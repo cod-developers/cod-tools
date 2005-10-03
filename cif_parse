@@ -1,0 +1,30 @@
+#! /bin/sh
+#!perl -w # --*- Perl -*--
+eval 'exec perl5 -x $0 ${1+"$@"}'
+    if 0;
+#------------------------------------------------------------------------------
+#$Author:$
+#$Date:$ 
+#$Locker:$
+#$Revision:$
+#$Source:$
+#$State:$
+#------------------------------------------------------------------------------
+#*
+#  Parse a CIF file
+#**
+
+use strict;
+use lib "./lib/perl5";
+use STAR::Parser;
+use ShowStruct;
+
+my $filename = shift(@ARGV);
+my @data;
+
+@data = STAR::Parser->parse($filename);
+
+
+for my $dataset (@data) {
+    showHash( $dataset );
+}
