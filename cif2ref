@@ -29,7 +29,7 @@ my $n = 0;
 
 for my $dataset (@data) {
 
-    print "\n" if $n > 0;
+    die unless defined $dataset->{DATA};
 
     my $compounds = $dataset->{DATA};
     my @names = keys %{$compounds};
@@ -38,8 +38,12 @@ for my $dataset (@data) {
 
     my $compound_name = $names[0];
     my $compound = $compounds->{$compound_name};
-    my $category = $compound->{"-"};
-    my $datablok = $category->{"-"};
+    my $category = defined $compound ? $compound->{"-"} : undef;
+    my $datablok = defined $category ? $category->{"-"} : undef;
+
+    next if !defined $datablok or !defined $datablok->{_atom_site_label};
+
+    print "\n" if $n > 0;
 
     # Chemical formula:
     my $formula = $datablok->{_chemical_formula_sum}[0];
