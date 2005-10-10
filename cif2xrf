@@ -1,0 +1,146 @@
+#! /bin/sh
+#!perl -w # --*- Perl -*--
+eval 'exec perl5 -x $0 ${1+"$@"}'
+    if 0;
+#------------------------------------------------------------------------------
+#$Author: saulius $
+#$Date: 2005-10-05 18:09:03 +0300 (Wed, 05 Oct 2005) $ 
+#$Revision: 7 $
+#$URL: svn+ssh://kolibris.ibt.lt/home/saulius/svn-repositories/cif-tools/trunk/cif2ref $
+#------------------------------------------------------------------------------
+#*
+#  Parse a CIF file and print out the essential information in the COD
+#  REF format
+#**
+
+use strict;
+use lib "./lib/perl5";
+use STAR::Parser;
+
+my $filename = shift(@ARGV);
+my $biblio = @ARGV > 0 ? shift(@ARGV) : undef;
+my @data;
+
+@data = STAR::Parser->parse(-file=>$filename);
+
+my @processed_cif_tags = (
+    "_chemical_formula_sum",
+    "_cell_length_a",
+    "_cell_length_b",
+    "_cell_length_c",
+    "_cell_angle_alpha",
+    "_cell_angle_beta",
+    "_cell_angle_gamma",
+##    "_symmetry_space_group_name_H-M",
+    "_atom_site_fract_x",
+    "_atom_site_fract_y",
+    "_atom_site_fract_z",
+    "_atom_site_occupancy",
+    "_atom_site_U_iso_or_equiv",
+    "_atom_site_Uiso_or_Biso",
+);
+
+my %processed_cif_tags = map { ($_, $_) } @processed_cif_tags;
+
+my $n = 0;
+
+for my $dataset (@data) {
+
+    die unless defined $dataset->{DATA};
+
+    my $compounds = $dataset->{DATA};
+    my @names = keys %{$compounds};
+
+    ## print int(@data), "\n"; exit;
+
+    my $compound_name = $names[0];
+    my $compound = $compounds->{$compound_name};
+    my $category = defined $compound ? $compound->{"-"} : undef;
+    my $datablok = defined $category ? $category->{"-"} : undef;
+
+    next if !defined $datablok or !defined $datablok->{_atom_site_label};
+
+    print "\n" if $n > 0;
+
+    # Print out all tags:
+    for my $tag (keys %{$datablok}) {
+	if( !defined $processed_cif_tags{$tag} ) {
+	    my $data = $datablok->{$tag};
+	    if( int(@{$data}) == 1 ) {
+		my @lines = split( "\n", $data->[0] );
+		for my $line (@lines) {
+		    print "#", $tag, "\t", $line, "\n";
+		}
+	    } else {
+		for my $j (0..$#{$data}) {
+		    my @lines = split( "\n", $data->[$j] );
+		    for my $line (@lines) {
+			print "#", $tag, "[", $j, "]", "\t", $line, "\n";
+		    }
+		}
+	    }
+	}
+    }
+
+    # Chemical formula:
+    my $formula = $datablok->{_chemical_formula_sum}[0];
+    $formula =~ s/^\s*|\s*$//g;
+
+    # Cell constants:
+    my $a = $datablok->{_cell_length_a}[0];
+    my $b = $datablok->{_cell_length_b}[0];
+    my $c = $datablok->{_cell_length_c}[0];
+    my $alpha = $datablok->{_cell_angle_alpha}[0];
+    my $beta  = $datablok->{_cell_angle_beta}[0];
+    my $gamma = $datablok->{_cell_angle_gamma}[0];
+
+    # Spacegroup:
+    my $spacegroup = $datablok->{"_symmetry_space_group_name_H-M"}[0];
+
+    # Atom records:
+
+    my $atom = $datablok->{_atom_site_label};
+
+    my $x = $datablok->{_atom_site_fract_x};
+    my $y = $datablok->{_atom_site_fract_y};
+    my $z = $datablok->{_atom_site_fract_z};
+
+    my $q = $datablok->{_atom_site_occupancy};
+    my $B = $datablok->{_atom_site_U_iso_or_equiv};
+    
+    if( !defined $B ) {
+	$B = $datablok->{_atom_site_Uiso_or_Biso};
+    }
+
+    # Print it out:
+
+    if( defined $biblio ) {
+	open( BIBLIO, $biblio ) or
+	    die( "Could not open file '$biblio' for reading: $?" );
+	my $reference = <BIBLIO>; # read one line
+	close BIBLIO;
+	print $reference;
+    } else {
+	print "Bibliography ...\n";
+    }
+
+    do {
+	local $, = " ";
+	local $\ = "\n";
+
+	print $formula;
+
+	print $a, $b, $c, $alpha, $beta, $gamma;
+
+	$spacegroup =~ s/\s*//g;
+	print $spacegroup;
+
+	for my $i (0..$#{$x}) {
+	    print
+		$atom->[$i], "?", "?", $x->[$i], $y->[$i], $z->[$i],
+		$q->[$i], $B->[$i];
+	}
+    };
+
+    $n ++;
+}
