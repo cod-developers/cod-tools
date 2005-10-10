@@ -1,0 +1,152 @@
+#!/bin/sh
+#!perl -w # --*- Perl -*--
+eval 'exec perl5 -x $0 ${1+"$@"}'
+    if 0;
+#------------------------------------------------------------------------
+#$Author: saulius $
+#$Date: 2004/12/03 16:12:32 $ 
+#$Revision: 1.3 $
+#$URL: /home/saulius/src/tgd-database/RCS/tdb2csv,v $
+#------------------------------------------------------------------------
+#*
+# Convert a COD XRF (eXtended ReFerence) format into a CIF file.
+#**
+
+use strict;
+
+my @processed_tags = (
+    "_cell_measurement_temperature",
+    "_diffrn_ambient_temperature",
+);
+
+my %tags = ();
+my @record = ();
+my @anisou = ();
+
+my $n = 0;
+my $compound = 1;
+
+while(<>) {
+    chomp;
+    if( /^\#/ ) {
+	my ( $key, $value ) = split( /[\s]/, $_, 2 );
+	$key =~ s/^\#//;
+	if( !defined $tags{$key} ) {
+	    $tags{$key} = $value;
+	} else {
+	    $tags{$key} .= "\n" . $value;
+	}
+    } elsif( /^ANISOU/ ) {
+	push( @anisou, [ split( " ",$_ ) ] );
+    } elsif( !/^\s*$/ ) {
+	if( $n < 4 && $n != 2 ) {
+	    push( @record, [$_] );
+	} else {
+	    push( @record, [ split( " ", $_ ) ] );
+	}
+	$n++;
+    }
+    
+    if( /^\s*$/ ) {
+	print_record( \@record, \%tags, \@anisou );
+	@record = ();
+	%tags = ();
+	@anisou = ();
+	$n = 0;
+    }
+}
+
+sub print_record
+{
+    my ($records, $tags, $anisou) = @_;
+
+    printf "data_%d\n", 7000000 + $compound++;
+
+    ## do { local $, = ",\n"; print keys %{$tags}, "\n"; };
+
+    if( $tags ) {
+	for my $key (@processed_tags) {
+	    if( exists $tags->{$key} ) {
+		my $val = $tags->{$key};
+		if( $val =~ /\n/ ) {
+		    $val = "\n; " . $val . "\n;\n";
+		} elsif( $val =~ /^[A-Za-z0-9()]*$/ ) {
+		    $val = " " . $val . "\n";
+		} else {
+		    $val = " '" . $val . "'\n";
+		}
+		printf "%-30s%s", $key, $val; 
+	    }
+	}
+    }
+
+    if( $records && int(@{$records}) > 0 ) {
+	my $bibliography = shift( @{$records} );
+	my $composition =  shift( @{$records} );
+	my $cell =  shift( @{$records} );
+	my $spacegroup = shift( @{$records} );
+	print "_publ_section_title \n";
+	print ";\n";
+	do {
+	    local $, = "\n";
+	    local $\ = "\n";
+	    print map { " " . $_ } fold( 71, " ", ($bibliography->[0]) );
+	};
+	print ";\n";
+	print "_chemical_formula_sum '$composition->[0]'\n";
+	print "_cell_length_a       $cell->[0]\n";
+	print "_cell_length_b       $cell->[1]\n";
+	print "_cell_length_c       $cell->[2]\n";
+	print "_cell_angle_alpha    $cell->[3]\n";
+	print "_cell_angle_beta     $cell->[4]\n";
+	print "_cell_angle_gamma    $cell->[5]\n";
+	print "_symmetry_space_group_name_H-M   '$spacegroup->[0]'\n";
+	if( int(@{$records}) > 0 ) {
+	    print "loop_\n";
+	    print "_atom_site_label\n";
+	    print "_atom_site_symmetry_multiplicity\n";
+	    print "_atom_site_Wyckoff_symbol\n";
+	    print "_atom_site_fract_x\n";
+	    print "_atom_site_fract_y\n";
+	    print "_atom_site_fract_z\n";
+	    print "_atom_site_occupancy\n";
+	    print "_atom_site_U_iso_or_equiv\n";
+	    print "_atom_site_adp_type\n";
+	    local $, = " ";
+	    local $\ = "\n";
+	    for my $atom (@{$records}) {
+		print @{$atom}, "Uiso";
+	    }
+	}
+    }
+
+    print "\n";
+}
+
+sub fold
+{
+    my $length = shift;
+    my $separator = shift;
+    my $string = shift;
+    my @lines = ();
+    my $line = "";
+
+    my $ors = $separator =~ /\s/ ? $separator : "$separator ";
+    my $word;
+    for $word (split( $separator, $string )) {
+	$word =~ s/^\s*|\s*$//g;
+	if( !$line ) {
+	    $line = $word;
+	} else {
+	    my $new_line = "$line$ors$word";
+	    if( length($new_line) < $length ) {
+		$line = $new_line;
+	    } else {
+		push( @lines, $line );
+		$line = $word;
+	    }
+	}
+    }
+    push( @lines, $line );
+    return @lines;
+}
