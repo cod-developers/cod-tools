@@ -44,8 +44,8 @@ my @inherited_tags = (
     "_journal_name_full",
     "_journal_year",
     "_journal_volume",
-    "_journal_page_start",
-    "_journal_page_end",
+    "_journal_page_first",
+    "_journal_page_last",
     "_cell_measurement_temperature",
     "_diffrn_ambient_temperature",
 );
@@ -64,7 +64,18 @@ my $compound = 1;
 
 while(<>) {
     chomp;
-    if( /^\#/ ) {
+
+    if( /^\#(_journal_name_full)\s(.*)$/ ) {
+	$journal = $2 unless defined $user_journal;
+    } elsif( /^\#(_journal_year)\s(.*)$/ ) {
+	$year = $2 unless defined $user_year;
+    } elsif( /^\#(_journal_volume)\s(.*)$/ ) {
+	$volume = $2 unless defined $user_volume;
+    } elsif( /^\#(_journal_page_first)\s(.*)$/ ) {
+	$start_page = $2 unless defined $user_start_page;
+    } elsif( /^\#(_journal_page_last)\s(.*)$/ ) {
+	$end_page = $2 unless defined $user_end_page;
+    } elsif( /^\#/ ) {
 	my $idx;
 	my ( $key, $value ) = split( /[\s]/, $_, 2 );
 	$key =~ s/^\#//;
@@ -85,16 +96,6 @@ while(<>) {
 		$tags{$key} .= "\n" . $value;
 	    }
 	}
-    } elsif( /^\#(_journal_name_full)\s(.*)$/ ) {
-	$journal = $2 unless defined $user_journal;
-    } elsif( /^\#(_journal_year)\s(.*)$/ ) {
-	$year = $2 unless defined $user_year;
-    } elsif( /^\#(_journal_volume)\s(.*)$/ ) {
-	$volume = $2 unless defined $user_volume;
-    } elsif( /^\#(PAGE|_journal_page_first)\s(.*)$/ ) {
-	$start_page = $2 unless defined $user_start_page;
-    } elsif( /^\#(_journal_page_last)\s(.*)$/ ) {
-	$end_page = $2 unless defined $user_end_page;
     } elsif( /^ANISOU/ ) {
 	my @atom = split( " ",$_ );
 	my $atom_name = $atom[1];
@@ -110,6 +111,12 @@ while(<>) {
     }
     
     if( /^\s*$/ || eof ) {
+	$tags{_journal_name_full} = $journal if defined $journal;
+	$tags{_journal_year} = $year if defined $year;
+	$tags{_journal_volume} = $volume if defined $volume;
+	$tags{_journal_page_first} = $start_page if defined $start_page;
+	$tags{_journal_page_last} = $end_page if defined $end_page;
+
 	print_record( \@record, \%tags, \@anisou, \%anisou );
 	@record = ();
 	%tags = ();
