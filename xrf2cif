@@ -17,6 +17,7 @@ use strict;
 my @processed_tags = (
     "_cell_measurement_temperature",
     "_diffrn_ambient_temperature",
+    "_symmetry_equiv_pos_as_xyz",
 );
 
 my %tags = ();
@@ -30,12 +31,25 @@ my $compound = 1;
 while(<>) {
     chomp;
     if( /^\#/ ) {
+	my $idx;
 	my ( $key, $value ) = split( /[\s]/, $_, 2 );
 	$key =~ s/^\#//;
-	if( !defined $tags{$key} ) {
-	    $tags{$key} = $value;
+	if( $key =~ /^(.*)\[(.*)\]$/ ) {
+	    $key = $1;
+	    $idx = $2;
+	}
+	if( defined $idx ) {
+	    if( !defined $tags{$key}[$idx] ) {
+		$tags{$key}[$idx] = $value;
+	    } else {
+		$tags{$key}[$idx] .= "\n" . $value;
+	    }
 	} else {
-	    $tags{$key} .= "\n" . $value;
+	    if( !defined $tags{$key} ) {
+		$tags{$key} = $value;
+	    } else {
+		$tags{$key} .= "\n" . $value;
+	    }
 	}
     } elsif( /^ANISOU/ ) {
 	my @atom = split( " ",$_ );
@@ -61,6 +75,20 @@ while(<>) {
     }
 }
 
+sub print_value
+{
+    my $val = $_[0];
+
+    if( $val =~ /\n/ ) {
+	$val = "\n; " . $val . "\n;\n";
+    } elsif( $val =~ /^[A-Za-z0-9()]*$/) {
+	$val = " " . $val . "\n";
+    } else {
+	$val = " '" . $val . "'\n";
+    }
+    print $val;
+}
+
 sub print_record
 {
     my ($records, $tags, $anisou, $anisou_atoms ) = @_;
@@ -73,14 +101,16 @@ sub print_record
 	for my $key (@processed_tags) {
 	    if( exists $tags->{$key} ) {
 		my $val = $tags->{$key};
-		if( $val =~ /\n/ ) {
-		    $val = "\n; " . $val . "\n;\n";
-		} elsif( $val =~ /^[A-Za-z0-9()]*$/ ) {
-		    $val = " " . $val . "\n";
+		if( ref $val eq "ARRAY" ) {
+		    print "loop_\n";
+		    print "$key\n";
+		    for my $value (@$val) {
+			print_value( $value );
+		    }
 		} else {
-		    $val = " '" . $val . "'\n";
+		    printf "%-30s", $key;
+		    print_value( $val );
 		}
-		printf "%-30s%s", $key, $val; 
 	    }
 	}
     }
@@ -105,7 +135,8 @@ sub print_record
 	print "_cell_angle_alpha    $cell->[3]\n";
 	print "_cell_angle_beta     $cell->[4]\n";
 	print "_cell_angle_gamma    $cell->[5]\n";
-	print "_symmetry_space_group_name_H-M   '$spacegroup->[0]'\n";
+	print "_symmetry_space_group_name_H-M   ";
+	print_value( $spacegroup->[0] );
 	if( int(@{$records}) > 0 ) {
 	    print "loop_\n";
 	    print "_atom_site_label\n";
