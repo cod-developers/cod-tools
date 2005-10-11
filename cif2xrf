@@ -112,6 +112,18 @@ for my $dataset (@data) {
 	$B = $datablok->{_atom_site_Uiso_or_Biso};
     }
 
+    # Anisotripoc temperature factor records:
+
+    my $aniso_label = $datablok->{_atom_site_aniso_label};
+    my @anisou = (
+	$datablok->{_atom_site_aniso_U_11},
+	$datablok->{_atom_site_aniso_U_22},
+	$datablok->{_atom_site_aniso_U_33},
+	$datablok->{_atom_site_aniso_U_23},
+	$datablok->{_atom_site_aniso_U_13},
+	$datablok->{_atom_site_aniso_U_12},
+    );
+
     # Print it out:
 
     if( defined $biblio ) {
@@ -135,12 +147,22 @@ for my $dataset (@data) {
 	$spacegroup =~ s/\s*//g;
 	print $spacegroup;
 
-	for my $i (0..$#{$x}) {
+	for my $i (0..$#{$atom}) {
 	    print
 		$atom->[$i], "?", "?", $x->[$i], $y->[$i], $z->[$i],
 		$q->[$i], $B->[$i];
 	}
     };
+
+    if( defined $aniso_label and int(@{$aniso_label}) > 0 ) {
+	for my $i (0..$#{$aniso_label}) {
+	    print "ANISOU ", $aniso_label->[$i];
+	    for my $anisou (@anisou) {
+		print " ", $anisou->[$i];
+	    }
+	    print "\n";
+	}
+    }
 
     $n ++;
 }

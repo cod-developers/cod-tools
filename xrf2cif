@@ -22,6 +22,7 @@ my @processed_tags = (
 my %tags = ();
 my @record = ();
 my @anisou = ();
+my %anisou = ();
 
 my $n = 0;
 my $compound = 1;
@@ -37,7 +38,10 @@ while(<>) {
 	    $tags{$key} .= "\n" . $value;
 	}
     } elsif( /^ANISOU/ ) {
-	push( @anisou, [ split( " ",$_ ) ] );
+	my @atom = split( " ",$_ );
+	my $atom_name = $atom[1];
+	push( @anisou, [ @atom ] );
+	$anisou{$atom_name} ++;
     } elsif( !/^\s*$/ ) {
 	if( $n < 4 && $n != 2 ) {
 	    push( @record, [$_] );
@@ -48,17 +52,18 @@ while(<>) {
     }
     
     if( /^\s*$/ ) {
-	print_record( \@record, \%tags, \@anisou );
+	print_record( \@record, \%tags, \@anisou, \%anisou );
 	@record = ();
 	%tags = ();
 	@anisou = ();
+	%anisou = ();
 	$n = 0;
     }
 }
 
 sub print_record
 {
-    my ($records, $tags, $anisou) = @_;
+    my ($records, $tags, $anisou, $anisou_atoms ) = @_;
 
     printf "data_%d\n", 7000000 + $compound++;
 
@@ -115,8 +120,26 @@ sub print_record
 	    local $, = " ";
 	    local $\ = "\n";
 	    for my $atom (@{$records}) {
-		print @{$atom}, "Uiso";
+		my $atom_name = $atom->[0];
+		print @{$atom}, defined $anisou_atoms->{$atom_name} ?
+		    "Uani" : "Uiso";
 	    }
+	}
+    }
+
+    if( $anisou && int(@{$anisou}) > 0 ) {
+	print "loop_\n";
+	print "_atom_site_aniso_label\n";
+	print "_atom_site_aniso_U_11\n";
+	print "_atom_site_aniso_U_22\n";
+	print "_atom_site_aniso_U_33\n";
+	print "_atom_site_aniso_U_23\n";
+	print "_atom_site_aniso_U_13\n";
+	print "_atom_site_aniso_U_12\n";
+	local $, = " ";
+	local $\ = "\n";
+	for my $atom (@{$anisou}) {
+	    print @{$atom}[1..$#{$atom}];
 	}
     }
 
