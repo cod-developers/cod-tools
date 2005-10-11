@@ -6,7 +6,7 @@ eval 'exec perl5 -x $0 ${1+"$@"}'
 #$Author$
 #$Date$ 
 #$Revision$
-#$URL:$
+#$URL$
 #------------------------------------------------------------------------------
 #*
 #  Parse a CIF file and print out the essential information in the COD
@@ -73,6 +73,9 @@ for my $dataset (@data) {
 	$B = $datablok->{_atom_site_Uiso_or_Biso};
     }
 
+    my $multiplicity = $datablok->{_atom_site_symmetry_multiplicity};
+    my $Wyckoff_sym = $datablok->{_atom_site_Wyckoff_symbol};
+
     # Print it out:
 
     if( defined $biblio ) {
@@ -105,7 +108,10 @@ for my $dataset (@data) {
 
 	for my $i (0..$#{$x}) {
 	    print
-		$atom->[$i], "?", "?", $x->[$i], $y->[$i], $z->[$i],
+		$atom->[$i],
+		defined $multiplicity ? $multiplicity->[$i] : "?",
+		defined $Wyckoff_sym ? $Wyckoff_sym->[$i] : "?",
+		$x->[$i], $y->[$i], $z->[$i],
 		$q->[$i], $B->[$i];
 	}
     };
