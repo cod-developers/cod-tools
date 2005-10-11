@@ -17,7 +17,7 @@ use strict;
 my @processed_tags = (
     "_cell_measurement_temperature",
     "_diffrn_ambient_temperature",
-    "_symmetry_equiv_pos_as_xyz",
+    ## "_symmetry_equiv_pos_as_xyz",
 );
 
 my %tags = ();
@@ -72,6 +72,25 @@ while(<>) {
 	@anisou = ();
 	%anisou = ();
 	$n = 0;
+    }
+}
+
+sub print_tag
+{
+    my ($key, $tags) = @_;
+
+    if( exists $tags->{$key} ) {
+	my $val = $tags->{$key};
+	if( ref $val eq "ARRAY" ) {
+	    print "loop_\n";
+	    print "$key\n";
+	    for my $value (@$val) {
+		print_value( $value );
+	    }
+	} else {
+	    printf "%-30s", $key;
+	    print_value( $val );
+	}
     }
 }
 
@@ -137,6 +156,7 @@ sub print_record
 	print "_cell_angle_gamma    $cell->[5]\n";
 	print "_symmetry_space_group_name_H-M   ";
 	print_value( $spacegroup->[0] );
+	print_tag( "_symmetry_equiv_pos_as_xyz", $tags );
 	if( int(@{$records}) > 0 ) {
 	    print "loop_\n";
 	    print "_atom_site_label\n";
