@@ -13,9 +13,39 @@ eval 'exec perl5 -x $0 ${1+"$@"}'
 #**
 
 use strict;
+use lib "./lib/perl5";
+use SOptions;
+use SUsage;
+
+my $user_journal;
+my $user_volume;
+my $user_start_page;
+my $user_end_page;
+my $user_year;
+
+@ARGV = getOptions( 
+    "-j,--journal"   => \$user_journal,
+    "-v,--volume"    => \$user_volume,
+    "-p,--page"      => \$user_start_page,
+    "--start-page"   => \$user_start_page,
+    "-e,--end-page"  => \$user_end_page,
+    "-y,--year"      => \$user_year,
+    "--help,--usage" => sub { SUsage::usage; exit },
+);
+
+my $journal = $user_journal;
+my $volume = $user_volume;
+my $start_page = $user_start_page;
+my $end_page = $user_end_page;
+my $year = $user_year;
 
 my @inherited_tags = (
     "_chemical_name_systematic",
+    "_journal_name_full",
+    "_journal_year",
+    "_journal_volume",
+    "_journal_page_start",
+    "_journal_page_end",
     "_cell_measurement_temperature",
     "_diffrn_ambient_temperature",
 );
@@ -55,6 +85,16 @@ while(<>) {
 		$tags{$key} .= "\n" . $value;
 	    }
 	}
+    } elsif( /^\#(_journal_name_full)\s(.*)$/ ) {
+	$journal = $2 unless defined $user_journal;
+    } elsif( /^\#(_journal_year)\s(.*)$/ ) {
+	$year = $2 unless defined $user_year;
+    } elsif( /^\#(_journal_volume)\s(.*)$/ ) {
+	$volume = $2 unless defined $user_volume;
+    } elsif( /^\#(PAGE|_journal_page_first)\s(.*)$/ ) {
+	$start_page = $2 unless defined $user_start_page;
+    } elsif( /^\#(_journal_page_last)\s(.*)$/ ) {
+	$end_page = $2 unless defined $user_end_page;
     } elsif( /^ANISOU/ ) {
 	my @atom = split( " ",$_ );
 	my $atom_name = $atom[1];

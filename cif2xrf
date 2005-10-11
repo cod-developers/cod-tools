@@ -16,6 +16,24 @@ eval 'exec perl5 -x $0 ${1+"$@"}'
 use strict;
 use lib "./lib/perl5";
 use STAR::Parser;
+use SOptions;
+use SUsage;
+
+my $user_journal;
+my $user_volume;
+my $user_start_page;
+my $user_end_page;
+my $user_year;
+
+@ARGV = getOptions( 
+    "-j,--journal"   => \$user_journal,
+    "-v,--volume"    => \$user_volume,
+    "-p,--page"      => \$user_start_page,
+    "--start-page"   => \$user_start_page,
+    "-e,--end-page"  => \$user_end_page,
+    "-y,--year"      => \$user_year,
+    "--help,--usage" => sub { SUsage::usage; exit },
+);
 
 my $filename = shift(@ARGV);
 my $biblio = @ARGV > 0 ? shift(@ARGV) : undef;
@@ -61,6 +79,21 @@ for my $dataset (@data) {
     next if !defined $datablok or !defined $datablok->{_atom_site_label};
 
     print "\n" if $n > 0;
+
+    $datablok->{_journal_name_full} = [ $user_journal ]
+	if defined $user_journal;
+
+    $datablok->{_journal_year} = [ $user_year ]
+	if defined $user_year;
+
+    $datablok->{_journal_volume} = [ $user_volume ]
+	if defined $user_volume;
+
+    $datablok->{_journal_page_start} = [ $user_start_page ]
+	if defined $user_start_page;
+
+    $datablok->{_journal_page_end} = [ $user_end_page ]
+	if defined $user_end_page;
 
     # Print out all tags:
     for my $tag (keys %{$datablok}) {
