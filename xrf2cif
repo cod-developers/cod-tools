@@ -14,10 +14,14 @@ eval 'exec perl5 -x $0 ${1+"$@"}'
 
 use strict;
 
-my @processed_tags = (
+my @inherited_tags = (
+    "_chemical_name_systematic",
     "_cell_measurement_temperature",
     "_diffrn_ambient_temperature",
-    ## "_symmetry_equiv_pos_as_xyz",
+);
+
+my @generated_tags = (
+    "_symmetry_equiv_pos_as_xyz",
 );
 
 my %tags = ();
@@ -116,24 +120,6 @@ sub print_record
 
     ## do { local $, = ",\n"; print keys %{$tags}, "\n"; };
 
-    if( $tags ) {
-	for my $key (@processed_tags) {
-	    if( exists $tags->{$key} ) {
-		my $val = $tags->{$key};
-		if( ref $val eq "ARRAY" ) {
-		    print "loop_\n";
-		    print "$key\n";
-		    for my $value (@$val) {
-			print_value( $value );
-		    }
-		} else {
-		    printf "%-30s", $key;
-		    print_value( $val );
-		}
-	    }
-	}
-    }
-
     if( $records && int(@{$records}) > 0 ) {
 	my $bibliography = shift( @{$records} );
 	my $composition =  shift( @{$records} );
@@ -148,6 +134,13 @@ sub print_record
 	};
 	print ";\n";
 	print "_chemical_formula_sum '$composition->[0]'\n";
+
+	if( $tags ) {
+	    for my $key (@inherited_tags) {
+		print_tag( $key, $tags );
+	    }
+	}
+
 	print "_cell_length_a       $cell->[0]\n";
 	print "_cell_length_b       $cell->[1]\n";
 	print "_cell_length_c       $cell->[2]\n";
