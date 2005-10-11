@@ -41,24 +41,25 @@ my @data;
 
 @data = STAR::Parser->parse(-file=>$filename);
 
-my @processed_cif_tags = (
+my @requested_cif_tags = (
     "_chemical_formula_sum",
+    "_chemical_name_systematic",
+    "_journal_name_full",
+    "_journal_year",
+    "_journal_volume",
+    "_journal_page_start",
+    "_journal_page_end",
+    "_cell_measurement_temperature",
+    "_diffrn_ambient_temperature",
     "_cell_length_a",
     "_cell_length_b",
     "_cell_length_c",
     "_cell_angle_alpha",
     "_cell_angle_beta",
     "_cell_angle_gamma",
-##    "_symmetry_space_group_name_H-M",
-    "_atom_site_fract_x",
-    "_atom_site_fract_y",
-    "_atom_site_fract_z",
-    "_atom_site_occupancy",
-    "_atom_site_U_iso_or_equiv",
-    "_atom_site_Uiso_or_Biso",
+    "_symmetry_space_group_name_H-M",
+    "_symmetry_equiv_pos_as_xyz",
 );
-
-my %processed_cif_tags = map { ($_, $_) } @processed_cif_tags;
 
 my $n = 0;
 
@@ -95,9 +96,9 @@ for my $dataset (@data) {
     $datablok->{_journal_page_end} = [ $user_end_page ]
 	if defined $user_end_page;
 
-    # Print out all tags:
-    for my $tag (keys %{$datablok}) {
-	if( !defined $processed_cif_tags{$tag} ) {
+    # Print out requested tags:
+    for my $tag (@requested_cif_tags) {
+	if( defined $datablok->{$tag} ) {
 	    my $data = $datablok->{$tag};
 	    if( int(@{$data}) == 1 ) {
 		my @lines = split( "\n", $data->[0] );
