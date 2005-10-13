@@ -17,27 +17,26 @@ use lib "./lib/perl5";
 use SOptions;
 use SUsage;
 
-my $user_journal;
-my $user_volume;
-my $user_start_page;
-my $user_end_page;
-my $user_year;
+my $user_biblio = 0;
+my $leave_biblio = 0;
+
+my $journal;
+my $volume;
+my $start_page;
+my $end_page;
+my $year;
 
 @ARGV = getOptions( 
-    "-j,--journal"   => \$user_journal,
-    "-v,--volume"    => \$user_volume,
-    "-p,--page"      => \$user_start_page,
-    "--start-page"   => \$user_start_page,
-    "-e,--end-page"  => \$user_end_page,
-    "-y,--year"      => \$user_year,
+    "-j,--journal"   => sub{ $user_biblio = 1; $journal = get_value() },
+    "-v,--volume"    => sub{ $user_biblio = 1; $volume = get_value() },
+    "-p,--page"      => sub{ $user_biblio = 1; $start_page = get_value() },
+    "--start-page"   => sub{ $user_biblio = 1; $start_page = get_value() },
+    "-e,--end-page"  => sub{ $user_biblio = 1; $end_page = get_value() },
+    "-y,--year"      => sub{ $user_biblio = 1; $year = get_value() },
+    "--leave-bibliography"   => sub{ $leave_biblio = 1 },
+    "--discard-bibliography" => sub{ $leave_biblio = 0 },
     "--help,--usage" => sub { SUsage::usage; exit },
 );
-
-my $journal = $user_journal;
-my $volume = $user_volume;
-my $start_page = $user_start_page;
-my $end_page = $user_end_page;
-my $year = $user_year;
 
 my @inherited_tags = (
     "_chemical_name_systematic",
@@ -65,17 +64,7 @@ my $compound = 1;
 while(<>) {
     chomp;
 
-    if( /^\#(_journal_name_full)\s(.*)$/ ) {
-	$journal = $2 unless defined $user_journal;
-    } elsif( /^\#(_journal_year)\s(.*)$/ ) {
-	$year = $2 unless defined $user_year;
-    } elsif( /^\#(_journal_volume)\s(.*)$/ ) {
-	$volume = $2 unless defined $user_volume;
-    } elsif( /^\#(_journal_page_first)\s(.*)$/ ) {
-	$start_page = $2 unless defined $user_start_page;
-    } elsif( /^\#(_journal_page_last)\s(.*)$/ ) {
-	$end_page = $2 unless defined $user_end_page;
-    } elsif( /^\#/ ) {
+    if( /^\#/ ) {
 	my $idx;
 	my ( $key, $value ) = split( /[\s]/, $_, 2 );
 	$key =~ s/^\#//;
@@ -111,12 +100,18 @@ while(<>) {
     }
     
     if( /^\s*$/ || eof ) {
-	$tags{_journal_name_full} = $journal if defined $journal;
-	$tags{_journal_year} = $year if defined $year;
-	$tags{_journal_volume} = $volume if defined $volume;
-	$tags{_journal_page_first} = $start_page if defined $start_page;
-	$tags{_journal_page_last} = $end_page if defined $end_page;
-
+	if( $user_biblio ) {
+	    if( !$leave_biblio ) {
+		for my $key ( grep /_journal_/, keys %tags ) {
+		    delete $tags{$key};
+		}
+	    }
+	    $tags{_journal_name_full} = $journal if defined $journal;
+	    $tags{_journal_year} = $year if defined $year;
+	    $tags{_journal_volume} = $volume if defined $volume;
+	    $tags{_journal_page_first} = $start_page if defined $start_page;
+	    $tags{_journal_page_last} = $end_page if defined $end_page;
+	}
 	print_record( \@record, \%tags, \@anisou, \%anisou );
 	@record = ();
 	%tags = ();
