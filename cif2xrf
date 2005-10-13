@@ -19,19 +19,24 @@ use STAR::Parser;
 use SOptions;
 use SUsage;
 
-my $user_journal;
-my $user_volume;
-my $user_start_page;
-my $user_end_page;
-my $user_year;
+my $user_biblio = 0;
+my $leave_biblio = 0;
+
+my $journal;
+my $volume;
+my $start_page;
+my $end_page;
+my $year;
 
 @ARGV = getOptions( 
-    "-j,--journal"   => \$user_journal,
-    "-v,--volume"    => \$user_volume,
-    "-p,--page"      => \$user_start_page,
-    "--start-page"   => \$user_start_page,
-    "-e,--end-page"  => \$user_end_page,
-    "-y,--year"      => \$user_year,
+    "-j,--journal"   => sub{ $user_biblio = 1; $journal = get_value() },
+    "-v,--volume"    => sub{ $user_biblio = 1; $volume = get_value() },
+    "-p,--page"      => sub{ $user_biblio = 1; $start_page = get_value() },
+    "--start-page"   => sub{ $user_biblio = 1; $start_page = get_value() },
+    "-e,--end-page"  => sub{ $user_biblio = 1; $end_page = get_value() },
+    "-y,--year"      => sub{ $user_biblio = 1; $year = get_value() },
+    "--leave-bibliography"   => sub{ $leave_biblio = 1 },
+    "--discard-bibliography" => sub{ $leave_biblio = 0 },
     "--help,--usage" => sub { SUsage::usage; exit },
 );
 
@@ -81,20 +86,28 @@ for my $dataset (@data) {
 
     print "\n" if $n > 0;
 
-    $datablok->{_journal_name_full} = [ $user_journal ]
-	if defined $user_journal;
+    if( $user_biblio ) {
+	if( !$leave_biblio ) {
+	    for my $key ( grep /_journal_/, keys %{$datablok} ) {
+		delete $datablok->{$key};
+	    }
+	}
 
-    $datablok->{_journal_year} = [ $user_year ]
-	if defined $user_year;
+	$datablok->{_journal_name_full} = [ $journal ]
+	    if defined $journal;
 
-    $datablok->{_journal_volume} = [ $user_volume ]
-	if defined $user_volume;
+	$datablok->{_journal_year} = [ $year ]
+	    if defined $year;
 
-    $datablok->{_journal_page_first} = [ $user_start_page ]
-	if defined $user_start_page;
+	$datablok->{_journal_volume} = [ $volume ]
+	    if defined $volume;
 
-    $datablok->{_journal_page_last} = [ $user_end_page ]
-	if defined $user_end_page;
+	$datablok->{_journal_page_first} = [ $start_page ]
+	    if defined $start_page;
+
+	$datablok->{_journal_page_last} = [ $end_page ]
+	    if defined $end_page;
+    }
 
     # Print out requested tags:
     for my $tag (@requested_cif_tags) {
