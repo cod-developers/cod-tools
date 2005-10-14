@@ -48,7 +48,7 @@ my %cif = (
 );
 
 for my $i ( 0x0391 .. 0x03A9 ) {
-    if( $i != 0x03A2 ) { # reserved code-point, qould be an uppercase varsigma
+    if( $i != 0x03A2 ) { # reserved code-point, could be an uppercase varsigma
 	my $c = chr($i);
 	$cif{$c} = uc($cif{lc($c)});
 	## binmode(STDOUT,":utf8");
