@@ -16,9 +16,9 @@ require Exporter;
 @ShowStruct::EXPORT = qw(unicode2cif cif2unicode);
 
 my %cif = (
-    "\N{RIGHTWARDS ARROW}" => '\\\\rightarrow ',
-    "\N{LEFTWARDS ARROW}"  => '\\\\leftarrow ',
-    "\N{UP TACK}"          => '\\\\x{22A5}',
+    "\N{RIGHTWARDS ARROW}" => '\\\\rightarrow ', # RIGHTWARDS ARROW
+    "\N{LEFTWARDS ARROW}"  => '\\\\leftarrow ', # LEFTWARDS ARROW
+    "\N{UP TACK}"          => '\\\\x{22A5}', # UP TACK, similar to PERPENDICULAR
     "\x{27C2}"             => '\\\\x{27C2}', # PERPENDICULAR
     "\x{03B1}" => '\a', # alpha
     "\x{03B2}" => '\b', # beta
