@@ -22,38 +22,24 @@ my %cif = (
 #
     "\x{2190}" => '\\\\leftarrow ',  # LEFTWARDS ARROW
     "\x{2192}" => '\\\\rightarrow ', # RIGHTWARDS ARROW
-    "\x{22A5}" => '\\x{22A5}',       # UP TACK, similar to PERPENDICULAR
-    "\x{27C2}" => '\\x{27C2}',       # PERPENDICULAR
+    "\x{22A5}" => '\x{22A5}',        # UP TACK, similar to PERPENDICULAR
+    "\x{27C2}" => '\x{27C2}',        # PERPENDICULAR
+    "\x{00B0}" => '\%',              # DEGREE SIGN
+    "\x{00D7}" => '\\\\times ',      # MULTIPLICATION SIGN (times)
+    "\x{2012}" => '--',              # EN DASH             (dash) (?)
+    "\x{2013}" => '--',              # EN DASH             (dash)
+    "\x{2014}" => '---',             # EM DASH             (single bond)
+    "\x{00B1}" => '+-',              # PLUS-MINUS SIGN     (plus-minus)
+    "\x{2213}" => '-+',              # MINUS-OR-PLUS SIGN  (minus-plus)
+    "\x{003D}" => '\\\\db ',         # EQUALS SIGN         (double bond)
+##  "\x{2610}" => '\\\\square ',     # BALLOT BOX          (square) (?)
+    "\x{25A1}" => '\\\\square ',     # WHITE SQUARE        (square)
+    "\x{2261}" => '\\\\tb ',         # IDENTICAL TO        (triple bond)
+    "\x{2260}" => '\\\\neq ',        # NOT EQUAL TO
 
-    "\x{00B0}" => '\%',       # DEGREE SIGN
-    "\x{00D7}" => '\\times ', # MULTIPLICATION SIGN
-
-# --
-# dash
-
-# 
-# +-
-# ±
-# 
-# ---
-# single bond
-# 
-# -+
-# 
-# \\db
-# double bond
-# 
-# \\square
-# square
-# 
-# \\tb
-# triple bond
-# 
-# \\neq
-# 
 # \\ddb
 # delocalized double bond
-# 
+
 # \\rangle
 # 
 # \\sim
@@ -158,7 +144,7 @@ sub cif2unicode
 	$text =~ s/(\Q$combining{$pattern}\E)(.)/$2$1/g;
 	$text =~ s/\Q$combining{$pattern}\E/$pattern/g;
     }
-    for my $pattern (keys %utf) {
+    for my $pattern (sort keys %utf) {
     	$text =~ s/\Q$pattern/$utf{$pattern}/g;
     	if( $pattern =~ /\s$/ ) {
     	    my $core = $pattern;
