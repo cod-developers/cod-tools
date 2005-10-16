@@ -24,7 +24,6 @@ my %cif = (
     "\x{2192}" => '\\\\rightarrow ', # RIGHTWARDS ARROW
     "\x{22A5}" => '&0x22A5;',        # UP TACK, similar to PERPENDICULAR
     "\x{27C2}" => '&0x27C2;',        # PERPENDICULAR
-    "\x{00B0}" => '\%',              # DEGREE SIGN
     "\x{00D7}" => '\\\\times ',      # MULTIPLICATION SIGN (times)
     "\x{2012}" => '--',              # EN DASH             (dash) (?)
     "\x{2013}" => '--',              # EN DASH             (dash)
@@ -92,6 +91,17 @@ my %cif = (
     "\x{03C7}" => '\c', # chi
     "\x{03C8}" => '\y', # psi
     "\x{03C9}" => '\w', # omega
+#
+# Some special European letters
+#
+    "\x{00DF}" => '\&s',  # LATIN SMALL LETTER SHARP S (German eszett)
+    "\x{00B0}" => '\%',   # DEGREE SIGN
+    "\x{0141}" => '\/L',  # LATIN CAPITAL LETTER L WITH STROKE
+    "\x{0142}" => '\/l',  # LATIN SMALL LETTER L WITH STROKE
+    "\x{00D8}" => '\/O',  # LATIN CAPITAL LETTER O WITH STROKE
+    "\x{00F8}" => '\/o',  # LATIN SMALL LETTER O WITH STROKE
+    "\x{0110}" => '\/D',  # LATIN CAPITAL LETTER D WITH STROKE (barred D ?)
+    "\x{0111}" => '\/d',  # LATIN SMALL LETTER D WITH STROKE (barred d ?)
 );
 
 my %combining = (
@@ -110,6 +120,10 @@ my %combining = (
    "\x{0327}" => '\,',   #   COMBINING CEDILLA      (cedilla)
    "\x{030B}" => '\>',   #   COMBINING DOUBLE ACUTE ACCENT (Hungarian umlaut)
    "\x{0306}" => '\(',   #   COMBINING BREVE (breve)
+   "\x{030A}" => '\%',   #   COMBINING RING ABOVE (ring)
+   ## "\x{0338}" => '\/',   #   COMBINING LONG SOLIDUS OVERLAY (ring)
+   ## # alternatives:
+   ## "\x{0337}" => '\/',   #   COMBINING SHORT SOLIDUS OVERLAY (ring)
 ); 
 
 #
