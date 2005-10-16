@@ -22,8 +22,8 @@ my %cif = (
 #
     "\x{2190}" => '\\\\leftarrow ',  # LEFTWARDS ARROW
     "\x{2192}" => '\\\\rightarrow ', # RIGHTWARDS ARROW
-    "\x{22A5}" => '\x{22A5}',        # UP TACK, similar to PERPENDICULAR
-    "\x{27C2}" => '\x{27C2}',        # PERPENDICULAR
+    "\x{22A5}" => '&0x22A5;',        # UP TACK, similar to PERPENDICULAR
+    "\x{27C2}" => '&0x27C2;',        # PERPENDICULAR
     "\x{00B0}" => '\%',              # DEGREE SIGN
     "\x{00D7}" => '\\\\times ',      # MULTIPLICATION SIGN (times)
     "\x{2012}" => '--',              # EN DASH             (dash) (?)
@@ -37,23 +37,32 @@ my %cif = (
     "\x{2261}" => '\\\\tb ',         # IDENTICAL TO        (triple bond)
     "\x{2260}" => '\\\\neq ',        # NOT EQUAL TO
 
-# \\ddb
-# delocalized double bond
+    # For this symbol, no suitable Unicode character could be found.
+    # '\\ddb' delocalized double bond
 
-# \\rangle
-# 
-# \\sim
-# 
-# \\langle
-# 
-# (N.B. ~  is the code for subscript)
-# \\rightarrow
-# 
-# \\simeq
-# 
-# \\leftarrow
-# 
-# \\infty
+    "\x{223C}" => '\\sim ', # TILDE OPERATOR
+    # alternatives:
+    "\x{02DC}" => '\\sim ', # SMALL TILDE
+    "\x{2053}" => '\\sim ', # SWUNG DASH
+    "\x{FF5E}" => '\\sim ', # FULLWIDTH TILDE
+    # '~' (TILDE) is not used since it denotes subscript in CIF.
+
+   "\x{2329}" => '\\\\langle ', # LEFT-POINTING ANGLE BRACKET     (langle)
+   # alternatives:
+   "<"        => '\\\\langle ', # LESS-THAN SIGN
+   "\x{27E8}" => '\\\\langle ', # MATHEMATICAL LEFT ANGLE BRACKET (langle)
+   "\x{3008}" => '\\\\langle ', # LEFT ANGLE BRACKET              (langle)
+   ## "\x{2039}" => '\\\\langle ', # SINGLE LEFT-POINTING ANGLE QUATATION
+
+   "\x{232A}" => '\\\\rangle ', # RIGHT-POINTING ANGLE BRACKET     (rangle)
+   # alternatives:
+   ">"        => '\\\\rangle ', # GREATER-THAN SIGN
+   "\x{27E9}" => '\\\\rangle ', # MATHEMATICAL RIGHT ANGLE BRACKET (rangle)
+   "\x{3009}" => '\\\\rangle ', # RIGHT ANGLE BRACKET              (rangle)
+   ## "\x{203A}" => '\\\\rangle ', # SINGLE RIGHT-POINTING ANGLE QUATATION
+
+   "\x{2243}" => '\\\\simeq ',  # ASYMPTOTICALLY EQUAL TO
+   "\x{221E}" => '\\\\infty ',  # INFINITY
 
 #
 # Greek letters:
