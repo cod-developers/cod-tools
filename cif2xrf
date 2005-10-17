@@ -178,10 +178,21 @@ for my $dataset (@data) {
 
     if( defined $biblio ) {
 	open( BIBLIO, $biblio ) or
-	    die( "Could not open file '$biblio' for reading: $?" );
-	my $reference = <BIBLIO>; # read one line
+	    die( "Could not open file '$biblio' for reading: $!" );
+	my $reference;
+	if( $biblio =~ /\.ref/ ) {
+	    $reference = <BIBLIO>; # read the first line
+	} elsif( $biblio =~ /\.xrf/ ) {
+	    my @reference = grep !/^\#/, <BIBLIO>;
+	    $reference = $reference[0]; # read the first non-comment line
+	} else {
+	    local $/ = undef; # read the whole file
+	    $reference = <BIBLIO>;
+	}
 	close BIBLIO;
-	print $reference;
+	chomp $reference;
+	$reference =~ s/\n/ /g;
+	print $reference, "\n";
     } else {
 	print "Bibliography ...\n";
     }
