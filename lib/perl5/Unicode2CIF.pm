@@ -13,8 +13,8 @@ use Unicode::Normalize;
 ## use charnames ':full';
 
 require Exporter;
-@ShowStruct::ISA = qw(Exporter);
-@ShowStruct::EXPORT = qw(unicode2cif cif2unicode);
+@Unicode2CIF::ISA = qw(Exporter);
+@Unicode2CIF::EXPORT = qw(unicode2cif cif2unicode);
 
 my %commands = (
 #
