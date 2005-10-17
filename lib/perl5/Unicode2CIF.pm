@@ -16,7 +16,7 @@ require Exporter;
 @ShowStruct::ISA = qw(Exporter);
 @ShowStruct::EXPORT = qw(unicode2cif cif2unicode);
 
-my %cif = (
+my %commands = (
 #
 # Arrows and mathematical symbols:
 #
@@ -31,7 +31,6 @@ my %cif = (
     "\x{00B1}" => '+-',              # PLUS-MINUS SIGN     (plus-minus)
     "\x{2213}" => '-+',              # MINUS-OR-PLUS SIGN  (minus-plus)
     "\x{003D}" => '\\\\db ',         # EQUALS SIGN         (double bond)
-##  "\x{2610}" => '\\\\square ',     # BALLOT BOX          (square) (?)
     "\x{25A1}" => '\\\\square ',     # WHITE SQUARE        (square)
     "\x{2261}" => '\\\\tb ',         # IDENTICAL TO        (triple bond)
     "\x{2260}" => '\\\\neq ',        # NOT EQUAL TO
@@ -40,29 +39,60 @@ my %cif = (
     # '\\ddb' delocalized double bond
 
     "\x{223C}" => '\\sim ', # TILDE OPERATOR
-    # alternatives:
-    "\x{02DC}" => '\\sim ', # SMALL TILDE
-    "\x{2053}" => '\\sim ', # SWUNG DASH
-    "\x{FF5E}" => '\\sim ', # FULLWIDTH TILDE
-    # '~' (TILDE) is not used since it denotes subscript in CIF.
+    "\x{2329}" => '\\\\langle ', # LEFT-POINTING ANGLE BRACKET     (langle)
+    "\x{232A}" => '\\\\rangle ', # RIGHT-POINTING ANGLE BRACKET     (rangle)
+    "\x{2243}" => '\\\\simeq ',  # ASYMPTOTICALLY EQUAL TO
+    "\x{221E}" => '\\\\infty ',  # INFINITY
+);
 
-   "\x{2329}" => '\\\\langle ', # LEFT-POINTING ANGLE BRACKET     (langle)
-   # alternatives:
-   "<"        => '\\\\langle ', # LESS-THAN SIGN
-   "\x{27E8}" => '\\\\langle ', # MATHEMATICAL LEFT ANGLE BRACKET (langle)
-   "\x{3008}" => '\\\\langle ', # LEFT ANGLE BRACKET              (langle)
-   ## "\x{2039}" => '\\\\langle ', # SINGLE LEFT-POINTING ANGLE QUATATION
 
-   "\x{232A}" => '\\\\rangle ', # RIGHT-POINTING ANGLE BRACKET     (rangle)
-   # alternatives:
-   ">"        => '\\\\rangle ', # GREATER-THAN SIGN
-   "\x{27E9}" => '\\\\rangle ', # MATHEMATICAL RIGHT ANGLE BRACKET (rangle)
-   "\x{3009}" => '\\\\rangle ', # RIGHT ANGLE BRACKET              (rangle)
-   ## "\x{203A}" => '\\\\rangle ', # SINGLE RIGHT-POINTING ANGLE QUATATION
+#
+# %alt_cmd is used only to transform from Unicode to CIF commands. For
+# back translation only main forms, %commands, are used, since
+# information about the variety of Unicode characters is lost.
+#
 
-   "\x{2243}" => '\\\\simeq ',  # ASYMPTOTICALLY EQUAL TO
-   "\x{221E}" => '\\\\infty ',  # INFINITY
+my %alt_cmd = (
+#
+# Alternative Unicode encoding of some commands:
+#
+    # Main:
+    # "\x{232A}" => '\\\\rangle ', # RIGHT-POINTING ANGLE BRACKET     (rangle)
+    #
+    # Alternatives:
+    ">"        => '\\\\rangle ',   # GREATER-THAN SIGN
+    "\x{27E9}" => '\\\\rangle ',   # MATHEMATICAL RIGHT ANGLE BRACKET (rangle)
+    "\x{3009}" => '\\\\rangle ',   # RIGHT ANGLE BRACKET              (rangle)
+    # "\x{203A}" => '\\\\rangle ', # SINGLE RIGHT-POINTING ANGLE QUOTATION
 
+    # Main:
+    # "\x{2329}" => '\\\\langle ', # LEFT-POINTING ANGLE BRACKET     (langle)
+    #
+    # Alternatives:
+    "<"        => '\\\\langle ',   # LESS-THAN SIGN
+    "\x{27E8}" => '\\\\langle ',   # MATHEMATICAL LEFT ANGLE BRACKET (langle)
+    "\x{3008}" => '\\\\langle ',   # LEFT ANGLE BRACKET              (langle)
+    # "\x{2039}" => '\\\\langle ', # SINGLE LEFT-POINTING ANGLE QUOTATION
+
+    # Main:
+    # "\x{223C}" => '\\sim ', # TILDE OPERATOR
+    #
+    # Alternatives:
+    "\x{02DC}" => '\\sim ',   # SMALL TILDE
+    "\x{2053}" => '\\sim ',   # SWUNG DASH
+    "\x{FF5E}" => '\\sim ',   # FULLWIDTH TILDE
+    # character '~' (TILDE) is not used since it denotes subscript in CIF.
+
+    # Main: "\x{25A1}" => '\\\\square ', # WHITE SQUARE        (square)
+    # "\x{2610}" => '\\\\square ',       # BALLOT BOX          (square) (?)
+    #
+    # 'Ballot box' character, though similar to 'square', seems inappropriate
+    # to denote mathematical and chemical formulae and therefore
+    # is at present not interpreted.
+    #
+);
+
+my %letters = (
 #
 # Greek letters:
 #
@@ -133,17 +163,13 @@ my %combining = (
 for my $i ( 0x0391 .. 0x03A9 ) {
     if( $i != 0x03A2 ) { # reserved code-point, could be an uppercase varsigma
 	my $c = chr($i);
-	$cif{$c} = uc($cif{lc($c)});
+	$letters{$c} = uc($letters{lc($c)});
 	## binmode(STDOUT,":utf8");
 	## print ">>> $c, $cif{$c}\n";
     }
 }
 
-my %utf = ();
-
-while( my ($key,$val) = each %cif ) {
-    $utf{$val} = $key;
-}
+my %cif = ( %commands, %alt_cmd, %letters );
 
 sub unicode2cif
 {
@@ -163,21 +189,25 @@ sub cif2unicode
 {
     my $text = $_[0];
 
+    for my $pattern (keys %commands) {
+	my $value = $commands{$pattern};
+    	$text =~ s/\Q$value/$pattern/g;
+    	if( $pattern =~ /\s$/ ) {
+    	    my $core = $value;
+    	    $core =~ s/\s$//;
+    	    $text =~ s/\Q$core\E([^a-zA-Z0-9])/$pattern$1/g;
+    	    $text =~ s/\Q$core\E([^a-zA-Z0-9])/$pattern$1/g;
+    	    $text =~ s/\Q$core\E$/$pattern/g;
+    	}
+    }
+    for my $pattern (keys %letters) {
+	$text =~ s/\Q$letters{$pattern}\E/$pattern/g;
+    }
     for my $pattern (keys %combining) {
 	$text =~ s/(\Q$combining{$pattern}\E)(.)/$2$1/g;
 	$text =~ s/\Q$combining{$pattern}\E/$pattern/g;
     }
-    for my $pattern (sort keys %utf) {
-    	$text =~ s/\Q$pattern/$utf{$pattern}/g;
-    	if( $pattern =~ /\s$/ ) {
-    	    my $core = $pattern;
-    	    $core =~ s/\s$//;
-    	    $text =~ s/\Q$core\E([^a-zA-Z0-9])/$utf{$pattern}$1/g;
-    	    $text =~ s/\Q$core\E([^a-zA-Z0-9])/$utf{$pattern}$1/g;
-    	    $text =~ s/\Q$core\E$/$utf{$pattern}/g;
-    	}
-    }
-    return $text;
+    return Unicode::Normalize::normalize( 'C', $text );
 }
 
 return 1;
