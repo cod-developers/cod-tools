@@ -1,0 +1,26 @@
+#! /bin/sh
+#!perl -w # --*- Perl -*--
+eval 'exec perl5 -x $0 ${1+"$@"}'
+    if 0;
+#------------------------------------------------------------------------------
+#$Author: saulius $
+#$Date: 2005-10-11 15:03:24 +0300 (Tue, 11 Oct 2005) $ 
+#$Revision: 12 $
+#$URL: svn+ssh://kolibris.ibt.lt/home/saulius/svn-repositories/cif-tools/trunk/cif2ref $
+#------------------------------------------------------------------------------
+#*
+#  Convert CIF escape sequences into Unicode characters.
+#**
+
+use strict;
+use lib "./lib/perl5";
+use Unicode2CIF;
+
+use open ":utf8";
+
+binmode( STDIN,  ":utf8" );
+binmode( STDOUT, ":utf8" );
+
+while(<>) {
+    print Unicode2CIF::cif2unicode( $_ );
+}
