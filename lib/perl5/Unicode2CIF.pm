@@ -22,8 +22,6 @@ my %commands = (
 #
     "\x{2190}" => '\\\\leftarrow ',  # LEFTWARDS ARROW
     "\x{2192}" => '\\\\rightarrow ', # RIGHTWARDS ARROW
-    "\x{22A5}" => '&#x22A5;',        # UP TACK, similar to PERPENDICULAR
-    "\x{27C2}" => '&#x27C2;',        # PERPENDICULAR
     "\x{00D7}" => '\\\\times ',      # MULTIPLICATION SIGN (times)
     "\x{2012}" => '--',              # EN DASH             (dash) (?)
     "\x{2013}" => '--',              # EN DASH             (dash)
@@ -182,6 +180,7 @@ sub unicode2cif
 	$text =~ s/(.)($pattern)/$2$1/g;
 	$text =~ s/$pattern/$combining{$pattern}/g;
     }
+    $text =~ s/([^\x{0000}-\x{007F}])/sprintf("&#x%04X;",ord($1))/eg;
     return $text;
 }
 
@@ -207,6 +206,7 @@ sub cif2unicode
 	$text =~ s/(\Q$combining{$pattern}\E)(.)/$2$1/g;
 	$text =~ s/\Q$combining{$pattern}\E/$pattern/g;
     }
+    $text =~ s/\&\#x([0-9A-Fa-f]+);/chr(hex($1))/eg;
     return Unicode::Normalize::normalize( 'C', $text );
 }
 
