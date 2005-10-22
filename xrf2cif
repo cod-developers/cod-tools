@@ -207,14 +207,29 @@ sub print_record
 	    print "_atom_site_fract_y\n";
 	    print "_atom_site_fract_z\n";
 	    print "_atom_site_occupancy\n";
-	    print "_atom_site_U_iso_or_equiv\n";
+	    if( !defined $tags{_atom_site_B_iso_or_equiv} ) {
+		print "_atom_site_U_iso_or_equiv\n";
+	    } else {
+		print "_atom_site_B_iso_or_equiv\n";
+	    }
 	    print "_atom_site_adp_type\n";
 	    local $, = " ";
 	    local $\ = "\n";
-	    for my $atom (@{$records}) {
-		my $atom_name = $atom->[0];
-		print @{$atom}, defined $anisou_atoms->{$atom_name} ?
-		    "Uani" : "Uiso";
+	    if( !defined $tags{_atom_site_B_iso_or_equiv} ) {
+		for my $atom (@{$records}) {
+		    my $atom_name = $atom->[0];
+		    print @{$atom}, defined $anisou_atoms->{$atom_name} ?
+			"Uani" : "Uiso";
+		}
+	    } else {
+		my $i = 0;
+		for my $atom (@{$records}) {
+		    my $atom_name = $atom->[0];
+		    print @{$atom}[0..6],
+		        $tags{_atom_site_B_iso_or_equiv}[$i++],
+		        defined $anisou_atoms->{$atom_name} ?
+			    "Bani" : "Biso";
+		}
 	    }
 	}
     }
