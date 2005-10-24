@@ -45,7 +45,11 @@ for my $dataset (@data) {
 
     # Chemical formula:
     my $formula = $datablok->{_chemical_formula_sum}[0];
-    $formula =~ s/^\s*|\s*$//g;
+    if( defined $formula ) {
+	$formula =~ s/^\s*|\s*$//g;
+    } else {
+	$formula = "?";
+    }
 
     # Cell constants:
     my $a = $datablok->{_cell_length_a}[0];
@@ -134,7 +138,8 @@ for my $dataset (@data) {
 		defined $multiplicity ? $multiplicity->[$i] : "?",
 		defined $Wyckoff_sym ? $Wyckoff_sym->[$i] : "?",
 		$x->[$i], $y->[$i], $z->[$i],
-		$q->[$i], $U->[$i];
+		defined $q ? $q->[$i] : "?",
+		$U->[$i];
 	}
     };
 
