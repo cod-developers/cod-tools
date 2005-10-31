@@ -219,6 +219,12 @@ for my $dataset (@data) {
 	$datablok->{_atom_site_aniso_U_12},
     );
 
+    my @bonds = (
+	$datablok->{_geom_bond_atom_site_label_1},
+	$datablok->{_geom_bond_atom_site_label_2},
+	$datablok->{_geom_bond_distance},
+    );
+
     # Print it out:
 
     if( defined $biblio ) {
@@ -269,6 +275,16 @@ for my $dataset (@data) {
 	    print "ANISOU ", $aniso_label->[$i];
 	    for my $anisou (@anisou) {
 		print " ", $anisou->[$i];
+	    }
+	    print "\n";
+	}
+    }
+
+    if( int(@bonds) > 0 ) {
+	for my $i (0..$#{$bonds[0]}) {
+	    print "BOND ";
+	    for my $bond_parameter (@bonds) {
+		print " ", $bond_parameter->[$i];
 	    }
 	    print "\n";
 	}
