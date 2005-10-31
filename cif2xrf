@@ -52,6 +52,7 @@ my @data;
 @data = STAR::Parser->parse(-file=>$filename);
 
 my @requested_cif_tags = (
+    "_publ_author_name",
     "_publ_section_title",
     "_journal_name_full",
     "_journal_year",
@@ -165,25 +166,25 @@ for my $dataset (@data) {
 	close BIBLIO;
 	chomp $reference;
 	if( (!$user_biblio || $leave_biblio) &&
-	    $reference =~ /<.*?>.*?<.*?>/ ) {
-	    if( !$title && $reference =~ /<title>(.*?)<\/title>/ ) {
+	    $reference =~ /<.*?>.*?<.*?>/s ) {
+	    if( !$title && $reference =~ /<title>(.*?)<\/title>/s ) {
 		$datablok->{_publ_section_title} = [ $1 ];
 	    }
-	    if( !$journal && $reference =~ /<journal>(.*?)<\/journal>/ ) {
+	    if( !$journal && $reference =~ /<journal>(.*?)<\/journal>/s ) {
 		$datablok->{_journal_name_full} = [ $1 ];
 	    }
-	    if( !$issue && $reference =~ /<issue>(.*?)<\/issue>/ ) {
+	    if( !$issue && $reference =~ /<issue>(.*?)<\/issue>/s ) {
 		$datablok->{_journal_issue} = [ $1 ];
 	    }
-	    if( !$volume && $reference =~ /<volume>(.*?)<\/volume>/ ) {
+	    if( !$volume && $reference =~ /<volume>(.*?)<\/volume>/s ) {
 		$datablok->{_journal_volume} = [ $1 ];
 	    }
-	    if( !$year && $reference =~ /<year>(.*?)<\/year>/ ) {
+	    if( !$year && $reference =~ /<year>(.*?)<\/year>/s ) {
 		my $y = $1;
 		$y =~ s/[^0-9]//g;
 		$datablok->{_journal_year} = [ $y ];
 	    }
-	    if( !$start_page && $reference =~ /<pages?>(.*?)<\/pages?>/ ) {
+	    if( !$start_page && $reference =~ /<pages?>(.*?)<\/pages?>/s ) {
 		my @pages = map { s/\s//g; $_ } split ( "-", $1 );
 		$datablok->{_journal_page_first} = [ $pages[0] ];
 		if( int(@pages) > 1 ) {
@@ -191,23 +192,25 @@ for my $dataset (@data) {
 		}
 	    }
 	    if( !@authors && $reference =~
-		    /<authors?\s?(.*?)>(.*?)<\/authors?>/ ) {
+		    /<authors?\s?(.*?)>(.*?)<\/authors?>/s ) {
 		my $attributes = $1;
 		my $author_list = $2;
 		my $separator = ",";
 		if( $attributes && $attributes =~ /separator\s*=\s*"(.*?)"/ ) {
 		    $separator = $1;
 		}
-		@authors = map { s/^\s*|\s*$//g; $_ }
+		@authors =
+		    map { s/\n/ /g; $_ }
+		    map { s/^\s*|\s*$//g; $_ }
 		    split( $separator, $author_list );
 		$datablok->{_publ_author_name} = [ @authors ];
 	    }
 	}
 
 	if( $no_biblio_tags ) {
-	    while( $reference =~ /<(.*?)(\s.*?)?>(.*?)<\/.*>/s ) {
+	    while( $reference =~ /<(.*?)(\s+.*?)?>(.*?)<\/.*>/s ) {
 		my $tag = $1;
-		my $regexp = "<\Q$tag\E\s*.*?>(.*?)<\/\Q$tag\E>";
+		my $regexp = "<\Q$tag\E(?:\\s+.*?)?>(.*?)<\/\Q$tag\E>";
 		## print "\n<$tag>:\n";
 		while( $reference =~ /$regexp/s ) {
 		    $reference =~ s/$regexp/$1/s;
