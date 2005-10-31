@@ -87,6 +87,10 @@ my @inherited_tags = (
 my @generated_tags = (
     "_publ_section_title",
     "_symmetry_equiv_pos_as_xyz",
+    "_atom_site_calc_flag",
+    "_atom_site_refinement_flags",
+    "_atom_site_disorder_assembly",
+    "_atom_site_disorder_group",
 );
 
 my %tags = ();
@@ -262,22 +266,69 @@ sub print_record
 		print "_atom_site_B_iso_or_equiv\n";
 	    }
 	    print "_atom_site_adp_type\n";
+
+	    for my $atom_site_tag ( "_atom_site_calc_flag",
+				    "_atom_site_disorder_assembly",
+				    "_atom_site_disorder_group" ) {
+		if( defined $tags{$atom_site_tag} ) {
+		    my $has_value = 0;
+		    for my $val ( @{$tags{$atom_site_tag}} ) {
+			if( defined $val && $val ne '.' && $val ne '?' ) {
+			    $has_value = 1;
+			    last;
+			}
+		    }
+		    if( !$has_value ) {
+			delete $tags{$atom_site_tag};
+		    }
+		}
+	    }
+
+	    for my $atom_site_tag ( "_atom_site_calc_flag",
+				    "_atom_site_refinement_flags",
+				    "_atom_site_disorder_assembly",
+				    "_atom_site_disorder_group" ) {
+		if( defined $tags{$atom_site_tag} ) {
+		    print $atom_site_tag, "\n";
+		}
+	    }
+
 	    local $, = " ";
-	    local $\ = "\n";
+	    local $\ = "";
+	    my $i = 0;
 	    if( !defined $tags{_atom_site_B_iso_or_equiv} ) {
 		for my $atom (@{$records}) {
 		    my $atom_name = $atom->[0];
 		    print @{$atom}, defined $anisou_atoms->{$atom_name} ?
 			"Uani" : "Uiso";
+		    for my $atom_site_tag ( "_atom_site_calc_flag",
+					    "_atom_site_refinement_flags",
+					    "_atom_site_disorder_assembly",
+					    "_atom_site_disorder_group" ) {
+			if( defined $tags{$atom_site_tag} ) {
+			    print " " . $tags{$atom_site_tag}[$i];
+			}
+		    }
+		    print "\n";
+		    $i ++;
 		}
 	    } else {
-		my $i = 0;
 		for my $atom (@{$records}) {
 		    my $atom_name = $atom->[0];
 		    print @{$atom}[0..6],
-		        $tags{_atom_site_B_iso_or_equiv}[$i++],
+		        $tags{_atom_site_B_iso_or_equiv}[$i],
 		        defined $anisou_atoms->{$atom_name} ?
 			    "Bani" : "Biso";
+		    for my $atom_site_tag ( "_atom_site_calc_flag",
+					    "_atom_site_refinement_flags",
+					    "_atom_site_disorder_assembly",
+					    "_atom_site_disorder_group" ) {
+			if( defined $tags{$atom_site_tag} ) {
+			    print " " . $tags{$atom_site_tag}[$i];
+			}
+		    }
+		    print "\n";
+		    $i ++;
 		}
 	    }
 	}
