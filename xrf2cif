@@ -87,6 +87,7 @@ my %tags = ();
 my @record = ();
 my @anisou = ();
 my %anisou = ();
+my @bonds = ();
 
 my $n = 0;
 my $compound = 1;
@@ -118,11 +119,14 @@ while(<>) {
 		$tags{$key} .= "\n" . $value;
 	    }
 	}
-    } elsif( /^ANISOU/ ) {
+    } elsif( /^ANISOU\s/ ) {
 	my @atom = split( " ",$_ );
 	my $atom_name = $atom[1];
 	push( @anisou, [ @atom ] );
 	$anisou{$atom_name} ++;
+    } elsif( /^BOND\s/ ) {
+	my @bond = split( " ",$_ );
+	push( @bonds, [ @bond ] );
     } elsif( !/^\s*$/ ) {
 	if( $n < 4 && $n != 2 ) {
 	    push( @record, [$_] );
@@ -145,11 +149,12 @@ while(<>) {
 	    $tags{_journal_page_first} = $start_page if defined $start_page;
 	    $tags{_journal_page_last} = $end_page if defined $end_page;
 	}
-	print_record( \@record, \%tags, \@anisou, \%anisou );
+	print_record( \@record, \%tags, \@anisou, \%anisou, \@bonds );
 	@record = ();
 	%tags = ();
 	@anisou = ();
 	%anisou = ();
+	@bonds = ();
 	$n = 0;
     }
 }
@@ -189,7 +194,7 @@ sub print_value
 
 sub print_record
 {
-    my ($records, $tags, $anisou, $anisou_atoms ) = @_;
+    my ($records, $tags, $anisou, $anisou_atoms, $bonds ) = @_;
 
     printf "data_%d\n", 7000000 + $compound++;
 
@@ -276,6 +281,18 @@ sub print_record
 	local $\ = "\n";
 	for my $atom (@{$anisou}) {
 	    print @{$atom}[1..$#{$atom}];
+	}
+    }
+
+    if( $bonds and int(@{$bonds}) > 0 ) {
+	print "loop_\n";
+	print "_geom_bond_atom_site_label_1\n";
+	print "_geom_bond_atom_site_label_2\n";
+	print "_geom_bond_distance\n";
+	local $, = " ";
+	local $\ = "\n";
+	for my $bond (@{$bonds}) {
+	    print @{$bond}[1..$#{$bond}];
 	}
     }
 
