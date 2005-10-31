@@ -21,11 +21,14 @@ use SUsage;
 my $user_biblio = 0;
 my $leave_biblio = 0;
 
+my $title;
 my $journal;
 my $volume;
+my $issue;
 my $start_page;
 my $end_page;
 my $year;
+my $authors;
 
 @ARGV = getOptions( 
     "-j,--journal"   => sub{ $user_biblio = 1; $journal = get_value() },
@@ -41,9 +44,11 @@ my $year;
 
 my @inherited_tags = (
     "_chemical_name_systematic",
+    "_publ_author_name",
     "_journal_name_full",
     "_journal_year",
     "_journal_volume",
+    "_journal_issue",
     "_journal_page_first",
     "_journal_page_last",
     "_cell_measurement_temperature",
@@ -80,6 +85,7 @@ my @inherited_tags = (
 );
 
 my @generated_tags = (
+    "_publ_section_title",
     "_symmetry_equiv_pos_as_xyz",
 );
 
@@ -143,9 +149,11 @@ while(<>) {
 		    delete $tags{$key};
 		}
 	    }
+	    $tags{_publ_section_title} = $title if defined $title;
 	    $tags{_journal_name_full} = $journal if defined $journal;
 	    $tags{_journal_year} = $year if defined $year;
 	    $tags{_journal_volume} = $volume if defined $volume;
+	    $tags{_journal_issue} = $issue if defined $issue;
 	    $tags{_journal_page_first} = $start_page if defined $start_page;
 	    $tags{_journal_page_last} = $end_page if defined $end_page;
 	}
@@ -194,7 +202,7 @@ sub print_value
 
 sub print_record
 {
-    my ($records, $tags, $anisou, $anisou_atoms, $bonds ) = @_;
+    my ($records, $tags, $anisou, $anisou_atoms, $bonds) = @_;
 
     printf "data_%d\n", 7000000 + $compound++;
 
@@ -205,6 +213,12 @@ sub print_record
 	my $composition =  shift( @{$records} );
 	my $cell =  shift( @{$records} );
 	my $spacegroup = shift( @{$records} );
+
+	if( defined $tags->{_publ_section_title} ) {
+	    $bibliography = [ $tags->{_publ_section_title} ];
+	    $bibliography->[0] =~ s/\n/ /g;
+	}
+
 	print "_publ_section_title \n";
 	print ";\n";
 	do {
