@@ -104,6 +104,10 @@ my @requested_cif_tags = (
     "_refine_ls_wR_factor_gt",
 );
 
+my %looped_tags = (
+    "_publ_author_name" => 1,
+);
+
 my $n = 0;
 
 for my $dataset (@data) {
@@ -227,7 +231,7 @@ for my $dataset (@data) {
     for my $tag (@requested_cif_tags) {
 	if( defined $datablok->{$tag} ) {
 	    my $data = $datablok->{$tag};
-	    if( int(@{$data}) == 1 ) {
+	    if( int(@{$data}) == 1 && !$looped_tags{$tag} ) {
 		my @lines = split( "\n", $data->[0] );
 		for my $line (@lines) {
 		    print "#", $tag, "\t", $line, "\n";
