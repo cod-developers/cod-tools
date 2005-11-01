@@ -219,10 +219,10 @@ for my $dataset (@data) {
 	if( $no_biblio_tags ) {
 	    while( $reference =~ /<(.*?)(\s+.*?)?>(.*?)<\/.*>/s ) {
 		my $tag = $1;
-		my $regexp = "<\Q$tag\E(?:\\s+.*?)?>(.*?)<\/\Q$tag\E>";
+		my $regexp = qr/<$tag(?:\s+.*?)?>(.*?)<\/$tag>/s;
 		## print "\n<$tag>:\n";
-		while( $reference =~ /$regexp/s ) {
-		    $reference =~ s/$regexp/$1/s;
+		while( $reference =~ /$regexp/ ) {
+		    $reference =~ s/$regexp/$1/;
 		}
 		## print ">>>$reference\n";
 	    }
