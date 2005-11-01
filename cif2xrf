@@ -249,6 +249,26 @@ for my $dataset (@data) {
 	$reference =~ s/\n/ /g;
     }
 
+
+    # Clean away "empty" tags:
+
+    for my $atom_site_tag ( "_atom_site_calc_flag",
+			    "_atom_site_disorder_assembly",
+			    "_atom_site_disorder_group" ) {
+	if( defined $datablok->{$atom_site_tag} ) {
+	    my $has_value = 0;
+	    for my $val ( @{$datablok->{$atom_site_tag}} ) {
+		if( defined $val && $val ne '.' && $val ne '?' ) {
+		    $has_value = 1;
+		    last;
+		}
+	    }
+	    if( !$has_value ) {
+		delete $datablok->{$atom_site_tag};
+	    }
+	}
+    }
+
     # Print out requested tags:
 
     for my $tag (@requested_cif_tags) {
