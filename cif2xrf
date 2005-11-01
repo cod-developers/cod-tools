@@ -219,12 +219,13 @@ for my $dataset (@data) {
 		if( $attributes && $attributes =~ /separator\s*=\s*"(.*?)"/ ) {
 		    $separator = $1;
 		}
-		@authors =
-		    map { unicode2cif( $_ ) }
-		    map { s/\n/ /g; $_ }
-		    map { s/^\s*|\s*$//g; $_ }
-		    split( $separator, $author_list );
-		$datablok->{_publ_author_name} = [ @authors ];
+		$datablok->{_publ_author_name} =
+		    [
+		     map { unicode2cif( $_ ) }
+		     map { s/\n/ /g; $_ }
+		     map { s/^\s*|\s*$//g; $_ }
+		     split( $separator, $author_list )
+		    ];
 	    }
 	}
 
