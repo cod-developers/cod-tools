@@ -241,6 +241,14 @@ sub print_record
 	    }
 	}
 
+	my $have_Wyckoff_symbol = 0;
+	for my $atom (@{$records}) {
+	    if( defined $atom->[2] && $atom->[2] ne '?' && $atom->[2] ne '.' ) {
+		$have_Wyckoff_symbol = 1;
+		last;
+	    }
+	}
+
 	print "_cell_length_a       $cell->[0]\n";
 	print "_cell_length_b       $cell->[1]\n";
 	print "_cell_length_c       $cell->[2]\n";
@@ -255,7 +263,7 @@ sub print_record
 	    print "loop_\n";
 	    print "_atom_site_label\n";
 	    print "_atom_site_symmetry_multiplicity\n";
-	    print "_atom_site_Wyckoff_symbol\n";
+	    print "_atom_site_Wyckoff_symbol\n" if $have_Wyckoff_symbol;
 	    print "_atom_site_fract_x\n";
 	    print "_atom_site_fract_y\n";
 	    print "_atom_site_fract_z\n";
@@ -299,7 +307,9 @@ sub print_record
 	    if( !defined $tags{_atom_site_B_iso_or_equiv} ) {
 		for my $atom (@{$records}) {
 		    my $atom_name = $atom->[0];
-		    print @{$atom}, defined $anisou_atoms->{$atom_name} ?
+		    my @atom = @{$atom};
+		    splice( @atom, 2, 1 ) if !$have_Wyckoff_symbol;
+		    print @atom, defined $anisou_atoms->{$atom_name} ?
 			"Uani" : "Uiso";
 		    for my $atom_site_tag ( "_atom_site_calc_flag",
 					    "_atom_site_refinement_flags",
@@ -315,7 +325,9 @@ sub print_record
 	    } else {
 		for my $atom (@{$records}) {
 		    my $atom_name = $atom->[0];
-		    print @{$atom}[0..6],
+		    my @atom = @{$atom};
+		    splice( @atom, 2, 1 ) if !$have_Wyckoff_symbol;
+		    print @atom[0..$#atom-1],
 		        $tags{_atom_site_B_iso_or_equiv}[$i],
 		        defined $anisou_atoms->{$atom_name} ?
 			    "Bani" : "Biso";
