@@ -175,7 +175,8 @@ for my $dataset (@data) {
 	close BIBLIO;
 	chomp $reference;
 	if( (!$user_biblio || $leave_biblio) &&
-	    $reference =~ /<.*?>.*?<.*?>/s ) {
+	    ( $reference =~ /<.*?>.*?<.*?>/s ||
+	      $reference =~ /\\.*?(?:\[.*?\])?\{.*?\}/s )) {
 	    if( !$title && ( $reference =~ /<title>(.*?)<\/title>/s ||
 			     $reference =~ /\\title\{(.*?)\}/s )) {
 		$datablok->{_publ_section_title} = [ $1 ];
