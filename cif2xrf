@@ -176,32 +176,40 @@ for my $dataset (@data) {
 	chomp $reference;
 	if( (!$user_biblio || $leave_biblio) &&
 	    $reference =~ /<.*?>.*?<.*?>/s ) {
-	    if( !$title && $reference =~ /<title>(.*?)<\/title>/s ) {
+	    if( !$title && ( $reference =~ /<title>(.*?)<\/title>/s ||
+			     $reference =~ /\\title\{(.*?)\}/s )) {
 		$datablok->{_publ_section_title} = [ $1 ];
 	    }
-	    if( !$journal && $reference =~ /<journal>(.*?)<\/journal>/s ) {
+	    if( !$journal && ( $reference =~ /<journal>(.*?)<\/journal>/s ||
+			       $reference =~ /\\journal\{(.*?)\}/s )) {
 		$datablok->{_journal_name_full} = [ $1 ];
 	    }
-	    if( !$issue && $reference =~ /<issue>(.*?)<\/issue>/s ) {
+	    if( !$issue && ( $reference =~ /<issue>(.*?)<\/issue>/s ||
+			     $reference =~ /\\issue\{(.*?)\}/s )) {
 		$datablok->{_journal_issue} = [ $1 ];
 	    }
-	    if( !$volume && $reference =~ /<volume>(.*?)<\/volume>/s ) {
+	    if( !$volume && ( $reference =~ /<volume>(.*?)<\/volume>/s ||
+			      $reference =~ /\\volume\{(.*?)\}/s )) {
 		$datablok->{_journal_volume} = [ $1 ];
 	    }
-	    if( !$year && $reference =~ /<year>(.*?)<\/year>/s ) {
+	    if( !$year && ( $reference =~ /<year>(.*?)<\/year>/s ||
+			    $reference =~ /\\year\{(.*?)\}/s )) {
 		my $y = $1;
 		$y =~ s/[^0-9]//g;
 		$datablok->{_journal_year} = [ $y ];
 	    }
-	    if( !$start_page && $reference =~ /<pages?>(.*?)<\/pages?>/s ) {
+	    if( !$start_page && ( $reference =~ /<pages?>(.*?)<\/pages?>/s ||
+				  $reference =~ /\\pages?\{(.*?)\}/s )) {
 		my @pages = map { s/\s//g; $_ } split ( "-", $1 );
 		$datablok->{_journal_page_first} = [ $pages[0] ];
 		if( int(@pages) > 1 ) {
 		    $datablok->{_journal_page_last} = [ $pages[1] ];
 		}
 	    }
-	    if( !@authors && $reference =~
-		    /<authors?\s?(.*?)>(.*?)<\/authors?>/s ) {
+	    if( !@authors && ( $reference =~
+			       /<authors?\s?(.*?)>(.*?)<\/authors?>/s ||
+			       $reference =~
+			       /\\authors?(?:\[(.*?)\])?\{(.*?)\}/s )) {
 		my $attributes = $1;
 		my $author_list = $2;
 		my $separator = ",|and";
@@ -222,7 +230,16 @@ for my $dataset (@data) {
 		my $regexp = qr/<$tag(?:\s+.*?)?>(.*?)<\/$tag>/s;
 		## print "\n<$tag>:\n";
 		while( $reference =~ /$regexp/ ) {
-		    $reference =~ s/$regexp/$1/;
+		    $reference =~ s/$regexp/$1/g;
+		}
+		## print ">>>$reference\n";
+	    }
+	    while( $reference =~ /\\(.*?)(?:(\[.*?\]))?\{(.*?)\}/s ) {
+		my $tag = $1;
+		my $regexp = qr/\\$tag(?:\[.*?\])?\{(.*?)\}/s;
+		## print "\n\\$tag:\n";
+		while( $reference =~ /$regexp/ ) {
+		    $reference =~ s/$regexp/$1/g;
 		}
 		## print ">>>$reference\n";
 	    }
