@@ -137,30 +137,6 @@ for my $dataset (@data) {
 
     # Process bibliography:
 
-    if( $user_biblio ) {
-	if( !$leave_biblio ) {
-	    for my $key ( grep /_journal_|_publ_section_title|_author_/,
-			  keys %{$datablok} ) {
-		delete $datablok->{$key};
-	    }
-	}
-
-	$datablok->{_journal_name_full} = [ $journal ]
-	    if defined $journal;
-
-	$datablok->{_journal_year} = [ $year ]
-	    if defined $year;
-
-	$datablok->{_journal_volume} = [ $volume ]
-	    if defined $volume;
-
-	$datablok->{_journal_page_first} = [ $start_page ]
-	    if defined $start_page;
-
-	$datablok->{_journal_page_last} = [ $end_page ]
-	    if defined $end_page;
-    }
-
     my $reference;
 
     if( defined $biblio ) {
@@ -177,9 +153,16 @@ for my $dataset (@data) {
 	}
 	close BIBLIO;
 	chomp $reference;
-	if( (!$user_biblio || $leave_biblio) &&
-	    ( $reference =~ /<.*?>.*?<.*?>/s ||
-	      $reference =~ /\\.*?(?:\[.*?\])?\{.*?\}/s )) {
+
+	if( !$leave_biblio ) {
+	    for my $key ( grep /_journal_|_publ_section_title|_author_/,
+			  keys %{$datablok} ) {
+		delete $datablok->{$key};
+	    }
+	}
+
+	if( $reference =~ /<.*?>.*?<.*?>/s ||
+	    $reference =~ /\\.*?(?:\[.*?\])?\{.*?\}/s ) {
 	    if( !$title && ( $reference =~ /<title>(.*?)<\/title>/s ||
 			     $reference =~ /\\title\{(.*?)\}/s )) {
 		$datablok->{_publ_section_title} = [ unicode2cif( $1 ) ];
@@ -255,6 +238,33 @@ for my $dataset (@data) {
 	$reference =~ s/\n/ /g;
     }
 
+    # User specified bibliography is processed last since it must take
+    # prcedence over original CIF bibliography and over the
+    # bibliography file data:
+
+    if( $user_biblio ) {
+	if( !$leave_biblio ) {
+	    for my $key ( grep /_journal_|_publ_section_title|_author_/,
+			  keys %{$datablok} ) {
+		delete $datablok->{$key};
+	    }
+	}
+
+	$datablok->{_journal_name_full} = [ $journal ]
+	    if defined $journal;
+
+	$datablok->{_journal_year} = [ $year ]
+	    if defined $year;
+
+	$datablok->{_journal_volume} = [ $volume ]
+	    if defined $volume;
+
+	$datablok->{_journal_page_first} = [ $start_page ]
+	    if defined $start_page;
+
+	$datablok->{_journal_page_last} = [ $end_page ]
+	    if defined $end_page;
+    }
 
     # Clean away "empty" tags:
 
