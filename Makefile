@@ -12,9 +12,10 @@ include ${MAKECONF_FILES}
 endif
 
 #
-# The first program (alphabetically) in the ./programs directory is a
-# main executable (target). It will be run for every file in ./inputs
-# when 'make test' is invoked.
+# TEST variable should be defined in the Makeconf file, or on the
+# command line, and specifies the main executable (target). This
+# executable will be run for every file in ./inputs when 'make test'
+# is invoked.
 #
 
 .PHONY: tests
