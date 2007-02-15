@@ -43,19 +43,29 @@ my $authors;
 );
 
 my @inherited_tags = (
-    "_chemical_name_systematic",
-    "_chemical_formula_weight",
     "_publ_author_name",
+    "_publ_section_title",
     "_journal_name_full",
     "_journal_year",
     "_journal_volume",
     "_journal_issue",
     "_journal_page_first",
     "_journal_page_last",
+    "_chemical_formula_sum",
+    "_chemical_name_systematic",
+    "_chemical_formula_weight",
+    "_diffrn_ambient_temperature",
+    "_symmetry_space_group_name_H-M",
+    "_symmetry_space_group_name_Hall",
+    "_symmetry_equiv_pos_as_xyz",
+    "_atom_site_B_iso_or_equiv",
+    "_atom_site_calc_flag",
+    "_atom_site_refinement_flags",
+    "_atom_site_disorder_assembly",
+    "_atom_site_disorder_group",
     #
     # Data collection parameters:
     #
-    "_diffrn_ambient_temperature",
     "_diffrn_radiation_type",
     "_diffrn_radiation_wavelength",
     "_diffrn_reflns_number",
@@ -85,24 +95,6 @@ my @inherited_tags = (
     #
     # Unit cell parameters
     #
-    "_cell_formula_units_Z",
-    "_cell_measurement_temperature",
-    "_cell_measurement_reflns_used",
-    "_cell_measurement_theta_min",
-    "_cell_measurement_theta_max",
-    #
-    # Spacegroup and symmetry
-    #
-    "_symmetry_space_group_name_Hall",
-);
-
-my @generated_tags = (
-    "_publ_section_title",
-    "_symmetry_equiv_pos_as_xyz",
-    "_atom_site_calc_flag",
-    "_atom_site_refinement_flags",
-    "_atom_site_disorder_assembly",
-    "_atom_site_disorder_group",
     "_cell_length_a",
     "_cell_length_b",
     "_cell_length_c",
@@ -110,7 +102,54 @@ my @generated_tags = (
     "_cell_angle_beta",
     "_cell_angle_gamma",
     "_cell_volume",
+    "_cell_formula_units_Z",
+    "_cell_measurement_temperature",
+    "_cell_measurement_reflns_used",
+    "_cell_measurement_theta_min",
+    "_cell_measurement_theta_max",
 );
+
+my @generated_tags = (
+    "_atom_site_B_iso_or_equiv",
+    "_atom_site_U_iso_or_equiv",
+    "_atom_site_Wyckoff_symbol",
+    "_atom_site_adp_type",
+    "_atom_site_aniso_U_11",
+    "_atom_site_aniso_U_12",
+    "_atom_site_aniso_U_13",
+    "_atom_site_aniso_U_22",
+    "_atom_site_aniso_U_23",
+    "_atom_site_aniso_U_33",
+    "_atom_site_aniso_label",
+    "_atom_site_calc_flag",
+    "_atom_site_disorder_assembly",
+    "_atom_site_disorder_group",
+    "_atom_site_fract_x",
+    "_atom_site_fract_y",
+    "_atom_site_fract_z",
+    "_atom_site_label",
+    "_atom_site_occupancy",
+    "_atom_site_refinement_flags",
+    "_atom_site_symmetry_multiplicity",
+    "_cell_angle_alpha",
+    "_cell_angle_beta",
+    "_cell_angle_gamma",
+    "_cell_length_a",
+    "_cell_length_b",
+    "_cell_length_c",
+    "_cell_volume",
+    "_chemical_formula_sum",
+    "_geom_bond_atom_site_label_1",
+    "_geom_bond_atom_site_label_2",
+    "_geom_bond_distance",
+    "_publ_section_title",
+    "_symmetry_equiv_pos_as_xyz",
+    "_symmetry_space_group_name_H-M",
+);
+
+my %generated_tags = map { ($_,1) } @generated_tags;
+
+@inherited_tags = map { defined $generated_tags{$_} ? () : $_ } @inherited_tags;
 
 my %tags = ();
 my @record = ();
