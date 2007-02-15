@@ -310,7 +310,17 @@ sub print_tag
 		print_value( $value );
 	    }
 	} else {
-	    printf "%-30s", $key;
+	    my $key_len = length($key) > 30 ? length($key) : 30;
+	    my $val_len = length($val);
+
+	    if( $val =~ /\s/ ) {
+		$val_len += 2;
+	    }
+	    if( $key_len + $val_len + 1 > 80 && $val !~ /\n/ ) {
+		printf "%s\n", $key;
+	    } else {
+		printf "%-30s", $key;
+	    }
 	    print_value( $val );
 	}
     }
