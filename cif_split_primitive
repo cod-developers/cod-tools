@@ -1,0 +1,148 @@
+#!/bin/sh
+#!perl -w # --*- Perl -*--
+eval 'exec perl5 -x $0 ${1+"$@"}'
+    if 0;
+#-----------------------------------------------------------------------
+#$Author$
+#$Date$ 
+#$Revision$
+#$URL$
+#------------------------------------------------------------------------
+#*
+# Split CIF files into separate files with one data_ section each.
+#
+# This is a very naive and primitive version of the splitter, which
+# expects each data_... section to start on a new line. It may fail on
+# some CIF files that do not follow such convention. For splitting of
+# any correctly formatted CIF files, one mus do full CIF parsing using
+# CIF grammar and tokenisation of the file.
+#**
+
+use strict;
+use File::Basename;
+use SOptions;
+use SUsage;
+
+my $verbose = 1;
+
+@ARGV = getOptions(
+#** -v, --verbose      print names of the generated files to STDERR
+#** -q, --quiet        do not print file names to STDERR
+#** --help,--usage     print short usage message (this message) and exit
+
+   "-v,--verbose"   => sub { $verbose = 1 },
+   "-q,--quiet"     => sub { $verbose = 0 },
+   "--help,--usage" => sub { SUsage::usage; exit },
+);
+
+my $output_file;
+my @initial_comments = ();
+my @data_global = ();
+my %files = ();
+my %has_end = ();
+my $global = 0;
+my $skip = 1;
+my $initial_comments = 1;
+my $data_id;
+
+while(<>) {
+
+    if( /^\s*\#|^\s*$/ && $initial_comments ) {
+	push( @initial_comments, $_ );
+	next;
+    }
+
+    $initial_comments = 0;
+
+    if( /^\s*data_global/ ) {
+	if( int(@data_global) == 0 ) {
+	    push( @data_global, $_ );
+	    $global = 1;
+	    $skip = 0;
+	} else {
+	    print STDERR
+		"$0: warning: second data_global encountered ".
+		"-- skipping\n";
+	    $global = 1;
+	    $skip = 1;
+	}
+	next;
+    }
+
+    if( /^\s*data_([^\s]+)/ ) {
+	$data_id = $1;
+	$data_id =~ s/^data_//;
+
+	$global = 0;
+	$skip = 0;
+
+	close STDOUT;
+
+	my $suffix = $data_id;
+	$suffix =~ s/[^-+._a-zA-Z0-9]/_/g;
+
+	my $basename = basename( $ARGV, ".cif" );
+	if( $basename ne "-" ) {
+	    $output_file = basename( $ARGV, ".cif" ) . "_${suffix}" . ".cif";
+	} else {
+	    $output_file = "${suffix}" . ".cif";
+	}
+	if( !exists $files{$output_file} ) {
+	    open( STDOUT, ">$output_file" ) or
+		die( "Could not open file '${output_file}' for writing: $!" );
+
+	    $files{$output_file} = $output_file;
+
+	    print STDERR "$output_file\n" if $verbose;
+	    for ( @initial_comments ) {
+		print;
+	    }
+	    for ( @data_global ) {
+		print;
+	    }
+	} else {
+	    open( STDOUT, ">>$output_file" ) or
+		die( "Could not open file '${output_file}' for appending: $!" );
+	    
+	    print STDERR "$output_file (appending)\n" if $verbose;
+	}
+    }
+
+    if( /^\s*\#/ ) {
+	next;
+    }
+
+    if( /^\s*\#=+END/ ) {
+	$has_end{$output_file} = 1;
+    }
+
+    if( $global == 1 && $skip == 0 ) {
+	push( @data_global, $_ );
+	next;
+    }
+
+    if( $skip == 1 ) {
+	next;
+    }
+
+    print;
+
+    if( eof( ARGV )) {
+	$output_file = undef;
+	@data_global = ();
+	@initial_comments = ();
+	$global = 0;
+	$skip = 1;
+	$initial_comments = 1;
+    }
+}
+
+close STDOUT;
+foreach $output_file (keys %files) {
+    unless( defined $has_end{$output_file} ) {
+	open( STDOUT, ">>$output_file" ) or
+	    die( "Could not open file '${output_file}' for appending: $!" );
+	print "#===END\n";
+	close STDOUT;
+    }
+}
