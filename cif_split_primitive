@@ -14,8 +14,8 @@ eval 'exec perl5 -x $0 ${1+"$@"}'
 # This is a very naive and primitive version of the splitter, which
 # expects each data_... section to start on a new line. It may fail on
 # some CIF files that do not follow such convention. For splitting of
-# any correctly formatted CIF files, one mus do full CIF parsing using
-# CIF grammar and tokenisation of the file.
+# any correctly formatted CIF files, one must do full CIF parsing
+# using CIF grammar and tokenisation of the file.
 #**
 
 use strict;
@@ -24,16 +24,23 @@ use SOptions;
 use SUsage;
 
 my $verbose = 1;
+my $output_dir = "";
 
 @ARGV = getOptions(
+#** -o, --output-dir out/
+#**     Put all split files into the directory out/.
+#**
 #** -v, --verbose      print names of the generated files to STDERR
 #** -q, --quiet        do not print file names to STDERR
 #** --help,--usage     print short usage message (this message) and exit
 
-   "-v,--verbose"   => sub { $verbose = 1 },
-   "-q,--quiet"     => sub { $verbose = 0 },
-   "--help,--usage" => sub { SUsage::usage; exit },
+   "-o,--output-dir" => \$output_dir,
+   "-v,--verbose"    => sub { $verbose = 1 },
+   "-q,--quiet"      => sub { $verbose = 0 },
+   "--help,--usage"  => sub { SUsage::usage; exit },
 );
+
+$output_dir =~ s./+$..;
 
 my $output_file;
 my @initial_comments = ();
@@ -86,6 +93,9 @@ while(<>) {
 	    $output_file = basename( $ARGV, ".cif" ) . "_${suffix}" . ".cif";
 	} else {
 	    $output_file = "${suffix}" . ".cif";
+	}
+	if( $output_dir ne "" ) {
+	    $output_file = $output_dir . "/" . $output_file;
 	}
 	if( !exists $files{$output_file} ) {
 	    open( STDOUT, ">$output_file" ) or
