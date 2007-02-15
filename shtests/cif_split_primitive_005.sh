@@ -27,6 +27,6 @@ cp ${cif_split} ${TMP_DIR}
     rm ${script_base}
 )
 
-diff -rs outputs/split/${BASENAME} ${TMP_DIR}
+diff --exclude .svn -rs outputs/split/${BASENAME} ${TMP_DIR}
 
 rm -rf ${TMP_DIR}
