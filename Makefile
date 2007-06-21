@@ -11,6 +11,10 @@ ifneq ("${MAKECONF_FILES}","")
 include ${MAKECONF_FILES}
 endif
 
+CWD := ${shell pwd}
+PERL5LIB := ${PERL5LIB}:${CWD}/lib/perl5
+export PERL5LIB
+
 #
 # TEST variable should be defined in the Makeconf file, or on the
 # command line, and specifies the main executable (target). This
