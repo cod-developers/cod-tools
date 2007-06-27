@@ -41,12 +41,19 @@ endif
 # compared with the sample outputs files in ./outputs/*.out, and any
 # differences will be recorded in ./outputs/*.diff #
 
-TEST_DIR = ./inputs
-OUTPUT_DIR = ./outputs
+TEST_DIR       = ./inputs
+OUTPUT_DIR     = ./outputs
 
 TEST_FILES = ${wildcard ${TEST_DIR}/*${EXT}}
 RES_FILES  = ${patsubst ${TEST_DIR}/%${EXT},${OUTPUT_DIR}/%.out,${TEST_FILES}}
 DIFF_FILES = ${patsubst ${TEST_DIR}/%${EXT},${OUTPUT_DIR}/%.diff,${TEST_FILES}}
+
+
+INP            = .inp
+SCRIPT_TST_DIR = ./tests
+SCRIPT_TESTS   = ${wildcard ${SCRIPT_TST_DIR}/*${INP}}
+SCRIPT_OUTPUTS = ${SCRIPT_TESTS:${SCRIPT_TST_DIR}/%${INP}=${OUTPUT_DIR}/%.out}
+SCRIPT_DIFFS   = ${SCRIPT_TESTS:${SCRIPT_TST_DIR}/%${INP}=${OUTPUT_DIR}/%.diff}
 
 #
 # Outputs and tests from the shell-driven tests
@@ -64,9 +71,9 @@ SHELL_DIFFS   = ${addprefix ${SHELL_OUTDIR}/, ${SHELL_BASES:%.sh=%.diff}}
 
 .PHONY: outputs test
 
-outputs: ${RES_FILES} ${TST_OUTPUTS}
+outputs: ${RES_FILES} ${TST_OUTPUTS} ${SCRIPT_OUTPUTS}
 
-test: ${DIFF_FILES} ${TST_DIFFS}
+test: ${DIFF_FILES} ${TST_DIFFS} ${SCRIPT_DIFFS}
 
 ${OUTPUT_DIR}/%.diff: ${TARGET} ${TEST_DIR}/%${EXT}
 	-@printf "%-30s " "$*:" ; \
@@ -77,6 +84,45 @@ ${OUTPUT_DIR}/%.out: ${TARGET} ${TEST_DIR}/%${EXT}
 	-@test -f $@ || echo "$@:"
 	-@test -f $@ || ./$^ ${TEST_OPTIONS} 2>&1 | tee $@
 	-@touch $@
+
+# Rules to run script-specific tests
+
+${OUTPUT_DIR}/%.diff: ${SCRIPT_TST_DIR}/%${INP} ${SCRIPT_TST_DIR}/%.opt \
+                      ${SCRIPT_FILES}
+	-@printf "%-30s " "$<:" ; \
+	./$(shell echo $* | sed -e 's/_[0-9]*$$//') \
+	    $(shell grep -v '^#' ${word 2, $^}) \
+	    $< \
+	2>&1 \
+	| diff ${OUTPUT_DIR}/$*.out - > $@ ; \
+	if [ $$? = 0 ]; then echo "OK"; else echo "FAILED:"; cat $@; fi
+
+${OUTPUT_DIR}/%.diff: ${SCRIPT_TST_DIR}/%${INP} ${SCRIPT_FILES}
+	-@printf "%-30s " "$<:" ; \
+	./$(shell echo $* | sed -e 's/_[0-9]*$$//') $< 2>&1 \
+	| diff ${OUTPUT_DIR}/$*.out - > $@ ; \
+	if [ $$? = 0 ]; then echo "OK"; else echo "FAILED:"; cat $@; fi
+
+${OUTPUT_DIR}/%.out: ${SCRIPT_TST_DIR}/%${INP} ${SCRIPT_TST_DIR}/%.opt
+	-@test -f $@ || echo "$@:"
+	-@test -f $@ || \
+	./$(shell echo $* | sed -e 's/_[0-9]*$$//') \
+	    $(shell grep -v '^#' ${word 2, $^}) \
+	    $< \
+	2>&1 \
+	| tee $@
+	-@touch $@
+
+${OUTPUT_DIR}/%.out: ${SCRIPT_TST_DIR}/%${INP}
+	-@test -f $@ || echo "$@:"
+	-@test -f $@ || \
+	./$(shell echo $* | sed -e 's/_[0-9]*$$//') \
+	    $< \
+	2>&1 \
+	| tee $@
+	-@touch $@
+
+# Rules to run standalone executable test drives:
 
 ${TST_OUT_DIR}/%.out: ${TST_EXE_DIR}/%
 	-@test -f $@ || echo "$@:"
