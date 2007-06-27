@@ -1,0 +1,53 @@
+
+TEST_DIR = tests
+OUTP_DIR = outputs
+
+TEST_MODULE = ${firstword ${PM_FILES}}
+
+YP_FILES   = ${wildcard *.yp}
+PM_FILES   = ${YP_FILES:%.yp=%.pm}
+
+TEST_FILES = ${wildcard ${TEST_DIR}/*.inp}
+DIFF_FILES = ${TEST_FILES:${TEST_DIR}/%.inp=${OUTP_DIR}/%.diff}
+OUTP_FILES = ${TEST_FILES:${TEST_DIR}/%.inp=${OUTP_DIR}/%.out}
+
+.PRECIOUS: %.pm
+.PHONY: all clean cleanAll distclean test tests out outputs
+
+all: ${PM_FILES}
+
+test tests: ${DIFF_FILES}
+
+out outputs: ${OUTP_FILES}
+
+#------------------------------------------------------------------------------
+
+%.pm: %.yp
+	yapp -o $@ $<
+
+${OUTP_DIR}/%.diff: ${TEST_MODULE} ${TEST_DIR}/%.inp
+	-@printf "%-30s " "$*:" ; \
+	perl $< < ${word 2, $^} 2>&1 | diff ${OUTP_DIR}/$*.out - > $@ ; \
+	if [ $$? = 0 ]; then echo "OK"; else echo "FAILED:"; cat $@; fi
+
+${OUTP_DIR}/%.out: ${TEST_MODULE} ${TEST_DIR}/%.inp
+	-@test -f $@ || echo "$@:"
+	-@test -f $@ || perl $< < ${word 2, $^} 2>&1 | tee $@
+	-@touch $@
+
+#------------------------------------------------------------------------------
+
+.PHONY: listdiff
+
+listdiff: # test
+	@-( test -d ${OUTP_DIR} && \
+	    ls -l ${OUTP_DIR}/*.diff | awk '{if( $$5 > 0 ) print}' ) || \
+	    true
+
+#------------------------------------------------------------------------------
+
+clean:
+	rm -f ${DIFF_FILES}
+
+distclean cleanAll: clean
+	rm -f ${PM_FILES}
