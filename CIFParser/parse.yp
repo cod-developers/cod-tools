@@ -1,0 +1,86 @@
+#
+# parse.yp
+#
+# --------------------------------------------------------------
+# begin of header
+# --------------------------------------------------------------
+# copy directly to PERL module:
+%{
+use warnings;
+%}
+# --------------------------------------------------------------
+
+# --------------------------------------------------------------
+# begin of body
+# --------------------------------------------------------------
+
+%%
+cif_file:	#empty
+	|	cif_elements
+;
+
+cif_elements:	cif_elements FLOAT
+	|	FLOAT	{ $_[0]->YYData->{VARS}{$_[1]} }
+;
+
+%%
+# --------------------------------------------------------------
+# begin of footer
+# --------------------------------------------------------------
+
+sub _Error
+{
+	exists $_[0]->YYData->{ERRMSG}
+	and do {
+		print $_[0]->YYData->{ERRMSG};
+		delete $_[0]->YYData->{ERRMSG};
+		return;
+	};
+	print "Syntax error.\n";
+}
+
+sub _Lexer
+{
+	my($parser) = shift;
+
+	if( !$parser->YYData->{INPUT} ) {
+		$parser->YYData->{INPUT} = <STDIN>;
+		if( defined $parser->YYData->{INPUT} )
+		{
+			chomp $parser->YYData->{INPUT};
+		} else {
+			return('',undef);
+		}
+	}
+
+	$parser->YYData->{INPUT}=~s/^[ \t]//;
+
+#	print ">>> '", $parser->YYData->{INPUT}, "'\n";
+
+	for ($parser->YYData->{INPUT})
+	{
+#matching floats
+		s/^([0-9]*\.[0-9]+)//
+			and return('FLOAT', $1);
+#any unmatched symbol
+		s/^(.)//s
+			and return($1,$1);
+	}
+}
+
+sub Run
+{
+	my($self) = shift;
+	$self->YYParse( yylex => \&_Lexer, yyerror => \&_Error );
+	if( $self->YYNberr() == 0 )
+	{
+		print "File syntax is CORRECT!\n";
+	} else {
+		print "Syntax check failed.\n";
+	}
+
+}
+
+my($prog) = new parse;
+$prog->Run;
+
