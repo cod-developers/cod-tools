@@ -76,9 +76,7 @@ sub _Lexer
 	}
 
 	$parser->YYData->{INPUT}=~s/^(\s*)//;
-        $parser->YYData->{VARS}{'token_prev_pos'} = 
-		$parser->YYData->{VARS}{'token_pos'};
-	$parser->YYData->{VARS}{'token_pos'} += length($1);
+	advance_token($parser);
 
 #function used for debugging purposes only
 #	print ">>> '", $parser->YYData->{INPUT}, "'\n";
@@ -88,22 +86,25 @@ sub _Lexer
 		#matching floats:
 		if( s/^([0-9]*\.[0-9]+)//s )
 		{
-		        $parser->YYData->{VARS}{'token_prev_pos'} = 
-				$parser->YYData->{VARS}{'token_pos'};
-			$parser->YYData->{VARS}{'token_pos'} += length($1);
+			advance_token($parser);
 			return('FLOAT', $1);
 		}
 		#matching strings
-		
 		#matching any still unmatched symbol:
 		if( s/^(.)//m )
 		{
-		        $parser->YYData->{VARS}{'token_prev_pos'} = 
-				$parser->YYData->{VARS}{'token_pos'};
-			$parser->YYData->{VARS}{'token_pos'} += length($1);
+			advance_token($parser);
 			return($1,$1);
 		}
 	}
+}
+
+sub advance_token
+{
+	my $parser = shift;
+	$parser->YYData->{VARS}{'token_prev_pos'} =
+		$parser->YYData->{VARS}{'token_pos'};
+	$parser->YYData->{VARS}{'token_pos'} += length($1);
 }
 
 sub Run
