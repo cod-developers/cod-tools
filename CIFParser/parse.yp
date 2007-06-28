@@ -36,7 +36,9 @@ sub _Error
 		delete $_[0]->YYData->{ERRMSG};
 		return;
 	};
-	print "Syntax error.\n";
+	print "Analyzed symbols line containing bogus data (num. " . $_[0]->YYData->{VARS}{'lines'} . " pos. " . $_[0]->YYData->{VARS}{'token_prev_pos'} . ") was:\n" . $_[0]->YYData->{VARS}{'current_line'} . "\n";
+	for (my $cPos = 0; $cPos < $_[0]->YYData->{VARS}{'token_prev_pos'}; $cPos++) { print " "; }
+	print "^\n";
 }
 
 sub _Lexer
@@ -48,29 +50,47 @@ sub _Lexer
 		if( defined $parser->YYData->{INPUT} )
 		{
 			chomp $parser->YYData->{INPUT};
+			$parser->YYData->{INPUT}=~s/\t/    /g;
+			$parser->YYData->{VARS}{'lines'}++;
+			$parser->YYData->{VARS}{'current_line'} =  $parser->YYData->{INPUT};
+			$parser->YYData->{VARS}{'token_pos'} = 0;
+		        $parser->YYData->{VARS}{'token_pos'} = 0;
 		} else {
 			return('',undef);
 		}
 	}
 
-	$parser->YYData->{INPUT}=~s/^[ \t]//;
+	$parser->YYData->{INPUT}=~s/^(\s*)//;
+        $parser->YYData->{VARS}{'token_prev_pos'} = $parser->YYData->{VARS}{'token_pos'};
+	$parser->YYData->{VARS}{'token_pos'} += length($1);
 
+#function used for debugging purposes only
 #	print ">>> '", $parser->YYData->{INPUT}, "'\n";
 
 	for ($parser->YYData->{INPUT})
 	{
-#matching floats
-		s/^([0-9]*\.[0-9]+)//
-			and return('FLOAT', $1);
-#any unmatched symbol
-		s/^(.)//s
-			and return($1,$1);
+		#matching floats:
+		if( s/^([0-9]*\.[0-9]+)//s )
+		{
+		        $parser->YYData->{VARS}{'token_prev_pos'} = $parser->YYData->{VARS}{'token_pos'};
+			$parser->YYData->{VARS}{'token_pos'} += length($1);
+			return('FLOAT', $1);
+		}
+		#matching any still unmatched symbol:
+		if( s/^(.)//m )
+		{
+		        $parser->YYData->{VARS}{'token_prev_pos'} = $parser->YYData->{VARS}{'token_pos'};
+			$parser->YYData->{VARS}{'token_pos'} += length($1);
+			return($1,$1);
+		}
 	}
 }
 
 sub Run
 {
 	my($self) = shift;
+#used for debugging purposes only
+#	$self->YYParse( yylex => \&_Lexer, yyerror => \&_Error, yydebug => 0x05 );
 	$self->YYParse( yylex => \&_Lexer, yyerror => \&_Error );
 	if( $self->YYNberr() == 0 )
 	{
