@@ -28,6 +28,8 @@ cif_file:	#empty
 ;
 
 cif_elements:	cif_elements FLOAT
+	|	cif_elements STRING
+	|	STRING
 	|	FLOAT	{ $_[0]->YYData->{VARS}{$_[1]} }
 ;
 
@@ -81,6 +83,20 @@ sub _Lexer
 #function used for debugging purposes only
 #	print ">>> '", $parser->YYData->{INPUT}, "'\n";
 
+#scalars storing regular expressions, common to several matches
+my($EOLMID)		=
+	qr/\n|\r\n|\r/is;
+my($ORDINARY_CHAR)	=
+	qr/a-zA-Z0-9!%&\(\)\*\+,-\.\/\:<=>\?@\\\^`{\|}~/is;
+my($NON_BLANK_CHAR)	=
+	qr/a-zA-Z0-9!%&\(\)\*\+,-\.\/\:<=>\?@\\\^`{\|}~"#\$'_;\[\]/is;
+my($TEXT_LEAD_CHAR)	=
+	qr/a-zA-Z0-9!%&\(\)\*\+,-\.\/\:<=>\?@\\\^`{\|}~"#\$'_\[\]\s/is;
+my($ANY_PRINT_CHAR)	=
+	qr/a-zA-Z0-9!%&\(\)\*\+,-\.\/\:<=>\?@\\\^`{\|}~"#\$'_;\[\]\s/is;
+my($WHITE_SPACE)	=
+	qr/\s{EOLMID}((\s{EOLMID})+(#.*))/is;
+
 	for ($parser->YYData->{INPUT})
 	{
 		#matching floats:
@@ -90,6 +106,14 @@ sub _Lexer
 			return('FLOAT', $1);
 		}
 		#matching strings
+		if( s/(
+			("[${ANY_PRINT_CHAR}]*"\s+ #DQ string in line
+			| "[${ANY_PRINT_CHAR}]*"$) #DQ string at the EOL
+		)//x )
+		{
+			advance_token($parser);
+			return('STRING', $1);
+		}
 		#matching any still unmatched symbol:
 		if( s/^(.)//m )
 		{
