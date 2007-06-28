@@ -50,7 +50,9 @@ sub _Lexer
 {
 	my($parser) = shift;
 
-	if( !$parser->YYData->{INPUT} ) {
+	if( !defined $parser->YYData->{INPUT} || 
+		$parser->YYData->{INPUT} =~ m/^\s*$/ )
+	{
 		$parser->YYData->{INPUT} = <STDIN>;
 		if( defined $parser->YYData->{INPUT} )
 		{
@@ -59,7 +61,6 @@ sub _Lexer
 			$parser->YYData->{VARS}{'lines'}++;
 			$parser->YYData->{VARS}{'current_line'} = 
 				$parser->YYData->{INPUT};
-			$parser->YYData->{VARS}{'token_pos'} = 0;
 		        $parser->YYData->{VARS}{'token_pos'} = 0;
 		} else {
 			return('',undef);
