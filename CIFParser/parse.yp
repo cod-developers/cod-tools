@@ -107,8 +107,14 @@ my($WHITE_SPACE)	=
 		}
 		#matching strings
 		if( s/(
-			("[${ANY_PRINT_CHAR}]*"\s+ #DQ string in line
-			| "[${ANY_PRINT_CHAR}]*"$) #DQ string at the EOL
+			#DQ string in line
+			("[${ANY_PRINT_CHAR}]*"\s+
+			#DQ string at the EOL
+			| "[${ANY_PRINT_CHAR}]*"$)
+			#SQ string in line
+			| ('[${ANY_PRINT_CHAR}]*'\s+
+			#SQ string at the EOL
+			| '[${ANY_PRINT_CHAR}]*'$)
 		)//x )
 		{
 			advance_token($parser);
