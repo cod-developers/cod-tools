@@ -47,12 +47,10 @@ sub _Error
 		return;
 	};
 	print "Analyzed symbols line containing bogus data (num. " . 
-		$_[0]->YYData->{VARS}{'lines'} . " pos. " . 
-		$_[0]->YYData->{VARS}{'token_prev_pos'} . ") was:\n" . 
-		$_[0]->YYData->{VARS}{'current_line'} . "\n";
-	for (my $cPos = 0; $cPos < 
-		$_[0]->YYData->{VARS}{'token_prev_pos'}; $cPos++)
-		 { print " "; }
+		$_[0]->YYData->{VARS}{lines} . " pos. " . 
+		$_[0]->YYData->{VARS}{token_prev_pos} . ") was:\n" . 
+		$_[0]->YYData->{VARS}{current_line} . "\n";
+	print " " x $_[0]->YYData->{VARS}{token_prev_pos};
 	print "^\n";
 }
 
@@ -68,10 +66,10 @@ sub _Lexer
 		{
 			chomp $parser->YYData->{INPUT};
 			$parser->YYData->{INPUT}=~s/\t/    /g;
-			$parser->YYData->{VARS}{'lines'}++;
-			$parser->YYData->{VARS}{'current_line'} = 
+			$parser->YYData->{VARS}{lines}++;
+			$parser->YYData->{VARS}{current_line} = 
 				$parser->YYData->{INPUT};
-		        $parser->YYData->{VARS}{'token_pos'} = 0;
+		        $parser->YYData->{VARS}{token_pos} = 0;
 		} else {
 			return('',undef);
 		}
@@ -84,18 +82,14 @@ sub _Lexer
 #	print ">>> '", $parser->YYData->{INPUT}, "'\n";
 
 #scalars storing regular expressions, common to several matches
-my($EOLMID)		=
-	qr/\n|\r\n|\r/is;
-my($ORDINARY_CHAR)	=
-	qr/a-zA-Z0-9!%&\(\)\*\+,-\.\/\:<=>\?@\\\^`{\|}~/is;
-my($NON_BLANK_CHAR)	=
-	qr/a-zA-Z0-9!%&\(\)\*\+,-\.\/\:<=>\?@\\\^`{\|}~"#\$'_;\[\]/is;
-my($TEXT_LEAD_CHAR)	=
-	qr/a-zA-Z0-9!%&\(\)\*\+,-\.\/\:<=>\?@\\\^`{\|}~"#\$'_\[\]\s/is;
-my($ANY_PRINT_CHAR)	=
-	qr/a-zA-Z0-9!%&\(\)\*\+,-\.\/\:<=>\?@\\\^`{\|}~"#\$'_;\[\]\s/is;
-my($WHITE_SPACE)	=
-	qr/\s{EOLMID}((\s{EOLMID})+(#.*))/is;
+my $ORDINARY_CHAR	=
+	qr/[a-zA-Z0-9!%&\(\)\*\+,-\.\/\:<=>\?@\\\^`{\|}~]/is;
+my $SPECIAL_CHAR	=	qr/(["#\$'_\[\]])/is;
+my $NON_BLANK_CHAR	=	qr/(?:$ORDINARY_CHAR|$SPECIAL_CHAR|;)/is;
+my $TEXT_LEAD_CHAR	=	
+qr/(?:$ORDINARY_CHAR|$SPECIAL_CHAR|\s)/is;
+my $ANY_PRINT_CHAR	=	qr/(?:$NON_BLANK_CHAR|\s)/is;
+my $WHITE_SPACE		=	qr/\s$((\s$)+(#.*))/im;
 
 	for ($parser->YYData->{INPUT})
 	{
@@ -105,16 +99,16 @@ my($WHITE_SPACE)	=
 			advance_token($parser);
 			return('FLOAT', $1);
 		}
-		#matching strings
+		#matching double quoted strings
 		if( s/(
 			#DQ string in line
-			("[${ANY_PRINT_CHAR}]*"\s+
+			("$ANY_PRINT_CHAR*"\s+
 			#DQ string at the EOL
-			| "[${ANY_PRINT_CHAR}]*"$)
-			#SQ string in line
-			| ('[${ANY_PRINT_CHAR}]*'\s+
-			#SQ string at the EOL
-			| '[${ANY_PRINT_CHAR}]*'$)
+			| "$ANY_PRINT_CHAR*"$)
+                       #SQ string in line
+			| ('$ANY_PRINT_CHAR*'\s+
+                        #SQ string at the EOL
+                        | '$ANY_PRINT_CHAR*'$)
 		)//x )
 		{
 			advance_token($parser);
@@ -132,9 +126,9 @@ my($WHITE_SPACE)	=
 sub advance_token
 {
 	my $parser = shift;
-	$parser->YYData->{VARS}{'token_prev_pos'} =
-		$parser->YYData->{VARS}{'token_pos'};
-	$parser->YYData->{VARS}{'token_pos'} += length($1);
+	$parser->YYData->{VARS}{token_prev_pos} =
+		$parser->YYData->{VARS}{token_pos};
+	$parser->YYData->{VARS}{token_pos} += length($1);
 }
 
 sub Run
