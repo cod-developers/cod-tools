@@ -28,8 +28,10 @@ cif_file:	#empty
 ;
 
 cif_elements:	cif_elements FLOAT
-	|	cif_elements STRING
-	|	STRING
+	|	cif_elements DQSTRING
+	|	cif_elements SQSTRING
+	|	SQSTRING
+	|	DQSTRING
 	|	FLOAT	{ $_[0]->YYData->{VARS}{$_[1]} }
 ;
 
@@ -105,14 +107,21 @@ my $WHITE_SPACE		=	qr/\s$((\s$)+(#.*))/im;
 			("$ANY_PRINT_CHAR*"\s+
 			#DQ string at the EOL
 			| "$ANY_PRINT_CHAR*"$)
+		)//x )
+		{
+			advance_token($parser);
+			return('DQSTRING', $1);
+		}
+		#matching single quoted strings
+		if( s/(
                        #SQ string in line
-			| ('$ANY_PRINT_CHAR*'\s+
+			('$ANY_PRINT_CHAR*'\s+
                         #SQ string at the EOL
                         | '$ANY_PRINT_CHAR*'$)
 		)//x )
 		{
 			advance_token($parser);
-			return('STRING', $1);
+			return('SQSTRING', $1);
 		}
 		#matching any still unmatched symbol:
 		if( s/^(.)//m )
