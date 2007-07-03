@@ -7,22 +7,7 @@
 #
 # parse.yp
 #
-# CIF structure is stored in parser's object YYData VARS hash in this way:
-# $parser->YYData->{VARS}{data_name}
-# where data_name is name of DATA_ section (i.e. DATA_mycif
-# $parser->YYData->{VARS}{mycif}).
-# This element consists of arrays of data elements.
-# $parser->YYData->{VARS}{data_name}->[x]
-# where x increases from begining to end of CIF data section.
-# We provide four elements for this array, which is hash of elements, or
-# hash of arrays, for respectivly tags and loops.
-# {form}->0 - for TAG or 1 - for loop.
-# {name}->"_name_of_tag" or ["_name_1", "_name2", .., "_nameN"]
-# {value}->value_of_tag or {"name1", ["value1", "value2", .., "valueN"],
-# "name2", ["value1", "value2", .., "valueN"], .., "nameN" [...]]}
-# {type}->type_of_tag_value or {"name1", "type1", "name2", type2", ..,
-# "nameN", "typeN"}
-# Such structure allows to recreate original file, line-by-line.
+# Parsed CIF file structure overview is described at the end of this file.
 # --------------------------------------------------------------
 # begin of header
 # --------------------------------------------------------------
@@ -44,11 +29,12 @@ cif_file:	#empty
 ;
 
 cif_elements:	cif_elements cif_value
-	|	cif_value	{ $_[0]->YYData->{VARS}{$_[1]} }
+	|	cif_value	{ $_[0]->YYData->{VARS}{$_[0]} }
 ;
 
-cif_value:	string
-	|	number
+cif_value:	string { print "strin: " . $_[1] . "\n" }
+	|	number { print $_[1]->{type} . " -> " . $_[1]->{value} . 
+"\n" }
 ;
 
 string:		SQSTRING
@@ -56,8 +42,12 @@ string:		SQSTRING
 	|	UQSTRING
 ;
 
-number:		FLOAT
-	|	INT
+precision:	'(' INT ')'	{ $_[2] };
+
+number:		FLOAT	{ { value  => $_[1], type => 'FLOAT' } }
+	|	FLOAT precision { { value => $_[1], type => 'FLOAT', 
+precision => $_[2] } }
+	|	INT { { value => $_[1], type => 'INT' } }
 ;
 
 %%
@@ -85,10 +75,15 @@ sub _Lexer
 {
 	my($parser) = shift;
 
-	if( !defined $parser->YYData->{INPUT} || 
+	if( !defined $parser->YYData->{INPUT} ||
 		$parser->YYData->{INPUT} =~ m/^\s*$/ )
 	{
-		$parser->YYData->{INPUT} = <STDIN>;
+		do
+		{
+			$parser->YYData->{INPUT} = <STDIN>;
+			$parser->YYData->{VARS}{lines}++;
+		} until ( !defined $parser->YYData->{INPUT} ||
+			$parser->YYData->{INPUT} !~ m/^\s*$/ );
 		if( defined $parser->YYData->{INPUT} )
 		{
 			chomp $parser->YYData->{INPUT};
@@ -97,40 +92,44 @@ sub _Lexer
 			$parser->YYData->{VARS}{current_line} = 
 				$parser->YYData->{INPUT};
 		        $parser->YYData->{VARS}{token_pos} = 0;
-		} else {
+		} else {			
 			return('',undef);
 		}
 	}
-
-	$parser->YYData->{INPUT}=~s/^(\s*)//;
-	advance_token($parser);
+		$parser->YYData->{INPUT} =~ s/^(\s*)//;
+		advance_token($parser);
 
 #function used for debugging purposes only
 #	print ">>> '", $parser->YYData->{INPUT}, "'\n";
 
 #scalars storing regular expressions, common to several matches
-my $ORDINARY_CHAR	=
+my $ORDINARY_CHAR	=	
 	qr/[a-zA-Z0-9!%&\(\)\*\+,-\.\/\:<=>\?@\\\^`{\|}~]/is;
 my $SPECIAL_CHAR	=	qr/(["#\$'_\[\]])/is;
 my $NON_BLANK_CHAR	=	qr/(?:$ORDINARY_CHAR|$SPECIAL_CHAR|;)/is;
-my $TEXT_LEAD_CHAR	=	
-qr/(?:$ORDINARY_CHAR|$SPECIAL_CHAR|\s)/is;
+my $TEXT_LEAD_CHAR	=	qr/(?:$ORDINARY_CHAR|$SPECIAL_CHAR|\s)/is;
 my $ANY_PRINT_CHAR	=	qr/(?:$NON_BLANK_CHAR|\s)/is;
 my $WHITE_SPACE		=	qr/\s$((\s$)+(#.*))/im;
+my $INTEGER		=	qr/[-+]?[0-9]+/is;
+my $EXPONENT		=	qr/(e[-+]?[0-9]+)/is;
 
 	for ($parser->YYData->{INPUT})
 	{
-		#matching integers:
-		if ( s/^([\+-]?[0-9]+)// )
-		{
-			advance_token($parser);
-			return('INT', $1);
-		}
 		#matching floats:
-		if( s/^([0-9]*\.[0-9]+)//s )
+		if( s/^(
+			( $INTEGER $EXPONENT )
+			| ( [+-]? [0-9]* \. [0-9]+ $EXPONENT ?)
+			| ( $INTEGER \. $EXPONENT ?)
+		)//sx )
 		{
 			advance_token($parser);
 			return('FLOAT', $1);
+		}
+		#matching integers:
+		if ( s/^($INTEGER)//s )
+		{
+			advance_token($parser);
+			return('INT', $1);
 		}
 		#matching double quoted strings
 		if( s/(
@@ -198,14 +197,10 @@ sub Run
 {
 	my($self) = shift;
 #used for debugging purposes only
-	$self->YYParse( yylex => \&_Lexer,
-			yyerror => \&_Error,
-			yydebug => 0x05 );
-#	$self->YYParse( yylex => \&_Lexer, yyerror => \&_Error );
-	foreach my $temp ($self->YYData->{VARS}{cif_elements_hash})
-	{
-		print "tokia: $temp \n";
-	}
+#	$self->YYParse( yylex => \&_Lexer,
+#			yyerror => \&_Error,
+#			yydebug => 0x05 );
+	$self->YYParse( yylex => \&_Lexer, yyerror => \&_Error );
 	if( $self->YYNberr() == 0 )
 	{
 		print "File syntax is CORRECT!\n";
@@ -217,4 +212,101 @@ sub Run
 
 my($prog) = new parse;
 $prog->Run;
+
+__END__
+CIF structure is stored in parser's object YYData VARS hash in this way:
+$parser->YYData->{VARS}{[CIF_ARRAY]}
+
+Here CIF_ARRAY is array of elements:
+        kind
+        [type]
+        [name]
+        value
+        [precision]
+*NOTE: square brackets ('[' and ']') denotes optional element.
+
+As far as now, 'kind' is one of:
+        DATA_
+        SAVE_
+        LOOP_
+        TAG             - for any tag
+        LOOPCOL         - for loop column
+
+'type' is type of value stored:
+        FLOAT
+        INT
+        SQSTRING
+        DQSTRING
+        UQSTRING
+        TEXTFIELD
+
+'name' is TAG's name.
+
+'value' is value for TAG, whose name is 'name'.
+It could be a list of values, in case of loop.
+
+'precision' - optional component, which defines precision of numerical
+values. It could be a single value, or an array of values - array of the
+same size, as array for 'value' field.
+
+All this array is recursive - in a block could reside several sections,
+each with different values.
+
+Everything goes to array 'value' in case of recursion.
+Example with DATA_ section having a loop_:
+$parser->YYDATA->{VARS}{myCIF} =
+[
+        {
+#DATA_compound1
+                kind = DATA_,
+                name= 'compound1'
+                value =
+                [
+                        {
+#_chemical_formula_sum 'C2 H2 Ca O4'
+                                kind = 'TAG'
+                                name = '_chemical_formula_sum'
+                                value = 'C2 H2 Ca O4'
+                                type = 'SQSTRING'
+                        },
+                        {
+#loop_
+#_atom_site_label,
+#_atom_site_fract_x
+#Ca1 0.0098(2)
+#Ca2 0.0093(2)
+                                kind = 'LOOP_'
+                                value =
+                                [
+                                        {
+                                                kind = 'LOOPCOL'
+                                                name = 
+'_atom_site_label'
+                                                value =
+                                                [
+                                                        'Ca1',
+                                                        'Ca2'
+                                                ]
+                                        },
+                                        {
+                                                kind = 'LOOPCOL'
+                                                name = 
+'_atom_site_fract_x'
+                                                value =
+                                                [
+                                                        0.0098,
+                                                        0.0093
+                                                ]
+                                                precision =
+                                                [
+                                                        0.00002,
+                                                        0.00002
+                                                ]
+                                        }
+                                ]
+                        }
+                ]
+        }
+]
+
 
