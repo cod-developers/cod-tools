@@ -21,8 +21,8 @@ OUTP_FILES = ${TEST_FILES:${TEST_DIR}/%.inp=${OUTP_DIR}/%.out}
 all: run
 
 run: ${PM_FILES} ${WORK_TESTS}
-	for file in ${WORK_TESTS}; do \
-		perl $< < $$file; \
+	@for file in ${WORK_TESTS}; do \
+		( echo === $$file ===; set -x; perl $< < $$file ); \
 	done
 
 test tests: ${DIFF_FILES}
