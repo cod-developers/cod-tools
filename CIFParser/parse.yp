@@ -32,10 +32,15 @@ cif_elements:	cif_elements cif_value
 	|	cif_value	{ $_[0]->YYData->{VARS}{$_[1]} }
 ;
 
-cif_value:	string { print $_[1]->{type} . "\t->\t"
-			. $_[1]->{value} . "\n" }
-	|	number { print $_[1]->{type} . "\t->\t"
-			. $_[1]->{value} . "\n" }
+#for debug purposes only
+#cif_value:	string { print $_[1]->{type} . "\t->\t"
+#			. $_[1]->{value} . "\n" }
+#	|	number { print $_[1]->{type} . "\t->\t"
+#			. $_[1]->{value} . "\n" }
+#;
+
+cif_value:	string
+	|	number
 ;
 
 string:		SQSTRING	{ { value => $_[1], type => 'SQSTRING'} }
@@ -128,7 +133,7 @@ $FLOAT31)/six;
 			return('FLOAT', $1);
 		}
 		#matching integers:
-		if( s/^($INTEGER)(?=\s)/$2/sx || s/^($INTEGER)$//sx )
+		if( s/^($INTEGER)(?=\s)//sx || s/^($INTEGER)$//sx )
 		{
 			advance_token($parser);
 			return('INT', $1);
