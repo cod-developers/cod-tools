@@ -7,14 +7,23 @@ TEST_MODULE = ${firstword ${PM_FILES}}
 YP_FILES   = ${wildcard *.yp}
 PM_FILES   = ${YP_FILES:%.yp=%.pm}
 
+WORK_TESTS = ${wildcard *.inp}
+
 TEST_FILES = ${wildcard ${TEST_DIR}/*.inp}
 DIFF_FILES = ${TEST_FILES:${TEST_DIR}/%.inp=${OUTP_DIR}/%.diff}
 OUTP_FILES = ${TEST_FILES:${TEST_DIR}/%.inp=${OUTP_DIR}/%.out}
 
 .PRECIOUS: %.pm
 .PHONY: all clean cleanAll distclean test tests out outputs
+.PHONY: run
 
-all: ${PM_FILES}
+## all: ${PM_FILES}
+all: run
+
+run: ${PM_FILES} ${WORK_TESTS}
+	for file in ${WORK_TESTS}; do \
+		perl $< < $$file; \
+	done
 
 test tests: ${DIFF_FILES}
 
