@@ -29,17 +29,18 @@ cif_file:	#empty
 ;
 
 cif_elements:	cif_elements cif_value
-	|	cif_value	{ $_[0]->YYData->{VARS}{$_[0]} }
+	|	cif_value	{ $_[0]->YYData->{VARS}{$_[1]} }
 ;
 
-cif_value:	string { print "strin: " . $_[1] . "\n" }
-	|	number { print $_[1]->{type} . " -> " . $_[1]->{value} . 
-"\n" }
+cif_value:	string { print $_[1]->{type} . "\t->\t"
+			. $_[1]->{value} . "\n" }
+	|	number { print $_[1]->{type} . "\t->\t"
+			. $_[1]->{value} . "\n" }
 ;
 
-string:		SQSTRING
-	|	DQSTRING
-	|	UQSTRING
+string:		SQSTRING	{ { value => $_[1], type => 'SQSTRING'} }
+	|	DQSTRING	{ { value => $_[1], type => 'DQSTRING'} }
+	|	UQSTRING	{ { value => $_[1], type => 'UQSTRING'} }
 ;
 
 precision:	'(' INT ')'	{ $_[2] };
@@ -112,21 +113,22 @@ my $ANY_PRINT_CHAR	=	qr/(?:$NON_BLANK_CHAR|\s)/is;
 my $WHITE_SPACE		=	qr/\s$((\s$)+(#.*))/im;
 my $INTEGER		=	qr/[-+]?[0-9]+/is;
 my $EXPONENT		=	qr/(e[-+]?[0-9]+)/is;
+my $FLOAT11		=	qr/($INTEGER $EXPONENT)/x;
+my $FLOAT21		=	qr/([+-]? [0-9]* \. [0-9]+ $EXPONENT ?)/x;
+my $FLOAT31		=	qr/($INTEGER \. $EXPONENT ?)/x;
+my $FLOAT		=	qr/(?: $FLOAT11 | $FLOAT21 | 
+$FLOAT31)/six;
 
 	for ($parser->YYData->{INPUT})
 	{
 		#matching floats:
-		if( s/^(
-			( $INTEGER $EXPONENT )
-			| ( [+-]? [0-9]* \. [0-9]+ $EXPONENT ?)
-			| ( $INTEGER \. $EXPONENT ?)
-		)//sx )
+		if( s/^(($FLOAT)(?=\s))//sx || s/^($FLOAT)$//sx )
 		{
 			advance_token($parser);
 			return('FLOAT', $1);
 		}
 		#matching integers:
-		if ( s/^($INTEGER)//s )
+		if( s/^($INTEGER)(?=\s)/$2/sx || s/^($INTEGER)$//sx )
 		{
 			advance_token($parser);
 			return('INT', $1);
