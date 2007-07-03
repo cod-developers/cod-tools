@@ -16,6 +16,11 @@
 use warnings;
 
 my $SVNID = '$Id$';
+
+# 0 - no debug
+# 1 - only YAPP output (type -> value)
+# 2 - lex & yapp output
+my $debug = 0;
 %}
 # --------------------------------------------------------------
 
@@ -32,15 +37,12 @@ cif_elements:	cif_elements cif_value
 	|	cif_value	{ $_[0]->YYData->{VARS}{$_[1]} }
 ;
 
-#for debug purposes only
-#cif_value:	string { print $_[1]->{type} . "\t->\t"
-#			. $_[1]->{value} . "\n" }
-#	|	number { print $_[1]->{type} . "\t->\t"
-#			. $_[1]->{value} . "\n" }
-#;
-
-cif_value:	string
-	|	number
+cif_value:	string { print $_[1]->{type} . "\t->\t"
+			. $_[1]->{value} . "\n" if $debug >= 1; }
+	|	number { print $_[1]->{type} . "\t\t->\t"
+			. $_[1]->{value} . "\n" if $debug >= 1; }
+	|	COMMENT { print "COMMENT\t\t->\t"
+			. $_[1] . "\n" if $debug >= 1; }
 ;
 
 string:		SQSTRING	{ { value => $_[1], type => 'SQSTRING'} }
@@ -102,8 +104,8 @@ sub _Lexer
 			return('',undef);
 		}
 	}
-		$parser->YYData->{INPUT} =~ s/^(\s*)//;
-		advance_token($parser);
+	$parser->YYData->{INPUT} =~ s/^(\s*)//;
+	advance_token($parser);
 
 #function used for debugging purposes only
 #	print ">>> '", $parser->YYData->{INPUT}, "'\n";
@@ -115,7 +117,7 @@ my $SPECIAL_CHAR	=	qr/(["#\$'_\[\]])/is;
 my $NON_BLANK_CHAR	=	qr/(?:$ORDINARY_CHAR|$SPECIAL_CHAR|;)/is;
 my $TEXT_LEAD_CHAR	=	qr/(?:$ORDINARY_CHAR|$SPECIAL_CHAR|\s)/is;
 my $ANY_PRINT_CHAR	=	qr/(?:$NON_BLANK_CHAR|\s)/is;
-my $COMMENT		=	qr/(?: $ANY_PRINT_CHAR * )/sx;
+my $COMMENT		=	qr/(#${ANY_PRINT_CHAR}*$)/s;
 my $INTEGER		=	qr/[-+]?[0-9]+/is;
 my $EXPONENT		=	qr/(?: e[-+]?[0-9]+)/is;
 my $FLOAT11		=	qr/(?: $INTEGER $EXPONENT)/x;
@@ -183,19 +185,10 @@ my $FLOAT		=	qr/(?: $FLOAT11 | $FLOAT21 | $FLOAT31)/six;
 			}
 		}
 		#matching comments
-		if( $parser->YYData->{VARS}{token_pos} == 0 )
+		if( s/^$COMMENT//s )
 		{
-			if( s/ $COMMENT $//xs )
-			{
-				advance_token($parser);
-	#			return('COMMENT', $1);
-			}
-		} else {
-			if( s/\s $COMMENT $//xs )
-			{
-				advance_token($parser);
-	#			return('COMMENT', $1);
-			}
+			advance_token($parser);
+			return('COMMENT', $1);
 		}
 		#matching any still unmatched symbol:
 		if( s/^(.)//m )
@@ -217,11 +210,14 @@ sub advance_token
 sub Run
 {
 	my($self) = shift;
-#used for debugging purposes only
-#	$self->YYParse( yylex => \&_Lexer,
-#			yyerror => \&_Error,
-#			yydebug => 0x05 );
-	$self->YYParse( yylex => \&_Lexer, yyerror => \&_Error );
+	if( $debug >= 2)
+	{
+		$self->YYParse( yylex => \&_Lexer,
+				yyerror => \&_Error,
+				yydebug => 0x05 );
+	} else {
+		$self->YYParse( yylex => \&_Lexer, yyerror => \&_Error );
+	}
 	if( $self->YYNberr() == 0 )
 	{
 		print "File syntax is CORRECT!\n";
