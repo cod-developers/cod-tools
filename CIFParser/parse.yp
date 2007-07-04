@@ -20,7 +20,7 @@ my $SVNID = '$Id$';
 # 0 - no debug
 # 1 - only YAPP output (type -> value)
 # 2 - lex & yapp output
-my $debug = 0;
+my $debug = 1;
 %}
 # --------------------------------------------------------------
 
@@ -43,6 +43,12 @@ cif_value:	string { print $_[1]->{type} . "\t->\t"
 			. $_[1]->{value} . "\n" if $debug >= 1; }
 	|	COMMENT { print "COMMENT\t\t->\t"
 			. $_[1] . "\n" if $debug >= 1; }
+	|	whitespace { print "WSPACE\t\t->\t"
+			. $_[1] . "\n" if $debug >= 1; }
+;
+
+whitespace:	WSPACE
+	|	TOKENIZED_COMMENT
 ;
 
 string:		SQSTRING	{ { value => $_[1], type => 'SQSTRING'} }
@@ -118,17 +124,17 @@ my $NON_BLANK_CHAR	=	qr/(?:$ORDINARY_CHAR|$SPECIAL_CHAR|;)/is;
 my $TEXT_LEAD_CHAR	=	qr/(?:$ORDINARY_CHAR|$SPECIAL_CHAR|\s)/is;
 my $ANY_PRINT_CHAR	=	qr/(?:$NON_BLANK_CHAR|\s)/is;
 my $COMMENT		=	qr/(#${ANY_PRINT_CHAR}*$)/s;
-my $INTEGER		=	qr/[-+]?[0-9]+/is;
-my $EXPONENT		=	qr/(?: e[-+]?[0-9]+)/is;
-my $FLOAT11		=	qr/(?: $INTEGER $EXPONENT)/x;
-my $FLOAT21		=	qr/(?: [+-]? [0-9]* \. [0-9]+ $EXPONENT ?)/x;
-my $FLOAT31		=	qr/(?: $INTEGER \. $EXPONENT ?)/x;
+my $INTEGER		=	qr/[-+]?[0-9]+/s;
+my $EXPONENT		=	qr/e[-+]?[0-9]+/is;
+my $FLOAT11		=	qr/(?: $INTEGER $EXPONENT)/ix;
+my $FLOAT21		=	qr/(?: [+-]? [0-9]* \. [0-9]+ $EXPONENT ?)/ix;
+my $FLOAT31		=	qr/(?: $INTEGER \. $EXPONENT ?)/ix;
 my $FLOAT		=	qr/(?: $FLOAT11 | $FLOAT21 | $FLOAT31)/six;
 
 	for ($parser->YYData->{INPUT})
 	{
 		#matching floats:
-		if( s/^(?:($FLOAT)(\s))/$2/sx || s/^($FLOAT)$//sx )
+		if( s/^(?:($FLOAT)(\s))/$2/six || s/^($FLOAT)$//six )
 		{
 			advance_token($parser);
 			return('FLOAT', $1);
@@ -184,11 +190,24 @@ my $FLOAT		=	qr/(?: $FLOAT11 | $FLOAT21 | $FLOAT31)/six;
 				return('UQSTRING', $1);
 			}
 		}
+		#matching tokenized comments
+		if( $parser->YYData->{VARS}{token_pos} > 0
+			&& s/^$COMMENT//s )
+		{
+			advance_token($parser);
+			return('TOKENIZED_COMMENT', $1);
+		}
 		#matching comments
 		if( s/^$COMMENT//s )
 		{
 			advance_token($parser);
 			return('COMMENT', $1);
+		}
+		#matching white space characters
+		if( s/\s//s )
+		{
+			advance_token($parser);
+			return('WSPACE', $1);
 		}
 		#matching any still unmatched symbol:
 		if( s/^(.)//m )
