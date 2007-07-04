@@ -20,7 +20,7 @@ my $SVNID = '$Id$';
 # 0 - no debug
 # 1 - only YAPP output (type -> value)
 # 2 - lex & yapp output
-my $debug = 1;
+my $debug = 0;
 %}
 # --------------------------------------------------------------
 
@@ -40,28 +40,44 @@ cif_elements:	cif_elements cif_value
 cif_value:	string { print $_[1]->{type} . "\t->\t"
 			. $_[1]->{value} . "\n" if $debug >= 1; }
 	|	number { print $_[1]->{type} . "\t\t->\t"
-			. $_[1]->{value} . "\n" if $debug >= 1; }
+			. $_[1]->{value} . " -- " . $_[1]->{precision}
+			. "\n" if $debug >= 1; }
 	|	COMMENT { print "COMMENT\t\t->\t"
 			. $_[1] . "\n" if $debug >= 1; }
-	|	whitespace { print "WSPACE\t\t->\t"
-			. $_[1] . "\n" if $debug >= 1; }
+	|	whitespace { if($debug >= 2)
+				{ print $_[1]->{type} . "\t->\t"
+				. $_[1]->{value} . "\n"; 
+				} elsif($debug >= 1) {
+					print $_[1]->{type} . "\t->\t"
+					. $_[1]->{value} . "\n"
+					if $_[1]->{type} !~ 'WSPACE';
+				}
+			}
 ;
 
-whitespace:	WSPACE
-	|	TOKENIZED_COMMENT
+whitespace:	WSPACE	{ { value => $_[1], type => 'WSPACE' } }
+	|	TOKENIZED_COMMENT	{ { value => $_[1],
+			type => 'TCOMMENT' } }
 ;
 
-string:		SQSTRING	{ { value => $_[1], type => 'SQSTRING'} }
-	|	DQSTRING	{ { value => $_[1], type => 'DQSTRING'} }
-	|	UQSTRING	{ { value => $_[1], type => 'UQSTRING'} }
+string:		SQSTRING	{ { value => $_[1],
+			type => 'SQSTRING'} }
+	|	DQSTRING	{ { value => $_[1],
+			type => 'DQSTRING'} }
+	|	UQSTRING	{ { value => $_[1],
+			type => 'UQSTRING'} }
 ;
 
-precision:	'(' INT ')'	{ $_[2] };
+precision:	'(' INT ')'	{ print $_[2] . "\n"; return $_[2]; };
 
-number:		FLOAT	{ { value  => $_[1], type => 'FLOAT' } }
-	|	FLOAT precision { { value => $_[1], type => 'FLOAT', 
-precision => $_[2] } }
-	|	INT { { value => $_[1], type => 'INT' } }
+number:		FLOAT	{ { value  => $_[1], type => 'FLOAT',
+			precision => 'undef' } }
+	|	FLOAT precision { { value => $_[1], type => 'FLOAT',
+			precision => $_[2] } }
+	|	INT { { value => $_[1], type => 'INT',
+			precision => 'undef' } }
+	|	INT precision { { value => $_[1], type => 'INT',
+			precision => $_[2] } }
 ;
 
 %%
@@ -110,8 +126,8 @@ sub _Lexer
 			return('',undef);
 		}
 	}
-	$parser->YYData->{INPUT} =~ s/^(\s*)//;
-	advance_token($parser);
+#	$parser->YYData->{INPUT} =~ s/^(\s*)//;
+#	advance_token($parser);
 
 #function used for debugging purposes only
 #	print ">>> '", $parser->YYData->{INPUT}, "'\n";
@@ -129,7 +145,7 @@ my $EXPONENT		=	qr/e[-+]?[0-9]+/is;
 my $FLOAT11		=	qr/(?: $INTEGER $EXPONENT)/ix;
 my $FLOAT21		=	qr/(?: [+-]? [0-9]* \. [0-9]+ $EXPONENT ?)/ix;
 my $FLOAT31		=	qr/(?: $INTEGER \. $EXPONENT ?)/ix;
-my $FLOAT		=	qr/(?: $FLOAT11 | $FLOAT21 | $FLOAT31)/six;
+my $FLOAT		=	qr/(?: (?: $FLOAT11 | $FLOAT21 | $FLOAT31))/six;
 
 	for ($parser->YYData->{INPUT})
 	{
@@ -204,7 +220,7 @@ my $FLOAT		=	qr/(?: $FLOAT11 | $FLOAT21 | $FLOAT31)/six;
 			return('COMMENT', $1);
 		}
 		#matching white space characters
-		if( s/\s//s )
+		if( s/^( )+//s )
 		{
 			advance_token($parser);
 			return('WSPACE', $1);
