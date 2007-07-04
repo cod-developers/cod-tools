@@ -79,24 +79,50 @@ string:		SQSTRING	{ { value => $_[1],
 			type => 'UQSTRING'} }
 ;
 
-#must be unsigned INT !
-precision:	'(' INT ')'	{ print $_[2] . "\n"; return $_[2]; };
-
-#number:		number precision
-#	|	FLOAT	{ { type => 'FLOAT', value => $_[1] } }
-#	|	INT	{ { type => 'INT', value => $_[1] } }
-#	|	precision	{ $_[1] }
-#;
-
-number:		FLOAT	{ { value  => $_[1], type => 'FLOAT',
-			precision => 'undef' } }
-	|	FLOAT precision { { value => $_[1], type => 'FLOAT',
-			precision => $_[2] } }
-	|	INT { { value => $_[1], type => 'INT',
-			precision => 'undef' } }
-	|	INT precision { { value => $_[1], type => 'INT',
-			precision => $_[2] } }
+number
+	:	FLOAT
+		{
+			if( $_[1] =~ m/^(.*)( \( ([0-9]+) \) )$/six )
+			{
+				{	type => 'FLOAT',
+					value => $1,
+					precision => $3
+				}
+			} else {
+				{	type => 'FLOAT',
+					value => $_[1],
+					precision => 'undef'
+				}
+			}
+		}
+	|	INT
+		{
+			if( $_[1] =~ m/^(.*)( \( ([0-9]+) \) )$/sx)
+			{
+				{	type => 'INT',
+					value => $1,
+					precision => $3
+				}
+			} else {
+				{	type => 'INT',
+					value => $_[1],
+					precision => 'undef'
+				}
+			}
+		}
 ;
+
+
+
+#number:		FLOAT	{ { value  => $_[1], type => 'FLOAT',
+#			precision => 'undef' } }
+#	|	FLOAT precision { { value => $_[1], type => 'FLOAT',
+#			precision => $_[2] } }
+#	|	INT { { value => $_[1], type => 'INT',
+#			precision => 'undef' } }
+#	|	INT precision { { value => $_[1], type => 'INT',
+#			precision => $_[2] } }
+#;
 
 %%
 # --------------------------------------------------------------
@@ -145,7 +171,7 @@ sub _Lexer
 		}
 	}
 
-	if($debug >= 1)
+	if($debug >= 2)
 	{
 		print ">>> '", $parser->YYData->{INPUT}, "'\n";
 	}
@@ -168,13 +194,15 @@ my $FLOAT		=	qr/(?: (?: $FLOAT11 | $FLOAT21 | $FLOAT31))/six;
 	for ($parser->YYData->{INPUT})
 	{
 		#matching floats:
-		if( s/^(?:($FLOAT)(\s))/$2/six || s/^($FLOAT)$//six )
+		if( s/^(?: ($FLOAT (?:\([0-9]+\))?) (\s) )/$2/six
+			|| s/^($FLOAT (?:\([0-9]+\))?)$//six )
 		{
 			advance_token($parser);
 			return('FLOAT', $1);
 		}
 		#matching integers:
-		if( s/^($INTEGER)(\s)/$2/sx || s/^($INTEGER)$//sx )
+		if( s/^($INTEGER (?:\([0-9]+\))?)(\s)/$2/sx
+			|| s/^($INTEGER (?:\([0-9]+\))?)$//sx )
 		{
 			advance_token($parser);
 			return('INT', $1);
