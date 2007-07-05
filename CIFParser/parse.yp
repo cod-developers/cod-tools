@@ -84,9 +84,34 @@ number
 		{
 			if( $_[1] =~ m/^(.*)( \( ([0-9]+) \) )$/six )
 			{
+				my $value	= $1;
+				my $precision	= $3;
+				#parsing float value:
+				# - $1 - part before decimal dot
+				# - $2 - decimal dot
+				# - $3 - mantissa (part after d-dot)
+				# - $4 - exponent
+				$value =~ m/
+						([-+]?[0-9]*)?
+						(\.)?
+						([0-9]+)?
+						(?:e([+-]?[0-9]+))?
+					/six;
+				if( defined $2 )
+				{
+					if( defined $4 )
+					{
+						$precision /= 10**(length($3));
+						$precision *= 10**($4);
+					} else {
+						$precision /= 10**(length($3));
+					}
+				} else {
+					$precision *= 10**($4);
+				}
 				{	type => 'FLOAT',
-					value => $1,
-					precision => $3
+					value => $value,
+					precision => $precision
 				}
 			} else {
 				{	type => 'FLOAT',
@@ -111,18 +136,6 @@ number
 			}
 		}
 ;
-
-
-
-#number:		FLOAT	{ { value  => $_[1], type => 'FLOAT',
-#			precision => 'undef' } }
-#	|	FLOAT precision { { value => $_[1], type => 'FLOAT',
-#			precision => $_[2] } }
-#	|	INT { { value => $_[1], type => 'INT',
-#			precision => 'undef' } }
-#	|	INT precision { { value => $_[1], type => 'INT',
-#			precision => $_[2] } }
-#;
 
 %%
 # --------------------------------------------------------------
