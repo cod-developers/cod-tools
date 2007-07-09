@@ -29,19 +29,23 @@ my $debug = 0;
 # --------------------------------------------------------------
 
 %%
-cif_file:	opt_wspace #empty
+cif_file
+	:	opt_wspace #empty
 	|	opt_wspace cif_elements opt_wspace
 ;
 
-opt_wspace:	whitespace
+opt_wspace
+	:	whitespace
 	|	#empty
 ;
 
-cif_elements:	cif_elements whitespace cif_value
+cif_elements
+	:	cif_elements whitespace cif_value
 	|	cif_value	{ $_[0]->YYData->{VARS}{$_[1]} }
 ;
 
-cif_value:	string { print $_[1]->{type} . "\t->\t"
+cif_value
+	:	string { print $_[1]->{type} . "\t->\t"
 			. $_[1]->{value} . "\n" if $debug >= 1; }
 	|	number { print $_[1]->{type} . "\t\t->\t"
 			. $_[1]->{value} . " -- " . $_[1]->{precision}
@@ -88,19 +92,15 @@ whitespace
 		}
 ;
 
-string:		SQSTRING	{ { value => $_[1],
+string
+	:		SQSTRING	{ { value => $_[1],
 			type => 'SQSTRING'} }
 	|	DQSTRING	{ { value => $_[1],
 			type => 'DQSTRING'} }
 	|	UQSTRING	{ { value => $_[1],
 			type => 'UQSTRING'} }
-;
-
-textfield
-	:	TEXT_FIELD
-		{
-			{ value => $_[1], type=> 'TEXTFIELD' }
-		}
+	|	TEXT_FIELD	{ { value => $_[1],
+			type => 'TEXTFIELD' } }
 ;
 
 number
