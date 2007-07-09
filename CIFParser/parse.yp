@@ -46,13 +46,30 @@ cif_value:	string { print $_[1]->{type} . "\t->\t"
 	|	number { print $_[1]->{type} . "\t\t->\t"
 			. $_[1]->{value} . " -- " . $_[1]->{precision}
 			. "\n" if $debug >= 1; }
+	|	textfield	{ print "TFIELD\t\t->\t" .
+					$_[1]->{value} . "\n"
+					if $debug >= 1; }
 	|	COMMENT { print "COMMENT\t\t->\t"
 			. $_[1] . "\n" if $debug >= 1; }
 ;
 
 whitespace
 	:	whitespace WSPACE
+		{
+			if($debug >= 2 && defined $_[2])
+			{
+				print "WSPACE\t\t->\t" . $_[2] . "\n";
+			}
+			{ value => $_[2], type => 'WSPACE' };
+		}
 	|	whitespace TOKENIZED_COMMENT
+		{
+			if($debug >= 1)
+			{
+				print "TCOMMENT\t->\t" . $_[2] . "\n";
+			}
+			{ value => $_[2], type => 'TCOMMENT' };
+		}
 	|	WSPACE
 		{
 			if($debug >= 2 && defined $_[1])
@@ -77,6 +94,13 @@ string:		SQSTRING	{ { value => $_[1],
 			type => 'DQSTRING'} }
 	|	UQSTRING	{ { value => $_[1],
 			type => 'UQSTRING'} }
+;
+
+textfield
+	:	TEXT_FIELD
+		{
+			{ value => $_[1], type=> 'TEXTFIELD' }
+		}
 ;
 
 number
@@ -177,7 +201,7 @@ sub _Lexer
 			$parser->YYData->{INPUT}=~s/\t/    /g;
 			$parser->YYData->{VARS}{current_line} = 
 				$parser->YYData->{INPUT};
-		        $parser->YYData->{VARS}{token_pos} = 0;
+			$parser->YYData->{VARS}{token_pos} = 0;
 			return('WSPACE', "\n");
 		} else {			
 			return('',undef);
@@ -194,7 +218,7 @@ my $ORDINARY_CHAR	=
 	qr/[a-zA-Z0-9!%&\(\)\*\+,-\.\/\:<=>\?@\\\^`{\|}~]/is;
 my $SPECIAL_CHAR	=	qr/["#\$'_\[\]]/is;
 my $NON_BLANK_CHAR	=	qr/(?:$ORDINARY_CHAR|$SPECIAL_CHAR|;)/is;
-my $TEXT_LEAD_CHAR	=	qr/(?:$ORDINARY_CHAR|$SPECIAL_CHAR|\s)/is;
+my $TEXT_LEAD_CHAR	=	qr/(?:$ORDINARY_CHAR|$SPECIAL_CHAR|\s)/s;
 my $ANY_PRINT_CHAR	=	qr/(?:$NON_BLANK_CHAR|\s)/is;
 my $COMMENT		=	qr/(#${ANY_PRINT_CHAR}*$)/s;
 my $INTEGER		=	qr/[-+]?[0-9]+/s;
@@ -234,6 +258,56 @@ my $FLOAT		=	qr/(?: (?: $FLOAT11 | $FLOAT21 | $FLOAT31))/six;
 			advance_token($parser);
 			return('SQSTRING', $1);
 		}
+		#matching text field
+		if( $parser->YYData->{VARS}{token_pos} == 0 )
+		{
+			if( s/^;(${ANY_PRINT_CHAR}*)$//s )
+			{
+				my $eotf = 0;
+				my $tfield;	#all textfield
+				my $tf_line_begin =
+					$parser->YYData->{VARS}{lines};
+				$tfield = $1 . "\n";
+				while( 1 )
+				{
+					my $line = <STDIN>;
+					if( defined $line )
+					{
+						chomp $line;
+						$line=~s/\t/    /g;
+						$parser->YYData->{VARS}{current_line} = 
+							$line;
+						$parser->YYData->{VARS}{lines}++;
+						if( $line =~
+							s/^;//s )
+						{
+							if( defined $line )
+							{
+							$parser->YYData->{INPUT}
+								= $line;
+							$parser->YYData->{VARS}{token_pos} = 1;
+							}
+							last;
+						} else {
+							$tfield .= $line;
+						}
+					} else {
+						undef $parser->YYData->{INPUT};
+						last;
+					}
+				}
+				if( !defined $parser->YYData->{INPUT} )
+				{
+					$parser->YYData->{ERRMSG} = <<END_M;
+ERROR encountered while in text field, which started in line $tf_line_begin.
+Possible runaway of closing ';', or unexpected end of file.
+END_M
+					$parser->YYError();
+				}
+				chomp $tfield;
+				return('TEXT_FIELD', $tfield);
+			}
+		}
 		#matching unquoted strings
 		if( $parser->YYData->{VARS}{token_pos} == 0 )
 		{
@@ -257,11 +331,6 @@ my $FLOAT		=	qr/(?: (?: $FLOAT11 | $FLOAT21 | $FLOAT31))/six;
 				return('UQSTRING', $1);
 			}
 		}
-#		if( s/^?:(?=\()[0-9]+(?=\))//s )
-#		{
-#			advance_token($parser);
-#			return('PRECISION', $1);
-#		}
 		#matching tokenized comments
 		if( $parser->YYData->{VARS}{token_pos} > 0
 			&& s/^($COMMENT)//s )
