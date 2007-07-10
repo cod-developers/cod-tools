@@ -40,21 +40,55 @@ opt_wspace
 ;
 
 cif_elements
-	:	cif_elements whitespace cif_value
-	|	cif_value	{ $_[0]->YYData->{VARS}{$_[1]} }
+	:	cif_elements whitespace cif_entry
+	|	cif_entry	{ $_[0]->YYData->{VARS}{$_[1]} }
+;
+
+cif_entry
+	:	TAG WSPACE cif_value
+		{
+			if(defined $_[3]->{precision})
+			{
+				{ name => $_[1],
+					kind => 'TAG',
+					value => $_[3]->{value},
+					type => $_[3]->{type},
+					precision => $_[3]->{precision}
+				}
+			} else {
+				{ name => $_[1],
+					kind => 'TAG',
+					value => $_[3]->{value},
+					type => $_[3]->{type}
+				}
+			}
+		}
 ;
 
 cif_value
-	:	string { print $_[1]->{type} . "\t->\t"
-			. $_[1]->{value} . "\n" if $debug >= 1; }
-	|	number { print $_[1]->{type} . "\t\t->\t"
-			. $_[1]->{value} . " -- " . $_[1]->{precision}
-			. "\n" if $debug >= 1; }
-	|	textfield	{ print "TFIELD\t\t->\t" .
-					$_[1]->{value} . "\n"
-					if $debug >= 1; }
-	|	COMMENT { print "COMMENT\t\t->\t"
-			. $_[1] . "\n" if $debug >= 1; }
+	:	string
+		{	print $_[1]->{type} . "\t->\t"
+				. $_[1]->{value} . "\n" if $debug >= 1;
+			$_[1];
+		}
+	|	number
+		{	print $_[1]->{type} . "\t\t->\t"
+				. $_[1]->{value} . " -- "
+				. $_[1]->{precision}
+				. "\n" if $debug >= 1;
+			$_[1];
+		}
+	|	textfield
+		{	print "TFIELD\t\t->\t" .
+				$_[1]->{value} . "\n"
+				if $debug >= 1;
+			$_[1];
+		}
+	|	COMMENT
+		{	print "COMMENT\t\t->\t"
+				. $_[1] . "\n" if $debug >= 1;
+			$_[1];
+		}
 ;
 
 whitespace
@@ -307,6 +341,12 @@ END_M
 				chomp $tfield;
 				return('TEXT_FIELD', $tfield);
 			}
+		}
+		#matching TAG's
+		if( s/^(_${NON_BLANK_CHAR}+)//si )
+		{
+			advance_token($parser);
+			return('TAG', $1);
 		}
 		#matching unquoted strings
 		if( $parser->YYData->{VARS}{token_pos} == 0 )
