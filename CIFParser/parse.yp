@@ -30,22 +30,36 @@ my $debug = 0;
 
 %%
 cif_file
-	:	opt_wspace #empty
-	|	opt_wspace cif_elements opt_wspace
+	:	#empty
+	|	data_block_set
 ;
 
-opt_wspace
-	:	whitespace
-	|	#empty
+data_block_set
+	:	data_block_set data_block
+	|	data_block
 ;
 
-cif_elements
-	:	cif_elements whitespace cif_entry
-	|	cif_entry	{ $_[0]->YYData->{VARS}{$_[1]} }
+data_block
+	:	data_block_head data_item
+	|	data_block_head
+;
+
+data_block_head
+	:	DATA_
+		{
+			{ kind => 'data',
+				name => $_[1]
+			}
+		}
+;
+
+data_item
+	:	data_item cif_entry
+	|	cif_entry { $_[0]->YYData->{VARS}{$_[1]} }
 ;
 
 cif_entry
-	:	TAG WSPACE cif_value
+	:	TAG cif_value
 		{
 			if(defined $_[3]->{precision})
 			{
@@ -84,50 +98,10 @@ cif_value
 				if $debug >= 1;
 			$_[1];
 		}
-	|	COMMENT
-		{	print "COMMENT\t\t->\t"
-				. $_[1] . "\n" if $debug >= 1;
-			$_[1];
-		}
-;
-
-whitespace
-	:	whitespace WSPACE
-		{
-			if($debug >= 2 && defined $_[2])
-			{
-				print "WSPACE\t\t->\t" . $_[2] . "\n";
-			}
-			{ value => $_[2], type => 'WSPACE' };
-		}
-	|	whitespace TOKENIZED_COMMENT
-		{
-			if($debug >= 1)
-			{
-				print "TCOMMENT\t->\t" . $_[2] . "\n";
-			}
-			{ value => $_[2], type => 'TCOMMENT' };
-		}
-	|	WSPACE
-		{
-			if($debug >= 2 && defined $_[1])
-			{
-				print "WSPACE\t\t->\t" . $_[1] . "\n";
-			}
-			{ value => $_[1], type => 'WSPACE' };
-		}
-	|	TOKENIZED_COMMENT
-		{
-			if($debug >= 1)
-			{
-				print "TCOMMENT\t->\t" . $_[1] . "\n";
-			}
-			{ value => $_[1], type => 'TCOMMENT' };
-		}
 ;
 
 string
-	:		SQSTRING	{ { value => $_[1],
+	:	SQSTRING	{ { value => $_[1],
 			type => 'SQSTRING'} }
 	|	DQSTRING	{ { value => $_[1],
 			type => 'DQSTRING'} }
@@ -236,15 +210,9 @@ sub _Lexer
 			$parser->YYData->{VARS}{current_line} = 
 				$parser->YYData->{INPUT};
 			$parser->YYData->{VARS}{token_pos} = 0;
-			return('WSPACE', "\n");
 		} else {			
 			return('',undef);
 		}
-	}
-
-	if($debug >= 2)
-	{
-		print ">>> '", $parser->YYData->{INPUT}, "'\n";
 	}
 
 #scalars storing regular expressions, common to several matches
@@ -262,18 +230,34 @@ my $FLOAT21		=	qr/(?: [+-]? [0-9]* \. [0-9]+ $EXPONENT ?)/ix;
 my $FLOAT31		=	qr/(?: $INTEGER \. $EXPONENT ?)/ix;
 my $FLOAT		=	qr/(?: (?: $FLOAT11 | $FLOAT21 | $FLOAT31))/six;
 
+	#matching white space characters
+	if( $parser->YYData->{INPUT} =~
+		s/^(\s+)//s ||
+		$parser->YYData->{INPUT} =~
+		s/^(${COMMENT})//s )
+	{
+		advance_token($parser);
+	}
+
+	if($debug >= 2)
+	{
+		print ">>> '", $parser->YYData->{INPUT}, "'\n";
+	}
+
 	for ($parser->YYData->{INPUT})
 	{
 		#matching floats:
-		if( s/^(?: ($FLOAT (?:\([0-9]+\))?) (\s) )/$2/six
-			|| s/^($FLOAT (?:\([0-9]+\))?)$//six )
+#		if( s/^(?: ($FLOAT (?:\([0-9]+\))?) (\s) )/$2/six
+#			|| s/^($FLOAT (?:\([0-9]+\))?)$//six )
+		if( s/^(?: ($FLOAT (?:\([0-9]+\))?) )//six )
 		{
 			advance_token($parser);
 			return('FLOAT', $1);
 		}
 		#matching integers:
-		if( s/^($INTEGER (?:\([0-9]+\))?)(\s)/$2/sx
-			|| s/^($INTEGER (?:\([0-9]+\))?)$//sx )
+#		if( s/^($INTEGER (?:\([0-9]+\))?)(\s)/$2/sx
+#			|| s/^($INTEGER (?:\([0-9]+\))?)$//sx )
+		if( s/^($INTEGER (?:\([0-9]+\))?)//sx )
 		{
 			advance_token($parser);
 			return('INT', $1);
@@ -342,6 +326,12 @@ END_M
 				return('TEXT_FIELD', $tfield);
 			}
 		}
+		#matching DATA_ field
+		if( s/^(data_)(${NON_BLANK_CHAR}+)//si )
+		{
+			advance_token($parser);
+			return('DATA_', $2);
+		}
 		#matching TAG's
 		if( s/^(_${NON_BLANK_CHAR}+)//si )
 		{
@@ -370,25 +360,6 @@ END_M
 				advance_token($parser);
 				return('UQSTRING', $1);
 			}
-		}
-		#matching tokenized comments
-		if( $parser->YYData->{VARS}{token_pos} > 0
-			&& s/^($COMMENT)//s )
-		{
-			advance_token($parser);
-			return('TOKENIZED_COMMENT', $1);
-		}
-		#matching comments
-		if( s/^($COMMENT)//s )
-		{
-			advance_token($parser);
-			return('COMMENT', $1);
-		}
-		#matching white space characters
-		if( s/^(\s+)//s )
-		{
-			advance_token($parser);
-			return('WSPACE', $1);
 		}
 		#matching any still unmatched symbol:
 		if( s/^(.)//m )
