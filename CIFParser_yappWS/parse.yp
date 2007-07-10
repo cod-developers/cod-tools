@@ -31,7 +31,7 @@ my $debug = 0;
 %%
 cif_file
 	:	opt_wspace #empty
-	|	opt_wspace cif_elements opt_wspace
+	|	opt_wspace data_block_set #opt_wspace
 ;
 
 opt_wspace
@@ -39,13 +39,32 @@ opt_wspace
 	|	#empty
 ;
 
-cif_elements
-	:	cif_elements whitespace cif_entry
-	|	cif_entry	{ $_[0]->YYData->{VARS}{$_[1]} }
+data_block_set
+	:	data_block_set whitespace data_block
+	|	data_block
+;
+
+data_block
+	:	data_block_head whitespace data_item
+	|	data_block_head
+;
+
+data_block_head
+	:	DATA_
+		{
+			{ kind => 'data',
+				name => $_[1]
+			}
+		}
+;
+
+data_item
+	:	data_item whitespace cif_entry
+	|	cif_entry { $_[0]->YYData->{VARS}{$_[1]} }
 ;
 
 cif_entry
-	:	TAG WSPACE cif_value
+	:	TAG whitespace cif_value
 		{
 			if(defined $_[3]->{precision})
 			{
