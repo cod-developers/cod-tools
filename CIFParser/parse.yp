@@ -21,7 +21,7 @@ my $SVNID = '$Id$';
 # 0 - no debug
 # 1 - only YAPP output (type -> value)
 # 2 - lex & yapp output
-my $debug = 0;
+my $debug = 1;
 %}
 # --------------------------------------------------------------
 
@@ -298,16 +298,12 @@ my $FLOAT		=	qr/(?: (?: $FLOAT11 | $FLOAT21 | $FLOAT31))/six;
 	for ($parser->YYData->{INPUT})
 	{
 		#matching floats:
-#		if( s/^(?: ($FLOAT (?:\([0-9]+\))?) (\s) )/$2/six
-#			|| s/^($FLOAT (?:\([0-9]+\))?)$//six )
 		if( s/^(?: ($FLOAT (?:\([0-9]+\))?) )//six )
 		{
 			advance_token($parser);
 			return('FLOAT', $1);
 		}
 		#matching integers:
-#		if( s/^($INTEGER (?:\([0-9]+\))?)(\s)/$2/sx
-#			|| s/^($INTEGER (?:\([0-9]+\))?)$//sx )
 		if( s/^($INTEGER (?:\([0-9]+\))?)//sx )
 		{
 			advance_token($parser);
