@@ -14,6 +14,7 @@
 # copy directly to PERL module:
 %{
 use warnings;
+use ShowStruct;
 
 my $SVNID = '$Id$';
 
@@ -76,6 +77,56 @@ cif_entry
 					type => $_[3]->{type}
 				}
 			}
+		}
+	|	loop
+		{
+			if($debug >= 1)
+			{
+				showRef($_[1]);
+			}
+			return $_[1];
+		}
+;
+
+loop
+	:	LOOP_ loop_tags loop_values
+		{
+			my $val = { kind => 'loop' };
+			$val->{name} = $_[2];
+			push( @{$val->{value}}, $_[3] );
+			return $val;
+		}
+;
+
+loop_tags
+	:	loop_tags TAG
+		{
+			my $val = $_[1];
+			push( @{$val->{name}}, $_[2] );
+			return $val;
+		}
+	|	TAG
+		{
+			my $val = { name => [ $_[1] ] };
+			return $val;
+		}
+;
+
+loop_values
+	:	loop_values cif_value
+		{
+			my $val = $_[1];
+			push( @{$val->{value}}, $_[2]->{value} );
+			push( @{$val->{type}}, $_[2]->{type} );
+			push( @{$val->{precision}}, $_[2]->{precision} );
+			return $val;
+		}
+	|	cif_value
+		{
+			my $val = { type => [ $_[1]->{type} ] };
+			push( @{$val->{value}}, $_[1]->{value} );
+			push( @{$val->{precision}}, $_[1]->{precision} );
+			return $val;
 		}
 ;
 
@@ -331,6 +382,12 @@ END_M
 		{
 			advance_token($parser);
 			return('DATA_', $2);
+		}
+		#matching LOOP_ begining
+		if( s/^(loop_)//si )
+		{
+			advance_token($parser);
+			return('LOOP_', $1);
 		}
 		#matching TAG's
 		if( s/^(_${NON_BLANK_CHAR}+)//si )
