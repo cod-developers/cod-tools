@@ -21,7 +21,7 @@ my $SVNID = '$Id$';
 # 0 - no debug
 # 1 - only YAPP output (type -> value)
 # 2 - lex & yapp output
-my $debug = 1;
+my $debug = 0;
 %}
 # --------------------------------------------------------------
 
@@ -42,6 +42,7 @@ data_block_set
 
 data_block
 	:	data_block_head data_item
+	|	data_block_head reserved_words data_item
 	|	data_block_head
 ;
 
@@ -220,6 +221,33 @@ number
 		}
 ;
 
+reserved_words
+	:	GLOBAL_
+		{
+			$_[0]->YYData->{ERRMSG} = "GLOBAL_ symbol " .
+"detected in line " . $_[0]->YYData->{VARS}{lines} . ", pos. " . 
+$_[0]->YYData->{VARS}{token_prev_pos} . ".\nIt is not " .
+"acceptable in this version.\n";
+			$_[0]->YYError();
+		}
+	|	SAVE_
+		{
+			$_[0]->YYData->{ERRMSG} = "SAVE_ symbol " .
+"detected in line " . $_[0]->YYData->{VARS}{lines} . ", pos. " . 
+$_[0]->YYData->{VARS}{token_prev_pos} . ".\nIt is not " .
+"acceptable in this version.\n";
+			$_[0]->YYError();
+		}
+	|	STOP_
+		{
+			$_[0]->YYData->{ERRMSG} = "STOP_ symbol " .
+"detected in line " . $_[0]->YYData->{VARS}{lines} . ", pos. " . 
+$_[0]->YYData->{VARS}{token_prev_pos} . ".\nIt is not " .
+"acceptable in this version.\n";
+			$_[0]->YYError();
+		}
+;
+
 %%
 # --------------------------------------------------------------
 # begin of footer
@@ -372,6 +400,24 @@ END_M
 				chomp $tfield;
 				return('TEXT_FIELD', $tfield);
 			}
+		}
+		#matching GLOBAL_ field
+		if( s/^(global_)//si )
+		{
+			advance_token($parser);
+			return('GLOBAL_', $1);
+		}
+		#matching SAVE_ field
+		if( s/^(save_)//si )
+		{
+			advance_token($parser);
+			return('SAVE_', $1);
+		}
+		#matching STOP_ field
+		if( s/^(stop_)//si )
+		{
+			advance_token($parser);
+			return('STOP_', $1);
 		}
 		#matching DATA_ field
 		if( s/^(data_)(${NON_BLANK_CHAR}+)//si )
