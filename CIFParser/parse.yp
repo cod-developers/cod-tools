@@ -63,21 +63,27 @@ data_item
 cif_entry
 	:	TAG cif_value
 		{
-			if(defined $_[3]->{precision})
+			my $val;
+			if(defined $_[2]->{precision})
 			{
-				{ name => $_[1],
+				$val = { name => $_[1],
 					kind => 'TAG',
-					value => $_[3]->{value},
-					type => $_[3]->{type},
-					precision => $_[3]->{precision}
-				}
+					value => $_[2]->{value},
+					type => $_[2]->{type},
+					precision => $_[2]->{precision}
+				};
 			} else {
-				{ name => $_[1],
+				$val = { name => $_[1],
 					kind => 'TAG',
-					value => $_[3]->{value},
-					type => $_[3]->{type}
-				}
+					value => $_[2]->{value},
+					type => $_[2]->{type}
+				};
 			}
+			if($debug >= 1)
+			{
+				showRef($val);
+			}
+			return $val;
 		}
 	|	loop
 		{
@@ -92,7 +98,7 @@ cif_entry
 loop
 	:	LOOP_ loop_tags loop_values
 		{
-			my $val = { kind => 'loop' };
+		my $val = { kind => 'loop' };
 			$val->{name} = $_[2];
 			push( @{$val->{value}}, $_[3] );
 			return $val;
