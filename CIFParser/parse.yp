@@ -37,27 +37,64 @@ cif_file
 
 data_block_set
 	:	data_block_set data_block
+		{
+			my $val = $_[1];
+			push(@{$val}, $_[2]);
+			if($debug == 3)
+			{
+				showRef($val);
+			}
+			return $val;
+		}
 	|	data_block
+		{
+			my $val = [ $_[1] ];
+			return $val;
+		}
 ;
 
 data_block
 	:	data_block_head data_item
+		{
+			my $val = { kind => 'DATA',
+					name => $_[1] };
+			$val->{value} = $_[2]->{value};
+			return $val;
+		}
 	|	data_block_head reserved_words data_item
+		{
+			my $val = { kind => 'DATA',
+					name => $_[1] };
+			$val->{value} = $_[3]->{value};
+			return $val;
+		}
 	|	data_block_head
+		{
+			my $val = { kind => 'DATA',
+					name => $_[1] };
+			return $val;
+		}
 ;
 
 data_block_head
 	:	DATA_
 		{
-			{ kind => 'data',
-				name => $_[1]
-			}
+			return $_[1];
 		}
 ;
 
 data_item
 	:	data_item cif_entry
-	|	cif_entry { $_[0]->YYData->{VARS}{$_[1]} }
+		{
+			my $val = $_[1];
+			push( @{$val->{value}}, $_[2] );
+			return $val;
+		}
+	|	cif_entry
+		{
+			my $val = { value => [ $_[1] ] };
+			return $val;
+		}
 ;
 
 cif_entry
@@ -79,7 +116,7 @@ cif_entry
 					type => $_[2]->{type}
 				};
 			}
-			if($debug >= 1)
+			if($debug == 1)
 			{
 				showRef($val);
 			}
@@ -103,7 +140,7 @@ cif_entry
 					type => $_[3]->{type}
 				};
 			}
-			if($debug >= 1)
+			if($debug == 1)
 			{
 				showRef($val);
 			}
@@ -111,7 +148,7 @@ cif_entry
 		}
 	|	loop
 		{
-			if($debug >= 1)
+			if($debug == 1)
 			{
 				showRef($_[1]);
 			}
@@ -164,20 +201,20 @@ loop_values
 cif_value
 	:	string
 		{	print $_[1]->{type} . "\t->\t"
-				. $_[1]->{value} . "\n" if $debug >= 1;
+				. $_[1]->{value} . "\n" if $debug == 1;
 			$_[1];
 		}
 	|	number
 		{	print $_[1]->{type} . "\t\t->\t"
 				. $_[1]->{value} . " -- "
 				. $_[1]->{precision}
-				. "\n" if $debug >= 1;
+				. "\n" if $debug == 1;
 			$_[1];
 		}
 	|	textfield
 		{	print "TFIELD\t\t->\t" .
 				$_[1]->{value} . "\n"
-				if $debug >= 1;
+				if $debug == 1;
 			$_[1];
 		}
 ;
@@ -348,7 +385,7 @@ my $FLOAT		=	qr/(?: (?: $FLOAT11 | $FLOAT21 | $FLOAT31))/six;
 		advance_token($parser);
 	}
 
-	if($debug >= 2)
+	if($debug == 2)
 	{
 		print ">>> '", $parser->YYData->{INPUT}, "'\n";
 	}
@@ -516,7 +553,7 @@ sub advance_token
 sub Run
 {
 	my($self) = shift;
-	if( $debug >= 2)
+	if( $debug == 2)
 	{
 		$self->YYParse( yylex => \&_Lexer,
 				yyerror => \&_Error,
