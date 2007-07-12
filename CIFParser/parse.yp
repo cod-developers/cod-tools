@@ -21,7 +21,7 @@ my $SVNID = '$Id$';
 # 0 - no debug
 # 1 - only YAPP output (type -> value)
 # 2 - lex & yapp output
-my $debug = 0;
+my $debug = 2;
 %}
 # --------------------------------------------------------------
 
@@ -40,7 +40,7 @@ data_block_set
 		{
 			my $val = $_[1];
 			push(@{$val}, $_[2]);
-			if($debug == 3)
+			if($debug >= 3)
 			{
 				showRef($val);
 			}
@@ -61,11 +61,19 @@ data_block
 			$val->{value} = $_[2]->{value};
 			return $val;
 		}
-	|	data_block_head reserved_words data_item
+	|	data_block_head
+			opt_save_block
+			reserved_words
+			opt_save_block
+			data_item
+			opt_save_block
 		{
 			my $val = { kind => 'DATA',
 					name => $_[1] };
-			$val->{value} = $_[3]->{value};
+			$val->{value} = $_[5]->{value};
+			push(@{$val->{value}}, $_[2]);
+			push(@{$val->{value}}, $_[4]);
+			push(@{$val->{value}}, $_[6]);
 			return $val;
 		}
 	|	data_block_head
@@ -74,6 +82,17 @@ data_block
 					name => $_[1] };
 			return $val;
 		}
+;
+
+opt_save_block
+	:	SAVE_HEAD data_item SAVE_FOOT
+		{
+			my $val = { kind => 'SAVE',
+					name => $_[1] };
+			$val->{value} = $_[3]->{value};
+			return $val;
+		}
+	|	#empty
 ;
 
 data_block_head
@@ -116,7 +135,7 @@ cif_entry
 					type => $_[2]->{type}
 				};
 			}
-			if($debug == 1)
+			if($debug >= 1 && $debug <= 2)
 			{
 				showRef($val);
 			}
@@ -140,7 +159,7 @@ cif_entry
 					type => $_[3]->{type}
 				};
 			}
-			if($debug == 1)
+			if($debug >= 1 && $debug <= 2)
 			{
 				showRef($val);
 			}
@@ -148,7 +167,7 @@ cif_entry
 		}
 	|	loop
 		{
-			if($debug == 1)
+			if($debug >= 1 && $debug <= 2)
 			{
 				showRef($_[1]);
 			}
@@ -201,20 +220,21 @@ loop_values
 cif_value
 	:	string
 		{	print $_[1]->{type} . "\t->\t"
-				. $_[1]->{value} . "\n" if $debug == 1;
+				. $_[1]->{value} . "\n" if( $debug >= 1 
+&& $debug <= 2) ;
 			$_[1];
 		}
 	|	number
 		{	print $_[1]->{type} . "\t\t->\t"
 				. $_[1]->{value} . " -- "
 				. $_[1]->{precision}
-				. "\n" if $debug == 1;
+				. "\n" if( $debug >= 1 && $debug <= 2);
 			$_[1];
 		}
 	|	textfield
 		{	print "TFIELD\t\t->\t" .
 				$_[1]->{value} . "\n"
-				if $debug == 1;
+				if( $debug >= 1 && $debug <= 2);
 			$_[1];
 		}
 ;
@@ -292,14 +312,6 @@ reserved_words
 	:	GLOBAL_
 		{
 			$_[0]->YYData->{ERRMSG} = "GLOBAL_ symbol " .
-"detected in line " . $_[0]->YYData->{VARS}{lines} . ", pos. " . 
-$_[0]->YYData->{VARS}{token_prev_pos} . ".\nIt is not " .
-"acceptable in this version.\n";
-			$_[0]->YYError();
-		}
-	|	SAVE_
-		{
-			$_[0]->YYData->{ERRMSG} = "SAVE_ symbol " .
 "detected in line " . $_[0]->YYData->{VARS}{lines} . ", pos. " . 
 $_[0]->YYData->{VARS}{token_prev_pos} . ".\nIt is not " .
 "acceptable in this version.\n";
@@ -385,7 +397,7 @@ my $FLOAT		=	qr/(?: (?: $FLOAT11 | $FLOAT21 | $FLOAT31))/six;
 		advance_token($parser);
 	}
 
-	if($debug == 2)
+	if($debug >= 2 && $debug < 3)
 	{
 		print ">>> '", $parser->YYData->{INPUT}, "'\n";
 	}
@@ -480,11 +492,17 @@ END_M
 			advance_token($parser);
 			return('GLOBAL_', $1);
 		}
-		#matching SAVE_ field
+		#matching SAVE_ head
+		if( s/^(save_)(${NON_BLANK_CHAR}+)//si )
+		{
+			advance_token($parser);
+			return('SAVE_HEAD', $2);
+		}
+		#matching SAVE_ foot
 		if( s/^(save_)//si )
 		{
 			advance_token($parser);
-			return('SAVE_', $1);
+			return('SAVE_FOOT', $1);
 		}
 		#matching STOP_ field
 		if( s/^(stop_)//si )
@@ -553,7 +571,7 @@ sub advance_token
 sub Run
 {
 	my($self) = shift;
-	if( $debug == 2)
+	if( $debug >= 2 && $debug < 3)
 	{
 		$self->YYParse( yylex => \&_Lexer,
 				yyerror => \&_Error,
