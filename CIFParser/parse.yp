@@ -362,7 +362,7 @@ sub _Lexer
 			$parser->YYData->{INPUT} = <STDIN>;
 			$parser->YYData->{VARS}{lines}++;
 		} until ( !defined $parser->YYData->{INPUT} ||
-			$parser->YYData->{INPUT} !~ m/^\s*$/ );
+			$parser->YYData->{INPUT} !~ m/^(\s*(#.*)?)$/s );
 		if( defined $parser->YYData->{INPUT} )
 		{
 			chomp $parser->YYData->{INPUT};
@@ -383,7 +383,7 @@ my $SPECIAL_CHAR	=	qr/["#\$'_\[\]]/is;
 my $NON_BLANK_CHAR	=	qr/(?:$ORDINARY_CHAR|$SPECIAL_CHAR|;)/is;
 my $TEXT_LEAD_CHAR	=	qr/(?:$ORDINARY_CHAR|$SPECIAL_CHAR|\s)/s;
 my $ANY_PRINT_CHAR	=	qr/(?:$NON_BLANK_CHAR|\s)/is;
-my $COMMENT		=	qr/(#${ANY_PRINT_CHAR}*$)/s;
+my $COMMENT		=	qr/(?:#${ANY_PRINT_CHAR}*$)/s;
 my $INTEGER		=	qr/[-+]?[0-9]+/s;
 my $EXPONENT		=	qr/e[-+]?[0-9]+/is;
 my $FLOAT11		=	qr/(?: $INTEGER $EXPONENT)/ix;
@@ -393,9 +393,9 @@ my $FLOAT		=	qr/(?: (?: $FLOAT11 | $FLOAT21 | $FLOAT31))/six;
 
 	#matching white space characters
 	if( $parser->YYData->{INPUT} =~
-		s/^(\s+)//s ||
-		$parser->YYData->{INPUT} =~
-		s/^(${COMMENT})//s )
+		s/^(\s+)//s )
+#		$parser->YYData->{INPUT} =~
+#		s/^(${COMMENT})//s )
 	{
 		advance_token($parser);
 	}
