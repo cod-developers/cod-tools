@@ -277,7 +277,15 @@ number
 						$precision /= 10**(length($3));
 						$precision *= 10**($4);
 					} else {
+						if(defined($3))
+						{
 						$precision /= 10**(length($3));
+						} else {
+					$_[0]->YYData->{ERRMSG} = <<ENDM;
+Error in line $_[0]->YYData->{VARS}{lines}:
+$_[0]->YYData->{VARS}{current_line}.
+ENDM
+						}
 					}
 				} else {
 					$precision *= 10**($4);
@@ -354,6 +362,14 @@ sub _Lexer
 {
 	my($parser) = shift;
 
+	#trimming tokenized comments
+	if( defined $parser->YYData->{INPUT} &&
+		$parser->YYData->{INPUT} =~
+			s/^(\s*#.*)$//s )
+	{
+		advance_token($parser);
+	}
+
 	if( !defined $parser->YYData->{INPUT} ||
 		$parser->YYData->{INPUT} =~ m/^\s*$/ )
 	{
@@ -383,7 +399,6 @@ my $SPECIAL_CHAR	=	qr/["#\$'_\[\]]/is;
 my $NON_BLANK_CHAR	=	qr/(?:$ORDINARY_CHAR|$SPECIAL_CHAR|;)/is;
 my $TEXT_LEAD_CHAR	=	qr/(?:$ORDINARY_CHAR|$SPECIAL_CHAR|\s)/s;
 my $ANY_PRINT_CHAR	=	qr/(?:$NON_BLANK_CHAR|\s)/is;
-my $COMMENT		=	qr/(?:#${ANY_PRINT_CHAR}*$)/s;
 my $INTEGER		=	qr/[-+]?[0-9]+/s;
 my $EXPONENT		=	qr/e[-+]?[0-9]+/is;
 my $FLOAT11		=	qr/(?: $INTEGER $EXPONENT)/ix;
@@ -392,14 +407,11 @@ my $FLOAT31		=	qr/(?: $INTEGER \. $EXPONENT ?)/ix;
 my $FLOAT		=	qr/(?: (?: $FLOAT11 | $FLOAT21 | $FLOAT31))/six;
 
 	#matching white space characters
-	if( $parser->YYData->{INPUT} =~
-		s/^(\s+)//s )
-#		$parser->YYData->{INPUT} =~
-#		s/^(${COMMENT})//s )
+	if( $parser->YYData->{INPUT} =~ s/(\s*)//s )
 	{
 		advance_token($parser);
 	}
-
+		
 	if($debug >= 2 && $debug < 3)
 	{
 		print ">>> '", $parser->YYData->{INPUT}, "'\n";
@@ -429,8 +441,8 @@ my $FLOAT		=	qr/(?: (?: $FLOAT11 | $FLOAT21 | $FLOAT31))/six;
 			return('DQSTRING', $1);
 		}
 		#matching single quoted strings
-		if( s/^('${ANY_PRINT_CHAR}*')(\s)/$2/s
-			|| s/^('${ANY_PRINT_CHAR}*')//s )
+		if( s/^('${ANY_PRINT_CHAR}*')(\s*)/$2/s
+			|| s/^('${ANY_PRINT_CHAR}*')$//s )
 		{
 			advance_token($parser);
 			return('SQSTRING', $1);
