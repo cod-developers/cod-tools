@@ -533,22 +533,14 @@ END_M
 		}
 		#matching unquoted strings
 		if( $parser->YYData->{VARS}{token_pos} == 0 )
-		{
-			if( s/^(?:
-			#UQ string in first pos. of line
-				( ($ORDINARY_CHAR
-				$NON_BLANK_CHAR* ) )
-			)//sx)
+		{ #UQSTRING at first pos. of line
+			if( s/^(${NON_BLANK_CHAR}*)//s)
 			{
 				advance_token($parser);
 				return('UQSTRING', $1);
 			}
-		} else {
-			if( s/^(?:
-			#UQ string in line
-				( ($ORDINARY_CHAR|;)
-				$NON_BLANK_CHAR* )
-			)//sx )
+		} else { #UQSTRING in line
+			if( s/^(;?${NON_BLANK_CHAR}*)//s )
 			{
 				advance_token($parser);
 				return('UQSTRING', $1);
