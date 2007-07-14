@@ -71,6 +71,7 @@ my @inherited_tags = (
     #
     # Atomic parameters
     #
+    "_atom_site_type_symbol",
     "_atom_site_B_iso_or_equiv",
     "_atom_site_calc_flag",
     "_atom_site_refinement_flags",
@@ -198,6 +199,7 @@ my @generated_tags = (
     "_atom_site_occupancy",
     "_atom_site_refinement_flags",
     "_atom_site_symmetry_multiplicity",
+    "_atom_site_type_symbol",
     "_cell_angle_alpha",
     "_cell_angle_beta",
     "_cell_angle_gamma",
@@ -401,6 +403,9 @@ sub print_record
 	if( int(@{$records}) > 0 ) {
 	    print "loop_\n";
 	    print "_atom_site_label\n";
+	    if( defined $tags{_atom_site_type_symbol} ) {
+		print "_atom_site_type_symbol\n";
+	    }
 	    print "_atom_site_symmetry_multiplicity\n";
 	    print "_atom_site_Wyckoff_symbol\n" if $have_Wyckoff_symbol;
 	    print "_atom_site_fract_x\n";
@@ -448,6 +453,10 @@ sub print_record
 		    my $atom_name = $atom->[0];
 		    my @atom = @{$atom};
 		    splice( @atom, 2, 1 ) if !$have_Wyckoff_symbol;
+		    if( defined $tags{_atom_site_type_symbol} ) {
+			splice( @atom, 1, 0,
+				$tags{_atom_site_type_symbol}[$i] );
+		    }
 		    print @atom, defined $anisou_atoms->{$atom_name} ?
 			"Uani" : "Uiso";
 		    for my $atom_site_tag ( "_atom_site_calc_flag",
