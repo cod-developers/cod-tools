@@ -369,29 +369,6 @@ END_M
 			advance_token($parser);
 			return('DATA_', $2);
 		}
-		#matching unquoted strings
-		if( $parser->YYData->{VARS}{token_pos} == 0 )
-		{
-			if( s/^(?:
-			#UQ string in first pos. of line
-				( ($ORDINARY_CHAR
-				$NON_BLANK_CHAR* ) )
-			)//sx)
-			{
-				advance_token($parser);
-				return('UQSTRING', $1);
-			}
-		} else {
-			if( s/^(?:
-			#UQ string in line
-				( ($ORDINARY_CHAR|;)
-				$NON_BLANK_CHAR* )
-			)//sx )
-			{
-				advance_token($parser);
-				return('UQSTRING', $1);
-			}
-		}
 		#matching tokenized comments
 		if( $parser->YYData->{VARS}{token_pos} > 0
 			&& s/^($COMMENT)//s )
@@ -404,6 +381,28 @@ END_M
 		{
 			advance_token($parser);
 			return('COMMENT', $1);
+		}
+		#matching unquoted strings
+		if( $parser->YYData->{VARS}{token_pos} == 0 )
+		{
+			if( s/^(?:
+			#UQ string in first pos. of line
+				( ( $NON_BLANK_CHAR+ ) )
+			)//sx)
+			{
+				advance_token($parser);
+				return('UQSTRING', $1);
+			}
+		} else {
+			if( s/^(?:
+			#UQ string in line
+				( ($NON_BLANK_CHAR|;)
+				$NON_BLANK_CHAR* )
+			)//sx )
+			{
+				advance_token($parser);
+				return('UQSTRING', $1);
+			}
 		}
 		#matching white space characters
 		if( s/^(\s+)//s )
