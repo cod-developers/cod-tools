@@ -232,6 +232,8 @@ my $compound = 1;
 use open ":utf8";
 binmode( STDIN, ":utf8" );
 
+my $nrecords = 0;
+
 while(<>) {
     chomp;
 
@@ -289,6 +291,7 @@ while(<>) {
 	    $tags{_journal_page_first} = $start_page if defined $start_page;
 	    $tags{_journal_page_last} = $end_page if defined $end_page;
 	}
+	print "\n" if $nrecords++ > 0;
 	print_record( \@record, \%tags, \@anisou, \%anisou, \@bonds );
 	@record = ();
 	%tags = ();
@@ -521,8 +524,6 @@ sub print_record
 	    print @{$bond}[1..$#{$bond}];
 	}
     }
-
-    print "\n";
 }
 
 sub fold
