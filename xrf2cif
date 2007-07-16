@@ -478,6 +478,10 @@ sub print_record
 		    my $atom_name = $atom->[0];
 		    my @atom = @{$atom};
 		    splice( @atom, 2, 1 ) if !$have_Wyckoff_symbol;
+		    if( defined $tags{_atom_site_type_symbol} ) {
+			splice( @atom, 1, 0,
+				$tags{_atom_site_type_symbol}[$i] );
+		    }
 		    print @atom[0..$#atom-1],
 		        $tags{_atom_site_B_iso_or_equiv}[$i],
 		        defined $anisou_atoms->{$atom_name} ?
