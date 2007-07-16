@@ -34,6 +34,12 @@ my $debug = 0;
 cif_file
 	:	#empty
 	|	data_block_set
+		{
+			if($debug >= 3)
+			{
+				showRef($_[1]);
+			}
+		}
 ;
 
 data_block_set
@@ -41,10 +47,6 @@ data_block_set
 		{
 			my $val = $_[1];
 			push(@{$val}, $_[2]);
-			if($debug >= 3)
-			{
-				showRef($val);
-			}
 			return $val;
 		}
 	|	data_block
