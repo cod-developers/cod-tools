@@ -276,17 +276,17 @@ number
 				{
 					if( defined $4 )
 					{
-						$precision /= 10**(length($3));
+						if(defined($3))
+						{
+							$precision /=
+							10**(length($3));
+						}
 						$precision *= 10**($4);
 					} else {
 						if(defined($3))
 						{
-						$precision /= 10**(length($3));
-						} else {
-					$_[0]->YYData->{ERRMSG} = <<ENDM;
-Error in line $_[0]->YYData->{VARS}{lines}:
-$_[0]->YYData->{VARS}{current_line}.
-ENDM
+							$precision /=
+							10**(length($3));
 						}
 					}
 				} else {
@@ -583,6 +583,7 @@ sub advance_token
 sub Run
 {
 	my($self) = shift;
+	$| = 1;
 	if( $debug >= 2 && $debug < 3)
 	{
 		$self->YYParse( yylex => \&_Lexer,
