@@ -33,7 +33,7 @@ my $debug = 0;
 %%
 cif_file
 	:	#empty
-	|	data_block_set
+	|	data_block_list
 		{
 			if($debug >= 3)
 			{
@@ -42,8 +42,8 @@ cif_file
 		}
 ;
 
-data_block_set
-	:	data_block_set data_block
+data_block_list
+	:	data_block_list data_block
 		{
 			my $val = $_[1];
 			push(@{$val}, $_[2]);
@@ -57,7 +57,7 @@ data_block_set
 ;
 
 data_block
-	:	data_block_head data_item
+	:	data_block_head cif_entry_list
 		{
 			my $val = { kind => 'DATA',
 					name => $_[1] };
@@ -68,7 +68,7 @@ data_block
 			opt_save_block
 			reserved_words
 			opt_save_block
-			data_item
+			cif_entry_list
 			opt_save_block
 		{
 			my $val = { kind => 'DATA',
@@ -88,7 +88,7 @@ data_block
 ;
 
 opt_save_block
-	:	SAVE_HEAD data_item SAVE_FOOT
+	:	SAVE_HEAD cif_entry_list SAVE_FOOT
 		{
 			my $val = { kind => 'SAVE',
 					name => $_[1] };
@@ -106,8 +106,8 @@ data_block_head
 		}
 ;
 
-data_item
-	:	data_item cif_entry
+cif_entry_list
+	:	cif_entry_list cif_entry
 		{
 			my $val = $_[1];
 			push( @{$val->{value}}, $_[2] );
