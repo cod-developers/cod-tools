@@ -57,7 +57,7 @@ data_block_list
 ;
 
 data_block
-	:	data_block_head cif_entry_list
+	:	data_block_head data_item_list
 		{
 			my $val = { kind => 'DATA',
 					name => $_[1] };
@@ -65,37 +65,11 @@ data_block
 			return $val;
 		}
 	|	data_block_head
-			opt_save_block
-			reserved_words
-			opt_save_block
-			cif_entry_list
-			opt_save_block
-		{
-			my $val = { kind => 'DATA',
-					name => $_[1] };
-			$val->{value} = $_[5]->{value};
-			push(@{$val->{value}}, $_[2]);
-			push(@{$val->{value}}, $_[4]);
-			push(@{$val->{value}}, $_[6]);
-			return $val;
-		}
-	|	data_block_head
 		{
 			my $val = { kind => 'DATA',
 					name => $_[1] };
 			return $val;
 		}
-;
-
-opt_save_block
-	:	SAVE_HEAD cif_entry_list SAVE_FOOT
-		{
-			my $val = { kind => 'SAVE',
-					name => $_[1] };
-			$val->{value} = $_[3]->{value};
-			return $val;
-		}
-	|	#empty
 ;
 
 data_block_head
@@ -106,19 +80,86 @@ data_block_head
 		}
 ;
 
-cif_entry_list
-	:	cif_entry_list cif_entry
-		{
-			my $val = $_[1];
-			push( @{$val->{value}}, $_[2] );
-			return $val;
-		}
+#data_item_list
+#	:	data_item_list data_item
+#		{
+#			my $val = $_[1];
+#			push( @{$val->{value}}, $_[2] );
+#			return $val;
+#		}
+#	|	data_item
+#		{
+#			my $val = { value => [ $_[1] ] };
+#			return $val;
+#		}
+#;
+
+#data_item_list
+#	:	data_item_list	cif_entry
+#	|	data_item_list	loop
+#	|	data_item_list	save_block
+#	|	data_item_list	reserved_words
+#	|	cif_entry
+#	|	loop
+#	|	save_block
+#	|	reserved_words
+#;
+
+#data_item
+#	:	save_item
+#		{
+#			return $_[1];
+#		}
+#	|	save_block
+#		{
+#			return $_[1];
+#		}
+#;
+
+#data_item
+#	:	cif_entry
+#	|	loop
+#	|	reserved_words
+#	|	save_block
+#		{
+#			return $_[1];
+#		}
+#;
+
+#save_item_list
+#	:	save_item_list save_item
+#		{
+#			my $val = $_[1];
+#			push( @{$val->{value}}, $_[2] );
+#			return $val;
+#		}
+#	|	save_item
+#		{
+#			my $val = { value => [ $_[1] ] };
+#			return $val;
+#		}
+#;
+
+save_item_list
+	:	save_item_list cif_entry
+	|	save_item_list loop
+	|	save_item_list reserved_words
+	|	reserved_words
 	|	cif_entry
-		{
-			my $val = { value => [ $_[1] ] };
-			return $val;
-		}
+	|	loop
 ;
+
+#save_item
+#	:	cif_entry
+#		{
+#			return $_[1];
+#		}
+#	|	loop
+#		{
+#			return $_[1];
+#		}
+#	|	reserved_words
+#;
 
 cif_entry
 	:	TAG cif_value
@@ -169,14 +210,6 @@ cif_entry
 			}
 			return $val;
 		}
-	|	loop
-		{
-			if($debug >= 1 && $debug <= 2)
-			{
-				showRef($_[1]);
-			}
-			return $_[1];
-		}
 ;
 
 loop
@@ -219,6 +252,17 @@ loop_values
 			push( @{$val->{precision}}, $_[1]->{precision} );
 			return $val;
 		}
+;
+
+save_block
+	:	SAVE_HEAD save_item_list SAVE_FOOT
+		{
+			my $val = { kind => 'SAVE',
+					name => $_[1] };
+			$val->{value} = $_[3]->{value};
+			return $val;
+		}
+	|	#empty
 ;
 
 cif_value
