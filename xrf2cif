@@ -451,53 +451,67 @@ sub print_record
 	    local $, = " ";
 	    local $\ = "";
 	    my $i = 0;
-	    if( !defined $tags{_atom_site_B_iso_or_equiv} ) {
-		for my $atom (@{$records}) {
-		    my $atom_name = $atom->[0];
-		    my @atom = @{$atom};
-		    splice( @atom, 2, 1 ) if !$have_Wyckoff_symbol;
-		    if( defined $tags{_atom_site_type_symbol} ) {
-			splice( @atom, 1, 0,
-				$tags{_atom_site_type_symbol}[$i] );
-		    }
-		    print @atom, defined $anisou_atoms->{$atom_name} ?
-			"Uani" : "Uiso";
-		    for my $atom_site_tag ( "_atom_site_calc_flag",
-					    "_atom_site_refinement_flags",
-					    "_atom_site_disorder_assembly",
-					    "_atom_site_disorder_group" ) {
-			if( defined $tags{$atom_site_tag} ) {
-			    print " " . $tags{$atom_site_tag}[$i];
-			}
-		    }
-		    print "\n";
-		    $i ++;
-		}
+
+	    my $UisoBiso_val;
+	    my $use_Biso_tag;
+
+	    if( defined $tags{_atom_site_B_iso_or_equiv} ) {
+		$UisoBiso_val = "Biso";
+		$use_Biso_tag = 1;
 	    } else {
-		for my $atom (@{$records}) {
-		    my $atom_name = $atom->[0];
-		    my @atom = @{$atom};
-		    splice( @atom, 2, 1 ) if !$have_Wyckoff_symbol;
-		    if( defined $tags{_atom_site_type_symbol} ) {
-			splice( @atom, 1, 0,
-				$tags{_atom_site_type_symbol}[$i] );
-		    }
-		    print @atom[0..$#atom-1],
-		        $tags{_atom_site_B_iso_or_equiv}[$i],
-		        defined $anisou_atoms->{$atom_name} ?
-			    "Uani" : "Biso";
-		    for my $atom_site_tag ( "_atom_site_calc_flag",
-					    "_atom_site_refinement_flags",
-					    "_atom_site_disorder_assembly",
-					    "_atom_site_disorder_group" ) {
-			if( defined $tags{$atom_site_tag} ) {
-			    print " " . $tags{$atom_site_tag}[$i];
-			}
-		    }
-		    print "\n";
-		    $i ++;
-		}
+		$UisoBiso_val = "Uiso";
+		$use_Biso_tag = 0;
 	    }
+
+## 	    if( !defined $tags{_atom_site_B_iso_or_equiv} ) {
+## 		for my $atom (@{$records}) {
+## 		    my $atom_name = $atom->[0];
+## 		    my @atom = @{$atom};
+## 		    splice( @atom, 2, 1 ) if !$have_Wyckoff_symbol;
+## 		    if( defined $tags{_atom_site_type_symbol} ) {
+## 			splice( @atom, 1, 0,
+## 				$tags{_atom_site_type_symbol}[$i] );
+## 		    }
+## 		    print @atom, defined $anisou_atoms->{$atom_name} ?
+## 			"Uani" : "Uiso";
+## 		    for my $atom_site_tag ( "_atom_site_calc_flag",
+## 					    "_atom_site_refinement_flags",
+## 					    "_atom_site_disorder_assembly",
+## 					    "_atom_site_disorder_group" ) {
+## 			if( defined $tags{$atom_site_tag} ) {
+## 			    print " " . $tags{$atom_site_tag}[$i];
+## 			}
+## 		    }
+## 		    print "\n";
+## 		    $i ++;
+## 		}
+## 	    } else {
+	    for my $atom (@{$records}) {
+		my $atom_name = $atom->[0];
+		my @atom = @{$atom};
+		splice( @atom, 2, 1 ) if !$have_Wyckoff_symbol;
+		if( defined $tags{_atom_site_type_symbol} ) {
+		    splice( @atom, 1, 0,
+			    $tags{_atom_site_type_symbol}[$i] );
+		}
+		print @atom[0..$#atom-1],
+		    $use_Biso_tag ?
+			$tags{_atom_site_B_iso_or_equiv}[$i] :
+			$atom[-1],
+		    defined $anisou_atoms->{$atom_name} ?
+		        "Uani" : $UisoBiso_val;
+		for my $atom_site_tag ( "_atom_site_calc_flag",
+					"_atom_site_refinement_flags",
+					"_atom_site_disorder_assembly",
+					"_atom_site_disorder_group" ) {
+		    if( defined $tags{$atom_site_tag} ) {
+			print " " . $tags{$atom_site_tag}[$i];
+		    }
+		}
+		print "\n";
+		$i ++;
+	    }
+##	    }
 	}
     }
 
