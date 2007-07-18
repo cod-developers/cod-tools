@@ -44,16 +44,40 @@ cif_file
 
 data_block_list
 	:	data_block_list data_block
+		{
+			my $val = [ $_[1] ];
+			push(@{$val}, $_[2]);
+			return $val;
+		}
 	|	data_block
+		{
+			return $_[1];
+		}
 ;
 
 data_block
 	:	data_block_head data_item_list
+		{
+			my $val = { name => $_[1] };
+			$val->{value} = $_[2]->{value};
+			$val->{kind} = $_[2]->{kind};
+			return $val;
+		}
 ;
 
 data_item_list
 	:	data_item_list data_item
+		{
+			my $val = $_[1];
+			push(@{$val->{value}}, $_[2]);
+			return $val;
+		}
 	|	data_item
+		{
+			my $val = { kind => 'DATA' };
+			push(@{$val->{value}}, $_[1]);
+			return $val;
+		}
 ;
 
 data_block_head
@@ -155,9 +179,14 @@ cif_entry
 loop
 	:	LOOP_ loop_tags loop_values
 		{
-		my $val = { kind => 'loop' };
-			$val->{name} = $_[2];
-			push( @{$val->{value}}, $_[3] );
+			my $val = { kind => 'loop' };
+			$val->{name} = $_[2]->{name};
+			$val->{value} = $_[3]->{value};
+			$val->{type} = $_[3]->{type};
+			if( defined $_[3]->{precision} )
+			{
+				$val->{precision} = $_[3]->{precision};
+			}
 			return $val;
 		}
 ;
@@ -197,12 +226,11 @@ loop_values
 save_block
 	:	SAVE_HEAD save_item_list SAVE_FOOT
 		{
-#			print "^^^\n";
-#			showRef($_[2]);
+			my $value = $_[2]->{value};
+			$_[1] =~ m/^(save_)(.*)$/si;
 			my $val = { kind => 'SAVE',
-					name => $_[1] };
-#			push(@{$val->{value}}, $_[2]);
-			$val->{value} = $_[2];
+					name => $2 };
+			$val->{value} = $value;
 			return $val;
 		}
 ;
@@ -236,7 +264,8 @@ string
 	|	UQSTRING	{ { value => $_[1],
 			type => 'UQSTRING'} }
 	|	TEXT_FIELD	{ { value => $_[1],
-			type => 'TEXTFIELD' } }
+			type => 'TEXTFIELD' };
+		}
 ;
 
 number
