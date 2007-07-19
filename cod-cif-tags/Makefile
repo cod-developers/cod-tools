@@ -12,6 +12,7 @@ tags-indict-sorted.lst \
 tags-indict-canonical.lst \
 looped-blocks.lst \
 looped-tags.lst \
+tags-indict-nonlooped.lst \
 ##
 
 all: ${LISTS}
@@ -70,6 +71,15 @@ looped-tags.lst: looped-blocks.lst
 	perl -ne "print \$$1, \"\n\" if m:\\s_name\\s+'(_[^\\s]+)':" $< \
 	| sort | uniq \
 	> $@
+
+tags-indict-nonlooped.lst: tags-indict-canonical.lst looped-tags.lst
+	cp -av $< $@
+	for i in `cat ${word 2,$^}`; do \
+		mv $@ tmp-$$$$; \
+		perl -ne "print unless m:(^|\\s)\\Q$$i\\E(\\s|$$):i" \
+			tmp-$$$$ > $@; \
+	done; \
+	rm -v tmp-$$$$
 
 clean cleanAll distclean:
 	rm -f ${LISTS}
