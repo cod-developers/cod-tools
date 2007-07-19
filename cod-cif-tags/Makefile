@@ -10,6 +10,8 @@ tags-not-in-dictionaries.lst \
 tags-indict-counted.lst \
 tags-indict-sorted.lst \
 tags-indict-canonical.lst \
+looped-blocks.lst \
+looped-tags.lst \
 ##
 
 all: ${LISTS}
@@ -58,6 +60,15 @@ tags-indict-canonical.lst: tags-indict-sorted.lst
 		perl -ne "print \$$1, \"\\n\" and exit if m:'($$i)':i" \
 			${DICT_DIR}/*.dic; \
 	done \
+	> $@
+
+looped-blocks.lst:
+	perl -00 -ne 'print if /^\s+_list\s+yes/m' ${DICT_DIR}/*.dic \
+	> $@
+
+looped-tags.lst: looped-blocks.lst
+	perl -ne "print \$$1, \"\n\" if m:\\s_name\\s+'(_[^\\s]+)':" $< \
+	| sort | uniq \
 	> $@
 
 clean cleanAll distclean:
