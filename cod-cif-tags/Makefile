@@ -9,6 +9,7 @@ tags-sorted.lst \
 tags-not-in-dictionaries.lst \
 tags-indict-counted.lst \
 tags-indict-sorted.lst \
+tags-indict-canonical.lst \
 ##
 
 all: ${LISTS}
@@ -51,6 +52,13 @@ tags-indict-counted.lst: tags-counted.lst tags-not-in-dictionaries.lst
 			tmp-$$$$ > $@; \
 	done; \
 	rm -v tmp-$$$$
+
+tags-indict-canonical.lst: tags-indict-sorted.lst
+	for i in `cat $<`; do \
+		perl -ne "print \$$1, \"\\n\" and exit if m:'($$i)':i" \
+			${DICT_DIR}/*.dic; \
+	done \
+	> $@
 
 clean cleanAll distclean:
 	rm -f ${LISTS}
