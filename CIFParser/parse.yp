@@ -22,7 +22,7 @@ my $SVNID = '$Id$';
 # 1 - only YAPP output (type -> value)
 # 2 - lex & yapp output
 # 3 - generated array dump
-my $debug = 0;
+my $debug = 3;
 %}
 # --------------------------------------------------------------
 
@@ -59,8 +59,9 @@ data_block
 	:	data_block_head data_item_list
 		{
 			my $val = { name => $_[1] };
-			$val->{value} = $_[2]->{value};
+			$val->{content} = $_[2]->{value};
 			$val->{kind} = $_[2]->{kind};
+			$val->{type} = "DATA";
 			return $val;
 		}
 ;
@@ -230,7 +231,8 @@ save_block
 			$_[1] =~ m/^(save_)(.*)$/si;
 			my $val = { kind => 'SAVE',
 					name => $2 };
-			$val->{value} = $value;
+			$val->{type} = "SAVE";
+			$val->{content} = $value;
 			return $val;
 		}
 ;
