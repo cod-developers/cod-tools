@@ -68,7 +68,7 @@ looped-blocks.lst:
 	> $@
 
 looped-tags.lst: looped-blocks.lst
-	perl -ne "print \$$1, \"\n\" if m:\\s_name\\s+'(_[^\\s]+)':" $< \
+	perl -ne "print \$$2, \"\n\" if m:(\\s_name|^\\s*)\\s+'(_[^\\s]+)':" $< \
 	| sort | uniq \
 	> $@
 
