@@ -22,7 +22,7 @@ my $SVNID = '$Id$';
 # 1 - only YAPP output (type -> value)
 # 2 - lex & yapp output
 # 3 - generated array dump
-my $debug = 3;
+my $debug = 0;
 %}
 # --------------------------------------------------------------
 
@@ -630,18 +630,17 @@ $parser->YYData->{VARS}{[CIF_ARRAY]}
 
 Here CIF_ARRAY is array of elements:
         kind
-        [type]
+        type
         [name]
         value
         [precision]
 *NOTE: square brackets ('[' and ']') denotes optional element.
 
 As far as now, 'kind' is one of:
-        DATA_
-        SAVE_
-        LOOP_
+        DATA
+        SAVE
+        loop
         TAG             - for any tag
-        LOOPCOL         - for loop column
 
 'type' is type of value stored:
         FLOAT
@@ -650,35 +649,35 @@ As far as now, 'kind' is one of:
         DQSTRING
         UQSTRING
         TEXTFIELD
+or
+		DATA			- for data block
+		SAVE			- for save block
 
-'name' is TAG's name.
+'name' is elements name (DATA, or SAVE block name, TAG name).
 
-'value' is value for TAG, whose name is 'name'.
+'value' is value for element, which name is 'name'.
 It could be a list of values, in case of loop.
 
 'precision' - optional component, which defines precision of numerical
 values. It could be a single value, or an array of values - array of the
 same size, as array for 'value' field.
 
-All this array is recursive - in a block could reside several sections,
-each with different values.
-
-Everything goes to array 'value' in case of recursion.
-Example with DATA_ section having a loop_:
+Example with DATA block having a SAVE block and a loop:
 $parser->YYDATA->{VARS}{myCIF} =
 [
         {
 #DATA_compound1
-                kind = DATA_,
-                name= 'compound1'
+                kind	=> 'DATA',
+                name	=> 'compound1',
+                type	=> 'DATA'
                 value =
                 [
                         {
 #_chemical_formula_sum 'C2 H2 Ca O4'
-                                kind = 'TAG'
-                                name = '_chemical_formula_sum'
-                                value = 'C2 H2 Ca O4'
-                                type = 'SQSTRING'
+                                kind	=> 'TAG',
+                                name	=> '_chemical_formula_sum',
+                                value	=> 'C2 H2 Ca O4',
+                                type	=> 'SQSTRING'
                         },
                         {
 #loop_
@@ -686,35 +685,87 @@ $parser->YYDATA->{VARS}{myCIF} =
 #_atom_site_fract_x
 #Ca1 0.0098(2)
 #Ca2 0.0093(2)
-                                kind = 'LOOP_'
-                                value =
+                                kind	=> 'loop',
+                                value	=>
                                 [
-                                        {
-                                                kind = 'LOOPCOL'
-                                                name = 
-'_atom_site_label'
-                                                value =
-                                                [
-                                                        'Ca1',
-                                                        'Ca2'
-                                                ]
-                                        },
-                                        {
-                                                kind = 'LOOPCOL'
-                                                name = 
-'_atom_site_fract_x'
-                                                value =
-                                                [
-                                                        0.0098,
-                                                        0.0093
-                                                ]
-                                                precision =
-                                                [
-                                                        0.00002,
-                                                        0.00002
-                                                ]
-                                        }
-                                ]
+                                	Ca1,
+                                	0.0098,
+                                	Ca2,
+                                	0.0093
+                                ],
+                                name	=>
+                                [
+                                	_atom_site_label,
+                                	_atom_site_fract_x
+                                ],
+                                type	=>
+                                [
+                                	UQSTRING,
+                                	FLOAT,
+                                	UQSTRING,
+                                	FLOAT
+                                ],
+                                precision =>
+                                [
+                                	,
+                                	0.0002,
+                                	,
+                                	0.0002
+                                ],
+                        }
+                        {
+#save_someold
+#	_published
+#	;
+#		1999 May 17 CACM
+#	;
+#	loop_
+#		_temp
+#		_color
+#			128     "green"
+#			190     "red"
+#SAVE_
+                        	kind	=> 'SAVE',
+                        	content	=>
+                        	[
+                        		{
+                        			kind	=> 'TAG',
+                        			value	=> '1999 May 17 CACM',
+                        			name	=> '_published',
+                        			type	=> 'TEXTFIELD'
+                        		}
+                        		{
+                        			kind	=> 'loop',
+                        			value	=>
+                        			[
+                        				128,
+                        				green,
+                        				190,
+                        				red
+                        			],
+                        			name	=>
+                        			[
+                        				_temp,
+                        				_color
+                        			],
+                        			type	=>
+                        			[
+                        				INT,
+                        				DQSTRING,
+                        				INT,
+                        				DQSTRING
+                        			],
+                        			precision =>
+                        			[
+                        				undef,
+                        				,
+                        				undef,
+                        				,
+                        			]
+                        		}
+                        	],
+                        	name	=> 'someold',
+                        	type	=> 'save'
                         }
                 ]
         }
