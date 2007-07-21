@@ -13,6 +13,9 @@ tags-indict-canonical.lst \
 looped-blocks.lst \
 looped-tags.lst \
 tags-indict-nonlooped.lst \
+dict-looped-tags.lst \
+dict-nonlooped-tags.lst \
+dict-both-tags.lst \
 ##
 
 all: ${LISTS}
@@ -80,6 +83,25 @@ tags-indict-nonlooped.lst: tags-indict-canonical.lst looped-tags.lst
 			tmp-$$$$ > $@; \
 	done; \
 	rm -v tmp-$$$$
+
+dict-looped-tags.lst:
+	perl -00 -ne 'print if /^\s+_list\s+yes/m' ${DICT_DIR}/*.dic \
+	| perl -ne "print \$$2, \"\n\" if m:(\\s_name|^\\s*)\\s+'(_[^\\s]+)':" $< \
+	| sort | uniq \
+	> $@
+
+dict-nonlooped-tags.lst:
+	( perl -00 -ne 'print if /^\s+_list\s+no/m' ${DICT_DIR}/*.dic; \
+	  perl -00 -ne 'print if !/^\s+_list\s+/m' ${DICT_DIR}/*.dic ) \
+	| perl -ne "print \$$2, \"\n\" if m:(\\s_name|^\\s*)\\s+'(_\w[^\\s]+)':" $< \
+	| sort | uniq \
+	> $@
+
+dict-both-tags.lst:
+	perl -00 -ne 'print if /^\s+_list\s+both/m' ${DICT_DIR}/*.dic \
+	| perl -ne "print \$$2, \"\n\" if m:(\\s_name|^\\s*)\\s+'(_[^\\s]+)':" $< \
+	| sort | uniq \
+	> $@
 
 clean cleanAll distclean:
 	rm -f ${LISTS}
