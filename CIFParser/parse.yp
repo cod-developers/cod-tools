@@ -258,10 +258,18 @@ cif_value
 ;
 
 string
-	:	SQSTRING	{ { value => $_[1],
-			type => 'SQSTRING'} }
-	|	DQSTRING	{ { value => $_[1],
-			type => 'DQSTRING'} }
+	:	SQSTRING
+		{
+			$_[1] =~ m/^(')(.*)(')$/si;
+			return { value => $2,
+				type => 'SQSTRING'};
+		}
+	|	DQSTRING
+		{
+			$_[1] =~ m/^(")(.*)(")$/si;
+			return { value => $2,
+				type => 'SQSTRING'};
+		}
 	|	UQSTRING	{ { value => $_[1],
 			type => 'UQSTRING'} }
 	|	TEXT_FIELD	{ { value => $_[1],
