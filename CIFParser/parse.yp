@@ -123,7 +123,6 @@ save_item
 		{
 			return $_[1];
 		}
-	|	reserved_words
 ;
 
 cif_entry
@@ -336,25 +335,6 @@ number
 		}
 ;
 
-reserved_words
-	:	GLOBAL_
-		{
-			$_[0]->YYData->{ERRMSG} = "GLOBAL_ symbol " .
-"detected in line " . $_[0]->YYData->{VARS}{lines} . ", pos. " . 
-$_[0]->YYData->{VARS}{token_prev_pos} . ".\nIt is not " .
-"acceptable in this version.\n";
-			$_[0]->YYError();
-		}
-	|	STOP_
-		{
-			$_[0]->YYData->{ERRMSG} = "STOP_ symbol " .
-"detected in line " . $_[0]->YYData->{VARS}{lines} . ", pos. " . 
-$_[0]->YYData->{VARS}{token_prev_pos} . ".\nIt is not " .
-"acceptable in this version.\n";
-			$_[0]->YYError();
-		}
-;
-
 %%
 # --------------------------------------------------------------
 # begin of footer
@@ -526,6 +506,14 @@ END_M
 		if( s/^(global_)//si )
 		{
 			advance_token($parser);
+			$parser->YYData->{ERRMSG} = "GLOBAL_ symbol detected" .
+				" in line " .
+				$parser->YYData->{VARS}{lines} .
+				", pos. " .
+				$parser->YYData->{VARS}{token_prev_pos} . ":\n--\n" .
+				$parser->YYData->{VARS}{current_line} . "\n--\n" .
+				"It is not acceptable in this version!\n";
+			$parser->YYError();
 			return('GLOBAL_', $1);
 		}
 		#matching SAVE_ head
@@ -544,6 +532,14 @@ END_M
 		if( s/^(stop_)//si )
 		{
 			advance_token($parser);
+			$parser->YYData->{ERRMSG} = "STOP_ symbol detected" .
+				" in line " .
+				$parser->YYData->{VARS}{lines} .
+				", pos. " .
+				$parser->YYData->{VARS}{token_prev_pos} . ":\n--\n" .
+				$parser->YYData->{VARS}{current_line} . "\n--\n" .
+				"It is not acceptable in this version!\n";
+			$parser->YYError();
 			return('STOP_', $1);
 		}
 		#matching DATA_ field
