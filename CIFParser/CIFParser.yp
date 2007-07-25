@@ -1,0 +1,793 @@
+# --------------------------------------------------------------
+#$Author: justas $
+#$Date: 2007-07-24 12:37:40 +0300 (Tue, 24 Jul 2007) $
+#$Revision: 201 $
+#$URL: svn+ssh://pitonas.ibt.lt/home/xray/svn-repositories/cif-tools/trunk/CIFParser/parse.yp $
+# -------------------------------------------------------------- 
+#
+# parse.yp
+#
+# Parsed CIF file structure overview is described at the end of this file.
+# --------------------------------------------------------------
+# begin of header
+# --------------------------------------------------------------
+# copy directly to PERL module:
+%{
+use warnings;
+use ShowStruct;
+
+my $SVNID = '$Id: parse.yp 201 2007-07-24 09:37:40Z justas $';
+
+# 0 - no debug
+# 1 - only YAPP output (type -> value)
+# 2 - lex & yapp output
+# 3 - generated array dump
+$CIFParser::debug = 3;
+%}
+# --------------------------------------------------------------
+
+# --------------------------------------------------------------
+# begin of body
+# --------------------------------------------------------------
+
+%%
+cif_file
+	:	#empty
+	|	data_block_list
+		{
+			if($CIFParser::debug >= 3)
+			{
+				showRef($_[1]);
+			}
+			$_[0]->{USER}->{CIFfile} = $_[1];
+		}
+	|	data_item
+		{
+			$_[0]->YYData->{ERRMSG} = "No data block heading (i.e." .
+			" data_somecif) found in file!\n";
+			$_[0]->YYError();
+		}
+	|	cif_value
+		{
+			$_[0]->YYData->{ERRMSG} = "No data block heading (i.e." .
+			" data_somecif) found in file!\n";
+			$_[0]->YYError();
+		}
+;
+
+data_block_list
+	:	data_block_list data_block
+		{
+			my $val = $_[1];
+			push(@{$val}, $_[2]);
+			return $val;
+		}
+	|	data_block
+		{
+			return [ $_[1] ];
+		}
+;
+
+data_block
+	:	data_block_head data_item_list
+		{
+			my $val = { name => $_[1] };
+			$val->{content} = $_[2]->{value};
+			$val->{kind} = $_[2]->{kind};
+			$val->{type} = "DATA";
+			return $val;
+		}
+;
+
+data_item_list
+	:	data_item_list data_item
+		{
+			my $val = $_[1];
+			push(@{$val->{value}}, $_[2]);
+			return $val;
+		}
+	|	data_item
+		{
+			my $val = { kind => 'DATA' };
+			push(@{$val->{value}}, $_[1]);
+			return $val;
+		}
+;
+
+data_block_head
+	:	DATA_
+		{
+			$_[1] =~ m/^(data_)(.*)/si;
+			return $2;
+		}
+;
+
+data_item
+	:	save_item
+		{
+			return $_[1];
+		}
+	|	save_block
+		{
+			return $_[1];
+		}
+	|	error
+;
+
+save_item_list
+	:	save_item_list save_item
+		{
+			my $val = $_[1];
+			push( @{$val->{value}}, $_[2] );
+			return $val;
+		}
+	|	save_item
+		{
+			my $val = { value => [ $_[1] ] };
+			return $val;
+		}
+;
+
+save_item
+	:	cif_entry
+		{
+			return $_[1];
+		}
+	|	loop
+		{
+			return $_[1];
+		}
+;
+
+cif_entry
+	:	TAG cif_value
+		{
+			my $val;
+			if(defined $_[2]->{precision})
+			{
+				$val = { name => $_[1],
+					kind => 'TAG',
+					value => $_[2]->{value},
+					type => $_[2]->{type},
+					precision => $_[2]->{precision}
+				};
+			} else {
+				$val = { name => $_[1],
+					kind => 'TAG',
+					value => $_[2]->{value},
+					type => $_[2]->{type}
+				};
+			}
+			if($CIFParser::debug >= 1 && $CIFParser::debug <= 2)
+			{
+				showRef($val);
+			}
+			return $val;
+		}
+	|	LOCAL TAG cif_value
+		{
+			my $val;
+			if(defined $_[3]->{precision})
+			{
+				$val = { name => $_[2],
+					kind => 'LOCAL',
+					value => $_[3]->{value},
+					type => $_[3]->{type},
+					precision => $_[3]->{precision}
+				};
+			} else {
+				$val = { name => $_[2],
+					kind => 'LOCAL',
+					value => $_[3]->{value},
+					type => $_[3]->{type}
+				};
+			}
+			if($CIFParser::debug >= 1 && $CIFParser::debug <= 2)
+			{
+				showRef($val);
+			}
+			return $val;
+		}
+;
+
+loop
+	:	LOOP_ loop_tags loop_values
+		{
+			my $val = { kind => 'loop' };
+			$val->{name} = $_[2]->{name};
+			$val->{value} = $_[3]->{value};
+			$val->{type} = $_[3]->{type};
+			if( defined $_[3]->{precision} )
+			{
+				$val->{precision} = $_[3]->{precision};
+			}
+			return $val;
+		}
+;
+
+loop_tags
+	:	loop_tags TAG
+		{
+			my $val = $_[1];
+			push( @{$val->{name}}, $_[2] );
+			return $val;
+		}
+	|	TAG
+		{
+			my $val = { name => [ $_[1] ] };
+			return $val;
+		}
+;
+
+loop_values
+	:	loop_values cif_value
+		{
+			my $val = $_[1];
+			push( @{$val->{value}}, $_[2]->{value} );
+			push( @{$val->{type}}, $_[2]->{type} );
+			push( @{$val->{precision}}, $_[2]->{precision} );
+			return $val;
+		}
+	|	cif_value
+		{
+			my $val = { type => [ $_[1]->{type} ] };
+			push( @{$val->{value}}, $_[1]->{value} );
+			push( @{$val->{precision}}, $_[1]->{precision} );
+			return $val;
+		}
+;
+
+save_block
+	:	SAVE_HEAD save_item_list SAVE_FOOT
+		{
+			my $value = $_[2]->{value};
+			$_[1] =~ m/^(save_)(.*)$/si;
+			my $val = { kind => 'SAVE',
+					name => $2 };
+			$val->{type} = "SAVE";
+			$val->{content} = $value;
+			return $val;
+		}
+;
+
+cif_value
+	:	string
+		{	print $_[1]->{type} . "\t->\t"
+				. $_[1]->{value} . "\n" if( $CIFParser::debug >= 1 && $CIFParser::debug <= 2) ;
+			$_[1];
+		}
+	|	number
+		{	print $_[1]->{type} . "\t\t->\t"
+				. $_[1]->{value} . " -- "
+				. $_[1]->{precision}
+				. "\n" if( $CIFParser::debug >= 1 && $CIFParser::debug <= 2);
+			$_[1];
+		}
+	|	textfield
+		{	print "TFIELD\t\t->\t" .
+				$_[1]->{value} . "\n"
+				if( $CIFParser::debug >= 1 && $CIFParser::debug <= 2);
+			$_[1];
+		}
+;
+
+string
+	:	SQSTRING
+		{
+			$_[1] =~ m/^(')(.*)(')$/si;
+			return { value => $2,
+				type => 'SQSTRING'};
+		}
+	|	DQSTRING
+		{
+			$_[1] =~ m/^(")(.*)(")$/si;
+			return { value => $2,
+				type => 'SQSTRING'};
+		}
+	|	UQSTRING	{ { value => $_[1],
+			type => 'UQSTRING'} }
+	|	TEXT_FIELD	{ { value => $_[1],
+			type => 'TEXTFIELD' };
+		}
+;
+
+number
+	:	FLOAT
+		{
+			if( $_[1] =~ m/^(.*)( \( ([0-9]+) \) )$/six )
+			{
+				my $value	= $1;
+				my $precision	= $3;
+				#parsing float value:
+				# - $1 - part before decimal dot
+				# - $2 - decimal dot
+				# - $3 - mantissa (part after d-dot)
+				# - $4 - exponent
+				$value =~ m/
+						([-+]?[0-9]*)?
+						(\.)?
+						([0-9]+)?
+						(?:e([+-]?[0-9]+))?
+					/six;
+				if( defined $2 )
+				{
+					if( defined $4 )
+					{
+						if(defined($3))
+						{
+							$precision /=
+							10**(length($3));
+						}
+						$precision *= 10**($4);
+					} else {
+						if(defined($3))
+						{
+							$precision /=
+							10**(length($3));
+						}
+					}
+				} else {
+					$precision *= 10**($4);
+				}
+				{	type => 'FLOAT',
+					value => $value,
+					precision => $precision
+				}
+			} else {
+				{	type => 'FLOAT',
+					value => $_[1],
+					precision => 'undef'
+				}
+			}
+		}
+	|	INT
+		{
+			if( $_[1] =~ m/^(.*)( \( ([0-9]+) \) )$/sx)
+			{
+				{	type => 'INT',
+					value => $1,
+					precision => $3
+				}
+			} else {
+				{	type => 'INT',
+					value => $_[1],
+					precision => 'undef'
+				}
+			}
+		}
+;
+
+%%
+# --------------------------------------------------------------
+# begin of footer
+# --------------------------------------------------------------
+
+sub _Error
+{
+	exists $_[0]->YYData->{ERRMSG}
+	and do {
+		print $_[0]->YYData->{ERRMSG};
+		delete $_[0]->YYData->{ERRMSG};
+		return;
+	};
+	print "Analyzed symbols line containing bogus data (num. " . 
+		$_[0]->YYData->{VARS}{lines} . " pos. " . 
+		$_[0]->YYData->{VARS}{token_prev_pos} . ") was:\n" . 
+		$_[0]->YYData->{VARS}{current_line} . "\n";
+	print " " x $_[0]->YYData->{VARS}{token_prev_pos};
+	print "^\n";
+}
+
+sub _Lexer
+{
+	my($parser) = shift;
+
+	#trimming tokenized comments
+	if( defined $parser->YYData->{INPUT} &&
+		$parser->YYData->{INPUT} =~
+			s/^(\s*#.*)$//s )
+	{
+		advance_token($parser);
+	}
+
+	if( !defined $parser->YYData->{INPUT} ||
+		$parser->YYData->{INPUT} =~ m/^\s*$/ )
+	{
+		do
+		{
+			$parser->YYData->{INPUT} = <STDIN>;
+			$parser->YYData->{VARS}{lines}++;
+		} until ( !defined $parser->YYData->{INPUT} ||
+			$parser->YYData->{INPUT} !~ m/^(\s*(#.*)?)$/s );
+		if( defined $parser->YYData->{INPUT} )
+		{
+			chomp $parser->YYData->{INPUT};
+			$parser->YYData->{INPUT}=~s/\r$//g;
+			$parser->YYData->{INPUT}=~s/\t/    /g;
+			$parser->YYData->{VARS}{current_line} = 
+				$parser->YYData->{INPUT};
+			$parser->YYData->{VARS}{token_pos} = 0;
+		} else {			
+			return('',undef);
+		}
+	}
+
+#scalars storing regular expressions, common to several matches
+my $ORDINARY_CHAR	=	
+	qr/[a-zA-Z0-9!%&\(\)\*\+,-\.\/\:<=>\?@\\\^`{\|}~]/is;
+my $SPECIAL_CHAR	=	qr/["#\$'_\[\]]/is;
+my $NON_BLANK_CHAR	=	qr/(?:$ORDINARY_CHAR|$SPECIAL_CHAR|;)/is;
+my $TEXT_LEAD_CHAR	=	qr/(?:$ORDINARY_CHAR|$SPECIAL_CHAR|\s)/s;
+my $ANY_PRINT_CHAR	=	qr/(?:$NON_BLANK_CHAR|\s)/is;
+my $INTEGER		=	qr/[-+]?[0-9]+/s;
+my $EXPONENT		=	qr/e[-+]?[0-9]+/is;
+my $FLOAT11		=	qr/(?: $INTEGER $EXPONENT)/ix;
+my $FLOAT21		=	qr/(?: [+-]? [0-9]* \. [0-9]+ $EXPONENT ?)/ix;
+my $FLOAT31		=	qr/(?: $INTEGER \. $EXPONENT ?)/ix;
+my $FLOAT		=	qr/(?: (?: $FLOAT11 | $FLOAT21 | $FLOAT31))/six;
+
+	#matching white space characters
+	if( $parser->YYData->{INPUT} =~ s/(\s*)//s )
+	{
+		advance_token($parser);
+	}
+		
+	if($CIFParser::debug >= 2 && $CIFParser::debug < 3)
+	{
+		print ">>> '", $parser->YYData->{INPUT}, "'\n";
+	}
+
+	for ($parser->YYData->{INPUT})
+	{
+		#matching floats:
+                if( s/^(?: ($FLOAT (?:\([0-9]+\))?) (\s) )/$2/six
+                        || s/^($FLOAT (?:\([0-9]+\))?)$//six )
+		{
+			advance_token($parser);
+			return('FLOAT', $1);
+		}
+		#matching integers:
+                if( s/^($INTEGER (?:\([0-9]+\))?)(\s)/$2/sx
+                        || s/^($INTEGER (?:\([0-9]+\))?)$//sx )
+		{
+			advance_token($parser);
+			return('INT', $1);
+		}
+		#matching double quoted strings
+		if( s/^("${ANY_PRINT_CHAR}*")(\s)/$2/s
+			|| s/^("${ANY_PRINT_CHAR}*")$//s )
+		{
+			advance_token($parser);
+			return('DQSTRING', $1);
+		}
+		#matching single quoted strings
+		if( s/^('${ANY_PRINT_CHAR}*')(\s*)/$2/s
+			|| s/^('${ANY_PRINT_CHAR}*')$//s )
+		{
+			advance_token($parser);
+			return('SQSTRING', $1);
+		}
+		#matching text field
+		if( $parser->YYData->{VARS}{token_pos} == 0 )
+		{
+			if( s/^;(${ANY_PRINT_CHAR}*)$//s )
+			{
+				my $eotf = 0;
+				my $tfield;	#all textfield
+				my $tf_line_begin =
+					$parser->YYData->{VARS}{lines};
+				$tfield = $1 . "\n";
+				while( 1 )
+				{
+					my $line = <STDIN>;
+					if( defined $line )
+					{
+						chomp $line;
+						$line=~s/\r$//g;
+						$line=~s/\t/    /g;
+						$parser->YYData->{VARS}{current_line} = 
+							$line;
+						$parser->YYData->{VARS}{lines}++;
+						if( $line =~
+							s/^;//s )
+						{
+							if( defined $line )
+							{
+							$parser->YYData->{INPUT}
+								= $line;
+							$parser->YYData->{VARS}{token_pos} = 1;
+							}
+							last;
+						} else {
+							$tfield .= $line;
+						}
+					} else {
+						undef $parser->YYData->{INPUT};
+						last;
+					}
+				}
+				if( !defined $parser->YYData->{INPUT} )
+				{
+					$parser->YYData->{ERRMSG} = <<END_M;
+ERROR encountered while in text field, which started in line $tf_line_begin.
+Possible runaway of closing ';', or unexpected end of file.
+END_M
+					$parser->YYError();
+				}
+				chomp $tfield;
+				return('TEXT_FIELD', $tfield);
+			}
+		}
+		#matching [local] attribute
+		if( s/^(\[local\])//si )
+		{
+			advance_token($parser);
+			return('LOCAL', $1);
+		}
+		#matching GLOBAL_ field
+		if( s/^(global_.*)$//si )
+		{
+			advance_token($parser);
+			$parser->YYData->{ERRMSG} = "GLOBAL_ symbol detected" .
+				" in line " .
+				$parser->YYData->{VARS}{lines} .
+				", pos. " .
+				$parser->YYData->{VARS}{token_prev_pos} . ":\n--\n" .
+				$parser->YYData->{VARS}{current_line} . "\n--\n" .
+				"It is not acceptable in this version!\n";
+			$parser->YYError();
+			return('GLOBAL_', $1);
+		}
+		#matching SAVE_ head
+		if( s/^(save_${NON_BLANK_CHAR}+)//si )
+		{
+			advance_token($parser);
+			return('SAVE_HEAD', $1);
+		}
+		#matching SAVE_ foot
+		if( s/^(save_)//si )
+		{
+			advance_token($parser);
+			return('SAVE_FOOT', $1);
+		}
+		#matching STOP_ field
+		if( s/^(stop_.*)$//si )
+		{
+			advance_token($parser);
+			$parser->YYData->{ERRMSG} = "STOP_ symbol detected" .
+				" in line " .
+				$parser->YYData->{VARS}{lines} .
+				", pos. " .
+				$parser->YYData->{VARS}{token_prev_pos} . ":\n--\n" .
+				$parser->YYData->{VARS}{current_line} . "\n--\n" .
+				"It is not acceptable in this version!\n";
+			$parser->YYError();
+			return('STOP_', $1);
+		}
+		#matching DATA_ field
+		if( s/^(data_${NON_BLANK_CHAR}+)//si )
+		{
+			advance_token($parser);
+			return('DATA_', $1);
+		}
+		#matching LOOP_ begining
+		if( s/^(loop_)//si )
+		{
+			advance_token($parser);
+			return('LOOP_', $1);
+		}
+		#matching TAG's
+		if( s/^(_${NON_BLANK_CHAR}+)//si )
+		{
+			advance_token($parser);
+			return('TAG', $1);
+		}
+		#matching unquoted strings
+		if( $parser->YYData->{VARS}{token_pos} == 0 )
+		{ #UQSTRING at first pos. of line
+			if( s/^(?: ( ($ORDINARY_CHAR | \[ )
+				($NON_BLANK_CHAR)*) )
+				//sx)
+			{
+				advance_token($parser);
+				return('UQSTRING', $1);
+			}
+		} else { #UQSTRING in line
+			if( s/^(?: ( ($ORDINARY_CHAR | ; | \[ )
+				($NON_BLANK_CHAR)*) )
+				//sx )
+			{
+				advance_token($parser);
+				return('UQSTRING', $1);
+			}
+		}
+		#matching any still unmatched symbol:
+		if( s/^(.)//m )
+		{
+			advance_token($parser);
+			return($1,$1);
+		}
+	}
+}
+
+sub advance_token
+{
+	my $parser = shift;
+	$parser->YYData->{VARS}{token_prev_pos} =
+		$parser->YYData->{VARS}{token_pos};
+	$parser->YYData->{VARS}{token_pos} += length($1);
+}
+
+sub Run
+{
+	my($self) = shift;
+	$| = 1;
+	if( $CIFParser::debug >= 2 && $CIFParser::debug < 3)
+	{
+		$self->YYParse( yylex => \&_Lexer,
+				yyerror => \&_Error,
+				yydebug => 0x05 );
+	} else {
+		$self->YYParse( yylex => \&_Lexer, yyerror => \&_Error );
+	}
+	if( $self->YYNberr() == 0 )
+	{
+		print "File syntax is CORRECT!\n";
+		return $self->{USER}->{CIFfile};
+	} else {
+		print "Syntax check failed.\n";
+		return 2;
+	}
+
+}
+
+return 1;
+
+__END__
+CIF structure is stored in parser's object YYData VARS hash in this way:
+$parser->YYData->{VARS}{[CIF_ARRAY]}
+
+Here CIF_ARRAY is array of elements:
+        kind
+        type
+        [name]
+        value
+        [precision]
+*NOTE: square brackets ('[' and ']') denotes optional element.
+
+As far as now, 'kind' is one of:
+        DATA
+        SAVE
+        loop
+        TAG             - for any tag
+
+'type' is type of value stored:
+        FLOAT
+        INT
+        SQSTRING
+        DQSTRING
+        UQSTRING
+        TEXTFIELD
+or
+		DATA			- for data block
+		SAVE			- for save block
+
+'name' is elements name (DATA, or SAVE block name, TAG name).
+
+'value' is value for element, which name is 'name'.
+It could be a list of values, in case of loop.
+
+'precision' - optional component, which defines precision of numerical
+values. It could be a single value, or an array of values - array of the
+same size, as array for 'value' field.
+
+Example with DATA block having a SAVE block and a loop:
+$parser->YYDATA->{VARS}{myCIF} =
+[
+        {
+#DATA_compound1
+                kind	=> 'DATA',
+                name	=> 'compound1',
+                type	=> 'DATA'
+                value =
+                [
+                        {
+#_chemical_formula_sum 'C2 H2 Ca O4'
+                                kind	=> 'TAG',
+                                name	=> '_chemical_formula_sum',
+                                value	=> 'C2 H2 Ca O4',
+                                type	=> 'SQSTRING'
+                        },
+                        {
+#loop_
+#_atom_site_label,
+#_atom_site_fract_x
+#Ca1 0.0098(2)
+#Ca2 0.0093(2)
+                                kind	=> 'loop',
+                                value	=>
+                                [
+                                	Ca1,
+                                	0.0098,
+                                	Ca2,
+                                	0.0093
+                                ],
+                                name	=>
+                                [
+                                	_atom_site_label,
+                                	_atom_site_fract_x
+                                ],
+                                type	=>
+                                [
+                                	UQSTRING,
+                                	FLOAT,
+                                	UQSTRING,
+                                	FLOAT
+                                ],
+                                precision =>
+                                [
+                                	,
+                                	0.0002,
+                                	,
+                                	0.0002
+                                ],
+                        }
+                        {
+#save_someold
+#	_published
+#	;
+#		1999 May 17 CACM
+#	;
+#	loop_
+#		_temp
+#		_color
+#			128     "green"
+#			190     "red"
+#SAVE_
+                        	kind	=> 'SAVE',
+                        	content	=>
+                        	[
+                        		{
+                        			kind	=> 'TAG',
+                        			value	=> '1999 May 17 CACM',
+                        			name	=> '_published',
+                        			type	=> 'TEXTFIELD'
+                        		}
+                        		{
+                        			kind	=> 'loop',
+                        			value	=>
+                        			[
+                        				128,
+                        				green,
+                        				190,
+                        				red
+                        			],
+                        			name	=>
+                        			[
+                        				_temp,
+                        				_color
+                        			],
+                        			type	=>
+                        			[
+                        				INT,
+                        				DQSTRING,
+                        				INT,
+                        				DQSTRING
+                        			],
+                        			precision =>
+                        			[
+                        				undef,
+                        				,
+                        				undef,
+                        				,
+                        			]
+                        		}
+                        	],
+                        	name	=> 'someold',
+                        	type	=> 'save'
+                        }
+                ]
+        }
+]
+
+
