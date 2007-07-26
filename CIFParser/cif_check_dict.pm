@@ -17,6 +17,8 @@ use CIFParser;
 #
 my $version = 0.1;
 
+my $CIFfile;
+my $CIFtags;
 my $outputFile;
 my $dictFile;
 my $quiet = 0;
@@ -32,6 +34,8 @@ sub VersionMessage;
 # subroutine to print help on module usage
 sub HelpMessage;
 
+# subroutine to extract tags from CIFfile array
+sub getTags;
 
 #
 # main program code
@@ -50,23 +54,41 @@ Getopt::Long::GetOptions
 # parse CIF files. If none is passed - display help message
 if(@ARGV > 0)
 {
-	my $CIFfile;
 	if(@ARGV > 1)
 	{
-		my $i = 0;
-		while($i < @ARGV)
+		my $filen = 0;
+		while($filen < @ARGV)
 		{
 			push(@{$CIFfile}, { kind => 'FILE',
-								content => $parser->Run($ARGV[$i]),
-								name => $ARGV[$i] });
-			$i++;
+								content => $parser->Run($ARGV[$filen]),
+								name => $ARGV[$filen] });
+			$filen++;
 		}
 	} else {
 		$CIFfile = $parser->Run($ARGV[0]);
 	}
-	showRef($CIFfile);
 } else {
 	HelpMessage();
+}
+
+if($quiet == 0)
+{
+	print "Got structure for file(s) parsed:\n";
+	showRef($CIFfile);
+	print "\n";
+}
+
+# take tags from parsed CIF file
+if(@ARGV > 1)
+{
+	my $filen = 0;
+	while($filen < @ARGV)
+	{
+		push(@{$CIFtags}, getTags($CIFfile->[$filen]));
+		$filen++;
+	}
+} else {
+	$CIFtags = getTags($CIFfile);
 }
 
 #
@@ -92,4 +114,52 @@ sub HelpMessage
 I hope you know, what you are doing.
 If not - feel recommended to wait until release of production version.
 END_M
+}
+
+sub getTags
+{
+	my $file = shift;
+	my $size = scalar @$file;
+	my @tags;
+	if($size > 1)
+	{
+		my $datan;
+		while($datan < $size)
+		{
+			$datan++;
+		}
+	} else {
+		my $dataname = $file->[0]->{name};
+		my $noitems = scalar @{$file->[0]->{content}};
+		my $content = $file->[0]->{content};
+		for(my $i = 0; $i < $noitems; $i++)
+		{
+			my $item = $content->[$i];
+			if($item->{kind} eq 'TAG')
+			{
+				push(@tags, $item->{name});
+			} elsif($item->{kind} eq 'loop') {
+				foreach my $tag (@{$item->{name}})
+				{
+					push( @tags, $tag );
+				}
+			} elsif($item->{kind} eq 'SAVE') {
+				my $savetags = getTags( [$item] );
+				foreach my $tag ( @$savetags )
+				{
+					push(@tags, $tag);
+				}
+			} else {
+				die("ERROR: file contains elements, not handled by ".
+				"this module!\n");
+			}
+		}
+	}
+	if( $quiet == 0 )
+	{
+		print "Got following tags from file:\n";
+		showRef(\@tags);
+		print "\n";
+	}
+	return \@tags;
 }
