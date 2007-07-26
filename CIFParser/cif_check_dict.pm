@@ -17,9 +17,8 @@ use CIFParser;
 #
 my $version = 0.1;
 
-my @input_file;
-my $output_file;
-my $dict_file;
+my $outputFile;
+my $dictFile;
 my $quiet = 0;
 my $parser = new CIFParser;
 
@@ -38,13 +37,33 @@ sub HelpMessage;
 # main program code
 #
 
-@input_file = Getopt::Long::GetOptions
-	("output"			=> \$output_file,
-		"dictionary"	=> \$dict_file,
+# check parameters passed
+Getopt::Long::GetOptions
+	("output=s"			=> \$outputFile,
+		"dictionary=s"	=> \$dictFile,
 		"version"		=> sub { VersionMessage() },
 		"quiet"			=> sub { $quiet = 1; },
 		"no-quiet"		=> sub { $quiet = 0; },
-		"help|?"		=> sub { HelpMessage() });
+		"help|?"		=> sub { HelpMessage() }
+	);
+
+# parse CIF files. If none is passed - display help message
+if(@ARGV > 0)
+{
+	my @CIFfile = ();
+	if(@ARGV > 1)
+	{
+		while(my $i < @ARGV)
+		{
+			push(@CIFfile, $parser->Run($ARGV[$i]));
+			$i++;
+		}
+	} else {
+		my @CIFfile = $parser->Run($ARGV[0]);
+	}
+} else {
+	HelpMessage();
+}
 
 #
 # here goes all subroutines bodies
