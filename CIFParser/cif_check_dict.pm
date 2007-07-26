@@ -53,9 +53,12 @@ if(@ARGV > 0)
 	my $CIFfile;
 	if(@ARGV > 1)
 	{
-		while(my $i < @ARGV)
+		my $i = 0;
+		while($i < @ARGV)
 		{
-			push(@{$CIFfile}, $parser->Run($ARGV[$i]));
+			push(@{$CIFfile}, { kind => 'FILE',
+								content => $parser->Run($ARGV[$i]),
+								name => $ARGV[$i] });
 			$i++;
 		}
 	} else {
