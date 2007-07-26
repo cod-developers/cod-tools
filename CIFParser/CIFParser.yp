@@ -204,7 +204,17 @@ loop
 			{
 				$val->{precision} = $_[3]->{precision};
 			}
-			return $val;
+			if( (scalar @{$val->{value}}) %
+					(scalar @{$val->{name}}) == 0 )
+			{
+				return $val;
+			} else {
+				$_[0]->YYData->{ERRMSG} = "Wrong number of elements in"
+					. " loop block starting in line "
+					. $_[0]->YYData->{VARS}{loop_begin}
+					. "!\n";
+				$_[0]->YYError();
+			}
 		}
 ;
 
@@ -583,6 +593,8 @@ END_M
 		if( s/^(loop_)//si )
 		{
 			advance_token($parser);
+			$parser->YYData->{VARS}{loop_begin} =
+					$parser->YYData->{VARS}{lines};
 			return('LOOP_', $1);
 		}
 		#matching TAG's

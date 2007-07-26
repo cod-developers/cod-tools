@@ -123,7 +123,7 @@ sub getTags
 	my @tags;
 	if($size > 1)
 	{
-		my $datan;
+		my $datan = 0;
 		while($datan < $size)
 		{
 			$datan++;
