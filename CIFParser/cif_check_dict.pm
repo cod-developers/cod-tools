@@ -59,7 +59,7 @@ if(@ARGV > 0)
 			$i++;
 		}
 	} else {
-		my @CIFfile = $parser->Run($ARGV[0]);
+		my @CIFfile = $parser->CIFParser::Run($ARGV[0]);
 	}
 } else {
 	HelpMessage();
