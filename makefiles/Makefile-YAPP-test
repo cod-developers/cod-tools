@@ -36,7 +36,10 @@ out outputs: ${OUTP_FILES}
 
 ${OUTP_DIR}/%.diff: ${TEST_MODULE} ${TEST_DIR}/%.inp
 	-@printf "%-30s " "$*:" ; \
-	perl $< < ${word 2, $^} 2>&1 | diff ${OUTP_DIR}/$*.out - > $@ ; \
+     perl -e 'use ${TEST_MODULE:%.pm=%}; my $$p=new parse; $$p->Run' \
+         < ${word 2, $^} 2>&1 \
+     | diff ${OUTP_DIR}/$*.out - \
+     > $@ ; \
 	if [ $$? = 0 ]; then echo "OK"; else echo "FAILED:"; cat $@; fi
 
 ${OUTP_DIR}/%.out: ${TEST_MODULE} ${TEST_DIR}/%.inp
