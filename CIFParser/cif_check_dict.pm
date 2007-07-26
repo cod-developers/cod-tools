@@ -37,6 +37,9 @@ sub HelpMessage;
 # subroutine to extract tags from CIFfile array
 sub getTags;
 
+# subroutine to extract tags from data block array
+sub getTagsSData;
+
 #
 # main program code
 #
@@ -84,7 +87,9 @@ if(@ARGV > 1)
 	my $filen = 0;
 	while($filen < @ARGV)
 	{
-		push(@{$CIFtags}, getTags($CIFfile->[$filen]));
+		push( @{$CIFtags}, { kind => 'DATAFILE',
+				name => $ARGV[$filen],
+				content => getTags( @{$CIFfile}[$filen]->{content} ) } );
 		$filen++;
 	}
 } else {
@@ -120,46 +125,57 @@ sub getTags
 {
 	my $file = shift;
 	my $size = scalar @$file;
-	my @tags;
+	my $tags;
 	if($size > 1)
 	{
 		my $datan = 0;
 		while($datan < $size)
 		{
+			push( @{$tags}, getTagsSData( $file->[$datan] ) );
 			$datan++;
 		}
 	} else {
-		my $dataname = $file->[0]->{name};
-		my $noitems = scalar @{$file->[0]->{content}};
-		my $content = $file->[0]->{content};
-		for(my $i = 0; $i < $noitems; $i++)
-		{
-			my $item = $content->[$i];
-			if($item->{kind} eq 'TAG')
-			{
-				push(@tags, $item->{name});
-			} elsif($item->{kind} eq 'loop') {
-				foreach my $tag (@{$item->{name}})
-				{
-					push( @tags, $tag );
-				}
-			} elsif($item->{kind} eq 'SAVE') {
-				my $savetags = getTags( [$item] );
-				foreach my $tag ( @$savetags )
-				{
-					push(@tags, $tag);
-				}
-			} else {
-				die("ERROR: file contains elements, not handled by ".
-				"this module!\n");
-			}
-		}
+		$tags = getTagsSData($file->[0]);
 	}
 	if( $quiet == 0 )
 	{
 		print "Got following tags from file:\n";
-		showRef(\@tags);
+		showRef($tags);
 		print "\n";
 	}
-	return \@tags;
+	return $tags;
+}
+
+sub getTagsSData
+{
+	my $data = shift;
+	my @tags;
+	my $dataname = $data->{name};
+	my $noitems = scalar @{$data->{content}};
+	my $content = $data->{content};
+	for(my $i = 0; $i < $noitems; $i++)
+	{
+		my $item = $content->[$i];
+		if( $item->{kind} eq 'TAG' || $item->{kind} eq 'LOCAL' )
+		{
+			push(@tags, $item->{name});
+		} elsif($item->{kind} eq 'loop') {
+			foreach my $tag (@{$item->{name}})
+			{
+				push( @tags, $tag );
+			}
+		} elsif($item->{kind} eq 'SAVE') {
+			my $savetags = getTagsSData( $item );
+			foreach my $tag ( @{$savetags->{content}} )
+			{
+				push(@tags, $tag);
+			}
+		} else {
+			die("ERROR: file contains elements, not handled by ".
+			"this module!\n");
+		}
+	}
+	return { kind => 'DATATAGS',
+				name => $dataname,
+				content => \@tags };
 }
