@@ -50,17 +50,18 @@ Getopt::Long::GetOptions
 # parse CIF files. If none is passed - display help message
 if(@ARGV > 0)
 {
-	my @CIFfile = ();
+	my $CIFfile;
 	if(@ARGV > 1)
 	{
 		while(my $i < @ARGV)
 		{
-			push(@CIFfile, $parser->Run($ARGV[$i]));
+			push(@{$CIFfile}, $parser->Run($ARGV[$i]));
 			$i++;
 		}
 	} else {
-		my @CIFfile = $parser->CIFParser::Run($ARGV[0]);
+		$CIFfile = $parser->Run($ARGV[0]);
 	}
+	showRef($CIFfile);
 } else {
 	HelpMessage();
 }
