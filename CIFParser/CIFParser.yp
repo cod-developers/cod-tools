@@ -22,7 +22,7 @@ my $SVNID = '$Id$';
 # 1 - only YAPP output (type -> value)
 # 2 - lex & yapp output
 # 3 - generated array dump
-my $debug = 0;
+$CIFParser::debug = 3;
 %}
 # --------------------------------------------------------------
 
@@ -35,10 +35,11 @@ cif_file
 	:	#empty
 	|	data_block_list
 		{
-			if($debug >= 3)
+			if($CIFParser::debug >= 3)
 			{
 				showRef($_[1]);
 			}
+			$_[0]->{USER}->{CIFfile} = $_[1];
 		}
 	|	data_item
 		{
@@ -157,7 +158,7 @@ cif_entry
 					type => $_[2]->{type}
 				};
 			}
-			if($debug >= 1 && $debug <= 2)
+			if($CIFParser::debug >= 1 && $CIFParser::debug <= 2)
 			{
 				showRef($val);
 			}
@@ -181,7 +182,7 @@ cif_entry
 					type => $_[3]->{type}
 				};
 			}
-			if($debug >= 1 && $debug <= 2)
+			if($CIFParser::debug >= 1 && $CIFParser::debug <= 2)
 			{
 				showRef($val);
 			}
@@ -252,20 +253,20 @@ save_block
 cif_value
 	:	string
 		{	print $_[1]->{type} . "\t->\t"
-				. $_[1]->{value} . "\n" if( $debug >= 1 && $debug <= 2) ;
+				. $_[1]->{value} . "\n" if( $CIFParser::debug >= 1 && $CIFParser::debug <= 2) ;
 			$_[1];
 		}
 	|	number
 		{	print $_[1]->{type} . "\t\t->\t"
 				. $_[1]->{value} . " -- "
 				. $_[1]->{precision}
-				. "\n" if( $debug >= 1 && $debug <= 2);
+				. "\n" if( $CIFParser::debug >= 1 && $CIFParser::debug <= 2);
 			$_[1];
 		}
 	|	textfield
 		{	print "TFIELD\t\t->\t" .
 				$_[1]->{value} . "\n"
-				if( $debug >= 1 && $debug <= 2);
+				if( $CIFParser::debug >= 1 && $CIFParser::debug <= 2);
 			$_[1];
 		}
 ;
@@ -431,7 +432,7 @@ my $FLOAT		=	qr/(?: (?: $FLOAT11 | $FLOAT21 | $FLOAT31))/six;
 		advance_token($parser);
 	}
 		
-	if($debug >= 2 && $debug < 3)
+	if($CIFParser::debug >= 2 && $CIFParser::debug < 3)
 	{
 		print ">>> '", $parser->YYData->{INPUT}, "'\n";
 	}
@@ -621,7 +622,7 @@ sub Run
 {
 	my($self) = shift;
 	$| = 1;
-	if( $debug >= 2 && $debug < 3)
+	if( $CIFParser::debug >= 2 && $CIFParser::debug < 3)
 	{
 		$self->YYParse( yylex => \&_Lexer,
 				yyerror => \&_Error,
@@ -632,14 +633,15 @@ sub Run
 	if( $self->YYNberr() == 0 )
 	{
 		print "File syntax is CORRECT!\n";
+		return $self->{USER}->{CIFfile};
 	} else {
 		print "Syntax check failed.\n";
+		return 2;
 	}
 
 }
 
-my($prog) = new parse;
-$prog->Run;
+return 1;
 
 __END__
 CIF structure is stored in parser's object YYData VARS hash in this way:
