@@ -15,6 +15,7 @@
 %{
 use warnings;
 use ShowStruct;
+use FileHandle;
 
 $CIFParser::version = '1.0';
 
@@ -383,7 +384,7 @@ sub _Error
 sub _Lexer
 {
 	my($parser) = shift;
-
+	
 	#trimming tokenized comments
 	if( defined $parser->YYData->{INPUT} &&
 		$parser->YYData->{INPUT} =~
@@ -397,7 +398,7 @@ sub _Lexer
 	{
 		do
 		{
-			$parser->YYData->{INPUT} = <STDIN>;
+			$parser->YYData->{INPUT} = <$CIFParser::FILEIN>;
 			$parser->YYData->{VARS}{lines}++;
 		} until ( !defined $parser->YYData->{INPUT} ||
 			$parser->YYData->{INPUT} !~ m/^(\s*(#.*)?)$/s );
@@ -409,7 +410,7 @@ sub _Lexer
 			$parser->YYData->{VARS}{current_line} = 
 				$parser->YYData->{INPUT};
 			$parser->YYData->{VARS}{token_pos} = 0;
-		} else {			
+		} else {
 			return('',undef);
 		}
 	}
@@ -481,7 +482,7 @@ my $FLOAT		=	qr/(?: (?: $FLOAT11 | $FLOAT21 | $FLOAT31))/six;
 				$tfield = $1 . "\n";
 				while( 1 )
 				{
-					my $line = <STDIN>;
+					my $line = <$CIFParser::FILEIN>;
 					if( defined $line )
 					{
 						chomp $line;
@@ -623,6 +624,7 @@ sub advance_token
 sub Run
 {
 	my($self) = shift;
+	$CIFParser::FILEIN = new FileHandle shift;
 	$| = 1;
 	if( $CIFParser::debug >= 2 && $CIFParser::debug < 3)
 	{
@@ -635,9 +637,11 @@ sub Run
 	if( $self->YYNberr() == 0 )
 	{
 		print "File syntax is CORRECT!\n";
+		undef $CIFParser::FILEIN;
 		return $self->{USER}->{CIFfile};
 	} else {
 		print "Syntax check failed.\n";
+		undef $CIFParser::FILEIN;
 		return 2;
 	}
 }
