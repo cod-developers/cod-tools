@@ -228,14 +228,20 @@ loop_values
 			my $val = $_[1];
 			push( @{$val->{value}}, $_[2]->{value} );
 			push( @{$val->{type}}, $_[2]->{type} );
-			push( @{$val->{precision}}, $_[2]->{precision} );
+			if( defined $_[2]->{precision} )
+			{
+				push( @{$val->{precision}}, $_[2]->{precision} );
+			}
 			return $val;
 		}
 	|	cif_value
 		{
 			my $val = { type => [ $_[1]->{type} ] };
 			push( @{$val->{value}}, $_[1]->{value} );
-			push( @{$val->{precision}}, $_[1]->{precision} );
+			if( defined $_[1]->{precision} )
+			{
+				push( @{$val->{precision}}, $_[1]->{precision} );
+			}
 			return $val;
 		}
 ;
@@ -636,11 +642,17 @@ sub Run
 	}
 	if( $self->YYNberr() == 0 )
 	{
-		print "File syntax is CORRECT!\n";
+		if( $CIFParser::debug >= 1 && $CIFParser::debug < 3)
+	    {
+			print "File syntax is CORRECT!\n";
+		}
 		undef $CIFParser::FILEIN;
 		return $self->{USER}->{CIFfile};
 	} else {
-		print "Syntax check failed.\n";
+		if( $CIFParser::debug >= 1 && $CIFParser::debug < 3)
+	    {
+			print "Syntax check failed.\n";
+		}
 		undef $CIFParser::FILEIN;
 		return 2;
 	}
