@@ -40,6 +40,10 @@ sub getTags;
 # subroutine to extract tags from data block array
 sub getTagsSData;
 
+# subroutine to be used then printing information (debug output could be 
+# made using print STDOUT|STDERR "")
+sub output;
+
 #
 # main program code
 #
@@ -179,4 +183,24 @@ sub getTagsSData
 	return { kind => 'DATATAGS',
 				name => $dataname,
 				content => \@tags };
+}
+
+sub output
+{
+	$data = shift;
+	if( !defined($outputFile) || (length($outputFile) == 0) )
+	{
+		print $data;
+	} else {
+		my $fh = new FileHandle "> $output";
+		if( defined $fh )
+		{
+			print $fh $data;
+			$fh->close;
+		} else {
+			die("Please check your output file ["
+				. $outputFile . "]. There was an error"
+				. " openning it!\n");
+		}
+	}
 }
