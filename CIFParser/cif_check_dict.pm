@@ -72,6 +72,7 @@ if(@ARGV > 0)
 	}
 } else {
 	HelpMessage();
+	exit();
 }
 
 if($quiet == 0)
