@@ -44,6 +44,9 @@ sub getTagsSData;
 # made using print STDOUT|STDERR "")
 sub output;
 
+# subroutine to convert reference (r. to array, hash, scalar) to scalar
+sub refToScalar;
+
 #
 # main program code
 #
@@ -100,6 +103,8 @@ if(@ARGV > 1)
 } else {
 	$CIFtags = getTags($CIFfile);
 }
+
+output($CIFtags);
 
 #
 # here goes all subroutines bodies
@@ -187,14 +192,15 @@ sub getTagsSData
 
 sub output
 {
-	$data = shift;
+	my $data = shift;
 	if( !defined($outputFile) || (length($outputFile) == 0) )
 	{
 		print $data;
 	} else {
-		my $fh = new FileHandle "> $output";
+		my $fh = new FileHandle "> $outputFile";
 		if( defined $fh )
 		{
+			$data = refToScalar($data, 0);
 			print $fh $data;
 			$fh->close;
 		} else {
@@ -203,4 +209,46 @@ sub output
 				. " openning it!\n");
 		}
 	}
+}
+
+sub refToScalar
+{
+	my $reference = shift;
+	my $indent;
+	my $value = '';
+	my $type = ref($reference);
+	if( !ref($reference) )
+	{
+		return $reference;
+	}
+	if( $type eq "ARRAY" )
+	{
+		foreach my $entry ( @{$reference} )
+		{
+			if( !ref($entry) )
+			{
+				$value .= $entry . " | ";
+			} else {
+				$value .= refToScalar($entry)
+					. "\n";
+			}
+		}
+	} elsif ( $type eq "HASH" )
+	{
+		foreach my $key ( keys %{$reference} )
+		{
+			if( !ref($reference->{$key}) )
+			{
+				$value .= $reference->{$key} . " \\ ";
+			} else {
+				$value .= refToScalar($reference->{$key})
+					. "\n";
+			}
+		}
+	} elsif ( $type eq "SCALAR" ) {
+		$value .= $$reference;
+	} else {
+		return $value;
+	}
+	return $value;
 }
