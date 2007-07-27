@@ -21,6 +21,7 @@ my $CIFfile;
 my $CIFtags;
 my $outputFile;
 my $dictFile;
+my $dictTags;
 my $quiet = 0;
 my $parser = new CIFParser;
 
@@ -47,6 +48,9 @@ sub output;
 # subroutine to convert reference (r. to array, hash, scalar) to scalar
 sub refToScalar;
 
+# subroutine to extract tags from dictionary (parsed using CIFParser)
+sub getDict;
+
 #
 # main program code
 #
@@ -60,6 +64,14 @@ Getopt::Long::GetOptions
 		"no-quiet"		=> sub { $quiet = 0; },
 		"help|?"		=> sub { HelpMessage() }
 	);
+
+if( defined($dictFile) )
+{
+	$dictTags = getDict($dictFile = $parser->Run($dictFile));
+} else {
+	$dictFile = "cif_core.dic";
+	$dictTags = getDict($dictFile = $parser->Run($dictFile));
+}
 
 # parse CIF files. If none is passed - display help message
 if(@ARGV > 0)
@@ -104,7 +116,12 @@ if(@ARGV > 1)
 	$CIFtags = getTags($CIFfile);
 }
 
-output($CIFtags);
+if( $quiet == 0 )
+{
+	print "Got following tags from file:\n";
+	showRef($CIFtags);
+	print "\n";
+}
 
 #
 # here goes all subroutines bodies
@@ -146,12 +163,6 @@ sub getTags
 		}
 	} else {
 		$tags = getTagsSData($file->[0]);
-	}
-	if( $quiet == 0 )
-	{
-		print "Got following tags from file:\n";
-		showRef($tags);
-		print "\n";
 	}
 	return $tags;
 }
@@ -251,4 +262,84 @@ sub refToScalar
 		return $value;
 	}
 	return $value;
+}
+
+sub getDict
+{
+	my $dictF = shift;
+	my $size = scalar @$dictF;
+	my $tags;
+	my $datan = 0;
+	while($datan < $size)
+	{
+		my $convert = getDTagsSData( $dictF->[$datan] );
+		if( $convert )
+		{
+			push( @{$tags}, $convert );
+		}
+		$datan++;
+	}
+	return $tags;
+}
+
+sub getDTagsSData
+{
+	my $data = shift;
+	if( !($data->{name} eq "on_this_dictionary") )
+	{
+		my $tag;
+		my $dataname = $data->{name};
+		my $noitems = scalar @{$data->{content}};
+		my $content = $data->{content};
+		my $noreturn = 0;
+		for(my $i = 0; $i < $noitems; $i++)
+		{
+			my $item = $content->[$i];
+			if( $item->{kind} eq 'TAG' || $item->{kind} eq 'LOCAL' )
+			{
+				if( substr($item->{value},1) eq $dataname )
+				{
+					$tag = $item->{value};
+					print $item->{value} . "\t\t" . $dataname . "\n";
+				} elsif ( $item->{name} eq '_type' &&
+							$item->{value} eq 'null' ) {
+					print $dataname . "\n";
+					$noreturn = 1;
+				}
+			} elsif($item->{kind} eq 'loop') {
+				return 0;
+			} elsif($item->{kind} eq 'SAVE') {
+				my $savetags = getDTagsSData( $item );
+				foreach my $tag ( @{$savetags->{content}} )
+				{
+					# check if not 0; in this case we got tag
+					# which we do not want
+					if( $tag )
+					{
+						if( substr($item->{value},1) eq $dataname )
+						{
+							$tag = $item->{value};
+							print $item->{value} . "\t\t" . $dataname . "\n";
+						} elsif ( $item->{name} eq '_type' &&
+									$item->{value} eq 'null' ) {
+							print $dataname . "\n";
+							$noreturn = 1;
+						}
+					}
+				}
+			} else {
+				die("ERROR: file contains elements, not handled by ".
+				"this module!\n");
+			}
+		}
+		if( $noreturn )
+		{
+			return 0;
+		} else {
+			return $tag;
+		}
+	} else {
+		return 0;
+	}
+	return 0;
 }
