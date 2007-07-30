@@ -51,6 +51,13 @@ sub refToScalar;
 # subroutine to extract tags from dictionary (parsed using CIFParser)
 sub getDict;
 
+# subroutine to check if tags in data block provided are defined within 
+# dictionary. It takes arguments:
+#	- reference to data block array
+#	- data block index (of array @{$CIFfile})
+#	- data file index (of array @ARGV)
+sub checkTags;
+
 #
 # main program code
 #
@@ -67,16 +74,21 @@ Getopt::Long::GetOptions
 
 if( defined($dictFile) )
 {
-	$dictTags = getDict($dictFile = $parser->Run($dictFile));
+	my $dt = getDict($dictFile = $parser->Run($dictFile));
+	%{$dictTags} = map { lc($_) => $_ } @{$dt};
 } else {
 	$dictFile = "cif_core.dic";
-	$dictTags = getDict($dictFile = $parser->Run($dictFile));
+	my $dt = getDict($dictFile = $parser->Run($dictFile));
+	%{$dictTags} = map { lc($_) => $_ } @{$dt};
 }
 
 if($quiet == 0)
 {
 	print "Got dictionary tags:\n";
-	showRef($dictTags);
+	foreach my $key ( keys %{$dictTags} )
+	{
+	    print $key . "\t-->\t" . $dictTags->{$key} . "\n";
+    }
 	print "\n";
 }
 
@@ -84,50 +96,47 @@ if($quiet == 0)
 if(@ARGV > 0)
 {
 	if(@ARGV > 1)
-	{
+	{ # we have multiple files
 		my $filen = 0;
 		while($filen < @ARGV)
-		{
-			push(@{$CIFfile}, { kind => 'FILE',
-								content => $parser->Run($ARGV[$filen]),
-								name => $ARGV[$filen] });
+		{ # iterate through files
+			$CIFtags = getTags($parser->Run($ARGV[$filen]));
+			if( $quiet == 0 )
+			{
+				print "Got following tags from file:\n";
+				showRef($CIFtags);
+				print "\n";
+			}
+			if( scalar @{$CIFtags} > 1 )
+			{ # more than one data block
+				for( my $i = 0; $i < ( scalar (@{$CIFtags}) ); $i++)
+				{ # iterate through data block
+					my $data = @{$CIFtags}[$i]->{content};
+					checkTags($data, $i, $filen);
+				}
+			} else { # single data block
+				my $data = @{$CIFtags}[0]->{content};
+				checkTags($data, 0, $filen);
+			}
 			$filen++;
 		}
-	} else {
-		$CIFfile = $parser->Run($ARGV[0]);
+	} else { # we have single file
+		$CIFtags = getTags($parser->Run($ARGV[0]));
+		if( scalar @{$CIFtags} > 1 )
+		{ # more than one data block
+			for( my $i = 0; $i < ( scalar (@{$CIFtags}) ); $i++)
+			{ # iterate through data block
+				my $data = @{$CIFtags}[$i]->{content};
+				checkTags($data, $i, 0);
+			}
+		} else { # single data block
+			my $data = @{$CIFtags}[0]->{content};
+			checkTags($data, 0, 0);
+		}
 	}
 } else {
 	HelpMessage();
 	exit();
-}
-
-if($quiet == 0)
-{
-	print "Got structure for file(s) parsed:\n";
-	showRef($CIFfile);
-	print "\n";
-}
-
-# take tags from parsed CIF file
-if(@ARGV > 1)
-{
-	my $filen = 0;
-	while($filen < @ARGV)
-	{
-		push( @{$CIFtags}, { kind => 'DATAFILE',
-				name => $ARGV[$filen],
-				content => getTags( @{$CIFfile}[$filen]->{content} ) } );
-		$filen++;
-	}
-} else {
-	$CIFtags = getTags($CIFfile);
-}
-
-if( $quiet == 0 )
-{
-	print "Got following tags from file:\n";
-	showRef($CIFtags);
-	print "\n";
 }
 
 #
@@ -169,7 +178,7 @@ sub getTags
 			$datan++;
 		}
 	} else {
-		$tags = getTagsSData($file->[0]);
+		$tags = [getTagsSData($file->[0])];
 	}
 	return $tags;
 }
@@ -347,4 +356,38 @@ sub getDTagsSData
 		return 0;
 	}
 	return 0;
+}
+
+sub checkTags
+{
+	my $data = shift;
+	my $i = shift;
+	my $filen = shift;
+	my %lcCIFtags;
+	%lcCIFtags = map { lc($_) => $_ } @{$data};
+	if( $quiet == 0 )
+	{
+		print "Got following tags for file "
+			. $ARGV[$filen] . ", data block "
+			. @{$CIFtags}[$i]->{name} . ":\n";
+		foreach my $key ( keys %lcCIFtags )
+		{
+		    print $key . "\t-->\t"
+		    		. $lcCIFtags{$key}
+		    		. "\n";
+	    }
+	    print "\n";
+	}
+	foreach my $key ( keys %lcCIFtags )
+	{
+		if( !defined $dictTags->{$key} )
+		{
+			print <<END_M;
+Got tag '$key' which is not in dictionary provided. This tag was found 
+in file '$ARGV[$filen]', data block '@{$CIFtags}[$i]->{name}'.
+Please check this tag - it might be wrong.
+
+END_M
+		}
+	}
 }
