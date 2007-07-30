@@ -73,6 +73,13 @@ if( defined($dictFile) )
 	$dictTags = getDict($dictFile = $parser->Run($dictFile));
 }
 
+if($quiet == 0)
+{
+	print "Got dictionary tags:\n";
+	showRef($dictTags);
+	print "\n";
+}
+
 # parse CIF files. If none is passed - display help message
 if(@ARGV > 0)
 {
@@ -300,10 +307,8 @@ sub getDTagsSData
 				if( substr($item->{value},1) eq $dataname )
 				{
 					$tag = $item->{value};
-					print $item->{value} . "\t\t" . $dataname . "\n";
 				} elsif ( $item->{name} eq '_type' &&
 							$item->{value} eq 'null' ) {
-					print $dataname . "\n";
 					$noreturn = 1;
 				}
 			} elsif($item->{kind} eq 'loop') {
