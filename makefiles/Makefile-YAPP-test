@@ -22,7 +22,12 @@ all: run
 
 run: ${PM_FILES} ${WORK_TESTS}
 	@for file in ${WORK_TESTS}; do \
-		( echo === $$file ===; set -x; perl $< < $$file ); \
+	( \
+		echo === $$file ===; \
+		set -x; \
+		perl -e 'use ${TEST_MODULE:%.pm=%}; my $$p=new ${TEST_MODULE:%.pm=%}; $$p->Run' \
+			< $$file \
+	); \
 	done
 
 test tests: ${DIFF_FILES}
