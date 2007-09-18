@@ -36,7 +36,7 @@ out outputs: ${OUTP_FILES}
 
 ${OUTP_DIR}/%.diff: ${TEST_MODULE} ${TEST_DIR}/%.inp
 	-@printf "%-30s " "$*:" ; \
-     perl -e 'use ${TEST_MODULE:%.pm=%}; my $$p=new parse; $$p->Run' \
+     perl -e 'use ${TEST_MODULE:%.pm=%}; my $$p=new ${TEST_MODULE:%.pm=%}; $$p->Run' \
          < ${word 2, $^} 2>&1 \
      | diff ${OUTP_DIR}/$*.out - \
      > $@ ; \
