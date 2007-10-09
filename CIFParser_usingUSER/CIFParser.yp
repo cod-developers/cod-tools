@@ -211,7 +211,7 @@ loop
 			} else {
 				$_[0]->YYData->{ERRMSG} = "Wrong number of elements in"
 					. " loop block starting in line "
-					. $_[0]->YYData->{VARS}{loop_begin}
+					. $_[0]->{USER}->{VARS}{loop_begin}
 					. "!\n";
 				$_[0]->YYError();
 			}
@@ -390,10 +390,10 @@ sub _Error
 		return;
 	};
 	print "Analyzed symbols line containing bogus data (num. " . 
-		$_[0]->YYData->{VARS}{lines} . " pos. " . 
-		$_[0]->YYData->{VARS}{token_prev_pos} . ") was:\n" . 
-		$_[0]->YYData->{VARS}{current_line} . "\n";
-	print " " x $_[0]->YYData->{VARS}{token_prev_pos};
+		$_[0]->{USER}->{VARS}{lines} . " pos. " . 
+		$_[0]->{USER}->{VARS}{token_prev_pos} . ") was:\n" . 
+		$_[0]->{USER}->{VARS}{current_line} . "\n";
+	print " " x $_[0]->{USER}->{VARS}{token_prev_pos};
 	print "^\n";
 }
 
@@ -402,30 +402,30 @@ sub _Lexer
 	my($parser) = shift;
 	
 	#trimming tokenized comments
-	if( defined $parser->YYData->{INPUT} &&
-		$parser->YYData->{INPUT} =~
+	if( defined $parser->{USER}->{INPUT} &&
+		$parser->{USER}->{INPUT} =~
 			s/^(\s*#.*)$//s )
 	{
 		advance_token($parser);
 	}
 
-	if( !defined $parser->YYData->{INPUT} ||
-		$parser->YYData->{INPUT} =~ m/^\s*$/ )
+	if( !defined $parser->{USER}->{INPUT} ||
+		$parser->{USER}->{INPUT} =~ m/^\s*$/ )
 	{
 		do
 		{
-			$parser->YYData->{INPUT} = <$CIFParser::FILEIN>;
-			$parser->YYData->{VARS}{lines}++;
-		} until ( !defined $parser->YYData->{INPUT} ||
-			$parser->YYData->{INPUT} !~ m/^(\s*(#.*)?)$/s );
-		if( defined $parser->YYData->{INPUT} )
+			$parser->{USER}->{INPUT} = <$CIFParser::FILEIN>;
+			$parser->{USER}->{VARS}{lines}++;
+		} until ( !defined $parser->{USER}->{INPUT} ||
+			$parser->{USER}->{INPUT} !~ m/^(\s*(#.*)?)$/s );
+		if( defined $parser->{USER}->{INPUT} )
 		{
-			chomp $parser->YYData->{INPUT};
-			$parser->YYData->{INPUT}=~s/\r$//g;
-			$parser->YYData->{INPUT}=~s/\t/    /g;
-			$parser->YYData->{VARS}{current_line} = 
-				$parser->YYData->{INPUT};
-			$parser->YYData->{VARS}{token_pos} = 0;
+			chomp $parser->{USER}->{INPUT};
+			$parser->{USER}->{INPUT}=~s/\r$//g;
+			$parser->{USER}->{INPUT}=~s/\t/    /g;
+			$parser->{USER}->{VARS}{current_line} = 
+				$parser->{USER}->{INPUT};
+			$parser->{USER}->{VARS}{token_pos} = 0;
 		} else {
 			return('',undef);
 		}
@@ -446,17 +446,17 @@ my $FLOAT31		=	qr/(?: $INTEGER \. $EXPONENT ?)/ix;
 my $FLOAT		=	qr/(?: (?: $FLOAT11 | $FLOAT21 | $FLOAT31))/six;
 
 	#matching white space characters
-	if( $parser->YYData->{INPUT} =~ s/(\s*)//s )
+	if( $parser->{USER}->{INPUT} =~ s/(\s*)//s )
 	{
 		advance_token($parser);
 	}
 		
 	if($CIFParser::debug >= 2 && $CIFParser::debug < 3)
 	{
-		print ">>> '", $parser->YYData->{INPUT}, "'\n";
+		print ">>> '", $parser->{USER}->{INPUT}, "'\n";
 	}
 
-	for ($parser->YYData->{INPUT})
+	for ($parser->{USER}->{INPUT})
 	{
 		#matching floats:
                 if( s/^(?: ($FLOAT (?:\([0-9]+\))?) (\s) )/$2/six
@@ -487,14 +487,14 @@ my $FLOAT		=	qr/(?: (?: $FLOAT11 | $FLOAT21 | $FLOAT31))/six;
 			return('SQSTRING', $1);
 		}
 		#matching text field
-		if( $parser->YYData->{VARS}{token_pos} == 0 )
+		if( $parser->{USER}->{VARS}{token_pos} == 0 )
 		{
 			if( s/^;(${ANY_PRINT_CHAR}*)$//s )
 			{
 				my $eotf = 0;
 				my $tfield;	#all textfield
 				my $tf_line_begin =
-					$parser->YYData->{VARS}{lines};
+					$parser->{USER}->{VARS}{lines};
 				$tfield = $1 . "\n";
 				while( 1 )
 				{
@@ -504,28 +504,28 @@ my $FLOAT		=	qr/(?: (?: $FLOAT11 | $FLOAT21 | $FLOAT31))/six;
 						chomp $line;
 						$line=~s/\r$//g;
 						$line=~s/\t/    /g;
-						$parser->YYData->{VARS}{current_line} = 
+						$parser->{USER}->{VARS}{current_line} = 
 							$line;
-						$parser->YYData->{VARS}{lines}++;
+						$parser->{USER}->{VARS}{lines}++;
 						if( $line =~
 							s/^;//s )
 						{
 							if( defined $line )
 							{
-							$parser->YYData->{INPUT}
+							$parser->{USER}->{INPUT}
 								= $line;
-							$parser->YYData->{VARS}{token_pos} = 1;
+							$parser->{USER}->{VARS}{token_pos} = 1;
 							}
 							last;
 						} else {
 							$tfield .= $line;
 						}
 					} else {
-						undef $parser->YYData->{INPUT};
+						undef $parser->{USER}->{INPUT};
 						last;
 					}
 				}
-				if( !defined $parser->YYData->{INPUT} )
+				if( !defined $parser->{USER}->{INPUT} )
 				{
 					$parser->YYData->{ERRMSG} = <<END_M;
 ERROR encountered while in text field, which started in line $tf_line_begin.
@@ -549,10 +549,10 @@ END_M
 			advance_token($parser);
 			$parser->YYData->{ERRMSG} = "GLOBAL_ symbol detected" .
 				" in line " .
-				$parser->YYData->{VARS}{lines} .
+				$parser->{USER}->{VARS}{lines} .
 				", pos. " .
-				$parser->YYData->{VARS}{token_prev_pos} . ":\n--\n" .
-				$parser->YYData->{VARS}{current_line} . "\n--\n" .
+				$parser->{USER}->{VARS}{token_prev_pos} . ":\n--\n" .
+				$parser->{USER}->{VARS}{current_line} . "\n--\n" .
 				"It is not acceptable in this version!\n";
 			$parser->YYError();
 			return('GLOBAL_', $1);
@@ -575,10 +575,10 @@ END_M
 			advance_token($parser);
 			$parser->YYData->{ERRMSG} = "STOP_ symbol detected" .
 				" in line " .
-				$parser->YYData->{VARS}{lines} .
+				$parser->{USER}->{VARS}{lines} .
 				", pos. " .
-				$parser->YYData->{VARS}{token_prev_pos} . ":\n--\n" .
-				$parser->YYData->{VARS}{current_line} . "\n--\n" .
+				$parser->{USER}->{VARS}{token_prev_pos} . ":\n--\n" .
+				$parser->{USER}->{VARS}{current_line} . "\n--\n" .
 				"It is not acceptable in this version!\n";
 			$parser->YYError();
 			return('STOP_', $1);
@@ -593,8 +593,8 @@ END_M
 		if( s/^(loop_)//si )
 		{
 			advance_token($parser);
-			$parser->YYData->{VARS}{loop_begin} =
-					$parser->YYData->{VARS}{lines};
+			$parser->{USER}->{VARS}{loop_begin} =
+					$parser->{USER}->{VARS}{lines};
 			return('LOOP_', $1);
 		}
 		#matching TAG's
@@ -604,7 +604,7 @@ END_M
 			return('TAG', $1);
 		}
 		#matching unquoted strings
-		if( $parser->YYData->{VARS}{token_pos} == 0 )
+		if( $parser->{USER}->{VARS}{token_pos} == 0 )
 		{ #UQSTRING at first pos. of line
 			if( s/^(?: ( ($ORDINARY_CHAR | \[ )
 				($NON_BLANK_CHAR)*) )
@@ -634,9 +634,9 @@ END_M
 sub advance_token
 {
 	my $parser = shift;
-	$parser->YYData->{VARS}{token_prev_pos} =
-		$parser->YYData->{VARS}{token_pos};
-	$parser->YYData->{VARS}{token_pos} += length($1);
+	$parser->{USER}->{VARS}{token_prev_pos} =
+		$parser->{USER}->{VARS}{token_pos};
+	$parser->{USER}->{VARS}{token_pos} += length($1);
 }
 
 sub Run
@@ -676,8 +676,8 @@ sub Run
 return 1;
 
 __END__
-CIF structure is stored in parser's object YYData VARS hash in this way:
-$parser->YYData->{VARS}{[CIF_ARRAY]}
+CIF structure is stored in parser's object {USER} VARS hash in this way:
+$parser->{USER}->{VARS}{[CIF_ARRAY]}
 
 Here CIF_ARRAY is array of elements:
         kind
@@ -714,7 +714,7 @@ values. It could be a single value, or an array of values - array of the
 same size, as array for 'value' field.
 
 Example with DATA block having a SAVE block and a loop:
-$parser->YYDATA->{VARS}{myCIF} =
+$parser->{USER}->{VARS}{myCIF} =
 [
         {
 #DATA_compound1
