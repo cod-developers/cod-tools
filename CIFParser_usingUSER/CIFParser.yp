@@ -404,25 +404,25 @@ sub _Lexer
 	#trimming tokenized comments
 	if( defined $parser->{USER}->{INPUT} &&
 		$parser->{USER}->{INPUT} =~
-			s/^(\s*#.*)$//s )
+			s/^(\s*#.*)$//so )
 	{
 		advance_token($parser);
 	}
 
 	if( !defined $parser->{USER}->{INPUT} ||
-		$parser->{USER}->{INPUT} =~ m/^\s*$/ )
+		$parser->{USER}->{INPUT} =~ m/^\s*$/o )
 	{
 		do
 		{
 			$parser->{USER}->{INPUT} = <$CIFParser::FILEIN>;
 			$parser->{USER}->{VARS}{lines}++;
 		} until ( !defined $parser->{USER}->{INPUT} ||
-			$parser->{USER}->{INPUT} !~ m/^(\s*(#.*)?)$/s );
+			$parser->{USER}->{INPUT} !~ m/^(\s*(#.*)?)$/so );
 		if( defined $parser->{USER}->{INPUT} )
 		{
 			chomp $parser->{USER}->{INPUT};
-			$parser->{USER}->{INPUT}=~s/\r$//g;
-			$parser->{USER}->{INPUT}=~s/\t/    /g;
+			$parser->{USER}->{INPUT}=~s/\r$//go;
+			$parser->{USER}->{INPUT}=~s/\t/    /go;
 			$parser->{USER}->{VARS}{current_line} = 
 				$parser->{USER}->{INPUT};
 			$parser->{USER}->{VARS}{token_pos} = 0;
@@ -446,7 +446,7 @@ my $FLOAT31		=	qr/(?: $INTEGER \. $EXPONENT ?)/ix;
 my $FLOAT		=	qr/(?: (?: $FLOAT11 | $FLOAT21 | $FLOAT31))/six;
 
 	#matching white space characters
-	if( $parser->{USER}->{INPUT} =~ s/(\s*)//s )
+	if( $parser->{USER}->{INPUT} =~ s/(\s*)//so )
 	{
 		advance_token($parser);
 	}
@@ -459,29 +459,29 @@ my $FLOAT		=	qr/(?: (?: $FLOAT11 | $FLOAT21 | $FLOAT31))/six;
 	for ($parser->{USER}->{INPUT})
 	{
 		#matching floats:
-                if( s/^(?: ($FLOAT (?:\([0-9]+\))?) (\s) )/$2/six
-                        || s/^($FLOAT (?:\([0-9]+\))?)$//six )
+                if( s/^(?: ($FLOAT (?:\([0-9]+\))?) (\s) )/$2/sixo
+                        || s/^($FLOAT (?:\([0-9]+\))?)$//sixo )
 		{
 			advance_token($parser);
 			return('FLOAT', $1);
 		}
 		#matching integers:
-                if( s/^($INTEGER (?:\([0-9]+\))?)(\s)/$2/sx
-                        || s/^($INTEGER (?:\([0-9]+\))?)$//sx )
+                if( s/^($INTEGER (?:\([0-9]+\))?)(\s)/$2/sxo
+                        || s/^($INTEGER (?:\([0-9]+\))?)$//sxo )
 		{
 			advance_token($parser);
 			return('INT', $1);
 		}
 		#matching double quoted strings
-		if( s/^("${ANY_PRINT_CHAR}*")(\s)/$2/s
-			|| s/^("${ANY_PRINT_CHAR}*")$//s )
+		if( s/^("${ANY_PRINT_CHAR}*")(\s)/$2/so
+			|| s/^("${ANY_PRINT_CHAR}*")$//so )
 		{
 			advance_token($parser);
 			return('DQSTRING', $1);
 		}
 		#matching single quoted strings
-		if( s/^('${ANY_PRINT_CHAR}*')(\s*)/$2/s
-			|| s/^('${ANY_PRINT_CHAR}*')$//s )
+		if( s/^('${ANY_PRINT_CHAR}*')(\s*)/$2/so
+			|| s/^('${ANY_PRINT_CHAR}*')$//so )
 		{
 			advance_token($parser);
 			return('SQSTRING', $1);
@@ -489,7 +489,7 @@ my $FLOAT		=	qr/(?: (?: $FLOAT11 | $FLOAT21 | $FLOAT31))/six;
 		#matching text field
 		if( $parser->{USER}->{VARS}{token_pos} == 0 )
 		{
-			if( s/^;(${ANY_PRINT_CHAR}*)$//s )
+			if( s/^;(${ANY_PRINT_CHAR}*)$//so )
 			{
 				my $eotf = 0;
 				my $tfield;	#all textfield
@@ -502,13 +502,13 @@ my $FLOAT		=	qr/(?: (?: $FLOAT11 | $FLOAT21 | $FLOAT31))/six;
 					if( defined $line )
 					{
 						chomp $line;
-						$line=~s/\r$//g;
-						$line=~s/\t/    /g;
+						$line=~s/\r$//go;
+						$line=~s/\t/    /go;
 						$parser->{USER}->{VARS}{current_line} = 
 							$line;
 						$parser->{USER}->{VARS}{lines}++;
 						if( $line =~
-							s/^;//s )
+							s/^;//so )
 						{
 							if( defined $line )
 							{
@@ -538,13 +538,13 @@ END_M
 			}
 		}
 		#matching [local] attribute
-		if( s/^(\[local\])//si )
+		if( s/^(\[local\])//sio )
 		{
 			advance_token($parser);
 			return('LOCAL', $1);
 		}
 		#matching GLOBAL_ field
-		if( s/^(global_.*)$//si )
+		if( s/^(global_.*)$//sio )
 		{
 			advance_token($parser);
 			$parser->YYData->{ERRMSG} = "GLOBAL_ symbol detected" .
@@ -558,19 +558,19 @@ END_M
 			return('GLOBAL_', $1);
 		}
 		#matching SAVE_ head
-		if( s/^(save_${NON_BLANK_CHAR}+)//si )
+		if( s/^(save_${NON_BLANK_CHAR}+)//sio )
 		{
 			advance_token($parser);
 			return('SAVE_HEAD', $1);
 		}
 		#matching SAVE_ foot
-		if( s/^(save_)//si )
+		if( s/^(save_)//sio )
 		{
 			advance_token($parser);
 			return('SAVE_FOOT', $1);
 		}
 		#matching STOP_ field
-		if( s/^(stop_.*)$//si )
+		if( s/^(stop_.*)$//sio )
 		{
 			advance_token($parser);
 			$parser->YYData->{ERRMSG} = "STOP_ symbol detected" .
@@ -584,13 +584,13 @@ END_M
 			return('STOP_', $1);
 		}
 		#matching DATA_ field
-		if( s/^(data_${NON_BLANK_CHAR}+)//si )
+		if( s/^(data_${NON_BLANK_CHAR}+)//sio )
 		{
 			advance_token($parser);
 			return('DATA_', $1);
 		}
 		#matching LOOP_ begining
-		if( s/^(loop_)//si )
+		if( s/^(loop_)//sio )
 		{
 			advance_token($parser);
 			$parser->{USER}->{VARS}{loop_begin} =
@@ -598,7 +598,7 @@ END_M
 			return('LOOP_', $1);
 		}
 		#matching TAG's
-		if( s/^(_${NON_BLANK_CHAR}+)//si )
+		if( s/^(_${NON_BLANK_CHAR}+)//sio )
 		{
 			advance_token($parser);
 			return('TAG', $1);
@@ -608,7 +608,7 @@ END_M
 		{ #UQSTRING at first pos. of line
 			if( s/^(?: ( ($ORDINARY_CHAR | \[ )
 				($NON_BLANK_CHAR)*) )
-				//sx)
+				//sxo )
 			{
 				advance_token($parser);
 				return('UQSTRING', $1);
@@ -616,7 +616,7 @@ END_M
 		} else { #UQSTRING in line
 			if( s/^(?: ( ($ORDINARY_CHAR | ; | \[ )
 				($NON_BLANK_CHAR)*) )
-				//sx )
+				//sxo )
 			{
 				advance_token($parser);
 				return('UQSTRING', $1);
