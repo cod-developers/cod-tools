@@ -1,0 +1,56 @@
+#! /bin/sh
+#!perl -w # --*- Perl -*--
+eval 'exec perl -x $0 ${1+"$@"}'
+    if 0;
+#------------------------------------------------------------------------------
+#$Author: saulius $
+#$Date: 2007-02-04 20:26:13 +0200 (Sun, 04 Feb 2007) $ 
+#$Revision: 71 $
+#$URL: svn+ssh://kolibris.ibt.lt/home/saulius/svn-repositories/cif-tools/trunk/cif_parse $
+#------------------------------------------------------------------------------
+#*
+#  Parse a CIF file
+#**
+
+use strict;
+use lib "./lib/perl5";
+use lib "./CIFParser";
+use CIFParser;
+use ShowStruct;
+
+my $filename = shift(@ARGV);
+
+my $parser = new CIFParser;
+
+my $data = $parser->Run($filename);
+
+
+for my $dataset (@$data) {
+    my @name = (); 
+    my ( $inlist, $list_mandatory ) = ( 0, 0 );
+    for my $tagstruct (@{$dataset->{content}}) {
+	if( $tagstruct->{kind} eq "TAG" and
+	    $tagstruct->{name} eq "_name" ) {
+	    push( @name, $tagstruct->{value} );
+	} elsif( $tagstruct->{kind} eq "loop" ) {
+	    if( grep( /^_name$/, @{$tagstruct->{name}} ) &&
+		int(@{$tagstruct->{name}}) == 1 ) {
+		@name = @{$tagstruct->{value}};
+	    }
+	}
+	if( $tagstruct->{name} eq "_list" ) {
+	    if( $tagstruct->{value} eq "yes" ) {
+		$inlist = 1;
+	    } elsif( $tagstruct->{value} eq "both" ) {
+		$inlist = 2;
+	    }
+	}
+	if( $tagstruct->{name} eq "_list_mandatory" and
+	    $tagstruct->{value} eq "yes" ) {
+	    $list_mandatory = 1;
+	}
+    }
+    for my $name (@name) {
+	print "$inlist\t$list_mandatory\t$name\n";
+    }
+}
