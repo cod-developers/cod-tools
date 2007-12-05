@@ -1,5 +1,5 @@
 #
-# CIF data structure, attempt 2
+# CIF data structure, attempt 3
 #
 
 my @cif = (
@@ -22,43 +22,52 @@ my %cif_datablock = (
 
    values => {
 
-       _tag => "value",
+       _tag => [ "value" ],
     
-       _tag2 => 10.1,
+       _tag2 => [ 10.1 ],
     
        _looped_tag_1 => [ "val1", "val2", "val3" ],
     
        _looped_tag_2 => [ 1.2, 2.3, 3.4 ],
 
+       _looped_tag_3 => [ "val1", "val2", "val3" ],
+    
+       _looped_tag_4 => [ 11.2, 22.3, 13.4 ],
+
    },
 
    precisions => {
 
-       _tag2 => 0.33,
+       _tag2 => [ 0.33 ],
 
        _looped_tag_2 => [ 0.2, undef, 0.12 ],
 
+       _looped_tag_4 => [ 0.2, undef, 0.12 ],
    },
 
    tags => [
-       "_tag", "_tag2", "_looped_tag_1", "_looped_tag_2"
+       "_tag", "_tag2", "_looped_tag_1", "_looped_tag_2",
+       "_looped_tag_3", "_looped_tag_4"
    ],
 
    loops => [
        [ "_looped_tag_1", "_looped_tag_2" ],
+       [ "_looped_tag_3", "_looped_tag_4" ],
    ],
 
    inloop => {
-       _looped_tag_1 => [ "_looped_tag_1", "_looped_tag_2" ],
-       _looped_tag_2 => [ "_looped_tag_1", "_looped_tag_2" ],
+       _looped_tag_1 => 0, # [ 0, "_looped_tag_1", "_looped_tag_2" ],
+       _looped_tag_2 => 0, # [ 0, "_looped_tag_1", "_looped_tag_2" ],
+       _looped_tag_3 => 1, # [ 1, "_looped_tag_3", "_looped_tag_4" ],
+       _looped_tag_4 => 1, # [ 1, "_looped_tag_3", "_looped_tag_4" ],
    },
 );
 
 my %cif_values = (
 
-   _tag => "value",
+   _tag => [ "value" ],
 
-   _tag2 => 10.1,
+   _tag2 => [ 10.1 ],
 
    _looped_tag_1 => [ "val1", "val2", "val3" ],
 
@@ -68,7 +77,7 @@ my %cif_values = (
 
 my %cif_precisionss = (
 
-   _tag2 => 0.33,
+   _tag2 => [ 0.33 ],
 
    _looped_tag_2 => [ 0.2, undef, 0.12 ],
 
