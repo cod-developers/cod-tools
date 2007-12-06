@@ -33,9 +33,15 @@ for my $dataset (@$data) {
 	    $tagstruct->{name} eq "_name" ) {
 	    push( @name, $tagstruct->{value} );
 	} elsif( $tagstruct->{kind} eq "loop" ) {
-	    if( grep( /^_name$/, @{$tagstruct->{name}} ) &&
-		int(@{$tagstruct->{name}}) == 1 ) {
-		@name = @{$tagstruct->{value}};
+	    my @tag_names = @{$tagstruct->{name}};
+	    my @tag_values = @{$tagstruct->{value}};
+	    while( int(@tag_values) > 0 ) {
+		for my $name (@tag_names) {
+		    my $value = pop( @tag_values );
+		    if( $name eq "_name" ) {
+			push( @name, $value );
+		    }
+		}
 	    }
 	}
 	if( $tagstruct->{name} eq "_list" ) {
