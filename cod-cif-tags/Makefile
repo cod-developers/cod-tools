@@ -16,6 +16,7 @@ tags-indict-nonlooped.lst \
 dict-looped-tags.lst \
 dict-nonlooped-tags.lst \
 dict-both-tags.lst \
+tags-nonlooped-notinscript.lst \
 ##
 
 all: ${LISTS}
@@ -101,6 +102,15 @@ dict-both-tags.lst:
 	perl -00 -ne 'print if /^\s+_list\s+both/m' ${DICT_DIR}/*.dic \
 	| perl -ne "print \$$2, \"\n\" if m:(\\s_name|^\\s*)\\s+'(_[^\\s]+)':" $< \
 	| sort | uniq \
+	> $@
+
+tags-nonlooped-notinscript.lst: dict-nonlooped-tags.lst tags-in-script-counted.lst
+	for i in `cat $<`; do \
+		if perl -ne "exit 1 if m@'\Q$$i\E'@i" ${word 2,$^}; \
+		then \
+			echo $$i; \
+		fi; \
+	done \
 	> $@
 
 clean cleanAll distclean:
