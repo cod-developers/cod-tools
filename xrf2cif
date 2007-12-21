@@ -370,7 +370,7 @@ sub print_record
 	    local $, = "\n";
 	    local $\ = "\n";
 	    $bibliography->[0] = unicode2cif( $bibliography->[0] );
-	    print map { " " . $_ } fold( 71, " ", ($bibliography->[0]) );
+	    print map { " " . $_ } fold( 71, " +", " ", ($bibliography->[0]) );
 	};
 	print ";\n";
 	print "_chemical_formula_sum '$composition->[0]'\n";
@@ -524,11 +524,11 @@ sub fold
 {
     my $length = shift;
     my $separator = shift;
+    my $ors = shift;
     my $string = shift;
     my @lines = ();
     my $line = "";
 
-    my $ors = $separator =~ /\s/ ? $separator : "$separator ";
     my $word;
     for $word (split( $separator, $string )) {
 	$word =~ s/^\s*|\s*$//g;
