@@ -16,6 +16,7 @@ eval 'exec perl -x $0 ${1+"$@"}'
 use strict;
 use lib "./lib/perl5";
 use lib "./CIFParser";
+use lib ".";
 use CIFParser;
 use Unicode2CIF;
 use SOptions;
@@ -38,6 +39,7 @@ my $no_biblio_tags = 1;
 @ARGV = getOptions( 
     "-j,--journal"   => sub{ $user_biblio = 1; $journal = get_value() },
     "-v,--volume"    => sub{ $user_biblio = 1; $volume = get_value() },
+    "-i,--issue"     => sub{ $user_biblio = 1; $issue = get_value() },
     "-p,--page"      => sub{ $user_biblio = 1; $start_page = get_value() },
     "--start-page"   => sub{ $user_biblio = 1; $start_page = get_value() },
     "-e,--end-page"  => sub{ $user_biblio = 1; $end_page = get_value() },
@@ -231,20 +233,69 @@ my @generated_tags = (
 
 my %cif_tags_lc = map {(lc($_),$_)} @requested_cif_tags, @generated_tags;
 
+my %looped_tags = (
+    "_publ_author_name" => 1,
+);
+
 my $n = 0;
 
 binmode( STDOUT, ":utf8" );
 
+my %global_bibliography = ();
+my @global_biblio_keys = (
+    "_journal_name_full",
+    "_journal_volume",
+    "_journal_issue",
+    "_journal_page_first",
+    "_journal_page_last",
+    "_journal_year",
+    "_publ_section_title",
+    "_publ_author_name"
+);
+
+#
+# First, look for a data_global section and extract bibliography
+# information. Stupidly enough, this section can be in the very end of
+# the CIF file, so we need to scan all sections to find it.
+#
+
+my $global_section_nr = 0;
+
+for my $dataset (@data) {
+    next unless $dataset->{name} eq "global";
+    my $datablock = $dataset->{values};
+
+    $global_section_nr ++;
+
+    %global_bibliography = ();
+
+    for my $key (@global_biblio_keys) {
+	if( defined $datablock->{$key} ) {
+	    $global_bibliography{$key} = $datablock->{$key};
+	}
+    }
+}
+
+if( $global_section_nr > 1 ) {
+    warn "file '${filename}' has $global_section_nr global sections";
+}
+
 for my $dataset (@data) {
 
-    next unless defined $dataset->{kind} && $dataset->{kind} == "DATA";
+    ## next unless defined $dataset->{kind} && $dataset->{kind} == "DATA";
 
     my $compound_name = $dataset->{name};
-    my $datablok = $dataset->{content};
-    my %datablok = map {
-	$_->{kind} == "TAG" ?
-	    ($_->{name}, $_->{value}) : ()
-	} @{$datablok};
+    my $datablok = $dataset->{values};
+
+    # Add bibliography from a global section, if any:
+
+    if( %global_bibliography ) {
+	for my $key (keys %global_bibliography) {
+	    if( !exists $datablok->{$key} ) {
+		$datablok->{$key} = $global_bibliography{$key};
+	    }
+	}
+    }
 
     # convert all tags to a "cannonical" form (the one used in this
     # script ;):
@@ -266,7 +317,8 @@ for my $dataset (@data) {
 
     print "\n" if $n > 0;
 
-    # Process bibliography:
+    # Process the bibliography file that was supplied on the command
+    # line:
 
     my $reference;
 
@@ -381,6 +433,12 @@ for my $dataset (@data) {
 	    }
 	}
 
+	$datablok->{_publ_author_name} = [ @authors ]
+	    if @authors;
+
+	$datablok->{_publ_section_title} = [ $title ]
+	    if defined $title;
+
 	$datablok->{_journal_name_full} = [ $journal ]
 	    if defined $journal;
 
@@ -389,6 +447,9 @@ for my $dataset (@data) {
 
 	$datablok->{_journal_volume} = [ $volume ]
 	    if defined $volume;
+
+	$datablok->{_journal_issue} = [ $issue ]
+	    if defined $issue;
 
 	$datablok->{_journal_page_first} = [ $start_page ]
 	    if defined $start_page;
@@ -421,8 +482,8 @@ for my $dataset (@data) {
     for my $tag (@requested_cif_tags) {
 	if( defined $datablok->{$tag} ) {
 	    my $data = $datablok->{$tag};
-	    ## if( int(@{$data}) == 1 && !$looped_tags{$tag} ) {
-	    if( int(@{$data}) == 1 ) {
+	    if( int(@{$data}) == 1 && !$looped_tags{$tag} ) {
+	    ## if( int(@{$data}) == 1 ) {
 		my @lines = split( "\n", $data->[0] );
                 # check if single value is not '?'
 		if( @lines != 1 || $lines[0] ne '?' ) { 
