@@ -1,0 +1,30 @@
+#! /bin/sh
+#!perl -w # --*- Perl -*--
+eval 'exec perl -x $0 ${1+"$@"}'
+    if 0;
+#------------------------------------------------------------------------------
+#$Author: saulius $
+#$Date: 2007-02-04 20:26:13 +0200 (Sun, 04 Feb 2007) $ 
+#$Revision: 71 $
+#$URL: svn+ssh://kolibris.ibt.lt/home/saulius/svn-repositories/cif-tools/trunk/cif_parse $
+#------------------------------------------------------------------------------
+#*
+#  Parse a CIF file
+#**
+
+use strict;
+use lib "./lib/perl5";
+use lib ".";
+use CIFParser;
+use ShowStruct;
+
+my $filename = shift(@ARGV);
+
+my $parser = new CIFParser;
+
+my $data = $parser->Run($filename);
+
+
+for my $dataset (@$data) {
+    showRef( $dataset );
+}
