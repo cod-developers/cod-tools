@@ -16,6 +16,7 @@ tags-indict-nonlooped.lst \
 dict-looped-tags.lst \
 dict-nonlooped-tags.lst \
 dict-both-tags.lst \
+dict-all-tags.lst \
 tags-nonlooped-notinscript.lst \
 ##
 
@@ -112,6 +113,10 @@ tags-nonlooped-notinscript.lst: dict-nonlooped-tags.lst tags-in-script-counted.l
 		fi; \
 	done \
 	> $@
+
+dict-all-tags.lst: dict-both-tags.lst dict-looped-tags.lst \
+                   dict-nonlooped-tags.lst
+	cat $^ | sort | uniq > $@
 
 clean cleanAll distclean:
 	rm -f ${LISTS}
