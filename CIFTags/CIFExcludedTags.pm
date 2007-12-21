@@ -17,6 +17,7 @@ require Exporter;
 
 @CIFExcludedTags::tag_list = (
     @CIFExcludedTags::iurc_tags,
+    @CIFExcludedTags::ccdc_tags,
     @CIFExcludedTags::potentially_copyrighted_tags
 );
 
@@ -88,6 +89,15 @@ _geom_contact_site_symmetry_H
 _publ_vrn_code
 _vrf_[]
 _vrf_VALIDATOR_comments
+);
+
+@CIFExcludedTags::ccdc_tags = qw (
+_database_code_depnum_ccdc_archive
+_database.code_depnum_ccdc_archive
+_database_code_depnum_ccdc_fiz
+_database.code_depnum_ccdc_fiz
+_database_code_depnum_ccdc_journal
+_database.code_depnum_ccdc_journal
 );
 
 @CIFExcludedTags::potentially_copyrighted_tags = qw(
