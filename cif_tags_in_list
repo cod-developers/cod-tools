@@ -26,35 +26,23 @@ my $data = $parser->Run($filename);
 
 
 for my $dataset (@$data) {
-    my @name = (); 
+    my $values = $dataset->{values};
+
+    next unless defined $values;
+    next unless defined $values->{_name};
+
+    my @name = @{$values->{_name}};
     my ( $inlist, $list_mandatory ) = ( 0, 0 );
-    for my $tagstruct (@{$dataset->{content}}) {
-	if( $tagstruct->{kind} eq "TAG" and
-	    $tagstruct->{name} eq "_name" ) {
-	    push( @name, $tagstruct->{value} );
-	} elsif( $tagstruct->{kind} eq "loop" ) {
-	    my @tag_names = @{$tagstruct->{name}};
-	    my @tag_values = @{$tagstruct->{value}};
-	    while( int(@tag_values) > 0 ) {
-		for my $name (@tag_names) {
-		    my $value = pop( @tag_values );
-		    if( $name eq "_name" ) {
-			push( @name, $value );
-		    }
-		}
-	    }
+    if( defined $values->{_list} ) {
+	if( $values->{_list}[0] eq "yes" ) {
+	    $inlist = 1;
+	} elsif( $values->{_list}[0] eq "both" ) {
+	    $inlist = 2;
 	}
-	if( $tagstruct->{name} eq "_list" ) {
-	    if( $tagstruct->{value} eq "yes" ) {
-		$inlist = 1;
-	    } elsif( $tagstruct->{value} eq "both" ) {
-		$inlist = 2;
-	    }
-	}
-	if( $tagstruct->{name} eq "_list_mandatory" and
-	    $tagstruct->{value} eq "yes" ) {
-	    $list_mandatory = 1;
-	}
+    }
+    if( defined $values->{_list_mandatory} and
+	$values->{_list_mandatory}[0] eq "yes" ) {
+	$list_mandatory = 1;
     }
     for my $name (@name) {
 	print "$inlist\t$list_mandatory\t$name\n";
