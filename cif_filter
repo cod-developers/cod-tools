@@ -362,7 +362,7 @@ sub print_tag
 	    if( $key_len + $val_len + 1 > 80 && $value !~ /\n/ ) {
 		printf "%s\n", $key;
 	    } else {
-		printf "%-30s", $key;
+		printf "%-30s ", $key;
 	    }
 	    print_value( $value );
 	    print "\n";
@@ -387,7 +387,7 @@ sub print_loop
     for my $i (0..$last_val) {
 	my $n = 0;
 	for my $loop_tag (@loop_tags) {
-	    print " " if $n > 0;
+	    print " ";
 	    print_value( $tags->{values}{$loop_tag}[$i] );
 	    $n ++;
 	}
@@ -401,10 +401,8 @@ sub print_value
 
     if( $val =~ /\n/ ) {
 	$val = "\n;" . $val . "\n;";
-    } elsif( $val !~ /\s/) {
-	$val = " " . $val;
-    } else {
-	$val = " '" . $val . "'";
+    } elsif( $val =~ /\s/) {
+	$val = "'" . $val . "'";
     }
     print $val;
 }
