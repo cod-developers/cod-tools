@@ -101,6 +101,39 @@ _database.code_depnum_ccdc_journal
 );
 
 @CIFExcludedTags::potentially_copyrighted_tags = qw(
+_publ_body_[]
+_publ_body_contents
+_publ_body.contents
+_publ_body_element
+_publ_body.element
+_publ_body_format
+_publ_body.format
+_publ_body_label
+_publ_body.label
+_publ_body_title
+_publ_body.title
+
+_publ_manuscript_creation
+_publ.manuscript_creation
+_publ_manuscript_incl_[]
+_publ_manuscript_incl.entry_id
+_publ_manuscript_incl_extra_defn
+_publ_manuscript_incl.extra_defn
+_publ_manuscript_incl_extra_info
+_publ_manuscript_incl.extra_info
+_publ_manuscript_incl_extra_item
+_publ_manuscript_incl.extra_item
+_publ_manuscript_processed
+_publ.manuscript_processed
+_publ_manuscript_text
+_publ.manuscript_text
+_publ_requested_category
+_publ.requested_category
+_publ_requested_coeditor_name
+_publ.requested_coeditor_name
+_publ_requested_journal
+_publ.requested_journal
+
 _publ_section_abstract
 _publ.section_abstract
 _publ_section_acknowledgements
@@ -127,6 +160,7 @@ _publ_section_synopsis
 _publ.section_synopsis
 _publ_section_table_legends
 _publ.section_table_legends
+
 _publ_vrn_code
 );
 
