@@ -359,10 +359,14 @@ sub print_tag
 	    if( $value =~ /\s/ ) {
 		$val_len += 2;
 	    }
-	    if( $key_len + $val_len + 1 > 80 || $value =~ /\n/ ) {
+	    if( $key_len + $val_len + 1 > 80 && $value !~ /\n/ ) {
 		printf "%s\n", $key;
 	    } else {
-		printf "%-30s ", $key;
+		if( $value !~ /\n/ ) {
+		    printf "%-30s ", $key;
+		} else {
+		    printf "%s", $key;
+		}
 	    }
 	    print_value( $value );
 	    print "\n";
@@ -400,7 +404,7 @@ sub print_value
     my $val = $_[0];
 
     if( $val =~ /\n/ ) {
-	$val = ";" . $val . "\n;";
+	$val = "\n;" . $val . "\n;";
     } elsif( $val =~ /\s/) {
 	$val = "'" . $val . "'";
     }
