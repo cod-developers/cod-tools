@@ -517,16 +517,16 @@ sub _Error
 {
 	exists $_[0]->YYData->{ERRMSG}
 	and do {
-		print $_[0]->YYData->{ERRMSG};
+		print STDERR $_[0]->YYData->{ERRMSG};
 		delete $_[0]->YYData->{ERRMSG};
 		return;
 	};
-	print "Analyzed symbols line containing bogus data (num. " . 
+	print STDERR "Analyzed symbols line containing bogus data (num. " . 
 		$_[0]->YYData->{VARS}{lines} . " pos. " . 
 		$_[0]->YYData->{VARS}{token_prev_pos} . ") was:\n" . 
 		$_[0]->YYData->{VARS}{current_line} . "\n";
-	print " " x $_[0]->YYData->{VARS}{token_prev_pos};
-	print "^\n";
+	print STDERR " " x $_[0]->YYData->{VARS}{token_prev_pos};
+	print STDERR "^\n";
 }
 
 sub _Lexer
