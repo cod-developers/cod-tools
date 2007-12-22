@@ -141,36 +141,6 @@ my %looped_tags = (
     "_publ_author_name" => 1,
 );
 
-#
-# Tag printout order: the higher the number, the closer is the tag to
-# the beginning of the file. Those tags that are not in the
-# %tag_priority list have priority 0. Tags with equal priority are
-# printed out in alphabetical order.
-#
-
-my %tag_priority_groups = (
-    "_publ_author"  => 100,
-    "_publ_section" => 50,
-    "_journal"      => 30,
-    "_chemical"     => 20,
-);
-
-my %tag_priority = map {
-    my $priority = 0;
-    for my $key (keys %tag_priority_groups) {
-	if( $_ =~ m/^$key/ ) {
-	    $priority = $tag_priority_groups{$key};
-	}
-    }
-    ( $_, $priority )
-} @requested_cif_tags;
-
-@requested_cif_tags = sort {
-    my $pr_a = defined $tag_priority{$a} ? $tag_priority{$a} : 0;
-    my $pr_b = defined $tag_priority{$b} ? $tag_priority{$b} : 0;
-    return ($pr_a != $pr_b) ? ($pr_b <=> $pr_a) : ($a cmp $b)
-} @requested_cif_tags;
-
 #------------------------------------------------------------------------------
 
 my %global_bibliography = ();
