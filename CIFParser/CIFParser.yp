@@ -86,6 +86,10 @@ sub merge_data_lists($$)
 %%
 cif_file
 	:	#empty
+                {
+			$_[0]->{USER}->{CIFfile} =
+                            [ { name => undef, values => {}, tags => [] } ];
+		}
 	|	data_block_list
 		{
 			if($CIFParser::debug >= 3)
@@ -98,12 +102,14 @@ cif_file
 		{
 			$_[0]->YYData->{ERRMSG} = "No data block heading (i.e." .
 			" data_somecif) found in file!\n";
+			$_[0]->{USER}->{CIFfile} = [ { name => "", values => {}, tags => [] } ];
 			$_[0]->YYError();
 		}
 	|	cif_value
 		{
 			$_[0]->YYData->{ERRMSG} = "No data block heading (i.e." .
 			" data_somecif) found in file!\n";
+			$_[0]->{USER}->{CIFfile} = [ { name => "", values => {}, tags => [] } ];
 			$_[0]->YYError();
 		}
 ;
@@ -172,7 +178,7 @@ data_item
 		{
 			return $_[1];
 		}
-	|	error
+##	|	error
 ;
 
 save_item_list
@@ -788,15 +794,14 @@ sub Run
 			print "File syntax is CORRECT!\n";
 		}
 		undef $CIFParser::FILEIN;
-		return $self->{USER}->{CIFfile};
 	} else {
 		if( $CIFParser::debug >= 1 && $CIFParser::debug < 3)
 		{
 			print "Syntax check failed.\n";
 		}
 		undef $CIFParser::FILEIN;
-		return 2;
 	}
+	return $self->{USER}->{CIFfile};
 }
 
 return 1;
