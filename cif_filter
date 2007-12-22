@@ -301,17 +301,23 @@ for my $dataset (@data) {
 
     # Print out requested tags:
 
+    my %printed_loops = ();
+
     print "data_", $compound_name, "\n";
 
     for my $tag (@requested_cif_tags) {
 	if( defined $datablok->{$tag} ) {
 	    if( !exists $dataset->{inloop}{$tag} ) {
 		print_tag( $tag, $datablok );
+	    } elsif( $tag eq "_publ_author_name" ) {
+		my $tag_loop_nr = $dataset->{inloop}{$tag};
+		unless( exists $printed_loops{$tag_loop_nr} ) {
+		    print_loop( $tag, $tag_loop_nr, $dataset );
+		    $printed_loops{$tag_loop_nr} = 1;
+		}
 	    }
 	}
     }
-
-    my %printed_loops = ();
 
     for my $tag (@requested_cif_tags) {
 	if( defined $datablok->{$tag} ) {
