@@ -1,0 +1,480 @@
+#! /bin/sh
+#!perl -w # --*- Perl -*--
+eval 'exec perl -x $0 ${1+"$@"}'
+    if 0;
+#------------------------------------------------------------------------------
+#$Author: saulius $
+#$Date: 2007-07-15 23:10:53 +0300 (Sun, 15 Jul 2007) $ 
+#$Revision: 168 $
+#$URL: svn+ssh://pitonas.ibt.lt/home/xray/svn-repositories/cif-tools/trunk/cif2xrf $
+#------------------------------------------------------------------------------
+#*
+#  Parse a CIF file and print out the essential information in the COD
+#  REF format
+#**
+
+use strict;
+use lib "./lib/perl5";
+use lib "./CIFParser";
+use lib "./CIFTags";
+use lib ".";
+use CIFParser;
+use CIFDictTags;
+use CIFExcludedTags;
+use Unicode2CIF;
+use SOptions;
+use SUsage;
+
+sub merge_new_tag_values($$$);
+
+my $user_biblio = 0;
+my $leave_biblio = 0;
+
+my $journal;
+my $volume;
+my $issue;
+my $start_page;
+my $end_page;
+my $year;
+my $title;
+my @authors;
+
+my $no_biblio_tags = 1;
+
+my %excluded_tags  = map { ($_,$_) } @CIFExcludedTags::tag_list;
+
+my @requested_cif_tags = map {
+    exists $excluded_tags{$_} ? () : $_
+} @CIFDictTags::tag_list;
+
+my %cif_tags_lc = map {(lc($_),$_)} @requested_cif_tags;
+
+@ARGV = getOptions( 
+    "-j,--journal"   => sub{ $user_biblio = 1; $journal = get_value() },
+    "-v,--volume"    => sub{ $user_biblio = 1; $volume = get_value() },
+    "-i,--issue"     => sub{ $user_biblio = 1; $issue = get_value() },
+    "-p,--page"      => sub{ $user_biblio = 1; $start_page = get_value() },
+    "--start-page"   => sub{ $user_biblio = 1; $start_page = get_value() },
+    "-e,--end-page"  => sub{ $user_biblio = 1; $end_page = get_value() },
+    "-y,--year"      => sub{ $user_biblio = 1; $year = get_value() },
+    "--leave-bibliography"   => sub{ $leave_biblio = 1 },
+    "--discard-bibliography" => sub{ $leave_biblio = 0 },
+    "--help,--usage" => sub { SUsage::usage; exit },
+);
+
+my $filename = shift(@ARGV);
+my $biblio = @ARGV > 0 ? shift(@ARGV) : undef;
+my @data;
+
+my $parser = new CIFParser;
+
+@data = @{$parser->Run($filename)};
+
+#------------------------------------------------------------------------------
+
+my %global_bibliography = ();
+my @global_biblio_keys = (
+    "_journal_name_full",
+    "_journal_volume",
+    "_journal_issue",
+    "_journal_page_first",
+    "_journal_page_last",
+    "_journal_year",
+    "_publ_section_title",
+    "_publ_author_name"
+);
+
+my %global_biblio_keys = map {($_,$_)} @global_biblio_keys;
+
+#
+# First, look for a data_global section and extract bibliography
+# information. Stupidly enough, this section can be in the very end of
+# the CIF file, so we need to scan all sections to find it.
+#
+
+my $global_section_nr = 0;
+
+for my $dataset (@data) {
+    next unless $dataset->{name} eq "global";
+    my $datablock = $dataset->{values};
+
+    $global_section_nr ++;
+
+    %global_bibliography = ();
+
+    merge_new_tag_values( \@global_biblio_keys, \%global_bibliography,
+			  $dataset );
+
+    ## use ShowStruct; showRef( \%global_bibliography );
+}
+
+if( $global_section_nr > 1 ) {
+    warn "file '${filename}' has $global_section_nr global sections";
+}
+
+my $n = 0;
+
+binmode( STDOUT, ":utf8" );
+
+for my $dataset (@data) {
+
+    ## next unless defined $dataset->{kind} && $dataset->{kind} == "DATA";
+
+    my $compound_name = $dataset->{name};
+    my $datablok = $dataset->{values};
+
+    # Add bibliography from a global section, if any:
+
+    ## if( %global_bibliography ) {
+    ## 	for my $key (keys %{$global_bibliography{values}}) {
+    ## 	    if( !exists $datablok->{$key} ) {
+    ## 		$datablok->{$key} = $global_bibliography{values}{$key};
+    ## 	    }
+    ## 	}
+    ## }
+
+    if( %global_bibliography ) {
+	merge_new_tag_values( [keys %{$global_bibliography{values}}],
+			      $dataset, \%global_bibliography );
+    }
+
+    # convert all tags to a "cannonical" form (the one used in this
+    # script ;):
+
+    if( 1 ) {
+	for my $key ( keys %{$datablok} ) {
+	    my $lc_key = lc( $key );
+	    ## print ">>> $key -> $lc_key\n";
+	    if( defined $cif_tags_lc{$lc_key} ) {
+		my $cannonical_key = $cif_tags_lc{$lc_key};
+		## print ">>> $key -> $lc_key -> $cannonical_key\n";
+		$datablok->{$cannonical_key} = $datablok->{$key} unless
+		    exists $datablok->{$cannonical_key};
+	    }
+	}
+    }
+
+    next if !defined $datablok or !defined $datablok->{_atom_site_label};
+
+    print "\n" if $n > 0;
+
+    # Process the bibliography file that was supplied on the command
+    # line:
+
+    my $reference;
+
+    if( defined $biblio ) {
+	open( BIBLIO, "<:utf8", $biblio ) or
+	    die( "Could not open file '$biblio' for reading: $!" );
+	if( $biblio =~ /\.ref/ ) {
+	    $reference = <BIBLIO>; # read the first line
+	} elsif( $biblio =~ /\.xrf/ ) {
+	    my @reference = grep !/^\#/, <BIBLIO>;
+	    $reference = $reference[0]; # read the first non-comment line
+	} else {
+	    local $/ = undef; # read the whole file
+	    $reference = <BIBLIO>;
+	}
+	close BIBLIO;
+	chomp $reference;
+
+	if( !$leave_biblio ) {
+	    for my $key ( grep /_journal_|_publ_section_title|_author_/,
+			  keys %{$datablok} ) {
+		delete $datablok->{$key};
+	    }
+	}
+
+	if( $reference =~ /<.*?>.*?<.*?>/s ||
+	    $reference =~ /\\.*?(?:\[.*?\])?\{.*?\}/s ) {
+	    if( !$title && ( $reference =~ /<title>(.*?)<\/title>/s ||
+			     $reference =~ /\\title\{(.*?)\}/s )) {
+		$datablok->{_publ_section_title} = [ unicode2cif( $1 ) ];
+	    }
+	    if( !$journal && ( $reference =~ /<journal>(.*?)<\/journal>/s ||
+			       $reference =~ /\\journal\{(.*?)\}/s )) {
+		$datablok->{_journal_name_full} = [ unicode2cif( $1 ) ];
+	    }
+	    if( !$issue && ( $reference =~ /<issue>(.*?)<\/issue>/s ||
+			     $reference =~ /\\issue\{(.*?)\}/s )) {
+		$datablok->{_journal_issue} = [ unicode2cif( $1 ) ];
+	    }
+	    if( !$volume && ( $reference =~ /<volume>(.*?)<\/volume>/s ||
+			      $reference =~ /\\volume\{(.*?)\}/s )) {
+		$datablok->{_journal_volume} = [ unicode2cif( $1 ) ];
+	    }
+	    if( !$year && ( $reference =~ /<year>(.*?)<\/year>/s ||
+			    $reference =~ /\\year\{(.*?)\}/s )) {
+		my $y = $1;
+		$y =~ s/[^0-9]//g;
+		$datablok->{_journal_year} = [ unicode2cif( $y ) ];
+	    }
+	    if( !$start_page && ( $reference =~ /<pages?>(.*?)<\/pages?>/s ||
+				  $reference =~ /\\pages?\{(.*?)\}/s )) {
+		my @pages = map { s/\s//g; $_ } split ( "-", $1 );
+		$datablok->{_journal_page_first} = [ unicode2cif( $pages[0] ) ];
+		if( int(@pages) > 1 ) {
+		    $datablok->{_journal_page_last} =
+			[ unicode2cif( $pages[1] ) ];
+		}
+	    }
+	    if( !@authors && ( $reference =~
+			       /<authors?\s?(.*?)>(.*?)<\/authors?>/s ||
+			       $reference =~
+			       /\\authors?(?:\[(.*?)\])?\{(.*?)\}/s )) {
+		my $attributes = $1;
+		my $author_list = $2;
+		my $separator = qr/,\s*and|\sand\s|,/;
+		if( $attributes && $attributes =~ /separator\s*=\s*"(.*?)"/ ) {
+		    $separator = qr/$1/;
+		}
+		$datablok->{_publ_author_name} =
+		    [
+		     map { unicode2cif( $_ ) }
+		     map { s/\n/ /g; s/\s+/ /g; $_ }
+		     map { s/^\s*|\s*$//g; $_ }
+		     split( $separator, $author_list )
+		    ];
+	    }
+	}
+
+	if( $no_biblio_tags ) {
+	    while( $reference =~ /<(.*?)(\s+.*?)?>(.*?)<\/.*>/s ) {
+		my $tag = $1;
+		my $regexp = qr/<$tag(?:\s+.*?)?>(.*?)<\/$tag>/s;
+		## print "\n<$tag>:\n";
+		while( $reference =~ /$regexp/ ) {
+		    $reference =~ s/$regexp/$1/g;
+		}
+		## print ">>>$reference\n";
+	    }
+	    while( $reference =~ /\\(.*?)(?:(\[.*?\]))?\{(.*?)\}/s ) {
+		my $tag = $1;
+		my $regexp = qr/\\$tag(?:\[.*?\])?\{(.*?)\}/s;
+		## print "\n\\$tag:\n";
+		while( $reference =~ /$regexp/ ) {
+		    $reference =~ s/$regexp/$1/g;
+		}
+		## print ">>>$reference\n";
+	    }
+	}
+
+	$reference =~ s/\n/ /g;
+    }
+
+    # User specified bibliography is processed last since it must take
+    # precedence over original CIF bibliography and over the
+    # bibliography file data:
+
+    if( $user_biblio ) {
+	if( !$leave_biblio ) {
+	    for my $key ( grep /_journal_|_publ_section_title|_author_/,
+			  keys %{$datablok} ) {
+		delete $datablok->{$key};
+	    }
+	}
+
+	$datablok->{_publ_author_name} = [ @authors ]
+	    if @authors;
+
+	$datablok->{_publ_section_title} = [ $title ]
+	    if defined $title;
+
+	$datablok->{_journal_name_full} = [ $journal ]
+	    if defined $journal;
+
+	$datablok->{_journal_year} = [ $year ]
+	    if defined $year;
+
+	$datablok->{_journal_volume} = [ $volume ]
+	    if defined $volume;
+
+	$datablok->{_journal_issue} = [ $issue ]
+	    if defined $issue;
+
+	$datablok->{_journal_page_first} = [ $start_page ]
+	    if defined $start_page;
+
+	$datablok->{_journal_page_last} = [ $end_page ]
+	    if defined $end_page;
+    }
+
+    # Print out requested tags:
+
+    print "data_", $compound_name, "\n";
+
+    for my $tag (@requested_cif_tags) {
+	if( defined $datablok->{$tag} ) {
+	    if( !exists $dataset->{inloop}{$tag} ) {
+		print_tag( $tag, $datablok );
+	    }
+	}
+    }
+
+    my %printed_loops = ();
+
+    for my $tag (@requested_cif_tags) {
+	if( defined $datablok->{$tag} ) {
+	    if( exists $dataset->{inloop}{$tag} ) {
+		my $tag_loop_nr = $dataset->{inloop}{$tag};
+		unless( exists $printed_loops{$tag_loop_nr} ) {
+		    print_loop( $tag, $tag_loop_nr, $dataset );
+		    $printed_loops{$tag_loop_nr} = 1;
+		}
+	    }
+	}
+    }
+
+    $n ++;
+}
+
+#
+# Subroutines:
+#
+
+sub print_tag
+{
+    my ($key, $tags) = @_;
+
+    if( exists $tags->{$key} ) {
+	my $val = $tags->{$key};
+	if( int(@{$val}) > 1 ) {
+	    print "loop_\n";
+	    print "$key\n";
+	    for my $value (@$val) {
+		print_value( $value );
+		print "\n";
+	    }
+	} else {
+	    my $value = $val->[0];
+	    my $key_len = length($key) > 30 ? length($key) : 30;
+	    my $val_len = length($value);
+
+	    if( $value =~ /\s/ ) {
+		$val_len += 2;
+	    }
+	    if( $key_len + $val_len + 1 > 80 && $value !~ /\n/ ) {
+		printf "%s\n", $key;
+	    } else {
+		printf "%-30s", $key;
+	    }
+	    print_value( $value );
+	    print "\n";
+	}
+    }
+}
+
+sub print_loop
+{
+    my ($tag, $loop_nr, $tags) = @_;
+
+    my @loop_tags = @{$tags->{loops}[$loop_nr]};
+
+    print "loop_\n";
+    for (@loop_tags) {
+	print $_, "\n";
+    }
+
+    my $val_array = $tags->{values}{$tag};
+    my $last_val = $#{$val_array};
+
+    for my $i (0..$last_val) {
+	my $n = 0;
+	for my $loop_tag (@loop_tags) {
+	    print " " if $n > 0;
+	    print_value( $tags->{values}{$loop_tag}[$i] );
+	    $n ++;
+	}
+	print "\n";
+    }
+}
+
+sub print_value
+{
+    my $val = $_[0];
+
+    if( $val =~ /\n/ ) {
+	$val = "\n;" . $val . "\n;";
+    } elsif( $val !~ /\s/) {
+	$val = " " . $val;
+    } else {
+	$val = " '" . $val . "'";
+    }
+    print $val;
+}
+
+sub fold
+{
+    my $length = shift;
+    my $separator = shift;
+    my $ors = shift;
+    my $string = shift;
+    my @lines = ();
+    my $line = "";
+
+    my $word;
+    for $word (split( $separator, $string )) {
+	$word =~ s/^\s*|\s*$//g;
+	if( !$line ) {
+	    $line = $word;
+	} else {
+	    my $new_line = "$line$ors$word";
+	    if( length($new_line) < $length ) {
+		$line = $new_line;
+	    } else {
+		push( @lines, $line );
+		$line = $word;
+	    }
+	}
+    }
+    push( @lines, $line );
+    return @lines;
+}
+
+sub cell_volume
+{
+    my @cell = map { s/\(.*\)//g; $_ } @_;
+
+    my $Pi = 3.14159265358979;
+
+    my ($a, $b, $c) = @cell[0..2];
+    my ($alpha, $beta, $gamma) = map {$Pi * $_ / 180} @cell[3..5];
+    my ($ca, $cb, $cg) = map {cos} ($alpha, $beta, $gamma);
+    my $sg = sin($gamma);
+    
+    my $V = $a * $b * $c * sqrt( $sg**2 - $ca**2 - $cb**2 + 2*$ca*$cb*$cg );
+
+    return $V;
+}
+
+sub merge_new_tag_values($$$)
+{
+    my ($tag_list, $dst, $src ) = @_;
+
+    my %tag_list = map {($_,1)} @$tag_list;
+
+    for my $key (@{$tag_list}) {
+	if( defined $src->{values}{$key} ) {
+
+	    $dst->{values}{$key} = $src->{values}{$key};
+	    push( @{$dst->{tags}}, $key );
+
+	    if( exists $src->{inloop}{$key} &&
+		!exists $dst->{inloop}{$key} ) {
+		my $loop_nr = $src->{inloop}{$key};
+		my @loop = @{$src->{loops}[$loop_nr]};
+		my $dst_loop_nr =
+		    defined $dst->{loops} ? int(@{$dst->{loops}}) : 0;
+
+		for my $loop_key (@loop) {
+		    if( exists $tag_list{$loop_key}) {
+			push( @{$dst->{loops}[$dst_loop_nr]}, $loop_key );
+			$dst->{inloop}{$loop_key} = $dst_loop_nr;
+		    }
+		}
+	    }
+	}
+    }
+
+    return $dst;
+}
