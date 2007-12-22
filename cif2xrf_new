@@ -60,51 +60,79 @@ my $parser = new CIFParser;
 
 @data = @{$parser->Run($filename)};
 
-my @generated_tags = (
-    "_atom_site_B_iso_or_equiv",
-    "_atom_site_U_iso_or_equiv",
+#
+# The @xrf_tags list specifies CIF tags that contain information
+# encoded in the main body of the .xrf file (i.e. not in the lines
+# started with a has ('#') symbol). This information can be
+# unambiguously derived from the main body, and therefore the tags
+# from the @xrf_tags list should NOT be in general included into the
+# comment section.
+#
+
+my @xrf_tags = (
+    "_atom_site_aniso_label",
+    "_atom_site_label",
     "_atom_site_Wyckoff_symbol",
-    "_atom_site_adp_type",
+    "_atom_site_U_iso_or_equiv",
     "_atom_site_aniso_U_11",
     "_atom_site_aniso_U_12",
     "_atom_site_aniso_U_13",
     "_atom_site_aniso_U_22",
     "_atom_site_aniso_U_23",
     "_atom_site_aniso_U_33",
-    "_atom_site_aniso_label",
-    "_atom_site_calc_flag",
-    "_atom_site_disorder_assembly",
-    "_atom_site_disorder_group",
+    "_atom_site_adp_type",
     "_atom_site_fract_x",
     "_atom_site_fract_y",
     "_atom_site_fract_z",
-    "_atom_site_label",
     "_atom_site_occupancy",
-    "_atom_site_refinement_flags",
     "_atom_site_symmetry_multiplicity",
+    "_geom_bond_atom_site_label_1",
+    "_geom_bond_atom_site_label_2",
+    "_geom_bond_distance",
+    "_symmetry_space_group_name_H-M",
+);
+
+#
+# The @calculated_tags list contains tags that SHOULD be included into
+# the comment section of the .xrf file if they are present in the
+# input file. However, the inforation in these tags is printed by a
+# special dedicated statements in the script and, if necessary,
+# calculated on the fly. Thus, these tags should not be printed
+# automatically when all other accumulated .xrf file tags are printed
+# back into a .cif file.
+#
+
+my @calculated_tags = (
+    "_publ_section_title",
+    "_atom_site_B_iso_or_equiv",
+    "_atom_site_calc_flag",
+    "_atom_site_disorder_assembly",
+    "_atom_site_disorder_group",
     "_atom_site_type_symbol",
+    "_atom_site_refinement_flags",
+    "_cell_volume",
+    "_symmetry_equiv_pos_as_xyz",
+
     "_cell_angle_alpha",
     "_cell_angle_beta",
     "_cell_angle_gamma",
     "_cell_length_a",
     "_cell_length_b",
     "_cell_length_c",
-    "_cell_volume",
     "_chemical_formula_sum",
-    "_geom_bond_atom_site_label_1",
-    "_geom_bond_atom_site_label_2",
-    "_geom_bond_distance",
-    "_symmetry_equiv_pos_as_xyz",
-    "_symmetry_space_group_name_H-M",
 );
 
-##    "_publ_section_title",
+my @generated_tags = (
+    @calculated_tags,
+    @xrf_tags,
+);
 
 my %excluded_tags  = map { ($_,$_) } @CIFExcludedTags::tag_list;
-my %generated_tags = map { ($_,$_) } @generated_tags;
+## my %generated_tags = map { ($_,$_) } @generated_tags;
+my %xrf_tags = map { ($_,$_) } @xrf_tags;
 
 my @requested_cif_tags = map {
-    (exists $excluded_tags{$_} || exists $generated_tags{$_} )? () : $_
+    (exists $excluded_tags{$_} || exists $xrf_tags{$_} )? () : $_
 } @CIFDictTags::tag_list;
 
 my %cif_tags_lc = map {(lc($_),$_)} @requested_cif_tags, @generated_tags;
@@ -113,9 +141,37 @@ my %looped_tags = (
     "_publ_author_name" => 1,
 );
 
-my $n = 0;
+#
+# Tag printout order: the higher the number, the closer is the tag to
+# the beginning of the file. Those tags that are not in the
+# %tag_priority list have priority 0. Tags with equal priority are
+# printed out in alphabetical order.
+#
 
-binmode( STDOUT, ":utf8" );
+my %tag_priority_groups = (
+    "_publ_author"  => 100,
+    "_publ_section" => 50,
+    "_journal"      => 30,
+    "_chemical"     => 20,
+);
+
+my %tag_priority = map {
+    my $priority = 0;
+    for my $key (keys %tag_priority_groups) {
+	if( $_ =~ m/^$key/ ) {
+	    $priority = $tag_priority_groups{$key};
+	}
+    }
+    ( $_, $priority )
+} @requested_cif_tags;
+
+@requested_cif_tags = sort {
+    my $pr_a = defined $tag_priority{$a} ? $tag_priority{$a} : 0;
+    my $pr_b = defined $tag_priority{$b} ? $tag_priority{$b} : 0;
+    return ($pr_a != $pr_b) ? ($pr_b <=> $pr_a) : ($a cmp $b)
+} @requested_cif_tags;
+
+#------------------------------------------------------------------------------
 
 my %global_bibliography = ();
 my @global_biblio_keys = (
@@ -155,6 +211,10 @@ for my $dataset (@data) {
 if( $global_section_nr > 1 ) {
     warn "file '${filename}' has $global_section_nr global sections";
 }
+
+my $n = 0;
+
+binmode( STDOUT, ":utf8" );
 
 for my $dataset (@data) {
 
