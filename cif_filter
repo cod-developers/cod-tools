@@ -191,7 +191,12 @@ for my $dataset (@data) {
 	    $reference =~ /\\.*?(?:\[.*?\])?\{.*?\}/s ) {
 	    if( !$title && ( $reference =~ /<title>(.*?)<\/title>/s ||
 			     $reference =~ /\\title\{(.*?)\}/s )) {
-		$datablok->{_publ_section_title} = [ unicode2cif( $1 ) ];
+		my $cif_title = unicode2cif( $1 );
+		$cif_title =~ s/\n/ /g;
+		$datablok->{_publ_section_title} = [
+		    "\n" . join( "\n", map { " " . $_ }
+				 fold( 71, " +", " ", $cif_title ))
+		];
 	    }
 	    if( !$journal && ( $reference =~ /<journal>(.*?)<\/journal>/s ||
 			       $reference =~ /\\journal\{(.*?)\}/s )) {
