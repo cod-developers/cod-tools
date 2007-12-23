@@ -18,6 +18,7 @@ require Exporter;
 @CIFExcludedTags::tag_list = (
     @CIFExcludedTags::iurc_tags,
     @CIFExcludedTags::ccdc_tags,
+    @CIFExcludedTags::icsd_tags,
     @CIFExcludedTags::potentially_copyrighted_tags
 );
 
@@ -98,6 +99,11 @@ _database_code_depnum_ccdc_fiz
 _database.code_depnum_ccdc_fiz
 _database_code_depnum_ccdc_journal
 _database.code_depnum_ccdc_journal
+);
+
+@CIFExcludedTags::icsd_tags = qw (
+_database_code_ICSD
+_database.code_ICSD
 );
 
 @CIFExcludedTags::potentially_copyrighted_tags = qw(
