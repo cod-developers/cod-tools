@@ -163,9 +163,9 @@ for my $dataset (@data) {
     # Process the bibliography file that was supplied on the command
     # line:
 
-    my $reference;
-
     if( defined $biblio ) {
+	my $reference;
+
 	open( BIBLIO, "<:utf8", $biblio ) or
 	    die( "Could not open file '$biblio' for reading: $!" );
 	if( $biblio =~ /\.ref/ ) {
@@ -249,29 +249,6 @@ for my $dataset (@data) {
 		}
 	    }
 	}
-
-	if( $no_biblio_tags ) {
-	    while( $reference =~ /<(.*?)(\s+.*?)?>(.*?)<\/.*>/s ) {
-		my $tag = $1;
-		my $regexp = qr/<$tag(?:\s+.*?)?>(.*?)<\/$tag>/s;
-		## print "\n<$tag>:\n";
-		while( $reference =~ /$regexp/ ) {
-		    $reference =~ s/$regexp/$1/g;
-		}
-		## print ">>>$reference\n";
-	    }
-	    while( $reference =~ /\\(.*?)(?:(\[.*?\]))?\{(.*?)\}/s ) {
-		my $tag = $1;
-		my $regexp = qr/\\$tag(?:\[.*?\])?\{(.*?)\}/s;
-		## print "\n\\$tag:\n";
-		while( $reference =~ /$regexp/ ) {
-		    $reference =~ s/$regexp/$1/g;
-		}
-		## print ">>>$reference\n";
-	    }
-	}
-
-	$reference =~ s/\n/ /g;
     }
 
     # User specified bibliography is processed last since it must take
