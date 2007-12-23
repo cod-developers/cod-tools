@@ -242,6 +242,11 @@ for my $dataset (@data) {
 		     map { s/^\s*|\s*$//g; $_ }
 		     split( $separator, $author_list )
 		    ];
+		if( exists $dataset->{inloop} ) {
+		    my $tag = "_publ_author_name";
+		    my $loop_nr = $dataset->{inloop}{$tag};
+		    $dataset->{loops}[$loop_nr] = [ $tag ];
+		}
 	    }
 	}
 
@@ -281,8 +286,14 @@ for my $dataset (@data) {
 	    }
 	}
 
-	$datablok->{_publ_author_name} = [ @authors ]
-	    if @authors;
+	do {
+	    $datablok->{_publ_author_name} = [ @authors ];
+	    if( exists $dataset->{inloop} ) {
+		my $tag = "_publ_author_name";
+		my $loop_nr = $dataset->{inloop}{$tag};
+		$dataset->{loops}[$loop_nr] = [ $tag ];
+	    }
+	} if @authors;
 
 	$datablok->{_publ_section_title} = [ $title ]
 	    if defined $title;
