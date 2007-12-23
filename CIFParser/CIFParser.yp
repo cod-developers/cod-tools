@@ -105,7 +105,15 @@ cif_file
 			$_[0]->{USER}->{CIFfile} = [ { name => "", values => {}, tags => [] } ];
 			$_[0]->YYError();
 		}
-	|	cif_value
+	|	cif_value                     {
+			$_[0]->{USER}->{CIFfile} =
+                            [ { name => undef, values => {}, tags => [] } ];
+		}
+           {
+			$_[0]->{USER}->{CIFfile} =
+                            [ { name => undef, values => {}, tags => [] } ];
+		}
+
 		{
 			$_[0]->YYData->{ERRMSG} = "No data block heading (i.e." .
 			" data_somecif) found in file!\n";
@@ -138,6 +146,11 @@ data_block
 		        my $val = $_[2];
 			$val->{name} = $name;
 			return $val;
+		}
+        |       data_block_head # empty data item list
+                {
+			return
+                            [ { name => $_[1], values => {}, tags => [] } ];
 		}
 ;
 
