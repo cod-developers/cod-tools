@@ -72,9 +72,10 @@ my $parser = new CIFParser;
 
 @data = @{$parser->Run($filename)};
 
-if( defined $parser->YYData->{ERRCOUNT} &&
-    $parser->YYData->{ERRCOUNT} > 0 ) {
-    die "$0: ", $parser->YYData->{ERRCOUNT}, " error(s) encountered";
+if( defined $parser->YYData->{ERRCOUNT} && $parser->YYData->{ERRCOUNT} > 0 ) {
+    print STDERR "$0: ", $parser->YYData->{ERRCOUNT},
+                 " error(s) encountered while parsing file '${filename}'\n";
+    die;
 }
 
 #------------------------------------------------------------------------------
