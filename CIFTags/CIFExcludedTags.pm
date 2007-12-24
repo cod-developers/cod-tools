@@ -15,13 +15,6 @@ require Exporter;
 @CIFExcludedTags::ISA = qw(Exporter);
 @CIFExcludedTags::EXPORT_OK = qw(@tag_list);
 
-@CIFExcludedTags::tag_list = (
-    @CIFExcludedTags::iurc_tags,
-    @CIFExcludedTags::ccdc_tags,
-    @CIFExcludedTags::icsd_tags,
-    @CIFExcludedTags::potentially_copyrighted_tags
-);
-
 @CIFExcludedTags::iurc_tags = qw (
 _iucr_compatibility_tag
 _geom_extra_table_[]
@@ -171,6 +164,13 @@ _exptl_special_details
 _geom_special_details
 
 _publ_vrn_code
+);
+
+@CIFExcludedTags::tag_list = (
+    @CIFExcludedTags::iurc_tags,
+    @CIFExcludedTags::ccdc_tags,
+    @CIFExcludedTags::icsd_tags,
+    @CIFExcludedTags::potentially_copyrighted_tags
 );
 
 1;
