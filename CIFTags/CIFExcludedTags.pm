@@ -167,6 +167,10 @@ _publ.section_synopsis
 _publ_section_table_legends
 _publ.section_table_legends
 
+_publ_section_exptl_refinement
+_exptl_special_details
+_geom_special_details
+
 _publ_vrn_code
 );
 
