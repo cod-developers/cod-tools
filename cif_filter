@@ -425,6 +425,10 @@ sub print_loop
 	    my $val = sprint_value( $tags->{values}{$loop_tag}[$i] );
 	    if( $val =~ /^\n;/ ) {
 		$lines .= $folding_separator . $line if $line ne $line_prefix;
+		if( $lines eq "" ) {
+		    # don't print extra newline at the beginning of the loop:
+		    $val =~ s/^\n//;
+		}
 		$lines .= $val;
 		$line = $line_prefix;
 		$folding_separator = "\n";
