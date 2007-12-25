@@ -166,8 +166,18 @@ for my $dataset (@data) {
 	    if( defined $cif_tags_lc{$lc_key} ) {
 		my $cannonical_key = $cif_tags_lc{$lc_key};
 		## print ">>> $key -> $lc_key -> $cannonical_key\n";
-		$datablok->{$cannonical_key} = $datablok->{$key} unless
-		    exists $datablok->{$cannonical_key};
+		if( !exists $datablok->{$cannonical_key} ) {
+		    $datablok->{$cannonical_key} = $datablok->{$key};
+		    if( $dataset->{inloop}{$key} ) {
+			my $loop_nr = $dataset->{inloop}{$key};
+			$dataset->{inloop}{$cannonical_key} =
+			    $dataset->{inloop}{$key};
+			delete $dataset->{inloop}{$key};
+			@{$dataset->{loops}[$loop_nr]} =
+			    map { s/^$key$/$cannonical_key/; $_ }
+			@{$dataset->{loops}[$loop_nr]};
+		    }
+		}
 	    }
 	}
     }
