@@ -521,7 +521,8 @@ sub merge_new_tag_values($$$)
     my %tag_list = map {($_,1)} @$tag_list;
 
     for my $key (@{$tag_list}) {
-	if( defined $src->{values}{$key} ) {
+	if( defined $src->{values}{$key}
+	    && !exists $dst->{values}{$key} ) {
 
 	    $dst->{values}{$key} = $src->{values}{$key};
 	    push( @{$dst->{tags}}, $key );
