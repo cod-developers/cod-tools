@@ -22,6 +22,7 @@ for my $filename (@ARGV) {
     my $parser = new CIFParser;
     my $data = $parser->Run($filename);
 
+    my $warnings = 0;
     for my $dataset (@$data) {
 	if( !defined $dataset->{values} ) {
 	    print "$0: $filename: no values?!\n";
@@ -30,17 +31,23 @@ for my $filename (@ARGV) {
 	my $values = $dataset->{values};
 	if( !defined $values->{_journal_name_full} ) {
 	    print "$0: $filename: _journal_name_full is undefined\n";
+	    $warnings ++;
 	}
 	if( !defined $values->{_journal_year} &&
 	    !defined $values->{_journal_volume} ) {
 	    print "$0: $filename: neither _journal_year nor " .
 		  "_journal_volume is defined\n";
+	    $warnings ++;
 	}
 	if( !defined $values->{_journal_page_first} ) {
 	    print "$0: $filename: _journal_page_first is undefined\n";
+	    $warnings ++;
 	}
 	if( !defined $values->{_publ_author_name} ) {
 	    print "$0: $filename: no _publ_author_name\n";
+	    $warnings ++;
 	}
     }
+    printf "%-30s: %s\n", $filename,
+           $warnings == 0 ? "OK" : "$warnings warning(s)";
 }
