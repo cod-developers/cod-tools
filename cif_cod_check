@@ -1,0 +1,46 @@
+#! /bin/sh
+#!perl -w # --*- Perl -*--
+eval 'exec perl -x $0 ${1+"$@"}'
+    if 0;
+#------------------------------------------------------------------------------
+#$Author: saulius $
+#$Date: 2007-02-04 20:26:13 +0200 (Sun, 04 Feb 2007) $ 
+#$Revision: 71 $
+#$URL: svn+ssh://kolibris.ibt.lt/home/saulius/svn-repositories/cif-tools/trunk/cif_parse $
+#------------------------------------------------------------------------------
+#*
+#  Parse a CIF file
+#**
+
+use strict;
+use lib "./lib/perl5";
+use lib "./CIFParser";
+use CIFParser;
+use ShowStruct;
+
+for my $filename (@ARGV) {
+    my $parser = new CIFParser;
+    my $data = $parser->Run($filename);
+
+    for my $dataset (@$data) {
+	if( !defined $dataset->{values} ) {
+	    print "$0: $filename: no values?!\n";
+	    next;
+	}
+	my $values = $dataset->{values};
+	if( !defined $values->{_journal_name_full} ) {
+	    print "$0: $filename: _journal_name_full is undefined\n";
+	}
+	if( !defined $values->{_journal_year} &&
+	    !defined $values->{_journal_volume} ) {
+	    print "$0: $filename: neither _journal_year nor " .
+		  "_journal_volume is defined\n";
+	}
+	if( !defined $values->{_journal_page_first} ) {
+	    print "$0: $filename: _journal_page_first is undefined\n";
+	}
+	if( !defined $values->{_publ_author_name} ) {
+	    print "$0: $filename: no _publ_author_name\n";
+	}
+    }
+}
