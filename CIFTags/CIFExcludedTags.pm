@@ -160,8 +160,22 @@ _publ.section_synopsis
 _publ_section_table_legends
 _publ.section_table_legends
 
+_atom_sites_special_details
+_cell_special_details
+_citation_special_details
+_diffrn_special_details
 _exptl_special_details
 _geom_special_details
+_pd_calibration_special_details
+_pd_char_special_details
+_pd_instr_special_details
+_pd_meas_special_details
+_pd_peak_special_details
+_pd_proc_info_special_details
+_pd_proc_ls_special_details
+_pd_spec_special_details
+_refine_special_details
+_reflns_special_details
 
 _publ_vrn_code
 );
