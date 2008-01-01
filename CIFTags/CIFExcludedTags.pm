@@ -178,6 +178,9 @@ _refine_special_details
 _reflns_special_details
 
 _publ_vrn_code
+
+_publ_contact_letter
+_publ.contact_letter
 );
 
 @CIFExcludedTags::tag_list = (
