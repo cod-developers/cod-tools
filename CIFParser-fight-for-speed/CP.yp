@@ -1,0 +1,785 @@
+# --*-Perl-*----------------------------------------------------
+#$Author: saulius $
+#$Date: 2008-01-02 17:13:24 +0200 (Wed, 02 Jan 2008) $
+#$Revision: 325 $
+#$URL: svn+ssh://pitonas.ibt.lt/home/xray/svn-repositories/cif-tools/trunk/CIFParser-fight-for-speed/CIFParser.yp $
+# -------------------------------------------------------------- 
+#
+# parse.yp
+#
+# Parsed CIF file structure overview is described at the end of this file.
+# --------------------------------------------------------------
+# begin of header
+# --------------------------------------------------------------
+# copy directly to PERL module:
+%{
+use warnings;
+use ShowStruct;
+use FileHandle;
+
+$CP::version = '1.0';
+
+my $SVNID = '$Id: CIFParser.yp 325 2008-01-02 15:13:24Z saulius $';
+
+$CP::debug = 0;
+
+sub merge_data_lists($$)
+{
+    my $list = $_[0];
+    my $item = $_[1];
+
+    for my $tag (@{$item->{tags}}) {
+
+	push( @{$list->{tags}}, $tag );
+
+	$list->{values}{$tag} =
+	    $item->{values}{$tag};
+
+	$list->{types}{$tag} =
+	    $item->{types}{$tag};
+
+	if( exists $item->{precisions}{$tag} ) {
+	    $list->{precisions}{$tag} =
+		$item->{precisions}{$tag};
+	}
+
+    }
+
+    if( exists $item->{loops} ) {
+	if( defined $list->{loops} ) {
+	    $list->{loops} = [ @{$list->{loops}}, $item->{loops}[0] ];
+	} else {
+	    $list->{loops} = [ $item->{loops}[0] ];
+	}
+    }
+
+    if( exists $item->{inloop} ) {
+	my $loop_nr = $#{$list->{loops}};
+	for my $key (keys %{$item->{inloop}} ) {
+	    $list->{inloop}{$key} = $loop_nr;
+	}
+    }
+
+    if( exists $item->{save_blocks} ) {
+	if( defined $list->{save_blocks} ) {
+	    $list->{save_blocks} =
+		[ @{$list->{save_blocks}}, $item->{save_blocks}[0] ];
+	} else {
+	    $list->{save_blocks} = [ $item->{save_blocks}[0] ];
+	}
+    }
+
+    return $list;
+}
+
+$CP::parser = {};
+
+%}
+# --------------------------------------------------------------
+
+# --------------------------------------------------------------
+# begin of body
+# --------------------------------------------------------------
+
+%token DATA_
+%token TAG
+%token LOCAL
+%token LOOP_
+%token SAVE_HEAD
+%token SAVE_FOOT
+%token textfield
+%token SQSTRING
+%token DQSTRING
+%token UQSTRING
+%token TEXT_FIELD
+%token FLOAT
+%token INT
+
+%%
+cif_file
+	:	#empty
+                {
+			$CP::parser->{USER}->{CIFfile} =
+                            [ { name => undef, values => {}, tags => [] } ];
+		}
+	|	data_block_list
+		{
+			if($CIFParser::debug >= 3)
+			{
+				showRef($1);
+			}
+			$CP::parser->{USER}->{CIFfile} = $1;
+		}
+	|	data_item
+		{
+			$CP::parser->{ERRMSG} = "No data block heading (i.e." .
+			" data_somecif) found in file!\n";
+			$CP::parser->{USER}->{CIFfile} = [ { name => "", values => {}, tags => [] } ];
+			$CP::parser->YYError();
+		}
+	|	cif_value                     {
+			$CP::parser->{USER}->{CIFfile} =
+                            [ { name => undef, values => {}, tags => [] } ];
+		}
+           {
+			$CP::parser->{USER}->{CIFfile} =
+                            [ { name => undef, values => {}, tags => [] } ];
+		}
+
+		{
+			$CP::parser->{ERRMSG} = "No data block heading (i.e." .
+			" data_somecif) found in file!\n";
+			$CP::parser->{USER}->{CIFfile} = [ { name => "", values => {}, tags => [] } ];
+			$CP::parser->YYError();
+		}
+;
+
+data_block_list
+	:	data_block_list data_block
+		{
+			my $val = $1;
+			push( @{$val}, $2 );
+			$$ = $val;
+		}
+	|	data_block
+		{
+			$$ = [ $1 ];
+		}
+;
+
+data_block
+	:	data_block_head data_item_list
+		{
+			## my $val = { name => $1 };
+			## $val->{content} = $2->{value};
+			## $val->{kind} = $2->{kind};
+			## $val->{type} = "DATA";
+			my $name = $1;
+		        my $val = $2;
+			$val->{name} = $name;
+			$$ = $val;
+		}
+        |       data_block_head # empty data item list
+                {
+			$$ =
+                            { name => $1, values => {}, tags => [] };
+		}
+;
+
+data_item_list
+	:	data_item_list data_item
+		{
+		        ## my $val = $1;
+			## push(@{$val->{value}}, $2);
+			## $$ = $val;
+                        my $list = $1;
+                        my $item = $2;
+                        $list = merge_data_lists( $list, $item );
+			$$ = $list;
+		}
+	|	data_item
+		{
+			## my $val = { kind => 'DATA' };
+			## push(@{$val->{value}}, $1);
+		        my $val = $1;
+			$$ = $val;
+		}
+;
+
+data_block_head
+	:	DATA_
+		{
+			##$1 =~ m/^(data_)(.*)/si;
+			$$ = $1;
+		}
+;
+
+data_item
+	:	save_item
+		{
+			$$ = $1;
+		}
+	|	save_block
+		{
+			$$ = $1;
+		}
+##	|	error
+;
+
+save_item_list
+	:	save_item_list save_item
+		{
+			## my $val = $1;
+			## push( @{$val->{value}}, $2 );
+			## $$ = $val;
+		        my $list = $1;
+			my $item = $2;
+                        $list = merge_data_lists( $list, $item );
+			$$ = $list;
+		}
+	|	save_item
+		{
+			my $val = $1;
+			$$ = $val;
+		}
+;
+
+save_item
+	:	cif_entry
+		{
+		    # Here we convert to new structure:
+			## $$ = $1;
+		        my $entry = $1;
+			my $item = {
+			    values => {
+				$entry->{name} => [ $entry->{value} ]
+			    },
+			    types => {
+				$entry->{name} => [ $entry->{type} ]
+			    },
+			    tags => [ $entry->{name} ]
+			};
+			if( exists $entry->{precision} ) {
+			    $item->{precisions} = {
+				$entry->{name} => [ $entry->{precision} ]
+			    }
+			}
+			$$ = $item;
+		}
+	|	loop
+		{
+		        $$ = $1;
+		}
+;
+
+cif_entry
+	:	TAG cif_value
+		{
+			my $val;
+			if(defined $2->{precision})
+			{
+				$val = { name => $1,
+					kind => 'TAG',
+					value => $2->{value},
+					type => $2->{type},
+					precision => $2->{precision}
+				};
+			} else {
+				$val = { name => $1,
+					kind => 'TAG',
+					value => $2->{value},
+					type => $2->{type}
+				};
+			}
+			if($CIFParser::debug >= 1 && $CIFParser::debug <= 2)
+			{
+				showRef($val);
+			}
+			$$ = $val;
+		}
+	|	LOCAL TAG cif_value
+		{
+			my $val;
+			if(defined $3->{precision})
+			{
+				$val = { name => $2,
+					kind => 'LOCAL',
+					value => $3->{value},
+					type => $3->{type},
+					precision => $3->{precision}
+				};
+			} else {
+				$val = { name => $2,
+					kind => 'LOCAL',
+					value => $3->{value},
+					type => $3->{type}
+				};
+			}
+			if($CIFParser::debug >= 1 && $CIFParser::debug <= 2)
+			{
+				showRef($val);
+			}
+			$$ = $val;
+		}
+;
+
+loop
+    :	LOOP_ loop_tags loop_values
+		{
+			## my $val = { kind => 'loop' };
+			## $val->{name} = $2->{name};
+			## $val->{value} = $3->{value};
+			## $val->{type} = $3->{type};
+			## if( defined $3->{precision} )
+			## {
+			## 	$val->{precision} = $3->{precision};
+			## }
+			## if( (scalar @{$val->{value}}) %
+			## 		(scalar @{$val->{name}}) == 0 )
+			## {
+			## 	$$ = $val;
+			## } else {
+			## 	$CP::parser->{ERRMSG} =
+			## 	    "Wrong number of elements in"
+			## 	    . " loop block starting in line "
+			## 	    . $CP::parser->{VARS}{loop_begin}
+			## 	    . "!\n";
+			## 	$CP::parser->YYError();
+			## }
+
+		        my $val = {};
+		        my $tags = $2;
+			my @values = @{$3};
+
+			## push( @{$val->{loops}}, $tags );
+                        $val->{loops} = [ [ @{$tags} ] ];
+                        $val->{tags} = $tags;
+
+		      VALUES:
+			while( int( @values ) > 0 ) {
+			    for my $tag (@{$tags}) {
+				my $value = shift( @values );
+				if( defined $value ) {
+				    push( @{$val->{values}{$tag}},
+					  $value->{value} );
+				    push( @{$val->{types}{$tag}},
+					  $value->{type} );
+				    if( exists $value->{precision} ) {
+					push( @{$val->{precisionss}{$tag}},
+					      $value->{precision} );
+				    }
+				    $val->{inloop}{$tag} = 0;
+				} else {
+				    $CP::parser->{ERRMSG} =
+					"Wrong number of elements in the"
+					. " loop block starting in line "
+					. $CP::parser->{VARS}{loop_begin}
+				    . "!\n";
+				    $CP::parser->YYError();
+				    last VALUES;
+				}
+			    }
+			}
+                        $$ = $val;
+		}
+;
+
+loop_tags
+	:	loop_tags TAG
+		{
+			my $val = $1;
+			push( @{$val}, $2 );
+			$$ = $val;
+		}
+	|	TAG
+		{
+			my $val = [ $1 ];
+			$$ = $val;
+		}
+;
+
+loop_values
+	:	loop_values cif_value
+		{
+			my $arr = $1;
+			my $val = $2;
+			## push( @{$val->{value}}, $2->{value} );
+			## push( @{$val->{type}}, $2->{type} );
+			## if( defined $2->{precision} )
+			## {
+			## 	push( @{$val->{precision}}, $2->{precision} );
+			## }
+			$$ = [ @{$arr}, $val ];
+		}
+	|	cif_value
+		{
+			my $val = $1;
+			## { type => [ $1->{type} ] };
+			## push( @{$val->{value}}, $1->{value} );
+			## if( defined $1->{precision} )
+			## {
+			## 	push( @{$val->{precision}}, $1->{precision} );
+			## }
+			$$ = [ $val ];
+		}
+;
+
+save_block
+	:	SAVE_HEAD save_item_list SAVE_FOOT
+		{
+			## my $value = $2->{value};
+			## $1 =~ m/^(save_)(.*)$/si;
+			## my $val = { kind => 'SAVE',
+			## 		name => $2 };
+			## $val->{type} = "SAVE";
+			## $val->{content} = $value;
+			## $$ = $val;
+                        my $val = {
+			    save_blocks => [
+				{
+				    name => $1,
+				    %{$2}
+				}
+			    ]
+                        };
+                        $$ = $val;
+		}
+;
+
+cif_value
+	:	string
+		{	print $1->{type} . "\t->\t"
+				. $1->{value} . "\n" if( $CIFParser::debug >= 1 && $CIFParser::debug <= 2) ;
+			$1;
+		}
+	|	number
+		{	print $1->{type} . "\t\t->\t"
+				. $1->{value} . " -- "
+				. $1->{precision}
+				. "\n" if( $CIFParser::debug >= 1 && $CIFParser::debug <= 2);
+			$1;
+		}
+	|	textfield
+		{	print "TFIELD\t\t->\t" .
+				$1->{value} . "\n"
+				if( $CIFParser::debug >= 1 && $CIFParser::debug <= 2);
+			$1;
+		}
+;
+
+string
+	:	SQSTRING
+		{
+			##$1 =~ m/^(')(.*)(')$/si;
+			$$ = { value => $1,
+				type => 'SQSTRING'};
+		}
+	|	DQSTRING
+		{
+			##$1 =~ m/^(")(.*)(")$/si;
+			$$ = { value => $1,
+				type => 'DQSTRING'};
+		}
+	|	UQSTRING	{ { value => $1,
+			type => 'UQSTRING'} }
+	|	TEXT_FIELD	{ { value => $1,
+			type => 'TEXTFIELD' };
+		}
+;
+
+number
+	:	FLOAT
+		{
+		    {	
+                        type => 'FLOAT',
+                        value => $1,
+                        precision => 'undef'
+		    }
+		}
+	|	INT
+		{
+		    {	type => 'INT',
+                        value => $1,
+                        precision => 'undef'
+		    }
+		}
+;
+
+%%
+# --------------------------------------------------------------
+# begin of footer
+# --------------------------------------------------------------
+
+sub _Error
+{
+        $_[0]->{ERRCOUNT}++;
+	exists $_[0]->{ERRMSG}
+	and do {
+		print STDERR $_[0]->{ERRMSG};
+		delete $_[0]->{ERRMSG};
+		return;
+	};
+	print STDERR "Analyzed symbols line containing bogus data (num. " . 
+		$_[0]->{VARS}{lines} . " pos. " . 
+		$_[0]->{VARS}{token_prev_pos} . ") was:\n" . 
+		$_[0]->{VARS}{current_line} . "\n";
+	print STDERR " " x $_[0]->{VARS}{token_prev_pos};
+	print STDERR "^\n";
+}
+
+sub _Lexer
+{
+	my($parser) = shift;
+	my $input = $parser->{INPUT};
+
+	#trimming tokenized comments
+	if( defined $input &&
+		$input =~
+			s/^(\s*#.*)$//s )
+	{
+		advance_token($parser);
+	}
+
+	if( !defined $input ||
+		$input =~ m/^\s*$/ )
+	{
+		do
+		{
+			$input = <$CIFParser::FILEIN>;
+			$parser->{VARS}{lines}++;
+		} until ( !defined $input ||
+			$input !~ m/^(\s*(#.*)?)$/s );
+		if( defined $input )
+		{
+			chomp $input;
+			$input=~s/\r$//g;
+			$input=~s/\t/    /g;
+			$parser->{VARS}{current_line} = 
+				$input;
+			$parser->{VARS}{token_pos} = 0;
+		} else {
+			$parser->{INPUT} = $input; return('',undef);
+		}
+	}
+
+#scalars storing regular expressions, common to several matches
+my $ORDINARY_CHAR	=	
+	qr/[a-zA-Z0-9!%&\(\)\*\+,-\.\/\:<=>\?@\\\^`{\|}~]/is;
+my $SPECIAL_CHAR	=	qr/["#\$'_\[\]]/is;
+my $NON_BLANK_CHAR	=	qr/(?:$ORDINARY_CHAR|$SPECIAL_CHAR|;)/is;
+my $TEXT_LEAD_CHAR	=	qr/(?:$ORDINARY_CHAR|$SPECIAL_CHAR|\s)/s;
+my $ANY_PRINT_CHAR	=	qr/(?:$NON_BLANK_CHAR|\s)/is;
+my $INTEGER		=	qr/[-+]?[0-9]+/s;
+my $EXPONENT		=	qr/e[-+]?[0-9]+/is;
+my $FLOAT11		=	qr/(?: $INTEGER $EXPONENT)/ix;
+my $FLOAT21		=	qr/(?: [+-]? [0-9]* \. [0-9]+ $EXPONENT ?)/ix;
+my $FLOAT31		=	qr/(?: $INTEGER \. $EXPONENT ?)/ix;
+my $FLOAT		=	qr/(?: (?: $FLOAT11 | $FLOAT21 | $FLOAT31))/six;
+
+	#matching white space characters
+	if( $input =~ s/(\s*)//s )
+	{
+		advance_token($parser);
+	}
+		
+	if($CIFParser::debug >= 2 && $CIFParser::debug < 3)
+	{
+		print ">>> '", $input, "'\n";
+	}
+
+	for ($input)
+	{
+		#matching floats:
+                if( s/^(?: ($FLOAT (?:\([0-9]+\))?) (\s) )/$2/six
+                        || s/^($FLOAT (?:\([0-9]+\))?)$//six )
+		{
+			advance_token($parser);
+			$parser->{INPUT} = $input; return($FLOAT, $1);
+		}
+		#matching integers:
+                if( s/^($INTEGER (?:\([0-9]+\))?)(\s)/$2/sx
+                        || s/^($INTEGER (?:\([0-9]+\))?)$//sx )
+		{
+			advance_token($parser);
+			$parser->{INPUT} = $input; return($INT, $1);
+		}
+		#matching double quoted strings
+		if( s/^("${ANY_PRINT_CHAR}*?")(\s)/$2/s
+			|| s/^("${ANY_PRINT_CHAR}*?")$//s )
+		{
+			advance_token($parser);
+			$parser->{INPUT} = $input; return($DQSTRING, $1);
+		}
+		#matching single quoted strings
+		if( s/^('${ANY_PRINT_CHAR}*?')(\s)/$2/s
+			|| s/^('${ANY_PRINT_CHAR}*?')$//s )
+		{
+			advance_token($parser);
+			$parser->{INPUT} = $input; return($SQSTRING, $1);
+		}
+		#matching text field
+		if( $parser->{VARS}{token_pos} == 0 )
+		{
+			if( s/^;(${ANY_PRINT_CHAR}*)$//s )
+			{
+				my $eotf = 0;
+				my $tfield;	#all textfield
+				my $tf_line_begin =
+					$parser->{VARS}{lines};
+				$tfield = $1;
+				while( 1 )
+				{
+					my $line = <$CIFParser::FILEIN>;
+					if( defined $line )
+					{
+						chomp $line;
+						$line=~s/\r$//g;
+						$line=~s/\t/    /g;
+						$parser->{VARS}{current_line} = 
+							$line;
+						$parser->{VARS}{lines}++;
+						if( $line =~
+							s/^;//s )
+						{
+							if( defined $line )
+							{
+							$input
+								= $line;
+							$parser->{VARS}{token_pos} = 1;
+							}
+							last;
+						} else {
+							$tfield .= "\n" . $line;
+						}
+					} else {
+						undef $input;
+						last;
+					}
+				}
+				if( !defined $input )
+				{
+					$parser->{ERRMSG} = <<END_M;
+ERROR encountered while in text field, which started in line $tf_line_begin.
+Possible runaway of closing ';', or unexpected end of file.
+END_M
+					$parser->YYError();
+				}
+				$parser->{INPUT} = $input; return($TEXT_FIELD, $tfield);
+			}
+		}
+		#matching [local] attribute
+		if( s/^(\[local\])//si )
+		{
+			advance_token($parser);
+			$parser->{INPUT} = $input; return($LOCAL, $1);
+		}
+		#matching GLOBAL_ field
+		if( s/^(global_.*)$//si )
+		{
+			advance_token($parser);
+			$parser->{ERRMSG} = "GLOBAL_ symbol detected" .
+				" in line " .
+				$parser->{VARS}{lines} .
+				", pos. " .
+				$parser->{VARS}{token_prev_pos} . ":\n--\n" .
+				$parser->{VARS}{current_line} . "\n--\n" .
+				"It is not acceptable in this version!\n";
+			$parser->YYError();
+			$parser->{INPUT} = $input; return($GLOBAL_, $1);
+		}
+		#matching SAVE_ head
+		if( s/^(save_${NON_BLANK_CHAR}+)//si )
+		{
+			advance_token($parser);
+			$parser->{INPUT} = $input; return($SAVE_HEAD, $1);
+		}
+		#matching SAVE_ foot
+		if( s/^(save_)//si )
+		{
+			advance_token($parser);
+			$parser->{INPUT} = $input; return($SAVE_FOOT, $1);
+		}
+		#matching STOP_ field
+		if( s/^(stop_.*)$//si )
+		{
+			advance_token($parser);
+			$parser->{ERRMSG} = "STOP_ symbol detected" .
+				" in line " .
+				$parser->{VARS}{lines} .
+				", pos. " .
+				$parser->{VARS}{token_prev_pos} . ":\n--\n" .
+				$parser->{VARS}{current_line} . "\n--\n" .
+				"It is not acceptable in this version!\n";
+			$parser->YYError();
+			$parser->{INPUT} = $input; return($STOP_, $1);
+		}
+		#matching DATA_ field
+		if( s/^(data_${NON_BLANK_CHAR}+)//si )
+		{
+			advance_token($parser);
+			$parser->{INPUT} = $input; return($DATA_, $1);
+		}
+		#matching LOOP_ begining
+		if( s/^(loop_)//si )
+		{
+			advance_token($parser);
+			$parser->{VARS}{loop_begin} =
+					$parser->{VARS}{lines};
+			$parser->{INPUT} = $input; return($LOOP_, $1);
+		}
+		#matching TAG's
+		if( s/^(_${NON_BLANK_CHAR}+)//si )
+		{
+			advance_token($parser);
+			$parser->{INPUT} = $input; return($TAG, $1);
+		}
+		#matching unquoted strings
+		if( $parser->{VARS}{token_pos} == 0 )
+		{ #UQSTRING at first pos. of line
+			if( s/^(?: ( ($ORDINARY_CHAR | \[ )
+				($NON_BLANK_CHAR)*) )
+				//sx)
+			{
+				advance_token($parser);
+				$parser->{INPUT} = $input; return($UQSTRING, $1);
+			}
+		} else { #UQSTRING in line
+			if( s/^(?: ( ($ORDINARY_CHAR | ; | \[ )
+				($NON_BLANK_CHAR)*) )
+				//sx )
+			{
+				advance_token($parser);
+				$parser->{INPUT} = $input; return($UQSTRING, $1);
+			}
+		}
+		#matching any still unmatched symbol:
+		if( s/^(.)//m )
+		{
+			advance_token($parser);
+			$parser->{INPUT} = $input; return($1,$1);
+		}
+	}
+}
+
+sub advance_token
+{
+	my $parser = shift;
+	$parser->{VARS}{token_prev_pos} =
+		$parser->{VARS}{token_pos};
+	$parser->{VARS}{token_pos} += length($1);
+}
+
+sub Run
+{
+	my($self) = shift;
+	my($filename) = shift;
+
+	$filename = "-" unless $filename;
+	$CIFParser::FILEIN = new FileHandle $filename;
+	$| = 1;
+	if( $CIFParser::debug >= 2 && $CIFParser::debug < 3)
+	{
+		$self->YYParse( yylex => \&_Lexer,
+				yyerror => \&_Error,
+				yydebug => 0x05 );
+	} else {
+		$self->YYParse( yylex => \&_Lexer, yyerror => \&_Error );
+	}
+	if( $self->YYNberr() == 0 )
+	{
+		if( $CIFParser::debug >= 1 && $CIFParser::debug < 3)
+		{
+			print "File syntax is CORRECT!\n";
+		}
+		undef $CIFParser::FILEIN;
+	} else {
+		if( $CIFParser::debug >= 1 && $CIFParser::debug < 3)
+		{
+			print "Syntax check failed.\n";
+		}
+		undef $CIFParser::FILEIN;
+	}
+	return $self->{USER}->{CIFfile};
+}
+
+return 1;
