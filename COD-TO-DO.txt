@@ -1,0 +1,76 @@
+-- Rename 'cod_old' database into 'cod'.
+
+-- Check PCOD database, fix it if necessary (create the 'pcod'
+   database).
+
+-- Add backreferences to Acta Cryst paper using coeditor code.
+
+-- Eliminate entries with duplicate 'file' field from the COD data
+   table.
+
+-- ALTER TABLE data MODIFY COLUMN file MEDIUMINT(7) UNSIGNED UNIQUE;
+   load splitted CIF files into COD svn repository, and load their
+   data into MySQL database.
+
+-- Make 'entry' unique (primary).
+
+-- Add headers with SVN keywords, COD URL, and copying policy into
+   each COD CIF file that does not have it. Add svn:keywords property
+   to all existing COD CIF files.
+
+-- Add svn:keywords auto-property into our .svn/conf files.
+
+-- Add extra fields to the COD 'data' table:
+   JOURNAL (from the _journal_name_full),
+   JOURNAL_ID at some stage, when information regarding journal
+   abbreviations is fetched.
+   VOLUME (journal volume),
+   ISSUE (journal issue),
+   YEAR (publication year),
+   FIRST_PAGE, LAST_PAGE
+   TITLE (from _publ_section_title)
+   CHEM_NAME_SYSTEMATIC
+   CHEM_NAME_TRIVIAL
+   ACTA_CRYST_COEDITOR_CODE (ACCE_CODE)
+   AUTHORS (would point to a separate
+   table 'authors' containing autor lists for each entry)
+   #
+   For unpublished but COD-deposited structures I suggest listing
+   'Crystallography Open Database (personal communication)' in the
+   _journal_name_full to indicate their status, and to list authors in
+   the _publ_author_name/_publ_author_address tags. The year would be
+   COD deposition year.
+
+-- Add table 'authors'.
+
+-- Add option into 'cif_filter' to print CIFs with SVN headers. Or
+   maybe this should be a 'cif_split_primitive' option?
+
+-- Add option/functionality into 'cif_filter' to exclude "empty" tags
+   (i.e. tags that have values '?' or '.').
+
+-- In the 'cif_filter' script, exclude _publ_author_address from the
+   output CIF; add consistent exclusion of tags from loops, either by
+   checking if the tags exists in a loop printout procedure, or by
+   eliminating tags from loop description arrays in the CIF internal
+   representation.
+
+-- Write cif2cod in Perl, using the CIFParser, so that it gets all CIF
+   fields correctly.
+
+-- Prepare automatic deposition procedure that uses a command line
+   script ('cod_deposit'), with all checks (syntactic, semantic,
+   duplicate, etc).
+
+-- Prepare automatic deposition procedure that uses a Web-based
+   interface, with all checks (syntactic, semantic, duplicate, etc).
+
+-- Replace some COD entries that were corrected.
+
+-- Check all COD CIF files for syntactic correctness, fix syntax
+   errors, commit changes.
+
+-- Check all COD CIF files for semantic error (e.g. missing
+   bibliography, missing chemical information, missing
+   crystallographic information, inconsistent CIF "entity"
+   identificators in loops, incompatibilities with dictionaries).
