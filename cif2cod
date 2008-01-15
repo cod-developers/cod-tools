@@ -1,0 +1,96 @@
+#! /bin/sh
+#!perl -w # --*- Perl -*--
+eval 'exec perl -x $0 ${1+"$@"}'
+    if 0;
+#------------------------------------------------------------------------------
+#$Author$
+#$Date$ 
+#$Revision$
+#$URL$
+#------------------------------------------------------------------------------
+#*
+#  Parse a CIF file
+#**
+
+use strict;
+use lib "./lib/perl5";
+use lib "./CIFParser";
+use CIFParser;
+use ShowStruct;
+
+$\ = "\n";
+$, = ";";
+
+for my $filename (@ARGV) {
+
+    my $parser = new CIFParser;
+    my $data = $parser->Run($filename);
+
+    for my $dataset (@$data) {
+	my @data = ();
+	my $nel = 0;
+	my $values = $dataset->{values};
+
+	next unless exists $values->{_atom_site_fract_x};
+
+	my $authors = "";
+	if( exists $values->{_publ_author_name} ) {
+	    for my $author (@{$values->{_publ_author_name}}) {
+		$authors .= $author . " ";
+	    }
+	}
+
+	my $title = get_tag( $values, "_publ_section_title", 0 );
+	$title =~ s/^\s*|\s*$//g;
+	$title =~ s/\n/ /g;
+	$title =~ s/\s+/ /g;
+
+	my $journal = get_tag( $values, "_journal_name_full", 0 );
+	my $year = get_tag( $values, "_journal_year", 0 );
+	my $volume = get_tag( $values, "_journal_volume", 0 );
+	my $first_page = get_tag( $values, "_journal_page_first", 0 );
+	my $last_page = get_tag( $values, "_journal_page_last", 0 );
+
+	my $text = $authors . $title . " " . $journal . " " . $volume . " (" . $year . ") " .
+	    $first_page . " " . $last_page;
+	$text =~ s/\n/ /g;
+	$text =~ s/^\s*|\s*$//;
+
+	push( @data, $dataset->{name} );
+	push( @data, 0 ); # field 'pdf'
+	push( @data, filter_num( $values->{_cell_length_a}[0] ));
+	push( @data, filter_num( $values->{_cell_length_b}[0] ));
+	push( @data, filter_num( $values->{_cell_length_c}[0] ));
+	push( @data, filter_num( $values->{_cell_angle_alpha}[0] ));
+	push( @data, filter_num( $values->{_cell_angle_beta}[0] ));
+	push( @data, filter_num( $values->{_cell_angle_gamma}[0] ));
+	push( @data, filter_num( $values->{_cell_volume}[0] ));
+	push( @data, $nel );
+	push( @data, $values->{"_symmetry_space_group_name_H-M"}[0] );
+	push( @data, $text );
+
+	@data = map { defined $_ ? "\"$_\"" : "\"\"" } @data;
+	print @data;
+    }
+}
+
+sub filter_num
+{
+    map { s/\(.*\)$//; $_ } @_
+}
+
+sub get_tag
+{
+    my ($values, $tag, $index) = @_;
+
+    if( ref $values eq "HASH" ) {
+	if( exists $values->{$tag} ) {
+	    if( ref $values->{$tag} eq "ARRAY" ) {
+		if( defined $values->{$tag}[0] ) {
+		    return $values->{$tag}[0];
+		}
+	    }
+	}
+    }
+    return "";
+}
