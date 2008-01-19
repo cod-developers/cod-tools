@@ -16,10 +16,13 @@ use strict;
 use lib "./lib/perl5";
 use lib "./CIFParser";
 use CIFParser;
+use Unicode2CIF;
 use ShowStruct;
 
 $\ = "\n";
 $, = ";";
+
+binmode( STDOUT, ":utf8" );
 
 for my $filename (@ARGV) {
 
@@ -51,10 +54,11 @@ for my $filename (@ARGV) {
 	my $first_page = get_tag( $values, "_journal_page_first", 0 );
 	my $last_page = get_tag( $values, "_journal_page_last", 0 );
 
-	my $text = $authors . $title . " " . $journal . " " . $volume . " (" . $year . ") " .
-	    $first_page . " " . $last_page;
+	my $text = $authors . $title . " " . $journal . " " . $volume . 
+	    " (" . $year . ") " . $first_page . " " . $last_page;
 	$text =~ s/\n/ /g;
 	$text =~ s/^\s*|\s*$//;
+	$text = Unicode2CIF::cif2unicode( $text );
 
 	push( @data, $dataset->{name} );
 	push( @data, 0 ); # field 'pdf'
