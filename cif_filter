@@ -21,6 +21,7 @@ use lib ".";
 use CIFParser;
 use CIFDictTags;
 use CIFExcludedTags;
+use CIFTagManage;
 use Unicode2CIF;
 use SOptions;
 use SUsage;
@@ -31,6 +32,7 @@ $::max_cif_line_len = 80;
 
 my $user_biblio = 0;
 my $leave_biblio = 0;
+my $exclude_empty_tags = 0;
 
 my $journal;
 my $volume;
@@ -71,6 +73,10 @@ my %cif_tags_lc = map {(lc($_),$_)} @requested_cif_tags;
     "-B,--bibliography" => \$biblio,
 
     "-h,--add-cif-header" => \$cif_header_file,
+
+    "--exclude-empty-tags"      => sub { $exclude_empty_tags = 1; },
+    "--dont-exclude-empty-tags" => sub { $exclude_empty_tags = 0; },
+    "--no-exclude-empty-tags"   => sub { $exclude_empty_tags = 0; },
 
     "-S,--start-data-block-number"    => \$data_block_nr,
     "-R,--renumber-data-blocks"       => sub { $data_block_nr = 7000001 },
@@ -334,6 +340,12 @@ for my $dataset (@data) {
 
 	$datablok->{_journal_page_last} = [ $end_page ]
 	    if defined $end_page;
+    }
+
+    # Clean up the resulting CIF data structure:
+
+    if( $exclude_empty_tags ) {
+	CIFTagManage::exclude_empty_tags( $dataset );
     }
 
     # Print out the CIF header if requested:
