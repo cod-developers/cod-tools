@@ -43,6 +43,12 @@ my @authors;
 my $biblio; # A bibliography file name, possibly marked up by XML-like
 	    # or LaTeX-like tags.
 
+my $cif_comment_header; # A header with comments to printed at the
+			# beginning of the output CIF file.
+
+my $cif_header_file; # The name of an external file that holds a CIF
+		     # header.
+
 my $data_block_nr; # If defined, specifies that data blocks should be
 		   # numbered in a COD-like fasion.
 
@@ -64,6 +70,8 @@ my %cif_tags_lc = map {(lc($_),$_)} @requested_cif_tags;
     "-y,--year"         => sub{ $user_biblio = 1; $year = get_value() },
     "-B,--bibliography" => \$biblio,
 
+    "-h,--add-cif-header" => \$cif_header_file,
+
     "-S,--start-data-block-number"    => \$data_block_nr,
     "-R,--renumber-data-blocks"       => sub { $data_block_nr = 7000001 },
     "-R-,--dont-renumber-data-blocks" => sub { undef $data_block_nr },
@@ -72,6 +80,15 @@ my %cif_tags_lc = map {(lc($_),$_)} @requested_cif_tags;
     "--discard-bibliography" => sub{ $leave_biblio = 0 },
     "--help,--usage" => sub { SUsage::usage; exit },
 );
+
+if( defined $cif_header_file ) {
+    open( HEADER, "$cif_header_file" ) or
+	die( "could not open CIF header file '$cif_header_file' for reading: $!" );
+    local $/; # enable "slurp" mode: read the whole header file.
+    $cif_comment_header = <HEADER>;
+    close( HEADER ) or
+	die( "error while closing file '$cif_header_file' after reading" );
+}
 
 my $filename = shift(@ARGV);
 my @data;
@@ -317,6 +334,12 @@ for my $dataset (@data) {
 
 	$datablok->{_journal_page_last} = [ $end_page ]
 	    if defined $end_page;
+    }
+
+    # Print out the CIF header if requested:
+
+    if( defined $cif_comment_header ) {
+	print $cif_comment_header;
     }
 
     # Print out requested tags:
