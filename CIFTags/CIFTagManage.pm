@@ -23,6 +23,7 @@ sub exclude_tag
 
     undef( $cif->{values}{$tag} );
     undef( $cif->{precisions}{$tag} );
+    undef( $cif->{types}{$tag} );
     @{$cif->{tags}} =
 	grep ! /^\Q$tag\E$/, @{$cif->{tags}};
 
