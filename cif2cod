@@ -9,7 +9,7 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #$URL$
 #------------------------------------------------------------------------------
 #*
-#  Parse a CIF file
+#  Parse a CIF file, prepare a COD database table entry from it.
 #**
 
 use strict;
@@ -17,7 +17,18 @@ use lib "./lib/perl5";
 use lib "./CIFParser";
 use CIFParser;
 use Unicode2CIF;
-use ShowStruct;
+use SOptions;
+use SUsage;
+
+my $continue_on_errors = 0;
+
+@ARGV = getOptions(
+    "-c,--continue-on-errors"       => sub { $continue_on_errors = 1 },
+    "-c-,--dont-continue-on-errors" => sub { $continue_on_errors = 0 },
+    "--no-continue-on-errors"       => sub { $continue_on_errors = 0 },
+    "--exit-on-errors"              => sub { $continue_on_errors = 0 },
+    "--help,--usage"                => sub { SUsage::usage; exit },
+);
 
 $\ = "\n";
 $, = ";";
@@ -43,16 +54,16 @@ for my $filename (@ARGV) {
 	    }
 	}
 
-	my $title = get_tag( $values, "_publ_section_title", 0 );
+	my $title = get_tag( $values, "_publ_section_title", 0, $filename );
 	$title =~ s/^\s*|\s*$//g;
 	$title =~ s/\n/ /g;
 	$title =~ s/\s+/ /g;
 
-	my $journal = get_tag( $values, "_journal_name_full", 0 );
-	my $year = get_tag( $values, "_journal_year", 0 );
-	my $volume = get_tag( $values, "_journal_volume", 0 );
-	my $first_page = get_tag( $values, "_journal_page_first", 0 );
-	my $last_page = get_tag( $values, "_journal_page_last", 0 );
+	my $journal = get_tag( $values, "_journal_name_full", 0, $filename );
+	my $year = get_tag( $values, "_journal_year", 0, $filename );
+	my $volume = get_tag( $values, "_journal_volume", 0, $filename );
+	my $first_page = get_tag( $values, "_journal_page_first", 0, $filename );
+	my $last_page = get_tag( $values, "_journal_page_last", 0, $filename );
 
 	my $text = $authors . $title . " " . $journal . " " . $volume . 
 	    " (" . $year . ") " . $first_page . " " . $last_page;
@@ -60,24 +71,36 @@ for my $filename (@ARGV) {
 	$text =~ s/^\s*|\s*$//;
 	$text = Unicode2CIF::cif2unicode( $text );
 
+	my $formula = get_tag( $values, "_chemical_formula_sum", 0, $filename );
+
 	push( @data, $dataset->{name} );
 	push( @data, 0 ); # field 'pdf'
-	push( @data, filter_num( $values->{_cell_length_a}[0] ));
-	push( @data, filter_num( $values->{_cell_length_b}[0] ));
-	push( @data, filter_num( $values->{_cell_length_c}[0] ));
-	push( @data, filter_num( $values->{_cell_angle_alpha}[0] ));
-	push( @data, filter_num( $values->{_cell_angle_beta}[0] ));
-	push( @data, filter_num( $values->{_cell_angle_gamma}[0] ));
-	push( @data, filter_num( $values->{_cell_volume}[0] ));
+	push( @data, get_num( $values, "_cell_length_a", 0, $filename ));
+	push( @data, get_num( $values, "_cell_length_b", 0, $filename ));
+	push( @data, get_num( $values, "_cell_length_c", 0, $filename ));
+	push( @data, get_num( $values, "_cell_angle_alpha", 0, $filename ));
+	push( @data, get_num( $values, "_cell_angle_beta", 0, $filename ));
+	push( @data, get_num( $values, "_cell_angle_gamma", 0, $filename ));
+	push( @data, get_num( $values, "_cell_volume", 0, $filename ));
 	push( @data, $nel );
-	push( @data, $values->{"_symmetry_space_group_name_H-M"}[0] );
-	push( @data, defined $values->{_chemical_formula_sum} ?
-	    "- " . $values->{_chemical_formula_sum}[0] . " -" :
-	    "?" );
+	push( @data, get_tag( $values, "_symmetry_space_group_name_H-M", 0,
+			      $filename ));
+	push( @data, $formula ? "- " . $formula . " -" : "?" );
 	push( @data, $text );
 
 	@data = map { defined $_ ? "\"$_\"" : "\"\"" } @data;
 	print @data;
+    }
+}
+
+sub error
+{
+    my $message = $_[0];
+
+    if( $continue_on_errors ) {
+	warn( $message );
+    } else {
+	die( $message );
     }
 }
 
@@ -86,17 +109,27 @@ sub filter_num
     map { s/\(.*\)$//; $_ } @_
 }
 
+sub get_num
+{
+    my ($values, $tag, $index, $filename ) = @_;
+
+    return filter_num( &get_tag );
+}
+
 sub get_tag
 {
-    my ($values, $tag, $index) = @_;
+    my ($values, $tag, $index, $filename ) = @_;
 
     if( ref $values eq "HASH" ) {
-	if( exists $values->{$tag} ) {
-	    if( ref $values->{$tag} eq "ARRAY" ) {
-		if( defined $values->{$tag}[0] ) {
-		    return $values->{$tag}[0];
-		}
+	if( exists $values->{$tag} && ref $values->{$tag} eq "ARRAY" ) {
+	    if( defined $values->{$tag}[$index] ) {
+		return $values->{$tag}[$index];
+	    } else {
+		error( "tag '$tag' in the file '$filename' does not have value ".
+		       "number $index" );
 	    }
+	} else {
+	    error( "tag '$tag' is absent in the file '$filename'" );
 	}
     }
     return "";
