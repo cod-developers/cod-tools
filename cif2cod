@@ -42,7 +42,7 @@ for my $filename (@ARGV) {
 
     for my $dataset (@$data) {
 	my @data = ();
-	my $nel = 0;
+	my $nel;
 	my $values = $dataset->{values};
 
 	next unless exists $values->{_atom_site_fract_x};
@@ -72,7 +72,10 @@ for my $filename (@ARGV) {
 	$text = Unicode2CIF::cif2unicode( $text );
 
 	my $formula = get_tag( $values, "_chemical_formula_sum", 0, $filename );
+	$formula =~ s/^\s*|\s*$//g;
 	check_chem_formula( $formula, $filename );
+
+	$nel = count_number_of_elements( $formula );
 
 	push( @data, $dataset->{name} );
 	push( @data, 0 ); # field 'pdf'
@@ -117,11 +120,22 @@ sub check_chem_formula
     my $formula_component = "[a-zA-Z]{1,2}[0-9.]*";
 
     if( $formula !~ /^\s*($formula_component\s+)*($formula_component)\s*$/ ) {
-	error( "chemical formula '$formula' cold not be parsed in the" .
+	error( "chemical formula '$formula' cold not be parsed in the " .
 	       "file '$filename':\n" .
 	       "it does not consist of space-seprated chemical element names " .
 	       "with optional numeric quantities (e.g. 'C2 H6 O')" );
     }
+}
+
+sub count_number_of_elements
+{
+    my $formula = $_[0];
+    my @elements = map {s/[0-9.]//g;$_} split( " ", $formula );
+    my $prev;
+    my @unique = map {(!defined $prev || $prev ne $_) ? $prev=$_ : ()}
+                 sort {$a cmp $b} @elements;
+
+    return int(@unique);
 }
 
 sub get_num
