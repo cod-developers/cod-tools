@@ -68,7 +68,7 @@ my %cif_tags_lc = map {(lc($_),$_)} @requested_cif_tags;
 
 my %spacegroups = map {
     my $generated_key = $_->[2];
-    $generated_key = s/\s//g;
+    $generated_key =~ s/\s//g;
     ($_->[1], $_->[2], $generated_key, $_->[2] )
 } @SpacegroupNames::names;
 
@@ -395,10 +395,6 @@ for my $dataset (@data) {
 		##print ">>> $orig_sg\n";
 		if( exists $spacegroups{$orig_sg} ) {
 		    $datablok->{$sg_tag}[0] = $spacegroups{$orig_sg};
-		} else {
-		    $datablok->{$sg_tag}[0] =~ s/~//g;
-		    $datablok->{$sg_tag}[0] =~ s/\(//g;
-		    $datablok->{$sg_tag}[0] =~ s/\)/ /g;
 		}
 	    }
 	}
