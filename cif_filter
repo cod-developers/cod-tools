@@ -22,6 +22,7 @@ use CIFParser;
 use CIFDictTags;
 use CIFExcludedTags;
 use CIFTagManage;
+use Spacegroups::SpacegroupNames;
 use Unicode2CIF;
 use SOptions;
 use SUsage;
@@ -35,6 +36,7 @@ my $user_biblio = 0;
 my $leave_biblio = 0;
 my $exclude_empty_tags = 0;
 my $preserve_loop_order = 0;
+my $reformat_spacegroup = 0;
 
 my $journal;
 my $volume;
@@ -64,6 +66,12 @@ my @requested_cif_tags = map {
 
 my %cif_tags_lc = map {(lc($_),$_)} @requested_cif_tags;
 
+my %spacegroups = map {
+    my $generated_key = $_->[2];
+    $generated_key = s/\s//g;
+    ($_->[1], $_->[2], $generated_key, $_->[2] )
+} @SpacegroupNames::names;
+
 @ARGV = getOptions( 
     "-j,--journal"      => sub{ $user_biblio = 1; $journal = get_value() },
     "-v,--volume"       => sub{ $user_biblio = 1; $volume = get_value() },
@@ -82,6 +90,10 @@ my %cif_tags_lc = map {(lc($_),$_)} @requested_cif_tags;
 
     "--preserve-loop-order"     => sub { $preserve_loop_order = 1; },
     "--use-internal-loop-order" => sub { $preserve_loop_order = 0; },
+
+    "--reformat-space-group"      => sub { $reformat_spacegroup = 1; },
+    "--dont-reformat-space-group" => sub { $reformat_spacegroup = 0; },
+    "--leave-space-space-group"   => sub { $reformat_spacegroup = 0; },
 
     "-S,--start-data-block-number"    => \$data_block_nr,
     "-R,--renumber-data-blocks"       => sub { $data_block_nr = 7000001 },
@@ -364,6 +376,31 @@ for my $dataset (@data) {
 	    CIFTagManage::exclude_tag( $dataset, $excluded_tag );
 	    #use ShowStruct;
 	    #showRef( $dataset );
+	}
+    }
+
+    # Correct the formatting of the H-M spacegroup symbol:
+
+    if( $reformat_spacegroup ) {
+	for my $sg_tag (qw (
+            _symmetry_space_group_name_H-M
+            _space_group_name_H-M_alt
+            _space_group.name_H-M_full
+        )) {
+	    ##use ShowStruct;
+	    ##showRef( \%spacegroups  );
+	    if( exists $datablok->{$sg_tag} ) {
+		my $orig_sg = $datablok->{$sg_tag}[0];
+		$orig_sg =~ s/[()~\s]//g;
+		##print ">>> $orig_sg\n";
+		if( exists $spacegroups{$orig_sg} ) {
+		    $datablok->{$sg_tag}[0] = $spacegroups{$orig_sg};
+		} else {
+		    $datablok->{$sg_tag}[0] =~ s/~//g;
+		    $datablok->{$sg_tag}[0] =~ s/\(//g;
+		    $datablok->{$sg_tag}[0] =~ s/\)/ /g;
+		}
+	    }
 	}
     }
 
