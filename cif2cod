@@ -72,6 +72,7 @@ for my $filename (@ARGV) {
 	$text = Unicode2CIF::cif2unicode( $text );
 
 	my $formula = get_tag( $values, "_chemical_formula_sum", 0, $filename );
+	check_chem_formula( $formula, $filename );
 
 	push( @data, $dataset->{name} );
 	push( @data, 0 ); # field 'pdf'
@@ -107,6 +108,20 @@ sub error
 sub filter_num
 {
     map { s/\(.*\)$//; $_ } @_
+}
+
+sub check_chem_formula
+{
+    my ( $formula, $filename ) = @_;
+
+    my $formula_component = "[a-zA-Z]{1,2}[0-9.]*";
+
+    if( $formula !~ /^\s*($formula_component\s+)*($formula_component)\s*$/ ) {
+	error( "chemical formula '$formula' cold not be parsed in the" .
+	       "file '$filename':\n" .
+	       "it does not consist of space-seprated chemical element names " .
+	       "with optional numeric quantities (e.g. 'C2 H6 O')" );
+    }
 }
 
 sub get_num
