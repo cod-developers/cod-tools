@@ -107,7 +107,8 @@ for my $filename (@ARGV) {
 	push( @data, $formula ? "- " . $formula . " -" : "?" );
 	push( @data, $text );
 
-	@data = map { defined $_ ? "\"$_\"" : "\"\"" } @data;
+	@data = map { defined $_ ? $_ : "" } @data;
+	@data = map { s/\\/\\\\/g; s/"/\\"/g; "\"$_\"" } @data;
 	print @data;
     }
 }
