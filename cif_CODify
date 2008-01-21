@@ -1,0 +1,55 @@
+#!/bin/sh
+#------------------------------------------------------------------------------
+#$Author$
+#$Date$ 
+#$Revision$
+#$URL$
+#------------------------------------------------------------------------------
+#*
+# Extract essential data from the input CIF file and format it
+# using the rules of the Crystallography Open Database (COD).
+#**
+
+TMP_DIR="${tmp}"
+
+set -ue
+
+BASENAME="`basename $0`"
+
+test -z "${TMP_DIR}" && TMP_DIR="."
+TMP_DIR="${TMP_DIR}/tmp-${BASENAME}-$$"
+mkdir "${TMP_DIR}"
+
+TMP_COD_HEADER="${TMP_DIR}/header.txt"
+
+## set -x
+
+cat > $TMP_COD_HEADER <<'EOF'
+#------------------------------------------------------------------------------
+#$Date$
+#$Revision$
+#$URL$
+#------------------------------------------------------------------------------
+#
+# This file is available in the Crystallography Open Database (COD),
+# http://www.crystallography.net/
+#
+# All data on this site have been placed in the public domain by the
+# contributors.
+#
+EOF
+
+for file
+do
+    NUMBER=`basename ${file} .cif`
+
+    cif_filter \
+	${file} \
+	--renumber \
+	--start-data="${NUMBER}" \
+	--exclude-empty-tags \
+	--add-cif-header ${TMP_COD_HEADER}
+done
+
+
+rm -rf "${TMP_DIR}"
