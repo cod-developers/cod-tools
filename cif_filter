@@ -347,6 +347,20 @@ for my $dataset (@data) {
     if( $exclude_empty_tags ) {
 	CIFTagManage::exclude_empty_tags( $dataset );
     }
+    for my $excluded_tag (qw( _publ_author_address
+                              _publ_author.address
+                              _publ_author_email
+                              _publ_author.email
+                              _publ_author_footnote
+                              _publ_author.footnote
+                              _publ_author_id_iucr
+                              _publ_author.id_iucr )) {
+	if( exists $datablok->{$excluded_tag} ) {
+	    CIFTagManage::exclude_tag( $dataset, $excluded_tag );
+	    #use ShowStruct;
+	    #showRef( $dataset );
+	}
+    }
 
     # Print out the CIF header if requested:
 
