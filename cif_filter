@@ -29,6 +29,7 @@ use SUsage;
 sub merge_new_tag_values($$$);
 
 $::max_cif_line_len = 80;
+$::max_cif_tag_len = 32;
 
 my $user_biblio = 0;
 my $leave_biblio = 0;
@@ -427,7 +428,8 @@ sub print_tag
 	    }
 	} else {
 	    my $value = $val->[0];
-	    my $key_len = length($key) > 30 ? length($key) : 30;
+	    my $key_len = length($key) > $::max_cif_tag_len ?
+		length($key) : $::max_cif_tag_len;
 	    my $val_len = length($value);
 
 	    if( $value =~ /\s/ ) {
@@ -438,7 +440,7 @@ sub print_tag
 		printf "%s\n", $key;
 	    } else {
 		if( $value !~ /\n/ ) {
-		    printf "%-30s ", $key;
+		    printf "%-" . $::max_cif_tag_len . "s ", $key;
 		} else {
 		    printf "%s", $key;
 		}
