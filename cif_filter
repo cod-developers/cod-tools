@@ -34,6 +34,7 @@ $::max_cif_tag_len = 32;
 my $user_biblio = 0;
 my $leave_biblio = 0;
 my $exclude_empty_tags = 0;
+my $preserve_loop_order = 0;
 
 my $journal;
 my $volume;
@@ -78,6 +79,9 @@ my %cif_tags_lc = map {(lc($_),$_)} @requested_cif_tags;
     "--exclude-empty-tags"      => sub { $exclude_empty_tags = 1; },
     "--dont-exclude-empty-tags" => sub { $exclude_empty_tags = 0; },
     "--no-exclude-empty-tags"   => sub { $exclude_empty_tags = 0; },
+
+    "--preserve-loop-order"     => sub { $preserve_loop_order = 1; },
+    "--use-internal-loop-order" => sub { $preserve_loop_order = 0; },
 
     "-S,--start-data-block-number"    => \$data_block_nr,
     "-R,--renumber-data-blocks"       => sub { $data_block_nr = 7000001 },
@@ -371,6 +375,15 @@ for my $dataset (@data) {
 
     # Print out requested tags:
 
+    my @tags_for_output;
+
+    if( $preserve_loop_order ) {
+	@tags_for_output =
+	    map {exists $excluded_tags{$_} ? () : $_ } @{$dataset->{tags}}
+    } else {
+	@tags_for_output = @requested_cif_tags;
+    }
+
     my %printed_loops = ();
 
     if( defined $data_block_nr ) {
@@ -394,7 +407,7 @@ for my $dataset (@data) {
 	}
     }
 
-    for my $tag (@requested_cif_tags) {
+    for my $tag (@tags_for_output) {
 	if( defined $datablok->{$tag} ) {
 	    if( exists $dataset->{inloop}{$tag} ) {
 		my $tag_loop_nr = $dataset->{inloop}{$tag};
