@@ -110,8 +110,13 @@ for my $filename (@ARGV) {
 	push( @data, $formula ? "- " . $formula . " -" : "?" );
 	push( @data, $text );
 
-	@data = map { defined $_ ? $_ : "" } @data;
-	@data = map { s/\\/\\\\/g; s/"/\\"/g; "\"$_\"" } @data;
+	@data = map {
+	    if( defined $_ ) {
+		s/\\/\\\\/g; s/"/\\"/g; "\"$_\"";
+	    } else {
+		"NULL";
+	    }
+	} @data;
 	print @data;
     }
 }
@@ -155,37 +160,43 @@ sub get_num
 
 sub get_tag
 {
-    push( @_, 1 );
+    push( @_, 0 );
     &get_and_check_tag;
 }
 
 sub get_tag_silently
 {
-    push( @_, ("",0) );
+    push( @_, ("",1) );
+    &get_and_check_tag;
+}
+
+sub get_tag_or_undef
+{
+    push( @_, ("",2) );
     &get_and_check_tag;
 }
 
 sub get_and_check_tag
 {
-    my ($values, $tag, $index, $filename, $report_error ) = @_;
+    my ($values, $tag, $index, $filename, $ignore_errors ) = @_;
 
     if( ref $values eq "HASH" ) {
 	if( exists $values->{$tag} && ref $values->{$tag} eq "ARRAY" ) {
 	    if( defined $values->{$tag}[$index] ) {
 		return $values->{$tag}[$index];
 	    } else {
-		if( $report_error ) {
+		unless( $ignore_errors ) {
 		    error( "tag '$tag' in the file '$filename' does not " .
 			   "have value number $index" );
 		}
 	    }
 	} else {
-	    if( $report_error ) {
+	    unless( $ignore_errors ) {
 		error( "tag '$tag' is absent in the file '$filename'" );
 	    }
 	}
     }
-    return "";
+    return $ignore_errors <= 1 ? "" : undef;
 }
 
 sub get_spacegroup_info
