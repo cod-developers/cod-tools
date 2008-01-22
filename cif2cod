@@ -108,6 +108,15 @@ for my $filename (@ARGV) {
 	push( @data, $nel );
 	push( @data, get_spacegroup_info( $values, $filename ));
 	push( @data, $formula ? "- " . $formula . " -" : "?" );
+	if( exists $values->{_journal_coeditor_code} ) {
+	    push( @data, uc( get_tag_or_undef( $values, 
+					       "_journal_coeditor_code", 0 )));
+	} elsif( exists $values->{"_journal.coeditor_code"} ) {
+	    push( @data, uc( get_tag_or_undef( $values, 
+					       "_journal.coeditor_code", 0 )));
+	} else {
+	    push( @data, undef );
+	}
 	push( @data, $text );
 
 	@data = map {
