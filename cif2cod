@@ -22,6 +22,9 @@ use SOptions;
 use SUsage;
 
 my $continue_on_errors = 0;
+
+sub error { if( $continue_on_errors ){warn $_[0]}else{die $_[0]} }
+
 my $reformat_spacegroup = 0;
 
 @ARGV = getOptions(
@@ -110,17 +113,6 @@ for my $filename (@ARGV) {
 	@data = map { defined $_ ? $_ : "" } @data;
 	@data = map { s/\\/\\\\/g; s/"/\\"/g; "\"$_\"" } @data;
 	print @data;
-    }
-}
-
-sub error
-{
-    my $message = $_[0];
-
-    if( $continue_on_errors ) {
-	warn( $message );
-    } else {
-	die( $message );
     }
 }
 
