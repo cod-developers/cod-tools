@@ -400,6 +400,14 @@ for my $dataset (@data) {
 	}
     }
 
+    # Calculate essential information if it is missing:
+
+    if( !exists $datablok->{"_cell_volume"} &&
+	exists $datablok->{"_cell_length_a"} ) {
+	my @cell = get_cell( $datablok );
+	$datablok->{"_cell_volume"} = cell_volume( @cell );
+    }
+    
     # Print out the CIF header if requested:
 
     if( defined $cif_comment_header ) {
@@ -640,4 +648,18 @@ sub merge_new_tag_values($$$)
     }
 
     return $dst;
+}
+
+sub get_cell
+{
+    my $datablok = $_[0];
+
+    return (
+	$datablok->{_cell_length_a}[0],
+	$datablok->{_cell_length_b}[0],
+	$datablok->{_cell_length_c}[0],
+	$datablok->{_cell_angle_alpha}[0],
+	$datablok->{_cell_angle_beta}[0],
+	$datablok->{_cell_angle_gamma}[0]
+    );
 }
