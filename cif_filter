@@ -37,6 +37,7 @@ my $leave_biblio = 0;
 my $exclude_empty_tags = 0;
 my $preserve_loop_order = 0;
 my $reformat_spacegroup = 0;
+my $calculate_cell_volume = 0;
 
 my $journal;
 my $volume;
@@ -94,6 +95,9 @@ my %spacegroups = map {
     "--reformat-space-group"      => sub { $reformat_spacegroup = 1; },
     "--dont-reformat-space-group" => sub { $reformat_spacegroup = 0; },
     "--leave-space-space-group"   => sub { $reformat_spacegroup = 0; },
+
+    "--calculate-cell-volume"      => sub { $calculate_cell_volume = 1; },
+    "--dont-calculate-cell-volume" => sub { $calculate_cell_volume = 0; },
 
     "-S,--start-data-block-number"    => \$data_block_nr,
     "-R,--renumber-data-blocks"       => sub { $data_block_nr = 7000001 },
@@ -400,13 +404,15 @@ for my $dataset (@data) {
 	}
     }
 
-    # Calculate essential information if it is missing:
+    # Calculate essential information if it is missing but requested:
 
-    if( !exists $datablok->{"_cell_volume"} &&
-	exists $datablok->{"_cell_length_a"} ) {
-	my @cell = get_cell( $datablok );
-	$datablok->{"_cell_volume"}[0] =
-	    sprintf( "%7.2f", cell_volume( @cell ));
+    if( $calculate_cell_volume ) {
+	if( !exists $datablok->{"_cell_volume"} &&
+	    exists $datablok->{"_cell_length_a"} ) {
+	    my @cell = get_cell( $datablok );
+	    $datablok->{"_cell_volume"}[0] =
+		sprintf( "%7.2f", cell_volume( @cell ));
+	}
     }
     
     # Print out the CIF header if requested:
