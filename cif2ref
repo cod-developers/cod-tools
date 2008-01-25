@@ -16,6 +16,7 @@ eval 'exec perl -x $0 ${1+"$@"}'
 use strict;
 use lib "./lib/perl5";
 use STAR::Parser;
+use Unicode2CIF;
 
 my $filename = shift(@ARGV);
 my $biblio = @ARGV > 0 ? shift(@ARGV) : undef;
@@ -24,6 +25,8 @@ my @data;
 @data = STAR::Parser->parse(-file=>$filename);
 
 my $n = 0;
+
+binmode( STDOUT, ":utf8" );
 
 for my $dataset (@data) {
 
@@ -116,7 +119,12 @@ for my $dataset (@data) {
 	$reference =~ s/\n/ /g;
 	print $reference, "\n";
     } else {
-	print "Bibliography ...\n";
+	my $text = get_cif_description( $datablok );
+	if( defined $text ) {
+	    print $text, "\n";
+	} else {
+	    print "Bibliography ...\n";
+	}
     }
 
     do {
@@ -134,6 +142,7 @@ for my $dataset (@data) {
 
 	print $a, $b, $c, $alpha, $beta, $gamma;
 
+	$spacegroup = "?" unless defined $spacegroup;
 	$spacegroup =~ s/^\s*|\s*$//g;
 	print $spacegroup;
 
@@ -149,4 +158,49 @@ for my $dataset (@data) {
     };
 
     $n ++;
+}
+
+sub get_cif_description
+{
+    my $datablok = $_[0];
+
+    my $text;
+
+    my $separator = "|";
+
+    for my $tag (qw(
+                    _chemical_name_trivial
+                    _chemical_name_systematic
+                    _publ_author_name
+                    _publ_section_title
+                    _journal_name_full
+                    _journal_volume
+                    _journal_year
+                    _journal_page_first
+                    _journal_page_last
+                )) {
+	my $val = "";
+	if( exists $datablok->{$tag} ) {
+	    $val = join( "; ", @{$datablok->{$tag}} );
+	    $val =~ s/^\s*|\s*$//g;
+	}
+	if( $tag eq "_journal_year" ) {
+	    $val = "(" . $val . ")";
+	    }
+	if( defined $text ) {
+	    $text .= $separator . $val;
+	} else {
+	    $text = $val;
+	}
+	if( $tag eq "_journal_volume" ) {
+	    $separator = " ";
+	}
+    }
+    if( defined $text ) {
+	$text =~ s/\n/ /g;
+	$text =~ s/\s+/ /g;
+	$text =~ s/^\s*|\s*$//g;
+	$text = Unicode2CIF::cif2unicode( $text );
+    }
+    return $text;
 }
