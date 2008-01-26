@@ -59,7 +59,7 @@ my %alt_cmd = (
     # "\x{232A}" => '\\\\rangle ', # RIGHT-POINTING ANGLE BRACKET     (rangle)
     #
     # Alternatives:
-    ">"        => '\\\\rangle ',   # GREATER-THAN SIGN
+    #">"       => '\\\\rangle ',   # GREATER-THAN SIGN
     "\x{27E9}" => '\\\\rangle ',   # MATHEMATICAL RIGHT ANGLE BRACKET (rangle)
     "\x{3009}" => '\\\\rangle ',   # RIGHT ANGLE BRACKET              (rangle)
     # "\x{203A}" => '\\\\rangle ', # SINGLE RIGHT-POINTING ANGLE QUOTATION
@@ -68,7 +68,7 @@ my %alt_cmd = (
     # "\x{2329}" => '\\\\langle ', # LEFT-POINTING ANGLE BRACKET     (langle)
     #
     # Alternatives:
-    "<"        => '\\\\langle ',   # LESS-THAN SIGN
+    #"<"       => '\\\\langle ',   # LESS-THAN SIGN
     "\x{27E8}" => '\\\\langle ',   # MATHEMATICAL LEFT ANGLE BRACKET (langle)
     "\x{3008}" => '\\\\langle ',   # LEFT ANGLE BRACKET              (langle)
     # "\x{2039}" => '\\\\langle ', # SINGLE LEFT-POINTING ANGLE QUOTATION
