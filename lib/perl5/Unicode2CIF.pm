@@ -28,7 +28,8 @@ my %commands = (
     "\x{2014}" => '---',             # EM DASH             (single bond)
     "\x{00B1}" => '+-',              # PLUS-MINUS SIGN     (plus-minus)
     "\x{2213}" => '-+',              # MINUS-OR-PLUS SIGN  (minus-plus)
-    "\x{003D}" => '\\\\db ',         # EQUALS SIGN         (double bond)
+    ## "\x{003D}" => '\\\\db ',      # EQUALS SIGN         (double bond)
+    ## "\x{2A75}" => '\\\\db ',      # TWO EQUALS SIGNS    (used for double bond)
     "\x{25A1}" => '\\\\square ',     # WHITE SQUARE        (square)
     "\x{2261}" => '\\\\tb ',         # IDENTICAL TO        (triple bond)
     "\x{2260}" => '\\\\neq ',        # NOT EQUAL TO
@@ -188,6 +189,7 @@ sub cif2unicode
 {
     my $text = $_[0];
 
+    $text =~ s/\\\\db /\x{003D}/g;
     for my $pattern (keys %commands) {
 	my $value = $commands{$pattern};
     	$text =~ s/\Q$value/$pattern/g;
