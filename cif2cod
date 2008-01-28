@@ -176,7 +176,9 @@ sub unique
 sub count_number_of_elements
 {
     my $formula = $_[0];
-    my @elements = map {s/[0-9.]//g;$_} split( " ", $formula );
+    my @elements = map {s/[^A-Za-z]//g; /^[A-Za-z]+$/ ? $_ : () }
+                   split( " ", $formula );
+
     my @unique = unique( sort {$a cmp $b} @elements );
 
     return int(@unique);
