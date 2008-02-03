@@ -131,6 +131,15 @@ for my $filename (@ARGV) {
 	} elsif( exists $values->{"_journal.coeditor_code"} ) {
 	    push( @data, uc( get_tag_or_undef( $values, 
 					       "_journal.coeditor_code", 0 )));
+	} elsif( $journal =~ /^Acta Cryst/ &&
+		 exists $values->{"_[local]_cod_original_file"} ) {
+	    my $acce_code = $values->{"_[local]_cod_original_file"}[0];
+	    $acce_code =~ s/\..*$//g;
+	    if( $acce_code =~ /^[a-zA-Z]{1,2}[0-9]{4,5}$/ ) {
+		push( @data, uc( $acce_code ));
+	    }  else {
+		push( @data, undef );
+	    }
 	} else {
 	    push( @data, undef );
 	}
