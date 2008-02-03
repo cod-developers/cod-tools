@@ -18,6 +18,7 @@ use lib "./lib/perl5";
 use lib "./CIFParser";
 use lib "./CIFTags";
 use lib ".";
+use File::Basename;
 use CIFParser;
 use CIFDictTags;
 use CIFCODTags;
@@ -39,6 +40,7 @@ my $exclude_empty_tags = 0;
 my $preserve_loop_order = 0;
 my $reformat_spacegroup = 0;
 my $calculate_cell_volume = 0;
+my $record_original_filename = 0;
 
 my $journal;
 my $volume;
@@ -99,6 +101,9 @@ my %spacegroups = map {
 
     "--calculate-cell-volume"      => sub { $calculate_cell_volume = 1; },
     "--dont-calculate-cell-volume" => sub { $calculate_cell_volume = 0; },
+
+    "--record-original-filename"      => sub { $record_original_filename = 1; },
+    "--dont-record-original-filename" => sub { $record_original_filename = 0; },
 
     "-S,--start-data-block-number"    => \$data_block_nr,
     "-R,--renumber-data-blocks"       => sub { $data_block_nr = 7000001 },
@@ -369,6 +374,13 @@ for my $dataset (@data) {
     if( $exclude_empty_tags ) {
 	CIFTagManage::exclude_empty_tags( $dataset );
     }
+
+    if( $record_original_filename ) {
+	my $basename = File::Basename::basename( $filename );
+	$datablok->{"_[local]_cod_original_file"}[0] = $basename;
+	unshift( @{$dataset->{tags}}, "_[local]_cod_original_file" );
+    }
+
     for my $excluded_tag (qw( _publ_author_address
                               _publ_author.address
                               _publ_author_email
