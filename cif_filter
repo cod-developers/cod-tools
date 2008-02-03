@@ -369,6 +369,18 @@ for my $dataset (@data) {
 	    if defined $end_page;
     }
 
+    # Check for misspelled tags:
+
+    for my $tag (@{$dataset->{tags}}) {
+	my %cif_dictionary_tags = map { $_, $_ }
+	    @CIFDictTags::tag_list, @CIFCODTags::tag_list;
+
+	unless( exists $cif_dictionary_tags{$tag} ) {
+	    print STDERR basename( $0 ) . ": ";
+	    print STDERR "tag '$tag' is not recognised\n";
+	}
+    }
+
     # Clean up the resulting CIF data structure:
 
     if( $exclude_empty_tags ) {
