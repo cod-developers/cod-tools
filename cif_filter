@@ -222,7 +222,11 @@ for my $dataset (@data) {
 		## print ">>> $key -> $lc_key -> $cannonical_key\n";
 		if( !exists $datablok->{$cannonical_key} ) {
 		    $datablok->{$cannonical_key} = $datablok->{$key};
-		    if( $dataset->{inloop}{$key} ) {
+		    delete $datablok->{$key};
+		    @{$dataset->{tags}} =
+			    map { s/^$key$/$cannonical_key/; $_ }
+		        @{$dataset->{tags}};
+		    if( exists $dataset->{inloop}{$key} ) {
 			my $loop_nr = $dataset->{inloop}{$key};
 			$dataset->{inloop}{$cannonical_key} =
 			    $dataset->{inloop}{$key};
