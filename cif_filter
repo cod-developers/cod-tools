@@ -41,6 +41,7 @@ my $preserve_loop_order = 0;
 my $reformat_spacegroup = 0;
 my $calculate_cell_volume = 0;
 my $record_original_filename = 0;
+my $original_filename;
 
 my $journal;
 my $volume;
@@ -101,6 +102,10 @@ my %spacegroups = map {
 
     "--calculate-cell-volume"      => sub { $calculate_cell_volume = 1; },
     "--dont-calculate-cell-volume" => sub { $calculate_cell_volume = 0; },
+
+    "--original-filename" => sub { $original_filename = &get_value;
+				   $record_original_filename = 1 },
+    "--clear-original-filename" => sub { undef $original_filename },
 
     "--record-original-filename"      => sub { $record_original_filename = 1; },
     "--dont-record-original-filename" => sub { $record_original_filename = 0; },
@@ -383,14 +388,21 @@ for my $dataset (@data) {
 
     # Clean up the resulting CIF data structure:
 
-    if( $exclude_empty_tags ) {
-	CIFTagManage::exclude_empty_tags( $dataset );
-    }
-
     if( $record_original_filename ) {
-	my $basename = File::Basename::basename( $filename );
+	my $basename;
+	if( defined $original_filename ) {
+	    $basename = File::Basename::basename( $original_filename );
+	} elsif( defined $filename && $filename ne "-" ) {
+	    $basename = File::Basename::basename( $filename );
+	} else {
+	    $basename = "?";
+	}
 	$datablok->{"_[local]_cod_original_file"}[0] = $basename;
 	unshift( @{$dataset->{tags}}, "_[local]_cod_original_file" );
+    }
+
+    if( $exclude_empty_tags ) {
+	CIFTagManage::exclude_empty_tags( $dataset );
     }
 
     for my $excluded_tag (qw( _publ_author_address
