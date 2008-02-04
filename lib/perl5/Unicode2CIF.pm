@@ -131,6 +131,7 @@ my %letters = (
     "\x{00F8}" => '\/o',  # LATIN SMALL LETTER O WITH STROKE
     "\x{0110}" => '\/D',  # LATIN CAPITAL LETTER D WITH STROKE (barred D ?)
     "\x{0111}" => '\/d',  # LATIN SMALL LETTER D WITH STROKE (barred d ?)
+    "\x{0131}" => '\?i',  # LATIN SMALL LETTER DOTLESS I
 );
 
 my %combining = (
