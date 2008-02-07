@@ -18,19 +18,19 @@ require Exporter;
 
 @CIFCODTags::tag_list = qw (
 _[local]_cod_duplicate_entry
-_[local]_cod_original_file
+_[local]_cod_data_source_file
 _[local]_cod_published_source
-_[local]_cod_original_file_MD5_sum
-_[local]_cod_original_file_SHA1_sum
-_[local]_cod_original_file_SHA256_sum
+_[local]_cod_data_source_MD5_sum
+_[local]_cod_data_source_SHA1_sum
+_[local]_cod_data_source_SHA256_sum
 _[local]_cod_est_spacegroup_name_H-M
 
 _cod_duplicate_entry
-_cod_original_file
+_cod_data_source_file
 _cod_published_source
-_cod_original_file_MD5_sum
-_cod_original_file_SHA1_sum
-_cod_original_file_SHA256_sum
+_cod_data_source_MD5_sum
+_cod_data_source_SHA1_sum
+_cod_data_source_SHA256_sum
 _cod_est_spacegroup_name_H-M
 );
 
