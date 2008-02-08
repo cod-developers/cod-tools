@@ -70,16 +70,6 @@ _geom_extra_table_head_C
 _geom_table_headnote_A
 _geom_table_headnote_B
 _geom_table_headnote_C
-_geom_angle_DHA
-_geom_bond_atom_site_label_A
-_geom_bond_atom_site_label_D
-_geom_bond_atom_site_label_H
-_geom_bond_distance_DH
-_geom_contact_distance_DA
-_geom_contact_distance_HA
-_geom_contact_site_symmetry_A
-_geom_contact_site_symmetry_D
-_geom_contact_site_symmetry_H
 _publ_vrn_code
 _vrf_[]
 _vrf_VALIDATOR_comments
