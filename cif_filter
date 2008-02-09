@@ -208,28 +208,26 @@ for my $dataset (@data) {
     # convert all tags to a "cannonical" form (the one used in this
     # script ;):
 
-    if( 1 ) {
-	for my $key ( keys %{$datablok} ) {
-	    my $lc_key = lc( $key );
-	    ## print ">>> $key -> $lc_key\n";
-	    if( defined $cif_tags_lc{$lc_key} ) {
-		my $cannonical_key = $cif_tags_lc{$lc_key};
-		## print ">>> $key -> $lc_key -> $cannonical_key\n";
-		if( !exists $datablok->{$cannonical_key} ) {
-		    $datablok->{$cannonical_key} = $datablok->{$key};
-		    delete $datablok->{$key};
-		    @{$dataset->{tags}} =
-			    map { s/^$key$/$cannonical_key/; $_ }
-		        @{$dataset->{tags}};
-		    if( exists $dataset->{inloop}{$key} ) {
-			my $loop_nr = $dataset->{inloop}{$key};
-			$dataset->{inloop}{$cannonical_key} =
-			    $dataset->{inloop}{$key};
-			delete $dataset->{inloop}{$key};
-			@{$dataset->{loops}[$loop_nr]} =
-			    map { s/^$key$/$cannonical_key/; $_ }
-			@{$dataset->{loops}[$loop_nr]};
-		    }
+    for my $key ( keys %{$datablok} ) {
+	my $lc_key = lc( $key );
+	## print ">>> $key -> $lc_key\n";
+	if( defined $cif_tags_lc{$lc_key} ) {
+	    my $cannonical_key = $cif_tags_lc{$lc_key};
+	    ## print ">>> $key -> $lc_key -> $cannonical_key\n";
+	    if( !exists $datablok->{$cannonical_key} ) {
+		$datablok->{$cannonical_key} = $datablok->{$key};
+		delete $datablok->{$key};
+		@{$dataset->{tags}} =
+		    map { s/^$key$/$cannonical_key/; $_ }
+		@{$dataset->{tags}};
+		if( exists $dataset->{inloop}{$key} ) {
+		    my $loop_nr = $dataset->{inloop}{$key};
+		    $dataset->{inloop}{$cannonical_key} =
+			$dataset->{inloop}{$key};
+		    delete $dataset->{inloop}{$key};
+		    @{$dataset->{loops}[$loop_nr]} =
+			map { s/^$key$/$cannonical_key/; $_ }
+		    @{$dataset->{loops}[$loop_nr]};
 		}
 	    }
 	}
