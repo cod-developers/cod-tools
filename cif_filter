@@ -409,13 +409,16 @@ for my $dataset (@data) {
     # Exclude potentially copyrighted and irrelevant tags
     # unconditionally:
 
-    for my $tag (@{$dataset->{tags}}) {
-	if( exists $excluded_tags{$tag} ) {
-	    CIFTagManage::exclude_tag( $dataset, $tag );
-	    #use ShowStruct;
-	    #showRef( $dataset );
+    do {
+	my @tag_list = @{$dataset->{tags}};
+	for my $tag (@tag_list) {
+	    if( exists $excluded_tags{$tag} ) {
+		CIFTagManage::exclude_tag( $dataset, $tag );
+		#use ShowStruct;
+		#showRef( $dataset );
+	    }
 	}
-    }
+    };
 
     # Clean up the resulting CIF data structure:
 
