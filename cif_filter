@@ -41,6 +41,7 @@ my $preserve_loop_order = 0;
 my $reformat_spacegroup = 0;
 my $calculate_cell_volume = 0;
 my $record_original_filename = 0;
+my $exclude_misspelled_tags = 0;
 my $original_filename;
 
 my $journal;
@@ -65,11 +66,15 @@ my $data_block_nr; # If defined, specifies that data blocks should be
 
 my %excluded_tags  = map { ($_,$_) } @CIFExcludedTags::tag_list;
 
+my @dictionary_tags = ( @CIFDictTags::tag_list, @CIFCODTags::tag_list );
+
+my %dictionary_tags = map { $_, $_ } @dictionary_tags;
+
 my @requested_cif_tags = map {
     exists $excluded_tags{$_} ? () : $_
-} @CIFDictTags::tag_list, @CIFCODTags::tag_list;
+} @dictionary_tags;
 
-my %cif_tags_lc = map {(lc($_),$_)} @requested_cif_tags;
+my %cif_tags_lc = map {(lc($_),$_)} @dictionary_tags;
 
 my %spacegroups = map {
     my $generated_key = $_->[2];
@@ -92,6 +97,10 @@ my %spacegroups = map {
     "--exclude-empty-tags"      => sub { $exclude_empty_tags = 1; },
     "--dont-exclude-empty-tags" => sub { $exclude_empty_tags = 0; },
     "--no-exclude-empty-tags"   => sub { $exclude_empty_tags = 0; },
+
+    "--exclude-misspelled-tags"      => sub { $exclude_misspelled_tags = 1; },
+    "--dont-exclude-misspelled-tags" => sub { $exclude_misspelled_tags = 0; },
+    "--no-exclude-misspelled-tags"   => sub { $exclude_misspelled_tags = 0; },
 
     "--preserve-loop-order"     => sub { $preserve_loop_order = 1; },
     "--use-internal-loop-order" => sub { $preserve_loop_order = 0; },
@@ -336,7 +345,7 @@ for my $dataset (@data) {
     }
 
     # User specified bibliography is processed last since it must take
-    # precedence over original CIF bibliography and over the
+    # precedence over the original CIF bibliography and over the
     # bibliography file data:
 
     if( $user_biblio ) {
@@ -381,16 +390,24 @@ for my $dataset (@data) {
     # Check for misspelled tags:
 
     for my $tag (@{$dataset->{tags}}) {
-	my %cif_dictionary_tags = map { $_, $_ }
-	    @CIFDictTags::tag_list, @CIFCODTags::tag_list;
-
-	unless( exists $cif_dictionary_tags{$tag} ) {
+	unless( exists $dictionary_tags{$tag} ) {
 	    print STDERR basename( $0 ) . ": ";
 	    print STDERR "tag '$tag' is not recognised\n";
 	}
     }
 
-    # Clean up the resulting CIF data structure:
+    # Exclude the misspelled tags if requested:
+
+    if( $exclude_misspelled_tags ) {
+	my @tag_list = @{$dataset->{tags}};
+	for my $tag (@tag_list) {
+	    unless( exists $dictionary_tags{$tag} ) {
+		CIFTagManage::exclude_tag( $dataset, $tag );
+	    }
+	}
+    }
+
+    # Add the data source file name, if requested:
 
     if( $record_original_filename ) {
 	my $basename;
@@ -404,6 +421,19 @@ for my $dataset (@data) {
 	$datablok->{"_[local]_cod_data_source_file"}[0] = $basename;
 	unshift( @{$dataset->{tags}}, "_[local]_cod_data_source_file" );
     }
+
+    # Exclude potentially copyrighted and irrelevant tags
+    # unconditionally:
+
+    for my $tag (@{$dataset->{tags}}) {
+	if( exists $excluded_tags{$tag} ) {
+	    CIFTagManage::exclude_tag( $dataset, $tag );
+	    #use ShowStruct;
+	    #showRef( $dataset );
+	}
+    }
+
+    # Clean up the resulting CIF data structure:
 
     if( $exclude_empty_tags ) {
 	CIFTagManage::exclude_empty_tags( $dataset );
@@ -496,6 +526,28 @@ for my $dataset (@data) {
 	}
     }
 
+    # Print out any tags that are not in the dictionary (most probably
+    # some misspelled tags):
+
+    if( !$exclude_misspelled_tags ) {
+	my $tags_encountered = 0;
+	for my $tag (@{$dataset->{tags}}) {
+	    if( !exists $dictionary_tags{$tag} &&
+		!exists $dataset->{inloop}{$tag} ) {
+		if( !$tags_encountered ) {
+		    print "#BEGIN Tags that were not found in dictionaries:\n";
+		    $tags_encountered = 1;
+		}
+		print_tag( $tag, $datablok );
+	    }
+	}
+	if( $tags_encountered ) {
+	    print "#END Tags that were not found in dictionaries\n";
+	}
+    }
+
+    # Print out loops:
+
     for my $tag (@tags_for_output) {
 	if( defined $datablok->{$tag} ) {
 	    if( exists $dataset->{inloop}{$tag} ) {
@@ -505,6 +557,30 @@ for my $dataset (@data) {
 		    $printed_loops{$tag_loop_nr} = 1;
 		}
 	    }
+	}
+    }
+
+    # Print out loops that contain only non-dictionary tags:
+
+    if( !$exclude_misspelled_tags ) {
+	my $tags_encountered = 0;
+	for my $tag (@{$dataset->{tags}}) {
+	    if( exists $dataset->{inloop}{$tag} && 
+		! exists $dictionary_tags{$tag} ) {
+		my $tag_loop_nr = $dataset->{inloop}{$tag};
+		unless( exists $printed_loops{$tag_loop_nr} ) {
+		    print_loop( $tag, $tag_loop_nr, $dataset );
+		    $printed_loops{$tag_loop_nr} = 1;
+		    if( !$tags_encountered ) {
+			print "#BEGIN Loops that were not found in " .
+			    "dictionaries:\n";
+			$tags_encountered = 1;
+		    }
+		}
+	    }
+	}
+	if( $tags_encountered ) {
+	    print "#END Loops that were not found in dictionaries\n";
 	}
     }
 
