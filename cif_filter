@@ -70,10 +70,6 @@ my @dictionary_tags = ( @CIFDictTags::tag_list, @CIFCODTags::tag_list );
 
 my %dictionary_tags = map { $_, $_ } @dictionary_tags;
 
-my @requested_cif_tags = map {
-    exists $excluded_tags{$_} ? () : $_
-} @dictionary_tags;
-
 my %cif_tags_lc = map {(lc($_),$_)} @dictionary_tags;
 
 my %spacegroups = map {
@@ -494,15 +490,6 @@ for my $dataset (@data) {
 
     # Print out requested tags:
 
-    my @tags_for_output;
-
-    if( $preserve_loop_order ) {
-	@tags_for_output =
-	    map {exists $excluded_tags{$_} ? () : $_ } @{$dataset->{tags}}
-    } else {
-	@tags_for_output = @requested_cif_tags;
-    }
-
     my %printed_loops = ();
 
     if( defined $data_block_nr ) {
@@ -512,7 +499,7 @@ for my $dataset (@data) {
 	print "data_", $compound_name, "\n";
     }
 
-    for my $tag (@requested_cif_tags) {
+    for my $tag (@dictionary_tags) {
 	if( defined $datablok->{$tag} ) {
 	    if( !exists $dataset->{inloop}{$tag} ) {
 		print_tag( $tag, $datablok );
@@ -547,6 +534,14 @@ for my $dataset (@data) {
     }
 
     # Print out loops:
+
+    my @tags_for_output;
+
+    if( $preserve_loop_order ) {
+	@tags_for_output = @{$dataset->{tags}}
+    } else {
+	@tags_for_output = @dictionary_tags;
+    }
 
     for my $tag (@tags_for_output) {
 	if( defined $datablok->{$tag} ) {
