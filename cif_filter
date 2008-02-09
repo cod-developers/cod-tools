@@ -371,6 +371,20 @@ for my $dataset (@data) {
 	    if defined $end_page;
     }
 
+    # Exclude potentially copyrighted and irrelevant tags
+    # unconditionally:
+
+    do {
+	my @tag_list = @{$dataset->{tags}};
+	for my $tag (@tag_list) {
+	    if( exists $excluded_tags{$tag} || $tag =~ /^_vrf_/ ) {
+		CIFTagManage::exclude_tag( $dataset, $tag );
+		#use ShowStruct;
+		#showRef( $dataset );
+	    }
+	}
+    };
+
     # Check for misspelled tags:
 
     for my $tag (@{$dataset->{tags}}) {
@@ -405,20 +419,6 @@ for my $dataset (@data) {
 	$datablok->{"_[local]_cod_data_source_file"}[0] = $basename;
 	unshift( @{$dataset->{tags}}, "_[local]_cod_data_source_file" );
     }
-
-    # Exclude potentially copyrighted and irrelevant tags
-    # unconditionally:
-
-    do {
-	my @tag_list = @{$dataset->{tags}};
-	for my $tag (@tag_list) {
-	    if( exists $excluded_tags{$tag} ) {
-		CIFTagManage::exclude_tag( $dataset, $tag );
-		#use ShowStruct;
-		#showRef( $dataset );
-	    }
-	}
-    };
 
     # Clean up the resulting CIF data structure:
 
