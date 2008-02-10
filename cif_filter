@@ -42,6 +42,8 @@ my $reformat_spacegroup = 0;
 my $calculate_cell_volume = 0;
 my $record_original_filename = 0;
 my $exclude_misspelled_tags = 0;
+
+my $extra_tag_file;
 my $original_filename;
 
 my $journal;
@@ -64,14 +66,6 @@ my $cif_header_file; # The name of an external file that holds a CIF
 my $data_block_nr; # If defined, specifies that data blocks should be
 		   # numbered in a COD-like fasion.
 
-my %excluded_tags  = map { ($_,$_) } @CIFExcludedTags::tag_list;
-
-my @dictionary_tags = ( @CIFDictTags::tag_list, @CIFCODTags::tag_list );
-
-my %dictionary_tags = map { $_, $_ } @dictionary_tags;
-
-my %cif_tags_lc = map {(lc($_),$_)} @dictionary_tags;
-
 my %spacegroups = map {
     my $generated_key = $_->[2];
     $generated_key =~ s/\s//g;
@@ -89,6 +83,8 @@ my %spacegroups = map {
     "-B,--bibliography" => \$biblio,
 
     "-h,--add-cif-header" => \$cif_header_file,
+
+    "-x,--extra-tag-list" => \$extra_tag_file,
 
     "--exclude-empty-tags"      => sub { $exclude_empty_tags = 1; },
     "--dont-exclude-empty-tags" => sub { $exclude_empty_tags = 0; },
@@ -123,6 +119,28 @@ my %spacegroups = map {
     "--discard-bibliography" => sub{ $leave_biblio = 0 },
     "--help,--usage" => sub { SUsage::usage; exit },
 );
+
+my @extra_tags = ();
+
+if( $extra_tag_file ) {
+    open( EXTRA, "$extra_tag_file" ) or
+	die( "could not open tag list '$extra_tag_file' for reading: $!" );
+    @extra_tags = map {s/\s//g;$_} map {split} grep /^\s*_/, <EXTRA>;
+    close( EXTRA ) or
+	die( "error while closing file '$extra_tag_file' after reading" );
+
+    ## local $, = "\n"; local $\ = "\n";
+    ## print @extra_tags;
+}
+
+my %excluded_tags  = map { ($_,$_) } @CIFExcludedTags::tag_list;
+
+my @dictionary_tags = ( @CIFDictTags::tag_list, @CIFCODTags::tag_list,
+			@extra_tags );
+
+my %dictionary_tags = map { $_, $_ } @dictionary_tags;
+
+my %cif_tags_lc = map {(lc($_),$_)} @dictionary_tags;
 
 if( defined $cif_header_file ) {
     open( HEADER, "$cif_header_file" ) or
