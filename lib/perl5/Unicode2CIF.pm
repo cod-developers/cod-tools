@@ -132,6 +132,8 @@ my %letters = (
     "\x{0110}" => '\/D',  # LATIN CAPITAL LETTER D WITH STROKE (barred D ?)
     "\x{0111}" => '\/d',  # LATIN SMALL LETTER D WITH STROKE (barred d ?)
     "\x{0131}" => '\?i',  # LATIN SMALL LETTER DOTLESS I
+    "A\x{030A}" => '\%A', # LATIN CAPITAL LETER A with ring above
+    "a\x{030A}" => '\%a', # LATIN SMALL LETER A with ring above
 );
 
 my %combining = (
@@ -150,7 +152,7 @@ my %combining = (
    "\x{0327}" => '\,',   #   COMBINING CEDILLA      (cedilla)
    "\x{030B}" => '\>',   #   COMBINING DOUBLE ACUTE ACCENT (Hungarian umlaut)
    "\x{0306}" => '\(',   #   COMBINING BREVE (breve)
-   "\x{030A}" => '\%',   #   COMBINING RING ABOVE (ring)
+   ## "\x{030A}" => '\%',   #   COMBINING RING ABOVE (ring)
    ## "\x{0338}" => '\/',   #   COMBINING LONG SOLIDUS OVERLAY (ring)
    ## # alternatives:
    ## "\x{0337}" => '\/',   #   COMBINING SHORT SOLIDUS OVERLAY (ring)
