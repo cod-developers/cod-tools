@@ -24,6 +24,7 @@ _[local]_cod_data_source_MD5_sum
 _[local]_cod_data_source_SHA1_sum
 _[local]_cod_data_source_SHA256_sum
 _[local]_cod_est_spacegroup_name_H-M
+_[local]_cod_depositor_comments
 
 _cod_duplicate_entry
 _cod_data_source_file
@@ -32,6 +33,7 @@ _cod_data_source_MD5_sum
 _cod_data_source_SHA1_sum
 _cod_data_source_SHA256_sum
 _cod_est_spacegroup_name_H-M
+_cod_depositor_comments
 );
 
 1;
