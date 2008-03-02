@@ -255,6 +255,12 @@ for my $dataset (@data) {
 
     ## print "\n" if $n > 0;
 
+    # Remove empty tags, if requested:
+
+    if( $exclude_empty_tags ) {
+	CIFTagManage::exclude_empty_tags( $dataset );
+    }
+
     # Process the bibliography file that was supplied on the command
     # line:
 
@@ -439,10 +445,6 @@ for my $dataset (@data) {
     }
 
     # Clean up the resulting CIF data structure:
-
-    if( $exclude_empty_tags ) {
-	CIFTagManage::exclude_empty_tags( $dataset );
-    }
 
     for my $excluded_tag (qw( _publ_author_address
                               _publ_author.address
