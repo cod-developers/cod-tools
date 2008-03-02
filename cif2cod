@@ -89,10 +89,10 @@ for my $filename (@ARGV) {
 	my $last_page = get_tag_silently( $values, "_journal_page_last", 0 );
 	my $issue = get_tag_silently( $values, "_journal_issue", 0 );
 
-	my $text = $authors . $title . " " . $journal . " " . $volume .
-	    " (" . $year . ") " .
-	    ( ($first_page && $first_page ne "?") || !$issue? "" : "issue $issue ") .
-	    $first_page . " " . $last_page;
+	my $text = $authors . $title . " " . $journal . " " . $volume
+	    . ( $issue? ( $volume ? "($issue) " : "(issue $issue) ") : " " )
+	    . "(" . $year . ") "
+	    . $first_page . " " . $last_page;
 	$text =~ s/\n/ /g;
 	$text =~ s/^\s*|\s*$//g;
 	$text = Unicode2CIF::cif2unicode( $text );
