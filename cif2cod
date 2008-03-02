@@ -87,9 +87,12 @@ for my $filename (@ARGV) {
 	my $volume = get_tag( $values, "_journal_volume", 0, $filename );
 	my $first_page = get_tag( $values, "_journal_page_first", 0, $filename );
 	my $last_page = get_tag_silently( $values, "_journal_page_last", 0 );
+	my $issue = get_tag_silently( $values, "_journal_issue", 0 );
 
-	my $text = $authors . $title . " " . $journal . " " . $volume . 
-	    " (" . $year . ") " . $first_page . " " . $last_page;
+	my $text = $authors . $title . " " . $journal . " " . $volume .
+	    " (" . $year . ") " .
+	    ( ($first_page && $first_page ne "?") || !$issue? "" : "issue $issue ") .
+	    $first_page . " " . $last_page;
 	$text =~ s/\n/ /g;
 	$text =~ s/^\s*|\s*$//g;
 	$text = Unicode2CIF::cif2unicode( $text );
