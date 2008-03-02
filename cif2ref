@@ -174,8 +174,9 @@ sub get_cif_description
                     _publ_author_name
                     _publ_section_title
                     _journal_name_full
-                    _journal_volume
                     _journal_year
+                    _journal_volume
+                    _journal_issue
                     _journal_page_first
                     _journal_page_last
                 )) {
@@ -184,16 +185,18 @@ sub get_cif_description
 	    $val = join( "; ", @{$datablok->{$tag}} );
 	    $val =~ s/^\s*|\s*$//g;
 	}
-	if( $tag eq "_journal_year" ) {
+	if( $tag eq "_journal_issue" && $val ne "" ) {
 	    $val = "(" . $val . ")";
-	    }
+	}
 	if( defined $text ) {
 	    $text .= $separator . $val;
 	} else {
 	    $text = $val;
 	}
-	if( $tag eq "_journal_volume" ) {
+	if( $tag eq "_journal_year" || $tag eq "_journal_issue" ) {
 	    $separator = " ";
+	} elsif( $tag eq "_journal_volume" ) {
+	    $separator = "";
 	}
     }
     if( defined $text ) {
