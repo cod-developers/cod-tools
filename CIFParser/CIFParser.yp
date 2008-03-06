@@ -27,15 +27,21 @@ my $SVNID = '$Id$';
 # 3 - generated array dump
 $CIFParser::debug = 0;
 
-sub merge_data_lists($$)
+sub merge_data_lists($$$)
 {
-    my $list = $_[0];
-    my $item = $_[1];
+    my $parser = $_[0];
+    my $list = $_[1];
+    my $item = $_[2];
 
     for my $tag (@{$item->{tags}}) {
 
 	push( @{$list->{tags}}, $tag );
 
+    if( exists $list->{values}{$tag} )  {
+       $parser->YYData->{ERRMSG} = "tag $tag appears more than once in "
+                    . "file";
+       $parser->YYError();
+    }
 	$list->{values}{$tag} =
 	    $item->{values}{$tag};
 
@@ -162,7 +168,7 @@ data_item_list
 			## return $val;
                         my $list = $_[1];
                         my $item = $_[2];
-                        $list = merge_data_lists( $list, $item );
+                        $list = merge_data_lists( $_[0], $list, $item );
 			return $list;
 		}
 	|	data_item
@@ -202,7 +208,7 @@ save_item_list
 			## return $val;
 		        my $list = $_[1];
 			my $item = $_[2];
-                        $list = merge_data_lists( $list, $item );
+                        $list = merge_data_lists( $_[0], $list, $item );
 			return $list;
 		}
 	|	save_item
