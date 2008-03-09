@@ -42,6 +42,8 @@ my $reformat_spacegroup = 0;
 my $calculate_cell_volume = 0;
 my $record_original_filename = 0;
 my $exclude_misspelled_tags = 0;
+my $fold_title = 0;
+my $folding_width = 75;
 
 my $extra_tag_file;
 my $original_filename;
@@ -114,6 +116,10 @@ my %spacegroups = map {
     "-S,--start-data-block-number"    => \$data_block_nr,
     "-R,--renumber-data-blocks"       => sub { $data_block_nr = 7000001 },
     "-R-,--dont-renumber-data-blocks" => sub { undef $data_block_nr },
+
+    "--folding-width"   => \$folding_width,
+    "--fold-title"      => sub{ $fold_title = 1 },
+    "--dont-fold-title" => sub{ $fold_title = 0 },
 
     "--leave-bibliography"   => sub{ $leave_biblio = 1 },
     "--discard-bibliography" => sub{ $leave_biblio = 0 },
@@ -393,6 +399,18 @@ for my $dataset (@data) {
 
 	$datablok->{_journal_page_last} = [ $end_page ]
 	    if defined $end_page;
+    }
+
+    #
+    # Fold title if requested:
+
+    if( $fold_title ) {
+	my $cif_title = join( " ", @{$datablok->{_publ_section_title}} );
+	$cif_title =~ s/\n/ /g;
+	$datablok->{_publ_section_title} = [
+	    "\n" . join( "\n", map { " " . $_ }
+				 fold( $folding_width-1, " +", " ", $cif_title ))
+	    ];
     }
 
     # Exclude potentially copyrighted and irrelevant tags
