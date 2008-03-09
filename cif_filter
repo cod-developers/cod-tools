@@ -42,6 +42,7 @@ my $reformat_spacegroup = 0;
 my $calculate_cell_volume = 0;
 my $record_original_filename = 0;
 my $exclude_misspelled_tags = 0;
+my $fold_long_fields = 0;
 my $fold_title = 0;
 my $folding_width = 75;
 
@@ -117,9 +118,11 @@ my %spacegroups = map {
     "-R,--renumber-data-blocks"       => sub { $data_block_nr = 7000001 },
     "-R-,--dont-renumber-data-blocks" => sub { undef $data_block_nr },
 
-    "--folding-width"   => \$folding_width,
-    "--fold-title"      => sub{ $fold_title = 1 },
-    "--dont-fold-title" => sub{ $fold_title = 0 },
+    "--folding-width"         => \$folding_width,
+    "--fold-title"            => sub{ $fold_title = 1 },
+    "--dont-fold-title"       => sub{ $fold_title = 0 },
+    "--fold-long-fields"      => sub{ $fold_long_fields = 1 },
+    "--dont-fold-long-fields" => sub{ $fold_long_fields = 0 },
 
     "--leave-bibliography"   => sub{ $leave_biblio = 1 },
     "--discard-bibliography" => sub{ $leave_biblio = 0 },
@@ -409,7 +412,7 @@ for my $dataset (@data) {
 	$cif_title =~ s/\n/ /g;
 	$datablok->{_publ_section_title} = [
 	    "\n" . join( "\n", map { " " . $_ }
-				 fold( $folding_width-1, " +", " ", $cif_title ))
+				 fold( $folding_width - 2, " +", " ", $cif_title ))
 	    ];
     }
 
@@ -708,9 +711,26 @@ sub print_value
     print &sprint_value
 }
 
+sub maxlen
+{
+    my $val = $_[0];
+    my $len = 0;
+
+    for (split( "\n", $val )) {
+	$len = length if length > $len;
+    }
+    return $len;
+}
+
 sub sprint_value
 {
     my $val = $_[0];
+
+    if( $fold_long_fields && maxlen($val) > $folding_width - 2 ) {
+	$val = join( "\n", map { " " . $_ }
+		     fold( $folding_width - 1, " +", " ", $val ));
+	$val =~ s/^\s+//g;
+    }
 
     if( $val =~ /\n/ || $val =~ /^$/ ) {
 	$val = "\n;" . $val . "\n;";
