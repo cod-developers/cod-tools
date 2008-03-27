@@ -356,6 +356,14 @@ for my $dataset (@data) {
 		if( exists $dataset->{inloop}{$tag} ) {
 		    my $loop_nr = $dataset->{inloop}{$tag};
 		    $dataset->{loops}[$loop_nr] = [ $tag ];
+		} else {
+		    if( exists $dataset->{loops} ) {
+			push( @{$dataset->{loops}}, [ $tag ] );
+			$dataset->{inloop}{$tag} = $#{$dataset->{loops}};
+		    } else {
+			$dataset->{inloop}{$tag} = 0;
+			$dataset->{loops} = [ [ $tag ] ];
+		    }
 		}
 	    }
 	}
@@ -379,6 +387,14 @@ for my $dataset (@data) {
 	    if( exists $dataset->{inloop}{$tag} ) {
 		my $loop_nr = $dataset->{inloop}{$tag};
 		$dataset->{loops}[$loop_nr] = [ $tag ];
+	    } else {
+		if( exists $dataset->{loops} ) {
+		    push( @{$dataset->{loops}}, [ $tag ] );
+		    $dataset->{inloop}{$tag} = $#{$dataset->{loops}};
+		} else {
+		    $dataset->{inloop}{$tag} = 0;
+		    $dataset->{loops} = [ [ $tag ] ];
+		}
 	    }
 	} if @authors;
 
