@@ -68,11 +68,11 @@ for my $file (@COD_cif_files) {
 	    $val =~ s/[()_a-zA-Z]//g;
 	    $structures{$id}{cell}{$key} = sprintf "%f", $val;
 	}
-	if( /_([^\s]*temperature[^\s]*)\s+(.*)/ ) {
+	if( /(_[^\s]*temperature[^\s]*)\s+(.*)/ ) {
 	    $structures{$id}{temperature}{$1} = $2;
 	    $structures{$id}{temperature}{$1} =~ s/^\s*'\s*|\s*'\s*$//g;
 	}
-	if( /_([^\s]*pressure[^\s]*)\s+(.*)/ ) {
+	if( /(_[^\s]*pressure[^\s]*)\s+(.*)/ ) {
 	    $structures{$id}{pressure}{$1} = $2;
 	    $structures{$id}{pressure}{$1} =~ s/^\s*'\s*|\s*'\s*$//g;
 	}
@@ -97,7 +97,9 @@ for my $file (@COD_cif_files) {
 	push( @{$COD{$formula}}, { id => $id,
 				   filename => "$basename",
 				   cell => $cell,
-				   bibliography => $biblio
+				   bibliography => $biblio,
+				   temperature => $structures{$id}{temperature},
+				   pressure => $structures{$id}{pressure},
 	                         } );
     }
 }
@@ -137,11 +139,11 @@ for my $file (@cif_files) {
 	    $val =~ s/\(.*$//;
 	    $structures{$id}{cell}{$key} = sprintf "%f", $val;
 	}
-	if( /_([^\s]*temperature[^\s]*)\s+(.*)/ ) {
+	if( /(_[^\s]*temperature[^\s]*)\s+(.*)/ ) {
 	    $structures{$id}{temperature}{$1} = $2;
 	    $structures{$id}{temperature}{$1} =~ s/^\s*'\s*|\s*'\s*$//g;
 	}
-	if( /_([^\s]*pressure[^\s]*)\s+(.*)/ ) {
+	if( /(_[^\s]*pressure[^\s]*)\s+(.*)/ ) {
 	    $structures{$id}{pressure}{$1} = $2;
 	    $structures{$id}{pressure}{$1} =~ s/^\s*'\s*|\s*'\s*$//g;
 	}
@@ -247,9 +249,11 @@ sub conditions_are_the_same
 	my %tags = map {($_,$_)} ( keys %{$entry1->{$parameter}},
 				   keys %{$entry2->{$parameter}} );
 	for my $tag (keys %tags) {
+	    ## print STDERR ">>> $entry1->{id}, $entry2->{id}, $tag, $entry1->{$parameter}{$tag}, $entry2->{$parameter}{$tag}\n";
 	    if( exists $entry1->{$parameter}{$tag} &&
 		exists $entry2->{$parameter}{$tag} &&
 		$entry1->{$parameter}{$tag} ne $entry2->{$parameter}{$tag} ) {
+		## print STDERR "Entries $entry1->{id} and $entry2->{id} are found to be at different conditions\n";
 		return 0;
 	    }
 	}
