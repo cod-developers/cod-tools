@@ -249,11 +249,9 @@ sub conditions_are_the_same
 	my %tags = map {($_,$_)} ( keys %{$entry1->{$parameter}},
 				   keys %{$entry2->{$parameter}} );
 	for my $tag (keys %tags) {
-	    ## print STDERR ">>> $entry1->{id}, $entry2->{id}, $tag, $entry1->{$parameter}{$tag}, $entry2->{$parameter}{$tag}\n";
 	    if( exists $entry1->{$parameter}{$tag} &&
 		exists $entry2->{$parameter}{$tag} &&
 		$entry1->{$parameter}{$tag} ne $entry2->{$parameter}{$tag} ) {
-		## print STDERR "Entries $entry1->{id} and $entry2->{id} are found to be at different conditions\n";
 		return 0;
 	    }
 	}
