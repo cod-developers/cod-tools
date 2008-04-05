@@ -27,8 +27,8 @@ my %COD = ();
 
 if( @ARGV < 2 ) {
     print STDERR "$0: please supply two directory names on the command line:\n";
-    print STDERR "first directory with the analysed CIF files,\nand the second ";
-    print STDERR "with the COD CIF files.\n";
+    print STDERR "first directory with the analysed CIF files,\n";
+    print STDERR "and the second with the COD CIF files.\n";
     exit -1;
 }
 
@@ -52,6 +52,8 @@ for my $file (@COD_cif_files) {
     while( <CODCIF> ) {
 	if( /^\s*data_(.*)/ ) {
 	    $id = $1;
+	    $structures{$id}{id} = $id;
+	    $structures{$id}{filename} = File::Basename::basename( $file );
 	}
 	if( /_chemical_formula_sum\s+(.*)/ ) {
 	    $structures{$id}{chemical_formula_sum} = $1;
@@ -65,6 +67,14 @@ for my $file (@COD_cif_files) {
 	    $val =~ s/\(.*$//;
 	    $val =~ s/[()_a-zA-Z]//g;
 	    $structures{$id}{cell}{$key} = sprintf "%f", $val;
+	}
+	if( /_([^\s]*temperature[^\s]*)\s+(.*)/ ) {
+	    $structures{$id}{temperature}{$1} = $2;
+	    $structures{$id}{temperature}{$1} =~ s/^\s*'\s*|\s*'\s*$//g;
+	}
+	if( /_([^\s]*pressure[^\s]*)\s+(.*)/ ) {
+	    $structures{$id}{pressure}{$1} = $2;
+	    $structures{$id}{pressure}{$1} =~ s/^\s*'\s*|\s*'\s*$//g;
 	}
 	if( /(_journal_[^\s]*)\s+(.*)\s*$/ ) {
 	    my $key = $1;
@@ -126,6 +136,14 @@ for my $file (@cif_files) {
 	    $val =~ s/^\s*'\s*|\s*'\s*$//g;
 	    $val =~ s/\(.*$//;
 	    $structures{$id}{cell}{$key} = sprintf "%f", $val;
+	}
+	if( /_([^\s]*temperature[^\s]*)\s+(.*)/ ) {
+	    $structures{$id}{temperature}{$1} = $2;
+	    $structures{$id}{temperature}{$1} =~ s/^\s*'\s*|\s*'\s*$//g;
+	}
+	if( /_([^\s]*pressure[^\s]*)\s+(.*)/ ) {
+	    $structures{$id}{pressure}{$1} = $2;
+	    $structures{$id}{pressure}{$1} =~ s/^\s*'\s*|\s*'\s*$//g;
 	}
 	if( /(_journal_[^\s]*)\s+(.*)\s*$/ ) {
 	    my $key = $1;
@@ -220,6 +238,25 @@ sub cells_are_the_same($$)
 	$max_angle_diff < $max_cell_angle_diff;
 }
 
+sub conditions_are_the_same
+{
+    my ($entry1, $entry2) = @_;
+
+    for my $parameter ("temperature", "pressure" ) {
+
+	my %tags = map {($_,$_)} ( keys %{$entry1->{$parameter}},
+				   keys %{$entry2->{$parameter}} );
+	for my $tag (keys %tags) {
+	    if( exists $entry1->{$parameter}{$tag} &&
+		exists $entry2->{$parameter}{$tag} &&
+		$entry1->{$parameter}{$tag} ne $entry2->{$parameter}{$tag} ) {
+		return 0;
+	    }
+	}
+    }
+    return 1;
+}
+
 my %has_numeric_value = (
     "_journal_year"   => 1,
     "_journal_volume" => 1,
@@ -270,11 +307,13 @@ sub entries_are_the_same
 	return
 	    ! data_sections_are_the_same( $entry1, $entry2 ) &&
 	    cells_are_the_same( $entry1->{cell}, $entry2->{cell} ) &&
+	    conditions_are_the_same( $entry1, $entry2 ) &&
 	    bibliographies_are_the_same( $entry1->{bibliography},
 					 $entry2->{bibliography} );
     } else {
 	return
 	    ! data_sections_are_the_same( $entry1, $entry2 ) &&
+	    conditions_are_the_same( $entry1, $entry2 ) &&
 	    cells_are_the_same( $entry1->{cell}, $entry2->{cell} );
     }
 }
