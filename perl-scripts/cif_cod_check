@@ -31,14 +31,15 @@ for my $filename (@ARGV) {
     my $data = $parser->Run($filename);
 
     if( defined $parser->YYData->{ERRCOUNT} && $parser->YYData->{ERRCOUNT} > 0 ) {
-	print STDERR File::Basename::basename($0), ": " ,
+	print STDERR "$0: $filename: ",
 	$parser->YYData->{ERRCOUNT},
-	" error(s) encountered while parsing file '${filename}'\n";
+	" error(s) encountered while parsing CIF data\n";
 	exit -1;
     }
 
     my $warnings = 0;
     for my $dataset (@$data) {
+	$warnings += check_data( $dataset, $filename );
 	$warnings += check_bibliography( $dataset, $filename );
 	$warnings += check_chemical_formula_sum( $dataset, $filename );
 	$warnings += check_spacegroup_info( $dataset, $filename );
@@ -46,16 +47,29 @@ for my $filename (@ARGV) {
     printf "%-30s: OK\n", $filename if $warnings == 0;
 }
 
+sub check_data
+{
+    my ($dataset,$filename) = @_;
+
+    if( !defined $dataset->{values} ) {
+	print "$0: $filename: no values?!\n";
+	return 1;
+    } else {
+	return 0;
+    }
+}
+
 sub check_bibliography
 {
     my ($dataset,$filename) = @_;
 
-    my $warnings = 0;
     if( !defined $dataset->{values} ) {
-	print "$0: $filename: no values?!\n";
-	$warnings ++;
+	return 0;
     }
+
+    my $warnings = 0;
     my $values = $dataset->{values};
+
     if( !defined $values->{_journal_name_full} ) {
 	print "$0: $filename: _journal_name_full is undefined\n";
 	$warnings ++;
@@ -81,6 +95,10 @@ sub check_chemical_formula_sum
 {
     my ($dataset, $filename) = @_;
 
+    if( !defined $dataset->{values} ) {
+	return 0;
+    }
+
     my $formula = $dataset->{values}{_chemical_formula_sum}[0];
 
     my $formula_component = "[a-zA-Z]{1,2}[0-9.]*";
@@ -89,10 +107,7 @@ sub check_chemical_formula_sum
 	print "$0: $filename: no _chemical_formula_sum\n";
 	return 1;
     } elsif( $formula !~ /^\s*($formula_component\s+)*($formula_component)\s*$/ ) {
-	print "$0: chemical formula '$formula' could not be parsed in the " .
-	      "file '$filename':\n" .
-	      "it does not consist of space-seprated chemical element names " .
-	      "with optional numeric quantities (e.g. 'C2 H6 O')";
+	print "$0: $filename: chemical formula '$formula' could not be parsed\n";
 	return 1;
     } else {
 	return 0;
@@ -102,6 +117,10 @@ sub check_chemical_formula_sum
 sub check_spacegroup_info
 {
     my ($dataset, $filename ) = @_;
+
+    if( !defined $dataset->{values} ) {
+	return 0;
+    }
 
     my $values = $dataset->{values};
 
