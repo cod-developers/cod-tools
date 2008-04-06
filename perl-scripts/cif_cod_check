@@ -23,7 +23,7 @@ use File::Basename;
 my %spacegroups = map {
     my $generated_key = $_->[2];
     $generated_key =~ s/\s//g;
-    ($_->[2], $_->[1], $generated_key, $_->[2] )
+    ($_->[2], $_->[2], $_->[1], $_->[2], $generated_key, $_->[2])
 } @SpacegroupNames::names;
 
 for my $filename (@ARGV) {
@@ -123,10 +123,13 @@ sub check_spacegroup_info
     for my $sg_tag (@spacegroup_tags) {
 	if( exists $values->{$sg_tag} ) {
 	    $spacegroup = $values->{$sg_tag}[0];
+	    my $no_spaces = $spacegroup;
+	    $no_spaces =~ s/\s//g;
 	    if( $sg_tag =~ /H-M/ ) {
 		if( defined $spacegroup &&
-		    !exists $spacegroups{$spacegroup} ) {
-		    print "$0: $filename: unrecognised spacegroup $spacegroup\n";
+		    !exists $spacegroups{$spacegroup} &&
+		    !exists $spacegroups{$no_spaces} ) {
+		    print "$0: $filename: unrecognised spacegroup '$spacegroup'\n";
 		    $warnings ++;
 		}
 	    }
