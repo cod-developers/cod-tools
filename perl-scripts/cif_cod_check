@@ -43,6 +43,7 @@ for my $filename (@ARGV) {
 	$warnings += check_bibliography( $dataset, $filename );
 	$warnings += check_chemical_formula_sum( $dataset, $filename );
 	$warnings += check_spacegroup_info( $dataset, $filename );
+	$warnings += check_symmetry_operators( $dataset, $filename );
     }
     printf "%-30s: OK\n", $filename if $warnings == 0;
 }
@@ -161,4 +162,36 @@ sub check_spacegroup_info
 	$warnings ++;
     }
     return $warnings;
+}
+
+sub check_symmetry_operators
+{
+    my ($dataset, $filename) = @_;
+
+    if( !defined $dataset->{values} ) {
+	return 0;
+    }
+
+    my $symop_term = '(?:x|y|z|\d\.\d|\d/\d)';
+    my $symop_component =
+	"(?:(?:-|\\+)?$symop_term|" .
+	"(?:-|\\+)?$symop_term(?:-|\\+)$symop_term|" .
+	"(?:-|\\+)?$symop_term(?:-|\\+)$symop_term(?:-|\\+)$symop_term)";
+
+    my $symops = $dataset->{values}{_symmetry_equiv_pos_as_xyz};
+
+    if( !defined $symops ) {
+	print "$0: $filename: no _symmetry_equiv_pos_as_xyz\n";
+	return 1;
+    } else {
+	for my $symop (@$symops) {
+	    if( $symop !~ 
+		/^\s*($symop_component,\s*){2}($symop_component)\s*$/i ) {
+		print "$0: $filename: symmetry operator '$symop' " .
+		    "could not be parsed\n";
+		return 1;
+	    }
+	}
+    }
+    return 0;
 }
