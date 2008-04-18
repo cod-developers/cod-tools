@@ -172,7 +172,7 @@ sub check_symmetry_operators
 	return 0;
     }
 
-    my $symop_term = '(?:x|y|z|\d\.\d|\d/\d)';
+    my $symop_term = '(?:x|y|z|\d|\d\.\d|\d/\d)';
     my $symop_component =
 	"(?:(?:-|\\+)?$symop_term|" .
 	"(?:-|\\+)?$symop_term(?:-|\\+)$symop_term|" .
@@ -185,8 +185,10 @@ sub check_symmetry_operators
 	return 1;
     } else {
 	for my $symop (@$symops) {
-	    if( $symop !~ 
-		/^\s*($symop_component,\s*){2}($symop_component)\s*$/i ) {
+	    my $no_spaces = $symop;
+	    $no_spaces =~ s/\s//g;
+	    if( $no_spaces !~ 
+		/^($symop_component,){2}($symop_component)$/i ) {
 		print "$0: $filename: symmetry operator '$symop' " .
 		    "could not be parsed\n";
 		return 1;
