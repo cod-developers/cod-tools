@@ -15,10 +15,12 @@ OUTP_FILES = ${TEST_FILES:${TEST_DIR}/%.inp=${OUTP_DIR}/%.out}
 
 .PRECIOUS: %.pm
 .PHONY: all clean cleanAll distclean test tests alltests out outputs
-.PHONY: run
+.PHONY: run times
 
 ## all: ${PM_FILES}
 all: run
+
+SHELL = /bin/bash
 
 run: ${PM_FILES} ${WORK_TESTS}
 	@for file in ${WORK_TESTS}; do \
@@ -26,6 +28,16 @@ run: ${PM_FILES} ${WORK_TESTS}
 		echo === $$file ===; \
 		set -x; \
 		perl -e 'use ${TEST_MODULE:%.pm=%}; my $$p=new ${TEST_MODULE:%.pm=%}; $$p->Run' \
+			< $$file \
+	); \
+	done
+
+times: ${PM_FILES} ${WORK_TESTS}
+	@for file in ${WORK_TESTS}; do \
+	( \
+		echo === $$file ===; \
+		set -x; \
+		time perl -e 'use ${TEST_MODULE:%.pm=%}; my $$p=new ${TEST_MODULE:%.pm=%}; $$p->Run' \
 			< $$file \
 	); \
 	done
