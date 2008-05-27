@@ -479,28 +479,28 @@ require Exporter;
         "x,-y,z+1/2",
     ]
 },
-'-x,-y,-z;-x,y,-z+1/2;x,-y,z+1/2;x,y,z', => {
+'-x+1/2,y,-z+1/2;-x,-y,-z;x+1/2,-y,z+1/2;x,y,z', => {
     spacegroup_name => 'C 2/c',
     setting_name    => 'A 1 2/n 1',
     schoenflies     => 'C_2h^6',
     number => 15,
     symops => [
         "x,y,z",
-        "-x,y,-z+1/2",
+        "-x+1/2,y,-z+1/2",
         "-x,-y,-z",
-        "x,-y,z+1/2",
+        "x+1/2,-y,z+1/2",
     ]
 },
-'-x,-y,-z;-x,y,-z+1/2;x,-y,z+1/2;x,y,z', => {
+'-x+1/2,y,-z;-x,-y,-z;x+1/2,-y,z;x,y,z', => {
     spacegroup_name => 'C 2/c',
     setting_name    => 'I 1 2/a 1',
     schoenflies     => 'C_2h^6',
     number => 15,
     symops => [
         "x,y,z",
-        "-x,y,-z+1/2",
+        "-x+1/2,y,-z",
         "-x,-y,-z",
-        "x,-y,z+1/2",
+        "x+1/2,-y,z",
     ]
 },
 '-x+1/2,-y,z;-x,-y,-z;x+1/2,y,-z;x,y,z', => {
@@ -515,28 +515,28 @@ require Exporter;
         "x+1/2,y,-z",
     ]
 },
-'-x+1/2,-y,z;-x,-y,-z;x+1/2,y,-z;x,y,z', => {
+'-x+1/2,-y+1/2,z;-x,-y,-z;x+1/2,y+1/2,-z;x,y,z', => {
     spacegroup_name => 'C 2/c',
     setting_name    => 'B 1 1 2/n',
     schoenflies     => 'C_2h^6',
     number => 15,
     symops => [
         "x,y,z",
-        "-x+1/2,-y,z",
+        "-x+1/2,-y+1/2,z",
         "-x,-y,-z",
-        "x+1/2,y,-z",
+        "x+1/2,y+1/2,-z",
     ]
 },
-'-x+1/2,-y,z;-x,-y,-z;x+1/2,y,-z;x,y,z', => {
+'-x,-y+1/2,z;-x,-y,-z;x,y+1/2,-z;x,y,z', => {
     spacegroup_name => 'C 2/c',
     setting_name    => 'I 1 1 2/b',
     schoenflies     => 'C_2h^6',
     number => 15,
     symops => [
         "x,y,z",
-        "-x+1/2,-y,z",
+        "-x,-y+1/2,z",
         "-x,-y,-z",
-        "x+1/2,y,-z",
+        "x,y+1/2,-z",
     ]
 },
 '-x,-y,-z;-x,y+1/2,z;x,-y+1/2,-z;x,y,z', => {
@@ -551,28 +551,28 @@ require Exporter;
         "-x,y+1/2,z",
     ]
 },
-'-x,-y,-z;-x,y+1/2,z;x,-y+1/2,-z;x,y,z', => {
+'-x,-y,-z;-x,y+1/2,z+1/2;x,-y+1/2,-z+1/2;x,y,z', => {
     spacegroup_name => 'C 2/c',
     setting_name    => 'C 2/n 1 1',
     schoenflies     => 'C_2h^6',
     number => 15,
     symops => [
         "x,y,z",
-        "x,-y+1/2,-z",
+        "x,-y+1/2,-z+1/2",
         "-x,-y,-z",
-        "-x,y+1/2,z",
+        "-x,y+1/2,z+1/2",
     ]
 },
-'-x,-y,-z;-x,y+1/2,z;x,-y+1/2,-z;x,y,z', => {
+'-x,-y,-z;-x,y,z+1/2;x,-y,-z+1/2;x,y,z', => {
     spacegroup_name => 'C 2/c',
     setting_name    => 'I 2/c 1 1',
     schoenflies     => 'C_2h^6',
     number => 15,
     symops => [
         "x,y,z",
-        "x,-y+1/2,-z",
+        "x,-y,-z+1/2",
         "-x,-y,-z",
-        "-x,y+1/2,z",
+        "-x,y,z+1/2",
     ]
 },
 '-x,-y,-z;-x,y,-z;x,-y,z;x,y,z', => {
@@ -693,24 +693,24 @@ require Exporter;
         "x,-y,z+1/2",
     ]
 },
-'x,-y,z+1/2;x,y,z', => {
+'x+1/2,-y,z+1/2;x,y,z', => {
     spacegroup_name => 'C c',
     setting_name    => 'A 1 n 1',
     schoenflies     => 'C_s^4',
     number => 9,
     symops => [
         "x,y,z",
-        "x,-y,z+1/2",
+        "x+1/2,-y,z+1/2",
     ]
 },
-'x,-y,z+1/2;x,y,z', => {
+'x+1/2,-y,z;x,y,z', => {
     spacegroup_name => 'C c',
     setting_name    => 'I 1 a 1',
     schoenflies     => 'C_s^4',
     number => 9,
     symops => [
         "x,y,z",
-        "x,-y,z+1/2",
+        "x+1/2,-y,z",
     ]
 },
 'x+1/2,y,-z;x,y,z', => {
@@ -723,24 +723,24 @@ require Exporter;
         "x+1/2,y,-z",
     ]
 },
-'x+1/2,y,-z;x,y,z', => {
+'x+1/2,y+1/2,-z;x,y,z', => {
     spacegroup_name => 'C c',
     setting_name    => 'B 1 1 n',
     schoenflies     => 'C_s^4',
     number => 9,
     symops => [
         "x,y,z",
-        "x+1/2,y,-z",
+        "x+1/2,y+1/2,-z",
     ]
 },
-'x+1/2,y,-z;x,y,z', => {
+'x,y+1/2,-z;x,y,z', => {
     spacegroup_name => 'C c',
     setting_name    => 'I 1 1 b',
     schoenflies     => 'C_s^4',
     number => 9,
     symops => [
         "x,y,z",
-        "x+1/2,y,-z",
+        "x,y+1/2,-z",
     ]
 },
 '-x,y+1/2,z;x,y,z', => {
@@ -753,24 +753,24 @@ require Exporter;
         "-x,y+1/2,z",
     ]
 },
-'-x,y+1/2,z;x,y,z', => {
+'-x,y+1/2,z+1/2;x,y,z', => {
     spacegroup_name => 'C c',
     setting_name    => 'C n 1 1',
     schoenflies     => 'C_s^4',
     number => 9,
     symops => [
         "x,y,z",
-        "-x,y+1/2,z",
+        "-x,y+1/2,z+1/2",
     ]
 },
-'-x,y+1/2,z;x,y,z', => {
+'-x,y,z+1/2;x,y,z', => {
     spacegroup_name => 'C c',
     setting_name    => 'I c 1 1',
     schoenflies     => 'C_s^4',
     number => 9,
     symops => [
         "x,y,z",
-        "-x,y+1/2,z",
+        "-x,y,z+1/2",
     ]
 },
 '-x,-y,z;-x,y,z+1/2;x,-y,z+1/2;x,y,z', => {
