@@ -22,8 +22,9 @@ for my $key (sort keys %Spacegroups::space_groups) {
     my $sg = $Spacegroups::space_groups{$key};
 
     if( exists $sg->{settings} ) {
+	my ($a, $b, $c) = (0, 0, 0);
 	for my $setting (@{$sg->{settings}}) {
-	    my $symops = select_symops( $sg, $setting );
+	    my $symops = select_symops( $sg, $setting, \$a, \$b, \$c );
 	    print_setting( $setting, $key, $sg, $symops );
 	}
     } elsif( exists $sg->{positions} ) {
@@ -97,32 +98,33 @@ sub unique_axis
 
 sub select_symops
 {
-    my ($sg, $setting) = @_;
+    my ($sg, $setting, $a, $b, $c ) = @_;
 
-
-    my $index = setting_index( $sg->{settings}, $setting );
     my $symops;
     my $n = unique_axis( $setting );
     for ($n) {
 	if(/^0$/) {
 	    $symops = $sg->{a_unique};
 	    if( !defined $symops ) {
-		my $key = "a_unique_$index";
-		$symops = $sg->{$key}
+		$$a ++;
+		my $key = "a_unique_$$a";
+		$symops = $sg->{$key};
 	    }
 	}
 	if(/^1$/) {
 	    $symops = $sg->{b_unique};
 	    if( !defined $symops ) {
-		my $key = "b_unique_$index";
-		$symops = $sg->{$key}
+		$$b ++;
+		my $key = "b_unique_$$b";
+		$symops = $sg->{$key};
 	    }
 	}
 	if(/^2$/) {
 	    $symops = $sg->{c_unique};
 	    if( !defined $symops ) {
-		my $key = "c_unique_$index";
-		$symops = $sg->{$key}
+		$$c ++;
+		my $key = "c_unique_$$c";
+		$symops = $sg->{$key};
 	    }
 	}
     }
@@ -131,6 +133,7 @@ sub select_symops
 	$symops = $sg->{positions};
     }
 
+    print ">>> $n, $$a, $$b, $$c \n" and
     die( "Could not find appropriate symops for setting '$setting'" )
 	unless defined $symops;
 
