@@ -1,0 +1,60 @@
+#! /bin/sh
+#!perl -w # --*- Perl -*--
+eval 'exec perl -x $0 ${1+"$@"}'
+    if 0;
+#------------------------------------------------------------------------------
+#$Author: saulius $
+#$Date: 2008-04-03 13:51:52 +0300 (Thu, 03 Apr 2008) $ 
+#$Revision: 435 $
+#$URL: svn+ssh://pitonas.ibt.lt/home/xray/svn-repositories/cif-tools/trunk/perl-scripts/cif_parse_new $
+#------------------------------------------------------------------------------
+#*
+#  Parse a CIF file
+#**
+
+use strict;
+use lib "./lib/perl5";
+use lib "./CIFParser";
+use CIFParser;
+use SymopLookup;
+use ShowStruct;
+
+for my $filename (@ARGV) {
+
+    my $parser = new CIFParser;
+
+    my $data = $parser->Run($filename);
+
+    for my $dataset (@$data) {
+	## showRef( $dataset );
+	my @symops;
+
+	print "data_", $dataset->{name}, "\n";
+
+	if( exists $dataset->{values}{_symmetry_equiv_pos_as_xyz} ) {
+	    @symops = @{$dataset->{values}{_symmetry_equiv_pos_as_xyz}};
+	    #showRef( \@symops );
+	    for my $i (0..$#symops) {
+		my @coords = map {s/\s//g;$_} split( ',', $symops[$i] );
+		@coords = map {/([-+]1\/2)([-+]\w)/ ? $2.$1 : $_} @coords;
+		@coords = map {/^(1\/2)([-+]\w)/ ? $2."+$1" : $_} @coords;
+		@coords = map {s/^\+//; $_} @coords;
+		$symops[$i] = join( ",", @coords );
+	    }
+	    @symops = sort map {s/\s*//g; s,-1/2,+1/2,g; lc($_)} @symops;
+	    my $key = join( ";", @symops );
+	    print "## >>> $key\n";
+	    if( exists $SymopLookup::table{$key} ) {
+		print "_[local]_cod_est_spacegroup_name_H-M ";
+		print "'", $SymopLookup::table{$key}{setting_name}, "'\n";
+	    } else {
+		print "_[local]_cod_est_spacegroup_name_H-M ?\n";
+	    }
+	}
+	if( exists $dataset->{values}{"_symmetry_space_group_name_H-M"} ) {
+	    print "_symmetry_space_group_name_H-M ";
+	    print "'", $dataset->{values}{"_symmetry_space_group_name_H-M"}[0],
+	          "'\n";
+	}
+    }
+}
