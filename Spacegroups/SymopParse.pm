@@ -109,18 +109,22 @@ sub string_from_symop
 	    my $val = $symop->[$i][3];
 	    my $abs = abs( $val );
 	    my $sig = $val > 0 ? "+" : "-";
-	    if( $abs == 0.5 ) {
+	    my $maxdiff = 1e-3;
+	    if( abs( $abs - 1.0 ) < $maxdiff ) {
+		$val = ""
+	    }
+	    elsif( abs( $abs - 0.5 ) < $maxdiff ) {
 		$val = $sig . "1/2";
 	    }
-	    elsif( abs( $abs * 3 - round($abs * 3)) < 1e-3 ) {
+	    elsif( abs( $abs * 3 - round($abs * 3)) < $maxdiff ) {
 		my $numerator = round( $abs * 3 );
 		$val = $sig . "$numerator/3";
 	    }
-	    elsif( abs( $abs * 4 - round($abs * 4)) < 1e-3 ) {
+	    elsif( abs( $abs * 4 - round($abs * 4)) < $maxdiff ) {
 		my $numerator = round( $abs * 4 );
 		$val = $sig . "$numerator/4";
 	    }
-	    elsif( abs( $abs * 6 - round($abs * 6)) < 1e-3 ) {
+	    elsif( abs( $abs * 6 - round($abs * 6)) < $maxdiff ) {
 		my $numerator = round( $abs * 6 );
 		$val = $sig . "$numerator/6";
 	    } else {
