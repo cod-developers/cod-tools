@@ -14,7 +14,24 @@ use strict;
 
 require Exporter;
 @Spacegroups::ISA = qw(Exporter);
-@Spacegroups::EXPORT = qw( %space_groups );
+@Spacegroups::EXPORT = qw( %space_groups %centering_translations );
+
+%Spacegroups::centering_translations = (
+    "P" => [ ],
+    "A" => [ [ 0, 1/2, 1/2 ] ],
+    "B" => [ [ 1/2, 0, 1/2 ] ],
+    "C" => [ [ 1/2, 1/2, 0 ] ],
+    "I" => [ [ 1/2, 1/2, 1/2 ] ],
+    "F" => [
+	     [ 0, 1/2, 1/2 ],
+	     [ 1/2, 0, 1/2 ],
+	     [ 1/2, 1/2, 0 ],
+           ],
+    "R" => [
+	     [ 2/3, 1/3, 1/3 ],
+	     [ 1/3, 2/3, 2/3 ],
+           ],
+);
 
 %Spacegroups::space_groups =
     (

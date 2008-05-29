@@ -17,6 +17,7 @@ eval 'exec perl5 -x $0 ${1+"$@"}'
 use strict;
 use lib ".";
 use Spacegroups;
+use SymopParse;
 
 for my $key (sort keys %Spacegroups::space_groups) {
     my $sg = $Spacegroups::space_groups{$key};
@@ -32,21 +33,70 @@ for my $key (sort keys %Spacegroups::space_groups) {
     }
 }
 
+sub symop_add_shift
+{
+    my ($symop, $shift) = @_;
+
+    return [
+	[ $symop->[0][0], $symop->[0][1], $symop->[0][2],
+	  $symop->[0][3] + $shift->[0] ],
+
+	[ $symop->[1][0], $symop->[1][1], $symop->[1][2],
+	  $symop->[1][3] + $shift->[1] ],
+
+	[ $symop->[2][0], $symop->[2][1], $symop->[2][2],
+	  $symop->[2][3] + $shift->[2] ],
+    ];
+}
+
 sub print_setting
 {
     my ($setting, $sg_name, $sg, $symops) = @_;
 
-    my @symop_strings = symop_strings($symops);
+    my @ncsymop_strings = symop_strings($symops); # non-centering symops
+    my @symop_strings = @ncsymop_strings;
+
+    my $lattice_type = uc(substr( $sg_name, 0, 1 ));
+
+    if( $lattice_type !~ /P/ ) {
+	my @centering_symops = ();
+	my $centering_shifts =
+	    $Spacegroups::centering_translations{$lattice_type};
+	foreach my $symop_str (@symop_strings) {
+	    my $symop = SymopParse::symop_from_string( $symop_str );
+	    for my $shift (@{$centering_shifts}) {
+		my $new_symop = symop_add_shift( $symop, $shift );
+		push( @centering_symops, SymopParse::string_from_symop(
+			  SymopParse::symop_translation_modulo_1( $new_symop )
+		      )
+		    );
+	    }
+	}
+	@symop_strings = ( @ncsymop_strings, @centering_symops );
+    }
 
     ## print "'", $setting, "'";
-    print "'", join(";", sort @symop_strings), "',";
-    print " => {\n";
+    ## print "'", join(";", sort @symop_strings), "',";
+    ## print " => {\n";
+    print "{\n";
     print "    spacegroup_name => ", "'".ucfirst($sg_name)."',", "\n";
     print "    setting_name    => ", "'".ucfirst($setting)."',", "\n";
     print "    schoenflies     => ", "'".ucfirst($sg->{schoenflies})."',", "\n";
+    print "    new_symbol      => ", "'".ucfirst($sg->{new_symbol})."',", "\n"
+	if defined $sg->{new_symbol};
+    print "    thirtyfive      => ", "'".ucfirst($sg->{thirtyfive})."',", "\n"
+	if defined $sg->{thirtyfive};
+    print "    full   => ", $sg->{full}, ",\n"
+	if defined $sg->{full};
     print "    number => ", $sg->{number}, ",\n";
+    print "    nsymop => ", int(@symop_strings), ",\n";
     print "    symops => [\n";
     for my $symop (@symop_strings) {
+	print "        \"", $symop, "\",\n";
+    }
+    print "    nncsym => ", int(@ncsymop_strings), ",\n";
+    print "    ncsyms => [\n";
+    for my $symop (@ncsymop_strings) {
 	print "        \"", $symop, "\",\n";
     }
     print "    ]\n";
