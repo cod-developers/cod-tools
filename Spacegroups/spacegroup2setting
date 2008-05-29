@@ -26,10 +26,10 @@ for my $key (sort keys %Spacegroups::space_groups) {
 	my ($a, $b, $c) = (0, 0, 0);
 	for my $setting (@{$sg->{settings}}) {
 	    my $symops = select_symops( $sg, $setting, \$a, \$b, \$c );
-	    print_setting( $setting, $key, $sg, $symops );
+	    print_shifted_settings( $setting, $key, $sg, $symops );
 	}
     } elsif( exists $sg->{positions} ) {
-	print_setting( $key, $key, $sg, $sg->{positions} );
+	print_shifted_settings( $key, $key, $sg, $sg->{positions} );
     }
 }
 
@@ -49,11 +49,74 @@ sub symop_add_shift
     ];
 }
 
+sub symop_mul_vector
+{
+    my ($symop, $vect) = @_;
+
+    return [
+	$symop->[0][0] * $vect->[0] +
+	$symop->[0][1] * $vect->[1] +
+	$symop->[0][2] * $vect->[2],
+
+	$symop->[1][0] * $vect->[0] +
+	$symop->[1][1] * $vect->[1] +
+	$symop->[1][2] * $vect->[2],
+
+	$symop->[2][0] * $vect->[0] +
+	$symop->[2][1] * $vect->[1] +
+	$symop->[2][2] * $vect->[2],
+    ];
+}
+
+sub symop_shift_origin
+{
+    my ($symop, $origin_shift) = @_;
+
+    my @back_shift = map {-$_} @{$origin_shift};
+    my $new_tr = symop_mul_vector( $symop, \@back_shift );
+
+    return SymopParse::symop_translation_modulo_1( [
+	[ $symop->[0][0], $symop->[0][1], $symop->[0][2],
+	  $symop->[0][3] + $new_tr->[0] + $origin_shift->[0] ],
+
+	[ $symop->[1][0], $symop->[1][1], $symop->[1][2],
+	  $symop->[1][3] + $new_tr->[1] + $origin_shift->[1] ],
+
+	[ $symop->[2][0], $symop->[2][1], $symop->[2][2],
+	  $symop->[2][3] + $new_tr->[2] + $origin_shift->[2] ],
+      ]
+    );
+}
+
+sub print_shifted_settings
+{
+    my ($setting, $sg_name, $sg, $symops ) = @_;
+
+    if( exists $sg->{shiftvec} ) {
+	my @shift = @{$sg->{shiftvec}};
+	my @symops = symop_strings($symops);
+
+	&print_setting( $setting, $sg_name, $sg, $symops, 1 );
+
+	my @symop_matrices = map {SymopParse::symop_from_string($_)} @symops;
+	my @shifted_matrices = map {symop_shift_origin($_,\@shift)} @symop_matrices;
+	my @shifted_strings = map {SymopParse::string_from_symop( $_ )}
+	                      @shifted_matrices;
+
+	print_setting( $setting, $sg_name, $sg, \@shifted_strings, 2 );
+    } else {
+	&print_setting
+    }
+}
+
 sub print_setting
 {
-    my ($setting, $sg_name, $sg, $symops) = @_;
+    my ($setting, $sg_name, $sg, $symops, $origin ) = @_;
 
-    my @ncsymop_strings = symop_strings($symops); # non-centering symops
+    my @ncsymop_strings = ref $symops->[0] eq "ARRAY" ?
+	symop_strings($symops) : # non-centering symops
+	@{$symops};
+
     my @symop_strings = @ncsymop_strings;
 
     my $lattice_type = uc(substr( $sg_name, 0, 1 ));
@@ -86,9 +149,11 @@ sub print_setting
 	if defined $sg->{new_symbol};
     print "    thirtyfive      => ", "'".ucfirst($sg->{thirtyfive})."',", "\n"
 	if defined $sg->{thirtyfive};
-    print "    full   => ", $sg->{full}, ",\n"
+    print "    full   => ", "'".$sg->{full}, "',\n"
 	if defined $sg->{full};
     print "    number => ", $sg->{number}, ",\n";
+    print "    origin => ", $origin, ",\n"
+	if defined $origin;
     print "    nsymop => ", int(@symop_strings), ",\n";
     print "    symops => [\n";
     for my $symop (@symop_strings) {
@@ -189,27 +254,27 @@ sub select_symops
 
     return $symops;
 }
-
-sub setting_index
-{
-    my ($setting_list, $requested_setting) = @_;
-
-    my $unique_axis = unique_axis( $requested_setting );
-    my $n = 0;
-    my $found_setting;
-
-    for my $current_setting (@{$setting_list}) {
-	if( unique_axis( $current_setting ) == $unique_axis ) {
-	    $n ++;
-	}
-	if( $current_setting eq $requested_setting ) {
-	    $found_setting = $current_setting;
-	    last;
-	}
-    }
-
-    print ">>> $n\n" and die if $n < 1;
-    die unless defined $found_setting;
-
-    return $n;
-}
+## 
+## sub setting_index
+## {
+##     my ($setting_list, $requested_setting) = @_;
+## 
+##     my $unique_axis = unique_axis( $requested_setting );
+##     my $n = 0;
+##     my $found_setting;
+## 
+##     for my $current_setting (@{$setting_list}) {
+## 	if( unique_axis( $current_setting ) == $unique_axis ) {
+## 	    $n ++;
+## 	}
+## 	if( $current_setting eq $requested_setting ) {
+## 	    $found_setting = $current_setting;
+## 	    last;
+## 	}
+##     }
+## 
+##     print ">>> $n\n" and die if $n < 1;
+##     die unless defined $found_setting;
+## 
+##     return $n;
+## }
