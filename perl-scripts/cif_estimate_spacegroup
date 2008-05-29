@@ -17,6 +17,7 @@ use lib "./lib/perl5";
 use lib "./CIFParser";
 use CIFParser;
 use SymopLookup;
+use SymopParse;
 use ShowStruct;
 
 for my $filename (@ARGV) {
@@ -33,16 +34,11 @@ for my $filename (@ARGV) {
 
 	if( exists $dataset->{values}{_symmetry_equiv_pos_as_xyz} ) {
 	    @symops = @{$dataset->{values}{_symmetry_equiv_pos_as_xyz}};
-	    #showRef( \@symops );
-	    for my $i (0..$#symops) {
-		my @coords = map {s/\s//g;$_} split( ',', $symops[$i] );
-		@coords = map {/([-+]1\/2)([-+]\w)/ ? $2.$1 : $_} @coords;
-		@coords = map {/^(1\/2)([-+]\w)/ ? $2."+$1" : $_} @coords;
-		@coords = map {s/^\+//; $_} @coords;
-		$symops[$i] = join( ",", @coords );
-	    }
-	    @symops = sort map {s/\s*//g; s,-1/2,+1/2,g; lc($_)} @symops;
-	    my $key = join( ";", @symops );
+	    my $key = join( ";",
+			    sort
+			    map {SymopParse::symop_string_canonical_form($_)}
+			    @symops 
+		);
 	    print "## >>> $key\n";
 	    if( exists $SymopLookup::table{$key} ) {
 		print "_[local]_cod_est_spacegroup_name_H-M ";
