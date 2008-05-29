@@ -16,11 +16,46 @@ eval 'exec perl5 -x $0 ${1+"$@"}'
 
 use strict;
 use lib ".";
-use Spacegroups;
 use SymopParse;
 
-for my $key (sort keys %Spacegroups::space_groups) {
-    my $sg = $Spacegroups::space_groups{$key};
+my $filename = @ARGV > 0 ? $ARGV[0] : "symop.lib";
+
+open( SYMOP, $filename ) or die "$0: could not open file '$filename': $!";
+
+my %spacegroups;
+
+my $last_sg;
+
+while(<SYMOP>) {
+    if( !/^\s/ ) {
+	chomp;
+	my ($sgnum, $nsymop, $nncsymop, $sgname, $pgname, $class, $tailer ) =
+	    split( " ", $_, 7 );
+	$tailer =~ s/^'|'$//g;
+	my ($longname, $remark) = split( "'", $tailer, 2 );
+	## print ">>>$longname\n";
+	$last_sg = $sgname;
+	$spacegroups{$last_sg} = {
+	    name => $sgname,
+	    setting => $sgname,
+	    number => $sgnum,
+	    pgname => $pgname,
+	    nsymop => $nsymop,
+	    nncsym => $nncsymop,
+	    cclass => $class,
+	    remark => $remark,
+	    full   => $longname,
+	};
+    } else {
+	s/\s//g;
+	push( @{$spacegroups{$last_sg}{positions}}, lc($_) );
+    }
+}
+
+close( SYMOP );
+
+for my $key (sort keys %spacegroups) {
+    my $sg = $spacegroups{$key};
 
     if( exists $sg->{settings} ) {
 	my ($a, $b, $c) = (0, 0, 0);
@@ -113,31 +148,14 @@ sub print_setting
 {
     my ($setting, $sg_name, $sg, $symops, $origin ) = @_;
 
-    my @ncsymop_strings = ref $symops->[0] eq "ARRAY" ?
-	symop_strings($symops) : # non-centering symops
+    my @symop_strings = ref $symops->[0] eq "ARRAY" ?
+	symop_strings($symops) :
 	@{$symops};
 
-    my @symop_strings = @ncsymop_strings;
+    @symop_strings = map {SymopParse::symop_string_canonical_form($_)}
+        @symop_strings;
 
-    ## my $lattice_type = uc(substr( $setting, 0, 1 ));
-    my $lattice_type = uc(substr( $sg_name, 0, 1 ));
-
-    if( $lattice_type !~ /P/ ) {
-	my @centering_symops = ();
-	my $centering_shifts =
-	    $Spacegroups::centering_translations{$lattice_type};
-	foreach my $symop_str (@symop_strings) {
-	    my $symop = SymopParse::symop_from_string( $symop_str );
-	    for my $shift (@{$centering_shifts}) {
-		my $new_symop = symop_add_shift( $symop, $shift );
-		push( @centering_symops, SymopParse::string_from_symop(
-			  SymopParse::symop_translation_modulo_1( $new_symop )
-		      )
-		    );
-	    }
-	}
-	@symop_strings = ( @ncsymop_strings, @centering_symops );
-    }
+    my $lattice_type = uc(substr( $setting, 0, 1 ));
 
     ## print "'", $setting, "'";
     ## print "'", join(";", sort @symop_strings), "',";
@@ -161,12 +179,7 @@ sub print_setting
 	print "        \"", $symop, "\",\n";
     }
     print "    ],\n";
-    print "    nncsym => ", int(@ncsymop_strings), ",\n";
-    print "    ncsyms => [\n";
-    for my $symop (@ncsymop_strings) {
-	print "        \"", $symop, "\",\n";
-    }
-    print "    ]\n";
+    print "    nncsym => ", $sg->{nncsym}, ",\n";
     print "},\n\n";
 }
 
