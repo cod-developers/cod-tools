@@ -14,7 +14,7 @@ use strict;
 require Exporter;
 @SymopParse::ISA = qw(Exporter);
 @SymopParse::EXPORT = qw( symop_from_string string_from_symop 
-    symop_string_canonical_form
+    symop_string_canonical_form check_symmetry_operator
 );
 
 #
@@ -177,6 +177,29 @@ sub symop_string_canonical_form
 	    symop_from_string( $symop )
 	)
     );
+}
+
+sub check_symmetry_operator
+{
+    my ($symop) = @_;
+
+    my $symop_term = '(?:x|y|z|\d|\d*\.\d+|\d+\.\d*|\d/\d)';
+    my $symop_component =
+	"(?:(?:-|\\+)?$symop_term|" .
+	"(?:-|\\+)?$symop_term(?:-|\\+)$symop_term|" .
+	"(?:-|\\+)?$symop_term(?:-|\\+)$symop_term(?:-|\\+)$symop_term)";
+
+    if( !defined $symop ) {
+	return "no symmetry operators";
+    } else {
+	my $no_spaces = $symop;
+	$no_spaces =~ s/\s//g;
+	if( $no_spaces !~ 
+	    /^($symop_component,){2}($symop_component)$/i ) {
+	    return "symmetry operator '$symop' could not be parsed";
+	}
+    }
+    return undef;
 }
 
 1;
