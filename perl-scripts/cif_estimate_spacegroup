@@ -17,6 +17,7 @@ use lib "./lib/perl5";
 use lib "./CIFParser";
 use CIFParser;
 use SymopLookup;
+use CCP4SymopLookup;
 use SymopParse;
 use ShowStruct;
 
@@ -32,7 +33,11 @@ sub mk_symop_key
 
 sub mkhash
 {
-    map { (mk_symop_key($_->{symops}), $_) } @SymopLookup::table;
+    if( 1 ) {
+	map { (mk_symop_key($_->{symops}), $_) } @SymopLookup::table;
+    } else {
+	map { (mk_symop_key($_->{symops}), $_) } @CCP4SymopLookup::table;
+    }
 }
 
 my %symop_lookup_table = mkhash();
@@ -40,7 +45,7 @@ my %symop_lookup_table = mkhash();
 do {
     use Serialise;
     serialiseRef( \%symop_lookup_table );
-} if 1;
+} if 0;
 
 for my $filename (@ARGV) {
 
