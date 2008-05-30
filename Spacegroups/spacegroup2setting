@@ -26,13 +26,15 @@ for my $key (sort keys %Spacegroups::space_groups) {
 	my ($a, $b, $c) = (0, 0, 0);
 	my @settings = @{$sg->{settings}};
 	my %settings = map {($_,$_)} @settings;
-	my %short = exists $sg->{short} ? map {($_,$_)} @{$sg->{short}} : ();
+	my @short = exists $sg->{short} ? @{$sg->{short}} : ();
+	my %short = map {($_,$_)} @short;
 	if( !exists $settings{$key} && !exists $short{$key} ) {
 	    unshift( @settings, $key );
 	}
 	for my $setting (@settings) {
 	    my $symops = select_symops( $sg, $setting, \$a, \$b, \$c );
-	    print_shifted_settings( $setting, $key, $sg, $symops );
+	    my $short = @short > 0 ? shift( @short ) : undef;
+	    print_shifted_settings( $setting, $key, $sg, $symops, $short );
 	}
     } elsif( exists $sg->{positions} ) {
 	print_shifted_settings( $key, $key, $sg, $sg->{positions} );
@@ -96,20 +98,21 @@ sub symop_shift_origin
 
 sub print_shifted_settings
 {
-    my ($setting, $sg_name, $sg, $symops ) = @_;
+    my ($setting, $sg_name, $sg, $symops, $short ) = @_;
 
     if( exists $sg->{shiftvec} ) {
 	my @shift = @{$sg->{shiftvec}};
 	my @symops = symop_strings($symops);
 
-	&print_setting( $setting, $sg_name, $sg, $symops, 1 );
+	&print_setting( $setting, $sg_name, $sg, $symops, $short, 1 );
 
 	my @symop_matrices = map {SymopParse::symop_from_string($_)} @symops;
-	my @shifted_matrices = map {symop_shift_origin($_,\@shift)} @symop_matrices;
+	my @shifted_matrices = map {symop_shift_origin($_,\@shift)}
+	                       @symop_matrices;
 	my @shifted_strings = map {SymopParse::string_from_symop( $_ )}
 	                      @shifted_matrices;
 
-	print_setting( $setting, $sg_name, $sg, \@shifted_strings, 2 );
+	print_setting( $setting, $sg_name, $sg, \@shifted_strings, $short, 2 );
     } else {
 	&print_setting
     }
@@ -117,7 +120,7 @@ sub print_shifted_settings
 
 sub print_setting
 {
-    my ($setting, $sg_name, $sg, $symops, $origin ) = @_;
+    my ($setting, $sg_name, $sg, $symops, $short, $origin ) = @_;
 
     my @ncsymop_strings = ref $symops->[0] eq "ARRAY" ?
 	symop_strings($symops) : # non-centering symops
@@ -155,8 +158,10 @@ sub print_setting
 	if defined $sg->{new_symbol};
     print "    thirtyfive      => ", "'".ucfirst($sg->{thirtyfive})."',", "\n"
 	if defined $sg->{thirtyfive};
-    print "    full   => ", "'".$sg->{full}, "',\n"
+    print "    full   => ", "'".ucfirst($sg->{full}), "',\n"
 	if defined $sg->{full};
+    print "    short  => ", "'".ucfirst($short)."'\n"
+	if defined $short;
     print "    number => ", $sg->{number}, ",\n";
     print "    origin => ", $origin, ",\n"
 	if defined $origin;
