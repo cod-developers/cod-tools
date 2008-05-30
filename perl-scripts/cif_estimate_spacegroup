@@ -56,11 +56,7 @@ for my $filename (@ARGV) {
 
 	if( exists $dataset->{values}{_symmetry_equiv_pos_as_xyz} ) {
 	    @symops = @{$dataset->{values}{_symmetry_equiv_pos_as_xyz}};
-	    my $key = join( ";",
-			    sort
-			    map {SymopParse::symop_string_canonical_form($_)}
-			    @symops 
-		);
+	    my $key = mk_symop_key( \@symops );
 	    print "## >>> $key\n";
 	    if( exists $symop_lookup_table{$key} ) {
 		print "_[local]_cod_est_spacegroup_name_H-M ";
