@@ -34,10 +34,10 @@ while(<SYMOP>) {
 	$tailer =~ s/^'|'$//g;
 	my ($longname, $remark) = split( "'", $tailer, 2 );
 	## print ">>>$longname\n";
-	$last_sg = $sgname;
+	$last_sg = $longname;
 	$spacegroups{$last_sg} = {
-	    name => $sgname,
-	    setting => $sgname,
+	    short => [ $sgname ],
+	    settings => [ $longname ],
 	    number => $sgnum,
 	    pgname => $pgname,
 	    nsymop => $nsymop,
@@ -59,9 +59,11 @@ for my $key (sort keys %spacegroups) {
 
     if( exists $sg->{settings} ) {
 	my ($a, $b, $c) = (0, 0, 0);
+	my @short = exists $sg->{short} ? @{$sg->{short}} : ();
 	for my $setting (@{$sg->{settings}}) {
 	    my $symops = select_symops( $sg, $setting, \$a, \$b, \$c );
-	    print_shifted_settings( $setting, $key, $sg, $symops );
+	    my $short = @short > 0 ? shift( @short ) : undef;
+	    print_shifted_settings( $setting, $key, $sg, $symops, $short );
 	}
     } elsif( exists $sg->{positions} ) {
 	print_shifted_settings( $key, $key, $sg, $sg->{positions} );
@@ -125,20 +127,21 @@ sub symop_shift_origin
 
 sub print_shifted_settings
 {
-    my ($setting, $sg_name, $sg, $symops ) = @_;
+    my ($setting, $sg_name, $sg, $symops, $short ) = @_;
 
     if( exists $sg->{shiftvec} ) {
 	my @shift = @{$sg->{shiftvec}};
 	my @symops = symop_strings($symops);
 
-	&print_setting( $setting, $sg_name, $sg, $symops, 1 );
+	&print_setting( $setting, $sg_name, $sg, $symops, $short, 1 );
 
 	my @symop_matrices = map {SymopParse::symop_from_string($_)} @symops;
-	my @shifted_matrices = map {symop_shift_origin($_,\@shift)} @symop_matrices;
+	my @shifted_matrices = map {symop_shift_origin($_,\@shift)}
+	                      @symop_matrices;
 	my @shifted_strings = map {SymopParse::string_from_symop( $_ )}
 	                      @shifted_matrices;
 
-	print_setting( $setting, $sg_name, $sg, \@shifted_strings, 2 );
+	print_setting( $setting, $sg_name, $sg, \@shifted_strings, $short, 2 );
     } else {
 	&print_setting
     }
@@ -146,7 +149,7 @@ sub print_shifted_settings
 
 sub print_setting
 {
-    my ($setting, $sg_name, $sg, $symops, $origin ) = @_;
+    my ($setting, $sg_name, $sg, $symops, $short, $origin ) = @_;
 
     my @symop_strings = ref $symops->[0] eq "ARRAY" ?
 	symop_strings($symops) :
@@ -163,13 +166,16 @@ sub print_setting
     print "{\n";
     print "    spacegroup_name => ", "'".ucfirst($sg_name)."',", "\n";
     print "    setting_name    => ", "'".ucfirst($setting)."',", "\n";
-    print "    schoenflies     => ", "'".ucfirst($sg->{schoenflies})."',", "\n";
+    print "    schoenflies     => ", "'".ucfirst($sg->{schoenflies})."',", "\n"
+	if defined $sg->{schoenflies};
     print "    new_symbol      => ", "'".ucfirst($sg->{new_symbol})."',", "\n"
 	if defined $sg->{new_symbol};
     print "    thirtyfive      => ", "'".ucfirst($sg->{thirtyfive})."',", "\n"
 	if defined $sg->{thirtyfive};
     print "    full   => ", "'".$sg->{full}, "',\n"
 	if defined $sg->{full};
+    print "    short  => ", "'".ucfirst($short)."',\n"
+	if defined $short;
     print "    number => ", $sg->{number}, ",\n";
     print "    origin => ", $origin, ",\n"
 	if defined $origin;
