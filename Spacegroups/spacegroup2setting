@@ -24,7 +24,13 @@ for my $key (sort keys %Spacegroups::space_groups) {
 
     if( exists $sg->{settings} ) {
 	my ($a, $b, $c) = (0, 0, 0);
-	for my $setting (@{$sg->{settings}}) {
+	my @settings = @{$sg->{settings}};
+	my %settings = map {($_,$_)} @settings;
+	my %short = exists $sg->{short} ? map {($_,$_)} @{$sg->{short}} : ();
+	if( !exists $settings{$key} && !exists $short{$key} ) {
+	    unshift( @settings, $key );
+	}
+	for my $setting (@settings) {
 	    my $symops = select_symops( $sg, $setting, \$a, \$b, \$c );
 	    print_shifted_settings( $setting, $key, $sg, $symops );
 	}
