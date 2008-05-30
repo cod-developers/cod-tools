@@ -20,6 +20,28 @@ use SymopLookup;
 use SymopParse;
 use ShowStruct;
 
+sub mk_symop_key
+{
+    my ( $symops ) = @_;
+
+    my @canonical = sort 
+	map {SymopParse::symop_string_canonical_form($_)} @$symops;
+    my $key = join( ";", @canonical );
+    return $key;
+}
+
+sub mkhash
+{
+    map { (mk_symop_key($_->{symops}), $_) } @SymopLookup::table;
+}
+
+my %symop_lookup_table = mkhash();
+
+do {
+    use Serialise;
+    serialiseRef( \%symop_lookup_table );
+} if 1;
+
 for my $filename (@ARGV) {
 
     my $parser = new CIFParser;
@@ -40,9 +62,9 @@ for my $filename (@ARGV) {
 			    @symops 
 		);
 	    print "## >>> $key\n";
-	    if( exists $SymopLookup::table{$key} ) {
+	    if( exists $symop_lookup_table{$key} ) {
 		print "_[local]_cod_est_spacegroup_name_H-M ";
-		print "'", $SymopLookup::table{$key}{setting_name}, "'\n";
+		print "'", $symop_lookup_table{$key}{setting_name}, "'\n";
 	    } else {
 		print "_[local]_cod_est_spacegroup_name_H-M ?\n";
 	    }
