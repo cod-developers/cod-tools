@@ -450,6 +450,33 @@ require Exporter;
 		       ['-$x', '-$y', '$z+1/2'],
 		       ['-$x', '$y', '-$z+1/2'],
 		       ['$x', '-$y', '-$z']],
+	 setting_positions => { # taken from
+				# http://cci.lbl.gov/servers/cctbx/explore_symmetry.html
+				# output. Copied operators from the 'p 2 2 21'
+	                        # spacegroup entry and
+				# corrected the lattice type
+				# letters. The corresponding centering
+				# operators must be added
+				# automatically when needed. S.G.
+	     'c 2 2 21' => [
+		 ['$x', '$y', '$z'],
+		 ['-$x', '-$y', '$z+1/2'],
+		 ['-$x', '$y', '-$z+1/2'],
+		 ['$x', '-$y', '-$z']
+	     ],
+	     'a 21 2 2' => [
+		 [ '$x', '$y', '$z' ],
+		 [ '-$x+1/2', '-$y', '$z' ],
+		 [ '$x+1/2', '-$y', '-$z' ],
+		 [ '-$x', '$y', '-$z' ],
+	     ],
+	     'b 2 21 2' => [
+		 [ '$x', '$y', '$z' ],
+		 [ '-$x', '-$y', '$z' ],
+		 [ '$x', '-$y+1/2', '-$z' ],
+		 [ '-$x', '$y+1/2', '-$z' ],
+	     ],
+	 },
      },
      'c 2 2 2' => {
 	 number => 21,
