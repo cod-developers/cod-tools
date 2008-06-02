@@ -519,6 +519,28 @@ require Exporter;
 		       ['-$x', '-$y', '$z'],
 		       ['$x', '-$y', '$z'],
 		       ['-$x', '$y', '$z']],
+	 setting_positions => { # taken from
+				# http://cci.lbl.gov/servers/cctbx/explore_symmetry.html
+				# output. S.G.
+	     'p m m 2' => [
+		 ['$x', '$y', '$z'],
+		 ['-$x', '-$y', '$z'],
+		 ['$x', '-$y', '$z'],
+		 ['-$x', '$y', '$z'],
+	     ],
+	     'p 2 m m' => [
+		 ['$x', '$y', '$z'],
+		 ['$x', '$y', '-$z'],
+		 ['$x', '-$y', '-$z'],
+		 ['$x', '-$y', '$z'],
+	     ],
+	     'p m 2 m' => [
+		 ['$x', '$y', '$z'],
+		 ['$x', '$y', '-$z'],
+		 ['-$x', '$y', '$z'],
+		 ['-$x', '$y', '-$z'],
+	     ],
+	 },
      },
      'p m c 21' => {
 	 number => 26,
