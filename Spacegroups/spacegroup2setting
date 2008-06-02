@@ -19,6 +19,8 @@ use lib ".";
 use Spacegroups;
 use SymopParse;
 
+my %used_settings = ();
+
 for my $key (sort keys %Spacegroups::space_groups) {
     my $sg = $Spacegroups::space_groups{$key};
 
@@ -32,12 +34,18 @@ for my $key (sort keys %Spacegroups::space_groups) {
 	    unshift( @settings, $key );
 	}
 	for my $setting (@settings) {
-	    my $symops = select_symops( $sg, $setting, \$a, \$b, \$c );
-	    my $short = @short > 0 ? shift( @short ) : undef;
-	    print_shifted_settings( $setting, $key, $sg, $symops, $short );
+	    if( !exists $used_settings{$setting} ) {
+		my $symops = select_symops( $sg, $setting, \$a, \$b, \$c );
+		my $short = @short > 0 ? shift( @short ) : undef;
+		print_shifted_settings( $setting, $key, $sg, $symops, $short );
+		$used_settings{$setting} = 1;
+	    }
 	}
     } elsif( exists $sg->{positions} ) {
-	print_shifted_settings( $key, $key, $sg, $sg->{positions} );
+	if( !exists $used_settings{$key} ) {
+	    print_shifted_settings( $key, $key, $sg, $sg->{positions} );
+	    $used_settings{$key} = 1;
+	}
     }
 }
 
