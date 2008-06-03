@@ -25,9 +25,33 @@ use CIFCODTags;
 use CIFExcludedTags;
 use CIFTagManage;
 use Spacegroups::SpacegroupNames;
+use Spacegroups::SymopParse;
+use Spacegroups::SymopLookup;
 use Unicode2CIF;
 use SOptions;
 use SUsage;
+
+sub mk_symop_key
+{
+    my ( $symops ) = @_;
+
+    my @canonical = sort 
+	map {SymopParse::symop_string_canonical_form($_)} @$symops;
+    my $key = join( ";", @canonical );
+    return $key;
+}
+
+sub mkhash
+{
+    if( 1 ) {
+	map { (mk_symop_key($_->{symops}), $_) } @SymopLookup::table;
+    #} else {
+    #	map { (mk_symop_key($_->{symops}), $_) } @CCP4SymopLookup::table;
+    }
+}
+
+my %symop_lookup_table;
+## my %symop_lookup_table = mkhash();
 
 sub merge_new_tag_values($$$);
 
@@ -36,6 +60,7 @@ $::max_cif_tag_len = 32;
 
 my $user_biblio = 0;
 my $leave_biblio = 0;
+my $estimate_spacegroup = 0;
 my $exclude_empty_tags = 0;
 my $preserve_loop_order = 0;
 my $reformat_spacegroup = 0;
@@ -86,6 +111,10 @@ my %spacegroups = map {
     "-B,--bibliography" => \$biblio,
 
     "-h,--add-cif-header" => \$cif_header_file,
+
+    "-s,--estimate-spacegroup" => sub { $estimate_spacegroup = 1; },
+    "-s-,--dont-estimate-spacegroup" => sub { $estimate_spacegroup = 0; },
+    "--no-estimate-spacegroup" => sub { $estimate_spacegroup = 0; },
 
     "-x,--extra-tag-list" => \$extra_tag_file,
 
@@ -516,6 +545,96 @@ for my $dataset (@data) {
 		    $datablok->{$sg_tag}[0] = $spacegroups{$orig_sg};
 		}
 	    }
+	}
+    }
+
+    # Determine space group symbols from symmetry elements if requested:
+
+    if( $estimate_spacegroup ) {
+	if( !%symop_lookup_table ) {
+	    %symop_lookup_table = mkhash();
+	}
+	if( exists $datablok->{"_symmetry_equiv_pos_as_xyz"} ) {
+	    my $has_errors = 0;
+	    my @symops = @{$datablok->{"_symmetry_equiv_pos_as_xyz"}};
+	    for my $symop (@symops) {
+		my $error = SymopParse::check_symmetry_operator( $symop );
+		if( $error ) {
+		    $has_errors = 1;
+		    print STDERR "$0: $filename: $error\n";
+		}
+	    }
+	    if( !$has_errors ) {
+		my $key = mk_symop_key( \@symops );
+		my $original_sg_H_M =
+		    defined $datablok->{"_symmetry_space_group_name_H-M"} ?
+		    $datablok->{"_symmetry_space_group_name_H-M"}[0] :
+		    undef;
+		my $original_sg_Hall =
+		    defined $datablok->{"_symmetry_space_group_name_Hall"} ?
+		    $datablok->{"_symmetry_space_group_name_Hall"}[0] :
+		    undef;
+		my $original_sg_number =
+		    defined $datablok->{"_space_group_IT_number"} ?
+		    $datablok->{"_space_group_IT_number"}[0] :
+		    undef;
+
+		if( exists $symop_lookup_table{$key} ) {
+		    my $estimated_sg = $symop_lookup_table{$key};
+
+		    my $estimated_sg_H_M = $estimated_sg->{hermann_mauguin};
+		    if( defined $original_sg_H_M &&
+			$original_sg_H_M ne '?' &&
+			$original_sg_H_M ne $estimated_sg_H_M ) {
+			set_tag( $dataset, "_[local]_cod_cif_authors_sg_H-M",
+				 $original_sg_H_M );
+		    }
+		    set_tag( $dataset, "_symmetry_space_group_name_H-M",
+			     $estimated_sg_H_M );
+
+		    my $estimated_sg_Hall = $estimated_sg->{hall};
+		    $estimated_sg_Hall =~ s/^\s*//;
+		    if( defined $original_sg_Hall &&
+			$original_sg_Hall ne '?' &&
+			$original_sg_Hall ne $estimated_sg_Hall ) {
+			set_tag( $dataset, "_[local]_cod_cif_authors_sg_Hall",
+				 $original_sg_Hall );
+		    }
+		    set_tag( $dataset, "_symmetry_space_group_name_Hall",
+			     $estimated_sg_Hall );
+
+		    my $estimated_sg_number = $estimated_sg->{number};
+		    if( defined $original_sg_number &&
+			$original_sg_number != $estimated_sg_number ) {
+			set_tag( $dataset, "_[local]_cod_cif_authors_sg_number",
+				 $original_sg_number );
+		    }
+		    set_tag( $dataset, "_space_group_IT_number",
+			     $estimated_sg_number );
+		} else {
+
+		    if( defined $original_sg_H_M && $original_sg_H_M ne '?' ) {
+			set_tag( $dataset, "_[local]_cod_cif_authors_sg_H-M",
+				 $original_sg_H_M );
+		    }
+		    set_tag( $dataset, "_symmetry_space_group_name_H-M", '?' );
+
+		    if( defined $original_sg_Hall && $original_sg_Hall ne '?' ) {
+			set_tag( $dataset, "_[local]_cod_cif_authors_sg_Hall",
+				 $original_sg_Hall );
+		    }
+		    set_tag( $dataset, "_symmetry_space_group_name_Hall",'?' );
+
+		    if( defined $original_sg_number ) {
+			set_tag( $dataset, "_[local]_cod_cif_authors_sg_number",
+				 $original_sg_number );
+		    }
+		    set_tag( $dataset, "_space_group_IT_number", '?' );
+		}
+	    }
+	} else {
+	    print STDERR "$0: the '$filename' data_$dataset->{name} " .
+		"does not contain symmetry operators\n";
 	}
     }
 
