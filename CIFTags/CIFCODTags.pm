@@ -25,6 +25,15 @@ _[local]_cod_data_source_SHA1_sum
 _[local]_cod_data_source_SHA256_sum
 _[local]_cod_est_spacegroup_name_H-M
 _[local]_cod_depositor_comments
+_[local]_cod_error_flag
+_[local]_cod_error_source
+_[local]_cod_error_description
+_[local]_cod_cif_authors_sg_H-M
+_[local]_cod_cif_authors_sg_Hall
+_[local]_cod_cif_authors_sg_number
+_[local]_cod_suboptimal_structure
+_[local]_cod_related_optimal_struct
+_[local]_cod_related_suboptimal_struct
 
 _cod_duplicate_entry
 _cod_data_source_file
@@ -34,6 +43,15 @@ _cod_data_source_SHA1_sum
 _cod_data_source_SHA256_sum
 _cod_est_spacegroup_name_H-M
 _cod_depositor_comments
+_cod_error_flag
+_cod_error_source
+_cod_error_description
+_cod_cif_authors_sg_H-M
+_cod_cif_authors_sg_Hall
+_cod_cif_authors_sg_number
+_cod_suboptimal_structure
+_cod_related_optimal_struct
+_cod_related_suboptimal_struct
 );
 
 1;

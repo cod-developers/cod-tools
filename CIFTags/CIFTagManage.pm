@@ -15,7 +15,9 @@ use strict;
 
 require Exporter;
 @CIFTagManage::ISA = qw(Exporter);
-@CIFTagManage::EXPORT = qw( exclude_tag tag_is_empty exclude_empty_tags );
+@CIFTagManage::EXPORT = qw( exclude_tag tag_is_empty exclude_empty_tags
+    set_tag
+);
 
 sub exclude_tag
 {
@@ -64,6 +66,15 @@ sub exclude_empty_tags
     for my $empty_tag (@empty_tags) {
 	exclude_tag( $cif, $empty_tag );
     }
+}
+
+sub set_tag
+{
+    my ( $cif, $tag, $value ) = @_;
+    if( !exists $cif->{values}{$tag} ) {
+	push( @{$cif->{tags}}, $tag );
+    }
+    $cif->{values}{$tag}[0] = $value;
 }
 
 1;
