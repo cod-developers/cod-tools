@@ -1,0 +1,32 @@
+Import("env_base", "env_etc")
+env = env_base.Copy(
+  CXXFLAGS=env_etc.cxxflags_base,
+)
+env_etc.include_registry.append(
+  env=env,
+  paths=["."] + env_etc.scitbx_common_includes)
+envlm = env.Copy(
+  LIBS=env_etc.libm
+)
+if (env_etc.compiler != "unix_icc"):
+  env_wd = env
+  envlm_wd = envlm
+else:
+  # disable "function was declared but never referenced" warning
+  wd = ["-wd177"]
+  env_wd = env.Copy()
+  env_wd.Append(CXXFLAGS=wd)
+  envlm_wd = envlm.Copy()
+  envlm_wd.Append(CXXFLAGS=wd)
+env_wd.Program(target="tst_af_1", source="tst_af_1.cpp")
+env.Program(target="tst_af_2", source="tst_af_2.cpp")
+env.Program(target="tst_af_3", source="tst_af_3.cpp")
+envlm_wd.Program(target="tst_af_4", source="tst_af_4.cpp")
+envlm.Program(target="tst_af_5", source="tst_af_5.cpp")
+envlm.Program(target="tst_vec3", source="tst_vec3.cpp")
+envlm.Program(target="tst_mat3", source="tst_mat3.cpp")
+envlm.Program(target="tst_sym_mat3", source="tst_sym_mat3.cpp")
+env.Program(target="tst_mat_ref", source="tst_mat_ref.cpp")
+env.Program(target="tst_accessors", source="tst_accessors.cpp")
+env.Program(target="tst_unsigned_float_arithmetic",
+            source="tst_unsigned_float_arithmetic.cpp")

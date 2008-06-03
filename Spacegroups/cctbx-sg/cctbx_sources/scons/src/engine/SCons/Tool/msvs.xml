@@ -1,0 +1,605 @@
+<!--
+__COPYRIGHT__
+
+This file is processed by the bin/SConsDoc.py module.
+See its __doc__ string for a discussion of the format.
+-->
+<tool name="msvs">
+<summary>
+Sets construction variables for Microsoft Visual Studio.
+</summary>
+<sets>
+MSVSPROJECTCOM
+MSVSSOLUTIONCOM
+MSVSSCONSCRIPT
+MSVSSCONS
+MSVSSCONSFLAGS
+MSVSSCONSCOM
+MSVSBUILDCOM
+MSVSREBUILDCOM
+MSVSCLEANCOM
+MSVSENCODING
+</sets>
+<uses>
+</uses>
+</tool>
+
+<builder name ="MSVSProject">
+<summary>
+Builds a Microsoft Visual Studio project file,
+and by default builds a solution file as well.
+
+This builds a Visual Studio project file, based on the version of
+Visual Studio that is configured (either the latest installed version,
+or the version specified by
+&cv-link-MSVS_VERSION;
+in the Environment constructor).
+For Visual Studio 6, it will generate a
+<filename>.dsp</filename>
+file.
+For Visual Studio 7 (.NET) and later versions, it will generate a
+<filename>.vcproj</filename>
+file.
+
+By default,
+this also generates a solution file
+for the specified project,
+a
+<filename>.dsw</filename>
+file for Visual Studio 6
+or a
+<filename>.sln</filename>
+file for Visual Studio 7 (.NET).
+This behavior may be disabled by specifying
+<literal>auto_build_solution=0</literal>
+when you call
+&b-MSVSProject;,
+in which case you presumably want to
+build the solution file(s)
+by calling the
+&b-MSVSSolution;
+Builder (see below).
+
+It takes several lists of filenames to be placed into the project
+file.
+These are currently limited to
+<literal>srcs</literal>,
+<literal>incs</literal>,
+<literal>localincs</literal>,
+<literal>resources</literal>,
+and
+<literal>misc</literal>.
+These are pretty self-explanatory, but it should be noted that these
+lists are added to the &cv-link-SOURCES; construction variable as strings,
+NOT as SCons File Nodes.  This is because they represent file
+names to be added to the project file, not the source files used to
+build the project file.
+
+The above filename lists are all optional,
+although at least one must be specified
+for the resulting project file to be non-empty.
+
+In addition to the above lists of values,
+the following values may be specified:
+
+<literal>target</literal>:
+The name of the target
+<filename>.dsp</filename>
+or
+<filename>.vcproj</filename>
+file.
+The correct
+suffix for the version of Visual Studio must be used,
+but the
+&cv-link-MSVSPROJECTSUFFIX;
+construction variable
+will be defined to the correct value (see example below).
+
+<literal>variant</literal>:
+The name of this particular variant.
+For Visual Studio 7 projects,
+this can also be a list of variant names.
+These are typically things like "Debug" or "Release", but really
+can be anything you want.
+For Visual Studio 7 projects,
+they may also specify a target platform
+separated from the variant name by a
+<literal>|</literal>
+(vertical pipe)
+character:
+<literal>Debug|Xbox</literal>.
+The default target platform is Win32.
+Multiple calls to
+&b-MSVSProject;
+with different variants are allowed;
+all variants will be added to the project file with their appropriate
+build targets and sources.
+
+<literal>buildtarget</literal>:
+An optional string, node, or list of strings or nodes
+(one per build variant), to tell the Visual Studio debugger
+what output target to use in what build variant.
+The number of
+<literal>buildtarget</literal>
+entries must match the number of
+<literal>variant</literal>
+entries.
+
+<literal>runfile</literal>:
+The name of the file that Visual Studio 7 and later
+will run and debug.
+This appears as the value of the
+<literal>Output</literal>
+field in the resutling Visual Studio project file.
+If this is not specified,
+the default is the same as the specified
+<literal>buildtarget</literal>
+value.
+
+Example usage:
+
+<example>
+barsrcs = ['bar.cpp'],
+barincs = ['bar.h'],
+barlocalincs = ['StdAfx.h']
+barresources = ['bar.rc','resource.h']
+barmisc = ['bar_readme.txt']
+
+dll = env.SharedLibrary(target = 'bar.dll',
+                        source = barsrcs)
+
+env.MSVSProject(target = 'Bar' + env['MSVSPROJECTSUFFIX'],
+                srcs = barsrcs,
+                incs = barincs,
+                localincs = barlocalincs,
+                resources = barresources,
+                misc = barmisc,
+                buildtarget = dll,
+                variant = 'Release')
+</example>
+</summary>
+</builder>
+
+<builder name ="MSVSSolution">
+<summary>
+Builds a Microsoft Visual Studio solution file.
+
+This builds a Visual Studio solution file,
+based on the version of Visual Studio that is configured
+(either the latest installed version,
+or the version specified by
+&cv-link-MSVS_VERSION;
+in the construction environment).
+For Visual Studio 6, it will generate a
+<filename>.dsw</filename>
+file.
+For Visual Studio 7 (.NET), it will
+generate a
+<filename>.sln</filename>
+file.
+
+The following values must be specified:
+
+<literal>target</literal>:
+The name of the target .dsw or .sln file.  The correct
+suffix for the version of Visual Studio must be used, but the value
+&cv-link-MSVSSOLUTIONSUFFIX;
+will be defined to the correct value (see example below).
+
+<literal>variant</literal>:
+The name of this particular variant, or a list of variant
+names (the latter is only supported for MSVS 7 solutions). These are
+typically things like "Debug" or "Release", but really can be anything
+you want. For MSVS 7 they may also specify target platform, like this
+"Debug|Xbox". Default platform is Win32.
+
+<literal>projects</literal>:
+A list of project file names, or Project nodes returned by calls to the
+&b-MSVSProject;
+Builder,
+to be placed into the solution file.
+It should be noted that these file names are NOT added to the $SOURCES
+environment variable in form of files, but rather as strings.   This
+is because they represent file names to be added to the solution file,
+not the source files used to build the solution file.
+
+(NOTE: Currently only one project is supported per solution.)
+
+Example Usage:
+
+<example>
+env.MSVSSolution(target = 'Bar' + env['MSVSSOLUTIONSUFFIX'],
+                 projects = ['bar' + env['MSVSPROJECTSUFFIX']],
+                 variant = 'Release')
+</example>
+</summary>
+</builder>
+
+<cvar name="MSVS">
+<summary>
+When the Microsoft Visual Studio tools are initialized, they set up
+this dictionary with the following keys:
+
+<envar>VERSION</envar>:
+the version of MSVS being used (can be set via
+MSVS_VERSION)
+
+<envar>VERSIONS</envar>:
+the available versions of MSVS installed
+
+<envar>VCINSTALLDIR</envar>:
+installed directory of Visual C++
+
+<envar>VSINSTALLDIR</envar>:
+installed directory of Visual Studio
+
+<envar>FRAMEWORKDIR</envar>:
+installed directory of the .NET framework
+
+<envar>FRAMEWORKVERSIONS</envar>:
+list of installed versions of the .NET framework, sorted latest to oldest.
+
+<envar>FRAMEWORKVERSION</envar>:
+latest installed version of the .NET framework
+
+<envar>FRAMEWORKSDKDIR</envar>:
+installed location of the .NET SDK.
+
+<envar>PLATFORMSDKDIR</envar>:
+installed location of the Platform SDK.
+
+<envar>PLATFORMSDK_MODULES</envar>:
+dictionary of installed Platform SDK modules,
+where the dictionary keys are keywords for the various modules, and
+the values are 2-tuples where the first is the release date, and the
+second is the version number.
+
+If a value isn't set, it wasn't available in the registry.
+</summary>
+</cvar>
+
+<cvar name="MSVS_IGNORE_IDE_PATHS">
+<summary>
+Tells the MS Visual Studio tools to use minimal INCLUDE, LIB, and PATH settings,
+instead of the settings from the IDE.
+
+For Visual Studio, SCons will (by default) automatically determine
+where MSVS is installed, and use the LIB, INCLUDE, and PATH variables
+set by the IDE.  You can override this behavior by setting these
+variables after Environment initialization, or by setting
+<envar>MSVS_IGNORE_IDE_PATHS = 1</envar>
+in the Environment initialization.
+Specifying this will not leave these unset, but will set them to a
+minimal set of paths needed to run the tools successfully.
+
+For VS6, the mininimal set is:
+<example>
+   INCLUDE:'&lt;VSDir&gt;\VC98\ATL\include;&lt;VSDir&gt;\VC98\MFC\include;&lt;VSDir&gt;\VC98\include'
+   LIB:'&lt;VSDir&gt;\VC98\MFC\lib;&lt;VSDir&gt;\VC98\lib'
+   PATH:'&lt;VSDir&gt;\Common\MSDev98\bin;&lt;VSDir&gt;\VC98\bin'
+</example>
+For VS7, it is:
+<example>
+   INCLUDE:'&lt;VSDir&gt;\Vc7\atlmfc\include;&lt;VSDir&gt;\Vc7\include'
+   LIB:'&lt;VSDir&gt;\Vc7\atlmfc\lib;&lt;VSDir&gt;\Vc7\lib'
+   PATH:'&lt;VSDir&gt;\Common7\Tools\bin;&lt;VSDir&gt;\Common7\Tools;&lt;VSDir&gt;\Vc7\bin'
+</example>
+
+Where '&lt;VSDir&gt;' is the installed location of Visual Studio.
+</summary>
+</cvar>
+
+<cvar name="MSVS_PROJECT_BASE_PATH">
+<summary>
+The string
+placed in a generated Microsoft Visual Studio solution file
+as the value of the
+<literal>SccProjectFilePathRelativizedFromConnection0</literal>
+and
+<literal>SccProjectFilePathRelativizedFromConnection1</literal>
+attributes of the
+<literal>GlobalSection(SourceCodeControl)</literal>
+section.
+There is no default value.
+</summary>
+</cvar>
+
+<cvar name="MSVS_PROJECT_GUID">
+<summary>
+The string
+placed in a generated Microsoft Visual Studio project file
+as the value of the
+<literal>ProjectGUID</literal>
+attribute.
+The string is also placed in the
+<literal>SolutionUniqueID</literal>
+attribute of the
+<literal>GlobalSection(SourceCodeControl)</literal>
+section of the Microsoft Visual Studio solution file.
+There is no default value.
+</summary>
+</cvar>
+
+<cvar name="MSVS_SCC_AUX_PATH">
+<summary>
+The path name
+placed in a generated Microsoft Visual Studio project file
+as the value of the
+<literal>SccAuxPath</literal>
+attribute
+if the
+<envar>MSVS_SCC_PROVIDER</envar>
+construction variable is also set.
+There is no default value.
+</summary>
+</cvar>
+
+<cvar name="MSVS_SCC_LOCAL_PATH">
+<summary>
+The path name
+placed in a generated Microsoft Visual Studio project file
+as the value of the
+<literal>SccLocalPath</literal>
+attribute
+if the
+<envar>MSVS_SCC_PROVIDER</envar>
+construction variable is also set.
+The path name is also placed in the
+<literal>SccLocalPath0</literal>
+and
+<literal>SccLocalPath1</literal>
+attributes of the
+<literal>GlobalSection(SourceCodeControl)</literal>
+section of the Microsoft Visual Studio solution file.
+There is no default value.
+</summary>
+</cvar>
+
+<cvar name="MSVS_SCC_PROJECT_NAME">
+<summary>
+The project name
+placed in a generated Microsoft Visual Studio project file
+as the value of the
+<literal>SccProjectName</literal>
+attribute.
+There is no default value.
+</summary>
+</cvar>
+
+<cvar name="MSVS_SCC_PROVIDER">
+<summary>
+The string
+placed in a generated Microsoft Visual Studio project file
+as the value of the
+<literal>SccProvider</literal>
+attribute.
+The string is also placed in the
+<literal>SccProvider1</literal>
+attribute of the
+<literal>GlobalSection(SourceCodeControl)</literal>
+section of the Microsoft Visual Studio solution file.
+There is no default value.
+</summary>
+</cvar>
+
+<cvar name="MSVS_USE_MFC_DIRS">
+<summary>
+Tells the MS Visual Studio tool(s) to use
+the MFC directories in its default paths
+for compiling and linking.
+The &cv-MSVS_USE_MFC_DIRS; variable has no effect if the
+<envar>INCLUDE</envar>
+or
+<envar>LIB</envar>
+environment variables are set explictly.
+
+Under Visual Studio version 6,
+setting
+&cv-MSVS_USE_MFC_DIRS;
+to a non-zero value
+adds the
+<filename>ATL\include</filename>
+and
+<filename>MFC\include</filename>
+directories to
+the default
+<envar>INCLUDE</envar>
+external environment variable,
+and adds the
+<filename>MFC\lib</filename>
+directory to
+the default
+<envar>LIB</envar>
+external environment variable.
+
+Under Visual Studio version 7,
+setting
+&cv-MSVS_USE_MFC_DIRS;
+to a non-zero value
+adds the
+<filename>atlmfc\include</filename>
+directory to the default
+<envar>INCLUDE</envar>
+external environment variable,
+and adds the
+<filename>atlmfc\lib</filename>
+directory to the default
+<envar>LIB</envar>
+external environment variable.
+
+Under Visual Studio version 8,
+setting
+&cv-MSVS_USE_MFC_DIRS;
+to a non-zero value will,
+by default,
+add the
+<filename>atlmfc\include</filename>
+directory to the default
+<envar>INCLUDE</envar>
+external environment variable,
+and the
+<filename>atlmfc\lib</filename>
+directory to the default
+<envar>LIB</envar>
+external environment variable.
+If, however, the
+<envar>['MSVS']['PLATFORMSDKDIR']</envar>
+variable is set,
+then the
+<filename>mfc</filename>
+and the
+<filename>atl</filename>
+subdirectories of the
+<envar>PLATFORMSDKDIR</envar>
+are added to the default value of the
+<envar>INCLUDE</envar>
+external environment variable,
+and the default value of the
+<envar>LIB</envar>
+external environment variable is left untouched.
+</summary>
+</cvar>
+
+<cvar name="MSVS_VERSION">
+<summary>
+Sets the preferred version of MSVS to use.
+
+SCons will (by default) select the latest version of MSVS
+installed on your machine.
+So, if you have version 6 and version 7 (MSVS .NET) installed,
+it will prefer version 7.
+You can override this by
+specifying the
+<envar>MSVS_VERSION</envar>
+variable in the Environment initialization, setting it to the
+appropriate version ('6.0' or '7.0', for example).
+If the given version isn't installed, tool initialization will fail.
+</summary>
+</cvar>
+
+<cvar name="MSVSBUILDCOM">
+<summary>
+The build command line placed in
+a generated Microsoft Visual Studio project file.
+The default is to have Visual Studio invoke SCons with any specified
+build targets.
+</summary>
+</cvar>
+
+<cvar name="MSVSCLEANCOM">
+<summary>
+The clean command line placed in
+a generated Microsoft Visual Studio project file.
+The default is to have Visual Studio invoke SCons with the -c option
+to remove any specified targets.
+</summary>
+</cvar>
+
+<cvar name="MSVSENCODING">
+<summary>
+The encoding string placed in
+a generated Microsoft Visual Studio project file.
+The default is encoding
+<literal>Windows-1252</literal>.
+</summary>
+</cvar>
+
+<cvar name="MSVSPROJECTCOM">
+<summary>
+The action used to generate Microsoft Visual Studio project files.
+</summary>
+</cvar>
+
+<cvar name="MSVSPROJECTSUFFIX">
+<summary>
+The suffix used for Microsoft Visual Studio project (DSP) files.
+The default value is
+<filename>.vcproj</filename>
+when using Visual Studio version 7.x (.NET)
+or later version,
+and
+<filename>.dsp</filename>
+when using earlier versions of Visual Studio.
+</summary>
+</cvar>
+
+<cvar name="MSVSREBUILDCOM">
+<summary>
+The rebuild command line placed in
+a generated Microsoft Visual Studio project file.
+The default is to have Visual Studio invoke SCons with any specified
+rebuild targets.
+</summary>
+</cvar>
+
+<cvar name="MSVSSCONS">
+<summary>
+The SCons used in generated Microsoft Visual Studio project files.
+The default is the version of SCons being
+used to generate the project file.
+</summary>
+</cvar>
+
+<cvar name="MSVSSCONSFLAGS">
+<summary>
+The SCons flags used in generated Microsoft Visual Studio
+project files.
+</summary>
+</cvar>
+
+<cvar name="MSVSSCONSCOM">
+<summary>
+The default SCons command used in generated Microsoft Visual Studio
+project files.
+</summary>
+</cvar>
+
+<cvar name="MSVSSCONSCRIPT">
+<summary>
+The sconscript file
+(that is,
+&SConstruct;
+or
+&SConscript;
+file)
+that will be invoked by Visual Studio
+project files
+(through the
+&cv-link-MSVSSCONSCOM;
+variable).
+The default is the same sconscript file
+that contains the call to
+&b-MSVSProject;
+to build the project file.
+</summary>
+</cvar>
+
+<cvar name="MSVSSOLUTIONCOM">
+<summary>
+The action used to generate Microsoft Visual Studio solution files.
+</summary>
+</cvar>
+
+<cvar name="MSVSSOLUTIONSUFFIX">
+<summary>
+The suffix used for Microsoft Visual Studio solution (DSW) files.
+The default value is
+<filename>.sln</filename>
+when using Visual Studio version 7.x (.NET),
+and
+<filename>.dsw</filename>
+when using earlier versions of Visual Studio.
+</summary>
+</cvar>
+
+<cvar name="SCONS_HOME">
+<summary>
+The (optional) path to the SCons library directory,
+initialized from the external environment.
+If set, this is used to construct a shorter and more
+efficient search path in the
+&cv-link-MSVSSCONS;
+command line executed
+from Microsoft Visual Studio project files.
+</summary>
+</cvar>
