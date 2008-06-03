@@ -77,7 +77,7 @@ for my $filename (@ARGV) {
 	    print "## >>> $key\n";
 	    if( exists $symop_lookup_table{$key} ) {
 		print "_[local]_cod_est_spacegroup_name_H-M ";
-		print "'", $symop_lookup_table{$key}{setting_name}, "'\n";
+		print "'", $symop_lookup_table{$key}{hermann_mauguin}, "'\n";
 	    } else {
 		print "_[local]_cod_est_spacegroup_name_H-M ?\n";
 	    }
@@ -90,8 +90,18 @@ for my $filename (@ARGV) {
 	if( exists $dataset->{values}{"_symmetry_equiv_pos_as_xyz"} ) {
 	    print "loop_\n";
 	    print "  _symmetry_equiv_pos_as_xyz\n";
+	    my @types = @{$dataset->{types}{"_symmetry_equiv_pos_as_xyz"}};
 	    for my $symop (@{$dataset->{values}{"_symmetry_equiv_pos_as_xyz"}}) {
-		print $symop, "\n";
+		my $type = shift( @types );
+		my $quotes;
+		if( $type eq "SQSTRING" ) {
+		    $quotes = "'";
+		} elsif( $type eq "DQSTRING" ) {
+		    $quotes = '"';
+		} else {
+		    $quotes = "";
+		}
+		print $quotes, $symop, $quotes, "\n";
 	    }
 	}
     }
