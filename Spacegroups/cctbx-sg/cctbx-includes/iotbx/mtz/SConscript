@@ -1,0 +1,34 @@
+Import("mtz_env", "env_etc")
+
+env = mtz_env.Copy()
+env.Prepend(LIBS=["cctbx", "cmtz"]+env_etc.libm)
+env.Append(CXXFLAGS=env_etc.ccp4io_defines)
+env.Append(SHCXXFLAGS=env_etc.ccp4io_defines)
+env.Append(LIBPATH=["#lib"])
+env_etc.enable_more_warnings(env=env)
+if (env_etc.static_libraries): builder = env.StaticLibrary
+else:                          builder = env.SharedLibrary
+builder(
+  target="#lib/iotbx_mtz",
+  source=[
+    "object.cpp",
+    "crystal.cpp",
+    "dataset.cpp",
+    "column.cpp"])
+
+if (not env_etc.no_boost_python):
+  Import("env_iotbx_boost_python_ext")
+  env = env_iotbx_boost_python_ext.Copy()
+  env.Append(CXXFLAGS=env_etc.ccp4io_defines)
+  env.Append(SHCXXFLAGS=env_etc.ccp4io_defines)
+  env.Prepend(LIBS=["iotbx_mtz", "cctbx", "cmtz", "scitbx_boost_python"])
+  env_etc.enable_more_warnings(env=env)
+  env.SharedLibrary(
+    target="#lib/iotbx_mtz_ext",
+    source=[
+      "ext.cpp",
+      "object_bpl.cpp",
+      "crystal_bpl.cpp",
+      "dataset_bpl.cpp",
+      "column_bpl.cpp",
+      "batch_bpl.cpp"])

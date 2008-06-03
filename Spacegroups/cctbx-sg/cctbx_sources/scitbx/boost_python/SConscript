@@ -1,0 +1,25 @@
+Import("env_base", "env_etc")
+
+env = env_base.Copy(
+  CXXFLAGS=env_etc.cxxflags_base,
+  SHCXXFLAGS=env_etc.cxxflags_base,
+  SHLINKFLAGS=env_etc.shlinkflags,
+)
+env.Append(CXXFLAGS=env_etc.cxxflags_bpl_defines_base)
+env.Append(SHCXXFLAGS=env_etc.cxxflags_bpl_defines_base)
+env.Append(LIBPATH=["#lib"])
+env.Append(LIBS=["boost_python"])
+env_etc.include_registry.append(
+  env=env,
+  paths=env_etc.scitbx_common_includes + [env_etc.python_include])
+
+lib_scitbx_boost_python_sources = [
+  "#scitbx/boost_python/utils.cpp",
+  "#scitbx/boost_python/slice.cpp",
+  "#scitbx/array_family/boost_python/utils.cpp",
+]
+if (env_etc.static_libraries): builder = env.StaticLibrary
+else:                          builder = env.SharedLibrary
+builder(
+  target="#lib/scitbx_boost_python",
+  source=lib_scitbx_boost_python_sources)

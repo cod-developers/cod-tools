@@ -1,0 +1,128 @@
+#!/bin/csh -f
+
+#
+# defaults
+#
+setenv CLPR $cwd
+setenv CCPX $cwd/ccp4
+setenv FFTW $cwd/fftw
+setenv MMDB $cwd/mmdb
+setenv CCTBX $cwd/cctbx
+
+#
+# command line options
+#
+while ($#argv)
+set words = (`echo "$argv[1] ." | tr "=" " "`)
+set word = $words[1]
+set dir = $words[2]
+if ( $word == "--help" ) then
+  echo "Usage: ./configure [options]"
+  echo "Options include:"
+  echo "  --with-gcc"
+  echo "  --prefix=DIR      (Directory for lib and include, e.g. /usr/local)"
+  echo "  --ccp4dir=DIR     (ccp4 version 5 top dir) PROVIDES CCP4,MMDB,FFTW"
+  echo "  --fftwdir=DIR     (fftw top dir)"
+  echo "  --mmdbdir=DIR     (mmdb top dir)"
+  echo "  --cctbxdir=DIR    (cctbx top dir - optional)"
+  exit
+else if ( $word == "--with-gcc" ) then
+  setenv USEGCC yes
+else if ( $word == "--prefix" ) then
+  setenv CLPR $dir
+else if ( $word == "--ccp4dir" ) then
+  setenv CCPX $dir
+else if ( $word == "--fftwdir" ) then
+  setenv FFTW $dir
+else if ( $word == "--mmdbdir" ) then
+  setenv MMDB $dir
+else if ( $word == "--cctbxdir" ) then
+  setenv CCTBX $dir
+endif
+shift
+end
+
+set UNAME = `uname`
+
+# pick platform
+if ( $?USEGCC ) then
+  echo "Configuring for g++"
+  test $?CXX = "0" && setenv CXX "g++"
+  test $?CC = "0" && setenv CC "gcc"
+  test $?AR = "0" && setenv AR "ar cr"
+  test $?XCPPFLAGS = "0" && setenv XCPPFLAGS "-fPIC -ftemplate-depth-30 -Wnon-virtual-dtor"
+else if ( $UNAME =~ Linux* ) then
+  echo "Configuring for g++"
+  test $?CXX = "0" && setenv CXX "g++"
+  test $?CC = "0" && setenv CC "gcc"
+  test $?AR = "0" && setenv AR "ar cr"
+  test $?XCPPFLAGS = "0" && setenv XCPPFLAGS "-fPIC -ftemplate-depth-30"
+else if ( $UNAME == Darwin ) then
+  echo "Configuring for g++"
+  test $?CXX = "0" && setenv CXX "g++"
+  test $?CC = "0" && setenv CC "gcc -D__unix__"
+  test $?AR = "0" && setenv AR "ar cr"
+  test $?XCPPFLAGS = "0" && setenv XCPPFLAGS "-fPIC -ftemplate-depth-30"
+else if ( ( $UNAME =~ *Sun* ) ) then
+  echo "Configuring for Sun CC"
+  test $?CXX = "0" && setenv CXX "CC"
+  test $?CC = "0" && setenv CC "cc -D__unix__"
+  test $?AR = "0" && setenv AR "CC -xar -o"
+  test $?XCPPFLAGS = "0" && setenv XCPPFLAGS ""
+else if ( $UNAME =~ IRIX* ) then
+  echo "Configuring for IRIX CC"
+  test $?CXX = "0" && setenv CXX "CC"
+  test $?CC = "0" && setenv CC "cc"
+  test $?AR = "0" && setenv AR "ar cr"
+  test $?XCPPFLAGS = "0" && setenv XCPPFLAGS "-LANG:std -ptused"
+else if ( ( $UNAME =~ *OSF* ) || ( $UNAME =~ *64* ) ) then
+  echo "Configuring for TRU64 cxx"
+  test $?CXX = "0" && setenv CXX "cxx"
+  test $?CC = "0" && setenv CC "cc"
+  test $?AR = "0" && setenv AR "ar cr"
+  test $?XCPPFLAGS = "0" && setenv XCPPFLAGS "-ieee -std strict_ansi -alternative_tokens -timplicit_local -no_implicit_include"
+endif
+
+setenv LIBM "lib-core lib-contrib lib-phs lib-cif"
+setenv LIBS "-lclipper-phs -lclipper-cif -lclipper-contrib -lclipper-core -lrfftw -lfftw -lmmdb -lm"
+if ( ( $UNAME =~ *Sun* ) ) then
+  setenv LIBS "$LIBS -lsocket -lnsl"
+endif
+test -e $CCPX/lib/libccp4c.a  && setenv LIBM "$LIBM lib-mmdbold lib-mmdb lib-minimol lib-ccp4"
+test -e $CCPX/lib/libccp4c.a  && setenv LIBS "-lclipper-ccp4 -lccp4c -lclipper-minimol -lclipper-mmdb -lclipper-mmdbold $LIBS"
+test -e $MMDB/libmmdb.a       && setenv LIBM "$LIBM lib-mmdbold lib-mmdb lib-minimol"
+test -e $MMDB/libmmdb.a       && setenv LIBS "-lclipper-minimol -lclipper-mmdb -lclipper-mmdbold $LIBS"
+test -e $CCTBX/cctbx_build/libtbx/libcctbx.so && setenv LIBM "$LIBM lib-cctbx"
+test -e $CCTBX/cctbx_build/libtbx/libcctbx.so && setenv LIBS "-lclipper-cctbx -lcctbx $LIBS"
+
+# use fftw include for ccp4 and mmdb if present
+test -e $CCPX/lib/libccp4c.a  && setenv FFTW "$CCPX"
+
+test $?OPT = "0" && setenv OPT "-g"
+
+echo "# set by configure" > config.status
+echo "CLPR=$CLPR" >> config.status
+echo "CCPX=$CCPX" >> config.status
+echo "FFTW=$FFTW" >> config.status
+echo "MMDB=$MMDB" >> config.status
+echo "CCTBX=$CCTBX" >> config.status
+echo "CXX=$CXX" >> config.status
+echo "CC=$CC" >> config.status
+echo "AR=$AR" >> config.status
+echo "XCPPFLAGS=$OPT $XCPPFLAGS" >> config.status
+echo "MKLIBS=$LIBM" >> config.status
+echo "LDLIBS=$LIBS" >> config.status
+
+m4 Makefile.m4 > Makefile
+
+m4 clipper/core/Makefile.m4 > clipper/core/Makefile
+m4 clipper/contrib/Makefile.m4 > clipper/contrib/Makefile
+m4 clipper/mmdb/Makefile.m4 > clipper/mmdb/Makefile
+m4 clipper/minimol/Makefile.m4 > clipper/minimol/Makefile
+m4 clipper/phs/Makefile.m4 > clipper/phs/Makefile
+m4 clipper/cif/Makefile.m4 > clipper/cif/Makefile
+m4 clipper/ccp4/Makefile.m4 > clipper/ccp4/Makefile
+m4 clipper/cctbx/Makefile.m4 > clipper/cctbx/Makefile
+m4 clipper/mmdbold/Makefile.m4 > clipper/mmdbold/Makefile
+
+m4 examples/Makefile.m4 > examples/Makefile
