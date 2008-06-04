@@ -18,7 +18,9 @@ require Exporter;
 
 @CIFCODTags::tag_list = qw (
 _[local]_cod_duplicate_entry
+_[local]_cod_superseeded_by
 _[local]_cod_data_source_file
+_[local]_cod_data_source_block
 _[local]_cod_published_source
 _[local]_cod_data_source_MD5_sum
 _[local]_cod_data_source_SHA1_sum
@@ -36,7 +38,9 @@ _[local]_cod_related_optimal_struct
 _[local]_cod_related_suboptimal_struct
 
 _cod_duplicate_entry
+_cod_superseeded_by
 _cod_data_source_file
+_cod_data_source_block
 _cod_published_source
 _cod_data_source_MD5_sum
 _cod_data_source_SHA1_sum
