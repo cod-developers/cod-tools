@@ -55,11 +55,11 @@ for my $file (@COD_cif_files) {
 	    $structures{$id}{id} = $id;
 	    $structures{$id}{filename} = File::Basename::basename( $file );
 	}
-	if( /_chemical_formula_sum\s+(.*)/ ) {
+	if( /^\s*_chemical_formula_sum\s+(.*)/ ) {
 	    $structures{$id}{chemical_formula_sum} = $1;
 	    $structures{$id}{chemical_formula_sum} =~ s/^\s*'\s*|\s*'\s*$//g;
 	}
-	if( /(_cell_(?:length_a|length_b|length_c|
+	if( /^\s*(_cell_(?:length_a|length_b|length_c|
                      angle_alpha|angle_beta|angle_gamma))\s+([\d.]+)/x ) {
 	    my $key = $1;
 	    my $val = $2;
@@ -68,19 +68,23 @@ for my $file (@COD_cif_files) {
 	    $val =~ s/[()_a-zA-Z]//g;
 	    $structures{$id}{cell}{$key} = sprintf "%f", $val;
 	}
-	if( /(_[^\s]*temperature[^\s]*)\s+(.*)/ ) {
+	if( /^\s*(_[^\s]*temperature[^\s]*)\s+(.*)/ ) {
 	    $structures{$id}{temperature}{$1} = $2;
 	    $structures{$id}{temperature}{$1} =~ s/^\s*'\s*|\s*'\s*$//g;
 	}
-	if( /(_[^\s]*pressure[^\s]*)\s+(.*)/ ) {
+	if( /^\s*(_[^\s]*pressure[^\s]*)\s+(.*)/ ) {
 	    $structures{$id}{pressure}{$1} = $2;
 	    $structures{$id}{pressure}{$1} =~ s/^\s*'\s*|\s*'\s*$//g;
 	}
-	if( /(_journal_[^\s]*)\s+(.*)\s*$/ ) {
+	if( /^\s*(_journal_[^\s]*)\s+(.*)\s*$/ ) {
 	    my $key = $1;
 	    my $value = $2;
 	    $value =~ s/^['"]|["']$//g;
 	    $structures{$id}{bibliography}{$key} = $value;
+	}
+	if( /^\s*(_\[local\])?_cod_suboptimal_structure\s+(.*)\s*$/ ) {
+	    ## print ">>>>>> $2\n";
+	    $structures{$id}{suboptimal} = $2;
 	}
     }
 
@@ -88,19 +92,11 @@ for my $file (@COD_cif_files) {
 
     my $basename = File::Basename::basename( $file );
     for my $id (keys %structures) {
-	my $cell = $structures{$id}{cell};
-	my $biblio = $structures{$id}{bibliography};
 	my $formula = $structures{$id}{chemical_formula_sum};
 
 	$formula = '?' unless defined $formula;
 
-	push( @{$COD{$formula}}, { id => $id,
-				   filename => "$basename",
-				   cell => $cell,
-				   bibliography => $biblio,
-				   temperature => $structures{$id}{temperature},
-				   pressure => $structures{$id}{pressure},
-	                         } );
+	push( @{$COD{$formula}}, $structures{$id} );
     }
 }
 
@@ -127,11 +123,11 @@ for my $file (@cif_files) {
 	    $structures{$id}{id} = $id;
 	    $structures{$id}{filename} = File::Basename::basename( $file );
 	}
-	if( /_chemical_formula_sum\s+(.*)/ ) {
+	if( /^\s*_chemical_formula_sum\s+(.*)/ ) {
 	    $structures{$id}{chemical_formula_sum} = $1;
 	    $structures{$id}{chemical_formula_sum} =~ s/^\s*'\s*|\s*'\s*$//g;
 	}
-	if( /(_cell_(?:length_a|length_b|length_c|
+	if( /^\s*(_cell_(?:length_a|length_b|length_c|
                      angle_alpha|angle_beta|angle_gamma))\s+([\d.]+)/x ) {
 	    my $key = $1;
 	    my $val = $2;
@@ -139,19 +135,23 @@ for my $file (@cif_files) {
 	    $val =~ s/\(.*$//;
 	    $structures{$id}{cell}{$key} = sprintf "%f", $val;
 	}
-	if( /(_[^\s]*temperature[^\s]*)\s+(.*)/ ) {
+	if( /^\s*(_[^\s]*temperature[^\s]*)\s+(.*)/ ) {
 	    $structures{$id}{temperature}{$1} = $2;
 	    $structures{$id}{temperature}{$1} =~ s/^\s*'\s*|\s*'\s*$//g;
 	}
-	if( /(_[^\s]*pressure[^\s]*)\s+(.*)/ ) {
+	if( /^\s*(_[^\s]*pressure[^\s]*)\s+(.*)/ ) {
 	    $structures{$id}{pressure}{$1} = $2;
 	    $structures{$id}{pressure}{$1} =~ s/^\s*'\s*|\s*'\s*$//g;
 	}
-	if( /(_journal_[^\s]*)\s+(.*)\s*$/ ) {
+	if( /^\s*(_journal_[^\s]*)\s+(.*)\s*$/ ) {
 	    my $key = $1;
 	    my $value = $2;
 	    $value =~ s/^['"]|["']$//g;
 	    $structures{$id}{bibliography}{$key} = $value;
+	}
+	if( /^\s*(_\[local\])?_cod_suboptimal_structure\s+(.*)\s*$/ ) {
+	    ## print ">>>>>> $2\n";
+	    $structures{$id}{suboptimal} = $2;
 	}
     }
 
@@ -304,18 +304,26 @@ sub data_sections_are_the_same($$)
 sub entries_are_the_same
 {
     my ($entry1, $entry2) = @_;
+    
+    ## print ">>> $entry1->{id}, $entry2->{id}, ",
+    ## defined $entry1->{suboptimal} ? $entry1->{suboptimal} : "" , " ", 
+    ## defined $entry2->{suboptimal} ? $entry2->{suboptimal} : "", "\n";
 
     if( $check_bibliography ) {
 	return
 	    ! data_sections_are_the_same( $entry1, $entry2 ) &&
 	    cells_are_the_same( $entry1->{cell}, $entry2->{cell} ) &&
 	    conditions_are_the_same( $entry1, $entry2 ) &&
+	    (!defined $entry1->{suboptimal} || $entry1->{suboptimal} ne "yes") &&
+	    (!defined $entry2->{suboptimal} || $entry2->{suboptimal} ne "yes") &&
 	    bibliographies_are_the_same( $entry1->{bibliography},
 					 $entry2->{bibliography} );
     } else {
 	return
 	    ! data_sections_are_the_same( $entry1, $entry2 ) &&
 	    conditions_are_the_same( $entry1, $entry2 ) &&
+	    (!defined $entry1->{suboptimal} || $entry1->{suboptimal} ne "yes") &&
+	    (!defined $entry2->{suboptimal} || $entry2->{suboptimal} ne "yes") &&
 	    cells_are_the_same( $entry1->{cell}, $entry2->{cell} );
     }
 }
