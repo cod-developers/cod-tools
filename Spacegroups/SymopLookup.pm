@@ -2272,6 +2272,26 @@ require Exporter;
 },
 
 {
+    number          => 19,
+    hall            => ' P 2ac 2ab (x,y,z+1/4)',
+    schoenflies     => 'D2^4',
+    hermann_mauguin => 'P 21 21 21 (origin shift x,y,z+1/4)',
+    universal_h_m   => 'P 21 21 21 (origin shift x,y,z+1/4)',
+    symops => [
+        'x,y,z',
+        'x+1/2,-y+1/2,-z+1/2',
+        '-x,y+1/2,-z',
+        '-x+1/2,-y,z+1/2',
+    ],
+    ncsym => [
+        'x,y,z',
+        'x+1/2,-y+1/2,-z+1/2',
+        '-x,y+1/2,-z',
+        '-x+1/2,-y,z+1/2',
+    ]
+},
+
+{
     number          => 20,
     hall            => ' C 2c 2',
     schoenflies     => 'D2^5',
