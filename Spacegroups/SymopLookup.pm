@@ -13,7 +13,7 @@ use strict;
 
 require Exporter;
 @SymopLookup::ISA = qw(Exporter);
-@SymopLookup::EXPORT = qw( @table );
+@SymopLookup::EXPORT = qw( @table @extra_settings );
 
 @SymopLookup::table =
 (
@@ -2268,26 +2268,6 @@ require Exporter;
         '-x+1/2,-y,z+1/2',
         'x+1/2,-y+1/2,-z',
         '-x,y+1/2,-z+1/2',
-    ]
-},
-
-{
-    number          => 19,
-    hall            => ' P 2ac 2ab (x,y,z+1/4)',
-    schoenflies     => 'D2^4',
-    hermann_mauguin => 'P 21 21 21 (origin shift x,y,z+1/4)',
-    universal_h_m   => 'P 21 21 21 (origin shift x,y,z+1/4)',
-    symops => [
-        'x,y,z',
-        'x+1/2,-y+1/2,-z+1/2',
-        '-x,y+1/2,-z',
-        '-x+1/2,-y,z+1/2',
-    ],
-    ncsym => [
-        'x,y,z',
-        'x+1/2,-y+1/2,-z+1/2',
-        '-x,y+1/2,-z',
-        '-x+1/2,-y,z+1/2',
     ]
 },
 
@@ -18246,6 +18226,102 @@ require Exporter;
         'z-3/4,-y-1/4,-x-3/4',
     ]
 }
+);
+
+@SymopLookup::extra_settings = (
+{
+    number          => 2,
+    hall            => '-P 1 (-1/2*x+1/2*z,-y,1/2*x+1/2*z)',
+    schoenflies     => 'D2^4',
+    hermann_mauguin => 'B -1',
+    universal_h_m   => 'B -1',
+    symops => [
+	'x, y, z',
+	'x+1/2, y, z+1/2',
+	'-x, -y, -z',
+	'-x+1/2, -y, -z+1/2',
+    ],
+    ncsym => [
+	'x, y, z',
+	'-x, -y, -z',
+    ]
+},
+
+{
+    number          => 2,
+    hall            => '-P 1 ' .
+        '(-1/2*x+1/2*y+1/2*z,1/2*x-1/2*y+1/2*z,1/2*x+1/2*y-1/2*z)',
+    schoenflies     => 'D2^4',
+    hermann_mauguin => 'I -1',
+    universal_h_m   => 'I -1',
+    symops => [
+	'x,y,z',
+	'1/2-x,1/2-y,1/2-z',
+	'1/2+x,1/2+y,1/2+z',
+	'-x,-y,-z',
+    ],
+    ncsym => [
+	'x,y,z',
+	'-x,-y,-z',
+    ]
+},
+
+{
+    number          => 15,
+    hall            => '-C 2yc (x+y-16/3*z,-x+y+16/3*z,1/3*z)',
+    schoenflies     => 'C2h^6',
+    hermann_mauguin => 'R 1 2/c 1 ("rombohedral" setting)',
+    universal_h_m   => 'R 1 2/c 1',
+    symops => [
+	'x, y, z',
+	'y, x, -z+1/2',
+	'x+2/3, y+1/3, z+1/3',
+	'y+2/3, x+1/3, -z+5/6',
+	'x+1/3, y+2/3, z+2/3',
+	'y+1/3, x+2/3, -z+7/6',
+	'-x, -y, -z',
+	'-y, -x, z-1/2',
+	'-x+2/3, -y+1/3, -z+1/3',
+	'-y+2/3, -x+1/3, z-1/6',
+	'-x+1/3, -y+2/3, -z+2/3',
+	'-y+1/3, -x+2/3, z+1/6',
+    ],
+    ncsym => [
+	'x, y, z',
+	'y, x, -z+1/2',
+	## 'x+2/3, y+1/3, z+1/3',
+	## 'y+2/3, x+1/3, -z+5/6',
+	## 'x+1/3, y+2/3, z+2/3',
+	## 'y+1/3, x+2/3, -z+7/6',
+	'-x, -y, -z',
+	'-y, -x, z-1/2',
+	## '-x+2/3, -y+1/3, -z+1/3',
+	## '-y+2/3, -x+1/3, z-1/6',
+	## '-x+1/3, -y+2/3, -z+2/3',
+	## '-y+1/3, -x+2/3, z+1/6',
+    ]
+},
+
+{
+    number          => 19,
+    hall            => ' P 2ac 2ab (x,y,z+1/4)',
+    schoenflies     => 'D2^4',
+    hermann_mauguin => 'P 21 21 21 (origin shift x,y,z+1/4)',
+    universal_h_m   => 'P 21 21 21 (origin shift x,y,z+1/4)',
+    symops => [
+        'x,y,z',
+        'x+1/2,-y+1/2,-z+1/2',
+        '-x,y+1/2,-z',
+        '-x+1/2,-y,z+1/2',
+    ],
+    ncsym => [
+        'x,y,z',
+        'x+1/2,-y+1/2,-z+1/2',
+        '-x,y+1/2,-z',
+        '-x+1/2,-y,z+1/2',
+    ]
+},
+
 );
 
 1;
