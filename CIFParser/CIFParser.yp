@@ -515,6 +515,10 @@ sub _Lexer
 		{
 			$parser->YYData->{INPUT} = <$CIFParser::FILEIN>;
 			$parser->YYData->{VARS}{lines}++;
+			if( $parser->YYData->{VARS}{lines} % 100 == 0 &&
+			    defined $parser->{reporter} ) {
+			    &{$parser->{reporter}}( $parser->YYData->{VARS}{lines} );
+			}
 		} until ( !defined $parser->YYData->{INPUT} ||
 			$parser->YYData->{INPUT} !~ m/^(\s*(#.*)?)$/s );
 		if( defined $parser->YYData->{INPUT} )
@@ -741,6 +745,9 @@ sub Run
 {
 	my($self) = shift;
 	my($filename) = shift;
+	my($reporter) = shift;
+
+	$self->{reporter} = $reporter;
 
 	$filename = "-" unless $filename;
 	$CIFParser::FILEIN = new FileHandle $filename;
