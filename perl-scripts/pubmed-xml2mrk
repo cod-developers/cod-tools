@@ -24,74 +24,111 @@ for my $file (@ARGV) {
     ## print $xml;
 
     if( $xml =~ m|<PubmedArticleSet.*?>(.*?)</PubmedArticleSet>|ms ) {
+	my $article_nr = 0;
 	my $article_set = $1;
 	## print "$article_set = $article_set\n";
 	while( $article_set =~ s|<PubmedArticle.*?>(.*?)</PubmedArticle>||ms ) {
 	    my $article = $1;
 	    ## print "$article = $article\n";
-	    $article =~ m|<Title.*?>(.*?)</Title>|ms;
-	    my $journal = $1;
-	    $article =~ m|<ArticleTitle.*?>(.*?)</ArticleTitle>|ms;
-	    my $title = $1;
-	    $article =~ m|<Year.*?>(.*?)</Year>|ms;
-	    my $year = $1;
-	    $article =~ m|<Issue.*?>(.*?)</Issue>|ms;
-	    my $issue = $1;
-	    $article =~ m|<Volume.*?>(.*?)</Volume>|ms;
-	    my $volume = $1;
+	    $article_nr ++;
+
+	    my $journal;
+	    if( $article =~ m|<Title.*?>(.*?)</Title>|ms ) {
+		$journal = $1;
+	    } else {
+		print STDERR "$0: no <Title> (Journal title) " .
+		    "found in the file '$file' article $article_nr\n";
+		die;
+	    }
+
+	    my $title;
+	    if( $article =~ m|<ArticleTitle.*?>(.*?)</ArticleTitle>|ms ) {
+		$title = $1;
+	    } else {
+		print STDERR "$0: no <ArticleTitle> found in the file '$file' ".
+		    "article $article_nr\n";
+		die;
+	    }
+
+	    my $year;
+	    if( $article =~ m|<Year.*?>(.*?)</Year>|ms ) {
+		$year = $1;
+	    } else {
+		print STDERR "$0: no <Year> found in the file '$file' ".
+		    "article $article_nr\n";
+		die;
+	    }
+
+	    my $issue;
+	    if( $article =~ m|<Issue.*?>(.*?)</Issue>|ms ) {
+		$issue = $1;
+	    }
+
+	    my $volume;
+	    if( $article =~ m|<Volume.*?>(.*?)</Volume>|ms ) {
+		$volume = $1;
+	    }
 
 	    my $pages = "";
 	    if( $article =~ m|<MedlinePgn.*?>(.*?)</MedlinePgn>| ) {
 		$pages = $1;
-	    } else {
-		$article =~ m|<Pagination.*?>(.*?)</Pagination>|;
+	    } elsif( $article =~ m|<Pagination.*?>(.*?)</Pagination>| ){
 		$pages = $1;
 		$pages =~ m/(\d+\s*(:?-\s*\d+)?)/;
 		$pages = $1;
+	    } else {
+		print STDERR "$0: no <MedlinePgn> or <Pagination> " .
+		    "found in the file '$file' ".
+		    "article $article_nr\n";
+		die;
 	    }
 
-	    $article =~ m|<AuthorList.*?>(.*?)</AuthorList>|ms;
-	    my $author_list = $1;
+	    if( $article =~ m|<AuthorList.*?>(.*?)</AuthorList>|ms ) {
+		my $author_list = $1;
 
-	    print "<authors separator=\";\">";
-	    my $separator = "";
-	    while( $author_list =~ s|<Author.*?>(.*?)</Author>||ms ) {
-		my $author = $1;
-		$author =~ m|<LastName.*?>(.*?)</LastName>|;
-		my $last = $1;
-		my $first;
-		if( $author =~ m|<ForeName.*?>(.*?)</ForeName>| ) {
-		    $first = $1;
-		} else {
-		    if( $author =~ m|<FirstName.*?>(.*?)</FirstName>| ) {
+		print "<authors separator=\";\">";
+		my $separator = "";
+		while( $author_list =~ s|<Author.*?>(.*?)</Author>||ms ) {
+		    my $author = $1;
+		    $author =~ m|<LastName.*?>(.*?)</LastName>|;
+		    my $last = $1;
+		    my $first;
+		    if( $author =~ m|<ForeName.*?>(.*?)</ForeName>| ) {
 			$first = $1;
+		    } else {
+			if( $author =~ m|<FirstName.*?>(.*?)</FirstName>| ) {
+			    $first = $1;
+			}
+			if( $author =~ m|<MiddleName.*?>(.*?)</MiddleName>| ) {
+			    $first .= " " . $1;
+			}
 		    }
-		    if( $author =~ m|<MiddleName.*?>(.*?)</MiddleName>| ) {
-			$first .= " " . $1;
+		    my $junior;
+		    if( $author =~ m|<Suffix.*?>(.*?)</Suffix>| ) {
+			$junior = $1;
 		    }
+		    my $author_name = $last;
+		    if( defined $junior ) {
+			$author_name .= ", " . $junior;
+		    }
+		    $author_name .= ", " . $first;
+		    print $separator, $author_name;
+		    $separator = "; ";
 		}
-		my $junior;
-		if( $author =~ m|<Suffix.*?>(.*?)</Suffix>| ) {
-		    $junior = $1;
-		}
-		my $author_name = $last;
-		if( defined $junior ) {
-		    $author_name .= ", " . $junior;
-		}
-		$author_name .= ", " . $first;
-		print $separator, $author_name;
-		$separator = "; ";
-	    }
+	    } # if AuthorList
+
 	    print "</authors>\n";
 
 	    print "<title>$title</title>\n";
 	    print "<journal>$journal</journal>\n";
 	    print "<year>$year</year>\n";
-	    print "<volume>$volume</volume>\n";
-	    print "<issue>$issue</issue>\n";
+	    print "<volume>$volume</volume>\n" if defined $volume;
+	    print "<issue>$issue</issue>\n" if defined $issue;
 	    print "<pages>$pages</pages>\n";
 	    print "\n";
 	}
+    } else {
+	print STDERR "$0: <PubmedArticleSet> is not found in file '$file'\n";
     }
 
     close F;
