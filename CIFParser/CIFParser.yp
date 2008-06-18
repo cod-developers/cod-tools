@@ -144,10 +144,6 @@ data_block_list
 data_block
 	:	data_block_head data_item_list
 		{
-			## my $val = { name => $_[1] };
-			## $val->{content} = $_[2]->{value};
-			## $val->{kind} = $_[2]->{kind};
-			## $val->{type} = "DATA";
 			my $name = $_[1];
 		        my $val = $_[2];
 			$val->{name} = $name;
@@ -163,9 +159,6 @@ data_block
 data_item_list
 	:	data_item_list data_item
 		{
-		        ## my $val = $_[1];
-			## push(@{$val->{value}}, $_[2]);
-			## return $val;
                         my $list = $_[1];
                         my $item = $_[2];
                         $list = merge_data_lists( $_[0], $list, $item );
@@ -173,8 +166,6 @@ data_item_list
 		}
 	|	data_item
 		{
-			## my $val = { kind => 'DATA' };
-			## push(@{$val->{value}}, $_[1]);
 		        my $val = $_[1];
 			return $val;
 		}
@@ -203,9 +194,6 @@ data_item
 save_item_list
 	:	save_item_list save_item
 		{
-			## my $val = $_[1];
-			## push( @{$val->{value}}, $_[2] );
-			## return $val;
 		        my $list = $_[1];
 			my $item = $_[2];
                         $list = merge_data_lists( $_[0], $list, $item );
@@ -222,7 +210,6 @@ save_item
 	:	cif_entry
 		{
 		    # Here we convert to new structure:
-			## return $_[1];
 		        my $entry = $_[1];
 			my $item = {
 			    values => {
@@ -300,27 +287,6 @@ cif_entry
 loop
     :	LOOP_ loop_tags loop_values
 		{
-			## my $val = { kind => 'loop' };
-			## $val->{name} = $_[2]->{name};
-			## $val->{value} = $_[3]->{value};
-			## $val->{type} = $_[3]->{type};
-			## if( defined $_[3]->{precision} )
-			## {
-			## 	$val->{precision} = $_[3]->{precision};
-			## }
-			## if( (scalar @{$val->{value}}) %
-			## 		(scalar @{$val->{name}}) == 0 )
-			## {
-			## 	return $val;
-			## } else {
-			## 	$_[0]->YYData->{ERRMSG} =
-			## 	    "Wrong number of elements in"
-			## 	    . " loop block starting in line "
-			## 	    . $_[0]->YYData->{VARS}{loop_begin}
-			## 	    . "!\n";
-			## 	$_[0]->YYError();
-			## }
-
 		        my $val = {};
 		        my $tags = $_[2];
 			my @values = @{$_[3]};
@@ -377,25 +343,12 @@ loop_values
 		{
 			my $arr = $_[1];
 			my $val = $_[2];
-			## push( @{$val->{value}}, $_[2]->{value} );
-			## push( @{$val->{type}}, $_[2]->{type} );
-			## if( defined $_[2]->{precision} )
-			## {
-			## 	push( @{$val->{precision}}, $_[2]->{precision} );
-			## }
                         push( @{$arr}, $val );
                         return $arr;
-			## return [ @{$arr}, $val ]; # QUADRATIC ALG.!!!!
 		}
 	|	cif_value
 		{
 			my $val = $_[1];
-			## { type => [ $_[1]->{type} ] };
-			## push( @{$val->{value}}, $_[1]->{value} );
-			## if( defined $_[1]->{precision} )
-			## {
-			## 	push( @{$val->{precision}}, $_[1]->{precision} );
-			## }
 			return [ $val ];
 		}
 ;
@@ -403,13 +356,6 @@ loop_values
 save_block
 	:	SAVE_HEAD save_item_list SAVE_FOOT
 		{
-			## my $value = $_[2]->{value};
-			## $_[1] =~ m/^(save_)(.*)$/si;
-			## my $val = { kind => 'SAVE',
-			## 		name => $2 };
-			## $val->{type} = "SAVE";
-			## $val->{content} = $value;
-			## return $val;
                         my $val = {
 			    save_blocks => [
 				{
