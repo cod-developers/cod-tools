@@ -450,6 +450,20 @@ for my $dataset (@data) {
 	    if defined $end_page;
     }
 
+    # Restore the full final page number if only trailing digits of
+    # the _journal_page_last are given:
+
+    if( defined $datablok->{_journal_page_first} &&
+	defined $datablok->{_journal_page_last} &&
+	$datablok->{_journal_page_first}[0] =~ /^[0-9]+$/ &&
+	$datablok->{_journal_page_last}[0] =~ /^[0-9]+$/ &&
+	$datablok->{_journal_page_first}[0] >
+	$datablok->{_journal_page_last}[0] ) {
+	$datablok->{_journal_page_last}[0] =
+	    restore_last_page( $datablok->{_journal_page_first}[0],
+			       $datablok->{_journal_page_last}[0] );
+    }
+
     #
     # Fold title if requested:
 
@@ -964,4 +978,21 @@ sub get_cell
 	$datablok->{_cell_angle_beta}[0],
 	$datablok->{_cell_angle_gamma}[0]
     );
+}
+
+sub restore_last_page
+{
+    my ( $page_first, $page_last ) = @_;
+
+    if( $page_last > $page_first ) {
+	return $page_last;
+    } else {
+	my $length_last = length( $page_last );
+	my $length_first = length( $page_first );
+	my $extra = $length_first - $length_last;
+
+	my $leading_digits = substr( $page_first, 0, $extra );
+
+	return $leading_digits . $page_last;
+    }
 }
