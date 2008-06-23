@@ -32,11 +32,15 @@ my $year;
 my $text;
 my $title;
 my $author;
+my $first_author;
+my $last_author;
 
 my $query_url = "http://eutils.ncbi.nlm.nih.gov/entrez/eutils";
 
 @ARGV = getOptions( 
     "-a,--author"       => sub{ $author = get_value() },
+    "-1,--first-author" => sub{ $first_author = get_value() },
+    "-l,--last-author"  => sub{ $last_author = get_value() },
     "-j,--journal"      => sub{ $journal = get_value() },
     "-v,--volume"       => sub{ $volume = get_value() },
     "-i,--issue"        => sub{ $issue = get_value() },
@@ -52,6 +56,16 @@ my $term = "";
 
 if( defined $author ) {
     $term .= "\"$author\"\[AU\]";
+}
+
+if( defined $first_author ) {
+    $term .= " AND " if $term;
+    $term .= "\"$first_author\"\[1AU\]";
+}
+
+if( defined $last_author ) {
+    $term .= " AND " if $term;
+    $term .= "\"$last_author\"\[LASTAU\]";
 }
 
 if( defined $journal ) {
