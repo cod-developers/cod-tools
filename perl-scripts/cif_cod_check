@@ -53,7 +53,7 @@ sub check_data
     my ($dataset,$filename) = @_;
 
     if( !defined $dataset->{values} ) {
-	print "$0: $filename: no values?!\n";
+	print "$0: $filename: $dataset->{name}: no values?!\n";
 	return 1;
     } else {
 	return 0;
@@ -72,21 +72,22 @@ sub check_bibliography
     my $values = $dataset->{values};
 
     if( !defined $values->{_journal_name_full} ) {
-	print "$0: $filename: _journal_name_full is undefined\n";
+	print "$0: $filename: $dataset->{name}: _journal_name_full is undefined\n";
 	$warnings ++;
     }
     if( !defined $values->{_journal_year} &&
 	!defined $values->{_journal_volume} ) {
-	print "$0: $filename: neither _journal_year nor " .
-	    "_journal_volume is defined\n";
+	print "$0: $filename: $dataset->{name}: neither _journal_year nor " 
+	        . "_journal_volume is defined\n";
 	$warnings ++;
     }
     if( !defined $values->{_journal_page_first} ) {
-	print "$0: $filename: _journal_page_first is undefined\n";
+	print "$0: $filename: $dataset->{name}: _journal_page_first is "
+    	    . "undefined\n";
 	$warnings ++;
     }
     if( !defined $values->{_publ_author_name} ) {
-	print "$0: $filename: no _publ_author_name\n";
+	print "$0: $filename: $dataset->{name}: no _publ_author_name\n";
 	$warnings ++;
     }
     return $warnings;
@@ -105,10 +106,11 @@ sub check_chemical_formula_sum
     my $formula_component = "[a-zA-Z]{1,2}[0-9.]*";
 
     if( !defined $formula ) {
-	print "$0: $filename: no _chemical_formula_sum\n";
+	print "$0: $filename: $dataset->{name}: no _chemical_formula_sum\n";
 	return 1;
     } elsif( $formula !~ /^\s*($formula_component\s+)*($formula_component)\s*$/ ) {
-	print "$0: $filename: chemical formula '$formula' could not be parsed\n";
+	print "$0: $filename: $dataset->{name}: chemical formula '$formula'"
+	        . " could not be parsed\n";
 	return 1;
     } else {
 	return 0;
@@ -150,7 +152,8 @@ sub check_spacegroup_info
 		if( defined $spacegroup &&
 		    !exists $spacegroups{$spacegroup} &&
 		    !exists $spacegroups{$no_spaces} ) {
-		    print "$0: $filename: unrecognised spacegroup '$spacegroup'\n";
+		    print "$0: $filename: $dataset->{name}: unrecognised "
+		                . "spacegroup '$spacegroup'\n";
 		    $warnings ++;
 		}
 	    }
@@ -158,7 +161,8 @@ sub check_spacegroup_info
 	}
     }
     if( !defined $spacegroup ) {
-	print "$0: $filename: no spacegroup information found\n";
+	print "$0: $filename: $dataset->{name}: no spacegroup information "
+	        . "found\n";
 	$warnings ++;
     }
     return $warnings;
@@ -181,7 +185,8 @@ sub check_symmetry_operators
     my $symops = $dataset->{values}{_symmetry_equiv_pos_as_xyz};
 
     if( !defined $symops ) {
-	print "$0: $filename: no _symmetry_equiv_pos_as_xyz\n";
+	print "$0: $filename: $dataset->{name}: no "
+	        . "_symmetry_equiv_pos_as_xyz\n";
 	return 1;
     } else {
 	for my $symop (@$symops) {
@@ -189,7 +194,8 @@ sub check_symmetry_operators
 	    $no_spaces =~ s/\s//g;
 	    if( $no_spaces !~ 
 		/^($symop_component,){2}($symop_component)$/i ) {
-		print "$0: $filename: symmetry operator '$symop' " .
+		print "$0: $filename: $dataset->{name}: symmetry operator "
+		        . "'$symop' " .
 		    "could not be parsed\n";
 		return 1;
 	    }
