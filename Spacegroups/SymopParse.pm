@@ -154,7 +154,7 @@ sub modulo_1
 {
     my $x = $_[0];
     use POSIX;
-    return $x - POSIX:floor($x);
+    return $x - POSIX::floor($x);
 }
 
 sub symop_translation_modulo_1
