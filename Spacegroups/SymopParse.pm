@@ -31,7 +31,7 @@ sub symop_from_string
 {
     my ($str) = @_;
 
-    my @symop = ( [0,0,0,0], [0,0,0,0], [0,0,0,0], [0,0,0,0] );
+    my @symop = ( [0,0,0,0], [0,0,0,0], [0,0,0,0], [0,0,0,1] );
     my $n = 0;
 
     $str =~ s/\s+//g;
@@ -153,8 +153,8 @@ sub symop_print
 sub modulo_1
 {
     my $x = $_[0];
-
-    return $x - int($x);
+    use POSIX;
+    return $x - POSIX:floor($x);
 }
 
 sub symop_translation_modulo_1
