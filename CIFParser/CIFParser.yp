@@ -174,6 +174,7 @@ data_block_head
 	:	DATA_
 		{
 			$_[1] =~ m/^(data_)(.*)/si;
+                        $_[0]->{USER}->{CURRENT_DATABLOCK} = $2;
 			return $2;
 		}
 ;
@@ -484,7 +485,14 @@ sub _Error
         $_[0]->YYData->{ERRCOUNT}++;
 	exists $_[0]->YYData->{ERRMSG}
 	and do {
-		print STDERR $_[0]->YYData->{ERRMSG};
+	        print STDERR "file '$_[0]->YYData->{FILENAME}', ";
+	        print STDERR "line $_[0]->YYData->{VARS}{lines}";
+		if( defined $_[0]->{USER}->{CURRENT_DATABLOCK} ) {
+		    print STDERR ", datablock '",
+		        $_[0]->{USER}->{CURRENT_DATABLOCK}, "'";
+		}
+		print STDERR ":\n";
+		print STDERR $_[0]->YYData->{ERRMSG}, "\n";
 		delete $_[0]->YYData->{ERRMSG};
 		return;
 	};
@@ -750,6 +758,9 @@ sub Run
 	$self->{reporter} = $reporter;
 
 	$filename = "-" unless $filename;
+
+	$self->{USER}{FILENAME} = $filename;
+
 	$CIFParser::FILEIN = new FileHandle $filename;
 	$| = 1;
 	if( $CIFParser::debug >= 2 && $CIFParser::debug < 3)
