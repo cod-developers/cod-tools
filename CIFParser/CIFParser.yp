@@ -37,10 +37,14 @@ sub merge_data_lists($$$)
 
 	push( @{$list->{tags}}, $tag );
 
-    if( exists $list->{values}{$tag} )  {
-       $parser->YYData->{ERRMSG} = "tag $tag appears more than once";
-       $parser->YYError();
-    }
+        if( exists $list->{values}{$tag} )  {
+            $parser->YYData->{ERRMSG} =
+                "WARNING, tag $tag appears more than once";
+            # Don't call $parser->YYError() since it clears the Yapp stack.
+            # For now, let's call _Error() directly:
+            _Error( $parser );
+        }
+
 	$list->{values}{$tag} =
 	    $item->{values}{$tag};
 
