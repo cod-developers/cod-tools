@@ -39,7 +39,7 @@ sub merge_data_lists($$$)
 
         if( exists $list->{values}{$tag} )  {
             $parser->YYData->{ERRMSG} =
-                "WARNING, tag $tag appears more than once";
+                "tag $tag appears more than once";
             # Don't call $parser->YYError() since it clears the Yapp stack.
             # For now, let's call _Error() directly:
             _Error( $parser );
@@ -491,21 +491,29 @@ sub _Error
         $_[0]->YYData->{ERRCOUNT}++;
 	exists $_[0]->YYData->{ERRMSG}
 	and do {
-	        print STDERR "file '", $_[0]->YYData->{FILENAME}, "', ";
-	        print STDERR "line ", $_[0]->YYData->{VARS}{lines};
+	        print STDERR $0, ": ";
+	        print STDERR "file '", $_[0]->YYData->{FILENAME}, "'";
 		if( defined $_[0]->{USER}->{CURRENT_DATABLOCK} ) {
-		    print STDERR ", datablock '",
-		        $_[0]->{USER}->{CURRENT_DATABLOCK}, "'";
+		    print STDERR " data_",
+		        $_[0]->{USER}->{CURRENT_DATABLOCK};
 		}
-		print STDERR ":\n";
+	        print STDERR ", line ", $_[0]->YYData->{VARS}{lines};
+		print STDERR ": ";
 		print STDERR $_[0]->YYData->{ERRMSG}, "\n";
 		delete $_[0]->YYData->{ERRMSG};
 		return;
 	};
-	print STDERR "syntax error (line " . 
-		$_[0]->YYData->{VARS}{lines} . " pos. " . 
-		$_[0]->YYData->{VARS}{token_prev_pos} . "):\n" . 
-		$_[0]->YYData->{VARS}{current_line};
+	print STDERR 
+            "$0: file '", $_[0]->YYData->{FILENAME}, "'";
+        if( defined $_[0]->{USER}->{CURRENT_DATABLOCK} ) {
+            print STDERR " data_",
+            $_[0]->{USER}->{CURRENT_DATABLOCK};
+        }
+        print STDERR 
+            ", line ", $_[0]->YYData->{VARS}{lines} . ", pos. ",
+            $_[0]->YYData->{VARS}{token_prev_pos} . ": ",
+            "syntax error:\n",
+            $_[0]->YYData->{VARS}{current_line};
 	print STDERR "\n";
         print STDERR " " x $_[0]->YYData->{VARS}{token_prev_pos};
 	print STDERR "^\n";
