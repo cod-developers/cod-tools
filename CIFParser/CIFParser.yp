@@ -488,31 +488,36 @@ number
 
 sub _Error
 {
+    my $script = $0 eq '-e' ? "" : "$0: ";
+    my $filename = $_[0]->YYData->{FILENAME} eq '-' ?
+        "file '-'" : $_[0]->YYData->{FILENAME};
+
         $_[0]->YYData->{ERRCOUNT}++;
 	exists $_[0]->YYData->{ERRMSG}
 	and do {
-	        print STDERR $0, ": ";
-	        print STDERR "file '", $_[0]->YYData->{FILENAME}, "'";
+	        print STDERR $script;
+	        print STDERR $filename;
+	        print STDERR "(", $_[0]->YYData->{VARS}{lines}, ")";
 		if( defined $_[0]->{USER}->{CURRENT_DATABLOCK} ) {
 		    print STDERR " data_",
 		        $_[0]->{USER}->{CURRENT_DATABLOCK};
 		}
-	        print STDERR ", line ", $_[0]->YYData->{VARS}{lines};
 		print STDERR ": ";
 		print STDERR $_[0]->YYData->{ERRMSG}, "\n";
 		delete $_[0]->YYData->{ERRMSG};
 		return;
 	};
 	print STDERR 
-            "$0: file '", $_[0]->YYData->{FILENAME}, "'";
+            "$script", $filename;
+        print STDERR 
+            "(", $_[0]->YYData->{VARS}{lines} . ",",
+            $_[0]->YYData->{VARS}{token_prev_pos} . ")";
         if( defined $_[0]->{USER}->{CURRENT_DATABLOCK} ) {
             print STDERR " data_",
             $_[0]->{USER}->{CURRENT_DATABLOCK};
         }
         print STDERR 
-            ", line ", $_[0]->YYData->{VARS}{lines} . ", pos. ",
-            $_[0]->YYData->{VARS}{token_prev_pos} . ": ",
-            "syntax error:\n",
+            ": syntax error:\n",
             $_[0]->YYData->{VARS}{current_line};
 	print STDERR "\n";
         print STDERR " " x $_[0]->YYData->{VARS}{token_prev_pos};
