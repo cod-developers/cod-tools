@@ -38,8 +38,7 @@ sub merge_data_lists($$$)
 	push( @{$list->{tags}}, $tag );
 
     if( exists $list->{values}{$tag} )  {
-       $parser->YYData->{ERRMSG} = "tag $tag appears more than once in "
-                    . "file";
+       $parser->YYData->{ERRMSG} = "tag $tag appears more than once";
        $parser->YYError();
     }
 	$list->{values}{$tag} =
@@ -105,9 +104,11 @@ cif_file
 		}
 	|	data_item
 		{
-			$_[0]->YYData->{ERRMSG} = "No data block heading (i.e." .
-			" data_somecif) found in file!\n";
-			$_[0]->{USER}->{CIFfile} = [ { name => "", values => {}, tags => [] } ];
+			$_[0]->YYData->{ERRMSG} = "no data block heading (i.e." .
+			    " data_somecif) found";
+			$_[0]->{USER}->{CIFfile} = [
+                            { name => "", values => {}, tags => [] }
+                        ];
 			$_[0]->YYError();
 		}
 	|	cif_value                     {
@@ -120,9 +121,11 @@ cif_file
 		}
 
 		{
-			$_[0]->YYData->{ERRMSG} = "No data block heading (i.e." .
-			" data_somecif) found in file!\n";
-			$_[0]->{USER}->{CIFfile} = [ { name => "", values => {}, tags => [] } ];
+			$_[0]->YYData->{ERRMSG} = "no data block heading (i.e." .
+			" data_somecif) found";
+			$_[0]->{USER}->{CIFfile} = [
+                            { name => "", values => {}, tags => [] }
+                        ];
 			$_[0]->YYError();
 		}
 ;
@@ -311,10 +314,9 @@ loop
 				    $val->{inloop}{$tag} = 0;
 				} else {
 				    $_[0]->YYData->{ERRMSG} =
-					"Wrong number of elements in the"
+					"wrong number of elements in the"
 					. " loop block starting in line "
-					. $_[0]->YYData->{VARS}{loop_begin}
-				    . "!\n";
+					. $_[0]->YYData->{VARS}{loop_begin};
 				    $_[0]->YYError();
 				    last VALUES;
 				}
@@ -496,10 +498,10 @@ sub _Error
 		delete $_[0]->YYData->{ERRMSG};
 		return;
 	};
-	print STDERR "Analyzed symbols line containing bogus data (num. " . 
+	print STDERR "syntax error (line " . 
 		$_[0]->YYData->{VARS}{lines} . " pos. " . 
-		$_[0]->YYData->{VARS}{token_prev_pos} . ") was:\n" . 
-		$_[0]->YYData->{VARS}{current_line} . "\n";
+		$_[0]->YYData->{VARS}{token_prev_pos} . "):\n" . 
+		$_[0]->YYData->{VARS}{current_line};
 	print STDERR " " x $_[0]->YYData->{VARS}{token_prev_pos};
 	print STDERR "^\n";
 }
@@ -639,8 +641,8 @@ my $FLOAT		=	qr/(?: (?: $FLOAT11 | $FLOAT21 | $FLOAT31))/six;
 				if( !defined $parser->YYData->{INPUT} )
 				{
 					$parser->YYData->{ERRMSG} = <<END_M;
-ERROR encountered while in text field, which started in line $tf_line_begin.
-Possible runaway of closing ';', or unexpected end of file.
+end of file encountered while in text field starting in line $tf_line_begin.
+Possible runaway closing semicolon (';')
 END_M
 					$parser->YYError();
 				}
@@ -661,9 +663,11 @@ END_M
 				" in line " .
 				$parser->YYData->{VARS}{lines} .
 				", pos. " .
-				$parser->YYData->{VARS}{token_prev_pos} . ":\n--\n" .
-				$parser->YYData->{VARS}{current_line} . "\n--\n" .
-				"It is not acceptable in this version!\n";
+				$parser->YYData->{VARS}{token_prev_pos} .
+                                ":\n--\n" .
+				$parser->YYData->{VARS}{current_line} .
+                                "\n--\n" .
+				"it is not acceptable in this version";
 			$parser->YYError();
 			return('GLOBAL_', $1);
 		}
@@ -687,9 +691,11 @@ END_M
 				" in line " .
 				$parser->YYData->{VARS}{lines} .
 				", pos. " .
-				$parser->YYData->{VARS}{token_prev_pos} . ":\n--\n" .
-				$parser->YYData->{VARS}{current_line} . "\n--\n" .
-				"It is not acceptable in this version!\n";
+				$parser->YYData->{VARS}{token_prev_pos} .
+                                ":\n--\n" .
+				$parser->YYData->{VARS}{current_line} .
+                                "\n--\n" .
+				"it is not acceptable in this version";
 			$parser->YYError();
 			return('STOP_', $1);
 		}
