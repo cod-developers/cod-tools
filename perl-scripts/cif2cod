@@ -25,7 +25,7 @@ my $continue_on_errors = 0;
 
 sub error
 {
-    my ( $message, $filename, $dataset ) = @_;
+    my ( $message, $filename, $dataset, $explanation ) = @_;
 
     local $, = "";
     local $\ = "";
@@ -38,6 +38,7 @@ sub error
     print STDERR ": "
         if $filename || $dataset;
     print STDERR $_[0], "\n";
+    print STDERR $explanation, "\n";
 
     die unless $continue_on_errors;
 }
@@ -193,10 +194,12 @@ sub check_chem_formula
     my $formula_component = "[a-zA-Z]{1,2}[0-9.]*";
 
     if( $formula !~ /^\s*($formula_component\s+)*($formula_component)\s*$/ ) {
-	error( "chemical formula '$formula' could not be parsed in the " .
-	       "file '$filename':\n" .
-	       "it does not consist of space-seprated chemical element names " .
-	       "with optional numeric quantities (e.g. 'C2 H6 O')" );
+	error( "chemical formula '$formula' could not be parsed",
+               $filename, undef,
+               # explanation:
+               "A chemical formula should consist of space-seprated " .
+               "chemical element names\n" .
+	       "with optional numeric quantities (e.g. 'C2 H6 O')." );
     }
 }
 
@@ -263,13 +266,13 @@ sub get_and_check_tag
 		return $values->{$tag}[$index];
 	    } else {
 		unless( $ignore_errors ) {
-		    error( "tag '$tag' in the file '$filename' does not " .
-			   "have value number $index" );
+		    error( "tag '$tag' does not have value number $index",
+                           $filename );
 		}
 	    }
 	} else {
 	    unless( $ignore_errors ) {
-		error( "tag '$tag' is absent in the file '$filename'" );
+		error( "tag '$tag' is absent", $filename );
 	    }
 	}
     }
@@ -308,7 +311,7 @@ sub get_spacegroup_info
 	}
     }
     if( !defined $spacegroup ) {
-	error( "no spacegroup information found in the file '$filename'" );
+	error( "no spacegroup information found", $filename );
 	$spacegroup = "";
     }
     $spacegroup =~ s/^\s*|\s*$//g;
