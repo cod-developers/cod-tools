@@ -23,7 +23,24 @@ use SUsage;
 
 my $continue_on_errors = 0;
 
-sub error { if( $continue_on_errors ){warn $_[0]}else{die $_[0]} }
+sub error
+{
+    my ( $message, $filename, $dataset ) = @_;
+
+    local $, = "";
+    local $\ = "";
+
+    print STDERR $0, ": ";
+    print STDERR $filename
+        if $filename;
+    print STDERR " ",  $dataset->{name}
+        if $dataset && exists $dataset->{name};
+    print STDERR ": "
+        if $filename || $dataset;
+    print STDERR $_[0], "\n";
+
+    die unless $continue_on_errors;
+}
 
 my $reformat_spacegroup = 0;
 my $guess_formula_from_atoms = 0;
