@@ -27,9 +27,6 @@ sub error
 {
     my ( $message, $filename, $dataset, $explanation ) = @_;
 
-    local $, = "";
-    local $\ = "";
-
     print STDERR $0, ": ";
     print STDERR $filename
         if $filename;
@@ -70,9 +67,6 @@ my %spacegroups = map {
 
 ## use ShowStruct;
 ## showRef( \%spacegroups  );
-
-$\ = "\n";
-$, = ";";
 
 binmode( STDOUT, ":utf8" );
 
@@ -177,7 +171,12 @@ for my $filename (@ARGV) {
 		"NULL";
 	    }
 	} @data;
-	print @data;
+        do {
+            local $\ = "\n";
+            local $, = ";";
+
+            print @data;
+        };
     }
 }
 
