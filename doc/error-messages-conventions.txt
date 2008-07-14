@@ -1,0 +1,123 @@
+CONTENTS:
+  1. INTRO
+  2. GENERAL VIEW
+  3. EXAMPLES
+  4. REGULAR EXPRESSIONS
+  5. OUTPUT
+
+=====================================================================
+1. INTO
+
+This is a proposal, on methods of error reporting. Target of this 
+document is developers of COD (Crystallography Open Database) tools.
+
+This kind of error reporting was developed with influence of GNU 
+Programming guidelines and view of Turbo Pascal 5.5 parser reporting.
+It is a mixture of two schools. Might be better, might be worse - it is 
+for you to decide...
+
+One of the principles is that most, if not all, error messages should 
+fit into a single line (80 columns, at its best).
+So it is easier to grep through them.
+
+=====================================================================
+2. GENERAL VIEW
+
+The usual format for error message is as following:
+$0 <el>: <fn>(<ln>,<co>) <apos>: <emsg>
+Where:
+    - $0 stands for script name; programs convention meaning "my name" - 
+      by what name script has been called.
+      In case of Perl libraries - $0 returns the name of program which 
+      is calling library and this is correct behaviour here.
+      If the library is called using -e (here - Perl command line switch 
+      indicating next to it written code execution; for similar 
+      behaviour in other programming languages - take a look at 
+      respective manual) instead of '$0: <fn>...' we should output only 
+      '<fn>...' as it appears more readable.
+    - <el> - emergency level. Optional. Any single word, or script
+      error-level constant.
+    - <fn> means file name. The name with user provided path to the file 
+      being currently processed.
+      If information is read from STDIN, then we should write 'file "-"' 
+      as dash ('-') stands for STDIN in UNIX CLI scripts. In other cases 
+      prefix 'file "<filename>"' is not required as it is more 
+      intuitive.
+    - <ln> means line number in which error was detected. Optional.
+    - <co> stands for column number. Optional.
+    - <apos> means Additional POSition information. I.e. for CIF files 
+    we could place here DATA block name (in format data_<title> - so, as 
+    it appears in file). Optional.
+    - <emsg> is error message as minimalistic and understandable as it 
+    is possible.
+
+=====================================================================
+3. EXAMPLES
+
+Examples of error reporting:
+E.g.1:
+./cif_filter: tests/cif_filter_004.opt(1): no data block heading (i.e. data_somecif) found
+
+E.g.2:
+./cif_cod_check: comments_in_text.cif data_test: _journal_name_full is undefined
+
+E.g.3:
+./cif_parse_new: tests/cif_cod_check_006.inp(34,38) data_2009397: syntax error
+_symmetry_space_group_name_H-M  'R 3' ccc
+                                      ^
+=====================================================================
+4. REGULAR EXPRESSIONS
+
+This section is intended for those, who think that regular expressions 
+are more readable than any generalization about generic forms.
+
+This is an example Perl script, which returns all possible parameters:
+---- SOURCE:PERL\ ----
+    my $FNAME  = qr/[a-z0-9_\-\.\/]+/si;
+    my $ELEVEL = qr/[a-z0-9]+/si;
+    $_ =~ m/
+        ($FNAME)?
+        (?:
+            \s+
+            ($ELEVEL)
+        )?
+        :\s*
+        (?:
+            ($FNAME)
+            (?:\(
+                ([0-9]+)
+                  (?:
+                    ,\s*
+                    ([0-9]+)
+                  )?
+            \))?
+            (?:
+                \s*data_
+                ([^:]+)
+            )?
+        )
+        :\s*(.*)
+        /six;
+---- /SOURCE:PERL ----
+
+After execution of this regular expression against error message (here 
+stored as $_) you would get:
+    - $1 as program name;
+    - $2 could be error level if any present;
+    - $3 as file being processed name;
+    - $4 as line number of file being processed;
+    - $5 as column number of file being processed in line (look $3);
+    - $6 as data block name (name <apos> in section 3.);
+    - $7 as error message returned.
+$2, $3, $4 and $5 are optional parameters and could be left blank, so 
+you should check whereas these values exist before printing them... ;)
+
+=====================================================================
+5. OUTPUT
+
+Create your scripts with respect. Respect towards users and computers - 
+you never now, who will be your next reader.
+
+So far as our scripts are concerned - we will put all our efforts on 
+making error reportings according to these guideliness, so you should be 
+safe to set up your tools to check for errors in this format.
