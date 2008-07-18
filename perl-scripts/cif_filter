@@ -881,8 +881,13 @@ sub sprint_value
 	$val =~ s/^\s+//g;
     }
 
-    if( $val =~ /\n/ || $val =~ /^$/ ) {
+    if( $val =~ /\n/ || $val =~ /^$/ ||
+        ($val =~ /'\s/ && $val =~ /"\s/) ) {
 	$val = "\n;" . $val . "\n;";
+    } elsif( $val =~ /'\s/ ) {
+	$val = "\"" . $val . "\"";
+    } elsif( $val =~ /"\s/ ) {
+	$val = "'" . $val . "'";
     } elsif( $val =~ /^'.*'$/ ) {
 	$val = "\"" . $val . "\"";
     } elsif( $val =~ /\s|^_|^".*"$/) {
