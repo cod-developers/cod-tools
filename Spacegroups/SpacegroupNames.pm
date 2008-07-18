@@ -107,6 +107,7 @@ require Exporter;
 [60,	"P b c n",	"P b c n" ],
 [61,	"P b c a",	"P 21/b 21/c 21/a" ],
 [61,	"P b c a",	"P b c a" ],
+[61,    "P c a b", 	"P c a b" ],
 [62,	"P n m a",	"P 21/n 21/m 21/a" ],
 [62,	"P n m a",	"P n m a" ],
 [63,	"C m c m",	"C 2/m 2/c 21/m" ],
