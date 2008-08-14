@@ -19,6 +19,21 @@ use CIFParser;
 use ShowStruct;
 use Spacegroups::SpacegroupNames;
 use File::Basename;
+use SOptions;
+
+my $useReporter = 0;
+my $reportFile = '-';
+
+@ARGV = getOptions(
+    "--use-reporter"      => sub{ $useReporter = 1; $reportFile = get_value() }
+);
+
+if( $reportFile =~ m/^\s*-\s*$/ || !-w dirname($reportFile) )
+{
+    open reportFileFH, ">&", \*STDOUT or die "Can't dup STDOUT: $!";
+} else {
+    open reportFileFH, ">", $reportFile;
+}
 
 my %spacegroups = map {
     my $key1 = $_->[1];
@@ -30,7 +45,13 @@ my %spacegroups = map {
 
 for my $filename (@ARGV) {
     my $parser = new CIFParser;
-    my $data = $parser->Run($filename);
+    my $data;
+    if( $useReporter == 1 )
+    {
+        $data = $parser->Run($filename, \&parser_error_reporter );
+    } else {
+        $data = $parser->Run($filename);
+    }
 
     if( defined $parser->YYData->{ERRCOUNT} && $parser->YYData->{ERRCOUNT} > 0 ) {
 	print STDERR "$0: $filename: ",
@@ -55,7 +76,7 @@ sub check_data
     my ($dataset,$filename) = @_;
 
     if( !defined $dataset->{values} ) {
-	print "$0: $filename: $dataset->{name}: no values?!\n";
+    error_reporter($filename, undef, $dataset->{name}, "no values?!");
 	return 1;
     } else {
 	return 0;
@@ -74,22 +95,23 @@ sub check_bibliography
     my $values = $dataset->{values};
 
     if( !defined $values->{_journal_name_full} ) {
-	print "$0: $filename: $dataset->{name}: _journal_name_full is undefined\n";
+    error_reporter($filename, undef, $dataset->{name}, "_journal_name_full "
+                    . "is undefined");
 	$warnings ++;
     }
     if( !defined $values->{_journal_year} &&
 	!defined $values->{_journal_volume} ) {
-	print "$0: $filename: $dataset->{name}: neither _journal_year nor " 
-	        . "_journal_volume is defined\n";
+	error_reporter($filename, undef, $dataset->{name}, "neither _journal_year "
+	                . "nor _journal_volume is defined");
 	$warnings ++;
     }
     if( !defined $values->{_journal_page_first} ) {
-	print "$0: $filename: $dataset->{name}: _journal_page_first is "
-    	    . "undefined\n";
+    error_reporter($filename, undef, $dataset->{name}, "_journal_page_first is "
+                    . "undefined");
 	$warnings ++;
     }
     if( !defined $values->{_publ_author_name} ) {
-	print "$0: $filename: $dataset->{name}: no _publ_author_name\n";
+    error_reporter($filename, undef, $dataset->{name}, "no _publ_author_name");
 	$warnings ++;
     }
     return $warnings;
@@ -108,11 +130,12 @@ sub check_chemical_formula_sum
     my $formula_component = "[a-zA-Z]{1,2}[0-9.]*";
 
     if( !defined $formula ) {
-	print "$0: $filename: $dataset->{name}: no _chemical_formula_sum\n";
+    error_reporter($filename, undef, $dataset->{name}, "no "
+                    . "_chemical_formula_sum");
 	return 1;
     } elsif( $formula !~ /^\s*($formula_component\s+)*($formula_component)\s*$/ ) {
-	print "$0: $filename: $dataset->{name}: chemical formula '$formula'"
-	        . " could not be parsed\n";
+	error_reporter($filename, undef, $dataset->{name}, "chemical formula "
+	                . "'$formula' could not be parsed");
 	return 1;
     } else {
 	return 0;
@@ -154,8 +177,8 @@ sub check_spacegroup_info
 		if( defined $spacegroup &&
 		    !exists $spacegroups{$spacegroup} &&
 		    !exists $spacegroups{$no_spaces} ) {
-		    print "$0: $filename: $dataset->{name}: unrecognised "
-		                . "spacegroup '$spacegroup'\n";
+		    error_reporter($filename, undef, $dataset->{name}, "unrecognised "
+		                    . "spacegroup '$spacegroup'");
 		    $warnings ++;
 		}
 	    }
@@ -163,8 +186,8 @@ sub check_spacegroup_info
 	}
     }
     if( !defined $spacegroup ) {
-	print "$0: $filename: $dataset->{name}: no spacegroup information "
-	        . "found\n";
+    error_reporter($filename, undef, $dataset->{name}, "no spacegroup "
+                    . "information found");
 	$warnings ++;
     }
     return $warnings;
@@ -187,8 +210,8 @@ sub check_symmetry_operators
     my $symops = $dataset->{values}{_symmetry_equiv_pos_as_xyz};
 
     if( !defined $symops ) {
-	print "$0: $filename: $dataset->{name}: no "
-	        . "_symmetry_equiv_pos_as_xyz\n";
+    error_reporter($filename, undef, $dataset->{name}, "no "
+                    . "_symmetry_equiv_pos_as_xyz");
 	return 1;
     } else {
 	for my $symop (@$symops) {
@@ -196,12 +219,30 @@ sub check_symmetry_operators
 	    $no_spaces =~ s/\s//g;
 	    if( $no_spaces !~ 
 		/^($symop_component,){2}($symop_component)$/i ) {
-		print "$0: $filename: $dataset->{name}: symmetry operator "
-		        . "'$symop' " .
-		    "could not be parsed\n";
+		error_reporter($filename, undef, $dataset->{name}, "symmetry operator "
+		                . "'$symop' could not be parsed");
 		return 1;
 	    }
 	}
     }
     return 0;
+}
+
+sub error_reporter
+{
+    my ($file, $line, $data, $message) = @_;
+    $file = '-' unless $file;
+    $line = ( defined $line ) ? '(' . $line . ')' : '';
+    $data = ( defined $data ) ? ' data_' . $data : '';
+    my $output = $0 . ': ' . $file . $line . $data;
+    $output .= ': ' . $message . "\n";
+    print reportFileFH $output;
+    return 0;
+}
+
+sub parser_error_reporter
+{
+    my ($file, $line, $data) = @_;
+    return error_reporter($file, $line, $data, "line currently"
+                            ." processed: $line");
 }
