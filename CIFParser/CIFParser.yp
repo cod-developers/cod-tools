@@ -543,9 +543,11 @@ sub _Lexer
 		{
 			$parser->YYData->{INPUT} = <$CIFParser::FILEIN>;
 			$parser->YYData->{VARS}{lines}++;
-			if( $parser->YYData->{VARS}{lines} % 100 == 0 &&
-			    defined $parser->{reporter} ) {
-			    &{$parser->{reporter}}( $parser->YYData->{VARS}{lines} );
+			if( defined $parser->{reporter} &&
+			    $parser->YYData->{VARS}{lines} % 100 == 0 ) {
+			    &{$parser->{reporter}}( $parser->{USER}{FILENAME},
+			                            $parser->YYData->{VARS}{lines},
+			                            $parser->{USER}{CURRENT_DATABLOCK} );
 			}
 		} until ( !defined $parser->YYData->{INPUT} ||
 			$parser->YYData->{INPUT} !~ m/^(\s*(#.*)?)$/s );
