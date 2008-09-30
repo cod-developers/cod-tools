@@ -40,12 +40,21 @@ require Exporter;
 [15,	"C 2/c",	"C 1 2/c 1" ],
 [15,    "A 2/n",        "A 1 2/n 1" ],
 [15,    "I 2/a",        "I 1 2/a 1" ],
+[15,    "A 1 2/a 1",    "A 1 2/a 1" ], # from cctbx via SymopLookup.pm
+[15,    "C 1 2/n 1",    "C 1 2/n 1" ], # from cctbx via SymopLookup.pm
+[15,    "I 1 2/c 1",    "I 1 2/c 1" ], # from cctbx via SymopLookup.pm
 [15,    "A 2/a", 	"A 1 1 2/a" ],
 [15,    "B 2/b", 	"B 1 1 2/n" ],
 [15,    "I 2/b", 	"I 1 1 2/b" ],
+[15,    "B 1 1 2/b",    "B 1 1 2/b" ], # from cctbx via SymopLookup.pm
+[15,    "A 1 1 2/n",    "A 1 1 2/n" ], # from cctbx via SymopLookup.pm
+[15,    "I 1 1 2/a",    "I 1 1 2/a" ], # from cctbx via SymopLookup.pm
 [15,    "B 2/b", 	"B 2/a 1 1" ],
 [15,    "C 2/n", 	"C 2/n 1 1" ],
 [15,    "I 2/c", 	"I 2/c 1 1" ],
+[15,    "C 2/c 1 1",    "C 2/c 1 1" ], # from cctbx via SymopLookup.pm
+[15,    "B 2/n 1 1",    "B 2/n 1 1" ], # from cctbx via SymopLookup.pm
+[15,    "I 2/b 1 1",    "I 2/b 1 1" ], # from cctbx via SymopLookup.pm
 [16,	"P 2 2 2",	"P 2 2 2" ],
 [17,	"P 2 2 21",	"P 2 2 21" ],
 [18,	"P 21 21 2",	"P 21 21 2" ],
