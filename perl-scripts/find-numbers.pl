@@ -76,7 +76,8 @@ for my $file (@COD_cif_files) {
 	    $structures{$id}{pressure}{$1} = $2;
 	    $structures{$id}{pressure}{$1} =~ s/^\s*'\s*|\s*'\s*$//g;
 	}
-	if( /^\s*(_journal_[^\s]*)\s+(.*)\s*$/ ) {
+	if( /^\s*(_journal_[^\s]*)\s+(.*)\s*$/ && 
+            ! /^\s*_journal_name/ ) {
 	    my $key = $1;
 	    my $value = $2;
 	    $value =~ s/^['"]|["']$//g;
@@ -143,7 +144,8 @@ for my $file (@cif_files) {
 	    $structures{$id}{pressure}{$1} = $2;
 	    $structures{$id}{pressure}{$1} =~ s/^\s*'\s*|\s*'\s*$//g;
 	}
-	if( /^\s*(_journal_[^\s]*)\s+(.*)\s*$/ ) {
+	if( /^\s*(_journal_[^\s]*)\s+(.*)\s*$/ && 
+            ! /^\s*_journal_name/ ) {
 	    my $key = $1;
 	    my $value = $2;
 	    $value =~ s/^['"]|["']$//g;
