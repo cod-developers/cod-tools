@@ -150,11 +150,13 @@ sub check_spacegroup_info
 	return 0;
     }
 
+    my $symops = $dataset->{values}{_symmetry_equiv_pos_as_xyz};
     my $values = $dataset->{values};
 
     my @spacegroup_tags = qw (
         _symmetry_space_group_name_H-M
         _symmetry_space_group_name_Hall
+        _symmetry_Int_Tables_number
         _space_group_name_H-M_alt
         _space_group.name_H-M_full
         _space_group_name_Hall
@@ -186,8 +188,13 @@ sub check_spacegroup_info
 	}
     }
     if( !defined $spacegroup ) {
-    error_reporter($filename, undef, $dataset->{name}, "no spacegroup "
-                    . "information found");
+        if( !defined $symops ) {
+            error_reporter($filename, undef, $dataset->{name}, "no symmetry "
+                           . "information found");
+        } else {
+            error_reporter($filename, undef, $dataset->{name}, "no spacegroup "
+                           . "symbol found");
+        }
 	$warnings ++;
     }
     return $warnings;
@@ -210,9 +217,7 @@ sub check_symmetry_operators
     my $symops = $dataset->{values}{_symmetry_equiv_pos_as_xyz};
 
     if( !defined $symops ) {
-    error_reporter($filename, undef, $dataset->{name}, "no "
-                    . "_symmetry_equiv_pos_as_xyz");
-	return 1;
+	return 0; # Let's not regard missing symmetry operators as error.
     } else {
 	for my $symop (@$symops) {
 	    my $no_spaces = $symop;
