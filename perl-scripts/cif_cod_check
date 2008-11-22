@@ -22,11 +22,49 @@ use Spacegroups::SpacegroupNames;
 use File::Basename;
 use SOptions;
 
+my $check_bibliography = 1;
+my $check_authors = 1;
+my $check_chemical_formula_sum = 1;
+my $check_spacegroup_info = 1;
+my $check_symmetry_operators = 1;
+
+sub dont_check_any
+{
+    $check_bibliography = 0;
+    $check_authors = 0;
+    $check_chemical_formula_sum = 0;
+    $check_spacegroup_info = 0;
+    $check_symmetry_operators = 0;
+}
+
+sub check_all
+{
+    $check_bibliography = 1;
+    $check_authors = 1;
+    $check_chemical_formula_sum = 1;
+    $check_spacegroup_info = 1;
+    $check_symmetry_operators = 1;
+}
+
 my $useReporter = 0;
 my $reportFile = '-';
 
 @ARGV = getOptions(
-    "--use-reporter"      => sub{ $useReporter = 1; $reportFile = get_value() }
+    "--check-bibliography"
+        => sub{ dont_check_any(); $check_bibliography = 1 },
+    "--check-authors"
+        => sub{ dont_check_any(); $check_authors = 1 },
+    "--check-chemical-formula-sum"
+        => sub{ dont_check_any(); $check_chemical_formula_sum = 1 },
+    "--check-spacegroup-info"
+        => sub{ dont_check_any(); $check_spacegroup_info = 1 },
+    "--check-symmetry-operators"
+        => sub{ dont_check_any(); $check_symmetry_operators = 1 },
+
+    "--check-all"
+        => \&check_all,
+
+    "--use-reporter" => sub{ $useReporter = 1; $reportFile = get_value() }
 );
 
 if( $reportFile =~ m/^\s*-\s*$/ || !-w dirname($reportFile) )
@@ -67,11 +105,16 @@ for my $filename (@ARGV) {
     my $warnings = 0;
     for my $dataset (@$data) {
 	$warnings += check_data( $dataset, $filename );
-	$warnings += check_bibliography( $dataset, $filename );
-	$warnings += check_authors( $dataset, $filename );
-	$warnings += check_chemical_formula_sum( $dataset, $filename );
-	$warnings += check_spacegroup_info( $dataset, $filename );
-	$warnings += check_symmetry_operators( $dataset, $filename );
+        $warnings += check_bibliography( $dataset, $filename )
+            if $check_bibliography;
+	$warnings += check_authors( $dataset, $filename )
+            if $check_authors;
+	$warnings += check_chemical_formula_sum( $dataset, $filename )
+            if $check_chemical_formula_sum;
+	$warnings += check_spacegroup_info( $dataset, $filename )
+            if $check_spacegroup_info;
+	$warnings += check_symmetry_operators( $dataset, $filename )
+            if $check_symmetry_operators;
     }
     printf "%-30s: OK\n", $filename if $warnings == 0;
 }
@@ -178,14 +221,16 @@ sub check_authors
                 /^\s*${vonLastNames}\s*,\s*${Jr}\s*,\s*${Initials}\s*$/
                 ) {
                 error_reporter( $filename, undef, $dataset->{name},
-                                "name '$author' ('$UCS_author')" .
+                                "name '$author'" .
+                                ( $author eq $UCS_author ?
+                                    "" : " ('$UCS_author')" ) .
                                 " does not match name syntax" );
                 if( ! $name_syntax_explained ) {
                     error_reporter( undef, undef, undef,
                                     "names should be written as " .
                                     "'First von Last', " .
                                     "'von Last, First', or " .
-                                    "'von Last, Jr, First'"
+                                    "'von Last, Jr, First' (mind the case!)"
                         );
                     $name_syntax_explained = 1;
                 }
@@ -257,8 +302,8 @@ sub check_spacegroup_info
 		if( defined $spacegroup &&
 		    !exists $spacegroups{$spacegroup} &&
 		    !exists $spacegroups{$no_spaces} ) {
-		    error_reporter($filename, undef, $dataset->{name}, "unrecognised "
-		                    . "spacegroup '$spacegroup'");
+		    error_reporter( $filename, undef, $dataset->{name},
+                                    "unrecognised spacegroup '$spacegroup'");
 		    $warnings ++;
 		}
 	    }
@@ -267,11 +312,11 @@ sub check_spacegroup_info
     }
     if( !defined $spacegroup ) {
         if( !defined $symops ) {
-            error_reporter($filename, undef, $dataset->{name}, "no symmetry "
-                           . "information found");
+            error_reporter( $filename, undef, $dataset->{name},
+                            "no symmetry information found");
         } else {
-            error_reporter($filename, undef, $dataset->{name}, "no spacegroup "
-                           . "symbol found");
+            error_reporter( $filename, undef, $dataset->{name},
+                            "no spacegroup symbol found");
         }
 	$warnings ++;
     }
@@ -302,7 +347,8 @@ sub check_symmetry_operators
 	    $no_spaces =~ s/\s//g;
 	    if( $no_spaces !~ 
 		/^($symop_component,){2}($symop_component)$/i ) {
-		error_reporter($filename, undef, $dataset->{name}, "symmetry operator "
+		error_reporter( $filename, undef, $dataset->{name},
+                                "symmetry operator "
 		                . "'$symop' could not be parsed");
 		return 1;
 	    }
