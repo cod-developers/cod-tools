@@ -56,8 +56,11 @@ for my $file (@COD_cif_files) {
 	    $structures{$id}{filename} = File::Basename::basename( $file );
 	}
 	if( /^\s*_chemical_formula_sum\s+(.*)/ ) {
-	    $structures{$id}{chemical_formula_sum} = $1;
-	    $structures{$id}{chemical_formula_sum} =~ s/^\s*'\s*|\s*'\s*$//g;
+            my $formula = $1;
+            $formula =~ s/^\s*'\s*|\s*'\s*$//g;
+            $formula =~ s/\s+/ /g;
+            my $sorted = join( " ", sort {$a cmp $b} split( " ", $formula ));
+	    $structures{$id}{chemical_formula_sum} = $sorted;
 	}
 	if( /^\s*(_cell_(?:length_a|length_b|length_c|
                      angle_alpha|angle_beta|angle_gamma))\s+([\d.]+)/x ) {
@@ -125,8 +128,11 @@ for my $file (@cif_files) {
 	    $structures{$id}{filename} = File::Basename::basename( $file );
 	}
 	if( /^\s*_chemical_formula_sum\s+(.*)/ ) {
-	    $structures{$id}{chemical_formula_sum} = $1;
-	    $structures{$id}{chemical_formula_sum} =~ s/^\s*'\s*|\s*'\s*$//g;
+            my $formula = $1;
+            $formula =~ s/^\s*'\s*|\s*'\s*$//g;
+            $formula =~ s/\s+/ /g;
+            my $sorted = join( " ", sort {$a cmp $b} split( " ", $formula ));
+	    $structures{$id}{chemical_formula_sum} = $sorted;
 	}
 	if( /^\s*(_cell_(?:length_a|length_b|length_c|
                      angle_alpha|angle_beta|angle_gamma))\s+([\d.]+)/x ) {
