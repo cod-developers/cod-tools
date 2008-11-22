@@ -22,6 +22,8 @@ use Spacegroups::SpacegroupNames;
 use File::Basename;
 use SOptions;
 
+my $name_syntax_explained = 0;
+
 my $check_bibliography = 1;
 my $check_authors = 1;
 my $check_chemical_formula_sum = 1;
@@ -83,6 +85,9 @@ my %spacegroups = map {
     $key2 =~ s/\s//g;
     ($_->[2], $_->[2], $_->[1], $_->[2], $key1, $_->[2], $key2, $_->[2] )
 } @SpacegroupNames::names;
+
+$| = 1; # Flush buffers immediately, to avoid mixing lines of STDOU
+        # and STDERR.
 
 for my $filename (@ARGV) {
     my $parser = new CIFParser;
@@ -172,11 +177,10 @@ sub check_authors
 	return 0;
     }
 
-    my $name_syntax_explained = 0;
     my $warnings = 0;
     my $values = $dataset->{values};
 
-    my $First = qr/[[:upper:]] ['[:lower:]]*
+    my $First = qr/[[:upper:]] ('[[:alpha:]])? [[:lower:]]*
                    ( \s*-\s* [[:upper:]] ['[:lower:]]* )?/x;
                 # Armel, Miguel, O'Reily, Ding-Quan
 
@@ -184,7 +188,7 @@ sub check_authors
                    ( \s*-\s* [[:upper:]] [[:lower:]]?\. )?/x;
                 # A., M., O., D.-Q.
 
-    my $Last = qr/[[:upper:]] ['[:lower:]]*
+    my $Last = qr/[[:upper:]] ('[[:alpha:]])? [[:lower:]]*
                   ( \s*-\s* [[:upper:]] ['[:lower:]]+ )?/x;
                 # Neuman, D'Lamber, le Bail, Le Bail (?),
 
