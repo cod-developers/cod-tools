@@ -86,7 +86,7 @@ my %spacegroups = map {
     ($_->[2], $_->[2], $_->[1], $_->[2], $key1, $_->[2], $key2, $_->[2] )
 } @SpacegroupNames::names;
 
-$| = 1; # Flush buffers immediately, to avoid mixing lines of STDOU
+$| = 1; # Flush buffers immediately, to avoid mixing lines of STDOUT
         # and STDERR.
 
 for my $filename (@ARGV) {
@@ -238,6 +238,7 @@ sub check_authors
                         );
                     $name_syntax_explained = 1;
                 }
+                $warnings ++;
             }
         }
     }
@@ -260,9 +261,10 @@ sub check_chemical_formula_sum
     error_reporter($filename, undef, $dataset->{name}, "no "
                     . "_chemical_formula_sum");
 	return 1;
-    } elsif( $formula !~ /^\s*($formula_component\s+)*($formula_component)\s*$/ ) {
-	error_reporter($filename, undef, $dataset->{name}, "chemical formula "
-	                . "'$formula' could not be parsed");
+    } elsif( $formula !~ 
+             /^\s*($formula_component\s+)*($formula_component)\s*$/ ) {
+	error_reporter( $filename, undef, $dataset->{name}, "chemical formula "
+                        . "'$formula' could not be parsed");
 	return 1;
     } else {
 	return 0;
@@ -370,6 +372,7 @@ sub error_reporter
     my $output = $0 . ': ' . $file . $line . $data;
     $output .= ': ' . $message . "\n";
     print reportFileFH $output;
+    flush reportFileFH;
     return 0;
 }
 
