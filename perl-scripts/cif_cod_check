@@ -9,7 +9,8 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #$URL$
 #------------------------------------------------------------------------------
 #*
-#  Parse a CIF file
+#  Parse a CIF file, check if certain data values match COD
+#  requirements.
 #**
 
 use strict;
@@ -35,6 +36,8 @@ if( $reportFile =~ m/^\s*-\s*$/ || !-w dirname($reportFile) )
     open reportFileFH, ">", $reportFile;
 }
 
+binmode( reportFileFH, 'utf8' );
+
 my %spacegroups = map {
     my $key1 = $_->[1];
     my $key2 = $_->[2];
@@ -53,7 +56,8 @@ for my $filename (@ARGV) {
         $data = $parser->Run($filename);
     }
 
-    if( defined $parser->YYData->{ERRCOUNT} && $parser->YYData->{ERRCOUNT} > 0 ) {
+    if( defined $parser->YYData->{ERRCOUNT} &&
+        $parser->YYData->{ERRCOUNT} > 0 ) {
 	print STDERR "$0: $filename: ",
 	$parser->YYData->{ERRCOUNT},
 	" error(s) encountered while parsing CIF data\n";
@@ -64,6 +68,7 @@ for my $filename (@ARGV) {
     for my $dataset (@$data) {
 	$warnings += check_data( $dataset, $filename );
 	$warnings += check_bibliography( $dataset, $filename );
+	$warnings += check_authors( $dataset, $filename );
 	$warnings += check_chemical_formula_sum( $dataset, $filename );
 	$warnings += check_spacegroup_info( $dataset, $filename );
 	$warnings += check_symmetry_operators( $dataset, $filename );
@@ -76,7 +81,7 @@ sub check_data
     my ($dataset,$filename) = @_;
 
     if( !defined $dataset->{values} ) {
-    error_reporter($filename, undef, $dataset->{name}, "no values?!");
+        error_reporter($filename, undef, $dataset->{name}, "no values?!");
 	return 1;
     } else {
 	return 0;
@@ -95,24 +100,97 @@ sub check_bibliography
     my $values = $dataset->{values};
 
     if( !defined $values->{_journal_name_full} ) {
-    error_reporter($filename, undef, $dataset->{name}, "_journal_name_full "
-                    . "is undefined");
+        error_reporter($filename, undef, $dataset->{name},
+                       "_journal_name_full is undefined");
 	$warnings ++;
     }
     if( !defined $values->{_journal_year} &&
 	!defined $values->{_journal_volume} ) {
-	error_reporter($filename, undef, $dataset->{name}, "neither _journal_year "
-	                . "nor _journal_volume is defined");
+	error_reporter($filename, undef, $dataset->{name},
+                       "neither _journal_year "
+                       . "nor _journal_volume is defined");
 	$warnings ++;
     }
     if( !defined $values->{_journal_page_first} ) {
-    error_reporter($filename, undef, $dataset->{name}, "_journal_page_first is "
-                    . "undefined");
+        error_reporter($filename, undef, $dataset->{name},
+                       "_journal_page_first is undefined");
 	$warnings ++;
     }
+    return $warnings;
+}
+
+sub check_authors
+{
+    use Unicode2CIF;
+
+    my ($dataset,$filename) = @_;
+
+    if( !defined $dataset->{values} ) {
+	return 0;
+    }
+
+    my $name_syntax_explained = 0;
+    my $warnings = 0;
+    my $values = $dataset->{values};
+
+    my $First = qr/[[:upper:]] ['[:lower:]]+
+                   ( \s*-\s* [[:upper:]] ['[:lower:]]+ )?/x;
+                # Armel, Miguel, O'Reily. Ding-Quan
+
+    my $Initial = qr/[[:upper:]] [[:lower:]]? \.
+                   ( \s*-\s* [[:upper:]] [[:lower:]]?\. )?/x;
+                # A., M., O., D.-Q.
+
+    my $Last = qr/[[:upper:]] ['[:lower:]]*
+                  ( \s*-\s* [[:upper:]] ['[:lower:]]+ )?/x;
+                # Neuman, D'Lamber, le Bail, Le Bail (?),
+
+    my $von = qr/[a-zA-Z][a-z]+(\s+[a-zA-Z][a-z]+)?/;
+                # von, van, de, De, de la
+
+    my $Jr  = qr/[A-Za-z]+\.?/;
+                # Jr, Jr., I, II, III, IV
+
+    my $FirstNames = qr/${First}(\s+${First})*/;
+    my $Initials = qr/(${First}\s+|${Initial})(\s*$Initial)*/;
+    my $LastNames = qr/${Last}(\s+${Last})*/;
+    my $vonLast = qr/(${von}\s+)?${Last}/;
+    my $vonLastNames = qr/(${von}\s+)?${Last}(\s+${Last})*/;
+
     if( !defined $values->{_publ_author_name} ) {
-    error_reporter($filename, undef, $dataset->{name}, "no _publ_author_name");
+        error_reporter($filename, undef, $dataset->{name}, "_publ_author_name "
+                       . "is undefined");
 	$warnings ++;
+    } else {
+        for my $author (@{$values->{_publ_author_name}}) {
+            my $UCS_author = cif2unicode( $author );
+            if( $UCS_author !~
+                /^\s*${FirstNames}\s+${vonLast}\s*$/ &&
+                $UCS_author !~
+                /^\s*${Initials}\s*${vonLast}\s*$/ &&
+                $UCS_author !~
+                /^\s*${vonLastNames}\s*,\s*${FirstNames}\s*$/ &&
+                $UCS_author !~
+                /^\s*${vonLastNames}\s*,\s*${Initials}\s*$/ &&
+                $UCS_author !~
+                /^\s*${vonLastNames}\s*,\s*${Jr}\s*,\s*${FirstNames}\s*$/ &&
+                $UCS_author !~
+                /^\s*${vonLastNames}\s*,\s*${Jr}\s*,\s*${Initials}\s*$/
+                ) {
+                error_reporter( $filename, undef, $dataset->{name},
+                                "name '$author' ('$UCS_author')" .
+                                " does not match name syntax" );
+                if( ! $name_syntax_explained ) {
+                    error_reporter( undef, undef, undef,
+                                    "names should be written as " .
+                                    "'First von Last', " .
+                                    "'von Last, First', or " .
+                                    "'von Last, Jr, First'"
+                        );
+                    $name_syntax_explained = 1;
+                }
+            }
+        }
     }
     return $warnings;
 }
