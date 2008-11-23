@@ -17,6 +17,7 @@ use strict;
 use lib "./lib/perl5";
 use lib "./CIFParser";
 use CIFParser;
+use CIFTagCanonicalNames;
 use ShowStruct;
 use Spacegroups::SpacegroupNames;
 use File::Basename;
@@ -111,6 +112,8 @@ for my $filename (@ARGV) {
 	" error(s) encountered while parsing CIF data\n";
 	exit -1;
     }
+
+    canonicalize_names( $data );
 
     my $warnings = 0;
     for my $dataset (@$data) {
