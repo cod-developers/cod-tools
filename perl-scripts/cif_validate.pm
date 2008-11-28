@@ -36,9 +36,9 @@ my $version = 0.1;
 my $CIFfile;
 my $CIFtags;
 my $outputFile;
-my $dictFile;
-my $dictFileParsed;
-my $dictTags = [];
+my $dictFiles = [];
+my $dictFilesParsed = [];
+my $dictTags = {};
 my $quiet = 0;
 my $parser = new CIFParser;
 
@@ -66,6 +66,8 @@ sub output;
 sub refToScalar;
 
 # subroutine to extract tags from dictionary (parsed using CIFParser)
+# it takes reference to CIFParser output
+# returns hash of tags and related references to parsed data blocks
 sub getDict;
 
 # subroutine to check if tags in data block provided are defined within 
@@ -74,6 +76,14 @@ sub getDict;
 #	- data block index (of array @{$CIFfile})
 #	- data file index (of array @ARGV)
 sub checkTags;
+
+# subroutine is used to check if types of elements matches ones defined 
+# within dictionary
+# It takes arguments:
+#   1. reference to data block element
+#   2. reference to dictionary(-ies)
+#   3. accordingly (to 2) array of dictionary names
+sub checkTypes;
 
 #
 # main program code
@@ -84,7 +94,7 @@ sub checkTags;
         "--output"
             => \$outputFile,
         "--dictionary" ## @todo load multiple dictionaries
-            => \$$dictFile[0],
+            => $dictFiles,
         "--version"
             => sub{ VersionMessage() },
         "--quiet"
@@ -95,35 +105,31 @@ sub checkTags;
             => sub{ HelpMessage() }
     );
 
-my $dt;
-if( defined($$dictFile[0]) )
+if( @$dictFiles )
 {
-	$dt = getDict($$dictFileParsed[0] = $parser->Run($$dictFile[0]));
+    for( @{$dictFiles} ) {
+        my $parsed = $parser->Run( $_ );
+        push( @$dictFilesParsed, $parsed );
+        $$dictTags{$_} = getDict( $parsed );
+        undef $parsed;
+    }
 } else {
     die "You must specify dictionary using '--dictionary'. Automatic "
             . "dictionary download is not implemeted yet.\n";
     my $dictIUCRURI = "ftp://ftp.iucr.org/pub/cif_core.dic";
-    my $dictFileContents = undef;
-	$dictFile = "./.cif_core.dic.cache";
-	if( ! -f $dictFile ) {
-	#    open dictFH, ">", $dictFile
-	#        or die "Unable to open " . $dictFile . ": " . $! . "\n";
-	#    close dictFH;
-	}
-	$dt = getDict($dictFile = $parser->Run($dictFile));
 }
-
-$$dictTags[0] = $dt;
-
-#showRef( $dictTags );
 
 if($quiet == 0)
 {
 	print "Got dictionary tags:\n";
-	for( my $i = 0; $i < @$dictTags; $i++ ) {
-	    print "For dictionary [" . $$dictFile[$i] . "]:\n";
-	    for my $key( keys %{$$dictTags[$i]} ) {
-	        print "\t" . $key . "\n";
+	while( my( $fname, $tags ) = each %$dictTags ) {
+	    print "For dictionary [" . $fname . "]:\n";
+	    while( my($tag, $data) = each %$tags ) {
+	        print "\t"
+	                . $tag
+	                . ' :: '
+	                . ${$$data}{values}{_type}[0]
+	                . "\n";
 	    }
 	}
 	print "\n";
@@ -320,21 +326,17 @@ sub refToScalar
 sub getDict
 {
 	my $dictF = shift;
-	my $size = scalar @$dictF;
 	my $tags = {};
 	my $datan = 0;
-	while($datan < $size)
-	{
+   	while( $datan < @$dictF )
+    {
         $datan++ and next if
             !exists $$dictF[$datan]{values}{_type};
         for ( @{$$dictF[$datan]{values}{_name}} ) {
-            ${$tags}{lc $_} = \$$dictF[$datan];
+            $$tags{lc $_} = \$$dictF[$datan];
         }
         $datan++;
 	}
-#	while( my($k,$v) = each( %$tags ) ) {
-#	    print $k . ' ==> ' . ${$$v}{values}{_type}[0] . "\n";
-#	}
 	return $tags;
 }
 
@@ -370,4 +372,9 @@ Please check this tag - it might be wrong.
 END_M
 		}
 	}
+}
+
+# TODO: implement
+sub checkTypes {
+    return false;
 }
