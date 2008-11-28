@@ -33,7 +33,7 @@ use Getopt::Long;
 #
 my $version = 0.1;
 
-my $CIFfile;
+my $CIFfile = {};
 my $CIFtags;
 my $outputFile;
 my $dictFiles = [];
@@ -119,67 +119,62 @@ if( @$dictFiles )
     my $dictIUCRURI = "ftp://ftp.iucr.org/pub/cif_core.dic";
 }
 
-if($quiet == 0)
-{
-	print "Got dictionary tags:\n";
-	while( my( $fname, $tags ) = each %$dictTags ) {
-	    print "For dictionary [" . $fname . "]:\n";
-	    while( my($tag, $data) = each %$tags ) {
-	        print "\t"
-	                . $tag
-	                . ' :: '
-	                . ${$$data}{values}{_type}[0]
-	                . "\n";
-	    }
-	}
-	print "\n";
-}
+## don't dare to touch - dictionaries are being parsed for now
+## if($quiet == 0)
+## {
+## 	print "Got dictionary tags:\n";
+## 	while( my( $fname, $tags ) = each %$dictTags ) {
+## 	    print "For dictionary [" . $fname . "]:\n";
+## 	    while( my($tag, $data) = each %$tags ) {
+## 	        print "\t"
+## 	                . $tag
+## 	                . ' :: '
+## 	                . ${$$data}{values}{_type}[0]
+## 	                . "\n";
+## 	    }
+## 	}
+## 	print "\n";
+## }
 
 # parse CIF files. If none is passed - display help message
-if(@ARGV > 0)
-{
-	if(@ARGV > 1)
-	{ # we have multiple files
-		my $filen = 0;
-		while($filen < @ARGV)
-		{ # iterate through files
-			$CIFtags = getTags($parser->Run($ARGV[$filen]));
-			if( $quiet == 0 )
-			{
-				print "Got following tags from file:\n";
-				## TODO: showRef($CIFtags);
-				print "\n";
-			}
-			if( scalar @{$CIFtags} > 1 )
-			{ # more than one data block
-				for( my $i = 0; $i < ( scalar (@{$CIFtags}) ); $i++)
-				{ # iterate through data block
-					my $data = @{$CIFtags}[$i]->{content};
-					checkTags($data, $i, $filen);
-				}
-			} else { # single data block
-				my $data = @{$CIFtags}[0]->{content};
-				checkTags($data, 0, $filen);
-			}
-			$filen++;
-		}
-	} else { # we have single file
-		$CIFtags = getTags($parser->Run($ARGV[0]));
-		if( scalar @{$CIFtags} > 1 )
-		{ # more than one data block
-			for( my $i = 0; $i < ( scalar (@{$CIFtags}) ); $i++)
-			{ # iterate through data block
-				my $data = @{$CIFtags}[$i]->{content};
-				checkTags($data, $i, 0);
-			}
-		} else { # single data block
-			my $data = @{$CIFtags}[0]->{content};
-			checkTags($data, 0, 0);
-		}
-	}
-} else {
+if( !@ARGV ) {
 	HelpMessage();
-	exit();
+	exit( 1 );
+}
+
+for( @ARGV ) {
+    $$CIFfile{$_} = $parser->Run( $_ );
+}
+
+while( my($cifF, $data) = each %$CIFfile ) {
+    for( @$data ) {
+    showRef( $_ );
+        if( $quiet == 0 ) {
+            print "Analysing file ["
+                    . $cifF . "], data block ["
+                    . $_->{name} . "]:\n";
+        }
+        my $block = $_;
+        for( @{$block->{tags}} ) {
+            # if check tags
+            my $defined = false;
+            for( my($dictF, $dictD) = each $dictTags ) {
+                if( exists $$dictD{$_} ) {
+                    $defined = true;
+                } else {
+                    if( $quiet == 0 ) {
+                        print $cifF . ', ' . $block{name}
+                                . ', tag: [' . $_ . ']'
+                                . ' does not exist' . "\n";
+                    }
+                }
+            }
+            # end-if check tags
+#            print "Tag: " . $_ . "\n";
+#            my $values = $$block{values}{$_};
+#            showRef( $values );
+        }
+    }
 }
 
 #
@@ -376,5 +371,5 @@ END_M
 
 # TODO: implement
 sub checkTypes {
-    return false;
+    return undef;
 }
