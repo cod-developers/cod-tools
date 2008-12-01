@@ -52,6 +52,14 @@ sub VersionMessage;
 # subroutine to print help on module usage
 sub HelpMessage;
 
+# subroutine to print validation message (for SPOT purposes)
+# list of arguments:
+#     1. severity level (# ../doc/error-levels.txt)
+#     2. CIF file analysed
+#     3. CIF data block analysed
+#     4. error message experienced
+sub showValidationMessage;
+
 # subroutine to extract tags from CIFfile array
 sub getTags;
 
@@ -84,6 +92,12 @@ sub checkTags;
 #   2. reference to dictionary(-ies)
 #   3. accordingly (to 2) array of dictionary names
 sub checkTypes;
+
+# subroutine to check value against range (defined in dictionary)
+# Arguments:
+#   1. reference to range as $$range{min} and $$range{max}
+#   2. value, that must be checked
+sub checkAgainstRange;
 
 #
 # main program code
@@ -147,31 +161,78 @@ for( @ARGV ) {
 }
 
 while( my($cifF, $data) = each %$CIFfile ) {
-    for( @$data ) {
-    showRef( $_ );
+    for my $block ( @$data ) {
+    showRef( $block );
         if( $quiet == 0 ) {
-            print "Analysing file ["
-                    . $cifF . "], data block ["
-                    . $_->{name} . "]:\n";
+            showValidationMessage 64, $cifF, $$block{name}, 
+                    'analysis start';
         }
-        my $block = $_;
-        for( @{$block->{tags}} ) {
-            # if check tags
-            my $defined = false;
-            for( my($dictF, $dictD) = each $dictTags ) {
-                if( exists $$dictD{$_} ) {
-                    $defined = true;
+        for my $tagAnalysed ( @{$block->{tags}} ) {
+            my $defined = 0;
+            my $correctDataType = 0;
+            while( my($dictF, $dictD) = each %$dictTags ) {
+                #
+                # if check tags
+                #
+                if( exists $$dictD{lc $tagAnalysed} ) {
+                    $defined++;
+                    if( $quiet == 0 ) {
+                        showValidationMessage 64, $cifF, 
+                            $$block{name}, 'tag: [' . $tagAnalysed . ']'
+                            . ' do exist in dictionary ' . $dictF;
+                    }
                 } else {
                     if( $quiet == 0 ) {
-                        print $cifF . ', ' . $block{name}
-                                . ', tag: [' . $_ . ']'
-                                . ' does not exist' . "\n";
+                        showValidationMessage 16, $cifF, 
+                            $$block{name}, 'tag: [' . $tagAnalysed . ']'
+                            . ' does not exist in dictionary ' . $dictF;
                     }
                 }
+                # end-if check tags
+                
+                # -----------------------------------------------------
+                # -----------------------------------------------------
+                # -----------------------------------------------------
+                
+                #
+                # if check types of values
+                #
+                my $range = {};
+                if( exists $$dictD{values}{_enumeration_range} ) {
+                    ($$range{min}, $$range{max}) = split(/:/, 
+                        $$dictD{values}{_enumeration_range}, 2);
+                }
+                for my $tagValue ( @{$block{values}{$tagAnalysed}} ) {
+                    my $value = $tagValue;
+                    if( $$dictD{values}{_type}[0] == 'numb' ) {
+                        $value =~ s/\s*\(.*$//;
+                    }
+                    if( checkAgainstRange($range, $value) <= 0 ) {
+                        showValidationMessage 4, $cifF, $$block{name},
+                            'tag [' . $tagAnalysed . '] value "'
+                            . '" should be in range (' . $$range{min}
+                            . ', ' . $$range{max} . ')';
+
+                    } else {
+                        if( $quiet == 0 ) {
+                            showValidationMessage 64, $cifF, 
+                            $$block{name},
+                            'tag [' . $tagAnalysed . '] value "'
+                            . '" is in range (' . $$range{min}
+                            . ', ' . $$range{max} . ')';
+                        }
+                    }
+                }
+                # end-if check types of values
             }
-            # end-if check tags
-#            print "Tag: " . $_ . "\n";
-#            my $values = $$block{values}{$_};
+            if( !$defined ) {
+                showValidationMessage 4, $cifF, 
+                    $$block{name}, 'tag: [' . $tagAnalysed . ']'
+                    . ' is not defined';
+            }
+            
+#            print "Tag: " . $tagAnalysed . "\n";
+#            my $values = $$block{values}{$tagAnalysed};
 #            showRef( $values );
         }
     }
@@ -200,6 +261,23 @@ sub HelpMessage
 I hope you know, what you are doing.
 If not - feel recommended to wait until release of production version.
 END_M
+}
+
+sub showValidationMessage {
+    my ($severity, $file, $dataBlockName, $message)
+        = (shift, shift, shift, shift);
+    my $output = $0 . ": ";
+    if( defined $severity && $severity ) {
+        $output .= $severity . ": ";
+    }
+    $output .= $file;
+    if( defined $dataBlockName && $dataBlockName ) {
+        $output .= " data_" . $dataBlockName;
+    }
+    $output .= ":";
+    $output .= " " . $message;
+    $output .= "\n";
+    print $output;
 }
 
 sub getTags
@@ -372,4 +450,29 @@ END_M
 # TODO: implement
 sub checkTypes {
     return undef;
+}
+
+sub checkAgainstRange {
+    my $range = shift;
+    my $value = shift;
+    if( !exists $$range{min} &&
+        !exists $$range{max} ) {
+        return -1;
+    }
+    if( exists $$range{min}
+        && $$range{min} le $value ) {
+        if( exists $$range{max}
+            && $$range{max} ge $value ) {
+            return 1;
+        } else {
+            return 0;
+        }
+        return 0;
+    } elsif ( exists $$range{max}
+        && $$range{max} ge $value ) {
+        return 1;
+    } else {
+        return 0;
+    }
+    return 0;
 }
