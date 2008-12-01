@@ -1,0 +1,57 @@
+CONTENTS:
+  1. ERROR MESSAGE EXPLAINED
+  2. LIST CONSTANTS
+  3. USAGE
+
+=====================================================================
+1. ERROR MESSAGE EXPLAINED
+
+This is a proposed error messages severity indicators list.
+Each message string represents a bit field, so transitional levels
+could be created.
+
+=====================================================================
+2. LIST CONSTANTS
+
+BIT CONSTANT    DESCRIPTION
+1   ERROR   Super-severe message, meaning general fault, which could not 
+            be recovered, must be taken into account if returned by 
+            validation script.
+2   WARNING Severe message meaning some serious problem in input data, 
+            but script must not terminate if experienced with error of 
+            this level. It should be taken into account.
+4   NOTICE  Notice might not be a real error, but in some conditions 
+            this could indicate a real problem incorrectly captured.
+            Could be filtered out, while there are enough of warnings...
+8   I_ERROR This is information message. It is a process indicator and 
+            ERROR message must follow this one. Process indicators are 
+            displayed during normal script execution, if -v (verbose) 
+            option is selected. Could be useful for script analysis as 
+            well.
+16  I_WARNING   This is information message about upcoming warning. As 
+            well as I_ERROR is displayed prior to WARNING and only if 
+            verbose output is selected.
+32  I_NOTICE    Information notice could not be related to NOTICE, but 
+            in most situations it should. Exceptions could be made if 
+            during script run something s-e-e-m-s as a NOTICE, but after 
+            full analysis it appears as normal situation.
+64  I_INDICATOR This is not error message entirely. It is progress 
+            indicator shown only while in DEBUG mode (or full verbose) 
+            and writing messages about current script progress.
+
+65536   ALL Do you think, that higher error levels are possible? 
+            Intermediate levels could be used by various scripts and 
+            this information should be explicitly written in help 
+            messages with detailed description on demand.
+            ALL means, that script should output ANY actual information, 
+            almost every tick of progress.
+
+=====================================================================
+3. USAGE
+
+Every script since the creation of this document must be able to accept 
+error level defined (bitfield) with '--show-errors' option.
+Scripts could have their own command line options to indicate how 
+verbose messages will be printed.
+If severity is defined in error message outputed it should adhere to 
+this document.
