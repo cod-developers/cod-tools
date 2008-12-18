@@ -160,16 +160,28 @@ for( @ARGV ) {
     $$CIFfile{$_} = $parser->Run( $_ );
 }
 
+#
+# start-iterate-trough-CIF-files
+#    
 while( my($cifF, $data) = each %$CIFfile ) {
+    #
+    # start-iterate-trough-CIF-file-data-blocks
+    #    
     for my $block ( @$data ) {
     showRef( $block );
         if( $quiet == 0 ) {
             showValidationMessage 64, $cifF, $$block{name}, 
                     'analysis start';
         }
+        #
+        # start-iterate-trough-CIF-values
+        #
         for my $tagAnalysed ( @{$block->{tags}} ) {
             my $defined = 0;
             my $correctDataType = 0;
+            #
+            # start-iterate-through-dictionaries
+            #
             while( my($dictF, $dictD) = each %$dictTags ) {
                 #
                 # if check tags
@@ -204,11 +216,14 @@ while( my($cifF, $data) = each %$CIFfile ) {
                 }
                 for my $tagValue ( @{$block{values}{$tagAnalysed}} ) {
                     my $value = $tagValue;
+                    my $valueWOPrecision = $value;
                     if( $$dictD{values}{_type}[0] == 'numb' ) {
-                        $value =~ s/\s*\(.*$//;
+                        $valueWOPrecision =~ s/\s*\(.*$//;
                     }
-                    if( checkAgainstRange($range, $value) <= 0 ) {
-                        showValidationMessage 4, $cifF, $$block{name},
+                    if( checkAgainstRange($$dictD{values}{_type}[0], $range,
+                                            $valueWOPrecision)
+                            <= 0 ) {
+                        showValidationMessage 2, $cifF, $$block{name},
                             'tag [' . $tagAnalysed . '] value "'
                             . '" should be in range (' . $$range{min}
                             . ', ' . $$range{max} . ')';
@@ -224,7 +239,20 @@ while( my($cifF, $data) = each %$CIFfile ) {
                     }
                 }
                 # end-if check types of values
+                
+                # -----------------------------------------------------
+                # -----------------------------------------------------
+                # -----------------------------------------------------
+                
+                #
+                # if check enumerator values
+                #
+                
+                # end-if check enumerator values
             }
+            #
+            # end-iterate-through-dictionaries
+            #
             if( !$defined ) {
                 showValidationMessage 4, $cifF, 
                     $$block{name}, 'tag: [' . $tagAnalysed . ']'
@@ -235,8 +263,17 @@ while( my($cifF, $data) = each %$CIFfile ) {
 #            my $values = $$block{values}{$tagAnalysed};
 #            showRef( $values );
         }
+        #
+        # end-iterate-trough-CIF-values
+        #
     }
+    #
+    # end-iterate-trough-CIF-file-data-blocks
+    #    
 }
+#
+# end-iterate-trough-CIF-files
+#    
 
 #
 # here goes all subroutines bodies
@@ -453,6 +490,7 @@ sub checkTypes {
 }
 
 sub checkAgainstRange {
+    my $type  = shift; // char or numb
     my $range = shift;
     my $value = shift;
     if( !exists $$range{min} &&
@@ -460,16 +498,37 @@ sub checkAgainstRange {
         return -1;
     }
     if( exists $$range{min}
-        && $$range{min} le $value ) {
+        && (
+            ($type eq 'numb'
+                && $$range{min} <= $value)
+            ||
+            ($type eq 'char'
+                && $$range{min} le $value)
+        )
+    ) {
         if( exists $$range{max}
-            && $$range{max} ge $value ) {
+            && (
+                ($type eq 'numb'
+                    && $$range{max} >= $value)
+            ||
+                ($type eq 'char'
+                    && $$range{max} ge $value)
+            )
+        ) {
             return 1;
         } else {
             return 0;
         }
         return 0;
     } elsif ( exists $$range{max}
-        && $$range{max} ge $value ) {
+        && (
+            ($type eq 'numb'
+                && $$range{max} >= $value)
+            ||
+            ($type eq 'char'
+                && $$range{max} ge $value)
+        )
+    ) {
         return 1;
     } else {
         return 0;
