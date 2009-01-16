@@ -19,6 +19,7 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #
 use strict;
 use warnings;
+use Scalar::Util;
 use lib "./lib/perl5";
 use lib "./CIFParser";
 use CIFParser;
@@ -133,23 +134,6 @@ if( @$dictFiles )
     my $dictIUCRURI = "ftp://ftp.iucr.org/pub/cif_core.dic";
 }
 
-## don't dare to touch - dictionaries are being parsed for now
-## if($quiet == 0)
-## {
-## 	print "Got dictionary tags:\n";
-## 	while( my( $fname, $tags ) = each %$dictTags ) {
-## 	    print "For dictionary [" . $fname . "]:\n";
-## 	    while( my($tag, $data) = each %$tags ) {
-## 	        print "\t"
-## 	                . $tag
-## 	                . ' :: '
-## 	                . ${$$data}{values}{_type}[0]
-## 	                . "\n";
-## 	    }
-## 	}
-## 	print "\n";
-## }
-
 # parse CIF files. If none is passed - display help message
 if( !@ARGV ) {
 	HelpMessage();
@@ -168,7 +152,6 @@ while( my($cifF, $data) = each %$CIFfile ) {
     # start-iterate-trough-CIF-file-data-blocks
     #    
     for my $block ( @$data ) {
-    showRef( $block );
         if( $quiet == 0 ) {
             showValidationMessage 64, $cifF, $$block{name}, 
                     'analysis start';
@@ -210,31 +193,58 @@ while( my($cifF, $data) = each %$CIFfile ) {
                 # if check types of values
                 #
                 my $range = {};
-                if( exists $$dictD{values}{_enumeration_range} ) {
+                my %rangeForPrint;
+                if( exists $dictD->{lc $tagAnalysed}{values}{_enumeration_range}[0] ) {
                     ($$range{min}, $$range{max}) = split(/:/, 
-                        $$dictD{values}{_enumeration_range}, 2);
+                        $dictD->{lc $tagAnalysed}{values}{_enumeration_range}[0],
+                        2);
+                    %rangeForPrint = %$range;
+                    if( length($$range{min}) == 0 ) {
+                        delete $$range{min};
+                        $rangeForPrint{min} = '<any>';
+                    }
+                    if( length($$range{max}) == 0 ) {
+                        delete $$range{max};
+                        $rangeForPrint{max} = '<any>';
+                    }
                 }
-                for my $tagValue ( @{$block{values}{$tagAnalysed}} ) {
+                for my $tagValue ( @{$block->{values}{$tagAnalysed}} ) {
                     my $value = $tagValue;
                     my $valueWOPrecision = $value;
-                    if( $$dictD{values}{_type}[0] == 'numb' ) {
+                    if( $dictD->{lc $tagAnalysed}{values}{_type}[0] eq 'numb' ) {
                         $valueWOPrecision =~ s/\s*\(.*$//;
                     }
-                    if( checkAgainstRange($$dictD{values}{_type}[0], $range,
-                                            $valueWOPrecision)
-                            <= 0 ) {
-                        showValidationMessage 2, $cifF, $$block{name},
-                            'tag [' . $tagAnalysed . '] value "'
-                            . '" should be in range (' . $$range{min}
-                            . ', ' . $$range{max} . ')';
+                    if( %$range ) {
+                        if( checkAgainstRange(
+                        $dictD->{lc $tagAnalysed}{values}{_type}[0],
+                        $range, $valueWOPrecision) <= 0 ) {
+                            showValidationMessage 2,
+                                $cifF, $$block{name},
+                                'tag [' . $tagAnalysed . '] value "'
+                                . $value
+                                . '" should be in range ('
+                                .  $rangeForPrint{min}
+                                . ', ' . $rangeForPrint{max} . ')';
 
+                        } else {
+                            if( $quiet == 0 ) {
+                                showValidationMessage 64, $cifF, 
+                                    $$block{name},
+                                    'tag [' . $tagAnalysed . '] value "'
+                                    . $value
+                                    . '" is in range ('
+                                    . $rangeForPrint{min}
+                                    . ', ' . $rangeForPrint{max} . ')';
+                            }
+                        }
                     } else {
                         if( $quiet == 0 ) {
-                            showValidationMessage 64, $cifF, 
-                            $$block{name},
-                            'tag [' . $tagAnalysed . '] value "'
-                            . '" is in range (' . $$range{min}
-                            . ', ' . $$range{max} . ')';
+                            showValidationMessage 64, $cifF,
+                                $$block{name},
+                                'there are no range restrictions'
+                                . ' for tag ['
+                                . $tagAnalysed
+                                . '], skipping range test';
                         }
                     }
                 }
@@ -259,9 +269,6 @@ while( my($cifF, $data) = each %$CIFfile ) {
                     . ' is not defined';
             }
             
-#            print "Tag: " . $tagAnalysed . "\n";
-#            my $values = $$block{values}{$tagAnalysed};
-#            showRef( $values );
         }
         #
         # end-iterate-trough-CIF-values
@@ -443,7 +450,7 @@ sub getDict
         $datan++ and next if
             !exists $$dictF[$datan]{values}{_type};
         for ( @{$$dictF[$datan]{values}{_name}} ) {
-            $$tags{lc $_} = \$$dictF[$datan];
+            $$tags{lc $_} = $$dictF[$datan];
         }
         $datan++;
 	}
@@ -490,48 +497,46 @@ sub checkTypes {
 }
 
 sub checkAgainstRange {
-    my $type  = shift; // char or numb
+    my $type  = shift; # char or numb
     my $range = shift;
     my $value = shift;
     if( !exists $$range{min} &&
         !exists $$range{max} ) {
         return -1;
     }
-    if( exists $$range{min}
-        && (
-            ($type eq 'numb'
-                && $$range{min} <= $value)
-            ||
-            ($type eq 'char'
-                && $$range{min} le $value)
-        )
-    ) {
-        if( exists $$range{max}
-            && (
-                ($type eq 'numb'
-                    && $$range{max} >= $value)
-            ||
-                ($type eq 'char'
-                    && $$range{max} ge $value)
-            )
-        ) {
-            return 1;
-        } else {
-            return 0;
-        }
+    if( $type eq 'numb' ) {
+        return checkAgainstRangeNumb( $range, $value );
+    } else {
+        return checkAgainstRangeChar( $range, $value );
+    }
+    return 0;
+}
+
+sub checkAgainstRangeNumb {
+    my $range = shift;
+    my $value = shift;
+    if( ! Scalar::Util::looks_like_number($value) ) {
         return 0;
-    } elsif ( exists $$range{max}
-        && (
-            ($type eq 'numb'
-                && $$range{max} >= $value)
-            ||
-            ($type eq 'char'
-                && $$range{max} ge $value)
-        )
+    }
+    if(
+        ( !exists $$range{max} || $value <= $$range{max} )
+        &&
+        ( !exists $$range{min} || $value >= $$range{min} )
     ) {
         return 1;
-    } else {
-        return 0;
+    }
+    return 0;
+}
+
+sub checkAgainstRangeChar {
+    my $range = shift;
+    my $value = shift;
+    if(
+        ( !exists $$range{max} || $value le $$range{max} )
+        &&
+        ( !exists $$range{min} || $value ge $$range{min} )
+    ) {
+        return 1;
     }
     return 0;
 }
