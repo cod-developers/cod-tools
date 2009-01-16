@@ -41,6 +41,7 @@ my $dictFiles = [];
 my $dictFilesParsed = [];
 my $dictTags = {};
 my $quiet = 0;
+my $errorLevel = 2;
 my $parser = new CIFParser;
 
 #
@@ -96,9 +97,22 @@ sub checkTypes;
 
 # subroutine to check value against range (defined in dictionary)
 # Arguments:
-#   1. reference to range as $$range{min} and $$range{max}
-#   2. value, that must be checked
+#   1. type of value (numb or char);
+#   2. reference to range as $$range{min} and $$range{max};
+#   3. value, that must be checked.
 sub checkAgainstRange;
+
+# subroutine to check number value against range (defined in dictionary)
+# Arguments:
+#   1. reference to range as $$range{min} and $$range{max};
+#   2. value, that must be checked.
+sub checkAgainstRangeNumb;
+
+# subroutine to check character value against range (defined in dictionary)
+# Arguments:
+#   1. reference to range as $$range{min} and $$range{max};
+#   2. value, that must be checked.
+sub checkAgainstRangeChar;
 
 #
 # main program code
@@ -108,7 +122,7 @@ sub checkAgainstRange;
 @ARGV = getOptions(
         "--output"
             => \$outputFile,
-        "--dictionary" ## @todo load multiple dictionaries
+        "--dictionary"
             => $dictFiles,
         "--version"
             => sub{ VersionMessage() },
@@ -116,6 +130,8 @@ sub checkAgainstRange;
             => sub{ $quiet = 1; },
         "--no-quiet"
             => sub{ $quiet = 0; },
+        "--error-level"
+            => \$errorLevel,
         "--help"
             => sub{ HelpMessage() }
     );
@@ -194,7 +210,7 @@ while( my($cifF, $data) = each %$CIFfile ) {
                 #
                 my $range = {};
                 my %rangeForPrint;
-                if( exists $dictD->{lc $tagAnalysed}{values}{_enumeration_range}[0] ) {
+                if( exists $dictD->{lc $tagAnalysed}{values}{_enumeration_range} ) {
                     ($$range{min}, $$range{max}) = split(/:/, 
                         $dictD->{lc $tagAnalysed}{values}{_enumeration_range}[0],
                         2);
@@ -210,6 +226,40 @@ while( my($cifF, $data) = each %$CIFfile ) {
                 }
                 for my $tagValue ( @{$block->{values}{$tagAnalysed}} ) {
                     my $value = $tagValue;
+                    #
+                    # if check values in enumeration list
+                    #
+                    if( exists $dictD->{lc $tagAnalysed}{values}{_enumeration} ) {
+                        my $listEnumValuesForTag = join(', ',
+                                @{$dictD->{lc $tagAnalysed}{values}{_enumeration}}
+                                    );
+                        if( !grep $_ eq $value, @{$dictD->{lc $tagAnalysed}{values}{_enumeration}} ) {
+                            showValidationMessage 2,
+                                $cifF, $$block{name},
+                                'tag [' . $tagAnalysed . '] value "'
+                                . $value
+                                . '" should be one of these: ['
+                                . $listEnumValuesForTag
+                                . '] values';
+                        } else {
+                            if( $quiet == 0 ) {
+                            showValidationMessage 64,
+                                $cifF, $$block{name},
+                                'tag [' . $tagAnalysed . '] value "'
+                                . $value
+                                . '" is one of these: ['
+                                . $listEnumValuesForTag
+                                . '] values';
+                            }
+                        }
+                    }
+                    #
+                    # end-if check values in enumeration list
+                    #
+                    
+                    #
+                    # if check values against enumeration_range
+                    #
                     my $valueWOPrecision = $value;
                     if( $dictD->{lc $tagAnalysed}{values}{_type}[0] eq 'numb' ) {
                         $valueWOPrecision =~ s/\s*\(.*$//;
@@ -247,6 +297,9 @@ while( my($cifF, $data) = each %$CIFfile ) {
                                 . '], skipping range test';
                         }
                     }
+                    #
+                    # end-if check values against enumeration_range
+                    #
                 }
                 # end-if check types of values
                 
@@ -310,6 +363,9 @@ END_M
 sub showValidationMessage {
     my ($severity, $file, $dataBlockName, $message)
         = (shift, shift, shift, shift);
+    if( $severity > $errorLevel ) {
+        return 0;
+    }
     my $output = $0 . ": ";
     if( defined $severity && $severity ) {
         $output .= $severity . ": ";
