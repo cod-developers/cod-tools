@@ -3,7 +3,7 @@
 set -ue
 
 unset LANG
-unset `printenv | grep LC_`
+unset `printenv | grep LC_ | awk -F= '{print $1}'`
 
 find_numbers=./find-numbers.pl
 
