@@ -788,6 +788,16 @@ sub Run
 	$self->{USER}{FILENAME} = $filename;
 
 	$CIFParser::FILEIN = new FileHandle $filename;
+    my $scriptNamePrint = $0 eq '-e' ? "" : "$0: ";
+    my $filenamePrint = $filename eq '-' ?
+        "file '-'" : $filename;
+	if( !defined $CIFParser::FILEIN ) {
+        print STDERR $scriptNamePrint;
+        print STDERR $filenamePrint;
+		print STDERR ': Unable to open file for reading.';
+		return 1;
+	}
+
 	$| = 1;
 	if( $CIFParser::debug >= 2 && $CIFParser::debug < 3)
 	{
