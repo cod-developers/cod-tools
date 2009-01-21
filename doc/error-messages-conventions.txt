@@ -6,7 +6,7 @@ CONTENTS:
   5. OUTPUT
 
 =====================================================================
-1. INTO
+1. INTRO
 
 This is a proposal, on methods of error reporting. Target of this 
 document is developers of COD (Crystallography Open Database) tools.
@@ -20,11 +20,13 @@ One of the principles is that most, if not all, error messages should
 fit into a single line (80 columns, at its best).
 So it is easier to grep through them.
 
+For meaning of words SHOULD, MAY, etc. please refer to rfc2119.
+
 =====================================================================
 2. GENERAL VIEW
 
 The usual format for error message is as following:
-$0 <el>: <fn>(<ln>,<co>) <apos>: <emsg>
+$0: <fn>(<ln>,<co>) <apos>: <el> <emsg>
 Where:
     - $0 stands for script name; programs convention meaning "my name" - 
       by what name script has been called.
@@ -33,10 +35,8 @@ Where:
       If the library is called using -e (here - Perl command line switch 
       indicating next to it written code execution; for similar 
       behaviour in other programming languages - take a look at 
-      respective manual) instead of '$0: <fn>...' we should output only 
+      respective manual) instead of '$0: <fn>...' we SHOULD output only 
       '<fn>...' as it appears more readable.
-    - <el> - emergency level. Optional. Any single word, or script
-      error-level constant.
     - <fn> means file name. The name with user provided path to the file 
       being currently processed.
       If information is read from STDIN, then we should write 'file "-"' 
@@ -48,6 +48,9 @@ Where:
     - <apos> means Additional POSition information. I.e. for CIF files 
     we could place here DATA block name (in format data_<title> - so, as 
     it appears in file). Optional.
+    - <el> - emergency level. Optional. Any single word, or script
+      error-level constant. MAY be followed by colon, SHOULD be in 
+      uppercase, if it is a word.
     - <emsg> is error message as minimalistic and understandable as it 
     is possible.
 
@@ -65,6 +68,12 @@ E.g.3:
 ./cif_parse_new: tests/cif_cod_check_006.inp(34,38) data_2009397: syntax error
 _symmetry_space_group_name_H-M  'R 3' ccc
                                       ^
+E.g.4:
+./cif_validate: inputs/cif_core.dic: ERROR: No tags were defined in dictionaries.
+
+E.g.5:
+./perl-scripts/cif_validate.pm: inputs/cif_core.dic: Unable to open file 'inputs/cif_core.dic' for reading: No such file or directory.
+
 =====================================================================
 4. REGULAR EXPRESSIONS
 
@@ -73,14 +82,10 @@ are more readable than any generalization about generic forms.
 
 This is an example Perl script, which returns all possible parameters:
 ---- SOURCE:PERL\ ----
-    my $FNAME  = qr/[a-z0-9_\-\.\/]+/si;
-    my $ELEVEL = qr/[a-z0-9]+/si;
+    my $FNAME  = qr/[a-z0-9_,\-\.\/]+/si;
+    my $ELEVEL = qr/[A-Z0-9]+/si;
     $_ =~ m/
         ($FNAME)?
-        (?:
-            \s+
-            ($ELEVEL)
-        )?
         :\s*
         (?:
             ($FNAME)
@@ -96,7 +101,14 @@ This is an example Perl script, which returns all possible parameters:
                 ([^:]+)
             )?
         )
-        :\s*(.*)
+        :
+        (?:
+            \s+
+            ($ELEVEL)
+            :?
+        )?
+        \s*
+        (.*)
         /six;
 ---- /SOURCE:PERL ----
 
