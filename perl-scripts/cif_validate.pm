@@ -138,11 +138,19 @@ sub checkAgainstRangeChar;
 
 if( @$dictFiles )
 {
-    for( @{$dictFiles} ) {
+    DICTFILE: for( @{$dictFiles} ) {
         my $parsed = $parser->Run( $_ );
+        next DICTFILE if $parsed == 1;
         push( @$dictFilesParsed, $parsed );
         $$dictTags{$_} = getDict( $parsed );
         undef $parsed;
+    }
+    if( keys( %$dictTags ) == 0 ) {
+        print STDERR $0 . ': '
+                . join( ",", @$dictFiles )
+                . ': No tags were defined in dictionaries.'
+                . "\n";
+        exit 1;
     }
 } else {
     die "You must specify dictionary using '--dictionary'. Automatic "
