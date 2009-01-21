@@ -184,6 +184,7 @@ while( my($cifF, $data) = each %$CIFfile ) {
         # start-iterate-trough-CIF-values
         #
         for my $tagAnalysed ( @{$block->{tags}} ) {
+            my $lc_tagAnalysed = lc $tagAnalysed;
             my $defined = 0;
             my $correctDataType = 0;
             #
@@ -193,7 +194,7 @@ while( my($cifF, $data) = each %$CIFfile ) {
                 #
                 # if check tags
                 #
-                if( exists $$dictD{lc $tagAnalysed} ) {
+                if( exists $$dictD{$lc_tagAnalysed} ) {
                     $defined++;
                     if( $quiet == 0 ) {
                         showValidationMessage 64, $cifF, 
@@ -218,9 +219,9 @@ while( my($cifF, $data) = each %$CIFfile ) {
                 #
                 my $range = {};
                 my %rangeForPrint;
-                if( exists $dictD->{lc $tagAnalysed}{values}{_enumeration_range} ) {
+                if( exists $dictD->{$lc_tagAnalysed}{values}{_enumeration_range} ) {
                     ($$range{min}, $$range{max}) = split(/:/, 
-                        $dictD->{lc $tagAnalysed}{values}{_enumeration_range}[0],
+                        $dictD->{$lc_tagAnalysed}{values}{_enumeration_range}[0],
                         2);
                     %rangeForPrint = %$range;
                     if( length($$range{min}) == 0 ) {
@@ -238,11 +239,11 @@ while( my($cifF, $data) = each %$CIFfile ) {
                     #
                     # if check values in enumeration list
                     #
-                    if( exists $dictD->{lc $tagAnalysed}{values}{_enumeration} ) {
+                    if( exists $dictD->{$lc_tagAnalysed}{values}{_enumeration} ) {
                         my $listEnumValuesForTag = join(', ',
-                                @{$dictD->{lc $tagAnalysed}{values}{_enumeration}}
+                                @{$dictD->{$lc_tagAnalysed}{values}{_enumeration}}
                                     );
-                        if( !grep $_ eq $value, @{$dictD->{lc $tagAnalysed}{values}{_enumeration}} ) {
+                        if( !grep $_ eq $value, @{$dictD->{$lc_tagAnalysed}{values}{_enumeration}} ) {
                             showValidationMessage 2,
                                 $cifF, $$block{name},
                                 "tag '" . $tagAnalysed . "' value "
@@ -273,12 +274,12 @@ while( my($cifF, $data) = each %$CIFfile ) {
                     #
                     if( %$range ) {
                         my $valueWOPrecision = $value;
-                        if( $dictD->{lc $tagAnalysed}{values}{_type}[0] 
+                        if( $dictD->{$lc_tagAnalysed}{values}{_type}[0] 
                              eq 'numb' ) {
                             $valueWOPrecision =~ s/\s*\(.*$//;
                         }
                         if( checkAgainstRange(
-                        $dictD->{lc $tagAnalysed}{values}{_type}[0],
+                        $dictD->{$lc_tagAnalysed}{values}{_type}[0],
                         $range, $valueWOPrecision) <= 0 ) {
                             showValidationMessage 2,
                                 $cifF, $$block{name},
