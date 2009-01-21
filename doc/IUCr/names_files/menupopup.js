@@ -1,0 +1,6 @@
+function setuparrays(help_title,help_text) {
+  help_title[0] = 'Login';
+  help_text[0] ='<form id="loginform" onsubmit="nd();makeRequest(formurllogin, \'loginform\', \'loginbox\');return false;" action="javascript:void%200"><table><tr><td colspan="2" width="100%" align="right"><a style="border: 1px solid #000; text-decoration: none;" href="" onclick="nd()">x</a></td></tr><tr><td>IUCr ID:</td><td><input name="id" size="10" style="font-size: 12px;" type="text"><input name="loginbox" value="yes" type="hidden"></td></tr><tr><td>Password:</td><td><input style="font-size: 12px;" name="passwd" size="10" type="password"></td></tr><tr><td></td><td><input name="Login" value="Login" style="font-size: 12px;" type="submit"></td></tr></table></form>';
+  help_title[1] = 'Search';
+  help_text[1] ='<form id="searchform" onsubmit="nd();makeRequest(formurlsearch, \'searchform\', \'mainbody\');return false;" action="javascript:void%200"><table><tr><td width="100%" align="right"><a style="border: 1px solid #000; text-decoration: none;" href="" onclick="nd()">x</a></td></tr><tr><td><input name="words" size="13" style="font-size: 12px;" type="text"><input name="searchbox" value="yes" type="hidden"></td></tr><tr><td><input name="Action" value="Search" style="font-size: 12px;" type="submit"></td></tr></table></form>';
+}
