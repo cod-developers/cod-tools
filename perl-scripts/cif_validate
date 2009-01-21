@@ -210,6 +210,31 @@ while( my($cifF, $data) = each %$CIFfile ) {
                 }
                 # end-if check tags
                 
+                #
+                # if check tags deprecation (replacements)
+                #
+                if( exists $dictD->{$lc_tagAnalysed}{values}{_related_item} ) {
+                    my $replaceWith = [];
+                    for( my $i = 0;
+                            $i < @{$dictD->{$lc_tagAnalysed}{values}{_related_item}};
+                            $i++ )
+                        {
+                        if( $dictD->{$lc_tagAnalysed}{values}{_related_function}[$i]
+                             eq 'replace' ) {
+                            push @{$replaceWith},
+                                $dictD->{$lc_tagAnalysed}{values}{_related_item}[$i];
+                        }
+                    }
+                    if( @$replaceWith != 0 ) {
+                        showValidationMessage 8, $cifF, $$block{name},
+                            "tag '" . $tagAnalysed . "' has been"
+                            . ' replaced by tag(-s): ['
+                            . join(', ', @$replaceWith)
+                            . '] according to ' . $dictF;
+                    }
+                }
+                # end-if check tags deprecation (replacements)
+                
                 # -----------------------------------------------------
                 # -----------------------------------------------------
                 # -----------------------------------------------------
