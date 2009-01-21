@@ -1,0 +1,730 @@
+<html>
+<head>
+</head>
+<body bgcolor="#ffffff">
+</body>
+<PRE>
+
+COMCIFS Working Group on Dictionary Maintenance
+===============================================
+
+Brian McMahon, John Westbrook, Herbert Bernstein
+
+Final report
+
+15 January 2000
+
+Introduction
+------------
+As the number of formal and informal uses of STAR and CIF grows, it
+becomes increasingly important to have a clear understanding of what
+defines a valid CIF data set. Particularly as cross-disciplinary
+investigations become more common, it becomes essential to understand how to
+merge CIFs from multiple disciplines, and to ensure efficient and
+reliable transitions among versions of dictionaries.
+
+Here we propose some mechanisms to ensure coherent interactions among
+evolving definitions of CIFs for various domains of science.
+
+Whether being done by an individual author or by the IUCr through
+COMCIFS, the ground rules for extending the language are the same:
+
+Once a definition has been given for a tag, then all CIFs written
+using that tag must have the original meaning preserved forever.  This
+does not mean that the definition of a tag may not be changed.  Errors
+can and should be corrected, and definitions extended, but all of this
+must be done in an upwards compatible way - once CIFs have been
+created using a tag defined in a certain way, it would cause endless
+confusion if years later, when those CIFs were validated against a
+later dictionary, the meaning of what had been written in the past
+were to be changed.  If a new concept is to be expressed, don't
+recycle an old tag, create a new one.
+
+If new tags are to be defined, they must be presented in a dictionary
+conforming to the rules of the DDL appropriate to the domain involved.
+
+Problems arise when multiple groups wish to make extensions with
+similar tags.  COMCIFS will resolve conflicts involving official
+dictionaries, but a standard protocol is needed to minimize conflicts
+among local extensions made in different laboratories.
+
+We give rules for concatenation, inclusion or overlay of one or more
+dictionary files or, possibly, fragments of data files to build a
+notional "virtual dictionary". The dictionary structures built in memory
+by a validation application may not be exact images of this notional
+dictionary file, but it is a convenient model for discussing how to
+assemble dictionary fragments.
+
+Six components of dictionary maintenance are identified and discussed below.
+   1. Identify dictionaries
+   2. Locate dictionaries
+   3. Reserve namespaces
+   4. Add to official dictionaries
+   5. Merge dictionaries
+   6. Versioning tools
+
+A summary of the major recommendations arising from the discussion is given in
+section 7.
+
+
+1. Identification of dictionaries
+---------------------------------
+If one is to validate the data names appearing in a CIF data file, one must
+know what dictionary it is appropriate to validate against. The process is
+bidirectional; the CIF must identify the dictionary or dictionaries against
+which it is claimed to be compliant; and when those dictionaries have been
+retrieved, there must be internal confirmation that they are the files
+required. These issues are addressed in reverse order below. Note that an
+application seeking to validate a data file should not consider the file
+invalid if a data name is found that has no definition in the dictionaries
+referenced. The CIF standard permits the incorporation of local and
+standard names in any data file. Nevertheless, it is recommended as good
+practice that all data names in a CIF should be able to be validated against
+dictionary files, including locally constructed dictionaries.
+
+
+(a) internal identification
+---------------------------
+For DDL1 dictionaries, the dictionaries are identified internally by
+three fields; thus for the current working version of the core:
+     _dictionary_name               cif_core.dic
+     _dictionary_version            2.1
+     _dictionary_update             1999-03-24
+
+Each unique edition of a dictionary should have a unique triad of values
+for these names. Each release version should have a different value of
+_dictionary_version (minor revisions and bug fixes will take the form
+2.1, 2.1.1 etc.). The structure of _dictionary_name is
+&lt;star-type&gt;_&lt;application&gt;.dic
+
+This convention will be enforced (by COMCIFS) on new dictionaries. The
+original published core has instead:
+     _compliance                    'CIF Dictionary (Core 1991)'
+
+The implicit values for this file are
+     _dictionary_name               cif_core.dic
+     _dictionary_version            1.0
+     _dictionary_update             1991-09-20
+
+For DDL2, the equivalent identifiers are _dictionary.title,
+_dictionary.version; the revision history is itemised with the data
+names _dictionary_history.version, _dictionary_history.update, and
+_dictionary_history.revision
+
+As matters stand at present in DDL2 dictionaries (e.g. mmCIF), the
+dictionary identification and history items are set in the single data block
+that has scope over the entire file (this differs from practice in DDL1
+dictionaries, where each definition is in a separate data block). It is
+proposed that the dictionary information be stored in its own save frame in
+future revisions of DDL2 dictionaries, so that dictionary naming and versioning 
+can be handled at an application level when dictionaries are merged (as
+discussed later).
+
+(b) compliance certification
+----------------------------
+Data files should certify the dictionaries against which they may be validated 
+with data names from the AUDIT_CONFORM category, e.g.
+     _audit_conform_dict_name       cif_core.dic
+     _audit_conform_dict_version    2.0
+[for DDL2 files, _audit_conform.dict_name and _audit_conform.dict_version].
+These data names may be looped when there are multiple dictionaries.
+
+Ideally, the various _audit_ items (in categories such as AUDIT,
+AUDIT_CONFORM, AUDIT_LINK, AUDIT_AUTHOR and AUDIT_CONTACT_AUTHOR)
+should relate only to the creation and update of the current data
+block. An attempt to encourage this has been made in the wording of
+the definitions in the current core and mmCIF dictionaries.
+
+We should enforce the rule that _audit_ items refer only to the
+current data block, so that a file containing multiple data blocks
+must repeat its _audit_ lists in each data block.
+
+
+2. Location of dictionaries
+---------------------------
+The core data name _audit_conform_dict_location [_audit_conform.dict_location]
+permits a data file to specify a filename or URL identifying the location of
+the dictionary file referred to by _audit_conform_dict_name and *_version.
+
+However, it is recommended that this data name be used only to locate local
+dictionaries. To guard against changing file names or URLs, and to grant
+access to the most current version of any dictionary, public dictionaries
+are best located using a public registry. It is proposed that COMCIFS
+maintain such a registry. An example of the contents of such a registry
+(expressed of course as a STAR File) is given in Appendix 1. Note how the
+example permits dictionaries local to a particular application or laboratory
+to be made publicly available if so required.
+
+It is possible to reference both public and local dictionaries: a value
+of '.' for _audit_conform_dict_location implies that the location should
+be obtained from the public registry information; e.g.
+     loop_
+         _audit_conform_dict_name
+         _audit_conform_dict_version
+         _audit_conform_dict_location
+           cif_core.dic  2.1   .
+           cif_pd.dic    1.0   .
+           cif_my.dic    1.0   /usr/local/dics/my_local_dictionary
+(In this example the dictionary file location is given as an absolute path
+name, and hence is valid on only one machine or network.)
+
+In detail, the recommendations for locating and loading dictionaries are as
+follows.
+
+(a) COMCIFS shall construct and maintain a registry of known
+dictionaries.  The values that must have a unique value for each entry
+are the combination of _dic.name and _dic.version.  Local dictionaries
+appropriate to local data names with a reserved prefix "foo" may be
+assigned the identifier cif_local_foo.dic, and their locations may be
+registered as publicly accessible URLs if their maintainers are
+willing to allow them to be visible to external validation software.
+This file will be maintained by COMCIFS at a public and stable URL.
+ 
+(b) Dictionary validation software source shall be distributed with a
+copy of the most recent version of the above file, and with the URL of
+the master copy hard coded. Library utilities should be provided that
+permit local cacheing of the registry file, and the ability to
+download and replace the cached register at periodic intervals.
+Individual dictionary files located through the use of the registry
+should also be cached locally.
+
+(c) Each data file should contain a reference to one or more dictionary
+files against which the file should be validated. This will comprise
+minimally _audit_conform_dict_name [_audit_conform.dict_name for DDL2 
+files] (N), and optionally *_version (V) and *_location (L). In the event
+that no dictionaries are specified, the default validation dictionary
+should be that identified as having N="cif_core.dic" and V="."
+(i.e. the most recent version of the core dictionary). Since
+dictionaries are intended always to be extended, it normally suffices
+to specify only the name (and possibly location).
+
+(d) A dictionary validation application should try to load the
+referenced validation dictionaries according to the following
+protocol.
+
+If N, V and L are all given, try to load the file found at location L,
+or a locally cached copy of the file thus referenced. If this
+fails, raise a warning. Then search the dictionary registry for
+entries matching the given N and V. If successful, try to load the
+file at the location given by the matching entry (or a locally cached
+copy). If this fails, try to load files identified from the registry
+with the same N but progressively older versions V (version numbering
+takes the form n.m.l..., where n, m, l, ... are integers referring to
+progressively less significant revision levels). Version '.' should be
+accessed prior to any other numbered version. If this attempt fails,
+raise a warning indicating that the desired dictionary could not be
+located.
+
+If N and V are given, try to load locally cached or master copies of
+the files with location given in the registry file, in the order
+stated above, viz:
+     - the version number V specified
+     - the version with version number indicated as '.'
+     - progressively older versions
+Success in other than the first instance should be accompanied by a
+warning message specifying the revision actually loaded.
+
+If only N is given, try to load files identified in the registry by
+     - the version with version number indicated as '.'
+     - progressively older versions
+
+If all efforts to load a referenced dictionary fail, the
+validation application should raise a warning.
+
+If all efforts to load all referenced dictionaries fail, the
+validation application should raise an error.
+
+(e) For any dictionary file successfully loaded according to the
+protocol stipulated in (d), the validation application must scan the
+file for internal identifiers (_dictionary_name, _dictionary_version)
+and ensure that they match the values of N and V (where V is not
+"."). Failure in matching should raise an error.
+
+
+3. Reserved namespaces
+----------------------
+For official CIF dictionaries it may be taken as a responsibility of COMCIFS
+to check at the approval stage that no data name clashes with any currently
+registered in the existing official dictionaries. For local dictionaries
+(files defining additional data names), a registry of reserved prefixes
+is maintained by COMCIFS. See
+ 	<A  HREF="http://www.iucr.org/iucr-top/cif/spec/reserved.html">http://www.iucr.org/iucr-top/cif/spec/reserved.html</A>
+for a proposed documentation of the conventions and procedures involved.
+
+The reserved prefix is simply an underscore-bounded string within the data
+name: for DDL1 applications it must be the first such component of the
+data name; for DDL2 applications the first component of the data name if
+describing data names in a category not defined in the official dictionaries;
+or the first component after the period character (category delimiter)
+if the local data name is an extension to an existing category.
+
+The registry of reserved prefixes maintained as described in
+<A  HREF="http://www.iucr.org/iucr-top/cif/spec/reserved.html">http://www.iucr.org/iucr-top/cif/spec/reserved.html</A> should include the
+additional convention that a local dictionary defining data names with
+reserved prefix foo will be identified by the dictionary name cif_local_foo.dic
+
+The character string "[local]" shall not be used in any COMCIFS-approved
+dictionary-defined tag, so that tags constructed with "[local]" in any
+position will never conflict with tags in any official dictionary. This can
+facilitate development work with tags that might in future be offered as
+new public ones.
+
+It would be prudent for any group planning any interchange of CIFs with
+such tags to combine the "[local]" construct with a properly registered
+prefix, such as "_foo" to make "_foo_[local]"; but for purely local
+work involving only official dictionaries combined with local efforts,
+only "[local]" somewhere within a tag would be necessary to avoid conflicts.
+
+In order to resolve conflicts among local dictionaries and to facilitate
+mapping the namespaces of local dictionaries into the namespace of official
+dictionaries when particular local dictionaries achieve community
+acceptance, a "cifmap" program is proposed which maps tags in both
+CIFs and dictionaries to new namespaces, either tag-by-tag or in
+blocks. In order to preserve the integrity of CIFs using the unmapped
+dictionary, the remapped dictionary should not be given the same name as
+the original.  The mapped dictionary is not a version of the original
+dictionary.  It is a different dictionary
+
+The exact syntax of the commands to cifmap should be discussed
+and made as user-friendly as possible.  Since our context is CIF, it
+seems natural to make the mapping into a loop, e.g.:
+   loop_
+      _cifmap_map.from
+      _cifmap_map.to
+      _cifmap_map.regex
+      _cifmap_map.comments
+      _cifmap_map.quoted_strings
+           '_some_original_tag'     '_some_target_tag'       no  yes  yes
+           '*_xyz_\[local\]'        '${1}_qrs_\[local\]'    yes  yes   no
+           '*[.|_]abc_\[local\]*    '${1}${2}defghi_${3}'   yes   no  yes
+
+
+
+4. Addition to official dictionaries
+------------------------------------
+As the official dictionaries become larger and more complex, it is useful to
+have a mechanism allowing additions to be listed, tested and modified in an
+orderly fashion before full integration with the official dictionary. An
+administrative mechanism has been established for the mmCIF dictionary, and can 
+serve as a model for other dictionaries. The mmCIF approach is as follows.
+
+An editorial board has been appointed, to which new data items may be
+submitted. The board members have responsibility for the scientific content of
+the new items; they work alongside technical editors responsible for ensuring
+that the new definitions are compliant with the dictionary syntax.
+
+Proposed extensions to the dictionary are submitted to the mmCIF web server in
+the form of a dictionary entry. To facilitate this, a definition template
+is available on the mmCIF server via the URL
+     <A  HREF="http://ndbserver.rutgers.edu/NDB/mmcif/dict-templates/index.html">http://ndbserver.rutgers.edu/NDB/mmcif/dict-templates/index.html</A>
+
+Proposed definitions receive a preliminary review by the editorial staff and
+are then sent to the appropriate board member(s) for scientific content review.
+The reviewers receive full dictionary definitions and return them with
+corrections and/or modifications.
+
+Once definitions have been approved they are put into a provisional extensions
+dictionary. If the proposed data item was submitted with a local data name
+prefix, that prefix is removed in the entry in the extensions dictionary, but
+an alias to the local dictionary name (with the extension) is retained. A
+policy for retention times for these aliases is under discussion within the
+mmCIF community.
+
+The provisional dictionary is made available on the mmCIF server and updated
+on a continuing basis. Members of the community at large are encouraged to
+monitor the evolution of the extensions dictionary via the mmCIF web page,
+and to comment on all new data items via the mmCIF list server.
+
+When the extensions dictionary has been formally approved by COMCIFS, the new
+data items are incorporated into the parent mmCIF dictionary.
+
+It is recommended that other dictionary maintenance groups study this model
+and consider offering it within their own communities. A set of definition
+templates should be constructed for DDL1 dictionaries.
+
+
+5. Merging dictionaries
+-----------------------
+Suppose that one wishes to validate a data file against the core
+dictionary, except that one wishes to modify the enumeration range of one
+or more data items. (For example, the core dictionary permits
+_atom_site_attached_hydrogens an enumeration range of 0 to 8; but one
+might wish to validate well-behaved organic molecules where anything
+above 4 almost certainly represents a mistake.) It would seem
+laborious to create an alternative dictionary of the same size as the
+core simply for this one change.
+
+Here is a suggested protocol for extending, replacing and merging
+dictionary definition fragments. (The terminology "dictionary
+fragment" refers here to a physical file which contains one or more
+data blocks or save frames containing complete or partial sets of
+attributes associated with data names that are identified in the
+relevant dictionary data block or save frame through the item "_name"
+or "_item.name".)
+
+(a) Assemble and load all dictionary fragments against which the
+current data block will be validated. The order of presentation is
+important. Dictionary fragments should be assembled in the order cited
+by a data file.  A dictionary validation application may accept a list
+of additional dictionary fragments to PREPEND to, REPLACE, or APPEND
+to the list referenced internally.
+
+(b) Define three modes in which name collisions in the aggregate
+dictionary file may be resolved, called STRICT, REPLACE and OVERLAY.
+
+(c) Scan the aggregate dictionary files in the order of
+loading. Assemble for each data name a composite definition frame
+thus, depending on the mode in which the validation application is
+working:
+
+    STRICT: If a data name appears to be multiply defined, generate a
+fatal error
+    REPLACE: All attributes previously stored for the conflicting data
+name are expunged, and only the attributes in the later data block
+(or save frame) containing the definition are preserved
+    OVERLAY: New attributes are added to those already stored for the
+data name; conflicting attributes replace those already stored
+
+Appendix 2 describes the process in more detail for a DDL1.4 dictionary,
+and Appendix 3 gives some examples.
+
+This protocol permits the creation of a coherent virtual dictionary from
+several different dictionary files or fragments. Although it must be used with
+care, it permits different levels of validation based on dictionary-driven
+methods, without modifying the original dictionary files themselves.
+
+
+6. Versioning tools
+-------------------
+Though we all desire dictionary stability in order to avoid confusion and
+to keep software from breaking, change is a constant of the progress of
+science.  New dictionaries for new applications of CIF will be needed and
+new versions of existing dictionaries will be needed. Further, retrieval of a
+specific previous version may be required to resolve anomalies or difficulties
+in data file validation.  When there was just a core dictionary changing every
+few years, almost any mechanism of managing such changes would work.  As we
+enter a period of multiple dictionaries and rapid rates of change, a
+rigorous approach to revision control will help to ensure a stability of use
+even while the dictionaries themselves change.
+
+A single application may need to work with a virtual dictionary
+created from multiple official dictionaries and one or more local
+dictionaries by layering the definitions from each dictionary onto
+those of the others. A general long-term implementation of this approach may
+require extensions to the DDLs to allow precise specification of dictionary
+deletions and insertions, including changes to comments and of lines
+within text fields, and a merging of virtual dictionary management
+software into a variant of the popular Unix revision control system,
+rcs, with some improvements to provide a simple CIF-editor interface
+and better protection against file corruption than rcs provides.  The
+resulting software suite could well be called cifrcs.
+
+
+7. Recommendations
+------------------
+(1) A registry of reserved prefixes should be maintained by COMCIFS to permit
+    software developers exclusive use of a reserved namespace.
+    [Comment: this is already in place at the URL published in the main body of 
+    the report.]
+(2) COMCIFS should maintain a registry of known dictionaries mapping dictionary
+    identifiers against real URLs.
+(3) Dictionary files for validation should be located and loaded with
+    reference to the registry. 
+(4) The data names _audit_conform_dict_name, *_version and *_location 
+    (or their DDL2 equivalents) should be included in each data block of a
+    data file.
+(5) A virtual dictionary may be constructed by prepending, replacing or
+    appending external dictionary files to the list specified in the
+    _audit_conform_ items of a data block. 
+(6) The protocol for merging dictionaries as outlined in section 5 of this
+    report should be approved and published.
+(7) Mechanisms should be established by dictionary maintenance groups to permit
+    suggestions for new data names to be received from the public, reviewed
+    and incorporated into subsequent revisions of public dictionaries.
+    [Comment: the mmCIF model is commended but may not be appropriate for all
+    communities.]
+
+
+APPENDIX 1. An example dictionary registry file
+-----------------------------------------------
+data_validation_dictionaries 
+    loop_
+      _dic.name
+      _dic.version
+      _dic.DDL_compliance
+      _dic.reserved_prefix
+      _dic.URL
+      _dic.description
+      _dic.maintainer_name
+      _dic.maintainer_email
+    cif_core.dic
+      .  1.4   .               <A  HREF="ftp://ftp.iucr.org/pub/cifdics/cif_core.dic">ftp://ftp.iucr.org/pub/cifdics/cif_core.dic</A>
+      'Core CIF Dictionary'           'B. McMahon' bm@iucr.org
+    cif_core.dic
+      1.0   1.4   .            <A  HREF="ftp://ftp.iucr.org/pub/cifdics/cifdic.C91">ftp://ftp.iucr.org/pub/cifdics/cifdic.C91</A>
+      'Original Core CIF Dictionary'  'B. McMahon' bm@iucr.org
+    cif_core.dic
+      2.0.1   1.4   .          <A  HREF="ftp://ftp.iucr.org/pub/cifdics/cif_core_2.0.1.dic">ftp://ftp.iucr.org/pub/cifdics/cif_core_2.0.1.dic</A>
+      'Core CIF Dictionary'           'B. McMahon' bm@iucr.org
+    cif_core.dic
+      2.1     1.4   .          <A  HREF="ftp://ftp.iucr.org/pub/cifdics/cif_core_2.1.dic">ftp://ftp.iucr.org/pub/cifdics/cif_core_2.1.dic</A>
+      'Core CIF Dictionary'           'B. McMahon' bm@iucr.org
+    cif_pd.dic
+      1.0   1.4   .            <A  HREF="ftp://ftp.iucr.org/pub/cifdics/cif_pd_1.0.dic">ftp://ftp.iucr.org/pub/cifdics/cif_pd_1.0.dic</A>
+      'Powder CIF Dictionary'         'B.H. Toby' Brian.Toby@NIST.GOV
+    cif_mm.dic
+      1.0   2.1.2   .          <A  HREF="ftp://ftp.iucr.org/pub/cifdics/cif_mm_1.0.dic">ftp://ftp.iucr.org/pub/cifdics/cif_mm_1.0.dic</A>
+      'Macromolecular CIF Dictionary' 'P.M.D.F. Fitzgerald'
+      paula_fitzgerald@merck.com
+    cif_local_iucr.dic
+      1.0   1.4   iucr         <A  HREF="ftp://ftp.iucr.org/pub/cifdics/cifdic.iucr">ftp://ftp.iucr.org/pub/cifdics/cifdic.iucr</A>
+      'IUCr journal use'              'B. McMahon' bm@iucr.org
+    cif_local_xtal.dic
+      1.0   1.4   xtal         <A  HREF="ftp://ftp.crystal.uwa.edu.au/pub/cifdic.xtal">ftp://ftp.crystal.uwa.edu.au/pub/cifdic.xtal</A>
+      'Xtal program system'           'S.R. Hall' syd@crystal.uwa.edu.au
+    cif_local_shelx.dic
+      1.0   1.4   shelx      .        'SHELX solution and refinement programs'
+      'G.M. Sheldrick' gsheldr@shelx.uni-ac.gwdg.de
+    cif_local_gsas.dic
+      1.0   1.4   gsas       .   'GSAS powder refinement system' 'A. Larson' .
+    cif_local_cgraph.dic
+      1.0   1.4   cgraph       <A  HREF="ftp://ftp.OxfordCryosystems.co.uk/foo.bar">ftp://ftp.OxfordCryosystems.co.uk/foo.bar</A>
+      'Oxford Cryosystems Crystallographica package'
+      'A. Renshaw' alex@OxfordCryosystems.co.uk
+    cif_local_ccdc.dic
+      1.0   1.4   ccdc        <A  HREF="ftp://ftp.ccdc.cam.ac.uk/foo.bar">ftp://ftp.ccdc.cam.ac.uk/foo.bar</A>
+      'Cambridge Crystallographic Data Centre' 'F.H. Allen'  
+      allen@ccdc.cam.ac.uk
+
+
+
+APPENDIX 2: Merging or overlay of dictionaries with respect to DDL 1.4
+----------------------------------------------------------------------
+[Imagine a hypothetical dictionary merge operation
+    cifdiccreate -mode OVERLAY a.dic b.dic &gt; c.dic]
+
+(1) a.dic and b.dic should each have at most one datablock containing the
+data names _dictionary_name and _dictionary_version (with, optionally,
+_dictionary_update and _dictionary_history). The *_name and *_version
+together identify uniquely the dictionary file, and should match
+corresponding entries in the IUCr registry if this is a public dictionary.
+This information is conventionally stored in a datablock named
+data_on_this_dictionary.
+
+In DDL1.4, all four of _dictionary_name, *_version, *_update and
+*_history are scalars, i.e. may not be looped. So a possible protocol
+for constructing the new dictionary identifier section in the
+resultant c.dic is the following:
+
+   1. Create a datablock data_on_this_dictionary at the top of c.dic.
+   2. If a dictionary name is supplied (via command-line switch
+"-dname" for example) write this as the value of _dictionary_name;
+otherwise generate a pseudo-unique string (e.g. concatenate the
+hostid, pid and current date string on a Unix system).
+   3. If a dictionary version number is supplied (via command-line
+switch "-dversion" for example) write this as the value of
+_dictionary_version; otherwise supply the value "1.0".
+   4. Supply the current date in the format yyyy-mm-dd as the value of
+_dictionary_update.
+   5. Create a composite _dictionary_history by concatenation of the
+individual _dictionary_history fragments.
+
+(2) COMCIFS has currently undertaken not to use STAR global_
+constructs in CIF data dictionaries. However, there is a global_ section
+in the DDL1.4 dictionary, and we should perhaps plan for future instances.
+For our purposes, we presume that each datablock within the primitive file
+following a global_ statement implements the global assignments
+according to the standard STAR rules. That is, in the case of DDL1.4
+itself, the global_ statement "_list no" is implemented in each
+successive datablock unless that datablock already contains a
+different "_list" statement. The global assignment does not extend
+across file boundaries (i.e. in our example, a global_ in a.dic is
+expanded only to the end of the file a.dic, and not applied to
+b.dic). All global_'s are expanded in the merge process and no global_
+statement is written to c.dic.
+
+(3) There is no deep significance to the ordering of datablocks
+(containing definitions) in dictionaries, though they are conventionally
+sorted alphabetically. For convenience, datablocks should be written out
+in the order in which they are encountered in the input primitive
+dictionary files, except that definitions modified by subsequent entries
+remain in their initial location.
+
+(4) We propose the following procedure. Load a datablock
+from the first dictionary file. Locate the '_name' tag. (Because _name
+may be looped, there may be more than one value. For now, we assume
+there's a single value of _name.) Search the next dictionary file for
+a datablock containing the same value of '_name'. Load the contents of
+that datablock.
+
+(a) If the new datablock contains only data items
+that do not appear in the first datablock, they are simply
+concatenated with those already present.
+
+(b) If the new datablock contains a scalar data item already present in the
+first datablock (i.e. with "_list no") discard the stored attributes.
+
+(c) If the new datablock contains data items that may be looped and
+that occur in the first datablock, build a new composite table of
+values in this way:
+      (i) construct a valid loop header if necessary
+      (ii) do not repeat identical sets of values (i.e. collapse
+identical table rows)
+      (iii) if it is possible to identify the category key, then issue
+a fatal warning and die if there are identical instances of a key
+value (after the normalisation of step (ii) has occurred)
+      (iv) else append new rows to the table
+
+When the new composite datablock has been built according to these
+principles, search the next dictionary file specified and repeat.
+
+
+
+APPENDIX 3: Examples
+--------------------
+We consider how a hypothetical validation program "dictcheck" might validate a
+data file against a range of local validation dictionaries.
+
+Here is an example: a data file test.cif includes the fragment
+    _audit_conform_dict_name   'official'
+    _dummy                     1234.5
+
+The entry for "_dummy" in the dictionary "official" looks like this:
+    data_dummy
+    _name               '_dummy'
+    _type                numb
+    _enumeration_range   0:          # i.e. any positive number
+
+A local validation dictionary dict_A has entry
+    data_dummy_modified
+    _name               '_dummy'
+    _enumeration_range   0:1000
+
+A local validation dictionary dict_B has entry
+    data_dummy
+    _name               '_dummy'
+    _type_extended       integer
+
+A local validation dictionary dict_C has entry
+    data_dummy
+    _name               '_dummy'
+    _type                char
+
+Here is an analysis of some runs of the notional dictcheck application.
+
+dictcheck test.cif
+    The data item is valid (assuming dictcheck was able to locate and load
+    the dictionary "official".
+
+dictcheck -mode STRICT -A "dict_A" test.cif
+    An attempt is made to define the data name "_dummy" in two dictionaries;
+    the validation process fails.
+
+dictcheck -mode OVERLAY -A "dict_A" test.cif
+    The value of _dummy is invalid, because the latest enumeration range
+    restricts its value from 0 to 1000.
+
+dictcheck -mode OVERLAY -P "dict_A" test.cif
+    The value of _dummy is valid, because dict_A is prepended to the list of
+    dictionary fragments scanned, so that the last enumeration range stored
+    is 0:
+
+dictcheck -mode OVERLAY -A "dict_B" test.cif
+    An additional attribute (_type_extended, a local attribute presumed to
+    be understood by the validation software) is overlaid on the properties
+    of _dummy, and its value is now invalid because it is not an integer.
+
+dictcheck -mode REPLACE -A "dict_B" test.cif
+    The _type_extended attribute is now present, but the original _type
+    attribute has been lost (mode REPLACE expunges any stored information).
+    I suggest that whether or not this is an error is application dependent.
+
+dictcheck -mode REPLACE -A "dict_C" test.cif
+    The value of "_dummy" is invalid, because it is not of type char.
+
+dictcheck -mode OVERLAY -A "dict_C" test.cif
+    Now there is an inconsistency in the "virtual dictionary" - the
+    definition block for "_dummy" has effectively two attributes
+        _type                char
+        _enumeration_range   0:
+    which are incompatible, because an attempt has been made to impose
+    a numeric range on a character value.
+
+An OVERLAY example: a.dic has the following entry:
+
+   data_cell_volume
+    _name                      '_cell_volume'
+    _category                    cell
+    _type                        numb
+    _type_conditions             esd
+    _enumeration_range           0.0:
+    _units                       A^3^
+    _units_detail              'cubic angstroms'
+    _definition
+;              Cell volume V in angstroms cubed.
+;
+
+b.dic has this datablock:
+
+   data_cell_volume_additional
+    _name                      '_cell_volume'
+    _type_construct      '[+-]?[1-9][0-9]*\.?[0-9]*\(([1-9]?[0-9]*)\)?'
+    _example                   123.4
+
+These are merged to create the legitimate datablock
+
+   data_cell_volume
+    _name                      '_cell_volume'
+    _category                    cell
+    _type                        numb
+    _type_conditions             esd
+    _enumeration_range           0.0:
+    _units                       A^3^
+    _units_detail              'cubic angstroms'
+    _definition
+;              Cell volume V in angstroms cubed.
+;
+    _type_construct      '[+-]?[1-9][0-9]*\.?[0-9]*\(([1-9]?[0-9]*)\)?' 
+    _example                   123.4
+
+Now suppose we merge an additional datablock from another file,
+
+   data_cell_volume_additional  # same name, but OK - in a different file
+    _name                      '_cell_volume'
+    _example                   4567.8
+    _example_detail            'large cell'
+
+The resultant looks like this:   
+   data_cell_volume            
+    _name                      '_cell_volume' 
+    _category                    cell 
+    _type                        numb 
+    _type_conditions             esd 
+    _enumeration_range           0.0: 
+    _units                       A^3^ 
+    _units_detail              'cubic angstroms' 
+    _definition
+;              Cell volume V in angstroms cubed. 
+;   
+    _type_construct      '[+-]?[1-9][0-9]*\.?[0-9]*\(([1-9]?[0-9]*)\)?'
+    loop_ _example  _example_detail     123.4           .
+                                       4567.8          'large cell'
+
+Now try to merge in another datablock,
+
+ data_cell_volume_more
+    _name                      '_cell_volume'
+    loop_ _example  _example_detail     4567.8          'large cell'
+                                         123.4          'small cell'
+    _units                       A^3^
+
+This now causes a fatal error. Note first that the first row in the
+"_example" table duplicates the second row in the preceding example, but this
+is not an error; the second occurrence of " 4567.8  'large cell'" is simply
+discarded. However, the next row conflicts with an existing row containing
+an identical key value, and this IS an error.
+------------------------------------------------------------------------------
+</PRE>
+
+</body>
+</html>
