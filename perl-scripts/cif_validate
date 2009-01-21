@@ -240,6 +240,31 @@ while( my($cifF, $data) = each %$CIFfile ) {
                 # -----------------------------------------------------
                 
                 #
+                # if check list mandatory
+                #
+                if( exists $dictD->{$lc_tagAnalysed}{values}{_list_mandatory}
+                    && $dictD->{$lc_tagAnalysed}{values}{_list_mandatory}[0]
+                        eq 'yes' )
+                    {
+                    if( exists $block->{inloop}{$tagAnalysed} ) {
+                        showValidationMessage 64, $cifF, $$block{name},
+                            "tag '" . $tagAnalysed . "' is loop"
+                            . ' mandatory according to ' . $dictF
+                            . ' and is in loop';
+                    } else {
+                        showValidationMessage 2, $cifF, $$block{name},
+                            "tag '" . $tagAnalysed . "' is loop"
+                            . ' mandatory according to ' . $dictF
+                            . ' but is not in loop';
+                    }
+                }
+                # end-if check list mandatory
+                
+                # -----------------------------------------------------
+                # -----------------------------------------------------
+                # -----------------------------------------------------
+                
+                #
                 # if check types of values
                 #
                 my $range = {};
