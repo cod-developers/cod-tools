@@ -1,0 +1,457 @@
+##############################################################################
+#                                                                            #
+#                             DDL CORE DICTIONARY                            #
+#                                                                            #
+##############################################################################
+
+
+data_on_this_dictionary
+
+    _dictionary_name            ddl_core.dic
+    _dictionary_version         1.4 
+    _dictionary_update          1995-05-16
+    _dictionary_history
+;
+  1991-03-08 "Implementing SMD in STAR: Dictionary Definition Language"  
+                 A F P Cook, ORAC Ltd., 8 March 1991. AFPC
+  1991-06-25  Adjustments and refinement for CIF applications. SRH
+  1991-09-02  Further refinements prior to "cifdic.c91". SRH
+  1993-05-10  Additions arising from discussions with Phil Bourne, 
+                 Tony Cook, Brian McMahon. SRH
+  1993-05-11  Further adjustments and Cyclops tests. SRH
+  1993-05-14  Proposed additional changes. PEB
+  1993-05-17  Further adjustments. SRH
+  1993-06-01  Refinements and additions. SRH
+  1993-07-19  Some tidying up. SRH
+  1993-08-10  Final checks before Beijing. SRH
+  1993-12-12  Following the Cambridge meeting with FHA and AFPC. SRH
+  1993-12-16  Following discussions with Brian McMahon in Chester. SRH
+  1993-12-17  Further adjustments. SRH
+  1994-02-18  Add _include_file provisions. SRH
+  1994-08-08  Install _type_construct definitions and apply. SRH
+  1994-08-24  Adjustments following Brian McMahon's comments. SRH
+  1994-11-16  Changes following Brussels workshop. SRH
+  1995-05-16  Changes to _units definitions. SRH
+;
+
+
+global_            
+
+    _list                        no
+    _list_mandatory              no
+    _list_level                  1
+    _type_conditions             none
+    _type_construct              .+
+
+
+
+
+data_category
+    _definition
+;              Character string which identifies the natural grouping of data
+               items to which the specified data item belongs. If the data
+               item belongs in a looped list then it must be grouped only with
+               items from the same category, but there may be more than one
+               looped list of the same category provided that each loop has its
+               own independent reference item (see _list_reference).
+;
+    _name                      '_category'
+    _category                    category
+    _type                        char
+
+
+data_definition   
+    _definition                 
+;              The text description of the defined item.
+;
+    _name                      '_definition'
+    _category                    definition
+    _type                        char
+
+
+data_dictionary_history
+    _definition
+;              A chronological record of the changes to the dictionary file
+               containing the definition. Normally this item is stored in the
+               separate data block labelled data_on_this_dictionary.
+;
+    _name                      '_dictionary_history'
+    _category                    dictionary
+    _type                        char
+
+
+data_dictionary_name          
+    _definition
+;              The name string which identifies the generic identity of
+               dictionary. The standard construction for these names is
+                       <application code>_<dictionary version>.dic
+               Normally this item is stored in the separate data block
+               labelled data_on_this_dictionary.
+;
+    _name                      '_dictionary_name'
+    _category                    dictionary
+    _type                        char
+    loop_ _example               ddl_core.dic  cif_mm_core.dic
+
+
+data_dictionary_update        
+    _definition
+;              The date that the dictionary was last updated.
+               Normally this item is stored in the separate data block
+               labelled data_on_this_dictionary.
+;
+    _name                      '_dictionary_update'
+    _category                    dictionary
+    _type                        char
+    _type_construct             
+                   (_chronology_year)-(_chronology_month)-(_chronology_day) 
+
+
+data_dictionary_version       
+    _definition
+;              The dictionary version number. Version numbers cannot decrease
+               with updates. Normally this item is stored in the separate data
+               block labelled data_on_this_dictionary.
+;
+    _name                      '_dictionary_version'    
+    _category                    dictionary
+    _type                        numb
+
+
+data_enumeration          
+    _definition
+;              Permitted value(s) for the defined item.
+;
+    _name                      '_enumeration'
+    _category                    enumeration
+    _type                        char
+    _list                        both
+    _list_mandatory              yes
+
+
+data_enumeration_default  
+    _definition
+;              The default value for the defined item if it is not specified
+               explicitly. If a data value is not declared the default is 
+               assumed to be the "most-likely" or "natural" value.
+;
+    _name                      '_enumeration_default'
+    _category                    enumeration_default
+    _type                        char
+
+
+data_enumeration_detail   
+    _definition
+;              A description of a permitted value(s) for the defined item, as
+               identified by _enumeration.
+;
+    _name                      '_enumeration_detail'
+    _category                    enumeration
+    _type                        char
+    _list                        both
+    _list_reference            '_enumeration'
+
+
+data_enumeration_range    
+    _definition
+;              The range of values permitted for a defined item. This can 
+               apply to 'numb' or 'char' items which have a preordained 
+               sequence (e.g. numbers or alphabetic characters).
+               If 'max' is omitted then the item can have any permitted 
+               value greater than or equal to 'min'.
+;
+    _name                      '_enumeration_range'  
+    _category                    enumeration_range
+    _type                        char
+    _type_construct            (_sequence_minimum):((_sequence_maximum)?)
+    loop_ _example                -4:10   a:z    B:R   0:
+
+
+data_example
+    _definition
+;              An example value of the defined item.
+;
+    _name                      '_example'
+    _category                    example
+    _type                        char
+    _list                        both
+    _list_mandatory              yes
+
+
+data_example_detail
+    _definition
+;              A description of an example value for the defined item.
+;
+    _name                      '_example_detail'       
+    _category                    example
+    _type                        char
+    _list                        both
+    _list_reference            '_example'       
+
+
+data_list 
+    _definition
+;              Signals if the defined item is declared in a looped list.
+;
+    _name                      '_list'          
+    _category                    list
+    _type                        char
+    loop_ _enumeration
+          _enumeration_detail   yes   'can only be declared in a looped list'
+                                no    'cannot be declared in a looped list'
+                                both  'declaration in a looped list optional'
+    _enumeration_default        no
+
+
+data_list_level          
+    _definition
+;              Specifies the level of the loop structure in which a defined
+               item, with the attribute _list 'yes' or 'both', must be declared.
+;
+    _name                      '_list_level'
+    _category                    list
+    _type                        numb
+    _enumeration_range           1:
+    _enumeration_default         1 
+
+
+data_list_link_child
+    _definition
+;              Identifies data item(s) by name which must have a value which
+               matches that of the defined item. These items are referred to
+               as "child" references because they depend on the existence 
+               of the defined item.
+;
+    _name                      '_list_link_child'
+    _category                    list_link_child
+    _type                        char
+    _list                        both
+
+
+data_list_link_parent
+    _definition
+;              Identifies a data item by name which must have a value which
+               matches that of the defined item, and which must be present in
+               the same data block as the defined item. This provides for a 
+               reference to the "parent" data item.
+;
+    _name                      '_list_link_parent'
+    _category                    list_link_parent
+    _type                        char
+    _list                        both
+
+
+data_list_mandatory    
+    _definition
+;               Signals if the defined item must be present in the loop 
+                structure containing other items of the designated _category. 
+                This property is transferrable to another data item which is
+                identified by _related_item and has _related_function set as
+                'alternate'.
+;                
+    _name                      '_list_mandatory'            
+    _category                    list
+    _type                        char
+    loop_ _enumeration
+          _enumeration_detail  
+                           yes  'required item in this category of looped list'
+                           no   'optional item in this category of looped list'
+    _enumeration_default         no
+
+
+data_list_reference 
+    _definition
+;              Identifies the data item, or items, which must be present
+               (collectively) in a looped list with the defined data item 
+               in order that the loop structure is valid. The data item(s)
+               identified by _list_reference provides a unique access code 
+               to each loop packet. Note that this property may be trans-
+               ferred to another item with '_related_function alternate'.
+;            
+    _name                      '_list_reference'          
+    _category                    list_reference
+    _type                        char
+    _list                        both
+
+
+data_list_uniqueness
+    _definition
+;              Identifies data items which, collectively, must have a unique
+               values for the loop structure of the designated _category items
+               to be deemed valid. This attribute is specified in the 
+               definition of a data item th _list_mandatory set to 'yes'.
+;
+    _name                      '_list_uniqueness'
+    _category                    list_uniqueness
+    _type                        char
+    _list                        both
+
+
+data_name   
+    _definition
+;              The data name(s) of the defined item(s). If data items are 
+               closely related, or represent an irreducible set, their names 
+               may be declared as a looped sequence in the same definition.
+;
+    _name                      '_name'
+    _category                    name
+    _type                        char
+    _list                        both
+    loop_ _example             '_atom_site_label'
+                               '_atom_attach_all   _atom_attach_ring'
+                               '_index_h   _index_k   _index_l'
+                               '_matrix_11 _matrix_12 _matrix_21 _matrix_22'
+
+
+data_related_item
+    _definition
+;              Identifies data item(s) which have a classified relationship
+               to the defined data item. The nature of this relationship is 
+               specified by _related_function.
+;
+    _name                      '_related_item'
+    _category                    related
+    _type                        char
+    _list                        both
+    _list_mandatory              yes
+
+
+data_related_function
+    _definition
+;              Specifies the relationship between the defined item and the
+               item specified by _related_item. The following classifications
+               are recognised.
+
+               'alternate' signals that the item referred to in _related_item
+               has attributes that permit it to be used alternately to the
+               defined item for validation purposes.
+
+               'convention' signals that the item referred to in _related_item
+               is equivalent to the defined item except for a predefined
+               convention which requires a different _enumeration set.
+
+               'conversion' signals that the item referred to in _related_item
+               is equivalent to the defined item except that different scaling
+               or conversion factors are applied.
+
+               'replace' signals that the item referred to in _related_item
+               may be used identically to replace the defined item.
+;
+    _name                      '_related_function'
+    _category                    related
+    _type                        char
+    _list                        yes 
+    _list_reference            '_related_item'   
+    loop_ _enumeration
+          _enumeration_detail
+                         alternate  'used alternatively for validation tests'
+                         convention 'equivalent except for defined convention'
+                         conversion 'equivalent except for conversion factor'
+                         replace    'new definition replaces the current one'
+
+
+data_type   
+    _definition
+;              The type specification of the defined item.
+
+               Type 'numb' identifies items which must have values that are
+               identifiable numbers. The acceptable syntax for these numbers
+               is application dependent, but the formats illustrated by the
+               following identical numbers are considered to be interchangeable.
+               42   42.000  0.42E2  .42E+2  4.2E1  420000D-4  0.0000042D+07
+
+               Type 'char' identifies items which need not be interpretable
+               numbers. The specification of these items must comply with the
+               STAR syntax specification of either a 'contiguous single line
+               string' bounded by blanks or blank-quotes, or a 'text string'
+               bounded by semi-colons as first character of a line.
+
+               Type 'null' identifies items which appear in the dictionary
+               for data definition and descriptive purposes. These items
+               serve no function outside of the dictionary files.
+;
+    _name                      '_type'
+    _category                    type
+    _type                        char
+    loop_ _enumeration
+          _enumeration_detail   numb  'numberically-interpretable string'
+                                char  'character or text string'
+                                null  'for dictionary purposes only'
+
+
+data_type_conditions   
+    _definition
+;              Codes defining conditions on the _type specification.
+
+               'esd' permits a number string to contain an appended standard
+               deviation number enclosed within parentheses. E.g. 4.37(5)
+
+               'seq' permits data to be declared as a sequence of values
+               separated by a comma <,> or a colon <:>.
+                  * The sequence v1,v2,v3,. signals that v1, v2, v3, etc.
+                    are alternative values.
+                  * The sequence v1:v2 signals that v1 and v2 are the boundary
+                    values of a continuous range of values satisfying the
+                    requirements of _enumeration for the defined item.
+               Combinations of alternate and range sequences are permitted.
+;
+    _name                      '_type_conditions'
+    _category                    type_conditions
+    _type                        char
+    _list                        both
+    loop_ _enumeration
+          _enumeration_detail 
+                            
+                       none   'no extra conditions apply to the defined _type'
+                       esd    'numbers *may* have esd's appended within ()'
+                       seq    'data may be declared as a permitted sequence'
+
+
+data_type_construct    
+    _definition
+;              String of characters specifying the construction of the data
+               value for the defined data item. The construction is composed
+               of two entities:
+                  (1) data names
+                  (2) construction characters
+               The rules of construction conform to the the regular expression
+               (REGEX) specificatiopns detailed in the IEEE document P1003.2
+               Draft 11.2 Sept 1991 (ftp file '/doc/POSIX/1003.2/p121-140').
+;
+    _name                      '_type_construct'   
+    _category                    type_construct
+    _type                        char
+    _example                   (_year)-(_month)-(_day)
+    _example_detail            'a typical construction for _date'
+
+
+data_units
+    _definition
+;              A unique code which identifies the units of the defined data
+               item. A description of the units is provided in _units_detail.
+;
+    _name                      '_units'
+    _category                    units
+    _type                        char
+    loop_ _example
+          _example_detail         K    'degrees Kelvin'
+                                  C    'degrees Celsius'
+                                  rad  'radians of angle'
+                                  e    'electrons'
+                                  V    'volts'
+                                  Dal  'Daltons'
+                                  m    'metres'
+                                  kg   'kilogrammes'
+                                  s    'seconds'
+
+data_units_detail
+    _definition
+;              A description of the numerical units applicable to the defined
+               item and identified by the code _units.
+;
+    _name                      '_units_detail'
+    _category                    units
+    _type                        char
+
+
+#-eof-eof-eof-eof-eof-eof-eof-eof-eof-eof-eof-eof-eof-eof-eof-eof-eof-eof-eof
