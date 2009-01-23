@@ -34,7 +34,7 @@ use Getopt::Long;
 #
 my $version = 0.1;
 
-my $CIFfile = {};
+my $CIFfile = ();
 my $CIFtags;
 my $outputFile;
 my $dictFiles = [];
@@ -142,13 +142,15 @@ if( !@ARGV ) {
 }
 
 for( @ARGV ) {
-    $$CIFfile{$_} = $parser->Run( $_ );
+    push( @{$CIFfile}, $_ );
 }
 
 #
 # start-iterate-trough-CIF-files
 #    
-while( my($cifF, $data) = each %$CIFfile ) {
+CIFFILEANAL: for my $cifF ( @{$CIFfile} ) {
+    my $data = $parser->Run( $cifF );
+    next CIFFILEANAL if $data == 1;
     #
     # start-iterate-trough-CIF-file-data-blocks
     #    
