@@ -159,6 +159,7 @@ CIFFILEANAL: for my $cifF ( @{$CIFfile} ) {
             showValidationMessage 64, $cifF, $$block{name}, 
                     'analysis start';
         }
+        my %tagsListedInLoops;
         #
         # start-iterate-trough-CIF-values
         #
@@ -217,6 +218,70 @@ CIFFILEANAL: for my $cifF ( @{$CIFfile} ) {
                 # -----------------------------------------------------
                 # -----------------------------------------------------
                 # -----------------------------------------------------
+                
+                #
+                # if group of tags must be presented within same loop
+                #
+                if( defined $dictD->{$lc_tagAnalysed}{values}{_name}
+                    && defined $dictD->{$lc_tagAnalysed}{values}{_list}
+                    && !defined $tagsListedInLoops{$lc_tagAnalysed}
+                    && @{$dictD->{$lc_tagAnalysed}{values}{_name}} > 1
+                    && $dictD->{$lc_tagAnalysed}{values}{_list}[0] eq 'yes' ) {
+                    my $countItems = 
+                        @{$dictD->{$lc_tagAnalysed}{values}{_name}};
+                    my $allTagsFound = 0;
+                    #
+                    # iterate through loops array from CIFfile, current 
+                    # data block.
+                    # NOTE: $loopAnalysed is an array-ref
+                    #
+                    for my $loopAnalysed ( @{$block->{loops}} ) {
+                        my @found;
+                        my @notFound;
+                        #
+                        # iterate through tags list, that there marked 
+                        # as mandatory if at least one is defined.
+                        # NOTE: $mandatoryTag is a scalar
+                        #
+                        for my $mandatoryTag ( 
+                            @{$dictD->{$lc_tagAnalysed}{values}{_name}}
+                        ) {
+                            if( grep $_ eq $mandatoryTag, @{$loopAnalysed} ) {
+                                push @found, $mandatoryTag;
+                                $tagsListedInLoops{lc $mandatoryTag} = 'yes';
+                            } else {
+                                push @notFound, lc($mandatoryTag);
+                            }
+                        }
+                        if( @found > 0 ) {
+                            if( @found == $countItems ) {
+                               $allTagsFound = 1;
+                                showValidationMessage 64, $cifF,
+                                    $$block{name},
+                                    'tags ['
+                                    . join(', ', 
+                                        @{$dictD->{$lc_tagAnalysed}{values}{_name}})
+                                    . '] must be in loop according to '
+                                    . $dictF . ' and were found'
+                                    . ' within loop';
+                            } else {
+                                for( @notFound ) {
+                                    $tagsListedInLoops{$_} = 'no';
+                                }
+                                showValidationMessage 2, $cifF,
+                                    $$block{name},
+                                    'tags ['
+                                    . join(', ', 
+                                        @{$dictD->{$lc_tagAnalysed}{values}{_name}})
+                                    . '] must be in loop according to '
+                                    . $dictF . ' but only ['
+                                    . join(', ', @found)
+                                    . '] were found';
+                            }
+                        }
+                    }
+                }
+                # end-if group of tags must be presented within same loop
                 
                 #
                 # if check list mandatory
