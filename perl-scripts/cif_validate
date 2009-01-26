@@ -86,6 +86,14 @@ sub checkAgainstRangeNumb;
 #   2. value, that must be checked.
 sub checkAgainstRangeChar;
 
+# subroutine to return name of closest (according to dictionary) 
+#     mandatory tag, if applicable. Return undef, if no mandatory tag is 
+#     related to tag analysed
+# Arguments:
+#   1. reference to dictionary
+#   2. lowercased name of currently analysed tag
+sub getRelatedMandatory;
+
 #
 # main program code
 #
@@ -159,7 +167,22 @@ CIFFILEANAL: for my $cifF ( @{$CIFfile} ) {
             showValidationMessage 64, $cifF, $$block{name}, 
                     'analysis start';
         }
+        #
+        # hash tagsListedInLoops
+        # If a tag (key is lowercased tag name) appears in this hash it 
+        # means, that it must appear within loop.
+        # Value is enum('yes', 'no'). Depending on this we know, whereas 
+        # tag was correctly (i.e. together with other tags) defined 
+        # within some loop.
+        #
         my %tagsListedInLoops;
+        #
+        # hash baseNamesOfRefTags
+        # A tag listed in this hash depends on some other loop_ tag, and
+        # is correctly referenced (parent tag is defined within same 
+        # loop). Value is enum('yes', 'no').
+        #
+        my %baseNamesOfRefTags;
         #
         # start-iterate-trough-CIF-values
         #
@@ -220,6 +243,48 @@ CIFFILEANAL: for my $cifF ( @{$CIFfile} ) {
                 # -----------------------------------------------------
                 
                 #
+                # if check referenced list mandatory
+                #
+                my $mandatoryRTag = getRelatedMandatory($dictD, $lc_tagAnalysed);
+                if( defined $mandatoryRTag
+                    && !exists($baseNamesOfRefTags{$dictD->{$lc_tagAnalysed}{name}})
+                    ) {
+                    for my $loopAnalysed ( @{$block->{loops}} ) {
+                        if( grep $_ eq $tagAnalysed, @{$loopAnalysed} ) {
+                            if( grep lc($_) eq $mandatoryRTag, @{$loopAnalysed} ) {
+                                showValidationMessage 64, $cifF,
+                                    $$block{name},
+                                    "tag '" . $mandatoryRTag
+                                    . "' is mandatory in loop when"
+                                    . ' tag(s) ['
+                                    . join(', ', 
+                                    @{$dictD->{$lc_tagAnalysed}{values}{_name}})
+                                    . '] are defined'
+                                    . ' according to ' . $dictF
+                                    . ' and was found';
+                                $baseNamesOfRefTags{$dictD->{$lc_tagAnalysed}{name}}
+                                    = 'yes';
+                            } else {
+                                showValidationMessage 2, $cifF,
+                                    $$block{name},
+                                    "tag '" . $mandatoryRTag
+                                    . "' is mandatory in loop when"
+                                    . ' tag(s) ['
+                                    . join(', ', 
+                                    @{$dictD->{$lc_tagAnalysed}{values}{_name}})
+                                    . '] are defined'
+                                    . ' according to ' . $dictF
+                                    . ' but was not found';
+                                $baseNamesOfRefTags{$dictD->{$lc_tagAnalysed}{name}}
+                                    = 'no';
+                            }
+                        }
+                    }
+                }
+                # end-if check referenced list mandatory
+                
+
+                #
                 # if group of tags must be presented within same loop
                 #
                 if( defined $dictD->{$lc_tagAnalysed}{values}{_name}
@@ -246,7 +311,7 @@ CIFFILEANAL: for my $cifF ( @{$CIFfile} ) {
                         for my $mandatoryTag ( 
                             @{$dictD->{$lc_tagAnalysed}{values}{_name}}
                         ) {
-                            if( grep $_ eq $mandatoryTag, @{$loopAnalysed} ) {
+                            if( grep lc($_) eq $mandatoryTag, @{$loopAnalysed} ) {
                                 push @found, $mandatoryTag;
                                 $tagsListedInLoops{lc $mandatoryTag} = 'yes';
                             } else {
@@ -549,4 +614,30 @@ sub checkAgainstRangeChar {
         return 1;
     }
     return 0;
+}
+
+sub getRelatedMandatory {
+    my $dict = shift;
+    my $tag = shift;
+    $tag = lc $tag;
+    my $reccurentCall = shift;
+    my $requeryTag = undef;
+    if( !exists $dict->{$tag} ) {
+        return undef;
+    }
+    if( defined $reccurentCall
+        && exists $dict->{$tag}{values}{_list_mandatory}
+        && $dict->{$tag}{values}{_list_mandatory}[0] eq 'yes' ) {
+        return $tag;
+    }
+    if( exists $dict->{$tag}{values}{_list_link_parent} ) {
+        $requeryTag = $dict->{$tag}{values}{_list_link_parent}[0];
+    }
+    if( exists $dict->{$tag}{values}{_list_reference} ) {
+        $requeryTag = $dict->{$tag}{values}{_list_reference}[0];
+    }
+    if( !defined $requeryTag ) {
+        return undef;
+    }
+    return getRelatedMandatory $dict, $requeryTag, 1;
 }
