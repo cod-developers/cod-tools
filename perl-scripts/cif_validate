@@ -62,6 +62,9 @@ my $outputOptions = [];
 #
 my %showMap = (
         #
+        # some private tags
+        '_debug'             => 1,
+        #
         # tag name checking related options
         'tag-exsits'         => 1,
         'tag-deprecated'     => 0,
@@ -260,7 +263,7 @@ CIFFILEANAL: for my $cifF ( @{$CIFfile} ) {
     #    
     for my $block ( @$data ) {
         if( $quiet == 0 ) {
-            showValidationMessage 64, $cifF, $$block{name}, 
+            showValidationMessage 64, '_debug', $cifF, $$block{name}, 
                     'analysis start';
         }
         #
@@ -293,16 +296,14 @@ CIFFILEANAL: for my $cifF ( @{$CIFfile} ) {
                 #
                 # if check tags
                 #
-                if( exists $$dictD{$lc_tagAnalysed} ) {
-                    $defined++;
-                    if( $quiet == 0 ) {
-                        showValidationMessage 64, $cifF, 
+                if( $showMap{'tag-exsits'} ) {
+                    if( exists $$dictD{$lc_tagAnalysed} ) {
+                        $defined++;
+                        showValidationMessage 64, 'tag-exsits', $cifF, 
                             $$block{name}, "tag '" . $tagAnalysed . "'"
                             . ' do exist in dictionary ' . $dictF;
-                    }
-                } else {
-                    if( $quiet == 0 ) {
-                        showValidationMessage 16, $cifF, 
+                    } else {
+                        showValidationMessage 16, 'tag-exsits', $cifF, 
                             $$block{name}, "tag '" . $tagAnalysed . "'"
                             . ' does not exist in dictionary ' . $dictF;
                     }
@@ -312,24 +313,27 @@ CIFFILEANAL: for my $cifF ( @{$CIFfile} ) {
                 #
                 # if check tags deprecation (replacements)
                 #
-                if( exists $dictD->{$lc_tagAnalysed}{values}{_related_item} ) {
-                    my $replaceWith = [];
-                    for( my $i = 0;
+                if( $showMap{'tag-deprecated'} ) {
+                    if(exists $dictD->{$lc_tagAnalysed}{values}{_related_item}) {
+                        my $replaceWith = [];
+                        for( my $i = 0;
                             $i < @{$dictD->{$lc_tagAnalysed}{values}{_related_item}};
                             $i++ )
-                        {
-                        if( $dictD->{$lc_tagAnalysed}{values}{_related_function}[$i]
-                             eq 'replace' ) {
-                            push @{$replaceWith},
-                                $dictD->{$lc_tagAnalysed}{values}{_related_item}[$i];
+                            {
+                            if($dictD->{$lc_tagAnalysed}{values}{_related_function}[$i]
+                                eq 'replace') {
+                                push @{$replaceWith},
+                                    $dictD->{$lc_tagAnalysed}{values}{_related_item}[$i];
+                            }
                         }
-                    }
-                    if( @$replaceWith != 0 ) {
-                        showValidationMessage 8, $cifF, $$block{name},
-                            "tag '" . $tagAnalysed . "' has been"
-                            . ' replaced by tag(-s): ['
-                            . join(', ', @$replaceWith)
-                            . '] according to ' . $dictF;
+                        if( @$replaceWith != 0 ) {
+                            showValidationMessage 8, 'tag-deprecated',
+                                $cifF, $$block{name},
+                                "tag '" . $tagAnalysed . "' has been"
+                                . ' replaced by tag(-s): ['
+                                . join(', ', @$replaceWith)
+                                . '] according to ' . $dictF;
+                        }
                     }
                 }
                 # end-if check tags deprecation (replacements)
@@ -341,38 +345,43 @@ CIFFILEANAL: for my $cifF ( @{$CIFfile} ) {
                 #
                 # if check referenced list mandatory
                 #
-                my $mandatoryRTag = getRelatedMandatory($dictD, $lc_tagAnalysed);
-                if( defined $mandatoryRTag
-                    && !exists($baseNamesOfRefTags{$dictD->{$lc_tagAnalysed}{name}})
-                    ) {
-                    for my $loopAnalysed ( @{$block->{loops}} ) {
-                        if( grep $_ eq $tagAnalysed, @{$loopAnalysed} ) {
-                            if( grep lc($_) eq $mandatoryRTag, @{$loopAnalysed} ) {
-                                showValidationMessage 64, $cifF,
-                                    $$block{name},
-                                    "tag '" . $mandatoryRTag
-                                    . "' is mandatory in loop when"
-                                    . ' tag(s) ['
-                                    . join(', ', 
-                                    @{$dictD->{$lc_tagAnalysed}{values}{_name}})
-                                    . '] are defined'
-                                    . ' according to ' . $dictF
-                                    . ' and was found';
-                                $baseNamesOfRefTags{$dictD->{$lc_tagAnalysed}{name}}
-                                    = 'yes';
-                            } else {
-                                showValidationMessage 2, $cifF,
-                                    $$block{name},
-                                    "tag '" . $mandatoryRTag
-                                    . "' is mandatory in loop when"
-                                    . ' tag(s) ['
-                                    . join(', ', 
-                                    @{$dictD->{$lc_tagAnalysed}{values}{_name}})
-                                    . '] are defined'
-                                    . ' according to ' . $dictF
-                                    . ' but was not found';
-                                $baseNamesOfRefTags{$dictD->{$lc_tagAnalysed}{name}}
-                                    = 'no';
+                if( $showMap{'ref-list-mandatory'} ) {
+                    my $mandatoryRTag = getRelatedMandatory($dictD, 
+                                                     $lc_tagAnalysed);
+                    if( defined $mandatoryRTag
+                        && !exists($baseNamesOfRefTags{$dictD->{$lc_tagAnalysed}{name}})
+                        ) {
+                        for my $loopAnalysed ( @{$block->{loops}} ) {
+                            if( grep $_ eq $tagAnalysed, @{$loopAnalysed} ) {
+                                if( grep lc($_) eq $mandatoryRTag, @{$loopAnalysed} ) {
+                                    showValidationMessage 64,
+                                        'ref-list-mandatory', $cifF,
+                                        $$block{name},
+                                        "tag '" . $mandatoryRTag
+                                        . "' is mandatory in loop when"
+                                        . ' tag(s) ['
+                                        . join(', ', 
+                                        @{$dictD->{$lc_tagAnalysed}{values}{_name}})
+                                        . '] are defined'
+                                        . ' according to ' . $dictF
+                                        . ' and was found';
+                                    $baseNamesOfRefTags{$dictD->{$lc_tagAnalysed}{name}}
+                                        = 'yes';
+                                } else {
+                                    showValidationMessage 2,
+                                        'ref-list-mandatory', $cifF,
+                                        $$block{name},
+                                        "tag '" . $mandatoryRTag
+                                        . "' is mandatory in loop when"
+                                        . ' tag(s) ['
+                                        . join(', ', 
+                                        @{$dictD->{$lc_tagAnalysed}{values}{_name}})
+                                        . '] are defined'
+                                        . ' according to ' . $dictF
+                                        . ' but was not found';
+                                    $baseNamesOfRefTags{$dictD->{$lc_tagAnalysed}{name}}
+                                        = 'no';
+                                }
                             }
                         }
                     }
@@ -383,61 +392,68 @@ CIFFILEANAL: for my $cifF ( @{$CIFfile} ) {
                 #
                 # if group of tags must be presented within same loop
                 #
-                if( defined $dictD->{$lc_tagAnalysed}{values}{_name}
-                    && defined $dictD->{$lc_tagAnalysed}{values}{_list}
-                    && !defined $tagsListedInLoops{$lc_tagAnalysed}
-                    && @{$dictD->{$lc_tagAnalysed}{values}{_name}} > 1
-                    && $dictD->{$lc_tagAnalysed}{values}{_list}[0] eq 'yes' ) {
-                    my $countItems = 
-                        @{$dictD->{$lc_tagAnalysed}{values}{_name}};
-                    my $allTagsFound = 0;
-                    #
-                    # iterate through loops array from CIFfile, current 
-                    # data block.
-                    # NOTE: $loopAnalysed is an array-ref
-                    #
-                    for my $loopAnalysed ( @{$block->{loops}} ) {
-                        my @found;
-                        my @notFound;
+                if( $showMap{'tags-grouped'} ) {
+                    if( defined $dictD->{$lc_tagAnalysed}{values}{_name}
+                        && defined $dictD->{$lc_tagAnalysed}{values}{_list}
+                        && !defined $tagsListedInLoops{$lc_tagAnalysed}
+                        && @{$dictD->{$lc_tagAnalysed}{values}{_name}} > 1
+                        && $dictD->{$lc_tagAnalysed}{values}{_list}[0] eq 'yes' ) {
+                        my $countItems = 
+                            @{$dictD->{$lc_tagAnalysed}{values}{_name}};
+                        my $allTagsFound = 0;
                         #
-                        # iterate through tags list, that there marked 
-                        # as mandatory if at least one is defined.
-                        # NOTE: $mandatoryTag is a scalar
+                        # iterate through loops array from CIFfile, 
+                        # current data block.
+                        # NOTE: $loopAnalysed is an array-ref
                         #
-                        for my $mandatoryTag ( 
-                            @{$dictD->{$lc_tagAnalysed}{values}{_name}}
-                        ) {
-                            if( grep lc($_) eq $mandatoryTag, @{$loopAnalysed} ) {
-                                push @found, $mandatoryTag;
-                                $tagsListedInLoops{lc $mandatoryTag} = 'yes';
-                            } else {
-                                push @notFound, lc($mandatoryTag);
-                            }
-                        }
-                        if( @found > 0 ) {
-                            if( @found == $countItems ) {
-                               $allTagsFound = 1;
-                                showValidationMessage 64, $cifF,
-                                    $$block{name},
-                                    'tags ['
-                                    . join(', ', 
-                                        @{$dictD->{$lc_tagAnalysed}{values}{_name}})
-                                    . '] must be in loop according to '
-                                    . $dictF . ' and were found'
-                                    . ' within loop';
-                            } else {
-                                for( @notFound ) {
-                                    $tagsListedInLoops{$_} = 'no';
+                        for my $loopAnalysed ( @{$block->{loops}} ) {
+                            my @found;
+                            my @notFound;
+                            #
+                            # iterate through tags list, that there
+                            # marked as mandatory if at least one is
+                            # defined.
+                            # NOTE: $mandatoryTag is a scalar
+                            #
+                            for my $mandatoryTag ( 
+                                @{$dictD->{$lc_tagAnalysed}{values}{_name}}
+                            ) {
+                                if( grep lc($_) eq $mandatoryTag, @{$loopAnalysed} ) {
+                                    push @found, $mandatoryTag;
+                                    $tagsListedInLoops{lc $mandatoryTag} = 'yes';
+                                } else {
+                                    push @notFound, lc($mandatoryTag);
                                 }
-                                showValidationMessage 2, $cifF,
-                                    $$block{name},
-                                    'tags ['
-                                    . join(', ', 
-                                        @{$dictD->{$lc_tagAnalysed}{values}{_name}})
-                                    . '] must be in loop according to '
-                                    . $dictF . ' but only ['
-                                    . join(', ', @found)
-                                    . '] were found';
+                            }
+                            if( @found > 0 ) {
+                                if( @found == $countItems ) {
+                                   $allTagsFound = 1;
+                                    showValidationMessage 64, 
+                                        'tags-grouped', $cifF,
+                                        $$block{name},
+                                        'tags ['
+                                        . join(', ', 
+                                            @{$dictD->{$lc_tagAnalysed}{values}{_name}})
+                                        . '] must be in loop according'
+                                       . ' to ' .$dictF
+                                       . ' and were found'
+                                        . ' within loop';
+                                } else {
+                                    for( @notFound ) {
+                                        $tagsListedInLoops{$_} = 'no';
+                                    }
+                                    showValidationMessage 2, 
+                                        'tags-grouped', $cifF,
+                                        $$block{name},
+                                        'tags ['
+                                        . join(', ', 
+                                            @{$dictD->{$lc_tagAnalysed}{values}{_name}})
+                                        . '] must be in loop according'
+                                        . ' to '
+                                        . $dictF . ' but only ['
+                                        . join(', ', @found)
+                                        . '] were found';
+                                }
                             }
                         }
                     }
@@ -447,20 +463,24 @@ CIFFILEANAL: for my $cifF ( @{$CIFfile} ) {
                 #
                 # if check list mandatory
                 #
-                if( exists $dictD->{$lc_tagAnalysed}{values}{_list_mandatory}
-                    && $dictD->{$lc_tagAnalysed}{values}{_list_mandatory}[0]
-                        eq 'yes' )
-                    {
-                    if( exists $block->{inloop}{$tagAnalysed} ) {
-                        showValidationMessage 64, $cifF, $$block{name},
-                            "tag '" . $tagAnalysed . "' is loop"
-                            . ' mandatory according to ' . $dictF
-                            . ' and is in loop';
-                    } else {
-                        showValidationMessage 2, $cifF, $$block{name},
-                            "tag '" . $tagAnalysed . "' is loop"
-                            . ' mandatory according to ' . $dictF
-                            . ' but is not in loop';
+                if( $showMap{'list-mandatory'} ) {
+                    if( exists $dictD->{$lc_tagAnalysed}{values}{_list_mandatory}
+                        && $dictD->{$lc_tagAnalysed}{values}{_list_mandatory}[0]
+                            eq 'yes' )
+                        {
+                        if( exists $block->{inloop}{$tagAnalysed} ) {
+                            showValidationMessage 64, 'list-mandatory', 
+                                $cifF, $$block{name},
+                                "tag '" . $tagAnalysed . "' is loop"
+                                . ' mandatory according to ' . $dictF
+                                . ' and is in loop';
+                        } else {
+                            showValidationMessage 2, 'list-mandatory', 
+                                $cifF, $$block{name},
+                                "tag '" . $tagAnalysed . "' is loop"
+                                . ' mandatory according to ' . $dictF
+                                . ' but is not in loop';
+                        }
                     }
                 }
                 # end-if check list mandatory
@@ -472,6 +492,8 @@ CIFFILEANAL: for my $cifF ( @{$CIFfile} ) {
                 #
                 # if check types of values
                 #
+                if( $showMap{'values-enum'} == 1
+                    || $showMap{'values-range'} == 1 ) {
                 my $range = {};
                 my %rangeForPrint;
                 if( exists $dictD->{$lc_tagAnalysed}{values}{_enumeration_range} ) {
@@ -494,29 +516,30 @@ CIFFILEANAL: for my $cifF ( @{$CIFfile} ) {
                     #
                     # if check values in enumeration list
                     #
-                    if( exists $dictD->{$lc_tagAnalysed}{values}{_enumeration} ) {
-                        my $listEnumValuesForTag = join(', ',
-                                @{$dictD->{$lc_tagAnalysed}{values}{_enumeration}}
+                    if( $showMap{'values-enum'} ) {
+                        if( exists $dictD->{$lc_tagAnalysed}{values}{_enumeration} ) {
+                            my $listEnumValuesForTag = join(', ',
+                                    @{$dictD->{$lc_tagAnalysed}{values}{_enumeration}}
                                     );
-                        if( !grep $_ eq $value, @{$dictD->{$lc_tagAnalysed}{values}{_enumeration}} ) {
-                            showValidationMessage 2,
-                                $cifF, $$block{name},
-                                "tag '" . $tagAnalysed . "' value "
-                                . '"'
-                                . $value
-                                . '" should be one of these: ['
-                                . $listEnumValuesForTag
-                                . '] values';
-                        } else {
-                            if( $quiet == 0 ) {
-                            showValidationMessage 64,
-                                $cifF, $$block{name},
-                                "tag '" . $tagAnalysed . "' value "
-                                . '"'
-                                . $value
-                                . '" is one of these: ['
-                                . $listEnumValuesForTag
-                                . '] values';
+                            if( !grep $_ eq $value, 
+                                 @{$dictD->{$lc_tagAnalysed}{values}{_enumeration}} ) {
+                                showValidationMessage 2, 'values-enum',
+                                    $cifF, $$block{name},
+                                    "tag '" . $tagAnalysed . "' value "
+                                    . '"'
+                                    . $value
+                                    . '" should be one of these: ['
+                                    . $listEnumValuesForTag
+                                    . '] values';
+                            } else {
+                                showValidationMessage 64, 'values-enum',
+                                    $cifF, $$block{name},
+                                    "tag '" . $tagAnalysed . "' value "
+                                    . '"'
+                                    . $value
+                                    . '" is one of these: ['
+                                    . $listEnumValuesForTag
+                                    . '] values';
                             }
                         }
                     }
@@ -527,38 +550,39 @@ CIFFILEANAL: for my $cifF ( @{$CIFfile} ) {
                     #
                     # if check values against enumeration_range
                     #
-                    if( %$range ) {
-                        my $valueWOPrecision = $value;
-                        if( $dictD->{$lc_tagAnalysed}{values}{_type}[0] 
-                             eq 'numb' ) {
-                            $valueWOPrecision =~ s/\s*\(.*$//;
-                        }
-                        if( checkAgainstRange(
-                        $dictD->{$lc_tagAnalysed}{values}{_type}[0],
-                        $range, $valueWOPrecision) <= 0 ) {
-                            showValidationMessage 2,
-                                $cifF, $$block{name},
-                                "tag '" . $tagAnalysed . "' value "
-                                . '"'
-                                . $value
-                                . '" should be in range ('
-                                .  $rangeForPrint{min}
-                                . ', ' . $rangeForPrint{max} . ')';
-
-                        } else {
-                            if( $quiet == 0 ) {
-                                showValidationMessage 64, $cifF, 
-                                    $$block{name},
+                    if( $showMap{'values-range'} ) {
+                        if( %$range ) {
+                            my $valueWOPrecision = $value;
+                            if( $dictD->{$lc_tagAnalysed}{values}{_type}[0] 
+                                 eq 'numb' ) {
+                                $valueWOPrecision =~ s/\s*\(.*$//;
+                            }
+                            if( checkAgainstRange(
+                            $dictD->{$lc_tagAnalysed}{values}{_type}[0],
+                            $range, $valueWOPrecision) <= 0 ) {
+                                showValidationMessage 2, 'values-range',
+                                    $cifF, $$block{name},
                                     "tag '" . $tagAnalysed . "' value "
                                     . '"'
                                     . $value
-                                    . '" is in range ('
-                                    . $rangeForPrint{min}
+                                    . '" should be in range ('
+                                    .  $rangeForPrint{min}
                                     . ', ' . $rangeForPrint{max} . ')';
+                            } else {
+                                    showValidationMessage 64, 
+                                        'values-range', $cifF, 
+                                        $$block{name},
+                                        "tag '" . $tagAnalysed . "'"
+                                        . ' value '
+                                        . '"'
+                                        . $value
+                                        . '" is in range ('
+                                        . $rangeForPrint{min}
+                                        . ', '
+                                        . $rangeForPrint{max}
+                                        . ')';
                             }
-                        }
-                    } else {
-                        if( $quiet == 0 ) {
+                        } else {
                             showValidationMessage 64, $cifF,
                                 $$block{name},
                                 'there are no range restrictions'
@@ -571,6 +595,7 @@ CIFFILEANAL: for my $cifF ( @{$CIFfile} ) {
                     # end-if check values against enumeration_range
                     #
                 }
+                }
                 # end-if check types of values
                 
                 # -----------------------------------------------------
@@ -580,8 +605,9 @@ CIFFILEANAL: for my $cifF ( @{$CIFfile} ) {
             #
             # end-iterate-through-dictionaries
             #
-            if( $defined == 0 ) {
-                showValidationMessage 2, $cifF, 
+            if( $showMap{'tag-exsits'} == 1
+                && $defined == 0 ) {
+                showValidationMessage 2, 'tag-exsits', $cifF, 
                     $$block{name}, "tag '" . $tagAnalysed . "'"
                     . ' was not found in dictionaries';
             }
@@ -704,9 +730,13 @@ END_M
 }
 
 sub showValidationMessage {
-    my ($severity, $file, $dataBlockName, $message)
-        = (shift, shift, shift, shift);
+    my ($severity, $type, $file, $dataBlockName, $message)
+        = (shift, shift, shift, shift, shift);
     if( $severity > $errorLevel ) {
+        return 0;
+    }
+    if( $showMap{$type} == 0 ) {
+        # if this return happens - there must be a bug left
         return 0;
     }
     my $output = $0 . ": ";
