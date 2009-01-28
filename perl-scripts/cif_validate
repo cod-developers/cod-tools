@@ -42,6 +42,39 @@ my $dictTags = {};
 my $quiet = 0;
 my $errorLevel = 2;
 my $parser = new CIFParser;
+#
+# We read user requested options into an array-ref in this case user can 
+# define '--check' many times with different or same options, that are 
+# parsed later.
+#
+my $outputOptions = [];
+#
+# Errors reporting and CIF validation is performed according to this 
+# hash entries.
+# All possible options MUST be listed here, because no checking whereas 
+# option exists will be made (it MUST be NOT necessary).
+# NOTE: please update 'HelpMessage' subroutine when adding new option, 
+# so that user would know what options are possible.
+# TODO: 'errorLevel' and 'quiet' options must be removed later in 
+# accordance to this option. Some 'debug' option might be created, to 
+# report more information than it is necessary to understand validation 
+# errors.
+#
+my %showMap = (
+        #
+        # tag name checking related options
+        'tag-exsits'         => 1,
+        'tag-deprecated'     => 0,
+        #
+        # loop_ checking related options
+        'tags-grouped'       => 0,
+        'list-mandatory'     => 1,
+        'ref-list-mandatory' => 0,
+        #
+        # value checking related options
+        'values-enum'        => 1,
+        'values-range'       => 1
+    );
 
 #
 # here we declare subroutines
@@ -112,12 +145,55 @@ sub getRelatedMandatory;
         "--error-level"
             => \$errorLevel,
         "--help"
-            => sub{ HelpMessage() }
+            => sub{ HelpMessage() },
+        "--check"
+            => $outputOptions,
+        "--show"
+            => $outputOptions
     );
 
 if( defined($outputFile) ) {
     open( STDOUT, "> $outputFile" ) || die('Unable to open '
                         . $outputFile . ' for writing: ' . $! . '.');
+}
+
+for( @{$outputOptions} ) {
+    my @options = split /,/;
+    ITERATEOPTIONS: for( @options ) {
+        m/^
+            (
+                [\-+]? # the option might be preceeded by '+' or '-' sign
+                # the later meaning, that we do NOT want this to be printed
+            )
+            (
+                [a-z\-_]+ # option itself MUST be letters-only
+            )
+        $/six;
+        if( !defined $1 ) {
+            print STDERR $0. ': Output option "' . $_ . '" is not'
+                    . ' valid.'
+                    . ' Options MUST contain only letters,'
+                    . ' underscore "_" and minus "-" signs.' . "\n";
+            next ITERATEOPTIONS;
+        }
+        my $opt = lc( $2 );
+        if( !exists $showMap{$2} ) {
+            print STDERR $0. ': Output option '
+                    . "'" . $2 . "'"
+                    . ' is not '
+                    . 'known. '
+                    . 'Options should be one of these: ['
+                    . join(', ', keys(%showMap))
+                    . '].'
+                    . "\n";
+            next ITERATEOPTIONS;
+        }
+        if( $1 eq '-' ) {
+            $showMap{$2} = 0;
+        } else {
+            $showMap{$2} = 1;
+        }
+    }
 }
 
 if( @$dictFiles )
@@ -479,12 +555,6 @@ CIFFILEANAL: for my $cifF ( @{$CIFfile} ) {
                 # -----------------------------------------------------
                 # -----------------------------------------------------
                 # -----------------------------------------------------
-                
-                #
-                # if check enumerator values
-                #
-                
-                # end-if check enumerator values
             }
             #
             # end-iterate-through-dictionaries
@@ -556,6 +626,54 @@ Options available:
         Prints version message and exits.
     --help
         Prints this message and exits.
+    --check
+        Provide a list of options, what tests should be performed.
+        Please see list of options further.
+    --show
+        Alias for '--check'.
+
+Selecting tests, that should be performed:
+    Option '--check' accepts comma separated list of test names.
+    Tests are listed below, and any other value than that is not 
+    accepted. NOTE that test names consists only of letters, minus sign 
+    (i.e. '-') and underscore symbol (i.e. '_').
+    Test name could be preceded by plus '+', or minus '-' sign, and by 
+    this test could be turned on (in case of plus sign), or turned off 
+    (in case of minus sign). NOTE: if you do not supply any of these 
+    symbols, the validator expects it to be a plus sign and turns on the 
+    test indicated.
+    Some tests are turned on by default, but you could turn them off by 
+    setting prefixing with minus in '--check' option.
+    List of tests:
+        o tag-exsits - this test is ON by default. It is meant to check 
+                    whereas tag DO exist in dictionary.
+        o tag-deprecated - this test is OFF by default. If turned on it 
+                    checks whereas tag was not replaced by new one.
+        o tags-grouped - this test is OFF by default. It is meant to 
+                    check, whereas list of tags must be together in 
+                    loop. I.e. if you define '_atom_site_fract_x' values 
+                    for '_atom_site_fract_y' and '_atom_site_fract_z' 
+                    must be defined as well.
+                    It is turned off, because so far it might give too 
+                    much false-warnings.
+        o list-mandatory - this test is ON by default. It checks whereas 
+                    tag MUST be in loop. It means it can not be defined 
+                    anywhere in data_ block, only within some loop.
+        o ref-list-mandatory - this test is OFF by default. It is used 
+                    to check, whereas there is some tag associated with 
+                    any others, that must be present in loop. I.e. if 
+                    you define '_atom_site_aniso_U_12' tag 
+                    '_atom_site_label' must be defined somewhere as 
+                    well.
+        o values-enum - this test is ON by default. The test checks, 
+                    whereas tag values are restricted to some list and 
+                    if yes - whereas they fit in. I.e. tag
+                    '_exptl_absorpt_correction_type' is restricted to 
+                    values 'analytical, cylinder, empirical, ...'.
+        o values-range - this test is ON by default. The test is used to 
+                    check, whereas some boundaries were defined. I.e. 
+                    '_refine_ls_abs_structure_Flack' must be between 
+                    '0.0' and '1.0'.
 END_M
     exit 0;
 }
