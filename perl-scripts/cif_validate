@@ -162,11 +162,12 @@ for( @{$outputOptions} ) {
     ITERATEOPTIONS: for( @options ) {
         m/^
             (
-                [\-+]? # the option might be preceeded by '+' or '-' sign
-                # the later meaning, that we do NOT want this to be printed
+                [a-z\-_]* # option itself MUST be letters-only
+                [a-z]
             )
             (
-                [a-z\-_]+ # option itself MUST be letters-only
+                [\-+]? # the option might be preceeded by '+' or '-' sign
+                # the later meaning, that we do NOT want this to be printed
             )
         $/six;
         if( !defined $1 ) {
@@ -176,10 +177,11 @@ for( @{$outputOptions} ) {
                     . ' underscore "_" and minus "-" signs.' . "\n";
             next ITERATEOPTIONS;
         }
-        my $opt = lc( $2 );
-        if( !exists $showMap{$2} ) {
+        my $opt = lc( $1 );
+        if( !exists $showMap{$opt}
+            && $opt ne 'all' ) {
             print STDERR $0. ': Output option '
-                    . "'" . $2 . "'"
+                    . "'" . $1 . "'"
                     . ' is not '
                     . 'known. '
                     . 'Options should be one of these: ['
@@ -188,13 +190,32 @@ for( @{$outputOptions} ) {
                     . "\n";
             next ITERATEOPTIONS;
         }
-        if( $1 eq '-' ) {
-            $showMap{$2} = 0;
+        if( $opt eq 'all' ) {
+            my $setTo = 0;
+            $setTo = 1 unless $2 eq '-';
+            while ( my($k,$v) = each(%showMap) ) {
+                $showMap{$k} = $setTo;
+            }
+            last ITERATEOPTIONS;
+        }
+        if( $2 eq '-' ) {
+            $showMap{$opt} = 0;
         } else {
-            $showMap{$2} = 1;
+            $showMap{$opt} = 1;
         }
     }
 }
+
+my $anyTestIsTurnedOn = 0;
+while( my($k, $v) = each %showMap ) {
+    $anyTestIsTurnedOn = 1 if $v;
+}
+if( !$anyTestIsTurnedOn ) {
+    print STDERR $0. ': No test is chosen to be performed. Exiting.'
+        . "\n";
+    exit( 0 );
+}
+undef $anyTestIsTurnedOn;
 
 if( @$dictFiles )
 {
@@ -644,6 +665,10 @@ Selecting tests, that should be performed:
     test indicated.
     Some tests are turned on by default, but you could turn them off by 
     setting prefixing with minus in '--check' option.
+    Special option is 'all'. If you put 'all-', then it turns OFF all 
+    tests, if you put 'all+', or plain 'all' it turns ON all tests.
+    NOTE: later declarations of '--check' will override previously 
+    turned on/off tests.
     List of tests:
         o tag-exsits - this test is ON by default. It is meant to check 
                     whereas tag DO exist in dictionary.
