@@ -23,6 +23,16 @@ my $check_bibliography = 1;
 my $max_cell_length_diff = 0.5; # Angsroems
 my $max_cell_angle_diff  = 1.2; # degrees
 
+my %has_numeric_value = (
+    "_journal_year"   => 1,
+    "_journal_volume" => 1,
+    "_journal_issue"  => 1,
+);
+
+my %skip_tag = (
+    "_journal_name_full" => 0,
+);
+
 my %COD = ();
 
 if( @ARGV < 2 ) {
@@ -266,16 +276,6 @@ sub conditions_are_the_same
     }
     return 1;
 }
-
-my %has_numeric_value = (
-    "_journal_year"   => 1,
-    "_journal_volume" => 1,
-    "_journal_issue"  => 1,
-);
-
-my %skip_tag = (
-    "_journal_name_full" => 1,
-);
 
 sub bibliographies_are_the_same($$)
 {
