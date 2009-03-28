@@ -18360,6 +18360,36 @@ require Exporter;
     ]
 },
 
+# A non-standard 'C -1' setting used in the M. A. Siegler et al. paper
+# in the Acta Cryst. B vol. 64 issue 6, 2008, p.738 (bs5069).
+#
+# Hall symbol taken as determined by the CCTBX Web service
+# (http://cci.lbl.gov/cctbx/cctbx_web.cgi) on 2009.03.28
+#
+# Schoenflies symbol taken from the spacegroup 2 entry in this file.
+#
+# Hermann-Mauguin symbol taken from the M. A. Siegler's bs5069 paper's
+# CIFs.
+#
+
+{
+    number          => 2,
+    hall            => '-P 1 (1/2*x+1/2*y,1/2*x-1/2*y,-z)',
+    schoenflies     => 'Ci^1',
+    hermann_mauguin => 'C -1',
+    universal_h_m   => 'C -1',
+    symops => [
+        'x, y, z',
+        'x+1/2, y+1/2, z',
+        '-x, -y, -z',
+        '-x+1/2, -y+1/2, -z',
+    ],
+    ncsym => [
+        'x, y, z',
+        '-x, -y, -z',
+    ]
+},
+
 );
 
 1;
