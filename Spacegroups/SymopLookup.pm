@@ -18322,6 +18322,44 @@ require Exporter;
     ]
 },
 
+#
+# A non-standard 'B 21' setting used in the M. A. Siegler et
+# al. papers in the Acta Cryst. B vol. 64 issue 6, 2008, p.725
+# (bs5068) and p.738 (bs5069).
+#
+# Hall symbol taken as determined by the CCTBX Web service
+# (http://cci.lbl.gov/cctbx/cctbx_web.cgi) on 2009.03.28
+#
+# Schoenflies symbol taken from the spacegroup 4 entries in this file.
+#
+# Hermann-Mauguin symbol taken from the M. A. Siegler's bs5068 and
+# bs5069 papers' CIFs.
+#
+# The spacegroup symbol used in M. A. Siegler et al. was 'B 21', but
+# we use explicit axis symbol 'B 1 21 1', derived from symmetry
+# operators (S.G.). The short form 'B 21' along with the corresponding
+# long form 'B 1 21 1' will be documented in the SpacegroupNames.pm
+# tables.
+#
+
+{
+    number          => 4,
+    hall            => 'P 2yb (1/2*x,y,-1/2*x+z)',
+    schoenflies     => 'C2^2',
+    hermann_mauguin => 'B 1 21 1',
+    universal_h_m   => 'B 1 21 1',
+    symops => [
+        'x, y, z',              # unity operator
+        '-x, y+1/2, -z',        # 21 axis along b
+        'x+1/2, y, z+1/2',      # face centering in B
+        '-x+1/2, y+1/2, -z+1/2' # 21 axis with the B-centering
+    ],
+    ncsym => [
+        'x, y, z',              # unity operator
+        '-x, y+1/2, -z',        # 21 axis along b
+    ]
+},
+
 );
 
 1;
