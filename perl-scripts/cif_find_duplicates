@@ -12,7 +12,7 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #  Find COD numbers for the .cif files in given directories of file lists.
 #
 #  Usage:
-#      find-numbers.pl my-cif-dir1/ my-cif-dir2/files*.cif  COD-cif-dir/ 
+#      cif_find_duplicates my-cif-dir1/ my-cif-dir2/files*.cif  COD-cif-dir/ 
 #**
 
 use strict;
@@ -55,7 +55,12 @@ for my $file (@COD_cif_files) {
 
     chomp $file;
 
-    my @data = load_cif_file( $file );
+    my @data;
+
+    eval {
+	@data = load_cif_file( $file );
+    };
+    next if $@;
 
     if( !@data || !defined $data[0] || !defined $data[0]->{name} ) {
 	warn( "file '$file' seems to be empty" );
@@ -87,7 +92,12 @@ for my $file (@cif_files) {
 
     chomp $file;
 
-    my @data = load_cif_file( $file );
+    my @data;
+
+    eval {
+	@data = load_cif_file( $file );
+    };
+    next if $@;
 
     if( !@data || !defined $data[0] || !defined $data[0]->{name} ) {
 	warn( "file '$file' seems to be empty" );
