@@ -55,18 +55,10 @@ for my $file (@COD_cif_files) {
 
     chomp $file;
 
-    my $parser = new CIFParser;
-    my @data = @{$parser->Run($file)};
-
-    if( defined $parser->YYData->{ERRCOUNT} && $parser->YYData->{ERRCOUNT} > 0 ) {
-	print STDERR "$0: ", $parser->YYData->{ERRCOUNT},
-	" error(s) encountered while parsing file '${file}'\n";
-	die;
-    }
+    my @data = load_cif_file( $file );
 
     if( !@data || !defined $data[0] || !defined $data[0]->{name} ) {
 	warn( "file '$file' seems to be empty" );
-	next;
     }
 
     my %structures = cif_fill_data( \@data, $file );
@@ -92,56 +84,18 @@ do {
 my @cif_files = `find @ARGV -name "*.cif" -o -name "*.CIF"`;
 
 for my $file (@cif_files) {
+
     chomp $file;
-    open( CIF, "<$file" ) or
-	die( "$0: could not open file '$file' for reading: $!" );
 
-    my %structures = ();
-    my $id;
+    my @data = load_cif_file( $file );
 
-    while( <CIF> ) {
-	if( /^\s*data_(.*)/ ) {
-	    $id = $1;
-	    $structures{$id}{id} = $id;
-	    $structures{$id}{filename} = File::Basename::basename( $file );
-	}
-	if( /^\s*_chemical_formula_sum\s+(.*)/ ) {
-            my $formula = $1;
-            $formula =~ s/^\s*'\s*|\s*'\s*$//g;
-            $formula =~ s/\s+/ /g;
-            my $sorted = join( " ", sort {$a cmp $b} split( " ", $formula ));
-	    $structures{$id}{chemical_formula_sum} = $sorted;
-	}
-	if( /^\s*(_cell_(?:length_a|length_b|length_c|
-                     angle_alpha|angle_beta|angle_gamma))\s+([\d.]+)/x ) {
-	    my $key = $1;
-	    my $val = $2;
-	    $val =~ s/^\s*'\s*|\s*'\s*$//g;
-	    $val =~ s/\(.*$//;
-	    $structures{$id}{cell}{$key} = sprintf "%f", $val;
-	}
-	if( /^\s*(_[^\s]*temperature[^\s]*)\s+(.*)/ ) {
-	    $structures{$id}{temperature}{$1} = $2;
-	    $structures{$id}{temperature}{$1} =~ s/^\s*'\s*|\s*'\s*$//g;
-	}
-	if( /^\s*(_[^\s]*pressure[^\s]*)\s+(.*)/ ) {
-	    $structures{$id}{pressure}{$1} = $2;
-	    $structures{$id}{pressure}{$1} =~ s/^\s*'\s*|\s*'\s*$//g;
-	}
-	if( /^\s*(_journal_[^\s]*)\s+(.*)\s*$/ && 
-            ! /^\s*_journal_name/ ) {
-	    my $key = $1;
-	    my $value = $2;
-	    $value =~ s/^['"]|["']$//g;
-	    $structures{$id}{bibliography}{$key} = $value;
-	}
-	if( /^\s*(_\[local\])?_cod_suboptimal_structure\s+(.*)\s*$/ ) {
-	    ## print ">>>>>> $2\n";
-	    $structures{$id}{suboptimal} = $2;
-	}
+    if( !@data || !defined $data[0] || !defined $data[0]->{name} ) {
+	warn( "file '$file' seems to be empty" );
     }
 
-    for $id (keys %structures) {
+    my %structures = cif_fill_data( \@data, $file );
+
+    for my $id (keys %structures) {
 	my $formula = $structures{$id}{chemical_formula_sum};
 
 	$formula = '?' unless defined $formula;
@@ -170,11 +124,25 @@ for my $file (@cif_files) {
 	    printf "%-35s %15s %3d %s\n", $final_formula, "?", 0, $file;
 	}
     }
-
-    close( CIF );
 }
 
 #------------------------------------------------------------------------------
+
+sub load_cif_file
+{
+    my ( $file ) = @_;
+
+    my $parser = new CIFParser;
+    my @data = @{$parser->Run($file)};
+
+    if( defined $parser->YYData->{ERRCOUNT} && $parser->YYData->{ERRCOUNT} > 0 ) {
+	print STDERR "$0: ", $parser->YYData->{ERRCOUNT},
+	" error(s) encountered while parsing file '${file}'\n";
+	die;
+    }
+
+    return @data;
+}
 
 sub cif_fill_data
 {
@@ -240,7 +208,7 @@ sub cif_fill_data
 	}
 
 	my @journal_keys =
-	    #grep ! /^_journal_name/
+	    grep ! /^_journal_name/,
 	    grep /^_journal_[^\s]*$/,
 	    keys %{$values};
 
