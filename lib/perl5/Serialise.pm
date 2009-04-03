@@ -51,7 +51,11 @@ sub serialiseHash
        } elsif( ref $hash->{$key} eq "SCALAR" ) {
 	   serialiseScalar( $hash->{$key}, $indent );
        } else {
-	   printf STDOUT "\"%s\",\n", $hash->{$key}; 
+           if( defined $hash->{$key} ) {
+               printf STDOUT "\"%s\",\n", $hash->{$key};
+           } else {
+               print STDOUT "undef,\n";
+           }
        }
    }
    print STDOUT $old_indent, "},\n";
