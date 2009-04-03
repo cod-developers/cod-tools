@@ -194,16 +194,20 @@ if( defined $cif_header_file ) {
 }
 
 my $filename = shift(@ARGV);
-my @data;
 
 my $parser = new CIFParser;
 
-@data = @{$parser->Run($filename)};
+my @data = @{$parser->Run($filename)};
 
 if( defined $parser->YYData->{ERRCOUNT} && $parser->YYData->{ERRCOUNT} > 0 ) {
     print STDERR "$0: ", $parser->YYData->{ERRCOUNT},
                  " error(s) encountered while parsing file '${filename}'\n";
     die;
+}
+
+if( !@data || !defined $data[0] || !defined $data[0]->{name} ) {
+    warn( "file '$filename' seems to be empty" );
+    exit( 0 );
 }
 
 #------------------------------------------------------------------------------
