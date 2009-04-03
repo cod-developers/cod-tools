@@ -69,86 +69,7 @@ for my $file (@COD_cif_files) {
 	next;
     }
 
-    my %structures = ();
-    my $id;
-
-    for my $dataset ( @data ) {
-	my $values = $dataset->{values};
-	my $id = $dataset->{name};
-
-	if( defined $id ) {
-	    $structures{$id}{id} = $id;
-	    $structures{$id}{filename} = File::Basename::basename( $file );
-	} else {
-	    next
-	}
-
-	if( defined $values->{_chemical_formula_sum} ) {
-            my $formula = $values->{_chemical_formula_sum}[0];
-            $formula =~ s/^\s*'\s*|\s*'\s*$//g;
-            $formula =~ s/\s+/ /g;
-            my $sorted = join( " ", sort {$a cmp $b} split( " ", $formula ));
-	    $structures{$id}{chemical_formula_sum} = $sorted;
-	}
-	for my $key ( qw( _cell_length_a _cell_length_b _celllength_c
-                     _cell_angle_alpha _cell_angle_beta _cell_angle_gamma )) {
-	    my $val = $values->{$key}[0];
-	    if( defined $val ) {
-		$val =~ s/^\s*'\s*|\s*'\s*$//g;
-		$val =~ s/\(.*$//;
-		$val =~ s/[()_a-zA-Z]//g;
-		$structures{$id}{cell}{$key} = sprintf "%f", $val;
-	    }
-	}
-	for my $key ( qw( _cell_measurement_temperature
-                          _cell_measurement_temperature_C
-                          _diffrn_ambient_temperature
-                          _diffrn_ambient_temperature_C
-                          _diffrn_ambient_temperature_gt
-                          _diffrn_ambient_temperature_lt
-                          _pd_prep_temperature
-                          _cell_measurement_pressure
-                          _cell_measurement_pressure_gPa
-                          _cell_wave_vectors_pressure_max
-                          _cell_wave_vectors_pressure_min
-                          _diffrn_ambient_pressure
-                          _diffrn.ambient_pressure
-                          _diffrn.ambient_pressure_esd
-                          _diffrn_ambient_pressure_gPa
-                          _diffrn_ambient_pressure_gt
-                          _diffrn.ambient_pressure_gt
-                          _diffrn_ambient_pressure_lt
-                          _diffrn.ambient_pressure_lt
-                          _exptl_crystal_pressure_history
-                          _pd_prep_pressure )) {
-	    my $val = $values->{$key}[0];
-	    if( defined $val ) {
-		$structures{$id}{temperature}{$key} = $val;
-		$structures{$id}{temperature}{$key} =~ s/^\s*'\s*|\s*'\s*$//g;
-	    }
-	}
-
-	my @journal_keys =
-	    #grep ! /^_journal_name/
-	    grep /^_journal_[^\s]*$/,
-	    keys %{$values};
-
-	for my $key (@journal_keys) {
-	    my $val = $values->{$key}[0];
-	    if( defined $val ) {
-		$val =~ s/^['"]|["']$//g;
-		$structures{$id}{bibliography}{$key} = $val;
-	    }
-	}
-	if( defined $values->{'_[local]_cod_suboptimal_structure'} ||
-	    defined $values->{_cod_suboptimal_structure} ) {
-	    my $val = defined $values->{_cod_suboptimal_structure} ?
-		$values->{_cod_suboptimal_structure}[0] :
-		$values->{'_[local]_cod_suboptimal_structure'}[0];
-	    ## print ">>>>>> $val\n";
-	    $structures{$id}{suboptimal} = $val;
-	}
-    }
+    my %structures = cif_fill_data( \@data, $file );
 
     my $basename = File::Basename::basename( $file );
     for my $id (keys %structures) {
@@ -158,6 +79,7 @@ for my $file (@COD_cif_files) {
 
 	push( @{$COD{$formula}}, $structures{$id} );
     }
+
 }
 
 do {
@@ -250,6 +172,96 @@ for my $file (@cif_files) {
     }
 
     close( CIF );
+}
+
+#------------------------------------------------------------------------------
+
+sub cif_fill_data
+{
+    my ( $data, $file ) = @_;
+
+    my %structures = ();
+    my $id;
+
+    for my $dataset ( @$data ) {
+	my $values = $dataset->{values};
+	my $id = $dataset->{name};
+
+	if( defined $id ) {
+	    $structures{$id}{id} = $id;
+	    $structures{$id}{filename} = File::Basename::basename( $file );
+	} else {
+	    next
+	}
+
+	if( defined $values->{_chemical_formula_sum} ) {
+            my $formula = $values->{_chemical_formula_sum}[0];
+            $formula =~ s/^\s*'\s*|\s*'\s*$//g;
+            $formula =~ s/\s+/ /g;
+            my $sorted = join( " ", sort {$a cmp $b} split( " ", $formula ));
+	    $structures{$id}{chemical_formula_sum} = $sorted;
+	}
+	for my $key ( qw( _cell_length_a _cell_length_b _celllength_c
+                     _cell_angle_alpha _cell_angle_beta _cell_angle_gamma )) {
+	    my $val = $values->{$key}[0];
+	    if( defined $val ) {
+		$val =~ s/^\s*'\s*|\s*'\s*$//g;
+		$val =~ s/\(.*$//;
+		$val =~ s/[()_a-zA-Z]//g;
+		$structures{$id}{cell}{$key} = sprintf "%f", $val;
+	    }
+	}
+	for my $key ( qw( _cell_measurement_temperature
+                          _cell_measurement_temperature_C
+                          _diffrn_ambient_temperature
+                          _diffrn_ambient_temperature_C
+                          _diffrn_ambient_temperature_gt
+                          _diffrn_ambient_temperature_lt
+                          _pd_prep_temperature
+                          _cell_measurement_pressure
+                          _cell_measurement_pressure_gPa
+                          _cell_wave_vectors_pressure_max
+                          _cell_wave_vectors_pressure_min
+                          _diffrn_ambient_pressure
+                          _diffrn.ambient_pressure
+                          _diffrn.ambient_pressure_esd
+                          _diffrn_ambient_pressure_gPa
+                          _diffrn_ambient_pressure_gt
+                          _diffrn.ambient_pressure_gt
+                          _diffrn_ambient_pressure_lt
+                          _diffrn.ambient_pressure_lt
+                          _exptl_crystal_pressure_history
+                          _pd_prep_pressure )) {
+	    my $val = $values->{$key}[0];
+	    if( defined $val ) {
+		$structures{$id}{temperature}{$key} = $val;
+		$structures{$id}{temperature}{$key} =~ s/^\s*'\s*|\s*'\s*$//g;
+	    }
+	}
+
+	my @journal_keys =
+	    #grep ! /^_journal_name/
+	    grep /^_journal_[^\s]*$/,
+	    keys %{$values};
+
+	for my $key (@journal_keys) {
+	    my $val = $values->{$key}[0];
+	    if( defined $val ) {
+		$val =~ s/^['"]|["']$//g;
+		$structures{$id}{bibliography}{$key} = $val;
+	    }
+	}
+	if( defined $values->{'_[local]_cod_suboptimal_structure'} ||
+	    defined $values->{_cod_suboptimal_structure} ) {
+	    my $val = defined $values->{_cod_suboptimal_structure} ?
+		$values->{_cod_suboptimal_structure}[0] :
+		$values->{'_[local]_cod_suboptimal_structure'}[0];
+	    ## print ">>>>>> $val\n";
+	    $structures{$id}{suboptimal} = $val;
+	}
+    }
+
+    return %structures;
 }
 
 #------------------------------------------------------------------------------
