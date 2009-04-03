@@ -3,10 +3,10 @@
 eval 'exec perl -x $0 ${1+"$@"}'
     if 0;
 #------------------------------------------------------------------------------
-#$Author: saulius $
-#$Date: 2008-03-29 08:18:40 +0200 (Sat, 29 Mar 2008) $
-#$Revision: 536 $
-#$URL: svn+ssh://pitonas.ibt.lt/home/xray/svn-repositories/xyz-extraction/deposit/bin/find-numbers.pl $
+#$Author$
+#$Date$
+#$Revision$
+#$URL$
 #------------------------------------------------------------------------------
 #*
 #  Find COD numbers for the .cif files in given directories of file lists.
