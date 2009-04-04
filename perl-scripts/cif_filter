@@ -24,6 +24,7 @@ use CIFDictTags;
 use CIFCODTags;
 use CIFExcludedTags;
 use CIFTagManage;
+use CIFTagPrint;
 use CIFTagCanonicalNames;
 use Spacegroups::SpacegroupNames;
 use Spacegroups::SymopParse;
@@ -320,7 +321,7 @@ for my $dataset (@data) {
 		$cif_title =~ s/\n/ /g;
 		$datablok->{_publ_section_title} = [
 		    "\n" . join( "\n", map { " " . $_ }
-				 fold( 71, " +", " ", $cif_title ))
+				 CIFTagPrint::fold( 71, " +", " ", $cif_title ))
 		];
 	    }
 	    if( !$journal && ( $reference =~ /<journal>(.*?)<\/journal>/s ||
@@ -457,7 +458,7 @@ for my $dataset (@data) {
 	$cif_title =~ s/\n/ /g;
 	$datablok->{_publ_section_title} = [
 	    "\n" . join( "\n", map { " " . $_ }
-				 fold( $folding_width - 2, " +", " ", $cif_title ))
+				 CIFTagPrint::fold( $folding_width - 2, " +", " ", $cif_title ))
 	    ];
     }
 
@@ -655,259 +656,29 @@ for my $dataset (@data) {
 	print $cif_comment_header;
     }
 
-    # Print out requested tags:
-
-    my %printed_loops = ();
+    # Calculate the data block name:
 
     if( defined $data_block_nr ) {
-	printf "data_%07d\n", $data_block_nr;
+	$dataset->{name} = sprintf "%07d\n", $data_block_nr;
 	$data_block_nr ++;
-    } else {
-	print "data_", $compound_name, "\n";
     }
 
-    for my $tag (@dictionary_tags) {
-	if( defined $datablok->{$tag} ) {
-	    if( !exists $dataset->{inloop}{$tag} ) {
-		print_tag( $tag, $datablok );
-	    } elsif( $tag eq "_publ_author_name" ) {
-		my $tag_loop_nr = $dataset->{inloop}{$tag};
-		unless( exists $printed_loops{$tag_loop_nr} ) {
-		    print_loop( $tag, $tag_loop_nr, $dataset );
-		    $printed_loops{$tag_loop_nr} = 1;
-		}
-	    }
-	}
-    }
+    # Print out requested tags:
 
-    # Print out any tags that are not in the dictionary (most probably
-    # some misspelled tags):
-
-    if( !$exclude_misspelled_tags ) {
-	my $tags_encountered = 0;
-	for my $tag (@{$dataset->{tags}}) {
-	    if( !exists $dictionary_tags{$tag} &&
-		!exists $dataset->{inloop}{$tag} ) {
-		if( !$tags_encountered ) {
-		    print "#BEGIN Tags that were not found in dictionaries:\n";
-		    $tags_encountered = 1;
-		}
-		print_tag( $tag, $datablok );
-	    }
-	}
-	if( $tags_encountered ) {
-	    print "#END Tags that were not found in dictionaries\n";
-	}
-    }
-
-    # Print out loops:
-
-    my @tags_for_output;
-
-    if( $preserve_loop_order ) {
-	@tags_for_output = @{$dataset->{tags}}
-    } else {
-	@tags_for_output = @dictionary_tags;
-    }
-
-    for my $tag (@tags_for_output) {
-	if( defined $datablok->{$tag} ) {
-	    if( exists $dataset->{inloop}{$tag} ) {
-		my $tag_loop_nr = $dataset->{inloop}{$tag};
-		unless( exists $printed_loops{$tag_loop_nr} ) {
-		    print_loop( $tag, $tag_loop_nr, $dataset );
-		    $printed_loops{$tag_loop_nr} = 1;
-		}
-	    }
-	}
-    }
-
-    # Print out loops that contain only non-dictionary tags:
-
-    if( !$exclude_misspelled_tags ) {
-	my $tags_encountered = 0;
-	for my $tag (@{$dataset->{tags}}) {
-	    if( exists $dataset->{inloop}{$tag} && 
-		! exists $dictionary_tags{$tag} ) {
-		my $tag_loop_nr = $dataset->{inloop}{$tag};
-		unless( exists $printed_loops{$tag_loop_nr} ) {
-		    if( !$tags_encountered ) {
-			print "#BEGIN Loops that were not found in " .
-			    "dictionaries:\n";
-			$tags_encountered = 1;
-		    }
-		    print_loop( $tag, $tag_loop_nr, $dataset );
-		    $printed_loops{$tag_loop_nr} = 1;
-		}
-	    }
-	}
-	if( $tags_encountered ) {
-	    print "#END Loops that were not found in dictionaries\n";
-	}
-    }
+    print_cif( $dataset, { 
+	exclude_misspelled_tags => $exclude_misspelled_tags,
+	preserve_loop_order => $preserve_loop_order,
+	fold_long_fields => $fold_long_fields,
+	folding_width => $folding_width,
+	dictionary_tags => \%dictionary_tags,
+	dictionary_tag_list => \@dictionary_tags,
+    } );
 
 }
 
 #
 # Subroutines:
 #
-
-sub print_tag
-{
-    my ($key, $tags) = @_;
-
-    if( exists $tags->{$key} ) {
-	my $val = $tags->{$key};
-	if( int(@{$val}) > 1 ) {
-	    print "loop_\n";
-	    print "$key\n";
-	    for my $value (@$val) {
-		print_value( $value );
-		print "\n";
-	    }
-	} else {
-	    my $value = sprint_value( $val->[0] );
-	    my $key_len = length($key) > $::max_cif_tag_len ?
-		length($key) : $::max_cif_tag_len;
-	    my $val_len = length($value);
-
-	    if( $value =~ /\s/ ) {
-		$val_len += 2;
-	    }
-	    if( $key_len + $val_len + 1 > $::max_cif_line_len &&
-		$value !~ /\n/ ) {
-		printf "%s\n", $key;
-	    } else {
-		if( $value !~ /\n/ ) {
-		    printf "%-" . $::max_cif_tag_len . "s ", $key;
-		} else {
-		    printf "%s", $key;
-		}
-	    }
-	    print $value, "\n";
-	}
-    }
-}
-
-sub print_loop
-{
-    my ($tag, $loop_nr, $tags) = @_;
-
-    my @loop_tags = @{$tags->{loops}[$loop_nr]};
-
-    print "loop_\n";
-    for (@loop_tags) {
-	print $_, "\n";
-    }
-
-    my $val_array = $tags->{values}{$tag};
-    my $last_val = $#{$val_array};
-
-    my $line_prefix = "";
-    for my $i (0..$last_val) {
-	my $folding_separator = "";
-	my $lines = "";
-	my $line = $line_prefix;
-	for my $loop_tag (@loop_tags) {
-	    my $val = sprint_value( $tags->{values}{$loop_tag}[$i] );
-	    if( $val =~ /^\n;/ ) {
-		$lines .= $folding_separator . $line if $line ne $line_prefix;
-		if( $lines eq "" ) {
-		    # don't print extra newline at the beginning of the loop:
-		    $val =~ s/^\n//;
-		}
-		$lines .= $val;
-		$line = $line_prefix;
-		$folding_separator = "\n";
-	    } elsif( length( $line ) + length( $val ) + 1 
-		     < $::max_cif_line_len ) {
-		if( $line eq $line_prefix ) {
-		    $line .= $val;
-		} else {
-		    $line .= " " . $val;
-		}
-	    } else {
-		$lines .= $folding_separator . $line;
-		$line = $line_prefix . $val;
-		$folding_separator = "\n";
-	    }
-	}
-	if( $line ne $line_prefix ) {
-	    $lines .= $folding_separator . $line;
-	}
-	print $lines;
-	print "\n";
-    }
-}
-
-sub print_value
-{
-    print &sprint_value
-}
-
-sub maxlen
-{
-    my $val = $_[0];
-    my $len = 0;
-
-    for (split( "\n", $val )) {
-	$len = length if length > $len;
-    }
-    return $len;
-}
-
-sub sprint_value
-{
-    my $val = $_[0];
-
-    if( $fold_long_fields && maxlen($val) > $folding_width - 2 ) {
-	$val = join( "\n", map { " " . $_ }
-		     fold( $folding_width - 1, " +", " ", $val ));
-	$val =~ s/^\s+//g;
-    }
-
-    if( $val =~ /\n/ || $val =~ /^$/ ||
-        ($val =~ /'\s/ && $val =~ /"\s/) ) {
-	$val = "\n;" . $val . "\n;";
-    } elsif( $val =~ /'\s/ ) {
-	$val = "\"" . $val . "\"";
-    } elsif( $val =~ /"\s/ ) {
-	$val = "'" . $val . "'";
-    } elsif( $val =~ /^'.*'$/ ) {
-	$val = "\"" . $val . "\"";
-    } elsif( $val =~ /\s|^_|^".*"$/) {
-	$val = "'" . $val . "'";
-    }
-    return $val;
-}
-
-sub fold
-{
-    my $length = shift;
-    my $separator = shift;
-    my $ors = shift;
-    my $string = shift;
-    my @lines = ();
-    my $line = "";
-
-    my $word;
-    for $word (split( $separator, $string )) {
-	$word =~ s/^\s*|\s*$//g;
-	if( !$line ) {
-	    $line = $word;
-	} else {
-	    my $new_line = "$line$ors$word";
-	    if( length($new_line) < $length ) {
-		$line = $new_line;
-	    } else {
-		push( @lines, $line );
-		$line = $word;
-	    }
-	}
-    }
-    push( @lines, $line );
-    return @lines;
-}
 
 sub cell_volume
 {
