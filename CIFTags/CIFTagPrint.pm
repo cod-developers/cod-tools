@@ -80,7 +80,8 @@ sub print_cif
 		    print "#BEGIN Tags that were not found in dictionaries:\n";
 		    $tags_encountered = 1;
 		}
-		print_tag( $tag, $datablok );
+		print_tag( $tag, $datablok, $fold_long_fields,
+                           $folding_width );
 	    }
 	}
 	if( $tags_encountered ) {
@@ -103,7 +104,8 @@ sub print_cif
 	    if( exists $dataset->{inloop}{$tag} ) {
 		my $tag_loop_nr = $dataset->{inloop}{$tag};
 		unless( exists $printed_loops{$tag_loop_nr} ) {
-		    print_loop( $tag, $tag_loop_nr, $dataset );
+		    print_loop( $tag, $tag_loop_nr, $dataset,
+                                $fold_long_fields, $folding_width );
 		    $printed_loops{$tag_loop_nr} = 1;
 		}
 	    }
@@ -124,7 +126,8 @@ sub print_cif
 			    "dictionaries:\n";
 			$tags_encountered = 1;
 		    }
-		    print_loop( $tag, $tag_loop_nr, $dataset );
+		    print_loop( $tag, $tag_loop_nr, $dataset,
+                                $fold_long_fields, $folding_width );
 		    $printed_loops{$tag_loop_nr} = 1;
 		}
 	    }
@@ -149,11 +152,11 @@ sub print_tag
 	    print "loop_\n";
 	    print "$key\n";
 	    for my $value (@$val) {
-		print_value( $value );
+		print_value( $value, $fold_long_fields, $folding_width );
 		print "\n";
 	    }
 	} else {
-	    my $value = sprint_value( $val->[0] );
+	    my $value = sprint_value( $val->[0], $fold_long_fields, $folding_width );
 	    my $key_len = length($key) > $::max_cif_tag_len ?
 		length($key) : $::max_cif_tag_len;
 	    my $val_len = length($value);
