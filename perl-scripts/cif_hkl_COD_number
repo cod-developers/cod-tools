@@ -1,0 +1,268 @@
+#! /bin/sh
+#!perl -w # --*- Perl -*--
+eval 'exec perl -x $0 ${1+"$@"}'
+    if 0;
+#------------------------------------------------------------------------------
+#$Author$
+#$Date$ 
+#$Revision$
+#$URL$
+#------------------------------------------------------------------------------
+#*
+#  Parse a CIF file and print out the essential information in the COD
+#  CIF format
+#**
+
+use strict;
+use lib "./lib/perl5";
+use lib "./CIFParser";
+use lib "./CIFTags";
+use lib ".";
+use File::Basename;
+use CIFParser;
+use CIFDictTags;
+use CIFCODTags;
+use CIFExcludedTags;
+use CIFTagManage;
+use CIFTagPrint;
+use CIFTagCanonicalNames;
+use Spacegroups::SpacegroupNames;
+use Spacegroups::SymopParse;
+use Spacegroups::SymopLookup;
+use Unicode2CIF;
+use SOptions;
+use SUsage;
+
+$::max_cif_line_len = 80;
+$::max_cif_tag_len = 32;
+
+my $exclude_empty_tags = 0;
+my $preserve_loop_order = 0;
+my $record_original_filename = 0;
+my $exclude_misspelled_tags = 0;
+my $fold_long_fields = 0;
+my $fold_title = 0;
+my $folding_width = 76;
+
+my $extra_tag_file;
+my $original_filename;
+
+my $cif_comment_header; # A header with comments to printed at the
+			# beginning of the output CIF file.
+
+my $cif_header_file; # The name of an external file that holds a CIF
+		     # header.
+
+my $data_block_nr; # If defined, specifies that data blocks should be
+		   # numbered in a COD-like fasion.
+
+@ARGV = getOptions( 
+    "-h,--add-cif-header" => \$cif_header_file,
+
+    "-x,--extra-tag-list" => \$extra_tag_file,
+
+    "--exclude-empty-tags"      => sub { $exclude_empty_tags = 1; },
+    "--dont-exclude-empty-tags" => sub { $exclude_empty_tags = 0; },
+    "--no-exclude-empty-tags"   => sub { $exclude_empty_tags = 0; },
+
+    "--exclude-misspelled-tags"      => sub { $exclude_misspelled_tags = 1; },
+    "--dont-exclude-misspelled-tags" => sub { $exclude_misspelled_tags = 0; },
+    "--no-exclude-misspelled-tags"   => sub { $exclude_misspelled_tags = 0; },
+
+    "--preserve-loop-order"     => sub { $preserve_loop_order = 1; },
+    "--use-internal-loop-order" => sub { $preserve_loop_order = 0; },
+
+    "--original-filename" => sub { $original_filename = &get_value;
+				   $record_original_filename = 1 },
+    "--clear-original-filename" => sub { undef $original_filename },
+
+    "--record-original-filename"      => sub { $record_original_filename = 1; },
+    "--dont-record-original-filename" => sub { $record_original_filename = 0; },
+
+    "-S,--start-data-block-number"    => \$data_block_nr,
+    "-R,--renumber-data-blocks"       => sub { $data_block_nr = 7000001 },
+    "-R-,--dont-renumber-data-blocks" => sub { undef $data_block_nr },
+
+    "--folding-width"         => \$folding_width,
+    "--fold-title"            => sub{ $fold_title = 1 },
+    "--dont-fold-title"       => sub{ $fold_title = 0 },
+    "--fold-long-fields"      => sub{ $fold_long_fields = 1 },
+    "--dont-fold-long-fields" => sub{ $fold_long_fields = 0 },
+
+    "--help,--usage" => sub { SUsage::usage; exit },
+);
+
+my @extra_tags = ();
+
+if( $extra_tag_file ) {
+    open( EXTRA, "$extra_tag_file" ) or
+	die( "could not open tag list '$extra_tag_file' for reading: $!" );
+    @extra_tags = map {s/\s//g;$_} map {split} grep /^\s*_/, <EXTRA>;
+    close( EXTRA ) or
+	die( "error while closing file '$extra_tag_file' after reading" );
+
+    ## local $, = "\n"; local $\ = "\n";
+    ## print @extra_tags;
+}
+
+my %excluded_tags  = map { ($_,$_) } @CIFExcludedTags::tag_list;
+
+my @dictionary_tags = ( @CIFDictTags::tag_list, @CIFCODTags::tag_list,
+			@extra_tags );
+
+my %dictionary_tags = map { $_, $_ } @dictionary_tags;
+
+my %cif_tags_lc = map {(lc($_),$_)} @dictionary_tags;
+
+
+if( defined $cif_header_file ) {
+    open( HEADER, "$cif_header_file" ) or
+	die( "could not open CIF header file '$cif_header_file' for reading: ".
+             "$!" );
+    local $/; # enable "slurp" mode: read the whole header file.
+    $cif_comment_header = <HEADER>;
+    close( HEADER ) or
+	die( "error while closing file '$cif_header_file' after reading" );
+}
+
+my $filename = shift(@ARGV);
+
+my $parser = new CIFParser;
+
+my @data = @{$parser->Run($filename)};
+
+if( defined $parser->YYData->{ERRCOUNT} && $parser->YYData->{ERRCOUNT} > 0 ) {
+    print STDERR "$0: ", $parser->YYData->{ERRCOUNT},
+                 " error(s) encountered while parsing file '${filename}'\n";
+    die;
+}
+
+if( !@data || !defined $data[0] || !defined $data[0]->{name} ) {
+    warn( "file '$filename' seems to be empty" );
+    exit( 0 );
+}
+
+#------------------------------------------------------------------------------
+
+binmode( STDOUT, ":utf8" );
+
+for my $dataset (@data) {
+
+    my $datablok = $dataset->{values};
+
+    canonicalize_names( $dataset );
+
+    next if !defined $datablok or !defined $datablok->{_refln_index_h};
+
+    ## print "\n" if $n > 0;
+
+    # Remove empty tags, if requested:
+
+    if( $exclude_empty_tags ) {
+	CIFTagManage::exclude_empty_tags( $dataset );
+    }
+
+    #
+    # Fold title if requested:
+
+    if( $fold_title ) {
+	my $cif_title = join( " ", @{$datablok->{_publ_section_title}} );
+	$cif_title =~ s/\n/ /g;
+	$datablok->{_publ_section_title} = [
+	    "\n" . join( "\n", map { " " . $_ }
+				 CIFTagPrint::fold( $folding_width - 2,
+                                                    " +", " ", $cif_title ))
+	    ];
+    }
+
+    # Exclude potentially copyrighted and irrelevant tags
+    # unconditionally:
+
+    do {
+	my @tag_list = @{$dataset->{tags}};
+	for my $tag (@tag_list) {
+	    if( exists $excluded_tags{$tag} || $tag =~ /^_vrf_/ ) {
+		CIFTagManage::exclude_tag( $dataset, $tag );
+		#use ShowStruct;
+		#showRef( $dataset );
+	    }
+	}
+    };
+
+    # Check for misspelled tags:
+
+    for my $tag (@{$dataset->{tags}}) {
+	unless( exists $dictionary_tags{$tag} ) {
+	    print STDERR basename( $0 ) . ": ";
+	    print STDERR "tag '$tag' is not recognised\n";
+	}
+    }
+
+    # Exclude the misspelled tags if requested:
+
+    if( $exclude_misspelled_tags ) {
+	my @tag_list = @{$dataset->{tags}};
+	for my $tag (@tag_list) {
+	    unless( exists $dictionary_tags{$tag} ) {
+		CIFTagManage::exclude_tag( $dataset, $tag );
+	    }
+	}
+    }
+
+    # Add the data source file name, if requested:
+
+    if( $record_original_filename ) {
+	my $basename;
+	if( defined $original_filename ) {
+	    $basename = File::Basename::basename( $original_filename );
+	} elsif( defined $filename && $filename ne "-" ) {
+	    $basename = File::Basename::basename( $filename );
+	} else {
+	    $basename = "?";
+	}
+	set_tag( $dataset, "_[local]_cod_data_source_file", $basename );
+	set_tag( $dataset, "_[local]_cod_data_source_block", $dataset->{name} );
+    }
+
+    # Clean up the resulting CIF data structure:
+
+    for my $excluded_tag (qw( _publ_author_address
+                              _publ_author.address
+                              _publ_author_email
+                              _publ_author.email
+                              _publ_author_footnote
+                              _publ_author.footnote
+                              _publ_author_id_iucr
+                              _publ_author.id_iucr )) {
+	if( exists $datablok->{$excluded_tag} ) {
+	    CIFTagManage::exclude_tag( $dataset, $excluded_tag );
+	    #use ShowStruct;
+	    #showRef( $dataset );
+	}
+    }
+
+    # Print out the CIF header if requested:
+
+    if( defined $cif_comment_header ) {
+	print $cif_comment_header;
+    }
+
+    # Calculate the data block name:
+
+    if( defined $data_block_nr ) {
+	$dataset->{name} = sprintf "%07d", $data_block_nr;
+	$data_block_nr ++;
+    }
+
+    # Print out requested tags:
+
+    print_cif( $dataset, { 
+	exclude_misspelled_tags => $exclude_misspelled_tags,
+	preserve_loop_order => $preserve_loop_order,
+	fold_long_fields => $fold_long_fields,
+	folding_width => $folding_width,
+	dictionary_tags => \%dictionary_tags,
+	dictionary_tag_list => \@dictionary_tags,
+    } );
+
+}
