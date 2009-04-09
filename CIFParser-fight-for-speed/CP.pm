@@ -195,13 +195,13 @@ $YYMAXTOKEN=269;
 "TEXT_FIELD","FLOAT","INT",
 );
 @yyrule = (
-"\$accept : cif_file",
-"cif_file :",
-"cif_file : data_block_list",
-"cif_file : data_item",
+"\$accept : start",
+"start :",
+"start : data_block_list",
+"start : data_item",
 "\$$1 :",
 "\$$2 :",
-"cif_file : cif_value $$1 $$2",
+"start : cif_value $$1 $$2",
 "data_block_list : data_block_list data_block",
 "data_block_list : data_block",
 "data_block : data_block_head data_item_list",
@@ -383,14 +383,14 @@ yyloop: while(1)
     $p->{yym} = $yylen[$p->{yyn}];
     $p->{yyval} = $p->{yyvs}->[$p->{yyvsp}+1-$p->{yym}];
 if ($p->{yyn} == 1) {
-#line 101 "CP.yp"
+#line 102 "CP.yp"
 {
 			$CP::parser->{USER}->{CIFfile} =
                             [ { name => undef, values => {}, tags => [] } ];
 		}
 }
 if ($p->{yyn} == 2) {
-#line 106 "CP.yp"
+#line 107 "CP.yp"
 {
 			if($CIFParser::debug >= 3)
 			{
@@ -400,7 +400,7 @@ if ($p->{yyn} == 2) {
 		}
 }
 if ($p->{yyn} == 3) {
-#line 114 "CP.yp"
+#line 115 "CP.yp"
 {
 			$CP::parser->{ERRMSG} = "No data block heading (i.e." .
 			" data_somecif) found in file!\n";
@@ -409,21 +409,21 @@ if ($p->{yyn} == 3) {
 		}
 }
 if ($p->{yyn} == 4) {
-#line 120 "CP.yp"
+#line 121 "CP.yp"
 {
 			$CP::parser->{USER}->{CIFfile} =
                             [ { name => undef, values => {}, tags => [] } ];
 		}
 }
 if ($p->{yyn} == 5) {
-#line 124 "CP.yp"
+#line 125 "CP.yp"
 {
 			$CP::parser->{USER}->{CIFfile} =
                             [ { name => undef, values => {}, tags => [] } ];
 		}
 }
 if ($p->{yyn} == 6) {
-#line 129 "CP.yp"
+#line 130 "CP.yp"
 {
 			$CP::parser->{ERRMSG} = "No data block heading (i.e." .
 			" data_somecif) found in file!\n";
@@ -432,7 +432,7 @@ if ($p->{yyn} == 6) {
 		}
 }
 if ($p->{yyn} == 7) {
-#line 139 "CP.yp"
+#line 140 "CP.yp"
 {
 			my $val = $p->{yyvs}->[$p->{yyvsp}-1];
 			push( @{$val}, $p->{yyvs}->[$p->{yyvsp}-0] );
@@ -440,13 +440,13 @@ if ($p->{yyn} == 7) {
 		}
 }
 if ($p->{yyn} == 8) {
-#line 145 "CP.yp"
+#line 146 "CP.yp"
 {
 			$p->{yyval} = [ $p->{yyvs}->[$p->{yyvsp}-0] ];
 		}
 }
 if ($p->{yyn} == 9) {
-#line 152 "CP.yp"
+#line 153 "CP.yp"
 {
 			## my $val = { name => $1 };
 			## $val->{content} = $2->{value};
@@ -459,14 +459,14 @@ if ($p->{yyn} == 9) {
 		}
 }
 if ($p->{yyn} == 10) {
-#line 163 "CP.yp"
+#line 164 "CP.yp"
 {
 			$p->{yyval} =
                             { name => $p->{yyvs}->[$p->{yyvsp}-0], values => {}, tags => [] };
 		}
 }
 if ($p->{yyn} == 11) {
-#line 171 "CP.yp"
+#line 172 "CP.yp"
 {
 		        ## my $val = $1;
 			## push(@{$val->{value}}, $2);
@@ -478,7 +478,7 @@ if ($p->{yyn} == 11) {
 		}
 }
 if ($p->{yyn} == 12) {
-#line 181 "CP.yp"
+#line 182 "CP.yp"
 {
 			## my $val = { kind => 'DATA' };
 			## push(@{$val->{value}}, $1);
@@ -487,26 +487,26 @@ if ($p->{yyn} == 12) {
 		}
 }
 if ($p->{yyn} == 13) {
-#line 191 "CP.yp"
+#line 192 "CP.yp"
 {
 			##$1 =~ m/^(data_)(.*)/si;
 			$p->{yyval} = $p->{yyvs}->[$p->{yyvsp}-0];
 		}
 }
 if ($p->{yyn} == 14) {
-#line 199 "CP.yp"
+#line 200 "CP.yp"
 {
 			$p->{yyval} = $p->{yyvs}->[$p->{yyvsp}-0];
 		}
 }
 if ($p->{yyn} == 15) {
-#line 203 "CP.yp"
+#line 204 "CP.yp"
 {
 			$p->{yyval} = $p->{yyvs}->[$p->{yyvsp}-0];
 		}
 }
 if ($p->{yyn} == 16) {
-#line 211 "CP.yp"
+#line 212 "CP.yp"
 {
 			## my $val = $1;
 			## push( @{$val->{value}}, $2 );
@@ -518,14 +518,14 @@ if ($p->{yyn} == 16) {
 		}
 }
 if ($p->{yyn} == 17) {
-#line 221 "CP.yp"
+#line 222 "CP.yp"
 {
 			my $val = $p->{yyvs}->[$p->{yyvsp}-0];
 			$p->{yyval} = $val;
 		}
 }
 if ($p->{yyn} == 18) {
-#line 229 "CP.yp"
+#line 230 "CP.yp"
 {
 		    # Here we convert to new structure:
 			## $$ = $1;
@@ -548,13 +548,13 @@ if ($p->{yyn} == 18) {
 		}
 }
 if ($p->{yyn} == 19) {
-#line 250 "CP.yp"
+#line 251 "CP.yp"
 {
 		        $p->{yyval} = $p->{yyvs}->[$p->{yyvsp}-0];
 		}
 }
 if ($p->{yyn} == 20) {
-#line 257 "CP.yp"
+#line 258 "CP.yp"
 {
 			my $val;
 			if(defined $p->{yyvs}->[$p->{yyvsp}-0]->{precision})
@@ -580,7 +580,7 @@ if ($p->{yyn} == 20) {
 		}
 }
 if ($p->{yyn} == 21) {
-#line 281 "CP.yp"
+#line 282 "CP.yp"
 {
 			my $val;
 			if(defined $p->{yyvs}->[$p->{yyvsp}-0]->{precision})
@@ -606,34 +606,12 @@ if ($p->{yyn} == 21) {
 		}
 }
 if ($p->{yyn} == 22) {
-#line 308 "CP.yp"
+#line 309 "CP.yp"
 {
-			## my $val = { kind => 'loop' };
-			## $val->{name} = $2->{name};
-			## $val->{value} = $3->{value};
-			## $val->{type} = $3->{type};
-			## if( defined $3->{precision} )
-			## {
-			## 	$val->{precision} = $3->{precision};
-			## }
-			## if( (scalar @{$val->{value}}) %
-			## 		(scalar @{$val->{name}}) == 0 )
-			## {
-			## 	$$ = $val;
-			## } else {
-			## 	$CP::parser->{ERRMSG} =
-			## 	    "Wrong number of elements in"
-			## 	    . " loop block starting in line "
-			## 	    . $CP::parser->{VARS}{loop_begin}
-			## 	    . "!\n";
-			## 	$CP::parser->YYError();
-			## }
-
 		        my $val = {};
 		        my $tags = $p->{yyvs}->[$p->{yyvsp}-1];
 			my @values = @{$p->{yyvs}->[$p->{yyvsp}-0]};
 
-			## push( @{$val->{loops}}, $tags );
                         $val->{loops} = [ [ @{$tags} ] ];
                         $val->{tags} = $tags;
 
@@ -666,7 +644,7 @@ if ($p->{yyn} == 22) {
 		}
 }
 if ($p->{yyn} == 23) {
-#line 369 "CP.yp"
+#line 348 "CP.yp"
 {
 			my $val = $p->{yyvs}->[$p->{yyvsp}-1];
 			push( @{$val}, $p->{yyvs}->[$p->{yyvsp}-0] );
@@ -674,14 +652,14 @@ if ($p->{yyn} == 23) {
 		}
 }
 if ($p->{yyn} == 24) {
-#line 375 "CP.yp"
+#line 354 "CP.yp"
 {
 			my $val = [ $p->{yyvs}->[$p->{yyvsp}-0] ];
 			$p->{yyval} = $val;
 		}
 }
 if ($p->{yyn} == 25) {
-#line 383 "CP.yp"
+#line 362 "CP.yp"
 {
 			my $arr = $p->{yyvs}->[$p->{yyvsp}-1];
 			my $val = $p->{yyvs}->[$p->{yyvsp}-0];
@@ -695,7 +673,7 @@ if ($p->{yyn} == 25) {
 		}
 }
 if ($p->{yyn} == 26) {
-#line 395 "CP.yp"
+#line 374 "CP.yp"
 {
 			my $val = $p->{yyvs}->[$p->{yyvsp}-0];
 			## { type => [ $1->{type} ] };
@@ -708,7 +686,7 @@ if ($p->{yyn} == 26) {
 		}
 }
 if ($p->{yyn} == 27) {
-#line 409 "CP.yp"
+#line 388 "CP.yp"
 {
 			## my $value = $2->{value};
 			## $1 =~ m/^(save_)(.*)$/si;
@@ -729,31 +707,32 @@ if ($p->{yyn} == 27) {
 		}
 }
 if ($p->{yyn} == 28) {
-#line 431 "CP.yp"
+#line 410 "CP.yp"
 {	print $p->{yyvs}->[$p->{yyvsp}-0]->{type} . "\t->\t"
-				. $p->{yyvs}->[$p->{yyvsp}-0]->{value} . "\n" if( $CIFParser::debug >= 1 && $CIFParser::debug <= 2) ;
-			$p->{yyvs}->[$p->{yyvsp}-0];
+				. $p->{yyvs}->[$p->{yyvsp}-0]->{value} . "\n" 
+                        if( $CIFParser::debug >= 1 && $CIFParser::debug <= 2) ;
+			$p->{yyval} = $p->{yyvs}->[$p->{yyvsp}-0];
 		}
 }
 if ($p->{yyn} == 29) {
-#line 436 "CP.yp"
+#line 416 "CP.yp"
 {	print $p->{yyvs}->[$p->{yyvsp}-0]->{type} . "\t\t->\t"
 				. $p->{yyvs}->[$p->{yyvsp}-0]->{value} . " -- "
 				. $p->{yyvs}->[$p->{yyvsp}-0]->{precision}
 				. "\n" if( $CIFParser::debug >= 1 && $CIFParser::debug <= 2);
-			$p->{yyvs}->[$p->{yyvsp}-0];
+			$p->{yyval} = $p->{yyvs}->[$p->{yyvsp}-0];
 		}
 }
 if ($p->{yyn} == 30) {
-#line 443 "CP.yp"
+#line 423 "CP.yp"
 {	print "TFIELD\t\t->\t" .
 				$p->{yyvs}->[$p->{yyvsp}-0]->{value} . "\n"
 				if( $CIFParser::debug >= 1 && $CIFParser::debug <= 2);
-			$p->{yyvs}->[$p->{yyvsp}-0];
+			$p->{yyval} = $p->{yyvs}->[$p->{yyvsp}-0];
 		}
 }
 if ($p->{yyn} == 31) {
-#line 452 "CP.yp"
+#line 432 "CP.yp"
 {
 			##$1 =~ m/^(')(.*)(')$/si;
 			$p->{yyval} = { value => $p->{yyvs}->[$p->{yyvsp}-0],
@@ -761,7 +740,7 @@ if ($p->{yyn} == 31) {
 		}
 }
 if ($p->{yyn} == 32) {
-#line 458 "CP.yp"
+#line 438 "CP.yp"
 {
 			##$1 =~ m/^(")(.*)(")$/si;
 			$p->{yyval} = { value => $p->{yyvs}->[$p->{yyvsp}-0],
@@ -769,20 +748,20 @@ if ($p->{yyn} == 32) {
 		}
 }
 if ($p->{yyn} == 33) {
-#line 463 "CP.yp"
-{ { value => $p->{yyvs}->[$p->{yyvsp}-0],
+#line 443 "CP.yp"
+{ $p->{yyval} = { value => $p->{yyvs}->[$p->{yyvsp}-0],
 			type => 'UQSTRING'} }
 }
 if ($p->{yyn} == 34) {
-#line 465 "CP.yp"
-{ { value => $p->{yyvs}->[$p->{yyvsp}-0],
+#line 445 "CP.yp"
+{ $p->{yyval} = { value => $p->{yyvs}->[$p->{yyvsp}-0],
 			type => 'TEXTFIELD' };
 		}
 }
 if ($p->{yyn} == 35) {
-#line 472 "CP.yp"
+#line 452 "CP.yp"
 {
-		    {	
+		    $p->{yyval} = {	
                         type => 'FLOAT',
                         value => $p->{yyvs}->[$p->{yyvsp}-0],
                         precision => 'undef'
@@ -790,15 +769,15 @@ if ($p->{yyn} == 35) {
 		}
 }
 if ($p->{yyn} == 36) {
-#line 480 "CP.yp"
+#line 460 "CP.yp"
 {
-		    {	type => 'INT',
+		    $p->{yyval} = {	type => 'INT',
                         value => $p->{yyvs}->[$p->{yyvsp}-0],
                         precision => 'undef'
 		    }
 		}
 }
-#line 799 "CP.pm"
+#line 778 "CP.pm"
     $p->{yyssp} -= $p->{yym};
     $p->{yystate} = $p->{yyss}->[$p->{yyssp}];
     $p->{yyvsp} -= $p->{yym};
@@ -843,7 +822,7 @@ if ($p->{yyn} == 36) {
     $p->{yyvs}[++$p->{yyvsp}] = $p->{yyval};
   } # yyloop
 } # yyparse
-#line 489 "CP.yp"
+#line 469 "CP.yp"
 # --------------------------------------------------------------
 # begin of footer
 # --------------------------------------------------------------
@@ -865,9 +844,10 @@ sub _Error
 	print STDERR "^\n";
 }
 
-sub _Lexer
+sub yylex
 {
-	my($parser) = shift;
+    my ($stream) = @_;
+	my $parser = {INPUT=>undef, ISTREAM=>$stream};
 	my $input = $parser->{INPUT};
 
 	#trimming tokenized comments
@@ -883,7 +863,7 @@ sub _Lexer
 	{
 		do
 		{
-			$input = <$CIFParser::FILEIN>;
+			$input = <$stream>;
 			$parser->{VARS}{lines}++;
 		} until ( !defined $input ||
 			$input !~ m/^(\s*(#.*)?)$/s );
@@ -1107,39 +1087,11 @@ sub advance_token
 	$parser->{VARS}{token_pos} += length($1);
 }
 
-sub Run
+sub yyerror
 {
-	my($self) = shift;
-	my($filename) = shift;
-
-	$filename = "-" unless $filename;
-	$CIFParser::FILEIN = new FileHandle $filename;
-	$| = 1;
-	if( $CIFParser::debug >= 2 && $CIFParser::debug < 3)
-	{
-		$self->YYParse( yylex => \&_Lexer,
-				yyerror => \&_Error,
-				yydebug => 0x05 );
-	} else {
-		$self->YYParse( yylex => \&_Lexer, yyerror => \&_Error );
-	}
-	if( $self->YYNberr() == 0 )
-	{
-		if( $CIFParser::debug >= 1 && $CIFParser::debug < 3)
-		{
-			print "File syntax is CORRECT!\n";
-		}
-		undef $CIFParser::FILEIN;
-	} else {
-		if( $CIFParser::debug >= 1 && $CIFParser::debug < 3)
-		{
-			print "Syntax check failed.\n";
-		}
-		undef $CIFParser::FILEIN;
-	}
-	return $self->{USER}->{CIFfile};
+    print STDERR "$.: $@\n";
 }
 
 return 1;
-#line 1142 "CP.pm"
+#line 1094 "CP.pm"
 1;

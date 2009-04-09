@@ -96,8 +96,9 @@ $CP::parser = {};
 %token INT
 
 %%
-cif_file
-	:	#empty
+
+#cif_file
+start:	#empty
                 {
 			$CP::parser->{USER}->{CIFfile} =
                             [ { name => undef, values => {}, tags => [] } ];
@@ -306,32 +307,10 @@ cif_entry
 loop
     :	LOOP_ loop_tags loop_values
 		{
-			## my $val = { kind => 'loop' };
-			## $val->{name} = $2->{name};
-			## $val->{value} = $3->{value};
-			## $val->{type} = $3->{type};
-			## if( defined $3->{precision} )
-			## {
-			## 	$val->{precision} = $3->{precision};
-			## }
-			## if( (scalar @{$val->{value}}) %
-			## 		(scalar @{$val->{name}}) == 0 )
-			## {
-			## 	$$ = $val;
-			## } else {
-			## 	$CP::parser->{ERRMSG} =
-			## 	    "Wrong number of elements in"
-			## 	    . " loop block starting in line "
-			## 	    . $CP::parser->{VARS}{loop_begin}
-			## 	    . "!\n";
-			## 	$CP::parser->YYError();
-			## }
-
 		        my $val = {};
 		        my $tags = $2;
 			my @values = @{$3};
 
-			## push( @{$val->{loops}}, $tags );
                         $val->{loops} = [ [ @{$tags} ] ];
                         $val->{tags} = $tags;
 
@@ -429,21 +408,22 @@ save_block
 cif_value
 	:	string
 		{	print $1->{type} . "\t->\t"
-				. $1->{value} . "\n" if( $CIFParser::debug >= 1 && $CIFParser::debug <= 2) ;
-			$1;
+				. $1->{value} . "\n" 
+                        if( $CIFParser::debug >= 1 && $CIFParser::debug <= 2) ;
+			$$ = $1;
 		}
 	|	number
 		{	print $1->{type} . "\t\t->\t"
 				. $1->{value} . " -- "
 				. $1->{precision}
 				. "\n" if( $CIFParser::debug >= 1 && $CIFParser::debug <= 2);
-			$1;
+			$$ = $1;
 		}
 	|	textfield
 		{	print "TFIELD\t\t->\t" .
 				$1->{value} . "\n"
 				if( $CIFParser::debug >= 1 && $CIFParser::debug <= 2);
-			$1;
+			$$ = $1;
 		}
 ;
 
@@ -460,9 +440,9 @@ string
 			$$ = { value => $1,
 				type => 'DQSTRING'};
 		}
-	|	UQSTRING	{ { value => $1,
+	|	UQSTRING	{ $$ = { value => $1,
 			type => 'UQSTRING'} }
-	|	TEXT_FIELD	{ { value => $1,
+	|	TEXT_FIELD	{ $$ = { value => $1,
 			type => 'TEXTFIELD' };
 		}
 ;
@@ -470,7 +450,7 @@ string
 number
 	:	FLOAT
 		{
-		    {	
+		    $$ = {	
                         type => 'FLOAT',
                         value => $1,
                         precision => 'undef'
@@ -478,7 +458,7 @@ number
 		}
 	|	INT
 		{
-		    {	type => 'INT',
+		    $$ = {	type => 'INT',
                         value => $1,
                         precision => 'undef'
 		    }
@@ -507,9 +487,10 @@ sub _Error
 	print STDERR "^\n";
 }
 
-sub _Lexer
+sub yylex
 {
-	my($parser) = shift;
+    my ($stream) = @_;
+	my $parser = {INPUT=>undef, ISTREAM=>$stream};
 	my $input = $parser->{INPUT};
 
 	#trimming tokenized comments
@@ -525,7 +506,7 @@ sub _Lexer
 	{
 		do
 		{
-			$input = <$CIFParser::FILEIN>;
+			$input = <$stream>;
 			$parser->{VARS}{lines}++;
 		} until ( !defined $input ||
 			$input !~ m/^(\s*(#.*)?)$/s );
@@ -749,37 +730,9 @@ sub advance_token
 	$parser->{VARS}{token_pos} += length($1);
 }
 
-sub Run
+sub yyerror
 {
-	my($self) = shift;
-	my($filename) = shift;
-
-	$filename = "-" unless $filename;
-	$CIFParser::FILEIN = new FileHandle $filename;
-	$| = 1;
-	if( $CIFParser::debug >= 2 && $CIFParser::debug < 3)
-	{
-		$self->YYParse( yylex => \&_Lexer,
-				yyerror => \&_Error,
-				yydebug => 0x05 );
-	} else {
-		$self->YYParse( yylex => \&_Lexer, yyerror => \&_Error );
-	}
-	if( $self->YYNberr() == 0 )
-	{
-		if( $CIFParser::debug >= 1 && $CIFParser::debug < 3)
-		{
-			print "File syntax is CORRECT!\n";
-		}
-		undef $CIFParser::FILEIN;
-	} else {
-		if( $CIFParser::debug >= 1 && $CIFParser::debug < 3)
-		{
-			print "Syntax check failed.\n";
-		}
-		undef $CIFParser::FILEIN;
-	}
-	return $self->{USER}->{CIFfile};
+    print STDERR "$.: $@\n";
 }
 
 return 1;
