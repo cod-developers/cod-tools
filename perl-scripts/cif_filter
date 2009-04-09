@@ -29,6 +29,7 @@ use CIFTagCanonicalNames;
 use Spacegroups::SpacegroupNames;
 use Spacegroups::SymopParse;
 use Spacegroups::SymopLookup;
+use Formulae::AdHocParser;
 use Unicode2CIF;
 use SOptions;
 use SUsage;
@@ -73,6 +74,7 @@ my $exclude_misspelled_tags = 0;
 my $fold_long_fields = 0;
 my $fold_title = 0;
 my $folding_width = 76;
+my $parse_formula_sum = 0;
 
 my $extra_tag_file;
 my $original_filename;
@@ -130,6 +132,10 @@ my %spacegroups = map {
     "--exclude-misspelled-tags"      => sub { $exclude_misspelled_tags = 1; },
     "--dont-exclude-misspelled-tags" => sub { $exclude_misspelled_tags = 0; },
     "--no-exclude-misspelled-tags"   => sub { $exclude_misspelled_tags = 0; },
+
+    "--parse-formula-sum"       => sub { $parse_formula_sum = 1; },
+    "--dont-parse-formula-sum"  => sub { $parse_formula_sum = 0; },
+    "--no-parse-formula-sum"    => sub { $parse_formula_sum = 0; },
 
     "--preserve-loop-order"     => sub { $preserve_loop_order = 1; },
     "--use-internal-loop-order" => sub { $preserve_loop_order = 0; },
@@ -635,6 +641,20 @@ for my $dataset (@data) {
 	} else {
 	    print STDERR "$0: the ", defined $filename ? "'$filename' " : "",
 	        "data_$dataset->{name} does not contain symmetry operators\n";
+	}
+    }
+
+    # Try to parse and correct chemical formula if requested:
+
+    if( $parse_formula_sum && defined $datablok->{_chemical_formula_sum} ) {
+	my $formula = $datablok->{_chemical_formula_sum}[0];
+	my $parser = new AdHocParser;
+	$parser->ParseString( $formula );
+	my $new_formula = $parser->SprintFormula;
+
+	if( $formula ne $new_formula ) {
+	    set_tag( $dataset, "_[local]_cod_chemical_formula_sum_orig", $formula );
+	    set_tag( $dataset, "_chemical_formula_sum", $new_formula );
 	}
     }
 
