@@ -187,24 +187,37 @@ sub _Error
 
 sub PrintFormula
 {
+    my ( $self ) = @_;
+
+    my $formula = $self->SprintFormula();
+
+    print $formula, "\n" if defined $formula;
+}
+
+sub SprintFormula
+{
     my ($parser) = @_;
+
+    my $formula;
 
     if( $parser->YYNberr() == 0 ) {
 	my %formula = %{$parser->{USER}->{FormulaSum}};
-
+	$formula = "";
 	my $separator = "";
+
 	if( exists $formula{C} && exists $formula{H} ) {
-	    print "C", $formula{C}, " ", "H", $formula{H};
+	    $formula .= "C" . $formula{C} . " " . "H" . $formula{H};
 	    delete $formula{C};
 	    delete $formula{H};
 	    $separator = " ";
 	}
 	for my $key (sort {$a cmp $b} keys %formula) {
-	    print $separator, $key, $formula{$key} != 1 ? $formula{$key} : "";
+	    $formula .= $separator . $key . ($formula{$key} != 1 ?
+		$formula{$key} : "");
 	    $separator = " ";
 	}
-	print "\n";
     }
+    return $formula;
 }
 
 sub _Lexer
