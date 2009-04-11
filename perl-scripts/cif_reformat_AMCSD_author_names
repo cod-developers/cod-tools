@@ -1,0 +1,94 @@
+#! /bin/sh
+#!perl -w # --*- Perl -*--
+eval 'exec perl -x $0 ${1+"$@"}'
+    if 0;
+#------------------------------------------------------------------------------
+#$Author$
+#$Date$ 
+#$Revision$
+#$URL$
+#------------------------------------------------------------------------------
+#*
+#  Parse a CIF file, reformat author names in AMCSD convention into
+#  COD format.
+#**
+
+use strict;
+use lib "./lib/perl5";
+use lib "./CIFParser";
+use CIFParser;
+use CIFTagCanonicalNames;
+use CIFDictTags;
+use CIFCODTags;
+use CIFTagPrint;
+use SOptions;
+use SUsage;
+
+@ARGV = getOptions(
+    "--help,--usage" => sub { SUsage::usage; exit },
+);
+
+my @dictionary_tags = ( @CIFDictTags::tag_list, @CIFCODTags::tag_list );
+my %dictionary_tags = map { $_, $_ } @dictionary_tags;
+
+$::max_cif_line_len = 80;
+$::max_cif_tag_len = 32;
+
+@ARGV = ("-") unless @ARGV;
+
+for my $filename (@ARGV) {
+    my $parser = new CIFParser;
+    my $data = $parser->Run($filename);
+
+    if( defined $parser->YYData->{ERRCOUNT} &&
+        $parser->YYData->{ERRCOUNT} > 0 ) {
+	print STDERR "$0: $filename: ",
+	$parser->YYData->{ERRCOUNT},
+	" error(s) encountered while parsing CIF data\n";
+	exit -1;
+    }
+
+    canonicalize_all_names( $data );
+
+    for my $dataset (@$data) {
+
+	my $values = $dataset->{values};
+
+	if( exists $values->{_publ_author_name} ) {
+	    for my $i (0..$#{$values->{_publ_author_name}}) {
+		my $author = $values->{_publ_author_name}[$i];
+		if( $author =~
+		    /\s*([A-Z][a-z\']+)          # Surname
+                     \s+((?:[A-Z]\s+)*[A-Z])\s*$ # Initials
+                    /x ) {
+		    my $surname = $1;
+		    my $initials = $2;
+		    $initials =~ s/([A-Z])/$1./g;
+		    $values->{_publ_author_name}[$i] =
+			"$surname, $initials";
+		}
+		if( $author =~
+		    /\s*((?:[a-z]+\s+)*[a-z]+)   # 'von' prefix
+                     \s+([A-Z][a-z\']+)          # Surname
+                     \s+((?:[A-Z]\s+)*[A-Z])\s*$ # Initials
+                    /x ) {
+		    my $von_prefix = $1;
+		    my $surname = $2;
+		    my $initials = $3;
+		    $initials =~ s/([A-Z])/$1./g;
+		    $values->{_publ_author_name}[$i] =
+			"$von_prefix $surname, $initials";
+		}
+	    }
+	}
+
+	print_cif( $dataset, { 
+	    exclude_misspelled_tags => 0,
+	    preserve_loop_order => 1,
+	    fold_long_fields => 0,
+	    dictionary_tags => \%dictionary_tags,
+	    dictionary_tag_list => \@dictionary_tags,
+	} );
+    }
+
+}
