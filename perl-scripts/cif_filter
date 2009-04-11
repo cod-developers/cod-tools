@@ -68,6 +68,7 @@ my $estimate_spacegroup = 0;
 my $exclude_empty_tags = 0;
 my $preserve_loop_order = 0;
 my $reformat_spacegroup = 0;
+my $keep_unrecognised_spacegroups = 0;
 my $calculate_cell_volume = 0;
 my $record_original_filename = 0;
 my $exclude_misspelled_tags = 0;
@@ -132,6 +133,10 @@ my %spacegroups = map {
     "--exclude-misspelled-tags"      => sub { $exclude_misspelled_tags = 1; },
     "--dont-exclude-misspelled-tags" => sub { $exclude_misspelled_tags = 0; },
     "--no-exclude-misspelled-tags"   => sub { $exclude_misspelled_tags = 0; },
+
+    "--keep-unrecognised-spacegroups"      => sub { $keep_unrecognised_spacegroups = 1; },
+    "--dont-keep-unrecognised-spacegroups" => sub { $keep_unrecognised_spacegroups = 0; },
+    "--no-keep-unrecognised-spacegroups"   => sub { $keep_unrecognised_spacegroups = 0; },
 
     "--parse-formula-sum"       => sub { $parse_formula_sum = 1; },
     "--dont-parse-formula-sum"  => sub { $parse_formula_sum = 0; },
@@ -632,24 +637,26 @@ for my $dataset (@data) {
 		    set_tag( $dataset, "_space_group_IT_number",
 			     $estimated_sg_number );
 		} else {
+		    if( !$keep_unrecognised_spacegroups ) {
+			if( defined $original_sg_H_M && $original_sg_H_M ne '?' &&
+			    !exists $datablok->{"_[local]_cod_cif_authors_sg_H-M"} ) {
+			    set_tag( $dataset, "_[local]_cod_cif_authors_sg_H-M",
+				     $original_sg_H_M );
+			}
+			set_tag( $dataset, "_symmetry_space_group_name_H-M", '?' );
 
-		    if( defined $original_sg_H_M && $original_sg_H_M ne '?' ) {
-			set_tag( $dataset, "_[local]_cod_cif_authors_sg_H-M",
-				 $original_sg_H_M );
-		    }
-		    set_tag( $dataset, "_symmetry_space_group_name_H-M", '?' );
+			if( defined $original_sg_Hall && $original_sg_Hall ne '?' ) {
+			    set_tag( $dataset, "_[local]_cod_cif_authors_sg_Hall",
+				     $original_sg_Hall );
+			}
+			set_tag( $dataset, "_symmetry_space_group_name_Hall",'?' );
 
-		    if( defined $original_sg_Hall && $original_sg_Hall ne '?' ) {
-			set_tag( $dataset, "_[local]_cod_cif_authors_sg_Hall",
-				 $original_sg_Hall );
+			if( defined $original_sg_number ) {
+			    set_tag( $dataset, "_[local]_cod_cif_authors_sg_number",
+				     $original_sg_number );
+			}
+			set_tag( $dataset, "_space_group_IT_number", '?' );
 		    }
-		    set_tag( $dataset, "_symmetry_space_group_name_Hall",'?' );
-
-		    if( defined $original_sg_number ) {
-			set_tag( $dataset, "_[local]_cod_cif_authors_sg_number",
-				 $original_sg_number );
-		    }
-		    set_tag( $dataset, "_space_group_IT_number", '?' );
 		}
 	    }
 	} else {
