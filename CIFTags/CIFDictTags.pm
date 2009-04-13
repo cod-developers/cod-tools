@@ -2790,6 +2790,13 @@ _phasing_set_refln.index_k
 _phasing_set_refln.index_l
 _phasing_set_refln.set_id
 _phasing_set.temp
+_platon_squeeze_void_nr
+_platon_squeeze_void_average_x
+_platon_squeeze_void_average_y
+_platon_squeeze_void_average_z
+_platon_squeeze_void_volume
+_platon_squeeze_void_count_electrons
+_platon_squeeze_details
 _refine_[]
 _refine_analyze.entry_id
 _refine_analyze.Luzzati_coordinate_error_free
