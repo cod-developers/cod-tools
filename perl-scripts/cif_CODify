@@ -10,21 +10,17 @@
 # using the rules of the Crystallography Open Database (COD).
 #**
 
-TMP_DIR="${tmp}"
-
 set -ue
-
-BASENAME="`basename $0`"
-
-test -z "${TMP_DIR}" && TMP_DIR="."
-TMP_DIR="${TMP_DIR}/tmp-${BASENAME}-$$"
-mkdir "${TMP_DIR}"
-
-TMP_COD_HEADER="${TMP_DIR}/header.txt"
 
 ## set -x
 
-cat > $TMP_COD_HEADER <<EOF
+for file
+do
+    if head $file | grep -q '^#' > /dev/null 2>&1
+    then
+	awk '{if( match( $0, "^#" )) print; else exit}' $file
+    else
+	cat <<EOF
 #------------------------------------------------------------------------------
 #\$Date\$
 #\$Revision\$
@@ -38,10 +34,9 @@ cat > $TMP_COD_HEADER <<EOF
 # contributors.
 #
 EOF
+    fi
 
-for file
-do
-    NUMBER=`basename ${file} .cif`
+    NUMBER=`basename ${file} .cif | sed -e 's/[^0-9]//g'`
 
     cif_filter \
 	${file} \
@@ -51,9 +46,5 @@ do
 	--estimate-spacegroup \
 	--reformat-spacegroup \
 	--keep-unrecognised-spacegroup \
-	--parse-formula-sum \
-	--add-cif-header ${TMP_COD_HEADER}
+	--parse-formula-sum
 done
-
-
-rm -rf "${TMP_DIR}"
