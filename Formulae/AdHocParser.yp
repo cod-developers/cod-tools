@@ -220,6 +220,14 @@ sub SprintFormula
     return $formula;
 }
 
+my $INTEGER  =	qr/[-+]?[0-9]+/s;
+my $EXPONENT =	qr/e[-+]?[0-9]+/is;
+my $FLOAT11  =	qr/(?: $INTEGER $EXPONENT)/ix;
+my $FLOAT21  =	qr/(?: [+-]? [0-9]* \. [0-9]+ $EXPONENT ?)/ix;
+my $FLOAT31  =	qr/(?: $INTEGER \. $EXPONENT ?)/ix;
+my $FLOAT    =	qr/(?: (?: $FLOAT11 | $FLOAT21 | $FLOAT31))/six;
+my $NUMBER   =  qr/(?: $INTEGER | $FLOAT )/ix;
+
 sub _Lexer
 {
     my($parser) = shift;
@@ -238,7 +246,7 @@ sub _Lexer
 		$parser->YYData->{VARS}{token_pos} += length($1);
 		return( 'ELEMENT', $1 );
 	    }
-	    if( s/^([-+0-9.Ee]+)// ) {
+	    if( s/^($NUMBER)//x ) {
 		$parser->YYData->{VARS}{token_pos} += length($1);
 		return( 'NUMBER', $1 );
 	    }
