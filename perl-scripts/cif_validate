@@ -76,6 +76,7 @@ my %showMap = (
         #
         # value checking related options
         'values-enum'        => 1,
+        'values-enum-nocase' => 0,
         'values-range'       => 1
     );
 
@@ -521,8 +522,20 @@ CIFFILEANAL: for my $cifF ( @{$CIFfile} ) {
                             my $listEnumValuesForTag = join(', ',
                                     @{$dictD->{$lc_tagAnalysed}{values}{_enumeration}}
                                     );
-                            if( !grep $_ eq $value, 
-                                 @{$dictD->{$lc_tagAnalysed}{values}{_enumeration}} ) {
+                            my $valueFoundInList = 0;
+                            if( $showMap{'values-enum-nocase'} ) {
+                                my $lcValue = lc $value;
+                                if( grep lc($_) eq $lcValue, 
+                                     @{$dictD->{$lc_tagAnalysed}{values}{_enumeration}} ) {
+                                    $valueFoundInList = 1;
+                                }
+                            } else {
+                                if( grep $_ eq $value, 
+                                     @{$dictD->{$lc_tagAnalysed}{values}{_enumeration}} ) {
+                                    $valueFoundInList = 1;
+                                }
+                            }
+                            if( $valueFoundInList == 0 ) {
                                 showValidationMessage 2, 'values-enum',
                                     $cifF, $$block{name},
                                     "tag '" . $tagAnalysed . "' value "
@@ -532,14 +545,20 @@ CIFFILEANAL: for my $cifF ( @{$CIFfile} ) {
                                     . $listEnumValuesForTag
                                     . '] values';
                             } else {
-                                showValidationMessage 64, 'values-enum',
-                                    $cifF, $$block{name},
-                                    "tag '" . $tagAnalysed . "' value "
+                                my $message = "tag '" . $tagAnalysed
+                                    . "' value "
                                     . '"'
                                     . $value
                                     . '" is one of these: ['
                                     . $listEnumValuesForTag
                                     . '] values';
+                                if( $showMap{'values-enum-nocase'} ) {
+                                    $message .= ' (case ignored)';
+                                }
+                                showValidationMessage 24, 'values-enum',
+                                    $cifF, $$block{name},
+                                    $message;
+                                undef $message;
                             }
                         }
                     }
@@ -583,8 +602,8 @@ CIFFILEANAL: for my $cifF ( @{$CIFfile} ) {
                                         . ')';
                             }
                         } else {
-                            showValidationMessage 64, $cifF,
-                                $$block{name},
+                            showValidationMessage 64, 'values-range', 
+                                $cifF, $$block{name},
                                 'there are no range restrictions'
                                 . " for tag '"
                                 . $tagAnalysed
@@ -721,6 +740,13 @@ Selecting tests, that should be performed:
                     if yes - whereas they fit in. I.e. tag
                     '_exptl_absorpt_correction_type' is restricted to 
                     values 'analytical, cylinder, empirical, ...'.
+        o values-enum-nocase - this is a test option, indicating that
+                    case must be ignored, while checking them against 
+                    list. This option is only actual if values-enum 
+                    test is ON. I.e. '_atom_site_adp_type' is restricted 
+                    to values ('Uani', 'Uiso', 'Uovl', ...) and 'UANI' 
+                    would be incorrect, if values-enum-nocase is turned 
+                    off.
         o values-range - this test is ON by default. The test is used to 
                     check, whereas some boundaries were defined. I.e. 
                     '_refine_ls_abs_structure_Flack' must be between 
