@@ -72,7 +72,7 @@ my %showMap = (
         # loop_ checking related options
         'tags-grouped'       => 0,
         'list-mandatory'     => 1,
-        'ref-list-mandatory' => 0,
+        'ref-list-mandatory' => 1,
         #
         # value checking related options
         'values-enum'        => 1,
@@ -350,7 +350,7 @@ CIFFILEANAL: for my $cifF ( @{$CIFfile} ) {
                     my $mandatoryRTag = getRelatedMandatory($dictD, 
                                                      $lc_tagAnalysed);
                     if( defined $mandatoryRTag
-                        && !exists($baseNamesOfRefTags{$dictD->{$lc_tagAnalysed}{name}})
+                        && !exists($baseNamesOfRefTags{$mandatoryRTag})
                         ) {
                         for my $loopAnalysed ( @{$block->{loops}} ) {
                             if( grep $_ eq $tagAnalysed, @{$loopAnalysed} ) {
@@ -366,8 +366,8 @@ CIFFILEANAL: for my $cifF ( @{$CIFfile} ) {
                                         . '] are defined'
                                         . ' according to ' . $dictF
                                         . ' and was found';
-                                    $baseNamesOfRefTags{$dictD->{$lc_tagAnalysed}{name}}
-                                        = 'yes';
+                                    $baseNamesOfRefTags{$mandatoryRTag} = 'yes';
+                                    last;
                                 } else {
                                     showValidationMessage 2,
                                         'ref-list-mandatory', $cifF,
@@ -380,8 +380,8 @@ CIFFILEANAL: for my $cifF ( @{$CIFfile} ) {
                                         . '] are defined'
                                         . ' according to ' . $dictF
                                         . ' but was not found';
-                                    $baseNamesOfRefTags{$dictD->{$lc_tagAnalysed}{name}}
-                                        = 'no';
+                                    $baseNamesOfRefTags{$mandatoryRTag} = 'no';
+                                    last;
                                 }
                             }
                         }
@@ -732,7 +732,7 @@ Selecting tests, that should be performed:
         o ref-list-mandatory - this test is OFF by default. It is used 
                     to check, whereas there is some tag associated with 
                     any others, that must be present in loop. I.e. if 
-                    you define '_atom_site_aniso_U_12' tag 
+                    you define '_atom_site_fract_x' tag
                     '_atom_site_label' must be defined somewhere as 
                     well.
         o values-enum - this test is ON by default. The test checks, 
@@ -854,9 +854,6 @@ sub getRelatedMandatory {
         && exists $dict->{$tag}{values}{_list_mandatory}
         && $dict->{$tag}{values}{_list_mandatory}[0] eq 'yes' ) {
         return $tag;
-    }
-    if( exists $dict->{$tag}{values}{_list_link_parent} ) {
-        $requeryTag = $dict->{$tag}{values}{_list_link_parent}[0];
     }
     if( exists $dict->{$tag}{values}{_list_reference} ) {
         $requeryTag = $dict->{$tag}{values}{_list_reference}[0];
