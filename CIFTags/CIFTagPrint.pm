@@ -265,7 +265,7 @@ sub sprint_value
 	$val = "\n;" . $val . "\n;";
     } elsif( $val =~ /'\s/ ) {
 	$val = "\"" . $val . "\"";
-    } elsif( $val =~ /"\s/ ) {
+    } elsif( $val =~ /"\s|^\#/ ) {
 	$val = "'" . $val . "'";
     } elsif( $val =~ /^'.*'$/ ) {
 	$val = "\"" . $val . "\"";
