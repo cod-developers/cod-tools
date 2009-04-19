@@ -38,7 +38,18 @@ $AdHocParser::debug = 0;
 formula
     : item
     | formula SPACE item
+    | formula ',' opt_spaces item
 ;
+
+opt_spaces
+   : spaces
+   | # empty
+    ;
+
+spaces
+   : SPACE
+   | spaces SPACE
+   ;
 
 item
 	:	ELEMENT
@@ -272,7 +283,7 @@ sub _Lexer
 	    }
 	    if( s/^(.)// ) {
 		$parser->YYData->{VARS}{token_pos} += length($1);
-		return ( 'CHAR', $1 );
+		return ( $1, $1 );
 	    }
 	    else {
 		return( '', undef );
