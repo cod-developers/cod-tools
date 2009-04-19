@@ -30,6 +30,7 @@ sub print_cif
 
     my ( $exclude_misspelled_tags, $preserve_loop_order ) = ( 0 ) x 2;
     my $fold_long_fields = 1;
+    my $keep_tag_order = 0;
     my $folding_width;
 
     if( $flags && ref $flags eq "HASH" ) {
@@ -43,10 +44,20 @@ sub print_cif
 	    if defined $flags->{dictionary_tags};
 	@dictionary_tags = @{$flags->{dictionary_tag_list}}
 	    if defined $flags->{dictionary_tag_list};
+	$keep_tag_order = $flags->{keep_tag_order}
+	    if defined $flags->{keep_tag_order};
     }
 
     if( !@dictionary_tags ) {
 	@dictionary_tags = sort {$a cmp $b} keys %dictionary_tags;
+    }
+
+    my @tags_to_print = ();
+
+    if( $keep_tag_order ) {
+	@tags_to_print = @{$dataset->{tags}};
+    } else {
+	@tags_to_print = @dictionary_tags;
     }
 
     my %printed_loops = ();
@@ -55,7 +66,7 @@ sub print_cif
 	print "data_", $dataset->{name}, "\n";
     }
 
-    for my $tag (@dictionary_tags) {
+    for my $tag (@tags_to_print) {
 	if( defined $datablok->{$tag} ) {
 	    if( !exists $dataset->{inloop}{$tag} ) {
 		print_tag( $tag, $datablok,

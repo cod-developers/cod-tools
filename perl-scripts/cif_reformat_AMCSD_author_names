@@ -24,8 +24,12 @@ use CIFTagPrint;
 use SOptions;
 use SUsage;
 
+my $keep_tag_order = 0;
+
 @ARGV = getOptions(
-    "--help,--usage" => sub { SUsage::usage; exit },
+    "--keep-tag-order" => sub { $keep_tag_order = 1; },
+    "--sort-tags"      => sub { $keep_tag_order = 0; },
+    "--help,--usage"   => sub { SUsage::usage; exit },
 );
 
 my @dictionary_tags = ( @CIFDictTags::tag_list, @CIFCODTags::tag_list );
@@ -87,6 +91,7 @@ for my $filename (@ARGV) {
 	    fold_long_fields => 0,
 	    dictionary_tags => \%dictionary_tags,
 	    dictionary_tag_list => \@dictionary_tags,
+	    keep_tag_order => $keep_tag_order,
 	} );
     }
 }
