@@ -17,6 +17,9 @@ require Exporter;
 @CIFTagPrint::ISA = qw(Exporter);
 @CIFTagPrint::EXPORT = qw( print_cif );
 
+$CIFTagPrint::max_cif_line_len = 80;
+$CIFTagPrint::max_cif_tag_len = 32;
+
 sub print_cif
 {
     my ( $dataset, $flags ) = @_;
@@ -157,19 +160,19 @@ sub print_tag
 	    }
 	} else {
 	    my $value = sprint_value( $val->[0], $fold_long_fields, $folding_width );
-	    my $key_len = length($key) > $::max_cif_tag_len ?
-		length($key) : $::max_cif_tag_len;
+	    my $key_len = length($key) > $CIFTagPrint::max_cif_tag_len ?
+		length($key) : $CIFTagPrint::max_cif_tag_len;
 	    my $val_len = length($value);
 
 	    if( $value =~ /\s/ ) {
 		$val_len += 2;
 	    }
-	    if( $key_len + $val_len + 1 > $::max_cif_line_len &&
+	    if( $key_len + $val_len + 1 > $CIFTagPrint::max_cif_line_len &&
 		$value !~ /\n/ ) {
 		printf "%s\n", $key;
 	    } else {
 		if( $value !~ /\n/ ) {
-		    printf "%-" . $::max_cif_tag_len . "s ", $key;
+		    printf "%-" . $CIFTagPrint::max_cif_tag_len . "s ", $key;
 		} else {
 		    printf "%s", $key;
 		}
@@ -211,7 +214,7 @@ sub print_loop
 		$line = $line_prefix;
 		$folding_separator = "\n";
 	    } elsif( length( $line ) + length( $val ) + 1 
-		     < $::max_cif_line_len ) {
+		     < $CIFTagPrint::max_cif_line_len ) {
 		if( $line eq $line_prefix ) {
 		    $line .= $val;
 		} else {
