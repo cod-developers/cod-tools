@@ -44,7 +44,6 @@ my %commands = (
     "\x{221E}" => '\\\\infty ',  # INFINITY
 );
 
-
 #
 # %alt_cmd is used only to transform from Unicode to CIF commands. For
 # back translation only main forms, %commands, are used, since
@@ -124,7 +123,6 @@ my %letters = (
 # Some special European letters
 #
     "\x{00DF}" => '\&s',  # LATIN SMALL LETTER SHARP S (German eszett)
-    "\x{00B0}" => '\%',   # DEGREE SIGN
     "\x{0141}" => '\/L',  # LATIN CAPITAL LETTER L WITH STROKE
     "\x{0142}" => '\/l',  # LATIN SMALL LETTER L WITH STROKE
     "\x{00D8}" => '\/O',  # LATIN CAPITAL LETTER O WITH STROKE
@@ -134,6 +132,19 @@ my %letters = (
     "\x{0131}" => '\?i',  # LATIN SMALL LETTER DOTLESS I
     "A\x{030A}" => '\%A', # LATIN CAPITAL LETER A with ring above
     "a\x{030A}" => '\%a', # LATIN SMALL LETER A with ring above
+    "U\x{030A}" => '\%U', # LATIN CAPITAL LETER U with ring above
+    "u\x{030A}" => '\%u', # LATIN SMALL LETER U with ring above
+);
+
+#
+# Special signs are CIF sequences that need to be transformed after
+# the letters, only if the letters do not match. Since the letetrs
+# themselves must be transformed after the %commands list, these
+# special signs can not be included into the %commands hash.
+#
+
+my %special_signs = (
+    "\x{00B0}" => '\%',          # DEGREE SIGN
 );
 
 my %combining = (
@@ -171,7 +182,7 @@ for my $i ( 0x0391 .. 0x03A9 ) {
     }
 }
 
-my %cif = ( %commands, %alt_cmd, %letters );
+my %cif = ( %commands, %alt_cmd, %letters, %special_signs );
 
 sub unicode2cif
 {
@@ -206,6 +217,9 @@ sub cif2unicode
     }
     for my $pattern (keys %letters) {
 	$text =~ s/\Q$letters{$pattern}\E/$pattern/g;
+    }
+    for my $pattern (keys %special_signs) {
+	$text =~ s/\Q$special_signs{$pattern}\E/$pattern/g;
     }
     for my $pattern (keys %combining) {
 	$text =~ s/(\Q$combining{$pattern}\E)(.)/$2$1/g;
