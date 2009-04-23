@@ -37,6 +37,7 @@ my $CIFfile = ();
 my $CIFtags;
 my $outputFile;
 my $dictFiles = [];
+my $setOfEnum = [];
 my $dictFilesParsed = [];
 my $dictTags = {};
 my $quiet = 0;
@@ -134,12 +135,20 @@ sub getRelatedMandatory;
 # main program code
 #
 
+# Treat '_atom_site_refinement_flags' by default, as it is so documented 
+# in CIF core dictionary.
+push @$setOfEnum, '_atom_site_refinement_flags';
+
 # check parameters passed
 @ARGV = getOptions(
         "--output"
             => \$outputFile,
         "--dictionary"
             => $dictFiles,
+        "--set-of-enum"
+            => $setOfEnum,
+        "--no-set-emulation"
+            => sub{ $setOfEnum = [] },
         "--version"
             => sub{ VersionMessage() },
         "--quiet"
@@ -523,18 +532,41 @@ CIFFILEANAL: for my $cifF ( @{$CIFfile} ) {
                                     @{$dictD->{$lc_tagAnalysed}{values}{_enumeration}}
                                     );
                             my $valueFoundInList = 0;
-                            if( $showMap{'values-enum-nocase'} ) {
-                                my $lcValue = lc $value;
-                                if( grep lc($_) eq $lcValue, 
-                                     @{$dictD->{$lc_tagAnalysed}{values}{_enumeration}} ) {
-                                    $valueFoundInList = 1;
+                            my $emulateSet = 0;
+                            if(  grep lc($_) eq $lc_tagAnalysed,
+                                    @{$setOfEnum} ) {
+                                $emulateSet = 1;
+                                my $setOfEnumValues = join '|',
+                                    @{$dictD->{$lc_tagAnalysed}{values}{_enumeration}};
+                                $setOfEnumValues =~ s/\./\\./;
+                                my $regexpSetOfEnumValues = 
+                                                 qr/^($setOfEnumValues)+$/s;
+                                if( $showMap{'values-enum-nocase'} ) {
+                                    if( $value =~ 
+                                        m/$regexpSetOfEnumValues/is ) {
+                                        $valueFoundInList = 1;
+                                    }
+                                } else {
+                                    if( $value =~ 
+                                        m/$regexpSetOfEnumValues/s ) {
+                                        $valueFoundInList = 1;
+                                    }
                                 }
                             } else {
-                                if( grep $_ eq $value, 
-                                     @{$dictD->{$lc_tagAnalysed}{values}{_enumeration}} ) {
-                                    $valueFoundInList = 1;
+                                if( $showMap{'values-enum-nocase'} ) {
+                                    my $lcValue = lc $value;
+                                    if( grep lc($_) eq $lcValue, 
+                                         @{$dictD->{$lc_tagAnalysed}{values}{_enumeration}} ) {
+                                        $valueFoundInList = 1;
+                                    }
+                                } else {
+                                    if( grep $_ eq $value, 
+                                         @{$dictD->{$lc_tagAnalysed}{values}{_enumeration}} ) {
+                                        $valueFoundInList = 1;
+                                    }
                                 }
                             }
+
                             if( $valueFoundInList == 0 ) {
                                 showValidationMessage 2, 'values-enum',
                                     $cifF, $$block{name},
@@ -554,6 +586,9 @@ CIFFILEANAL: for my $cifF ( @{$CIFfile} ) {
                                     . '] values';
                                 if( $showMap{'values-enum-nocase'} ) {
                                     $message .= ' (case ignored)';
+                                }
+                                if( $emulateSet ) {
+                                    $message .= ', enum was treated as set';
                                 }
                                 showValidationMessage 24, 'values-enum',
                                     $cifF, $$block{name},
@@ -692,6 +727,16 @@ Options available:
         Prints version message and exits.
     --help
         Prints this message and exits.
+    --set-of-enum
+        If tag name is given to this parameter and tag specified has 
+        some enumeration values to check against, they are treated as 
+        set, i.e. more than one of enumeration values could be defined 
+        for one single element. By default it is turned on for tag 
+        '_atom_site_refinement_flags', which is documented as set, but 
+        only in it's description.
+    --no-set-emulation
+        This parameter turns off all so far defined exceptions, that 
+        emulates enumeration treating as set (see --set-of-enum).
     --check
         Provide a list of options, what tests should be performed.
         Please see list of options further.
