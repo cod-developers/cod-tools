@@ -68,6 +68,7 @@ my %showMap = (
         #
         # tag name checking related options
         'tag-exsits'         => 1,
+        'tag-exists-local'   => 0,
         'tag-deprecated'     => 0,
         #
         # loop_ checking related options
@@ -298,6 +299,10 @@ CIFFILEANAL: for my $cifF ( @{$CIFfile} ) {
         for my $tagAnalysed ( @{$block->{tags}} ) {
             my $lc_tagAnalysed = lc $tagAnalysed;
             my $defined = 0;
+            if( $showMap{'tag-exists-local'} == 0
+                && $lc_tagAnalysed =~ m/^_\[local\]/ ) {
+                ++$defined;
+            }
             my $correctDataType = 0;
             #
             # start-iterate-through-dictionaries
@@ -762,6 +767,9 @@ Selecting tests, that should be performed:
     List of tests:
         o tag-exsits - this test is ON by default. It is meant to check 
                     whereas tag DO exist in dictionary.
+        o tag-exists-local - this test enforces check of tags marked as 
+                    local, i.e. _[local]_cod_depositor_comments. 
+                    Otherwise these tags are ignored.
         o tag-deprecated - this test is OFF by default. If turned on it 
                     checks whereas tag was not replaced by new one.
         o tags-grouped - this test is OFF by default. It is meant to 
