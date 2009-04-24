@@ -60,7 +60,7 @@ sub exclude_empty_tags
 
     for my $tag (@{$cif->{tags}}) {
 	if( tag_is_empty( $cif, $tag ) &&
-            !$cif->{inloop}{$tag} ) {
+            !exists $cif->{inloop}{$tag} ) {
 	    push( @empty_tags, $tag );
 	}
     }
