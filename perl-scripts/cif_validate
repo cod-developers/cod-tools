@@ -163,7 +163,37 @@ push @$setOfEnum, '_atom_site_refinement_flags';
         "--check"
             => $outputOptions,
         "--show"
-            => $outputOptions
+            => $outputOptions,
+        # turn on check options
+        "--check-all"
+            => sub{ while ( my($k,$v) = each(%showMap) ) {
+                        $showMap{$k} = 1;
+                    }
+                  },
+        "--check-tag-exists"         => sub{ $showMap{'tag-exists'} = 1 },
+        "--check-tag-exists-local"   => sub{ $showMap{'tag-exists-local'} = 1 },
+        "--check-tag-deprecated"     => sub{ $showMap{'tag-deprecated'} = 1 },
+        "--check-tags-grouped"       => sub{ $showMap{'tags-grouped'} = 1 },
+        "--check-list-mandatory"     => sub{ $showMap{'list-mandatory'} = 1 },
+        "--check-ref-list-mandatory" => sub{ $showMap{'ref-list-mandatory'} = 1 },
+        "--check-values-enum"        => sub{ $showMap{'values-enum'} = 1 },
+        "--check-values-enum-nocase" => sub{ $showMap{'values-enum'} = 1; $showMap{'values-enum-nocase'} = 1 },
+        "--check-values-range"       => sub{ $showMap{'values-range'} = 1 },
+        # turn off check options
+        "--check-none"
+            => sub{ while ( my($k,$v) = each(%showMap) ) {
+                        $showMap{$k} = 0;
+                    }
+                  },
+        "--do-not-check-tag-exists"         => sub{ $showMap{'tag-exists'} = 0 },
+        "--do-not-check-tag-exists-local"   => sub{ $showMap{'tag-exists-local'} = 0 },
+        "--do-not-check-tag-deprecated"     => sub{ $showMap{'tag-deprecated'} = 0 },
+        "--do-not-check-tags-grouped"       => sub{ $showMap{'tags-grouped'} = 0 },
+        "--do-not-check-list-mandatory"     => sub{ $showMap{'list-mandatory'} = 0 },
+        "--do-not-check-ref-list-mandatory" => sub{ $showMap{'ref-list-mandatory'} = 0 },
+        "--do-not-check-values-enum"        => sub{ $showMap{'values-enum'} = 0 },
+        "--do-not-check-values-enum-nocase" => sub{ $showMap{'values-enum'} = 0 },
+        "--do-not-check-values-range"       => sub{ $showMap{'values-range'} = 0 }
     );
 
 if( defined($outputFile) ) {
@@ -711,11 +741,11 @@ Please be careful not to include it in any public system, or carefully
 revise in case of updates.
 
 Options available:
-    --output <file>
+    --output cid_validate.log
         This meant - you can define some file, that is writable for 
         current user and this script output will be redirected to it.
         I.e. '--output output.log'
-    --dictionary <cif_file>
+    --dictionary cif_core.dic
         Any valid CIF file, with CIF dictionary (according to DDL2).
         You can define any number of CIF dictionaries, in a way like 
         this:
@@ -724,10 +754,12 @@ Options available:
         Minimizes program output.
     --no-quiet
         Maximizes program output.
-    --error-level xx
+    --error-level 4
         Define verbosity of script.
         This is a subject to change. So far it is used for debugging 
         purposes to maximise program output.
+        Default verbosity level is 4. It can go up as far as to 65536.
+        Higher than 4 levels are intended for debugging purposes only.
     --version
         Prints version message and exits.
     --help
@@ -747,6 +779,122 @@ Options available:
         Please see list of options further.
     --show
         Alias for '--check'.
+    --check-all
+        Turn on all tests (see below).
+    --check-tag-exists
+        Turn on test 'tag-exists'.
+        This test is ON by default.
+        It tests, whereas tag is defined in dictionary.
+    --check-tag-exists-local
+        Turn on test 'tag-exists-local'.
+        This test is OFF by default.
+        This test enforces check of tags marked as local, i.e.
+         _[local]_cod_depositor_comments.
+        Otherwise these tags are ignored.
+    --check-tag-deprecated
+        Turn on test 'tag-deprecated'.
+        This test is OFF by default.
+        This test checks whereas tag was not replaced by new one.
+    --check-tags-grouped
+        Turn on test 'tags-grouped'.
+        This test is OFF by default.
+        This test checks, whereas list of tags must be together in loop.
+        I.e. if you define '_atom_site_fract_x' values for
+        '_atom_site_fract_y' and '_atom_site_fract_z' must be defined as
+        well.
+        It is turned off, because so far it might give too much
+        false-warnings.
+    --check-list-mandatory
+        Turn on test 'list-mandatory'.
+        This test is ON by default.
+        This test checks whereas tag MUST be in loop. It means it can not
+        be defined anywhere in data_ block, only within some loop.
+    --check-ref-list-mandatory
+        Turn on test 'ref-list-mandatory'.
+        This test is OFF by default.
+        This test is used to check, whereas there is some tag associated
+        with any others, that must be present in loop. I.e. if you define
+        '_atom_site_fract_x' tag '_atom_site_label' must be defined
+        somewhere as well.
+    --check-values-enum
+        Turn on test 'values-enum'.
+        This test is ON by default.
+        This test is used to check, whereas tag values are restricted to
+        some list and if yes - whereas they fit in. I.e. tag
+        '_exptl_absorpt_correction_type' is restricted to values
+        'analytical, cylinder, empirical, ...'.
+    --check-values-enum-nocase
+        Turn on tests 'values-enum-nocase' and 'values-enum'.
+        This test is OFF by default.
+        This is a test option, indicating that case must be ignored, while
+        checking them against list (see 'values-enum'). This option is
+        only actual if values-enum test is ON. I.e. '_atom_site_adp_type'
+        is restricted to values ('Uani', 'Uiso', 'Uovl', ...) and 'UANI' 
+        would be incorrect, if values-enum-nocase is turned off.
+    --check-values-range
+        Turn on test 'values-range'.
+        This test is ON by default.
+        The test is used to check, whereas some boundaries were defined.
+        I.e. '_refine_ls_abs_structure_Flack' must be between '0.0' and
+        '1.0'.
+    --check-none
+        Turns of all tests.
+    --do-not-check-tag-exists
+        Turn off test 'tag-exists'.
+        This test is ON by default.
+        It tests, whereas tag is defined in dictionary.
+    --do-not-check-tag-exists-local
+        Turn off test 'tag-exists-local'.
+        This test is OFF by default.
+        This test enforces check of tags marked as local, i.e.
+         _[local]_cod_depositor_comments.
+        Otherwise these tags are ignored.
+    --do-not-check-tag-deprecated
+        Turn off test 'tag-deprecated'.
+        This test is OFF by default.
+        This test checks whereas tag was not replaced by new one.
+    --do-not-check-tags-grouped
+        Turn off test 'tags-grouped'.
+        This test is OFF by default.
+        This test checks, whereas list of tags must be together in loop.
+        I.e. if you define '_atom_site_fract_x' values for
+        '_atom_site_fract_y' and '_atom_site_fract_z' must be defined as
+        well.
+        It is turned off, because so far it might give too much
+        false-warnings.
+    --do-not-check-list-mandatory
+        Turn off test 'list-mandatory'.
+        This test is ON by default.
+        This test checks whereas tag MUST be in loop. It means it can not
+        be defined anywhere in data_ block, only within some loop.
+    --do-not-check-ref-list-mandatory
+        Turn off test 'ref-list-mandatory'.
+        This test is OFF by default.
+        This test is used to check, whereas there is some tag associated
+        with any others, that must be present in loop. I.e. if you define
+        '_atom_site_fract_x' tag '_atom_site_label' must be defined
+        somewhere as well.
+    --do-not-check-values-enum
+        Turn off test 'values-enum'.
+        This test is ON by default.
+        This test is used to check, whereas tag values are restricted to
+        some list and if yes - whereas they fit in. I.e. tag
+        '_exptl_absorpt_correction_type' is restricted to values
+        'analytical, cylinder, empirical, ...'.
+    --do-not-check-values-enum-nocase
+        Turn off test 'values-enum-nocase'.
+        This test is OFF by default.
+        This is a test option, indicating that case must be ignored, while
+        checking them against list (see 'values-enum'). This option is
+        only actual if values-enum test is ON. I.e. '_atom_site_adp_type'
+        is restricted to values ('Uani', 'Uiso', 'Uovl', ...) and 'UANI' 
+        would be incorrect, if values-enum-nocase is turned off.
+    --do-not-check-values-range
+        Turn off test 'values-range'.
+        This test is ON by default.
+        The test is used to check, whereas some boundaries were defined.
+        I.e. '_refine_ls_abs_structure_Flack' must be between '0.0' and
+        '1.0'.
 
 Selecting tests, that should be performed:
     Option '--check' accepts comma separated list of test names.
