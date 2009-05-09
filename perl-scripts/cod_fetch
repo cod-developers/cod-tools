@@ -1,0 +1,45 @@
+#! /bin/sh
+#!perl -w # --*- Perl -*--
+eval 'exec perl5 -x $0 ${1+"$@"}'
+    if 0;
+#------------------------------------------------------------------------------
+#$Author$
+#$Date$ 
+#$Revision$
+#$URL$
+#------------------------------------------------------------------------------
+#*
+#  Query COD server using the Perl DBD::mysql interface.
+#**
+
+use strict;
+
+use DBD::mysql;
+
+my $database = "cod";
+my $hostname = "cod.ibt.lt";
+
+my $query_text = $ARGV[0];
+
+my $dsn = "DBI:mysql:database=$database;host=$hostname";
+
+my $dbh = DBI->connect( $dsn, "cod_reader" );
+
+my $query = sprintf("SELECT file FROM data WHERE text like %s",
+		    $dbh->quote( "%" . $query_text . "%" ));
+
+print "query = >>>$query<<<\n";
+
+my $sth = $dbh->prepare( $query );
+
+$sth->execute();
+
+use Serialise;
+
+while (my $row = $sth->fetchrow_hashref()) {
+    serialiseRef( $row );
+}
+
+$sth->finish();
+
+$dbh->disconnect();
