@@ -106,19 +106,25 @@ cif_file
 			}
 			$_[0]->{USER}->{CIFfile} = $_[1];
 		}
-	|	data_item_list
-		{
-                        my $data_item_list = $_[1];
-                        $data_item_list->{name} = "";
-			$_[0]->{USER}->{CIFfile} = [ $data_item_list ];
+	|	data_item
+                {
 			$_[0]->YYData->{ERRMSG} = "no data block heading (i.e." .
 			    " data_somecif) found";
                         unless( $_[0]->{USER}{OPTIONS}{fix_errors} ||
                                 $_[0]->{USER}{OPTIONS}{fix_data_header} ) {
-			    $_[0]->YYError();
+			    $_[0]->_Error();
                         } else {
 			    $_[0]->_Warning();
                         }
+                        return $_[1];
+		}
+		data_item_list
+		{
+                        my $list = $_[3];
+                        my $item = $_[1];
+                        $list = merge_data_lists( $_[0], $list, $item );
+                        $list->{name} = "";
+			$_[0]->{USER}->{CIFfile} = [ $list ];
 		}
 	|	cif_value                     {
 			$_[0]->{USER}->{CIFfile} =
