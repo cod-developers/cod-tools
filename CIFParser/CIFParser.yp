@@ -106,14 +106,19 @@ cif_file
 			}
 			$_[0]->{USER}->{CIFfile} = $_[1];
 		}
-	|	data_item
+	|	data_item_list
 		{
+                        my $data_item_list = $_[1];
+                        $data_item_list->{name} = "";
+			$_[0]->{USER}->{CIFfile} = [ $data_item_list ];
 			$_[0]->YYData->{ERRMSG} = "no data block heading (i.e." .
 			    " data_somecif) found";
-			$_[0]->{USER}->{CIFfile} = [
-                            { name => "", values => {}, tags => [] }
-                        ];
-			$_[0]->YYError();
+                        unless( $_[0]->{USER}{OPTIONS}{fix_errors} ||
+                                $_[0]->{USER}{OPTIONS}{fix_data_header} ) {
+			    $_[0]->YYError();
+                        } else {
+			    $_[0]->_Warning();
+                        }
 		}
 	|	cif_value                     {
 			$_[0]->{USER}->{CIFfile} =
@@ -524,6 +529,26 @@ sub _Error
 	print STDERR "^\n";
 }
 
+sub _Warning
+{
+    my $script = $0 eq '-e' ? "" : "$0: ";
+    my $filename = $_[0]->YYData->{FILENAME} eq '-' ?
+        "file '-'" : $_[0]->YYData->{FILENAME};
+
+    if( exists $_[0]->YYData->{ERRMSG} ) {
+	print STDERR $script;
+	print STDERR $filename;
+	print STDERR "(", $_[0]->YYData->{VARS}{lines}, ")";
+	if( defined $_[0]->{USER}->{CURRENT_DATABLOCK} ) {
+	    print STDERR " data_",
+	    $_[0]->{USER}->{CURRENT_DATABLOCK};
+	}
+	print STDERR ": warning, ";
+	print STDERR $_[0]->YYData->{ERRMSG}, "\n";
+	delete $_[0]->YYData->{ERRMSG};
+    };
+}
+
 sub _Lexer
 {
 	my($parser) = shift;
@@ -777,11 +802,25 @@ sub advance_token
 
 sub Run
 {
-	my($self) = shift;
-	my($filename) = shift;
-	my($reporter) = shift;
+    my ($self, $filename, $options, $reporter) = @_;
 
-	$self->{reporter} = $reporter;
+
+    if( ref $options eq "CODE" ) {
+	$self->{reporter} = $options; # old syntax,
+	                              # $reporter ref passed as 3rd arg.
+    } else {
+	if( defined $reporter ) {
+	    $self->{reporter} = $reporter;
+	} else {
+	    if( defined $options && exists $options->{reporter} ) {
+		$self->{reporter} = $options->{reporter};
+	    }
+	}
+    }
+
+    if( ref $options eq "HASH" ) {
+	$self->{USER}{OPTIONS} = $options;
+    }
 
 	$filename = "-" unless $filename;
 

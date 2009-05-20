@@ -73,6 +73,7 @@ my $fold_long_fields = 0;
 my $fold_title = 0;
 my $folding_width = 76;
 my $parse_formula_sum = 0;
+my $fix_errors = 0;
 
 my $extra_tag_file;
 my $original_filename;
@@ -138,6 +139,10 @@ my %spacegroups = map {
     "--parse-formula-sum"       => sub { $parse_formula_sum = 1; },
     "--dont-parse-formula-sum"  => sub { $parse_formula_sum = 0; },
     "--no-parse-formula-sum"    => sub { $parse_formula_sum = 0; },
+
+    "--fix-syntax-errors"       => sub { $fix_errors = 1; },
+    "--dont-fix-syntax-errors"  => sub { $fix_errors = 0; },
+    "--no-fix-syntax-errors"    => sub { $fix_errors = 0; },
 
     "--preserve-loop-order"     => sub { $preserve_loop_order = 1; },
     "--use-internal-loop-order" => sub { $preserve_loop_order = 0; },
@@ -210,7 +215,13 @@ my $filename = shift(@ARGV);
 
 my $parser = new CIFParser;
 
-my @data = @{$parser->Run($filename)};
+my %options;
+
+if( $fix_errors ) {
+    $options{fix_errors} = 1;
+}
+
+my @data = @{$parser->Run($filename, \%options)};
 
 if( defined $parser->YYData->{ERRCOUNT} && $parser->YYData->{ERRCOUNT} > 0 ) {
     print STDERR "$0: ", $parser->YYData->{ERRCOUNT},
