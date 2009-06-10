@@ -125,15 +125,49 @@ cif_file
 			}
 			$_[0]->{USER}->{CIFfile} = $val;
 		}
-	|	cif_value
+
+	|	stray_cif_value_list
                 {
-			$_[0]->YYData->{ERRMSG} = "no data block heading (i.e." .
-			" data_somecif) found";
 			$_[0]->{USER}->{CIFfile} = [
                             { name => "", values => {}, tags => [] }
                         ];
-			$_[0]->YYError();
 		}
+
+	|	stray_cif_value_list data_block_list
+                {
+			$_[0]->{USER}->{CIFfile} = $_[2];
+		}
+;
+
+stray_cif_value_list
+        : cif_value 
+                {
+			$_[0]->YYData->{ERRMSG} = "stray CIF values at the " .
+                            "beginning of the input file";
+                        unless( $_[0]->{USER}{OPTIONS}{fix_errors} ||
+                                $_[0]->{USER}{OPTIONS}{fix_data_header} ) {
+			    $_[0]->_Error();
+                        } else {
+			    $_[0]->_Warning();
+                        }
+		}
+        | cif_value
+                {
+			$_[0]->YYData->{ERRMSG} = "stray CIF values at the " .
+                            "beginning of the input file";
+                        unless( $_[0]->{USER}{OPTIONS}{fix_errors} ||
+                                $_[0]->{USER}{OPTIONS}{fix_data_header} ) {
+			    $_[0]->_Error();
+                        } else {
+			    $_[0]->_Warning();
+                        }
+		}
+          cif_value_list
+;
+
+cif_value_list
+    : cif_value
+    | cif_value_list cif_value
 ;
 
 data_block_list
