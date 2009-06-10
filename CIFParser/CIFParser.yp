@@ -106,25 +106,24 @@ cif_file
 			}
 			$_[0]->{USER}->{CIFfile} = $_[1];
 		}
-	|	data_item
-                {
-			$_[0]->YYData->{ERRMSG} = "no data block heading (i.e." .
-			    " data_somecif) found";
-                        unless( $_[0]->{USER}{OPTIONS}{fix_errors} ||
-                                $_[0]->{USER}{OPTIONS}{fix_data_header} ) {
-			    $_[0]->_Error();
-                        } else {
-			    $_[0]->_Warning();
-                        }
-                        return $_[1];
-		}
-		data_item_list
+	|	headerless_data_block
 		{
-                        my $list = $_[3];
-                        my $item = $_[1];
-                        $list = merge_data_lists( $_[0], $list, $item );
-                        $list->{name} = "";
-			$_[0]->{USER}->{CIFfile} = [ $list ];
+			my $val = $_[1];
+			if($CIFParser::debug >= 3)
+			{
+				showRef($_[1]);
+			}
+			$_[0]->{USER}->{CIFfile} = [ $val ];
+		}
+	|	headerless_data_block data_block_list
+		{
+			my $val = $_[2];
+			unshift( @{$val}, $_[1] );
+			if($CIFParser::debug >= 3)
+			{
+				showRef($_[1]);
+			}
+			$_[0]->{USER}->{CIFfile} = $val;
 		}
 	|	cif_value
                 {
@@ -147,6 +146,29 @@ data_block_list
 	|	data_block
 		{
 			return [ $_[1] ];
+		}
+;
+
+headerless_data_block
+	:	data_item
+                {
+			$_[0]->YYData->{ERRMSG} = "no data block heading (i.e." .
+			    " data_somecif) found";
+                        unless( $_[0]->{USER}{OPTIONS}{fix_errors} ||
+                                $_[0]->{USER}{OPTIONS}{fix_data_header} ) {
+			    $_[0]->_Error();
+                        } else {
+			    $_[0]->_Warning();
+                        }
+                        return $_[1];
+		}
+		data_item_list
+		{
+                        my $list = $_[3];
+                        my $item = $_[1];
+                        $list = merge_data_lists( $_[0], $list, $item );
+                        $list->{name} = "";
+			return $list;
 		}
 ;
 
