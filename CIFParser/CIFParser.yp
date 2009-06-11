@@ -643,6 +643,15 @@ sub _Lexer
 		}
 	}
 
+	if( $parser->YYData->{INPUT} !~ /^[\x10-\x7F]*$/ &&
+	    ( $parser->{USER}{OPTIONS}{fix_errors} ||
+	      $parser->{USER}{OPTIONS}{fix_non_ascii_symbols} )) {
+	    $parser->YYData->{ERRMSG} = "non-ascii symbols encountered in the text:\n'" .
+		$parser->YYData->{INPUT} . "'";
+	    $parser->_Warning();
+	    $parser->YYData->{INPUT} =~ s/([^\x10-\x7F])/sprintf("&#x%04X;",ord($1))/eg;
+	}
+
 #scalars storing regular expressions, common to several matches
 my $ORDINARY_CHAR	=	
 	qr/[a-zA-Z0-9!%&\(\)\*\+,-\.\/\:<=>\?@\\\^`{\|}~]/is;
