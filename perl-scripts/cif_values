@@ -1,0 +1,162 @@
+#! /bin/sh
+#!perl -w # --*- Perl -*--
+eval 'exec perl -x $0 ${1+"$@"}'
+    if 0;
+#------------------------------------------------------------------------------
+#$Author: saulius $
+#$Date: 2009-06-12 17:42:41 +0100 (Fri, 12 Jun 2009) $ 
+#$Revision: 12 $
+#$URL: svn://193.219.56.16/atomclasses/trunk/bin/cif_classify_atoms $
+#------------------------------------------------------------------------------
+#*
+#  Read CIFs and print out requested tag values in a tabular form.
+#**
+
+use strict;
+use File::Basename;
+use CIFParser;
+use CIFTags::CIFTagManage;
+use SOptions;
+use SUsage;
+
+my $header = 1;
+my $separator = "\t";
+
+my @selected_tags;
+my @excluded_tags;
+my $write_data_name = 1;
+
+my $write_filename = 1;
+my $write_basename = 2;
+my $write_file;
+
+#* Usage:
+#*     cif_values [options] input.cif [input2.cif ...]
+#*
+#* Options:
+#*     -t, --tags _tag1,_tag2,_tag3
+#*     --tags "_tag1 _tag2 _tag3"
+#*         Print out values of tags _tag1, _tag2, and _tag3;
+#*         the specified tag list becomes a new list of printed tags.
+#*
+#*     -a, --add-tag _tag4
+#*         Add tag _tag4 to the list of printed tags.
+#*
+#*     -c, --clear-tags
+#*         Clear the list of printed tags accumulated so far.
+#*
+#*     -h, --header
+#*         Print out header with the names of selected tags at the beginning
+#*         (default).
+#*
+#*     -h-, --no-header
+#*         Do not print out any header.
+#*
+#*     -s, --separator=", "
+#*         Use the specified string as a separator between tag values on a line.
+#*
+#*     --tab-separator
+#*         Use TAB character as a separator between tag values on a line.
+#*         (default).
+#*
+#*     --filename
+#*         Print out full filename at the beginning of each line.
+#*
+#*     --basename
+#*         Print out basename of each file at the beginning of each line.
+#*
+#*     --no-filename
+#*         Do not print file names (default).
+#*
+#*     --dataname
+#*         Print out data block name at the beginning of each line (default).
+#*
+#*     --no-dataname
+#*         Do not print data block names.
+#*
+#*     --help  print a short usage message (this message) and exit.
+#**
+
+@ARGV = getOptions(
+    "--t,--tags" => sub { @selected_tags = split( /\s|,/, get_value()) },
+    "-a,--add-tag"    => \@selected_tags,
+    "-c,--clear-tags" => sub { @selected_tags = () },
+
+    "-h,--header"     => sub { $header = 1 },
+    "-h-,--no-header" => sub { $header = 0 },
+
+    "-s,--separator"  => \$separator,
+    "--tab-separator" => sub { $separator = "\t" },
+    
+    "-x,--exclude-tags" => sub { @excluded_tags =
+                                     push( @excluded_tags,
+                                           split( /\s|,/, get_value()))},
+
+    "-x-,--no-excluded-tags" => sub { @excluded_tags = () },
+
+    "--filename"      => sub { $write_file = $write_filename },
+    "--basename"      => sub { $write_file = $write_basename },
+    "--no-filename"   => sub { $write_file = 0 },
+
+    "--dataname"      => sub { $write_data_name = 1 },
+    "--no-dataname"   => sub { $write_data_name = 0 },
+
+    "--help,--usage"  => sub { SUsage::usage; exit },
+);
+
+if( $header ) {
+    print "# ", join( $separator, @selected_tags ), "\n";
+}
+
+for my $filename (@ARGV) {
+
+    my $parser = new CIFParser;
+
+    my $data = $parser->Run($filename);
+
+    if( defined $parser->YYData->{ERRCOUNT} &&
+        $parser->YYData->{ERRCOUNT} > 0 ) {
+        print STDERR "$0: ", $parser->YYData->{ERRCOUNT},
+        " error(s) encountered while parsing file '${filename}'\n";
+        die;
+    }
+
+    if( !@{$data} || !defined $data->[0] || !defined $data->[0]{name} ) {
+        warn( "file '$filename' seems to be empty" );
+        next;
+    }
+
+    for my $dataset (@$data) {
+
+        for my $tag (@excluded_tags) {
+            CIFTag::CIFTagManage::exclude_tag( $dataset, $tag );
+        }
+
+        my @values = ();
+        my $values = $dataset->{values};
+
+        if( $write_file ) {
+            if( $write_file == $write_filename ) {
+                push( @values, $filename );
+            } else {
+                push( @values, basename( $filename ));
+            }
+        }
+
+        if( $write_data_name ) {
+            push( @values, $dataset->{name} ? $dataset->{name} : "?" );
+        }
+
+        for my $tag (@selected_tags) {
+            if( exists $values->{$tag} ) {
+                my @tag_vals = map { s/\n$//; s/[\n\s]/_/g; $_ }
+                    @{$values->{$tag}};
+                push( @values, join( ",", @tag_vals ));
+            } else {
+                push( @values, "?" );
+            }
+        }
+
+        print join( $separator, @values ), "\n";
+    }
+}
