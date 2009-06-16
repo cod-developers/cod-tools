@@ -14,7 +14,7 @@ use strict;
 require Exporter;
 @SymopParse::ISA = qw(Exporter);
 @SymopParse::EXPORT = qw( symop_from_string string_from_symop 
-    symop_string_canonical_form check_symmetry_operator
+    symop_string_canonical_form check_symmetry_operator modulo_1
 );
 
 #
