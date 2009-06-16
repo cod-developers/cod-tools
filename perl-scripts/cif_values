@@ -24,6 +24,7 @@ my $separator = "\t";
 
 my @selected_tags;
 my @excluded_tags;
+my @uniquified_tags;
 my $write_data_name = 1;
 
 my $write_filename = 1;
@@ -54,6 +55,16 @@ my $write_file;
 #*
 #*     -s, --separator=", "
 #*         Use the specified string as a separator between tag values on a line.
+#*
+#*     -u, --uniquify-tags _tag1,_tag2
+#*         Print only unique values of specified tags, not the whole
+#*         list of values.
+#*
+#*     --add-uniquified-tag _tag1
+#*         Add tag '_tag' to the uniquified tag list
+#*
+#*     -u-, --dont-uniquify-tags
+#*         Print all values of all tags, do not uniquify any tags
 #*
 #*     --tab-separator
 #*         Use TAB character as a separator between tag values on a line.
@@ -88,6 +99,14 @@ my $write_file;
     "-s,--separator"  => \$separator,
     "--tab-separator" => sub { $separator = "\t" },
     
+    "-u,--uniquify-tags" => sub { @uniquified_tags =
+                                      split( /\s|,/, get_value())},
+
+    "--add-uniquified-tag" => \@uniquified_tags,
+
+    "-u-,--no-uniquify-tags" => sub { @uniquified_tags = () },
+    "--dont-uniquify-tags"   => sub { @uniquified_tags = () },
+
     "-x,--exclude-tags" => sub { @excluded_tags =
                                      push( @excluded_tags,
                                            split( /\s|,/, get_value()))},
@@ -103,6 +122,10 @@ my $write_file;
 
     "--help,--usage"  => sub { SUsage::usage; exit },
 );
+
+sub sunique(@);
+
+my %uniquified_tags = map { ($_,1) } @uniquified_tags;
 
 if( $header ) {
     print "# ", join( $separator, @selected_tags ), "\n";
@@ -151,7 +174,11 @@ for my $filename (@ARGV) {
             if( exists $values->{$tag} ) {
                 my @tag_vals = map { s/\n$//; s/[\n\s]/_/g; $_ }
                     @{$values->{$tag}};
-                push( @values, join( ",", @tag_vals ));
+                if( $uniquified_tags{$tag} ) {
+                    push( @values, join( ",", sunique( @tag_vals )));
+                } else {
+                    push( @values, join( ",", @tag_vals ));
+                }
             } else {
                 push( @values, "?" );
             }
@@ -159,4 +186,17 @@ for my $filename (@ARGV) {
 
         print join( $separator, @values ), "\n";
     }
+}
+
+sub sunique(@)
+{
+    my @sorted = sort { $a cmp $b } @_;
+    my @unique = ();
+
+    for my $value (@sorted) {
+        if( int(@unique) == 0 || $unique[-1] ne $value ) {
+            push( @unique, $value );
+        }
+    }
+    return @unique;
 }
