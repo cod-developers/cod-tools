@@ -1,0 +1,897 @@
+#! /bin/sh
+#!perl -w # --*- Perl -*--
+eval 'exec perl -x $0 ${1+"$@"}'
+    if 0;
+#------------------------------------------------------------------------------
+#$Author$
+#$Date$ 
+#$Revision$
+#$URL$
+#------------------------------------------------------------------------------
+#*
+#  Collects distance statistics among given atoms in CIF file and symetric
+#  atoms.
+#**
+
+use strict;
+use lib "./lib/perl5";
+use lib "./CIFParser";
+use lib "./Spacegroups";
+use CIFParser;
+use SymopParse;
+use SymopLookup;
+use File::Basename;
+use SOptions;
+use SUsage;
+use Fractional;
+use AtomProperties;
+
+my $Id = '$Id$';
+
+my $print_dist_matrix = 0;
+my $print_file_name = 0;
+my $print_suspicious_atoms = 0;
+my $cutoff;
+my $file_to_load;
+my $print_to_loaded_file = 0;
+my $step_size = 0.1;
+my $sensitivity = 0.2;
+
+@ARGV = getOptions( 
+    "-d,--print_dist_matrix"  => sub { $print_dist_matrix = 1; },
+    "-f,--print_file_name"  => sub { $print_file_name = 1; },
+    "-s,--print_suspicious_atoms"  => sub { $print_suspicious_atoms = 1; },
+    "-n,--sensitivity"  => sub { $sensitivity = get_value() },
+    "-c,--cutoff"  => sub {$cutoff = get_value() },
+    "-t,--step_size"  => sub {$step_size = get_value() },
+    "-l,--load"  => sub {$file_to_load = get_value() },
+    "-o,--output"  => sub {$print_to_loaded_file = 1; $file_to_load =
+                                                                get_value() },
+    "--help,--usage" => sub { SUsage::usage; exit },
+);
+
+my %histogram_stats;
+my @files;
+
+if(defined $file_to_load)
+{
+    my $error;
+    
+    $error = load_histogram_stats(\%histogram_stats, \@files, $file_to_load);
+
+    if($error == 1)
+    {
+        print STDERR "ERR: " . &File::Basename::fileparse($0) . ": ";
+        print STDERR "'$file_to_load': ";
+        print STDERR "Can't load information from file" . 
+                                                    "(load_histogram_stats).\n";
+    }
+}
+
+foreach my $filename (@ARGV)
+{
+    my $parser = new CIFParser;
+    my $data = $parser->Run($filename);
+
+    for my $dataset (@$data)
+    {
+    #   extracts atom site label or atom site type symbol
+        my $values = $dataset->{"values"};
+        my $atom_labels;
+
+        if (exists $values->{"_atom_site_label"})
+        {
+            $atom_labels = $values->{"_atom_site_label"};
+        }
+        elsif (exists $values->{"_atom_site_type_symbol"})
+        {
+            $atom_labels = $values->{"_atom_site_type_symbol"};
+        }
+        else
+        {
+            print STDERR "ERR: " . &File::Basename::fileparse($0) . ": ";
+            print STDERR "'$filename': ";
+            print STDERR "There was neither _atom_site_type_symbol" .
+                                                " nor _atom_site_label.\n";
+        }
+
+    #   extracts symmetry operators
+        my $sym_data;
+
+        if(exists $values->{"_symmetry_equiv_pos_as_xyz"})
+        {
+            $sym_data = $values->{"_symmetry_equiv_pos_as_xyz"};
+        }
+
+        if(exists $values->{"_symmetry_space_group_name_Hall"} &&
+                                                        (not defined $sym_data))
+        {
+            my $hall = $values->{"_symmetry_space_group_name_Hall"}[0];
+            $sym_data = get_symops("hall", $hall);
+
+            if($sym_data == 0)
+            {
+                print STDERR "ERR: " . &File::Basename::fileparse($0) . ": ";
+                print STDERR "'$filename': ";
+                print STDERR "There was incorrect " .
+                            "_symmetry_space_group_name_Hall " . $hall . "\n";
+            }
+        }
+
+        if(exists $values->{"_symmetry_space_group_name_H-M"} &&
+                                    (not defined $sym_data or $sym_data == 0))
+        {
+            my $h_m = $values->{"_symmetry_space_group_name_H-M"}[0];
+            $sym_data = get_symops("hermann_mauguin", $h_m);
+
+            if($sym_data == 0)
+            {
+                print STDERR "ERR: " . &File::Basename::fileparse($0) . ": ";
+                print STDERR "'$filename': ";
+                print STDERR "There was incorrect " . 
+                            "_symmetry_space_group_name_H-M " . $h_m . "\n";
+            }
+        }
+
+        if(not defined $sym_data)
+        {
+            print STDERR "ERR: " . &File::Basename::fileparse($0) . ": ";
+            print STDERR "'$filename': ";
+            print STDERR "There was neither _symmetry_equiv_pos_as_xyz " .
+                        "nor _symmetry_space_group_name_Hall " .
+                        "nor _symmetry_space_group_name_H-M.\n";
+        }
+
+    #   checks for disorder
+        my $found_disorder = check_disorder($values);
+
+        if($found_disorder == 1)
+        {
+            print STDERR "INFO: " . &File::Basename::fileparse($0) . ": ";
+            print STDERR "'$filename': ";
+            print STDERR "There was _atom_site_disorder_group or" .
+            "_atom_site_disorder_assembly with value not equal to \".\"."
+                                                                        . "\n";
+        }
+        
+        if((defined $atom_labels) && ($found_disorder != 1) &&              
+                                    (defined $sym_data) && ($sym_data != 0))
+        {
+            push(@files, $filename);
+
+    #       extracts symmetry operators
+            my @sym_operators = map {symop_from_string($_)}@{$sym_data};
+
+    #       extracts cell angles(alpha, beta, gama) and lengths(a, b, c)
+            my @cell_lengths_and_angles;
+
+            for my $cif_tag (qw(_cell_length_a
+                                _cell_length_b
+                                _cell_length_c
+            ))
+            {
+                push(@cell_lengths_and_angles, $values->{$cif_tag}[0]);
+                $cell_lengths_and_angles[-1] =~ s/\(\d+\)$//;
+            }
+
+            for my $cif_tag (qw(_cell_angle_alpha
+                                _cell_angle_beta
+                                _cell_angle_gamma
+            ))
+            {
+                push(@cell_lengths_and_angles, $values->{$cif_tag}[0]);
+                $cell_lengths_and_angles[-1] =~ s/\(\d+\)$//;
+            }
+
+    #       extracts atoms coordinates and does modulo_1
+            my @symmetric_atoms;
+            my @initial_atoms;
+    
+            for(my $i = 0; $i < @{$atom_labels}; $i++)
+            {
+                my %atom_info;
+                my @atom_xyz;
+
+                for my $cif_fract ("_atom_site_fract_x",
+                                "_atom_site_fract_y",
+                                "_atom_site_fract_z",)
+                {
+                    push(@atom_xyz, $values->{$cif_fract}[$i]);
+                    $atom_xyz[-1] =~ s/\(\d+\)$//;
+                    $atom_xyz[-1] = modulo_1($atom_xyz[-1]);
+                }
+
+                ${$atom_labels}[$i] =~ m/^([^a-z]*)([a-z]+)/i;
+
+# $atom_info = {label=>"C1_2",
+#               chemical_type=>"C",
+#               coordinates=>[1.0, 1.0, 1.0],
+#               unity_matrix_applied=>1}
+
+                $atom_info{"coordinates"} = \@atom_xyz;
+                $atom_info{"label"} = ${$atom_labels}[$i];
+                $atom_info{"chemical_type"} = $2;
+                $atom_info{"unity_matrix_applied"} = 1;
+
+                push(@initial_atoms, \%atom_info);
+            }
+
+    #       applies symmetry operators and translates atoms
+            @symmetric_atoms = @initial_atoms;
+            
+            for(my $i = 0; $i < @sym_operators; $i++)
+            {
+                foreach my $primary_atom (@initial_atoms)
+                {
+                    my $new_atom_info = symop_apply($primary_atom,
+                                                            $sym_operators[$i]);
+                    push(@symmetric_atoms, shift_atoms($new_atom_info, $i));
+                }
+            }
+
+    #       converts from fract to ortho
+            my $ortho_matrix = symop_ortho_from_fract(@cell_lengths_and_angles);
+            @symmetric_atoms = map {multiply_matrix_with_vector($ortho_matrix, 
+                                                        $_)} @symmetric_atoms;
+
+            # Calculates distance between atoms
+            # Distance matrix
+            # |*12|     symetric atoms|
+            # |**3|                   |
+            # |***|                   |
+            my @dist_matrix;
+
+
+            for(my $i = 0; $i < @initial_atoms; $i++)
+            {
+                my $primary_coords = $initial_atoms[$i]->{"coordinates"};
+                for(my $j = $i + 1; $j < @symmetric_atoms; $j++)
+                {
+                    my $sym_coords = $symmetric_atoms[$j]->{"coordinates"};
+                    $dist_matrix[$i][$j] = distance($primary_coords,
+                                                                $sym_coords);
+                }
+            }
+            
+            if($print_suspicious_atoms == 1)
+            {
+                for(my $i = 0; $i < @initial_atoms; $i++)
+                {
+                    my $primary_chemical_type =
+                                        $initial_atoms[$i]->{"chemical_type"};
+                                        
+                    for(my $j = $i + 1; $j < @symmetric_atoms; $j++)
+                    {
+                        my $sym_chemical_type =
+                                    $symmetric_atoms[$j]->{"chemical_type"};
+                        my $not_ok = test_distance($primary_chemical_type,
+                                      $sym_chemical_type, $dist_matrix[$i][$j],
+                                      \%AtomProperties::atoms, $sensitivity);
+                        if($not_ok == 1)
+                        {
+                            print "##WARN: " .
+                                        &File::Basename::fileparse($0) . ": ";
+                            print "'$filename': ";
+                            print "The distance may be incorrect: " .
+                                  $initial_atoms[$i]->{"label"} . " " .
+                                  $symmetric_atoms[$j]->{"label"} . " " .
+                                  $dist_matrix[$i][$j] . "\n";
+                        }
+                    }
+                }
+            }
+
+
+#           prints distance matrix if requested
+            if($print_dist_matrix == 1)
+            {
+                print_dist_matrix(\@dist_matrix);
+            }
+
+#           collects statistics about distance matrix
+            my %dist_stats;
+            for(my $i = 0; $i < @initial_atoms; $i++)
+            {
+                my $primary_chemical_type =
+                                        $initial_atoms[$i]->{"chemical_type"};
+                for(my $j = $i + 1; $j < @symmetric_atoms; $j++)
+                {
+                    my $sym_chemical_type =
+                                        $symmetric_atoms[$j]->{"chemical_type"};
+
+                    if(exists $dist_stats{$primary_chemical_type . "-" .
+                                                            $sym_chemical_type})
+                    {
+                        push(@{$dist_stats{$primary_chemical_type . "-" .
+                                    $sym_chemical_type}}, $dist_matrix[$i][$j]);
+                    }
+                    elsif(exists $dist_stats{$sym_chemical_type . "-" .
+                                                        $primary_chemical_type})
+                    {
+                        push(@{$dist_stats{$sym_chemical_type . "-" .
+                                $primary_chemical_type}}, $dist_matrix[$i][$j]);
+                    }
+                    else
+                    {
+                        my @distances;
+                        if(defined $dist_matrix[$i][$j])
+                        {
+                            push(@distances, $dist_matrix[$i][$j]);
+                        }
+                        else
+                        {
+                            push(@distances, $dist_matrix[$j][$i]);
+                        }
+                        $dist_stats{$primary_chemical_type . "-" .
+                                            $sym_chemical_type} = \@distances;
+                    }
+                }
+            }
+            collect_stats(\%histogram_stats, $step_size, \%dist_stats, $cutoff);
+        }
+    }
+}
+
+if($print_to_loaded_file == 0)
+{
+    print "# DISTANCE HISTOGRAM V.1.0\n";
+    print "# " . &File::Basename::fileparse($0) . "\n";
+
+    # prints file names if requested
+    if($print_file_name == 1)
+    {
+        print "# SOURCE FILES:\n";
+        foreach my $filename (@files)
+    {
+            print  "##$filename\n";
+    }
+    }
+
+    print_histogram_stats(\%histogram_stats, $step_size);
+}
+else
+{
+    open FILE, ">", $file_to_load;
+    print FILE "# DISTANCE HISTOGRAM V.1.0\n";
+    print FILE "# " . &File::Basename::fileparse($0) . "\n";
+
+    # prints file names if requested
+    if($print_file_name == 1)
+    {
+        print FILE "# SOURCE FILES:\n";
+        foreach my $filename (@files)
+        {
+            print FILE "##$filename\n";
+        }
+    }
+    close FILE;
+    print_histogram_stats_to_file(\%histogram_stats, $step_size, $file_to_load);
+}
+
+#===============================================================#
+# @SymopLookup::table =
+# (
+# {
+#     number          => 1,
+#     hall            => ' P 1',
+#     schoenflies     => 'C1^1',
+#     hermann_mauguin => 'P 1',
+#     universal_h_m   => 'P 1',
+#     symops => [
+#         'x,y,z',
+#     ],
+#     ncsym => [
+#         'x,y,z',
+#     ]
+# },
+# );
+
+sub get_symops
+{
+    my ($option, $param) = @_;
+
+    $param =~ s/ //g;
+    $param =~ s/_//g;
+
+    foreach my $hash (@SymopLookup::table)
+    {
+        my $value = $hash->{$option};
+        $value =~ s/ //g;
+        $value =~ s/_//g;
+
+        if($value eq $param)
+        {
+            return $hash->{symops};
+        }
+    }
+    return 0;
+}
+
+#===============================================================#
+sub test_distance
+{
+    my ($chemical_type1, $chemical_type2, $distance, $atom_properties,
+                                                        $sensitivity) = @_;
+
+    my $cov_radius1 = $atom_properties->{$chemical_type1}->{covalent_radius};
+    my $cov_radius2 = $atom_properties->{$chemical_type2}->{covalent_radius};
+
+    if(($distance > ($cov_radius1 + $cov_radius2 + $sensitivity) &&
+        $distance < ($cov_radius1 + $cov_radius2 + 2 * $sensitivity)) ||
+       ($distance < ($cov_radius1 + $cov_radius2 - $sensitivity) &&
+        $distance > 0.01))
+    {
+        return 1;
+    }
+
+    return 0;
+}
+
+#===============================================================#
+# Accepts a hash
+# dist_stats = {
+#
+#     "C-C"=>[1.0, 1.1, 1.05, 2.09],
+# }
+# and a hash
+# $histogram_stats = {
+#
+#     "C-C"=>[0, 12, 100, 20],
+# }
+
+sub collect_stats
+{
+    my($histogram_stats, $step_size, $dist_stats, $cutoff) = @_;
+
+    for my $key (keys %{$dist_stats})
+    {
+        my $current_point = 0;
+        my $value = $dist_stats->{$key};
+        @{$value} = sort {$a <=> $b} @{$value};
+
+        my @chemical_type = split(/-/, $key);
+
+        my $stats;
+        if(exists $histogram_stats->{$chemical_type[0] . "-" .
+                                                             $chemical_type[1]})
+        {
+            $stats = $histogram_stats->{$chemical_type[0] . "-" .
+                                                             $chemical_type[1]};
+        }
+        elsif(exists $histogram_stats->{$chemical_type[1] . "-" .
+                                                             $chemical_type[0]})
+        {
+            $stats = $histogram_stats->{$chemical_type[1] . "-" .
+                                                             $chemical_type[0]};
+        }
+        else
+        {
+            my @tmp;
+            $histogram_stats->{$key} = \@tmp;
+            $stats = \@tmp;
+        }
+        
+        my $reached_cutoff = 0;
+        my $array_index = 0;
+        for(my $i = 0; $i < @{$value} && $reached_cutoff == 0; $i++)
+        {
+            my $dist = ${$value}[$i];
+
+            if(not defined $cutoff or $dist < $cutoff)
+            {
+                if(not defined ${$stats}[$array_index])
+                {
+                    ${$stats}[$array_index] = 0;
+                }
+                
+                if($dist <= $current_point)
+                {
+                    ${$stats}[$array_index]++;
+                }
+                else
+                {
+                    while($dist > $current_point)
+                    {
+                        $current_point += $step_size;
+                        $array_index++;
+
+                        if(not defined ${$stats}[$array_index])
+                        {
+                            ${$stats}[$array_index] = 0;
+                        }
+                    }
+                    ${$stats}[$array_index]++;
+                }
+            }
+            else
+            {
+                $reached_cutoff = 1;
+            }
+        }
+    }
+}
+
+#===============================================================#
+# Accepts a hash
+# dist_stats = {
+#
+#     "C-C"=>[0, 12, 200, 20],
+# }
+
+sub print_histogram_stats_to_file
+{
+    my($histogram_stats, $step_size, $file) = @_;
+
+    open FILE, ">>", $file;
+
+    for my $key (sort keys %{$histogram_stats})
+    {
+        my $value = $histogram_stats->{$key};
+        print FILE "#ATOMS $key\n";
+
+        for(my $i = 0; $i < @{$value}; $i++)
+        {
+            if(defined ${$value}[$i])
+            {
+                printf FILE "%5.2f %d\n", $i * $step_size, ${$value}[$i];
+            }
+        }
+        print FILE "#END ATOMS $key\n\n";
+    }
+
+    close FILE;
+}
+
+#===============================================================#
+# Accepts a hash
+# dist_stats = {
+# 
+#     "C-C"=>[0, 12, 200, 20],
+# }
+
+sub print_histogram_stats
+{
+    my($histogram_stats, $step_size) = @_;
+
+    for my $key (sort keys %{$histogram_stats})
+    {
+        my $value = $histogram_stats->{$key};
+        print "#ATOMS $key\n";
+
+        for(my $i = 0; $i < @{$value}; $i++)
+        {
+            if(defined ${$value}[$i])
+            {
+                printf "%5.2f %d\n", $i * $step_size, ${$value}[$i];
+            }            
+        }
+        print "#END ATOMS $key\n\n";
+    }
+}
+
+#===============================================================#
+# Accepts a hash
+# dist_stats = {
+#
+#     "C-C"=>[0, 12, 200, 20],
+# }
+
+sub load_histogram_stats
+{
+    my($histogram_stats, $sources, $data) = @_;
+
+    my $error = 0;
+    open FILE, "<", $data or $error = 1;
+    if($error == 1)
+    {
+        return 1;
+    }
+
+    my $bond;
+    while (my $line = <FILE>)
+    {
+        chomp($line);
+        
+        if($line =~ /^##(.+$)/)
+        {
+            push(@{$sources}, $1);
+        }
+        elsif($line =~ /#ATOMS (.*$)/)
+        {
+            my @stats;
+            $histogram_stats->{$1} = \@stats;
+            $bond = $1;
+        }
+        elsif($line =~ /\s*\d+\s+(\d+$)/)
+        {
+            push(@{$histogram_stats->{$bond}}, $1);
+        }
+    }
+
+    close FILE;
+    return 0;
+}
+
+#===============================================================#
+sub check_disorder
+{
+    my ($values) = @_;
+    
+    if (exists $values->{"_atom_site_disorder_group"})
+    {
+        my $disordered_data = $values->{"_atom_site_disorder_group"};
+        foreach my $dis_value (@{$disordered_data})
+        {
+            if($dis_value ne ".")
+            {
+                return 1;
+            }
+        }
+    }
+    
+    if (exists $values->{"_atom_site_disorder_assembly"})
+    {
+        my $disordered_data = $values->{"_atom_site_disorder_assembly"};
+        foreach my $dis_value (@{$disordered_data})
+        {
+            if($dis_value ne ".")
+            {
+                return 1;
+            }
+        }
+    }
+
+    return 0;
+}
+
+#===============================================================#
+# Multiply ortho matrix with vector
+
+# my $ortho = [
+#     [ o11 o12 o13 ]
+#     [ 0   o22 o23 ]
+#     [ 0   0   o33 ]
+# ]
+#
+# $atom_info = {label=>"C1_2",
+#               chemical_type=>"C",
+#               coordinates=>[1.0, 1.0, 1.0],
+#               unity_matrix_applied=>1}
+# returns above-mentioned atom_info struct
+
+
+sub multiply_matrix_with_vector
+{
+    my($ortho, $atom_info) = @_;
+
+    my $vector = $atom_info->{coordinates};
+
+    my @new_coordinates;
+
+    for(my $i = 0; $i < @{$vector}; $i++)
+    {
+        $new_coordinates[$i] = 0;
+        for(my $j = 0; $j < @{$vector}; $j++)
+        {
+            $new_coordinates[$i] += ${$ortho}[$i][$j] * ${$vector}[$j];
+        }
+    }
+
+    $atom_info->{"coordinates"} = \@new_coordinates;
+
+    return $atom_info;
+}
+
+
+#===============================================================#
+# The symop_apply subroutine accepts a reference to a hash 
+# $atom_info = {label=>"C1_2",
+#               chemical_type=>"C",
+#               coordinates=>[1.0, 1.0, 1.0],
+#               unity_matrix_applied=>1} and
+# a refernce to an array - symmetry operator
+# my $symop = [
+#     [ r11 r12 r13 t1 ]
+#     [ r21 r22 r23 t1 ]
+#     [ r31 r32 r33 t1 ]
+#     [   0   0   0  1 ]
+# ],
+# returns an above-mentioned hash
+# 
+sub symop_apply
+{
+	my($atom_info, $symop) = @_;
+
+	my %new_atom_info;
+    my @new_atom_xyz;    
+    my $atom_xyz = $atom_info->{"coordinates"};
+
+	for(my $i = 0; $i < @{$atom_xyz}; $i++)
+	{
+		$new_atom_xyz[$i] = 0;
+		for(my $j = 0; $j < @{$atom_xyz}; $j++)
+		{
+		    $new_atom_xyz[$i] += ${$atom_xyz}[$j] * ${$symop}[$i][$j];
+		}
+        $new_atom_xyz[$i] += ${$symop}[$i][-1];
+		$new_atom_xyz[$i] = modulo_1($new_atom_xyz[$i]);
+	}
+
+    $new_atom_info{"coordinates"} = \@new_atom_xyz;
+    $new_atom_info{"label"} = $atom_info->{"label"};
+    $new_atom_info{"chemical_type"} = $atom_info->{"chemical_type"};
+    $new_atom_info{"unity_matrix_applied"} = symop_is_unity($symop);
+
+	return \%new_atom_info;
+}
+
+
+#===============================================================#
+# The shift_atoms subroutine accepts a reference to a hash
+# $atom_info = {label=>"C1_2",
+#               chemical_type=>"C",
+#               coordinates=>[1.0, 1.0, 1.0],
+#               unity_matrix_applied=>1}, returns an array of references of
+# above-mentioned hashes
+# 
+sub shift_atoms
+{
+	my($atom_info, $symop_id) = @_;
+
+	my @shifted_atoms;
+	my @shifting_params = (-1, 0, 1);
+	
+	my $counter = 0;
+	for(my $i = 0; $i < @shifting_params; $i++)
+	{
+		for(my $j = 0; $j < @shifting_params; $j++)
+		{
+			for(my $k = 0; $k < @shifting_params; $k++)
+			{
+                my %new_atom_info;
+                my @new_atom_xyz;
+                if($shifting_params[$i] != 0 || $shifting_params[$j] != 0 ||
+                   $shifting_params[$k] != 0 ||
+                                    $atom_info->{"unity_matrix_applied"} != 1)
+                {
+                    $new_atom_xyz[0] =
+                        $atom_info->{"coordinates"}[0] +  $shifting_params[$i];
+                    $new_atom_xyz[1] =
+                        $atom_info->{"coordinates"}[1] +  $shifting_params[$j];
+                    $new_atom_xyz[2] =
+                        $atom_info->{"coordinates"}[2] +  $shifting_params[$k];
+
+                    $new_atom_info{"coordinates"} = \@new_atom_xyz;
+                    $new_atom_info{"chemical_type"} =
+                                                  $atom_info->{"chemical_type"};
+                    $new_atom_info{"label"} = $atom_info->{"label"} . "_" .
+                                                     $symop_id . "_" . $counter;
+                    $new_atom_info{"unity_matrix_applied"} =
+                                           $atom_info->{"unity_matrix_applied"};
+
+                    push(@shifted_atoms, \%new_atom_info);
+                    $counter++;
+                }
+			}
+		}
+	}
+
+	return @shifted_atoms;
+}
+
+#===============================================================#
+sub distance
+{
+    my($vector1, $vector2) = @_;
+    my $dist = 0;
+
+    for(my $k = 0; $k < @{$vector1}; $k++)
+    {
+        $dist += (${$vector1}[$k] - ${$vector2}[$k])**2;
+    }
+    return sqrt($dist);
+}
+
+
+#===============================================================#
+# Accepts distance matrix
+# |*11|     symetric atoms|
+# |**1|                   |
+# |***|                   |
+sub print_dist_matrix
+{
+    my($dist_matrix) = @_;
+
+    for(my $i = 0; $i < @{$dist_matrix}; $i++)
+    {
+       for(my $j = 0; $j < @{$dist_matrix->[$i]}; $j++)
+       {
+            if($i < $j)
+            {
+                printf "%10.7f ", ${$dist_matrix}[$i][$j];
+            }
+            elsif($i != $j)
+            {
+                print "%10.7f ", ${$dist_matrix}[$j][$i];
+            }
+            else
+            {
+                print "0  ";
+            }
+        }
+        print "\n";
+    }
+}
+
+#===============================================================#
+sub symop_is_unity
+{
+    my($symop) = @_;
+    my $eps = 1e-10;
+
+    for(my $i = 0; $i < @{$symop}; $i++)
+    {
+        for(my $j = 0; $j < @{$symop}; $j++)
+        {
+            if($i == $j)
+            {
+                if(abs(${$symop}[$i][$j] - 1) > $eps) {
+                    return 0;
+                }
+            }
+            else
+            {
+                if(abs(${$symop}[$i][$j] - 0) > $eps) {
+                    return 0;
+                }
+            }
+        }
+    }
+    return 1;
+}
+
+#===============================================================#
+# Accepts distance matrix and initial atom id
+# |*11|44444symetric atoms|
+# |**1|2222222222222222222|
+# |***|3333333333333333333|
+# Returns atom id that is closest to a given
+
+
+sub closest_atom_id
+{
+    my($dist_matrix, $initial_atom_id) = @_;
+
+    my $min_value;
+    if($initial_atom_id != 0)
+    {
+        $min_value = ${$dist_matrix}[0][$initial_atom_id];
+  
+    }
+    else
+    {
+        $min_value = ${$dist_matrix}[0][1];
+    }
+
+    my $closest_atom;
+    for(my $j = 0; $j < @{$dist_matrix->[$initial_atom_id]}; $j++)
+    {
+        if(defined  ${$dist_matrix}[$initial_atom_id][$j])
+        {
+            if (${$dist_matrix}[$initial_atom_id][$j] < $min_value)
+            {
+                $min_value = ${$dist_matrix}[$initial_atom_id][$j];
+                $closest_atom = $j;
+            }
+        }
+        elsif($initial_atom_id != $j)
+        {
+            if (${$dist_matrix}[$j][$initial_atom_id] < $min_value)
+            {
+                $min_value = ${$dist_matrix}[$j][$initial_atom_id];
+                $closest_atom = $j;
+            }
+        }
+    }
+    return $closest_atom;
+}
