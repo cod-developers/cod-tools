@@ -23,7 +23,6 @@ my $header = 1;
 my $separator = "\t";
 
 my @selected_tags;
-my @excluded_tags;
 my @uniquified_tags;
 my $write_data_name = 1;
 
@@ -119,6 +118,10 @@ my $write_file;
 
 sub sunique(@);
 
+@selected_tags = map { lc($_) } @selected_tags;
+
+@uniquified_tags = map { lc($_) } @uniquified_tags;
+
 my %uniquified_tags = map { ($_,1) } @uniquified_tags;
 
 if( $header ) {
@@ -129,7 +132,7 @@ for my $filename (@ARGV) {
 
     my $parser = new CIFParser;
 
-    my $data = $parser->Run($filename);
+    my $data = CIFTagManage::cif_lowercase_tags( $parser->Run($filename) );
 
     if( defined $parser->YYData->{ERRCOUNT} &&
         $parser->YYData->{ERRCOUNT} > 0 ) {
@@ -144,10 +147,6 @@ for my $filename (@ARGV) {
     }
 
     for my $dataset (@$data) {
-
-        for my $tag (@excluded_tags) {
-            CIFTag::CIFTagManage::exclude_tag( $dataset, $tag );
-        }
 
         my @values = ();
         my $values = $dataset->{values};
