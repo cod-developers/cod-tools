@@ -174,8 +174,8 @@ for my $dataset (@$data)
         my $dataset_name = $dataset->{name};
         foreach my $molecule (@$unique_molecules)
         {
-            print_molecule($molecule_id, $audit, $molecule, $Id, $dataset,
-                                                                 $dataset_name);
+            print_molecule($molecule_id, $audit, $molecule, $Id,
+                           $dataset, $dataset_name, $filename );
             $molecule_id++;
         }
     }
@@ -1222,7 +1222,8 @@ sub symop_is_unity
 
 sub print_molecule
 {
-    my($molecule_id, $audit, $molecule, $Id, $dataset, $dataset_name) = @_;
+    my( $molecule_id, $audit, $molecule, $Id, $dataset, $dataset_name,
+        $filename ) = @_;
 
     $dataset->{"name"} = $dataset_name . "_molecule_" . $molecule_id;
 
@@ -1384,8 +1385,11 @@ sub print_molecule
                             dictionary_tag_list => \@data2copy
                         } );
 
-    my @data2generate = qw  (   _audit_creation_method
-                                _chemical_formula_sum);
+    my @data2generate = qw( _audit_creation_method
+                            _chemical_formula_sum
+                            _cod_data_source_file
+                            _cod_data_source_block
+    );
 
     print "_symmetry_space_group_name_H-M   \'P 1\'\n";
     print "loop_ _symmetry_equiv_pos_as_xyz \'x, y, z\'\n";
@@ -1407,22 +1411,30 @@ sub print_molecule
                $atom->{"coordinates_fract"}[1], $atom->{"coordinates_fract"}[2];
     }
 
-    foreach my $data (@data2generate)
+    foreach my $data_tag (@data2generate)
     {
-        if ( $data eq "_audit_creation_method" )
+        if ( $data_tag eq "_audit_creation_method" )
         {
             if ( $audit == 1 )
             {
-                print $data . " \"" . $Id . "\"\n";
+                print $data_tag . " \"" . $Id . "\"\n";
             }
         }
-        elsif ( $data eq "_chemical_formula_sum" )
+        elsif ( $data_tag eq "_chemical_formula_sum" )
         {
-            print $data . " \'" . $molecule->{chemical_formula_sum} . "\'\n";
+            print $data_tag . " \'" . $molecule->{chemical_formula_sum} . "\'\n";
+        }
+        elsif ( $data_tag =~ /_cod_data_source_file/ )
+        {
+            print $data_tag . " " . File::Basename::basename( $filename ) . "\n";
+        }
+        elsif ( $data_tag =~ /_cod_data_source_block/ )
+        {
+            print $data_tag . " " . $dataset_name . "\n";
         }
         else
         {
-            print $data . "\n";
+            die( "do not know how to generate tag '$data_tag'" );
         }
 
     }
