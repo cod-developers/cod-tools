@@ -24,6 +24,7 @@ use lib "./CIFParser";
 use lib "./CIFTags";
 use lib "./Spacegroups";
 use CIFParser;
+use CIFTagCanonicalNames;
 use SymopParse;
 use SymopLookup;
 use CIFTagPrint;
@@ -77,6 +78,8 @@ my $filename = shift(@ARGV);
 my $parser = new CIFParser;
 my $data = $parser->Run($filename);
 
+canonicalize_all_names( $data );
+
 for my $dataset (@$data)
 {
 #   extracts atom site label or atom site type symbol
@@ -112,10 +115,10 @@ for my $dataset (@$data)
         $sym_data = $values->{"_symmetry_equiv_pos_as_xyz"};
     }
 
-    if(exists $values->{"_symmetry_space_group_name_hall"} &&
+    if(exists $values->{"_symmetry_space_group_name_Hall"} &&
                                                     (not defined $sym_data))
     {
-        my $hall = $values->{"_symmetry_space_group_name_hall"}[0];
+        my $hall = $values->{"_symmetry_space_group_name_Hall"}[0];
         $sym_data = get_symops("hall", $hall);
 
         if($sym_data == 0)
@@ -127,10 +130,10 @@ for my $dataset (@$data)
         }
     }
 
-    if(exists $values->{"_symmetry_space_group_name_h-m"} &&
+    if(exists $values->{"_symmetry_space_group_name_H-M"} &&
                                     (not defined $sym_data or $sym_data == 0))
     {
-        my $h_m = $values->{"_symmetry_space_group_name_h-m"}[0];
+        my $h_m = $values->{"_symmetry_space_group_name_H-M"}[0];
         $sym_data = get_symops("hermann_mauguin", $h_m);
 
         if($sym_data == 0)
@@ -1304,6 +1307,52 @@ sub print_molecule
     _diffrn_radiation_wavelength.wt
     _diffrn_radiation_xray_symbol
     _diffrn_radiation.xray_symbol
+
+    _pd_proc_ls_prof_R_factor
+    _pd_proc_ls_prof_wR_factor
+    _refine_hist.R_factor_all
+    _refine_hist.R_factor_obs
+    _refine_hist.R_factor_R_free
+    _refine_hist.R_factor_R_work
+    _refine_ls_class_R_factor_all
+    _refine_ls_class.R_factor_all
+    _refine_ls_class_R_factor_gt
+    _refine_ls_class.R_factor_gt
+    _refine_ls_class_wR_factor_all
+    _refine_ls_class.wR_factor_all
+    _refine_ls_R_factor_all
+    _refine.ls_R_factor_all
+    _refine_ls_R_factor_gt
+    _refine.ls_R_factor_gt
+    _refine_ls_R_factor_obs
+    _refine.ls_R_factor_obs
+    _refine.ls_R_factor_R_free
+    _refine.ls_R_factor_R_free_error
+    _refine.ls_R_factor_R_free_error_details
+    _refine.ls_R_factor_R_work
+    _refine_ls_shell.R_factor_all
+    _refine_ls_shell.R_factor_obs
+    _refine_ls_shell.R_factor_R_free
+    _refine_ls_shell.R_factor_R_free_error
+    _refine_ls_shell.R_factor_R_work
+    _refine_ls_shell.wR_factor_all
+    _refine_ls_shell.wR_factor_obs
+    _refine_ls_shell.wR_factor_R_free
+    _refine_ls_shell.wR_factor_R_work
+    _refine_ls_wR_factor_all
+    _refine.ls_wR_factor_all
+    _refine_ls_wR_factor_gt
+    _refine_ls_wR_factor_obs
+    _refine.ls_wR_factor_obs
+    _refine_ls_wR_factor_ref
+    _refine.ls_wR_factor_R_free
+    _refine.ls_wR_factor_R_work
+    _reflns_class_R_factor_all
+    _reflns_class.R_factor_all
+    _reflns_class_R_factor_gt
+    _reflns_class.R_factor_gt
+    _reflns_class_wR_factor_all
+    _reflns_class.wR_factor_all
 );
 
     my %data2copy = map { $_, $_ } @data2copy;
@@ -1549,8 +1598,3 @@ sub find_in_unit_cell
     print STDERR "There was no corresponding atom in a main unit cell.\n";
     die "";
 }
-
-
-
-
-
