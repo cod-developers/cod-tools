@@ -185,7 +185,7 @@ my @extra_tags = ();
 if( $extra_tag_file ) {
     open( EXTRA, "$extra_tag_file" ) or
 	die( "could not open tag list '$extra_tag_file' for reading: $!" );
-    @extra_tags = map {s/\s//g;$_} map {split} grep /^\s*_/, <EXTRA>;
+    @extra_tags = map {s/\s//g;lc($_)} map {split} grep /^\s*_/, <EXTRA>;
     close( EXTRA ) or
 	die( "error while closing file '$extra_tag_file' after reading" );
 
@@ -199,8 +199,6 @@ my @dictionary_tags = ( @CIFDictTags::tag_list, @CIFCODTags::tag_list,
 			@extra_tags );
 
 my %dictionary_tags = map { $_, $_ } @dictionary_tags;
-
-my %cif_tags_lc = map {(lc($_),$_)} @dictionary_tags;
 
 if( defined $cif_header_file ) {
     open( HEADER, "$cif_header_file" ) or

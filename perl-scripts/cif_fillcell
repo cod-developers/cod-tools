@@ -17,6 +17,7 @@ use lib "./lib/perl5";
 use lib "./CIFParser";
 use lib "./Spacegroups";
 use CIFParser;
+use CIFTagCanonicalNames;
 use ShowStruct;
 use SymopParse;
 use SymopLookup;
@@ -32,7 +33,9 @@ my $data = $parser->Run($filename);
 
 for my $dataset (@$data)
 {
-  	my $values = $dataset->{"values"};
+    canonicalize_names( $dataset );
+
+    my $values = $dataset->{"values"};
 
 #   extracts atom site label or atom site type symbol
     my $loop_tag;

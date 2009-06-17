@@ -15,7 +15,7 @@ use strict;
 
 require Exporter;
 @CIFTagCanonicalNames::ISA = qw(Exporter);
-@CIFTagCanonicalNames::EXPORT = qw( canonicalize_names canonicalize_all_names );
+@CIFTagCanonicalNames::EXPORT = qw( canonical_tag_name canonicalize_names canonicalize_all_names );
 
 use CIFDictTags;
 use CIFCODTags;
@@ -23,6 +23,14 @@ use CIFCODTags;
 my @dictionary_tags = ( @CIFDictTags::tag_list, @CIFCODTags::tag_list );
 
 my %cif_tags_lc = map {(lc($_),$_)} @dictionary_tags;
+
+sub canonical_tag_name($)
+{
+    my $tag = $_[0];
+    my $lc_tag = lc( $tag );
+
+    exists $cif_tags_lc{$lc_tag} ? $cif_tags_lc{$lc_tag} : $tag;
+}
 
 sub canonicalize_all_names
 {
@@ -51,7 +59,7 @@ sub canonicalize_names
                 $datablok->{$cannonical_key} = $datablok->{$key};
                 delete $datablok->{$key};
                 @{$dataset->{tags}} =
-                    map { s/^$key$/$cannonical_key/; $_ }
+                    map { s/^\Q$key\E$/$cannonical_key/; $_ }
                 @{$dataset->{tags}};
                 if( exists $dataset->{inloop}{$key} ) {
                     my $loop_nr = $dataset->{inloop}{$key};
@@ -59,7 +67,7 @@ sub canonicalize_names
                         $dataset->{inloop}{$key};
                     delete $dataset->{inloop}{$key};
                     @{$dataset->{loops}[$loop_nr]} =
-                        map { s/^$key$/$cannonical_key/; $_ }
+                        map { s/^\Q$key\E$/$cannonical_key/; $_ }
                     @{$dataset->{loops}[$loop_nr]};
                 }
             }
