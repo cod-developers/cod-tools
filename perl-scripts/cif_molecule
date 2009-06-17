@@ -36,6 +36,7 @@ use AtomProperties;
 
 my $Id = '$Id$';
 
+my $continue_on_errors = 0;
 my $covalent_sensitivity = 0.35;
 my $audit = 0;
 my $uniquify_atoms = 0;
@@ -47,6 +48,15 @@ my $uniquify_atoms = 0;
 #**
 #** -u,--uniquify_atoms
 #**                    Makes unique the labels of atoms
+#**
+#** --continue-on-errors
+#**                    Do not stop if errors such as unrecognised atoms are
+#**                    encountered; the output may be incorrect and missing
+#**                    some atoms if this otion is used!
+#**
+#** --dont-continue-on-errors, --no-continue-on-errors
+#**                    Stop immediately when an error is encountered.
+#**                    
 #** --audit            print audit information to the generated CIF file
 #** --no-audit         do not print audit information to the generated CIF file
 #**                    (default)
@@ -54,6 +64,10 @@ my $uniquify_atoms = 0;
 
     "-u,--uniquify_atoms"       => sub { $uniquify_atoms = 1; },
     "-c,--covalent-sensitivity" => \$covalent_sensitivity,
+    "--continue-on-errors" => sub{ $continue_on_errors = 1 },
+    "--no-continue-on-errors" => sub{ $continue_on_errors = 0 },
+    "--dont-continue-on-errors" => sub{ $continue_on_errors = 0 },
+
     "--audit"                   => sub { $audit = 1; },
     "--no-audit"                => sub { $audit = 0; },
     "--help,--usage"            => sub { SUsage::usage; exit },
@@ -366,6 +380,7 @@ sub initial_atoms
             print STDERR "\'$filename\': ";
             print STDERR "Doesn\'t know about chemical type "
                                         . $atom_info->{chemical_type} . "\n";
+            exit(1) unless $continue_on_errors;
         }
     }
     return \@all_initial_atoms;
