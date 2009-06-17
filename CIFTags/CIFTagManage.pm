@@ -16,7 +16,7 @@ use strict;
 require Exporter;
 @CIFTagManage::ISA = qw(Exporter);
 @CIFTagManage::EXPORT = qw( exclude_tag tag_is_empty exclude_empty_tags
-    set_tag cif_lowercase_tags
+    set_tag
 );
 
 sub exclude_tag
@@ -76,45 +76,6 @@ sub set_tag
 	push( @{$cif->{tags}}, $tag );
     }
     $cif->{values}{$tag}[0] = $value;
-}
-
-sub cif_lowercase_tags
-{
-    my ( $cif ) = @_;
-
-    if( ref $cif eq "ARRAY" ) {
-        for my $datablock (@{$cif}) {
-            cif_lowercase_tags( $datablock );
-        }
-    } elsif( ref $cif eq "HASH" ) {
-
-        @{$cif->{tags}} = map { lc($_) } @{$cif->{tags}};
-
-        for my $loop (@{$cif->{loops}}) {
-            @{$loop} = map { lc($_) } @{$loop};
-        }
-
-        for my $key (qw( values precisions types inloop )) {
-            while ( my ($tag, $value) = each %{$cif->{values}} ) {
-                my $lc_tag = lc( $tag );
-                if( $lc_tag ne $tag ) {
-                    delete $cif->{values}{$tag};
-                    $cif->{values}{$lc_tag} = $value;
-                }
-            }
-        }
-
-        if( $cif->{save_blocks} ) {
-            for my $save_blk (@{$cif->{save_blocks}}) {
-                cif_lowercase_tags( $save_blk );
-            }
-        }
-    } else {
-        die( "cif_lowercase_tags() expects ARRAY or HASH reference as " .
-             "a parameter" );
-    }
-
-    return $cif;
 }
 
 1;

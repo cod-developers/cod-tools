@@ -23,6 +23,7 @@ use Scalar::Util;
 use lib "./lib/perl5";
 use lib "./CIFParser";
 use CIFParser;
+use CIFTagCanonicalNames;
 use ShowStruct;
 use SOptions;
 
@@ -298,6 +299,9 @@ for( @ARGV ) {
 #    
 CIFFILEANAL: for my $cifF ( @{$CIFfile} ) {
     my $data = $parser->Run( $cifF );
+    # convert all tags to a "cannonical" form (the one used in the
+    # CIFTags modules ;):
+    canonicalize_all_names( $data );
     next CIFFILEANAL if ( !defined $data || $data == 1 );
     #
     # start-iterate-trough-CIF-file-data-blocks
