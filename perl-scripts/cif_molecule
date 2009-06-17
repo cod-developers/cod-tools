@@ -643,14 +643,32 @@ sub extract_atom
         $atom_xyz[-1] =~ s/\(\d+\)$//;
     }
 
-    $atom_label =~ m/^([^a-z]*)([a-z]+)/i;
-
     $atom_info{"coordinates_fract"}     = \@atom_xyz;
     $atom_info{"label"}                 = $atom_label;
     $atom_info{"label_basename"}        = $atom_label;
-    $atom_info{"chemical_type"}         = $2;
     $atom_info{"symop_id"}              = (-1) * $number - 1;
     $atom_info{"unity_matrix_applied"}  = 1;
+
+    my $atom_type;
+
+    if( exists $values->{_atom_site_type_symbol}  &&
+        defined $values->{_atom_site_type_symbol}[$number] &&
+        $values->{_atom_site_type_symbol}[$number] ne '?' ) {
+        $atom_type = $values->{_atom_site_type_symbol}[$number];
+        if( $atom_type =~ m/^([A-Za-z]{1,2})/ ) {
+            $atom_type = ucfirst( lc( $1 ));
+        }
+    } else {
+        if( $values->{_atom_site_label}[$number] =~
+            m/^([A-Za-z]{1,2})/ ) {
+            $atom_type = ucfirst( lc( $1 ));
+        } else {
+            die( "could not determine atom type for atom " .
+                 "'$values->{_atom_site_label}[$number]'" );
+        }
+    }
+
+    $atom_info{"chemical_type"} = $atom_type;
 
     if(exists $values->{"_atom_site_disorder_assembly"}[$number])
     {
