@@ -37,6 +37,7 @@ use AtomProperties;
 
 my $Id = '$Id$';
 
+my $format = "%8.6f";
 my $continue_on_errors = 0;
 my $covalent_sensitivity = 0.35;
 my $audit = 0;
@@ -58,6 +59,9 @@ my $uniquify_atoms = 0;
 #** --dont-continue-on-errors, --no-continue-on-errors
 #**                    Stop immediately when an error is encountered.
 #**                    
+#**
+#** --format "%8.6f"   Use the specified format for output coordinate printout.
+#**
 #** --audit            print audit information to the generated CIF file
 #** --no-audit         do not print audit information to the generated CIF file
 #**                    (default)
@@ -68,6 +72,7 @@ my $uniquify_atoms = 0;
     "--continue-on-errors" => sub{ $continue_on_errors = 1 },
     "--no-continue-on-errors" => sub{ $continue_on_errors = 0 },
     "--dont-continue-on-errors" => sub{ $continue_on_errors = 0 },
+    "--format" => \$format,
 
     "--audit"                   => sub { $audit = 1; },
     "--no-audit"                => sub { $audit = 0; },
@@ -1392,16 +1397,14 @@ sub print_molecule
     print "_atom_site_fract_y\n";
     print "_atom_site_fract_z\n";
 
-
-    my $i = 0;
+    my $print_format = join( " ", ($format)x3 ) . "\n";
     foreach my $atom (@{$molecule->{atoms_c}})
     {
         print $atom->{"label"} . " ";
         print $atom->{"atom_site_type_symbol"} . " "
             if defined $atom_site_type_symbol;
-        printf "%6.4f %6.4f %6.4f\n", $atom->{"coordinates_fract"}[0],
+        printf $print_format, $atom->{"coordinates_fract"}[0],
                $atom->{"coordinates_fract"}[1], $atom->{"coordinates_fract"}[2];
-        $i ++;
     }
 
     foreach my $data (@data2generate)
