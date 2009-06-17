@@ -350,6 +350,7 @@ sub check_init_atoms
 #   $atom_info = {
 #                   label=>"C1_2",
 #                   chemical_type=>"C",
+#                   atom_site_type_symbol = "C",
 #                   coordinates_fract=>[1.0, 1.0, 1.0],
 #                   unity_matrix_applied=>1,
 #                   assembly=>"A", # "."
@@ -640,6 +641,7 @@ sub extract_angles_and_lengths
 # Returns a hash $atom_info = {
 #                       label=>"C1_2",
 #                       chemical_type=>"C",
+#                       atom_site_type_symbol = "C",
 #                       coordinates_fract=>[1.0, 1.0, 1.0],
 #                       unity_matrix_applied=>1,
 #                       assembly=>"A", # "."
@@ -673,6 +675,7 @@ sub extract_atom
         defined $values->{_atom_site_type_symbol}[$number] &&
         $values->{_atom_site_type_symbol}[$number] ne '?' ) {
         $atom_type = $values->{_atom_site_type_symbol}[$number];
+        $atom_info{atom_site_type_symbol} = $atom_type;
         if( $atom_type =~ m/^([A-Za-z]{1,2})/ ) {
             $atom_type = ucfirst( lc( $1 ));
         }
@@ -752,6 +755,7 @@ sub copy_atom
     $new_atom{unity_matrix_applied} = $old_atom->{unity_matrix_applied};
     $new_atom{assembly}             = $old_atom->{assembly};
     $new_atom{group}                = $old_atom->{group};
+    $new_atom{atom_site_type_symbol} = $old_atom->{atom_site_type_symbol};
 
     return \%new_atom;
 }
@@ -1359,6 +1363,8 @@ sub print_molecule
 
     my @tag_list = @{$dataset->{tags}};
 
+    my $atom_site_type_symbol = $dataset->{values}{_atom_site_type_symbol};
+
     for my $tag (@tag_list)
     {
         unless( exists $data2copy{$tag} )
@@ -1380,15 +1386,22 @@ sub print_molecule
     print "loop_ _symmetry_equiv_pos_as_xyz \'x, y, z\'\n";
     print "loop_\n";
     print "_atom_site_label\n";
+    print "_atom_site_type_symbol\n"
+        if defined $atom_site_type_symbol;
     print "_atom_site_fract_x\n";
     print "_atom_site_fract_y\n";
     print "_atom_site_fract_z\n";
 
+
+    my $i = 0;
     foreach my $atom (@{$molecule->{atoms_c}})
     {
         print $atom->{"label"} . " ";
+        print $atom->{"atom_site_type_symbol"} . " "
+            if defined $atom_site_type_symbol;
         printf "%6.4f %6.4f %6.4f\n", $atom->{"coordinates_fract"}[0],
                $atom->{"coordinates_fract"}[1], $atom->{"coordinates_fract"}[2];
+        $i ++;
     }
 
     foreach my $data (@data2generate)
