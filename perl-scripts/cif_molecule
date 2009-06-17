@@ -1391,26 +1391,6 @@ sub print_molecule
                             _cod_data_source_block
     );
 
-    print "_symmetry_space_group_name_H-M   \'P 1\'\n";
-    print "loop_ _symmetry_equiv_pos_as_xyz \'x, y, z\'\n";
-    print "loop_\n";
-    print "_atom_site_label\n";
-    print "_atom_site_type_symbol\n"
-        if defined $atom_site_type_symbol;
-    print "_atom_site_fract_x\n";
-    print "_atom_site_fract_y\n";
-    print "_atom_site_fract_z\n";
-
-    my $print_format = join( " ", ($format)x3 ) . "\n";
-    foreach my $atom (@{$molecule->{atoms_c}})
-    {
-        print $atom->{"label"} . " ";
-        print $atom->{"atom_site_type_symbol"} . " "
-            if defined $atom_site_type_symbol;
-        printf $print_format, $atom->{"coordinates_fract"}[0],
-               $atom->{"coordinates_fract"}[1], $atom->{"coordinates_fract"}[2];
-    }
-
     foreach my $data_tag (@data2generate)
     {
         if ( $data_tag eq "_audit_creation_method" )
@@ -1437,6 +1417,26 @@ sub print_molecule
             die( "do not know how to generate tag '$data_tag'" );
         }
 
+    }
+
+    print "_symmetry_space_group_name_H-M   \'P 1\'\n";
+    print "loop_ _symmetry_equiv_pos_as_xyz \'x, y, z\'\n";
+    print "loop_\n";
+    print "_atom_site_label\n";
+    print "_atom_site_type_symbol\n"
+        if defined $atom_site_type_symbol;
+    print "_atom_site_fract_x\n";
+    print "_atom_site_fract_y\n";
+    print "_atom_site_fract_z\n";
+
+    my $print_format = join( " ", ($format)x3 ) . "\n";
+    foreach my $atom (@{$molecule->{atoms_c}})
+    {
+        print $atom->{"label"} . " ";
+        print $atom->{"atom_site_type_symbol"} . " "
+            if defined $atom_site_type_symbol;
+        printf $print_format, $atom->{"coordinates_fract"}[0],
+               $atom->{"coordinates_fract"}[1], $atom->{"coordinates_fract"}[2];
     }
 }
 
