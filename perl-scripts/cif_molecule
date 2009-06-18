@@ -1104,6 +1104,11 @@ sub symop_apply
     $new_atom_info->{"symop_id"} = $symop_id;
     $new_atom_info->{"coordinates_fract"} = \@new_atom_xyz;
     $new_atom_info->{"unity_matrix_applied"} = symop_is_unity($symop);
+    if( $atom_xyz->[0] >= 0 && $atom_xyz->[0] <= 1.0 &&
+        $atom_xyz->[1] >= 0 && $atom_xyz->[1] <= 1.0 &&
+        $atom_xyz->[2] >= 0 && $atom_xyz->[2] <= 1.0 ) {
+        $new_atom_info->{atom_in_a_unit_cell} = $atom_info;
+    }
 
     return $new_atom_info;
 }
@@ -1534,11 +1539,12 @@ sub find_molecule
     my @current_coords_fract_modulo_1 =
                     map { modulo_1($_) } @{$current_atom->{coordinates_fract}};
 
-    my $current_translation = translation(  $current_atom->{coordinates_fract},
-                                            \@current_coords_fract_modulo_1);
+    my $current_translation = translation( $current_atom->{coordinates_fract},
+                                           \@current_coords_fract_modulo_1 );
 
-    my $atom_in_unit_cell = find_in_unit_cell(  \@current_coords_fract_modulo_1,
-                                                $symmetric_atoms );
+    my $atom_in_unit_cell = find_in_unit_cell( \@current_coords_fract_modulo_1,
+                                               $current_atom,
+                                               $symmetric_atoms );
     my @neighbors;
 
     if(exists $used_atoms->{$atom_in_unit_cell->{"label"}})
@@ -1605,21 +1611,26 @@ sub find_molecule
 
 sub find_in_unit_cell
 {
-    my ($atom_coords_fract, $symmetric_atoms) = @_;
+    my ($atom_coords_fract, $current_atom, $symmetric_atoms) = @_;
 
     my $eps = 0.0001;
 
-    foreach my $sym_atom (@$symmetric_atoms)
-    {
-        if((abs($$atom_coords_fract[0] - ${$sym_atom->{coordinates_fract}}[0])
-                                                                      < $eps) &&
-           (abs($$atom_coords_fract[1] - ${$sym_atom->{coordinates_fract}}[1])
-                                                                      < $eps) &&
-           (abs($$atom_coords_fract[2] - ${$sym_atom->{coordinates_fract}}[2])
-                                                                      < $eps))
-           {
+    if( exists $current_atom->{atom_in_a_unit_cell} ) {
+        return $current_atom->{atom_in_a_unit_cell};
+    } else {
+        foreach my $sym_atom (@$symmetric_atoms)
+        {
+            if((abs($$atom_coords_fract[0] - ${$sym_atom->{coordinates_fract}}[0])
+                < $eps) &&
+               (abs($$atom_coords_fract[1] - ${$sym_atom->{coordinates_fract}}[1])
+                < $eps) &&
+               (abs($$atom_coords_fract[2] - ${$sym_atom->{coordinates_fract}}[2])
+                < $eps))
+            {
+                $current_atom->{atom_in_a_unit_cell} = $sym_atom;
                 return $sym_atom;
-           }
+            }
+        }
     }
     print STDERR "ERR: " . &File::Basename::fileparse($0) . ": ";
     print STDERR "'$filename': ";
