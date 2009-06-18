@@ -751,16 +751,27 @@ sub copy_atom
 
     my %new_atom;
 
-    $new_atom{coordinates_fract}   = copy_array($old_atom->{coordinates_fract});
-    $new_atom{coordinates_ortho}   = copy_array($old_atom->{coordinates_ortho});
-    $new_atom{label}                = $old_atom->{label};
-    $new_atom{label_basename}       = $old_atom->{label_basename};
-    $new_atom{symop_id}             = $old_atom->{symop_id};
-    $new_atom{chemical_type}        = $old_atom->{chemical_type};
-    $new_atom{unity_matrix_applied} = $old_atom->{unity_matrix_applied};
-    $new_atom{assembly}             = $old_atom->{assembly};
-    $new_atom{group}                = $old_atom->{group};
-    $new_atom{atom_site_type_symbol} = $old_atom->{atom_site_type_symbol};
+    for my $key (keys %$old_atom ) {
+        if( !ref $old_atom->{$key} ) {
+            $new_atom{$key} = $old_atom->{$key};
+        } elsif( ref $old_atom->{$key} eq "ARRAY" ) {
+            $new_atom{$key} = copy_array($old_atom->{$key});
+        } else {
+            die( "assertion failed: 'copy_atom' does not know how to " .
+                 "copy the supplied object" );
+        }
+    }
+
+    ## $new_atom{coordinates_fract}   = copy_array($old_atom->{coordinates_fract});
+    ## $new_atom{coordinates_ortho}   = copy_array($old_atom->{coordinates_ortho});
+    ## $new_atom{label}                = $old_atom->{label};
+    ## $new_atom{label_basename}       = $old_atom->{label_basename};
+    ## $new_atom{symop_id}             = $old_atom->{symop_id};
+    ## $new_atom{chemical_type}        = $old_atom->{chemical_type};
+    ## $new_atom{unity_matrix_applied} = $old_atom->{unity_matrix_applied};
+    ## $new_atom{assembly}             = $old_atom->{assembly};
+    ## $new_atom{group}                = $old_atom->{group};
+    ## $new_atom{atom_site_type_symbol} = $old_atom->{atom_site_type_symbol};
 
     return \%new_atom;
 }
@@ -1104,11 +1115,11 @@ sub symop_apply
     $new_atom_info->{"symop_id"} = $symop_id;
     $new_atom_info->{"coordinates_fract"} = \@new_atom_xyz;
     $new_atom_info->{"unity_matrix_applied"} = symop_is_unity($symop);
-    if( $atom_xyz->[0] >= 0 && $atom_xyz->[0] <= 1.0 &&
-        $atom_xyz->[1] >= 0 && $atom_xyz->[1] <= 1.0 &&
-        $atom_xyz->[2] >= 0 && $atom_xyz->[2] <= 1.0 ) {
-        $new_atom_info->{atom_in_a_unit_cell} = $atom_info;
-    }
+    ## if( $atom_xyz->[0] >= 0 && $atom_xyz->[0] <= 1.0 &&
+    ##     $atom_xyz->[1] >= 0 && $atom_xyz->[1] <= 1.0 &&
+    ##     $atom_xyz->[2] >= 0 && $atom_xyz->[2] <= 1.0 ) {
+    ##     $new_atom_info->{atom_in_a_unit_cell} = $atom_info;
+    ## }
 
     return $new_atom_info;
 }
@@ -1627,7 +1638,7 @@ sub find_in_unit_cell
                (abs($$atom_coords_fract[2] - ${$sym_atom->{coordinates_fract}}[2])
                 < $eps))
             {
-                $current_atom->{atom_in_a_unit_cell} = $sym_atom;
+                ## $current_atom->{atom_in_a_unit_cell} = $sym_atom;
                 return $sym_atom;
             }
         }
