@@ -41,7 +41,7 @@ my $format = "%8.6f";
 my $continue_on_errors = 0;
 my $covalent_sensitivity = 0.35;
 my $audit = 0;
-my $uniquify_atoms = 0;
+my $uniquify_atoms = 1;
 
 @ARGV = getOptions
 (
@@ -49,7 +49,11 @@ my $uniquify_atoms = 0;
 #**                    Set a new covalent sensitivity value (default 0.35)
 #**
 #** -u,--uniquify_atoms
-#**                    Makes unique the labels of atoms
+#**                    Makes unique the labels of atoms (default).
+#**
+#** -u-,--no-uniquify_atoms,--dont-uniquify_atoms
+#**                    Do not makes unique labels for atoms,
+#**                    exclude duplicates.
 #**
 #** --continue-on-errors
 #**                    Do not stop if errors such as unrecognised atoms are
@@ -68,10 +72,15 @@ my $uniquify_atoms = 0;
 #** --help,--usage     print short usage message (this message) and exit
 
     "-u,--uniquify_atoms"       => sub { $uniquify_atoms = 1; },
+    "-u-,--no-uniquify_atoms"   => sub { $uniquify_atoms = 0; },
+    "--dont-uniquify_atoms"     => sub { $uniquify_atoms = 0; },
+
     "-c,--covalent-sensitivity" => \$covalent_sensitivity,
+
     "--continue-on-errors" => sub{ $continue_on_errors = 1 },
     "--no-continue-on-errors" => sub{ $continue_on_errors = 0 },
     "--dont-continue-on-errors" => sub{ $continue_on_errors = 0 },
+
     "--format" => \$format,
 
     "--audit"                   => sub { $audit = 1; },
