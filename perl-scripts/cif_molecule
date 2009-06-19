@@ -48,6 +48,11 @@ my $uniquify_atoms = 1;
 
 my $bump_distance_factor = 0.75;
 
+# A distance between two atoms when they are considered to be
+# instances of the same atom on a special position:
+
+my $special_position_cutoff = 0.01;
+
 @ARGV = getOptions
 (
 #** -c,--covalent-sensitivity
@@ -917,7 +922,9 @@ sub test_bump
     my $cov_radius1 = $atom_properties->{$chemical_type1}->{covalent_radius};
     my $cov_radius2 = $atom_properties->{$chemical_type2}->{covalent_radius};
 
-    if( $dist < $bump_factor * ($cov_radius1 + $cov_radius2)) {
+    if( $dist < $bump_factor * ($cov_radius1 + $cov_radius2) &&
+        ($dist > $special_position_cutoff ||
+         $chemical_type1 ne $chemical_type2)) {
         return 1;
     }
 
@@ -1084,7 +1091,7 @@ sub are_atoms_unique
         return 1;
     }
 
-    my $eps = 0.01;
+    my $eps = $special_position_cutoff;
 
     my $coords1 = $atom1->{coordinates_ortho};
     my $coords2 = $atom2->{coordinates_ortho};
