@@ -42,6 +42,8 @@ my $continue_on_errors = 0;
 my $covalent_sensitivity = 0.35;
 my $audit = 0;
 my $uniquify_atoms = 1;
+my $exclude_zero_occupancies = 1; # Do not use atoms with zero
+                                  # occupancies
 
 # A fraction of covalent bond radii Used to determine when atoms are
 # too close and are considered a bump:
@@ -77,6 +79,12 @@ my $special_position_cutoff = 0.01;
 #** --dont-continue-on-errors, --no-continue-on-errors
 #**                    Stop immediately when an error is encountered.
 #**                    
+#** --exclude-zero-occupancies
+#**                    Do not use atoms woth 0 occupancies in calculations
+#**                    (defalut).
+#**                    
+#** --dont-exclude-zero-occupancies, --no-exclude-zero-occupancies
+#**                    Use all atoms regardless of their occupancy.
 #**
 #** --format "%8.6f"   Use the specified format for output coordinate printout.
 #**
@@ -94,6 +102,10 @@ my $special_position_cutoff = 0.01;
     "--continue-on-errors" => sub{ $continue_on_errors = 1 },
     "--no-continue-on-errors" => sub{ $continue_on_errors = 0 },
     "--dont-continue-on-errors" => sub{ $continue_on_errors = 0 },
+
+    "--exclude-zero-occupancies"    => sub { $exclude_zero_occupancies = 1; },
+    "--no-exclude-zero-occupancies" => sub { $exclude_zero_occupancies = 0; },
+    "--dont-exclude-zero-occupancies" => sub { $exclude_zero_occupancies = 0; },
 
     "--bump-distance-factor" => \$bump_distance_factor,
 
@@ -397,6 +409,16 @@ sub initial_atoms
 
     for (my $i = 0; $i < @{$atom_labels}; $i++)
     {
+        if( $exclude_zero_occupancies &&
+            defined $values->{_atom_site_occupancy} ) {
+            my $occupancy = $values->{_atom_site_occupancy}[$i];
+            $occupancy =~ s/\(\d+\)$//; # remove precission
+            if( $occupancy eq "?" || $occupancy eq "." ||
+                $occupancy == 0.0 ) {
+                next;
+            }
+        }
+
         my $atom_info = extract_atom($$atom_labels[$i], $values, $i);
 
         if ( $atom_site_tag eq "_atom_site_type_symbol" )
