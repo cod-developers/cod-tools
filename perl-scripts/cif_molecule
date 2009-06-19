@@ -43,6 +43,11 @@ my $covalent_sensitivity = 0.35;
 my $audit = 0;
 my $uniquify_atoms = 1;
 
+# A fraction of covalent bond radii Used to determine when atoms are
+# too close and are considered a bump:
+
+my $bump_distance_factor = 0.75;
+
 @ARGV = getOptions
 (
 #** -c,--covalent-sensitivity
@@ -55,6 +60,10 @@ my $uniquify_atoms = 1;
 #**                    Do not makes unique labels for atoms,
 #**                    exclude duplicates.
 #**
+#*  --bump-distance-factor 0.75
+#*         A fraction of covalent bond radii sum used to determine when
+#*         atoms are too close and are considered a bump:
+#*
 #** --continue-on-errors
 #**                    Do not stop if errors such as unrecognised atoms are
 #**                    encountered; the output may be incorrect and missing
@@ -80,6 +89,8 @@ my $uniquify_atoms = 1;
     "--continue-on-errors" => sub{ $continue_on_errors = 1 },
     "--no-continue-on-errors" => sub{ $continue_on_errors = 0 },
     "--dont-continue-on-errors" => sub{ $continue_on_errors = 0 },
+
+    "--bump-distance-factor" => \$bump_distance_factor,
 
     "--format" => \$format,
 
@@ -863,7 +874,6 @@ sub get_symops
 #                     },
 #          );
 
-
 sub test_bond
 {
     my ($atom_properties, $chemical_type1, $chemical_type2, $distance,
@@ -874,6 +884,40 @@ sub test_bond
 
     if($distance < $cov_radius1 + $cov_radius2 + $covalent_sensitivity)
     {
+        return 1;
+    }
+
+    return 0;
+}
+
+#===============================================================#
+# Makes a decision if atoms are too close to each other, i.e if they
+# make a "bump:
+
+# Accepts distance, atom id and a reference to a hash of atom properties
+# %atoms = (
+#           H => { #(chemical_type)
+#                     name => Hydrogen,
+#                     period => 1,
+#                     group => 1,
+#                     block => s,
+#                     atomic_number => "1",
+#                     atomic_weight => 1.008,
+#                     covalent_radius => 0.23,
+#                     vdw_radius => 1.09,
+#                     valency => [1],
+#                     },
+#          );
+
+sub test_bump
+{
+    my ( $atom_properties, $chemical_type1, $chemical_type2,
+         $dist, $bump_factor ) = @_;
+
+    my $cov_radius1 = $atom_properties->{$chemical_type1}->{covalent_radius};
+    my $cov_radius2 = $atom_properties->{$chemical_type2}->{covalent_radius};
+
+    if( $dist < $bump_factor * ($cov_radius1 + $cov_radius2)) {
         return 1;
     }
 
@@ -1661,6 +1705,19 @@ sub find_molecule
         if ((not exists $used_atoms->{$label}))
         {
             my $dist = distance($atom_in_unit_cell_coords_ortho, $coords_ortho);
+
+            my $is_bump = test_bump( $atom_properties,
+                                     $atom_in_unit_cell_type, $type,
+                                     $dist, $bump_distance_factor );
+
+            if( $is_bump ) {
+                die( "atoms \"$atom_in_unit_cell_label\" and " .
+                     "\"$label\" are too close " .
+                     "(distance = " .
+                     sprintf( "%6.4f", $dist ) .
+                     "), and are considered a bump " .
+                     "-- aborting calculations" );
+            }
 
             my $is_bond = test_bond($atom_properties,
                                     $atom_in_unit_cell_type,
