@@ -1228,6 +1228,35 @@ sub symop_is_unity
 }
 
 #===============================================================#
+
+# Renames CIF data tags so that they are not confused with the
+# original ones.
+
+# Accepts a dataset hash produced by CIFParser, a list of tags to be
+# renamed, and a prefix to be appended
+
+# Returns a hash with renamed data tags
+
+sub rename_tags($$$)
+{
+    my ($dataset, $tags2rename, $prefix ) = @_;
+
+    my $values = $dataset->{values};
+    my %renamed_tags = ();
+
+    for my $tag (@$tags2rename) {
+        if( exists $values->{$tag} &&
+            !defined $dataset->{inloop}{$tag} ) {
+            my $new_tag = $prefix . $tag;
+            my $value = $values->{$tag}[0];
+            set_tag( $dataset, $new_tag, $value );
+            $renamed_tags{$new_tag} = $tag;
+        }
+    }
+    return wantarray ? %renamed_tags : \%renamed_tags;
+}
+
+#===============================================================#
 # Prints molecule to the CIF file.
 
 # Accepts a hash
@@ -1333,7 +1362,9 @@ sub print_molecule
     _diffrn_radiation_wavelength.wt
     _diffrn_radiation_xray_symbol
     _diffrn_radiation.xray_symbol
+);
 
+    my @data2rename = qw(
     _pd_proc_ls_prof_R_factor
     _pd_proc_ls_prof_wR_factor
     _refine_hist.R_factor_all
@@ -1387,18 +1418,23 @@ sub print_molecule
 
     my $atom_site_type_symbol = $dataset->{values}{_atom_site_type_symbol};
 
+    my %renamed_tags = rename_tags( $dataset, \@data2rename, "_cod_src" );
+
     for my $tag (@tag_list)
     {
-        unless( exists $data2copy{$tag} )
+        unless( exists $data2copy{$tag} || exists $renamed_tags{$tag} )
         {
             CIFTagManage::exclude_tag($dataset, $tag);
         }
     }
 
+    my %known_tags = ( %data2copy, %renamed_tags );
+    my @known_tags = ( @data2copy, keys %renamed_tags );
+
     print_cif( $dataset,
                         {
-                            dictionary_tags => \%data2copy,
-                            dictionary_tag_list => \@data2copy
+                            dictionary_tags => \%known_tags,
+                            dictionary_tag_list => \@known_tags
                         } );
 
     my @data2generate = qw( _audit_creation_method
