@@ -37,7 +37,7 @@ use AtomProperties;
 
 my $Id = '$Id$';
 
-my $debug = 1;
+my $debug = 0;
 my $format = "%8.6f";
 my $continue_on_errors = 0;
 my $covalent_sensitivity = 0.35;
@@ -235,6 +235,12 @@ for my $dataset (@$data)
 }
 
 #==============================================================================#
+# Forward subroutine definitions:
+
+sub find_molecules($$$$$);
+sub find_molecule($$$$$$$);
+
+#==============================================================================#
 # Find a maximal covalent radius in the atom property list
 
 sub get_max_covalent_radius($)
@@ -286,7 +292,6 @@ sub get_min_max_atom_coordinates($)
 }
 
 #==============================================================================#
-
 # Given a "brick" structure with a cutoff distance, minimum and
 # maximum coordinates inside, and an atom orthogonal coordinates,
 # calculated idices of the brick in which this atom is in.
@@ -302,6 +307,40 @@ sub bricks_get_atom_index($@)
     my $k = int(($z - $bricks->{min_z})/$distance);
 
     return ( $i, $j, $k );
+}
+
+#==============================================================================#
+# Given a "brick" structure and three indices of an atom, return spans
+# of indices that can contain neighbours of a given atom.
+
+sub bricks_get_search_span($@)
+{
+    my ( $bricks, $i, $j, $k ) = @_;
+
+    my $nx = $bricks->{nx};
+    my $ny = $bricks->{ny};
+    my $nz = $bricks->{nz};
+
+    my ( $min_i, $max_i ) = ( $i - 1, $i + 1 );
+    my ( $min_j, $max_j ) = ( $j - 1, $j + 1 );
+    my ( $min_k, $max_k ) = ( $k - 1, $k + 1 );
+
+    die( "assertion '\$i >=0 && \$i < \$nx (\$nx == $nx)' failed on \$i == $i" )
+        unless $i >= 0 && $i < $nx;
+    die( "assertion '\$j >=0 && \$j < \$ny (\$ny == $ny)' failed on \$j == $j" )
+        unless $j >= 0 && $j < $ny;
+    die( "assertion '\$k >=0 && \$k < \$nz (\$nz == $nz)' failed on \$k == $k" )
+        unless $k >= 0 && $k < $nz;
+
+    $min_i = 0 if $min_i < 0;
+    $min_j = 0 if $min_j < 0;
+    $min_k = 0 if $min_k < 0;
+
+    $max_i = $nx - 1 unless $max_i < $nx;
+    $max_j = $ny - 1 unless $max_j < $ny;
+    $max_k = $nz - 1 unless $max_k < $nz;
+
+    return ( $min_i, $max_i, $min_j, $max_j, $min_k, $max_k );
 }
 
 #==============================================================================#
@@ -323,8 +362,8 @@ sub build_bricks($$)
 
     do {
         print ">>> $min_x, $max_x, $distance, $nx\n";
-        print ">>> $min_y, $max_y, $distance, $nx\n";
-        print ">>> $min_z, $max_z, $distance, $nx\n";
+        print ">>> $min_y, $max_y, $distance, $ny\n";
+        print ">>> $min_z, $max_z, $distance, $nz\n";
     } if( $debug > 5 );
 
     # Create a 4-D rray, indexable with i, j, k, and atom_number:
@@ -345,10 +384,11 @@ sub build_bricks($$)
 
     my $bricks = {
         distance => $distance,
+        nx => $nx, ny => $ny, nz => $nz,
         max_x => $max_x, min_x => $min_x,
         max_y => $max_y, min_y => $min_y,
         max_z => $max_z, min_z => $min_z,
-        array => $brick_array,
+        atoms => $brick_array,
     };
 
     # distribute atom references into bricks:
@@ -361,20 +401,22 @@ sub build_bricks($$)
         my ( $i, $j, $k ) =
             bricks_get_atom_index( $bricks, @{$atom->{coordinates_ortho}} );
         print ">>> $atom->{label}, $i, $j, $k\n" if $debug > 4;
-        ## print ">>> ", ref $bricks->{array}[$i][$j][$k], "\n";
-        push( @{$bricks->{array}[$i][$j][$k]}, $atom )
+        ## print ">>> ", ref $bricks->{atoms}[$i][$j][$k], "\n";
+        push( @{$bricks->{atoms}[$i][$j][$k]}, $atom )
     }
 
     do {
-        my $i = int(@{$bricks->{array}} / 2);
-        my $j = int(@{$bricks->{array}[$i]} / 2);
+        my $i = int(@{$bricks->{atoms}} / 2);
+        my $j = int(@{$bricks->{atoms}[$i]} / 2);
 
-        for my $k ( 0..$#{$bricks->{array}[$i][$j]} ) {
+        for my $k ( 0..$#{$bricks->{atoms}[$i][$j]} ) {
             print ">> $i, $j, $k, ",
-            int( @{$bricks->{array}[$i][$j][$k]} ), "\n";
+            int( @{$bricks->{atoms}[$i][$j][$k]} ), "\n";
         }
         ## exit( -1 );
     } if( $debug > 3 );
+
+    return $bricks;
 }
 
 
@@ -460,10 +502,11 @@ sub get_molecules
                                    $covalent_sensitivity );
 
         #   Finds molecules
-        push(@unique_molecules, find_molecules($covalent_sensitivity,
-                                               $atom_properties,
-                                               \@symmetric_atoms,
-                                               $translated_atoms));
+        push(@unique_molecules, find_molecules( $covalent_sensitivity,
+                                                $atom_properties,
+                                                \@symmetric_atoms,
+                                                $translated_atoms,
+                                                $bricks ));
     }
 
     #   Finds unique atoms
@@ -1806,12 +1849,13 @@ sub print_molecule
 #               chemical_formula_sum=>"C6 H6",
 #             );
 
-sub find_molecules
+sub find_molecules($$$$$)
 {
     my $covalent_sensitivity = shift(@_);
     my $atom_properties      = shift(@_);
     my $symmetric_atoms      = shift(@_);
     my $initial_atoms        = shift(@_);
+    my $bricks               = shift(@_);
 
     my @unique_molecules;
     my %used_atoms;
@@ -1826,7 +1870,7 @@ sub find_molecules
                                                $symmetric_atoms,
                                                \%used_atoms,
                                                \%used_basenames,
-                                               $initial_atom);
+                                               $initial_atom, $bricks );
 
 #             if(@molecule_atoms > 0)
 #             {
@@ -1842,7 +1886,7 @@ sub find_molecules
 
 # ============================================================================ #
 
-sub find_molecule
+sub find_molecule($$$$$$$)
 {
     my $covalent_sensitivity = shift(@_);
     my $atom_properties      = shift(@_);
@@ -1850,6 +1894,7 @@ sub find_molecule
     my $used_atoms           = shift(@_);
     my $used_basenames       = shift(@_);
     my $current_atom         = shift(@_);
+    my $bricks               = shift(@_);
 
     my @current_coords_fract_modulo_1 =
                     map { modulo_1($_) } @{$current_atom->{coordinates_fract}};
@@ -1875,7 +1920,6 @@ sub find_molecule
 
     my $current_label = $current_atom->{label};
 
-    $used_atoms->{$current_label} = $current_label;
     $used_atoms->{$atom_in_unit_cell_label} = $atom_in_unit_cell_label;
 
     $used_basenames->{$current_atom->{label_basename}} =
@@ -1885,51 +1929,77 @@ sub find_molecule
 
     push(@neighbors, copy_atom($atom_in_unit_cell));
 
-    foreach my $sym_atom (@$symmetric_atoms)
-    {
-        my $type            = $sym_atom->{"chemical_type"};
-        my $coords_ortho    = $sym_atom->{"coordinates_ortho"};
-        my $label           = $sym_atom->{"label"};
-        my $label_basename  = $sym_atom->{"label_basename"};
+    my ($i, $j, $k) =
+        bricks_get_atom_index( $bricks, @{$atom_in_unit_cell_coords_ortho});
 
-        if ((not exists $used_atoms->{$label}))
-        {
-            my $dist = distance($atom_in_unit_cell_coords_ortho, $coords_ortho);
+    my ( $min_i, $max_i, $min_j, $max_j, $min_k, $max_k );
 
-            my $is_bump = test_bump( $atom_properties,
-                                     $atom_in_unit_cell_type, $type,
-                                     $dist, $bump_distance_factor );
+    eval {
+        ( $min_i, $max_i, $min_j, $max_j, $min_k, $max_k ) =
+            bricks_get_search_span( $bricks, $i, $j, $k );
+    };
+    if( $@ ) {
+        use Serialise;
+        serialiseRef( $atom_in_unit_cell );
+        serialiseRef( $atom_in_unit_cell_coords_ortho );
+        serialiseRef( [ $i, $j, $k ] );
+        delete $bricks->{atoms};
+        serialiseRef( $bricks );
+        die( $@ );
+    }
+                                  
+    ## foreach my $sym_atom (@$symmetric_atoms)
+    for $i ($min_i .. $max_i) {
+    for $j ($min_j .. $max_j) {
+    for $k ($min_k .. $max_k) {
+        for my $sym_atom ( @{$bricks->{atoms}[$i][$j][$k]} ) {
+            my $type            = $sym_atom->{"chemical_type"};
+            my $coords_ortho    = $sym_atom->{"coordinates_ortho"};
+            my $label           = $sym_atom->{"label"};
+            my $label_basename  = $sym_atom->{"label_basename"};
 
-            if( $is_bump ) {
-                my $message =  "atoms \"$atom_in_unit_cell_label\" and " .
-                    "\"$label\" are too close " .
-                    "(distance = " .
-                    sprintf( "%6.4f", $dist ) .
-                    "), and are considered a bump";
-                if( $ignore_bumps ) {
-                    warn( $message );
-                } else {
-                    die( $message . " -- aborting calculations");
+            if ((not exists $used_atoms->{$label}))
+            {
+                my $dist = distance( $atom_in_unit_cell_coords_ortho,
+                                     $coords_ortho );
+
+                my $is_bump = test_bump( $atom_properties,
+                                         $atom_in_unit_cell_type, $type,
+                                         $dist, $bump_distance_factor );
+
+                if( $is_bump ) {
+                    my $message =  "atoms \"$atom_in_unit_cell_label\" and " .
+                        "\"$label\" are too close " .
+                        "(distance = " .
+                        sprintf( "%6.4f", $dist ) .
+                        "), and are considered a bump";
+                    if( $ignore_bumps ) {
+                        warn( $message );
+                    } else {
+                        die( $message . " -- aborting calculations");
+                    }
+                }
+
+                my $is_bond = test_bond($atom_properties,
+                                        $atom_in_unit_cell_type,
+                                        $type,
+                                        $dist,
+                                        $covalent_sensitivity);
+
+                if($is_bond == 1)
+                {
+                    push(@neighbors, find_molecule( $covalent_sensitivity,
+                                                    $atom_properties,
+                                                    $symmetric_atoms,
+                                                    $used_atoms,
+                                                    $used_basenames,
+                                                    $sym_atom, $bricks ));
                 }
             }
-
-            my $is_bond = test_bond($atom_properties,
-                                    $atom_in_unit_cell_type,
-                                    $type,
-                                    $dist,
-                                    $covalent_sensitivity);
-
-            if($is_bond == 1)
-            {
-                push(@neighbors, find_molecule( $covalent_sensitivity,
-                                                $atom_properties,
-                                                $symmetric_atoms,
-                                                $used_atoms,
-                                                $used_basenames,
-                                                $sym_atom));
-            }
         }
-    }
+    }}}
+
+    $used_atoms->{$current_label} = $current_label;
 
     my $translated_neighbors = translate_atoms(\@neighbors,
                                                           $current_translation);
