@@ -6,7 +6,7 @@ use Storable;
 
 $VERSION = '0.58';
 
-#  $Id: DataBlock.pm,v 1.6 2001/07/10 17:05:51 wbluhm Exp $    RCS Identification
+#  $Id$    RCS Identification
 
 
 ####################

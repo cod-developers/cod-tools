@@ -1,8 +1,8 @@
 #------------------------------------------------------------------------
-#$Author: saulius $
-#$Date: 2008-02-18 15:38:32 +0200 (Mon, 18 Feb 2008) $ 
-#$Revision: 1171 $
-#$URL: svn+ssh://lokys.ibt.lt/home/saulius/svn-repositories/cce/aux/Serialise.pm $
+#$Author$
+#$Date$ 
+#$Revision$
+#$URL$
 #------------------------------------------------------------------------
 
 package Serialise;

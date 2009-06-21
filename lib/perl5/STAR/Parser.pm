@@ -8,7 +8,7 @@ use vars qw($VERSION @ISA @EXPORT @EXPORT_OK);
 
 $VERSION = '0.59';
 
-# $Id: Parser.pm,v 1.6 2004/04/08 17:03:43 wbluhm Exp $  RCS identification
+# $Id$  RCS identification
 
 
 ####################

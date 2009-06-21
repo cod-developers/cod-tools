@@ -1,8 +1,8 @@
 #------------------------------------------------------------------------
-#$Author: saulius $
-#$Date: 2006-05-03 13:16:28 +0300 (Wed, 03 May 2006) $ 
-#$Revision: 988 $
-#$URL: svn+ssh://lokys.ibt.lt/home/saulius/svn-repositories/cce/aux/SOptions.pm $
+#$Author$
+#$Date$ 
+#$Revision$
+#$URL$
 #------------------------------------------------------------------------
 #* 
 #  Simple option processing package

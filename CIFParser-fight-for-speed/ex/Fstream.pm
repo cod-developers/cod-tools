@@ -1,4 +1,4 @@
-# $Id: Fstream.pm,v 1.1 2002/04/10 04:58:09 srz Exp $
+# $Id$
 
 package Fstream;
 

@@ -7,7 +7,7 @@ use FileHandle;
 
 $CP::version = '1.0';
 
-my $SVNID = '$Id: CIFParser.yp 325 2008-01-02 15:13:24Z saulius $';
+my $SVNID = '$Id$';
 
 $CP::debug = 0;
 

@@ -1,8 +1,8 @@
 #------------------------------------------------------------------------
-#$Author: saulius $
-#$Date: 2008-06-03 17:21:41 +0300 (Tue, 03 Jun 2008) $ 
-#$Revision: 499 $
-#$URL: svn+ssh://pitonas.ibt.lt/home/xray/svn-repositories/cif-tools/trunk/CIFTags/CIFTagPrint.pm $
+#$Author$
+#$Date$ 
+#$Revision$
+#$URL$
 #------------------------------------------------------------------------
 #* 
 #  CIF tag management functions that work on the internal
