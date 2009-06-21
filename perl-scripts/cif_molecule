@@ -37,6 +37,7 @@ use AtomProperties;
 
 my $Id = '$Id$';
 
+my $debug = 1;
 my $format = "%8.6f";
 my $continue_on_errors = 0;
 my $covalent_sensitivity = 0.35;
@@ -234,6 +235,150 @@ for my $dataset (@$data)
 }
 
 #==============================================================================#
+# Find a maximal covalent radius in the atom property list
+
+sub get_max_covalent_radius($)
+{
+    my ($atom_properties) = @_;
+
+    my $max_radius = 0;
+
+    for my $atom (keys %$atom_properties) {
+        if( $max_radius < $atom_properties->{$atom}{covalent_radius} ) {
+            $max_radius = $atom_properties->{$atom}{covalent_radius};
+        }
+    }
+
+    return $max_radius;
+}
+
+#==============================================================================#
+# Find minimal and maximal coordinate values in an atom list
+
+sub get_min_max_atom_coordinates($)
+{
+    my ($atoms) = @_;
+
+    my ( $min_x, $max_x, $min_y, $max_y, $min_z, $max_z );    
+
+    for my $atom (@$atoms) {
+        my ( $x, $y, $z ) = @{$atom->{coordinates_ortho}};
+        if( !defined $min_x || $min_x > $x ) {
+            $min_x = $x;
+        }
+        if( !defined $max_x || $max_x < $x ) {
+            $max_x = $x;
+        }
+        if( !defined $min_y || $min_y > $y ) {
+            $min_y = $y;
+        }
+        if( !defined $max_y || $max_y < $y ) {
+            $max_y = $y;
+        }
+        if( !defined $min_z || $min_z > $z ) {
+            $min_z = $z;
+        }
+        if( !defined $max_z || $max_z < $z ) {
+            $max_z = $z;
+        }
+    }
+    return ( $min_x, $max_x, $min_y, $max_y, $min_z, $max_z );
+}
+
+#==============================================================================#
+
+# Given a "brick" structure with a cutoff distance, minimum and
+# maximum coordinates inside, and an atom orthogonal coordinates,
+# calculated idices of the brick in which this atom is in.
+
+sub bricks_get_atom_index($@)
+{
+    my ( $bricks, $x, $y, $z ) = @_;
+
+    my $distance = $bricks->{distance};
+
+    my $i = int(($x - $bricks->{min_x})/$distance);
+    my $j = int(($y - $bricks->{min_y})/$distance);
+    my $k = int(($z - $bricks->{min_z})/$distance);
+
+    return ( $i, $j, $k );
+}
+
+#==============================================================================#
+# Create a 3D array of "bricks" that contain atoms in the specific
+# region of the 3D space; the neighbour search will then only need to
+# consider atoms from the neighbouring bricks.
+
+sub build_bricks($$)
+{
+    my ($atoms, $distance) = @_;
+
+    my ( $min_x, $max_x, $min_y, $max_y, $min_z, $max_z ) =
+        get_min_max_atom_coordinates( $atoms );
+
+    # numbers of bricks in directions x, y, and z, respectively:
+    my $nx = int(($max_x - $min_x)/$distance) + 1;
+    my $ny = int(($max_y - $min_y)/$distance) + 1;
+    my $nz = int(($max_z - $min_z)/$distance) + 1;
+
+    do {
+        print ">>> $min_x, $max_x, $distance, $nx\n";
+        print ">>> $min_y, $max_y, $distance, $nx\n";
+        print ">>> $min_z, $max_z, $distance, $nx\n";
+    } if( $debug > 5 );
+
+    # Create a 4-D rray, indexable with i, j, k, and atom_number:
+
+    my $brick_array = [];
+
+    for my $i (0..$nx) {
+        push( @{$brick_array}, [] );
+        for my $j (0..$ny) {
+            push( @{$brick_array->[$i]}, [] );
+            for my $k (0..$nz) {
+                push( @{$brick_array->[$i][$j]}, [] );
+            }
+        }
+    }
+
+    # create the "bricks" structure:
+
+    my $bricks = {
+        distance => $distance,
+        max_x => $max_x, min_x => $min_x,
+        max_y => $max_y, min_y => $min_y,
+        max_z => $max_z, min_z => $min_z,
+        array => $brick_array,
+    };
+
+    # distribute atom references into bricks:
+
+    for my $atom (@$atoms) {
+        ## my ( $x, $y, $z ) = @{$atom->{coordinates_ortho}};
+        ## my $i = int(($x - $min_x)/$distance);
+        ## my $j = int(($y - $min_y)/$distance);
+        ## my $k = int(($z - $min_z)/$distance);
+        my ( $i, $j, $k ) =
+            bricks_get_atom_index( $bricks, @{$atom->{coordinates_ortho}} );
+        print ">>> $atom->{label}, $i, $j, $k\n" if $debug > 4;
+        ## print ">>> ", ref $bricks->{array}[$i][$j][$k], "\n";
+        push( @{$bricks->{array}[$i][$j][$k]}, $atom )
+    }
+
+    do {
+        my $i = int(@{$bricks->{array}} / 2);
+        my $j = int(@{$bricks->{array}[$i]} / 2);
+
+        for my $k ( 0..$#{$bricks->{array}[$i][$j]} ) {
+            print ">> $i, $j, $k, ",
+            int( @{$bricks->{array}[$i][$j][$k]} ), "\n";
+        }
+        ## exit( -1 );
+    } if( $debug > 3 );
+}
+
+
+#==============================================================================#
 # This is the main function where other functions such as find_molecules are
 # called.
 # Accepts
@@ -279,6 +424,8 @@ sub get_molecules
     #   splits init atoms into assemblies and groups
     my $atom_groups = atom_groups($checked_initial_atoms);
 
+    my $max_covalent_radius = get_max_covalent_radius( $atom_properties );
+
     my @unique_molecules;
 
     foreach my $atom_group ( @{$atom_groups} )
@@ -307,6 +454,10 @@ sub get_molecules
                         multiply_matrix_with_vector($ortho_matrix,
                                                     $atom->{coordinates_fract});
         }
+
+        my $bricks = build_bricks( \@symmetric_atoms,
+                                   $max_covalent_radius * 2 +
+                                   $covalent_sensitivity );
 
         #   Finds molecules
         push(@unique_molecules, find_molecules($covalent_sensitivity,
