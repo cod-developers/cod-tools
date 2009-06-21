@@ -1,13 +1,13 @@
 #------------------------------------------------------------------------
-#$Author: saulius $
-#$Date: 1997/09/03 15:56:59 $ 
+#$Author$
+#$Date$ 
 #$Header:
 #$Locker:  $
 #$Log: ShowStruct.pm,v $
 #Revision 1.3  1997/09/03 15:56:59  saulius
 #RCS header added
 #
-#$Revision: 1.3 $
+#$Revision$
 #$Source: /home/saulius/src/perl-modules/ShowStruct/RCS/ShowStruct.pm,v $
 #$State: Exp $
 #------------------------------------------------------------------------

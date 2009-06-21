@@ -1,8 +1,8 @@
 #------------------------------------------------------------------------
-#$Author: saulius $
-#$Date: 2008-01-21 15:26:58 +0200 (Mon, 21 Jan 2008) $ 
-#$Revision: 361 $
-#$URL: svn+ssh://pitonas.ibt.lt/home/xray/svn-repositories/cif-tools/trunk/Spacegroups/SpacegroupNames.pm $
+#$Author$
+#$Date$ 
+#$Revision$
+#$URL$
 #------------------------------------------------------------------------
 #* 
 #**

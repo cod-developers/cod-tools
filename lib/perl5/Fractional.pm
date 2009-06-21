@@ -1,8 +1,8 @@
 #--*-perl-*-------------------------------------------------------------
-#$Author: saulius $
-#$Date: 2008-05-10 17:49:22 +0300 (Sat, 10 May 2008) $
-#$Revision: 1195 $
-#$URL: svn+ssh://lokys.ibt.lt/home/saulius/svn-repositories/cce/modules/Fractional.pm $
+#$Author$
+#$Date$
+#$Revision$
+#$URL$
 #-----------------------------------------------------------------------
 #       Convert orthogonal coordinates into fractional and back
 #-----------------------------------------------------------------------

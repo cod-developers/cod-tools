@@ -332,7 +332,7 @@ if ($p->{yyn} == 10) {
   } # yyloop
 } # yyparse
 #line 25 "calc.y"
-# $Id: calc.y,v 1.1 2002/04/10 04:58:09 srz Exp $
+# $Id$
 
 sub yylex
 {
