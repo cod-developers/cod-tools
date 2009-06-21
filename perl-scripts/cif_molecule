@@ -1746,7 +1746,11 @@ sub print_molecule
     print "_atom_site_fract_z\n";
 
     my $print_format = join( " ", ($format)x3 ) . "\n";
-    foreach my $atom (@{$molecule->{atoms_c}})
+    foreach my $atom ( sort {
+        length($a->{label}) == length($b->{label}) ?
+            $a->{label} cmp $b->{label} :
+            length($a->{label}) <=> length($b->{label})
+        } @{$molecule->{atoms_c}} )
     {
         print $atom->{"label"} . " ";
         print $atom->{"atom_site_type_symbol"} . " "
