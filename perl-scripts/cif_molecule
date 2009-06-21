@@ -238,7 +238,7 @@ for my $dataset (@$data)
 # Forward subroutine definitions:
 
 sub find_molecules($$$$$);
-sub find_molecule($$$$$$$);
+sub find_molecule($$$$$$$$);
 
 #==============================================================================#
 # Find a maximal covalent radius in the atom property list
@@ -1859,6 +1859,7 @@ sub find_molecules($$$$$)
 
     my @unique_molecules;
     my %used_atoms;
+    my %used_bonds;
     my %used_basenames;
 
     foreach my $initial_atom (@$initial_atoms)
@@ -1870,6 +1871,7 @@ sub find_molecules($$$$$)
                                                $symmetric_atoms,
                                                \%used_atoms,
                                                \%used_basenames,
+                                               \%used_bonds,
                                                $initial_atom, $bricks );
 
 #             if(@molecule_atoms > 0)
@@ -1886,13 +1888,14 @@ sub find_molecules($$$$$)
 
 # ============================================================================ #
 
-sub find_molecule($$$$$$$)
+sub find_molecule($$$$$$$$)
 {
     my $covalent_sensitivity = shift(@_);
     my $atom_properties      = shift(@_);
     my $symmetric_atoms      = shift(@_);
     my $used_atoms           = shift(@_);
     my $used_basenames       = shift(@_);
+    my $used_bonds           = shift(@_);
     my $current_atom         = shift(@_);
     my $bricks               = shift(@_);
 
@@ -1958,8 +1961,16 @@ sub find_molecule($$$$$$$)
             my $label           = $sym_atom->{"label"};
             my $label_basename  = $sym_atom->{"label_basename"};
 
-            if ((not exists $used_atoms->{$label}))
+            if( not exists $used_bonds->{$label}{$atom_in_unit_cell_label} )
             {
+                $used_bonds->{$label} = {}
+                    unless exists $used_bonds->{$label};
+                $used_bonds->{$label}{$atom_in_unit_cell_label} = 1;
+
+                $used_bonds->{$atom_in_unit_cell_label} = {}
+                     unless exists $used_bonds->{$atom_in_unit_cell_label};
+                $used_bonds->{$atom_in_unit_cell_label}{$label} = 1;
+
                 my $dist = distance( $atom_in_unit_cell_coords_ortho,
                                      $coords_ortho );
 
@@ -1993,6 +2004,7 @@ sub find_molecule($$$$$$$)
                                                     $symmetric_atoms,
                                                     $used_atoms,
                                                     $used_basenames,
+                                                    $used_bonds,
                                                     $sym_atom, $bricks ));
                 }
             }
