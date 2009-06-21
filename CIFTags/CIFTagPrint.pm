@@ -15,9 +15,10 @@ use strict;
 
 require Exporter;
 @CIFTagPrint::ISA = qw(Exporter);
-@CIFTagPrint::EXPORT = qw( print_cif );
+@CIFTagPrint::EXPORT = qw( print_cif print_single_tag_and_value );
 
 $CIFTagPrint::max_cif_line_len = 80;
+$CIFTagPrint::default_folding_width = $CIFTagPrint::max_cif_line_len - 1;
 $CIFTagPrint::max_cif_tag_len = 32;
 
 sub print_cif
@@ -156,6 +157,37 @@ sub print_cif
 # Subroutines:
 #
 
+sub print_single_tag_and_value($$@)
+{
+    my ( $tag, $val, $fold_long_fields, $folding_width ) = @_;
+
+    $fold_long_fields = 0
+        unless defined $fold_long_fields;
+
+    $folding_width = $CIFTagPrint::default_folding_width
+        unless defined $folding_width;
+
+    my $value = sprint_value( $val, $fold_long_fields, $folding_width );
+    my $key_len = length($tag) > $CIFTagPrint::max_cif_tag_len ?
+        length($tag) : $CIFTagPrint::max_cif_tag_len;
+    my $val_len = length($value);
+
+    if( $value =~ /\s/ ) {
+        $val_len += 2;
+    }
+    if( $key_len + $val_len + 1 > $CIFTagPrint::max_cif_line_len &&
+        $value !~ /\n/ ) {
+        printf "%s\n", $tag;
+    } else {
+        if( $value !~ /\n/ ) {
+            printf "%-" . $CIFTagPrint::max_cif_tag_len . "s ", $tag;
+        } else {
+            printf "%s", $tag;
+        }
+    }
+    print $value, "\n";
+}
+
 sub print_tag
 {
     my ($key, $tags, $fold_long_fields, $folding_width ) = @_;
@@ -170,25 +202,8 @@ sub print_tag
 		print "\n";
 	    }
 	} else {
-	    my $value = sprint_value( $val->[0], $fold_long_fields, $folding_width );
-	    my $key_len = length($key) > $CIFTagPrint::max_cif_tag_len ?
-		length($key) : $CIFTagPrint::max_cif_tag_len;
-	    my $val_len = length($value);
-
-	    if( $value =~ /\s/ ) {
-		$val_len += 2;
-	    }
-	    if( $key_len + $val_len + 1 > $CIFTagPrint::max_cif_line_len &&
-		$value !~ /\n/ ) {
-		printf "%s\n", $key;
-	    } else {
-		if( $value !~ /\n/ ) {
-		    printf "%-" . $CIFTagPrint::max_cif_tag_len . "s ", $key;
-		} else {
-		    printf "%s", $key;
-		}
-	    }
-	    print $value, "\n";
+            print_single_tag_and_value( $key, $val->[0], $fold_long_fields,
+                                        $folding_width   )
 	}
     }
 }
@@ -265,8 +280,11 @@ sub sprint_value
 {
     my ( $val, $fold_long_fields, $folding_width ) = @_;
 
-    $fold_long_fields = 0 unless defined $fold_long_fields;
-    $folding_width = 79 unless defined $folding_width;
+    $fold_long_fields = 0
+        unless defined $fold_long_fields;
+
+    $folding_width = $CIFTagPrint::default_folding_width
+        unless defined $folding_width;
 
     if( $fold_long_fields && maxlen($val) > $folding_width - 2 ) {
 	$val = join( "\n", map { " " . $_ }
