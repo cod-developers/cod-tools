@@ -1,0 +1,116 @@
+#! /bin/sh
+#!perl -w # --*- Perl -*--
+eval 'exec perl -x $0 ${1+"$@"}'
+    if 0;
+#------------------------------------------------------------------------------
+#$Author$
+#$Date$ 
+#$Revision$
+#$URL$
+#------------------------------------------------------------------------------
+#*
+#  Read CIFs and print out selected tags with their values.
+#**
+
+use strict;
+use File::Basename;
+use CIFParser;
+use CIFTags::CIFTagManage;
+use CIFTags::CIFTagPrint;
+use SOptions;
+use SUsage;
+
+my @selected_tags;
+
+my $treat_dots_as_underscores = 1;
+
+#* Usage:
+#*     cif_select [options] input.cif [input2.cif ...]
+#*
+#* Options:
+#*     -t, --tags _tag1,_tag2,_tag3
+#*     --tags "_tag1 _tag2 _tag3"
+#*         Print out values of tags _tag1, _tag2, and _tag3;
+#*         the specified tag list becomes a new list of printed tags.
+#*
+#*     -a, --add-tag _tag4
+#*         Add tag _tag4 to the list of printed tags.
+#*
+#*     -c, --clear-tags
+#*         Clear the list of printed tags accumulated so far.
+#*
+#**    --treat-dots-as-underscores
+#**        Convert all dots in tag names into underscores (default)
+#**
+#**    --dont-treat-dots-as-underscores,--no-treat-dots-as-underscores
+#**        Leave original tags as they are.
+#**
+#*     --help  print a short usage message (this message) and exit.
+#**
+
+@ARGV = getOptions(
+    "--t,--tags" => sub { @selected_tags = split( /\s|,/, get_value()) },
+    "-a,--add-tag"    => \@selected_tags,
+    "-c,--clear-tags" => sub { @selected_tags = () },
+
+    "--treat-dots-as-underscores"
+        => sub { $treat_dots_as_underscores = 1 },
+    "--dont-treat-dots-as-underscores"
+        => sub { $treat_dots_as_underscores = 0 },
+    "--no-treat-dots-as-underscores"
+        => sub { $treat_dots_as_underscores = 0 },
+
+    "--help,--usage"  => sub { SUsage::usage; exit },
+);
+
+sub sunique(@);
+
+if( $treat_dots_as_underscores ) {
+    @selected_tags = map { s/\./_/g; $_ } @selected_tags;
+}
+
+@selected_tags = map { lc($_) } @selected_tags;
+
+my %selected_tags = map { ($_, $_) } @selected_tags;
+
+for my $filename (@ARGV) {
+
+    my $parser = new CIFParser;
+
+    my $data = $parser->Run($filename);
+
+    if( defined $parser->YYData->{ERRCOUNT} &&
+        $parser->YYData->{ERRCOUNT} > 0 ) {
+        print STDERR "$0: ", $parser->YYData->{ERRCOUNT},
+        " error(s) encountered while parsing file '${filename}'\n";
+        die;
+    }
+
+    if( !@{$data} || !defined $data->[0] || !defined $data->[0]{name} ) {
+        warn( "file '$filename' seems to be empty" );
+        next;
+    }
+
+    for my $dataset (@$data) {
+
+        my @values = ();
+        my $values = $dataset->{values};
+
+        if( $treat_dots_as_underscores ) {
+            for my $tag (keys %{$values}) {
+                my $new_tag = $tag;
+                $new_tag =~ s/\./_/g;
+                if( $new_tag ne $tag ) {
+                    $values->{$new_tag} = $values->{$tag};
+                }
+            }
+        }
+
+        CIFTagPrint::print_cif( $dataset,
+                   {
+                       dictionary_tags => \%selected_tags,
+                       dictionary_tag_list => \@selected_tags,
+                       exclude_misspelled_tags => 1,
+                   } );
+    }
+}
