@@ -59,10 +59,17 @@ my $ignore_bumps = 0; # detect and warn about close atom "bumps"
 
 my $special_position_cutoff = 0.01;
 
+my $cif_header_file; # Comments from the beginning of this file wil be
+                     # prepended to the output.
+
 @ARGV = getOptions
 (
 #** -c,--covalent-sensitivity
 #**                    Set a new covalent sensitivity value (default 0.35)
+#**
+#** -h, --cif-header-file input_header.txt
+#**                    Comments from the beginning of this file wil be
+#**                    prepended to the output.
 #**
 #** -i,--ignore-bumps
 #**                     Detect and warn about close atom "bumps" but do not
@@ -111,6 +118,8 @@ my $special_position_cutoff = 0.01;
 
     "-c,--covalent-sensitivity" => \$covalent_sensitivity,
 
+    "-h,--add-cif-header" => \$cif_header_file,
+
     "-i,--ignore-bumps"   => sub{ $ignore_bumps = 1 },
     "--no-ignore-bumps"   => sub{ $ignore_bumps = 0 },
     "--dont-ignore-bumps" => sub{ $ignore_bumps = 0 },
@@ -132,11 +141,32 @@ my $special_position_cutoff = 0.01;
     "--help,--usage"            => sub { SUsage::usage; exit },
 );
 
+my $cif_header;
+
+if( $cif_header_file ) {
+    open( HDR, "$cif_header_file" ) or
+        die( "$0: could not open header file '$cif_header_file' " .
+             "for input: $!" );
+
+    $cif_header = "";
+    while( <HDR> ) {
+        last unless /^#/;
+        $cif_header .= $_;
+    }
+
+    close( HDR ) or
+        die( "$0: error reading header file '$cif_header_file': $!" );
+}
+
 my $filename = shift(@ARGV);
 my $parser = new CIFParser;
 my $data = $parser->Run($filename);
 
 canonicalize_all_names( $data );
+
+if( $cif_header ) {
+    print $cif_header;
+}
 
 for my $dataset (@$data)
 {
