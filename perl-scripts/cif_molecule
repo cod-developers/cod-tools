@@ -1725,21 +1725,21 @@ sub print_molecule
 
     my %renamed_tags = rename_tags( $dataset, \@data2rename, "_cod_src" );
 
-    for my $tag (@tag_list)
-    {
-        unless( exists $data2copy{$tag} || exists $renamed_tags{$tag} )
-        {
-            CIFTagManage::exclude_tag($dataset, $tag);
-        }
-    }
-
+    ## for my $tag (@tag_list)
+    ## {
+    ##     unless( exists $data2copy{$tag} || exists $renamed_tags{$tag} )
+    ##     {
+    ##         CIFTagManage::exclude_tag($dataset, $tag);
+    ##     }
+    ## }
     my %known_tags = ( %data2copy, %renamed_tags );
     my @known_tags = ( @data2copy, keys %renamed_tags );
 
     print_cif( $dataset,
                         {
                             dictionary_tags => \%known_tags,
-                            dictionary_tag_list => \@known_tags
+                            dictionary_tag_list => \@known_tags,
+                            exclude_misspelled_tags => 1,
                         } );
 
     my @data2generate = qw( _audit_creation_method
