@@ -30,6 +30,8 @@ my $write_filename = 1;
 my $write_basename = 2;
 my $write_file;
 
+my $treat_dots_as_underscores = 1;
+
 #* Usage:
 #*     cif_values [options] input.cif [input2.cif ...]
 #*
@@ -69,6 +71,12 @@ my $write_file;
 #*         Use TAB character as a separator between tag values on a line.
 #*         (default).
 #*
+#**    --treat-dots-as-underscores
+#**        Convert all dots in tag names into underscores (default)
+#**
+#**    --dont-treat-dots-as-underscores,--no-treat-dots-as-underscores
+#**        Leave original tags as they are.
+#**
 #*     --filename
 #*         Print out full filename at the beginning of each line.
 #*
@@ -106,6 +114,13 @@ my $write_file;
     "-u-,--no-uniquify-tags" => sub { @uniquified_tags = () },
     "--dont-uniquify-tags"   => sub { @uniquified_tags = () },
 
+    "--treat-dots-as-underscores"
+        => sub { $treat_dots_as_underscores = 1 },
+    "--dont-treat-dots-as-underscores"
+        => sub { $treat_dots_as_underscores = 0 },
+    "--no-treat-dots-as-underscores"
+        => sub { $treat_dots_as_underscores = 0 },
+
     "--filename"      => sub { $write_file = $write_filename },
     "--basename"      => sub { $write_file = $write_basename },
     "--no-filename"   => sub { $write_file = 0 },
@@ -117,6 +132,11 @@ my $write_file;
 );
 
 sub sunique(@);
+
+if( $treat_dots_as_underscores ) {
+    @selected_tags = map { s/\./_/g; $_ } @selected_tags;
+    @uniquified_tags = map { s/\./_/g; $_ } @uniquified_tags;
+}
 
 @selected_tags = map { lc($_) } @selected_tags;
 
@@ -150,6 +170,16 @@ for my $filename (@ARGV) {
 
         my @values = ();
         my $values = $dataset->{values};
+
+        if( $treat_dots_as_underscores ) {
+            for my $tag (keys %{$values}) {
+                my $new_tag = $tag;
+                $new_tag =~ s/\./_/g;
+                if( $new_tag ne $tag ) {
+                    $values->{$new_tag} = $values->{$tag};
+                }
+            }
+        }
 
         if( $write_file ) {
             if( $write_file == $write_filename ) {
