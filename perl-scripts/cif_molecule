@@ -14,6 +14,21 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #  Restores molecule from the CIF file.
 #**
 
+# Note: this script assumes that atoms have unique labels in the input
+# CIF file; most often these are labels given by the _atom_site_label
+# tag. If the assumption of uniqness does not hold, the script
+# attempts by default to create uniq labels itself, appanding numeric
+# prefixes to the duplicate labels.
+#
+# The uniqueness of the labels is assumed in checks for atoms at
+# special positions, and most importantly in the code removing
+# duplicate molecules.
+#
+# Although there is an option to switch off this diversifivation of
+# labels, the algorithms employed in this script will most probably
+# break and give incorrect results (e.g. some atoms will, the unes
+# with duplicate labels, will be missing from the output). Thus, use
+# option '--dont-uniquify_atoms' with caution.
 
 # ~/workspace/praktika/cod/cif/1/1000028.cif interesting
 # kokia prasme, kai disorder_assembly reiksme nelygi ".", o disorder_group lygi.
@@ -43,6 +58,7 @@ my $continue_on_errors = 0;
 my $covalent_sensitivity = 0.35;
 my $audit = 1;
 my $uniquify_atoms = 1;
+my $uniquify_molecules = 1;       # Leave only unique molecules in the output
 my $exclude_zero_occupancies = 1; # Do not use atoms with zero
                                   # occupancies
 
@@ -131,6 +147,10 @@ my $cif_header_file; # Comments from the beginning of this file wil be
     "--exclude-zero-occupancies"    => sub { $exclude_zero_occupancies = 1; },
     "--no-exclude-zero-occupancies" => sub { $exclude_zero_occupancies = 0; },
     "--dont-exclude-zero-occupancies" => sub { $exclude_zero_occupancies = 0; },
+
+    "--remove-duplicate-molecules"      => sub { $uniquify_molecules = 1; },
+    "--no-remove-duplicate-molecules"   => sub { $uniquify_molecules = 0; },
+    "--dont-remove-duplicate-molecules" => sub { $uniquify_molecules = 0; },
 
     "--bump-distance-factor" => \$bump_distance_factor,
 
@@ -390,12 +410,12 @@ sub get_molecules
                                                $covalent_sensitivity );
 
         #   Finds molecules
-        push(@unique_molecules, find_molecules( $covalent_sensitivity,
-                                                $atom_properties,
-                                                \@symmetric_atoms,
-                                                $translated_atoms,
-                                                $bricks,
-                                                $filename, $dataname ));
+        push( @unique_molecules, find_molecules( $covalent_sensitivity,
+                                                 $atom_properties,
+                                                 \@symmetric_atoms,
+                                                 $translated_atoms,
+                                                 $bricks,
+                                                 $filename, $dataname ));
     }
 
     #   Finds unique atoms
@@ -1728,6 +1748,8 @@ sub print_molecule
 #               chemical_formula_sum=>"C6 H6",
 #             );
 
+my %seen_molecules;
+
 sub find_molecules($$$$$$$)
 {
     my $covalent_sensitivity = shift(@_);
@@ -1747,21 +1769,36 @@ sub find_molecules($$$$$$$)
     {
         if ((not exists $used_basenames{$initial_atom->{label_basename}}))
         {
-            my @molecule_atoms = find_molecule($covalent_sensitivity,
-                                               $atom_properties,
-                                               $symmetric_atoms,
-                                               \%used_atoms,
-                                               \%used_basenames,
-                                               \%used_bonds,
-                                               $initial_atom, $bricks,
-                                               $filename, $dataname );
+            my @molecule_atoms = find_molecule( $covalent_sensitivity,
+                                                $atom_properties,
+                                                $symmetric_atoms,
+                                                \%used_atoms,
+                                                \%used_basenames,
+                                                \%used_bonds,
+                                                $initial_atom, $bricks,
+                                                $filename, $dataname );
 
-#             if(@molecule_atoms > 0)
-#             {
+            ## if(@molecule_atoms > 0)
+            ## {
+
+            my $signature;
+
+            if( $uniquify_molecules ) {
+                $signature = join( " ", sort {$a cmp $b} 
+                                   map {$_->{label}} @molecule_atoms );
+            }
+
+            if( !$uniquify_molecules || !$seen_molecules{$signature} ) {
+
                 my %molecule =  (atoms_c              => \@molecule_atoms,
                                  chemical_formula_sum => "",);
+
                 push( @unique_molecules, \%molecule );
-#             }
+
+                $seen_molecules{$signature} = 1 if $uniquify_molecules ;
+            }
+
+            ## }
         }
     }
 
