@@ -304,7 +304,7 @@ for my $dataset (@$data)
 #==============================================================================#
 # Forward subroutine definitions:
 
-sub find_molecules($$$$$$$);
+sub find_molecules($$$$$$$$);
 sub find_molecule($$$$$$$$$$);
 sub check_init_atoms($$$$);
 
@@ -377,6 +377,7 @@ sub get_molecules
     my $max_covalent_radius = get_max_covalent_radius( $atom_properties );
 
     my @unique_molecules;
+    my %seen_molecules;
 
     foreach my $atom_group ( @{$atom_groups} )
     {
@@ -415,7 +416,8 @@ sub get_molecules
                                                  \@symmetric_atoms,
                                                  $translated_atoms,
                                                  $bricks,
-                                                 $filename, $dataname ));
+                                                 $filename, $dataname,
+                                                 \%seen_molecules ));
     }
 
     #   Finds unique atoms
@@ -1748,9 +1750,7 @@ sub print_molecule
 #               chemical_formula_sum=>"C6 H6",
 #             );
 
-my %seen_molecules;
-
-sub find_molecules($$$$$$$)
+sub find_molecules($$$$$$$$)
 {
     my $covalent_sensitivity = shift(@_);
     my $atom_properties      = shift(@_);
@@ -1759,6 +1759,7 @@ sub find_molecules($$$$$$$)
     my $bricks               = shift(@_);
     my $filename             = shift(@_);
     my $dataname             = shift(@_);
+    my $seen_molecules       = shift(@_);
 
     my @unique_molecules;
     my %used_atoms;
@@ -1788,14 +1789,14 @@ sub find_molecules($$$$$$$)
                                    map {$_->{label}} @molecule_atoms );
             }
 
-            if( !$uniquify_molecules || !$seen_molecules{$signature} ) {
+            if( !$uniquify_molecules || !$seen_molecules->{$signature} ) {
 
                 my %molecule =  (atoms_c              => \@molecule_atoms,
                                  chemical_formula_sum => "",);
 
                 push( @unique_molecules, \%molecule );
 
-                $seen_molecules{$signature} = 1 if $uniquify_molecules ;
+                $seen_molecules->{$signature} = 1 if $uniquify_molecules ;
             }
 
             ## }
