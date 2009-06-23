@@ -141,12 +141,34 @@ my $cif_header_file; # Comments from the beginning of this file wil be
     "--help,--usage"            => sub { SUsage::usage; exit },
 );
 
+sub print_error($$$$$)
+{
+    my ( $program, $filename, $datablock, $errlevel, $message ) = @_;
+
+    print STDERR $program, ": ", $filename,
+    defined $datablock ? " data_" . $datablock : "",
+    defined $errlevel ? ": " . $errlevel : "",
+    ": ", $message, ".\n";
+}
+
+sub error($$$$)
+{
+    my ( $program, $filename, $datablock, $message ) = @_;
+    print_error( $program, $filename, $datablock, "ERROR", $message );
+}
+
+sub warning($$$$)
+{
+    my ( $program, $filename, $datablock, $message ) = @_;
+    print_error( $program, $filename, $datablock, "WARNING", $message );
+}
+
 my $cif_header;
 
 if( $cif_header_file ) {
     open( HDR, "$cif_header_file" ) or
         die( "$0: could not open header file '$cif_header_file' " .
-             "for input: $!" );
+             "for input - $!" );
 
     $cif_header = "";
     while( <HDR> ) {
@@ -155,7 +177,7 @@ if( $cif_header_file ) {
     }
 
     close( HDR ) or
-        die( "$0: error reading header file '$cif_header_file': $!" );
+        die( "$0: error reading header file '$cif_header_file' - $!" );
 }
 
 my $filename = shift(@ARGV);
@@ -182,17 +204,16 @@ for my $dataset (@$data)
     {
         $atom_site_tag = "_atom_site_type_symbol";
 
-        print STDERR "ERR: " . &File::Basename::fileparse($0) . ": ";
-        print STDERR "'$filename': ";
-        print STDERR "There was no _atom_site_label. There will be appended id".
-                     " to _atom_site_type_symbol.\n";
+        error( $0, $filename, $dataset->{name},
+               "_atom_site_label tag was not found. " .
+               "A serial number will be appended " .
+               "to _atom_site_type_symbol to make atom labels" );
     }
     else
     {
-        print STDERR "ERR: " . &File::Basename::fileparse($0) . ": ";
-        print STDERR "'$filename': ";
-        print STDERR "There was neither _atom_site_type_symbol" .
-                                            " nor _atom_site_label.\n";
+        error( $0, $filename, $dataset->{name},
+               "neither _atom_site_type_symbol nor _atom_site_label " .
+               "were found" );
     }
 
 #   extracts symmetry operators
@@ -203,18 +224,16 @@ for my $dataset (@$data)
         $sym_data = $values->{"_symmetry_equiv_pos_as_xyz"};
     }
 
-    if(exists $values->{"_symmetry_space_group_name_Hall"} &&
-                                                    (not defined $sym_data))
+    if( exists $values->{"_symmetry_space_group_name_Hall"} &&
+        ( not defined $sym_data ))
     {
         my $hall = $values->{"_symmetry_space_group_name_Hall"}[0];
         $sym_data = get_symops("hall", $hall);
 
         if($sym_data == 0)
         {
-            print STDERR "ERR: " . &File::Basename::fileparse($0) . ": ";
-            print STDERR "'$filename': ";
-            print STDERR "There was incorrect _symmetry_space_group_name_Hall "
-                         . $hall . "\n";
+            error( $0, $filename, $dataset->{name},
+                   "incorrect _symmetry_space_group_name_Hall '$hall'" );
         }
     }
 
@@ -226,39 +245,37 @@ for my $dataset (@$data)
 
         if($sym_data == 0)
         {
-            print STDERR "ERR: " . &File::Basename::fileparse($0) . ": ";
-            print STDERR "'$filename': ";
-            print STDERR "There was incorrect _symmetry_space_group_name_H-M "
-                         . $h_m . "\n";
+            error( $0, $filename, $dataset->{name},
+                   "incorrect _symmetry_space_group_name_H-M '$h_m'" );
         }
     }
 
     if(not defined $sym_data)
     {
-        print STDERR "ERR: " . &File::Basename::fileparse($0) . ": ";
-        print STDERR "'$filename': ";
-        print STDERR "There was neither _symmetry_equiv_pos_as_xyz " .
-                     "nor _symmetry_space_group_name_Hall " .
-                     "nor _symmetry_space_group_name_H-M.\n";
+        error( $0, $filename, $dataset->{name},
+               "neither _symmetry_equiv_pos_as_xyz, " .
+               "_symmetry_space_group_name_Hall " .
+               "nor _symmetry_space_group_name_H-M were specified" );
     }
 
     if((defined $atom_site_tag) && (defined $sym_data) && ($sym_data != 0))
     {
+        my $molecule_id = 0;
+        my $dataset_name = $dataset->{name};
+
         my $unique_molecules = get_molecules (  $covalent_sensitivity,
-                                                $filename,
+                                                $filename, $dataset_name,
                                                 $sym_data,
                                                 $atom_site_tag,
                                                 $values,
                                                 \%AtomProperties::atoms,
-                                                $uniquify_atoms);
+                                                $uniquify_atoms );
 
 #       prints molecule to the CIF file
-        my $molecule_id = 0;
-        my $dataset_name = $dataset->{name};
         foreach my $molecule (@$unique_molecules)
         {
-            print_molecule($molecule_id, $audit, $molecule, $Id,
-                           $dataset, $dataset_name, $filename );
+            print_molecule( $molecule_id, $audit, $molecule, $Id,
+                            $dataset, $dataset_name, $filename );
             $molecule_id++;
         }
     }
@@ -267,8 +284,9 @@ for my $dataset (@$data)
 #==============================================================================#
 # Forward subroutine definitions:
 
-sub find_molecules($$$$$);
-sub find_molecule($$$$$$$$);
+sub find_molecules($$$$$$$);
+sub find_molecule($$$$$$$$$$);
+sub check_init_atoms($$$$);
 
 #==============================================================================#
 # Find a maximal covalent radius in the atom property list
@@ -472,6 +490,7 @@ sub get_molecules
 {
     my $covalent_sensitivity = shift;
     my $filename             = shift;
+    my $dataname             = shift;
     my $sym_data             = shift;
     my $atom_site_tag        = shift;
     my $values               = shift;
@@ -491,7 +510,8 @@ sub get_molecules
 
     #   checks if all atom labels are unique, otherwise appends ID to the label.
     my $checked_initial_atoms = check_init_atoms($all_initial_atoms,
-                                                               $uniquify_atoms);
+                                                 $uniquify_atoms,
+                                                 $filename, $dataname );
 
     #   splits init atoms into assemblies and groups
     my $atom_groups = atom_groups($checked_initial_atoms);
@@ -536,7 +556,8 @@ sub get_molecules
                                                 $atom_properties,
                                                 \@symmetric_atoms,
                                                 $translated_atoms,
-                                                $bricks ));
+                                                $bricks,
+                                                $filename, $dataname ));
     }
 
     #   Finds unique atoms
@@ -567,9 +588,9 @@ sub get_molecules
 #                   group=>"1", # "."
 #              }
 #
-sub check_init_atoms
+sub check_init_atoms($$$$)
 {
-    my ($init_atoms, $uniquify_atoms) = @_;
+    my ($init_atoms, $uniquify_atoms, $filename, $dataset_name) = @_;
 
     my @checked_initial_atoms;
 
@@ -592,10 +613,8 @@ sub check_init_atoms
         else
         {
             push(@not_unique_labels, $label);
-
-            print STDERR "WARN: " . &File::Basename::fileparse($0) . ": ";
-            print STDERR "\'$filename\': ";
-            print STDERR "Not unique label " . $label . ".\n";
+            warning( $0, $filename, $dataset_name,
+                     "atom label '$label' is not unique" );
         }
     }
 
@@ -610,10 +629,9 @@ sub check_init_atoms
 
                 if($label eq $not_unique_label)
                 {
-                    print STDERR "WARN: " . &File::Basename::fileparse($0).": ";
-                    print STDERR "\'$filename\': ";
-                    print STDERR "Label $label changing to $label"."_"."$id.\n";
-
+                    warning( $0, $filename, $dataset_name,
+                             "renaming atom '$label' " .
+                             "to '" . $label . "_" . $id . "'" );
                     $atom->{label}          .= "_" . $id;
                     $atom->{label_basename} .= "_" . $id;
                     $id++;
@@ -1872,13 +1890,15 @@ sub print_molecule
 #               chemical_formula_sum=>"C6 H6",
 #             );
 
-sub find_molecules($$$$$)
+sub find_molecules($$$$$$$)
 {
     my $covalent_sensitivity = shift(@_);
     my $atom_properties      = shift(@_);
     my $symmetric_atoms      = shift(@_);
     my $initial_atoms        = shift(@_);
     my $bricks               = shift(@_);
+    my $filename             = shift(@_);
+    my $dataname             = shift(@_);
 
     my @unique_molecules;
     my %used_atoms;
@@ -1895,7 +1915,8 @@ sub find_molecules($$$$$)
                                                \%used_atoms,
                                                \%used_basenames,
                                                \%used_bonds,
-                                               $initial_atom, $bricks );
+                                               $initial_atom, $bricks,
+                                               $filename, $dataname );
 
 #             if(@molecule_atoms > 0)
 #             {
@@ -1911,7 +1932,7 @@ sub find_molecules($$$$$)
 
 # ============================================================================ #
 
-sub find_molecule($$$$$$$$)
+sub find_molecule($$$$$$$$$$)
 {
     my $covalent_sensitivity = shift(@_);
     my $atom_properties      = shift(@_);
@@ -1921,6 +1942,8 @@ sub find_molecule($$$$$$$$)
     my $used_bonds           = shift(@_);
     my $current_atom         = shift(@_);
     my $bricks               = shift(@_);
+    my $filename             = shift(@_);
+    my $dataname             = shift(@_);
 
     my @current_coords_fract_modulo_1 =
                     map { modulo_1($_) } @{$current_atom->{coordinates_fract}};
@@ -2006,11 +2029,12 @@ sub find_molecule($$$$$$$$)
                         "\"$label\" are too close " .
                         "(distance = " .
                         sprintf( "%6.4f", $dist ) .
-                        "), and are considered a bump";
+                        ") and are considered a bump";
                     if( $ignore_bumps ) {
-                        warn( $message );
+                        warning( $0, $filename, $dataname, $message );
                     } else {
-                        die( $message . " -- aborting calculations");
+                        error( $0, $filename, $dataname, $message );
+                        die( "aborting calculations" );
                     }
                 }
 
@@ -2028,7 +2052,8 @@ sub find_molecule($$$$$$$$)
                                                     $used_atoms,
                                                     $used_basenames,
                                                     $used_bonds,
-                                                    $sym_atom, $bricks ));
+                                                    $sym_atom, $bricks,
+                                                    $filename, $dataname ));
                 }
             }
         }
