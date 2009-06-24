@@ -51,6 +51,10 @@ use AtomProperties;
 
 my $Id = '$Id$';
 
+my $sort_molecules = 1; # A flag indicating whether molecules should
+                        # be sorted in the output (descending by atom
+                        # number)
+
 my $format = "%8.6f";
 my $continue_on_errors = 0;
 my $covalent_sensitivity = 0.35;
@@ -92,6 +96,14 @@ my $cif_header_file; # Comments from the beginning of this file wil be
 #** -i-,--dont-ignore-bumps,--no-ignore-bumps
 #**                     Stop processing immediately if bumps are
 #**                     detected (default).
+#**
+#** -s,--sort-molecules
+#**                     Sort molecules descending bey their atom types before
+#**                     outputing them into the output CIF.
+#**
+#** -i-,--dont-sort-molecules,--no-sort-molecules
+#**                     Do not sort molecules, print them out in the order they
+#**                     are detected.
 #**
 #** --uniquify-atoms
 #**                    Makes unique the labels of atoms (default).
@@ -137,6 +149,10 @@ my $cif_header_file; # Comments from the beginning of this file wil be
     "-i,--ignore-bumps"   => sub{ $ignore_bumps = 1 },
     "--no-ignore-bumps"   => sub{ $ignore_bumps = 0 },
     "--dont-ignore-bumps" => sub{ $ignore_bumps = 0 },
+
+    "-s,--sort-molecules"   => sub{ $sort_molecules = 1 },
+    "--no-sort-molecules"   => sub{ $sort_molecules = 0 },
+    "--dont-sort-molecules" => sub{ $sort_molecules = 0 },
 
     "--continue-on-errors" => sub{ $continue_on_errors = 1 },
     "--no-continue-on-errors" => sub{ $continue_on_errors = 0 },
@@ -290,6 +306,12 @@ for my $dataset (@$data)
                                                 $uniquify_atoms );
 
 #       prints molecule to the CIF file
+
+        if( $sort_molecules ) {
+            @$unique_molecules = sort {@{$b->{atoms_c}} <=> @{$a->{atoms_c}}}
+                                 @$unique_molecules;
+        }
+
         foreach my $molecule (@$unique_molecules)
         {
             print_molecule( $molecule_id, $audit, $molecule, $Id,
