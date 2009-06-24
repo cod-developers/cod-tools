@@ -330,6 +330,7 @@ sub find_molecules($$$$$$$$);
 sub find_molecule($$$$$$$$$$);
 sub check_init_atoms($$$$);
 sub initial_atoms($$$$$);
+sub find_in_unit_cell($$$);
 
 #==============================================================================#
 # Find a maximal covalent radius in the atom property list
@@ -1993,9 +1994,9 @@ sub find_molecule($$$$$$$$$$)
 # Accepts fract coords an an array of all atoms (including symetric ones).
 # Returns an atom which is identical according given  fract coords.
 
-sub find_in_unit_cell
+sub find_in_unit_cell($$$)
 {
-    my ($atom_coords_fract, $current_atom, $symmetric_atoms) = @_;
+    my ( $atom_coords_fract, $current_atom, $symmetric_atoms ) = @_;
 
     my $eps = 0.0001;
 
@@ -2004,20 +2005,18 @@ sub find_in_unit_cell
     } else {
         foreach my $sym_atom (@$symmetric_atoms)
         {
-            if((abs($$atom_coords_fract[0] - ${$sym_atom->{coordinates_fract}}[0])
-                < $eps) &&
-               (abs($$atom_coords_fract[1] - ${$sym_atom->{coordinates_fract}}[1])
-                < $eps) &&
-               (abs($$atom_coords_fract[2] - ${$sym_atom->{coordinates_fract}}[2])
-                < $eps))
+            if((abs($$atom_coords_fract[0] -
+                    ${$sym_atom->{coordinates_fract}}[0]) < $eps) &&
+               (abs($$atom_coords_fract[1] -
+                    ${$sym_atom->{coordinates_fract}}[1]) < $eps) &&
+               (abs($$atom_coords_fract[2] -
+                    ${$sym_atom->{coordinates_fract}}[2]) < $eps))
             {
                 ## $current_atom->{atom_in_a_unit_cell} = $sym_atom;
                 return $sym_atom;
             }
         }
     }
-    print STDERR "ERR: " . &File::Basename::fileparse($0) . ": ";
-    print STDERR "'$filename': ";
-    print STDERR "There was no corresponding atom in a main unit cell.\n";
-    die "";
+    die( "there was no atom corresponding to '" . $current_atom->{label} .
+         "' in the main unit cell" );
 }
