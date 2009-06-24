@@ -329,6 +329,7 @@ for my $dataset (@$data)
 sub find_molecules($$$$$$$$);
 sub find_molecule($$$$$$$$$$);
 sub check_init_atoms($$$$);
+sub initial_atoms($$$$$);
 
 #==============================================================================#
 # Find a maximal covalent radius in the atom property list
@@ -386,9 +387,9 @@ sub get_molecules
                                                               $dataname );
 
     #   extracts atoms fract coordinates
-    my $all_initial_atoms = initial_atoms($atom_properties,
-                                          $values,
-                                          $atom_site_tag);
+    my $all_initial_atoms = initial_atoms( $atom_properties,
+                                           $values, $atom_site_tag,
+                                           $filename, $dataname );
 
     if( @$all_initial_atoms == 0 ) {
         warning( $0, $filename, $dataname,
@@ -549,9 +550,9 @@ sub check_init_atoms($$$$)
 #                   group=>"1", # "."
 #              }
 #
-sub initial_atoms
+sub initial_atoms($$$$$)
 {
-    my ($atom_properties, $values, $atom_site_tag) = @_;
+    my ($atom_properties, $values, $atom_site_tag, $filename, $dataname) = @_;
 
     my $atom_labels = $values->{$atom_site_tag};
 
@@ -582,11 +583,15 @@ sub initial_atoms
         }
         else
         {
-            print STDERR "ERR: " . &File::Basename::fileparse($0) . ": ";
-            print STDERR "\'$filename\': ";
-            print STDERR "Doesn\'t know about chemical type "
-                                        . $atom_info->{chemical_type} . "\n";
-            exit(1) unless $continue_on_errors;
+            my $message = "unknown chemical type '" .
+                $atom_info->{chemical_type} . "'";
+
+            if( $continue_on_errors ) {
+                warning( $0, $filename, $dataname, $message );
+            } else {
+                error( $0, $filename, $dataname, $message );
+                exit(1);
+            }
         }
     }
     return \@all_initial_atoms;
