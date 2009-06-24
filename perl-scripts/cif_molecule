@@ -364,6 +364,15 @@ sub get_molecules
                                           $values,
                                           $atom_site_tag);
 
+    if( @$all_initial_atoms == 0 ) {
+        warning( $0, $filename, $dataname,
+                 "no atoms suitable for processing were found" );
+        print STDERR $0, ": ",
+            "Maybe all occupancies were unkown, zero, or " .
+            "all atom types were unrecognised?\n";
+        return [];
+    }
+
     #   checks if all atom labels are unique, otherwise appends ID to the label.
     my $checked_initial_atoms = check_init_atoms($all_initial_atoms,
                                                  $uniquify_atoms,
