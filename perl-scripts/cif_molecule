@@ -379,7 +379,9 @@ sub get_molecules
     my @sym_operators = map { symop_from_string($_) } @{$sym_data};
 
     #   extracts cell angles(alpha, beta, gama) and lengths(a, b, c)
-    my @cell_lengths_and_angles = extract_angles_and_lengths($values);
+    my @cell_lengths_and_angles = extract_angles_and_lengths( $values,
+                                                              $filename,
+                                                              $dataname );
 
     #   extracts atoms fract coordinates
     my $all_initial_atoms = initial_atoms($atom_properties,
@@ -801,9 +803,9 @@ sub assemblies
 # Returns
 #     cell_lengths_and_angles - an array  with stored information.
 
-sub extract_angles_and_lengths
+sub extract_angles_and_lengths($$$)
 {
-    my($values) = @_;
+    my( $values, $filename, $dataname ) = @_;
 
     my @cell_lengths_and_angles;
 
@@ -821,8 +823,15 @@ sub extract_angles_and_lengths
                         _cell_angle_gamma
                         ))
     {
-        push(@cell_lengths_and_angles, $values->{$cif_tag}[0]);
-        $cell_lengths_and_angles[-1] =~ s/\(\d+\)$//;
+        if( exists $values->{$cif_tag} ) {
+            push( @cell_lengths_and_angles, $values->{$cif_tag}[0] );
+            $cell_lengths_and_angles[-1] =~ s/\(\d+\)$//;
+        } else {
+            warning( $0, $filename, $dataname,
+                     "cell angle '$cif_tag' not present -- " .
+                     "taking default value 90 degress." );
+            push( @cell_lengths_and_angles, 90 );
+        }
     }
 
     return @cell_lengths_and_angles;
