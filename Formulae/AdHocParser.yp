@@ -209,6 +209,25 @@ sub SprintFormula
 {
     my ($parser) = @_;
 
+    # Chemical formulas, according the IUCr recommendations, should
+    # use the 'Hill' system used by Chemical Abstracts:
+    #
+    # the order of the elements within any group or moiety depends on
+    # whether carbon is present or not. If carbon is present, the
+    # order should be: C, then H, then the other elements in
+    # alphabetical order of their symbol. If carbon is not present,
+    # the elements are listed purely in alphabetical order of their
+    # symbol.
+
+    # References:
+    # 1. http://www.iucr.org/__data/iucr/cifdic_html/1/cif_core.dic/Cchemical_formula.html
+    # (2009-06-25)
+    #
+    # 2. Dictionary of organic compounds By J. I. G. (John Ivan
+    # George) Cadogan, American Chemical Society. Chemical Abstracts
+    # Service, P. H. Rhodes, Steven V Ley; page 106 (found by Google
+    # book search on 2009-06-25)
+
     my $formula;
 
     if( $parser->YYNberr() == 0 ) {
@@ -216,11 +235,22 @@ sub SprintFormula
 	$formula = "";
 	my $separator = "";
 
-	if( exists $formula{C} && exists $formula{H} ) {
-	    $formula .= "C" . $formula{C} . " " . "H" . $formula{H};
+	if( exists $formula{C} ) {
+            if( $formula{C} == 1 ) {
+                $formula .= "C";
+            } else {
+                $formula .= "C" . $formula{C};
+            }
 	    delete $formula{C};
-	    delete $formula{H};
-	    $separator = " ";
+            $separator = " ";
+            if( exists $formula{H} ) {
+                if( $formula{H} == 1 ) {
+                    $formula .= $separator . "H";
+                } else {
+                    $formula .= $separator . "H" . $formula{H};
+                }
+                delete $formula{H};
+            }
 	}
 	for my $key (sort {$a cmp $b} keys %formula) {
 	    $formula .= $separator . $key . ($formula{$key} != 1 ?
