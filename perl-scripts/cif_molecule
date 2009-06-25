@@ -1827,27 +1827,25 @@ sub find_molecules($$$$$$$$)
                                                 $initial_atom, $bricks,
                                                 $filename, $dataname );
 
-            ## if(@molecule_atoms > 0)
-            ## {
+            if(@molecule_atoms > 0)
+            {
+                my $signature;
 
-            my $signature;
+                if( $uniquify_molecules ) {
+                    $signature = join( " ", sort {$a cmp $b} 
+                                       map {$_->{label}} @molecule_atoms );
+                }
 
-            if( $uniquify_molecules ) {
-                $signature = join( " ", sort {$a cmp $b} 
-                                   map {$_->{label}} @molecule_atoms );
+                if( !$uniquify_molecules || !$seen_molecules->{$signature} ) {
+
+                    my %molecule =  (atoms_c              => \@molecule_atoms,
+                                     chemical_formula_sum => "",);
+
+                    push( @unique_molecules, \%molecule );
+
+                    $seen_molecules->{$signature} = 1 if $uniquify_molecules ;
+                }
             }
-
-            if( !$uniquify_molecules || !$seen_molecules->{$signature} ) {
-
-                my %molecule =  (atoms_c              => \@molecule_atoms,
-                                 chemical_formula_sum => "",);
-
-                push( @unique_molecules, \%molecule );
-
-                $seen_molecules->{$signature} = 1 if $uniquify_molecules ;
-            }
-
-            ## }
         }
     }
 
@@ -1855,6 +1853,9 @@ sub find_molecules($$$$$$$$)
 }
 
 # ============================================================================ #
+
+# Grrrrr....
+my $find_molecule_recursion_level = 0;
 
 sub find_molecule($$$$$$$$$$)
 {
@@ -1869,6 +1870,8 @@ sub find_molecule($$$$$$$$$$)
     my $filename             = shift(@_);
     my $dataname             = shift(@_);
 
+    $find_molecule_recursion_level ++;
+
     my @current_coords_fract_modulo_1 =
                     map { modulo_1($_) } @{$current_atom->{coordinates_fract}};
 
@@ -1882,6 +1885,12 @@ sub find_molecule($$$$$$$$$$)
 
     if(exists $used_atoms->{$atom_in_unit_cell->{"label"}})
     {
+        ## warning( $0, $filename, $dataname,
+        ##          "lone atom '$atom_in_unit_cell->{label}' ".
+        ##          "(originally '$current_atom->{label}') " .
+        ##          "is already used in molecules, at recursion level " .
+        ##          $find_molecule_recursion_level );
+        $find_molecule_recursion_level --;
         return @neighbors;
     }
 
@@ -1989,6 +1998,7 @@ sub find_molecule($$$$$$$$$$)
     my $translated_neighbors = translate_atoms(\@neighbors,
                                                           $current_translation);
 
+    $find_molecule_recursion_level --;
     return @{$translated_neighbors};
 }
 
