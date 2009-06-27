@@ -62,10 +62,12 @@ for my $filename (@ARGV) {
 
 	for my $tag ( @{$dataset->{tags}} ) {
 	    if( $values->{$tag}[0] =~
-		/((?:\w+\s+)?(?:anneal\w*|quench\w*)(?:\s+\w+)?)\s+
-                 T\s*=\s*([-+0-9.E]+)\s*((?:deg(?:ree(?:s)?)?\s+)?[\w]+)/xi ) {
+		/((?:\w+\s+)?(?:anneal\w*|quench\w*|prepare\w*)(?:\s+\w+)?)\s+
+                 (P|T)\s*=\s*([-+0-9.E]+)\s*((?:deg(?:ree(?:s)?)?\s+)?[\w]+)/xi ) {
 		print STDERR "$0: $filename data_$dataset->{name}: ",
-		"structure marked as '$1', not taking temperature value\n";
+		"structure marked as '$1', not taking " . 
+		    ($1 eq "P" ? "pressure" : "temperature") . 
+		    " value\n";
 		$temperature_is_processing = 1;
 		last
 	    }
@@ -82,7 +84,7 @@ for my $filename (@ARGV) {
 		    print STDERR "$0: $filename data_$dataset->{name}: ", $@;
 		    next;
 		}
-		print ">>> P = $pressure, $units, $coefficient\n";
+		print ">>> $filename: P = $pressure, $units, $coefficient\n";
 	    }
 	    if( !$temperature_is_processing &&
 		$values->{$tag}[0] =~
@@ -97,7 +99,7 @@ for my $filename (@ARGV) {
 		    print STDERR "$0: $filename data_$dataset->{name}: ", $@;
 		    next;
 		}
-		print ">>> T = $temperature, $units, $shift\n";
+		print ">>> $filename: T = $temperature, $units, $shift\n";
 	    }
 	}
 
