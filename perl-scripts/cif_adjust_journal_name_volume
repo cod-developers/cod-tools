@@ -1,0 +1,87 @@
+#! /bin/sh
+#!perl -w # --*- Perl -*--
+eval 'exec perl -x $0 ${1+"$@"}'
+    if 0;
+#------------------------------------------------------------------------------
+#$Author$
+#$Date$ 
+#$Revision$
+#$URL$
+#------------------------------------------------------------------------------
+#*
+#  If journal volume starts with a letter, add this letter to the
+#  journal name, and leave journal volume purely numeric.
+#**
+
+use strict;
+use lib "./lib/perl5";
+use lib "./CIFParser";
+use CIFParser;
+use CIFTagCanonicalNames;
+use CIFDictTags;
+use CIFCODTags;
+use CIFTagPrint;
+use SOptions;
+use SUsage;
+
+my $keep_tag_order = 0;
+
+@ARGV = getOptions(
+    "--keep-tag-order" => sub { $keep_tag_order = 1; },
+    "--sort-tags"      => sub { $keep_tag_order = 0; },
+    "--help,--usage"   => sub { SUsage::usage; exit },
+);
+
+my @dictionary_tags = ( @CIFDictTags::tag_list, @CIFCODTags::tag_list );
+my %dictionary_tags = map { $_, $_ } @dictionary_tags;
+
+sub get_pressure_unit_coefficient($);
+sub get_temperature_unit_shift($);
+
+@ARGV = ("-") unless @ARGV;
+
+for my $filename (@ARGV) {
+    my $parser = new CIFParser;
+    my $data = $parser->Run($filename);
+
+    if( defined $parser->YYData->{ERRCOUNT} &&
+        $parser->YYData->{ERRCOUNT} > 0 ) {
+	print STDERR "$0: $filename: ",
+	$parser->YYData->{ERRCOUNT},
+	" error(s) encountered while parsing CIF data\n";
+	exit -1;
+    }
+
+    canonicalize_all_names( $data );
+
+    for my $dataset (@$data) {
+
+	my $values = $dataset->{values};
+
+	if( exists $values->{_journal_name_full} &&
+	    exists $values->{_journal_volume} ) {
+	    my $journal = $values->{_journal_name_full}[0];
+	    my $volume = $values->{_journal_volume}[0];
+
+	    if( $volume =~ /^\s*([A-Za-z]+)(\d+)/ ) {
+		my $letter = $1;
+		my $new_volume = $2;
+		my $new_journal = $journal;
+		if( $journal !~ /$letter$/ ) {
+		    $new_journal = $journal . " ". $letter;
+		}
+		print ">>> $filename $dataset->{name}: '$journal' -> '$new_journal'\n";
+		print ">>> $filename $dataset->{name}: '$volume' -> '$new_volume'\n";
+	    }
+	}
+
+	print_cif( $dataset, {
+	    exclude_misspelled_tags => 0,
+	    preserve_loop_order => 1,
+	    fold_long_fields => 0,
+	    dictionary_tags => \%dictionary_tags,
+	    dictionary_tag_list => \@dictionary_tags,
+	    keep_tag_order => $keep_tag_order,
+	} ) if 0;
+    }
+}
