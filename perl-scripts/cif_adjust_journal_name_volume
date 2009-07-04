@@ -70,8 +70,15 @@ for my $filename (@ARGV) {
 		if( $journal !~ /$letter$/ ) {
 		    $new_journal = $journal . " ". $letter;
 		}
-		print ">>> $filename $dataset->{name}: '$journal' -> '$new_journal'\n";
-		print ">>> $filename $dataset->{name}: '$volume' -> '$new_volume'\n";
+		do {
+		    print ">>> $filename $dataset->{name}: '$journal' " .
+			"-> '$new_journal'\n";
+		    print ">>> $filename $dataset->{name}: '$volume' " .
+			"-> '$new_volume'\n";
+		} if 0;
+
+		$values->{_journal_name_full}[0] = $new_journal;
+		$values->{_journal_volume}[0] = $new_volume;
 	    }
 	}
 
@@ -82,6 +89,6 @@ for my $filename (@ARGV) {
 	    dictionary_tags => \%dictionary_tags,
 	    dictionary_tag_list => \@dictionary_tags,
 	    keep_tag_order => $keep_tag_order,
-	} ) if 0;
+	} );
     }
 }
