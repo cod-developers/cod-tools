@@ -307,6 +307,17 @@ sub get_atoms
 	$atom->{coordinates_ortho} =
 	    mat_vect_mul( $ortho_matrix, $atom->{coordinates_fract} );
 
+	if( defined $values->{_atom_site_occupancy} &&
+	    $values->{_atom_site_occupancy}[$i] ne '?' ) {
+	    $atom->{occupancy} = $values->{_atom_site_occupancy}[$i];
+	}
+
+	if( defined $values->{_atom_site_symmetry_multiplicity} &&
+	    $values->{_atom_site_symmetry_multiplicity}[$i] ne '?' ) {
+	    $atom->{cif_multiplicity} =
+		$values->{_atom_site_symmetry_multiplicity}[$i];
+	}
+
 	push( @atoms, $atom );
     }
 
