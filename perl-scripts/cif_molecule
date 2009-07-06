@@ -1780,11 +1780,16 @@ sub print_molecule
             length($a->{label}) <=> length($b->{label})
         } @{$molecule->{atoms_c}} )
     {
-        print $atom->{"label"} . " ";
-        print( (defined $atom->{"atom_site_type_symbol"} ?
-                $atom->{"atom_site_type_symbol"} : "?")
-               . " "
-            ) if defined $atom_site_type_symbol;
+        CIFTagPrint::print_value( $atom->{"label"} );
+        print " ";
+        if( defined $atom_site_type_symbol ) {
+            if( defined $atom->{atom_site_type_symbol} ) {
+                CIFTagPrint::print_value( $atom->{atom_site_type_symbol} );
+                print " ";
+            } else {
+                print "? ";
+            }
+        }
         printf $print_format, $atom->{"coordinates_fract"}[0],
                $atom->{"coordinates_fract"}[1], $atom->{"coordinates_fract"}[2];
     }
