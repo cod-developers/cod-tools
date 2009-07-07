@@ -532,8 +532,11 @@ sub get_atoms
 	    ],
 	};
 
-        if( defined $atom->{atom_type} &&
-            $atom->{atom_type} =~ m/^([A-Za-z]{1,2})/ ) {
+        if( !defined $atom->{atom_type} ) {
+            $atom->{atom_type} = $atom->{atom_name};
+        }
+
+        if( $atom->{atom_type} =~ m/^([A-Za-z]{1,2})/ ) {
             $atom->{atom_type} = ucfirst( lc( $1 ));
         }
 
