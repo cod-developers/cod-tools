@@ -26,29 +26,34 @@ sub get_min_max_atom_coordinates($)
 {
     my ($atoms) = @_;
 
-    my ( $min_x, $max_x, $min_y, $max_y, $min_z, $max_z );    
+    my ( $min_x, $max_x, $min_y, $max_y, $min_z, $max_z );
 
-    for my $atom (@$atoms) {
-        my ( $x, $y, $z ) = @{$atom->{coordinates_ortho}};
-        if( !defined $min_x || $min_x > $x ) {
-            $min_x = $x;
+    if( @$atoms ) {
+        for my $atom (@$atoms) {
+            my ( $x, $y, $z ) = @{$atom->{coordinates_ortho}};
+            if( !defined $min_x || $min_x > $x ) {
+                $min_x = $x;
+            }
+            if( !defined $max_x || $max_x < $x ) {
+                $max_x = $x;
+            }
+            if( !defined $min_y || $min_y > $y ) {
+                $min_y = $y;
+            }
+            if( !defined $max_y || $max_y < $y ) {
+                $max_y = $y;
+            }
+            if( !defined $min_z || $min_z > $z ) {
+                $min_z = $z;
+            }
+            if( !defined $max_z || $max_z < $z ) {
+                $max_z = $z;
+            }
         }
-        if( !defined $max_x || $max_x < $x ) {
-            $max_x = $x;
-        }
-        if( !defined $min_y || $min_y > $y ) {
-            $min_y = $y;
-        }
-        if( !defined $max_y || $max_y < $y ) {
-            $max_y = $y;
-        }
-        if( !defined $min_z || $min_z > $z ) {
-            $min_z = $z;
-        }
-        if( !defined $max_z || $max_z < $z ) {
-            $max_z = $z;
-        }
+    } else {
+        ( $min_x, $max_x, $min_y, $max_y, $min_z, $max_z ) = ( 0 ) x 6;
     }
+
     return ( $min_x, $max_x, $min_y, $max_y, $min_z, $max_z );
 }
 
