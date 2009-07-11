@@ -294,43 +294,6 @@ sub symgen_atom($$$)
 
     my $multiplicity = $gp_multiplicity / $multiplicity_ratio;
 
-    ## # exclude duplicates on special positions:
-    ## if( $multiplicity_ratio > 1 ) {
-    ## 
-    ##     my @unique_atoms;
-    ## 
-    ##     for my $i (0 .. $#sym_atoms) {
-    ##         my $old_coord = $sym_atoms[$i]{coordinates_fract};
-    ##         my $old_xyz = $sym_atoms[$i]{coordinates_ortho};
-    ## 
-    ##         my $maps_to_self = 0;
-    ##         for my $j (0 .. $i-1) {
-    ##     	my $new_coord = $sym_atoms[$j]{coordinates_fract};
-    ##           TEST_SPECIAL:
-    ##     	for my $dx (-1, 0, 1) {
-    ##     	for my $dy (-1, 0, 1) {
-    ##     	for my $dz (-1, 0, 1) {
-    ##     	    my $shifted_coord = [
-    ##     		$new_coord->[0] + $dx,
-    ##     		$new_coord->[1] + $dy,
-    ##     		$new_coord->[2] + $dz,
-    ##     	    ];
-    ##     	    my $new_xyz = mat_vect_mul( $f2o, $shifted_coord );
-    ##     	    if( distance( $new_xyz, $old_xyz ) <
-    ##     		$special_position_cutoff ) {
-    ##     		$maps_to_self = 1;
-    ##     		last TEST_SPECIAL;
-    ##     	    }
-    ##     	}}}
-    ##         }
-    ## 
-    ##         if( !$maps_to_self ) {
-    ##     	push( @unique_atoms, $sym_atoms[$i] );
-    ##         }
-    ##     }
-    ##     @sym_atoms = @unique_atoms;
-    ## }
-
     for my $atom (@sym_atoms) {
 	$atom->{multiplicity} = $multiplicity;
 	$atom->{multiplicity_ratio} = $multiplicity_ratio;
