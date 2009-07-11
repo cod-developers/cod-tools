@@ -18,6 +18,7 @@ eval 'exec perl -x $0 ${1+"$@"}'
 use strict;
 use File::Basename;
 use CIFParser;
+use Formulae::AdHocParser;
 
 my $check_bibliography = 1;
 
@@ -174,10 +175,32 @@ sub cif_fill_data
 
 	if( defined $values->{_chemical_formula_sum} ) {
             my $formula = $values->{_chemical_formula_sum}[0];
+
             $formula =~ s/^\s*'\s*|\s*'\s*$//g;
             $formula =~ s/\s+/ /g;
-            my $sorted = join( " ", sort {$a cmp $b} split( " ", $formula ));
-	    $structures{$id}{chemical_formula_sum} = $sorted;
+
+            my $formula_parser = new AdHocParser;
+
+            eval {
+                $formula_parser->ParseString( $formula );
+                if( defined $formula_parser->YYData->{ERRCOUNT} &&
+                    $formula_parser->YYData->{ERRCOUNT} > 0 ) {
+                    print STDERR "$0: ", $file, " ", $dataset->{name}, ": ",
+                    $formula_parser->YYData->{ERRCOUNT},
+                    " error(s) encountered while parsing chemical formula ",
+                    "sum\n";
+                    die;
+                } else {
+                    $formula = $formula_parser->SprintFormula;
+                }
+            };
+            if( $@ ) {
+                print STDERR "$0: ", $file, " ", $dataset->{name}, ": ",
+                "could not parse formula '$formula', resorting to ",
+                "simple split routine\n";
+                $formula = join( " ", sort {$a cmp $b} split( " ", $formula ));
+            }
+            $structures{$id}{chemical_formula_sum} = $formula;
 	}
 	for my $key ( qw( _cell_length_a _cell_length_b _celllength_c
                      _cell_angle_alpha _cell_angle_beta _cell_angle_gamma )) {
