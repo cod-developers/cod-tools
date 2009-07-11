@@ -63,7 +63,7 @@ sub symop_generate_atoms($$$);
 sub copy_atom($);
 sub copy_array($);
 sub mat_vect_mul($$);
-sub atomic_composition($$);
+sub atomic_composition($$$);
 sub print_composition($);
 
 for my $dataset (@$data) {
@@ -119,21 +119,27 @@ for my $dataset (@$data) {
 	$Z = 1;
     }
 
-    my %composition = atomic_composition( $sym_atoms, $Z );
+    my %composition = atomic_composition( $sym_atoms, $Z, int(@sym_operators));
 
     print_composition( \%composition );
 }
 
-sub atomic_composition($$)
+sub atomic_composition($$$)
 {
-    my ( $sym_atoms, $Z ) = @_;
+    my ( $sym_atoms, $Z, $gp_multiplicity ) = @_;
     my %composition;
 
     for my $atom ( @$sym_atoms ) { 
 	my $type = $atom->{atom_type};
 	my $occupancy = defined $atom->{occupancy} ? $atom->{occupancy} : 1;
-	my $amount = $occupancy  / ( $Z * $atom->{multiplicity_ratio} );
+	my $amount = $occupancy  * $atom->{multiplicity};
 	$composition{$type} += $amount;
+    }
+
+    my $abundance_ration = $Z * $gp_multiplicity;
+
+    for my $type ( keys %composition ) {
+        $composition{$type} /= $abundance_ration;
     }
 
     return wantarray ? %composition : \%composition;
