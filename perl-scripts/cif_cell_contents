@@ -22,9 +22,11 @@ use ShowStruct;
 use Serialise;
 use SymopParse;
 use SymopLookup;
+use FormulaPrint;
 use Fractional;
 use File::Basename;
 
+my $format = "%g";
 my $special_position_cutoff = 0.001;
 
 sub print_error($$$$$)
@@ -114,9 +116,9 @@ for my $dataset (@$data) {
     if( exists $values->{_cell_formula_units_Z} ) {
 	$Z = $values->{_cell_formula_units_Z}[0];
     } else {
-	warning( $0, $filename, $dataset->{name},
-		 "_cell_formula_units_Z is missing -- assuming Z = 1" );
 	$Z = 1;
+	warning( $0, $filename, $dataset->{name},
+		 "_cell_formula_units_Z is missing -- assuming Z = $Z" );
     }
 
     my %composition = atomic_composition( $sym_atoms, $Z, int(@sym_operators));
@@ -149,11 +151,12 @@ sub print_composition($)
 {
     my ( $composition ) = @_;
 
-    for my $key ( sort { $a cmp $b } keys %$composition ) {
-	print "$key: ", $composition->{$key}, "\n";
-    }
-}
+    ## for my $key ( sort { $a cmp $b } keys %$composition ) {
+    ##     print "$key: ", $composition->{$key}, "\n";
+    ## }
 
+    FormulaPrint::print_formula( $composition, $format );
+}
 
 #===============================================================#
 # Tests if a symmetry operator is   (1, 0, 0, 0)
