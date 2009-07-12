@@ -9,7 +9,7 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #$URL$
 #------------------------------------------------------------------------------
 #*
-#  Generate symetric atoms
+#  Calculate cell contents from atom coordinates and symmetry information.
 #**
 
 use strict;
@@ -25,9 +25,32 @@ use SymopLookup;
 use Formulae::FormulaPrint;
 use Fractional;
 use File::Basename;
+use SOptions;
+use SUsage;
 
 my $format = "%g";
 my $special_position_cutoff = 0.001;
+my $Z_value;
+
+#* Usage:
+#*     cif_cell_constants [options] input.cif
+#*
+#* Options:
+#*
+#*     -Z, --cell-formula-units-Z  1
+#*         Specify number of formula sum units in the unit cell.
+#*         Default: taken from the input CIF if present, otherwise
+#*         assumed to be 1.
+#*
+#*     --help  print a short usage message (this message) and exit.
+#**
+
+@ARGV = getOptions(
+
+    "-Z,--cell-formula-units-Z" => \$Z_value,
+
+    "--help,--usage" => sub { SUsage::usage; exit },
+);
 
 sub print_error($$$$$)
 {
@@ -113,12 +136,24 @@ for my $dataset (@$data) {
 
     my $Z;
 
-    if( exists $values->{_cell_formula_units_Z} ) {
-	$Z = $values->{_cell_formula_units_Z}[0];
+    if( defined $Z_value ) {
+        $Z = $Z_value;
+        if( exists $values->{_cell_formula_units_Z} ) {
+            my $file_Z = $values->{_cell_formula_units_Z}[0];
+            if( $Z != $file_Z ) {
+                warning( $0, $filename, $dataset->{name},
+                         "overriding _cell_formula_units_Z ($file_Z) " .
+                         "with command-line value $Z" );
+            }
+        }
     } else {
-	$Z = 1;
-	warning( $0, $filename, $dataset->{name},
-		 "_cell_formula_units_Z is missing -- assuming Z = $Z" );
+        if( exists $values->{_cell_formula_units_Z} ) {
+            $Z = $values->{_cell_formula_units_Z}[0];
+        } else {
+            $Z = 1;
+            warning( $0, $filename, $dataset->{name},
+                     "_cell_formula_units_Z is missing -- assuming Z = $Z" );
+        }
     }
 
     my %composition = atomic_composition( $sym_atoms, $Z, int(@sym_operators));
