@@ -30,6 +30,8 @@ my $write_filename = 1;
 my $write_basename = 2;
 my $write_file;
 
+my $replace_spaces = 1; # indicates whether spaces should be replaced to underscores
+
 my $treat_dots_as_underscores = 1;
 
 #* Usage:
@@ -53,6 +55,13 @@ my $treat_dots_as_underscores = 1;
 #*
 #*     -h-, --no-header
 #*         Do not print out any header.
+#*
+#*     -r, --replace-sapces
+#*         Replace spaces into underscores (default)
+#*
+#*     -r-, --dont-replace-sapces, --no-replace-spaces
+#*         Do not replace spaces into underscores (works satistactory only when
+#*         tabs are used as separators)
 #*
 #*     -s, --separator=", "
 #*         Use the specified string as a separator between tag values on a line.
@@ -102,6 +111,10 @@ my $treat_dots_as_underscores = 1;
 
     "-h,--header"     => sub { $header = 1 },
     "-h-,--no-header" => sub { $header = 0 },
+
+    "-r,--replace-spaces" => sub { $replace_spaces = 1 },
+    "--no-replace-spaces" => sub { $replace_spaces = 0 },
+    "--dont-replace-spaces" => sub { $replace_spaces = 0 },
 
     "-s,--separator"  => \$separator,
     "--tab-separator" => sub { $separator = "\t" },
@@ -195,8 +208,14 @@ for my $filename (@ARGV) {
 
         for my $tag (@selected_tags) {
             if( exists $values->{$tag} ) {
-                my @tag_vals = map { s/\n$//; s/[\n\s]/_/g; $_ }
-                    @{$values->{$tag}};
+                my @tag_vals;
+                if( $replace_spaces ) {
+                    @tag_vals = map { s/\n$//; s/[\n\s]/_/g; $_ }
+                        @{$values->{$tag}};
+                } else {
+                    @tag_vals = map { s/\n$//; s/[\n\s]/ /g; $_ }
+                        @{$values->{$tag}};
+                }
                 if( $uniquified_tags{$tag} ) {
                     push( @values, join( ",", sunique( @tag_vals )));
                 } else {
