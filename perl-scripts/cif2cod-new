@@ -21,7 +21,30 @@ use Unicode2CIF;
 use SOptions;
 use SUsage;
 
-my $continue_on_errors = 1;
+my $continue_on_errors = 0;
+
+#* Usage:
+#*     cif_select [options] input.cif [input2.cif ...]
+#*
+#* Options:
+#*     -c, --continue-on-errors
+#*         Continue processing and return successful return status
+#*         even if errors are diagnosed.
+#*
+#*     -c-, --dont-continue-on-errors, --no-continue-on-errors
+#*         Stop and return error status if errors are diagnosed.
+#*
+#*     --help  print a short usage message (this message) and exit.
+#**
+
+@ARGV = getOptions(
+
+    "-c,--continue-on-errors" => sub { $continue_on_errors = 1 },
+    "-c-,--no-continue-on-errors" => sub { $continue_on_errors = 0 },
+    "--dont-continue-on-errors"   => sub { $continue_on_errors = 0 },
+
+    "--help,--usage"  => sub { SUsage::usage; exit },
+);
 
 sub error
 {
