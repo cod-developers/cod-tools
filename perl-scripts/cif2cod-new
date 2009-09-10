@@ -22,11 +22,17 @@ use SOptions;
 use SUsage;
 
 my $continue_on_errors = 0;
+my $cod_number;
 
 #* Usage:
 #*     cif2cod-new [options] input.cif [input2.cif ...]
 #*
 #* Options:
+#*     -C, --cod-number 1000000
+#*         Use the specified number, 1000000 in this example, as
+#*         a COD number for this structure; do not take the number
+#*         from the datablock name.
+#*
 #*     -c, --continue-on-errors
 #*         Continue processing and return successful return status
 #*         even if errors are diagnosed.
@@ -38,6 +44,8 @@ my $continue_on_errors = 0;
 #**
 
 @ARGV = getOptions(
+
+    "-C,--cod-number" => \$cod_number,
 
     "-c,--continue-on-errors" => sub { $continue_on_errors = 1 },
     "-c-,--no-continue-on-errors" => sub { $continue_on_errors = 0 },
@@ -157,7 +165,11 @@ for my $filename (@ARGV) {
 
 	$nel = count_number_of_elements( $formula );
 
-	push( @data, $dataset->{name} );
+        if( defined $cod_number ) {
+            push( @data, $cod_number );
+        } else {
+            push( @data, $dataset->{name} );
+        }
 	push( @data, get_num( $values, "_cell_length_a", 0, $filename ));
 	push( @data, get_num( $values, "_cell_length_b", 0, $filename ));
 	push( @data, get_num( $values, "_cell_length_c", 0, $filename ));
