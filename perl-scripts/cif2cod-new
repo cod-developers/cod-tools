@@ -1,0 +1,390 @@
+#! /bin/sh
+#!perl -w # --*- Perl -*--
+eval 'exec perl -x $0 ${1+"$@"}'
+    if 0;
+#------------------------------------------------------------------------------
+#$Author$
+#$Date$ 
+#$Revision$
+#$URL$
+#------------------------------------------------------------------------------
+#*
+#  Parse a CIF file, prepare a COD database table entry from it.
+#**
+
+use strict;
+use lib "./lib/perl5";
+use lib "./CIFParser";
+use CIFParser;
+use Spacegroups::SpacegroupNames;
+use Unicode2CIF;
+use SOptions;
+use SUsage;
+
+my $continue_on_errors = 1;
+
+sub error
+{
+    my ( $message, $filename, $dataset, $explanation ) = @_;
+
+    print STDERR $0, ": ";
+    print STDERR $filename
+        if $filename;
+    print STDERR " ",  $dataset->{name}
+        if $dataset && exists $dataset->{name};
+    print STDERR ": "
+        if $filename || $dataset;
+    print STDERR $message
+        if defined $message;
+    print STDERR "\n", $explanation
+        if defined $explanation;
+    print STDERR "\n";
+
+    die unless $continue_on_errors;
+}
+
+my $reformat_spacegroup = 0;
+my $guess_formula_from_atoms = 0;
+
+@ARGV = getOptions(
+    "-c,--continue-on-errors"       => sub { $continue_on_errors = 1 },
+    "-c-,--dont-continue-on-errors" => sub { $continue_on_errors = 0 },
+    "--no-continue-on-errors"       => sub { $continue_on_errors = 0 },
+    "--exit-on-errors"              => sub { $continue_on_errors = 0 },
+
+    "--reformat-space-group"        => sub { $reformat_spacegroup = 1; },
+    "--dont-reformat-space-group"   => sub { $reformat_spacegroup = 0; },
+    "--leave-space-space-group"     => sub { $reformat_spacegroup = 0; },
+
+    "--guess-formula-from-atoms"      => sub { $guess_formula_from_atoms = 1; },
+    "--dont-guess-formula-from-atoms" => sub { $guess_formula_from_atoms = 0; },
+
+    "--help,--usage"                => sub { SUsage::usage; exit },
+);
+
+my %spacegroups = map {
+    my $key1 = $_->[1];
+    my $key2 = $_->[2];
+    $key1 =~ s/\s//g;
+    $key2 =~ s/\s//g;
+    ($key1, $_->[2], $key2, $_->[2] )
+} @SpacegroupNames::names;
+
+## use ShowStruct;
+## showRef( \%spacegroups  );
+
+binmode( STDOUT, ":utf8" );
+
+for my $filename (@ARGV) {
+
+    my $parser = new CIFParser;
+    my $data = $parser->Run($filename);
+
+    for my $dataset (@$data) {
+	my @data = ();
+	my $nel;
+	my $values = $dataset->{values};
+
+	next unless exists $values->{_atom_site_fract_x};
+
+        my @authors = ();
+	if( exists $values->{_publ_author_name} ) {
+	    for my $author (@{$values->{_publ_author_name}}) {
+                push( @authors, $author );
+	    }
+	}
+
+ 	my $authors = join( "; ", @authors );
+        $authors =~ s/\n/ /g;
+        $authors =~ s/\s+/ /g;
+	$authors =~ s/^\s*|\s*$//g;
+
+	my $title = get_tag( $values, "_publ_section_title", 0, $filename );
+	if( $title =~ /^\\\n/ ) {
+	    $title =~ s/\\\n//g;
+	}
+	$title =~ s/\n/ /g;
+	$title =~ s/\s+/ /g;
+	$title =~ s/^\s*|\s*$//g;
+
+	my $journal = get_tag( $values, "_journal_name_full", 0, $filename );
+	my $year = get_tag( $values, "_journal_year", 0, $filename );
+	my $volume = get_tag( $values, "_journal_volume", 0, $filename );
+	my $first_page = get_tag( $values, "_journal_page_first", 0, $filename );
+	my $last_page = get_tag_silently( $values, "_journal_page_last", 0 );
+	my $issue = get_tag_silently( $values, "_journal_issue", 0 );
+
+	my $text = join( '\n', map { Unicode2CIF::cif2unicode($_) }
+                         ( $authors, $title, $journal, $volume,
+                           ( $issue? ( $volume ? "($issue)" : 
+                                       "(issue $issue)") : "" ),
+                           "(" . $year . ")",
+                           $first_page, $last_page ));
+	$text =~ s/\n/ /g;
+	$text =~ s/^\s*|\s*$//g;
+
+	my $formula = get_tag( $values, "_chemical_formula_sum", 0, $filename );
+	$formula =~ s/^\s*|\s*$//g;
+	$formula =~ s/\n/ /g;
+	if( $formula eq '' &&  $guess_formula_from_atoms ) {
+	    $formula = guess_formula_from_data( $values );
+	} else {
+	    check_chem_formula( $formula, $filename );
+	}
+
+	$nel = count_number_of_elements( $formula );
+
+	push( @data, $dataset->{name} );
+	push( @data, get_num( $values, "_cell_length_a", 0, $filename ));
+	push( @data, get_num( $values, "_cell_length_b", 0, $filename ));
+	push( @data, get_num( $values, "_cell_length_c", 0, $filename ));
+	push( @data, get_num( $values, "_cell_angle_alpha", 0, $filename ));
+	push( @data, get_num( $values, "_cell_angle_beta", 0, $filename ));
+	push( @data, get_num( $values, "_cell_angle_gamma", 0, $filename ));
+
+	my $cell_volume = get_num_or_undef( $values, "_cell_volume", 0 );
+
+	if( !defined $cell_volume ) {
+	    my @cell = get_cell( $values );
+	    $cell_volume = sprintf( "%7.2f", cell_volume( @cell ));
+	}
+
+	push( @data, $cell_volume );
+	
+	push( @data, $nel );
+	push( @data, get_spacegroup_info( $values, $filename ));
+	push( @data, $formula ? "- " . $formula . " -" : "?" );
+	if( exists $values->{_journal_coeditor_code} ) {
+	    push( @data, uc( get_tag_or_undef( $values, 
+					       "_journal_coeditor_code", 0 )));
+	} elsif( exists $values->{"_journal.coeditor_code"} ) {
+	    push( @data, uc( get_tag_or_undef( $values, 
+					       "_journal.coeditor_code", 0 )));
+	} elsif( $journal =~ /^Acta Cryst/ &&
+		 exists $values->{"_[local]_cod_data_source_file"} ) {
+	    my $acce_code = $values->{"_[local]_cod_data_source_file"}[0];
+	    $acce_code =~ s/\..*$//g;
+	    if( $acce_code =~ /^[a-zA-Z]{1,2}[0-9]{4,5}$/ ) {
+		push( @data, uc( $acce_code ));
+	    }  else {
+		push( @data, undef );
+	    }
+	} else {
+	    push( @data, undef );
+	}
+
+        push( @data, Unicode2CIF::cif2unicode( $authors ));
+        push( @data, Unicode2CIF::cif2unicode( $title ));
+	push( @data, get_tag_or_undef( $values, "_journal_name_full", 0 ));
+	push( @data, get_tag_or_undef( $values, "_journal_year", 0 ));
+	push( @data, get_tag_or_undef( $values, "_journal_volume", 0 ));
+	push( @data, get_tag_or_undef( $values, "_journal_issue", 0 ));
+	push( @data, get_tag_or_undef( $values, "_journal_page_first", 0 ));
+	push( @data, get_tag_or_undef( $values, "_journal_page_last", 0 ));
+
+	push( @data, $text );
+
+        my $n = 0;
+	@data = map {
+            $n++;
+	    if( defined $_ ) {
+                if( $n != @data ) {
+                    s/\\/\\\\/g; s/"/\\"/g;
+                }
+                "\"$_\"";
+	    } else {
+		"NULL";
+	    }
+	} @data;
+        do {
+            local $\ = "\n";
+            local $, = ";";
+
+            print @data;
+        };
+    }
+}
+
+sub filter_num
+{
+    my @nums = map { s/\(.*\)$//; $_ } @_;
+    wantarray ? @nums : $nums[0];
+}
+
+sub check_chem_formula
+{
+    my ( $formula, $filename ) = @_;
+
+    my $formula_component = "[a-zA-Z]{1,2}[0-9.]*";
+
+    if( $formula !~ /^\s*($formula_component\s+)*($formula_component)\s*$/ ) {
+	error( "chemical formula '$formula' could not be parsed",
+               $filename, undef,
+               # explanation:
+               "A chemical formula should consist of space-seprated " .
+               "chemical element names\n" .
+	       "with optional numeric quantities (e.g. 'C2 H6 O')." );
+    }
+}
+
+sub unique
+{
+    my $prev;
+    return map {(!defined $prev || $prev ne $_) ? $prev=$_ : ()} @_;
+}
+
+sub count_number_of_elements
+{
+    my $formula = $_[0];
+    my @elements = map {s/[^A-Za-z]//g; /^[A-Za-z]+$/ ? $_ : () }
+                   split( " ", $formula );
+
+    my @unique = unique( sort {$a cmp $b} @elements );
+
+    return int(@unique);
+}
+
+sub get_num
+{
+    my ($values, $tag, $index, $filename) = @_;
+
+    return filter_num( &get_tag );
+}
+
+sub get_num_or_undef
+{
+    my $value = &get_tag_or_undef;
+
+    if( defined $value ) {
+	return filter_num( $value );
+    } else {
+	return undef;
+    }
+}
+
+sub get_tag
+{
+    push( @_, 0 );
+    &get_and_check_tag;
+}
+
+sub get_tag_silently
+{
+    push( @_, ("",1) );
+    &get_and_check_tag;
+}
+
+sub get_tag_or_undef
+{
+    push( @_, ("",2) );
+    &get_and_check_tag;
+}
+
+sub get_and_check_tag
+{
+    my ($values, $tag, $index, $filename, $ignore_errors ) = @_;
+
+    if( ref $values eq "HASH" ) {
+	if( exists $values->{$tag} && ref $values->{$tag} eq "ARRAY" ) {
+	    if( defined $values->{$tag}[$index] ) {
+		return $values->{$tag}[$index];
+	    } else {
+		unless( $ignore_errors ) {
+		    error( "tag '$tag' does not have value number $index",
+                           $filename );
+		}
+	    }
+	} else {
+	    unless( $ignore_errors ) {
+		error( "tag '$tag' is absent", $filename );
+	    }
+	}
+    }
+    return $ignore_errors <= 1 ? "" : undef;
+}
+
+sub get_spacegroup_info
+{
+    my ($values, $filename ) = @_;
+    
+    my @spacegroup_tags = map {lc} qw (
+        _symmetry_space_group_name_H-M
+        _symmetry_space_group_name_Hall
+        _space_group_name_H-M_alt
+        _space_group.name_H-M_full
+        _space_group_name_Hall
+        _space_group_ssg_name
+        _space_group_ssg_name_IT
+        _space_group_ssg_name_WJJ
+    );
+
+    my $spacegroup;
+
+    for my $sg_tag (@spacegroup_tags) {
+	if( exists $values->{$sg_tag} ) {
+	    $spacegroup = $values->{$sg_tag}[0];
+	    if( $sg_tag =~ /_h-m/ && $reformat_spacegroup ) {
+		my $orig_sg = $spacegroup;
+		$orig_sg =~ s/[\(\)~_\s]//g;
+		## print ">>> $orig_sg\n";
+		if( exists $spacegroups{$orig_sg} ) {
+		    $spacegroup = $spacegroups{$orig_sg};
+		}
+	    }
+	    last
+	}
+    }
+    if( !defined $spacegroup ) {
+	error( "no spacegroup information found", $filename );
+	$spacegroup = "";
+    }
+    $spacegroup =~ s/^\s*|\s*$//g;
+    return $spacegroup;
+}
+
+sub get_cell
+{
+    my $datablok = $_[0];
+
+    return (
+	$datablok->{_cell_length_a}[0],
+	$datablok->{_cell_length_b}[0],
+	$datablok->{_cell_length_c}[0],
+	$datablok->{_cell_angle_alpha}[0],
+	$datablok->{_cell_angle_beta}[0],
+	$datablok->{_cell_angle_gamma}[0]
+    );
+}
+
+sub cell_volume
+{
+    my @cell = map { s/\(.*\)//g; $_ } @_;
+
+    my $Pi = 3.14159265358979;
+
+    my ($a, $b, $c) = @cell[0..2];
+    my ($alpha, $beta, $gamma) = map {$Pi * $_ / 180} @cell[3..5];
+    my ($ca, $cb, $cg) = map {cos} ($alpha, $beta, $gamma);
+    my $sg = sin($gamma);
+    
+    my $V = $a * $b * $c * sqrt( $sg**2 - $ca**2 - $cb**2 + 2*$ca*$cb*$cg );
+
+    return $V;
+}
+
+sub guess_formula_from_data
+{
+    my ( $values ) = @_;
+    my $formula = "";
+
+    for my $tag (qw( _atom_site_type_symbol _atom_site_label )) {
+	if( exists $values->{$tag} ) {
+	    my @atoms = map { s/^([A-Za-z]{1,2}).*$/$1/; $_ } @{$values->{$tag}};
+	    @atoms = unique( sort {$a cmp $b} @atoms );
+	    @atoms = map { "$_?" } @atoms;
+	    $formula = join( " ", @atoms );
+	    last;
+	}	
+    }
+    return $formula;
+}
