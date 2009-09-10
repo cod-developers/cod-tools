@@ -21,6 +21,9 @@ use Unicode2CIF;
 use SOptions;
 use SUsage;
 
+my $reformat_spacegroup = 0;
+my $guess_formula_from_atoms = 0;
+
 my $continue_on_errors = 0;
 my $cod_number;
 
@@ -74,9 +77,6 @@ sub error
     die unless $continue_on_errors;
 }
 
-my $reformat_spacegroup = 0;
-my $guess_formula_from_atoms = 0;
-
 @ARGV = getOptions(
     "-c,--continue-on-errors"       => sub { $continue_on_errors = 1 },
     "-c-,--dont-continue-on-errors" => sub { $continue_on_errors = 0 },
@@ -120,24 +120,14 @@ for my $filename (@ARGV) {
 
         my @authors = ();
 	if( exists $values->{_publ_author_name} ) {
-	    for my $author (@{$values->{_publ_author_name}}) {
-                push( @authors, $author );
+	    for my $i (0..$#{$values->{_publ_author_name}}) {
+                push( @authors, get_tag( $values, "_publ_author_name", $i ));
 	    }
 	}
 
  	my $authors = join( "; ", @authors );
-        $authors =~ s/\n/ /g;
-        $authors =~ s/\s+/ /g;
-	$authors =~ s/^\s*|\s*$//g;
 
 	my $title = get_tag( $values, "_publ_section_title", 0, $filename );
-	if( $title =~ /^\\\n/ ) {
-	    $title =~ s/\\\n//g;
-	}
-	$title =~ s/\n/ /g;
-	$title =~ s/\s+/ /g;
-	$title =~ s/^\s*|\s*$//g;
-
 	my $journal = get_tag( $values, "_journal_name_full", 0, $filename );
 	my $year = get_tag( $values, "_journal_year", 0, $filename );
 	my $volume = get_tag( $values, "_journal_volume", 0, $filename );
@@ -151,12 +141,9 @@ for my $filename (@ARGV) {
                                        "(issue $issue)") : "" ),
                            "(" . $year . ")",
                            $first_page, $last_page ));
-	$text =~ s/\n/ /g;
-	$text =~ s/^\s*|\s*$//g;
 
 	my $formula = get_tag( $values, "_chemical_formula_sum", 0, $filename );
-	$formula =~ s/^\s*|\s*$//g;
-	$formula =~ s/\n/ /g;
+
 	if( $formula eq '' &&  $guess_formula_from_atoms ) {
 	    $formula = guess_formula_from_data( $values );
 	} else {
@@ -322,7 +309,14 @@ sub get_and_check_tag
     if( ref $values eq "HASH" ) {
 	if( exists $values->{$tag} && ref $values->{$tag} eq "ARRAY" ) {
 	    if( defined $values->{$tag}[$index] ) {
-		return $values->{$tag}[$index];
+		my $val = $values->{$tag}[$index];
+                if( $val =~ /^\\\n/ ) {
+                    $val =~ s/\\\n//g;
+                }
+                $val =~ s/\n/ /g;
+                $val =~ s/\s+/ /g;
+                $val =~ s/^\s*|\s*$//g;
+                return $val;
 	    } else {
 		unless( $ignore_errors ) {
 		    error( "tag '$tag' does not have value number $index",
