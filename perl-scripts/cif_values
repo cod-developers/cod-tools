@@ -21,6 +21,7 @@ use SUsage;
 
 my $header = 1;
 my $separator = "\t";
+my $value_separator = ",";
 
 my @selected_tags;
 my @uniquified_tags;
@@ -83,6 +84,9 @@ my $treat_dots_as_underscores = 1;
 #**    --treat-dots-as-underscores
 #**        Convert all dots in tag names into underscores (default)
 #**
+#*     --vseparator ',' --value-separator ','
+#*         Use the specified string to separate multiple values of a given tag.
+#*
 #**    --dont-treat-dots-as-underscores,--no-treat-dots-as-underscores
 #**        Leave original tags as they are.
 #**
@@ -133,6 +137,9 @@ my $treat_dots_as_underscores = 1;
         => sub { $treat_dots_as_underscores = 0 },
     "--no-treat-dots-as-underscores"
         => sub { $treat_dots_as_underscores = 0 },
+
+    "--vseparator"      => \$value_separator,
+    "--value-separator" => \$value_separator,
 
     "--filename"      => sub { $write_file = $write_filename },
     "--basename"      => sub { $write_file = $write_basename },
@@ -219,9 +226,10 @@ for my $filename (@ARGV) {
                         @{$values->{$tag}};
                 }
                 if( $uniquified_tags{$tag} ) {
-                    push( @values, join( ",", sunique( @tag_vals )));
+                    push( @values, join( $value_separator,
+                                         sunique( @tag_vals )));
                 } else {
-                    push( @values, join( ",", @tag_vals ));
+                    push( @values, join( $value_separator, @tag_vals ));
                 }
             } else {
                 push( @values, "?" );
