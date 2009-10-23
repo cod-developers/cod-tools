@@ -81,7 +81,7 @@ sub string_from_symop
 
     my @symops = ( "", "", "" );
 
-    for( my $i = 0; $i <= $#{$symop}; $i ++ ) {
+    for( my $i = 0; $i < $#{$symop}; $i ++ ) {
 	if( $symop->[$i][0] > 0 ) {
 	    $symops[$i] = "x";
 	} elsif( $symop->[$i][0] < 0 ) {
