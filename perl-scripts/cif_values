@@ -31,7 +31,9 @@ my $write_filename = 1;
 my $write_basename = 2;
 my $write_file;
 
-my $replace_spaces = 1; # indicates whether spaces should be replaced to underscores
+my $replace_spaces = 1; # indicates whether spaces should be replaced
+                        # to underscores
+my $fix_errors = 0;
 
 my $treat_dots_as_underscores = 1;
 
@@ -117,7 +119,7 @@ my $treat_dots_as_underscores = 1;
     "-h-,--no-header" => sub { $header = 0 },
 
     "-r,--replace-spaces" => sub { $replace_spaces = 1 },
-    "--no-replace-spaces" => sub { $replace_spaces = 0 },
+    "-r-,--no-replace-spaces" => sub { $replace_spaces = 0 },
     "--dont-replace-spaces" => sub { $replace_spaces = 0 },
 
     "-s,--separator"  => \$separator,
@@ -144,6 +146,10 @@ my $treat_dots_as_underscores = 1;
     "--filename"      => sub { $write_file = $write_filename },
     "--basename"      => sub { $write_file = $write_basename },
     "--no-filename"   => sub { $write_file = 0 },
+
+    "--fix-syntax-errors"       => sub { $fix_errors = 1; },
+    "--dont-fix-syntax-errors"  => sub { $fix_errors = 0; },
+    "--no-fix-syntax-errors"    => sub { $fix_errors = 0; },
 
     "--dataname"      => sub { $write_data_name = 1 },
     "--no-dataname"   => sub { $write_data_name = 0 },
@@ -174,7 +180,13 @@ for my $filename (@ARGV) {
 
     my $parser = new CIFParser;
 
-    my $data = $parser->Run($filename);
+    my %options;
+
+    if( $fix_errors ) {
+        $options{fix_errors} = 1;
+    }
+
+    my $data = $parser->Run($filename, \%options);
 
     if( defined $parser->YYData->{ERRCOUNT} &&
         $parser->YYData->{ERRCOUNT} > 0 ) {
