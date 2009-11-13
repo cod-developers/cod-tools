@@ -163,6 +163,9 @@ for my $filename (@ARGV) {
         my $systematic_name =
             get_tag_or_undef( $values, "_chemical_name_systematic", 0 );
 
+        undef $systematic_name
+            if defined $systematic_name && $systematic_name =~ /^\s*\?\s*$/sm;
+
         my $common_name =
             get_tag_or_undef( $values, "_chemical_name_common", 0 );
 
@@ -170,6 +173,9 @@ for my $filename (@ARGV) {
             $common_name =
                 get_tag_or_undef( $values, "_chemical_name_mineral", 0 );
         }
+
+        undef $common_name
+            if defined $common_name && $common_name =~ /^\s*\?\s*$/sm;
 
 	my $formula = get_tag( $values, "_chemical_formula_sum", 0, $filename );
 
