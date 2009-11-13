@@ -63,6 +63,7 @@ my $user_biblio = 0;
 my $leave_biblio = 0;
 my $estimate_spacegroup = 0;
 my $exclude_empty_tags = 0;
+my $preserve_tag_order = 0;
 my $preserve_loop_order = 0;
 my $reformat_spacegroup = 0;
 my $keep_unrecognised_spacegroups = 0;
@@ -146,6 +147,9 @@ my %spacegroups = map {
 
     "--preserve-loop-order"     => sub { $preserve_loop_order = 1; },
     "--use-internal-loop-order" => sub { $preserve_loop_order = 0; },
+
+    "--retain-tag-order"        => sub { $preserve_tag_order = 1; },
+    "--dont-retain-tag-order"   => sub { $preserve_tag_order = 0; },
 
     "--reformat-space-group"      => sub { $reformat_spacegroup = 1; },
     "--dont-reformat-space-group" => sub { $reformat_spacegroup = 0; },
@@ -722,6 +726,7 @@ for my $dataset (@data) {
 	folding_width => $folding_width,
 	dictionary_tags => \%dictionary_tags,
 	dictionary_tag_list => \@dictionary_tags,
+        keep_tag_order => $preserve_tag_order,
     } );
 
 }
