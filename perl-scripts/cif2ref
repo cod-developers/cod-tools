@@ -42,7 +42,18 @@ for my $dataset (@data) {
     my $category = defined $compound ? $compound->{"-"} : undef;
     my $datablok = defined $category ? $category->{"-"} : undef;
 
-    next if !defined $datablok or !defined $datablok->{_atom_site_label};
+    next if !defined $datablok;
+    
+    # Make sure all tags are present in their lowercase form:
+
+    while( my ($key, $value) = each %{$datablok} ) {
+        my $lc_key = lc( $key );
+        if( $lc_key ne $key ) {
+            $datablok->{$lc_key} = $value;
+        }
+    }
+
+    next if !defined $datablok->{_atom_site_label};
 
     print "\n" if $n > 0;
 
