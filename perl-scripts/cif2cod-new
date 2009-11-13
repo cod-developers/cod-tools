@@ -144,6 +144,17 @@ for my $filename (@ARGV) {
                              $first_page )) 
                        );
 
+        my $systematic_name =
+            get_tag_or_undef( $values, "_chemical_name_systematic", 0 );
+
+        my $common_name =
+            get_tag_or_undef( $values, "_chemical_name_common", 0 );
+
+        if( !$common_name ) {
+            $common_name =
+                get_tag_or_undef( $values, "_chemical_name_mineral", 0 );
+        }
+
 	my $formula = get_tag( $values, "_chemical_formula_sum", 0, $filename );
 
 	if( $formula eq '' &&  $guess_formula_from_atoms ) {
@@ -177,6 +188,8 @@ for my $filename (@ARGV) {
 	
 	push( @data, $nel );
 	push( @data, get_spacegroup_info( $values, $filename ));
+        push( @data, $common_name );
+        push( @data, $systematic_name );
 	push( @data, $formula ? "- " . $formula . " -" : "?" );
 	if( exists $values->{_journal_coeditor_code} ) {
 	    push( @data, uc( get_tag_or_undef( $values, 
