@@ -298,7 +298,7 @@ sub sprint_value
     } elsif( $val =~ /'\s/ || $val =~ /^'/ ) {
 	$val = "\"" . $val . "\"";
     } elsif( $val =~ /"\s|^\#/ || $val =~ /^"/ ||
-        $val =~ /^data_/ ) {
+        $val =~ /^(data|loop|global|save)_/ ) {
 	$val = "'" . $val . "'";
     } elsif( $val =~ /^'.*'$/ ) {
 	$val = "\"" . $val . "\"";
