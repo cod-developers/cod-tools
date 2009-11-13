@@ -680,31 +680,27 @@ my $FLOAT		=	qr/(?: (?: $FLOAT11 | $FLOAT21 | $FLOAT31))/six;
 	for ($parser->YYData->{INPUT})
 	{
 		#matching floats:
-                if( s/^(?: ($FLOAT (?:\([0-9]+\))?) (\s) )/$2/six
-                        || s/^($FLOAT (?:\([0-9]+\))?)$//six )
+                if(s/^($FLOAT (?:\([0-9]+\))?)(\s|$)//six)
 		{
-			advance_token($parser, length($1));
+			advance_token($parser, length($1 . $2));
 			return('FLOAT', $1);
 		}
 		#matching integers:
-                if( s/^($INTEGER (?:\([0-9]+\))?)(\s)/$2/sx
-                        || s/^($INTEGER (?:\([0-9]+\))?)$//sx )
+                if(s/^($INTEGER (?:\([0-9]+\))?)(\s|$)//sx)
 		{
-			advance_token($parser, length($1));
+			advance_token($parser, length($1 . $2));
 			return('INT', $1);
 		}
 		#matching double quoted strings
-		if( s/^("${ANY_PRINT_CHAR}*?")(\s)/$2/s
-			|| s/^("${ANY_PRINT_CHAR}*?")$//s )
+		if(s/^("${ANY_PRINT_CHAR}*?")(\s|$)//s)
 		{
-			advance_token($parser, length($1));
+			advance_token($parser, length($1 . $2));
 			return('DQSTRING', $1);
 		}
 		#matching single quoted strings
-		if( s/^('${ANY_PRINT_CHAR}*?')(\s)/$2/s
-			|| s/^('${ANY_PRINT_CHAR}*?')$//s )
+		if(s/^('${ANY_PRINT_CHAR}*?')(\s|$)//s)
 		{
-			advance_token($parser, length($1));
+			advance_token($parser, length($1 . $2));
 			return('SQSTRING', $1);
 		}
 		#matching text field
