@@ -136,11 +136,13 @@ for my $filename (@ARGV) {
 	my $issue = get_tag_silently( $values, "_journal_issue", 0 );
 
 	my $text = join( '\n', map { Unicode2CIF::cif2unicode($_) }
-                         ( $authors, $title, $journal, $volume,
+                         ( $authors, $title, $journal, $volume .
                            ( $issue? ( $volume ? "($issue)" : 
                                        "(issue $issue)") : "" ),
                            "(" . $year . ")",
-                           $first_page, $last_page ));
+                           ( $last_page ? $first_page . "-" . $last_page :
+                             $first_page )) 
+                       );
 
 	my $formula = get_tag( $values, "_chemical_formula_sum", 0, $filename );
 
