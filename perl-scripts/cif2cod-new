@@ -144,6 +144,22 @@ for my $filename (@ARGV) {
                              $first_page )) 
                        );
 
+        my $temperature =
+            get_num_or_undef( $values, "_diffrn_ambient_temperature", 0 );
+
+        if( ! defined $temperature ){
+            $temperature =
+                get_num_or_undef( $values, "_cell_measurement_temperature", 0 );
+        }
+
+        my $pressure =
+            get_num_or_undef( $values, "_diffrn_ambient_pressure", 0 );
+
+        if( !defined $pressure ) {
+            $pressure =
+                get_num_or_undef( $values, "_cell_measurement_pressure", 0 );
+        }
+
         my $systematic_name =
             get_tag_or_undef( $values, "_chemical_name_systematic", 0 );
 
@@ -185,7 +201,10 @@ for my $filename (@ARGV) {
 	}
 
 	push( @data, $cell_volume );
-	
+
+	push( @data, $temperature );
+        push( @data, $pressure );
+
 	push( @data, $nel );
 	push( @data, get_spacegroup_info( $values, $filename ));
         push( @data, $common_name );
