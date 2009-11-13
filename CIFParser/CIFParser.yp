@@ -857,10 +857,11 @@ END_M
 
 sub advance_token
 {
-	my $parser = shift;
+	my ($parser, $length) = @_;
+        $length = length($1) unless defined $length;
 	$parser->YYData->{VARS}{token_prev_pos} =
 		$parser->YYData->{VARS}{token_pos};
-	$parser->YYData->{VARS}{token_pos} += length($1);
+	$parser->YYData->{VARS}{token_pos} += $length;
 }
 
 sub Run
