@@ -85,21 +85,21 @@ for my $dataset (@data) {
     my $z = $datablok->{_atom_site_fract_z};
 
     my $q = $datablok->{_atom_site_occupancy};
-    my $U = $datablok->{_atom_site_U_iso_or_equiv};
+    my $U = $datablok->{_atom_site_u_iso_or_equiv};
     
     if( !defined $U ) {
-	$U = $datablok->{_atom_site_Uiso_or_Biso};
+	$U = $datablok->{_atom_site_uiso_or_biso};
     }
 
-    if( !defined $U && defined $datablok->{_atom_site_B_iso_or_equiv} ) {
-	my $B = $datablok->{_atom_site_B_iso_or_equiv};
+    if( !defined $U && defined $datablok->{_atom_site_b_iso_or_equiv} ) {
+	my $B = $datablok->{_atom_site_b_iso_or_equiv};
 	my $Pi = 3.14159265358979;
 	for my $i ( 0..$#{$B} ) {
 	    my $b = $B->[$i];
 	    $b =~ s/\(.*\)$//;
-	    $datablok->{_atom_site_U_iso_or_equiv}[$i] = $b/(8*$Pi**2);
+	    $datablok->{_atom_site_u_iso_or_equiv}[$i] = $b/(8*$Pi**2);
 	}
-	$U = $datablok->{_atom_site_U_iso_or_equiv};
+	$U = $datablok->{_atom_site_u_iso_or_equiv};
     }
 
     my $multiplicity = $datablok->{_atom_site_symmetry_multiplicity};
@@ -108,7 +108,7 @@ for my $dataset (@data) {
 	$multiplicity = $datablok->{_atom_site_symetry_multiplicity};
     }
 
-    my $Wyckoff_sym = $datablok->{_atom_site_Wyckoff_symbol};
+    my $Wyckoff_sym = $datablok->{_atom_site_wyckoff_symbol};
 
     # Print it out:
 
