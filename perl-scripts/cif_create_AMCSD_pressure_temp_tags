@@ -84,19 +84,20 @@ for my $filename (@ARGV) {
 		    print STDERR "$0: $filename data_$dataset->{name}: ", $@;
 		    next;
 		}
-		my $pressure_GPa = $pressure * $coefficient;
+		my $pressure_kPa =
+		    sprintf( "%7.5g", $pressure * $coefficient );
 		if( !exists $values->{_diffrn_ambient_pressure} ) {
-		    $values->{_diffrn_ambient_pressure}[0] = $pressure_GPa;
+		    $values->{_diffrn_ambient_pressure}[0] = $pressure_kPa;
 		    print STDERR ">>> $filename: P = " .
 			"$pressure, $units, $coefficient\n";
 
 		} else {
 		    if( $values->{_diffrn_ambient_pressure}[0] !=
-			$pressure_GPa ) {
+			$pressure_kPa ) {
 			print STDERR "$0: $filename $dataset->{name}:" .
 			    "pressure given in '$tag' value, interpreted as " .
 			    " $pressure $units" .
-			    ($units == "GPa" ? "" : "($pressure_GPa GPa)") .
+			    ($units == "kPa" ? "" : "($pressure_kPa kPa)") .
 			    "is not equal to the value in the " .
 			    "_diffrn_ambient_pressure tag (" .
 			    $values->{_diffrn_ambient_pressure}[0] .
