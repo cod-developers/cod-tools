@@ -324,30 +324,6 @@ cif_entry
 			}
 			return $val;
 		}
-	|	LOCAL TAG cif_value
-		{
-			my $val;
-			if(defined $_[3]->{precision})
-			{
-				$val = { name => $_[2],
-					kind => 'LOCAL',
-					value => $_[3]->{value},
-					type => $_[3]->{type},
-					precision => $_[3]->{precision}
-				};
-			} else {
-				$val = { name => $_[2],
-					kind => 'LOCAL',
-					value => $_[3]->{value},
-					type => $_[3]->{type}
-				};
-			}
-			if($CIFParser::debug >= 1 && $CIFParser::debug <= 2)
-			{
-				showRef($val);
-			}
-			return $val;
-		}
 ;
 
 loop
@@ -752,12 +728,6 @@ END_M
 				}
 				return('TEXT_FIELD', $tfield);
 			}
-		}
-		#matching [local] attribute
-		if( s/^(\[local\])//si )
-		{
-			advance_token($parser, length($1));
-			return('LOCAL', lc($1));
 		}
 		#matching GLOBAL_ field
 		if( s/^(global_)(\s+|$)//si )
