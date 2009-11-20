@@ -641,6 +641,25 @@ my $FLOAT11		=	qr/(?: $INTEGER $EXPONENT)/ix;
 my $FLOAT21		=	qr/(?: [+-]? [0-9]* \. [0-9]+ $EXPONENT ?)/ix;
 my $FLOAT31		=	qr/(?: $INTEGER \. $EXPONENT ?)/ix;
 my $FLOAT		=	qr/(?: (?: $FLOAT11 | $FLOAT21 | $FLOAT31))/six;
+my $UQSTRING_FIRSTPOS   =       qr/^(?:
+                                        $ORDINARY_CHAR
+                                        ${NON_BLANK_CHAR} *
+                                    )/six;
+my $UQSTRING_INLINE     =       qr/^(?:
+                                        (?:$ORDINARY_CHAR | ;)
+                                        ${NON_BLANK_CHAR} *
+                                    )/six;
+
+        if($parser->{USER}{OPTIONS}{allow_uqstring_brackets}) {
+            $UQSTRING_FIRSTPOS = qr/^(?:
+                                (?:$ORDINARY_CHAR | \[)
+                                ${NON_BLANK_CHAR} *
+                            )/six;
+            $UQSTRING_INLINE   = qr/^(?:
+                                (?:$ORDINARY_CHAR | ; | \[)
+                                ${NON_BLANK_CHAR} *
+                            )/six;
+        }
 
 	#matching white space characters
 	if( $parser->YYData->{INPUT} =~ s/(\s*)//s )
@@ -796,17 +815,13 @@ END_M
 		#matching unquoted strings
 		if( $parser->YYData->{VARS}{token_pos} == 0 )
 		{ #UQSTRING at first pos. of line
-			if( s/^(?: ( ($ORDINARY_CHAR | \[ )
-				($NON_BLANK_CHAR)*) )
-				//sx)
+			if( s/^(${UQSTRING_FIRSTPOS})//s)
 			{
 				advance_token($parser, length($1));
 				return('UQSTRING', $1);
 			}
 		} else { #UQSTRING in line
-			if( s/^(?: ( ($ORDINARY_CHAR | ; | \[ )
-				($NON_BLANK_CHAR)*) )
-				//sx )
+			if( s/^(${UQSTRING_INLINE})//sx )
 			{
 				advance_token($parser, length($1));
 				return('UQSTRING', $1);
