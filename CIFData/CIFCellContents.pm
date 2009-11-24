@@ -22,6 +22,7 @@ use Formulae::FormulaPrint;
 require Exporter;
 @CIFCellContents::ISA = qw(Exporter);
 @CIFCellContents::EXPORT = qw(
+    cif_cell_contents
     get_cell
     get_symmetry_operators
     symop_generate_atoms
@@ -29,7 +30,7 @@ require Exporter;
     print_composition
 );
 
-my $format = "%g";
+$::format = "%g";
 my $special_position_cutoff = 0.001;
 
 sub get_cell($$$);
@@ -40,6 +41,102 @@ sub copy_array($);
 sub mat_vect_mul($$);
 sub atomic_composition($$$);
 sub print_composition($);
+
+sub print_error($$$$$)
+{
+    my ( $program, $filename, $datablock, $errlevel, $message ) = @_;
+
+    print STDERR $program, ": ", $filename,
+    defined $datablock ? " data_" . $datablock : "",
+    defined $errlevel ? ": " . $errlevel : "",
+    ": ", $message, ".\n";
+}
+
+sub error($$$$)
+{
+    my ( $program, $filename, $datablock, $message ) = @_;
+    print_error( $program, $filename, $datablock, "ERROR", $message );
+}
+
+sub warning($$$$)
+{
+    my ( $program, $filename, $datablock, $message ) = @_;
+    print_error( $program, $filename, $datablock, "WARNING", $message );
+}
+
+sub cif_cell_contents($$$)
+{
+    my ($dataset, $filename, $user_Z) = @_;
+
+    my $values = $dataset->{values};
+
+#   extracts atom site label or atom site type symbol
+    my $loop_tag;
+
+    if( exists $values->{"_atom_site_label"} ) {
+        $loop_tag = "_atom_site_label";
+    } elsif( exists $values->{"_atom_site_type_symbol"} ) {
+        $loop_tag = "_atom_site_type_symbol";
+    } else {
+	error( $0, $filename, $dataset->{name},
+	       "neither _atom_site_label " .
+	       "nor _atom_site_type_symbol was found in the input file" );
+        return undef;
+    }
+
+#   extracts cell constants
+    my @unit_cell = CIFCellContents::get_cell( $values, $filename,
+					       $dataset->{name} );
+    my $ortho_matrix = symop_ortho_from_fract( @unit_cell );
+
+#   extracts symmetry operators
+    my $sym_data = get_symmetry_operators( $dataset, $filename );
+
+#   extract atoms
+    my $atoms = get_atoms( $dataset, $filename, $loop_tag );
+
+#   compute symmetry operator matrices
+    my @sym_operators = map { symop_from_string($_) } @{$sym_data};
+
+    ## serialiseRef( \@sym_operators );
+
+    my $sym_atoms = symop_generate_atoms( \@sym_operators, $atoms,
+					  $ortho_matrix );
+
+    ## serialiseRef( $sym_atoms );
+
+#   get the Z value
+
+    my $Z;
+
+    if( defined $user_Z ) {
+        $Z = $user_Z;
+        if( exists $values->{_cell_formula_units_Z} ) {
+            my $file_Z = $values->{_cell_formula_units_Z}[0];
+            if( $Z != $file_Z ) {
+                warning( $0, $filename, $dataset->{name},
+                         "overriding _cell_formula_units_Z ($file_Z) " .
+                         "with command-line value $Z" );
+            }
+        }
+    } else {
+        if( exists $values->{_cell_formula_units_Z} ) {
+            $Z = $values->{_cell_formula_units_Z}[0];
+        } else {
+            $Z = 1;
+            warning( $0, $filename, $dataset->{name},
+                     "_cell_formula_units_Z is missing -- assuming Z = $Z" );
+        }
+    }
+
+    my %composition = atomic_composition( $sym_atoms, $Z, int(@sym_operators));
+
+    ## print_composition( \%composition );
+
+    wantarray ?
+	%composition :
+	FormulaPrint::sprint_formula( \%composition, $::format );
+}
 
 sub atomic_composition($$$)
 {
@@ -70,7 +167,7 @@ sub print_composition($)
     ##     print "$key: ", $composition->{$key}, "\n";
     ## }
 
-    FormulaPrint::print_formula( $composition, $format );
+    FormulaPrint::print_formula( $composition, $::format );
 }
 
 #===============================================================#

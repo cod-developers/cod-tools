@@ -27,6 +27,7 @@ use File::Basename;
 use SOptions;
 use SUsage;
 
+my $format = "%g";
 my $Z_value;
 
 #* Usage:
@@ -49,28 +50,6 @@ my $Z_value;
     "--help,--usage" => sub { SUsage::usage; exit },
 );
 
-sub print_error($$$$$)
-{
-    my ( $program, $filename, $datablock, $errlevel, $message ) = @_;
-
-    print STDERR $program, ": ", $filename,
-    defined $datablock ? " data_" . $datablock : "",
-    defined $errlevel ? ": " . $errlevel : "",
-    ": ", $message, ".\n";
-}
-
-sub error($$$$)
-{
-    my ( $program, $filename, $datablock, $message ) = @_;
-    print_error( $program, $filename, $datablock, "ERROR", $message );
-}
-
-sub warning($$$$)
-{
-    my ( $program, $filename, $datablock, $message ) = @_;
-    print_error( $program, $filename, $datablock, "WARNING", $message );
-}
-
 my $Id = '$Id$';
 
 my $filename = shift(@ARGV);
@@ -85,71 +64,8 @@ for my $dataset (@$data) {
 
     my $values = $dataset->{values};
 
-#   extracts atom site label or atom site type symbol
-    my $loop_tag;
-
-    if( exists $values->{"_atom_site_label"} ) {
-        $loop_tag = "_atom_site_label";
-    } elsif( exists $values->{"_atom_site_type_symbol"} ) {
-        $loop_tag = "_atom_site_type_symbol";
-    } else {
-        error( $0, $filename, $dataset->{name},
-	       "neither _atom_site_label " .
-	       "nor _atom_site_type_symbol was found in the input file" );
-        next;
-    }
-
-#   extracts cell constants
-
-    my @unit_cell = CIFCellContents::get_cell( $values, $filename,
-					       $dataset->{name} );
-    my $ortho_matrix = symop_ortho_from_fract( @unit_cell );
-
-#   extracts symmetry operators
-    my $sym_data = CIFCellContents::get_symmetry_operators( $dataset,
-							    $filename );
-
-#   extract atoms
-    my $atoms = CIFCellContents::get_atoms( $dataset, $filename, $loop_tag );
-
-#   compute symmetry operator matrices
-    my @sym_operators = map { symop_from_string($_) } @{$sym_data};
-
-    ## serialiseRef( \@sym_operators );
-
-    my $sym_atoms = CIFCellContents::symop_generate_atoms( \@sym_operators,
-							   $atoms,
-							   $ortho_matrix );
-
-    ## serialiseRef( $sym_atoms );
-
-#   get the Z value
-
-    my $Z;
-
-    if( defined $Z_value ) {
-        $Z = $Z_value;
-        if( exists $values->{_cell_formula_units_Z} ) {
-            my $file_Z = $values->{_cell_formula_units_Z}[0];
-            if( $Z != $file_Z ) {
-                warning( $0, $filename, $dataset->{name},
-                         "overriding _cell_formula_units_Z ($file_Z) " .
-                         "with command-line value $Z" );
-            }
-        }
-    } else {
-        if( exists $values->{_cell_formula_units_Z} ) {
-            $Z = $values->{_cell_formula_units_Z}[0];
-        } else {
-            $Z = 1;
-            warning( $0, $filename, $dataset->{name},
-                     "_cell_formula_units_Z is missing -- assuming Z = $Z" );
-        }
-    }
-
-    my %composition =
-	CIFCellContents::atomic_composition( $sym_atoms, $Z,
-					     int(@sym_operators));
-
-    CIFCellContents::print_composition( \%composition );
+    my $formula = CIFCellContents::cif_cell_contents( $dataset, 
+						      $filename,
+						      $Z_value );
+    print $formula, "\n" if defined $formula;
 }
