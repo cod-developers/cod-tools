@@ -116,20 +116,20 @@ for my $file (@cif_files) {
 	my $formula = $structures{$id}{chemical_formula_sum};
 	my $cell_contents = $structures{$id}{cell_contents};
 
-	$formula = '?' unless defined $formula;
+	$formula = '?' unless defined $formula || defined $cell_contents;
 
 	my $final_formula = $formula;
 	$final_formula =~ s/\s/_/g;
 
 	my $n = 0;
-	if( defined $COD{$formula} ) {
+	if( defined $formula && defined $COD{$formula} ) {
 	    for my $COD_entry (@{$COD{$formula}}) {
 		if( entries_are_the_same( $structures{$id}, $COD_entry )) {
 		    $n++;
 		}
 	    }
 	} else {
-	    if( defined $COD{$cell_contents} ) {
+	    if( defined $cell_contents && defined $COD{$cell_contents} ) {
 		for my $COD_entry (@{$COD{$cell_contents}}) {
 		    if( entries_are_the_same( $structures{$id}, $COD_entry )) {
 			$n++;
@@ -138,7 +138,7 @@ for my $file (@cif_files) {
 	    }
 	}
 	if( $n > 0 ) {
-	    if( defined $COD{$formula} ) {
+	    if( defined $formula && defined $COD{$formula} ) {
 		for my $COD_entry (@{$COD{$formula}}) {
 		    if( entries_are_the_same( $structures{$id}, $COD_entry )) {
 			printf
@@ -148,7 +148,7 @@ for my $file (@cif_files) {
 		    }
 		}
 	    } else {
-		if( defined $COD{$cell_contents} ) {
+		if( defined $cell_contents && defined $COD{$cell_contents} ) {
 		    for my $COD_entry (@{$COD{$cell_contents}}) {
 			if( entries_are_the_same( $structures{$id}, $COD_entry )) {
 			    printf
