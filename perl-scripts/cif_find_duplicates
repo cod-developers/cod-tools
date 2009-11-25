@@ -19,6 +19,7 @@ use strict;
 use File::Basename;
 use CIFParser;
 use Formulae::AdHocParser;
+use CIFData::CIFCellContents;
 
 my $check_bibliography = 1;
 
@@ -76,6 +77,11 @@ for my $file (@COD_cif_files) {
 	$formula = '?' unless defined $formula;
 
 	push( @{$COD{$formula}}, $structures{$id} );
+
+	if( exists $structures{$id}{cell_contents} ) {
+	    my $cell_contents = $structures{$id}{cell_contents};
+	    push( @{$COD{$cell_contents}}, $structures{$id} );
+	}
     }
 
 }
@@ -108,6 +114,7 @@ for my $file (@cif_files) {
 
     for my $id (keys %structures) {
 	my $formula = $structures{$id}{chemical_formula_sum};
+	my $cell_contents = $structures{$id}{cell_contents};
 
 	$formula = '?' unless defined $formula;
 
@@ -121,14 +128,35 @@ for my $file (@cif_files) {
 		    $n++;
 		}
 	    }
+	} else {
+	    if( defined $COD{$cell_contents} ) {
+		for my $COD_entry (@{$COD{$cell_contents}}) {
+		    if( entries_are_the_same( $structures{$id}, $COD_entry )) {
+			$n++;
+		    }
+		}
+	    }
 	}
 	if( $n > 0 ) {
-	    for my $COD_entry (@{$COD{$formula}}) {
-		if( entries_are_the_same( $structures{$id}, $COD_entry )) {
-		    printf
-			"%-35s %15s %3d %s\n",
-			$final_formula, 
-			$COD_entry->{filename}, $n, $file;
+	    if( defined $COD{$formula} ) {
+		for my $COD_entry (@{$COD{$formula}}) {
+		    if( entries_are_the_same( $structures{$id}, $COD_entry )) {
+			printf
+			    "%-35s %15s %3d %s\n",
+			    $final_formula, 
+			    $COD_entry->{filename}, $n, $file;
+		    }
+		}
+	    } else {
+		if( defined $COD{$cell_contents} ) {
+		    for my $COD_entry (@{$COD{$cell_contents}}) {
+			if( entries_are_the_same( $structures{$id}, $COD_entry )) {
+			    printf
+				"%-35s %15s %3d %s\n",
+				$final_formula, 
+				$COD_entry->{filename}, $n, $file;
+			}
+		    }
 		}
 	    }
 	} else {
@@ -206,6 +234,13 @@ sub cif_fill_data
             }
             $structures{$id}{chemical_formula_sum} = $formula;
 	}
+
+	my $calculated_formula =
+	    CIFCellContents::cif_cell_contents( $dataset, $file, undef );
+
+	$structures{$id}{cell_contents} = $calculated_formula
+	    if defined $calculated_formula;
+
 	for my $key ( qw( _cell_length_a _cell_length_b _celllength_c
                      _cell_angle_alpha _cell_angle_beta _cell_angle_gamma )) {
 	    my $val = $values->{$key}[0];
