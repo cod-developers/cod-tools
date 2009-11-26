@@ -365,7 +365,7 @@ sub lookup_symops
             return $hash->{symops};
         }
     }
-    return 0;
+    return undef;
 }
 
 #===============================================================#
@@ -427,9 +427,11 @@ sub get_symmetry_operators($$)
         $sym_data = $values->{"_symmetry_equiv_pos_as_xyz"};
     }
 
-    if( exists $values->{"_symmetry_space_group_name_Hall"} &&
+    if( ( exists $values->{"_symmetry_space_group_name_Hall"} ||
+	  exists $values->{"_symmetry_space_group_name_Hall"} )&&
 	not defined $sym_data ) {
         my $hall = $values->{"_symmetry_space_group_name_Hall"}[0];
+	$hall = $values->{"_symmetry_space_group_name_hall"}[0] unless $hall;
         $sym_data = lookup_symops("hall", $hall);
 
         if( !$sym_data ) {
@@ -439,9 +441,11 @@ sub get_symmetry_operators($$)
         } 
     }
 
-    if( exists $values->{"_symmetry_space_group_name_H-M"} &&
-       ( not defined $sym_data or $sym_data == 0 )) {
+    if( ( exists $values->{"_symmetry_space_group_name_H-M"} ||
+	  exists $values->{"_symmetry_space_group_name_h-m"} ) &&
+	not defined $sym_data ) {
         my $h_m = $values->{"_symmetry_space_group_name_H-M"}[0];
+        $h_m = $values->{"_symmetry_space_group_name_h-m"}[0] unless $h_m;
         $sym_data = lookup_symops("hermann_mauguin", $h_m);
 
         if( !$sym_data ) {
