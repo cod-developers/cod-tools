@@ -235,8 +235,11 @@ sub cif_fill_data
             $structures{$id}{chemical_formula_sum} = $formula;
 	}
 
-	my $calculated_formula =
-	    CIFCellContents::cif_cell_contents( $dataset, $file, undef );
+	my $calculated_formula;
+	eval {
+	    $calculated_formula =
+		CIFCellContents::cif_cell_contents( $dataset, $file, undef );
+	};
 
 	$structures{$id}{cell_contents} = $calculated_formula
 	    if defined $calculated_formula;
