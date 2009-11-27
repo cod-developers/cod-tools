@@ -543,7 +543,7 @@ sub get_atoms
 		$atom->{occupancy} = $values->{_atom_site_occupancy}[$i];
 		$atom->{occupancy} =~ s/\(\d+\)\s*$//;
 	    } else {
-		$atom->{occupancy} = 0;
+		$atom->{occupancy} = 1;
 	    }
 	}
 
