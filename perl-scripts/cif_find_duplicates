@@ -129,7 +129,11 @@ for my $file (@cif_files) {
 		    $n++;
 		}
 	    }
-	} elsif( defined $cell_contents && defined $COD{$cell_contents} ) {
+	}
+	if( defined $cell_contents && defined $COD{$cell_contents} &&
+	    $formula ne $cell_contents &&
+	    $n == 0 ) {
+	    ## print ">>> formula: '$formula', contents: '$cell_contents'\n";
 	    for my $COD_entry (@{$COD{$cell_contents}}) {
 		if( entries_are_the_same( $structures{$id}, $COD_entry )) {
 		    $n++;
@@ -137,6 +141,7 @@ for my $file (@cif_files) {
 	    }
 	}
 	if( $n > 0 ) {
+	    my $nformulae = 0;
 	    if( defined $formula && defined $COD{$formula} ) {
 		for my $COD_entry (@{$COD{$formula}}) {
 		    if( entries_are_the_same( $structures{$id}, $COD_entry )) {
@@ -144,9 +149,13 @@ for my $file (@cif_files) {
 			    "%-35s %15s %3d %s\n",
 			    $final_formula, 
 			    $COD_entry->{filename}, $n, $file;
+			$nformulae ++;
 		    }
 		}
-	    } elsif( defined $cell_contents && defined $COD{$cell_contents} ) {
+	    }
+	    if( defined $cell_contents && defined $COD{$cell_contents} &&
+		$formula ne $cell_contents &&
+		$nformulae == 0 ) {
 		for my $COD_entry (@{$COD{$cell_contents}}) {
 		    if( entries_are_the_same( $structures{$id}, $COD_entry )) {
 			printf
