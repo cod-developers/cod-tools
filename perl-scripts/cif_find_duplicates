@@ -369,15 +369,26 @@ sub conditions_are_the_same
 {
     my ($entry1, $entry2) = @_;
 
+    my $number = '[-+]?([0-9]+(\.[0-9]*)?|\.[0-9]+)([Ee][-+]?[0-9]+)?';
+
     for my $parameter ("temperature", "pressure" ) {
 
 	my %tags = map {($_,$_)} ( keys %{$entry1->{$parameter}},
 				   keys %{$entry2->{$parameter}} );
 	for my $tag (keys %tags) {
 	    if( exists $entry1->{$parameter}{$tag} &&
-		exists $entry2->{$parameter}{$tag} &&
-		$entry1->{$parameter}{$tag} ne $entry2->{$parameter}{$tag} ) {
-		return 0;
+		exists $entry2->{$parameter}{$tag} ) {
+		if( $entry1->{$parameter}{$tag} =~ /^${number}$/o ) {
+		    if( $entry1->{$parameter}{$tag} !=
+			$entry2->{$parameter}{$tag} ) {
+			return 0;
+		    }
+		} else {
+		    if( $entry1->{$parameter}{$tag} ne
+			$entry2->{$parameter}{$tag} ) {
+			return 0;
+		    }
+		}
 	    }
 	}
     }
