@@ -86,7 +86,7 @@ sub print_cif
     # Print out any tags that are not in the dictionary (most probably
     # some misspelled tags):
 
-    if( !$exclude_misspelled_tags ) {
+    if( !$exclude_misspelled_tags && %dictionary_tags ) {
 	my $tags_encountered = 0;
 	for my $tag (@{$dataset->{tags}}) {
 	    if( !exists $dictionary_tags{$tag} &&
@@ -129,7 +129,7 @@ sub print_cif
 
     # Print out loops that contain only non-dictionary tags:
 
-    if( !$exclude_misspelled_tags ) {
+    if( !$exclude_misspelled_tags && %dictionary_tags ) {
 	my $tags_encountered = 0;
 	for my $tag (@{$dataset->{tags}}) {
 	    if( exists $dataset->{inloop}{$tag} && 
