@@ -22,6 +22,7 @@ use SUsage;
 
 my $dictionary_file;
 my $fix_errors = 0;
+my $debug = 0;
 
 #* Usage:
 #*     cif_eval_numbers [options] input.cif
@@ -41,6 +42,9 @@ my $fix_errors = 0;
 @ARGV = getOptions( 
     "-d,--dictionary" => \$dictionary_file,
 
+    "--debug"    => sub{ $debug = 1; },
+    "--no-debug" => sub{ $debug = 0; },
+
     "--fix-syntax-errors"       => sub { $fix_errors = 1; },
     "--dont-fix-syntax-errors"  => sub { $fix_errors = 0; },
     "--no-fix-syntax-errors"    => sub { $fix_errors = 0; },
@@ -54,8 +58,35 @@ if( defined $dictionary_file ) {
     my $parser = new CIFParser;
     $dictionary = $parser->Run($dictionary_file);
 } else {
-    die "Reading __DATA__ is not yet implemented..."
+    my $parser = new CIFParser;
+    $dictionary = $parser->Run($dictionary_file, {filehandle => \*DATA});
 }
+
+my %dictionary;
+
+if( defined $dictionary ) {
+    %dictionary = map {
+        if( defined $_->{values}{_name} ) {
+            my @key_val;
+            for my $key (@{$_->{values}{_name}}) {
+                push( @key_val, (lc($key), $_) ) ;
+            }
+            @key_val
+        } else {
+            ()
+        }
+    } @{$dictionary};
+}
+
+if( $debug ) {
+    use Serialise;
+    serialiseRef( \%dictionary );
+}
+
+my $integer = '\d+';
+my $number = '[-+]?(?:\d+(?:\.\d*)?|\.(?:\d+))(?:[eE][-+]?\d+)?';
+
+my $return_status = 0;
 
 for my $filename (@ARGV) {
 
@@ -68,12 +99,13 @@ for my $filename (@ARGV) {
 
     my @data = @{$parser->Run($filename, \%options)};
 
-    if( defined $parser->YYData->{ERRCOUNT} && $parser->YYData->{ERRCOUNT} > 0 ) {
+    if( defined $parser->YYData->{ERRCOUNT} &&
+        $parser->YYData->{ERRCOUNT} > 0 ) {
         print STDERR "$0: ", $parser->YYData->{ERRCOUNT},
         " error(s) encountered while parsing file '${filename}'\n";
         die;
     }
-
+    
     if( !@data || !defined $data[0] || !defined $data[0]->{name} ) {
         warn( "file '$filename' seems to be empty" );
         next;
@@ -83,17 +115,42 @@ for my $filename (@ARGV) {
         # Fix numeric tags:
         for my $tag (@{$dataset->{tags}}) {
             ## print STDERR ">>> $tag\n";
-            
+            if( exists $dictionary{$tag} &&
+                $dictionary{$tag}{values}{_type}[0] eq "numb" ) {
+                ## print STDERR ">>> tag '$tag' is found to be numeric\n";
+                foreach my $value (@{$dataset->{values}{$tag}}) {
+                    if( $value eq '.' || $value eq '?' ) {
+                        next;
+                    }
+                    if( $value !~ /^$number(\($integer\))?$/ ) {
+                        ## print ">>> numb tag '$tag' has value '$value'\n";
+                        my $newval;
+                        eval {
+                            $newval = eval $value;
+                            ## print STDERR ">>> new val '$newval' for '$tag'\n";
+                        };
+                        if( !defined $newval ) {
+                            warn( "error evaluating numeric value '$value'" );
+                            $return_status = 2 if $return_status < 2;
+                        } else {
+                            $value = $newval;
+                            $return_status = 1 if $return_status < 1;
+                        }
+                    }
+                }
+            }
         }
 
         # Print out requested tags:
 
-        print_cif( $dataset, { 
+        print_cif( $dataset, {
             preserve_loop_order => 1,
             keep_tag_order => 1,
         });
     }
 }
+
+exit( $return_status );
 
 __DATA__
 ##############################################################################
