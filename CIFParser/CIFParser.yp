@@ -872,19 +872,23 @@ sub Run
     $self->{USER}{FILENAME} = $filename;
     $self->{USER}->{CIFfile} = undef;
 
-    $CIFParser::FILEIN = new FileHandle $filename;
-    my $scriptNamePrint = $0 eq '-e' ? "" : "$0: ";
-    my $filenamePrint = $filename eq '-' ?
-        "file '-'" : $filename;
-    if( !defined $CIFParser::FILEIN ) {
-        print STDERR $scriptNamePrint;
-        print STDERR $filenamePrint;
-        print STDERR ": Unable to open file '"
-            . $filenamePrint
-            . "' for reading: "
-            . $!
-            . ".\n";
-        return 1;
+    if( ref $options eq "HASH"  && defined $options->{filehandle} ) {
+        $CIFParser::FILEIN = $options->{filehandle};
+    } else {
+        $CIFParser::FILEIN = new FileHandle $filename;
+        my $scriptNamePrint = $0 eq '-e' ? "" : "$0: ";
+        my $filenamePrint = $filename eq '-' ?
+            "file '-'" : $filename;
+        if( !defined $CIFParser::FILEIN ) {
+            print STDERR $scriptNamePrint;
+            print STDERR $filenamePrint;
+            print STDERR ": Unable to open file '"
+                . $filenamePrint
+                . "' for reading: "
+                . $!
+                . ".\n";
+            return 1;
+        }
     }
 
     $| = 1;
