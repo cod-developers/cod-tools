@@ -852,7 +852,7 @@ sub Run
 
     if( ref $options eq "CODE" ) {
 	$self->{reporter} = $options; # old syntax,
-	                              # $reporter ref passed as 3rd arg.
+        # $reporter ref passed as 3rd arg.
     } else {
 	if( defined $reporter ) {
 	    $self->{reporter} = $reporter;
@@ -867,50 +867,50 @@ sub Run
 	$self->{USER}{OPTIONS} = $options;
     }
 
-	$filename = "-" unless $filename;
+    $filename = "-" unless $filename;
 
-	$self->{USER}{FILENAME} = $filename;
-	$self->{USER}->{CIFfile} = undef;
+    $self->{USER}{FILENAME} = $filename;
+    $self->{USER}->{CIFfile} = undef;
 
-	$CIFParser::FILEIN = new FileHandle $filename;
+    $CIFParser::FILEIN = new FileHandle $filename;
     my $scriptNamePrint = $0 eq '-e' ? "" : "$0: ";
     my $filenamePrint = $filename eq '-' ?
         "file '-'" : $filename;
-	if( !defined $CIFParser::FILEIN ) {
+    if( !defined $CIFParser::FILEIN ) {
         print STDERR $scriptNamePrint;
         print STDERR $filenamePrint;
-		print STDERR ": Unable to open file '"
-		                . $filenamePrint
-		                . "' for reading: "
-		                . $!
-		                . ".\n";
-		return 1;
-	}
+        print STDERR ": Unable to open file '"
+            . $filenamePrint
+            . "' for reading: "
+            . $!
+            . ".\n";
+        return 1;
+    }
 
-	$| = 1;
-	if( $CIFParser::debug >= 2 && $CIFParser::debug < 3)
-	{
-		$self->YYParse( yylex => \&_Lexer,
-				yyerror => \&_Error,
-				yydebug => 0x05 );
-	} else {
-		$self->YYParse( yylex => \&_Lexer, yyerror => \&_Error );
-	}
-	if( $self->YYNberr() == 0 )
-	{
-		if( $CIFParser::debug >= 1 && $CIFParser::debug < 3)
-		{
-			print "File syntax is CORRECT!\n";
-		}
-		undef $CIFParser::FILEIN;
-	} else {
-		if( $CIFParser::debug >= 1 && $CIFParser::debug < 3)
-		{
-			print "Syntax check failed.\n";
-		}
-		undef $CIFParser::FILEIN;
-	}
-	return $self->{USER}->{CIFfile};
+    $| = 1;
+    if( $CIFParser::debug >= 2 && $CIFParser::debug < 3)
+    {
+        $self->YYParse( yylex => \&_Lexer,
+                        yyerror => \&_Error,
+                        yydebug => 0x05 );
+    } else {
+        $self->YYParse( yylex => \&_Lexer, yyerror => \&_Error );
+    }
+    if( $self->YYNberr() == 0 )
+    {
+        if( $CIFParser::debug >= 1 && $CIFParser::debug < 3)
+        {
+            print "File syntax is CORRECT!\n";
+        }
+        undef $CIFParser::FILEIN;
+    } else {
+        if( $CIFParser::debug >= 1 && $CIFParser::debug < 3)
+        {
+            print "Syntax check failed.\n";
+        }
+        undef $CIFParser::FILEIN;
+    }
+    return $self->{USER}->{CIFfile};
 }
 
 return 1;
