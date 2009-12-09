@@ -17,6 +17,7 @@ eval 'exec perl -x $0 ${1+"$@"}'
 use strict;
 use CIFParser;
 use CIFTagPrint;
+use CIFTagCanonicalNames;
 use SOptions;
 use SUsage;
 
@@ -112,22 +113,24 @@ for my $filename (@ARGV) {
     }
 
     for my $dataset (@data) {
+        canonicalize_names( $dataset );
         # Fix numeric tags:
         for my $tag (@{$dataset->{tags}}) {
             ## print STDERR ">>> $tag\n";
-            if( exists $dictionary{$tag} &&
-                $dictionary{$tag}{values}{_type}[0] eq "numb" ) {
-                ## print STDERR ">>> tag '$tag' is found to be numeric\n";
-                foreach my $value (@{$dataset->{values}{$tag}}) {
+            my $key = lc($tag);
+            if( exists $dictionary{$key} &&
+                $dictionary{$key}{values}{_type}[0] eq "numb" ) {
+                ## print STDERR ">>> tag '$key' is found to be numeric\n";
+                foreach my $value (@{$dataset->{values}{$key}}) {
                     if( $value eq '.' || $value eq '?' ) {
                         next;
                     }
                     if( $value !~ /^$number(\($integer\))?$/ ) {
-                        ## print ">>> numb tag '$tag' has value '$value'\n";
+                        ## print ">>> numb tag '$key' has value '$value'\n";
                         my $newval;
                         eval {
                             $newval = eval $value;
-                            ## print STDERR ">>> new val '$newval' for '$tag'\n";
+                            ## print STDERR ">>> new val '$newval' for '$key'\n";
                         };
                         if( !defined $newval ) {
                             warn( "error evaluating numeric value '$value'" );
