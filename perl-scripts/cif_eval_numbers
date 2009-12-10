@@ -21,6 +21,7 @@ use CIFTagCanonicalNames;
 use SOptions;
 use SUsage;
 
+my $tags_to_fix;
 my $dictionary_file;
 my $fix_errors = 0;
 my $debug = 0;
@@ -43,6 +44,8 @@ my $debug = 0;
 @ARGV = getOptions( 
     "-d,--dictionary" => \$dictionary_file,
 
+    "-t,--tags-to-fix" => \$tags_to_fix,
+
     "--debug"    => sub{ $debug = 1; },
     "--no-debug" => sub{ $debug = 0; },
 
@@ -58,30 +61,32 @@ my $dictionary;
 if( defined $dictionary_file ) {
     my $parser = new CIFParser;
     $dictionary = $parser->Run($dictionary_file);
-} else {
+} elsif( !$tags_to_fix ) {
     my $parser = new CIFParser;
     $dictionary = $parser->Run($dictionary_file, {filehandle => \*DATA});
 }
 
-my %dictionary;
+my %tags_to_fix;
 
-if( defined $dictionary ) {
-    %dictionary = map {
-        if( defined $_->{values}{_name} ) {
-            my @key_val;
-            for my $key (@{$_->{values}{_name}}) {
-                push( @key_val, (lc($key), $_) ) ;
+if( $tags_to_fix ) {
+    %tags_to_fix = map { (lc($_), $_) } split( ',|\s+', $tags_to_fix );
+}
+
+if( $dictionary ) {
+    foreach my $entry (@{$dictionary}) {
+        if( exists $entry->{values}{_type} &&
+            $entry->{values}{_type}[0] eq "numb" ) {
+            for my $tag_name (@{$entry->{values}{_name}}) {
+                my $key = lc($tag_name);
+                $tags_to_fix{$key} = $tag_name;
             }
-            @key_val
-        } else {
-            ()
         }
-    } @{$dictionary};
+    }
 }
 
 if( $debug ) {
     use Serialise;
-    serialiseRef( \%dictionary );
+    serialiseRef( \%tags_to_fix );
 }
 
 my $integer = '\d+';
@@ -118,8 +123,7 @@ for my $filename (@ARGV) {
         for my $tag (@{$dataset->{tags}}) {
             ## print STDERR ">>> $tag\n";
             my $key = lc($tag);
-            if( exists $dictionary{$key} &&
-                $dictionary{$key}{values}{_type}[0] eq "numb" ) {
+            if( exists $tags_to_fix{$key} ) {
                 ## print STDERR ">>> tag '$key' is found to be numeric\n";
                 foreach my $value (@{$dataset->{values}{$key}}) {
                     if( $value eq '.' || $value eq '?' ) {
