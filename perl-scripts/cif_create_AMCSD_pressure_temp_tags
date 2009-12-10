@@ -63,14 +63,36 @@ for my $filename (@ARGV) {
 	for my $tag ( @{$dataset->{tags}} ) {
 	    if( $values->{$tag}[0] =~
 		/((?:\w+\s+)?(?:anneal\w*|quench\w*|prepare\w*)(?:\s+\w+)?)\s+
-                 (P|T)\s*=\s*([-+0-9.E]+)\s*((?:deg(?:ree(?:s)?)?\s+)?[\w]+)/xi ) {
+                 (P|T)\s*=\s*([-+0-9.E]+)\s*((?:deg(?:ree(?:s)?)?\s+)?[\w]+)/xi
+                ) {
 		print STDERR "$0: $filename data_$dataset->{name}: ",
-		"structure marked as '$1', not taking " . 
+		"WARNING, structure marked as '$1', not taking " . 
 		    ($1 eq "P" ? "pressure" : "temperature") . 
 		    " value\n";
+                $values->{$tag}[0] =~ /((?:quench|anneal|prepare).*\d+.*)$/imx;
+                my $sample_history = $1;
 		$temperature_is_processing = 1;
-		last
-	    }
+                if( $values->{$tag}[0] =~ /T\s*=\s*([-+0-9.E]+)/ ) {
+                    $values->{_exptl_crystal_thermal_history}[0] =
+                        $sample_history;
+                } elsif( $values->{$tag}[0] =~ /P\s*=\s*([-+0-9.E]+)/) {
+                    $values->{_exptl_crystal_pressure_history}[0] =
+                        $sample_history;
+                }
+	    } else {
+                if( $values->{$tag}[0] =~ /T\s*=\s*([-+0-9.E]+)/ ||
+                    $values->{$tag}[0] !~ /([-+0-9.E]+)\s*GPa/i ||
+                    $values->{$tag}[0] =~ /synthe[sz]ized/ ) {
+                    if( $values->{$tag}[0] =~
+                        /((?:quench|anneal|heat|synthesized|synthezized)
+                          .*\d+.*)$/imx ||
+                        $values->{$tag}[0] =~
+                        /(\d+.*(?:quench|anneal).*)$/imx ) {
+                        $values->{_exptl_crystal_thermal_history}[0] =
+                            $1;
+                    }
+                }
+            }
 	}
 	for my $tag ( @{$dataset->{tags}} ) {
 	    if( $values->{$tag}[0] =~ /P\s*=\s*([-+0-9.eE]+)\s*([\w]+)/ ) {
