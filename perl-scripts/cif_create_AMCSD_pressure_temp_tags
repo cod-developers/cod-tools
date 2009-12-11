@@ -93,15 +93,15 @@ for my $filename (@ARGV) {
 		for my $units (( "(?:$temp_units|\$)", $pressure_units )) {
 		    my $value;
 		    while( $values->{$tag}[0] =~
-			/((?:^|\s)(?:cool|quench|anneal|heat|synthe[sz]ized)
+			/((?:(?:^|\s)(?:cool|quench|anneal|heat|synthe[sz]ized)
 			  .*?\s+$number+\s*$units
 			  (?:.*?\s\d+\s*$time_units)?
-			  (?:.*?(?:quench|anneal|heat|synthe[sz]ized)\w*)?
+			  (?:.*?(?:quench|anneal|heat|synthe[sz]ized)\w*$)?)
 			  |
-			  ((?:^|\s)$number\s*$units
+			  (?:(?:^|\s)$number\s*$units
 			  (?:.*\s$number\s*$time_units)?
 			  (?:.*(?:quench|anneal)\w*))$
-			  )/imsxg
+			 )/imsxg
 			) {
 			$value = defined $value ? $value . "; " . $1 : $1;
 		    }
