@@ -88,7 +88,8 @@ for my $filename (@ARGV) {
 		    '(?:one|two|three|four|five|six|seven|eight|nine|ten)';
 		my $number_or_word = "(?:$number|$number_word)";
 		my $temp_units =
-		    '(?-i:K|(?:C/h(?:our)?|[Cc]|oC|[Dd]eg(?:grees?)?\s*C))';
+		    '(?-i:(?:[KC]/h(?:our)?|[KC]\s+hr?\^-1\^|' .
+		    'K|[Cc]|oC|[Dd]eg(?:grees?)?\s*C))';
 		my $pressure_units = '(?-i:GPa|MPa|kPa|Pa|kbar|bar)';
 		my $time_units =
 		    '(?:min|m|seconds?|sec|s|hours?|h|days?|d|years?|y|weeks?)';
@@ -96,7 +97,7 @@ for my $filename (@ARGV) {
 		for my $units (( "(?:$temp_units|\$)", $pressure_units )) {
 		    my $value;
 		    while( $values->{$tag}[0] =~
-			/((?:(?:^|\s)(?:cool|quench|anneal|heat|synthe[sz]ized)
+			/((?:(?:^|\s)(?:cool|rate|quench|anneal|heat|synthe[sz]ized)
 			  .*?\s+$number_or_word+\s*$units
 			  (?:.*?\s(?:\d+|$number_word)\s*$time_units)?
 			  (?:.*?(?:quench|anneal|heat|synthe[sz]ized)\w*$)?)
