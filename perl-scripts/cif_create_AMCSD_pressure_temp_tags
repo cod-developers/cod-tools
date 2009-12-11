@@ -84,31 +84,35 @@ for my $filename (@ARGV) {
 		    '(?:[-+]?' .
 		    '(:?\d+(?:\.\d*)?|\d*\.\d+)' .
 		    '(?:[eE][-+]?\d+)?)';
-		my $temp_units = '(?-i:K|(?:[Cc]|oC|[Dd]eg(?:grees?)?\s*C))';
+		my $temp_units =
+		    '(?-i:K|(?:C/h(?:our)?|[Cc]|oC|[Dd]eg(?:grees?)?\s*C))';
 		my $pressure_units = '(?-i:GPa|MPa|kPa|Pa|kbar|bar)';
 		my $time_units =
 		    '(?:min|m|seconds?|sec|s|hours?|h|days?|d|years?|y|weeks?)';
 
 		for my $units (( "(?:$temp_units|\$)", $pressure_units )) {
-		    if( $values->{$tag}[0] =~
-			/((?:^|\s)(?:quench|anneal|heat|synthe[sz]ized)
+		    my $value;
+		    while( $values->{$tag}[0] =~
+			/((?:^|\s)(?:cool|quench|anneal|heat|synthe[sz]ized)
 			  .*?\s+$number+\s*$units
 			  (?:.*?\s\d+\s*$time_units)?
 			  (?:.*?(?:quench|anneal|heat|synthe[sz]ized)\w*)?
-			  )/imsx ||
-			$values->{$tag}[0] =~
-			/((?:^|\s)$number\s*$units
+			  |
+			  ((?:^|\s)$number\s*$units
 			  (?:.*\s$number\s*$time_units)?
-			  (?:.*(?:quench|anneal)\w*)
-			  )$/imsx
+			  (?:.*(?:quench|anneal)\w*))$
+			  )/imsxg
 			) {
+			$value = defined $value ? $value . "; " . $1 : $1;
+		    }
+		    if( defined $value ) {
 			my $key;
 			if( $units ne $pressure_units ) {
 			    $key  = "_exptl_crystal_thermal_history";
 			} else {
 			    $key  = "_exptl_crystal_pressure_history";
 			}
-			$values->{$key}[0] = $1;
+			$values->{$key}[0] = $value;
 		    }
 		}
 	    }
