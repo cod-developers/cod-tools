@@ -80,21 +80,24 @@ for my $filename (@ARGV) {
                         $sample_history;
                 }
 	    } else {
+		my $number =
+		    '(?:[-+]?\d+(?:\.\d*)?|\d*\.(?:\d+)' .
+		    '(?:[eE][-+]?\d+)?)';
 		my $temp_units = '(?:K|C|oC|deg(?:grees?)?\s*C)';
-		my $pressure_units = '(?:Pa|GPa|kPa|MPa|kbar|bar)';
+		my $pressure_units = '(?:GPa|Mpa|kPa|Pa|kbar|bar)';
 		my $time_units =
-		    '(?:m|min|s|sec|seconds?|h|hours?|d|days?|y|years?|weeks?)';
+		    '(?:min|m|seconds?|sec|s|hours?|h|d|days?|y|years?|weeks?)';
 
 		for my $units (( "(?:$temp_units|\$)", $pressure_units )) {
 		    if( $values->{$tag}[0] =~
 			/((?:^|\s)(?:quench|anneal|heat|synthe[sz]ized)
-			  .*\s+\d+\s*$units
+			  .*\s+$number+\s*$units
 			  (?:.*\s\d+\s*$time_units)?
 			  (?:.*(?:quench|anneal|heat|synthe[sz]ized)\w*)?
 			  )/imsx ||
 			$values->{$tag}[0] =~
-			/((?:^|\s)\d+\s*$units
-			  (?:.*\s\d+\s*$time_units)?
+			/((?:^|\s)$number\s*$units
+			  (?:.*\s$number\s*$time_units)?
 			  (?:.*(?:quench|anneal)\w*)
 			  )$/imsx
 			) {
