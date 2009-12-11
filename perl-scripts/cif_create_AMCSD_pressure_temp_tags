@@ -71,6 +71,10 @@ for my $filename (@ARGV) {
 		    " value\n";
                 $values->{$tag}[0] =~ /((?:quench|anneal|prepare).*\d+.*)$/imx;
                 my $sample_history = $1;
+		$sample_history =~ s/\n/ /g;
+		$sample_history =~ s/\s+/ /g;
+		$sample_history =~ s/^\s+|\s+$//g;
+
 		$temperature_is_processing = 1;
                 if( $values->{$tag}[0] =~ /T\s*=\s*([-+0-9.E]+)/ ) {
                     $values->{_exptl_crystal_thermal_history}[0] =
@@ -116,17 +120,14 @@ for my $filename (@ARGV) {
 			} else {
 			    $key  = "_exptl_crystal_pressure_history";
 			}
-			$values->{$key}[0] = $value;
+			if( !exists $values->{$key} ) {
+			    $values->{$key}[0] = $value;
+			    $values->{$key}[0] =~ s/\n/ /g;
+			    $values->{$key}[0] =~ s/\s+/ /g;
+			    $values->{$key}[0] =~ s/^\s+|\s+$//g;
+			}
 		    }
 		}
-	    }
-	}
-	for my $tag (qw( _exptl_crystal_thermal_history
-		      _exptl_crystal_pressure_history )) {
-	    if( exists$values->{$tag} ) {
-		$values->{$tag}[0] =~ s/\n/ /g;
-		$values->{$tag}[0] =~ s/\s+/ /g;
-		$values->{$tag}[0] =~ s/^\s+|\s+$//g;
 	    }
 	}
 	for my $tag ( @{$dataset->{tags}} ) {
