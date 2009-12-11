@@ -85,31 +85,28 @@ for my $filename (@ARGV) {
 		my $time_units =
 		    '(?:m|min|s|sec|seconds?|h|hours?|d|days?|y|years?|weeks?)';
 
-                if( $values->{$tag}[0] =~
-		    /((?:^|\s)(?:quench|anneal|heat|synthe[sz]ized)
-		      .*\s+\d+\s*(?:$temp_units|$)
-		      (?:.*\s\d+\s*$time_units)?
-		      (?:.*(?:quench|anneal|heat|synthe[sz]ized)\w*)?
-		     )/imsx ||
-		    $values->{$tag}[0] =~
-		    /((?:^|\s)\d+\s*$temp_units
-		      (?:.*\s\d+\s*$time_units)?
-		      (?:.*(?:quench|anneal)\w*)
-                     )$/imsx
-		    ) {
-		    $values->{_exptl_crystal_thermal_history}[0] = $1;
-                }
-                if( $values->{$tag}[0] =~
-		    /((?:^|\s)(?:quench|anneal|heat|synthe[sz]ized)
-		      .*\s+\d+\s*$pressure_units
-		      (?:.*\s\d+\s*$time_units)?
-		      )/imsx ||
-		    $values->{$tag}[0] =~
-		    /((?:^|\s)\d+\s*$pressure_units\s+.*
-		      (?:quench|anneal)\w*)$/imsx
-		    ) {
-		    $values->{_exptl_crystal_pressure_history}[0] = $1;
-                }
+		for my $units (( "(?:$temp_units|\$)", $pressure_units )) {
+		    if( $values->{$tag}[0] =~
+			/((?:^|\s)(?:quench|anneal|heat|synthe[sz]ized)
+			  .*\s+\d+\s*$units
+			  (?:.*\s\d+\s*$time_units)?
+			  (?:.*(?:quench|anneal|heat|synthe[sz]ized)\w*)?
+			  )/imsx ||
+			$values->{$tag}[0] =~
+			/((?:^|\s)\d+\s*$units
+			  (?:.*\s\d+\s*$time_units)?
+			  (?:.*(?:quench|anneal)\w*)
+			  )$/imsx
+			) {
+			my $key;
+			if( $units ne $pressure_units ) {
+			    $key  = "_exptl_crystal_thermal_history";
+			} else {
+			    $key  = "_exptl_crystal_pressure_history";
+			}
+			$values->{$key}[0] = $1;
+		    }
+		}
 	    }
 	}
 	for my $tag (qw( _exptl_crystal_thermal_history
