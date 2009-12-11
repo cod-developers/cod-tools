@@ -39,6 +39,7 @@ _[local]_cod_related_suboptimal_struct
 _[local]_cod_chemical_formula_sum_orig
 _[local]_cod_chemical_formula_moiety_orig
 _[local]_cod_citation_special_details
+_[local]_cod_text
 
 _cod_duplicate_entry
 _cod_superseeded_by
@@ -62,6 +63,7 @@ _cod_related_suboptimal_struct
 _cod_chemical_formula_sum_orig
 _cod_chemical_formula_moiety_orig
 _cod_citation_special_details
+_cod_text
 );
 
 1;
