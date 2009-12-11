@@ -83,13 +83,19 @@ for my $filename (@ARGV) {
                 if( $values->{$tag}[0] =~ /T\s*=\s*([-+0-9.E]+)/ ||
                     $values->{$tag}[0] !~ /([-+0-9.E]+)\s*GPa/i ||
                     $values->{$tag}[0] =~ /synthe[sz]ized/ ) {
-                    if( $values->{$tag}[0] =~
+		    if( $values->{$tag}[0] =~
                         /((?:quench|anneal|heat|synthesized|synthezized)
-                          .*\d+.*)$/imx ||
+                          .*\s+\d+[\w\s,\.]*)$/imsx ||
                         $values->{$tag}[0] =~
-                        /(\d+.*(?:quench|anneal).*)$/imx ) {
+                        /((?:^|\s)\d+\s+.*(?:quench|anneal)[\s\w]*)$/imsx ) {
                         $values->{_exptl_crystal_thermal_history}[0] =
                             $1;
+			$values->{_exptl_crystal_thermal_history}[0] =~
+			    s/\n/ /g;
+			$values->{_exptl_crystal_thermal_history}[0] =~
+			    s/\s+/ /g;
+			$values->{_exptl_crystal_thermal_history}[0] =~
+			    s/^\s+|\s+$//g;
                     }
                 }
             }
