@@ -135,6 +135,9 @@ my $cif_header_file; # Comments from the beginning of this file wil be
 #** --dont-exclude-zero-occupancies, --no-exclude-zero-occupancies
 #**                    Use all atoms regardless of their occupancy.
 #**
+#** --debug            Print some human-readable debug output
+#** --no-debug         Suppress any debug output (default)
+#**
 #** --format "%8.6f"   Use the specified format for output coordinate printout.
 #**
 #** --audit            print audit information to the generated CIF file
@@ -171,6 +174,9 @@ my $cif_header_file; # Comments from the beginning of this file wil be
     "--dont-remove-duplicate-molecules" => sub { $uniquify_molecules = 0; },
 
     "--bump-distance-factor" => \$bump_distance_factor,
+
+    "--debug"    => sub { $debug = 1 },
+    "--no-debug" => sub { $debug = 0 },
 
     "--format" => \$format,
 
@@ -2004,7 +2010,7 @@ sub find_molecule($$$$$$$$$$)
 		    local $" = ' ';
 		    print ">>> checking $atom_in_unit_cell_label " .
 			"(@{$atom_in_unit_cell_coords_ortho}) vs. " .
-			"$label (@{$coords_ortho})\n";
+			"$label (@{$coords_ortho}), d = $dist\n";
 		} if $debug;
 
                 my $is_bump = test_bump( $atom_properties,
