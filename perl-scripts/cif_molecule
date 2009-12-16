@@ -53,6 +53,8 @@ no warnings 'recursion';
 
 my $Id = '$Id$';
 
+my $debug;
+
 my $sort_molecules = 1; # A flag indicating whether molecules should
                         # be sorted in the output (descending by atom
                         # number)
@@ -1091,6 +1093,7 @@ sub test_bond
 sub test_bump
 {
     my ( $atom_properties, $chemical_type1, $chemical_type2,
+	 $atom1_label, $atom2_label,
          $dist, $bump_factor ) = @_;
 
     my $cov_radius1 = $atom_properties->{$chemical_type1}->{covalent_radius};
@@ -1098,7 +1101,7 @@ sub test_bump
 
     if( $dist < $bump_factor * ($cov_radius1 + $cov_radius2) &&
         ($dist > $special_position_cutoff ||
-         $chemical_type1 ne $chemical_type2)) {
+         $atom1_label ne $atom2_label)) {
         return 1;
     }
 
@@ -1997,8 +2000,17 @@ sub find_molecule($$$$$$$$$$)
                 my $dist = distance( $atom_in_unit_cell_coords_ortho,
                                      $coords_ortho );
 
+		do {
+		    local $" = ' ';
+		    print ">>> checking $atom_in_unit_cell_label " .
+			"(@{$atom_in_unit_cell_coords_ortho}) vs. " .
+			"$label (@{$coords_ortho})\n";
+		} if $debug;
+
                 my $is_bump = test_bump( $atom_properties,
                                          $atom_in_unit_cell_type, $type,
+					 $atom_in_unit_cell_label_basename,
+					 $label_basename,
                                          $dist, $bump_distance_factor );
 
                 if( $is_bump ) {
@@ -2036,6 +2048,8 @@ sub find_molecule($$$$$$$$$$)
             }
         }
     }}}
+
+    print ">>> Finished checks;\n" if $debug;
 
     $used_atoms->{$current_label} = $current_label;
 
