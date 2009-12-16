@@ -2066,8 +2066,14 @@ sub find_in_unit_cell($$$)
                (abs($$atom_coords_fract[1] -
                     ${$sym_atom->{coordinates_fract}}[1]) < $eps) &&
                (abs($$atom_coords_fract[2] -
-                    ${$sym_atom->{coordinates_fract}}[2]) < $eps))
+                    ${$sym_atom->{coordinates_fract}}[2]) < $eps) &&
+	       $sym_atom->{label_basename} eq $current_atom->{label_basename} )
             {
+		if( $sym_atom->{label_basename} ne
+		    $current_atom->{label_basename} ) {
+		    warn( "atom $sym_atom->{label_basename} found as an " .
+			  "original for $current_atom->{label_basename}" );
+		}
                 ## $current_atom->{atom_in_a_unit_cell} = $sym_atom;
                 return $sym_atom;
             }
