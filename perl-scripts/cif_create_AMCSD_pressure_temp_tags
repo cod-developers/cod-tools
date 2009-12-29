@@ -113,7 +113,12 @@ for my $filename (@ARGV) {
 			  (?:.*(?:quench|anneal)\w*))$
 			 )/imsxg
 			) {
-			$value = defined $value ? $value . "; " . $1 : $1;
+			my $newval = $1;
+			$newval =~ s/($processing_words\w*)
+			             (.+\1)
+			             /$1/ixsm;
+			$value = defined $value ?
+			    $value . "; " . $newval : $newval;
 		    }
 		    if( defined $value ) {
 			my $key;
