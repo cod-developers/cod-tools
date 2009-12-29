@@ -1,0 +1,20 @@
+#! /bin/sh
+
+# grep a value of a CIF-like tag; take into account values that are on
+# the next line an that may span several lines
+
+PATTERN="$1"
+shift
+
+awk "/${PATTERN}/ {
+        print
+        if( NF == 1 ) {
+            getline; print
+        }
+        if( match( \$0, \"^;\" )) {
+            getline; print;
+            while( !match( \$0, \"^;\" )) {
+                getline; print
+            }
+        }
+}" ${1+"$@"}
