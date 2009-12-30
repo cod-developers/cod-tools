@@ -162,14 +162,14 @@ for my $filename (@ARGV) {
 		} else {
 		    if( $values->{_diffrn_ambient_pressure}[0] !=
 			$pressure_kPa ) {
-			print STDERR "$0: $filename $dataset->{name}:" .
+			print STDERR "$0: $filename $dataset->{name}: " .
 			    "pressure given in '$tag' value, interpreted as " .
-			    " $pressure $units" .
-			    ($units == "kPa" ? "" : "($pressure_kPa kPa)") .
+			    " $pressure $units " .
+			    ($units eq "kPa" ? "" : "($pressure_kPa kPa) ") .
 			    "is not equal to the value in the " .
 			    "_diffrn_ambient_pressure tag (" .
 			    $values->{_diffrn_ambient_pressure}[0] .
-			    " GPa)";
+			    " GPa)\n";
 		    }
 		}
 	    }
@@ -192,15 +192,16 @@ for my $filename (@ARGV) {
 		    print STDERR ">>> $filename: T = " .
 			"$temperature, $units, $shift\n";
 		} else {
-		    if( $values->{_diffrn_ambient_temperature}[0] != $temp_K ) {
-			print STDERR "$0: $filename $dataset->{name}:" .
+		    if( abs($values->{_diffrn_ambient_temperature}[0] - $temp_K)
+			>= 0.001 ) {
+			print STDERR "$0: $filename $dataset->{name}: " .
 			    "temperature given in '$tag' value, " .
-			    "interpreted as $temperature $units" .
-			    ($units == "K" ? "" : "($temp_K K)") .
+			    "interpreted as $temperature $units " .
+			    ($units eq "K" ? "" : "($temp_K K) ") .
 			    "is not equal to the value in the " .
 			    "_diffrn_ambient_temperature tag (" .
 			    $values->{_diffrn_ambient_temperature}[0] .
-			    " K)";
+			    " K)\n";
 		    }
 		}
 	    }
