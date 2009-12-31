@@ -96,7 +96,7 @@ for my $filename (@ARGV) {
 		    'K|[Cc]|oC|\(C|[Dd]eg(?:rees?)?\s*C))';
 		my $pressure_units = '(?-i:GPa|MPa|kPa|Pa|kbar|bar)';
 		my $time_units =
-		    '(?:min|months?|m|seconds?|sec|s|hours?|h|days?|d|' .
+		    '(?:min|months?|m|seconds?|sec|s|hours?|hrs?|h|days?|d|' .
 		    'years?|y|weeks?|[KC]/h(?:our)?|[KC]\s+hr?\^-1\^)';
 		my $processing_words =
 		    '(?:initially\s|after\s|un)?' .
@@ -114,7 +114,7 @@ for my $filename (@ARGV) {
 			  (?:(?:^|\s)$number_or_word\s*$units
 			  (?:.*\s$number_or_word\s*$time_units)?
 			  (?:.*(?:quench|anneal)\w*))$
-			 )/imsxg
+			 )(?:\W|$)/imsxg
 			) {
 			my $newval = $1;
 			$newval =~ s/($processing_words(?:ed|i?ng))
