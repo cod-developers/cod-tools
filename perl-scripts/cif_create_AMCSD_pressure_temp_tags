@@ -69,75 +69,62 @@ for my $filename (@ARGV) {
 		"WARNING, structure marked as '$1', not taking " . 
 		    ($1 eq "P" ? "pressure" : "temperature") . 
 		    " value\n";
-                $values->{$tag}[0] =~ /((?:quench|anneal|prepare).*\d+.*)$/imx;
-                my $sample_history = $1;
-		$sample_history =~ s/\n/ /g;
-		$sample_history =~ s/\s+/ /g;
-		$sample_history =~ s/^\s+|\s+$//g;
-
 		$temperature_is_processing = 1;
-                if( $values->{$tag}[0] =~ /T\s*=\s*([-+0-9.E]+)/ ) {
-                    $values->{_exptl_crystal_thermal_history}[0] =
-                        $sample_history;
-                } elsif( $values->{$tag}[0] =~ /P\s*=\s*([-+0-9.E]+)/) {
-                    $values->{_exptl_crystal_pressure_history}[0] =
-                        $sample_history;
-                }
-	    } else {
-		my $number =
-		    '(?:[-+]?' .
-		    '(:?\d+(?:\.\d*)?|\.\d+)' .
-		    '(?:[eE][-+]?\d+)?)';
-		my $number_word =
-		    '(?:one|two|three|four|five|six|seven|eight|nine|ten)';
-		my $number_or_word = "(?:$number|$number_word\\s)";
-		my $temp_units =
-		    '(?-i:(?:[KC]/h(?:our)?|[KC]\s+hr?\^-1\^|' .
-		    'K|[Cc]|oC|\(C|[Dd]eg(?:rees?)?\s*C))';
-		my $pressure_units = '(?-i:GPa|MPa|kPa|Pa|kbar|bar)';
-		my $time_units =
-		    '(?:min|months?|m|seconds?|sec|s|hours?|hrs?|h|days?|d|' .
-		    'years?|y|weeks?|[KC]/h(?:our)?|[KC]\s+hr?\^-1\^)';
-		my $processing_words =
-		    '(?:initially\s|after\s|un)?' .
-		    '(?:cool|rate|quench|anneal|heat[ie]|heat-treat|synthe[sz]ized|'.
-		    'isoth?ermally\s+order)';
+	    }
 
-		for my $units (( $temp_units, $pressure_units )) {
-		    my $value;
-		    while( $values->{$tag}[0] =~
-			/((?:(?:^|\s)$processing_words
+	    my $number =
+		'(?:[-+]?' .
+		'(:?\d+(?:\.\d*)?|\.\d+)' .
+		'(?:[eE][-+]?\d+)?)';
+	    my $number_word =
+		'(?:one|two|three|four|five|six|seven|eight|nine|ten)';
+	    my $number_or_word = "(?:$number|$number_word\\s)";
+	    my $temp_units =
+		'(?-i:(?:[KC]/h(?:our)?|[KC]\s+hr?\^-1\^|' .
+		'K|[Cc]|oC|\(C|[Dd]eg(?:rees?)?\s*C))';
+	    my $pressure_units = '(?-i:GPa|MPa|kPa|Pa|kbar|bar)';
+	    my $time_units =
+		'(?:min|months?|m|seconds?|sec|s|hours?|hrs?|h|days?|d|' .
+		'years?|y|weeks?|[KC]/h(?:our)?|[KC]\s+hr?\^-1\^)';
+	    my $processing_words =
+		'(?:initially\s|after\s|un)?' .
+		'(?:cool|rate|quench|anneal|heat[ie]|heat-treat|synthe[sz]ized|'.
+		'isoth?ermally\s+order)';
+
+	    for my $units (( $temp_units, $pressure_units )) {
+		my $value;
+		while( $values->{$tag}[0] =~
+		       /((?:(?:^|\s)$processing_words
 			  .*?\s+$number_or_word+\s*$units
 			  (?:[^\d]*?\s$number_or_word\s*$time_units)?
 			  (?:.*?(?:quench|anneal|heat|synthe[sz]ized)\w*$)?)
 			  |
 			  (?:(?:^|\s)$number_or_word\s*$units
-			  (?:.*\s$number_or_word\s*$time_units)?
-			  (?:.*(?:quench|anneal)\w*))$
-			 )(?:\W|$)/imsxg
-			) {
-			my $newval = $1;
-			$newval =~ s/($processing_words(?:ed|i?ng))
-			             (.+\1)
-			             /$1/ixsm;
-			$value = defined $value ?
-			    $value . "; " . $newval : $newval;
-		    }
-		    if( defined $value ) {
-			my $key;
-			if( $units ne $pressure_units ) {
-			    $key  = "_exptl_crystal_thermal_history";
-			} else {
-			    $key  = "_exptl_crystal_pressure_history";
-			}
-			if( !exists $values->{$key} ) {
-			    $values->{$key}[0] = $value;
-			    $values->{$key}[0] =~ s/\n/ /g;
-			    $values->{$key}[0] =~ s/\s+/ /g;
-			    $values->{$key}[0] =~ s/^\s+|\s+$//g;
-			}
-		    }
+			   (?:.*\s$number_or_word\s*$time_units)?
+			   (?:.*(?:quench|anneal)\w*))$
+			  )(?:\W|$)/imsxg
+			    ) {
+			      my $newval = $1;
+			      $newval =~ s/($processing_words(?:ed|i?ng))
+				  (.+\1)
+				  /$1/ixsm;
+			      $value = defined $value ?
+				  $value . "; " . $newval : $newval;
 		}
+		if( defined $value ) {
+		    my $key;
+		    if( $units ne $pressure_units ) {
+			$key  = "_exptl_crystal_thermal_history";
+		    } else {
+			$key  = "_exptl_crystal_pressure_history";
+		    }
+		    if( !exists $values->{$key} ) {
+			$values->{$key}[0] = $value;
+			$values->{$key}[0] =~ s/\n/ /g;
+			$values->{$key}[0] =~ s/\s+/ /g;
+			$values->{$key}[0] =~ s/^\s+|\s+$//g;
+		    }
+	        }
 	    }
 	}
 	for my $tag ( @{$dataset->{tags}} ) {
