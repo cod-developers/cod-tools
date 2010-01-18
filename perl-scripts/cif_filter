@@ -587,9 +587,13 @@ for my $dataset (@data) {
 	if( !%symop_lookup_table ) {
 	    %symop_lookup_table = mkhash();
 	}
-	if( exists $datablok->{"_symmetry_equiv_pos_as_xyz"} ) {
+	if( exists $datablok->{"_symmetry_equiv_pos_as_xyz"} ||
+            exists $datablok->{"_space_group_symop_operation_xyz"} ) {
 	    my $has_errors = 0;
-	    my @symops = @{$datablok->{"_symmetry_equiv_pos_as_xyz"}};
+	    my @symops = @{$datablok->{"_space_group_symop_operation_xyz"}};
+            if( !@symops ) {
+                @symops = @{$datablok->{"_symmetry_equiv_pos_as_xyz"}}
+            }
 	    for my $symop (@symops) {
 		my $error = SymopParse::check_symmetry_operator( $symop );
 		if( $error ) {
