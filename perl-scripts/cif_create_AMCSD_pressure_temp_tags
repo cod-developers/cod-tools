@@ -92,6 +92,8 @@ for my $filename (@ARGV) {
 		'(?:un)?' .
 		'(?:cool|rate|quench|anneal|heat[ie]|heat-treat' .
 		'|synthe[sz]ized|prepare|isoth?ermally\s+order)';
+	    my $synthesis_words =
+		'(?:prepar|synthe[sz]iz)';
 
 	    for my $units (( $temp_units, $pressure_units )) {
 		my $value;
@@ -112,7 +114,7 @@ for my $filename (@ARGV) {
 				  ($processing_words)(?:ed|i?ng)
 				  (.+\1)
 				  /$1/ixsm;
-			      $newval =~ s/(prepar(?:ed|i?ng))
+			      $newval =~ s/($synthesis_words(?:ed|i?ng)\s+(?:by|in))
 				  .+($processing_words)
 				  /$2/ixsm;
 			      $value = defined $value ?
