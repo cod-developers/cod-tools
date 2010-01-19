@@ -97,7 +97,8 @@ for my $filename (@ARGV) {
 
 	    for my $units (( $temp_units, $pressure_units )) {
 		my $value;
-		while( $values->{$tag}[0] =~
+		for my $tag_value (split( '(?<![\d\s]min)\.\s', $values->{$tag}[0] )) {
+		while( $tag_value =~
 		       /((?:
 			  (?:^|\s)(?:$initial_words\s+)?$processing_words
 			  .*?\s+$number_or_word+\s*$units
@@ -120,6 +121,7 @@ for my $filename (@ARGV) {
 			      $value = defined $value ?
 				  $value . "; " . $newval : $newval;
 		}
+		}
 		if( defined $value ) {
 		    my $key;
 		    if( $units ne $pressure_units ) {
@@ -127,11 +129,11 @@ for my $filename (@ARGV) {
 		    } else {
 			$key  = "_exptl_crystal_pressure_history";
 		    }
+		    $value =~ s/\n/ /g;
+		    $value =~ s/\s+/ /g;
+		    $value =~ s/^\s+|\s+$//g;
 		    if( !exists $values->{$key} ) {
 			$values->{$key}[0] = $value;
-			$values->{$key}[0] =~ s/\n/ /g;
-			$values->{$key}[0] =~ s/\s+/ /g;
-			$values->{$key}[0] =~ s/^\s+|\s+$//g;
 		    }
 	        }
 	    }
