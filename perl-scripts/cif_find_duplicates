@@ -280,12 +280,22 @@ sub cif_fill_data
                           _diffrn_ambient_pressure_lt
                           _diffrn.ambient_pressure_lt
                           _exptl_crystal_pressure_history
+                          _exptl_crystal_thermal_history
                           _pd_prep_pressure )) {
-	    my $val = $values->{$key}[0];
-	    if( defined $val ) {
-		$structures{$id}{temperature}{$key} = $val;
-		$structures{$id}{temperature}{$key} =~ s/^\s*'\s*|\s*'\s*$//g;
-	    }
+            if( exists $values->{$key} ) {
+                my $val = $values->{$key}[0];
+                if( defined $val ) {
+                    my $parameter;
+                    if( $key =~ /pressure/ ) {
+                        $parameter = "pressure";
+                    } else {
+                        $parameter = "temperature";
+                    }
+                    $structures{$id}{$parameter}{$key} = $val;
+                    $structures{$id}{$parameter}{$key}
+                        =~ s/^\s*'\s*|\s*'\s*$//g;
+                }
+            }
 	}
 
 	my @journal_keys =
