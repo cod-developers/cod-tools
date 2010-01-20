@@ -390,8 +390,11 @@ sub conditions_are_the_same
 		exists $entry2->{$parameter}{$tag} ) {
 		if( $entry1->{$parameter}{$tag} =~ /^${number}$/o ||
 		    $entry2->{$parameter}{$tag} =~ /^${number}$/o ) {
-		    if( $entry1->{$parameter}{$tag} !=
-			$entry2->{$parameter}{$tag} ) {
+                    my $val1 = $entry1->{$parameter}{$tag};
+                    my $val2 = $entry2->{$parameter}{$tag};
+                    $val1 =~ s/\(\d+\)$//;
+                    $val2 =~ s/\(\d+\)$//;
+		    if( $val1 != $val2 ) {
 			return 0;
 		    }
 		} else {
