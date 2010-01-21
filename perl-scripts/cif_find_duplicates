@@ -10,9 +10,6 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #------------------------------------------------------------------------------
 #*
 #  Find COD numbers for the .cif files in given directories of file lists.
-#
-#  Usage:
-#      cif_find_duplicates my-cif-dir1/ my-cif-dir2/files*.cif  COD-cif-dir/ 
 #**
 
 use strict;
@@ -20,8 +17,54 @@ use File::Basename;
 use CIFParser;
 use Formulae::AdHocParser;
 use CIFData::CIFCellContents;
+use SOptions;
+use SUsage;
 
 my $check_bibliography = 1;
+my $check_sample_history = 0;
+
+#*Usage:
+#*     cif_find_duplicates [options] my-cif-dir1/ my-cif-dir2/files*.cif COD-cif-dir/
+#*
+#*Options:
+#*     --check-bibliography
+#*        Only CIFs that have different bibliography data are declared different
+#*        if all other parameters match (default). CIFs with missing bibliographies
+#*        are assumed to have matching bibliographies.
+#*
+#*     --dont-check-bibliography, --no-check-bibliography
+#*        Ignore bibliographic data of all CIFs; thus even files with different
+#*        bibliographies will be regared the same if their cells, chemical
+#*        formulae and measurement conditions match.
+#*
+#*     --check-sample-history
+#*        Only CIFs that have different sample history data (as recorded
+#*        in the _exptl_crystal_thermal_history and _exptl_crystal_pressure_history
+#*        tags) are declared different if all other parameters match.
+#*
+#*     --dont-check-sample-history, --no-check-sample-history,
+#*     --disregard-sample-history
+#*        Ignore sample history of all CIFs; thus even files with different
+#*        sample histories will be regared the same if their cells,
+#*        chemical formulae and measurement conditions match.
+#*        (default)
+#*
+#*     --help  print a short usage message (this message) and exit.
+#**
+
+@ARGV = getOptions( 
+    "--check-bibliography"      => sub { $check_bibliography = 1; },
+    "--dont-check-bibliography" => sub { $check_bibliography = 0; },
+    "--no-check-bibliography"   => sub { $check_bibliography = 0; },
+
+    "--check-sample-history"      => sub { $check_sample_history = 1; },
+    "--dont-check-sample-history" => sub { $check_sample_history = 0; },
+    "--no-check-sample-history"   => sub { $check_sample_history = 0; },
+    "--disregard-sample-history"  => sub { $check_sample_history = 0; },
+
+    "--help,--usage" => sub { SUsage::usage; exit },
+);
+
 
 my $max_cell_length_diff = 0.5; # Angstroems
 my $max_cell_angle_diff  = 1.2; # degrees
@@ -286,7 +329,9 @@ sub cif_fill_data
                 my $val = $values->{$key}[0];
                 if( defined $val ) {
                     my $parameter;
-                    if( $key =~ /pressure/ ) {
+                    if( $key =~ /history/ ) {
+                        $parameter = "history";
+                    } elsif( $key =~ /pressure/ ) {
                         $parameter = "pressure";
                     } else {
                         $parameter = "temperature";
@@ -381,7 +426,12 @@ sub conditions_are_the_same
 
     my $number = '[-+]?([0-9]+(\.[0-9]*)?|\.[0-9]+)([Ee][-+]?[0-9]+)?';
 
-    for my $parameter ("temperature", "pressure" ) {
+    my @parameters = qw( temperature pressure );
+    if( $check_sample_history ) {
+        push( @parameters, "history" );
+    }
+
+    for my $parameter ( @parameters ) {
 
 	my %tags = map {($_,$_)} ( keys %{$entry1->{$parameter}},
 				   keys %{$entry2->{$parameter}} );
