@@ -20,6 +20,9 @@ use CIFData::CIFCellContents;
 use SOptions;
 use SUsage;
 
+my $max_cell_length_diff = 0.5; # Angstroems
+my $max_cell_angle_diff  = 1.2; # degrees
+
 my $check_bibliography = 1;
 my $check_sample_history = 0;
 
@@ -27,6 +30,14 @@ my $check_sample_history = 0;
 #*     cif_find_duplicates [options] my-cif-dir1/ my-cif-dir2/files*.cif COD-cif-dir/
 #*
 #*Options:
+#*     --max-cell-difference 0.5
+#*        Maximum difference of unit cell lengths allowed for 
+#*        entries regarded as the same, in Angstroems.
+#*
+#*     --max-cell-difference 1.2
+#*        Maximum difference of unit cell angles allowed for
+#*        entries regarded as the same, in Angstroems.
+#*
 #*     --check-bibliography
 #*        Only CIFs that have different bibliography data are declared different
 #*        if all other parameters match (default). CIFs with missing bibliographies
@@ -53,6 +64,9 @@ my $check_sample_history = 0;
 #**
 
 @ARGV = getOptions( 
+    "--max-cell-length-difference" => \$max_cell_length_diff,
+    "--max-cell-angle-difference"  => \$max_cell_angle_diff,
+
     "--check-bibliography"      => sub { $check_bibliography = 1; },
     "--dont-check-bibliography" => sub { $check_bibliography = 0; },
     "--no-check-bibliography"   => sub { $check_bibliography = 0; },
@@ -65,9 +79,6 @@ my $check_sample_history = 0;
     "--help,--usage" => sub { SUsage::usage; exit },
 );
 
-
-my $max_cell_length_diff = 0.5; # Angstroems
-my $max_cell_angle_diff  = 1.2; # degrees
 
 my %has_numeric_value = (
     "_journal_year"   => 1,
