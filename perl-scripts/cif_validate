@@ -80,6 +80,7 @@ my %showMap = (
         # value checking related options
         'values-enum'        => 1,
         'values-enum-nocase' => 0,
+        'value-type'         => 1,
         'values-range'       => 1
     );
 
@@ -180,6 +181,7 @@ push @$setOfEnum, '_atom_site_refinement_flags';
         "--check-values-enum"        => sub{ $showMap{'values-enum'} = 1 },
         "--check-values-enum-nocase" => sub{ $showMap{'values-enum'} = 1; $showMap{'values-enum-nocase'} = 1 },
         "--check-values-range"       => sub{ $showMap{'values-range'} = 1 },
+        "--check-value-type"         => sub{ $showMap{'values-enum'} = 1; $showMap{'value-type'} = 1 },
         # turn off check options
         "--check-none"
             => sub{ while ( my($k,$v) = each(%showMap) ) {
@@ -194,7 +196,8 @@ push @$setOfEnum, '_atom_site_refinement_flags';
         "--do-not-check-ref-list-mandatory" => sub{ $showMap{'ref-list-mandatory'} = 0 },
         "--do-not-check-values-enum"        => sub{ $showMap{'values-enum'} = 0 },
         "--do-not-check-values-enum-nocase" => sub{ $showMap{'values-enum'} = 0 },
-        "--do-not-check-values-range"       => sub{ $showMap{'values-range'} = 0 }
+        "--do-not-check-values-range"       => sub{ $showMap{'values-range'} = 0 },
+        "--do-not-check-value-type"         => sub{ $showMap{'value-type'} = 0 }
     );
 
 if( defined($outputFile) ) {
@@ -331,6 +334,12 @@ CIFFILEANAL: for my $cifF ( @{$CIFfile} ) {
         # start-iterate-trough-CIF-values
         #
         for my $tagAnalysed ( @{$block->{tags}} ) {
+            if(!defined $block->{types}{$tagAnalysed}) {
+                showValidationMessage 64, '_debug',
+                    $cifF, $$block{name},
+                    "tag '" . $tagAnalysed . "' has no associated type"
+                    . ' which, probably, means that error in CIFParser occured';
+            }
             my $lc_tagAnalysed = lc $tagAnalysed;
             my $defined = 0;
             if( $showMap{'tag-exists-local'} == 0
@@ -559,7 +568,8 @@ CIFFILEANAL: for my $cifF ( @{$CIFfile} ) {
                         $rangeForPrint{max} = '<any>';
                     }
                 }
-                CIFVALUE: for my $tagValue ( @{$block->{values}{$tagAnalysed}} ) {
+                CIFVALUE: for my $tagIndex ( 0..$#{$block->{values}{$tagAnalysed}} ) {
+                    my $tagValue = $block->{values}{$tagAnalysed}[$tagIndex];
                     next CIFVALUE if $tagValue eq '.' or $tagValue eq '?';
                     my $value = $tagValue;
                     #
@@ -648,6 +658,24 @@ CIFFILEANAL: for my $cifF ( @{$CIFfile} ) {
                             my $valueWOPrecision = $value;
                             if( $dictD->{$lc_tagAnalysed}{values}{_type}[0] 
                                  eq 'numb' ) {
+                                if(defined $block->{types}{$tagAnalysed}) {
+                                    if('FLOAT'  ne $block->{types}{$tagAnalysed}[$tagIndex]
+                                       && 'INT' ne $block->{types}{$tagAnalysed}[$tagIndex]) {
+                                        showValidationMessage 2, 'value-type',
+                                            $cifF, $$block{name},
+                                            "tag '" . $tagAnalysed . "' is of type "
+                                            . "'"
+                                            . $block->{types}{$tagAnalysed}[$tagIndex]
+                                            . "' while it should be numeric, i.e. 'FLOAT', or 'INT'";
+                                    } else {
+                                        showValidationMessage 64, 'value-type',
+                                            $cifF, $$block{name},
+                                            "tag '" . $tagAnalysed . "' is of type "
+                                            . "'"
+                                            . $block->{types}{$tagAnalysed}[$tagIndex]
+                                            . "' as expected, as it should be one of: 'FLOAT', 'INT'";
+                                    }
+                                }
                                 $valueWOPrecision =~ s/\s*\(.*$//;
                             }
                             if( checkAgainstRange(
@@ -841,6 +869,13 @@ Options available:
         The test is used to check, whereas some boundaries were defined.
         I.e. '_refine_ls_abs_structure_Flack' must be between '0.0' and
         '1.0'.
+    --check-value-type
+        Turn on tests 'value-type' and 'values-enum'.
+        This test is ON by default.
+        This test is used to check, if type implied by dictionary (i.e. numb)
+        does match the type in file, as detected by CIFParser (i.e. FLOAT).
+        So far applies only to nummeric types, as UQSTRING, as such, might be
+        treated as numeric value by human and vice-versa.
     --check-none
         Turns of all tests.
     --do-not-check-tag-exists
@@ -899,6 +934,13 @@ Options available:
         The test is used to check, whereas some boundaries were defined.
         I.e. '_refine_ls_abs_structure_Flack' must be between '0.0' and
         '1.0'.
+    --do-not-check-value-type
+        Turn off test 'value-type'.
+        This test is ON by default.
+        This test is used to check, if type implied by dictionary (i.e. numb)
+        does match the type in file, as detected by CIFParser (i.e. FLOAT).
+        So far applies only to nummeric types, as UQSTRING, as such, might be
+        treated as numeric value by human and vice-versa.
 
 Selecting tests, that should be performed:
     Option '--check' accepts comma separated list of test names.
