@@ -75,6 +75,8 @@ my $fold_title = 0;
 my $folding_width = 76;
 my $parse_formula_sum = 0;
 my $fix_errors = 0;
+my $update_database_code = 1; # Specifies whether to update _cod_database_code tag
+                              # value upon renumbering.
 
 my $extra_tag_file;
 my $original_filename;
@@ -168,6 +170,9 @@ my %spacegroups = map {
 
     "--record-original-filename"      => sub { $record_original_filename = 1; },
     "--dont-record-original-filename" => sub { $record_original_filename = 0; },
+
+    "--update-database-code"          => sub { $update_database_code = 1; },
+    "--dont-update-database-code"     => sub { $update_database_code = 0; },
 
     "-S,--start-data-block-number"    => \$data_block_nr,
     "-R,--renumber-data-blocks"       => sub { $data_block_nr = 7000001 },
@@ -721,6 +726,9 @@ for my $dataset (@data) {
 
     if( defined $data_block_nr ) {
 	$dataset->{name} = sprintf "%07d", $data_block_nr;
+        if( $update_database_code ) {
+            $dataset->{values}{_cod_database_code}[0] = $dataset->{name};
+        }
 	$data_block_nr ++;
     }
 

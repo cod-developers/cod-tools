@@ -64,6 +64,7 @@ _cod_chemical_formula_sum_orig
 _cod_chemical_formula_moiety_orig
 _cod_citation_special_details
 _cod_text
+_cod_database_code
 );
 
 1;
