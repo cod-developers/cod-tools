@@ -493,15 +493,6 @@ sub bibliographies_are_the_same($$)
     return 1;
 }
 
-sub data_sections_are_the_same($$)
-{
-    my ($entry1, $entry2) = @_;
-
-    return
-	$entry1->{filename} eq $entry2->{filename} &&
-	$entry1->{id} eq $entry2->{id};
-}
-
 sub entries_are_the_same
 {
     my ($entry1, $entry2) = @_;
@@ -512,7 +503,6 @@ sub entries_are_the_same
 
     if( $check_bibliography ) {
 	return
-	    ! data_sections_are_the_same( $entry1, $entry2 ) &&
 	    cells_are_the_same( $entry1->{cell}, $entry2->{cell} ) &&
 	    conditions_are_the_same( $entry1, $entry2 ) &&
 	    (!defined $entry1->{suboptimal} || $entry1->{suboptimal} ne "yes") &&
@@ -521,11 +511,10 @@ sub entries_are_the_same
 					 $entry2->{bibliography} );
     } else {
 	return
-	    ! data_sections_are_the_same( $entry1, $entry2 ) &&
+	    cells_are_the_same( $entry1->{cell}, $entry2->{cell} ) &&
 	    conditions_are_the_same( $entry1, $entry2 ) &&
 	    (!defined $entry1->{suboptimal} || $entry1->{suboptimal} ne "yes") &&
-	    (!defined $entry2->{suboptimal} || $entry2->{suboptimal} ne "yes") &&
-	    cells_are_the_same( $entry1->{cell}, $entry2->{cell} );
+	    (!defined $entry2->{suboptimal} || $entry2->{suboptimal} ne "yes");
     }
 }
 
