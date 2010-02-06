@@ -185,6 +185,8 @@ my $cif_header_file; # Comments from the beginning of this file wil be
     "--help,--usage"            => sub { SUsage::usage; exit },
 );
 
+# Error reporting (message formatting) subroutines:
+
 sub print_error($$$$$)
 {
     my ( $program, $filename, $datablock, $errlevel, $message ) = @_;
@@ -334,11 +336,15 @@ for my $dataset (@$data)
 #==============================================================================#
 # Forward subroutine definitions:
 
-sub find_molecules($$$$$$$$);
-sub find_molecule($$$$$$$$$$);
+sub symgen_atom($$$);
+sub symgen_all_atoms($$$);
+sub apply_shifts($);
+sub find_molecules($$$$$$$$$);
+sub find_molecule($$$$$$$$$$$);
 sub check_init_atoms($$$$);
 sub initial_atoms($$$$$);
-sub find_in_unit_cell($$$);
+
+sub test_bump($$$$$$$);
 
 #==============================================================================#
 # Find a maximal covalent radius in the atom property list
@@ -426,28 +432,23 @@ sub get_molecules
     {
         my $translated_atoms = init_atoms_modulo_1($atom_group);
 
-        #   applies symmetry operators and translates atoms
-        my @symmetric_atoms = @{$translated_atoms};
-
-        for ( my $i = 0 ; $i < @sym_operators ; $i++ )
-        {
-            foreach my $primary_atom ( @{$translated_atoms} )
-            {
-                my $new_atom_info = symop_apply($primary_atom,
-                                                $sym_operators[$i], $i);
-                push(@symmetric_atoms, shift_atoms($new_atom_info, $i ));
-            }
-        }
-
-        #   calculates ortho coords
         my $ortho_matrix = symop_ortho_from_fract(@cell_lengths_and_angles);
+
+        my @symmetric_atoms = apply_shifts( 
+            symgen_all_atoms( $translated_atoms, \@sym_operators, 
+                              $ortho_matrix ));
 
         foreach my $atom (@symmetric_atoms)
         {
             $atom->{coordinates_ortho} =
-                        multiply_matrix_with_vector($ortho_matrix,
-                                                    $atom->{coordinates_fract});
+                multiply_matrix_with_vector( $ortho_matrix,
+                                             $atom->{coordinates_fract} );
         }
+
+        do {
+            use Serialise;
+            serialiseRef( \@symmetric_atoms );
+        } if $debug;
 
         my $bricks = AtomBricks::build_bricks( \@symmetric_atoms,
                                                $max_covalent_radius * 2 +
@@ -460,16 +461,11 @@ sub get_molecules
                                                  $translated_atoms,
                                                  $bricks,
                                                  $filename, $dataname,
-                                                 \%seen_molecules ));
+                                                 \%seen_molecules,
+                                                 $ortho_matrix ));
     }
 
-    #   Finds unique atoms
-    ## foreach my $molecule (@unique_molecules)
-    ## {
-    ##     $molecule->{atoms_c} = unique_atoms( $molecule->{atoms_c} );
-    ## }
-
-    #   Calculates chemical formula sum
+    # Calculates chemical formula sum
     foreach my $molecule (@unique_molecules)
     {
         $molecule->{chemical_formula_sum} =
@@ -584,6 +580,7 @@ sub initial_atoms($$$$$)
         if ( $atom_site_tag eq "_atom_site_type_symbol" )
         {
             $atom_info->{"label"} .= $i;
+            $atom_info->{"label_basename"} = $atom_info->{"label"};
         }
 
         if (exists $atom_properties->{ $atom_info->{"chemical_type"}})
@@ -969,6 +966,11 @@ sub copy_atom
 
     my %new_atom;
 
+    if( ref $old_atom ne "HASH" ) {
+        use Carp;
+        croak;
+    }
+
     for my $key (keys %$old_atom ) {
         if( !ref $old_atom->{$key} ) {
             $new_atom{$key} = $old_atom->{$key};
@@ -1096,7 +1098,7 @@ sub test_bond
 #                     },
 #          );
 
-sub test_bump
+sub test_bump($$$$$$$)
 {
     my ( $atom_properties, $chemical_type1, $chemical_type2,
 	 $atom1_label, $atom2_label,
@@ -1113,45 +1115,6 @@ sub test_bump
 
     return 0;
 }
-
-#==============================================================#
-# Removes the atoms which have different labels, but are near to each other more
-# then a constant represented in a function are_atoms_unique.
-
-# Accepts an array of atoms:
-# $atom =      {label=>"C1_2",
-#               chemical_type=>"C",
-#               coordinates_fract=>[1.0, 1.0, 1.0],
-#               coordinates_ortho=>[1.0, 1.0, 1.0],
-#               unity_matrix_applied=>1}
-
-# Returns an array of unique atoms.
-
-sub unique_atoms
-{
-    my ($atoms) = @_;
-
-    my @unique_atoms;
-    my %not_unique_atoms;
-
-    for(my $i = 0; $i < @{$atoms}; $i++)
-    {
-        if(not defined $not_unique_atoms{$i})
-        {
-            push(@unique_atoms, ${$atoms}[$i]);
-
-            for(my $j = $i + 1; $j < @{$atoms}; $j++)
-            {
-                if(0 == are_atoms_unique(${$atoms}[$i], ${$atoms}[$j]))
-                {
-                    $not_unique_atoms{$j} = $j;
-                }
-            }
-        }
-    }
-    return \@unique_atoms;
-}
-
 
 #==============================================================#
 # Finds translation center of mass and center of mass modulo 1 information.
@@ -1289,43 +1252,6 @@ sub chemical_formula_sum
     return $formula_sum;
 }
 #===============================================================#
-# Makes a decision if atoms are unique (closer then eps).
-
-# $atom =      {label=>"C1_2",
-#               chemical_type=>"C",
-#               coordinates_fract=>[1.0, 1.0, 1.0],
-#               unity_matrix_applied=>1}
-
-# Returns 1 or 0.
-
-sub are_atoms_unique
-{
-    my($atom1, $atom2) = @_;
-
-    my $label1 = $atom1->{label_basename};
-    my $label2 = $atom2->{label_basename};
-
-    if($label1 ne $label2)
-    {
-        return 1;
-    }
-
-    my $eps = $special_position_cutoff;
-
-    my $coords1 = $atom1->{coordinates_ortho};
-    my $coords2 = $atom2->{coordinates_ortho};
-
-    my $dist = distance($coords1, $coords2);
-
-    if($dist > $eps)
-    {
-        return 1;
-    }
-
-    return 0;
-}
-
-#===============================================================#
 # Multiplies an ortho matrix with a vector.
 
 # my $ortho = [
@@ -1394,36 +1320,194 @@ sub symop_apply
     $new_atom_info->{"symop_id"} = $symop_id;
     $new_atom_info->{"coordinates_fract"} = \@new_atom_xyz;
     $new_atom_info->{"unity_matrix_applied"} = symop_is_unity($symop);
-    $new_atom_info->{"label"} = $atom_info->{"label"} . "_" . $symop_id;
-    ## if( $atom_xyz->[0] >= 0 && $atom_xyz->[0] <= 1.0 &&
-    ##     $atom_xyz->[1] >= 0 && $atom_xyz->[1] <= 1.0 &&
-    ##     $atom_xyz->[2] >= 0 && $atom_xyz->[2] <= 1.0 ) {
-    ##     $new_atom_info->{atom_in_a_unit_cell} = $atom_info;
-    ## }
+    if( !$new_atom_info->{"unity_matrix_applied"} ) {
+        $new_atom_info->{"label"} = $atom_info->{"label"} . "_" . $symop_id;
+    }
+    do {
+        use Serialise;
+        serialiseRef( { atom => $new_atom_info, symop => $symop } );
+    } if 0;
 
     return $new_atom_info;
 }
 
+#===============================================================#
+# Multiplies an ortho matrix with a vector.
+
+# my $ortho = [
+#     [ o11 o12 o13 ]
+#     [ 0   o22 o23 ]
+#     [ 0   0   o33 ]
+# ]
+#
+
+sub mat_vect_mul($$)
+{
+    my($matrix, $vector) = @_;
+
+    my @new_coordinates;
+
+    for(my $i = 0; $i < @{$vector}; $i++)
+    {
+        $new_coordinates[$i] = 0;
+        for(my $j = 0; $j < @{$vector}; $j++)
+        {
+            $new_coordinates[$i] += ${$matrix}[$i][$j] * ${$vector}[$j];
+        }
+    }
+
+    if( @$vector == 3 && @$matrix == 4 ) {
+	$new_coordinates[0] += $matrix->[0][3];
+	$new_coordinates[1] += $matrix->[1][3];
+	$new_coordinates[2] += $matrix->[2][3];
+    }
+
+    return \@new_coordinates;
+}
+
+#===============================================================#
+# Checks whether atoms are in the same point in space:
+
+sub atoms_coincide($$$)
+{
+    my ( $old_atom, $new_atom, $f2o ) = @_;
+
+    my $old_coord = [ map { modulo_1($_) } @{$old_atom->{coordinates_fract}} ];
+    my $old_xyz = mat_vect_mul( $f2o, $old_coord );
+
+    my $new_coord = [ map { modulo_1($_) } @{$new_atom->{coordinates_fract}} ];
+
+    for my $dx (-1, 0, 1) {
+    for my $dy (-1, 0, 1) {
+    for my $dz (-1, 0, 1) {
+        my $shifted_coord = [
+            $new_coord->[0] + $dx,
+            $new_coord->[1] + $dy,
+            $new_coord->[2] + $dz,
+	];
+        my $new_xyz = mat_vect_mul( $f2o, $shifted_coord );
+        if( distance( $new_xyz, $old_xyz ) < $special_position_cutoff ) {
+            ## local $, = ", ";
+            ## print ">>> mapped to self: @{$new_xyz} / @{$old_xyz}\n";
+            return 1;
+        }
+    }}}
+
+    return 0;
+}
+
+#===============================================================#
+# Generate symmetry equivalents of an atom, exclude duplicates
+# on special positions
+
+sub symgen_atom($$$)
+{
+    my ( $atom, $sym_operators, $f2o ) = @_;
+
+    my @sym_atoms;
+
+    my $gp_multiplicity = int(@$sym_operators);
+    my $multiplicity_ratio = 1;
+
+    do {
+        use Serialise;
+        serialiseRef( $sym_operators );
+    } if 0;
+
+    my $n = 0;
+
+    for my $symop ( @{$sym_operators} ) {
+        my $new_atom = symop_apply( $atom, $symop, $n++ );
+        if( !symop_is_unity( $symop ) &&
+            atoms_coincide( $atom, $new_atom, $f2o )) {
+            $multiplicity_ratio ++;
+        } else {
+            push( @sym_atoms, $new_atom );
+        }
+    }
+
+    ## print ">>> $gp_multiplicity / $multiplicity_ratio\n";
+
+    if( $gp_multiplicity % $multiplicity_ratio ) {
+	die( "Multiplicity ratio $multiplicity_ratio does not divide " .
+	     "multiplicity of a general position $gp_multiplicity" .
+             "-- this can not be." );
+    }
+
+    my $multiplicity = $gp_multiplicity / $multiplicity_ratio;
+
+    for my $atom (@sym_atoms) {
+	$atom->{multiplicity} = $multiplicity;
+	$atom->{multiplicity_ratio} = $multiplicity_ratio;
+    }
+
+    if( $multiplicity_ratio == 1 ) {
+        return @sym_atoms;
+    } else {
+        my @unique_atoms;
+        my %to_be_deleted;
+        for my $i (0..$#sym_atoms-1) {
+            for my $j ($i+1..$#sym_atoms) {
+                if( distance( $sym_atoms[$i]->{coordinates_fract},
+                              $sym_atoms[$j]->{coordinates_fract}) < 0.0001 ) {
+                    $to_be_deleted{$sym_atoms[$j]->{label}} = 1;
+                }
+            }
+        }
+        for my $atom (@sym_atoms) {
+            if( !defined $to_be_deleted{$atom->{label}} ) {
+                push( @unique_atoms, $atom );
+            }
+        }
+        return @unique_atoms;
+    }
+}
+
+#===============================================================#
+# Generate symmetry equivalents of all atoms from a list, exclude
+# duplicates on special positions
+
+sub symgen_all_atoms($$$)
+{
+    my ( $atoms, $sym_operators, $f2o ) = @_;
+
+    my @sym_atoms = ();
+
+    for my $atom (@{$atoms}) {
+        push( @sym_atoms, symgen_atom( $atom, $sym_operators, $f2o ));
+    }
+
+    return \@sym_atoms;
+}
 
 #===============================================================#
 # Shifts a given atom according shifting params. If shifting params are
 # (-1, 0, 1) then 27 shifts are made.
 
-# The shift_atoms subroutine accepts a reference to a hash
+# The shift_atom subroutine accepts a reference to a hash
 # $atom_info = {label=>"C1_2",
 #               chemical_type=>"C",
 #               coordinates_fract=>[1.0, 1.0, 1.0],
 #               unity_matrix_applied=>1}, returns an array of references of
 # above-mentioned hashes
 #
-sub shift_atoms
+sub shift_atom($)
 {
-    my($atom_info, $symop_id) = @_;
+    my($atom_info) = @_;
 
     my @shifted_atoms;
-    my @shifting_params = (-1, 0, 1);
+    my @shifting_params = (0, -1, 1);
 
     my $counter = 0;
+
+    my $unit_cell_label;
+
+    if( $atom_info->{"unity_matrix_applied"} ) {
+        $unit_cell_label = $atom_info->{label_basename};
+    } else {
+        $unit_cell_label = $atom_info->{label} . "_0";
+    }
+
     for(my $i = 0; $i < @shifting_params; $i++)
     {
         for(my $j = 0; $j < @shifting_params; $j++)
@@ -1431,10 +1515,15 @@ sub shift_atoms
             for(my $k = 0; $k < @shifting_params; $k++)
             {
                 my $new_atom_info = copy_atom($atom_info);
+                do {
+                    $new_atom_info->{shift} = [ $shifting_params[$i],
+                                                $shifting_params[$j],
+                                                $shifting_params[$k] ];
+                } if 1;
                 my @new_atom_xyz;
                 if($shifting_params[$i] != 0 || $shifting_params[$j] != 0 ||
                    $shifting_params[$k] != 0 ||
-                                    $atom_info->{"unity_matrix_applied"} != 1)
+                   $atom_info->{"unity_matrix_applied"} != 1)
                 {
                     $new_atom_xyz[0] = $atom_info->{"coordinates_fract"}[0] +
                                                            $shifting_params[$i];
@@ -1446,15 +1535,32 @@ sub shift_atoms
                     $new_atom_info->{"coordinates_fract"} = \@new_atom_xyz;
                     $new_atom_info->{"label"} =
                         $atom_info->{"label"} . "_" . $counter;
-
-                    push(@shifted_atoms, $new_atom_info);
-                    $counter++;
+                    $new_atom_info->{"unit_cell_label"} = $unit_cell_label;
                 }
+                $counter++;
+                push(@shifted_atoms, $new_atom_info);
             }
         }
     }
 
     return @shifted_atoms;
+}
+
+#===============================================================#
+# Generate symmetry equivalents of an atom, exclude duplicates
+# on special positions
+
+sub apply_shifts($)
+{
+    my ($atoms) = @_;
+
+    my @shifted = ();
+
+    for my $atom (@{$atoms}) {
+        push( @shifted, shift_atom( $atom ));
+    }
+
+    return @shifted;
 }
 
 #===============================================================#
@@ -1850,7 +1956,7 @@ sub print_molecule
 #               chemical_formula_sum=>"C6 H6",
 #             );
 
-sub find_molecules($$$$$$$$)
+sub find_molecules($$$$$$$$$)
 {
     my $covalent_sensitivity = shift(@_);
     my $atom_properties      = shift(@_);
@@ -1860,6 +1966,7 @@ sub find_molecules($$$$$$$$)
     my $filename             = shift(@_);
     my $dataname             = shift(@_);
     my $seen_molecules       = shift(@_);
+    my $ortho_matrix         = shift(@_);
 
     my @unique_molecules;
     my %used_atoms;
@@ -1877,7 +1984,8 @@ sub find_molecules($$$$$$$$)
                                                 \%used_basenames,
                                                 \%used_bonds,
                                                 $initial_atom, $bricks,
-                                                $filename, $dataname );
+                                                $filename, $dataname,
+                                                $ortho_matrix );
 
             if(@molecule_atoms > 0)
             {
@@ -1906,10 +2014,7 @@ sub find_molecules($$$$$$$$)
 
 # ============================================================================ #
 
-# Grrrrr....
-my $find_molecule_recursion_level = 0;
-
-sub find_molecule($$$$$$$$$$)
+sub find_molecule($$$$$$$$$$$)
 {
     my $covalent_sensitivity = shift(@_);
     my $atom_properties      = shift(@_);
@@ -1921,36 +2026,42 @@ sub find_molecule($$$$$$$$$$)
     my $bricks               = shift(@_);
     my $filename             = shift(@_);
     my $dataname             = shift(@_);
-
-    $find_molecule_recursion_level ++;
+    my $ortho_matrix         = shift(@_);
 
     my @current_coords_fract_modulo_1 =
-                    map { modulo_1($_) } @{$current_atom->{coordinates_fract}};
+        map { modulo_1($_) } @{$current_atom->{coordinates_fract}};
 
     my $current_translation = translation( $current_atom->{coordinates_fract},
                                            \@current_coords_fract_modulo_1 );
 
-    my $atom_in_unit_cell = find_in_unit_cell( \@current_coords_fract_modulo_1,
-                                               $current_atom,
-                                               $symmetric_atoms );
+    my $atom_in_unit_cell = copy_atom( $current_atom );
+
+    $atom_in_unit_cell->{coordinates_fract} = \@current_coords_fract_modulo_1;
+    $atom_in_unit_cell->{coordinates_ortho} =
+        multiply_matrix_with_vector( $ortho_matrix,
+                                     \@current_coords_fract_modulo_1 );
+
+    if( exists $atom_in_unit_cell->{unit_cell_label} ) {
+        $atom_in_unit_cell->{label} = $atom_in_unit_cell->{unit_cell_label};
+    }
+
     my @neighbors;
 
     if(exists $used_atoms->{$atom_in_unit_cell->{"label"}})
     {
-        ## warning( $0, $filename, $dataname,
-        ##          "lone atom '$atom_in_unit_cell->{label}' ".
-        ##          "(originally '$current_atom->{label}') " .
-        ##          "is already used in molecules, at recursion level " .
-        ##          $find_molecule_recursion_level );
-        $find_molecule_recursion_level --;
+        print "<<<< atom labeled '$atom_in_unit_cell->{label}' " .
+            "is already in some molecule, returning\n"
+            if $debug;
         return @neighbors;
     }
 
-    my $atom_in_unit_cell_type           = $atom_in_unit_cell->{chemical_type};
-    my $atom_in_unit_cell_coords_ortho   =
-                                        $atom_in_unit_cell->{coordinates_ortho};
-    my $atom_in_unit_cell_label          = $atom_in_unit_cell->{label};
-    my $atom_in_unit_cell_label_basename = $atom_in_unit_cell->{label_basename};
+    my $atom_in_unit_cell_type  = $atom_in_unit_cell->{chemical_type};
+    my $atom_in_unit_cell_label = $atom_in_unit_cell->{label};
+
+    my $atom_in_unit_cell_coords_ortho =
+        $atom_in_unit_cell->{coordinates_ortho};
+    my $atom_in_unit_cell_label_basename =
+        $atom_in_unit_cell->{label_basename};
 
     my $current_label = $current_atom->{label};
 
@@ -1995,6 +2106,7 @@ sub find_molecule($$$$$$$$$$)
 
             if( not exists $used_bonds->{$label}{$atom_in_unit_cell_label} )
             {
+
                 $used_bonds->{$label} = {}
                     unless exists $used_bonds->{$label};
                 $used_bonds->{$label}{$atom_in_unit_cell_label} = 1;
@@ -2015,8 +2127,8 @@ sub find_molecule($$$$$$$$$$)
 
                 my $is_bump = test_bump( $atom_properties,
                                          $atom_in_unit_cell_type, $type,
-					 $atom_in_unit_cell_label_basename,
-					 $label_basename,
+                                         $atom_in_unit_cell_label_basename,
+                                         $label_basename,
                                          $dist, $bump_distance_factor );
 
                 if( $is_bump ) {
@@ -2042,6 +2154,14 @@ sub find_molecule($$$$$$$$$$)
 
                 if($is_bond == 1)
                 {
+                    do {
+                        use Serialise;
+                        local $" = ' ';
+                        print ">>> found bond:\n";
+                        serialiseRef( { "translation" => $current_translation,
+                                        "original atom" => $atom_in_unit_cell,
+                                        "atom" => $sym_atom } );
+                    } if $debug;
                     push(@neighbors, find_molecule( $covalent_sensitivity,
                                                     $atom_properties,
                                                     $symmetric_atoms,
@@ -2049,7 +2169,8 @@ sub find_molecule($$$$$$$$$$)
                                                     $used_basenames,
                                                     $used_bonds,
                                                     $sym_atom, $bricks,
-                                                    $filename, $dataname ));
+                                                    $filename, $dataname,
+                                                    $ortho_matrix ));
                 }
             }
         }
@@ -2059,47 +2180,20 @@ sub find_molecule($$$$$$$$$$)
 
     $used_atoms->{$current_label} = $current_label;
 
+    do {
+        use Serialise;
+        print ">>> Before translation:";
+        serialiseRef( \@neighbors );
+    } if $debug;
+
     my $translated_neighbors = translate_atoms(\@neighbors,
-                                                          $current_translation);
+                                               $current_translation);
 
-    $find_molecule_recursion_level --;
+    do {
+        use Serialise;
+        print ">>> After translation:";
+        serialiseRef( $translated_neighbors );
+    } if $debug;
+
     return @{$translated_neighbors};
-}
-
-# ============================================================================ #
-# Accepts fract coords an an array of all atoms (including symetric ones).
-# Returns an atom which is identical according given  fract coords.
-
-sub find_in_unit_cell($$$)
-{
-    my ( $atom_coords_fract, $current_atom, $symmetric_atoms ) = @_;
-
-    my $eps = 0.0001;
-
-    if( exists $current_atom->{atom_in_a_unit_cell} ) {
-        return $current_atom->{atom_in_a_unit_cell};
-    } else {
-        foreach my $sym_atom (@$symmetric_atoms)
-        {
-            if((abs($$atom_coords_fract[0] -
-                    ${$sym_atom->{coordinates_fract}}[0]) < $eps) &&
-               (abs($$atom_coords_fract[1] -
-                    ${$sym_atom->{coordinates_fract}}[1]) < $eps) &&
-               (abs($$atom_coords_fract[2] -
-                    ${$sym_atom->{coordinates_fract}}[2]) < $eps) &&
-	       $sym_atom->{label_basename} eq $current_atom->{label_basename} )
-            {
-		if( $sym_atom->{label_basename} ne
-		    $current_atom->{label_basename} ) {
-		    warn( "atom $sym_atom->{label_basename} found as an " .
-			  "original for $current_atom->{label_basename}" );
-		}
-                ## $current_atom->{atom_in_a_unit_cell} = $sym_atom;
-                return $sym_atom;
-            }
-        }
-    }
-    die( "$0: $filename: there was no atom corresponding to '" .
-         $current_atom->{label} .
-         "' in the main unit cell" );
 }
