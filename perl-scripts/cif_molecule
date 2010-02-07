@@ -510,50 +510,54 @@ sub check_init_atoms($$$$)
 {
     my ($init_atoms, $uniquify_atoms, $filename, $dataset_name) = @_;
 
+    my $max_label_suffix = 30000; # Maximum number to be appened to labels 
+                                  # when trying to produce unique names.
+
     my @checked_initial_atoms;
+
+    my %used_labels;
+    my @labels_to_be_renamed;
 
     foreach my $atom (@{$init_atoms})
     {
-        push(@checked_initial_atoms, copy_atom($atom));
-    }
-
-    my %used_labels;
-    my @not_unique_labels;
-
-    foreach my $atom (@checked_initial_atoms)
-    {
+        my $atom_copy = copy_atom( $atom );
         my $label = $atom->{label};
 
-        if(not exists $used_labels{$label})
-        {
-            $used_labels{$label} = $label;
-        }
-        else
-        {
-            push(@not_unique_labels, $label);
+        push( @checked_initial_atoms, $atom_copy );
+
+        if( ! exists $used_labels{$label} ) {
+            $used_labels{$label}{atoms} = [ $atom_copy ];
+        } else {
+            push( @{$used_labels{$label}{atoms}}, $atom_copy );
             warning( $0, $filename, $dataset_name,
                      "atom label '$label' is not unique" );
+            push( @labels_to_be_renamed, $label );
         }
+        $used_labels{$label}{count} ++;
     }
 
-    if($uniquify_atoms != 0)
+    if( $uniquify_atoms )
     {
-        foreach my $not_unique_label (@not_unique_labels)
+        foreach my $label (@labels_to_be_renamed)
         {
-            my $id = 0;
-            foreach my $atom (@checked_initial_atoms)
-            {
-                my $label = $atom->{label};
-
-                if($label eq $not_unique_label)
-                {
-                    warning( $0, $filename, $dataset_name,
-                             "renaming atom '$label' " .
-                             "to '" . $label . "_" . $id . "'" );
-                    $atom->{label}          .= "_" . $id;
-                    $atom->{label_basename} .= "_" . $id;
-                    $id++;
+            foreach my $renamed_atom (@{$used_labels{$label}{atoms}}) {
+                my $id = 0;
+                while( exists $used_labels{$label . "_" .$id} &&
+                       $id <= $max_label_suffix ) {
+                    $id ++;
                 }
+                if( $id > $max_label_suffix ) {
+                    error( $0, $filename, $dataset_name,
+                           "could not generate unique atom name for ".
+                           "atom '$label', even after $id iterations" );
+                }
+                my $new_label = $label . "_" . $id;
+                warning( $0, $filename, $dataset_name,
+                         "renaming atom '$label' " .
+                         "to '" . $new_label . "'" );
+                $renamed_atom->{label}          = $new_label;
+                $renamed_atom->{label_basename} = $new_label;
+                $used_labels{$new_label}{count} ++;
             }
         }
     }
