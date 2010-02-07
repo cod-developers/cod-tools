@@ -276,7 +276,7 @@ for my $dataset (@$data)
         my $hall = $values->{"_symmetry_space_group_name_Hall"}[0];
         $sym_data = get_symops("hall", $hall);
 
-        if($sym_data == 0)
+        if( !defined $sym_data )
         {
             error( $0, $filename, $dataset->{name},
                    "incorrect _symmetry_space_group_name_Hall '$hall'" );
@@ -284,12 +284,12 @@ for my $dataset (@$data)
     }
 
     if(exists $values->{"_symmetry_space_group_name_H-M"} &&
-                                    (not defined $sym_data or $sym_data == 0))
+       not defined $sym_data)
     {
         my $h_m = $values->{"_symmetry_space_group_name_H-M"}[0];
         $sym_data = get_symops("hermann_mauguin", $h_m);
 
-        if($sym_data == 0)
+        if( !defined $sym_data )
         {
             error( $0, $filename, $dataset->{name},
                    "incorrect _symmetry_space_group_name_H-M '$h_m'" );
@@ -1043,7 +1043,7 @@ sub get_symops
             return $hash->{symops};
         }
     }
-    return 0;
+    return undef;
 }
 #===============================================================#
 # Made a decision if a chemical bond exists.
