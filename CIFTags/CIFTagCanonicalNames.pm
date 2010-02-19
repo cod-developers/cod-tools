@@ -61,6 +61,16 @@ sub canonicalize_names
                 @{$dataset->{tags}} =
                     map { s/^\Q$key\E$/$cannonical_key/; $_ }
                 @{$dataset->{tags}};
+                if( exists $dataset->{types}{$key} ) {
+                    $dataset->{types}{$cannonical_key} =
+                        $dataset->{types}{$key};
+                    delete $dataset->{types}{$key};
+                }
+                if( exists $dataset->{precisions}{$key} ) {
+                    $dataset->{precisions}{$cannonical_key} =
+                        $dataset->{precisions}{$key};
+                    delete $dataset->{precisions}{$key};
+                }
                 if( exists $dataset->{inloop}{$key} ) {
                     my $loop_nr = $dataset->{inloop}{$key};
                     $dataset->{inloop}{$cannonical_key} =
