@@ -42,7 +42,7 @@ my $setOfEnum = [];
 my $dictFilesParsed = [];
 my $dictTags = {};
 my $quiet = 0;
-my $errorLevel = 2;
+my $errorLevel = 4;
 my $parser = new CIFParser;
 #
 # We read user requested options into an array-ref in this case user can 
@@ -426,7 +426,7 @@ CIFFILEANAL: for my $cifF ( @{$CIFfile} ) {
                                     $baseNamesOfRefTags{$mandatoryRTag} = 'yes';
                                     last;
                                 } else {
-                                    showValidationMessage 2,
+                                    showValidationMessage 4,
                                         'ref-list-mandatory', $cifF,
                                         $$block{name},
                                         "tag '" . $mandatoryRTag
@@ -500,7 +500,7 @@ CIFFILEANAL: for my $cifF ( @{$CIFfile} ) {
                                     for( @notFound ) {
                                         $tagsListedInLoops{$_} = 'no';
                                     }
-                                    showValidationMessage 2, 
+                                    showValidationMessage 4, 
                                         'tags-grouped', $cifF,
                                         $$block{name},
                                         'tags ['
@@ -533,7 +533,7 @@ CIFFILEANAL: for my $cifF ( @{$CIFfile} ) {
                                 . ' mandatory according to ' . $dictF
                                 . ' and is in loop';
                         } else {
-                            showValidationMessage 2, 'list-mandatory', 
+                            showValidationMessage 4, 'list-mandatory', 
                                 $cifF, $$block{name},
                                 "tag '" . $tagAnalysed . "' is loop"
                                 . ' mandatory according to ' . $dictF
@@ -617,7 +617,7 @@ CIFFILEANAL: for my $cifF ( @{$CIFfile} ) {
                             }
 
                             if( $valueFoundInList == 0 ) {
-                                showValidationMessage 2, 'values-enum',
+                                showValidationMessage 4, 'values-enum',
                                     $cifF, $$block{name},
                                     "tag '" . $tagAnalysed . "' value "
                                     . '"'
@@ -661,7 +661,7 @@ CIFFILEANAL: for my $cifF ( @{$CIFfile} ) {
                                 if(defined $block->{types}{$tagAnalysed}) {
                                     if('FLOAT'  ne $block->{types}{$tagAnalysed}[$tagIndex]
                                        && 'INT' ne $block->{types}{$tagAnalysed}[$tagIndex]) {
-                                        showValidationMessage 2, 'value-type',
+                                        showValidationMessage 4, 'value-type',
                                             $cifF, $$block{name},
                                             "tag '" . $tagAnalysed . "' " .
                                             "value \"" . 
@@ -685,7 +685,7 @@ CIFFILEANAL: for my $cifF ( @{$CIFfile} ) {
                             if( checkAgainstRange(
                             $dictD->{$lc_tagAnalysed}{values}{_type}[0],
                             $range, $valueWOPrecision) <= 0 ) {
-                                showValidationMessage 2, 'values-range',
+                                showValidationMessage 4, 'values-range',
                                     $cifF, $$block{name},
                                     "tag '" . $tagAnalysed . "' value "
                                     . '"'
@@ -732,7 +732,7 @@ CIFFILEANAL: for my $cifF ( @{$CIFfile} ) {
             #
             if( $showMap{'tag-exists'} == 1
                 && $defined == 0 ) {
-                showValidationMessage 2, 'tag-exists', $cifF, 
+                showValidationMessage 4, 'tag-exists', $cifF, 
                     $$block{name}, "tag '" . $tagAnalysed . "'"
                     . ' was not found in dictionaries';
             }
@@ -1005,6 +1005,34 @@ Selecting tests, that should be performed:
 END_M
     exit 0;
 }
+#' restart normal text colouring in Emacs
+
+# Return a string that describes "severity level" in a human readable
+# form (for discussions of severity levels, see
+# ../doc/error-levels.txt.
+
+sub severityName($)
+{
+    my $severity = $_[0];
+
+    if( $severity & 1 ) {
+        return "ERROR";
+    } elsif( $severity & 2 ) {
+        return "WARNING";
+    } elsif( $severity & 4 ) {
+        return "NOTICE";
+    } elsif( $severity & 8 ) {
+        return "INFO-ERROR";
+    } elsif( $severity & 16 ) {
+        return "INFO-WARNING";
+    } elsif( $severity & 32 ) {
+        return "INFO-NOTICE";
+    } elsif( $severity & 64 ) {
+        return "INFO-INDICATOR";
+    } else {
+        return "ERROR-LEVEL=$severity";
+    }
+}
 
 sub showValidationMessage {
     my ($severity, $type, $file, $dataBlockName, $message)
@@ -1017,15 +1045,15 @@ sub showValidationMessage {
         return 0;
     }
     my $output = $0 . ": ";
-    if( defined $severity && $severity ) {
-        $output .= $severity . ": ";
-    }
     $output .= $file;
     if( defined $dataBlockName && $dataBlockName ) {
         $output .= " data_" . $dataBlockName;
     }
-    $output .= ":";
-    $output .= " " . $message;
+    $output .= ": ";
+    if( defined $severity && $severity ) {
+        $output .= severityName( $severity ) . ", ";
+    }
+    $output .= $message;
     $output .= "\n";
     print $output;
 }
