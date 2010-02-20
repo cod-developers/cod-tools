@@ -1,0 +1,125 @@
+#! /bin/sh
+#!perl -w # --*- Perl -*--
+eval 'exec perl -x $0 ${1+"$@"}'
+    if 0;
+#------------------------------------------------------------------------------
+#$Author$
+#$Date$ 
+#$Revision$
+#$URL$
+#------------------------------------------------------------------------------
+#*
+#  Convert Pubmed XML bibliography records to may own XML-like markup
+#**
+
+use strict;
+
+for my $file (@ARGV) {
+    open( F, $file ) or die "$0: could not open file '$file' for reading";
+    
+    local $/; #  enable "slurp" mode: read the whole header file.
+
+    my $xml = <F>; # read in the whole XML file
+
+    ## print $xml;
+
+    if( $xml =~ m|<query_result>(.*?)</query_result>|ms ) {
+	my $article_nr = 0;
+	my $article_set = $1;
+	## print "$article_set = $article_set\n";
+	while( $article_set =~ s|<query\s.*?>(.*?)</query>||ms ) {
+	    my $article = $1;
+	    ## print "$article = $article\n";
+	    $article_nr ++;
+
+	    my $journal;
+	    if( $article =~ m|<journal_title.*?>(.*?)</journal_title>|ms ) {
+		$journal = $1;
+	    } else {
+		print STDERR "$0: no <journal_title> " .
+		    "found in the file '$file' article $article_nr\n";
+		die;
+	    }
+
+	    my $title;
+	    if( $article =~ m|<article_title.*?>(.*?)</article_title>|ms ) {
+		$title = $1;
+	    } else {
+		print STDERR "$0: no <article_title> found in the file '$file' ".
+		    "article $article_nr\n";
+		die;
+	    }
+
+	    my $year;
+	    if( $article =~ m|<year\s.*?>(.*?)</year>|ms ) {
+		$year = $1;
+	    } else {
+		print STDERR "$0: no <year> found in the file '$file' ".
+		    "article $article_nr\n";
+		die;
+	    }
+
+	    my $issue;
+	    if( $article =~ m|<issue>(.*?)</issue>|ms ) {
+		$issue = $1;
+	    }
+
+	    my $volume;
+	    if( $article =~ m|<volume>(.*?)</volume>|ms ) {
+		$volume = $1;
+	    }
+
+	    my $pages = "";
+	    if( $article =~ m|<first_page>(.*?)</first_page>| ) {
+		$pages = $1;
+	    } else {
+		print STDERR "$0: no <first_page> " .
+		    "found in the file '$file' ".
+		    "article $article_nr\n";
+		die;
+	    }
+
+	    if( $article =~ m|<contributors>(.*?)</contributors>|ms ) {
+		my $author_list = $1;
+
+		print "<authors separator=\";\">";
+		my $separator = "";
+		while( $author_list =~ s|
+                           <contributor\s.*?(?:contributor_role="(.*?)")?>
+                                (.*?)
+                           </contributor>||msx ) {
+                    if( defined $2 && $1 ne "author" ) {
+                        print STDERR "$0: contributor '$2' ($1) not " .
+                            "included into author list\n";
+                        next;
+                    }
+		    my $author = defined $2 ? $2 : $1;
+		    $author =~ m|<surname>(.*?)</surname>|;
+		    my $last = $1;
+		    my $first;
+		    if( $author =~ m|<given_name>(.*?)</given_name>| ) {
+			$first = $1;
+		    }
+		    my $author_name = $last;
+		    $author_name .= ", " . $first;
+		    print $separator, $author_name;
+		    $separator = "; ";
+		}
+	    } # if AuthorList
+
+	    print "</authors>\n";
+
+	    print "<title>$title</title>\n";
+	    print "<journal>$journal</journal>\n";
+	    print "<year>$year</year>\n";
+	    print "<volume>$volume</volume>\n" if defined $volume;
+	    print "<issue>$issue</issue>\n" if defined $issue;
+	    print "<pages>$pages</pages>\n";
+	    print "\n";
+	}
+    } else {
+	print STDERR "$0: <query_result> is not found in file '$file'\n";
+    }
+
+    close F;
+}
