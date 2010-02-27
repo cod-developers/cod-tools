@@ -110,6 +110,10 @@ for my $filename (@ARGV) {
 			  (?:(?:^|\s)$number_or_word\s*$units
 			   (?:.*\s$number_or_word\s*$time_units)?
 			   (?:.*(?:quench|anneal)\w*))$
+                          |(?:P(?:ressure)?\s*=\s*$number\s*$units\s+
+                              in\s+(?:air|.*\scell)
+                              (?:\s+after\s+decompression)?
+                           )
 			  )(?:\W|$)/imsxg
 			    ) {
 			      my $newval = $1;
@@ -117,7 +121,8 @@ for my $filename (@ARGV) {
 				  ($processing_words)(?:ed|i?ng)
 				  (.+\1)
 				  /$1/ixsm;
-			      $newval =~ s/($synthesis_words(?:ed|i?ng)\s+(?:by|in))
+			      $newval =~ s/($synthesis_words(?:ed|i?ng)\s+
+                                  (?:by|in))
 				  .+($processing_words)
 				  /$2/ixsm;
 			      $value = defined $value ?
@@ -134,6 +139,13 @@ for my $filename (@ARGV) {
 		    $value =~ s/\n/ /g;
 		    $value =~ s/\s+/ /g;
 		    $value =~ s/^\s+|\s+$//g;
+                    if( $value =~ /^(P(?:ressure)?\s*=\s*)($number)(\s.*)$/ ) {
+                        my $prefix = $1;
+                        my $numeric_value = $2;
+                        my $suffix = $3;
+                        $value =
+                            $prefix . sprintf( "%g", $numeric_value ) . $suffix;
+                    }
 		    if( !exists $values->{$key} ) {
 			$values->{$key}[0] = $value;
 		    }
