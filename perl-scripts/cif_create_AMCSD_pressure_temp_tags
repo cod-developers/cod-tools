@@ -63,7 +63,8 @@ for my $filename (@ARGV) {
 	for my $tag ( @{$dataset->{tags}} ) {
 	    if( $values->{$tag}[0] =~
 		/((?:\w+\s+)?(?:anneal\w*|quench\w*|prepare\w*)(?:\s+\w+)?)\s+
-                 (P|T)\s*=\s*([-+0-9.E]+)\s*((?:deg(?:ree(?:s)?)?\s+)?[\w]+)/xi
+                 (P(?:ressure)?|T(?:emperature)?)\s*=\s*([-+0-9.E]+)\s*
+                 ((?:deg(?:ree(?:s)?)?\s+)?[\w]+)/xi
                 ) {
 		print STDERR "$0: $filename data_$dataset->{name}: ",
 		"WARNING, structure marked as '$1', not taking " . 
@@ -140,7 +141,8 @@ for my $filename (@ARGV) {
 	    }
 	}
 	for my $tag ( @{$dataset->{tags}} ) {
-	    if( $values->{$tag}[0] =~ /P\s*=\s*([-+0-9.eE]+)\s*([\w]+)/ ) {
+	    if( $values->{$tag}[0] =~
+                /P(?:ressure)?\s*=\s*([-+0-9.eE]+)\s*([\w]+)/ ) {
 		my $pressure = $1;
 		my $units = $2;
 		my $coefficient;
@@ -175,7 +177,8 @@ for my $filename (@ARGV) {
 	    }
 	    if( !$temperature_is_processing &&
 		$values->{$tag}[0] =~
-		  /T\s*=\s*([-+0-9.eE]+)\s*((?:deg(?:ree(?:s)?)?\s+)?[\w]+)/ ) {
+		  /T(?:emperature)?\s*=\s*([-+0-9.eE]+)\s*
+                ((?:deg(?:ree(?:s)?)?\s+)?[\w]+)/x ) {
 		my $temperature = $1;
 		my $units = $2;
 		my $shift;
