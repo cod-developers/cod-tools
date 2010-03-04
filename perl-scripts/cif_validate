@@ -649,37 +649,47 @@ CIFFILEANAL: for my $cifF ( @{$CIFfile} ) {
                     #
                     # end-if check values in enumeration list
                     #
+
+                    #
+                    # Check if values match the declared types:
+                    #
+
+                    if( $showMap{'value-type'} ) {
+                        if( defined $dictD->{$lc_tagAnalysed}{values}{_type} &&
+                            $dictD->{$lc_tagAnalysed}{values}{_type}[0] eq 'numb' ) {
+                            if(defined $block->{types}{$tagAnalysed}) {
+                                if('FLOAT'  ne $block->{types}{$tagAnalysed}[$tagIndex]
+                                   && 'INT' ne $block->{types}{$tagAnalysed}[$tagIndex]) {
+                                    showValidationMessage 4, 'value-type',
+                                    $cifF, $$block{name},
+                                    "tag '" . $tagAnalysed . "' " .
+                                        "value \"" . 
+                                        $block->{values}{$tagAnalysed}[$tagIndex] .
+                                        "\" " .
+                                        "is of type "
+                                        . "'"
+                                        . $block->{types}{$tagAnalysed}[$tagIndex]
+                                        . "' while it should be numeric, i.e. 'FLOAT', or 'INT'";
+                                } else {
+                                    showValidationMessage 64, 'value-type',
+                                    $cifF, $$block{name},
+                                    "tag '" . $tagAnalysed . "' is of type "
+                                        . "'"
+                                        . $block->{types}{$tagAnalysed}[$tagIndex]
+                                        . "' as expected, as it should be one of: 'FLOAT', 'INT'";
+                                }
+                            }
+                        }
+                    }
                     
                     #
-                    # if check values against enumeration_range
+                    # Check values against enumeration_range
                     #
                     if( $showMap{'values-range'} ) {
                         if( %$range ) {
                             my $valueWOPrecision = $value;
                             if( $dictD->{$lc_tagAnalysed}{values}{_type}[0] 
-                                 eq 'numb' ) {
-                                if(defined $block->{types}{$tagAnalysed}) {
-                                    if('FLOAT'  ne $block->{types}{$tagAnalysed}[$tagIndex]
-                                       && 'INT' ne $block->{types}{$tagAnalysed}[$tagIndex]) {
-                                        showValidationMessage 4, 'value-type',
-                                            $cifF, $$block{name},
-                                            "tag '" . $tagAnalysed . "' " .
-                                            "value \"" . 
-                                            $block->{values}{$tagAnalysed}[$tagIndex] .
-                                            "\" " .
-                                            "is of type "
-                                            . "'"
-                                            . $block->{types}{$tagAnalysed}[$tagIndex]
-                                            . "' while it should be numeric, i.e. 'FLOAT', or 'INT'";
-                                    } else {
-                                        showValidationMessage 64, 'value-type',
-                                            $cifF, $$block{name},
-                                            "tag '" . $tagAnalysed . "' is of type "
-                                            . "'"
-                                            . $block->{types}{$tagAnalysed}[$tagIndex]
-                                            . "' as expected, as it should be one of: 'FLOAT', 'INT'";
-                                    }
-                                }
+                                eq 'numb' ) {
                                 $valueWOPrecision =~ s/\s*\(.*$//;
                             }
                             if( checkAgainstRange(
