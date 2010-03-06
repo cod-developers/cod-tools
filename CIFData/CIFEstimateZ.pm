@@ -1,8 +1,8 @@
 #------------------------------------------------------------------------------
-#$Author: saulius $
-#$Date: 2010-01-19 17:12:06 +0200 (Tue, 19 Jan 2010) $ 
-#$Revision: 1071 $
-#$URL: svn+ssh2224://vartai.ibt.lt/home/xray/svn-repositories/cif-tools/trunk/CIFData/CIFCellContents.pm $
+#$Author$
+#$Date$ 
+#$Revision$
+#$URL$
 #------------------------------------------------------------------------------
 #*
 #  Estimate Z-value using CIF-provided crystal density, cell volume
