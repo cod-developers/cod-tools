@@ -18,6 +18,7 @@ use Fractional;
 use SymopParse;
 use SymopLookup;
 use Formulae::FormulaPrint;
+use CIFData::CIFEstimateZ;
 
 require Exporter;
 @CIFCellContents::ISA = qw(Exporter);
@@ -123,9 +124,23 @@ sub cif_cell_contents($$$)
         if( exists $values->{_cell_formula_units_Z} ) {
             $Z = $values->{_cell_formula_units_Z}[0];
         } else {
-            $Z = 1;
-            warning( $0, $filename, $dataset->{name},
-                     "_cell_formula_units_Z is missing -- assuming Z = $Z" );
+            eval {
+                $Z = CIFEstimateZ::cif_estimate_z( $dataset );
+            };
+            if( $@ ) {
+                my $msg = $@;
+                $msg =~ s/\n$//;
+                $msg =~ s/:\n/: /g;
+                $msg =~ s/\n/; /g;
+                $Z = 1;
+                warning( $0, $filename, $dataset->{name},
+                         "$msg -- " .
+                         "assuming Z = $Z" );
+            } else {
+                warning( $0, $filename, $dataset->{name},
+                         "_cell_formula_units_Z is missing -- " .
+                         "assuming Z = $Z" );
+            }
         }
     }
 
