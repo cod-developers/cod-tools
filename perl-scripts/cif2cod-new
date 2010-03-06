@@ -17,6 +17,7 @@ use lib "./lib/perl5";
 use lib "./CIFParser";
 use CIFParser;
 use Spacegroups::SpacegroupNames;
+use CIFData::CIFCellContents;
 use Unicode2CIF;
 use SOptions;
 use SUsage;
@@ -126,6 +127,9 @@ for my $filename (@ARGV) {
 	my $first_page = get_tag( $values, "_journal_page_first", 0, $filename );
 	my $last_page = get_tag_silently( $values, "_journal_page_last", 0 );
 	my $issue = get_tag_silently( $values, "_journal_issue", 0 );
+
+        my $calculated_formula =
+            CIFCellContents::cif_cell_contents( $dataset, $filename, undef );
 
 	my $text = join( '\n', map { Unicode2CIF::cif2unicode($_) }
                          ( $authors, $title, $journal, $volume .

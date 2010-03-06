@@ -112,8 +112,8 @@ sub cif_cell_contents($$$)
 
     if( defined $user_Z ) {
         $Z = $user_Z;
-        if( exists $values->{_cell_formula_units_Z} ) {
-            my $file_Z = $values->{_cell_formula_units_Z}[0];
+        if( exists $values->{_cell_formula_units_z} ) {
+            my $file_Z = $values->{_cell_formula_units_z}[0];
             if( $Z != $file_Z ) {
                 warning( $0, $filename, $dataset->{name},
                          "overriding _cell_formula_units_Z ($file_Z) " .
@@ -121,8 +121,8 @@ sub cif_cell_contents($$$)
             }
         }
     } else {
-        if( exists $values->{_cell_formula_units_Z} ) {
-            $Z = $values->{_cell_formula_units_Z}[0];
+        if( exists $values->{_cell_formula_units_z} ) {
+            $Z = $values->{_cell_formula_units_z}[0];
         } else {
             eval {
                 $Z = CIFEstimateZ::cif_estimate_z( $dataset );
