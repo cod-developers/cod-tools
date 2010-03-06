@@ -42,13 +42,13 @@ sub cif_estimate_z($)
         } else {
             my $error = "";
             if( !defined $volume ) {
-                $error .= "cell volume undefined in '$dataset->{name}'\n";
+                $error .= "cell volume undefined\n";
             }
             if( !defined $density ) {
-                 $error .= "crystal density undefined in '$dataset->{name}'\n";
+                 $error .= "crystal density undefined\n";
             }
             if( !defined $molwt ) {
-                $error .= "molecular weight undefined in '$dataset->{name}'\n";
+                $error .= "molecular weight undefined\n";
             }
             die "not enough data in '$dataset->{name}' to estimate Z:\n" . $error;
         }
