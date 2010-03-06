@@ -53,6 +53,14 @@ my $cod_number;
     "-c,--continue-on-errors" => sub { $continue_on_errors = 1 },
     "-c-,--no-continue-on-errors" => sub { $continue_on_errors = 0 },
     "--dont-continue-on-errors"   => sub { $continue_on_errors = 0 },
+    "--exit-on-errors"            => sub { $continue_on_errors = 0 },
+
+    "--reformat-space-group"      => sub { $reformat_spacegroup = 1; },
+    "--dont-reformat-space-group" => sub { $reformat_spacegroup = 0; },
+    "--leave-space-space-group"   => sub { $reformat_spacegroup = 0; },
+
+    "--guess-formula-from-atoms"      => sub { $guess_formula_from_atoms = 1; },
+    "--dont-guess-formula-from-atoms" => sub { $guess_formula_from_atoms = 0; },
 
     "--help,--usage"  => sub { SUsage::usage; exit },
 );
@@ -76,22 +84,6 @@ sub error
 
     die unless $continue_on_errors;
 }
-
-@ARGV = getOptions(
-    "-c,--continue-on-errors"       => sub { $continue_on_errors = 1 },
-    "-c-,--dont-continue-on-errors" => sub { $continue_on_errors = 0 },
-    "--no-continue-on-errors"       => sub { $continue_on_errors = 0 },
-    "--exit-on-errors"              => sub { $continue_on_errors = 0 },
-
-    "--reformat-space-group"        => sub { $reformat_spacegroup = 1; },
-    "--dont-reformat-space-group"   => sub { $reformat_spacegroup = 0; },
-    "--leave-space-space-group"     => sub { $reformat_spacegroup = 0; },
-
-    "--guess-formula-from-atoms"      => sub { $guess_formula_from_atoms = 1; },
-    "--dont-guess-formula-from-atoms" => sub { $guess_formula_from_atoms = 0; },
-
-    "--help,--usage"                => sub { SUsage::usage; exit },
-);
 
 my %spacegroups = map {
     my $key1 = $_->[1];
