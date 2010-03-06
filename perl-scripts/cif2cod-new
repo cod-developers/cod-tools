@@ -128,8 +128,16 @@ for my $filename (@ARGV) {
 	my $last_page = get_tag_silently( $values, "_journal_page_last", 0 );
 	my $issue = get_tag_silently( $values, "_journal_issue", 0 );
 
-        my $calculated_formula =
-            CIFCellContents::cif_cell_contents( $dataset, $filename, undef );
+        my $calculated_formula;
+
+        eval {
+            $calculated_formula =
+                CIFCellContents::cif_cell_contents( $dataset, $filename, undef );
+        };
+        if( $@ ) {
+            error( "summary formula could not be calculated",
+                   $filename, $dataset );
+        }
 
 	my $text = join( '\n', map { Unicode2CIF::cif2unicode($_) }
                          ( $authors, $title, $journal, $volume .
@@ -210,7 +218,7 @@ for my $filename (@ARGV) {
         push( @data, $common_name );
         push( @data, $systematic_name );
 	push( @data, $formula ? "- " . $formula . " -" : "?" );
-        push( @data, "- $calculated_formula -" );
+        push( @data, $calculated_formula ? "- " . $calculated_formula . " -" : undef );
 	if( exists $values->{_journal_coeditor_code} ) {
 	    push( @data, uc( get_tag_or_undef( $values, 
 					       "_journal_coeditor_code", 0 )));
