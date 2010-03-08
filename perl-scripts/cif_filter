@@ -75,6 +75,7 @@ my $fold_title = 0;
 my $folding_width = 76;
 my $parse_formula_sum = 0;
 my $fix_errors = 0;
+my $use_datablocks_without_coord = 0;
 my $update_database_code = 1; # Specifies whether to update _cod_database_code tag
                               # value upon renumbering.
 
@@ -177,6 +178,20 @@ my %spacegroups = map {
     "-S,--start-data-block-number"    => \$data_block_nr,
     "-R,--renumber-data-blocks"       => sub { $data_block_nr = 7000001 },
     "-R-,--dont-renumber-data-blocks" => sub { undef $data_block_nr },
+
+    "--use-datablocks-without-coordinates"
+        => sub{ $use_datablocks_without_coord = 1 },
+    "--use-all-datablocks"
+        => sub{ $use_datablocks_without_coord = 1 },
+
+    "--do-not-use-datablocks-without-coordinates"
+        => sub{ $use_datablocks_without_coord = 0 },
+    "--dont-use-datablocks-without-coordinates"
+        => sub{ $use_datablocks_without_coord = 0 },
+    "--no-use-datablocks-without-coordinates"
+        => sub{ $use_datablocks_without_coord = 0 },
+    "--skip-datablocks-without-coordinates"
+        => sub{ $use_datablocks_without_coord = 0 },
 
     "--folding-width"         => \$folding_width,
     "--fold-title"            => sub{ $fold_title = 1 },
@@ -303,7 +318,8 @@ for my $dataset (@data) {
 
     canonicalize_names( $dataset );
 
-    next if !defined $datablok or !defined $datablok->{_atom_site_label};
+    next if !defined $datablok;
+    next if !$use_datablocks_without_coord && !defined $datablok->{_atom_site_label};
 
     ## print "\n" if $n > 0;
 
