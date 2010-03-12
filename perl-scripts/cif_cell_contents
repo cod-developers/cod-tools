@@ -52,18 +52,21 @@ my $Z_value;
 
 my $Id = '$Id$';
 
-my $filename = shift(@ARGV);
+@ARGV = ( "-" ) unless @ARGV;
 
-my $parser = new CIFParser;
+for my $filename (@ARGV) {
 
-my $data = $parser->Run($filename);
+    my $parser = new CIFParser;
 
-for my $dataset (@$data) {
+    my $data = $parser->Run($filename);
 
-    my $values = $dataset->{values};
+    for my $dataset (@$data) {
 
-    my $formula = CIFCellContents::cif_cell_contents( $dataset, 
-						      $filename,
-						      $Z_value );
-    print $formula, "\n" if defined $formula;
+        my $values = $dataset->{values};
+
+        my $formula = CIFCellContents::cif_cell_contents( $dataset, 
+                                                          $filename,
+                                                          $Z_value );
+        print $formula, "\n" if defined $formula;
+    }
 }
