@@ -125,6 +125,7 @@ for my $filename (@ARGV) {
 	my @data = ();
 	my $nel;
 	my $values = $dataset->{values};
+	my $sigmas = $dataset->{precisions};
 
 	next unless exists $values->{_atom_site_fract_x} ||
             $use_datablocks_without_coord;
@@ -211,11 +212,17 @@ for my $filename (@ARGV) {
             push( @data, $dataset->{name} );
         }
 	push( @data, get_num( $values, "_cell_length_a", 0, $filename ));
+	push( @data, get_num_or_undef( $sigmas, "_cell_length_a", 0 ));
 	push( @data, get_num( $values, "_cell_length_b", 0, $filename ));
+	push( @data, get_num_or_undef( $sigmas, "_cell_length_b", 0 ));
 	push( @data, get_num( $values, "_cell_length_c", 0, $filename ));
+	push( @data, get_num_or_undef( $sigmas, "_cell_length_c", 0 ));
 	push( @data, get_num( $values, "_cell_angle_alpha", 0, $filename ));
+	push( @data, get_num_or_undef( $sigmas, "_cell_angle_alpha", 0 ));
 	push( @data, get_num( $values, "_cell_angle_beta", 0, $filename ));
+	push( @data, get_num_or_undef( $sigmas, "_cell_angle_beta", 0 ));
 	push( @data, get_num( $values, "_cell_angle_gamma", 0, $filename ));
+	push( @data, get_num_or_undef( $sigmas, "_cell_angle_gamma", 0 ));
 
 	my $cell_volume = get_num_or_undef( $values, "_cell_volume", 0 );
 
