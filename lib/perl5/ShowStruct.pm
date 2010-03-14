@@ -76,18 +76,20 @@ sub showArray
    my $item;
    my $isFlat = 1;
    foreach $item ( @{$array} ) {
-      if( ref $item eq "HASH" or ref $item eq "ARRAY" ) {
+      if( defined $item and (ref $item eq "HASH" or ref $item eq "ARRAY" )) {
          $isFlat = 0; last;
       }
    }
    if( $isFlat ) {
-       print STDOUT "[ @{$array} ]";
+       print STDOUT "[ ", map( { defined $_ ? $_ : "undef" } @{$array} ), " ]";
    } else {
        printf STDOUT "\n" unless $ident eq "";
        print STDOUT $ident, "[";
        my $index = 1;
        foreach $item ( @{$array} ) {
-	   if( ref $item eq "HASH" ) {
+           if( !defined $item  ) {
+               printf STDOUT "   %s%-3d: ", "undef", $index++;
+           } elsif( ref $item eq "HASH" ) {
                printf STDOUT "   %s%-3d: ", $ident, $index++;
 	       showHash( $item, $ident . "   " );
 	   } elsif( ref $item eq "ARRAY" ) {
