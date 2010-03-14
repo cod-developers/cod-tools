@@ -13,12 +13,21 @@ SET @saved_cs_client     = @@character_set_client;
 SET character_set_client = utf8;
 CREATE TABLE `data` (
   `file` mediumint(7) unsigned NOT NULL default '0',
+
   `a` float unsigned NOT NULL default '0.0000',
+  `siga` float unsigned;
   `b` float unsigned NOT NULL default '0.0000',
+  `sigb` float unsigned;
   `c` float unsigned NOT NULL default '0.0000',
+  `sigc` float unsigned;
+
   `alpha` float unsigned NOT NULL default '0.000',
+  `sigalpha` float unsigned;
   `beta` float unsigned NOT NULL default '0.000',
+  `sigbeta` float unsigned;
   `gamma` float unsigned NOT NULL default '0.000',
+  `siggamma` float unsigned;
+
   `vol` float unsigned,
   `celltemp` float unsigned,
   `diffrtemp` float unsigned,
