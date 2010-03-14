@@ -464,26 +464,33 @@ sub get_symmetry_operators($$)
         }
     }
 
-    if( ( exists $values->{"_symmetry_space_group_name_H-M"} ||
-	  exists $values->{"_symmetry_space_group_name_h-m"} ) &&
-	not defined $sym_data ) {
-        my $h_m = $values->{"_symmetry_space_group_name_H-M"}[0];
-        $h_m = $values->{"_symmetry_space_group_name_h-m"}[0] unless $h_m;
-        $sym_data = lookup_symops("hermann_mauguin", $h_m);
+    if( !defined $sym_data ) {
+        for my $tag (qw( _space_group_name_H-M_alt
+                         _space_group_name_h-m_alt
+                         _space_group.name_H-M_full
+                         _space_group.name_h-m_full
+                         _symmetry_space_group_name_H-M
+                         _symmetry_space_group_name_h-m
+                    )) {
+            if( exists $values->{$tag} ) {
+                my $h_m = $values->{$tag}[0];
+                $sym_data = lookup_symops("hermann_mauguin", $h_m);
 
-        if( !$sym_data ) {
-            error( $0, $filename, $dataset->{name},
-		   "_symmetry_space_group_name_H-M value '$h_m' is " .
-		   "not recognised" );
-            die;
+                if( !$sym_data ) {
+                    error( $0, $filename, $dataset->{name},
+                           "$tag value '$h_m' is not recognised" );
+                } else {
+                    last
+                }
+            }
         }
     }
 
     if( not defined $sym_data ) {
         error( $0, $filename, $dataset->{name},
-	       "neither _symmetry_equiv_pos_as_xyz " .
-	       "nor _symmetry_space_group_name_Hall " .                  
-	       "nor _symmetry_space_group_name_H-M could be processed" );
+	       "neither symmetry operators, " .
+	       "nor Hall spacegroup symbol," .                  
+	       "nor Hermann-Mauguin spacegroup symbol could be processed" );
         die;
     }
 
