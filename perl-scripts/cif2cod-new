@@ -170,14 +170,39 @@ for my $filename (@ARGV) {
         my $diffr_temperature =
             get_num_or_undef( $values, "_diffrn_ambient_temperature", 0 );
 
+        undef $diffr_temperature if defined $diffr_temperature &&
+            $diffr_temperature =~ /^\s*\?\s*$/;
+
+        my $diffr_temperature_sigma =
+            get_num_or_undef( $sigmas, "_diffrn_ambient_temperature", 0 );
+
         my $cell_temperature =
             get_num_or_undef( $values, "_cell_measurement_temperature", 0 );
+
+        undef $cell_temperature if defined $cell_temperature &&
+            $cell_temperature =~ /^\s*\?\s*$/;
+
+        my $cell_temperature_sigma =
+            get_num_or_undef( $sigmas, "_cell_measurement_temperature", 0 );
 
         my $diffr_pressure =
             get_num_or_undef( $values, "_diffrn_ambient_pressure", 0 );
 
+        undef $diffr_pressure if defined $diffr_pressure &&
+            $diffr_pressure =~ /^\s*\?\s*$/;
+
+        my $diffr_pressure_sigma =
+            get_num_or_undef( $sigmas, "_diffrn_ambient_pressure", 0 );
+
         my $cell_pressure =
             get_num_or_undef( $values, "_cell_measurement_pressure", 0 );
+
+        undef $cell_pressure if defined $cell_pressure &&
+            $cell_pressure =~ /^\s*\?\s*$/;
+
+        my $cell_pressure_sigma =
+            get_num_or_undef( $sigmas, "_cell_measurement_pressure", 0 );
+
 
         my $systematic_name =
             get_tag_or_undef( $values, "_chemical_name_systematic", 0 );
@@ -232,11 +257,16 @@ for my $filename (@ARGV) {
 	}
 
 	push( @data, $cell_volume );
+	push( @data, get_num_or_undef( $sigmas, "_cell_volume", 0 ));
 
 	push( @data, $cell_temperature );
+	push( @data, $cell_temperature_sigma );
 	push( @data, $diffr_temperature );
+	push( @data, $diffr_temperature_sigma );
         push( @data, $cell_pressure );
+        push( @data, $cell_pressure_sigma );
         push( @data, $diffr_pressure );
+        push( @data, $diffr_pressure_sigma );
 
 	push( @data, $nel );
 	push( @data, get_spacegroup_info( $values, $filename ));

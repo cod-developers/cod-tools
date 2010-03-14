@@ -29,10 +29,19 @@ CREATE TABLE `data` (
   `siggamma` float unsigned,
 
   `vol` float unsigned,
+  `sigvol` float unsigned,
+
   `celltemp` float unsigned,
+  `sigcelltemp` float unsigned,
+
   `diffrtemp` float unsigned,
+  `sigdiffrtemp` float unsigned,
+
   `cellpressure` float unsigned,
+  `sigcellpressure` float unsigned,
+
   `diffrpressure` float unsigned,
+  `sigdiffrpressure` float unsigned,
 
   `nel` varchar(4) collate utf8_unicode_ci,
   `sg` varchar(32) collate utf8_unicode_ci,
