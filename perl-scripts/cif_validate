@@ -572,6 +572,7 @@ CIFFILEANAL: for my $cifF ( @{$CIFfile} ) {
                     my $tagValue = $block->{values}{$tagAnalysed}[$tagIndex];
                     next CIFVALUE if $tagValue eq '.' or $tagValue eq '?';
                     my $value = $tagValue;
+                    my $sigma = $block->{precisions}{$tagAnalysed}[$tagIndex];
                     #
                     # if check values in enumeration list
                     #
@@ -694,7 +695,7 @@ CIFFILEANAL: for my $cifF ( @{$CIFfile} ) {
                             }
                             if( checkAgainstRange(
                             $dictD->{$lc_tagAnalysed}{values}{_type}[0],
-                            $range, $valueWOPrecision) <= 0 ) {
+                            $range, $valueWOPrecision, $sigma) <= 0 ) {
                                 showValidationMessage 4, 'values-range',
                                     $cifF, $$block{name},
                                     "tag '" . $tagAnalysed . "' value "
@@ -1089,12 +1090,13 @@ sub checkAgainstRange {
     my $type  = shift; # char or numb
     my $range = shift;
     my $value = shift;
+    my $sigma = shift;
     if( !exists $$range{min} &&
         !exists $$range{max} ) {
         return -1;
     }
     if( $type eq 'numb' ) {
-        return checkAgainstRangeNumb( $range, $value );
+        return checkAgainstRangeNumb( $range, $value, $sigma );
     } else {
         return checkAgainstRangeChar( $range, $value );
     }
@@ -1104,13 +1106,25 @@ sub checkAgainstRange {
 sub checkAgainstRangeNumb {
     my $range = shift;
     my $value = shift;
+    my $sigma = shift;
     if( ! Scalar::Util::looks_like_number($value) ) {
         return 0;
     }
+
+    my ($min,$max);
+
+    if( defined $sigma ) {
+        $min = $$range{min} - 3 * $sigma if exists $$range{min};
+        $max = $$range{max} + 3 * $sigma if exists $$range{max};
+    } else {
+        $min = $$range{min} if exists $$range{min};
+        $max = $$range{max} if exists $$range{max};
+    }
+
     if(
-        ( !exists $$range{max} || $value <= $$range{max} )
+        ( !defined $max || $value <= $max )
         &&
-        ( !exists $$range{min} || $value >= $$range{min} )
+        ( !defined $min || $value >= $min )
     ) {
         return 1;
     }
