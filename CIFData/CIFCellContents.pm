@@ -452,6 +452,7 @@ sub get_symmetry_operators($$)
                      )) {
             if( exists $values->{$tag} ) {
                 my $hall = $values->{$tag}[0];
+                next if $hall eq '?';
                 $sym_data = lookup_symops("hall", $hall);
 
                 if( !$sym_data ) {
@@ -474,6 +475,7 @@ sub get_symmetry_operators($$)
                     )) {
             if( exists $values->{$tag} ) {
                 my $h_m = $values->{$tag}[0];
+                next if $h_m eq '?';
                 $sym_data = lookup_symops("hermann_mauguin", $h_m);
 
                 if( !$sym_data ) {
