@@ -43,6 +43,9 @@ CREATE TABLE `data` (
   `diffrpressure` float unsigned,
   `sigdiffrpressure` float unsigned,
 
+  `thermalhist` varchar(255),
+  `pressurehist` varchar(255),
+
   `nel` varchar(4) collate utf8_unicode_ci,
   `sg` varchar(32) collate utf8_unicode_ci,
 
