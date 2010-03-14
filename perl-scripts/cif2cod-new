@@ -23,7 +23,6 @@ use SOptions;
 use SUsage;
 
 my $reformat_spacegroup = 0;
-my $guess_formula_from_atoms = 0;
 my $use_datablocks_without_coord = 0;
 
 my $continue_on_errors = 0;
@@ -74,9 +73,6 @@ my $cod_number;
         => sub{ $use_datablocks_without_coord = 0 },
     "--skip-datablocks-without-coordinates"
         => sub{ $use_datablocks_without_coord = 0 },
-
-    "--guess-formula-from-atoms"      => sub { $guess_formula_from_atoms = 1; },
-    "--dont-guess-formula-from-atoms" => sub { $guess_formula_from_atoms = 0; },
 
     "--help,--usage"  => sub { SUsage::usage; exit },
 );
@@ -223,9 +219,9 @@ for my $filename (@ARGV) {
 
 	my $formula = get_tag( $values, "_chemical_formula_sum", 0, $filename );
 
-	if( $formula eq '' &&  $guess_formula_from_atoms ) {
-	    $formula = guess_formula_from_data( $values );
-	} else {
+        undef $formula if $formula =~ /^\s*\?\s*$/;
+
+	if( defined $formula  ) {
 	    check_chem_formula( $formula, $filename );
 	}
 
@@ -527,21 +523,4 @@ sub cell_volume
     my $V = $a * $b * $c * sqrt( $sg**2 - $ca**2 - $cb**2 + 2*$ca*$cb*$cg );
 
     return $V;
-}
-
-sub guess_formula_from_data
-{
-    my ( $values ) = @_;
-    my $formula = "";
-
-    for my $tag (qw( _atom_site_type_symbol _atom_site_label )) {
-	if( exists $values->{$tag} ) {
-	    my @atoms = map { s/^([A-Za-z]{1,2}).*$/$1/; $_ } @{$values->{$tag}};
-	    @atoms = unique( sort {$a cmp $b} @atoms );
-	    @atoms = map { "$_?" } @atoms;
-	    $formula = join( " ", @atoms );
-	    last;
-	}	
-    }
-    return $formula;
 }
