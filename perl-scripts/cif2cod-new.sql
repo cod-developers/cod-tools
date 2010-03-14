@@ -19,7 +19,7 @@ CREATE TABLE `data` (
   `alpha` float unsigned NOT NULL default '0.000',
   `beta` float unsigned NOT NULL default '0.000',
   `gamma` float unsigned NOT NULL default '0.000',
-  `vol` float unsigned NOT NULL default '0.00',
+  `vol` float unsigned,
   `celltemp` float unsigned,
   `diffrtemp` float unsigned,
   `cellpressure` float unsigned,
