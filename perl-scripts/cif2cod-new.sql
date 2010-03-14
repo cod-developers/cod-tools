@@ -15,18 +15,18 @@ CREATE TABLE `data` (
   `CODID` mediumint(7) unsigned NOT NULL default '0',
 
   `a` float unsigned NOT NULL default '0.0000',
-  `siga` float unsigned;
+  `siga` float unsigned,
   `b` float unsigned NOT NULL default '0.0000',
-  `sigb` float unsigned;
+  `sigb` float unsigned,
   `c` float unsigned NOT NULL default '0.0000',
-  `sigc` float unsigned;
+  `sigc` float unsigned,
 
   `alpha` float unsigned NOT NULL default '0.000',
-  `sigalpha` float unsigned;
+  `sigalpha` float unsigned,
   `beta` float unsigned NOT NULL default '0.000',
-  `sigbeta` float unsigned;
+  `sigbeta` float unsigned,
   `gamma` float unsigned NOT NULL default '0.000',
-  `siggamma` float unsigned;
+  `siggamma` float unsigned,
 
   `vol` float unsigned,
   `celltemp` float unsigned,
@@ -52,6 +52,10 @@ CREATE TABLE `data` (
   `issue` tinyint unsigned collate utf8_unicode_ci,
   `firstpage` varchar(20) collate utf8_unicode_ci,
   `lastpage` varchar(20) collate utf8_unicode_ci,
+
+  `duplicateof` mediumint(7) unsigned,
+  `optimal` mediumint(7) unsigned,
+  `status` enum('none', 'warnings', 'errors', 'retracted'),
 
   `text` text collate utf8_unicode_ci NOT NULL,
 
