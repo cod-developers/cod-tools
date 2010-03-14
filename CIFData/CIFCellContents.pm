@@ -445,7 +445,7 @@ sub get_symmetry_operators($$)
     }
 
     if( ( exists $values->{"_symmetry_space_group_name_Hall"} ||
-	  exists $values->{"_symmetry_space_group_name_Hall"} ) &&
+	  exists $values->{"_symmetry_space_group_name_hall"} ) &&
 	not defined $sym_data ) {
         my $hall = $values->{"_symmetry_space_group_name_Hall"}[0];
 	$hall = $values->{"_symmetry_space_group_name_hall"}[0] unless $hall;
