@@ -243,7 +243,8 @@ for my $filename (@ARGV) {
         push( @data, $common_name );
         push( @data, $systematic_name );
 	push( @data, $formula ? "- " . $formula . " -" : "?" );
-        push( @data, $calculated_formula ? "- " . $calculated_formula . " -" : undef );
+        push( @data, $calculated_formula ?
+              "- " . $calculated_formula . " -" : undef );
 	if( exists $values->{_journal_coeditor_code} ) {
 	    push( @data, uc( get_tag_or_undef( $values, 
 					       "_journal_coeditor_code", 0 )));
@@ -271,6 +272,28 @@ for my $filename (@ARGV) {
 	push( @data, get_tag_or_undef( $values, "_journal_issue", 0 ));
 	push( @data, get_tag_or_undef( $values, "_journal_page_first", 0 ));
 	push( @data, get_tag_or_undef( $values, "_journal_page_last", 0 ));
+
+	push( @data, get_tag_or_undef( $values, "_cod_duplicate_entry", 0 ));
+        if( !defined $data[-1] ) {
+            $data[-1] = get_tag_or_undef( $values,
+                                          "_[local]_cod_duplicate_entry",
+                                          0 );
+        }
+
+        push( @data, get_tag_or_undef( $values,
+                                       "_cod_related_optimal_struct", 0 ));
+        if( !defined $data[-1] ) {
+            $data[-1] = get_tag_or_undef( $values,
+                                          "_[local]_cod_related_optimal_struct",
+                                          0 );
+        }
+
+	push( @data, get_tag_or_undef( $values, "_cod_error_flag", 0 ));
+        if( !defined $data[-1] ) {
+            $data[-1] = get_tag_or_undef( $values,
+                                          "_[local]_cod_error_flag",
+                                          0 );
+        }
 
 	push( @data, $text );
 
