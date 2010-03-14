@@ -444,18 +444,24 @@ sub get_symmetry_operators($$)
         $sym_data = $values->{"_symmetry_equiv_pos_as_xyz"};
     }
 
-    if( ( exists $values->{"_symmetry_space_group_name_Hall"} ||
-	  exists $values->{"_symmetry_space_group_name_hall"} ) &&
-	not defined $sym_data ) {
-        my $hall = $values->{"_symmetry_space_group_name_Hall"}[0];
-	$hall = $values->{"_symmetry_space_group_name_hall"}[0] unless $hall;
-        $sym_data = lookup_symops("hall", $hall);
+    if( !defined $sym_data ) {
+        for my $tag (qw( _space_group_name_Hall
+                         _space_group_name_hall
+                         _symmetry_space_group_name_Hall 
+                         _symmetry_space_group_name_hall 
+                     )) {
+            if( exists $values->{$tag} ) {
+                my $hall = $values->{$tag}[0];
+                $sym_data = lookup_symops("hall", $hall);
 
-        if( !$sym_data ) {
-            error( $0, $filename, $dataset->{name},
-		   "_symmetry_space_group_name_Hall value '$hall' is " .
-		   "not recognised" );
-        } 
+                if( !$sym_data ) {
+                    error( $0, $filename, $dataset->{name},
+                           "$tag value '$hall' is not recognised" );
+                } else {
+                    last
+                }
+            }
+        }
     }
 
     if( ( exists $values->{"_symmetry_space_group_name_H-M"} ||
