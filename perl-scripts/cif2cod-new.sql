@@ -48,6 +48,7 @@ CREATE TABLE `data` (
 
   `nel` varchar(4) collate utf8_unicode_ci,
   `sg` varchar(32) collate utf8_unicode_ci,
+  `sgHall` varchar(32) collate utf8_unicode_ci,
 
   `commonname` varchar(255) collate utf8_unicode_ci,
   `chemname` varchar(255) collate utf8_unicode_ci,
