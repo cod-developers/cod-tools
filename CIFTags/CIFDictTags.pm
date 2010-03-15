@@ -3610,6 +3610,26 @@ _valence_ref_reference
 _valence_ref.reference
 _vrf_[]
 _vrf_VALIDATOR_comments
+
+_oxford_atom_site_special_shape
+_oxford_diffrn_Wilson_B_factor
+_oxford_diffrn_Wilson_scale
+_oxford_refine_ls_r_factor_ref
+_oxford_refine_ls_scale
+_oxford_reflns_number_all
+_oxford_reflns_threshold_expression_ref
+_oxford_structure_analysis_title
+_oxford_twin_element_scale_factors
+
+_platon_squeeze_details
+_platon_squeeze_void_average_x
+_platon_squeeze_void_average_y
+_platon_squeeze_void_average_z
+_platon_squeeze_void_content
+_platon_squeeze_void_count_electrons
+_platon_squeeze_void_nr
+_platon_squeeze_void_volume
+
 );
 
 1;
