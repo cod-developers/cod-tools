@@ -2790,13 +2790,14 @@ _phasing_set_refln.index_k
 _phasing_set_refln.index_l
 _phasing_set_refln.set_id
 _phasing_set.temp
-_platon_squeeze_void_nr
+_platon_squeeze_details
 _platon_squeeze_void_average_x
 _platon_squeeze_void_average_y
 _platon_squeeze_void_average_z
-_platon_squeeze_void_volume
+_platon_squeeze_void_content
 _platon_squeeze_void_count_electrons
-_platon_squeeze_details
+_platon_squeeze_void_nr
+_platon_squeeze_void_volume
 _refine_[]
 _refine_analyze.entry_id
 _refine_analyze.Luzzati_coordinate_error_free
@@ -3620,15 +3621,6 @@ _oxford_reflns_number_all
 _oxford_reflns_threshold_expression_ref
 _oxford_structure_analysis_title
 _oxford_twin_element_scale_factors
-
-_platon_squeeze_details
-_platon_squeeze_void_average_x
-_platon_squeeze_void_average_y
-_platon_squeeze_void_average_z
-_platon_squeeze_void_content
-_platon_squeeze_void_count_electrons
-_platon_squeeze_void_nr
-_platon_squeeze_void_volume
 
 );
 
