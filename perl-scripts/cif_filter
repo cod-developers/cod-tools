@@ -726,14 +726,49 @@ for my $filename (@ARGV) {
 	# Calculate essential information if it is missing but requested:
 
 	if( $calculate_cell_volume ) {
-	    if( !exists $datablok->{"_cell_volume"} &&
-		exists $datablok->{"_cell_length_a"} ) {
-		my @cell = get_cell( $datablok );
-		$datablok->{"_cell_volume"}[0] =
-		    sprintf( "%7.2f", cell_volume( @cell ));
-	    }
+            my @cell = get_cell( $datablok );
+            my @sigcell = get_cell( $dataset->{precisions} );
+            $cell[3] = 90 unless defined $cell[3];
+            $cell[4] = 90 unless defined $cell[4];
+            $cell[5] = 90 unless defined $cell[5];
+
+            my $has_cell = 1;
+            my $has_precisions = 0;
+
+            for (@cell) {
+                if( !defined $_ ) {
+                    $has_cell = 0;
+                    last;
+                }
+            }
+            for (@sigcell) {
+                if( defined $_ ) {
+                    $has_precisions = 1;
+                    last;
+                }
+            }
+
+            if( $has_cell ) {
+                my ( $V, $sigV );
+                if( $has_precisions ) {
+                    @sigcell = map { defined $_ ? $_ : 0 } @sigcell;
+                    ($V, $sigV) = cell_volume( @cell, @sigcell );
+                    $V = pack_precision( $V, $sigV );
+                } else {
+                    $V = sprintf( "%.3f", cell_volume( @cell ));
+                }
+                if( exists $datablok->{"_cell_volume"} ) {
+                    $datablok->{"_cod_original_cell_volume"}[0] =
+                        $datablok->{"_cell_volume"}[0];
+                }
+                $datablok->{"_cell_volume"}[0] = $V;
+            } else {
+                warn "file '${filename}', datablock $dataset->{name} " .
+                    "has no unit cell info -- "  .
+                    "can't compute cell volume";
+            }
 	}
-	
+
 	# Print out the CIF header if requested:
 
 	if( defined $cif_comment_header ) {
@@ -779,10 +814,27 @@ sub cell_volume
     my ($alpha, $beta, $gamma) = map {$Pi * $_ / 180} @cell[3..5];
     my ($ca, $cb, $cg) = map {cos} ($alpha, $beta, $gamma);
     my $sg = sin($gamma);
+    my $D = $sg**2 - $ca**2 - $cb**2 + 2*$ca*$cb*$cg;
     
-    my $V = $a * $b * $c * sqrt( $sg**2 - $ca**2 - $cb**2 + 2*$ca*$cb*$cg );
+    my $V = $a * $b * $c * sqrt( $D );
 
-    return $V;
+    if( wantarray ) {
+        my $sa = sin($alpha);
+        my $sb = sin($beta);
+        my ( $siga, $sigb, $sigc ) = @cell[6..8];
+        my ( $sigalpha, $sigbeta, $siggamma ) =
+            map {$Pi * $_ / 180} @cell[9..11];
+        my $dVda = $sigalpha * $sa * ($ca - $cb * $cg ) / $D;
+        my $dVdb = $sigbeta * $sb * ($cb - $ca * $cg ) / $D;
+        my $dVdg = $siggamma * $sg * ($cg - $ca * $cb ) / $D;
+        my $sigV = $V * sqrt(
+            ($siga/$a) ** 2 + ($sigb/$b) ** 2 + ($sigc/$c) ** 2 +
+            $dVda ** 2 + $dVdb ** 2 + $dVdg ** 2
+            );
+        return ( $V, $sigV );
+    } else {
+        return $V;
+    }
 }
 
 sub merge_new_tag_values($$$)
@@ -823,13 +875,41 @@ sub get_cell
     my $datablok = $_[0];
 
     return (
-	$datablok->{_cell_length_a}[0],
-	$datablok->{_cell_length_b}[0],
-	$datablok->{_cell_length_c}[0],
-	$datablok->{_cell_angle_alpha}[0],
-	$datablok->{_cell_angle_beta}[0],
-	$datablok->{_cell_angle_gamma}[0]
+	exists $datablok->{_cell_length_a} ?
+            $datablok->{_cell_length_a}[0] : undef,
+
+	exists $datablok->{_cell_length_b} ?
+            $datablok->{_cell_length_b}[0] : undef,
+
+	exists $datablok->{_cell_length_c} ?
+            $datablok->{_cell_length_c}[0] : undef,
+
+	exists $datablok->{_cell_angle_alpha} ?
+            $datablok->{_cell_angle_alpha}[0] : undef,
+
+	exists $datablok->{_cell_angle_beta} ?
+            $datablok->{_cell_angle_beta}[0] : undef,
+
+	exists $datablok->{_cell_angle_gamma} ?
+            $datablok->{_cell_angle_gamma}[0] : undef
     );
+}
+
+sub round { int( $_[0] + 0.5 ) }
+
+sub pack_precision
+{
+    my ( $val, $sig ) = @_;
+
+    if( defined $sig ) {
+        ## print ">>> $val +/- $sig (log = " . log($sig)/log(10) . ")\n";
+        my $digits = -int(log($sig)/log(10)) + 1;
+        $val = sprintf( "%.${digits}f", $val );
+        my $prec = round( $sig * 10**$digits );
+        return "$val($prec)";
+    } else {
+        return $val;
+    }
 }
 
 sub restore_last_page
