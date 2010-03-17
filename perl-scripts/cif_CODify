@@ -14,13 +14,13 @@ set -ue
 
 ## set -x
 
-for file
-do
-    if head $file | grep -q '^#' > /dev/null 2>&1
-    then
-	awk '{if( match( $0, "^#" )) print; else exit}' $file
-    else
-	cat <<EOF
+file="$1"
+
+if head $file | grep -q '^#' > /dev/null 2>&1
+then
+    awk '{if( match( $0, "^#" )) print; else exit}' $file
+else
+    cat <<EOF
 #------------------------------------------------------------------------------
 #\$Date\$
 #\$Revision\$
@@ -34,17 +34,18 @@ do
 # contributors.
 #
 EOF
-    fi
+fi
 
-    NUMBER=`basename ${file} .cif | sed -e 's/[^0-9]//g'`
+NUMBER=`basename ${file} .cif | sed -e 's/[^0-9]//g'`
 
-    cif_filter \
-	${file} \
-	--renumber \
-	--start-data="${NUMBER}" \
-	--exclude-empty-tags \
-	--estimate-spacegroup \
-	--reformat-spacegroup \
-	--keep-unrecognised-spacegroup \
-	--parse-formula-sum
-done
+cif_filter \
+    --renumber \
+    --start-data="${NUMBER}" \
+    --exclude-empty-tags \
+    --estimate-spacegroup \
+    --reformat-spacegroup \
+    --keep-unrecognised-spacegroup \
+    --parse-formula-sum \
+    --calculate-cell-volume \
+    --use-all-datablocks \
+    ${1+"$@"}
