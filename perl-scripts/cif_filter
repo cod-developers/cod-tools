@@ -876,7 +876,7 @@ sub get_cell
 {
     my $datablok = $_[0];
 
-    return (
+    my @cell = (
 	exists $datablok->{_cell_length_a} ?
             $datablok->{_cell_length_a}[0] : undef,
 
@@ -895,6 +895,8 @@ sub get_cell
 	exists $datablok->{_cell_angle_gamma} ?
             $datablok->{_cell_angle_gamma}[0] : undef
     );
+
+    return map { defined $_ && /^\s*[?.]\s*$/ ? undef : $_ } @cell;
 }
 
 sub round { $_[0] > 0 ? int($_[0] + 0.5) : int($_[0] - 0.5) }
