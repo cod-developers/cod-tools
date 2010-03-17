@@ -757,7 +757,9 @@ for my $filename (@ARGV) {
                 } else {
                     $V = sprintf( "%.3f", cell_volume( @cell ));
                 }
-                if( exists $datablok->{"_cell_volume"} ) {
+                if( exists $datablok->{"_cell_volume"} &&
+                    !exists $datablok->{"_cod_original_cell_volume"} &&
+                    $datablok->{"_cell_volume"}[0] ne $V ) {
                     $datablok->{"_cod_original_cell_volume"}[0] =
                         $datablok->{"_cell_volume"}[0];
                 }
@@ -903,7 +905,7 @@ sub pack_precision
 
     if( defined $sig ) {
         my $digits = -round(log($sig)/log(10)) + 1;
-        print ">>> $val +/- $sig (log = " . log($sig)/log(10) . "), digits = $digits\n";
+        ## print ">>> $val +/- $sig (log = " . log($sig)/log(10) . "), digits = $digits\n";
         my $prec = round( $sig * 10**$digits );
         if( $prec >= 20 ) {
             $digits --;
