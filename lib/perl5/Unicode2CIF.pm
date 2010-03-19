@@ -203,6 +203,17 @@ sub cif2unicode
 {
     my $text = $_[0];
 
+    # In some rare cases, when the CIF markup contains \&s', the
+    # 'LATIN SMALL LETTER SHARP S (German eszett)', $text gets
+    # incorrectly converted into bytes when its is originally marged
+    # as 'bytes' and not 'utf8'. The decode_utf8() should force Perl
+    # beleive that $text is in utf8 and make all substitions
+    # correctly:
+
+    use Encode;
+
+    $text = Encode::decode_utf8($text);
+    
     $text =~ s/\\\\db /\x{003D}/g;
     for my $pattern (keys %commands) {
 	my $value = $commands{$pattern};
