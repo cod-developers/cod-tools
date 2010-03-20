@@ -9,8 +9,8 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #$URL$
 #------------------------------------------------------------------------------
 #*
-#  Parse a CIF file and print out the essential information in the COD
-#  CIF format
+#  Parse a CIF file and print out essential data values in the CIF
+#  format, the COD CIF style.
 #**
 
 use strict;
@@ -109,6 +109,94 @@ my %spacegroups = map {
     $key2 =~ s/\s//g;
     ($key1, $_->[2], $key2, $_->[2] )
 } @SpacegroupNames::names;
+
+#* OPTIONS:
+#*    -j, --journal 'Acta Cryst. A'
+#*    -v, --volume    36
+#*    -i, --issue      1
+#*    -p, --page     123
+#*    --start-page   123
+#*    -e, --end-page 132
+#*    -y, --year     1999
+#*        Specify bibliographic data to be included into the output.
+#*
+#*    -B, --bibliography bibliography.mrk
+#*        Provide a bibliography file, 'bibliography.mrk' in this example,
+#*        with the bibliographic information to be included into the output.
+#*    
+#*    -h, --add-cif-header header_file.cif
+#*
+#*    -s, --estimate-spacegroup
+#*    -s-, --dont-estimate-spacegroup, --no-estimate-spacegroup
+#*         Estimate spacegroup symbols from the symmetry operators in the
+#*         input.
+#*
+#*    -x,--extra-tag-list tag-list.lst
+#*
+#*    --exclude-empty-tags
+#*    --dont-exclude-empty-tags, --no-exclude-empty-tags
+#*
+#*    --exclude-misspelled-tags
+#*    --dont-exclude-misspelled-tags, --no-exclude-misspelled-tags
+#*
+#*    --keep-unrecognised-spacegroups
+#*    --dont-keep-unrecognised-spacegroups, --no-keep-unrecognised-spacegroups
+#*
+#*    --parse-formula-sum
+#*    --dont-parse-formula-sum, --no-parse-formula-sum
+#*
+#*    --fix-syntax-errors
+#*    --dont-fix-syntax-errors, --no-fix-syntax-errors
+#*
+#*    --preserve-loop-order
+#*    --use-internal-loop-order
+#*
+#*    --retain-tag-order
+#*    --dont-retain-tag-order
+#*
+#*    --reformat-space-group
+#*    --dont-reformat-space-group, --leave-space-group
+#*
+#*    --reformat-spacegroup
+#*    --dont-reformat-spacegroup, --leave-spacegroup
+#*
+#*    --calculate-cell-volume
+#*    --dont-calculate-cell-volume
+#*
+#*    --original-filename data_source.cif
+#*
+#*    --clear-original-filename
+#*
+#*    --record-original-filename
+#*    --dont-record-original-filename
+#*
+#*    --update-database-code
+#*    --dont-update-database-code
+#*
+#*    -S, --start-data-block-number 1234567
+#*
+#*    -R, --renumber-data-blocks
+#*    -R-, --dont-renumber-data-blocks
+#*
+#*    --use-datablocks-without-coordinates
+#*    
+#*    --do-not-use-datablocks-without-coordinates, --use-all-datablocks
+#*    --dont-use-datablocks-without-coordinates
+#*    --no-use-datablocks-without-coordinates
+#*    --skip-datablocks-without-coordinates
+#*
+#*    --folding-width 78
+#*
+#*    --fold-title
+#*    --dont-fold-title
+#*
+#*    --fold-long-fields
+#*    --dont-fold-long-fields
+#*
+#*    --leave-bibliography
+#*    --discard-bibliograph
+#*    --help,--usage         Print a short usage message (this message) and exit.
+#**
 
 @ARGV = getOptions( 
     "-j,--journal"      => sub{ $user_biblio = 1; $journal = get_value() },
