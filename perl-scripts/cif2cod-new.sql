@@ -12,7 +12,7 @@ DROP TABLE IF EXISTS `data`;
 SET @saved_cs_client     = @@character_set_client;
 SET character_set_client = utf8;
 CREATE TABLE `data` (
-  `CODID` mediumint(7) unsigned NOT NULL default '0',
+  `file` mediumint(7) unsigned NOT NULL default '0',
 
   `a` float unsigned NOT NULL default '0.0000',
   `siga` float unsigned,
