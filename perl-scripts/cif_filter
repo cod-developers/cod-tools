@@ -429,100 +429,162 @@ for my $filename (@ARGV) {
 	if( defined $biblio ) {
 	    my $reference;
 
-	    open( BIBLIO, "<:utf8", $biblio ) or
-		die( "Could not open file '$biblio' for reading: $!" );
-	    if( $biblio =~ /\.ref/ ) {
-		$reference = <BIBLIO>; # read the first line
-	    } elsif( $biblio =~ /\.xrf/ ) {
-		my @reference = grep !/^\#/, <BIBLIO>;
-		$reference = $reference[0]; # read the first non-comment line
-	    } else {
-		local $/ = undef; # read the whole file
-		$reference = <BIBLIO>;
-	    }
-	    close BIBLIO;
-	    chomp $reference;
+            if( $biblio =~ /\.cif/i ) {
+                my $biblio_parser = new CIFParser;
+                my $biblio_blocks = $biblio_parser->Run( $biblio,
+                                                         {fix_errors => 1} );
+                if( defined $biblio_parser->YYData->{ERRCOUNT} &&
+                    $biblio_parser->YYData->{ERRCOUNT} > 0 ) {
+                    print STDERR "$0: ", $biblio_parser->YYData->{ERRCOUNT},
+                    " error(s) encountered while parsing file '${biblio}'\n";
+                    die;
+                }
 
-	    if( !$leave_biblio ) {
-		for my $key ( grep /_journal_|_publ_section_title|_author_/,
-			      keys %{$datablok} ) {
-		    if( $key ne "_journal_coeditor_code" ) {
-			delete $datablok->{$key};
-		    }
-		}
-	    }
+                my $bibdata;
 
-	    if( $reference =~ /<.*?>.*?<.*?>/s ||
-		$reference =~ /\\.*?(?:\[.*?\])?\{.*?\}/s ) {
-		if( !$title && ( $reference =~ /<title>(.*?)<\/title>/s ||
-				 $reference =~ /\\title\{(.*?)\}/s )) {
-		    my $cif_title = unicode2cif( $1 );
-		    $cif_title =~ s/\n/ /g;
-		    $datablok->{_publ_section_title} = [
-			"\n" . join( "\n", map { " " . $_ }
-				     CIFTagPrint::fold( 71, " +", " ", $cif_title ))
-			];
-		}
-		if( !$journal && ( $reference =~ /<journal>(.*?)<\/journal>/s ||
-				   $reference =~ /\\journal\{(.*?)\}/s )) {
-		    $datablok->{_journal_name_full} = [ unicode2cif( $1 ) ];
-		}
-		if( !$issue && ( $reference =~ /<issue>(.*?)<\/issue>/s ||
-				 $reference =~ /\\issue\{(.*?)\}/s )) {
-		    $datablok->{_journal_issue} = [ unicode2cif( $1 ) ];
-		}
-		if( !$volume && ( $reference =~ /<volume>(.*?)<\/volume>/s ||
-				  $reference =~ /\\volume\{(.*?)\}/s )) {
-		    $datablok->{_journal_volume} = [ unicode2cif( $1 ) ];
-		}
-		if( !$year && ( $reference =~ /<year>(.*?)<\/year>/s ||
-				$reference =~ /\\year\{(.*?)\}/s )) {
-		    my $y = $1;
-		    $y =~ s/[^0-9]//g;
-		    $datablok->{_journal_year} = [ unicode2cif( $y ) ];
-		}
-		if( !$start_page && ( $reference =~ /<pages?>(.*?)<\/pages?>/s ||
-				      $reference =~ /\\pages?\{(.*?)\}/s )) {
-		    my @pages = map { s/\s//g; $_ } split ( "-", $1 );
-		    $datablok->{_journal_page_first} = [ unicode2cif( $pages[0] ) ];
-		    if( int(@pages) > 1 ) {
-			$datablok->{_journal_page_last} =
-			    [ unicode2cif( $pages[1] ) ];
-		    }
-		}
-		if( !@authors && ( $reference =~
-				   /<authors?\s?(.*?)>(.*?)<\/authors?>/s ||
-				   $reference =~
-				   /\\authors?(?:\[(.*?)\])?\{(.*?)\}/s )) {
-		    my $attributes = $1;
-		    my $author_list = $2;
-		    my $separator = qr/,\s*and|\sand\s|,/;
-		    if( $attributes && $attributes =~ /separator\s*=\s*"(.*?)"/ ) {
-			$separator = qr/$1/;
-		    }
-		    $datablok->{_publ_author_name} =
-			[
-			 map { unicode2cif( $_ ) }
-			 map { s/\n/ /g; s/\s+/ /g; $_ }
-			 map { s/^\s*|\s*$//g; $_ }
-			 split( $separator, $author_list )
-			];
-		    my $tag = "_publ_author_name";
-		    if( exists $dataset->{inloop}{$tag} ) {
-			my $loop_nr = $dataset->{inloop}{$tag};
-			$dataset->{loops}[$loop_nr] = [ $tag ];
-		    } else {
-			if( exists $dataset->{loops} ) {
-			    push( @{$dataset->{loops}}, [ $tag ] );
-			    $dataset->{inloop}{$tag} = $#{$dataset->{loops}};
-			} else {
-			    $dataset->{inloop}{$tag} = 0;
-			    $dataset->{loops} = [ [ $tag ] ];
-			}
-		    }
-		}
-	    }
-	}
+                if( @{$biblio_blocks} > 1 ) {
+                    warn "file '${biblio}' has @{$biblio_blocks} --" .
+                        "will take bibliography from a datablock "  .
+                        "that has the same name as the coordinate datablock";
+                    for my $block (@{$biblio_blocks}) {
+                        if( $block->{name} eq $dataset->{name} ) {
+                            $bibdata = $block->{values};
+                            last
+                        }
+                    }
+                } else {
+                    $bibdata = $biblio_blocks->[0]{values};
+                }
+                if( !defined $bibdata ) {
+                    warn "file '${biblio}' matching bibliography datablock " .
+                        "for '$dataset->{name}' --"  .
+                        "no bibliography wil be taken for this datablock";
+                } else {
+                    if( !$leave_biblio ) {
+                        for my $key ( grep /_journal_|_publ_section_title|_author_/,
+                                      keys %{$datablok} ) {
+                            if( $key ne "_journal_coeditor_code" ) {
+                                delete $datablok->{$key};
+                            }
+                        }
+                    }
+                    for my $bibtag (@global_biblio_keys) {
+                        if( !exists $datablok->{$bibtag} &&
+                            exists $bibdata->{$bibtag}) {
+                            $datablok->{$bibtag} = $bibdata->{$bibtag};
+                            if( $bibtag eq "_publ_author_name" ) {
+                                if( exists $dataset->{inloop}{$bibtag} ) {
+                                    my $loop_nr = $dataset->{inloop}{$bibtag};
+                                    $dataset->{loops}[$loop_nr] = [ $bibtag ];
+                                } else {
+                                    if( exists $dataset->{loops} ) {
+                                        push( @{$dataset->{loops}}, [ $bibtag ] );
+                                        $dataset->{inloop}{$bibtag} = $#{$dataset->{loops}};
+                                    } else {
+                                        $dataset->{inloop}{$bibtag} = 0;
+                                        $dataset->{loops} = [ [ $bibtag ] ];
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            } else {
+                open( BIBLIO, "<:utf8", $biblio ) or
+                    die( "Could not open file '$biblio' for reading: $!" );
+                if( $biblio =~ /\.ref/ ) {
+                    $reference = <BIBLIO>; # read the first line
+                } elsif( $biblio =~ /\.xrf/ ) {
+                    my @reference = grep !/^\#/, <BIBLIO>;
+                    $reference = $reference[0]; # read the first non-comment line
+                } else {
+                    local $/ = undef; # read the whole file
+                    $reference = <BIBLIO>;
+                }
+                close BIBLIO;
+                chomp $reference;
+
+                if( !$leave_biblio ) {
+                    for my $key ( grep /_journal_|_publ_section_title|_author_/,
+                                  keys %{$datablok} ) {
+                        if( $key ne "_journal_coeditor_code" ) {
+                            delete $datablok->{$key};
+                        }
+                    }
+                }
+
+                if( $reference =~ /<.*?>.*?<.*?>/s ||
+                    $reference =~ /\\.*?(?:\[.*?\])?\{.*?\}/s ) {
+                    if( !$title && ( $reference =~ /<title>(.*?)<\/title>/s ||
+                                     $reference =~ /\\title\{(.*?)\}/s )) {
+                        my $cif_title = unicode2cif( $1 );
+                        $cif_title =~ s/\n/ /g;
+                        $datablok->{_publ_section_title} = [
+                            "\n" . join( "\n", map { " " . $_ }
+                                         CIFTagPrint::fold( 71, " +", " ", $cif_title ))
+                            ];
+                    }
+                    if( !$journal && ( $reference =~ /<journal>(.*?)<\/journal>/s ||
+                                       $reference =~ /\\journal\{(.*?)\}/s )) {
+                        $datablok->{_journal_name_full} = [ unicode2cif( $1 ) ];
+                    }
+                    if( !$issue && ( $reference =~ /<issue>(.*?)<\/issue>/s ||
+                                     $reference =~ /\\issue\{(.*?)\}/s )) {
+                        $datablok->{_journal_issue} = [ unicode2cif( $1 ) ];
+                    }
+                    if( !$volume && ( $reference =~ /<volume>(.*?)<\/volume>/s ||
+                                      $reference =~ /\\volume\{(.*?)\}/s )) {
+                        $datablok->{_journal_volume} = [ unicode2cif( $1 ) ];
+                    }
+                    if( !$year && ( $reference =~ /<year>(.*?)<\/year>/s ||
+                                    $reference =~ /\\year\{(.*?)\}/s )) {
+                        my $y = $1;
+                        $y =~ s/[^0-9]//g;
+                        $datablok->{_journal_year} = [ unicode2cif( $y ) ];
+                    }
+                    if( !$start_page && ( $reference =~ /<pages?>(.*?)<\/pages?>/s ||
+                                          $reference =~ /\\pages?\{(.*?)\}/s )) {
+                        my @pages = map { s/\s//g; $_ } split ( "-", $1 );
+                        $datablok->{_journal_page_first} = [ unicode2cif( $pages[0] ) ];
+                        if( int(@pages) > 1 ) {
+                            $datablok->{_journal_page_last} =
+                                [ unicode2cif( $pages[1] ) ];
+                        }
+                    }
+                    if( !@authors && ( $reference =~
+                                       /<authors?\s?(.*?)>(.*?)<\/authors?>/s ||
+                                       $reference =~
+                                       /\\authors?(?:\[(.*?)\])?\{(.*?)\}/s )) {
+                        my $attributes = $1;
+                        my $author_list = $2;
+                        my $separator = qr/,\s*and|\sand\s|,/;
+                        if( $attributes && $attributes =~ /separator\s*=\s*"(.*?)"/ ) {
+                            $separator = qr/$1/;
+                        }
+                        $datablok->{_publ_author_name} =
+                            [
+                             map { unicode2cif( $_ ) }
+                             map { s/\n/ /g; s/\s+/ /g; $_ }
+                             map { s/^\s*|\s*$//g; $_ }
+                             split( $separator, $author_list )
+                            ];
+                        my $tag = "_publ_author_name";
+                        if( exists $dataset->{inloop}{$tag} ) {
+                            my $loop_nr = $dataset->{inloop}{$tag};
+                            $dataset->{loops}[$loop_nr] = [ $tag ];
+                        } else {
+                            if( exists $dataset->{loops} ) {
+                                push( @{$dataset->{loops}}, [ $tag ] );
+                                $dataset->{inloop}{$tag} = $#{$dataset->{loops}};
+                            } else {
+                                $dataset->{inloop}{$tag} = 0;
+                                $dataset->{loops} = [ [ $tag ] ];
+                            }
+                        }
+                    }
+                }
+            }
+        }
 
 	# User specified bibliography is processed last since it must take
 	# precedence over the original CIF bibliography and over the
