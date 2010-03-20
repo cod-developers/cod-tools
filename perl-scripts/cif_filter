@@ -227,8 +227,12 @@ my %dictionary_tags = map { $_, $_ } @dictionary_tags;
 if( defined $cif_header_file ) {
     open( HEADER, "$cif_header_file" ) or
 	die( "could not open CIF header file '$cif_header_file' for reading: $!" );
-    local $/; # enable "slurp" mode: read the whole header file.
-    $cif_comment_header = <HEADER>;
+    # local $/; # enable "slurp" mode: read the whole header file.
+    $cif_comment_header = "";
+    while( <HEADER> ) {
+        last unless /^\#|^\s*$/;
+        $cif_comment_header .= $_;
+    }
     close( HEADER ) or
 	die( "error while closing file '$cif_header_file' after reading" );
 }
