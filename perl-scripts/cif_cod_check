@@ -20,6 +20,7 @@ use CIFParser;
 use CIFTagCanonicalNames;
 use ShowStruct;
 use Spacegroups::SpacegroupNames;
+use Spacegroups::SymopLookup;
 use File::Basename;
 use SOptions;
 
@@ -90,7 +91,9 @@ my %spacegroups = map {
     $key1 =~ s/\s//g;
     $key2 =~ s/\s//g;
     ($_->[2], $_->[2], $_->[1], $_->[2], $key1, $_->[2], $key2, $_->[2] )
-} @SpacegroupNames::names;
+} @SpacegroupNames::names,
+  map { [ $_->{number}, $_->{hermann_mauguin}, $_->{universal_h_m} ] }
+      @SymopLookup::table;
 
 $| = 1; # Flush buffers immediately, to avoid mixing lines of STDOUT
         # and STDERR.
