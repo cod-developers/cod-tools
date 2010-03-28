@@ -68,11 +68,13 @@ CREATE TABLE `data` (
 
   `duplicateof` mediumint(7) unsigned,
   `optimal` mediumint(7) unsigned,
-  `status` enum('none', 'warnings', 'errors', 'retracted'),
+  `status` enum('warnings', 'errors', 'retracted'),
+
+  `flags` SET('has coordinates','has disorder','has Fobs'),
 
   `text` text collate utf8_unicode_ci NOT NULL,
 
-  PRIMARY KEY `CODID` (`CODID`),
+  PRIMARY KEY `file` (`file`),
   KEY `a` (`a`),
   KEY `b` (`b`),
   KEY `c` (`c`),
