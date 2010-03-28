@@ -117,6 +117,11 @@ for my $filename (@ARGV) {
     my $parser = new CIFParser;
     my $data = $parser->Run($filename);
 
+    if( defined $parser->YYData->{ERRCOUNT} && $parser->YYData->{ERRCOUNT} > 0 ) {
+	error( $parser->YYData->{ERRCOUNT} .
+               " error(s) encountered while parsing" );
+    }
+
     for my $dataset (@$data) {
 	my @data = ();
 	my $nel;
