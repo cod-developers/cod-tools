@@ -22,6 +22,9 @@ use Unicode2CIF;
 use SOptions;
 use SUsage;
 
+sub entry_has_coordinates($);
+sub entry_has_disorder($);
+
 my $reformat_spacegroup = 0;
 my $use_datablocks_without_coord = 0;
 
@@ -334,6 +337,21 @@ for my $filename (@ARGV) {
                                           0 );
         }
 
+        # Compose COD flags:
+        do {
+            my $separator = "";
+            my $value = "";
+            if( entry_has_coordinates( $values )) {
+                $value = "has coordinates";
+                $separator = ",";
+            }
+            if( entry_has_disorder( $values )) {
+                $value .= $separator . "has disorder";
+                $separator = ",";
+            }
+            push( @data, $value );
+        };
+
 	push( @data, $text );
 
         my $n = 0;
@@ -552,4 +570,66 @@ sub cell_volume
     my $V = $a * $b * $c * sqrt( $sg**2 - $ca**2 - $cb**2 + 2*$ca*$cb*$cg );
 
     return $V;
+}
+
+sub entry_has_coordinates($)
+{
+    my ($values) = @_;
+
+    my @tags = qw(
+        _atom_site_fract_x
+        _atom_site.fract_x
+        _atom_site_fract_y
+        _atom_site.fract_y
+        _atom_site_fract_z
+        _atom_site.fract_z
+        _atom_site_Cartn_x
+        _atom_site.Cartn_x
+        _atom_site_Cartn_x_nm
+        _atom_site_Cartn_x_pm
+        _atom_site_Cartn_y
+        _atom_site.Cartn_y
+        _atom_site_Cartn_y_nm
+        _atom_site_Cartn_y_pm
+        _atom_site_Cartn_z
+        _atom_site.Cartn_z
+        _atom_site_Cartn_z_nm
+        _atom_site_Cartn_z_pm
+    );
+
+    for my $tag ( @tags ) {
+        if( exists $values->{$tag} ) {
+            for my $value (@{$values->{$tag}}) {
+                if( defined $value && $value ne '.' && $value ne '?' ) {
+                    return 1;
+                }
+            }
+        }
+    }
+
+    return 0;
+}
+
+sub entry_has_disorder($)
+{
+    my ($values) = @_;
+
+    my @tags = qw(
+        _atom_site_disorder_assembly
+        _atom_site.disorder_assembly
+        _atom_site_disorder_group
+        _atom_site.disorder_group
+    );
+
+    for my $tag ( @tags ) {
+        if( exists $values->{$tag} ) {
+            for my $value (@{$values->{$tag}}) {
+                if( defined $value && $value ne '.' && $value ne '?' ) {
+                    return 1;
+                }
+            }
+        }
+    }
+
+    return 0;
 }
