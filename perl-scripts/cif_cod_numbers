@@ -494,7 +494,6 @@ sub query_COD_database
         "SELECT $column_list FROM `$database{table}` ".
         "WHERE formula = ?"
         );
-            
 
     for my $id (keys %{$data}) {
         ## print ">>> id = $id\n";
@@ -504,11 +503,24 @@ sub query_COD_database
             ## print ">>> formula = $formula\n";
             my $rv = $sth->execute( "- " . $formula . " -" );
             if( defined $rv ) {
-                print "\n>>> rv = $rv\n";
-                local $" = ", ";
-                while( my @row = $sth->fetchrow_array() ) {
-                    @row = map { defined $_ ? $_ : "NULL" } @row;
-                    print ">>> @row\n";
+                ## print "\n>>> rv = $rv\n";
+                ## local $" = ", ";
+                $COD->{$formula} = [];
+                while( my $row = $sth->fetchrow_hashref() ) {
+                    ## my @row = map { defined $_ ? $_ : "NULL" } values %$row;
+                    ## print ">>> @row\n";
+
+                    push( @{$COD->{$formula}}, {
+                        filename => $row->{file},
+                        cell => {
+                            _cell_length_a => $row->{a},
+                            _cell_length_b => $row->{b},
+                            _cell_length_c => $row->{c},
+                            _cell_length_alpha => $row->{alpha},
+                            _cell_length_beta  => $row->{beta},
+                            _cell_length_gamma => $row->{gamma},
+                        },
+                    });
                 }
             } else {
                 print STDERR "$0: error fetching formula '${formula}' -- " .
