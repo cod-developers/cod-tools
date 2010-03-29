@@ -399,6 +399,10 @@ sub conditions_are_the_same
 
 	my %tags = map {($_,$_)} ( keys %{$entry1->{$parameter}},
 				   keys %{$entry2->{$parameter}} );
+
+        ## print ">>> 1: ",keys %{$entry1->{$parameter}},"\n";
+        ## print ">>> 2: ",keys %{$entry2->{$parameter}},"\n\n";
+
 	for my $tag (keys %tags) {
 	    if( exists $entry1->{$parameter}{$tag} &&
 		exists $entry2->{$parameter}{$tag} ) {
@@ -497,34 +501,75 @@ sub query_COD_database
 
     for my $id (keys %{$data}) {
         ## print ">>> id = $id\n";
-        my $formula = $data->{$id}{chemical_formula_sum};
+        ## use Serialise;
+        ## serialiseRef( $data->{$id} );
+        for my $formula (( $data->{$id}{chemical_formula_sum},
+                           $data->{$id}{cell_contents} )) {
+            if( defined $formula ) {
+                ## print ">>> formula = $formula\n";
+                my $rv = $sth->execute( "- " . $formula . " -" );
+                if( defined $rv ) {
+                    ## print "\n>>> rv = $rv\n";
+                    ## local $" = ", ";
+                    $COD->{$formula} = [];
+                    while( my $row = $sth->fetchrow_hashref() ) {
+                        ## my @row = map { defined $row->{$_} ? $row->{$_} : "NULL" } @columns;
+                        ## print ">>> @row\n";
 
-        if( defined $formula ) {
-            ## print ">>> formula = $formula\n";
-            my $rv = $sth->execute( "- " . $formula . " -" );
-            if( defined $rv ) {
-                ## print "\n>>> rv = $rv\n";
-                ## local $" = ", ";
-                $COD->{$formula} = [];
-                while( my $row = $sth->fetchrow_hashref() ) {
-                    ## my @row = map { defined $_ ? $_ : "NULL" } values %$row;
-                    ## print ">>> @row\n";
+                        my $structure = {
+                            filename => $row->{file},
+                            cell => {
+                                _cell_length_a => $row->{a},
+                                _cell_length_b => $row->{b},
+                                _cell_length_c => $row->{c},
+                                _cell_length_alpha => $row->{alpha},
+                                _cell_length_beta  => $row->{beta},
+                                _cell_length_gamma => $row->{gamma},
+                            },
+                        };
 
-                    push( @{$COD->{$formula}}, {
-                        filename => $row->{file},
-                        cell => {
-                            _cell_length_a => $row->{a},
-                            _cell_length_b => $row->{b},
-                            _cell_length_c => $row->{c},
-                            _cell_length_alpha => $row->{alpha},
-                            _cell_length_beta  => $row->{beta},
-                            _cell_length_gamma => $row->{gamma},
-                        },
-                    });
+                        $structure->{temperature}{_diffrn_ambient_temperature} =
+                            $row->{diffrtemp} if defined $row->{diffrtemp};
+
+                        $structure->{temperature}{_cell_measurement_temperature} =
+                            $row->{celltemp} if defined $row->{celltemp};
+
+                        $structure->{pressure}{_diffrn_ambient_pressure} =
+                            $row->{diffrpressure} if defined $row->{diffrpressure};
+
+                        $structure->{pressure}{_cell_measurement_pressure} =
+                            $row->{cellpressure} if defined $row->{cellpressure};
+
+                        $structure->{history}{_sample_thermal_history} =
+                            $row->{thermalhist} if defined $row->{thermalhist};
+
+                        $structure->{history}{_sample_pressure_history} =
+                            $row->{pressurehist} if defined $row->{pressurehist};
+
+                        $structure->{bibliography}{_journal_name_full} =
+                            $row->{journal} if defined $row->{journal};
+
+                        $structure->{bibliography}{_journal_year} =
+                            $row->{year} if defined $row->{year};
+
+                        $structure->{bibliography}{_journal_volume} =
+                            $row->{volume} if defined $row->{volume};
+
+                        $structure->{bibliography}{_journal_issue} =
+                            $row->{issue} if defined $row->{issue};
+
+                        $structure->{bibliography}{_journal_page_first} =
+                            $row->{firstpage} if defined $row->{firstpage};
+
+                        $structure->{bibliography}{_journal_page_last} =
+                            $row->{lastpage} if defined $row->{lastpage};
+
+                        push( @{$COD->{$formula}}, $structure );
+                    }
+                } else {
+                    print STDERR "$0: error fetching formula '${formula}' -- " .
+                        "$DBI::errstr";
                 }
-            } else {
-                print STDERR "$0: error fetching formula '${formula}' -- " .
-                    "$DBI::errstr";
             }
         }
     }
