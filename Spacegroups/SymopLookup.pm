@@ -2903,6 +2903,8 @@ require Exporter;
     schoenflies     => 'C2v^2',
     hermann_mauguin => 'P b 21 m',
     universal_h_m   => 'P b 21 m',
+    crystal_class   => 'orthorombic',
+    constraints     => '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         'x,y,-z',
