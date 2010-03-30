@@ -9391,6 +9391,8 @@ require Exporter;
     schoenflies     => 'C4^2',
     hermann_mauguin => 'P 41',
     universal_h_m   => 'P 41',
+    crystal_class   => 'tetragonal',
+    constraints     => '$a == $b && $alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-y,x,z+1/4',
@@ -9411,6 +9413,8 @@ require Exporter;
     schoenflies     => 'C4^3',
     hermann_mauguin => 'P 42',
     universal_h_m   => 'P 42',
+    crystal_class   => 'tetragonal',
+    constraints     => '$a == $b && $alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-y,x,z+1/2',
@@ -9431,6 +9435,8 @@ require Exporter;
     schoenflies     => 'C4^4',
     hermann_mauguin => 'P 43',
     universal_h_m   => 'P 43',
+    crystal_class   => 'tetragonal',
+    constraints     => '$a == $b && $alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-y,x,z+3/4',
@@ -9451,6 +9457,8 @@ require Exporter;
     schoenflies     => 'C4^5',
     hermann_mauguin => 'I 4',
     universal_h_m   => 'I 4',
+    crystal_class   => 'tetragonal',
+    constraints     => '$a == $b && $alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-y,x,z',
@@ -9475,6 +9483,8 @@ require Exporter;
     schoenflies     => 'C4^6',
     hermann_mauguin => 'I 41',
     universal_h_m   => 'I 41',
+    crystal_class   => 'tetragonal',
+    constraints     => '$a == $b && $alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-y,x+1/2,z+1/4',
@@ -9499,6 +9509,8 @@ require Exporter;
     schoenflies     => 'S4^1',
     hermann_mauguin => 'P -4',
     universal_h_m   => 'P -4',
+    crystal_class   => 'tetragonal',
+    constraints     => '$a == $b && $alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         'y,-x,-z',
@@ -9519,6 +9531,8 @@ require Exporter;
     schoenflies     => 'S4^2',
     hermann_mauguin => 'I -4',
     universal_h_m   => 'I -4',
+    crystal_class   => 'tetragonal',
+    constraints     => '$a == $b && $alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         'y,-x,-z',
@@ -9543,6 +9557,8 @@ require Exporter;
     schoenflies     => 'C4h^1',
     hermann_mauguin => 'P 4/m',
     universal_h_m   => 'P 4/m',
+    crystal_class   => 'tetragonal',
+    constraints     => '$a == $b && $alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-y,x,z',
@@ -9571,6 +9587,8 @@ require Exporter;
     schoenflies     => 'C4h^2',
     hermann_mauguin => 'P 42/m',
     universal_h_m   => 'P 42/m',
+    crystal_class   => 'tetragonal',
+    constraints     => '$a == $b && $alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-y,x,z+1/2',
@@ -9599,6 +9617,8 @@ require Exporter;
     schoenflies     => 'C4h^3',
     hermann_mauguin => 'P 4/n',
     universal_h_m   => 'P 4/n :1',
+    crystal_class   => 'tetragonal',
+    constraints     => '$a == $b && $alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-y+1/2,x+1/2,z',
@@ -9627,6 +9647,8 @@ require Exporter;
     schoenflies     => 'C4h^3',
     hermann_mauguin => 'P 4/n',
     universal_h_m   => 'P 4/n :2',
+    crystal_class   => 'tetragonal',
+    constraints     => '$a == $b && $alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-y+1/2,x,z',
@@ -9655,6 +9677,8 @@ require Exporter;
     schoenflies     => 'C4h^4',
     hermann_mauguin => 'P 42/n',
     universal_h_m   => 'P 42/n :1',
+    crystal_class   => 'tetragonal',
+    constraints     => '$a == $b && $alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-y+1/2,x+1/2,z+1/2',
@@ -9683,6 +9707,8 @@ require Exporter;
     schoenflies     => 'C4h^4',
     hermann_mauguin => 'P 42/n',
     universal_h_m   => 'P 42/n :2',
+    crystal_class   => 'tetragonal',
+    constraints     => '$a == $b && $alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-y,x+1/2,z+1/2',
@@ -9711,6 +9737,8 @@ require Exporter;
     schoenflies     => 'C4h^5',
     hermann_mauguin => 'I 4/m',
     universal_h_m   => 'I 4/m',
+    crystal_class   => 'tetragonal',
+    constraints     => '$a == $b && $alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-y,x,z',
@@ -9747,6 +9775,8 @@ require Exporter;
     schoenflies     => 'C4h^6',
     hermann_mauguin => 'I 41/a',
     universal_h_m   => 'I 41/a :1',
+    crystal_class   => 'tetragonal',
+    constraints     => '$a == $b && $alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-y,x+1/2,z+1/4',
@@ -9783,6 +9813,8 @@ require Exporter;
     schoenflies     => 'C4h^6',
     hermann_mauguin => 'I 41/a',
     universal_h_m   => 'I 41/a :2',
+    crystal_class   => 'tetragonal',
+    constraints     => '$a == $b && $alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-y+3/4,x+1/4,z+1/4',
@@ -9819,6 +9851,8 @@ require Exporter;
     schoenflies     => 'D4^1',
     hermann_mauguin => 'P 4 2 2',
     universal_h_m   => 'P 4 2 2',
+    crystal_class   => 'tetragonal',
+    constraints     => '$a == $b && $alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-y,x,z',
@@ -9847,6 +9881,8 @@ require Exporter;
     schoenflies     => 'D4^2',
     hermann_mauguin => 'P 4 21 2',
     universal_h_m   => 'P 4 21 2',
+    crystal_class   => 'tetragonal',
+    constraints     => '$a == $b && $alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-y+1/2,x+1/2,z',
@@ -9875,6 +9911,8 @@ require Exporter;
     schoenflies     => 'D4^3',
     hermann_mauguin => 'P 41 2 2',
     universal_h_m   => 'P 41 2 2',
+    crystal_class   => 'tetragonal',
+    constraints     => '$a == $b && $alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-y,x,z+1/4',
@@ -9903,6 +9941,8 @@ require Exporter;
     schoenflies     => 'D4^4',
     hermann_mauguin => 'P 41 21 2',
     universal_h_m   => 'P 41 21 2',
+    crystal_class   => 'tetragonal',
+    constraints     => '$a == $b && $alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-y+1/2,x+1/2,z+1/4',
@@ -9931,6 +9971,8 @@ require Exporter;
     schoenflies     => 'D4^5',
     hermann_mauguin => 'P 42 2 2',
     universal_h_m   => 'P 42 2 2',
+    crystal_class   => 'tetragonal',
+    constraints     => '$a == $b && $alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-y,x,z+1/2',
@@ -9959,6 +10001,8 @@ require Exporter;
     schoenflies     => 'D4^6',
     hermann_mauguin => 'P 42 21 2',
     universal_h_m   => 'P 42 21 2',
+    crystal_class   => 'tetragonal',
+    constraints     => '$a == $b && $alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-y+1/2,x+1/2,z+1/2',
@@ -9987,6 +10031,8 @@ require Exporter;
     schoenflies     => 'D4^7',
     hermann_mauguin => 'P 43 2 2',
     universal_h_m   => 'P 43 2 2',
+    crystal_class   => 'tetragonal',
+    constraints     => '$a == $b && $alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-y,x,z+3/4',
@@ -10015,6 +10061,8 @@ require Exporter;
     schoenflies     => 'D4^8',
     hermann_mauguin => 'P 43 21 2',
     universal_h_m   => 'P 43 21 2',
+    crystal_class   => 'tetragonal',
+    constraints     => '$a == $b && $alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-y+1/2,x+1/2,z+3/4',
@@ -10043,6 +10091,8 @@ require Exporter;
     schoenflies     => 'D4^9',
     hermann_mauguin => 'I 4 2 2',
     universal_h_m   => 'I 4 2 2',
+    crystal_class   => 'tetragonal',
+    constraints     => '$a == $b && $alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-y,x,z',
@@ -10079,6 +10129,8 @@ require Exporter;
     schoenflies     => 'D4^10',
     hermann_mauguin => 'I 41 2 2',
     universal_h_m   => 'I 41 2 2',
+    crystal_class   => 'tetragonal',
+    constraints     => '$a == $b && $alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-y,x+1/2,z+1/4',
@@ -10115,6 +10167,8 @@ require Exporter;
     schoenflies     => 'C4v^1',
     hermann_mauguin => 'P 4 m m',
     universal_h_m   => 'P 4 m m',
+    crystal_class   => 'tetragonal',
+    constraints     => '$a == $b && $alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-y,x,z',
@@ -10143,6 +10197,8 @@ require Exporter;
     schoenflies     => 'C4v^2',
     hermann_mauguin => 'P 4 b m',
     universal_h_m   => 'P 4 b m',
+    crystal_class   => 'tetragonal',
+    constraints     => '$a == $b && $alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-y,x,z',
@@ -10171,6 +10227,8 @@ require Exporter;
     schoenflies     => 'C4v^3',
     hermann_mauguin => 'P 42 c m',
     universal_h_m   => 'P 42 c m',
+    crystal_class   => 'tetragonal',
+    constraints     => '$a == $b && $alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-y,x,z+1/2',
@@ -10199,6 +10257,8 @@ require Exporter;
     schoenflies     => 'C4v^4',
     hermann_mauguin => 'P 42 n m',
     universal_h_m   => 'P 42 n m',
+    crystal_class   => 'tetragonal',
+    constraints     => '$a == $b && $alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-y+1/2,x+1/2,z+1/2',
@@ -10227,6 +10287,8 @@ require Exporter;
     schoenflies     => 'C4v^5',
     hermann_mauguin => 'P 4 c c',
     universal_h_m   => 'P 4 c c',
+    crystal_class   => 'tetragonal',
+    constraints     => '$a == $b && $alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-y,x,z',
@@ -10255,6 +10317,8 @@ require Exporter;
     schoenflies     => 'C4v^6',
     hermann_mauguin => 'P 4 n c',
     universal_h_m   => 'P 4 n c',
+    crystal_class   => 'tetragonal',
+    constraints     => '$a == $b && $alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-y,x,z',
@@ -10283,6 +10347,8 @@ require Exporter;
     schoenflies     => 'C4v^7',
     hermann_mauguin => 'P 42 m c',
     universal_h_m   => 'P 42 m c',
+    crystal_class   => 'tetragonal',
+    constraints     => '$a == $b && $alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-y,x,z+1/2',
@@ -10311,6 +10377,8 @@ require Exporter;
     schoenflies     => 'C4v^8',
     hermann_mauguin => 'P 42 b c',
     universal_h_m   => 'P 42 b c',
+    crystal_class   => 'tetragonal',
+    constraints     => '$a == $b && $alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-y,x,z+1/2',
@@ -10339,6 +10407,8 @@ require Exporter;
     schoenflies     => 'C4v^9',
     hermann_mauguin => 'I 4 m m',
     universal_h_m   => 'I 4 m m',
+    crystal_class   => 'tetragonal',
+    constraints     => '$a == $b && $alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-y,x,z',
@@ -10375,6 +10445,8 @@ require Exporter;
     schoenflies     => 'C4v^10',
     hermann_mauguin => 'I 4 c m',
     universal_h_m   => 'I 4 c m',
+    crystal_class   => 'tetragonal',
+    constraints     => '$a == $b && $alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-y,x,z',
@@ -10411,6 +10483,8 @@ require Exporter;
     schoenflies     => 'C4v^11',
     hermann_mauguin => 'I 41 m d',
     universal_h_m   => 'I 41 m d',
+    crystal_class   => 'tetragonal',
+    constraints     => '$a == $b && $alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-y,x+1/2,z+1/4',
@@ -10447,6 +10521,8 @@ require Exporter;
     schoenflies     => 'C4v^12',
     hermann_mauguin => 'I 41 c d',
     universal_h_m   => 'I 41 c d',
+    crystal_class   => 'tetragonal',
+    constraints     => '$a == $b && $alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-y,x+1/2,z+1/4',
@@ -10483,6 +10559,8 @@ require Exporter;
     schoenflies     => 'D2d^1',
     hermann_mauguin => 'P -4 2 m',
     universal_h_m   => 'P -4 2 m',
+    crystal_class   => 'tetragonal',
+    constraints     => '$a == $b && $alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         'y,-x,-z',
@@ -10511,6 +10589,8 @@ require Exporter;
     schoenflies     => 'D2d^2',
     hermann_mauguin => 'P -4 2 c',
     universal_h_m   => 'P -4 2 c',
+    crystal_class   => 'tetragonal',
+    constraints     => '$a == $b && $alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         'y,-x,-z',
@@ -10539,6 +10619,8 @@ require Exporter;
     schoenflies     => 'D2d^3',
     hermann_mauguin => 'P -4 21 m',
     universal_h_m   => 'P -4 21 m',
+    crystal_class   => 'tetragonal',
+    constraints     => '$a == $b && $alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         'y,-x,-z',
@@ -10567,6 +10649,8 @@ require Exporter;
     schoenflies     => 'D2d^4',
     hermann_mauguin => 'P -4 21 c',
     universal_h_m   => 'P -4 21 c',
+    crystal_class   => 'tetragonal',
+    constraints     => '$a == $b && $alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         'y,-x,-z',
@@ -10595,6 +10679,8 @@ require Exporter;
     schoenflies     => 'D2d^5',
     hermann_mauguin => 'P -4 m 2',
     universal_h_m   => 'P -4 m 2',
+    crystal_class   => 'tetragonal',
+    constraints     => '$a == $b && $alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         'y,-x,-z',
@@ -10623,6 +10709,8 @@ require Exporter;
     schoenflies     => 'D2d^6',
     hermann_mauguin => 'P -4 c 2',
     universal_h_m   => 'P -4 c 2',
+    crystal_class   => 'tetragonal',
+    constraints     => '$a == $b && $alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         'y,-x,-z',
@@ -10651,6 +10739,8 @@ require Exporter;
     schoenflies     => 'D2d^7',
     hermann_mauguin => 'P -4 b 2',
     universal_h_m   => 'P -4 b 2',
+    crystal_class   => 'tetragonal',
+    constraints     => '$a == $b && $alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         'y,-x,-z',
@@ -10679,6 +10769,8 @@ require Exporter;
     schoenflies     => 'D2d^8',
     hermann_mauguin => 'P -4 n 2',
     universal_h_m   => 'P -4 n 2',
+    crystal_class   => 'tetragonal',
+    constraints     => '$a == $b && $alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         'y,-x,-z',
@@ -10707,6 +10799,8 @@ require Exporter;
     schoenflies     => 'D2d^9',
     hermann_mauguin => 'I -4 m 2',
     universal_h_m   => 'I -4 m 2',
+    crystal_class   => 'tetragonal',
+    constraints     => '$a == $b && $alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         'y,-x,-z',
@@ -10743,6 +10837,8 @@ require Exporter;
     schoenflies     => 'D2d^10',
     hermann_mauguin => 'I -4 c 2',
     universal_h_m   => 'I -4 c 2',
+    crystal_class   => 'tetragonal',
+    constraints     => '$a == $b && $alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         'y,-x,-z',
@@ -10779,6 +10875,8 @@ require Exporter;
     schoenflies     => 'D2d^11',
     hermann_mauguin => 'I -4 2 m',
     universal_h_m   => 'I -4 2 m',
+    crystal_class   => 'tetragonal',
+    constraints     => '$a == $b && $alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         'y,-x,-z',
@@ -10815,6 +10913,8 @@ require Exporter;
     schoenflies     => 'D2d^12',
     hermann_mauguin => 'I -4 2 d',
     universal_h_m   => 'I -4 2 d',
+    crystal_class   => 'tetragonal',
+    constraints     => '$a == $b && $alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         'y,-x,-z',
@@ -10851,6 +10951,8 @@ require Exporter;
     schoenflies     => 'D4h^1',
     hermann_mauguin => 'P 4/m m m',
     universal_h_m   => 'P 4/m m m',
+    crystal_class   => 'tetragonal',
+    constraints     => '$a == $b && $alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-y,x,z',
@@ -10895,6 +10997,8 @@ require Exporter;
     schoenflies     => 'D4h^2',
     hermann_mauguin => 'P 4/m c c',
     universal_h_m   => 'P 4/m c c',
+    crystal_class   => 'tetragonal',
+    constraints     => '$a == $b && $alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-y,x,z',
@@ -10939,6 +11043,8 @@ require Exporter;
     schoenflies     => 'D4h^3',
     hermann_mauguin => 'P 4/n b m',
     universal_h_m   => 'P 4/n b m :1',
+    crystal_class   => 'tetragonal',
+    constraints     => '$a == $b && $alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-y,x,z',
@@ -10983,6 +11089,8 @@ require Exporter;
     schoenflies     => 'D4h^3',
     hermann_mauguin => 'P 4/n b m',
     universal_h_m   => 'P 4/n b m :2',
+    crystal_class   => 'tetragonal',
+    constraints     => '$a == $b && $alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-y+1/2,x,z',
@@ -11027,6 +11135,8 @@ require Exporter;
     schoenflies     => 'D4h^4',
     hermann_mauguin => 'P 4/n n c',
     universal_h_m   => 'P 4/n n c :1',
+    crystal_class   => 'tetragonal',
+    constraints     => '$a == $b && $alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-y,x,z',
@@ -11071,6 +11181,8 @@ require Exporter;
     schoenflies     => 'D4h^4',
     hermann_mauguin => 'P 4/n n c',
     universal_h_m   => 'P 4/n n c :2',
+    crystal_class   => 'tetragonal',
+    constraints     => '$a == $b && $alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-y+1/2,x,z',
@@ -11115,6 +11227,8 @@ require Exporter;
     schoenflies     => 'D4h^5',
     hermann_mauguin => 'P 4/m b m',
     universal_h_m   => 'P 4/m b m',
+    crystal_class   => 'tetragonal',
+    constraints     => '$a == $b && $alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-y,x,z',
@@ -11159,6 +11273,8 @@ require Exporter;
     schoenflies     => 'D4h^6',
     hermann_mauguin => 'P 4/m n c',
     universal_h_m   => 'P 4/m n c',
+    crystal_class   => 'tetragonal',
+    constraints     => '$a == $b && $alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-y,x,z',
@@ -11203,6 +11319,8 @@ require Exporter;
     schoenflies     => 'D4h^7',
     hermann_mauguin => 'P 4/n m m',
     universal_h_m   => 'P 4/n m m :1',
+    crystal_class   => 'tetragonal',
+    constraints     => '$a == $b && $alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-y+1/2,x+1/2,z',
@@ -11247,6 +11365,8 @@ require Exporter;
     schoenflies     => 'D4h^7',
     hermann_mauguin => 'P 4/n m m',
     universal_h_m   => 'P 4/n m m :2',
+    crystal_class   => 'tetragonal',
+    constraints     => '$a == $b && $alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-y+1/2,x,z',
@@ -11291,6 +11411,8 @@ require Exporter;
     schoenflies     => 'D4h^8',
     hermann_mauguin => 'P 4/n c c',
     universal_h_m   => 'P 4/n c c :1',
+    crystal_class   => 'tetragonal',
+    constraints     => '$a == $b && $alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-y+1/2,x+1/2,z',
@@ -11335,6 +11457,8 @@ require Exporter;
     schoenflies     => 'D4h^8',
     hermann_mauguin => 'P 4/n c c',
     universal_h_m   => 'P 4/n c c :2',
+    crystal_class   => 'tetragonal',
+    constraints     => '$a == $b && $alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-y+1/2,x,z',
@@ -11379,6 +11503,8 @@ require Exporter;
     schoenflies     => 'D4h^9',
     hermann_mauguin => 'P 42/m m c',
     universal_h_m   => 'P 42/m m c',
+    crystal_class   => 'tetragonal',
+    constraints     => '$a == $b && $alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-y,x,z+1/2',
@@ -11423,6 +11549,8 @@ require Exporter;
     schoenflies     => 'D4h^10',
     hermann_mauguin => 'P 42/m c m',
     universal_h_m   => 'P 42/m c m',
+    crystal_class   => 'tetragonal',
+    constraints     => '$a == $b && $alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-y,x,z+1/2',
@@ -11467,6 +11595,8 @@ require Exporter;
     schoenflies     => 'D4h^11',
     hermann_mauguin => 'P 42/n b c',
     universal_h_m   => 'P 42/n b c :1',
+    crystal_class   => 'tetragonal',
+    constraints     => '$a == $b && $alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-y+1/2,x+1/2,z+1/2',
@@ -11511,6 +11641,8 @@ require Exporter;
     schoenflies     => 'D4h^11',
     hermann_mauguin => 'P 42/n b c',
     universal_h_m   => 'P 42/n b c :2',
+    crystal_class   => 'tetragonal',
+    constraints     => '$a == $b && $alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-y+1/2,x,z+1/2',
@@ -11555,6 +11687,8 @@ require Exporter;
     schoenflies     => 'D4h^12',
     hermann_mauguin => 'P 42/n n m',
     universal_h_m   => 'P 42/n n m :1',
+    crystal_class   => 'tetragonal',
+    constraints     => '$a == $b && $alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-y+1/2,x+1/2,z+1/2',
@@ -11599,6 +11733,8 @@ require Exporter;
     schoenflies     => 'D4h^12',
     hermann_mauguin => 'P 42/n n m',
     universal_h_m   => 'P 42/n n m :2',
+    crystal_class   => 'tetragonal',
+    constraints     => '$a == $b && $alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-y+1/2,x,z+1/2',
@@ -11643,6 +11779,8 @@ require Exporter;
     schoenflies     => 'D4h^13',
     hermann_mauguin => 'P 42/m b c',
     universal_h_m   => 'P 42/m b c',
+    crystal_class   => 'tetragonal',
+    constraints     => '$a == $b && $alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-y,x,z+1/2',
@@ -11687,6 +11825,8 @@ require Exporter;
     schoenflies     => 'D4h^14',
     hermann_mauguin => 'P 42/m n m',
     universal_h_m   => 'P 42/m n m',
+    crystal_class   => 'tetragonal',
+    constraints     => '$a == $b && $alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-y+1/2,x+1/2,z+1/2',
@@ -11731,6 +11871,8 @@ require Exporter;
     schoenflies     => 'D4h^15',
     hermann_mauguin => 'P 42/n m c',
     universal_h_m   => 'P 42/n m c :1',
+    crystal_class   => 'tetragonal',
+    constraints     => '$a == $b && $alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-y+1/2,x+1/2,z+1/2',
@@ -11775,6 +11917,8 @@ require Exporter;
     schoenflies     => 'D4h^15',
     hermann_mauguin => 'P 42/n m c',
     universal_h_m   => 'P 42/n m c :2',
+    crystal_class   => 'tetragonal',
+    constraints     => '$a == $b && $alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-y+1/2,x,z+1/2',
@@ -11819,6 +11963,8 @@ require Exporter;
     schoenflies     => 'D4h^16',
     hermann_mauguin => 'P 42/n c m',
     universal_h_m   => 'P 42/n c m :1',
+    crystal_class   => 'tetragonal',
+    constraints     => '$a == $b && $alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-y+1/2,x+1/2,z+1/2',
@@ -11863,6 +12009,8 @@ require Exporter;
     schoenflies     => 'D4h^16',
     hermann_mauguin => 'P 42/n c m',
     universal_h_m   => 'P 42/n c m :2',
+    crystal_class   => 'tetragonal',
+    constraints     => '$a == $b && $alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-y+1/2,x,z+1/2',
@@ -11907,6 +12055,8 @@ require Exporter;
     schoenflies     => 'D4h^17',
     hermann_mauguin => 'I 4/m m m',
     universal_h_m   => 'I 4/m m m',
+    crystal_class   => 'tetragonal',
+    constraints     => '$a == $b && $alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-y,x,z',
@@ -11967,6 +12117,8 @@ require Exporter;
     schoenflies     => 'D4h^18',
     hermann_mauguin => 'I 4/m c m',
     universal_h_m   => 'I 4/m c m',
+    crystal_class   => 'tetragonal',
+    constraints     => '$a == $b && $alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-y,x,z',
@@ -12027,6 +12179,8 @@ require Exporter;
     schoenflies     => 'D4h^19',
     hermann_mauguin => 'I 41/a m d',
     universal_h_m   => 'I 41/a m d :1',
+    crystal_class   => 'tetragonal',
+    constraints     => '$a == $b && $alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-y,x+1/2,z+1/4',
@@ -12087,6 +12241,8 @@ require Exporter;
     schoenflies     => 'D4h^19',
     hermann_mauguin => 'I 41/a m d',
     universal_h_m   => 'I 41/a m d :2',
+    crystal_class   => 'tetragonal',
+    constraints     => '$a == $b && $alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-y+1/4,x+3/4,z+1/4',
@@ -12147,6 +12303,8 @@ require Exporter;
     schoenflies     => 'D4h^20',
     hermann_mauguin => 'I 41/a c d',
     universal_h_m   => 'I 41/a c d :1',
+    crystal_class   => 'tetragonal',
+    constraints     => '$a == $b && $alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-y,x+1/2,z+1/4',
@@ -12207,6 +12365,8 @@ require Exporter;
     schoenflies     => 'D4h^20',
     hermann_mauguin => 'I 41/a c d',
     universal_h_m   => 'I 41/a c d :2',
+    crystal_class   => 'tetragonal',
+    constraints     => '$a == $b && $alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-y+1/4,x+3/4,z+1/4',
