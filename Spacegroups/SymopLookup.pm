@@ -14497,6 +14497,9 @@ require Exporter;
     schoenflies     => 'T^1',
     hermann_mauguin => 'P 2 3',
     universal_h_m   => 'P 2 3',
+    crystal_class   => 'cubic',
+    constraints     => '$a == $b && $b == $c &&' .
+                       '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-x,-y,z',
@@ -14533,6 +14536,9 @@ require Exporter;
     schoenflies     => 'T^2',
     hermann_mauguin => 'F 2 3',
     universal_h_m   => 'F 2 3',
+    crystal_class   => 'cubic',
+    constraints     => '$a == $b && $b == $c &&' .
+                       '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-x,-y,z',
@@ -14605,6 +14611,9 @@ require Exporter;
     schoenflies     => 'T^3',
     hermann_mauguin => 'I 2 3',
     universal_h_m   => 'I 2 3',
+    crystal_class   => 'cubic',
+    constraints     => '$a == $b && $b == $c &&' .
+                       '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-x,-y,z',
@@ -14653,6 +14662,9 @@ require Exporter;
     schoenflies     => 'T^4',
     hermann_mauguin => 'P 21 3',
     universal_h_m   => 'P 21 3',
+    crystal_class   => 'cubic',
+    constraints     => '$a == $b && $b == $c &&' .
+                       '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-x+1/2,-y,z+1/2',
@@ -14689,6 +14701,9 @@ require Exporter;
     schoenflies     => 'T^5',
     hermann_mauguin => 'I 21 3',
     universal_h_m   => 'I 21 3',
+    crystal_class   => 'cubic',
+    constraints     => '$a == $b && $b == $c &&' .
+                       '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-x,-y+1/2,z',
@@ -14737,6 +14752,9 @@ require Exporter;
     schoenflies     => 'Th^1',
     hermann_mauguin => 'P m -3',
     universal_h_m   => 'P m -3',
+    crystal_class   => 'cubic',
+    constraints     => '$a == $b && $b == $c &&' .
+                       '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-x,-y,z',
@@ -14797,6 +14815,9 @@ require Exporter;
     schoenflies     => 'Th^2',
     hermann_mauguin => 'P n -3',
     universal_h_m   => 'P n -3 :1',
+    crystal_class   => 'cubic',
+    constraints     => '$a == $b && $b == $c &&' .
+                       '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-x,-y,z',
@@ -14857,6 +14878,9 @@ require Exporter;
     schoenflies     => 'Th^2',
     hermann_mauguin => 'P n -3',
     universal_h_m   => 'P n -3 :2',
+    crystal_class   => 'cubic',
+    constraints     => '$a == $b && $b == $c &&' .
+                       '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-x+1/2,-y+1/2,z',
@@ -14917,6 +14941,9 @@ require Exporter;
     schoenflies     => 'Th^3',
     hermann_mauguin => 'F m -3',
     universal_h_m   => 'F m -3',
+    crystal_class   => 'cubic',
+    constraints     => '$a == $b && $b == $c &&' .
+                       '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-x,-y,z',
@@ -15049,6 +15076,9 @@ require Exporter;
     schoenflies     => 'Th^4',
     hermann_mauguin => 'F d -3',
     universal_h_m   => 'F d -3 :1',
+    crystal_class   => 'cubic',
+    constraints     => '$a == $b && $b == $c &&' .
+                       '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-x,-y,z',
@@ -15181,6 +15211,9 @@ require Exporter;
     schoenflies     => 'Th^4',
     hermann_mauguin => 'F d -3',
     universal_h_m   => 'F d -3 :2',
+    crystal_class   => 'cubic',
+    constraints     => '$a == $b && $b == $c &&' .
+                       '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-x+1/4,-y+1/4,z',
@@ -15313,6 +15346,9 @@ require Exporter;
     schoenflies     => 'Th^5',
     hermann_mauguin => 'I m -3',
     universal_h_m   => 'I m -3',
+    crystal_class   => 'cubic',
+    constraints     => '$a == $b && $b == $c &&' .
+                       '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-x,-y,z',
@@ -15397,6 +15433,9 @@ require Exporter;
     schoenflies     => 'Th^6',
     hermann_mauguin => 'P a -3',
     universal_h_m   => 'P a -3',
+    crystal_class   => 'cubic',
+    constraints     => '$a == $b && $b == $c &&' .
+                       '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-x+1/2,-y,z+1/2',
@@ -15457,6 +15496,9 @@ require Exporter;
     schoenflies     => 'Th^7',
     hermann_mauguin => 'I a -3',
     universal_h_m   => 'I a -3',
+    crystal_class   => 'cubic',
+    constraints     => '$a == $b && $b == $c &&' .
+                       '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-x,-y+1/2,z',
@@ -15541,6 +15583,9 @@ require Exporter;
     schoenflies     => 'O^1',
     hermann_mauguin => 'P 4 3 2',
     universal_h_m   => 'P 4 3 2',
+    crystal_class   => 'cubic',
+    constraints     => '$a == $b && $b == $c &&' .
+                       '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-y,x,z',
@@ -15601,6 +15646,9 @@ require Exporter;
     schoenflies     => 'O^2',
     hermann_mauguin => 'P 42 3 2',
     universal_h_m   => 'P 42 3 2',
+    crystal_class   => 'cubic',
+    constraints     => '$a == $b && $b == $c &&' .
+                       '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-y+1/2,x+1/2,z+1/2',
@@ -15661,6 +15709,9 @@ require Exporter;
     schoenflies     => 'O^3',
     hermann_mauguin => 'F 4 3 2',
     universal_h_m   => 'F 4 3 2',
+    crystal_class   => 'cubic',
+    constraints     => '$a == $b && $b == $c &&' .
+                       '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-y,x,z',
@@ -15793,6 +15844,9 @@ require Exporter;
     schoenflies     => 'O^4',
     hermann_mauguin => 'F 41 3 2',
     universal_h_m   => 'F 41 3 2',
+    crystal_class   => 'cubic',
+    constraints     => '$a == $b && $b == $c &&' .
+                       '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-y+1/4,x+1/4,z+1/4',
@@ -15925,6 +15979,9 @@ require Exporter;
     schoenflies     => 'O^5',
     hermann_mauguin => 'I 4 3 2',
     universal_h_m   => 'I 4 3 2',
+    crystal_class   => 'cubic',
+    constraints     => '$a == $b && $b == $c &&' .
+                       '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-y,x,z',
@@ -16009,6 +16066,9 @@ require Exporter;
     schoenflies     => 'O^6',
     hermann_mauguin => 'P 43 3 2',
     universal_h_m   => 'P 43 3 2',
+    crystal_class   => 'cubic',
+    constraints     => '$a == $b && $b == $c &&' .
+                       '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-y+3/4,x+1/4,z+3/4',
@@ -16069,6 +16129,9 @@ require Exporter;
     schoenflies     => 'O^7',
     hermann_mauguin => 'P 41 3 2',
     universal_h_m   => 'P 41 3 2',
+    crystal_class   => 'cubic',
+    constraints     => '$a == $b && $b == $c &&' .
+                       '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-y+1/4,x+3/4,z+1/4',
@@ -16129,6 +16192,9 @@ require Exporter;
     schoenflies     => 'O^8',
     hermann_mauguin => 'I 41 3 2',
     universal_h_m   => 'I 41 3 2',
+    crystal_class   => 'cubic',
+    constraints     => '$a == $b && $b == $c &&' .
+                       '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-y+1/4,x+3/4,z+1/4',
@@ -16213,6 +16279,9 @@ require Exporter;
     schoenflies     => 'Td^1',
     hermann_mauguin => 'P -4 3 m',
     universal_h_m   => 'P -4 3 m',
+    crystal_class   => 'cubic',
+    constraints     => '$a == $b && $b == $c &&' .
+                       '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         'y,-x,-z',
@@ -16273,6 +16342,9 @@ require Exporter;
     schoenflies     => 'Td^2',
     hermann_mauguin => 'F -4 3 m',
     universal_h_m   => 'F -4 3 m',
+    crystal_class   => 'cubic',
+    constraints     => '$a == $b && $b == $c &&' .
+                       '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         'y,-x,-z',
@@ -16405,6 +16477,9 @@ require Exporter;
     schoenflies     => 'Td^3',
     hermann_mauguin => 'I -4 3 m',
     universal_h_m   => 'I -4 3 m',
+    crystal_class   => 'cubic',
+    constraints     => '$a == $b && $b == $c &&' .
+                       '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         'y,-x,-z',
@@ -16489,6 +16564,9 @@ require Exporter;
     schoenflies     => 'Td^4',
     hermann_mauguin => 'P -4 3 n',
     universal_h_m   => 'P -4 3 n',
+    crystal_class   => 'cubic',
+    constraints     => '$a == $b && $b == $c &&' .
+                       '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         'y+1/2,-x+1/2,-z+1/2',
@@ -16549,6 +16627,9 @@ require Exporter;
     schoenflies     => 'Td^5',
     hermann_mauguin => 'F -4 3 c',
     universal_h_m   => 'F -4 3 c',
+    crystal_class   => 'cubic',
+    constraints     => '$a == $b && $b == $c &&' .
+                       '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         'y+1/2,-x,-z',
@@ -16681,6 +16762,9 @@ require Exporter;
     schoenflies     => 'Td^6',
     hermann_mauguin => 'I -4 3 d',
     universal_h_m   => 'I -4 3 d',
+    crystal_class   => 'cubic',
+    constraints     => '$a == $b && $b == $c &&' .
+                       '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         'y+1/4,-x+3/4,-z+1/4',
@@ -16765,6 +16849,9 @@ require Exporter;
     schoenflies     => 'Oh^1',
     hermann_mauguin => 'P m -3 m',
     universal_h_m   => 'P m -3 m',
+    crystal_class   => 'cubic',
+    constraints     => '$a == $b && $b == $c &&' .
+                       '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-y,x,z',
@@ -16873,6 +16960,9 @@ require Exporter;
     schoenflies     => 'Oh^2',
     hermann_mauguin => 'P n -3 n',
     universal_h_m   => 'P n -3 n :1',
+    crystal_class   => 'cubic',
+    constraints     => '$a == $b && $b == $c &&' .
+                       '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-y,x,z',
@@ -16981,6 +17071,9 @@ require Exporter;
     schoenflies     => 'Oh^2',
     hermann_mauguin => 'P n -3 n',
     universal_h_m   => 'P n -3 n :2',
+    crystal_class   => 'cubic',
+    constraints     => '$a == $b && $b == $c &&' .
+                       '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-y+1/2,x,z',
@@ -17089,6 +17182,9 @@ require Exporter;
     schoenflies     => 'Oh^3',
     hermann_mauguin => 'P m -3 n',
     universal_h_m   => 'P m -3 n',
+    crystal_class   => 'cubic',
+    constraints     => '$a == $b && $b == $c &&' .
+                       '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-y+1/2,x+1/2,z+1/2',
@@ -17197,6 +17293,9 @@ require Exporter;
     schoenflies     => 'Oh^4',
     hermann_mauguin => 'P n -3 m',
     universal_h_m   => 'P n -3 m :1',
+    crystal_class   => 'cubic',
+    constraints     => '$a == $b && $b == $c &&' .
+                       '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-y+1/2,x+1/2,z+1/2',
@@ -17305,6 +17404,9 @@ require Exporter;
     schoenflies     => 'Oh^4',
     hermann_mauguin => 'P n -3 m',
     universal_h_m   => 'P n -3 m :2',
+    crystal_class   => 'cubic',
+    constraints     => '$a == $b && $b == $c &&' .
+                       '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-y,x+1/2,z+1/2',
@@ -17413,6 +17515,9 @@ require Exporter;
     schoenflies     => 'Oh^5',
     hermann_mauguin => 'F m -3 m',
     universal_h_m   => 'F m -3 m',
+    crystal_class   => 'cubic',
+    constraints     => '$a == $b && $b == $c &&' .
+                       '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-y,x,z',
@@ -17665,6 +17770,9 @@ require Exporter;
     schoenflies     => 'Oh^6',
     hermann_mauguin => 'F m -3 c',
     universal_h_m   => 'F m -3 c',
+    crystal_class   => 'cubic',
+    constraints     => '$a == $b && $b == $c &&' .
+                       '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-y+1/2,x,z',
@@ -17917,6 +18025,9 @@ require Exporter;
     schoenflies     => 'Oh^7',
     hermann_mauguin => 'F d -3 m',
     universal_h_m   => 'F d -3 m :1',
+    crystal_class   => 'cubic',
+    constraints     => '$a == $b && $b == $c &&' .
+                       '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-y+1/4,x+1/4,z+1/4',
@@ -18169,6 +18280,9 @@ require Exporter;
     schoenflies     => 'Oh^7',
     hermann_mauguin => 'F d -3 m',
     universal_h_m   => 'F d -3 m :2',
+    crystal_class   => 'cubic',
+    constraints     => '$a == $b && $b == $c &&' .
+                       '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-y,x+1/4,z+1/4',
@@ -18421,6 +18535,9 @@ require Exporter;
     schoenflies     => 'Oh^8',
     hermann_mauguin => 'F d -3 c',
     universal_h_m   => 'F d -3 c :1',
+    crystal_class   => 'cubic',
+    constraints     => '$a == $b && $b == $c &&' .
+                       '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-y+1/4,x+1/4,z+1/4',
@@ -18673,6 +18790,9 @@ require Exporter;
     schoenflies     => 'Oh^8',
     hermann_mauguin => 'F d -3 c',
     universal_h_m   => 'F d -3 c :2',
+    crystal_class   => 'cubic',
+    constraints     => '$a == $b && $b == $c &&' .
+                       '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-y+1/2,x+1/4,z+1/4',
@@ -18925,6 +19045,9 @@ require Exporter;
     schoenflies     => 'Oh^9',
     hermann_mauguin => 'I m -3 m',
     universal_h_m   => 'I m -3 m',
+    crystal_class   => 'cubic',
+    constraints     => '$a == $b && $b == $c &&' .
+                       '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-y,x,z',
@@ -19081,6 +19204,9 @@ require Exporter;
     schoenflies     => 'Oh^10',
     hermann_mauguin => 'I a -3 d',
     universal_h_m   => 'I a -3 d',
+    crystal_class   => 'cubic',
+    constraints     => '$a == $b && $b == $c &&' .
+                       '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-y+1/4,x+3/4,z+1/4',
