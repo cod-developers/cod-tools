@@ -23,6 +23,8 @@ require Exporter;
     schoenflies     => 'C1^1',
     hermann_mauguin => 'P 1',
     universal_h_m   => 'P 1',
+    crystal_class   => 'triclinic',
+    constraints     => '1',
     symops => [
         'x,y,z',
     ],
@@ -37,6 +39,8 @@ require Exporter;
     schoenflies     => 'Ci^1',
     hermann_mauguin => 'P -1',
     universal_h_m   => 'P -1',
+    crystal_class   => 'triclinic',
+    constraints     => '1',
     symops => [
         'x,y,z',
         '-x,-y,-z',
@@ -53,6 +57,8 @@ require Exporter;
     schoenflies     => 'C2^1',
     hermann_mauguin => 'P 1 2 1',
     universal_h_m   => 'P 1 2 1',
+    crystal_class   => 'monoclinic',
+    constraints     => '$alpha == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-x,y,-z',
@@ -69,6 +75,8 @@ require Exporter;
     schoenflies     => 'C2^1',
     hermann_mauguin => 'P 1 1 2',
     universal_h_m   => 'P 1 1 2',
+    crystal_class   => 'monoclinic',
+    constraints     => '$alpha == 90 && $beta == 90',
     symops => [
         'x,y,z',
         '-x,-y,z',
@@ -85,6 +93,8 @@ require Exporter;
     schoenflies     => 'C2^1',
     hermann_mauguin => 'P 2 1 1',
     universal_h_m   => 'P 2 1 1',
+    crystal_class   => 'monoclinic',
+    constraints     => '$beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         'x,-y,-z',
@@ -101,6 +111,8 @@ require Exporter;
     schoenflies     => 'C2^2',
     hermann_mauguin => 'P 1 21 1',
     universal_h_m   => 'P 1 21 1',
+    crystal_class   => 'monoclinic',
+    constraints     => '$alpha == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-x,y+1/2,-z',
@@ -117,6 +129,8 @@ require Exporter;
     schoenflies     => 'C2^2',
     hermann_mauguin => 'P 1 1 21',
     universal_h_m   => 'P 1 1 21',
+    crystal_class   => 'monoclinic',
+    constraints     => '$alpha == 90 && $beta == 90',
     symops => [
         'x,y,z',
         '-x,-y,z+1/2',
@@ -133,6 +147,8 @@ require Exporter;
     schoenflies     => 'C2^2',
     hermann_mauguin => 'P 21 1 1',
     universal_h_m   => 'P 21 1 1',
+    crystal_class   => 'monoclinic',
+    constraints     => '$beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         'x+1/2,-y,-z',
@@ -149,6 +165,8 @@ require Exporter;
     schoenflies     => 'C2^3',
     hermann_mauguin => 'C 1 2 1',
     universal_h_m   => 'C 1 2 1',
+    crystal_class   => 'monoclinic',
+    constraints     => '$alpha == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-x,y,-z',
@@ -167,6 +185,8 @@ require Exporter;
     schoenflies     => 'C2^3',
     hermann_mauguin => 'A 1 2 1',
     universal_h_m   => 'A 1 2 1',
+    crystal_class   => 'monoclinic',
+    constraints     => '$alpha == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-x,y,-z',
@@ -185,6 +205,8 @@ require Exporter;
     schoenflies     => 'C2^3',
     hermann_mauguin => 'I 1 2 1',
     universal_h_m   => 'I 1 2 1',
+    crystal_class   => 'monoclinic',
+    constraints     => '$alpha == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-x,y,-z',
@@ -203,6 +225,8 @@ require Exporter;
     schoenflies     => 'C2^3',
     hermann_mauguin => 'A 1 1 2',
     universal_h_m   => 'A 1 1 2',
+    crystal_class   => 'monoclinic',
+    constraints     => '$alpha == 90 && $beta == 90',
     symops => [
         'x,y,z',
         '-x,-y,z',
@@ -221,6 +245,8 @@ require Exporter;
     schoenflies     => 'C2^3',
     hermann_mauguin => 'B 1 1 2',
     universal_h_m   => 'B 1 1 2',
+    crystal_class   => 'monoclinic',
+    constraints     => '$alpha == 90 && $beta == 90',
     symops => [
         'x,y,z',
         '-x,-y,z',
@@ -239,6 +265,8 @@ require Exporter;
     schoenflies     => 'C2^3',
     hermann_mauguin => 'I 1 1 2',
     universal_h_m   => 'I 1 1 2',
+    crystal_class   => 'monoclinic',
+    constraints     => '$alpha == 90 && $beta == 90',
     symops => [
         'x,y,z',
         '-x,-y,z',
@@ -257,6 +285,8 @@ require Exporter;
     schoenflies     => 'C2^3',
     hermann_mauguin => 'B 2 1 1',
     universal_h_m   => 'B 2 1 1',
+    crystal_class   => 'monoclinic',
+    constraints     => '$beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         'x,-y,-z',
@@ -275,6 +305,8 @@ require Exporter;
     schoenflies     => 'C2^3',
     hermann_mauguin => 'C 2 1 1',
     universal_h_m   => 'C 2 1 1',
+    crystal_class   => 'monoclinic',
+    constraints     => '$beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         'x,-y,-z',
@@ -293,6 +325,8 @@ require Exporter;
     schoenflies     => 'C2^3',
     hermann_mauguin => 'I 2 1 1',
     universal_h_m   => 'I 2 1 1',
+    crystal_class   => 'monoclinic',
+    constraints     => '$beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         'x,-y,-z',
@@ -311,6 +345,8 @@ require Exporter;
     schoenflies     => 'Cs^1',
     hermann_mauguin => 'P 1 m 1',
     universal_h_m   => 'P 1 m 1',
+    crystal_class   => 'monoclinic',
+    constraints     => '$alpha == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         'x,-y,z',
@@ -327,6 +363,8 @@ require Exporter;
     schoenflies     => 'Cs^1',
     hermann_mauguin => 'P 1 1 m',
     universal_h_m   => 'P 1 1 m',
+    crystal_class   => 'monoclinic',
+    constraints     => '$alpha == 90 && $beta == 90',
     symops => [
         'x,y,z',
         'x,y,-z',
@@ -343,6 +381,8 @@ require Exporter;
     schoenflies     => 'Cs^1',
     hermann_mauguin => 'P m 1 1',
     universal_h_m   => 'P m 1 1',
+    crystal_class   => 'monoclinic',
+    constraints     => '$beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-x,y,z',
@@ -359,6 +399,8 @@ require Exporter;
     schoenflies     => 'Cs^2',
     hermann_mauguin => 'P 1 c 1',
     universal_h_m   => 'P 1 c 1',
+    crystal_class   => 'monoclinic',
+    constraints     => '$alpha == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         'x,-y,z+1/2',
@@ -375,6 +417,8 @@ require Exporter;
     schoenflies     => 'Cs^2',
     hermann_mauguin => 'P 1 n 1',
     universal_h_m   => 'P 1 n 1',
+    crystal_class   => 'monoclinic',
+    constraints     => '$alpha == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         'x+1/2,-y,z+1/2',
@@ -391,6 +435,8 @@ require Exporter;
     schoenflies     => 'Cs^2',
     hermann_mauguin => 'P 1 a 1',
     universal_h_m   => 'P 1 a 1',
+    crystal_class   => 'monoclinic',
+    constraints     => '$alpha == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         'x+1/2,-y,z',
@@ -407,6 +453,8 @@ require Exporter;
     schoenflies     => 'Cs^2',
     hermann_mauguin => 'P 1 1 a',
     universal_h_m   => 'P 1 1 a',
+    crystal_class   => 'monoclinic',
+    constraints     => '$alpha == 90 && $beta == 90',
     symops => [
         'x,y,z',
         'x+1/2,y,-z',
@@ -423,6 +471,8 @@ require Exporter;
     schoenflies     => 'Cs^2',
     hermann_mauguin => 'P 1 1 n',
     universal_h_m   => 'P 1 1 n',
+    crystal_class   => 'monoclinic',
+    constraints     => '$alpha == 90 && $beta == 90',
     symops => [
         'x,y,z',
         'x+1/2,y+1/2,-z',
@@ -439,6 +489,8 @@ require Exporter;
     schoenflies     => 'Cs^2',
     hermann_mauguin => 'P 1 1 b',
     universal_h_m   => 'P 1 1 b',
+    crystal_class   => 'monoclinic',
+    constraints     => '$alpha == 90 && $beta == 90',
     symops => [
         'x,y,z',
         'x,y+1/2,-z',
@@ -455,6 +507,8 @@ require Exporter;
     schoenflies     => 'Cs^2',
     hermann_mauguin => 'P b 1 1',
     universal_h_m   => 'P b 1 1',
+    crystal_class   => 'monoclinic',
+    constraints     => '$beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-x,y+1/2,z',
@@ -471,6 +525,8 @@ require Exporter;
     schoenflies     => 'Cs^2',
     hermann_mauguin => 'P n 1 1',
     universal_h_m   => 'P n 1 1',
+    crystal_class   => 'monoclinic',
+    constraints     => '$beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-x,y+1/2,z+1/2',
@@ -487,6 +543,8 @@ require Exporter;
     schoenflies     => 'Cs^2',
     hermann_mauguin => 'P c 1 1',
     universal_h_m   => 'P c 1 1',
+    crystal_class   => 'monoclinic',
+    constraints     => '$beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-x,y,z+1/2',
@@ -503,6 +561,8 @@ require Exporter;
     schoenflies     => 'Cs^3',
     hermann_mauguin => 'C 1 m 1',
     universal_h_m   => 'C 1 m 1',
+    crystal_class   => 'monoclinic',
+    constraints     => '$alpha == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         'x,-y,z',
@@ -521,6 +581,8 @@ require Exporter;
     schoenflies     => 'Cs^3',
     hermann_mauguin => 'A 1 m 1',
     universal_h_m   => 'A 1 m 1',
+    crystal_class   => 'monoclinic',
+    constraints     => '$alpha == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         'x,-y,z',
@@ -539,6 +601,8 @@ require Exporter;
     schoenflies     => 'Cs^3',
     hermann_mauguin => 'I 1 m 1',
     universal_h_m   => 'I 1 m 1',
+    crystal_class   => 'monoclinic',
+    constraints     => '$alpha == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         'x,-y,z',
@@ -557,6 +621,8 @@ require Exporter;
     schoenflies     => 'Cs^3',
     hermann_mauguin => 'A 1 1 m',
     universal_h_m   => 'A 1 1 m',
+    crystal_class   => 'monoclinic',
+    constraints     => '$alpha == 90 && $beta == 90',
     symops => [
         'x,y,z',
         'x,y,-z',
@@ -575,6 +641,8 @@ require Exporter;
     schoenflies     => 'Cs^3',
     hermann_mauguin => 'B 1 1 m',
     universal_h_m   => 'B 1 1 m',
+    crystal_class   => 'monoclinic',
+    constraints     => '$alpha == 90 && $beta == 90',
     symops => [
         'x,y,z',
         'x,y,-z',
@@ -593,6 +661,8 @@ require Exporter;
     schoenflies     => 'Cs^3',
     hermann_mauguin => 'I 1 1 m',
     universal_h_m   => 'I 1 1 m',
+    crystal_class   => 'monoclinic',
+    constraints     => '$alpha == 90 && $beta == 90',
     symops => [
         'x,y,z',
         'x,y,-z',
@@ -611,6 +681,8 @@ require Exporter;
     schoenflies     => 'Cs^3',
     hermann_mauguin => 'B m 1 1',
     universal_h_m   => 'B m 1 1',
+    crystal_class   => 'monoclinic',
+    constraints     => '$beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-x,y,z',
@@ -629,6 +701,8 @@ require Exporter;
     schoenflies     => 'Cs^3',
     hermann_mauguin => 'C m 1 1',
     universal_h_m   => 'C m 1 1',
+    crystal_class   => 'monoclinic',
+    constraints     => '$beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-x,y,z',
@@ -647,6 +721,8 @@ require Exporter;
     schoenflies     => 'Cs^3',
     hermann_mauguin => 'I m 1 1',
     universal_h_m   => 'I m 1 1',
+    crystal_class   => 'monoclinic',
+    constraints     => '$beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-x,y,z',
@@ -665,6 +741,8 @@ require Exporter;
     schoenflies     => 'Cs^4',
     hermann_mauguin => 'C 1 c 1',
     universal_h_m   => 'C 1 c 1',
+    crystal_class   => 'monoclinic',
+    constraints     => '$alpha == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         'x,-y,z+1/2',
@@ -683,6 +761,8 @@ require Exporter;
     schoenflies     => 'Cs^4',
     hermann_mauguin => 'A 1 n 1',
     universal_h_m   => 'A 1 n 1',
+    crystal_class   => 'monoclinic',
+    constraints     => '$alpha == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         'x+1/2,-y+1/2,z',
@@ -701,6 +781,8 @@ require Exporter;
     schoenflies     => 'Cs^4',
     hermann_mauguin => 'I 1 a 1',
     universal_h_m   => 'I 1 a 1',
+    crystal_class   => 'monoclinic',
+    constraints     => '$alpha == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         'x+1/2,-y,z',
@@ -719,6 +801,8 @@ require Exporter;
     schoenflies     => 'Cs^4',
     hermann_mauguin => 'A 1 a 1',
     universal_h_m   => 'A 1 a 1',
+    crystal_class   => 'monoclinic',
+    constraints     => '$alpha == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         'x+1/2,-y,z',
@@ -737,6 +821,8 @@ require Exporter;
     schoenflies     => 'Cs^4',
     hermann_mauguin => 'C 1 n 1',
     universal_h_m   => 'C 1 n 1',
+    crystal_class   => 'monoclinic',
+    constraints     => '$alpha == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         'x+1/2,-y,z+1/2',
@@ -755,6 +841,8 @@ require Exporter;
     schoenflies     => 'Cs^4',
     hermann_mauguin => 'I 1 c 1',
     universal_h_m   => 'I 1 c 1',
+    crystal_class   => 'monoclinic',
+    constraints     => '$alpha == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         'x,-y,z+1/2',
@@ -773,6 +861,8 @@ require Exporter;
     schoenflies     => 'Cs^4',
     hermann_mauguin => 'A 1 1 a',
     universal_h_m   => 'A 1 1 a',
+    crystal_class   => 'monoclinic',
+    constraints     => '$alpha == 90 && $beta == 90',
     symops => [
         'x,y,z',
         'x+1/2,y,-z',
@@ -791,6 +881,8 @@ require Exporter;
     schoenflies     => 'Cs^4',
     hermann_mauguin => 'B 1 1 n',
     universal_h_m   => 'B 1 1 n',
+    crystal_class   => 'monoclinic',
+    constraints     => '$alpha == 90 && $beta == 90',
     symops => [
         'x,y,z',
         'x+1/2,y+1/2,-z',
@@ -809,6 +901,8 @@ require Exporter;
     schoenflies     => 'Cs^4',
     hermann_mauguin => 'I 1 1 b',
     universal_h_m   => 'I 1 1 b',
+    crystal_class   => 'monoclinic',
+    constraints     => '$alpha == 90 && $beta == 90',
     symops => [
         'x,y,z',
         'x,y+1/2,-z',
@@ -827,6 +921,8 @@ require Exporter;
     schoenflies     => 'Cs^4',
     hermann_mauguin => 'B 1 1 b',
     universal_h_m   => 'B 1 1 b',
+    crystal_class   => 'monoclinic',
+    constraints     => '$alpha == 90 && $beta == 90',
     symops => [
         'x,y,z',
         'x,y+1/2,-z',
@@ -845,6 +941,8 @@ require Exporter;
     schoenflies     => 'Cs^4',
     hermann_mauguin => 'A 1 1 n',
     universal_h_m   => 'A 1 1 n',
+    crystal_class   => 'monoclinic',
+    constraints     => '$alpha == 90 && $beta == 90',
     symops => [
         'x,y,z',
         'x+1/2,y+1/2,-z',
@@ -863,6 +961,8 @@ require Exporter;
     schoenflies     => 'Cs^4',
     hermann_mauguin => 'I 1 1 a',
     universal_h_m   => 'I 1 1 a',
+    crystal_class   => 'monoclinic',
+    constraints     => '$alpha == 90 && $beta == 90',
     symops => [
         'x,y,z',
         'x+1/2,y,-z',
@@ -881,6 +981,8 @@ require Exporter;
     schoenflies     => 'Cs^4',
     hermann_mauguin => 'B b 1 1',
     universal_h_m   => 'B b 1 1',
+    crystal_class   => 'monoclinic',
+    constraints     => '$beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-x,y+1/2,z',
@@ -899,6 +1001,8 @@ require Exporter;
     schoenflies     => 'Cs^4',
     hermann_mauguin => 'C n 1 1',
     universal_h_m   => 'C n 1 1',
+    crystal_class   => 'monoclinic',
+    constraints     => '$beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-x+1/2,y,z+1/2',
@@ -917,6 +1021,8 @@ require Exporter;
     schoenflies     => 'Cs^4',
     hermann_mauguin => 'I c 1 1',
     universal_h_m   => 'I c 1 1',
+    crystal_class   => 'monoclinic',
+    constraints     => '$beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-x,y,z+1/2',
@@ -935,6 +1041,8 @@ require Exporter;
     schoenflies     => 'Cs^4',
     hermann_mauguin => 'C c 1 1',
     universal_h_m   => 'C c 1 1',
+    crystal_class   => 'monoclinic',
+    constraints     => '$beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-x,y,z+1/2',
@@ -953,6 +1061,8 @@ require Exporter;
     schoenflies     => 'Cs^4',
     hermann_mauguin => 'B n 1 1',
     universal_h_m   => 'B n 1 1',
+    crystal_class   => 'monoclinic',
+    constraints     => '$beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-x+1/2,y+1/2,z',
@@ -971,6 +1081,8 @@ require Exporter;
     schoenflies     => 'Cs^4',
     hermann_mauguin => 'I b 1 1',
     universal_h_m   => 'I b 1 1',
+    crystal_class   => 'monoclinic',
+    constraints     => '$beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-x,y+1/2,z',
@@ -989,6 +1101,8 @@ require Exporter;
     schoenflies     => 'C2h^1',
     hermann_mauguin => 'P 1 2/m 1',
     universal_h_m   => 'P 1 2/m 1',
+    crystal_class   => 'monoclinic',
+    constraints     => '$alpha == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-x,y,-z',
@@ -1009,6 +1123,8 @@ require Exporter;
     schoenflies     => 'C2h^1',
     hermann_mauguin => 'P 1 1 2/m',
     universal_h_m   => 'P 1 1 2/m',
+    crystal_class   => 'monoclinic',
+    constraints     => '$alpha == 90 && $beta == 90',
     symops => [
         'x,y,z',
         '-x,-y,z',
@@ -1029,6 +1145,8 @@ require Exporter;
     schoenflies     => 'C2h^1',
     hermann_mauguin => 'P 2/m 1 1',
     universal_h_m   => 'P 2/m 1 1',
+    crystal_class   => 'monoclinic',
+    constraints     => '$beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         'x,-y,-z',
@@ -1049,6 +1167,8 @@ require Exporter;
     schoenflies     => 'C2h^2',
     hermann_mauguin => 'P 1 21/m 1',
     universal_h_m   => 'P 1 21/m 1',
+    crystal_class   => 'monoclinic',
+    constraints     => '$alpha == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-x,y+1/2,-z',
@@ -1069,6 +1189,8 @@ require Exporter;
     schoenflies     => 'C2h^2',
     hermann_mauguin => 'P 1 1 21/m',
     universal_h_m   => 'P 1 1 21/m',
+    crystal_class   => 'monoclinic',
+    constraints     => '$alpha == 90 && $beta == 90',
     symops => [
         'x,y,z',
         '-x,-y,z+1/2',
@@ -1089,6 +1211,8 @@ require Exporter;
     schoenflies     => 'C2h^2',
     hermann_mauguin => 'P 21/m 1 1',
     universal_h_m   => 'P 21/m 1 1',
+    crystal_class   => 'monoclinic',
+    constraints     => '$beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         'x+1/2,-y,-z',
@@ -1109,6 +1233,8 @@ require Exporter;
     schoenflies     => 'C2h^3',
     hermann_mauguin => 'C 1 2/m 1',
     universal_h_m   => 'C 1 2/m 1',
+    crystal_class   => 'monoclinic',
+    constraints     => '$alpha == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-x,y,-z',
@@ -1133,6 +1259,8 @@ require Exporter;
     schoenflies     => 'C2h^3',
     hermann_mauguin => 'A 1 2/m 1',
     universal_h_m   => 'A 1 2/m 1',
+    crystal_class   => 'monoclinic',
+    constraints     => '$alpha == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-x,y,-z',
@@ -1157,6 +1285,8 @@ require Exporter;
     schoenflies     => 'C2h^3',
     hermann_mauguin => 'I 1 2/m 1',
     universal_h_m   => 'I 1 2/m 1',
+    crystal_class   => 'monoclinic',
+    constraints     => '$alpha == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-x,y,-z',
@@ -1181,6 +1311,8 @@ require Exporter;
     schoenflies     => 'C2h^3',
     hermann_mauguin => 'A 1 1 2/m',
     universal_h_m   => 'A 1 1 2/m',
+    crystal_class   => 'monoclinic',
+    constraints     => '$alpha == 90 && $beta == 90',
     symops => [
         'x,y,z',
         '-x,-y,z',
@@ -1205,6 +1337,8 @@ require Exporter;
     schoenflies     => 'C2h^3',
     hermann_mauguin => 'B 1 1 2/m',
     universal_h_m   => 'B 1 1 2/m',
+    crystal_class   => 'monoclinic',
+    constraints     => '$alpha == 90 && $beta == 90',
     symops => [
         'x,y,z',
         '-x,-y,z',
@@ -1229,6 +1363,8 @@ require Exporter;
     schoenflies     => 'C2h^3',
     hermann_mauguin => 'I 1 1 2/m',
     universal_h_m   => 'I 1 1 2/m',
+    crystal_class   => 'monoclinic',
+    constraints     => '$alpha == 90 && $beta == 90',
     symops => [
         'x,y,z',
         '-x,-y,z',
@@ -1253,6 +1389,8 @@ require Exporter;
     schoenflies     => 'C2h^3',
     hermann_mauguin => 'B 2/m 1 1',
     universal_h_m   => 'B 2/m 1 1',
+    crystal_class   => 'monoclinic',
+    constraints     => '$beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         'x,-y,-z',
@@ -1277,6 +1415,8 @@ require Exporter;
     schoenflies     => 'C2h^3',
     hermann_mauguin => 'C 2/m 1 1',
     universal_h_m   => 'C 2/m 1 1',
+    crystal_class   => 'monoclinic',
+    constraints     => '$beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         'x,-y,-z',
@@ -1301,6 +1441,8 @@ require Exporter;
     schoenflies     => 'C2h^3',
     hermann_mauguin => 'I 2/m 1 1',
     universal_h_m   => 'I 2/m 1 1',
+    crystal_class   => 'monoclinic',
+    constraints     => '$beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         'x,-y,-z',
@@ -1325,6 +1467,8 @@ require Exporter;
     schoenflies     => 'C2h^4',
     hermann_mauguin => 'P 1 2/c 1',
     universal_h_m   => 'P 1 2/c 1',
+    crystal_class   => 'monoclinic',
+    constraints     => '$alpha == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-x,y,-z+1/2',
@@ -1345,6 +1489,8 @@ require Exporter;
     schoenflies     => 'C2h^4',
     hermann_mauguin => 'P 1 2/n 1',
     universal_h_m   => 'P 1 2/n 1',
+    crystal_class   => 'monoclinic',
+    constraints     => '$alpha == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-x+1/2,y,-z+1/2',
@@ -1365,6 +1511,8 @@ require Exporter;
     schoenflies     => 'C2h^4',
     hermann_mauguin => 'P 1 2/a 1',
     universal_h_m   => 'P 1 2/a 1',
+    crystal_class   => 'monoclinic',
+    constraints     => '$alpha == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-x+1/2,y,-z',
@@ -1385,6 +1533,8 @@ require Exporter;
     schoenflies     => 'C2h^4',
     hermann_mauguin => 'P 1 1 2/a',
     universal_h_m   => 'P 1 1 2/a',
+    crystal_class   => 'monoclinic',
+    constraints     => '$alpha == 90 && $beta == 90',
     symops => [
         'x,y,z',
         '-x+1/2,-y,z',
@@ -1405,6 +1555,8 @@ require Exporter;
     schoenflies     => 'C2h^4',
     hermann_mauguin => 'P 1 1 2/n',
     universal_h_m   => 'P 1 1 2/n',
+    crystal_class   => 'monoclinic',
+    constraints     => '$alpha == 90 && $beta == 90',
     symops => [
         'x,y,z',
         '-x+1/2,-y+1/2,z',
@@ -1425,6 +1577,8 @@ require Exporter;
     schoenflies     => 'C2h^4',
     hermann_mauguin => 'P 1 1 2/b',
     universal_h_m   => 'P 1 1 2/b',
+    crystal_class   => 'monoclinic',
+    constraints     => '$alpha == 90 && $beta == 90',
     symops => [
         'x,y,z',
         '-x,-y+1/2,z',
@@ -1445,6 +1599,8 @@ require Exporter;
     schoenflies     => 'C2h^4',
     hermann_mauguin => 'P 2/b 1 1',
     universal_h_m   => 'P 2/b 1 1',
+    crystal_class   => 'monoclinic',
+    constraints     => '$beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         'x,-y+1/2,-z',
@@ -1465,6 +1621,8 @@ require Exporter;
     schoenflies     => 'C2h^4',
     hermann_mauguin => 'P 2/n 1 1',
     universal_h_m   => 'P 2/n 1 1',
+    crystal_class   => 'monoclinic',
+    constraints     => '$beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         'x,-y+1/2,-z+1/2',
@@ -1485,6 +1643,8 @@ require Exporter;
     schoenflies     => 'C2h^4',
     hermann_mauguin => 'P 2/c 1 1',
     universal_h_m   => 'P 2/c 1 1',
+    crystal_class   => 'monoclinic',
+    constraints     => '$beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         'x,-y,-z+1/2',
@@ -1505,6 +1665,8 @@ require Exporter;
     schoenflies     => 'C2h^5',
     hermann_mauguin => 'P 1 21/c 1',
     universal_h_m   => 'P 1 21/c 1',
+    crystal_class   => 'monoclinic',
+    constraints     => '$alpha == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-x,y+1/2,-z+1/2',
@@ -1525,6 +1687,8 @@ require Exporter;
     schoenflies     => 'C2h^5',
     hermann_mauguin => 'P 1 21/n 1',
     universal_h_m   => 'P 1 21/n 1',
+    crystal_class   => 'monoclinic',
+    constraints     => '$alpha == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-x+1/2,y+1/2,-z+1/2',
@@ -1545,6 +1709,8 @@ require Exporter;
     schoenflies     => 'C2h^5',
     hermann_mauguin => 'P 1 21/a 1',
     universal_h_m   => 'P 1 21/a 1',
+    crystal_class   => 'monoclinic',
+    constraints     => '$alpha == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-x+1/2,y+1/2,-z',
@@ -1565,6 +1731,8 @@ require Exporter;
     schoenflies     => 'C2h^5',
     hermann_mauguin => 'P 1 1 21/a',
     universal_h_m   => 'P 1 1 21/a',
+    crystal_class   => 'monoclinic',
+    constraints     => '$alpha == 90 && $beta == 90',
     symops => [
         'x,y,z',
         '-x+1/2,-y,z+1/2',
@@ -1585,6 +1753,8 @@ require Exporter;
     schoenflies     => 'C2h^5',
     hermann_mauguin => 'P 1 1 21/n',
     universal_h_m   => 'P 1 1 21/n',
+    crystal_class   => 'monoclinic',
+    constraints     => '$alpha == 90 && $beta == 90',
     symops => [
         'x,y,z',
         '-x+1/2,-y+1/2,z+1/2',
@@ -1605,6 +1775,8 @@ require Exporter;
     schoenflies     => 'C2h^5',
     hermann_mauguin => 'P 1 1 21/b',
     universal_h_m   => 'P 1 1 21/b',
+    crystal_class   => 'monoclinic',
+    constraints     => '$alpha == 90 && $beta == 90',
     symops => [
         'x,y,z',
         '-x,-y+1/2,z+1/2',
@@ -1625,6 +1797,8 @@ require Exporter;
     schoenflies     => 'C2h^5',
     hermann_mauguin => 'P 21/b 1 1',
     universal_h_m   => 'P 21/b 1 1',
+    crystal_class   => 'monoclinic',
+    constraints     => '$beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         'x+1/2,-y+1/2,-z',
@@ -1645,6 +1819,8 @@ require Exporter;
     schoenflies     => 'C2h^5',
     hermann_mauguin => 'P 21/n 1 1',
     universal_h_m   => 'P 21/n 1 1',
+    crystal_class   => 'monoclinic',
+    constraints     => '$beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         'x+1/2,-y+1/2,-z+1/2',
@@ -1665,6 +1841,8 @@ require Exporter;
     schoenflies     => 'C2h^5',
     hermann_mauguin => 'P 21/c 1 1',
     universal_h_m   => 'P 21/c 1 1',
+    crystal_class   => 'monoclinic',
+    constraints     => '$beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         'x+1/2,-y,-z+1/2',
@@ -1685,6 +1863,8 @@ require Exporter;
     schoenflies     => 'C2h^6',
     hermann_mauguin => 'C 1 2/c 1',
     universal_h_m   => 'C 1 2/c 1',
+    crystal_class   => 'monoclinic',
+    constraints     => '$alpha == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-x,y,-z+1/2',
@@ -1709,6 +1889,8 @@ require Exporter;
     schoenflies     => 'C2h^6',
     hermann_mauguin => 'A 1 2/n 1',
     universal_h_m   => 'A 1 2/n 1',
+    crystal_class   => 'monoclinic',
+    constraints     => '$alpha == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-x+1/2,y+1/2,-z',
@@ -1733,6 +1915,8 @@ require Exporter;
     schoenflies     => 'C2h^6',
     hermann_mauguin => 'I 1 2/a 1',
     universal_h_m   => 'I 1 2/a 1',
+    crystal_class   => 'monoclinic',
+    constraints     => '$alpha == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-x+1/2,y,-z',
@@ -1757,6 +1941,8 @@ require Exporter;
     schoenflies     => 'C2h^6',
     hermann_mauguin => 'A 1 2/a 1',
     universal_h_m   => 'A 1 2/a 1',
+    crystal_class   => 'monoclinic',
+    constraints     => '$alpha == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-x+1/2,y,-z',
@@ -1781,6 +1967,8 @@ require Exporter;
     schoenflies     => 'C2h^6',
     hermann_mauguin => 'C 1 2/n 1',
     universal_h_m   => 'C 1 2/n 1',
+    crystal_class   => 'monoclinic',
+    constraints     => '$alpha == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-x+1/2,y,-z+1/2',
@@ -1805,6 +1993,8 @@ require Exporter;
     schoenflies     => 'C2h^6',
     hermann_mauguin => 'I 1 2/c 1',
     universal_h_m   => 'I 1 2/c 1',
+    crystal_class   => 'monoclinic',
+    constraints     => '$alpha == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-x,y,-z+1/2',
@@ -1829,6 +2019,8 @@ require Exporter;
     schoenflies     => 'C2h^6',
     hermann_mauguin => 'A 1 1 2/a',
     universal_h_m   => 'A 1 1 2/a',
+    crystal_class   => 'monoclinic',
+    constraints     => '$alpha == 90 && $beta == 90',
     symops => [
         'x,y,z',
         '-x+1/2,-y,z',
@@ -1853,6 +2045,8 @@ require Exporter;
     schoenflies     => 'C2h^6',
     hermann_mauguin => 'B 1 1 2/n',
     universal_h_m   => 'B 1 1 2/n',
+    crystal_class   => 'monoclinic',
+    constraints     => '$alpha == 90 && $beta == 90',
     symops => [
         'x,y,z',
         '-x+1/2,-y+1/2,z',
@@ -1877,6 +2071,8 @@ require Exporter;
     schoenflies     => 'C2h^6',
     hermann_mauguin => 'I 1 1 2/b',
     universal_h_m   => 'I 1 1 2/b',
+    crystal_class   => 'monoclinic',
+    constraints     => '$alpha == 90 && $beta == 90',
     symops => [
         'x,y,z',
         '-x,-y+1/2,z',
@@ -1901,6 +2097,8 @@ require Exporter;
     schoenflies     => 'C2h^6',
     hermann_mauguin => 'B 1 1 2/b',
     universal_h_m   => 'B 1 1 2/b',
+    crystal_class   => 'monoclinic',
+    constraints     => '$alpha == 90 && $beta == 90',
     symops => [
         'x,y,z',
         '-x,-y+1/2,z',
@@ -1925,6 +2123,8 @@ require Exporter;
     schoenflies     => 'C2h^6',
     hermann_mauguin => 'A 1 1 2/n',
     universal_h_m   => 'A 1 1 2/n',
+    crystal_class   => 'monoclinic',
+    constraints     => '$alpha == 90 && $beta == 90',
     symops => [
         'x,y,z',
         '-x+1/2,-y+1/2,z',
@@ -1949,6 +2149,8 @@ require Exporter;
     schoenflies     => 'C2h^6',
     hermann_mauguin => 'I 1 1 2/a',
     universal_h_m   => 'I 1 1 2/a',
+    crystal_class   => 'monoclinic',
+    constraints     => '$alpha == 90 && $beta == 90',
     symops => [
         'x,y,z',
         '-x+1/2,-y,z',
@@ -1973,6 +2175,8 @@ require Exporter;
     schoenflies     => 'C2h^6',
     hermann_mauguin => 'B 2/b 1 1',
     universal_h_m   => 'B 2/b 1 1',
+    crystal_class   => 'monoclinic',
+    constraints     => '$beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         'x,-y+1/2,-z',
@@ -1997,6 +2201,8 @@ require Exporter;
     schoenflies     => 'C2h^6',
     hermann_mauguin => 'C 2/n 1 1',
     universal_h_m   => 'C 2/n 1 1',
+    crystal_class   => 'monoclinic',
+    constraints     => '$beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         'x+1/2,-y,-z+1/2',
@@ -2021,6 +2227,8 @@ require Exporter;
     schoenflies     => 'C2h^6',
     hermann_mauguin => 'I 2/c 1 1',
     universal_h_m   => 'I 2/c 1 1',
+    crystal_class   => 'monoclinic',
+    constraints     => '$beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         'x,-y,-z+1/2',
@@ -2045,6 +2253,8 @@ require Exporter;
     schoenflies     => 'C2h^6',
     hermann_mauguin => 'C 2/c 1 1',
     universal_h_m   => 'C 2/c 1 1',
+    crystal_class   => 'monoclinic',
+    constraints     => '$beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         'x,-y,-z+1/2',
@@ -2069,6 +2279,8 @@ require Exporter;
     schoenflies     => 'C2h^6',
     hermann_mauguin => 'B 2/n 1 1',
     universal_h_m   => 'B 2/n 1 1',
+    crystal_class   => 'monoclinic',
+    constraints     => '$beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         'x+1/2,-y+1/2,-z',
@@ -2093,6 +2305,8 @@ require Exporter;
     schoenflies     => 'C2h^6',
     hermann_mauguin => 'I 2/b 1 1',
     universal_h_m   => 'I 2/b 1 1',
+    crystal_class   => 'monoclinic',
+    constraints     => '$beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         'x,-y+1/2,-z',
@@ -2117,6 +2331,8 @@ require Exporter;
     schoenflies     => 'D2^1',
     hermann_mauguin => 'P 2 2 2',
     universal_h_m   => 'P 2 2 2',
+    crystal_class   => 'orthorombic',
+    constraints     => '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-x,-y,z',
@@ -2137,6 +2353,8 @@ require Exporter;
     schoenflies     => 'D2^2',
     hermann_mauguin => 'P 2 2 21',
     universal_h_m   => 'P 2 2 21',
+    crystal_class   => 'orthorombic',
+    constraints     => '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-x,-y,z+1/2',
@@ -2157,6 +2375,8 @@ require Exporter;
     schoenflies     => 'D2^2',
     hermann_mauguin => 'P 21 2 2',
     universal_h_m   => 'P 21 2 2',
+    crystal_class   => 'orthorombic',
+    constraints     => '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-x+1/2,-y,z',
@@ -2177,6 +2397,8 @@ require Exporter;
     schoenflies     => 'D2^2',
     hermann_mauguin => 'P 2 21 2',
     universal_h_m   => 'P 2 21 2',
+    crystal_class   => 'orthorombic',
+    constraints     => '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-x,-y,z',
@@ -2197,6 +2419,8 @@ require Exporter;
     schoenflies     => 'D2^3',
     hermann_mauguin => 'P 21 21 2',
     universal_h_m   => 'P 21 21 2',
+    crystal_class   => 'orthorombic',
+    constraints     => '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-x,-y,z',
@@ -2217,6 +2441,8 @@ require Exporter;
     schoenflies     => 'D2^3',
     hermann_mauguin => 'P 2 21 21',
     universal_h_m   => 'P 2 21 21',
+    crystal_class   => 'orthorombic',
+    constraints     => '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-x,-y+1/2,z+1/2',
@@ -2237,6 +2463,8 @@ require Exporter;
     schoenflies     => 'D2^3',
     hermann_mauguin => 'P 21 2 21',
     universal_h_m   => 'P 21 2 21',
+    crystal_class   => 'orthorombic',
+    constraints     => '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-x+1/2,-y,z+1/2',
@@ -2257,6 +2485,8 @@ require Exporter;
     schoenflies     => 'D2^4',
     hermann_mauguin => 'P 21 21 21',
     universal_h_m   => 'P 21 21 21',
+    crystal_class   => 'orthorombic',
+    constraints     => '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-x+1/2,-y,z+1/2',
@@ -2277,6 +2507,8 @@ require Exporter;
     schoenflies     => 'D2^5',
     hermann_mauguin => 'C 2 2 21',
     universal_h_m   => 'C 2 2 21',
+    crystal_class   => 'orthorombic',
+    constraints     => '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-x,-y,z+1/2',
@@ -2301,6 +2533,8 @@ require Exporter;
     schoenflies     => 'D2^5',
     hermann_mauguin => 'A 21 2 2',
     universal_h_m   => 'A 21 2 2',
+    crystal_class   => 'orthorombic',
+    constraints     => '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-x+1/2,-y,z',
@@ -2325,6 +2559,8 @@ require Exporter;
     schoenflies     => 'D2^5',
     hermann_mauguin => 'B 2 21 2',
     universal_h_m   => 'B 2 21 2',
+    crystal_class   => 'orthorombic',
+    constraints     => '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-x,-y,z',
@@ -2349,6 +2585,8 @@ require Exporter;
     schoenflies     => 'D2^6',
     hermann_mauguin => 'C 2 2 2',
     universal_h_m   => 'C 2 2 2',
+    crystal_class   => 'orthorombic',
+    constraints     => '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-x,-y,z',
@@ -2373,6 +2611,8 @@ require Exporter;
     schoenflies     => 'D2^6',
     hermann_mauguin => 'A 2 2 2',
     universal_h_m   => 'A 2 2 2',
+    crystal_class   => 'orthorombic',
+    constraints     => '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-x,-y,z',
@@ -2397,6 +2637,8 @@ require Exporter;
     schoenflies     => 'D2^6',
     hermann_mauguin => 'B 2 2 2',
     universal_h_m   => 'B 2 2 2',
+    crystal_class   => 'orthorombic',
+    constraints     => '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-x,-y,z',
@@ -2421,6 +2663,8 @@ require Exporter;
     schoenflies     => 'D2^7',
     hermann_mauguin => 'F 2 2 2',
     universal_h_m   => 'F 2 2 2',
+    crystal_class   => 'orthorombic',
+    constraints     => '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-x,-y,z',
@@ -2453,6 +2697,8 @@ require Exporter;
     schoenflies     => 'D2^8',
     hermann_mauguin => 'I 2 2 2',
     universal_h_m   => 'I 2 2 2',
+    crystal_class   => 'orthorombic',
+    constraints     => '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-x,-y,z',
@@ -2477,6 +2723,8 @@ require Exporter;
     schoenflies     => 'D2^9',
     hermann_mauguin => 'I 21 21 21',
     universal_h_m   => 'I 21 21 21',
+    crystal_class   => 'orthorombic',
+    constraints     => '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-x,-y+1/2,z',
@@ -2501,6 +2749,8 @@ require Exporter;
     schoenflies     => 'C2v^1',
     hermann_mauguin => 'P m m 2',
     universal_h_m   => 'P m m 2',
+    crystal_class   => 'orthorombic',
+    constraints     => '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-x,-y,z',
@@ -2521,6 +2771,8 @@ require Exporter;
     schoenflies     => 'C2v^1',
     hermann_mauguin => 'P 2 m m',
     universal_h_m   => 'P 2 m m',
+    crystal_class   => 'orthorombic',
+    constraints     => '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         'x,y,-z',
@@ -2541,6 +2793,8 @@ require Exporter;
     schoenflies     => 'C2v^1',
     hermann_mauguin => 'P m 2 m',
     universal_h_m   => 'P m 2 m',
+    crystal_class   => 'orthorombic',
+    constraints     => '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         'x,y,-z',
@@ -2561,6 +2815,8 @@ require Exporter;
     schoenflies     => 'C2v^2',
     hermann_mauguin => 'P m c 21',
     universal_h_m   => 'P m c 21',
+    crystal_class   => 'orthorombic',
+    constraints     => '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-x,-y,z+1/2',
@@ -2581,6 +2837,8 @@ require Exporter;
     schoenflies     => 'C2v^2',
     hermann_mauguin => 'P c m 21',
     universal_h_m   => 'P c m 21',
+    crystal_class   => 'orthorombic',
+    constraints     => '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-x,-y,z+1/2',
@@ -2601,6 +2859,8 @@ require Exporter;
     schoenflies     => 'C2v^2',
     hermann_mauguin => 'P 21 m a',
     universal_h_m   => 'P 21 m a',
+    crystal_class   => 'orthorombic',
+    constraints     => '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         'x+1/2,y,-z',
@@ -2621,6 +2881,8 @@ require Exporter;
     schoenflies     => 'C2v^2',
     hermann_mauguin => 'P 21 a m',
     universal_h_m   => 'P 21 a m',
+    crystal_class   => 'orthorombic',
+    constraints     => '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         'x,y,-z',
@@ -2661,6 +2923,8 @@ require Exporter;
     schoenflies     => 'C2v^2',
     hermann_mauguin => 'P m 21 b',
     universal_h_m   => 'P m 21 b',
+    crystal_class   => 'orthorombic',
+    constraints     => '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         'x,y+1/2,-z',
@@ -2681,6 +2945,8 @@ require Exporter;
     schoenflies     => 'C2v^3',
     hermann_mauguin => 'P c c 2',
     universal_h_m   => 'P c c 2',
+    crystal_class   => 'orthorombic',
+    constraints     => '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-x,-y,z',
@@ -2701,6 +2967,8 @@ require Exporter;
     schoenflies     => 'C2v^3',
     hermann_mauguin => 'P 2 a a',
     universal_h_m   => 'P 2 a a',
+    crystal_class   => 'orthorombic',
+    constraints     => '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         'x+1/2,y,-z',
@@ -2721,6 +2989,8 @@ require Exporter;
     schoenflies     => 'C2v^3',
     hermann_mauguin => 'P b 2 b',
     universal_h_m   => 'P b 2 b',
+    crystal_class   => 'orthorombic',
+    constraints     => '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         'x,y+1/2,-z',
@@ -2741,6 +3011,8 @@ require Exporter;
     schoenflies     => 'C2v^4',
     hermann_mauguin => 'P m a 2',
     universal_h_m   => 'P m a 2',
+    crystal_class   => 'orthorombic',
+    constraints     => '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-x,-y,z',
@@ -2761,6 +3033,8 @@ require Exporter;
     schoenflies     => 'C2v^4',
     hermann_mauguin => 'P b m 2',
     universal_h_m   => 'P b m 2',
+    crystal_class   => 'orthorombic',
+    constraints     => '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-x,-y,z',
@@ -2781,6 +3055,8 @@ require Exporter;
     schoenflies     => 'C2v^4',
     hermann_mauguin => 'P 2 m b',
     universal_h_m   => 'P 2 m b',
+    crystal_class   => 'orthorombic',
+    constraints     => '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         'x,y+1/2,-z',
@@ -2801,6 +3077,8 @@ require Exporter;
     schoenflies     => 'C2v^4',
     hermann_mauguin => 'P 2 c m',
     universal_h_m   => 'P 2 c m',
+    crystal_class   => 'orthorombic',
+    constraints     => '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         'x,y,-z+1/2',
@@ -2821,6 +3099,8 @@ require Exporter;
     schoenflies     => 'C2v^4',
     hermann_mauguin => 'P c 2 m',
     universal_h_m   => 'P c 2 m',
+    crystal_class   => 'orthorombic',
+    constraints     => '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         'x,y,-z+1/2',
@@ -2841,6 +3121,8 @@ require Exporter;
     schoenflies     => 'C2v^4',
     hermann_mauguin => 'P m 2 a',
     universal_h_m   => 'P m 2 a',
+    crystal_class   => 'orthorombic',
+    constraints     => '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         'x+1/2,y,-z',
