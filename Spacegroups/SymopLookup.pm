@@ -12427,6 +12427,9 @@ require Exporter;
     schoenflies     => 'C3^1',
     hermann_mauguin => 'P 3',
     universal_h_m   => 'P 3',
+    crystal_class   => 'trigonal',
+    constraints     => '$a == $b && ' .
+                       '$alpha == 90 && $beta == 90 && $gamma == 120',
     symops => [
         'x,y,z',
         '-y,x-y,z',
@@ -12445,6 +12448,9 @@ require Exporter;
     schoenflies     => 'C3^2',
     hermann_mauguin => 'P 31',
     universal_h_m   => 'P 31',
+    crystal_class   => 'trigonal',
+    constraints     => '$a == $b && ' .
+                       '$alpha == 90 && $beta == 90 && $gamma == 120',
     symops => [
         'x,y,z',
         '-y,x-y,z+1/3',
@@ -12463,6 +12469,9 @@ require Exporter;
     schoenflies     => 'C3^3',
     hermann_mauguin => 'P 32',
     universal_h_m   => 'P 32',
+    crystal_class   => 'trigonal',
+    constraints     => '$a == $b && ' .
+                       '$alpha == 90 && $beta == 90 && $gamma == 120',
     symops => [
         'x,y,z',
         '-y,x-y,z+2/3',
@@ -12481,6 +12490,9 @@ require Exporter;
     schoenflies     => 'C3^4',
     hermann_mauguin => 'R 3',
     universal_h_m   => 'R 3 :H',
+    crystal_class   => 'rhombohedral',
+    constraints     => '$a == $b && ' .
+                       '$alpha == 90 && $beta == 90 && $gamma == 120',
     symops => [
         'x,y,z',
         '-y,x-y,z',
@@ -12505,6 +12517,9 @@ require Exporter;
     schoenflies     => 'C3^4',
     hermann_mauguin => 'R 3',
     universal_h_m   => 'R 3 :R',
+    crystal_class   => 'rhombohedral',
+    constraints     => '$a == $b && $b == $c &&' .
+                       '$alpha == $beta && $beta == $gamma',
     symops => [
         'x,y,z',
         'z,x,y',
@@ -12523,6 +12538,9 @@ require Exporter;
     schoenflies     => 'C3i^1',
     hermann_mauguin => 'P -3',
     universal_h_m   => 'P -3',
+    crystal_class   => 'trigonal',
+    constraints     => '$a == $b && ' .
+                       '$alpha == 90 && $beta == 90 && $gamma == 120',
     symops => [
         'x,y,z',
         '-y,x-y,z',
@@ -12547,6 +12565,9 @@ require Exporter;
     schoenflies     => 'C3i^2',
     hermann_mauguin => 'R -3',
     universal_h_m   => 'R -3 :H',
+    crystal_class   => 'rhombohedral',
+    constraints     => '$a == $b && ' .
+                       '$alpha == 90 && $beta == 90 && $gamma == 120',
     symops => [
         'x,y,z',
         '-y,x-y,z',
@@ -12583,6 +12604,9 @@ require Exporter;
     schoenflies     => 'C3i^2',
     hermann_mauguin => 'R -3',
     universal_h_m   => 'R -3 :R',
+    crystal_class   => 'rhombohedral',
+    constraints     => '$a == $b && $b == $c &&' .
+                       '$alpha == $beta && $beta == $gamma',
     symops => [
         'x,y,z',
         'z,x,y',
@@ -12607,6 +12631,9 @@ require Exporter;
     schoenflies     => 'D3^1',
     hermann_mauguin => 'P 3 1 2',
     universal_h_m   => 'P 3 1 2',
+    crystal_class   => 'trigonal',
+    constraints     => '$a == $b && ' .
+                       '$alpha == 90 && $beta == 90 && $gamma == 120',
     symops => [
         'x,y,z',
         '-y,x-y,z',
@@ -12631,6 +12658,9 @@ require Exporter;
     schoenflies     => 'D3^2',
     hermann_mauguin => 'P 3 2 1',
     universal_h_m   => 'P 3 2 1',
+    crystal_class   => 'trigonal',
+    constraints     => '$a == $b && ' .
+                       '$alpha == 90 && $beta == 90 && $gamma == 120',
     symops => [
         'x,y,z',
         '-y,x-y,z',
@@ -12655,6 +12685,9 @@ require Exporter;
     schoenflies     => 'D3^3',
     hermann_mauguin => 'P 31 1 2',
     universal_h_m   => 'P 31 1 2',
+    crystal_class   => 'trigonal',
+    constraints     => '$a == $b && ' .
+                       '$alpha == 90 && $beta == 90 && $gamma == 120',
     symops => [
         'x,y,z',
         '-y,x-y,z+1/3',
@@ -12679,6 +12712,9 @@ require Exporter;
     schoenflies     => 'D3^4',
     hermann_mauguin => 'P 31 2 1',
     universal_h_m   => 'P 31 2 1',
+    crystal_class   => 'trigonal',
+    constraints     => '$a == $b && ' .
+                       '$alpha == 90 && $beta == 90 && $gamma == 120',
     symops => [
         'x,y,z',
         '-y,x-y,z+1/3',
@@ -12703,6 +12739,9 @@ require Exporter;
     schoenflies     => 'D3^5',
     hermann_mauguin => 'P 32 1 2',
     universal_h_m   => 'P 32 1 2',
+    crystal_class   => 'trigonal',
+    constraints     => '$a == $b && ' .
+                       '$alpha == 90 && $beta == 90 && $gamma == 120',
     symops => [
         'x,y,z',
         '-y,x-y,z+2/3',
@@ -12727,6 +12766,9 @@ require Exporter;
     schoenflies     => 'D3^6',
     hermann_mauguin => 'P 32 2 1',
     universal_h_m   => 'P 32 2 1',
+    crystal_class   => 'trigonal',
+    constraints     => '$a == $b && ' .
+                       '$alpha == 90 && $beta == 90 && $gamma == 120',
     symops => [
         'x,y,z',
         '-y,x-y,z+2/3',
@@ -12751,6 +12793,9 @@ require Exporter;
     schoenflies     => 'D3^7',
     hermann_mauguin => 'R 3 2',
     universal_h_m   => 'R 3 2 :H',
+    crystal_class   => 'rhombohedral',
+    constraints     => '$a == $b && ' .
+                       '$alpha == 90 && $beta == 90 && $gamma == 120',
     symops => [
         'x,y,z',
         '-y,x-y,z',
@@ -12787,6 +12832,9 @@ require Exporter;
     schoenflies     => 'D3^7',
     hermann_mauguin => 'R 3 2',
     universal_h_m   => 'R 3 2 :R',
+    crystal_class   => 'rhombohedral',
+    constraints     => '$a == $b && $b == $c &&' .
+                       '$alpha == $beta && $beta == $gamma',
     symops => [
         'x,y,z',
         'z,x,y',
@@ -12811,6 +12859,9 @@ require Exporter;
     schoenflies     => 'C3v^1',
     hermann_mauguin => 'P 3 m 1',
     universal_h_m   => 'P 3 m 1',
+    crystal_class   => 'trigonal',
+    constraints     => '$a == $b && ' .
+                       '$alpha == 90 && $beta == 90 && $gamma == 120',
     symops => [
         'x,y,z',
         '-y,x-y,z',
@@ -12835,6 +12886,9 @@ require Exporter;
     schoenflies     => 'C3v^2',
     hermann_mauguin => 'P 3 1 m',
     universal_h_m   => 'P 3 1 m',
+    crystal_class   => 'trigonal',
+    constraints     => '$a == $b && ' .
+                       '$alpha == 90 && $beta == 90 && $gamma == 120',
     symops => [
         'x,y,z',
         '-y,x-y,z',
@@ -12859,6 +12913,9 @@ require Exporter;
     schoenflies     => 'C3v^3',
     hermann_mauguin => 'P 3 c 1',
     universal_h_m   => 'P 3 c 1',
+    crystal_class   => 'trigonal',
+    constraints     => '$a == $b && ' .
+                       '$alpha == 90 && $beta == 90 && $gamma == 120',
     symops => [
         'x,y,z',
         '-y,x-y,z',
@@ -12883,6 +12940,9 @@ require Exporter;
     schoenflies     => 'C3v^4',
     hermann_mauguin => 'P 3 1 c',
     universal_h_m   => 'P 3 1 c',
+    crystal_class   => 'trigonal',
+    constraints     => '$a == $b && ' .
+                       '$alpha == 90 && $beta == 90 && $gamma == 120',
     symops => [
         'x,y,z',
         '-y,x-y,z',
@@ -12907,6 +12967,9 @@ require Exporter;
     schoenflies     => 'C3v^5',
     hermann_mauguin => 'R 3 m',
     universal_h_m   => 'R 3 m :H',
+    crystal_class   => 'rhombohedral',
+    constraints     => '$a == $b && ' .
+                       '$alpha == 90 && $beta == 90 && $gamma == 120',
     symops => [
         'x,y,z',
         '-y,x-y,z',
@@ -12943,6 +13006,9 @@ require Exporter;
     schoenflies     => 'C3v^5',
     hermann_mauguin => 'R 3 m',
     universal_h_m   => 'R 3 m :R',
+    crystal_class   => 'rhombohedral',
+    constraints     => '$a == $b && $b == $c &&' .
+                       '$alpha == $beta && $beta == $gamma',
     symops => [
         'x,y,z',
         'z,x,y',
@@ -12967,6 +13033,9 @@ require Exporter;
     schoenflies     => 'C3v^6',
     hermann_mauguin => 'R 3 c',
     universal_h_m   => 'R 3 c :H',
+    crystal_class   => 'rhombohedral',
+    constraints     => '$a == $b && ' .
+                       '$alpha == 90 && $beta == 90 && $gamma == 120',
     symops => [
         'x,y,z',
         '-y,x-y,z',
@@ -13003,6 +13072,9 @@ require Exporter;
     schoenflies     => 'C3v^6',
     hermann_mauguin => 'R 3 c',
     universal_h_m   => 'R 3 c :R',
+    crystal_class   => 'rhombohedral',
+    constraints     => '$a == $b && $b == $c &&' .
+                       '$alpha == $beta && $beta == $gamma',
     symops => [
         'x,y,z',
         'z,x,y',
@@ -13027,6 +13099,9 @@ require Exporter;
     schoenflies     => 'D3d^1',
     hermann_mauguin => 'P -3 1 m',
     universal_h_m   => 'P -3 1 m',
+    crystal_class   => 'trigonal',
+    constraints     => '$a == $b && ' .
+                       '$alpha == 90 && $beta == 90 && $gamma == 120',
     symops => [
         'x,y,z',
         '-y,x-y,z',
@@ -13063,6 +13138,9 @@ require Exporter;
     schoenflies     => 'D3d^2',
     hermann_mauguin => 'P -3 1 c',
     universal_h_m   => 'P -3 1 c',
+    crystal_class   => 'trigonal',
+    constraints     => '$a == $b && ' .
+                       '$alpha == 90 && $beta == 90 && $gamma == 120',
     symops => [
         'x,y,z',
         '-y,x-y,z',
@@ -13099,6 +13177,9 @@ require Exporter;
     schoenflies     => 'D3d^3',
     hermann_mauguin => 'P -3 m 1',
     universal_h_m   => 'P -3 m 1',
+    crystal_class   => 'trigonal',
+    constraints     => '$a == $b && ' .
+                       '$alpha == 90 && $beta == 90 && $gamma == 120',
     symops => [
         'x,y,z',
         '-y,x-y,z',
@@ -13135,6 +13216,9 @@ require Exporter;
     schoenflies     => 'D3d^4',
     hermann_mauguin => 'P -3 c 1',
     universal_h_m   => 'P -3 c 1',
+    crystal_class   => 'trigonal',
+    constraints     => '$a == $b && ' .
+                       '$alpha == 90 && $beta == 90 && $gamma == 120',
     symops => [
         'x,y,z',
         '-y,x-y,z',
@@ -13171,6 +13255,9 @@ require Exporter;
     schoenflies     => 'D3d^5',
     hermann_mauguin => 'R -3 m',
     universal_h_m   => 'R -3 m :H',
+    crystal_class   => 'rhombohedral',
+    constraints     => '$a == $b && ' .
+                       '$alpha == 90 && $beta == 90 && $gamma == 120',
     symops => [
         'x,y,z',
         '-y,x-y,z',
@@ -13231,6 +13318,9 @@ require Exporter;
     schoenflies     => 'D3d^5',
     hermann_mauguin => 'R -3 m',
     universal_h_m   => 'R -3 m :R',
+    crystal_class   => 'rhombohedral',
+    constraints     => '$a == $b && $b == $c &&' .
+                       '$alpha == $beta && $beta == $gamma',
     symops => [
         'x,y,z',
         'z,x,y',
@@ -13267,6 +13357,9 @@ require Exporter;
     schoenflies     => 'D3d^6',
     hermann_mauguin => 'R -3 c',
     universal_h_m   => 'R -3 c :H',
+    crystal_class   => 'rhombohedral',
+    constraints     => '$a == $b && ' .
+                       '$alpha == 90 && $beta == 90 && $gamma == 120',
     symops => [
         'x,y,z',
         '-y,x-y,z',
@@ -13327,6 +13420,9 @@ require Exporter;
     schoenflies     => 'D3d^6',
     hermann_mauguin => 'R -3 c',
     universal_h_m   => 'R -3 c :R',
+    crystal_class   => 'rhombohedral',
+    constraints     => '$a == $b && $b == $c &&' .
+                       '$alpha == $beta && $beta == $gamma',
     symops => [
         'x,y,z',
         'z,x,y',
@@ -19124,7 +19220,7 @@ require Exporter;
     number          => 15,
     hall            => '-C 2yc (x+y-16/3*z,-x+y+16/3*z,1/3*z)',
     schoenflies     => 'C2h^6',
-    hermann_mauguin => 'R 1 2/c 1 ("rombohedral" setting)',
+    hermann_mauguin => 'R 1 2/c 1 ("rhombohedral" setting)',
     universal_h_m   => 'R 1 2/c 1',
     symops => [
 	'x, y, z',
