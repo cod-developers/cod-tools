@@ -31,6 +31,7 @@ my $check_authors = 1;
 my $check_chemical_formula_sum = 1;
 my $check_spacegroup_info = 1;
 my $check_symmetry_operators = 1;
+my $check_spacegroup_constraints = 0;
 
 sub dont_check_any
 {
@@ -64,10 +65,13 @@ my $reportFile = '-';
         => sub{ dont_check_any(); $check_spacegroup_info = 1 },
     "--check-symmetry-operators"
         => sub{ dont_check_any(); $check_symmetry_operators = 1 },
+    "--check-constraints-on-unit-cell"
+        => sub{ dont_check_any(); $check_spacegroup_constraints = 1 },
     "--check-symmetry"
         => sub{ dont_check_any(); 
                 $check_spacegroup_info = 1;
                 $check_symmetry_operators = 1;
+                $check_spacegroup_constraints = 1;
     },
 
     "--check-all"
@@ -131,6 +135,8 @@ for my $filename (@ARGV) {
             if $check_spacegroup_info;
 	$warnings += check_symmetry_operators( $dataset, $filename )
             if $check_symmetry_operators;
+        $warnings += check_spacegroup_constraints( $dataset, $filename )
+            if $check_spacegroup_constraints;
     }
     printf "%-30s: OK\n", $filename if $warnings == 0;
 }
@@ -345,6 +351,188 @@ sub check_spacegroup_info
 	$warnings ++;
     }
     return $warnings;
+}
+
+#===============================================================#
+# Gets symmetry operators if they are not directly represented in the CIF file.
+
+# Accepts
+#     option - an option, for example, "hall"
+#     param  - according to an option a value given in the CIF file
+
+# Uses @SymopLookup::table =
+# (
+# {
+#     number          => 1,
+#     hall            => ' P 1',
+#     schoenflies     => 'C1^1',
+#     hermann_mauguin => 'P 1',
+#     universal_h_m   => 'P 1',
+#     crystal_class   => 'monoclinic',
+#     constraints     => '1',
+#     symops => [
+#         'x,y,z',
+#     ],
+#     ncsym => [
+#         'x,y,z',
+#     ]
+# },
+# );
+
+# Returns a reference to the spacegroup descriptor
+# (a @SymopLookup::table element).
+
+sub lookup_spacegroup
+{
+    my ($option, $param) = @_;
+
+    $param =~ s/ //g;
+    $param =~ s/_//g;
+
+    foreach my $hash (@SymopLookup::table) {
+        my $value = $hash->{$option};
+        $value =~ s/ //g;
+        $value =~ s/_//g;
+
+        if( $value eq $param ) {
+            return $hash;
+        }
+    }
+    return undef;
+}
+
+sub get_spacegroup_descriptions
+{
+    my ( $dataset, $filename ) = @_;
+
+    my $values = $dataset->{values};
+
+    my $sym_data;
+
+    if( exists $values->{"_space_group_name_Hall"} &&
+        not defined $sym_data ) {
+        my $hall = $values->{"_space_group_name_Hall"}[0];
+        $sym_data = lookup_spacegroup("hall", $hall);
+
+        if( !defined $sym_data ) {
+            error_reporter( $filename, undef, $dataset->{name},
+                   "incorrect _space_group_name_Hall '$hall'" );
+        }
+    } elsif( exists $values->{"_symmetry_space_group_name_Hall"} &&
+        not defined $sym_data ) {
+        my $hall = $values->{"_symmetry_space_group_name_Hall"}[0];
+        $sym_data = lookup_spacegroup("hall", $hall);
+
+        if( !defined $sym_data ) {
+            error_reporter( $filename, undef, $dataset->{name},
+                   "incorrect _symmetry_space_group_name_Hall '$hall'" );
+        }
+    }
+
+    if(exists $values->{"_space_group_name_H-M_alt"} &&
+       not defined $sym_data) {
+        my $h_m = $values->{"_space_group_name_H-M_alt"}[0];
+        $sym_data = lookup_spacegroup("hermann_mauguin", $h_m);
+
+        if( !defined $sym_data ) {
+            error_reporter( $filename, undef, $dataset->{name},
+                   "incorrect _space_group_name_H-M_alt '$h_m'" );
+        }
+    } elsif(exists $values->{"_symmetry_space_group_name_H-M"} &&
+            not defined $sym_data) {
+        my $h_m = $values->{"_symmetry_space_group_name_H-M"}[0];
+        $sym_data = lookup_spacegroup("hermann_mauguin", $h_m);
+
+        if( !defined $sym_data ) {
+            error_reporter( $filename, undef, $dataset->{name},
+                   "incorrect _symmetry_space_group_name_H-M '$h_m'" );
+        }
+    }
+
+    if(not defined $sym_data) {
+        error_reporter( $filename, undef, $dataset->{name},
+                        "no symmetry information found" );
+    }
+
+    return $sym_data;
+}
+
+sub get_unit_cell($$)
+{
+    my( $dataset, $filename ) = @_;
+    my $values = $dataset->{values};
+
+    my @cell;
+
+    for my $cif_tag (qw(_cell_length_a
+                        _cell_length_b
+                        _cell_length_c
+                        )) {
+        push(@cell, $values->{$cif_tag}[0]);
+        $cell[-1] =~ s/\(\d+\)$//;
+    }
+
+    for my $cif_tag (qw(_cell_angle_alpha
+                        _cell_angle_beta
+                        _cell_angle_gamma
+                        )) {
+        if( exists $values->{$cif_tag} ) {
+            push( @cell, $values->{$cif_tag}[0] );
+            $cell[-1] =~ s/\(\d+\)$//;
+        } else {
+            error_reporter( $filename, undef, $dataset->{name},
+                     "cell angle '$cif_tag' not present -- " .
+                     "taking default value 90 degrees." );
+            push( @cell, 90 );
+        }
+    }
+
+    return @cell;
+}
+
+sub check_spacegroup_constraints
+{
+    my ( $dataset, $filename ) = @_;
+
+    if( !defined $dataset->{values} ) {
+	return 0;
+    }
+
+    my $spacegroup_descr =
+        get_spacegroup_descriptions( $dataset, $filename );
+
+    if( !defined $spacegroup_descr ) {
+        return 0; 
+    }
+
+    if( !exists $spacegroup_descr->{constraints} ) {
+        error_reporter( $filename, undef, $dataset->{name},
+                        "could not find constraints for spacegroup ".
+                        "'$spacegroup_descr->{universal_h_m}'" );
+        return 1;
+    }
+
+    my $constraints = $spacegroup_descr->{constraints};
+    my @cell = get_unit_cell( $dataset, $filename );
+
+    do {
+        my ( $a, $b, $c, $alpha, $beta, $gamma ) = @cell;
+
+        if( !eval $constraints ) {
+            local $" = " ";
+            error_reporter( $filename, undef, $dataset->{name},
+                            "unit cell '@cell' does not satisfy " .
+                            "constraints '$constraints'" );
+            return 1;
+        }
+        ## else {
+        ##     local $" = " ";
+        ##     print( "$0: $filename  $dataset->{name}: " .
+        ##            "unit cell '@cell' IS FINE with " .
+        ##            "constraints '$constraints'!\n" );
+        ## }
+    };
+    return 0;
 }
 
 sub check_symmetry_operators
