@@ -130,6 +130,8 @@ my %COD = ();
 
 @ARGV = ("-") unless @ARGV;
 
+my $dbh = database_connect( \%database );
+
 for my $file (@ARGV) {
 
     my @data;
@@ -145,7 +147,7 @@ for my $file (@ARGV) {
 
     my %structures = cif_fill_data( \@data, $file );
 
-    query_COD_database( \%COD, \%structures, \%database );
+    query_COD_database( $dbh, \%COD, \%structures );
 
     for my $id (keys %structures) {
 	my $formula = $structures{$id}{chemical_formula_sum};
@@ -204,6 +206,8 @@ for my $file (@ARGV) {
 	}
     }
 }
+
+database_disconnect( $dbh );
 
 #------------------------------------------------------------------------------
 
@@ -506,16 +510,30 @@ sub entries_are_the_same
     }
 }
 
-sub query_COD_database
+sub database_connect
 {
-    my ( $COD, $data, $database ) = @_;
-
-    use DBI;
-
+    my ( $database ) = @_;
+    
     my $dbh = DBI->connect( "dbi:mysql:hostname=$database{host};".
                             "db=$database{name};".
                             "user=$database{user}" )
         || die "cannot connect do the database -- $DBI::errstr";
+
+    return $dbh;
+}
+
+sub database_disconnect
+{
+    my ( $dbh ) = @_;
+
+    $dbh->disconnect || die "cannot disconnect -- $DBI::errstr";
+}
+
+sub query_COD_database
+{
+    my ( $dbh, $COD, $data ) = @_;
+
+    use DBI;
 
     my @columns = qw( file a b c alpha beta gamma
                       celltemp diffrtemp cellpressure diffrpressure
@@ -604,8 +622,6 @@ sub query_COD_database
             }
         }
     }
-
-    $dbh->disconnect || die "cannot disconnect -- $DBI::errstr";
 }
 
 
