@@ -287,20 +287,12 @@ if( @$dictFiles )
     my $dictIUCRURI = "ftp://ftp.iucr.org/pub/cif_core.dic";
 }
 
-# parse CIF files. If none is passed - display help message
-if( !@ARGV ) {
-	HelpMessage();
-	exit( 1 );
-}
-
-for( @ARGV ) {
-    push( @{$CIFfile}, $_ );
-}
+@ARGV = ("-") unless @ARGV;
 
 #
 # start-iterate-trough-CIF-files
 #    
-CIFFILEANAL: for my $cifF ( @{$CIFfile} ) {
+CIFFILEANAL: for my $cifF ( @ARGV ) {
     my $data = $parser->Run( $cifF );
     # convert all tags to a "cannonical" form (the one used in the
     # CIFTags modules ;):
