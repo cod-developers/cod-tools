@@ -13459,6 +13459,8 @@ require Exporter;
     schoenflies     => 'C6^1',
     hermann_mauguin => 'P 6',
     universal_h_m   => 'P 6',
+    crystal_class   => 'hexagonal',
+    constraints     => '$a == $b && $alpha == 90 && $beta == 90 && $gamma == 120',
     symops => [
         'x,y,z',
         'x-y,x,z',
@@ -13483,6 +13485,8 @@ require Exporter;
     schoenflies     => 'C6^2',
     hermann_mauguin => 'P 61',
     universal_h_m   => 'P 61',
+    crystal_class   => 'hexagonal',
+    constraints     => '$a == $b && $alpha == 90 && $beta == 90 && $gamma == 120',
     symops => [
         'x,y,z',
         'x-y,x,z+1/6',
@@ -13507,6 +13511,8 @@ require Exporter;
     schoenflies     => 'C6^3',
     hermann_mauguin => 'P 65',
     universal_h_m   => 'P 65',
+    crystal_class   => 'hexagonal',
+    constraints     => '$a == $b && $alpha == 90 && $beta == 90 && $gamma == 120',
     symops => [
         'x,y,z',
         'x-y,x,z+5/6',
@@ -13531,6 +13537,8 @@ require Exporter;
     schoenflies     => 'C6^4',
     hermann_mauguin => 'P 62',
     universal_h_m   => 'P 62',
+    crystal_class   => 'hexagonal',
+    constraints     => '$a == $b && $alpha == 90 && $beta == 90 && $gamma == 120',
     symops => [
         'x,y,z',
         'x-y,x,z+1/3',
@@ -13555,6 +13563,8 @@ require Exporter;
     schoenflies     => 'C6^5',
     hermann_mauguin => 'P 64',
     universal_h_m   => 'P 64',
+    crystal_class   => 'hexagonal',
+    constraints     => '$a == $b && $alpha == 90 && $beta == 90 && $gamma == 120',
     symops => [
         'x,y,z',
         'x-y,x,z+2/3',
@@ -13579,6 +13589,8 @@ require Exporter;
     schoenflies     => 'C6^6',
     hermann_mauguin => 'P 63',
     universal_h_m   => 'P 63',
+    crystal_class   => 'hexagonal',
+    constraints     => '$a == $b && $alpha == 90 && $beta == 90 && $gamma == 120',
     symops => [
         'x,y,z',
         'x-y,x,z+1/2',
@@ -13603,6 +13615,8 @@ require Exporter;
     schoenflies     => 'C3h^1',
     hermann_mauguin => 'P -6',
     universal_h_m   => 'P -6',
+    crystal_class   => 'hexagonal',
+    constraints     => '$a == $b && $alpha == 90 && $beta == 90 && $gamma == 120',
     symops => [
         'x,y,z',
         '-x+y,-x,-z',
@@ -13627,6 +13641,8 @@ require Exporter;
     schoenflies     => 'C6h^1',
     hermann_mauguin => 'P 6/m',
     universal_h_m   => 'P 6/m',
+    crystal_class   => 'hexagonal',
+    constraints     => '$a == $b && $alpha == 90 && $beta == 90 && $gamma == 120',
     symops => [
         'x,y,z',
         'x-y,x,z',
@@ -13663,6 +13679,8 @@ require Exporter;
     schoenflies     => 'C6h^2',
     hermann_mauguin => 'P 63/m',
     universal_h_m   => 'P 63/m',
+    crystal_class   => 'hexagonal',
+    constraints     => '$a == $b && $alpha == 90 && $beta == 90 && $gamma == 120',
     symops => [
         'x,y,z',
         'x-y,x,z+1/2',
@@ -13699,6 +13717,8 @@ require Exporter;
     schoenflies     => 'D6^1',
     hermann_mauguin => 'P 6 2 2',
     universal_h_m   => 'P 6 2 2',
+    crystal_class   => 'hexagonal',
+    constraints     => '$a == $b && $alpha == 90 && $beta == 90 && $gamma == 120',
     symops => [
         'x,y,z',
         'x-y,x,z',
@@ -13735,6 +13755,8 @@ require Exporter;
     schoenflies     => 'D6^2',
     hermann_mauguin => 'P 61 2 2',
     universal_h_m   => 'P 61 2 2',
+    crystal_class   => 'hexagonal',
+    constraints     => '$a == $b && $alpha == 90 && $beta == 90 && $gamma == 120',
     symops => [
         'x,y,z',
         'x-y,x,z+1/6',
@@ -13771,6 +13793,8 @@ require Exporter;
     schoenflies     => 'D6^3',
     hermann_mauguin => 'P 65 2 2',
     universal_h_m   => 'P 65 2 2',
+    crystal_class   => 'hexagonal',
+    constraints     => '$a == $b && $alpha == 90 && $beta == 90 && $gamma == 120',
     symops => [
         'x,y,z',
         'x-y,x,z+5/6',
@@ -13807,6 +13831,8 @@ require Exporter;
     schoenflies     => 'D6^4',
     hermann_mauguin => 'P 62 2 2',
     universal_h_m   => 'P 62 2 2',
+    crystal_class   => 'hexagonal',
+    constraints     => '$a == $b && $alpha == 90 && $beta == 90 && $gamma == 120',
     symops => [
         'x,y,z',
         'x-y,x,z+1/3',
@@ -13843,6 +13869,8 @@ require Exporter;
     schoenflies     => 'D6^5',
     hermann_mauguin => 'P 64 2 2',
     universal_h_m   => 'P 64 2 2',
+    crystal_class   => 'hexagonal',
+    constraints     => '$a == $b && $alpha == 90 && $beta == 90 && $gamma == 120',
     symops => [
         'x,y,z',
         'x-y,x,z+2/3',
@@ -13879,6 +13907,8 @@ require Exporter;
     schoenflies     => 'D6^6',
     hermann_mauguin => 'P 63 2 2',
     universal_h_m   => 'P 63 2 2',
+    crystal_class   => 'hexagonal',
+    constraints     => '$a == $b && $alpha == 90 && $beta == 90 && $gamma == 120',
     symops => [
         'x,y,z',
         'x-y,x,z+1/2',
@@ -13915,6 +13945,8 @@ require Exporter;
     schoenflies     => 'C6v^1',
     hermann_mauguin => 'P 6 m m',
     universal_h_m   => 'P 6 m m',
+    crystal_class   => 'hexagonal',
+    constraints     => '$a == $b && $alpha == 90 && $beta == 90 && $gamma == 120',
     symops => [
         'x,y,z',
         'x-y,x,z',
@@ -13951,6 +13983,8 @@ require Exporter;
     schoenflies     => 'C6v^2',
     hermann_mauguin => 'P 6 c c',
     universal_h_m   => 'P 6 c c',
+    crystal_class   => 'hexagonal',
+    constraints     => '$a == $b && $alpha == 90 && $beta == 90 && $gamma == 120',
     symops => [
         'x,y,z',
         'x-y,x,z',
@@ -13987,6 +14021,8 @@ require Exporter;
     schoenflies     => 'C6v^3',
     hermann_mauguin => 'P 63 c m',
     universal_h_m   => 'P 63 c m',
+    crystal_class   => 'hexagonal',
+    constraints     => '$a == $b && $alpha == 90 && $beta == 90 && $gamma == 120',
     symops => [
         'x,y,z',
         'x-y,x,z+1/2',
@@ -14023,6 +14059,8 @@ require Exporter;
     schoenflies     => 'C6v^4',
     hermann_mauguin => 'P 63 m c',
     universal_h_m   => 'P 63 m c',
+    crystal_class   => 'hexagonal',
+    constraints     => '$a == $b && $alpha == 90 && $beta == 90 && $gamma == 120',
     symops => [
         'x,y,z',
         'x-y,x,z+1/2',
@@ -14059,6 +14097,8 @@ require Exporter;
     schoenflies     => 'D3h^1',
     hermann_mauguin => 'P -6 m 2',
     universal_h_m   => 'P -6 m 2',
+    crystal_class   => 'hexagonal',
+    constraints     => '$a == $b && $alpha == 90 && $beta == 90 && $gamma == 120',
     symops => [
         'x,y,z',
         '-x+y,-x,-z',
@@ -14095,6 +14135,8 @@ require Exporter;
     schoenflies     => 'D3h^2',
     hermann_mauguin => 'P -6 c 2',
     universal_h_m   => 'P -6 c 2',
+    crystal_class   => 'hexagonal',
+    constraints     => '$a == $b && $alpha == 90 && $beta == 90 && $gamma == 120',
     symops => [
         'x,y,z',
         '-x+y,-x,-z+1/2',
@@ -14131,6 +14173,8 @@ require Exporter;
     schoenflies     => 'D3h^3',
     hermann_mauguin => 'P -6 2 m',
     universal_h_m   => 'P -6 2 m',
+    crystal_class   => 'hexagonal',
+    constraints     => '$a == $b && $alpha == 90 && $beta == 90 && $gamma == 120',
     symops => [
         'x,y,z',
         '-x+y,-x,-z',
@@ -14167,6 +14211,8 @@ require Exporter;
     schoenflies     => 'D3h^4',
     hermann_mauguin => 'P -6 2 c',
     universal_h_m   => 'P -6 2 c',
+    crystal_class   => 'hexagonal',
+    constraints     => '$a == $b && $alpha == 90 && $beta == 90 && $gamma == 120',
     symops => [
         'x,y,z',
         '-x+y,-x,-z+1/2',
@@ -14203,6 +14249,8 @@ require Exporter;
     schoenflies     => 'D6h^1',
     hermann_mauguin => 'P 6/m m m',
     universal_h_m   => 'P 6/m m m',
+    crystal_class   => 'hexagonal',
+    constraints     => '$a == $b && $alpha == 90 && $beta == 90 && $gamma == 120',
     symops => [
         'x,y,z',
         'x-y,x,z',
@@ -14263,6 +14311,8 @@ require Exporter;
     schoenflies     => 'D6h^2',
     hermann_mauguin => 'P 6/m c c',
     universal_h_m   => 'P 6/m c c',
+    crystal_class   => 'hexagonal',
+    constraints     => '$a == $b && $alpha == 90 && $beta == 90 && $gamma == 120',
     symops => [
         'x,y,z',
         'x-y,x,z',
@@ -14323,6 +14373,8 @@ require Exporter;
     schoenflies     => 'D6h^3',
     hermann_mauguin => 'P 63/m c m',
     universal_h_m   => 'P 63/m c m',
+    crystal_class   => 'hexagonal',
+    constraints     => '$a == $b && $alpha == 90 && $beta == 90 && $gamma == 120',
     symops => [
         'x,y,z',
         'x-y,x,z+1/2',
@@ -14383,6 +14435,8 @@ require Exporter;
     schoenflies     => 'D6h^4',
     hermann_mauguin => 'P 63/m m c',
     universal_h_m   => 'P 63/m m c',
+    crystal_class   => 'hexagonal',
+    constraints     => '$a == $b && $alpha == 90 && $beta == 90 && $gamma == 120',
     symops => [
         'x,y,z',
         'x-y,x,z+1/2',
