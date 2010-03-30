@@ -37,18 +37,21 @@ my $check_sample_history = 0;
 #*     cif_cod_numbers [options] file1.cif [file2.cif ...]
 #*
 #*Options:
+#*     -d, --database  cod
+#*        Use database "cod" to query for strctures.
+#*
+#*     -h, --host   www.crystallography.net
+#*     -s, --server www.crystallography.net
+#*        Query COD database on the host 'www.crystallography.net'.
+#*
 #*     -l, --localhost
 #*        Use database server on the localhost to query the COD database.
-#*
-#*     -s, --server www.crystallography.net
-#*     -h, --host   www.crystallography.net
-#*        Query COD database on the host 'www.crystallography.net'.
 #*
 #*     -p, --port 3306
 #*        Use use the specified port (default 3306) to query structures.
 #*
-#*     -d, --database  cod
-#*        Use database "cod" to query for strctures.
+#*     -t, --table  data
+#*        Use SQL table "data" to query for strctures.
 #*
 #*     -u, --user cod_reader
 #*        Use user name "cod_reader" to access COD database; this reader
@@ -89,11 +92,12 @@ my $check_sample_history = 0;
 #**
 
 @ARGV = getOptions( 
+    "-d,--database"  => \$database{name},
     "-l,--localhost" => sub { $database{host} = 'localhost' },
-    "-s,--server"    => \$database{host},
     "-h,--host"      => \$database{host},
     "-p,--port"      => \$database{port},
-    "-d,--database"  => \$database{name},
+    "-s,--server"    => \$database{host},
+    "-t,--table"     => \$database{table},
     "-u,--user"      => \$database{user},
 
     "--max-cell-length-difference" => \$max_cell_length_diff,
