@@ -37,6 +37,24 @@ my $check_sample_history = 0;
 #*     cif_cod_numbers [options] file1.cif [file2.cif ...]
 #*
 #*Options:
+#*     -l, --localhost
+#*        Use database server on the localhost to query the COD database.
+#*
+#*     -s, --server www.crystallography.net
+#*     -h, --host   www.crystallography.net
+#*        Query COD database on the host 'www.crystallography.net'.
+#*
+#*     -p, --port 3306
+#*        Use use the specified port (default 3306) to query structures.
+#*
+#*     -d, --database  cod
+#*        Use database "cod" to query for strctures.
+#*
+#*     -u, --user cod_reader
+#*        Use user name "cod_reader" to access COD database; this reader
+#*        sould be granted SELECT priviledge, i.e. should be able to read
+#*        the COD database, whithout supplying a password.
+#*
 #*     --max-cell-difference 0.5
 #*        Maximum difference of unit cell lengths allowed for 
 #*        entries regarded as the same, in Angstroems.
@@ -71,6 +89,13 @@ my $check_sample_history = 0;
 #**
 
 @ARGV = getOptions( 
+    "-l,--localhost" => sub { $database{host} = 'localhost' },
+    "-s,--server"    => \$database{host},
+    "-h,--host"      => \$database{host},
+    "-p,--port"      => \$database{port},
+    "-d,--database"  => \$database{name},
+    "-u,--user"      => \$database{user},
+
     "--max-cell-length-difference" => \$max_cell_length_diff,
     "--max-cell-angle-difference"  => \$max_cell_angle_diff,
 
