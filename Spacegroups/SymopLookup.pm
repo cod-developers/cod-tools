@@ -19365,6 +19365,8 @@ require Exporter;
     schoenflies     => 'D2^4',
     hermann_mauguin => 'B -1',
     universal_h_m   => 'B -1',
+    crystal_class   => 'triclinic',
+    constraints     => '1',    
     symops => [
 	'x, y, z',
 	'x+1/2, y, z+1/2',
@@ -19384,6 +19386,8 @@ require Exporter;
     schoenflies     => 'D2^4',
     hermann_mauguin => 'I -1',
     universal_h_m   => 'I -1',
+    crystal_class   => 'triclinic',
+    constraints     => '1',
     symops => [
 	'x,y,z',
 	'1/2-x,1/2-y,1/2-z',
@@ -19402,6 +19406,9 @@ require Exporter;
     schoenflies     => 'C2h^6',
     hermann_mauguin => 'R 1 2/c 1 ("rhombohedral" setting)',
     universal_h_m   => 'R 1 2/c 1',
+    crystal_class   => 'rhombohedral',
+    constraints     => '$a == $b && $b == $c &&' .
+                       '$alpha == $beta && $beta == $gamma',
     symops => [
 	'x, y, z',
 	'y, x, -z+1/2',
@@ -19438,6 +19445,8 @@ require Exporter;
     schoenflies     => 'D2^4',
     hermann_mauguin => 'P 21 21 21 (origin shift x,y,z+1/4)',
     universal_h_m   => 'P 21 21 21 (origin shift x,y,z+1/4)',
+    crystal_class   => 'orthorombic',
+    constraints     => '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         'x+1/2,-y+1/2,-z+1/2',
@@ -19478,6 +19487,8 @@ require Exporter;
     schoenflies     => 'C2^2',
     hermann_mauguin => 'B 1 21 1',
     universal_h_m   => 'B 1 21 1',
+    crystal_class   => 'monoclinic',
+    constraints     => '$alpha == 90 && $gamma == 90',
     symops => [
         'x, y, z',              # unity operator
         '-x, y+1/2, -z',        # 21 axis along b
@@ -19508,6 +19519,8 @@ require Exporter;
     schoenflies     => 'Ci^1',
     hermann_mauguin => 'C -1',
     universal_h_m   => 'C -1',
+    crystal_class   => 'triclinic',
+    constraints     => '1',
     symops => [
         'x, y, z',
         'x+1/2, y+1/2, z',
