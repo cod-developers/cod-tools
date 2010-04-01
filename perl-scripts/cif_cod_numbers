@@ -545,7 +545,7 @@ sub query_COD_database
 
     my $sth = $dbh->prepare(
         "SELECT $column_list FROM `$database{table}` ".
-        "WHERE formula = ?"
+        "WHERE formula = ? OR calcformula = ?"
         );
 
     for my $id (keys %{$data}) {
@@ -556,7 +556,8 @@ sub query_COD_database
                            $data->{$id}{cell_contents} )) {
             if( defined $formula ) {
                 ## print ">>> formula = $formula\n";
-                my $rv = $sth->execute( "- " . $formula . " -" );
+                my $query_formula = "- " . $formula . " -";
+                my $rv = $sth->execute( $query_formula, $query_formula );
                 if( defined $rv ) {
                     ## print "\n>>> rv = $rv\n";
                     ## local $" = ", ";
