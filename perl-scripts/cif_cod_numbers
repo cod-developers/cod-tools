@@ -33,6 +33,9 @@ my $max_cell_angle_diff  = 1.2; # degrees
 my $check_bibliography = 1;
 my $check_sample_history = 0;
 
+my $cod_series_prefix; # Which "series" of COD structures should be
+                       # checked? E.g. 9* structures...
+
 #*Usage:
 #*     cif_cod_numbers [options] file1.cif [file2.cif ...]
 #*
@@ -57,6 +60,11 @@ my $check_sample_history = 0;
 #*        Use user name "cod_reader" to access COD database; this reader
 #*        sould be granted SELECT priviledge, i.e. should be able to read
 #*        the COD database, whithout supplying a password.
+#*
+#*     -S, --series 9
+#*        Check only COD entries starting with 9 (so called 9* series).
+#*        Default: check all COD database. Set series to "" (empty string)
+#*        to restore the default behaviour.
 #*
 #*     --max-cell-difference 0.5
 #*        Maximum difference of unit cell lengths allowed for 
@@ -99,6 +107,8 @@ my $check_sample_history = 0;
     "-s,--server"    => \$database{host},
     "-t,--table"     => \$database{table},
     "-u,--user"      => \$database{user},
+
+    "-S,--series" => \$cod_series_prefix,
 
     "--max-cell-length-difference" => \$max_cell_length_diff,
     "--max-cell-angle-difference"  => \$max_cell_angle_diff,
@@ -545,7 +555,8 @@ sub query_COD_database
 
     my $sth = $dbh->prepare(
         "SELECT $column_list FROM `$database{table}` ".
-        "WHERE formula = ? OR calcformula = ?"
+        "WHERE (formula = ? OR calcformula = ?)" .
+        ($cod_series_prefix ? "AND `file` LIKE '$cod_series_prefix%'" : "")
         );
 
     for my $id (keys %{$data}) {
