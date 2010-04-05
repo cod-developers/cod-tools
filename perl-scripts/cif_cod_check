@@ -417,6 +417,7 @@ sub get_spacegroup_descriptions
     my $values = $dataset->{values};
 
     my $sym_data;
+    my $warnings = 0;
 
     if( exists $values->{"_space_group_name_Hall"} &&
         not defined $sym_data ) {
@@ -426,6 +427,7 @@ sub get_spacegroup_descriptions
         if( !defined $sym_data ) {
             error_reporter( $filename, undef, $dataset->{name},
                    "incorrect _space_group_name_Hall '$hall'" );
+            $warnings++;
         }
     } elsif( exists $values->{"_symmetry_space_group_name_Hall"} &&
         not defined $sym_data ) {
@@ -435,6 +437,7 @@ sub get_spacegroup_descriptions
         if( !defined $sym_data ) {
             error_reporter( $filename, undef, $dataset->{name},
                    "incorrect _symmetry_space_group_name_Hall '$hall'" );
+            $warnings++;
         }
     }
 
@@ -446,6 +449,7 @@ sub get_spacegroup_descriptions
         if( !defined $sym_data ) {
             error_reporter( $filename, undef, $dataset->{name},
                    "incorrect _space_group_name_H-M_alt '$h_m'" );
+            $warnings++;
         }
     } elsif(exists $values->{"_symmetry_space_group_name_H-M"} &&
             not defined $sym_data) {
@@ -455,15 +459,19 @@ sub get_spacegroup_descriptions
         if( !defined $sym_data ) {
             error_reporter( $filename, undef, $dataset->{name},
                    "incorrect _symmetry_space_group_name_H-M '$h_m'" );
+            $warnings++;
         }
     }
 
     if(not defined $sym_data) {
-        error_reporter( $filename, undef, $dataset->{name},
-                        "no symmetry information found" );
+        if( $warnings == 0 ) {
+            error_reporter( $filename, undef, $dataset->{name},
+                            "no spacegroup symbol to check cell constraints" );
+            $warnings = 1;
+        }
     }
 
-    return $sym_data;
+    return ( $sym_data, $warnings );
 }
 
 sub get_unit_cell($$)
@@ -580,18 +588,18 @@ sub check_spacegroup_constraints
 	return 0;
     }
 
-    my $spacegroup_descr =
+    my ( $spacegroup_descr, $warnings ) =
         get_spacegroup_descriptions( $dataset, $filename );
 
     if( !defined $spacegroup_descr ) {
-        return 0; 
+        return $warnings;
     }
 
     if( !exists $spacegroup_descr->{constraints} ) {
         error_reporter( $filename, undef, $dataset->{name},
                         "could not find constraints for spacegroup ".
                         "'$spacegroup_descr->{universal_h_m}'" );
-        return 1;
+        return $warnings + 1;
     }
 
     my $constraints = $spacegroup_descr->{constraints};
@@ -613,7 +621,7 @@ sub check_spacegroup_constraints
             error_reporter( $filename, undef, $dataset->{name},
                             "unit cell '@cell' does not satisfy " .
                             "constraints '$constraints'" );
-            return 1;
+            return $warnings+1;
         }
         ## else {
         ##     local $" = " ";
@@ -622,7 +630,7 @@ sub check_spacegroup_constraints
         ##            "constraints '$constraints'!\n" );
         ## }
     };
-    return 0;
+    return $warnings;
 }
 
 sub check_symmetry_operators
