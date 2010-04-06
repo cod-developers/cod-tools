@@ -106,7 +106,7 @@ my %spacegroups = map {
     ($_->[2], $_->[2], $_->[1], $_->[2], $key1, $_->[2], $key2, $_->[2] )
 } @SpacegroupNames::names,
   map { [ $_->{number}, $_->{hermann_mauguin}, $_->{universal_h_m} ] }
-      @SymopLookup::table;
+      @SymopLookup::table, @SymopLookup::extra_settings;
 
 $| = 1; # Flush buffers immediately, to avoid mixing lines of STDOUT
         # and STDERR.
@@ -398,7 +398,7 @@ sub lookup_spacegroup
     $param =~ s/ //g;
     $param =~ s/_//g;
 
-    foreach my $hash (@SymopLookup::table) {
+    foreach my $hash (@SymopLookup::table, @SymopLookup::extra_settings) {
         my $value = $hash->{$option};
         $value =~ s/ //g;
         $value =~ s/_//g;
