@@ -168,48 +168,36 @@ for my $file (@ARGV) {
 	my $final_formula = $formula;
 	$final_formula =~ s/\s/_/g;
 
-	my $n = 0;
+        my %structures_found = ();
 	if( defined $formula && defined $COD{$formula} ) {
 	    for my $COD_entry (@{$COD{$formula}}) {
 		if( entries_are_the_same( $structures{$id}, $COD_entry )) {
-		    $n++;
+                    my $COD_key = $COD_entry->{filename};
+		    $structures_found{$COD_key} = $COD_entry;
 		}
 	    }
 	}
 	if( defined $cell_contents && defined $COD{$cell_contents} &&
-	    $formula ne $cell_contents &&
-	    $n == 0 ) {
+	    $formula ne $cell_contents ) {
 	    ## print ">>> formula: '$formula', contents: '$cell_contents'\n";
 	    for my $COD_entry (@{$COD{$cell_contents}}) {
 		if( entries_are_the_same( $structures{$id}, $COD_entry )) {
-		    $n++;
+                    my $COD_key = $COD_entry->{filename};
+                    if( !exists $structures_found{$COD_key} ) {
+                        $structures_found{$COD_key} = $COD_entry;
+                    }
 		}
 	    }
 	}
+        my $n = keys %structures_found;
+
 	if( $n > 0 ) {
-	    my $nformulae = 0;
-	    if( defined $formula && defined $COD{$formula} ) {
-		for my $COD_entry (@{$COD{$formula}}) {
-		    if( entries_are_the_same( $structures{$id}, $COD_entry )) {
-			printf
-			    "%-35s %15s %3d %s\n",
-			    $final_formula, 
-			    $COD_entry->{filename}, $n, $file;
-			$nformulae ++;
-		    }
-		}
-	    }
-	    if( defined $cell_contents && defined $COD{$cell_contents} &&
-		$formula ne $cell_contents &&
-		$nformulae == 0 ) {
-		for my $COD_entry (@{$COD{$cell_contents}}) {
-		    if( entries_are_the_same( $structures{$id}, $COD_entry )) {
-			printf
-			    "%-35s %15s %3d %s\n",
-			    $final_formula, 
-			    $COD_entry->{filename}, $n, $file;
-		    }
-		}
+            for my $key (sort keys %structures_found) {
+                my $COD_entry = $structures_found{$key};
+                printf
+                    "%-35s %15s %3d %s\n",
+                    $final_formula, 
+                    $COD_entry->{filename}, $n, $file;
 	    }
 	} else {
 	    printf "%-35s %15s %3d %s\n", $final_formula, "?", 0, $file;
