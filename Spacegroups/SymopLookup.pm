@@ -19384,7 +19384,7 @@ require Exporter;
 {
     number          => 2,
     hall            => '-P 1 (-1/2*x+1/2*z,-y,1/2*x+1/2*z)',
-    schoenflies     => 'D2^4',
+    schoenflies     => 'Ci^1',
     hermann_mauguin => 'B -1',
     universal_h_m   => 'B -1',
     crystal_class   => 'triclinic',
