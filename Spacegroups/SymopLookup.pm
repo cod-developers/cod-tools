@@ -19362,6 +19362,23 @@ require Exporter;
 
 @SymopLookup::extra_settings = (
 {
+    number          => 1,
+    hall            => 'P 1 (1/2*x+1/2*y,1/2*x-1/2*y,-z)',
+    schoenflies     => 'C1^1',
+    hermann_mauguin => 'C 1',
+    universal_h_m   => 'C 1',
+    crystal_class   => 'triclinic',
+    constraints     => '1',
+    symops => [
+        'x,y,z',
+        '1/2+x,1/2+y,z',
+    ],
+    ncsym => [
+        'x, y, z',
+    ]
+},
+
+{
     number          => 2,
     hall            => '-P 1 (-x,-1/2*y+1/2*z,1/2*y+1/2*z)',
     schoenflies     => 'Ci^1',
