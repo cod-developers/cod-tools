@@ -1,0 +1,98 @@
+#!/usr/bin/perl -w
+use strict;
+use warnings;
+
+use CIFParser;
+
+sub csv_format($$$);
+
+@ARGV = ("-") unless @ARGV;
+
+my $fields_separator = ','; # as per section 1.4 of RFC 4180
+my $lines_separator  = "\r\n"; # as per section 4.1.1 of RFC 2046
+
+for my $inputFile(@ARGV) {
+    my $parser = new CIFParser;
+    my $cif;
+    $cif = $parser->Run($inputFile);
+    if(!@{$cif} || !defined $cif->[0] || !defined $cif->[0]{name} ) {
+        print STDERR "File '$inputFile' seems to be empty\n";
+        next;
+    }
+
+    for my $data (@$cif) {
+        print STDERR $data->{name} . "\n";
+        print 'data_'
+            . $fields_separator . $data->{name}
+            . $lines_separator;
+        # print stray values
+        for my $tagName (keys %{$data->{values}}) {
+            if(defined $data->{inloop}->{$tagName}) {
+                next; # print loops after stray values
+            }
+            my $precision = undef;
+            if(defined $data->{precisions}{$tagName}[0]) {
+                $precision = $data->{precisions}{$tagName}[0];
+            }
+            print $tagName . $fields_separator;
+            print csv_format($data->{values}{$tagName}[0],
+                             $data->{types}{$tagName}[0],
+                             $precision);
+            print $lines_separator;
+        }
+        # and print loop values
+        for my $loop (@{$data->{loops}}) {
+            local $, = $fields_separator;
+            print @$loop;
+            print $lines_separator;
+            for my $line(0..@$loop) {
+                for my $tagName (@{$loop}) {
+                    my $precision = undef;
+                    if(defined $data->{precisions}{$tagName}[0]) {
+                        $precision = $data->{precisions}{$tagName}[0];
+                    }
+                    print csv_format($data->{values}{$tagName}[$line],
+                                     $data->{types}{$tagName}[$line],
+                                     $precision);
+                    if($tagName ne $$loop[$#{$loop}]) { # do not print field separator
+                        print $fields_separator;        # after last element
+                    }
+                }
+                print $lines_separator;
+            }
+        }
+    }
+}
+
+
+sub csv_format($$$) {
+    my ($value, $type, $precision) = (shift,shift,shift);
+    if(0 == length $value) {
+        return '';
+    }
+    my $result = '';
+    my %formats = ('SQSTRING'   => '"%s"',
+                   'DQSTRING'   => '"%s"',
+                   'UQSTRING'   => '"%s"',
+                   'TEXTFIELD'  => '"%s"',
+                   'INT'        => '%d',
+                   'FLOAT'      => '%f');
+    return unless defined $formats{$type} && defined $value;
+    my $format = $formats{$type};
+    if('INT' eq $type || 'FLOAT' eq $type) {
+        $value =~ m/([+-]?[0-9]*(?:\.[0-9]+)?)(?:\(([0-9]+)\))?/;
+        $precision = $2;
+        $value     = $1;
+    }
+    if($value =~ m/,/ && $format !~ m/"/) {
+        $format = '"' . $format . '"';
+    }
+    if($format =~ m/"/) {
+        $value =~ tr/"/""/; # as per sections 2.6 & 2.7 of RFC 4180
+    }
+    $result = sprintf($format, $value);
+    if(defined $precision) {
+        $result .= '(' . $precision . ')';
+    }
+    return $result;
+}
