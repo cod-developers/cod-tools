@@ -1,0 +1,202 @@
+#! /bin/sh
+#!perl -w # --*- Perl -*--
+eval 'exec perl -x $0 ${1+"$@"}'
+    if 0;
+#------------------------------------------------------------------------------
+#$Author$
+#$Date$
+#$Revision$
+#$URL$
+#------------------------------------------------------------------------------
+#*
+#  Assign COD number to new structure(s) based on their a source
+#  journal. Query COD MySQL database to obtain the current free COD number
+#**
+
+use strict;
+use SOptions;
+use SUsage;
+use CIFParser;
+use Cwd;
+use File::Basename;
+use DBI;
+
+my $cwd = File::Basename::basename( getcwd );
+my $journal;
+
+my $write = 0;
+
+my $cod_series_prefix; # Which "series" of COD structures should be
+                       # deposited into? E.g. 9* structures...
+
+my %database = (
+    host  => "www.crystallography.net",
+    user  => "cod_reader",
+    name  => "cod",
+    table => "numbers",
+);
+
+#*Usage:
+#*     cif_cod_numbers [options] file1.cif [file2.cif ...]
+#*
+#*Options:
+#*     -d, --database  cod
+#*        Use database "cod" to query for strctures.
+#*
+#*     -h, --host   www.crystallography.net
+#*     -s, --server www.crystallography.net
+#*        Query COD database on the host 'www.crystallography.net'.
+#*
+#*     -l, --localhost
+#*        Use database server on the localhost to query the COD database.
+#*
+#*     -p, --port 3306
+#*        Use use the specified port (default 3306) to query structures.
+#*
+#*     -t, --table  data
+#*        Use SQL table "data" to query for strctures.
+#*
+#*     -u, --user cod_reader
+#*        Use user name "cod_reader" to access COD database; this reader
+#*        sould be granted SELECT privilege, i.e. should be able to read
+#*        the COD database, whithout supplying a password.
+#*
+#*     -S, --series 9
+#*        Check only COD entries starting with 9 (so called 9* series).
+#*        Default: check all COD database. Set series to "" (empty string)
+#*        to restore the default behaviour.
+#*
+#*     --help  print a short usage message (this message) and exit.
+#**
+
+@ARGV = getOptions( 
+    "-j,--journal"   => \$journal,
+
+    "-d,--database"  => \$database{name},
+    "-l,--localhost" => sub { $database{host} = 'localhost' },
+    "-h,--host"      => \$database{host},
+    "-p,--port"      => \$database{port},
+    "-s,--server"    => \$database{host},
+    "-t,--table"     => \$database{table},
+    "-u,--user"      => \$database{user},
+
+    "-S,--series" => \$cod_series_prefix,
+
+    "-w,--write-new-range"     => sub{ $write = 1 },
+    "-w-,--no-write-new-range" => sub{ $write = 0 },
+    "--dont-write-new-range"   => sub{ $write = 0 },
+    "--help,--usage" => sub { SUsage::usage; exit },
+);
+
+$journal = $cwd unless $journal;
+
+my $range;
+
+for ( $journal ) {
+    if( /Acta.*Cryst.*C/ ) {
+	$range = "20";
+	last;
+    }
+    if( /Acta.*Cryst.*B/ ) {
+	$range = "21";
+	last;
+    }
+    if( /Acta.*Cryst.*E/ ) {
+	$range = "22";
+	last;
+    }
+    if( /J.*Appl.*Cryst/ ) {
+	$range = "23";
+	last;
+    }
+    if( /Chem.*Mat/ ) {
+	$range = "400";
+	last;
+    }
+    if( /J.*Org.*Chem/ ) {
+	$range = "402";
+	last;
+    }
+    if( /Organometallics/ ) {
+	$range = "406";
+	last;
+    }
+    if( /Inorg.*Chem.*/ ) {
+	$range = "430";
+	last;
+    }
+    if( /J.*Am.*Chem.*Soc|JACS/ ) {
+	$range = "41";
+	last;
+    }
+    if( /Dalt.*Trans/ ) {
+	$range = "700";
+	last;
+    }
+    if( /New\s*J.*Chem/ ) {
+	$range = "705";
+	last;
+    }
+    if( /Chem.*Comm/ ) {
+	$range = "710";
+	last;
+    }
+    if( /Org.*Biomol.*Chem/ ) {
+	$range = "715";
+	last;
+    }
+    if( /Chem.*Lett/ ) {
+	$range = "80";
+	last;
+    }
+    if( /Zeitschr.*Krist/ ) {
+	$range = "81";
+	last;
+    }
+    $range = "15";
+}
+
+## print $range, ".....\n";
+
+my $dbh = database_connect( \%database );
+
+$journal =~ s/\s+/%/g;
+
+my $select_sth = $dbh->prepare(
+    "SELECT curr_id, end_id, journal FROM `$database{table}` ".
+    "WHERE start_id like '$range%'"
+);
+
+my $rv = $select_sth->execute();
+
+if( $rv ) {
+    ## print "\n>>> rv = $rv\n";
+    ## local $" = ", ";
+    while( my $row = $select_sth->fetchrow_arrayref() ) {
+        print "@$row\n";
+    }
+}
+
+database_disconnect( $dbh );
+
+#------------------------------------------------------------------------------
+# Subrotines:
+
+sub database_connect
+{
+    my ( $database ) = @_;
+    
+    my $dbh = DBI->connect( "dbi:mysql:hostname=$database{host};".
+                            "db=$database{name};".
+                            "user=$database{user}" )
+        || die "cannot connect do the database -- $DBI::errstr";
+
+    return $dbh;
+}
+
+sub database_disconnect
+{
+    my ( $dbh ) = @_;
+
+    $dbh->disconnect || die "cannot disconnect -- $DBI::errstr";
+}
