@@ -237,6 +237,7 @@ sub cif_fill_data
 
     for my $dataset ( @$data ) {
 	my $values = $dataset->{values};
+	my $sigmas = $dataset->{precisions};
 	my $id = $dataset->{name};
 
 	if( defined $id ) {
@@ -298,6 +299,13 @@ sub cif_fill_data
 		$val =~ s/\(.*$//;
 		$val =~ s/[()_a-zA-Z]//g;
 		$structures{$id}{cell}{$key} = sprintf "%f", $val;
+	    }
+	}
+	for my $key ( qw( _cell_length_a _cell_length_b _cell_length_c
+                     _cell_angle_alpha _cell_angle_beta _cell_angle_gamma )) {
+	    if( exists $sigmas->{$key} ) {
+                my $val = $sigmas->{$key}[0];
+		$structures{$id}{sigcell}{$key} = $val;
 	    }
 	}
 	for my $key ( qw( _cell_measurement_temperature
@@ -379,6 +387,16 @@ sub get_cell($)
 	$datablok->{_cell_angle_beta},
 	$datablok->{_cell_angle_gamma}
     );
+}
+
+sub eqsig
+{
+    my ( $x, $sigx, $y, $sigy ) = @_;
+
+    $sigx = 0.0 unless defined $sigx;
+    $sigy = 0.0 unless defined $sigy;
+
+    return ($x - $y)**2 <= 9 * $sigx**2 + $sigy**2;
 }
 
 sub cells_are_the_same($$)
@@ -541,6 +559,7 @@ sub query_COD_database
     use DBI;
 
     my @columns = qw( file a b c alpha beta gamma
+                      siga sigb sigc sigalpha sigbeta siggamma
                       celltemp diffrtemp cellpressure diffrpressure
                       thermalhist pressurehist
                       journal year volume issue firstpage lastpage
@@ -569,7 +588,8 @@ sub query_COD_database
                     ## local $" = ", ";
                     $COD->{$formula} = [];
                     while( my $row = $sth->fetchrow_hashref() ) {
-                        ## my @row = map { defined $row->{$_} ? $row->{$_} : "NULL" } @columns;
+                        ## my @row = map { defined $row->{$_} ? 
+                        ##           $row->{$_} : "NULL" } @columns;
                         ## print ">>> @row\n";
 
                         my $structure = {
@@ -582,6 +602,14 @@ sub query_COD_database
                                 _cell_angle_beta  => $row->{beta},
                                 _cell_angle_gamma => $row->{gamma},
                             },
+                            sigcell => {
+                                _cell_length_a => $row->{siga},
+                                _cell_length_b => $row->{sigb},
+                                _cell_length_c => $row->{sigc},
+                                _cell_angle_alpha => $row->{sigalpha},
+                                _cell_angle_beta  => $row->{sigbeta},
+                                _cell_angle_gamma => $row->{siggamma},                                
+                            }
                         };
 
                         $structure->{temperature}{_diffrn_ambient_temperature} =
