@@ -69,14 +69,13 @@ for my $file (@ARGV) {
 		$volume = $1;
 	    }
 
-	    my $pages = "";
+	    my $pages;
 	    if( $article =~ m|<first_page>(.*?)</first_page>| ) {
 		$pages = $1;
 	    } else {
 		print STDERR "$0: no <first_page> " .
 		    "found in the file '$file' ".
 		    "article $article_nr\n";
-		die;
 	    }
 
 	    if( $article =~ m|<contributors>(.*?)</contributors>|ms ) {
@@ -114,7 +113,7 @@ for my $file (@ARGV) {
 	    print "<year>$year</year>\n";
 	    print "<volume>$volume</volume>\n" if defined $volume;
 	    print "<issue>$issue</issue>\n" if defined $issue;
-	    print "<pages>$pages</pages>\n";
+	    print "<pages>$pages</pages>\n" if defined $pages;
 	    print "\n";
 	}
     } else {
