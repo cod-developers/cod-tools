@@ -76,6 +76,13 @@ for my $filename (@ARGV) {
 		    CIFTagManage::rename_tag( $dataset, $tag, $correct );
 		}
 	    }
+	    if( $tag =~ /^_(_.*)$/ ) {
+		my $correct = $1;
+		if( exists $dictionary_tags{$correct} &&
+		    !exists $values->{$correct} ) {
+		    CIFTagManage::rename_tag( $dataset, $tag, $correct );
+		}
+	    }
 	}
 
 	print_cif( $dataset, {
