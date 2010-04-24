@@ -83,6 +83,8 @@ _database.code_depnum_ccdc_fiz
 _database_code_depnum_ccdc_journal
 _database.code_depnum_ccdc_journal
 _ccdc_compound_id
+_database_code_ccdc
+_ccdc_disorder
 );
 
 @CIFExcludedTags::icsd_tags = qw (
