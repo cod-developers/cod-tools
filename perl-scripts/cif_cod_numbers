@@ -399,45 +399,64 @@ sub eqsig
     return ($x - $y)**2 <= 9 * $sigx**2 + $sigy**2;
 }
 
-sub cells_are_the_same($$)
+sub cells_are_the_same($$$$)
 {
-    my ($cell1, $cell2) = @_;
+    my ($cell1, $cell2, $sigma1, $sigma2) = @_;
 
     my @cell1 = get_cell( $cell1 );
     my @cell2 = get_cell( $cell2 );
-
-    my $max_length_diff = 0;
-    my $max_angle_diff = 0;
+    my @sigma1 = get_cell( $sigma1 );
+    my @sigma2 = get_cell( $sigma2 );
 
     for my $i (0..2) {
 	my $length1 = $cell1[$i];
 	my $length2 = $cell2[$i];
 	if( defined $length1 and defined $length2 ) {
-	    my $diff = abs( $length1 - $length2 );
-	    if( $max_length_diff < $diff ) {
-		$max_length_diff = $diff;
-	    }
+            my $sigma1 = $sigma1[$i];
+            my $sigma2 = $sigma2[$i];
+            if( defined $sigma1 || defined $sigma2 ) {
+                $sigma1 = 0 unless defined $sigma1;
+                $sigma2 = 0 unless defined $sigma2;
+            }
+            if( defined $sigma1 ) {
+                if( !eqsig( $length1, $sigma1, $length2, $sigma2 )) {
+                    return 0;
+                }
+            } else {
+                my $diff = abs( $length1 - $length2 );
+                if( $diff > $max_cell_length_diff ) {
+                    return 0;
+                }
+            }
 	}
     }
     for my $i (3..5) {
 	my $angle1 = $cell1[$i];
 	my $angle2 = $cell2[$i];
 	if( defined $angle1 and defined $angle2 ) {
-	    my $diff = abs( $angle1 - $angle2 );
-	    if( $max_angle_diff < $diff ) {
-		$max_angle_diff = $diff;
-	    }
+            my $sigma1 = $sigma1[$i];
+            my $sigma2 = $sigma2[$i];
+            if( defined $sigma1 || defined $sigma2 ) {
+                $sigma1 = 0 unless defined $sigma1;
+                $sigma2 = 0 unless defined $sigma2;
+            }
+            if( defined $sigma1 ) {
+                if( !eqsig( $angle1, $sigma1, $angle2, $sigma2 )) {
+                    return 0;
+                }
+            } else {
+                my $diff = abs( $angle1 - $angle2 );
+                if( $diff > $max_cell_angle_diff ) {
+                    return 0;
+                }
+            }
 	}
     }
 
     ## print ">>> \$cell1: @cell1\n";
     ## print ">>> \$cell2: @cell2\n";
-    ## print ">>> \$max_angle_diff = $max_angle_diff\n";
-    ## print ">>> \$max_length_diff = $max_length_diff\n\n";
 
-    return
-	$max_length_diff < $max_cell_length_diff &&
-	$max_angle_diff < $max_cell_angle_diff;
+    return 1;
 }
 
 sub conditions_are_the_same
@@ -518,7 +537,8 @@ sub entries_are_the_same
 
     if( $check_bibliography ) {
 	return
-	    cells_are_the_same( $entry1->{cell}, $entry2->{cell} ) &&
+	    cells_are_the_same( $entry1->{cell}, $entry2->{cell},
+                                $entry1->{sigcell}, $entry2->{sigcell} ) &&
 	    conditions_are_the_same( $entry1, $entry2 ) &&
 	    (!defined $entry1->{suboptimal} || $entry1->{suboptimal} ne "yes") &&
 	    (!defined $entry2->{suboptimal} || $entry2->{suboptimal} ne "yes") &&
@@ -526,7 +546,8 @@ sub entries_are_the_same
 					 $entry2->{bibliography} );
     } else {
 	return
-	    cells_are_the_same( $entry1->{cell}, $entry2->{cell} ) &&
+	    cells_are_the_same( $entry1->{cell}, $entry2->{cell},
+                                $entry1->{sigcell}, $entry2->{sigcell} ) &&
 	    conditions_are_the_same( $entry1, $entry2 ) &&
 	    (!defined $entry1->{suboptimal} || $entry1->{suboptimal} ne "yes") &&
 	    (!defined $entry2->{suboptimal} || $entry2->{suboptimal} ne "yes");
