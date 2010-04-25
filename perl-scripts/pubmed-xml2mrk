@@ -51,10 +51,14 @@ for my $file (@ARGV) {
 	    }
 
 	    my $year;
-	    if( $article =~ m|<Year.*?>(.*?)</Year>|ms ) {
-		$year = $1;
-	    } else {
-		print STDERR "$0: no <Year> found in the file '$file' ".
+            if( $article =~ m|<PubDate>(.*?)</PubDate>|ms ) {
+                my $publication_date = $1;
+                if( $publication_date =~ m|<Year>(.*?)</Year>|ms ) {
+                    $year = $1;
+                }
+	    }
+            if( !defined $year ) {
+		print STDERR "$0: no <Year...> found in the file '$file' ".
 		    "article $article_nr\n";
 		die;
 	    }
