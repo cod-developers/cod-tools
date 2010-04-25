@@ -32,6 +32,7 @@ my $max_cell_angle_diff  = 1.2; # degrees
 
 my $check_bibliography = 1;
 my $check_sample_history = 0;
+my $ignore_sigma = 0;
 
 my $cod_series_prefix; # Which "series" of COD structures should be
                        # checked? E.g. 9* structures...
@@ -84,6 +85,12 @@ my $cod_series_prefix; # Which "series" of COD structures should be
 #*        bibliographies will be regared the same if their cells, chemical
 #*        formulae and measurement conditions match.
 #*
+#*     --ignore-sigma
+#*        Ignore standard deviations (sigmas) when comparing unit cell constants
+#*
+#*     --dont-ignore-sigma, --use-sigma
+#*        Use standard deviations (sigmas) when comparing unit cell constants
+#*
 #*     --check-sample-history
 #*        Only CIFs that have different sample history data (as recorded
 #*        in the _exptl_crystal_thermal_history and _exptl_crystal_pressure_history
@@ -121,6 +128,14 @@ my $cod_series_prefix; # Which "series" of COD structures should be
     "--dont-check-sample-history" => sub { $check_sample_history = 0; },
     "--no-check-sample-history"   => sub { $check_sample_history = 0; },
     "--disregard-sample-history"  => sub { $check_sample_history = 0; },
+
+    "--ignore-sigma" => sub{ $ignore_sigma = 1 },
+    "--dont-ignore-sigma" => sub{ $ignore_sigma = 0 },
+    "--no-ignore-sigma" => sub{ $ignore_sigma = 0 },
+
+    "--use-sigma" => sub{ $ignore_sigma = 0 },
+    "--dont-use-sigma" => sub{ $ignore_sigma = 1 },
+    "--no-use-sigma" => sub{ $ignore_sigma = 1 },
 
     "--help,--usage" => sub { SUsage::usage; exit },
 );
@@ -418,7 +433,7 @@ sub cells_are_the_same($$$$)
                 $sigma1 = 0 unless defined $sigma1;
                 $sigma2 = 0 unless defined $sigma2;
             }
-            if( defined $sigma1 ) {
+            if( defined $sigma1 && ! $ignore_sigma) {
                 if( !eqsig( $length1, $sigma1, $length2, $sigma2 )) {
                     return 0;
                 }
@@ -440,7 +455,7 @@ sub cells_are_the_same($$$$)
                 $sigma1 = 0 unless defined $sigma1;
                 $sigma2 = 0 unless defined $sigma2;
             }
-            if( defined $sigma1 ) {
+            if( defined $sigma1 && ! $ignore_sigma ) {
                 if( !eqsig( $angle1, $sigma1, $angle2, $sigma2 )) {
                     return 0;
                 }
