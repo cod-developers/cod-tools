@@ -1521,14 +1521,12 @@ sub shift_atom($)
     my @shifted_atoms;
     my @shifting_params = (0, -1, 1);
 
-    my $counter = 0;
-
     my $unit_cell_label;
 
     if( $atom_info->{"unity_matrix_applied"} ) {
         $unit_cell_label = $atom_info->{label_basename};
     } else {
-        $unit_cell_label = $atom_info->{label} . "_0";
+        $unit_cell_label = $atom_info->{label} . "_555";
     }
 
     for(my $i = 0; $i < @shifting_params; $i++)
@@ -1555,12 +1553,12 @@ sub shift_atom($)
                     $new_atom_xyz[2] = $atom_info->{"coordinates_fract"}[2] +
                                                            $shifting_params[$k];
 
+                    my $shift_label = ($i+5).($j+5).($k+5);
                     $new_atom_info->{"coordinates_fract"} = \@new_atom_xyz;
                     $new_atom_info->{"label"} =
-                        $atom_info->{"label"} . "_" . $counter;
+                        $atom_info->{"label"} . "_" . $shift_label;
                     $new_atom_info->{"unit_cell_label"} = $unit_cell_label;
                 }
-                $counter++;
                 push(@shifted_atoms, $new_atom_info);
             }
         }
