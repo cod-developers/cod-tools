@@ -50,20 +50,51 @@ for my $filename (@ARGV) {
 	next;
     }
 
-    canonicalize_all_names( $data );
-
-    for my $dataset (@$data) {
+        canonicalize_all_names( $data );
+	for my $dataset (@$data) {
 
 	my $values = $dataset->{values};
+        my @temp_tags =
+              ( '_exptl_crystal_density_meas_temp',
+                '_cell_measurement_temperature',		
+                '_chemical_temperature_decomposition',		
+                '_chemical_temperature_sublimation',
+                '_diffrn_ambient_temperature',  
+                '_exptl_crystal_density_meas_temp' );                     
+        my $number = 
+                '(?:[-+]?' .
+                '(?:\d+(?:\.\d*)?|\.\d+' .
+                '(?:[eE][-+]?\d+)?))';
+        my $temp_K  = '\s*((?i:[K](?:elvin?)?)|[Kk])';
+        my $temp_C  = '(?i:[C]|[Dd]eg(?:rees?)?\s*)';
+        my $temp_RT = '\s*(?:(?i:room)|(?i:amb(?i:i[ae]nte?))?\s*(?i:temp(?:erature)?) )|(?i:rt)'; 
+	my %convertable = 
+                ( "($number)" . '\s*' . $temp_K => '$1',
+                  "($number)" . '(?:[-_\s]*)' . $temp_C => '$1 + 273.15',
+		    $temp_RT => '"295(2)"', 
+                );
+        for my $tag (@temp_tags) {
+            if( exists $values->{$tag} ) {
+                for my $i (0..$#{$values->{$tag}}) {
+                    my $temperature = $values->{$tag}[$i];
+                    for my $key (keys %convertable) {
+			eval "\$temperature =~ s/$key/$convertable{$key}/xei";
+		    }
+		$values->{$tag}[$i] = $temperature;
+                } 
+             
+             }
+            
+         } 
 
-	
-	print_cif( $dataset, {
+     	print_cif( $dataset, {
 	    exclude_misspelled_tags => 0,
 	    preserve_loop_order => 1,
 	    fold_long_fields => 0,
 	    dictionary_tags => \%dictionary_tags,
 	    dictionary_tag_list => \@dictionary_tags,
 	    keep_tag_order => $keep_tag_order,
-	} );
+	}        );
     }
+   
 }
