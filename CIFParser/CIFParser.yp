@@ -35,15 +35,45 @@ sub merge_data_lists($$$)
 
     for my $tag (@{$item->{tags}}) {
 
-	push( @{$list->{tags}}, $tag );
-
         if( exists $list->{values}{$tag} )  {
-            $parser->YYData->{ERRMSG} =
-                "tag $tag appears more than once";
-            # Don't call $parser->YYError() since it clears the Yapp stack.
-            # For now, let's call _Error() directly:
-            _Error( $parser );
+            if( ( $_[0]->{USER}{OPTIONS}{fix_errors} ||
+                  $_[0]->{USER}{OPTIONS}{fix_duplicate_tags_with_same_values} ) &&
+                @{$list->{values}{$tag}} == 1 &&
+                @{$item->{values}{$tag}} == 1 &&
+                $item->{values}{$tag}[0] eq $list->{values}{$tag}[0] ) {
+                $parser->YYData->{ERRMSG} =
+                    "tag $tag appears more than once with the same value";
+                _Warning( $parser );
+                next
+            } elsif( ( $_[0]->{USER}{OPTIONS}{fix_errors} ||
+                       $_[0]->{USER}{OPTIONS}{fix_duplicate_tags_with_empty_values} ) &&
+                     @{$list->{values}{$tag}} == 1 &&
+                     @{$item->{values}{$tag}} == 1 &&
+                     $item->{values}{$tag}[0] =~ /^(\s*\?\s*)$/ ) {
+                $parser->YYData->{ERRMSG} =
+                    "tag $tag appears more than once, the second occurence " .
+                    "'$1' is ignored";
+                _Warning( $parser );
+                next
+            } elsif( ( $_[0]->{USER}{OPTIONS}{fix_errors} ||
+                       $_[0]->{USER}{OPTIONS}{fix_duplicate_tags_with_empty_values} ) &&
+                     @{$list->{values}{$tag}} == 1 &&
+                     @{$item->{values}{$tag}} == 1 &&
+                     $list->{values}{$tag}[0] =~ /^(\s*\?\s*)$/ ) {
+                $parser->YYData->{ERRMSG} =
+                    "tag $tag appears more than once, " .
+                    "the previous value '$1' is overwritten";
+                _Warning( $parser );
+            } else {
+                $parser->YYData->{ERRMSG} =
+                    "tag $tag appears more than once";
+                # Don't call $parser->YYError() since it clears the Yapp stack.
+                # For now, let's call _Error() directly:
+                _Error( $parser );
+            }
         }
+
+	push( @{$list->{tags}}, $tag );
 
 	$list->{values}{$tag} =
 	    $item->{values}{$tag};
