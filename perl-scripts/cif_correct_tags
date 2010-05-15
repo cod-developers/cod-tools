@@ -26,31 +26,30 @@ use SUsage;
 
 my $keep_tag_order = 0;
 
-my %misspelled_tags = (
-    '_atom_site_symmetry_multiplicity' => [ '_atom_site_symetry_multiplicity' ],
-    '_atom_site_U_iso_or_equiv' => [ '_atom_site_u_iso' ],
-    '_diffrn_radiation_monochromator' => [ '_diffrn_radiation_monochromador' ],
-    '_publ_contact_author' => [ '_publ_contact_autor' ],
-    '_publ_author_name' => [ '_publ_autor_name' ],
-    '_symmetry_space_group_name_Hall' =>
-        [ "_symmetry_space_group_name_hall'" ],
-    '_diffrn_measurement_specimen_support' =>
-        [ '_diffrn_measurement_specimen_suppport' ],
-);
-
-my %tag_spelling = ();
-
-while( my ($correct, $all_misspelled) = each %misspelled_tags ) {
-    for my $misspelled (@{$all_misspelled}) {
-	$tag_spelling{$misspelled} = $correct;
-    }
-}
+my $replacement_list;
 
 @ARGV = getOptions(
     "--keep-tag-order" => sub { $keep_tag_order = 1; },
     "--sort-tags"      => sub { $keep_tag_order = 0; },
     "--help,--usage"   => sub { SUsage::usage; exit },
+    "--replacement-list" => \$replacement_list,
 );
+
+my %tag_spelling = ();
+
+if( $replacement_list ) {
+    open( LIST, $replacement_list ) or
+        die "$0: $replacement_list: can not open file for input - $!";
+
+    %tag_spelling =
+        map { split }
+        grep !/^\#/,
+        grep '\.',
+    <LIST>;
+
+    close( LIST ) or
+        die "$0: $replacement_list: error closing file - $!";
+}
 
 my @dictionary_tags = ( @CIFDictTags::tag_list, @CIFCODTags::tag_list );
 my %dictionary_tags = map { $_, $_ } @dictionary_tags;
