@@ -38,7 +38,7 @@ sub cif_estimate_z($)
         my $molwt = get_molecular_weight( $values );
 
         if( defined $volume && defined $density && defined $molwt ) {
-            return int( 0.5 + $N * $density * $volume / $molwt ), "\n";
+            return int( 0.5 + $N * $density * $volume / $molwt );
         } else {
             my $error = "";
             if( !defined $volume ) {
