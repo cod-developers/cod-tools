@@ -74,7 +74,7 @@ my %showMap = (
         #
         # loop_ checking related options
         'tags-grouped'       => 0,
-        'list-mandatory'     => 1,
+        'list-only'          => 1,
         'ref-list-mandatory' => 1,
         #
         # value checking related options
@@ -176,7 +176,7 @@ push @$setOfEnum, '_atom_site_refinement_flags';
         "--check-tag-exists-local"   => sub{ $showMap{'tag-exists-local'} = 1 },
         "--check-tag-deprecated"     => sub{ $showMap{'tag-deprecated'} = 1 },
         "--check-tags-grouped"       => sub{ $showMap{'tags-grouped'} = 1 },
-        "--check-list-mandatory"     => sub{ $showMap{'list-mandatory'} = 1 },
+        "--check-list-only"          => sub{ $showMap{'list-only'} = 1 },
         "--check-ref-list-mandatory" => sub{ $showMap{'ref-list-mandatory'} = 1 },
         "--check-values-enum"        => sub{ $showMap{'values-enum'} = 1 },
         "--check-values-enum-nocase" => sub{ $showMap{'values-enum'} = 1;
@@ -194,7 +194,7 @@ push @$setOfEnum, '_atom_site_refinement_flags';
         "--do-not-check-tag-exists-local"   => sub{ $showMap{'tag-exists-local'} = 0 },
         "--do-not-check-tag-deprecated"     => sub{ $showMap{'tag-deprecated'} = 0 },
         "--do-not-check-tags-grouped"       => sub{ $showMap{'tags-grouped'} = 0 },
-        "--do-not-check-list-mandatory"     => sub{ $showMap{'list-mandatory'} = 0 },
+        "--do-not-check-list-only"          => sub{ $showMap{'list-only'} = 0 },
         "--do-not-check-ref-list-mandatory" => sub{ $showMap{'ref-list-mandatory'} = 0 },
         "--do-not-check-values-enum"        => sub{ $showMap{'values-enum'} = 0 },
         "--do-not-check-values-enum-nocase" => sub{ $showMap{'values-enum-nocase'} = 0 },
@@ -517,24 +517,24 @@ CIFFILEANAL: for my $cifF ( @ARGV ) {
                 #
                 # if check list mandatory
                 #
-                if( $showMap{'list-mandatory'} ) {
+                if( $showMap{'list-only'} ) {
                     if( exists $dictD->{$lc_tagAnalysed}
-			&& exists $dictD->{$lc_tagAnalysed}{values}{_list_mandatory}
-                        && $dictD->{$lc_tagAnalysed}{values}{_list_mandatory}[0]
+			&& exists $dictD->{$lc_tagAnalysed}{values}{_list}
+                        && $dictD->{$lc_tagAnalysed}{values}{_list}[0]
                             eq 'yes' )
                         {
                         if( exists $block->{inloop}{$tagAnalysed} ) {
-                            showValidationMessage 64, 'list-mandatory', 
+                            showValidationMessage 64, 'list-only', 
                                 $cifF, $$block{name},
-                                "tag '" . $tagAnalysed . "' is loop"
-                                . ' mandatory according to ' . $dictF
-                                . ' and is in loop';
+                                "tag '" . $tagAnalysed . "' must be in a loop"
+                                . ' according to ' . $dictF
+                                . ' and is in a loop';
                         } else {
-                            showValidationMessage 4, 'list-mandatory', 
+                            showValidationMessage 4, 'list-only', 
                                 $cifF, $$block{name},
-                                "tag '" . $tagAnalysed . "' is loop"
-                                . ' mandatory according to ' . $dictF
-                                . ' but is not in loop';
+                                "tag '" . $tagAnalysed . "' must be in a loop"
+                                . ' according to ' . $dictF
+                                . ' but is not in a loop';
                         }
                     }
                 }
@@ -853,8 +853,8 @@ Options available:
         well.
         It is turned off, because so far it might give too much
         false-warnings.
-    --check-list-mandatory
-        Turn on test 'list-mandatory'.
+    --check-list-only
+        Turn on test 'list-only'.
         This test is ON by default.
         This test checks whereas tag MUST be in loop. It means it can not
         be defined anywhere in data_ block, only within some loop.
@@ -918,8 +918,8 @@ Options available:
         well.
         It is turned off, because so far it might give too much
         false-warnings.
-    --do-not-check-list-mandatory
-        Turn off test 'list-mandatory'.
+    --do-not-check-list-only
+        Turn off test 'list-only'.
         This test is ON by default.
         This test checks whereas tag MUST be in loop. It means it can not
         be defined anywhere in data_ block, only within some loop.
@@ -990,7 +990,7 @@ Selecting tests, that should be performed:
                     must be defined as well.
                     It is turned off, because so far it might give too 
                     much false-warnings.
-        o list-mandatory - this test is ON by default. It checks whereas 
+        o list-only - this test is ON by default. It checks whereas 
                     tag MUST be in loop. It means it can not be defined 
                     anywhere in data_ block, only within some loop.
         o ref-list-mandatory - this test is OFF by default. It is used 
