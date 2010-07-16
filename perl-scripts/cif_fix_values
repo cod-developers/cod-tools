@@ -50,65 +50,61 @@ for my $filename (@ARGV) {
 	next;
     }
 
-        canonicalize_all_names( $data );
-	for my $dataset (@$data) {
+    canonicalize_all_names( $data );
+    for my $dataset (@$data) {
 
 	my $values = $dataset->{values};
         my @temp_tags =
-              ( '_exptl_crystal_density_meas_temp',
-                '_cell_measurement_temperature',		
-                '_chemical_temperature_decomposition',		
-                '_chemical_temperature_sublimation',
-                '_diffrn_ambient_temperature',  
-                '_exptl_crystal_density_meas_temp',
-				'_chemical_melting_point' );                     
+            ( '_exptl_crystal_density_meas_temp',
+              '_cell_measurement_temperature',		
+              '_chemical_temperature_decomposition',		
+              '_chemical_temperature_sublimation',
+              '_diffrn_ambient_temperature',  
+              '_exptl_crystal_density_meas_temp',
+              '_chemical_melting_point' );                     
         my $number_pos =
-				'(?:^\+?' . 
-                '(?:\d+(?:\.\d*)?|\.\d+' .
-                '(?:[eE][-+]?\d+)?))';
-		my $number_neg =  
-                '(?:^-' .
-                '(?:\d+(?:\.\d*)?|\.\d+' .
-                '(?:[eE][-+]?\d+)?))';
+            '(?:^\+?' . 
+            '(?:\d+(?:\.\d*)?|\.\d+' .
+            '(?:[eE][-+]?\d+)?))';
+        my $number_neg =  
+            '(?:^-' .
+            '(?:\d+(?:\.\d*)?|\.\d+' .
+            '(?:[eE][-+]?\d+)?))';
         my $temp_K  = '\s*((?i:[K](?:elvin?)?)|[Kk])';
         my $temp_C  = '(?i:[C]|[Dd]eg(?:rees?)?\s*)';
         my $temp_RT = '\s*(?:(?i:room)|(?i:amb(?i:i[ae]nte?))?\s*(?i:temp(?:erature)?))|(?i:rt)'; 
-		my $temp_undef = '\s*(?i:[Y]es)|(?i:[N]o(?:ne)?)|(?i:[U]known)';
+        my $temp_undef = '\s*(?i:[Y]es)|(?i:[N]o(?:ne)?)|(?i:[U]known)';
 
         for my $tag (@temp_tags) {
             if( exists $values->{$tag} ) {
                 for my $i (0..$#{$values->{$tag}}) {
                     my $temperature = $values->{$tag}[$i];
-						if( $temperature =~	/($number_pos)(?:[-_\s]*)$temp_K/ ) {
-							$values->{$tag}[$i] = "$1";
-							next;			
-						} 
-						if ( $temperature =~ /($number_pos)(?:[-_\s]*)$temp_C/ ) {
-							$values->{$tag}[$i] = $1 + 273.15;
-							next;
-						}
-						if( $temperature =~	/($number_neg)(?:[-_\s]*)$temp_C/ ) {
-							$values->{$tag}[$i] = $1 + 273.15;
-							next;				
-						}
-						if( $temperature =~	/($number_neg)(?:[-_\s]*)/ ) {
-							$values->{$tag}[$i] = $1 + 273.15;
-							next;				
-						}
-						if( $temperature =~ /($temp_RT)(?:[-_\s]*)/ ) {
-							$values->{$tag}[$i] = "295(2)";
-							next;
-						}
-						if( $temperature =~ /($temp_undef)(?:[-_\s]*)/ ) {
-							$values->{$tag}[$i] = "?";
-						}			
-					
-
+                    if( $temperature =~	/($number_pos)(?:[-_\s]*)$temp_K/ ) {
+                        $values->{$tag}[$i] = "$1";
+                        next;			
+                    } 
+                    if ( $temperature =~ /($number_pos)(?:[-_\s]*)$temp_C/ ) {
+                        $values->{$tag}[$i] = $1 + 273.15;
+                        next;
+                    }
+                    if( $temperature =~	/($number_neg)(?:[-_\s]*)$temp_C/ ) {
+                        $values->{$tag}[$i] = $1 + 273.15;
+                        next;				
+                    }
+                    if( $temperature =~	/($number_neg)(?:[-_\s]*)/ ) {
+                        $values->{$tag}[$i] = $1 + 273.15;
+                        next;				
+                    }
+                    if( $temperature =~ /($temp_RT)(?:[-_\s]*)/ ) {
+                        $values->{$tag}[$i] = "295(2)";
+                        next;
+                    }
+                    if( $temperature =~ /($temp_undef)(?:[-_\s]*)/ ) {
+                        $values->{$tag}[$i] = "?";
+                    }			
                 } 
-             
-             }
-            
-         } 
+            }
+        } 
 
      	print_cif( $dataset, {
 	    exclude_misspelled_tags => 0,
@@ -117,7 +113,7 @@ for my $filename (@ARGV) {
 	    dictionary_tags => \%dictionary_tags,
 	    dictionary_tag_list => \@dictionary_tags,
 	    keep_tag_order => $keep_tag_order,
-	}        );
+        });
     }
-   
+    
 }
