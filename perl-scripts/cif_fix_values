@@ -72,8 +72,12 @@ for my $filename (@ARGV) {
             '(?:[eE][-+]?\d+)?))';
         my $temp_K  = '\s*((?i:[K](?:elvin?)?)|[Kk])';
         my $temp_C  = '(?i:[C]|[Dd]eg(?:rees?)?\s*)';
-        my $temp_RT = '\s*(?:(?i:room)|(?i:amb(?i:i[ae]nte?))?\s*(?i:temp(?:erature)?))|(?i:rt)'; 
-        my $temp_undef = '\s*(?i:[Y]es)|(?i:[N]o(?:ne)?)|(?i:[U]known)';
+        my $temp_RT = 
+            '\s*(?:(?i:room)|(?i:amb(?i:i[ae]nte?))' .
+            '?\s*(?i:temp(?:erature)?))|(?i:rt)'; 
+        my $temp_undef = 
+            '\s*(?i:[Y]es)|(?i:[N]o(?:ne)?)|(?i:[U]known)|' .
+            '(?i:[N]ot)\s*(?i:[M]easured)';
 
         for my $tag (@temp_tags) {
             if( exists $values->{$tag} ) {
@@ -101,6 +105,7 @@ for my $filename (@ARGV) {
                     }
                     if( $temperature =~ /($temp_undef)(?:[-_\s]*)/ ) {
                         $values->{$tag}[$i] = "?";
+                        next;
                     }			
                 } 
             }
