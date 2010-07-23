@@ -9,8 +9,11 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #$URL$
 #------------------------------------------------------------------------------
 #*
-#  Correct temperature values which have units specified or convert Celsius degrees 
-#  to Kelvins. Fix other values such as  'none', 'not measured', ect.
+#  Correct temperature values which have units specified or convert between
+#  Celsius degrees and Kelvins. Changes 'room/ambiante temperature' to the 
+#  appropriate numeric value.
+#  Fixes other undefined values('none', 'not measured', etc.) to '?' simbol.
+#  Determine a report about changes made into standart I/O streams.
 #**
 
 use strict;
@@ -89,51 +92,57 @@ for my $filename (@ARGV) {
                     my $temperature = $values->{$tag}[$i];
                     if( $temperature =~	/($number_pos)(?:[-_\s]*)$temp_K/ ) {
                         $values->{$tag}[$i] = "$1";
-                        print STDERR  "$0: $filename: NOTE, " .
-                                      "$tag value '$temperature' changed to '$1' - " .
-                                      "value should be numeric, i.e.'FLOAT or 'INT' " .
-                                      "without temperature units.\n";
+                        my $report_msg = "$0: $filename: NOTE, " .
+                                         "$tag value '$temperature' changed to '$1' - " .
+                                         "value should be numeric, i.e.'FLOAT or 'INT' " .
+                                         "without temperature units.\n";
+                        print STDERR $report_msg;            
                         next;
                     } 
                     if ( $temperature =~ /($number_pos)(?:[-_\s]*)$temp_C/ ) {
                         $values->{$tag}[$i] = $1 + 273.15;
-                        print STDERR  "$0: $filename: NOTE, " .
-                                      "$tag value '$temperature' changed to '$1+273.15' - " .
-                                      "converted between Celsius(C) and Kelvins(K), " . 
-                                      "value should be numeric, permitted range [0.0; ∞] " .
-                                      "given in Kelvins(K) without temperature units.\n";
+                        my $report_msg = "$0: $filename: NOTE, " .
+                                         "$tag value '$temperature' changed to '$1+273.15' - " .
+                                         "converted between Celsius(C) and Kelvins(K), " . 
+                                         "value should be numeric, permitted range [0.0; ∞] " .
+                                         "given in Kelvins(K) without temperature units.\n";
+                        print STDERR $report_msg;
                         next;
                     }
                     if( $temperature =~	/($number_neg)(?:[-_\s]*)$temp_C/ ) {
                         $values->{$tag}[$i] = $1 + 273.15;
-                        print STDERR  "$0: $filename: NOTE, " .
-                                      "$tag value '$temperature' changed to '$1+273.15' - " .
-                                      "making conversion between Celsius(C) and Kelvins(K), " .
-                                      "value should be numeric, permitted range [0.0;+inf], " .
-                                      "given in Kelvins(K) without temperature units.\n";
+                        my $report_msg = "$0: $filename: NOTE, " .
+                                         "$tag value '$temperature' changed to '$1+273.15' - " .
+                                         "making conversion between Celsius(C) and Kelvins(K), " .
+                                         "value should be numeric, permitted range [0.0;+inf], " .
+                                         "given in Kelvins(K) without temperature units.\n";
+                        print STDERR $report_msg;              
                         next;				
                     }
                     if( $temperature =~	/($number_neg)(?:[-_\s]*)/ ) {
                         $values->{$tag}[$i] = $1 + 273.15;
-                        print STDERR  "$0: $filename: NOTE, " .
-                                      "$tag value $temperature changed to $1+273.15 - " .
-                                      "value should be numeric, permitted range [0.0;+inf], " .
-                                      "given in Kelvins(K) without temperature units.\n";
+                        my $report_msg = "$0: $filename: NOTE, " .
+                                         "$tag value $temperature changed to $1+273.15 - " .
+                                         "value should be numeric, permitted range [0.0;+inf], " .
+                                         "given in Kelvins(K) without temperature units.\n";
+                        print STDERR $report_msg;                   
                         next;				
                     }
                     if( $temperature =~ /($temp_RT)(?:[-_\s]*)/ ) {
                         $values->{$tag}[$i] = "295(2)";
-                        print STDERR  "$0: $filename: NOTE, " .
-                                      "$tag value '$temperature' changed to '295(2)' - " .
-                                      "took room/ambient temperature average value [293;298] " .
-                                      "in Kelvins(K).\n";
+                        my $report_msg = "$0: $filename: NOTE, " .
+                                         "$tag value '$temperature' changed to '295(2)' - " .
+                                         "took room/ambient temperature average value [293;298] " .
+                                         "in Kelvins(K).\n";
+                        print STDERR $report_msg;                            
                         next;
                     }
                     if( $temperature =~ /($temp_undef)(?:[-_\s]*)/ ) {
                         $values->{$tag}[$i] = "?";
-                        print STDERR  "$0: $filename: NOTE, " .
-                                      "$tag value '$temperature' changed to '?' - " .
-                                      "value is undefined or not given.\n";
+                        my $report_msg = "$0: $filename: NOTE, " .
+                                         "$tag value '$temperature' changed to '?' - " .
+                                         "value is undefined or not given.\n";
+                        print STDERR $report_msg;              
                         next;
                     }
                     if( $temperature !~ m/$number_pos/ ) {
