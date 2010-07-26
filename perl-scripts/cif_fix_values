@@ -35,6 +35,8 @@ my $keep_tag_order = 0;
     "--help,--usage"   => sub { SUsage::usage; exit },
 );
 
+sub insert_report_to_comments {}
+
 my @dictionary_tags = ( @CIFDictTags::tag_list, @CIFCODTags::tag_list );
 my %dictionary_tags = map { $_, $_ } @dictionary_tags;
 
@@ -57,6 +59,7 @@ for my $filename (@ARGV) {
     for my $dataset (@$data) {
 
 	my $values = $dataset->{values};
+ #       my $cod_depositor_comments = '_cod_depositor_comments';
         my @temp_tags =
             ( '_exptl_crystal_density_meas_temp',
               '_cell_measurement_temperature',		
@@ -85,11 +88,15 @@ for my $filename (@ARGV) {
             '\s*(?i:[Y]es)|(?i:[N]o(?:ne)?)|(?i:[U]known)|' .
             '(?i:[N]ot)\s*((?i:[M]easured)|(?i:[D]etermined))|' .
             '(?i:[N]/(?i:[DA]))';
-
+#        for $cod_depositor_comments
         for my $tag (@temp_tags) {
             if( exists $values->{$tag} ) {
                 for my $i (0..$#{$values->{$tag}}) {
                     my $temperature = $values->{$tag}[$i];
+                    
+                    if( $temperature =~ /(?:\.)|(?:\?)/ ) {
+                        next;    
+                    }
                     if( $temperature =~	/($number_pos)(?:[-_\s]*)$temp_K/ ) {
                         $values->{$tag}[$i] = "$1";
                         my $report_msg = "$tag value '$temperature' changed to '$1' - " .
@@ -102,7 +109,7 @@ for my $filename (@ARGV) {
                         $values->{$tag}[$i] = $1 + 273.15;
                         my $report_msg = "$tag value '$temperature' changed to '$1+273.15' - " .
                                          "converted between Celsius(C) and Kelvins(K), " . 
-                                         "value should be numeric, permitted range [0.0; ∞] " .
+                                         "value should be numeric, permitted range [0.0;+inf] " .
                                          "given in Kelvins(K) without temperature units.\n";
                         print STDERR "$0: $filename: NOTE, $report_msg";
                         next;
@@ -141,7 +148,7 @@ for my $filename (@ARGV) {
                     }
                     if( $temperature !~ m/$number_pos/ ) {
                         print STDERR  "$0: $filename: WARNING, " .
-                                      "$tag value '$temperature' sould be numeric, " .
+                                      "$tag value '$temperature' should be numeric, " .
                                       "i.e.'FLOAT or 'INT', permitted range [0.0;+inf], " .
                                       "given in Kelvins(K) without temperature units.\n";
                         next;
