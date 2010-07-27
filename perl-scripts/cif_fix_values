@@ -35,8 +35,23 @@ my $keep_tag_order = 0;
     "--help,--usage"   => sub { SUsage::usage; exit },
 );
 
-sub insert_report_to_comments {}
+sub insert_report_to_comments {
+    my ($dataset, $insert_reports) = @_;
+    if ( @$insert_reports > 0 ) {
+        my $comments_tag = '_cod_depositor_comments';
+        my $values = $dataset->{values};
+        
+        if( exists $values->{$comments_tag} ) {
+            $values->{$comments_tag}[0] = 
+                $values->{$comments_tag}[0] . "\n\n" . join("\n\n",@$insert_reports);
+           
+        } else {
+            $values->{$comments_tag} =  [ "\n\n" . join("\n\n",@$insert_reports) ];
+        }
+    }
+} 
 
+my @insert_reports = ();
 my @dictionary_tags = ( @CIFDictTags::tag_list, @CIFCODTags::tag_list );
 my %dictionary_tags = map { $_, $_ } @dictionary_tags;
 
@@ -57,9 +72,9 @@ for my $filename (@ARGV) {
 
     canonicalize_all_names( $data );
     for my $dataset (@$data) {
-
-	my $values = $dataset->{values};
- #       my $cod_depositor_comments = '_cod_depositor_comments';
+    # print keys %{ $dataset->{values} };
+    my $values = $dataset->{values};
+    
         my @temp_tags =
             ( '_exptl_crystal_density_meas_temp',
               '_cell_measurement_temperature',		
@@ -88,7 +103,7 @@ for my $filename (@ARGV) {
             '\s*(?i:[Y]es)|(?i:[N]o(?:ne)?)|(?i:[U]known)|' .
             '(?i:[N]ot)\s*((?i:[M]easured)|(?i:[D]etermined))|' .
             '(?i:[N]/(?i:[DA]))';
-#        for $cod_depositor_comments
+        
         for my $tag (@temp_tags) {
             if( exists $values->{$tag} ) {
                 for my $i (0..$#{$values->{$tag}}) {
@@ -101,8 +116,9 @@ for my $filename (@ARGV) {
                         $values->{$tag}[$i] = "$1";
                         my $report_msg = "$tag value '$temperature' changed to '$1' - " .
                                          "value should be numeric, i.e.'FLOAT or 'INT' " .
-                                         "without temperature units.\n";
-                        print STDERR "$0: $filename: NOTE, $report_msg";            
+                                         "without temperature units.";
+                        push (@insert_reports, $report_msg);
+                        print STDERR "$0: $filename: NOTE, $report_msg\n";
                         next;
                     } 
                     if ( $temperature =~ /($number_pos)(?:[-_\s]*)$temp_C/ ) {
@@ -110,8 +126,9 @@ for my $filename (@ARGV) {
                         my $report_msg = "$tag value '$temperature' changed to '$1+273.15' - " .
                                          "converted between Celsius(C) and Kelvins(K), " . 
                                          "value should be numeric, permitted range [0.0;+inf] " .
-                                         "given in Kelvins(K) without temperature units.\n";
-                        print STDERR "$0: $filename: NOTE, $report_msg";
+                                         "given in Kelvins(K) without temperature units.";
+                        push (@insert_reports, $report_msg);
+                        print STDERR "$0: $filename: NOTE, $report_msg\n";
                         next;
                     }
                     if( $temperature =~	/($number_neg)(?:[-_\s]*)$temp_C/ ) {
@@ -119,31 +136,35 @@ for my $filename (@ARGV) {
                         my $report_msg = "$tag value '$temperature' changed to '$1+273.15' - " .
                                          "making conversion between Celsius(C) and Kelvins(K), " .
                                          "value should be numeric, permitted range [0.0;+inf], " .
-                                         "given in Kelvins(K) without temperature units.\n";
-                        print STDERR "$0: $filename: NOTE, $report_msg";              
+                                         "given in Kelvins(K) without temperature units.";
+                        push (@insert_reports, $report_msg);
+                        print STDERR "$0: $filename: NOTE, $report_msg\n";
                         next;				
                     }
                     if( $temperature =~	/($number_neg)(?:[-_\s]*)/ ) {
                         $values->{$tag}[$i] = $1 + 273.15;
                         my $report_msg = "$tag value $temperature changed to $1+273.15 - " .
                                          "value should be numeric, permitted range [0.0;+inf], " .
-                                         "given in Kelvins(K) without temperature units.\n";
-                        print STDERR "$0: $filename: NOTE, $report_msg";                   
+                                         "given in Kelvins(K) without temperature units.";
+                        push (@insert_reports, $report_msg);
+                        print STDERR "$0: $filename: NOTE, $report_msg\n";                   
                         next;				
                     }
                     if( $temperature =~ /($temp_RT)(?:[-_\s]*)/ ) {
                         $values->{$tag}[$i] = "295(2)";
                         my $report_msg = "$tag value '$temperature' changed to '295(2)' - " .
                                          "took room/ambient temperature average value [293;298] " .
-                                         "in Kelvins(K).\n";
-                        print STDERR "$0: $filename: NOTE, $report_msg";                            
+                                         "in Kelvins(K).";
+                        push (@insert_reports, $report_msg);
+                        print STDERR "$0: $filename: NOTE, $report_msg\n";                            
                         next;
                     }
                     if( $temperature =~ /($temp_undef)(?:[-_\s]*)/ ) {
                         $values->{$tag}[$i] = "?";
                         my $report_msg = "$tag value '$temperature' changed to '?' - " .
-                                         "value is undefined or not given.\n";
-                        print STDERR "$0: $filename: NOTE, $report_msg";              
+                                         "value is undefined or not given.";
+                        push (@insert_reports, $report_msg);
+                        print STDERR "$0: $filename: NOTE, $report_msg\n";              
                         next;
                     }
                     if( $temperature !~ m/$number_pos/ ) {
@@ -155,9 +176,9 @@ for my $filename (@ARGV) {
                     }			
                 } 
             }
-        } 
-
-     	print_cif( $dataset, {
+        }
+        insert_report_to_comments ($dataset,\@insert_reports);  
+        print_cif( $dataset, {
 	    exclude_misspelled_tags => 0,
 	    preserve_loop_order => 1,
 	    fold_long_fields => 0,
@@ -166,5 +187,4 @@ for my $filename (@ARGV) {
 	    keep_tag_order => $keep_tag_order,
         });
     }
-    
 }
