@@ -27,6 +27,7 @@ use CIFTagPrint;
 use SOptions;
 use SUsage;
 
+my $Id = '$Id$';
 my $keep_tag_order = 0;
 
 @ARGV = getOptions(
@@ -43,11 +44,16 @@ sub insert_report_to_comments {
         
         if( exists $values->{$comments_tag} ) {
             $values->{$comments_tag}[0] = 
-                $values->{$comments_tag}[0] . "\n\n" . join("\n\n",@$insert_reports);
+                $values->{$comments_tag}[0] . "\n\n" . 
+                join("\n\n", @$insert_reports);
            
         } else {
-            $values->{$comments_tag} =  [ "\n\n" . join("\n\n",@$insert_reports) ];
+            $values->{$comments_tag} =  [ "\n" . 
+                      join("\n\n",@$insert_reports) ];
         }
+        my $signature = $Id;
+        $signature =~ s/^\$|\$$//g;
+        $values->{$comments_tag}[0] .= "\n\n" . $signature;
     }
 } 
 
