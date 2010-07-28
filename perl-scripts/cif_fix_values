@@ -109,7 +109,7 @@ for my $filename (@ARGV) {
                 for my $i (0..$#{$values->{$tag}}) {
                     my $temperature = $values->{$tag}[$i];
                     
-                    if( $temperature =~ /(?:\.)|(?:\?)/ ) {
+                    if( $temperature =~ /^\.|\?$/ ) {
                         next;    
                     }
                     if( $temperature =~	/($number_pos)(?:[-_\s]*)$temp_K/ ) {
@@ -167,13 +167,13 @@ for my $filename (@ARGV) {
                         print STDERR "$0: $filename: NOTE, $report_msg\n";              
                         next;
                     }
-                    if( $temperature !~ m/$number_pos/ ) {
+                    if( $temperature !~ /$number_pos/ ) {
                         print STDERR  "$0: $filename: WARNING, " .
                                       "$tag value '$temperature' should be numeric, " .
                                       "i.e.'FLOAT or 'INT', permitted range [0.0;+inf], " .
                                       "given in Kelvins(K) without temperature units.\n";
                         next;
-                    }			
+                    }
                 } 
             }
         }
