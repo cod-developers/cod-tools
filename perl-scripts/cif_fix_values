@@ -9,10 +9,10 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #$URL$
 #------------------------------------------------------------------------------
 #*
-#  Correct temperature values which have units specified or convert between
-#  Celsius degrees and Kelvins. Changes 'room/ambiante temperature' to the 
-#  appropriate numeric value.
-#  Fixes other undefined values('none', 'not measured', etc.) to '?' simbol.
+#  Correct temperature values which have units specified or convert 
+#  between Celsius degrees and Kelvins. Changes 'room/ambiante temperature'  
+#  to the appropriate numeric value. Fixes other undefined values('none', 
+#  'not measured', etc.) to '?' simbol.
 #  Determine a report about changes made into standart I/O streams.
 #**
 
@@ -36,21 +36,29 @@ my $keep_tag_order = 0;
     "--help,--usage"   => sub { SUsage::usage; exit },
 );
 
+#
+# Subroutines:
+#
+
 sub insert_report_to_comments {
     my ($dataset, $insert_reports) = @_;
     if ( @$insert_reports > 0 ) {
         my $comments_tag = '_cod_depositor_comments';
         my $values = $dataset->{values};
+        my $reports_value = join("\n\n",@$insert_reports);
         
         if( exists $values->{$comments_tag} ) {
-            $values->{$comments_tag}[0] = 
+            $values->{$comments_tag}[0] = (
                 $values->{$comments_tag}[0] . "\n\n" . 
-                join("\n\n", @$insert_reports);
-           
+                join( "\n", map { "" . $_ }
+                    CIFTagPrint::fold( 70, " +", " ", $reports_value ))
+            );
         } else {
-            $values->{$comments_tag} =  [ "\n" . 
-                      join("\n\n",@$insert_reports) ];
-        }
+            $values->{$comments_tag}[0] = ( 
+                "\n" . join( "\n", map { "" . $_ }
+                    CIFTagPrint::fold( 70, " +", " ", $reports_value )) 
+            );
+          }
         my $signature = $Id;
         $signature =~ s/^\$|\$$//g;
         $values->{$comments_tag}[0] .= "\n\n" . $signature;
@@ -120,64 +128,71 @@ for my $filename (@ARGV) {
                     }
                     if( $temperature =~	/($number_pos)(?:[-_\s]*)$temp_K/ ) {
                         $values->{$tag}[$i] = "$1";
-                        my $report_msg = "$tag value '$temperature' changed to '$1' - " .
-                                         "value should be numeric, i.e.'FLOAT or 'INT' " .
-                                         "without temperature units.";
+                        my $report_msg = 
+                            "$tag value '$temperature' changed to '$1' - " .
+                            "value should be numeric, i.e.'FLOAT or 'INT' " .
+                            "without temperature units.";
                         push (@insert_reports, $report_msg);
                         print STDERR "$0: $filename: NOTE, $report_msg\n";
                         next;
                     } 
                     if ( $temperature =~ /($number_pos)(?:[-_\s]*)$temp_C/ ) {
                         $values->{$tag}[$i] = $1 + 273.15;
-                        my $report_msg = "$tag value '$temperature' changed to '$1+273.15' - " .
-                                         "converted between Celsius(C) and Kelvins(K), " . 
-                                         "value should be numeric, permitted range [0.0;+inf] " .
-                                         "given in Kelvins(K) without temperature units.";
+                        my $report_msg = 
+                            "$tag value '$temperature' changed to '$1+273.15' - " .
+                            "converted between Celsius(C) and Kelvins(K), " . 
+                            "value should be numeric, permitted range [0.0;+inf] " .
+                            "given in Kelvins(K) without temperature units.";
                         push (@insert_reports, $report_msg);
                         print STDERR "$0: $filename: NOTE, $report_msg\n";
                         next;
                     }
                     if( $temperature =~	/($number_neg)(?:[-_\s]*)$temp_C/ ) {
                         $values->{$tag}[$i] = $1 + 273.15;
-                        my $report_msg = "$tag value '$temperature' changed to '$1+273.15' - " .
-                                         "making conversion between Celsius(C) and Kelvins(K), " .
-                                         "value should be numeric, permitted range [0.0;+inf], " .
-                                         "given in Kelvins(K) without temperature units.";
+                        my $report_msg = 
+                            "$tag value '$temperature' changed to '$1+273.15' - " .
+                            "making conversion between Celsius(C) and Kelvins(K), " .
+                            "value should be numeric, permitted range [0.0;+inf], " .
+                            "given in Kelvins(K) without temperature units.";
                         push (@insert_reports, $report_msg);
                         print STDERR "$0: $filename: NOTE, $report_msg\n";
                         next;				
                     }
                     if( $temperature =~	/($number_neg)(?:[-_\s]*)/ ) {
                         $values->{$tag}[$i] = $1 + 273.15;
-                        my $report_msg = "$tag value $temperature changed to $1+273.15 - " .
-                                         "value should be numeric, permitted range [0.0;+inf], " .
-                                         "given in Kelvins(K) without temperature units.";
+                        my $report_msg = 
+                            "$tag value $temperature changed to $1+273.15 - " .
+                            "value should be numeric, permitted range [0.0;+inf], " .
+                            "given in Kelvins(K) without temperature units.";
                         push (@insert_reports, $report_msg);
                         print STDERR "$0: $filename: NOTE, $report_msg\n";                   
                         next;				
                     }
                     if( $temperature =~ /($temp_RT)(?:[-_\s]*)/ ) {
                         $values->{$tag}[$i] = "295(2)";
-                        my $report_msg = "$tag value '$temperature' changed to '295(2)' - " .
-                                         "took room/ambient temperature average value [293;298] " .
-                                         "in Kelvins(K).";
+                        my $report_msg = 
+                            "$tag value '$temperature' changed to '295(2)' - " .
+                            "took room/ambient temperature average value [293;298] " .
+                            "in Kelvins(K).";
                         push (@insert_reports, $report_msg);
                         print STDERR "$0: $filename: NOTE, $report_msg\n";                            
                         next;
                     }
                     if( $temperature =~ /($temp_undef)(?:[-_\s]*)/ ) {
                         $values->{$tag}[$i] = "?";
-                        my $report_msg = "$tag value '$temperature' changed to '?' - " .
-                                         "value is undefined or not given.";
+                        my $report_msg = 
+                            "$tag value '$temperature' changed to '?' - " .
+                            "value is undefined or not given.";
                         push (@insert_reports, $report_msg);
                         print STDERR "$0: $filename: NOTE, $report_msg\n";              
                         next;
                     }
                     if( $temperature !~ /$number_pos/ ) {
-                        print STDERR  "$0: $filename: WARNING, " .
-                                      "$tag value '$temperature' should be numeric, " .
-                                      "i.e.'FLOAT or 'INT', permitted range [0.0;+inf], " .
-                                      "given in Kelvins(K) without temperature units.\n";
+                        print STDERR  
+                            "$0: $filename: WARNING, " .
+                            "$tag value is '$temperature', it should be numeric, " .
+                            "i.e.'FLOAT or 'INT', permitted range [0.0;+inf], " .
+                            "given in Kelvins(K) without temperature units.\n";
                         next;
                     }
                 } 
