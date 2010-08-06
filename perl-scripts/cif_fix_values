@@ -61,7 +61,7 @@ sub insert_report_to_comments {
           }
         my $signature = $Id;
         $signature =~ s/^\$|\$$//g;
-        $values->{$comments_tag}[0] .= "\n\n" . $signature;
+        #$values->{$comments_tag}[0] .= "\n\n" . $signature;
     }
 } 
 
@@ -108,25 +108,33 @@ for my $filename (@ARGV) {
         my $temp_K  = 
             '((?i:[K](?:elvin?)?)|(?i:[K]))';
         my $temp_C  = 
-            '((?i:[C]|[Dd]eg(?:rees?)?\s*)|' .
-            '(?:(?:\\\/o)|(?i:[O])|(?:\\\%)\s*(?i:[C])?))';
+            '((?i:[C]|[Dd]eg(?:rees?)?)|' .
+            '(?:(?:\\\/o)|(?i:[O])|(?:\\\%))\s*(?i:[C])?)';
         my $temp_RT = 
-            '\s*(?:(?i:room)|(?i:amb(?i:i[ae]nte?))' .
-            '?\s*(?i:temp(?:erature)?))|(?i:rt)'; 
+            '(?:(?:(?i:room)|(?i:amb(?i:i[ae]nte?))' .
+            '?\s*(?i:temp(?:erature)?))|(?i:rt))'; 
         my $temp_undef = 
-            '\s*(?i:[Y]es)|(?i:[N]o(?:ne)?)|(?i:[U]known)|' .
-            '(?i:[N]ot)\s*((?i:[M]easured)|(?i:[D]etermined))|' .
-            '(?i:[N]/(?i:[DA]))';
+            '(?:(?i:[Y]es)|(?i:[N]o(?:ne)?)|(?i:[U]nknown)|' .
+            '(?i:[N]ot\s*((?i:[M]easured)|(?i:[D]etermined)))|' .
+            '(?i:[N]/(?i:[DA])))';
+        my $sigma =
+            '(?:\d+)';
         
         for my $tag (@temp_tags) {
             if( exists $values->{$tag} ) {
                 for my $i (0..$#{$values->{$tag}}) {
                     my $temperature = $values->{$tag}[$i];
+                    #
+                    #remove all \s in velues' string
+                    #Insert in all if statments' regexp ^ and $,
+                    #to process values exactly through all string.
+                    #
+                    #$temperature =~ s/^\s+|\s+$//g;
                     
                     if( $temperature =~ /^\.|\?$/ ) {
                         next;    
                     }
-                    if( $temperature =~	/($number_pos)(?:[-_\s]*)$temp_K/ ) {
+                    if( $temperature =~	/^\s*($number_pos(?:\($sigma\))?)(?:[-_\s]*)$temp_K\s*$/ ) {
                         $values->{$tag}[$i] = "$1";
                         my $report_msg = 
                             "$tag value '$temperature' changed to '$1' - " .
@@ -136,7 +144,7 @@ for my $filename (@ARGV) {
                         print STDERR "$0: $filename: NOTE, $report_msg\n";
                         next;
                     } 
-                    if ( $temperature =~ /($number_pos)(?:[-_\s]*)$temp_C/ ) {
+                    if ( $temperature =~ /^\s*($number_pos(?:\($sigma\))?)(?:[-_\s]*)$temp_C\s*$/ ) {
                         $values->{$tag}[$i] = $1 + 273.15;
                         my $report_msg = 
                             "$tag value '$temperature' changed to '$1+273.15' - " .
@@ -148,7 +156,7 @@ for my $filename (@ARGV) {
                         print STDERR "$0: $filename: NOTE, $report_msg\n";
                         next;
                     }
-                    if( $temperature =~	/($number_neg)(?:[-_\s]*)$temp_C/ ) {
+                    if( $temperature =~	/^\s*($number_neg(?:\($sigma\))?)(?:[-_\s]*)$temp_C\s*$/ ) {
                         $values->{$tag}[$i] = $1 + 273.15;
                         my $report_msg = 
                             "$tag value '$temperature' changed to '$1+273.15' - " .
@@ -160,7 +168,7 @@ for my $filename (@ARGV) {
                         print STDERR "$0: $filename: NOTE, $report_msg\n";
                         next;				
                     }
-                    if( $temperature =~	/($number_neg)(?:[-_\s]*)/ ) {
+                    if( $temperature =~	/^\s*($number_neg(?:\($sigma\))?)(?:[-_\s]*)$/ ) {
                         $values->{$tag}[$i] = $1 + 273.15;
                         my $report_msg = 
                             "$tag value $temperature changed to $1+273.15 - " .
@@ -170,7 +178,7 @@ for my $filename (@ARGV) {
                         print STDERR "$0: $filename: NOTE, $report_msg\n";                   
                         next;				
                     }
-                    if( $temperature =~ /($temp_RT)(?:[-_\s]*)/ ) {
+                    if( $temperature =~ /^\s*($temp_RT)(?:[-_\s]*)$/ ) {
                         $values->{$tag}[$i] = "295(2)";
                         my $report_msg = 
                             "$tag value '$temperature' changed to '295(2)' - " .
@@ -180,7 +188,7 @@ for my $filename (@ARGV) {
                         print STDERR "$0: $filename: NOTE, $report_msg\n";                            
                         next;
                     }
-                    if( $temperature =~ /($temp_undef)(?:[-_\s]*)/ ) {
+                    if( $temperature =~ /^\s*($temp_undef)(?:[-_\s]*)$/ ) {
                         $values->{$tag}[$i] = "?";
                         my $report_msg = 
                             "$tag value '$temperature' changed to '?' - " .
@@ -189,7 +197,7 @@ for my $filename (@ARGV) {
                         print STDERR "$0: $filename: NOTE, $report_msg\n";              
                         next;
                     }
-                    if( $temperature !~ /$number_pos/ ) {
+                    if( $temperature !~ /^\s*($number_pos)(\($sigma\))?\s*$/ ) {
                         print STDERR  
                             "$0: $filename: WARNING, " .
                             "$tag value is '$temperature', it should be numeric, " .
