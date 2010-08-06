@@ -25,6 +25,7 @@ my %database = (
     user  => "cod_reader",
     name  => "cod",
     table => "data",
+    password => "",
 );
 
 my $max_cell_length_diff = 0.5; # Angstroems
@@ -61,6 +62,9 @@ my $cod_series_prefix; # Which "series" of COD structures should be
 #*        Use user name "cod_reader" to access COD database; this reader
 #*        sould be granted SELECT priviledge, i.e. should be able to read
 #*        the COD database, whithout supplying a password.
+#*
+#*     -w, --password
+#*        Use the specified password (default empty) to connect.
 #*
 #*     -S, --series 9
 #*        Check only COD entries starting with 9 (so called 9* series).
@@ -114,6 +118,7 @@ my $cod_series_prefix; # Which "series" of COD structures should be
     "-s,--server"    => \$database{host},
     "-t,--table"     => \$database{table},
     "-u,--user"      => \$database{user},
+    "-w,--password"  => \$database{password},
 
     "-S,--series" => \$cod_series_prefix,
 
@@ -575,7 +580,8 @@ sub database_connect
     
     my $dbh = DBI->connect( "dbi:mysql:hostname=$database{host};".
                             "db=$database{name};".
-                            "user=$database{user}" )
+                            "user=$database{user};".
+                            "password=$database{password}" )
         || die "cannot connect do the database -- $DBI::errstr";
 
     return $dbh;
