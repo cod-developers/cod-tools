@@ -336,4 +336,26 @@ sub fold
     return @lines;
 }
 
+sub round { $_[0] > 0 ? int($_[0] + 0.5) : int($_[0] - 0.5) }
+
+sub pack_precision
+{
+    my ( $val, $sig ) = @_;
+
+    if( defined $sig ) {
+        my $digits = -round(log($sig)/log(10)) + 1;
+        ## print ">>> $val +/- $sig (log = " . log($sig)/log(10) . "), digits = $digits\n";
+        my $prec = round( $sig * 10**$digits );
+        if( $prec >= 20 ) {
+            $digits --;
+            $prec = round( $sig * 10**$digits );
+        }
+        my $format_digits = $digits > 0 ? $digits : 0;
+        $val = sprintf( "%.${format_digits}f", $val );
+        return "$val($prec)";
+    } else {
+        return $val;
+    }
+}
+
 1;
