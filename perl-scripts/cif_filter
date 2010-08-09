@@ -912,7 +912,7 @@ for my $filename (@ARGV) {
                 if( $has_precisions ) {
                     @sigcell = map { defined $_ ? $_ : 0 } @sigcell;
                     ($V, $sigV) = cell_volume( @cell, @sigcell );
-                    $V = pack_precision( $V, $sigV );
+                    $V = CIFTagPrint::pack_precision( $V, $sigV );
                 } else {
                     $V = sprintf( "%.3f", scalar( cell_volume( @cell )));
                 }
@@ -1060,28 +1060,6 @@ sub get_cell
     );
 
     return map { defined $_ && /^\s*[?.]\s*$/ ? undef : $_ } @cell;
-}
-
-sub round { $_[0] > 0 ? int($_[0] + 0.5) : int($_[0] - 0.5) }
-
-sub pack_precision
-{
-    my ( $val, $sig ) = @_;
-
-    if( defined $sig ) {
-        my $digits = -round(log($sig)/log(10)) + 1;
-        ## print ">>> $val +/- $sig (log = " . log($sig)/log(10) . "), digits = $digits\n";
-        my $prec = round( $sig * 10**$digits );
-        if( $prec >= 20 ) {
-            $digits --;
-            $prec = round( $sig * 10**$digits );
-        }
-        my $format_digits = $digits > 0 ? $digits : 0;
-        $val = sprintf( "%.${format_digits}f", $val );
-        return "$val($prec)";
-    } else {
-        return $val;
-    }
 }
 
 sub restore_last_page
