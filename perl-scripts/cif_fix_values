@@ -98,53 +98,61 @@ for my $filename (@ARGV) {
               '_exptl_crystal_density_meas_temp',
               '_chemical_melting_point' );                     
         my $number_pos =
-            '(?:^\+?' . 
-            '(?:\d+(?:\.\d*)?|\.\d+' .
-            '(?:[eE][-+]?\d+)?))';
+            '(?:\+?' . 
+            '(?:\d+(?:\.\d*)?|\.\d+)' .
+            '(?:[eE][-+]?\d+)?)';
         my $number_neg =  
-            '(?:^-' .
-            '(?:\d+(?:\.\d*)?|\.\d+' .
-            '(?:[eE][-+]?\d+)?))';
+            '(?:\-' .
+            '(?:\d+(?:\.\d*)?|\.\d+)' .
+            '(?:[eE][-+]?\d+)?)';
         my $temp_K  = 
-            '((?i:[K](?:elvin?)?)|(?i:[K]))';
+            '((?i:K(?i:elvin?)?)|(?i:K))';
         my $temp_C  = 
-            '((?i:[C]|[Dd]eg(?:rees?)?)|' .
-            '(?:(?:\\\/o)|(?i:[O])|(?:\\\%))\s*(?i:[C])?)';
+            '((?i:C|Deg\.?(?:rees?)?)|' .
+            '(?:(?:\\\/o)|(?i:O)|(?:\\\%))\s*(?i:C)?)';
         my $temp_RT = 
             '(?:(?:(?i:room)|(?i:amb(?i:i[ae]nte?))' .
             '?\s*(?i:temp(?:erature)?))|(?i:rt))'; 
         my $temp_undef = 
-            '(?:(?i:[Y]es)|(?i:[N]o(?:ne)?)|(?i:[U]nknown)|' .
-            '(?i:[N]ot\s*((?i:[M]easured)|(?i:[D]etermined)))|' .
-            '(?i:[N]/(?i:[DA])))';
-        my $sigma =
-            '(?:\d+)';
+            '(?:(?i:yes)|(?i:no(?i:ne)?)|(?i:unknown)|' .
+            '(?i:not\s*((?i:measured)|(?i:determined)))|' .
+            '(?i:N\/(?i:[DA])))';
+        my $sigma = '(?:\d+\.\d+|\d+\.|\.\d+|\d+)';
         
         for my $tag (@temp_tags) {
             if( exists $values->{$tag} ) {
                 for my $i (0..$#{$values->{$tag}}) {
                     my $temperature = $values->{$tag}[$i];
-                    #
-                    #remove all \s in velues' string
-                    #Insert in all if statments' regexp ^ and $,
-                    #to process values exactly through all string.
-                    #
                     $temperature =~ s/^\s+|\s+$//g;
                     
                     if( $temperature =~ /^\.|\?$/ ) {
                         next;    
                     }
-                    if( $temperature =~	/^($number_pos(?:\($sigma\))?)(?:[-_\s]*)$temp_K$/ ) {
-                        $values->{$tag}[$i] = "$1";
+                    #if( $temperature =~ 
+                    #      /^(\>|\<)\s*($number_pos)
+                    #      \s*($temp_K|$temp_C)?$/  &&
+                    #    {$tag}[$i] !~ /_cell_measurement_temperature/) {
+                    #    my $sign = $1;
+                    #    my $number = $2;
+                    #    my $units = $3;
+                    #    print STDERR "NOTE: $sign $number $units \n";
+                    #    next;
+                    #}
+                    if( $temperature =~	
+                        /^($number_pos)(?:\()?($sigma)?(?:\))?(?:[-_\s]*)$temp_K$/ ) {
+                        $values->{$tag}[$i] = 
+                                CIFTagPrint::pack_precision( $1, $2 );
+                        my $new_val = $values->{$tag}[$i];
                         my $report_msg = 
-                            "$tag value '$temperature' changed to '$1' - " .
+                            "$tag value '$temperature' changed to '$new_val' - " .
                             "value should be numeric, i.e.'FLOAT or 'INT' " .
                             "without temperature units.";
                         push (@insert_reports, $report_msg);
                         print STDERR "$0: $filename: NOTE, $report_msg\n";
                         next;
                     } 
-                    if ( $temperature =~ /^($number_pos(?:\($sigma\))?)(?:[-_\s]*)$temp_C$/ ) {
+                    if ( $temperature =~ 
+                          /^($number_pos(?:\($sigma\))?)(?:[-_\s]*)$temp_C$/ ) {
                         $values->{$tag}[$i] = $1 + 273.15;
                         my $report_msg = 
                             "$tag value '$temperature' changed to '$1+273.15' - " .
@@ -156,7 +164,8 @@ for my $filename (@ARGV) {
                         print STDERR "$0: $filename: NOTE, $report_msg\n";
                         next;
                     }
-                    if( $temperature =~	/^($number_neg(?:\($sigma\))?)(?:[-_\s]*)$temp_C$/ ) {
+                    if( $temperature =~	
+                          /^($number_neg(?:\($sigma\))?)(?:[-_\s]*)$temp_C$/ ) {
                         $values->{$tag}[$i] = $1 + 273.15;
                         my $report_msg = 
                             "$tag value '$temperature' changed to '$1+273.15' - " .
@@ -168,7 +177,8 @@ for my $filename (@ARGV) {
                         print STDERR "$0: $filename: NOTE, $report_msg\n";
                         next;				
                     }
-                    if( $temperature =~	/^($number_neg(?:\($sigma\))?)(?:[-_\s]*)$/ ) {
+                    if( $temperature =~	
+                          /^($number_neg(?:\($sigma\))?)(?:[-_\s]*)$/ ) {
                         $values->{$tag}[$i] = $1 + 273.15;
                         my $report_msg = 
                             "$tag value $temperature changed to $1+273.15 - " .
@@ -197,6 +207,15 @@ for my $filename (@ARGV) {
                         print STDERR "$0: $filename: NOTE, $report_msg\n";              
                         next;
                     }
+                  #  if( $temperature =~ /^($number_pos(?:\($sigma\))?)(?:[-_\s]*)($number_pos(?:\($sigma\))?)($temp_K|$temp_C)?$/ ){
+                  #      $values->{$tag}[$i] = ($1 + $2)/2 . "\(" . ($2 - $1)/2 ."\)";
+                  #      my $report_msg = "ishkvieciam subrutina arba sudetinga if'a";
+                  #         "$tag value '$temperature' changed to '...' - " .
+                  #        "taking average value.";
+                  #     push (@insert_reports, $report_msg);
+                  #     print STDERR "$0: $filename: NOTE, $report_msg\n";              
+                  #    next; 
+                  #  }
                     if( $temperature !~ /^($number_pos)(\($sigma\))?$/ ) {
                         print STDERR  
                             "$0: $filename: WARNING, " .
