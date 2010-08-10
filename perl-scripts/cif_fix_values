@@ -139,9 +139,12 @@ for my $filename (@ARGV) {
                     #    next;
                     #}
                     if( $temperature =~	
-                        /^($number_pos)(?:\()?($sigma)?(?:\))?(?:[-_\s]*)$temp_K$/ ) {
+                        /^
+                            ($number_pos)(?:\()?($sigma)?
+                            (?:\))?(?:[-_\s]*)$temp_K$
+                            /x ) {
                         $values->{$tag}[$i] = 
-                                CIFTagPrint::pack_precision( $1, $2 );
+                            CIFTagPrint::pack_precision( $1, $2 );
                         my $new_val = $values->{$tag}[$i];
                         my $report_msg = 
                             "$tag value '$temperature' changed to '$new_val' - " .
@@ -152,10 +155,15 @@ for my $filename (@ARGV) {
                         next;
                     } 
                     if ( $temperature =~ 
-                          /^($number_pos(?:\($sigma\))?)(?:[-_\s]*)$temp_C$/ ) {
-                        $values->{$tag}[$i] = $1 + 273.15;
+                          /^
+                            ($number_pos)(?:\()?($sigma)?
+                            (?:\))?(?:[-_\s]*)$temp_C$
+                            /x ) {
+                        $values->{$tag}[$i] = 
+                            CIFTagPrint::pack_precision( $1 + 273.15, $2 );
+                        my $new_val = $values->{$tag}[$i];
                         my $report_msg = 
-                            "$tag value '$temperature' changed to '$1+273.15' - " .
+                            "$tag value '$temperature' changed to '$new_val' - " .
                             "converted between degrees Celsius(C) " . 
                             "and Kelvins(K), value should be numeric, " . 
                             "permitted range [0.0;+inf] " .
@@ -165,10 +173,15 @@ for my $filename (@ARGV) {
                         next;
                     }
                     if( $temperature =~	
-                          /^($number_neg(?:\($sigma\))?)(?:[-_\s]*)$temp_C$/ ) {
-                        $values->{$tag}[$i] = $1 + 273.15;
+                          /^
+                            ($number_neg)(?:\()?($sigma)?
+                            (?:\))?(?:[-_\s]*)$temp_C$
+                            /x ) {
+                        $values->{$tag}[$i] = 
+                            CIFTagPrint::pack_precision( $1 + 273.15, $2 ); 
+                        my $new_val = $values->{$tag}[$i];
                         my $report_msg = 
-                            "$tag value '$temperature' changed to '$1+273.15' - " .
+                            "$tag value '$temperature' changed to '$new_val' - " .
                             "converted between degrees Celsius(C) " .
                             "and Kelvins(K), value should be numeric, " . 
                             "permitted range [0.0;+inf] " .
@@ -178,17 +191,25 @@ for my $filename (@ARGV) {
                         next;				
                     }
                     if( $temperature =~	
-                          /^($number_neg(?:\($sigma\))?)(?:[-_\s]*)$/ ) {
-                        $values->{$tag}[$i] = $1 + 273.15;
+                          /^
+                          ($number_neg)(?:\()($sigma)?
+                          (?:\))?(?:[-_\s]*)$
+                          /x ) {
+                        $values->{$tag}[$i] = 
+                            CIFTagPrint::pack_precision( $1 + 273.15, $2 );
+                        my $new_val = $values->{$tag}[$i];
                         my $report_msg = 
-                            "$tag value $temperature changed to $1+273.15 - " .
+                            "$tag value '$temperature' changed to '$new_val' - " .
                             "value should be numeric, permitted range [0.0;+inf], " .
                             "given in Kelvins(K) without temperature units.";
                         push (@insert_reports, $report_msg);
                         print STDERR "$0: $filename: NOTE, $report_msg\n";                   
                         next;				
                     }
-                    if( $temperature =~ /^($temp_RT)(?:[-_\s]*)$/ ) {
+                    if( $temperature =~ 
+                        /^
+                            ($temp_RT)(?:[-_\s]*)$
+                            /x ) {
                         $values->{$tag}[$i] = "295(2)";
                         my $report_msg = 
                             "$tag value '$temperature' changed to '295(2)' - " .
@@ -198,7 +219,10 @@ for my $filename (@ARGV) {
                         print STDERR "$0: $filename: NOTE, $report_msg\n";                            
                         next;
                     }
-                    if( $temperature =~ /^($temp_undef)(?:[-_\s]*)$/ ) {
+                    if( $temperature =~ 
+                        /^
+                            ($temp_undef)(?:[-_\s]*)$
+                            /x ) {
                         $values->{$tag}[$i] = "?";
                         my $report_msg = 
                             "$tag value '$temperature' changed to '?' - " .
@@ -207,7 +231,12 @@ for my $filename (@ARGV) {
                         print STDERR "$0: $filename: NOTE, $report_msg\n";              
                         next;
                     }
-                  #  if( $temperature =~ /^($number_pos(?:\($sigma\))?)(?:[-_\s]*)($number_pos(?:\($sigma\))?)($temp_K|$temp_C)?$/ ){
+                  #  if( $temperature =~ 
+                  #      /^
+                  #          ($number_pos(?:\($sigma\))?)
+                  #          (?:[-_\s]*)($number_pos(?:\($sigma\))?)
+                  #          ($temp_K|$temp_C)?$
+                  #          /x )    {
                   #      $values->{$tag}[$i] = ($1 + $2)/2 . "\(" . ($2 - $1)/2 ."\)";
                   #      my $report_msg = "ishkvieciam subrutina arba sudetinga if'a";
                   #         "$tag value '$temperature' changed to '...' - " .
@@ -216,7 +245,10 @@ for my $filename (@ARGV) {
                   #     print STDERR "$0: $filename: NOTE, $report_msg\n";              
                   #    next; 
                   #  }
-                    if( $temperature !~ /^($number_pos)(\($sigma\))?$/ ) {
+                    if( $temperature !~ 
+                        /^
+                            ($number_pos)(\($sigma\))?$
+                            /x ) {
                         print STDERR  
                             "$0: $filename: WARNING, " .
                             "$tag value is '$temperature', it should be numeric, " .
