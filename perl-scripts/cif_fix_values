@@ -175,7 +175,7 @@ for my $filename (@ARGV) {
                     if( $temperature =~	
                           /^
                             ($number_neg)(?:\()?($sigma)?
-                            (?:\))?(?:[-_\s]*)$temp_C$
+                            (?:\))?(?:[-_\s]*)$temp_C?$
                             /x ) {
                         $values->{$tag}[$i] = 
                             CIFTagPrint::pack_precision( $1 + 273.15, $2 ); 
@@ -188,22 +188,6 @@ for my $filename (@ARGV) {
                             "given in Kelvins(K) without temperature units.";
                         push (@insert_reports, $report_msg);
                         print STDERR "$0: $filename: NOTE, $report_msg\n";
-                        next;				
-                    }
-                    if( $temperature =~	
-                          /^
-                          ($number_neg)(?:\()($sigma)?
-                          (?:\))?(?:[-_\s]*)$
-                          /x ) {
-                        $values->{$tag}[$i] = 
-                            CIFTagPrint::pack_precision( $1 + 273.15, $2 );
-                        my $new_val = $values->{$tag}[$i];
-                        my $report_msg = 
-                            "$tag value '$temperature' changed to '$new_val' - " .
-                            "value should be numeric, permitted range [0.0;+inf], " .
-                            "given in Kelvins(K) without temperature units.";
-                        push (@insert_reports, $report_msg);
-                        print STDERR "$0: $filename: NOTE, $report_msg\n";                   
                         next;				
                     }
                     if( $temperature =~ 
