@@ -90,8 +90,7 @@ for my $filename (@ARGV) {
     my $values = $dataset->{values};
     
         my @temp_tags =
-            ( '_exptl_crystal_density_meas_temp',
-              '_cell_measurement_temperature',		
+            ( '_cell_measurement_temperature',		
               '_chemical_temperature_decomposition',		
               '_chemical_temperature_sublimation',
               '_diffrn_ambient_temperature',  
@@ -127,6 +126,25 @@ for my $filename (@ARGV) {
                     
                     if( $temperature =~ /^\.|\?$/ ) {
                         next;    
+                    }
+                    if( $temperature =~ 
+                            /^($number_pos|$number_pos\(\d+\))$/ ) {
+                        next;    
+                    }
+                    if( $temperature =~ 
+                        /^  
+                            ($number_pos)(?:\()?[\s]*(?:[\+]?.?[\-]?)[\s]*
+                            ($sigma)(?:\))?$
+                            /x ) {
+                        $values->{$tag}[$i] = 
+                            CIFTagPrint::pack_precision( $1, $2 );
+                        my $new_val = $values->{$tag}[$i];
+                        my $report_msg = 
+                            "$tag value '$temperature' changed to " .
+                            "'$new_val'- fixed precision.";
+                        push (@insert_reports, $report_msg);
+                        print STDERR "$0: $filename: NOTE, $report_msg\n";
+                        next;
                     }
                     #if( $temperature =~ 
                     #      /^(\>|\<)\s*($number_pos)
