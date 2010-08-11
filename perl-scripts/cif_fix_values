@@ -233,20 +233,23 @@ for my $filename (@ARGV) {
                         print STDERR "$0: $filename: NOTE, $report_msg\n";              
                         next;
                     }
-                  #  if( $temperature =~ 
-                  #      /^
-                  #          ($number_pos(?:\($sigma\))?)
-                  #          (?:[-_\s]*)($number_pos(?:\($sigma\))?)
-                  #          ($temp_K|$temp_C)?$
-                  #          /x )    {
-                  #      $values->{$tag}[$i] = ($1 + $2)/2 . "\(" . ($2 - $1)/2 ."\)";
-                  #      my $report_msg = "ishkvieciam subrutina arba sudetinga if'a";
-                  #         "$tag value '$temperature' changed to '...' - " .
-                  #        "taking average value.";
-                  #     push (@insert_reports, $report_msg);
-                  #     print STDERR "$0: $filename: NOTE, $report_msg\n";              
-                  #    next; 
-                  #  }
+                    if( $temperature =~ 
+                        /^
+                            ($number_pos)\s*[\-\/]+\s*($number_pos)
+                            (?:$temp_K)?$
+                            /x )   {
+                        my $number = ($1 + $2)/2;
+                        my $sig = ($2 - $1 )/2;
+                        $values->{$tag}[$i] = 
+                            CIFTagPrint::pack_precision( $number , $sig );
+                        my $new_val = $values->{$tag}[$i]; 
+                        my $report_msg = 
+                            "$tag value '$temperature' changed to '$new_val' - " .
+                            "took average value and fixed precision.";
+                       push (@insert_reports, $report_msg);
+                       print STDERR "$0: $filename: NOTE, $report_msg\n";              
+                       next; 
+                    }
                     if( $temperature !~ 
                         /^
                             ($number_pos)(\($sigma\))?$
