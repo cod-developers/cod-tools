@@ -1,0 +1,33 @@
+
+COMS   = ${wildcard *.com}
+LOGS   = ${COMS:%.com=%.log}
+DEPEND = ${COMS:%.com=.%.d}
+
+#------------------------------------------------------------------------------
+
+.PHONY: all run clean cleanAll
+
+all: run
+
+include ${DEPEND}
+
+run: ${LOGS}
+
+#------------------------------------------------------------------------------
+
+%.log: %.com
+	./$< 2>&1 | tee $@
+
+.%.d: %.com
+	mkcomdepend $< > $@
+
+%: %.log;
+
+#------------------------------------------------------------------------------
+
+clean:
+	rm -f ${LOGS}
+
+cleanAll: clean
+	rm -f ${DEPEND}
+	rm -f ${CLEAN_FILES}
