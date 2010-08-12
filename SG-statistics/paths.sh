@@ -1,0 +1,9 @@
+PATH=../perl-scripts:${PATH}
+
+PERL5LIB=../CIFParser${PERL5LIB:+:${PERL5LIB}}
+PERL5LIB=../CIFTags:${PERL5LIB}
+PERL5LIB=../Spacegroups:${PERL5LIB}
+PERL5LIB=../:${PERL5LIB}
+PERL5LIB=../lib/perl5:${PERL5LIB}
+
+export PATH PERL5LIB
