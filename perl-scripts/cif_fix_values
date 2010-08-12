@@ -238,36 +238,38 @@ for my $filename (@ARGV) {
                             ($number_pos)\s*[\-\/]+\s*($number_pos)
                             (?:[-_\s]*)(?:$temp_K)?$
                             /x )   {
-                        my $number = ($1 + $2)/2;
-                        my $sig = ($2 - $1 )/2;
-                        $values->{$tag}[$i] = 
-                            CIFTagPrint::pack_precision( $number , $sig );
-                        my $new_val = $values->{$tag}[$i]; 
-                        my $report_msg = 
-                            "$tag value '$temperature' changed to '$new_val' - " .
-                            "took average value and fixed precision.";
-                       push (@insert_reports, $report_msg);
-                       print STDERR "$0: $filename: NOTE, $report_msg\n";              
-                       next; 
+                        if( $2 > $1 )   {
+                            my $number = ($1 + $2)/2;
+                            my $sig = ($2 - $1 )/2;
+                            $values->{$tag}[$i] = 
+                                CIFTagPrint::pack_precision( $number , $sig );
+                            my $new_val = $values->{$tag}[$i]; 
+                            my $report_msg = 
+                                "$tag value '$temperature' changed to '$new_val' - " .
+                                "took average value and fixed precision.";
+                            push (@insert_reports, $report_msg);
+                            print STDERR "$0: $filename: NOTE, $report_msg\n";
+                        next; }
                     }
                     if( $temperature =~ 
                         /^
                             ($number_pos)\s*[\-\/]+\s*($number_pos)
                             (?:[-_\s]*)(?:$temp_C)$
                             /x )   {
-                        my $number = ($1 + $2)/2;
-                        my $sig = ($2 - $1 )/2;
-                        $values->{$tag}[$i] = 
-                            CIFTagPrint::pack_precision( $number + 273.15 , $sig );
-                        my $new_val = $values->{$tag}[$i]; 
-                        my $report_msg = 
-                            "$tag value '$temperature' changed to '$new_val' - " .
-                            "converted between degrees Celsius(C) " .
-                            "and Kelvins(K), took average value and " .
-                            "fixed precision.";
-                       push (@insert_reports, $report_msg);
-                       print STDERR "$0: $filename: NOTE, $report_msg\n";              
-                       next; 
+                        if( $2 > $1 )   {        
+                            my $number = ($1 + $2)/2;
+                            my $sig = ($2 - $1 )/2;
+                            $values->{$tag}[$i] = 
+                                CIFTagPrint::pack_precision( $number+273.15 , $sig );
+                            my $new_val = $values->{$tag}[$i]; 
+                            my $report_msg = 
+                                "$tag value '$temperature' changed to '$new_val' - " .
+                                "converted between degrees Celsius(C) " .
+                                "and Kelvins(K), took average value and " .
+                                "fixed precision.";
+                            push (@insert_reports, $report_msg);
+                            print STDERR "$0: $filename: NOTE, $report_msg\n"; 
+                       next; }
                     }
                     if( $temperature !~ 
                         /^
