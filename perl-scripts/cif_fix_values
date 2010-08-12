@@ -110,8 +110,8 @@ for my $filename (@ARGV) {
             '((?i:C|Deg\.?(?:rees?)?)|' .
             '(?:(?:\\\/o)|(?i:O)|(?:\\\%))\s*(?i:C)?)';
         my $temp_RT = 
-            '(?:(?:(?i:room)|(?i:amb(?i:i[ae]nte?))' .
-            '?\s*(?i:temp(?:erature)?))|(?i:rt))'; 
+            '(?:(?:(?:(?i:room)|(?i:amb(?i:i[ae]nte?)))' .
+            '\s*(?i:temp(?:erature)?)?)|(?i:rt))'; 
         my $temp_undef = 
             '(?:(?i:yes)|(?i:no(?i:ne)?)|(?i:unknown)|' .
             '(?i:not\s*((?i:measured)|(?i:determined)))|' .
@@ -133,7 +133,7 @@ for my $filename (@ARGV) {
                     }
                     if( $temperature =~ 
                         /^  
-                            ($number_pos)(?:\()?[\s]*(?:\+|\+\/\-)?[\s]*
+                            ($number_pos)\s*(?:\()?[\s]*(?:\+|\+\/\-)?[\s]*
                             ($sigma)(?:\))?$
                             /x ) {
                         $values->{$tag}[$i] = 
@@ -159,7 +159,7 @@ for my $filename (@ARGV) {
                     if( $temperature =~	
                         /^
                             ($number_pos)(?:\()?($sigma)?
-                            (?:\))?(?:[-_\s]*)$temp_K$
+                            (?:\))?(?:[-_\s]*)\(?$temp_K\)?$
                             /x ) {
                         $values->{$tag}[$i] = 
                             CIFTagPrint::pack_precision( $1, $2 );
@@ -175,7 +175,7 @@ for my $filename (@ARGV) {
                     if ( $temperature =~ 
                           /^
                             ($number_pos)(?:\()?($sigma)?
-                            (?:\))?(?:[-_\s]*)$temp_C$
+                            (?:\))?(?:[-_\s]*)\(?$temp_C\)?$
                             /x ) {
                         $values->{$tag}[$i] = 
                             CIFTagPrint::pack_precision( $1 + 273.15, $2 );
