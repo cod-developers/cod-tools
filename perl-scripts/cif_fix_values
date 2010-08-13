@@ -107,14 +107,14 @@ for my $filename (@ARGV) {
         my $temp_K  = 
             '((?i:K(?i:elvin?)?)|(?i:K))';
         my $temp_C  = 
-            '((?i:C|Deg\.?(?:rees?)?)|' .
-            '(?:(?:\\\/o)|(?i:O)|(?:\\\%))\s*(?i:C)?)';
+            '( (?i:C) | (?i:Deg\.?(?:rees?)?\s*[Cc]?) |' .
+            '(?:(?i:[\\\/]+o)|(?i:O)|(?:\\\%))\s*(?i:C)?)';
         my $temp_RT = 
             '(?:(?:(?:(?i:room)|(?i:amb(?i:i[ae]nte?)))' .
             '\s*(?i:temp(?:erature)?)?)|(?i:rt))'; 
         my $temp_undef = 
             '(?:(?i:yes)|(?i:no(?i:ne)?)|(?i:unknown)|' .
-            '(?i:not\s*((?i:measured)|(?i:determined)))|' .
+            '(?i:not\s*((?i:measured)|(?i:determined)|(?i:recorded)))|' .
             '(?i:N\/(?i:[DA])))';
         my $sigma = '(?:\d+\.\d+|\d+\.|\.\d+|\d+)';
         
@@ -132,9 +132,24 @@ for my $filename (@ARGV) {
                         next;    
                     }
                     if( $temperature =~ 
+                            /^
+                                \(?($number_pos)\s*\+\s*
+                                273(?:[\.\,]\d+)?\)?$
+                                /x ) {
+                        $values->{$tag}[$i] = $1 + 273.15;
+                        my $new_val = $values->{$tag}[$i];
+                        my $report_msg = 
+                            "$tag value '$temperature' changed to " .
+                            "'$new_val'- converted between degrees " . 
+                            "Celsius(C) and Kelvins(K).";
+                        push (@insert_reports, $report_msg);
+                        print STDERR "$0: $filename: NOTE, $report_msg\n";
+                        next;    
+                    }
+                    if( $temperature =~ 
                         /^  
-                            ($number_pos)\s*(?:\()?[\s]*(?:\+|\+\/\-)?[\s]*
-                            ($sigma)(?:\))?$
+                            ($number_pos)\s*(?:\()?[\s]*(?:\+|\+\/?\-)?
+                            [\s]*($sigma)(?:\))?$
                             /x ) {
                         $values->{$tag}[$i] = 
                             CIFTagPrint::pack_precision( $1, $2 );
@@ -253,7 +268,7 @@ for my $filename (@ARGV) {
                     }
                     if( $temperature =~ 
                         /^
-                            ($number_pos)\s*[\-\/]+\s*($number_pos)
+                            ($number_pos)\s*[\-\/\:]+\s*($number_pos)
                             (?:[-_\s]*)(?:$temp_C)$
                             /x )   {
                         if( $2 > $1 )   {        
