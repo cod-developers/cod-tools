@@ -183,10 +183,16 @@ for my $file (@ARGV) {
 	my $formula = $structures{$id}{chemical_formula_sum};
 	my $cell_contents = $structures{$id}{cell_contents};
 
-	$formula = '?' unless defined $formula || defined $cell_contents;
+        my $final_formula;
+        if( defined $formula ) {
+            $final_formula = $formula;
+        } elsif( defined $cell_contents ) {
+            $final_formula = $cell_contents;            
+        } else {
+            $final_formula = '?';
+        }
 
-	my $final_formula = $formula;
-	$final_formula =~ s/\s/_/g;
+        $final_formula =~ s/\s/_/g;
 
         my %structures_found = ();
 
@@ -199,7 +205,7 @@ for my $file (@ARGV) {
 	    }
 	}
 	if( defined $cell_contents && defined $COD{$cell_contents} &&
-	    $formula ne $cell_contents ) {
+	    ( !defined $formula || $formula ne $cell_contents )) {
 	    ## print ">>> formula: '$formula', contents: '$cell_contents'\n";
 	    for my $COD_entry (@{$COD{$cell_contents}}) {
 		if( entries_are_the_same( $structures{$id}, $COD_entry )) {
