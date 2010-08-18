@@ -108,8 +108,8 @@ for my $filename (@ARGV) {
         my $temp_K  = 
             '((?i:K(?i:elvin?)?)|(?i:K))';
         my $temp_C  = 
-            '( (?i:C) | (?i:Deg\.?(?:rees?)?\s*[Cc]?) |' .
-            '(?:(?i:[\\\/]+o)|(?i:O)|(?:\\\%))(?:[-_\s]*)(?i:C\.?)?)';
+            '((?i:C)|(?i:Deg\.?(?:rees?)?\s*[Cc]?)|' .
+            '(?:(?:(?i:[\\\/]+o)|(?i:O)|(?:[\\\/]*\%))(?:[-_\s]*)(?i:C\.?)?))';
         my $temp_RT = 
             '(?:(?:(?:(?i:room)|(?i:amb(?i:i[ae]nte?)))' .
             '\s*(?i:temp(?:erature)?)?)|(?i:rt))'; 
@@ -118,6 +118,9 @@ for my $filename (@ARGV) {
             '(?i:not\s*((?i:measured)|(?i:determined)|(?i:recorded)))|' .
             '(?i:N\/?(?i:[DA]))|\s*|[-])';
         my $sigma = '(?:\d+\.\d+|\d+\.|\.\d+|\d+)';
+        my $temp_dec = 
+            '(?i: d\.?(?i:ec\.?)?' .
+            '(?i:omp\.?)?(?i:os(?i:e[Dd]?|ition))?)';
         
         for my $tag (@temp_tags) {
             if( exists $values->{$tag} ) {
@@ -132,6 +135,44 @@ for my $filename (@ARGV) {
                             /^($number_pos|$number_pos\(\d+\))$/ ) {
                         next;    
                     }
+                    if( $temperature =~ 
+                            /^ ($number_pos)(?:[-_\s]*)(?:$temp_K)?
+                               (?:[-_,\s]*)\(?($temp_dec)\)?$
+                                /x )  {
+                        my $old_tag = $tag;
+                        my $new_tag = '_chemical_temperature_decomposition';
+                        $values->{$tag}[$i] = $1;
+                        my $new_val = $values->{$tag}[$i];
+                        CIFTagManage::rename_tag
+                                    ( $dataset, $old_tag, $new_tag );
+                        my $report_msg = 
+                            "'$old_tag' tag changed to '$new_tag' " .
+                            "since the value is given as '$temperature'.";
+                        push (@insert_reports, $report_msg);
+                        print STDERR "$0: $filename: NOTE, $report_msg\n";
+                        next;
+                    }
+###
+                    if( $temperature =~ 
+                            /^ ($number_pos)(?:[-_\s]*)(?:$temp_C)
+                               (?:[-_,\s]*)\(?$temp_dec\)?$
+                                /x )  {
+                        my $old_tag = $tag;
+                        my $new_tag = '_chemical_temperature_decomposition';
+                        $values->{$tag}[$i] = $1 + 273.15;
+                        my $new_val = $values->{$tag}[$i];
+                        CIFTagManage::rename_tag
+                                    ( $dataset, $old_tag, $new_tag );
+                        my $report_msg = 
+                            "'$old_tag' tag changed to '$new_tag' " .
+                            "since the value '$temperature' is specified " .
+                            "as 'solid decomposition' temperature." .
+                            "Convert value fro C to K";
+                        push (@insert_reports, $report_msg);
+                        print STDERR "$0: $filename: NOTE, $report_msg\n";
+                        next;
+                    }    
+###
                     if( $temperature =~ 
                             /^
                                 \(?($number_pos)\s*\+\s*
