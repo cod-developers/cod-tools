@@ -195,8 +195,8 @@ for my $filename (@ARGV) {
                                 print STDERR "$0: $filename: NOTE, $report_msg\n";
                                 next;
                             }
-                        next;
                         }
+                        next;
                     }
                     if( $temperature =~ 
                           /^
@@ -246,8 +246,8 @@ for my $filename (@ARGV) {
                                 print STDERR "$0: $filename: NOTE, $report_msg\n";
                                 next;
                             }
-                        next;
                         }
+                        next;
                     }
                     if( $temperature =~ 
                         /^  
@@ -344,38 +344,44 @@ for my $filename (@ARGV) {
                     if( $temperature =~ 
                         /^
                             ($number_pos)\s*[\-\/\:]+\s*($number_pos)
-                            (?:[-_\s]*)($temp_C)?$
+                            (?:[-_\s]*)(?:$temp_C)$
                             /x )   {
-                        my $units = $3;
                         my $number = ($1 + $2)/2;
                         my $sig = ($2 - $1 )/2;
                         if( $2 > $1 )   {
-                            if( defined $units ) {
-                                $values->{$tag}[$i] = 
-                                  CIFTagPrint::pack_precision
-                                    ( $number+273.15 , $sig );
-                                my $new_val = $values->{$tag}[$i];
-                                my $report_msg = 
-                                  "$tag value '$temperature' changed to " .
-                                  "'$new_val' - converted between degrees " .
-                                  "Celsius(C) and Kelvins(K), took " .
-                                  "average value and fixed precision.";
-                                push (@insert_reports, $report_msg);
-                                print STDERR "$0: $filename: NOTE, $report_msg\n";
-                                next;
-                            } else { 
-                                $values->{$tag}[$i] = 
+                            $values->{$tag}[$i] = 
+                              CIFTagPrint::pack_precision
+                                ( $number+273.15 , $sig );
+                            my $new_val = $values->{$tag}[$i];
+                            my $report_msg = 
+                              "$tag value '$temperature' changed to " .
+                              "'$new_val' - converted between degrees " .
+                              "Celsius(C) and Kelvins(K), took " .
+                              "average value and fixed precision.";
+                            push (@insert_reports, $report_msg);
+                            print STDERR "$0: $filename: NOTE, $report_msg\n";
+                            next;
+                         } 
+                     }
+                     if( $temperature =~ 
+                        /^
+                            ($number_pos)\s*[\-\/\:]+\s*($number_pos)
+                            (?:[-_\s]*)(?:$temp_K)?
+                            /x )   {
+                        my $number = ($1 + $2)/2;
+                        my $sig = ($2 - $1 )/2;
+                        if( $2 > $1 )   {
+                            $values->{$tag}[$i] = 
                                   CIFTagPrint::pack_precision
                                     ( $number , $sig );
-                                my $new_val = $values->{$tag}[$i];
-                                my $report_msg = 
-                                  "$tag value '$temperature' changed to " .
-                                  "'$new_val' - took average value " .
-                                  "and fixed precision.";
-                                push (@insert_reports, $report_msg);
-                                print STDERR "$0: $filename: NOTE, $report_msg\n";
-                              next;
-                              } 
+                            my $new_val = $values->{$tag}[$i];
+                            my $report_msg = 
+                                "$tag value '$temperature' changed to " .
+                                "'$new_val' - took average value " .
+                                "and fixed precision.";
+                            push (@insert_reports, $report_msg);
+                            print STDERR "$0: $filename: NOTE, $report_msg\n";
+                        next;
                         }
                     }
                     if( $temperature !~ 
