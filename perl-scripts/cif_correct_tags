@@ -34,6 +34,7 @@ my $replacement_list;
     "--help,--usage"   => sub { SUsage::usage; exit },
     "--replacement-list" => \$replacement_list,
 );
+
 sub insert_report_to_comments {
     my ($dataset, $insert_reports) = @_;
     if ( @$insert_reports > 0 ) {
@@ -45,13 +46,11 @@ sub insert_report_to_comments {
             $values->{$comments_tag}[0] = (
                 $values->{$comments_tag}[0] . "\n\n" . 
                 join( "\n", map { "" . $_ }
-                    CIFTagPrint::fold( 70, " +", " ", $reports_value ))
-            );
+                    CIFTagPrint::fold( 70, " +", " ", $reports_value )) );
         } else {
             $values->{$comments_tag}[0] = ( 
                 "\n" . join( "\n", map { "" . $_ }
-                    CIFTagPrint::fold( 70, " +", " ", $reports_value )) 
-            );
+                    CIFTagPrint::fold( 70, " +", " ", $reports_value )) );
           }
         my $signature = $Id;
         $signature =~ s/^\$|\$$//g;
@@ -86,42 +85,46 @@ for my $filename (@ARGV) {
 
     if( defined $parser->YYData->{ERRCOUNT} &&
         $parser->YYData->{ERRCOUNT} > 0 ) {
-	print STDERR "$0: $filename: ",
-	$parser->YYData->{ERRCOUNT},
-	" error(s) encountered while parsing CIF data\n";
-	exit -1;
+            print STDERR "$0: $filename: ",
+            $parser->YYData->{ERRCOUNT},
+            " error(s) encountered while parsing CIF data\n";
+            exit -1;
     }
 
     canonicalize_all_names( $data );
 
     for my $dataset (@$data) {
 
-	my $tags = $dataset->{tags};
-	my $values = $dataset->{values};
+        my $tags = $dataset->{tags};
+        my $values = $dataset->{values};
 
-	for my $tag (@$tags) {
-	    if( exists $tag_spelling{$tag} ) {
-		my $correct = $tag_spelling{$tag};
-		if( !exists $values->{$correct} ) {
-		    CIFTagManage::rename_tag( $dataset, $tag, $correct );
+        for my $tag (@$tags) {
+            if( exists $tag_spelling{$tag} ) {
+                my $old_tag = $tag;
+                my $correct = $tag_spelling{$tag};
+                if( !exists $values->{$correct} ) {
+                    CIFTagManage::rename_tag( $dataset, $tag, $correct );
+                    my $report_msg = 
+                    "'$old_tag' tag replaced with '$correct'.";
+                    push (@insert_reports, $report_msg);
+                    print STDERR "$0: $filename: NOTE, $report_msg\n";
+                }
+            }
+            if( $tag =~ /^_+(_[^_].*)$/ ) {
+                my $old_tag = $tag;
+                my $correct = $1;
+                if( exists $dictionary_tags{$correct} &&
+                    !exists $values->{$correct} ) {
+                    CIFTagManage::rename_tag( $dataset, $tag, $correct );
+                    my $report_msg = 
+                    "'$old_tag' tag replaced with '$correct'.";
+                    push (@insert_reports, $report_msg);
+                    print STDERR "$0: $filename: NOTE, $report_msg\n";
+                }
+            }
         }
-	    }
-	    if( $tag =~ /^_+(_[^_].*)$/ ) {
-		my $old_tag = $tag;
-        my $correct = $1;
-		if( exists $dictionary_tags{$correct} &&
-		    !exists $values->{$correct} ) {
-		    CIFTagManage::rename_tag( $dataset, $tag, $correct );
-        my $report_msg = 
-            "'$old_tag' tag replaced with '$correct' - " .
-            "according to the CIF format specification.";
-            push (@insert_reports, $report_msg);
-            print STDERR "$0: $filename: NOTE, $report_msg\n";
-        }
-	    }
-	}
-    insert_report_to_comments ($dataset,\@insert_reports);
-	print_cif( $dataset, {
+        insert_report_to_comments ($dataset,\@insert_reports);
+        print_cif( $dataset, {
 	    exclude_misspelled_tags => 0,
 	    preserve_loop_order => 1,
 	    fold_long_fields => 0,
