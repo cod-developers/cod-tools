@@ -77,8 +77,9 @@ my $folding_width = 76;
 my $parse_formula_sum = 0;
 my $fix_errors = 0;
 my $use_datablocks_without_coord = 0;
-my $update_database_code = 1; # Specifies whether to update _cod_database_code tag
-                              # value upon renumbering.
+my $update_database_code = 1; # Specifies whether to update
+                              # _cod_database_code tag value upon
+                              # renumbering.
 
 my $extra_tag_file;
 my $original_filename;
@@ -204,6 +205,9 @@ my %spacegroups = map {
 #**
 
 @ARGV = getOptions( 
+    "-a,--authors"      => sub{ $user_biblio = 1;
+                                @authors = split( /(?:,|;|:)\s*/,
+                                                  get_value()) },
     "-j,--journal"      => sub{ $user_biblio = 1; $journal = get_value() },
     "-v,--volume"       => sub{ $user_biblio = 1; $volume = get_value() },
     "-i,--issue"        => sub{ $user_biblio = 1; $issue = get_value() },
@@ -229,9 +233,12 @@ my %spacegroups = map {
     "--dont-exclude-misspelled-tags" => sub { $exclude_misspelled_tags = 0; },
     "--no-exclude-misspelled-tags"   => sub { $exclude_misspelled_tags = 0; },
 
-    "--keep-unrecognised-spacegroups"      => sub { $keep_unrecognised_spacegroups = 1; },
-    "--dont-keep-unrecognised-spacegroups" => sub { $keep_unrecognised_spacegroups = 0; },
-    "--no-keep-unrecognised-spacegroups"   => sub { $keep_unrecognised_spacegroups = 0; },
+    "--keep-unrecognised-spacegroups"
+        => sub { $keep_unrecognised_spacegroups = 1; },
+    "--dont-keep-unrecognised-spacegroups"
+        => sub { $keep_unrecognised_spacegroups = 0; },
+    "--no-keep-unrecognised-spacegroups"
+        => sub { $keep_unrecognised_spacegroups = 0; },
 
     "--parse-formula-sum"       => sub { $parse_formula_sum = 1; },
     "--dont-parse-formula-sum"  => sub { $parse_formula_sum = 0; },
@@ -604,6 +611,16 @@ for my $filename (@ARGV) {
 	    }
 
 	    do {
+                use Encode 'decode_utf8';
+                ## use encoding 'utf8';
+                @authors = map { s/\n/ /g; s/\s+/ /g; $_ }
+                           map { s/^\s*|\s*$//g; $_ }
+                           map { unicode2cif( $_ ) }
+                           # Insist that the names are well-formed utf8:
+                           map { decode_utf8($_) }
+                           # This does not work, alas:
+                           ## map { pack("U*", unpack("C*", $_ )) }
+                           @authors;
 		$datablok->{_publ_author_name} = [ @authors ];
 		my $tag = "_publ_author_name";
 		if( exists $dataset->{inloop}{$tag} ) {
