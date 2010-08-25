@@ -66,7 +66,6 @@ sub insert_report_to_comments {
     }
 } 
 
-my @insert_reports = ();
 my @dictionary_tags = ( @CIFDictTags::tag_list, @CIFCODTags::tag_list );
 my %dictionary_tags = map { $_, $_ } @dictionary_tags;
 
@@ -87,7 +86,8 @@ for my $filename (@ARGV) {
 
     canonicalize_all_names( $data );
     for my $dataset (@$data) {
-    my $values = $dataset->{values};
+        my @insert_reports = ();
+        my $values = $dataset->{values};
         my @temp_tags =
             ( '_cell_measurement_temperature',		
               '_chemical_temperature_decomposition',		
