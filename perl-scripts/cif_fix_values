@@ -29,7 +29,8 @@ use CIFTagManage;
 use SOptions;
 use SUsage;
 
-my $Id = '$Id$';
+my $Id = 'Automatic conversion script $Id:' . "\n" .
+         'cif_fix_values 1364 2010-08-26 09:26:26Z adriana $';
 my $keep_tag_order = 0;
 
 @ARGV = getOptions(
@@ -348,8 +349,9 @@ for my $filename (@ARGV) {
                     } 
                     if ( $temperature =~ 
                           /^
-                            ($number_pos)(?:\()?($sigma)?
-                            (?:\))?(?:[-_\s]*)\(?$temp_C\)?$
+                            ($number_pos)\(?($sigma)?
+                            \)?(?:[-,_\s]*)\(?$temp_C\)?
+                            (?:[-_,\s]*)$
                             /x ) {
                         $values->{$tag}[$i] = 
                             CIFTagPrint::pack_precision( $1 + 273.15, $2 );
