@@ -66,6 +66,7 @@ sub insert_report_to_comments {
     }
 } 
 
+my @insert_reports = ();
 my @dictionary_tags = ( @CIFDictTags::tag_list, @CIFCODTags::tag_list );
 my %dictionary_tags = map { $_, $_ } @dictionary_tags;
 
@@ -86,8 +87,7 @@ for my $filename (@ARGV) {
 
     canonicalize_all_names( $data );
     for my $dataset (@$data) {
-        my @insert_reports = ();
-        my $values = $dataset->{values};
+    my $values = $dataset->{values};
         my @temp_tags =
             ( '_cell_measurement_temperature',		
               '_chemical_temperature_decomposition',		
@@ -104,9 +104,9 @@ for my $filename (@ARGV) {
             '(?:\d+(?:\.\d*)?|\.\d+)' .
             '(?:[eE][-+]?\d+)?)';
         my $temp_K  = 
-            '((?i:K(?i:elvin?)?)|(?i:K))';
+            '(?:(?i:K(?i:elvin?)?)|(?i:K))';
         my $temp_C  = 
-            '((?i:C)|(?i:Deg\.?(?:rees?)?\s*[Cc]?)|' .
+            '(?:(?i:C)|(?i:Deg\.?(?:rees?)?\s*[Cc]?)|' .
             '(?:(?:(?i:[\\\/]+o)|(?i:O)|(?:[\\\/]*\%))' . 
             '(?:[-_\s]*)(?i:C\.?)?)|' .
             '(?i:(?i:degrees?)?(?:[-_\s]*)centigrades?))';
@@ -115,7 +115,7 @@ for my $filename (@ARGV) {
             '\s*(?i:temp(?:erature)?)?)|(?i:rt))'; 
         my $temp_undef = 
             '(?:(?i:yes)|(?i:no(?i:ne)?)|(?i:unknown)|' .
-            '(?i:not\s*((?i:measured)|(?i:determined)|(?i:recorded)))|' .
+            '(?i:not\s*(?:(?i:measured)|(?i:determined)|(?i:recorded)))|' .
             '(?i:N\/?(?i:[DA]))|\s*|[-])';
         my $sigma = '(?:\d+\.\d+|\d+\.|\.\d+|\d+)';
         my $temp_dec = 
@@ -136,12 +136,14 @@ for my $filename (@ARGV) {
                         next;    
                     }
                     if( $temperature =~ 
-                            /^ ($number_pos)(?:[-_\s]*)(?:$temp_K)?
-                               (?:[-_,\s]*)\(?($temp_dec)\)?$
+                            /^ \(?$temp_dec\)?(?:[-_,\s]*)
+                                ($number_pos)\(?($sigma)?\)?
+                                (?:[-_\s]*)$temp_K?$
                                 /x )  {
                         my $old_tag = $tag;
                         my $new_tag = '_chemical_temperature_decomposition';
-                        $values->{$tag}[$i] = $1;
+                        $values->{$tag}[$i] = 
+                            CIFTagPrint::pack_precision( $1 , $2 );
                         my $new_val = $values->{$tag}[$i];
                         CIFTagManage::rename_tag
                                     ( $dataset, $old_tag, $new_tag );
@@ -153,10 +155,29 @@ for my $filename (@ARGV) {
                         next;
                     }
                     if( $temperature =~ 
-                            /^
-                                \(?($number_pos)\s*\+\s*
-                                273(?:[\.\,]\d+)?\)?$
-                                /x ) {
+                            /^ ($number_pos)\(?($sigma)?\)?
+                               (?:[-_\s]*)(?:$temp_K)?
+                               (?:[-_,\s]*)\(?($temp_dec)\)?$
+                               /x )  {
+                        my $old_tag = $tag;
+                        my $new_tag = '_chemical_temperature_decomposition';
+                        $values->{$tag}[$i] = 
+                            CIFTagPrint::pack_precision( $1 , $2 );
+                        my $new_val = $values->{$tag}[$i];
+                        CIFTagManage::rename_tag
+                            ( $dataset, $old_tag, $new_tag );
+                        my $report_msg = 
+                            "'$old_tag' tag changed to '$new_tag' " .
+                            "since the value is given as '$temperature'.";
+                        push (@insert_reports, $report_msg);
+                        print STDERR "$0: $filename: NOTE, $report_msg\n";
+                        next;
+                    }
+                    if( $temperature =~ 
+                            /^  
+                              \(?($number_pos)\s*\+\s*
+                              273(?:[\.\,]\d+)?\)?$
+                              /x ) {
                         $values->{$tag}[$i] = $1 + 273.15;
                         my $new_val = $values->{$tag}[$i];
                         my $report_msg = 
@@ -170,7 +191,7 @@ for my $filename (@ARGV) {
                     if( $temperature =~ 
                           /^
                             (\>|\<)(?:[-_\s]*)($number_pos)\(?($sigma)?\)?
-                            (?:[-_\s]*)(?:$temp_C)$
+                            (?:[-_\'\s]*)(?:$temp_C)$
                             /x ) {
                         my $sign = $1;
                         my $number = $2;
@@ -189,7 +210,7 @@ for my $filename (@ARGV) {
                                     "'$old_tag' tag changed to '$new_tag' " .
                                     "since the value specified 'more than' " .
                                     "('>') a certain temperature. Value " .
-                                    "'$temperature' changed to '$new_val - " .
+                                    "'$temperature' changed to '$new_val' - " .
                                     "converted between degrees " .
                                     "Celsius(C) and Kelvins(K).";
                                   push (@insert_reports, $report_msg);
@@ -208,7 +229,7 @@ for my $filename (@ARGV) {
                                     "'$old_tag' tag changed to '$new_tag' " .
                                     "since the value specified 'less than' " .
                                     "('<') a certain temperature. Value " .
-                                    "'$temperature' changed to '$new_val - " .
+                                    "'$temperature' changed to '$new_val' - " .
                                     "converted between degrees " .
                                     "Celsius(C) and Kelvins(K).";
                                 push (@insert_reports, $report_msg);
@@ -384,24 +405,47 @@ for my $filename (@ARGV) {
                          } 
                      }
                     if( $temperature =~ 
-                        /^
-                            ($number_pos)\s*[\-\/\:]+\s*($number_pos)
-                            (?:[-_\s]*)\(?(?:$temp_K)?\)?$
-                            /x )   {
+                        /^ ($number_pos)\s*[\-\/\:]+\s*($number_pos)
+                            (?:[-_\s]*)\(?(?:$temp_K)?\)?
+                            (?:[-_,\s]*)\(?($temp_dec)?\)?
+                            /x ) {
+                        my $temp_d = $3;
                         my $number = ($1 + $2)/2;
-                        my $sig = ($2 - $1 )/2;
-                        if( $2 > $1 )   {
-                            $values->{$tag}[$i] = 
-                                  CIFTagPrint::pack_precision
-                                    ( $number , $sig );
-                            my $new_val = $values->{$tag}[$i];
-                            my $report_msg = 
-                                "$tag value '$temperature' changed to " .
-                                "'$new_val' - took average value " .
-                                "and fixed precision.";
-                            push (@insert_reports, $report_msg);
-                            print STDERR "$0: $filename: NOTE, $report_msg\n";
-                        next;
+                        my $sig = ($2 - $1)/2;
+                        if( $2 > $1 ) {
+                            if( defined $temp_d ) {
+                                my $old_tag = $tag;
+                                my $new_tag = 
+                                    '_chemical_temperature_decomposition';
+                                CIFTagManage::rename_tag
+                                  ( $dataset, $old_tag, $new_tag );
+                                $values->{$tag}[$i] = 
+                                    CIFTagPrint::pack_precision
+                                        ( $number , $sig );
+                                my $new_val = $values->{$tag}[$i];
+                                my $report_msg = 
+                                    "'$old_tag' tag changed to '$new_tag' " .
+                                    "since the value is given as " .
+                                    "'$temperature'. " .
+                                    "Temperature value changed to " .
+                                    "'$new_val' - took average value " .
+                                    "and fixed precision.";
+                                push (@insert_reports, $report_msg);
+                                print STDERR "$0: $filename: NOTE, $report_msg\n";
+                                next;
+                            }else {
+                                $values->{$tag}[$i] = 
+                                    CIFTagPrint::pack_precision
+                                        ( $number , $sig );
+                                my $new_val = $values->{$tag}[$i];
+                                my $report_msg = 
+                                    "$tag value '$temperature' changed to " .
+                                    "'$new_val' - took average value " .
+                                    "and fixed precision.";
+                                push (@insert_reports, $report_msg);
+                                print STDERR "$0: $filename: NOTE, $report_msg\n";
+                                next;
+                            }
                         }
                     }
                     if( $temperature =~ 
@@ -421,7 +465,7 @@ for my $filename (@ARGV) {
                         my $report_msg = 
                             "'$old_tag' tag changed to '$new_tag' " .
                             "since the value is given as '$temperature'. " .
-                            "Value changed to '$new_val - " .
+                            "Value changed to '$new_val' - " .
                             "converted between degrees Celsius(C) " .
                             "and Kelvins(K).";
                         push (@insert_reports, $report_msg);
@@ -443,14 +487,14 @@ for my $filename (@ARGV) {
                 } 
             }
         }
-        insert_report_to_comments ($dataset,\@insert_reports);  
+        insert_report_to_comments( $dataset, \@insert_reports );  
         print_cif( $dataset, {
-	    exclude_misspelled_tags => 0,
-	    preserve_loop_order => 1,
-	    fold_long_fields => 0,
-	    dictionary_tags => \%dictionary_tags,
-	    dictionary_tag_list => \@dictionary_tags,
-	    keep_tag_order => $keep_tag_order,
+            exclude_misspelled_tags => 0,
+            preserve_loop_order => 1,
+            fold_long_fields => 0,
+            dictionary_tags => \%dictionary_tags,
+            dictionary_tag_list => \@dictionary_tags,
+            keep_tag_order => $keep_tag_order,
         });
     }
 }
