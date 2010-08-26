@@ -69,7 +69,8 @@ sub print_cif
 
     for my $tag (@tags_to_print) {
 	if( defined $datablok->{$tag} ) {
-	    if( !exists $dataset->{inloop}{$tag} ) {
+	    if( exists $dictionary_tags{$tag} &&
+                !exists $dataset->{inloop}{$tag} ) {
 		print_tag( $tag, $datablok,
 			   $fold_long_fields, $folding_width );
 	    } elsif( $tag eq "_publ_author_name" ) {
