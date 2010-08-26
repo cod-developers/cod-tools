@@ -11,6 +11,11 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #*
 #  Parse a CIF file and print out essential data values in the CIF
 #  format, the COD CIF style.
+#
+#  This script has also many capabilities -- it can restore spacegroup
+#  symbols from symmetry operators (consulting pre-defined tables),
+#  parse and tidy-up _chemical_formula_sum, compute cell volume,
+#  exclude unknown or "empty" tags, and add specified bibliography data.
 #**
 
 use strict;
@@ -62,6 +67,9 @@ sub merge_new_tag_values($$$);
 
 my $user_biblio = 0;
 my $leave_biblio = 0;
+my $global_priority = 0; # if set to says that bibliography in
+                         # 'data_global' has priority over
+                         # bibliography in each other datablock.
 my $estimate_spacegroup = 0;
 my $exclude_empty_tags = 0;
 my $preserve_tag_order = 0;
@@ -216,6 +224,9 @@ my %spacegroups = map {
     "-e,--end-page"     => sub{ $user_biblio = 1; $end_page = get_value() },
     "-y,--year"         => sub{ $user_biblio = 1; $year = get_value() },
     "-B,--bibliography" => \$biblio,
+
+    "-g,--global-priority"     => sub { $global_priority = 1 },
+    "-g-,--no-global-priority" => sub { $global_priority = 0 },
 
     "-h,--add-cif-header" => \$cif_header_file,
 
@@ -1027,7 +1038,11 @@ sub merge_new_tag_values($$$)
 
     for my $key (@{$tag_list}) {
 	if( defined $src->{values}{$key}
-	    && !exists $dst->{values}{$key} ) {
+	    && (!exists $dst->{values}{$key} || $global_priority )) {
+
+            if( exists $dst->{values}{$key} ) {
+                exclude_tag( $dst, $key );
+            }
 
 	    $dst->{values}{$key} = $src->{values}{$key};
 	    push( @{$dst->{tags}}, $key );
