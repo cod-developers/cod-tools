@@ -347,26 +347,6 @@ for my $filename (@ARGV) {
                             "$0: $filename: NOTE, $report_msg\n";
                         next;
                     } 
-                    if ( $temperature =~ 
-                          /^
-                            ($number_pos)\(?($sigma)?
-                            \)?(?:[-,_\s]*)\(?$temp_C\)?
-                            (?:[-_,\s]*)$
-                            /x ) {
-                        $values->{$tag}[$i] = 
-                            CIFTagPrint::pack_precision( $1 + 273.15, $2 );
-                        my $new_val = $values->{$tag}[$i];
-                        my $report_msg = 
-                            "$tag value '$temperature' changed to ". 
-                            "'$new_val' - converted between degrees " .
-                            "Celsius(C) and Kelvins(K), value should be" .
-                            " numeric, permitted range [0.0;+inf] given" .
-                            "in Kelvins(K) without temperature units.";
-                        push (@insert_reports, $report_msg);
-                        print STDERR 
-                            "$0: $filename: NOTE, $report_msg\n";
-                        next;
-                    }
                     if( $temperature =~	
                           /^
                             ($number_neg)(?:\()?($sigma)?
@@ -384,13 +364,13 @@ for my $filename (@ARGV) {
                             "without temperature units.";
                         push (@insert_reports, $report_msg);
                         print STDERR 
-                            "$0: $filename: NOTE, $report_msg\n";
+                           "$0: $filename: NOTE, $report_msg\n";
                         next;				
-                    }
-                    if( $temperature =~ 
+                   }
+                   if( $temperature =~ 
                         /^
-                            ($temp_RT)(?:[-_\s]*)$
-                            /x ) {
+                          ($temp_RT)(?:[-_\s]*)$
+                          /x ) {
                         $values->{$tag}[$i] = "295(2)";
                         my $report_msg = 
                             "$tag value '$temperature' changed to " .
@@ -484,30 +464,47 @@ for my $filename (@ARGV) {
                         }
                     }
                     if( $temperature =~ 
-                            /^ (?:$temp_dec)?(?:[-_,\s]*)
+                            /^ ($temp_dec)?(?:[-_,\s]*)
                                ($number_pos)\(?($sigma)?\)?
                                (?:[-_\s]*)(?:$temp_C)
-                               (?:[-_,\s]*)\(?$temp_dec?\)?$
+                               (?:[-_,\s]*)\(?($temp_dec)?\)?$
                                 /x )  {
-                        my $old_tag = $tag;
-                        my $new_tag = 
-                            '_chemical_temperature_decomposition';
-                        $values->{$tag}[$i] = 
-                            CIFTagPrint::pack_precision
-                                ($1 + 273.15, $2);
-                        my $new_val = $values->{$tag}[$i];
-                        CIFTagManage::rename_tag
-                            ( $dataset, $old_tag, $new_tag );
-                        my $report_msg = 
-                            "'$old_tag' tag changed to '$new_tag' " .
-                            "since the value is given as '$temperature'. " .
-                            "Value changed to '$new_val' - " .
-                            "converted between degrees Celsius(C) " .
-                            "and Kelvins(K).";
-                        push (@insert_reports, $report_msg);
-                        print STDERR 
-                            "$0: $filename: NOTE, $report_msg\n";
-                        next;
+                        if( defined $1 | defined $4) {
+                            my $old_tag = $tag;
+                            my $new_tag = 
+                              '_chemical_temperature_decomposition';
+                            $values->{$tag}[$i] = 
+                              CIFTagPrint::pack_precision
+                                  ($2 + 273.15, $3);
+                            my $new_val = $values->{$tag}[$i];
+                            CIFTagManage::rename_tag
+                              ( $dataset, $old_tag, $new_tag );
+                            my $report_msg = 
+                              "'$old_tag' tag changed to '$new_tag' " .
+                              "since the value is given as '$temperature'. " .
+                              "Value changed to '$new_val' - " .
+                              "converted between degrees Celsius(C) " .
+                              "and Kelvins(K).";
+                            push (@insert_reports, $report_msg);
+                            print STDERR 
+                              "$0: $filename: NOTE, $report_msg\n";
+                            next;
+                        } else {
+                            $values->{$tag}[$i] = 
+                            CIFTagPrint::pack_precision( $2 + 273.15, $3 ); 
+                            my $new_val = $values->{$tag}[$i];
+                            my $report_msg = 
+                              "$tag value '$temperature' changed to " .
+                              "'$new_val' - converted between degrees " .
+                              "Celsius(C) and Kelvins(K), value " .
+                              "should be numeric, permitted range " . 
+                              "[0.0;+inf] givenin Kelvins(K) " .
+                              "without temperature units.";
+                           push (@insert_reports, $report_msg);
+                           print STDERR 
+                              "$0: $filename: NOTE, $report_msg\n";
+                           next;
+                          }
                     }
                     if( $temperature !~ 
                         /^
