@@ -52,12 +52,15 @@ sub insert_report_to_comments {
         
         if( exists $values->{$comments_tag} ) {
             $values->{$comments_tag}[0] = (
-                $values->{$comments_tag}[0] . "\n\n" . 
-                join( "\n", map { "" . $_ }
+                $values->{$comments_tag}[0] . "\n\n" .
+                "The following automatic conversions were performed:" . 
+                "\n" . join( "\n", map { "" . $_ }
                     CIFTagPrint::fold( 70, " +", " ", $reports_value ))
             );
         } else {
             $values->{$comments_tag}[0] = ( 
+                "\n" .
+                "The following automatic conversions were performed:" .
                 "\n" . join( "\n", map { "" . $_ }
                     CIFTagPrint::fold( 70, " +", " ", $reports_value )) 
             );
@@ -65,7 +68,7 @@ sub insert_report_to_comments {
         my $signature = $Id;
         $signature =~ s/^\$|\$$//g;
         $values->{$comments_tag}[0] .= 
-            "\n\n" . "Automatic conversion script - " .
+            "\n\n" . "Automatic conversion script" .
             "\n" . $signature;
     }
 } 
