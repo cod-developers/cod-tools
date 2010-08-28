@@ -85,7 +85,8 @@ SHELL_DIFFS   = ${addprefix ${SHELL_OUTDIR}/, ${SHELL_BASES:%.sh=%.diff}}
 #------------------------------------------------------------------------------
 
 define filter_Ids
-perl -pe 's/Id: [-\w]+ \d+ [-\d]+ [:\dZ]+ \w+/Id: <script_name> <revision_nr> <date> <time> <author>/'
+perl -pe 's/Id: [-\w]+ \d+ [-\d]+ [:\dZ]+ \w+/Id: <script_name> <revision_nr> <date> <time> <author>/' \
+| perl -pe 's,at [-\.\/\w\d]+ line \d+\.,at <script_name> line <line_no>.,'
 endef
 
 .PHONY: outputs test
