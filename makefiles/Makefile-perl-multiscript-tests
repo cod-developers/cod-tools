@@ -84,6 +84,10 @@ SHELL_DIFFS   = ${addprefix ${SHELL_OUTDIR}/, ${SHELL_BASES:%.sh=%.diff}}
 
 #------------------------------------------------------------------------------
 
+define filter_Ids
+perl -pe 's/Id: [-\w]+ \d+ [-\d]+ [:\dZ]+ \w+/Id: <script_name> <revision_nr> <date> <time> <author>/'
+endef
+
 .PHONY: outputs test
 
 outputs: ${RES_FILES} ${TST_OUTPUTS} ${SCRIPT_OUTPUTS}
@@ -94,12 +98,16 @@ ${TARGET}: ${YAPP_MODULES}
 
 ${OUTPUT_DIR}/%.diff: ${TARGET} ${TEST_DIR}/%${EXT}
 	-@printf "%-30s " "$*:" ; \
-	./$^ ${TEST_OPTIONS} 2>&1 | diff ${OUTPUT_DIR}/$*.out - > $@ ; \
+	./$^ ${TEST_OPTIONS} 2>&1 \
+	| ${filter_Ids} \
+	| diff ${OUTPUT_DIR}/$*.out - > $@ ; \
 	if [ $$? = 0 ]; then echo "OK"; else echo "FAILED:"; cat $@; fi
 
 ${OUTPUT_DIR}/%.out: ${TARGET} ${TEST_DIR}/%${EXT}
 	-@test -f $@ || echo "$@:"
-	-@test -f $@ || ./$^ ${TEST_OPTIONS} 2>&1 | tee $@
+	-@test -f $@ || ./$^ ${TEST_OPTIONS} 2>&1 \
+	| ${filter_Ids} \
+	| tee $@
 	-@touch $@
 
 # Rules to run script-specific tests
@@ -111,12 +119,14 @@ ${OUTPUT_DIR}/%.diff: ${SCRIPT_TST_DIR}/%${INP} ${SCRIPT_TST_DIR}/%${OPT} \
 	    $(shell grep -v '^#' ${word 2, $^}) \
 	    $< \
 	2>&1 \
+	| ${filter_Ids} \
 	| diff ${OUTPUT_DIR}/$*.out - > $@ ; \
 	if [ $$? = 0 ]; then echo "OK"; else echo "FAILED:"; cat $@; fi
 
 ${OUTPUT_DIR}/%.diff: ${SCRIPT_TST_DIR}/%${INP} ${SCRIPT_FILES} ${YAPP_MODULES}
 	-@printf "%-30s " "$<:" ; \
 	./$(shell echo $* | sed -e 's/_[0-9]*$$//') $< 2>&1 \
+	| ${filter_Ids} \
 	| diff ${OUTPUT_DIR}/$*.out - > $@ ; \
 	if [ $$? = 0 ]; then echo "OK"; else echo "FAILED:"; cat $@; fi
 
@@ -125,6 +135,7 @@ ${OUTPUT_DIR}/%.diff: ${SCRIPT_TST_DIR}/%${OPT} ${SCRIPT_FILES} ${YAPP_MODULES}
 	./$(shell echo $* | sed -e 's/_[0-9]*$$//') \
 	     $(shell grep -v '^#' ${word 1, $^}) \
 	2>&1 \
+	| ${filter_Ids} \
 	| diff ${OUTPUT_DIR}/$*.out - > $@ ; \
 	if [ $$? = 0 ]; then echo "OK"; else echo "FAILED:"; cat $@; fi
 
@@ -135,6 +146,7 @@ ${OUTPUT_DIR}/%.out: ${SCRIPT_TST_DIR}/%${INP} ${SCRIPT_TST_DIR}/%${OPT} ${YAPP_
 	    $(shell grep -v '^#' ${word 2, $^}) \
 	    $< \
 	2>&1 \
+	| ${filter_Ids} \
 	| tee $@
 	-@touch $@
 
@@ -144,6 +156,7 @@ ${OUTPUT_DIR}/%.out: ${SCRIPT_TST_DIR}/%${INP} ${YAPP_MODULES}
 	./$(shell echo $* | sed -e 's/_[0-9]*$$//') \
 	    $< \
 	2>&1 \
+	| ${filter_Ids} \
 	| tee $@
 	-@touch $@
 
@@ -153,6 +166,7 @@ ${OUTPUT_DIR}/%.out: ${SCRIPT_TST_DIR}/%${OPT} ${YAPP_MODULES}
 	./$(shell echo $* | sed -e 's/_[0-9]*$$//') \
 	    $(shell grep -v '^#' ${word 1, $^}) \
 	2>&1 \
+	| ${filter_Ids} \
 	| tee $@
 	-@touch $@
 
@@ -160,12 +174,14 @@ ${OUTPUT_DIR}/%.out: ${SCRIPT_TST_DIR}/%${OPT} ${YAPP_MODULES}
 
 ${TST_OUT_DIR}/%.out: ${TST_EXE_DIR}/% ${YAPP_MODULES}
 	-@test -f $@ || echo "$@:"
-	-@test -f $@ || $< 2>&1 | tee $@
+	-@test -f $@ || $< 2>&1 | ${filter_Ids} | tee $@
 	-@touch $@
 
 ${TST_OUT_DIR}/%.diff: ${TST_EXE_DIR}/% ${YAPP_MODULES}
 	-@printf "%-30s " "$*:" ; \
-	./$< 2>&1 | diff ${TST_OUT_DIR}/$*.out - > $@ ; \
+	./$< 2>&1 \
+	| ${filter_Ids} \
+	| diff ${TST_OUT_DIR}/$*.out - > $@ ; \
 	if [ $$? = 0 ]; then echo "OK"; else echo "FAILED:"; cat $@; fi
 
 .PHONY: shoutpus shout shtests shtest
@@ -176,12 +192,14 @@ shtest shtests: ${SHELL_DIFFS}
 
 ${SHELL_OUTDIR}/%.out: ${SHELL_TSTDIR}/%.sh ${TARGET} ${YAPP_MODULES}
 	-@test -f $@ || echo "$@:"
-	-@test -f $@ || $< ./${TARGET} 2>&1 | tee $@
+	-@test -f $@ || $< ./${TARGET} 2>&1 | ${filter_Ids} | tee $@
 	-@touch $@
 
 ${SHELL_OUTDIR}/%.diff: ${SHELL_TSTDIR}/%.sh ${TARGET} ${YAPP_MODULES}
 	-@printf "%-30s " "$*:" ; \
-	$< ./${TARGET} 2>&1 | diff ${SHELL_OUTDIR}/$*.out - > $@ ; \
+	$< ./${TARGET} 2>&1 \
+	| ${filter_Ids} \
+	| diff ${SHELL_OUTDIR}/$*.out - > $@ ; \
 	if [ $$? = 0 ]; then echo "OK"; else echo "FAILED:"; cat $@; fi
 
 .PHONY: tests alltests
