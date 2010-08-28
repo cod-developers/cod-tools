@@ -57,6 +57,9 @@ sub print_cif
 
     if( $keep_tag_order ) {
 	@tags_to_print = @{$dataset->{tags}};
+	if( !%dictionary_tags ) {
+	    %dictionary_tags = map {($_,$_)} @tags_to_print;
+	}
     } else {
 	@tags_to_print = @dictionary_tags;
     }
