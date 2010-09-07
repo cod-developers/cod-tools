@@ -36,6 +36,10 @@ my $treat_dots_as_underscores = 1;
 #*     -a, --add-tag _tag4
 #*         Add tag _tag4 to the list of printed tags.
 #*
+#*     -f, --file-with-tags tag.lst
+#*         Read tags to be extracted from the file 'tag.lst'. Comments
+#*         (lines starting with '#') in 'tag.lst' are ignored.
+#*
 #*     -c, --clear-tags
 #*         Clear the list of printed tags accumulated so far.
 #*
@@ -52,6 +56,18 @@ my $treat_dots_as_underscores = 1;
     "-t,--tags" => sub { @selected_tags = split( /\s|,/, get_value()) },
     "-a,--add-tag"    => \@selected_tags,
     "-c,--clear-tags" => sub { @selected_tags = () },
+    "-f,--file-with-tags" => sub {
+        my $filename = get_value();
+        open( TAGS, $filename ) or
+            die( "$0: $filename: ERROR, could not open file '$filename' " .
+                 "for reading - $!" );
+        @selected_tags = ( @selected_tags,
+                          map { s/^\s*|\s*$//g; $_ }
+                          grep !/^\#/, <TAGS> );
+        close( TAGS ) or
+            die( "$0: $filename: ERROR, could not close file '$filename' " .
+                 "after reading - $!" );
+    },
 
     "--treat-dots-as-underscores"
         => sub { $treat_dots_as_underscores = 1 },
