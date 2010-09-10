@@ -31,7 +31,7 @@ my $check_authors = 1;
 my $check_chemical_formula_sum = 1;
 my $check_spacegroup_info = 1;
 my $check_symmetry_operators = 1;
-my $check_spacegroup_constraints = 0;
+my $check_spacegroup_constraints = 1;
 
 my $use_precisions = 1;
 
@@ -69,14 +69,21 @@ my $reportFile = '-';
         => sub{ dont_check_any(); $check_spacegroup_info = 1 },
     "--check-symmetry-operators"
         => sub{ dont_check_any(); $check_symmetry_operators = 1 },
-    "--check-constraints-on-unit-cell"
+
+    "--check-constraints-on-unit-cell," .
+    "--check-unit-cell"
         => sub{ dont_check_any(); $check_spacegroup_constraints = 1 },
-    "--check-symmetry"
-        => sub{ dont_check_any(); 
-                $check_spacegroup_info = 1;
-                $check_symmetry_operators = 1;
-                $check_spacegroup_constraints = 1;
-    },
+
+    "--dont-check-constraints-on-unit-cell," .
+    "--do-not-check-constraints-on-unit-cell," .
+    "--no-check-constraints-on-unit-cell," .
+    "--dont-check-unit-cell,--do-not-check-unit-cell," .
+    "--no-check-unit-cell"
+        => sub{ $check_spacegroup_constraints = 0 },
+
+    "--check-symmetry" => sub{ dont_check_any();
+        $check_spacegroup_info = 1; $check_symmetry_operators = 1;
+        $check_spacegroup_constraints = 1; },
 
     "--check-all"
         => \&check_all,
