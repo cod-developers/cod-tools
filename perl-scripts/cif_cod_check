@@ -23,6 +23,7 @@ use Spacegroups::SpacegroupNames;
 use Spacegroups::SymopLookup;
 use File::Basename;
 use SOptions;
+use SUsage;
 
 my $name_syntax_explained = 0;
 
@@ -57,6 +58,43 @@ sub check_all
 
 my $useReporter = 0;
 my $reportFile = '-';
+
+#* USAGE:
+#*    $0 [options] input1.cif [input2.cif ...]
+#*
+#* OPTIONS:
+#* For every --check-xyz option, there are the following corresponding
+#* related options:
+#*
+#*    --check-only-xyz
+#*        Switch off any other checks and check ONLY xyz (the last option on the
+#*        command line wins)
+#*
+#*    --dont-check-xyz, --do-no-check-xyz, no-check-xyz
+#*        Switch off checks of xyz conditions
+#*
+#* The check options are:
+#*
+#*    --check-authors
+#*
+#*    --check-bibliography
+#*
+#*    --check-chemical-formula-sum
+#*
+#*    --check-spacegroup-info
+#*
+#*    --check-operators, --check-symmetry-operators
+#*
+#*    --check-unit-cell
+#*
+#*    --check-symmetry
+#*
+#*    --check-all
+#*
+#*    --check-none, --dont-check-any
+#*
+#*    --help,--usage         Print a short usage message (this message) and exit.
+#**
 
 @ARGV = getOptions(
     "--check-bibliography"
@@ -138,7 +176,9 @@ my $reportFile = '-';
     "--do-not-use-precisions" => sub { $use_precisions = 0 },
     "--ignore-precisions"     => sub { $use_precisions = 0 },
 
-    "--use-reporter" => sub{ $useReporter = 1; $reportFile = get_value() }
+    "--use-reporter" => sub{ $useReporter = 1; $reportFile = get_value() },
+
+    "--help,--usage" => sub { SUsage::usage; exit },
 );
 
 if( $reportFile =~ m/^\s*-\s*$/ || !-w dirname($reportFile) )
