@@ -24,7 +24,9 @@ sub usage
     while( <SCRIPT> ) {
 	if( /^\s*#\*/ .. /^\s*#\*\*/ ) {
 	    /^\s*#\*?\*?/;
-	    print "$'";
+            my $line = "$'";
+            $line =~ s/\$0/$0/g;
+	    print $line;
         }
     }
     close SCRIPT;
