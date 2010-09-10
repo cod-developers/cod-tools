@@ -60,20 +60,38 @@ my $reportFile = '-';
 
 @ARGV = getOptions(
     "--check-bibliography"
-        => sub{ dont_check_any(); $check_bibliography = 1 },
+        => sub{ $check_bibliography = 1 },
+    "--dont-check-bibliography,--no-check-bibliography," .
+    "--do-not-check-bibliography"
+        => sub{ $check_bibliography = 0 },
+
     "--check-authors"
-        => sub{ dont_check_any(); $check_authors = 1 },
+        => sub{ $check_authors = 1 },
+    "--dont-check-authors,--no-check-authors," .
+    "--do-not-check-authors"
+        => sub{ $check_authors = 0 },
+
     "--check-chemical-formula-sum"
-        => sub{ dont_check_any(); $check_chemical_formula_sum = 1 },
+        => sub{ $check_chemical_formula_sum = 1 },
+    "--dont-check-chemical-formula-sum,--no-check-chemical-formula-sum," .
+    "--do-not-check-chemical-formula-sum"
+        => sub{ $check_chemical_formula_sum = 0 },
+
     "--check-spacegroup-info"
-        => sub{ dont_check_any(); $check_spacegroup_info = 1 },
+        => sub{ $check_spacegroup_info = 1 },
+    "--dont-check-spacegroup-info,--no-check-spacegroup-info" .
+    "--do-not-check-spacegroup-info"
+        => sub{ $check_spacegroup_info = 0 },
+
     "--check-symmetry-operators"
-        => sub{ dont_check_any(); $check_symmetry_operators = 1 },
+        => sub{ $check_symmetry_operators = 1 },
+    "--dont-check-symmetry-operators,--no-check-symmetry-operators" .
+    "--do-not-check-symmetry-operators"
+        => sub{ $check_symmetry_operators = 0 },
 
     "--check-constraints-on-unit-cell," .
     "--check-unit-cell"
-        => sub{ dont_check_any(); $check_spacegroup_constraints = 1 },
-
+        => sub{ $check_spacegroup_constraints = 1 },
     "--dont-check-constraints-on-unit-cell," .
     "--do-not-check-constraints-on-unit-cell," .
     "--no-check-constraints-on-unit-cell," .
@@ -81,12 +99,16 @@ my $reportFile = '-';
     "--no-check-unit-cell"
         => sub{ $check_spacegroup_constraints = 0 },
 
-    "--check-symmetry" => sub{ dont_check_any();
+    "--check-symmetry" => sub{
         $check_spacegroup_info = 1; $check_symmetry_operators = 1;
-        $check_spacegroup_constraints = 1; },
+        $check_spacegroup_constraints = 1;
+    },
 
     "--check-all"
         => \&check_all,
+
+    "--check-none,--dont-check-any,--do-not-check-any,--no-check-any"
+        => \&dont_check_any,
 
     "--use-precisions"        => sub { $use_precisions = 1 },
     "--dont-use-precisions"   => sub { $use_precisions = 0 },
