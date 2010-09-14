@@ -653,24 +653,22 @@ sub regularize_cell
     }
 
     # fix unit cell angles:
-    if( eqsig( $cell->[3], $cellsig[3], $cell->[4], $cellsig[4] ) &&
-        eqsig( $cell->[3], $cellsig[3], $cell->[5], $cellsig[5] ) &&
-        eqsig( $cell->[4], $cellsig[4], $cell->[5], $cellsig[5] )) {
-        $regcell[3] = $regcell[4] = $regcell[5] = $cell->[3];
-    } else {
-        $regcell[3] = $cell->[3];
-        $regcell[4] = $cell->[4];
-        $regcell[5] = $cell->[5];
-    }
-
     for my $i (( 3, 4, 5 )) {
-        my $angle = $regcell[$i];
+        my $angle = $cell->[$i];
         my $sigma = $cellsig[$i];
         if( eqsig( $angle, $sigma, 90, 0 )) {
             $regcell[$i] = 90;
         } elsif( eqsig( $angle, $sigma, 120, 0 )) {
             $regcell[$i] = 120;
+        } else {
+            $regcell[$i] = $cell->[$i];
         }
+    }
+
+    if( eqsig( $cell->[3], $cellsig[3], $cell->[4], $cellsig[4] ) &&
+        eqsig( $cell->[3], $cellsig[3], $cell->[5], $cellsig[5] ) &&
+        eqsig( $cell->[4], $cellsig[4], $cell->[5], $cellsig[5] )) {
+        $regcell[4] = $regcell[5] = $regcell[3];
     }
 
     return @regcell;
