@@ -315,8 +315,8 @@ sub symgen_atom($$$)
 
     if( $gp_multiplicity % $multiplicity_ratio ) {
 	die( "Multiplicity ratio $multiplicity_ratio does not divide " .
-	     "multiplicity of a general position $gp_multiplicity" .
-             "-- this can not be." );
+	     "multiplicity of a general position $gp_multiplicity " .
+             "- this should not happen" );
     }
 
     my $multiplicity = $gp_multiplicity / $multiplicity_ratio;
