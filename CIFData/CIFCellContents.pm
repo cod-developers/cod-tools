@@ -32,7 +32,13 @@ require Exporter;
 );
 
 $::format = "%g";
-my $special_position_cutoff = 0.002;
+my $special_position_cutoff = 0.01; # Angstroems
+# Atoms related by symmetry operators that are more distant than the
+# $special_position_cutoff are considered different and not belonging
+# to the same special position. All symmetry equivalent atoms that
+# (after appropriate translations) are closer to the original atom
+# than $special_position_cutoff are considered to be the same atom on
+# a special position.
 
 sub get_cell($$$);
 sub get_symmetry_operators($$);
