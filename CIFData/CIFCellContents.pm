@@ -32,7 +32,7 @@ require Exporter;
 );
 
 $::format = "%g";
-my $special_position_cutoff = 0.001;
+my $special_position_cutoff = 0.002;
 
 sub get_cell($$$);
 sub get_symmetry_operators($$);
