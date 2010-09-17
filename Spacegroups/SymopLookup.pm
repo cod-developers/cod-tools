@@ -15,6 +15,12 @@ require Exporter;
 @SymopLookup::ISA = qw(Exporter);
 @SymopLookup::EXPORT = qw( @table @extra_settings );
 
+# NOTE: some code using this table (cif_cod_check) assumes that
+# rhombohedral spacegroups in hexagonal setting have universal_h_m
+# field maching the pattern /^H|:H$/ (e.g. 'R 3 2 :H' or 'H 3 2'), and
+# for the rhombohedral setting universal_h_m values do not match this
+# pattern.
+
 @SymopLookup::table =
 (
 {

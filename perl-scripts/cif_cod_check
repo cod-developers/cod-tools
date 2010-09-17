@@ -637,42 +637,56 @@ sub eqsig
     return ($x - $y)**2 <= 9 * $sigx**2 + $sigy**2;
 }
 
-sub regularize_cell
+sub regularize_cell($$$$)
 {
-    my ( $cell, $cellsig ) = @_;
+    my ( $cell, $cellsig, $crystal_class, $h_m_symbol ) = @_;
 
     my @regcell = @$cell;
 
     my @cellsig = map { defined $_ ? $_ : 0 } @$cellsig;
 
-    # fix cell lengths:
-    if( eqsig( $cell->[0], $cellsig[0], $cell->[1], $cellsig[1] )) {
-        if( eqsig( $cell->[0], $cellsig[0], $cell->[2], $cellsig[2] ) &&
-            eqsig( $cell->[1], $cellsig[1], $cell->[2], $cellsig[2] )) {
-            $regcell[0] = $regcell[1] = $regcell[2] = $cell->[0];
-        } else {
-            $regcell[0] = $regcell[1] = $cell->[0];
-            $regcell[2] = $cell->[2];
+    # snap cell lengths:
+    if( $crystal_class ne "triclinic" && $crystal_class ne "monoclinic" ) {
+        if( eqsig( $cell->[0], $cellsig[0], $cell->[1], $cellsig[1] )) {
+            if( ( $crystal_class eq "rhombohedral" ||
+                  $crystal_class eq "cubic" ) &&
+                eqsig( $cell->[0], $cellsig[0], $cell->[2], $cellsig[2] ) &&
+                eqsig( $cell->[1], $cellsig[1], $cell->[2], $cellsig[2] )) {
+                $regcell[1] = $regcell[2] = $regcell[0];
+            } else {
+                $regcell[0] = $regcell[1];
+            }
+        } elsif( eqsig( $cell->[0], $cellsig[0], $cell->[2], $cellsig[2] )) {
+                $regcell[0] = $regcell[2];
+        } elsif( eqsig( $cell->[1], $cellsig[1], $cell->[2], $cellsig[2] )) {
+                $regcell[1] = $regcell[2];
         }
     }
 
-    # fix unit cell angles:
+    # snap unit cell angles:
     for my $i (( 3, 4, 5 )) {
         my $angle = $cell->[$i];
         my $sigma = $cellsig[$i];
-        if( eqsig( $angle, $sigma, 90, 0 )) {
+        if( eqsig( $angle, $sigma, 90, 0 ) &&
+            $crystal_class ne "triclinic" &&
+            ( $crystal_class ne "rhombohedral" ||
+              $h_m_symbol =~ /^H|:H$/ )) {
             $regcell[$i] = 90;
-        } elsif( eqsig( $angle, $sigma, 120, 0 )) {
+        } elsif( eqsig( $angle, $sigma, 120, 0 ) &&
+                 (( $crystal_class eq "rhombohedral" &&
+                    $h_m_symbol =~ /^H|:H$/ ) ||
+                  $crystal_class eq "trigonal" ||
+                  $crystal_class eq "hexagonal" )) {
             $regcell[$i] = 120;
-        } else {
-            $regcell[$i] = $cell->[$i];
         }
     }
 
-    if( eqsig( $cell->[3], $cellsig[3], $cell->[4], $cellsig[4] ) &&
-        eqsig( $cell->[3], $cellsig[3], $cell->[5], $cellsig[5] ) &&
-        eqsig( $cell->[4], $cellsig[4], $cell->[5], $cellsig[5] )) {
-        $regcell[4] = $regcell[5] = $regcell[3];
+    if( $crystal_class eq "rhombohedral" && $h_m_symbol !~ /^H|:H$/ ) {
+        if( eqsig( $cell->[3], $cellsig[3], $cell->[4], $cellsig[4] ) &&
+            eqsig( $cell->[3], $cellsig[3], $cell->[5], $cellsig[5] ) &&
+            eqsig( $cell->[4], $cellsig[4], $cell->[5], $cellsig[5] )) {
+            $regcell[4] = $regcell[5] = $regcell[3];
+        }
     }
 
     return @regcell;
@@ -701,6 +715,8 @@ sub check_spacegroup_constraints
     }
 
     my $constraints = $spacegroup_descr->{constraints};
+    my $cryst_class = $spacegroup_descr->{crystal_class};
+    my $h_m_symbol = $spacegroup_descr->{universal_h_m};
     my @cell = get_unit_cell( $dataset, $filename );
     my @cellsig = get_unit_cell_sigmas( $dataset, $filename );
 
@@ -709,10 +725,17 @@ sub check_spacegroup_constraints
 
         if( $use_precisions ) {
             ( $a, $b, $c, $alpha, $beta, $gamma ) =
-                regularize_cell( \@cell, \@cellsig );
+                regularize_cell( \@cell, \@cellsig,
+                                 $cryst_class, $h_m_symbol );
         } else {
             ( $a, $b, $c, $alpha, $beta, $gamma ) = @cell;
         }
+
+        do {
+            local $" = ", ";
+            print ">>> CELL: @cell\n";
+            print ">>> REGULARISED: $a, $b, $c, $alpha, $beta, $gamma\n";
+        } if 0;
 
         if( !eval $constraints ) {
             local $" = " ";
@@ -721,12 +744,13 @@ sub check_spacegroup_constraints
                             "constraints '$constraints'" );
             return $warnings+1;
         }
-        ## else {
-        ##     local $" = " ";
-        ##     print( "$0: $filename  $dataset->{name}: " .
-        ##            "unit cell '$a $b $c $alpha $beta $gamma' IS FINE with " .
-        ##            "constraints '$constraints'!\n" );
-        ## }
+
+        do {
+            local $" = " ";
+            print( "$0: $filename  $dataset->{name}: " .
+                   "unit cell '$a $b $c $alpha $beta $gamma' IS FINE with " .
+                   "constraints '$constraints'!\n" );
+        } if 0;
     };
     return $warnings;
 }
