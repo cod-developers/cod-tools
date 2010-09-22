@@ -28,16 +28,8 @@ use CIFTagManage;
 use SUsage;
 
 my $parser = new CIFParser;
-my $CIFfile = ();
-my $CIFtags;
-my $dictFiles = [];
+my $dictFile;
 my @dictionaries = [];
-my $dictFilesParsed = [];
-my $dictTags = {};
-
-#my $outputFile;
-#my $setOfEnum = [];
-#my $outputOptions = [];
 
 my $Id = '$Id: cif_fix_values 1391 2010-09-07 12:51:13Z saulius $';
 my $keep_tag_order = 0;
@@ -59,6 +51,9 @@ my %dictionary_tags = map { $_, $_ } @dictionary_tags;
 #*        this:
 #*        $0 --add-dictionary cif_core.dic
 #*     --clear-dictionaries
+#*		  You can clear all dictionaries used for checking
+#*		  CIF file, in a way like this:
+#*		  $0 --clear-dictionary
 #*
 #**
 
@@ -68,17 +63,19 @@ my %dictionary_tags = map { $_, $_ } @dictionary_tags;
         "--sort-tags"      
             => sub { $keep_tag_order = 0; },
         "-d,--dictionary"
-            => \$dictFiles,
+            => \$dictFile,
         "-D,--add-dictionaries"
             => \@dictionaries,
         "--clear-dictionaries"
             => sub{ @dictionaries = () },
 );
 
-@ARGV = ("-") unless @ARGV;
-for my $dict_name (@ARGV) {
+#print "$dictFile" . "\n";
+#print "@ARGV" . "\n";
+
+for my $dict_name ($dictFile) {
     my $parser = new CIFParser;
-    my $data = $parser->Run($dict_name);
+    my $dictParsed = $parser->Run($dict_name);
     
     if( defined $parser->YYData->{ERRCOUNT} &&
         $parser->YYData->{ERRCOUNT} > 0 ) {
@@ -88,7 +85,23 @@ for my $dict_name (@ARGV) {
 	## exit -1;
 	next;
     }
-    #ShowStruct::showRef \@$data;
+    ShowStruct::showRef \@$dictParsed;
+}
+
+@ARGV = ("-") unless @ARGV;
+for my $filename (@ARGV) {
+    my $parser = new CIFParser;
+    my $data = $parser->Run($filename);
+    
+    if( defined $parser->YYData->{ERRCOUNT} &&
+        $parser->YYData->{ERRCOUNT} > 0 ) {
+	print STDERR "$0: $filename: ",
+	$parser->YYData->{ERRCOUNT},
+	" error(s) encountered while parsing CIF file\n";
+	## exit -1;
+	next;
+    }
+    ShowStruct::showRef \@$data;
 }      
 
 
