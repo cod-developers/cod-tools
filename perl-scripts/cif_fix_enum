@@ -87,12 +87,17 @@ for my $dict_name ( $dictFile ) {
 			}
 		}
 	}
-	foreach(sort keys %dictTags) {
-		print "$_:\n";
-		foreach( sort @{ $dictTags{$_} } ) {
-			print "    $_\n";
-		}
-	}
+	
+	# Prints in STDOUT CIF tags parsed from specified dictionary
+	# with appropriates (all possible) values.
+	#
+	# foreach(sort keys %dictTags) {
+	#     print "$_:\n";
+	#	  foreach( sort @{ $dictTags{$_} } ) {
+	#		 print "    $_\n";
+	#	 }
+	# }
+	
 	if( defined $parser->YYData->{ERRCOUNT} &&
         $parser->YYData->{ERRCOUNT} > 0 ) {
 		print STDERR "$0: $dict_name: ",
@@ -116,7 +121,17 @@ for my $filename ( @ARGV ) {
 		## exit -1;
 		next;
 	}
-    #ShowStruct::showRef \@$data;
+	
+	canonicalize_all_names( $data );
+    for my $dataset (@$data) {
+		my $values = $dataset->{values};
+		foreach( keys %dictTags ) {
+			if( exists $values->{$_} ) {
+			print "$_\n";
+			}
+		
+		}
+	}
 }
 
 
