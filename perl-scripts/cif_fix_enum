@@ -32,6 +32,7 @@ my $parser = new CIFParser;
 my $dictFile;
 my @dictionaries = [];
 my %dictTags;
+my %tagDicts;
 
 my $Id = '$Id: cif_fix_values 1391 2010-09-07 12:51:13Z saulius $';
 my $keep_tag_order = 0;
@@ -79,17 +80,28 @@ for my $dict_name ( $dictFile ) {
 		my $values_name = $values->{_name};
 		my $values_enum = $values->{_enumeration};
 		if( (defined $values_name) && (defined $values_enum) ) {
-			#ShowStruct::showRef $values_name;
 			my @enums = @$values_enum;
 			my @tag_names = @$values_name;;
 			foreach( @tag_names ) {
-				$dictTags{$_} = \@enums;			
+				$dictTags{$_} = \@enums;
+    			$tagDicts{$_} = $dict_name;
 			}
 		}
 	}
-	
-	# Prints in STDOUT CIF tags parsed from specified dictionary
-	# with appropriates (all possible) values.
+	# FOR CHECK: 
+	#    Prints in STDOUT enumeration value's tag and
+	#	 dictionary name, where it was found.
+	#
+	# foreach( keys %tagDicts ) {
+    #     print "$_:\n";
+	#     foreach( $tagDicts{$_} ) {
+	#	      print "    $_\n";
+	#     }
+	# }
+	#
+	# FOR CHECK:
+	#     Prints in STDOUT CIF tags parsed from specified dictionary
+	#     with appropriates (all possible) values.
 	#
 	# foreach(sort keys %dictTags) {
 	#     print "$_:\n";
@@ -122,16 +134,11 @@ for my $filename ( @ARGV ) {
 		next;
 	}
 	
-	canonicalize_all_names( $data );
-    for my $dataset (@$data) {
-		my $values = $dataset->{values};
-		foreach( keys %dictTags ) {
-			if( exists $values->{$_} ) {
-			print "$_\n";
-			}
+	#canonicalize_all_names( $data );
+    #for my $dataset (@$data) {
+		#my $values = $dataset->{values};
 		
-		}
-	}
+	#}
 }
 
 
