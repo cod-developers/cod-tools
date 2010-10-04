@@ -155,6 +155,9 @@ sub replacement_candidates($$)
 	return @candidate_list
 }
 
+my @dictionary_tags = ( @CIFDictTags::tag_list, @CIFCODTags::tag_list );
+my %dictionary_tags = map { $_, $_ } @dictionary_tags;
+
 @ARGV = ("-") unless @ARGV;
 for my $filename ( @ARGV ) {
     my $parser = new CIFParser;
@@ -186,22 +189,34 @@ for my $filename ( @ARGV ) {
 						if(! @replacement_list ) {
 							next;
 						}elsif( scalar( @replacement_list ) == 1 ) {
-							$tag_value = shift( @replacement_list );
-							print "$tag\n";
-							print "$tag_value\n";
+							my $new_value = shift( @replacement_list );
+							print STDERR
+								"$0: $filename: NOTE, " .
+                            	"'$tag' value '$tag_value' " .
+                            	"changed to '$new_value' " .
+								"according to '$dictFile' dictionary.\n";
+							$tag_value = $new_value;
 							next;
 						}else {
 							print STDERR  
-                            "$0: $filename: WARNING, " .
-                            "'$tag' value '$tag_value' " .
-                            "should be one of these: [" .
-                            join( ", " , @replacement_list ) . "] " .
-                            "according to '$dictFile' dictionary.\n";
+                            	"$0: $filename: WARNING, " .
+                            	"'$tag' value '$tag_value' " .
+                            	"should be one of these: [" .
+                            	join( ", " , @replacement_list ) . "] " .
+                            	"according to '$dictFile' dictionary.\n";
 							next;
 						}
 					}	
 				}
 			}
 		}
-    }
+		print_cif( $dataset, {
+            exclude_misspelled_tags => 0,
+            preserve_loop_order => 1,
+            fold_long_fields => 0,
+            dictionary_tags => \%dictionary_tags,
+            dictionary_tag_list => \@dictionary_tags,
+            keep_tag_order => $keep_tag_order,
+		});
+	}
 }
