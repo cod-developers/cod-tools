@@ -133,10 +133,25 @@ sub replacement_candidates($$)
 {
 	my( $cif_value, $dict_value_list ) = @_;
 	my @candidate_list = ();
+	my @lc_candidates = ();
 	foreach my $dict_tag_value ( @{$dict_value_list} ) {
 		if( $cif_value eq $dict_tag_value ) {
+			@candidate_list = ();
 			last;
-		} 
+		}
+		if( lc $cif_value eq lc $dict_tag_value ) {
+			push( @lc_candidates , $dict_tag_value );
+			next;
+		}else {
+			push( @candidate_list , $dict_tag_value );
+			next;	
+		}	
+	}
+	my $lc_size = @lc_candidates;
+	if( $lc_size == 1 ) {
+		@candidate_list = @lc_candidates;
+	}else {
+		push( @candidate_list, @lc_candidates );
 	}
 	return @candidate_list
 }
@@ -167,10 +182,25 @@ for my $filename ( @ARGV ) {
 					}
 					if( exists $dictTags{$tag} ) {
 						my @replacement_list = 
-							replacement_candidates
-								( $tag_value , $dictTags{$tag} );
+						  replacement_candidates
+						  	( $tag_value , $dictTags{$tag} );
+						if(! @replacement_list ) {
+							next;
+						}elsif( scalar( @replacement_list ) == 1 ) {
+							$tag_value = shift( @replacement_list );
+							print "$tag\n";
+							print "$tag_value\n";
+							next;
+						}else {
+							print STDERR  
+                            "$0: $filename: WARNING, " .
+                            "'$tag' value '$tag_value' " .
+                            "should be one of these: [" .
+                            join( ", " , @replacement_list ) . "] " .
+                            "according to '$dictFile' dictionary.\n";
+							next;
+						}
 					}	
-						
 				}
 			}
 		}
