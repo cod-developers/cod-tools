@@ -15,6 +15,7 @@ eval 'exec perl -x $0 ${1+"$@"}'
 
 use strict;
 use warnings;
+#use English;
 use lib "./lib/perl5";
 use lib "./CIFParser";
 use CIFDictTags;
@@ -99,7 +100,7 @@ for my $dict_name ( @dictionaries ) {
 					#print STDERR  
 						#"$0: WARNING, '$_' " .
                         #"tag is already defined by " . 
-                        #"'$dict_name' dictionary\n";
+                        #"'$tagDicts{$_}' dictionary\n";
 					#next;
 				#}
             }
@@ -141,14 +142,14 @@ sub replacement_candidates($$)
 		if( lc $cif_value eq lc $dict_tag_value ) {
 			push( @lc_candidates , $dict_tag_value );
 			next;
-		}else {
+		} else {
 			push( @candidate_list , $dict_tag_value );
 			next;	
 		}	
 	}
 	if( scalar( @lc_candidates ) == 1 ) {
 		@candidate_list = @lc_candidates;
-	}else {
+	} else {
 		push( @candidate_list, @lc_candidates );
 	}
 	return @candidate_list
@@ -187,23 +188,24 @@ for my $filename ( @ARGV ) {
 						  	( $tag_value , $dictTags{$tag} );
 						if(! @replacement_list ) {
 							next;
-						}elsif( scalar( @replacement_list ) == 1 ) {
+						} elsif( scalar( @replacement_list ) == 1 ) {
 							my $new_value = shift( @replacement_list );
+							#local $LIST_SEPARATOR = " ";
 							print STDERR
 								"$0: $filename: NOTE, " .
                             	"'$tag' value '$tag_value' " .
                             	"changed to '$new_value' " .
-								"according to '@dictionaries' " .
+								"according to '$tagDicts{$tag}' " .
 								"dictionary.\n";
 							$tag_value = $new_value;
 							next;
-						}else {
+						} else {
 							print STDERR  
                             	"$0: $filename: WARNING, " .
                             	"'$tag' value '$tag_value' " .
                             	"should be one of these: [" .
                             	join( ", " , @replacement_list ) . "] " .
-                            	"according to '@dictionaries' " .
+                            	"according to '$tagDicts{$tag}' " .
 								"dictionary.\n";
 							next;
 						}
