@@ -29,8 +29,7 @@ use SUsage;
 
 my $dictParsed = [];
 my $parser = new CIFParser;
-my $dictFile;
-my @dictionaries = [];
+my @dictionaries = ();
 my %dictTags;
 my %tagDicts;
 
@@ -63,14 +62,14 @@ my $keep_tag_order = 0;
     "--sort-tags"      
     => sub { $keep_tag_order = 0; },
     "-d,--dictionary"
-    => \$dictFile,
+    => sub{@dictionaries = ( &get_value )}, 
     "-D,--add-dictionaries"
     => \@dictionaries,
     "--clear-dictionaries"
     => sub{ @dictionaries = () },
     );
 
-for my $dict_name ( $dictFile ) {
+for my $dict_name ( @dictionaries ) {
     my $parser = new CIFParser;
     my $data = $parser->Run( $dict_name );
     
@@ -194,7 +193,7 @@ for my $filename ( @ARGV ) {
 								"$0: $filename: NOTE, " .
                             	"'$tag' value '$tag_value' " .
                             	"changed to '$new_value' " .
-								"according to '$dictFile' dictionary.\n";
+								"according to '@dictionaries' dictionary.\n";
 							$tag_value = $new_value;
 							next;
 						}else {
@@ -203,7 +202,7 @@ for my $filename ( @ARGV ) {
                             	"'$tag' value '$tag_value' " .
                             	"should be one of these: [" .
                             	join( ", " , @replacement_list ) . "] " .
-                            	"according to '$dictFile' dictionary.\n";
+                            	"according to '@dictionaries' dictionary.\n";
 							next;
 						}
 					}	
