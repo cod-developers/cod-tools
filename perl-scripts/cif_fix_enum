@@ -86,7 +86,7 @@ for my $dict_file_name ( @dictionaries ) {
 	
 	#for my $dataset ( @$data ) {
 		#my  
-	
+		
 	#}
 		
     for my $dataset ( @$data ) {
@@ -168,6 +168,10 @@ sub replacement_candidates($$)
 			@candidate_list = ();
 			last;
 		}
+		if( $cif_value =~ /^\s+$dict_tag_value|$dict_tag_value\s+$/i ) {
+			push( @lc_candidates , $dict_tag_value );
+			next;
+		}
 		if( lc $cif_value eq lc $dict_tag_value ) {
 			push( @lc_candidates , $dict_tag_value );
 			next;
@@ -222,22 +226,22 @@ for my $filename ( @ARGV ) {
 						} elsif( scalar( @replacement_list ) == 1 ) {
 							my $new_value = shift( @replacement_list );
 							my $report_msg = 
-                            	"'$tag' value '$tag_value' " .
-                            	"changed to '$new_value' " .
+								"'$tag' value '$tag_value' " .
+								"changed to '$new_value' " .
 								"according to '$tagDicts{$tag}' " .
 								"dictionary.";
 							push (@insert_reports, $report_msg);
                         	print STDERR 
-                            	"$0: $filename: NOTE, $report_msg\n";
+								"$0: $filename: NOTE, $report_msg\n";
 							$tag_value = $new_value;
 							next;
 						} else {
 							print STDERR  
-                            	"$0: $filename: WARNING, " .
-                            	"'$tag' value '$tag_value' " .
-                            	"should be one of these: [" .
+								"$0: $filename: WARNING, " .
+								"'$tag' value '$tag_value' " .
+								"should be one of these: [" .
                             	join( ", " , @replacement_list ) . "] " .
-                            	"according to '$tagDicts{$tag}' " .
+								"according to '$tagDicts{$tag}' " .
 								"dictionary.\n";
 							next;
 						}
