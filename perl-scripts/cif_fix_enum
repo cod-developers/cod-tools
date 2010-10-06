@@ -33,7 +33,7 @@ my @dictionaries = ();
 my %dictTags;
 my %tagDicts;
 
-my $Id = '$Id: cif_fix_enum 1426 2010-10-06 12:51:13Z adriana $';
+my $Id = '$Id: cif_fix_enum 1280 2010-05-30 12:51:13Z adriana $';
 my $keep_tag_order = 0;
 
 #*Usage:
@@ -84,14 +84,26 @@ for my $dict_file_name ( @dictionaries ) {
 	
 	canonicalize_all_names( $data );
 	
-	#for my $dataset ( @$data ) {
-		#my  
-		
-	#}
-		
+	my $dict_name;
+	my $dict_version;
+	my $dict_update;
+	for my $dataset ( @$data ) {
+		next unless $dataset->{name} eq 'on_this_dictionary' &&
+			 		exists $dataset->{values};
+		my $values = $dataset->{values};
+		die( "$0: $dict_file_name $dataset->{name}: dictionary " .
+			 "'$dict_file_name' " .
+			 "data_$dataset->{name} does not contain data" ) 
+			unless defined $values;
+		$dict_name = $values->{_dictionary_name};
+		$dict_version = $values->{_dictionary_version};
+		$dict_update = $values->{_dictionary_update};
+		last;
+	}
+	
     for my $dataset ( @$data ) {
         my $values = $dataset->{values};
-        my $values_name = $values->{_name};
+		my $values_name = $values->{_name};
         my $values_enum = $values->{_enumeration};
         if( (defined $values_name) && (defined $values_enum) ) {
             my @enums = @$values_enum;
@@ -99,8 +111,13 @@ for my $dict_file_name ( @dictionaries ) {
             foreach( @tag_names ) {
 				if( !defined $tagDicts{$_} ) {
 				    $dictTags{$_} = \@enums;
-				    $tagDicts{$_} = $dict_file_name;
+				    $tagDicts{$_} = [ 
+						$dict_file_name, 
+						@$dict_name, 
+						@$dict_version, 
+						@$dict_update  ];
 				}
+				#print STDERR "$tagDicts{$_}[0]\n";
 				#else {
 					#print STDERR  
 						#"$0: WARNING, '$_' " .
@@ -115,12 +132,12 @@ for my $dict_file_name ( @dictionaries ) {
     #    Prints in STDOUT enumeration value's tag and
     #	 dictionary name, where it was found.
     #
-    # foreach( keys %tagDicts ) {
-    #     print "$_:\n";
-    #     foreach( $tagDicts{$_} ) {
-    #	      print "    $_\n";
-    #     }
-    # }
+     #foreach( keys %tagDicts ) {
+         #print "$_:\n";
+         #foreach( $tagDicts{$_}[0] ) {
+    	      #print "    $_\n";
+         #}
+     #}
     #
     # FOR CHECK:
     #     Prints in STDOUT CIF tags parsed from specified dictionary
@@ -228,8 +245,11 @@ for my $filename ( @ARGV ) {
 							my $report_msg = 
 								"'$tag' value '$tag_value' " .
 								"changed to '$new_value' " .
-								"according to '$tagDicts{$tag}' " .
-								"dictionary.";
+								"according to '$tagDicts{$tag}[0]' " .
+								"dictionary " .
+								"named '$tagDicts{$tag}[1]' " .
+								"version $tagDicts{$tag}[2] " .
+								"from $tagDicts{$tag}[3].";
 							push (@insert_reports, $report_msg);
                         	print STDERR 
 								"$0: $filename: NOTE, $report_msg\n";
@@ -241,8 +261,11 @@ for my $filename ( @ARGV ) {
 								"'$tag' value '$tag_value' " .
 								"should be one of these: [" .
                             	join( ", " , @replacement_list ) . "] " .
-								"according to '$tagDicts{$tag}' " .
-								"dictionary.\n";
+								"according to '$tagDicts{$tag}[0]' " .
+								"dictionary " .
+								"named '$tagDicts{$tag}[1]' " .
+								"version $tagDicts{$tag}[2] " .
+								"from $tagDicts{$tag}[3].\n";
 							next;
 						}
 					}	
