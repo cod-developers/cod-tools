@@ -15,7 +15,6 @@ eval 'exec perl -x $0 ${1+"$@"}'
 
 use strict;
 use warnings;
-#use English;
 use lib "./lib/perl5";
 use lib "./CIFParser";
 use CIFDictTags;
@@ -34,7 +33,7 @@ my @dictionaries = ();
 my %dictTags;
 my %tagDicts;
 
-my $Id = '$Id: cif_fix_values 1391 2010-09-07 12:51:13Z saulius $';
+my $Id = '$Id: cif_fix_enum 1426 2010-10-06 12:51:13Z adriana $';
 my $keep_tag_order = 0;
 
 #*Usage:
@@ -83,7 +82,7 @@ for my $dict_name ( @dictionaries ) {
         next;
     }
 	
-    canonicalize_all_names( $data );
+	canonicalize_all_names( $data );
     for my $dataset ( @$data ) {
         my $values = $dataset->{values};
         my $values_name = $values->{_name};
@@ -127,6 +126,30 @@ for my $dict_name ( @dictionaries ) {
     #		 print "    $_\n";
     #	 }
     # }
+}
+
+sub insert_report_to_comments {
+    my ($dataset, $insert_reports) = @_;
+    if ( @$insert_reports > 0 ) {
+        my $comments_tag = '_cod_depositor_comments';
+        my $values = $dataset->{values};
+        my $reports_value = join("\n\n",@$insert_reports);
+        my $message =
+	        "The following automatic conversions were performed:\n" .
+	        join( "\n", map { "" . $_ }
+		    CIFTagPrint::fold( 75, " +", " ", $reports_value ));
+
+        if( exists $values->{$comments_tag} ) {
+            $values->{$comments_tag}[0] .= "\n\n" . $message;
+        } else {
+            $values->{$comments_tag}[0] = "\n" . $message;
+		}
+        my $signature = $Id;
+        $signature =~ s/^\$|\$$//g;
+        $values->{$comments_tag}[0] .= 
+            "\n\n" . "Automatic conversion script" .
+            "\n" . $signature;
+    }
 }
 
 sub replacement_candidates($$)
@@ -174,11 +197,13 @@ for my $filename ( @ARGV ) {
     
     canonicalize_all_names( $data );
 	for my $dataset (@$data) {
-    	my $values = $dataset->{values};
+		my @insert_reports = ();
+		my $values = $dataset->{values};
 		my $tags = $dataset->{tags};
 		foreach my $tag ( @$tags ) {
 			if( defined $values->{$tag} ) {
                 foreach my $tag_value ( @{$values->{$tag}} ) {
+					#$tag_value =~ s/^\s+|\s+$//g;
 				    if( $tag_value =~ /^\.|\?$/ ) {
 					    next;
 					}
@@ -190,13 +215,14 @@ for my $filename ( @ARGV ) {
 							next;
 						} elsif( scalar( @replacement_list ) == 1 ) {
 							my $new_value = shift( @replacement_list );
-							#local $LIST_SEPARATOR = " ";
-							print STDERR
-								"$0: $filename: NOTE, " .
+							my $report_msg = 
                             	"'$tag' value '$tag_value' " .
                             	"changed to '$new_value' " .
 								"according to '$tagDicts{$tag}' " .
-								"dictionary.\n";
+								"dictionary.";
+							push (@insert_reports, $report_msg);
+                        	print STDERR 
+                            	"$0: $filename: NOTE, $report_msg\n";
 							$tag_value = $new_value;
 							next;
 						} else {
@@ -213,6 +239,7 @@ for my $filename ( @ARGV ) {
 				}
 			}
 		}
+		insert_report_to_comments( $dataset, \@insert_reports ); 
 		print_cif( $dataset, {
             exclude_misspelled_tags => 0,
             preserve_loop_order => 1,
