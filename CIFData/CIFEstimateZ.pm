@@ -119,14 +119,14 @@ sub get_unit_cell
     my $values = $_[0];
 
     return (
-	$values->{_cell_length_a}[0],
-	$values->{_cell_length_b}[0],
-	$values->{_cell_length_c}[0],
-	defined $values->{_cell_angle_alpha} ?
+        $values->{_cell_length_a}[0],
+        $values->{_cell_length_b}[0],
+        $values->{_cell_length_c}[0],
+        defined $values->{_cell_angle_alpha} ?
             $values->{_cell_angle_alpha}[0] : 90,
-	defined $values->{_cell_angle_beta} ?
+        defined $values->{_cell_angle_beta} ?
             $values->{_cell_angle_beta}[0] : 90,
-	defined $values->{_cell_angle_gamma} ?
+        defined $values->{_cell_angle_gamma} ?
             $values->{_cell_angle_gamma}[0] : 90
     );
 }

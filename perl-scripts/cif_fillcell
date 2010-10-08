@@ -112,9 +112,9 @@ for my $dataset (@$data)
 
     my @sym_operators = map{symop_from_string($_)} @{$sym_data};
 
-# 	prints additional cif file information
-	print "data_".$dataset->{"name"}."_".&File::Basename::fileparse($0)."\n";
-	print  "_symmetry_space_group_name_H-M   'P 1'\n";
+#         prints additional cif file information
+        print "data_".$dataset->{"name"}."_".&File::Basename::fileparse($0)."\n";
+        print  "_symmetry_space_group_name_H-M   'P 1'\n";
 
     foreach my $angle (qw(_cell_angle_alpha
                           _cell_angle_beta
@@ -132,8 +132,8 @@ for my $dataset (@$data)
         print $length . "   " . $values->{$length}[0]."\n";
     }
 
-	print "loop_ " . "_symmetry_equiv_pos_as_xyz" . " 'x, y, z'\n";
-	print "loop_\n";
+        print "loop_ " . "_symmetry_equiv_pos_as_xyz" . " 'x, y, z'\n";
+        print "loop_\n";
 
     foreach my $loop_value (@{$loop})
     {
@@ -143,107 +143,107 @@ for my $dataset (@$data)
         }
     }
 
-	my @sym_atoms;
+        my @sym_atoms;
 
-	for(my $i = 0; $i < @sym_operators; $i++)
-	{
-		my $symop = $sym_operators[$i];
+        for(my $i = 0; $i < @sym_operators; $i++)
+        {
+        	my $symop = $sym_operators[$i];
 
-		for(my $j = 0; $j < @{$values->{$loop_tag}}; $j++)
-		{
+        	for(my $j = 0; $j < @{$values->{$loop_tag}}; $j++)
+        	{
             my @atom_xyz;
-			foreach my $atom_fract (qw(_atom_site_fract_x
+        		foreach my $atom_fract (qw(_atom_site_fract_x
                                        _atom_site_fract_y
                                        _atom_site_fract_z))
-			{
-				my $sym_atom_data = $values->{$atom_fract};
-				push(@atom_xyz, ${$sym_atom_data}[$j]);
-			}
-			push(@atom_xyz, 1);
-			
-			my $new_atom_xyz = shift_atoms(symop_apply(\@atom_xyz, $symop));
-			for(my $m = 0; $m < @{$new_atom_xyz}; $m++)
-			{
+        		{
+        			my $sym_atom_data = $values->{$atom_fract};
+        			push(@atom_xyz, ${$sym_atom_data}[$j]);
+        		}
+        		push(@atom_xyz, 1);
+        		
+        		my $new_atom_xyz = shift_atoms(symop_apply(\@atom_xyz, $symop));
+        		for(my $m = 0; $m < @{$new_atom_xyz}; $m++)
+        		{
 
-				for(my $k = 0; $k < @{$loop}; $k++)
-				{
-					my $sym_atom_data = $values->{${$loop}[$k]};
+        			for(my $k = 0; $k < @{$loop}; $k++)
+        			{
+        				my $sym_atom_data = $values->{${$loop}[$k]};
 
-					if("_atom_site_adp_type" ne ${$loop}[$k])
-					{	
-						if(${$loop}[$k] eq "_atom_site_label")
-						{
-							$sym_atoms[$i][$j][$k] = ${$sym_atom_data}[$j]."_".$i."_".$m;
-						}
-						elsif(${$loop}[$k] eq "_atom_site_fract_x")
-						{
-							$sym_atoms[$i][$j][$k] = ${$new_atom_xyz}[$m][0];
-						}
-						elsif(${$loop}[$k] eq "_atom_site_fract_y")
-						{
-							$sym_atoms[$i][$j][$k] = ${$new_atom_xyz}[$m][1];
-						}
-						elsif(${$loop}[$k] eq "_atom_site_fract_z")
-						{
-							$sym_atoms[$i][$j][$k] = ${$new_atom_xyz}[$m][2];
-						}
-						else
-						{
-							$sym_atoms[$i][$j][$k] = ${$sym_atom_data}[$j];
-						}
-						print $sym_atoms[$i][$j][$k] . "   ";
-					}
-				}
-				print "\n";
-			}
-		}
-	}
+        				if("_atom_site_adp_type" ne ${$loop}[$k])
+        				{	
+        					if(${$loop}[$k] eq "_atom_site_label")
+        					{
+        						$sym_atoms[$i][$j][$k] = ${$sym_atom_data}[$j]."_".$i."_".$m;
+        					}
+        					elsif(${$loop}[$k] eq "_atom_site_fract_x")
+        					{
+        						$sym_atoms[$i][$j][$k] = ${$new_atom_xyz}[$m][0];
+        					}
+        					elsif(${$loop}[$k] eq "_atom_site_fract_y")
+        					{
+        						$sym_atoms[$i][$j][$k] = ${$new_atom_xyz}[$m][1];
+        					}
+        					elsif(${$loop}[$k] eq "_atom_site_fract_z")
+        					{
+        						$sym_atoms[$i][$j][$k] = ${$new_atom_xyz}[$m][2];
+        					}
+        					else
+        					{
+        						$sym_atoms[$i][$j][$k] = ${$sym_atom_data}[$j];
+        					}
+        					print $sym_atoms[$i][$j][$k] . "   ";
+        				}
+        			}
+        			print "\n";
+        		}
+        	}
+        }
 }
 
 #===============================================================#
 sub symop_apply
 {
-	my($atom_xyz, $symop) = @_;
-	my @new_atom_xyz;
+        my($atom_xyz, $symop) = @_;
+        my @new_atom_xyz;
 
-	for(my $i = 0; $i < @{$symop}; $i++)
-	{
-		$new_atom_xyz[$i] = 0;
-		for(my $j = 0; $j < @{$symop}; $j++)
-		{
-			${$atom_xyz}[$j] =~ s/\(\d+\)$//;
-			$new_atom_xyz[$i] += ${$atom_xyz}[$j] * ${$symop}[$i][$j];
-		}
-		$new_atom_xyz[$i] = modulo_1($new_atom_xyz[$i]);
-	}
+        for(my $i = 0; $i < @{$symop}; $i++)
+        {
+        	$new_atom_xyz[$i] = 0;
+        	for(my $j = 0; $j < @{$symop}; $j++)
+        	{
+        		${$atom_xyz}[$j] =~ s/\(\d+\)$//;
+        		$new_atom_xyz[$i] += ${$atom_xyz}[$j] * ${$symop}[$i][$j];
+        	}
+        	$new_atom_xyz[$i] = modulo_1($new_atom_xyz[$i]);
+        }
 
-	return \@new_atom_xyz;
+        return \@new_atom_xyz;
 }
 
 #===============================================================#
 sub shift_atoms
 {
-	my($atom_xyz) = @_;
+        my($atom_xyz) = @_;
 
-	my @shifted_atom_xyz;
-	my @shifting_params = (0, -1, 1);
-	
-	my $counter = 0;
-	for(my $i = 0; $i < @shifting_params; $i++)
-	{
-		for(my $j = 0; $j < @shifting_params; $j++)
-		{
-			for(my $k = 0; $k < @shifting_params; $k++)
-			{
-				$shifted_atom_xyz[$counter][0] = ${$atom_xyz}[0] + $shifting_params[$i];
-				$shifted_atom_xyz[$counter][1] = ${$atom_xyz}[1] + $shifting_params[$j];
-				$shifted_atom_xyz[$counter][2] = ${$atom_xyz}[2] + $shifting_params[$k];	
-				$counter++;
-			}
-		}
-	}
+        my @shifted_atom_xyz;
+        my @shifting_params = (0, -1, 1);
+        
+        my $counter = 0;
+        for(my $i = 0; $i < @shifting_params; $i++)
+        {
+        	for(my $j = 0; $j < @shifting_params; $j++)
+        	{
+        		for(my $k = 0; $k < @shifting_params; $k++)
+        		{
+        			$shifted_atom_xyz[$counter][0] = ${$atom_xyz}[0] + $shifting_params[$i];
+        			$shifted_atom_xyz[$counter][1] = ${$atom_xyz}[1] + $shifting_params[$j];
+        			$shifted_atom_xyz[$counter][2] = ${$atom_xyz}[2] + $shifting_params[$k];	
+        			$counter++;
+        		}
+        	}
+        }
 
-	return \@shifted_atom_xyz;
+        return \@shifted_atom_xyz;
 }
 #===============================================================#
 # @SymopLookup::table =

@@ -29,8 +29,8 @@ use SOptions;
 
 #
 # here we define variables
-#	first - constant values
-#	then  - common variables
+#        first - constant values
+#        then  - common variables
 #
 my $version = 0.1;
 
@@ -367,7 +367,7 @@ CIFFILEANAL: for my $cifF ( @ARGV ) {
                 #
                 if( $showMap{'tag-deprecated'} ) {
                     if( exists $dictD->{$lc_tagAnalysed} &&
-			exists $dictD->{$lc_tagAnalysed}{values}{_related_item}) {
+        		exists $dictD->{$lc_tagAnalysed}{values}{_related_item}) {
                         my $replaceWith = [];
                         for( my $i = 0;
                             $i < @{$dictD->{$lc_tagAnalysed}{values}{_related_item}};
@@ -447,7 +447,7 @@ CIFFILEANAL: for my $cifF ( @ARGV ) {
                 #
                 if( $showMap{'tags-grouped'} ) {
                     if( exists $dictD->{$lc_tagAnalysed}
-			&& defined $dictD->{$lc_tagAnalysed}{values}{_name}
+        		&& defined $dictD->{$lc_tagAnalysed}{values}{_name}
                         && defined $dictD->{$lc_tagAnalysed}{values}{_list}
                         && !defined $tagsListedInLoops{$lc_tagAnalysed}
                         && @{$dictD->{$lc_tagAnalysed}{values}{_name}} > 1
@@ -519,7 +519,7 @@ CIFFILEANAL: for my $cifF ( @ARGV ) {
                 #
                 if( $showMap{'list-only'} ) {
                     if( exists $dictD->{$lc_tagAnalysed}
-			&& exists $dictD->{$lc_tagAnalysed}{values}{_list}
+        		&& exists $dictD->{$lc_tagAnalysed}{values}{_list}
                         && $dictD->{$lc_tagAnalysed}{values}{_list}[0]
                             eq 'yes' )
                         {
@@ -552,7 +552,7 @@ CIFFILEANAL: for my $cifF ( @ARGV ) {
                 my $range = {};
                 my %rangeForPrint;
                 if( exists $dictD->{$lc_tagAnalysed} &&
-		    exists $dictD->{$lc_tagAnalysed}{values}{_enumeration_range} ) {
+        	    exists $dictD->{$lc_tagAnalysed}{values}{_enumeration_range} ) {
                     ($$range{min}, $$range{max}) = split(/:/, 
                         $dictD->{$lc_tagAnalysed}{values}{_enumeration_range}[0],
                         2);
@@ -576,7 +576,7 @@ CIFFILEANAL: for my $cifF ( @ARGV ) {
                     #
                     if( $showMap{'values-enum'} ) {
                         if( exists $dictD->{$lc_tagAnalysed} &&
-			    exists $dictD->{$lc_tagAnalysed}{values}{_enumeration} ) {
+        		    exists $dictD->{$lc_tagAnalysed}{values}{_enumeration} ) {
                             my $listEnumValuesForTag = join(', ',
                                     @{$dictD->{$lc_tagAnalysed}{values}{_enumeration}}
                                     );
@@ -656,7 +656,7 @@ CIFFILEANAL: for my $cifF ( @ARGV ) {
 
                     if( $showMap{'value-type'} ) {
                         if( exists $dictD->{$lc_tagAnalysed} &&
-			    defined $dictD->{$lc_tagAnalysed}{values}{_type} &&
+        		    defined $dictD->{$lc_tagAnalysed}{values}{_type} &&
                             $dictD->{$lc_tagAnalysed}{values}{_type}[0] eq 'numb' ) {
                             if(defined $block->{types}{$tagAnalysed}) {
                                 if('FLOAT'  ne $block->{types}{$tagAnalysed}[$tagIndex]
@@ -690,14 +690,14 @@ CIFFILEANAL: for my $cifF ( @ARGV ) {
                         if( %$range ) {
                             my $valueWOPrecision = $value;
                             if( exists $dictD->{$lc_tagAnalysed} &&
-				$dictD->{$lc_tagAnalysed}{values}{_type}[0] 
+        			$dictD->{$lc_tagAnalysed}{values}{_type}[0] 
                                 eq 'numb' ) {
                                 $valueWOPrecision =~ s/\s*\(.*$//;
                             }
                             if( exists $dictD->{$lc_tagAnalysed} &&
-				checkAgainstRange(
-				    $dictD->{$lc_tagAnalysed}{values}{_type}[0],
-				    $range, $valueWOPrecision, $sigma) <= 0 ) {
+        			checkAgainstRange(
+        			    $dictD->{$lc_tagAnalysed}{values}{_type}[0],
+        			    $range, $valueWOPrecision, $sigma) <= 0 ) {
                                 showValidationMessage 4, 'values-range',
                                     $cifF, $$block{name},
                                     "tag '" . $tagAnalysed . "' value "
@@ -769,7 +769,7 @@ CIFFILEANAL: for my $cifF ( @ARGV ) {
 
 sub VersionMessage
 {
-	print <<END_M;
+        print <<END_M;
 cif_check_dict (using CIFParser v.$CIFParser::version) v.$version
 Copyright (C) 2007 ???
 This is free software. You may redistribute copies of it under the terms of
@@ -783,7 +783,7 @@ END_M
 
 sub HelpMessage
 {
-	print <<END_M;
+        print <<END_M;
 NOTICE: this is a development version.
 Any interfaces are a matter to change.
 Please be careful not to include it in any public system, or carefully 
@@ -1073,10 +1073,10 @@ sub showValidationMessage {
 
 sub getDict
 {
-	my $dictF = shift;
-	my $tags = {};
-	my $datan = 0;
-   	while( $datan < @$dictF )
+        my $dictF = shift;
+        my $tags = {};
+        my $datan = 0;
+           while( $datan < @$dictF )
     {
         $datan++ and next if
             !exists $$dictF[$datan]{values}{_type};
@@ -1084,8 +1084,8 @@ sub getDict
             $$tags{lc $_} = $$dictF[$datan];
         }
         $datan++;
-	}
-	return $tags;
+        }
+        return $tags;
 }
 
 sub checkAgainstRange {

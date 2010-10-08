@@ -105,7 +105,7 @@ if( defined $year ) {
 
 if( !$term ) {
     die "no search terms -- you probably do not want to download the whole " .
-	"PubMed, do you?"
+        "PubMed, do you?"
 }
 
 my $query = "$query_url/esearch.fcgi?db=pubmed&term=" . $term;
@@ -118,12 +118,12 @@ if( $esearch_result =~ m|<Id>(\d+)</Id>| ) {
     my $separator = "";
     my $ids = "";
     while( $esearch_result =~ s|<Id>(\d+)</Id>|| ) {
-	## print $id, "\n";
-	$ids .= $separator . $1;
-	$separator = ",";
+        ## print $id, "\n";
+        $ids .= $separator . $1;
+        $separator = ",";
     }
     $query = "$query_url/efetch.fcgi?" .
-	"db=pubmed&tool=$0&email=grazulis\@ibt.lt&id=$ids&retmode=xml";
+        "db=pubmed&tool=$0&email=grazulis\@ibt.lt&id=$ids&retmode=xml";
     $esearch_result = get( $query );
     print $esearch_result, "\n";
 } else {

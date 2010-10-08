@@ -45,11 +45,11 @@ sub serialiseHash
    foreach $key ( sort {$a cmp $b} keys %{$hash} ) {
        printf STDOUT "%s%-5s => ", $indent, '"' . $key . '"';
        if( ref $hash->{$key} eq "HASH" ) {
-	   serialiseHash( $hash->{$key}, $indent );
+           serialiseHash( $hash->{$key}, $indent );
        } elsif( ref $hash->{$key} eq "ARRAY" ) {
-	   serialiseArray( $hash->{$key}, $indent );
+           serialiseArray( $hash->{$key}, $indent );
        } elsif( ref $hash->{$key} eq "SCALAR" ) {
-	   serialiseScalar( $hash->{$key}, $indent );
+           serialiseScalar( $hash->{$key}, $indent );
        } else {
            if( defined $hash->{$key} ) {
                printf STDOUT "\"%s\",\n", $hash->{$key};
@@ -73,9 +73,9 @@ sub serialiseArray
        $isFlat = 0;
    } else {
        foreach $item ( @{$array} ) {
-	   if( ref $item or length($item) > 20 ) {
-	       $isFlat = 0; last;
-	   }
+           if( ref $item or length($item) > 20 ) {
+               $isFlat = 0; last;
+           }
        }
    }
    my $old_indent = $indent;
@@ -91,19 +91,19 @@ sub serialiseArray
        $indent .= " " x 3;
        my $index = 0;
        foreach $item ( @{$array} ) {
-	   if( ref $item eq "HASH" ) {
-	       printf STDOUT "%s# %3d:\n%s", $indent, $index++, $indent;
-		   serialiseHash( $item, $indent );
-	   } elsif( ref $item eq "ARRAY" ) {
-	       printf STDOUT "%s# %3d:\n%s", $indent, $index++, $indent;
-	       serialiseArray( $item, $indent );
-	   } elsif( ref $item eq "SCALAR" ) {
-	       printf STDOUT "%s# %3d:\n%s", $indent, $index++, $indent;
-	       serialiseScalar( $item, $indent );
-	   } else {
-	       printf STDOUT "%s# %3s:\n%s\"%s\",\n", $indent, $index++,
-	       $indent, $item;
-	   }
+           if( ref $item eq "HASH" ) {
+               printf STDOUT "%s# %3d:\n%s", $indent, $index++, $indent;
+        	   serialiseHash( $item, $indent );
+           } elsif( ref $item eq "ARRAY" ) {
+               printf STDOUT "%s# %3d:\n%s", $indent, $index++, $indent;
+               serialiseArray( $item, $indent );
+           } elsif( ref $item eq "SCALAR" ) {
+               printf STDOUT "%s# %3d:\n%s", $indent, $index++, $indent;
+               serialiseScalar( $item, $indent );
+           } else {
+               printf STDOUT "%s# %3s:\n%s\"%s\",\n", $indent, $index++,
+               $indent, $item;
+           }
        }
        print STDOUT $old_indent, "],\n";
    }

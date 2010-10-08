@@ -26,7 +26,7 @@ sub mk_symop_key
     my ( $symops ) = @_;
 
     my @canonical = sort 
-	map {SymopParse::symop_string_canonical_form($_)} @$symops;
+        map {SymopParse::symop_string_canonical_form($_)} @$symops;
     my $key = join( ";", @canonical );
     return $key;
 }
@@ -34,10 +34,10 @@ sub mk_symop_key
 sub mkhash
 {
     if( 1 ) {
-	map { (mk_symop_key($_->{symops}), $_) }
-	@SymopLookup::table, @SymopLookup::extra_settings;
+        map { (mk_symop_key($_->{symops}), $_) }
+        @SymopLookup::table, @SymopLookup::extra_settings;
     } else {
-	map { (mk_symop_key($_->{symops}), $_) } @CCP4SymopLookup::table;
+        map { (mk_symop_key($_->{symops}), $_) } @CCP4SymopLookup::table;
     }
 }
 
@@ -55,55 +55,55 @@ for my $filename (@ARGV) {
     my $data = $parser->Run($filename);
 
     for my $dataset (@$data) {
-	## showRef( $dataset );
-	my @symops;
+        ## showRef( $dataset );
+        my @symops;
 
-	print "data_", $dataset->{name}, "\n";
+        print "data_", $dataset->{name}, "\n";
 
-	if( exists $dataset->{values}{_symmetry_equiv_pos_as_xyz} ) {
-	    @symops = @{$dataset->{values}{_symmetry_equiv_pos_as_xyz}};
+        if( exists $dataset->{values}{_symmetry_equiv_pos_as_xyz} ) {
+            @symops = @{$dataset->{values}{_symmetry_equiv_pos_as_xyz}};
 
-	    my $has_errors = 0;
-	    my $error;
-	    for my $symop (@symops) {
-		$error = SymopParse::check_symmetry_operator( $symop );
-		if( $error ) {
-		    $has_errors = 1;
-		    print "$0: $filename: $error\n";
-		}
-	    }
-	    next if $has_errors;
+            my $has_errors = 0;
+            my $error;
+            for my $symop (@symops) {
+        	$error = SymopParse::check_symmetry_operator( $symop );
+        	if( $error ) {
+        	    $has_errors = 1;
+        	    print "$0: $filename: $error\n";
+        	}
+            }
+            next if $has_errors;
 
-	    my $key = mk_symop_key( \@symops );
-	    print "## >>> $key\n";
-	    if( exists $symop_lookup_table{$key} ) {
-		print "_[local]_cod_est_spacegroup_name_H-M ";
-		print "'", $symop_lookup_table{$key}{hermann_mauguin}, "'\n";
-	    } else {
-		print "_[local]_cod_est_spacegroup_name_H-M ?\n";
-	    }
-	}
-	if( exists $dataset->{values}{"_symmetry_space_group_name_H-M"} ) {
-	    print "_symmetry_space_group_name_H-M ";
-	    print "'", $dataset->{values}{"_symmetry_space_group_name_H-M"}[0],
-	          "'\n";
-	}
-	if( exists $dataset->{values}{"_symmetry_equiv_pos_as_xyz"} ) {
-	    print "loop_\n";
-	    print "  _symmetry_equiv_pos_as_xyz\n";
-	    my @types = @{$dataset->{types}{"_symmetry_equiv_pos_as_xyz"}};
-	    for my $symop (@{$dataset->{values}{"_symmetry_equiv_pos_as_xyz"}}) {
-		my $type = shift( @types );
-		my $quotes;
-		if( $type eq "SQSTRING" ) {
-		    $quotes = "'";
-		} elsif( $type eq "DQSTRING" ) {
-		    $quotes = '"';
-		} else {
-		    $quotes = "";
-		}
-		print $quotes, $symop, $quotes, "\n";
-	    }
-	}
+            my $key = mk_symop_key( \@symops );
+            print "## >>> $key\n";
+            if( exists $symop_lookup_table{$key} ) {
+        	print "_[local]_cod_est_spacegroup_name_H-M ";
+        	print "'", $symop_lookup_table{$key}{hermann_mauguin}, "'\n";
+            } else {
+        	print "_[local]_cod_est_spacegroup_name_H-M ?\n";
+            }
+        }
+        if( exists $dataset->{values}{"_symmetry_space_group_name_H-M"} ) {
+            print "_symmetry_space_group_name_H-M ";
+            print "'", $dataset->{values}{"_symmetry_space_group_name_H-M"}[0],
+                  "'\n";
+        }
+        if( exists $dataset->{values}{"_symmetry_equiv_pos_as_xyz"} ) {
+            print "loop_\n";
+            print "  _symmetry_equiv_pos_as_xyz\n";
+            my @types = @{$dataset->{types}{"_symmetry_equiv_pos_as_xyz"}};
+            for my $symop (@{$dataset->{values}{"_symmetry_equiv_pos_as_xyz"}}) {
+        	my $type = shift( @types );
+        	my $quotes;
+        	if( $type eq "SQSTRING" ) {
+        	    $quotes = "'";
+        	} elsif( $type eq "DQSTRING" ) {
+        	    $quotes = '"';
+        	} else {
+        	    $quotes = "";
+        	}
+        	print $quotes, $symop, $quotes, "\n";
+            }
+        }
     }
 }

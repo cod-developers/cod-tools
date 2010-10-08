@@ -54,63 +54,63 @@ for my $file (@COD_cif_files) {
 
     chomp $file;
     open( CODCIF, "<$file" ) or
-	die( "$0: could not open file '$file' for reading: $!" );
+        die( "$0: could not open file '$file' for reading: $!" );
 
     my %structures = ();
     my $id;
 
     while( <CODCIF> ) {
-	if( /^\s*data_(.*)/ ) {
-	    $id = $1;
-	    $structures{$id}{id} = $id;
-	    $structures{$id}{filename} = File::Basename::basename( $file );
-	}
-	if( /^\s*_chemical_formula_sum\s+(.*)/ ) {
+        if( /^\s*data_(.*)/ ) {
+            $id = $1;
+            $structures{$id}{id} = $id;
+            $structures{$id}{filename} = File::Basename::basename( $file );
+        }
+        if( /^\s*_chemical_formula_sum\s+(.*)/ ) {
             my $formula = $1;
             $formula =~ s/^\s*'\s*|\s*'\s*$//g;
             $formula =~ s/\s+/ /g;
             my $sorted = join( " ", sort {$a cmp $b} split( " ", $formula ));
-	    $structures{$id}{chemical_formula_sum} = $sorted;
-	}
-	if( /^\s*(_cell_(?:length_a|length_b|length_c|
+            $structures{$id}{chemical_formula_sum} = $sorted;
+        }
+        if( /^\s*(_cell_(?:length_a|length_b|length_c|
                      angle_alpha|angle_beta|angle_gamma))\s+([\d.]+)/x ) {
-	    my $key = $1;
-	    my $val = $2;
-	    $val =~ s/^\s*'\s*|\s*'\s*$//g;
-	    $val =~ s/\(.*$//;
-	    $val =~ s/[()_a-zA-Z]//g;
-	    $structures{$id}{cell}{$key} = sprintf "%f", $val;
-	}
-	if( /^\s*(_[^\s]*temperature[^\s]*)\s+(.*)/ ) {
-	    $structures{$id}{temperature}{$1} = $2;
-	    $structures{$id}{temperature}{$1} =~ s/^\s*'\s*|\s*'\s*$//g;
-	}
-	if( /^\s*(_[^\s]*pressure[^\s]*)\s+(.*)/ ) {
-	    $structures{$id}{pressure}{$1} = $2;
-	    $structures{$id}{pressure}{$1} =~ s/^\s*'\s*|\s*'\s*$//g;
-	}
-	if( /^\s*(_journal_[^\s]*)\s+(.*)\s*$/ && 
+            my $key = $1;
+            my $val = $2;
+            $val =~ s/^\s*'\s*|\s*'\s*$//g;
+            $val =~ s/\(.*$//;
+            $val =~ s/[()_a-zA-Z]//g;
+            $structures{$id}{cell}{$key} = sprintf "%f", $val;
+        }
+        if( /^\s*(_[^\s]*temperature[^\s]*)\s+(.*)/ ) {
+            $structures{$id}{temperature}{$1} = $2;
+            $structures{$id}{temperature}{$1} =~ s/^\s*'\s*|\s*'\s*$//g;
+        }
+        if( /^\s*(_[^\s]*pressure[^\s]*)\s+(.*)/ ) {
+            $structures{$id}{pressure}{$1} = $2;
+            $structures{$id}{pressure}{$1} =~ s/^\s*'\s*|\s*'\s*$//g;
+        }
+        if( /^\s*(_journal_[^\s]*)\s+(.*)\s*$/ && 
             ! /^\s*_journal_name/ ) {
-	    my $key = $1;
-	    my $value = $2;
-	    $value =~ s/^['"]|["']$//g;
-	    $structures{$id}{bibliography}{$key} = $value;
-	}
-	if( /^\s*(_\[local\])?_cod_suboptimal_structure\s+(.*)\s*$/ ) {
-	    ## print ">>>>>> $2\n";
-	    $structures{$id}{suboptimal} = $2;
-	}
+            my $key = $1;
+            my $value = $2;
+            $value =~ s/^['"]|["']$//g;
+            $structures{$id}{bibliography}{$key} = $value;
+        }
+        if( /^\s*(_\[local\])?_cod_suboptimal_structure\s+(.*)\s*$/ ) {
+            ## print ">>>>>> $2\n";
+            $structures{$id}{suboptimal} = $2;
+        }
     }
 
     close( CODCIF );
 
     my $basename = File::Basename::basename( $file );
     for my $id (keys %structures) {
-	my $formula = $structures{$id}{chemical_formula_sum};
+        my $formula = $structures{$id}{chemical_formula_sum};
 
-	$formula = '?' unless defined $formula;
+        $formula = '?' unless defined $formula;
 
-	push( @{$COD{$formula}}, $structures{$id} );
+        push( @{$COD{$formula}}, $structures{$id} );
     }
 }
 
@@ -126,81 +126,81 @@ my @cif_files = `find @ARGV -name "*.cif" -o -name "*.CIF"`;
 for my $file (@cif_files) {
     chomp $file;
     open( CIF, "<$file" ) or
-	die( "$0: could not open file '$file' for reading: $!" );
+        die( "$0: could not open file '$file' for reading: $!" );
 
     my %structures = ();
     my $id;
 
     while( <CIF> ) {
-	if( /^\s*data_(.*)/ ) {
-	    $id = $1;
-	    $structures{$id}{id} = $id;
-	    $structures{$id}{filename} = File::Basename::basename( $file );
-	}
-	if( /^\s*_chemical_formula_sum\s+(.*)/ ) {
+        if( /^\s*data_(.*)/ ) {
+            $id = $1;
+            $structures{$id}{id} = $id;
+            $structures{$id}{filename} = File::Basename::basename( $file );
+        }
+        if( /^\s*_chemical_formula_sum\s+(.*)/ ) {
             my $formula = $1;
             $formula =~ s/^\s*'\s*|\s*'\s*$//g;
             $formula =~ s/\s+/ /g;
             my $sorted = join( " ", sort {$a cmp $b} split( " ", $formula ));
-	    $structures{$id}{chemical_formula_sum} = $sorted;
-	}
-	if( /^\s*(_cell_(?:length_a|length_b|length_c|
+            $structures{$id}{chemical_formula_sum} = $sorted;
+        }
+        if( /^\s*(_cell_(?:length_a|length_b|length_c|
                      angle_alpha|angle_beta|angle_gamma))\s+([\d.]+)/x ) {
-	    my $key = $1;
-	    my $val = $2;
-	    $val =~ s/^\s*'\s*|\s*'\s*$//g;
-	    $val =~ s/\(.*$//;
-	    $structures{$id}{cell}{$key} = sprintf "%f", $val;
-	}
-	if( /^\s*(_[^\s]*temperature[^\s]*)\s+(.*)/ ) {
-	    $structures{$id}{temperature}{$1} = $2;
-	    $structures{$id}{temperature}{$1} =~ s/^\s*'\s*|\s*'\s*$//g;
-	}
-	if( /^\s*(_[^\s]*pressure[^\s]*)\s+(.*)/ ) {
-	    $structures{$id}{pressure}{$1} = $2;
-	    $structures{$id}{pressure}{$1} =~ s/^\s*'\s*|\s*'\s*$//g;
-	}
-	if( /^\s*(_journal_[^\s]*)\s+(.*)\s*$/ && 
+            my $key = $1;
+            my $val = $2;
+            $val =~ s/^\s*'\s*|\s*'\s*$//g;
+            $val =~ s/\(.*$//;
+            $structures{$id}{cell}{$key} = sprintf "%f", $val;
+        }
+        if( /^\s*(_[^\s]*temperature[^\s]*)\s+(.*)/ ) {
+            $structures{$id}{temperature}{$1} = $2;
+            $structures{$id}{temperature}{$1} =~ s/^\s*'\s*|\s*'\s*$//g;
+        }
+        if( /^\s*(_[^\s]*pressure[^\s]*)\s+(.*)/ ) {
+            $structures{$id}{pressure}{$1} = $2;
+            $structures{$id}{pressure}{$1} =~ s/^\s*'\s*|\s*'\s*$//g;
+        }
+        if( /^\s*(_journal_[^\s]*)\s+(.*)\s*$/ && 
             ! /^\s*_journal_name/ ) {
-	    my $key = $1;
-	    my $value = $2;
-	    $value =~ s/^['"]|["']$//g;
-	    $structures{$id}{bibliography}{$key} = $value;
-	}
-	if( /^\s*(_\[local\])?_cod_suboptimal_structure\s+(.*)\s*$/ ) {
-	    ## print ">>>>>> $2\n";
-	    $structures{$id}{suboptimal} = $2;
-	}
+            my $key = $1;
+            my $value = $2;
+            $value =~ s/^['"]|["']$//g;
+            $structures{$id}{bibliography}{$key} = $value;
+        }
+        if( /^\s*(_\[local\])?_cod_suboptimal_structure\s+(.*)\s*$/ ) {
+            ## print ">>>>>> $2\n";
+            $structures{$id}{suboptimal} = $2;
+        }
     }
 
     for $id (keys %structures) {
-	my $formula = $structures{$id}{chemical_formula_sum};
+        my $formula = $structures{$id}{chemical_formula_sum};
 
-	$formula = '?' unless defined $formula;
+        $formula = '?' unless defined $formula;
 
-	my $final_formula = $formula;
-	$final_formula =~ s/\s/_/g;
+        my $final_formula = $formula;
+        $final_formula =~ s/\s/_/g;
 
-	my $n = 0;
-	if( defined $COD{$formula} ) {
-	    for my $COD_entry (@{$COD{$formula}}) {
-		if( entries_are_the_same( $structures{$id}, $COD_entry )) {
-		    $n++;
-		}
-	    }
-	}
-	if( $n > 0 ) {
-	    for my $COD_entry (@{$COD{$formula}}) {
-		if( entries_are_the_same( $structures{$id}, $COD_entry )) {
-		    printf
-			"%-35s %15s %3d %s\n",
-			$final_formula, 
-			$COD_entry->{filename}, $n, $file;
-		}
-	    }
-	} else {
-	    printf "%-35s %15s %3d %s\n", $final_formula, "?", 0, $file;
-	}
+        my $n = 0;
+        if( defined $COD{$formula} ) {
+            for my $COD_entry (@{$COD{$formula}}) {
+        	if( entries_are_the_same( $structures{$id}, $COD_entry )) {
+        	    $n++;
+        	}
+            }
+        }
+        if( $n > 0 ) {
+            for my $COD_entry (@{$COD{$formula}}) {
+        	if( entries_are_the_same( $structures{$id}, $COD_entry )) {
+        	    printf
+        		"%-35s %15s %3d %s\n",
+        		$final_formula, 
+        		$COD_entry->{filename}, $n, $file;
+        	}
+            }
+        } else {
+            printf "%-35s %15s %3d %s\n", $final_formula, "?", 0, $file;
+        }
     }
 
     close( CIF );
@@ -213,12 +213,12 @@ sub get_cell($)
     my $datablok = $_[0];
 
     return (
-	$datablok->{_cell_length_a},
-	$datablok->{_cell_length_b},
-	$datablok->{_cell_length_c},
-	$datablok->{_cell_angle_alpha},
-	$datablok->{_cell_angle_beta},
-	$datablok->{_cell_angle_gamma}
+        $datablok->{_cell_length_a},
+        $datablok->{_cell_length_b},
+        $datablok->{_cell_length_c},
+        $datablok->{_cell_angle_alpha},
+        $datablok->{_cell_angle_beta},
+        $datablok->{_cell_angle_gamma}
     );
 }
 
@@ -233,29 +233,29 @@ sub cells_are_the_same($$)
     my $max_angle_diff = 0;
 
     for my $i (0..2) {
-	my $length1 = $cell1[$i];
-	my $length2 = $cell2[$i];
-	if( defined $length1 and defined $length2 ) {
-	    my $diff = abs( $length1 - $length2 );
-	    if( $max_length_diff < $diff ) {
-		$max_length_diff = $diff;
-	    }
-	}
+        my $length1 = $cell1[$i];
+        my $length2 = $cell2[$i];
+        if( defined $length1 and defined $length2 ) {
+            my $diff = abs( $length1 - $length2 );
+            if( $max_length_diff < $diff ) {
+        	$max_length_diff = $diff;
+            }
+        }
     }
     for my $i (3..5) {
-	my $angle1 = $cell1[$i];
-	my $angle2 = $cell2[$i];
-	if( defined $angle1 and defined $angle2 ) {
-	    my $diff = abs( $angle1 - $angle2 );
-	    if( $max_angle_diff < $diff ) {
-		$max_angle_diff = $diff;
-	    }
-	}
+        my $angle1 = $cell1[$i];
+        my $angle2 = $cell2[$i];
+        if( defined $angle1 and defined $angle2 ) {
+            my $diff = abs( $angle1 - $angle2 );
+            if( $max_angle_diff < $diff ) {
+        	$max_angle_diff = $diff;
+            }
+        }
     }
 
     return
-	$max_length_diff < $max_cell_length_diff &&
-	$max_angle_diff < $max_cell_angle_diff;
+        $max_length_diff < $max_cell_length_diff &&
+        $max_angle_diff < $max_cell_angle_diff;
 }
 
 sub conditions_are_the_same
@@ -264,15 +264,15 @@ sub conditions_are_the_same
 
     for my $parameter ("temperature", "pressure" ) {
 
-	my %tags = map {($_,$_)} ( keys %{$entry1->{$parameter}},
-				   keys %{$entry2->{$parameter}} );
-	for my $tag (keys %tags) {
-	    if( exists $entry1->{$parameter}{$tag} &&
-		exists $entry2->{$parameter}{$tag} &&
-		$entry1->{$parameter}{$tag} ne $entry2->{$parameter}{$tag} ) {
-		return 0;
-	    }
-	}
+        my %tags = map {($_,$_)} ( keys %{$entry1->{$parameter}},
+        			   keys %{$entry2->{$parameter}} );
+        for my $tag (keys %tags) {
+            if( exists $entry1->{$parameter}{$tag} &&
+        	exists $entry2->{$parameter}{$tag} &&
+        	$entry1->{$parameter}{$tag} ne $entry2->{$parameter}{$tag} ) {
+        	return 0;
+            }
+        }
     }
     return 1;
 }
@@ -284,18 +284,18 @@ sub bibliographies_are_the_same($$)
     my %tags = map {($_,$_)} ( keys %$biblio1, keys %$biblio2 );
 
     for my $tag ( keys %tags ) {
-	next if( $skip_tag{$tag} );
-	if( defined $biblio1->{$tag} && defined $biblio2->{$tag} ) {
-	    if( $has_numeric_value{$tag} ) {
-		if( $biblio1->{$tag} != $biblio2->{$tag} ) {
-		    return 0;
-		}
-	    } else {
-		if( $biblio1->{$tag} ne $biblio2->{$tag} ) {
+        next if( $skip_tag{$tag} );
+        if( defined $biblio1->{$tag} && defined $biblio2->{$tag} ) {
+            if( $has_numeric_value{$tag} ) {
+        	if( $biblio1->{$tag} != $biblio2->{$tag} ) {
+        	    return 0;
+        	}
+            } else {
+        	if( $biblio1->{$tag} ne $biblio2->{$tag} ) {
                     return 0;
                 }
-	    }
-	}
+            }
+        }
     }
     return 1;
 }
@@ -305,8 +305,8 @@ sub data_sections_are_the_same($$)
     my ($entry1, $entry2) = @_;
 
     return
-	$entry1->{filename} eq $entry2->{filename} &&
-	$entry1->{id} eq $entry2->{id};
+        $entry1->{filename} eq $entry2->{filename} &&
+        $entry1->{id} eq $entry2->{id};
 }
 
 sub entries_are_the_same
@@ -318,21 +318,21 @@ sub entries_are_the_same
     ## defined $entry2->{suboptimal} ? $entry2->{suboptimal} : "", "\n";
 
     if( $check_bibliography ) {
-	return
-	    ! data_sections_are_the_same( $entry1, $entry2 ) &&
-	    cells_are_the_same( $entry1->{cell}, $entry2->{cell} ) &&
-	    conditions_are_the_same( $entry1, $entry2 ) &&
-	    (!defined $entry1->{suboptimal} || $entry1->{suboptimal} ne "yes") &&
-	    (!defined $entry2->{suboptimal} || $entry2->{suboptimal} ne "yes") &&
-	    bibliographies_are_the_same( $entry1->{bibliography},
-					 $entry2->{bibliography} );
+        return
+            ! data_sections_are_the_same( $entry1, $entry2 ) &&
+            cells_are_the_same( $entry1->{cell}, $entry2->{cell} ) &&
+            conditions_are_the_same( $entry1, $entry2 ) &&
+            (!defined $entry1->{suboptimal} || $entry1->{suboptimal} ne "yes") &&
+            (!defined $entry2->{suboptimal} || $entry2->{suboptimal} ne "yes") &&
+            bibliographies_are_the_same( $entry1->{bibliography},
+        				 $entry2->{bibliography} );
     } else {
-	return
-	    ! data_sections_are_the_same( $entry1, $entry2 ) &&
-	    conditions_are_the_same( $entry1, $entry2 ) &&
-	    (!defined $entry1->{suboptimal} || $entry1->{suboptimal} ne "yes") &&
-	    (!defined $entry2->{suboptimal} || $entry2->{suboptimal} ne "yes") &&
-	    cells_are_the_same( $entry1->{cell}, $entry2->{cell} );
+        return
+            ! data_sections_are_the_same( $entry1, $entry2 ) &&
+            conditions_are_the_same( $entry1, $entry2 ) &&
+            (!defined $entry1->{suboptimal} || $entry1->{suboptimal} ne "yes") &&
+            (!defined $entry2->{suboptimal} || $entry2->{suboptimal} ne "yes") &&
+            cells_are_the_same( $entry1->{cell}, $entry2->{cell} );
     }
 }
 
@@ -341,8 +341,8 @@ sub entries_are_the_same
 ##     my @cell = @_;
 ## 
 ##     if( !defined $cell[0] || !defined $cell[1] || !defined $cell[2] ||
-## 	!defined $cell[3] || !defined $cell[4] || !defined $cell[5] ) {
-## 	return -1;
+##         !defined $cell[3] || !defined $cell[4] || !defined $cell[5] ) {
+##         return -1;
 ##     }
 ## 
 ##     my $Pi = 3.14159265358979;

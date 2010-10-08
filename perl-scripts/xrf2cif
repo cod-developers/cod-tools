@@ -238,67 +238,67 @@ while(<>) {
     chomp;
 
     if( /^\#/ ) {
-	my $idx;
-	my ( $key, $value ) = split( /[\s]/, $_, 2 );
-	$key =~ s/^\#//;
-	if( $key =~ /^(.*)\[(.*)\]$/ ) {
-	    $key = $1;
-	    $idx = $2;
-	}
-	if( defined $idx ) {
-	    if( !defined $tags{$key}[$idx] ) {
-		$tags{$key}[$idx] = $value;
-	    } else {
-		$tags{$key}[$idx] .= "\n" . $value;
-	    }
-	} else {
-	    if( !defined $tags{$key} ) {
-		$tags{$key} = $value;
-	    } else {
-		$tags{$key} .= "\n" . $value;
-	    }
-	}
+        my $idx;
+        my ( $key, $value ) = split( /[\s]/, $_, 2 );
+        $key =~ s/^\#//;
+        if( $key =~ /^(.*)\[(.*)\]$/ ) {
+            $key = $1;
+            $idx = $2;
+        }
+        if( defined $idx ) {
+            if( !defined $tags{$key}[$idx] ) {
+        	$tags{$key}[$idx] = $value;
+            } else {
+        	$tags{$key}[$idx] .= "\n" . $value;
+            }
+        } else {
+            if( !defined $tags{$key} ) {
+        	$tags{$key} = $value;
+            } else {
+        	$tags{$key} .= "\n" . $value;
+            }
+        }
     } elsif( /^ANISOU\s/ ) {
-	my @atom = split( " ",$_ );
-	my $atom_name = $atom[1];
-	push( @anisou, [ @atom ] );
-	$anisou{$atom_name} ++;
+        my @atom = split( " ",$_ );
+        my $atom_name = $atom[1];
+        push( @anisou, [ @atom ] );
+        $anisou{$atom_name} ++;
     } elsif( /^BOND\s/ ) {
-	my @bond = split( " ",$_ );
-	push( @bonds, [ @bond ] );
+        my @bond = split( " ",$_ );
+        push( @bonds, [ @bond ] );
     } elsif( !/^\s*$/ ) {
-	if( $n < 4 && $n != 2 ) {
-	    push( @record, [$_] );
-	} else {
-	    push( @record, [ split( " ", $_ ) ] );
-	}
-	$n++;
+        if( $n < 4 && $n != 2 ) {
+            push( @record, [$_] );
+        } else {
+            push( @record, [ split( " ", $_ ) ] );
+        }
+        $n++;
     }
     
     if( /^\s*$/ || eof ) {
-	if( $user_biblio ) {
-	    if( !$leave_biblio ) {
-		for my $key ( grep /_journal_|_publ_section_title|_author_/,
-			      keys %tags ) {
-		    delete $tags{$key};
-		}
-	    }
-	    $tags{_publ_section_title} = $title if defined $title;
-	    $tags{_journal_name_full} = $journal if defined $journal;
-	    $tags{_journal_year} = $year if defined $year;
-	    $tags{_journal_volume} = $volume if defined $volume;
-	    $tags{_journal_issue} = $issue if defined $issue;
-	    $tags{_journal_page_first} = $start_page if defined $start_page;
-	    $tags{_journal_page_last} = $end_page if defined $end_page;
-	}
-	print "\n" if $nrecords++ > 0;
-	print_record( \@record, \%tags, \@anisou, \%anisou, \@bonds );
-	@record = ();
-	%tags = ();
-	@anisou = ();
-	%anisou = ();
-	@bonds = ();
-	$n = 0;
+        if( $user_biblio ) {
+            if( !$leave_biblio ) {
+        	for my $key ( grep /_journal_|_publ_section_title|_author_/,
+        		      keys %tags ) {
+        	    delete $tags{$key};
+        	}
+            }
+            $tags{_publ_section_title} = $title if defined $title;
+            $tags{_journal_name_full} = $journal if defined $journal;
+            $tags{_journal_year} = $year if defined $year;
+            $tags{_journal_volume} = $volume if defined $volume;
+            $tags{_journal_issue} = $issue if defined $issue;
+            $tags{_journal_page_first} = $start_page if defined $start_page;
+            $tags{_journal_page_last} = $end_page if defined $end_page;
+        }
+        print "\n" if $nrecords++ > 0;
+        print_record( \@record, \%tags, \@anisou, \%anisou, \@bonds );
+        @record = ();
+        %tags = ();
+        @anisou = ();
+        %anisou = ();
+        @bonds = ();
+        $n = 0;
     }
 }
 
@@ -307,27 +307,27 @@ sub print_tag
     my ($key, $tags) = @_;
 
     if( exists $tags->{$key} ) {
-	my $val = $tags->{$key};
-	if( ref $val eq "ARRAY" ) {
-	    print "loop_\n";
-	    print "$key\n";
-	    for my $value (@$val) {
-		print_value( $value );
-	    }
-	} else {
-	    my $key_len = length($key) > 30 ? length($key) : 30;
-	    my $val_len = length($val);
+        my $val = $tags->{$key};
+        if( ref $val eq "ARRAY" ) {
+            print "loop_\n";
+            print "$key\n";
+            for my $value (@$val) {
+        	print_value( $value );
+            }
+        } else {
+            my $key_len = length($key) > 30 ? length($key) : 30;
+            my $val_len = length($val);
 
-	    if( $val =~ /\s/ ) {
-		$val_len += 2;
-	    }
-	    if( $key_len + $val_len + 1 > 80 && $val !~ /\n/ ) {
-		printf "%s\n", $key;
-	    } else {
-		printf "%-30s", $key;
-	    }
-	    print_value( $val );
-	}
+            if( $val =~ /\s/ ) {
+        	$val_len += 2;
+            }
+            if( $key_len + $val_len + 1 > 80 && $val !~ /\n/ ) {
+        	printf "%s\n", $key;
+            } else {
+        	printf "%-30s", $key;
+            }
+            print_value( $val );
+        }
     }
 }
 
@@ -336,11 +336,11 @@ sub print_value
     my $val = $_[0];
 
     if( $val =~ /\n/ ) {
-	$val = "\n;" . $val . "\n;\n";
+        $val = "\n;" . $val . "\n;\n";
     } elsif( $val !~ /\s/) {
-	$val = " " . $val . "\n";
+        $val = " " . $val . "\n";
     } else {
-	$val = " '" . $val . "'\n";
+        $val = " '" . $val . "'\n";
     }
     print $val;
 }
@@ -354,169 +354,169 @@ sub print_record
     ## do { local $, = ",\n"; print keys %{$tags}, "\n"; };
 
     if( $records && int(@{$records}) > 0 ) {
-	my $bibliography = shift( @{$records} );
-	my $composition =  shift( @{$records} );
-	my $cell =  shift( @{$records} );
-	my $spacegroup = shift( @{$records} );
+        my $bibliography = shift( @{$records} );
+        my $composition =  shift( @{$records} );
+        my $cell =  shift( @{$records} );
+        my $spacegroup = shift( @{$records} );
 
-	if( defined $tags->{_publ_section_title} ) {
-	    $bibliography = [ $tags->{_publ_section_title} ];
-	    $bibliography->[0] =~ s/\n/ /g;
-	}
+        if( defined $tags->{_publ_section_title} ) {
+            $bibliography = [ $tags->{_publ_section_title} ];
+            $bibliography->[0] =~ s/\n/ /g;
+        }
 
-	print "_publ_section_title \n";
-	print ";\n";
-	do {
-	    local $, = "\n";
-	    local $\ = "\n";
-	    $bibliography->[0] = unicode2cif( $bibliography->[0] );
-	    print map { " " . $_ } fold( 71, " +", " ", ($bibliography->[0]) );
-	};
-	print ";\n";
-	print "_chemical_formula_sum '$composition->[0]'\n";
+        print "_publ_section_title \n";
+        print ";\n";
+        do {
+            local $, = "\n";
+            local $\ = "\n";
+            $bibliography->[0] = unicode2cif( $bibliography->[0] );
+            print map { " " . $_ } fold( 71, " +", " ", ($bibliography->[0]) );
+        };
+        print ";\n";
+        print "_chemical_formula_sum '$composition->[0]'\n";
 
-	if( $tags ) {
-	    for my $key (@inherited_tags) {
-		print_tag( $key, $tags );
-	    }
-	}
+        if( $tags ) {
+            for my $key (@inherited_tags) {
+        	print_tag( $key, $tags );
+            }
+        }
 
-	my $have_Wyckoff_symbol = 0;
-	for my $atom (@{$records}) {
-	    if( defined $atom->[2] && $atom->[2] ne '?' && $atom->[2] ne '.' ) {
-		$have_Wyckoff_symbol = 1;
-		last;
-	    }
-	}
+        my $have_Wyckoff_symbol = 0;
+        for my $atom (@{$records}) {
+            if( defined $atom->[2] && $atom->[2] ne '?' && $atom->[2] ne '.' ) {
+        	$have_Wyckoff_symbol = 1;
+        	last;
+            }
+        }
 
-	print "_cell_length_a       $cell->[0]\n";
-	print "_cell_length_b       $cell->[1]\n";
-	print "_cell_length_c       $cell->[2]\n";
-	print "_cell_angle_alpha    $cell->[3]\n";
-	print "_cell_angle_beta     $cell->[4]\n";
-	print "_cell_angle_gamma    $cell->[5]\n";
-	if( defined $tags{_cell_volume} ) {
-	    printf "_cell_volume         %s\n", $tags{_cell_volume};
-	} else {
-	    printf "_cell_volume         %8.2f\n", cell_volume( @{$cell} );
-	}
-	print "_symmetry_space_group_name_H-M   ";
-	print_value( $spacegroup->[0] );
-	print_tag( "_symmetry_equiv_pos_as_xyz", $tags );
-	if( int(@{$records}) > 0 ) {
-	    print "loop_\n";
-	    print "_atom_site_label\n";
-	    if( defined $tags{_atom_site_type_symbol} ) {
-		print "_atom_site_type_symbol\n";
-	    }
-	    print "_atom_site_symmetry_multiplicity\n";
-	    print "_atom_site_Wyckoff_symbol\n" if $have_Wyckoff_symbol;
-	    print "_atom_site_fract_x\n";
-	    print "_atom_site_fract_y\n";
-	    print "_atom_site_fract_z\n";
-	    print "_atom_site_occupancy\n";
-	    if( !defined $tags{_atom_site_B_iso_or_equiv} ) {
-		print "_atom_site_U_iso_or_equiv\n";
-	    } else {
-		print "_atom_site_B_iso_or_equiv\n";
-	    }
-	    print "_atom_site_adp_type\n";
+        print "_cell_length_a       $cell->[0]\n";
+        print "_cell_length_b       $cell->[1]\n";
+        print "_cell_length_c       $cell->[2]\n";
+        print "_cell_angle_alpha    $cell->[3]\n";
+        print "_cell_angle_beta     $cell->[4]\n";
+        print "_cell_angle_gamma    $cell->[5]\n";
+        if( defined $tags{_cell_volume} ) {
+            printf "_cell_volume         %s\n", $tags{_cell_volume};
+        } else {
+            printf "_cell_volume         %8.2f\n", cell_volume( @{$cell} );
+        }
+        print "_symmetry_space_group_name_H-M   ";
+        print_value( $spacegroup->[0] );
+        print_tag( "_symmetry_equiv_pos_as_xyz", $tags );
+        if( int(@{$records}) > 0 ) {
+            print "loop_\n";
+            print "_atom_site_label\n";
+            if( defined $tags{_atom_site_type_symbol} ) {
+        	print "_atom_site_type_symbol\n";
+            }
+            print "_atom_site_symmetry_multiplicity\n";
+            print "_atom_site_Wyckoff_symbol\n" if $have_Wyckoff_symbol;
+            print "_atom_site_fract_x\n";
+            print "_atom_site_fract_y\n";
+            print "_atom_site_fract_z\n";
+            print "_atom_site_occupancy\n";
+            if( !defined $tags{_atom_site_B_iso_or_equiv} ) {
+        	print "_atom_site_U_iso_or_equiv\n";
+            } else {
+        	print "_atom_site_B_iso_or_equiv\n";
+            }
+            print "_atom_site_adp_type\n";
 
-	    for my $atom_site_tag ( "_atom_site_calc_flag",
-				    "_atom_site_disorder_assembly",
-				    "_atom_site_disorder_group" ) {
-		if( defined $tags{$atom_site_tag} ) {
-		    my $has_value = 0;
-		    for my $val ( @{$tags{$atom_site_tag}} ) {
-			if( defined $val && $val ne '.' && $val ne '?' ) {
-			    $has_value = 1;
-			    last;
-			}
-		    }
-		    if( !$has_value ) {
-			delete $tags{$atom_site_tag};
-		    }
-		}
-	    }
+            for my $atom_site_tag ( "_atom_site_calc_flag",
+        			    "_atom_site_disorder_assembly",
+        			    "_atom_site_disorder_group" ) {
+        	if( defined $tags{$atom_site_tag} ) {
+        	    my $has_value = 0;
+        	    for my $val ( @{$tags{$atom_site_tag}} ) {
+        		if( defined $val && $val ne '.' && $val ne '?' ) {
+        		    $has_value = 1;
+        		    last;
+        		}
+        	    }
+        	    if( !$has_value ) {
+        		delete $tags{$atom_site_tag};
+        	    }
+        	}
+            }
 
-	    for my $atom_site_tag ( "_atom_site_calc_flag",
-				    "_atom_site_refinement_flags",
-				    "_atom_site_disorder_assembly",
-				    "_atom_site_disorder_group" ) {
-		if( defined $tags{$atom_site_tag} ) {
-		    print $atom_site_tag, "\n";
-		}
-	    }
+            for my $atom_site_tag ( "_atom_site_calc_flag",
+        			    "_atom_site_refinement_flags",
+        			    "_atom_site_disorder_assembly",
+        			    "_atom_site_disorder_group" ) {
+        	if( defined $tags{$atom_site_tag} ) {
+        	    print $atom_site_tag, "\n";
+        	}
+            }
 
-	    local $, = " ";
-	    local $\ = "";
-	    my $i = 0;
+            local $, = " ";
+            local $\ = "";
+            my $i = 0;
 
-	    my $UisoBiso_val;
-	    my $use_Biso_tag;
+            my $UisoBiso_val;
+            my $use_Biso_tag;
 
-	    if( defined $tags{_atom_site_B_iso_or_equiv} ) {
-		$UisoBiso_val = "Biso";
-		$use_Biso_tag = 1;
-	    } else {
-		$UisoBiso_val = "Uiso";
-		$use_Biso_tag = 0;
-	    }
+            if( defined $tags{_atom_site_B_iso_or_equiv} ) {
+        	$UisoBiso_val = "Biso";
+        	$use_Biso_tag = 1;
+            } else {
+        	$UisoBiso_val = "Uiso";
+        	$use_Biso_tag = 0;
+            }
 
-	    for my $atom (@{$records}) {
-		my $atom_name = $atom->[0];
-		my @atom = @{$atom};
-		splice( @atom, 2, 1 ) if !$have_Wyckoff_symbol;
-		if( defined $tags{_atom_site_type_symbol} ) {
-		    splice( @atom, 1, 0,
-			    $tags{_atom_site_type_symbol}[$i] );
-		}
-		print @atom[0..$#atom-1],
-		    $use_Biso_tag ?
-			$tags{_atom_site_B_iso_or_equiv}[$i] :
-			$atom[-1],
-		    defined $anisou_atoms->{$atom_name} ?
-		        "Uani" : $UisoBiso_val;
-		for my $atom_site_tag ( "_atom_site_calc_flag",
-					"_atom_site_refinement_flags",
-					"_atom_site_disorder_assembly",
-					"_atom_site_disorder_group" ) {
-		    if( defined $tags{$atom_site_tag} ) {
-			print " " . $tags{$atom_site_tag}[$i];
-		    }
-		}
-		print "\n";
-		$i ++;
-	    }
-	}
+            for my $atom (@{$records}) {
+        	my $atom_name = $atom->[0];
+        	my @atom = @{$atom};
+        	splice( @atom, 2, 1 ) if !$have_Wyckoff_symbol;
+        	if( defined $tags{_atom_site_type_symbol} ) {
+        	    splice( @atom, 1, 0,
+        		    $tags{_atom_site_type_symbol}[$i] );
+        	}
+        	print @atom[0..$#atom-1],
+        	    $use_Biso_tag ?
+        		$tags{_atom_site_B_iso_or_equiv}[$i] :
+        		$atom[-1],
+        	    defined $anisou_atoms->{$atom_name} ?
+        	        "Uani" : $UisoBiso_val;
+        	for my $atom_site_tag ( "_atom_site_calc_flag",
+        				"_atom_site_refinement_flags",
+        				"_atom_site_disorder_assembly",
+        				"_atom_site_disorder_group" ) {
+        	    if( defined $tags{$atom_site_tag} ) {
+        		print " " . $tags{$atom_site_tag}[$i];
+        	    }
+        	}
+        	print "\n";
+        	$i ++;
+            }
+        }
     }
 
     if( $anisou && int(@{$anisou}) > 0 ) {
-	print "loop_\n";
-	print "_atom_site_aniso_label\n";
-	print "_atom_site_aniso_U_11\n";
-	print "_atom_site_aniso_U_22\n";
-	print "_atom_site_aniso_U_33\n";
-	print "_atom_site_aniso_U_23\n";
-	print "_atom_site_aniso_U_13\n";
-	print "_atom_site_aniso_U_12\n";
-	local $, = " ";
-	local $\ = "\n";
-	for my $atom (@{$anisou}) {
-	    print @{$atom}[1..$#{$atom}];
-	}
+        print "loop_\n";
+        print "_atom_site_aniso_label\n";
+        print "_atom_site_aniso_U_11\n";
+        print "_atom_site_aniso_U_22\n";
+        print "_atom_site_aniso_U_33\n";
+        print "_atom_site_aniso_U_23\n";
+        print "_atom_site_aniso_U_13\n";
+        print "_atom_site_aniso_U_12\n";
+        local $, = " ";
+        local $\ = "\n";
+        for my $atom (@{$anisou}) {
+            print @{$atom}[1..$#{$atom}];
+        }
     }
 
     if( $bonds and int(@{$bonds}) > 0 ) {
-	print "loop_\n";
-	print "_geom_bond_atom_site_label_1\n";
-	print "_geom_bond_atom_site_label_2\n";
-	print "_geom_bond_distance\n";
-	local $, = " ";
-	local $\ = "\n";
-	for my $bond (@{$bonds}) {
-	    print @{$bond}[1..$#{$bond}];
-	}
+        print "loop_\n";
+        print "_geom_bond_atom_site_label_1\n";
+        print "_geom_bond_atom_site_label_2\n";
+        print "_geom_bond_distance\n";
+        local $, = " ";
+        local $\ = "\n";
+        for my $bond (@{$bonds}) {
+            print @{$bond}[1..$#{$bond}];
+        }
     }
 }
 
@@ -531,18 +531,18 @@ sub fold
 
     my $word;
     for $word (split( $separator, $string )) {
-	$word =~ s/^\s*|\s*$//g;
-	if( !$line ) {
-	    $line = $word;
-	} else {
-	    my $new_line = "$line$ors$word";
-	    if( length($new_line) < $length ) {
-		$line = $new_line;
-	    } else {
-		push( @lines, $line );
-		$line = $word;
-	    }
-	}
+        $word =~ s/^\s*|\s*$//g;
+        if( !$line ) {
+            $line = $word;
+        } else {
+            my $new_line = "$line$ors$word";
+            if( length($new_line) < $length ) {
+        	$line = $new_line;
+            } else {
+        	push( @lines, $line );
+        	$line = $word;
+            }
+        }
     }
     push( @lines, $line );
     return @lines;

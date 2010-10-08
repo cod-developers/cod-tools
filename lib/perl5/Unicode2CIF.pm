@@ -175,10 +175,10 @@ my %combining = (
 
 for my $i ( 0x0391 .. 0x03A9 ) {
     if( $i != 0x03A2 ) { # reserved code-point, could be an uppercase varsigma
-	my $c = chr($i);
-	$letters{$c} = uc($letters{lc($c)});
-	## binmode(STDOUT,":utf8");
-	## print ">>> $c, $cif{$c}\n";
+        my $c = chr($i);
+        $letters{$c} = uc($letters{lc($c)});
+        ## binmode(STDOUT,":utf8");
+        ## print ">>> $c, $cif{$c}\n";
     }
 }
 
@@ -189,11 +189,11 @@ sub unicode2cif
     my $text = Unicode::Normalize::normalize( 'D', $_[0] );
 
     for my $pattern (keys %cif) {
-	$text =~ s/$pattern/$cif{$pattern}/g;
+        $text =~ s/$pattern/$cif{$pattern}/g;
     }
     for my $pattern (keys %combining) {
-	$text =~ s/(.)($pattern)/$2$1/g;
-	$text =~ s/$pattern/$combining{$pattern}/g;
+        $text =~ s/(.)($pattern)/$2$1/g;
+        $text =~ s/$pattern/$combining{$pattern}/g;
     }
     $text =~ s/([^\x{0000}-\x{007F}])/sprintf("&#x%04X;",ord($1))/eg;
     return $text;
@@ -216,25 +216,25 @@ sub cif2unicode
     
     $text =~ s/\\\\db /\x{003D}/g;
     for my $pattern (keys %commands) {
-	my $value = $commands{$pattern};
-    	$text =~ s/\Q$value/$pattern/g;
-    	if( $pattern =~ /\s$/ ) {
-    	    my $core = $value;
-    	    $core =~ s/\s$//;
-    	    $text =~ s/\Q$core\E([^a-zA-Z0-9])/$pattern$1/g;
-    	    $text =~ s/\Q$core\E([^a-zA-Z0-9])/$pattern$1/g;
-    	    $text =~ s/\Q$core\E$/$pattern/g;
-    	}
+        my $value = $commands{$pattern};
+            $text =~ s/\Q$value/$pattern/g;
+            if( $pattern =~ /\s$/ ) {
+                my $core = $value;
+                $core =~ s/\s$//;
+                $text =~ s/\Q$core\E([^a-zA-Z0-9])/$pattern$1/g;
+                $text =~ s/\Q$core\E([^a-zA-Z0-9])/$pattern$1/g;
+                $text =~ s/\Q$core\E$/$pattern/g;
+            }
     }
     for my $pattern (keys %letters) {
-	$text =~ s/\Q$letters{$pattern}\E/$pattern/g;
+        $text =~ s/\Q$letters{$pattern}\E/$pattern/g;
     }
     for my $pattern (keys %special_signs) {
-	$text =~ s/\Q$special_signs{$pattern}\E/$pattern/g;
+        $text =~ s/\Q$special_signs{$pattern}\E/$pattern/g;
     }
     for my $pattern (keys %combining) {
-	$text =~ s/(\Q$combining{$pattern}\E)(.)/$2$1/g;
-	$text =~ s/\Q$combining{$pattern}\E/$pattern/g;
+        $text =~ s/(\Q$combining{$pattern}\E)(.)/$2$1/g;
+        $text =~ s/\Q$combining{$pattern}\E/$pattern/g;
     }
     $text =~ s/\&\#x([0-9A-Fa-f]+);/chr(hex($1))/eg;
     return Unicode::Normalize::normalize( 'C', $text );
