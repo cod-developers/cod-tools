@@ -43,55 +43,55 @@ for my $filename (@ARGV) {
 
     if( defined $parser->YYData->{ERRCOUNT} &&
         $parser->YYData->{ERRCOUNT} > 0 ) {
-	print STDERR "$0: $filename: ",
-	$parser->YYData->{ERRCOUNT},
-	" error(s) encountered while parsing CIF data\n";
-	exit -1;
+        print STDERR "$0: $filename: ",
+        $parser->YYData->{ERRCOUNT},
+        " error(s) encountered while parsing CIF data\n";
+        exit -1;
     }
 
     canonicalize_all_names( $data );
 
     for my $dataset (@$data) {
 
-	my $values = $dataset->{values};
+        my $values = $dataset->{values};
 
-	if( exists $values->{_publ_author_name} ) {
-	    for my $i (0..$#{$values->{_publ_author_name}}) {
-		my $author = $values->{_publ_author_name}[$i];
-		if( $author =~
-		    /^
+        if( exists $values->{_publ_author_name} ) {
+            for my $i (0..$#{$values->{_publ_author_name}}) {
+        	my $author = $values->{_publ_author_name}[$i];
+        	if( $author =~
+        	    /^
                      \s*((?:[A-Z][a-z]+)?[A-Z][a-z\']+)  # Surname
                      \s+((?:[A-Z](?:\s+|-))*[A-Z])\s*$   # Initials
                     /x ) {
-		    my $surname = $1;
-		    my $initials = $2;
-		    $initials =~ s/([A-Z])/$1./g;
-		    $values->{_publ_author_name}[$i] =
-			"$surname, $initials";
-		}
-		if( $author =~
-		    /^
+        	    my $surname = $1;
+        	    my $initials = $2;
+        	    $initials =~ s/([A-Z])/$1./g;
+        	    $values->{_publ_author_name}[$i] =
+        		"$surname, $initials";
+        	}
+        	if( $author =~
+        	    /^
                      \s*((?:[A-Za-z][a-z]*\s+)*[A-Za-z]?[a-z]+)  # 'von' prefix
                      \s+((?:[A-Z][a-z]+)?[A-Z][a-z\']+) # Surname
                      \s+((?:[A-Z](?:\s+|-))*[A-Z])\s*$  # Initials
                     /x ) {
-		    my $von_prefix = $1;
-		    my $surname = $2;
-		    my $initials = $3;
-		    $initials =~ s/([A-Z])/$1./g;
-		    $values->{_publ_author_name}[$i] =
-			"$von_prefix $surname, $initials";
-		}
-	    }
-	}
+        	    my $von_prefix = $1;
+        	    my $surname = $2;
+        	    my $initials = $3;
+        	    $initials =~ s/([A-Z])/$1./g;
+        	    $values->{_publ_author_name}[$i] =
+        		"$von_prefix $surname, $initials";
+        	}
+            }
+        }
 
-	print_cif( $dataset, {
-	    exclude_misspelled_tags => 0,
-	    preserve_loop_order => 1,
-	    fold_long_fields => 0,
-	    dictionary_tags => \%dictionary_tags,
-	    dictionary_tag_list => \@dictionary_tags,
-	    keep_tag_order => $keep_tag_order,
-	} );
+        print_cif( $dataset, {
+            exclude_misspelled_tags => 0,
+            preserve_loop_order => 1,
+            fold_long_fields => 0,
+            dictionary_tags => \%dictionary_tags,
+            dictionary_tag_list => \@dictionary_tags,
+            keep_tag_order => $keep_tag_order,
+        } );
     }
 }

@@ -91,13 +91,13 @@ sub showArray
                printf STDOUT "   %s%-3d: ", "undef", $index++;
            } elsif( ref $item eq "HASH" ) {
                printf STDOUT "   %s%-3d: ", $ident, $index++;
-	       showHash( $item, $ident . "   " );
-	   } elsif( ref $item eq "ARRAY" ) {
+               showHash( $item, $ident . "   " );
+           } elsif( ref $item eq "ARRAY" ) {
                printf STDOUT "   %s%-3d: ", $ident, $index++;
-	       showArray( $item, $ident . "   " );
-	   } else {
-	       printf STDOUT "%s%-3s%-17s\n", $ident, $index++, $item; 
-	   }
+               showArray( $item, $ident . "   " );
+           } else {
+               printf STDOUT "%s%-3s%-17s\n", $ident, $index++, $item; 
+           }
        }
        print STDOUT $ident, "]";
    }

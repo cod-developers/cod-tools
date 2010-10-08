@@ -172,9 +172,9 @@ for my $dataset (@data) {
     %global_bibliography = ();
 
     for my $key (@global_biblio_keys) {
-	if( defined $datablock->{$key} ) {
-	    $global_bibliography{$key} = $datablock->{$key};
-	}
+        if( defined $datablock->{$key} ) {
+            $global_bibliography{$key} = $datablock->{$key};
+        }
     }
 }
 
@@ -196,27 +196,27 @@ for my $dataset (@data) {
     # Add bibliography from a global section, if any:
 
     if( %global_bibliography ) {
-	for my $key (keys %global_bibliography) {
-	    if( !exists $datablok->{$key} ) {
-		$datablok->{$key} = $global_bibliography{$key};
-	    }
-	}
+        for my $key (keys %global_bibliography) {
+            if( !exists $datablok->{$key} ) {
+        	$datablok->{$key} = $global_bibliography{$key};
+            }
+        }
     }
 
     # convert all tags to a "cannonical" form (the one used in this
     # script ;):
 
     if( 1 ) {
-	for my $key ( keys %{$datablok} ) {
-	    my $lc_key = lc( $key );
-	    ## print ">>> $key -> $lc_key\n";
-	    if( defined $cif_tags_lc{$lc_key} ) {
-		my $cannonical_key = $cif_tags_lc{$lc_key};
-		## print ">>> $key -> $lc_key -> $cannonical_key\n";
-		$datablok->{$cannonical_key} = $datablok->{$key} unless
-		    exists $datablok->{$cannonical_key};
-	    }
-	}
+        for my $key ( keys %{$datablok} ) {
+            my $lc_key = lc( $key );
+            ## print ">>> $key -> $lc_key\n";
+            if( defined $cif_tags_lc{$lc_key} ) {
+        	my $cannonical_key = $cif_tags_lc{$lc_key};
+        	## print ">>> $key -> $lc_key -> $cannonical_key\n";
+        	$datablok->{$cannonical_key} = $datablok->{$key} unless
+        	    exists $datablok->{$cannonical_key};
+            }
+        }
     }
 
     next if !defined $datablok or !defined $datablok->{_atom_site_label};
@@ -229,102 +229,102 @@ for my $dataset (@data) {
     my $reference;
 
     if( defined $biblio ) {
-	open( BIBLIO, "<:utf8", $biblio ) or
-	    die( "Could not open file '$biblio' for reading: $!" );
-	if( $biblio =~ /\.ref/ ) {
-	    $reference = <BIBLIO>; # read the first line
-	} elsif( $biblio =~ /\.xrf/ ) {
-	    my @reference = grep !/^\#/, <BIBLIO>;
-	    $reference = $reference[0]; # read the first non-comment line
-	} else {
-	    local $/ = undef; # read the whole file
-	    $reference = <BIBLIO>;
-	}
-	close BIBLIO;
-	chomp $reference;
+        open( BIBLIO, "<:utf8", $biblio ) or
+            die( "Could not open file '$biblio' for reading: $!" );
+        if( $biblio =~ /\.ref/ ) {
+            $reference = <BIBLIO>; # read the first line
+        } elsif( $biblio =~ /\.xrf/ ) {
+            my @reference = grep !/^\#/, <BIBLIO>;
+            $reference = $reference[0]; # read the first non-comment line
+        } else {
+            local $/ = undef; # read the whole file
+            $reference = <BIBLIO>;
+        }
+        close BIBLIO;
+        chomp $reference;
 
-	if( !$leave_biblio ) {
-	    for my $key ( grep /_journal_|_publ_section_title|_author_/,
-			  keys %{$datablok} ) {
-		delete $datablok->{$key};
-	    }
-	}
+        if( !$leave_biblio ) {
+            for my $key ( grep /_journal_|_publ_section_title|_author_/,
+        		  keys %{$datablok} ) {
+        	delete $datablok->{$key};
+            }
+        }
 
-	if( $reference =~ /<.*?>.*?<.*?>/s ||
-	    $reference =~ /\\.*?(?:\[.*?\])?\{.*?\}/s ) {
-	    if( !$title && ( $reference =~ /<title>(.*?)<\/title>/s ||
-			     $reference =~ /\\title\{(.*?)\}/s )) {
-		$datablok->{_publ_section_title} = [ unicode2cif( $1 ) ];
-	    }
-	    if( !$journal && ( $reference =~ /<journal>(.*?)<\/journal>/s ||
-			       $reference =~ /\\journal\{(.*?)\}/s )) {
-		$datablok->{_journal_name_full} = [ unicode2cif( $1 ) ];
-	    }
-	    if( !$issue && ( $reference =~ /<issue>(.*?)<\/issue>/s ||
-			     $reference =~ /\\issue\{(.*?)\}/s )) {
-		$datablok->{_journal_issue} = [ unicode2cif( $1 ) ];
-	    }
-	    if( !$volume && ( $reference =~ /<volume>(.*?)<\/volume>/s ||
-			      $reference =~ /\\volume\{(.*?)\}/s )) {
-		$datablok->{_journal_volume} = [ unicode2cif( $1 ) ];
-	    }
-	    if( !$year && ( $reference =~ /<year>(.*?)<\/year>/s ||
-			    $reference =~ /\\year\{(.*?)\}/s )) {
-		my $y = $1;
-		$y =~ s/[^0-9]//g;
-		$datablok->{_journal_year} = [ unicode2cif( $y ) ];
-	    }
-	    if( !$start_page && ( $reference =~ /<pages?>(.*?)<\/pages?>/s ||
-				  $reference =~ /\\pages?\{(.*?)\}/s )) {
-		my @pages = map { s/\s//g; $_ } split ( "-", $1 );
-		$datablok->{_journal_page_first} = [ unicode2cif( $pages[0] ) ];
-		if( int(@pages) > 1 ) {
-		    $datablok->{_journal_page_last} =
-			[ unicode2cif( $pages[1] ) ];
-		}
-	    }
-	    if( !@authors && ( $reference =~
-			       /<authors?\s?(.*?)>(.*?)<\/authors?>/s ||
-			       $reference =~
-			       /\\authors?(?:\[(.*?)\])?\{(.*?)\}/s )) {
-		my $attributes = $1;
-		my $author_list = $2;
-		my $separator = qr/,\s*and|\sand\s|,/;
-		if( $attributes && $attributes =~ /separator\s*=\s*"(.*?)"/ ) {
-		    $separator = qr/$1/;
-		}
-		$datablok->{_publ_author_name} =
-		    [
-		     map { unicode2cif( $_ ) }
-		     map { s/\n/ /g; s/\s+/ /g; $_ }
-		     map { s/^\s*|\s*$//g; $_ }
-		     split( $separator, $author_list )
-		    ];
-	    }
-	}
+        if( $reference =~ /<.*?>.*?<.*?>/s ||
+            $reference =~ /\\.*?(?:\[.*?\])?\{.*?\}/s ) {
+            if( !$title && ( $reference =~ /<title>(.*?)<\/title>/s ||
+        		     $reference =~ /\\title\{(.*?)\}/s )) {
+        	$datablok->{_publ_section_title} = [ unicode2cif( $1 ) ];
+            }
+            if( !$journal && ( $reference =~ /<journal>(.*?)<\/journal>/s ||
+        		       $reference =~ /\\journal\{(.*?)\}/s )) {
+        	$datablok->{_journal_name_full} = [ unicode2cif( $1 ) ];
+            }
+            if( !$issue && ( $reference =~ /<issue>(.*?)<\/issue>/s ||
+        		     $reference =~ /\\issue\{(.*?)\}/s )) {
+        	$datablok->{_journal_issue} = [ unicode2cif( $1 ) ];
+            }
+            if( !$volume && ( $reference =~ /<volume>(.*?)<\/volume>/s ||
+        		      $reference =~ /\\volume\{(.*?)\}/s )) {
+        	$datablok->{_journal_volume} = [ unicode2cif( $1 ) ];
+            }
+            if( !$year && ( $reference =~ /<year>(.*?)<\/year>/s ||
+        		    $reference =~ /\\year\{(.*?)\}/s )) {
+        	my $y = $1;
+        	$y =~ s/[^0-9]//g;
+        	$datablok->{_journal_year} = [ unicode2cif( $y ) ];
+            }
+            if( !$start_page && ( $reference =~ /<pages?>(.*?)<\/pages?>/s ||
+        			  $reference =~ /\\pages?\{(.*?)\}/s )) {
+        	my @pages = map { s/\s//g; $_ } split ( "-", $1 );
+        	$datablok->{_journal_page_first} = [ unicode2cif( $pages[0] ) ];
+        	if( int(@pages) > 1 ) {
+        	    $datablok->{_journal_page_last} =
+        		[ unicode2cif( $pages[1] ) ];
+        	}
+            }
+            if( !@authors && ( $reference =~
+        		       /<authors?\s?(.*?)>(.*?)<\/authors?>/s ||
+        		       $reference =~
+        		       /\\authors?(?:\[(.*?)\])?\{(.*?)\}/s )) {
+        	my $attributes = $1;
+        	my $author_list = $2;
+        	my $separator = qr/,\s*and|\sand\s|,/;
+        	if( $attributes && $attributes =~ /separator\s*=\s*"(.*?)"/ ) {
+        	    $separator = qr/$1/;
+        	}
+        	$datablok->{_publ_author_name} =
+        	    [
+        	     map { unicode2cif( $_ ) }
+        	     map { s/\n/ /g; s/\s+/ /g; $_ }
+        	     map { s/^\s*|\s*$//g; $_ }
+        	     split( $separator, $author_list )
+        	    ];
+            }
+        }
 
-	if( $no_biblio_tags ) {
-	    while( $reference =~ /<(.*?)(\s+.*?)?>(.*?)<\/.*>/s ) {
-		my $tag = $1;
-		my $regexp = qr/<$tag(?:\s+.*?)?>(.*?)<\/$tag>/s;
-		## print "\n<$tag>:\n";
-		while( $reference =~ /$regexp/ ) {
-		    $reference =~ s/$regexp/$1/g;
-		}
-		## print ">>>$reference\n";
-	    }
-	    while( $reference =~ /\\(.*?)(?:(\[.*?\]))?\{(.*?)\}/s ) {
-		my $tag = $1;
-		my $regexp = qr/\\$tag(?:\[.*?\])?\{(.*?)\}/s;
-		## print "\n\\$tag:\n";
-		while( $reference =~ /$regexp/ ) {
-		    $reference =~ s/$regexp/$1/g;
-		}
-		## print ">>>$reference\n";
-	    }
-	}
+        if( $no_biblio_tags ) {
+            while( $reference =~ /<(.*?)(\s+.*?)?>(.*?)<\/.*>/s ) {
+        	my $tag = $1;
+        	my $regexp = qr/<$tag(?:\s+.*?)?>(.*?)<\/$tag>/s;
+        	## print "\n<$tag>:\n";
+        	while( $reference =~ /$regexp/ ) {
+        	    $reference =~ s/$regexp/$1/g;
+        	}
+        	## print ">>>$reference\n";
+            }
+            while( $reference =~ /\\(.*?)(?:(\[.*?\]))?\{(.*?)\}/s ) {
+        	my $tag = $1;
+        	my $regexp = qr/\\$tag(?:\[.*?\])?\{(.*?)\}/s;
+        	## print "\n\\$tag:\n";
+        	while( $reference =~ /$regexp/ ) {
+        	    $reference =~ s/$regexp/$1/g;
+        	}
+        	## print ">>>$reference\n";
+            }
+        }
 
-	$reference =~ s/\n/ /g;
+        $reference =~ s/\n/ /g;
     }
 
     # User specified bibliography is processed last since it must take
@@ -332,88 +332,88 @@ for my $dataset (@data) {
     # bibliography file data:
 
     if( $user_biblio ) {
-	if( !$leave_biblio ) {
-	    for my $key ( grep /_journal_|_publ_section_title|_author_/,
-			  keys %{$datablok} ) {
-		delete $datablok->{$key};
-	    }
-	}
+        if( !$leave_biblio ) {
+            for my $key ( grep /_journal_|_publ_section_title|_author_/,
+        		  keys %{$datablok} ) {
+        	delete $datablok->{$key};
+            }
+        }
 
-	$datablok->{_publ_author_name} = [ @authors ]
-	    if @authors;
+        $datablok->{_publ_author_name} = [ @authors ]
+            if @authors;
 
-	$datablok->{_publ_section_title} = [ $title ]
-	    if defined $title;
+        $datablok->{_publ_section_title} = [ $title ]
+            if defined $title;
 
-	$datablok->{_journal_name_full} = [ $journal ]
-	    if defined $journal;
+        $datablok->{_journal_name_full} = [ $journal ]
+            if defined $journal;
 
-	$datablok->{_journal_year} = [ $year ]
-	    if defined $year;
+        $datablok->{_journal_year} = [ $year ]
+            if defined $year;
 
-	$datablok->{_journal_volume} = [ $volume ]
-	    if defined $volume;
+        $datablok->{_journal_volume} = [ $volume ]
+            if defined $volume;
 
-	$datablok->{_journal_issue} = [ $issue ]
-	    if defined $issue;
+        $datablok->{_journal_issue} = [ $issue ]
+            if defined $issue;
 
-	$datablok->{_journal_page_first} = [ $start_page ]
-	    if defined $start_page;
+        $datablok->{_journal_page_first} = [ $start_page ]
+            if defined $start_page;
 
-	$datablok->{_journal_page_last} = [ $end_page ]
-	    if defined $end_page;
+        $datablok->{_journal_page_last} = [ $end_page ]
+            if defined $end_page;
     }
 
     # Clean away "empty" tags:
 
     for my $atom_site_tag ( "_atom_site_calc_flag",
-			    "_atom_site_disorder_assembly",
-			    "_atom_site_disorder_group" ) {
-	if( defined $datablok->{$atom_site_tag} ) {
-	    my $has_value = 0;
-	    for my $val ( @{$datablok->{$atom_site_tag}} ) {
-		if( defined $val && $val ne '.' && $val ne '?' ) {
-		    $has_value = 1;
-		    last;
-		}
-	    }
-	    if( !$has_value ) {
-		delete $datablok->{$atom_site_tag};
-	    }
-	}
+        		    "_atom_site_disorder_assembly",
+        		    "_atom_site_disorder_group" ) {
+        if( defined $datablok->{$atom_site_tag} ) {
+            my $has_value = 0;
+            for my $val ( @{$datablok->{$atom_site_tag}} ) {
+        	if( defined $val && $val ne '.' && $val ne '?' ) {
+        	    $has_value = 1;
+        	    last;
+        	}
+            }
+            if( !$has_value ) {
+        	delete $datablok->{$atom_site_tag};
+            }
+        }
     }
 
     # Print out requested tags:
 
     for my $tag (@requested_cif_tags) {
-	if( defined $datablok->{$tag} ) {
-	    my $data = $datablok->{$tag};
-	    if( int(@{$data}) == 1 && !$looped_tags{$tag} ) {
-	    ## if( int(@{$data}) == 1 ) {
-		my @lines = split( "\n", $data->[0] );
+        if( defined $datablok->{$tag} ) {
+            my $data = $datablok->{$tag};
+            if( int(@{$data}) == 1 && !$looped_tags{$tag} ) {
+            ## if( int(@{$data}) == 1 ) {
+        	my @lines = split( "\n", $data->[0] );
                 # check if single value is not '?'
-		if( @lines != 1 || $lines[0] ne '?' ) { 
-		    for my $line (@lines) {
-			print "#", $tag, "\t", $line, "\n";
-		    }
-		}
-	    } else {
-		for my $j (0..$#{$data}) {
-		    my @lines = split( "\n", $data->[$j] );
-		    for my $line (@lines) {
-			print "#", $tag, "[", $j, "]", "\t", $line, "\n";
-		    }
-		}
-	    }
-	}
+        	if( @lines != 1 || $lines[0] ne '?' ) { 
+        	    for my $line (@lines) {
+        		print "#", $tag, "\t", $line, "\n";
+        	    }
+        	}
+            } else {
+        	for my $j (0..$#{$data}) {
+        	    my @lines = split( "\n", $data->[$j] );
+        	    for my $line (@lines) {
+        		print "#", $tag, "[", $j, "]", "\t", $line, "\n";
+        	    }
+        	}
+            }
+        }
     }
 
     # Chemical formula:
     my $formula = $datablok->{_chemical_formula_sum}[0];
     if( defined $formula ) {
-	$formula =~ s/^\s*|\s*$//g;
+        $formula =~ s/^\s*|\s*$//g;
     } else {
-	$formula = "?";
+        $formula = "?";
     }
 
     # Cell constants:
@@ -439,24 +439,24 @@ for my $dataset (@data) {
     my $U = $datablok->{_atom_site_U_iso_or_equiv};
     
     if( !defined $U ) {
-	$U = $datablok->{_atom_site_Uiso_or_Biso};
+        $U = $datablok->{_atom_site_Uiso_or_Biso};
     }
 
     if( !defined $U && defined $datablok->{_atom_site_B_iso_or_equiv} ) {
-	my $B = $datablok->{_atom_site_B_iso_or_equiv};
-	my $Pi = 3.14159265358979;
-	for my $i ( 0..$#{$B} ) {
-	    my $b = $B->[$i];
-	    $b =~ s/\(.*\)$//;
-	    $datablok->{_atom_site_U_iso_or_equiv}[$i] = $b/(8*$Pi**2);
-	}
-	$U = $datablok->{_atom_site_U_iso_or_equiv};
+        my $B = $datablok->{_atom_site_B_iso_or_equiv};
+        my $Pi = 3.14159265358979;
+        for my $i ( 0..$#{$B} ) {
+            my $b = $B->[$i];
+            $b =~ s/\(.*\)$//;
+            $datablok->{_atom_site_U_iso_or_equiv}[$i] = $b/(8*$Pi**2);
+        }
+        $U = $datablok->{_atom_site_U_iso_or_equiv};
     }
 
     my $multiplicity = $datablok->{_atom_site_symmetry_multiplicity};
 
     if( !defined $multiplicity ) {
-	$multiplicity = $datablok->{_atom_site_symetry_multiplicity};
+        $multiplicity = $datablok->{_atom_site_symetry_multiplicity};
     }
 
     my $Wyckoff_sym = $datablok->{_atom_site_Wyckoff_symbol};
@@ -465,68 +465,68 @@ for my $dataset (@data) {
 
     my $aniso_label = $datablok->{_atom_site_aniso_label};
     my @anisou = (
-	$datablok->{_atom_site_aniso_U_11},
-	$datablok->{_atom_site_aniso_U_22},
-	$datablok->{_atom_site_aniso_U_33},
-	$datablok->{_atom_site_aniso_U_23},
-	$datablok->{_atom_site_aniso_U_13},
-	$datablok->{_atom_site_aniso_U_12},
+        $datablok->{_atom_site_aniso_U_11},
+        $datablok->{_atom_site_aniso_U_22},
+        $datablok->{_atom_site_aniso_U_33},
+        $datablok->{_atom_site_aniso_U_23},
+        $datablok->{_atom_site_aniso_U_13},
+        $datablok->{_atom_site_aniso_U_12},
     );
 
     my @bonds = (
-	$datablok->{_geom_bond_atom_site_label_1},
-	$datablok->{_geom_bond_atom_site_label_2},
-	$datablok->{_geom_bond_distance},
+        $datablok->{_geom_bond_atom_site_label_1},
+        $datablok->{_geom_bond_atom_site_label_2},
+        $datablok->{_geom_bond_distance},
     );
 
     # Print it out:
 
     if( $reference ) {
-	print $reference, "\n";
+        print $reference, "\n";
     } else {
-	print "?\n";
+        print "?\n";
     }
 
     do {
-	local $, = " ";
-	local $\ = "\n";
+        local $, = " ";
+        local $\ = "\n";
 
-	print $formula;
+        print $formula;
 
-	print $a, $b, $c, $alpha, $beta, $gamma;
+        print $a, $b, $c, $alpha, $beta, $gamma;
 
-	$spacegroup =~ s/^\s*|\s*$//g;
-	print $spacegroup;
+        $spacegroup =~ s/^\s*|\s*$//g;
+        print $spacegroup;
 
-	for my $i (0..$#{$atom}) {
-	    print
-		$atom->[$i],
-		defined $multiplicity ? $multiplicity->[$i] : "?",
-		defined $Wyckoff_sym ? $Wyckoff_sym->[$i] : "?",
-		$x->[$i], $y->[$i], $z->[$i],
-		defined $q ? $q->[$i] : "?",
-		$U->[$i];
-	}
+        for my $i (0..$#{$atom}) {
+            print
+        	$atom->[$i],
+        	defined $multiplicity ? $multiplicity->[$i] : "?",
+        	defined $Wyckoff_sym ? $Wyckoff_sym->[$i] : "?",
+        	$x->[$i], $y->[$i], $z->[$i],
+        	defined $q ? $q->[$i] : "?",
+        	$U->[$i];
+        }
     };
 
     if( defined $aniso_label and int(@{$aniso_label}) > 0 ) {
-	for my $i (0..$#{$aniso_label}) {
-	    print "ANISOU ", $aniso_label->[$i];
-	    for my $anisou (@anisou) {
-		print " ", $anisou->[$i];
-	    }
-	    print "\n";
-	}
+        for my $i (0..$#{$aniso_label}) {
+            print "ANISOU ", $aniso_label->[$i];
+            for my $anisou (@anisou) {
+        	print " ", $anisou->[$i];
+            }
+            print "\n";
+        }
     }
 
     if( int(@bonds) > 0 ) {
-	for my $i (0..$#{$bonds[0]}) {
-	    print "BOND ";
-	    for my $bond_parameter (@bonds) {
-		print " ", $bond_parameter->[$i];
-	    }
-	    print "\n";
-	}
+        for my $i (0..$#{$bonds[0]}) {
+            print "BOND ";
+            for my $bond_parameter (@bonds) {
+        	print " ", $bond_parameter->[$i];
+            }
+            print "\n";
+        }
     }
 
     $n ++;

@@ -60,9 +60,9 @@ for my $dataset (@data) {
     # Chemical formula:
     my $formula = $datablok->{_chemical_formula_sum}[0];
     if( defined $formula ) {
-	$formula =~ s/^\s*|\s*$//g;
+        $formula =~ s/^\s*|\s*$//g;
     } else {
-	$formula = "?";
+        $formula = "?";
     }
 
     # Cell constants:
@@ -88,24 +88,24 @@ for my $dataset (@data) {
     my $U = $datablok->{_atom_site_u_iso_or_equiv};
     
     if( !defined $U ) {
-	$U = $datablok->{_atom_site_uiso_or_biso};
+        $U = $datablok->{_atom_site_uiso_or_biso};
     }
 
     if( !defined $U && defined $datablok->{_atom_site_b_iso_or_equiv} ) {
-	my $B = $datablok->{_atom_site_b_iso_or_equiv};
-	my $Pi = 3.14159265358979;
-	for my $i ( 0..$#{$B} ) {
-	    my $b = $B->[$i];
-	    $b =~ s/\(.*\)$//;
-	    $datablok->{_atom_site_u_iso_or_equiv}[$i] = $b/(8*$Pi**2);
-	}
-	$U = $datablok->{_atom_site_u_iso_or_equiv};
+        my $B = $datablok->{_atom_site_b_iso_or_equiv};
+        my $Pi = 3.14159265358979;
+        for my $i ( 0..$#{$B} ) {
+            my $b = $B->[$i];
+            $b =~ s/\(.*\)$//;
+            $datablok->{_atom_site_u_iso_or_equiv}[$i] = $b/(8*$Pi**2);
+        }
+        $U = $datablok->{_atom_site_u_iso_or_equiv};
     }
 
     my $multiplicity = $datablok->{_atom_site_symmetry_multiplicity};
 
     if( !defined $multiplicity ) {
-	$multiplicity = $datablok->{_atom_site_symetry_multiplicity};
+        $multiplicity = $datablok->{_atom_site_symetry_multiplicity};
     }
 
     my $Wyckoff_sym = $datablok->{_atom_site_wyckoff_symbol};
@@ -113,43 +113,43 @@ for my $dataset (@data) {
     # Print it out:
 
     if( defined $biblio ) {
-	open( BIBLIO, $biblio ) or
-	    die( "Could not open file '$biblio' for reading: $!" );
-	my $reference;
-	if( $biblio =~ /\.ref/ ) {
-	    $reference = <BIBLIO>; # read the first line
-	} elsif( $biblio =~ /\.xrf/ ) {
-	    my @reference = grep !/^\#/, <BIBLIO>;
-	    $reference = $reference[0]; # read the first non-comment line
-	} else {
-	    local $/ = undef; # read the whole file
-	    $reference = <BIBLIO>;
-	}
-	close BIBLIO;
-	chomp $reference;
-	$reference =~ s/\n/ /g;
-	print $reference, "\n";
+        open( BIBLIO, $biblio ) or
+            die( "Could not open file '$biblio' for reading: $!" );
+        my $reference;
+        if( $biblio =~ /\.ref/ ) {
+            $reference = <BIBLIO>; # read the first line
+        } elsif( $biblio =~ /\.xrf/ ) {
+            my @reference = grep !/^\#/, <BIBLIO>;
+            $reference = $reference[0]; # read the first non-comment line
+        } else {
+            local $/ = undef; # read the whole file
+            $reference = <BIBLIO>;
+        }
+        close BIBLIO;
+        chomp $reference;
+        $reference =~ s/\n/ /g;
+        print $reference, "\n";
     } else {
-	my $text = get_cif_description( $datablok );
-	if( defined $text ) {
-	    print $text, "\n";
-	} else {
-	    print "Bibliography ...\n";
-	}
+        my $text = get_cif_description( $datablok );
+        if( defined $text ) {
+            print $text, "\n";
+        } else {
+            print "Bibliography ...\n";
+        }
     }
 
     do {
-	local $, = " ";
-	local $\ = "\n";
+        local $, = " ";
+        local $\ = "\n";
 
-	print $formula;
+        print $formula;
 
-	## $a =~ s/\(.*\)//g;
-	## $b =~ s/\(.*\)//g;
-	## $c =~ s/\(.*\)//g;
-	## $alpha =~ s/\(.*\)//g;
-	## $beta  =~ s/\(.*\)//g;
-	## $gamma =~ s/\(.*\)//g;
+        ## $a =~ s/\(.*\)//g;
+        ## $b =~ s/\(.*\)//g;
+        ## $c =~ s/\(.*\)//g;
+        ## $alpha =~ s/\(.*\)//g;
+        ## $beta  =~ s/\(.*\)//g;
+        ## $gamma =~ s/\(.*\)//g;
 
         $a = '?' unless defined $a;
         $b = '?' unless defined $b;
@@ -162,22 +162,22 @@ for my $dataset (@data) {
         $beta  =~ s/^(\d+)\.$/$1/;
         $gamma =~ s/^(\d+)\.$/$1/;
 
-	print $a, $b, $c, $alpha, $beta, $gamma;
+        print $a, $b, $c, $alpha, $beta, $gamma;
 
-	$spacegroup = "?" unless defined $spacegroup;
-	$spacegroup =~ s/[\s()~_]//g;
-	print $spacegroup;
+        $spacegroup = "?" unless defined $spacegroup;
+        $spacegroup =~ s/[\s()~_]//g;
+        print $spacegroup;
 
-	for my $i (0..$#{$x}) {
+        for my $i (0..$#{$x}) {
             $atom->[$i] =~ s/\s//g;
-	    print
-		$atom->[$i],
-		defined $multiplicity ? $multiplicity->[$i] : "?",
-		defined $Wyckoff_sym ? $Wyckoff_sym->[$i] : "?",
-		$x->[$i], $y->[$i], $z->[$i],
-		defined $q ? $q->[$i] : "?",
-		defined $U ? $U->[$i] : "?";
-	}
+            print
+        	$atom->[$i],
+        	defined $multiplicity ? $multiplicity->[$i] : "?",
+        	defined $Wyckoff_sym ? $Wyckoff_sym->[$i] : "?",
+        	$x->[$i], $y->[$i], $z->[$i],
+        	defined $q ? $q->[$i] : "?",
+        	defined $U ? $U->[$i] : "?";
+        }
     };
 
     $n ++;
@@ -204,32 +204,32 @@ sub get_cif_description
                     _journal_page_first
                     _journal_page_last
                 )) {
-	my $val = "";
-	if( exists $datablok->{$tag} ) {
-	    $val = join( "; ", @{$datablok->{$tag}} );
-	    $val =~ s/^\s*|\s*$//g;
-	}
-	if( $tag eq "_journal_issue" && $val ne "" ) {
-	    $val = "(" . $val . ")";
-	}
-	if( defined $text ) {
-	    $text .= $separator . $val;
-	} else {
-	    $text = $val;
-	}
-	if( $tag eq "_journal_year" || $tag eq "_journal_issue" ) {
-	    $separator = " ";
-	} elsif( $tag eq "_journal_volume" ) {
-	    $separator = "";
-	} elsif( $tag eq "_chemical_name_common" ) {
-	    $separator = "|";
-	}
+        my $val = "";
+        if( exists $datablok->{$tag} ) {
+            $val = join( "; ", @{$datablok->{$tag}} );
+            $val =~ s/^\s*|\s*$//g;
+        }
+        if( $tag eq "_journal_issue" && $val ne "" ) {
+            $val = "(" . $val . ")";
+        }
+        if( defined $text ) {
+            $text .= $separator . $val;
+        } else {
+            $text = $val;
+        }
+        if( $tag eq "_journal_year" || $tag eq "_journal_issue" ) {
+            $separator = " ";
+        } elsif( $tag eq "_journal_volume" ) {
+            $separator = "";
+        } elsif( $tag eq "_chemical_name_common" ) {
+            $separator = "|";
+        }
     }
     if( defined $text ) {
-	$text =~ s/\n/ /g;
-	$text =~ s/\s+/ /g;
-	$text =~ s/^\s*|\s*$//g;
-	$text = Unicode2CIF::cif2unicode( $text );
+        $text =~ s/\n/ /g;
+        $text =~ s/\s+/ /g;
+        $text =~ s/^\s*|\s*$//g;
+        $text = Unicode2CIF::cif2unicode( $text );
     }
     return $text;
 }

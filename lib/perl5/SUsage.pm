@@ -22,11 +22,11 @@ sub usage
 
     open( SCRIPT, $script ) or die("Could not open $script: $!");
     while( <SCRIPT> ) {
-	if( /^\s*#\*/ .. /^\s*#\*\*/ ) {
-	    /^\s*#\*?\*?/;
+        if( /^\s*#\*/ .. /^\s*#\*\*/ ) {
+            /^\s*#\*?\*?/;
             my $line = "$'";
             $line =~ s/\$0/$0/g;
-	    print $line;
+            print $line;
         }
     }
     close SCRIPT;

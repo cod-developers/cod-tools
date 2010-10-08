@@ -29,25 +29,25 @@ my $query_url = "http://eutils.ncbi.nlm.nih.gov/entrez/eutils";
 
 for my $file (@ARGV) {
     my $doi_suffix = substr(
-	File::Basename::basename( $file, '\.cif|\.txt' ), 0, 8
+        File::Basename::basename( $file, '\.cif|\.txt' ), 0, 8
     );
     my $doi = $doi_prefix . "/" . $doi_suffix;
 
     my $query = "$query_url/esearch.fcgi?" .
-	"db=pubmed&term=$doi\[AID\]";
+        "db=pubmed&term=$doi\[AID\]";
 
     my $esearch_result = get( $query );
 
     ## print $esearch_result;
 
     if( $esearch_result =~ m|<Id>(\d+)</Id>| ) {
-	my $id = $1;
-	## print $id, "\n";
-	$query = "$query_url/efetch.fcgi?" .
-	    "db=pubmed&tool=$0&email=grazulis\@ibt.lt&id=$id&retmode=xml";
-	$esearch_result = get( $query );
-	print $esearch_result, "\n";
+        my $id = $1;
+        ## print $id, "\n";
+        $query = "$query_url/efetch.fcgi?" .
+            "db=pubmed&tool=$0&email=grazulis\@ibt.lt&id=$id&retmode=xml";
+        $esearch_result = get( $query );
+        print $esearch_result, "\n";
     } else {
-	print STDERR "$0: Id for '$file' not found in Medline\n";
+        print STDERR "$0: Id for '$file' not found in Medline\n";
     }
 }

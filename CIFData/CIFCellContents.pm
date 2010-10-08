@@ -85,15 +85,15 @@ sub cif_cell_contents($$$)
     } elsif( exists $values->{"_atom_site_type_symbol"} ) {
         $loop_tag = "_atom_site_type_symbol";
     } else {
-	error( $0, $filename, $dataset->{name},
-	       "neither _atom_site_label " .
-	       "nor _atom_site_type_symbol was found in the input file" );
+        error( $0, $filename, $dataset->{name},
+               "neither _atom_site_label " .
+               "nor _atom_site_type_symbol was found in the input file" );
         return undef;
     }
 
 #   extracts cell constants
     my @unit_cell = CIFCellContents::get_cell( $values, $filename,
-					       $dataset->{name} );
+        				       $dataset->{name} );
     my $ortho_matrix = symop_ortho_from_fract( @unit_cell );
 
 #   extracts symmetry operators
@@ -108,7 +108,7 @@ sub cif_cell_contents($$$)
     ## serialiseRef( \@sym_operators );
 
     my $sym_atoms = symop_generate_atoms( \@sym_operators, $atoms,
-					  $ortho_matrix );
+        				  $ortho_matrix );
 
     ## serialiseRef( $sym_atoms );
 
@@ -155,8 +155,8 @@ sub cif_cell_contents($$$)
     ## print_composition( \%composition );
 
     wantarray ?
-	%composition :
-	FormulaPrint::sprint_formula( \%composition, $::format );
+        %composition :
+        FormulaPrint::sprint_formula( \%composition, $::format );
 }
 
 sub atomic_composition($$$)
@@ -165,10 +165,10 @@ sub atomic_composition($$$)
     my %composition;
 
     for my $atom ( @$sym_atoms ) { 
-	my $type = $atom->{atom_type};
-	my $occupancy = defined $atom->{occupancy} ? $atom->{occupancy} : 1;
-	my $amount = $occupancy  * $atom->{multiplicity};
-	$composition{$type} += $amount;
+        my $type = $atom->{atom_type};
+        my $occupancy = defined $atom->{occupancy} ? $atom->{occupancy} : 1;
+        my $amount = $occupancy  * $atom->{multiplicity};
+        $composition{$type} += $amount;
     }
 
     my $abundance_ration = $Z * $gp_multiplicity;
@@ -258,7 +258,7 @@ sub symop_apply_to_atom_mod1($$$$)
     }
 
     $new_atom->{coordinates_ortho} =
-	mat_vect_mul( $f2o, $new_atom->{coordinates_fract} );
+        mat_vect_mul( $f2o, $new_atom->{coordinates_fract} );
 
     ## serialiseRef( $new_atom );
 
@@ -283,7 +283,7 @@ sub atoms_coincide($$$)
             $new_coord->[0] + $dx,
             $new_coord->[1] + $dy,
             $new_coord->[2] + $dz,
-	];
+        ];
         my $new_xyz = mat_vect_mul( $f2o, $shifted_coord );
         if( distance( $new_xyz, $old_xyz ) < $special_position_cutoff ) {
             ## local $, = ", ";
@@ -320,16 +320,16 @@ sub symgen_atom($$$)
     ## print ">>> $gp_multiplicity / $multiplicity_ratio\n";
 
     if( $gp_multiplicity % $multiplicity_ratio ) {
-	die( "Multiplicity ratio $multiplicity_ratio does not divide " .
-	     "multiplicity of a general position $gp_multiplicity " .
+        die( "Multiplicity ratio $multiplicity_ratio does not divide " .
+             "multiplicity of a general position $gp_multiplicity " .
              "- this should not happen" );
     }
 
     my $multiplicity = $gp_multiplicity / $multiplicity_ratio;
 
     for my $atom (@sym_atoms) {
-	$atom->{multiplicity} = $multiplicity;
-	$atom->{multiplicity_ratio} = $multiplicity_ratio;
+        $atom->{multiplicity} = $multiplicity;
+        $atom->{multiplicity_ratio} = $multiplicity_ratio;
     }
 
     return @sym_atoms;
@@ -344,7 +344,7 @@ sub symop_generate_atoms($$$)
     my @sym_atoms;
 
     for my $atom ( @{$atoms} ) {
-	push( @sym_atoms, symgen_atom( $sym_operators, $atom, $f2o ));
+        push( @sym_atoms, symgen_atom( $sym_operators, $atom, $f2o ));
     }
 
     return \@sym_atoms;
@@ -409,12 +409,12 @@ sub get_cell($$$)
                         ))
     {
         if( exists $values->{$cif_tag} ) {
-	    push(@cell_lengths_and_angles, $values->{$cif_tag}[0]);
-	    $cell_lengths_and_angles[-1] =~ s/\(\d+\)$//;
+            push(@cell_lengths_and_angles, $values->{$cif_tag}[0]);
+            $cell_lengths_and_angles[-1] =~ s/\(\d+\)$//;
         } else {
             error( $0, $filename, $dataname,
-		   "cell angle '$cif_tag' not present" );
-	}
+        	   "cell angle '$cif_tag' not present" );
+        }
     }
 
     for my $cif_tag (qw(_cell_angle_alpha
@@ -496,9 +496,9 @@ sub get_symmetry_operators($$)
 
     if( not defined $sym_data ) {
         error( $0, $filename, $dataset->{name},
-	       "neither symmetry operators, " .
-	       "nor Hall spacegroup symbol," .                  
-	       "nor Hermann-Mauguin spacegroup symbol could be processed" );
+               "neither symmetry operators, " .
+               "nor Hall spacegroup symbol," .                  
+               "nor Hermann-Mauguin spacegroup symbol could be processed" );
         die;
     }
 
@@ -531,9 +531,9 @@ sub mat_vect_mul($$)
     }
 
     if( @$vector == 3 && @$matrix == 4 ) {
-	$new_coordinates[0] += $matrix->[0][3];
-	$new_coordinates[1] += $matrix->[1][3];
-	$new_coordinates[2] += $matrix->[2][3];
+        $new_coordinates[0] += $matrix->[0][3];
+        $new_coordinates[1] += $matrix->[1][3];
+        $new_coordinates[2] += $matrix->[2][3];
     }
 
     return \@new_coordinates;
@@ -551,16 +551,16 @@ sub get_atoms
     my @atoms;
 
     for my $i ( 0 .. $#{$values->{$loop_tag}} ) {
-	my $atom = {
-	    atom_name => $values->{$loop_tag}[$i],
-	    atom_type => exists $values->{_atom_site_type_symbol} ?
-		$values->{_atom_site_type_symbol}[$i] : undef,
-	    coordinates_fract => [
-		$values->{_atom_site_fract_x}[$i],
-		$values->{_atom_site_fract_y}[$i],
-		$values->{_atom_site_fract_z}[$i]
-	    ],
-	};
+        my $atom = {
+            atom_name => $values->{$loop_tag}[$i],
+            atom_type => exists $values->{_atom_site_type_symbol} ?
+        	$values->{_atom_site_type_symbol}[$i] : undef,
+            coordinates_fract => [
+        	$values->{_atom_site_fract_x}[$i],
+        	$values->{_atom_site_fract_y}[$i],
+        	$values->{_atom_site_fract_z}[$i]
+            ],
+        };
 
         if( !defined $atom->{atom_type} ) {
             $atom->{atom_type} = $atom->{atom_name};
@@ -570,28 +570,28 @@ sub get_atoms
             $atom->{atom_type} = ucfirst( lc( $1 ));
         }
 
-	@{$atom->{coordinates_fract}} = map { s/\(\d+\)\s*$//; $_ }
-	    @{$atom->{coordinates_fract}};
+        @{$atom->{coordinates_fract}} = map { s/\(\d+\)\s*$//; $_ }
+            @{$atom->{coordinates_fract}};
 
-	$atom->{coordinates_ortho} =
-	    mat_vect_mul( $ortho_matrix, $atom->{coordinates_fract} );
+        $atom->{coordinates_ortho} =
+            mat_vect_mul( $ortho_matrix, $atom->{coordinates_fract} );
 
-	if( defined $values->{_atom_site_occupancy} ) {
-	    if( $values->{_atom_site_occupancy}[$i] ne '?' ) {
-		$atom->{occupancy} = $values->{_atom_site_occupancy}[$i];
-		$atom->{occupancy} =~ s/\(\d+\)\s*$//;
-	    } else {
-		$atom->{occupancy} = 1;
-	    }
-	}
+        if( defined $values->{_atom_site_occupancy} ) {
+            if( $values->{_atom_site_occupancy}[$i] ne '?' ) {
+        	$atom->{occupancy} = $values->{_atom_site_occupancy}[$i];
+        	$atom->{occupancy} =~ s/\(\d+\)\s*$//;
+            } else {
+        	$atom->{occupancy} = 1;
+            }
+        }
 
-	if( defined $values->{_atom_site_symmetry_multiplicity} &&
-	    $values->{_atom_site_symmetry_multiplicity}[$i] ne '?' ) {
-	    $atom->{cif_multiplicity} =
-		$values->{_atom_site_symmetry_multiplicity}[$i];
-	}
+        if( defined $values->{_atom_site_symmetry_multiplicity} &&
+            $values->{_atom_site_symmetry_multiplicity}[$i] ne '?' ) {
+            $atom->{cif_multiplicity} =
+        	$values->{_atom_site_symmetry_multiplicity}[$i];
+        }
 
-	push( @atoms, $atom );
+        push( @atoms, $atom );
     }
 
     return \@atoms;
