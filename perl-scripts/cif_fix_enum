@@ -116,39 +116,16 @@ for my $dict_file_name ( @dictionaries ) {
 						@$dict_name, 
 						@$dict_version, 
 						@$dict_update  ];
+				} else {
+					print STDERR  
+						"$0: WARNING, '$_' " .
+                        "tag is already defined by " . 
+                        "'$dict_file_name' dictionary.\n";
+					next;
 				}
-				#print STDERR "$tagDicts{$_}[0]\n";
-				#else {
-					#print STDERR  
-						#"$0: WARNING, '$_' " .
-                        #"tag is already defined by " . 
-                        #"'$tagDicts{$_}' dictionary\n";
-					#next;
-				#}
             }
         }
     }
-    # FOR CHECK: 
-    #    Prints in STDOUT enumeration value's tag and
-    #	 dictionary name, where it was found.
-    #
-     #foreach( keys %tagDicts ) {
-         #print "$_:\n";
-         #foreach( $tagDicts{$_}[0] ) {
-    	      #print "    $_\n";
-         #}
-     #}
-    #
-    # FOR CHECK:
-    #     Prints in STDOUT CIF tags parsed from specified dictionary
-    #     with appropriates (all possible) values.
-    #
-    # foreach(sort keys %dictTags) {
-    #     print "$_:\n";
-    #	  foreach( sort @{ $dictTags{$_} } ) {
-    #		 print "    $_\n";
-    #	 }
-    # }
 }
 
 sub insert_report_to_comments {
@@ -230,8 +207,7 @@ for my $filename ( @ARGV ) {
 		foreach my $tag ( @$tags ) {
 			if( defined $values->{$tag} ) {
                 foreach my $tag_value ( @{$values->{$tag}} ) {
-					#$tag_value =~ s/^\s+|\s+$//g;
-				    if( $tag_value =~ /^\.|\?$/ ) {
+					if( $tag_value =~ /^\.|\?$/ ) {
 					    next;
 					}
 					if( exists $dictTags{$tag} ) {
