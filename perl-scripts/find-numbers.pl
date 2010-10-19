@@ -184,19 +184,19 @@ for my $file (@cif_files) {
         my $n = 0;
         if( defined $COD{$formula} ) {
             for my $COD_entry (@{$COD{$formula}}) {
-        	if( entries_are_the_same( $structures{$id}, $COD_entry )) {
-        	    $n++;
-        	}
+                if( entries_are_the_same( $structures{$id}, $COD_entry )) {
+                    $n++;
+                }
             }
         }
         if( $n > 0 ) {
             for my $COD_entry (@{$COD{$formula}}) {
-        	if( entries_are_the_same( $structures{$id}, $COD_entry )) {
-        	    printf
-        		"%-35s %15s %3d %s\n",
-        		$final_formula, 
-        		$COD_entry->{filename}, $n, $file;
-        	}
+                if( entries_are_the_same( $structures{$id}, $COD_entry )) {
+                    printf
+                        "%-35s %15s %3d %s\n",
+                        $final_formula, 
+                        $COD_entry->{filename}, $n, $file;
+                }
             }
         } else {
             printf "%-35s %15s %3d %s\n", $final_formula, "?", 0, $file;
@@ -238,7 +238,7 @@ sub cells_are_the_same($$)
         if( defined $length1 and defined $length2 ) {
             my $diff = abs( $length1 - $length2 );
             if( $max_length_diff < $diff ) {
-        	$max_length_diff = $diff;
+                $max_length_diff = $diff;
             }
         }
     }
@@ -248,7 +248,7 @@ sub cells_are_the_same($$)
         if( defined $angle1 and defined $angle2 ) {
             my $diff = abs( $angle1 - $angle2 );
             if( $max_angle_diff < $diff ) {
-        	$max_angle_diff = $diff;
+                $max_angle_diff = $diff;
             }
         }
     }
@@ -265,12 +265,12 @@ sub conditions_are_the_same
     for my $parameter ("temperature", "pressure" ) {
 
         my %tags = map {($_,$_)} ( keys %{$entry1->{$parameter}},
-        			   keys %{$entry2->{$parameter}} );
+                                   keys %{$entry2->{$parameter}} );
         for my $tag (keys %tags) {
             if( exists $entry1->{$parameter}{$tag} &&
-        	exists $entry2->{$parameter}{$tag} &&
-        	$entry1->{$parameter}{$tag} ne $entry2->{$parameter}{$tag} ) {
-        	return 0;
+                exists $entry2->{$parameter}{$tag} &&
+                $entry1->{$parameter}{$tag} ne $entry2->{$parameter}{$tag} ) {
+                return 0;
             }
         }
     }
@@ -287,11 +287,11 @@ sub bibliographies_are_the_same($$)
         next if( $skip_tag{$tag} );
         if( defined $biblio1->{$tag} && defined $biblio2->{$tag} ) {
             if( $has_numeric_value{$tag} ) {
-        	if( $biblio1->{$tag} != $biblio2->{$tag} ) {
-        	    return 0;
-        	}
+                if( $biblio1->{$tag} != $biblio2->{$tag} ) {
+                    return 0;
+                }
             } else {
-        	if( $biblio1->{$tag} ne $biblio2->{$tag} ) {
+                if( $biblio1->{$tag} ne $biblio2->{$tag} ) {
                     return 0;
                 }
             }
@@ -325,7 +325,7 @@ sub entries_are_the_same
             (!defined $entry1->{suboptimal} || $entry1->{suboptimal} ne "yes") &&
             (!defined $entry2->{suboptimal} || $entry2->{suboptimal} ne "yes") &&
             bibliographies_are_the_same( $entry1->{bibliography},
-        				 $entry2->{bibliography} );
+                                         $entry2->{bibliography} );
     } else {
         return
             ! data_sections_are_the_same( $entry1, $entry2 ) &&

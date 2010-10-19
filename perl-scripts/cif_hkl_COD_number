@@ -45,13 +45,13 @@ my $extra_tag_file;
 my $original_filename;
 
 my $cif_comment_header; # A header with comments to printed at the
-        		# beginning of the output CIF file.
+                        # beginning of the output CIF file.
 
 my $cif_header_file; # The name of an external file that holds a CIF
-        	     # header.
+                     # header.
 
 my $data_block_nr; # If defined, specifies that data blocks should be
-        	   # numbered in a COD-like fasion.
+                   # numbered in a COD-like fasion.
 
 @ARGV = getOptions( 
     "-h,--add-cif-header" => \$cif_header_file,
@@ -70,7 +70,7 @@ my $data_block_nr; # If defined, specifies that data blocks should be
     "--use-internal-loop-order" => sub { $preserve_loop_order = 0; },
 
     "--original-filename" => sub { $original_filename = &get_value;
-        			   $record_original_filename = 1 },
+                                   $record_original_filename = 1 },
     "--clear-original-filename" => sub { undef $original_filename },
 
     "--record-original-filename"      => sub { $record_original_filename = 1; },
@@ -105,7 +105,7 @@ if( $extra_tag_file ) {
 my %excluded_tags  = map { ($_,$_) } @CIFExcludedTags::tag_list;
 
 my @dictionary_tags = ( @CIFDictTags::tag_list, @CIFCODTags::tag_list,
-        		@extra_tags );
+                        @extra_tags );
 
 my %dictionary_tags = map { $_, $_ } @dictionary_tags;
 
@@ -167,7 +167,7 @@ for my $dataset (@data) {
         $cif_title =~ s/\n/ /g;
         $datablok->{_publ_section_title} = [
             "\n" . join( "\n", map { " " . $_ }
-        			 CIFTagPrint::fold( $folding_width - 2,
+                                 CIFTagPrint::fold( $folding_width - 2,
                                                     " +", " ", $cif_title ))
             ];
     }
@@ -179,9 +179,9 @@ for my $dataset (@data) {
         my @tag_list = @{$dataset->{tags}};
         for my $tag (@tag_list) {
             if( exists $excluded_tags{$tag} || $tag =~ /^_vrf_/ ) {
-        	CIFTagManage::exclude_tag( $dataset, $tag );
-        	#use ShowStruct;
-        	#showRef( $dataset );
+                CIFTagManage::exclude_tag( $dataset, $tag );
+                #use ShowStruct;
+                #showRef( $dataset );
             }
         }
     };
@@ -201,7 +201,7 @@ for my $dataset (@data) {
         my @tag_list = @{$dataset->{tags}};
         for my $tag (@tag_list) {
             unless( exists $dictionary_tags{$tag} ) {
-        	CIFTagManage::exclude_tag( $dataset, $tag );
+                CIFTagManage::exclude_tag( $dataset, $tag );
             }
         }
     }

@@ -289,18 +289,18 @@ for my $filename (@ARGV) {
               "- " . $calculated_formula . " -" : undef );
         if( exists $values->{_journal_coeditor_code} ) {
             push( @data, uc( get_tag_or_undef( $values, 
-        				       "_journal_coeditor_code", 0 )));
+                                               "_journal_coeditor_code", 0 )));
         } elsif( exists $values->{"_journal.coeditor_code"} ) {
             push( @data, uc( get_tag_or_undef( $values, 
-        				       "_journal.coeditor_code", 0 )));
+                                               "_journal.coeditor_code", 0 )));
         } elsif( $journal =~ /^Acta Cryst/ &&
-        	 exists $values->{"_[local]_cod_data_source_file"} ) {
+                 exists $values->{"_[local]_cod_data_source_file"} ) {
             my $acce_code = $values->{"_[local]_cod_data_source_file"}[0];
             $acce_code =~ s/\..*$//g;
             if( $acce_code =~ /^[a-zA-Z]{1,2}[0-9]{4,5}$/ ) {
-        	push( @data, uc( $acce_code ));
+                push( @data, uc( $acce_code ));
             } else {
-        	push( @data, undef );
+                push( @data, undef );
             }
         } else {
             push( @data, undef );
@@ -364,7 +364,7 @@ for my $filename (@ARGV) {
                 }
                 "\"$_\"";
             } else {
-        	"NULL";
+                "NULL";
             }
         } @data;
         do {
@@ -458,7 +458,7 @@ sub get_and_check_tag
     if( ref $values eq "HASH" ) {
         if( exists $values->{$tag} && ref $values->{$tag} eq "ARRAY" ) {
             if( defined $values->{$tag}[$index] ) {
-        	my $val = $values->{$tag}[$index];
+                my $val = $values->{$tag}[$index];
                 if( $val =~ /^\\\n/ ) {
                     $val =~ s/\\\n//g;
                 }
@@ -467,14 +467,14 @@ sub get_and_check_tag
                 $val =~ s/^\s*|\s*$//g;
                 return $val;
             } else {
-        	unless( $ignore_errors ) {
-        	    error( "tag '$tag' does not have value number $index",
+                unless( $ignore_errors ) {
+                    error( "tag '$tag' does not have value number $index",
                            $filename );
-        	}
+                }
             }
         } else {
             unless( $ignore_errors ) {
-        	error( "tag '$tag' is absent", $filename );
+                error( "tag '$tag' is absent", $filename );
             }
         }
     }
@@ -500,12 +500,12 @@ sub get_spacegroup_info
         if( exists $values->{$sg_tag} ) {
             $spacegroup = $values->{$sg_tag}[0];
             if( $sg_tag =~ /_h-m/ && $reformat_spacegroup ) {
-        	my $orig_sg = $spacegroup;
-        	$orig_sg =~ s/[\(\)~_\s]//g;
-        	## print ">>> $orig_sg\n";
-        	if( exists $spacegroups{$orig_sg} ) {
-        	    $spacegroup = $spacegroups{$orig_sg};
-        	}
+                my $orig_sg = $spacegroup;
+                $orig_sg =~ s/[\(\)~_\s]//g;
+                ## print ">>> $orig_sg\n";
+                if( exists $spacegroups{$orig_sg} ) {
+                    $spacegroup = $spacegroups{$orig_sg};
+                }
             }
             last
         }

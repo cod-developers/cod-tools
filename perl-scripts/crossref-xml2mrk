@@ -34,56 +34,56 @@ for my $file (@ARGV) {
 
             my $journal;
             if( $article =~ m|<journal_title.*?>(.*?)</journal_title>|ms ) {
-        	$journal = $1;
+                $journal = $1;
             } else {
-        	print STDERR "$0: no <journal_title> " .
-        	    "found in the file '$file' article $article_nr\n";
-        	die;
+                print STDERR "$0: no <journal_title> " .
+                    "found in the file '$file' article $article_nr\n";
+                die;
             }
 
             my $title;
             if( $article =~ m|<article_title.*?>(.*?)</article_title>|ms ) {
-        	$title = $1;
+                $title = $1;
             } else {
-        	print STDERR "$0: no <article_title> found in the file '$file' ".
-        	    "article $article_nr\n";
-        	die;
+                print STDERR "$0: no <article_title> found in the file '$file' ".
+                    "article $article_nr\n";
+                die;
             }
 
             my $year;
             if( $article =~ m|<year\s.*?>(.*?)</year>|ms ) {
-        	$year = $1;
+                $year = $1;
             } else {
-        	print STDERR "$0: no <year> found in the file '$file' ".
-        	    "article $article_nr\n";
-        	die;
+                print STDERR "$0: no <year> found in the file '$file' ".
+                    "article $article_nr\n";
+                die;
             }
 
             my $issue;
             if( $article =~ m|<issue>(.*?)</issue>|ms ) {
-        	$issue = $1;
+                $issue = $1;
             }
 
             my $volume;
             if( $article =~ m|<volume>(.*?)</volume>|ms ) {
-        	$volume = $1;
+                $volume = $1;
             }
 
             my $pages;
             if( $article =~ m|<first_page>(.*?)</first_page>| ) {
-        	$pages = $1;
+                $pages = $1;
             } else {
-        	print STDERR "$0: no <first_page> " .
-        	    "found in the file '$file' ".
-        	    "article $article_nr\n";
+                print STDERR "$0: no <first_page> " .
+                    "found in the file '$file' ".
+                    "article $article_nr\n";
             }
 
             if( $article =~ m|<contributors>(.*?)</contributors>|ms ) {
-        	my $author_list = $1;
+                my $author_list = $1;
 
-        	print "<authors separator=\";\">";
-        	my $separator = "";
-        	while( $author_list =~ s|
+                print "<authors separator=\";\">";
+                my $separator = "";
+                while( $author_list =~ s|
                            <contributor\s.*?(?:contributor_role="(.*?)")?>
                                 (.*?)
                            </contributor>||msx ) {
@@ -92,18 +92,18 @@ for my $file (@ARGV) {
                             "included into author list\n";
                         next;
                     }
-        	    my $author = defined $2 ? $2 : $1;
-        	    $author =~ m|<surname>(.*?)</surname>|;
-        	    my $last = $1;
-        	    my $first;
-        	    if( $author =~ m|<given_name>(.*?)</given_name>| ) {
-        		$first = $1;
-        	    }
-        	    my $author_name = $last;
-        	    $author_name .= ", " . $first;
-        	    print $separator, $author_name;
-        	    $separator = "; ";
-        	}
+                    my $author = defined $2 ? $2 : $1;
+                    $author =~ m|<surname>(.*?)</surname>|;
+                    my $last = $1;
+                    my $first;
+                    if( $author =~ m|<given_name>(.*?)</given_name>| ) {
+                        $first = $1;
+                    }
+                    my $author_name = $last;
+                    $author_name .= ", " . $first;
+                    print $separator, $author_name;
+                    $separator = "; ";
+                }
             } # if AuthorList
 
             print "</authors>\n";
