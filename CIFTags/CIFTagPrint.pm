@@ -74,15 +74,15 @@ sub print_cif
         if( defined $datablok->{$tag} ) {
             if( exists $dictionary_tags{$tag} &&
                 !exists $dataset->{inloop}{$tag} ) {
-        	print_tag( $tag, $datablok,
-        		   $fold_long_fields, $folding_width );
+                print_tag( $tag, $datablok,
+                           $fold_long_fields, $folding_width );
             } elsif( $tag eq "_publ_author_name" ) {
-        	my $tag_loop_nr = $dataset->{inloop}{$tag};
-        	unless( exists $printed_loops{$tag_loop_nr} ) {
-        	    print_loop( $tag, $tag_loop_nr, $dataset,
-        			$fold_long_fields, $folding_width );
-        	    $printed_loops{$tag_loop_nr} = 1;
-        	}
+                my $tag_loop_nr = $dataset->{inloop}{$tag};
+                unless( exists $printed_loops{$tag_loop_nr} ) {
+                    print_loop( $tag, $tag_loop_nr, $dataset,
+                                $fold_long_fields, $folding_width );
+                    $printed_loops{$tag_loop_nr} = 1;
+                }
             }
         }
     }
@@ -94,12 +94,12 @@ sub print_cif
         my $tags_encountered = 0;
         for my $tag (@{$dataset->{tags}}) {
             if( !exists $dictionary_tags{$tag} &&
-        	!exists $dataset->{inloop}{$tag} ) {
-        	if( !$tags_encountered ) {
-        	    print "#BEGIN Tags that were not found in dictionaries:\n";
-        	    $tags_encountered = 1;
-        	}
-        	print_tag( $tag, $datablok, $fold_long_fields,
+                !exists $dataset->{inloop}{$tag} ) {
+                if( !$tags_encountered ) {
+                    print "#BEGIN Tags that were not found in dictionaries:\n";
+                    $tags_encountered = 1;
+                }
+                print_tag( $tag, $datablok, $fold_long_fields,
                            $folding_width );
             }
         }
@@ -121,12 +121,12 @@ sub print_cif
     for my $tag (@tags_for_output) {
         if( defined $datablok->{$tag} ) {
             if( exists $dataset->{inloop}{$tag} ) {
-        	my $tag_loop_nr = $dataset->{inloop}{$tag};
-        	unless( exists $printed_loops{$tag_loop_nr} ) {
-        	    print_loop( $tag, $tag_loop_nr, $dataset,
+                my $tag_loop_nr = $dataset->{inloop}{$tag};
+                unless( exists $printed_loops{$tag_loop_nr} ) {
+                    print_loop( $tag, $tag_loop_nr, $dataset,
                                 $fold_long_fields, $folding_width );
-        	    $printed_loops{$tag_loop_nr} = 1;
-        	}
+                    $printed_loops{$tag_loop_nr} = 1;
+                }
             }
         }
     }
@@ -137,18 +137,18 @@ sub print_cif
         my $tags_encountered = 0;
         for my $tag (@{$dataset->{tags}}) {
             if( exists $dataset->{inloop}{$tag} && 
-        	! exists $dictionary_tags{$tag} ) {
-        	my $tag_loop_nr = $dataset->{inloop}{$tag};
-        	unless( exists $printed_loops{$tag_loop_nr} ) {
-        	    if( !$tags_encountered ) {
-        		print "#BEGIN Loops that were not found in " .
-        		    "dictionaries:\n";
-        		$tags_encountered = 1;
-        	    }
-        	    print_loop( $tag, $tag_loop_nr, $dataset,
+                ! exists $dictionary_tags{$tag} ) {
+                my $tag_loop_nr = $dataset->{inloop}{$tag};
+                unless( exists $printed_loops{$tag_loop_nr} ) {
+                    if( !$tags_encountered ) {
+                        print "#BEGIN Loops that were not found in " .
+                            "dictionaries:\n";
+                        $tags_encountered = 1;
+                    }
+                    print_loop( $tag, $tag_loop_nr, $dataset,
                                 $fold_long_fields, $folding_width );
-        	    $printed_loops{$tag_loop_nr} = 1;
-        	}
+                    $printed_loops{$tag_loop_nr} = 1;
+                }
             }
         }
         if( $tags_encountered ) {
@@ -202,8 +202,8 @@ sub print_tag
             print "loop_\n";
             print "$key\n";
             for my $value (@$val) {
-        	print_value( $value, $fold_long_fields, $folding_width );
-        	print "\n";
+                print_value( $value, $fold_long_fields, $folding_width );
+                print "\n";
             }
         } else {
             print_single_tag_and_value( $key, $val->[0], $fold_long_fields,
@@ -233,27 +233,27 @@ sub print_loop
         my $line = $line_prefix;
         for my $loop_tag (@loop_tags) {
             my $val = sprint_value( $tags->{values}{$loop_tag}[$i],
-        			    $fold_long_fields, $folding_width );
+                                    $fold_long_fields, $folding_width );
             if( $val =~ /^\n;/ ) {
-        	$lines .= $folding_separator . $line if $line ne $line_prefix;
-        	if( $lines eq "" ) {
-        	    # don't print extra newline at the beginning of the loop:
-        	    $val =~ s/^\n//;
-        	}
-        	$lines .= $val;
-        	$line = $line_prefix;
-        	$folding_separator = "\n";
+                $lines .= $folding_separator . $line if $line ne $line_prefix;
+                if( $lines eq "" ) {
+                    # don't print extra newline at the beginning of the loop:
+                    $val =~ s/^\n//;
+                }
+                $lines .= $val;
+                $line = $line_prefix;
+                $folding_separator = "\n";
             } elsif( length( $line ) + length( $val ) + 1 
-        	     < $CIFTagPrint::max_cif_line_len ) {
-        	if( $line eq $line_prefix ) {
-        	    $line .= $val;
-        	} else {
-        	    $line .= " " . $val;
-        	}
+                     < $CIFTagPrint::max_cif_line_len ) {
+                if( $line eq $line_prefix ) {
+                    $line .= $val;
+                } else {
+                    $line .= " " . $val;
+                }
             } else {
-        	$lines .= $folding_separator . $line;
-        	$line = $line_prefix . $val;
-        	$folding_separator = "\n";
+                $lines .= $folding_separator . $line;
+                $line = $line_prefix . $val;
+                $folding_separator = "\n";
             }
         }
         if( $line ne $line_prefix ) {
@@ -292,7 +292,7 @@ sub sprint_value
 
     if( $fold_long_fields && maxlen($val) > $folding_width - 2 ) {
         $val = join( "\n", map { " " . $_ }
-        	     fold( $folding_width - 1, " +", " ", $val ));
+                     fold( $folding_width - 1, " +", " ", $val ));
         $val =~ s/^\s+//g;
     }
 
@@ -329,10 +329,10 @@ sub fold
         } else {
             my $new_line = "$line$ors$word";
             if( length($new_line) < $length ) {
-        	$line = $new_line;
+                $line = $new_line;
             } else {
-        	push( @lines, $line );
-        	$line = $word;
+                push( @lines, $line );
+                $line = $word;
             }
         }
     }

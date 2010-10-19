@@ -93,7 +93,7 @@ sub serialiseArray
        foreach $item ( @{$array} ) {
            if( ref $item eq "HASH" ) {
                printf STDOUT "%s# %3d:\n%s", $indent, $index++, $indent;
-        	   serialiseHash( $item, $indent );
+                   serialiseHash( $item, $indent );
            } elsif( ref $item eq "ARRAY" ) {
                printf STDOUT "%s# %3d:\n%s", $indent, $index++, $indent;
                serialiseArray( $item, $indent );

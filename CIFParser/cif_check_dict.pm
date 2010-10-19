@@ -64,12 +64,12 @@ sub checkTags;
 
 # check parameters passed
 Getopt::Long::GetOptions
-        ("output=s"			=> \$outputFile,
-        	"dictionary=s"	=> \$dictFile,
-        	"version"		=> sub { VersionMessage() },
-        	"quiet"			=> sub { $quiet = 1; },
-        	"no-quiet"		=> sub { $quiet = 0; },
-        	"help|?"		=> sub { HelpMessage() }
+        ("output=s"                        => \$outputFile,
+                "dictionary=s"        => \$dictFile,
+                "version"                => sub { VersionMessage() },
+                "quiet"                        => sub { $quiet = 1; },
+                "no-quiet"                => sub { $quiet = 0; },
+                "help|?"                => sub { HelpMessage() }
         );
 
 if( defined($dictFile) )
@@ -97,42 +97,42 @@ if(@ARGV > 0)
 {
         if(@ARGV > 1)
         { # we have multiple files
-        	my $filen = 0;
-        	while($filen < @ARGV)
-        	{ # iterate through files
-        		$CIFtags = getTags($parser->Run($ARGV[$filen]));
-        		if( $quiet == 0 )
-        		{
-        			print "Got following tags from file:\n";
-        			showRef($CIFtags);
-        			print "\n";
-        		}
-        		if( scalar @{$CIFtags} > 1 )
-        		{ # more than one data block
-        			for( my $i = 0; $i < ( scalar (@{$CIFtags}) ); $i++)
-        			{ # iterate through data block
-        				my $data = @{$CIFtags}[$i]->{content};
-        				checkTags($data, $i, $filen);
-        			}
-        		} else { # single data block
-        			my $data = @{$CIFtags}[0]->{content};
-        			checkTags($data, 0, $filen);
-        		}
-        		$filen++;
-        	}
+                my $filen = 0;
+                while($filen < @ARGV)
+                { # iterate through files
+                        $CIFtags = getTags($parser->Run($ARGV[$filen]));
+                        if( $quiet == 0 )
+                        {
+                                print "Got following tags from file:\n";
+                                showRef($CIFtags);
+                                print "\n";
+                        }
+                        if( scalar @{$CIFtags} > 1 )
+                        { # more than one data block
+                                for( my $i = 0; $i < ( scalar (@{$CIFtags}) ); $i++)
+                                { # iterate through data block
+                                        my $data = @{$CIFtags}[$i]->{content};
+                                        checkTags($data, $i, $filen);
+                                }
+                        } else { # single data block
+                                my $data = @{$CIFtags}[0]->{content};
+                                checkTags($data, 0, $filen);
+                        }
+                        $filen++;
+                }
         } else { # we have single file
-        	$CIFtags = getTags($parser->Run($ARGV[0]));
-        	if( scalar @{$CIFtags} > 1 )
-        	{ # more than one data block
-        		for( my $i = 0; $i < ( scalar (@{$CIFtags}) ); $i++)
-        		{ # iterate through data block
-        			my $data = @{$CIFtags}[$i]->{content};
-        			checkTags($data, $i, 0);
-        		}
-        	} else { # single data block
-        		my $data = @{$CIFtags}[0]->{content};
-        		checkTags($data, 0, 0);
-        	}
+                $CIFtags = getTags($parser->Run($ARGV[0]));
+                if( scalar @{$CIFtags} > 1 )
+                { # more than one data block
+                        for( my $i = 0; $i < ( scalar (@{$CIFtags}) ); $i++)
+                        { # iterate through data block
+                                my $data = @{$CIFtags}[$i]->{content};
+                                checkTags($data, $i, 0);
+                        }
+                } else { # single data block
+                        my $data = @{$CIFtags}[0]->{content};
+                        checkTags($data, 0, 0);
+                }
         }
 } else {
         HelpMessage();
@@ -171,14 +171,14 @@ sub getTags
         my $tags;
         if($size > 1)
         {
-        	my $datan = 0;
-        	while($datan < $size)
-        	{
-        		push( @{$tags}, getTagsSData( $file->[$datan] ) );
-        		$datan++;
-        	}
+                my $datan = 0;
+                while($datan < $size)
+                {
+                        push( @{$tags}, getTagsSData( $file->[$datan] ) );
+                        $datan++;
+                }
         } else {
-        	$tags = [getTagsSData($file->[0])];
+                $tags = [getTagsSData($file->[0])];
         }
         return $tags;
 }
@@ -192,29 +192,29 @@ sub getTagsSData
         my $content = $data->{content};
         for(my $i = 0; $i < $noitems; $i++)
         {
-        	my $item = $content->[$i];
-        	if( $item->{kind} eq 'TAG' || $item->{kind} eq 'LOCAL' )
-        	{
-        		push(@tags, $item->{name});
-        	} elsif($item->{kind} eq 'loop') {
-        		foreach my $tag (@{$item->{name}})
-        		{
-        			push( @tags, $tag );
-        		}
-        	} elsif($item->{kind} eq 'SAVE') {
-        		my $savetags = getTagsSData( $item );
-        		foreach my $tag ( @{$savetags->{content}} )
-        		{
-        			push(@tags, $tag);
-        		}
-        	} else {
-        		die("ERROR: file contains elements, not handled by ".
-        		"this module!\n");
-        	}
+                my $item = $content->[$i];
+                if( $item->{kind} eq 'TAG' || $item->{kind} eq 'LOCAL' )
+                {
+                        push(@tags, $item->{name});
+                } elsif($item->{kind} eq 'loop') {
+                        foreach my $tag (@{$item->{name}})
+                        {
+                                push( @tags, $tag );
+                        }
+                } elsif($item->{kind} eq 'SAVE') {
+                        my $savetags = getTagsSData( $item );
+                        foreach my $tag ( @{$savetags->{content}} )
+                        {
+                                push(@tags, $tag);
+                        }
+                } else {
+                        die("ERROR: file contains elements, not handled by ".
+                        "this module!\n");
+                }
         }
         return { kind => 'DATATAGS',
-        			name => $dataname,
-        			content => \@tags };
+                                name => $dataname,
+                                content => \@tags };
 }
 
 sub output
@@ -222,19 +222,19 @@ sub output
         my $data = shift;
         if( !defined($outputFile) || (length($outputFile) == 0) )
         {
-        	print $data;
+                print $data;
         } else {
-        	my $fh = new FileHandle "> $outputFile";
-        	if( defined $fh )
-        	{
-        		$data = refToScalar($data, 0);
-        		print $fh $data;
-        		$fh->close;
-        	} else {
-        		die("Please check your output file ["
-        			. $outputFile . "]. There was an error"
-        			. " openning it!\n");
-        	}
+                my $fh = new FileHandle "> $outputFile";
+                if( defined $fh )
+                {
+                        $data = refToScalar($data, 0);
+                        print $fh $data;
+                        $fh->close;
+                } else {
+                        die("Please check your output file ["
+                                . $outputFile . "]. There was an error"
+                                . " openning it!\n");
+                }
         }
 }
 
@@ -246,36 +246,36 @@ sub refToScalar
         my $type = ref($reference);
         if( !ref($reference) )
         {
-        	return $reference;
+                return $reference;
         }
         if( $type eq "ARRAY" )
         {
-        	foreach my $entry ( @{$reference} )
-        	{
-        		if( !ref($entry) )
-        		{
-        			$value .= $entry . " | ";
-        		} else {
-        			$value .= refToScalar($entry)
-        				. "\n";
-        		}
-        	}
+                foreach my $entry ( @{$reference} )
+                {
+                        if( !ref($entry) )
+                        {
+                                $value .= $entry . " | ";
+                        } else {
+                                $value .= refToScalar($entry)
+                                        . "\n";
+                        }
+                }
         } elsif ( $type eq "HASH" )
         {
-        	foreach my $key ( keys %{$reference} )
-        	{
-        		if( !ref($reference->{$key}) )
-        		{
-        			$value .= $reference->{$key} . " \\ ";
-        		} else {
-        			$value .= refToScalar($reference->{$key})
-        				. "\n";
-        		}
-        	}
+                foreach my $key ( keys %{$reference} )
+                {
+                        if( !ref($reference->{$key}) )
+                        {
+                                $value .= $reference->{$key} . " \\ ";
+                        } else {
+                                $value .= refToScalar($reference->{$key})
+                                        . "\n";
+                        }
+                }
         } elsif ( $type eq "SCALAR" ) {
-        	$value .= $$reference;
+                $value .= $$reference;
         } else {
-        	return $value;
+                return $value;
         }
         return $value;
 }
@@ -288,12 +288,12 @@ sub getDict
         my $datan = 0;
         while($datan < $size)
         {
-        	my $convert = getDTagsSData( $dictF->[$datan] );
-        	if( $convert )
-        	{
-        		push( @{$tags}, $convert );
-        	}
-        	$datan++;
+                my $convert = getDTagsSData( $dictF->[$datan] );
+                if( $convert )
+                {
+                        push( @{$tags}, $convert );
+                }
+                $datan++;
         }
         return $tags;
 }
@@ -303,57 +303,57 @@ sub getDTagsSData
         my $data = shift;
         if( !($data->{name} eq "on_this_dictionary") )
         {
-        	my $tag;
-        	my $dataname = $data->{name};
-        	my $noitems = scalar @{$data->{content}};
-        	my $content = $data->{content};
-        	my $noreturn = 0;
-        	for(my $i = 0; $i < $noitems; $i++)
-        	{
-        		my $item = $content->[$i];
-        		if( $item->{kind} eq 'TAG' || $item->{kind} eq 'LOCAL' )
-        		{
-        			if( substr($item->{value},1) eq $dataname )
-        			{
-        				$tag = $item->{value};
-        			} elsif ( $item->{name} eq '_type' &&
-        						$item->{value} eq 'null' ) {
-        				$noreturn = 1;
-        			}
-        		} elsif($item->{kind} eq 'loop') {
-        			return 0;
-        		} elsif($item->{kind} eq 'SAVE') {
-        			my $savetags = getDTagsSData( $item );
-        			foreach my $tag ( @{$savetags->{content}} )
-        			{
-        				# check if not 0; in this case we got tag
-        				# which we do not want
-        				if( $tag )
-        				{
-        					if( substr($item->{value},1) eq $dataname )
-        					{
-        						$tag = $item->{value};
-        						print $item->{value} . "\t\t" . $dataname . "\n";
-        					} elsif ( $item->{name} eq '_type' &&
-        								$item->{value} eq 'null' ) {
-        						print $dataname . "\n";
-        						$noreturn = 1;
-        					}
-        				}
-        			}
-        		} else {
-        			die("ERROR: file contains elements, not handled by ".
-        			"this module!\n");
-        		}
-        	}
-        	if( $noreturn )
-        	{
-        		return 0;
-        	} else {
-        		return $tag;
-        	}
+                my $tag;
+                my $dataname = $data->{name};
+                my $noitems = scalar @{$data->{content}};
+                my $content = $data->{content};
+                my $noreturn = 0;
+                for(my $i = 0; $i < $noitems; $i++)
+                {
+                        my $item = $content->[$i];
+                        if( $item->{kind} eq 'TAG' || $item->{kind} eq 'LOCAL' )
+                        {
+                                if( substr($item->{value},1) eq $dataname )
+                                {
+                                        $tag = $item->{value};
+                                } elsif ( $item->{name} eq '_type' &&
+                                                        $item->{value} eq 'null' ) {
+                                        $noreturn = 1;
+                                }
+                        } elsif($item->{kind} eq 'loop') {
+                                return 0;
+                        } elsif($item->{kind} eq 'SAVE') {
+                                my $savetags = getDTagsSData( $item );
+                                foreach my $tag ( @{$savetags->{content}} )
+                                {
+                                        # check if not 0; in this case we got tag
+                                        # which we do not want
+                                        if( $tag )
+                                        {
+                                                if( substr($item->{value},1) eq $dataname )
+                                                {
+                                                        $tag = $item->{value};
+                                                        print $item->{value} . "\t\t" . $dataname . "\n";
+                                                } elsif ( $item->{name} eq '_type' &&
+                                                                        $item->{value} eq 'null' ) {
+                                                        print $dataname . "\n";
+                                                        $noreturn = 1;
+                                                }
+                                        }
+                                }
+                        } else {
+                                die("ERROR: file contains elements, not handled by ".
+                                "this module!\n");
+                        }
+                }
+                if( $noreturn )
+                {
+                        return 0;
+                } else {
+                        return $tag;
+                }
         } else {
-        	return 0;
+                return 0;
         }
         return 0;
 }
@@ -367,27 +367,27 @@ sub checkTags
         %lcCIFtags = map { lc($_) => $_ } @{$data};
         if( $quiet == 0 )
         {
-        	print "Got following tags for file "
-        		. $ARGV[$filen] . ", data block "
-        		. @{$CIFtags}[$i]->{name} . ":\n";
-        	foreach my $key ( keys %lcCIFtags )
-        	{
-        	    print $key . "\t-->\t"
-        	    		. $lcCIFtags{$key}
-        	    		. "\n";
+                print "Got following tags for file "
+                        . $ARGV[$filen] . ", data block "
+                        . @{$CIFtags}[$i]->{name} . ":\n";
+                foreach my $key ( keys %lcCIFtags )
+                {
+                    print $key . "\t-->\t"
+                                    . $lcCIFtags{$key}
+                                    . "\n";
             }
             print "\n";
         }
         foreach my $key ( keys %lcCIFtags )
         {
-        	if( !defined $dictTags->{$key} )
-        	{
-        		print <<END_M;
+                if( !defined $dictTags->{$key} )
+                {
+                        print <<END_M;
 Got tag '$key' which is not in dictionary provided. This tag was found 
 in file '$ARGV[$filen]', data block '@{$CIFtags}[$i]->{name}'.
 Please check this tag - it might be wrong.
 
 END_M
-        	}
+                }
         }
 }

@@ -45,8 +45,8 @@ sub tag_is_empty
     if( exists $cif->{values}{$tag} ) {
         for my $val (@{$cif->{values}{$tag}}) {
             if( defined $val && $val ne "?" && $val ne "." ) {
-        	$is_empty = 0;
-        	last;
+                $is_empty = 0;
+                last;
             }
         }
     }
@@ -83,14 +83,14 @@ sub rename_tag
         for my $i ( 0 .. $#{$cif->{tags}} ) {
             my $tag = $cif->{tags}[$i];
             if( $tag eq $old_tag ) {
-        	$cif->{tags}[$i] = $new_tag;
+                $cif->{tags}[$i] = $new_tag;
             }
         }
         for my $loop ( @{$cif->{loops}} ) {
             for my $i ( 0 .. $#{$loop} ) {
-        	if( $loop->[$i] eq $old_tag ) {
-        	    $loop->[$i] = $new_tag;
-        	}
+                if( $loop->[$i] eq $old_tag ) {
+                    $loop->[$i] = $new_tag;
+                }
             }
         }
     }
