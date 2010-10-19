@@ -14,7 +14,7 @@ use strict;
 require Exporter;
 @SOptions::ISA = qw(Exporter);
 @SOptions::EXPORT = qw( getOptions get_value get_int get_ints
-        		get_float get_floats );
+                        get_float get_floats );
 
 my @args;
 
@@ -25,8 +25,8 @@ sub getOptions
     @args = map { /^-[-\w]+=/o ? split( "=", $_, 2) : $_ } @ARGV;
 
     %options = map { my @synonims = split( ",", $_ );
-        	     my $value = $options{$_};
-        	     map {($_,$value)} @synonims } keys %options;
+                     my $value = $options{$_};
+                     map {($_,$value)} @synonims } keys %options;
 
     while( @args ) {
 
@@ -42,9 +42,9 @@ sub getOptions
             @matches = ( $args[0] );
         } elsif( $args[0] !~ /^-[^-]/ ) {
             foreach ( keys( %options )) {
-        	if( /^\Q$args[0]\E/ ) {
-        	    push( @matches, $_ );
-        	}
+                if( /^\Q$args[0]\E/ ) {
+                    push( @matches, $_ );
+                }
             }
         }
 
@@ -56,10 +56,10 @@ sub getOptions
         } elsif( @matches == 1 ) {
             my $var = $options{$matches[0]};
             for( ref( $var )) {
-        	if( /ARRAY/ )  { push( @$var, &get_value); last }
-        	if( /HASH/ )   { $$var{$matches[0]} = &get_value; last }
-        	if( /SCALAR/ ) { $$var = &get_value; last }
-        	if( /CODE/ )   { &$var; last }
+                if( /ARRAY/ )  { push( @$var, &get_value); last }
+                if( /HASH/ )   { $$var{$matches[0]} = &get_value; last }
+                if( /SCALAR/ ) { $$var = &get_value; last }
+                if( /CODE/ )   { &$var; last }
             }
             shift @args;
         } else {
@@ -148,26 +148,26 @@ sub interpolateFile
             chomp($_);
             s/\s*$//;
             if( /^\s*-/ ) {
-        	my @file_line =
-        	    # split option/value pairs with '=':
-        	    # '--option=value' becomes '--option value':
-        	    /^\s*-{1,2}[^\s=]+\s*=/ ?
-        		split(/=/,$_, 2) : split(' ',$_, 2);
+                my @file_line =
+                    # split option/value pairs with '=':
+                    # '--option=value' becomes '--option value':
+                    /^\s*-{1,2}[^\s=]+\s*=/ ?
+                        split(/=/,$_, 2) : split(' ',$_, 2);
 
-        	# remove trailing spaces from the option name, if any:
-        	$file_line[0] =~ s/\s+$//g if $file_line[0];
+                # remove trailing spaces from the option name, if any:
+                $file_line[0] =~ s/\s+$//g if $file_line[0];
 
-        	# remove quotes around the option values, to emulate
-        	# shell behaviour:
-        	# '--option "value"' becomes '--option value'
-        	# Note, however, that the 'value' will never be passed
-        	# to shell, so the spaces in the 'value' will be processed
-        	# correctly:
-        	# '--option "1 2 3"' will be interpreted as --option with
-        	# an argument '1 2 3'
-        	$file_line[1] =~ s/^\s*['"]?|["']?\s*$//g 
-        	    if $file_line[1];
-        	@file_line
+                # remove quotes around the option values, to emulate
+                # shell behaviour:
+                # '--option "value"' becomes '--option value'
+                # Note, however, that the 'value' will never be passed
+                # to shell, so the spaces in the 'value' will be processed
+                # correctly:
+                # '--option "1 2 3"' will be interpreted as --option with
+                # an argument '1 2 3'
+                $file_line[1] =~ s/^\s*['"]?|["']?\s*$//g 
+                    if $file_line[1];
+                @file_line
             } else { $_ } 
         }
         grep !/^\s*#|^\s*$/, <VALUE>;

@@ -93,7 +93,7 @@ sub cif_cell_contents($$$)
 
 #   extracts cell constants
     my @unit_cell = CIFCellContents::get_cell( $values, $filename,
-        				       $dataset->{name} );
+                                               $dataset->{name} );
     my $ortho_matrix = symop_ortho_from_fract( @unit_cell );
 
 #   extracts symmetry operators
@@ -108,7 +108,7 @@ sub cif_cell_contents($$$)
     ## serialiseRef( \@sym_operators );
 
     my $sym_atoms = symop_generate_atoms( \@sym_operators, $atoms,
-        				  $ortho_matrix );
+                                          $ortho_matrix );
 
     ## serialiseRef( $sym_atoms );
 
@@ -413,7 +413,7 @@ sub get_cell($$$)
             $cell_lengths_and_angles[-1] =~ s/\(\d+\)$//;
         } else {
             error( $0, $filename, $dataname,
-        	   "cell angle '$cif_tag' not present" );
+                   "cell angle '$cif_tag' not present" );
         }
     }
 
@@ -554,11 +554,11 @@ sub get_atoms
         my $atom = {
             atom_name => $values->{$loop_tag}[$i],
             atom_type => exists $values->{_atom_site_type_symbol} ?
-        	$values->{_atom_site_type_symbol}[$i] : undef,
+                $values->{_atom_site_type_symbol}[$i] : undef,
             coordinates_fract => [
-        	$values->{_atom_site_fract_x}[$i],
-        	$values->{_atom_site_fract_y}[$i],
-        	$values->{_atom_site_fract_z}[$i]
+                $values->{_atom_site_fract_x}[$i],
+                $values->{_atom_site_fract_y}[$i],
+                $values->{_atom_site_fract_z}[$i]
             ],
         };
 
@@ -578,17 +578,17 @@ sub get_atoms
 
         if( defined $values->{_atom_site_occupancy} ) {
             if( $values->{_atom_site_occupancy}[$i] ne '?' ) {
-        	$atom->{occupancy} = $values->{_atom_site_occupancy}[$i];
-        	$atom->{occupancy} =~ s/\(\d+\)\s*$//;
+                $atom->{occupancy} = $values->{_atom_site_occupancy}[$i];
+                $atom->{occupancy} =~ s/\(\d+\)\s*$//;
             } else {
-        	$atom->{occupancy} = 1;
+                $atom->{occupancy} = 1;
             }
         }
 
         if( defined $values->{_atom_site_symmetry_multiplicity} &&
             $values->{_atom_site_symmetry_multiplicity}[$i] ne '?' ) {
             $atom->{cif_multiplicity} =
-        	$values->{_atom_site_symmetry_multiplicity}[$i];
+                $values->{_atom_site_symmetry_multiplicity}[$i];
         }
 
         push( @atoms, $atom );

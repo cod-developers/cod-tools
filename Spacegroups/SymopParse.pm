@@ -45,19 +45,19 @@ sub symop_from_string
             my $value = $2;
 
             if( $value =~ /^x$/ ) {
-        	$symop[$n][0] = $sign;
+                $symop[$n][0] = $sign;
             }
             elsif( $value =~ /^y$/ ) {
-        	$symop[$n][1] = $sign;
+                $symop[$n][1] = $sign;
             }
             elsif( $value =~ /^z$/ ) {
-        	$symop[$n][2] = $sign;
+                $symop[$n][2] = $sign;
             }
             else {
-        	if( $value =~ m/(\d+)\/(\d+)/ ) {
-        	    $value = $1 / $2;
-        	}
-        	$symop[$n][3] = $sign * $value;
+                if( $value =~ m/(\d+)\/(\d+)/ ) {
+                    $value = $1 / $2;
+                }
+                $symop[$n][3] = $sign * $value;
             }
             #print "sign = $sign; value = $value\n";
         }
@@ -89,18 +89,18 @@ sub string_from_symop
         }
         if( $symop->[$i][1] > 0 ) {
             if( $symops[$i] eq "" ) {
-        	$symops[$i] = "y";
+                $symops[$i] = "y";
             } else {
-        	$symops[$i] .= "+y";
+                $symops[$i] .= "+y";
             }
         } elsif( $symop->[$i][1] < 0 ) {
             $symops[$i] .= "-y";
         }
         if( $symop->[$i][2] > 0 ) {
             if( $symops[$i] eq "" ) {
-        	$symops[$i] = "z";
+                $symops[$i] = "z";
             } else {
-        	$symops[$i] .= "+z";
+                $symops[$i] .= "+z";
             }
         } elsif( $symop->[$i][2] < 0 ) {
             $symops[$i] .= "-z";
@@ -111,24 +111,24 @@ sub string_from_symop
             my $sig = $val > 0 ? "+" : "-";
             my $maxdiff = 1e-3;
             if( abs( $abs - 1.0 ) < $maxdiff ) {
-        	$val = ""
+                $val = ""
             }
             elsif( abs( $abs - 0.5 ) < $maxdiff ) {
-        	$val = $sig . "1/2";
+                $val = $sig . "1/2";
             }
             elsif( abs( $abs * 3 - round($abs * 3)) < $maxdiff ) {
-        	my $numerator = round( $abs * 3 );
-        	$val = $sig . "$numerator/3";
+                my $numerator = round( $abs * 3 );
+                $val = $sig . "$numerator/3";
             }
             elsif( abs( $abs * 4 - round($abs * 4)) < $maxdiff ) {
-        	my $numerator = round( $abs * 4 );
-        	$val = $sig . "$numerator/4";
+                my $numerator = round( $abs * 4 );
+                $val = $sig . "$numerator/4";
             }
             elsif( abs( $abs * 6 - round($abs * 6)) < $maxdiff ) {
-        	my $numerator = round( $abs * 6 );
-        	$val = $sig . "$numerator/6";
+                my $numerator = round( $abs * 6 );
+                $val = $sig . "$numerator/6";
             } else {
-        	$val = sprintf( "%+f", $val );
+                $val = sprintf( "%+f", $val );
             }
             $symops[$i] .= $val;
         }
