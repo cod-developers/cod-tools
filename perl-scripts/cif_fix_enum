@@ -168,11 +168,25 @@ sub replacement_candidates($$)
         	if( lc $cif_value eq lc $dict_tag_value ) {
         		push( @lc_candidates , $dict_tag_value );
         		next;
-        	} else {
-        		push( @candidate_list , $dict_tag_value );
-        		next;	
-        	}	
-        }
+        	} 
+            #elsif( lc $cif_value ne lc $dict_tag_value )  {
+        	#	push( @candidate_list , $dict_tag_value );
+        	#	next;	
+        	#}	
+            if( $dict_tag_value =~ /^(\w+)[-](\w+)$/ ) {
+                my $word = "$1" . "$2";
+                if( $cif_value eq $word ) {
+                    push( @lc_candidates , $dict_tag_value );
+                    next;
+                } elsif( $cif_value ne $word ) {
+                    push( @candidate_list , $dict_tag_value );
+                    next;
+                } 
+            } else {
+                push( @candidate_list , $dict_tag_value );
+                next;
+            }
+        }    
         if( scalar( @lc_candidates ) == 1 ) {
         	@candidate_list = @lc_candidates;
         } else {
