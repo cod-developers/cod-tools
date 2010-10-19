@@ -247,15 +247,15 @@ while(<>) {
         }
         if( defined $idx ) {
             if( !defined $tags{$key}[$idx] ) {
-        	$tags{$key}[$idx] = $value;
+                $tags{$key}[$idx] = $value;
             } else {
-        	$tags{$key}[$idx] .= "\n" . $value;
+                $tags{$key}[$idx] .= "\n" . $value;
             }
         } else {
             if( !defined $tags{$key} ) {
-        	$tags{$key} = $value;
+                $tags{$key} = $value;
             } else {
-        	$tags{$key} .= "\n" . $value;
+                $tags{$key} .= "\n" . $value;
             }
         }
     } elsif( /^ANISOU\s/ ) {
@@ -278,10 +278,10 @@ while(<>) {
     if( /^\s*$/ || eof ) {
         if( $user_biblio ) {
             if( !$leave_biblio ) {
-        	for my $key ( grep /_journal_|_publ_section_title|_author_/,
-        		      keys %tags ) {
-        	    delete $tags{$key};
-        	}
+                for my $key ( grep /_journal_|_publ_section_title|_author_/,
+                              keys %tags ) {
+                    delete $tags{$key};
+                }
             }
             $tags{_publ_section_title} = $title if defined $title;
             $tags{_journal_name_full} = $journal if defined $journal;
@@ -312,19 +312,19 @@ sub print_tag
             print "loop_\n";
             print "$key\n";
             for my $value (@$val) {
-        	print_value( $value );
+                print_value( $value );
             }
         } else {
             my $key_len = length($key) > 30 ? length($key) : 30;
             my $val_len = length($val);
 
             if( $val =~ /\s/ ) {
-        	$val_len += 2;
+                $val_len += 2;
             }
             if( $key_len + $val_len + 1 > 80 && $val !~ /\n/ ) {
-        	printf "%s\n", $key;
+                printf "%s\n", $key;
             } else {
-        	printf "%-30s", $key;
+                printf "%-30s", $key;
             }
             print_value( $val );
         }
@@ -377,15 +377,15 @@ sub print_record
 
         if( $tags ) {
             for my $key (@inherited_tags) {
-        	print_tag( $key, $tags );
+                print_tag( $key, $tags );
             }
         }
 
         my $have_Wyckoff_symbol = 0;
         for my $atom (@{$records}) {
             if( defined $atom->[2] && $atom->[2] ne '?' && $atom->[2] ne '.' ) {
-        	$have_Wyckoff_symbol = 1;
-        	last;
+                $have_Wyckoff_symbol = 1;
+                last;
             }
         }
 
@@ -407,7 +407,7 @@ sub print_record
             print "loop_\n";
             print "_atom_site_label\n";
             if( defined $tags{_atom_site_type_symbol} ) {
-        	print "_atom_site_type_symbol\n";
+                print "_atom_site_type_symbol\n";
             }
             print "_atom_site_symmetry_multiplicity\n";
             print "_atom_site_Wyckoff_symbol\n" if $have_Wyckoff_symbol;
@@ -416,36 +416,36 @@ sub print_record
             print "_atom_site_fract_z\n";
             print "_atom_site_occupancy\n";
             if( !defined $tags{_atom_site_B_iso_or_equiv} ) {
-        	print "_atom_site_U_iso_or_equiv\n";
+                print "_atom_site_U_iso_or_equiv\n";
             } else {
-        	print "_atom_site_B_iso_or_equiv\n";
+                print "_atom_site_B_iso_or_equiv\n";
             }
             print "_atom_site_adp_type\n";
 
             for my $atom_site_tag ( "_atom_site_calc_flag",
-        			    "_atom_site_disorder_assembly",
-        			    "_atom_site_disorder_group" ) {
-        	if( defined $tags{$atom_site_tag} ) {
-        	    my $has_value = 0;
-        	    for my $val ( @{$tags{$atom_site_tag}} ) {
-        		if( defined $val && $val ne '.' && $val ne '?' ) {
-        		    $has_value = 1;
-        		    last;
-        		}
-        	    }
-        	    if( !$has_value ) {
-        		delete $tags{$atom_site_tag};
-        	    }
-        	}
+                                    "_atom_site_disorder_assembly",
+                                    "_atom_site_disorder_group" ) {
+                if( defined $tags{$atom_site_tag} ) {
+                    my $has_value = 0;
+                    for my $val ( @{$tags{$atom_site_tag}} ) {
+                        if( defined $val && $val ne '.' && $val ne '?' ) {
+                            $has_value = 1;
+                            last;
+                        }
+                    }
+                    if( !$has_value ) {
+                        delete $tags{$atom_site_tag};
+                    }
+                }
             }
 
             for my $atom_site_tag ( "_atom_site_calc_flag",
-        			    "_atom_site_refinement_flags",
-        			    "_atom_site_disorder_assembly",
-        			    "_atom_site_disorder_group" ) {
-        	if( defined $tags{$atom_site_tag} ) {
-        	    print $atom_site_tag, "\n";
-        	}
+                                    "_atom_site_refinement_flags",
+                                    "_atom_site_disorder_assembly",
+                                    "_atom_site_disorder_group" ) {
+                if( defined $tags{$atom_site_tag} ) {
+                    print $atom_site_tag, "\n";
+                }
             }
 
             local $, = " ";
@@ -456,37 +456,37 @@ sub print_record
             my $use_Biso_tag;
 
             if( defined $tags{_atom_site_B_iso_or_equiv} ) {
-        	$UisoBiso_val = "Biso";
-        	$use_Biso_tag = 1;
+                $UisoBiso_val = "Biso";
+                $use_Biso_tag = 1;
             } else {
-        	$UisoBiso_val = "Uiso";
-        	$use_Biso_tag = 0;
+                $UisoBiso_val = "Uiso";
+                $use_Biso_tag = 0;
             }
 
             for my $atom (@{$records}) {
-        	my $atom_name = $atom->[0];
-        	my @atom = @{$atom};
-        	splice( @atom, 2, 1 ) if !$have_Wyckoff_symbol;
-        	if( defined $tags{_atom_site_type_symbol} ) {
-        	    splice( @atom, 1, 0,
-        		    $tags{_atom_site_type_symbol}[$i] );
-        	}
-        	print @atom[0..$#atom-1],
-        	    $use_Biso_tag ?
-        		$tags{_atom_site_B_iso_or_equiv}[$i] :
-        		$atom[-1],
-        	    defined $anisou_atoms->{$atom_name} ?
-        	        "Uani" : $UisoBiso_val;
-        	for my $atom_site_tag ( "_atom_site_calc_flag",
-        				"_atom_site_refinement_flags",
-        				"_atom_site_disorder_assembly",
-        				"_atom_site_disorder_group" ) {
-        	    if( defined $tags{$atom_site_tag} ) {
-        		print " " . $tags{$atom_site_tag}[$i];
-        	    }
-        	}
-        	print "\n";
-        	$i ++;
+                my $atom_name = $atom->[0];
+                my @atom = @{$atom};
+                splice( @atom, 2, 1 ) if !$have_Wyckoff_symbol;
+                if( defined $tags{_atom_site_type_symbol} ) {
+                    splice( @atom, 1, 0,
+                            $tags{_atom_site_type_symbol}[$i] );
+                }
+                print @atom[0..$#atom-1],
+                    $use_Biso_tag ?
+                        $tags{_atom_site_B_iso_or_equiv}[$i] :
+                        $atom[-1],
+                    defined $anisou_atoms->{$atom_name} ?
+                        "Uani" : $UisoBiso_val;
+                for my $atom_site_tag ( "_atom_site_calc_flag",
+                                        "_atom_site_refinement_flags",
+                                        "_atom_site_disorder_assembly",
+                                        "_atom_site_disorder_group" ) {
+                    if( defined $tags{$atom_site_tag} ) {
+                        print " " . $tags{$atom_site_tag}[$i];
+                    }
+                }
+                print "\n";
+                $i ++;
             }
         }
     }
@@ -537,10 +537,10 @@ sub fold
         } else {
             my $new_line = "$line$ors$word";
             if( length($new_line) < $length ) {
-        	$line = $new_line;
+                $line = $new_line;
             } else {
-        	push( @lines, $line );
-        	$line = $word;
+                push( @lines, $line );
+                $line = $word;
             }
         }
     }

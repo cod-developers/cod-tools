@@ -104,13 +104,13 @@ my $biblio; # A bibliography file name, possibly marked up by XML-like
             # or LaTeX-like tags.
 
 my $cif_comment_header; # A header with comments to printed at the
-        		# beginning of the output CIF file.
+                        # beginning of the output CIF file.
 
 my $cif_header_file; # The name of an external file that holds a CIF
-        	     # header.
+                     # header.
 
 my $data_block_nr; # If defined, specifies that data blocks should be
-        	   # numbered in a COD-like fasion.
+                   # numbered in a COD-like fasion.
 
 my %spacegroups = map {
     my $key1 = $_->[1];
@@ -280,7 +280,7 @@ my %spacegroups = map {
     "--dont-calculate-cell-volume" => sub { $calculate_cell_volume = 0; },
 
     "--original-filename" => sub { $original_filename = &get_value;
-        			   $record_original_filename = 1 },
+                                   $record_original_filename = 1 },
     "--clear-original-filename" => sub { undef $original_filename },
 
     "--record-original-filename"      => sub { $record_original_filename = 1; },
@@ -334,7 +334,7 @@ if( $extra_tag_file ) {
 my %excluded_tags  = map { ($_,$_) } @CIFExcludedTags::tag_list;
 
 my @dictionary_tags = ( @CIFDictTags::tag_list, @CIFCODTags::tag_list,
-        		@CIFAMCSDTags::tag_list, @extra_tags );
+                        @CIFAMCSDTags::tag_list, @extra_tags );
 
 my %dictionary_tags = map { $_, $_ } @dictionary_tags;
 
@@ -410,7 +410,7 @@ for my $filename (@ARGV) {
         %global_bibliography = ();
 
         merge_new_tag_values( \@global_biblio_keys, \%global_bibliography,
-        		      $dataset );
+                              $dataset );
 
         ## use ShowStruct; showRef( \%global_bibliography );
     }
@@ -431,7 +431,7 @@ for my $filename (@ARGV) {
 
         if( %global_bibliography ) {
             merge_new_tag_values( [keys %{$global_bibliography{values}}],
-        			  $dataset, \%global_bibliography );
+                                  $dataset, \%global_bibliography );
         }
 
         # convert all tags to a "cannonical" form:
@@ -618,10 +618,10 @@ for my $filename (@ARGV) {
 
         if( $user_biblio ) {
             if( !$leave_biblio ) {
-        	for my $key ( grep /_journal_|_publ_section_title|_author_/,
-        		      keys %{$datablok} ) {
-        	    delete $datablok->{$key};
-        	}
+                for my $key ( grep /_journal_|_publ_section_title|_author_/,
+                              keys %{$datablok} ) {
+                    delete $datablok->{$key};
+                }
             }
 
             do {
@@ -635,42 +635,42 @@ for my $filename (@ARGV) {
                            # This does not work, alas:
                            ## map { pack("U*", unpack("C*", $_ )) }
                            @authors;
-        	$datablok->{_publ_author_name} = [ @authors ];
-        	my $tag = "_publ_author_name";
-        	if( exists $dataset->{inloop}{$tag} ) {
-        	    my $loop_nr = $dataset->{inloop}{$tag};
-        	    $dataset->{loops}[$loop_nr] = [ $tag ];
-        	} else {
-        	    if( exists $dataset->{loops} ) {
-        		push( @{$dataset->{loops}}, [ $tag ] );
-        		$dataset->{inloop}{$tag} = $#{$dataset->{loops}};
-        	    } else {
-        		$dataset->{inloop}{$tag} = 0;
-        		$dataset->{loops} = [ [ $tag ] ];
-        	    }
-        	}
+                $datablok->{_publ_author_name} = [ @authors ];
+                my $tag = "_publ_author_name";
+                if( exists $dataset->{inloop}{$tag} ) {
+                    my $loop_nr = $dataset->{inloop}{$tag};
+                    $dataset->{loops}[$loop_nr] = [ $tag ];
+                } else {
+                    if( exists $dataset->{loops} ) {
+                        push( @{$dataset->{loops}}, [ $tag ] );
+                        $dataset->{inloop}{$tag} = $#{$dataset->{loops}};
+                    } else {
+                        $dataset->{inloop}{$tag} = 0;
+                        $dataset->{loops} = [ [ $tag ] ];
+                    }
+                }
             } if @authors;
 
             $datablok->{_publ_section_title} = [ $title ]
-        	if defined $title;
+                if defined $title;
 
             $datablok->{_journal_name_full} = [ $journal ]
-        	if defined $journal;
+                if defined $journal;
 
             $datablok->{_journal_year} = [ $year ]
-        	if defined $year;
+                if defined $year;
 
             $datablok->{_journal_volume} = [ $volume ]
-        	if defined $volume;
+                if defined $volume;
 
             $datablok->{_journal_issue} = [ $issue ]
-        	if defined $issue;
+                if defined $issue;
 
             $datablok->{_journal_page_first} = [ $start_page ]
-        	if defined $start_page;
+                if defined $start_page;
 
             $datablok->{_journal_page_last} = [ $end_page ]
-        	if defined $end_page;
+                if defined $end_page;
         }
 
         # Restore the full final page number if only trailing digits of
@@ -683,8 +683,8 @@ for my $filename (@ARGV) {
             $datablok->{_journal_page_first}[0] >
             $datablok->{_journal_page_last}[0] ) {
             $datablok->{_journal_page_last}[0] =
-        	restore_last_page( $datablok->{_journal_page_first}[0],
-        			   $datablok->{_journal_page_last}[0] );
+                restore_last_page( $datablok->{_journal_page_first}[0],
+                                   $datablok->{_journal_page_last}[0] );
         }
 
         #
@@ -694,9 +694,9 @@ for my $filename (@ARGV) {
             my $cif_title = join( " ", @{$datablok->{_publ_section_title}} );
             $cif_title =~ s/\n/ /g;
             $datablok->{_publ_section_title} = [
-        	"\n" . join( "\n", map { " " . $_ }
-        		     CIFTagPrint::fold( $folding_width - 2, " +", " ", $cif_title ))
-        	];
+                "\n" . join( "\n", map { " " . $_ }
+                             CIFTagPrint::fold( $folding_width - 2, " +", " ", $cif_title ))
+                ];
         }
 
         # Exclude potentially copyrighted and irrelevant tags
@@ -705,11 +705,11 @@ for my $filename (@ARGV) {
         do {
             my @tag_list = @{$dataset->{tags}};
             for my $tag (@tag_list) {
-        	if( exists $excluded_tags{$tag} || $tag =~ /^_vrf_/ ) {
-        	    CIFTagManage::exclude_tag( $dataset, $tag );
-        	    #use ShowStruct;
-        	    #showRef( $dataset );
-        	}
+                if( exists $excluded_tags{$tag} || $tag =~ /^_vrf_/ ) {
+                    CIFTagManage::exclude_tag( $dataset, $tag );
+                    #use ShowStruct;
+                    #showRef( $dataset );
+                }
             }
         };
 
@@ -717,8 +717,8 @@ for my $filename (@ARGV) {
 
         for my $tag (@{$dataset->{tags}}) {
             unless( exists $dictionary_tags{$tag} ) {
-        	print STDERR basename( $0 ) . ": ";
-        	print STDERR "tag '$tag' is not recognised\n";
+                print STDERR basename( $0 ) . ": ";
+                print STDERR "tag '$tag' is not recognised\n";
             }
         }
 
@@ -727,9 +727,9 @@ for my $filename (@ARGV) {
         if( $exclude_misspelled_tags ) {
             my @tag_list = @{$dataset->{tags}};
             for my $tag (@tag_list) {
-        	unless( exists $dictionary_tags{$tag} ) {
-        	    CIFTagManage::exclude_tag( $dataset, $tag );
-        	}
+                unless( exists $dictionary_tags{$tag} ) {
+                    CIFTagManage::exclude_tag( $dataset, $tag );
+                }
             }
         }
 
@@ -738,11 +738,11 @@ for my $filename (@ARGV) {
         if( $record_original_filename ) {
             my $basename;
             if( defined $original_filename ) {
-        	$basename = File::Basename::basename( $original_filename );
+                $basename = File::Basename::basename( $original_filename );
             } elsif( defined $filename && $filename ne "-" ) {
-        	$basename = File::Basename::basename( $filename );
+                $basename = File::Basename::basename( $filename );
             } else {
-        	$basename = "?";
+                $basename = "?";
             }
             set_tag( $dataset, "_[local]_cod_data_source_file", $basename );
             set_tag( $dataset, "_[local]_cod_data_source_block", $dataset->{name} );
@@ -759,9 +759,9 @@ for my $filename (@ARGV) {
                               _publ_author_id_iucr
                               _publ_author.id_iucr )) {
             if( exists $datablok->{$excluded_tag} ) {
-        	CIFTagManage::exclude_tag( $dataset, $excluded_tag );
-        	#use ShowStruct;
-        	#showRef( $dataset );
+                CIFTagManage::exclude_tag( $dataset, $excluded_tag );
+                #use ShowStruct;
+                #showRef( $dataset );
             }
         }
 
@@ -773,24 +773,24 @@ for my $filename (@ARGV) {
             _space_group_name_H-M_alt
             _space_group.name_H-M_full
         )) {
-        	##use ShowStruct;
-        	##showRef( \%spacegroups  );
-        	if( exists $datablok->{$sg_tag} ) {
-        	    my $clean_sg = $datablok->{$sg_tag}[0];
-        	    $clean_sg =~ s/[()~_\s]//g;
-        	    ##print ">>> $clean_sg\n";
-        	    if( exists $spacegroups{$clean_sg} ) {
-        		my $original_sg_H_M = $datablok->{$sg_tag}[0];
-        		if( $sg_tag eq "_symmetry_space_group_name_H-M" &&
-        		    $original_sg_H_M ne '?' &&
-        		    $original_sg_H_M ne $spacegroups{$clean_sg} &&
-        		    !exists $datablok->{"_[local]_cod_cif_authors_sg_H-M"} ) {
-        		    set_tag( $dataset, "_[local]_cod_cif_authors_sg_H-M",
-        			     $original_sg_H_M );
-        		}
-        		$datablok->{$sg_tag}[0] = $spacegroups{$clean_sg};
-        	    }
-        	}
+                ##use ShowStruct;
+                ##showRef( \%spacegroups  );
+                if( exists $datablok->{$sg_tag} ) {
+                    my $clean_sg = $datablok->{$sg_tag}[0];
+                    $clean_sg =~ s/[()~_\s]//g;
+                    ##print ">>> $clean_sg\n";
+                    if( exists $spacegroups{$clean_sg} ) {
+                        my $original_sg_H_M = $datablok->{$sg_tag}[0];
+                        if( $sg_tag eq "_symmetry_space_group_name_H-M" &&
+                            $original_sg_H_M ne '?' &&
+                            $original_sg_H_M ne $spacegroups{$clean_sg} &&
+                            !exists $datablok->{"_[local]_cod_cif_authors_sg_H-M"} ) {
+                            set_tag( $dataset, "_[local]_cod_cif_authors_sg_H-M",
+                                     $original_sg_H_M );
+                        }
+                        $datablok->{$sg_tag}[0] = $spacegroups{$clean_sg};
+                    }
+                }
             }
         }
 
@@ -798,99 +798,99 @@ for my $filename (@ARGV) {
 
         if( $estimate_spacegroup ) {
             if( !%symop_lookup_table ) {
-        	%symop_lookup_table = mkhash();
+                %symop_lookup_table = mkhash();
             }
 
             my @symops;
             if( exists $datablok->{"_space_group_symop_operation_xyz"} ) {
-        	@symops = @{$datablok->{"_space_group_symop_operation_xyz"}};
+                @symops = @{$datablok->{"_space_group_symop_operation_xyz"}};
             } elsif( exists $datablok->{"_symmetry_equiv_pos_as_xyz"} ) {
-        	@symops = @{$datablok->{"_symmetry_equiv_pos_as_xyz"}};
+                @symops = @{$datablok->{"_symmetry_equiv_pos_as_xyz"}};
             }
             
             if( @symops ) {
-        	my $has_errors = 0;
-        	for my $symop (@symops) {
-        	    my $error = SymopParse::check_symmetry_operator( $symop );
-        	    if( $error ) {
-        		$has_errors = 1;
-        		print STDERR "$0: $filename: $error\n";
-        	    }
-        	}
-        	if( !$has_errors ) {
-        	    my $key = mk_symop_key( \@symops );
-        	    my $original_sg_H_M =
-        		defined $datablok->{"_symmetry_space_group_name_H-M"} ?
-        		$datablok->{"_symmetry_space_group_name_H-M"}[0] :
-        		undef;
-        	    my $original_sg_Hall =
-        		defined $datablok->{"_symmetry_space_group_name_Hall"} ?
-        		$datablok->{"_symmetry_space_group_name_Hall"}[0] :
-        		undef;
-        	    my $original_sg_number =
-        		defined $datablok->{"_space_group_IT_number"} ?
-        		$datablok->{"_space_group_IT_number"}[0] :
-        		undef;
+                my $has_errors = 0;
+                for my $symop (@symops) {
+                    my $error = SymopParse::check_symmetry_operator( $symop );
+                    if( $error ) {
+                        $has_errors = 1;
+                        print STDERR "$0: $filename: $error\n";
+                    }
+                }
+                if( !$has_errors ) {
+                    my $key = mk_symop_key( \@symops );
+                    my $original_sg_H_M =
+                        defined $datablok->{"_symmetry_space_group_name_H-M"} ?
+                        $datablok->{"_symmetry_space_group_name_H-M"}[0] :
+                        undef;
+                    my $original_sg_Hall =
+                        defined $datablok->{"_symmetry_space_group_name_Hall"} ?
+                        $datablok->{"_symmetry_space_group_name_Hall"}[0] :
+                        undef;
+                    my $original_sg_number =
+                        defined $datablok->{"_space_group_IT_number"} ?
+                        $datablok->{"_space_group_IT_number"}[0] :
+                        undef;
 
-        	    if( exists $symop_lookup_table{$key} ) {
-        		my $estimated_sg = $symop_lookup_table{$key};
+                    if( exists $symop_lookup_table{$key} ) {
+                        my $estimated_sg = $symop_lookup_table{$key};
 
-        		my $estimated_sg_H_M = $estimated_sg->{universal_h_m};
-        		if( defined $original_sg_H_M &&
-        		    $original_sg_H_M ne '?' &&
-        		    $original_sg_H_M ne $estimated_sg_H_M &&
-        		    !exists $datablok->{"_[local]_cod_cif_authors_sg_H-M"} ) {
-        		    set_tag( $dataset, "_[local]_cod_cif_authors_sg_H-M",
-        			     $original_sg_H_M );
-        		}
-        		set_tag( $dataset, "_symmetry_space_group_name_H-M",
-        			 $estimated_sg_H_M );
+                        my $estimated_sg_H_M = $estimated_sg->{universal_h_m};
+                        if( defined $original_sg_H_M &&
+                            $original_sg_H_M ne '?' &&
+                            $original_sg_H_M ne $estimated_sg_H_M &&
+                            !exists $datablok->{"_[local]_cod_cif_authors_sg_H-M"} ) {
+                            set_tag( $dataset, "_[local]_cod_cif_authors_sg_H-M",
+                                     $original_sg_H_M );
+                        }
+                        set_tag( $dataset, "_symmetry_space_group_name_H-M",
+                                 $estimated_sg_H_M );
 
-        		my $estimated_sg_Hall = $estimated_sg->{hall};
-        		$estimated_sg_Hall =~ s/^\s*//;
-        		if( defined $original_sg_Hall &&
-        		    $original_sg_Hall ne '?' &&
-        		    $original_sg_Hall ne $estimated_sg_Hall ) {
-        		    set_tag( $dataset, "_[local]_cod_cif_authors_sg_Hall",
-        			     $original_sg_Hall );
-        		}
-        		set_tag( $dataset, "_symmetry_space_group_name_Hall",
-        			 $estimated_sg_Hall );
+                        my $estimated_sg_Hall = $estimated_sg->{hall};
+                        $estimated_sg_Hall =~ s/^\s*//;
+                        if( defined $original_sg_Hall &&
+                            $original_sg_Hall ne '?' &&
+                            $original_sg_Hall ne $estimated_sg_Hall ) {
+                            set_tag( $dataset, "_[local]_cod_cif_authors_sg_Hall",
+                                     $original_sg_Hall );
+                        }
+                        set_tag( $dataset, "_symmetry_space_group_name_Hall",
+                                 $estimated_sg_Hall );
 
-        		my $estimated_sg_number = $estimated_sg->{number};
-        		if( defined $original_sg_number &&
-        		    $original_sg_number ne '?' &&
-        		    $original_sg_number != $estimated_sg_number ) {
-        		    set_tag( $dataset, "_[local]_cod_cif_authors_sg_number",
-        			     $original_sg_number );
-        		}
-        		set_tag( $dataset, "_space_group_IT_number",
-        			 $estimated_sg_number );
-        	    } else {
-        		if( !$keep_unrecognised_spacegroups ) {
-        		    if( defined $original_sg_H_M && $original_sg_H_M ne '?' &&
-        			!exists $datablok->{"_[local]_cod_cif_authors_sg_H-M"} ) {
-        			set_tag( $dataset, "_[local]_cod_cif_authors_sg_H-M",
-        				 $original_sg_H_M );
-        		    }
-        		    set_tag( $dataset, "_symmetry_space_group_name_H-M", '?' );
+                        my $estimated_sg_number = $estimated_sg->{number};
+                        if( defined $original_sg_number &&
+                            $original_sg_number ne '?' &&
+                            $original_sg_number != $estimated_sg_number ) {
+                            set_tag( $dataset, "_[local]_cod_cif_authors_sg_number",
+                                     $original_sg_number );
+                        }
+                        set_tag( $dataset, "_space_group_IT_number",
+                                 $estimated_sg_number );
+                    } else {
+                        if( !$keep_unrecognised_spacegroups ) {
+                            if( defined $original_sg_H_M && $original_sg_H_M ne '?' &&
+                                !exists $datablok->{"_[local]_cod_cif_authors_sg_H-M"} ) {
+                                set_tag( $dataset, "_[local]_cod_cif_authors_sg_H-M",
+                                         $original_sg_H_M );
+                            }
+                            set_tag( $dataset, "_symmetry_space_group_name_H-M", '?' );
 
-        		    if( defined $original_sg_Hall && $original_sg_Hall ne '?' ) {
-        			set_tag( $dataset, "_[local]_cod_cif_authors_sg_Hall",
-        				 $original_sg_Hall );
-        		    }
-        		    set_tag( $dataset, "_symmetry_space_group_name_Hall",'?' );
+                            if( defined $original_sg_Hall && $original_sg_Hall ne '?' ) {
+                                set_tag( $dataset, "_[local]_cod_cif_authors_sg_Hall",
+                                         $original_sg_Hall );
+                            }
+                            set_tag( $dataset, "_symmetry_space_group_name_Hall",'?' );
 
-        		    if( defined $original_sg_number ) {
-        			set_tag( $dataset, "_[local]_cod_cif_authors_sg_number",
-        				 $original_sg_number );
-        		    }
-        		    set_tag( $dataset, "_space_group_IT_number", '?' );
-        		}
-        	    }
-        	}
+                            if( defined $original_sg_number ) {
+                                set_tag( $dataset, "_[local]_cod_cif_authors_sg_number",
+                                         $original_sg_number );
+                            }
+                            set_tag( $dataset, "_space_group_IT_number", '?' );
+                        }
+                    }
+                }
             } else {
-        	print STDERR "$0: the ", defined $filename ? "'$filename' " : "",
+                print STDERR "$0: the ", defined $filename ? "'$filename' " : "",
                 "data_$dataset->{name} does not contain symmetry operators\n";
             }
         }
@@ -906,10 +906,10 @@ for my $filename (@ARGV) {
             my $new_formula = $parser->SprintFormula;
 
             if( defined $new_formula && 
-        	$datablok->{_chemical_formula_sum}[0] ne $new_formula ) {
-        	set_tag( $dataset, "_[local]_cod_chemical_formula_sum_orig",
-        		 $datablok->{_chemical_formula_sum}[0] );
-        	set_tag( $dataset, "_chemical_formula_sum", $new_formula );
+                $datablok->{_chemical_formula_sum}[0] ne $new_formula ) {
+                set_tag( $dataset, "_[local]_cod_chemical_formula_sum_orig",
+                         $datablok->{_chemical_formula_sum}[0] );
+                set_tag( $dataset, "_chemical_formula_sum", $new_formula );
             }
         }
 
@@ -972,7 +972,7 @@ for my $filename (@ARGV) {
         if( defined $data_block_nr ) {
             $dataset->{name} = sprintf "%07d", $data_block_nr;
             if( $update_database_code ) {
-        	$dataset->{values}{_cod_database_code}[0] = $dataset->{name};
+                $dataset->{values}{_cod_database_code}[0] = $dataset->{name};
             }
             $data_block_nr ++;
         }
@@ -987,7 +987,7 @@ for my $filename (@ARGV) {
             dictionary_tags => \%dictionary_tags,
             dictionary_tag_list => \@dictionary_tags,
             keep_tag_order => $preserve_tag_order,
-        	   } );
+                   } );
 
     }
 }
@@ -1051,18 +1051,18 @@ sub merge_new_tag_values($$$)
             push( @{$dst->{tags}}, $key );
 
             if( exists $src->{inloop}{$key} &&
-        	!exists $dst->{inloop}{$key} ) {
-        	my $loop_nr = $src->{inloop}{$key};
-        	my @loop = @{$src->{loops}[$loop_nr]};
-        	my $dst_loop_nr =
-        	    defined $dst->{loops} ? int(@{$dst->{loops}}) : 0;
+                !exists $dst->{inloop}{$key} ) {
+                my $loop_nr = $src->{inloop}{$key};
+                my @loop = @{$src->{loops}[$loop_nr]};
+                my $dst_loop_nr =
+                    defined $dst->{loops} ? int(@{$dst->{loops}}) : 0;
 
-        	for my $loop_key (@loop) {
-        	    if( exists $tag_list{$loop_key}) {
-        		push( @{$dst->{loops}[$dst_loop_nr]}, $loop_key );
-        		$dst->{inloop}{$loop_key} = $dst_loop_nr;
-        	    }
-        	}
+                for my $loop_key (@loop) {
+                    if( exists $tag_list{$loop_key}) {
+                        push( @{$dst->{loops}[$dst_loop_nr]}, $loop_key );
+                        $dst->{inloop}{$loop_key} = $dst_loop_nr;
+                    }
+                }
             }
         }
     }

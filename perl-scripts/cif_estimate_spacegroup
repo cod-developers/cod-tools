@@ -66,21 +66,21 @@ for my $filename (@ARGV) {
             my $has_errors = 0;
             my $error;
             for my $symop (@symops) {
-        	$error = SymopParse::check_symmetry_operator( $symop );
-        	if( $error ) {
-        	    $has_errors = 1;
-        	    print "$0: $filename: $error\n";
-        	}
+                $error = SymopParse::check_symmetry_operator( $symop );
+                if( $error ) {
+                    $has_errors = 1;
+                    print "$0: $filename: $error\n";
+                }
             }
             next if $has_errors;
 
             my $key = mk_symop_key( \@symops );
             print "## >>> $key\n";
             if( exists $symop_lookup_table{$key} ) {
-        	print "_[local]_cod_est_spacegroup_name_H-M ";
-        	print "'", $symop_lookup_table{$key}{hermann_mauguin}, "'\n";
+                print "_[local]_cod_est_spacegroup_name_H-M ";
+                print "'", $symop_lookup_table{$key}{hermann_mauguin}, "'\n";
             } else {
-        	print "_[local]_cod_est_spacegroup_name_H-M ?\n";
+                print "_[local]_cod_est_spacegroup_name_H-M ?\n";
             }
         }
         if( exists $dataset->{values}{"_symmetry_space_group_name_H-M"} ) {
@@ -93,16 +93,16 @@ for my $filename (@ARGV) {
             print "  _symmetry_equiv_pos_as_xyz\n";
             my @types = @{$dataset->{types}{"_symmetry_equiv_pos_as_xyz"}};
             for my $symop (@{$dataset->{values}{"_symmetry_equiv_pos_as_xyz"}}) {
-        	my $type = shift( @types );
-        	my $quotes;
-        	if( $type eq "SQSTRING" ) {
-        	    $quotes = "'";
-        	} elsif( $type eq "DQSTRING" ) {
-        	    $quotes = '"';
-        	} else {
-        	    $quotes = "";
-        	}
-        	print $quotes, $symop, $quotes, "\n";
+                my $type = shift( @types );
+                my $quotes;
+                if( $type eq "SQSTRING" ) {
+                    $quotes = "'";
+                } elsif( $type eq "DQSTRING" ) {
+                    $quotes = '"';
+                } else {
+                    $quotes = "";
+                }
+                print $quotes, $symop, $quotes, "\n";
             }
         }
     }

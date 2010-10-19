@@ -57,87 +57,87 @@ for my $filename (@ARGV) {
 
         if( exists $values->{_publ_author_name} ) {
             for my $i (0..$#{$values->{_publ_author_name}}) {
-        	my $author = $values->{_publ_author_name}[$i];
-        	if( $author =~
-        	    /^
+                my $author = $values->{_publ_author_name}[$i];
+                if( $author =~
+                    /^
                      \s*((?:[A-Z][a-z]+)?[A-Z][a-z\']+),         # Surname
                      \s+((?:[A-Z](?:\s+|-))*[A-Z])\s*$           # Initials
                     /x ) {
-        	    my $surname = $1;
-        	    my $initials = $2;
-        	    $initials =~ s/([A-Z])/$1./g;
-        	    $values->{_publ_author_name}[$i] =
-        		"$surname, $initials";
-        	}
-        	elsif( $author =~
-        	    /^
+                    my $surname = $1;
+                    my $initials = $2;
+                    $initials =~ s/([A-Z])/$1./g;
+                    $values->{_publ_author_name}[$i] =
+                        "$surname, $initials";
+                }
+                elsif( $author =~
+                    /^
                      \s*((?:[A-Z][a-z]+)?[A-Z][a-z\']+),         # Surname
                      \s*((?:[A-Z][a-z\']+)(?:\s+[A-Z][a-z\']+)*) # Name
                      \s+((?:[A-Z](?:\s+|-))*[A-Z])\s*$           # Initials
                     /x ) {
-        	    my $surname = $1;
-        	    my $name = $2;
-        	    my $initials = $3;
-        	    $initials =~ s/([A-Z])/$1./g;
-        	    $values->{_publ_author_name}[$i] =
-        		"$surname, $name $initials";
-        	}
-        	elsif( $author =~
-        	    /^
+                    my $surname = $1;
+                    my $name = $2;
+                    my $initials = $3;
+                    $initials =~ s/([A-Z])/$1./g;
+                    $values->{_publ_author_name}[$i] =
+                        "$surname, $name $initials";
+                }
+                elsif( $author =~
+                    /^
                      \s*((?:[A-Z][a-z]+)?[A-Z][a-z\']+),          # Surname
                      \s*((?:[A-Z](?:\s+|-))*[A-Z])\s*             # Initials
                      \s+((?:[A-Z][a-z\']+)(?:\s+[A-Z][a-z\']+)*)$ # Name
                     /x ) {
-        	    my $surname = $1;
-        	    my $initials = $2;
-        	    my $name = $3;
-        	    $initials =~ s/([A-Z])/$1./g;
-        	    $values->{_publ_author_name}[$i] =
-        		"$surname, $initials $name";
-        	}
-        	elsif( $author =~
-        	    /^
+                    my $surname = $1;
+                    my $initials = $2;
+                    my $name = $3;
+                    $initials =~ s/([A-Z])/$1./g;
+                    $values->{_publ_author_name}[$i] =
+                        "$surname, $initials $name";
+                }
+                elsif( $author =~
+                    /^
                      \s*((?:[A-Za-z][a-z]*\s+)*[A-Za-z]?[a-z]+) # 'von' prefix
                      \s+((?:[A-Z][a-z]+)?[A-Z][a-z\']+),        # Surname
                      \s+((?:[A-Z](?:\s+|-))*[A-Z])\s*$          # Initials
                     /x ) {
-        	    my $von_prefix = $1;
-        	    my $surname = $2;
-        	    my $initials = $3;
-        	    $initials =~ s/([A-Z])/$1./g;
-        	    $values->{_publ_author_name}[$i] =
-        		"$von_prefix $surname, $initials";
-        	}
-        	elsif( $author =~
-        	    /^
+                    my $von_prefix = $1;
+                    my $surname = $2;
+                    my $initials = $3;
+                    $initials =~ s/([A-Z])/$1./g;
+                    $values->{_publ_author_name}[$i] =
+                        "$von_prefix $surname, $initials";
+                }
+                elsif( $author =~
+                    /^
                      \s*((?:[A-Za-z][a-z]*\s+)*[A-Za-z]?[a-z]+)  # 'von' prefix
                      \s+((?:[A-Z][a-z]+)?[A-Z][a-z\']+),         # Surname
                      \s*((?:[A-Z][a-z\']+)(?:\s+[A-Z][a-z\']+)*) # Name
                      \s+((?:[A-Z](?:\s+|-))*[A-Z])\s*$           # Initials
                     /x ) {
-        	    my $von_prefix = $1;
-        	    my $surname = $2;
-        	    my $name = $3;
-        	    my $initials = $4;
-        	    $initials =~ s/([A-Z])/$1./g;
-        	    $values->{_publ_author_name}[$i] =
-        		"$von_prefix $surname, $name $initials";
-        	}
-        	elsif( $author =~
-        	    /^
+                    my $von_prefix = $1;
+                    my $surname = $2;
+                    my $name = $3;
+                    my $initials = $4;
+                    $initials =~ s/([A-Z])/$1./g;
+                    $values->{_publ_author_name}[$i] =
+                        "$von_prefix $surname, $name $initials";
+                }
+                elsif( $author =~
+                    /^
                      \s*((?:[A-Za-z][a-z]*\s+)*[A-Za-z]?[a-z]+)   # 'von' prefix
                      \s+((?:[A-Z][a-z]+)?[A-Z][a-z\']+),          # Surname
                      \s+((?:[A-Z](?:\s+|-))*[A-Z])\s*             # Initials
                      \s*((?:[A-Z][a-z\']+)(?:\s+[A-Z][a-z\']+)*)$ # Name
                     /x ) {
-        	    my $von_prefix = $1;
-        	    my $surname = $2;
-        	    my $initials = $3;
-        	    my $name = $4;
-        	    $initials =~ s/([A-Z])/$1./g;
-        	    $values->{_publ_author_name}[$i] =
-        		"$von_prefix $surname, $initials $name";
-        	}
+                    my $von_prefix = $1;
+                    my $surname = $2;
+                    my $initials = $3;
+                    my $name = $4;
+                    $initials =~ s/([A-Z])/$1./g;
+                    $values->{_publ_author_name}[$i] =
+                        "$von_prefix $surname, $initials $name";
+                }
             }
         }
 

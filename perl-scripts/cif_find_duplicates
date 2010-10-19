@@ -180,22 +180,22 @@ for my $file (@cif_files) {
 
         if( defined $formula && defined $COD{$formula} ) {
             for my $COD_entry (@{$COD{$formula}}) {
-        	if( entries_are_the_same( $structures{$id}, $COD_entry )) {
+                if( entries_are_the_same( $structures{$id}, $COD_entry )) {
                     my $COD_key = $COD_entry->{filename};
-        	    $structures_found{$COD_key} = $COD_entry;
-        	}
+                    $structures_found{$COD_key} = $COD_entry;
+                }
             }
         }
         if( defined $cell_contents && defined $COD{$cell_contents} &&
             $formula ne $cell_contents ) {
             ## print ">>> formula: '$formula', contents: '$cell_contents'\n";
             for my $COD_entry (@{$COD{$cell_contents}}) {
-        	if( entries_are_the_same( $structures{$id}, $COD_entry )) {
+                if( entries_are_the_same( $structures{$id}, $COD_entry )) {
                     my $COD_key = $COD_entry->{filename};
                     if( !exists $structures_found{$COD_key} ) {
                         $structures_found{$COD_key} = $COD_entry;
                     }
-        	}
+                }
             }
         }
 
@@ -288,7 +288,7 @@ sub cif_fill_data
         my $calculated_formula;
         eval {
             $calculated_formula =
-        	CIFCellContents::cif_cell_contents( $dataset, $file, undef );
+                CIFCellContents::cif_cell_contents( $dataset, $file, undef );
         };
 
         $structures{$id}{cell_contents} = $calculated_formula
@@ -298,10 +298,10 @@ sub cif_fill_data
                      _cell_angle_alpha _cell_angle_beta _cell_angle_gamma )) {
             my $val = $values->{$key}[0];
             if( defined $val ) {
-        	$val =~ s/^\s*'\s*|\s*'\s*$//g;
-        	$val =~ s/\(.*$//;
-        	$val =~ s/[()_a-zA-Z]//g;
-        	$structures{$id}{cell}{$key} = sprintf "%f", $val;
+                $val =~ s/^\s*'\s*|\s*'\s*$//g;
+                $val =~ s/\(.*$//;
+                $val =~ s/[()_a-zA-Z]//g;
+                $structures{$id}{cell}{$key} = sprintf "%f", $val;
             }
         }
         for my $key ( qw( _cell_measurement_temperature
@@ -352,15 +352,15 @@ sub cif_fill_data
         for my $key (@journal_keys) {
             my $val = $values->{$key}[0];
             if( defined $val ) {
-        	$val =~ s/^['"]|["']$//g;
-        	$structures{$id}{bibliography}{$key} = $val;
+                $val =~ s/^['"]|["']$//g;
+                $structures{$id}{bibliography}{$key} = $val;
             }
         }
         if( defined $values->{'_[local]_cod_suboptimal_structure'} ||
             defined $values->{_cod_suboptimal_structure} ) {
             my $val = defined $values->{_cod_suboptimal_structure} ?
-        	$values->{_cod_suboptimal_structure}[0] :
-        	$values->{'_[local]_cod_suboptimal_structure'}[0];
+                $values->{_cod_suboptimal_structure}[0] :
+                $values->{'_[local]_cod_suboptimal_structure'}[0];
             ## print ">>>>>> $val\n";
             $structures{$id}{suboptimal} = $val;
         }
@@ -401,7 +401,7 @@ sub cells_are_the_same($$)
         if( defined $length1 and defined $length2 ) {
             my $diff = abs( $length1 - $length2 );
             if( $max_length_diff < $diff ) {
-        	$max_length_diff = $diff;
+                $max_length_diff = $diff;
             }
         }
     }
@@ -411,7 +411,7 @@ sub cells_are_the_same($$)
         if( defined $angle1 and defined $angle2 ) {
             my $diff = abs( $angle1 - $angle2 );
             if( $max_angle_diff < $diff ) {
-        	$max_angle_diff = $diff;
+                $max_angle_diff = $diff;
             }
         }
     }
@@ -435,25 +435,25 @@ sub conditions_are_the_same
     for my $parameter ( @parameters ) {
 
         my %tags = map {($_,$_)} ( keys %{$entry1->{$parameter}},
-        			   keys %{$entry2->{$parameter}} );
+                                   keys %{$entry2->{$parameter}} );
         for my $tag (keys %tags) {
             if( exists $entry1->{$parameter}{$tag} &&
-        	exists $entry2->{$parameter}{$tag} ) {
-        	if( $entry1->{$parameter}{$tag} =~ /^${number}$/o ||
-        	    $entry2->{$parameter}{$tag} =~ /^${number}$/o ) {
+                exists $entry2->{$parameter}{$tag} ) {
+                if( $entry1->{$parameter}{$tag} =~ /^${number}$/o ||
+                    $entry2->{$parameter}{$tag} =~ /^${number}$/o ) {
                     my $val1 = $entry1->{$parameter}{$tag};
                     my $val2 = $entry2->{$parameter}{$tag};
                     $val1 =~ s/\(\d+\)$//;
                     $val2 =~ s/\(\d+\)$//;
-        	    if( $val1 != $val2 ) {
-        		return 0;
-        	    }
-        	} else {
-        	    if( $entry1->{$parameter}{$tag} ne
-        		$entry2->{$parameter}{$tag} ) {
-        		return 0;
-        	    }
-        	}
+                    if( $val1 != $val2 ) {
+                        return 0;
+                    }
+                } else {
+                    if( $entry1->{$parameter}{$tag} ne
+                        $entry2->{$parameter}{$tag} ) {
+                        return 0;
+                    }
+                }
             }
         }
     }
@@ -470,11 +470,11 @@ sub bibliographies_are_the_same($$)
         next if( $skip_tag{$tag} );
         if( defined $biblio1->{$tag} && defined $biblio2->{$tag} ) {
             if( $has_numeric_value{$tag} ) {
-        	if( $biblio1->{$tag} != $biblio2->{$tag} ) {
-        	    return 0;
-        	}
+                if( $biblio1->{$tag} != $biblio2->{$tag} ) {
+                    return 0;
+                }
             } else {
-        	if( $biblio1->{$tag} ne $biblio2->{$tag} ) {
+                if( $biblio1->{$tag} ne $biblio2->{$tag} ) {
                     return 0;
                 }
             }
@@ -498,7 +498,7 @@ sub entries_are_the_same
             (!defined $entry1->{suboptimal} || $entry1->{suboptimal} ne "yes") &&
             (!defined $entry2->{suboptimal} || $entry2->{suboptimal} ne "yes") &&
             bibliographies_are_the_same( $entry1->{bibliography},
-        				 $entry2->{bibliography} );
+                                         $entry2->{bibliography} );
     } else {
         return
             cells_are_the_same( $entry1->{cell}, $entry2->{cell} ) &&
