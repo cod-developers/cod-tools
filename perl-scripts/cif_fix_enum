@@ -155,36 +155,38 @@ sub replacement_candidates($$)
 {
         my( $cif_value, $dict_value_list ) = @_;
         my @candidate_list = ();
-        my @lc_candidates = ();
+        my @candidates = ();
         foreach my $dict_tag_value ( @{$dict_value_list} ) {
             if( $cif_value eq $dict_tag_value ) {
                 @candidate_list = ();
                 last;
             }
             if( $cif_value =~ /^\s+$dict_tag_value|$dict_tag_value\s+$/i ) {
-                push( @lc_candidates , $dict_tag_value );
+                push( @candidates , $dict_tag_value );
                 next;
             }
-            if( lc $cif_value eq lc $dict_tag_value ) {
-                push( @lc_candidates , $dict_tag_value );
-                next;
-            }
+            
             my $test_dict_value = $dict_tag_value;
             $test_dict_value =~ s/[-_\s]//g;
             my $test_cif_value = $cif_value;
             $test_cif_value =~ s/[-_\s]//g;
-            if( $test_cif_value eq $test_dict_value ) {
-                push( @lc_candidates , $dict_tag_value );
+            
+            if( lc $test_cif_value eq lc $test_dict_value ) {
+                push( @candidates , $dict_tag_value );
+                next;
+            }
+            if( lc $cif_value eq lc $dict_tag_value ) {
+                push( @candidates , $dict_tag_value );
                 next;
             } else {
                 push( @candidate_list , $dict_tag_value );
                 next;
             }
         }    
-        if( scalar( @lc_candidates ) == 1 ) {
-            @candidate_list = @lc_candidates;
+        if( scalar( @candidates ) == 1 ) {
+            @candidate_list = @candidates;
         } else {
-            push( @candidate_list, @lc_candidates );
+            push( @candidate_list, @candidates );
         }
         return @candidate_list
 }
