@@ -50,9 +50,9 @@ my $keep_tag_order = 0;
 #*        this:
 #*        $0 --add-dictionary cif_core.dic
 #*     --clear-dictionaries
-#*              You can clear all dictionaries used for checking
-#*              CIF file, in a way like this:
-#*              $0 --clear-dictionary
+#*        You can clear all dictionaries used for checking
+#*        CIF file, in a way like this:
+#*        $0 --clear-dictionary
 #*
 #**
 
@@ -103,25 +103,25 @@ for my $dict_file_name ( @dictionaries ) {
         
     for my $dataset ( @$data ) {
         my $values = $dataset->{values};
-            my $values_name = $values->{_name};
+        my $values_name = $values->{_name};
         my $values_enum = $values->{_enumeration};
         if( (defined $values_name) && (defined $values_enum) ) {
             my @enums = @$values_enum;
             my @tag_names = @$values_name;;
             foreach( @tag_names ) {
-                    if( !defined $tagDicts{$_} ) {
-                        $dictTags{$_} = \@enums;
-                        $tagDicts{$_} = [ 
-                            $dict_file_name, 
-                            @$dict_name, 
-                            @$dict_version, 
-                            @$dict_update  ];
-                    } else {
-                        print STDERR  
-                            "$0: WARNING, '$_' " .
-                        "tag is already defined by " . 
-                        "'$dict_file_name' dictionary.\n";
-                    }
+		if( !defined $tagDicts{$_} ) {
+		    $dictTags{$_} = \@enums;
+                    $tagDicts{$_} = [ 
+			$dict_file_name, 
+                        @$dict_name, 
+                        @$dict_version, 
+                        @$dict_update  ];
+                } else {
+		    print STDERR  
+                    "$0: WARNING, '$_' " .
+                    "tag is already defined by " . 
+                    "'$dict_file_name' dictionary.\n";
+                }
             }
         }
     }
@@ -134,15 +134,15 @@ sub insert_report_to_comments {
         my $values = $dataset->{values};
         my $reports_value = join("\n\n",@$insert_reports);
         my $message =
-                "The following automatic conversions were performed:\n" .
-                join( "\n", map { "" . $_ }
-                CIFTagPrint::fold( 75, " +", " ", $reports_value ));
+	    "The following automatic conversions were performed:\n" .
+            join( "\n", map { "" . $_ }
+            CIFTagPrint::fold( 75, " +", " ", $reports_value ));
 
         if( exists $values->{$comments_tag} ) {
             $values->{$comments_tag}[0] .= "\n\n" . $message;
         } else {
             $values->{$comments_tag}[0] = "\n" . $message;
-            }
+        }
         my $signature = $Id;
         $signature =~ s/^\$|\$$//g;
         $values->{$comments_tag}[0] .= 
@@ -215,9 +215,9 @@ for my $filename ( @ARGV ) {
             my $tags = $dataset->{tags};
             foreach my $tag ( @$tags ) {
                 if( defined $values->{$tag} ) {
-                foreach my $tag_value ( @{$values->{$tag}} ) {
+		    foreach my $tag_value ( @{$values->{$tag}} ) {
                         if( $tag_value =~ /^\.|\?$/ ) {
-                            next;
+			    next;
                         }
                         if( exists $dictTags{$tag} ) {
                             my @replacement_list = 
