@@ -42,11 +42,11 @@ my $keep_tag_order = 0;
 #*Options:
 #*     --dictionary cif_core.dic
 #*        Any valid CIF file, with CIF dictionary (according to DDL2).
-#*        You can define any number of CIF dictionaries, in a way like 
+#*        You can define any number of CIF dictionaries, in a way like
 #*        this:
 #*        $0 --dictionary cif_core.dic --dictionary cod_core.dic
 #*     --add-dictionary cif_core.dic
-#*        You can add CIF dictionary, in a way like 
+#*        You can add CIF dictionary, in a way like
 #*        this:
 #*        $0 --add-dictionary cif_core.dic
 #*     --clear-dictionaries
@@ -57,12 +57,12 @@ my $keep_tag_order = 0;
 #**
 
 @ARGV = getOptions(
-    "--keep-tag-order" 
+    "--keep-tag-order"
     => sub { $keep_tag_order = 1; },
-    "--sort-tags"      
+    "--sort-tags"
     => sub { $keep_tag_order = 0; },
     "-d,--dictionary"
-    => sub{@dictionaries = ( &get_value )}, 
+    => sub{@dictionaries = ( &get_value )},
     "-D,--add-dictionaries"
     => \@dictionaries,
     "--clear-dictionaries"
@@ -72,7 +72,7 @@ my $keep_tag_order = 0;
 for my $dict_file_name ( @dictionaries ) {
     my $parser = new CIFParser;
     my $data = $parser->Run( $dict_file_name );
-    
+
         if( defined $parser->YYData->{ERRCOUNT} &&
         $parser->YYData->{ERRCOUNT} > 0 ) {
         print STDERR "$0: $dict_file_name: ",
@@ -81,9 +81,9 @@ for my $dict_file_name ( @dictionaries ) {
         ## exit -1;
         next;
     }
-        
+
         canonicalize_all_names( $data );
-        
+
         my $dict_name;
         my $dict_version;
         my $dict_update;
@@ -93,14 +93,14 @@ for my $dict_file_name ( @dictionaries ) {
             my $values = $dataset->{values};
             die( "$0: $dict_file_name $dataset->{name}: dictionary " .
                  "'$dict_file_name' " .
-                 "data_$dataset->{name} does not contain data" ) 
+                 "data_$dataset->{name} does not contain data" )
                 unless defined $values;
             $dict_name = $values->{_dictionary_name};
             $dict_version = $values->{_dictionary_version};
             $dict_update = $values->{_dictionary_update};
             last;
         }
-        
+
     for my $dataset ( @$data ) {
         my $values = $dataset->{values};
         my $values_name = $values->{_name};
@@ -111,15 +111,15 @@ for my $dict_file_name ( @dictionaries ) {
             foreach( @tag_names ) {
 		if( !defined $tagDicts{$_} ) {
 		    $dictTags{$_} = \@enums;
-                    $tagDicts{$_} = [ 
-			$dict_file_name, 
-                        @$dict_name, 
-                        @$dict_version, 
+                    $tagDicts{$_} = [
+			$dict_file_name,
+                        @$dict_name,
+                        @$dict_version,
                         @$dict_update  ];
                 } else {
-		    print STDERR  
+		    print STDERR
                     "$0: WARNING, '$_' " .
-                    "tag is already defined by " . 
+                    "tag is already defined by " .
                     "'$dict_file_name' dictionary.\n";
                 }
             }
@@ -145,7 +145,7 @@ sub insert_report_to_comments {
         }
         my $signature = $Id;
         $signature =~ s/^\$|\$$//g;
-        $values->{$comments_tag}[0] .= 
+        $values->{$comments_tag}[0] .=
             "\n\n" . "Automatic conversion script" .
             "\n" . $signature;
     }
@@ -165,12 +165,12 @@ sub replacement_candidates($$)
                 push( @candidates , $dict_tag_value );
                 next;
             }
-            
+
             my $test_dict_value = $dict_tag_value;
             $test_dict_value =~ s/[-_\s]//g;
             my $test_cif_value = $cif_value;
             $test_cif_value =~ s/[-_\s]//g;
-            
+
             if( lc $test_cif_value eq lc $test_dict_value ) {
                 push( @candidates , $dict_tag_value );
                 next;
@@ -182,7 +182,7 @@ sub replacement_candidates($$)
                 push( @candidate_list , $dict_tag_value );
                 next;
             }
-        }    
+        }
         if( scalar( @candidates ) == 1 ) {
             @candidate_list = @candidates;
         } else {
@@ -198,7 +198,7 @@ my %dictionary_tags = map { $_, $_ } @dictionary_tags;
 for my $filename ( @ARGV ) {
     my $parser = new CIFParser;
     my $data = $parser->Run( $filename );
-    
+
     if( defined $parser->YYData->{ERRCOUNT} &&
         $parser->YYData->{ERRCOUNT} > 0 ) {
         print STDERR "$0: $filename: ",
@@ -207,7 +207,7 @@ for my $filename ( @ARGV ) {
         ## exit -1;
         next
     }
-    
+
     canonicalize_all_names( $data );
         for my $dataset (@$data) {
             my @insert_reports = ();
@@ -220,14 +220,14 @@ for my $filename ( @ARGV ) {
 			    next;
                         }
                         if( exists $dictTags{$tag} ) {
-                            my @replacement_list = 
+                            my @replacement_list =
                               replacement_candidates
                                   ( $tag_value , $dictTags{$tag} );
                             if(! @replacement_list ) {
                                 next;
                             } elsif( scalar( @replacement_list ) == 1 ) {
                                 my $new_value = shift( @replacement_list );
-                                my $report_msg = 
+                                my $report_msg =
                                     "'$tag' value '$tag_value' " .
                                     "changed to '$new_value' " .
                                     "according to '$tagDicts{$tag}[0]' " .
@@ -236,12 +236,12 @@ for my $filename ( @ARGV ) {
                                     "version $tagDicts{$tag}[2] " .
                                     "from $tagDicts{$tag}[3].";
                                 push (@insert_reports, $report_msg);
-                                print STDERR 
+                                print STDERR
                                     "$0: $filename: NOTE, $report_msg\n";
                                 $tag_value = $new_value;
                                 next;
                             } else {
-                                print STDERR  
+                                print STDERR
                                     "$0: $filename: WARNING, " .
                                     "'$tag' value '$tag_value' " .
                                     "should be one of these: [" .
@@ -253,11 +253,11 @@ for my $filename ( @ARGV ) {
                                     "from $tagDicts{$tag}[3].\n";
                                 next;
                             }
-                        }    
+                        }
                     }
                 }
             }
-            insert_report_to_comments( $dataset, \@insert_reports ); 
+            insert_report_to_comments( $dataset, \@insert_reports );
             print_cif( $dataset, {
             exclude_misspelled_tags => 0,
             preserve_loop_order => 1,
