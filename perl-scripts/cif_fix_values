@@ -425,16 +425,16 @@ for my $filename (@ARGV) {
                         my $number = ($1 + $2)/2;
                         my $sig = ($2 - $1)/2;
                         if( $2 > $1 ) {
-                            if( defined $temp_d ) {
+                            if( $temp_d ) {
                                 my $old_tag = $tag;
                                 my $new_tag =
                                     '_chemical_temperature_decomposition';
-                                CIFTagManage::rename_tag
-                                  ( $dataset, $old_tag, $new_tag );
                                 $values->{$tag}[$i] =
                                     CIFTagPrint::pack_precision
                                         ( $number , $sig );
                                 my $new_val = $values->{$tag}[$i];
+                                CIFTagManage::rename_tag
+                                  ( $dataset, $old_tag, $new_tag );
                                 my $report_msg =
                                     "'$old_tag' tag changed to '$new_tag' " .
                                     "since the value is given as " .
