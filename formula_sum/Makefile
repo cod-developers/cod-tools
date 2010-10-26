@@ -1,0 +1,123 @@
+
+TEST_DIR = tests
+OUTP_DIR = outputs
+
+TEST_MODULE = ${firstword ${PM_FILES}}
+
+YP_FILES   = ${wildcard *.yp}
+PM_FILES   = ${YP_FILES:%.yp=%.pm}
+YO_FILES   = ${YP_FILES:%.yp=%.output}
+
+WORK_TESTS = ${wildcard inputs/*.inp}
+
+TEST_FILES = ${wildcard ${TEST_DIR}/*.inp}
+DIFF_FILES = ${TEST_FILES:${TEST_DIR}/%.inp=${OUTP_DIR}/%.diff}
+OUTP_FILES = ${TEST_FILES:${TEST_DIR}/%.inp=${OUTP_DIR}/%.out}
+
+.PRECIOUS: %.pm
+.PHONY: all clean cleanAll distclean test tests alltests out outputs
+.PHONY: run times
+
+## all: ${PM_FILES}
+all: run
+
+SHELL = /bin/bash
+
+run: ${PM_FILES} ${WORK_TESTS}
+	@for file in ${WORK_TESTS}; do \
+	( \
+		echo === $$file ===; \
+		set -x; \
+		perl -e 'use ${TEST_MODULE:%.pm=%}; my $$p=new ${TEST_MODULE:%.pm=%}; $$p->Run($$ARGV[0]); $$p->PrintFormula' \
+			"`cat $$file`" \
+	); \
+	done
+
+times: ${PM_FILES} ${WORK_TESTS}
+	@for file in ${WORK_TESTS}; do \
+	( \
+		echo === $$file ===; \
+		set -x; \
+		time perl -e 'use ${TEST_MODULE:%.pm=%}; my $$p=new ${TEST_MODULE:%.pm=%}; $$p->Run' \
+			< $$file \
+	); \
+	done
+
+tests alltests: test shtest
+
+#------------------------------------------------------------------------------
+
+test: ${DIFF_FILES}
+
+out outputs: ${OUTP_FILES}
+
+%.pm: %.yp
+	yapp -v -o $@ $<
+
+${OUTP_DIR}/%.diff: ${TEST_MODULE} ${TEST_DIR}/%.inp
+	-@printf "%-30s " "$*:" ; \
+	perl -e 'use ${TEST_MODULE:%.pm=%}; my $$p=new ${TEST_MODULE:%.pm=%}; $$p->Run' \
+         < ${word 2, $^} 2>&1 \
+     | diff ${OUTP_DIR}/$*.out - \
+     > $@ ; \
+	if [ $$? = 0 ]; then echo "OK"; else echo "FAILED:"; cat $@; fi
+
+${OUTP_DIR}/%.out: ${TEST_MODULE} ${TEST_DIR}/%.inp
+	-@test -f $@ || echo "$@:"
+	-@test -f $@ || \
+	perl -e 'use ${TEST_MODULE:%.pm=%}; my $$p=new ${TEST_MODULE:%.pm=%}; $$p->Run' \
+	< ${word 2, $^} 2>&1 \
+	| tee $@
+	-@touch $@
+
+#------------------------------------------------------------------------------
+
+.PHONY: shtests
+
+#
+# Outputs and tests for the shell-driven tests:
+#
+
+SHELL_TSTDIR = ./shtests
+SHELL_OUTDIR = ./shoutputs
+
+SHELL_TESTS   = ${wildcard ${SHELL_TSTDIR}/*.sh}
+SHELL_BASES   = ${notdir ${SHELL_TESTS}}
+SHELL_OUTPUTS = ${addprefix ${SHELL_OUTDIR}/, ${SHELL_BASES:%.sh=%.out}}
+SHELL_DIFFS   = ${addprefix ${SHELL_OUTDIR}/, ${SHELL_BASES:%.sh=%.diff}}
+
+shoutputs shout: ${SHELL_OUTPUTS}
+
+shtest shtests: ${SHELL_DIFFS}
+
+${SHELL_OUTDIR}/%.out: ${SHELL_TSTDIR}/%.sh ${TEST_MODULE}
+	-@test -f $@ || echo "$@:"
+	-@test -f $@ || $< ./${TEST_MODULE} 2>&1 | tee $@
+	-@touch $@
+
+${SHELL_OUTDIR}/%.diff: ${SHELL_TSTDIR}/%.sh ${TEST_MODULE}
+	-@printf "%-30s " "$*:" ; \
+	$< ./${TEST_MODULE} 2>&1 | diff ${SHELL_OUTDIR}/$*.out - > $@ ; \
+	if [ $$? = 0 ]; then echo "OK"; else echo "FAILED:"; cat $@; fi
+
+#------------------------------------------------------------------------------
+
+.PHONY: listdiff
+
+listdiff: # test
+	@-( test -d ${OUTP_DIR} && \
+	    ls -l ${OUTP_DIR}/*.diff | awk '{if( $$5 > 0 ) print}' ) || \
+	    true
+	@-( test -d ${SHELL_OUTDIR} && \
+	    ls -l ${SHELL_OUTDIR}/*.diff | awk '{if( $$5 > 0 ) print}' ) || \
+	    true
+
+#------------------------------------------------------------------------------
+
+clean:
+	rm -f ${DIFF_FILES}
+	rm -f ${SHELL_DIFFS}
+
+distclean cleanAll: clean
+	rm -f ${PM_FILES}
+	rm -f ${YO_FILES}

@@ -1,0 +1,290 @@
+# --*-Perl-*----------------------------------------------------
+#$Author: justas $
+#$Date: 2008-03-06 17:58:02 +0200 (Thu, 06 Mar 2008) $
+#$Revision: 422 $
+#$URL: svn+ssh://pitonas.ibt.lt/home/xray/svn-repositories/cif-tools/trunk/CIFParser/CIFParser.yp $
+# -------------------------------------------------------------- 
+#
+# --------------------------------------------------------------
+# copy directly to PERL module:
+%{
+use warnings;
+use ShowStruct;
+use FileHandle;
+
+$formula_sum::version = '1.0';
+
+my $SVNID = '$Id: formula_sum.yp 422 2008-03-06 15:58:02Z justas $';
+
+# 0 - no debug
+# 1 - only YAPP output (type -> value)
+# 2 - lex & yapp output
+# 3 - generated array dump
+$formula_sum::debug = 0;
+
+%}
+# --------------------------------------------------------------
+
+# --------------------------------------------------------------
+# begin of body
+# --------------------------------------------------------------
+
+%%
+## 	:	#empty
+##                 {
+## 			$_[0]->{USER}->{FormulaSum} = {};
+## 		}
+
+formula
+    : item
+    | formula SPACE item
+;
+
+item
+	:	ELEMENT
+		{
+		    ## print ">>> ELEMENT: ",$_[1],"\n";
+		    $_[0]->{USER}->{FormulaSum}{$_[1]} += 1;
+		}
+	|	ELEMENT NUMBER
+		{
+		    ## print ">>> ELEMENT: ",$_[1],"\n";
+		    $_[0]->{USER}->{FormulaSum}{$_[1]} += $_[2];
+		}
+
+	|	item ELEMENT
+		{
+		    ## print ">>> ELEMENT: ",$_[1],"\n";
+		    $_[0]->{USER}->{FormulaSum}{$_[2]} += 1;
+		}
+
+	|	item ELEMENT NUMBER
+		{
+		    ## print ">>> ELEMENT: ",$_[2], " number: ", $_[3], "\n";
+		    $_[0]->{USER}->{FormulaSum}{$_[2]} += $_[3];
+		}
+
+        |  formula_start opt_space formula opt_space ')'
+		{
+		    my $subformula = $_[0]->{USER}->{FormulaSum};
+		    $_[0]->{USER}->{FormulaSum} =
+			pop( @{$_[0]->{USER}->{FormulaStack}} );
+
+		    for my $key ( keys %{$subformula} ) {
+			$_[0]->{USER}->{FormulaSum}->{$key} +=
+			    $subformula->{$key};
+		    }
+		}
+
+        |  formula_start
+           opt_space formula opt_space ')' NUMBER
+		{
+		    my $subformula = $_[0]->{USER}->{FormulaSum};
+		    $_[0]->{USER}->{FormulaSum} =
+			pop( @{$_[0]->{USER}->{FormulaStack}} );
+
+		    for my $key ( keys %{$subformula} ) {
+			$_[0]->{USER}->{FormulaSum}->{$key} +=
+			    $subformula->{$key} * $_[6];
+		    }
+		}
+        
+        |       NUMBER formula_start
+                opt_space formula opt_space ')'
+		{
+		    my $subformula = $_[0]->{USER}->{FormulaSum};
+		    $_[0]->{USER}->{FormulaSum} =
+			pop( @{$_[0]->{USER}->{FormulaStack}} );
+
+		    for my $key ( keys %{$subformula} ) {
+			$_[0]->{USER}->{FormulaSum}->{$key} +=
+			    $subformula->{$key} * $_[1];
+		    }
+		}
+        
+        |  bracket_start opt_space formula opt_space ']'
+		{
+		    my $subformula = $_[0]->{USER}->{FormulaSum};
+		    $_[0]->{USER}->{FormulaSum} =
+			pop( @{$_[0]->{USER}->{FormulaStack}} );
+
+		    for my $key ( keys %{$subformula} ) {
+			$_[0]->{USER}->{FormulaSum}->{$key} +=
+			    $subformula->{$key};
+		    }
+		}
+
+        |  bracket_start
+           opt_space formula opt_space ']' NUMBER
+		{
+		    my $subformula = $_[0]->{USER}->{FormulaSum};
+		    $_[0]->{USER}->{FormulaSum} =
+			pop( @{$_[0]->{USER}->{FormulaStack}} );
+
+		    for my $key ( keys %{$subformula} ) {
+			$_[0]->{USER}->{FormulaSum}->{$key} +=
+			    $subformula->{$key} * $_[6];
+		    }
+		}
+        
+        |       NUMBER bracket_start
+                opt_space formula opt_space ']'
+		{
+		    my $subformula = $_[0]->{USER}->{FormulaSum};
+		    $_[0]->{USER}->{FormulaSum} =
+			pop( @{$_[0]->{USER}->{FormulaStack}} );
+
+		    for my $key ( keys %{$subformula} ) {
+			$_[0]->{USER}->{FormulaSum}->{$key} +=
+			    $subformula->{$key} * $_[1];
+		    }
+		}
+        
+;
+
+formula_start
+    : '('
+        {
+	    push( @{$_[0]->{USER}->{FormulaStack}},
+		  $_[0]->{USER}->{FormulaSum} );
+	    $_[0]->{USER}->{FormulaSum} = {}
+	}
+    ;
+
+bracket_start
+    : '['
+        {
+	    push( @{$_[0]->{USER}->{FormulaStack}},
+		  $_[0]->{USER}->{FormulaSum} );
+	    $_[0]->{USER}->{FormulaSum} = {}
+	}
+    ;
+
+opt_space
+    : SPACE
+    |
+    ;
+
+%%
+# --------------------------------------------------------------
+# begin of footer
+# --------------------------------------------------------------
+
+sub _Error
+{
+        $_[0]->YYData->{ERRCOUNT}++;
+	exists $_[0]->YYData->{ERRMSG}
+	and do {
+		print STDERR $_[0]->YYData->{ERRMSG};
+		delete $_[0]->YYData->{ERRMSG};
+		return;
+	};
+	print STDERR "incorrect formula syntax:\n"; 
+	print STDERR $_[0]->YYData->{LINE}, "\n";
+	print STDERR " " x $_[0]->YYData->{VARS}{token_prev_pos};
+	print STDERR "^\n";
+}
+
+sub PrintFormula
+{
+    my ($parser) = @_;
+
+    if( $parser->YYNberr() == 0 ) {
+	my %formula = %{$parser->{USER}->{FormulaSum}};
+
+	my $separator = "";
+	if( exists $formula{C} && exists $formula{H} ) {
+	    print "C", $formula{C}, " ", "H", $formula{H};
+	    delete $formula{C};
+	    delete $formula{H};
+	    $separator = " ";
+	}
+	for my $key (sort {$a cmp $b} keys %formula) {
+	    print $separator, $key, $formula{$key} != 1 ? $formula{$key} : "";
+	    $separator = " ";
+	}
+	print "\n";
+    }
+}
+
+sub _Lexer
+{
+    my($parser) = shift;
+
+    if( !defined $parser->YYData->{INPUT} ||
+	$parser->YYData->{INPUT} =~ m/^\s*$/ ) {
+	## print ">>> lexing: empty line...\n";
+	return('',undef);
+    } else {
+	## $parser->YYData->{INPUT} =~ s/^\s*//;
+	## print ">>> lexing: ", $parser->YYData->{INPUT}, "\n";
+
+	$parser->YYData->{VARS}{token_prev_pos} = $parser->YYData->{VARS}{token_pos};
+	for($parser->YYData->{INPUT}) {
+	    if( s/^([A-Za-z][a-z]?)// ) {
+		$parser->YYData->{VARS}{token_pos} += length($1);
+		return( 'ELEMENT', $1 );
+	    }
+	    if( s/^([-+0-9.Ee]+)// ) {
+		$parser->YYData->{VARS}{token_pos} += length($1);
+		return( 'NUMBER', $1 );
+	    }
+	    if( s/^(\()// ) {
+		$parser->YYData->{VARS}{token_pos} += length($1);
+		return ( '(', $1 );
+	    }
+	    if( s/^(\))// ) {
+		$parser->YYData->{VARS}{token_pos} += length($1);
+		return ( ')', $1 );
+	    }
+	    if( s/^(\[)// ) {
+		$parser->YYData->{VARS}{token_pos} += length($1);
+		return ( '[', $1 );
+	    }
+	    if( s/^(\])// ) {
+		$parser->YYData->{VARS}{token_pos} += length($1);
+		return ( ']', $1 );
+	    }
+	    if( s/^([\s.]+)// ) {
+		$parser->YYData->{VARS}{token_pos} += length($1);
+		return ( 'SPACE', $1 );
+	    }
+	    else {
+		return( '', undef );
+	    }
+	}
+    }
+}
+
+sub Run
+{
+    my ($self, $text) = @_;
+
+    $self->YYData->{INPUT} = $text;
+    $self->YYData->{LINE} = $text;
+
+    $self->YYData->{VARS}{token_prev_pos} = 0;
+    $self->YYData->{VARS}{token_pos} = 0;
+
+    $| = 1;
+
+    if( $formula_sum::debug >= 2 && $formula_sum::debug < 3) {
+	$self->YYParse( yylex => \&_Lexer,
+			yyerror => \&_Error,
+			yydebug => 0x05 );
+    } else {
+	$self->YYParse( yylex => \&_Lexer, yyerror => \&_Error );
+    }
+    if( $self->YYNberr() == 0 ) {
+	if( $formula_sum::debug >= 1 && $formula_sum::debug < 3 ) {
+	    print "File syntax is CORRECT!\n";
+	}
+    } else {
+	if( $formula_sum::debug >= 1 && $formula_sum::debug < 3 ) {
+	    print "Syntax check failed.\n";
+	}
+    }
+    return $self->{USER}->{FormulaSum};
+}
+
+return 1;
