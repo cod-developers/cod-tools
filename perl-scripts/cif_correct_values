@@ -3,13 +3,13 @@
 eval 'exec perl -x $0 ${1+"$@"}'
     if 0;
 #------------------------------------------------------------------------------
-#$Author: saulius $
+#$Author: adriana $
 #$Date: 2010-10-19 09:21:57 +0300 (Tue, 19 Oct 2010) $
 #$Revision: 1440 $
-#$URL: svn://cod.ibt.lt/cif-tools/trunk/perl-scripts/cif_correct_tags $
+#$URL: svn://cod.ibt.lt/cif-tools/trunk/perl-scripts/cif_correct_values $
 #------------------------------------------------------------------------------
 #*
-#  Correct misspelled tags in a CIF file.
+#  Correct misspelled values in a CIF file.
 #**
 
 use strict;
@@ -78,12 +78,6 @@ if( $replacement_values ) {
             next;
         }
     }
-    #foreach my $tag( keys %value_spelling ) {
-        #print "$tag\n";
-        #foreach ( keys %{ $value_spelling{$tag} } ) {
-            #print "    $_ -> " . ${ $value_spelling{$tag} }{$_} . "\n";
-        #}
-    #}
     close( LIST ) or
         die "$0: $replacement_values: error closing file - $!";
 }
@@ -125,7 +119,6 @@ for my $filename (@ARGV) {
                 my $old_value = $tag_value;
                 my $correct = ${ $value_spelling{$tag}}{$tag_value};
                 $tag_value = $correct;
-                #print $tag_value . " -> " . $correct . "\n";
                 my $report_msg =
                     "'$tag' tag value '$old_value' replaced with " .
                     "'$correct'.";
