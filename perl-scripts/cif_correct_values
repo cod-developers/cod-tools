@@ -86,8 +86,8 @@ my @dictionary_tags = ( @CIFDictTags::tag_list, @CIFCODTags::tag_list );
 my %dictionary_tags = map { $_, $_ } @dictionary_tags;
 
 @ARGV = ("-") unless @ARGV;
-
 for my $filename (@ARGV) {
+    
     my $parser = new CIFParser;
     my $data = $parser->Run($filename);
 
@@ -100,7 +100,7 @@ for my $filename (@ARGV) {
     }
 
     canonicalize_all_names( $data );
-
+    my %reports = ();
     for my $dataset (@$data) {
         my @insert_reports = ();
         my $tags = $dataset->{tags};
@@ -120,13 +120,35 @@ for my $filename (@ARGV) {
                 my $old_value = $tag_value;
                 my $correct = ${ $value_spelling{$tag}}{$lc_tag_value};
                 $tag_value = $correct;
-                my $report_msg =
-                    "'$tag' tag value '$old_value' replaced with " .
-                    "'$correct'.";
-                push (@insert_reports, $report_msg);
-                print STDERR "$0: $filename: NOTE, $report_msg\n";
+		my $report_key = 
+		    $tag .'@@'. $old_value .'@@'. $correct;
+		if(! exists $reports{$report_key} ) {
+		    $reports{$report_key} = 0;
+		}
+		$reports{$report_key} ++;
             }
         }
+	foreach( keys %reports  ) {
+	    if( $reports{$_} == 1 ) {
+		my( $tag, $incorrect_val, $correct_val ) = 
+		    split( '@@', $_ );
+		my $report_msg =
+		    "'$tag' tag value '$incorrect_val' " .
+		    "replaced with '$correct_val' value.";
+		push (@insert_reports, $report_msg);
+                print STDERR "$0: $filename: NOTE, $report_msg\n";
+	    } else {
+	    my $count = $reports{$_};
+	    my( $tag, $incorrect_val, $correct_val ) = 
+		    split( '@@', $_ );
+	    my $report_msg =
+		"'$tag' tag values '$incorrect_val' " .
+		"were replaced with '$correct_val' value " .
+		"$count times.";
+	    push (@insert_reports, $report_msg);
+            print STDERR "$0: $filename: NOTE, $report_msg\n";
+	    }  
+	}
         insert_report_to_comments ($dataset,\@insert_reports);
         print_cif( $dataset, {
             exclude_misspelled_tags => 0,
