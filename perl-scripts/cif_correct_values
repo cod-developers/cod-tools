@@ -25,7 +25,7 @@ use SOptions;
 use SUsage;
 
 my $keep_tag_order = 0;
-my $Id = '$Id: cif_correct_tags 1440 2010-10-19 06:21:57Z saulius $';
+my $Id = '$Id: cif_correct_values 1440 2010-10-19 06:21:57Z adriana $';
 my $replacement_values;
 
 @ARGV = getOptions(
@@ -138,15 +138,17 @@ for my $filename (@ARGV) {
 		push (@insert_reports, $report_msg);
                 print STDERR "$0: $filename: NOTE, $report_msg\n";
 	    } else {
-	    my $count = $reports{$_};
-	    my( $tag, $incorrect_val, $correct_val ) = 
+		my $count = $reports{$_};
+		my $times = 
+		    ( $count =~ /^(\d*[02-9])?1$/ ) ? "time" : "times";
+		my( $tag, $incorrect_val, $correct_val ) = 
 		    split( '@@', $_ );
-	    my $report_msg =
-		"'$tag' tag values '$incorrect_val' " .
-		"were replaced with '$correct_val' value " .
-		"$count times.";
-	    push (@insert_reports, $report_msg);
-            print STDERR "$0: $filename: NOTE, $report_msg\n";
+		my $report_msg =
+		    "'$tag' tag value '$incorrect_val' " .
+		    "replaced with '$correct_val' value " .
+		    "$count $times.";
+		push (@insert_reports, $report_msg);
+		print STDERR "$0: $filename: NOTE, $report_msg\n";
 	    }  
 	}
         insert_report_to_comments ($dataset,\@insert_reports);
