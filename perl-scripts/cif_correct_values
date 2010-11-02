@@ -129,23 +129,18 @@ for my $filename (@ARGV) {
             }
         }
 	foreach( keys %reports  ) {
-	    my $report_msg;
+	    my( $tag, $incorrect_val, $correct_val ) = 
+		    split( '@@', $_ );
+	    my $report_msg = 
+		"'$tag' tag value '$incorrect_val' " .
+		"replaced with '$correct_val' value";
+	    my $count = $reports{$_};
+	    my $times = 
+		( $count =~ /^(\d*[02-9])?1$/ ) ? "time" : "times";
 	    if( $reports{$_} == 1 ) {
-		my( $tag, $incorrect_val, $correct_val ) = 
-		    split( '@@', $_ );
-		$report_msg =
-		    "'$tag' tag value '$incorrect_val' " .
-		    "replaced with '$correct_val' value.";
+		$report_msg .= ".";		    
 	    } else {
-		my $count = $reports{$_};
-		my $times = 
-		    ( $count =~ /^(\d*[02-9])?1$/ ) ? "time" : "times";
-		my( $tag, $incorrect_val, $correct_val ) = 
-		    split( '@@', $_ );
-		$report_msg =
-		    "'$tag' tag value '$incorrect_val' " .
-		    "replaced with '$correct_val' value " .
-		    "$count $times.";
+		$report_msg .= " $count $times.";
 	    }
 	    push (@insert_reports, $report_msg);
 	    print STDERR "$0: $filename: NOTE, $report_msg\n";
