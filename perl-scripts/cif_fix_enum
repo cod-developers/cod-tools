@@ -190,38 +190,25 @@ sub replacement_candidates($$) {
 sub generate_comment_reports(\%) {
     my %comment_reports = %{ $_[0] };
     my @reports;
-    my $report_msg;
     foreach( keys %comment_reports  ) {
+	my $count = $comment_reports{$_};
+	my $times = 
+	    ( $count =~ /^(\d*[02-9])?1$/ ) ? "time" : "times";
+	my( $tag, $old_val, $new_val,
+	    $dic_file, $dic_name,
+	    $dic_version, $dic_date ) = split( '@@', $_ );
+	my $report_msg = 
+	    "'$tag' value '$old_val' " .
+	    "changed to '$new_val' " .
+	    "according to '$dic_file' " .
+	    "dictionary " .
+	    "named '$dic_name' " .
+	    "version $dic_version " .
+	    "from $dic_date";
 	if( $comment_reports{$_} == 1 ) {
-	    my( $tag, $old_val, $new_val,
-	        $dic_file, $dic_name,
-		$dic_version, $dic_date ) = 
-		  split( '@@', $_ );
-	    $report_msg =
-		"'$tag' value '$old_val' " .
-		"changed to '$new_val' " .
-		"according to '$dic_file' " .
-		"dictionary " .
-		"named '$dic_name' " .
-		"version $dic_version " .
-		"from $dic_date.";
+	    $report_msg .= ".";
 	} else {
-	    my $count = $comment_reports{$_};
-	    my $times = 
-		( $count =~ /^(\d*[02-9])?1$/ ) ? "time" : "times";
-	    my( $tag, $old_val, $new_val,
-	        $dic_file, $dic_name,
-		$dic_version, $dic_date ) = 
-		  split( '@@', $_ );
-	    $report_msg =
-		"'$tag' value '$old_val' " .
-		"changed to '$new_val' " .
-		"($count $times) ".
-		"according to '$dic_file' " .
-		"dictionary " .
-		"named '$dic_name' " .
-		"version $dic_version " .
-		"from $dic_date.";    
+	    $report_msg .= " ($count $times).";   
 	}
 	push( @reports, $report_msg );
     }
@@ -233,46 +220,30 @@ sub generate_warning_reports(\%) {
     my @warnings;
     my $warning_msg;
     foreach( keys %warning_reports ) {
+	my( $tag, $tag_value, $dict_values,
+	    $dic_file, $dic_name,
+	    $dic_version, $dic_date ) = split( '@@', $_ );
+	my $count = $warning_reports{$_};
+	my $times = 
+	    ( $count =~ /^(\d*[02-9])?1$/ ) ? "time" : "times";
+	$warning_msg = 
+	    "'$tag' value '$tag_value' " .
+	    "should be one of these: [" .
+	    "$dict_values] " .
+	    "according to '$tagDicts{$tag}[0]' " .
+	    "dictionary " .
+	    "named '$tagDicts{$tag}[1]' " .
+	    "version $tagDicts{$tag}[2] " .
+	    "from $tagDicts{$tag}[3]";    
 	if( $warning_reports{$_} == 1 ) {
-	    my( $tag, $tag_value, $dict_values,
-	        $dic_file, $dic_name,
-		$dic_version, $dic_date ) = 
-		  split( '@@', $_ );
-	    $warning_msg = 
-		"'$tag' value '$tag_value' " .
-                "should be one of these: [" .
-		"$dict_values ] " .
-		"according to '$tagDicts{$tag}[0]' " .
-                "dictionary " .
-                "named '$tagDicts{$tag}[1]' " .
-                "version $tagDicts{$tag}[2] " .
-                "from $tagDicts{$tag}[3].";
+	    $warning_msg .= ".";
 	} else {
-	    my $count = $warning_reports{$_};
-	    my $times = 
-		( $count =~ /^(\d*[02-9])?1$/ ) ? "time" : "times";
-	    my( $tag, $tag_value, $dict_values,
-	        $dic_file, $dic_name,
-		$dic_version, $dic_date ) = 
-		  split( '@@', $_ );
-	    $warning_msg =
-		"'$tag' values '$tag_value' " .
-                "should be one of these: [" .
-		"$dict_values ] " .
-		"(repeated $count $times) " .
-		"according to '$tagDicts{$tag}[0]' " .
-                "dictionary " .
-                "named '$tagDicts{$tag}[1]' " .
-                "version $tagDicts{$tag}[2] " .
-                "from $tagDicts{$tag}[3].";
+	    $warning_msg .= " ($count $times).";
 	}
 	push( @warnings, $warning_msg );
     }
     return @warnings;
 }    
-			    
-
-
 
 my @dictionary_tags = ( @CIFDictTags::tag_list, @CIFCODTags::tag_list );
 my %dictionary_tags = map { $_, $_ } @dictionary_tags;
