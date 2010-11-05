@@ -130,15 +130,15 @@ sub insert_report_to_comments {
         my $comments_tag = '_cod_depositor_comments';
         my $values = $dataset->{values};
         my $reports_value = join("\n\n",@$insert_reports);
-        my $message =
+        my $title =
 	    "The following automatic conversions were performed:\n" .
             join( "\n", map { "" . $_ }
             CIFTagPrint::fold( 75, " +", " ", $reports_value ));
 
         if( exists $values->{$comments_tag} ) {
-            $values->{$comments_tag}[0] .= "\n\n" . $message;
+            $values->{$comments_tag}[0] .= "\n\n" . $title;
         } else {
-            $values->{$comments_tag}[0] = "\n" . $message;
+            $values->{$comments_tag}[0] = "\n" . $title;
         }
         my $signature = $Id;
         $signature =~ s/^\$|\$$//g;
@@ -187,63 +187,29 @@ sub replacement_candidates($$) {
         return @candidate_list
 }
 
-sub generate_comment_reports(\%) {
-    my %comment_reports = %{ $_[0] };
+sub make_count($$) {
+    my %notes_warnings = %{ $_[0] };
+    my @messages = @{ $_[1] };
     my @reports;
-    foreach( keys %comment_reports  ) {
-	my $count = $comment_reports{$_};
+    foreach my $message( @messages ) {
+	if(! exists $notes_warnings{$message} ) {
+	    die( "$0: Error while counting " .
+		"'$message' audit message.\n"  );
+	}
+	if( exists $notes_warnings{$message}) {
+	my $count = $notes_warnings{$message};
 	my $times = 
 	    ( $count =~ /^(\d*[02-9])?1$/ ) ? "time" : "times";
-	my( $tag, $old_val, $new_val,
-	    $dic_file, $dic_name,
-	    $dic_version, $dic_date ) = split( '@@', $_ );
-	my $report_msg = 
-	    "'$tag' value '$old_val' " .
-	    "changed to '$new_val' " .
-	    "according to '$dic_file' " .
-	    "dictionary " .
-	    "named '$dic_name' " .
-	    "version $dic_version " .
-	    "from $dic_date";
-	if( $comment_reports{$_} == 1 ) {
-	    $report_msg .= ".";
+	if( $notes_warnings{$message} == 1 ) {
+	    $message .= ".";
 	} else {
-	    $report_msg .= " ($count $times).";   
+	    $message .= " ($count $times).";   
 	}
-	push( @reports, $report_msg );
+	push( @reports, $message );
+	}
     }
     return @reports;
 }
-
-sub generate_warning_reports(\%) {
-    my %warning_reports = %{ $_[0] };
-    my @warnings;
-    my $warning_msg;
-    foreach( keys %warning_reports ) {
-	my( $tag, $tag_value, $dict_values,
-	    $dic_file, $dic_name,
-	    $dic_version, $dic_date ) = split( '@@', $_ );
-	my $count = $warning_reports{$_};
-	my $times = 
-	    ( $count =~ /^(\d*[02-9])?1$/ ) ? "time" : "times";
-	$warning_msg = 
-	    "'$tag' value '$tag_value' " .
-	    "should be one of these: [" .
-	    "$dict_values] " .
-	    "according to '$tagDicts{$tag}[0]' " .
-	    "dictionary " .
-	    "named '$tagDicts{$tag}[1]' " .
-	    "version $tagDicts{$tag}[2] " .
-	    "from $tagDicts{$tag}[3]";    
-	if( $warning_reports{$_} == 1 ) {
-	    $warning_msg .= ".";
-	} else {
-	    $warning_msg .= " ($count $times).";
-	}
-	push( @warnings, $warning_msg );
-    }
-    return @warnings;
-}    
 
 my @dictionary_tags = ( @CIFDictTags::tag_list, @CIFCODTags::tag_list );
 my %dictionary_tags = map { $_, $_ } @dictionary_tags;
@@ -262,13 +228,12 @@ for my $filename ( @ARGV ) {
         next
     }
     my %reports;
-    my %warnings;
+    my $message_key;
     canonicalize_all_names( $data );
     for my $dataset (@$data) {
-	my $report_msg;
+	my @uniq_messages;
 	my @insert_reports = ();
-	my @warning = ();
-        my $values = $dataset->{values};
+	my $values = $dataset->{values};
         my $tags = $dataset->{tags};
         foreach my $tag ( @$tags ) {
 	    if( defined $values->{$tag} ) {
@@ -286,50 +251,46 @@ for my $filename ( @ARGV ) {
 			    my $new_value = shift( @replacement_list );
 			    my $old_value = $tag_value;
 			    $tag_value = $new_value;
-			    my $report_key = 
-				$tag .'@@'. $old_value .'@@' .
-				$new_value .'@@'. 
-				$tagDicts{$tag}[0] .'@@'. 
-				$tagDicts{$tag}[1] .'@@'.
-				$tagDicts{$tag}[2] .'@@'.
-				$tagDicts{$tag}[3] .'@@';
-			    if(! exists $reports{$report_key} ) {
-				$reports{$report_key} = 0;
-			    }
-			    $reports{$report_key} ++;
+			    $message_key = 
+				"NOTE, '$tag' value '$old_value' " .
+				"changed to '$new_value' " .
+				"according to '$tagDicts{$tag}[0]' " .
+				"dictionary " .
+				"named '$tagDicts{$tag}[1]' " .
+				"version $tagDicts{$tag}[2] " .
+				"from $tagDicts{$tag}[3]";
 			} else {
 			    my $dict_values = 
 				join( ", " , @replacement_list );
-			    my $warning_key = 
-				$tag .'@@'. $tag_value .'@@' .
-				$dict_values .'@@' .
-				$tagDicts{$tag}[0] .'@@'. 
-				$tagDicts{$tag}[1] .'@@'.
-				$tagDicts{$tag}[2] .'@@'.
-				$tagDicts{$tag}[3] .'@@';
-			    if(! exists $warnings{$warning_key} ) {
-				$warnings{$warning_key} = 0;
-			    }
-			    $warnings{$warning_key} ++;
+			    $message_key = 
+				"WARNING, '$tag' value '$tag_value' " .
+				"should be one of these: [" .
+				"$dict_values] " .
+				"according to '$tagDicts{$tag}[0]' " .
+				"dictionary " .
+				"named '$tagDicts{$tag}[1]' " .
+				"version $tagDicts{$tag}[2] " .
+				"from $tagDicts{$tag}[3]";
 			}
+			if(! exists $reports{$message_key} ) {
+			    $reports{$message_key} = 0;
+			    push( @uniq_messages, $message_key );
+			}
+			$reports{$message_key} ++;
 		    }
 		}
-		
-		# call warnings
-		# call notes
 	    }
 	}
-	@insert_reports = generate_comment_reports( %reports );
+	my @report_messages = 
+	    make_count( \%reports , \@uniq_messages );
+	foreach my $report ( @report_messages ) {
+	    print STDERR "$0: $filename: $report\n";
+	    if( $report =~ /^(NOTE,\s+)(.+)$/ ) {
+		my $comment_message = $2;
+		push( @insert_reports , $comment_message );
+	    }
+	}
 	insert_report_to_comments( $dataset, \@insert_reports );
-	foreach( @insert_reports ) {
-	    print STDERR "$0: $filename: NOTE, $_\n";
-	    next;
-	}
-	@warning = generate_warning_reports( %warnings );
-	foreach( @warning ){
-	    print STDERR "$0: $filename: WARNING, $_\n";
-	    next;
-	}
         print_cif( $dataset, {
 	    exclude_misspelled_tags => 0,
             preserve_loop_order => 1,
