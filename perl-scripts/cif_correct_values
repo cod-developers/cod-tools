@@ -121,29 +121,25 @@ for my $filename (@ARGV) {
                 my $correct = ${ $value_spelling{$tag}}{$lc_tag_value};
                 $tag_value = $correct;
 		my $report_key = 
-		    $tag .'@@'. $old_value .'@@'. $correct;
+		    "'$tag' tag value '$old_value' " .
+		    "replaced with '$correct' value";
 		if(! exists $reports{$report_key} ) {
 		    $reports{$report_key} = 0;
 		}
 		$reports{$report_key} ++;
             }
         }
-	foreach( keys %reports  ) {
-	    my( $tag, $incorrect_val, $correct_val ) = 
-		    split( '@@', $_ );
-	    my $report_msg = 
-		"'$tag' tag value '$incorrect_val' " .
-		"replaced with '$correct_val' value";
-	    my $count = $reports{$_};
+	foreach my $message( keys %reports  ) {
+	    my $count = $reports{$message};
 	    my $times = 
 		( $count =~ /^(\d*[02-9])?1$/ ) ? "time" : "times";
-	    if( $reports{$_} == 1 ) {
-		$report_msg .= ".";		    
+	    if( $reports{$message} == 1 ) {
+		$message .= ".";		    
 	    } else {
-		$report_msg .= " $count $times.";
+		$message .= " $count $times.";
 	    }
-	    push (@insert_reports, $report_msg);
-	    print STDERR "$0: $filename: NOTE, $report_msg\n";
+	    push (@insert_reports, $message);
+	    print STDERR "$0: $filename: NOTE, $message\n";
 	}
         insert_report_to_comments ($dataset,\@insert_reports);
         print_cif( $dataset, {
