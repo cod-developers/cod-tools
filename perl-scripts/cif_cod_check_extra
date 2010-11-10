@@ -4,7 +4,7 @@ eval 'exec perl -x $0 ${1+"$@"}'
     if 0;
 #------------------------------------------------------------------------------
 #$Author: saulius $
-#$Date: 2010-10-08 10:46:28 +0300 (Fri, 08 Oct 2010) $ 
+#$Date: 2010-10-08 10:46:28 +0300 (Fri, 08 Oct 2010) $
 #$Revision: 1434 $
 #$URL: svn://cod.ibt.lt/cif-tools/trunk/perl-scripts/cif_cod_check $
 #------------------------------------------------------------------------------
@@ -34,6 +34,7 @@ my $check_chemical_formula_sum = 1;
 my $check_spacegroup_info = 1;
 my $check_symmetry_operators = 1;
 my $check_spacegroup_constraints = 1;
+my $check_R_factor = 1;
 
 my $use_precisions = 1;
 
@@ -160,11 +161,19 @@ my $reportFile = '-';
     },
 
     "--check-only-symmetry" => sub{
-        dont_check_any(); 
+        dont_check_any();
         $check_spacegroup_info = 1;
         $check_symmetry_operators = 1;
         $check_spacegroup_constraints = 1;
     },
+
+    "--check-R-factor"
+        => sub{ $check_R_factor = 1 },
+    "--check-only-R-factor"
+        => sub{ dont_check_any(); $check_R_factor = 1 },
+    "--dont-check-R-factor,--no-check-R-factor," .
+    "--do-not-check-R-factor"
+        => sub{ $check_R_factor = 0 },
 
     "--check-all"
         => \&check_all,
@@ -241,6 +250,8 @@ for my $filename (@ARGV) {
             if $check_symmetry_operators;
         $warnings += check_spacegroup_constraints( $dataset, $filename )
             if $check_spacegroup_constraints;
+        $warnings += check_R_factor( $dataset, $filename )
+            if $check_R_factor;
     }
     printf "%-30s: OK\n", $filename if $warnings == 0;
 }
@@ -391,7 +402,7 @@ sub check_chemical_formula_sum
     error_reporter($filename, undef, $dataset->{name}, "no "
                     . "_chemical_formula_sum");
         return 1;
-    } elsif( $formula !~ 
+    } elsif( $formula !~
              /^\s*($formula_component\s+)*($formula_component)\s*$/ ) {
         error_reporter( $filename, undef, $dataset->{name}, "chemical formula "
                         . "'$formula' could not be parsed");
@@ -778,7 +789,7 @@ sub check_symmetry_operators
         for my $symop (@$symops) {
             my $no_spaces = $symop;
             $no_spaces =~ s/\s//g;
-            if( $no_spaces !~ 
+            if( $no_spaces !~
             /^($symop_component,){2}($symop_component)$/i ) {
             error_reporter( $filename, undef, $dataset->{name},
                                 "symmetry operator "
@@ -808,4 +819,16 @@ sub parser_error_reporter
     my ($file, $line, $data) = @_;
     return error_reporter($file, $line, $data, "line currently"
                             ." processed: $line");
+}
+
+# To check that '_refine_ls_R_factor_gt' or '_refine_ls_R_factor_obs'
+# tags value is within expected limits.
+
+sub check_R_factor {
+    my( $dataset, $filename ) = @_;
+
+    if(! defined $dataset->{values} ) {
+        return 0;
+    }
+    my $values = $dataset->{values};
 }
