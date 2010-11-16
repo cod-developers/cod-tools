@@ -835,10 +835,25 @@ sub check_R_factor {
         _refine_ls_R_factor_gt
         _refine_ls_R_factor_obs
     );
+    my %r_factor_constraints = (
+        0.2  => 'ERRORR',
+        0.15 => 'WARNING',
+        0.10 => 'NOTICE',
+    );
     foreach my $r_factor_tag ( @r_factor_tags ) {
         if( exists $values->{$r_factor_tag} ){
             my $r_factor_value = $values->{$r_factor_tag}[0];
-            
+            foreach my $constraints (
+                sort {$b <=> $a} keys %r_factor_constraints ) {
+                if( $r_factor_value > $constraints ) {
+                   error_reporter($filename, undef, $dataset->{name},
+                    $r_factor_constraints{ $constraints } .
+                    ", the value of the R factor is > " . $constraints .
+                    ".");
+                    $warnings ++;
+                    last;
+                }
+            } 
            # if( $r_factor_tag =~ /_refine_ls_R_factor_obs/ ) {
            #    error_reporter($filename, undef, $dataset->{name},
            #        "NOTICE, '_refine_ls_R_factor_obs' is an old " .
@@ -846,25 +861,6 @@ sub check_R_factor {
            #        "'_refine_ls_R_factor_gt'.");
            #    $warnings ++;
            # }
-            if( $r_factor_value > 0.2 ) {
-                error_reporter($filename, undef, $dataset->{name},
-                    "ERROR, the value of the R factor is > 0.20.");
-                $warnings ++;
-                next;
-            }
-            if( $r_factor_value > 0.15 ) {
-                error_reporter($filename, undef, $dataset->{name},
-                    "WARNING, the value of the R factor is > 0.15.");
-                $warnings ++;
-                next;
-            }
-            if( $r_factor_value > 0.1 ) {
-                error_reporter($filename, undef, $dataset->{name},
-                    "NOTICE, the value of the R factor is > 0.1.");
-                $warnings ++;
-                next;
-            }
-            
         }
     }
     return $warnings;
