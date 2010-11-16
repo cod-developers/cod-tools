@@ -826,7 +826,7 @@ sub parser_error_reporter
 
 sub check_R_factor {
     my( $dataset, $filename ) = @_;
-
+    my $warnings = 0;
     if(! defined $dataset->{values} ) {
         return 0;
     }
@@ -837,9 +837,35 @@ sub check_R_factor {
     );
     foreach my $r_factor_tag ( @r_factor_tags ) {
         if( exists $values->{$r_factor_tag} ){
-        my $r_factor_value = $values->{$r_factor_tag}[0];
-        print STDERR $r_factor_tag ."->". $r_factor_value ."\n" ;
+            my $r_factor_value = $values->{$r_factor_tag}[0];
+            if( $r_factor_tag =~ /_refine_ls_R_factor_obs/ ) {
+                error_reporter($filename, undef, $dataset->{name},
+                    "NOTICE, '_refine_ls_R_factor_obs' is an old " .
+                    "dataname which has been superceded by " .
+                    "'_refine_ls_R_factor_gt'.");
+                $warnings ++;
+            }
+            if( $r_factor_value > 0.2 ) {
+                error_reporter($filename, undef, $dataset->{name},
+                    "ERROR, the value of the R factor is > 0.20.");
+                $warnings ++;
+                next;
+            }
+            if( $r_factor_value > 0.15 ) {
+                error_reporter($filename, undef, $dataset->{name},
+                    "WARNING, the value of the R factor is > 0.15.");
+                $warnings ++;
+                next;
+            }
+            if( $r_factor_value > 0.1 ) {
+                error_reporter($filename, undef, $dataset->{name},
+                    "NOTICE, the value of the R factor is > 0.1.");
+                $warnings ++;
+                next;
+            }
+            
         }
-
     }
+    return $warnings;
 }
+
