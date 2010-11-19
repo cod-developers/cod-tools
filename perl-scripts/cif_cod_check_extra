@@ -46,6 +46,7 @@ sub dont_check_any
     $check_spacegroup_info = 0;
     $check_symmetry_operators = 0;
     $check_spacegroup_constraints = 0;
+    $check_R_factor = 0;
 }
 
 sub check_all
@@ -56,6 +57,7 @@ sub check_all
     $check_spacegroup_info = 1;
     $check_symmetry_operators = 1;
     $check_spacegroup_constraints = 1;
+    $check_R_factor = 1;
 }
 
 my $useReporter = 0;
@@ -90,6 +92,8 @@ my $reportFile = '-';
 #*    --check-unit-cell
 #*
 #*    --check-symmetry
+#*
+#*    --check-R-factor
 #*
 #*    --check-all
 #*
@@ -847,20 +851,14 @@ sub check_R_factor {
                 sort {$b <=> $a} keys %r_factor_constraints ) {
                 if( $r_factor_value > $constraints ) {
                    error_reporter($filename, undef, $dataset->{name},
-                    $r_factor_constraints{ $constraints } .
-                    ", the value of the R factor is > " . $constraints .
-                    ".");
-                    $warnings ++;
-                    last;
+                     $r_factor_constraints{ $constraints } .
+                     ", the value of the R factor '$r_factor_value' " . 
+		     "is > " . $constraints .
+                     ".");
+                   $warnings ++;
+                   last;
                 }
-            } 
-           # if( $r_factor_tag =~ /_refine_ls_R_factor_obs/ ) {
-           #    error_reporter($filename, undef, $dataset->{name},
-           #        "NOTICE, '_refine_ls_R_factor_obs' is an old " .
-           #        "dataname which has been superceded by " .
-           #        "'_refine_ls_R_factor_gt'.");
-           #    $warnings ++;
-           # }
+            }
         }
     }
     return $warnings;
