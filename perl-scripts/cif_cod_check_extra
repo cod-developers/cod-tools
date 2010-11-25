@@ -34,14 +34,14 @@ my $check_chemical_formula_sum = 1;
 my $check_spacegroup_info = 1;
 my $check_symmetry_operators = 1;
 my $check_spacegroup_constraints = 1;
-my $check_R_factor = 1;
-my $r_factor_limits;
+my $check_within_limits = 1;
+my $xyz_value_limits;
 my $check_name;
 
 my $use_precisions = 1;
 
-my %r_factor_limits = ();
-my @r_factor_tags = ();
+my %xyz_value_limits = ();
+my @xyz_value_tags = ();
 
 sub dont_check_any
 {
@@ -51,7 +51,7 @@ sub dont_check_any
     $check_spacegroup_info = 0;
     $check_symmetry_operators = 0;
     $check_spacegroup_constraints = 0;
-    $check_R_factor = 0;
+    $check_within_limits = 0;
 }
 
 sub check_all
@@ -62,7 +62,7 @@ sub check_all
     $check_spacegroup_info = 1;
     $check_symmetry_operators = 1;
     $check_spacegroup_constraints = 1;
-    $check_R_factor = 1;
+    $check_within_limits = 1;
 }
 
 my $useReporter = 0;
@@ -98,7 +98,7 @@ my $reportFile = '-';
 #*
 #*    --check-symmetry
 #*
-#*    --check-R-factor r_factor_limits.lst
+#*    --check-R-factor xyz_limits.lst
 #*
 #*    --check-all
 #*
@@ -177,13 +177,13 @@ my $reportFile = '-';
     },
 
     "--check-R-factor"
-        => sub{ $r_factor_limits = get_value(); $check_R_factor = 1 },
+        => sub{ $xyz_value_limits = get_value(); $check_within_limits = 1 },
     "--check-only-R-factor"
-        => sub{ dont_check_any(); $r_factor_limits = get_value();
-		$check_R_factor = 1 },
+        => sub{ dont_check_any(); $xyz_value_limits = get_value();
+		$check_within_limits = 1 },
     "--dont-check-R-factor,--no-check-R-factor," .
     "--do-not-check-R-factor"
-        => sub{ $check_R_factor = 0 },
+        => sub{ $check_within_limits = 0 },
 
     "--check-all"
         => \&check_all,
@@ -201,34 +201,27 @@ my $reportFile = '-';
     "--help,--usage" => sub { SUsage::usage; exit },
 );
 
-if( $r_factor_limits ) {
-    open( LIST, $r_factor_limits ) or
-        die "$0: $r_factor_limits: can not open file for input - $!";
+if( $xyz_value_limits ) {
+    open( LIST, $xyz_value_limits ) or
+        die "$0: $xyz_value_limits: can not open file for input - $!";
     foreach( <LIST> ) {
-	if( /^#/ ) {
+        if( /^#/ ) {
             next;
         }
-	if( /^[\'](.*)[\']$/  ) { 
-	    $check_name = $1;
-	    next;
-	} 
-	if( /^(_\w+)$/ ) {
-	    push ( @r_factor_tags , $1 );
-	}
+        if( /^[\'](.*)[\']$/  ) { 
+            $check_name = $1;
+            next;
+        } 
+        if( /^(_\w+)$/ ) {
+            push ( @xyz_value_tags , $1 );
+        }
         if( /^(\d*\.\d+)\s*(\w+)\s*$/ ) {
-            $r_factor_limits{$1} = $2;
+            $xyz_value_limits{$1} = $2;
             next;
         }
-#	if( /^
-#	      ((?:\d*\.\d+)\s*\<\>\s*(?:\d*\.\d+))
-#	      \s+(\w+)\s*$
-#	      /x ) {
-#	    $r_factor_limits{$1} = $2;
-#	    next;
-#	}
     }
     close( LIST ) or
-        die "$0: $r_factor_limits: error closing file - $!";
+        die "$0: $xyz_value_limits: error closing file - $!";
 }
 
 if( $reportFile =~ m/^\s*-\s*$/ || !-w dirname($reportFile) )
@@ -290,8 +283,8 @@ for my $filename (@ARGV) {
             if $check_symmetry_operators;
         $warnings += check_spacegroup_constraints( $dataset, $filename )
             if $check_spacegroup_constraints;
-        $warnings += check_R_factor( $dataset, $filename )
-            if $check_R_factor;
+        $warnings += check_within_limits( $dataset, $filename )
+            if $check_within_limits;
     }
     printf "%-30s: OK\n", $filename if $warnings == 0;
 }
@@ -861,27 +854,25 @@ sub parser_error_reporter
                             ." processed: $line");
 }
 
-# To check that '_refine_ls_R_factor_gt' or '_refine_ls_R_factor_obs'
-# tags value is within expected limits.
+# To check that specified XYZ tag value is within expected limits.
 
-sub check_R_factor {
+sub check_within_limits {
     my( $dataset, $filename ) = @_;
     my $warnings = 0;
     if(! defined $dataset->{values} ) {
         return 0;
     }
     my $values = $dataset->{values};
-    foreach my $r_factor_tag ( @r_factor_tags ) {
-        if( exists $values->{$r_factor_tag} ){
-            my $r_factor_value = $values->{$r_factor_tag}[0];
+    foreach my $xyz_tag ( @xyz_value_tags ) {
+        if( exists $values->{$xyz_tag} ){
+            my $xyz_value = $values->{$xyz_tag}[0];
             foreach my $limit (
-                sort {$b <=> $a} keys %r_factor_limits ) {
-                if( $r_factor_value > $limit ) {
+                sort {$b <=> $a} keys %xyz_value_limits ) {
+                if( $xyz_value > $limit ) {
                    error_reporter($filename, undef, $dataset->{name},
-                     $r_factor_limits{ $limit } .
-                    # ", the value of the R factor '$r_factor_value' " .
-		     ", the value of the " . $check_name . 
-		     " '$r_factor_value' is > " . $limit . ".");
+                     $xyz_value_limits{ $limit } .
+                     ", the value of the " . $check_name . 
+                     " '$xyz_value' is > " . $limit . ".");
                    $warnings ++;
                    last;
                 }
