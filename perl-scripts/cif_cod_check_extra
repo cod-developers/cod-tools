@@ -36,6 +36,7 @@ my $check_symmetry_operators = 1;
 my $check_spacegroup_constraints = 1;
 my $check_R_factor = 1;
 my $r_factor_limits;
+my $check_name;
 
 my $use_precisions = 1;
 
@@ -207,6 +208,10 @@ if( $r_factor_limits ) {
 	if( /^#/ ) {
             next;
         }
+	if( /^[\'](.*)[\']$/  ) { 
+	    $check_name = $1;
+	    next;
+	} 
 	if( /^(_\w+)$/ ) {
 	    push ( @r_factor_tags , $1 );
 	}
@@ -874,9 +879,9 @@ sub check_R_factor {
                 if( $r_factor_value > $limit ) {
                    error_reporter($filename, undef, $dataset->{name},
                      $r_factor_limits{ $limit } .
-                     ", the value of the R factor '$r_factor_value' " .
-		     "is > " . $limit .
-                     ".");
+                    # ", the value of the R factor '$r_factor_value' " .
+		     ", the value of the " . $check_name . 
+		     " '$r_factor_value' is > " . $limit . ".");
                    $warnings ++;
                    last;
                 }
