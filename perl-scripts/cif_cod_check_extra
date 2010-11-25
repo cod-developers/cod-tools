@@ -208,12 +208,19 @@ if( $r_factor_limits ) {
             next;
         }
 	if( /^(_\w+)$/ ) {
-	    push ( @r_factor_tags , $1 ); 
+	    push ( @r_factor_tags , $1 );
 	}
         if( /^(\d*\.\d+)\s*(\w+)\s*$/ ) {
             $r_factor_limits{$1} = $2;
             next;
         }
+#	if( /^
+#	      ((?:\d*\.\d+)\s*\<\>\s*(?:\d*\.\d+))
+#	      \s+(\w+)\s*$
+#	      /x ) {
+#	    $r_factor_limits{$1} = $2;
+#	    next;
+#	}
     }
     close( LIST ) or
         die "$0: $r_factor_limits: error closing file - $!";
@@ -859,15 +866,6 @@ sub check_R_factor {
         return 0;
     }
     my $values = $dataset->{values};
-    # my @r_factor_tags = qw(
-    #     _refine_ls_R_factor_gt
-    #     _refine_ls_R_factor_obs
-    # );
-    # my %r_factor_constraints = (
-    #     0.2  => 'ERRORR',
-    #     0.15 => 'WARNING',
-    #     0.10 => 'NOTICE',
-    # );
     foreach my $r_factor_tag ( @r_factor_tags ) {
         if( exists $values->{$r_factor_tag} ){
             my $r_factor_value = $values->{$r_factor_tag}[0];
@@ -876,7 +874,7 @@ sub check_R_factor {
                 if( $r_factor_value > $limit ) {
                    error_reporter($filename, undef, $dataset->{name},
                      $r_factor_limits{ $limit } .
-                     ", the value of the R factor '$r_factor_value' " . 
+                     ", the value of the R factor '$r_factor_value' " .
 		     "is > " . $limit .
                      ".");
                    $warnings ++;
