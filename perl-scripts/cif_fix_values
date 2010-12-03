@@ -34,6 +34,7 @@ my $keep_tag_order = 0;
 my $fix_misspelled_values = 0;
 my $replacement_file;
 my $fix_temperature = 0;
+my %value_spelling = ();
 
 #* USAGE:
 #*     $0 [options] input.cif [input2.cif ...]
@@ -57,9 +58,9 @@ my $fix_temperature = 0;
     "--help,--usage"   => sub { SUsage::usage; exit },
     "--fix-misspell" =>
         sub { $fix_misspelled_values = 1; 
-        $replacement_file = get_values(); },
+        $replacement_file = get_value(); },
     "--fix-only-misspell" => sub { $fix_misspelled_values = 1; 
-        $replacement_file = get_values(); $fix_temperature = 0; },
+        $replacement_file = get_value(); $fix_temperature = 0; },
     "--do-not-fix-misspell,--no-fix-misspell" =>
         sub { $fix_misspelled_values = 0; 
         undef $replacement_file; },
@@ -68,7 +69,7 @@ my $fix_temperature = 0;
     "--fix-only-temperature" => sub { $fix_temperature = 1; 
         $fix_misspelled_values = 0; undef $replacement_file; },
     "--do-not-fix-temperature,--no-fix-temperature,
-    --dont-fix-temperature" =>
+     --dont-fix-temperature" =>
         sub { $fix_temperature = 0; }
 );
 
@@ -100,11 +101,54 @@ sub insert_report_to_comments {
             "\n" . $signature;
     }
 }
+sub fix_misspelled_values($$$) {
+    my( $dataset, $filename, $values_spelling ) = @_;
+        #ishsikastinti nuoruoda !
+        my %reports = ();
+        my @insert_reports = ();
+        my $tags = $dataset->{tags};
+        my $values = $dataset->{values};
+        foreach my $tag ( @$tags ) {
+            if(! exists $value_spelling{$tag} ) {
+                next;
+            }
+            foreach my $tag_value( @{ $values->{$tag} } ) {
+                if( $tag_value =~ /^\.|\?$/ ){
+                    next;
+                }
+                my $lc_tag_value = lc $tag_value;
+                if(! exists ${ $value_spelling{$tag}}{$lc_tag_value} ){
+                    next;
+                }
+                my $old_value = $tag_value;
+                my $correct = ${ $value_spelling{$tag}}{$lc_tag_value};
+                $tag_value = $correct;
+                my $report_key = 
+                    "'$tag' tag value '$old_value' " .
+                    "replaced with '$correct' value";
+                if(! exists $reports{$report_key} ) {
+                $reports{$report_key} = 0;
+                }
+                $reports{$report_key} ++;
+            }
+        }
+	foreach my $message( keys %reports  ) {
+	    my $count = $reports{$message};
+	    my $times = 
+		( $count =~ /^(\d*[02-9])?1$/ ) ? "time" : "times";
+	    if( $reports{$message} == 1 ) {
+		$message .= ".";		    
+	    } else {
+		$message .= " $count $times.";
+	    }
+	    push (@insert_reports, $message);
+	    print STDERR "$0: $filename: NOTE, $message\n";
+	}
+     return @insert_reports;   
+}
 
 my @dictionary_tags = ( @CIFDictTags::tag_list, @CIFCODTags::tag_list );
 my %dictionary_tags = map { $_, $_ } @dictionary_tags;
-
-my %value_spelling = ();
 
 if( defined $replacement_file ) {
     open( LIST, $replacement_file ) or
@@ -141,6 +185,7 @@ for my $filename (@ARGV) {
     }
 
     canonicalize_all_names( $data );
+    #my %reports = ();
     for my $dataset (@$data) {
         my @insert_reports = ();
         my $values = $dataset->{values};
@@ -576,7 +621,13 @@ for my $filename (@ARGV) {
                 }
             }
         }
-        insert_report_to_comments( $dataset, \@insert_reports );
+        if( $fix_misspelled_values ) { 
+            my @reports = 
+                fix_misspelled_values( $dataset, $filename , \%value_spelling );
+            push( @reports, @insert_reports );
+        }
+        
+        insert_report_to_comments( $dataset , \@insert_reports );
         print_cif( $dataset, {
             exclude_misspelled_tags => 0,
             preserve_loop_order => 1,
