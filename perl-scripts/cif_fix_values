@@ -31,11 +31,45 @@ use SUsage;
 
 my $Id = '$Id$';
 my $keep_tag_order = 0;
+my $fix_misspelled_values = 0;
+my $replacement_file;
+my $fix_temperature = 0;
+
+#* USAGE:
+#*     $0 [options] input.cif [input2.cif ...]
+#* 
+#* OPTIONS:
+#*   --fix-temperature  
+#*     Correct temperature values which have units specified 
+#*     or convert between Celsius degrees and Kelvins. 
+#*     Changes 'room/ambiante temperature' to the appropriate numeric value.
+#*     Fixes other undefined values ('none', 'not given') to '?' simbol.
+#* 
+#*   --fix-misspell
+#*     Correct misspelled values in a CIF file. Provide a file
+#*     for the check.
+#*
+#**   --help,--usage     Print a short usage message (this message) and exit.
 
 @ARGV = getOptions(
     "--keep-tag-order" => sub { $keep_tag_order = 1; },
     "--sort-tags"      => sub { $keep_tag_order = 0; },
     "--help,--usage"   => sub { SUsage::usage; exit },
+    "--fix-misspell" =>
+        sub { $fix_misspelled_values = 1; 
+        $replacement_file = get_values(); },
+    "--fix-only-misspell" => sub { $fix_misspelled_values = 1; 
+        $replacement_file = get_values(); $fix_temperature = 0; },
+    "--do-not-fix-misspell,--no-fix-misspell" =>
+        sub { $fix_misspelled_values = 0; 
+        undef $replacement_file; },
+        
+    "--fix-temperature" => sub { $fix_temperature = 1; },
+    "--fix-only-temperature" => sub { $fix_temperature = 1; 
+        $fix_misspelled_values = 0; undef $replacement_file; },
+    "--do-not-fix-temperature,--no-fix-temperature,
+    --dont-fix-temperature" =>
+        sub { $fix_temperature = 0; }
 );
 
 #
@@ -69,6 +103,27 @@ sub insert_report_to_comments {
 
 my @dictionary_tags = ( @CIFDictTags::tag_list, @CIFCODTags::tag_list );
 my %dictionary_tags = map { $_, $_ } @dictionary_tags;
+
+my %value_spelling = ();
+
+if( defined $replacement_file ) {
+    open( LIST, $replacement_file ) or
+        die "$0: $replacement_file: can not open file for input - $!";
+    foreach( <LIST> ) {
+        if( /^#/ ) {
+            next;
+        }
+        if( /^(\S+)\s+(\S+)\s+(\S+)$/ ) {
+            if( !defined $value_spelling{$1} ) {
+                $value_spelling{$1} = {};
+            }
+            $value_spelling{$1}->{$2} = $3;
+            next;
+        }
+    }
+    close( LIST ) or
+        die "$0: $replacement_file: error closing file - $!";
+}
 
 @ARGV = ("-") unless @ARGV;
 
