@@ -101,11 +101,11 @@ sub insert_report_to_comments {
             "\n" . $signature;
     }
 }
+
 sub fix_misspelled_values($$$) {
     my( $dataset, $filename, $values_spelling ) = @_;
-        #ishsikastinti nuoruoda !
         my %reports = ();
-        my @insert_reports = ();
+        my @reports = ();
         my $tags = $dataset->{tags};
         my $values = $dataset->{values};
         foreach my $tag ( @$tags ) {
@@ -141,10 +141,10 @@ sub fix_misspelled_values($$$) {
 	    } else {
 		$message .= " $count $times.";
 	    }
-	    push (@insert_reports, $message);
+	    push (@reports, $message);
 	    print STDERR "$0: $filename: NOTE, $message\n";
 	}
-     return @insert_reports;   
+     return @reports;   
 }
 
 my @dictionary_tags = ( @CIFDictTags::tag_list, @CIFCODTags::tag_list );
@@ -185,7 +185,7 @@ for my $filename (@ARGV) {
     }
 
     canonicalize_all_names( $data );
-    #my %reports = ();
+    
     for my $dataset (@$data) {
         my @insert_reports = ();
         my $values = $dataset->{values};
@@ -622,11 +622,10 @@ for my $filename (@ARGV) {
             }
         }
         if( $fix_misspelled_values ) { 
-            my @reports = 
+            my @misspell_reports = 
                 fix_misspelled_values( $dataset, $filename , \%value_spelling );
-            push( @reports, @insert_reports );
+            push( @insert_reports , @misspell_reports );
         }
-        
         insert_report_to_comments( $dataset , \@insert_reports );
         print_cif( $dataset, {
             exclude_misspelled_tags => 0,
