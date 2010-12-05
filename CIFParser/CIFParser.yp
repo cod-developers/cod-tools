@@ -644,6 +644,20 @@ sub _Lexer
 			$parser->YYData->{VARS}{current_line} = 
 				$parser->YYData->{INPUT};
 			$parser->YYData->{VARS}{token_pos} = 0;
+			if( $parser->YYData->{INPUT} =~ /\x{001A}/ ) {
+			    if( $parser->{USER}{OPTIONS}{fix_ctrl_z} ||
+				$parser->{USER}{OPTIONS}{fix_errors} ) {
+				$parser->YYData->{ERRMSG} = "DOS EOF symbol " .
+				    "^Z was encountered and ignored";
+				$parser->_Warning();
+				$parser->YYData->{INPUT} =~ s/\x{001A}/ /g;
+			    } else {
+				$parser->YYData->{ERRMSG} = "DOS EOF symbol " .
+				    "^Z was encountered, " .
+				    "it is not permitted in CIFs";
+				$parser->_Error();
+			    }
+			}
 		} else {
 			return('',undef);
 		}
