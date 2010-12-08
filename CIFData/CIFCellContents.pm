@@ -577,7 +577,8 @@ sub get_atoms
             mat_vect_mul( $ortho_matrix, $atom->{coordinates_fract} );
 
         if( defined $values->{_atom_site_occupancy} ) {
-            if( $values->{_atom_site_occupancy}[$i] ne '?' ) {
+            if( $values->{_atom_site_occupancy}[$i] ne '?' &&
+                $values->{_atom_site_occupancy}[$i] ne '.' ) {
                 $atom->{occupancy} = $values->{_atom_site_occupancy}[$i];
                 $atom->{occupancy} =~ s/\(\d+\)\s*$//;
             } else {
