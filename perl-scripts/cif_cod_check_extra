@@ -34,7 +34,7 @@ my $check_chemical_formula_sum = 1;
 my $check_spacegroup_info = 1;
 my $check_symmetry_operators = 1;
 my $check_spacegroup_constraints = 1;
-my $check_within_limits = 1;
+my $check_limits = 1;
 my $xyz_value_limits;
 my $check_name;
 
@@ -51,7 +51,7 @@ sub dont_check_any
     $check_spacegroup_info = 0;
     $check_symmetry_operators = 0;
     $check_spacegroup_constraints = 0;
-    $check_within_limits = 0;
+    $check_limits = 0;
 }
 
 sub check_all
@@ -62,7 +62,7 @@ sub check_all
     $check_spacegroup_info = 1;
     $check_symmetry_operators = 1;
     $check_spacegroup_constraints = 1;
-    $check_within_limits = 1;
+    $check_limits = 1;
 }
 
 my $useReporter = 0;
@@ -98,7 +98,7 @@ my $reportFile = '-';
 #*
 #*    --check-symmetry
 #*
-#*    --check-within-limits xyz_limits.lst
+#*    --check-limits limits.lst
 #*
 #*    --check-all
 #*
@@ -176,14 +176,14 @@ my $reportFile = '-';
         $check_spacegroup_constraints = 1;
     },
 
-    "--check-within-limits"
-        => sub{ $xyz_value_limits = get_value(); $check_within_limits = 1 },
-    "--check-only-within-limits"
+    "--check-limits"
+        => sub{ $xyz_value_limits = get_value(); $check_limits = 1 },
+    "--check-only-limits"
         => sub{ dont_check_any(); $xyz_value_limits = get_value();
-		$check_within_limits = 1 },
-    "--dont-check-within-limits,--no-check-within-limits," .
-    "--do-not-check-within-limits"
-        => sub{ $check_within_limits = 0 },
+		$check_limits = 1 },
+    "--dont-check-limits,--no-check-limits," .
+    "--do-not-check-limits"
+        => sub{ $check_limits = 0 },
 
     "--check-all"
         => \&check_all,
@@ -283,8 +283,8 @@ for my $filename (@ARGV) {
             if $check_symmetry_operators;
         $warnings += check_spacegroup_constraints( $dataset, $filename )
             if $check_spacegroup_constraints;
-        $warnings += check_within_limits( $dataset, $filename )
-            if $check_within_limits;
+        $warnings += check_limits( $dataset, $filename )
+            if $check_limits;
     }
     printf "%-30s: OK\n", $filename if $warnings == 0;
 }
@@ -856,7 +856,7 @@ sub parser_error_reporter
 
 # To check that specified XYZ tag value is within expected limits.
 
-sub check_within_limits {
+sub check_limits {
     my( $dataset, $filename ) = @_;
     my $warnings = 0;
     if(! defined $dataset->{values} ) {
