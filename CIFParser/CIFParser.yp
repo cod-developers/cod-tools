@@ -36,6 +36,7 @@ sub merge_data_lists($$$)
     for my $tag (@{$item->{tags}}) {
 
         if( exists $list->{values}{$tag} )  {
+            $_[0]->YYData->{VARS}{lines}--;
             if( ( $_[0]->{USER}{OPTIONS}{fix_errors} ||
                   $_[0]->{USER}{OPTIONS}{fix_duplicate_tags_with_same_values} ) &&
                 @{$list->{values}{$tag}} == 1 &&
@@ -71,6 +72,7 @@ sub merge_data_lists($$$)
                 # For now, let's call _Error() directly:
                 _Error( $parser );
             }
+            $_[0]->YYData->{VARS}{lines}++;
         }
 
 	push( @{$list->{tags}}, $tag );
@@ -195,10 +197,10 @@ stray_cif_value_list
           cif_value_list
 ;
 
-cif_value_list
-    : cif_value
-    | cif_value_list cif_value
-;
+## cif_value_list
+##     : cif_value
+##     | cif_value_list cif_value
+## ;
 
 data_block_list
 	:	data_block_list data_block
@@ -218,12 +220,14 @@ headerless_data_block
                 {
 			$_[0]->YYData->{ERRMSG} = "no data block heading (i.e." .
 			    " data_somecif) found";
+                        $_[0]->YYData->{VARS}{lines}--;
                         unless( $_[0]->{USER}{OPTIONS}{fix_errors} ||
                                 $_[0]->{USER}{OPTIONS}{fix_data_header} ) {
 			    $_[0]->_Error();
                         } else {
 			    $_[0]->_Warning();
                         }
+                        $_[0]->YYData->{VARS}{lines}++;
                         return $_[1];
 		}
 		data_item_list
@@ -354,6 +358,44 @@ cif_entry
 			}
 			return $val;
 		}
+
+        | TAG cif_value 
+            {
+                unless( $_[0]->{USER}{OPTIONS}{fix_errors} ||
+                        $_[0]->{USER}{OPTIONS}{fix_string_quotes} ) {
+                    $_[0]->_Error();
+                }
+            }
+          cif_value_list
+            {
+                if( $_[0]->{USER}{OPTIONS}{fix_errors} ||
+                    $_[0]->{USER}{OPTIONS}{fix_string_quotes} ) {
+                    $_[0]->YYData->{ERRMSG} = "string with spaces without quotes";
+                    $_[0]->_Warning();
+                }
+                my $val = { name => $_[1],
+                            kind => 'TAG',
+                            value => join( " ", $_[2]->{value}, @{$_[4]} ),
+                            type => 'SQSTRING'
+                          };
+                if( $CIFParser::debug >= 1 && $CIFParser::debug <= 2 ) {
+                    showRef($val);
+                }
+                return $val;
+            }
+;
+
+cif_value_list
+: cif_value
+{
+    my $values = [ $_[1]->{value} ];
+    return $values;
+}
+| cif_value_list cif_value
+{
+    my $values = [ @{$_[1]}, $_[2]->{value} ];
+    return $values;
+}
 ;
 
 loop
