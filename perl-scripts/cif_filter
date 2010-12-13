@@ -363,7 +363,7 @@ for my $filename (@ARGV) {
         $options{fix_errors} = 1;
     }
 
-    my @data = @{$parser->Run($filename, \%options)};
+    my $data = $parser->Run($filename, \%options);
 
     if( defined $parser->YYData->{ERRCOUNT} && $parser->YYData->{ERRCOUNT} > 0 ) {
         print STDERR "$0: ", $parser->YYData->{ERRCOUNT},
@@ -371,7 +371,7 @@ for my $filename (@ARGV) {
         die;
     }
 
-    if( !@data || !defined $data[0] || !defined $data[0]->{name} ) {
+    if( !@$data || !defined $data->[0] || !defined $data->[0]{name} ) {
         warn( "file '$filename' seems to be empty" );
         next;
     }
@@ -401,7 +401,7 @@ for my $filename (@ARGV) {
 
     my $global_section_nr = 0;
 
-    for my $dataset (@data) {
+    for my $dataset (@$data) {
         next unless $dataset->{name} eq "global";
         my $datablock = $dataset->{values};
 
@@ -421,7 +421,7 @@ for my $filename (@ARGV) {
 
     binmode( STDOUT, ":utf8" );
 
-    for my $dataset (@data) {
+    for my $dataset (@$data) {
 
         ## next unless defined $dataset->{kind} && $dataset->{kind} == "DATA";
 
