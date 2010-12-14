@@ -35,12 +35,12 @@ my $check_spacegroup_info = 1;
 my $check_symmetry_operators = 1;
 my $check_spacegroup_constraints = 1;
 my $check_limits = 1;
-my $xyz_value_limits;
+my $limits_file;
 my $check_name;
 
 my $use_precisions = 1;
 
-my %xyz_value_limits = ();
+my %limits = ();
 my @xyz_value_tags = ();
 
 sub dont_check_any
@@ -98,7 +98,7 @@ my $reportFile = '-';
 #*
 #*    --check-symmetry
 #*
-#*    --check-limits limits.lst
+#*    --check-limits limits_file.lst
 #*
 #*    --check-all
 #*
@@ -177,9 +177,9 @@ my $reportFile = '-';
     },
 
     "--check-limits"
-        => sub{ $xyz_value_limits = get_value(); $check_limits = 1 },
+        => sub{ $limits_file = get_value(); $check_limits = 1 },
     "--check-only-limits"
-        => sub{ dont_check_any(); $xyz_value_limits = get_value();
+        => sub{ dont_check_any(); $limits_file = get_value();
 		$check_limits = 1 },
     "--dont-check-limits,--no-check-limits," .
     "--do-not-check-limits"
@@ -201,9 +201,9 @@ my $reportFile = '-';
     "--help,--usage" => sub { SUsage::usage; exit },
 );
 
-if( $xyz_value_limits ) {
-    open( LIST, $xyz_value_limits ) or
-        die "$0: $xyz_value_limits: can not open file for input - $!";
+if( $limits_file ) {
+    open( LIST, $limits_file ) or
+        die "$0: $limits_file: can not open file for input - $!";
     foreach( <LIST> ) {
         if( /^#/ ) {
             next;
@@ -216,12 +216,12 @@ if( $xyz_value_limits ) {
             push ( @xyz_value_tags , $1 );
         }
         if( /^(\d*\.\d+)\s*(\w+)\s*$/ ) {
-            $xyz_value_limits{$1} = $2;
+            $limits{$1} = $2;
             next;
         }
     }
     close( LIST ) or
-        die "$0: $xyz_value_limits: error closing file - $!";
+        die "$0: $limits_file: error closing file - $!";
 }
 
 if( $reportFile =~ m/^\s*-\s*$/ || !-w dirname($reportFile) )
@@ -863,14 +863,26 @@ sub check_limits {
         return 0;
     }
     my $values = $dataset->{values};
+#    my %limits = ();
+#    if( $limits_file ) {
+#       open( LIST, $limits_file ) or
+#        die "$0: $limits_file: can not open file for input - $!";
+#       foreach( <LIST> ) {
+#
+#       %limits = call sub get_limits ( LIST );
+#       }
+#       close( LIST ) or
+#            die "$0: $limits_file: error closing file - $!";
+#    }
+#    %limits = call sub get_limits ( $default_limits );
     foreach my $xyz_tag ( @xyz_value_tags ) {
         if( exists $values->{$xyz_tag} ){
             my $xyz_value = $values->{$xyz_tag}[0];
             foreach my $limit (
-                sort {$b <=> $a} keys %xyz_value_limits ) {
+                sort {$b <=> $a} keys %limits ) {
                 if( $xyz_value > $limit ) {
                    error_reporter($filename, undef, $dataset->{name},
-                     $xyz_value_limits{ $limit } .
+                     $limits{ $limit } .
                      ", the value of the " . $check_name . 
                      " '$xyz_value' is > " . $limit . ".");
                    $warnings ++;
@@ -880,4 +892,9 @@ sub check_limits {
         }
     }
     return $warnings;
+}
+
+sub get_limits($) {
+    my $limitsf = @_;
+    
 }
