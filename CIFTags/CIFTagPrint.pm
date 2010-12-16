@@ -306,7 +306,7 @@ sub sprint_value
         $val = "'" . $val . "'";
     } elsif( $val =~ /^'.*'$/ ) {
         $val = "\"" . $val . "\"";
-    } elsif( $val =~ /\s|^_|^\[|^".*"$/) {
+    } elsif( $val =~ /\s|^_|^\[|^\$|^".*"$/) {
         $val = "'" . $val . "'";
     }
     return $val;
