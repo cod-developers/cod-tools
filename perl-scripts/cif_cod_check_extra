@@ -183,7 +183,7 @@ my $reportFile = '-';
 		$check_limits = 1 },
     "--dont-check-limits,--no-check-limits," .
     "--do-not-check-limits"
-        => sub{ $check_limits = 0 },
+        => sub{ undef $limits_file; $check_limits = 0 },
 
     "--check-all"
         => \&check_all,
@@ -208,10 +208,10 @@ if( $limits_file ) {
         if( /^#/ ) {
             next;
         }
-        if( /^[\'](.*)[\']$/  ) { 
+        if( /^[\'](.*)[\']$/  ) {
             $check_name = $1;
             next;
-        } 
+        }
         if( /^(_\w+)$/ ) {
             push ( @xyz_value_tags , $1 );
         }
@@ -863,19 +863,42 @@ sub check_limits {
         return 0;
     }
     my $values = $dataset->{values};
-#    my %limits = ();
-#    if( $limits_file ) {
-#       open( LIST, $limits_file ) or
-#        die "$0: $limits_file: can not open file for input - $!";
-#       foreach( <LIST> ) {
-#
-#       %limits = call sub get_limits ( LIST );
-#       }
-#       close( LIST ) or
-#            die "$0: $limits_file: error closing file - $!";
-#    }
-#    %limits = call sub get_limits ( $default_limits );
-    foreach my $xyz_tag ( @xyz_value_tags ) {
+
+
+    my %limits;
+    my @ranges;
+    if( $limits_file ) {
+	open( LIST, $limits_file ) or
+	  die "$0: $limits_file: can not open file for input - $!";
+	foreach( <LIST> ) {
+	    if( /^#/ ) { next; }
+	    my @limits_data = split(" " , $_ , 4 );
+	    my $tag = shift( @limits_data );
+#	    @ranges = map{ split("-") }@limits_data;
+#	    $limits{$tag} = [ @ranges ];
+	    $limits{$tag} = [ @limits_data ];
+	}
+#	foreach( keys %limits ) { print "$_ -> @{ $limits{$_} }\n"; }
+	close( LIST ) or
+            die "$0: $limits_file: error closing file - $!";
+    }
+#	 else take default values to perform '--check-limits'
+    foreach my $tag ( keys %limits ) {
+	if( exists $values->{$tag} ){
+	    my $value = $values->{$tag}[0];
+#	    print "$tag -> $value\n"
+	    
+	    
+	}
+    }
+
+    return $warnings;
+}
+
+
+
+
+foreach my $xyz_tag ( @xyz_value_tags ) {
         if( exists $values->{$xyz_tag} ){
             my $xyz_value = $values->{$xyz_tag}[0];
             foreach my $limit (
@@ -883,7 +906,7 @@ sub check_limits {
                 if( $xyz_value > $limit ) {
                    error_reporter($filename, undef, $dataset->{name},
                      $limits{ $limit } .
-                     ", the value of the " . $check_name . 
+                     ", the value of the " . $check_name .
                      " '$xyz_value' is > " . $limit . ".");
                    $warnings ++;
                    last;
@@ -892,9 +915,4 @@ sub check_limits {
         }
     }
     return $warnings;
-}
-
-sub get_limits($) {
-    my $limitsf = @_;
-    
 }
