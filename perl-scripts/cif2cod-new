@@ -1,0 +1,636 @@
+#! /bin/sh
+#!perl -w # --*- Perl -*--
+eval 'exec perl -x $0 ${1+"$@"}'
+    if 0;
+#------------------------------------------------------------------------------
+#$Author$
+#$Date$ 
+#$Revision$
+#$URL$
+#------------------------------------------------------------------------------
+#*
+#  Parse a CIF file, prepare a COD database table entry from it.
+#**
+
+use strict;
+use lib "./lib/perl5";
+use lib "./CIFParser";
+use CIFParser;
+use Spacegroups::SpacegroupNames;
+use CIFData::CIFCellContents;
+use Unicode2CIF;
+use SOptions;
+use SUsage;
+
+sub entry_has_coordinates($);
+sub entry_has_disorder($);
+
+my $reformat_spacegroup = 0;
+my $use_datablocks_without_coord = 0;
+
+my $continue_on_errors = 0;
+my $cod_number;
+
+#* Usage:
+#*     cif2cod-new [options] input.cif [input2.cif ...]
+#*
+#* Options:
+#*     -C, --cod-number 1000000
+#*         Use the specified number, 1000000 in this example, as
+#*         a COD number for this structure; do not take the number
+#*         from the datablock name.
+#*
+#*     -c, --continue-on-errors
+#*         Continue processing and return successful return status
+#*         even if errors are diagnosed.
+#*
+#*     -c-, --dont-continue-on-errors, --no-continue-on-errors
+#*         Stop and return error status if errors are diagnosed.
+#*
+#*     --help  print a short usage message (this message) and exit.
+#**
+
+@ARGV = getOptions(
+
+    "-C,--cod-number" => \$cod_number,
+
+    "-c,--continue-on-errors" => sub { $continue_on_errors = 1 },
+    "-c-,--no-continue-on-errors" => sub { $continue_on_errors = 0 },
+    "--dont-continue-on-errors"   => sub { $continue_on_errors = 0 },
+    "--exit-on-errors"            => sub { $continue_on_errors = 0 },
+
+    "--reformat-space-group"      => sub { $reformat_spacegroup = 1; },
+    "--dont-reformat-space-group" => sub { $reformat_spacegroup = 0; },
+    "--leave-space-space-group"   => sub { $reformat_spacegroup = 0; },
+
+    "--use-datablocks-without-coordinates"
+        => sub{ $use_datablocks_without_coord = 1 },
+    "--use-all-datablocks"
+        => sub{ $use_datablocks_without_coord = 1 },
+
+    "--do-not-use-datablocks-without-coordinates"
+        => sub{ $use_datablocks_without_coord = 0 },
+    "--dont-use-datablocks-without-coordinates"
+        => sub{ $use_datablocks_without_coord = 0 },
+    "--no-use-datablocks-without-coordinates"
+        => sub{ $use_datablocks_without_coord = 0 },
+    "--skip-datablocks-without-coordinates"
+        => sub{ $use_datablocks_without_coord = 0 },
+
+    "--help,--usage"  => sub { SUsage::usage; exit },
+);
+
+sub error
+{
+    my ( $message, $filename, $dataset, $explanation ) = @_;
+
+    print STDERR $0, ": ";
+    print STDERR $filename
+        if $filename;
+    print STDERR " ",  $dataset->{name}
+        if $dataset && exists $dataset->{name};
+    print STDERR ": "
+        if $filename || $dataset;
+    print STDERR $message
+        if defined $message;
+    print STDERR "\n", $explanation
+        if defined $explanation;
+    print STDERR "\n";
+
+    die unless $continue_on_errors;
+}
+
+my %spacegroups = map {
+    my $key1 = $_->[1];
+    my $key2 = $_->[2];
+    $key1 =~ s/\s//g;
+    $key2 =~ s/\s//g;
+    ($key1, $_->[2], $key2, $_->[2] )
+} @SpacegroupNames::names;
+
+## use ShowStruct;
+## showRef( \%spacegroups  );
+
+binmode( STDOUT, ":utf8" );
+
+@ARGV = ( "-" ) unless @ARGV;
+
+for my $filename (@ARGV) {
+
+    my $parser = new CIFParser;
+    my $data = $parser->Run($filename);
+
+    if( defined $parser->YYData->{ERRCOUNT} && $parser->YYData->{ERRCOUNT} > 0 ) {
+        error( $parser->YYData->{ERRCOUNT} .
+               " error(s) encountered while parsing" );
+    }
+
+    for my $dataset (@$data) {
+        my @data = ();
+        my $nel;
+        my $values = $dataset->{values};
+        my $sigmas = $dataset->{precisions};
+
+        next unless exists $values->{_atom_site_fract_x} ||
+            $use_datablocks_without_coord;
+
+        my @authors = ();
+        if( exists $values->{_publ_author_name} ) {
+            for my $i (0..$#{$values->{_publ_author_name}}) {
+                push( @authors, get_tag( $values, "_publ_author_name", $i ));
+            }
+        }
+
+         my $authors = join( "; ", @authors );
+
+        my $title = get_tag( $values, "_publ_section_title", 0, $filename );
+        my $journal = get_tag( $values, "_journal_name_full", 0, $filename );
+        my $year = get_tag( $values, "_journal_year", 0, $filename );
+        my $volume = get_tag( $values, "_journal_volume", 0, $filename );
+        my $first_page = get_tag( $values, "_journal_page_first", 0, $filename );
+        my $last_page = get_tag_silently( $values, "_journal_page_last", 0 );
+        my $issue = get_tag_silently( $values, "_journal_issue", 0 );
+
+        my $calculated_formula;
+
+        eval {
+            $calculated_formula =
+                CIFCellContents::cif_cell_contents( $dataset, $filename, undef );
+        };
+        if( $@ ) {
+            error( "summary formula could not be calculated",
+                   $filename, $dataset );
+        }
+
+        my $text = join( '\n', map { Unicode2CIF::cif2unicode($_) }
+                         ( $authors, $title, $journal, $volume .
+                           ( $issue? ( $volume ? "($issue)" : 
+                                       "(issue $issue)") : "" ),
+                           "(" . $year . ")",
+                           ( $last_page ? $first_page . "-" . $last_page :
+                             $first_page )) 
+                       );
+
+        my $diffr_temperature =
+            get_num_or_undef( $values, "_diffrn_ambient_temperature", 0 );
+
+        undef $diffr_temperature if defined $diffr_temperature &&
+            $diffr_temperature =~ /^\s*\?\s*$/;
+
+        my $diffr_temperature_sigma =
+            get_num_or_undef( $sigmas, "_diffrn_ambient_temperature", 0 );
+
+        my $cell_temperature =
+            get_num_or_undef( $values, "_cell_measurement_temperature", 0 );
+
+        undef $cell_temperature if defined $cell_temperature &&
+            $cell_temperature =~ /^\s*\?\s*$/;
+
+        my $cell_temperature_sigma =
+            get_num_or_undef( $sigmas, "_cell_measurement_temperature", 0 );
+
+        my $diffr_pressure =
+            get_num_or_undef( $values, "_diffrn_ambient_pressure", 0 );
+
+        undef $diffr_pressure if defined $diffr_pressure &&
+            $diffr_pressure =~ /^\s*\?\s*$/;
+
+        my $diffr_pressure_sigma =
+            get_num_or_undef( $sigmas, "_diffrn_ambient_pressure", 0 );
+
+        my $cell_pressure =
+            get_num_or_undef( $values, "_cell_measurement_pressure", 0 );
+
+        undef $cell_pressure if defined $cell_pressure &&
+            $cell_pressure =~ /^\s*\?\s*$/;
+
+        my $cell_pressure_sigma =
+            get_num_or_undef( $sigmas, "_cell_measurement_pressure", 0 );
+
+
+        my $systematic_name =
+            get_tag_or_undef( $values, "_chemical_name_systematic", 0 );
+
+        undef $systematic_name
+            if defined $systematic_name && $systematic_name =~ /^\s*\?\s*$/sm;
+
+        my $common_name =
+            get_tag_or_undef( $values, "_chemical_name_common", 0 );
+
+        if( !$common_name ) {
+            $common_name =
+                get_tag_or_undef( $values, "_chemical_name_mineral", 0 );
+        }
+
+        undef $common_name
+            if defined $common_name && $common_name =~ /^\s*\?\s*$/sm;
+
+        my $formula = get_tag( $values, "_chemical_formula_sum", 0, $filename );
+
+        undef $formula if $formula =~ /^\s*\?\s*$/;
+
+        if( defined $formula  ) {
+            check_chem_formula( $formula, $filename );
+        }
+
+        $nel = count_number_of_elements( $formula );
+
+        if( defined $cod_number ) {
+            push( @data, $cod_number );
+        } else {
+            push( @data, $dataset->{name} );
+        }
+        push( @data, get_num_or_undef( $values, "_cell_length_a", 0 ));
+        push( @data, get_num_or_undef( $sigmas, "_cell_length_a", 0 ));
+        push( @data, get_num_or_undef( $values, "_cell_length_b", 0 ));
+        push( @data, get_num_or_undef( $sigmas, "_cell_length_b", 0 ));
+        push( @data, get_num_or_undef( $values, "_cell_length_c", 0 ));
+        push( @data, get_num_or_undef( $sigmas, "_cell_length_c", 0 ));
+        push( @data, get_num_or_undef( $values, "_cell_angle_alpha", 0 ));
+        push( @data, get_num_or_undef( $sigmas, "_cell_angle_alpha", 0 ));
+        push( @data, get_num_or_undef( $values, "_cell_angle_beta", 0 ));
+        push( @data, get_num_or_undef( $sigmas, "_cell_angle_beta", 0 ));
+        push( @data, get_num_or_undef( $values, "_cell_angle_gamma", 0 ));
+        push( @data, get_num_or_undef( $sigmas, "_cell_angle_gamma", 0 ));
+
+        my $cell_volume = get_num_or_undef( $values, "_cell_volume", 0 );
+
+        if( !defined $cell_volume ) {
+            my @cell = get_cell( $values );
+            $cell_volume = sprintf( "%7.2f", cell_volume( @cell ));
+        }
+
+        push( @data, $cell_volume );
+        push( @data, get_num_or_undef( $sigmas, "_cell_volume", 0 ));
+
+        push( @data, $cell_temperature );
+        push( @data, $cell_temperature_sigma );
+        push( @data, $diffr_temperature );
+        push( @data, $diffr_temperature_sigma );
+        push( @data, $cell_pressure );
+        push( @data, $cell_pressure_sigma );
+        push( @data, $diffr_pressure );
+        push( @data, $diffr_pressure_sigma );
+
+        push( @data, get_tag_or_undef( $values,
+                                       "_exptl_crystal_thermal_history",
+                                       0 ));
+        push( @data, get_tag_or_undef( $values,
+                                       "_exptl_crystal_pressure_history",
+                                       0 ));
+
+        push( @data, $nel );
+        push( @data, get_spacegroup_info( $values, $filename ));
+        push( @data, get_spacegroup_Hall_symbol( $values, $filename ));
+        push( @data, $common_name );
+        push( @data, $systematic_name );
+        push( @data, $formula ? "- " . $formula . " -" : "?" );
+        push( @data, $calculated_formula ?
+              "- " . $calculated_formula . " -" : undef );
+        if( exists $values->{_journal_coeditor_code} ) {
+            push( @data, uc( get_tag_or_undef( $values, 
+                                               "_journal_coeditor_code", 0 )));
+        } elsif( exists $values->{"_journal.coeditor_code"} ) {
+            push( @data, uc( get_tag_or_undef( $values, 
+                                               "_journal.coeditor_code", 0 )));
+        } elsif( $journal =~ /^Acta Cryst/ &&
+                 exists $values->{"_[local]_cod_data_source_file"} ) {
+            my $acce_code = $values->{"_[local]_cod_data_source_file"}[0];
+            $acce_code =~ s/\..*$//g;
+            if( $acce_code =~ /^[a-zA-Z]{1,2}[0-9]{4,5}$/ ) {
+                push( @data, uc( $acce_code ));
+            } else {
+                push( @data, undef );
+            }
+        } else {
+            push( @data, undef );
+        }
+
+        push( @data, Unicode2CIF::cif2unicode( $authors ));
+        push( @data, Unicode2CIF::cif2unicode( $title ));
+        push( @data, get_tag_or_undef( $values, "_journal_name_full", 0 ));
+        push( @data, get_tag_or_undef( $values, "_journal_year", 0 ));
+        push( @data, get_tag_or_undef( $values, "_journal_volume", 0 ));
+        push( @data, get_tag_or_undef( $values, "_journal_issue", 0 ));
+        push( @data, get_tag_or_undef( $values, "_journal_page_first", 0 ));
+        push( @data, get_tag_or_undef( $values, "_journal_page_last", 0 ));
+
+        push( @data, get_tag_or_undef( $values, "_cod_duplicate_entry", 0 ));
+        if( !defined $data[-1] ) {
+            $data[-1] = get_tag_or_undef( $values,
+                                          "_[local]_cod_duplicate_entry",
+                                          0 );
+        }
+
+        push( @data, get_tag_or_undef( $values,
+                                       "_cod_related_optimal_struct", 0 ));
+        if( !defined $data[-1] ) {
+            $data[-1] = get_tag_or_undef( $values,
+                                          "_[local]_cod_related_optimal_struct",
+                                          0 );
+        }
+
+        push( @data, get_tag_or_undef( $values, "_cod_error_flag", 0 ));
+        if( !defined $data[-1] ) {
+            $data[-1] = get_tag_or_undef( $values,
+                                          "_[local]_cod_error_flag",
+                                          0 );
+        }
+
+        # Compose COD flags:
+        do {
+            my $separator = "";
+            my $value = "";
+            if( entry_has_coordinates( $values )) {
+                $value = "has coordinates";
+                $separator = ",";
+            }
+            if( entry_has_disorder( $values )) {
+                $value .= $separator . "has disorder";
+                $separator = ",";
+            }
+            push( @data, $value );
+        };
+
+        push( @data, $text );
+
+        my $n = 0;
+        @data = map {
+            $n++;
+            if( defined $_ ) {
+                s/^\s*(\d+)\.\s*$/$1/; # remove trailing dot from numbers
+                if( $n != @data ) {
+                    s/\\/\\\\/g; s/"/\\"/g;
+                }
+                "\"$_\"";
+            } else {
+                "NULL";
+            }
+        } @data;
+        do {
+            local $\ = "\n";
+            local $, = ";";
+
+            print @data;
+        };
+    }
+}
+
+sub filter_num
+{
+    my @nums = map { s/\(.*\)$//; $_ } @_;
+    wantarray ? @nums : $nums[0];
+}
+
+sub check_chem_formula
+{
+    my ( $formula, $filename ) = @_;
+
+    my $formula_component = "[a-zA-Z]{1,2}[0-9.]*";
+
+    if( $formula !~ /^\s*($formula_component\s+)*($formula_component)\s*$/ ) {
+        error( "chemical formula '$formula' could not be parsed",
+               $filename, undef,
+               # explanation:
+               "A chemical formula should consist of space-seprated " .
+               "chemical element names\n" .
+               "with optional numeric quantities (e.g. 'C2 H6 O')." );
+    }
+}
+
+sub unique
+{
+    my $prev;
+    return map {(!defined $prev || $prev ne $_) ? $prev=$_ : ()} @_;
+}
+
+sub count_number_of_elements
+{
+    my $formula = $_[0];
+    my @elements = map {s/[^A-Za-z]//g; /^[A-Za-z]+$/ ? $_ : () }
+                   split( " ", $formula );
+
+    my @unique = unique( sort {$a cmp $b} @elements );
+
+    return int(@unique);
+}
+
+sub get_num
+{
+    my ($values, $tag, $index, $filename) = @_;
+
+    return filter_num( &get_tag );
+}
+
+sub get_num_or_undef
+{
+    my $value = &get_tag_or_undef;
+
+    if( defined $value ) {
+        return filter_num( $value );
+    } else {
+        return undef;
+    }
+}
+
+sub get_tag
+{
+    push( @_, 0 );
+    &get_and_check_tag;
+}
+
+sub get_tag_silently
+{
+    push( @_, ("",1) );
+    &get_and_check_tag;
+}
+
+sub get_tag_or_undef
+{
+    push( @_, ("",2) );
+    &get_and_check_tag;
+}
+
+sub get_and_check_tag
+{
+    my ($values, $tag, $index, $filename, $ignore_errors ) = @_;
+
+    if( ref $values eq "HASH" ) {
+        if( exists $values->{$tag} && ref $values->{$tag} eq "ARRAY" ) {
+            if( defined $values->{$tag}[$index] ) {
+                my $val = $values->{$tag}[$index];
+                if( $val =~ /^\\\n/ ) {
+                    $val =~ s/\\\n//g;
+                }
+                $val =~ s/\n/ /g;
+                $val =~ s/\s+/ /g;
+                $val =~ s/^\s*|\s*$//g;
+                return $val;
+            } else {
+                unless( $ignore_errors ) {
+                    error( "tag '$tag' does not have value number $index",
+                           $filename );
+                }
+            }
+        } else {
+            unless( $ignore_errors ) {
+                error( "tag '$tag' is absent", $filename );
+            }
+        }
+    }
+    return $ignore_errors <= 1 ? "" : undef;
+}
+
+sub get_spacegroup_info
+{
+    my ($values, $filename ) = @_;
+    
+    my @spacegroup_tags = map {lc} qw (
+        _space_group_name_H-M_alt
+        _space_group.name_H-M_full
+        _symmetry_space_group_name_H-M
+        _space_group_ssg_name
+        _space_group_ssg_name_IT
+        _space_group_ssg_name_WJJ
+    );
+
+    my $spacegroup;
+
+    for my $sg_tag (@spacegroup_tags) {
+        if( exists $values->{$sg_tag} ) {
+            $spacegroup = $values->{$sg_tag}[0];
+            if( $sg_tag =~ /_h-m/ && $reformat_spacegroup ) {
+                my $orig_sg = $spacegroup;
+                $orig_sg =~ s/[\(\)~_\s]//g;
+                ## print ">>> $orig_sg\n";
+                if( exists $spacegroups{$orig_sg} ) {
+                    $spacegroup = $spacegroups{$orig_sg};
+                }
+            }
+            last
+        }
+    }
+    if( !defined $spacegroup ) {
+        error( "no spacegroup information found", $filename );
+    } else {
+        $spacegroup =~ s/^\s*|\s*$//g;
+    }
+    return $spacegroup;
+}
+
+sub get_spacegroup_Hall_symbol
+{
+    my ($values, $filename ) = @_;
+    
+    my @spacegroup_tags = map {lc} qw (
+        _space_group_name_Hall
+        _symmetry_space_group_name_Hall
+    );
+
+    my $spacegroup;
+
+    for my $sg_tag (@spacegroup_tags) {
+        if( exists $values->{$sg_tag} ) {
+            $spacegroup = $values->{$sg_tag}[0];
+            last
+        }
+    }
+    if( !defined $spacegroup ) {
+        error( "no Hall spacegroup symbol found", $filename );
+    } else {
+        $spacegroup =~ s/^\s*|\s*$//g;
+    }
+    return $spacegroup;
+}
+
+sub get_cell
+{
+    my $datablok = $_[0];
+
+    return (
+        $datablok->{_cell_length_a}[0],
+        $datablok->{_cell_length_b}[0],
+        $datablok->{_cell_length_c}[0],
+        $datablok->{_cell_angle_alpha}[0],
+        $datablok->{_cell_angle_beta}[0],
+        $datablok->{_cell_angle_gamma}[0]
+    );
+}
+
+sub cell_volume
+{
+    my @cell = map { s/\(.*\)//g; $_ } @_;
+
+    my $Pi = 3.14159265358979;
+
+    my ($a, $b, $c) = @cell[0..2];
+    my ($alpha, $beta, $gamma) = map {$Pi * $_ / 180} @cell[3..5];
+    my ($ca, $cb, $cg) = map {cos} ($alpha, $beta, $gamma);
+    my $sg = sin($gamma);
+    
+    my $V = $a * $b * $c * sqrt( $sg**2 - $ca**2 - $cb**2 + 2*$ca*$cb*$cg );
+
+    return $V;
+}
+
+sub entry_has_coordinates($)
+{
+    my ($values) = @_;
+
+    my @tags = qw(
+        _atom_site_fract_x
+        _atom_site.fract_x
+        _atom_site_fract_y
+        _atom_site.fract_y
+        _atom_site_fract_z
+        _atom_site.fract_z
+        _atom_site_Cartn_x
+        _atom_site.Cartn_x
+        _atom_site_Cartn_x_nm
+        _atom_site_Cartn_x_pm
+        _atom_site_Cartn_y
+        _atom_site.Cartn_y
+        _atom_site_Cartn_y_nm
+        _atom_site_Cartn_y_pm
+        _atom_site_Cartn_z
+        _atom_site.Cartn_z
+        _atom_site_Cartn_z_nm
+        _atom_site_Cartn_z_pm
+    );
+
+    for my $tag ( @tags ) {
+        if( exists $values->{$tag} ) {
+            for my $value (@{$values->{$tag}}) {
+                if( defined $value && $value ne '.' && $value ne '?' ) {
+                    return 1;
+                }
+            }
+        }
+    }
+
+    return 0;
+}
+
+sub entry_has_disorder($)
+{
+    my ($values) = @_;
+
+    my @tags = qw(
+        _atom_site_disorder_assembly
+        _atom_site.disorder_assembly
+        _atom_site_disorder_group
+        _atom_site.disorder_group
+    );
+
+    for my $tag ( @tags ) {
+        if( exists $values->{$tag} ) {
+            for my $value (@{$values->{$tag}}) {
+                if( defined $value && $value ne '.' && $value ne '?' ) {
+                    return 1;
+                }
+            }
+        }
+    }
+
+    return 0;
+}
