@@ -27,6 +27,8 @@ sub entry_has_disorder($);
 
 my $reformat_spacegroup = 0;
 my $use_datablocks_without_coord = 0;
+my $print_header = 0; # Indicates whether to print out a header with
+                      # column names.
 
 my $continue_on_errors = 0;
 my $cod_number;
@@ -96,6 +98,12 @@ my @data_fields = qw (
 #*     -c-, --dont-continue-on-errors, --no-continue-on-errors
 #*         Stop and return error status if errors are diagnosed.
 #*
+#*     -h, --print-header
+#*         Print header with data column names at the first line
+#*
+#*     -h-, --dont-print-header, --no-print header
+#*         Do not print column names on the first (header) line (default).
+#*
 #*     --help  print a short usage message (this message) and exit.
 #**
 
@@ -107,6 +115,10 @@ my @data_fields = qw (
     "-c-,--no-continue-on-errors" => sub { $continue_on_errors = 0 },
     "--dont-continue-on-errors"   => sub { $continue_on_errors = 0 },
     "--exit-on-errors"            => sub { $continue_on_errors = 0 },
+
+    "-h,--print-header"   => sub { $print_header = 1 },
+    "--dont-print-header" => sub { $print_header = 0 },
+    "--no-print-header"   => sub { $print_header = 0 },
 
     "--reformat-space-group"      => sub { $reformat_spacegroup = 1; },
     "--dont-reformat-space-group" => sub { $reformat_spacegroup = 0; },
@@ -161,6 +173,12 @@ my %spacegroups = map {
 ## showRef( \%spacegroups  );
 
 binmode( STDOUT, ":utf8" );
+
+if( $print_header ) {
+    local $, = ";";
+    local $\ = "\n";
+    print @data_fields;
+}
 
 @ARGV = ( "-" ) unless @ARGV;
 
