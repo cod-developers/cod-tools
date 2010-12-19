@@ -62,10 +62,12 @@ my @data_fields = qw (
     nel
     sg
     sgHall
+
     commonname
     chemname
     formula
     calcformula
+
     acce_code
     authors
     title
@@ -75,6 +77,16 @@ my @data_fields = qw (
     issue
     firstpage
     lastpage
+
+    Rall
+    Robs
+    Rref
+    wRall
+    wRobs
+    wRref
+    RFsqd
+    RI
+
     duplicateof
     optimal
     status
@@ -384,6 +396,29 @@ for my $filename (@ARGV) {
         $data{issue} = get_tag_or_undef( $values, "_journal_issue", 0 );
         $data{firstpage} = get_tag_or_undef( $values, "_journal_page_first", 0 );
         $data{lastpage} = get_tag_or_undef( $values, "_journal_page_last", 0 );
+
+        for my $r_factor_tag (qw(
+            _refine_ls_R_factor_all
+            _refine_ls_R_factor_gt
+            _refine_ls_R_factor_obs
+            _refine_ls_R_factor_ref
+            _refine_ls_R_Fsqd_factor
+            _refine_ls_R_I_factor
+            _refine_ls_wR_factor_all
+            _refine_ls_wR_factor_gt
+            _refine_ls_wR_factor_obs
+            _refine_ls_wR_factor_ref )) {
+            my $data_key = $r_factor_tag;
+            $data_key =~ s/^_refine_ls_//;
+            $data_key =~ s/_factor//;
+            $data_key =~ s/_//g;
+            $data_key = "Robs" if $data_key eq "Rgt";
+            $data_key = "wRobs" if $data_key eq "wRgt";
+            if( !defined $data{$data_key} ) {
+                $data{$data_key} =
+                    get_tag_or_undef( $values, lc($r_factor_tag), 0 );
+            }
+        }
 
         $data{duplicateof} =
             get_tag_or_undef( $values, "_cod_duplicate_entry", 0 );
