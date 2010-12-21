@@ -416,7 +416,7 @@ for my $filename (@ARGV) {
             $data_key = "wRobs" if $data_key eq "wRgt";
             if( !defined $data{$data_key} ) {
                 $data{$data_key} =
-                    get_tag_or_undef( $values, lc($r_factor_tag), 0 );
+                    get_num_or_undef( $values, lc($r_factor_tag), 0 );
             }
         }
 
@@ -535,7 +535,11 @@ sub get_num_or_undef
     my $value = &get_tag_or_undef;
 
     if( defined $value ) {
-        return filter_num( $value );
+        if( $value ne '?' && $value ne '.' ) {
+            return filter_num( $value );
+        } else {
+            return undef;
+        }
     } else {
         return undef;
     }
