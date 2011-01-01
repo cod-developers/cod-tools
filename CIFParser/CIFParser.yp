@@ -886,16 +886,22 @@ Possible runaway closing semicolon (';')
 END_M
 					$parser->YYError();
 				}
-				if( $tfield !~ /^[\x08-\x7F]*$/ &&
-				    ( $parser->{USER}{OPTIONS}{fix_errors} ||
-				      $parser->{USER}{OPTIONS}
-				      {fix_non_ascii_symbols} )) {
+				if( $tfield !~ /^[\x08-\x7F]*$/ ) {
+				    if( $parser->{USER}{OPTIONS}{fix_errors} ||
+					$parser->{USER}{OPTIONS}
+					{fix_non_ascii_symbols} ) {
 				    $parser->YYData->{ERRMSG} =
 					"non-ascii symbols encountered in the text field, " .
 					"replaced by XML entities:\n;" .
 					$tfield . "\n;\n";
 				    $parser->_Warning();
 				    $tfield =~ s/([^\x08-\x7F])/sprintf("&#x%04X;",ord($1))/eg;
+				    } else {
+					$parser->YYData->{ERRMSG} =
+					    "non-ascii symbols encountered in the text field:\n;" .
+					    $tfield . "\n;\n";
+					$parser->_Error();
+				    }
 				}
 				return('TEXT_FIELD', $tfield);
 			}
