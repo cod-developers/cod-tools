@@ -9379,6 +9379,8 @@ require Exporter;
     schoenflies     => 'C4^1',
     hermann_mauguin => 'P 4',
     universal_h_m   => 'P 4',
+    crystal_class   => 'tetragonal',
+    constraints     => '$a == $b && $alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-y,x,z',
