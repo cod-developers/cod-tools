@@ -155,12 +155,6 @@ sub replacement_candidates($$) {
             if( $cif_value eq $dict_tag_value ) {
 		return ();
             }
-            if( $cif_value =~
-                /^\s+$dict_tag_value\s*$|\s*$dict_tag_value\s+$/i ) {
-                push( @candidate_list, $dict_tag_value );
-                next;
-            }
-	    
             my $test_dict_value = $dict_tag_value;
             $test_dict_value =~ s/[-_\s]//g;
             my $test_cif_value = $cif_value;
@@ -193,12 +187,12 @@ sub make_count($$) {
 	}
 	if( exists $notes_warnings{$message}) {
 	my $count = $notes_warnings{$message};
-	my $times = 
+	my $times =
 	    ( $count =~ /^(\d*[02-9])?1$/ ) ? "time" : "times";
 	if( $notes_warnings{$message} == 1 ) {
 	    $message .= ".";
 	} else {
-	    $message .= " ($count $times).";   
+	    $message .= " ($count $times).";
 	}
 	push( @reports, $message );
 	}
@@ -246,7 +240,7 @@ for my $filename ( @ARGV ) {
 			    my $new_value = shift( @replacement_list );
 			    my $old_value = $tag_value;
 			    $tag_value = $new_value;
-			    $message_key = 
+			    $message_key =
 				"NOTE, '$tag' value '$old_value' " .
 				"changed to '$new_value' " .
 				"according to '$tagDicts{$tag}[0]' " .
@@ -255,9 +249,9 @@ for my $filename ( @ARGV ) {
 				"version $tagDicts{$tag}[2] " .
 				"from $tagDicts{$tag}[3]";
 			} else {
-			    my $dict_values = 
+			    my $dict_values =
 				join( ", ", @replacement_list );
-			    $message_key = 
+			    $message_key =
 				"WARNING, '$tag' value '$tag_value' " .
 				"should be one of these: [" .
 				"$dict_values] " .
@@ -276,7 +270,7 @@ for my $filename ( @ARGV ) {
 		}
 	    }
 	}
-	my @report_messages = 
+	my @report_messages =
 	    make_count( \%reports , \@uniq_messages );
 	foreach my $report ( @report_messages ) {
 	    print STDERR "$0: $filename: $report\n";
