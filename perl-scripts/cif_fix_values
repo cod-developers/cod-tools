@@ -117,6 +117,12 @@ my %value_spelling = ();
  
 sub get_sigma($$) {
     my( $value , $sig ) = @_;
+    $value =~ m/([^.]*)\.?(\d*)/;
+    if( $2 ) {
+        return $sig*10**(length($2)*(-1) ) 
+    } else {
+        return $sig;
+    }
 }
 
 if( defined $replacement_file ) {
@@ -188,7 +194,7 @@ sub fix_temperature($$) {
     my @insert_reports = ();
     my $values = $dataset->{values};
     my @temp_tags =
-        (  '_cell_measurement_temperature',
+        (   '_cell_measurement_temperature',
             '_chemical_temperature_decomposition',
             '_chemical_temperature_sublimation',
             '_diffrn_ambient_temperature',
@@ -306,6 +312,9 @@ sub fix_temperature($$) {
                     my $old_tag = $tag;
                     if( $old_tag !~
                         /_cell_measurement_temperature/ ) {
+                        if( $sig ) {  
+                            $sig = get_sigma( $number , $sig );
+                        }                   
                         if( $sign =~ /\>/ ) {
                             $values->{$tag}[$i] =
                                 CIFTagPrint::pack_precision
@@ -416,6 +425,11 @@ sub fix_temperature($$) {
                         [\s]*(?:\+|\+\/?\-)?
                         [\s]*($sigma)(?:\))?$
                         /x ) {
+                    #my $number = $1;
+                    #my $sig = $2;
+                    #if( $sig ) {  
+                    #    $sig = get_sigma( $number , $sig );
+                    #}
                     $values->{$tag}[$i] =
                         CIFTagPrint::pack_precision( $1, $2 );
                     my $new_val = $values->{$tag}[$i];
