@@ -114,7 +114,7 @@ my %dictionary_tags = map { $_, $_ } @dictionary_tags;
 my %value_spelling = ();
 
 # Counts sigma value for pack_presicion subroutine
- 
+
 sub get_sigma($$) {
     my( $value , $sig ) = @_;
     $value =~ m/([^.]*)\.?(\d*)/;
@@ -312,7 +312,7 @@ sub fix_temperature($$) {
                     my $old_tag = $tag;
                     if( $old_tag !~
                         /_cell_measurement_temperature/ ) {
-                        if( $sig ) {  
+                        if( $sig ) {
                             $sig = get_sigma( $number , $sig );
                         }                   
                         if( $sign =~ /\>/ ) {
@@ -425,11 +425,6 @@ sub fix_temperature($$) {
                         [\s]*(?:\+|\+\/?\-)?
                         [\s]*($sigma)(?:\))?$
                         /x ) {
-                    #my $number = $1;
-                    #my $sig = $2;
-                    #if( $sig ) {  
-                    #    $sig = get_sigma( $number , $sig );
-                    #}
                     $values->{$tag}[$i] =
                         CIFTagPrint::pack_precision( $1, $2 );
                     my $new_val = $values->{$tag}[$i];
@@ -463,8 +458,13 @@ sub fix_temperature($$) {
                             ($number_neg)(?:\()?($sigma)?
                             (?:\))?(?:[-_\s]*)$temp_C?$
                             /x ) {
+                    my $number = $1;
+                    my $sig = $2;
+                    if( $sig ) {
+                        $sig = get_sigma( $number , $sig );
+                    } 
                     $values->{$tag}[$i] =
-                        CIFTagPrint::pack_precision( $1 + 273.15, $2 );
+                        CIFTagPrint::pack_precision( $1 + 273.15, $sig );
                     my $new_val = $values->{$tag}[$i];
                     my $report_msg =
                         "$tag value '$temperature' changed to " .
@@ -584,6 +584,7 @@ sub fix_temperature($$) {
                         my $old_tag = $tag;
                         my $new_tag =
                             '_chemical_temperature_decomposition';
+                        
                         $values->{$tag}[$i] =
                             CIFTagPrint::pack_precision
                                 ($2 + 273.15, $3);
