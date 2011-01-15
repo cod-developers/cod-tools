@@ -505,6 +505,32 @@ sub get_symmetry_operators($$)
     }
 
     if( not defined $sym_data ) {
+        for my $tag (qw( _space_group_ssg_name
+                         _space_group_ssg_name_IT
+                         _space_group_ssg_name_WJJ
+                    )) {
+            if( exists $values->{$tag} ) {
+                my $ssg_name = $values->{$tag}[0];
+                next if $ssg_name eq '?';
+
+                my $h_m = $ssg_name;
+                $h_m =~ s/\(.*//g;
+                $h_m =~ s/[\s_]+//g;
+
+                $sym_data = lookup_symops("hermann_mauguin", $h_m);
+
+                if( !$sym_data ) {
+                    error( $0, $filename, $dataset->{name},
+                           "$tag value '$ssg_name' yielded H-M " .
+                           "symbol '$h_m' which is not in our tables" );
+                } else {
+                    last
+                }
+            }
+        }
+    }
+
+    if( not defined $sym_data ) {
         error( $0, $filename, $dataset->{name},
                "neither symmetry operators, " .
                "nor Hall spacegroup symbol," .                  
