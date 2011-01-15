@@ -610,6 +610,18 @@ sub get_spacegroup_descriptions
 
     if(not defined $sym_data) {
         if( $warnings == 0 ) {
+            my @spacegroup_tags = qw (
+                _space_group_symop_ssg_id
+                _space_group_symop_ssg_operation_algebraic
+                _space_group_ssg_name
+                _space_group_ssg_name_IT
+                _space_group_ssg_name_WJJ
+            );
+            for my $sg_tag (@spacegroup_tags) {
+                if( exists $dataset->{values}{$sg_tag} ) {
+                    return (undef, 0);
+                }
+            }
             error_reporter( $filename, undef, $dataset->{name},
                             "no spacegroup symbol to check cell constraints" );
             $warnings = 1;
