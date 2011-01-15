@@ -35,12 +35,13 @@ for my $file (@ARGV) {
             $article_nr ++;
 
             my $journal;
+
             if( $article =~ m|<journal_title.*?>(.*?)</journal_title>|ms ) {
                 $journal = $1;
             } else {
                 print STDERR "$0: no <journal_title> " .
                     "found in the file '$file' article $article_nr\n";
-                die;
+                ## die;
             }
 
             my $title;
@@ -49,7 +50,7 @@ for my $file (@ARGV) {
             } else {
                 print STDERR "$0: no <article_title> found in the file '$file' ".
                     "article $article_nr\n";
-                die;
+                ## die;
             }
 
             my $year;
@@ -58,7 +59,7 @@ for my $file (@ARGV) {
             } else {
                 print STDERR "$0: no <year> found in the file '$file' ".
                     "article $article_nr\n";
-                die;
+                ## die;
             }
 
             my $issue;
@@ -106,13 +107,12 @@ for my $file (@ARGV) {
                     print $separator, $author_name;
                     $separator = "; ";
                 }
+                print "</authors>\n";
             } # if AuthorList
 
-            print "</authors>\n";
-
-            print "<title>$title</title>\n";
-            print "<journal>$journal</journal>\n";
-            print "<year>$year</year>\n";
+            print "<title>$title</title>\n" if defined $title;
+            print "<journal>$journal</journal>\n" if defined $journal;
+            print "<year>$year</year>\n" if defined $year;
             print "<volume>$volume</volume>\n" if defined $volume;
             print "<issue>$issue</issue>\n" if defined $issue;
             print "<pages>$pages</pages>\n" if defined $pages;
