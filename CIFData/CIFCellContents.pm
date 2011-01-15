@@ -17,6 +17,7 @@ use warnings;
 use Fractional;
 use SymopParse;
 use SymopLookup;
+use Spacegroups::SpacegroupNames;
 use Formulae::FormulaPrint;
 use CIFData::CIFEstimateZ;
 
@@ -30,6 +31,10 @@ require Exporter;
     atomic_composition
     print_composition
 );
+
+my %sg_name_abbrev =
+    map { my $key = $_->[1]; $key =~ s/\s+//g; ( $key, $_->[2] ) }
+@SpacegroupNames::names;
 
 $::format = "%g";
 my $special_position_cutoff = 0.01; # Angstroems
@@ -375,13 +380,18 @@ sub lookup_symops
     $param =~ s/ //g;
     $param =~ s/_//g;
 
+    my $sg_full = $sg_name_abbrev{$param};
+
+    $sg_full = "" unless defined $sg_full;
+    $sg_full =~ s/\s+//g;
+
     foreach my $hash (@SymopLookup::table)
     {
         my $value = $hash->{$option};
         $value =~ s/ //g;
         $value =~ s/_//g;
 
-        if($value eq $param)
+        if( $value eq $param || $value eq $sg_full )
         {
             return $hash->{symops};
         }
