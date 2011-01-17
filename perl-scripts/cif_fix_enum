@@ -220,10 +220,9 @@ for my $filename ( @ARGV ) {
         ## exit -1;
         next
     }
-    my %reports;
-    my $message_key;
     canonicalize_all_names( $data );
     for my $dataset (@$data) {
+        my %reports;
 	my @uniq_messages;
 	my @insert_reports = ();
 	my $values = $dataset->{values};
@@ -235,9 +234,10 @@ for my $filename ( @ARGV ) {
 			next;
 		    }
                     if( exists $dictTags{$tag} ) {
+                        my $message_key;
                         my @replacement_list =
-			  replacement_candidates
-                            ( $tag_value , $dictTags{$tag} );
+                            replacement_candidates( $tag_value,
+                                                    $dictTags{$tag} );
                         if(! @replacement_list ) {
 			    next;
                         } elsif( scalar( @replacement_list ) == 1 ) {
@@ -286,7 +286,7 @@ for my $filename ( @ARGV ) {
 	    print STDERR "$0: $filename: $report\n";
 	    if( $report =~ /^(NOTE,\s+)(.+)$/ ) {
 		my $comment_message = $2;
-		push( @insert_reports , $comment_message );
+		push( @insert_reports, $comment_message );
 	    }
 	}
 	insert_report_to_comments( $dataset, \@insert_reports );
