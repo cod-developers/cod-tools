@@ -110,9 +110,13 @@ for my $dict_file_name ( @dictionaries ) {
 		    $dictTags{$_} = \@enums;
                     $tagDicts{$_} = [
 			$dict_file_name,
-			join( ', ', @$dict_name ),
-                        join( ', ', @$dict_version ),
-                        join( ', ', @$dict_update )  ];
+			defined $dict_name ?
+                             join( ', ', @$dict_name ) : undef,
+                        defined $dict_version ?
+                             join( ', ', @$dict_version ) : undef,
+                        defined $dict_update ?
+                             join( ', ', @$dict_update ) : undef
+                    ];
                 } else {
 		    print STDERR
                         "$0: WARNING, '$_' " .
@@ -244,10 +248,13 @@ for my $filename ( @ARGV ) {
 				"NOTE, '$tag' value '$old_value' " .
 				"changed to '$new_value' " .
 				"according to '$tagDicts{$tag}[0]' " .
-				"dictionary " .
-				"named '$tagDicts{$tag}[1]' " .
-				"version $tagDicts{$tag}[2] " .
-				"from $tagDicts{$tag}[3]";
+				"dictionary" .
+				(defined $tagDicts{$tag}[1] ? 
+                                " named '$tagDicts{$tag}[1]'" : "") .
+                                (defined $tagDicts{$tag}[2] ? 
+				" version $tagDicts{$tag}[2]" : "") .
+                                (defined $tagDicts{$tag}[3] ?
+				" from $tagDicts{$tag}[3]" : "");
 			} else {
 			    my $dict_values =
 				join( ", ", @replacement_list );
@@ -256,10 +263,13 @@ for my $filename ( @ARGV ) {
 				"should be one of these: [" .
 				"$dict_values] " .
 				"according to '$tagDicts{$tag}[0]' " .
-				"dictionary " .
-				"named '$tagDicts{$tag}[1]' " .
-				"version $tagDicts{$tag}[2] " .
-				"from $tagDicts{$tag}[3]";
+				"dictionary" .
+                                (defined $tagDicts{$tag}[1] ?
+				" named '$tagDicts{$tag}[1]'" : "") .
+                                (defined $tagDicts{$tag}[2] ?
+				" version $tagDicts{$tag}[2]" : "") .
+                                (defined $tagDicts{$tag}[3] ?
+				" from $tagDicts{$tag}[3]" : "");
 			}
 			if(! exists $reports{$message_key} ) {
 			    $reports{$message_key} = 0;
