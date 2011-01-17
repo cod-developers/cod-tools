@@ -73,31 +73,31 @@ for my $dict_file_name ( @dictionaries ) {
     my $parser = new CIFParser;
     my $data = $parser->Run( $dict_file_name );
 
-        if( defined $parser->YYData->{ERRCOUNT} &&
+    if( defined $parser->YYData->{ERRCOUNT} &&
         $parser->YYData->{ERRCOUNT} > 0 ) {
         print STDERR "$0: $dict_file_name: ",
         $parser->YYData->{ERRCOUNT},
         " error(s) encountered while parsing CIF dictionary\n";
         ## exit -1;
         next;
-	}
+    }
 
-        canonicalize_all_names( $data );
+    canonicalize_all_names( $data );
 
-        my( $dict_name , $dict_version , $dict_update );
-        for my $dataset ( @$data ) {
-            next unless $dataset->{name} eq 'on_this_dictionary' &&
-                         exists $dataset->{values};
-            my $values = $dataset->{values};
-            die( "$0: $dict_file_name $dataset->{name}: dictionary " .
-                 "'$dict_file_name' " .
-                 "data_$dataset->{name} does not contain data" )
-                unless defined $values;
-            $dict_name = $values->{_dictionary_name};
-            $dict_version = $values->{_dictionary_version};
-            $dict_update = $values->{_dictionary_update};
-            last;
-        }
+    my( $dict_name , $dict_version , $dict_update );
+    for my $dataset ( @$data ) {
+        next unless $dataset->{name} eq 'on_this_dictionary' &&
+            exists $dataset->{values};
+        my $values = $dataset->{values};
+        die( "$0: $dict_file_name $dataset->{name}: dictionary " .
+             "'$dict_file_name' " .
+             "data_$dataset->{name} does not contain data" )
+            unless defined $values;
+        $dict_name = $values->{_dictionary_name};
+        $dict_version = $values->{_dictionary_version};
+        $dict_update = $values->{_dictionary_update};
+        last;
+    }
     for my $dataset ( @$data ) {
         my $values = $dataset->{values};
         my $values_name = $values->{_name};
@@ -115,9 +115,9 @@ for my $dict_file_name ( @dictionaries ) {
                         join( ', ', @$dict_update )  ];
                 } else {
 		    print STDERR
-                    "$0: WARNING, '$_' " .
-                    "tag is already defined by " .
-                    "'$dict_file_name' dictionary.\n";
+                        "$0: WARNING, '$_' " .
+                        "tag is already defined by " .
+                        "'$dict_file_name' dictionary.\n";
                 }
             }
         }
