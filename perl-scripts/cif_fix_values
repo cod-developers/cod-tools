@@ -580,20 +580,18 @@ sub fix_temperature($$) {
                             (?:[-_\s]*)(?:$temp_C)
                             (?:[-_,\s]*)\(?($temp_dec)?\)?$
                             /x )  {
+                    my $number = $2;
+                    my $sig = $3;
+                    if( $sig ) {
+                        $sig = get_sigma( $number , $sig );
+                    }
                     if( defined $1 || defined $4 ) {
                         my $old_tag = $tag;
                         my $new_tag =
                             '_chemical_temperature_decomposition';
-                        my $number = $2;
-                        my $sig = $3;
-                        if( $sig ) {
-                            $sig = get_sigma( $number , $sig );
-                        }
-                        #print "--------------------------------------$sig\n";
                         $values->{$tag}[$i] =
                             CIFTagPrint::pack_precision
-                                ($number + 273.15, $sig);
-                        #        ($2 + 273.15, $3);
+                              ( $number + 273.15, $sig );
                         my $new_val = $values->{$tag}[$i];
                             CIFTagManage::rename_tag
                               ( $dataset, $old_tag, $new_tag );
@@ -609,7 +607,8 @@ sub fix_temperature($$) {
                         next;
                     } else {
                         $values->{$tag}[$i] =
-                        CIFTagPrint::pack_precision( $2 + 273.15, $3 );
+                            CIFTagPrint::pack_precision
+                              ( $number + 273.15, $sig );
                         my $new_val = $values->{$tag}[$i];
                         my $report_msg =
                             "$tag value '$temperature' changed to " .
