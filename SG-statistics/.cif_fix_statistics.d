@@ -1,4 +1,4 @@
-./cif_fix_statistics.log: inputs/cod/cif/checks/COD-check-authors.log inputs/cod/cif/checks/COD-check-bibliography.log inputs/cod/cif/checks/COD-check-formulae.log inputs/cod/cif/checks/COD-check-symmetry.log inputs/cod/cif/checks/cif-validate-series1.log inputs/cod/cif/checks/cif-validate-series2.log inputs/cod/cif/checks/cif-validate-series4.log inputs/cod/cif/checks/cif-validate-series5.log inputs/cod/cif/checks/cif-validate-series7.log inputs/cod/cif/checks/cif-validate-series8.log inputs/cod/cif/checks/cif-validate-series9.log inputs/cod/cif/checks/make.log
+./cif_fix_statistics.log: $(echo $(ls -1 inputs/cod/cif/checks/*.log | grep -v '/make'))
 ./outputs/cif_fix_statistics.dat: ./cif_fix_statistics.log
 	@cd .; test -f ./outputs/cif_fix_statistics.dat || sh -xc './cif_fix_statistics.com > cif_fix_statistics.log 2>&1'
 	@cd .; test -f ./outputs/cif_fix_statistics.dat && touch ./outputs/cif_fix_statistics.dat

@@ -22,7 +22,7 @@ OUTPUT_DIR="./outputs"
 
 #BEGIN DEPEND------------------------------------------------------------------
 
-INPUT_LOG="`echo inputs/cod/cif/checks/*.log`"
+INPUT_LOG="$(echo $(ls -1 inputs/cod/cif/checks/*.log | grep -v '/make'))"
 
 BASENAME="`basename $0 .com`"
 
@@ -39,7 +39,7 @@ mkdir "${TMP_DIR}"
 set -x
 
 grep -Eh 'temp|melting' ${INPUT_LOG} \
-| grep '^/home/saulius/src/cif-tools/perl-scripts/cif_validate:' \
+| grep '^/.*/perl-scripts/cif_validate:' \
 | awk '{print $2}' \
 | sort \
 | uniq \
