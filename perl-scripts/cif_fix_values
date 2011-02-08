@@ -216,8 +216,10 @@ sub fix_temperature($$) {
         '(?:[-_\s]*)(?i:C\.?)?)|' .
         '(?i:(?i:degrees?)?(?:[-_\s]*)centigrades?))';
     my $temp_RT =
-        '(?:(?:(?:(?i:room)|(?i:amb(?i:i[ae]nte?)))' .
+        '(?:(?:(?i:temp\\\\\'erature)\s*ambi[ae]nte?)|' .
+        '(?:(?:(?i:room)|(?i:amb(?i:i[ae]nte?)))' .
         '\s*(?i:temp(?:erature)?)?)|(?i:rt))';
+    #my $temp_RT = '(?:Temp\\\\\'erature)';
     my $temp_undef =
         '(?:(?i:yes)|(?i:no(?i:ne)?)|(?i:unknown)|' .
         '(?i:not\s*(?:(?i:measured)|(?i:determined)|' .
@@ -232,7 +234,6 @@ sub fix_temperature($$) {
             for my $i (0..$#{$values->{$tag}}) {
                 my $temperature = $values->{$tag}[$i];
                 $temperature =~ s/^\s+|\s+$//g;
-                
                 if( $temperature =~ /^\.|\?$/ ) {
                     next;
                 }
