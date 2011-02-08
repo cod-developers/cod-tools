@@ -72,8 +72,8 @@ sub dont_check_any {
         undef $replacement_file; },
 
     "--fix-temperature" => sub { $fix_temperature = 1; },
-    "--fix-only-temperature" => sub { dont_check_any(); 
-        $fix_temperature = 1; $fix_misspelled_values = 0; 
+    "--fix-only-temperature" => sub { dont_check_any();
+        $fix_temperature = 1; $fix_misspelled_values = 0;
         undef $replacement_file; },
     "--do-not-fix-temperature,--no-fix-temperature," .
     "--dont-fix-temperature" =>
@@ -119,7 +119,7 @@ sub get_sigma($$) {
     my( $value , $sig ) = @_;
     $value =~ m/([^.]*)\.?(\d*)/;
     if( $2 ) {
-        return $sig*10**(length($2)*(-1) ) 
+        return $sig*10**(length($2)*(-1) )
     } else {
         return $sig;
     }
@@ -179,9 +179,9 @@ sub fix_misspelled_values($$$) {
 	    my $times =
 		( $count =~ /^(\d*[02-9])?1$/ ) ? "time" : "times";
 	    if( $reports{$message} == 1 ) {
-            $message .= ".";
+                $message .= ".";
 	    } else {
-            $message .= " $count $times.";
+                $message .= " $count $times.";
 	    }
 	    push (@reports, $message);
 	    print STDERR "$0: $filename: NOTE, $message\n";
@@ -315,7 +315,7 @@ sub fix_temperature($$) {
                         /_cell_measurement_temperature/ ) {
                         if( $sig ) {
                             $sig = get_sigma( $number , $sig );
-                        }                   
+                        }
                         if( $sign =~ /\>/ ) {
                             $values->{$tag}[$i] =
                                 CIFTagPrint::pack_precision
@@ -666,7 +666,7 @@ for my $filename (@ARGV) {
             my @temperature_reports =
                 fix_temperature( $dataset, $filename );
             push( @insert_reports, @temperature_reports );
-        }            
+        }
         if( $fix_misspelled_values ) {
             my @misspell_reports =
                 fix_misspelled_values
