@@ -233,15 +233,17 @@ sub fix_temperature($$) {
         if( exists $values->{$tag} ) {
             for my $i (0..$#{$values->{$tag}}) {
                 my $temperature = $values->{$tag}[$i];
-                $temperature =~ s/^\s+|\s+$//g;
-                if( $temperature =~ /^\.|\?$/ ) {
+                my $temperature_modif = $temperature;
+		$temperature_modif =~ s/^\s+|\s+$//g;
+		
+                if( $temperature_modif =~ /^\.|\?$/ ) {
                     next;
                 }
-                if( $temperature =~
+                if( $temperature_modif =~
                         /^($number_pos|$number_pos\(\d+\))$/ ) {
                     next;
                 }
-                if( $temperature =~
+                if( $temperature_modif =~
                         /^ \(?$temp_dec\)?(?:[-_,\s]*)
                             ($number_pos)\(?($sigma)?\)?
                             (?:[-_\s]*)$temp_K?$
@@ -264,7 +266,7 @@ sub fix_temperature($$) {
                         "$0: $filename: NOTE, $report_msg\n";
                     next;
                 }
-                if( $temperature =~
+                if( $temperature_modif =~
                         /^ ($number_pos)\(?($sigma)?\)?
                             (?:[-_\s]*)(?:$temp_K)?
                             (?:[-_,\s]*)\(?($temp_dec)\)?$
@@ -287,7 +289,7 @@ sub fix_temperature($$) {
                         "$0: $filename: NOTE, $report_msg\n";
                     next;
                 }
-                if( $temperature =~
+                if( $temperature_modif =~
                         /^
                             \(?($number_pos)\s*\+\s*
                             273(?:[\.\,]\d+)?\)?$
@@ -303,7 +305,7 @@ sub fix_temperature($$) {
                         "$0: $filename: NOTE, $report_msg\n";
                     next;
                 }
-                if( $temperature =~
+                if( $temperature_modif =~
                         /^
                         (\>|\<)(?:[-_\s]*)($number_pos)
                         \(?($sigma)?\)?
@@ -363,7 +365,7 @@ sub fix_temperature($$) {
                     }
                     next;
                 }
-                if( $temperature =~
+                if( $temperature_modif =~
                         /^
                             (\>|\<)(?:[-_\s]*)($number_pos)
                             \(?($sigma)?\)?(?:[-_\s]*)
@@ -420,7 +422,7 @@ sub fix_temperature($$) {
                     }
                     next;
                 }
-                if( $temperature =~
+                if( $temperature_modif =~
                     /^
                         ($number_pos)\s*(?:\()?
                         [\s]*(?:\+|\+\/?\-)?
@@ -437,7 +439,7 @@ sub fix_temperature($$) {
                         "$0: $filename: NOTE, $report_msg\n";
                     next;
                 }
-                if( $temperature =~
+                if( $temperature_modif =~
                     /^
                         ($number_pos)(?:\()?($sigma)?
                         (?:\))?(?:[-_\s]*)\(?$temp_K\)?$
@@ -454,7 +456,7 @@ sub fix_temperature($$) {
                         "$0: $filename: NOTE, $report_msg\n";
                     next;
                 }
-                if( $temperature =~
+                if( $temperature_modif =~
                         /^
                             ($number_neg)(?:\()?($sigma)?
                             (?:\))?(?:[-_\s]*)$temp_C?$
@@ -476,7 +478,7 @@ sub fix_temperature($$) {
                         "$0: $filename: NOTE, $report_msg\n";
                     next;
                 }
-                if( $temperature =~
+                if( $temperature_modif =~
                     /^
                         ($temp_RT)(?:[-_\s]*)$
                         /x ) {
@@ -490,7 +492,7 @@ sub fix_temperature($$) {
                         "$0: $filename: NOTE, $report_msg\n";
                     next;
                 }
-                if( $temperature =~
+                if( $temperature_modif =~
                     /^
                         ($temp_undef)(?:[-_\s]*)$
                         /x ) {
@@ -504,7 +506,7 @@ sub fix_temperature($$) {
                         "$0: $filename: NOTE, $report_msg\n";
                     next;
                 }
-                if( $temperature =~
+                if( $temperature_modif =~
                     /^
                         ($number_pos)\s*[\-\/\:]+\s*($number_pos)
                         (?:[-_\s]*)\(?(?:$temp_C)\)?$
@@ -528,7 +530,7 @@ sub fix_temperature($$) {
                         next;
                     }
                 }
-                if( $temperature =~
+                if( $temperature_modif =~
                     /^ ($number_pos)\s*[\-\/\:]+\s*($number_pos)
                         (?:[-_\s]*)\(?(?:$temp_K)?\)?
                         (?:[-_,\s]*)\(?($temp_dec)?\)?$
@@ -574,7 +576,7 @@ sub fix_temperature($$) {
                         }
                     }
                 }
-                if( $temperature =~
+                if( $temperature_modif =~
                         /^ ($temp_dec)?(?:[-_,\s]*)
                             ($number_pos)\(?($sigma)?\)?
                             (?:[-_\s]*)(?:$temp_C)
@@ -622,7 +624,7 @@ sub fix_temperature($$) {
                         next;
                     }
                 }
-                if( $temperature !~
+                if( $temperature_modif !~
                     /^
                         ($number_pos)(\($sigma\))?$
                         /x ) {
