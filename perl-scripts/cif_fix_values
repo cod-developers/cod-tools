@@ -146,45 +146,45 @@ if( defined $replacement_file ) {
 
 sub fix_misspelled_values($$$) {
     my( $dataset, $filename, $value_spelling ) = @_;
-        my %reports = ();
-        my @reports = ();
-        my $tags = $dataset->{tags};
-        my $values = $dataset->{values};
-        foreach my $tag ( @$tags ) {
-            if(! exists $value_spelling{$tag} ) {
+    my %reports = ();
+    my @reports = ();
+    my $tags = $dataset->{tags};
+    my $values = $dataset->{values};
+    foreach my $tag ( @$tags ) {
+        if(! exists $value_spelling{$tag} ) {
+            next;
+        }
+        foreach my $tag_value( @{ $values->{$tag} } ) {
+            if( $tag_value =~ /^\.|\?$/ ){
                 next;
             }
-            foreach my $tag_value( @{ $values->{$tag} } ) {
-                if( $tag_value =~ /^\.|\?$/ ){
-                    next;
-                }
-                my $lc_tag_value = lc $tag_value;
-                if(! exists ${ $value_spelling{$tag}}{$lc_tag_value} ){
-                    next;
-                }
-                my $old_value = $tag_value;
-                my $correct = ${ $value_spelling{$tag}}{$lc_tag_value};
-                $tag_value = $correct;
-                my $report_key =
-                    "'$tag' tag value '$old_value' " .
-                    "replaced with '$correct' value";
-                if(! exists $reports{$report_key} ) {
-                    $reports{$report_key} = 0;
-                }
-                $reports{$report_key} ++;
+            my $lc_tag_value = lc $tag_value;
+            if(! exists ${ $value_spelling{$tag}}{$lc_tag_value} ){
+                next;
             }
+            my $old_value = $tag_value;
+            my $correct = ${ $value_spelling{$tag}}{$lc_tag_value};
+            $tag_value = $correct;
+            my $report_key =
+                "'$tag' tag value '$old_value' " .
+                "was replaced with '$correct' value";
+            if(! exists $reports{$report_key} ) {
+                $reports{$report_key} = 0;
+            }
+            $reports{$report_key} ++;
         }
-	foreach my $message( keys %reports  ) {
-	    my $count = $reports{$message};
-	    my $times =
-		( $count =~ /^(\d*[02-9])?1$/ ) ? "time" : "times";
-	    if( $reports{$message} == 1 ) {
-                $message .= ".";
-	    } else {
-                $message .= " $count $times.";
-	    }
-	    push (@reports, $message);
-	    print STDERR "$0: $filename: NOTE, $message\n";
+    }
+    foreach my $message( keys %reports  ) {
+        my $count = $reports{$message};
+        my $times =
+            ( $count =~ /^(\d*[02-9])?1$/ ) ? "time" : "times";
+	if( $reports{$message} == 1 ) {
+            $message .= ".";
+        } else {
+            $message .= " $count $times.";
+        }
+        push (@reports, $message);
+        print STDERR "$0: $filename: NOTE, $message\n";
     }
     return @reports;
 }
