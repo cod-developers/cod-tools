@@ -255,9 +255,10 @@ sub fix_temperature($$) {
                         CIFTagManage::rename_tag
                             ( $dataset, $old_tag, $new_tag );
                     my $report_msg =
-                        "'$old_tag' tag changed to '$new_tag' " .
-                        "since the value is given as " .
-                        "'$temperature'.";
+                        "'$old_tag' tag was changed to '$new_tag' " .
+                        "since the value had been '$temperature'. " .
+                        "The value '$temperature' was changed to " .
+			"'$new_val'.";
                     push (@insert_reports, $report_msg);
                     print STDERR
                         "$0: $filename: NOTE, $report_msg\n";
@@ -277,9 +278,10 @@ sub fix_temperature($$) {
                     CIFTagManage::rename_tag
                         ( $dataset, $old_tag, $new_tag );
                     my $report_msg =
-                        "'$old_tag' tag changed to '$new_tag' " .
-                        "since the value is given as " .
-                        "'$temperature'.";
+                        "'$old_tag' tag was changed to '$new_tag' " .
+                        "since the value had been '$temperature'. " .
+                        "The value '$temperature' was changed to " .
+			"'$new_val'.";
                     push (@insert_reports, $report_msg);
                     print STDERR
                         "$0: $filename: NOTE, $report_msg\n";
@@ -293,9 +295,9 @@ sub fix_temperature($$) {
                     $values->{$tag}[$i] = $1 + 273.15;
                     my $new_val = $values->{$tag}[$i];
                     my $report_msg =
-                        "$tag value '$temperature' changed to " .
-                        "'$new_val'- converted between degrees " .
-                        "Celsius(C) and Kelvins(K).";
+                        "'$tag' value '$temperature' was changed to " .
+                        "'$new_val'- it was converted from degrees " .
+                        "Celsius(C) to Kelvins(K).";
                     push (@insert_reports, $report_msg);
                     print STDERR
                         "$0: $filename: NOTE, $report_msg\n";
@@ -325,13 +327,13 @@ sub fix_temperature($$) {
                             CIFTagManage::rename_tag
                                 ( $dataset, $old_tag, $new_tag );
                             my $report_msg =
-                                "'$old_tag' tag changed to " .
-                                "'$new_tag' since the value " .
+                                "'$old_tag' tag was changed to " .
+                                "'$new_tag' since the value was " .
                                 "specified 'more than' ('>') a " .
-                                "certain temperature. Value " .
-                                "'$temperature' changed to " .
-                                "'$new_val' - converted between " .
-                                "degrees Celsius(C) and Kelvins(K).";
+                                "certain temperature. The value " .
+                                "'$temperature' was changed to " .
+                                "'$new_val' - it was converted from " .
+                                "degrees Celsius(C) to Kelvins(K).";
                             push (@insert_reports, $report_msg);
                             print STDERR
                                 "$0: $filename: NOTE, $report_msg\n";
@@ -346,13 +348,13 @@ sub fix_temperature($$) {
                             CIFTagManage::rename_tag
                                 ( $dataset, $old_tag, $new_tag );
                             my $report_msg =
-                                "'$old_tag' tag changed to " .
-                                "'$new_tag' since the value " .
+                                "'$old_tag' tag was changed to " .
+                                "'$new_tag' since the value was " .
                                 "specified 'less than' ('<') a " .
-                                "certain temperature. Value " .
-                                "'$temperature' changed to " .
-                                "'$new_val' - converted between " .
-                                "degrees Celsius(C) and Kelvins(K).";
+                                "certain temperature. The value " .
+                                "'$temperature' was changed to " .
+                                "'$new_val' - it was converted from " .
+                                "degrees Celsius(C) to Kelvins(K).";
                             push (@insert_reports, $report_msg);
                             print STDERR
                                 "$0: $filename: NOTE, $report_msg\n";
@@ -382,14 +384,13 @@ sub fix_temperature($$) {
                             CIFTagManage::rename_tag
                                 ( $dataset, $old_tag, $new_tag );
                             my $report_msg =
-                                "'$old_tag' tag changed to " .
-                                "'$new_tag' since the value " .
-                                "specified 'more than' ('>') a" .
-                                "certain temperature. Value " .
-                                "'$temperature' changed to " .
-                                "'$new_val' - value should be " .
-                                "numeric, i.e. 'FLOAT or 'INT' " .
-                                "without temperature units.";
+                                "'$old_tag' tag was changed to " .
+                                "'$new_tag' since the value was " .
+                                "specified 'more than' ('>') a " .
+                                "certain temperature. The value " .
+                                "'$temperature' was changed to " .
+                                "'$new_val' - it should be numeric " .
+                                "and without a unit designator.";
                             push (@insert_reports, $report_msg);
                             print STDERR
                                 "$0: $filename: NOTE, $report_msg\n";
@@ -404,14 +405,13 @@ sub fix_temperature($$) {
                                 CIFTagManage::rename_tag
                                 ( $dataset, $old_tag, $new_tag );
                             my $report_msg =
-                                "'$old_tag' tag changed to " .
-                                "'$new_tag' since the value " .
-                                "specified 'less than' ('<') a" .
-                                "certain temperature. Value " .
-                                "'$temperature' changed to " .
-                                "'$new_val' - value should be " .
-                                "numeric, i.e. 'FLOAT or 'INT' " .
-                                "without temperature units.";
+                                "'$old_tag' tag was changed to " .
+                                "'$new_tag' since the value was " .
+                                "specified 'less than' ('<') a " .
+                                "certain temperature. The value " .
+                                "'$temperature' was changed to " .
+                                "'$new_val' - it should be numeric " .
+                                "and without a unit designator.";
                             push (@insert_reports, $report_msg);
                             print STDERR
                                 "$0: $filename: NOTE, $report_msg\n";
@@ -430,8 +430,8 @@ sub fix_temperature($$) {
                         CIFTagPrint::pack_precision( $1, $2 );
                     my $new_val = $values->{$tag}[$i];
                     my $report_msg =
-                        "$tag value '$temperature' changed to " .
-                        "'$new_val'- fixed precision.";
+                        "'$tag' value '$temperature' was changed to " .
+                        "'$new_val'- precision was estimated.";
                     push (@insert_reports, $report_msg);
                     print STDERR
                         "$0: $filename: NOTE, $report_msg\n";
@@ -446,9 +446,9 @@ sub fix_temperature($$) {
                         CIFTagPrint::pack_precision( $1, $2 );
                     my $new_val = $values->{$tag}[$i];
                     my $report_msg =
-                        "$tag value '$temperature' changed to " .
-                        "'$new_val' - value should be numeric, i.e." .
-                        "'FLOAT or 'INT' without temperature units.";
+                        "'$tag' value '$temperature' was changed to " .
+                        "'$new_val' - the value should be numeric " .
+                        "and without a unit designator.";
                     push (@insert_reports, $report_msg);
                     print STDERR
                         "$0: $filename: NOTE, $report_msg\n";
@@ -468,12 +468,9 @@ sub fix_temperature($$) {
                         CIFTagPrint::pack_precision( $1 + 273.15, $sig );
                     my $new_val = $values->{$tag}[$i];
                     my $report_msg =
-                        "$tag value '$temperature' changed to " .
-                        "'$new_val' - converted between degrees " .
-                        "Celsius(C) and Kelvins(K), value " .
-                        "should be numeric, permitted range " .
-                        "[0.0;+inf] given in Kelvins(K) " .
-                        "without temperature units.";
+                        "'$tag' value '$temperature' was changed to " .
+                        "'$new_val' - it was converted from degrees " .
+                        "Celsius(C) to Kelvins(K).";
                     push (@insert_reports, $report_msg);
                     print STDERR
                         "$0: $filename: NOTE, $report_msg\n";
@@ -485,9 +482,9 @@ sub fix_temperature($$) {
                         /x ) {
                     $values->{$tag}[$i] = "295(2)";
                     my $report_msg =
-                        "$tag value '$temperature' changed to " .
-                        "'295(2)' - took room/ambient temperature " .
-                        "average value [293;298] in Kelvins(K).";
+                        "'$tag' value '$temperature' was changed to " .
+                        "'295(2)' - the room/ambient temperature " .
+                        "average [293;298] in Kelvins(K) was taken.";
                     push (@insert_reports, $report_msg);
                     print STDERR
                         "$0: $filename: NOTE, $report_msg\n";
@@ -499,7 +496,8 @@ sub fix_temperature($$) {
                         /x ) {
                     $values->{$tag}[$i] = "?";
                     my $report_msg =
-                        "$tag value '$temperature' changed to '?' - " .
+                        "'$tag' value '$temperature' ".
+                        "was changed to '?' - the " .
                         "value is undefined or not given.";
                     push (@insert_reports, $report_msg);
                     print STDERR
@@ -519,10 +517,11 @@ sub fix_temperature($$) {
                               ( $number+273.15 , $sig );
                         my $new_val = $values->{$tag}[$i];
                         my $report_msg =
-                            "$tag value '$temperature' changed to " .
-                            "'$new_val' - converted between degrees " .
-                            "Celsius(C) and Kelvins(K), took " .
-                            "average value and fixed precision.";
+                            "'$tag' value '$temperature' was changed to " .
+                            "'$new_val' - it was converted from degrees " .
+                            "Celsius(C) to Kelvins(K), the " .
+                            "average value was taken and " .
+			    "precision was estimated.";
                         push (@insert_reports, $report_msg);
                         print STDERR
                             "$0: $filename: NOTE, $report_msg\n";
@@ -549,12 +548,12 @@ sub fix_temperature($$) {
                                 CIFTagManage::rename_tag
                                     ( $dataset, $old_tag, $new_tag );
                             my $report_msg =
-                                "'$old_tag' tag changed to '$new_tag' " .
-                                "since the value is given as " .
+                                "'$old_tag' tag was changed to '$new_tag' " .
+                                "since the value had been given as " .
                                 "'$temperature'. " .
-                                "Temperature value changed to " .
-                                "'$new_val' - took average value " .
-                                "and fixed precision.";
+                                "The value was changed to " .
+                                "'$new_val' - the average value was " .
+                                "taken and precision was estimated.";
                             push (@insert_reports, $report_msg);
                             print STDERR
                                 "$0: $filename: NOTE, $report_msg\n";
@@ -565,9 +564,9 @@ sub fix_temperature($$) {
                                     ( $number , $sig );
                             my $new_val = $values->{$tag}[$i];
                             my $report_msg =
-                                "$tag value '$temperature' changed to " .
-                                "'$new_val' - took average value " .
-                                "and fixed precision.";
+                                "'$tag' value '$temperature' was changed to " .
+                                "'$new_val' - the average value was taken " .
+                                "and precision was estimated.";
                             push (@insert_reports, $report_msg);
                             print STDERR
                                 "$0: $filename: NOTE, $report_msg\n";
@@ -597,11 +596,13 @@ sub fix_temperature($$) {
                             CIFTagManage::rename_tag
                               ( $dataset, $old_tag, $new_tag );
                         my $report_msg =
-                            "'$old_tag' tag changed to '$new_tag' " .
-                            "since the value is given as '$temperature'. " .
-                            "Value changed to '$new_val' - " .
-                            "converted between degrees Celsius(C) " .
-                            "and Kelvins(K).";
+                            "'$old_tag' tag was changed to '$new_tag' " .
+                            "since the value had been given as " .
+			    "'$temperature'. " .
+                            "The value '$temperature' was changed to " .
+                            "'$new_val' - " .
+                            "it was converted from degrees Celsius(C) " .
+                            "to Kelvins(K).";
                         push (@insert_reports, $report_msg);
                         print STDERR
                             "$0: $filename: NOTE, $report_msg\n";
@@ -612,12 +613,9 @@ sub fix_temperature($$) {
                               ( $number + 273.15, $sig );
                         my $new_val = $values->{$tag}[$i];
                         my $report_msg =
-                            "$tag value '$temperature' changed to " .
-                            "'$new_val' - converted between degrees " .
-                            "Celsius(C) and Kelvins(K), value " .
-                            "should be numeric, permitted range " .
-                            "[0.0;+inf] given in Kelvins(K) " .
-                            "without temperature units.";
+                            "'$tag' value '$temperature' was changed to " .
+                            "'$new_val' - it was converted from degrees " .
+                            "Celsius(C) to Kelvins(K).";
                         push (@insert_reports, $report_msg);
                         print STDERR
                             "$0: $filename: NOTE, $report_msg\n";
@@ -630,11 +628,11 @@ sub fix_temperature($$) {
                         /x ) {
                     print STDERR
                         "$0: $filename: WARNING, " .
-                        "$tag value is '$temperature', " .
-                        "it should be numeric, " .
-                        "i.e.'FLOAT or 'INT', permitted " .
-                        "range [0.0;+inf], given in Kelvins(K) ".
-                        "without temperature units.\n";
+                        "'$tag' value is '$temperature', " .
+                        "but it should be numeric, " .
+                        "i.e. 'FLOAT or 'INT', permitted " .
+                        "range is [0.0;+inf], the value is in Kelvins(K) ".
+                        "without a unit designator.\n";
                     next;
                 }
             }
