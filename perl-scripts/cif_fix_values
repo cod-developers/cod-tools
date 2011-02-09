@@ -428,16 +428,28 @@ sub fix_temperature($$) {
                         [\s]*(?:\+|\+\/?\-)?
                         [\s]*($sigma)(?:\))?$
                         /x ) {
+                    my $check_value = $temperature_modif;
                     $values->{$tag}[$i] =
                         CIFTagPrint::pack_precision( $1, $2 );
                     my $new_val = $values->{$tag}[$i];
-                    my $report_msg =
-                        "'$tag' value '$temperature' was changed to " .
-                        "'$new_val' - precision was estimated.";
-                    push (@insert_reports, $report_msg);
-                    print STDERR
-                        "$0: $filename: NOTE, $report_msg\n";
-                    next;
+                    $check_value =~ s/\s+//g;
+                    if( $check_value eq  $new_val ) {
+                        my $report_msg =
+                            "'$tag' value '$temperature' was changed to " .
+                            "'$new_val' - the value was reformatted.";
+                        push (@insert_reports, $report_msg);
+                        print STDERR
+                            "$0: $filename: NOTE, $report_msg\n";
+                        next;
+                    } else {
+                        my $report_msg =
+                            "'$tag' value '$temperature' was changed to " .
+                            "'$new_val' - precision was estimated.";
+                        push (@insert_reports, $report_msg);
+                        print STDERR
+                            "$0: $filename: NOTE, $report_msg\n";
+                        next;
+                    }
                 }
                 if( $temperature_modif =~
                     /^
