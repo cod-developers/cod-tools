@@ -28,6 +28,9 @@ setvar DEPOSIT_URL  = "${SERVER}/${DEPOSIT_PATH}"
 
 setvar FILES = ""
 
+setvar DEBUG    = false
+setvar PROGRESS = false
+
 setvar BASENAME = "`basename $0`"
 
 # Executables:
@@ -50,6 +53,13 @@ curl=curl
 #**      Specify the full URL to use for structure uploading (default:
 #**      combine --host and --path values using http:// protocol and /).
 #**
+#**  -P, --progress
+#**      Ask cif-deposit.pl to report progress of the deposition.
+#**
+#**  -D, --debug
+#**      Request output of the progress information from cif-deposit.pl to the
+#**      HTTP server log.
+#**
 #**  --help                   print short help message (this message) and exit
 while [ $# -gt 0 ]
 do
@@ -71,6 +81,19 @@ do
       -u|--url|--ur|--u)
           DEPOSIT_URL="$2"
           shift
+          ;;
+      -D|--debug|--debu|--deb|--de|--d)
+          DEBUG=true
+          ;;
+      -D-|--no-debug|--no-debu|--no-deb|--no-de|--no-d)
+          DEBUG=false
+          ;;
+      -P|--progress|--progres|--progre|--progr|--prog|--pro|--pr|--p)
+          PROGRESS=true
+          ;;
+      -P-|--no-progress|--no-progres|--no-progre|--no-progr|--no-prog|\
+      --no-pro|--no-pr|--no-p)
+          PROGRESS=false
           ;;
       --script|--scrip|--scri|--scr|--sc|--s)
           curl="script curl"
@@ -95,6 +118,20 @@ done
 ## echo ${FILES}
 eval set -- "${FILES}"
 
+if [ $DEBUG = true ]
+then
+    DEBUG_ARG='-F debug=1'
+else
+    DEBUG_ARG=''
+fi
+
+if [ $PROGRESS = true ]
+then
+    PROGRESS_ARG='-F progress=1'
+else
+    PROGRESS_ARG=''
+fi
+
 test -z "${TMP_DIR}" && TMP_DIR="/tmp"
 TMP_DIR="${TMP_DIR}/tmp-${BASENAME}-$$"
 mkdir "${TMP_DIR}"
@@ -117,6 +154,8 @@ awk -F= '/^password=/{print $2}' ${INPUT_CONFIG} | tr -d "\n" > ${TMP_PASSWRD}
 cat ${1+"$@"} > ${TMP_CIFFILE}
 
 ${curl} \
+    ${DEBUG_ARG} \
+    ${PROGRESS_ARG} \
     -F "username=${USERNAME}" \
     -F "password=<${TMP_PASSWRD}" \
     -F "cif=@${TMP_CIFFILE};filename=$(basename ${TMP_CIFFILE})" \
