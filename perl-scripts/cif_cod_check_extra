@@ -213,8 +213,8 @@ my %default_limits_table = (
     _refine_ls_R_factor_obs =>  [ [0.2], [0.15], [0.10] ],
     _refine_ls_wR_factor_ref => [ [0.45], [0.35], [0.25] ],
     _refine_ls_wR_factor_obs => [ [0.45], [0.35], [0.25] ],
-    #_refine_ls_goodness_of_fit_ref => [ [0.4,6], [0.6,4], [0.8,2] ],
-    #_refine_ls_goodness_of_fit_obs => [ [0.4,6], [0.6,4], [0.8,2] ],
+    _refine_ls_goodness_of_fit_ref => [ [0.4,6], [0.6,4], [0.8,2] ],
+    _refine_ls_goodness_of_fit_obs => [ [0.4,6], [0.6,4], [0.8,2] ],
 );
 
 if( $reportFile =~ m/^\s*-\s*$/ || !-w dirname($reportFile) )
@@ -882,11 +882,10 @@ sub check_limits {
     foreach my $tag( keys %$limits_table ){
         if( exists $values->{$tag} ) {
             my $value = $values->{$tag}[0];
-            
+            my @report_names = ( "ERROR", "WARNING", "NOTE" );
             if(! defined $limits_table->{$tag}[0][1] ) {
                 foreach my $i( 0..$#{ $limits_table->{$tag} } ) {
                     my $limit = @{ $limits_table->{$tag}->[$i]}[0];
-                    my @report_names = ( "ERROR", "WARNING", "NOTE" );
                     if( $value > $limit ) {
                         error_reporter($filename, undef, $dataset->{name},
                                        $report_names[$i] .       
@@ -895,6 +894,21 @@ sub check_limits {
                         $warnings ++;
                         last;
                     }
+                }
+            } else {
+                foreach my $i( 0..$#{ $limits_table->{$tag} } ) {
+                    my $begin = @{ $limits_table->{$tag}->[$i]}[0];
+                    my $end = @{ $limits_table->{$tag}->[$i]}[1];
+                    if( ($value < $begin) || ($value > $end) ) {
+                        error_reporter($filename, undef, $dataset->{name},
+                                       $report_names[$i] .       
+                                       ", the value of the '$tag' tag " .
+                                       "'$value' lies outside the range " . 
+                                       $begin . " <> " . $end . ".");
+                        $warnings ++;
+                        last;
+                    }
+                    
                 }
             }
         }
