@@ -60,7 +60,7 @@ sub check_all
     $check_limits = 1;
 }
 
-my $file_limits_table;
+my $limits_table_file;
 my $useReporter = 0;
 my $reportFile = '-';
 
@@ -179,7 +179,7 @@ my $reportFile = '-';
     "--dont-check-limits,--no-check-limits,--do-not-check-limits"
         => sub{ $check_limits = 0 },
     
-    "--limits-file" => sub{ $file_limits_table = get_value() },
+    "--limits-file" => sub{ $limits_table_file = &get_value() },
    
     "--check-all"
         => \&check_all,
@@ -277,10 +277,10 @@ for my $filename (@ARGV) {
         $warnings += check_spacegroup_constraints( $dataset, $filename )
             if $check_spacegroup_constraints;
         $warnings += check_limits( $dataset, $filename, \%default_limits_table )
-            if $check_limits;
+            if( $check_limits && !$limits_table_file );
         $warnings += check_limits( $dataset, $filename, 
-                                   &get_limits($file_limits_table) )
-            if( $check_limits && $file_limits_table );
+                                   &get_limits_table( $limits_table_file ) )
+            if( $check_limits && $limits_table_file );
     }
     printf "%-30s: OK\n", $filename if $warnings == 0;
 }
@@ -866,8 +866,28 @@ sub parser_error_reporter
 # the option '--limits-file'
 
 sub get_limits_table($) {
-    my $limits_table = @_;
-
+    my( $flimits ) = @_;
+    my %limits_table;
+    open( LIST, $flimits ) or
+        die "$0: $flimits: can not open file for input - $!";
+    foreach( <LIST> ) {
+        if( /^#/ ) { next; }
+        my @constraints;
+        my @data = split(/\s+/ , $_ , 4 );
+        my $tag = shift( @data );
+        foreach( @data ) {
+            $_ =~ s/\s+//g;
+            if( $_ =~ /(\d*\.?\d+)-(\d*\.?\d+)/ ) {
+                push( @constraints , [$1,$2] );
+            } else {
+                push( @constraints , [$_] );
+            }
+        }
+        $limits_table{$tag} = \@constraints;
+    }
+    close( LIST ) or
+        die "$0: $flimits: error closing file - $!";
+    return \%limits_table;
 }
 
 # To check that specified XYZ tag value is within expected limits.
