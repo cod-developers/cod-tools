@@ -61,6 +61,10 @@ sub check_all
 }
 
 my $limits_table_file;
+my $merge_limits_table = 0;
+my $add_limits_table = 0;
+my $reset_limits = 0;
+
 my $useReporter = 0;
 my $reportFile = '-';
 
@@ -97,6 +101,12 @@ my $reportFile = '-';
 #*    --check-limits
 #*
 #*    --limits-file limits.lst
+#*    
+#*    --add-limits  limits.lst
+#*
+#*    --merge-limits limits_table.lst
+#*
+#*    --reset-limits
 #*
 #*    --check-all
 #*
@@ -179,8 +189,10 @@ my $reportFile = '-';
     "--dont-check-limits,--no-check-limits,--do-not-check-limits"
         => sub{ $check_limits = 0 },
     
-    #"--limits-file" => sub{ $limits_table_file = &get_value() },
     "--limits-file" => \$limits_table_file,
+    "--merge-limits" => sub{ $merge_limits_table = 1 },
+    "--add-limits" => sub{ $add_limits_table = 1 },
+    "--reset-limits" => sub{ $reset_limits = 1 },
 
     "--check-all"
         => \&check_all,
@@ -278,12 +290,7 @@ for my $filename (@ARGV) {
         $warnings += check_spacegroup_constraints( $dataset, $filename )
             if $check_spacegroup_constraints;
         $warnings += check_limits( $dataset, $filename, \%default_limits_table )
-        #$warnings += check_limits( $dataset, $filename )
             if $check_limits;  
-            #if( $check_limits && !$limits_table_file );
-        #$warnings += check_limits( $dataset, $filename, 
-        #                           &get_limits_table( $limits_table_file ) )
-        #    if( $check_limits && $limits_table_file );
     }
     printf "%-30s: OK\n", $filename if $warnings == 0;
 }
@@ -876,14 +883,14 @@ sub get_limits_table($) {
     foreach( <LIST> ) {
         if( /^#/ ) { next; }
         my @constraints;
-        my @data = split(/\s+/ , $_ , 4 );
+        my @data = split( /\s+/, $_, 4 );
         my $tag = shift( @data );
         foreach( @data ) {
             $_ =~ s/\s+//g;
             if( $_ =~ /(\d*\.?\d+)-(\d*\.?\d+)/ ) {
-                push( @constraints , [$1,$2] );
+                push( @constraints, [$1,$2] );
             } else {
-                push( @constraints , [$_] );
+                push( @constraints, [$_] );
             }
         }
         $limits_table{$tag} = \@constraints;
@@ -893,27 +900,40 @@ sub get_limits_table($) {
     return %limits_table;
 }
 
+sub merge_limit_tables($$) {
+    my( $default_table, $new_table ) = @_;
+    
+}
+
 # To check that specified XYZ tag value is within expected limits.
 
 sub check_limits {
     my( $dataset, $filename, $limits_table ) = @_;
-    #my( $dataset, $filename ) = @_;
     my $warnings = 0;
-    #my %def_limits = %{ $limits_table };
     
     if(! defined $dataset->{values} ) {
         return 0;
     }
     my $values = $dataset->{values};
-    
-    #my %limits_table = %{ $limits_table };
-    #my %limits_table = %default_limits_table;
     my %new_limits_table;
     my %def_limits = %{ $limits_table };
+    
     if( defined $limits_table_file ) {
         %new_limits_table = get_limits_table( $limits_table_file );
         $limits_table = \%new_limits_table;
-    } else { my $limits_table = \%def_limits; }
+    } elsif( defined $merge_limits_table ) {
+        # merge given table with default table of limits  
+        # $limits_table = merge_limits( $merge_limits_table );
+        
+    } elsif( defined $add_limits_table ) {
+        # just add limits to the default table of limits 
+        # $limits_table = add_limits( $add_limits_table );
+    
+    } elsif( $reset_limits ) {
+        $limits_table = \%def_limits;
+    } else { 
+        my $limits_table = \%def_limits; 
+    }
     foreach my $tag( keys %$limits_table ){
         if( exists $values->{$tag} ) {
             my $value = $values->{$tag}[0];
@@ -942,8 +962,7 @@ sub check_limits {
                                        $begin . " <> " . $end . ".");
                         $warnings ++;
                         last;
-                    }
-                    
+                    }   
                 }
             }
         }
