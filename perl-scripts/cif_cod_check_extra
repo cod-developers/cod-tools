@@ -179,8 +179,9 @@ my $reportFile = '-';
     "--dont-check-limits,--no-check-limits,--do-not-check-limits"
         => sub{ $check_limits = 0 },
     
-    "--limits-file" => sub{ $limits_table_file = &get_value() },
-   
+    #"--limits-file" => sub{ $limits_table_file = &get_value() },
+    "--limits-file" => \$limits_table_file,
+
     "--check-all"
         => \&check_all,
 
@@ -277,10 +278,12 @@ for my $filename (@ARGV) {
         $warnings += check_spacegroup_constraints( $dataset, $filename )
             if $check_spacegroup_constraints;
         $warnings += check_limits( $dataset, $filename, \%default_limits_table )
-            if( $check_limits && !$limits_table_file );
-        $warnings += check_limits( $dataset, $filename, 
-                                   &get_limits_table( $limits_table_file ) )
-            if( $check_limits && $limits_table_file );
+        #$warnings += check_limits( $dataset, $filename )
+            if $check_limits;  
+            #if( $check_limits && !$limits_table_file );
+        #$warnings += check_limits( $dataset, $filename, 
+        #                           &get_limits_table( $limits_table_file ) )
+        #    if( $check_limits && $limits_table_file );
     }
     printf "%-30s: OK\n", $filename if $warnings == 0;
 }
@@ -887,18 +890,30 @@ sub get_limits_table($) {
     }
     close( LIST ) or
         die "$0: $flimits: error closing file - $!";
-    return \%limits_table;
+    return %limits_table;
 }
 
 # To check that specified XYZ tag value is within expected limits.
 
 sub check_limits {
     my( $dataset, $filename, $limits_table ) = @_;
+    #my( $dataset, $filename ) = @_;
     my $warnings = 0;
+    #my %def_limits = %{ $limits_table };
+    
     if(! defined $dataset->{values} ) {
         return 0;
     }
     my $values = $dataset->{values};
+    
+    #my %limits_table = %{ $limits_table };
+    #my %limits_table = %default_limits_table;
+    my %new_limits_table;
+    my %def_limits = %{ $limits_table };
+    if( defined $limits_table_file ) {
+        %new_limits_table = get_limits_table( $limits_table_file );
+        $limits_table = \%new_limits_table;
+    } else { my $limits_table = \%def_limits; }
     foreach my $tag( keys %$limits_table ){
         if( exists $values->{$tag} ) {
             my $value = $values->{$tag}[0];
