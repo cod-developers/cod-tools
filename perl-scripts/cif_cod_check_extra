@@ -35,7 +35,7 @@ my $check_spacegroup_info = 1;
 my $check_symmetry_operators = 1;
 my $check_spacegroup_constraints = 1;
 my $check_limits = 1;
-
+my $print_limits = 0;
 my $use_precisions = 1;
 
 sub dont_check_any
@@ -60,11 +60,35 @@ sub check_all
     $check_limits = 1;
 }
 
-my $limits_table_file;
-my $merge_limits_table = 0;
-my $add_limits_table = 0;
-my $reset_limits = 0;
+sub get_limits_table($) {
+    my( $flimits ) = @_;
+    my %ltable;
+    open( LIST, $flimits ) or
+        die "$0: $flimits: can not open file for input - $!";
+    foreach( <LIST> ) {
+        if( /^#/ ) { next; }
+        my @constraints;
+        my @data = split( /\s+/, $_, 4 );
+        my $tag = shift( @data );
+        foreach( @data ) {
+            $_ =~ s/\s+//g;
+            if( $_ =~ /(\d*\.?\d+)-(\d*\.?\d+)/ ) {
+                push( @constraints, [$1,$2] );
+            } else {
+                push( @constraints, [$_] );
+            }
+        }
+        $ltable{$tag} = \@constraints;
+    }
+    close( LIST ) or
+        die "$0: $flimits: error closing file - $!";
+    return \%ltable;
+}
 
+my $limits_table_file;
+my $add_limits_table;
+my %limits_table;
+my $limits_table;
 my $useReporter = 0;
 my $reportFile = '-';
 
@@ -100,13 +124,13 @@ my $reportFile = '-';
 #*
 #*    --check-limits
 #*
-#*    --limits-file limits.lst
-#*    
+#*    --print-limits
+#*
 #*    --add-limits  limits.lst
 #*
-#*    --merge-limits limits_table.lst
-#*
 #*    --reset-limits
+#*
+#*    --limits-file limits.lst
 #*
 #*    --check-all
 #*
@@ -189,10 +213,13 @@ my $reportFile = '-';
     "--dont-check-limits,--no-check-limits,--do-not-check-limits"
         => sub{ $check_limits = 0 },
     
-    "--limits-file" => \$limits_table_file,
-    "--merge-limits" => sub{ $merge_limits_table = 1 },
-    "--add-limits" => sub{ $add_limits_table = 1 },
-    "--reset-limits" => sub{ $reset_limits = 1 },
+    "--limits-file" => sub{ $limits_table_file = get_value() },
+
+    "--add-limits" => sub{ $add_limits_table = get_value() },
+
+    #"--reset-limits" => sub{ %limits_table = %default_limits_table },
+    
+    "--print-limits" => sub{ $print_limits = 1 },
 
     "--check-all"
         => \&check_all,
@@ -230,11 +257,21 @@ my %default_limits_table = (
     _refine_ls_goodness_of_fit_obs => [ [0.4,6], [0.6,4], [0.8,2] ],
 );
 
-if( $reportFile =~ m/^\s*-\s*$/ || !-w dirname($reportFile) )
-{
+
+if( $reportFile =~ m/^\s*-\s*$/ || !-w dirname($reportFile) ) {
     open reportFileFH, ">&", \*STDOUT or die "Can't dup STDOUT: $!";
 } else {
     open reportFileFH, ">", $reportFile;
+}
+
+if( $limits_table_file ) {
+    $limits_table = get_limits_table( $limits_table_file );
+} elsif( $add_limits_table ) {
+    $limits_table = 
+        merge_limits_tables( \%limits_table, get_limits_table( $add_limits_table ) );
+#} elsif( undef %limits_table ) { 
+} else {
+    $limits_table = \%default_limits_table;
 }
 
 binmode( reportFileFH, 'utf8' );
@@ -271,9 +308,9 @@ for my $filename (@ARGV) {
         " error(s) encountered while parsing CIF data\n";
         exit -1;
     }
-
+    
     canonicalize_all_names( $data );
-
+    
     my $warnings = 0;
     for my $dataset (@$data) {
         $warnings += check_data( $dataset, $filename );
@@ -289,8 +326,8 @@ for my $filename (@ARGV) {
             if $check_symmetry_operators;
         $warnings += check_spacegroup_constraints( $dataset, $filename )
             if $check_spacegroup_constraints;
-        $warnings += check_limits( $dataset, $filename, \%default_limits_table )
-            if $check_limits;  
+        $warnings += check_limits( $dataset, $filename )
+            if $check_limits;
     }
     printf "%-30s: OK\n", $filename if $warnings == 0;
 }
@@ -875,73 +912,36 @@ sub parser_error_reporter
 # Subroutine that gets limits values from the file that is given under
 # the option '--limits-file'
 
-sub get_limits_table($) {
-    my( $flimits ) = @_;
-    my %limits_table;
-    open( LIST, $flimits ) or
-        die "$0: $flimits: can not open file for input - $!";
-    foreach( <LIST> ) {
-        if( /^#/ ) { next; }
-        my @constraints;
-        my @data = split( /\s+/, $_, 4 );
-        my $tag = shift( @data );
-        foreach( @data ) {
-            $_ =~ s/\s+//g;
-            if( $_ =~ /(\d*\.?\d+)-(\d*\.?\d+)/ ) {
-                push( @constraints, [$1,$2] );
-            } else {
-                push( @constraints, [$_] );
-            }
+if( $print_limits ) {
+    my $limits_table = \%limits_table; 
+    foreach my $tag( sort keys %$limits_table ) {
+        print "\n  " . $tag;
+        for my $i( 0..$#{ $limits_table->{$tag} } ) {
+            print "   " , join("-", @{ $limits_table->{$tag}[$i]} ) , " ";
         }
-        $limits_table{$tag} = \@constraints;
     }
-    close( LIST ) or
-        die "$0: $flimits: error closing file - $!";
-    return %limits_table;
-}
-
-sub merge_limit_tables($$) {
-    my( $default_table, $new_table ) = @_;
-    
+    exit 0;
 }
 
 # To check that specified XYZ tag value is within expected limits.
 
 sub check_limits {
-    my( $dataset, $filename, $limits_table ) = @_;
+    my( $dataset, $filename ) = @_;
     my $warnings = 0;
     
     if(! defined $dataset->{values} ) {
         return 0;
     }
     my $values = $dataset->{values};
-    my %new_limits_table;
-    my %def_limits = %{ $limits_table };
-    
-    if( defined $limits_table_file ) {
-        %new_limits_table = get_limits_table( $limits_table_file );
-        $limits_table = \%new_limits_table;
-    } elsif( defined $merge_limits_table ) {
-        # merge given table with default table of limits  
-        # $limits_table = merge_limits( $merge_limits_table );
-        
-    } elsif( defined $add_limits_table ) {
-        # just add limits to the default table of limits 
-        # $limits_table = add_limits( $add_limits_table );
-    
-    } elsif( $reset_limits ) {
-        $limits_table = \%def_limits;
-    } else { 
-        my $limits_table = \%def_limits; 
-    }
-    foreach my $tag( keys %$limits_table ){
+
+    foreach my $tag( keys %$limits_table ) {
         if( exists $values->{$tag} ) {
             my $value = $values->{$tag}[0];
             my @report_names = ( "ERROR", "WARNING", "NOTE" );
             if(! defined $limits_table->{$tag}[0][1] ) {
                 foreach my $i( 0..$#{ $limits_table->{$tag} } ) {
                     my $limit = @{ $limits_table->{$tag}->[$i]}[0];
-                    if( $value > $limit ) {
+                    if( $value >= $limit ) {
                         error_reporter($filename, undef, $dataset->{name},
                                        $report_names[$i] .       
                                        ", the value of the '$tag' tag " .
@@ -954,7 +954,7 @@ sub check_limits {
                 foreach my $i( 0..$#{ $limits_table->{$tag} } ) {
                     my $begin = @{ $limits_table->{$tag}->[$i]}[0];
                     my $end = @{ $limits_table->{$tag}->[$i]}[1];
-                    if( ($value < $begin) || ($value > $end) ) {
+                    if( ($value <= $begin) || ($value >= $end) ) {
                         error_reporter($filename, undef, $dataset->{name},
                                        $report_names[$i] .       
                                        ", the value of the '$tag' tag " .
