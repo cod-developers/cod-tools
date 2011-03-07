@@ -35,8 +35,8 @@ my $check_spacegroup_info = 1;
 my $check_symmetry_operators = 1;
 my $check_spacegroup_constraints = 1;
 my $check_limits = 1;
-my $print_limits = 0;
-my $reset_limits = 0;
+#my $print_limits = 0;
+#my $reset_limits = 0;
 my $use_precisions = 1;
 
 sub dont_check_any
@@ -61,10 +61,10 @@ sub check_all
     $check_limits = 1;
 }
 
-my $limits_table_file;
-my $add_limits_table;
-my %limits_table;
-my $limits_table = \%default_limits_table;
+#my $limits_table_file;
+#my $add_limits_table;
+#my %limits_table;
+#my $limits_table = \%limits_table;
 
 my $useReporter = 0;
 my $reportFile = '-';
@@ -88,6 +88,9 @@ my %default_limits_table = (
     _refine_ls_goodness_of_fit_ref => [ [0.4,6], [0.6,4], [0.8,2] ],
     _refine_ls_goodness_of_fit_obs => [ [0.4,6], [0.6,4], [0.8,2] ],
 );
+
+my %limits_table = %default_limits_table;
+my $limits_table = \%limits_table;
 
 # Subroutine that gets limits values from the file that is given under
 # the option '--limits-file'
@@ -249,14 +252,18 @@ sub merge_limits_tables($$) {
     "--dont-check-limits,--no-check-limits,--do-not-check-limits"
         => sub{ $check_limits = 0 },
     
-    "--limits-file" => sub{ $limits_table_file = get_value() },
+    #"--limits-file" => sub{ $limits_table_file = get_value() },
+    "--limits-file" => sub{ $limits_table = &get_limits_table( &get_value() ) },
 
-    "--add-limits" => sub{ $add_limits_table = get_value() },
+    #"--add-limits" => sub{ $add_limits_table = get_value() },
+    "--add-limits" => sub{ $limits_table = 
+			       &merge_limits( &get_limits_table( &get_value() ), $limits_table ) },
 
-    #"--reset-limits" => sub{ $limits_table = \%default_limits_table },
-    "--reset-limits" => sub{ $reset_limits = 1 },
+    "--reset-limits" => sub{ $limits_table = \%default_limits_table },
+    #"--reset-limits" => sub{ $reset_limits = 1 },
 
-    "--print-limits" => sub{ $print_limits = 1 },
+    #"--print-limits" => sub{ $print_limits = 1 },
+    "--print-limits" => sub{ &print_limits() }, 
 
     "--check-all"
         => \&check_all,
@@ -281,17 +288,18 @@ if( $reportFile =~ m/^\s*-\s*$/ || !-w dirname($reportFile) ) {
     open reportFileFH, ">", $reportFile;
 }
 
-if( $limits_table_file ) {
-    $limits_table = get_limits_table( $limits_table_file );
-} elsif( $add_limits_table ) {
-    $limits_table = 
-        merge_limits_tables( \%limits_table, get_limits_table( $add_limits_table ) );
-} elsif( $reset_limits ) {
-    $limits_table = \%default_limits_table;
-}
+#if( $limits_table_file ) {
+#    $limits_table = get_limits_table( $limits_table_file );
+#} elsif( $add_limits_table ) {
+#    $limits_table = 
+#        merge_limits_tables( \%limits_table, get_limits_table( $add_limits_table ) );
+#} elsif( $reset_limits ) {
+#    $limits_table = \%default_limits_table;
+#}
 
 # print out limits tablethe table of limits
-if( $print_limits ) {
+sub print_limits {
+#if( $print_limits ) {
     foreach my $tag( sort keys %$limits_table ) {
         print $tag;
         for my $i( 0..$#{ $limits_table->{$tag} } ) {
@@ -300,6 +308,7 @@ if( $print_limits ) {
         print "\n";
     }
     exit 0;
+#}
 }
 
 binmode( reportFileFH, 'utf8' );
