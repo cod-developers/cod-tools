@@ -63,12 +63,31 @@ sub check_all
 
 my $limits_table_file;
 my $add_limits_table;
-my %default_limits_table;
 my %limits_table;
 my $limits_table = \%default_limits_table;
 
 my $useReporter = 0;
 my $reportFile = '-';
+
+#===================================================================#
+#
+# The structure of the default table of the values 
+# that uses '--check-limits' option is:
+#
+# { _tag_name -> [ [$begin,$end] , [$begin,$end] , [$begin,$end] ] }
+# 
+# The array [$begin,$end] is the range of the limits.
+#
+#===================================================================#
+
+my %default_limits_table = (
+    _refine_ls_R_factor_gt =>   [ [0.2], [0.15], [0.10] ],
+    _refine_ls_R_factor_obs =>  [ [0.2], [0.15], [0.10] ],
+    _refine_ls_wR_factor_ref => [ [0.45], [0.35], [0.25] ],
+    _refine_ls_wR_factor_obs => [ [0.45], [0.35], [0.25] ],
+    _refine_ls_goodness_of_fit_ref => [ [0.4,6], [0.6,4], [0.8,2] ],
+    _refine_ls_goodness_of_fit_obs => [ [0.4,6], [0.6,4], [0.8,2] ],
+);
 
 # Subroutine that gets limits values from the file that is given under
 # the option '--limits-file'
@@ -234,7 +253,7 @@ sub merge_limits_tables($$) {
 
     "--add-limits" => sub{ $add_limits_table = get_value() },
 
-    #"--reset-limits" => sub{ %limits_table = %default_limits_table },
+    #"--reset-limits" => sub{ $limits_table = \%default_limits_table },
     "--reset-limits" => sub{ $reset_limits = 1 },
 
     "--print-limits" => sub{ $print_limits = 1 },
@@ -243,6 +262,7 @@ sub merge_limits_tables($$) {
         => \&check_all,
 
     "--check-none,--dont-check-any,--do-not-check-any,--no-check-any"
+
         => \&dont_check_any,
 
     "--use-precisions"        => sub { $use_precisions = 1 },
@@ -254,27 +274,6 @@ sub merge_limits_tables($$) {
 
     "--help,--usage" => sub { SUsage::usage; exit },
 );
-
-#===================================================================#
-#
-# The structure of the default table of the values 
-# that uses '--check-limits' option is:
-#
-# { _tag_name -> [ [$begin,$end] , [$begin,$end] , [$begin,$end] ] }
-# 
-# The array [$begin,$end] is the range of the limits.
-#
-#===================================================================#
-
-%default_limits_table = (
-    _refine_ls_R_factor_gt =>   [ [0.2], [0.15], [0.10] ],
-    _refine_ls_R_factor_obs =>  [ [0.2], [0.15], [0.10] ],
-    _refine_ls_wR_factor_ref => [ [0.45], [0.35], [0.25] ],
-    _refine_ls_wR_factor_obs => [ [0.45], [0.35], [0.25] ],
-    _refine_ls_goodness_of_fit_ref => [ [0.4,6], [0.6,4], [0.8,2] ],
-    _refine_ls_goodness_of_fit_obs => [ [0.4,6], [0.6,4], [0.8,2] ],
-);
-
 
 if( $reportFile =~ m/^\s*-\s*$/ || !-w dirname($reportFile) ) {
     open reportFileFH, ">&", \*STDOUT or die "Can't dup STDOUT: $!";
@@ -296,7 +295,7 @@ if( $print_limits ) {
     foreach my $tag( sort keys %$limits_table ) {
         print $tag;
         for my $i( 0..$#{ $limits_table->{$tag} } ) {
-            print "\t" , join("-", @{ $limits_table->{$tag}[$i]} );
+            print "\t" , join( "-", @{ $limits_table->{$tag}[$i]} );
         }
         print "\n";
     }
@@ -970,11 +969,11 @@ sub check_limits {
                     my $begin = @{ $limits_table->{$tag}->[$i]}[0];
                     my $end = @{ $limits_table->{$tag}->[$i]}[1];
                     if( ($value <= $begin) || ($value >= $end) ) {
-                        error_reporter($filename, undef, $dataset->{name},
+                        error_reporter( $filename, undef, $dataset->{name},
                                        $report_names[$i] .       
                                        ", the value of the '$tag' tag " .
                                        "'$value' lies outside the range " . 
-                                       $begin . " <> " . $end . ".");
+                                       $begin . " <> " . $end . "." );
                         $warnings ++;
                         last;
                     }   
