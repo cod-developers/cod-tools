@@ -35,8 +35,6 @@ my $check_spacegroup_info = 1;
 my $check_symmetry_operators = 1;
 my $check_spacegroup_constraints = 1;
 my $check_limits = 1;
-#my $print_limits = 0;
-#my $reset_limits = 0;
 my $use_precisions = 1;
 
 sub dont_check_any
@@ -61,17 +59,12 @@ sub check_all
     $check_limits = 1;
 }
 
-#my $limits_table_file;
-#my $add_limits_table;
-#my %limits_table;
-#my $limits_table = \%limits_table;
-
 my $useReporter = 0;
 my $reportFile = '-';
 
 #===================================================================#
 #
-# The structure of the default table of the values 
+# The structure of the default table of the limits 
 # that uses '--check-limits' option is:
 #
 # { _tag_name -> [ [$begin,$end] , [$begin,$end] , [$begin,$end] ] }
@@ -121,14 +114,12 @@ sub get_limits_table($) {
 }
 
 # Subroutine that merges tables of limits
-#  $limits_table =         merge_limits_tables( \%limits_table, get_limits_table( $add_limits_table ) );
+#  $limits_table =
+#      merge_limits_tables( \%limits_table, get_limits_table( $add_limits_table ) );
 
 sub merge_limits_tables($$) {
    my( $limits, $new_limits ) = @_;
-   
-   
-   
-   
+    
 }
 
 #* USAGE:
@@ -167,9 +158,10 @@ sub merge_limits_tables($$) {
 #*
 #*    --add-limits  limits.lst
 #*
+#*    --limits-file limits.lst
+#*
 #*    --reset-limits
 #*
-#*    --limits-file limits.lst
 #*
 #*    --check-all
 #*
@@ -252,17 +244,13 @@ sub merge_limits_tables($$) {
     "--dont-check-limits,--no-check-limits,--do-not-check-limits"
         => sub{ $check_limits = 0 },
     
-    #"--limits-file" => sub{ $limits_table_file = get_value() },
     "--limits-file" => sub{ $limits_table = &get_limits_table( &get_value() ) },
 
-    #"--add-limits" => sub{ $add_limits_table = get_value() },
-    "--add-limits" => sub{ $limits_table = 
-			       &merge_limits( &get_limits_table( &get_value() ), $limits_table ) },
+    "--add-limits" => sub{ $limits_table = &merge_limits( 
+                               &get_limits_table( &get_value() ), $limits_table ) },
 
     "--reset-limits" => sub{ $limits_table = \%default_limits_table },
-    #"--reset-limits" => sub{ $reset_limits = 1 },
-
-    #"--print-limits" => sub{ $print_limits = 1 },
+    
     "--print-limits" => sub{ &print_limits() }, 
 
     "--check-all"
@@ -288,18 +276,12 @@ if( $reportFile =~ m/^\s*-\s*$/ || !-w dirname($reportFile) ) {
     open reportFileFH, ">", $reportFile;
 }
 
-#if( $limits_table_file ) {
-#    $limits_table = get_limits_table( $limits_table_file );
-#} elsif( $add_limits_table ) {
-#    $limits_table = 
-#        merge_limits_tables( \%limits_table, get_limits_table( $add_limits_table ) );
-#} elsif( $reset_limits ) {
-#    $limits_table = \%default_limits_table;
-#}
+# The subroutine that prints out the table of limits
 
-# print out limits tablethe table of limits
 sub print_limits {
-#if( $print_limits ) {
+#    print "# The table of data value limits that \n" .
+#          "# 'cif_cod_check' script uses under the \n" .
+#          "# option '--check-limits'.\n";
     foreach my $tag( sort keys %$limits_table ) {
         print $tag;
         for my $i( 0..$#{ $limits_table->{$tag} } ) {
@@ -308,7 +290,6 @@ sub print_limits {
         print "\n";
     }
     exit 0;
-#}
 }
 
 binmode( reportFileFH, 'utf8' );
