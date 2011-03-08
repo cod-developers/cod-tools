@@ -65,17 +65,128 @@ static cexception_t *px; /* parser exception */
     int token;           /* token value returned by lexer */
 }
 
-%token __IDENTIFIER
-%token __STRING_CONST
-%token __INTEGER_CONST
-%token __REAL_CONST
+%token _DATA_
+%token _SAVE_HEAD
+%token _SAVE_FOOT
+%token _TAG
+%token _LOOP_
+%token _DQSTRING
+%token _SQSTRING
+%token _UQSTRING
+%token _TEXT_FIELD
+%token _INTEGER_CONST
+%token _REAL_CONST
 
 %%
 
-CIF
-  :   {
-      }
-  ;
+cif_file
+       :	// empty
+	|	data_block_list
+	|	headerless_data_block
+	|	headerless_data_block data_block_list
+	|	stray_cif_value_list
+	|	stray_cif_value_list data_block_list
+;
+
+stray_cif_value_list
+        : cif_value 
+        | cif_value cif_value_list
+;
+
+//  cif_value_list
+//      : cif_value
+//      | cif_value_list cif_value
+//  ;
+
+data_block_list
+	:	data_block_list data_block
+	|	data_block
+;
+
+headerless_data_block
+	:	data_item
+		data_item_list
+;
+
+data_block
+	:	data_block_head data_item_list
+        |       data_block_head //  empty data item list
+;
+
+data_item_list
+	:	data_item_list data_item
+	|	data_item
+;
+
+data_block_head
+	:	_DATA_
+	|	_DATA_ cif_value_list
+;
+
+data_item
+	:	save_item
+	|	save_block
+// 	|	error
+;
+
+save_item_list
+	:	save_item_list save_item
+	|	save_item
+;
+
+save_item
+	:	cif_entry
+	|	loop
+;
+
+cif_entry
+	:	_TAG cif_value
+        |       _TAG cif_value cif_value_list
+;
+
+cif_value_list
+        :       cif_value
+        |       cif_value_list cif_value
+;
+
+loop
+    :	_LOOP_ loop_tags loop_values
+;
+
+loop_tags
+	:	loop_tags _TAG
+	|	_TAG
+;
+
+loop_values
+	:	loop_values cif_value
+	|	cif_value
+;
+
+save_block
+	:	_SAVE_HEAD save_item_list _SAVE_FOOT
+;
+
+cif_value
+	:	string
+	|	number
+	|	textfield
+;
+
+string
+	:	_SQSTRING
+	|	_DQSTRING
+	|	_UQSTRING
+;
+
+textfield
+        :	_TEXT_FIELD
+;
+
+number
+	:	_REAL_CONST
+	|	_INTEGER_CONST
+;
 
 %%
 
