@@ -9,9 +9,6 @@
 
  /* %option yylineno */
 
-%x	comment
-%x	m2comment
-
 DECIMAL_DIGIT  [0-9]
 NAME	       [a-zA-Z_][a-zA-Z0-9_]*
 INTEGER	       {DECIMAL_DIGIT}+
@@ -23,6 +20,8 @@ REAL           {FIXED}([eE]([-+]?)[0-9]+)?
 DSTRING         \"(([^\"\n]|\\\")*)*\"
 SSTRING         '(([^'\n]|\\')*)*'
 STRING          {DSTRING}|{SSTRING}
+
+ /* Unterminated double and single quoted strings */
 
 UDSTRING        \"[^\"\n]*
 USSTRING        '[^'\n]*
@@ -38,6 +37,7 @@ USTRING         {UDSTRING}|{USSTRING}
 #include <string.h>
 #include <ctype.h>
 #include <assert.h>
+#include <common.h>
 #include <yy.h>
 #include <cif_grammar_y.h>
 #include <cif_grammar.tab.h>
@@ -82,22 +82,7 @@ static void storeCurrentLine( char *line, int length );
 
  /**************** eat up comments **************************/
 
-"//".*
 "#".*
-
-"/*"			{ MARK; BEGIN(comment); }
-<comment>^.*		{ RESET_MARK; storeCurrentLine(yytext, yyleng); yyless(0); }
-<comment>\n+		{ COUNT_LINES; }
-<comment>[^*\n]*	{ ADVANCE_MARK; }
-<comment>"*"+[^*/\n]*	{ ADVANCE_MARK; }
-<comment>"*"+"/"	{ ADVANCE_MARK; BEGIN(INITIAL); }
-
-"(*"			{ MARK; BEGIN(m2comment); }
-<m2comment>^.*		{ RESET_MARK; storeCurrentLine(yytext, yyleng); yyless(0); }
-<m2comment>\n+		{ COUNT_LINES; }
-<m2comment>[^*\n]*	{ ADVANCE_MARK; }
-<m2comment>"*"+[^*)\n]*	{ ADVANCE_MARK; }
-<m2comment>"*"+")"	{ ADVANCE_MARK; BEGIN(INITIAL); }
 
  /**************** eat up whitespace ************************/
 
@@ -116,7 +101,7 @@ static void storeCurrentLine( char *line, int length );
  /* array      { MARK; return _ARRAY; } */
  /* begin      { MARK; return '{'; } */
 
- /********************** identifiers *************************/
+ /********************** unquoted strings *************************/
 
 {NAME}			%{
                            MARK;
@@ -124,24 +109,16 @@ static void storeCurrentLine( char *line, int length );
 			           CIF_FLEX_DEBUG_YYLVAL )
                                printf("yylval.s = %s\n", yytext);
                            yylval.s = strclone(yytext);
-                           return __IDENTIFIER;
+                           return _UQSTRING;
 			%}
 
  /********************* literal constants *********************/
-
-{INTEGER}".."		%{
-                           yyless(strlen(yytext) - 2);
-                           MARK;
-                           yylval.s = strnclone(yytext, yyleng);
-                           yylval.s = process_escapes(yylval.s);
-			   return __INTEGER_CONST;
-			%}
 
 {INTEGER}		%{
                            MARK;
                            yylval.s = strnclone(yytext, yyleng);
                            yylval.s = process_escapes(yylval.s);
-			   return __INTEGER_CONST;
+			   return _INTEGER_CONST;
 			%}
 
 {REAL}			%{
@@ -149,20 +126,20 @@ static void storeCurrentLine( char *line, int length );
                            yylval.s = strnclone(yytext, yyleng);
                            yylval.s = process_escapes(yylval.s);
 			   /* sscanf( yytext, "%lf", &yylval.r ); */
-			   return __REAL_CONST;
+			   return _REAL_CONST;
 			%}
 
  /************************* strings **********************************/
 
-{STRING}		%{
+{DSTRING}		%{
                            MARK;
                            assert(yyleng > 1);
                            yylval.s = strnclone(yytext + 1, yyleng - 2);
                            yylval.s = process_escapes(yylval.s);
-                           return __STRING_CONST;
+                           return _DQSTRING;
 			%}
 
-({USTRING})$		%{
+({UDSTRING})$		%{
                            MARK;
                            assert(yyleng > 0);
                            yyerror("unterminated string");
@@ -170,7 +147,26 @@ static void storeCurrentLine( char *line, int length );
                                          strnclone(yytext + 1, yyleng - 2) :
                                          strclone("");
                            yylval.s = process_escapes(yylval.s);
-                           return __STRING_CONST;
+                           return _DQSTRING;
+			%}
+
+{SSTRING}		%{
+                           MARK;
+                           assert(yyleng > 1);
+                           yylval.s = strnclone(yytext + 1, yyleng - 2);
+                           yylval.s = process_escapes(yylval.s);
+                           return _SQSTRING;
+			%}
+
+({USSTRING})$		%{
+                           MARK;
+                           assert(yyleng > 0);
+                           yyerror("unterminated string");
+                           yylval.s = yyleng > 1 ?
+                                         strnclone(yytext + 1, yyleng - 2) :
+                                         strclone("");
+                           yylval.s = process_escapes(yylval.s);
+                           return _SQSTRING;
 			%}
 
 .			{ MARK; return yytext[0]; }
