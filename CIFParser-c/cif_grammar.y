@@ -154,6 +154,9 @@ save_item
 cif_entry
 	:	_TAG cif_value
         |       _TAG cif_value cif_value_list
+	{
+	    yywarning( "unterminated string" );
+	}
 ;
 
 cif_value_list
