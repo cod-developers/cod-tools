@@ -109,25 +109,7 @@ data_          { MARK; yylval.s = NULL;  return _DATA_; }
 loop_          { MARK; return _LOOP_; }
 _[^ \t\n]+     { MARK; yylval.s = strclone(yytext); return _TAG; }
 
- /********************** unquoted strings *************************/
-
-{UQSTRING}	        %{
-                           MARK;
-                           if( cif_flex_debug_flags &
-			           CIF_FLEX_DEBUG_YYLVAL )
-                               printf("yylval.s = %s\n", yytext);
-                           yylval.s = strclone(yytext);
-                           return _UQSTRING;
-			%}
-
  /********************* literal constants *********************/
-
-{INTEGER}		%{
-                           MARK;
-                           yylval.s = strnclone(yytext, yyleng);
-                           yylval.s = process_escapes(yylval.s);
-			   return _INTEGER_CONST;
-			%}
 
 {REAL}			%{
                            MARK;
@@ -135,6 +117,13 @@ _[^ \t\n]+     { MARK; yylval.s = strclone(yytext); return _TAG; }
                            yylval.s = process_escapes(yylval.s);
 			   /* sscanf( yytext, "%lf", &yylval.r ); */
 			   return _REAL_CONST;
+			%}
+
+{INTEGER}		%{
+                           MARK;
+                           yylval.s = strnclone(yytext, yyleng);
+                           yylval.s = process_escapes(yylval.s);
+			   return _INTEGER_CONST;
 			%}
 
  /************************* strings **********************************/
@@ -175,6 +164,17 @@ _[^ \t\n]+     { MARK; yylval.s = strclone(yytext); return _TAG; }
                                          strclone("");
                            yylval.s = process_escapes(yylval.s);
                            return _SQSTRING;
+			%}
+
+ /********************** unquoted strings *************************/
+
+{UQSTRING}	        %{
+                           MARK;
+                           if( cif_flex_debug_flags &
+			           CIF_FLEX_DEBUG_YYLVAL )
+                               printf("yylval.s = %s\n", yytext);
+                           yylval.s = strclone(yytext);
+                           return _UQSTRING;
 			%}
 
 \.	                %{
