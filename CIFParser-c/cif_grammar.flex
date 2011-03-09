@@ -14,8 +14,8 @@
 UQSTRING       [^-+ \t\n\r\#\[\'\"0-9.][^ \t\n\r]*
 
 DECIMAL_DIGIT  [0-9]
-INTEGER	       {DECIMAL_DIGIT}+
-FIXED	       ({DECIMAL_DIGIT}+"."{DECIMAL_DIGIT}*)|("."{DECIMAL_DIGIT}+)
+INTEGER	       (-|\+)?{DECIMAL_DIGIT}+
+FIXED	       (-|\+)?({DECIMAL_DIGIT}+"."{DECIMAL_DIGIT}*)|("."{DECIMAL_DIGIT}+)
 REAL           {FIXED}([eE]([-+]?)[0-9]+)?
 
  /* Double and single quoted strings */
