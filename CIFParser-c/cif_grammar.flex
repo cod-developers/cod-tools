@@ -11,7 +11,7 @@
 
 %x	text
 
-UQSTRING       [^ \t\n\r\#\[\'\".][^ \t\n\r]*
+UQSTRING       [^ \t\n\r\#\[\'\"][^ \t\n\r]*
 
 DECIMAL_DIGIT  [0-9]
 INTEGER	       [-+]?{DECIMAL_DIGIT}+
@@ -23,8 +23,8 @@ REAL_ESD       {REAL}(\({INTEGER}\))?
 
  /* Double and single quoted strings */
 
-DSTRING         \"([^\"\n]|\"[^ \t\n\r])*\"
-SSTRING         '([^'\n]|\'[^ \t\n\r])*'
+DSTRING         \"([^\"\n]|\"[^ \t\n\r])*\"?\"
+SSTRING         '([^'\n]|\'[^ \t\n\r])*\'?'
 STRING          {DSTRING}|{SSTRING}
 
  /* Unterminated double and single quoted strings */
