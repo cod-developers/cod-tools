@@ -11,8 +11,9 @@
 
 %x	text
 
+UQSTRING       [^ \t\n\#\[\'\"][^ \t\n]*
+
 DECIMAL_DIGIT  [0-9]
-NAME	       [a-zA-Z_][a-zA-Z0-9_]*
 INTEGER	       {DECIMAL_DIGIT}+
 FIXED	       ({DECIMAL_DIGIT}+"."{DECIMAL_DIGIT}*)|("."{DECIMAL_DIGIT}+)
 REAL           {FIXED}([eE]([-+]?)[0-9]+)?
@@ -110,7 +111,7 @@ _[^ \t\n]+     { MARK; yylval.s = strclone(yytext); return _TAG; }
 
  /********************** unquoted strings *************************/
 
-{NAME}			%{
+{UQSTRING}	        %{
                            MARK;
                            if( cif_flex_debug_flags &
 			           CIF_FLEX_DEBUG_YYLVAL )
