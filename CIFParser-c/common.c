@@ -36,6 +36,17 @@ char *strnclone( const char *s, size_t length )
    return new;
 }
 
+char *strappend( char *s, const char *suffix )
+{
+   ssize_t s_length = strlen(s);
+   ssize_t suffix_length = strlen(suffix);
+   char *new;
+   merror( new = realloc(s, s_length + suffix_length + 1) );
+   strcpy( new + s_length, suffix );
+   new[s_length+suffix_length] = '\0';
+   return new;
+}
+
 char translate_escape( char **s )
 {
     switch( *(++(*s)) ) {

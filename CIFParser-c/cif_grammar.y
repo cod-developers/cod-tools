@@ -209,9 +209,6 @@ static void cif_compile_file( char *filename, cexception_t *ex )
     cexception_guard( inner ) {
         if( filename ) {
             yyin = fopenx( filename, "r", ex );
-            printf( "Opening '%s'\n", filename );
-        } else {
-            printf( "should read stdin...\n" );
         }
 	if( yyparse() != 0 ) {
 	    int errcount = cif_yy_error_number();
