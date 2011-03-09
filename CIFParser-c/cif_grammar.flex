@@ -65,6 +65,12 @@ static int currentLineLength = 0;
 static int lineCnt = 1;
 static int linePos, nextPos;
 
+void cif_flex_reset_counters( void )
+{
+    lineCnt = 1;
+    linePos = nextPos = 0;
+}
+
 /* The following macros are used to save context for error reporting
 routines (notably yyerror()). MARK remembers the start position of the
 current token. If yacc fails, we know that it is this token that
