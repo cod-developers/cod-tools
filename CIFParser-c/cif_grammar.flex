@@ -9,6 +9,8 @@
 
  /* %option yylineno */
 
+%x	text
+
 DECIMAL_DIGIT  [0-9]
 NAME	       [a-zA-Z_][a-zA-Z0-9_]*
 INTEGER	       {DECIMAL_DIGIT}+
@@ -84,6 +86,18 @@ static void storeCurrentLine( char *line, int length );
 
 "#".*
 
+ /**************** process multi-line text fields **************************/
+
+^;.*			{ MARK; BEGIN(text); yylval.s = strclone( yytext + 1 ); }
+<text>^[^;].*		{
+                          RESET_MARK;
+                          storeCurrentLine(yytext, yyleng);
+                          yylval.s = strappend( yylval.s, yytext );
+                          yyless(0);
+                        }
+<text>\n+		{ COUNT_LINES; }
+<text>^;	        { ADVANCE_MARK; BEGIN(INITIAL); return _TEXT_FIELD; }
+
  /**************** eat up whitespace ************************/
 
 [ \t]+			ADVANCE_MARK;
@@ -96,13 +110,10 @@ static void storeCurrentLine( char *line, int length );
 
  /*********************** keywords ***************************/
 
- /* and        { MARK; return _AND; } */
- /* any        { MARK; return _ANY; } */
- /* array      { MARK; return _ARRAY; } */
- /* begin      { MARK; return '{'; } */
-
 data_[^ \t\n]+ { MARK; yylval.s = strclone(yytext + 5);  return _DATA_; }
 data_          { MARK; yylval.s = NULL;  return _DATA_; }
+loop_          { MARK; return _LOOP_; }
+_[^ \t\n]+     { MARK; yylval.s = strclone(yytext); return _TAG; }
 
  /********************** unquoted strings *************************/
 
