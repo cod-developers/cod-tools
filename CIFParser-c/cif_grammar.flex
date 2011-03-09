@@ -11,7 +11,7 @@
 
 %x	text
 
-UQSTRING       [^ \t\n\#\[\'\"][^ \t\n]*
+UQSTRING       [^-+ \t\n\#\[\'\"0-9.][^ \t\n]*
 
 DECIMAL_DIGIT  [0-9]
 INTEGER	       {DECIMAL_DIGIT}+
