@@ -11,7 +11,7 @@
 
 %x	text
 
-UQSTRING       [^-+ \t\n\#\[\'\"0-9.][^ \t\n]*
+UQSTRING       [^-+ \t\n\r\#\[\'\"0-9.][^ \t\n\r]*
 
 DECIMAL_DIGIT  [0-9]
 INTEGER	       {DECIMAL_DIGIT}+
@@ -26,8 +26,8 @@ STRING          {DSTRING}|{SSTRING}
 
  /* Unterminated double and single quoted strings */
 
-UDSTRING        \"[^\"\n]*
-USSTRING        '[^'\n]*
+UDSTRING        \"[^\"\n\r]*
+USSTRING        '[^'\n\r]*
 USTRING         {UDSTRING}|{USSTRING}
 
 %{
@@ -100,7 +100,7 @@ static void storeCurrentLine( char *line, int length );
 
  /**************** eat up whitespace ************************/
 
-[ \t]+			ADVANCE_MARK;
+[ \t\r]+			ADVANCE_MARK;
 
  /*********************** keywords ***************************/
 
