@@ -242,6 +242,7 @@ CIF *new_cif_from_cif_file( char *filename, cexception_t *ex )
 
     assert( !cif_cc );
     cif_cc = new_cif_compiler( filename, ex );
+    cif_flex_reset_counters();
 
     cif_compile_file( filename, ex );
 

@@ -18,6 +18,8 @@ void cif_flex_debug_yylval( void );
 void cif_flex_debug_yytext( void );
 void cif_flex_debug_lines( void );
 
+void cif_flex_reset_counters( void );
+
 int cif_flex_current_line_number( void );
 void cif_flex_set_current_line_number( ssize_t line );
 int cif_flex_current_position( void );
