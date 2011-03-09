@@ -177,6 +177,12 @@ _[^ \t\n]+     { MARK; yylval.s = strclone(yytext); return _TAG; }
                            return _SQSTRING;
 			%}
 
+\.	                %{
+                           MARK;
+                           yylval.s = strclone(yytext);
+                           return _UQSTRING;
+			%}
+
 .			{ MARK; return yytext[0]; }
 
 %%
