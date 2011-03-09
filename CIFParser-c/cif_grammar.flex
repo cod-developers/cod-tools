@@ -23,8 +23,8 @@ REAL_ESD       {REAL}(\({INTEGER}\))?
 
  /* Double and single quoted strings */
 
-DSTRING         \"(([^\"\n]|\\\")*)*\"
-SSTRING         '(([^'\n]|\\')*)*'
+DSTRING         \"([^\"\n]|\"[^ \t\n\r])*\"
+SSTRING         '([^'\n]|\'[^ \t\n\r])*'
 STRING          {DSTRING}|{SSTRING}
 
  /* Unterminated double and single quoted strings */
