@@ -11,12 +11,15 @@
 
 %x	text
 
-UQSTRING       [^ \t\n\r\#\[\'\"0-9.][^ \t\n\r]*
+UQSTRING       [^ \t\n\r\#\[\'\".][^ \t\n\r]*
 
 DECIMAL_DIGIT  [0-9]
 INTEGER	       [-+]?{DECIMAL_DIGIT}+
 FIXED	       [-+]?(({DECIMAL_DIGIT}+"."{DECIMAL_DIGIT}*)|("."{DECIMAL_DIGIT}+))
 REAL           {FIXED}([eE]([-+]?)[0-9]+)?
+
+INTEGER_ESD    {INTEGER}(\({INTEGER}\))?
+REAL_ESD       {REAL}(\({INTEGER}\))?
 
  /* Double and single quoted strings */
 
@@ -111,7 +114,7 @@ _[^ \t\n]+     { MARK; yylval.s = strclone(yytext); return _TAG; }
 
  /********************* literal constants *********************/
 
-{REAL}			%{
+{REAL_ESD}		%{
                            MARK;
                            yylval.s = strnclone(yytext, yyleng);
                            yylval.s = process_escapes(yylval.s);
@@ -119,7 +122,7 @@ _[^ \t\n]+     { MARK; yylval.s = strclone(yytext); return _TAG; }
 			   return _REAL_CONST;
 			%}
 
-{INTEGER}		%{
+{INTEGER_ESD}		%{
                            MARK;
                            yylval.s = strnclone(yytext, yyleng);
                            yylval.s = process_escapes(yylval.s);
