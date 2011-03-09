@@ -14,8 +14,8 @@
 UQSTRING       [^-+ \t\n\r\#\[\'\"0-9.][^ \t\n\r]*
 
 DECIMAL_DIGIT  [0-9]
-INTEGER	       (-|\+)?{DECIMAL_DIGIT}+
-FIXED	       (-|\+)?({DECIMAL_DIGIT}+"."{DECIMAL_DIGIT}*)|("."{DECIMAL_DIGIT}+)
+INTEGER	       [-+]?{DECIMAL_DIGIT}+
+FIXED	       [-+]?(({DECIMAL_DIGIT}+"."{DECIMAL_DIGIT}*)|("."{DECIMAL_DIGIT}+))
 REAL           {FIXED}([eE]([-+]?)[0-9]+)?
 
  /* Double and single quoted strings */
@@ -90,11 +90,11 @@ static void storeCurrentLine( char *line, int length );
  /**************** process multi-line text fields **************************/
 
 \n;.*			{ MARK; BEGIN(text); yylval.s = strclone( yytext + 1 ); }
-<text>^[^;].*		{
+<text>^[^;].*		%{
                           RESET_MARK;
                           storeCurrentLine(yytext, yyleng);
                           yylval.s = strappend( yylval.s, yytext );
-                        }
+                        %}
 <text>\n+		{ COUNT_LINES; yylval.s = strappend( yylval.s, yytext ); }
 <text>^;	        { ADVANCE_MARK; BEGIN(INITIAL); return _TEXT_FIELD; }
 
