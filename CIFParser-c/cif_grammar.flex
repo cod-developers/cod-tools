@@ -80,7 +80,7 @@ static void storeCurrentLine( char *line, int length );
  /********* store line for better error reporting ***********/
 
 ^.*   { storeCurrentLine(yytext, yyleng); RESET_MARK; yyless(0); }
- \n+   COUNT_LINES; /** count lines **/
+\n+   COUNT_LINES; /** count lines **/
 
  /**************** eat up comments **************************/
 
@@ -88,25 +88,18 @@ static void storeCurrentLine( char *line, int length );
 
  /**************** process multi-line text fields **************************/
 
-^;.*			{ MARK; BEGIN(text); yylval.s = strclone( yytext + 1 ); }
+\n;.*			{ MARK; BEGIN(text); yylval.s = strclone( yytext + 1 ); }
 <text>^[^;].*		{
                           RESET_MARK;
                           storeCurrentLine(yytext, yyleng);
                           yylval.s = strappend( yylval.s, yytext );
-                          yyless(0);
                         }
-<text>\n+		{ COUNT_LINES; }
+<text>\n+		{ COUNT_LINES; yylval.s = strappend( yylval.s, yytext ); }
 <text>^;	        { ADVANCE_MARK; BEGIN(INITIAL); return _TEXT_FIELD; }
 
  /**************** eat up whitespace ************************/
 
 [ \t]+			ADVANCE_MARK;
-
- /**************** multi-character tokens *********************/
-
- /* ":="                    { MARK; yylval.op = ':'/\*OP_COPY*\/; return __ASSIGN; } */
- /* "->"                    { MARK; yylval.op = ':'/\*OP_COPY*\/; return __ARROW; } */
- /* "="                     { MARK; yylval.op = ':'/\*OP_COPY*\/; return '='; } */
 
  /*********************** keywords ***************************/
 
