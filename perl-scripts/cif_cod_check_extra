@@ -170,7 +170,6 @@ sub merge_limits_tables($$) {
 #*
 #*    --reset-limits
 #*
-#*
 #*    --check-all
 #*
 #*    --check-none, --dont-check-any
@@ -950,11 +949,18 @@ sub check_limits {
     foreach my $tag( keys %$limits_table ) {
         if( exists $values->{$tag} ) {
             my $value = $values->{$tag}[0];
+            if( $value =~ /^(\.|\?)$/ ) {
+                print STDERR "$0: $filename: WARNING, tag '$tag' " .
+                    "value '$value' is not defined.\n";
+                
+                $warnings++;
+                next;
+            }
             if( $value !~ /^[+-]?(\d+(\.\d*)?|\.\d+)$/ ) {
-                print STDERR "$0: $filename: ERROR, The value of the '$tag' tag '$value' " .
+                print STDERR "$0: $filename: WARNING, tag '$tag' value '$value'  " .
                     "is not numeric.\n";
                 $warnings++;
-                #last;
+                next;
             } else {
                 my @report_names = ( "ERROR", "WARNING", "NOTE" );
                 if(! defined $limits_table->{$tag}[0][1] ) {
@@ -963,8 +969,8 @@ sub check_limits {
                         if( $value >= $limit ) {
                             error_reporter($filename, undef, $dataset->{name},
                                            $report_names[$i] .       
-                                           ", the value of the '$tag' tag " .
-                                           "'$value' is > " . $limit . ".");
+                                           ", tag '$tag' value '$value' " .
+                                           "is > " . $limit . ".");
                             $warnings ++;
                             last;
                         }
@@ -976,8 +982,8 @@ sub check_limits {
                         if( ($value <= $begin) || ($value >= $end) ) {
                             error_reporter( $filename, undef, $dataset->{name},
                                             $report_names[$i] .       
-                                            ", the value of the '$tag' tag " .
-                                            "'$value' lies outside the range " . 
+                                            ", tag '$tag' value '$value' " .
+                                            "lies outside the range " . 
                                             $begin . " <> " . $end . "." );
                             $warnings ++;
                             last;
