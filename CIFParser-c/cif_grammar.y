@@ -65,7 +65,7 @@ static cexception_t *px; /* parser exception */
     int token;           /* token value returned by lexer */
 }
 
-%token _DATA_
+%token <s> _DATA_
 %token _SAVE_HEAD
 %token _SAVE_FOOT
 %token _TAG
@@ -76,6 +76,8 @@ static cexception_t *px; /* parser exception */
 %token _TEXT_FIELD
 %token _INTEGER_CONST
 %token _REAL_CONST
+
+%type <s> data_block_head
 
 %%
 
@@ -110,7 +112,17 @@ headerless_data_block
 
 data_block
 	:	data_block_head data_item_list
+        {
+            if( $1 == NULL ) {
+                yywarning( "data block header has no data block name" );
+            }
+        }
         |       data_block_head //  empty data item list
+        {
+            if( $1 == NULL ) {
+                yywarning( "data block header has no data block name" );
+            }
+        }
 ;
 
 data_item_list
@@ -195,7 +207,12 @@ static void cif_compile_file( char *filename, cexception_t *ex )
     cexception_t inner;
 
     cexception_guard( inner ) {
-        yyin = fopenx( filename, "r", ex );
+        if( filename ) {
+            yyin = fopenx( filename, "r", ex );
+            printf( "Opening '%s'\n", filename );
+        } else {
+            printf( "should read stdin...\n" );
+        }
 	if( yyparse() != 0 ) {
 	    int errcount = cif_yy_error_number();
 	    cexception_raise( &inner, CIF_UNRECOVERABLE_ERROR,
@@ -221,7 +238,7 @@ static void cif_compile_file( char *filename, cexception_t *ex )
 
 CIF *new_cif_from_cif_file( char *filename, cexception_t *ex )
 {
-    CIF *code;
+    CIF *code = NULL;
 
     assert( !cif_cc );
     cif_cc = new_cif_compiler( filename, ex );
@@ -283,6 +300,11 @@ int yyerror( char *message )
     fprintf(stderr, "%*s\n", cif_flex_current_position(), "^" );
     fflush(NULL);
     return 0;
+}
+
+int yywarning( char *message )
+{
+    return yyerror( message );
 }
 
 int yywrap()

@@ -1,5 +1,6 @@
 
 #include <stdio.h>
+#include <unistd.h>
 #include <string.h>
 #include <getoptions.h>
 #include <cif_grammar_y.h>
@@ -54,7 +55,7 @@ int main( int argc, char *argv[], char *env[] )
       exit(1);
   }
 
-  if( files[0] == NULL ) {
+  if( files[0] == NULL && isatty(0) && isatty(1) ) {
       fprintf( stderr, "%s: Usage: %s data.cif\n", argv[0], argv[0] );
       exit(2);
   }
@@ -64,6 +65,7 @@ int main( int argc, char *argv[], char *env[] )
   cif_debug_off();
   if( debug.present ) {
       if( strstr(debug.value.s, "lex") != NULL ) cif_flex_debug_yyflex();
+      if( strstr(debug.value.s, "yacc") != NULL ) cif_yy_debug_on();
       if( strstr(debug.value.s, "yylval") != NULL ) cif_flex_debug_yylval();
       if( strstr(debug.value.s, "text") != NULL ) cif_flex_debug_yytext();
       if( strstr(debug.value.s, "code") != NULL ) {
@@ -83,7 +85,7 @@ int main( int argc, char *argv[], char *env[] )
 	      cif_dump( code );
 	  }
       } else {
-	  for( i = 0; files[i] != NULL; i++ ) {
+	  for( i = 0; i == 0 || files[i] != NULL; i++ ) {
 	      code = new_cif_from_cif_file( files[i], &inner );
 
 	      if( debug.present && strstr(debug.value.s, "dump") != NULL ) {

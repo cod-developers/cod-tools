@@ -101,6 +101,9 @@ static void storeCurrentLine( char *line, int length );
  /* array      { MARK; return _ARRAY; } */
  /* begin      { MARK; return '{'; } */
 
+data_[^ \t\n]+ { MARK; yylval.s = strclone(yytext + 5);  return _DATA_; }
+data_          { MARK; yylval.s = NULL;  return _DATA_; }
+
  /********************** unquoted strings *************************/
 
 {NAME}			%{
