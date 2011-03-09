@@ -951,8 +951,10 @@ sub check_limits {
         if( exists $values->{$tag} ) {
             my $value = $values->{$tag}[0];
             if( $value !~ /^[+-]?(\d+(\.\d*)?|\.\d+)$/ ) {
-            print STDERR "The value of the '$tag' tag '$value' " .
-                             "is not numeric.\n";
+                print STDERR "$0: $filename: ERROR, The value of the '$tag' tag '$value' " .
+                    "is not numeric.\n";
+                $warnings++;
+                #last;
             } else {
                 my @report_names = ( "ERROR", "WARNING", "NOTE" );
                 if(! defined $limits_table->{$tag}[0][1] ) {
