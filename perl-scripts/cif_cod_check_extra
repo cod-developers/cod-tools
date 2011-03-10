@@ -952,13 +952,10 @@ sub check_limits {
         if( exists $values->{$tag} ) {
             my $value = $values->{$tag}[0];
             if( $value =~ /^(\.|\?)$/ ) {
-                print STDERR "$0: $filename: WARNING, tag '$tag' " .
-                    "value '$value' is not defined.\n";
-                $warnings++;
                 next;
             }
             if( $value !~ /^([+-]?(?:\d+(?:\.\d*)?|\.\d+))(\(?\d*\)?)$/ ) {
-                print STDERR "$0: $filename: WARNING, tag '$tag' value '$value'  " .
+                print STDERR "$0: $filename: ERROR, tag '$tag' value '$value' " .
                     "is not numeric.\n";
                 $warnings++;
                 next;
@@ -974,7 +971,7 @@ sub check_limits {
                 } elsif(! defined $limits_table->{$tag}[0][1] ) {
                     foreach my $i( 0..$#{ $limits_table->{$tag} } ) {
                         my $limit = @{ $limits_table->{$tag}->[$i]}[0];
-                        if( $number >= $limit ) {
+                        if( $number > $limit ) {
                             error_reporter($filename, undef, $dataset->{name},
                                            $report_names[$i] .       
                                            ", tag '$tag' value '$value' " .
@@ -987,7 +984,7 @@ sub check_limits {
                     foreach my $i( 0..$#{ $limits_table->{$tag} } ) {
                         my $begin = @{ $limits_table->{$tag}->[$i]}[0];
                         my $end = @{ $limits_table->{$tag}->[$i]}[1];
-                        if( ($number <= $begin) || ($number >= $end) ) {
+                        if( ($number < $begin) || ($number > $end) ) {
                             error_reporter( $filename, undef, $dataset->{name},
                                             $report_names[$i] .       
                                             ", tag '$tag' value '$value' " .
