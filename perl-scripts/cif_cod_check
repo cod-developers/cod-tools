@@ -10,7 +10,8 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #------------------------------------------------------------------------------
 #*
 #  Parse a CIF file, check if certain data values match COD
-#  requirements.
+#  requirements and IUCr data validation criteria (Version: 2000.06.09,
+#  ftp://ftp.iucr.ac.uk/pub/dvntests or ftp://ftp.iucr.org/pub/dvntests)
 #**
 
 use strict;
@@ -33,7 +34,7 @@ my $check_chemical_formula_sum = 1;
 my $check_spacegroup_info = 1;
 my $check_symmetry_operators = 1;
 my $check_spacegroup_constraints = 1;
-
+my $check_limits = 1;
 my $use_precisions = 1;
 
 sub dont_check_any
@@ -44,6 +45,7 @@ sub dont_check_any
     $check_spacegroup_info = 0;
     $check_symmetry_operators = 0;
     $check_spacegroup_constraints = 0;
+    $check_limits = 0;
 }
 
 sub check_all
@@ -54,10 +56,79 @@ sub check_all
     $check_spacegroup_info = 1;
     $check_symmetry_operators = 1;
     $check_spacegroup_constraints = 1;
+    $check_limits = 1;
 }
 
 my $useReporter = 0;
 my $reportFile = '-';
+
+#===================================================================#
+#
+# The structure of the default table of the limits 
+# that uses '--check-limits' option is:
+#
+# { _tag_name -> [ [$begin,$end] , [$begin,$end] , [$begin,$end] ] }
+# 
+# The array [$begin,$end] is the range of the limits.
+#
+#===================================================================#
+
+my %default_limits_table = (
+    _refine_ls_R_factor_gt =>   [ [0.2], [0.15], [0.10] ],
+    _refine_ls_R_factor_obs =>  [ [0.2], [0.15], [0.10] ],
+    _refine_ls_wR_factor_ref => [ [0.45], [0.35], [0.25] ],
+    _refine_ls_wR_factor_obs => [ [0.45], [0.35], [0.25] ],
+    _refine_ls_goodness_of_fit_ref => [ [0.4,6], [0.6,4], [0.8,2] ],
+    _refine_ls_goodness_of_fit_obs => [ [0.4,6], [0.6,4], [0.8,2] ],
+);
+
+my %limits_table = %default_limits_table;
+my $limits_table = \%limits_table;
+
+# Subroutine that gets limits values from the file that is given under
+# the option '--limits-file'
+
+sub get_limits_table($) {
+    my( $flimits ) = @_;
+    my %ltable;
+    open( LIST, $flimits ) or
+        die "$0: $flimits: can not open file for input - $!";
+    foreach( <LIST> ) {
+        if( /^#/ ) { next; }
+        my @constraints;
+        my @data = split( /\s+/, $_, 4 );
+        my $tag = shift( @data );
+        foreach( @data ) {
+            $_ =~ s/\s+//g;
+            if( $_ =~ /(\d*\.?\d+)-(\d*\.?\d+)/ ) {
+                push( @constraints, [$1,$2] );
+            } else {
+                push( @constraints, [$_] );
+            }
+        }
+        $ltable{$tag} = \@constraints;
+    }
+    close( LIST ) or
+        die "$0: $flimits: error closing file - $!";
+    return \%ltable;
+}
+
+# Subroutine that merges tables of limits
+
+sub merge_limits_tables($$) {
+   my( $new_limits, $old_limits ) = @_;
+   my $merged_limits = $old_limits;
+
+   foreach my $tag( keys %$new_limits ) {
+        if( exists $merged_limits->{$tag} ) {
+            $merged_limits->{$tag} = $new_limits->{$tag};
+            next;
+        } else {
+            $merged_limits->{$tag} = $new_limits->{$tag};
+        } 
+   }
+   return $merged_limits; 
+}
 
 #* USAGE:
 #*    $0 [options] input1.cif [input2.cif ...]
@@ -88,6 +159,16 @@ my $reportFile = '-';
 #*    --check-unit-cell
 #*
 #*    --check-symmetry
+#*
+#*    --check-limits
+#*
+#*    --print-limits
+#*
+#*    --add-limits  limits.lst
+#*
+#*    --limits-file limits.lst
+#*
+#*    --reset-limits
 #*
 #*    --check-all
 #*
@@ -159,16 +240,33 @@ my $reportFile = '-';
     },
 
     "--check-only-symmetry" => sub{
-        dont_check_any(); 
+        dont_check_any();
         $check_spacegroup_info = 1;
         $check_symmetry_operators = 1;
         $check_spacegroup_constraints = 1;
     },
 
+    "--check-limits" => sub{ $check_limits = 1 },
+    "--check-only-limits" => sub{ dont_check_any(); $check_limits = 1 },
+    "--dont-check-limits,--no-check-limits,--do-not-check-limits"
+        => sub{ $check_limits = 0 },
+    
+    "--limits-file" => sub{ $limits_table = &get_limits_table( &get_value() ) },
+
+    "--add-limits" => sub{ $limits_table = &merge_limits_tables( 
+                               &get_limits_table( &get_value() ),
+                               $limits_table )
+    },
+
+    "--reset-limits" => sub{ $limits_table = \%default_limits_table },
+    
+    "--print-limits" => sub{ &print_limits() }, 
+
     "--check-all"
         => \&check_all,
 
     "--check-none,--dont-check-any,--do-not-check-any,--no-check-any"
+
         => \&dont_check_any,
 
     "--use-precisions"        => sub { $use_precisions = 1 },
@@ -181,11 +279,27 @@ my $reportFile = '-';
     "--help,--usage" => sub { SUsage::usage; exit },
 );
 
-if( $reportFile =~ m/^\s*-\s*$/ || !-w dirname($reportFile) )
-{
+if( $reportFile =~ m/^\s*-\s*$/ || !-w dirname($reportFile) ) {
     open reportFileFH, ">&", \*STDOUT or die "Can't dup STDOUT: $!";
 } else {
     open reportFileFH, ">", $reportFile;
+}
+
+# The subroutine that prints out the table of limits
+
+sub print_limits {
+    print "#" . "-"x70  . "\n" .
+          "# The table of data value limits that 'cif_cod_check' script \n" .
+          "# uses under the option '--check-limits'.\n" .
+          "#" . "-"x70  . "\n";
+    foreach my $tag( sort keys %$limits_table ) {
+        printf "%-32s", $tag;
+        for my $i( 0..$#{ $limits_table->{$tag} } ) {
+            print "\t" , join( "-", @{ $limits_table->{$tag}[$i]} );
+        }
+        print "\n";
+    }
+    exit 0;
 }
 
 binmode( reportFileFH, 'utf8' );
@@ -214,7 +328,7 @@ for my $filename (@ARGV) {
     } else {
         $data = $parser->Run($filename);
     }
-
+    
     if( defined $parser->YYData->{ERRCOUNT} &&
         $parser->YYData->{ERRCOUNT} > 0 ) {
         print STDERR "$0: $filename: ",
@@ -222,9 +336,9 @@ for my $filename (@ARGV) {
         " error(s) encountered while parsing CIF data\n";
         exit -1;
     }
-
+    
     canonicalize_all_names( $data );
-
+    
     my $warnings = 0;
     for my $dataset (@$data) {
         $warnings += check_data( $dataset, $filename );
@@ -240,6 +354,8 @@ for my $filename (@ARGV) {
             if $check_symmetry_operators;
         $warnings += check_spacegroup_constraints( $dataset, $filename )
             if $check_spacegroup_constraints;
+        $warnings += check_limits( $dataset, $filename )
+            if $check_limits;
     }
     printf "%-30s: OK\n", $filename if $warnings == 0;
 }
@@ -259,7 +375,7 @@ sub check_data
 sub check_bibliography
 {
     my ($dataset,$filename) = @_;
-
+    
     if( !defined $dataset->{values} ) {
         return 0;
     }
@@ -377,20 +493,20 @@ sub check_authors
 sub check_chemical_formula_sum
 {
     my ($dataset, $filename) = @_;
-
+    
     if( !defined $dataset->{values} ) {
         return 0;
     }
-
+    
     my $formula = $dataset->{values}{_chemical_formula_sum}[0];
-
+    
     my $formula_component = "[a-zA-Z]{1,2}[0-9.]*";
-
+    
     if( !defined $formula ) {
     error_reporter($filename, undef, $dataset->{name}, "no "
                     . "_chemical_formula_sum");
         return 1;
-    } elsif( $formula !~ 
+    } elsif( $formula !~
              /^\s*($formula_component\s+)*($formula_component)\s*$/ ) {
         error_reporter( $filename, undef, $dataset->{name}, "chemical formula "
                         . "'$formula' could not be parsed");
@@ -519,7 +635,7 @@ sub get_spacegroup_descriptions
         not defined $sym_data ) {
         my $hall = $values->{"_space_group_name_Hall"}[0];
         $sym_data = lookup_spacegroup("hall", $hall);
-
+        
         if( !defined $sym_data ) {
             error_reporter( $filename, undef, $dataset->{name},
                    "incorrect _space_group_name_Hall '$hall'" );
@@ -529,21 +645,21 @@ sub get_spacegroup_descriptions
         not defined $sym_data ) {
         my $hall = $values->{"_symmetry_space_group_name_Hall"}[0];
         $sym_data = lookup_spacegroup("hall", $hall);
-
+        
         if( !defined $sym_data ) {
             error_reporter( $filename, undef, $dataset->{name},
                    "incorrect _symmetry_space_group_name_Hall '$hall'" );
             $warnings++;
         }
     }
-
+    
     if(exists $values->{"_space_group_name_H-M_alt"} &&
        not defined $sym_data) {
         my $h_m = $values->{"_space_group_name_H-M_alt"}[0];
         $sym_data = lookup_spacegroup("hermann_mauguin", $h_m);
         $sym_data = lookup_spacegroup("universal_h_m", $h_m)
             unless defined $sym_data;
-
+        
         if( !defined $sym_data ) {
             error_reporter( $filename, undef, $dataset->{name},
                    "incorrect _space_group_name_H-M_alt '$h_m'" );
@@ -555,14 +671,14 @@ sub get_spacegroup_descriptions
         $sym_data = lookup_spacegroup("hermann_mauguin", $h_m);
         $sym_data = lookup_spacegroup("universal_h_m", $h_m)
             unless defined $sym_data;
-
+        
         if( !defined $sym_data ) {
             error_reporter( $filename, undef, $dataset->{name},
                    "incorrect _symmetry_space_group_name_H-M '$h_m'" );
             $warnings++;
         }
     }
-
+    
     if(not defined $sym_data) {
         if( $warnings == 0 ) {
             my @spacegroup_tags = qw (
@@ -820,3 +936,70 @@ sub parser_error_reporter
     return error_reporter($file, $line, $data, "line currently"
                             ." processed: $line");
 }
+
+# To check that the specified XYZ tag value is within expected limits.
+
+sub check_limits {
+    my( $dataset, $filename ) = @_;
+    my $warnings = 0;
+    
+    if(! defined $dataset->{values} ) {
+        return 0;
+    }
+    my @report_names = ( "ERROR", "WARNING", "NOTE" );
+    my $numeric = '([+-]?(\d+(\.\d*)?|\.\d+))';
+    my $values = $dataset->{values};
+    
+    foreach my $tag( keys %$limits_table ) {
+        if( exists $values->{$tag} ) {
+            my $value = $values->{$tag}[0];
+            if( $value =~ /^(\.|\?)$/ ) {
+                next;
+            }
+            if( $value !~ /^([+-]?(?:\d+(?:\.\d*)?|\.\d+))(\(?\d*\)?)$/ ) {
+                print STDERR "$0: $filename: ERROR, tag '$tag' value '$value' " .
+                    "is not numeric.\n";
+                $warnings++;
+                next;
+            } else {
+                my $number = $1;
+                my $precision = $2;
+                if( ($tag =~ /_w?R_factor_/) && ( $precision) ) {
+                    print STDERR "$0: $filename: WARNING, '$tag' " .
+                        "value is '$value', but it should be numeric and " .
+                        "without presicion (esd value).\n";
+                    $warnings++;
+                    next;   
+                } elsif(! defined $limits_table->{$tag}[0][1] ) {
+                    foreach my $i( 0..$#{ $limits_table->{$tag} } ) {
+                        my $limit = @{ $limits_table->{$tag}->[$i]}[0];
+                        if( $number > $limit ) {
+                            error_reporter($filename, undef, $dataset->{name},
+                                           $report_names[$i] .       
+                                           ", tag '$tag' value '$value' " .
+                                           "is > " . $limit . ".");
+                            $warnings ++;
+                            last;
+                        }
+                    }
+                } else {
+                    foreach my $i( 0..$#{ $limits_table->{$tag} } ) {
+                        my $begin = @{ $limits_table->{$tag}->[$i]}[0];
+                        my $end = @{ $limits_table->{$tag}->[$i]}[1];
+                        if( ($number < $begin) || ($number > $end) ) {
+                            error_reporter( $filename, undef, $dataset->{name},
+                                            $report_names[$i] .       
+                                            ", tag '$tag' value '$value' " .
+                                            "lies outside the range " . 
+                                            $begin . " <> " . $end . "." );
+                            $warnings ++;
+                            last;
+                        } 
+                    }
+                }
+            }
+        }
+    }
+    return $warnings;
+}
+
