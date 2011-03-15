@@ -87,6 +87,10 @@ my @data_fields = qw (
     RFsqd
     RI
 
+    goodfall
+    goodfobs
+    goodfgt
+
     duplicateof
     optimal
     status
@@ -407,13 +411,19 @@ for my $filename (@ARGV) {
             _refine_ls_wR_factor_all
             _refine_ls_wR_factor_gt
             _refine_ls_wR_factor_obs
-            _refine_ls_wR_factor_ref )) {
+            _refine_ls_wR_factor_ref
+            _refine_ls_goodness_of_fit_all
+            _refine_ls_goodness_of_fit_ref
+            _refine_ls_goodness_of_fit_gt
+            _refine_ls_goodness_of_fit_obs )) {
             my $data_key = $r_factor_tag;
             $data_key =~ s/^_refine_ls_//;
             $data_key =~ s/_factor//;
+            $data_key =~ s/goodness_of_fit/goodf/;
             $data_key =~ s/_//g;
             $data_key = "Robs" if $data_key eq "Rgt";
             $data_key = "wRobs" if $data_key eq "wRgt";
+            $data_key = "goodfobs" if $data_key eq "goodfref";
             if( !defined $data{$data_key} ) {
                 $data{$data_key} =
                     get_num_or_undef( $values, lc($r_factor_tag), 0 );
