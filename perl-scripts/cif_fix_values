@@ -272,14 +272,18 @@ sub fix_temperature($$) {
                 }
                 if( $temperature_modif =~
                         /^
-                        (\>|\<)(?:[-_\s]*)($number_pos)
+                        (\>|\<)[_\s]*($number_pos|$number_neg)
                         \(?($sigma)?\)?
-                        (?:[-_\'\s]*)(?:$temp_C)$
+                        (?:[-_\'\s]*)(?:$temp_C)(?:[-_,\s]*)
+                        \(?($temp_dec)?\)?$
                         /x ) {
                     my $sign = $1;
                     my $number = $2;
                     my $sig  = $3;
                     my $old_tag = $tag;
+                    if( $4 ) {
+                        $old_tag = '_chemical_temperature_decomposition';
+                    }
                     if( $old_tag !~
                         /_cell_measurement_temperature/ ) {
                         if( $sig ) {
@@ -290,11 +294,12 @@ sub fix_temperature($$) {
                                 CIFTagPrint::pack_precision
                                   ( $number + 273.15 , $sig );
                             my $new_val = $values->{$tag}[$i];
+                            
                             my $new_tag = $old_tag . "_gt";
                             CIFTagManage::rename_tag
                                 ( $dataset, $old_tag, $new_tag );
                             my $report_msg =
-                                "'$old_tag' tag was changed to " .
+                                "'$tag' tag was changed to " .
                                 "'$new_tag' since the value was " .
                                 "specified 'more than' ('>') a " .
                                 "certain temperature. The value " .
