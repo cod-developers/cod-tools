@@ -90,12 +90,12 @@ sub insert_report_to_comments {
         my $comments_tag = '_cod_depositor_comments';
         my $values = $dataset->{values};
         my $reports_value = join("\n\n",@$insert_reports);
-
+        
         my $message =
             "The following automatic conversions were performed:\n\n" .
             join( "\n", map { "" . $_ }
                   CIFTagPrint::fold( 70, " +", " ", $reports_value ));
-
+        
         if( exists $values->{$comments_tag} ) {
             $values->{$comments_tag}[0] .= "\n\n" . $message;
         } else {
@@ -246,50 +246,29 @@ sub fix_temperature($$) {
                     next;
                 }
                 if( $temperature_modif =~
-                        /^ \(?$temp_dec\)?(?:[-_,\s]*)
+                        /^ \(?($temp_dec)?\)?(?:[-_,\s]*)
                             ($number_pos)\(?($sigma)?\)?
-                            (?:[-_\s]*)$temp_K?$
+                            (?:[-_\s]*)$temp_K?(?:[-_,\s]*)\(?($temp_dec)?\)?$
                             /x )  {
-                    my $old_tag = $tag;
-                    my $new_tag =
-                        '_chemical_temperature_decomposition';
-                    $values->{$tag}[$i] =
-                        CIFTagPrint::pack_precision( $1 , $2 );
-                    my $new_val = $values->{$tag}[$i];
+                    if( $1 || $4 ) {
+                        my $old_tag = $tag;
+                        my $new_tag =
+                            '_chemical_temperature_decomposition';
+                        $values->{$tag}[$i] =
+                            CIFTagPrint::pack_precision( $2 , $3 );
+                        my $new_val = $values->{$tag}[$i];
                         CIFTagManage::rename_tag
                             ( $dataset, $old_tag, $new_tag );
-                    my $report_msg =
-                        "'$old_tag' tag was changed to '$new_tag' " .
-                        "since the value had been '$temperature'. " .
-                        "The value '$temperature' was changed to " .
-			"'$new_val'.";
-                    push (@insert_reports, $report_msg);
-                    print STDERR
-                        "$0: $filename: NOTE, $report_msg\n";
-                    next;
-                }
-                if( $temperature_modif =~
-                        /^ ($number_pos)\(?($sigma)?\)?
-                            (?:[-_\s]*)(?:$temp_K)?
-                            (?:[-_,\s]*)\(?($temp_dec)\)?$
-                            /x )  {
-                    my $old_tag = $tag;
-                    my $new_tag =
-                        '_chemical_temperature_decomposition';
-                    $values->{$tag}[$i] =
-                        CIFTagPrint::pack_precision( $1 , $2 );
-                    my $new_val = $values->{$tag}[$i];
-                    CIFTagManage::rename_tag
-                        ( $dataset, $old_tag, $new_tag );
-                    my $report_msg =
-                        "'$old_tag' tag was changed to '$new_tag' " .
-                        "since the value had been '$temperature'. " .
-                        "The value '$temperature' was changed to " .
-			"'$new_val'.";
-                    push (@insert_reports, $report_msg);
-                    print STDERR
-                        "$0: $filename: NOTE, $report_msg\n";
-                    next;
+                        my $report_msg =
+                            "'$old_tag' tag was changed to '$new_tag' " .
+                            "since the value had been '$temperature'. " .
+                            "The value '$temperature' was changed to " .
+                            "'$new_val'.";
+                        push (@insert_reports, $report_msg);
+                        print STDERR
+                            "$0: $filename: NOTE, $report_msg\n";
+                        next;
+                    }
                 }
                 if( $temperature_modif =~
                         /^
