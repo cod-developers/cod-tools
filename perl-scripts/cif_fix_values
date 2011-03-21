@@ -220,7 +220,6 @@ sub fix_temperature($$) {
         '(?:(?:(?i:temp\\\\\'erature)\s*ambi[ae]nte?)|' .
         '(?:(?:(?i:room)|(?i:amb(?i:i[ae]nte?)))' .
         '\s*(?i:temp(?:erature)?)?)|(?i:rt))';
-    #my $temp_RT = '(?:Temp\\\\\'erature)';
     my $temp_undef =
         '(?:(?i:y[es]?)|(?i:n[o]?(?i:ne)?)|(?i:unknown)|' .
         '(?i:not\s*(?:(?i:measure?d?)|(?i:important)|' .
@@ -248,7 +247,8 @@ sub fix_temperature($$) {
                 if( $temperature_modif =~
                         /^ \(?($temp_dec)?\)?(?:[-_,\s]*)
                             ($number_pos)\(?($sigma)?\)?
-                            (?:[-_\s]*)$temp_K?(?:[-_,\s]*)\(?($temp_dec)?\)?$
+                            (?:[-_\s]*)$temp_K?(?:[-_,\s]*)
+                            \(?($temp_dec)?\)?$
                             /x )  {
                     if( $1 || $4 ) {
                         my $old_tag = $tag;
@@ -269,22 +269,6 @@ sub fix_temperature($$) {
                             "$0: $filename: NOTE, $report_msg\n";
                         next;
                     }
-                }
-                if( $temperature_modif =~
-                        /^
-                            \(?($number_pos)\s*\+\s*
-                            273(?:[\.\,]\d+)?\)?$
-                            /x ) {
-                    $values->{$tag}[$i] = $1 + 273.15;
-                    my $new_val = $values->{$tag}[$i];
-                    my $report_msg =
-                        "'$tag' value '$temperature' was changed to " .
-                        "'$new_val'- it was converted from degrees " .
-                        "Celsius(C) to Kelvins(K).";
-                    push (@insert_reports, $report_msg);
-                    print STDERR
-                        "$0: $filename: NOTE, $report_msg\n";
-                    next;
                 }
                 if( $temperature_modif =~
                         /^
@@ -571,8 +555,8 @@ sub fix_temperature($$) {
                 }
                 if( $temperature_modif =~
                         /^ ($temp_dec)?(?:[-_,\s]*)
-                            ($number_pos)\(?($sigma)?\)?
-                            (?:[-_\s]*)(?:$temp_C)
+                            \(?($number_pos)\(?($sigma)?\)?
+                            (?:[-_\s]*)(?:$temp_C|(?:\+\s*273(?:[\.\,]\d+)?\)?))
                             (?:[-_,\s]*)\(?($temp_dec)?\)?$
                             /x )  {
                     my $number = $2;
