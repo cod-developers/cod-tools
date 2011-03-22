@@ -36,6 +36,88 @@ my %tagDicts;
 my $Id = '$Id$';
 my $keep_tag_order = 0;
 
+my %default_enums = (
+    '_atom_site_adp_type'                    => [ "Uani", "Uiso", "Uovl", "Umpe", 
+                                                  "Bani", "Biso", "Bovl" ],
+    '_atom_site_calc_flag'                   => [ "d", "calc", "c", "dum" ],
+    '_atom_site_refinement_flags_adp'        => [ ".", "T", "U", "TU" ], 
+    '_atom_site_refinement_flags_occupancy'  => [ ".", "P" ],
+    '_atom_site_refinement_flags_posn'       => [ ".", "D", "G", "R", "S", "DG", 
+                                                  "DR", "DS", "GR", "GS", "RS", 
+                                                  "DGR", "DGS", "DRS", "GRS", "DGRS" ],
+    '_atom_site_refinement_flags'            => [ ".", "S", "G", "R", "D", "T", "U", "P" ],
+    '_atom_sites_solution_hydrogens'         => [ "difmap", "vecmap", "heavy", "direct", "geom", 
+                                                  "disper", "isomor", "notdet", "dual", "other" ],
+    '_atom_sites_solution_primary'           => [ "difmap", "vecmap", "heavy", "direct", "geom", 
+                                                  "disper", "isomor", "notdet", "dual", "other" ],
+    '_atom_sites_solution_secondary'         => [ "difmap", "vecmap", "heavy", "direct", "geom", 
+                                                  "disper", "isomor", "notdet", "dual", "other" ],
+    '_atom_site_thermal_displace_type'       => [ "Uani", "Uiso", "Uovl", "Umpe", 
+                                                  "Bani", "Biso", "Bovl" ],
+    '_chemical_absolute_configuration'       => [ "rm", "ad", "rmad", "syn", "unk", "." ],
+    '_chemical_conn_bond_type'               => [ "sing", "doub", "trip", "quad", 
+                                                  "arom", "poly", "delo", "pi" ],
+    '_chemical_enantioexcess_bulk_technique' => [ "OA", "CD", "EC", "other" ],
+    '_chemical_enantioexcess_crystal_technique' => [ "CD", "EC", "other" ],
+    '_citation_coordinate_linkage'           => [ "no", "n", "yes", "y" ],
+    '_diffrn_radiation_probe'                => [ "x-ray", "neutron", "electron", "gamma" ],
+    '_diffrn_radiation_wavelength_determination' => [ "fundamental", "estimated", "refined" ],
+    '_diffrn_radiation_xray_symbol'          => [ "K-L~3~", "K-L~2~", "K-M~3~", "K-L~2,3~" ],
+    '_diffrn_refln_scan_mode_backgd'         => [ "st", "mo" ],
+    '_diffrn_refln_scan_mode'                => [ "om", "ot", "q" ],
+    '_diffrn_source_target'                  => [ "H", "He", "Li", "Be", "B", "C", "N", "O",
+                                                  "F", "Ne", "Na", "Mg", "Al", "Si", "P", "S",
+                                                  "Cl", "Ar", "K", "Ca", "Sc", "Ti", "V", "Cr",
+                                                  "Mn", "Fe", "Co", "Ni", "Cu", "Zn", "Ga",
+                                                  "Ge", "As", "Se", "Br", "Kr", "Rb", "Sr", "Y",
+                                                  "Zr", "Nb", "Mo", "Tc", "Ru", "Rh", "Pd", "Ag",
+                                                  "Cd", "In", "Sn", "Sb", "Te", "I", "Xe", "Cs",
+                                                  "Ba", "La", "Ce", "Pr", "Nd", "Pm", "Sm", "Eu",
+                                                  "Gd", "Tb", "Dy", "Ho", "Er", "Tm", "Yb", "Lu",
+                                                  "Hf", "Ta", "W", "Re", "Os", "Ir", "Pt", "Au", 
+                                                  "Hg", "Tl", "Pb", "Bi", "Po", "At", "Rn", "Fr",
+                                                  "Ra", "Ac", "Th", "Pa", "U", "Np", "Pu", "Am", 
+                                                  "Cm", "Bk", "Cf", "Es", "Fm", "Md", "No", "Lr" ],
+    '_exptl_absorpt_correction_type'         => [ "analytical", "cylinder", "empirical", "gaussian",
+                                                  "integration", "multi-scan", "none", "numerical",
+                                                  "psi-scan", "refdelf", "sphere" ],
+    '_exptl_crystal_colour_lustre'           => [ "metallic", "dull", "clear" ],
+    '_exptl_crystal_colour_modifier'         => [ "light", "dark", "whitish", "blackish", 
+                                                  "grayish", "brownish", "reddish", "pinkish", 
+                                                  "orangish", "yellowish", "greenish", "bluish" ],
+    '_exptl_crystal_colour_primary'          => [ "colourless", "white", "black", "gray", 
+                                                  "brown", "red", "pink", "orange", "yellow", 
+                                                  "green", "blue", "violet" ],
+    '_geom_angle_publ_flag'                  => [ "no", "n", "yes", "y" ],
+    '_geom_bond_publ_flag'                   => [ "no", "n", "yes", "y" ],
+    '_geom_contact_publ_flag'                => [ "no", "n", "yes", "y" ],  
+    '_geom_hbond_publ_flag'                  => [ "no", "n", "yes", "y" ],
+    '_geom_torsion_publ_flag'                => [ "no", "n", "yes", "y" ],
+    '_publ_body_element'                     => [ "section", "subsection", "subsubsection",
+                                                  "appendix", "footnote" ],
+    '_publ_body_format'                      => [ "ascii", "cif", "latex", "rtf", 
+                                                  "sgml", "tex", "troff" ],
+    '_publ_manuscript_incl_extra_defn'       => [ "no", "n", "yes", "y" ],
+    '_publ_requested_category'               => [ "FA", "FI", "FO", "FM", "CI",
+                                                  "CO", "CM", "EI", "EO", "EM",
+                                                  "QI", "QO", "QM", "AD", "SC" ],
+    '_refine_ls_hydrogen_treatment'          => [ "refall", "refxyz", "refU", "noref",
+                                                  "constr", "mixed", "undef" ],
+    '_refine_ls_matrix_type'                 => [ "full", "fullcycle", "atomblock",
+                                                  "userblock", "diagonal", "sparse" ],
+    '_refine_ls_structure_factor_coef'       => [ "F", "Fsqd", "Inet" ],
+    '_refine_ls_weighting_scheme'            => [ "sigma", "unit", "calc" ],
+    '_refln_include_status'                  => [ "o", "<", "-", "x", "h", "l" ],
+    '_refln_observed_status'                 => [ "o", "<", "-", "x", "h", "l" ],
+    '_refln_refinement_status'               => [ "incl", "excl", "extn" ],
+    '_space_group_crystal_system'            => [ "triclinic", "monoclinic", "orthorhombic", 
+                                                  "tetragonal", "trigonal", "hexagonal", "cubic" ],
+    '_symmetry_cell_setting'                 => [ "triclinic", "monoclinic", "orthorhombic",
+                                                  "tetragonal", "rhombohedral", "trigonal", 
+                                                  "hexagonal", "cubic" ],
+    );
+my $default_enums = \%default_enums;
+
 #*Usage:
 #*      cif_fix_enum [options] COD-cif-dir/
 #*
@@ -68,65 +150,93 @@ my $keep_tag_order = 0;
     "--clear-dictionaries"
     => sub{ @dictionaries = () },
     );
-
-for my $dict_file_name ( @dictionaries ) {
-    my $parser = new CIFParser;
-    my $data = $parser->Run( $dict_file_name );
-
-    if( defined $parser->YYData->{ERRCOUNT} &&
-        $parser->YYData->{ERRCOUNT} > 0 ) {
-        print STDERR "$0: $dict_file_name: ",
-        $parser->YYData->{ERRCOUNT},
-        " error(s) encountered while parsing CIF dictionary\n";
-        ## exit -1;
-        next;
-    }
-
-    canonicalize_all_names( $data );
-
-    my( $dict_name , $dict_version , $dict_update );
-    for my $dataset ( @$data ) {
-        next unless $dataset->{name} eq 'on_this_dictionary' &&
-            exists $dataset->{values};
-        my $values = $dataset->{values};
-        die( "$0: $dict_file_name $dataset->{name}: dictionary " .
-             "'$dict_file_name' " .
-             "data_$dataset->{name} does not contain data" )
+if( @dictionaries ) {
+    for my $dict_file_name ( @dictionaries ) {
+        my $parser = new CIFParser;
+        my $data = $parser->Run( $dict_file_name );
+        
+        if( defined $parser->YYData->{ERRCOUNT} &&
+            $parser->YYData->{ERRCOUNT} > 0 ) {
+            print STDERR "$0: $dict_file_name: ",
+            $parser->YYData->{ERRCOUNT},
+            " error(s) encountered while parsing CIF dictionary\n";
+            ## exit -1;
+            next;
+        }
+        
+        canonicalize_all_names( $data );
+        
+        my( $dict_name , $dict_version , $dict_update );
+        for my $dataset ( @$data ) {
+            next unless $dataset->{name} eq 'on_this_dictionary' &&
+                exists $dataset->{values};
+            my $values = $dataset->{values};
+            die( "$0: $dict_file_name $dataset->{name}: dictionary " .
+                 "'$dict_file_name' " .
+                 "data_$dataset->{name} does not contain data" )
             unless defined $values;
-        $dict_name = $values->{_dictionary_name};
-        $dict_version = $values->{_dictionary_version};
-        $dict_update = $values->{_dictionary_update};
-        last;
-    }
-    for my $dataset ( @$data ) {
-        my $values = $dataset->{values};
-        my $values_name = $values->{_name};
-        my $values_enum = $values->{_enumeration};
-        if( (defined $values_name) && (defined $values_enum) ) {
-            my @enums = @$values_enum;
-            my @tag_names = @$values_name;
-            foreach( @tag_names ) {
-		if( !defined $tagDicts{$_} ) {
-		    $dictTags{$_} = \@enums;
-                    $tagDicts{$_} = [
-			$dict_file_name,
-			defined $dict_name ?
-                             join( ', ', @$dict_name ) : undef,
-                        defined $dict_version ?
-                             join( ', ', @$dict_version ) : undef,
-                        defined $dict_update ?
-                             join( ', ', @$dict_update ) : undef
-                    ];
-                } else {
-		    print STDERR
-                        "$0: WARNING, '$_' " .
-                        "tag is already defined by " .
-                        "'$dict_file_name' dictionary.\n";
+            $dict_name = $values->{_dictionary_name};
+            $dict_version = $values->{_dictionary_version};
+            $dict_update = $values->{_dictionary_update};
+            last;
+        }
+        for my $dataset ( @$data ) {
+            my $values = $dataset->{values};
+            my $values_name = $values->{_name};
+            my $values_enum = $values->{_enumeration};
+            if( (defined $values_name) && (defined $values_enum) ) {
+                my @enums = @$values_enum;
+                my @tag_names = @$values_name;
+                foreach( @tag_names ) {
+                    if( !defined $tagDicts{$_} ) {
+                        $dictTags{$_} = \@enums;
+                        $tagDicts{$_} = [
+                            $dict_file_name,
+                            defined $dict_name ?
+                            join( ', ', @$dict_name ) : undef,
+                            defined $dict_version ?
+                            join( ', ', @$dict_version ) : undef,
+                            defined $dict_update ?
+                            join( ', ', @$dict_update ) : undef
+                            ];
+                    } else {
+                        print STDERR
+                            "$0: WARNING, '$_' " .
+                            "tag is already defined by " .
+                            "'$dict_file_name' dictionary.\n";
+                    }
                 }
             }
         }
     }
+} else {
+    my $dict_file_name = 'ftp://ftp.iucr.org/pub/cif_core.dic'; 
+    my $dict_name = 'cif_core.dic';
+    my $dict_version = '2.4.1';
+    my $dict_update = '2010-06-29';
+    foreach my $tag( keys %default_enums ) {
+        my $enums = $default_enums{$tag};
+        $dictTags{ $tag } = $enums;        
+        $tagDicts{ $tag } = [ $dict_file_name, $dict_name, 
+                              $dict_version, $dict_update ];
+    }
+    
+    # To push all the values of the dafault enum table to the 
+    # hash of arrays '%dictTags' and don't forget about
+    # name of the dictionary, its version and date.
+    
+    
 }
+
+# to print out all tags and its enum values from the given dictionary
+#foreach( keys %dictTags ) {
+#    print "'$_' => [ ";
+#    foreach( @{ $dictTags{$_} } ){
+#        print '"' . $_ . '"' .', ';
+#    }
+#    print "\n";
+#}
+#exit 0;
 
 sub insert_report_to_comments {
     my ($dataset, $insert_reports) = @_;
