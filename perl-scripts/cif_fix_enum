@@ -144,11 +144,11 @@ my $default_enums = \%default_enums;
     "--sort-tags"
     => sub { $keep_tag_order = 0; },
     "-d,--dictionary"
-    => sub{@dictionaries = ( &get_value )},
-    "-D,--add-dictionaries"
-    => \@dictionaries,
+    => sub{ @dictionaries = &get_value; },
+    "-D,--add-dictionaries" 
+    => sub{ push( @dictionaries, &get_value ); },
     "--clear-dictionaries"
-    => sub{ @dictionaries = () },
+    => sub{ @dictionaries = (); },
     );
 
 if( @dictionaries ) {
@@ -211,7 +211,7 @@ if( @dictionaries ) {
         }
     }
 } else {
-    my $dict_file_name = 'ftp://ftp.iucr.org/pub/cif_core.dic'; 
+    my $dict_file_name = 'the built-in table from CIF Core'; 
     my $dict_name = 'cif_core.dic';
     my $dict_version = '2.4.1';
     my $dict_update = '2010-06-29';
@@ -242,8 +242,8 @@ sub insert_report_to_comments {
         my $title =
 	    "The following automatic conversions were performed:\n" .
             join( "\n", map { "" . $_ }
-            CIFTagPrint::fold( 75, " +", " ", $reports_value ));
-
+                  CIFTagPrint::fold( 75, " +", " ", $reports_value ));
+        
         if( exists $values->{$comments_tag} ) {
             $values->{$comments_tag}[0] .= "\n\n" . $title;
         } else {
@@ -258,31 +258,31 @@ sub insert_report_to_comments {
 }
 
 sub replacement_candidates($$) {
-        my( $cif_value, $dict_value_list ) = @_;
-        my @candidate_list = ();
-        foreach my $dict_tag_value ( @{$dict_value_list} ) {
-            if( $cif_value eq $dict_tag_value ) {
-		return ();
-            }
-            my $test_dict_value = $dict_tag_value;
-            $test_dict_value =~ s/[-_\s]//g;
-            my $test_cif_value = $cif_value;
-            $test_cif_value =~ s/[-_\s]//g;
-
-            if( lc $test_cif_value eq lc $test_dict_value ) {
-                push( @candidate_list, $dict_tag_value );
-                next;
-            }
-            if( lc $cif_value eq lc $dict_tag_value ) {
-                push( @candidate_list, $dict_tag_value );
-                next;
-            }
+    my( $cif_value, $dict_value_list ) = @_;
+    my @candidate_list = ();
+    foreach my $dict_tag_value ( @{$dict_value_list} ) {
+        if( $cif_value eq $dict_tag_value ) {
+            return ();
         }
-        if( scalar( @candidate_list ) == 1 ) {
-            return @candidate_list;
-	} else {
-	    return @{$dict_value_list};
-	}
+        my $test_dict_value = $dict_tag_value;
+        $test_dict_value =~ s/[-_\s]//g;
+        my $test_cif_value = $cif_value;
+        $test_cif_value =~ s/[-_\s]//g;
+        
+        if( lc $test_cif_value eq lc $test_dict_value ) {
+            push( @candidate_list, $dict_tag_value );
+            next;
+        }
+        if( lc $cif_value eq lc $dict_tag_value ) {
+            push( @candidate_list, $dict_tag_value );
+            next;
+        }
+    }
+    if( scalar( @candidate_list ) == 1 ) {
+        return @candidate_list;
+    } else {
+        return @{$dict_value_list};
+    }
 }
 
 sub make_count($$) {
@@ -292,18 +292,18 @@ sub make_count($$) {
     foreach my $message( @messages ) {
 	if(! exists $notes_warnings{$message} ) {
 	    die( "$0: Error while counting " .
-		"'$message' audit message.\n"  );
+                 "'$message' audit message.\n"  );
 	}
 	if( exists $notes_warnings{$message}) {
-	my $count = $notes_warnings{$message};
-	my $times =
-	    ( $count =~ /^(\d*[02-9])?1$/ ) ? "time" : "times";
-	if( $notes_warnings{$message} == 1 ) {
-	    $message .= ".";
-	} else {
-	    $message .= " ($count $times).";
-	}
-	push( @reports, $message );
+            my $count = $notes_warnings{$message};
+            my $times =
+                ( $count =~ /^(\d*[02-9])?1$/ ) ? "time" : "times";
+            if( $notes_warnings{$message} == 1 ) {
+                $message .= ".";
+            } else {
+                $message .= " ($count $times).";
+            }
+            push( @reports, $message );
 	}
     }
     return @reports;
@@ -316,7 +316,7 @@ my %dictionary_tags = map { $_, $_ } @dictionary_tags;
 for my $filename ( @ARGV ) {
     my $parser = new CIFParser;
     my $data = $parser->Run( $filename );
-
+    
     if( defined $parser->YYData->{ERRCOUNT} &&
         $parser->YYData->{ERRCOUNT} > 0 ) {
         print STDERR "$0: $filename: ",
@@ -352,14 +352,14 @@ for my $filename ( @ARGV ) {
 			    $message_key =
 				"NOTE, '$tag' value '$old_value' " .
 				"changed to '$new_value' " .
-				"according to '$tagDicts{$tag}[0]' " .
+				"according to $tagDicts{$tag}[0] " .
 				"dictionary" .
 				(defined $tagDicts{$tag}[1] ? 
-                                " named '$tagDicts{$tag}[1]'" : "") .
-                                (defined $tagDicts{$tag}[2] ? 
-				" version $tagDicts{$tag}[2]" : "") .
-                                (defined $tagDicts{$tag}[3] ?
-				" from $tagDicts{$tag}[3]" : "");
+                                 " named '$tagDicts{$tag}[1]'" : "") .
+                                 (defined $tagDicts{$tag}[2] ? 
+                                  " version $tagDicts{$tag}[2]" : "") .
+                                  (defined $tagDicts{$tag}[3] ?
+                                   " from $tagDicts{$tag}[3]" : "");
 			} else {
 			    my $dict_values =
 				join( ", ", @replacement_list );
@@ -370,11 +370,11 @@ for my $filename ( @ARGV ) {
 				"according to '$tagDicts{$tag}[0]' " .
 				"dictionary" .
                                 (defined $tagDicts{$tag}[1] ?
-				" named '$tagDicts{$tag}[1]'" : "") .
-                                (defined $tagDicts{$tag}[2] ?
-				" version $tagDicts{$tag}[2]" : "") .
-                                (defined $tagDicts{$tag}[3] ?
-				" from $tagDicts{$tag}[3]" : "");
+                                 " named '$tagDicts{$tag}[1]'" : "") .
+                                 (defined $tagDicts{$tag}[2] ?
+                                  " version $tagDicts{$tag}[2]" : "") .
+                                  (defined $tagDicts{$tag}[3] ?
+                                   " from $tagDicts{$tag}[3]" : "");
 			}
 			if(! exists $reports{$message_key} ) {
 			    $reports{$message_key} = 0;
