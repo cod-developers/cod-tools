@@ -942,6 +942,7 @@ sub parser_error_reporter
 
 sub check_limits {
     my( $dataset, $filename ) = @_;
+    my $dataname = 'data_' . $dataset->{name};
     my $warnings = 0;
     
     if(! defined $dataset->{values} ) {
@@ -958,7 +959,7 @@ sub check_limits {
                 next;
             }
             if( $value !~ /^([+-]?(?:\d+(?:\.\d*)?|\.\d+))(\(?\d*\)?)$/ ) {
-                print STDERR "$0: $filename: ERROR, tag '$tag' value '$value' " .
+                print STDERR "$0: $filename $dataname: ERROR, tag '$tag' value '$value' " .
                     "is not numeric.\n";
                 $warnings++;
                 next;
@@ -966,7 +967,7 @@ sub check_limits {
                 my $number = $1;
                 my $precision = $2;
                 if( ($tag =~ /_w?R_factor_/) && ( $precision) ) {
-                    print STDERR "$0: $filename: WARNING, '$tag' " .
+                    print STDERR "$0: $filename $dataname: WARNING, '$tag' " .
                         "value is '$value', but it should be numeric and " .
                         "without presicion (esd value).\n";
                     $warnings++;
