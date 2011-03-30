@@ -33,7 +33,63 @@ my $print_header = 0; # Indicates whether to print out a header with
 my $continue_on_errors = 0;
 my $cod_number;
 
-my @data_fields = qw (
+# The default sql table data field that was taken from the 
+# cod-add-data.sh script.
+
+my @default_data_fields = qw (
+    file
+    a
+    siga
+    b
+    sigb
+    c
+    sigc
+    alpha
+    sigalpha
+    beta
+    sigbeta
+    gamma
+    siggamma
+    vol
+    sigvol
+    celltemp
+    sigcelltemp
+    diffrtemp
+    sigdiffrtemp
+    cellpressure
+    sigcellpressure
+    diffrpressure
+    sigdiffrpressure
+    thermalhist
+    pressurehist
+    nel
+    sg
+    sgHall
+    commonname
+    chemname
+    formula
+    calcformula
+    acce_code
+    authors
+    title
+    journal
+    year
+    volume
+    issue
+    firstpage
+    lastpage
+    duplicateof
+    optimal
+    status
+    flags
+    text
+);
+
+my @data_fields = @default_data_fields;
+
+# New sql table data fields.
+
+my @new_data_fields = qw (
     file
     a
     siga
@@ -116,6 +172,8 @@ my @data_fields = qw (
 #*
 #*     -h, --print-header
 #*         Print header with data column names at the first line
+#*         With this option cif2cod-new loads CIF data to the new
+#*         sql talble data fields
 #*
 #*     -h-, --dont-print-header, --no-print header
 #*         Do not print column names on the first (header) line (default).
@@ -133,7 +191,7 @@ my @data_fields = qw (
     "--exit-on-errors"            => sub { $continue_on_errors = 0 },
 
     "-h,--print-header"   => sub { $print_header = 1 },
-    "--dont-print-header" => sub { $print_header = 0 },
+    "-h-,--dont-print-header" => sub { $print_header = 0 },
     "--no-print-header"   => sub { $print_header = 0 },
 
     "--reformat-space-group"      => sub { $reformat_spacegroup = 1; },
@@ -193,7 +251,7 @@ binmode( STDOUT, ":utf8" );
 if( $print_header ) {
     local $, = ";";
     local $\ = "\n";
-    print @data_fields;
+    print @new_data_fields;
 }
 
 @ARGV = ( "-" ) unless @ARGV;
@@ -470,7 +528,10 @@ for my $filename (@ARGV) {
         $data{text} = $text;
 
         # Print out the collected data fields:
-
+        
+        if( $print_header ) {
+            @data_fields = @new_data_fields;
+        }
         do {
             my $separator = "";
             for my $key (@data_fields) {
