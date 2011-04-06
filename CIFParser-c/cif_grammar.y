@@ -54,7 +54,9 @@ static CIF_COMPILER *new_cif_compiler( char *filename,
 
 static CIF_COMPILER * volatile cif_cc;
 
+#if 0
 static cexception_t *px; /* parser exception */
+#endif
 
 %}
 
@@ -245,6 +247,10 @@ CIF *new_cif_from_cif_file( char *filename, cexception_t *ex )
     cif_flex_reset_counters();
 
     cif_compile_file( filename, ex );
+
+    if( cif_yy_error_number() == 0 ) {
+        code = new_cif( ex );
+    }
 
     delete_cif_compiler( cif_cc );
     cif_cc = NULL;
