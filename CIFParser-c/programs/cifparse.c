@@ -28,6 +28,7 @@ int main( int argc, char *argv[], char *env[] )
   cexception_t inner;
   char ** volatile files = NULL;
   CIF * volatile code = NULL;
+  int retval = 0;
   int i;
 
   progname = argv[0];
@@ -59,8 +60,8 @@ int main( int argc, char *argv[], char *env[] )
       }
   }
 
-  cexception_guard( inner ) {
-      for( i = 0; i == 0 || files[i] != NULL; i++ ) {
+  for( i = 0; i == 0 || files[i] != NULL; i++ ) {
+      cexception_guard( inner ) {
           code = new_cif_from_cif_file( files[i], &inner );
 
           if( code ) {
@@ -68,17 +69,19 @@ int main( int argc, char *argv[], char *env[] )
               if( debug.present && strstr(debug.value.s, "dump") != NULL ) {
                   cif_dump( code );
               }
-              delete_cif( code );
-              code = NULL;
+                  delete_cif( code );
+                  code = NULL;
           }
       }
+      cexception_catch {
+          fprintf( stderr, "%s: %s\n", argv[0], cexception_message( &inner ));
+          delete_cif( code );
+          retval = 3;
+          code = NULL;
+      }
   }
-  cexception_catch {
-      fprintf( stderr, "%s: %s\n", argv[0], cexception_message( &inner ));
-      delete_cif( code );
-      exit(3);
-  }
+
   delete_cif( code );
 
-  return 0;
+  return retval;
 }

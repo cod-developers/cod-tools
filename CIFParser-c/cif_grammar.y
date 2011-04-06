@@ -49,6 +49,7 @@ static CIF_COMPILER *new_cif_compiler( char *filename,
         delete_cif_compiler( cc );
         cexception_reraise( inner, ex );
     }
+    cif_yy_reset_error_count();
     return cc;
 }
 
@@ -240,16 +241,24 @@ static void cif_compile_file( char *filename, cexception_t *ex )
 
 CIF *new_cif_from_cif_file( char *filename, cexception_t *ex )
 {
+    cexception_t inner;
     CIF *code = NULL;
 
     assert( !cif_cc );
     cif_cc = new_cif_compiler( filename, ex );
     cif_flex_reset_counters();
 
-    cif_compile_file( filename, ex );
-
-    if( cif_yy_error_number() == 0 ) {
-        code = new_cif( ex );
+    cexception_guard( inner ) {
+        cif_compile_file( filename, &inner );
+        if( cif_yy_error_number() == 0 ) {
+            code = new_cif( &inner );
+        }
+    }
+    cexception_catch {
+        delete_cif_compiler( cif_cc );
+        cif_cc = NULL;
+        
+        cexception_reraise( inner, ex );
     }
 
     delete_cif_compiler( cif_cc );
