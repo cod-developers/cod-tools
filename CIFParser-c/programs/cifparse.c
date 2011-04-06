@@ -21,21 +21,6 @@ static option_t options[] = {
   { NULL }
 };
 
-static int argv_has_dashes( int argc, char *argv[] )
-{
-    int i;
-
-    for( i = 0; i < argc; i++ ) {
-	if( argv[i] &&
-	    argv[i][0] == '-' &&
-	    argv[i][1] == '-' &&
-	    argv[i][2] == '\0' ) {
-	    return 1;
-	}
-    }
-    return 0;
-}
-
 char *progname;
 
 int main( int argc, char *argv[], char *env[] )
@@ -75,25 +60,17 @@ int main( int argc, char *argv[], char *env[] )
   }
 
   cexception_guard( inner ) {
-      if( argv_has_dashes( argc, argv )) {
-	  for( i = 0; files[i] != NULL; ) {
-	      i++;
-	  }
-	  code = new_cif_from_cif_file( files[0], &inner );
+      for( i = 0; i == 0 || files[i] != NULL; i++ ) {
+          code = new_cif_from_cif_file( files[i], &inner );
 
-	  if( debug.present && strstr(debug.value.s, "dump") != NULL ) {
-	      cif_dump( code );
-	  }
-      } else {
-	  for( i = 0; i == 0 || files[i] != NULL; i++ ) {
-	      code = new_cif_from_cif_file( files[i], &inner );
-
-	      if( debug.present && strstr(debug.value.s, "dump") != NULL ) {
-		  cif_dump( code );
-	      }
-	      delete_cif( code );
-	      code = NULL;
-	  }
+          if( code ) {
+              printf( "%s: file '%s' OK\n", progname, files[i] );
+              if( debug.present && strstr(debug.value.s, "dump") != NULL ) {
+                  cif_dump( code );
+              }
+              delete_cif( code );
+              code = NULL;
+          }
       }
   }
   cexception_catch {
