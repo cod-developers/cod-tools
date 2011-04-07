@@ -63,10 +63,7 @@ static cexception_t *px; /* parser exception */
 %}
 
 %union {
-    long i;
-    double d;
     char *s;
-    int token;           /* token value returned by lexer */
     struct {
         char *vstr;
         cif_value_type_t vtype;
