@@ -54,7 +54,7 @@ struct CIF {
     ssize_t tags_length;
     char **tags;
     char ***values;
-    cif_value_type_t *types;
+    cif_value_type_t **types; /* Contains a type for each value in 'values'. */
 
     ssize_t loop_start; /* Index of the entry into the 'tags',
                            'values' and 'types' arrays that indicates
@@ -126,7 +126,7 @@ void cif_dump( CIF * volatile cif )
     ssize_t i;
 
     for( i = 0; i < cif->length; i++ ) {
-        switch( cif->types[i] ) {
+        switch( cif->types[i][0] ) {
         case CIF_NUMBER:
         case CIF_UQSTRING:
             printf( "%-32s %s\n", cif->tags[i], cif->values[i][0] );
@@ -177,10 +177,11 @@ void cif_insert_value( CIF * cif, char *tag,
         cif->length++;
 
         cif->values[i] = callocx( sizeof(cif->values[0][0]), 2, &inner );
+        cif->types[i] = callocx( sizeof(cif->types[0][0]), 2, &inner );
 
         cif->tags[i] = tag;
         cif->values[i][0] = value;
-        cif->types[i] = vtype;
+        cif->types[i][0] = vtype;
     }
     cexception_catch {
         cexception_reraise( inner, ex );
@@ -214,7 +215,7 @@ void cif_push_loop_value( CIF * cif, char *value, cif_value_type_t vtype,
         i = cif->loop_current;
         j = cif->loop_lengths[i];
         cif->values[i][j] = value;
-        cif->types[i] = vtype;
+        cif->types[i][j] = vtype;
         cif->loop_lengths[i] ++;
     }
     cexception_catch {
