@@ -245,7 +245,7 @@ void cif_push_loop_value( CIF * cif, char *value, cif_value_type_t vtype,
                                       &inner );
             cif->value_capacities[i] = capacity;
         }
-        cif->value_lengths[i] = j;
+        cif->value_lengths[i] = j + 1;
         cif->values[i][j] = value;
         cif->types[i][j] = vtype;
         cif->loop_current++;
