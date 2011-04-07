@@ -21,12 +21,14 @@ setvar() { eval $1="'$3'"; }
 
 setvar Id = '$Id$'
 
-setvar INPUT_CONFIG = "${HOME}/.cod_deposit.cfg"
-setvar SERVER       = "http://test.crystallography.net"
-setvar DEPOSIT_PATH = "cgi-bin/cif-deposit.pl"
-setvar DEPOSIT_URL  = "${SERVER}/${DEPOSIT_PATH}"
+setvar INPUT_CONFIG    = "${HOME:-.}/.cod_deposit.cfg"
+setvar SERVER          = "http://test.crystallography.net"
+setvar DEPOSIT_PATH    = "cgi-bin/cif-deposit.pl"
+setvar DEPOSIT_URL     = "${SERVER}/${DEPOSIT_PATH}"
+setvar DEPOSITION_TYPE = "published"
 
-setvar FILES = ""
+setvar FILES    = ''
+setvar SEPARATE_OUT_DIR = ''
 
 setvar DEBUG    = false
 setvar PROGRESS = false
@@ -52,6 +54,13 @@ curl=curl
 #**  -u, --url  http://test.crystallography.net/cgi-bin/cif-deposit.pl
 #**      Specify the full URL to use for structure uploading (default:
 #**      combine --host and --path values using http:// protocol and /).
+#**
+#**  -d, --deposition-type published
+#**      Specify the deposition type under which the structure is to be 
+#**      deposited
+#**
+#**  -s, --separate-outputs folder-to-put-deposition-outputs/
+#**      Specify a folder to put deposition output for each deposited file
 #**
 #**  -P, --progress
 #**      Ask cif-deposit.pl to report progress of the deposition.
@@ -82,6 +91,14 @@ do
           DEPOSIT_URL="$2"
           shift
           ;;
+      -s|--separate-outputs|--separate)
+          SEPARATE_OUT_DIR="$2"
+          shift
+          ;;
+      -d|--deposition-type)
+          DEPOSITION_TYPE="$2"
+          shift
+          ;;
       -D|--debug|--debu|--deb|--de|--d)
           DEBUG=true
           ;;
@@ -110,7 +127,7 @@ do
 	    exit
 	    ;;      
       -*) echo "`basename $0`: unknown option $1" >&2 ; exit 1 ;;
-      *)  FILES="$FILES '$1'" ;;
+      *)  FILES="$FILES $1" ;;
     esac
     shift
 done
@@ -134,32 +151,87 @@ fi
 
 test -z "${TMP_DIR}" && TMP_DIR="/tmp"
 TMP_DIR="${TMP_DIR}/tmp-${BASENAME}-$$"
+umask 077
 mkdir "${TMP_DIR}"
 
-if [ $# -gt 0 ]
+TMP_USERNAME="${TMP_DIR}/username"
+TMP_PASSWRD="${TMP_DIR}/password"
+TMP_EMAIL="${TMP_DIR}/user_email"
+TMP_AUTHOR_NAME="${TMP_DIR}/author_name"
+TMP_AUTHOR_EMAIL="${TMP_DIR}/author_email"
+TMP_JOURNAL="${TMP_DIR}/journal"
+
+perl -lne "print \$1 if /^username=(.*)/" < ${INPUT_CONFIG} > ${TMP_USERNAME}
+perl -lne "print \$1 if /^password=(.*)/" < ${INPUT_CONFIG} > ${TMP_PASSWRD}
+perl -lne "print \$1 if /^journal=(.*)/"  < ${INPUT_CONFIG} > ${TMP_JOURNAL}
+perl -lne "print \$1 if /^user_email=(.*)/"   < ${INPUT_CONFIG} > ${TMP_EMAIL}
+perl -lne "print \$1 if /^author_name=(.*)/"  < ${INPUT_CONFIG} > ${TMP_AUTHOR_NAME}
+perl -lne "print \$1 if /^author_email=(.*)/" < ${INPUT_CONFIG} > ${TMP_AUTHOR_EMAIL}
+HOLD_PERIOD=$(perl -lne "print \$1 if /^hold_period=(.*)/" < ${INPUT_CONFIG})
+
+if [ -s ${TMP_JOURNAL} ]
 then
-    TMP_CIFFILE="${TMP_DIR}/$(basename $1)"
+    JOURNAL_ARG="-F journal=<${TMP_JOURNAL}"
 else
-    TMP_CIFFILE="${TMP_DIR}/$(basename $0 .sh).cif"
+    JOURNAL_ARG=''
 fi
 
-TMP_PASSWRD="${TMP_DIR}/password"
+if [ -s ${TMP_EMAIL} ]
+then
+    EMAIL_ARG="-F user_email=<${TMP_EMAIL}"
+else
+    EMAIL_ARG=''
+fi
 
-touch ${TMP_PASSWRD}
-chmod 600 ${TMP_PASSWRD}
+if [ -s ${TMP_AUTHOR_NAME} ]
+then
+    AUTHOR_NAME_ARG="-F author_name=<${TMP_AUTHOR_NAME}"
+else
+    AUTHOR_NAME_ARG=''
+fi
 
-USERNAME=$(awk -F= '/^username=/{print $2}' ${INPUT_CONFIG})
-awk -F= '/^password=/{print $2}' ${INPUT_CONFIG} | tr -d "\n" > ${TMP_PASSWRD}
+if [ -s ${TMP_AUTHOR_EMAIL} ]
+then
+    AUTHOR_EMAIL_ARG="-F author_email=<${TMP_AUTHOR_EMAIL}"
+else
+    AUTHOR_EMAIL_ARG=''
+fi
 
-cat ${1+"$@"} > ${TMP_CIFFILE}
+if [ -n "${HOLD_PERIOD}" ]
+then
+    HOLD_PERIOD_ARG="-F hold_period=${HOLD_PERIOD}"
+else
+    HOLD_PERIOD_ARG=''
+fi
 
-${curl} \
-    ${DEBUG_ARG} \
-    ${PROGRESS_ARG} \
-    -F "username=${USERNAME}" \
-    -F "password=<${TMP_PASSWRD}" \
-    -F "cif=@${TMP_CIFFILE};filename=$(basename ${TMP_CIFFILE})" \
-    -F "deposition_type=published" \
-    ${DEPOSIT_URL} \
+DEPOSIT_LOGGER="cat"
 
-rm -rf "${TMP_DIR}"
+for i in ${FILES}
+do
+    if [ -n "${SEPARATE_OUT_DIR}" ]
+    then
+        DEPOSIT_LOGGER="cat > \"${SEPARATE_OUT_DIR}/$(basename $i .cif).html\""
+    fi
+    ${curl} \
+        ${DEBUG_ARG} \
+        ${PROGRESS_ARG} \
+        -F "username=<${TMP_USERNAME}" \
+        -F "password=<${TMP_PASSWRD}" \
+        ${JOURNAL_ARG} \
+        ${EMAIL_ARG} \
+        ${AUTHOR_NAME_ARG} \
+        ${AUTHOR_EMAIL_ARG} \
+        ${HOLD_PERIOD_ARG} \
+        -F "cif=@$i;filename=$(basename $i)" \
+        -F "deposition_type=${DEPOSITION_TYPE}" \
+        ${DEPOSIT_URL} \
+        | eval ${DEPOSIT_LOGGER}
+done
+
+which wipe >/dev/null 2>&1
+if [ $? = 0 ]
+then
+    wipe -rf "${TMP_DIR}"
+else
+    rm -rf "${TMP_DIR}"
+fi
