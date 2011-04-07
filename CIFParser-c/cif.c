@@ -51,11 +51,13 @@ struct CIF {
        after the 'length-1'-th element MAY contain NULL values. */
     size_t length;
     size_t capacity;
-    ssize_t tags_length;
     char **tags;
     char ***values;
-    cif_value_type_t **types; /* Contains a type for each value in 'values'. */
+    ssize_t *value_lengths;    /* Lengths of the values[i] arrays. */
+    ssize_t *value_capacities; /* Capacities of the values[i] arrays. */
+    cif_value_type_t **types;   /* Type for each value in 'values'. */
 
+    ssize_t loop_value_count; /* Number of values in the currently constructed loop. */
     ssize_t loop_start; /* Index of the entry into the 'tags',
                            'values' and 'types' arrays that indicates
                            the beginning of the currently compiled
@@ -97,6 +99,8 @@ void delete_cif( CIF *cif )
         }
         freex( cif->tags );
         freex( cif->values );
+        freex( cif->value_lengths );
+        freex( cif->value_capacities );
         freex( cif->types );
         freex( cif->loop_lengths );
         freex( cif->loops );
@@ -141,7 +145,7 @@ void cif_dump( CIF * volatile cif )
             printf( "%s\n;%s\n;\n", cif->tags[i], cif->values[i][0] );
             break;
         default:
-            fprintf( stderr, "unknown CIF value type %d from CIF parser!\n", cif->types[i] );
+            fprintf( stderr, "unknown CIF value type %d from CIF parser!\n", cif->types[i][0] );
             printf( "%-32s '%s'\n", cif->tags[i], cif->values[i][0] );
             break;
         }
@@ -161,27 +165,44 @@ void cif_insert_value( CIF * cif, char *tag,
         i = cif->length;
         if( cif->length + 1 > cif->capacity ) {
             cif->tags = reallocx( cif->tags,
-                                  sizeof(cif->tags[0]) * (cif->capacity + DELTA_CAPACITY),
+                                  sizeof(cif->tags[0]) *
+                                  (cif->capacity + DELTA_CAPACITY),
                                   &inner );
             cif->tags[i] = NULL;
             cif->values = reallocx( cif->values,
-                                    sizeof(cif->values[0]) * (cif->capacity + DELTA_CAPACITY),
+                                    sizeof(cif->values[0]) *
+                                    (cif->capacity + DELTA_CAPACITY),
                                     &inner );
             cif->values[i] = NULL;
             cif->types = reallocx( cif->types,
-                                   sizeof(cif->types[0]) * (cif->capacity + DELTA_CAPACITY),
+                                   sizeof(cif->types[0]) *
+                                   (cif->capacity + DELTA_CAPACITY),
                                    &inner );
             cif->values[i] = NULL;
+            cif->value_lengths = reallocx( cif->value_lengths,
+                                           sizeof(cif->value_lengths[0]) *
+                                           (cif->capacity + DELTA_CAPACITY),
+                                           &inner );
+            cif->value_lengths[i] = 0;
+            cif->value_capacities = reallocx( cif->value_capacities,
+                                              sizeof(cif->value_capacities[0]) *
+                                              (cif->capacity + DELTA_CAPACITY),
+                                              &inner );
+            cif->value_capacities[i] = 0;
             cif->capacity += DELTA_CAPACITY;
         }
         cif->length++;
 
-        cif->values[i] = callocx( sizeof(cif->values[0][0]), 2, &inner );
-        cif->types[i] = callocx( sizeof(cif->types[0][0]), 2, &inner );
-
+        cif->values[i] = callocx( sizeof(cif->values[0][0]), 1, &inner );
+        cif->types[i] = callocx( sizeof(cif->types[0][0]), 1, &inner );
+        cif->value_capacities[i] = 1;
         cif->tags[i] = tag;
-        cif->values[i][0] = value;
-        cif->types[i][0] = vtype;
+
+        if( value ) {
+            cif->value_lengths[i] = 1;
+            cif->values[i][0] = value;
+            cif->types[i][0] = vtype;
+        }
     }
     cexception_catch {
         cexception_reraise( inner, ex );
@@ -191,6 +212,7 @@ void cif_insert_value( CIF * cif, char *tag,
 void cif_start_loop( CIF *cif )
 {
     assert( cif );
+    cif->loop_value_count = 0;
     cif->loop_current = cif->loop_start = cif->length;
 }
 
@@ -204,19 +226,32 @@ void cif_push_loop_value( CIF * cif, char *value, cif_value_type_t vtype,
                           cexception_t *ex )
 {
     cexception_t inner;
-    ssize_t i, j;
-
-    return;
+    ssize_t i, j, capacity;
 
     assert( cif->loop_start < cif->length );
     assert( cif->loop_current < cif->length );
 
     cexception_guard( inner ) {
         i = cif->loop_current;
-        j = cif->loop_lengths[i];
+        j = cif->value_lengths[i];
+        capacity = cif->value_capacities[i];
+        if( j >= capacity ) {
+            capacity += DELTA_CAPACITY;
+            cif->values[i] = reallocx( cif->values[i],
+                                       sizeof(cif->values[0][0]) * capacity,
+                                       &inner );
+            cif->types[i] = reallocx( cif->types[i],
+                                      sizeof(cif->types[0][0]) * capacity,
+                                      &inner );
+            cif->value_capacities[i] = capacity;
+        }
+        cif->value_lengths[i] = j;
         cif->values[i][j] = value;
         cif->types[i][j] = vtype;
-        cif->loop_lengths[i] ++;
+        cif->loop_current++;
+        if( cif->loop_current >= cif->length ) {
+            cif->loop_current = cif->loop_start;
+        }
     }
     cexception_catch {
         cexception_reraise( inner, ex );

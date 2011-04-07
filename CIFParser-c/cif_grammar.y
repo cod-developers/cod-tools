@@ -200,6 +200,9 @@ loop_tags
 
 loop_values
 	:	loop_values cif_value
+        {
+            cif_push_loop_value( cif_cc->cif, $2.vstr, $2.vtype, px );
+        }
 	|	cif_value
         {
             cif_push_loop_value( cif_cc->cif, $1.vstr, $1.vtype, px );
