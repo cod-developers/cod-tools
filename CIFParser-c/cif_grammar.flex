@@ -98,7 +98,7 @@ static void storeCurrentLine( char *line, int length );
 
  /**************** process multi-line text fields **************************/
 
-\n;.*			{ MARK; BEGIN(text); yylval.s = strclone( yytext + 1 ); }
+\n;.*			{ MARK; BEGIN(text); yylval.s = strclone( yytext + 2 ); }
 <text>^[^;].*		%{
                           RESET_MARK;
                           storeCurrentLine(yytext, yyleng);
