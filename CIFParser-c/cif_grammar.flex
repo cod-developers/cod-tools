@@ -105,7 +105,15 @@ static void storeCurrentLine( char *line, int length );
                           yylval.s = strappend( yylval.s, yytext );
                         %}
 <text>\n+		{ COUNT_LINES; yylval.s = strappend( yylval.s, yytext ); }
-<text>^;	        { ADVANCE_MARK; BEGIN(INITIAL); return _TEXT_FIELD; }
+<text>^;	        %{ 
+                          ssize_t length = strlen( yylval.s );
+                          ADVANCE_MARK;
+                          BEGIN(INITIAL);
+                          if( length > 1 ) {
+                              yylval.s[length-2] = '\0'; /* remove the last "\n" character from the value */
+                          }
+                          return _TEXT_FIELD; 
+                        %}
 
  /**************** eat up whitespace ************************/
 

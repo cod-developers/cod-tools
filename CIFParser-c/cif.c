@@ -55,6 +55,7 @@ struct CIF {
     ssize_t tags_length;
     char **tags;
     char ***values;
+    cif_value_type_t *types;
 };
 
 CIF *new_cif( cexception_t *ex )
@@ -78,6 +79,7 @@ void delete_cif( CIF *cif )
         }
         freex( cif->tags );
         freex( cif->values );
+        freex( cif->types );
 	freex( cif );
     }
 }
@@ -104,7 +106,25 @@ void cif_dump( CIF * volatile cif )
     ssize_t i;
 
     for( i = 0; i < cif->length; i++ ) {
-        printf( "%-32s '%s'\n", cif->tags[i], cif->values[i][0] );
+        switch( cif->types[i] ) {
+        case CIF_NUMBER:
+        case CIF_UQSTRING:
+            printf( "%-32s %s\n", cif->tags[i], cif->values[i][0] );
+            break;
+        case CIF_SQSTRING:
+            printf( "%-32s '%s'\n", cif->tags[i], cif->values[i][0] );
+            break;
+        case CIF_DQSTRING:
+            printf( "%-32s \"%s\"\n", cif->tags[i], cif->values[i][0] );
+            break;
+        case CIF_TEXT:
+            printf( "%s\n;%s\n;\n", cif->tags[i], cif->values[i][0] );
+            break;
+        default:
+            fprintf( stderr, "unknown CIF value type %d from CIF parser!\n", cif->types[i] );
+            printf( "%-32s '%s'\n", cif->tags[i], cif->values[i][0] );
+            break;
+        }
     }
 
     return;
@@ -128,6 +148,10 @@ void cif_insert_value( CIF * cif, char *tag,
                                     sizeof(cif->values[0]) * (cif->capacity + DELTA_CAPACITY),
                                     &inner );
             cif->values[i] = NULL;
+            cif->types = reallocx( cif->types,
+                                   sizeof(cif->types[0]) * (cif->capacity + DELTA_CAPACITY),
+                                   &inner );
+            cif->values[i] = NULL;
             cif->capacity += DELTA_CAPACITY;
         }
         cif->length++;
@@ -136,6 +160,7 @@ void cif_insert_value( CIF * cif, char *tag,
 
         cif->tags[i] = strdupx( tag, &inner );
         cif->values[i][0] = value;
+        cif->types[i] = vtype;
     }
     cexception_catch {
         cexception_reraise( inner, ex );
