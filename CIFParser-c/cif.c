@@ -56,6 +56,12 @@ struct CIF {
     char **tags;
     char ***values;
     cif_value_type_t *types;
+
+    int loop_count;    /* Number of loops in the array 'loops' and 'loop_sizes'. */
+    int *loop_lengths; /* Each element contains length of loop 'loops[i]'. */
+    int **loops;       /* Each element contains an array, of length
+                          'loop_sizes[i]', that lists all tags that
+                          belong to this loop. */
 };
 
 CIF *new_cif( cexception_t *ex )
@@ -77,9 +83,14 @@ void delete_cif( CIF *cif )
                 freex( cif->values[i] );
             }
         }
+        for( i = 0; i < cif->loop_count; i++ ) {
+            freex( cif->loops[i] );
+        }
         freex( cif->tags );
         freex( cif->values );
         freex( cif->types );
+        freex( cif->loop_lengths );
+        freex( cif->loops );
 	freex( cif );
     }
 }
