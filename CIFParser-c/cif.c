@@ -44,7 +44,6 @@ void cif_debug_off( void )
 #define DELTA_CAPACITY (100)
 
 struct CIF {
-
     /* Fields 'length' and 'capacity' describe allocated parallel
        arrays tags and values. The 'capacity' field contains a number
        of array elements allocated for use in each array. The 'length'
@@ -57,6 +56,14 @@ struct CIF {
     char ***values;
     cif_value_type_t *types;
 
+    ssize_t loop_start; /* Index of the entry into the 'tags',
+                           'values' and 'types' arrays that indicates
+                           the beginning of the currently compiled
+                           loop. */
+    ssize_t loop_current; /* Index of the 'values' and 'types' arrays
+                             where a new loop value will be pushed. */
+
+
     int loop_count;    /* Number of loops in the array 'loops' and 'loop_sizes'. */
     int *loop_lengths; /* Each element contains length of loop 'loops[i]'. */
     int **loops;       /* Each element contains an array, of length
@@ -66,7 +73,9 @@ struct CIF {
 
 CIF *new_cif( cexception_t *ex )
 {
-    return callocx( 1, sizeof(CIF), ex );
+    CIF *cif = callocx( 1, sizeof(CIF), ex );
+    cif->loop_start = -1;
+    return cif;
 }
 
 void delete_cif( CIF *cif )
@@ -172,6 +181,41 @@ void cif_insert_value( CIF * cif, char *tag,
         cif->tags[i] = tag;
         cif->values[i][0] = value;
         cif->types[i] = vtype;
+    }
+    cexception_catch {
+        cexception_reraise( inner, ex );
+    }
+}
+
+void cif_start_loop( CIF *cif )
+{
+    assert( cif );
+    cif->loop_current = cif->loop_start = cif->length;
+}
+
+void cif_finish_loop( CIF *cif )
+{
+    assert( cif );
+    cif->loop_current = cif->loop_start = -1;
+}
+
+void cif_push_loop_value( CIF * cif, char *value, cif_value_type_t vtype,
+                          cexception_t *ex )
+{
+    cexception_t inner;
+    ssize_t i, j;
+
+    return;
+
+    assert( cif->loop_start < cif->length );
+    assert( cif->loop_current < cif->length );
+
+    cexception_guard( inner ) {
+        i = cif->loop_current;
+        j = cif->loop_lengths[i];
+        cif->values[i][j] = value;
+        cif->types[i] = vtype;
+        cif->loop_lengths[i] ++;
     }
     cexception_catch {
         cexception_reraise( inner, ex );
