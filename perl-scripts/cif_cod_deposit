@@ -208,6 +208,7 @@ DEPOSIT_LOGGER="cat"
 
 for i in ${FILES}
 do
+    echo ${BASENAME}: $i: NOTE: Deposition started at $(date)
     if [ -n "${SEPARATE_OUT_DIR}" ]
     then
         DEPOSIT_LOGGER="cat > \"${SEPARATE_OUT_DIR}/$(basename $i .cif).html\""
@@ -226,6 +227,7 @@ do
         -F "deposition_type=${DEPOSITION_TYPE}" \
         ${DEPOSIT_URL} \
         | eval ${DEPOSIT_LOGGER}
+    echo ${BASENAME}: $i: NOTE: Deposition finished at $(date)
 done
 
 which wipe >/dev/null 2>&1
