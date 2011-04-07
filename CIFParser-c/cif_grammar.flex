@@ -186,8 +186,9 @@ _[^ \t\n]+     { MARK; yylval.s = strclone(yytext); return _TAG; }
                            return _UQSTRING;
 			%}
 
-\.	                %{
+\.[ \t]	                %{
                            MARK;
+                           yyless( 1 );
                            yylval.s = strclone(yytext);
                            return _UQSTRING;
 			%}
