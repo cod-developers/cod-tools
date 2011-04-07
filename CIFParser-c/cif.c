@@ -158,7 +158,7 @@ void cif_insert_value( CIF * cif, char *tag,
 
         cif->values[i] = callocx( sizeof(cif->values[0][0]), 2, &inner );
 
-        cif->tags[i] = strdupx( tag, &inner );
+        cif->tags[i] = tag;
         cif->values[i][0] = value;
         cif->types[i] = vtype;
     }
