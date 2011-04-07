@@ -47,13 +47,14 @@ void create_cif( CIF * volatile *cif, cexception_t *ex );
 void dispose_cif( CIF * volatile *cif );
 
 void cif_dump( CIF * volatile cif );
+void cif_print( CIF * volatile cif );
 
 void cif_insert_value( CIF * cif, char *tag,
                        char *value, cif_value_type_t vtype,
                        cexception_t *ex );
 
 void cif_start_loop( CIF *cif );
-void cif_finish_loop( CIF *cif );
+void cif_finish_loop( CIF *cif, cexception_t *ex );
 
 void cif_push_loop_value( CIF * cif, char *value, cif_value_type_t vtype,
                           cexception_t *ex );
