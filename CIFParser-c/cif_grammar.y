@@ -183,7 +183,7 @@ loop
        } 
        loop_tags loop_values
        {
-           cif_finish_loop( cif_cc->cif );
+           cif_finish_loop( cif_cc->cif, px );
        } 
        ;
 
