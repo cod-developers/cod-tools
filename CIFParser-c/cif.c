@@ -49,7 +49,7 @@ struct CIF {
        arrays tags and values. The 'capacity' field contains a number
        of array elements allocated for use in each array. The 'length'
        field contains a number of elements actually used. All elements
-       after the 'length-1'-th element MUST contain NULL values. */
+       after the 'length-1'-th element MAY contain NULL values. */
     size_t length;
     size_t capacity;
     ssize_t tags_length;
@@ -68,7 +68,7 @@ void delete_cif( CIF *cif )
     ssize_t i, j;
 
     if( cif ) {
-        for( i = 0; i < cif->length; i++ ) {
+        for( i = 0; i < cif->capacity; i++ ) {
             if( cif->tags ) 
                 freex( cif->tags[i] );
             if( cif->values && cif->values[i] ) {
