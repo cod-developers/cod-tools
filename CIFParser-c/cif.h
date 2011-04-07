@@ -52,4 +52,10 @@ void cif_insert_value( CIF * cif, char *tag,
                        char *value, cif_value_type_t vtype,
                        cexception_t *ex );
 
+void cif_start_loop( CIF *cif );
+void cif_finish_loop( CIF *cif );
+
+void cif_push_loop_value( CIF * cif, char *value, cif_value_type_t vtype,
+                          cexception_t *ex );
+
 #endif

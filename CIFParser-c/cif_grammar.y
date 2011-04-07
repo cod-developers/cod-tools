@@ -177,17 +177,33 @@ cif_value_list
 ;
 
 loop
-    :	_LOOP_ loop_tags loop_values
-;
+       :	_LOOP_ 
+       {
+           cif_start_loop( cif_cc->cif );
+       } 
+       loop_tags loop_values
+       {
+           cif_finish_loop( cif_cc->cif );
+       } 
+       ;
 
 loop_tags
 	:	loop_tags _TAG
+        {
+            cif_insert_value( cif_cc->cif, $2, NULL, CIF_UNKNOWN, px );
+        }
 	|	_TAG
+        {
+            cif_insert_value( cif_cc->cif, $1, NULL, CIF_UNKNOWN, px );
+        }
 ;
 
 loop_values
 	:	loop_values cif_value
 	|	cif_value
+        {
+            cif_push_loop_value( cif_cc->cif, $1.vstr, $1.vtype, px );
+        }
 ;
 
 save_block
