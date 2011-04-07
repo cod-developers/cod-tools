@@ -69,8 +69,8 @@ int main( int argc, char *argv[], char *env[] )
               if( debug.present && strstr(debug.value.s, "dump") != NULL ) {
                   cif_dump( code );
               }
-                  delete_cif( code );
-                  code = NULL;
+              delete_cif( code );
+              code = NULL;
           }
       }
       cexception_catch {
