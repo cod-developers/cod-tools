@@ -67,6 +67,10 @@ static cexception_t *px; /* parser exception */
     double d;
     char *s;
     int token;           /* token value returned by lexer */
+    struct {
+        char *vstr;
+        cif_value_type_t vtype;
+    } typed_value;
 }
 
 %token <s> _DATA_
@@ -82,10 +86,10 @@ static cexception_t *px; /* parser exception */
 %token <s> _REAL_CONST
 
 %type <s> data_block_head
-%type <s> cif_value;
-%type <s> number
-%type <s> string
-%type <s> textfield
+%type <typed_value> cif_value;
+%type <typed_value> number
+%type <typed_value> string
+%type <typed_value> textfield
 
 %%
 
@@ -162,7 +166,7 @@ save_item
 cif_entry
 	:	_TAG cif_value
         {
-            cif_insert_value( cif_cc->cif, $1, $2, px );
+            cif_insert_value( cif_cc->cif, $1, $2.vstr, $2.vtype, px );
         }
         |       _TAG cif_value cif_value_list
 	{
@@ -201,17 +205,23 @@ cif_value
 
 string
 	:	_SQSTRING
+        { $$.vstr = $1; $$.vtype = CIF_SQSTRING; }
 	|	_DQSTRING
+        { $$.vstr = $1; $$.vtype = CIF_DQSTRING; }
 	|	_UQSTRING
+        { $$.vstr = $1; $$.vtype = CIF_UQSTRING; }
 ;
 
 textfield
         :	_TEXT_FIELD
+        { $$.vstr = $1; $$.vtype = CIF_TEXT; }
 ;
 
 number
 	:	_REAL_CONST
+        { $$.vstr = $1; $$.vtype = CIF_NUMBER; }
 	|	_INTEGER_CONST
+        { $$.vstr = $1; $$.vtype = CIF_NUMBER; }
 ;
 
 %%

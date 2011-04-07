@@ -15,6 +15,16 @@
 typedef struct CIF CIF;
 
 typedef enum {
+    CIF_UNKNOWN = 0,
+    CIF_NUMBER,
+    CIF_UQSTRING,
+    CIF_SQSTRING,
+    CIF_DQSTRING,
+    CIF_TEXT,
+    last_CIF_VALUE
+} cif_value_type_t;
+
+typedef enum {
   CIF_OK = 0,
   CIF_UNRECOVERABLE_ERROR,
   CIF_COMPILATION_ERROR,
@@ -38,7 +48,8 @@ void dispose_cif( CIF * volatile *cif );
 
 void cif_dump( CIF * volatile cif );
 
-void cif_insert_value( CIF * cif, char *tag, char *value,
+void cif_insert_value( CIF * cif, char *tag,
+                       char *value, cif_value_type_t vtype,
                        cexception_t *ex );
 
 #endif

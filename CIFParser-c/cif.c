@@ -110,7 +110,8 @@ void cif_dump( CIF * volatile cif )
     return;
 }
 
-void cif_insert_value( CIF * cif, char *tag, char *value,
+void cif_insert_value( CIF * cif, char *tag,
+                       char *value, cif_value_type_t vtype,
                        cexception_t *ex )
 {
     cexception_t inner;
