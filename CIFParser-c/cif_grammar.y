@@ -24,12 +24,14 @@
 
 typedef struct {
     char *filename;
+    CIF *cif;
 } CIF_COMPILER;
 
 static void delete_cif_compiler( CIF_COMPILER *c )
 {
     if( c ) {
         if( c->filename ) free( c->filename );
+        if( c->cif ) delete_cif( c->cif );
         free( c );
     }
 }
@@ -44,6 +46,7 @@ static CIF_COMPILER *new_cif_compiler( char *filename,
         if( filename ) {
             cc->filename = strdupx( filename, &inner );
         }
+        cc->cif = new_cif( &inner );
     }
     cexception_catch {
         delete_cif_compiler( cc );
@@ -55,9 +58,7 @@ static CIF_COMPILER *new_cif_compiler( char *filename,
 
 static CIF_COMPILER * volatile cif_cc;
 
-#if 0
 static cexception_t *px; /* parser exception */
-#endif
 
 %}
 
@@ -71,16 +72,20 @@ static cexception_t *px; /* parser exception */
 %token <s> _DATA_
 %token _SAVE_HEAD
 %token _SAVE_FOOT
-%token _TAG
+%token <s> _TAG
 %token _LOOP_
-%token _DQSTRING
-%token _SQSTRING
-%token _UQSTRING
-%token _TEXT_FIELD
-%token _INTEGER_CONST
-%token _REAL_CONST
+%token <s> _DQSTRING
+%token <s> _SQSTRING
+%token <s> _UQSTRING
+%token <s> _TEXT_FIELD
+%token <s> _INTEGER_CONST
+%token <s> _REAL_CONST
 
 %type <s> data_block_head
+%type <s> cif_value;
+%type <s> number
+%type <s> string
+%type <s> textfield
 
 %%
 
@@ -156,6 +161,9 @@ save_item
 
 cif_entry
 	:	_TAG cif_value
+        {
+            cif_insert_value( cif_cc->cif, $1, $2, px );
+        }
         |       _TAG cif_value cif_value_list
 	{
 	    yywarning( "unterminated string" );
@@ -242,7 +250,7 @@ static void cif_compile_file( char *filename, cexception_t *ex )
 CIF *new_cif_from_cif_file( char *filename, cexception_t *ex )
 {
     cexception_t inner;
-    CIF *code = NULL;
+    CIF *cif = NULL;
 
     assert( !cif_cc );
     cif_cc = new_cif_compiler( filename, ex );
@@ -251,20 +259,21 @@ CIF *new_cif_from_cif_file( char *filename, cexception_t *ex )
     cexception_guard( inner ) {
         cif_compile_file( filename, &inner );
         if( cif_yy_error_number() == 0 ) {
-            code = new_cif( &inner );
+            cif = new_cif( &inner );
         }
     }
     cexception_catch {
         delete_cif_compiler( cif_cc );
         cif_cc = NULL;
-        
         cexception_reraise( inner, ex );
     }
 
+    cif = cif_cc->cif;
+    cif_cc->cif = NULL;
     delete_cif_compiler( cif_cc );
     cif_cc = NULL;
 
-    return code;
+    return cif;
 }
 
 void cif_printf( cexception_t *ex, char *format, ... )
