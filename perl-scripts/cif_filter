@@ -420,6 +420,11 @@ for my $filename (@ARGV) {
             . "taking one into account, other were removed"
     }
 
+    # Assume that there are no datablocks with coordinates until a datablock
+    # with coordinates is found 
+
+    my $no_coordinates = 1;
+
     binmode( STDOUT, ":utf8" );
 
     for my $dataset (@$data) {
@@ -441,6 +446,8 @@ for my $filename (@ARGV) {
 
         next if !defined $datablok;
         next if !$use_datablocks_without_coord && !defined $datablok->{_atom_site_label};
+
+        $no_coordinates = 0;
 
         ## print "\n" if $n > 0;
 
@@ -991,6 +998,12 @@ for my $filename (@ARGV) {
                    } );
 
     }
+
+    if( $no_coordinates ) {
+        warn "file '${filename}' does not contain any datablocks with"
+            . " coordinates";
+    }
+
 }
 
 #
