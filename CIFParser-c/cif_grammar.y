@@ -141,7 +141,13 @@ data_item_list
 
 data_block_head
 	:	_DATA_
+        {
+            cif_start_datablock( cif_cc->cif, $1, px );
+        }
 	|	_DATA_ cif_value_list
+        {
+            cif_start_datablock( cif_cc->cif, $1, px );
+        }
 ;
 
 data_item
@@ -179,7 +185,7 @@ cif_value_list
 loop
        :	_LOOP_ 
        {
-           cif_start_loop( cif_cc->cif );
+           cif_start_loop( cif_cc->cif, px );
        } 
        loop_tags loop_values
        {

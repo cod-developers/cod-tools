@@ -15,6 +15,7 @@
 #include <stdlib.h>
 #include <stdarg.h>
 #include <string.h>
+#include <datablock.h>
 #include <allocx.h>
 #include <assert.h>
 #include <cexceptions.h>
@@ -43,66 +44,20 @@ void cif_debug_off( void )
 #define DELTA_CAPACITY (100)
 
 struct CIF {
-    /* Fields 'length' and 'capacity' describe allocated parallel
-       arrays tags and values. The 'capacity' field contains a number
-       of array elements allocated for use in each array. The 'length'
-       field contains a number of elements actually used. All elements
-       after the 'length-1'-th element MAY contain NULL values. */
-    size_t length;
-    size_t capacity;
-    char **tags;
-    char ***values;
-    int *in_loop;              /* in_loop[i] is number of a loop to
-				  which the i-th tag belongs; -1 if
-				  not in a loop */
-    ssize_t *value_lengths;    /* Lengths of the values[i] arrays. */
-    ssize_t *value_capacities; /* Capacities of the values[i] arrays. */
-    cif_value_type_t **types;  /* Type for each value in 'values'. */
-
-    ssize_t loop_value_count; /* Number of values in the currently constructed loop. */
-    ssize_t loop_start; /* Index of the entry into the 'tags',
-                           'values' and 'types' arrays that indicates
-                           the beginning of the currently compiled
-                           loop. */
-    ssize_t loop_current; /* Index of the 'values' and 'types' arrays
-                             where a new loop value will be pushed. */
-
-    int loop_count;  /* Number of loops in the array 'loop_first' and 'loop_last'. */
-    int *loop_first; /* loop_first[i] is the first tag index in the
-			array 'tags' of the i-th loop. */
-    int *loop_last;  /* loop_last[i] is the last tag index of the i-th loop. */
+    DATABLOCK *datablock_list;
 };
 
 CIF *new_cif( cexception_t *ex )
 {
     CIF *cif = callocx( 1, sizeof(CIF), ex );
-    cif->loop_start = -1;
     return cif;
 }
 
 void delete_cif( CIF *cif )
 {
-    ssize_t i, j;
-
     if( cif ) {
-        for( i = 0; i < cif->length; i++ ) {
-            if( cif->tags ) 
-                freex( cif->tags[i] );
-            if( cif->values && cif->values[i] ) {
-                for( j = 0; j < cif->value_lengths[i]; j++ )
-                    freex( cif->values[i][j] );
-                freex( cif->values[i] );
-            }
-        }
-        freex( cif->tags );
-        freex( cif->in_loop );
-        freex( cif->values );
-        freex( cif->value_lengths );
-        freex( cif->value_capacities );
-        freex( cif->types );
-        freex( cif->loop_first );
-        freex( cif->loop_last );
-	freex( cif );
+        delete_datablock_list( cif->datablock_list );
+        freex( cif );
     }
 }
 
@@ -123,222 +78,84 @@ void dispose_cif( CIF * volatile *cif )
     }
 }
 
-void cif_print_tag( CIF * volatile cif, int tag_nr )
+void cif_start_datablock( CIF * volatile cif, const char *name,
+                          cexception_t *ex )
 {
     assert( cif );
-    printf( "%-32s", cif->tags[tag_nr] );
-}
-
-void cif_print_value( CIF * volatile cif, int tag_nr, int value_idx )
-{
-    ssize_t i, j;
-
-    assert( cif );
-    i = tag_nr;
-    j = value_idx;
-
-    switch( cif->types[i][j] ) {
-    case CIF_NUMBER:
-    case CIF_UQSTRING:
-	printf( " %s", cif->values[i][j] );
-	break;
-    case CIF_SQSTRING:
-	printf( " '%s'", cif->values[i][j] );
-	break;
-    case CIF_DQSTRING:
-	printf( " \"%s\"", cif->values[i][j] );
-	break;
-    case CIF_TEXT:
-	printf( "\n;%s\n;\n", cif->values[i][j] );
-	break;
-    default:
-	fprintf( stderr, "unknown CIF value type %d from CIF parser!\n",
-		 cif->types[i][j] );
-	printf( " '%s'\n", cif->values[i][j] );
-	break;
-    }
+    cif->datablock_list = new_datablock( name, cif->datablock_list, ex );
 }
 
 void cif_dump( CIF * volatile cif )
 {
-    ssize_t i;
+    DATABLOCK *datablock;
 
-    for( i = 0; i < cif->length; i++ ) {
-	cif_print_tag( cif, i );
-	cif_print_value( cif, i, 0 );
-	printf( "\n" );
+    if( cif ) {
+        foreach_datablock( datablock, cif->datablock_list ) {
+            datablock_dump( datablock );
+        }
     }
-}
-
-static int print_loop( CIF *cif, ssize_t i )
-{
-    ssize_t j, k, loop, max;
-
-    loop = cif->in_loop[i];
-    printf( "loop_\n" );
-    for( j = cif->loop_first[loop]; j <= cif->loop_last[loop]; j++ ) {
-	printf( "    %s\n", cif->tags[j] );
-    }
-
-    for( max = 0, j = cif->loop_first[loop]; j <= cif->loop_last[loop]; j++ ) {
-	if( max < cif->value_lengths[j] )
-	    max = cif->value_lengths[j];
-    }
-
-    for( k = 0; k < max; k++ ) {
-	for( j = cif->loop_first[loop]; j <= cif->loop_last[loop]; j++ ) {
-	    if( k < cif->value_lengths[j] ) {
-		cif_print_value( cif, j, k );
-	    } else {
-		printf( ". " );
-	    }
-	}
-	printf( "\n" );
-    }
-    return cif->loop_last[loop];
 }
 
 void cif_print( CIF * volatile cif )
 {
-    ssize_t i;
+    DATABLOCK *datablock;
 
-    for( i = 0; i < cif->length; i++ ) {
-	if( cif->in_loop[i] < 0 ) { /* tag is not in a loop */
-	    cif_print_tag( cif, i );
-	    cif_print_value( cif, i, 0 );
-	    printf( "\n" );
-	} else {
-	    i = print_loop( cif, i );
-	}
+    if( cif ) {
+        foreach_datablock( datablock, cif->datablock_list ) {
+            datablock_print( datablock );
+        }
     }
 }
 
 void cif_insert_value( CIF * cif, char *tag,
-                       char *value, cif_value_type_t vtype,
+                       char *value, datablock_value_type_t vtype,
                        cexception_t *ex )
 {
-    cexception_t inner;
-    ssize_t i;
+    assert( cif );
 
-    cexception_guard( inner ) {
-        i = cif->length;
-        if( cif->length + 1 > cif->capacity ) {
-            cif->tags = reallocx( cif->tags,
-                                  sizeof(cif->tags[0]) *
-                                  (cif->capacity + DELTA_CAPACITY),
-                                  &inner );
-            cif->tags[i] = NULL;
-            cif->in_loop = reallocx( cif->in_loop,
-				     sizeof(cif->in_loop[0]) *
-				     (cif->capacity + DELTA_CAPACITY),
-				     &inner );
-            cif->values = reallocx( cif->values,
-                                    sizeof(cif->values[0]) *
-                                    (cif->capacity + DELTA_CAPACITY),
-                                    &inner );
-            cif->values[i] = NULL;
-            cif->types = reallocx( cif->types,
-                                   sizeof(cif->types[0]) *
-                                   (cif->capacity + DELTA_CAPACITY),
-                                   &inner );
-            cif->values[i] = NULL;
-            cif->value_lengths = reallocx( cif->value_lengths,
-                                           sizeof(cif->value_lengths[0]) *
-                                           (cif->capacity + DELTA_CAPACITY),
-                                           &inner );
-	    cif->value_lengths[i] = 0;
-            cif->value_capacities = reallocx( cif->value_capacities,
-                                              sizeof(cif->value_capacities[0]) *
-                                              (cif->capacity + DELTA_CAPACITY),
-                                              &inner );
-	    cif->value_capacities[i] = 0;
-
-            cif->capacity += DELTA_CAPACITY;
-        }
-        cif->length++;
-
-        cif->values[i] = callocx( sizeof(cif->values[0][0]), 1, &inner );
-        cif->types[i] = callocx( sizeof(cif->types[0][0]), 1, &inner );
-        cif->value_capacities[i] = 1;
-        cif->tags[i] = tag;
-	cif->in_loop[i] = -1;
-
-        if( value ) {
-            cif->value_lengths[i] = 1;
-            cif->values[i][0] = value;
-            cif->types[i][0] = vtype;
-        } else {
-            cif->value_lengths[i] = 0;
-	}
-    }
-    cexception_catch {
-        cexception_reraise( inner, ex );
+    if( cif->datablock_list ) {
+        datablock_insert_value( cif->datablock_list, tag, value, vtype, ex );
+    } else {
+        cexception_raise( ex, CIF_NO_DATABLOCK_ERROR,
+                          "attempt to insert a CIF value before a "
+                          "datablock is started" );
     }
 }
 
-void cif_start_loop( CIF *cif )
+void cif_start_loop( CIF *cif, cexception_t *ex )
 {
     assert( cif );
-    cif->loop_value_count = 0;
-    cif->loop_current = cif->loop_start = cif->length;
+
+    if( cif->datablock_list ) {
+        datablock_start_loop( cif->datablock_list );
+    } else {
+        cexception_raise( ex, CIF_NO_DATABLOCK_ERROR,
+                          "attempt to start a CIF loop before a "
+                          "datablock is started" );
+    }
 }
 
 void cif_finish_loop( CIF *cif, cexception_t *ex )
 {
-    ssize_t i, j;
     assert( cif );
 
-    i = cif->loop_count;
-    cif->loop_count ++;
-    cif->loop_first = reallocx( cif->loop_first,
-				sizeof(cif->loop_first[0]) *
-				cif->loop_count, ex );
-    cif->loop_last = reallocx( cif->loop_last,
-			       sizeof(cif->loop_last[0]) *
-			       cif->loop_count, ex );
-
-    cif->loop_first[i] = cif->loop_start;
-    cif->loop_last[i] = cif->length - 1;
-
-    for( j = cif->loop_start; j < cif->length; j++ ) {
-	cif->in_loop[j] = i;
+    if( cif->datablock_list ) {
+        datablock_finish_loop( cif->datablock_list, ex );
+    } else {
+        cexception_raise( ex, CIF_NO_DATABLOCK_ERROR,
+                          "attempt to finish a CIF loop before a "
+                          "datablock is started" );
     }
-
-    cif->loop_current = cif->loop_start = -1;
 }
 
-void cif_push_loop_value( CIF * cif, char *value, cif_value_type_t vtype,
+void cif_push_loop_value( CIF * cif, char *value, datablock_value_type_t vtype,
                           cexception_t *ex )
 {
-    cexception_t inner;
-    ssize_t i, j, capacity;
-
-    assert( cif->loop_start < cif->length );
-    assert( cif->loop_current < cif->length );
-
-    cexception_guard( inner ) {
-        i = cif->loop_current;
-        j = cif->value_lengths[i];
-        capacity = cif->value_capacities[i];
-        if( j >= capacity ) {
-            capacity += DELTA_CAPACITY;
-            cif->values[i] = reallocx( cif->values[i],
-                                       sizeof(cif->values[0][0]) * capacity,
-                                       &inner );
-            cif->types[i] = reallocx( cif->types[i],
-                                      sizeof(cif->types[0][0]) * capacity,
-                                      &inner );
-            cif->value_capacities[i] = capacity;
-        }
-        cif->value_lengths[i] = j + 1;
-        cif->values[i][j] = value;
-        cif->types[i][j] = vtype;
-        cif->loop_current++;
-        if( cif->loop_current >= cif->length ) {
-            cif->loop_current = cif->loop_start;
-        }
-    }
-    cexception_catch {
-        cexception_reraise( inner, ex );
-    }
+    if( cif->datablock_list ) {
+        datablock_push_loop_value( cif->datablock_list, value, vtype, ex );
+    } else {
+        cexception_raise( ex, CIF_NO_DATABLOCK_ERROR,
+                          "attempt to push a CIF loop value before a "
+                          "datablock is started" );
+    }    
 }
