@@ -115,6 +115,16 @@ static void storeCurrentLine( char *line, int length );
                           return _TEXT_FIELD; 
                         %}
 
+<text><<EOF>>           %{
+                          length = strlen( yylval.s );
+                          yyerrorf( "unterminated text field" );
+                          BEGIN(INITIAL);
+                          if( length > 1 ) {
+                              yylval.s[length-2] = '\0'; /* remove the last "\n" character from the value */
+                          }
+                          return _TEXT_FIELD;
+                        %}
+
  /**************** eat up whitespace ************************/
 
 [ \t\r]+			ADVANCE_MARK;
