@@ -256,6 +256,7 @@ static void cif_compile_file( char *filename, cexception_t *ex )
         if( filename ) {
             yyin = fopenx( filename, "r", ex );
         }
+        px = &inner; /* catch all parser-generated exceptions */
 	if( yyparse() != 0 ) {
 	    int errcount = cif_yy_error_number();
 	    cexception_raise( &inner, CIF_UNRECOVERABLE_ERROR,
@@ -283,6 +284,7 @@ CIF *new_cif_from_cif_file( char *filename, cexception_t *ex )
 {
     cexception_t inner;
     CIF *cif = NULL;
+    extern void yyrestart();
 
     assert( !cif_cc );
     cif_cc = new_cif_compiler( filename, ex );
@@ -297,6 +299,7 @@ CIF *new_cif_from_cif_file( char *filename, cexception_t *ex )
     cexception_catch {
         delete_cif_compiler( cif_cc );
         cif_cc = NULL;
+        yyrestart();
         cexception_reraise( inner, ex );
     }
 
