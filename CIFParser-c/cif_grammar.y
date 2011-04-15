@@ -302,12 +302,14 @@ CIF *new_cif_from_cif_file( char *filename, cexception_t *ex )
         cexception_reraise( inner, ex );
     }
 
-    if( nerrors == 0 ) {
-        cif = cif_cc->cif;
-        cif_cc->cif = NULL;
-    }
+    cif = cif_cc->cif;
+    cif_cc->cif = NULL;
     delete_cif_compiler( cif_cc );
     cif_cc = NULL;
+
+    if( cif && nerrors > 0 ) {
+        cif_set_nerrors( cif, nerrors );
+    }
 
     return cif;
 }

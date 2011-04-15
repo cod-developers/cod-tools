@@ -27,7 +27,7 @@ int main( int argc, char *argv[], char *env[] )
 {
   cexception_t inner;
   char ** volatile files = NULL;
-  CIF * volatile code = NULL;
+  CIF * volatile cif = NULL;
   int retval = 0;
   int i;
 
@@ -64,16 +64,16 @@ int main( int argc, char *argv[], char *env[] )
       char * volatile filename = NULL;
       cexception_guard( inner ) {
           filename = files[i] ? files[i] : "-";
-          code = new_cif_from_cif_file( files[i], &inner );
+          cif = new_cif_from_cif_file( files[i], &inner );
 
-          if( code ) {
+          if( cif && cif_nerrors( cif ) == 0 ) {
               if( debug.present && strstr(debug.value.s, "dump") != NULL ) {
-                  cif_print( code );
+                  cif_print( cif );
               } else {
                   printf( "%s: file '%s' OK\n", progname, filename );
               }
-              delete_cif( code );
-              code = NULL;
+              delete_cif( cif );
+              cif = NULL;
               filename = NULL;
           }
       }
@@ -83,13 +83,13 @@ int main( int argc, char *argv[], char *env[] )
           } else {
               fprintf( stderr, "%s: %s\n", argv[0], cexception_message( &inner ));
           }
-          delete_cif( code );
+          delete_cif( cif );
           retval = 3;
-          code = NULL;
+          cif = NULL;
       }
   }
 
-  delete_cif( code );
+  delete_cif( cif );
 
   return retval;
 }
