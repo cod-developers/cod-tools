@@ -77,7 +77,7 @@ struct DATABLOCK {
     struct DATABLOCK *next; /* Data blocks can be linked in a linked-list. */
 };
 
-DATABLOCK *new_datablock( const char *name, cexception_t *ex )
+DATABLOCK *new_datablock( const char *name, DATABLOCK *next, cexception_t *ex )
 {
     cexception_t inner;
     DATABLOCK * volatile datablock = callocx( 1, sizeof(DATABLOCK), ex );
@@ -87,6 +87,7 @@ DATABLOCK *new_datablock( const char *name, cexception_t *ex )
         if( name ) {
             datablock->name = strdupx( name, &inner );
         }
+        datablock->next = next;
     }
     cexception_catch {
         delete_datablock( datablock );
@@ -138,12 +139,12 @@ void delete_datablock_list( DATABLOCK *datablock_list )
 }
 
 void create_datablock( DATABLOCK * volatile *datablock, const char *name,
-                       cexception_t *ex )
+                       DATABLOCK *next, cexception_t *ex )
 {
     assert( datablock );
     assert( !(*datablock) );
 
-    *datablock = new_datablock( name, ex );
+    *datablock = new_datablock( name, next, ex );
 }
 
 void dispose_datablock( DATABLOCK * volatile *datablock )
@@ -242,6 +243,10 @@ static int print_loop( DATABLOCK *datablock, ssize_t i )
 void datablock_print( DATABLOCK * volatile datablock )
 {
     ssize_t i;
+
+    assert( datablock );
+
+    printf( "data_%s\n",  datablock->name );
 
     for( i = 0; i < datablock->length; i++ ) {
 	if( datablock->in_loop[i] < 0 ) { /* tag is not in a loop */

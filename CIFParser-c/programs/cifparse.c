@@ -65,9 +65,10 @@ int main( int argc, char *argv[], char *env[] )
           code = new_cif_from_cif_file( files[i], &inner );
 
           if( code ) {
-              printf( "%s: file '%s' OK\n", progname, files[i] );
               if( debug.present && strstr(debug.value.s, "dump") != NULL ) {
                   cif_print( code );
+              } else {
+                  printf( "%s: file '%s' OK\n", progname, files[i] );
               }
               delete_cif( code );
               code = NULL;

@@ -38,12 +38,14 @@ void datablock_debug_on( void );
 void datablock_debug_off( void );
 int datablock_debug_is_on( void );
 
-DATABLOCK *new_datablock( const char *name, cexception_t *ex );
+DATABLOCK *new_datablock( const char *name, DATABLOCK *next,
+                          cexception_t *ex );
 
 void delete_datablock( DATABLOCK *bc );
+void delete_datablock_list( DATABLOCK *datablock_list );
 
 void create_datablock( DATABLOCK * volatile *datablock, const char *name,
-                       cexception_t *ex );
+                       DATABLOCK *next, cexception_t *ex );
 
 void dispose_datablock( DATABLOCK * volatile *datablock );
 
