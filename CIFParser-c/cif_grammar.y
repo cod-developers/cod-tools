@@ -171,10 +171,11 @@ cif_entry
         {
             cif_insert_value( cif_cc->cif, $1, $2.vstr, $2.vtype, px );
         }
-        |       _TAG cif_value cif_value_list
+        | _TAG cif_value
 	{
 	    yywarning( "unterminated string" );
 	}
+        cif_value_list
 ;
 
 cif_value_list
