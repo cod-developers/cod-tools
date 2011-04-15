@@ -44,6 +44,7 @@ void cif_debug_off( void )
 #define DELTA_CAPACITY (100)
 
 struct CIF {
+    int nerrors;
     DATABLOCK *datablock_list;
 };
 
@@ -158,4 +159,16 @@ void cif_push_loop_value( CIF * cif, char *value, datablock_value_type_t vtype,
                           "attempt to push a CIF loop value before a "
                           "datablock is started" );
     }    
+}
+
+void cif_set_nerrors( CIF *cif, int nerrors )
+{
+    assert( cif );
+    cif->nerrors = nerrors;
+}
+
+int cif_nerrors( CIF *cif )
+{
+    assert( cif );
+    return cif->nerrors;
 }

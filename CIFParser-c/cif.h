@@ -64,4 +64,7 @@ void cif_finish_loop( CIF *cif, cexception_t *ex );
 void cif_push_loop_value( CIF * cif, char *value, datablock_value_type_t vtype,
                           cexception_t *ex );
 
+void cif_set_nerrors( CIF *cif, int nerrors );
+int cif_nerrors( CIF *cif );
+
 #endif
