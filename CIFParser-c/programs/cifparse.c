@@ -68,7 +68,7 @@ int main( int argc, char *argv[], char *env[] )
               if( debug.present && strstr(debug.value.s, "dump") != NULL ) {
                   cif_print( code );
               } else {
-                  printf( "%s: file '%s' OK\n", progname, files[i] );
+                  printf( "%s: file '%s' OK\n", progname, files[i] ? files[i] : "-" );
               }
               delete_cif( code );
               code = NULL;
