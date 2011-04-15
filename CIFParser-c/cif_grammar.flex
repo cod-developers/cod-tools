@@ -90,7 +90,7 @@ static void storeCurrentLine( char *line, int length );
  /********* store line for better error reporting ***********/
 
 ^.*   { storeCurrentLine(yytext, yyleng); RESET_MARK; yyless(0); }
-\n+   COUNT_LINES; /** count lines **/
+\n    COUNT_LINES; /** count lines **/
 
  /**************** eat up comments **************************/
 
