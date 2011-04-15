@@ -282,8 +282,9 @@ static void cif_compile_file( char *filename, cexception_t *ex )
 
 CIF *new_cif_from_cif_file( char *filename, cexception_t *ex )
 {
+    volatile int nerrors;
     cexception_t inner;
-    CIF *cif = NULL;
+    CIF * volatile cif = NULL;
     extern void yyrestart();
 
     assert( !cif_cc );
@@ -292,9 +293,7 @@ CIF *new_cif_from_cif_file( char *filename, cexception_t *ex )
 
     cexception_guard( inner ) {
         cif_compile_file( filename, &inner );
-        if( cif_yy_error_number() == 0 ) {
-            cif = new_cif( &inner );
-        }
+        nerrors = cif_yy_error_number();
     }
     cexception_catch {
         delete_cif_compiler( cif_cc );
@@ -303,8 +302,10 @@ CIF *new_cif_from_cif_file( char *filename, cexception_t *ex )
         cexception_reraise( inner, ex );
     }
 
-    cif = cif_cc->cif;
-    cif_cc->cif = NULL;
+    if( nerrors == 0 ) {
+        cif = cif_cc->cif;
+        cif_cc->cif = NULL;
+    }
     delete_cif_compiler( cif_cc );
     cif_cc = NULL;
 
