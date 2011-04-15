@@ -61,21 +61,28 @@ int main( int argc, char *argv[], char *env[] )
   }
 
   for( i = 0; i == 0 || files[i] != NULL; i++ ) {
+      char * volatile filename = NULL;
       cexception_guard( inner ) {
+          filename = files[i] ? files[i] : "-";
           code = new_cif_from_cif_file( files[i], &inner );
 
           if( code ) {
               if( debug.present && strstr(debug.value.s, "dump") != NULL ) {
                   cif_print( code );
               } else {
-                  printf( "%s: file '%s' OK\n", progname, files[i] ? files[i] : "-" );
+                  printf( "%s: file '%s' OK\n", progname, filename );
               }
               delete_cif( code );
               code = NULL;
+              filename = NULL;
           }
       }
       cexception_catch {
-          fprintf( stderr, "%s: %s\n", argv[0], cexception_message( &inner ));
+          if( filename ) {
+              fprintf( stderr, "%s: %s: %s\n", argv[0], filename, cexception_message( &inner ));
+          } else {
+              fprintf( stderr, "%s: %s\n", argv[0], cexception_message( &inner ));
+          }
           delete_cif( code );
           retval = 3;
           code = NULL;
