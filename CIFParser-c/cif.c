@@ -46,6 +46,9 @@ void cif_debug_off( void )
 struct CIF {
     int nerrors;
     DATABLOCK *datablock_list;
+    DATABLOCK *last_datablock; /* points to the end of the
+                                  datablock_list; SHOULD not be freed
+                                  when the CIF structure is deleted.*/
 };
 
 CIF *new_cif( cexception_t *ex )
@@ -82,8 +85,18 @@ void dispose_cif( CIF * volatile *cif )
 void cif_start_datablock( CIF * volatile cif, const char *name,
                           cexception_t *ex )
 {
+    DATABLOCK *new_block = NULL;
+
     assert( cif );
-    cif->datablock_list = new_datablock( name, cif->datablock_list, ex );
+
+    new_block = new_datablock( name, NULL, ex );
+
+    if( cif->last_datablock ) {
+        datablock_set_next( cif->last_datablock, new_block );
+        cif->last_datablock = new_block;
+    } else {
+        cif->datablock_list = cif->last_datablock = new_block;
+    }
 }
 
 void cif_dump( CIF * volatile cif )

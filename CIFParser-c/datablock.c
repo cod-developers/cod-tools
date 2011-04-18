@@ -165,6 +165,14 @@ DATABLOCK *datablock_next( DATABLOCK *datablock )
     }
 }
 
+void datablock_set_next( DATABLOCK *datablock, DATABLOCK *next )
+{
+    if( datablock ) {
+        assert( !datablock->next );
+        datablock->next = next;
+    }
+}
+
 void datablock_print_tag( DATABLOCK * volatile datablock, int tag_nr )
 {
     assert( datablock );
