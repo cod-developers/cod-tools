@@ -50,6 +50,7 @@ void create_datablock( DATABLOCK * volatile *datablock, const char *name,
 void dispose_datablock( DATABLOCK * volatile *datablock );
 
 DATABLOCK *datablock_next( DATABLOCK *datablock );
+void datablock_set_next( DATABLOCK *datablock, DATABLOCK *next );
 
 void datablock_dump( DATABLOCK * volatile datablock );
 void datablock_print( DATABLOCK * volatile datablock );
