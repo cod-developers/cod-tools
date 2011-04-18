@@ -958,20 +958,29 @@ sub check_limits {
             if( $value =~ /^(\.|\?)$/ ) {
                 next;
             }
-            if( $value !~ /^([+-]?(?:\d+(?:\.\d*)?|\.\d+))(\(?\d*\)?)$/ ) {
-                print STDERR "$0: $filename $dataname: ERROR, tag '$tag' value '$value' " .
-                    "is not numeric.\n";
+            if( $value !~ /^([+-]?(?:\d+(?:\.\d*)?|\.\d+))\(?(\d*)\)?$/ ) {
+                print STDERR "$0: $filename $dataname: ERROR, tag '$tag' " .
+                             "value '$value' is not numeric.\n";
                 $warnings++;
                 next;
             } else {
                 my $number = $1;
                 my $precision = $2;
-                if( ($tag =~ /_w?R_factor_/) && ( $precision) ) {
+                if(! $precision ) {
+                    $precision = 0;
+                }
+                if( ($tag =~ /_w?R_factor_/) && ( $precision > 0 ) ) {
                     print STDERR "$0: $filename $dataname: WARNING, '$tag' " .
                         "value is '$value', but it should be numeric and " .
                         "without presicion (esd value).\n";
                     $warnings++;
-                    next;   
+                    next;
+                }
+                if( ( $number+$precision ) < 0 ) {
+                    print STDERR "$0: $filename $dataname: WARNING, '$tag' " .
+                        "value '$value' should be in range [0.0;+inf].\n";
+                    $warnings++;
+                    next;
                 } elsif(! defined $limits_table->{$tag}[0][1] ) {
                     foreach my $i( 0..$#{ $limits_table->{$tag} } ) {
                         my $limit = @{ $limits_table->{$tag}->[$i]}[0];
@@ -989,15 +998,16 @@ sub check_limits {
                         my $begin = @{ $limits_table->{$tag}->[$i]}[0];
                         my $end = @{ $limits_table->{$tag}->[$i]}[1];
                         if( ($number < $begin) || ($number > $end) ) {
-                            error_reporter( $filename, undef, $dataset->{name},
-                                            $report_names[$i] .       
-                                            ", tag '$tag' value '$value' " .
-                                            "lies outside the range " . 
-                                            $begin . " <> " . $end . "." );
-                            $warnings ++;
-                            last;
+                                error_reporter( $filename, undef, $dataset->{name},
+                                                $report_names[$i] .       
+                                                ", tag '$tag' value '$value' " .
+                                                "lies outside the range " . 
+                                                $begin . " <> " . $end . "." );
+                                $warnings ++;
+                                last;
                         } 
                     }
+                    
                 }
             }
         }
