@@ -160,6 +160,7 @@ TMP_EMAIL="${TMP_DIR}/user_email"
 TMP_AUTHOR_NAME="${TMP_DIR}/author_name"
 TMP_AUTHOR_EMAIL="${TMP_DIR}/author_email"
 TMP_JOURNAL="${TMP_DIR}/journal"
+TMP_CLIENT_IP="${TMP_DIR}/web_client_ip"
 
 perl -lne "print \$1 if /^username=(.*)/" < ${INPUT_CONFIG} > ${TMP_USERNAME}
 perl -lne "print \$1 if /^password=(.*)/" < ${INPUT_CONFIG} > ${TMP_PASSWRD}
@@ -167,6 +168,7 @@ perl -lne "print \$1 if /^journal=(.*)/"  < ${INPUT_CONFIG} > ${TMP_JOURNAL}
 perl -lne "print \$1 if /^user_email=(.*)/"   < ${INPUT_CONFIG} > ${TMP_EMAIL}
 perl -lne "print \$1 if /^author_name=(.*)/"  < ${INPUT_CONFIG} > ${TMP_AUTHOR_NAME}
 perl -lne "print \$1 if /^author_email=(.*)/" < ${INPUT_CONFIG} > ${TMP_AUTHOR_EMAIL}
+perl -lne "print \$1 if /^web_client_ip=(.*)/"   < ${INPUT_CONFIG} > ${TMP_CLIENT_IP}
 HOLD_PERIOD=$(perl -lne "print \$1 if /^hold_period=(.*)/" < ${INPUT_CONFIG})
 
 if [ -s ${TMP_JOURNAL} ]
@@ -197,6 +199,13 @@ else
     AUTHOR_EMAIL_ARG=''
 fi
 
+if [ -s ${TMP_CLIENT_IP} ]
+then
+    WEB_CLIENT_IP_ARG="-F web_client_ip=<${TMP_CLIENT_IP}"
+else
+    WEB_CLIENT_IP_ARG=''
+fi
+
 if [ -n "${HOLD_PERIOD}" ]
 then
     HOLD_PERIOD_ARG="-F hold_period=${HOLD_PERIOD}"
@@ -222,6 +231,7 @@ do
         ${EMAIL_ARG} \
         ${AUTHOR_NAME_ARG} \
         ${AUTHOR_EMAIL_ARG} \
+        ${WEB_CLIENT_IP_ARG} \
         ${HOLD_PERIOD_ARG} \
         -F "cif=@$i;filename=$(basename $i)" \
         -F "deposition_type=${DEPOSITION_TYPE}" \
