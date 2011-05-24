@@ -32,6 +32,7 @@ setvar SEPARATE_OUT_DIR = ''
 
 setvar DEBUG    = false
 setvar PROGRESS = false
+setvar OUTPUT_MODE  = "html"
 
 setvar BASENAME = "`basename $0`"
 
@@ -64,6 +65,9 @@ curl=curl
 #**
 #**  -P, --progress
 #**      Ask cif-deposit.pl to report progress of the deposition.
+#**
+#**  --output-mode html
+#**      Specify the output mode (from "html" and "stdout")
 #**
 #**  -D, --debug
 #**      Request output of the progress information from cif-deposit.pl to the
@@ -104,6 +108,9 @@ do
           ;;
       -D-|--no-debug|--no-debu|--no-deb|--no-de|--no-d)
           DEBUG=false
+          ;;
+      --output-mode)
+          OUTPUT_MODE="$2"
           ;;
       -P|--progress|--progres|--progre|--progr|--prog|--pro|--pr|--p)
           PROGRESS=true
@@ -225,6 +232,7 @@ do
     ${curl} \
         ${DEBUG_ARG} \
         ${PROGRESS_ARG} \
+        -F "output_mode=${OUTPUT_MODE}" \
         -F "username=<${TMP_USERNAME}" \
         -F "password=<${TMP_PASSWRD}" \
         ${JOURNAL_ARG} \
