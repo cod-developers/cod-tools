@@ -197,12 +197,14 @@ void cif_print_tag_values( CIF *cif, char *tagname, char * volatile prefix,
                 strlen( datablock_name( datablock ) ) + 
                 2 * strlen( separator )];
             nprefix[0] = '\0';
-            strcat( nprefix, prefix );
-            if( append_blkname == 1 ) {
+            if( strlen( prefix ) != 0 ) {
+                strcat( nprefix, prefix );
                 strcat( nprefix, separator );
-                strcat( nprefix, datablock_name( datablock ) );
             }
-            strcat( nprefix, separator );
+            if( append_blkname == 1 ) {
+                strcat( nprefix, datablock_name( datablock ) );
+                strcat( nprefix, separator );
+            }
             datablock_print_tag_values( datablock, tagname, nprefix,
                 separator, vseparator );
         }

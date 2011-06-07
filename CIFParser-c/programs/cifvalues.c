@@ -11,6 +11,8 @@
 static option_value_t tags;
 static option_value_t separator;
 static option_value_t vseparator;
+static option_value_t print_filename;
+static option_value_t print_dataname;
 static option_value_t verbose;
 static option_value_t debug;
 static option_value_t only_compile;
@@ -19,6 +21,10 @@ static option_t options[] = {
   { "-t", "--tag",          OT_STRING,        &tags },
   { "-s", "--separator",    OT_STRING,        &separator },
   { NULL, "--vseparator",   OT_STRING,        &vseparator },
+  { NULL, "--filename",     OT_BOOLEAN_TRUE,  &print_filename },
+  { NULL, "--no-filename",  OT_BOOLEAN_FALSE, &print_filename },
+  { NULL, "--dataname",     OT_BOOLEAN_TRUE,  &print_dataname },
+  { NULL, "--no-dataname",  OT_BOOLEAN_FALSE, &print_dataname },
   { "-d", "--debug",        OT_STRING,        &debug },
   { "-c", "--compile-only", OT_BOOLEAN_TRUE,  &only_compile },
   { "-q", "--quiet",        OT_BOOLEAN_FALSE, &verbose },
@@ -42,6 +48,8 @@ int main( int argc, char *argv[], char *env[] )
   tags.value.s = "";
   separator.value.s = " ";
   vseparator.value.s = ",";
+  print_filename.value.bool = 0;
+  print_dataname.value.bool = 1;
 
   cexception_guard( inner ) {
       files = get_optionsx( argc, argv, options, &inner );
@@ -80,7 +88,9 @@ int main( int argc, char *argv[], char *env[] )
               if( debug.present && strstr(debug.value.s, "dump") != NULL ) {
                   cif_print( cif );
               } else {
-                  cif_print_tag_values( cif, tags.value.s, filename, 1,
+                  cif_print_tag_values( cif, tags.value.s,
+                      ( print_filename.value.bool == 1 ? filename : "" ), 
+                      print_dataname.value.bool,
                       separator.value.s, vseparator.value.s );
               }         
               delete_cif( cif );
