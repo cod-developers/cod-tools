@@ -515,7 +515,7 @@ sub fix_temperature($$) {
             for my $i( 0..$#{$values->{$tag}} ) {
                 my $temperature = $values->{$tag}[$i];
                 my $temperature_modif = $temperature;
-		$temperature_modif =~ s/^\s+|\s+$//g;
+		$temperature_modif =~ s/^\s+|^\n+|\n+$|\s+$//g;
 		
                 if( $temperature_modif =~ /^\.|\?$/ ) {
                     next;
@@ -894,6 +894,10 @@ sub fix_temperature($$) {
                     /^
                         ($number_pos)(\($sigma\))?$
                         /x ) {
+                    if( length($temperature) > 40 ) {
+                            $temperature = substr $temperature, 0, 40;
+                            $temperature .= "...";
+                        }
                     print STDERR
                         "$0: $filename: $dataname: WARNING, " .
                         "'$tag' value is '$temperature', " .
@@ -949,8 +953,14 @@ sub fix_enums($$) {
                     } else {
                         my $dict_values =
                             join( ", ", @replacement_list );
+                        my $val = $tag_value;
+                        $val =~ s/^\n|\n$//g; 
+                        if( length($val) > 30 ) {
+                            $val = substr $val, 0, 30;
+                            $val .= "...";
+                        } 
                         $message_key =
-                            "WARNING, '$tag' value '$tag_value' " .
+                            "WARNING, '$tag' value '$val' " .
                             "should be one of these: [" .
                             "$dict_values] " .
                             "according to $tagDicts{$tag}[0] " .
