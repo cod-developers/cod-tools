@@ -209,6 +209,32 @@ void datablock_print_value( DATABLOCK * volatile datablock, int tag_nr, int valu
     }
 }
 
+void datablock_print_tag_values( DATABLOCK * volatile datablock,
+    char * tagname, char * volatile prefix, char * separator,
+    char * vseparator )
+{
+    ssize_t i, j;
+    for( i = 0; i < datablock->length; i++ ) {
+        if( strcmp( datablock->tags[i], tagname ) == 0 ) {
+            int first = 1;
+            for( j = 0; j < datablock->value_lengths[i]; j++ ) {
+                if( first == 1 ) {
+                    printf( "%s%s", prefix, datablock->values[i][j] );
+                    first = 0;
+                } else {
+                    printf( "%s%s", vseparator, datablock->values[i][j] );
+                }
+            }
+            if( datablock->value_lengths[i] > 0 ) {
+                printf( "\n" );
+            } else {
+                printf( "%s%s\n", prefix, "?" );
+            }
+            break;
+        }
+    }
+}
+
 void datablock_dump( DATABLOCK * volatile datablock )
 {
     ssize_t i;
@@ -395,4 +421,8 @@ void datablock_push_loop_value( DATABLOCK * datablock, char *value, datablock_va
     cexception_catch {
         cexception_reraise( inner, ex );
     }
+}
+
+char * datablock_name( DATABLOCK * datablock ) {
+    return datablock->name;
 }
