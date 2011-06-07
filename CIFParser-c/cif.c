@@ -185,3 +185,26 @@ int cif_nerrors( CIF *cif )
     assert( cif );
     return cif->nerrors;
 }
+
+void cif_print_tag_values( CIF *cif, char *tagname, char * volatile prefix,
+    int append_blkname, char * separator, char * vseparator )
+{
+    DATABLOCK *datablock;
+
+    if( cif ) {
+        foreach_datablock( datablock, cif->datablock_list ) {
+            char * nprefix[ strlen( prefix ) + 
+                strlen( datablock_name( datablock ) ) + 
+                2 * strlen( separator )];
+            nprefix[0] = '\0';
+            strcat( nprefix, prefix );
+            if( append_blkname == 1 ) {
+                strcat( nprefix, separator );
+                strcat( nprefix, datablock_name( datablock ) );
+            }
+            strcat( nprefix, separator );
+            datablock_print_tag_values( datablock, tagname, nprefix,
+                separator, vseparator );
+        }
+    }
+}
