@@ -210,29 +210,35 @@ void datablock_print_value( DATABLOCK * volatile datablock, int tag_nr, int valu
 }
 
 void datablock_print_tag_values( DATABLOCK * volatile datablock,
-    char * tagname, char * volatile prefix, char * separator,
+    char ** tagnames, int tagcount, char * volatile prefix, char * separator,
     char * vseparator )
 {
-    ssize_t i, j;
-    for( i = 0; i < datablock->length; i++ ) {
-        if( strcmp( datablock->tags[i], tagname ) == 0 ) {
-            int first = 1;
-            for( j = 0; j < datablock->value_lengths[i]; j++ ) {
-                if( first == 1 ) {
-                    printf( "%s%s", prefix, datablock->values[i][j] );
-                    first = 0;
-                } else {
-                    printf( "%s%s", vseparator, datablock->values[i][j] );
+
+    printf( "%s", prefix );
+    ssize_t i, j, k;
+    for( k = 0; k < tagcount; k++ ) {
+        int isfound = 0;
+        for( i = 0; i < datablock->length; i++ ) {
+            if( strcmp( datablock->tags[i], tagnames[k] ) == 0 ) {
+                isfound = 1;
+                int first = 1;
+                for( j = 0; j < datablock->value_lengths[i]; j++ ) {
+                    if( first == 1 ) {
+                        printf( "%s", datablock->values[i][j] );
+                        first = 0;
+                    } else {
+                        printf( "%s%s", vseparator, datablock->values[i][j] );
+                    }
                 }
+                break;
             }
-            if( datablock->value_lengths[i] > 0 ) {
-                printf( "\n" );
-            } else {
-                printf( "%s%s\n", prefix, "?" );
-            }
-            break;
         }
+        if( isfound == 0 ) {
+            printf( "?" );
+        }
+        printf( "%s", separator );
     }
+    printf( "\n" );
 }
 
 void datablock_dump( DATABLOCK * volatile datablock )

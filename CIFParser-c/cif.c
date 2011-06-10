@@ -186,8 +186,9 @@ int cif_nerrors( CIF *cif )
     return cif->nerrors;
 }
 
-void cif_print_tag_values( CIF *cif, char *tagname, char * volatile prefix,
-    int append_blkname, char * separator, char * vseparator )
+void cif_print_tag_values( CIF *cif, char ** tagnames, int tagcount,
+    char * volatile prefix, int append_blkname, char * separator,
+    char * vseparator )
 {
     DATABLOCK *datablock;
 
@@ -205,7 +206,7 @@ void cif_print_tag_values( CIF *cif, char *tagname, char * volatile prefix,
                 strcat( nprefix, datablock_name( datablock ) );
                 strcat( nprefix, separator );
             }
-            datablock_print_tag_values( datablock, tagname, nprefix,
+            datablock_print_tag_values( datablock, tagnames, tagcount, nprefix,
                 separator, vseparator );
         }
     }
