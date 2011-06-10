@@ -51,8 +51,32 @@ int main( int argc, char *argv[], char *env[] )
   print_filename.value.bool = 0;
   print_dataname.value.bool = 1;
 
+  char ** taglist = NULL;
+  int tagcount = 0;
+
   cexception_guard( inner ) {
       files = get_optionsx( argc, argv, options, &inner );
+      char * tag_pointer = tags.value.s;
+      char * end_pointer = strchr( tags.value.s, ',' );
+      while( tag_pointer != NULL ) {
+        tagcount++;
+        int taglen;
+        if( end_pointer != NULL ) {
+            taglen = end_pointer - tag_pointer;
+        } else {
+            taglen = strchr( tag_pointer, '\0' ) - tag_pointer;
+        }
+        taglist = reallocx( taglist, sizeof( char * ) * tagcount, &inner );
+        taglist[tagcount - 1] = mallocx( taglen * sizeof( char ), &inner );
+        strncpy( taglist[tagcount - 1], tag_pointer, taglen );
+        taglist[tagcount - 1][taglen] = '\0';
+        if( end_pointer != NULL ) {
+            tag_pointer = end_pointer + 1;
+            end_pointer = strchr( tag_pointer, ',' );
+        } else {
+            tag_pointer = NULL;
+        }
+      }
   }
   cexception_catch {
       fprintf( stderr, "%s: %s\n", argv[0], cexception_message( &inner ));
@@ -88,7 +112,7 @@ int main( int argc, char *argv[], char *env[] )
               if( debug.present && strstr(debug.value.s, "dump") != NULL ) {
                   cif_print( cif );
               } else {
-                  cif_print_tag_values( cif, tags.value.s,
+                  cif_print_tag_values( cif, taglist, tagcount,
                       ( print_filename.value.bool == 1 ? filename : "" ), 
                       print_dataname.value.bool,
                       separator.value.s, vseparator.value.s );
