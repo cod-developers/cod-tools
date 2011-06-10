@@ -236,7 +236,9 @@ void datablock_print_tag_values( DATABLOCK * volatile datablock,
         if( isfound == 0 ) {
             printf( "?" );
         }
-        printf( "%s", separator );
+        if( k != tagcount - 1 ) {
+            printf( "%s", separator );
+        }
     }
     printf( "\n" );
 }
