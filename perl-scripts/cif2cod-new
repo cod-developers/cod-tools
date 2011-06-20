@@ -29,6 +29,7 @@ my $reformat_spacegroup = 0;
 my $use_datablocks_without_coord = 0;
 my $print_header = 0; # Indicates whether to print out a header with
                       # column names.
+my $print_linear = 0;
 
 my $continue_on_errors = 0;
 my $cod_number;
@@ -178,6 +179,10 @@ my @new_data_fields = qw (
 #*     -h-, --dont-print-header, --no-print header
 #*         Do not print column names on the first (header) line (default).
 #*
+#*     -l, --linear
+#*         Print column names and values in form 'column value', one
+#*         pair per line.
+#*
 #*     --help  print a short usage message (this message) and exit.
 #**
 
@@ -193,6 +198,8 @@ my @new_data_fields = qw (
     "-h,--print-header"   => sub { $print_header = 1 },
     "-h-,--dont-print-header" => sub { $print_header = 0 },
     "--no-print-header"   => sub { $print_header = 0 },
+
+    "-l,--linear"   => sub { $print_linear = 1 },
 
     "--reformat-space-group"      => sub { $reformat_spacegroup = 1; },
     "--dont-reformat-space-group" => sub { $reformat_spacegroup = 0; },
@@ -249,9 +256,14 @@ my %spacegroups = map {
 binmode( STDOUT, ":utf8" );
 
 if( $print_header ) {
-    local $, = ";";
     local $\ = "\n";
-    print @new_data_fields;
+    if( $print_linear ) {
+        local $, = " ";
+        print @new_data_fields;
+    } else {
+        local $, = ";";
+        print @new_data_fields;
+    }
 }
 
 @ARGV = ( "-" ) unless @ARGV;
@@ -532,7 +544,21 @@ for my $filename (@ARGV) {
         if( $print_header ) {
             @data_fields = @new_data_fields;
         }
-        do {
+        if( $print_linear ) {
+            my $separator = " ";
+            for my $key (@data_fields) {
+                my $value = $data{$key};
+                if( defined $value ) {
+                    # remove trailing dot from numbers:
+                    $value =~ s/^\s*(\d+)\.\s*$/$1/;
+                    if( $key ne "text" ) {
+                        $value =~ s/\\/\\\\/g;
+                        $value =~ s/"/\\"/g;
+                    }
+                    print $key . $separator . $value . "\n";
+                }
+            }
+        } else {
             my $separator = "";
             for my $key (@data_fields) {
                 my $value = $data{$key};
@@ -551,7 +577,7 @@ for my $filename (@ARGV) {
                 $separator = ";";
             }
             print "\n";
-        };
+        }
     }
 }
 
