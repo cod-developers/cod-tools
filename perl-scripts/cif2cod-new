@@ -29,7 +29,7 @@ my $reformat_spacegroup = 0;
 my $use_datablocks_without_coord = 0;
 my $print_header = 0; # Indicates whether to print out a header with
                       # column names.
-my $print_linear = 0;
+my $print_keywords = 0;
 
 my $continue_on_errors = 0;
 my $cod_number;
@@ -179,9 +179,8 @@ my @new_data_fields = qw (
 #*     -h-, --dont-print-header, --no-print header
 #*         Do not print column names on the first (header) line (default).
 #*
-#*     -l, --linear
-#*         Print column names and values in form 'column value', one
-#*         pair per line.
+#*     -k, --keywords
+#*         Print values in separate lines prefixed with keywords.
 #*
 #*     --help  print a short usage message (this message) and exit.
 #**
@@ -199,7 +198,7 @@ my @new_data_fields = qw (
     "-h-,--dont-print-header" => sub { $print_header = 0 },
     "--no-print-header"   => sub { $print_header = 0 },
 
-    "-l,--linear"   => sub { $print_linear = 1 },
+    "-l,--linear"   => sub { $print_keywords = 1 },
 
     "--reformat-space-group"      => sub { $reformat_spacegroup = 1; },
     "--dont-reformat-space-group" => sub { $reformat_spacegroup = 0; },
@@ -257,7 +256,7 @@ binmode( STDOUT, ":utf8" );
 
 if( $print_header ) {
     local $\ = "\n";
-    if( $print_linear ) {
+    if( $print_keywords ) {
         local $, = " ";
         print @new_data_fields;
     } else {
@@ -544,7 +543,7 @@ for my $filename (@ARGV) {
         if( $print_header ) {
             @data_fields = @new_data_fields;
         }
-        if( $print_linear ) {
+        if( $print_keywords ) {
             my $separator = " ";
             for my $key (@data_fields) {
                 my $value = $data{$key};
