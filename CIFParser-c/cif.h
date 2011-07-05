@@ -53,6 +53,7 @@ void cif_start_datablock( CIF * volatile cif, const char *name,
 
 void cif_dump( CIF * volatile cif );
 void cif_print( CIF * volatile cif );
+void cif_list_tags( CIF * volatile cif );
 
 void cif_insert_value( CIF * cif, char *tag,
                        char *value, datablock_value_type_t vtype,

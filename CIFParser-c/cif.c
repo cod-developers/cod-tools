@@ -121,6 +121,17 @@ void cif_print( CIF * volatile cif )
     }
 }
 
+void cif_list_tags( CIF * volatile cif )
+{
+    DATABLOCK *datablock;
+
+    if( cif ) {
+        foreach_datablock( datablock, cif->datablock_list ) {
+            datablock_list_tags( datablock );
+        }
+    }
+}
+
 void cif_insert_value( CIF * cif, char *tag,
                        char *value, datablock_value_type_t vtype,
                        cexception_t *ex )
