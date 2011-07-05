@@ -301,6 +301,17 @@ void datablock_print( DATABLOCK * volatile datablock )
     }
 }
 
+void datablock_list_tags( DATABLOCK * volatile datablock )
+{
+    ssize_t i;
+
+    assert( datablock );
+
+    for( i = 0; i < datablock->length; i++ ) {
+        printf( "%s\t%s\n", datablock->name, datablock->tags[i] );
+    }
+}
+
 void datablock_insert_value( DATABLOCK * datablock, char *tag,
                        char *value, datablock_value_type_t vtype,
                        cexception_t *ex )
