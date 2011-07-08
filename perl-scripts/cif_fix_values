@@ -59,12 +59,14 @@ my %default_enums = (
     '_atom_site_adp_type'                    => [ "Uani", "Uiso", "Uovl",
                                                   "Umpe", "Bani", "Biso", "Bovl" ],
     '_atom_site_calc_flag'                   => [ "d", "calc", "c", "dum" ],
-    '_atom_site_refinement_flags_adp'        => [ ".", "T", "U", "TU" ], 
+    '_atom_site_refinement_flags_adp'        => [ ".", "T", "U", "TU" ],
+#    '_atom_site_refinement_flags_adp'        => [ ".", "T", "U" ],
     '_atom_site_refinement_flags_occupancy'  => [ ".", "P" ],
     '_atom_site_refinement_flags_posn'       => [ ".", "D", "G", "R", "S",
                                                   "DG", "DR", "DS", "GR",
                                                   "GS", "RS", "DGR", "DGS",
                                                   "DRS", "GRS", "DGRS" ],
+#    '_atom_site_refinement_flags_posn'       => [ ".", "D", "G", "R", "S" ],
     '_atom_site_refinement_flags'            => [ ".", "S", "G", "R",
                                                   "D", "T", "U", "P" ],
     '_atom_sites_solution_hydrogens'         => [ "difmap", "vecmap", "heavy",
@@ -161,7 +163,9 @@ my %default_enums = (
     );
 my $default_enums = \%default_enums;
 
-my @default_set_tags = ( "_atom_site_refinement_flags" );
+my @default_set_tags = ( "_atom_site_refinement_flags",
+                         "_atom_site_refinement_flags_adp",
+                         "_atom_site_refinement_flags_posn" );
 
 #* USAGE:
 #*     $0 [options] input.cif [input2.cif ...]
@@ -1070,6 +1074,11 @@ for my $filename (@ARGV) {
                 fix_enums( $dataset, $filename );
             push( @insert_reports, @enums_reports );
         }
+#        if( $treat_as_set ) {
+#            my @set_reports =
+#                treat_as_set( $dataset, $filename );
+#            push( @insert_reports, @set_reports );
+#        }
         insert_report_to_comments( $dataset , \@insert_reports );
         print_cif( $dataset, {
             exclude_misspelled_tags => 0,
