@@ -40,6 +40,8 @@ my $replacement_file;
 my $fix_temperature = 1;
 my $fix_enums = 1;
 
+my $treat_as_set = 1;
+
 my $dictParsed = [];
 my $parser = new CIFParser;
 my @dictionaries = ();
@@ -50,6 +52,7 @@ sub dont_fix_any {
     $fix_misspelled_values = 0;
     $fix_temperature = 0;
     $fix_enums = 0;
+    $treat_as_set = 0;
 }
 
 my %default_enums = (
@@ -158,6 +161,8 @@ my %default_enums = (
     );
 my $default_enums = \%default_enums;
 
+my @default_set_tags = ( "_atom_site_refinement_flags" );
+
 #* USAGE:
 #*     $0 [options] input.cif [input2.cif ...]
 #*
@@ -194,6 +199,13 @@ my $default_enums = \%default_enums;
 #*      CIF file, in a way like this:
 #*      $0 --clear-dictionary
 #*
+#*   --treat-as-set
+#*     Checks and fixes enumeration values that should be treated 
+#*     as set data type in the CIF agaisnt CIF dictionaries.
+#*     Provide dioctionaries using option --dictionary (or -d), 
+#*     otherwise script uses the built-in table from CIF Core
+#*     dictionary.
+#*
 #**  --help,--usage     Print a short usage message (this message) and exit.
 
 @ARGV = getOptions(
@@ -226,6 +238,7 @@ my $default_enums = \%default_enums;
     "-D,--add-dictionaries" => sub{ push( @dictionaries, &get_value ); },
     "--clear-dictionaries" => sub{ @dictionaries = (); },
     
+    "--treat-as-set" => sub{ $treat_as_set = 1; },
 );
 
 #
@@ -923,6 +936,9 @@ sub fix_enums($$) {
     my $values = $dataset->{values};
     my $tags = $dataset->{tags};
     foreach my $tag( @$tags ) {
+        #if( $tag =~ /_atom_site_refinement_flags/) {
+        #    next;
+        #}
         if( defined $values->{$tag} ) {
             foreach my $tag_value( @{$values->{$tag}} ) {
                 if( $tag_value =~ /^\.|\?$/ ) {
@@ -992,6 +1008,29 @@ sub fix_enums($$) {
     }
     return @insert_reports;
 }
+
+#sub treat_as_set($$) {
+#    my( $dataset, $filename ) = @_;
+#    my $dataname = 'data_' . $dataset->{name};
+#    my %reports;
+#    my @uniq_messages;
+#    my @insert_reports = ();
+#    my $values = $dataset->{values};
+#    my $tags = $dataset->{tags};
+#    foreach my $tag( @$tags ) {
+#        foreach my $set_tag( @default_set_tags ) {
+#            if( $tag = $set_tag ) {
+#                if( defined $values->{$tag} ) {
+#                    foreach my $tag_value( @{$values->{$tag}} ) {
+#                        if( $tag_value =~ /^\.|\?$/ ) {
+#                            next;
+#                        }
+#                    }
+#                }
+#            }
+#        }
+#    }
+#}
 
 my @dictionary_tags = ( @CIFDictTags::tag_list, @CIFCODTags::tag_list );
 my %dictionary_tags = map { $_, $_ } @dictionary_tags;
