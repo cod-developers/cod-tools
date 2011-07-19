@@ -1191,6 +1191,33 @@ sub translate_atoms
     return \@translated_initial_atoms;
 }
 
+#==============================================================#
+# Translates an atom according a given translation.
+#
+# Accepts an atom description and a translation.
+#
+# Returns a translated atom.
+
+sub translate_atom
+{
+    my($atom, $translation) = @_;
+
+    my $new_atom = copy_atom( $atom );
+    my @new_atom_xyz;
+
+    push( @new_atom_xyz, $atom->{"coordinates_fract"}[0] +
+          ${$translation}[0] );
+    push( @new_atom_xyz, $atom->{"coordinates_fract"}[1] +
+          ${$translation}[1] );
+    push( @new_atom_xyz, $atom->{"coordinates_fract"}[2] +
+          ${$translation}[2] );
+
+    $new_atom->{"coordinates_fract"} = \@new_atom_xyz;
+    delete( $new_atom->{coordinates_ortho} );
+
+    return $new_atom;
+}
+
 #===============================================================#
 # Finds a molecule chemical formula sum.
 
@@ -1553,6 +1580,9 @@ sub shift_atom($)
                     $new_atom_xyz[2] = $atom_info->{"coordinates_fract"}[2] +
                                                            $shifting_params[$k];
 
+                    # Shift label constructed incorrectly!
+                    # It should use $shifting_params[$i]+5, not $i+5, and so on.
+                    # S.G. 2011.07.14
                     my $shift_label = ($i+5).($j+5).($k+5);
                     $new_atom_info->{"coordinates_fract"} = \@new_atom_xyz;
                     $new_atom_info->{"label"} =
@@ -2075,6 +2105,7 @@ sub find_molecule($$$$$$$$$$$)
 
     if( exists $atom_in_unit_cell->{unit_cell_label} ) {
         $atom_in_unit_cell->{label} = $atom_in_unit_cell->{unit_cell_label};
+        ## print ">>> unit cell label = $atom_in_unit_cell->{unit_cell_label}\n";
     }
 
     my @neighbors;
@@ -2109,7 +2140,12 @@ sub find_molecule($$$$$$$$$$$)
         die;
     }
 
-    push(@neighbors, copy_atom($atom_in_unit_cell));
+    my $current_atom_copy = copy_atom($current_atom);
+    if( exists $current_atom_copy->{unit_cell_label} ) {
+        $current_atom_copy->{label} = $current_atom_copy->{unit_cell_label};
+        ## print ">>> unit cell label = $current_atom_copy->{unit_cell_label}\n";
+    }
+    push( @neighbors, $current_atom_copy );
 
     my ($i, $j, $k) =
         AtomBricks::get_atom_index( $bricks,
@@ -2199,13 +2235,17 @@ sub find_molecule($$$$$$$$$$$)
                                         "original atom" => $atom_in_unit_cell,
                                         "atom" => $sym_atom } );
                     } if $debug;
+
+                    my $back_shifted_sym_atom =
+                        translate_atom( $sym_atom, $current_translation );
                     push(@neighbors, find_molecule( $covalent_sensitivity,
                                                     $atom_properties,
                                                     $symmetric_atoms,
                                                     $used_atoms,
                                                     $used_basenames,
                                                     $used_bonds,
-                                                    $sym_atom, $bricks,
+                                                    $back_shifted_sym_atom,
+                                                    $bricks,
                                                     $filename, $dataname,
                                                     $ortho_matrix ));
                 }
@@ -2223,14 +2263,14 @@ sub find_molecule($$$$$$$$$$$)
         serialiseRef( \@neighbors );
     } if $debug;
 
-    my $translated_neighbors = translate_atoms(\@neighbors,
-                                               $current_translation);
+    ## my $translated_neighbors = translate_atoms(\@neighbors,
+    ##                                            $current_translation);
+    ## 
+    ## do {
+    ##     use Serialise;
+    ##     print ">>> After translation:";
+    ##     serialiseRef( $translated_neighbors );
+    ## } if $debug;
 
-    do {
-        use Serialise;
-        print ">>> After translation:";
-        serialiseRef( $translated_neighbors );
-    } if $debug;
-
-    return @{$translated_neighbors};
+    return @neighbors;
 }
