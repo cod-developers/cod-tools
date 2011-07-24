@@ -135,6 +135,11 @@ my @new_data_fields = qw (
     firstpage
     lastpage
 
+    radiation
+    wavelength
+    radType
+    radSymbol
+
     Rall
     Robs
     Rref
@@ -469,6 +474,17 @@ for my $filename (@ARGV) {
         $data{issue} = get_tag_or_undef( $values, "_journal_issue", 0 );
         $data{firstpage} = get_tag_or_undef( $values, "_journal_page_first", 0 );
         $data{lastpage} = get_tag_or_undef( $values, "_journal_page_last", 0 );
+
+        $data{radiation} = get_tag_or_undef( $values, "_diffrn_radiation_probe", 0 );
+        $data{wavelength} = get_tag_or_undef( $values, "_diffrn_radiation_wavelength", 0 );
+        $data{radType} = get_tag_or_undef( $values, "_diffrn_radiation_type", 0 );
+        if( defined $data{radType} ) {
+            $data{radType} = Unicode2CIF::cif2unicode( $data{radType} );
+        }
+        $data{radSymbol} = get_tag_or_undef( $values, "_diffrn_radiation_xray_symbol", 0 );
+        if( defined $data{radSymbol} ) {
+            $data{radSymbol} = Unicode2CIF::cif2unicode( $data{radSymbol} );
+        }
 
         for my $r_factor_tag (qw(
             _refine_ls_R_factor_all
