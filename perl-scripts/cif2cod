@@ -27,9 +27,138 @@ sub entry_has_disorder($);
 
 my $reformat_spacegroup = 0;
 my $use_datablocks_without_coord = 0;
+my $print_header = 0; # Indicates whether to print out a header with
+                      # column names.
+my $print_keywords = 0;
 
 my $continue_on_errors = 0;
 my $cod_number;
+
+# The default sql table data field that was taken from the 
+# cod-add-data.sh script.
+
+my @default_data_fields = qw (
+    file
+    a
+    siga
+    b
+    sigb
+    c
+    sigc
+    alpha
+    sigalpha
+    beta
+    sigbeta
+    gamma
+    siggamma
+    vol
+    sigvol
+    celltemp
+    sigcelltemp
+    diffrtemp
+    sigdiffrtemp
+    cellpressure
+    sigcellpressure
+    diffrpressure
+    sigdiffrpressure
+    thermalhist
+    pressurehist
+    nel
+    sg
+    sgHall
+    commonname
+    chemname
+    formula
+    calcformula
+    acce_code
+    authors
+    title
+    journal
+    year
+    volume
+    issue
+    firstpage
+    lastpage
+    duplicateof
+    optimal
+    status
+    flags
+    text
+);
+
+my @data_fields = @default_data_fields;
+
+# New sql table data fields.
+
+my @new_data_fields = qw (
+    file
+    a
+    siga
+    b
+    sigb
+    c
+    sigc
+    alpha
+    sigalpha
+    beta
+    sigbeta
+    gamma
+    siggamma
+    vol
+    sigvol
+    celltemp
+    sigcelltemp
+    diffrtemp
+    sigdiffrtemp
+    cellpressure
+    sigcellpressure
+    diffrpressure
+    sigdiffrpressure
+    thermalhist
+    pressurehist
+    nel
+    sg
+    sgHall
+
+    commonname
+    chemname
+    formula
+    calcformula
+
+    acce_code
+    authors
+    title
+    journal
+    year
+    volume
+    issue
+    firstpage
+    lastpage
+
+    radiation
+    wavelength
+    radType
+    radSymbol
+
+    Rall
+    Robs
+    Rref
+    wRall
+    wRobs
+    wRref
+    RFsqd
+    RI
+
+    gofall
+    gofobs
+    gofgt
+
+    duplicateof
+    optimal
+    status
+    flags
+    text
+);
 
 #* Usage:
 #*     cif2cod-new [options] input.cif [input2.cif ...]
@@ -47,6 +176,17 @@ my $cod_number;
 #*     -c-, --dont-continue-on-errors, --no-continue-on-errors
 #*         Stop and return error status if errors are diagnosed.
 #*
+#*     -h, --print-header
+#*         Print header with data column names at the first line
+#*         With this option cif2cod-new loads CIF data to the new
+#*         sql talble data fields
+#*
+#*     -h-, --dont-print-header, --no-print header
+#*         Do not print column names on the first (header) line (default).
+#*
+#*     -k, --keywords
+#*         Print values in separate lines prefixed with keywords.
+#*
 #*     --help  print a short usage message (this message) and exit.
 #**
 
@@ -58,6 +198,12 @@ my $cod_number;
     "-c-,--no-continue-on-errors" => sub { $continue_on_errors = 0 },
     "--dont-continue-on-errors"   => sub { $continue_on_errors = 0 },
     "--exit-on-errors"            => sub { $continue_on_errors = 0 },
+
+    "-h,--print-header"   => sub { $print_header = 1 },
+    "-h-,--dont-print-header" => sub { $print_header = 0 },
+    "--no-print-header"   => sub { $print_header = 0 },
+
+    "-k,--keywords"   => sub { $print_keywords = 1 },
 
     "--reformat-space-group"      => sub { $reformat_spacegroup = 1; },
     "--dont-reformat-space-group" => sub { $reformat_spacegroup = 0; },
@@ -113,6 +259,17 @@ my %spacegroups = map {
 
 binmode( STDOUT, ":utf8" );
 
+if( $print_header ) {
+    local $\ = "\n";
+    if( $print_keywords ) {
+        local $, = " ";
+        print @new_data_fields;
+    } else {
+        local $, = ";";
+        print @new_data_fields;
+    }
+}
+
 @ARGV = ( "-" ) unless @ARGV;
 
 for my $filename (@ARGV) {
@@ -120,13 +277,14 @@ for my $filename (@ARGV) {
     my $parser = new CIFParser;
     my $data = $parser->Run($filename);
 
-    if( defined $parser->YYData->{ERRCOUNT} && $parser->YYData->{ERRCOUNT} > 0 ) {
+    if( defined $parser->YYData->{ERRCOUNT} &&
+        $parser->YYData->{ERRCOUNT} > 0 ) {
         error( $parser->YYData->{ERRCOUNT} .
                " error(s) encountered while parsing" );
     }
 
     for my $dataset (@$data) {
-        my @data = ();
+        my %data = ();
         my $nel;
         my $values = $dataset->{values};
         my $sigmas = $dataset->{precisions};
@@ -141,7 +299,7 @@ for my $filename (@ARGV) {
             }
         }
 
-         my $authors = join( "; ", @authors );
+        my $authors = join( "; ", @authors );
 
         my $title = get_tag( $values, "_publ_section_title", 0, $filename );
         my $journal = get_tag( $values, "_journal_name_full", 0, $filename );
@@ -236,22 +394,22 @@ for my $filename (@ARGV) {
         $nel = count_number_of_elements( $formula );
 
         if( defined $cod_number ) {
-            push( @data, $cod_number );
+            $data{file} = $cod_number;
         } else {
-            push( @data, $dataset->{name} );
+            $data{file} = $dataset->{name};
         }
-        push( @data, get_num_or_undef( $values, "_cell_length_a", 0 ));
-        push( @data, get_num_or_undef( $sigmas, "_cell_length_a", 0 ));
-        push( @data, get_num_or_undef( $values, "_cell_length_b", 0 ));
-        push( @data, get_num_or_undef( $sigmas, "_cell_length_b", 0 ));
-        push( @data, get_num_or_undef( $values, "_cell_length_c", 0 ));
-        push( @data, get_num_or_undef( $sigmas, "_cell_length_c", 0 ));
-        push( @data, get_num_or_undef( $values, "_cell_angle_alpha", 0 ));
-        push( @data, get_num_or_undef( $sigmas, "_cell_angle_alpha", 0 ));
-        push( @data, get_num_or_undef( $values, "_cell_angle_beta", 0 ));
-        push( @data, get_num_or_undef( $sigmas, "_cell_angle_beta", 0 ));
-        push( @data, get_num_or_undef( $values, "_cell_angle_gamma", 0 ));
-        push( @data, get_num_or_undef( $sigmas, "_cell_angle_gamma", 0 ));
+        $data{a} = get_num_or_undef( $values, "_cell_length_a", 0 );
+        $data{siga} = get_num_or_undef( $sigmas, "_cell_length_a", 0 );
+        $data{b} = get_num_or_undef( $values, "_cell_length_b", 0 );
+        $data{sigb} = get_num_or_undef( $sigmas, "_cell_length_b", 0 );
+        $data{c} = get_num_or_undef( $values, "_cell_length_c", 0 );
+        $data{sigc} = get_num_or_undef( $sigmas, "_cell_length_c", 0 );
+        $data{alpha} = get_num_or_undef( $values, "_cell_angle_alpha", 0 );
+        $data{sigalpha} = get_num_or_undef( $sigmas, "_cell_angle_alpha", 0 );
+        $data{beta} = get_num_or_undef( $values, "_cell_angle_beta", 0 );
+        $data{sigbeta} = get_num_or_undef( $sigmas, "_cell_angle_beta", 0 );
+        $data{gamma} = get_num_or_undef( $values, "_cell_angle_gamma", 0 );
+        $data{siggamma} = get_num_or_undef( $sigmas, "_cell_angle_gamma", 0 );
 
         my $cell_volume = get_num_or_undef( $values, "_cell_volume", 0 );
 
@@ -260,81 +418,128 @@ for my $filename (@ARGV) {
             $cell_volume = sprintf( "%7.2f", cell_volume( @cell ));
         }
 
-        push( @data, $cell_volume );
-        push( @data, get_num_or_undef( $sigmas, "_cell_volume", 0 ));
+        $data{vol} = $cell_volume;
+        $data{sigvol} = get_num_or_undef( $sigmas, "_cell_volume", 0 );
 
-        push( @data, $cell_temperature );
-        push( @data, $cell_temperature_sigma );
-        push( @data, $diffr_temperature );
-        push( @data, $diffr_temperature_sigma );
-        push( @data, $cell_pressure );
-        push( @data, $cell_pressure_sigma );
-        push( @data, $diffr_pressure );
-        push( @data, $diffr_pressure_sigma );
+        $data{celltemp} = $cell_temperature;
+        $data{sigcelltemp} = $cell_temperature_sigma;
+        $data{diffrtemp} = $diffr_temperature;
+        $data{sigdiffrtemp} = $diffr_temperature_sigma;
+        $data{cellpressure} = $cell_pressure;
+        $data{sigcellpressure} = $cell_pressure_sigma;
+        $data{diffrpressure} = $diffr_pressure;
+        $data{sigdiffrpressure} = $diffr_pressure_sigma;
 
-        push( @data, get_tag_or_undef( $values,
-                                       "_exptl_crystal_thermal_history",
-                                       0 ));
-        push( @data, get_tag_or_undef( $values,
-                                       "_exptl_crystal_pressure_history",
-                                       0 ));
+        $data{thermalhist} =
+            get_tag_or_undef( $values, "_exptl_crystal_thermal_history", 0 );
+        $data{pressurehist} =
+            get_tag_or_undef( $values, "_exptl_crystal_pressure_history", 0 );
 
-        push( @data, $nel );
-        push( @data, get_spacegroup_info( $values, $filename ));
-        push( @data, get_spacegroup_Hall_symbol( $values, $filename ));
-        push( @data, $common_name );
-        push( @data, $systematic_name );
-        push( @data, $formula ? "- " . $formula . " -" : "?" );
-        push( @data, $calculated_formula ?
-              "- " . $calculated_formula . " -" : undef );
+        $data{nel} = $nel;
+        $data{sg} = get_spacegroup_info( $values, $filename );
+        $data{sgHall} = get_spacegroup_Hall_symbol( $values, $filename );
+        $data{commonname} = $common_name;
+        $data{chemname} = $systematic_name;
+        $data{formula} = $formula ? "- " . $formula . " -" : "?";
+        $data{calcformula} = $calculated_formula ?
+              "- " . $calculated_formula . " -" : undef;
+
         if( exists $values->{_journal_coeditor_code} ) {
-            push( @data, uc( get_tag_or_undef( $values, 
-                                               "_journal_coeditor_code", 0 )));
+            $data{acce_code} = uc( get_tag_or_undef( $values, 
+                                   "_journal_coeditor_code", 0 ));
         } elsif( exists $values->{"_journal.coeditor_code"} ) {
-            push( @data, uc( get_tag_or_undef( $values, 
-                                               "_journal.coeditor_code", 0 )));
+            $data{acce_code} = uc( get_tag_or_undef( $values, 
+                                   "_journal.coeditor_code", 0 ));
         } elsif( $journal =~ /^Acta Cryst/ &&
-                 exists $values->{"_[local]_cod_data_source_file"} ) {
-            my $acce_code = $values->{"_[local]_cod_data_source_file"}[0];
+                 exists $values->{"_[local]_cod_data_source_file"} ||
+                 exists $values->{"_cod_data_source_file"} ) {
+            my $acce_code = exists $values->{"_cod_data_source_file"} ?
+                $values->{"_cod_data_source_file"}[0] :
+                $values->{"_[local]_cod_data_source_file"}[0];
             $acce_code =~ s/\..*$//g;
             if( $acce_code =~ /^[a-zA-Z]{1,2}[0-9]{4,5}$/ ) {
-                push( @data, uc( $acce_code ));
+                $data{acce_code} = uc( $acce_code );
             } else {
-                push( @data, undef );
+                $data{acce_code} = undef;
             }
         } else {
-            push( @data, undef );
+            $data{acce_code} = undef;
         }
 
-        push( @data, Unicode2CIF::cif2unicode( $authors ));
-        push( @data, Unicode2CIF::cif2unicode( $title ));
-        push( @data, get_tag_or_undef( $values, "_journal_name_full", 0 ));
-        push( @data, get_tag_or_undef( $values, "_journal_year", 0 ));
-        push( @data, get_tag_or_undef( $values, "_journal_volume", 0 ));
-        push( @data, get_tag_or_undef( $values, "_journal_issue", 0 ));
-        push( @data, get_tag_or_undef( $values, "_journal_page_first", 0 ));
-        push( @data, get_tag_or_undef( $values, "_journal_page_last", 0 ));
+        $data{authors} = Unicode2CIF::cif2unicode( $authors );
+        $data{title} = Unicode2CIF::cif2unicode( $title );
+        $data{journal} = get_tag_or_undef( $values, "_journal_name_full", 0 );
+        if( defined $data{journal} ) {
+            $data{journal} = Unicode2CIF::cif2unicode( $data{journal} );
+        }
+        $data{year} = get_tag_or_undef( $values, "_journal_year", 0 );
+        $data{volume} = get_tag_or_undef( $values, "_journal_volume", 0 );
+        $data{issue} = get_tag_or_undef( $values, "_journal_issue", 0 );
+        $data{firstpage} = get_tag_or_undef( $values, "_journal_page_first", 0 );
+        $data{lastpage} = get_tag_or_undef( $values, "_journal_page_last", 0 );
 
-        push( @data, get_tag_or_undef( $values, "_cod_duplicate_entry", 0 ));
-        if( !defined $data[-1] ) {
-            $data[-1] = get_tag_or_undef( $values,
-                                          "_[local]_cod_duplicate_entry",
-                                          0 );
+        $data{radiation} = get_tag_or_undef( $values, "_diffrn_radiation_probe", 0 );
+        $data{wavelength} = get_num_or_undef( $values, "_diffrn_radiation_wavelength", 0 );
+        $data{radType} = get_tag_or_undef( $values, "_diffrn_radiation_type", 0 );
+        if( defined $data{radType} ) {
+            $data{radType} = Unicode2CIF::cif2unicode( $data{radType} );
+            $data{radType} =~ s/\s//g;
+        }
+        $data{radSymbol} = get_tag_or_undef( $values, "_diffrn_radiation_xray_symbol", 0 );
+        if( defined $data{radSymbol} ) {
+            $data{radSymbol} = Unicode2CIF::cif2unicode( $data{radSymbol} );
+            $data{radSymbol} =~ s/\s//g;
         }
 
-        push( @data, get_tag_or_undef( $values,
-                                       "_cod_related_optimal_struct", 0 ));
-        if( !defined $data[-1] ) {
-            $data[-1] = get_tag_or_undef( $values,
-                                          "_[local]_cod_related_optimal_struct",
-                                          0 );
+        for my $r_factor_tag (qw(
+            _refine_ls_R_factor_all
+            _refine_ls_R_factor_gt
+            _refine_ls_R_factor_obs
+            _refine_ls_R_factor_ref
+            _refine_ls_R_Fsqd_factor
+            _refine_ls_R_I_factor
+            _refine_ls_wR_factor_all
+            _refine_ls_wR_factor_gt
+            _refine_ls_wR_factor_obs
+            _refine_ls_wR_factor_ref
+            _refine_ls_goodness_of_fit_all
+            _refine_ls_goodness_of_fit_ref
+            _refine_ls_goodness_of_fit_gt
+            _refine_ls_goodness_of_fit_obs )) {
+            my $data_key = $r_factor_tag;
+            $data_key =~ s/^_refine_ls_//;
+            $data_key =~ s/_factor//;
+            $data_key =~ s/goodness_of_fit/gof/;
+            $data_key =~ s/_//g;
+            $data_key = "Robs" if $data_key eq "Rgt";
+            $data_key = "wRobs" if $data_key eq "wRgt";
+            $data_key = "gofobs" if $data_key eq "gofref";
+            if( !defined $data{$data_key} ) {
+                $data{$data_key} =
+                    get_num_or_undef( $values, lc($r_factor_tag), 0 );
+            }
         }
 
-        push( @data, get_tag_or_undef( $values, "_cod_error_flag", 0 ));
-        if( !defined $data[-1] ) {
-            $data[-1] = get_tag_or_undef( $values,
-                                          "_[local]_cod_error_flag",
-                                          0 );
+        $data{duplicateof} =
+            get_tag_or_undef( $values, "_cod_duplicate_entry", 0 );
+
+        if( !defined $data{duplicateof} ) {
+            $data{duplicateof} =
+                get_tag_or_undef( $values, "_[local]_cod_duplicate_entry", 0 );
+        }
+
+        $data{optimal} = get_tag_or_undef( $values,
+                                    "_cod_related_optimal_struct", 0 );
+        if( !defined $data{optimal} ) {
+            $data{optimal} =
+                get_tag_or_undef( $values,
+                                  "_[local]_cod_related_optimal_struct", 0 );
+        }
+
+        $data{status} = get_tag_or_undef( $values, "_cod_error_flag", 0 );
+        if( !defined $data{status} ) {
+            $data{status} =
+                get_tag_or_undef( $values, "_[local]_cod_error_flag", 0 );
         }
 
         # Compose COD flags:
@@ -349,30 +554,46 @@ for my $filename (@ARGV) {
                 $value .= $separator . "has disorder";
                 $separator = ",";
             }
-            push( @data, $value );
+            $data{flags} = $value;
         };
 
-        push( @data, $text );
+        $data{text} = $text;
 
-        my $n = 0;
-        @data = map {
-            $n++;
-            if( defined $_ ) {
-                s/^\s*(\d+)\.\s*$/$1/; # remove trailing dot from numbers
-                if( $n != @data ) {
-                    s/\\/\\\\/g; s/"/\\"/g;
+        # Print out the collected data fields:
+        
+        if( $print_header ) {
+            @data_fields = @new_data_fields;
+        }
+        if( $print_keywords ) {
+            my $separator = " ";
+            for my $key (@data_fields) {
+                my $value = $data{$key};
+                if( defined $value ) {
+                    # remove trailing dot from numbers:
+                    $value =~ s/^\s*(\d+)\.\s*$/$1/;
+                    print $key . $separator . $value . "\n";
                 }
-                "\"$_\"";
-            } else {
-                "NULL";
             }
-        } @data;
-        do {
-            local $\ = "\n";
-            local $, = ";";
-
-            print @data;
-        };
+        } else {
+            my $separator = "";
+            for my $key (@data_fields) {
+                my $value = $data{$key};
+                if( defined $value ) {
+                    # remove trailing dot from numbers:
+                    $value =~ s/^\s*(\d+)\.\s*$/$1/;
+                    if( $key ne "text" ) {
+                        $value =~ s/\\/\\\\/g;
+                        $value =~ s/"/\\"/g;
+                    }
+                    $value = "\"" . $value . "\"";
+                } else {
+                    $value = "NULL";
+                }
+                print $separator, $value;
+                $separator = ";";
+            }
+            print "\n";
+        }
     }
 }
 
@@ -427,7 +648,11 @@ sub get_num_or_undef
     my $value = &get_tag_or_undef;
 
     if( defined $value ) {
-        return filter_num( $value );
+        if( $value ne '?' && $value ne '.' ) {
+            return filter_num( $value );
+        } else {
+            return undef;
+        }
     } else {
         return undef;
     }
