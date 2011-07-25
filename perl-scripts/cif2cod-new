@@ -469,6 +469,9 @@ for my $filename (@ARGV) {
         $data{authors} = Unicode2CIF::cif2unicode( $authors );
         $data{title} = Unicode2CIF::cif2unicode( $title );
         $data{journal} = get_tag_or_undef( $values, "_journal_name_full", 0 );
+        if( defined $data{journal} ) {
+            $data{journal} = Unicode2CIF::cif2unicode( $data{journal} );
+        }
         $data{year} = get_tag_or_undef( $values, "_journal_year", 0 );
         $data{volume} = get_tag_or_undef( $values, "_journal_volume", 0 );
         $data{issue} = get_tag_or_undef( $values, "_journal_issue", 0 );
@@ -476,14 +479,16 @@ for my $filename (@ARGV) {
         $data{lastpage} = get_tag_or_undef( $values, "_journal_page_last", 0 );
 
         $data{radiation} = get_tag_or_undef( $values, "_diffrn_radiation_probe", 0 );
-        $data{wavelength} = get_tag_or_undef( $values, "_diffrn_radiation_wavelength", 0 );
+        $data{wavelength} = get_num_or_undef( $values, "_diffrn_radiation_wavelength", 0 );
         $data{radType} = get_tag_or_undef( $values, "_diffrn_radiation_type", 0 );
         if( defined $data{radType} ) {
             $data{radType} = Unicode2CIF::cif2unicode( $data{radType} );
+            $data{radType} =~ s/\s//g;
         }
         $data{radSymbol} = get_tag_or_undef( $values, "_diffrn_radiation_xray_symbol", 0 );
         if( defined $data{radSymbol} ) {
             $data{radSymbol} = Unicode2CIF::cif2unicode( $data{radSymbol} );
+            $data{radSymbol} =~ s/\s//g;
         }
 
         for my $r_factor_tag (qw(
