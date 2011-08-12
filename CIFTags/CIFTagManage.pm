@@ -15,7 +15,9 @@ use strict;
 
 require Exporter;
 @CIFTagManage::ISA = qw(Exporter);
-@CIFTagManage::EXPORT = qw( exclude_tag tag_is_empty exclude_empty_tags
+@CIFTagManage::EXPORT = qw( exclude_tag tag_is_empty
+    exclude_empty_tags
+    exclude_empty_non_loop_tags
     set_tag
 );
 
@@ -54,6 +56,21 @@ sub tag_is_empty
 }
 
 sub exclude_empty_tags
+{
+    my $cif = $_[0];
+    my @empty_tags = ();
+
+    for my $tag (@{$cif->{tags}}) {
+        if( tag_is_empty( $cif, $tag )) {
+            push( @empty_tags, $tag );
+        }
+    }
+    for my $empty_tag (@empty_tags) {
+        exclude_tag( $cif, $empty_tag );
+    }
+}
+
+sub exclude_empty_non_loop_tags
 {
     my $cif = $_[0];
     my @empty_tags = ();
