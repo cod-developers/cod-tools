@@ -34,6 +34,7 @@ setvar READ_STDIN = false
 
 setvar DEBUG    = false
 setvar PROGRESS = false
+setvar REPLACE  = false
 setvar OUTPUT_MODE  = "html"
 
 setvar BASENAME = "`basename $0`"
@@ -64,6 +65,10 @@ curl=curl
 #**
 #**  -s, --separate-outputs folder-to-put-deposition-outputs/
 #**      Specify a folder to put deposition output for each deposited file
+#**
+#**  --replace
+#**      Specify that given files are replacements for previously
+#**      deposited data
 #**
 #**  -P, --progress
 #**      Ask cif-deposit.pl to report progress of the deposition.
@@ -124,6 +129,9 @@ do
       --no-pro|--no-pr|--no-p)
           PROGRESS=false
           ;;
+      --replace)
+          REPLACE=true
+          ;;
       --script|--scrip|--scri|--scr|--sc|--s)
           curl="script curl"
           ;;
@@ -159,6 +167,13 @@ then
     PROGRESS_ARG='-F progress=1'
 else
     PROGRESS_ARG=''
+fi
+
+if [ $REPLACE = true ]
+then
+    REPLACE_ARG='-F replace=1'
+else
+    REPLACE_ARG=''
 fi
 
 test -z "${TMP_DIR}" && TMP_DIR="/tmp"
@@ -255,6 +270,7 @@ then
         ${curl} \
             ${DEBUG_ARG} \
             ${PROGRESS_ARG} \
+            ${REPLACE_ARG} \
             -F "output_mode=${OUTPUT_MODE}" \
             -F "username=<${TMP_USERNAME}" \
             -F "password=<${TMP_PASSWRD}" \
@@ -284,6 +300,7 @@ else
             --silent \
             ${DEBUG_ARG} \
             ${PROGRESS_ARG} \
+            ${REPLACE_ARG} \
             -F "output_mode=${OUTPUT_MODE}" \
             -F "username=<${TMP_USERNAME}" \
             -F "password=<${TMP_PASSWRD}" \
