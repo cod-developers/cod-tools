@@ -903,6 +903,19 @@ END_M
 					$parser->_Error();
 				    }
 				}
+                                if( !$parser->{USER}{OPTIONS}{do_not_unprefix_text} ) {
+                                    if( $tfield =~ /^(.*?)\\(\\)?\n/ ) {
+                                        my $prefix = $1;
+                                        $tfield =~ s/^\Q${prefix}\E\\\n//;
+                                        $tfield =~ s/^\Q${prefix}\E\\\\\n/\\\n/;
+                                        $tfield =~ s/^\Q${prefix}\E//mg;
+                                    }
+                                }
+                                if( !$parser->{USER}{OPTIONS}{do_not_unfold_text} ) {
+                                    if( $tfield =~ /^(.*)\\\n/ ) {
+                                        $tfield =~ s/\\\n//mg;
+                                    }
+                                }
 				return('TEXT_FIELD', $tfield);
 			}
 		}
