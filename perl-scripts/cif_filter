@@ -704,7 +704,6 @@ for my $filename (@ARGV) {
                                    $datablok->{_journal_page_last}[0] );
         }
 
-        #
         # Fold title if requested:
 
         if( $fold_title && exists $datablok->{_publ_section_title} ) {
@@ -975,6 +974,21 @@ for my $filename (@ARGV) {
                 warn "file '${filename}', datablock $dataset->{name} " .
                     "has no unit cell info -- "  .
                     "can't compute cell volume";
+            }
+        }
+
+        # Add default cell angles of 90 degrees if these are missing:
+        if( exists $datablok->{"_cell_length_a"} ||
+            exists $datablok->{"_cell_length_b"} ||
+            exists $datablok->{"_cell_length_c"} ) {
+            if( ! exists $datablok->{"_cell_angle_alpha"} ) {
+                $datablok->{"_cell_angle_alpha"}[0] = 90;
+            }
+            if( ! exists $datablok->{"_cell_angle_beta"} ) {
+                $datablok->{"_cell_angle_beta"}[0] = 90;
+            }
+            if( ! exists $datablok->{"_cell_angle_gamma"} ) {
+                $datablok->{"_cell_angle_gamma"}[0] = 90;
             }
         }
 
