@@ -19,6 +19,7 @@ use lib "./lib/perl5";
 use lib "./CIFParser";
 use CIFParser;
 use CIFTagCanonicalNames;
+use CIFTagManage;
 use ShowStruct;
 use Spacegroups::SpacegroupNames;
 use Spacegroups::SymopLookup;
@@ -35,6 +36,7 @@ my $check_symmetry_operators = 1;
 my $check_spacegroup_constraints = 1;
 my $check_limits = 1;
 my $use_precisions = 1;
+my $check_temperature_factors = 1;
 
 sub dont_check_any
 {
@@ -45,6 +47,7 @@ sub dont_check_any
     $check_symmetry_operators = 0;
     $check_spacegroup_constraints = 0;
     $check_limits = 0;
+    $check_temperature_factors = 0;
 }
 
 sub check_all
@@ -56,6 +59,7 @@ sub check_all
     $check_symmetry_operators = 1;
     $check_spacegroup_constraints = 1;
     $check_limits = 1;
+    $check_temperature_factors = 1;
 }
 
 my $useReporter = 0;
@@ -131,6 +135,8 @@ sub merge_limits_tables($$) {
    return $merged_limits; 
 }
 
+my $max_year_temperature_factors_optional = 1969;
+
 #* USAGE:
 #*    $0 [options] input1.cif [input2.cif ...]
 #*
@@ -170,6 +176,10 @@ sub merge_limits_tables($$) {
 #*    --limits-file limits.lst
 #*
 #*    --reset-limits
+#*
+#*    --check-temperature-factors
+#*
+#*    --max-year-temperature-factors-optional 1969
 #*
 #*    --check-all
 #*
@@ -262,6 +272,13 @@ sub merge_limits_tables($$) {
     "--reset-limits" => sub{ $limits_table = \%default_limits_table },
     
     "--print-limits" => sub{ &print_limits() }, 
+
+    "--check-temperature-factors" =>
+        sub { $check_temperature_factors = 1; },
+    "--dont-check-temperature-factors,--no-check-temperature-factors" =>
+        sub { $check_temperature_factors = 0; },
+    "--max-year-temperature-factors-optional" =>
+        \$max_year_temperature_factors_optional,
 
     "--check-all"
         => \&check_all,
@@ -357,6 +374,8 @@ for my $filename (@ARGV) {
             if $check_spacegroup_constraints;
         $warnings += check_limits( $dataset, $filename )
             if $check_limits;
+        $warnings += check_temperature_factors( $dataset, $filename )
+            if $check_temperature_factors;
     }
     printf "%-30s: OK\n", $filename if $warnings == 0;
 }
@@ -572,6 +591,45 @@ sub check_spacegroup_info
         }
         $warnings ++;
     }
+    return $warnings;
+}
+
+sub check_temperature_factors
+{
+    my( $dataset, $filename ) = @_;
+
+    if( !defined $dataset->{values} ) {
+        return 0;
+    }
+
+    my $values = $dataset->{values};
+    my $warnings = 0;
+
+    if( CIFTagManage::tag_is_empty( $dataset, '_journal_year' ) ) {
+        return 0;
+    }
+    if( $values->{_journal_year}[0] <= 
+        $max_year_temperature_factors_optional ) {
+        return 0;
+    }
+
+    if( !CIFTagManage::tag_is_empty($dataset,'_atom_site_B_iso_or_equiv') ||
+        !CIFTagManage::tag_is_empty($dataset,'_atom_site_U_iso_or_equiv') ) {
+        return 0;
+    }
+    foreach my $indexes ( '11', '12', '13', '22', '23', '33' ) {
+        if( !CIFTagManage::tag_is_empty($dataset,
+            '_atom_site_aniso_B_' . $indexes) ||
+            !CIFTagManage::tag_is_empty($dataset,
+            '_atom_site_aniso_U_' . $indexes) ) {
+            return 0;
+        }
+    }
+    error_reporter( $filename, undef, $dataset->{name},
+        "structure is published after " . 
+        $max_year_temperature_factors_optional . ", but does not contain " .
+        "temperature factors" );
+    $warnings++;
     return $warnings;
 }
 
