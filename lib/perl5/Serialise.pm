@@ -73,7 +73,7 @@ sub serialiseArray
        $isFlat = 0;
    } else {
        foreach $item ( @{$array} ) {
-           if( ref $item or length($item) > 20 ) {
+           if( defined $item && (ref $item or length($item) > 20 )) {
                $isFlat = 0; last;
            }
        }
@@ -81,7 +81,7 @@ sub serialiseArray
    my $old_indent = $indent;
    if( $isFlat ) {
        local $" = ", ";
-       my @val = map { "\"$_\"" } @{$array};
+       my @val = map { defined $_ ? "\"$_\"" : "undef" } @{$array};
        print STDOUT "[ @val ],\n";
    } else {
        ## printf STDOUT "\n" unless $indent eq "";
@@ -101,8 +101,13 @@ sub serialiseArray
                printf STDOUT "%s# %3d:\n%s", $indent, $index++, $indent;
                serialiseScalar( $item, $indent );
            } else {
-               printf STDOUT "%s# %3s:\n%s\"%s\",\n", $indent, $index++,
-               $indent, $item;
+               if( defined $item ) {
+                   printf STDOUT "%s# %3s:\n%s\"%s\",\n", $indent, $index++,
+                   $indent, $item;
+               } else {
+                   printf STDOUT "%s# %3s:\n%s%s,\n", $indent, $index++,
+                   $indent, "undef";
+               }
            }
        }
        print STDOUT $old_indent, "],\n";
