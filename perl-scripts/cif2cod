@@ -305,7 +305,14 @@ for my $filename (@ARGV) {
         my $journal = get_tag( $values, "_journal_name_full", 0, $filename );
         my $year = get_tag( $values, "_journal_year", 0, $filename );
         my $volume = get_tag( $values, "_journal_volume", 0, $filename );
-        my $first_page = get_tag( $values, "_journal_page_first", 0, $filename );
+        
+        my $first_page;
+        if( exists $values->{_journal_article_reference} ) {
+            $first_page = get_tag_silently( $values, "_journal_page_first", 0 );
+        } else {
+            $first_page = get_tag( $values, "_journal_page_first", 0, $filename );
+        }
+
         my $last_page = get_tag_silently( $values, "_journal_page_last", 0 );
         my $issue = get_tag_silently( $values, "_journal_issue", 0 );
 
