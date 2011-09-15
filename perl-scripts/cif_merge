@@ -1,0 +1,119 @@
+#! /bin/sh
+#!perl -w # --*- Perl -*--
+eval 'exec perl -x $0 ${1+"$@"}'
+    if 0;
+#------------------------------------------------------------------------------
+#$Author$
+#$Date$ 
+#$Revision$
+#$URL$
+#------------------------------------------------------------------------------
+#*
+# Merge data values in identical datablocks of multiple CIFs. Unique
+# tags are combined into a single datablock of the output CIF; tags
+# with equivalent values are silently merged into one. When a value
+# differs for the same tag and the same datablock in two files, a
+# warning (error) is issued.
+#**
+
+use strict;
+use lib "./lib/perl5";
+use lib "./CIFParser";
+use lib "./CIFTags";
+use lib ".";
+use CIFTagPrint;
+use CIFParser;
+use SOptions;
+use SUsage;
+
+#* USAGE:
+#*     $0 [options] input.cif [input2.cif ...]
+#* 
+#* OPTIONS:
+#*    --help,--usage         Print a short usage message (this message) and exit.
+#**
+
+@ARGV = getOptions( 
+    "--help,--usage" => sub { SUsage::usage; exit },
+);
+
+
+@ARGV = ( "-" ) unless @ARGV;
+
+my %merged_datablocks;
+my @merged_datablock_names;
+
+for my $filename (@ARGV) {
+
+    my $parser = new CIFParser;
+
+    my $data = $parser->Run($filename);
+
+    if( defined $parser->YYData->{ERRCOUNT} && $parser->YYData->{ERRCOUNT} > 0 ) {
+        print STDERR "$0: ", $parser->YYData->{ERRCOUNT},
+        " error(s) encountered while parsing file '${filename}'\n";
+        die;
+    }
+
+    if( !@$data || !defined $data->[0] || !defined $data->[0]{name} ) {
+        warn( "file '$filename' seems to be empty" );
+        next;
+    }
+
+    for my $datablock (@$data) {
+        my $data_name = $datablock->{name};
+        if( !exists $merged_datablocks{$data_name} ) {
+            push( @merged_datablock_names, $data_name );
+            $merged_datablocks{$data_name} = $datablock;
+        } else {
+            my $new_datablock = $datablock;
+            my $old_datablock = $merged_datablocks{$data_name};
+            for my $tag (@{$new_datablock->{tags}}) {
+                if( !exists $old_datablock->{values}{$tag} ) {
+                    if( !$old_datablock->{in_loop}{$tag} ) {
+
+                        $old_datablock->{values}{$tag} =
+                            $new_datablock->{values}{$tag};
+
+                        $old_datablock->{precisions}{$tag} =
+                            $new_datablock->{precisions}{$tag};
+
+                        $old_datablock->{types}{$tag} =
+                            $new_datablock->{types}{$tag};
+
+                        push( @{$old_datablock->{tags}}, $tag );
+                    } else {
+                        warn "Merging loops (tag $tag) is not supported " .
+                            "in this version";
+                    }
+                } else {
+                    if( !values_are_equal( $old_datablock->{values}{$tag},
+                                           $new_datablock->{values}{$tag} )) {
+                        warn( "values for tag '$tag' in '$data_name' differ" );
+                    }
+                }
+            }
+        }
+    }
+}
+
+for my $data_name (@merged_datablock_names) {
+    print_cif( $merged_datablocks{$data_name}, { keep_tag_order => 1 } );
+}
+
+sub values_are_equal
+{
+    my ($old_values, $new_values) = @_;
+
+    if( int(@$old_values) != int(@$new_values) ) {
+        return 0;
+    }
+
+    for( my $i = 0; $i <= $#{$new_values}; $i ++ ) {
+        if( $new_values->[$i] ne $old_values->[$i] ) {
+            return 0;
+        }
+    }
+
+    return 1;
+}
