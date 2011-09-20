@@ -24,6 +24,7 @@ use SUsage;
 
 sub entry_has_coordinates($);
 sub entry_has_disorder($);
+sub entry_has_Fobs($);
 
 my $reformat_spacegroup = 0;
 my $use_datablocks_without_coord = 0;
@@ -561,6 +562,10 @@ for my $filename (@ARGV) {
                 $value .= $separator . "has disorder";
                 $separator = ",";
             }
+            if( entry_has_Fobs( $values )) {
+                $value .= $separator . "has Fobs";
+                $separator = ",";
+            }
             $data{flags} = $value;
         };
 
@@ -852,6 +857,27 @@ sub entry_has_disorder($)
         _atom_site.disorder_assembly
         _atom_site_disorder_group
         _atom_site.disorder_group
+    );
+
+    for my $tag ( @tags ) {
+        if( exists $values->{$tag} ) {
+            for my $value (@{$values->{$tag}}) {
+                if( defined $value && $value ne '.' && $value ne '?' ) {
+                    return 1;
+                }
+            }
+        }
+    }
+
+    return 0;
+}
+
+sub entry_has_Fobs($)
+{
+    my ($values) = @_;
+
+    my @tags = qw(
+        _cod_database_fobs_code
     );
 
     for my $tag ( @tags ) {
