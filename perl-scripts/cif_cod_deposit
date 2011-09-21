@@ -121,6 +121,7 @@ do
           ;;
       --output-mode)
           OUTPUT_MODE="$2"
+          shift
           ;;
       -P|--progress|--progres|--progre|--progr|--prog|--pro|--pr|--p)
           PROGRESS=true
@@ -189,6 +190,7 @@ TMP_AUTHOR_EMAIL="${TMP_DIR}/author_email"
 TMP_JOURNAL="${TMP_DIR}/journal"
 TMP_CLIENT_IP="${TMP_DIR}/web_client_ip"
 TMP_BYPASS_PASSWD="${TMP_DIR}/bypass_password"
+TMP_MESSAGE="${TMP_DIR}/message"
 
 perl -lne "print \$1 if /^username=(.*)/" < ${INPUT_CONFIG} > ${TMP_USERNAME}
 perl -lne "print \$1 if /^password=(.*)/" < ${INPUT_CONFIG} > ${TMP_PASSWRD}
@@ -198,7 +200,9 @@ perl -lne "print \$1 if /^author_name=(.*)/"  < ${INPUT_CONFIG} > ${TMP_AUTHOR_N
 perl -lne "print \$1 if /^author_email=(.*)/" < ${INPUT_CONFIG} > ${TMP_AUTHOR_EMAIL}
 perl -lne "print \$1 if /^web_client_ip=(.*)/"   < ${INPUT_CONFIG} > ${TMP_CLIENT_IP}
 perl -lne "print \$1 if /^bypass_password=(.*)/" < ${INPUT_CONFIG} > ${TMP_BYPASS_PASSWD}
+perl -lne "print \$1 if /^message=(.*)/" < ${INPUT_CONFIG} > ${TMP_MESSAGE}
 HOLD_PERIOD=$(perl -lne "print \$1 if /^hold_period=(.*)/" < ${INPUT_CONFIG})
+
 
 if [ -s ${TMP_JOURNAL} ]
 then
@@ -242,6 +246,13 @@ else
     BYPASS_PASSWD_ARG=''
 fi
 
+if [ -s ${TMP_MESSAGE} ]
+then
+    MESSAGE_ARG="-F message=<${TMP_MESSAGE}"
+else
+    MESSAGE_ARG=''
+fi
+
 if [ -n "${HOLD_PERIOD}" ]
 then
     HOLD_PERIOD_ARG="-F hold_period=${HOLD_PERIOD}"
@@ -271,6 +282,7 @@ then
             ${DEBUG_ARG} \
             ${PROGRESS_ARG} \
             ${REPLACE_ARG} \
+            ${MESSAGE_ARG} \
             -F "output_mode=${OUTPUT_MODE}" \
             -F "username=<${TMP_USERNAME}" \
             -F "password=<${TMP_PASSWRD}" \
@@ -301,6 +313,7 @@ else
             ${DEBUG_ARG} \
             ${PROGRESS_ARG} \
             ${REPLACE_ARG} \
+            ${MESSAGE_ARG} \
             -F "output_mode=${OUTPUT_MODE}" \
             -F "username=<${TMP_USERNAME}" \
             -F "password=<${TMP_PASSWRD}" \
