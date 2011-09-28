@@ -35,6 +35,7 @@ setvar READ_STDIN = false
 setvar DEBUG    = false
 setvar PROGRESS = false
 setvar REPLACE  = false
+setvar RELEASE  = false
 setvar OUTPUT_MODE  = "html"
 
 setvar BASENAME = "`basename $0`"
@@ -133,6 +134,9 @@ do
       --replace)
           REPLACE=true
           ;;
+      --release|--release-data)
+          RELEASE=true
+          ;;
       --script|--scrip|--scri|--scr|--sc|--s)
           curl="script curl"
           ;;
@@ -175,6 +179,13 @@ then
     REPLACE_ARG='-F replace=1'
 else
     REPLACE_ARG=''
+fi
+
+if [ $RELEASE = true ]
+then
+    RELEASE_ARG='-F release=1'
+else
+    RELEASE_ARG=''
 fi
 
 test -z "${TMP_DIR}" && TMP_DIR="/tmp"
@@ -283,6 +294,7 @@ then
             ${PROGRESS_ARG} \
             ${REPLACE_ARG} \
             ${MESSAGE_ARG} \
+            ${RELEASE_ARG} \
             -F "output_mode=${OUTPUT_MODE}" \
             -F "username=<${TMP_USERNAME}" \
             -F "password=<${TMP_PASSWRD}" \
@@ -314,6 +326,7 @@ else
             ${PROGRESS_ARG} \
             ${REPLACE_ARG} \
             ${MESSAGE_ARG} \
+            ${RELEASE_ARG} \
             -F "output_mode=${OUTPUT_MODE}" \
             -F "username=<${TMP_USERNAME}" \
             -F "password=<${TMP_PASSWRD}" \
