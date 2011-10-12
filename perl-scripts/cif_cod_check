@@ -1003,10 +1003,13 @@ sub check_symmetry_operators
 sub error_reporter
 {
     my ($file, $line, $data, $message) = @_;
-    $file = '-' unless $file;
     $line = ( defined $line ) ? '(' . $line . ')' : '';
-    $data = ( defined $data ) ? ' data_' . $data : '';
-    my $output = $0 . ': ' . $file . $line . $data;
+    my $output = $0;
+    if( defined $file || defined $data ) {
+        $file = '-' unless $file;
+        $data = ( defined $data ) ? ' data_' . $data : '';
+        $output .= ': ' . $file . $line . $data;
+    }
     $output .= ': ' . $message . "\n";
     print reportFileFH $output;
     flush reportFileFH;
