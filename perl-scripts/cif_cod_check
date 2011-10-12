@@ -478,7 +478,16 @@ sub check_authors
     } else {
         for my $author (@{$values->{_publ_author_name}}) {
             my $UCS_author = cif2unicode( $author );
-            if( $UCS_author !~
+            if( $UCS_author =~ /^([^[:alpha:]])/ ||
+                $UCS_author =~ /([^-\.,[:alpha:]'()\s])/ ) {
+                error_reporter( $filename, undef, $dataset->{name},
+                                "NOTE, " .
+                                "name '$author'" .
+                                ( $author eq $UCS_author ?
+                                    "" : " ('$UCS_author')" ) .
+                                " looks unusual (contains symbol '$1' not usually found in names)" );
+                $warnings ++;
+            } elsif( $UCS_author !~
                 /^\s*${FirstNames}\s+${vonLast}\s*$/ &&
                 $UCS_author !~
                 /^\s*${Initials}\s*${vonLast}\s*$/ &&
