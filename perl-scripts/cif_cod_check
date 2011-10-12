@@ -481,11 +481,20 @@ sub check_authors
             if( $UCS_author =~ /^([^[:alpha:]])/ ||
                 $UCS_author =~ /([^-\.,[:alpha:]'()\s])/ ) {
                 error_reporter( $filename, undef, $dataset->{name},
-                                "NOTE, " .
+                                "WARNING, " .
                                 "name '$author'" .
                                 ( $author eq $UCS_author ?
                                     "" : " ('$UCS_author')" ) .
-                                " looks unusual (contains symbol '$1' not usually found in names)" );
+                                " contains symbol '$1' that is not permitted in names" );
+                if( ! $name_syntax_explained ) {
+                    error_reporter( undef, undef, undef,
+                                    "names should be written as " .
+                                    "'First von Last', " .
+                                    "'von Last, First', or " .
+                                    "'von Last, Jr, First' (mind the case!)"
+                        );
+                    $name_syntax_explained = 1;
+                }
                 $warnings ++;
             } elsif( $UCS_author !~
                 /^\s*${FirstNames}\s+${vonLast}\s*$/ &&
@@ -503,12 +512,14 @@ sub check_authors
                 /^\s*${First}-ur-${Last}\s*$/
                 ) {
                 error_reporter( $filename, undef, $dataset->{name},
+                                "NOTE, " .
                                 "name '$author'" .
                                 ( $author eq $UCS_author ?
                                     "" : " ('$UCS_author')" ) .
-                                " does not match name syntax" );
+                                " seems unusual" );
                 if( ! $name_syntax_explained ) {
                     error_reporter( undef, undef, undef,
+                                    "NOTE, " .
                                     "names should be written as " .
                                     "'First von Last', " .
                                     "'von Last, First', or " .
