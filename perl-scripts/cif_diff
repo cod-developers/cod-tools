@@ -1,0 +1,92 @@
+#! /bin/sh
+#!perl -w # --*- Perl -*--
+eval 'exec perl -x $0 ${1+"$@"}'
+    if 0;
+#------------------------------------------------------------------------------
+#$Author$
+#$Revision$
+#$URL$
+#$Date$
+#$Id$
+#------------------------------------------------------------------------------
+#*
+#  Parse two CIF files and compare their content
+#**
+
+use strict;
+use lib "./lib/perl5";
+use lib "./CIFParser";
+use lib "./CIFTags";
+use CIFParser;
+use CIFDiff;
+use SOptions;
+use SUsage;
+
+my $compare_datablock_names = 1;
+my $fold_long_fields        = 1;
+my $folding_width           = 72;
+
+@ARGV = getOptions(
+    "--compare-datablock-names"         => sub{ $compare_datablock_names = 1 },
+    "--dont-compare-datablock-names"    => sub{ $compare_datablock_names = 0 },
+    "--folding-width"         => \$folding_width,
+    "--fold-long-fields"      => sub{ $fold_long_fields = 1 },
+    "--dont-fold-long-fields" => sub{ $fold_long_fields = 0 },
+);
+
+push( @ARGV, "-" ) unless @ARGV > 1;
+if( @ARGV != 2 ) {
+    die( "please supply two files for comparison" );
+}
+
+my $parser1 = new CIFParser;
+my $data1 = $parser1->Run($ARGV[0]);
+my $parser2 = new CIFParser;
+my $data2 = $parser2->Run($ARGV[1]);
+
+my $min_datablocks  = scalar @$data1;
+if( scalar @$data1 != scalar @$data2 ) {
+    if( $min_datablocks > scalar @$data2 ) {
+        $min_datablocks = scalar @$data2;
+    }
+    print "number of datablocks in supplied files is different, " .
+          "taking first $min_datablocks datablocks for comparison\n";
+}
+
+for( my $i = 0; $i < $min_datablocks; $i++ ) {
+    CIFDiff::diff( $data1->[$i], $data2->[$i], {
+        'compare_datablock_names' => $compare_datablock_names,
+        'fold'                    => $fold_long_fields,
+        'folding_width'           => $folding_width } );
+}
+
+# Printout of parsed file contents
+
+if( 0 ) {
+    foreach my $datablock ( @$data1 ) {
+        foreach my $key ( keys %$datablock ) {
+            next unless ref( $datablock->{$key} ) eq 'HASH';
+            print "$key:\n";
+            foreach( keys %{$datablock->{$key}} ) {
+                print $_ . ": " . ref( $datablock->{$key}{$_} ) . " ";
+                if( $key eq 'inloop' ) {
+                    print $datablock->{$key}{$_};
+                }
+                if( $key eq 'values' ) {
+                    print join( " ", @{$datablock->{$key}{$_}} );
+                }
+                if( $key eq 'precisions' ) {
+                    print join( " ", @{$datablock->{$key}{$_}} );
+                }
+                print "\n";
+            }
+        }
+        print "\n\n";
+        print join( "\n", @{$datablock->{tags}} );
+        print "\n\n";
+        foreach my $loop ( @{$datablock->{loops}} ) {
+            print  "\n$loop\n    ";
+            print join( "\n    ", @$loop );
+        }
+    }
+}
