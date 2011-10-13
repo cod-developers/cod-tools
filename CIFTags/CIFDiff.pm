@@ -21,6 +21,11 @@ require Exporter;
 sub diff
 {
     my( $cif1, $cif2, $options ) = @_;
+    $options = {} unless defined $options;
+    $options->{compare_datablock_names} = 1
+        unless exists $options->{compare_datablock_names};
+    $options->{fold} = 1 unless exists $options->{fold};
+    $options->{fold_width} = 72 unless exists $options->{fold_width};
     if( $options->{compare_datablock_names}
         && $cif1->{name} ne $cif2->{name} ) {
         print "<data_" . $cif1->{name} . "\n";
