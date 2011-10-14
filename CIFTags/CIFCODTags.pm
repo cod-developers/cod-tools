@@ -67,6 +67,7 @@ _cod_chemical_formula_moiety_orig
 _cod_citation_special_details
 _cod_text
 _cod_database_code
+_cod_database_fobs_code
 );
 
 1;
