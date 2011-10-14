@@ -1359,6 +1359,7 @@ _database_code_PDB
 _database.code_PDB
 _database_code_PDF
 _database.code_PDF
+_database_code_COD
 _database_CSD_history
 _database.CSD_history
 _database.entry_id
@@ -3622,6 +3623,17 @@ _oxford_reflns_threshold_expression_ref
 _oxford_structure_analysis_title
 _oxford_twin_element_scale_factors
 
+_journal_paper_doi
+_chemical_identifier_inchi
+_chemical_identifier_inchi_key
+_chemical_identifier_inchi_version
+_diffrn_radiation_wavelength_details
+
+_iucr_refine_instructions_details
+
+_journal_article_reference
+_journal_pages_number
+_journal_article_page_count
 );
 
 1;
