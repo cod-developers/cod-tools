@@ -58,6 +58,7 @@ ssize_t *datablock_value_lengths( DATABLOCK *datablock );
 char ***datablock_values( DATABLOCK *datablock );
 int *datablock_in_loop( DATABLOCK *datablock );
 datablock_value_type_t **datablock_types( DATABLOCK *datablock );
+int datablock_loop_count( DATABLOCK *datablock );
 
 void datablock_dump( DATABLOCK * volatile datablock );
 void datablock_print( DATABLOCK * volatile datablock );
