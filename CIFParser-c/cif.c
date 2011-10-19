@@ -197,6 +197,12 @@ int cif_nerrors( CIF *cif )
     return cif->nerrors;
 }
 
+DATABLOCK * cif_datablock_list( CIF *cif )
+{
+    assert( cif );
+    return cif->datablock_list;
+}
+
 void cif_print_tag_values( CIF *cif, char ** tagnames, int tagcount,
     char * volatile prefix, int append_blkname, char * separator,
     char * vseparator )

@@ -52,6 +52,13 @@ void dispose_datablock( DATABLOCK * volatile *datablock );
 DATABLOCK *datablock_next( DATABLOCK *datablock );
 void datablock_set_next( DATABLOCK *datablock, DATABLOCK *next );
 
+size_t datablock_length( DATABLOCK *datablock );
+char **datablock_tags( DATABLOCK *datablock );
+ssize_t *datablock_value_lengths( DATABLOCK *datablock );
+char ***datablock_values( DATABLOCK *datablock );
+int *datablock_in_loop( DATABLOCK *datablock );
+datablock_value_type_t **datablock_types( DATABLOCK *datablock );
+
 void datablock_dump( DATABLOCK * volatile datablock );
 void datablock_print( DATABLOCK * volatile datablock );
 
