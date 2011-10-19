@@ -195,6 +195,11 @@ datablock_value_type_t **datablock_types( DATABLOCK *datablock )
     return datablock->types;
 }
 
+int datablock_loop_count( DATABLOCK *datablock )
+{
+    return datablock->loop_count;
+}
+
 void datablock_set_next( DATABLOCK *datablock, DATABLOCK *next )
 {
     if( datablock ) {
