@@ -67,6 +67,7 @@ void cif_push_loop_value( CIF * cif, char *value, datablock_value_type_t vtype,
 
 void cif_set_nerrors( CIF *cif, int nerrors );
 int cif_nerrors( CIF *cif );
+DATABLOCK * cif_datablock_list( CIF *cif );
 
 void cif_print_tag_values( CIF *cif, char ** tagnames, int tagcount,
     char * volatile prefix, int append_blkname, char * separator,

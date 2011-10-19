@@ -165,6 +165,36 @@ DATABLOCK *datablock_next( DATABLOCK *datablock )
     }
 }
 
+size_t datablock_length( DATABLOCK *datablock )
+{
+    return datablock->length;
+}
+
+char **datablock_tags( DATABLOCK *datablock )
+{
+    return datablock->tags;
+}
+
+ssize_t *datablock_value_lengths( DATABLOCK *datablock )
+{
+    return datablock->value_lengths;
+}
+
+char ***datablock_values( DATABLOCK *datablock )
+{
+    return datablock->values;
+}
+
+int *datablock_in_loop( DATABLOCK *datablock )
+{
+    return datablock->in_loop;
+}
+
+datablock_value_type_t **datablock_types( DATABLOCK *datablock )
+{
+    return datablock->types;
+}
+
 void datablock_set_next( DATABLOCK *datablock, DATABLOCK *next )
 {
     if( datablock ) {
