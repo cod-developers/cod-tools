@@ -2,9 +2,14 @@
 
 use strict;
 use warnings;
-#use Inline C => Config => AUTO_INCLUDE => '#include "cif_grammar_y"';
-use Inline C => Config => MYEXTLIB => '/home/andrius/cif-tools/trunk/CCIFParser/cif_grammar.so /home/andrius/cif-tools/trunk/CCIFParser/cif.so /home/andrius/cif-tools/trunk/CCIFParser/cexceptions.so /home/andrius/cif-tools/trunk/CCIFParser/getoptions.so';
 
+use lib "./lib/perl5";
+use lib "./CIFParser";
+use lib "./CIFTags";
+use CIFParser;
+use SOptions;
+
+use Inline C => Config => MYEXTLIB => '/home/andrius/cif-tools/trunk/CCIFParser/cif_grammar.so /home/andrius/cif-tools/trunk/CCIFParser/cif.so /home/andrius/cif-tools/trunk/CCIFParser/cexceptions.so /home/andrius/cif-tools/trunk/CCIFParser/getoptions.so';
 use Inline C => <<'END_OF_C_CODE';
 
 #include <stdio.h>
@@ -91,23 +96,47 @@ AV * parse_cif( SV * filename ) {
 
 END_OF_C_CODE
 
-my $a = parse_cif( $ARGV[0] );
-foreach my $datablock ( @$a ) {
+my $method = 'C';
+@ARGV = getOptions(
+    "-m,--method" => \$method
+);
+
+my $data;
+if( $method eq 'Perl' ) {
+    my $parser = new CIFParser;
+    $data = $parser->Run($ARGV[0]);
+} elsif( $method eq 'C' ) {
+    $data = parse_cif( $ARGV[0] );
+}
+
+foreach my $datablock ( @$data ) {
     print  $datablock->{name} . "\n";
-    foreach my $tag ( @{$datablock->{tags}} ) {
-        print "    [$tag]: ";
+    print "Values:\n";
+    foreach my $tag ( sort @{$datablock->{tags}} ) {
+        print "    " . lc( $tag ) . " ";
         print join( " ", @{$datablock->{values}{$tag}} ) . "\n";
     }
-    print "Values:\n";
-    foreach my $tag ( keys %{$datablock->{values}} ) {
-        print "    [$tag]\n";
+    if( exists $datablock->{precisions} ) {
+        print "Precisions:\n";
+        foreach my $tag ( sort keys %{$datablock->{precisions}} ) {
+            print "    " . lc( $tag ) . " ";
+            print join( " ", map{ ( defined $_ ) ? $_ : "undef" }
+                @{$datablock->{precisions}{$tag}} ) . "\n";
+        }
+    }
+    if( exists $datablock->{types} ) {
+        print "Types:\n";
+        foreach my $tag ( sort keys %{$datablock->{types}} ) {
+            print "    " . lc( $tag ) . " ";
+            print join( " ", @{$datablock->{types}{$tag}} ) . "\n";
+        }
     }
     print "Inloops:\n";
     foreach my $tag ( keys %{$datablock->{inloop}} ) {
-        print "    " . $tag . " " . $datablock->{inloop}{$tag} . "\n";
+        print "    " . lc( $tag ) . " " . $datablock->{inloop}{$tag} . "\n";
     }
     print "Loops:\n";
     foreach my $loop ( @{$datablock->{loops}} ) {
-        print join( " ", @$loop ) . "\n";
+        print join( " ", map{ lc $_ } @$loop ) . "\n";
     }
 }
