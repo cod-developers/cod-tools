@@ -242,9 +242,9 @@ textfield
 
 number
 	:	_REAL_CONST
-        { $$.vstr = $1; $$.vtype = CIF_NUMBER; }
+        { $$.vstr = $1; $$.vtype = CIF_FLOAT; }
 	|	_INTEGER_CONST
-        { $$.vstr = $1; $$.vtype = CIF_NUMBER; }
+        { $$.vstr = $1; $$.vtype = CIF_INT; }
 ;
 
 %%

@@ -223,7 +223,8 @@ void datablock_print_value( DATABLOCK * volatile datablock, int tag_nr, int valu
     j = value_idx;
 
     switch( datablock->types[i][j] ) {
-    case DBLK_NUMBER:
+    case DBLK_INT:
+    case DBLK_FLOAT:
     case DBLK_UQSTRING:
 	printf( " %s", datablock->values[i][j] );
 	break;

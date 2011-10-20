@@ -17,7 +17,8 @@ typedef struct CIF CIF;
 
 typedef enum {
     CIF_UNKNOWN = 0,
-    CIF_NUMBER,
+    CIF_INT,
+    CIF_FLOAT,
     CIF_UQSTRING,
     CIF_SQSTRING,
     CIF_DQSTRING,

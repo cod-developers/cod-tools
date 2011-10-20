@@ -16,7 +16,8 @@ typedef struct DATABLOCK DATABLOCK;
 
 typedef enum {
     DBLK_UNKNOWN = 0,
-    DBLK_NUMBER,
+    DBLK_INT,
+    DBLK_FLOAT,
     DBLK_UQSTRING,
     DBLK_SQSTRING,
     DBLK_DQSTRING,
