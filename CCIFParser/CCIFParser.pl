@@ -146,7 +146,12 @@ sub parse
                             $prec[$i] = $3;
                 }
             }
-            if( @prec > 0 ) { $datablock->{precisions}{$tag} = \@prec; }
+            if( @prec > 0 ) {
+                if( @prec < @{$datablock->{types}{$tag}} ) {
+                    $prec[ @{$datablock->{types}{$tag}} - 1 ] = undef;
+                }
+                $datablock->{precisions}{$tag} = \@prec;
+            }
         }
     }
     return $data;
