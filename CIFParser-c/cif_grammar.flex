@@ -141,7 +141,6 @@ _[^ \t\n]+     { MARK; yylval.s = strclone(yytext); return _TAG; }
 {REAL_ESD}		%{
                            MARK;
                            yylval.s = strnclone(yytext, yyleng);
-                           yylval.s = process_escapes(yylval.s);
 			   /* sscanf( yytext, "%lf", &yylval.r ); */
 			   return _REAL_CONST;
 			%}
@@ -149,7 +148,6 @@ _[^ \t\n]+     { MARK; yylval.s = strclone(yytext); return _TAG; }
 {INTEGER_ESD}		%{
                            MARK;
                            yylval.s = strnclone(yytext, yyleng);
-                           yylval.s = process_escapes(yylval.s);
 			   return _INTEGER_CONST;
 			%}
 
@@ -159,7 +157,6 @@ _[^ \t\n]+     { MARK; yylval.s = strclone(yytext); return _TAG; }
                            MARK;
                            assert(yyleng > 1);
                            yylval.s = strnclone(yytext + 1, yyleng - 2);
-                           yylval.s = process_escapes(yylval.s);
                            return _DQSTRING;
 			%}
 
@@ -170,7 +167,6 @@ _[^ \t\n]+     { MARK; yylval.s = strclone(yytext); return _TAG; }
                            yylval.s = yyleng > 1 ?
                                          strnclone(yytext + 1, yyleng - 2) :
                                          strclone("");
-                           yylval.s = process_escapes(yylval.s);
                            return _DQSTRING;
 			%}
 
@@ -178,7 +174,6 @@ _[^ \t\n]+     { MARK; yylval.s = strclone(yytext); return _TAG; }
                            MARK;
                            assert(yyleng > 1);
                            yylval.s = strnclone(yytext + 1, yyleng - 2);
-                           yylval.s = process_escapes(yylval.s);
                            return _SQSTRING;
 			%}
 
@@ -189,7 +184,6 @@ _[^ \t\n]+     { MARK; yylval.s = strclone(yytext); return _TAG; }
                            yylval.s = yyleng > 1 ?
                                          strnclone(yytext + 1, yyleng - 2) :
                                          strclone("");
-                           yylval.s = process_escapes(yylval.s);
                            return _SQSTRING;
 			%}
 
