@@ -55,11 +55,13 @@ AV * parse_cif( SV * filename ) {
             char ***values = datablock_values( datablock );
             int *inloop   = datablock_in_loop( datablock );
             int  loop_count = datablock_loop_count( datablock );
+            datablock_value_type_t **types = datablock_types( datablock );
 
             AV * taglist    = newAV();
             HV * valuehash  = newHV();
             HV * loopid     = newHV();
             AV * loops      = newAV();
+            HV * typehash   = newHV();
             int i, j;
             for( i = 0; i < loop_count; i++ ) {
                 AV * loop = newAV();
@@ -68,12 +70,35 @@ AV * parse_cif( SV * filename ) {
 
             for( i = 0; i < length; i++ ) {
                 av_push( taglist, newSVpv( tags[i], 0 ) );
-                AV * tagvalues = newAV();
+
+                AV * tagvalues  = newAV();
+                AV * typevalues = newAV();
+                SV * type;
                 for( j = 0; j < value_lengths[i]; j++ ) {
                     av_push( tagvalues, newSVpv( values[i][j], 0 ) );
+                    switch ( types[i][j] ) {
+                        case DBLK_INT :
+                            type = newSVpv( "INT", 3 ); break;
+                        case DBLK_FLOAT :
+                            type = newSVpv( "FLOAT", 5 ); break;
+                        case DBLK_SQSTRING :
+                            type = newSVpv( "SQSTRING", 8 ); break;
+                        case DBLK_DQSTRING :
+                            type = newSVpv( "DQSTRING", 8 ); break;
+                        case DBLK_UQSTRING :
+                            type = newSVpv( "UQSTRING", 8 ); break;
+                        case DBLK_TEXT :
+                            type = newSVpv( "TEXTFIELD", 9 ); break;
+                        default :
+                            type = newSVpv( "UNKNOWN", 7 );
+                    }
+                    av_push( typevalues, type );
                 }
                 hv_store( valuehash, tags[i], strlen( tags[i] ),
                     newRV_inc( tagvalues ), 0 );
+                hv_store( typehash,  tags[i], strlen( tags[i] ),
+                    newRV_inc( typevalues ), 0 );
+
                 if( inloop[i] != -1 ) {
                     hv_store( loopid, tags[i], strlen( tags[i] ),
                         newSViv( inloop[i] ), 0 );
@@ -84,6 +109,7 @@ AV * parse_cif( SV * filename ) {
 
             hv_store( current_datablock, "tags",   4, newRV_inc( taglist ),   0 );
             hv_store( current_datablock, "values", 6, newRV_inc( valuehash ), 0 );
+            hv_store( current_datablock, "types",  5, newRV_inc( typehash ), 0 );
             hv_store( current_datablock, "inloop", 6, newRV_inc( loopid ), 0 );
             hv_store( current_datablock, "loops",  5, newRV_inc( loops ), 0 );
        
