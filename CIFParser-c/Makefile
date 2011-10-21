@@ -64,7 +64,7 @@ TARGET = ${firstword ${EXE_FILES}}
 
 LOCAL_CFILES := ${notdir ${wildcard ${SRC_DIR}/*.c}}
 LOCAL_CFILES := ${filter-out %.tab.c lex.yy.c %.lex.c, ${LOCAL_CFILES}}
-LOCAL_OBJS    = ${LOCAL_CFILES:%.c=${OBJDIR}/%.o}
+LOCAL_OBJS    = ${LOCAL_CFILES:%.c=${OBJDIR}/%.o} ${wildcard %.lex.o %.tab.o}
 LOCAL_DEPENDS = ${LOCAL_CFILES:%.c=.%.d}
 
 LOCAL_LIB := ${addprefix lib, ${addsuffix .a, ${notdir ${shell pwd}} }}
