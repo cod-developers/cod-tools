@@ -62,7 +62,9 @@ AV * parse_cif( SV * filename ) {
             HV * loopid     = newHV();
             AV * loops      = newAV();
             HV * typehash   = newHV();
-            int i, j;
+
+            size_t i;
+            ssize_t j;
             for( i = 0; i < loop_count; i++ ) {
                 AV * loop = newAV();
                 av_push( loops, newRV_inc( loop ) );
