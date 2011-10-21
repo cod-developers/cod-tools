@@ -8,6 +8,7 @@ use lib "./CIFParser";
 use lib "./CIFTags";
 use CIFParser;
 use SOptions;
+use Precision;
 
 use Inline C => Config => MYEXTLIB => '/home/andrius/cif-tools/trunk/CCIFParser/cif_grammar.so /home/andrius/cif-tools/trunk/CCIFParser/cif.so /home/andrius/cif-tools/trunk/CCIFParser/cexceptions.so /home/andrius/cif-tools/trunk/CCIFParser/getoptions.so';
 use Inline C => <<'END_OF_C_CODE';
@@ -124,6 +125,33 @@ AV * parse_cif( SV * filename ) {
 
 END_OF_C_CODE
 
+sub parse
+{
+    my( $filename ) = @_;
+    my $data = parse_cif( $filename );
+    foreach my $datablock ( @$data ) {
+        $datablock->{precisions} = {};
+        foreach my $tag   ( keys %{$datablock->{types}} ) {
+            my @prec;
+            for( my $i = 0; $i < @{$datablock->{types}{$tag}}; $i++ ) {
+                next unless $datablock->{types}{$tag}[$i] eq "INT" ||
+                            $datablock->{types}{$tag}[$i] eq "FLOAT";
+                if(         $datablock->{types}{$tag}[$i] eq "FLOAT" &&
+                            $datablock->{values}{$tag}[$i] =~
+                            m/^(.*)( \( ([0-9]+) \) )$/six ) {
+                            $prec[$i] = unpack_precision( $1, $3 );
+                } elsif(    $datablock->{types}{$tag}[$i] eq "INT" &&
+                            $datablock->{values}{$tag}[$i] =~
+                            m/^(.*)( \( ([0-9]+) \) )$/sx ) {
+                            $prec[$i] = $3;
+                }
+            }
+            if( @prec > 0 ) { $datablock->{precisions}{$tag} = \@prec; }
+        }
+    }
+    return $data;
+}
+
 my $method = 'C';
 @ARGV = getOptions(
     "-m,--method" => \$method
@@ -134,7 +162,7 @@ if( $method eq 'Perl' ) {
     my $parser = new CIFParser;
     $data = $parser->Run($ARGV[0]);
 } elsif( $method eq 'C' ) {
-    $data = parse_cif( $ARGV[0] );
+    $data = parse( $ARGV[0] );
 }
 
 foreach my $datablock ( @$data ) {
