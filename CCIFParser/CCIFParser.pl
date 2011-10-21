@@ -168,13 +168,14 @@ if( $method eq 'Perl' ) {
 foreach my $datablock ( @$data ) {
     print  $datablock->{name} . "\n";
     print "Values:\n";
-    foreach my $tag ( sort @{$datablock->{tags}} ) {
+    foreach my $tag ( sort { lc( $a ) cmp lc( $b ) } @{$datablock->{tags}} ) {
         print "    " . lc( $tag ) . " ";
         print join( " ", @{$datablock->{values}{$tag}} ) . "\n";
     }
     if( exists $datablock->{precisions} ) {
         print "Precisions:\n";
-        foreach my $tag ( sort keys %{$datablock->{precisions}} ) {
+        foreach my $tag ( sort { lc( $a ) cmp lc( $b ) }
+            keys %{$datablock->{precisions}} ) {
             print "    " . lc( $tag ) . " ";
             print join( " ", map{ ( defined $_ ) ? $_ : "undef" }
                 @{$datablock->{precisions}{$tag}} ) . "\n";
@@ -182,13 +183,15 @@ foreach my $datablock ( @$data ) {
     }
     if( exists $datablock->{types} ) {
         print "Types:\n";
-        foreach my $tag ( sort keys %{$datablock->{types}} ) {
+        foreach my $tag ( sort { lc( $a ) cmp lc( $b ) }
+            keys %{$datablock->{types}} ) {
             print "    " . lc( $tag ) . " ";
             print join( " ", @{$datablock->{types}{$tag}} ) . "\n";
         }
     }
     print "Inloops:\n";
-    foreach my $tag ( keys %{$datablock->{inloop}} ) {
+    foreach my $tag ( sort { lc( $a ) cmp lc( $b ) }
+        keys %{$datablock->{inloop}} ) {
         print "    " . lc( $tag ) . " " . $datablock->{inloop}{$tag} . "\n";
     }
     print "Loops:\n";
