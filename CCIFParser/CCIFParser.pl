@@ -10,7 +10,7 @@ use CIFParser;
 use SOptions;
 use Precision;
 
-use Inline C => Config => MYEXTLIB => '/home/andrius/cif-tools/trunk/CCIFParser/cif_grammar.so /home/andrius/cif-tools/trunk/CCIFParser/cif.so /home/andrius/cif-tools/trunk/CCIFParser/cexceptions.so /home/andrius/cif-tools/trunk/CCIFParser/getoptions.so';
+use Inline C => Config => LIBS => '-L/home/andrius/cif-tools/trunk/CCIFParser -lCIFParser-c -lcexceptions -lgetoptions';
 use Inline C => <<'END_OF_C_CODE';
 
 #include <stdio.h>
