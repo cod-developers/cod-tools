@@ -110,7 +110,7 @@ static void storeCurrentLine( char *line, int length );
                           ADVANCE_MARK;
                           BEGIN(INITIAL);
                           if( length > 1 ) {
-                              yylval.s[length-2] = '\0'; /* remove the last "\n" character from the value */
+                              yylval.s[length-1] = '\0'; /* remove the last "\n" character from the value */
                           }
                           return _TEXT_FIELD; 
                         %}
@@ -120,7 +120,7 @@ static void storeCurrentLine( char *line, int length );
                           yyerrorf( "unterminated text field" );
                           BEGIN(INITIAL);
                           if( length > 1 ) {
-                              yylval.s[length-2] = '\0'; /* remove the last "\n" character from the value */
+                              yylval.s[length-1] = '\0'; /* remove the last "\n" character from the value */
                           }
                           return _TEXT_FIELD;
                         %}
