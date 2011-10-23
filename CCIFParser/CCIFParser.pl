@@ -133,9 +133,11 @@ sub parse
         $datablock->{precisions} = {};
         foreach my $tag   ( keys %{$datablock->{types}} ) {
             my @prec;
+            my $has_numeric_values = 0;
             for( my $i = 0; $i < @{$datablock->{types}{$tag}}; $i++ ) {
                 next unless $datablock->{types}{$tag}[$i] eq "INT" ||
                             $datablock->{types}{$tag}[$i] eq "FLOAT";
+                $has_numeric_values = 1;
                 if(         $datablock->{types}{$tag}[$i] eq "FLOAT" &&
                             $datablock->{values}{$tag}[$i] =~
                             m/^(.*)( \( ([0-9]+) \) )$/six ) {
@@ -146,7 +148,8 @@ sub parse
                             $prec[$i] = $3;
                 }
             }
-            if( @prec > 0 ) {
+            if( @prec > 0 || ( exists $datablock->{inloop}{$tag} &&
+                $has_numeric_values ) ) {
                 if( @prec < @{$datablock->{types}{$tag}} ) {
                     $prec[ @{$datablock->{types}{$tag}} - 1 ] = undef;
                 }
