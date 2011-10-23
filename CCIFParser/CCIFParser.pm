@@ -14,12 +14,13 @@ package CCIFParser;
 use strict;
 use SOptions;
 use Precision;
+use Cwd;
 
 require Exporter;
 @CCIFParser::ISA = qw(Exporter);
 @CCIFParser::EXPORT = qw( parse );
 
-use Inline C => Config => LIBS => '-L/home/andrius/cif-tools/trunk/CCIFParser -lCIFParser-c -lcexceptions -lgetoptions', INC => '-I/home/andrius/cif-tools/trunk/CCIFParser';
+use Inline C => Config => LIBS => "-L" . getcwd . "/CCIFParser -lCIFParser-c -lcexceptions -lgetoptions", INC => "-I" . getcwd . "/CCIFParser";
 use Inline C => <<'END_OF_C_CODE';
 
 #include <stdio.h>
