@@ -1,16 +1,25 @@
-#!/usr/bin/perl
+#------------------------------------------------------------------------
+#$Author$
+#$Date$ 
+#$Revision$
+#$URL$
+#------------------------------------------------------------------------
+#* 
+#  Wrapper for CIF parser, written in C language. Converts parsed CIF
+#  data structure to one, which can be used by Perl programs.
+#**
+
+package CCIFParser;
 
 use strict;
-use warnings;
-
-use lib "./lib/perl5";
-use lib "./CIFParser";
-use lib "./CIFTags";
-use CIFParser;
 use SOptions;
 use Precision;
 
-use Inline C => Config => LIBS => '-L/home/andrius/cif-tools/trunk/CCIFParser -lCIFParser-c -lcexceptions -lgetoptions';
+require Exporter;
+@CCIFParser::ISA = qw(Exporter);
+@CCIFParser::EXPORT = qw( parse );
+
+use Inline C => Config => LIBS => '-L/home/andrius/cif-tools/trunk/CCIFParser -lCIFParser-c -lcexceptions -lgetoptions', INC => '-I/home/andrius/cif-tools/trunk/CCIFParser';
 use Inline C => <<'END_OF_C_CODE';
 
 #include <stdio.h>
@@ -160,50 +169,4 @@ sub parse
     return $data;
 }
 
-my $method = 'C';
-@ARGV = getOptions(
-    "-m,--method" => \$method
-);
-
-my $data;
-if( $method eq 'Perl' ) {
-    my $parser = new CIFParser;
-    $data = $parser->Run($ARGV[0]);
-} elsif( $method eq 'C' ) {
-    $data = parse( $ARGV[0] );
-}
-
-foreach my $datablock ( @$data ) {
-    print  $datablock->{name} . "\n";
-    print "Values:\n";
-    foreach my $tag ( sort { lc( $a ) cmp lc( $b ) } @{$datablock->{tags}} ) {
-        print "    " . lc( $tag ) . " ";
-        print join( " ", @{$datablock->{values}{$tag}} ) . "\n";
-    }
-    if( exists $datablock->{precisions} ) {
-        print "Precisions:\n";
-        foreach my $tag ( sort { lc( $a ) cmp lc( $b ) }
-            keys %{$datablock->{precisions}} ) {
-            print "    " . lc( $tag ) . " ";
-            print join( " ", map{ ( defined $_ ) ? $_ : "undef" }
-                @{$datablock->{precisions}{$tag}} ) . "\n";
-        }
-    }
-    if( exists $datablock->{types} ) {
-        print "Types:\n";
-        foreach my $tag ( sort { lc( $a ) cmp lc( $b ) }
-            keys %{$datablock->{types}} ) {
-            print "    " . lc( $tag ) . " ";
-            print join( " ", @{$datablock->{types}{$tag}} ) . "\n";
-        }
-    }
-    print "Inloops:\n";
-    foreach my $tag ( sort { lc( $a ) cmp lc( $b ) }
-        keys %{$datablock->{inloop}} ) {
-        print "    " . lc( $tag ) . " " . $datablock->{inloop}{$tag} . "\n";
-    }
-    print "Loops:\n";
-    foreach my $loop ( @{$datablock->{loops}} ) {
-        print join( " ", map{ lc $_ } @$loop ) . "\n";
-    }
-}
+1;
