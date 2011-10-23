@@ -109,7 +109,7 @@ static void storeCurrentLine( char *line, int length );
                           ssize_t length = strlen( yylval.s );
                           ADVANCE_MARK;
                           BEGIN(INITIAL);
-                          if( length > 1 ) {
+                          if( length > 0 ) {
                               yylval.s[length-1] = '\0'; /* remove the last "\n" character from the value */
                           }
                           return _TEXT_FIELD; 
