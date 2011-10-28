@@ -33,7 +33,7 @@ typedef struct option_value_t {
     int present;
     int count;
     union {
-        char bool;
+        char b; /* Byte or boolean */
         long i;
         double f;    
         char *s;

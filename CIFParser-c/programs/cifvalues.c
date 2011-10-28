@@ -48,8 +48,8 @@ int main( int argc, char *argv[], char *env[] )
   tags.value.s = "";
   separator.value.s = " ";
   vseparator.value.s = ",";
-  print_filename.value.bool = 0;
-  print_dataname.value.bool = 1;
+  print_filename.value.b = 0;
+  print_dataname.value.b = 1;
 
   char ** taglist = NULL;
   int tagcount = 0;
@@ -113,8 +113,8 @@ int main( int argc, char *argv[], char *env[] )
                   cif_print( cif );
               } else {
                   cif_print_tag_values( cif, taglist, tagcount,
-                      ( print_filename.value.bool == 1 ? filename : "" ), 
-                      print_dataname.value.bool,
+                      ( print_filename.value.b == 1 ? filename : "" ), 
+                      print_dataname.value.b,
                       separator.value.s, vseparator.value.s );
               }         
               delete_cif( cif );
