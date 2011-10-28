@@ -211,7 +211,7 @@ void cif_print_tag_values( CIF *cif, char ** tagnames, int tagcount,
 
     if( cif ) {
         foreach_datablock( datablock, cif->datablock_list ) {
-            char * nprefix[ strlen( prefix ) + 
+            char nprefix[ strlen( prefix ) + 
                 strlen( datablock_name( datablock ) ) + 
                 2 * strlen( separator )];
             nprefix[0] = '\0';
