@@ -63,6 +63,7 @@ int datablock_loop_count( DATABLOCK *datablock );
 
 void datablock_dump( DATABLOCK * volatile datablock );
 void datablock_print( DATABLOCK * volatile datablock );
+void datablock_list_tags( DATABLOCK * volatile datablock );
 
 void datablock_insert_value( DATABLOCK * datablock, char *tag,
                        char *value, datablock_value_type_t vtype,
@@ -74,6 +75,7 @@ void datablock_finish_loop( DATABLOCK *datablock, cexception_t *ex );
 void datablock_push_loop_value( DATABLOCK * datablock, char *value,
                                 datablock_value_type_t vtype,
                                 cexception_t *ex );
+char * datablock_name( DATABLOCK * datablock );
 
 #define foreach_datablock( NODE, LIST ) \
     for( NODE = LIST; NODE != NULL; NODE = datablock_next( NODE ))
