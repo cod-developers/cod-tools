@@ -64,6 +64,9 @@ int datablock_loop_count( DATABLOCK *datablock );
 void datablock_dump( DATABLOCK * volatile datablock );
 void datablock_print( DATABLOCK * volatile datablock );
 void datablock_list_tags( DATABLOCK * volatile datablock );
+void datablock_print_tag_values( DATABLOCK * volatile datablock,
+    char ** tagnames, int tagcount, char * volatile prefix, char * separator,
+    char * vseparator );
 
 void datablock_insert_value( DATABLOCK * datablock, char *tag,
                        char *value, datablock_value_type_t vtype,
