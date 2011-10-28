@@ -62,10 +62,10 @@ char **get_optionsx( int argc, char *argv[], option_t options[],
 		    option->data->present = 1;
 	        switch( option->option_type ) {
                     case OT_BOOLEAN_TRUE:
-		        option->data->value.bool = 1;
+		        option->data->value.b = 1;
 		        break;
                     case OT_BOOLEAN_FALSE:
-		        option->data->value.bool = 0;
+		        option->data->value.b = 0;
 		        break;
                     case OT_STRING:
 		        get_string_value( argc, argv, &i, option, &inner );
