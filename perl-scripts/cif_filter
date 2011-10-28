@@ -67,6 +67,7 @@ sub merge_new_tag_values($$$);
 
 my $user_biblio = 0;
 my $leave_biblio = 0;
+my $leave_title = 0;
 my $global_priority = 0; # if set to says that bibliography in
                          # 'data_global' has priority over
                          # bibliography in each other datablock.
@@ -213,6 +214,7 @@ my %spacegroups = map {
 #*
 #*    --leave-bibliography
 #*    --discard-bibliograph
+#*    --leave-title
 #*    --help,--usage         Print a short usage message (this message) and exit.
 #**
 
@@ -320,6 +322,7 @@ my %spacegroups = map {
 
     "--leave-bibliography"   => sub{ $leave_biblio = 1 },
     "--discard-bibliography" => sub{ $leave_biblio = 0 },
+    "--leave-title"          => sub{ $leave_title  = 1 },
     "--help,--usage" => sub { SUsage::usage; exit },
 );
 
@@ -507,7 +510,9 @@ for my $filename (@ARGV) {
                         for my $key ( grep /_journal_|_publ_section_title|_author_/,
                                       keys %{$datablok} ) {
                             if( $key ne "_journal_coeditor_code" ) {
-                                CIFTagManage::exclude_tag( $dataset, $key );
+                                if( $key ne "_publ_section_title" || !$leave_title ) {
+                                    CIFTagManage::exclude_tag( $dataset, $key );
+                                }
                             }
                         }
                     }
@@ -551,7 +556,9 @@ for my $filename (@ARGV) {
                     for my $key ( grep /_journal_|_publ_section_title|_author_/,
                                   keys %{$datablok} ) {
                         if( $key ne "_journal_coeditor_code" ) {
-                            CIFTagManage::exclude_tag( $dataset, $key );
+                            if( $key ne "_publ_section_title" || !$leave_title ) {
+                                CIFTagManage::exclude_tag( $dataset, $key );
+                            }
                         }
                     }
                 }
@@ -637,7 +644,9 @@ for my $filename (@ARGV) {
             if( !$leave_biblio ) {
                 for my $key ( grep /_journal_|_publ_section_title|_author_/,
                               keys %{$datablok} ) {
-                    CIFTagManage::exclude_tag( $dataset, $key );
+                    if( $key ne "_publ_section_title" || !$leave_title ) {
+                        CIFTagManage::exclude_tag( $dataset, $key );
+                    }
                 }
             }
 
