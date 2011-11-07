@@ -55,9 +55,17 @@ AV * parse_cif( SV * filename ) {
     cif_flex_debug_off();    
     cif_debug_off();
     CIF * volatile cif = NULL;
-    cexception_t inner;
-    cif = new_cif_from_cif_file( SvPV_nolen( filename ), &inner );
     AV * datablocks = newAV();
+    cexception_t inner;
+    cexception_guard( inner ) {
+        cif = new_cif_from_cif_file( SvPV_nolen( filename ), &inner );
+    }
+    cexception_catch {
+        if( cif != NULL ) {
+            dispose_cif( cif );
+        }
+        return datablocks;
+    }
     if( cif && cif_nerrors( cif ) == 0 ) {
         DATABLOCK *datablock;
         foreach_datablock( datablock, cif_datablock_list( cif ) ) {
