@@ -50,11 +50,12 @@ use Inline C => <<'END_OF_C_CODE';
 
 char *progname = "cifparser";
 
-AV * parse_cif( SV * filename ) {
+void parse_cif( SV * filename ) {
     cif_yy_debug_off();    
     cif_flex_debug_off();    
     cif_debug_off();
     CIF * volatile cif = NULL;
+    int nerrors = 0;
     AV * datablocks = newAV();
     cexception_t inner;
     cexception_guard( inner ) {
@@ -62,9 +63,9 @@ AV * parse_cif( SV * filename ) {
     }
     cexception_catch {
         if( cif != NULL ) {
+            nerrors = cif_nerrors( cif );
             dispose_cif( cif );
         }
-        return datablocks;
     }
     if( cif && cif_nerrors( cif ) == 0 ) {
         DATABLOCK *datablock;
@@ -142,8 +143,14 @@ AV * parse_cif( SV * filename ) {
             av_push( datablocks, newRV_inc( current_datablock ) );
         }
     }
-    dispose_cif( cif );
-    return datablocks;
+    if( cif ) {
+        dispose_cif( cif );
+    }
+    Inline_Stack_Vars;
+    Inline_Stack_Reset;
+    Inline_Stack_Push(sv_2mortal(newRV_inc(datablocks)));
+    Inline_Stack_Push(sv_2mortal(newSViv(nerrors)));
+    Inline_Stack_Done;
 }
 
 END_OF_C_CODE
@@ -151,7 +158,7 @@ END_OF_C_CODE
 sub parse
 {
     my( $filename ) = @_;
-    my $data = parse_cif( $filename );
+    my( $data, $nerrors ) = parse_cif( $filename );
     foreach my $datablock ( @$data ) {
         $datablock->{precisions} = {};
         foreach my $tag   ( keys %{$datablock->{types}} ) {
@@ -180,7 +187,11 @@ sub parse
             }
         }
     }
-    return $data;
+    if( wantarray ) {
+        return( $data, $nerrors );
+    } else {
+        return $data;
+    }
 }
 
 1;
