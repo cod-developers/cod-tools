@@ -98,10 +98,21 @@ static void storeCurrentLine( char *line, int length );
 
  /**************** process multi-line text fields **************************/
 
-\n;.*			{ MARK; BEGIN(text); yylval.s = strclone( yytext + 2 ); }
+\n;.*			    %{    MARK;
+                          BEGIN(text);
+                          yylval.s = strclone( yytext + 2 );
+                          if( strlen( yylval.s ) > 0
+                              && yylval.s[strlen( yylval.s )-1] == '\r' ) {
+                              yylval.s[strlen( yylval.s )-1] = '\0';
+                          }
+                        %}
 <text>^[^;].*		%{
                           RESET_MARK;
                           storeCurrentLine(yytext, yyleng);
+                          if( strlen( yytext ) > 0
+                              && yytext[strlen( yytext )-1] == '\r' ) {
+                              yytext[strlen( yytext )-1] = '\0';
+                          }
                           yylval.s = strappend( yylval.s, yytext );
                         %}
 <text>\n+		{ COUNT_LINES; yylval.s = strappend( yylval.s, yytext ); }
@@ -111,6 +122,9 @@ static void storeCurrentLine( char *line, int length );
                           BEGIN(INITIAL);
                           if( length > 0 ) {
                               yylval.s[length-1] = '\0'; /* remove the last "\n" character from the value */
+                          }
+                          if( length > 1 && yylval.s[length-2] == '\r') {
+                              yylval.s[length-2] = '\0'; /* remove the last "\r" character from the value */
                           }
                           return _TEXT_FIELD; 
                         %}
