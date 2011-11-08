@@ -131,10 +131,10 @@ static void storeCurrentLine( char *line, int length );
 
  /*********************** keywords ***************************/
 
-data_[^ \t\n]+ { MARK; yylval.s = strclone(yytext + 5);  return _DATA_; }
-data_          { MARK; yylval.s = NULL;  return _DATA_; }
-loop_          { MARK; return _LOOP_; }
-_[^ \t\n]+     { MARK; yylval.s = strclone(yytext); return _TAG; }
+data_[^ \t\n\r]+ { MARK; yylval.s = strclone(yytext + 5);  return _DATA_; }
+data_            { MARK; yylval.s = NULL;  return _DATA_; }
+loop_            { MARK; return _LOOP_; }
+_[^ \t\n\r]+     { MARK; yylval.s = strclone(yytext); return _TAG; }
 
  /********************* literal constants *********************/
 
