@@ -148,7 +148,15 @@ static void storeCurrentLine( char *line, int length );
 data_[^ \t\n\r]+ { MARK; yylval.s = strclone(yytext + 5);  return _DATA_; }
 data_            { MARK; yylval.s = NULL;  return _DATA_; }
 loop_            { MARK; return _LOOP_; }
-_[^ \t\n\r]+     { MARK; yylval.s = strclone(yytext); return _TAG; }
+_[^ \t\n\r]+    %{
+                           MARK;
+                           yylval.s = strclone(yytext);
+                           int i;
+                           for( i = 0; i < strlen( yylval.s ); i++ ) {
+                               yylval.s[i] = tolower(yylval.s[i]);
+                           }
+                           return _TAG;
+            %}
 
  /********************* literal constants *********************/
 
