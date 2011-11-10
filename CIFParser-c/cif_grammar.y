@@ -23,9 +23,26 @@
 #include <assert.h>
 
 typedef struct {
+    int options;
+} COMPILER_OPTIONS;
+
+typedef struct {
     char *filename;
     CIF *cif;
+    COMPILER_OPTIONS *options;
 } CIF_COMPILER;
+
+typedef enum {
+    DO_NOT_UNPREFIX_TEXT = 1
+} compiler_option;
+
+COMPILER_OPTIONS *new_compiler_options( cexception_t *ex )
+{
+    COMPILER_OPTIONS *co = callocx( 1, sizeof(COMPILER_OPTIONS), ex );
+    co->options = 0;
+    /* Setting of default options should be done here */
+    return co;
+}
 
 static void delete_cif_compiler( CIF_COMPILER *c )
 {
@@ -43,6 +60,7 @@ static CIF_COMPILER *new_cif_compiler( char *filename,
     CIF_COMPILER *cc = callocx( 1, sizeof(CIF_COMPILER), ex );
 
     cexception_guard( inner ) {
+        cc->options  = new_compiler_options( &inner );
         if( filename ) {
             cc->filename = strdupx( filename, &inner );
         }
@@ -237,7 +255,11 @@ string
 
 textfield
         :	_TEXT_FIELD
-        { $$.vstr = cif_unfold_textfield( cif_unprefix_textfield( $1 ) );
+        { $$.vstr = $1;
+          if( isset_do_not_unprefix_text( cif_cc->options ) == 0 ) {
+              $$.vstr = cif_unprefix_textfield( $$.vstr );
+          }
+          $$.vstr  = cif_unfold_textfield( $$.vstr );
           $$.vtype = CIF_TEXT; }
 ;
 
@@ -466,4 +488,16 @@ void cif_yy_debug_off( void )
 #ifdef YYDEBUG
     yydebug = 0;
 #endif
+}
+
+void set_do_not_unprefix_text( COMPILER_OPTIONS * co )
+{
+    compiler_option copt = DO_NOT_UNPREFIX_TEXT;
+    co->options |= copt;
+}
+
+int isset_do_not_unprefix_text( COMPILER_OPTIONS * co )
+{
+    compiler_option copt = DO_NOT_UNPREFIX_TEXT;
+    return ( ( co->options & copt ) == 1 );
 }
