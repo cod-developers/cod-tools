@@ -403,52 +403,6 @@ char * cif_unfold_textfield( char * tf )
     return unfolded;
 }
 
-void cif_unprefix_unfold_textfield( char * tf )
-{
-    char * src    = tf;
-    char * dest   = tf;
-    char * prefix = tf;
-    int firstline = 1;
-    int pref = 0;
-    int pos  = 0;
-    while( 1 ) {
-        if( firstline  == 1 ) {
-            if( src[0] == '\\' ) {
-                if( src[1] == '\n' ) {
-                    firstline = 0;
-                    src += 2;
-                } else {
-                    pref++;
-                    src++;
-                }
-            } else {
-                if( src[0] == '\n' ) {
-                    firstline = 0;
-                } else {
-                    pref++;
-                }
-                src++;
-            }
-        } else {
-            if( pos < pref && src[0] == prefix[pos] ) {
-                src++;
-                pos++;
-            } else {
-                if( src[0] == '\\' && src[1] == '\n' ) {
-                    src += 2;
-                    pos = 0;
-                } else {
-                    dest[0] = src[0];
-                    if( dest[0] == '\0' ) { break; }
-                    src++;
-                    dest++;
-                    pos++;
-                }
-            }
-        }
-    }
-}
-
 static int errcount = 0;
 
 int cif_yy_error_number( void )
