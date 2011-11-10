@@ -14,6 +14,7 @@
 CIF *new_cif_from_cif_file( char *filename, cexception_t *ex );
 
 void cif_printf( cexception_t *ex, char *format, ... );
+char * cif_unprefix_textfield( char * tf );
 
 int cif_yy_error_number( void );
 void cif_yy_reset_error_count( void );
