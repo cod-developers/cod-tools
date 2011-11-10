@@ -237,7 +237,8 @@ string
 
 textfield
         :	_TEXT_FIELD
-        { $$.vstr = cif_unprefix_textfield( $1 ); $$.vtype = CIF_TEXT; }
+        { $$.vstr = cif_unfold_textfield( cif_unprefix_textfield( $1 ) );
+          $$.vtype = CIF_TEXT; }
 ;
 
 number
@@ -381,6 +382,25 @@ char * cif_unprefix_textfield( char * tf )
     }
     dest[0] = '\0';
     return unprefixed;
+}
+
+char * cif_unfold_textfield( char * tf )
+{
+    int length = strlen(tf);
+    char * unfolded = malloc( (length + 1) * sizeof( char ) );
+    char * src = tf;
+    char * dest = unfolded;
+    while(  src[0] != '\0' ) {
+        if( src[0] == '\\' && src[1] == '\n' ) {
+            src+=2;
+        } else {
+            dest[0] = src[0];
+            src++;
+            dest++;
+        }
+    }
+    dest[0] = '\0';
+    return unfolded;
 }
 
 void cif_unprefix_unfold_textfield( char * tf )
