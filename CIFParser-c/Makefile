@@ -181,8 +181,8 @@ FORCE:;
 # How to build library in the current directory
 #
 
-${LOCAL_LIB}: ${LOCAL_OBJS}
-	ar cr ${LOCAL_LIB} ${LOCAL_OBJS}
+${LOCAL_LIB}: ${LOCAL_OBJS} ${YYOBJ} ${FLEXOBJ}
+	ar cr ${LOCAL_LIB} $^
 
 #------------------------------------------------------------------------------
 
