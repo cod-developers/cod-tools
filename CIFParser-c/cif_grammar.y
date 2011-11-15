@@ -33,7 +33,8 @@ typedef struct {
 } CIF_COMPILER;
 
 typedef enum {
-    DO_NOT_UNPREFIX_TEXT = 1
+    DO_NOT_UNPREFIX_TEXT = 1,
+    DO_NOT_UNFOLD_TEXT = 2
 } compiler_option;
 
 COMPILER_OPTIONS *new_compiler_options( cexception_t *ex )
@@ -259,7 +260,9 @@ textfield
           if( isset_do_not_unprefix_text( cif_cc->options ) == 0 ) {
               $$.vstr = cif_unprefix_textfield( $$.vstr );
           }
-          $$.vstr  = cif_unfold_textfield( $$.vstr );
+          if( isset_do_not_unfold_text( cif_cc->options ) == 0 ) {
+              $$.vstr = cif_unfold_textfield( $$.vstr );
+          }
           $$.vtype = CIF_TEXT; }
 ;
 
@@ -496,8 +499,20 @@ void set_do_not_unprefix_text( COMPILER_OPTIONS * co )
     co->options |= copt;
 }
 
+void set_do_not_unfold_text( COMPILER_OPTIONS * co )
+{
+    compiler_option copt = DO_NOT_UNFOLD_TEXT;
+    co->options |= copt;
+}
+
 int isset_do_not_unprefix_text( COMPILER_OPTIONS * co )
 {
     compiler_option copt = DO_NOT_UNPREFIX_TEXT;
-    return ( ( co->options & copt ) == 1 );
+    return ( ( co->options & copt ) != 0 );
+}
+
+int isset_do_not_unfold_text( COMPILER_OPTIONS * co )
+{
+    compiler_option copt = DO_NOT_UNFOLD_TEXT;
+    return ( ( co->options & copt ) != 0 );
 }
