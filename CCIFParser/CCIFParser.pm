@@ -50,16 +50,25 @@ use Inline C => <<'END_OF_C_CODE';
 
 char *progname = "cifparser";
 
-void parse_cif( SV * filename ) {
+void parse_cif( SV * filename, HV * options ) {
     cif_yy_debug_off();    
     cif_flex_debug_off();    
     cif_debug_off();
     CIF * volatile cif = NULL;
     int nerrors = 0;
     AV * datablocks = newAV();
+
+    COMPILER_OPTIONS * co = new_compiler_options();
+    if( hv_exists( options, "do_not_unprefix_text", 20 ) ) {
+        set_do_not_unprefix_text( co );
+    }
+    if( hv_exists( options, "do_not_unfold_text", 18 ) ) {
+        set_do_not_unfold_text( co );
+    }
+
     cexception_t inner;
     cexception_guard( inner ) {
-        cif = new_cif_from_cif_file( SvPV_nolen( filename ), &inner );
+        cif = new_cif_from_cif_file( SvPV_nolen( filename ), co, &inner );
     }
     cexception_catch {
         if( cif != NULL ) {
@@ -157,8 +166,9 @@ END_OF_C_CODE
 
 sub parse
 {
-    my( $filename ) = @_;
-    my( $data, $nerrors ) = parse_cif( $filename );
+    my( $filename, $options ) = @_;
+    $options = {} unless defined $options;
+    my( $data, $nerrors ) = parse_cif( $filename, $options );
     foreach my $datablock ( @$data ) {
         $datablock->{precisions} = {};
         foreach my $tag   ( keys %{$datablock->{types}} ) {
