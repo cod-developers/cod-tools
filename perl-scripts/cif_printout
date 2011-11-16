@@ -25,8 +25,16 @@ use SOptions;
 use SUsage;
 
 my $method = 'C';
+my %options;
 @ARGV = getOptions(
-    "-m,--method" => \$method
+    "-m,--method" => \$method,
+    "--do-not-unprefix-text" => sub{ $options{do_not_unprefix_text} = 1 },
+    "--do-not-unfold-text"   => sub{ $options{do_not_unfold_text} = 1 },
+    "--fix-errors"           => sub{ $options{fix_errors} = 1 },
+    "--fix-duplicate-tags-with-same-values"  =>
+        sub{ $options{fix_duplicate_tags_with_same_values} = 1 },
+    "--fix-duplicate-tags-with-empty-values" =>
+        sub{ $options{fix_duplicate_tags_with_empty_values} = 1 },
 );
 
 @ARGV = ( "-" ) unless @ARGV;
@@ -36,9 +44,9 @@ foreach( @ARGV ) {
     my $data;
     if( $method eq 'Perl' ) {
         my $parser = new CIFParser;
-        $data = $parser->Run( $_ );
+        $data = $parser->Run( $_, \%options );
     } elsif( $method eq 'C' ) {
-        $data = CCIFParser::parse( $_ );
+        $data = CCIFParser::parse( $_, \%options );
     } else {
         die( "$0: unknown method: $method" );
     }
