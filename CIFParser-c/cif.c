@@ -132,6 +132,10 @@ void cif_list_tags( CIF * volatile cif )
     }
 }
 
+ssize_t cif_tag_index( CIF * cif, char *tag ) {
+    return datablock_tag_index( cif->last_datablock, tag );
+}
+
 void cif_insert_value( CIF * cif, char *tag,
                        char *value, datablock_value_type_t vtype,
                        cexception_t *ex )
@@ -201,6 +205,12 @@ DATABLOCK * cif_datablock_list( CIF *cif )
 {
     assert( cif );
     return cif->datablock_list;
+}
+
+DATABLOCK * cif_last_datablock( CIF *cif )
+{
+    assert( cif );
+    return cif->last_datablock;
 }
 
 void cif_print_tag_values( CIF *cif, char ** tagnames, int tagcount,

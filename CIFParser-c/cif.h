@@ -55,6 +55,7 @@ void cif_start_datablock( CIF * volatile cif, const char *name,
 void cif_dump( CIF * volatile cif );
 void cif_print( CIF * volatile cif );
 void cif_list_tags( CIF * volatile cif );
+ssize_t cif_tag_index( CIF * cif, char *tag );
 
 void cif_insert_value( CIF * cif, char *tag,
                        char *value, datablock_value_type_t vtype,
@@ -68,7 +69,9 @@ void cif_push_loop_value( CIF * cif, char *value, datablock_value_type_t vtype,
 
 void cif_set_nerrors( CIF *cif, int nerrors );
 int cif_nerrors( CIF *cif );
+
 DATABLOCK * cif_datablock_list( CIF *cif );
+DATABLOCK * cif_last_datablock( CIF *cif );
 
 void cif_print_tag_values( CIF *cif, char ** tagnames, int tagcount,
     char * volatile prefix, int append_blkname, char * separator,
