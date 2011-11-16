@@ -34,7 +34,10 @@ typedef struct {
 
 typedef enum {
     DO_NOT_UNPREFIX_TEXT = 1,
-    DO_NOT_UNFOLD_TEXT = 2
+    DO_NOT_UNFOLD_TEXT   = 2,
+    FIX_ERRORS           = 4,
+    FIX_DUPLICATE_TAGS_WITH_SAME_VALUES  = 8,
+    FIX_DUPLICATE_TAGS_WITH_EMPTY_VALUES = 16
 } compiler_option;
 
 COMPILER_OPTIONS *new_compiler_options( cexception_t *ex )
@@ -192,7 +195,39 @@ save_item
 cif_entry
 	:	_TAG cif_value
         {
-            cif_insert_value( cif_cc->cif, $1, $2.vstr, $2.vtype, px );
+            if( cif_tag_index( cif_cc->cif, $1 ) == -1 ) {
+                cif_insert_value( cif_cc->cif, $1, $2.vstr, $2.vtype, px );
+            } else {
+                ssize_t tag_nr = cif_tag_index( cif_cc->cif, $1 );
+                ssize_t * value_lengths = 
+                    datablock_value_lengths(cif_last_datablock(cif_cc->cif));
+                if( value_lengths[tag_nr] == 1) {
+                    if( strcmp(
+                            datablock_value(cif_last_datablock(cif_cc->cif), 
+                                            tag_nr, 0), $2.vstr ) == 0 && (
+                        isset_fix_errors(cif_cc->options) == 1 ||
+                        isset_fix_duplicate_tags_with_same_values(cif_cc->options) == 1)) {
+                        /* tag appears more than once with the same value */
+                    } else {
+                        if( isset_fix_errors(cif_cc->options) == 1 ||
+                            isset_fix_duplicate_tags_with_empty_values(cif_cc->options) == 1 ) {
+                            if( is_tag_value_unknown( $2.vstr ) ) {
+                                /* tag appears more than once, the second
+                                   occurence is ignored */
+                            } else if( is_tag_value_unknown(
+                                datablock_value(cif_last_datablock(cif_cc->cif),
+                                tag_nr, 0) ) ) {
+                                cif_overwrite_value( cif_cc->cif, tag_nr, 0,
+                                    $2.vstr, $2.vtype );
+                                /* tag appears more than once, the previous 
+                                   value is overwritten */
+                            }
+                        }
+                    }
+                } else {
+                    yywarning( "tag appears more than once" );
+                }
+            }
         }
         | _TAG cif_value
 	{
@@ -432,6 +467,24 @@ char * cif_unfold_textfield( char * tf )
     return unfolded;
 }
 
+int is_tag_value_unknown( char * tv )
+{
+    int question_mark = 0;
+    char * iter = tv;
+    while(  iter[0] != '\0' ) {
+        if( iter[0] ==  '?' ) {
+            question_mark = 1;
+        } else if( iter[0] != ' '  &&
+                   iter[0] != '\t' &&
+                   iter[0] != '\r' &&
+                   iter[0] != '\n' ) {
+            return 0;
+        }
+        iter++;
+    }
+    return question_mark;
+}
+
 static int errcount = 0;
 
 int cif_yy_error_number( void )
@@ -509,6 +562,24 @@ void set_do_not_unfold_text( COMPILER_OPTIONS * co )
     co->options |= copt;
 }
 
+void set_fix_errors( COMPILER_OPTIONS * co )
+{
+    compiler_option copt = FIX_ERRORS;
+    co->options |= copt;
+}
+
+void set_fix_duplicate_tags_with_same_values( COMPILER_OPTIONS * co )
+{
+    compiler_option copt = FIX_DUPLICATE_TAGS_WITH_SAME_VALUES;
+    co->options |= copt;
+}
+
+void set_fix_duplicate_tags_with_empty_values( COMPILER_OPTIONS * co )
+{
+    compiler_option copt = FIX_DUPLICATE_TAGS_WITH_EMPTY_VALUES;
+    co->options |= copt;
+}
+
 int isset_do_not_unprefix_text( COMPILER_OPTIONS * co )
 {
     compiler_option copt = DO_NOT_UNPREFIX_TEXT;
@@ -518,5 +589,23 @@ int isset_do_not_unprefix_text( COMPILER_OPTIONS * co )
 int isset_do_not_unfold_text( COMPILER_OPTIONS * co )
 {
     compiler_option copt = DO_NOT_UNFOLD_TEXT;
+    return ( ( co->options & copt ) != 0 );
+}
+
+int isset_fix_errors( COMPILER_OPTIONS * co )
+{
+    compiler_option copt = FIX_ERRORS;
+    return ( ( co->options & copt ) != 0 );
+}
+
+int isset_fix_duplicate_tags_with_same_values( COMPILER_OPTIONS * co )
+{
+    compiler_option copt = FIX_DUPLICATE_TAGS_WITH_SAME_VALUES;
+    return ( ( co->options & copt ) != 0 );
+}
+
+int isset_fix_duplicate_tags_with_empty_values( COMPILER_OPTIONS * co )
+{
+    compiler_option copt = FIX_DUPLICATE_TAGS_WITH_EMPTY_VALUES;
     return ( ( co->options & copt ) != 0 );
 }
