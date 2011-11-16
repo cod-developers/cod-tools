@@ -185,6 +185,16 @@ char ***datablock_values( DATABLOCK *datablock )
     return datablock->values;
 }
 
+ssize_t datablock_tag_index( DATABLOCK *datablock, char *tag ) {
+    ssize_t i;
+    for( i = 0; i < datablock->length; i++ ) {
+        if( strcmp( datablock->tags[i], tag ) == 0 ) {
+            return i;
+        }
+    }
+    return -1;
+}
+
 int *datablock_in_loop( DATABLOCK *datablock )
 {
     return datablock->in_loop;
