@@ -65,6 +65,15 @@ void parse_cif( SV * filename, HV * options ) {
     if( hv_exists( options, "do_not_unfold_text", 18 ) ) {
         set_do_not_unfold_text( co );
     }
+    if( hv_exists( options, "fix_errors", 10 ) ) {
+        set_fix_errors( co );
+    }
+    if( hv_exists( options, "fix_duplicate_tags_with_same_values", 35 ) ) {
+        set_fix_duplicate_tags_with_same_values( co );
+    }
+    if( hv_exists( options, "fix_duplicate_tags_with_empty_values", 36 ) ) {
+        set_fix_duplicate_tags_with_empty_values( co );
+    }
 
     cexception_t inner;
     cexception_guard( inner ) {
