@@ -11,7 +11,10 @@
 #include <cif.h>
 #include <cexceptions.h>
 
-CIF *new_cif_from_cif_file( char *filename, cexception_t *ex );
+typedef struct COMPILER_OPTIONS COMPILER_OPTIONS;
+
+CIF *new_cif_from_cif_file( char *filename, COMPILER_OPTIONS *co,
+    cexception_t *ex );
 
 void cif_printf( cexception_t *ex, char *format, ... );
 char * cif_unprefix_textfield( char * tf );
