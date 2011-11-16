@@ -185,6 +185,17 @@ char ***datablock_values( DATABLOCK *datablock )
     return datablock->values;
 }
 
+char *datablock_value( DATABLOCK *datablock, int tag_nr, int val_nr )
+{
+    if( tag_nr >= datablock->length ) {
+        return NULL;
+    }
+    if( val_nr >= datablock->value_lengths[tag_nr] ) {
+        return NULL;
+    }
+    return datablock->values[tag_nr][val_nr];
+}
+
 ssize_t datablock_tag_index( DATABLOCK *datablock, char *tag ) {
     ssize_t i;
     for( i = 0; i < datablock->length; i++ ) {
@@ -418,6 +429,18 @@ void datablock_insert_value( DATABLOCK * datablock, char *tag,
     }
     cexception_catch {
         cexception_reraise( inner, ex );
+    }
+}
+
+void datablock_overwrite_value(  DATABLOCK * datablock, ssize_t tag_nr,
+                       ssize_t val_nr, char *value,
+                       datablock_value_type_t vtype )
+{
+    if( value ) {
+        datablock->values[tag_nr][val_nr] = value;
+        datablock->types[tag_nr][val_nr]  = vtype;
+    } else {
+        datablock->values[tag_nr][val_nr] = "\0";
     }
 }
 
