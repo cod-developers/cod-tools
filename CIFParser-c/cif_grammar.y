@@ -22,9 +22,9 @@
 #include <yy.h>
 #include <assert.h>
 
-typedef struct {
+struct COMPILER_OPTIONS {
     int options;
-} COMPILER_OPTIONS;
+};
 
 typedef struct {
     char *filename;
@@ -55,13 +55,17 @@ static void delete_cif_compiler( CIF_COMPILER *c )
 }
 
 static CIF_COMPILER *new_cif_compiler( char *filename,
+                                       COMPILER_OPTIONS *co,
                                        cexception_t *ex )
 {
     cexception_t inner;
     CIF_COMPILER *cc = callocx( 1, sizeof(CIF_COMPILER), ex );
+    if( co == NULL ) {
+        co = new_compiler_options( ex );
+    }
 
     cexception_guard( inner ) {
-        cc->options  = new_compiler_options( &inner );
+        cc->options  = co;
         if( filename ) {
             cc->filename = strdupx( filename, &inner );
         }
@@ -307,7 +311,7 @@ static void cif_compile_file( char *filename, cexception_t *ex )
     fclosex( yyin, ex );
 }
 
-CIF *new_cif_from_cif_file( char *filename, cexception_t *ex )
+CIF *new_cif_from_cif_file( char *filename, COMPILER_OPTIONS * co, cexception_t *ex )
 {
     volatile int nerrors;
     cexception_t inner;
@@ -315,7 +319,7 @@ CIF *new_cif_from_cif_file( char *filename, cexception_t *ex )
     extern void yyrestart();
 
     assert( !cif_cc );
-    cif_cc = new_cif_compiler( filename, ex );
+    cif_cc = new_cif_compiler( filename, co, ex );
     cif_flex_reset_counters();
 
     cexception_guard( inner ) {
