@@ -57,7 +57,11 @@ size_t datablock_length( DATABLOCK *datablock );
 char **datablock_tags( DATABLOCK *datablock );
 ssize_t *datablock_value_lengths( DATABLOCK *datablock );
 char ***datablock_values( DATABLOCK *datablock );
+char *datablock_value( DATABLOCK *datablock, int tag_nr, int val_nr );
 ssize_t datablock_tag_index( DATABLOCK *datablock, char *tag );
+void datablock_overwrite_value(  DATABLOCK * datablock, ssize_t tag_nr,
+    ssize_t val_nr, char *value,
+    datablock_value_type_t vtype );
 int *datablock_in_loop( DATABLOCK *datablock );
 datablock_value_type_t **datablock_types( DATABLOCK *datablock );
 int datablock_loop_count( DATABLOCK *datablock );
