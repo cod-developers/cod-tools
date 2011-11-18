@@ -37,7 +37,8 @@ typedef enum {
     DO_NOT_UNFOLD_TEXT   = 2,
     FIX_ERRORS           = 4,
     FIX_DUPLICATE_TAGS_WITH_SAME_VALUES  = 8,
-    FIX_DUPLICATE_TAGS_WITH_EMPTY_VALUES = 16
+    FIX_DUPLICATE_TAGS_WITH_EMPTY_VALUES = 16,
+    FIX_DATA_HEADER      = 32
 } compiler_option;
 
 COMPILER_OPTIONS *new_compiler_options( cexception_t *ex )
@@ -600,6 +601,12 @@ void set_fix_duplicate_tags_with_empty_values( COMPILER_OPTIONS * co )
     co->options |= copt;
 }
 
+void set_fix_data_header( COMPILER_OPTIONS * co )
+{
+    compiler_option copt = FIX_DATA_HEADER;
+    co->options |= copt;
+}
+
 int isset_do_not_unprefix_text( COMPILER_OPTIONS * co )
 {
     compiler_option copt = DO_NOT_UNPREFIX_TEXT;
@@ -627,5 +634,11 @@ int isset_fix_duplicate_tags_with_same_values( COMPILER_OPTIONS * co )
 int isset_fix_duplicate_tags_with_empty_values( COMPILER_OPTIONS * co )
 {
     compiler_option copt = FIX_DUPLICATE_TAGS_WITH_EMPTY_VALUES;
+    return ( ( co->options & copt ) != 0 );
+}
+
+int isset_fix_data_header( COMPILER_OPTIONS * co )
+{
+    compiler_option copt = FIX_DATA_HEADER;
     return ( ( co->options & copt ) != 0 );
 }

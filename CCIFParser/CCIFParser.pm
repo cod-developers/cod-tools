@@ -74,6 +74,9 @@ void parse_cif( SV * filename, HV * options ) {
     if( hv_exists( options, "fix_duplicate_tags_with_empty_values", 36 ) ) {
         set_fix_duplicate_tags_with_empty_values( co );
     }
+    if( hv_exists( options, "fix_data_header", 15 ) ) {
+        set_fix_data_header( co );
+    }
 
     cexception_t inner;
     cexception_guard( inner ) {
