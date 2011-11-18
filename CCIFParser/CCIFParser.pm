@@ -87,7 +87,7 @@ void parse_cif( SV * filename, HV * options ) {
             dispose_cif( cif );
         }
     }
-    if( cif && cif_nerrors( cif ) == 0 ) {
+    if( cif ) {
         DATABLOCK *datablock;
         foreach_datablock( datablock, cif_datablock_list( cif ) ) {
             HV * current_datablock = newHV();
@@ -162,9 +162,8 @@ void parse_cif( SV * filename, HV * options ) {
        
             av_push( datablocks, newRV_inc( current_datablock ) );
         }
-    }
-    if( cif ) {
-        dispose_cif( cif );
+        nerrors = cif_nerrors( cif );
+        delete_cif( cif );
     }
     Inline_Stack_Vars;
     Inline_Stack_Reset;
