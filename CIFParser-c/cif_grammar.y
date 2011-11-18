@@ -244,20 +244,31 @@ cif_entry
                                             tag_nr, 0), $2.vstr ) == 0 && (
                         isset_fix_errors(cif_cc->options) == 1 ||
                         isset_fix_duplicate_tags_with_same_values(cif_cc->options) == 1)) {
-                        /* tag appears more than once with the same value */
+                        yynote( cxprintf( "warning, tag %s appears more than "
+                                          "once with the same value", $1 ) );
                     } else {
                         if( isset_fix_errors(cif_cc->options) == 1 ||
                             isset_fix_duplicate_tags_with_empty_values(cif_cc->options) == 1 ) {
                             if( is_tag_value_unknown( $2.vstr ) ) {
-                                /* tag appears more than once, the second
-                                   occurence is ignored */
+                                yynote(
+                                    cxprintf( "warning, tag %s appears more "
+                                              "than once, the second occurence "
+                                              "'%s' is ignored",
+                                              $1, $2.vstr )
+                                      );
                             } else if( is_tag_value_unknown(
                                 datablock_value(cif_last_datablock(cif_cc->cif),
                                 tag_nr, 0) ) ) {
+                                yynote(
+                                    cxprintf( "warning, tag %s appears more "
+                                              "than once, the previous value "
+                                              "'%s' is overwritten", $1,
+                                        datablock_value(
+                                            cif_last_datablock(cif_cc->cif),
+                                            tag_nr, 0) )
+                                       );
                                 cif_overwrite_value( cif_cc->cif, tag_nr, 0,
                                     $2.vstr, $2.vtype );
-                                /* tag appears more than once, the previous 
-                                   value is overwritten */
                             }
                         } else {
                             yywarning(
