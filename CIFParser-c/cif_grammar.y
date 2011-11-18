@@ -222,6 +222,8 @@ cif_entry
                                 /* tag appears more than once, the previous 
                                    value is overwritten */
                             }
+                        } else {
+                            yywarning( "tag appears more than once" );
                         }
                     }
                 } else {
@@ -231,7 +233,7 @@ cif_entry
         }
         | _TAG cif_value
 	{
-	    yywarning( "unterminated string" );
+	    yyerror( "unterminated string" );
 	}
         cif_value_list
 ;
@@ -323,25 +325,18 @@ static void cif_compile_file( char *filename, cexception_t *ex )
             yyin = fopenx( filename, "r", ex );
         }
         px = &inner; /* catch all parser-generated exceptions */
-	if( yyparse() != 0 ) {
-	    int errcount = cif_yy_error_number();
-	    cexception_raise( &inner, CIF_UNRECOVERABLE_ERROR,
-			      cxprintf( "compiler could not recover "
-					"from errors, quitting now\n"
-					"%d error(s) detected\n",
-					errcount ));
-	} else {
-	    int errcount = cif_yy_error_number();
-	    if( errcount != 0 ) {
-	        cexception_raise( &inner, CIF_COMPILATION_ERROR,
-				  cxprintf( "%d error(s) detected\n",
-					    errcount ));
-	    }
-	}
+        if( yyparse() != 0 ) {
+            int errcount = cif_yy_error_number();
+            cexception_raise( &inner, CIF_UNRECOVERABLE_ERROR,
+                cxprintf( "compiler could not recover "
+                    "from errors, quitting now\n"
+                    "%d error(s) detected\n",
+                    errcount ));
+        }
     }
     cexception_catch {
         if( yyin ) fclosex( yyin, ex );
-	cexception_reraise( inner, ex );
+	    cexception_reraise( inner, ex );
     }
     fclosex( yyin, ex );
 }
@@ -500,26 +495,51 @@ void cif_yy_reset_error_count( void )
 int yyerror( char *message )
 {
     extern char *progname;
-    /* if( YYRECOVERING ) return; */
     errcount++;
     fflush(NULL);
-    if( strcmp( message, "syntax error" ) == 0 ) {
-	message = "incorrect syntax";
+    if( strlen( progname ) > 0 ) {
+        fprintf( stderr, "%s: ", progname );
     }
-    fprintf(stderr, "%s: %s(%d,%d): ERROR, %s\n", 
-	    progname, cif_cc->filename,
-	    cif_flex_current_line_number(),
-	    cif_flex_current_position(),
-	    message );
-    fprintf(stderr, "%s\n", cif_flex_current_line() );
-    fprintf(stderr, "%*s\n", cif_flex_current_position(), "^" );
+    if( strcmp( message, "syntax error" ) == 0 ) {
+    	message = "incorrect syntax";
+    }
+    fprintf( stderr, "%s(%d,%d)",
+        cif_cc->filename,
+        cif_flex_current_line_number(),
+        cif_flex_current_position() );
+    if( cif_cc->cif && cif_last_datablock( cif_cc->cif ) ) {
+        fprintf( stderr, " data_%s", 
+            datablock_name( cif_last_datablock( cif_cc->cif ) ) );
+    }
+    fprintf( stderr, ": %s\n%s\n%*s\n",
+        message, cif_flex_current_line(),
+        cif_flex_current_position(), "^" );
     fflush(NULL);
     return 0;
 }
 
+/*
+ * warning is a non-critical incident,
+ * after that parsing can continue
+ */
 int yywarning( char *message )
 {
-    return yyerror( message );
+    extern char *progname;
+    errcount++;
+    fflush(NULL);
+    if( strlen( progname ) > 0 ) {
+        fprintf( stderr, "%s: ", progname );
+    }
+    fprintf( stderr, "%s(%d)",
+        cif_cc->filename,
+        cif_flex_current_line_number() );
+    if( cif_cc->cif && cif_last_datablock( cif_cc->cif ) ) {
+        fprintf( stderr, " data_%s",
+            datablock_name( cif_last_datablock( cif_cc->cif ) ) );
+    }
+    fprintf( stderr, ": warning, %s\n", message );
+    fflush(NULL);
+    return 0;
 }
 
 int yywrap()
