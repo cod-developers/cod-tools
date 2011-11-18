@@ -260,11 +260,14 @@ cif_entry
                                    value is overwritten */
                             }
                         } else {
-                            yywarning( "tag appears more than once" );
+                            yywarning(
+                                cxprintf( "tag %s appears more than once",
+                                    $1 )
+                                     );
                         }
                     }
                 } else {
-                    yywarning( "tag appears more than once" );
+                    yywarning(cxprintf("tag %s appears more than once",$1));
                 }
             }
         }
