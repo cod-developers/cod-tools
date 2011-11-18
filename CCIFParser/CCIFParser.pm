@@ -173,12 +173,17 @@ void parse_cif( SV * filename, HV * options ) {
     Inline_Stack_Done;
 }
 
+void set_progname( SV * name ) {
+    progname = SvPV_nolen( name );
+}
+
 END_OF_C_CODE
 
 sub parse
 {
     my( $filename, $options ) = @_;
     $options = {} unless defined $options;
+    set_progname( $0 ne '-e' ? $0 : "" );
     my( $data, $nerrors ) = parse_cif( $filename, $options );
     foreach my $datablock ( @$data ) {
         $datablock->{precisions} = {};
