@@ -308,10 +308,18 @@ loop
 loop_tags
 	:	loop_tags _TAG
         {
+            size_t tag_nr = cif_tag_index( cif_cc->cif, $2 );
+            if( tag_nr != -1 ) {
+                yywarning( cxprintf( "tag %s appears more than once", $2 ) );
+            }
             cif_insert_value( cif_cc->cif, $2, NULL, CIF_UNKNOWN, px );
         }
 	|	_TAG
         {
+            size_t tag_nr = cif_tag_index( cif_cc->cif, $1 );
+            if( tag_nr != -1 ) {
+                yywarning( cxprintf( "tag %s appears more than once", $1 ) );
+            }
             cif_insert_value( cif_cc->cif, $1, NULL, CIF_UNKNOWN, px );
         }
 ;
