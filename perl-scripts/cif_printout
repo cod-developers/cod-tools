@@ -41,12 +41,17 @@ my %options;
 
 foreach( @ARGV ) {
 
-    my $data;
+    my( $data, $errcount );
     if( $method eq 'Perl' ) {
         my $parser = new CIFParser;
         $data = $parser->Run( $_, \%options );
+        if( defined $parser->YYData->{ERRCOUNT} ) {
+            $errcount = $parser->YYData->{ERRCOUNT};
+        } else {
+            $errcount = 0;
+        }
     } elsif( $method eq 'C' ) {
-        $data = CCIFParser::parse( $_, \%options );
+        ( $data, $errcount ) = CCIFParser::parse( $_, \%options );
     } else {
         die( "$0: unknown method: $method" );
     }
@@ -85,4 +90,5 @@ foreach( @ARGV ) {
             print join( " ", @$loop ) . "\n";
         }
     }
+    print STDERR "$errcount error(s) detected\n";
 }
