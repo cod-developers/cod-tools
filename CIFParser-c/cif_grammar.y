@@ -493,53 +493,50 @@ void cif_yy_reset_error_count( void )
     errcount = 0;
 }
 
-int yyerror( char *message )
+void print_message( char *message, int line, int position )
 {
     extern char *progname;
-    errcount++;
     fflush(NULL);
     if( strlen( progname ) > 0 ) {
-        fprintf( stderr, "%s: ", progname );
+        fprintf( stderr, "%s: %s", progname,
+            cif_cc->filename );
     }
-    if( strcmp( message, "syntax error" ) == 0 ) {
-    	message = "incorrect syntax";
+    if( line != -1 ) {
+        fprintf( stderr, "(%d", line );
+        if( position != -1 ) {
+            fprintf( stderr, ",%d", position );
+        }
+        fprintf( stderr, ")" );
     }
-    fprintf( stderr, "%s(%d,%d)",
-        cif_cc->filename,
-        cif_flex_current_line_number(),
-        cif_flex_current_position() );
-    if( cif_cc->cif && cif_last_datablock( cif_cc->cif ) ) {
-        fprintf( stderr, " data_%s", 
-            datablock_name( cif_last_datablock( cif_cc->cif ) ) );
-    }
-    fprintf( stderr, ": %s\n%s\n%*s\n",
-        message, cif_flex_current_line(),
-        cif_flex_current_position(), "^" );
-    fflush(NULL);
-    return 0;
-}
-
-/*
- * warning is a non-critical incident,
- * after that parsing can continue
- */
-int yywarning( char *message )
-{
-    extern char *progname;
-    errcount++;
-    fflush(NULL);
-    if( strlen( progname ) > 0 ) {
-        fprintf( stderr, "%s: ", progname );
-    }
-    fprintf( stderr, "%s(%d)",
-        cif_cc->filename,
-        cif_flex_current_line_number() );
     if( cif_cc->cif && cif_last_datablock( cif_cc->cif ) ) {
         fprintf( stderr, " data_%s",
             datablock_name( cif_last_datablock( cif_cc->cif ) ) );
     }
-    fprintf( stderr, ": warning, %s\n", message );
+    fprintf( stderr, ": %s\n", message );
     fflush(NULL);
+}
+
+void print_trace( void ) {
+    fflush(NULL);
+    fprintf( stderr, "%s\n%*s\n",
+            cif_flex_current_line(),
+            cif_flex_current_position(), "^" );
+    fflush(NULL);
+}
+
+int yyerror( char *message )
+{
+    print_message( message, cif_flex_current_line_number(),
+                            cif_flex_current_position() );
+    print_trace();
+    errcount++;
+    return 0;
+}
+
+int yywarning( char *message )
+{
+    print_message( message, cif_flex_current_line_number(), -1 );
+    errcount++;
     return 0;
 }
 

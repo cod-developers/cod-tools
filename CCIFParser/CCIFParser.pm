@@ -83,11 +83,11 @@ void parse_cif( SV * filename, HV * options ) {
         cif = new_cif_from_cif_file( SvPV_nolen( filename ), co, &inner );
     }
     cexception_catch {
-        fprintf( stderr, "%s: %s: %s\n", progname, SvPV_nolen( filename ),
-            cexception_message( &inner ));
         if( cif != NULL ) {
             nerrors = cif_nerrors( cif );
             dispose_cif( cif );
+        } else {
+            nerrors++;
         }
     }
     if( cif ) {

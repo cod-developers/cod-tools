@@ -20,6 +20,9 @@ void cif_printf( cexception_t *ex, char *format, ... );
 char * cif_unprefix_textfield( char * tf );
 char * cif_unfold_textfield( char * tf );
 
+void print_message( char *message, int line, int position );
+void print_trace( void );
+
 int is_tag_value_unknown( char * tv );
 
 int cif_yy_error_number( void );
