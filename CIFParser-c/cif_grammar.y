@@ -127,8 +127,28 @@ cif_file
 ;
 
 stray_cif_value_list
-        : cif_value 
+        : cif_value
+        {
+            if( isset_fix_errors( cif_cc->options ) ||
+                isset_fix_data_header( cif_cc->options ) ) {
+                    yynote( "warning: stray CIF values at the "
+                            "beginning of the input file" );
+            } else {
+                    yywarning( "stray CIF values at the "
+                               "beginning of the input file" );
+            }
+        }
         | cif_value cif_value_list
+        {
+            if( isset_fix_errors( cif_cc->options ) ||
+                isset_fix_data_header( cif_cc->options ) ) {
+                    yynote( "warning: stray CIF values at the "
+                            "beginning of the input file" );
+            } else {
+                    yywarning( "stray CIF values at the "
+                               "beginning of the input file" );
+            }
+        }
 ;
 
 //  cif_value_list
@@ -549,9 +569,15 @@ int yyerror( char *message )
     return 0;
 }
 
-int yywarning( char *message )
+int yynote( char *message )
 {
     print_message( message, cif_flex_current_line_number(), -1 );
+    return 0;
+}
+
+int yywarning( char *message )
+{
+    yynote( message );
     errcount++;
     return 0;
 }
