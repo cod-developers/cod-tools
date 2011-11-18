@@ -196,6 +196,22 @@ save_item
 cif_entry
 	:	_TAG cif_value
         {
+            if( cif_last_datablock( cif_cc->cif ) == NULL ) {
+                if( isset_fix_errors( cif_cc->options ) ||
+                    isset_fix_data_header( cif_cc->options ) ) {
+                    print_message( "warning, no data block heading (i.e. "
+                                   "data_somecif) found",
+                                    cif_flex_current_line_number() - 1, -1 );
+                    cif_start_datablock( cif_cc->cif, "", px );
+                } else {
+                    print_message( "no data block heading (i.e. "
+                                   "data_somecif) found",
+                                    cif_flex_current_line_number() - 1, -1 );
+                    cexception_raise( px, CIF_UNRECOVERABLE_ERROR,
+                        "no data block heading (i.e. "
+                        "data_somecif) found" );
+                }
+            }
             if( cif_tag_index( cif_cc->cif, $1 ) == -1 ) {
                 cif_insert_value( cif_cc->cif, $1, $2.vstr, $2.vtype, px );
             } else {
