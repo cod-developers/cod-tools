@@ -110,6 +110,7 @@ static cexception_t *px; /* parser exception */
 %token <s> _REAL_CONST
 
 %type <s> data_block_head
+%type <typed_value> cif_value_list
 %type <typed_value> cif_value;
 %type <typed_value> number
 %type <typed_value> string
@@ -193,7 +194,13 @@ data_block_head
         }
 	|	_DATA_ cif_value_list
         {
-            cif_start_datablock( cif_cc->cif, $1, px );
+            char buf[strlen($1)+strlen($2.vstr)+2];
+            strcpy( buf, $1 );
+            strcat( buf, "_\0" );
+            strcat( buf, $2.vstr );
+            cif_start_datablock( cif_cc->cif, buf, px );
+            yynote( "warning, the dataname apparently had spaces in it - "
+                    "replaced spaces by underscores" );
         }
 ;
 
@@ -291,7 +298,19 @@ cif_entry
 
 cif_value_list
         :       cif_value
+        {
+            $$.vstr  = $1.vstr;
+            $$.vtype = $1.vtype;
+        }
         |       cif_value_list cif_value
+        {
+            char buf[strlen($1.vstr)+strlen($2.vstr)+2];
+            strcpy( buf, $1.vstr );
+            strcat( buf, "_\0" );
+            strcat( buf, $2.vstr );
+            strcpy( $$.vstr, buf );
+            $$.vtype = CIF_UNKNOWN;
+        }
 ;
 
 loop
