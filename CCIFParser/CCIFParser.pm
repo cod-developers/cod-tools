@@ -77,6 +77,12 @@ void parse_cif( SV * filename, HV * options ) {
     if( hv_exists( options, "fix_data_header", 15 ) ) {
         set_fix_data_header( co );
     }
+    if( hv_exists( options, "fix_datablock_names", 19 ) ) {
+        set_fix_datablock_names( co );
+    }
+    if( hv_exists( options, "fix_string_quotes", 17 ) ) {
+        set_fix_string_quotes( co );
+    }
 
     cexception_t inner;
     cexception_guard( inner ) {
