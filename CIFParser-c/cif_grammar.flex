@@ -60,6 +60,12 @@ typedef enum {
 
 static int cif_flex_debug_flags = 0;
 
+typedef enum {
+  CIF_FLEX_LEXER_FIX_CTRL_Z = 0x01,
+} CIF_FLEX_LEXER_FLAGS;
+
+static int cif_flex_lexer_flags = 0;
+
 static char * currentLine = NULL;
 static int currentLineLength = 0;
 static int lineCnt = 1;
@@ -89,7 +95,31 @@ static void storeCurrentLine( char *line, int length );
 
  /********* store line for better error reporting ***********/
 
-^.*   { storeCurrentLine(yytext, yyleng); RESET_MARK; yyless(0); }
+^.*   %{
+            char * ctrl_z_pos = strchr( yytext, 26 );
+            int ctrl_z_explained = 0;
+            while( ctrl_z_pos != NULL ) {
+                if( ctrl_z_explained == 0 ) {
+                    if( ( cif_flex_lexer_flags &
+                          CIF_FLEX_LEXER_FIX_CTRL_Z ) > 0 ) {
+                        yynote( "warning, DOS EOF symbol ^Z was "
+                                "encountered and ignored" );
+                        ctrl_z_explained = 1;
+                    } else {
+                        yynote( "DOS EOF symbol "
+                                "^Z was encountered, "
+                                "it is not permitted in CIFs" );
+                        yyerror( "syntax error: " );
+                        /* die here */
+                    }
+                }
+                *ctrl_z_pos = ' ';
+                ctrl_z_pos = strchr( ctrl_z_pos, 26 );
+            }
+            storeCurrentLine(yytext, yyleng);
+            RESET_MARK;
+            yyless(0);
+          %}
 \n    COUNT_LINES; /** count lines **/
 
  /**************** eat up comments **************************/
@@ -251,6 +281,11 @@ void cif_flex_debug_yytext( void )
 void cif_flex_debug_lines( void )
 {
     cif_flex_debug_flags |= CIF_FLEX_DEBUG_LINES;
+}
+
+void set_lexer_fix_ctrl_z( void )
+{
+    cif_flex_lexer_flags |= CIF_FLEX_LEXER_FIX_CTRL_Z;
 }
 
 int cif_flex_current_line_number( void ) { return lineCnt; }
