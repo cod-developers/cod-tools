@@ -187,7 +187,7 @@ _[^ \t\n\r]+    %{
                            assert(yyleng > 0);
                            yyerror("unterminated string");
                            yylval.s = yyleng > 1 ?
-                                         strnclone(yytext + 1, yyleng - 2) :
+                                         strnclone(yytext + 1, yyleng - 1) :
                                          strclone("");
                            return _DQSTRING;
 			%}
@@ -204,7 +204,7 @@ _[^ \t\n\r]+    %{
                            assert(yyleng > 0);
                            yyerror("unterminated string");
                            yylval.s = yyleng > 1 ?
-                                         strnclone(yytext + 1, yyleng - 2) :
+                                         strnclone(yytext + 1, yyleng - 1) :
                                          strclone("");
                            return _SQSTRING;
 			%}
