@@ -702,6 +702,7 @@ void set_do_not_unfold_text( COMPILER_OPTIONS * co )
 
 void set_fix_errors( COMPILER_OPTIONS * co )
 {
+    set_lexer_fix_ctrl_z();
     compiler_option copt = FIX_ERRORS;
     co->options |= copt;
 }
@@ -746,6 +747,11 @@ void set_fix_missing_closing_single_quote( COMPILER_OPTIONS * co )
 {
     compiler_option copt = FIX_MISSING_CLOSING_SINGLE_QUOTE;
     co->options |= copt;
+}
+
+void set_fix_ctrl_z( void )
+{
+    set_lexer_fix_ctrl_z();
 }
 
 int isset_do_not_unprefix_text( COMPILER_OPTIONS * co )
