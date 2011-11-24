@@ -185,11 +185,10 @@ _[^ \t\n\r]+    %{
 ({UDSTRING})$		%{
                            MARK;
                            assert(yyleng > 0);
-                           yyerror("unterminated string");
                            yylval.s = yyleng > 1 ?
                                          strnclone(yytext + 1, yyleng - 1) :
                                          strclone("");
-                           return _DQSTRING;
+                           return _UDSTRING;
 			%}
 
 {SSTRING}		%{
@@ -202,11 +201,10 @@ _[^ \t\n\r]+    %{
 ({USSTRING})$		%{
                            MARK;
                            assert(yyleng > 0);
-                           yyerror("unterminated string");
                            yylval.s = yyleng > 1 ?
                                          strnclone(yytext + 1, yyleng - 1) :
                                          strclone("");
-                           return _SQSTRING;
+                           return _USSTRING;
 			%}
 
  /********************** unquoted strings *************************/

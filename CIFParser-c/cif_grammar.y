@@ -41,6 +41,8 @@ typedef enum {
     FIX_DATA_HEADER      = 32,
     FIX_DATABLOCK_NAMES  = 64,
     FIX_STRING_QUOTES    = 128,
+    FIX_MISSING_CLOSING_DOUBLE_QUOTE = 256,
+    FIX_MISSING_CLOSING_SINGLE_QUOTE = 512,
 } compiler_option;
 
 COMPILER_OPTIONS *new_compiler_options( cexception_t *ex )
@@ -107,6 +109,8 @@ static cexception_t *px; /* parser exception */
 %token <s> _DQSTRING
 %token <s> _SQSTRING
 %token <s> _UQSTRING
+%token <s> _USSTRING
+%token <s> _UDSTRING
 %token <s> _TEXT_FIELD
 %token <s> _INTEGER_CONST
 %token <s> _REAL_CONST
@@ -380,6 +384,30 @@ string
         { $$.vstr = $1; $$.vtype = CIF_DQSTRING; }
 	|	_UQSTRING
         { $$.vstr = $1; $$.vtype = CIF_UQSTRING; }
+    |   _USSTRING
+        {
+            $$.vstr = $1;
+            $$.vtype = CIF_SQSTRING;
+            if( isset_fix_errors( cif_cc->options ) ||
+                isset_fix_missing_closing_single_quote( cif_cc->options ) ) {
+                yynote( "warning: single-quoted string is missing "
+                        "a closing quote -- fixed" );
+            } else {
+                yyerror( "syntax error:" );
+            }
+        }
+    |   _UDSTRING
+        {
+            $$.vstr = $1;
+            $$.vtype = CIF_DQSTRING;
+            if( isset_fix_errors( cif_cc->options ) ||
+                isset_fix_missing_closing_double_quote( cif_cc->options ) ) {
+                yynote( "warning: double-quoted string is missing "
+                        "a closing quote -- fixed" );
+            } else {
+                yyerror( "syntax error:" );
+            }
+        }
 ;
 
 textfield
@@ -708,6 +736,18 @@ void set_fix_string_quotes( COMPILER_OPTIONS * co )
     co->options |= copt;
 }
 
+void set_fix_missing_closing_double_quote( COMPILER_OPTIONS * co )
+{
+    compiler_option copt = FIX_MISSING_CLOSING_DOUBLE_QUOTE;
+    co->options |= copt;
+}
+
+void set_fix_missing_closing_single_quote( COMPILER_OPTIONS * co )
+{
+    compiler_option copt = FIX_MISSING_CLOSING_SINGLE_QUOTE;
+    co->options |= copt;
+}
+
 int isset_do_not_unprefix_text( COMPILER_OPTIONS * co )
 {
     compiler_option copt = DO_NOT_UNPREFIX_TEXT;
@@ -753,5 +793,17 @@ int isset_fix_datablock_names( COMPILER_OPTIONS * co )
 int isset_fix_string_quotes( COMPILER_OPTIONS * co )
 {
     compiler_option copt = FIX_STRING_QUOTES;
+    return ( ( co->options & copt ) != 0 );
+}
+
+int isset_fix_missing_closing_double_quote( COMPILER_OPTIONS * co )
+{
+    compiler_option copt = FIX_MISSING_CLOSING_DOUBLE_QUOTE;
+    return ( ( co->options & copt ) != 0 );
+}
+
+int isset_fix_missing_closing_single_quote( COMPILER_OPTIONS * co )
+{
+    compiler_option copt = FIX_MISSING_CLOSING_SINGLE_QUOTE;
     return ( ( co->options & copt ) != 0 );
 }
