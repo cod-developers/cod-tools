@@ -89,6 +89,9 @@ void parse_cif( SV * filename, HV * options ) {
     if( hv_exists( options, "fix_missing_closing_single_quote", 32 ) ) {
         set_fix_missing_closing_single_quote( co );
     }
+    if( hv_exists( options, "fix_ctrl_z", 10 ) ) {
+        set_fix_ctrl_z();
+    }
 
     cexception_t inner;
     cexception_guard( inner ) {
