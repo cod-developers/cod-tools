@@ -359,7 +359,7 @@ string
             $$.vtype = CIF_SQSTRING;
             if( isset_fix_errors( cif_cc->options ) ||
                 isset_fix_missing_closing_single_quote( cif_cc->options ) ) {
-                yynote( "warning: single-quoted string is missing "
+                yynote( "warning, single-quoted string is missing "
                         "a closing quote -- fixed" );
             } else {
                 yyerror( "syntax error:" );
@@ -371,7 +371,7 @@ string
             $$.vtype = CIF_DQSTRING;
             if( isset_fix_errors( cif_cc->options ) ||
                 isset_fix_missing_closing_double_quote( cif_cc->options ) ) {
-                yynote( "warning: double-quoted string is missing "
+                yynote( "warning, double-quoted string is missing "
                         "a closing quote -- fixed" );
             } else {
                 yyerror( "syntax error:" );
