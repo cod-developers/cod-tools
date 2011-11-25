@@ -244,77 +244,23 @@ save_item
 cif_entry
 	:	_TAG cif_value
         {
-            if( cif_last_datablock( cif_cc->cif ) == NULL ) {
-                if( isset_fix_errors( cif_cc->options ) ||
-                    isset_fix_data_header( cif_cc->options ) ) {
-                    print_message( "warning, no data block heading (i.e. "
-                                   "data_somecif) found",
-                                    cif_flex_current_line_number() - 1, -1 );
-                    cif_start_datablock( cif_cc->cif, "", px );
-                } else {
-                    print_message( "no data block heading (i.e. "
-                                   "data_somecif) found",
-                                    cif_flex_current_line_number() - 1, -1 );
-                    cexception_raise( px, CIF_UNRECOVERABLE_ERROR,
-                        "no data block heading (i.e. "
-                        "data_somecif) found" );
-                }
-            }
-            if( cif_tag_index( cif_cc->cif, $1 ) == -1 ) {
-                cif_insert_value( cif_cc->cif, $1, $2.vstr, $2.vtype, px );
-            } else {
-                ssize_t tag_nr = cif_tag_index( cif_cc->cif, $1 );
-                ssize_t * value_lengths = 
-                    datablock_value_lengths(cif_last_datablock(cif_cc->cif));
-                if( value_lengths[tag_nr] == 1) {
-                    if( strcmp(
-                            datablock_value(cif_last_datablock(cif_cc->cif), 
-                                            tag_nr, 0), $2.vstr ) == 0 && (
-                        isset_fix_errors(cif_cc->options) == 1 ||
-                        isset_fix_duplicate_tags_with_same_values(cif_cc->options) == 1)) {
-                        yynote( cxprintf( "warning, tag %s appears more than "
-                                          "once with the same value", $1 ) );
-                    } else {
-                        if( isset_fix_errors(cif_cc->options) == 1 ||
-                            isset_fix_duplicate_tags_with_empty_values(cif_cc->options) == 1 ) {
-                            if( is_tag_value_unknown( $2.vstr ) ) {
-                                yynote(
-                                    cxprintf( "warning, tag %s appears more "
-                                              "than once, the second occurence "
-                                              "'%s' is ignored",
-                                              $1, $2.vstr )
-                                      );
-                            } else if( is_tag_value_unknown(
-                                datablock_value(cif_last_datablock(cif_cc->cif),
-                                tag_nr, 0) ) ) {
-                                yynote(
-                                    cxprintf( "warning, tag %s appears more "
-                                              "than once, the previous value "
-                                              "'%s' is overwritten", $1,
-                                        datablock_value(
-                                            cif_last_datablock(cif_cc->cif),
-                                            tag_nr, 0) )
-                                       );
-                                cif_overwrite_value( cif_cc->cif, tag_nr, 0,
-                                    $2.vstr, $2.vtype );
-                            }
-                        } else {
-                            yywarning(
-                                cxprintf( "tag %s appears more than once",
-                                    $1 )
-                                     );
-                        }
-                    }
-                } else {
-                    yywarning(cxprintf("tag %s appears more than once",$1));
-                }
-            }
+            assert_datablock_exists( px );
+            add_tag_value( $1, $2.vstr, $2.vtype, px );
         }
-        | _TAG cif_value
-	{
-	    yyerror( "unterminated string" );
-	}
-        cif_value_list
+        | _TAG cif_value cif_value_list
+    	    {
+                assert_datablock_exists( px );
+                if( isset_fix_errors( cif_cc->options ) ||
+                    isset_fix_string_quotes( cif_cc->options ) ) {
+                    char *buf = mallocx(strlen($2.vstr)+strlen($3.vstr)+2,px);
+                    buf = strcpy( buf, $2.vstr );
+                    buf = strcat( buf, " \0" );
+                    buf = strcat( buf, $3.vstr );
+                    add_tag_value( $1, buf, CIF_SQSTRING, px );
+                } else {
+                    yyerror( "syntax error:" );
+                }
+            }
 ;
 
 cif_value_list
@@ -325,10 +271,10 @@ cif_value_list
         }
         |       cif_value_list cif_value
         {
-            char buf[strlen($1.vstr)+strlen($2.vstr)+2];
-            strcpy( buf, $1.vstr );
-            strcat( buf, " \0" );
-            strcat( buf, $2.vstr );
+            char *buf = mallocx( strlen($1.vstr) + strlen($2.vstr) + 2, px );
+            buf = strcpy( buf, $1.vstr );
+            buf = strcat( buf, " \0" );
+            buf = strcat( buf, $2.vstr );
             strcpy( $$.vstr, buf );
             $$.vtype = CIF_UNKNOWN;
         }
@@ -601,6 +547,78 @@ int is_tag_value_unknown( char * tv )
         iter++;
     }
     return question_mark;
+}
+
+void assert_datablock_exists( cexception_t *ex )
+{
+    if( cif_last_datablock( cif_cc->cif ) == NULL ) {
+        if( isset_fix_errors( cif_cc->options ) ||
+            isset_fix_data_header( cif_cc->options ) ) {
+                print_message( "warning, no data block heading (i.e. "
+                               "data_somecif) found",
+                                cif_flex_current_line_number() - 1, -1 );
+                cif_start_datablock( cif_cc->cif, "", px );
+            } else {
+                print_message( "no data block heading (i.e. "
+                               "data_somecif) found",
+                                cif_flex_current_line_number() - 1, -1 );
+                cexception_raise( px, CIF_UNRECOVERABLE_ERROR,
+                    "no data block heading (i.e. "
+                    "data_somecif) found" );
+            }
+    }
+}
+
+void add_tag_value( char * tag, char * value, cif_value_type_t type,
+    cexception_t *ex ) {
+    if( cif_tag_index( cif_cc->cif, tag ) == -1 ) {
+        cif_insert_value( cif_cc->cif, tag, value, type, ex );
+    } else {
+        ssize_t tag_nr = cif_tag_index( cif_cc->cif, tag );
+        ssize_t * value_lengths = 
+            datablock_value_lengths(cif_last_datablock(cif_cc->cif));
+        if( value_lengths[tag_nr] == 1) {
+            if( strcmp(
+                datablock_value( cif_last_datablock(cif_cc->cif), tag_nr, 0),
+                value ) == 0 && (
+                    isset_fix_errors(cif_cc->options) == 1 ||
+                    isset_fix_duplicate_tags_with_same_values(cif_cc->options) == 1)) {
+                    yynote( cxprintf( "warning, tag %s appears more than "
+                                      "once with the same value", tag ) );
+                } else {
+                    if( isset_fix_errors(cif_cc->options) == 1 ||
+                        isset_fix_duplicate_tags_with_empty_values(cif_cc->options) == 1 ) {
+                        if( is_tag_value_unknown( value ) ) {
+                            yynote(
+                                    cxprintf( "warning, tag %s appears more "
+                                              "than once, the second occurence "
+                                              "'%s' is ignored",
+                                              tag, value )
+                                  );
+                        } else if( is_tag_value_unknown(
+                            datablock_value(cif_last_datablock(cif_cc->cif),
+                            tag_nr, 0) ) ) {
+                            yynote(
+                                    cxprintf( "warning, tag %s appears more "
+                                              "than once, the previous value "
+                                              "'%s' is overwritten", tag,
+                                        datablock_value(
+                                            cif_last_datablock(cif_cc->cif),
+                                            tag_nr, 0) )
+                                  );
+                            cif_overwrite_value( cif_cc->cif, tag_nr, 0,
+                                                 value, type );
+                        }
+                    } else {
+                        yywarning(
+                            cxprintf( "tag %s appears more than once", tag )
+                                 );
+                    }
+            }
+        } else {
+            yywarning( cxprintf( "tag %s appears more than once", tag ) );
+        }
+    }
 }
 
 static int errcount = 0;
