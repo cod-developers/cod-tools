@@ -202,8 +202,16 @@ data_block_head
         {
             char buf[strlen($1)+strlen($2.vstr)+2];
             strcpy( buf, $1 );
-            strcat( buf, "_\0" );
-            strcat( buf, $2.vstr );
+            buf[strlen($1)] = '_';
+            int i;
+            for( i = 0; i < strlen($2.vstr); i++ ) {
+                if( $2.vstr[i] != ' ' ) {
+                    buf[strlen($1)+1+i] = $2.vstr[i];
+                } else {
+                    buf[strlen($1)+1+i] = '_';
+                } 
+            }
+            buf[strlen($1)+strlen($2.vstr)+1] = '\0';
             cif_start_datablock( cif_cc->cif, buf, px );
             if( !isset_fix_errors( cif_cc->options ) &&
                 !isset_fix_datablock_names( cif_cc->options ) ) {
@@ -319,7 +327,7 @@ cif_value_list
         {
             char buf[strlen($1.vstr)+strlen($2.vstr)+2];
             strcpy( buf, $1.vstr );
-            strcat( buf, "_\0" );
+            strcat( buf, " \0" );
             strcat( buf, $2.vstr );
             strcpy( $$.vstr, buf );
             $$.vtype = CIF_UNKNOWN;
