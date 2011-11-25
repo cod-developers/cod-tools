@@ -91,6 +91,21 @@ static CIF_COMPILER * volatile cif_cc;
 
 static cexception_t *px; /* parser exception */
 
+void assert_datablock_exists( cexception_t *ex );
+void add_tag_value( char * tag, char * value, cif_value_type_t type,
+    cexception_t *ex );
+
+int isset_do_not_unprefix_text( COMPILER_OPTIONS * co );
+int isset_do_not_unfold_text( COMPILER_OPTIONS * co );
+int isset_fix_errors( COMPILER_OPTIONS * co );
+int isset_fix_duplicate_tags_with_same_values( COMPILER_OPTIONS * co );
+int isset_fix_duplicate_tags_with_empty_values( COMPILER_OPTIONS * co );
+int isset_fix_data_header( COMPILER_OPTIONS * co );
+int isset_fix_datablock_names( COMPILER_OPTIONS * co );
+int isset_fix_string_quotes( COMPILER_OPTIONS * co );
+int isset_fix_missing_closing_double_quote( COMPILER_OPTIONS * co );
+int isset_fix_missing_closing_single_quote( COMPILER_OPTIONS * co );
+
 %}
 
 %union {
