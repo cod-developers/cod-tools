@@ -493,9 +493,14 @@ char * cif_unprefix_textfield( char * tf )
             src++;
             dest++;
         } else {
+            if( prefix_length > 0 ) {
+                is_prefix = 1;
+                dest = unprefixed;
+            } else {
+                dest[0] = src[0];
+                dest++;
+            }
             src++;
-            is_prefix = 1;
-            dest = unprefixed;
             break;
         }
     }
