@@ -129,6 +129,7 @@ static void storeCurrentLine( char *line, int length );
  /**************** process multi-line text fields **************************/
 
 \n;.*			    %{    MARK;
+                          lineCnt++;
                           BEGIN(text);
                           yylval.s = strclone( yytext + 2 );
                           if( strlen( yylval.s ) > 0
