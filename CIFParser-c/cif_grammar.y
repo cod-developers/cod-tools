@@ -493,7 +493,9 @@ char * cif_unprefix_textfield( char * tf )
             src++;
             dest++;
         } else {
-            if( prefix_length > 0 ) {
+            if( prefix_length > 0 &&
+                ( src[1] == '\n' ||
+                    ( src[1] == '\\' && src[2] == '\n' ) ) ) {
                 is_prefix = 1;
                 dest = unprefixed;
             } else {
