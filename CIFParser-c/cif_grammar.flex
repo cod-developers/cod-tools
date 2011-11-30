@@ -223,7 +223,7 @@ _[^ \t\n\r]+    %{
                            return _DQSTRING;
 			%}
 
-({UDSTRING})$		%{
+{UDSTRING}/[\r\n]    %{
                            MARK;
                            assert(yyleng > 0);
                            yylval.s = yyleng > 1 ?
@@ -239,7 +239,7 @@ _[^ \t\n\r]+    %{
                            return _SQSTRING;
 			%}
 
-({USSTRING})$		%{
+{USSTRING}/[\r\n]    %{
                            MARK;
                            assert(yyleng > 0);
                            yylval.s = yyleng > 1 ?
