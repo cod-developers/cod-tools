@@ -69,6 +69,8 @@ static int cif_flex_lexer_flags = 0;
 static char * currentLine = NULL;
 static int currentLineLength = 0;
 static int lineCnt = 1;
+static int currLine = 1;
+static int prevLine = 1;
 static int linePos, nextPos;
 
 void cif_flex_reset_counters( void )
@@ -83,7 +85,7 @@ current token. If yacc fails, we know that it is this token that
 caused an error, and can inform user about this.*/
 
 #define COUNT_LINES lineCnt += yyleng;
-#define MARK linePos = nextPos; nextPos += yyleng;
+#define MARK linePos = nextPos; nextPos += yyleng; prevLine = currLine; currLine = lineCnt;
 #define ADVANCE_MARK nextPos += yyleng
 #define RESET_MARK linePos = nextPos = 0
 
@@ -102,14 +104,22 @@ static void storeCurrentLine( char *line, int length );
                 if( ctrl_z_explained == 0 ) {
                     if( ( cif_flex_lexer_flags &
                           CIF_FLEX_LEXER_FIX_CTRL_Z ) > 0 ) {
-                        yynote( "warning, DOS EOF symbol ^Z was "
-                                "encountered and ignored" );
+                        print_message( "warning, DOS EOF symbol ^Z was "
+                                       "encountered and ignored",
+                                       cif_flex_current_line_number(),
+                                       -1 );
                         ctrl_z_explained = 1;
                     } else {
-                        yynote( "DOS EOF symbol "
-                                "^Z was encountered, "
-                                "it is not permitted in CIFs" );
-                        yyerror( "syntax error: " );
+                        print_message( "DOS EOF symbol ^Z was "
+                                       "encountered, it is not "
+                                       "permitted in CIFs",
+                                       cif_flex_current_line_number(),
+                                       -1 );
+                        print_message( "syntax error: ",
+                                       cif_flex_current_line_number(),
+                                       cif_flex_current_position() );
+                        print_trace();
+                        yyincrease_error_counter();
                         /* die here */
                     }
                 }
@@ -290,6 +300,7 @@ void set_lexer_fix_ctrl_z( void )
 }
 
 int cif_flex_current_line_number( void ) { return lineCnt; }
+int cif_flex_previous_line_number( void ) { return prevLine; }
 void cif_flex_set_current_line_number( ssize_t line ) { lineCnt = line; }
 int cif_flex_current_position( void ) { return linePos+1; }
 void cif_flex_set_current_position( ssize_t pos ) { linePos = pos - 1; }
