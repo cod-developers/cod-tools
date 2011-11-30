@@ -688,7 +688,7 @@ void print_trace( void ) {
 
 int yyerror( char *message )
 {
-    print_message( message, cif_flex_current_line_number(),
+    print_message( message, cif_flex_previous_line_number(),
                             cif_flex_current_position() );
     print_trace();
     errcount++;
@@ -697,8 +697,13 @@ int yyerror( char *message )
 
 int yynote( char *message )
 {
-    print_message( message, cif_flex_current_line_number(), -1 );
+    print_message( message, cif_flex_previous_line_number(), -1 );
     return 0;
+}
+
+void yyincrease_error_counter( void )
+{
+    errcount++;
 }
 
 int yywarning( char *message )
