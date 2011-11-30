@@ -90,6 +90,7 @@ caused an error, and can inform user about this.*/
 #define RESET_MARK linePos = nextPos = 0
 
 static void storeCurrentLine( char *line, int length );
+char *clean_string( char *src );
 
 %}
 
@@ -98,34 +99,6 @@ static void storeCurrentLine( char *line, int length );
  /********* store line for better error reporting ***********/
 
 ^.*   %{
-            char * ctrl_z_pos = strchr( yytext, 26 );
-            int ctrl_z_explained = 0;
-            while( ctrl_z_pos != NULL ) {
-                if( ctrl_z_explained == 0 ) {
-                    if( ( cif_flex_lexer_flags &
-                          CIF_FLEX_LEXER_FIX_CTRL_Z ) > 0 ) {
-                        print_message( "warning, DOS EOF symbol ^Z was "
-                                       "encountered and ignored",
-                                       cif_flex_current_line_number(),
-                                       -1 );
-                        ctrl_z_explained = 1;
-                    } else {
-                        print_message( "DOS EOF symbol ^Z was "
-                                       "encountered, it is not "
-                                       "permitted in CIFs",
-                                       cif_flex_current_line_number(),
-                                       -1 );
-                        print_message( "syntax error: ",
-                                       cif_flex_current_line_number(),
-                                       cif_flex_current_position() );
-                        print_trace();
-                        yyincrease_error_counter();
-                        /* die here */
-                    }
-                }
-                *ctrl_z_pos = ' ';
-                ctrl_z_pos = strchr( ctrl_z_pos, 26 );
-            }
             storeCurrentLine(yytext, yyleng);
             RESET_MARK;
             yyless(0);
@@ -146,6 +119,7 @@ static void storeCurrentLine( char *line, int length );
                               && yylval.s[strlen( yylval.s )-1] == '\r' ) {
                               yylval.s[strlen( yylval.s )-1] = '\0';
                           }
+                          yylval.s = clean_string( yylval.s );
                         %}
 <text>^[^;].*		%{
                           RESET_MARK;
@@ -154,7 +128,8 @@ static void storeCurrentLine( char *line, int length );
                               && yytext[strlen( yytext )-1] == '\r' ) {
                               yytext[strlen( yytext )-1] = '\0';
                           }
-                          yylval.s = strappend( yylval.s, yytext );
+                          yylval.s = clean_string( 
+                              strappend( yylval.s, yytext ) );
                         %}
 <text>\n+		{ COUNT_LINES; yylval.s = strappend( yylval.s, yytext ); }
 <text>^;	        %{ 
@@ -167,6 +142,7 @@ static void storeCurrentLine( char *line, int length );
                           if( length > 1 && yylval.s[length-2] == '\r') {
                               yylval.s[length-2] = '\0'; /* remove the last "\r" character from the value */
                           }
+                          yylval.s = clean_string( yylval.s );
                           return _TEXT_FIELD; 
                         %}
 
@@ -177,6 +153,7 @@ static void storeCurrentLine( char *line, int length );
                           if( length > 1 ) {
                               yylval.s[length-1] = '\0'; /* remove the last "\n" character from the value */
                           }
+                          yylval.s = clean_string( yylval.s );
                           return _TEXT_FIELD;
                         %}
 
@@ -186,7 +163,7 @@ static void storeCurrentLine( char *line, int length );
 
  /*********************** keywords ***************************/
 
-data_[^ \t\n\r]+ { MARK; yylval.s = strclone(yytext + 5);  return _DATA_; }
+data_[^ \t\n\r]+ { MARK; yylval.s = clean_string(yytext + 5); return _DATA_; }
 data_            { MARK; yylval.s = NULL;  return _DATA_; }
 loop_            { MARK; return _LOOP_; }
 _[^ \t\n\r]+    %{
@@ -196,6 +173,7 @@ _[^ \t\n\r]+    %{
                            for( i = 0; i < strlen( yylval.s ); i++ ) {
                                yylval.s[i] = tolower(yylval.s[i]);
                            }
+                           yylval.s = clean_string( yylval.s );
                            return _TAG;
             %}
 
@@ -219,7 +197,8 @@ _[^ \t\n\r]+    %{
 {DSTRING}		%{
                            MARK;
                            assert(yyleng > 1);
-                           yylval.s = strnclone(yytext + 1, yyleng - 2);
+                           yylval.s = clean_string( 
+                               strnclone(yytext + 1, yyleng - 2) );
                            return _DQSTRING;
 			%}
 
@@ -227,15 +206,17 @@ _[^ \t\n\r]+    %{
                            MARK;
                            assert(yyleng > 0);
                            yylval.s = yyleng > 1 ?
-                                         strnclone(yytext + 1, yyleng - 1) :
-                                         strclone("");
+                                         clean_string(
+                                             strnclone(yytext + 1, yyleng - 1)
+                                         ) : strclone("");
                            return _UDSTRING;
 			%}
 
 {SSTRING}		%{
                            MARK;
                            assert(yyleng > 1);
-                           yylval.s = strnclone(yytext + 1, yyleng - 2);
+                           yylval.s = clean_string(
+                               strnclone(yytext + 1, yyleng - 2) );
                            return _SQSTRING;
 			%}
 
@@ -243,8 +224,9 @@ _[^ \t\n\r]+    %{
                            MARK;
                            assert(yyleng > 0);
                            yylval.s = yyleng > 1 ?
-                                         strnclone(yytext + 1, yyleng - 1) :
-                                         strclone("");
+                                         clean_string(
+                                             strnclone(yytext + 1, yyleng - 1)
+                                         ) : strclone("");
                            return _USSTRING;
 			%}
 
@@ -255,11 +237,11 @@ _[^ \t\n\r]+    %{
                            if( cif_flex_debug_flags &
 			           CIF_FLEX_DEBUG_YYLVAL )
                                printf("yylval.s = %s\n", yytext);
-                           yylval.s = strclone(yytext);
+                           yylval.s = clean_string(yytext);
                            return _UQSTRING;
 			%}
 
-.			{ MARK; return yytext[0]; }
+.			{ MARK; return clean_string(yytext[0]); }
 
 %%
 
@@ -333,4 +315,55 @@ static void storeCurrentLine( char *line, int length )
            cif_printf( NULL, "#\n# %s\n#\n", currentLine );
        }
    }
+}
+
+char *clean_string( char *src )
+{
+    int DELTA = 8;
+    ssize_t length = strlen( src );
+    char *new = malloc( length + 1 );
+    char *dest = new;
+    int ctrl_z_explained = 0;
+    while( *src != '\0' ) {
+        if( (*src & 255) == 26 ) {
+            /* Inform about DOS newline */
+            *dest = ' ';
+            if( ctrl_z_explained == 0 ) {
+                if( ( cif_flex_lexer_flags &
+                      CIF_FLEX_LEXER_FIX_CTRL_Z ) > 0 ) {
+                        print_message( "warning, DOS EOF symbol ^Z was "
+                                       "encountered and ignored",
+                                       cif_flex_current_line_number(),
+                                       -1 );
+                } else {
+                        print_message( "DOS EOF symbol ^Z was "
+                                       "encountered, it is not "
+                                       "permitted in CIFs",
+                                       cif_flex_current_line_number(),
+                                       -1 );
+                        print_message( "syntax error: ",
+                                       cif_flex_current_line_number(),
+                                       cif_flex_current_position() );
+                        print_trace();
+                        yyincrease_error_counter();
+                        /* die here */
+                }
+                ctrl_z_explained = 1;
+            }
+        } else if( ( (*src & 255 ) < 16 || (*src & 255 ) > 127 )
+            && (*src & 255 ) != 10 ) {
+            /* Do magic with non-ascii symbols */
+            *dest = '\0';
+            length += DELTA;
+            new = realloc( new, length + 1 );
+            strcat( new, cxprintf( "&#x%04X;", *src & 255 ) );
+            dest = new + strlen( new ) - 1;
+        } else {
+            *dest = *src;
+        }
+        src++;
+        dest++;
+    }
+    *dest = '\0';
+    return new;
 }
