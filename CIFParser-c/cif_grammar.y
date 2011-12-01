@@ -756,6 +756,7 @@ void set_do_not_unfold_text( COMPILER_OPTIONS * co )
 void set_fix_errors( COMPILER_OPTIONS * co )
 {
     set_lexer_fix_ctrl_z();
+    set_lexer_fix_non_ascii_symbols();
     compiler_option copt = FIX_ERRORS;
     co->options |= copt;
 }
@@ -805,6 +806,11 @@ void set_fix_missing_closing_single_quote( COMPILER_OPTIONS * co )
 void set_fix_ctrl_z( void )
 {
     set_lexer_fix_ctrl_z();
+}
+
+void set_fix_non_ascii_symbols( void )
+{
+    set_lexer_fix_non_ascii_symbols();
 }
 
 int isset_do_not_unprefix_text( COMPILER_OPTIONS * co )

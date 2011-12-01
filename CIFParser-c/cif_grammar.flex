@@ -62,6 +62,7 @@ static int cif_flex_debug_flags = 0;
 
 typedef enum {
   CIF_FLEX_LEXER_FIX_CTRL_Z = 0x01,
+  CIF_FLEX_LEXER_FIX_NON_ASCII_SYMBOLS = 0x02,
 } CIF_FLEX_LEXER_FLAGS;
 
 static int cif_flex_lexer_flags = 0;
@@ -281,6 +282,11 @@ void set_lexer_fix_ctrl_z( void )
     cif_flex_lexer_flags |= CIF_FLEX_LEXER_FIX_CTRL_Z;
 }
 
+void set_lexer_fix_non_ascii_symbols( void )
+{
+    cif_flex_lexer_flags |= CIF_FLEX_LEXER_FIX_NON_ASCII_SYMBOLS;
+}
+
 int cif_flex_current_line_number( void ) { return lineCnt; }
 int cif_flex_previous_line_number( void ) { return prevLine; }
 void cif_flex_set_current_line_number( ssize_t line ) { lineCnt = line; }
@@ -306,6 +312,9 @@ static void storeCurrentLine( char *line, int length )
    }
    strncpy(currentLine, line, length);
    currentLine[length] = '\0';
+   if( currentLine[length-1] == '\r' ) {
+       currentLine[length-1] = '\0';
+   }
    if( cif_flex_debug_flags & CIF_FLEX_DEBUG_LINES ) {
        char *first_nonblank = currentLine;
        while( isspace( *first_nonblank )) first_nonblank++;
@@ -324,6 +333,7 @@ char *clean_string( char *src )
     char *new = malloc( length + 1 );
     char *dest = new;
     int ctrl_z_explained = 0;
+    int non_ascii_explained = 0;
     while( *src != '\0' ) {
         if( (*src & 255) == 26 ) {
             /* Inform about DOS newline */
@@ -352,12 +362,30 @@ char *clean_string( char *src )
             }
         } else if( ( (*src & 255 ) < 16 || (*src & 255 ) > 127 )
             && (*src & 255 ) != 10 ) {
-            /* Do magic with non-ascii symbols */
-            *dest = '\0';
-            length += DELTA;
-            new = realloc( new, length + 1 );
-            strcat( new, cxprintf( "&#x%04X;", *src & 255 ) );
-            dest = new + strlen( new ) - 1;
+            if( ( cif_flex_lexer_flags &
+                  CIF_FLEX_LEXER_FIX_NON_ASCII_SYMBOLS ) > 0 ) {
+                /* Do magic with non-ascii symbols */
+                *dest = '\0';
+                length += DELTA;
+                new = realloc( new, length + 1 );
+                strcat( new, cxprintf( "&#x%04X;", *src & 255 ) );
+                dest = new + strlen( new ) - 1;
+                if( non_ascii_explained == 0 ) {
+                    print_message( "warning, non-ascii symbols "
+                                   "encountered in the text:",
+                                   cif_flex_current_line_number(),
+                                   -1 );
+                    fprintf( stderr, "'%s'\n", cif_flex_current_line() );
+                    non_ascii_explained = 1;
+                }
+            } else {
+                print_message( "syntax error:",
+                               cif_flex_current_line_number(),
+                               cif_flex_current_position() );
+                print_trace();
+                yyincrease_error_counter();
+                dest--; /* Omit non-ascii symbols */
+            }
         } else {
             *dest = *src;
         }
