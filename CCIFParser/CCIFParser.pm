@@ -92,6 +92,9 @@ void parse_cif( SV * filename, HV * options ) {
     if( hv_exists( options, "fix_ctrl_z", 10 ) ) {
         set_fix_ctrl_z();
     }
+    if( hv_exists( options, "fix_non_ascii_symbols", 21 ) ) {
+        set_fix_non_ascii_symbols();
+    }
 
     cexception_t inner;
     cexception_guard( inner ) {
