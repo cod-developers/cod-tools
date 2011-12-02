@@ -230,7 +230,7 @@ data_block_head
             cif_start_datablock( cif_cc->cif, buf, px );
             if( !isset_fix_errors( cif_cc->options ) &&
                 !isset_fix_datablock_names( cif_cc->options ) ) {
-                yyerror( "syntax error:" );
+                yyerror_previous( "syntax error:" );
             }
             if( isset_fix_errors( cif_cc->options ) ||
                 isset_fix_string_quotes( cif_cc->options ) ) {
@@ -273,7 +273,7 @@ cif_entry
                     buf = strcat( buf, $3.vstr );
                     add_tag_value( $1, buf, CIF_SQSTRING, px );
                 } else {
-                    yyerror( "syntax error:" );
+                    yyerror_previous( "syntax error:" );
                 }
             }
 ;
@@ -678,7 +678,7 @@ void print_message( char *message, int line, int position )
     fflush(NULL);
 }
 
-void print_trace( void ) {
+void print_current_trace( void ) {
     fflush(NULL);
     fprintf( stderr, "%s\n%*s\n",
             cif_flex_current_line(),
@@ -686,11 +686,28 @@ void print_trace( void ) {
     fflush(NULL);
 }
 
+void print_previous_trace( void ) {
+    fflush(NULL);
+    fprintf( stderr, "%s\n%*s\n",
+            cif_flex_previous_line(),
+            cif_flex_previous_position()+1, "^" );
+    fflush(NULL);
+}
+
 int yyerror( char *message )
 {
-    print_message( message, cif_flex_previous_line_number(),
+    print_message( message, cif_flex_current_line_number(),
                             cif_flex_current_position() );
-    print_trace();
+    print_current_trace();
+    errcount++;
+    return 0;
+}
+
+int yyerror_previous( char *message )
+{
+    print_message( message, cif_flex_previous_line_number(),
+                            cif_flex_previous_position() );
+    print_previous_trace();
     errcount++;
     return 0;
 }

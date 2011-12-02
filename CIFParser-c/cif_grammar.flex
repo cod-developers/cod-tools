@@ -258,11 +258,7 @@ _[^ \t\n\r]+    %{
                                               "permitted in CIFs",
                                                cif_flex_current_line_number(),
                                                -1 );
-                               print_message( "syntax error: ",
-                                               cif_flex_current_line_number(),
-                                               cif_flex_current_position() );
-                               print_trace();
-                               yyincrease_error_counter();
+                               yyerror( "syntax error:" );
                            }
             %}
 
@@ -344,6 +340,9 @@ static void storeCurrentLine( char *line, int length )
 
    currentLine = strnclone( line, length );
    currentLineLength = length;
+   if( length > 0 && currentLine[length-1] == '\r' ) {
+       currentLine[length-1] = '\0';
+   }
 
    if( cif_flex_debug_flags & CIF_FLEX_DEBUG_LINES ) {
        char *first_nonblank = currentLine;
@@ -381,12 +380,7 @@ char *clean_string( char *src )
                                        "permitted in CIFs",
                                        cif_flex_current_line_number(),
                                        -1 );
-                        print_message( "syntax error: ",
-                                       cif_flex_current_line_number(),
-                                       cif_flex_current_position() );
-                        print_trace();
-                        yyincrease_error_counter();
-                        /* die here */
+                        yyerror( "syntax error:" );
                 }
                 ctrl_z_explained = 1;
             }
@@ -409,11 +403,7 @@ char *clean_string( char *src )
                     non_ascii_explained = 1;
                 }
             } else {
-                print_message( "syntax error:",
-                               cif_flex_current_line_number(),
-                               cif_flex_current_position() );
-                print_trace();
-                yyincrease_error_counter();
+                yyerror( "syntax error:" );
                 dest--; /* Omit non-ascii symbols */
             }
         } else {
