@@ -273,7 +273,7 @@ _[^ \t\n\r]+    %{
                            return _UQSTRING;
 			%}
 
-.			{ MARK; return clean_string(yytext[0]); }
+.			{ MARK; return clean_string(yytext); }
 
 %%
 
