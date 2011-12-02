@@ -67,12 +67,17 @@ typedef enum {
 
 static int cif_flex_lexer_flags = 0;
 
+static char * thisTokenLine = NULL;
+static char * lastTokenLine = NULL;
 static char * currentLine = NULL;
 static int currentLineLength = 0;
 static int lineCnt = 1;
 static int currLine = 1;
 static int prevLine = 1;
 static int linePos, nextPos;
+
+static int lastTokenPos = 0;
+static int thisTokenPos = 0;
 
 void cif_flex_reset_counters( void )
 {
@@ -86,7 +91,12 @@ current token. If yacc fails, we know that it is this token that
 caused an error, and can inform user about this.*/
 
 #define COUNT_LINES lineCnt += yyleng;
-#define MARK linePos = nextPos; nextPos += yyleng; prevLine = currLine; currLine = lineCnt;
+#define REMEMBER if( lastTokenLine != thisTokenLine && \
+    lastTokenLine != currentLine ) { free( lastTokenLine ); } \
+    lastTokenLine = thisTokenLine; thisTokenLine = currentLine; \
+    lastTokenPos = thisTokenPos; thisTokenPos = linePos; linePos = nextPos;    
+#define MARK linePos = nextPos; nextPos += yyleng; prevLine = currLine; \
+    currLine = lineCnt; REMEMBER
 #define ADVANCE_MARK nextPos += yyleng
 #define RESET_MARK linePos = nextPos = 0
 
@@ -124,6 +134,7 @@ char *clean_string( char *src );
                         %}
 <text>^[^;].*		%{
                           RESET_MARK;
+                          REMEMBER;
                           storeCurrentLine(yytext, yyleng);
                           if( strlen( yytext ) > 0
                               && yytext[strlen( yytext )-1] == '\r' ) {
@@ -315,8 +326,10 @@ int cif_flex_current_line_number( void ) { return lineCnt; }
 int cif_flex_previous_line_number( void ) { return prevLine; }
 void cif_flex_set_current_line_number( ssize_t line ) { lineCnt = line; }
 int cif_flex_current_position( void ) { return linePos; }
+int cif_flex_previous_position( void ) { return lastTokenPos; }
 void cif_flex_set_current_position( ssize_t pos ) { linePos = pos - 1; }
-const char *cif_flex_current_line( void ) { return currentLine; }
+const char *cif_flex_current_line( void ) { return thisTokenLine; }
+const char *cif_flex_previous_line( void ) { return lastTokenLine; }
 
 static void storeCurrentLine( char *line, int length )
 {
@@ -329,16 +342,9 @@ static void storeCurrentLine( char *line, int length )
        printf("length = %d\nline = %s\n", length, line);
    #endif
 
-   if( currentLineLength < length ) {
-      currentLine = realloc(currentLine, length+1);
-      assert(currentLine != NULL);
-      currentLineLength = length;
-   }
-   strncpy(currentLine, line, length);
-   currentLine[length] = '\0';
-   if( currentLine[length-1] == '\r' ) {
-       currentLine[length-1] = '\0';
-   }
+   currentLine = strnclone( line, length );
+   currentLineLength = length;
+
    if( cif_flex_debug_flags & CIF_FLEX_DEBUG_LINES ) {
        char *first_nonblank = currentLine;
        while( isspace( *first_nonblank )) first_nonblank++;
