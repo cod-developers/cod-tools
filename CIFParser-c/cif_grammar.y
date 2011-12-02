@@ -682,7 +682,7 @@ void print_trace( void ) {
     fflush(NULL);
     fprintf( stderr, "%s\n%*s\n",
             cif_flex_current_line(),
-            cif_flex_current_position(), "^" );
+            cif_flex_current_position()+1, "^" );
     fflush(NULL);
 }
 

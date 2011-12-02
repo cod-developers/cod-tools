@@ -314,7 +314,7 @@ void set_lexer_fix_non_ascii_symbols( void )
 int cif_flex_current_line_number( void ) { return lineCnt; }
 int cif_flex_previous_line_number( void ) { return prevLine; }
 void cif_flex_set_current_line_number( ssize_t line ) { lineCnt = line; }
-int cif_flex_current_position( void ) { return linePos+1; }
+int cif_flex_current_position( void ) { return linePos; }
 void cif_flex_set_current_position( ssize_t pos ) { linePos = pos - 1; }
 const char *cif_flex_current_line( void ) { return currentLine; }
 
