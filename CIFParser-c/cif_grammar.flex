@@ -231,6 +231,30 @@ _[^ \t\n\r]+    %{
                            return _USSTRING;
 			%}
 
+ /******************** single DOS EOF character *******************/
+
+\x1a                %{
+                           MARK;
+                           if( ( cif_flex_lexer_flags &
+                                     CIF_FLEX_LEXER_FIX_CTRL_Z ) > 0 ) {
+                               print_message( "warning, DOS EOF symbol ^Z was "
+                                              "encountered and ignored",
+                                               cif_flex_current_line_number(),
+                                               -1 );
+                           } else {
+                               print_message( "DOS EOF symbol ^Z was "
+                                              "encountered, it is not "
+                                              "permitted in CIFs",
+                                               cif_flex_current_line_number(),
+                                               -1 );
+                               print_message( "syntax error: ",
+                                               cif_flex_current_line_number(),
+                                               cif_flex_current_position() );
+                               print_trace();
+                               yyincrease_error_counter();
+                           }
+            %}
+
  /********************** unquoted strings *************************/
 
 {UQSTRING}	        %{
