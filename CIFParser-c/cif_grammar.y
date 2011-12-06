@@ -385,7 +385,8 @@ textfield
           if( isset_do_not_unprefix_text( cif_cc->options ) == 0 ) {
               $$.vstr = cif_unprefix_textfield( $$.vstr );
           }
-          if( isset_do_not_unfold_text( cif_cc->options ) == 0 ) {
+          if( isset_do_not_unfold_text( cif_cc->options ) == 0 &&
+              $$.vstr[0] == '\\' ) {
               $$.vstr = cif_unfold_textfield( $$.vstr );
           }
           $$.vtype = CIF_TEXT; }
