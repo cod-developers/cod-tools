@@ -24,10 +24,11 @@ use CIFDiff;
 use SOptions;
 use SUsage;
 
-my $method = 'C';
+my $use_parser = 'c';
 my %options;
 @ARGV = getOptions(
-    "-m,--method" => \$method,
+    "--use-perl-parser" => sub{ $use_parser = 'perl' },
+    "--use-c-parser"    => sub{ $use_parser = 'c' },
     "--do-not-unprefix-text" => sub{ $options{do_not_unprefix_text} = 1 },
     "--do-not-unfold-text"   => sub{ $options{do_not_unfold_text} = 1 },
     "--fix-errors"           => sub{ $options{fix_errors} = 1 },
@@ -50,7 +51,7 @@ my %options;
 foreach( @ARGV ) {
 
     my( $data, $errcount );
-    if( $method eq 'Perl' ) {
+    if( $use_parser eq 'perl' ) {
         my $parser = new CIFParser;
         $data = $parser->Run( $_, \%options );
         if( defined $parser->YYData->{ERRCOUNT} ) {
@@ -58,10 +59,10 @@ foreach( @ARGV ) {
         } else {
             $errcount = 0;
         }
-    } elsif( $method eq 'C' ) {
+    } elsif( $use_parser eq 'c' ) {
         ( $data, $errcount ) = CCIFParser::parse( $_, \%options );
     } else {
-        die( "$0: unknown method: $method" );
+        die( "$0: unknown parser: $use_parser" );
     }
 
     foreach my $datablock ( @$data ) {
