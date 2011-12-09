@@ -63,6 +63,8 @@ static int cif_flex_debug_flags = 0;
 typedef enum {
   CIF_FLEX_LEXER_FIX_CTRL_Z = 0x01,
   CIF_FLEX_LEXER_FIX_NON_ASCII_SYMBOLS = 0x02,
+  CIF_FLEX_LEXER_FIX_MISSING_CLOSING_DOUBLE_QUOTE = 0x04,
+  CIF_FLEX_LEXER_FIX_MISSING_CLOSING_SINGLE_QUOTE = 0x08,
 } CIF_FLEX_LEXER_FLAGS;
 
 static int cif_flex_lexer_flags = 0;
@@ -217,11 +219,18 @@ _[^ \t\n\r]+    %{
 {UDSTRING}/[\r\n]    %{
                            MARK;
                            assert(yyleng > 0);
+                           if( (cif_flex_lexer_flags &
+                                CIF_FLEX_LEXER_FIX_MISSING_CLOSING_DOUBLE_QUOTE) > 0 ) {
+                               yynote( "warning, double-quoted string is missing "
+                                       "a closing quote -- fixed" );
+                           } else {
+                               yyerror( "syntax error: " );
+                           }
                            yylval.s = yyleng > 1 ?
                                          clean_string(
                                              strnclone(yytext + 1, yyleng - 1)
                                          ) : strclone("");
-                           return _UDSTRING;
+                           return _DQSTRING;
 			%}
 
 {SSTRING}		%{
@@ -235,11 +244,18 @@ _[^ \t\n\r]+    %{
 {USSTRING}/[\r\n]    %{
                            MARK;
                            assert(yyleng > 0);
+                           if( (cif_flex_lexer_flags &
+                                CIF_FLEX_LEXER_FIX_MISSING_CLOSING_SINGLE_QUOTE) > 0 ) {
+                               yynote( "warning, single-quoted string is missing "
+                                       "a closing quote -- fixed" );
+                           } else {
+                               yyerror( "syntax error: " );
+                           }
                            yylval.s = yyleng > 1 ?
                                          clean_string(
                                              strnclone(yytext + 1, yyleng - 1)
                                          ) : strclone("");
-                           return _USSTRING;
+                           return _SQSTRING;
 			%}
 
  /******************** single DOS EOF character *******************/
@@ -316,6 +332,16 @@ void set_lexer_fix_ctrl_z( void )
 void set_lexer_fix_non_ascii_symbols( void )
 {
     cif_flex_lexer_flags |= CIF_FLEX_LEXER_FIX_NON_ASCII_SYMBOLS;
+}
+
+void set_lexer_fix_missing_closing_double_quote( void )
+{
+    cif_flex_lexer_flags |= CIF_FLEX_LEXER_FIX_MISSING_CLOSING_DOUBLE_QUOTE;
+}
+
+void set_lexer_fix_missing_closing_single_quote( void )
+{
+    cif_flex_lexer_flags |= CIF_FLEX_LEXER_FIX_MISSING_CLOSING_SINGLE_QUOTE;
 }
 
 int cif_flex_current_line_number( void ) { return lineCnt; }
