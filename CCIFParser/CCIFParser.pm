@@ -55,6 +55,10 @@ void parse_cif( SV * filename, HV * options ) {
     cif_flex_debug_off();    
     cif_debug_off();
     CIF * volatile cif = NULL;
+    char * fname = SvPV_nolen( filename );
+    if( strlen( fname ) == 1 && fname[0] == '-' ) {
+        fname = NULL;
+    }
     int nerrors = 0;
     AV * datablocks = newAV();
 
@@ -98,7 +102,7 @@ void parse_cif( SV * filename, HV * options ) {
 
     cexception_t inner;
     cexception_guard( inner ) {
-        cif = new_cif_from_cif_file( SvPV_nolen( filename ), co, &inner );
+        cif = new_cif_from_cif_file( fname, co, &inner );
     }
     cexception_catch {
         if( cif != NULL ) {
