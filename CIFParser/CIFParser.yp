@@ -71,7 +71,7 @@ sub merge_data_lists($$$)
                     "tag $tag appears more than once";
                 # Don't call $parser->YYError() since it clears the Yapp stack.
                 # For now, let's call _Error() directly:
-                _Error( $parser );
+                _Error( $parser, { line => $_[0]->YYData->{VARS}{token_prev_line} } );
             }
             $_[0]->YYData->{VARS}{lines}++;
         }
@@ -296,7 +296,9 @@ data_block_head
                             $_[0]->YYData->{ERRMSG} =
                                 "the dataname apparently had spaces in it - " .
                                 "replaced spaces by underscores";
-                            $_[0]->_Warning();
+                            $_[0]->_Warning(
+                                { line =>
+                                    $_[0]->YYData->{VARS}{token_prev_line} } );
                         }
 			return $datablock_name;
 		}
@@ -394,7 +396,7 @@ cif_entry
                 if( $_[0]->{USER}{OPTIONS}{fix_errors} ||
                     $_[0]->{USER}{OPTIONS}{fix_string_quotes} ) {
                     $_[0]->YYData->{ERRMSG} = "string with spaces without quotes";
-                    $_[0]->_Warning();
+                    $_[0]->_Warning( { line => $_[0]->YYData->{VARS}{token_prev_line} } );
                 }
                 my $val = { name => $_[1],
                             kind => 'TAG',
@@ -589,13 +591,18 @@ sub _Error
     my $script = $0 eq '-e' ? "" : "$0: ";
     my $filename = $_[0]->YYData->{FILENAME} eq '-' ?
         "file '-'" : $_[0]->YYData->{FILENAME};
+    my $options = ( defined $_[1] ) ? $_[1] : {};
 
         $_[0]->YYData->{ERRCOUNT}++;
 	exists $_[0]->YYData->{ERRMSG}
 	and do {
 	        print STDERR $script;
 	        print STDERR $filename;
-	        print STDERR "(", $_[0]->YYData->{VARS}{lines}, ")";
+        if( exists $options->{line} ) {
+            print STDERR "(", $options->{line}, ")";
+        } else {
+            print STDERR "(", $_[0]->YYData->{VARS}{lines}, ")";
+        }
 		if( defined $_[0]->{USER}->{CURRENT_DATABLOCK} ) {
 		    print STDERR " data_",
 		        $_[0]->{USER}->{CURRENT_DATABLOCK};
@@ -607,9 +614,13 @@ sub _Error
 	};
 	print STDERR 
             "$script", $filename;
+    if( exists $options->{line} && exists $options->{pos} ) {
+        print STDERR "(", $options->{line}, ",", $options->{pos}, ")";
+    } else {
         print STDERR 
             "(", $_[0]->YYData->{VARS}{lines} . ",",
             $_[0]->YYData->{VARS}{token_prev_pos} . ")";
+    }
         if( defined $_[0]->{USER}->{CURRENT_DATABLOCK} ) {
             print STDERR " data_",
             $_[0]->{USER}->{CURRENT_DATABLOCK};
@@ -618,7 +629,11 @@ sub _Error
             ": syntax error:\n",
             $_[0]->YYData->{VARS}{current_line};
 	print STDERR "\n";
+    if( exists $options->{line} && exists $options->{pos} ) {
+        print STDERR " " x $options->{pos};
+    } else {
         print STDERR " " x $_[0]->YYData->{VARS}{token_prev_pos};
+    }
 	print STDERR "^\n";
 }
 
@@ -627,11 +642,16 @@ sub _Warning
     my $script = $0 eq '-e' ? "" : "$0: ";
     my $filename = $_[0]->YYData->{FILENAME} eq '-' ?
         "file '-'" : $_[0]->YYData->{FILENAME};
+    my $options = ( defined $_[1] ) ? $_[1] : {};
 
     if( exists $_[0]->YYData->{ERRMSG} ) {
-	print STDERR $script;
-	print STDERR $filename;
-	print STDERR "(", $_[0]->YYData->{VARS}{lines}, ")";
+    print STDERR $script;
+    print STDERR $filename;
+    if( exists $options->{line} ) {
+        print STDERR "(", $options->{line}, ")";
+    } else {
+        print STDERR "(", $_[0]->YYData->{VARS}{lines}, ")";
+    }
 	if( defined $_[0]->{USER}->{CURRENT_DATABLOCK} ) {
 	    print STDERR " data_",
 	    $_[0]->{USER}->{CURRENT_DATABLOCK};
@@ -651,7 +671,7 @@ sub _Lexer
 		$parser->YYData->{INPUT} =~
 			s/^(\s*#.*)$//s )
 	{
-		advance_token($parser, length($1));
+		advance_token($parser, length($1), 1);
 	}
 
 	if( !defined $parser->YYData->{INPUT} ||
@@ -742,7 +762,7 @@ my $UQSTRING_INLINE     =       qr/^(?:
 	#matching white space characters
 	if( $parser->YYData->{INPUT} =~ s/(\s*)//s )
 	{
-		advance_token($parser, length($1));
+		advance_token($parser, length($1), 1);
 	}
 		
 	if($CIFParser::debug >= 2 && $CIFParser::debug < 3)
@@ -970,7 +990,7 @@ END_M
 		#matching any still unmatched symbol:
 		if( s/^(.)//m )
 		{
-			advance_token($parser, length($1));
+			advance_token($parser, length($1), 1);
 			return($1,$1);
 		}
 	}
@@ -978,7 +998,16 @@ END_M
 
 sub advance_token
 {
-	my ($parser, $length) = @_;
+	my ($parser, $length, $do_not_remember) = @_;
+    if( !defined $do_not_remember ||
+        $do_not_remember == 0 ) {
+        if( exists $parser->YYData->{VARS}{token_this_line} ) {
+            $parser->YYData->{VARS}{token_prev_line} =
+                $parser->YYData->{VARS}{token_this_line};
+        }
+        $parser->YYData->{VARS}{token_this_line} =
+            $parser->YYData->{VARS}{lines};
+    }
 	$parser->YYData->{VARS}{token_prev_pos} =
 		$parser->YYData->{VARS}{token_pos};
 	$parser->YYData->{VARS}{token_pos} += $length;
