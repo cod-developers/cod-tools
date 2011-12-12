@@ -291,6 +291,8 @@ _[^ \t\n\r]+    %{
 
 .			{ MARK; return clean_string(yytext); }
 
+<<EOF>>     { REMEMBER; yyterminate(); }
+
 %%
 
 void cif_flex_debug_off( void )
