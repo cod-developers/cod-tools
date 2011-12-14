@@ -29,8 +29,8 @@ STRING          {DSTRING}|{SSTRING}
 
  /* Unterminated double and single quoted strings */
 
-UDSTRING        \"[^\"\n\r]*
-USSTRING        '[^'\n\r]*
+UDSTRING        \"[^ \"\n\r]*
+USSTRING        '[^ '\n\r]*
 USTRING         {UDSTRING}|{USSTRING}
 
 %{
@@ -216,7 +216,7 @@ _[^ \t\n\r]+    %{
                            return _DQSTRING;
 			%}
 
-{UDSTRING}/[\r\n]    %{
+{UDSTRING}/[ \r\n]   %{
                            MARK;
                            assert(yyleng > 0);
                            if( (cif_flex_lexer_flags &
@@ -241,7 +241,7 @@ _[^ \t\n\r]+    %{
                            return _SQSTRING;
 			%}
 
-{USSTRING}/[\r\n]    %{
+{USSTRING}/[ \r\n]   %{
                            MARK;
                            assert(yyleng > 0);
                            if( (cif_flex_lexer_flags &
