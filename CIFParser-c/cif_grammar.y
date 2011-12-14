@@ -154,17 +154,18 @@ stray_cif_value_list
                                "beginning of the input file" );
             }
         }
-        | cif_value cif_value_list
+        | cif_value
         {
             if( isset_fix_errors( cif_cc->options ) ||
                 isset_fix_data_header( cif_cc->options ) ) {
-                    yynote( "warning: stray CIF values at the "
+                    yynote( "warning, stray CIF values at the "
                             "beginning of the input file" );
             } else {
                     yywarning( "stray CIF values at the "
                                "beginning of the input file" );
             }
         }
+        cif_value_list
 ;
 
 //  cif_value_list
