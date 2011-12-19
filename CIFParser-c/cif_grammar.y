@@ -670,7 +670,7 @@ void print_previous_trace( void ) {
 int yyerror( char *message )
 {
     print_message( message, cif_flex_current_line_number(),
-                            cif_flex_current_position() );
+                            cif_flex_current_position()+1 );
     print_current_trace();
     errcount++;
     return 0;
@@ -679,7 +679,7 @@ int yyerror( char *message )
 int yyerror_previous( char *message )
 {
     print_message( message, cif_flex_previous_line_number(),
-                            cif_flex_previous_position() );
+                            cif_flex_previous_position()+1 );
     print_previous_trace();
     errcount++;
     return 0;
