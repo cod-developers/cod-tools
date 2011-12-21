@@ -286,7 +286,7 @@ cif_value_list
             buf = strcpy( buf, $1.vstr );
             buf = strcat( buf, " \0" );
             buf = strcat( buf, $2.vstr );
-            strcpy( $$.vstr, buf );
+            $$.vstr  = buf;
             $$.vtype = CIF_UNKNOWN;
         }
 ;
