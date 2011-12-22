@@ -84,6 +84,7 @@ static int thisTokenPos = 0;
 void cif_flex_reset_counters( void )
 {
     lineCnt = 1;
+    currLine = prevLine = 1;
     linePos = nextPos = 0;
 }
 
