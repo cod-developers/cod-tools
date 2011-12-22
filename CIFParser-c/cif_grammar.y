@@ -294,6 +294,7 @@ cif_value_list
 loop
        :	_LOOP_ 
        {
+           assert_datablock_exists( px );
            cif_start_loop( cif_cc->cif, px );
        } 
        loop_tags loop_values
