@@ -133,7 +133,6 @@ char *clean_string( char *src );
                               && yylval.s[strlen( yylval.s )-1] == '\r' ) {
                               yylval.s[strlen( yylval.s )-1] = '\0';
                           }
-                          yylval.s = clean_string( yylval.s );
                         %}
 <text>^[^;].*		%{
                           RESET_MARK;
@@ -143,8 +142,7 @@ char *clean_string( char *src );
                               && yytext[strlen( yytext )-1] == '\r' ) {
                               yytext[strlen( yytext )-1] = '\0';
                           }
-                          yylval.s = clean_string( 
-                              strappend( yylval.s, yytext ) );
+                          yylval.s = strappend( yylval.s, yytext );
                         %}
 <text>\n+		{ COUNT_LINES; yylval.s = strappend( yylval.s, yytext ); }
 <text>^;	        %{ 
