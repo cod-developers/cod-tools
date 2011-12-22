@@ -551,12 +551,12 @@ void assert_datablock_exists( cexception_t *ex )
             isset_fix_data_header( cif_cc->options ) ) {
                 print_message( "warning, no data block heading (i.e. "
                                "data_somecif) found",
-                                cif_flex_current_line_number() - 1, -1 );
+                                cif_flex_previous_line_number(), -1 );
                 cif_start_datablock( cif_cc->cif, "", px );
             } else {
                 print_message( "no data block heading (i.e. "
                                "data_somecif) found",
-                                cif_flex_current_line_number() - 1, -1 );
+                                cif_flex_previous_line_number(), -1 );
                 cexception_raise( px, CIF_UNRECOVERABLE_ERROR,
                     "no data block heading (i.e. "
                     "data_somecif) found" );
