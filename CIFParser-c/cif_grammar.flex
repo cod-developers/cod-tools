@@ -104,7 +104,7 @@ caused an error, and can inform user about this.*/
 #define RESET_MARK linePos = nextPos = 0
 
 static void storeCurrentLine( char *line, int length );
-char *clean_string( char *src );
+char *clean_string( char *src, int is_textfield );
 
 %}
 
@@ -155,7 +155,7 @@ char *clean_string( char *src );
                           if( length > 1 && yylval.s[length-2] == '\r') {
                               yylval.s[length-2] = '\0'; /* remove the last "\r" character from the value */
                           }
-                          yylval.s = clean_string( yylval.s );
+                          yylval.s = clean_string( yylval.s, 1 );
                           return _TEXT_FIELD; 
                         %}
 
@@ -166,7 +166,7 @@ char *clean_string( char *src );
                           if( length > 1 ) {
                               yylval.s[length-1] = '\0'; /* remove the last "\n" character from the value */
                           }
-                          yylval.s = clean_string( yylval.s );
+                          yylval.s = clean_string( yylval.s, 1 );
                           return _TEXT_FIELD;
                         %}
 
@@ -176,7 +176,7 @@ char *clean_string( char *src );
 
  /*********************** keywords ***************************/
 
-data_[^ \t\n\r]+ { MARK; yylval.s = clean_string(yytext + 5); return _DATA_; }
+data_[^ \t\n\r]+ { MARK; yylval.s = clean_string(yytext + 5, 0); return _DATA_; }
 data_            { MARK; yylval.s = NULL;  return _DATA_; }
 loop_            { MARK; return _LOOP_; }
 _[^ \t\n\r]+    %{
@@ -186,7 +186,7 @@ _[^ \t\n\r]+    %{
                            for( i = 0; i < strlen( yylval.s ); i++ ) {
                                yylval.s[i] = tolower(yylval.s[i]);
                            }
-                           yylval.s = clean_string( yylval.s );
+                           yylval.s = clean_string( yylval.s, 0 );
                            return _TAG;
             %}
 
@@ -211,7 +211,7 @@ _[^ \t\n\r]+    %{
                            MARK;
                            assert(yyleng > 1);
                            yylval.s = clean_string( 
-                               strnclone(yytext + 1, yyleng - 2) );
+                               strnclone(yytext + 1, yyleng - 2), 0 );
                            return _DQSTRING;
 			%}
 
@@ -227,7 +227,7 @@ _[^ \t\n\r]+    %{
                            }
                            yylval.s = yyleng > 1 ?
                                          clean_string(
-                                             strnclone(yytext + 1, yyleng - 1)
+                                             strnclone(yytext + 1, yyleng - 1), 0
                                          ) : strclone("");
                            return _DQSTRING;
 			%}
@@ -236,7 +236,7 @@ _[^ \t\n\r]+    %{
                            MARK;
                            assert(yyleng > 1);
                            yylval.s = clean_string(
-                               strnclone(yytext + 1, yyleng - 2) );
+                               strnclone(yytext + 1, yyleng - 2), 0 );
                            return _SQSTRING;
 			%}
 
@@ -252,7 +252,7 @@ _[^ \t\n\r]+    %{
                            }
                            yylval.s = yyleng > 1 ?
                                          clean_string(
-                                             strnclone(yytext + 1, yyleng - 1)
+                                             strnclone(yytext + 1, yyleng - 1), 0
                                          ) : strclone("");
                            return _SQSTRING;
 			%}
@@ -284,11 +284,11 @@ _[^ \t\n\r]+    %{
                            if( cif_flex_debug_flags &
 			           CIF_FLEX_DEBUG_YYLVAL )
                                printf("yylval.s = %s\n", yytext);
-                           yylval.s = clean_string(yytext);
+                           yylval.s = clean_string(yytext, 0);
                            return _UQSTRING;
 			%}
 
-.			{ MARK; return clean_string(yytext); }
+.			{ MARK; return clean_string(yytext, 0); }
 
 <<EOF>>     { REMEMBER; yyterminate(); }
 
@@ -382,12 +382,13 @@ static void storeCurrentLine( char *line, int length )
    }
 }
 
-char *clean_string( char *src )
+char *clean_string( char *src, int is_textfield )
 {
     int DELTA = 8;
     ssize_t length = strlen( src );
     char *new = malloc( length + 1 );
     char *dest = new;
+    char *start = src;
     int ctrl_z_explained = 0;
     int non_ascii_explained = 0;
     while( *src != '\0' ) {
@@ -422,15 +423,36 @@ char *clean_string( char *src )
                 strcat( new, cxprintf( "&#x%04X;", *src & 255 ) );
                 dest = new + strlen( new ) - 1;
                 if( non_ascii_explained == 0 ) {
-                    print_message( "warning, non-ascii symbols "
-                                   "encountered in the text:",
-                                   cif_flex_current_line_number(),
-                                   -1 );
-                    fprintf( stderr, "'%s'\n", cif_flex_current_line() );
-                    non_ascii_explained = 1;
+                    if( is_textfield == 0 ) {
+                        print_message( "warning, non-ascii symbols "
+                                       "encountered in the text:",
+                                       cif_flex_current_line_number(),
+                                       -1 );
+                        fprintf( stderr, "'%s'\n", cif_flex_current_line() );
+                        non_ascii_explained = 1;
+                    } else {
+                        print_message(
+                            cxprintf( "warning, non-ascii symbols "
+                                      "encountered in the text field, "
+                                      "replaced by XML entities:\n;%s\n;\n",
+                                      start
+                                    ), cif_flex_current_line_number(), -1
+                        );
+                        non_ascii_explained = 1;
+                    }
                 }
             } else {
-                yyerror( "syntax error:" );
+                if( is_textfield == 0 ) {
+                    yyerror( "syntax error:" );
+                } else if( non_ascii_explained == 0 ) {
+                    print_message( 
+                        cxprintf( "non-ascii symbols encountered in the "
+                                  "text field:\n;%s\n;\n", start ),
+                        cif_flex_current_line_number(), -1
+                    );
+                    yyincrease_error_counter();
+                    non_ascii_explained = 1;
+                }
                 dest--; /* Omit non-ascii symbols */
             }
         } else {
