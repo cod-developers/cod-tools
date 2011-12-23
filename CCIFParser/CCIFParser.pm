@@ -99,6 +99,9 @@ void parse_cif( SV * filename, HV * options ) {
     if( hv_exists( options, "fix_non_ascii_symbols", 21 ) ) {
         set_fix_non_ascii_symbols();
     }
+    if( hv_exists( options, "allow_uqstring_brackets", 23 ) ) {
+        set_allow_uqstring_brackets();
+    }
 
     cexception_t inner;
     cexception_guard( inner ) {
