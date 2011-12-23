@@ -750,6 +750,7 @@ void set_fix_errors( COMPILER_OPTIONS * co )
     set_lexer_fix_non_ascii_symbols();
     set_lexer_fix_missing_closing_double_quote();
     set_lexer_fix_missing_closing_single_quote();
+    set_lexer_allow_uqstring_brackets();
     compiler_option copt = FIX_ERRORS;
     co->options |= copt;
 }
@@ -802,6 +803,11 @@ void set_fix_ctrl_z( void )
 void set_fix_non_ascii_symbols( void )
 {
     set_lexer_fix_non_ascii_symbols();
+}
+
+void set_allow_uqstring_brackets( void )
+{
+    set_lexer_allow_uqstring_brackets();
 }
 
 int isset_do_not_unprefix_text( COMPILER_OPTIONS * co )

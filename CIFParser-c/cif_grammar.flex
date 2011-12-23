@@ -11,7 +11,8 @@
 
 %x	text
 
-UQSTRING       [^ \t\n\r\#\[\'\"][^ \t\n\r]*
+UQSTRING       [^ \t\n\r]*
+UQSTRING_FIRST [^ \t\n\r\#\[\'\"]
 
 DECIMAL_DIGIT  [0-9]
 INTEGER	       [-+]?{DECIMAL_DIGIT}+
@@ -65,6 +66,7 @@ typedef enum {
   CIF_FLEX_LEXER_FIX_NON_ASCII_SYMBOLS = 0x02,
   CIF_FLEX_LEXER_FIX_MISSING_CLOSING_DOUBLE_QUOTE = 0x04,
   CIF_FLEX_LEXER_FIX_MISSING_CLOSING_SINGLE_QUOTE = 0x08,
+  CIF_FLEX_LEXER_ALLOW_UQSTRING_BRACKETS = 0x16,
 } CIF_FLEX_LEXER_FLAGS;
 
 static int cif_flex_lexer_flags = 0;
@@ -97,7 +99,7 @@ caused an error, and can inform user about this.*/
 #define REMEMBER if( lastTokenLine != thisTokenLine && \
     lastTokenLine != currentLine ) { free( lastTokenLine ); } \
     lastTokenLine = thisTokenLine; thisTokenLine = currentLine; \
-    lastTokenPos = thisTokenPos; thisTokenPos = linePos; linePos = nextPos;    
+    lastTokenPos = thisTokenPos; thisTokenPos = linePos; linePos = nextPos;
 #define MARK linePos = nextPos; nextPos += yyleng; prevLine = currLine; \
     currLine = lineCnt; REMEMBER
 #define ADVANCE_MARK nextPos += yyleng
@@ -279,7 +281,7 @@ _[^ \t\n\r]+    %{
 
  /********************** unquoted strings *************************/
 
-{UQSTRING}	        %{
+{UQSTRING_FIRST}{UQSTRING}      %{
                            MARK;
                            if( cif_flex_debug_flags &
 			           CIF_FLEX_DEBUG_YYLVAL )
@@ -287,6 +289,18 @@ _[^ \t\n\r]+    %{
                            yylval.s = clean_string(yytext, 0);
                            return _UQSTRING;
 			%}
+
+\[{UQSTRING} %{
+                           MARK;
+                           if( cif_flex_debug_flags &
+                       CIF_FLEX_DEBUG_YYLVAL )
+                               printf("yylval.s = %s\n", yytext);
+                           if( ( cif_flex_lexer_flags &
+                       CIF_FLEX_LEXER_ALLOW_UQSTRING_BRACKETS ) == 0 )
+                               yyerror( "syntax error:" );
+                           yylval.s = clean_string(yytext, 0);
+                           return _UQSTRING;
+            %}
 
 .			{ MARK; return clean_string(yytext, 0); }
 
@@ -343,6 +357,11 @@ void set_lexer_fix_missing_closing_double_quote( void )
 void set_lexer_fix_missing_closing_single_quote( void )
 {
     cif_flex_lexer_flags |= CIF_FLEX_LEXER_FIX_MISSING_CLOSING_SINGLE_QUOTE;
+}
+
+void set_lexer_allow_uqstring_brackets( void )
+{
+    cif_flex_lexer_flags |= CIF_FLEX_LEXER_ALLOW_UQSTRING_BRACKETS;
 }
 
 int cif_flex_current_line_number( void ) { return lineCnt; }
