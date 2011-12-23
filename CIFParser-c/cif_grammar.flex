@@ -450,13 +450,11 @@ char *clean_string( char *src, int is_textfield )
                         fprintf( stderr, "'%s'\n", cif_flex_current_line() );
                         non_ascii_explained = 1;
                     } else {
-                        print_message(
-                            cxprintf( "warning, non-ascii symbols "
-                                      "encountered in the text field, "
-                                      "replaced by XML entities:\n;%s\n;\n",
-                                      start
-                                    ), cif_flex_current_line_number(), -1
-                        );
+                        print_message( "warning, non-ascii symbols "
+                                       "encountered in the text field, "
+                                       "replaced by XML entities:",
+                                        cif_flex_current_line_number(), -1 );
+                        fprintf( stderr, ";%s\n;\n\n", start );
                         non_ascii_explained = 1;
                     }
                 }
@@ -464,11 +462,10 @@ char *clean_string( char *src, int is_textfield )
                 if( is_textfield == 0 ) {
                     yyerror( "syntax error:" );
                 } else if( non_ascii_explained == 0 ) {
-                    print_message( 
-                        cxprintf( "non-ascii symbols encountered in the "
-                                  "text field:\n;%s\n;\n", start ),
-                        cif_flex_current_line_number(), -1
-                    );
+                    print_message( "non-ascii symbols encountered in the "
+                                   "text field:",
+                                    cif_flex_current_line_number(), -1 );
+                    fprintf( stderr, ";%s\n;\n\n", start );
                     yyincrease_error_counter();
                     non_ascii_explained = 1;
                 }
