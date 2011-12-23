@@ -275,6 +275,7 @@ _[^ \t\n\r]+    %{
                                               "permitted in CIFs",
                                                cif_flex_current_line_number(),
                                                -1 );
+                               yyincrease_error_counter();
                                yyerror( "syntax error:" );
                            }
             %}
