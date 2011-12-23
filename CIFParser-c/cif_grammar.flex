@@ -348,7 +348,7 @@ void set_lexer_fix_missing_closing_single_quote( void )
 int cif_flex_current_line_number( void ) { return lineCnt; }
 int cif_flex_previous_line_number( void ) { return prevLine; }
 void cif_flex_set_current_line_number( ssize_t line ) { lineCnt = line; }
-int cif_flex_current_position( void ) { return linePos; }
+int cif_flex_current_position( void ) { return thisTokenPos; }
 int cif_flex_previous_position( void ) { return lastTokenPos; }
 void cif_flex_set_current_position( ssize_t pos ) { linePos = pos - 1; }
 const char *cif_flex_current_line( void ) { return thisTokenLine; }
