@@ -660,7 +660,8 @@ void print_message( char *message, int line, int position )
         }
         fprintf( stderr, ")" );
     }
-    if( cif_cc->cif && cif_last_datablock( cif_cc->cif ) ) {
+    if( cif_cc->cif && cif_last_datablock( cif_cc->cif ) &&
+        datablock_name( cif_last_datablock( cif_cc->cif ) ) ) {
         fprintf( stderr, " data_%s",
             datablock_name( cif_last_datablock( cif_cc->cif ) ) );
     }
