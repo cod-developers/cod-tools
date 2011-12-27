@@ -43,7 +43,6 @@ my $dictFilesParsed = [];
 my $dictTags = {};
 my $quiet = 0;
 my $errorLevel = 4;
-my $parser = new CIFParser;
 #
 # We read user requested options into an array-ref in this case user can 
 # define '--check' many times with different or same options, that are 
@@ -270,6 +269,7 @@ undef $anyTestIsTurnedOn;
 if( @$dictFiles )
 {
     DICTFILE: for( @{$dictFiles} ) {
+        my $parser = new CIFParser;
         my $parsed = $parser->Run( $_ );
         next DICTFILE if $parsed == 1;
         push( @$dictFilesParsed, $parsed );
@@ -295,6 +295,7 @@ if( @$dictFiles )
 # start-iterate-trough-CIF-files
 #    
 CIFFILEANAL: for my $cifF ( @ARGV ) {
+    my $parser = new CIFParser;
     my $data = $parser->Run( $cifF );
     # convert all tags to a "cannonical" form (the one used in the
     # CIFTags modules ;):
