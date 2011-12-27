@@ -184,6 +184,22 @@ data_block_list
 
 headerless_data_block
 	:	data_item
+        {
+            extern char *progname;
+            if( isset_fix_errors( cif_cc->options ) ||
+                isset_fix_data_header( cif_cc->options ) ) {
+                    print_message_generic( progname, cif_cc->filename,
+                        NULL, "warning, no data block heading (i.e. "
+                              "data_somecif) found",
+                               cif_flex_previous_line_number(), -1 );
+            } else {
+                    print_message_generic( progname, cif_cc->filename,
+                        NULL, "no data block heading (i.e. "
+                              "data_somecif) found",
+                               cif_flex_previous_line_number(), -1 );
+                    yyincrease_error_counter();
+            }
+        }
 		data_item_list
 ;
 
@@ -564,20 +580,7 @@ int is_tag_value_unknown( char * tv )
 void assert_datablock_exists( cexception_t *ex )
 {
     if( cif_last_datablock( cif_cc->cif ) == NULL ) {
-        if( isset_fix_errors( cif_cc->options ) ||
-            isset_fix_data_header( cif_cc->options ) ) {
-                print_message( "warning, no data block heading (i.e. "
-                               "data_somecif) found",
-                                cif_flex_previous_line_number(), -1 );
-                cif_start_datablock( cif_cc->cif, "", px );
-            } else {
-                print_message( "no data block heading (i.e. "
-                               "data_somecif) found",
-                                cif_flex_previous_line_number(), -1 );
-                cexception_raise( px, CIF_UNRECOVERABLE_ERROR,
-                    "no data block heading (i.e. "
-                    "data_somecif) found" );
-            }
+        cif_start_datablock( cif_cc->cif, "", px );
     }
 }
 
@@ -645,13 +648,11 @@ void cif_yy_reset_error_count( void )
     errcount = 0;
 }
 
-void print_message( char *message, int line, int position )
-{
-    extern char *progname;
+void print_message_generic( char *progname, char *filename, char *datablock,
+    char *message, int line, int position ) {
     fflush(NULL);
-    if( strlen( progname ) > 0 ) {
-        fprintf( stderr, "%s: %s", progname,
-            cif_cc->filename );
+    if( progname && strlen( progname ) > 0 ) {
+        fprintf( stderr, "%s: %s", progname, filename );
     }
     if( line != -1 ) {
         fprintf( stderr, "(%d", line );
@@ -660,13 +661,22 @@ void print_message( char *message, int line, int position )
         }
         fprintf( stderr, ")" );
     }
-    if( cif_cc->cif && cif_last_datablock( cif_cc->cif ) &&
-        datablock_name( cif_last_datablock( cif_cc->cif ) ) ) {
-        fprintf( stderr, " data_%s",
-            datablock_name( cif_last_datablock( cif_cc->cif ) ) );
+    if( datablock ) {
+        fprintf( stderr, " data_%s", datablock );
     }
     fprintf( stderr, ": %s\n", message );
     fflush(NULL);
+}
+
+void print_message( char *message, int line, int position )
+{
+    extern char *progname;
+    char *datablock = NULL;
+    if( cif_cc->cif && cif_last_datablock( cif_cc->cif ) ) {
+        datablock = datablock_name( cif_last_datablock( cif_cc->cif ) );
+    }
+    print_message_generic( progname, cif_cc->filename, datablock,
+        message, line, position );
 }
 
 void print_current_trace( void ) {
