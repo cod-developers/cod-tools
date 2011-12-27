@@ -102,6 +102,10 @@ int isset_fix_data_header( COMPILER_OPTIONS * co );
 int isset_fix_datablock_names( COMPILER_OPTIONS * co );
 int isset_fix_string_quotes( COMPILER_OPTIONS * co );
 
+int loop_tag_count = 0;
+int loop_value_count = 0;
+int loop_start = 0;
+
 %}
 
 %union {
@@ -295,10 +299,18 @@ loop
        :	_LOOP_ 
        {
            assert_datablock_exists( px );
+           loop_tag_count = 0;
+           loop_value_count = 0;
+           loop_start = cif_flex_current_line_number();
            cif_start_loop( cif_cc->cif, px );
        } 
        loop_tags loop_values
        {
+           if( loop_value_count % loop_tag_count != 0 ) {
+               yywarning( cxprintf( "wrong number of elements in the"
+                                    " loop block starting in line %d",
+                                    loop_start ) );
+           }
            cif_finish_loop( cif_cc->cif, px );
        } 
        ;
@@ -310,6 +322,7 @@ loop_tags
             if( tag_nr != -1 ) {
                 yywarning( cxprintf( "tag %s appears more than once", $2 ) );
             }
+            loop_tag_count++;
             cif_insert_value( cif_cc->cif, $2, NULL, CIF_UNKNOWN, px );
         }
 	|	_TAG
@@ -318,6 +331,7 @@ loop_tags
             if( tag_nr != -1 ) {
                 yywarning( cxprintf( "tag %s appears more than once", $1 ) );
             }
+            loop_tag_count++;
             cif_insert_value( cif_cc->cif, $1, NULL, CIF_UNKNOWN, px );
         }
 ;
@@ -325,10 +339,12 @@ loop_tags
 loop_values
 	:	loop_values cif_value
         {
+            loop_value_count++;
             cif_push_loop_value( cif_cc->cif, $2.vstr, $2.vtype, px );
         }
 	|	cif_value
         {
+            loop_value_count++;
             cif_push_loop_value( cif_cc->cif, $1.vstr, $1.vtype, px );
         }
 ;
