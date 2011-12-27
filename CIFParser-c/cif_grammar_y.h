@@ -20,6 +20,8 @@ void cif_printf( cexception_t *ex, char *format, ... );
 char * cif_unprefix_textfield( char * tf );
 char * cif_unfold_textfield( char * tf );
 
+void print_message_generic( char *progname, char *filename,
+    char *datablock, char *message, int line, int position );
 void print_message( char *message, int line, int position );
 void print_current_trace( void );
 void print_previous_trace( void );
