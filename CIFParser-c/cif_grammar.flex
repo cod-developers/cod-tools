@@ -225,7 +225,7 @@ _[^ \t\n\r]+    %{
                                yynote( "warning, double-quoted string is missing "
                                        "a closing quote -- fixed" );
                            } else {
-                               yyerror( "syntax error: " );
+                               yyerror( "syntax error:" );
                            }
                            yylval.s = yyleng > 1 ?
                                          clean_string(
@@ -250,7 +250,7 @@ _[^ \t\n\r]+    %{
                                yynote( "warning, single-quoted string is missing "
                                        "a closing quote -- fixed" );
                            } else {
-                               yyerror( "syntax error: " );
+                               yyerror( "syntax error:" );
                            }
                            yylval.s = yyleng > 1 ?
                                          clean_string(
