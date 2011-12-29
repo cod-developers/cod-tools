@@ -11,8 +11,14 @@
 
 %x	text
 
-UQSTRING       [^ \t\n\r]*
-UQSTRING_FIRST [^ \t\n\r\#\[\'\"]
+ORDINARY_CHAR  [a-zA-Z0-9!%&\(\)\*\+,-\.\/\:<=>\?@\\\^`{\|}~]
+SPECIAL_CHAR   ["#\$'_\[\]]
+NON_BLANK_CHAR {ORDINARY_CHAR}|{SPECIAL_CHAR}|;
+ANY_PRINT_CHAR {NON_BLANK_CHAR}|[ \t]
+HIGH_CHAR      [\x80-\xFF]
+
+UQSTRING       {ORDINARY_CHAR}{NON_BLANK_CHAR}*
+HIGH_UQSTRING  {ORDINARY_CHAR}({NON_BLANK_CHAR}|{HIGH_CHAR})*
 
 DECIMAL_DIGIT  [0-9]
 INTEGER	       [-+]?{DECIMAL_DIGIT}+
@@ -24,14 +30,18 @@ REAL_ESD       {REAL}(\({INTEGER}\))?
 
  /* Double and single quoted strings */
 
-DSTRING         \"([^\"\n]|\"[^ \t\n\r])*\"?\"
-SSTRING         '([^'\n]|\'[^ \t\n\r])*\'?'
+DSTRING         \"(({ORDINARY_CHAR}|[#\$'_\[\] \t;])|\"{NON_BLANK_CHAR})*\"?\"
+SSTRING         '(({ORDINARY_CHAR}|["#\$_\[\] \t;])|\'{NON_BLANK_CHAR})*\'?'
+
+HIGH_DSTRING    \"(({ORDINARY_CHAR}|{HIGH_CHAR}|[#\$'_\[\] \t;])|\"({NON_BLANK_CHAR}|{HIGH_CHAR}))*\"?\"
+HIGH_SSTRING    '(({ORDINARY_CHAR}|{HIGH_CHAR}|["#\$_\[\] \t;])|\'({NON_BLANK_CHAR}|{HIGH_CHAR}))*\'?'
+
 STRING          {DSTRING}|{SSTRING}
 
  /* Unterminated double and single quoted strings */
 
-UDSTRING        \"[^ \"\n\r]*
-USSTRING        '[^ '\n\r]*
+UDSTRING        \"({ORDINARY_CHAR}|[#\$'_\[\]\t;])*
+USSTRING        '({ORDINARY_CHAR}|["#\$_\[\]\t;])*
 USTRING         {UDSTRING}|{USSTRING}
 
 %{
@@ -178,10 +188,15 @@ char *clean_string( char *src, int is_textfield );
 
  /*********************** keywords ***************************/
 
-data_[^ \t\n\r]+ { MARK; yylval.s = clean_string(yytext + 5, 0); return _DATA_; }
+data_{NON_BLANK_CHAR}+ { MARK; yylval.s = strclone(yytext + 5); return _DATA_; }
+data_({NON_BLANK_CHAR}|{HIGH_CHAR})+    %{
+                           MARK;
+                           yylval.s = clean_string(yytext + 5, 0);
+                           return _DATA_;
+            %}
 data_            { MARK; yylval.s = NULL;  return _DATA_; }
 loop_            { MARK; return _LOOP_; }
-_[^ \t\n\r]+    %{
+_{NON_BLANK_CHAR}+    %{
                            MARK;
                            yylval.s = strclone(yytext);
                            int i;
@@ -212,12 +227,20 @@ _[^ \t\n\r]+    %{
 {DSTRING}		%{
                            MARK;
                            assert(yyleng > 1);
-                           yylval.s = clean_string( 
-                               strnclone(yytext + 1, yyleng - 2), 0 );
+                           yylval.s = strnclone(yytext + 1, yyleng - 2);
                            return _DQSTRING;
 			%}
 
-{UDSTRING}/[ \r\n]   %{
+{HIGH_DSTRING}  %{
+                           MARK;
+                           assert(yyleng > 1);
+                           yylval.s = clean_string(
+                               strnclone(yytext + 1, yyleng - 2), 0 );
+                           return _DQSTRING;
+            %}
+
+
+{UDSTRING}   %{
                            MARK;
                            assert(yyleng > 0);
                            if( (cif_flex_lexer_flags &
@@ -237,12 +260,19 @@ _[^ \t\n\r]+    %{
 {SSTRING}		%{
                            MARK;
                            assert(yyleng > 1);
-                           yylval.s = clean_string(
-                               strnclone(yytext + 1, yyleng - 2), 0 );
+                           yylval.s = strnclone(yytext + 1, yyleng - 2);
                            return _SQSTRING;
 			%}
 
-{USSTRING}/[ \r\n]   %{
+{HIGH_SSTRING}  %{
+                           MARK;
+                           assert(yyleng > 1);
+                           yylval.s = clean_string(
+                               strnclone(yytext + 1, yyleng - 2), 0 );
+                           return _SQSTRING;
+            %}
+
+{USSTRING}   %{
                            MARK;
                            assert(yyleng > 0);
                            if( (cif_flex_lexer_flags &
@@ -282,14 +312,23 @@ _[^ \t\n\r]+    %{
 
  /********************** unquoted strings *************************/
 
-{UQSTRING_FIRST}{UQSTRING}      %{
+{UQSTRING}  %{
                            MARK;
                            if( cif_flex_debug_flags &
 			           CIF_FLEX_DEBUG_YYLVAL )
                                printf("yylval.s = %s\n", yytext);
-                           yylval.s = clean_string(yytext, 0);
+                           yylval.s = strclone(yytext);
                            return _UQSTRING;
 			%}
+
+{HIGH_UQSTRING} %{
+                           MARK;
+                           if( cif_flex_debug_flags &
+                       CIF_FLEX_DEBUG_YYLVAL )
+                               printf("yylval.s = %s\n", yytext);
+                           yylval.s = clean_string(yytext, 0);
+                           return _UQSTRING;
+            %}
 
 \[{UQSTRING} %{
                            MARK;
