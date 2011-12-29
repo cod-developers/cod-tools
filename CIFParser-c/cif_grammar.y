@@ -151,22 +151,28 @@ stray_cif_value_list
         {
             if( isset_fix_errors( cif_cc->options ) ||
                 isset_fix_data_header( cif_cc->options ) ) {
-                    yynote( "warning: stray CIF values at the "
-                            "beginning of the input file" );
+                    print_message( "warning: stray CIF values at the "
+                                   "beginning of the input file",
+                                    cif_flex_current_line_number(), -1 );
             } else {
-                    yywarning( "stray CIF values at the "
-                               "beginning of the input file" );
+                    print_message( "stray CIF values at the "
+                                   "beginning of the input file",
+                                    cif_flex_current_line_number(), -1 );
+                    yyincrease_error_counter();
             }
         }
         | cif_value
         {
             if( isset_fix_errors( cif_cc->options ) ||
                 isset_fix_data_header( cif_cc->options ) ) {
-                    yynote( "warning, stray CIF values at the "
-                            "beginning of the input file" );
+                    print_message( "warning: stray CIF values at the "
+                                   "beginning of the input file",
+                                    cif_flex_current_line_number(), -1 );
             } else {
-                    yywarning( "stray CIF values at the "
-                               "beginning of the input file" );
+                    print_message( "stray CIF values at the "
+                                   "beginning of the input file",
+                                    cif_flex_current_line_number(), -1 );
+                    yyincrease_error_counter();
             }
         }
         cif_value_list
