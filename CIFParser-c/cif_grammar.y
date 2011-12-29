@@ -151,7 +151,7 @@ stray_cif_value_list
         {
             if( isset_fix_errors( cif_cc->options ) ||
                 isset_fix_data_header( cif_cc->options ) ) {
-                    print_message( "warning: stray CIF values at the "
+                    print_message( "warning, stray CIF values at the "
                                    "beginning of the input file",
                                     cif_flex_current_line_number(), -1 );
             } else {
@@ -165,7 +165,7 @@ stray_cif_value_list
         {
             if( isset_fix_errors( cif_cc->options ) ||
                 isset_fix_data_header( cif_cc->options ) ) {
-                    print_message( "warning: stray CIF values at the "
+                    print_message( "warning, stray CIF values at the "
                                    "beginning of the input file",
                                     cif_flex_current_line_number(), -1 );
             } else {
