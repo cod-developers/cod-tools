@@ -329,9 +329,13 @@ loop
        loop_tags loop_values
        {
            if( loop_value_count % loop_tag_count != 0 ) {
-               yywarning( cxprintf( "wrong number of elements in the"
-                                    " loop block starting in line %d",
-                                    loop_start ) );
+               yywarning( cxprintf( "wrong number of elements in the "
+                                    "loop block starting in line %d",
+                                    loop_start ) ); 
+               cexception_raise( px, CIF_UNRECOVERABLE_ERROR,
+                   cxprintf( "wrong number of elements in the "
+                             "loop block starting in line %d",
+                              loop_start ) );
            }
            cif_finish_loop( cif_cc->cif, px );
        } 
