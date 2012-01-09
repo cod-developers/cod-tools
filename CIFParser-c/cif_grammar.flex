@@ -332,6 +332,15 @@ _{NON_BLANK_CHAR}+    %{
                            return _UQSTRING;
             %}
 
+{HIGH_CHAR}+ %{
+                           MARK;
+                           if( cif_flex_debug_flags &
+                       CIF_FLEX_DEBUG_YYLVAL )
+                               printf("yylval.s = %s\n", yytext);
+                           yylval.s = clean_string(yytext, 0);
+                           return _UQSTRING;
+            %}
+
 \[{UQSTRING} %{
                            MARK;
                            if( cif_flex_debug_flags &
