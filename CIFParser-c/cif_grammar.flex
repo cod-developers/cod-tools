@@ -125,7 +125,30 @@ char *clean_string( char *src, int is_textfield );
  /********* store line for better error reporting ***********/
 
 ^.*   %{
-            storeCurrentLine(yytext, yyleng);
+            char * ctrl_z_position = strchr( yytext, 26 );
+            if( ctrl_z_position != NULL ) {
+                if( ( cif_flex_lexer_flags &
+                      CIF_FLEX_LEXER_FIX_CTRL_Z ) > 0 ) {
+                        print_message( "warning, DOS EOF symbol ^Z was "
+                                       "encountered and ignored",
+                                       cif_flex_current_line_number(),
+                                       -1 );
+                        while( ctrl_z_position != NULL ) {
+                            *ctrl_z_position = ' ';
+                            ctrl_z_position = strchr( ctrl_z_position, 26 );
+                        }
+                        storeCurrentLine(yytext, yyleng);
+                } else {
+                        storeCurrentLine(yytext, yyleng);
+                        print_message( "DOS EOF symbol ^Z was "
+                                       "encountered, it is not "
+                                       "permitted in CIFs",
+                                        cif_flex_current_line_number(), -1 );
+                        yyincrease_error_counter();
+                }
+            } else {
+                storeCurrentLine(yytext, yyleng);
+            }
             RESET_MARK;
             yyless(0);
           %}
@@ -289,27 +312,6 @@ _{NON_BLANK_CHAR}+    %{
                            return _SQSTRING;
 			%}
 
- /******************** single DOS EOF character *******************/
-
-\x1a                %{
-                           MARK;
-                           if( ( cif_flex_lexer_flags &
-                                     CIF_FLEX_LEXER_FIX_CTRL_Z ) > 0 ) {
-                               print_message( "warning, DOS EOF symbol ^Z was "
-                                              "encountered and ignored",
-                                               cif_flex_current_line_number(),
-                                               -1 );
-                           } else {
-                               print_message( "DOS EOF symbol ^Z was "
-                                              "encountered, it is not "
-                                              "permitted in CIFs",
-                                               cif_flex_current_line_number(),
-                                               -1 );
-                               yyincrease_error_counter();
-                               yyerror( "syntax error:" );
-                           }
-            %}
-
  /********************** unquoted strings *************************/
 
 {UQSTRING}  %{
@@ -448,30 +450,9 @@ char *clean_string( char *src, int is_textfield )
     char *new = malloc( length + 1 );
     char *dest = new;
     char *start = src;
-    int ctrl_z_explained = 0;
     int non_ascii_explained = 0;
     while( *src != '\0' ) {
-        if( (*src & 255) == 26 ) {
-            /* Inform about DOS newline */
-            *dest = ' ';
-            if( ctrl_z_explained == 0 ) {
-                if( ( cif_flex_lexer_flags &
-                      CIF_FLEX_LEXER_FIX_CTRL_Z ) > 0 ) {
-                        print_message( "warning, DOS EOF symbol ^Z was "
-                                       "encountered and ignored",
-                                       cif_flex_current_line_number(),
-                                       -1 );
-                } else {
-                        print_message( "DOS EOF symbol ^Z was "
-                                       "encountered, it is not "
-                                       "permitted in CIFs",
-                                       cif_flex_current_line_number(),
-                                       -1 );
-                        yyerror( "syntax error:" );
-                }
-                ctrl_z_explained = 1;
-            }
-        } else if( ( (*src & 255 ) < 16 || (*src & 255 ) > 127 )
+        if( ( (*src & 255 ) < 16 || (*src & 255 ) > 127 )
             && (*src & 255 ) != 10 ) {
             if( ( cif_flex_lexer_flags &
                   CIF_FLEX_LEXER_FIX_NON_ASCII_SYMBOLS ) > 0 ) {
