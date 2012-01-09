@@ -707,6 +707,9 @@ void print_previous_trace( void ) {
 
 int yyerror( char *message )
 {
+    if( strcmp( message, "syntax error" ) == 0 ) {
+        message = "syntax error:";
+    }
     print_message( message, cif_flex_current_line_number(),
                             cif_flex_current_position()+1 );
     print_current_trace();
