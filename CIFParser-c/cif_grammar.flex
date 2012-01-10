@@ -268,15 +268,14 @@ _{NON_BLANK_CHAR}+    %{
 
 
 {UDSTRING}   %{
-                           MARK;
-                           assert(yyleng > 0);
                            if( (cif_flex_lexer_flags &
-                                CIF_FLEX_LEXER_FIX_MISSING_CLOSING_DOUBLE_QUOTE) > 0 ) {
-                               yynote( "warning, double-quoted string is missing "
-                                       "a closing quote -- fixed" );
-                           } else {
-                               yyerror( "syntax error:" );
+                               CIF_FLEX_LEXER_FIX_MISSING_CLOSING_DOUBLE_QUOTE) == 0 ) {
+                               REJECT;
                            }
+                           MARK;
+                           yynote( "warning, double-quoted string is missing "
+                                   "a closing quote -- fixed" );
+                           assert(yyleng > 0);
                            yylval.s = yyleng > 1 ?
                                          clean_string(
                                              strnclone(yytext + 1, yyleng - 1), 0
@@ -304,15 +303,14 @@ _{NON_BLANK_CHAR}+    %{
             %}
 
 {USSTRING}   %{
-                           MARK;
-                           assert(yyleng > 0);
                            if( (cif_flex_lexer_flags &
-                                CIF_FLEX_LEXER_FIX_MISSING_CLOSING_SINGLE_QUOTE) > 0 ) {
-                               yynote( "warning, single-quoted string is missing "
-                                       "a closing quote -- fixed" );
-                           } else {
-                               yyerror( "syntax error:" );
+                               CIF_FLEX_LEXER_FIX_MISSING_CLOSING_SINGLE_QUOTE) == 0 ) {
+                               REJECT;
                            }
+                           MARK;
+                           yynote( "warning, single-quoted string is missing "
+                                   "a closing quote -- fixed" );
+                           assert(yyleng > 0);
                            yylval.s = yyleng > 1 ?
                                          clean_string(
                                              strnclone(yytext + 1, yyleng - 1), 0
