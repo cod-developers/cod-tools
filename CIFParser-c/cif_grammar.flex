@@ -59,6 +59,7 @@ USTRING         {UDSTRING}|{USSTRING}
 #include <cif_grammar_y.h>
 #include <cif_grammar.tab.h>
 #include <allocx.h>
+#include <cxprintf.h>
 #include <cexceptions.h>
 
 typedef enum {
