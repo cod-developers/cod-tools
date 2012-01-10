@@ -255,6 +255,10 @@ _{NON_BLANK_CHAR}+    %{
 			%}
 
 {HIGH_DSTRING}  %{
+                           if( ( cif_flex_lexer_flags &
+                               CIF_FLEX_LEXER_FIX_NON_ASCII_SYMBOLS ) == 0 ) {
+                               REJECT;
+                           }
                            MARK;
                            assert(yyleng > 1);
                            yylval.s = clean_string(
@@ -288,6 +292,10 @@ _{NON_BLANK_CHAR}+    %{
 			%}
 
 {HIGH_SSTRING}  %{
+                           if( ( cif_flex_lexer_flags &
+                               CIF_FLEX_LEXER_FIX_NON_ASCII_SYMBOLS ) == 0 ) {
+                               REJECT;
+                           }
                            MARK;
                            assert(yyleng > 1);
                            yylval.s = clean_string(
@@ -324,6 +332,10 @@ _{NON_BLANK_CHAR}+    %{
 			%}
 
 {HIGH_UQSTRING} %{
+                           if( ( cif_flex_lexer_flags &
+                               CIF_FLEX_LEXER_FIX_NON_ASCII_SYMBOLS ) == 0 ) {
+                               REJECT;
+                           }
                            MARK;
                            if( cif_flex_debug_flags &
                        CIF_FLEX_DEBUG_YYLVAL )
@@ -333,6 +345,10 @@ _{NON_BLANK_CHAR}+    %{
             %}
 
 {HIGH_CHAR}+ %{
+                           if( ( cif_flex_lexer_flags &
+                               CIF_FLEX_LEXER_FIX_NON_ASCII_SYMBOLS ) == 0 ) {
+                               REJECT;
+                           }
                            MARK;
                            if( cif_flex_debug_flags &
                        CIF_FLEX_DEBUG_YYLVAL )
@@ -342,13 +358,14 @@ _{NON_BLANK_CHAR}+    %{
             %}
 
 \[{UQSTRING} %{
+                           if( ( cif_flex_lexer_flags &
+                               CIF_FLEX_LEXER_ALLOW_UQSTRING_BRACKETS ) == 0 ) {
+                               REJECT;
+                           }
                            MARK;
                            if( cif_flex_debug_flags &
                        CIF_FLEX_DEBUG_YYLVAL )
                                printf("yylval.s = %s\n", yytext);
-                           if( ( cif_flex_lexer_flags &
-                       CIF_FLEX_LEXER_ALLOW_UQSTRING_BRACKETS ) == 0 )
-                               yyerror( "syntax error:" );
                            yylval.s = clean_string(yytext, 0);
                            return _UQSTRING;
             %}
