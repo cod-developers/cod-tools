@@ -92,6 +92,7 @@ static cexception_t *px; /* parser exception */
 void assert_datablock_exists( cexception_t *ex );
 void add_tag_value( char * tag, char * value, cif_value_type_t type,
     cexception_t *ex );
+int yyerror_previous( char *message );
 
 int isset_do_not_unprefix_text( COMPILER_OPTIONS * co );
 int isset_do_not_unfold_text( COMPILER_OPTIONS * co );
