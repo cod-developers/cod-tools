@@ -118,6 +118,7 @@ caused an error, and can inform user about this.*/
 
 static void storeCurrentLine( char *line, int length );
 char *clean_string( char *src, int is_textfield );
+char *lowercase( char *str );
 
 %}
 
@@ -222,12 +223,19 @@ data_            { MARK; yylval.s = NULL;  return _DATA_; }
 loop_            { MARK; return _LOOP_; }
 _{NON_BLANK_CHAR}+    %{
                            MARK;
-                           yylval.s = strclone(yytext);
-                           int i;
-                           for( i = 0; i < strlen( yylval.s ); i++ ) {
-                               yylval.s[i] = tolower(yylval.s[i]);
+                           yylval.s = lowercase( yytext );
+                           return _TAG;
+            %}
+_({NON_BLANK_CHAR}|{HIGH_CHAR})+ %{
+                           if( ( cif_flex_lexer_flags &
+                               CIF_FLEX_LEXER_FIX_NON_ASCII_SYMBOLS ) == 0 ) {
+                               REJECT;
                            }
-                           yylval.s = clean_string( yylval.s, 0 );
+                           MARK;
+                           /* First clean, then lowercase --
+                              as Perl CIF parser does */
+                           yylval.s = clean_string( yytext, 0 );
+                           yylval.s = lowercase( yylval.s );
                            return _TAG;
             %}
 
@@ -466,6 +474,15 @@ static void storeCurrentLine( char *line, int length )
            cif_printf( NULL, "#\n# %s\n#\n", currentLine );
        }
    }
+}
+
+char *lowercase( char *str ) {
+    char *lowered = strclone( str );
+    int i;
+    for( i = 0; i < strlen( lowered ); i++ ) {
+        lowered[i] = tolower( lowered[i] );
+    }
+    return lowered;
 }
 
 char *clean_string( char *src, int is_textfield )
