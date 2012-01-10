@@ -25,6 +25,7 @@ void print_message_generic( char *progname, char *filename,
 void print_message( char *message, int line, int position );
 void print_current_trace( void );
 void print_previous_trace( void );
+void yyincrease_error_counter( void );
 
 int is_tag_value_unknown( char * tv );
 
