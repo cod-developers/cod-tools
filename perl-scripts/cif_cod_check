@@ -17,7 +17,9 @@ eval 'exec perl -x $0 ${1+"$@"}'
 use strict;
 use lib "./lib/perl5";
 use lib "./CIFParser";
+use lib "./CCIFParser";
 use CIFParser;
+use CCIFParser;
 use CIFTagCanonicalNames;
 use CIFTagManage;
 use ShowStruct;
@@ -136,6 +138,7 @@ sub merge_limits_tables($$) {
 }
 
 my $max_year_temperature_factors_optional = 1969;
+my $use_parser = "perl";
 
 #* USAGE:
 #*    $0 [options] input1.cif [input2.cif ...]
@@ -184,6 +187,10 @@ my $max_year_temperature_factors_optional = 1969;
 #*    --check-all
 #*
 #*    --check-none, --dont-check-any
+#*
+#*    --use-perl-parser
+#*
+#*    --use-c-parser
 #*
 #*    --help,--usage         Print a short usage message (this message) and exit.
 #**
@@ -296,6 +303,9 @@ my $max_year_temperature_factors_optional = 1969;
 
     "--use-reporter" => sub{ $useReporter = 1; $reportFile = get_value() },
 
+    "--use-perl-parser" => sub{ $use_parser = "perl" },
+    "--use-c-parser"    => sub{ $use_parser = "c" },
+
     "--help,--usage" => sub { SUsage::usage; exit },
 );
 
@@ -340,19 +350,26 @@ $| = 1; # Flush buffers immediately, to avoid mixing lines of STDOUT
 @ARGV = ("-") unless @ARGV;
 
 for my $filename (@ARGV) {
-    my $parser = new CIFParser;
-    my $data;
-    if( $useReporter == 1 )
-    {
-        $data = $parser->Run($filename, \&parser_error_reporter );
+
+    my( $data, $error_count );
+
+    if( $use_parser eq "perl" ) {
+        my $parser = new CIFParser;
+        if( $useReporter == 1 )
+        {
+            $data = $parser->Run($filename, \&parser_error_reporter );
+        } else {
+            $data = $parser->Run($filename);
+        }
+        if( defined $parser->YYData->{ERRCOUNT} ) {
+            $error_count = $parser->YYData->{ERRCOUNT};
+        }
     } else {
-        $data = $parser->Run($filename);
+        ( $data, $error_count ) = CCIFParser::parse( $filename );
     }
     
-    if( defined $parser->YYData->{ERRCOUNT} &&
-        $parser->YYData->{ERRCOUNT} > 0 ) {
-        print STDERR "$0: $filename: ",
-        $parser->YYData->{ERRCOUNT},
+    if( defined $error_count && $error_count > 0 ) {
+        print STDERR "$0: $filename: ", $error_count,
         " error(s) encountered while parsing CIF data\n";
         exit -1;
     }

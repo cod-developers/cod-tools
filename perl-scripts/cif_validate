@@ -22,7 +22,9 @@ use warnings;
 use Scalar::Util;
 use lib "./lib/perl5";
 use lib "./CIFParser";
+use lib "./CCIFParser";
 use CIFParser;
+use CCIFParser;
 use CIFTagCanonicalNames;
 use ShowStruct;
 use SOptions;
@@ -42,6 +44,7 @@ my $setOfEnum = [];
 my $dictFilesParsed = [];
 my $dictTags = {};
 my $quiet = 0;
+my $use_parser = "perl";
 my $errorLevel = 4;
 #
 # We read user requested options into an array-ref in this case user can 
@@ -198,7 +201,9 @@ push @$setOfEnum, '_atom_site_refinement_flags';
         "--do-not-check-values-enum"        => sub{ $showMap{'values-enum'} = 0 },
         "--do-not-check-values-enum-nocase" => sub{ $showMap{'values-enum-nocase'} = 0 },
         "--do-not-check-values-range"       => sub{ $showMap{'values-range'} = 0 },
-        "--do-not-check-value-type"         => sub{ $showMap{'value-type'} = 0 }
+        "--do-not-check-value-type"         => sub{ $showMap{'value-type'} = 0 },
+        "--use-perl-parser"                 => sub{ $use_parser = "perl" },
+        "--use-c-parser"                    => sub{ $use_parser = "c" },
     );
 
 if( defined($outputFile) ) {
@@ -269,9 +274,16 @@ undef $anyTestIsTurnedOn;
 if( @$dictFiles )
 {
     DICTFILE: for( @{$dictFiles} ) {
-        my $parser = new CIFParser;
-        my $parsed = $parser->Run( $_ );
-        next DICTFILE if $parsed == 1;
+        my $parsed;
+        if( $use_parser eq "perl" ) {
+            my $parser = new CIFParser;
+            $parsed = $parser->Run( $_ );
+            next DICTFILE if $parsed == 1;
+        } else {
+            my $error_count;
+            ( $parsed, $error_count ) = CCIFParser::parse( $_ );
+            next DICTFILE if $error_count > 0;
+        }
         push( @$dictFilesParsed, $parsed );
         $$dictTags{$_} = getDict( $parsed );
         undef $parsed;
@@ -295,8 +307,13 @@ if( @$dictFiles )
 # start-iterate-trough-CIF-files
 #    
 CIFFILEANAL: for my $cifF ( @ARGV ) {
-    my $parser = new CIFParser;
-    my $data = $parser->Run( $cifF );
+    my $data;
+    if( $use_parser eq "perl" ) {
+        my $parser = new CIFParser;
+        $data = $parser->Run( $cifF );
+    } else {
+        $data = CCIFParser::parse( $cifF );
+    }
     # convert all tags to a "cannonical" form (the one used in the
     # CIFTags modules ;):
     canonicalize_all_names( $data );

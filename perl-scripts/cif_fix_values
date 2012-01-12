@@ -23,7 +23,9 @@ use strict;
 use warnings;
 use lib "./lib/perl5";
 use lib "./CIFParser";
+use lib "./CCIFParser";
 use CIFParser;
+use CCIFParser;
 use CIFTagCanonicalNames;
 use CIFDictTags;
 use CIFCODTags;
@@ -41,6 +43,8 @@ my $fix_temperature = 1;
 my $fix_enums = 1;
 
 my $treat_as_set = 1;
+
+my $use_parser = "perl";
 
 my $dictParsed = [];
 my $parser = new CIFParser;
@@ -210,6 +214,10 @@ my @default_set_tags = ( "_atom_site_refinement_flags",
 #*     otherwise script uses the built-in table from CIF Core
 #*     dictionary.
 #*
+#*   --use-perl-parser
+#*   --use-c-parser
+#*     Specify parser to parse CIF files. C parser is default.
+#*
 #**  --help,--usage     Print a short usage message (this message) and exit.
 
 @ARGV = getOptions(
@@ -243,6 +251,8 @@ my @default_set_tags = ( "_atom_site_refinement_flags",
     "--clear-dictionaries" => sub{ @dictionaries = (); },
     
     "--treat-as-set" => sub{ $treat_as_set = 1; },
+    "--use-perl-parser"       => sub{ $use_parser = "perl" },
+    "--use-c-parser"          => sub{ $use_parser = "c" },
 );
 
 #
@@ -359,13 +369,22 @@ if( defined $replacement_file ) {
 
 if( @dictionaries ) {
     for my $dict_file_name( @dictionaries ) {
-        my $parser = new CIFParser;
-        my $data = $parser->Run( $dict_file_name );
+        my( $data, $error_count );
+        if( $use_parser eq "perl" ) {
+            my $parser = new CIFParser;
+            $data = $parser->Run( $dict_file_name );
+            if( defined $parser->YYData->{ERRCOUNT} &&
+                $parser->YYData->{ERRCOUNT} > 0 ) {
+                $error_count = $parser->YYData->{ERRCOUNT};
+            }
+        } else {
+            ( $data, $error_count ) = CCIFParser::parse( $dict_file_name );
+        }
+
         
-        if( defined $parser->YYData->{ERRCOUNT} &&
-            $parser->YYData->{ERRCOUNT} > 0 ) {
+        if( defined $error_count && $error_count > 0 ) {
             print STDERR "$0: $dict_file_name: ",
-            $parser->YYData->{ERRCOUNT},
+            $error_count,
             " error(s) encountered while parsing CIF dictionary\n";
             ## exit -1;
             next;
@@ -1042,13 +1061,21 @@ my %dictionary_tags = map { $_, $_ } @dictionary_tags;
 @ARGV = ("-") unless @ARGV;
 
 for my $filename (@ARGV) {
-    my $parser = new CIFParser;
-    my $data = $parser->Run($filename);
+    my( $data, $error_count );
+    if( $use_parser eq "perl" ) {
+        my $parser = new CIFParser;
+        $data = $parser->Run( $filename );
+        if( defined $parser->YYData->{ERRCOUNT} &&
+            $parser->YYData->{ERRCOUNT} > 0 ) {
+            $error_count = $parser->YYData->{ERRCOUNT};
+        }
+    } else {
+        ( $data, $error_count ) = CCIFParser::parse( $filename );
+    }
 
-    if( defined $parser->YYData->{ERRCOUNT} &&
-        $parser->YYData->{ERRCOUNT} > 0 ) {
+    if( defined $error_count && $error_count > 0 ) {
         print STDERR "$0: $filename: ",
-        $parser->YYData->{ERRCOUNT},
+        $error_count,
         " error(s) encountered while parsing CIF data\n";
         ## exit -1;
         next;
