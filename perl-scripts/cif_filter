@@ -21,10 +21,12 @@ eval 'exec perl -x $0 ${1+"$@"}'
 use strict;
 use lib "./lib/perl5";
 use lib "./CIFParser";
+use lib "./CCIFParser";
 use lib "./CIFTags";
 use lib ".";
 use File::Basename;
 use CIFParser;
+use CCIFParser;
 use CIFDictTags;
 use CIFCODTags;
 use CIFAMCSDTags;
@@ -84,6 +86,7 @@ my $exclude_misspelled_tags = 0;
 my $fold_long_fields = 0;
 my $fold_title = 0;
 my $folding_width = 76;
+my $use_parser = "perl";
 my $parse_formula_sum = 0;
 my $fix_errors = 0;
 my $use_datablocks_without_coord = 0;
@@ -212,6 +215,9 @@ my %spacegroups = map {
 #*    --fold-long-fields
 #*    --dont-fold-long-fields
 #*
+#*    --use-perl-parser
+#*    --use-c-parser
+#*
 #*    --leave-bibliography
 #*    --discard-bibliograph
 #*    --leave-title
@@ -320,6 +326,9 @@ my %spacegroups = map {
     "--fold-long-fields"      => sub{ $fold_long_fields = 1 },
     "--dont-fold-long-fields" => sub{ $fold_long_fields = 0 },
 
+    "--use-perl-parser"       => sub{ $use_parser = "perl" },
+    "--use-c-parser"          => sub{ $use_parser = "c" },
+
     "--leave-bibliography"   => sub{ $leave_biblio = 1 },
     "--discard-bibliography" => sub{ $leave_biblio = 0 },
     "--leave-title"          => sub{ $leave_title  = 1 },
@@ -363,18 +372,27 @@ if( defined $cif_header_file ) {
 
 for my $filename (@ARGV) {
 
-    my $parser = new CIFParser;
-
+    my( $data, $error_count );
     my %options;
 
     if( $fix_errors ) {
         $options{fix_errors} = 1;
     }
 
-    my $data = $parser->Run($filename, \%options);
+    if( $use_parser eq "perl" ) {
+        my $parser = new CIFParser;
 
-    if( defined $parser->YYData->{ERRCOUNT} && $parser->YYData->{ERRCOUNT} > 0 ) {
-        print STDERR "$0: ", $parser->YYData->{ERRCOUNT},
+        $data = $parser->Run($filename, \%options);
+
+        if( defined $parser->YYData->{ERRCOUNT} ) {
+            $error_count = $parser->YYData->{ERRCOUNT};
+        }
+    } else {
+        ( $data, $error_count ) = CCIFParser::parse( $filename, \%options );
+    }
+
+    if( defined $error_count && $error_count > 0 ) {
+        print STDERR "$0: ", $error_count,
         " error(s) encountered while parsing file '${filename}'\n";
         die;
     }
@@ -476,13 +494,27 @@ for my $filename (@ARGV) {
             my $reference;
 
             if( $biblio =~ /\.cif/i ) {
-                my $biblio_parser = new CIFParser;
-                my $biblio_blocks = $biblio_parser->Run( $biblio,
-                                                         {fix_errors => 1} );
-                if( defined $biblio_parser->YYData->{ERRCOUNT} &&
-                    $biblio_parser->YYData->{ERRCOUNT} > 0 ) {
-                    print STDERR "$0: ", $biblio_parser->YYData->{ERRCOUNT},
-                    " error(s) encountered while parsing file '${biblio}'\n";
+
+                my( $biblio_blocks, $error_count );
+                my %biblio_options = ( fix_errors => 1 );
+                if( $use_parser eq "perl" ) {
+                    my $parser = new CIFParser;
+
+                        $biblio_blocks = $parser->Run($biblio, \%biblio_options);
+
+                        if( defined $parser->YYData->{ERRCOUNT} &&
+                            $parser->YYData->{ERRCOUNT} > 0 ) {
+                            $error_count = $parser->YYData->{ERRCOUNT};
+                        }
+                } else {
+                    ( $biblio_blocks, $error_count ) = 
+                        CCIFParser::parse( $biblio, \%biblio_options );
+                }
+
+                if( defined $error_count && $error_count > 0 ) {
+                    print STDERR "$0: ", $error_count,
+                        " error(s) encountered while parsing",
+                        " file '${biblio}'\n";
                     die;
                 }
 
