@@ -27,17 +27,41 @@ use CIFParser;
 use SOptions;
 use SUsage;
 
+my $override_tags;
+my $merge_tags;
+
 #* USAGE:
 #*     $0 [options] input.cif [input2.cif ...]
 #* 
 #* OPTIONS:
+#*    --override-tags  _tag1,_tag2
+#*        Replace values for tags listed as an argument (_tag1 and _tag2 in 
+#*        this example) instead of keeping old values.
+#*
+#*    --merge-tags  _tag1,_tag2
+#*        Merge values for tags listed as an argument (_tag1 and _tag2 in 
+#*        this example).
+#*
 #*    --help,--usage         Print a short usage message (this message) and exit.
 #**
 
 @ARGV = getOptions( 
-    "--help,--usage" => sub { SUsage::usage; exit },
+    "--merge-tags"    => \$merge_tags,
+    "--override-tags" => \$override_tags,
+    "--help,--usage"  => sub { SUsage::usage; exit },
 );
 
+my ( %override_tags, %merge_tags );
+
+if( $override_tags ) {
+    %override_tags =
+        map {( lc($_), $_ )} split( ",", $override_tags );
+}
+
+if( $merge_tags ) {
+    %merge_tags =
+        map {( lc($_), $_ )} split( ",", $merge_tags );
+}
 
 @ARGV = ( "-" ) unless @ARGV;
 
@@ -129,7 +153,21 @@ for my $filename (@ARGV) {
                     $old_datablock->{types}{$tag} =
                         $new_datablock->{types}{$tag};
                 } else {
-                    if( !values_are_equal( $old_datablock->{values}{$tag},
+                    if( $merge_tags{$tag} ) {
+                        for( my $i = 0;
+                             $i <= $#{$old_datablock->{values}{$tag}};
+                             $i ++ ) {
+                            $old_datablock->{values}{$tag}[$i] .= "\n" .
+                                $new_datablock->{values}{$tag}[$i];
+                        }
+                    } elsif( defined $override_tags{$tag} ) {
+                        for( my $i = 0;
+                             $i <= $#{$old_datablock->{values}{$tag}};
+                             $i ++ ) {
+                            $old_datablock->{values}{$tag}[$i] =
+                                $new_datablock->{values}{$tag}[$i];
+                        }
+                    } elsif( !values_are_equal( $old_datablock->{values}{$tag},
                                            $new_datablock->{values}{$tag} )) {
                         warn( "values for tag '$tag' in '$data_name' differ" );
                     }
