@@ -21,6 +21,7 @@ use lib "./lib/perl5";
 use lib "./CIFParser";
 use lib "./CIFTags";
 use lib ".";
+use CIFTagCanonicalNames;
 use CIFTagPrint;
 use CIFParser;
 use SOptions;
@@ -48,6 +49,8 @@ for my $filename (@ARGV) {
     my $parser = new CIFParser;
 
     my $data = $parser->Run($filename);
+
+    canonicalize_all_names( $data );
 
     if( defined $parser->YYData->{ERRCOUNT} && $parser->YYData->{ERRCOUNT} > 0 ) {
         print STDERR "$0: ", $parser->YYData->{ERRCOUNT},
