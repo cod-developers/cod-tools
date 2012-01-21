@@ -50,19 +50,31 @@ use Inline C => <<'END_OF_C_CODE';
 
 char *progname = "cifparser";
 
-void parse_cif( SV * filename, HV * options ) {
+void parse_cif( SV * filename, HV * options ) 
+{
+    cexception_t inner;
     cif_yy_debug_off();    
     cif_flex_debug_off();    
     cif_debug_off();
     CIF * volatile cif = NULL;
     char * fname = SvPV_nolen( filename );
+    COMPILER_OPTIONS * volatile co = NULL;
+
+
     if( strlen( fname ) == 1 && fname[0] == '-' ) {
         fname = NULL;
     }
     int nerrors = 0;
     AV * datablocks = newAV();
 
-    COMPILER_OPTIONS * co = new_compiler_options();
+    cexception_guard( inner ) {
+        co = new_compiler_options( &inner );
+    }
+    cexception_catch {
+        fprintf( stderr,
+                 "could not allocate CIF parser options in CCIFparser.pm\n" );
+        co = NULL;
+    }
     if( hv_exists( options, "do_not_unprefix_text", 20 ) ) {
         set_do_not_unprefix_text( co );
     }

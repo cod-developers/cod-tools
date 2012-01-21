@@ -13,6 +13,8 @@
 
 typedef struct COMPILER_OPTIONS COMPILER_OPTIONS;
 
+COMPILER_OPTIONS *new_compiler_options( cexception_t *ex );
+
 CIF *new_cif_from_cif_file( char *filename, COMPILER_OPTIONS *co,
     cexception_t *ex );
 
