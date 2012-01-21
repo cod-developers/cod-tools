@@ -56,6 +56,7 @@ static void delete_cif_compiler( CIF_COMPILER *c )
     if( c ) {
         if( c->filename ) free( c->filename );
         if( c->cif ) delete_cif( c->cif );
+#warning "possibly a memory leak here: c->options are not deleted. S.G."
         free( c );
     }
 }
