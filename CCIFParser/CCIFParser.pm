@@ -35,7 +35,6 @@ use Inline C => <<'END_OF_C_CODE';
 #include <string.h>
 #include <cif_grammar_y.h>
 #include <cif_grammar_flex.h>
-#include <cif_grammar.tab.h>
 #include <allocx.h>
 #include <cxprintf.h>
 #include <getoptions.h>
