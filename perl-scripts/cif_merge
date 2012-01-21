@@ -70,22 +70,61 @@ for my $filename (@ARGV) {
             my $old_datablock = $merged_datablocks{$data_name};
             for my $tag (@{$new_datablock->{tags}}) {
                 if( !exists $old_datablock->{values}{$tag} ) {
-                    if( !$old_datablock->{in_loop}{$tag} ) {
-
-                        $old_datablock->{values}{$tag} =
-                            $new_datablock->{values}{$tag};
-
-                        $old_datablock->{precisions}{$tag} =
-                            $new_datablock->{precisions}{$tag};
-
-                        $old_datablock->{types}{$tag} =
-                            $new_datablock->{types}{$tag};
-
-                        push( @{$old_datablock->{tags}}, $tag );
-                    } else {
-                        warn "Merging loops (tag $tag) is not supported " .
-                            "in this version";
+                    ## print ">>> old datablock does not have tag $tag\n";
+                    if( exists $new_datablock->{inloop}{$tag} ) {
+                        ## print ">>> tag '$tag' is in a loop...\n";
+                        ## warn "Merging loops (tag $tag) is not supported " .
+                        ##     "in this version";
+                        my $new_loop_id = $new_datablock->{inloop}{$tag};
+                        ## print ">>> ... it is loop $new_loop_id.\n";
+                        my $old_loop_id;
+                        for my $loop_tag (
+                            @{$new_datablock->{loops}[$new_loop_id]} ) {
+                            ## print ">>> checking '$loop_tag'...\n";
+                            if( exists $old_datablock->{values}{$loop_tag} &&
+                                exists $old_datablock->{inloop}{$loop_tag} ) {
+                                $old_loop_id = $old_datablock->{inloop}{$loop_tag};
+                                die unless defined $old_loop_id; # assert...
+                                ## print ">>> found it in $old_loop_id\n";
+                                if( int( @{$old_datablock->
+                                            {values}{$loop_tag}} ) !=
+                                    int( @{$new_datablock->{values}{$tag}} )) {
+                                    print STDERR
+                                        "$0: ${filename}: ERROR, ", 
+                                        "loop tag '$loop_tag' has different ".
+                                        "number of values than the tag '$tag' ".
+                                        "in '${filename}, but '$tag' must end ".
+                                        "up in the same loop\n";
+                                    die;
+                                }
+                                last;
+                            }
+                        }
+                        if( defined $old_loop_id ) {
+                            push( @{$old_datablock->{loops}[$old_loop_id]},
+                                  $tag );
+                            $old_datablock->{inloop}{$tag} = $old_loop_id;
+                            ## print ">>> pushing '$tag' to old loop $old_loop_id\n";
+                            ## print ">>> it already has tags @{$old_datablock->{loops}[$old_loop_id]}\n";                            
+                        } else {
+                            push( @{$old_datablock->{loops}}, [ $tag ] );
+                            $old_datablock->{inloop}{$tag} =
+                                $#{$old_datablock->{loops}};
+                            ## print ">>> starting new loop $#{$old_datablock->{loops}} for tag '$tag'\n";
+                        }
                     }
+                    ## print "\n";
+
+                    push( @{$old_datablock->{tags}}, $tag );
+
+                    $old_datablock->{values}{$tag} =
+                        $new_datablock->{values}{$tag};
+
+                    $old_datablock->{precisions}{$tag} =
+                        $new_datablock->{precisions}{$tag};
+
+                    $old_datablock->{types}{$tag} =
+                        $new_datablock->{types}{$tag};
                 } else {
                     if( !values_are_equal( $old_datablock->{values}{$tag},
                                            $new_datablock->{values}{$tag} )) {
@@ -97,8 +136,12 @@ for my $filename (@ARGV) {
     }
 }
 
+## use Serialise;
+## serialiseRef( \%merged_datablocks );
+
 for my $data_name (@merged_datablock_names) {
-    print_cif( $merged_datablocks{$data_name}, { keep_tag_order => 1 } );
+    print_cif( $merged_datablocks{$data_name},
+               { keep_tag_order => 1, preserve_loop_order => 1 } );
 }
 
 sub values_are_equal
