@@ -110,7 +110,7 @@ void parse_cif( SV * filename, HV * options ) {
     cexception_catch {
         if( cif != NULL ) {
             nerrors = cif_nerrors( cif );
-            dispose_cif( cif );
+            dispose_cif( &cif );
         } else {
             nerrors++;
         }
