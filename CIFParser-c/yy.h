@@ -10,9 +10,9 @@
 extern FILE *yyin;
 
 extern int yyparse( void );
-extern int yyerror( char *message );
-extern int yywarning( char *message );
-extern int yynote( char *message );
+extern int yyerror( const char *message );
+extern int yywarning( const char *message );
+extern int yynote( const char *message );
 
 /* For testing of lexical analysers: */
 extern int yylex( void );
@@ -25,5 +25,5 @@ extern char *yytext;
 
 #endif
 
-void yyerrorf( char *message, ... );
-void yyverrorf( char *message, va_list ap );
+void yyerrorf( const char *message, ... );
+void yyverrorf( const char *message, va_list ap );
