@@ -495,7 +495,7 @@ char *clean_string( char *src, int is_textfield )
     int non_ascii_explained = 0;
     while( *src != '\0' ) {
         if( ( (*src & 255 ) < 16 || (*src & 255 ) > 127 )
-            && (*src & 255 ) != 10 ) {
+            && (*src & 255 ) != '\n' && (*src & 255 ) != '\t' ) {
             if( ( cif_flex_lexer_flags &
                   CIF_FLEX_LEXER_FIX_NON_ASCII_SYMBOLS ) > 0 ) {
                 /* Do magic with non-ascii symbols */
