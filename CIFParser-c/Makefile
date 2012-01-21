@@ -146,7 +146,7 @@ INCLUDES = -I. ${addprefix -I, ${sort ${SRC_DIR} ${OTHER_DIRS} ${LIB_DIRS}}}
 ## LIBFLAGS = -lm
 
 ifeq (${CC},gcc)
-    CFLAGS = -Wall -g ${OPTFLAGS} -DYYDEBUG=1 -D_YACC_ ${INCLUDES}
+    CFLAGS = -Wall -g ${OPTFLAGS} -DYYDEBUG=1 -D_YACC_ ${INCLUDES} -fPIC
 else
     CFLAGS = ${OPTFLAGS} -DYYDEBUG=1 -D_YACC_ ${INCLUDES}
 endif
