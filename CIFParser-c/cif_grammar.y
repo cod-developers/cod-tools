@@ -93,7 +93,7 @@ static cexception_t *px; /* parser exception */
 void assert_datablock_exists( cexception_t *ex );
 void add_tag_value( char * tag, char * value, cif_value_type_t type,
     cexception_t *ex );
-int yyerror_previous( char *message );
+int yyerror_previous( const char *message );
 
 int isset_do_not_unprefix_text( COMPILER_OPTIONS * co );
 int isset_do_not_unfold_text( COMPILER_OPTIONS * co );
@@ -660,8 +660,12 @@ void cif_yy_reset_error_count( void )
     errcount = 0;
 }
 
-void print_message_generic( char *progname, char *filename, char *datablock,
-    char *message, int line, int position ) {
+void print_message_generic( const char *progname,
+                            const char *filename,
+                            const char *datablock,
+                            const char *message,
+                            int line, int position )
+{
     fflush(NULL);
     if( progname && strlen( progname ) > 0 ) {
         fprintf( stderr, "%s: %s", progname, filename );
@@ -680,7 +684,7 @@ void print_message_generic( char *progname, char *filename, char *datablock,
     fflush(NULL);
 }
 
-void print_message( char *message, int line, int position )
+void print_message( const char *message, int line, int position )
 {
     extern char *progname;
     char *datablock = NULL;
@@ -707,7 +711,7 @@ void print_previous_trace( void ) {
     fflush(NULL);
 }
 
-int yyerror( char *message )
+int yyerror( const char *message )
 {
     if( strcmp( message, "syntax error" ) == 0 ) {
         message = "syntax error:";
@@ -719,7 +723,7 @@ int yyerror( char *message )
     return 0;
 }
 
-int yyerror_previous( char *message )
+int yyerror_previous( const char *message )
 {
     print_message( message, cif_flex_previous_line_number(),
                             cif_flex_previous_position()+1 );
@@ -728,7 +732,7 @@ int yyerror_previous( char *message )
     return 0;
 }
 
-int yynote( char *message )
+int yynote( const char *message )
 {
     print_message( message, cif_flex_previous_line_number(), -1 );
     return 0;
@@ -739,7 +743,7 @@ void yyincrease_error_counter( void )
     errcount++;
 }
 
-int yywarning( char *message )
+int yywarning( const char *message )
 {
     yynote( message );
     errcount++;

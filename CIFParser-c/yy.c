@@ -12,7 +12,7 @@
 #include <stdio.h>
 #include <stdarg.h>
 
-void yyerrorf( char *message, ... )
+void yyerrorf( const char *message, ... )
 {
     static char buffer[200];
     va_list ap;
@@ -28,7 +28,7 @@ void yyerrorf( char *message, ... )
     va_end(ap);
 }
 
-void yyverrorf( char *message, va_list ap )
+void yyverrorf( const char *message, va_list ap )
 {
     static char buffer[200];
  
