@@ -115,7 +115,6 @@ void parse_cif( SV * filename, HV * options )
         set_allow_uqstring_brackets();
     }
 
-    cexception_t inner;
     cexception_guard( inner ) {
         cif = new_cif_from_cif_file( fname, co, &inner );
     }
