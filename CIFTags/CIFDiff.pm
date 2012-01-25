@@ -26,70 +26,102 @@ sub diff
         unless exists $options->{compare_datablock_names};
     $options->{fold} = 1 unless exists $options->{fold};
     $options->{fold_width} = 72 unless exists $options->{fold_width};
+
     if( $options->{compare_datablock_names}
         && $cif1->{name} ne $cif2->{name} ) {
         print "<data_" . $cif1->{name} . "\n";
         print ">data_" . $cif2->{name} . "\n";
     }
+
+    my $comm = comm( $cif1, $cif2, $options );
+    foreach my $line ( @$comm ) {
+        if( defined $line->[0] && defined $line->[2] &&
+            $line->[0] eq $line->[2] &&
+            @{$cif1->{values}{$line->[0]}} !=
+            @{$cif2->{values}{$line->[0]}} ) {
+            print "number of values for "
+                . "tag " . $line->[0]
+                . " is different\n";
+            next;
+        }
+        if( defined $line->[0] ) {
+            print "<";
+            CIFTagPrint::print_tag( $line->[0], $cif1->{values},
+                $options->{fold}, $options->{folding_width} );
+        }
+        if( defined $line->[2] ) {
+            print ">";
+            CIFTagPrint::print_tag( $line->[2], $cif2->{values},
+                $options->{fold}, $options->{folding_width} );
+        }
+    }
+}
+
+sub comm
+{
+    my( $cif1, $cif2, $options ) = @_;
+    $options = {} unless defined $options;
+    my $comm = [];
+    my $comparators = {};
+    if( defined $options->{comparators} ) {
+        $comparators = $options->{comparators};
+    }
     my @tags1 = sort @{$cif1->{tags}};
     my @tags2 = sort @{$cif2->{tags}};
     while( @tags1 > 0 || @tags2 > 0 ) {
         if( scalar @tags1 == 0 ) {
-            print ">";
-            CIFTagPrint::print_tag( $tags2[0], $cif2->{values},
-                $options->{fold}, $options->{folding_width} );
+            push( @$comm, [ undef, undef, $tags2[0] ] );
             shift @tags2;
             next;
         }
         if( scalar @tags2 == 0 ) {
-            print "<";
-            CIFTagPrint::print_tag( $tags1[0], $cif1->{values},
-                $options->{fold}, $options->{folding_width} );
+            push( @$comm, [ $tags1[0], undef, undef ] );
             shift @tags1;
             next;
         }
         if( $tags1[0] ne $tags2[0] ) {
             if( $tags1[0] lt $tags2[0] ) {
-                print "<";
-                CIFTagPrint::print_tag( $tags1[0], $cif1->{values},
-                    $options->{fold}, $options->{folding_width} );
+                push( @$comm, [ $tags1[0], undef, undef ] );
                 shift @tags1;
             } else {
-                print ">";
-                CIFTagPrint::print_tag( $tags2[0], $cif2->{values},
-                    $options->{fold}, $options->{folding_width} );
+                push( @$comm, [ undef, undef, $tags2[0] ] );
                 shift @tags2;
             }
             next;
         }
         if( scalar @{$cif1->{values}{$tags1[0]}} !=
             scalar @{$cif2->{values}{$tags2[0]}} ) {
-            print "number of values for "
-                . "tag " . $tags1[0]
-                . " is different\n";
+            push( @$comm, [ $tags1[0], undef, $tags2[0] ] );
             shift @tags1;
             shift @tags2;
             next;
         }
-        my $is_different = 0;
+        my $is_different;
         for( my $i = 0; $i < @{$cif1->{values}{$tags1[0]}}; $i++ ) {
-            if( $cif1->{values}{$tags1[0]}[$i] ne
-                $cif2->{values}{$tags2[0]}[$i] ) {
-                $is_different = 1;
-                last;
+            if( exists $comparators->{$tags1[0]} ) {
+                if( &{ $comparators->{$tags1[0]} }(
+                    $cif1->{values}{$tags1[0]}[$i],
+                    $cif2->{values}{$tags2[0]}[$i] ) != 0 ) {
+                    push( @$comm, [ $tags1[0], undef, $tags2[0] ] );
+                    shift @tags1;
+                    shift @tags2;
+                    last;
+                }
+            } else {
+                if( $cif1->{values}{$tags1[0]}[$i] ne
+                    $cif2->{values}{$tags2[0]}[$i] ) {
+                    push( @$comm, [ $tags1[0], undef, $tags2[0] ] );
+                    shift @tags1;
+                    shift @tags2;
+                    last;
+                }
             }
         }
-        if( $is_different ) {
-            print "<";
-            CIFTagPrint::print_tag( $tags1[0], $cif1->{values},
-                $options->{fold}, $options->{folding_width} );
-            print ">";
-            CIFTagPrint::print_tag( $tags2[0], $cif2->{values},
-                $options->{fold}, $options->{folding_width} );
-        }
+        push( @$comm, [ undef, $tags1[0], undef ] );
         shift @tags1;
-        shift @tags2;        
+        shift @tags2;
     }
+    return $comm;
 }
 
 1;

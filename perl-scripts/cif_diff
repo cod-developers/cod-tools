@@ -25,10 +25,18 @@ use SUsage;
 my $compare_datablock_names = 1;
 my $fold_long_fields        = 1;
 my $folding_width           = 72;
+my %comparators = ();
+
+sub numeric_compare { return $_[0] <=> $_[1]; }
+sub string_compare  { return $_[0] cmp $_[1]; }
 
 @ARGV = getOptions(
     "--compare-datablock-names"         => sub{ $compare_datablock_names = 1 },
     "--dont-compare-datablock-names"    => sub{ $compare_datablock_names = 0 },
+    "--compare-numeric" =>
+        sub{ $comparators{ get_value() } = \&numeric_compare },
+    "--compare-string" =>
+        sub{ $comparators{ get_value() } = \&string_compare },
     "--folding-width"         => \$folding_width,
     "--fold-long-fields"      => sub{ $fold_long_fields = 1 },
     "--dont-fold-long-fields" => sub{ $fold_long_fields = 0 },
@@ -57,7 +65,8 @@ for( my $i = 0; $i < $min_datablocks; $i++ ) {
     CIFDiff::diff( $data1->[$i], $data2->[$i], {
         'compare_datablock_names' => $compare_datablock_names,
         'fold'                    => $fold_long_fields,
-        'folding_width'           => $folding_width } );
+        'folding_width'           => $folding_width,
+        'comparators'             => \%comparators } );
 }
 
 # Printout of parsed file contents
