@@ -66,8 +66,25 @@ sub comm
     if( defined $options->{comparators} ) {
         $comparators = $options->{comparators};
     }
-    my @tags1 = sort @{$cif1->{tags}};
-    my @tags2 = sort @{$cif2->{tags}};
+    my( @tags1, @tags2 );
+    if( defined $options->{compare_only} ) {
+        my %compare_only = map{ $_ => 1 } @{$options->{compare_only}};
+        foreach( keys %{$cif1->{values}} ) {
+            if( exists $compare_only{$_} ) {
+                push( @tags1, $_ );
+            }
+        }
+        foreach( keys %{$cif2->{values}} ) {
+            if( exists $compare_only{$_} ) {
+                push( @tags2, $_ );
+            }
+        }
+    } else {
+        @tags1 = keys %{$cif1->{values}};
+        @tags2 = keys %{$cif2->{values}};
+    }
+    @tags1 = sort @tags1;
+    @tags2 = sort @tags2;
     PAIR_OF_TAGS:
     while( @tags1 > 0 || @tags2 > 0 ) {
         if( scalar @tags1 == 0 ) {
