@@ -68,6 +68,7 @@ sub comm
     }
     my @tags1 = sort @{$cif1->{tags}};
     my @tags2 = sort @{$cif2->{tags}};
+    PAIR_OF_TAGS:
     while( @tags1 > 0 || @tags2 > 0 ) {
         if( scalar @tags1 == 0 ) {
             push( @$comm, [ undef, undef, $tags2[0] ] );
@@ -105,7 +106,7 @@ sub comm
                     push( @$comm, [ $tags1[0], undef, $tags2[0] ] );
                     shift @tags1;
                     shift @tags2;
-                    last;
+                    next PAIR_OF_TAGS;
                 }
             } else {
                 if( $cif1->{values}{$tags1[0]}[$i] ne
@@ -113,7 +114,7 @@ sub comm
                     push( @$comm, [ $tags1[0], undef, $tags2[0] ] );
                     shift @tags1;
                     shift @tags2;
-                    last;
+                    next PAIR_OF_TAGS;
                 }
             }
         }
