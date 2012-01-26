@@ -30,7 +30,30 @@ my %comparators = ();
 sub numeric_compare { return $_[0] <=> $_[1]; }
 sub string_compare  { return $_[0] cmp $_[1]; }
 
+my $compare_only_selected = 0;
+my @selected_tags = ();
+
 @ARGV = getOptions(
+    "-t,--tags" => sub { $compare_only_selected = 1;
+                         @selected_tags = split( /\s|,/, get_value()); },
+    "-a,--add-tag" => sub { $compare_only_selected = 1;
+                            push( @selected_tags, get_value() ); },
+    "-c,--clear-tags" => sub { $compare_only_selected = 1;
+                               @selected_tags = () },
+    "-f,--file-with-tags" => sub {
+        $compare_only_selected = 1;
+        my $filename = get_value();
+        open( TAGS, $filename ) or
+            die( "$0: $filename: ERROR, could not open file '$filename' " .
+                 "for reading - $!" );
+        @selected_tags = ( @selected_tags,
+                          map { s/^\s*|\s*$//g; $_ }
+                          grep !/^\#/, <TAGS> );
+        close( TAGS ) or
+            die( "$0: $filename: ERROR, could not close file '$filename' " .
+                 "after reading - $!" );
+    },
+    "--compare-all-tags" => sub{ $compare_only_selected = 0; },
     "--compare-datablock-names"         => sub{ $compare_datablock_names = 1 },
     "--dont-compare-datablock-names"    => sub{ $compare_datablock_names = 0 },
     "--compare-numeric" =>
@@ -61,12 +84,18 @@ if( scalar @$data1 != scalar @$data2 ) {
           "taking first $min_datablocks datablocks for comparison\n";
 }
 
-for( my $i = 0; $i < $min_datablocks; $i++ ) {
-    CIFDiff::diff( $data1->[$i], $data2->[$i], {
+my $options = {
         'compare_datablock_names' => $compare_datablock_names,
         'fold'                    => $fold_long_fields,
         'folding_width'           => $folding_width,
-        'comparators'             => \%comparators } );
+        'comparators'             => \%comparators };
+if( $compare_only_selected == 1 ) {
+    @selected_tags = map { lc($_) } @selected_tags;
+    $options->{compare_only} = \@selected_tags;
+}
+
+for( my $i = 0; $i < $min_datablocks; $i++ ) {
+    CIFDiff::diff( $data1->[$i], $data2->[$i], $options );
 }
 
 # Printout of parsed file contents
