@@ -1,0 +1,196 @@
+#! /bin/sh
+#!perl -w # --*- Perl -*--
+eval 'exec perl -x $0 ${1+"$@"}'
+    if 0;
+#------------------------------------------------------------------------------
+#$Author$
+#$Date$ 
+#$Revision$
+#$URL$
+#------------------------------------------------------------------------------
+#*
+#  Check the correspondence between CIF and Fobs files, taking datablock
+#  names, cell parameters, author lists and symmetry group names into
+#  account.
+#**
+
+use strict;
+use warnings;
+use CCIFParser;
+use CIFDiff;
+
+PAIR:
+while( @ARGV > 0 ) {
+    my $cif_file = shift( @ARGV );
+    if( @ARGV == 0 ) {
+        die( "$0: $cif_file: missing Fobs file" );
+    }
+    my $hkl_file = shift( @ARGV );
+
+    my( $cif_data, $cif_errors ) = CCIFParser::parse( $cif_file );
+    if( $cif_errors > 0 ) {
+        next;
+    }
+    my( $hkl_data, $hkl_errors ) = CCIFParser::parse( $hkl_file );
+    if( $hkl_errors > 0 ) {
+        next;
+    }
+    if( @$hkl_data > 1 ) {
+        print STDERR "$0: $cif_file: file '$hkl_file' contains more than "
+            . "one datablock\n";
+        next;
+    }
+    foreach( 'h', 'k', 'l' ) {
+        if( !exists $hkl_data->[0]{values}{"_refln_index_$_"} ) {
+            print STDERR "$0: $cif_file: can not confirm that file "
+                . "'$hkl_file' contains Fobs data: one or more tags "
+                . "from list ( '_refln_index_h', '_refln_index_k', "
+                . "'_refln_index_l' ) is missing\n";
+            next PAIR;
+        }
+    }
+    my $hkl_dataname =
+        ( exists $hkl_data->[0]{values}{'_[local]_cod_data_source_block'} )
+            ? $hkl_data->[0]{values}{'_[local]_cod_data_source_block'}[0]
+            : $hkl_data->[0]{name};
+    my $cif_index;
+    for( my $i = 0; $i < @$cif_data; $i++ ) {
+        if( exists $cif_data->[$i]{values}{'_[local]_cod_data_source_block'} ) {
+            if( $cif_data->[$i]{values}{'_[local]_cod_data_source_block'}[0] eq
+                $hkl_dataname ) {
+                $cif_index = $i;
+                last;
+            }
+        } else {
+            if( $cif_data->[$i]{name} eq $hkl_dataname ) {
+                $cif_index = $i;
+                last;
+            }
+        }
+    }
+    if( !defined $cif_index ) {
+        print STDERR "$0: $cif_file: can not confirm relation between "
+            . "any datablocks in CIF and Fobs files -- there are no "
+            . "datablocks with the same name in both files\n";
+        next PAIR;
+    }
+    my $comm = CIFDiff::comm( $cif_data->[$cif_index], $hkl_data->[0],
+        {
+            'compare_only' =>
+                [
+                    '_cell_length_a', '_cell_length_b', '_cell_length_c',
+                    '_cell_angle_alpha', '_cell_angle_beta',
+                    '_cell_angle_gamma', '_publ_author_name',
+                    '_symmetry_space_group_name_Hall',
+                    '_symmetry_space_group_name_H-M'
+                ],
+            'comparators'  =>
+                {
+                    '_cell_length_a' => \&compare_cif_numbers,
+                    '_cell_length_b' => \&compare_cif_numbers,
+                    '_cell_length_c' => \&compare_cif_numbers,
+                    '_cell_angle_alpha' => \&compare_cif_numbers,
+                    '_cell_angle_beta'  => \&compare_cif_numbers,
+                    '_cell_angle_gamma' => \&compare_cif_numbers,
+                    '_publ_author_name' => \&compare_lc_strings
+                }
+        } );
+    foreach my $line ( @$comm ) {
+        if( defined $line->[0] && defined $line->[2] ) {
+            print STDERR "$0: $cif_file: can not confirm relation " .
+                  "between datablocks named '" . $hkl_dataname .
+                  "' from supplied CIF and Fobs files - ";
+            if( $line->[0] eq '_publ_author_name' ) {
+                print "publication author lists differ";
+            } else {
+                print "values of tag '$line->[0]' differ";
+            }
+            print ": '" . join( ', ', map { "'$_'" }
+                  @{$cif_data->[$cif_index]{values}{$line->[0]}} ) .
+                  "' (CIF) and '" . join( ', ', map { "'$_'" }
+                  @{$hkl_data->[0]{values}{$line->[0]}} ) .
+                  "' (Fobs)\n";
+            next PAIR;
+        }
+    }
+    print "$cif_file: OK\n";
+}
+
+sub compare_cif_numbers
+{
+    my( $a, $b ) = @_;
+    return 1 - can_be_equal( $a, $b );
+}
+
+sub compare_lc_strings
+{
+    my( $a, $b ) = @_;
+    return lc( $a ) cmp lc( $b );
+}
+
+# Unpacks CIF number to the value that can be processed with Perl
+# Parameters:
+#       -- $cif_number
+# Return:
+#       -- $unpacked_number
+#       -- $precision
+sub unpack_cif_number
+{
+    my ($value) = @_;
+    my $number_pos =
+        '(?:\+?' .
+        '(?:\d+(?:\.\d*)?|\.\d+))';
+    my $number_neg =
+        '(?:\-' .
+        '(?:\d+(?:\.\d*)?|\.\d+))';
+    my $exponent =
+        '(?:[eE][-+]?\d+)';
+    my $sigma =
+        '(?:\(\d+\))';
+    $value =~ /($number_pos|$number_neg)($exponent?)($sigma?)/;
+    my ($number_part, $exponent_part, $sigma_part ) = ($1, $2, $3);
+    $sigma_part =~ s/\((\d+)\)/$1/;
+    $exponent_part =~ s/[eE]([-+]?\d+)/$1/;
+    $exponent_part = 0 if $exponent_part eq "";
+    $sigma_part = 0 if $sigma_part eq "";
+    my $converted = 10 ** $exponent_part * $number_part;
+    my $digits_after_period = 0;
+    if( $number_part =~ /\.(\d+)$/ ) {
+        $digits_after_period = length($1);
+    }
+    my $precision = $sigma_part / 10 ** $digits_after_period;
+    return ($converted, $precision);
+}
+
+# Checks if two CIF format numbers are (possibly) equal.
+# Parameters:
+#       -- $first_cif_number
+#       -- $second_cif_number
+# Return:
+#       -- 1 if numbers are equal, 0 otherwise
+sub can_be_equal
+{
+    my ($x, $y) = @_;
+    my @x = unpack_cif_number($x);
+    my @y = unpack_cif_number($y);
+    if( $x[1] == 0 && $y[1] == 0 ) {
+        return $x[0] == $y[0];
+    } elsif( $x[1] == 0 ) {
+        return $x[0] > $y[0] - $y[1] && $x[0] < $y[0] + $y[1];
+    } elsif( $y[1] == 0 ) {
+        return $y[0] > $x[0] - $x[1] && $y[0] < $x[0] + $x[1];
+    } elsif( $x[0] + $x[1] == $y[0] - $y[1] ||
+             $y[0] + $y[1] == $x[0] - $x[1] ) {
+        return 0; # Intervals are open (?)
+    } else {
+        my @edges = (   [ $x[0] - $x[1],  1 ],
+                        [ $x[0] + $x[1], -1 ],
+                        [ $y[0] - $y[1],  1 ],
+                        [ $y[0] + $y[1], -1 ]  );
+        my $open_intervals = 0;
+        foreach( sort { $a->[0] <=> $b->[0] } @edges) {
+            $open_intervals += $_->[1];
+            if( $open_intervals > 1 ) { return 1; }
+        }
+    }
+}
