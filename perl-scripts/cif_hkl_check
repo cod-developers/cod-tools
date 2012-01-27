@@ -16,8 +16,34 @@ eval 'exec perl -x $0 ${1+"$@"}'
 
 use strict;
 use warnings;
+use CIFParser;
 use CCIFParser;
 use CIFDiff;
+use SOptions;
+
+sub parse_file
+{
+    my( $file, $use_parser ) = @_;
+    my( $data, $errors );
+    if( $use_parser eq "perl" ) {
+        my $parser = new CIFParser;
+        $data = $parser->Run($file);
+        $errors = 0;
+        if( defined $parser->YYData->{ERRCOUNT} ) {
+            $errors = $parser->YYData->{ERRCOUNT};
+        }
+    } else {
+        ( $data, $errors ) = CCIFParser::parse( $file );
+    }
+    return( $data, $errors );
+}
+
+my $use_parser = "perl";
+
+@ARGV = getOptions(
+    "--use-perl-parser"       => sub{ $use_parser = "perl" },
+    "--use-c-parser"          => sub{ $use_parser = "c" }
+);
 
 PAIR:
 while( @ARGV > 0 ) {
@@ -27,11 +53,11 @@ while( @ARGV > 0 ) {
     }
     my $hkl_file = shift( @ARGV );
 
-    my( $cif_data, $cif_errors ) = CCIFParser::parse( $cif_file );
+    my( $cif_data, $cif_errors ) = parse_file( $cif_file, $use_parser );
     if( $cif_errors > 0 ) {
         next;
     }
-    my( $hkl_data, $hkl_errors ) = CCIFParser::parse( $hkl_file );
+    my( $hkl_data, $hkl_errors ) = parse_file( $hkl_file, $use_parser );
     if( $hkl_errors > 0 ) {
         next;
     }
