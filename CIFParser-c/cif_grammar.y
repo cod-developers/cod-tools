@@ -141,6 +141,9 @@ int loop_start = 0;
 
 cif_file
        :	// empty
+    {
+        cif_start_datablock( cif_cc->cif, NULL, px );
+    }
 	|	data_block_list
 	|	headerless_data_block
 	|	headerless_data_block data_block_list
