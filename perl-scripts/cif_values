@@ -15,6 +15,7 @@ eval 'exec perl -x $0 ${1+"$@"}'
 use strict;
 use File::Basename;
 use CIFParser;
+use CCIFParser;
 use CIFTags::CIFTagManage;
 use SOptions;
 use SUsage;
@@ -36,6 +37,7 @@ my $replace_spaces = 1; # indicates whether spaces should be replaced
 my $fix_errors = 0;
 
 my $treat_dots_as_underscores = 1;
+my $use_parser = "perl";
 
 #* Usage:
 #*     cif_values [options] input.cif [input2.cif ...]
@@ -107,6 +109,10 @@ my $treat_dots_as_underscores = 1;
 #*     --no-dataname
 #*         Do not print data block names.
 #*
+#*     --use-perl-parser
+#*     --use-c-parser
+#*         Specify parser to parse CIF files. C parser is default.
+#*
 #*     --help  print a short usage message (this message) and exit.
 #**
 
@@ -154,6 +160,9 @@ my $treat_dots_as_underscores = 1;
     "--dataname"      => sub { $write_data_name = 1 },
     "--no-dataname"   => sub { $write_data_name = 0 },
 
+    "--use-perl-parser"       => sub{ $use_parser = "perl" },
+    "--use-c-parser"          => sub{ $use_parser = "c" },
+
     "--help,--usage"  => sub { SUsage::usage; exit },
 );
 
@@ -178,19 +187,27 @@ if( $header ) {
 
 for my $filename (@ARGV) {
 
-    my $parser = new CIFParser;
-
+    my( $data, $error_count );
     my %options;
 
     if( $fix_errors ) {
         $options{fix_errors} = 1;
     }
 
-    my $data = $parser->Run($filename, \%options);
+    if( $use_parser eq "perl" ) {
+        my $parser = new CIFParser;
 
-    if( defined $parser->YYData->{ERRCOUNT} &&
-        $parser->YYData->{ERRCOUNT} > 0 ) {
-        print STDERR "$0: ", $parser->YYData->{ERRCOUNT},
+        $data = $parser->Run($filename, \%options);
+
+        if( defined $parser->YYData->{ERRCOUNT} ) {
+            $error_count = $parser->YYData->{ERRCOUNT};
+        }
+    } else {
+        ( $data, $error_count ) = CCIFParser::parse( $filename, \%options );
+    }
+
+    if( defined $error_count && $error_count > 0 ) {
+        print STDERR "$0: ", $error_count,
         " error(s) encountered while parsing file '${filename}'\n";
         die;
     }
