@@ -2095,49 +2095,57 @@ sub find_molecule($$$$$$$$$$$)
     my $current_translation = translation( $current_atom->{coordinates_fract},
                                            \@current_coords_fract_modulo_1 );
 
-    my $atom_in_unit_cell = copy_atom( $current_atom );
+    ## my $atom_in_unit_cell = copy_atom( $current_atom );
 
-    $atom_in_unit_cell->{coordinates_fract} = \@current_coords_fract_modulo_1;
-    $atom_in_unit_cell->{coordinates_ortho} =
-        multiply_matrix_with_vector( $ortho_matrix,
-                                     \@current_coords_fract_modulo_1 );
+    my $atom_in_unit_cell_type  = $current_atom->{chemical_type};
+    my $atom_in_unit_cell_label = $current_atom->{label};
 
-    if( exists $atom_in_unit_cell->{unit_cell_label} ) {
-        $atom_in_unit_cell->{label} = $atom_in_unit_cell->{unit_cell_label};
-        ## print ">>> unit cell label = $atom_in_unit_cell->{unit_cell_label}\n";
+    ## $atom_in_unit_cell->{coordinates_fract} = \@current_coords_fract_modulo_1;
+    ## $atom_in_unit_cell->{coordinates_ortho} =
+    ##    multiply_matrix_with_vector( $ortho_matrix,
+    ##                                 \@current_coords_fract_modulo_1 );
+
+    my $atom_in_unit_cell_coords_ortho =
+        ## $atom_in_unit_cell->{coordinates_ortho};
+	multiply_matrix_with_vector( $ortho_matrix,
+				     \@current_coords_fract_modulo_1 );
+
+    my $atom_in_unit_cell_label_basename = $current_atom->{label_basename};
+        ## $atom_in_unit_cell->{label_basename};
+
+
+    ##if( exists $atom_in_unit_cell->{unit_cell_label} ) {
+    ##    $atom_in_unit_cell->{label} = $atom_in_unit_cell->{unit_cell_label};
+    ##    ## print ">>> unit cell label = $atom_in_unit_cell->{unit_cell_label}\n";
+    ##}
+    if( exists $current_atom->{unit_cell_label} ) {
+	$atom_in_unit_cell_label = $current_atom->{unit_cell_label};
     }
 
     my @neighbors;
 
-    if(exists $used_atoms->{$atom_in_unit_cell->{"label"}})
+    ## if(exists $used_atoms->{$atom_in_unit_cell->{"label"}})
+    if(exists $used_atoms->{$atom_in_unit_cell_label})
     {
-        print "<<<< atom labeled '$atom_in_unit_cell->{label}' " .
+        print "<<<< atom labeled '$atom_in_unit_cell_label' " .
             "is already in some molecule, returning\n"
             if $debug;
         return @neighbors;
     }
-
-    my $atom_in_unit_cell_type  = $atom_in_unit_cell->{chemical_type};
-    my $atom_in_unit_cell_label = $atom_in_unit_cell->{label};
-
-    my $atom_in_unit_cell_coords_ortho =
-        $atom_in_unit_cell->{coordinates_ortho};
-    my $atom_in_unit_cell_label_basename =
-        $atom_in_unit_cell->{label_basename};
 
     my $current_label = $current_atom->{label};
 
     $used_atoms->{$atom_in_unit_cell_label} = $atom_in_unit_cell_label;
 
     $used_basenames->{$current_atom->{label_basename}} =
-                                                $current_atom->{label_basename};
+	$current_atom->{label_basename};
 
     ##$used_basenames->{$atom_in_unit_cell_label_basename} =
     ##                                          $atom_in_unit_cell_label_basename;
 
-    if( $current_atom->{label_basename} ne $atom_in_unit_cell_label_basename ) {
-        die;
-    }
+    ##if( $current_atom->{label_basename} ne $atom_in_unit_cell_label_basename ) {
+    ##    die;
+    ##}
 
     my $current_atom_copy = copy_atom($current_atom);
     if( exists $current_atom_copy->{unit_cell_label} ) {
@@ -2158,7 +2166,7 @@ sub find_molecule($$$$$$$$$$$)
     };
     if( $@ ) {
         use Serialise;
-        serialiseRef( $atom_in_unit_cell );
+        ## serialiseRef( $atom_in_unit_cell );
         serialiseRef( $atom_in_unit_cell_coords_ortho );
         serialiseRef( [ $i, $j, $k ] );
         delete $bricks->{atoms};
@@ -2231,7 +2239,7 @@ sub find_molecule($$$$$$$$$$$)
                         local $" = ' ';
                         print ">>> found bond:\n";
                         serialiseRef( { "translation" => $current_translation,
-                                        "original atom" => $atom_in_unit_cell,
+                                        "original atom" => $current_atom,
                                         "atom" => $sym_atom } );
                     } if $debug;
 
