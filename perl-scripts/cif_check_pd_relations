@@ -102,6 +102,12 @@ foreach my $filename ( @ARGV ) {
             }
         }
     }
+    if( !defined $overall_info_datablock ) {
+        print STDERR "$0: $filename: no datablock containing both " .
+            "_pd_phase_block_id and _pd_block_diffractogram_id tags " .
+            "can be found -- file has no overall information datablock?\n";
+        next INPUTFILE;
+    }
 
     foreach( @{$data->[$overall_info_datablock]{values}{_pd_phase_block_id}} ) {
         if( !exists $pd_ids{$_} ) {
