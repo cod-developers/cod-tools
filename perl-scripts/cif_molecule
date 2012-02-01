@@ -359,7 +359,7 @@ sub symgen_atom($$$);
 sub symgen_all_atoms($$$);
 sub apply_shifts($);
 sub find_molecules($$$$$$$$$);
-sub find_molecule($$$$$$$$$$$);
+sub find_molecule($$$$$$$$$$$$);
 sub check_init_atoms($$$$);
 sub initial_atoms($$$$$);
 
@@ -2033,6 +2033,7 @@ sub find_molecules($$$$$$$$$)
     my %used_atoms;
     my %used_bonds;
     my %used_basenames;
+    my %polymer_bonds;
 
     foreach my $initial_atom (@$initial_atoms)
     {
@@ -2044,6 +2045,7 @@ sub find_molecules($$$$$$$$$)
                                                 \%used_atoms,
                                                 \%used_basenames,
                                                 \%used_bonds,
+                                                \%polymer_bonds,
                                                 $initial_atom, $bricks,
                                                 $filename, $dataname,
                                                 $ortho_matrix );
@@ -2075,7 +2077,7 @@ sub find_molecules($$$$$$$$$)
 
 # ============================================================================ #
 
-sub find_molecule($$$$$$$$$$$)
+sub find_molecule($$$$$$$$$$$$)
 {
     my $covalent_sensitivity = shift(@_);
     my $atom_properties      = shift(@_);
@@ -2083,6 +2085,7 @@ sub find_molecule($$$$$$$$$$$)
     my $used_atoms           = shift(@_);
     my $used_basenames       = shift(@_);
     my $used_bonds           = shift(@_);
+    my $polymer_bonds        = shift(@_);
     my $current_atom         = shift(@_);
     my $bricks               = shift(@_);
     my $filename             = shift(@_);
@@ -2151,15 +2154,7 @@ sub find_molecule($$$$$$$$$$$)
 	    my $new_label = $new_atom->{label};
 	    my $sym_label = $sym_atom->{label};
 
-            if( not exists $used_bonds->{$sym_label}{$new_label} ) {
-
-                $used_bonds->{$sym_label} = {}
-		     unless exists $used_bonds->{$sym_label};
-                $used_bonds->{$sym_label}{$new_label} = 1;
-
-                $used_bonds->{$new_label} = {}
-                     unless exists $used_bonds->{$new_label};
-                $used_bonds->{$new_label}{$sym_label} = 1;
+            ## if( not exists $used_bonds->{$sym_label}{$new_label} ) {
 
                 my $dist = distance( $atom_in_unit_cell_coords_ortho,
                                      $sym_atom_coords_ortho );
@@ -2179,19 +2174,24 @@ sub find_molecule($$$$$$$$$$$)
                                          $dist, $bump_distance_factor );
 
                 if( $is_bump ) {
-                    my $message =  "atoms \"$new_atom->{label}\" and " .
-                        "\"$sym_atom->{label}\" are too close " .
-                        "(distance = " .
-                        sprintf( "%6.4f", $dist ) .
-                        ") and are considered a bump";
-                    if( $ignore_bumps ) {
-                        warning( $0, $filename, $dataname, $message );
-                    } else {
-                        error( $0, $filename, $dataname, $message );
-                        print STDERR "$0: Aborting calculations.\n";
-                        exit( 254 );
-                    }
+		    if( not exists $used_bonds->{$sym_label}{$new_label} ) {
+			my $message =  "atoms \"$new_atom->{label}\" and " .
+			    "\"$sym_atom->{label}\" are too close " .
+			    "(distance = " .
+			    sprintf( "%6.4f", $dist ) .
+			    ") and are considered a bump";
+			if( $ignore_bumps ) {
+			    warning( $0, $filename, $dataname, $message );
+			} else {
+			    error( $0, $filename, $dataname, $message );
+			    print STDERR "$0: Aborting calculations.\n";
+			    exit( 254 );
+			}
+		    }
                 }
+
+                $used_bonds->{$sym_label}{$new_label} = 1;
+                $used_bonds->{$new_label}{$sym_label} = 1;
 
                 my $is_bond = test_bond($atom_properties,
 					$new_atom->{chemical_type},
@@ -2210,6 +2210,15 @@ sub find_molecule($$$$$$$$$$$)
                                         "atom" => $sym_atom } );
                     } if $debug;
 
+		    if( exists $polymer_bonds->
+			{$sym_atom->{label_basename}}
+			{$new_atom->{label_basename}} ) {
+			## print STDERR "polymer detected: $sym_atom->{label_basename} -- $new_atom->{label_basename}\n";
+		    } else {
+			$polymer_bonds->{$sym_atom->{label_basename}}{$new_atom->{label_basename}} = 1;
+			$polymer_bonds->{$new_atom->{label_basename}}{$sym_atom->{label_basename}} = 1;
+		    }
+
                     my $back_shifted_sym_atom =
                         translate_atom( $sym_atom, $current_translation );
                     push(@neighbors, find_molecule( $covalent_sensitivity,
@@ -2218,12 +2227,13 @@ sub find_molecule($$$$$$$$$$$)
                                                     $used_atoms,
                                                     $used_basenames,
                                                     $used_bonds,
+                                                    $polymer_bonds,
                                                     $back_shifted_sym_atom,
                                                     $bricks,
                                                     $filename, $dataname,
                                                     $ortho_matrix ));
                 }
-            }
+            ## }
         }
     }}}
 
