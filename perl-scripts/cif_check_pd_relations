@@ -23,8 +23,11 @@ use CCIFParser;
 use SOptions;
 
 my $use_parser = "perl";
+my $overall_info_datablock;
+my $overall_info_datablock_name;
 
 @ARGV = getOptions(
+    "--overall-information-datablock"   => \$overall_info_datablock_name,
     "--use-perl-parser"       => sub{ $use_parser = "perl" },
     "--use-c-parser"          => sub{ $use_parser = "c" }
 );
@@ -55,35 +58,63 @@ foreach my $filename ( @ARGV ) {
 
     my %pd_ids;
     my %type;
+    my $overall_info_datablock_count = 0;
     for( my $i = 0; $i < @$data; $i++ ) {
+        if( defined $overall_info_datablock_name ) {
+            if( $overall_info_datablock_name eq $data->[$i]{name} ) {
+                $overall_info_datablock_count++;
+                if( !defined $overall_info_datablock ) {
+                    $overall_info_datablock = $i;
+                }
+            }
+        }
         next unless exists $data->[$i]{values}{_pd_block_id};
         my $pd_block_id = $data->[$i]{values}{_pd_block_id}[0];
         if( exists $pd_ids{$pd_block_id} ) {
             print STDERR "$0: $filename: two or more datablocks with " .
                 "_pd_block_id '$pd_block_id' were found -- " .
-                "_pd_block_id must be unique for each datablock";
+                "_pd_block_id must be unique for each datablock\n";
                 next INPUTFILE;
         }
         $pd_ids{$pd_block_id} = $i;
     }
+    if( defined $overall_info_datablock_name ) {
+        if( $overall_info_datablock_count > 1 ) {
+            print STDERR "$0: $filename: $overall_info_datablock_count " .
+                "datablocks named '$overall_info_datablock' " .
+                "were found -- assuming that the first occurence " .
+                "is the overall information datablock\n";
+        } elsif( $overall_info_datablock_count == 0 ) {
+            print STDERR "$0: $filename: datablock '" .
+                $overall_info_datablock_name . "' was not found in " .
+                "supplied file -- skipping the checks\n";
+            next INPUTFILE;
+        }
+    } else {
+        for( my $i = 0; $i < @$data; $i++ ) {
+            if( exists $data->[$i]{values}{_pd_phase_block_id} &&
+                exists $data->[$i]{values}{_pd_block_diffractogram_id} ) {
+                $overall_info_datablock = $i;
+                print STDERR "$0: $filename: assuming that datablock '" .
+                    $data->[$i]{name} . "' is overall information " .
+                    "datablock\n";
+                last;
+            }
+        }
+    }
 
-    # For now, let's simply assume, that overall information block
-    # is the second datablock in the supplied CIF file.
-    # More sophisticated algorithm is to be devised. A.M.
-
-    my $relation_datablock = 1;
-    foreach( @{$data->[$relation_datablock]{values}{_pd_phase_block_id}} ) {
+    foreach( @{$data->[$overall_info_datablock]{values}{_pd_phase_block_id}} ) {
         if( !exists $pd_ids{$_} ) {
             print STDERR "$0: $filename: phase block with _pd_block_id " .
-                "'$_' does not exist";
+                "'$_' does not exist\n";
             next INPUTFILE;
         }
         $type{$pd_ids{$_}} = 'phase';
     }
-    foreach( @{$data->[$relation_datablock]{values}{_pd_block_diffractogram_id}} ) {
+    foreach( @{$data->[$overall_info_datablock]{values}{_pd_block_diffractogram_id}} ) {
         if( !exists $pd_ids{$_} ) {
             print STDERR "$0: $filename: diffractogram block with " .
-                "_pd_block_id '$_' does not exist";
+                "_pd_block_id '$_' does not exist\n";
             next INPUTFILE;
         }
         $type{$pd_ids{$_}} = 'diffractogram';
@@ -106,7 +137,7 @@ foreach my $filename ( @ARGV ) {
             foreach( @{$data->[$element]{values}{$tag}} ) {
                 if( !exists $pd_ids{$_} ) {
                     print STDERR "$0: $filename: " . $data->[$element]{name} .
-                        ": datablock with _pd_block_id '$_' does not exist";
+                        ": datablock with _pd_block_id '$_' does not exist\n";
                     next INPUTFILE;
                 }
                 if( exists $not_visited{$pd_ids{$_}} ) {
@@ -116,7 +147,7 @@ foreach my $filename ( @ARGV ) {
             }
         }
         print "$filename: group:\n    " . join( "\n    ",
-            map( $data->[$_]{values}{_pd_block_id}[0], @island ) ) . "\n";
+            map( $data->[$_]{values}{_pd_block_id}[0], sort @island ) ) . "\n";
         my @phases;
         my @diffractograms;
         foreach my $block ( @island ) {
