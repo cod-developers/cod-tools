@@ -1,0 +1,170 @@
+#! /bin/sh
+#!perl -w # --*- Perl -*--
+eval 'exec perl -x $0 ${1+"$@"}'
+    if 0;
+#------------------------------------------------------------------------------
+#$Author$
+#$Date$
+#$Revision$
+#$URL$
+#------------------------------------------------------------------------------
+#*
+#  Parse a pdCIF file and check the relations between chemical species
+#  and diffraction data blocks.
+#**
+
+use strict;
+use lib "./lib/perl5";
+use lib "./CIFParser";
+use lib "./CCIFParser";
+use lib ".";
+use CIFParser;
+use CCIFParser;
+use SOptions;
+
+my $use_parser = "perl";
+
+@ARGV = getOptions(
+    "--use-perl-parser"       => sub{ $use_parser = "perl" },
+    "--use-c-parser"          => sub{ $use_parser = "c" }
+);
+
+INPUTFILE:
+foreach my $filename ( @ARGV ) {
+
+    my( $data, $error_count );
+    my %options;
+
+    if( $use_parser eq "perl" ) {
+        my $parser = new CIFParser;
+
+        $data = $parser->Run($filename, \%options);
+
+        if( defined $parser->YYData->{ERRCOUNT} ) {
+            $error_count = $parser->YYData->{ERRCOUNT};
+        }
+    } else {
+        ( $data, $error_count ) = CCIFParser::parse( $filename, \%options );
+    }
+
+    if( defined $error_count && $error_count > 0 ) {
+        print STDERR "$0: ", $error_count,
+            " error(s) encountered while parsing file '${filename}'\n";
+        next INPUTFILE;
+    }
+
+    my %pd_ids;
+    my %type;
+    for( my $i = 0; $i < @$data; $i++ ) {
+        next unless exists $data->[$i]{values}{_pd_block_id};
+        $pd_ids{$data->[$i]{values}{_pd_block_id}[0]} = $i;
+    }
+
+    # For now, let's simply assume, that overall information block
+    # is the second datablock in the supplied CIF file.
+    # More sophisticated algorithm is to be devised. A.M.
+
+    my $relation_datablock = 1;
+    foreach( @{$data->[$relation_datablock]{values}{_pd_phase_block_id}} ) {
+        if( !exists $pd_ids{$_} ) {
+            print STDERR "$0: $filename: phase block with _pd_block_id " .
+                "'$_' does not exist";
+            next INPUTFILE;
+        }
+        $type{$pd_ids{$_}} = 'phase';
+    }
+    foreach( @{$data->[$relation_datablock]{values}{_pd_block_diffractogram_id}} ) {
+        if( !exists $pd_ids{$_} ) {
+            print STDERR "$0: $filename: diffractogram block with " .
+                "_pd_block_id '$_' does not exist";
+            next INPUTFILE;
+        }
+        $type{$pd_ids{$_}} = 'diffractogram';
+    }
+
+    # Simple breadth-first algorithm
+    my %not_visited = map{ $_ => 1 } keys %type;
+    while( scalar( keys %not_visited ) > 0 ) {
+        my @queue;
+        my @island;
+        my $selected = (sort keys %not_visited)[0];
+        delete( $not_visited{$selected} );
+        push( @queue, $selected );
+        while( @queue > 0 ) {
+            my $element = shift @queue;
+            push( @island, $element );
+            my $tag = ( $type{$element} eq 'phase' )
+                ? '_pd_block_diffractogram_id'
+                : '_pd_phase_block_id';
+            foreach( @{$data->[$element]{values}{$tag}} ) {
+                if( exists $not_visited{$pd_ids{$_}} ) {
+                    push( @queue, $pd_ids{$_} );
+                    delete( $not_visited{$pd_ids{$_}} );
+                }
+            }
+        }
+        print "$filename: group:\n    " . join( "\n    ",
+            map( $data->[$_]{values}{_pd_block_id}[0], @island ) ) . "\n";
+        my @phases;
+        my @diffractograms;
+        foreach my $block ( @island ) {
+            if( $type{$block} eq 'phase' ) {
+                push( @phases, $data->[$block]{values}{_pd_block_id}[0] );
+            } else {
+                push( @diffractograms, $data->[$block]{values}{_pd_block_id}[0] );
+            }
+        }
+        @phases = sort @phases;
+        @diffractograms = sort @diffractograms;
+        foreach my $block ( sort @island ) {
+            my( $cmp_array, $tag );
+            if( $type{$block} eq 'phase' ) {
+                $cmp_array = \@diffractograms;
+                $tag = '_pd_block_diffractogram_id';
+            } else {
+                $cmp_array = \@phases;
+                $tag = '_pd_phase_block_id';
+            }
+            my @comm = @{ comm_array( $cmp_array,
+                [sort @{$data->[$block]{values}{$tag}}] ) };
+            foreach my $line ( @comm ) {
+                if( defined $line->[0] ) {
+                    print STDERR "$0: $filename: " . $data->[$block]{name} .
+                        ": value '" . $line->[0] .
+                        "' is missing in $tag loop\n";
+                }
+            }
+        }
+    }
+}
+
+sub comm_array
+{
+    my( $arr1, $arr2 ) = @_;
+    my @arr1 = @$arr1;
+    my @arr2 = @$arr2;
+    my @comm;
+    while( scalar( @arr1 ) + scalar( @arr2 ) > 0 ) {
+        if( @arr1 == 0 ) {
+            push( @comm, [ undef, undef, shift @arr2 ] );
+            next;
+        }
+        if( @arr2 == 0 ) {
+            push( @comm, [ shift @arr1, undef, undef ] );
+            next;
+        }
+        if( $arr1[0] ne $arr2[0] ) {
+            if( $arr1[0] lt $arr2[0] ) {
+                push( @comm, [ shift @arr1, undef, undef ] );
+            } else {
+                push( @comm, [ undef, undef, shift @arr2 ] );
+            }
+        } else {
+            push( @comm, [ undef, $arr1[0], undef ] );
+            shift @arr1;
+            shift @arr2;
+        }
+        next;
+    }
+    return \@comm;
+}
