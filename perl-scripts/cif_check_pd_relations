@@ -57,7 +57,14 @@ foreach my $filename ( @ARGV ) {
     my %type;
     for( my $i = 0; $i < @$data; $i++ ) {
         next unless exists $data->[$i]{values}{_pd_block_id};
-        $pd_ids{$data->[$i]{values}{_pd_block_id}[0]} = $i;
+        my $pd_block_id = $data->[$i]{values}{_pd_block_id}[0];
+        if( exists $pd_ids{$pd_block_id} ) {
+            print STDERR "$0: $filename: two or more datablocks with " .
+                "_pd_block_id '$pd_block_id' were found -- " .
+                "_pd_block_id must be unique for each datablock";
+                next INPUTFILE;
+        }
+        $pd_ids{$pd_block_id} = $i;
     }
 
     # For now, let's simply assume, that overall information block
@@ -97,6 +104,11 @@ foreach my $filename ( @ARGV ) {
                 ? '_pd_block_diffractogram_id'
                 : '_pd_phase_block_id';
             foreach( @{$data->[$element]{values}{$tag}} ) {
+                if( !exists $pd_ids{$_} ) {
+                    print STDERR "$0: $filename: " . $data->[$element]{name} .
+                        ": datablock with _pd_block_id '$_' does not exist";
+                    next INPUTFILE;
+                }
                 if( exists $not_visited{$pd_ids{$_}} ) {
                     push( @queue, $pd_ids{$_} );
                     delete( $not_visited{$pd_ids{$_}} );
