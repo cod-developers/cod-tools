@@ -146,6 +146,12 @@ foreach my $filename ( @ARGV ) {
                         ": datablock with _pd_block_id '$_' does not exist\n";
                     next INPUTFILE;
                 }
+                if( !exists $type{$pd_ids{$_}} ) {
+                    print STDERR "$0: $filename: _pd_block_id '$_' " .
+                        "seems to be not mentioned in overall information " .
+                        "datablock -- can not continue\n";
+                    next INPUTFILE;
+                }
                 if( exists $not_visited{$pd_ids{$_}} ) {
                     push( @queue, $pd_ids{$_} );
                     delete( $not_visited{$pd_ids{$_}} );
