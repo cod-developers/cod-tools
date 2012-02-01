@@ -2099,7 +2099,7 @@ sub find_molecule($$$$$$$$$$$)
     my $current_translation = translation( $current_atom->{coordinates_fract},
                                            \@current_coords_fract_modulo_1 );
 
-    my $new_atom = copy_atom($current_atom);
+    my $new_atom = copy_atom( $current_atom );
 
     if( exists $new_atom->{unit_cell_label} ) {
         $new_atom->{label} = $new_atom->{unit_cell_label};
@@ -2175,8 +2175,8 @@ sub find_molecule($$$$$$$$$$$)
                 my $is_bump = test_bump( $atom_properties,
 					 $current_atom->{chemical_type},
 					 $sym_atom->{chemical_type},
-                                         $new_atom->{label_basename},
-                                         $label_basename,
+                                         $current_atom->{label_basename},
+                                         $sym_atom->{label_basename},
                                          $dist, $bump_distance_factor );
 
                 if( $is_bump ) {
@@ -2196,7 +2196,7 @@ sub find_molecule($$$$$$$$$$$)
 
                 my $is_bond = test_bond($atom_properties,
 					$current_atom->{chemical_type},
-                                        $sym_atom->{"chemical_type"},
+                                        $sym_atom->{chemical_type},
                                         $dist,
                                         $covalent_sensitivity);
 
