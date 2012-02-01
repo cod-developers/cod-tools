@@ -2148,19 +2148,17 @@ sub find_molecule($$$$$$$$$$$)
     for $k ($min_k .. $max_k) {
         for my $sym_atom ( @{$bricks->{atoms}[$i][$j][$k]} ) {
             my $coords_ortho    = $sym_atom->{coordinates_ortho};
-            my $label           = $sym_atom->{label};
-            my $label_basename  = $sym_atom->{label_basename};
 
-            if( not exists $used_bonds->{$label}{$new_atom->{label}} )
-            {
+            if( not exists
+		$used_bonds->{$sym_atom->{label}}{$new_atom->{label}} ) {
 
-                $used_bonds->{$label} = {}
-                    unless exists $used_bonds->{$label};
-                $used_bonds->{$label}{$new_atom->{label}} = 1;
+                $used_bonds->{$sym_atom->{label}} = {}
+                    unless exists $used_bonds->{$sym_atom->{label}};
+                $used_bonds->{$sym_atom->{label}}{$new_atom->{label}} = 1;
 
                 $used_bonds->{$new_atom->{label}} = {}
                      unless exists $used_bonds->{$new_atom->{label}};
-                $used_bonds->{$new_atom->{label}}{$label} = 1;
+                $used_bonds->{$new_atom->{label}}{$sym_atom->{label}} = 1;
 
                 my $dist = distance( $atom_in_unit_cell_coords_ortho,
                                      $coords_ortho );
@@ -2169,7 +2167,7 @@ sub find_molecule($$$$$$$$$$$)
                     local $" = ' ';
                     print ">>> checking $new_atom->{label} " .
                         "(@{$atom_in_unit_cell_coords_ortho}) vs. " .
-                        "$label (@{$coords_ortho}), d = $dist\n";
+                        "$sym_atom->{label} (@{$coords_ortho}), d = $dist\n";
                 } if $debug;
 
                 my $is_bump = test_bump( $atom_properties,
@@ -2181,7 +2179,7 @@ sub find_molecule($$$$$$$$$$$)
 
                 if( $is_bump ) {
                     my $message =  "atoms \"$new_atom->{label}\" and " .
-                        "\"$label\" are too close " .
+                        "\"$sym_atom->{label}\" are too close " .
                         "(distance = " .
                         sprintf( "%6.4f", $dist ) .
                         ") and are considered a bump";
