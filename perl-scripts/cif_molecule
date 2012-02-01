@@ -2095,13 +2095,14 @@ sub find_molecule($$$$$$$$$$$)
     my $current_translation = translation( $current_atom->{coordinates_fract},
                                            \@current_coords_fract_modulo_1 );
 
-    my $current_atom_copy = copy_atom($current_atom);
-    if( exists $current_atom_copy->{unit_cell_label} ) {
-        $current_atom_copy->{label} = $current_atom_copy->{unit_cell_label};
+    my $new_atom = copy_atom($current_atom);
+
+    if( exists $new_atom->{unit_cell_label} ) {
+        $new_atom->{label} = $new_atom->{unit_cell_label};
     }
 
     my $atom_in_unit_cell_type  = $current_atom->{chemical_type};
-    my $atom_in_unit_cell_label = $current_atom_copy->{label};
+    my $atom_in_unit_cell_label = $new_atom->{label};
 
     my $atom_in_unit_cell_coords_ortho =
 	multiply_matrix_with_vector( $ortho_matrix,
@@ -2126,7 +2127,7 @@ sub find_molecule($$$$$$$$$$$)
     $used_basenames->{$current_atom->{label_basename}} =
 	$current_atom->{label_basename};
 
-    push( @neighbors, $current_atom_copy );
+    push( @neighbors, $new_atom );
 
     my ($i, $j, $k) =
         AtomBricks::get_atom_index( $bricks,
