@@ -2092,6 +2092,10 @@ sub find_molecule($$$$$$$$$$$)
     my @current_coords_fract_modulo_1 =
         map { modulo_1($_) } @{$current_atom->{coordinates_fract}};
 
+    my $atom_in_unit_cell_coords_ortho =
+	multiply_matrix_with_vector( $ortho_matrix,
+				     \@current_coords_fract_modulo_1 );
+
     my $current_translation = translation( $current_atom->{coordinates_fract},
                                            \@current_coords_fract_modulo_1 );
 
@@ -2100,10 +2104,6 @@ sub find_molecule($$$$$$$$$$$)
     if( exists $new_atom->{unit_cell_label} ) {
         $new_atom->{label} = $new_atom->{unit_cell_label};
     }
-
-    my $atom_in_unit_cell_coords_ortho =
-	multiply_matrix_with_vector( $ortho_matrix,
-				     \@current_coords_fract_modulo_1 );
 
     my @neighbors;
 
