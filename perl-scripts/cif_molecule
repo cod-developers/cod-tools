@@ -2101,20 +2101,15 @@ sub find_molecule($$$$$$$$$$$)
         $new_atom->{label} = $new_atom->{unit_cell_label};
     }
 
-    my $atom_in_unit_cell_type  = $current_atom->{chemical_type};
-    my $atom_in_unit_cell_label = $new_atom->{label};
-
     my $atom_in_unit_cell_coords_ortho =
 	multiply_matrix_with_vector( $ortho_matrix,
 				     \@current_coords_fract_modulo_1 );
 
-    my $atom_in_unit_cell_label_basename = $current_atom->{label_basename};
-
     my @neighbors;
 
-    if(exists $used_atoms->{$atom_in_unit_cell_label})
+    if(exists $used_atoms->{$new_atom->{label}})
     {
-        print "<<<< atom labeled '$atom_in_unit_cell_label' " .
+        print "<<<< atom labeled '$new_atom->{label}' " .
             "is already in some molecule, returning\n"
             if $debug;
         return @neighbors;
@@ -2122,7 +2117,7 @@ sub find_molecule($$$$$$$$$$$)
 
     my $current_label = $current_atom->{label};
 
-    $used_atoms->{$atom_in_unit_cell_label} = $atom_in_unit_cell_label;
+    $used_atoms->{$new_atom->{label}} = $new_atom->{label};
 
     $used_basenames->{$current_atom->{label_basename}} =
 	$current_atom->{label_basename};
@@ -2153,40 +2148,40 @@ sub find_molecule($$$$$$$$$$$)
     for $j ($min_j .. $max_j) {
     for $k ($min_k .. $max_k) {
         for my $sym_atom ( @{$bricks->{atoms}[$i][$j][$k]} ) {
-            my $type            = $sym_atom->{"chemical_type"};
-            my $coords_ortho    = $sym_atom->{"coordinates_ortho"};
-            my $label           = $sym_atom->{"label"};
-            my $label_basename  = $sym_atom->{"label_basename"};
+            my $coords_ortho    = $sym_atom->{coordinates_ortho};
+            my $label           = $sym_atom->{label};
+            my $label_basename  = $sym_atom->{label_basename};
 
-            if( not exists $used_bonds->{$label}{$atom_in_unit_cell_label} )
+            if( not exists $used_bonds->{$label}{$new_atom->{label}} )
             {
 
                 $used_bonds->{$label} = {}
                     unless exists $used_bonds->{$label};
-                $used_bonds->{$label}{$atom_in_unit_cell_label} = 1;
+                $used_bonds->{$label}{$new_atom->{label}} = 1;
 
-                $used_bonds->{$atom_in_unit_cell_label} = {}
-                     unless exists $used_bonds->{$atom_in_unit_cell_label};
-                $used_bonds->{$atom_in_unit_cell_label}{$label} = 1;
+                $used_bonds->{$new_atom->{label}} = {}
+                     unless exists $used_bonds->{$new_atom->{label}};
+                $used_bonds->{$new_atom->{label}}{$label} = 1;
 
                 my $dist = distance( $atom_in_unit_cell_coords_ortho,
                                      $coords_ortho );
 
                 do {
                     local $" = ' ';
-                    print ">>> checking $atom_in_unit_cell_label " .
+                    print ">>> checking $new_atom->{label} " .
                         "(@{$atom_in_unit_cell_coords_ortho}) vs. " .
                         "$label (@{$coords_ortho}), d = $dist\n";
                 } if $debug;
 
                 my $is_bump = test_bump( $atom_properties,
-                                         $atom_in_unit_cell_type, $type,
-                                         $atom_in_unit_cell_label_basename,
+					 $current_atom->{chemical_type},
+					 $sym_atom->{chemical_type},
+                                         $new_atom->{label_basename},
                                          $label_basename,
                                          $dist, $bump_distance_factor );
 
                 if( $is_bump ) {
-                    my $message =  "atoms \"$atom_in_unit_cell_label\" and " .
+                    my $message =  "atoms \"$new_atom->{label}\" and " .
                         "\"$label\" are too close " .
                         "(distance = " .
                         sprintf( "%6.4f", $dist ) .
@@ -2201,8 +2196,8 @@ sub find_molecule($$$$$$$$$$$)
                 }
 
                 my $is_bond = test_bond($atom_properties,
-                                        $atom_in_unit_cell_type,
-                                        $type,
+					$current_atom->{chemical_type},
+                                        $sym_atom->{"chemical_type"},
                                         $dist,
                                         $covalent_sensitivity);
 
