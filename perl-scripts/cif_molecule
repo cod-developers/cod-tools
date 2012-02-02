@@ -557,6 +557,7 @@ sub check_init_atoms($$$$)
                          "to '" . $new_label . "'" );
                 $renamed_atom->{label}          = $new_label;
                 $renamed_atom->{label_basename} = $new_label;
+                $renamed_atom->{unit_cell_label} = $new_label;
                 $used_labels{$new_label}{count} ++;
             }
         }
@@ -604,6 +605,7 @@ sub initial_atoms($$$$$)
         {
             $atom_info->{"label"} .= $i;
             $atom_info->{"label_basename"} = $atom_info->{"label"};
+            $atom_info->{"unit_cell_label"} = $atom_info->{"label"};
         }
 
         if (exists $atom_properties->{ $atom_info->{"chemical_type"}})
@@ -909,7 +911,8 @@ sub extract_atom
     $atom_info{"coordinates_fract"}     = \@atom_xyz;
     $atom_info{"label"}                 = $atom_label;
     $atom_info{"label_basename"}        = $atom_label;
-    $atom_info{"symop_id"}              = (-1) * $number - 1;
+    $atom_info{"unit_cell_label"}       = $atom_label;
+    $atom_info{"symop_id"}              = (-1) * $number - 1; # ???? S.G.
     $atom_info{"unity_matrix_applied"}  = 1;
 
     my $atom_type;
@@ -1586,8 +1589,8 @@ sub shift_atom($)
                     $new_atom_info->{"coordinates_fract"} = \@new_atom_xyz;
                     $new_atom_info->{"label"} =
                         $atom_info->{"label"} . "_" . $shift_label;
-                    $new_atom_info->{"unit_cell_label"} = $unit_cell_label;
                 }
+		$new_atom_info->{"unit_cell_label"} = $unit_cell_label;
                 push(@shifted_atoms, $new_atom_info);
             }
         }
@@ -2106,6 +2109,8 @@ sub find_molecule($$$$$$$$$$$$)
 
     if( exists $new_atom->{unit_cell_label} ) {
         $new_atom->{label} = $new_atom->{unit_cell_label};
+    } else {
+	die
     }
 
     my @neighbors;
@@ -2210,13 +2215,24 @@ sub find_molecule($$$$$$$$$$$$)
                                         "atom" => $sym_atom } );
                     } if $debug;
 
-		    if( exists $polymer_bonds->
-			{$sym_atom->{label_basename}}
-			{$new_atom->{label_basename}} ) {
-			## print STDERR "polymer detected: $sym_atom->{label_basename} -- $new_atom->{label_basename}\n";
+		    if( exists $polymer_bonds->{$sym_atom->{unit_cell_label}} &&
+			exists $polymer_bonds->
+			{$sym_atom->{unit_cell_label}}
+			{$new_atom->{unit_cell_label}} ) {
+			## print STDERR
+			##     "polymer detected: " .
+			##     "$sym_atom->{label_basename}($sym_atom->{label}) -- " .
+			##     "$new_atom->{label_basename}($new_atom->{label})\n";
 		    } else {
-			$polymer_bonds->{$sym_atom->{label_basename}}{$new_atom->{label_basename}} = 1;
-			$polymer_bonds->{$new_atom->{label_basename}}{$sym_atom->{label_basename}} = 1;
+			$polymer_bonds->{$sym_atom->{unit_cell_label}} = {}
+			    unless exists $polymer_bonds->{$sym_atom->{unit_cell_label}};
+
+			$polymer_bonds->{$sym_atom->{unit_cell_label}}{$new_atom->{unit_cell_label}} ++;
+
+			$polymer_bonds->{$new_atom->{unit_cell_label}} = {}
+			    unless exists $polymer_bonds->{$new_atom->{unit_cell_label}};
+
+			$polymer_bonds->{$new_atom->{unit_cell_label}}{$sym_atom->{unit_cell_label}} ++;
 		    }
 
                     my $back_shifted_sym_atom =
