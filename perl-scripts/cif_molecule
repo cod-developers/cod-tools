@@ -1104,38 +1104,6 @@ sub translation
 }
 
 #==============================================================#
-# Translates all initial atoms according calculated translation.
-
-# Accepts an arrays of initial atoms and translation.
-
-# Returns an array of translated initial atoms.
-
-sub translate_atoms
-{
-    my($initial_atoms, $translation) = @_;
-    my @translated_initial_atoms;
-
-    foreach my $atom_info (@{$initial_atoms})
-    {
-        my $new_atom_info = copy_atom($atom_info);
-        my @new_atom_xyz;
-
-        push(@new_atom_xyz,$atom_info->{"coordinates_fract"}[0] +
-                                                            ${$translation}[0]);
-        push(@new_atom_xyz,$atom_info->{"coordinates_fract"}[1] +
-                                                            ${$translation}[1]);
-        push(@new_atom_xyz,$atom_info->{"coordinates_fract"}[2] +
-                                                            ${$translation}[2]);
-
-        $new_atom_info->{"coordinates_fract"} = \@new_atom_xyz;
-
-        push(@translated_initial_atoms, $new_atom_info);
-    }
-
-    return \@translated_initial_atoms;
-}
-
-#==============================================================#
 # Translates an atom according a given translation.
 #
 # Accepts an atom description and a translation.
