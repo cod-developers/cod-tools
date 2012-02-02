@@ -404,11 +404,8 @@ sub get_molecules
     my $n = 1;
     foreach my $atom_group ( @{$atom_groups} )
     {
-        my $translated_atoms = init_atoms_modulo_1($atom_group);
-
         my @symmetric_atoms = apply_shifts( 
-            symgen_all_atoms( $translated_atoms, \@sym_operators, 
-                              $f2o ));
+            symgen_all_atoms( $atom_group, \@sym_operators, $f2o ));
 
         foreach my $atom (@symmetric_atoms)
         {
@@ -430,7 +427,7 @@ sub get_molecules
         push( @unique_molecules, find_molecules( $covalent_sensitivity,
                                                  $atom_properties,
                                                  \@symmetric_atoms,
-                                                 $translated_atoms,
+                                                 $atom_group,
                                                  $bricks,
                                                  $filename, $dataname,
                                                  \%seen_molecules,
@@ -606,27 +603,6 @@ sub initial_atoms($$$$$$)
 				$filename, $dataname);
 }
 
-
-# ============================================================================ #
-# Accepts init atoms.
-# Returns the same atoms but with applied modulo_1 to all coords.
-
-sub init_atoms_modulo_1
-{
-    my ($init_atoms) = @_;
-
-    my @initial_atoms_modulo_1;
-
-    foreach my $atom (@$init_atoms)
-    {
-        my $init_atom_modulo_1 = copy_atom($atom);
-        my @modulo_1_coords = map {modulo_1($_)} @{$atom->{coordinates_fract}};
-        $init_atom_modulo_1->{coordinates_fract} = \@modulo_1_coords;
-        push(@initial_atoms_modulo_1, $init_atom_modulo_1);
-    }
-
-    return \@initial_atoms_modulo_1;
-}
 
 #============================================================================= #
 # It's a function where atom groups are made according disorder information. If
@@ -886,6 +862,8 @@ sub extract_atom
         push(@atom_xyz, $values->{$cif_fract}[$number]);
         $atom_xyz[-1] =~ s/\(\d+\)$//;
     }
+
+    @atom_xyz = map { modulo_1($_) } @atom_xyz;
 
     $atom_info{"coordinates_fract"}     = \@atom_xyz;
     $atom_info{"label"}                 = $atom_label;
