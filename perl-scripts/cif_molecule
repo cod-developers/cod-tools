@@ -410,8 +410,7 @@ sub get_molecules
         foreach my $atom (@symmetric_atoms)
         {
             $atom->{coordinates_ortho} =
-                multiply_matrix_with_vector( $f2o,
-                                             $atom->{coordinates_fract} );
+                mat_vect_mul( $f2o, $atom->{coordinates_fract} );
         }
 
 	if( $dump_atoms ) {
@@ -1265,34 +1264,6 @@ sub chemical_formula_sum
 
     return $formula_sum;
 }
-#===============================================================#
-# Multiplies an ortho matrix with a vector.
-
-# my $ortho = [
-#     [ o11 o12 o13 ]
-#     [ 0   o22 o23 ]
-#     [ 0   0   o33 ]
-# ]
-#
-
-sub multiply_matrix_with_vector
-{
-    my($matrix, $vector) = @_;
-
-    my @new_coordinates;
-
-    for(my $i = 0; $i < @{$vector}; $i++)
-    {
-        $new_coordinates[$i] = 0;
-        for(my $j = 0; $j < @{$vector}; $j++)
-        {
-            $new_coordinates[$i] += ${$matrix}[$i][$j] * ${$vector}[$j];
-        }
-    }
-
-    return \@new_coordinates;
-}
-
 
 #===============================================================#
 # Applies symmetry operator to a given atom.
@@ -2055,8 +2026,7 @@ sub find_molecule($$$$$$$$$$$$$)
         map { modulo_1($_) } @{$current_atom->{coordinates_fract}};
 
     my $atom_in_unit_cell_coords_ortho =
-	multiply_matrix_with_vector( $ortho_matrix,
-				     \@current_coords_fract_modulo_1 );
+	mat_vect_mul( $ortho_matrix, \@current_coords_fract_modulo_1 );
 
     my $current_translation = translation( $current_atom->{coordinates_fract},
                                            \@current_coords_fract_modulo_1 );
