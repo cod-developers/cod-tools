@@ -891,8 +891,10 @@ sub extract_atom
     $atom_info{"label"}                 = $atom_label;
     $atom_info{"original_label"}        = $atom_label;
     $atom_info{"unit_cell_label"}       = $atom_label;
-    $atom_info{"symop_id"}              = (-1) * $number - 1; # ???? S.G.
+    $atom_info{"symop_id"}              = 1;
     $atom_info{"unity_matrix_applied"}  = 1;
+    $atom_info{"translation_id"}        = "555";
+    $atom_info{"shift"}                 = [ 0, 0, 0 ];
 
     my $atom_type;
 
@@ -916,22 +918,16 @@ sub extract_atom
 
     $atom_info{"chemical_type"} = $atom_type;
 
-    if(exists $values->{"_atom_site_disorder_assembly"}[$number])
-    {
+    if( exists $values->{"_atom_site_disorder_assembly"}[$number]) {
         $atom_info{"assembly"} =
-                        $values->{"_atom_site_disorder_assembly"}[$number];
-    }
-    else
-    {
+	    $values->{"_atom_site_disorder_assembly"}[$number];
+    } else {
         $atom_info{"assembly"} = ".";
     }
 
-    if(exists $values->{"_atom_site_disorder_group"}[$number])
-    {
+    if( exists $values->{"_atom_site_disorder_group"}[$number] ) {
         $atom_info{"group"} = $values->{"_atom_site_disorder_group"}[$number];
-    }
-    else
-    {
+    } else {
         $atom_info{"group"} = ".";
     }
 
