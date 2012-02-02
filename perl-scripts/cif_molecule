@@ -371,7 +371,7 @@ sub symgen_atom($$$);
 sub symgen_all_atoms($$$);
 sub apply_shifts($);
 sub find_molecules($$$$$$$$$);
-sub find_molecule($$$$$$$$$$$$);
+sub find_molecule($$$$$$$$$$$$$);
 sub check_init_atoms($$$$);
 sub initial_atoms($$$$$);
 
@@ -481,11 +481,6 @@ sub get_molecules
 	    dump_atoms_as_cif( $n++, \@symmetric_atoms, \@cell_lengths_and_angles );
 	    next
 	}
-
-        do {
-            use Serialise;
-            serialiseRef( \@symmetric_atoms );
-        } if $debug;
 
         my $bricks = AtomBricks::build_bricks( \@symmetric_atoms,
                                                $max_covalent_radius * 2 +
@@ -1235,6 +1230,25 @@ sub translate_atom
 
     $new_atom->{"coordinates_fract"} = \@new_atom_xyz;
     delete( $new_atom->{coordinates_ortho} );
+
+    $new_atom->{shift} = [ @$translation ];
+
+    if( !( defined $new_atom->{unity_matrix_applied} &&
+	   $new_atom->{unity_matrix_applied} &&
+	   ${$translation}[0] == 0 &&
+	   ${$translation}[1] == 0 &&
+	   ${$translation}[2] == 0 )) {
+
+	my $translation_id =
+	    (${$translation}[0]+5) .
+	    (${$translation}[1]+5) .
+	    (${$translation}[2]+5);
+
+	$new_atom->{label} =
+	    $new_atom->{label_basename} . "_" .
+	    $new_atom->{symop_id} . "_" .
+	    $translation_id;
+    }
 
     return $new_atom;
 }
@@ -2052,19 +2066,23 @@ sub find_molecules($$$$$$$$$)
 
     my @unique_molecules;
     my %used_atoms;
-    my %used_bonds;
     my %used_basenames;
+    my %used_uc_atoms;
+    my %used_bonds;
     my %polymer_bonds;
 
     foreach my $initial_atom (@$initial_atoms)
     {
         if ((not exists $used_basenames{$initial_atom->{label_basename}}))
         {
+	    print STDERR ">>>> starting new molecule\n" if $debug;
+
             my @molecule_atoms = find_molecule( $covalent_sensitivity,
                                                 $atom_properties,
                                                 $symmetric_atoms,
                                                 \%used_atoms,
                                                 \%used_basenames,
+                                                \%used_uc_atoms,
                                                 \%used_bonds,
                                                 \%polymer_bonds,
                                                 $initial_atom, $bricks,
@@ -2098,13 +2116,14 @@ sub find_molecules($$$$$$$$$)
 
 # ============================================================================ #
 
-sub find_molecule($$$$$$$$$$$$)
+sub find_molecule($$$$$$$$$$$$$)
 {
     my $covalent_sensitivity = shift(@_);
     my $atom_properties      = shift(@_);
     my $symmetric_atoms      = shift(@_);
     my $used_atoms           = shift(@_);
     my $used_basenames       = shift(@_);
+    my $used_uc_atoms        = shift(@_);
     my $used_bonds           = shift(@_);
     my $polymer_bonds        = shift(@_);
     my $current_atom         = shift(@_);
@@ -2128,24 +2147,39 @@ sub find_molecule($$$$$$$$$$$$)
     if( exists $new_atom->{unit_cell_label} ) {
         $new_atom->{label} = $new_atom->{unit_cell_label};
     } else {
-	die
+    	die
     }
 
     my @neighbors;
 
     if(exists $used_atoms->{$new_atom->{label}})
     {
-        print "<<<< atom labeled '$new_atom->{label}' " .
+        print STDERR "<<<< atom labeled '$new_atom->{label}' " .
             "is already in some molecule, returning\n"
             if $debug;
         return @neighbors;
     }
+
+    if(exists $used_uc_atoms->{$new_atom->{unit_cell_label}})
+    {
+        print STDERR ">>> !!!! detected a used unit cell label $new_atom->{unit_cell_label}\n"
+            if $debug;
+    }
+
+    print STDERR
+	">>> considering atom $new_atom->{label} " .
+	"(ORIG=$new_atom->{label_basename}, " .
+	"UC=$new_atom->{unit_cell_label})\n"
+	if $debug;
 
     $used_atoms->{$new_atom->{label}} = $new_atom->{label};
     $used_atoms->{$current_atom->{label}} = $current_atom->{label};
 
     $used_basenames->{$new_atom->{label_basename}} =
 	$new_atom->{label_basename};
+
+    $used_uc_atoms->{$new_atom->{unit_cell_label}} =
+	$new_atom->{label};
 
     push( @neighbors, $new_atom );
 
@@ -2167,7 +2201,14 @@ sub find_molecule($$$$$$$$$$$$)
         serialiseRef( $bricks );
         die( $@ );
     }
-                                  
+
+    if( $debug ) {
+	local $" = ", ";
+	print STDERR
+	    ">>> now scanning its distinct neighbours " .
+	    "around @{$atom_in_unit_cell_coords_ortho}:\n";
+    };
+
     ## foreach my $sym_atom (@$symmetric_atoms)
     for $i ($min_i .. $max_i) {
     for $j ($min_j .. $max_j) {
@@ -2179,14 +2220,20 @@ sub find_molecule($$$$$$$$$$$$)
 
             ## if( not exists $used_bonds->{$sym_label}{$new_label} ) {
 
+	    if( $new_atom->{label} eq $sym_atom->{label} ) {
+		# We have found the same atom, no need to add bond or
+		# neighbour
+		next;
+	    }
+
                 my $dist = distance( $atom_in_unit_cell_coords_ortho,
                                      $sym_atom_coords_ortho );
 
                 do {
                     local $" = ' ';
-                    print ">>> checking $new_label " .
-                        "(@{$atom_in_unit_cell_coords_ortho}) vs. " .
-                        "$sym_label (@{$sym_atom_coords_ortho}), d = $dist\n";
+                    print STDERR ">>> checking neighbour $sym_label " .
+                        "(@{$sym_atom_coords_ortho}), " .
+                        "(ORIG=$new_atom->{label_basename}, UC=$new_atom->{unit_cell_label}), d = $dist\n";
                 } if $debug;
 
                 my $is_bump = test_bump( $atom_properties,
@@ -2227,21 +2274,28 @@ sub find_molecule($$$$$$$$$$$$)
                     do {
                         use Serialise;
                         local $" = ' ';
-                        print ">>> found bond:\n";
+                        print STDERR ">>> found bond:\n";
                         serialiseRef( { "translation" => $current_translation,
                                         "original atom" => $current_atom,
-                                        "atom" => $sym_atom } );
+                                        "sym atom" => $sym_atom } );
                     } if $debug;
 
 		    if( exists $polymer_bonds->{$sym_atom->{unit_cell_label}} &&
 			exists $polymer_bonds->
 			{$sym_atom->{unit_cell_label}}
 			{$new_atom->{unit_cell_label}} ) {
-			## print STDERR
-			##     "polymer detected: " .
-			##     "$sym_atom->{label_basename}($sym_atom->{label}) -- " .
-			##     "$new_atom->{label_basename}($new_atom->{label})\n";
+			print STDERR
+			    "polymer detected: " .
+			    "$sym_atom->{label_basename}($sym_atom->{label}, UC=$sym_atom->{unit_cell_label}) -- " .
+			    "$new_atom->{label_basename}($new_atom->{label}, UC=$new_atom->{unit_cell_label})\n"
+			    if $debug;
 		    } else {
+			print STDERR
+			    "adding bond: " .
+			    "$sym_atom->{label_basename}($sym_atom->{label}, UC=$sym_atom->{unit_cell_label}) -- " .
+			    "$new_atom->{label_basename}($new_atom->{label}, UC=$new_atom->{unit_cell_label})\n"
+			    if $debug;
+
 			$polymer_bonds->{$sym_atom->{unit_cell_label}} = {}
 			    unless exists $polymer_bonds->{$sym_atom->{unit_cell_label}};
 
@@ -2255,11 +2309,17 @@ sub find_molecule($$$$$$$$$$$$)
 
                     my $back_shifted_sym_atom =
                         translate_atom( $sym_atom, $current_translation );
+
+		    ## use Serialise;
+		    ## print ">>>> back-shifted atom:\n";
+		    ## serialiseRef( { sym_atom => $sym_atom, backshifted => $back_shifted_sym_atom } );
+
                     push(@neighbors, find_molecule( $covalent_sensitivity,
                                                     $atom_properties,
                                                     $symmetric_atoms,
                                                     $used_atoms,
                                                     $used_basenames,
+                                                    $used_uc_atoms,
                                                     $used_bonds,
                                                     $polymer_bonds,
                                                     $back_shifted_sym_atom,
