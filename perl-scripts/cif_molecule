@@ -59,6 +59,7 @@ my $sort_molecules = 1; # A flag indicating whether molecules should
                         # be sorted in the output (descending by atom
                         # number)
 
+my $dump_atoms = 0;
 my $format = "%8.6f";
 my $continue_on_errors = 0;
 my $covalent_sensitivity = 0.35;
@@ -135,6 +136,13 @@ my $cif_header_file; # Comments from the beginning of this file wil be
 #** --dont-exclude-zero-occupancies, --no-exclude-zero-occupancies
 #**                    Use all atoms regardless of their occupancy.
 #**
+#** --dump-atoms 
+#**       Dump atoms (including symmetry-equivalent) in CIF
+#**       format, for inspecion with some graphics program
+#**
+#** --dont-dump-atoms, --no-dump-atoms
+#**       Do not dump atoms (default)
+#**
 #** --debug            Print some human-readable debug output
 #** --no-debug         Suppress any debug output (default)
 #**
@@ -179,6 +187,10 @@ my $cif_header_file; # Comments from the beginning of this file wil be
     "--no-debug" => sub { $debug = 0 },
 
     "--format" => \$format,
+
+    "--dump-atoms"      => sub{ $dump_atoms = 1 },
+    "--dont-dump-atoms" => sub{ $dump_atoms = 0 },
+    "--no-dump-atoms"   => sub{ $dump_atoms = 0 },
 
     "--audit"                   => sub { $audit = 1; },
     "--no-audit"                => sub { $audit = 0; },
@@ -447,6 +459,7 @@ sub get_molecules
     my @unique_molecules;
     my %seen_molecules;
 
+    my $n = 1;
     foreach my $atom_group ( @{$atom_groups} )
     {
         my $translated_atoms = init_atoms_modulo_1($atom_group);
@@ -463,6 +476,11 @@ sub get_molecules
                 multiply_matrix_with_vector( $ortho_matrix,
                                              $atom->{coordinates_fract} );
         }
+
+	if( $dump_atoms ) {
+	    dump_atoms_as_cif( $n++, \@symmetric_atoms, \@cell_lengths_and_angles );
+	    next
+	}
 
         do {
             use Serialise;
@@ -2271,4 +2289,36 @@ sub find_molecule($$$$$$$$$$$$)
     ## } if $debug;
 
     return @neighbors;
+}
+
+sub dump_atoms_as_cif
+{
+    my ($datablock_name, $atom_list, $cell) = @_;
+
+    local $\ = "\n";
+
+    print "data_", $datablock_name;
+
+    print "_symmetry_space_group_name_H-M ", "'P 1'";
+    print "_cell_length_a ", $$cell[0] if defined $$cell[0];
+    print "_cell_length_b ", $$cell[1] if defined $$cell[1];
+    print "_cell_length_c ", $$cell[2] if defined $$cell[2];
+
+    print "_cell_angle_alpha ", $$cell[3] if defined $$cell[3];
+    print "_cell_angle_beta  ", $$cell[4] if defined $$cell[4];
+    print "_cell_angle_gamma ", $$cell[5] if defined $$cell[5];
+
+    print "loop_";
+    print "_atom_site_label";
+    print "_atom_site_fract_x";
+    print "_atom_site_fract_y";
+    print "_atom_site_fract_z";
+
+    for my $atom (@$atom_list) {
+	print
+	    $atom->{label}, " ",
+	    $atom->{coordinates_fract}[0], " ",
+	    $atom->{coordinates_fract}[1], " ",
+	    $atom->{coordinates_fract}[2];
+    }
 }
