@@ -954,7 +954,7 @@ sub copy_atom
         if( !ref $old_atom->{$key} ) {
             $new_atom{$key} = $old_atom->{$key};
         } elsif( ref $old_atom->{$key} eq "ARRAY" ) {
-            $new_atom{$key} = copy_array($old_atom->{$key});
+            $new_atom{$key} = [ @{$old_atom->{$key}} ];
         } else {
             die( "assertion failed: 'copy_atom' does not know how to " .
                  "copy the supplied object" );
@@ -962,19 +962,6 @@ sub copy_atom
     }
 
     return \%new_atom;
-}
-
-sub copy_array
-{
-    my ($arr) = @_;
-
-    my @copy_arr;
-    foreach my $value (@$arr)
-    {
-        push(@copy_arr, $value);
-    }
-
-    return \@copy_arr;
 }
 
 #===============================================================#
