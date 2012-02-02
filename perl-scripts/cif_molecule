@@ -582,7 +582,7 @@ sub initial_atoms($$$$$$)
 	    $label = $values->{$atom_site_tag}[$i];
 	}
 
-        my $atom_info = extract_atom( $label, $values, $i );
+        my $atom_info = extract_atom( $label, $values, $i, $f2o );
 
         if (exists $atom_properties->{ $atom_info->{"chemical_type"}}) {
             push( @atom_list, $atom_info );
@@ -850,7 +850,7 @@ sub get_unit_cell($$$)
 
 sub extract_atom
 {
-    my($atom_label, $values, $number) = @_;
+    my($atom_label, $values, $number, $f2o) = @_;
 
     my %atom_info;
     my @atom_xyz;
@@ -873,6 +873,9 @@ sub extract_atom
     $atom_info{"unity_matrix_applied"}  = 1;
     $atom_info{"translation_id"}        = "555";
     $atom_info{"translation"}           = [ 0, 0, 0 ];
+
+    $atom_info{coordinates_ortho} =
+        mat_vect_mul( $f2o, \@atom_xyz );
 
     my $atom_type;
 
@@ -989,7 +992,6 @@ sub copy_atom
 # );
 
 # Return a reference to symmetry operators.
-
 
 sub get_symops
 {
@@ -1315,19 +1317,11 @@ sub symop_apply
 
     my $new_atom_info = copy_atom($atom_info);
 
-    my @new_atom_xyz;
     my $atom_xyz = $atom_info->{"coordinates_fract"};
 
-    for(my $i = 0; $i < @{$atom_xyz}; $i++)
-    {
-        $new_atom_xyz[$i] = 0;
-        for(my $j = 0; $j < @{$atom_xyz}; $j++)
-        {
-            $new_atom_xyz[$i] += ${$atom_xyz}[$j] * ${$symop}[$i][$j];
-        }
-        $new_atom_xyz[$i] += ${$symop}[$i][-1];
-        $new_atom_xyz[$i] = modulo_1($new_atom_xyz[$i]);
-    }
+    my @new_atom_xyz =
+        map { modulo_1($_) }
+        mat_vect_mul( $symop, $atom_xyz );
 
     $new_atom_info->{"symop_id"} = $symop_id;
     $new_atom_info->{"coordinates_fract"} = \@new_atom_xyz;
@@ -1374,7 +1368,7 @@ sub mat_vect_mul($$)
         $new_coordinates[2] += $matrix->[2][3];
     }
 
-    return \@new_coordinates;
+    return wantarray ? @new_coordinates : \@new_coordinates;
 }
 
 #===============================================================#
