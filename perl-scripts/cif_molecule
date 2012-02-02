@@ -396,6 +396,10 @@ sub get_molecules
     # Get cell angles(alpha, beta, gama) and lengths(a, b, c)
     my @cell = get_unit_cell( $values, $filename, $dataname );
 
+    # Make a matric to convert from fractional coordinates to
+    # orthogonal:
+    my $f2o = symop_ortho_from_fract(@cell);
+
     # Extract atoms fract coordinates
     my $all_initial_atoms = initial_atoms( $atom_properties,
                                            $values, $atom_site_tag,
@@ -428,16 +432,14 @@ sub get_molecules
     {
         my $translated_atoms = init_atoms_modulo_1($atom_group);
 
-        my $ortho_matrix = symop_ortho_from_fract(@cell);
-
         my @symmetric_atoms = apply_shifts( 
             symgen_all_atoms( $translated_atoms, \@sym_operators, 
-                              $ortho_matrix ));
+                              $f2o ));
 
         foreach my $atom (@symmetric_atoms)
         {
             $atom->{coordinates_ortho} =
-                multiply_matrix_with_vector( $ortho_matrix,
+                multiply_matrix_with_vector( $f2o,
                                              $atom->{coordinates_fract} );
         }
 
@@ -458,7 +460,7 @@ sub get_molecules
                                                  $bricks,
                                                  $filename, $dataname,
                                                  \%seen_molecules,
-                                                 $ortho_matrix ));
+                                                 $f2o ));
     }
 
     # Calculates chemical formula sum
