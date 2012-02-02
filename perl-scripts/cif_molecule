@@ -283,47 +283,23 @@ for my $dataset (@$data)
 {
 #   extracts atom site label or atom site type symbol
     my $values = $dataset->{"values"};
-    my $atom_site_tag;
-
-    if (exists $values->{"_atom_site_label"})
-    {
-        $atom_site_tag = "_atom_site_label";
-    }
-    elsif (exists $values->{"_atom_site_type_symbol"})
-    {
-        $atom_site_tag = "_atom_site_type_symbol";
-
-        error( $0, $filename, $dataset->{name},
-               "_atom_site_label tag was not found. " .
-               "A serial number will be appended " .
-               "to _atom_site_type_symbol to make atom labels" );
-    }
-    else
-    {
-        error( $0, $filename, $dataset->{name},
-               "neither _atom_site_type_symbol nor _atom_site_label " .
-               "were found" );
-    }
 
 #   extracts symmetry operators
     my $sym_data = get_symmetry_operators( $dataset, $filename );
-
 
     if(not defined $sym_data) {
         error( $0, $filename, $dataset->{name},
                "no symmetry information found" );
     }
 
-    if((defined $atom_site_tag) && (defined $sym_data) && ($sym_data != 0))
-    {
+    if((defined $sym_data) && ($sym_data != 0)) {
         my $molecule_id = 0;
         my $dataset_name = $dataset->{name};
 
         my $unique_molecules = get_molecules (  $covalent_sensitivity,
                                                 $filename, $dataset_name,
                                                 $sym_data,
-                                                $atom_site_tag,
-                                                $values,
+                                                $dataset,
                                                 \%AtomProperties::atoms,
                                                 $uniquify_atoms );
 
@@ -334,8 +310,7 @@ for my $dataset (@$data)
                                  @$unique_molecules;
         }
 
-        foreach my $molecule (@$unique_molecules)
-        {
+        foreach my $molecule (@$unique_molecules) {
             print_molecule( $molecule_id, $audit, $molecule, $Id,
                             $dataset, $dataset_name, $filename );
             $molecule_id++;
@@ -385,10 +360,11 @@ sub get_molecules
     my $filename             = shift;
     my $dataname             = shift;
     my $sym_data             = shift;
-    my $atom_site_tag        = shift;
-    my $values               = shift;
+    my $dataset              = shift;
     my $atom_properties      = shift;
     my $uniquify_atoms       = shift;
+
+    my $values = $dataset->{values};
 
     # Parse symmetry operators:
     my @sym_operators = map { symop_from_string($_) } @{$sym_data};
@@ -401,9 +377,10 @@ sub get_molecules
     my $f2o = symop_ortho_from_fract(@cell);
 
     # Extract atoms fract coordinates
-    my $all_initial_atoms = initial_atoms( $atom_properties,
-                                           $values, $atom_site_tag,
-                                           $filename, $dataname );
+    my $all_initial_atoms = initial_atoms( $atom_properties, $dataset,
+                                           $filename, $dataname, $f2o );
+
+    return [] unless defined $all_initial_atoms;
 
     if( @$all_initial_atoms == 0 ) {
         warning( $0, $filename, $dataname,
@@ -560,7 +537,26 @@ sub check_init_atoms($$$$)
 #
 sub initial_atoms($$$$$)
 {
-    my ($atom_properties, $values, $atom_site_tag, $filename, $dataname) = @_;
+    my ($atom_properties, $dataset, $filename, $dataname, $f2o) = @_;
+    my $values = $dataset->{values};
+
+    my $atom_site_tag;
+
+    if( exists $values->{"_atom_site_label"} ) {
+        $atom_site_tag = "_atom_site_label";
+    } elsif( exists $values->{"_atom_site_type_symbol"} ) {
+        $atom_site_tag = "_atom_site_type_symbol";
+
+        error( $0, $filename, $dataset->{name},
+               "_atom_site_label tag was not found. " .
+               "A serial number will be appended " .
+               "to _atom_site_type_symbol to make atom labels" );
+    } else {
+        error( $0, $filename, $dataset->{name},
+               "neither _atom_site_type_symbol nor _atom_site_label " .
+               "were found" );
+	return undef;
+    }
 
     my $atom_labels = $values->{$atom_site_tag};
 
