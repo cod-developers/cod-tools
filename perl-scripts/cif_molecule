@@ -222,8 +222,8 @@ sub symgen_all_atoms($$$);
 sub apply_shifts($);
 sub find_molecules($$$$$$$$$);
 sub find_molecule($$$$$$$$$$$$$);
-sub check_init_atoms($$$$);
-sub initial_atoms($$$$$);
+sub uniquify_atom_names($$$$);
+sub initial_atoms($$$$$$);
 sub get_symmetry_operators( $$ );
 
 sub test_bump($$$$$$$);
@@ -377,12 +377,13 @@ sub get_molecules
     my $f2o = symop_ortho_from_fract(@cell);
 
     # Extract atoms fract coordinates
-    my $all_initial_atoms = initial_atoms( $atom_properties, $dataset,
-                                           $filename, $dataname, $f2o );
+    my $atom_list = initial_atoms( $atom_properties, $dataset,
+				   $filename, $dataname, $f2o,
+				   $uniquify_atoms );
 
-    return [] unless defined $all_initial_atoms;
+    return [] unless defined $atom_list;
 
-    if( @$all_initial_atoms == 0 ) {
+    if( @$atom_list == 0 ) {
         warning( $0, $filename, $dataname,
                  "no atoms suitable for processing were found" );
         print STDERR $0, ": ",
@@ -391,13 +392,9 @@ sub get_molecules
         return [];
     }
 
-    # Check if all atom labels are unique, otherwise appends ID to the label.
-    my $checked_initial_atoms = check_init_atoms($all_initial_atoms,
-                                                 $uniquify_atoms,
-                                                 $filename, $dataname );
-
     # Split init atoms into assemblies and groups
-    my $atom_groups = atom_groups($checked_initial_atoms);
+    ## my $atom_groups = atom_groups($checked_initial_atoms);
+    my $atom_groups = atom_groups($atom_list);
 
     my $max_covalent_radius = get_max_covalent_radius( $atom_properties );
 
@@ -462,7 +459,7 @@ sub get_molecules
 #                   group=>"1", # "."
 #              }
 #
-sub check_init_atoms($$$$)
+sub uniquify_atom_names($$$$)
 {
     my ($init_atoms, $uniquify_atoms, $filename, $dataset_name) = @_;
 
@@ -523,6 +520,8 @@ sub check_init_atoms($$$$)
 }
 
 # ============================================================================ #
+# Gets atom descriptions, as used in this program, from a CIF datablock.
+#
 # Returns an array of
 #
 #   $atom_info = {
@@ -535,11 +534,16 @@ sub check_init_atoms($$$$)
 #                   group=>"1", # "."
 #              }
 #
-sub initial_atoms($$$$$)
+sub initial_atoms($$$$$$)
 {
-    my ($atom_properties, $dataset, $filename, $dataname, $f2o) = @_;
+    my ($atom_properties, $dataset, $filename, $dataname, $f2o,
+	$uniquify_atoms ) = @_;
     my $values = $dataset->{values};
 
+    my $max_label_suffix = 30000; # Maximum number to be appened to labels 
+                                  # when trying to produce unique names.
+
+    my %used_labels;
     my $atom_site_tag;
 
     if( exists $values->{"_atom_site_label"} ) {
@@ -560,7 +564,7 @@ sub initial_atoms($$$$$)
 
     my $atom_labels = $values->{$atom_site_tag};
 
-    my @all_initial_atoms;
+    my @atom_list;
 
     for (my $i = 0; $i < @{$atom_labels}; $i++)
     {
@@ -574,21 +578,18 @@ sub initial_atoms($$$$$)
             }
         }
 
-        my $atom_info = extract_atom($$atom_labels[$i], $values, $i);
+	my $label;
+        if ( $atom_site_tag eq "_atom_site_type_symbol" ) {
+	    $label = $values->{$atom_site_tag}[$i] . $i;
+	} else {
+	    $label = $values->{$atom_site_tag}[$i];
+	}
 
-        if ( $atom_site_tag eq "_atom_site_type_symbol" )
-        {
-            $atom_info->{"label"} .= $i;
-            $atom_info->{"original_label"} = $atom_info->{"label"};
-            $atom_info->{"unit_cell_label"} = $atom_info->{"label"};
-        }
+        my $atom_info = extract_atom( $label, $values, $i );
 
-        if (exists $atom_properties->{ $atom_info->{"chemical_type"}})
-        {
-            push( @all_initial_atoms, $atom_info );
-        }
-        else
-        {
+        if (exists $atom_properties->{ $atom_info->{"chemical_type"}}) {
+            push( @atom_list, $atom_info );
+        } else {
             my $message = "unknown chemical type '" .
                 $atom_info->{chemical_type} . "'";
 
@@ -600,7 +601,9 @@ sub initial_atoms($$$$$)
             }
         }
     }
-    return \@all_initial_atoms;
+
+    return uniquify_atom_names( \@atom_list, $uniquify_atoms,
+				$filename, $dataname);
 }
 
 
