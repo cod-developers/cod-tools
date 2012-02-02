@@ -31,6 +31,23 @@ eval 'exec perl -x $0 ${1+"$@"}'
 # ~/workspace/praktika/cod/cif/1/1000028.cif interesting
 # kokia prasme, kai disorder_assembly reiksme nelygi ".", o disorder_group lygi.
 
+# Atom identification.
+# Atoms will be identified withing this program using three components:
+#
+# a) the original label, as found in the input CIF. This label must be
+# unique; it it is not, it will be uniquified by adding a serial
+# number upon reading in;
+#
+# b) a rotation operator (unity operator if no rotation is applied);
+# upon any rotation or when atoms are read in, their fractional
+# coordinates are truncated modulo 1, i.e. moved to the first octant
+# [0..1)x[0..1)x[0..1).
+#
+# c) a translation vector from the first octant to the actual atom
+# position; translation names will use IUCr convention shift +5 (555
+# is 0,0,0 translation). For larger translations, ":" character
+# separator will be used, e.g. 10:5:-11.
+
 use strict;
 use lib "./lib/perl5";
 use lib "./CIFParser";
