@@ -2027,15 +2027,22 @@ sub find_molecule($$$$$$$$$$$$$)
 
     my @neighbors;
 
-    if(exists $used_atoms->{$new_atom->{label}})
-    {
-        print STDERR "<<<< atom labeled '$new_atom->{label}' " .
-            "is already in some molecule, returning\n"
-            if $debug;
-        return @neighbors;
-    }
+    do {
+        no warnings;
+        if( exists $used_atoms->{$new_atom->{original_label}}
+            {$new_atom->{symop_id}}
+            {$new_atom->{translation_id}} ) {
+            print STDERR "<<<< atom labeled '$new_atom->{label}' " .
+                "is already in some molecule, returning\n"
+                if $debug;
+            return @neighbors;
+        }
 
-    $used_atoms->{$new_atom->{label}} = $new_atom->{label};
+        $used_atoms->{$new_atom->{original_label}}
+        {$new_atom->{symop_id}}
+        {$new_atom->{translation_id}} =
+            $new_atom;
+    }; # end no warnings
 
     $used_originals->{$new_atom->{original_label}} =
 	$new_atom->{original_label};
