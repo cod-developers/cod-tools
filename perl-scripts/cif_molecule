@@ -2025,11 +2025,11 @@ sub find_molecule($$$$$$$$$$$$$)
 
     my $new_atom = copy_atom( $current_atom );
 
-    if( exists $new_atom->{unit_cell_label} ) {
-        $new_atom->{label} = $new_atom->{unit_cell_label};
-    } else {
-    	die
-    }
+    ## if( exists $new_atom->{unit_cell_label} ) {
+    ##     $new_atom->{label} = $new_atom->{unit_cell_label};
+    ## } else {
+    ## 	die
+    ## }
 
     my @neighbors;
 
@@ -2043,8 +2043,16 @@ sub find_molecule($$$$$$$$$$$$$)
 
     if(exists $used_uc_atoms->{$new_atom->{unit_cell_label}})
     {
-        print STDERR ">>> !!!! detected a used unit cell label $new_atom->{unit_cell_label}\n"
+        print STDERR ">>> !!!! detected a used unit cell " .
+            "label $new_atom->{unit_cell_label} " .
+            "($used_uc_atoms->{$new_atom->{unit_cell_label}}-th time)\n"
             if $debug;
+        if( abs($new_atom->{translation}[0]) > 4 ||
+            abs($new_atom->{translation}[1]) > 4 ||
+            abs($new_atom->{translation}[2]) > 4 ||
+            $used_uc_atoms->{$new_atom->{unit_cell_label}} > 99 ) {
+            return ();
+        }
     }
 
     print STDERR
@@ -2059,8 +2067,11 @@ sub find_molecule($$$$$$$$$$$$$)
     $used_originals->{$new_atom->{original_label}} =
 	$new_atom->{original_label};
 
-    $used_uc_atoms->{$new_atom->{unit_cell_label}} =
-	$new_atom->{label};
+    if( exists $used_uc_atoms->{$new_atom->{unit_cell_label}} ) {
+        $used_uc_atoms->{$new_atom->{unit_cell_label}} ++;
+    } else {
+        $used_uc_atoms->{$new_atom->{unit_cell_label}} = 1;
+    }
 
     push( @neighbors, $new_atom );
 
