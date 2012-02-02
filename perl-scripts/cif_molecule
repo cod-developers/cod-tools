@@ -217,16 +217,16 @@ my $cif_header_file; # Comments from the beginning of this file wil be
 #==============================================================================#
 # Forward subroutine definitions:
 
-sub symgen_atom($$$);
-sub symgen_all_atoms($$$);
-sub apply_shifts($);
-sub find_molecules($$$$$$$$$);
-sub find_molecule($$$$$$$$$$$$$);
-sub uniquify_atom_names($$$$);
-sub initial_atoms($$$$$$);
+sub symgen_atom( $$$ );
+sub symgen_all_atoms( $$$ );
+sub apply_shifts( $$ );
+sub find_molecules( $$$$$$$$$ );
+sub find_molecule( $$$$$$$$$$$$$ );
+sub uniquify_atom_names( $$$$ );
+sub initial_atoms( $$$$$$ );
 sub get_symmetry_operators( $$ );
 
-sub test_bump($$$$$$$);
+sub test_bump( $$$$$$$ );
 
 # Error reporting (message formatting) subroutines:
 
@@ -405,7 +405,7 @@ sub get_molecules
     foreach my $atom_group ( @{$atom_groups} )
     {
         my @symmetric_atoms = apply_shifts( 
-            symgen_all_atoms( $atom_group, \@sym_operators, $f2o ));
+            symgen_all_atoms( $atom_group, \@sym_operators, $f2o ), $f2o );
 
         foreach my $atom (@symmetric_atoms)
         {
@@ -1480,9 +1480,9 @@ sub symgen_all_atoms($$$)
 #               unity_matrix_applied=>1}, returns an array of references of
 # above-mentioned hashes
 #
-sub shift_atom($)
+sub shift_atom($$)
 {
-    my($atom_info) = @_;
+    my($atom_info, $f2o) = @_;
 
     my @shifted_atoms;
     my @shifting_params = (0, -1, 1);
@@ -1529,6 +1529,8 @@ sub shift_atom($)
                     $new_atom_info->{"translation_id"} = $shift_label;
                 }
 		$new_atom_info->{"unit_cell_label"} = $unit_cell_label;
+                $new_atom_info->{coordinates_ortho} =
+                    mat_vect_mul( $f2o, \@new_atom_xyz );
                 push(@shifted_atoms, $new_atom_info);
             }
         }
@@ -1541,14 +1543,14 @@ sub shift_atom($)
 # Generate symmetry equivalents of an atom, exclude duplicates
 # on special positions
 
-sub apply_shifts($)
+sub apply_shifts($$)
 {
-    my ($atoms) = @_;
+    my ($atoms, $f2o) = @_;
 
     my @shifted = ();
 
     for my $atom (@{$atoms}) {
-        push( @shifted, shift_atom( $atom ));
+        push( @shifted, shift_atom( $atom, $f2o ));
     }
 
     return @shifted;
