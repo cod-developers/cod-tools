@@ -214,6 +214,20 @@ my $cif_header_file; # Comments from the beginning of this file wil be
     "--help,--usage"            => sub { SUsage::usage; exit },
 );
 
+#==============================================================================#
+# Forward subroutine definitions:
+
+sub symgen_atom($$$);
+sub symgen_all_atoms($$$);
+sub apply_shifts($);
+sub find_molecules($$$$$$$$$);
+sub find_molecule($$$$$$$$$$$$$);
+sub check_init_atoms($$$$);
+sub initial_atoms($$$$$);
+sub get_symmetry_operators( $$ );
+
+sub test_bump($$$$$$$);
+
 # Error reporting (message formatting) subroutines:
 
 sub print_error($$$$$)
@@ -330,20 +344,6 @@ for my $dataset (@$data)
 }
 
 #==============================================================================#
-# Forward subroutine definitions:
-
-sub symgen_atom($$$);
-sub symgen_all_atoms($$$);
-sub apply_shifts($);
-sub find_molecules($$$$$$$$$);
-sub find_molecule($$$$$$$$$$$$$);
-sub check_init_atoms($$$$);
-sub initial_atoms($$$$$);
-sub get_symmetry_operators( $$ );
-
-sub test_bump($$$$$$$);
-
-#==============================================================================#
 # Find a maximal covalent radius in the atom property list
 
 sub get_max_covalent_radius($)
@@ -394,9 +394,7 @@ sub get_molecules
     my @sym_operators = map { symop_from_string($_) } @{$sym_data};
 
     # Get cell angles(alpha, beta, gama) and lengths(a, b, c)
-    my @cell_lengths_and_angles = extract_angles_and_lengths( $values,
-                                                              $filename,
-                                                              $dataname );
+    my @cell = get_unit_cell( $values, $filename, $dataname );
 
     # Extract atoms fract coordinates
     my $all_initial_atoms = initial_atoms( $atom_properties,
@@ -430,7 +428,7 @@ sub get_molecules
     {
         my $translated_atoms = init_atoms_modulo_1($atom_group);
 
-        my $ortho_matrix = symop_ortho_from_fract(@cell_lengths_and_angles);
+        my $ortho_matrix = symop_ortho_from_fract(@cell);
 
         my @symmetric_atoms = apply_shifts( 
             symgen_all_atoms( $translated_atoms, \@sym_operators, 
@@ -444,7 +442,7 @@ sub get_molecules
         }
 
 	if( $dump_atoms ) {
-	    dump_atoms_as_cif( $n++, \@symmetric_atoms, \@cell_lengths_and_angles );
+	    dump_atoms_as_cif( $n++, \@symmetric_atoms, \@cell );
 	    next
 	}
 
@@ -814,25 +812,25 @@ sub assemblies
 
 #===============================================================#
 # Extract unit cell angles and lengths.
-
+#
 # Accepts
 #     values - a hash where a data from the CIF file is stored
 # Returns
-#     cell_lengths_and_angles - an array  with stored information.
+#     cell - an array  with stored information.
 
-sub extract_angles_and_lengths($$$)
+sub get_unit_cell($$$)
 {
     my( $values, $filename, $dataname ) = @_;
 
-    my @cell_lengths_and_angles;
+    my @cell;
 
     for my $cif_tag (qw(_cell_length_a
                         _cell_length_b
                         _cell_length_c
                         ))
     {
-        push(@cell_lengths_and_angles, $values->{$cif_tag}[0]);
-        $cell_lengths_and_angles[-1] =~ s/\(\d+\)$//;
+        push(@cell, $values->{$cif_tag}[0]);
+        $cell[-1] =~ s/\(\d+\)$//;
     }
 
     for my $cif_tag (qw(_cell_angle_alpha
@@ -841,17 +839,17 @@ sub extract_angles_and_lengths($$$)
                         ))
     {
         if( exists $values->{$cif_tag} ) {
-            push( @cell_lengths_and_angles, $values->{$cif_tag}[0] );
-            $cell_lengths_and_angles[-1] =~ s/\(\d+\)$//;
+            push( @cell, $values->{$cif_tag}[0] );
+            $cell[-1] =~ s/\(\d+\)$//;
         } else {
             warning( $0, $filename, $dataname,
                      "cell angle '$cif_tag' not present -- " .
                      "taking default value 90 degress." );
-            push( @cell_lengths_and_angles, 90 );
+            push( @cell, 90 );
         }
     }
 
-    return @cell_lengths_and_angles;
+    return @cell;
 }
 
 #===============================================================#
