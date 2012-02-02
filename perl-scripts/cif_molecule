@@ -894,7 +894,7 @@ sub extract_atom
     $atom_info{"symop_id"}              = 1;
     $atom_info{"unity_matrix_applied"}  = 1;
     $atom_info{"translation_id"}        = "555";
-    $atom_info{"shift"}                 = [ 0, 0, 0 ];
+    $atom_info{"translation"}           = [ 0, 0, 0 ];
 
     my $atom_type;
 
@@ -1193,7 +1193,7 @@ sub translate_atom
     $new_atom->{"coordinates_fract"} = \@new_atom_xyz;
     delete( $new_atom->{coordinates_ortho} );
 
-    $new_atom->{shift} = [ @$translation ];
+    $new_atom->{translation} = [ @$translation ];
 
     if( !( defined $new_atom->{unity_matrix_applied} &&
 	   $new_atom->{unity_matrix_applied} &&
@@ -1560,11 +1560,9 @@ sub shift_atom($)
             for(my $k = 0; $k < @shifting_params; $k++)
             {
                 my $new_atom_info = copy_atom($atom_info);
-                do {
-                    $new_atom_info->{shift} = [ $shifting_params[$i],
-                                                $shifting_params[$j],
-                                                $shifting_params[$k] ];
-                } if 1;
+                $new_atom_info->{translation} = [ $shifting_params[$i],
+                                                  $shifting_params[$j],
+                                                  $shifting_params[$k] ];
                 my @new_atom_xyz;
                 if($shifting_params[$i] != 0 || $shifting_params[$j] != 0 ||
                    $shifting_params[$k] != 0 ||
