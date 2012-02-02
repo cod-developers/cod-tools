@@ -586,7 +586,7 @@ sub check_init_atoms($$$$)
                          "renaming atom '$label' " .
                          "to '" . $new_label . "'" );
                 $renamed_atom->{label}          = $new_label;
-                $renamed_atom->{label_basename} = $new_label;
+                $renamed_atom->{original_label} = $new_label;
                 $renamed_atom->{unit_cell_label} = $new_label;
                 $used_labels{$new_label}{count} ++;
             }
@@ -634,7 +634,7 @@ sub initial_atoms($$$$$)
         if ( $atom_site_tag eq "_atom_site_type_symbol" )
         {
             $atom_info->{"label"} .= $i;
-            $atom_info->{"label_basename"} = $atom_info->{"label"};
+            $atom_info->{"original_label"} = $atom_info->{"label"};
             $atom_info->{"unit_cell_label"} = $atom_info->{"label"};
         }
 
@@ -940,7 +940,7 @@ sub extract_atom
 
     $atom_info{"coordinates_fract"}     = \@atom_xyz;
     $atom_info{"label"}                 = $atom_label;
-    $atom_info{"label_basename"}        = $atom_label;
+    $atom_info{"original_label"}        = $atom_label;
     $atom_info{"unit_cell_label"}       = $atom_label;
     $atom_info{"symop_id"}              = (-1) * $number - 1; # ???? S.G.
     $atom_info{"unity_matrix_applied"}  = 1;
@@ -994,7 +994,7 @@ sub extract_atom
 
 # Accepts a hash $atom_info = {
 #                       label=>"C1_2",
-#                       label_basename=>"C1",
+#                       original_label=>"C1",
 #                       chemical_type=>"C",
 #                       coordinates_fract=>[1.0, 1.0, 1.0],
 #                       coordinates_ortho=>[5.0, -1.3, 1.7],
@@ -1006,7 +1006,7 @@ sub extract_atom
 
 # Returns a hash $new_atom_info = {
 #                       label=>"C1_2",
-#                       label_basename=>"C1",
+#                       original_label=>"C1",
 #                       chemical_type=>"C",
 #                       coordinates_fract=>[1.0, 1.0, 1.0],
 #                       coordinates_ortho=>[5.0, -1.3, 1.7],
@@ -1262,7 +1262,7 @@ sub translate_atom
 	    (${$translation}[2]+5);
 
 	$new_atom->{label} =
-	    $new_atom->{label_basename} . "_" .
+	    $new_atom->{original_label} . "_" .
 	    $new_atom->{symop_id} . "_" .
 	    $translation_id;
     }
@@ -1603,7 +1603,7 @@ sub shift_atom($)
     my $unit_cell_label;
 
     if( $atom_info->{"unity_matrix_applied"} ) {
-        $unit_cell_label = $atom_info->{label_basename};
+        $unit_cell_label = $atom_info->{original_label};
     } else {
         $unit_cell_label = $atom_info->{label} . "_555";
     }
@@ -2083,14 +2083,14 @@ sub find_molecules($$$$$$$$$)
 
     my @unique_molecules;
     my %used_atoms;
-    my %used_basenames;
+    my %used_originals;
     my %used_uc_atoms;
     my %used_bonds;
     my %polymer_bonds;
 
     foreach my $initial_atom (@$initial_atoms)
     {
-        if ((not exists $used_basenames{$initial_atom->{label_basename}}))
+        if ((not exists $used_originals{$initial_atom->{original_label}}))
         {
 	    print STDERR ">>>> starting new molecule\n" if $debug;
 
@@ -2098,7 +2098,7 @@ sub find_molecules($$$$$$$$$)
                                                 $atom_properties,
                                                 $symmetric_atoms,
                                                 \%used_atoms,
-                                                \%used_basenames,
+                                                \%used_originals,
                                                 \%used_uc_atoms,
                                                 \%used_bonds,
                                                 \%polymer_bonds,
@@ -2139,7 +2139,7 @@ sub find_molecule($$$$$$$$$$$$$)
     my $atom_properties      = shift(@_);
     my $symmetric_atoms      = shift(@_);
     my $used_atoms           = shift(@_);
-    my $used_basenames       = shift(@_);
+    my $used_originals       = shift(@_);
     my $used_uc_atoms        = shift(@_);
     my $used_bonds           = shift(@_);
     my $polymer_bonds        = shift(@_);
@@ -2185,15 +2185,15 @@ sub find_molecule($$$$$$$$$$$$$)
 
     print STDERR
 	">>> considering atom $new_atom->{label} " .
-	"(ORIG=$new_atom->{label_basename}, " .
+	"(ORIG=$new_atom->{original_label}, " .
 	"UC=$new_atom->{unit_cell_label})\n"
 	if $debug;
 
     $used_atoms->{$new_atom->{label}} = $new_atom->{label};
     $used_atoms->{$current_atom->{label}} = $current_atom->{label};
 
-    $used_basenames->{$new_atom->{label_basename}} =
-	$new_atom->{label_basename};
+    $used_originals->{$new_atom->{original_label}} =
+	$new_atom->{original_label};
 
     $used_uc_atoms->{$new_atom->{unit_cell_label}} =
 	$new_atom->{label};
@@ -2250,14 +2250,14 @@ sub find_molecule($$$$$$$$$$$$$)
                     local $" = ' ';
                     print STDERR ">>> checking neighbour $sym_label " .
                         "(@{$sym_atom_coords_ortho}), " .
-                        "(ORIG=$new_atom->{label_basename}, UC=$new_atom->{unit_cell_label}), d = $dist\n";
+                        "(ORIG=$new_atom->{original_label}, UC=$new_atom->{unit_cell_label}), d = $dist\n";
                 } if $debug;
 
                 my $is_bump = test_bump( $atom_properties,
 					 $new_atom->{chemical_type},
 					 $sym_atom->{chemical_type},
-                                         $new_atom->{label_basename},
-                                         $sym_atom->{label_basename},
+                                         $new_atom->{original_label},
+                                         $sym_atom->{original_label},
                                          $dist, $bump_distance_factor );
 
                 if( $is_bump ) {
@@ -2303,14 +2303,14 @@ sub find_molecule($$$$$$$$$$$$$)
 			{$new_atom->{unit_cell_label}} ) {
 			print STDERR
 			    "polymer detected: " .
-			    "$sym_atom->{label_basename}($sym_atom->{label}, UC=$sym_atom->{unit_cell_label}) -- " .
-			    "$new_atom->{label_basename}($new_atom->{label}, UC=$new_atom->{unit_cell_label})\n"
+			    "$sym_atom->{original_label}($sym_atom->{label}, UC=$sym_atom->{unit_cell_label}) -- " .
+			    "$new_atom->{original_label}($new_atom->{label}, UC=$new_atom->{unit_cell_label})\n"
 			    if $debug;
 		    } else {
 			print STDERR
 			    "adding bond: " .
-			    "$sym_atom->{label_basename}($sym_atom->{label}, UC=$sym_atom->{unit_cell_label}) -- " .
-			    "$new_atom->{label_basename}($new_atom->{label}, UC=$new_atom->{unit_cell_label})\n"
+			    "$sym_atom->{original_label}($sym_atom->{label}, UC=$sym_atom->{unit_cell_label}) -- " .
+			    "$new_atom->{original_label}($new_atom->{label}, UC=$new_atom->{unit_cell_label})\n"
 			    if $debug;
 
 			$polymer_bonds->{$sym_atom->{unit_cell_label}} = {}
@@ -2335,7 +2335,7 @@ sub find_molecule($$$$$$$$$$$$$)
                                                     $atom_properties,
                                                     $symmetric_atoms,
                                                     $used_atoms,
-                                                    $used_basenames,
+                                                    $used_originals,
                                                     $used_uc_atoms,
                                                     $used_bonds,
                                                     $polymer_bonds,
