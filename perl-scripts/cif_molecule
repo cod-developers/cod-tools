@@ -2029,7 +2029,8 @@ sub find_molecule($$$$$$$$$$$$$)
 
     do {
         no warnings;
-        if( exists $used_atoms->{$new_atom->{original_label}}
+        if( exists $used_atoms->
+            {$new_atom->{original_label}}
             {$new_atom->{symop_id}}
             {$new_atom->{translation_id}} ) {
             print STDERR "<<<< atom labeled '$new_atom->{label}' " .
@@ -2047,25 +2048,28 @@ sub find_molecule($$$$$$$$$$$$$)
     $used_originals->{$new_atom->{original_label}} =
 	$new_atom->{original_label};
 
-    if(exists $used_uc_atoms->{$new_atom->{unit_cell_label}})
-    {
-        print STDERR ">>> !!!! detected a used unit cell " .
-            "label $new_atom->{unit_cell_label} " .
-            "($used_uc_atoms->{$new_atom->{unit_cell_label}}-th time)\n"
+    do {
+        no warnings;
+        if( exists $used_uc_atoms->
+            {$new_atom->{original_label}}
+            {$new_atom->{symop_id}} ) {
+            print STDERR ">>> !!!! detected a used unit cell " .
+                "label $new_atom->{unit_cell_label} (".
+                "$used_uc_atoms->{$new_atom->{original_label}}{$new_atom->{symop_id}}"
+                . "-th time)\n"
             if $debug;
-        if( abs($new_atom->{translation}[0]) > 4 ||
-            abs($new_atom->{translation}[1]) > 4 ||
-            abs($new_atom->{translation}[2]) > 4 ||
-            $used_uc_atoms->{$new_atom->{unit_cell_label}} > 99 ) {
-            return ();
+            if( abs($new_atom->{translation}[0]) > 4 ||
+                abs($new_atom->{translation}[1]) > 4 ||
+                abs($new_atom->{translation}[2]) > 4 ||
+                $used_uc_atoms->
+                {$new_atom->{original_label}}
+                {$new_atom->{symop_id}} > 99 ) {
+                return ();
+            }
         }
-    }
 
-    if( exists $used_uc_atoms->{$new_atom->{unit_cell_label}} ) {
-        $used_uc_atoms->{$new_atom->{unit_cell_label}} ++;
-    } else {
-        $used_uc_atoms->{$new_atom->{unit_cell_label}} = 1;
-    }
+        $used_uc_atoms->{$new_atom->{original_label}}{$new_atom->{symop_id}} ++;
+    }; # end no warnings
 
     print STDERR
 	">>> considering atom $new_atom->{label} " .
