@@ -1127,24 +1127,29 @@ sub translate_atom
     $new_atom->{"coordinates_fract"} = \@new_atom_xyz;
     $new_atom->{coordinates_ortho} =
         mat_vect_mul( $f2o, \@new_atom_xyz );
+    
+    $new_atom->{translation} = [ 
+        $new_atom_xyz[0] - modulo_1($new_atom_xyz[0]),
+        $new_atom_xyz[1] - modulo_1($new_atom_xyz[1]),
+        $new_atom_xyz[2] - modulo_1($new_atom_xyz[2]),
+    ];
 
-    $new_atom->{translation} = [ @$translation ];
+    $new_atom->{translation_id} =
+        ($new_atom->{translation}[0]+5).
+        ($new_atom->{translation}[1]+5).
+        ($new_atom->{translation}[2]+5);
 
-    if( !( defined $new_atom->{unity_matrix_applied} &&
-	   $new_atom->{unity_matrix_applied} &&
-	   ${$translation}[0] == 0 &&
-	   ${$translation}[1] == 0 &&
-	   ${$translation}[2] == 0 )) {
-
-	my $translation_id =
-	    (${$translation}[0]+5) .
-	    (${$translation}[1]+5) .
-	    (${$translation}[2]+5);
-
+    if( defined $new_atom->{unity_matrix_applied} &&
+        $new_atom->{unity_matrix_applied} &&
+        $new_atom->{translation}[0] == 0 &&
+        $new_atom->{translation}[1] == 0 &&
+        $new_atom->{translation}[2] == 0 ) {
+	$new_atom->{label} = $new_atom->{original_label};
+    } else {
 	$new_atom->{label} =
 	    $new_atom->{original_label} . "_" .
 	    $new_atom->{symop_id} . "_" .
-	    $translation_id;
+	    $new_atom->{translation_id};
     }
 
     return $new_atom;
