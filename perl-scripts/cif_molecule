@@ -2025,12 +2025,6 @@ sub find_molecule($$$$$$$$$$$$$)
 
     my $new_atom = copy_atom( $current_atom );
 
-    ## if( exists $new_atom->{unit_cell_label} ) {
-    ##     $new_atom->{label} = $new_atom->{unit_cell_label};
-    ## } else {
-    ## 	die
-    ## }
-
     my @neighbors;
 
     if(exists $used_atoms->{$new_atom->{label}})
@@ -2040,6 +2034,11 @@ sub find_molecule($$$$$$$$$$$$$)
             if $debug;
         return @neighbors;
     }
+
+    $used_atoms->{$new_atom->{label}} = $new_atom->{label};
+
+    $used_originals->{$new_atom->{original_label}} =
+	$new_atom->{original_label};
 
     if(exists $used_uc_atoms->{$new_atom->{unit_cell_label}})
     {
@@ -2055,24 +2054,17 @@ sub find_molecule($$$$$$$$$$$$$)
         }
     }
 
-    print STDERR
-	">>> considering atom $new_atom->{label} " .
-	"(ORIG=$new_atom->{original_label}, " .
-	"UC=$new_atom->{unit_cell_label})\n"
-	if $debug;
-
-    $used_atoms->{$new_atom->{label}} = $new_atom->{label};
-
-    die unless $used_atoms->{$current_atom->{label}} eq $current_atom->{label};
-
-    $used_originals->{$new_atom->{original_label}} =
-	$new_atom->{original_label};
-
     if( exists $used_uc_atoms->{$new_atom->{unit_cell_label}} ) {
         $used_uc_atoms->{$new_atom->{unit_cell_label}} ++;
     } else {
         $used_uc_atoms->{$new_atom->{unit_cell_label}} = 1;
     }
+
+    print STDERR
+	">>> considering atom $new_atom->{label} " .
+	"(ORIG=$new_atom->{original_label}, " .
+	"UC=$new_atom->{unit_cell_label})\n"
+	if $debug;
 
     push( @neighbors, $new_atom );
 
