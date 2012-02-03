@@ -2069,12 +2069,33 @@ sub find_molecule($$$$$$$$$$$$)
                 "$used_uc_atoms->{$new_atom->{original_label}}{$new_atom->{symop_id}}"
                 . "-th time)\n"
             if $debug;
+            
+            if( $used_uc_atoms->
+                {$new_atom->{original_label}}
+                {$new_atom->{symop_id}} > $max_polymer_atoms ) {
+                my $message = "the maximum number of polymer atom " .
+                    "repetitions $max_polymer_atoms was hit for the " .
+                    "atom $new_atom->{original_label} " .
+                    "($new_atom->{symop_id})\n" .
+                    "To get around this limit, please increase " .
+                    "--max-polymer-atoms, to say, " .
+                    "--max-polymer-atoms=" . (2 * $max_polymer_atoms) . " " .
+                    "or decrease --max-polymer-span (e.g. " .
+                    "--max-polymer-span=" . int($max_polymer_span/2) . ", " .
+                    "but expect increased computation times and " .
+                    "memory consumption)";
+                if( $continue_on_errors ) {
+                    warning( $0, $filename, $dataname, $message );
+                    return ();
+                } else {
+                    error( $0, $filename, $dataname, $message );
+                    exit(1);
+                }
+            }
+
             if( abs($new_atom->{translation}[0]) > $max_polymer_span ||
                 abs($new_atom->{translation}[1]) > $max_polymer_span ||
-                abs($new_atom->{translation}[2]) > $max_polymer_span ||
-                $used_uc_atoms->
-                {$new_atom->{original_label}}
-                {$new_atom->{symop_id}} >= $max_polymer_atoms ) {
+                abs($new_atom->{translation}[2]) > $max_polymer_span ) {
                 return ();
             }
         }
