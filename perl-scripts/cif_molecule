@@ -532,7 +532,6 @@ sub uniquify_atom_names($$$$)
                          "to '" . $new_label . "'" );
                 $renamed_atom->{label}          = $new_label;
                 $renamed_atom->{original_label} = $new_label;
-                $renamed_atom->{unit_cell_label} = $new_label;
                 $used_labels{$new_label}{count} ++;
             }
         }
@@ -893,7 +892,6 @@ sub extract_atom
     $atom_info{"coordinates_fract"}     = \@atom_xyz;
     $atom_info{"label"}                 = $atom_label;
     $atom_info{"original_label"}        = $atom_label;
-    $atom_info{"unit_cell_label"}       = $atom_label;
     $atom_info{"symop_id"}              = 1;
     $atom_info{"unity_matrix_applied"}  = 1;
     $atom_info{"translation_id"}        = "555";
@@ -1487,15 +1485,6 @@ sub shift_atom($$)
     my @shifted_atoms;
     my @shifting_params = (0, -1, 1);
 
-    my $unit_cell_label;
-
-    if( $atom_info->{"unity_matrix_applied"} ) {
-        $unit_cell_label = $atom_info->{original_label};
-    } else {
-        $unit_cell_label = $atom_info->{original_label}
-            . "_" . $atom_info->{symop_id} . "_555";
-    }
-
     for(my $i = 0; $i < @shifting_params; $i++)
     {
         for(my $j = 0; $j < @shifting_params; $j++)
@@ -1528,7 +1517,6 @@ sub shift_atom($$)
                         $shift_label;
                     $new_atom_info->{"translation_id"} = $shift_label;
                 }
-		$new_atom_info->{"unit_cell_label"} = $unit_cell_label;
                 $new_atom_info->{coordinates_ortho} =
                     mat_vect_mul( $f2o, \@new_atom_xyz );
                 push(@shifted_atoms, $new_atom_info);
@@ -2077,7 +2065,8 @@ sub find_molecule($$$$$$$$$$$$)
             {$new_atom->{original_label}}
             {$new_atom->{symop_id}} ) {
             print STDERR ">>> !!!! detected a used unit cell " .
-                "label $new_atom->{unit_cell_label} (".
+                "label $new_atom->{label}/$new_atom->{symop_id}/" .
+                "$new_atom->{translation_id} (".
                 "$used_uc_atoms->{$new_atom->{original_label}}{$new_atom->{symop_id}}"
                 . "-th time)\n"
             if $debug;
@@ -2096,8 +2085,9 @@ sub find_molecule($$$$$$$$$$$$)
 
     print STDERR
 	">>> considering atom $new_atom->{label} " .
-	"(ORIG=$new_atom->{original_label}, " .
-	"UC=$new_atom->{unit_cell_label})\n"
+        "(@{$atom_in_unit_cell_coords_ortho}) " .
+	"($new_atom->{original_label}/" .
+	"$new_atom->{symop_id}/$new_atom->{translation_id})\n"
 	if $debug;
 
     push( @neighbors, $new_atom );
@@ -2152,7 +2142,7 @@ sub find_molecule($$$$$$$$$$$$)
                     local $" = ' ';
                     print STDERR ">>> checking neighbour $sym_label " .
                         "(@{$sym_atom_coords_ortho}), " .
-                        "(ORIG=$new_atom->{original_label}, UC=$new_atom->{unit_cell_label}), d = $dist\n";
+                        "d = $dist\n";
                 } if $debug;
 
                 my $is_bump = test_bump( $atom_properties,
