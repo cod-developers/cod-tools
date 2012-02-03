@@ -1964,7 +1964,7 @@ sub find_molecules($$$$$$$$$)
     my %used_atoms;
     my %used_originals;
     my %used_uc_atoms;
-    my %used_bonds;
+    my %checked_pairs;
 
     foreach my $initial_atom (@$initial_atoms)
     {
@@ -1978,7 +1978,7 @@ sub find_molecules($$$$$$$$$)
                                                 \%used_atoms,
                                                 \%used_originals,
                                                 \%used_uc_atoms,
-                                                \%used_bonds,
+                                                \%checked_pairs,
                                                 $initial_atom, $bricks,
                                                 $filename, $dataname,
                                                 $ortho_matrix );
@@ -2018,7 +2018,7 @@ sub find_molecule($$$$$$$$$$$$)
     my $used_atoms           = shift(@_);
     my $used_originals       = shift(@_);
     my $used_uc_atoms        = shift(@_);
-    my $used_bonds           = shift(@_);
+    my $checked_pairs           = shift(@_);
     my $current_atom         = shift(@_);
     my $bricks               = shift(@_);
     my $filename             = shift(@_);
@@ -2051,9 +2051,8 @@ sub find_molecule($$$$$$$$$$$$)
         }
 
         $used_atoms->{$new_atom->{original_label}}
-        {$new_atom->{symop_id}}
-        {$new_atom->{translation_id}} =
-            $new_atom;
+            {$new_atom->{symop_id}}
+            {$new_atom->{translation_id}} = $new_atom;
     }; # end no warnings
 
     $used_originals->{$new_atom->{original_label}} =
@@ -2127,91 +2126,87 @@ sub find_molecule($$$$$$$$$$$$)
 	    my $new_label = $new_atom->{label};
 	    my $sym_label = $sym_atom->{label};
 
-            ## if( not exists $used_bonds->{$sym_label}{$new_label} ) {
-
 	    if( $new_atom->{label} eq $sym_atom->{label} ) {
 		# We have found the same atom, no need to add bond or
 		# neighbour
 		next;
 	    }
 
-                my $dist = distance( $atom_in_unit_cell_coords_ortho,
-                                     $sym_atom_coords_ortho );
+            my $dist = distance( $atom_in_unit_cell_coords_ortho,
+                                 $sym_atom_coords_ortho );
 
+            do {
+                local $" = ' ';
+                print STDERR ">>> checking neighbour $sym_label " .
+                    "(@{$sym_atom_coords_ortho}), " .
+                    "d = $dist\n";
+            } if $debug;
+
+            my $is_bump = test_bump( $atom_properties,
+                                     $new_atom->{chemical_type},
+                                     $sym_atom->{chemical_type},
+                                     $new_atom->{original_label},
+                                     $sym_atom->{original_label},
+                                     $dist, $bump_distance_factor );
+
+            if( $is_bump ) {
+                if( not exists $checked_pairs->{$sym_label}{$new_label} ) {
+                    my $message =  "atoms \"$new_atom->{label}\" and " .
+                        "\"$sym_atom->{label}\" are too close " .
+                        "(distance = " .
+                        sprintf( "%6.4f", $dist ) .
+                        ") and are considered a bump";
+                    if( $ignore_bumps ) {
+                        warning( $0, $filename, $dataname, $message );
+                    } else {
+                        error( $0, $filename, $dataname, $message );
+                        print STDERR "$0: Aborting calculations.\n";
+                        exit( 254 );
+                    }
+                }
+            }
+
+            $checked_pairs->{$sym_label}{$new_label} = 1;
+            $checked_pairs->{$new_label}{$sym_label} = 1;
+
+            my $is_bond = test_bond($atom_properties,
+                                    $new_atom->{chemical_type},
+                                    $sym_atom->{chemical_type},
+                                    $dist,
+                                    $covalent_sensitivity);
+
+            if($is_bond == 1) {
                 do {
+                    use Serialise;
                     local $" = ' ';
-                    print STDERR ">>> checking neighbour $sym_label " .
-                        "(@{$sym_atom_coords_ortho}), " .
-                        "d = $dist\n";
+                    print STDERR ">>> found bond:\n";
+                    serialiseRef( { "translation" => $current_translation,
+                                    "original atom" => $current_atom,
+                                    "sym atom" => $sym_atom } );
                 } if $debug;
 
-                my $is_bump = test_bump( $atom_properties,
-					 $new_atom->{chemical_type},
-					 $sym_atom->{chemical_type},
-                                         $new_atom->{original_label},
-                                         $sym_atom->{original_label},
-                                         $dist, $bump_distance_factor );
+                my $back_shifted_sym_atom =
+                    translate_atom( $sym_atom, $current_translation,
+                                    $ortho_matrix );
 
-                if( $is_bump ) {
-		    if( not exists $used_bonds->{$sym_label}{$new_label} ) {
-			my $message =  "atoms \"$new_atom->{label}\" and " .
-			    "\"$sym_atom->{label}\" are too close " .
-			    "(distance = " .
-			    sprintf( "%6.4f", $dist ) .
-			    ") and are considered a bump";
-			if( $ignore_bumps ) {
-			    warning( $0, $filename, $dataname, $message );
-			} else {
-			    error( $0, $filename, $dataname, $message );
-			    print STDERR "$0: Aborting calculations.\n";
-			    exit( 254 );
-			}
-		    }
-                }
+                do {
+                    use Serialise;
+                    print ">>>> back-shifted atom:\n";
+                    serialiseRef( { sym_atom => $sym_atom, backshifted => $back_shifted_sym_atom } );
+                } if $debug;
 
-                $used_bonds->{$sym_label}{$new_label} = 1;
-                $used_bonds->{$new_label}{$sym_label} = 1;
-
-                my $is_bond = test_bond($atom_properties,
-					$new_atom->{chemical_type},
-                                        $sym_atom->{chemical_type},
-                                        $dist,
-                                        $covalent_sensitivity);
-
-                if($is_bond == 1)
-                {
-                    do {
-                        use Serialise;
-                        local $" = ' ';
-                        print STDERR ">>> found bond:\n";
-                        serialiseRef( { "translation" => $current_translation,
-                                        "original atom" => $current_atom,
-                                        "sym atom" => $sym_atom } );
-                    } if $debug;
-
-                    my $back_shifted_sym_atom =
-                        translate_atom( $sym_atom, $current_translation,
-                                        $ortho_matrix );
-
-                    do {
-                        use Serialise;
-                        print ">>>> back-shifted atom:\n";
-                        serialiseRef( { sym_atom => $sym_atom, backshifted => $back_shifted_sym_atom } );
-                    } if $debug;
-
-                    push(@neighbors, find_molecule( $covalent_sensitivity,
-                                                    $atom_properties,
-                                                    $symmetric_atoms,
-                                                    $used_atoms,
-                                                    $used_originals,
-                                                    $used_uc_atoms,
-                                                    $used_bonds,
-                                                    $back_shifted_sym_atom,
-                                                    $bricks,
-                                                    $filename, $dataname,
-                                                    $ortho_matrix ));
-                }
-            ## }
+                push(@neighbors, find_molecule( $covalent_sensitivity,
+                                                $atom_properties,
+                                                $symmetric_atoms,
+                                                $used_atoms,
+                                                $used_originals,
+                                                $used_uc_atoms,
+                                                $checked_pairs,
+                                                $back_shifted_sym_atom,
+                                                $bricks,
+                                                $filename, $dataname,
+                                                $ortho_matrix ));
+            }
         }
     }}}
 
