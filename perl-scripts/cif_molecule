@@ -295,52 +295,55 @@ if( $cif_header_file ) {
         die( "$0: error reading header file '$cif_header_file' - $!" );
 }
 
-my $filename = shift(@ARGV);
-my $parser = new CIFParser;
-my $data = $parser->Run($filename);
+@ARGV = ("-") unless @ARGV;
 
-canonicalize_all_names( $data );
+for my $filename (@ARGV) {
 
-if( $cif_header ) {
-    print $cif_header;
-}
+    my $parser = new CIFParser;
+    my $data = $parser->Run($filename);
 
-for my $dataset (@$data)
-{
-#   extracts atom site label or atom site type symbol
-    my $values = $dataset->{"values"};
+    canonicalize_all_names( $data );
 
-#   extracts symmetry operators
-    my $sym_data = get_symmetry_operators( $dataset, $filename );
-
-    if(not defined $sym_data) {
-        error( $0, $filename, $dataset->{name},
-               "no symmetry information found" );
+    if( $cif_header ) {
+	print $cif_header;
     }
 
-    if((defined $sym_data) && ($sym_data != 0)) {
-        my $molecule_id = 0;
-        my $dataset_name = $dataset->{name};
+    for my $dataset (@$data) {
+        #   extracts atom site label or atom site type symbol
+	my $values = $dataset->{"values"};
 
-        my $unique_molecules = get_molecules (  $covalent_sensitivity,
-                                                $filename, $dataset_name,
-                                                $sym_data,
-                                                $dataset,
-                                                \%AtomProperties::atoms,
-                                                $uniquify_atoms );
+        #   extracts symmetry operators
+	my $sym_data = get_symmetry_operators( $dataset, $filename );
+
+	if(not defined $sym_data) {
+	    error( $0, $filename, $dataset->{name},
+		   "no symmetry information found" );
+	}
+
+	if((defined $sym_data) && ($sym_data != 0)) {
+	    my $molecule_id = 0;
+	    my $dataset_name = $dataset->{name};
+
+	    my $unique_molecules = get_molecules (  $covalent_sensitivity,
+						    $filename, $dataset_name,
+						    $sym_data,
+						    $dataset,
+						    \%AtomProperties::atoms,
+						    $uniquify_atoms );
 
 #       prints molecule to the CIF file
 
-        if( $sort_molecules ) {
-            @$unique_molecules = sort {@{$b->{atoms_c}} <=> @{$a->{atoms_c}}}
-                                 @$unique_molecules;
-        }
+	    if( $sort_molecules ) {
+		@$unique_molecules = sort {@{$b->{atoms_c}} <=> @{$a->{atoms_c}}}
+		@$unique_molecules;
+	    }
 
-        foreach my $molecule (@$unique_molecules) {
-            print_molecule( $molecule_id, $audit, $molecule, $Id,
-                            $dataset, $dataset_name, $filename );
-            $molecule_id++;
-        }
+	    foreach my $molecule (@$unique_molecules) {
+		print_molecule( $molecule_id, $audit, $molecule, $Id,
+				$dataset, $dataset_name, $filename );
+		$molecule_id++;
+	    }
+	}
     }
 }
 
