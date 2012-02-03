@@ -99,6 +99,17 @@ my $ignore_bumps = 0; # detect and warn about close atom "bumps"
 
 my $special_position_cutoff = 0.01;
 
+# A span, in +/- unit cells, in which polymeric molecules (repeating
+# units) will be contruscted:
+
+my $max_polymer_span = 4;
+
+# A maximum alowed count of polymer example atoms: more than this
+# amount of symmetry (translational) equivalen atoms, for each AU
+# atom, will not be written to the output file:
+
+my $max_polymer_atoms = 100;
+
 my $cif_header_file; # Comments from the beginning of this file wil be
                      # prepended to the output.
 
@@ -160,6 +171,18 @@ my $cif_header_file; # Comments from the beginning of this file wil be
 #** --dont-dump-atoms, --no-dump-atoms
 #**       Do not dump atoms (default)
 #**
+#** --max-polymer-span 4
+#**       A span, in +/- unit cells, in which polymeric molecules (repeating
+#**       units) will be contruscted:
+#**
+#** --max-polymer-atoms 100
+#**       A maximum alowed count of polymer example atoms: more than this
+#**       amount of symmetry (translational) equivalen atoms, for each AU
+#**       atom, will not be written to the output file:
+#**
+#**       Using --max-polymer-span=0 --max-polymer-atoms=1 essentially
+#**       switches off the polymer detection.
+#**
 #** --debug            Print some human-readable debug output
 #** --no-debug         Suppress any debug output (default)
 #**
@@ -199,6 +222,9 @@ my $cif_header_file; # Comments from the beginning of this file wil be
     "--dont-remove-duplicate-molecules" => sub { $uniquify_molecules = 0; },
 
     "--bump-distance-factor" => \$bump_distance_factor,
+
+    "--max-polymer-span" => \$max_polymer_span,
+    "--max-polymer-atoms" => \$max_polymer_atoms ,
 
     "--debug"    => sub { $debug = 1 },
     "--no-debug" => sub { $debug = 0 },
@@ -2058,12 +2084,12 @@ sub find_molecule($$$$$$$$$$$$$)
                 "$used_uc_atoms->{$new_atom->{original_label}}{$new_atom->{symop_id}}"
                 . "-th time)\n"
             if $debug;
-            if( abs($new_atom->{translation}[0]) > 4 ||
-                abs($new_atom->{translation}[1]) > 4 ||
-                abs($new_atom->{translation}[2]) > 4 ||
+            if( abs($new_atom->{translation}[0]) > $max_polymer_span ||
+                abs($new_atom->{translation}[1]) > $max_polymer_span ||
+                abs($new_atom->{translation}[2]) > $max_polymer_span ||
                 $used_uc_atoms->
                 {$new_atom->{original_label}}
-                {$new_atom->{symop_id}} > 99 ) {
+                {$new_atom->{symop_id}} >= $max_polymer_atoms ) {
                 return ();
             }
         }
