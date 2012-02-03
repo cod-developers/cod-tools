@@ -247,7 +247,7 @@ sub symgen_atom( $$$ );
 sub symgen_all_atoms( $$$ );
 sub apply_shifts( $$ );
 sub find_molecules( $$$$$$$$$ );
-sub find_molecule( $$$$$$$$$$$$$ );
+sub find_molecule( $$$$$$$$$$$$ );
 sub uniquify_atom_names( $$$$ );
 sub initial_atoms( $$$$$$ );
 sub get_symmetry_operators( $$ );
@@ -1977,7 +1977,6 @@ sub find_molecules($$$$$$$$$)
     my %used_originals;
     my %used_uc_atoms;
     my %used_bonds;
-    my %polymer_bonds;
 
     foreach my $initial_atom (@$initial_atoms)
     {
@@ -1992,7 +1991,6 @@ sub find_molecules($$$$$$$$$)
                                                 \%used_originals,
                                                 \%used_uc_atoms,
                                                 \%used_bonds,
-                                                \%polymer_bonds,
                                                 $initial_atom, $bricks,
                                                 $filename, $dataname,
                                                 $ortho_matrix );
@@ -2024,7 +2022,7 @@ sub find_molecules($$$$$$$$$)
 
 # ============================================================================ #
 
-sub find_molecule($$$$$$$$$$$$$)
+sub find_molecule($$$$$$$$$$$$)
 {
     my $covalent_sensitivity = shift(@_);
     my $atom_properties      = shift(@_);
@@ -2033,7 +2031,6 @@ sub find_molecule($$$$$$$$$$$$$)
     my $used_originals       = shift(@_);
     my $used_uc_atoms        = shift(@_);
     my $used_bonds           = shift(@_);
-    my $polymer_bonds        = shift(@_);
     my $current_atom         = shift(@_);
     my $bricks               = shift(@_);
     my $filename             = shift(@_);
@@ -2202,33 +2199,6 @@ sub find_molecule($$$$$$$$$$$$$)
                                         "sym atom" => $sym_atom } );
                     } if $debug;
 
-		    if( exists $polymer_bonds->{$sym_atom->{unit_cell_label}} &&
-			exists $polymer_bonds->
-			{$sym_atom->{unit_cell_label}}
-			{$new_atom->{unit_cell_label}} ) {
-			print STDERR
-			    "polymer detected: " .
-			    "$sym_atom->{original_label}($sym_atom->{label}, UC=$sym_atom->{unit_cell_label}) -- " .
-			    "$new_atom->{original_label}($new_atom->{label}, UC=$new_atom->{unit_cell_label})\n"
-			    if $debug;
-		    } else {
-			print STDERR
-			    "adding bond: " .
-			    "$sym_atom->{original_label}($sym_atom->{label}, UC=$sym_atom->{unit_cell_label}) -- " .
-			    "$new_atom->{original_label}($new_atom->{label}, UC=$new_atom->{unit_cell_label})\n"
-			    if $debug;
-
-			$polymer_bonds->{$sym_atom->{unit_cell_label}} = {}
-			    unless exists $polymer_bonds->{$sym_atom->{unit_cell_label}};
-
-			$polymer_bonds->{$sym_atom->{unit_cell_label}}{$new_atom->{unit_cell_label}} ++;
-
-			$polymer_bonds->{$new_atom->{unit_cell_label}} = {}
-			    unless exists $polymer_bonds->{$new_atom->{unit_cell_label}};
-
-			$polymer_bonds->{$new_atom->{unit_cell_label}}{$sym_atom->{unit_cell_label}} ++;
-		    }
-
                     my $back_shifted_sym_atom =
                         translate_atom( $sym_atom, $current_translation,
                                         $ortho_matrix );
@@ -2244,7 +2214,6 @@ sub find_molecule($$$$$$$$$$$$$)
                                                     $used_originals,
                                                     $used_uc_atoms,
                                                     $used_bonds,
-                                                    $polymer_bonds,
                                                     $back_shifted_sym_atom,
                                                     $bricks,
                                                     $filename, $dataname,
