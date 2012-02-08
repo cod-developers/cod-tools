@@ -340,7 +340,7 @@ for my $filename (@ARGV) {
 
 	    foreach my $molecule (@$unique_molecules) {
 		print_molecule( $molecule_id, $audit, $molecule, $Id,
-				$dataset, $dataset_name, $filename );
+				$dataset, $dataset_name, $filename, $sym_data );
 		$molecule_id++;
 	    }
 	}
@@ -1637,7 +1637,7 @@ sub rename_tags($$$)
 sub print_molecule
 {
     my( $molecule_id, $audit, $molecule, $Id, $dataset, $dataset_name,
-        $filename ) = @_;
+        $filename, $sym_data ) = @_;
 
     $dataset->{"name"} = $dataset_name . "_molecule_" . $molecule_id;
 
@@ -1902,6 +1902,44 @@ sub print_molecule
         }
         printf $print_format, $atom->{"coordinates_fract"}[0],
                $atom->{"coordinates_fract"}[1], $atom->{"coordinates_fract"}[2];
+    }
+    print "loop_\n";
+    print "_cod_molecule_atom_label\n";
+    print "_cod_molecule_atom_orig_label\n";
+    print "_cod_molecule_atom_symmetry\n";
+    print "_cod_molecule_atom_symop_id\n";
+    print "_cod_molecule_atom_symop_xyz\n";
+    print "_cod_molecule_atom_transl_id\n";
+    print "_cod_molecule_atom_transl_x\n";
+    print "_cod_molecule_atom_transl_y\n";
+    print "_cod_molecule_atom_transl_z\n";
+
+    foreach my $atom ( sort {
+        length($a->{label}) == length($b->{label}) ?
+            $a->{label} cmp $b->{label} :
+            length($a->{label}) <=> length($b->{label})
+        } @{$molecule->{atoms_c}} )
+    {
+        CIFTagPrint::print_value( $atom->{"label"} );
+        print " ";
+        CIFTagPrint::print_value( $atom->{"original_label"} );
+        print " ";
+        CIFTagPrint::print_value( $atom->{"symop_id"} );
+        print "_";
+        CIFTagPrint::print_value( $atom->{"translation_id"} );
+        print " ";
+        CIFTagPrint::print_value( $atom->{"symop_id"} );
+        print " ";
+        CIFTagPrint::print_value( $sym_data->[$atom->{"symop_id"}-1] );
+        print " ";
+        CIFTagPrint::print_value( $atom->{"translation_id"} );
+        print " ";
+        CIFTagPrint::print_value( $atom->{"translation"}[0] );
+        print " ";
+        CIFTagPrint::print_value( $atom->{"translation"}[1] );
+        print " ";
+        CIFTagPrint::print_value( $atom->{"translation"}[2] );
+        print "\n";
     }
 }
 
