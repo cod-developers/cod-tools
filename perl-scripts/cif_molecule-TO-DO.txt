@@ -1,12 +1,54 @@
--- !! Make cif_molecule independent from uniqueness of labels
--+ !! Correct and test thoroughly the atom renaming algorithm.
--- Detect polymeric molecules.
--- Leave original _chemical_formula_sum of the entry in the _cod_src_... tag.
+-- Output information about the used symmetry operators in the
+   _cod_molecule_... tags (will be necessary for atom classifier):
+
+   loop_
+   _cod_molecule_atom_label
+   _cod_molecule_atom_orig_label
+   _cod_molecule_atom_symmetry
+   _cod_molecule_atom_symop_id
+   _cod_molecule_atom_symop_xyz
+   _cod_molecule_atom_transl_id
+   _cod_molecule_atom_transl_x
+   _cod_molecule_atom_transl_y
+   _cod_molecule_atom_transl_z
+   C1       C1 .      1 x,y,z    555  0  0  0
+   C1_2_543 C1 2_643  2 -x,-y,z  643  1 -1 -2
+
+-- Output information about bonds, angles and dihedrals:
+   loop_
+   _cod_molecule_bond_atom_label_1
+   _cod_molecule_bond_atom_label_2
+   _cod_molecule_bond_distance
+   _cod_molecule_bond_order
+   _cod_molecule_bond_type
+   C2 C1_4_554 1.2345(2) double covalent
+
+   loop_
+   _cod_molecule_angl_atom_label_1
+   _cod_molecule_angl_atom_label_2
+   _cod_molecule_angl_atom_label_3
+   _cod_molecule_angle
+   C2 C1_4_554 C1_3_545 104.8(2)
+
+   loop_
+   _cod_molecule_dihe_atom_label_1
+   _cod_molecule_dihe_atom_label_2
+   _cod_molecule_dihe_atom_label_3
+   _cod_molecule_dihe_atom_label_4
+   _cod_molecule_dihedral
+   C2  C1_4_554  C1_3_545  O3  104.8(2)
+
+-- Pass isotropic B-factor and refinement flags into the output CIF file.
+-- BUG in COD -- check and mark entries with incorrectly specifed disordered fragments?
+-- !! Calculate sigmas of the output values
+
+++ !! Make cif_molecule independent from uniqueness of labels
+++ !! Correct and test thoroughly the atom renaming algorithm.
+++ Detect polymeric molecules.
+++ Leave original _chemical_formula_sum of the entry in the _cod_src_... tag.
 ++ !? Check for special positions while generating symmetric atoms, not after.
 ++ !? Remove atoms on special positions.
 xx Accept (optionally?) short spacegroup names.
--- Pass isotropic B-factor and refinement flags into the output CIF file.
--- BUG in COD -- check and mark entries with incorrectly specifed disordered fragments?
 ++ Print CIF values (especially the externally obtained ones) using CIFTagPrint::print_value().
 ++ Write _atom_site_type_symbol into output.
 ++ Check and fix detection of special positions.
@@ -15,7 +57,6 @@ xx Accept (optionally?) short spacegroup names.
 ++ Make audit creation a default
 ++ Make it faster: implement Garib's suggestion to use brick algorithm
 ++ Increase number of significant digits in coordinate outputs
--- !! Calculate sigmas of the output values
 ++ Fail (maybe optionally, but "on" by default) when errors are encountered
 ++ Add _data_source_... tags into the output files
 ++ Pass crystallographic quality tags (resolution, R-factors) into the output files
