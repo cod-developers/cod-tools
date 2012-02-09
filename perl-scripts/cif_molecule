@@ -1903,6 +1903,15 @@ sub print_molecule
         printf $print_format, $atom->{"coordinates_fract"}[0],
                $atom->{"coordinates_fract"}[1], $atom->{"coordinates_fract"}[2];
     }
+
+    my $has_disorder = 0;
+    foreach my $atom ( @{$molecule->{atoms_c}} ) {
+        if( $atom->{group} ne '.' || $atom->{assembly} ne '.' ) {
+            $has_disorder = 1;
+            last;
+        }
+    }
+
     print "loop_\n";
     print "_cod_molecule_atom_label\n";
     print "_cod_molecule_atom_orig_label\n";
@@ -1913,6 +1922,10 @@ sub print_molecule
     print "_cod_molecule_atom_transl_x\n";
     print "_cod_molecule_atom_transl_y\n";
     print "_cod_molecule_atom_transl_z\n";
+    if( $has_disorder ) {
+        print "_cod_molecule_atom_assembly\n";
+        print "_cod_molecule_atom_group\n";
+    }
 
     foreach my $atom ( sort {
         length($a->{label}) == length($b->{label}) ?
@@ -1939,6 +1952,12 @@ sub print_molecule
         CIFTagPrint::print_value( $atom->{"translation"}[1] );
         print " ";
         CIFTagPrint::print_value( $atom->{"translation"}[2] );
+        if( $has_disorder ) {
+            print " ";
+            CIFTagPrint::print_value( $atom->{"assembly"} );
+            print " ";
+            CIFTagPrint::print_value( $atom->{"group"} );
+        }
         print "\n";
     }
 }
