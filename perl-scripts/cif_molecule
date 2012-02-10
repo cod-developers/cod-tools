@@ -1905,13 +1905,20 @@ sub print_molecule
     }
 
     my $has_disorder = 0;
+    my $is_polymer   = 0;
     foreach my $atom ( @{$molecule->{atoms_c}} ) {
         if( $atom->{group} ne '.' || $atom->{assembly} ne '.' ) {
             $has_disorder = 1;
-            last;
         }
+        if( exists $atom->{is_polymer} && $atom->{is_polymer} == 1 ) {
+            $is_polymer = 1;
+        }
+        if( $has_disorder && $is_polymer ) { last; }
     }
 
+    if( $is_polymer ) {
+        print "_cod_molecule_polymer    yes\n";
+    }
     print "loop_\n";
     print "_cod_molecule_atom_label\n";
     print "_cod_molecule_atom_orig_label\n";
@@ -2129,6 +2136,8 @@ sub find_molecule($$$$$$$$$$$$)
                 "$used_uc_atoms->{$new_atom->{original_label}}{$new_atom->{symop_id}}"
                 . "-th time)\n"
             if $debug;
+            
+            $new_atom->{is_polymer} = 1;
             
             if( $used_uc_atoms->
                 {$new_atom->{original_label}}
