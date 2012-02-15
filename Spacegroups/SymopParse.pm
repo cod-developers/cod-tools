@@ -13,7 +13,7 @@ use strict;
 
 require Exporter;
 @SymopParse::ISA = qw(Exporter);
-@SymopParse::EXPORT = qw( symop_from_string string_from_symop 
+@SymopParse::EXPORT = qw( symop_from_string string_from_symop_reduced 
     symop_string_canonical_form check_symmetry_operator modulo_1
 );
 
@@ -75,7 +75,7 @@ sub round
     return POSIX::floor( $x + 0.5 );
 }
 
-sub string_from_symop
+sub string_from_symop_reduced
 {
     my ($symop) = @_;
 
@@ -172,7 +172,7 @@ sub symop_string_canonical_form
 {
     my ($symop) = @_;
 
-    return string_from_symop(
+    return string_from_symop_reduced(
         symop_translation_modulo_1(
             symop_from_string( $symop )
         )
