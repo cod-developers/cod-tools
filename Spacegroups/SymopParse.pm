@@ -13,8 +13,9 @@ use strict;
 
 require Exporter;
 @SymopParse::ISA = qw(Exporter);
-@SymopParse::EXPORT = qw( symop_from_string string_from_symop_reduced 
-    symop_string_canonical_form check_symmetry_operator modulo_1
+@SymopParse::EXPORT = qw( symop_from_string string_from_symop
+    string_from_symop_reduced symop_string_canonical_form
+    check_symmetry_operator modulo_1
 );
 
 #
@@ -73,6 +74,45 @@ sub round
     use POSIX;
     my $x = $_[0];
     return POSIX::floor( $x + 0.5 );
+}
+
+sub string_from_symop
+{
+    my ($symop) = @_;
+
+    my @symops = ( "", "", "" );
+
+    for( my $i = 0; $i < $#{$symop}; $i ++ ) {
+        if( $symop->[$i][0] > 0 ) {
+            $symops[$i] = "x";
+        } elsif( $symop->[$i][0] < 0 ) {
+            $symops[$i] = "-x";
+        }
+        if( $symop->[$i][1] > 0 ) {
+            if( $symops[$i] eq "" ) {
+                $symops[$i] = "y";
+            } else {
+                $symops[$i] .= "+y";
+            }
+        } elsif( $symop->[$i][1] < 0 ) {
+            $symops[$i] .= "-y";
+        }
+        if( $symop->[$i][2] > 0 ) {
+            if( $symops[$i] eq "" ) {
+                $symops[$i] = "z";
+            } else {
+                $symops[$i] .= "+z";
+            }
+        } elsif( $symop->[$i][2] < 0 ) {
+            $symops[$i] .= "-z";
+        }
+        if( $symop->[$i][3] != 0 ) {
+            my $sig = $symop->[$i][3] > 0 ? "+" : "-";
+            my $val = abs( $symop->[$i][3] );
+            $symops[$i] .= $sig . $val;
+        }
+    }
+    return join( ",", @symops );
 }
 
 sub string_from_symop_reduced
