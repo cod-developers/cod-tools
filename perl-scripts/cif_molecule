@@ -871,6 +871,11 @@ sub get_unit_cell($$$)
 #                       atom_site_type_symbol = "C",
 #                       coordinates_fract=>[1.0, 1.0, 1.0],
 #                       unity_matrix_applied=>1,
+#                       transform_matrix=>[
+#                           [ 1, 0, 0, 0 ],
+#                           [ 0, 1, 0, 0 ],
+#                           [ 0, 0, 1, 0 ],
+#                           [ 0, 0, 0, 1 ] ],
 #                       assembly=>"A", # "."
 #                       group=>"1", # "."
 #                       }
@@ -899,6 +904,11 @@ sub extract_atom
     $atom_info{"unity_matrix_applied"}  = 1;
     $atom_info{"translation_id"}        = "555";
     $atom_info{"translation"}           = [ 0, 0, 0 ];
+    $atom_info{"transform_matrix"}        = [
+        [ 1, 0, 0, 0 ],
+        [ 0, 1, 0, 0 ],
+        [ 0, 0, 1, 0 ],
+        [ 0, 0, 0, 1 ] ];
 
     $atom_info{coordinates_ortho} =
         mat_vect_mul( $f2o, \@atom_xyz );
@@ -950,6 +960,11 @@ sub extract_atom
 #                       chemical_type=>"C",
 #                       coordinates_fract=>[1.0, 1.0, 1.0],
 #                       coordinates_ortho=>[5.0, -1.3, 1.7],
+#                       transform_matrix=>[
+#                           [ 1, 0, 0, 0 ],
+#                           [ 0, 1, 0, 0 ],
+#                           [ 0, 0, 1, 0 ],
+#                           [ 0, 0, 0, 1 ] ],
 #                       unity_matrix_applied=>1,
 #                       symop_id=>1
 #                       assembly=>"A", # "."
@@ -962,6 +977,11 @@ sub extract_atom
 #                       chemical_type=>"C",
 #                       coordinates_fract=>[1.0, 1.0, 1.0],
 #                       coordinates_ortho=>[5.0, -1.3, 1.7],
+#                       transform_matrix=>[
+#                           [ 1, 0, 0, 0 ],
+#                           [ 0, 1, 0, 0 ],
+#                           [ 0, 0, 1, 0 ],
+#                           [ 0, 0, 0, 1 ] ],
 #                       unity_matrix_applied=>1,
 #                       symop_id=>1,
 #                       assembly=>"A", # "."
@@ -983,7 +1003,14 @@ sub copy_atom
         if( !ref $old_atom->{$key} ) {
             $new_atom{$key} = $old_atom->{$key};
         } elsif( ref $old_atom->{$key} eq "ARRAY" ) {
-            $new_atom{$key} = [ @{$old_atom->{$key}} ];
+            $new_atom{$key} = [];
+            foreach my $element ( @{$old_atom->{$key}} ) {
+                if( ref $element eq 'ARRAY' ) {
+                    push( @{$new_atom{$key}}, [ @$element ] );
+                } else {
+                    push( @{$new_atom{$key}}, $element );
+                }
+            }
         } else {
             die( "assertion failed: 'copy_atom' does not know how to " .
                  "copy the supplied object" );
@@ -1166,6 +1193,13 @@ sub translate_atom
         ($new_atom->{translation}[1]+5).
         ($new_atom->{translation}[2]+5);
 
+    $new_atom->{transform_matrix}[0][3] +=
+        $new_atom->{translation}[0] - $atom->{translation}[0];
+    $new_atom->{transform_matrix}[1][3] +=
+        $new_atom->{translation}[1] - $atom->{translation}[1];
+    $new_atom->{transform_matrix}[2][3] +=
+        $new_atom->{translation}[2] - $atom->{translation}[2];
+
     if( defined $new_atom->{unity_matrix_applied} &&
         $new_atom->{unity_matrix_applied} &&
         $new_atom->{translation}[0] == 0 &&
@@ -1304,6 +1338,9 @@ sub symop_apply
     $new_atom_info->{"translation"} = [ 0, 0, 0 ];
     $new_atom_info->{"translation_id"} = "555";
 
+    $new_atom_info->{"transform_matrix"} =
+        mat_mat_mul( $new_atom_info->{"transform_matrix"}, $symop );
+
     if( $new_atom_info->{"unity_matrix_applied"} ) {
         $new_atom_info->{"label"} = $new_atom_info->{"original_label"};
     } else {
@@ -1319,6 +1356,44 @@ sub symop_apply
     } if 0;
 
     return $new_atom_info;
+}
+
+#===============================================================#
+# Multiplies two vectors
+
+sub vect_vect_mul($$)
+{
+    my( $vect1, $vect2 ) = @_;
+
+    my $product = 0;
+
+    for(my $i = 0; $i < scalar @$vect1; $i++ ) {
+        $product += $vect1->[$i] * $vect2->[$i];
+    }
+
+    return $product;
+}
+
+#===============================================================#
+# Multiplies two symmetry operator matrices
+
+sub mat_mat_mul($$)
+{
+    my( $matrix1, $matrix2 ) = @_;
+    
+    my @new_matrix;
+    for(my $i = 0; $i < 4; $i++ ) {
+        my @matrix_line;
+        for(my $j = 0; $j < 4; $j++ ) {
+            push( @matrix_line, vect_vect_mul(
+                $matrix1->[$i],
+                [ $matrix2->[0][$j], $matrix2->[1][$j],
+                  $matrix2->[2][$j], $matrix2->[3][$j] ] ) );
+        }
+        push( @new_matrix, \@matrix_line );
+    }
+
+    return wantarray ? @new_matrix : \@new_matrix;
 }
 
 #===============================================================#
@@ -1519,6 +1594,12 @@ sub shift_atom($$)
                         $atom_info->{"symop_id"} . "_" .
                         $shift_label;
                     $new_atom_info->{"translation_id"} = $shift_label;
+                    $new_atom_info->{transform_matrix}[0][3] +=
+                        $shifting_params[$i];
+                    $new_atom_info->{transform_matrix}[1][3] +=
+                        $shifting_params[$j];
+                    $new_atom_info->{transform_matrix}[2][3] +=
+                        $shifting_params[$k];
                 }
                 $new_atom_info->{coordinates_ortho} =
                     mat_vect_mul( $f2o, \@new_atom_xyz );
@@ -1929,6 +2010,7 @@ sub print_molecule
     print "_cod_molecule_atom_transl_x\n";
     print "_cod_molecule_atom_transl_y\n";
     print "_cod_molecule_atom_transl_z\n";
+    print "_cod_molecule_atom_transform\n";
     if( $has_disorder ) {
         print "_cod_molecule_atom_assembly\n";
         print "_cod_molecule_atom_group\n";
@@ -1959,6 +2041,9 @@ sub print_molecule
         CIFTagPrint::print_value( $atom->{"translation"}[1] );
         print " ";
         CIFTagPrint::print_value( $atom->{"translation"}[2] );
+        print " ";
+        CIFTagPrint::print_value(
+            string_from_symop( $atom->{"transform_matrix"} ) );
         if( $has_disorder ) {
             print " ";
             CIFTagPrint::print_value( $atom->{"assembly"} );
