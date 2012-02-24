@@ -14,18 +14,18 @@ package CCIFParser;
 use strict;
 use SOptions;
 use Precision;
-use Cwd;
+use Cwd "abs_path";
+use File::Basename;
 
 require Exporter;
 @CCIFParser::ISA = qw(Exporter);
 @CCIFParser::EXPORT = qw( parse );
 
-use Inline C => Config => LIBS => "-L" . getcwd . "/CIFParser-c -L"
-    . getcwd . "/CIFParser-c/libs/cexceptions -L"
-    . getcwd . "/CIFParser-c/libs/getoptions -lCIFParser-c -lcexceptions -lgetoptions",
-    INC => "-I" . getcwd . "/CIFParser-c -I"
-    . getcwd . "/CIFParser-c/libs/cexceptions -I"
-    . getcwd . "/CIFParser-c/libs/getoptions";
+use Inline C => Config => LIBS => "-lCIFParser-c -lcexceptions -lgetoptions",
+    INC => "-I" . dirname(abs_path($0)) . "/../CIFParser-c " .
+           "-I" . dirname(abs_path($0)) . "/../CIFParser-c/libs/cexceptions " .
+           "-I" . dirname(abs_path($0)) . "/../CIFParser-c/libs/getoptions",
+    DIRECTORY =>  dirname(abs_path($0)) . "/_Inline";
 use Inline C => <<'END_OF_C_CODE';
 
 #include <stdio.h>
