@@ -55,6 +55,7 @@ use lib "./CIFTags";
 use lib "./Spacegroups";
 use AtomBricks;
 use CIFParser;
+use CCIFParser;
 use CIFTagCanonicalNames;
 use SymopParse;
 use SymopLookup;
@@ -112,6 +113,8 @@ my $max_polymer_atoms = 100;
 
 my $cif_header_file; # Comments from the beginning of this file wil be
                      # prepended to the output.
+
+my $use_parser = "perl"; # Used CIF parser
 
 @ARGV = getOptions
 (
@@ -235,6 +238,9 @@ my $cif_header_file; # Comments from the beginning of this file wil be
     "--dont-dump-atoms" => sub{ $dump_atoms = 0 },
     "--no-dump-atoms"   => sub{ $dump_atoms = 0 },
 
+    "--use-perl-parser"       => sub{ $use_parser = "perl" },
+    "--use-c-parser"          => sub{ $use_parser = "c" },
+
     "--audit"                   => sub { $audit = 1; },
     "--no-audit"                => sub { $audit = 0; },
     "--help,--usage"            => sub { SUsage::usage; exit },
@@ -299,8 +305,13 @@ if( $cif_header_file ) {
 
 for my $filename (@ARGV) {
 
-    my $parser = new CIFParser;
-    my $data = $parser->Run($filename);
+    my $data;
+    if( $use_parser eq "perl" ) {
+        my $parser = new CIFParser;
+        $data = $parser->Run($filename);
+    } else {
+        $data = CCIFParser::parse($filename);
+    }
 
     canonicalize_all_names( $data );
 
