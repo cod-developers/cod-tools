@@ -21,7 +21,11 @@ require Exporter;
 @CCIFParser::ISA = qw(Exporter);
 @CCIFParser::EXPORT = qw( parse );
 
-use Inline C => Config => LIBS => "-lCIFParser-c -lcexceptions -lgetoptions",
+use Inline C => Config =>
+    LIBS => "-L" . dirname(abs_path($0)) . "/../CIFParser-c " .
+            "-L" . dirname(abs_path($0)) . "/../CIFParser-c/libs/cexceptions " .
+            "-L" . dirname(abs_path($0)) . "/../CIFParser-c/libs/getoptions " .
+            "-lCIFParser-c -lcexceptions -lgetoptions",
     INC => "-I" . dirname(abs_path($0)) . "/../CIFParser-c " .
            "-I" . dirname(abs_path($0)) . "/../CIFParser-c/libs/cexceptions " .
            "-I" . dirname(abs_path($0)) . "/../CIFParser-c/libs/getoptions",
