@@ -8,6 +8,61 @@
 #include <allocx.h>
 #include <cxprintf.h>
 
+static char *usage_text[2] = {
+
+"Get specified data values from a CIF file(s)\n",
+
+"Options:\n"
+
+"  -t, --tag _cell_length_a,_cell_volume\n"
+"      Extract the specified data items (no default)\n\n"
+
+"  -s, --separator \" \"\n"
+"      Use the specified string to separate values\n\n"
+
+"  --vseparator \",\"\n"
+"      Use the specified string to separate multiple values of a "
+"give data item, from a loop\n\n"
+
+"  --filename\n"
+"      Print filename in the output (default)\n\n"
+
+"  --no-filename\n"
+"      Don't print file name in the output\n\n"
+
+"  --dataname\n"
+"      Print data block names in the output (default)\n\n"
+
+"  --no-dataname\n"
+"      Do not print data block names in the output\n\n"
+
+"  -d, --debug\n"
+"      Print internal program data structures for debugging\n\n"
+
+"  -c, --compile-only\n"
+"      Just check the input CIF syntax... \n\n"
+
+"  -q, --quiet\n"
+"      Be quiet, do not print reports on the processing\n\n"
+
+"  -q-,--no-quiet, --vebose"
+"      Be verbose, print report on the work progress to STDERR\n\n"
+
+"  --help   print short usage message (this message) and exit\n"
+};
+
+static void usage( int argc, char *argv[], int *i, option_t *option,
+		   cexception_t * ex )
+{
+    puts( usage_text[0] );
+    puts( "Usage:" );
+    printf( "   %s --options < input.cif\n", argv[0] );
+    printf( "   %s --options input.cif\n", argv[0] );
+    printf( "   %s --options input1.cif input2.cif inputs*.cif\n\n", argv[0] );
+    puts( usage_text[1] );
+    exit( 0 );
+};
+
 static option_value_t tags;
 static option_value_t separator;
 static option_value_t vseparator;
@@ -30,6 +85,7 @@ static option_t options[] = {
   { "-q", "--quiet",        OT_BOOLEAN_FALSE, &verbose },
   { "-q-","--no-quiet",     OT_BOOLEAN_TRUE,  &verbose },
   { NULL, "--vebose",       OT_BOOLEAN_TRUE,  &verbose },
+  { NULL, "--help",         OT_FUNCTION,      NULL, &usage },
   { NULL }
 };
 
