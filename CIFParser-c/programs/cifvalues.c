@@ -114,6 +114,14 @@ int main( int argc, char *argv[], char *env[] )
       files = get_optionsx( argc, argv, options, &inner );
       char * tag_pointer = tags.value.s;
       char * end_pointer = strchr( tags.value.s, ',' );
+
+      if( !tags.present || !tags.value.s || !tags.value.s[0] ) {
+          fprintf( stderr, "%s: no data items to extract from the input, please"
+                   "specify them using --tag option (--help for examples)\n",
+                   argv[0] );
+          exit(0);
+      }
+
       while( tag_pointer != NULL ) {
         tagcount++;
         int taglen;
