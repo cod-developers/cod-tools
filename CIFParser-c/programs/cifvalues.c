@@ -1,3 +1,11 @@
+/*---------------------------------------------------------------------------*\
+**$Author$
+**$Date$ 
+**$Revision$
+**$URL$
+\*---------------------------------------------------------------------------*/
+
+/* uses: */
 
 #include <stdio.h>
 #include <unistd.h>
@@ -7,6 +15,9 @@
 #include <cif_grammar_flex.h>
 #include <allocx.h>
 #include <cxprintf.h>
+
+static char *Id = "$Id$";
+static char *source_URL = "$URL$";
 
 static char *usage_text[2] = {
 
@@ -48,7 +59,9 @@ static char *usage_text[2] = {
 "  -q-,--no-quiet, --vebose"
 "      Be verbose, print report on the work progress to STDERR\n\n"
 
-"  --help   print short usage message (this message) and exit\n"
+"  --version  print program version (SVN Id) and exit\n"
+
+"  --help     print short usage message (this message) and exit\n"
 };
 
 static void usage( int argc, char *argv[], int *i, option_t *option,
@@ -62,6 +75,14 @@ static void usage( int argc, char *argv[], int *i, option_t *option,
     puts( usage_text[1] );
     exit( 0 );
 };
+
+static void version( int argc, char *argv[], int *i, option_t *option,
+                     cexception_t * ex )
+{
+    printf( "%s\n", Id );
+    printf( "%s\n", source_URL );
+    exit( 0 );
+}
 
 static option_value_t tags;
 static option_value_t separator;
@@ -86,6 +107,7 @@ static option_t options[] = {
   { "-q-","--no-quiet",     OT_BOOLEAN_TRUE,  &verbose },
   { NULL, "--vebose",       OT_BOOLEAN_TRUE,  &verbose },
   { NULL, "--help",         OT_FUNCTION,      NULL, &usage },
+  { NULL, "--version",      OT_FUNCTION,      NULL, &version },
   { NULL }
 };
 
