@@ -86,6 +86,7 @@ my $exclude_misspelled_tags = 0;
 my $fold_long_fields = 0;
 my $fold_title = 0;
 my $folding_width = 76;
+my $exclude_publ_details = 1;
 my $use_parser = "perl";
 my $parse_formula_sum = 0;
 my $fix_errors = 0;
@@ -220,6 +221,10 @@ my %spacegroups = map {
 #*
 #*    --leave-bibliography
 #*    --discard-bibliograph
+#*
+#*    --exclude-publication-details
+#*    --dont-exclude-publication-details, --no-exclude-publication-details
+#*
 #*    --leave-title
 #*    --help,--usage         Print a short usage message (this message) and exit.
 #**
@@ -331,6 +336,11 @@ my %spacegroups = map {
 
     "--leave-bibliography"   => sub{ $leave_biblio = 1 },
     "--discard-bibliography" => sub{ $leave_biblio = 0 },
+
+    "--exclude-publication-details"      => sub{ $exclude_publ_details = 1 },
+    "--dont-exclude-publication-details" => sub{ $exclude_publ_details = 0 },
+    "--no-exclude-publication-details"   => sub{ $exclude_publ_details = 0 },
+
     "--leave-title"          => sub{ $leave_title  = 1 },
     "--help,--usage" => sub { SUsage::usage; exit },
 );
@@ -759,7 +769,7 @@ for my $filename (@ARGV) {
         # Exclude potentially copyrighted and irrelevant tags
         # unconditionally:
 
-        do {
+        if( $exclude_publ_details ) {
             my @tag_list = @{$dataset->{tags}};
             for my $tag (@tag_list) {
                 if( exists $excluded_tags{$tag} || $tag =~ /^_vrf_/ ) {
@@ -768,7 +778,7 @@ for my $filename (@ARGV) {
                     #showRef( $dataset );
                 }
             }
-        };
+        }
 
         # Check for misspelled tags:
 
