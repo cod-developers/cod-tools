@@ -229,16 +229,21 @@ void cif_print_tag_values( CIF *cif, char ** tagnames, int tagcount,
 
     if( cif ) {
         foreach_datablock( datablock, cif->datablock_list ) {
+            char *dblock_name = datablock_name( datablock );
             char nprefix[ strlen( prefix ) + 
-                strlen( datablock_name( datablock ) ) + 
-                2 * strlen( separator )];
+                          dblock_name ? strlen( dblock_name ) : 0 + 
+                          2 * strlen( separator ) ];
+            if( ! dblock_name ) {
+                continue;
+            }
+
             nprefix[0] = '\0';
             if( strlen( prefix ) != 0 ) {
                 strcat( nprefix, prefix );
                 strcat( nprefix, separator );
             }
             if( append_blkname == 1 ) {
-                strcat( nprefix, datablock_name( datablock ) );
+                strcat( nprefix, dblock_name );
                 strcat( nprefix, separator );
             }
             datablock_print_tag_values( datablock, tagnames, tagcount, nprefix,

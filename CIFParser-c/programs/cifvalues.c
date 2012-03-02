@@ -176,10 +176,19 @@ int main( int argc, char *argv[], char *env[] )
               if( debug.present && strstr(debug.value.s, "dump") != NULL ) {
                   cif_print( cif );
               } else {
-                  cif_print_tag_values( cif, taglist, tagcount,
-                      ( print_filename.value.b == 1 ? filename : "" ), 
-                      print_dataname.value.b,
-                      separator.value.s, vseparator.value.s );
+                  if( ( !cif_datablock_list( cif ) || 
+                        !datablock_next( cif_datablock_list( cif ))) &&
+                      !datablock_name( cif_datablock_list( cif ))) {
+                      fprintf( stderr,
+                               "%s: file '%s' seems to be empty (no named datablocks)\n",
+                               argv[0], filename );
+                  } else {
+                      cif_print_tag_values
+                          ( cif, taglist, tagcount,
+                            ( print_filename.value.b == 1 ? filename : "" ),
+                            print_dataname.value.b, separator.value.s, 
+                            vseparator.value.s );
+                  }
               }         
               delete_cif( cif );
               cif = NULL;
