@@ -507,10 +507,10 @@ sub conditions_are_the_same
         for my $tag (keys %tags) {
             if( exists $entry1->{$parameter}{$tag} &&
                 exists $entry2->{$parameter}{$tag} ) {
-                if( $entry1->{$parameter}{$tag} =~ /^${number}$/o ||
-                    $entry2->{$parameter}{$tag} =~ /^${number}$/o ) {
-                    my $val1 = $entry1->{$parameter}{$tag};
-                    my $val2 = $entry2->{$parameter}{$tag};
+                ## print ">>> $tag\n";
+                my $val1 = $entry1->{$parameter}{$tag};
+                my $val2 = $entry2->{$parameter}{$tag};
+                if( $val1 =~ /^${number}$/o || $val2 =~ /^${number}$/o ) {
                     $val1 =~ s/\(\d+\)$//;
                     $val2 =~ s/\(\d+\)$//;
                     ## print ">>> '$val1', '$val2'\n\n";
@@ -518,9 +518,14 @@ sub conditions_are_the_same
                         return 0;
                     }
                 } else {
-                    ## print ">>> '$entry1->{$parameter}{$tag}', '$entry2->{$parameter}{$tag}'\n\n";
-                    if( $entry1->{$parameter}{$tag} ne
-                        $entry2->{$parameter}{$tag} ) {
+                    $val1 =~ s/^\s+|\s+$//g;
+                    $val2 =~ s/^\s+|\s+$//g;
+                    $val1 =~ s/\n/ /g;
+                    $val2 =~ s/\n/ /g;
+                    $val1 =~ s/\s+/ /g;
+                    $val2 =~ s/\s+/ /g;
+                    ## print ">>> '$val1', '$val2'\n\n";
+                    if( $val1 ne $val2 ) {
                         return 0;
                     }
                 }
