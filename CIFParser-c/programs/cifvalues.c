@@ -16,7 +16,6 @@
 #include <allocx.h>
 #include <cxprintf.h>
 
-static char *Id = "$Id$";
 static char *source_URL = "$URL$";
 
 static char *usage_text[2] = {
@@ -76,10 +75,12 @@ static void usage( int argc, char *argv[], int *i, option_t *option,
     exit( 0 );
 };
 
+#define STRINGIFY(V) "\""##V##"\""
+
 static void version( int argc, char *argv[], int *i, option_t *option,
                      cexception_t * ex )
 {
-    printf( "%s\n", Id );
+    printf( "%s svnversion %s\n", argv[0], SVN_VERSION );
     printf( "%s\n", source_URL );
     exit( 0 );
 }

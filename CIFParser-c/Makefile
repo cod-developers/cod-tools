@@ -145,11 +145,16 @@ INCLUDES = -I. ${addprefix -I, ${sort ${SRC_DIR} ${OTHER_DIRS} ${LIB_DIRS}}}
 ## LDFLAGS  = -L/usr/local/lib
 ## LIBFLAGS = -lm
 
+SVN_VERSION := $(shell svnversion)
+
 ifeq (${CC},gcc)
     CFLAGS = -Wall -g ${OPTFLAGS} -DYYDEBUG=1 -D_YACC_ ${INCLUDES} -fPIC \
+	-DSVN_VERSION="\"${SVN_VERSION}\"" \
 	${EXTRA_CFLAGS}
 else
-    CFLAGS = ${OPTFLAGS} -DYYDEBUG=1 -D_YACC_ ${INCLUDES} ${EXTRA_CFLAGS}
+    CFLAGS = ${OPTFLAGS} -DYYDEBUG=1 -D_YACC_ ${INCLUDES} \
+	-DSVN_VERSION="\"${SVN_VERSION}\"" \
+	${EXTRA_CFLAGS}
 endif
 
 #------------------------------------------------------------------------------
