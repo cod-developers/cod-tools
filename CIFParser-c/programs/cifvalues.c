@@ -24,7 +24,7 @@ static char *usage_text[2] = {
 
 "Options:\n"
 
-"  -t, --tag _cell_length_a,_cell_volume\n"
+"  -t, --tags _cell_length_a,_cell_volume\n"
 "      Extract the specified data items (no default)\n\n"
 
 "  -s, --separator \" \"\n"
@@ -95,7 +95,7 @@ static option_value_t debug;
 static option_value_t only_compile;
 
 static option_t options[] = {
-  { "-t", "--tag",          OT_STRING,        &tags },
+  { "-t", "--tags",         OT_STRING,        &tags },
   { "-s", "--separator",    OT_STRING,        &separator },
   { NULL, "--vseparator",   OT_STRING,        &vseparator },
   { NULL, "--filename",     OT_BOOLEAN_TRUE,  &print_filename },
