@@ -227,7 +227,7 @@ ${TST_EXE_DIR}/%: ${TST_PRG_DIR}/%.c ${LINK_OBJ_FILES} \
 # compared with the sample outputs files in ./outputs/*.out, and any
 # differences will be recorded in ./outputs/*.diff #
 
-TEST_DIR = ./inputs
+TEST_DIR = ./tests
 OUTPUT_DIR = ./outputs
 
 TEST_FILES = ${wildcard ${TEST_DIR}/*${EXT}}
@@ -247,8 +247,8 @@ TST_DIFFS   = ${addprefix ${TST_OUT_DIR}/, ${TST_BASENAMES:%.c=%.diff}}
 # Outputs and tests from the shell-driven tests
 #
 
-SHELL_TSTDIR = ./shtests
-SHELL_OUTDIR = ./shoutputs
+SHELL_TSTDIR = ./tests
+SHELL_OUTDIR = ./outputs
 
 SHELL_TESTS   = ${wildcard ${SHELL_TSTDIR}/*.sh}
 SHELL_BASES   = ${notdir ${SHELL_TESTS}}
@@ -263,16 +263,43 @@ outputs: ${RES_FILES} ${TST_OUTPUTS}
 
 test: ${DIFF_FILES} ${TST_DIFFS}
 
-${DIFF_FILES}: ${TARGET}
+${RES_FILES}: ${EXE_FILES}
+${DIFF_FILES}: ${EXE_FILES}
 
-${OUTPUT_DIR}/%.diff: ${TARGET} ${TEST_DIR}/%${EXT}
+${OUTPUT_DIR}/%.diff: ${TEST_DIR}/%${EXT} ${TEST_DIR}/%${OPT_EXT}
 	-@printf "%-30s " "$*:" ; \
-	./$^ ${TEST_OPTIONS} 2>&1 | diff ${OUTPUT_DIR}/$*.out - > $@ ; \
+	./$(shell echo $* | sed -e 's/_[0-9]*$$//') ${TEST_OPTIONS} \
+		${TEST_OPTIONS} \
+		$(shell grep -v '^#' ${word 2, $^}) \
+		$< 2>&1 \
+	| diff ${OUTPUT_DIR}/$*.out - > $@ ; \
 	if [ $$? = 0 ]; then echo "OK"; else echo "FAILED:"; cat $@; fi
 
-${OUTPUT_DIR}/%.out: ${TARGET} ${TEST_DIR}/%${EXT}
+${OUTPUT_DIR}/%.out: ${TEST_DIR}/%${EXT} ${TEST_DIR}/%${OPT_EXT}
 	-@test -f $@ || echo "$@:"
-	-@test -f $@ || ./$^ ${TEST_OPTIONS} 2>&1 | tee $@
+	-@test -f $@ || \
+	./$(shell echo $* | sed -e 's/_[0-9]*$$//') \
+		${TEST_OPTIONS} \
+		$(shell grep -v '^#' ${word 2, $^}) \
+		$< 2>&1 \
+	| tee $@
+	-@touch $@
+
+${OUTPUT_DIR}/%.diff: ${TEST_DIR}/%${EXT}
+	-@printf "%-30s " "$*:" ; \
+	./$(shell echo $* | sed -e 's/_[0-9]*$$//') \
+		${TEST_OPTIONS} \
+		$<  2>&1 \
+	| diff ${OUTPUT_DIR}/$*.out - > $@ ; \
+	if [ $$? = 0 ]; then echo "OK"; else echo "FAILED:"; cat $@; fi
+
+${OUTPUT_DIR}/%.out: ${TEST_DIR}/%${EXT}
+	-@test -f $@ || echo "$@:"
+	-@test -f $@ || \
+	./$(shell echo $* | sed -e 's/_[0-9]*$$//') \
+		${TEST_OPTIONS} \
+		$< 2>&1 \
+	| tee $@
 	-@touch $@
 
 ${TST_OUT_DIR}/%.out: ${TST_EXE_DIR}/%
@@ -286,6 +313,8 @@ ${TST_OUT_DIR}/%.diff: ${TST_EXE_DIR}/%
 	if [ $$? = 0 ]; then echo "OK"; else echo "FAILED:"; cat $@; fi
 
 .PHONY: shoutpus shout shtests shtest
+
+${SHELL_DIFFS}: ${EXE_FILES}
 
 shoutputs shout: ${SHELL_OUTPUTS}
 
