@@ -35,10 +35,10 @@ static char *usage_text[2] = {
 "give data item, from a loop\n\n"
 
 "  --filename\n"
-"      Print filename in the output (default)\n\n"
+"      Print filename in the output\n\n"
 
 "  --no-filename\n"
-"      Don't print file name in the output\n\n"
+"      Don't print file name in the output (default)\n\n"
 
 "  --dataname\n"
 "      Print data block names in the output (default)\n\n"
