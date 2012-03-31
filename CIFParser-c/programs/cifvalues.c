@@ -75,8 +75,6 @@ static void usage( int argc, char *argv[], int *i, option_t *option,
     exit( 0 );
 };
 
-#define STRINGIFY(V) "\""##V##"\""
-
 static void version( int argc, char *argv[], int *i, option_t *option,
                      cexception_t * ex )
 {
