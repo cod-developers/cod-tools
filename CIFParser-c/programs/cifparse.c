@@ -15,6 +15,7 @@ static option_value_t only_compile;
 static option_t options[] = {
   { "-d", "--debug",        OT_STRING,        &debug },
   { "-c", "--compile-only", OT_BOOLEAN_TRUE,  &only_compile },
+  { "-p", "--print",        OT_BOOLEAN_FALSE, &only_compile },
   { "-q", "--quiet",        OT_BOOLEAN_FALSE, &verbose },
   { "-q-","--no-quiet",     OT_BOOLEAN_TRUE,  &verbose },
   { NULL, "--vebose",       OT_BOOLEAN_TRUE,  &verbose },
@@ -68,9 +69,13 @@ int main( int argc, char *argv[], char *env[] )
 
           if( cif && cif_nerrors( cif ) == 0 ) {
               if( debug.present && strstr(debug.value.s, "dump") != NULL ) {
-                  cif_print( cif );
+                  cif_dump( cif );
               } else {
-                  printf( "%s: file '%s' OK\n", progname, filename );
+                  if( only_compile.value.b == 1 ) {
+                      printf( "%s: file '%s' OK\n", progname, filename );
+                  } else {
+                      cif_print( cif );
+                  }
               }
               delete_cif( cif );
               cif = NULL;
