@@ -20,7 +20,7 @@ static char *source_URL = "$URL$";
 
 static char *usage_text[2] = {
 
-"Get specified data values from a CIF file(s)\n",
+"Parse CIF file(s), check syntax, and optionally output pretty-printed data\n",
 
 "Options:\n"
 
