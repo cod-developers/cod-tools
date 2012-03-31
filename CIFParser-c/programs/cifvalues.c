@@ -49,12 +49,6 @@ static char *usage_text[2] = {
 "  -d, --debug\n"
 "      Print internal program data structures for debugging\n\n"
 
-"  -q, --quiet\n"
-"      Be quiet, do not print reports on the processing\n\n"
-
-"  -q-,--no-quiet, --vebose"
-"      Be verbose, print report on the work progress to STDERR\n\n"
-
 "  --version  print program version (SVN Id) and exit\n"
 
 "  --help     print short usage message (this message) and exit\n"
@@ -85,7 +79,6 @@ static option_value_t separator;
 static option_value_t vseparator;
 static option_value_t print_filename;
 static option_value_t print_dataname;
-static option_value_t verbose;
 static option_value_t debug;
 
 static option_t options[] = {
@@ -97,9 +90,6 @@ static option_t options[] = {
   { NULL, "--dataname",     OT_BOOLEAN_TRUE,  &print_dataname },
   { NULL, "--no-dataname",  OT_BOOLEAN_FALSE, &print_dataname },
   { "-d", "--debug",        OT_STRING,        &debug },
-  { "-q", "--quiet",        OT_BOOLEAN_FALSE, &verbose },
-  { "-q-","--no-quiet",     OT_BOOLEAN_TRUE,  &verbose },
-  { NULL, "--vebose",       OT_BOOLEAN_TRUE,  &verbose },
   { NULL, "--help",         OT_FUNCTION,      NULL, &usage },
   { NULL, "--version",      OT_FUNCTION,      NULL, &version },
   { NULL }
