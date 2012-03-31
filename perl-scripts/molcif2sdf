@@ -1,0 +1,134 @@
+#! /bin/sh
+#------------------------------------------------------------------------------
+#$Author$
+#$Date$
+#$Revision$
+#$URL$
+#------------------------------------------------------------------------------
+#*
+# A script to convert CIFs with multiple molecules (similar to those
+# obtained from 'cif_molecule') to an SDF file with a molecule
+# description. Intended to be suitable for upload to PubChem.
+#
+# Usage: $0 --options < file1.cif
+# Usage: $0 --options file1.cif
+# Usage: $0 --options file1.cif file2*.cif
+#**
+
+TMP_DIR="${TMPDIR}"
+
+set -ue
+## set -x
+
+script() { echo "# $*"; cat; }
+setvar() { eval $1="'$3'"; }
+
+setvar Id = '$Id: script.sh 11 2011-01-06 12:57:08Z saulius $'
+
+setvar FILES = ""
+
+setvar BASENAME = "`basename $0`"
+
+setvar COD_CIF = ""
+
+#** OPTIONS:
+#**  -C, --cod-cif 1000000.cif
+#**      Provide the original COD CIF to extract structure metadata
+#**
+#**  --tmp-dir /tmp    Use the specified trmporary directory (default is /tmp)
+#**  --help            Print short help message (this message) and exit
+while [ $# -gt 0 ]
+do
+  case $1 in
+      -C|--cod-cif|--cod-ci|--cod-c|--cod|--co|--c)
+          COD_CIF="$2"
+          shift
+          ;;
+      --tmp-dir|--tmp-di|--tmp-d|--tmp|--tm|--t)
+          TMP_DIR="$2"
+          shift
+          ;;
+      --help|--hel|--he|--h)
+            awk '/#\*/,/#\*\*/ {
+                    sub("^ *#[*]?[*]?", ""); \
+                    gsub("\\$0","'$0'"); \
+                    print $0
+                }' $0
+	    exit
+	    ;;      
+      -*) echo "`basename $0`: unknown option $1" >&2 ; exit 1 ;;
+      *)  FILES="$FILES '$1'" ;;
+    esac
+    shift
+done
+
+## echo ${FILES}
+eval set -- "${FILES}"
+
+test -z "${TMP_DIR}" && TMP_DIR="/tmp"
+TMP_DIR="${TMP_DIR}/tmp-${BASENAME}-$$"
+mkdir "${TMP_DIR}"
+
+TMP_SPLIT_DIR="${TMP_DIR}/split"
+mkdir ${TMP_SPLIT_DIR}
+
+cat ${1+"$@"} \
+| cif_split_primitive --quiet -o ${TMP_SPLIT_DIR}
+
+## ls -l ${TMP_SPLIT_DIR}
+
+cif_values='cif_values --no-header --no-dataname --no-filename --dont-replace-spaces --tags'
+
+## set -x
+
+for MOL in ${TMP_SPLIT_DIR}/*
+do
+    (
+        cd ${TMP_SPLIT_DIR}
+        babel ---errorlevel 1 -iCIF $(basename $MOL) -o SDF \
+            | grep -v '^\$\$\$\$'
+    )
+    if [ "${COD_CIF}" != "" ]
+    then
+        CIF="${COD_CIF}"
+    else
+        CIF="${MOL}"
+    fi
+    DATABASE_ID=$(${cif_values} _cod_database_code $CIF)
+    test "${DATABASE_ID}" = "?" && \
+        DATABASE_ID=$(${cif_values} _cod_data_source_block $MOL)
+    echo '> <PUBCHEM_EXT_DATASOURCE_REGID>'
+    echo ${DATABASE_ID}
+    echo ""
+    echo '> <PUBCHEM_SUBSTANCE_SYNONYM>'
+    (
+        ${cif_values} _chemical_name_systematic $CIF
+        ${cif_values} _chemical_name_common $CIF
+    ) | ( grep -v '^\?' || true )
+    echo ""
+    echo '> <PUBCHEM_SUBSTANCE_COMMENT>'
+    (
+        ${cif_values} _publ_author_name --value-separator "; " $CIF
+        echo "("$(${cif_values} _journal_year $CIF)")"
+        ${cif_values} _publ_section_title $CIF
+        ${cif_values} _journal_name_full $CIF
+        ${cif_values} _journal_volume $CIF
+        ${cif_values} _journal_issue $CIF
+        echo $(${cif_values} _journal_page_first $CIF)-$(${cif_values} _journal_page_last $CIF)
+    ) \
+    | perl -pe 's/-\?/?/; s/\(\?\)/?/; s/\?-/?/; s/\?\?/?/g' \
+    | ( grep -v '^\?' || true ) \
+    | perl -0777 -pe 's/\n(.)/, $1/g; s/[ \t]+/ /g'
+    echo ""
+    echo '> <PUBCHEM_EXT_DATASOURCE_URL>'
+    echo 'http://www.crystallography.net/'
+    echo ""
+    echo '> <PUBCHEM_EXT_SUBSTANCE_URL>'
+    echo "http://www.crystallography.net/cod/${DATABASE_ID}.html"
+    echo ""
+    echo '$$$$'
+done \
+| perl -0777 -pe 's/^> <.*?>\n\s*\n//mg' \
+| cif-to-utf8
+
+rm -rf "${TMP_DIR}"
