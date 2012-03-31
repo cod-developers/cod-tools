@@ -49,9 +49,6 @@ static char *usage_text[2] = {
 "  -d, --debug\n"
 "      Print internal program data structures for debugging\n\n"
 
-"  -c, --compile-only\n"
-"      Just check the input CIF syntax... \n\n"
-
 "  -q, --quiet\n"
 "      Be quiet, do not print reports on the processing\n\n"
 
@@ -90,7 +87,6 @@ static option_value_t print_filename;
 static option_value_t print_dataname;
 static option_value_t verbose;
 static option_value_t debug;
-static option_value_t only_compile;
 
 static option_t options[] = {
   { "-t", "--tags",         OT_STRING,        &tags },
@@ -101,7 +97,6 @@ static option_t options[] = {
   { NULL, "--dataname",     OT_BOOLEAN_TRUE,  &print_dataname },
   { NULL, "--no-dataname",  OT_BOOLEAN_FALSE, &print_dataname },
   { "-d", "--debug",        OT_STRING,        &debug },
-  { "-c", "--compile-only", OT_BOOLEAN_TRUE,  &only_compile },
   { "-q", "--quiet",        OT_BOOLEAN_FALSE, &verbose },
   { "-q-","--no-quiet",     OT_BOOLEAN_TRUE,  &verbose },
   { NULL, "--vebose",       OT_BOOLEAN_TRUE,  &verbose },
@@ -137,7 +132,7 @@ int main( int argc, char *argv[], char *env[] )
       char * end_pointer = strchr( tags.value.s, ',' );
 
       if( !tags.present || !tags.value.s || !tags.value.s[0] ) {
-          fprintf( stderr, "%s: no data items to extract from the input, please"
+          fprintf( stderr, "%s: no data items to extract from the input, please "
                    "specify them using --tag option (--help for examples)\n",
                    argv[0] );
           exit(0);
