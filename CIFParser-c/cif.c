@@ -230,21 +230,27 @@ void cif_print_tag_values( CIF *cif, char ** tagnames, int tagcount,
     if( cif ) {
         foreach_datablock( datablock, cif->datablock_list ) {
             char *dblock_name = datablock_name( datablock );
-            char nprefix[ strlen( prefix ) + 
-                          (dblock_name ? strlen( dblock_name ) : 0) +
-                          2 * strlen( separator ) ];
+            ssize_t length =
+                /* lengths of both strings are added: */
+                strlen( prefix ) +
+                (dblock_name ? strlen( dblock_name ) : 0) +
+                /* too separators will be used, allocate place for them: */
+                2 * strlen( separator ) 
+                /* one byte must be added for the terminating '\0' character: */
+                + 1;
+            char nprefix[ length ];
             if( ! dblock_name ) {
                 continue;
             }
 
             nprefix[0] = '\0';
             if( strlen( prefix ) != 0 ) {
-                strcat( nprefix, prefix );
-                strcat( nprefix, separator );
+                strncat( nprefix, prefix, length - strlen(nprefix) - 1 );
+                strncat( nprefix, separator, length - strlen(nprefix) - 1 );
             }
             if( append_blkname == 1 ) {
-                strcat( nprefix, dblock_name );
-                strcat( nprefix, separator );
+                strncat( nprefix, dblock_name, length - strlen(nprefix) - 1 );
+                strncat( nprefix, separator, length - strlen(nprefix) - 1 );
             }
             datablock_print_tag_values( datablock, tagnames, tagcount, nprefix,
                 separator, vseparator );
