@@ -118,7 +118,7 @@ do
         ${cif_values} _journal_issue $CIF
         echo $(${cif_values} _journal_page_first $CIF)-$(${cif_values} _journal_page_last $CIF)
     ) \
-    | perl -pe 's/-\?/?/; s/\(\?\)/?/; s/\?-/?/; s/\?\?/?/g' \
+    | perl -pe 's/-\?//; s/\(\?\)/?/; s/\?-/?/; s/\?+/?/g' \
     | ( grep -v '^\?' || true ) \
     | perl -0777 -pe 's/\n(.)/, $1/g; s/[ \t]+/ /g'
     echo ""
