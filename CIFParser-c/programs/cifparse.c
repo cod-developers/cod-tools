@@ -1,3 +1,11 @@
+/*---------------------------------------------------------------------------*\
+**$Author$
+**$Date$ 
+**$Revision$
+**$URL$
+\*---------------------------------------------------------------------------*/
+
+/* uses: */
 
 #include <stdio.h>
 #include <unistd.h>
@@ -8,17 +16,74 @@
 #include <allocx.h>
 #include <cxprintf.h>
 
+static char *source_URL = "$URL$";
+
+static char *usage_text[2] = {
+
+"Get specified data values from a CIF file(s)\n",
+
+"Options:\n"
+
+"  -c, --compile-only\n"
+"      Only compile the CIF (check syntax). Prints out file name and\n"
+"      'OK' or 'FAILED' to STDOUT, along with error messages to STDERR\n\n"
+
+"  -p, --print\n"
+"      Print out data in CIF format (a kind of CIF pretty-printer ;)\n\n"
+
+"  -d, --debug dump\n"
+"      Specify one or several dubgging options. Currently supported options\n"
+"      are:\n"
+"          dump   -- dump internal data structures for inspection\n"
+"          lex    -- switch on (F)LEX token printout\n"
+"          yacc   -- ask YACC/BISON to tell us which rules they reduce\n"
+"          yylval -- print out YACC/BISON's yylval\n"
+"          text   -- dump the percieved input file text\n"
+"          code   -- dump intermediate CIF code representation\n"
+"\n"
+
+"  -q, --quiet                 Be quiet, only output error messages and data\n"
+
+"  -q-, --no-quiet, --verbose  Produce verbose output of the parsing process\n\n"
+
+"  --version  print program version (SVN Id) and exit\n"
+
+"  --help     print short usage message (this message) and exit\n"
+};
+
+static void usage( int argc, char *argv[], int *i, option_t *option,
+		   cexception_t * ex )
+{
+    puts( usage_text[0] );
+    puts( "Usage:" );
+    printf( "   %s --options < input.cif\n", argv[0] );
+    printf( "   %s --options input.cif\n", argv[0] );
+    printf( "   %s --options input1.cif input2.cif inputs*.cif\n\n", argv[0] );
+    puts( usage_text[1] );
+    exit( 0 );
+};
+
+static void version( int argc, char *argv[], int *i, option_t *option,
+                     cexception_t * ex )
+{
+    printf( "%s svnversion %s\n", argv[0], SVN_VERSION );
+    printf( "%s\n", source_URL );
+    exit( 0 );
+}
+
 static option_value_t verbose;
 static option_value_t debug;
-static option_value_t only_compile;
+static option_value_t print_cif;
 
 static option_t options[] = {
-  { "-d", "--debug",        OT_STRING,        &debug },
-  { "-c", "--compile-only", OT_BOOLEAN_TRUE,  &only_compile },
-  { "-p", "--print",        OT_BOOLEAN_FALSE, &only_compile },
-  { "-q", "--quiet",        OT_BOOLEAN_FALSE, &verbose },
-  { "-q-","--no-quiet",     OT_BOOLEAN_TRUE,  &verbose },
-  { NULL, "--vebose",       OT_BOOLEAN_TRUE,  &verbose },
+  { "-d", "--debug",        OT_STRING,         &debug },
+  { "-c", "--compile-only", OT_BOOLEAN_FALSE,  &print_cif },
+  { "-p", "--print",        OT_BOOLEAN_TRUE,   &print_cif },
+  { "-q", "--quiet",        OT_BOOLEAN_FALSE,  &verbose },
+  { "-q-","--no-quiet",     OT_BOOLEAN_TRUE,   &verbose },
+  { NULL, "--vebose",       OT_BOOLEAN_TRUE,   &verbose },
+  { NULL, "--help",         OT_FUNCTION, NULL, &usage },
+  { NULL, "--version",      OT_FUNCTION, NULL, &version },
   { NULL }
 };
 
@@ -71,10 +136,10 @@ int main( int argc, char *argv[], char *env[] )
               if( debug.present && strstr(debug.value.s, "dump") != NULL ) {
                   cif_dump( cif );
               } else {
-                  if( only_compile.value.b == 1 ) {
-                      printf( "%s: file '%s' OK\n", progname, filename );
-                  } else {
+                  if( print_cif.value.b == 1 ) {
                       cif_print( cif );
+                  } else {
+                      printf( "%s: file '%s' OK\n", progname, filename );
                   }
               }
               delete_cif( cif );
