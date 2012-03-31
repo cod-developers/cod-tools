@@ -145,10 +145,17 @@ int main( int argc, char *argv[], char *env[] )
               delete_cif( cif );
               cif = NULL;
               filename = NULL;
+          } else {
+              if( print_cif.value.b == 0 ) {
+                  printf( "%s: file '%s' FAILED\n", progname, filename );
+              }
           }
       }
       cexception_catch {
           if( filename ) {
+              if( print_cif.value.b == 0 ) {
+                  printf( "%s: file '%s' FAILED\n", progname, filename );
+              }
               fprintf( stderr, "%s: %s: %s\n", argv[0], filename, cexception_message( &inner ));
           } else {
               fprintf( stderr, "%s: %s\n", argv[0], cexception_message( &inner ));
