@@ -31,9 +31,9 @@ static char *usage_text[2] = {
 "  -p, --print\n"
 "      Print out data in CIF format (a kind of CIF pretty-printer ;)\n\n"
 
-"  -d, --debug dump\n"
-"      Specify one or several dubgging options. Currently supported options\n"
-"      are:\n"
+"  -d, --debug lex,yacc\n"
+"      Specify one or several (comma-separated) debgging options.\n\n"
+"      Currently supported options are:\n"
 "          dump   -- dump internal data structures for inspection\n"
 "          lex    -- switch on (F)LEX token printout\n"
 "          yacc   -- ask YACC/BISON to tell us which rules they reduce\n"
