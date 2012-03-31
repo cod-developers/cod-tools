@@ -1,0 +1,102 @@
+#! /bin/sh
+#------------------------------------------------------------------------------
+#$Author$
+#$Date$
+#$Revision$
+#$URL$
+#------------------------------------------------------------------------------
+#*
+# A script to convert CIFs with crystal description (similar to those
+# obtained from COD) to an SDF file with a molecule
+# description. Intended to be suitable for upload to PubChem.
+#
+# Usage: $0 --options < file1.cif
+# Usage: $0 --options file1.cif
+# Usage: $0 --options file1.cif file2*.cif
+#**
+
+TMP_DIR="${TMPDIR}"
+
+set -ue
+## set -x
+
+script() { echo "# $*"; cat; }
+setvar() { eval $1="'$3'"; }
+
+setvar Id = '$Id: script.sh 11 2011-01-06 12:57:08Z saulius $'
+
+setvar FILES = ""
+
+setvar BASENAME = "`basename $0`"
+
+setvar IGNORE_BUMPS_OPT = ""
+
+#** OPTIONS:
+#**  -i, --ignore-bumps
+#**      Ignore atomic bumps while running cif_molecule
+#**
+#**  --tmp-dir /tmp    Use the specified trmporary directory (default is /tmp)
+#**  --help            Print short help message (this message) and exit
+while [ $# -gt 0 ]
+do
+  case $1 in
+      -i|--ignore-bumps|--ignore-bump|--ignore-bum|--ignore-bu|--ignore-b|\
+      --ignore|--ignor|--igno|--ign|--ig|--i)
+          IGNORE_BUMPS_OPT="-i"
+          ;;
+      --tmp-dir|--tmp-di|--tmp-d|--tmp|--tm|--t)
+          TMP_DIR="$2"
+          shift
+          ;;
+      --help|--hel|--he|--h)
+            awk '/#\*/,/#\*\*/ {
+                    sub("^ *#[*]?[*]?", ""); \
+                    gsub("\\$0","'$0'"); \
+                    print $0
+                }' $0
+	    exit
+	    ;;      
+      -*) echo "`basename $0`: unknown option $1" >&2 ; exit 1 ;;
+      *)  FILES="$FILES '$1'" ;;
+    esac
+    shift
+done
+
+## echo ${FILES}
+eval set -- "${FILES}"
+
+test -n "${FILES}" && FILES="-"
+
+test -z "${TMP_DIR}" && TMP_DIR="/tmp"
+TMP_DIR="${TMP_DIR}/tmp-${BASENAME}-$$"
+mkdir "${TMP_DIR}"
+
+TMP_SPLIT_DIR="${TMP_DIR}/split"
+mkdir ${TMP_SPLIT_DIR}
+
+TMP_CIF="${TMP_DIR}/-"
+
+## set -x
+
+for CIF in ${1+"$@"}
+do
+    if [ ${CIF} = "-" ]
+    then
+        echo $0: reading CIF from STDIN... >&2
+        cat > ${TMP_CIF}
+        CIF=${TMP_CIF}
+    else
+        if [ ! -e ${CIF} ]
+        then
+            echo $0:$CIF: file "'${CIF}'" does not exist >&2
+            continue
+        fi
+    fi
+
+    cif_molecule ${IGNORE_BUMPS_OPT} "${CIF}" \
+    | molcif2sdf --cod-cif "${CIF}" --tmp-dir "${TMP_DIR}"
+
+done
+
+## set -x
+rm -rf "${TMP_DIR}"
