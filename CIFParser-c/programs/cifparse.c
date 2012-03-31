@@ -28,6 +28,10 @@ static char *usage_text[2] = {
 "      Only compile the CIF (check syntax). Prints out file name and\n"
 "      'OK' or 'FAILED' to STDOUT, along with error messages to STDERR\n\n"
 
+"  -f, --fix-syntax\n"
+"      Attempt to fix some errors in inputs CIFs, such as missing data_\n"
+"      headers or unterminated quoted strings\n\n"
+
 "  -p, --print\n"
 "      Print out data in CIF format (a kind of CIF pretty-printer ;)\n\n"
 
@@ -71,19 +75,22 @@ static void version( int argc, char *argv[], int *i, option_t *option,
     exit( 0 );
 }
 
+static option_value_t fix_errors;
 static option_value_t verbose;
 static option_value_t debug;
 static option_value_t print_cif;
 
 static option_t options[] = {
-  { "-d", "--debug",        OT_STRING,         &debug },
-  { "-c", "--compile-only", OT_BOOLEAN_FALSE,  &print_cif },
-  { "-p", "--print",        OT_BOOLEAN_TRUE,   &print_cif },
-  { "-q", "--quiet",        OT_BOOLEAN_FALSE,  &verbose },
-  { "-q-","--no-quiet",     OT_BOOLEAN_TRUE,   &verbose },
-  { NULL, "--vebose",       OT_BOOLEAN_TRUE,   &verbose },
-  { NULL, "--help",         OT_FUNCTION, NULL, &usage },
-  { NULL, "--version",      OT_FUNCTION, NULL, &version },
+  { "-d", "--debug",           OT_STRING,         &debug },
+  { "-f", "--fix-syntax",      OT_BOOLEAN_TRUE,   &fix_errors },
+  { "-f-","--dont-fix-syntax", OT_BOOLEAN_FALSE,  &fix_errors },
+  { "-c", "--compile-only",    OT_BOOLEAN_FALSE,  &print_cif },
+  { "-p", "--print",           OT_BOOLEAN_TRUE,   &print_cif },
+  { "-q", "--quiet",           OT_BOOLEAN_FALSE,  &verbose },
+  { "-q-","--no-quiet",        OT_BOOLEAN_TRUE,   &verbose },
+  { NULL, "--vebose",          OT_BOOLEAN_TRUE,   &verbose },
+  { NULL, "--help",            OT_FUNCTION, NULL, &usage },
+  { NULL, "--version",         OT_FUNCTION, NULL, &version },
   { NULL }
 };
 
@@ -94,6 +101,7 @@ int main( int argc, char *argv[], char *env[] )
   cexception_t inner;
   char ** volatile files = NULL;
   CIF * volatile cif = NULL;
+  COMPILER_OPTIONS * volatile compiler_options = NULL;
   int retval = 0;
   int i;
 
@@ -130,7 +138,13 @@ int main( int argc, char *argv[], char *env[] )
       char * volatile filename = NULL;
       cexception_guard( inner ) {
           filename = files[i] ? files[i] : "-";
-          cif = new_cif_from_cif_file( files[i], NULL, &inner );
+
+          if( fix_errors.value.b == 1 ) {
+              compiler_options = new_compiler_options( &inner );
+              set_fix_errors( compiler_options );
+          }
+
+          cif = new_cif_from_cif_file( files[i], compiler_options, &inner );
 
           if( cif && cif_nerrors( cif ) == 0 ) {
               if( debug.present && strstr(debug.value.s, "dump") != NULL ) {
