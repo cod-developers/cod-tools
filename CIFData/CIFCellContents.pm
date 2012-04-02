@@ -35,10 +35,11 @@ require Exporter;
 
 $::format = "%g";
 
-sub atomic_composition($$$);
-sub print_composition($);
+sub atomic_composition( $$$ );
+sub print_composition( $ );
+sub get_atoms( $$$ );
 
-sub cif_cell_contents($$$)
+sub cif_cell_contents( $$$ )
 {
     my ($dataset, $filename, $user_Z) = @_;
 
@@ -69,8 +70,7 @@ sub cif_cell_contents($$$)
         CIFSymmetryGenerator::get_symmetry_operators( $dataset, $filename );
 
 #   extract atoms
-    my $atoms =
-        CIFSymmetryGenerator::get_atoms( $dataset, $filename, $loop_tag );
+    my $atoms = get_atoms( $dataset, $filename, $loop_tag );
 
 #   compute symmetry operator matrices
     my @sym_operators = map { symop_from_string($_) } @{$sym_data};
@@ -160,6 +160,82 @@ sub print_composition($)
     ## }
 
     FormulaPrint::print_formula( $composition, $::format );
+}
+
+# ============================================================================ #
+# Gets atom descriptions, as used in this module, from a CIF datablock.
+#
+# Returns an array of
+#
+#   $atom_info = {
+#                   atom_name => "C1_2",
+#                   atom_type => "C",
+#                   occupancy => 1.0,
+#                   cif_multiplicity  => 96,
+#                   coordinates_fract => [1.0, 1.0, 1.0],
+#                   coordinates_ortho => [1.0, 1.0, 1.0],
+#              }
+#
+
+sub get_atoms( $$$ )
+{
+    my ( $dataset, $filename, $loop_tag ) = @_;
+
+    my $values = $dataset->{values};
+
+    my @unit_cell =
+        CIFSymmetryGenerator::get_cell( $values, $filename, $dataset->{name} );
+    my $ortho_matrix = symop_ortho_from_fract( @unit_cell );
+
+    my @atoms;
+
+    for my $i ( 0 .. $#{$values->{$loop_tag}} ) {
+        my $atom = {
+            atom_name => $values->{$loop_tag}[$i],
+            atom_type => exists $values->{_atom_site_type_symbol} ?
+                $values->{_atom_site_type_symbol}[$i] : undef,
+            coordinates_fract => [
+                $values->{_atom_site_fract_x}[$i],
+                $values->{_atom_site_fract_y}[$i],
+                $values->{_atom_site_fract_z}[$i]
+            ],
+        };
+
+        if( !defined $atom->{atom_type} ) {
+            $atom->{atom_type} = $atom->{atom_name};
+        }
+
+        if( $atom->{atom_type} =~ m/^([A-Za-z]{1,2})/ ) {
+            $atom->{atom_type} = ucfirst( lc( $1 ));
+        }
+
+        @{$atom->{coordinates_fract}} = map { s/\(\d+\)\s*$//; $_ }
+            @{$atom->{coordinates_fract}};
+
+        $atom->{coordinates_ortho} =
+            CIFSymmetryGenerator::mat_vect_mul( $ortho_matrix,
+                                                $atom->{coordinates_fract} );
+
+        if( defined $values->{_atom_site_occupancy} ) {
+            if( $values->{_atom_site_occupancy}[$i] ne '?' &&
+                $values->{_atom_site_occupancy}[$i] ne '.' ) {
+                $atom->{occupancy} = $values->{_atom_site_occupancy}[$i];
+                $atom->{occupancy} =~ s/\(\d+\)\s*$//;
+            } else {
+                $atom->{occupancy} = 1;
+            }
+        }
+
+        if( defined $values->{_atom_site_symmetry_multiplicity} &&
+            $values->{_atom_site_symmetry_multiplicity}[$i] ne '?' ) {
+            $atom->{cif_multiplicity} =
+                $values->{_atom_site_symmetry_multiplicity}[$i];
+        }
+
+        push( @atoms, $atom );
+    }
+
+    return \@atoms;
 }
 
 1;
