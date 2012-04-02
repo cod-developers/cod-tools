@@ -14,7 +14,6 @@ package CIFSymmetryGenerator;
 
 use strict;
 use warnings;
-use Fractional;
 use SymopParse;
 use SymopLookup;
 use Spacegroups::SpacegroupNames;
@@ -40,7 +39,7 @@ my $special_position_cutoff = 0.01; # Angstroems
 # than $special_position_cutoff are considered to be the same atom on
 # a special position.
 
-#sub get_cell($$$);
+sub get_cell($$$);
 sub get_symmetry_operators($$);
 sub symop_generate_atoms($$$);
 sub copy_atom($);
@@ -392,13 +391,24 @@ sub get_symmetry_operators($$)
     return $sym_data;
 }
 
-#===============================================================#
-# Multiplies an ortho matrix with a vector.
-
+#======================================================================#
+# Multiplies an ortho matrix with a vector. If the matrix is 3x4 (rows
+# x columns), it assumes that the 4-th column is a translation vector
+# and adds it to the result vector, thus implementing 3D symmetry
+# operators.
+#
+# Examples of matrices:
+#
 # my $ortho = [
 #     [ o11 o12 o13 ]
 #     [ 0   o22 o23 ]
 #     [ 0   0   o33 ]
+# ]
+#
+# my $symop = [
+#     [ o11 o12 o13 t1 ]
+#     [ 0   o22 o23 t2 ]
+#     [ 0   0   o33 t3 ]
 # ]
 #
 
@@ -424,65 +434,6 @@ sub mat_vect_mul($$)
     }
 
     return \@new_coordinates;
-}
-
-sub get_atoms
-{
-    my ( $dataset, $filename, $loop_tag ) = @_;
-
-    my $values = $dataset->{values};
-
-    my @unit_cell = get_cell( $values, $filename, $dataset->{name} );
-    my $ortho_matrix = symop_ortho_from_fract( @unit_cell );
-
-    my @atoms;
-
-    for my $i ( 0 .. $#{$values->{$loop_tag}} ) {
-        my $atom = {
-            atom_name => $values->{$loop_tag}[$i],
-            atom_type => exists $values->{_atom_site_type_symbol} ?
-                $values->{_atom_site_type_symbol}[$i] : undef,
-            coordinates_fract => [
-                $values->{_atom_site_fract_x}[$i],
-                $values->{_atom_site_fract_y}[$i],
-                $values->{_atom_site_fract_z}[$i]
-            ],
-        };
-
-        if( !defined $atom->{atom_type} ) {
-            $atom->{atom_type} = $atom->{atom_name};
-        }
-
-        if( $atom->{atom_type} =~ m/^([A-Za-z]{1,2})/ ) {
-            $atom->{atom_type} = ucfirst( lc( $1 ));
-        }
-
-        @{$atom->{coordinates_fract}} = map { s/\(\d+\)\s*$//; $_ }
-            @{$atom->{coordinates_fract}};
-
-        $atom->{coordinates_ortho} =
-            mat_vect_mul( $ortho_matrix, $atom->{coordinates_fract} );
-
-        if( defined $values->{_atom_site_occupancy} ) {
-            if( $values->{_atom_site_occupancy}[$i] ne '?' &&
-                $values->{_atom_site_occupancy}[$i] ne '.' ) {
-                $atom->{occupancy} = $values->{_atom_site_occupancy}[$i];
-                $atom->{occupancy} =~ s/\(\d+\)\s*$//;
-            } else {
-                $atom->{occupancy} = 1;
-            }
-        }
-
-        if( defined $values->{_atom_site_symmetry_multiplicity} &&
-            $values->{_atom_site_symmetry_multiplicity}[$i] ne '?' ) {
-            $atom->{cif_multiplicity} =
-                $values->{_atom_site_symmetry_multiplicity}[$i];
-        }
-
-        push( @atoms, $atom );
-    }
-
-    return \@atoms;
 }
 
 #===============================================================#
