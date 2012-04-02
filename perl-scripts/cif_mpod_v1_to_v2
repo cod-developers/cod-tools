@@ -1,0 +1,80 @@
+#! /bin/sh
+#!perl -w # --*- Perl -*--
+eval 'exec perl -x $0 ${1+"$@"}'
+    if 0;
+#------------------------------------------------------------------------------
+#$Author$
+#$Date$ 
+#$Revision$
+#$URL$
+#------------------------------------------------------------------------------
+#*
+#  Classify a CIF structure -- find out if it is organic compound,
+#  inorganic, mineral, etc.
+#
+#**
+
+use strict;
+use lib "./lib/perl5";
+use lib "./CIFParser";
+use lib "./CCIFParser";
+use lib "./CIFTags";
+use lib ".";
+use File::Basename;
+use CIFParser;
+use CCIFParser;
+use Spacegroups::SpacegroupNames;
+use Spacegroups::SymopParse;
+use Spacegroups::SymopLookup;
+use SOptions;
+use SUsage;
+
+my $use_parser = "c";
+
+#* USAGE:
+#*     $0 [options] input1.cif input*.cif
+#* 
+#* OPTIONS:
+#*    --use-perl-parser  Use development CIF parser written in Perl
+#*    --use-c-parser     Use faster C/Yacc CIF parser (default)
+#*
+#*    --help,--usage         Print a short usage message (this message) and exit.
+#**
+
+@ARGV = getOptions( 
+    "--use-perl-parser"  => sub{ $use_parser = "perl" },
+    "--use-c-parser"     => sub{ $use_parser = "c" },
+
+    "--help,--usage"     => sub { SUsage::usage; exit },
+);
+
+@ARGV = ( "-" ) unless @ARGV;
+
+for my $filename (@ARGV) {
+
+    my( $data, $error_count );
+
+    if( $use_parser eq "perl" ) {
+        my $parser = new CIFParser;
+
+        $data = $parser->Run( $filename );
+
+        if( defined $parser->YYData->{ERRCOUNT} ) {
+            $error_count = $parser->YYData->{ERRCOUNT};
+        }
+    } else {
+        ( $data, $error_count ) = CCIFParser::parse( $filename );
+    }
+
+    if( defined $error_count && $error_count > 0 ) {
+        print STDERR "$0: ", $error_count,
+        " error(s) encountered while parsing file '${filename}'\n";
+        die;
+    }
+
+    if( !@$data || !defined $data->[0] || !defined $data->[0]{name} ) {
+        warn( "file '$filename' seems to be empty" );
+        next;
+    }
+
+}
