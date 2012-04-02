@@ -11,7 +11,6 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #*
 #  Classify a CIF structure -- find out if it is organic compound,
 #  inorganic, mineral, etc.
-#
 #**
 
 use strict;
@@ -23,22 +22,22 @@ use lib ".";
 use File::Basename;
 use CIFParser;
 use CCIFParser;
-use Spacegroups::SpacegroupNames;
-use Spacegroups::SymopParse;
-use Spacegroups::SymopLookup;
+use CIFData::CIFClassifyer;
+use AtomProperties;
+use UserMessage;
 use SOptions;
 use SUsage;
 
 my $use_parser = "c";
 
 #* USAGE:
-#*     $0 [options] input1.cif input*.cif
+#*   $0 [options] input1.cif input*.cif
 #* 
 #* OPTIONS:
-#*    --use-perl-parser  Use development CIF parser written in Perl
-#*    --use-c-parser     Use faster C/Yacc CIF parser (default)
+#*   --use-perl-parser  Use development CIF parser written in Perl
+#*   --use-c-parser     Use faster C/Yacc CIF parser (default)
 #*
-#*    --help,--usage         Print a short usage message (this message) and exit.
+#*   --help,--usage     Print a short usage message (this message) and exit.
 #**
 
 @ARGV = getOptions( 
@@ -75,6 +74,35 @@ for my $filename (@ARGV) {
     if( !@$data || !defined $data->[0] || !defined $data->[0]{name} ) {
         warn( "file '$filename' seems to be empty" );
         next;
+    }
+
+    my $bond_safety_margin = 0.2; # Angstroems
+
+    my @flags = ();
+
+    for my $datablock (@$data) {
+
+        my $has_C_H_bond = 0;
+
+        eval {
+            $has_C_H_bond = CIFClassifyer::cif_has_C_H_bond
+                ( $datablock, $filename, \%AtomProperties::atoms,
+                  $bond_safety_margin );
+        };
+        if( $@ ) {
+            ## warning( $0, $filename, $datablock->{name}, $@ );
+            next;
+        }
+
+        if( $has_C_H_bond ) {
+            push( @flags, "has_C_H_bond" );
+        }
+
+        if( @flags ) {
+            print $datablock->{name}, "\t", join(",", @flags), "\n";
+        } else {
+            print $datablock->{name}, "\t", 0, "\n";
+        }
     }
 
 }
