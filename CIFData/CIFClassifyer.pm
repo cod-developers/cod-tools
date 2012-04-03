@@ -22,12 +22,29 @@ use UserMessage;
 require Exporter;
 @CIFCellContents::ISA = qw(Exporter);
 @CIFCellContents::EXPORT = qw(
+    cif_class_flags
     cif_has_C_H_bond
 );
 
-sub get_atoms($$$);
+sub get_atoms( $$$ );
 
-sub cif_has_C_H_bond($$$$)
+sub cif_class_flags( $$$$ )
+{
+    my ( $datablock, $filename, $atom_properties, $bond_safety_margin ) = @_;
+
+    my @flags = ();
+
+    my $has_C_H_bond = cif_has_C_H_bond
+        ( $datablock, $filename, $atom_properties, $bond_safety_margin );
+
+    if( $has_C_H_bond ) {
+        push( @flags, "has_C_H_bond" );
+    }
+
+    return wantarray? @flags : join( ",", @flags );
+}
+
+sub cif_has_C_H_bond( $$$$ )
 {
     my ( $datablock, $filename, $atom_properties, $bond_safety_margin ) = @_;
 
