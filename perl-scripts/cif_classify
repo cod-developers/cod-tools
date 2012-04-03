@@ -68,7 +68,7 @@ for my $filename (@ARGV) {
     if( defined $error_count && $error_count > 0 ) {
         print STDERR "$0: ", $error_count,
         " error(s) encountered while parsing file '${filename}'\n";
-        die;
+        next;
     }
 
     if( !@$data || !defined $data->[0] || !defined $data->[0]{name} ) {
@@ -78,31 +78,17 @@ for my $filename (@ARGV) {
 
     my $bond_safety_margin = 0.2; # Angstroems
 
-    my @flags = ();
-
     for my $datablock (@$data) {
-
-        my $has_C_H_bond = 0;
-
         eval {
-            $has_C_H_bond = CIFClassifyer::cif_has_C_H_bond
+            my $flags = CIFClassifyer::cif_class_flags
                 ( $datablock, $filename, \%AtomProperties::atoms,
                   $bond_safety_margin );
+
+            if( $flags ) {
+                print $datablock->{name}, "\t", $flags, "\n";
+            } else {
+                print $datablock->{name}, "\t", 0, "\n";
+            }
         };
-        if( $@ ) {
-            ## warning( $0, $filename, $datablock->{name}, $@ );
-            next;
-        }
-
-        if( $has_C_H_bond ) {
-            push( @flags, "has_C_H_bond" );
-        }
-
-        if( @flags ) {
-            print $datablock->{name}, "\t", join(",", @flags), "\n";
-        } else {
-            print $datablock->{name}, "\t", 0, "\n";
-        }
     }
-
 }
