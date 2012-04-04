@@ -963,6 +963,11 @@ sub extract_atom
         $atom_info{"group"} = ".";
     }
 
+    if( exists $values->{_atom_site_occupancy} ) {
+        $atom_info{"atom_site_occupancy"} =
+            $values->{"_atom_site_occupancy"}[$number];
+    }
+
     return \%atom_info;
 }
 
@@ -1918,6 +1923,7 @@ sub print_molecule
     my @tag_list = @{$dataset->{tags}};
 
     my $atom_site_type_symbol = $dataset->{values}{_atom_site_type_symbol};
+    my $atom_site_occupancy   = $dataset->{values}{_atom_site_occupancy};
 
     my %renamed_tags = rename_tags( $dataset, \@data2rename, "_cod_src" );
 
@@ -1978,8 +1984,10 @@ sub print_molecule
     print "_atom_site_fract_x\n";
     print "_atom_site_fract_y\n";
     print "_atom_site_fract_z\n";
+    print "_atom_site_occupancy\n"
+        if defined $atom_site_occupancy;
 
-    my $print_format = join( " ", ($format)x3 ) . "\n";
+    my $print_format = join( " ", ($format)x3 );
     foreach my $atom ( sort {
         length($a->{label}) == length($b->{label}) ?
             $a->{label} cmp $b->{label} :
@@ -1996,8 +2004,15 @@ sub print_molecule
                 print "? ";
             }
         }
-        printf $print_format, $atom->{"coordinates_fract"}[0],
-               $atom->{"coordinates_fract"}[1], $atom->{"coordinates_fract"}[2];
+        printf $print_format,
+               $atom->{"coordinates_fract"}[0],
+               $atom->{"coordinates_fract"}[1],
+               $atom->{"coordinates_fract"}[2];
+        if( defined $atom_site_occupancy ) {
+            print " ";
+            CIFTagPrint::print_value( $atom->{atom_site_occupancy} );
+        }
+        print "\n";
     }
 
     my $has_disorder = 0;
