@@ -948,24 +948,29 @@ sub extract_atom
         }
     }
 
-    $atom_info{"chemical_type"} = $atom_type;
+    $atom_info{chemical_type} = $atom_type;
 
-    if( exists $values->{"_atom_site_disorder_assembly"}[$number]) {
-        $atom_info{"assembly"} =
-	    $values->{"_atom_site_disorder_assembly"}[$number];
+    if( exists $values->{_atom_site_disorder_assembly}[$number]) {
+        $atom_info{assembly} =
+	    $values->{_atom_site_disorder_assembly}[$number];
     } else {
-        $atom_info{"assembly"} = ".";
+        $atom_info{assembly} = ".";
     }
 
-    if( exists $values->{"_atom_site_disorder_group"}[$number] ) {
-        $atom_info{"group"} = $values->{"_atom_site_disorder_group"}[$number];
+    if( exists $values->{_atom_site_disorder_group}[$number] ) {
+        $atom_info{group} = $values->{_atom_site_disorder_group}[$number];
     } else {
-        $atom_info{"group"} = ".";
+        $atom_info{group} = ".";
     }
 
     if( exists $values->{_atom_site_occupancy} ) {
-        $atom_info{"atom_site_occupancy"} =
-            $values->{"_atom_site_occupancy"}[$number];
+        $atom_info{atom_site_occupancy} =
+            $values->{_atom_site_occupancy}[$number];
+    }
+
+    if( exists $values->{_atom_site_U_iso_or_equiv} ) {
+        $atom_info{atom_site_U_iso_or_equiv} =
+            $values->{_atom_site_U_iso_or_equiv}[$number];
     }
 
     return \%atom_info;
@@ -1924,6 +1929,8 @@ sub print_molecule
 
     my $atom_site_type_symbol = $dataset->{values}{_atom_site_type_symbol};
     my $atom_site_occupancy   = $dataset->{values}{_atom_site_occupancy};
+    my $atom_site_U_iso_or_equiv = 
+        $dataset->{values}{_atom_site_U_iso_or_equiv};
 
     my %renamed_tags = rename_tags( $dataset, \@data2rename, "_cod_src" );
 
@@ -1984,6 +1991,8 @@ sub print_molecule
     print "_atom_site_fract_x\n";
     print "_atom_site_fract_y\n";
     print "_atom_site_fract_z\n";
+    print "_atom_site_U_iso_or_equiv\n"
+        if defined $atom_site_U_iso_or_equiv;
     print "_atom_site_occupancy\n"
         if defined $atom_site_occupancy;
 
@@ -2008,6 +2017,10 @@ sub print_molecule
                $atom->{"coordinates_fract"}[0],
                $atom->{"coordinates_fract"}[1],
                $atom->{"coordinates_fract"}[2];
+        if( defined $atom_site_U_iso_or_equiv ) {
+            print " ";
+            CIFTagPrint::print_value( $atom->{atom_site_U_iso_or_equiv} );
+        }
         if( defined $atom_site_occupancy ) {
             print " ";
             CIFTagPrint::print_value( $atom->{atom_site_occupancy} );
