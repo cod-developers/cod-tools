@@ -259,7 +259,7 @@ sub apply_shifts( $$ );
 sub find_molecules( $$$$$$$$$ );
 sub find_molecule( $$$$$$$$$$$$ );
 sub uniquify_atom_names( $$$$ );
-sub initial_atoms( $$$$$$ );
+sub initial_atoms( $$$$$$$ );
 sub get_symmetry_operators( $$ );
 
 sub test_bump( $$$$$$$ );
@@ -423,7 +423,7 @@ sub get_molecules
     # Extract atoms fract coordinates
     my $atom_list = initial_atoms( $atom_properties, $dataset,
 				   $filename, $dataname, $f2o,
-				   $uniquify_atoms );
+				   \@sym_operators, $uniquify_atoms );
 
     return [] unless defined $atom_list;
 
@@ -571,12 +571,14 @@ sub uniquify_atom_names($$$$)
 #                   unity_matrix_applied=>1,
 #                   assembly=>"A", # "."
 #                   group=>"1", # "."
+#                   multiplicity=>"1",
+#                   multiplicity_ratio=>"1",
 #              }
 #
-sub initial_atoms($$$$$$)
+sub initial_atoms($$$$$$$)
 {
     my ($atom_properties, $dataset, $filename, $dataname, $f2o,
-	$uniquify_atoms ) = @_;
+	$sym_operators, $uniquify_atoms ) = @_;
     my $values = $dataset->{values};
 
     my $max_label_suffix = 30000; # Maximum number to be appened to labels 
@@ -625,6 +627,24 @@ sub initial_atoms($$$$$$)
 	}
 
         my $atom_info = extract_atom( $label, $values, $i, $f2o );
+
+        my( $sym_atoms, $multiplicity, $multiplicity_ratio ) =
+            symops_apply( $atom_info, $sym_operators, $f2o );
+
+        if( exists $values->{_atom_site_symmetry_multiplicity} &&
+            $values->{_atom_site_symmetry_multiplicity}[$i] ne '?' &&
+            $values->{_atom_site_symmetry_multiplicity}[$i] ne
+            $multiplicity ) {
+            warning( $0, $filename, $dataname,
+                "given multiplicity value '" .
+                $values->{_atom_site_symmetry_multiplicity}[$i] .
+                "' for atom " . $atom_info->{label} . 
+                " is different from calculated value '" .
+                $multiplicity . "' -- taking calculated value" );
+        }
+            
+        $atom_info->{multiplicity} = $multiplicity;
+        $atom_info->{multiplicity_ratio} = $multiplicity_ratio;
 
         if (exists $atom_properties->{ $atom_info->{"chemical_type"}}) {
             push( @atom_list, $atom_info );
@@ -971,6 +991,11 @@ sub extract_atom
     if( exists $values->{_atom_site_U_iso_or_equiv} ) {
         $atom_info{atom_site_U_iso_or_equiv} =
             $values->{_atom_site_U_iso_or_equiv}[$number];
+    }
+
+    if( exists $values->{_atom_site_symmetry_multiplicity} ) {
+        $atom_info{multiplicity} =
+            $values->{_atom_site_symmetry_multiplicity}[$number];
     }
 
     return \%atom_info;
@@ -1494,9 +1519,42 @@ sub symgen_atom($$$)
 {
     my ( $atom, $sym_operators, $f2o ) = @_;
 
-    my @sym_atoms;
+    my( $sym_atoms, $multiplicity, $multiplicity_ratio ) =
+        symops_apply( $atom, $sym_operators, $f2o );
 
+    if( $multiplicity_ratio == 1 ) {
+        return @$sym_atoms;
+    } else {
+        my @unique_atoms;
+        my %to_be_deleted;
+        for my $i (0..$#$sym_atoms-1) {
+            for my $j ($i+1..$#$sym_atoms) {
+                if( distance( $sym_atoms->[$i]{coordinates_fract},
+                              $sym_atoms->[$j]{coordinates_fract}) < 0.0001 ) {
+                    $to_be_deleted{$sym_atoms->[$j]{label}} = 1;
+                }
+            }
+        }
+        for my $atom (@$sym_atoms) {
+            if( !defined $to_be_deleted{$atom->{label}} ) {
+                push( @unique_atoms, $atom );
+            }
+        }
+        return @unique_atoms;
+    }
+}
+
+#===============================================================#
+# Generate symmetry equivalents of an atom, evaluate atom's
+# multiplicity and multiplicity ratio
+
+sub symops_apply
+{
+    my ( $atom, $sym_operators, $f2o ) = @_;
+
+    my @sym_atoms;
     my $gp_multiplicity = int(@$sym_operators);
+
     my $multiplicity_ratio = 1;
 
     do {
@@ -1531,26 +1589,7 @@ sub symgen_atom($$$)
         $atom->{multiplicity_ratio} = $multiplicity_ratio;
     }
 
-    if( $multiplicity_ratio == 1 ) {
-        return @sym_atoms;
-    } else {
-        my @unique_atoms;
-        my %to_be_deleted;
-        for my $i (0..$#sym_atoms-1) {
-            for my $j ($i+1..$#sym_atoms) {
-                if( distance( $sym_atoms[$i]->{coordinates_fract},
-                              $sym_atoms[$j]->{coordinates_fract}) < 0.0001 ) {
-                    $to_be_deleted{$sym_atoms[$j]->{label}} = 1;
-                }
-            }
-        }
-        for my $atom (@sym_atoms) {
-            if( !defined $to_be_deleted{$atom->{label}} ) {
-                push( @unique_atoms, $atom );
-            }
-        }
-        return @unique_atoms;
-    }
+    return ( \@sym_atoms, $multiplicity, $multiplicity_ratio );
 }
 
 #===============================================================#
@@ -2054,6 +2093,8 @@ sub print_molecule
     print "_cod_molecule_atom_transl_y\n";
     print "_cod_molecule_atom_transl_z\n";
     print "_cod_molecule_atom_transform\n";
+    print "_cod_molecule_atom_mult\n";
+    print "_cod_molecule_atom_mult_ratio\n";
     if( $has_disorder ) {
         print "_cod_molecule_atom_assembly\n";
         print "_cod_molecule_atom_group\n";
@@ -2087,6 +2128,10 @@ sub print_molecule
         print " ";
         CIFTagPrint::print_value(
             string_from_symop( $atom->{"transform_matrix"} ) );
+        print " ";
+        CIFTagPrint::print_value( $atom->{"multiplicity"} );
+        print " ";
+        CIFTagPrint::print_value( $atom->{"multiplicity_ratio"} );
         if( $has_disorder ) {
             print " ";
             CIFTagPrint::print_value( $atom->{"assembly"} );
