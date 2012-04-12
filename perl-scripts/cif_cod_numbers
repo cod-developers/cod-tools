@@ -374,6 +374,20 @@ sub cif_fill_data
             }
         }
 
+        for my $key ( qw( _cod_enantiomer_of
+                          _cod_related_optimal_struct )) {
+            if( exists $values->{$key} ) {
+                $structures{$id}{enantiomer} = $values->{$key}[0];
+            }
+        }
+
+        for my $key ( qw( _cod_related_optimal_struct
+                          _[local]_cod_related_optimal_struct )) {
+            if( exists $values->{$key} ) {
+                $structures{$id}{related_optimal} = $values->{$key}[0];
+            }
+        }
+
         my @journal_keys =
             grep ! /^_journal_name/,
             grep /^_journal_[^\s]*$/,
@@ -566,8 +580,10 @@ sub entries_are_the_same
     ## defined $entry1->{suboptimal} ? $entry1->{suboptimal} : "" , " ", 
     ## defined $entry2->{suboptimal} ? $entry2->{suboptimal} : "", "\n";
 
+    my $are_the_same;
+
     if( $check_bibliography ) {
-        return
+        $are_the_same =
             cells_are_the_same( $entry1->{cell}, $entry2->{cell},
                                 $entry1->{sigcell}, $entry2->{sigcell} ) &&
             conditions_are_the_same( $entry1, $entry2 ) &&
@@ -576,13 +592,30 @@ sub entries_are_the_same
             bibliographies_are_the_same( $entry1->{bibliography},
                                          $entry2->{bibliography} );
     } else {
-        return
+        $are_the_same =
             cells_are_the_same( $entry1->{cell}, $entry2->{cell},
                                 $entry1->{sigcell}, $entry2->{sigcell} ) &&
             conditions_are_the_same( $entry1, $entry2 ) &&
             (!defined $entry1->{suboptimal} || $entry1->{suboptimal} ne "yes") &&
             (!defined $entry2->{suboptimal} || $entry2->{suboptimal} ne "yes");
     }
+
+    if( $are_the_same ) {
+        ## use Serialise;
+        ## serialiseRef( [ $entry1, $entry2 ] );
+        if( defined $entry1->{enantiomer} &&
+            $entry1->{enantiomer} eq $entry2->{id} ) {
+            $are_the_same = 0;
+        }
+        if( defined $entry1->{related_optimal} &&
+            $entry1->{related_optimal} eq $entry2->{id} &&
+            defined $entry1->{suboptimal} && 
+            $entry1->{suboptimal} eq "yes" ) {
+            $are_the_same = 0;
+        }
+    }
+
+    return $are_the_same;
 }
 
 sub database_connect
@@ -647,6 +680,7 @@ sub query_COD_database
 
                         my $structure = {
                             filename => $row->{file},
+                            id => $row->{file},
                             cell => {
                                 _cell_length_a => $row->{a},
                                 _cell_length_b => $row->{b},
