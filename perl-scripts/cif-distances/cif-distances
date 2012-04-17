@@ -69,11 +69,12 @@ my $atoms = CIFCellContents::get_atoms( $dataset, $filename, $loop_tag );
 #   compute symmetry operator matrices
 my @sym_operators = map { SymopParse::symop_from_string($_) } @{$sym_data};
 
-    ## serialiseRef( \@sym_operators );
-
 my $sym_atoms =
     CIFSymmetryGenerator::symop_generate_atoms( \@sym_operators, $atoms,
                                                     $ortho_matrix );
+
+#print_atoms( $atoms );
+print_atoms( $sym_atoms );
 
 my @shifted_atoms;
 
@@ -94,12 +95,23 @@ print "Number of atoms after applying symmetry operators: " .
 print "Number of atoms after shifting ( without initial atoms): " .
        scalar( @shifted_atoms ) . "\n";
 
-print_atoms( \@shifted_atoms );
+#print_atoms( \@shifted_atoms );
 
 exit;
 
+sub get_distances {
+    
+   # for ( )
+}
+
 ##
-#
+# Calculates distance between two equal length vectors.
+# @param $vector1
+#       Reference to an array of coordinates of the first vector.
+# @param $vector2
+#       Reference to an array of coordinates of the second vector.
+# @return
+#       Distance between vectors.
 ##
 
 sub get_distance {
@@ -110,8 +122,6 @@ sub get_distance {
         $dist += (${$vector1}[ $i ] - ${$vector2}[ $i ]) ** 2;
     }
     return sqrt( $dist );
-}
-
 }
 
 ##
@@ -133,27 +143,30 @@ sub shift_atom( $ ) {
     for( my $i = 0; $i < @shifting_params; $i++ ) {
         for( my $j = 0; $j < @shifting_params; $j++ ) {
             for( my $k = 0; $k < @shifting_params; $k++ ) {
-                my %new_atom_info;
+                my %new_atom;
                 my @new_atom_xyz;
                 if( $shifting_params[ $i ] != 0 || 
                     $shifting_params[ $j ] != 0 ||
                     $shifting_params[ $k ] != 0 ) {
                     $new_atom_xyz[ 0 ] =
-                        $atom_info->{ "coordinates_fract" }[ 0 ] +  $shifting_params[$i];
+                        $atom_ref->{ "coordinates_fract" }[ 0 ] +  
+                                     $shifting_params[$i];
                     $new_atom_xyz[ 1 ] =
-                        $atom_info->{ "coordinates_fract" }[ 1 ] +  $shifting_params[$j];
+                        $atom_ref->{ "coordinates_fract" }[ 1 ] +  
+                                     $shifting_params[$j];
                     $new_atom_xyz[ 2 ] =
-                        $atom_info->{ "coordinates_fract" }[ 2 ] +  $shifting_params[$k];
+                        $atom_ref->{ "coordinates_fract" }[ 2 ] +  
+                                     $shifting_params[$k];
 
-                    $new_atom_info{ "coordinates_fract" } = \@new_atom_xyz;
-                    $new_atom_info{ "atom_type" } =
-                                                  $atom_info->{ "atom_type" };
-                    $new_atom_info{ "atom_name" } = $atom_info->{ "atom_name" };
-                    $new_atom_info{ "shift_vector" } = [ $shifting_params[ $i ],
-                                                         $shifting_params[ $j ],
-                                                         $shifting_params[ $k ]
-                                                       ];
-                    push( @shifted_atoms, \%new_atom_info );
+                    $new_atom{ "coordinates_fract" } = \@new_atom_xyz;
+                    $new_atom{ "atom_type" } =
+                                                  $atom_ref->{ "atom_type" };
+                    $new_atom{ "atom_name" } = $atom_ref->{ "atom_name" };
+                    $new_atom{ "shift_vector" } = [ $shifting_params[ $i ],
+                                                    $shifting_params[ $j ],
+                                                    $shifting_params[ $k ]
+                                                  ];
+                    push( @shifted_atoms, \%new_atom );
                 }
             }
         }
@@ -183,7 +196,7 @@ sub print_atoms( $ ) {
               " @{ $atom_ref->{coordinates_ortho} } \n";
         print "Fractional coordinates:" .
               " @{ $atom_ref->{coordinates_fract} } \n";
-        print "Shift vector:" .
-              "@{ $atom_ref->{shift_vector} } \n";
+    #    print "Shift vector:" .
+    #          "@{ $atom_ref->{shift_vector} } \n";
     }
 }
