@@ -159,14 +159,16 @@ sub cif_has_C_bonds( $$$$ )
         # +/-1 translation:
         for my $j ($i+1..$#$sym_atoms) {
             my $atom2 = $sym_atoms->[$j];
-            next unless $atom2->{atom_type} eq "H";
+            next unless
+                $atom2->{atom_type} eq "H" || 
+                $atom2->{atom_type} eq "C";
             next if
                 $atom1->{assembly} eq $atom2->{assembly} &&
                 $atom1->{group} ne $atom2->{group};
 
-            for my $dx (-1, 1) {
-            for my $dy (-1, 1) {
-            for my $dz (-1, 1) {
+            for my $dx (-1, 0, 1) {
+            for my $dy (-1, 0, 1) {
+            for my $dz (-1, 0, 1) {
                 my @shifted_fractionals = ( $atom2->{coordinates_fract}[0] + $dx,
                                             $atom2->{coordinates_fract}[1] + $dy,
                                             $atom2->{coordinates_fract}[2] + $dz );
