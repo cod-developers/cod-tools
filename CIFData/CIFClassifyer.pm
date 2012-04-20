@@ -23,7 +23,7 @@ require Exporter;
 @CIFCellContents::ISA = qw(Exporter);
 @CIFCellContents::EXPORT = qw(
     cif_class_flags
-    cif_has_C_H_bond
+    cif_has_C_bonds
 );
 
 sub get_atoms( $$$ );
@@ -34,29 +34,36 @@ sub vsub( $$ );
 sub length_of_fractional_vector( $$ );
 sub distance_fractional( $$$ );
 
+my $has_C_H_bond_flag = "has_C_H_bond";
+my $has_C_C_bond_flag = "has_C_C_bond";
+
+my $too_close_distance = 0.3; # Angstroems
+
 sub cif_class_flags( $$$$ )
 {
     my ( $datablock, $filename, $atom_properties, $bond_safety_margin ) = @_;
 
     my @flags = ();
 
-    my $has_C_H_bond = cif_has_C_H_bond
+    @flags = cif_has_C_bonds
         ( $datablock, $filename, $atom_properties, $bond_safety_margin );
-
-    if( $has_C_H_bond ) {
-        push( @flags, "has_C_H_bond" );
-    }
 
     return wantarray? @flags : join( ",", @flags );
 }
 
-sub cif_has_C_H_bond( $$$$ )
+sub cif_has_C_bonds( $$$$ )
 {
     my ( $datablock, $filename, $atom_properties, $bond_safety_margin ) = @_;
+
+    my %flags; # accumulate flags that will be returned
 
     my $C_H_covalent_distance =
         $atom_properties->{"C"}{covalent_radius} +
         $atom_properties->{"H"}{covalent_radius} +
+        $bond_safety_margin;
+
+    my $C_C_covalent_distance =
+        $atom_properties->{"C"}{covalent_radius} * 2 +
         $bond_safety_margin;
 
     my $atoms = get_atoms( $datablock, $filename, "_atom_site_label" );
@@ -96,7 +103,7 @@ sub cif_has_C_H_bond( $$$$ )
     ## use Serialise;
     ## serialiseRef( $sym_atoms );
 
-    # Search for a C-H bond:
+    # Search for a C-H or C-C bond:
 
     for my $i (0..$#$atoms) {
         my $atom1 = $atoms->[$i];
@@ -108,7 +115,9 @@ sub cif_has_C_H_bond( $$$$ )
         # molecule:
         for my $j ($i+1..$#$sym_atoms) {
             my $atom2 = $sym_atoms->[$j];
-            next unless $atom2->{atom_type} eq "H";
+            next unless
+                $atom2->{atom_type} eq "H" || 
+                $atom2->{atom_type} eq "C";
             next if
                 $atom1->{assembly} eq $atom2->{assembly} &&
                 $atom1->{group} ne $atom2->{group};
@@ -117,6 +126,7 @@ sub cif_has_C_H_bond( $$$$ )
                 CIFSymmetryGenerator::distance( $atom1->{coordinates_ortho},
                                                 $atom2->{coordinates_ortho} );
 
+            next if $interatomic_distance < $too_close_distance;
 
             ## my $distance = distance_fractional( $atom1->{coordinates_fract},
             ##                                     $atom2->{coordinates_fract},
@@ -125,11 +135,24 @@ sub cif_has_C_H_bond( $$$$ )
             ## print ">>> $interatomic_distance, $distance\n"
             ##     if abs($interatomic_distance - $distance) > 1E-6;
 
-            if( $interatomic_distance < $C_H_covalent_distance ) {
+            if( $atom2->{atom_type} eq "H" &&
+                $interatomic_distance < $C_H_covalent_distance ) {
+                ## print ">>> found C-H bond $interatomic_distance " .
+                ##     "$atom1->{atom_name}-$atom2->{atom_name}\n";
                 ## use Serialise;
                 ## serialiseRef( [ $atom1, $atom2, $interatomic_distance,
                 ##                 $C_H_covalent_distance  ] );
-                return 1;
+                $flags{$has_C_H_bond_flag} = 1;
+                return keys %flags if int(keys %flags) >= 2;
+            }
+            if( $atom2->{atom_type} eq "C" &&
+                $interatomic_distance < $C_C_covalent_distance ) {
+                ## print ">>> found C-C bond $interatomic_distance \n";
+                ## use Serialise;
+                ## serialiseRef( [ $atom1, $atom2, $interatomic_distance,
+                ##                 $C_H_covalent_distance  ] );
+                $flags{$has_C_C_bond_flag} = 1;
+                return keys %flags if int(keys %flags) >= 2;
             }
         }
         # If we did not find bond to untranslated atoms, let's try
@@ -151,14 +174,30 @@ sub cif_has_C_H_bond( $$$$ )
                 my $distance = distance_fractional( $atom1->{coordinates_fract},
                                                     \@shifted_fractionals,
                                                     $g );
-                if( $distance < $C_H_covalent_distance ) {
-                    return 1;
+
+                next if $distance < $too_close_distance;
+
+                if( $atom2->{atom_type} eq "H" &&
+                    $distance < $C_H_covalent_distance ) {
+                    ## use Serialise;
+                    ## serialiseRef( [ $atom1, $atom2, $interatomic_distance,
+                    ##                 $C_H_covalent_distance  ] );
+                    $flags{$has_C_H_bond_flag} = 1;
+                    return keys %flags if int(keys %flags) >= 2;
+                }
+                if( $atom2->{atom_type} eq "C" &&
+                    $distance < $C_C_covalent_distance ) {
+                    ## use Serialise;
+                    ## serialiseRef( [ $atom1, $atom2, $interatomic_distance,
+                    ##                 $C_H_covalent_distance  ] );
+                    $flags{$has_C_C_bond_flag} = 1;
+                    return keys %flags if int(keys %flags) >= 2;
                 }
             }}}
         }
     }
 
-    return 0;
+    return keys %flags;
 }
 
 # ============================================================================ #
