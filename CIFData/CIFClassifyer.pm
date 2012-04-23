@@ -157,7 +157,7 @@ sub cif_has_C_bonds( $$$$ )
         }
         # If we did not find bond to untranslated atoms, let's try
         # +/-1 translation:
-        for my $j ($i+1..$#$sym_atoms) {
+        for my $j (0..$#$sym_atoms) {
             my $atom2 = $sym_atoms->[$j];
             next unless
                 $atom2->{atom_type} eq "H" || 
