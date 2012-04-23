@@ -10,12 +10,12 @@
 #   Calculates minimal distance between atoms read from a cif file.
 #**
 
-use lib "./CIFData";
-use lib "./CIFParser";
-use lib "./Spacegroups";
-use lib "./lib/perl5";
-use lib "./trunk";
-use lib "./perl-scripts";
+use lib "../../CIFData";
+use lib "../../CIFParser";
+use lib "../../Spacegroups";
+use lib "../../lib/perl5";
+use lib "../../../trunk";
+use lib "../../perl-scripts";
 use strict;
 use warnings;
 use CIFCellContents;
@@ -25,8 +25,21 @@ use Spacegroups::SymopParse;
 use Spacegroups::SpacegroupNames;
 use CIFData::CIFSymmetryGenerator;
 use UserMessage;
+use SOptions;
+use SUsage;
 
-my $filename = shift(@ARGV);
+my $silence_dist_matrix;
+my $print_original_atoms;
+my $line_length;
+
+@ARGV = getOptions( 
+    "-s,--silence-dist-matrix"  => sub { $silence_dist_matrix = 1; },
+    "-o, --print-original-atoms" => sub { $print_original_atoms = 1 },
+    "-l, --matrix-line-length" => sub { $line_length = get_value() },
+    "--help,--usage" => sub { SUsage::usage; exit },
+);
+
+my $filename = shift( @ARGV );
 
 my $parser = new CIFParser;
 
@@ -60,29 +73,25 @@ my $ortho_matrix = symop_ortho_from_fract( @unit_cell );
 my $sym_data =
     CIFSymmetryGenerator::get_symmetry_operators( $dataset, $filename );
 
-#print @$sym_data;
-
 #   extracts atoms
 my $atoms = CIFCellContents::get_atoms( $dataset, $filename, $loop_tag );
+
+my $printable_properties = [ "atom_name", "atom_type", 
+                             "coordinates_ortho", "coordinates_fract" ];
+
+if ( $print_original_atoms ) {
+    print_atoms( $atoms, $printable_properties );
+}
 
 #   computes symmetry operator matrices
 my @sym_operators = map { SymopParse::symop_from_string($_) } @{$sym_data};
 
 #   generates atoms by applying symmetry operators.
 #   at this subroutine original atoms are fitted into the first octant
-#   by applying x,y,z operator
+#   by applying x,y,z operator modulus 1
 my $sym_atoms =
     CIFSymmetryGenerator::symop_generate_atoms( \@sym_operators, $atoms,
                                                     $ortho_matrix );
-
-#   generates an array of original atoms fitted into the first octant
-#   might be clearer to write a local "mod 1" subroutine, or extract
-#   original atoms directly from the already computed array.                       
-$atoms = CIFSymmetryGenerator::symop_generate_atoms( [ SymopParse::symop_from_string( "x,y,z" ) ], 
-                                                        $atoms, $ortho_matrix );
-#print_atoms( $atoms );
-#print scalar( @sym_operators );
-#print_atoms( $sym_atoms );
 
 my @shifted_atoms;
 
@@ -96,14 +105,10 @@ foreach my $atom ( @shifted_atoms ) {
                                             $atom->{coordinates_fract} );
 }
 
-#print_atoms( \@shifted_atoms );
 my ( $distances, $headers, $atoms_used ) = get_distances( \@shifted_atoms, scalar( @sym_operators ) );
-#print @$atoms_used[1]->[2];
-foreach ( @$atoms_used ) {
-    print_atoms( $_ );
-    print "-------------------------------------------------------------";
+if ( !$silence_dist_matrix ) {
+    print_distances( $distances, $headers );
 }
-#print_distances();
 
 exit;
 
@@ -130,21 +135,20 @@ sub get_distances {
  
     for ( my $i  = 0; $i < @$all_atoms; $i += $cluster_size ) {
         my $atom1 = $all_atoms -> [ $i ];
-        push @headers, "$atom1->{atom_name}/$atom1->{atom_type}/@{$atom1->{shift_vector}}";
+        push @headers, "$atom1->{atom_name}/$atom1->{atom_type}";
         my @atom_rows_used;
-        $atom1->{'atom_name'} .= "------------------------------"; 
         push @atom_rows_used, $atom1;
-        my @distance_row;
+        my @distance_row = ();
         push @distance_row, 0;
         my $processed_atom_number = $cluster_size;
         for ( my $j = $i + $cluster_size; $j < @$all_atoms; $j++ ) {
             my $atom2 = $all_atoms -> [ $j ];
             my $distance = get_distance( $atom1->{coordinates_ortho}, 
                                          $atom2->{coordinates_ortho} );
-            if ( !defined( $distance_row[ $processed_atom_number ] ) ||
-                $distance_row[ $processed_atom_number / $cluster_size ] > $distance ) {
-                $distance_row[ $processed_atom_number / $cluster_size ] = $distance;
-                $atom_rows_used[ $processed_atom_number / $cluster_size ] = $atom2;
+            if ( !defined( $distance_row[ floor( $processed_atom_number / $cluster_size ) ] ) ||
+                $distance_row[ floor( $processed_atom_number / $cluster_size ) ] > $distance ) {
+                $distance_row[ floor( $processed_atom_number / $cluster_size ) ] = $distance;
+                $atom_rows_used[ floor( $processed_atom_number / $cluster_size ) ] = $atom2;
             }
             $processed_atom_number++;
         }
@@ -169,7 +173,7 @@ sub get_distance {
     my $dist = 0;
 
     for ( my $i = 0; $i < @{$vector1}; $i++ ) {
-        $dist += (${$vector1}[ $i ] - ${$vector2}[ $i ]) ** 2;
+        $dist += ( ${$vector1}[ $i ] - ${$vector2}[ $i ] ) ** 2;
     }
     return sqrt( $dist );
 }
@@ -233,22 +237,29 @@ sub shift_atom {
 ##
 
 sub print_atoms {
-    my ( $array_ref ) = @_;
+    my ( $array_ref, $properties ) = @_;
     foreach my $atom_ref ( @$array_ref ) {
-        print "Atom name:" .
-              " $atom_ref->{atom_name} \n";
-        print "Atom type:" .
-              " $atom_ref->{atom_type} \n";
-    #    print "Ocupancy:" .
-    #          " $atom_ref->{occupancy} \n";
-    #    print "cif_multiplicity:" .
-    #          " $atom_ref->{cif_multiplicity} \n";
-        print "Orthogonal coordinates:" . 
-              " @{ $atom_ref->{coordinates_ortho} } \n";
-        print "Fractional coordinates:" .
+        foreach my $property ( @$properties ) {
+            if ( $property eq "atom_name" ) {
+                print "Atom name $atom_ref->{atom_name} \n";
+            } elsif ( $property eq "atom_type" ) {
+                print "Atom type: $atom_ref->{atom_type} \n";
+            } elsif ( $property eq "occupancy" ) {
+                print "Ocupancy: $atom_ref->{occupancy} \n";
+            } elsif ( $property eq "cif_multiplicity" ) {
+                print "cif_multiplicity: " . 
+                      "$atom_ref->{cif_multiplicity} \n";
+            } elsif ( $property eq "coordinates_ortho" ) {
+                print "Orthogonal coordinates: " . 
+                "@{ $atom_ref->{coordinates_ortho} } \n";
+            } elsif ( $property eq "coordinates_fract" ) {
+                print "Fractional coordinates:" .
               " @{ $atom_ref->{coordinates_fract} } \n";
-        print "Shift vector:" .
-              "@{ $atom_ref->{shift_vector} } \n";
+            } elsif ( $property eq "shift_vector" ) {
+                print "Shift vector:" .
+                "@{ $atom_ref->{shift_vector} } \n";
+            }
+        }
     }
 }
 
