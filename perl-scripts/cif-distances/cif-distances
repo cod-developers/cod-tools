@@ -26,9 +26,6 @@ use Spacegroups::SpacegroupNames;
 use CIFData::CIFSymmetryGenerator;
 use UserMessage;
 
-sub shift_atom( $ );
-sub print_atoms( $ );
-
 my $filename = shift(@ARGV);
 
 my $parser = new CIFParser;
@@ -63,6 +60,8 @@ my $ortho_matrix = symop_ortho_from_fract( @unit_cell );
 my $sym_data =
     CIFSymmetryGenerator::get_symmetry_operators( $dataset, $filename );
 
+#print @$sym_data;
+
 #   extract atoms
 my $atoms = CIFCellContents::get_atoms( $dataset, $filename, $loop_tag );
 
@@ -72,9 +71,12 @@ my @sym_operators = map { SymopParse::symop_from_string($_) } @{$sym_data};
 my $sym_atoms =
     CIFSymmetryGenerator::symop_generate_atoms( \@sym_operators, $atoms,
                                                     $ortho_matrix );
-
+                                                    
+$atoms = CIFSymmetryGenerator::symop_generate_atoms( [ SymopParse::symop_from_string( "x,y,z" ) ], 
+                                                        $atoms, $ortho_matrix );
 #print_atoms( $atoms );
-print_atoms( $sym_atoms );
+#print "\n-------------\n";
+#print_atoms( $sym_atoms );
 
 my @shifted_atoms;
 
@@ -88,14 +90,33 @@ foreach my $atom ( @shifted_atoms ) {
                                             $atom->{coordinates_fract} );
 }
 
+my @headers;
+my @distances;
+
+for ( my $i = 0; $i < scalar( @$atoms ); $i++ ){
+    my $atom1 = $atoms->[ $i ];
+    #my ( $x1, $y1, $z1 ) = ( $atom1{'x'}, $atom1{'y'}, $atom1{'z'} );
+    my @distances_row = ();
+    push @headers, "$atom1->{atom_name}/$atom1->{atom_type}";
+    for ( my $j = $i; $j < scalar( @$atoms) ; $j++ ) { 
+        my $atom2 = $atoms->[ $j ];
+        push @distances_row, get_distance( $atom1->{coordinates_ortho}, 
+                                           $atom2->{coordinates_ortho} );
+    }
+    push @distances, \@distances_row;
+}
+
+
 push ( @shifted_atoms, @$sym_atoms );
 
-print "Number of atoms after applying symmetry operators: " .
-       scalar( @$sym_atoms ) . "\n";
-print "Number of atoms after shifting ( without initial atoms): " .
-       scalar( @shifted_atoms ) . "\n";
+#print "Number of atoms after applying symmetry operators: " .
+#       scalar( @$sym_atoms ) . "\n";
+#print "Number of atoms after shifting ( without initial atoms): " .
+#       scalar( @shifted_atoms ) . "\n";
 
 #print_atoms( \@shifted_atoms );
+
+print_distances(\@distances, \@headers );
 
 exit;
 
@@ -133,7 +154,7 @@ sub get_distance {
 #       Array of atom hashes.
 ##
 
-sub shift_atom( $ ) {
+sub shift_atom {
     my ( $atom_ref ) = @_;
 
     $atom_ref->{ "shift_vector" } = [ 0, 0, 0 ];
@@ -181,7 +202,7 @@ sub shift_atom( $ ) {
 #       Reference to an array from which the atoms are printed.  
 ##
 
-sub print_atoms( $ ) {
+sub print_atoms {
     my ( $array_ref ) = @_;
     foreach my $atom_ref ( @$array_ref ) {
         print "Atom name:" .
@@ -200,3 +221,42 @@ sub print_atoms( $ ) {
     #          "@{ $atom_ref->{shift_vector} } \n";
     }
 }
+
+sub print_distances {
+    my ( $distance_ref, $header_ref ) = @_;
+    my @distances = @$distance_ref;
+    my $line_width = 80;
+    my $cell_width = 11;
+    use POSIX;
+    my $cell_count = floor ( $line_width / $cell_width ) - 1;
+    
+    my $print_iteration = 0;
+    while ( $print_iteration < ceil( @distances / $cell_count ) ) {
+        my $start_cell_index = $cell_count * $print_iteration;
+        my $finish_cell_index = $cell_count * ( $print_iteration + 1 );
+        if ( $finish_cell_index > @distances ) {
+            $finish_cell_index = @distances;
+        }
+        
+        printf( "%-${cell_width}s", "ATOMS" );
+        for ( my $k = $start_cell_index; $k < $finish_cell_index; $k++ ) {
+            printf( "%-${cell_width}s", @$header_ref[ $k ] );
+        }
+        print "\n";
+        
+        for ( my $i = 0; $i < @distances; $i++ ) {
+            printf( "%-${cell_width}s", @$header_ref[ $i ] );
+            for ( my $j = $start_cell_index; $j < $finish_cell_index; $j++ ) {
+                if ( $j >= $i ) {
+                    printf( "%-${cell_width}.3f", $distances[ $i ][ $j - $i ] );
+                } else {
+                    printf( "%-${cell_width}.3f", $distances[ $j ][ $i - $j ] );
+                }
+            };
+            print "\n";
+        }
+        
+        print "\n";
+       $print_iteration++;
+    }
+ }
