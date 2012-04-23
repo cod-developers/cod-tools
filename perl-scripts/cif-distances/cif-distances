@@ -62,20 +62,26 @@ my $sym_data =
 
 #print @$sym_data;
 
-#   extract atoms
+#   extracts atoms
 my $atoms = CIFCellContents::get_atoms( $dataset, $filename, $loop_tag );
 
-#   compute symmetry operator matrices
+#   computes symmetry operator matrices
 my @sym_operators = map { SymopParse::symop_from_string($_) } @{$sym_data};
 
+#   generates atoms by applying symmetry operators.
+#   at this subroutine original atoms are fitted into the first octant
+#   by applying x,y,z operator
 my $sym_atoms =
     CIFSymmetryGenerator::symop_generate_atoms( \@sym_operators, $atoms,
                                                     $ortho_matrix );
-                                                    
+
+#   generates an array of original atoms fitted into the first octant
+#   might be clearer to write a local "mod 1" subroutine, or extract
+#   original atoms directly from the already computed array.                       
 $atoms = CIFSymmetryGenerator::symop_generate_atoms( [ SymopParse::symop_from_string( "x,y,z" ) ], 
                                                         $atoms, $ortho_matrix );
 #print_atoms( $atoms );
-#print "\n-------------\n";
+#print scalar( @sym_operators );
 #print_atoms( $sym_atoms );
 
 my @shifted_atoms;
@@ -90,39 +96,62 @@ foreach my $atom ( @shifted_atoms ) {
                                             $atom->{coordinates_fract} );
 }
 
-my @headers;
-my @distances;
-
-for ( my $i = 0; $i < scalar( @$atoms ); $i++ ){
-    my $atom1 = $atoms->[ $i ];
-    #my ( $x1, $y1, $z1 ) = ( $atom1{'x'}, $atom1{'y'}, $atom1{'z'} );
-    my @distances_row = ();
-    push @headers, "$atom1->{atom_name}/$atom1->{atom_type}";
-    for ( my $j = $i; $j < scalar( @$atoms) ; $j++ ) { 
-        my $atom2 = $atoms->[ $j ];
-        push @distances_row, get_distance( $atom1->{coordinates_ortho}, 
-                                           $atom2->{coordinates_ortho} );
-    }
-    push @distances, \@distances_row;
-}
-
-
-push ( @shifted_atoms, @$sym_atoms );
-
-#print "Number of atoms after applying symmetry operators: " .
-#       scalar( @$sym_atoms ) . "\n";
-#print "Number of atoms after shifting ( without initial atoms): " .
-#       scalar( @shifted_atoms ) . "\n";
-
 #print_atoms( \@shifted_atoms );
-
-print_distances(\@distances, \@headers );
+my ( $distances, $headers, $atoms_used ) = get_distances( \@shifted_atoms, scalar( @sym_operators ) );
+#print @$atoms_used[1]->[2];
+foreach ( @$atoms_used ) {
+    print_atoms( $_ );
+    print "-------------------------------------------------------------";
+}
+#print_distances();
 
 exit;
 
+##
+# Calculates the minimum distance between two atoms from the given array.
+# It is expected that atoms, derived from the original atom by applying
+# symmetry operator and shifting operators, are put near each other in the 
+# array, making clusters of size $syum_operator_count * 27 (number of 
+# octants). Since all atoms of the cluster are derived from one original 
+# atom, distances between them are not calculated.
+# @param $all_atom
+#       Reference to an array containing all atoms generated after 
+#       applying symmetry and shift operators.
+# @param $sym_operator_count
+#       Number of symmetry operators that have been applied.
+##
+
 sub get_distances {
-    
-   # for ( )
+    my ( $all_atoms, $sym_operator_count ) = @_; 
+    my $cluster_size = $sym_operator_count * 27; #27 is the number of octants
+    my @headers;
+    my @distances;
+    my @atoms_used;
+ 
+    for ( my $i  = 0; $i < @$all_atoms; $i += $cluster_size ) {
+        my $atom1 = $all_atoms -> [ $i ];
+        push @headers, "$atom1->{atom_name}/$atom1->{atom_type}/@{$atom1->{shift_vector}}";
+        my @atom_rows_used;
+        $atom1->{'atom_name'} .= "------------------------------"; 
+        push @atom_rows_used, $atom1;
+        my @distance_row;
+        push @distance_row, 0;
+        my $processed_atom_number = $cluster_size;
+        for ( my $j = $i + $cluster_size; $j < @$all_atoms; $j++ ) {
+            my $atom2 = $all_atoms -> [ $j ];
+            my $distance = get_distance( $atom1->{coordinates_ortho}, 
+                                         $atom2->{coordinates_ortho} );
+            if ( !defined( $distance_row[ $processed_atom_number ] ) ||
+                $distance_row[ $processed_atom_number / $cluster_size ] > $distance ) {
+                $distance_row[ $processed_atom_number / $cluster_size ] = $distance;
+                $atom_rows_used[ $processed_atom_number / $cluster_size ] = $atom2;
+            }
+            $processed_atom_number++;
+        }
+        push @distances, \@distance_row;
+        push @atoms_used, \@atom_rows_used;
+    }
+return ( \@distances, \@headers, \@atoms_used );
 }
 
 ##
@@ -159,6 +188,7 @@ sub shift_atom {
 
     $atom_ref->{ "shift_vector" } = [ 0, 0, 0 ];
     my @shifted_atoms;
+    push @shifted_atoms, $atom_ref;
     my @shifting_params = ( -1, 0, 1 );
     
     for( my $i = 0; $i < @shifting_params; $i++ ) {
@@ -171,13 +201,13 @@ sub shift_atom {
                     $shifting_params[ $k ] != 0 ) {
                     $new_atom_xyz[ 0 ] =
                         $atom_ref->{ "coordinates_fract" }[ 0 ] +  
-                                     $shifting_params[$i];
+                                     $shifting_params[ $i ];
                     $new_atom_xyz[ 1 ] =
                         $atom_ref->{ "coordinates_fract" }[ 1 ] +  
-                                     $shifting_params[$j];
+                                     $shifting_params[ $j ];
                     $new_atom_xyz[ 2 ] =
                         $atom_ref->{ "coordinates_fract" }[ 2 ] +  
-                                     $shifting_params[$k];
+                                     $shifting_params[ $k ];
 
                     $new_atom{ "coordinates_fract" } = \@new_atom_xyz;
                     $new_atom{ "atom_type" } =
@@ -217,8 +247,8 @@ sub print_atoms {
               " @{ $atom_ref->{coordinates_ortho} } \n";
         print "Fractional coordinates:" .
               " @{ $atom_ref->{coordinates_fract} } \n";
-    #    print "Shift vector:" .
-    #          "@{ $atom_ref->{shift_vector} } \n";
+        print "Shift vector:" .
+              "@{ $atom_ref->{shift_vector} } \n";
     }
 }
 
