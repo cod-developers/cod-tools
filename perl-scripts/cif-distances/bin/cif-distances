@@ -30,11 +30,15 @@ use SUsage;
 
 my $silence_dist_matrix;
 my $print_original_atoms;
+my $print_symmetrical_atoms;
+my $print_shifted_atoms;
 my $line_length;
 
 @ARGV = getOptions( 
-    "-s,--silence-dist-matrix"  => sub { $silence_dist_matrix = 1; },
-    "-o, --print-original-atoms" => sub { $print_original_atoms = 1 },
+    "-d,--silence-dist-matrix"     => sub { $silence_dist_matrix = 1; },
+    "-o, --print-original-atoms"   => sub { $print_original_atoms = 1 },
+    "-s, --print-symetrical-atoms" => sub { $print_symmetrical_atoms = 1 },
+    "-h, --print-shifted_atoms"    => sub { $print_shifted_atoms = 1 },
     "-l, --matrix-line-length" => sub { $line_length = get_value() },
     "--help,--usage" => sub { SUsage::usage; exit },
 );
@@ -43,18 +47,18 @@ my $filename = shift( @ARGV );
 
 my $parser = new CIFParser;
 
-my $data = $parser->Run($filename);
+my $data = $parser->Run( $filename );
 
-my $dataset = @$data[0];
+my $dataset = @$data[ 0 ];
 
 my $values = $dataset->{values};
 
 #   extracts atom site label or atom site type symbol
 my $loop_tag;
 
-if( exists $values->{"_atom_site_label"} ) {
+if( exists $values->{ "_atom_site_label" } ) {
     $loop_tag = "_atom_site_label";
-    } elsif( exists $values->{"_atom_site_type_symbol"} ) {
+    } elsif( exists $values->{ "_atom_site_type_symbol" } ) {
         $loop_tag = "_atom_site_type_symbol";
     } else {
         error( $0, $filename, $dataset->{name},
@@ -93,19 +97,19 @@ my $sym_atoms =
     CIFSymmetryGenerator::symop_generate_atoms( \@sym_operators, $atoms,
                                                     $ortho_matrix );
 
-my @shifted_atoms;
-
-foreach my $atom ( @$sym_atoms ) {
-    push ( @shifted_atoms, shift_atom( $atom ) );
+if ( $print_symmetrical_atoms ) {
+    print_atoms( $sym_atoms, $printable_properties );
 }
 
-foreach my $atom ( @shifted_atoms ) {
-    $atom->{coordinates_ortho} =
-        CIFSymmetryGenerator::mat_vect_mul( $ortho_matrix,
-                                            $atom->{coordinates_fract} );
+my @shifted_atoms = map { shift_atom( $_ ) } @{$sym_atoms};
+
+if ( $print_shifted_atoms ) {
+    push @$printable_properties, "shift_vector";
+    print_atoms( \@shifted_atoms, $printable_properties );
 }
 
 my ( $distances, $headers, $atoms_used ) = get_distances( \@shifted_atoms, scalar( @sym_operators ) );
+
 if ( !$silence_dist_matrix ) {
     print_distances( $distances, $headers );
 }
@@ -190,7 +194,7 @@ sub get_distance {
 sub shift_atom {
     my ( $atom_ref ) = @_;
 
-    $atom_ref->{ "shift_vector" } = [ 0, 0, 0 ];
+    $atom_ref->{ "shift_vector" } = [ 5, 5, 5 ];
     my @shifted_atoms;
     push @shifted_atoms, $atom_ref;
     my @shifting_params = ( -1, 0, 1 );
@@ -212,14 +216,16 @@ sub shift_atom {
                     $new_atom_xyz[ 2 ] =
                         $atom_ref->{ "coordinates_fract" }[ 2 ] +  
                                      $shifting_params[ $k ];
-
+            
                     $new_atom{ "coordinates_fract" } = \@new_atom_xyz;
-                    $new_atom{ "atom_type" } =
-                                                  $atom_ref->{ "atom_type" };
+                    $new_atom {coordinates_ortho} =
+                    CIFSymmetryGenerator::mat_vect_mul( $ortho_matrix,
+                    $new_atom {coordinates_fract} );
+                    $new_atom{ "atom_type" } = $atom_ref->{ "atom_type" };
                     $new_atom{ "atom_name" } = $atom_ref->{ "atom_name" };
-                    $new_atom{ "shift_vector" } = [ $shifting_params[ $i ],
-                                                    $shifting_params[ $j ],
-                                                    $shifting_params[ $k ]
+                    $new_atom{ "shift_vector" } = [ 5 + $shifting_params[ $i ],
+                                                    5 + $shifting_params[ $j ],
+                                                    5 + $shifting_params[ $k ]
                                                   ];
                     push( @shifted_atoms, \%new_atom );
                 }
@@ -241,7 +247,7 @@ sub print_atoms {
     foreach my $atom_ref ( @$array_ref ) {
         foreach my $property ( @$properties ) {
             if ( $property eq "atom_name" ) {
-                print "Atom name $atom_ref->{atom_name} \n";
+                print "Atom name: $atom_ref->{atom_name} \n";
             } elsif ( $property eq "atom_type" ) {
                 print "Atom type: $atom_ref->{atom_type} \n";
             } elsif ( $property eq "occupancy" ) {
@@ -253,10 +259,10 @@ sub print_atoms {
                 print "Orthogonal coordinates: " . 
                 "@{ $atom_ref->{coordinates_ortho} } \n";
             } elsif ( $property eq "coordinates_fract" ) {
-                print "Fractional coordinates:" .
-              " @{ $atom_ref->{coordinates_fract} } \n";
+                print "Fractional coordinates: " .
+                "@{ $atom_ref->{coordinates_fract} } \n";
             } elsif ( $property eq "shift_vector" ) {
-                print "Shift vector:" .
+                print "Shift vector: " .
                 "@{ $atom_ref->{shift_vector} } \n";
             }
         }
