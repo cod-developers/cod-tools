@@ -33,14 +33,16 @@ my $print_symmetrical_atoms;
 my $print_shifted_atoms;
 my $fraction_digit_number = 3;
 my $line_length = 80;
+my $print_paired;
 
 @ARGV = getOptions( 
     "-m, --silence-dist-matrix"     => sub { $silence_dist_matrix = 1; },
-    "-o, --print-original-atoms"   => sub { $print_original_atoms = 1 },
-    "-s, --print-symetrical-atoms" => sub { $print_symmetrical_atoms = 1 },
-    "-h, --print-shifted_atoms"    => sub { $print_shifted_atoms = 1 },
-    "-d, --fraction-digit-number" => sub { $fraction_digit_number = get_value() },
-    "-l, --matrix-line-length" => sub { $line_length = get_value() },
+    "-o, --print-original-atoms"    => sub { $print_original_atoms = 1 },
+    "-s, --print-symetrical-atoms"  => sub { $print_symmetrical_atoms = 1 },
+    "-h, --print-shifted_atoms"     => sub { $print_shifted_atoms = 1 },
+    "-d, --fraction-digit-number"   => sub { $fraction_digit_number = get_value() },
+    "-l, --matrix-line-length"      => sub { $line_length = get_value() },
+    "-p, --print-paired-distance"   => sub { $print_paired = 1 },
     "--help,--usage" => sub { SUsage::usage; exit },
 );
 
@@ -114,10 +116,35 @@ my ( $distances, $headers, $atoms_used ) = get_distances( \@shifted_atoms,
                                                 $symmetry_operator_count );
 
 if ( !$silence_dist_matrix ) {
-    print_distances( $distances, $headers, $fraction_digit_number );
+    print_distance_matrix( $distances, $headers, $fraction_digit_number );
+}
+
+if ( $print_paired ) {
+    print_paired( $distances, $atoms_used );
 }
 
 exit;
+
+##
+#
+##
+
+sub print_paired {
+    my ( $distances, $atoms_used ) = @_;
+    for ( my $i = 0; $i < @$atoms_used; $i++ ) {
+        my $first_atom = @$atoms_used[ $i ] -> [ 0 ];
+
+        for ( my $j = 1; $j < @{ @$atoms_used[ $i ] }; $j++ ) {
+            my $second_atom = @$atoms_used[ $i ] -> [ $j ];
+            printf( "DISTANCE %-6.3f", @$distances[ $i ] -> [ $j ] );
+            print 
+                  "FIRST ATOM " . $first_atom -> { atom_name } . " " .
+                  "SECOND ATOM " . $second_atom -> { atom_name } . " " .
+                  $second_atom -> { sym_operator } . " " .
+                  "@{$second_atom -> { shift_vector }} \n";
+        }
+    }
+}
 
 ##
 # Generates symmetrical atoms from the given original atoms and 
@@ -320,7 +347,7 @@ sub print_atoms {
     }
 }
 
-sub print_distances {
+sub print_distance_matrix {
     my ( $distance_ref, $header_ref, $fraction_digit_number, 
          $length_width ) = @_;
     my @distances = @$distance_ref;
@@ -345,7 +372,10 @@ sub print_distances {
         for ( my $i = 0; $i < @distances; $i++ ) {
             printf( "%-${cell_width}s", @$header_ref[ $i ] );
             for ( my $j = $start_cell_index; $j < $finish_cell_index; $j++ ) {
-                if ( $j >= $i ) {
+                if ( $i == $j ) {
+                    printf( "%-${cell_width}.${fraction_digit_number}f", 
+                            0 )
+                } elsif ( $j > $i ) {
                     printf( "%-${cell_width}.${fraction_digit_number}f", 
                             $distances[ $i ][ $j - $i ] );
                 } else {
