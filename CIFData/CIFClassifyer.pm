@@ -251,7 +251,7 @@ sub get_atoms($$$)
             coordinates_fract => \@fractional_coordinates_modulo_1,
         };
 
-        if( !defined $atom->{atom_type} ) {
+        if( !defined $atom->{atom_type} || $atom->{atom_type} eq '?' ) {
             if( length($atom->{atom_name}) < 2 ) {
                 $atom->{atom_type} = $atom->{atom_name};
             } else {
