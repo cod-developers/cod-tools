@@ -31,7 +31,7 @@ sub print_message($$$$$)
     print STDERR $program, ": ", $filename,
     defined $datablock ? " data_" . $datablock : "",
     defined $errlevel ? ": " . $errlevel : "",
-    ": ", $message, ".\n";
+    ", ", $message, ".\n";
 }
 
 #==============================================================================
