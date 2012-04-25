@@ -29,7 +29,10 @@ require Exporter;
 
 my %sg_name_abbrev =
     map { my $key = $_->[1]; $key =~ s/\s+//g; ( $key, $_->[2] ) }
-@SpacegroupNames::names;
+@SpacegroupNames::names,
+    map { [ $_->{number}, $_->{hermann_mauguin}, $_->{universal_h_m} ] }
+@SymopLookup::table, @SymopLookup::extra_settings;
+
 
 my $special_position_cutoff = 0.01; # Angstroems
 # Atoms related by symmetry operators that are more distant than the
@@ -235,7 +238,7 @@ sub lookup_symops
     $sg_full = "" unless defined $sg_full;
     $sg_full =~ s/\s+//g;
 
-    foreach my $hash (@SymopLookup::table)
+    foreach my $hash (@SymopLookup::table, @SymopLookup::extra_settings)
     {
         my $value = $hash->{$option};
         $value =~ s/ //g;
@@ -383,7 +386,7 @@ sub get_symmetry_operators($$)
     if( not defined $sym_data ) {
         error( $0, $filename, $dataset->{name},
                "neither symmetry operators, " .
-               "nor Hall spacegroup symbol," .                  
+               "nor Hall spacegroup symbol, " .
                "nor Hermann-Mauguin spacegroup symbol could be processed" );
         die;
     }
