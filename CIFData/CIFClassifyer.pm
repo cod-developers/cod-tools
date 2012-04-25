@@ -120,7 +120,8 @@ sub cif_has_C_bonds( $$$$ )
                 $atom2->{atom_type} eq "C";
             next if
                 $atom1->{assembly} eq $atom2->{assembly} &&
-                $atom1->{group} ne $atom2->{group};
+                $atom1->{group} ne $atom2->{group} &&
+                $atom1->{group} ne '.' && $atom2->{group} ne '.';
 
             my $interatomic_distance =
                 CIFSymmetryGenerator::distance( $atom1->{coordinates_ortho},
@@ -164,7 +165,8 @@ sub cif_has_C_bonds( $$$$ )
                 $atom2->{atom_type} eq "C";
             next if
                 $atom1->{assembly} eq $atom2->{assembly} &&
-                $atom1->{group} ne $atom2->{group};
+                $atom1->{group} ne $atom2->{group} &&
+                $atom1->{group} ne '.' && $atom2->{group} ne '.';
 
             for my $dx (-1, 0, 1) {
             for my $dy (-1, 0, 1) {
