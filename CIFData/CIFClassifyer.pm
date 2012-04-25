@@ -252,7 +252,20 @@ sub get_atoms($$$)
         };
 
         if( !defined $atom->{atom_type} ) {
-            $atom->{atom_type} = $atom->{atom_name};
+            if( length($atom->{atom_name}) < 2 ) {
+                $atom->{atom_type} = $atom->{atom_name};
+            } else {
+                my $tentative_type = substr( $atom->{atom_name}, 0, 2 );
+                my $lc_type = ucfirst( lc( $tentative_type ));
+
+                use AtomProperties;
+                if( exists $AtomProperties::atoms{$lc_type} ) {
+                    $atom->{atom_type} = $lc_type;
+                } else {
+                    $atom->{atom_type} = substr( $lc_type, 0, 1 );
+                }
+
+            }
         }
 
         if( $atom->{atom_type} =~ m/^([A-Za-z]{1,2})/ ) {
