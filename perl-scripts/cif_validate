@@ -75,7 +75,6 @@ my %showMap = (
         'tag-deprecated'     => 0,
         #
         # loop_ checking related options
-        'tags-grouped'       => 0,
         'list-only'          => 1,
         'ref-list-mandatory' => 1,
         #
@@ -177,7 +176,6 @@ push @$setOfEnum, '_atom_site_refinement_flags';
         "--check-tag-exists"         => sub{ $showMap{'tag-exists'} = 1 },
         "--check-tag-exists-local"   => sub{ $showMap{'tag-exists-local'} = 1 },
         "--check-tag-deprecated"     => sub{ $showMap{'tag-deprecated'} = 1 },
-        "--check-tags-grouped"       => sub{ $showMap{'tags-grouped'} = 1 },
         "--check-list-only"          => sub{ $showMap{'list-only'} = 1 },
         "--check-ref-list-mandatory" => sub{ $showMap{'ref-list-mandatory'} = 1 },
         "--check-values-enum"        => sub{ $showMap{'values-enum'} = 1 },
@@ -195,7 +193,6 @@ push @$setOfEnum, '_atom_site_refinement_flags';
         "--do-not-check-tag-exists"         => sub{ $showMap{'tag-exists'} = 0 },
         "--do-not-check-tag-exists-local"   => sub{ $showMap{'tag-exists-local'} = 0 },
         "--do-not-check-tag-deprecated"     => sub{ $showMap{'tag-deprecated'} = 0 },
-        "--do-not-check-tags-grouped"       => sub{ $showMap{'tags-grouped'} = 0 },
         "--do-not-check-list-only"          => sub{ $showMap{'list-only'} = 0 },
         "--do-not-check-ref-list-mandatory" => sub{ $showMap{'ref-list-mandatory'} = 0 },
         "--do-not-check-values-enum"        => sub{ $showMap{'values-enum'} = 0 },
@@ -458,80 +455,7 @@ CIFFILEANAL: for my $cifF ( @ARGV ) {
                     }
                 }
                 # end-if check referenced list mandatory
-                
 
-                #
-                # if group of tags must be presented within same loop
-                #
-                if( $showMap{'tags-grouped'} ) {
-                    if( exists $dictD->{$lc_tagAnalysed}
-                        && defined $dictD->{$lc_tagAnalysed}{values}{_name}
-                        && defined $dictD->{$lc_tagAnalysed}{values}{_list}
-                        && !defined $tagsListedInLoops{$lc_tagAnalysed}
-                        && @{$dictD->{$lc_tagAnalysed}{values}{_name}} > 1
-                        && $dictD->{$lc_tagAnalysed}{values}{_list}[0] eq 'yes' ) {
-                        my $countItems = 
-                            @{$dictD->{$lc_tagAnalysed}{values}{_name}};
-                        my $allTagsFound = 0;
-                        #
-                        # iterate through loops array from CIFfile, 
-                        # current data block.
-                        # NOTE: $loopAnalysed is an array-ref
-                        #
-                        for my $loopAnalysed ( @{$block->{loops}} ) {
-                            my @found;
-                            my @notFound;
-                            #
-                            # iterate through tags list, that there
-                            # marked as mandatory if at least one is
-                            # defined.
-                            # NOTE: $mandatoryTag is a scalar
-                            #
-                            for my $mandatoryTag ( 
-                                @{$dictD->{$lc_tagAnalysed}{values}{_name}}
-                            ) {
-                                if( grep lc($_) eq $mandatoryTag, @{$loopAnalysed} ) {
-                                    push @found, $mandatoryTag;
-                                    $tagsListedInLoops{lc $mandatoryTag} = 'yes';
-                                } else {
-                                    push @notFound, lc($mandatoryTag);
-                                }
-                            }
-                            if( @found > 0 ) {
-                                if( @found == $countItems ) {
-                                   $allTagsFound = 1;
-                                    showValidationMessage 64, 
-                                        'tags-grouped', $cifF,
-                                        $$block{name},
-                                        'tags ['
-                                        . join(', ', 
-                                            @{$dictD->{$lc_tagAnalysed}{values}{_name}})
-                                        . '] must be in loop according'
-                                       . ' to ' .$dictF
-                                       . ' and were found'
-                                        . ' within loop';
-                                } else {
-                                    for( @notFound ) {
-                                        $tagsListedInLoops{$_} = 'no';
-                                    }
-                                    showValidationMessage 4, 
-                                        'tags-grouped', $cifF,
-                                        $$block{name},
-                                        'tags ['
-                                        . join(', ', 
-                                            @{$dictD->{$lc_tagAnalysed}{values}{_name}})
-                                        . '] must be in loop according'
-                                        . ' to '
-                                        . $dictF . ' but only ['
-                                        . join(', ', @found)
-                                        . '] were found';
-                                }
-                            }
-                        }
-                    }
-                }
-                # end-if group of tags must be presented within same loop
-                
                 #
                 # if check list mandatory
                 #
