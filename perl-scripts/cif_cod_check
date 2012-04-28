@@ -39,6 +39,7 @@ my $check_spacegroup_constraints = 1;
 my $check_limits = 1;
 my $use_precisions = 1;
 my $check_temperature_factors = 1;
+my $check_simultaneous_presence = 1;
 
 sub dont_check_any
 {
@@ -50,6 +51,7 @@ sub dont_check_any
     $check_spacegroup_constraints = 0;
     $check_limits = 0;
     $check_temperature_factors = 0;
+    $check_simultaneous_presence = 0;
 }
 
 sub check_all
@@ -62,6 +64,7 @@ sub check_all
     $check_spacegroup_constraints = 1;
     $check_limits = 1;
     $check_temperature_factors = 1;
+    $check_simultaneous_presence = 1;
 }
 
 my $useReporter = 0;
@@ -170,6 +173,8 @@ my $use_parser = "perl";
 #*
 #*    --check-symmetry
 #*
+#*    --check-simultaneous-presence
+#*
 #*    --check-limits
 #*
 #*    --print-limits
@@ -263,6 +268,13 @@ my $use_parser = "perl";
         $check_symmetry_operators = 1;
         $check_spacegroup_constraints = 1;
     },
+
+    "--check-simultaneous-presence" =>
+        sub{ $check_simultaneous_presence = 1 },
+    "--check-only-simultaneous-presence" =>
+        sub{ dont_check_any(); $check_simultaneous_presence = 1 },
+    "--dont-check-simultaneous-presence" =>
+        sub{ $check_simultaneous_presence = 0 },
 
     "--check-limits" => sub{ $check_limits = 1 },
     "--check-only-limits" => sub{ dont_check_any(); $check_limits = 1 },
@@ -395,6 +407,8 @@ for my $filename (@ARGV) {
             if $check_limits;
         $warnings += check_temperature_factors( $dataset, $filename )
             if $check_temperature_factors;
+        $warnings += check_simultaneous_presence( $dataset, $filename )
+            if $check_simultaneous_presence;
     }
     printf "%-30s: OK\n", $filename if $warnings == 0;
 }
@@ -1118,4 +1132,62 @@ sub check_limits {
         }
     }
     return $warnings;
+}
+
+# Check whether specified tags are all simultaneously persent. This
+# check in COD is important for _atom_site_fractional_{x,y,z},
+# _atom_site_Cartesian_{x,y,z} and _atom_site_aniso_U_?? data items.
+
+sub check_simultaneous_presence
+{
+    my( $dataset, $filename ) = @_;
+    my $warnings = 0;
+
+    my @tag_lists = (
+        [ qw( _atom_site_fract_x _atom_site_fract_y _atom_site_fract_z ) ],
+        [ qw( _atom_site_Cartn_x _atom_site_Cartn_y _atom_site_Cartn_z ) ],
+        [ qw( _atom_site_aniso_U_11
+              _atom_site_aniso_U_22
+              _atom_site_aniso_U_33
+              _atom_site_aniso_U_23
+              _atom_site_aniso_U_13
+              _atom_site_aniso_U_12
+            )
+        ],
+        );
+
+    for my $tag_list (@tag_lists) {
+        $warnings += check_all_tags_present( $dataset, $filename, $tag_list );
+    }
+
+    return $warnings;
+}
+
+sub check_all_tags_present
+{
+    my( $dataset, $filename, $tag_list ) = @_;
+    my ( %tags_present, %tags_absent );
+
+    for my $tag (@{$tag_list}) {
+        if( exists $dataset->{values}{$tag} ) {
+            $tags_present{$tag} ++;
+        } else {
+            $tags_absent{$tag} ++;
+        }
+    }
+
+    if( int(keys %tags_present) > 0 &&
+        int(keys %tags_absent) > 0 ) {
+        my @tags_present = sort {$a cmp $b} keys %tags_present;
+        my @tags_absent = sort {$a cmp $b} keys %tags_absent;
+        my $tag = $tags_present[0];
+
+        print STDERR "$0: $filename $dataset->{name}: WARNING, tag '$tag' " .
+            "is present, but tag" . (int(@tags_absent) > 1 ? "s":"") . " ",
+            join( ", ", @tags_absent ),
+            " are absent.\n";
+        return 1;
+    } else {
+        return 0;
+    }
 }
