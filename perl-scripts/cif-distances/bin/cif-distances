@@ -150,16 +150,19 @@ exit;
 sub print_paired {
     my ( $distances, $atoms_used ) = @_;
     for ( my $i = 0; $i < @$atoms_used; $i++ ) {
-        my $first_atom = @$atoms_used[ $i ] -> [ 0 ];
+        my $atom_1 = @$atoms_used[ $i ] -> [ 0 ];
 
         for ( my $j = 1; $j < @{ @$atoms_used[ $i ] }; $j++ ) {
-            my $second_atom = @$atoms_used[ $i ] -> [ $j ];
-            printf( "DISTANCE %-6.3f", @$distances[ $i ] -> [ $j ] );
-            print 
-                  "FIRST ATOM " . $first_atom -> { atom_name } . " " .
-                  "SECOND ATOM " . $second_atom -> { atom_name } . " " .
-                  $second_atom -> { sym_operator } . " " .
-                  "@{$second_atom -> { shift_vector }} \n";
+            my $atom_2 = @$atoms_used[ $i ] -> [ $j ];
+            printf( 'DIST %-6.3f ATOM_1 %8s ATOM_2 %8s SYMOP %8s ' .
+                    'SHIFT %s', 
+                    @$distances[ $i ] -> [ $j ], 
+                    $atom_1 -> { atom_name }."/".$atom_1 -> {atom_type},
+                    $atom_2 -> { atom_name }."/".$atom_2 -> {atom_type},
+                    $atom_2 -> { sym_operator },
+                    "@{$atom_2 -> { shift_vector }}"
+                    );
+            print "\n";
         }
     }
 }
