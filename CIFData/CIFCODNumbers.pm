@@ -16,8 +16,8 @@ use Formulae::AdHocParser;
 use CIFData::CIFCellContents;
 
 require Exporter;
-@Precision::ISA = qw(Exporter);
-@Precision::EXPORT = qw(fetch_duplicates);
+@CIFCODNumbers::ISA = qw(Exporter);
+@CIFCODNumbers::EXPORT = qw(fetch_duplicates fetch_duplicates_from_database);
 
 my %has_numeric_value = (
     "_journal_year"   => 1,
@@ -43,11 +43,8 @@ my $cod_series_prefix;
 #   --  array of datablocks
 #   --  file name
 #   --  hash of database parameters, i.e.:
-#       { host  => "www.crystallography.net",
-#         user  => "cod_reader",
-#         name  => "cod",
-#         table => "data",
-#         password => "" }
+#       { table => "data" }
+#   --  database handle
 #   --  options
 # Return:
 #   --  {
@@ -68,9 +65,9 @@ my $cod_series_prefix;
 #         }
 #       }
 
-sub fetch_duplicates
+sub fetch_duplicates_from_database
 {
-    my( $data, $file, $database, $options ) = @_;
+    my( $data, $file, $database, $dbh, $options ) = @_;
 
     $options = {} unless defined $options;
     $max_cell_length_diff = $options->{max_cell_length_diff}
@@ -86,7 +83,6 @@ sub fetch_duplicates
     $cod_series_prefix = $options->{cod_series_prefix}
         if defined $options->{cod_series_prefix};
 
-    my $dbh = database_connect( $database );
     my %structures = cif_fill_data( $data, $file );
 
     my %COD = ();
@@ -137,8 +133,34 @@ sub fetch_duplicates
                   duplicates => \%structures_found } );
     }
 
-    database_disconnect( $dbh );
     return \@duplicates;
+}
+
+# Wrapper for fetch_duplicates_from_database(), pre-creating database
+# connection from database credential hash
+# Parameters:
+#   --  array of datablocks
+#   --  file name
+#   --  hash of database parameters, i.e.:
+#       { host  => "www.crystallography.net",
+#         user  => "cod_reader",
+#         name  => "cod",
+#         table => "data",
+#         password => "" }
+#   --  options
+# Return: same as fetch_duplicates_from_database()
+
+sub fetch_duplicates
+{
+    my( $data, $file, $database, $options ) = @_;
+    my $dbh = database_connect( $database );
+    my $duplicates = fetch_duplicates_from_database( $data,
+                                                     $file,
+                                                     $database,
+                                                     $dbh,
+                                                     $options );
+    database_disconnect( $dbh );
+    return $duplicates;
 }
 
 #------------------------------------------------------------------------------
