@@ -1,0 +1,67 @@
+cif-distances_matrix_v.1
+
+This is the standard output format for cif_distances script, which 
+calculates distances between atoms in a cif file.
+
+Results are output as a series of tables, each containing a header.
+Headers starts with ATOMS keywords after which a number of 
+atom name/atom type pairs follow, separated by whitespaces. The number 
+of pairs depends on the maximum length of a header line, which can be 
+specified by --maximum-line-lenght paramater. Default value for header 
+lenght is 80 symbols, giving 6 pairs. For example,
+
+ATOMS      Nd1/Nd     Co1/Co     O1/O       O2/O       O3/O       O4/O
+
+Lines after the header start with a atom name/atom type pair after which
+a number of real numbers follow, separated by white spaces. These numbers 
+should be interpret as a distances between the atom, defined at the start 
+of the line, and atoms in the header having same positions as the number.
+For example,
+
+ATOMS      Nd1/Nd     Co1/Co     O1/O       O2/O       O3/O       O4/O       
+Nd1/Nd     0.000      4.068      2.406      2.508      2.490      2.577      
+Co1/Co     4.068      0.000      5.896      4.634      2.115      4.276      
+O1/O       2.406      5.896      0.000      2.181      4.615      4.126      
+O2/O       2.508      4.634      2.181      0.000      3.171      2.890      
+O3/O       2.490      2.115      4.615      3.171      0.000      2.180      
+O4/O       2.577      4.276      4.126      2.890      2.180      0.000      
+O5/O       3.934      2.090      4.788      3.875      2.950      4.646      
+O6/O       2.433      3.478      2.979      3.021      3.182      4.416      
+O7/O       3.972      2.116      5.178      4.640      2.933      4.543      
+O8/O       2.370      3.518      3.193      4.631      2.949      4.059      
+O9/O       2.509      6.295      2.936      3.201      4.454      2.903 
+
+Given this matrix the distance from Nd1/Nd atom to O2/O is 2.508 since 
+O2/O is the fourth pair in the header and 2.508 is the fourth number in 
+the line starting with Nd1/Nd.
+
+Most of the time there are more atoms that can be fitted in to a single 
+header. As a result, a series of tables are printed, each having 
+different atom name/atom type pairs in the header. Tables are separated 
+by an empty line. For, example
+
+ATOMS      Nd1/Nd     Co1/Co     O1/O       O2/O       O3/O       O4/O       
+Nd1/Nd     0.000      4.068      2.406      2.508      2.490      2.577      
+Co1/Co     4.068      0.000      5.896      4.634      2.115      4.276      
+O1/O       2.406      5.896      0.000      2.181      4.615      4.126      
+O2/O       2.508      4.634      2.181      0.000      3.171      2.890      
+O3/O       2.490      2.115      4.615      3.171      0.000      2.180      
+O4/O       2.577      4.276      4.126      2.890      2.180      0.000      
+O5/O       3.934      2.090      4.788      3.875      2.950      4.646      
+O6/O       2.433      3.478      2.979      3.021      3.182      4.416      
+O7/O       3.972      2.116      5.178      4.640      2.933      4.543      
+O8/O       2.370      3.518      3.193      4.631      2.949      4.059      
+O9/O       2.509      6.295      2.936      3.201      4.454      2.903 
+
+ATOMS      O5/O       O6/O       O7/O       O8/O       O9/O       
+Nd1/Nd     3.934      2.433      3.972      2.370      2.509
+Co1/Co     2.090      3.478      2.116      3.518      6.295
+O1/O       4.788      2.979      5.178      3.193      2.936
+O2/O       3.875      3.021      4.640      4.631      3.201
+O3/O       2.950      3.182      2.933      2.949      4.454
+O4/O       4.646      4.416      4.543      4.059      2.903
+O5/O       0.000      2.235      2.786      3.980      4.841
+O6/O       2.235      0.000      3.488      2.951      2.878
+O7/O       2.786      3.488      0.000      2.234      5.609
+O8/O       3.980      2.951      2.234      0.000      4.542
+O9/O       4.841      2.878      5.609      4.542      0.000 
