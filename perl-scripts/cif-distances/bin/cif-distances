@@ -31,7 +31,7 @@ my $silence_dist_matrix;
 my $print_original_atoms;
 my $print_symmetrical_atoms;
 my $print_shifted_atoms;
-my $fraction_digit_number = 3;
+my $fraction_precision = 3;
 my $line_length = 80;
 my $print_paired;
 
@@ -41,7 +41,7 @@ my $print_paired;
     "-o, --print-original-atoms"   => sub { $print_original_atoms = 1 },
     "-s, --print-symetrical-atoms" => sub { $print_symmetrical_atoms = 1 },
     "-h, --print-shifted-atoms"    => sub { $print_shifted_atoms = 1 },
-    "-d, --precision"              => sub { $fraction_digit_number = get_value() },
+    "-d, --precision"              => sub { $fraction_precision = get_value() },
     "-l, --matrix-line-length"     => sub { $line_length = get_value() },
     "--help,--usage"               => sub { SUsage::usage; exit },
 );
@@ -134,7 +134,8 @@ my ( $distances, $headers, $atoms_used ) = get_distances( \@shifted_atoms,
                                                 $symmetry_operator_count );
 
 if ( !$silence_dist_matrix ) {
-    print_distance_matrix( $distances, $headers, $fraction_digit_number );
+    print_distance_matrix( $distances, $headers, $fraction_precision, 
+                           $line_length );
 }
 
 if ( $print_paired ) {
@@ -142,30 +143,6 @@ if ( $print_paired ) {
 }
 
 exit;
-
-##
-#
-##
-
-sub print_paired {
-    my ( $distances, $atoms_used ) = @_;
-    for ( my $i = 0; $i < @$atoms_used; $i++ ) {
-        my $atom_1 = @$atoms_used[ $i ] -> [ 0 ];
-
-        for ( my $j = 1; $j < @{ @$atoms_used[ $i ] }; $j++ ) {
-            my $atom_2 = @$atoms_used[ $i ] -> [ $j ];
-            printf( 'DIST %-6.3f ATOM_1 %8s ATOM_2 %8s SYMOP %8s ' .
-                    'SHIFT %s', 
-                    @$distances[ $i ] -> [ $j ], 
-                    $atom_1 -> { atom_name }."/".$atom_1 -> {atom_type},
-                    $atom_2 -> { atom_name }."/".$atom_2 -> {atom_type},
-                    $atom_2 -> { sym_operator },
-                    "@{$atom_2 -> { shift_vector }}"
-                    );
-            print "\n";
-        }
-    }
-}
 
 ##
 # Generates symmetrical atoms from the given original atoms and 
@@ -368,14 +345,31 @@ sub print_atoms {
     }
 }
 
+##
+# Prints distances between atoms in the default format, defined in
+# cod-tools/trunk/perl-scripts/cif-distances/cif-distances_matrix_v.1
+# @param $distance_ref
+#       Reference to an array distances between atoms.
+# @param $header_ref;
+#       Reference to an array of strings containing information about 
+#       atoms that were used in the calculation of distances.
+#       of the distances.
+# @param $fraction_precision
+#       Number of fraction digits of the distances that should be printed.
+# @param $line_length
+#       Length of the matrix line in symbols.
+##
+
 sub print_distance_matrix {
-    my ( $distance_ref, $header_ref, $fraction_digit_number, 
-         $length_width ) = @_;
+    my ( $distance_ref, $header_ref, $fraction_precision, 
+         $line_length ) = @_;
     my @distances = @$distance_ref;
     my $cell_width = 11;
     use POSIX;
     my $cell_count = floor ( $line_length / $cell_width ) - 1;
     
+    print "The following output format is defined in " .
+    "cod-tools/trunk/perl-scripts/cif-distances/cif-distances_matrix_v.1 \n";
     my $print_iteration = 0;
     while ( $print_iteration < ceil( @distances / $cell_count ) ) {
         my $start_cell_index = $cell_count * $print_iteration;
@@ -394,13 +388,13 @@ sub print_distance_matrix {
             printf( "%-${cell_width}s", @$header_ref[ $i ] );
             for ( my $j = $start_cell_index; $j < $finish_cell_index; $j++ ) {
                 if ( $i == $j ) {
-                    printf( "%-${cell_width}.${fraction_digit_number}f", 
+                    printf( "%-${cell_width}.${fraction_precision}f", 
                             0 )
                 } elsif ( $j > $i ) {
-                    printf( "%-${cell_width}.${fraction_digit_number}f", 
+                    printf( "%-${cell_width}.${fraction_precision}f", 
                             $distances[ $i ][ $j - $i ] );
                 } else {
-                    printf( "%-${cell_width}.${fraction_digit_number}f", 
+                    printf( "%-${cell_width}.${fraction_precision}f", 
                             $distances[ $j ][ $i - $j ] );
                 }
             };
@@ -409,5 +403,39 @@ sub print_distance_matrix {
         
         print "\n";
         $print_iteration++;
+    }
+}
+
+##
+# Prints distances between atoms in an alternative format, defined in
+# cod-tools/trunk/perl-scripts/cif-distances/cif-distances_paired_v.1
+# @param $distances
+#       Reference to an array distances between atoms.
+# @param $atoms_used
+#       Reference to an array of atoms that were used in the calculation
+#       of the distances.
+##
+
+sub print_paired {
+    my ( $distances, $atoms_used ) = @_;
+    
+    print "The following output format is defined in " .
+    "cod-tools/trunk/perl-scripts/cif-distances/cif-distances_paired_v.1 \n";
+    
+    for ( my $i = 0; $i < @$atoms_used; $i++ ) {
+        my $atom_1 = @$atoms_used[ $i ] -> [ 0 ];
+
+        for ( my $j = 1; $j < @{ @$atoms_used[ $i ] }; $j++ ) {
+            my $atom_2 = @$atoms_used[ $i ] -> [ $j ];
+            printf( 'DIST %-6.3f ATOM_1 %8s ATOM_2 %8s SYMOP %8s ' .
+                    'SHIFT %s', 
+                    @$distances[ $i ] -> [ $j ], 
+                    $atom_1 -> { atom_name }."/".$atom_1 -> {atom_type},
+                    $atom_2 -> { atom_name }."/".$atom_2 -> {atom_type},
+                    $atom_2 -> { sym_operator },
+                    "@{$atom_2 -> { shift_vector }}"
+                    );
+            print "\n";
+        }
     }
 }
