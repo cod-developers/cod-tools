@@ -354,7 +354,7 @@ sub print_atoms {
                 "@{ $atom_ref->{coordinates_fract} } \n";
             } elsif ( $property eq "shift_vector" ) {
                 print "Shift vector: " .
-                "@{ $atom_ref->{shift_vector} } \n";
+                    "$atom_ref->{shift_vector} \n";
             } elsif ( $property eq  "sym_operator" ) {
                 print "Symmetry operator: " . 
                       "$atom_ref->{sym_operator} \n";
@@ -387,7 +387,7 @@ sub print_distance_matrix {
     my $cell_count = floor ( $line_length / $cell_width ) - 1;
     	
     print "FORMAT distance-matrix v1.0 http://cod.ibt.lt/cod-tools/trunk" .
-	  "/perl-scripts/cif-distances/docs/cif_distances_matrix_v.1 \n";
+	  "/perl-scripts/cif-distances/docs/cif_distances_matrix_v1.0 \n";
     my $print_iteration = 0;
     while ( $print_iteration < ceil( @distances / $cell_count ) ) {
         my $start_cell_index = $cell_count * $print_iteration;
@@ -438,7 +438,7 @@ sub print_paired {
     my ( $distances, $atoms_used, $filename ) = @_;
     #, $add_filename
     print "FORMAT cif-distances_paired http://cod.ibt.lt/cod-tools/trunk" .
-	  "/perl-scripts/cif-distances/output_format/cif-distances_paired_v.1 \n";
+	  "/perl-scripts/cif-distances/output_format/cif-distances_paired_v1.0 \n";
     
     for ( my $i = 0; $i < @$atoms_used; $i++ ) {
         my $atom_1 = @$atoms_used[ $i ] -> [ 0 ];
@@ -446,7 +446,7 @@ sub print_paired {
         for ( my $j = 1; $j < @{ @$atoms_used[ $i ] }; $j++ ) {
             my $atom_2 = @$atoms_used[ $i ] -> [ $j ];
             
-            printf( 'DIST %-6.3f %10s %10s %24s %8s %10s', 
+            printf( 'DIST %-6.3f %10s %10s %24s %8s %s', 
                     @$distances[ $i ] -> [ $j ], 
                     $atom_1 -> { atom_name }."/".$atom_1 -> {atom_type},
                     $atom_2 -> { atom_name }."/".$atom_2 -> {atom_type},
