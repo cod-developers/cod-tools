@@ -64,82 +64,97 @@ my $print_paired;
 #   --help,--usage                  prints this message and quits.
 #**
 
-my $filename = shift( @ARGV );
+@ARGV = ( "-" ) unless @ARGV;
 
-my $parser = new CIFParser;
+foreach my $filename ( @ARGV ) {
 
-my $data = $parser->Run( $filename );
+    my $parser = new CIFParser;
 
-my $dataset = @$data[ 0 ];
+    my $data = $parser->Run( $filename );
 
-my $values = $dataset->{values};
+    foreach my $dataset ( @$data ) {
 
-#   extracts atom site label or atom site type symbol
-my $loop_tag;
+        my $values = $dataset->{values};
 
-if( exists $values->{ "_atom_site_label" } ) {
-    $loop_tag = "_atom_site_label";
-    } elsif( exists $values->{ "_atom_site_type_symbol" } ) {
-        $loop_tag = "_atom_site_type_symbol";
-    } else {
-        error( $0, $filename, $dataset->{name},
-               "neither _atom_site_label " .
-               "nor _atom_site_type_symbol was found in the input file" );
-        return undef;
-}
+        #   extracts atom site label or atom site type symbol
+        my $loop_tag;
 
-#   extracts cell constants
-my @unit_cell =
-    CIFSymmetryGenerator::get_cell( $values, $filename, $dataset->{name} );
+        if( exists $values->{ "_atom_site_label" } ) {
+            $loop_tag = "_atom_site_label";
+            } elsif( exists $values->{ "_atom_site_type_symbol" } ) {
+                $loop_tag = "_atom_site_type_symbol";
+            } else {
+                error( $0, $filename, $dataset->{name},
+                       "neither _atom_site_label " .
+                       "nor _atom_site_type_symbol was found in the input file" );
+                return undef;
+        }
+    
+        #   extracts cell constants
+        my @unit_cell =
+            CIFSymmetryGenerator::get_cell( $values, $filename, $dataset->{name} );
+    
+        my $ortho_matrix = symop_ortho_from_fract( @unit_cell );
+    
+        #   extracts symmetry operators
+        my $sym_data =
+            CIFSymmetryGenerator::get_symmetry_operators( $dataset, $filename );
 
-my $ortho_matrix = symop_ortho_from_fract( @unit_cell );
+        #   extracts atoms
+        my $atoms = CIFCellContents::get_atoms( $dataset, $filename, $loop_tag );
+    
+        my $printable_properties = [ "atom_name", "atom_type", 
+                                     "coordinates_ortho", "coordinates_fract" ];
+    
+        if ( $print_original_atoms ) {
+            print_atoms( $atoms, $printable_properties );
+        }
+    
+        #   generates atoms by applying symmetry operators.
+        #   at this subroutine original atoms are fitted into the first octant
+        #   by applying x,y,z operator modulus 1
+    
+        my ( $sym_atoms, $symmetry_operator_count ) = generate_symmetrical_atoms( 
+                                                       $sym_data, 
+                                                       $atoms, 
+                                                       $ortho_matrix 
+                                                       );
+    
+        push @$printable_properties, "sym_operator";
+        if ( $print_symmetrical_atoms ) {
+            print_atoms( $sym_atoms, $printable_properties );
+        }
+    
+        my @shifted_atoms = map { shift_atom( $_, $ortho_matrix ) } @{$sym_atoms};
+    
+        push @$printable_properties, "shift_vector";
+        if ( $print_shifted_atoms ) {
+            print_atoms( \@shifted_atoms, $printable_properties );
+        }
+    
+        my ( $distances, $headers, $atoms_used ) = get_distances( \@shifted_atoms, 
+                                                       $symmetry_operator_count );
+    
+        if ( !$silence_dist_matrix ) {
+            print_distance_matrix( $distances, $headers, $fraction_precision, 
+                                   $line_length );
+        }
+    
+        if ( $print_paired ) {
+            print_paired( $distances, $atoms_used );
+        }
+    }    
+    #my $print_distances = 1;
+    #
+#my $dist;
+#if ( $print_distances ) {
+#    foreach ( @$distances ) {
+#        foreach $dist ( @$_ ) {
+#            printf '%6.4f ',  $dist;        
+#        }
+#    }
+#}
 
-#   extracts symmetry operators
-my $sym_data =
-    CIFSymmetryGenerator::get_symmetry_operators( $dataset, $filename );
-
-#   extracts atoms
-my $atoms = CIFCellContents::get_atoms( $dataset, $filename, $loop_tag );
-
-my $printable_properties = [ "atom_name", "atom_type", 
-                             "coordinates_ortho", "coordinates_fract" ];
-
-if ( $print_original_atoms ) {
-    print_atoms( $atoms, $printable_properties );
-}
-
-#   generates atoms by applying symmetry operators.
-#   at this subroutine original atoms are fitted into the first octant
-#   by applying x,y,z operator modulus 1
-
-my ( $sym_atoms, $symmetry_operator_count ) = generate_symmetrical_atoms( 
-                                               $sym_data, 
-                                               $atoms, 
-                                               $ortho_matrix 
-                                               );
-
-push @$printable_properties, "sym_operator";
-if ( $print_symmetrical_atoms ) {
-    print_atoms( $sym_atoms, $printable_properties );
-}
-
-my @shifted_atoms = map { shift_atom( $_ ) } @{$sym_atoms};
-
-push @$printable_properties, "shift_vector";
-if ( $print_shifted_atoms ) {
-    print_atoms( \@shifted_atoms, $printable_properties );
-}
-
-my ( $distances, $headers, $atoms_used ) = get_distances( \@shifted_atoms, 
-                                                $symmetry_operator_count );
-
-if ( !$silence_dist_matrix ) {
-    print_distance_matrix( $distances, $headers, $fraction_precision, 
-                           $line_length );
-}
-
-if ( $print_paired ) {
-    print_paired( $distances, $atoms_used );
 }
 
 exit;
@@ -264,7 +279,7 @@ sub get_distance {
 ##
 
 sub shift_atom {
-    my ( $atom_ref ) = @_;
+    my ( $atom_ref, $ortho_matrix ) = @_;
 
     $atom_ref->{ "shift_vector" } = [ 5, 5, 5 ];
     my @shifted_atoms;
@@ -290,9 +305,9 @@ sub shift_atom {
                                      $shifting_params[ $k ];
             
                     $new_atom{ "coordinates_fract" } = \@new_atom_xyz;
-                    $new_atom {coordinates_ortho} =
+                    $new_atom { "coordinates_ortho" } =
                     CIFSymmetryGenerator::mat_vect_mul( $ortho_matrix,
-                    $new_atom {coordinates_fract} );
+                    $new_atom { "coordinates_fract" } );
                     $new_atom{ "atom_type" } = $atom_ref->{ "atom_type" };
                     $new_atom{ "atom_name" } = $atom_ref->{ "atom_name" };
                     $new_atom{ "sym_operator" } = $atom_ref->{ "sym_operator" };
@@ -367,9 +382,9 @@ sub print_distance_matrix {
     my $cell_width = 11;
     use POSIX;
     my $cell_count = floor ( $line_length / $cell_width ) - 1;
-    
-    print "The following output format is defined in " .
-    "cod-tools/trunk/perl-scripts/cif-distances/cif-distances_matrix_v.1 \n";
+    	
+    print "# FORMAT cif_distances-matrix http://cod.ibt.lt/cod-tools/trunk" .
+	  "/perl-scripts/cif-distances/output_format/cif-distances_matrix_v.1 \n";
     my $print_iteration = 0;
     while ( $print_iteration < ceil( @distances / $cell_count ) ) {
         my $start_cell_index = $cell_count * $print_iteration;
@@ -419,8 +434,8 @@ sub print_distance_matrix {
 sub print_paired {
     my ( $distances, $atoms_used ) = @_;
     
-    print "The following output format is defined in " .
-    "cod-tools/trunk/perl-scripts/cif-distances/cif-distances_paired_v.1 \n";
+    print "# FORMAT cif-distances_paired http://cod.ibt.lt/cod-tools/trunk" .
+	  "/perl-scripts/cif-distances/output_format/cif-distances_paired_v.1 \n";
     
     for ( my $i = 0; $i < @$atoms_used; $i++ ) {
         my $atom_1 = @$atoms_used[ $i ] -> [ 0 ];
