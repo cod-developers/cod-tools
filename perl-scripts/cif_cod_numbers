@@ -15,6 +15,7 @@ eval 'exec perl -x $0 ${1+"$@"}'
 use strict;
 use File::Basename;
 use CIFParser;
+use CCIFParser;
 use Formulae::AdHocParser;
 use CIFData::CIFCODNumbers;
 use SOptions;
@@ -27,6 +28,8 @@ my %database = (
         table => "data",
         password => "",
     );
+
+my $use_parser = "perl";
 
 my %options;
 
@@ -99,6 +102,9 @@ my %options;
 #*        chemical formulae and measurement conditions match.
 #*        (default)
 #*
+#*     --use-perl-parser  Use the Perl-only CIF parser
+#*     --use-c-parser     Use the speed-optimised C/Perl parser
+#*
 #*     --help  print a short usage message (this message) and exit.
 #**
 
@@ -134,6 +140,9 @@ my %options;
     "--dont-use-sigma"  => sub{ $options{ignore_sigma} = 1 },
     "--no-use-sigma"    => sub{ $options{ignore_sigma} = 1 },
 
+    "--use-perl-parser"       => sub{ $use_parser = "perl" },
+    "--use-c-parser"          => sub{ $use_parser = "c" },
+
     "--help,--usage" => sub { SUsage::usage; exit },
 );
 
@@ -146,7 +155,10 @@ for my $file (@ARGV) {
     eval {
         @data = load_cif_file( $file );
     };
-    next if $@;
+    if( $@ ) {
+        warn $@;
+        next
+    }
 
     if( !@data || !defined $data[0] || !defined $data[0]->{name} ) {
         warn( "file '$file' seems to be empty" );
@@ -180,15 +192,25 @@ sub load_cif_file
 {
     my ( $file ) = @_;
 
-    my $parser = new CIFParser;
-    my @data = @{$parser->Run($file)};
+    my $data;
+    my $error_count;
 
-    if( defined $parser->YYData->{ERRCOUNT} &&
-        $parser->YYData->{ERRCOUNT} > 0 ) {
-        print STDERR "$0: ", $parser->YYData->{ERRCOUNT},
+    if( $use_parser eq "perl" ) {
+        my $parser = new CIFParser;
+        $data = $parser->Run($file);
+        if( defined $parser->YYData->{ERRCOUNT} &&
+            $parser->YYData->{ERRCOUNT} > 0 ) {
+            $error_count = defined $parser->YYData->{ERRCOUNT};
+        }
+    } else {
+        ( $data, $error_count ) = CCIFParser::parse( $file );
+    }
+
+    if( defined $error_count && $error_count > 0 ) {
+        print STDERR "$0: ", $error_count,
         " error(s) encountered while parsing file '${file}'\n";
         die;
     }
 
-    return @data;
+    return wantarray ? @{$data} : $data;
 }
