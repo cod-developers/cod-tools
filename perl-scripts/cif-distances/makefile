@@ -8,7 +8,11 @@ DIFF_EXT = diff
 
 TEST_SCRIPT = ${wildcard ${SCRIPT_DIR}/*}
 
-#PL_FILES   = ${wildcard *.pl}
+CWD := ${shell pwd}
+TOP := ${dir ${CWD}}
+PERL5LIB := ${CWD}/lib/perl5:${PERL5LIB}
+PERL5LIB := ${TOP}/lib/perl5:${PERL5LIB}
+export PERL5LIB
 
 TEST_FILES = ${wildcard ${TEST_DIR}/*.${TEST_EXT}}
 OPT_FILES =  ${TEST_FILES:${TEST_DIR}/%.${TEST_EXT}=${TEST_DIR}/%.${OPT_EXT}}

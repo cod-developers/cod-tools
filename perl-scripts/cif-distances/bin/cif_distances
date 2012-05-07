@@ -10,12 +10,6 @@
 #   Calculates minimal distance between atoms read from a cif file.
 #**
 
-use lib "../../CIFData";
-use lib "../../CIFParser";
-use lib "../../Spacegroups";
-use lib "../../lib/perl5";
-use lib "../../../trunk";
-use lib "../../perl-scripts";
 use strict;
 use warnings;
 use CIFCellContents;
@@ -104,7 +98,10 @@ foreach my $filename ( @ARGV ) {
 
         #   extracts atoms
         my $atoms = CIFCellContents::get_atoms( $dataset, $filename, $loop_tag );
-    
+        
+        @$atoms = sort { ( $a -> {atom_type} cmp $b -> {atom_type} ) ||
+                         ( $a -> {atom_name} cmp $b -> {atom_name} ) } @$atoms;
+        
         my $printable_properties = [ "atom_name", "atom_type", 
                                      "coordinates_ortho", "coordinates_fract" ];
     
