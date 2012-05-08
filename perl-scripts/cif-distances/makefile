@@ -8,8 +8,12 @@ DIFF_EXT = diff
 
 TEST_SCRIPT = ${wildcard ${SCRIPT_DIR}/*}
 
-CWD := ${shell pwd}
+CWD := ${shell echo `cd ../../; pwd`}
 TOP := ${dir ${CWD}}
+PERL5LIB := ${CWD}:${PERL5LIB}
+PERL5LIB := ${CWD}/CIFData:${PERL5LIB}
+PERL5LIB := ${CWD}/Spacegroups:${PERL5LIB}
+PERL5LIB := ${CWD}/CIFParser:${PERL5LIB}
 PERL5LIB := ${CWD}/lib/perl5:${PERL5LIB}
 PERL5LIB := ${TOP}/lib/perl5:${PERL5LIB}
 export PERL5LIB
