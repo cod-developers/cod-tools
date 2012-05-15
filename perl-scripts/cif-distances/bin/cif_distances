@@ -129,8 +129,9 @@ foreach my $filename ( @ARGV ) {
         my $ortho_matrix = symop_ortho_from_fract( @unit_cell );
     
         #   extracts symmetry operators
-        my $sym_data =
-            CIFSymmetryGenerator::get_symmetry_operators( $dataset, $filename );
+        eval {
+            my $sym_data = CIFSymmetryGenerator::get_symmetry_operators( 
+                                                    $dataset, $filename );
 
         #   extracts atoms
         my $atoms = CIFCellContents::get_atoms( $dataset, $filename, $loop_tag );
@@ -149,14 +150,13 @@ foreach my $filename ( @ARGV ) {
         #   at this subroutine original atoms are fitted into the first octant
         #   by applying x,y,z operator modulus 1
         my ( $sym_atoms, $symmetry_operator_count );        
-        eval {
+
             ( $sym_atoms, $symmetry_operator_count ) = 
                                             generate_symmetrical_atoms( 
                                                        $sym_data, 
                                                        $atoms, 
                                                        $ortho_matrix 
                                                        );
-        }; warn $@ if $@;
 
         push @$printable_properties, "sym_operator";
         if ( $print_symmetrical ) {
@@ -181,6 +181,8 @@ foreach my $filename ( @ARGV ) {
         if ( $print_pairwise ) {
             print_pairwise( $distances, $atoms_used, $filename, $add_filename );
         }
+        
+        }; warn $@ if $@;
     }
 }
 
@@ -210,8 +212,8 @@ sub generate_symmetrical_atoms {
     #   computes symmetry operator matrices
     my @sym_operators = map { SymopParse::symop_from_string($_) } @{$sym_data};
     #   converts matrices back to strings all having the same format.
-    my @{sym_data} = map { SymopParse::string_from_symop($_) } @{sym_operators};
-    
+    @{$sym_data} = map { SymopParse::string_from_symop($_) } @{sym_operators};
+
     my $sym_atoms = CIFSymmetryGenerator::symop_generate_atoms( 
                                                     \@sym_operators, 
                                                     $atoms,
