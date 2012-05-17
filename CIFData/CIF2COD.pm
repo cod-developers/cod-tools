@@ -13,6 +13,7 @@ package CIF2COD;
 use strict;
 use Spacegroups::SpacegroupNames;
 use CIFData::CIFCellContents;
+use CIFTags::CIFDictTags;
 use Unicode2CIF;
 
 require Exporter;
@@ -133,6 +134,7 @@ my @data_fields = @CIF2COD::default_data_fields;
     firstpage
     lastpage
 
+    method
     radiation
     wavelength
     radType
@@ -387,6 +389,8 @@ sub cif2cod
         $data{issue} = get_tag_or_undef( $values, "_journal_issue", 0 );
         $data{firstpage} = get_tag_or_undef( $values, "_journal_page_first", 0 );
         $data{lastpage} = get_tag_or_undef( $values, "_journal_page_last", 0 );
+
+        $data{method} = get_experimental_method( $values );
 
         $data{radiation} = get_tag_or_undef( $values, "_diffrn_radiation_probe", 0 );
         $data{wavelength} = get_num_or_undef( $values, "_diffrn_radiation_wavelength", 0 );
@@ -781,6 +785,26 @@ sub entry_has_Fobs($)
     }
 
     return 0;
+}
+
+sub get_experimental_method
+{
+    my ($values) = @_;
+    my @powder_tags = grep /^_pd_/, @CIFDictTags::tag_list;
+
+    for my $tag (@powder_tags) {
+        if( exists $values->{$tag} ) {
+            return "powder diffraction";
+        }
+    }
+
+    for my $tag (qw(_exptl_crystals_number _exptl.crystals_number)) {
+        if( exists $values->{$tag} ) {
+            return "single crystal";
+        }
+    }
+
+    return undef;
 }
 
 1;
