@@ -27,10 +27,12 @@ my $print_header = 0;
     # Indicates whether to print out a header with column names
 my $print_keywords = 0;
 
+my $user_columns; # User specified list of columns to be printed
+
 my %options;
 
 #* Usage:
-#*     cif2cod-new [options] input.cif [input2.cif ...]
+#*     $0 --options input.cif inputs*.cif
 #*
 #* Options:
 #*     -C, --cod-number 1000000
@@ -56,6 +58,10 @@ my %options;
 #*     -k, --keywords
 #*         Print values in separate lines prefixed with keywords.
 #*
+#*     --columns file,flags,Robs
+#*     --columns "file flags Robs"
+#*         Print only columns specified in this option.
+#*
 #*     --help  print a short usage message (this message) and exit.
 #**
 
@@ -80,6 +86,8 @@ my %options;
             sub { $options{reformat_spacegroup} = 0; },
     "--leave-space-space-group" =>
             sub { $options{reformat_spacegroup} = 0; },
+
+    "--columns" => \$user_columns,
 
     "--use-datablocks-without-coordinates"
         => sub{ $options{use_datablocks_without_coord} = 1 },
@@ -118,16 +126,24 @@ sub error
     die unless $options{continue_on_errors};
 }
 
+my @print_columns;
+
+if( defined $user_columns ) {
+    @print_columns = map { split( " ", $_ ) } split( ",", $user_columns );
+} else {
+    @print_columns = @CIF2COD::new_data_fields;
+}
+
 binmode( STDOUT, ":utf8" );
 
 if( $print_header ) {
     local $\ = "\n";
     if( $print_keywords ) {
         local $, = " ";
-        print @CIF2COD::new_data_fields;
+        print @print_columns;
     } else {
         local $, = ";";
-        print @CIF2COD::new_data_fields;
+        print @print_columns;
     }
 }
 
@@ -152,8 +168,8 @@ for my $filename (@ARGV) {
         # Print out the collected data fields:
         
         my @data_fields = @CIF2COD::default_data_fields;
-        if( $print_header ) {
-            @data_fields = @CIF2COD::new_data_fields;
+        if( $print_header || defined $user_columns ) {
+            @data_fields = @print_columns;
         }
         if( $print_keywords ) {
             my $separator = " ";
