@@ -14,6 +14,8 @@ use strict;
 use Spacegroups::SpacegroupNames;
 use CIFData::CIFCellContents;
 use CIFTags::CIFDictTags;
+use CIFData::CIFClassifyer;
+use AtomProperties;
 use Unicode2CIF;
 
 require Exporter;
@@ -23,6 +25,8 @@ require Exporter;
 sub entry_has_coordinates($);
 sub entry_has_disorder($);
 sub entry_has_Fobs($);
+
+my $bond_safety_margin = 0.2; # Angstroems; a bond safety marging for a CIF classifier.
 
 my $reformat_spacegroup = 0;
 my $use_datablocks_without_coord = 0;
@@ -471,6 +475,13 @@ sub cif2cod
             if( entry_has_Fobs( $values )) {
                 $value .= $separator . "has Fobs";
                 $separator = ",";
+            }
+            my $bond_flags = CIFClassifyer::cif_class_flags
+                ( $dataset, $filename, \%AtomProperties::atoms,
+                  $bond_safety_margin );
+            $bond_flags =~ s/has_(\w+)_(\w+)_bond/has $1-$2 bond/g;
+            if( $bond_flags !~ /^\s*$/ ) {
+                $value .= "," . $bond_flags;
             }
             $data{flags} = $value;
         };
