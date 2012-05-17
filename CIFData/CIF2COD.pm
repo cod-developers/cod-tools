@@ -476,12 +476,17 @@ sub cif2cod
                 $value .= $separator . "has Fobs";
                 $separator = ",";
             }
-            my $bond_flags = CIFClassifyer::cif_class_flags
-                ( $dataset, $filename, \%AtomProperties::atoms,
-                  $bond_safety_margin );
-            $bond_flags =~ s/has_(\w+)_(\w+)_bond/has $1-$2 bond/g;
-            if( $bond_flags !~ /^\s*$/ ) {
-                $value .= "," . $bond_flags;
+            my $bond_flags;
+            eval {
+                $bond_flags = CIFClassifyer::cif_class_flags
+                    ( $dataset, $filename, \%AtomProperties::atoms,
+                      $bond_safety_margin )
+            };
+            if( defined $bond_flags ) {
+                $bond_flags =~ s/has_(\w+)_(\w+)_bond/has $1-$2 bond/g;
+                if( $bond_flags !~ /^\s*$/ ) {
+                    $value .= "," . $bond_flags;
+                }
             }
             $data{flags} = $value;
         };
