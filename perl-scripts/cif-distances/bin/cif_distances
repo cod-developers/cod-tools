@@ -99,6 +99,14 @@ my $line_length = 80;
 
 @ARGV = ( "-" ) unless @ARGV;
 
+if ( $print_pairwise ) {
+    print "FORMAT cif-distances_paired http://cod.ibt.lt/cod-tools/trunk" .
+	      "/perl-scripts/cif-distances/output_format/cif-distances_paired_v1.0 \n";
+} else {
+    print "FORMAT distance-matrix v1.0 http://cod.ibt.lt/cod-tools/trunk" .
+	      "/perl-scripts/cif-distances/docs/cif_distances_matrix_v1.0 \n";
+}
+
 foreach my $filename ( @ARGV ) {
 
     my $parser = new CIFParser;
@@ -112,14 +120,15 @@ foreach my $filename ( @ARGV ) {
         #   extracts atom site label or atom site type symbol
         my $loop_tag;
 
+        eval {
         if( exists $values->{ "_atom_site_label" } ) {
             $loop_tag = "_atom_site_label";
             } elsif( exists $values->{ "_atom_site_type_symbol" } ) {
                 $loop_tag = "_atom_site_type_symbol";
             } else {
                error( $0, $filename, $dataset->{name},
-                       "neither _atom_site_label " .
-                       "nor _atom_site_type_symbol was found in the input file" );
+                      "neither _atom_site_label " .
+                      "nor _atom_site_type_symbol was found in the input file" );
         }
     
         #   extracts cell constants
@@ -129,8 +138,7 @@ foreach my $filename ( @ARGV ) {
         my $ortho_matrix = symop_ortho_from_fract( @unit_cell );
     
         #   extracts symmetry operators
-        eval {
-            my $sym_data = CIFSymmetryGenerator::get_symmetry_operators( 
+        my $sym_data = CIFSymmetryGenerator::get_symmetry_operators( 
                                                     $dataset, $filename );
 
         #   extracts atoms
@@ -422,9 +430,7 @@ sub print_distance_matrix {
     }
     use POSIX;
     my $cell_count = floor ( $line_length / $cell_width ) - 1;
-    	
-    print "FORMAT distance-matrix v1.0 http://cod.ibt.lt/cod-tools/trunk" .
-	      "/perl-scripts/cif-distances/docs/cif_distances_matrix_v1.0 \n";
+
     my $print_iteration = 0;
     while ( $print_iteration < ceil( @distances / $cell_count ) ) {
         my $start_cell_index = $cell_count * $print_iteration;
@@ -470,8 +476,6 @@ sub print_distance_matrix {
 
 sub print_pairwise {
     my ( $distances, $atoms_used, $filename, $print_filename ) = @_;
-    print "FORMAT cif-distances_paired http://cod.ibt.lt/cod-tools/trunk" .
-	      "/perl-scripts/cif-distances/output_format/cif-distances_paired_v1.0 \n";
     
     for ( my $i = 0; $i < @$atoms_used; $i++ ) {
         my $atom_1 = @$atoms_used[ $i ] -> [ 0 ];
