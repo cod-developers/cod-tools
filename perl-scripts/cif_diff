@@ -33,6 +33,10 @@ sub string_compare  { return $_[0] cmp $_[1]; }
 my $compare_only_selected = 0;
 my @selected_tags = ();
 
+my $left    = 1;
+my $right   = 1;
+my $common  = 1;
+
 @ARGV = getOptions(
     "-t,--tags" => sub { $compare_only_selected = 1;
                          @selected_tags = split( /\s|,/, get_value()); },
@@ -63,6 +67,9 @@ my @selected_tags = ();
     "--folding-width"         => \$folding_width,
     "--fold-long-fields"      => sub{ $fold_long_fields = 1 },
     "--dont-fold-long-fields" => sub{ $fold_long_fields = 0 },
+    "--no-left"     => sub{ $left   = 0 },
+    "--no-right"    => sub{ $right  = 0 },
+    "--no-common"   => sub{ $common = 0 },
 );
 
 push( @ARGV, "-" ) unless @ARGV > 1;
@@ -88,7 +95,10 @@ my $options = {
         'compare_datablock_names' => $compare_datablock_names,
         'fold'                    => $fold_long_fields,
         'folding_width'           => $folding_width,
-        'comparators'             => \%comparators };
+        'comparators'             => \%comparators,
+        'suppress_left'           => !$left,
+        'suppress_right'          => !$right,
+        'suppress_common'         => !$common };
 if( $compare_only_selected == 1 ) {
     @selected_tags = map { lc($_) } @selected_tags;
     $options->{compare_only} = \@selected_tags;
