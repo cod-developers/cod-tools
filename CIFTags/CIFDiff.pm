@@ -66,6 +66,15 @@ sub comm
     if( defined $options->{comparators} ) {
         $comparators = $options->{comparators};
     }
+
+    my( $no_right, $no_left, $no_common );
+    $no_right = (exists $options->{suppress_right})
+        ? $options->{suppress_right} : 0;
+    $no_left = (exists $options->{suppress_left})
+        ? $options->{suppress_left} : 0;
+    $no_common = (exists $options->{suppress_common})
+        ? $options->{suppress_common} : 0;
+
     my( @tags1, @tags2 );
     if( defined $options->{compare_only} ) {
         my %compare_only = map{ $_ => 1 } @{$options->{compare_only}};
@@ -88,21 +97,21 @@ sub comm
     PAIR_OF_TAGS:
     while( @tags1 > 0 || @tags2 > 0 ) {
         if( scalar @tags1 == 0 ) {
-            push( @$comm, [ undef, undef, $tags2[0] ] );
+            push( @$comm, [ undef, undef, $tags2[0] ] ) unless $no_left;
             shift @tags2;
             next;
         }
         if( scalar @tags2 == 0 ) {
-            push( @$comm, [ $tags1[0], undef, undef ] );
+            push( @$comm, [ $tags1[0], undef, undef ] ) unless $no_right;
             shift @tags1;
             next;
         }
         if( $tags1[0] ne $tags2[0] ) {
             if( $tags1[0] lt $tags2[0] ) {
-                push( @$comm, [ $tags1[0], undef, undef ] );
+                push( @$comm, [ $tags1[0], undef, undef ] ) unless $no_left;
                 shift @tags1;
             } else {
-                push( @$comm, [ undef, undef, $tags2[0] ] );
+                push( @$comm, [ undef, undef, $tags2[0] ] ) unless $no_right;
                 shift @tags2;
             }
             next;
@@ -135,7 +144,7 @@ sub comm
                 }
             }
         }
-        push( @$comm, [ undef, $tags1[0], undef ] );
+        push( @$comm, [ undef, $tags1[0], undef ] ) unless $no_common;
         shift @tags1;
         shift @tags2;
     }
