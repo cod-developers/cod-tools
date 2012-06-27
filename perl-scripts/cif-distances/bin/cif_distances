@@ -10,7 +10,6 @@
 #   Calculates minimal distance between atoms read from a cif file.
 #**
 
-
 use lib "../../CIFData/";
 use lib "../../Spacegroups/";
 use lib "../../CIFParser/";
@@ -122,14 +121,15 @@ foreach my $filename ( @ARGV ) {
         my $loop_tag;
 
         eval {
+
         if( exists $values->{ "_atom_site_label" } ) {
             $loop_tag = "_atom_site_label";
-            } elsif( exists $values->{ "_atom_site_type_symbol" } ) {
-                $loop_tag = "_atom_site_type_symbol";
-            } else {
-               error( $0, $filename, $dataset->{name},
-                      "neither _atom_site_label " .
-                      "nor _atom_site_type_symbol was found in the input file" );
+        } elsif( exists $values->{ "_atom_site_type_symbol" } ) {
+            $loop_tag = "_atom_site_type_symbol";
+        } else {
+            error( $0, $filename, $dataset->{name},
+                   "neither _atom_site_label nor _atom_site_type_symbol " .
+                   "was found in the input file" );
         }
     
         #   extracts cell constants
@@ -218,18 +218,18 @@ exit;
 sub generate_symmetrical_atoms {
     my ( $sym_data, $atoms, $ortho_matrix ) = @_;
 
-    #   computes symmetry operator matrices
-    my @sym_operators = map { SymopParse::symop_from_string($_) } @{$sym_data};
-    #   converts matrices back to strings all having the same format.
-    @{$sym_data} = map { SymopParse::string_from_symop($_) } @{sym_operators};
+    # computes symmetry operator matrices
+    my @sym_operators = map { SymopParse::symop_from_string( $_ ) } @{$sym_data};
+    # converts matrices back to strings all having the same format.
+    @{$sym_data} = map { SymopParse::string_from_symop( $_ ) } @{sym_operators};
 
     my $sym_atoms = CIFSymmetryGenerator::symop_generate_atoms( 
                                                     \@sym_operators, 
                                                     $atoms,
                                                     $ortho_matrix );
 
-    #It might be better to make a copy of the symop_generate_atoms 
-    #subroutine and add the symmetry opperator directly there    
+    # It might be better to make a copy of the symop_generate_atoms 
+    # subroutine and add the symmetry opperator directly there    
     my $i = 0;
     foreach ( @{ $sym_atoms } ) {
         $_ -> { "sym_operator" } = @$sym_data[ $i ];
@@ -247,7 +247,7 @@ sub generate_symmetrical_atoms {
 # Calculates the minimum distance between two atoms from the given array.
 # It is expected that atoms, derived from the original atom by applying
 # symmetry operator and shifting operators, are put near each other in the 
-# array, making clusters of size $syum_operator_count * 27 (number of 
+# array, making groups of size $sym_operator_count * 27 (number of 
 # octants). Since all atoms of the cluster are derived from one original 
 # atom, distances between them are not calculated.
 # @param $all_atom
@@ -259,33 +259,50 @@ sub generate_symmetrical_atoms {
 
 sub get_distances {
     my ( $all_atoms, $sym_operator_count ) = @_; 
-    my $cluster_size = $sym_operator_count * 27; #27 is the number of octants
+    my $group_size = $sym_operator_count * 27; # 27 is the number of octants
+    my $number_of_groups = @$all_atoms/$group_size;
     my @headers;
     my @distances;
     my @atoms_used;
- 
-    for ( my $i  = 0; $i < @$all_atoms; $i += $cluster_size ) {
-        my $atom1 = $all_atoms -> [ $i ];
-        push @headers, "$atom1->{atom_name}/$atom1->{atom_type}";
+    
+    # $i holds the index of the first group
+    for ( my $i  = 0; $i < $number_of_groups; $i++ ) {
+        my $atom_1 = $all_atoms -> [ $i * $group_size ]; # acquiring first atom
+        
+        push @headers, "$atom_1->{atom_name}/$atom_1->{atom_type}";
         my @atom_rows_used;
-        push @atom_rows_used, $atom1;
-        my @distance_row = ();
+        push @atom_rows_used, $atom_1;
+        my @distance_row;
         push @distance_row, 0;
-        my $processed_atom_number = $cluster_size;
-        for ( my $j = $i + $cluster_size; $j < @$all_atoms; $j++ ) {
-            my $atom2 = $all_atoms -> [ $j ];
-            my $distance = get_distance( $atom1->{coordinates_ortho}, 
-                                         $atom2->{coordinates_ortho} );
-            if ( !defined( $distance_row[ floor( $processed_atom_number / $cluster_size ) ] ) ||
-                $distance_row[ floor( $processed_atom_number / $cluster_size ) ] > $distance ) {
-                $distance_row[ floor( $processed_atom_number / $cluster_size ) ] = $distance;
-                $atom_rows_used[ floor( $processed_atom_number / $cluster_size ) ] = $atom2;
+        
+        # $j holds the index of the second group
+        for ( my $j = $i + 1; $j < $number_of_groups; $j++ ) {
+            my $atom_2 = $all_atoms->[ $j * $group_size ];
+            my $min_distance = get_distance( $atom_1->{coordinates_ortho}, 
+                                             $atom_2->{coordinates_ortho} );
+            my $min_index = 0;
+            
+            # $k holds the element index in the second group 
+            for ( my $k = 1; $k < $group_size; $k++ ) {
+                $atom_2 = $all_atoms -> [ $j * $group_size + $k ];
+                my $distance = get_distance( $atom_1->{coordinates_ortho}, 
+                                             $atom_2->{coordinates_ortho} );
+                
+                if ( $distance < $min_distance ) {
+                     $min_distance = $distance;
+                     $min_index = $k;
+                }
             }
-            $processed_atom_number++;
+
+            push @distance_row, $min_distance;
+            push @atom_rows_used, $all_atoms -> [ $j * $group_size + $min_index ];
+
         }
+
         push @distances, \@distance_row;
         push @atoms_used, \@atom_rows_used;
     }
+
 return ( \@distances, \@headers, \@atoms_used );
 }
 
@@ -326,23 +343,23 @@ sub shift_atom {
     push @shifted_atoms, $atom_ref;
     my @shifting_params = ( -1, 0, 1 );
     
-    for( my $i = 0; $i < @shifting_params; $i++ ) {
-        for( my $j = 0; $j < @shifting_params; $j++ ) {
-            for( my $k = 0; $k < @shifting_params; $k++ ) {
+    for( my $x = 0; $x < @shifting_params; $x++ ) {
+        for( my $y = 0; $y < @shifting_params; $y++ ) {
+            for( my $z = 0; $z < @shifting_params; $z++ ) {
                 my %new_atom;
                 my @new_atom_xyz;
-                if( $shifting_params[ $i ] != 0 || 
-                    $shifting_params[ $j ] != 0 ||
-                    $shifting_params[ $k ] != 0 ) {
+                if( $shifting_params[ $x ] != 0 || 
+                    $shifting_params[ $y ] != 0 ||
+                    $shifting_params[ $z ] != 0 ) {
                     $new_atom_xyz[ 0 ] =
                         $atom_ref->{ "coordinates_fract" }[ 0 ] +  
-                                     $shifting_params[ $i ];
+                                     $shifting_params[ $x ];
                     $new_atom_xyz[ 1 ] =
                         $atom_ref->{ "coordinates_fract" }[ 1 ] +  
-                                     $shifting_params[ $j ];
+                                     $shifting_params[ $y ];
                     $new_atom_xyz[ 2 ] =
                         $atom_ref->{ "coordinates_fract" }[ 2 ] +  
-                                     $shifting_params[ $k ];
+                                     $shifting_params[ $z ];
             
                     $new_atom{ "coordinates_fract" } = \@new_atom_xyz;
                     $new_atom { "coordinates_ortho" } =
@@ -351,9 +368,9 @@ sub shift_atom {
                     $new_atom{ "atom_type" } = $atom_ref->{ "atom_type" };
                     $new_atom{ "atom_name" } = $atom_ref->{ "atom_name" };
                     $new_atom{ "sym_operator" } = $atom_ref->{ "sym_operator" };
-                    $new_atom{ "shift_vector" } = ( 5 + $shifting_params[ $i ] ) . "," .
-                                                  ( 5 + $shifting_params[ $j ] ) . "," .
-                                                  ( 5 + $shifting_params[ $k ] );
+                    $new_atom{ "shift_vector" } = ( 5 + $shifting_params[ $x ] ) . "," .
+                                                  ( 5 + $shifting_params[ $y ] ) . "," .
+                                                  ( 5 + $shifting_params[ $z ] );
                     push( @shifted_atoms, \%new_atom );
                 }
             }
@@ -413,7 +430,6 @@ sub print_atoms {
 # @param $header_ref;
 #       Reference to an array of strings containing information about 
 #       atoms that were used in the calculation of distances.
-#       of the distances.
 # @param $fraction_precision
 #       Number of fraction digits of the distances that should be printed.
 # @param $line_length
