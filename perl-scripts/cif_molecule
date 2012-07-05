@@ -116,8 +116,20 @@ my $cif_header_file; # Comments from the beginning of this file wil be
 
 my $use_parser = "c"; # Used CIF parser
 
+my $use_one_output_datablock = 0; # Put all molecules, and all
+                                  # disorder groups, into a single
+                                  # data block in the output.
+
 @ARGV = getOptions
 (
+#** -1,--one-datablock-output
+#**                    Output all molecules and all alternative conformations to
+#**                    a single output datablock.
+#**
+#** -1-,--multiple-datablocks-output
+#**                    Separate each molecule and each example of an alternative
+#**                    conformation into a separate datablock.
+#**
 #** -c,--covalent-sensitivity
 #**                    Set a new covalent sensitivity value (default 0.35)
 #**
@@ -199,6 +211,9 @@ my $use_parser = "c"; # Used CIF parser
 #**                    (default)
 #** --no-audit         do not print audit information to the generated CIF file
 #** --help,--usage     print short usage message (this message) and exit
+
+    "-1,--one-datablock-output" => sub { $use_one_output_datablock = 1; },
+    "-1-,--multiple-datablocks-output" => sub { $use_one_output_datablock = 0; },
 
     "--uniquify-atoms"      => sub { $uniquify_atoms = 1; },
     "--no-uniquify-atoms"   => sub { $uniquify_atoms = 0; },
@@ -353,11 +368,22 @@ for my $filename (@ARGV) {
 		@$unique_molecules;
 	    }
 
-	    foreach my $molecule (@$unique_molecules) {
-		print_molecule( $molecule_id, $audit, $molecule, $Id,
-				$dataset, $dataset_name, $filename, $sym_data );
-		$molecule_id++;
-	    }
+            if( $use_one_output_datablock ) {
+                my @all_atoms = map { @{$_->{atoms_c}} } @$unique_molecules;
+                my $all_molecules = {
+                    atoms_c => \@all_atoms,
+                    chemical_formula_sum =>
+                        chemical_formula_sum( \@all_atoms ),
+                };
+                print_molecule( undef, $audit, $all_molecules, $Id,
+                                $dataset, $dataset_name, $filename, $sym_data );
+            } else {
+                foreach my $molecule (@$unique_molecules) {
+                    print_molecule( $molecule_id, $audit, $molecule, $Id,
+                                    $dataset, $dataset_name, $filename, $sym_data );
+                    $molecule_id++;
+                }
+            }
 	}
     }
 }
@@ -438,7 +464,12 @@ sub get_molecules
 
     # Split init atoms into assemblies and groups
     ## my $atom_groups = atom_groups($checked_initial_atoms);
-    my $atom_groups = atom_groups($atom_list);
+    my $atom_groups;
+    if( $use_one_output_datablock ) {
+        $atom_groups = [ $atom_list ];
+    } else {
+        $atom_groups = atom_groups($atom_list);
+    }
 
     my $max_covalent_radius = get_max_covalent_radius( $atom_properties );
 
@@ -1784,7 +1815,11 @@ sub print_molecule
     my( $molecule_id, $audit, $molecule, $Id, $dataset, $dataset_name,
         $filename, $sym_data ) = @_;
 
-    $dataset->{"name"} = $dataset_name . "_molecule_" . $molecule_id;
+    $dataset->{"name"} = $dataset_name;
+
+    if( defined $molecule_id ) {
+        $dataset->{"name"} .= "_molecule_" . $molecule_id;
+    }
 
     my @data2copy = qw(
     _publ_author_name
