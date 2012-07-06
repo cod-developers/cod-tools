@@ -120,6 +120,9 @@ my $use_one_output_datablock = 0; # Put all molecules, and all
                                   # disorder groups, into a single
                                   # data block in the output.
 
+my $merge_disorder_groups = 0; # Put all alternative conformations
+                               # into one data block.
+
 @ARGV = getOptions
 (
 #** -1,--one-datablock-output
@@ -198,6 +201,13 @@ my $use_one_output_datablock = 0; # Put all molecules, and all
 #**       Using --max-polymer-span=0 --max-polymer-atoms=1 essentially
 #**       switches off the polymer detection.
 #**
+#** --split-disorder-groups, --dont-merge-disorder-groups
+#**       Put examples of disorder group conformations into separate data
+#**       blocks (default).
+#**
+#** --merge-disorder-groups, --dont-split-disorder-groups
+#**       Put all disorder groups into one data block.
+#**
 #** --use-perl-parser
 #** --use-c-parser
 #**       Specify parser to parse CIF files. C parser is default.
@@ -256,6 +266,13 @@ my $use_one_output_datablock = 0; # Put all molecules, and all
     "--dump-atoms"      => sub{ $dump_atoms = 1 },
     "--dont-dump-atoms" => sub{ $dump_atoms = 0 },
     "--no-dump-atoms"   => sub{ $dump_atoms = 0 },
+
+    "--split-disorder-groups,--dont-merge-disorder-groups," .
+    "--do-not-merge-disorder-groups,--no-merge-disorder-groups"
+        => sub { $merge_disorder_groups = 0 },
+    "--merge-disorder-groups,--dont-split-disorder-groups" .
+    "--do-not-split-disorder-groups,--no-split-disorder-groups"
+        => sub { $merge_disorder_groups = 1 },
 
     "--use-perl-parser"       => sub{ $use_parser = "perl" },
     "--use-c-parser"          => sub{ $use_parser = "c" },
@@ -368,21 +385,16 @@ for my $filename (@ARGV) {
 		@$unique_molecules;
 	    }
 
-            if( $use_one_output_datablock ) {
-                my @all_atoms = map { @{$_->{atoms_c}} } @$unique_molecules;
-                my $all_molecules = {
-                    atoms_c => \@all_atoms,
-                    chemical_formula_sum =>
-                        chemical_formula_sum( \@all_atoms ),
-                };
-                print_molecule( undef, $audit, $all_molecules, $Id,
-                                $dataset, $dataset_name, $filename, $sym_data );
-            } else {
-                foreach my $molecule (@$unique_molecules) {
-                    print_molecule( $molecule_id, $audit, $molecule, $Id,
-                                    $dataset, $dataset_name, $filename, $sym_data );
-                    $molecule_id++;
+            foreach my $molecule (@$unique_molecules) {
+                my $id;
+                unless( $use_one_output_datablock && $merge_disorder_groups ) {
+                    $id = $molecule_id;
+                } else {
+                    $id = undef;
                 }
+                print_molecule( $id, $audit, $molecule, $Id,
+                                $dataset, $dataset_name, $filename, $sym_data );
+                $molecule_id++;
             }
 	}
     }
@@ -462,10 +474,9 @@ sub get_molecules
         return [];
     }
 
-    # Split init atoms into assemblies and groups
-    ## my $atom_groups = atom_groups($checked_initial_atoms);
+    # Split init atoms into assemblies and groups, if requested
     my $atom_groups;
-    if( $use_one_output_datablock ) {
+    if( $merge_disorder_groups ) {
         $atom_groups = [ $atom_list ];
     } else {
         $atom_groups = atom_groups($atom_list);
@@ -497,22 +508,29 @@ sub get_molecules
                                                $max_covalent_radius * 2 +
                                                $covalent_sensitivity );
 
-        #   Finds molecules
-        push( @unique_molecules, find_molecules( $covalent_sensitivity,
-                                                 $atom_properties,
-                                                 \@symmetric_atoms,
-                                                 $atom_group,
-                                                 $bricks,
-                                                 $filename, $dataname,
-                                                 \%seen_molecules,
-                                                 $f2o ));
+        # Finds molecules
+        my @current_ordered_molecules = find_molecules( $covalent_sensitivity,
+                                                        $atom_properties,
+                                                        \@symmetric_atoms,
+                                                        $atom_group,
+                                                        $bricks,
+                                                        $filename, $dataname,
+                                                        \%seen_molecules,
+                                                        $f2o );
+
+        if( $use_one_output_datablock ) {
+            my @all_atoms = map { @{$_->{atoms_c}} } @current_ordered_molecules;
+            @current_ordered_molecules = ({
+                atoms_c => \@all_atoms,
+            });
+        }
+        push( @unique_molecules, @current_ordered_molecules );        
     }
 
     # Calculates chemical formula sum
-    foreach my $molecule (@unique_molecules)
-    {
+    foreach my $molecule (@unique_molecules) {
         $molecule->{chemical_formula_sum} =
-                                chemical_formula_sum( $molecule->{atoms_c});
+            chemical_formula_sum( $molecule->{atoms_c});
     }
 
     return \@unique_molecules;
