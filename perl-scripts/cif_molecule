@@ -2309,52 +2309,50 @@ sub find_molecule($$$$$$$$$$$$)
     my $current_translation = translation( $current_atom->{coordinates_fract},
                                            \@current_coords_fract_modulo_1 );
 
-    ## my $new_atom = copy_atom( $current_atom );
-    my $new_atom = $current_atom;
-
     my @neighbors;
 
     do {
         no warnings;
         if( exists $used_atoms->
-            {$new_atom->{original_label}}
-            {$new_atom->{symop_id}}
-            {$new_atom->{translation_id}} ) {
-            print STDERR "<<<< atom labeled '$new_atom->{label}' " .
+            {$current_atom->{original_label}}
+            {$current_atom->{symop_id}}
+            {$current_atom->{translation_id}} ) {
+            print STDERR "<<<< atom labeled '$current_atom->{label}' " .
                 "is already in some molecule, returning\n"
                 if $debug;
             return @neighbors;
         }
 
-        $used_atoms->{$new_atom->{original_label}}
-            {$new_atom->{symop_id}}
-            {$new_atom->{translation_id}} = $new_atom;
+        $used_atoms->{$current_atom->{original_label}}
+            {$current_atom->{symop_id}}
+            {$current_atom->{translation_id}} = $current_atom;
     }; # end no warnings
 
-    $used_originals->{$new_atom->{original_label}} =
-	$new_atom->{original_label};
+    $used_originals->{$current_atom->{original_label}} =
+	$current_atom->{original_label};
 
     do {
         no warnings;
         if( exists $used_uc_atoms->
-            {$new_atom->{original_label}}
-            {$new_atom->{symop_id}} ) {
+            {$current_atom->{original_label}}
+            {$current_atom->{symop_id}} ) {
+            my $used_uc_atom = $used_uc_atoms->
+                    {$current_atom->{original_label}}
+                    {$current_atom->{symop_id}};
             print STDERR ">>> !!!! detected a used unit cell " .
-                "label $new_atom->{label}/$new_atom->{symop_id}/" .
-                "$new_atom->{translation_id} (".
-                "$used_uc_atoms->{$new_atom->{original_label}}{$new_atom->{symop_id}}"
-                . "-th time)\n"
+                "label $current_atom->{label}/$current_atom->{symop_id}/" .
+                "$current_atom->{translation_id} (${used_uc_atom}-th time)\n"
             if $debug;
             
-            $new_atom->{is_polymer} = 1;
+            $current_atom->{is_polymer} = 1;
             
             if( $used_uc_atoms->
-                {$new_atom->{original_label}}
-                {$new_atom->{symop_id}} > $max_polymer_atoms ) {
+                {$current_atom->{original_label}}
+                {$current_atom->{symop_id}} > $max_polymer_atoms ) {
                 my $message = "the maximum number of polymer atom " .
                     "repetitions $max_polymer_atoms was hit for the " .
-                    "atom $new_atom->{original_label} " .
-                    "($new_atom->{symop_id})\n" .
+                    "atom $current_atom->{original_label} " .
+                    "($current_atom->{symop_id})\n" .
                     "To get around this limit, please increase " .
                     "--max-polymer-atoms, to say, " .
                     "--max-polymer-atoms=" . (2 * $max_polymer_atoms) . " " .
@@ -2371,24 +2369,26 @@ sub find_molecule($$$$$$$$$$$$)
                 }
             }
 
-            if( abs($new_atom->{translation}[0]) > $max_polymer_span ||
-                abs($new_atom->{translation}[1]) > $max_polymer_span ||
-                abs($new_atom->{translation}[2]) > $max_polymer_span ) {
+            if( abs($current_atom->{translation}[0]) > $max_polymer_span ||
+                abs($current_atom->{translation}[1]) > $max_polymer_span ||
+                abs($current_atom->{translation}[2]) > $max_polymer_span ) {
                 return ();
             }
         }
 
-        $used_uc_atoms->{$new_atom->{original_label}}{$new_atom->{symop_id}} ++;
+        $used_uc_atoms->
+            {$current_atom->{original_label}}
+            {$current_atom->{symop_id}} ++;
     }; # end no warnings
 
     print STDERR
-	">>> considering atom $new_atom->{label} " .
+	">>> considering atom $current_atom->{label} " .
         "(@{$atom_in_unit_cell_coords_ortho}) " .
-	"($new_atom->{original_label}/" .
-	"$new_atom->{symop_id}/$new_atom->{translation_id})\n"
+	"($current_atom->{original_label}/" .
+	"$current_atom->{symop_id}/$current_atom->{translation_id})\n"
 	if $debug;
 
-    push( @neighbors, $new_atom );
+    push( @neighbors, $current_atom );
 
     my ($i, $j, $k) =
         AtomBricks::get_atom_index( $bricks,
@@ -2421,10 +2421,10 @@ sub find_molecule($$$$$$$$$$$$)
     for $k ($min_k .. $max_k) {
         for my $sym_atom ( @{$bricks->{atoms}[$i][$j][$k]} ) {
             my $sym_atom_coords_ortho = $sym_atom->{coordinates_ortho};
-	    my $new_label = $new_atom->{label};
+	    my $new_label = $current_atom->{label};
 	    my $sym_label = $sym_atom->{label};
 
-	    if( $new_atom->{label} eq $sym_atom->{label} ) {
+	    if( $current_atom->{label} eq $sym_atom->{label} ) {
 		# We have found the same atom, no need to add bond or
 		# neighbour
 		next;
@@ -2441,15 +2441,15 @@ sub find_molecule($$$$$$$$$$$$)
             } if $debug;
 
             my $is_bump = test_bump( $atom_properties,
-                                     $new_atom->{chemical_type},
+                                     $current_atom->{chemical_type},
                                      $sym_atom->{chemical_type},
-                                     $new_atom->{original_label},
+                                     $current_atom->{original_label},
                                      $sym_atom->{original_label},
                                      $dist, $bump_distance_factor );
 
             if( $is_bump ) {
                 if( not exists $checked_pairs->{$sym_label}{$new_label} ) {
-                    my $message =  "atoms \"$new_atom->{label}\" and " .
+                    my $message =  "atoms \"$current_atom->{label}\" and " .
                         "\"$sym_atom->{label}\" are too close " .
                         "(distance = " .
                         sprintf( "%6.4f", $dist ) .
@@ -2468,20 +2468,22 @@ sub find_molecule($$$$$$$$$$$$)
             $checked_pairs->{$new_label}{$sym_label} = 1;
 
             my $is_bond = test_bond($atom_properties,
-                                    $new_atom->{chemical_type},
+                                    $current_atom->{chemical_type},
                                     $sym_atom->{chemical_type},
                                     $dist,
                                     $covalent_sensitivity);
 
             if( $is_bond &&
-                ( ( !defined $new_atom->{group} &&
-                    !defined $new_atom->{assembly} &&
+                ( ( !defined $current_atom->{group} &&
+                    !defined $current_atom->{assembly} &&
                     !defined $sym_atom->{group} &&
                     !defined $sym_atom->{assembly} ) ||
-                  ( $new_atom->{group} eq $sym_atom->{group} &&
-                    $new_atom->{assembly} eq $sym_atom->{assembly} ) ||
-                  ( $new_atom->{assembly} eq "." && $new_atom->{group} eq "." ) ||
-                  ( $sym_atom->{assembly} eq "." && $sym_atom->{group} eq "." ) )) {
+                  ( $current_atom->{group} eq $sym_atom->{group} &&
+                    $current_atom->{assembly} eq $sym_atom->{assembly} ) ||
+                  ( $current_atom->{assembly} eq "." && 
+                    $current_atom->{group} eq "." ) ||
+                  ( $sym_atom->{assembly} eq "." && 
+                    $sym_atom->{group} eq "." ) )) {
                 do {
                     use Serialise;
                     local $" = ' ';
