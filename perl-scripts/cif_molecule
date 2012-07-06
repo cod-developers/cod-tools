@@ -2473,7 +2473,15 @@ sub find_molecule($$$$$$$$$$$$)
                                     $dist,
                                     $covalent_sensitivity);
 
-            if($is_bond == 1) {
+            if( $is_bond &&
+                ( ( !defined $new_atom->{group} &&
+                    !defined $new_atom->{assembly} &&
+                    !defined $sym_atom->{group} &&
+                    !defined $sym_atom->{assembly} ) ||
+                  ( $new_atom->{group} eq $sym_atom->{group} &&
+                    $new_atom->{assembly} eq $sym_atom->{assembly} ) ||
+                  ( $new_atom->{assembly} eq "." && $new_atom->{group} eq "." ) ||
+                  ( $sym_atom->{assembly} eq "." && $sym_atom->{group} eq "." ) )) {
                 do {
                     use Serialise;
                     local $" = ' ';
