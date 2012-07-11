@@ -88,6 +88,19 @@ SHELL_OUTPUTS = ${addprefix ${SHELL_OUTDIR}/, ${SHELL_BASES:%.sh=%.out}}
 SHELL_DIFFS   = ${addprefix ${SHELL_OUTDIR}/, ${SHELL_BASES:%.sh=%.diff}}
 
 #------------------------------------------------------------------------------
+# Generate %.diff file dependencies from their respcetive scripts:
+
+include .diff.depend
+
+ALL_INPUTS = $(wildcard ${SCRIPT_TST_DIR}/*.*)
+
+.diff.depend: ${ALL_INPUTS}
+	@perl -le \
+		'for(@ARGV){ print "${OUTPUT_DIR}/",$$1,"_",$$2,".diff: ",$$1 if m|/(.*?)_(\d{2,4})\.\w{3}$$| }' \
+	$^ | sort | uniq \
+	> $@
+
+#------------------------------------------------------------------------------
 
 define filter_perl_messages
 perl -pe 's/Id: [-\w]+ \d+ [-\d]+ [:\dZ]+ \w+/Id: <script_name> <revision_nr> <date> <time> <author>/' \
