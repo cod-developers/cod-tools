@@ -24,7 +24,6 @@ use CIFParser;
 use Fractional;
 use Spacegroups::SymopParse;
 use Spacegroups::SpacegroupNames;
-use CIFData::CIFSymmetryGenerator;
 use SOptions;
 use SUsage;
 
@@ -143,13 +142,14 @@ foreach my $filename ( @ARGV ) {
                                                     $dataset, $filename );
 
         #   extracts atoms
-        my $atoms = CIFCellContents::get_atoms( $dataset, $filename, $loop_tag );
+        my $atoms = get_atoms( $dataset, $loop_tag, $ortho_matrix );
         
         @$atoms = sort { ( $a -> {atom_type} cmp $b -> {atom_type} ) ||
                          ( $a -> {atom_name} cmp $b -> {atom_name} ) } @$atoms;
         
         my $printable_properties = [ "atom_name", "atom_type", 
-                                     "coordinates_ortho", "coordinates_fract" ];
+                                     "coordinates_ortho", "coordinates_fract",
+                                     "disorder_group", "disorder_assembly" ];
     
         if ( $print_original ) {
             print_atoms( $atoms, $printable_properties );
@@ -196,6 +196,69 @@ foreach my $filename ( @ARGV ) {
 }
 
 exit;
+
+sub get_atoms {
+    my ( $dataset, $loop_tag, $ortho_matrix ) = @_;
+
+    my $values = $dataset->{values};
+
+    my @atoms;
+
+    for my $i ( 0 .. $#{$values->{$loop_tag}} ) {
+        my $atom = {
+            atom_name => $values->{$loop_tag}[$i],
+            atom_type => exists $values->{_atom_site_type_symbol} ?
+                $values->{_atom_site_type_symbol}[$i] : undef,
+            disorder_group => exists $values->{_atom_site_disorder_group} ?
+                $values->{_atom_site_disorder_group}[$i] : ".",
+            disorder_assembly => exists $values->{_atom_site_disorder_assembly} ?
+                $values->{_atom_site_disorder_assembly}[$i] : ".",
+            coordinates_fract => [
+                $values->{_atom_site_fract_x}[$i],
+                $values->{_atom_site_fract_y}[$i],
+                $values->{_atom_site_fract_z}[$i]
+            ],
+        };
+        
+	    #if ( defined $values->{_atom_site_disorder_group} ) { print "Disorder group found " . $values->{_atom_site_disorder_group} . "\n";  };
+        #if ( exists $values->{_atom_site_disorder_assembly} ) { print "Disorder assembly found " . $values->{_atom_site_disorder_assembly} . "\n"; };
+
+        if( !defined $atom->{atom_type} ) {
+            $atom->{atom_type} = $atom->{atom_name};
+        }
+
+        if( $atom->{atom_type} =~ m/^([A-Za-z]{1,2})/ ) {
+            $atom->{atom_type} = ucfirst( lc( $1 ));
+        }
+
+        @{$atom->{coordinates_fract}} = map { s/\(\d+\)\s*$//; $_ }
+            @{$atom->{coordinates_fract}};
+
+        $atom->{coordinates_ortho} =
+            CIFSymmetryGenerator::mat_vect_mul( $ortho_matrix,
+                                                $atom->{coordinates_fract} );
+
+        if( defined $values->{_atom_site_occupancy} ) {
+            if( $values->{_atom_site_occupancy}[$i] ne '?' &&
+                $values->{_atom_site_occupancy}[$i] ne '.' ) {
+                $atom->{occupancy} = $values->{_atom_site_occupancy}[$i];
+                $atom->{occupancy} =~ s/\(\d+\)\s*$//;
+            } else {
+                $atom->{occupancy} = 1;
+            }
+        }
+
+        if( defined $values->{_atom_site_symmetry_multiplicity} &&
+            $values->{_atom_site_symmetry_multiplicity}[$i] ne '?' ) {
+            $atom->{cif_multiplicity} =
+                $values->{_atom_site_symmetry_multiplicity}[$i];
+        }
+
+        push( @atoms, $atom );
+    }
+
+    return \@atoms;
+}
 
 ##
 # Generates symmetrical atoms from the given original atoms and 
@@ -336,42 +399,33 @@ sub get_distance {
 ##
 
 sub shift_atom {
-    my ( $atom_ref, $ortho_matrix ) = @_;
+    my ( $original_atom, $ortho_matrix ) = @_;
 
-    $atom_ref->{ "shift_vector" } = "5,5,5";
+    $original_atom->{ "shift_vector" } = "5,5,5";
     my @shifted_atoms;
-    push @shifted_atoms, $atom_ref;
-    my @shifting_params = ( -1, 0, 1 );
+    push @shifted_atoms, $original_atom;
+    my @shifting_param = ( -1, 0, 1 );
     
-    for( my $x = 0; $x < @shifting_params; $x++ ) {
-        for( my $y = 0; $y < @shifting_params; $y++ ) {
-            for( my $z = 0; $z < @shifting_params; $z++ ) {
-                my %new_atom;
-                my @new_atom_xyz;
-                if( $shifting_params[ $x ] != 0 || 
-                    $shifting_params[ $y ] != 0 ||
-                    $shifting_params[ $z ] != 0 ) {
-                    $new_atom_xyz[ 0 ] =
-                        $atom_ref->{ "coordinates_fract" }[ 0 ] +  
-                                     $shifting_params[ $x ];
-                    $new_atom_xyz[ 1 ] =
-                        $atom_ref->{ "coordinates_fract" }[ 1 ] +  
-                                     $shifting_params[ $y ];
-                    $new_atom_xyz[ 2 ] =
-                        $atom_ref->{ "coordinates_fract" }[ 2 ] +  
-                                     $shifting_params[ $z ];
-            
-                    $new_atom{ "coordinates_fract" } = \@new_atom_xyz;
-                    $new_atom { "coordinates_ortho" } =
+    for( my $x = 0; $x < @shifting_param; $x++ ) {
+        for( my $y = 0; $y < @shifting_param; $y++ ) {
+            for( my $z = 0; $z < @shifting_param; $z++ ) {
+                my $new_atom = CIFSymmetryGenerator::copy_atom($original_atom);
+
+                if( $shifting_param[ $x ] != 0 || 
+                    $shifting_param[ $y ] != 0 ||
+                    $shifting_param[ $z ] != 0 ) {
+
+                    $new_atom -> { coordinates_fract }[0] += $shifting_param[ $x ];
+                    $new_atom -> { coordinates_fract }[1] += $shifting_param[ $y ];
+                    $new_atom -> { coordinates_fract }[2] += $shifting_param[ $z ];
+
+                    $new_atom -> { coordinates_ortho } =
                     CIFSymmetryGenerator::mat_vect_mul( $ortho_matrix,
-                    $new_atom { "coordinates_fract" } );
-                    $new_atom{ "atom_type" } = $atom_ref->{ "atom_type" };
-                    $new_atom{ "atom_name" } = $atom_ref->{ "atom_name" };
-                    $new_atom{ "sym_operator" } = $atom_ref->{ "sym_operator" };
-                    $new_atom{ "shift_vector" } = ( 5 + $shifting_params[ $x ] ) . "," .
-                                                  ( 5 + $shifting_params[ $y ] ) . "," .
-                                                  ( 5 + $shifting_params[ $z ] );
-                    push( @shifted_atoms, \%new_atom );
+                    $new_atom -> { coordinates_fract } );
+                    $new_atom->{ shift_vector } = ( 5 + $shifting_param[ $x ] ) . "," .
+                                                  ( 5 + $shifting_param[ $y ] ) . "," .
+                                                  ( 5 + $shifting_param[ $z ] );
+                    push( @shifted_atoms, $new_atom );
                 }
             }
         }
@@ -397,8 +451,11 @@ sub print_atoms {
             } elsif ( $property eq "occupancy" ) {
                 print "Ocupancy: $atom_ref->{occupancy} \n";
             } elsif ( $property eq "cif_multiplicity" ) {
-                print "cif_multiplicity: " . 
-                      "$atom_ref->{cif_multiplicity} \n";
+                print "cif_multiplicity: $atom_ref->{cif_multiplicity} \n";
+            } elsif ( $property eq "disorder_group" ) {
+                print "Atom site disorder group: $atom_ref->{disorder_group} \n";
+            } elsif ( $property eq "disorder_assembly" ) {
+                print "Atom site disorder assembly: $atom_ref->{disorder_assembly} \n";
             } elsif ( $property eq "coordinates_ortho" ) {
                 printf 'Orthogonal coordinates: %8.3f %8.3f %8.3f',
                         $atom_ref -> {coordinates_ortho} -> [0],
