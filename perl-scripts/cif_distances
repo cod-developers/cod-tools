@@ -197,6 +197,20 @@ foreach my $filename ( @ARGV ) {
 
 exit;
 
+##
+# Extracts atom information from given dataset.
+# @param $dataset
+#       Dataset containing cif file information extracted by a cif file parser.
+# @param $loop_tag
+#       Tag which marks the start of atom information block. For example, 
+#       _atom_site_label.
+# @param $ortho_matrix
+#       Reference to a structure containing matrix information used to convert
+#       fractional coordinates to orthogonal.
+# @return $atoms
+#       Reference to a data structure containing atom information.
+##
+
 sub get_atoms {
     my ( $dataset, $loop_tag, $ortho_matrix ) = @_;
 
@@ -219,9 +233,6 @@ sub get_atoms {
                 $values->{_atom_site_fract_z}[$i]
             ],
         };
-        
-	    #if ( defined $values->{_atom_site_disorder_group} ) { print "Disorder group found " . $values->{_atom_site_disorder_group} . "\n";  };
-        #if ( exists $values->{_atom_site_disorder_assembly} ) { print "Disorder assembly found " . $values->{_atom_site_disorder_assembly} . "\n"; };
 
         if( !defined $atom->{atom_type} ) {
             $atom->{atom_type} = $atom->{atom_name};
@@ -341,22 +352,31 @@ sub get_distances {
         # $j holds the index of the second group
         for ( my $j = $i + 1; $j < $number_of_groups; $j++ ) {
             my $atom_2 = $all_atoms->[ $j * $group_size ];
-            my $min_distance = get_distance( $atom_1->{coordinates_ortho}, 
-                                             $atom_2->{coordinates_ortho} );
+            #
+            my $min_distance;
             my $min_index = 0;
             
-            # $k holds the element index in the second group 
-            for ( my $k = 1; $k < $group_size; $k++ ) {
-                $atom_2 = $all_atoms -> [ $j * $group_size + $k ];
-                my $distance = get_distance( $atom_1->{coordinates_ortho}, 
-                                             $atom_2->{coordinates_ortho} );
-                
-                if ( $distance < $min_distance ) {
-                     $min_distance = $distance;
-                     $min_index = $k;
-                }
-            }
+            if ( check_disorder( $atom_1, $atom_2 ) ) {
 
+                $min_distance = get_distance( $atom_1->{coordinates_ortho}, 
+                                              $atom_2->{coordinates_ortho} );
+                
+            
+                # $k holds the element index in the second group 
+                for ( my $k = 0; $k < $group_size; $k++ ) {
+                    $atom_2 = $all_atoms -> [ $j * $group_size + $k ];
+                    my $distance = get_distance( $atom_1->{coordinates_ortho}, 
+                                                 $atom_2->{coordinates_ortho} );
+                
+                    if ( $distance < $min_distance ) {
+                         $min_distance = $distance;
+                         $min_index = $k;
+                    }
+                }
+            } else {
+                $min_distance = "-";
+            }
+            #
             push @distance_row, $min_distance;
             push @atom_rows_used, $all_atoms -> [ $j * $group_size + $min_index ];
 
@@ -387,6 +407,30 @@ sub get_distance {
         $dist += ( ${$vector1}[ $i ] - ${$vector2}[ $i ] ) ** 2;
     }
     return sqrt( $dist );
+}
+ 
+##
+# Checks if the atoms belong to the same disorder group.
+# @param $atom_1
+#       Reference to a hash, containing information of the first atom.
+# @param $atom_2
+#       Reference to a hash, containing information of the second atom.
+# @return
+#       undef is atoms belong to different disorder groups but the same 
+#       disorder assembly. 1 otherwise. 
+##
+
+sub check_disorder {
+    my ( $atom_1, $atom_2 ) = @_;
+    if ( ( $atom_1 -> {disorder_group} ne "." ) && 
+         ( $atom_2 -> {disorder_group} ne "." ) &&
+         ( $atom_1 -> {disorder_group} ne $atom_2 -> {disorder_group} ) &&
+         ( $atom_1 -> {disorder_assembly} ne "." ) && 
+         ( $atom_2 -> {disorder_assembly} ne "." ) &&
+         ( $atom_1 -> {disorder_assembly} eq $atom_2 -> {disorder_assembly} ) ) {
+        return undef;
+    }
+    return 1;
 }
 
 ##
@@ -557,13 +601,19 @@ sub print_pairwise {
         for ( my $j = 1; $j < @{ @$atoms_used[ $i ] }; $j++ ) {
             my $atom_2 = @$atoms_used[ $i ] -> [ $j ];
             
-            printf( 'DIST %-6.3f %10s %10s %24s %8s ', 
-                    @$distances[ $i ] -> [ $j ], 
+            if ( @$distances[ $i ] -> [ $j ] eq "-" ) {
+                printf( 'DIST %-6s', "-");
+            } else {
+                printf( 'DIST %-6.3f', @$distances[ $i ] -> [ $j ] );
+            }
+
+            printf( ' %10s %10s %24s %8s ',  
                     $atom_1 -> { atom_name }."/".$atom_1 -> {atom_type},
                     $atom_2 -> { atom_name }."/".$atom_2 -> {atom_type},
                     $atom_2 -> { sym_operator },
                     $atom_2 -> { shift_vector },
                     );
+
             if ( $print_filename ) {
                 print basename( $filename );
             }
