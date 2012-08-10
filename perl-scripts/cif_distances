@@ -142,12 +142,12 @@ foreach my $filename ( @ARGV ) {
                                                     $dataset, $filename );
 
         #   extracts atoms
-        my $atoms = get_atoms( $dataset, $loop_tag, $ortho_matrix );
+        my $atoms = get_atoms( $dataset, $loop_tag, $ortho_matrix, $filename );
         
         @$atoms = sort { ( $a -> {atom_type} cmp $b -> {atom_type} ) ||
-                         ( $a -> {atom_name} cmp $b -> {atom_name} ) } @$atoms;
+                         ( $a -> {label} cmp $b -> {label} ) } @$atoms;
         
-        my $printable_properties = [ "atom_name", "atom_type", 
+        my $printable_properties = [ "label", "atom_type", 
                                      "coordinates_ortho", "coordinates_fract",
                                      "disorder_group", "disorder_assembly" ];
     
@@ -212,7 +212,8 @@ exit;
 ##
 
 sub get_atoms {
-    my ( $dataset, $loop_tag, $ortho_matrix ) = @_;
+
+    my ( $dataset, $loop_tag, $ortho_matrix, $filename ) = @_;
 
     my $values = $dataset->{values};
 
@@ -220,7 +221,7 @@ sub get_atoms {
 
     for my $i ( 0 .. $#{$values->{$loop_tag}} ) {
         my $atom = {
-            atom_name => $values->{$loop_tag}[$i],
+            label => $values->{$loop_tag}[$i],
             atom_type => exists $values->{_atom_site_type_symbol} ?
                 $values->{_atom_site_type_symbol}[$i] : undef,
             disorder_group => exists $values->{_atom_site_disorder_group} ?
@@ -235,7 +236,7 @@ sub get_atoms {
         };
 
         if( !defined $atom->{atom_type} ) {
-            $atom->{atom_type} = $atom->{atom_name};
+            $atom->{atom_type} = $atom->{label};
         }
 
         if( $atom->{atom_type} =~ m/^([A-Za-z]{1,2})/ ) {
@@ -269,7 +270,87 @@ sub get_atoms {
     }
 
     return \@atoms;
+  ##  return uniquify_atom_names(\@atoms, "1", $filename, "dataset_name");
 }
+
+
+
+
+# ============================================================================ #
+# Accepts an array of
+#
+#   $atom_info = {
+#                   label=>"C1_2",
+#                   chemical_type=>"C",
+#                   coordinates_fract=>[1.0, 1.0, 1.0],
+#                   unity_matrix_applied=>1,
+#                   assembly=>"A", # "."
+#                   group=>"1", # "."
+#              }
+#
+sub uniquify_atom_names()
+{
+    my ($init_atoms, $uniquify_atoms, $filename, $dataset_name) = @_;
+
+    my $max_label_suffix = 30000; # Maximum number to be appened to labels 
+                                  # when trying to produce unique names.
+
+    my @checked_initial_atoms;
+
+    my %used_labels;
+    my @labels_to_be_renamed;
+
+    foreach my $atom (@{$init_atoms})
+    {
+        my $atom_copy = CIFSymmetryGenerator::copy_atom( $atom );
+        my $label = $atom->{label};
+
+        push( @checked_initial_atoms, $atom_copy );
+
+        if( ! exists $used_labels{$label} ) {
+            $used_labels{$label}{atoms} = [ $atom_copy ];
+        } else {
+            push( @{$used_labels{$label}{atoms}}, $atom_copy );
+            warning( $0, $filename, $dataset_name,
+                     "atom label '$label' is not unique" );
+            push( @labels_to_be_renamed, $label );
+        }
+        $used_labels{$label}{count} ++;
+    }
+
+    if( $uniquify_atoms )
+    {
+        foreach my $label (@labels_to_be_renamed)
+        {
+            foreach my $renamed_atom (@{$used_labels{$label}{atoms}}) {
+                my $id = 0;
+                while( exists $used_labels{$label . "_" .$id} &&
+                       $id <= $max_label_suffix ) {
+                    $id ++;
+                }
+                if( $id > $max_label_suffix ) {
+                    error( $0, $filename, $dataset_name,
+                           "could not generate unique atom name for ".
+                           "atom '$label', even after $id iterations" );
+                }
+                my $new_label = $label . "_" . $id;
+                warning( $0, $filename, $dataset_name,
+                         "renaming atom '$label' " .
+                         "to '" . $new_label . "'" );
+                $renamed_atom->{label}          = $new_label;
+                $renamed_atom->{original_label} = $new_label;
+                $used_labels{$new_label}{count} ++;
+            }
+        }
+    }
+
+    return \@checked_initial_atoms;
+}
+
+
+
+
+
 
 ##
 # Generates symmetrical atoms from the given original atoms and 
@@ -343,7 +424,7 @@ sub get_distances {
     for ( my $i  = 0; $i < $number_of_groups; $i++ ) {
         my $atom_1 = $all_atoms -> [ $i * $group_size ]; # acquiring first atom
         
-        push @headers, "$atom_1->{atom_name}/$atom_1->{atom_type}";
+        push @headers, "$atom_1->{label}/$atom_1->{atom_type}";
         my @atom_rows_used;
         push @atom_rows_used, $atom_1;
         my @distance_row;
@@ -488,8 +569,8 @@ sub print_atoms {
     my ( $array_ref, $properties ) = @_;
     foreach my $atom_ref ( @$array_ref ) {
         foreach my $property ( @$properties ) {
-            if ( $property eq "atom_name" ) {
-                print "Atom name: $atom_ref->{atom_name} \n";
+            if ( $property eq "label" ) {
+                print "Atom name: $atom_ref->{label} \n";
             } elsif ( $property eq "atom_type" ) {
                 print "Atom type: $atom_ref->{atom_type} \n";
             } elsif ( $property eq "occupancy" ) {
@@ -608,8 +689,8 @@ sub print_pairwise {
             }
 
             printf( ' %10s %10s %24s %8s ',  
-                    $atom_1 -> { atom_name }."/".$atom_1 -> {atom_type},
-                    $atom_2 -> { atom_name }."/".$atom_2 -> {atom_type},
+                    $atom_1 -> { label }."/".$atom_1 -> {atom_type},
+                    $atom_2 -> { label }."/".$atom_2 -> {atom_type},
                     $atom_2 -> { sym_operator },
                     $atom_2 -> { shift_vector },
                     );
