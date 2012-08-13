@@ -18,7 +18,7 @@ use lib "../../";
 
 use strict;
 use warnings;
-use File::Basename;
+use File::Basename; 
 use CIFData::CIFCellContents;
 use CIFParser;
 use Fractional;
@@ -28,6 +28,7 @@ use SOptions;
 use SUsage;
 
 my $print_distance_matrix = 1;
+my $uniquify_atoms = 1;
 my $print_pairwise;
 my $print_original;
 my $print_symmetrical;
@@ -36,6 +37,8 @@ my $add_filename;
 my $verbose;
 my $format = "%-11.3f";
 my $line_length = 80;
+
+@ARGV = getOptions( 
 
 #** -F, --add-filename
 #**                     Add a filename field at the end of pairwise 
@@ -67,9 +70,16 @@ my $line_length = 80;
 #** --format "%8.6f"    
 #**                     Use the specified format for distance matrix 
 #**                     format printout (default "%-11.3f").
-#** --help,--usage      Print a short usage message (this message) and exit.
+#** --uniquify-atoms
+#**                    Makes unique the labels of atoms (default).
+#** --no-uniquify-atoms
+#**                    Does not make unique labels for atoms.
+#** -v, --verbose
+#**                    Print additional information for each step of the script.
+#** -s, --silent, --quiet
+#**                    Print no additional information.
+#** --help,--usage     Print a short usage message (this message) and exit.
 
-@ARGV = getOptions(
     "-F,--add-filename"       => sub { $add_filename = 1 },
     "--no-add-filename"       => sub { $add_filename = undef },
     "--do-not-print-filename" => sub { $add_filename = undef },
@@ -89,11 +99,13 @@ my $line_length = 80;
                                        $print_shifted = 1;
                                        $print_original = 1;
                                        $print_symmetrical = 1 },
+    "--uniquify-atoms"      => sub { $uniquify_atoms = 1; },
+    "--no-uniquify-atoms"   => sub { $uniquify_atoms = 0; },
     "-s,--silent,--quiet"     => sub { $verbose = undef;
                                        $print_shifted = undef;
                                        $print_original = undef;
                                        $print_symmetrical = undef },
-    "--help,--usage"          => sub { SUsage::usage; exit },
+    "--help,--usage"          => sub { SUsage::usage; exit }
 );
 
 @ARGV = ( "-" ) unless @ARGV;
@@ -106,7 +118,7 @@ if ( $print_pairwise ) {
 	      "/perl-scripts/cif-distances/docs/cif_distances_matrix_v1.0 \n";
 }
 
-foreach my $filename ( @ARGV ) {
+foreach my $filename ( @ARGV ) { 
 
     my $parser = new CIFParser;
 
@@ -116,20 +128,7 @@ foreach my $filename ( @ARGV ) {
 
         my $values = $dataset->{values};
 
-        #   extracts atom site label or atom site type symbol
-        my $loop_tag;
-
         eval {
-
-        if( exists $values->{ "_atom_site_label" } ) {
-            $loop_tag = "_atom_site_label";
-        } elsif( exists $values->{ "_atom_site_type_symbol" } ) {
-            $loop_tag = "_atom_site_type_symbol";
-        } else {
-            error( $0, $filename, $dataset->{name},
-                   "neither _atom_site_label nor _atom_site_type_symbol " .
-                   "was found in the input file" );
-        }
     
         #   extracts cell constants
         my @unit_cell =
@@ -142,12 +141,12 @@ foreach my $filename ( @ARGV ) {
                                                     $dataset, $filename );
 
         #   extracts atoms
-        my $atoms = get_atoms( $dataset, $loop_tag, $ortho_matrix, $filename );
+        my $atoms = get_atoms( $dataset, $ortho_matrix, $filename, $uniquify_atoms );
         
-        @$atoms = sort { ( $a -> {atom_type} cmp $b -> {atom_type} ) ||
+        @$atoms = sort { ( $a -> {chemical_type} cmp $b -> {chemical_type} ) ||
                          ( $a -> {label} cmp $b -> {label} ) } @$atoms;
         
-        my $printable_properties = [ "label", "atom_type", 
+        my $printable_properties = [ "label", "chemical_type", 
                                      "coordinates_ortho", "coordinates_fract",
                                      "disorder_group", "disorder_assembly" ];
     
@@ -197,13 +196,35 @@ foreach my $filename ( @ARGV ) {
 
 exit;
 
+
+# Error reporting (message formatting) subroutines:
+
+sub print_error($$$$$)
+{
+    my ( $program, $filename, $datablock, $errlevel, $message ) = @_;
+
+    print STDERR $program, ": ", $filename,
+    defined $datablock ? " data_" . $datablock : "",
+    defined $errlevel ? ": " . $errlevel : "",
+    ": ", $message, ".\n";
+}
+
+sub error($$$$)
+{
+    my ( $program, $filename, $datablock, $message ) = @_;
+    print_error( $program, $filename, $datablock, "ERROR", $message );
+}
+
+sub warning($$$$)
+{
+    my ( $program, $filename, $datablock, $message ) = @_;
+    print_error( $program, $filename, $datablock, "WARNING", $message );
+}
+
 ##
 # Extracts atom information from given dataset.
 # @param $dataset
 #       Dataset containing cif file information extracted by a cif file parser.
-# @param $loop_tag
-#       Tag which marks the start of atom information block. For example, 
-#       _atom_site_label.
 # @param $ortho_matrix
 #       Reference to a structure containing matrix information used to convert
 #       fractional coordinates to orthogonal.
@@ -213,16 +234,31 @@ exit;
 
 sub get_atoms {
 
-    my ( $dataset, $loop_tag, $ortho_matrix, $filename ) = @_;
+    my ( $dataset, $ortho_matrix, $filename, $uniquify_atoms ) = @_;
 
     my $values = $dataset->{values};
+    my $dataset_name = $dataset->{name};
+
+    #   extracts atom site label or atom site type symbol
+    my $atom_site_tag;
+
+    if( exists $values->{"_atom_site_label"} ) {
+        $atom_site_tag = "_atom_site_label";
+    } elsif( exists $values->{"_atom_site_type_symbol"} ) {
+        $atom_site_tag = "_atom_site_type_symbol";
+    } else {
+        error( $0, $filename, $dataset->{name},
+               "neither _atom_site_type_symbol nor _atom_site_label " .
+               "were found" );
+	return undef;
+    }
 
     my @atoms;
 
-    for my $i ( 0 .. $#{$values->{$loop_tag}} ) {
+    for my $i ( 0 .. $#{$values->{$atom_site_tag}} ) {
         my $atom = {
-            label => $values->{$loop_tag}[$i],
-            atom_type => exists $values->{_atom_site_type_symbol} ?
+            label => $values->{$atom_site_tag}[$i],
+            chemical_type => exists $values->{_atom_site_type_symbol} ?
                 $values->{_atom_site_type_symbol}[$i] : undef,
             disorder_group => exists $values->{_atom_site_disorder_group} ?
                 $values->{_atom_site_disorder_group}[$i] : ".",
@@ -235,16 +271,16 @@ sub get_atoms {
             ],
         };
 
-        if( !defined $atom->{atom_type} ) {
-            $atom->{atom_type} = $atom->{label};
+        if( !defined $atom->{chemical_type} ) {
+            $atom->{chemical_type} = $atom->{label};
         }
 
-        if( $atom->{atom_type} =~ m/^([A-Za-z]{1,2})/ ) {
-            $atom->{atom_type} = ucfirst( lc( $1 ));
+        if( $atom->{chemical_type} =~ m/^([A-Za-z]{1,2})/ ) {
+            $atom->{chemical_type} = ucfirst( lc( $1 ));
         }
 
         @{$atom->{coordinates_fract}} = map { s/\(\d+\)\s*$//; $_ }
-            @{$atom->{coordinates_fract}};
+            @{$atom->{coordinates_fract}};  
 
         $atom->{coordinates_ortho} =
             CIFSymmetryGenerator::mat_vect_mul( $ortho_matrix,
@@ -256,7 +292,7 @@ sub get_atoms {
                 $atom->{occupancy} = $values->{_atom_site_occupancy}[$i];
                 $atom->{occupancy} =~ s/\(\d+\)\s*$//;
             } else {
-                $atom->{occupancy} = 1;
+                $atom->{occupancy} = 1;  
             }
         }
 
@@ -268,29 +304,36 @@ sub get_atoms {
 
         push( @atoms, $atom );
     }
-
-    return \@atoms;
-  ##  return uniquify_atom_names(\@atoms, "1", $filename, "dataset_name");
+    
+    return uniquify_atom_names( \@atoms, $uniquify_atoms, $filename, $dataset_name );
 }
 
+##
+# Renames atoms upon them having identical names.
+# @param $init_atoms
+#       Reference to an array of
+#       $atom_info = {
+#                     label=>"C1_2",
+#                     chemical_type=>"C",
+#                     coordinates_fract=>[1.0, 1.0, 1.0],
+#                     coordinates_ortho=>[5.3, 6.1, 5.3],
+#                     disorder_assembly=>"A", # ".",
+#                     disorder_group=>"1", # ".",
+#                     occupancy=>"1"
+#                    }
+# @param $uniquify_atoms
+#       Logical value which determines whether atoms should be uniquified.
+# @param $filename
+#       Name of the file that is currently proccessed.
+# @dataset_name
+#       Name of the proccessed dataset.
+# @return
+#       Reference to an array of proccessed atoms.    
+##
 
-
-
-# ============================================================================ #
-# Accepts an array of
-#
-#   $atom_info = {
-#                   label=>"C1_2",
-#                   chemical_type=>"C",
-#                   coordinates_fract=>[1.0, 1.0, 1.0],
-#                   unity_matrix_applied=>1,
-#                   assembly=>"A", # "."
-#                   group=>"1", # "."
-#              }
-#
 sub uniquify_atom_names()
 {
-    my ($init_atoms, $uniquify_atoms, $filename, $dataset_name) = @_;
+    my ( $init_atoms, $uniquify_atoms, $filename, $dataset_name ) = @_;
 
     my $max_label_suffix = 30000; # Maximum number to be appened to labels 
                                   # when trying to produce unique names.
@@ -300,7 +343,7 @@ sub uniquify_atom_names()
     my %used_labels;
     my @labels_to_be_renamed;
 
-    foreach my $atom (@{$init_atoms})
+    foreach my $atom ( @{$init_atoms} )
     {
         my $atom_copy = CIFSymmetryGenerator::copy_atom( $atom );
         my $label = $atom->{label};
@@ -346,11 +389,6 @@ sub uniquify_atom_names()
 
     return \@checked_initial_atoms;
 }
-
-
-
-
-
 
 ##
 # Generates symmetrical atoms from the given original atoms and 
@@ -424,7 +462,7 @@ sub get_distances {
     for ( my $i  = 0; $i < $number_of_groups; $i++ ) {
         my $atom_1 = $all_atoms -> [ $i * $group_size ]; # acquiring first atom
         
-        push @headers, "$atom_1->{label}/$atom_1->{atom_type}";
+        push @headers, "$atom_1->{label}/$atom_1->{chemical_type}";
         my @atom_rows_used;
         push @atom_rows_used, $atom_1;
         my @distance_row;
@@ -571,8 +609,8 @@ sub print_atoms {
         foreach my $property ( @$properties ) {
             if ( $property eq "label" ) {
                 print "Atom name: $atom_ref->{label} \n";
-            } elsif ( $property eq "atom_type" ) {
-                print "Atom type: $atom_ref->{atom_type} \n";
+            } elsif ( $property eq "chemical_type" ) {
+                print "Chemical type: $atom_ref->{chemical_type} \n";
             } elsif ( $property eq "occupancy" ) {
                 print "Ocupancy: $atom_ref->{occupancy} \n";
             } elsif ( $property eq "cif_multiplicity" ) {
@@ -683,14 +721,14 @@ sub print_pairwise {
             my $atom_2 = @$atoms_used[ $i ] -> [ $j ];
             
             if ( @$distances[ $i ] -> [ $j ] eq "-" ) {
-                printf( 'DIST %-6s', "-");
+                printf( 'DIST %-6s', "-" );
             } else {
                 printf( 'DIST %-6.3f', @$distances[ $i ] -> [ $j ] );
             }
 
             printf( ' %10s %10s %24s %8s ',  
-                    $atom_1 -> { label }."/".$atom_1 -> {atom_type},
-                    $atom_2 -> { label }."/".$atom_2 -> {atom_type},
+                    $atom_1 -> { label }."/".$atom_1 -> { chemical_type },
+                    $atom_2 -> { label }."/".$atom_2 -> { chemical_type },
                     $atom_2 -> { sym_operator },
                     $atom_2 -> { shift_vector },
                     );
