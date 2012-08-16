@@ -127,13 +127,12 @@ foreach my $filename ( @ARGV ) {
 
     foreach my $dataset ( @$data ) {
 
-        my $values = $dataset->{values};
-
         eval {
     
         #   extracts cell constants
         my @unit_cell =
-            CIFSymmetryGenerator::get_cell( $values, $filename, $dataset->{name} );
+            CIFSymmetryGenerator::get_cell( $dataset->{values}, $filename, 
+                                            $dataset->{name} );
     
         my $ortho_matrix = symop_ortho_from_fract( @unit_cell );
     
@@ -157,15 +156,10 @@ foreach my $filename ( @ARGV ) {
     
         #   generates atoms by applying symmetry operators.
         #   at this subroutine original atoms are fitted into the first octant
-        #   by applying x,y,z operator modulus 1
-        my ( $sym_atoms, $symmetry_operator_count );        
+        #   by applying x,y,z operator modulus 1        
 
-            ( $sym_atoms, $symmetry_operator_count ) = 
-                                            generate_symmetrical_atoms( 
-                                                       $sym_data, 
-                                                       $atoms, 
-                                                       $ortho_matrix 
-                                                       );
+        my ( $sym_atoms, $symop_count ) = symops_apply( $sym_data, $atoms,
+                                                        $ortho_matrix );
 
         push @$printable_properties, "sym_operator";
         if ( $print_symmetrical ) {
@@ -180,11 +174,10 @@ foreach my $filename ( @ARGV ) {
         }
     
         my ( $distances, $headers, $atoms_used ) = get_distances( \@shifted_atoms, 
-                                                       $symmetry_operator_count );
+                                                                  $symop_count );
     
         if ( $print_distance_matrix ) {
-            print_distance_matrix( $distances, $headers, $format, 
-                                   $line_length );
+            print_distance_matrix( $distances, $headers, $format, $line_length );
         }
     
         if ( $print_pairwise ) {
@@ -196,7 +189,6 @@ foreach my $filename ( @ARGV ) {
 }
 
 exit;
-
 
 # Error reporting (message formatting) subroutines:
 
@@ -249,8 +241,7 @@ sub get_atoms {
         $atom_site_tag = "_atom_site_type_symbol";
     } else {
         error( $0, $filename, $dataset->{name},
-               "neither _atom_site_type_symbol nor _atom_site_label " .
-               "were found" );
+               "neither _atom_site_type_symbol nor _atom_site_label were found" );
 	return undef;
     }
 
@@ -261,7 +252,7 @@ sub get_atoms {
             label => $values->{$atom_site_tag}[$i],
             chemical_type => exists $values->{_atom_site_type_symbol} ?
                 $values->{_atom_site_type_symbol}[$i] : undef,
-            disorder_group => exists $values->{_atom_site_disorder_group}[$i] ? #!
+            disorder_group => exists $values->{_atom_site_disorder_group}[$i] ?
                 $values->{_atom_site_disorder_group}[$i] : ".",
             disorder_assembly => exists $values->{_atom_site_disorder_assembly}[$i] ?
                 $values->{_atom_site_disorder_assembly}[$i] : ".",
@@ -409,7 +400,7 @@ sub uniquify_atom_names()
 #       "sym_operator".
 ##
 
-sub generate_symmetrical_atoms {
+sub symops_apply {
     my ( $sym_data, $atoms, $ortho_matrix ) = @_;
 
     # computes symmetry operator matrices
