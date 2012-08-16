@@ -108,14 +108,15 @@ my $line_length = 80;
     "--help,--usage"          => sub { SUsage::usage; exit }
 );
 
-@ARGV = ( "-" ) unless @ARGV;
+@ARGV = ( "-" ) unless @ARGV; 
 
 if ( $print_pairwise ) {
-    print "FORMAT cif-distances_paired http://cod.ibt.lt/cod-tools/trunk" .
-	      "/perl-scripts/cif-distances/output_format/cif-distances_paired_v1.0 \n";
+    print "FORMAT pairwise_distance v1.0 svn://www.crystallography.net/" . 
+          "cod-tools/trunk/perl-scripts/docs/" .
+          "cif_distances_pairwise_distance_v1.0\n"
 } else {
-    print "FORMAT distance-matrix v1.0 http://cod.ibt.lt/cod-tools/trunk" .
-	      "/perl-scripts/cif-distances/docs/cif_distances_matrix_v1.0 \n";
+    print "FORMAT distance_matrix v1.0 svn://www.crystallography.net/cod-tools/" .
+          "trunk/perl-scripts/docs/cif_distances_distance_matrix_v1.0\n";
 }
 
 foreach my $filename ( @ARGV ) { 
@@ -260,9 +261,9 @@ sub get_atoms {
             label => $values->{$atom_site_tag}[$i],
             chemical_type => exists $values->{_atom_site_type_symbol} ?
                 $values->{_atom_site_type_symbol}[$i] : undef,
-            disorder_group => exists $values->{_atom_site_disorder_group} ?
+            disorder_group => exists $values->{_atom_site_disorder_group}[$i] ? #!
                 $values->{_atom_site_disorder_group}[$i] : ".",
-            disorder_assembly => exists $values->{_atom_site_disorder_assembly} ?
+            disorder_assembly => exists $values->{_atom_site_disorder_assembly}[$i] ?
                 $values->{_atom_site_disorder_assembly}[$i] : ".",
             coordinates_fract => [
                 $values->{_atom_site_fract_x}[$i],
