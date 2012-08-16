@@ -1,20 +1,20 @@
 distance_matrix_v1.0
 
-This is the standard output format for cif_distances script, which 
-calculates distances between atoms in a cif file.
+This is the standard output format for cif_distances script, which calculates 
+distances between atoms in a cif file.
 
-Results are output as a series of tables, each containing a header.
-Headers starts with ATOMS keywords after which a number of 
-atom name/atom type pairs follow, separated by whitespaces. The number 
-of pairs depends on the maximum length of a header line, which can be 
-specified by --maximum-line-lenght paramater. Default value for header 
-lenght is 80 symbols, giving 6 pairs. For example,
+Results are output as a series of tables, each containing a header.Headers 
+starts with ATOMS keyword after which a number of atom name/atom type pairs 
+follow, separated by whitespaces. The number of pairs depends on the maximum 
+length of a header line, which can be specified by --matrix-line-lenght 
+paramater. Default value for header lenght is 80 symbols, giving 6 pairs. 
+For example,
 
 ATOMS      Nd1/Nd     Co1/Co     O1/O       O2/O       O3/O       O4/O
 
 Lines after the header start with a atom name/atom type pair after which
 a number of real numbers follow, separated by white spaces. These numbers 
-should be interpret as a distances between the atom, defined at the start 
+should be interpret as distances between the atom, defined at the start 
 of the line, and atoms in the header having same positions as the number.
 For example,
 
@@ -31,14 +31,18 @@ O7/O       3.972      2.116      5.178      4.640      2.933      4.543
 O8/O       2.370      3.518      3.193      4.631      2.949      4.059      
 O9/O       2.509      6.295      2.936      3.201      4.454      2.903 
 
-Given this matrix the distance from Nd1/Nd atom to O2/O is 2.508 since 
-O2/O is the fourth pair in the header and 2.508 is the fourth number in 
-the line starting with Nd1/Nd.
+Given this matrix the distance from Nd1/Nd atom to O2/O is 2.508 since O2/O is 
+the fourth pair in the header and 2.508 is the fourth number in the line 
+starting with Nd1/Nd.
 
-Most of the time there are more atoms that can be fitted in to a single 
-header. As a result, a series of tables are printed, each having 
-different atom name/atom type pairs in the header. Tables are separated 
-by an empty line. For, example
+In some cif files the distance between some pairs of atoms is not calculated 
+(due to them belonging to different disorder groups, for example). In this case, 
+a "-" symbol is printed instead of the real number. 
+
+Most of the time there are more atoms that can be fitted in to a single header. 
+As a result, a series of tables are printed, each having different 
+atom name/atom type pairs in the header. Tables are separated by an empty line. 
+For, example
 
 ATOMS      Nd1/Nd     Co1/Co     O1/O       O2/O       O3/O       O4/O       
 Nd1/Nd     0.000      4.068      2.406      2.508      2.490      2.577      
