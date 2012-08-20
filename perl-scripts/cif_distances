@@ -26,6 +26,7 @@ use Spacegroups::SymopParse;
 use Spacegroups::SpacegroupNames;
 use SOptions;
 use SUsage;
+use UserMessage;
 
 my $print_distance_matrix = 1;
 my $uniquify_atoms = 1;
@@ -189,30 +190,6 @@ foreach my $filename ( @ARGV ) {
 }
 
 exit;
-
-# Error reporting (message formatting) subroutines:
-
-sub print_error($$$$$)
-{
-    my ( $program, $filename, $datablock, $errlevel, $message ) = @_;
-
-    print STDERR $program, ": ", $filename,
-    defined $datablock ? " data_" . $datablock : "",
-    defined $errlevel ? ": " . $errlevel : "",
-    ": ", $message, ".\n";
-}
-
-sub error($$$$)
-{
-    my ( $program, $filename, $datablock, $message ) = @_;
-    print_error( $program, $filename, $datablock, "ERROR", $message );
-}
-
-sub warning($$$$)
-{
-    my ( $program, $filename, $datablock, $message ) = @_;
-    print_error( $program, $filename, $datablock, "WARNING", $message );
-}
 
 ##
 # Extracts atom information from given dataset.

@@ -291,7 +291,7 @@ sub get_cell($$$)
         } else {
             warning( $0, $filename, $dataname,
                      "cell angle '$cif_tag' not present -- " .
-                     "taking default value 90 degress." );
+                     "taking default value 90 degrees" );
             push( @cell_lengths_and_angles, 90 );
         }
     }
