@@ -1,0 +1,2672 @@
+#! /bin/sh
+#!perl -w # --*- Perl -*--
+eval 'exec perl -x $0 ${1+"$@"}'
+    if 0;
+#------------------------------------------------------------------------------
+#$Author$
+#$Date$
+#$Revision$
+#$URL$
+#------------------------------------------------------------------------------
+#*
+#  Restores molecules from a CIF file.
+#**
+
+# Note: this script assumes that atoms have unique labels in the input
+# CIF file; most often these are labels given by the _atom_site_label
+# tag. If the assumption of uniqness does not hold, the script
+# attempts by default to create unique labels itself, appending numeric
+# prefixes to the duplicate labels.
+#
+# The uniqueness of the labels is assumed in checks for atoms at
+# special positions, and most importantly in the code removing
+# duplicate molecules.
+#
+# Although there is an option to switch off this diversifivation of
+# labels, the algorithms employed in this script will most probably
+# break and give incorrect results (e.g. some atoms, namely ones with
+# duplicate labels, will be missing from the output). Thus, use option
+# '--dont-uniquify-atoms' with caution.
+
+# ~/workspace/praktika/cod/cif/1/1000028.cif interesting
+# kokia prasme, kai disorder_assembly reiksme nelygi ".", o disorder_group lygi.
+
+# Atom identification.
+# Atoms will be identified withing this program using three components:
+#
+# a) the original label, as found in the input CIF. This label must be
+# unique; it it is not, it will be uniquified by adding a serial
+# number upon reading in;
+#
+# b) a rotation operator (unity operator if no rotation is applied);
+# upon any rotation or when atoms are read in, their fractional
+# coordinates are truncated modulo 1, i.e. moved to the first octant
+# [0..1)x[0..1)x[0..1).
+#
+# c) a translation vector from the first octant to the actual atom
+# position; translation names will use IUCr convention shift +5 (555
+# is 0,0,0 translation). For larger translations, ":" character
+# separator will be used, e.g. 10:5:-11.
+
+use strict;
+use lib "./lib/perl5";
+use lib "./CIFParser";
+use lib "./CIFTags";
+use lib "./Spacegroups";
+use AtomBricks;
+use CIFParser;
+use CCIFParser;
+use CIFTagCanonicalNames;
+use SymopParse;
+use SymopLookup;
+use CIFTagPrint;
+use CIFTagManage;
+use File::Basename;
+use SOptions;
+use SUsage;
+use UserMessage;
+use Fractional;
+use AtomProperties;
+
+no warnings 'recursion';
+
+my $Id = '$Id$';
+
+my $debug;
+
+my $sort_molecules = 1; # A flag indicating whether molecules should
+                        # be sorted in the output (descending by atom
+                        # number)
+
+my $dump_atoms = 0;
+my $format = "%8.6f";
+my $continue_on_errors = 0;
+my $covalent_sensitivity = 0.35;
+my $audit = 1;
+my $uniquify_atoms = 1;
+my $uniquify_molecules = 1;       # Leave only unique molecules in the output
+my $exclude_zero_occupancies = 1; # Do not use atoms with zero
+                                  # occupancies
+
+# A fraction of covalent bond radii Used to determine when atoms are
+# too close and are considered a bump:
+
+my $bump_distance_factor = 0.75;
+
+my $ignore_bumps = 0; # detect and warn about close atom "bumps"
+                      # but do not stop processing.
+
+# A distance between two atoms when they are considered to be
+# instances of the same atom on a special position:
+
+my $special_position_cutoff = 0.01;
+
+# A span, in +/- unit cells, in which polymeric molecules (repeating
+# units) will be contruscted:
+
+my $max_polymer_span = 4;
+
+# A maximum alowed count of polymer example atoms: more than this
+# amount of symmetry (translational) equivalen atoms, for each AU
+# atom, will not be written to the output file:
+
+my $max_polymer_atoms = 100;
+
+my $cif_header_file; # Comments from the beginning of this file wil be
+                     # prepended to the output.
+
+my $use_parser = "c"; # Used CIF parser
+
+my $use_one_output_datablock = 0; # Put all molecules, and all
+                                  # disorder groups, into a single
+                                  # data block in the output.
+
+my $merge_disorder_groups = 0; # Put all alternative conformations
+                               # into one data block.
+
+@ARGV = getOptions
+(
+#** -1,--one-datablock-output
+#**                    Output all molecules and all alternative conformations to
+#**                    a single output datablock.
+#**
+#** -1-,--multiple-datablocks-output
+#**                    Separate each molecule and each example of an alternative
+#**                    conformation into a separate datablock.
+#**
+#** -c,--covalent-sensitivity
+#**                    Set a new covalent sensitivity value (default 0.35)
+#**
+#** -h, --cif-header-file input_header.txt
+#**                    Comments from the beginning of this file wil be
+#**                    prepended to the output.
+#**
+#** -i,--ignore-bumps
+#**                     Detect and warn about close atom "bumps" but do not
+#**                     stop processing.
+#**
+#** -i-,--dont-ignore-bumps,--no-ignore-bumps
+#**                     Stop processing immediately if bumps are
+#**                     detected (default).
+#**
+#** -s,--sort-molecules
+#**                     Sort molecules descending bey their atom types before
+#**                     outputing them into the output CIF.
+#**
+#** -i-,--dont-sort-molecules,--no-sort-molecules
+#**                     Do not sort molecules, print them out in the order they
+#**                     are detected.
+#**
+#** --uniquify-atoms
+#**                    Makes unique the labels of atoms (default).
+#**
+#** --no-uniquify-atoms,--dont-uniquify-atoms
+#**                    Do not makes unique labels for atoms,
+#**                    exclude duplicates.
+#**
+#*  --bump-distance-factor 0.75
+#*         A fraction of covalent bond radii sum used to determine when
+#*         atoms are too close and are considered a bump:
+#*
+#** --continue-on-errors
+#**                    Do not stop if errors such as unrecognised atoms are
+#**                    encountered; the output may be incorrect and missing
+#**                    some atoms if this otion is used!
+#**
+#** --dont-continue-on-errors, --no-continue-on-errors
+#**                    Stop immediately when an error is encountered.
+#**                    
+#** --exclude-zero-occupancies
+#**                    Do not use atoms woth 0 occupancies in calculations
+#**                    (defalut).
+#**                    
+#** --dont-exclude-zero-occupancies, --no-exclude-zero-occupancies
+#**                    Use all atoms regardless of their occupancy.
+#**
+#** --dump-atoms 
+#**       Dump atoms (including symmetry-equivalent) in CIF
+#**       format, for inspecion with some graphics program
+#**
+#** --dont-dump-atoms, --no-dump-atoms
+#**       Do not dump atoms (default)
+#**
+#** --max-polymer-span 4
+#**       A span, in +/- unit cells, in which polymeric molecules (repeating
+#**       units) will be contruscted:
+#**
+#** --max-polymer-atoms 100
+#**       A maximum alowed count of polymer example atoms: more than this
+#**       amount of symmetry (translational) equivalen atoms, for each AU
+#**       atom, will not be written to the output file:
+#**
+#**       Using --max-polymer-span=0 --max-polymer-atoms=1 essentially
+#**       switches off the polymer detection.
+#**
+#** --split-disorder-groups, --dont-merge-disorder-groups
+#**       Put examples of disorder group conformations into separate data
+#**       blocks (default).
+#**
+#** --merge-disorder-groups, --dont-split-disorder-groups
+#**       Put all disorder groups into one data block.
+#**
+#** --use-perl-parser
+#** --use-c-parser
+#**       Specify parser to parse CIF files. C parser is default.
+#**
+#** --debug            Print some human-readable debug output
+#** --no-debug         Suppress any debug output (default)
+#**
+#** --format "%8.6f"   Use the specified format for output coordinate printout.
+#**
+#** --audit            print audit information to the generated CIF file
+#**                    (default)
+#** --no-audit         do not print audit information to the generated CIF file
+#** --help,--usage     print short usage message (this message) and exit
+
+    "-1,--one-datablock-output" => sub { $use_one_output_datablock = 1; },
+    "-1-,--multiple-datablocks-output" => sub { $use_one_output_datablock = 0; },
+
+    "--uniquify-atoms"      => sub { $uniquify_atoms = 1; },
+    "--no-uniquify-atoms"   => sub { $uniquify_atoms = 0; },
+    "--dont-uniquify-atoms" => sub { $uniquify_atoms = 0; },
+
+    "-c,--covalent-sensitivity" => \$covalent_sensitivity,
+
+    "-h,--add-cif-header" => \$cif_header_file,
+
+    "-i,--ignore-bumps"   => sub{ $ignore_bumps = 1 },
+    "--no-ignore-bumps"   => sub{ $ignore_bumps = 0 },
+    "--dont-ignore-bumps" => sub{ $ignore_bumps = 0 },
+
+    "-s,--sort-molecules"   => sub{ $sort_molecules = 1 },
+    "--no-sort-molecules"   => sub{ $sort_molecules = 0 },
+    "--dont-sort-molecules" => sub{ $sort_molecules = 0 },
+
+    "--continue-on-errors" => sub{ $continue_on_errors = 1 },
+    "--no-continue-on-errors" => sub{ $continue_on_errors = 0 },
+    "--dont-continue-on-errors" => sub{ $continue_on_errors = 0 },
+
+    "--exclude-zero-occupancies"    => sub { $exclude_zero_occupancies = 1; },
+    "--no-exclude-zero-occupancies" => sub { $exclude_zero_occupancies = 0; },
+    "--dont-exclude-zero-occupancies" => sub { $exclude_zero_occupancies = 0; },
+
+    "--remove-duplicate-molecules"      => sub { $uniquify_molecules = 1; },
+    "--no-remove-duplicate-molecules"   => sub { $uniquify_molecules = 0; },
+    "--dont-remove-duplicate-molecules" => sub { $uniquify_molecules = 0; },
+
+    "--bump-distance-factor" => \$bump_distance_factor,
+
+    "--max-polymer-span" => \$max_polymer_span,
+    "--max-polymer-atoms" => \$max_polymer_atoms ,
+
+    "--debug"    => sub { $debug = 1 },
+    "--no-debug" => sub { $debug = 0 },
+
+    "--format" => \$format,
+
+    "--dump-atoms"      => sub{ $dump_atoms = 1 },
+    "--dont-dump-atoms" => sub{ $dump_atoms = 0 },
+    "--no-dump-atoms"   => sub{ $dump_atoms = 0 },
+
+    "--split-disorder-groups,--dont-merge-disorder-groups," .
+    "--do-not-merge-disorder-groups,--no-merge-disorder-groups"
+        => sub { $merge_disorder_groups = 0 },
+    "--merge-disorder-groups,--dont-split-disorder-groups" .
+    "--do-not-split-disorder-groups,--no-split-disorder-groups"
+        => sub { $merge_disorder_groups = 1 },
+
+    "--use-perl-parser"       => sub{ $use_parser = "perl" },
+    "--use-c-parser"          => sub{ $use_parser = "c" },
+
+    "--audit"                   => sub { $audit = 1; },
+    "--no-audit"                => sub { $audit = 0; },
+    "--help,--usage"            => sub { SUsage::usage; exit },
+);
+
+#==============================================================================#
+# Forward subroutine definitions:
+
+sub symgen_atom( $$$ );
+sub symgen_all_atoms( $$$ );
+sub apply_shifts( $$ );
+sub find_molecules( $$$$$$$$$ );
+sub find_molecule( $$$$$$$$$$$$ );
+sub uniquify_atom_names( $$$$ );
+sub initial_atoms( $$$$$$$ );
+sub get_symmetry_operators( $$ );
+
+sub test_bump( $$$$$$$ );
+
+# Error reporting (message formatting) subroutines:
+
+# In order to follow SPOT these almost identical subroutines are taken from
+# UserMessage subroutine.
+
+#sub print_error($$$$$)
+#{
+#    my ( $program, $filename, $datablock, $errlevel, $message ) = @_;
+#
+#    print STDERR $program, ": ", $filename,
+#    defined $datablock ? " data_" . $datablock : "",
+#    defined $errlevel ? ": " . $errlevel : "",
+#    ": ", $message, ".\n";
+#}
+
+# sub error($$$$)
+# {
+#    my ( $program, $filename, $datablock, $message ) = @_;
+#    print_error( $program, $filename, $datablock, "ERROR", $message );
+# }
+
+# sub warning($$$$)
+# {
+#     my ( $program, $filename, $datablock, $message ) = @_;
+#    print_error( $program, $filename, $datablock, "WARNING", $message );
+# }
+
+my $cif_header;
+
+if( $cif_header_file ) {
+    open( HDR, "$cif_header_file" ) or
+        die( "$0: could not open header file '$cif_header_file' " .
+             "for input - $!" );
+
+    $cif_header = "";
+    while( <HDR> ) {
+        last unless /^#/;
+        $cif_header .= $_;
+    }
+
+    close( HDR ) or
+        die( "$0: error reading header file '$cif_header_file' - $!" );
+}
+
+@ARGV = ("-") unless @ARGV;
+
+for my $filename (@ARGV) {
+
+    my $data;
+    if( $use_parser eq "perl" ) {
+        my $parser = new CIFParser;
+        $data = $parser->Run($filename);
+    } else {
+        $data = CCIFParser::parse($filename);
+    }
+
+    canonicalize_all_names( $data );
+
+    if( $cif_header ) {
+	print $cif_header;
+    }
+
+    for my $dataset (@$data) {
+        #   extracts atom site label or atom site type symbol
+	my $values = $dataset->{"values"};
+
+        #   extracts symmetry operators
+	my $sym_data = get_symmetry_operators( $dataset, $filename );
+
+	if(not defined $sym_data) {
+	    error( $0, $filename, $dataset->{name},
+		   "no symmetry information found" );
+	}
+
+	if((defined $sym_data) && ($sym_data != 0)) {
+	    my $molecule_id = 0;
+	    my $dataset_name = $dataset->{name};
+
+	    my $unique_molecules = get_molecules (  $covalent_sensitivity,
+						    $filename, $dataset_name,
+						    $sym_data,
+						    $dataset,
+						    \%AtomProperties::atoms,
+						    $uniquify_atoms );
+
+#       prints molecule to the CIF file
+
+	    if( $sort_molecules ) {
+		@$unique_molecules = sort {@{$b->{atoms_c}} <=> @{$a->{atoms_c}}}
+		@$unique_molecules;
+	    }
+
+            foreach my $molecule (@$unique_molecules) {
+                my $id;
+                unless( $use_one_output_datablock && $merge_disorder_groups ) {
+                    $id = $molecule_id;
+                } else {
+                    $id = undef;
+                }
+                print_molecule( $id, $audit, $molecule, $Id,
+                                $dataset, $dataset_name, $filename, $sym_data );
+                $molecule_id++;
+            }
+	}
+    }
+}
+
+#==============================================================================#
+# Find a maximal covalent radius in the atom property list
+
+sub get_max_covalent_radius($)
+{
+    my ($atom_properties) = @_;
+
+    my $max_radius = 0;
+
+    for my $atom (keys %$atom_properties) {
+        if( $max_radius < $atom_properties->{$atom}{covalent_radius} ) {
+            $max_radius = $atom_properties->{$atom}{covalent_radius};
+        }
+    }
+
+    return $max_radius;
+}
+
+#==============================================================================#
+# This is the main function where other functions such as find_molecules are
+# called.
+# Accepts
+#     covalent_sensitivity - a threshold for covalent sensitivity
+#     filename             - CIF file name
+#     sym_data             - symmetric data from the CIF file
+#     atom_site_tag        - atom site label or atom site type symbol from the
+#                            CIF file
+#     values               - a hash where a data from the CIF file is stored
+#
+# Returns
+#     unique_molecules     - an array of hashes
+#                     %molecule = (
+#                         atoms_c=>[\%atom_info1, \%atom_info2], #covalent bond
+#                         chemical_formula_sum=>"C6 H6",
+#                                 );
+
+sub get_molecules
+{
+    my $covalent_sensitivity = shift;
+    my $filename             = shift;
+    my $dataname             = shift;
+    my $sym_data             = shift;
+    my $dataset              = shift;
+    my $atom_properties      = shift;
+    my $uniquify_atoms       = shift;
+
+    my $values = $dataset->{values};
+
+    # Parse symmetry operators:
+    my @sym_operators = map { symop_from_string($_) } @{$sym_data};
+
+    # Get cell angles(alpha, beta, gama) and lengths(a, b, c)
+    my @cell = get_unit_cell( $values, $filename, $dataname );
+
+    # Make a matric to convert from fractional coordinates to
+    # orthogonal:
+    my $f2o = symop_ortho_from_fract(@cell);
+
+    # Extract atoms fract coordinates
+    my $atom_list = initial_atoms( $atom_properties, $dataset,
+				   $filename, $dataname, $f2o,
+				   \@sym_operators, $uniquify_atoms );
+
+    return [] unless defined $atom_list;
+
+    if( @$atom_list == 0 ) {
+        warning( $0, $filename, $dataname,
+                 "no atoms suitable for processing were found" );
+        print STDERR $0, ": ",
+            "Maybe all occupancies were unkown, zero, or " .
+            "all atom types were unrecognised?\n";
+        return [];
+    }
+
+    # Split init atoms into assemblies and groups, if requested
+    my $atom_groups;
+    if( $merge_disorder_groups ) {
+        $atom_groups = [ $atom_list ];
+    } else {
+        $atom_groups = atom_groups($atom_list);
+    }
+
+    my $max_covalent_radius = get_max_covalent_radius( $atom_properties );
+
+    my @unique_molecules;
+    my %seen_molecules;
+
+    my $n = 1;
+    foreach my $atom_group ( @{$atom_groups} )
+    {
+        my @symmetric_atoms = apply_shifts(
+            symgen_all_atoms( $atom_group, \@sym_operators, $f2o ), $f2o );
+
+        foreach my $atom (@symmetric_atoms)
+        {
+            $atom->{coordinates_ortho} =
+                mat_vect_mul( $f2o, $atom->{coordinates_fract} );
+        }
+
+        if( $dump_atoms ) {
+            dump_atoms_as_cif( $n++, \@symmetric_atoms, \@cell );
+            next
+        }
+
+        my %atom_group_labels = map { $_->{label} => 1 } @$atom_group;
+        my @initial_atoms;
+        foreach my $symmetric_atom ( @symmetric_atoms ) {
+            push( @initial_atoms, $symmetric_atom )
+                if exists $atom_group_labels{$symmetric_atom->{label}};
+        }
+
+        my $bricks = AtomBricks::build_bricks( \@symmetric_atoms,
+                                               $max_covalent_radius * 2 +
+                                               $covalent_sensitivity );
+
+        # Finds molecules
+        my @current_ordered_molecules = find_molecules( $covalent_sensitivity,
+                                                        $atom_properties,
+                                                        \@symmetric_atoms,
+                                                        \@initial_atoms,
+                                                        $bricks,
+                                                        $filename, $dataname,
+                                                        \%seen_molecules,
+                                                        $f2o );
+
+        if( $use_one_output_datablock ) {
+            my @all_atoms = map { @{$_->{atoms_c}} } @current_ordered_molecules;
+            @current_ordered_molecules = ({
+                atoms_c => \@all_atoms,
+            });
+        }
+        push( @unique_molecules, @current_ordered_molecules );
+    }
+
+    # Calculates chemical formula sum
+    foreach my $molecule (@unique_molecules) {
+        $molecule->{chemical_formula_sum} =
+            chemical_formula_sum( $molecule->{atoms_c});
+    }
+
+    return \@unique_molecules;
+}
+
+# ============================================================================ #
+# Accepts an array of
+#
+#   $atom_info = {
+#                   label=>"C1_2",
+#                   chemical_type=>"C",
+#                   coordinates_fract=>[1.0, 1.0, 1.0],
+#                   unity_matrix_applied=>1,
+#                   assembly=>"A", # "."
+#                   group=>"1", # "."
+#              }
+#
+sub uniquify_atom_names($$$$)
+{
+    my ($init_atoms, $uniquify_atoms, $filename, $dataset_name) = @_;
+
+    my $max_label_suffix = 30000; # Maximum number to be appened to labels 
+                                  # when trying to produce unique names.
+
+    my @checked_initial_atoms;
+
+    my %used_labels;
+    my @labels_to_be_renamed;
+
+    foreach my $atom (@{$init_atoms})
+    {
+        my $atom_copy = copy_atom( $atom );
+        my $label = $atom->{label};
+
+        push( @checked_initial_atoms, $atom_copy );
+
+        if( ! exists $used_labels{$label} ) {
+            $used_labels{$label}{atoms} = [ $atom_copy ];
+        } else {
+            push( @{$used_labels{$label}{atoms}}, $atom_copy );
+            warning( $0, $filename, $dataset_name,
+                     "atom label '$label' is not unique" );
+            push( @labels_to_be_renamed, $label );
+        }
+        $used_labels{$label}{count} ++;
+    }
+
+    if( $uniquify_atoms )
+    {
+        foreach my $label (@labels_to_be_renamed)
+        {
+            foreach my $renamed_atom (@{$used_labels{$label}{atoms}}) {
+                my $id = 0;
+                while( exists $used_labels{$label . "_" .$id} &&
+                       $id <= $max_label_suffix ) {
+                    $id ++;
+                }
+                if( $id > $max_label_suffix ) {
+                    error( $0, $filename, $dataset_name,
+                           "could not generate unique atom name for ".
+                           "atom '$label', even after $id iterations" );
+                }
+                my $new_label = $label . "_" . $id;
+                warning( $0, $filename, $dataset_name,
+                         "renaming atom '$label' " .
+                         "to '" . $new_label . "'" );
+                $renamed_atom->{label}          = $new_label;
+                $renamed_atom->{original_label} = $new_label;
+                $used_labels{$new_label}{count} ++;
+            }
+        }
+    }
+
+    return \@checked_initial_atoms;
+}
+
+# ============================================================================ #
+# Gets atom descriptions, as used in this program, from a CIF datablock.
+#
+# Returns an array of
+#
+#   $atom_info = {
+#                   label=>"C1_2",
+#                   chemical_type=>"C",
+#                   atom_site_type_symbol = "C",
+#                   coordinates_fract=>[1.0, 1.0, 1.0],
+#                   unity_matrix_applied=>1,
+#                   assembly=>"A", # "."
+#                   group=>"1", # "."
+#                   multiplicity=>"1",
+#                   multiplicity_ratio=>"1",
+#              }
+#
+sub initial_atoms($$$$$$$)
+{
+    my ($atom_properties, $dataset, $filename, $dataname, $f2o,
+	$sym_operators, $uniquify_atoms ) = @_;
+    my $values = $dataset->{values};
+
+    my $atom_site_tag;
+
+    if( exists $values->{"_atom_site_label"} ) {
+        $atom_site_tag = "_atom_site_label";
+    } elsif( exists $values->{"_atom_site_type_symbol"} ) {
+        $atom_site_tag = "_atom_site_type_symbol";
+
+        error( $0, $filename, $dataset->{name},
+               "_atom_site_label tag was not found. " .
+               "A serial number will be appended " .
+               "to _atom_site_type_symbol to make atom labels" );
+    } else {
+        error( $0, $filename, $dataset->{name},
+               "neither _atom_site_type_symbol nor _atom_site_label " .
+               "were found" );
+	return undef;
+    }
+
+    my $atom_labels = $values->{$atom_site_tag};
+
+    my @atom_list;
+
+    for (my $i = 0; $i < @{$atom_labels}; $i++)
+    {
+        if( $exclude_zero_occupancies &&
+            defined $values->{_atom_site_occupancy} ) {
+            my $occupancy = $values->{_atom_site_occupancy}[$i];
+            $occupancy =~ s/\(\d+\)$//; # remove precission
+            if( $occupancy eq "?" || $occupancy eq "." ||
+                $occupancy == 0.0 ) {
+                next;
+            }
+        }
+
+	my $label;
+        if ( $atom_site_tag eq "_atom_site_type_symbol" ) {
+	    $label = $values->{$atom_site_tag}[$i] . $i;
+	} else {
+	    $label = $values->{$atom_site_tag}[$i];
+	}
+
+        my $atom_info = extract_atom( $label, $values, $i, $f2o );
+
+        my( $sym_atoms, $multiplicity, $multiplicity_ratio ) =
+            symops_apply( $atom_info, $sym_operators, $f2o );
+
+        if( exists $values->{_atom_site_symmetry_multiplicity} &&
+            $values->{_atom_site_symmetry_multiplicity}[$i] ne '?' &&
+            $values->{_atom_site_symmetry_multiplicity}[$i] !=
+            $multiplicity ) {
+            warning( $0, $filename, $dataname,
+                "given multiplicity value '" .
+                $values->{_atom_site_symmetry_multiplicity}[$i] .
+                "' for atom " . $atom_info->{label} . 
+                " is different from calculated value '" .
+                $multiplicity . "' -- taking calculated value" );
+        }
+            
+        $atom_info->{multiplicity} = $multiplicity;
+        $atom_info->{multiplicity_ratio} = $multiplicity_ratio;
+
+        if (exists $atom_properties->{ $atom_info->{"chemical_type"}}) {
+            push( @atom_list, $atom_info );
+        } else {
+            my $message = "unknown chemical type '" .
+                $atom_info->{chemical_type} . "'";
+
+            if( $continue_on_errors ) {
+                warning( $0, $filename, $dataname, $message );
+            } else {
+                error( $0, $filename, $dataname, $message );
+                exit(1);
+            }
+        }
+    }
+
+    return uniquify_atom_names( \@atom_list, $uniquify_atoms,
+				$filename, $dataname);
+}
+
+
+#============================================================================= #
+# It's a function where atom groups are made according disorder information. If
+# there is only one disorder assembly then all possible atom groups will be
+# generated. If there is more then one disorder assembly desicion will be made
+# according the following example:
+# an assembly disorder A has three disorder groups and B - two. Then the
+# following groups will be made: (1,1) (2,2) (3,2).
+
+# Accepts
+#   initial_atoms - an array of references to
+#   $atom_info = {
+#               label=>"C1_2",
+#               chemical_type=>"C",
+#               coordinates_fract=>[1.0, 1.0, 1.0],
+#               unity_matrix_applied=>1,
+#               assembly=>"A", # "."
+#               group=>"1", # "."
+#              }
+# Returns
+#   groups - an array of references to arrays of references to
+#   $atom_info = {
+#               label=>"C1_2",
+#               chemical_type=>"C",
+#               coordinates_fract=>[1.0, 1.0, 1.0],
+#               unity_matrix_applied=>1,
+#               assembly=>"A", # "."
+#               group=>"1", # "."
+#              }
+# These arrays of references are generated atom groups.
+
+sub atom_groups
+{
+    my ($initial_atoms) = @_;
+
+    my $assemblies = assemblies($initial_atoms);
+
+#     for my $assembly (keys %$assemblies)
+#     {
+#         print STDERR "Assembly $assembly\n";
+#
+#         foreach my $group (@{$assemblies->{$assembly}})
+#         {
+#             print STDERR "$group ";
+#         }
+#         print STDERR "\n";
+#     }
+
+    if((keys %$assemblies) == 0)
+    {
+        my @one_assembly;
+        push(@one_assembly, $initial_atoms);
+        return \@one_assembly;
+    }
+
+    my @keys = keys %$assemblies;
+    my @atom_groups;
+
+    if(@keys == 1)
+    {
+        my $assembly = $keys[0];
+        my $groups = $assemblies->{$assembly};
+
+        foreach my $group (@$groups)
+        {
+            my @tmp_group;
+            foreach my $atom (@$initial_atoms)
+            {
+                if($atom->{group} eq $group && $atom->{assembly} eq $assembly)
+                {
+                    push(@tmp_group, $atom);
+                }
+            }
+            push(@atom_groups, \@tmp_group);
+        }
+    }
+    else
+    {
+        my $iteration_number = 0;
+
+        foreach my $assembly (@keys)
+        {
+            my $groups = $assemblies->{$assembly};
+            if($iteration_number < @$groups)
+            {
+                $iteration_number = @$groups;
+            }
+        }
+
+        for(my $i = 0; $i < $iteration_number; $i++)
+        {
+            my @group;
+            foreach my $assembly (@keys)
+            {
+                my $groups = $assemblies->{$assembly};
+                my $atom_group;
+                if($i < @$groups)
+                {
+                    $atom_group = $$groups[$i];
+                }
+                else
+                {
+                    $atom_group = $$groups[-1];
+                }
+
+                foreach my $atom (@$initial_atoms)
+                {
+                    if($atom->{group} eq $atom_group &&
+                                    $atom->{assembly} eq $assembly)
+                    {
+                        push(@group, $atom);
+                    }
+                }
+            }
+            push(@atom_groups, \@group);
+        }
+    }
+
+    # Appends those atoms which do not belong to any group or assembly
+
+    my @independent_atoms;
+    foreach my $atom (@$initial_atoms)
+    {
+        if($atom->{group} eq ".")
+        {
+            push(@independent_atoms, $atom);
+        }
+    }
+
+    foreach my $group (@atom_groups)
+    {
+        push(@$group, @independent_atoms);
+    }
+
+    return \@atom_groups;
+}
+
+# ============================================================================ #
+# Returns a hash of all possible assemblies and groups:
+# %assemblies = ( A => [1,2,3],
+#                 . => [1,2]);
+
+sub assemblies
+{
+    my ($init_atoms) = @_;
+
+    my %assemblies;
+
+    foreach my $atom (@$init_atoms)
+    {
+        if(not exists $assemblies{$atom->{assembly}})
+        {
+            my @groups;
+            $assemblies{$atom->{assembly}} = \@groups;
+        }
+    }
+
+    for my $assembly (keys %assemblies)
+    {
+        my %unique_groups;
+
+        foreach my $atom (@$init_atoms)
+        {
+            if((not exists $unique_groups{$atom->{group}}) &&
+               ($assembly eq $atom->{assembly}) &&
+               ($atom->{group} ne "."))
+            {
+                $unique_groups{$atom->{group}} = $atom->{group};
+                push(@{$assemblies{$assembly}}, $atom->{group});
+            }
+        }
+    }
+
+    for my $assembly (keys %assemblies)
+    {
+        if(@{$assemblies{$assembly}} == 0)
+        {
+            delete $assemblies{$assembly};
+        }
+    }
+
+   return \%assemblies;
+}
+
+#===============================================================#
+# Extract unit cell angles and lengths.
+#
+# Accepts
+#     values - a hash where a data from the CIF file is stored
+# Returns
+#     cell - an array  with stored information.
+
+sub get_unit_cell($$$)
+{
+    my( $values, $filename, $dataname ) = @_;
+
+    my @cell;
+
+    for my $cif_tag (qw(_cell_length_a
+                        _cell_length_b
+                        _cell_length_c
+                        ))
+    {
+        push(@cell, $values->{$cif_tag}[0]);
+        $cell[-1] =~ s/\(\d+\)$//;
+    }
+
+    for my $cif_tag (qw(_cell_angle_alpha
+                        _cell_angle_beta
+                        _cell_angle_gamma
+                        ))
+    {
+        if( exists $values->{$cif_tag} ) {
+            push( @cell, $values->{$cif_tag}[0] );
+            $cell[-1] =~ s/\(\d+\)$//;
+        } else {
+            warning( $0, $filename, $dataname,
+                     "cell angle '$cif_tag' not present -- " .
+                     "taking default value 90 degress." );
+            push( @cell, 90 );
+        }
+    }
+
+    return @cell;
+}
+
+#===============================================================#
+# Extracts atom information from the CIF file.
+#
+# Accepts
+#     values     - a hash where a data from the CIF file is stored
+#     atom_label - atom site label or atom site type symbol from the CIF file
+#     number     - a number of the current atom
+#
+# Returns a hash $atom:{
+#                       label=>"C1",
+#                       original_label=>"C1";
+#                       chemical_type=>"C",
+#                       atom_site_type_symbol = "C",
+#                       coordinates_fract=>[1.0, 1.0, 1.0],
+#                       unity_matrix_applied=>1,
+#                       transform_matrices=>[ [
+#                           [ 1, 0, 0, 0 ],
+#                           [ 0, 1, 0, 0 ],
+#                           [ 0, 0, 1, 0 ],
+#                           [ 0, 0, 0, 1 ] ] ],
+#                       assembly=>"A", # "."
+#                       group=>"1", # "."
+#                       }
+
+sub extract_atom
+{
+    my($atom_label, $values, $number, $f2o) = @_;
+
+    my %atom_info;
+    my @atom_xyz;
+
+    for my $cif_fract ( "_atom_site_fract_x",
+                        "_atom_site_fract_y",
+                        "_atom_site_fract_z",)
+    {
+        push(@atom_xyz, $values->{$cif_fract}[$number]);
+        $atom_xyz[-1] =~ s/\(\d+\)$//;
+    }
+
+    @atom_xyz = map { modulo_1($_) } @atom_xyz;
+
+    $atom_info{"coordinates_fract"}     = \@atom_xyz;
+    $atom_info{"label"}                 = $atom_label;
+    $atom_info{"original_label"}        = $atom_label;
+    $atom_info{"symop_id"}              = 1;
+    $atom_info{"unity_matrix_applied"}  = 1;
+    $atom_info{"translation_id"}        = "555";
+    $atom_info{"translation"}           = [ 0, 0, 0 ];
+    $atom_info{"transform_matrices"}    = [ [
+        [ 1, 0, 0, 0 ],
+        [ 0, 1, 0, 0 ],
+        [ 0, 0, 1, 0 ],
+        [ 0, 0, 0, 1 ] ] ];
+
+    $atom_info{coordinates_ortho} =
+        mat_vect_mul( $f2o, \@atom_xyz );
+
+    my $atom_type;
+
+    if( exists $values->{_atom_site_type_symbol}  &&
+        defined $values->{_atom_site_type_symbol}[$number] &&
+        $values->{_atom_site_type_symbol}[$number] ne '?' ) {
+        $atom_type = $values->{_atom_site_type_symbol}[$number];
+        $atom_info{atom_site_type_symbol} = $atom_type;
+        if( $atom_type =~ m/^([A-Za-z]{1,2})/ ) {
+            $atom_type = ucfirst( lc( $1 ));
+        }
+    } else {
+        if( $values->{_atom_site_label}[$number] =~
+            m/^([A-Za-z]{1,2})/ ) {
+            $atom_type = ucfirst( lc( $1 ));
+        } else {
+            die( "could not determine atom type for atom " .
+                 "'$values->{_atom_site_label}[$number]'" );
+        }
+    }
+
+    $atom_info{chemical_type} = $atom_type;
+
+    if( exists $values->{_atom_site_disorder_assembly}[$number]) {
+        $atom_info{assembly} =
+	    $values->{_atom_site_disorder_assembly}[$number];
+    } else {
+        $atom_info{assembly} = ".";
+    }
+
+    if( exists $values->{_atom_site_disorder_group}[$number] ) {
+        $atom_info{group} = $values->{_atom_site_disorder_group}[$number];
+    } else {
+        $atom_info{group} = ".";
+    }
+
+    if( exists $values->{_atom_site_occupancy} ) {
+        $atom_info{atom_site_occupancy} =
+            $values->{_atom_site_occupancy}[$number];
+    }
+
+    if( exists $values->{_atom_site_U_iso_or_equiv} ) {
+        $atom_info{atom_site_U_iso_or_equiv} =
+            $values->{_atom_site_U_iso_or_equiv}[$number];
+    }
+
+    if( exists $values->{_atom_site_symmetry_multiplicity} ) {
+        $atom_info{multiplicity} =
+            $values->{_atom_site_symmetry_multiplicity}[$number];
+    }
+
+    return \%atom_info;
+}
+
+#===============================================================#
+# Copies atom and returns the same instance of it (different object, same props)
+
+# Accepts a hash $atom_info = {
+#                       label=>"C1_2",
+#                       original_label=>"C1",
+#                       chemical_type=>"C",
+#                       coordinates_fract=>[1.0, 1.0, 1.0],
+#                       coordinates_ortho=>[5.0, -1.3, 1.7],
+#                       transform_matrices=>[ [
+#                           [ 1, 0, 0, 0 ],
+#                           [ 0, 1, 0, 0 ],
+#                           [ 0, 0, 1, 0 ],
+#                           [ 0, 0, 0, 1 ] ] ],
+#                       unity_matrix_applied=>1,
+#                       symop_id=>1
+#                       assembly=>"A", # "."
+#                       group=>"1", # "."
+#                       }
+
+# Returns a hash $new_atom_info = {
+#                       label=>"C1_2",
+#                       original_label=>"C1",
+#                       chemical_type=>"C",
+#                       coordinates_fract=>[1.0, 1.0, 1.0],
+#                       coordinates_ortho=>[5.0, -1.3, 1.7],
+#                       transform_matrices=>[ [
+#                           [ 1, 0, 0, 0 ],
+#                           [ 0, 1, 0, 0 ],
+#                           [ 0, 0, 1, 0 ],
+#                           [ 0, 0, 0, 1 ] ] ],
+#                       unity_matrix_applied=>1,
+#                       symop_id=>1,
+#                       assembly=>"A", # "."
+#                       group=>"1", # "."
+#                       }
+
+sub copy_atom
+{
+    my($old_atom) = @_;
+
+    if( ref $old_atom ne "HASH" ) {
+        use Carp;
+        croak;
+    }
+
+    return copy_struct_deep($old_atom);
+}
+
+# Performs deep copying of structure passed via reference
+
+sub copy_struct_deep
+{
+    my($struct) = @_;
+    return $struct if !ref $struct;
+    return [ map( copy_struct_deep($_), @$struct ) ] if ref $struct eq "ARRAY";
+    return { map{ $_ => copy_struct_deep( $struct->{$_} ) } keys %$struct }
+        if ref $struct eq "HASH";
+    die( "deep copy failed: 'copy_struct_deep' does not know how to " .
+         "copy object '" . ref( $struct ) . "'" );
+}
+
+#===============================================================#
+# Gets symmetry operators if they are not directly represented in the CIF file.
+
+# Accepts
+#     option - an option, for example, "hall"
+#     param  - according to an option a value given in the CIF file
+
+# Uses @SymopLookup::table =
+# (
+# {
+#     number          => 1,
+#     hall            => ' P 1',
+#     schoenflies     => 'C1^1',
+#     hermann_mauguin => 'P 1',
+#     universal_h_m   => 'P 1',
+#     symops => [
+#         'x,y,z',
+#     ],
+#     ncsym => [
+#         'x,y,z',
+#     ]
+# },
+# );
+
+# Return a reference to symmetry operators.
+
+sub get_symops
+{
+    my ($option, $param) = @_;
+
+    $param =~ s/ //g;
+    $param =~ s/_//g;
+
+    foreach my $hash (@SymopLookup::table)
+    {
+        my $value = $hash->{$option};
+        $value =~ s/ //g;
+        $value =~ s/_//g;
+
+        if($value eq $param)
+        {
+            return $hash->{symops};
+        }
+    }
+    return undef;
+}
+#===============================================================#
+# Made a decision if a chemical bond exists.
+
+# Accepts distance matrix, atom id and a reference to a hash of atom properties
+# %atoms = (
+#           H => { #(chemical_type)
+#                     name => Hydrogen,
+#                     period => 1,
+#                     group => 1,
+#                     block => s,
+#                     atomic_number => "1",
+#                     atomic_weight => 1.008,
+#                     covalent_radius => 0.23,
+#                     vdw_radius => 1.09,
+#                     valency => [1],
+#                     },
+#          );
+
+sub test_bond
+{
+    my ($atom_properties, $chemical_type1, $chemical_type2, $distance,
+        $covalent_sensitivity) = @_;
+
+    my $cov_radius1 = $atom_properties->{$chemical_type1}->{covalent_radius};
+    my $cov_radius2 = $atom_properties->{$chemical_type2}->{covalent_radius};
+
+    if($distance < $cov_radius1 + $cov_radius2 + $covalent_sensitivity)
+    {
+        return 1;
+    }
+
+    return 0;
+}
+
+#===============================================================#
+# Makes a decision if atoms are too close to each other, i.e if they
+# make a "bump:
+
+# Accepts distance, atom id and a reference to a hash of atom properties
+# %atoms = (
+#           H => { #(chemical_type)
+#                     name => Hydrogen,
+#                     period => 1,
+#                     group => 1,
+#                     block => s,
+#                     atomic_number => "1",
+#                     atomic_weight => 1.008,
+#                     covalent_radius => 0.23,
+#                     vdw_radius => 1.09,
+#                     valency => [1],
+#                     },
+#          );
+
+sub test_bump($$$$$$$)
+{
+    my ( $atom_properties, $chemical_type1, $chemical_type2,
+         $atom1_label, $atom2_label,
+         $dist, $bump_factor ) = @_;
+
+    my $cov_radius1 = $atom_properties->{$chemical_type1}->{covalent_radius};
+    my $cov_radius2 = $atom_properties->{$chemical_type2}->{covalent_radius};
+
+    if( $dist < $bump_factor * ($cov_radius1 + $cov_radius2) &&
+        ($dist > $special_position_cutoff ||
+         $atom1_label ne $atom2_label)) {
+        return 1;
+    }
+
+    return 0;
+}
+
+#==============================================================#
+# Finds translation center of mass and center of mass modulo 1 information.
+
+# Accepts two arrays of coordinates_fract.
+
+# Returns an array of differences between coordinates_fract.
+
+sub translation
+{
+    my ($coords, $coords_modulo_1) = @_;
+
+    my @translation;
+    for(my $i = 0; $i < @{$coords}; $i++)
+    {
+        push(@translation, ${$coords}[$i] - ${$coords_modulo_1}[$i]);
+    }
+
+    return \@translation;
+}
+
+#==============================================================#
+# Translates an atom according a given translation.
+#
+# Accepts an atom description and a translation.
+#
+# Returns a translated atom.
+
+sub translate_atom
+{
+    my($atom, $translation, $f2o) = @_;
+
+    my $new_atom = copy_atom( $atom );
+    my @new_atom_xyz;
+
+    push( @new_atom_xyz, $atom->{"coordinates_fract"}[0] +
+          ${$translation}[0] );
+    push( @new_atom_xyz, $atom->{"coordinates_fract"}[1] +
+          ${$translation}[1] );
+    push( @new_atom_xyz, $atom->{"coordinates_fract"}[2] +
+          ${$translation}[2] );
+
+    $new_atom->{"coordinates_fract"} = \@new_atom_xyz;
+    $new_atom->{coordinates_ortho} =
+        mat_vect_mul( $f2o, \@new_atom_xyz );
+
+    $new_atom->{translation} = [
+        $new_atom_xyz[0] - modulo_1($new_atom_xyz[0]),
+        $new_atom_xyz[1] - modulo_1($new_atom_xyz[1]),
+        $new_atom_xyz[2] - modulo_1($new_atom_xyz[2]),
+    ];
+
+    $new_atom->{translation_id} =
+        ($new_atom->{translation}[0]+5).
+        ($new_atom->{translation}[1]+5).
+        ($new_atom->{translation}[2]+5);
+
+    foreach my $symop ( @{$new_atom->{transform_matrices}} ) {
+        $symop->[0][3] +=
+            $new_atom->{translation}[0] - $atom->{translation}[0];
+        $symop->[1][3] +=
+            $new_atom->{translation}[1] - $atom->{translation}[1];
+        $symop->[2][3] +=
+            $new_atom->{translation}[2] - $atom->{translation}[2];
+    }
+
+    if( defined $new_atom->{unity_matrix_applied} &&
+        $new_atom->{unity_matrix_applied} &&
+        $new_atom->{translation}[0] == 0 &&
+        $new_atom->{translation}[1] == 0 &&
+        $new_atom->{translation}[2] == 0 ) {
+	$new_atom->{label} = $new_atom->{original_label};
+    } else {
+	$new_atom->{label} =
+	    $new_atom->{original_label} . "_" .
+	    $new_atom->{symop_id} . "_" .
+	    $new_atom->{translation_id};
+    }
+
+    return $new_atom;
+}
+
+#===============================================================#
+# Finds a molecule chemical formula sum.
+
+# Accepts an array of atoms:
+# $atom =      {label=>"C1_2",
+#               chemical_type=>"C",
+#               coordinates_fract=>[1.0, 1.0, 1.0],
+#               unity_matrix_applied=>1}
+
+# Returns a string with chemical formula sum.
+
+sub chemical_formula_sum
+{
+    my ($atoms) = @_;
+
+    my %chemical_types;
+
+    foreach my $atom (@{$atoms})
+    {
+        my $chemical_type = $atom->{chemical_type};
+        if(defined $chemical_types{$chemical_type})
+        {
+            $chemical_types{$chemical_type} = ++$chemical_types{$chemical_type};
+        }
+        else
+        {
+            $chemical_types{$chemical_type} = 1;
+        }
+    }
+
+    my $formula_sum = "";
+
+    # Chemical formulas, according the IUCr recommendations, should
+    # use the 'Hill' system used by Chemical Abstracts:
+    #
+    # the order of the elements within any group or moiety depends on
+    # whether carbon is present or not. If carbon is present, the
+    # order should be: C, then H, then the other elements in
+    # alphabetical order of their symbol. If carbon is not present,
+    # the elements are listed purely in alphabetical order of their
+    # symbol.
+
+    # References:
+    # 1. http://www.iucr.org/__data/iucr/cifdic_html/1/cif_core.dic/Cchemical_formula.html
+    # (2009-06-25)
+    #
+    # 2. Dictionary of organic compounds By J. I. G. (John Ivan
+    # George) Cadogan, American Chemical Society. Chemical Abstracts
+    # Service, P. H. Rhodes, Steven V Ley; page 106 (found by Google
+    # book search on 2009-06-25)
+
+    if( exists $chemical_types{C} ) {
+        if( $chemical_types{C} == 1 ) {
+            $formula_sum = "C ";
+        } else {
+            $formula_sum = "C" . $chemical_types{C} . " ";
+        }
+        delete $chemical_types{C};
+        if( exists $chemical_types{H} ) {
+            if( $chemical_types{H} == 1 ) {
+                $formula_sum .= "H ";
+            } else {
+                $formula_sum .= "H" . $chemical_types{H} . " ";
+            }
+            delete $chemical_types{H};
+        }
+    }
+
+    foreach my $key (sort keys %chemical_types)
+    {
+        if($chemical_types{$key} == 1)
+        {
+            $formula_sum .= $key . " ";
+        }
+        else
+        {
+            $formula_sum .= $key . $chemical_types{$key} . " ";
+        }
+    }
+    $formula_sum =~ s/\s$//;
+
+    return $formula_sum;
+}
+
+#===============================================================#
+# Applies symmetry operator to a given atom.
+
+# The symop_apply subroutine accepts a reference to a hash
+# $atom_info = {label=>"C1_2",
+#               chemical_type=>"C",
+#               coordinates_fract=>[1.0, 1.0, 1.0],
+#               unity_matrix_applied=>1} and
+# a refernce to an array - symmetry operator
+# my $symop = [
+#     [ r11 r12 r13 t1 ]
+#     [ r21 r22 r23 t1 ]
+#     [ r31 r32 r33 t1 ]
+#     [   0   0   0  1 ]
+# ],
+# Returns an above-mentioned hash.
+#
+sub symop_apply
+{
+    my($atom_info, $symop, $symop_id) = @_;
+
+    my $new_atom_info = copy_atom($atom_info);
+
+    my $atom_xyz = $atom_info->{"coordinates_fract"};
+
+    my @new_atom_xyz =
+        map { modulo_1($_) }
+        mat_vect_mul( $symop, $atom_xyz );
+
+    $new_atom_info->{"symop_id"} = $symop_id;
+    $new_atom_info->{"coordinates_fract"} = \@new_atom_xyz;
+    $new_atom_info->{"unity_matrix_applied"} = symop_is_unity($symop);
+    if( !$new_atom_info->{"unity_matrix_applied"} ) {
+        $new_atom_info->{"label"} = $atom_info->{"label"} . "_" . $symop_id;
+    }
+    $new_atom_info->{"translation"} = [ 0, 0, 0 ];
+    $new_atom_info->{"translation_id"} = "555";
+
+    my $transform_matrix =
+        mat_mat_mul( $new_atom_info->{transform_matrices}[0], $symop );
+    $new_atom_info->{transform_matrices} = [ $transform_matrix ];
+
+    if( $new_atom_info->{"unity_matrix_applied"} ) {
+        $new_atom_info->{"label"} = $new_atom_info->{"original_label"};
+    } else {
+        $new_atom_info->{"label"} =
+            $new_atom_info->{"original_label"} . "_" .
+            $new_atom_info->{"symop_id"} . "_" .
+            $new_atom_info->{"translation_id"};
+    }
+
+    do {
+        use Serialise;
+        serialiseRef( { atom => $new_atom_info, symop => $symop } );
+    } if 0;
+
+    return $new_atom_info;
+}
+
+#===============================================================#
+# Multiplies two vectors
+
+sub vect_vect_mul($$)
+{
+    my( $vect1, $vect2 ) = @_;
+
+    my $product = 0;
+
+    for(my $i = 0; $i < scalar @$vect1; $i++ ) {
+        $product += $vect1->[$i] * $vect2->[$i];
+    }
+
+    return $product;
+}
+
+#===============================================================#
+# Multiplies two symmetry operator matrices
+
+sub mat_mat_mul($$)
+{
+    my( $matrix1, $matrix2 ) = @_;
+    
+    my @new_matrix;
+    for(my $i = 0; $i < 4; $i++ ) {
+        my @matrix_line;
+        for(my $j = 0; $j < 4; $j++ ) {
+            push( @matrix_line, vect_vect_mul(
+                $matrix1->[$i],
+                [ $matrix2->[0][$j], $matrix2->[1][$j],
+                  $matrix2->[2][$j], $matrix2->[3][$j] ] ) );
+        }
+        push( @new_matrix, \@matrix_line );
+    }
+
+    return wantarray ? @new_matrix : \@new_matrix;
+}
+
+#===============================================================#
+# Multiplies an ortho matrix with a vector.
+
+# my $ortho = [
+#     [ o11 o12 o13 ]
+#     [ 0   o22 o23 ]
+#     [ 0   0   o33 ]
+# ]
+#
+
+sub mat_vect_mul($$)
+{
+    my($matrix, $vector) = @_;
+
+    my @new_coordinates;
+
+    for(my $i = 0; $i < @{$vector}; $i++)
+    {
+        $new_coordinates[$i] = 0;
+        for(my $j = 0; $j < @{$vector}; $j++)
+        {
+            $new_coordinates[$i] += ${$matrix}[$i][$j] * ${$vector}[$j];
+        }
+    }
+
+    if( @$vector == 3 && @$matrix == 4 ) {
+        $new_coordinates[0] += $matrix->[0][3];
+        $new_coordinates[1] += $matrix->[1][3];
+        $new_coordinates[2] += $matrix->[2][3];
+    }
+
+    return wantarray ? @new_coordinates : \@new_coordinates;
+}
+
+#===============================================================#
+# Checks whether atoms are in the same point in space:
+
+sub atoms_coincide($$$)
+{
+    my ( $old_atom, $new_atom, $f2o ) = @_;
+
+    my $old_coord = [ map { modulo_1($_) } @{$old_atom->{coordinates_fract}} ];
+    my $old_xyz = mat_vect_mul( $f2o, $old_coord );
+
+    my $new_coord = [ map { modulo_1($_) } @{$new_atom->{coordinates_fract}} ];
+
+    for my $dx (-1, 0, 1) {
+    for my $dy (-1, 0, 1) {
+    for my $dz (-1, 0, 1) {
+        my $shifted_coord = [
+            $new_coord->[0] + $dx,
+            $new_coord->[1] + $dy,
+            $new_coord->[2] + $dz,
+        ];
+        my $new_xyz = mat_vect_mul( $f2o, $shifted_coord );
+        if( distance( $new_xyz, $old_xyz ) < $special_position_cutoff ) {
+            ## local $, = ", ";
+            ## print ">>> mapped to self: @{$new_xyz} / @{$old_xyz}\n";
+            return 1;
+        }
+    }}}
+
+    return 0;
+}
+
+#===============================================================#
+# Generate symmetry equivalents of an atom, exclude duplicates
+# on special positions
+
+sub symgen_atom($$$)
+{
+    my ( $atom, $sym_operators, $f2o ) = @_;
+
+    my( $sym_atoms, $multiplicity, $multiplicity_ratio,
+        $symops_mapping_to_self ) = symops_apply( $atom,
+                                                  $sym_operators, $f2o );
+
+    if( $multiplicity_ratio == 1 ) {
+        return @$sym_atoms;
+    } else {
+        my @unique_atoms;
+        my %to_be_deleted;
+        for my $i (0..$#$sym_atoms-1) {
+            for my $j ($i+1..$#$sym_atoms) {
+                if( distance( $sym_atoms->[$i]{coordinates_fract},
+                              $sym_atoms->[$j]{coordinates_fract}) < 0.0001 ) {
+                    $to_be_deleted{$sym_atoms->[$j]{label}} = 1;
+                }
+            }
+        }
+        for my $atom (@$sym_atoms) {
+            if( !defined $to_be_deleted{$atom->{label}} ) {
+                if( symop_is_unity( $atom->{transform_matrices}[0] ) ) {
+                    $atom->{transform_matrices} =
+                    [ $atom->{transform_matrices}[0],
+                      @$symops_mapping_to_self ];
+                }
+                push( @unique_atoms, $atom );
+            }
+        }
+        return @unique_atoms;
+    }
+}
+
+#===============================================================#
+# Generate symmetry equivalents of an atom, evaluate atom's
+# multiplicity and multiplicity ratio
+
+sub symops_apply
+{
+    my ( $atom, $sym_operators, $f2o ) = @_;
+
+    my @sym_atoms;
+    my @symops_mapping_to_self;
+    my $gp_multiplicity = int(@$sym_operators);
+
+    my $multiplicity_ratio = 1;
+
+    do {
+        use Serialise;
+        serialiseRef( $sym_operators );
+    } if 0;
+
+    my $n = 1;
+
+    for my $symop ( @{$sym_operators} ) {
+        my $new_atom = symop_apply( $atom, $symop, $n++ );
+        if( !symop_is_unity( $symop ) &&
+            atoms_coincide( $atom, $new_atom, $f2o )) {
+            push( @symops_mapping_to_self, $symop );
+            $multiplicity_ratio ++;
+        } else {
+            push( @sym_atoms, $new_atom );
+        }
+    }
+
+    ## print ">>> $gp_multiplicity / $multiplicity_ratio\n";
+
+    if( $gp_multiplicity % $multiplicity_ratio ) {
+        die( "Multiplicity ratio $multiplicity_ratio does not divide " .
+             "multiplicity of a general position $gp_multiplicity" .
+             "-- this can not be." );
+    }
+
+    my $multiplicity = $gp_multiplicity / $multiplicity_ratio;
+
+    for my $atom (@sym_atoms) {
+        $atom->{multiplicity} = $multiplicity;
+        $atom->{multiplicity_ratio} = $multiplicity_ratio;
+    }
+
+    return ( \@sym_atoms, $multiplicity, $multiplicity_ratio,
+             \@symops_mapping_to_self );
+}
+
+#===============================================================#
+# Generate symmetry equivalents of all atoms from a list, exclude
+# duplicates on special positions
+
+sub symgen_all_atoms($$$)
+{
+    my ( $atoms, $sym_operators, $f2o ) = @_;
+
+    my @sym_atoms = ();
+
+    for my $atom (@{$atoms}) {
+        push( @sym_atoms, symgen_atom( $atom, $sym_operators, $f2o ));
+    }
+
+    return \@sym_atoms;
+}
+
+#===============================================================#
+# Shifts a given atom according shifting params. If shifting params are
+# (-1, 0, 1) then 27 shifts are made.
+
+# The shift_atom subroutine accepts a reference to a hash
+# $atom_info = {label=>"C1_2",
+#               chemical_type=>"C",
+#               coordinates_fract=>[1.0, 1.0, 1.0],
+#               unity_matrix_applied=>1}, returns an array of references of
+# above-mentioned hashes
+#
+sub shift_atom($$)
+{
+    my($atom_info, $f2o) = @_;
+
+    my @shifted_atoms;
+    my @shifting_params = (0, -1, 1);
+
+    for(my $i = 0; $i < @shifting_params; $i++)
+    {
+        for(my $j = 0; $j < @shifting_params; $j++)
+        {
+            for(my $k = 0; $k < @shifting_params; $k++)
+            {
+                my $new_atom_info = copy_atom($atom_info);
+                $new_atom_info->{translation} = [ $shifting_params[$i],
+                                                  $shifting_params[$j],
+                                                  $shifting_params[$k] ];
+                my @new_atom_xyz;
+                if($shifting_params[$i] != 0 || $shifting_params[$j] != 0 ||
+                   $shifting_params[$k] != 0 ||
+                   $atom_info->{"unity_matrix_applied"} != 1)
+                {
+                    $new_atom_xyz[0] = $atom_info->{"coordinates_fract"}[0] +
+                                                           $shifting_params[$i];
+                    $new_atom_xyz[1] = $atom_info->{"coordinates_fract"}[1] +
+                                                           $shifting_params[$j];
+                    $new_atom_xyz[2] = $atom_info->{"coordinates_fract"}[2] +
+                                                           $shifting_params[$k];
+                    my $shift_label =
+                        ($shifting_params[$i]+5).
+                        ($shifting_params[$j]+5).
+                        ($shifting_params[$k]+5);
+                    $new_atom_info->{"coordinates_fract"} = \@new_atom_xyz;
+                    $new_atom_info->{"label"} =
+                        $atom_info->{"original_label"} . "_" .
+                        $atom_info->{"symop_id"} . "_" .
+                        $shift_label;
+                    $new_atom_info->{"translation_id"} = $shift_label;
+                    foreach my $symop ( @{$new_atom_info->{transform_matrices}} ) {
+                        $symop->[0][3] += $shifting_params[$i];
+                        $symop->[1][3] += $shifting_params[$j];
+                        $symop->[2][3] += $shifting_params[$k];
+                    }
+                }
+                $new_atom_info->{coordinates_ortho} =
+                    mat_vect_mul( $f2o, \@new_atom_xyz );
+                push(@shifted_atoms, $new_atom_info);
+            }
+        }
+    }
+
+    return @shifted_atoms;
+}
+
+#===============================================================#
+# Generate symmetry equivalents of an atom, exclude duplicates
+# on special positions
+
+sub apply_shifts($$)
+{
+    my ($atoms, $f2o) = @_;
+
+    my @shifted = ();
+
+    for my $atom (@{$atoms}) {
+        push( @shifted, shift_atom( $atom, $f2o ));
+    }
+
+    return @shifted;
+}
+
+#===============================================================#
+# Calculates distance between two given vectors.
+
+# Accepts two arrays of vectors coordinates_fract.
+
+# Returns a distance.
+
+sub distance
+{
+    my($vector1, $vector2) = @_;
+    my $dist = 0;
+
+    for(my $k = 0; $k < @{$vector1}; $k++)
+    {
+        $dist += (${$vector1}[$k] - ${$vector2}[$k])**2;
+    }
+    return sqrt($dist);
+}
+
+#===============================================================#
+# Tests if a symmetry operator is   (1, 0, 0)
+#                                   (0, 1, 0)
+#                                   (0, 0, 1)
+
+sub symop_is_unity
+{
+    my($symop) = @_;
+    my $eps = 1e-10;
+
+    for(my $i = 0; $i < @{$symop}; $i++)
+    {
+        for(my $j = 0; $j < @{$symop}; $j++)
+        {
+            if($i == $j)
+            {
+                if(abs(${$symop}[$i][$j] - 1) > $eps) {
+                    return 0;
+                }
+            }
+            else
+            {
+                if(abs(${$symop}[$i][$j] - 0) > $eps) {
+                    return 0;
+                }
+            }
+        }
+    }
+    return 1;
+}
+
+#===============================================================#
+# Renames CIF data tags so that they are not confused with the
+# original ones.
+
+# Accepts a dataset hash produced by CIFParser, a list of tags to be
+# renamed, and a prefix to be appended
+
+# Returns a hash with renamed data tags
+
+sub rename_tags($$$)
+{
+    my ($dataset, $tags2rename, $prefix ) = @_;
+
+    my $values = $dataset->{values};
+    my %renamed_tags = ();
+
+    for my $tag (@$tags2rename) {
+        if( exists $values->{$tag} &&
+            !defined $dataset->{inloop}{$tag} ) {
+            my $new_tag = $prefix . $tag;
+            my $value = $values->{$tag}[0];
+            set_tag( $dataset, $new_tag, $value );
+            $renamed_tags{$new_tag} = $tag;
+        }
+    }
+    return wantarray ? %renamed_tags : \%renamed_tags;
+}
+
+#===============================================================#
+# Prints molecule to the CIF file.
+
+# Accepts a hash
+# %molecule = (
+#               atoms_c=>[\%atom_info1, \%atom_info2], #covalent bond
+#               chemical_formula_sum=>"\\'C6 H6\\'",
+#             );
+
+sub print_molecule
+{
+    my( $molecule_id, $audit, $molecule, $Id, $dataset, $dataset_name,
+        $filename, $sym_data ) = @_;
+
+    $dataset->{"name"} = $dataset_name;
+
+    if( defined $molecule_id ) {
+        $dataset->{"name"} .= "_molecule_" . $molecule_id;
+    }
+
+    my @data2copy = qw(
+    _publ_author_name
+    _publ_section_title
+    _journal_issue
+    _journal_name_full
+    _journal_page_first
+    _journal_page_last
+    _journal_volume
+    _journal_year
+
+    _cell_length_a
+    _cell_length_b
+    _cell_length_c
+    _cell_angle_alpha
+    _cell_angle_beta
+    _cell_angle_gamma
+
+    _cell_measurement_pressure
+    _cell_measurement.pressure
+    _cell_measurement.pressure_esd
+    _cell_measurement_pressure_gPa
+    _cell_measurement_radiation
+    _cell_measurement.radiation
+    _cell_measurement.temp
+    _cell_measurement_temperature
+    _cell_measurement_temperature_C
+    _cell_measurement.temp_esd
+    _cell_measurement_wavelength
+    _cell_measurement.wavelength
+    _cell_measurement_wavelength_nm
+    _cell_measurement_wavelength_pm
+
+    _diffrn_ambient_environment
+    _diffrn.ambient_environment
+    _diffrn_ambient_pressure
+    _diffrn.ambient_pressure
+    _diffrn.ambient_pressure_esd
+    _diffrn_ambient_pressure_gPa
+    _diffrn_ambient_pressure_gt
+    _diffrn.ambient_pressure_gt
+    _diffrn_ambient_pressure_lt
+    _diffrn.ambient_pressure_lt
+    _diffrn.ambient_temp
+    _diffrn.ambient_temp_details
+    _diffrn_ambient_temperature
+    _diffrn_ambient_temperature_C
+    _diffrn_ambient_temperature_gt
+    _diffrn_ambient_temperature_lt
+    _diffrn.ambient_temp_esd
+    _diffrn.ambient_temp_gt
+    _diffrn.ambient_temp_lt
+
+    _diffrn_radiation_collimation
+    _diffrn_radiation.collimation
+    _diffrn_radiation_detector
+    _diffrn_radiation_detector_dtime
+    _diffrn_radiation.diffrn_id
+    _diffrn_radiation.div_x_source
+    _diffrn_radiation.div_x_y_source
+    _diffrn_radiation.div_y_source
+    _diffrn_radiation_filter_edge
+    _diffrn_radiation.filter_edge
+    _diffrn_radiation_filter_edge_nm
+    _diffrn_radiation_filter_edge_pm
+    _diffrn_radiation_inhomogeneity
+    _diffrn_radiation.inhomogeneity
+    _diffrn_radiation_monochromator
+    _diffrn_radiation.monochromator
+    _diffrn_radiation_polarisn_norm
+    _diffrn_radiation.polarisn_norm
+    _diffrn_radiation_polarisn_ratio
+    _diffrn_radiation.polarisn_ratio
+    _diffrn_radiation.polarizn_source_norm
+    _diffrn_radiation.polarizn_source_ratio
+    _diffrn_radiation_probe
+    _diffrn_radiation.probe
+    _diffrn_radiation_source
+    _diffrn_radiation_type
+    _diffrn_radiation.type
+    _diffrn_radiation_wavelength
+    _diffrn_radiation_wavelength_id
+    _diffrn_radiation_wavelength.id
+    _diffrn_radiation.wavelength_id
+    _diffrn_radiation_wavelength_nm
+    _diffrn_radiation_wavelength_pm
+    _diffrn_radiation_wavelength.wavelength
+    _diffrn_radiation_wavelength_wt
+    _diffrn_radiation_wavelength.wt
+    _diffrn_radiation_xray_symbol
+    _diffrn_radiation.xray_symbol
+
+    _diffrn_reflns_theta_full
+    _diffrn_reflns_resolution_full
+    _diffrn_reflns_theta_max
+    _diffrn_reflns_resolution_max
+    _reflns_d_resolution_high
+    _reflns.d_resolution_high
+    _reflns_d_resolution_high_nm
+    _reflns_d_resolution_high_pm
+    _reflns_d_resolution_low
+    _reflns.d_resolution_low
+    _reflns_d_resolution_low_nm
+    _reflns_d_resolution_low_pm
+    _diffrn_reflns_limit_h_max
+    _diffrn_reflns.limit_h_max
+    _diffrn_reflns_limit_h_min
+    _diffrn_reflns.limit_h_min
+    _diffrn_reflns_limit_k_max
+    _diffrn_reflns.limit_k_max
+    _diffrn_reflns_limit_k_min
+    _diffrn_reflns.limit_k_min
+    _diffrn_reflns_limit_l_max
+    _diffrn_reflns.limit_l_max
+    _diffrn_reflns_limit_l_min
+    _diffrn_reflns.limit_l_min
+);
+
+    my @data2rename = qw(
+    _chemical_formula_analytical
+    _chemical_formula.analytical
+    _chemical_formula.entry_id
+    _chemical_formula_iupac
+    _chemical_formula.iupac
+    _chemical_formula_moiety
+    _chemical_formula.moiety
+    _chemical_formula_structural
+    _chemical_formula.structural
+    _chemical_formula_sum
+    _chemical_formula.sum
+    _pd_proc_ls_prof_R_factor
+    _pd_proc_ls_prof_wR_factor
+    _refine_hist.R_factor_all
+    _refine_hist.R_factor_obs
+    _refine_hist.R_factor_R_free
+    _refine_hist.R_factor_R_work
+    _refine_ls_class_R_factor_all
+    _refine_ls_class.R_factor_all
+    _refine_ls_class_R_factor_gt
+    _refine_ls_class.R_factor_gt
+    _refine_ls_class_wR_factor_all
+    _refine_ls_class.wR_factor_all
+    _refine_ls_R_factor_all
+    _refine.ls_R_factor_all
+    _refine_ls_R_factor_gt
+    _refine.ls_R_factor_gt
+    _refine_ls_R_factor_obs
+    _refine.ls_R_factor_obs
+    _refine.ls_R_factor_R_free
+    _refine.ls_R_factor_R_free_error
+    _refine.ls_R_factor_R_free_error_details
+    _refine.ls_R_factor_R_work
+    _refine_ls_shell.R_factor_all
+    _refine_ls_shell.R_factor_obs
+    _refine_ls_shell.R_factor_R_free
+    _refine_ls_shell.R_factor_R_free_error
+    _refine_ls_shell.R_factor_R_work
+    _refine_ls_shell.wR_factor_all
+    _refine_ls_shell.wR_factor_obs
+    _refine_ls_shell.wR_factor_R_free
+    _refine_ls_shell.wR_factor_R_work
+    _refine_ls_wR_factor_all
+    _refine.ls_wR_factor_all
+    _refine_ls_wR_factor_gt
+    _refine_ls_wR_factor_obs
+    _refine.ls_wR_factor_obs
+    _refine_ls_wR_factor_ref
+    _refine.ls_wR_factor_R_free
+    _refine.ls_wR_factor_R_work
+    _reflns_class_R_factor_all
+    _reflns_class.R_factor_all
+    _reflns_class_R_factor_gt
+    _reflns_class.R_factor_gt
+    _reflns_class_wR_factor_all
+    _reflns_class.wR_factor_all
+);
+
+    my %data2copy = map { $_, $_ } @data2copy;
+
+    my @tag_list = @{$dataset->{tags}};
+
+    my $atom_site_type_symbol = $dataset->{values}{_atom_site_type_symbol};
+    my $atom_site_occupancy   = $dataset->{values}{_atom_site_occupancy};
+    my $atom_site_U_iso_or_equiv = 
+        $dataset->{values}{_atom_site_U_iso_or_equiv};
+
+    my %renamed_tags = rename_tags( $dataset, \@data2rename, "_cod_src" );
+
+    my %known_tags = ( %data2copy, %renamed_tags );
+    my @known_tags = ( @data2copy, keys %renamed_tags );
+
+    print_cif( $dataset,
+                        {
+                            dictionary_tags => \%known_tags,
+                            dictionary_tag_list => \@known_tags,
+                            exclude_misspelled_tags => 1,
+                        } );
+
+    my @data2generate = qw( _audit_creation_method
+                            _chemical_formula_sum
+                            _cod_data_source_file
+                            _cod_data_source_block
+    );
+
+    foreach my $data_tag (@data2generate)
+    {
+        if ( $data_tag eq "_audit_creation_method" )
+        {
+            if ( $audit == 1 )
+            {
+                my $id_value = $Id;
+                $id_value =~ s/\s*\$\s*//g;
+                print_single_tag_and_value( $data_tag, $id_value );
+            }
+        }
+        elsif ( $data_tag eq "_chemical_formula_sum" )
+        {
+            print_single_tag_and_value( $data_tag,
+                                        $molecule->{chemical_formula_sum} );
+        }
+        elsif ( $data_tag =~ /_cod_data_source_file/ )
+        {
+            print_single_tag_and_value( $data_tag,
+                                        File::Basename::basename( $filename ));
+        }
+        elsif ( $data_tag =~ /_cod_data_source_block/ )
+        {
+            print_single_tag_and_value( $data_tag, $dataset_name );
+        }
+        else
+        {
+            die( "do not know how to generate tag '$data_tag'" );
+        }
+
+    }
+
+    print "_symmetry_space_group_name_H-M   \'P 1\'\n";
+    print "loop_ _symmetry_equiv_pos_as_xyz \'x, y, z\'\n";
+    print "loop_\n";
+    print "_atom_site_label\n";
+    print "_atom_site_type_symbol\n"
+        if defined $atom_site_type_symbol;
+    print "_atom_site_fract_x\n";
+    print "_atom_site_fract_y\n";
+    print "_atom_site_fract_z\n";
+    print "_atom_site_U_iso_or_equiv\n"
+        if defined $atom_site_U_iso_or_equiv;
+    print "_atom_site_occupancy\n"
+        if defined $atom_site_occupancy;
+
+    my $print_format = join( " ", ($format)x3 );
+    foreach my $atom ( sort {
+        length($a->{label}) == length($b->{label}) ?
+            $a->{label} cmp $b->{label} :
+            length($a->{label}) <=> length($b->{label})
+        } @{$molecule->{atoms_c}} )
+    {
+        CIFTagPrint::print_value( $atom->{"label"} );
+        print " ";
+        if( defined $atom_site_type_symbol ) {
+            if( defined $atom->{atom_site_type_symbol} ) {
+                CIFTagPrint::print_value( $atom->{atom_site_type_symbol} );
+                print " ";
+            } else {
+                print "? ";
+            }
+        }
+        printf $print_format,
+               $atom->{"coordinates_fract"}[0],
+               $atom->{"coordinates_fract"}[1],
+               $atom->{"coordinates_fract"}[2];
+        if( defined $atom_site_U_iso_or_equiv ) {
+            print " ";
+            CIFTagPrint::print_value( $atom->{atom_site_U_iso_or_equiv} );
+        }
+        if( defined $atom_site_occupancy ) {
+            print " ";
+            CIFTagPrint::print_value( $atom->{atom_site_occupancy} );
+        }
+        print "\n";
+    }
+
+    my $has_disorder = 0;
+    my $is_polymer   = 0;
+    foreach my $atom ( @{$molecule->{atoms_c}} ) {
+        if( $atom->{group} ne '.' || $atom->{assembly} ne '.' ) {
+            $has_disorder = 1;
+        }
+        if( exists $atom->{is_polymer} && $atom->{is_polymer} == 1 ) {
+            $is_polymer = 1;
+        }
+        if( $has_disorder && $is_polymer ) { last; }
+    }
+
+    if( $is_polymer ) {
+        print "_cod_molecule_is_polymer    yes\n";
+    }
+    print "loop_\n";
+    print "_cod_molecule_atom_label\n";
+    print "_cod_molecule_atom_orig_label\n";
+    print "_cod_molecule_atom_symmetry\n";
+    print "_cod_molecule_atom_symop_id\n";
+    print "_cod_molecule_atom_symop_xyz\n";
+    print "_cod_molecule_atom_transl_id\n";
+    print "_cod_molecule_atom_transl_x\n";
+    print "_cod_molecule_atom_transl_y\n";
+    print "_cod_molecule_atom_transl_z\n";
+    print "_cod_molecule_atom_mult\n";
+    print "_cod_molecule_atom_mult_ratio\n";
+    if( $has_disorder ) {
+        print "_cod_molecule_atom_assembly\n";
+        print "_cod_molecule_atom_group\n";
+    }
+
+    foreach my $atom ( sort {
+        length($a->{label}) == length($b->{label}) ?
+            $a->{label} cmp $b->{label} :
+            length($a->{label}) <=> length($b->{label})
+        } @{$molecule->{atoms_c}} )
+    {
+        CIFTagPrint::print_value( $atom->{"label"} );
+        print " ";
+        CIFTagPrint::print_value( $atom->{"original_label"} );
+        print " ";
+        CIFTagPrint::print_value( $atom->{"symop_id"} );
+        print "_";
+        CIFTagPrint::print_value( $atom->{"translation_id"} );
+        print " ";
+        CIFTagPrint::print_value( $atom->{"symop_id"} );
+        print " ";
+        CIFTagPrint::print_value( $sym_data->[$atom->{"symop_id"}-1] );
+        print " ";
+        CIFTagPrint::print_value( $atom->{"translation_id"} );
+        print " ";
+        CIFTagPrint::print_value( $atom->{"translation"}[0] );
+        print " ";
+        CIFTagPrint::print_value( $atom->{"translation"}[1] );
+        print " ";
+        CIFTagPrint::print_value( $atom->{"translation"}[2] );
+        print " ";
+        CIFTagPrint::print_value( $atom->{"multiplicity"} );
+        print " ";
+        CIFTagPrint::print_value( $atom->{"multiplicity_ratio"} );
+        if( $has_disorder ) {
+            print " ";
+            CIFTagPrint::print_value( $atom->{"assembly"} );
+            print " ";
+            CIFTagPrint::print_value( $atom->{"group"} );
+        }
+        print "\n";
+    }
+
+    print "loop_\n";
+    print "_cod_molecule_transform_label\n";
+    print "_cod_molecule_transform_symop\n";
+
+    foreach my $atom ( sort {
+        length($a->{label}) == length($b->{label}) ?
+            $a->{label} cmp $b->{label} :
+            length($a->{label}) <=> length($b->{label})
+        } @{$molecule->{atoms_c}} )
+    {
+        foreach my $symop ( @{$atom->{"transform_matrices"}} ) {
+            CIFTagPrint::print_value( $atom->{"label"} );
+            print " ";
+            CIFTagPrint::print_value( string_from_symop( $symop ) );
+            print "\n";
+        }
+    }
+}
+
+#===============================================================#
+# Finds all possible molecules in the CIF file. If two atoms are connected via
+# then the algorithm states that there in no bond between these two atoms.
+
+# The algorithm:
+# 1. Takes an initial atom and tests if it has not been found in the other
+#    molecule yet
+# 2. If not, then begins to search for the other molecule:
+# 2.1  Does modulo_1 for the initial atom
+# 2.2  Finds a translation from initial atom to atom_modulo_1
+# 2.3  Searches for all neighbors of atom_modulo_1
+# 2.4  For each neighbor of atom_modulo_1 does 2.1 -- 2.4
+# 2.5  atom_modulo_1 and all its neigbors translates according translation
+#       vector. atom_modulo_1 now becomes initial atom. The others - accordingly
+# 3. Stops and does the step 1 until there is no left any initial atom.
+
+
+# Accepts
+#     covalent_sensitivity - a threshold for covalent sensitivity
+#     atom_properties(
+#           H => {
+#                     name => Hydrogen, #(chemical_type)
+#                     period => 1,
+#                     group => 1,
+#                     block => s,
+#                     atomic_number => "1",
+#                     atomic_weight => 1.008,
+#                     covalent_radius => 0.23,
+#                     vdw_radius => 1.09,
+#                     valency => [1],
+#                     },
+#          );
+# symmetric_atoms and initial_atoms are arrays of
+#                                 $atom_info = {
+#                                             label=>"C1_2",
+#                                             chemical_type=>"C",
+#                                             coordinates_fract=>[1.0, 1.0,1.0],
+#                                             coordinates_ortho=>[1.0, 1.0,1.0],
+#                                             unity_matrix_applied=>1
+#                                             }
+# Returns an array of
+# %molecule = (
+#               atoms_c=>[\%atom_info1, \%atom_info2], #covalent bond
+#               chemical_formula_sum=>"C6 H6",
+#             );
+
+sub find_molecules($$$$$$$$$)
+{
+    my $covalent_sensitivity = shift(@_);
+    my $atom_properties      = shift(@_);
+    my $symmetric_atoms      = shift(@_);
+    my $initial_atoms        = shift(@_);
+    my $bricks               = shift(@_);
+    my $filename             = shift(@_);
+    my $dataname             = shift(@_);
+    my $seen_molecules       = shift(@_);
+    my $ortho_matrix         = shift(@_);
+
+    my @unique_molecules;
+    my %used_atoms;
+    my %used_originals;
+    my %used_uc_atoms;
+    my %checked_pairs;
+
+    foreach my $initial_atom (@$initial_atoms)
+    {
+        if ((not exists $used_originals{$initial_atom->{original_label}}))
+        {
+	    print STDERR ">>>> starting new molecule\n" if $debug;
+
+            my @molecule_atoms = find_molecule( $covalent_sensitivity,
+                                                $atom_properties,
+                                                $symmetric_atoms,
+                                                \%used_atoms,
+                                                \%used_originals,
+                                                \%used_uc_atoms,
+                                                \%checked_pairs,
+                                                $initial_atom, $bricks,
+                                                $filename, $dataname,
+                                                $ortho_matrix );
+
+            if(@molecule_atoms > 0)
+            {
+                my $signature;
+
+                if( $uniquify_molecules ) {
+                    $signature = join( " ", sort {$a cmp $b} 
+                                       map {$_->{label}} @molecule_atoms );
+                }
+
+                if( !$uniquify_molecules || !$seen_molecules->{$signature} ) {
+
+                    my %molecule =  (atoms_c              => \@molecule_atoms,
+                                     chemical_formula_sum => "",);
+
+                    push( @unique_molecules, \%molecule );
+
+                    $seen_molecules->{$signature} = 1 if $uniquify_molecules ;
+                }
+            }
+        }
+    }
+
+    return @unique_molecules;
+}
+
+# ============================================================================ #
+
+sub find_molecule($$$$$$$$$$$$)
+{
+    my $covalent_sensitivity = shift(@_);
+    my $atom_properties      = shift(@_);
+    my $symmetric_atoms      = shift(@_);
+    my $used_atoms           = shift(@_);
+    my $used_originals       = shift(@_);
+    my $used_uc_atoms        = shift(@_);
+    my $checked_pairs        = shift(@_);
+    my $current_atom         = shift(@_);
+    my $bricks               = shift(@_);
+    my $filename             = shift(@_);
+    my $dataname             = shift(@_);
+    my $ortho_matrix         = shift(@_);
+
+    my @current_coords_fract_modulo_1 =
+        map { modulo_1($_) } @{$current_atom->{coordinates_fract}};
+
+    my $atom_in_unit_cell_coords_ortho =
+	mat_vect_mul( $ortho_matrix, \@current_coords_fract_modulo_1 );
+
+    my $current_translation = translation( $current_atom->{coordinates_fract},
+                                           \@current_coords_fract_modulo_1 );
+
+    my @neighbors;
+
+    do {
+        no warnings;
+        if( exists $used_atoms->
+            {$current_atom->{original_label}}
+            {$current_atom->{symop_id}}
+            {$current_atom->{translation_id}} ) {
+            print STDERR "<<<< atom labeled '$current_atom->{label}' " .
+                "is already in some molecule, returning\n"
+                if $debug;
+            return @neighbors;
+        }
+
+        $used_atoms->{$current_atom->{original_label}}
+            {$current_atom->{symop_id}}
+            {$current_atom->{translation_id}} = $current_atom;
+    }; # end no warnings
+
+    $used_originals->{$current_atom->{original_label}} =
+	$current_atom->{original_label};
+
+    do {
+        no warnings;
+        if( exists $used_uc_atoms->
+            {$current_atom->{original_label}}
+            {$current_atom->{symop_id}} ) {
+            my $used_uc_atom = $used_uc_atoms->
+                    {$current_atom->{original_label}}
+                    {$current_atom->{symop_id}};
+            print STDERR ">>> !!!! detected a used unit cell " .
+                "label $current_atom->{label}/$current_atom->{symop_id}/" .
+                "$current_atom->{translation_id} (${used_uc_atom}-th time)\n"
+            if $debug;
+            
+            $current_atom->{is_polymer} = 1;
+            
+            if( $used_uc_atoms->
+                {$current_atom->{original_label}}
+                {$current_atom->{symop_id}} > $max_polymer_atoms ) {
+                my $message = "the maximum number of polymer atom " .
+                    "repetitions $max_polymer_atoms was hit for the " .
+                    "atom $current_atom->{original_label} " .
+                    "($current_atom->{symop_id})\n" .
+                    "To get around this limit, please increase " .
+                    "--max-polymer-atoms, to say, " .
+                    "--max-polymer-atoms=" . (2 * $max_polymer_atoms) . " " .
+                    "or decrease --max-polymer-span (e.g. " .
+                    "--max-polymer-span=" . int($max_polymer_span/2) . ", " .
+                    "but expect increased computation times and " .
+                    "memory consumption)";
+                if( $continue_on_errors ) {
+                    warning( $0, $filename, $dataname, $message );
+                    return ();
+                } else {
+                    error( $0, $filename, $dataname, $message );
+                    exit(1);
+                }
+            }
+
+            if( abs($current_atom->{translation}[0]) > $max_polymer_span ||
+                abs($current_atom->{translation}[1]) > $max_polymer_span ||
+                abs($current_atom->{translation}[2]) > $max_polymer_span ) {
+                return ();
+            }
+        }
+
+        $used_uc_atoms->
+            {$current_atom->{original_label}}
+            {$current_atom->{symop_id}} ++;
+    }; # end no warnings
+
+    print STDERR
+	">>> considering atom $current_atom->{label} " .
+        "(@{$atom_in_unit_cell_coords_ortho}) " .
+	"($current_atom->{original_label}/" .
+	"$current_atom->{symop_id}/$current_atom->{translation_id})\n"
+	if $debug;
+
+    push( @neighbors, $current_atom );
+
+    my ($i, $j, $k) =
+        AtomBricks::get_atom_index( $bricks,
+                                    @{$atom_in_unit_cell_coords_ortho});
+
+    my ( $min_i, $max_i, $min_j, $max_j, $min_k, $max_k );
+
+    eval {
+        ( $min_i, $max_i, $min_j, $max_j, $min_k, $max_k ) =
+            AtomBricks::get_search_span( $bricks, $i, $j, $k );
+    };
+    if( $@ ) {
+        use Serialise;
+        serialiseRef( $atom_in_unit_cell_coords_ortho );
+        serialiseRef( [ $i, $j, $k ] );
+        serialiseRef( $bricks );
+        die( $@ );
+    }
+
+    if( $debug ) {
+	local $" = ", ";
+	print STDERR
+	    ">>> now scanning its distinct neighbours " .
+	    "around @{$atom_in_unit_cell_coords_ortho}:\n";
+    };
+
+    ## foreach my $sym_atom (@$symmetric_atoms)
+    for $i ($min_i .. $max_i) {
+    for $j ($min_j .. $max_j) {
+    for $k ($min_k .. $max_k) {
+        for my $sym_atom ( @{$bricks->{atoms}[$i][$j][$k]} ) {
+            my $sym_atom_coords_ortho = $sym_atom->{coordinates_ortho};
+	    my $new_label = $current_atom->{label};
+	    my $sym_label = $sym_atom->{label};
+
+	    if( $current_atom->{label} eq $sym_atom->{label} ) {
+		# We have found the same atom, no need to add bond or
+		# neighbour
+		next;
+	    }
+
+            my $dist = distance( $atom_in_unit_cell_coords_ortho,
+                                 $sym_atom_coords_ortho );
+
+            do {
+                local $" = ' ';
+                print STDERR ">>> checking neighbour $sym_label " .
+                    "(@{$sym_atom_coords_ortho}), " .
+                    "d = $dist\n";
+            } if $debug;
+
+            my $is_bump = test_bump( $atom_properties,
+                                     $current_atom->{chemical_type},
+                                     $sym_atom->{chemical_type},
+                                     $current_atom->{original_label},
+                                     $sym_atom->{original_label},
+                                     $dist, $bump_distance_factor );
+
+            if( $is_bump ) {
+                if( not exists $checked_pairs->{$sym_label}{$new_label} ) {
+                    my $message =  "atoms \"$current_atom->{label}\" and " .
+                        "\"$sym_atom->{label}\" are too close " .
+                        "(distance = " .
+                        sprintf( "%6.4f", $dist ) .
+                        ") and are considered a bump";
+                    if( $ignore_bumps ) {
+                        warning( $0, $filename, $dataname, $message );
+                    } else {
+                        error( $0, $filename, $dataname, $message );
+                        print STDERR "$0: Aborting calculations.\n";
+                        exit( 254 );
+                    }
+                }
+            }
+
+            $checked_pairs->{$sym_label}{$new_label} = 1;
+            $checked_pairs->{$new_label}{$sym_label} = 1;
+
+            my $is_bond = test_bond($atom_properties,
+                                    $current_atom->{chemical_type},
+                                    $sym_atom->{chemical_type},
+                                    $dist,
+                                    $covalent_sensitivity);
+
+            if( $is_bond &&
+                ( ( !defined $current_atom->{group} &&
+                    !defined $current_atom->{assembly} &&
+                    !defined $sym_atom->{group} &&
+                    !defined $sym_atom->{assembly} ) ||
+                  ( $current_atom->{group} eq $sym_atom->{group} &&
+                    $current_atom->{assembly} eq $sym_atom->{assembly} ) ||
+                  ( $current_atom->{assembly} eq "." && 
+                    $current_atom->{group} eq "." ) ||
+                  ( $sym_atom->{assembly} eq "." && 
+                    $sym_atom->{group} eq "." ) )) {
+                do {
+                    use Serialise;
+                    local $" = ' ';
+                    print STDERR ">>> found bond:\n";
+                    serialiseRef( { "translation" => $current_translation,
+                                    "original atom" => $current_atom,
+                                    "sym atom" => $sym_atom } );
+                } if $debug;
+
+                my $back_shifted_sym_atom =
+                    translate_atom( $sym_atom, $current_translation,
+                                    $ortho_matrix );
+
+                do {
+                    use Serialise;
+                    print ">>>> back-shifted atom:\n";
+                    serialiseRef( { sym_atom => $sym_atom, backshifted => $back_shifted_sym_atom } );
+                } if $debug;
+
+                push(@neighbors, find_molecule( $covalent_sensitivity,
+                                                $atom_properties,
+                                                $symmetric_atoms,
+                                                $used_atoms,
+                                                $used_originals,
+                                                $used_uc_atoms,
+                                                $checked_pairs,
+                                                $back_shifted_sym_atom,
+                                                $bricks,
+                                                $filename, $dataname,
+                                                $ortho_matrix ));
+            }
+        }
+    }}}
+
+    print ">>> Finished checks;\n" if $debug;
+
+    do {
+        use Serialise;
+        print ">>> Before translation:";
+        serialiseRef( \@neighbors );
+    } if $debug;
+
+    return @neighbors;
+}
+
+sub dump_atoms_as_cif
+{
+    my ($datablock_name, $atom_list, $cell) = @_;
+
+    local $\ = "\n";
+
+    print "data_", $datablock_name;
+
+    print "_symmetry_space_group_name_H-M ", "'P 1'";
+    print "_cell_length_a ", $$cell[0] if defined $$cell[0];
+    print "_cell_length_b ", $$cell[1] if defined $$cell[1];
+    print "_cell_length_c ", $$cell[2] if defined $$cell[2];
+
+    print "_cell_angle_alpha ", $$cell[3] if defined $$cell[3];
+    print "_cell_angle_beta  ", $$cell[4] if defined $$cell[4];
+    print "_cell_angle_gamma ", $$cell[5] if defined $$cell[5];
+
+    print "loop_";
+    print "_atom_site_label";
+    print "_atom_site_fract_x";
+    print "_atom_site_fract_y";
+    print "_atom_site_fract_z";
+
+    for my $atom (@$atom_list) {
+	print
+	    $atom->{label}, " ",
+	    $atom->{coordinates_fract}[0], " ",
+	    $atom->{coordinates_fract}[1], " ",
+	    $atom->{coordinates_fract}[2];
+    }
+}
+
+#===========================================================================
+# Extract symmetry operators from a parsed CIF datablock
+#
+# Returns a list of symmetry operators as ASCII strings with generap
+# position formulae (e.g. -y,-x,z+1/2).
+
+sub get_symmetry_operators($$)
+{
+    my ($dataset, $filename) = @_;
+    my $values = $dataset->{values};
+    my $sym_data;
+
+    if( exists $values->{"_space_group_symop_operation_xyz"} ) {
+        $sym_data = $values->{"_space_group_symop_operation_xyz"};
+    } elsif( exists $values->{"_symmetry_equiv_pos_as_xyz"} ) {
+        $sym_data = $values->{"_symmetry_equiv_pos_as_xyz"};
+    }
+
+    if( exists $values->{"_space_group_name_Hall"} &&
+        not defined $sym_data ) {
+        my $hall = $values->{"_space_group_name_Hall"}[0];
+        $sym_data = get_symops("hall", $hall);
+
+        if( !defined $sym_data )
+        {
+            error( $0, $filename, $dataset->{name},
+                   "incorrect _space_group_name_Hall '$hall'" );
+        }
+    } elsif( exists $values->{"_symmetry_space_group_name_Hall"} &&
+        not defined $sym_data ) {
+        my $hall = $values->{"_symmetry_space_group_name_Hall"}[0];
+        $sym_data = get_symops("hall", $hall);
+
+        if( !defined $sym_data )
+        {
+            error( $0, $filename, $dataset->{name},
+                   "incorrect _symmetry_space_group_name_Hall '$hall'" );
+        }
+    }
+
+    if(exists $values->{"_space_group_name_H-M_alt"} &&
+       not defined $sym_data)
+    {
+        my $h_m = $values->{"_space_group_name_H-M_alt"}[0];
+        $sym_data = get_symops("hermann_mauguin", $h_m);
+
+        if( !defined $sym_data )
+        {
+            error( $0, $filename, $dataset->{name},
+                   "incorrect _space_group_name_H-M_alt '$h_m'" );
+        }
+    } elsif(exists $values->{"_symmetry_space_group_name_H-M"} &&
+            not defined $sym_data)
+    {
+        my $h_m = $values->{"_symmetry_space_group_name_H-M"}[0];
+        $sym_data = get_symops("hermann_mauguin", $h_m);
+
+        if( !defined $sym_data )
+        {
+            error( $0, $filename, $dataset->{name},
+                   "incorrect _symmetry_space_group_name_H-M '$h_m'" );
+        }
+    }
+
+    return $sym_data;
+}
