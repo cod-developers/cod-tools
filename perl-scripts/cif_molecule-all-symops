@@ -1,4 +1,4 @@
-#! /bin/sh
+! /bin/sh
 #!perl -w # --*- Perl -*--
 eval 'exec perl -x $0 ${1+"$@"}'
     if 0;
@@ -2032,7 +2032,7 @@ sub print_molecule
 
     my $atom_site_type_symbol = $dataset->{values}{_atom_site_type_symbol};
     my $atom_site_occupancy   = $dataset->{values}{_atom_site_occupancy};
-    my $atom_site_U_iso_or_equiv = 
+    my $atom_site_U_iso_or_equiv =
         $dataset->{values}{_atom_site_U_iso_or_equiv};
 
     my %renamed_tags = rename_tags( $dataset, \@data2rename, "_cod_src" );
@@ -2085,6 +2085,18 @@ sub print_molecule
 
     }
 
+    my $has_disorder = 0;
+    my $is_polymer   = 0;
+    foreach my $atom ( @{$molecule->{atoms_c}} ) {
+        if( $atom->{group} ne '.' || $atom->{assembly} ne '.' ) {
+            $has_disorder = 1;
+        }
+        if( exists $atom->{is_polymer} && $atom->{is_polymer} == 1 ) {
+            $is_polymer = 1;
+        }
+        if( $has_disorder && $is_polymer ) { last; }
+    }
+
     print "_symmetry_space_group_name_H-M   \'P 1\'\n";
     print "loop_ _symmetry_equiv_pos_as_xyz \'x, y, z\'\n";
     print "loop_\n";
@@ -2098,6 +2110,10 @@ sub print_molecule
         if defined $atom_site_U_iso_or_equiv;
     print "_atom_site_occupancy\n"
         if defined $atom_site_occupancy;
+    print "_atom_site_disorder_assembly\n"
+        if $use_one_output_datablock && $has_disorder;
+    print "_atom_site_disorder_group\n"
+        if $use_one_output_datablock && $has_disorder;
 
     my $print_format = join( " ", ($format)x3 );
     foreach my $atom ( sort {
@@ -2128,19 +2144,13 @@ sub print_molecule
             print " ";
             CIFTagPrint::print_value( $atom->{atom_site_occupancy} );
         }
+        if( $use_one_output_datablock && $has_disorder ) {
+            print " ";
+            CIFTagPrint::print_value( $atom->{assembly} );
+            print " ";
+            CIFTagPrint::print_value( $atom->{group} );
+        }
         print "\n";
-    }
-
-    my $has_disorder = 0;
-    my $is_polymer   = 0;
-    foreach my $atom ( @{$molecule->{atoms_c}} ) {
-        if( $atom->{group} ne '.' || $atom->{assembly} ne '.' ) {
-            $has_disorder = 1;
-        }
-        if( exists $atom->{is_polymer} && $atom->{is_polymer} == 1 ) {
-            $is_polymer = 1;
-        }
-        if( $has_disorder && $is_polymer ) { last; }
     }
 
     if( $is_polymer ) {
