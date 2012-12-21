@@ -1584,6 +1584,9 @@ sub symgen_atom($$$)
             for my $j ($i+1..$#$sym_atoms) {
                 if( distance( $sym_atoms->[$i]{coordinates_fract},
                               $sym_atoms->[$j]{coordinates_fract}) < 0.0001 ) {
+                    $sym_atoms->[$i]{transform_matrices} =
+                        [ @{$sym_atoms->[$i]{transform_matrices}},
+                          @{$sym_atoms->[$j]{transform_matrices}} ];
                     $to_be_deleted{$sym_atoms->[$j]{label}} = 1;
                 }
             }
@@ -1595,6 +1598,8 @@ sub symgen_atom($$$)
                     [ $atom->{transform_matrices}[0],
                       @$symops_mapping_to_self ];
                 }
+                $atom->{transform_matrices} =
+                    [ unique_symops( @{$atom->{transform_matrices}} ) ];
                 push( @unique_atoms, $atom );
             }
         }
@@ -2679,4 +2684,22 @@ sub get_symmetry_operators($$)
     }
 
     return $sym_data;
+}
+
+#===========================================================================
+# Return unique symmetry operators (in matrix form) whilst preserving the
+# input order
+
+sub unique_symops
+{
+    my @symops = @_;
+    my %seen_symops;
+    my @unique_symops;
+    for my $symop ( @symops ) {
+        my $symop_string = string_from_symop( $symop );
+        next if exists $seen_symops{$symop_string};
+        push( @unique_symops, $symop );
+        $seen_symops{$symop_string} = 1;
+    }
+    return @unique_symops;
 }
