@@ -100,6 +100,7 @@ my $original_filename;
 
 my $journal;
 my $volume;
+my $doi;
 my $issue;
 my $start_page;
 my $end_page;
@@ -633,6 +634,10 @@ for my $filename (@ARGV) {
                         my $y = $1;
                         $y =~ s/[^0-9]//g;
                         $datablok->{_journal_year} = [ unicode2cif( $y ) ];
+                    }
+                    if( !$doi && ( $reference =~ /<doi>(.*?)<\/doi>/s ||
+                                      $reference =~ /\\doi\{(.*?)\}/s )) {
+                        $datablok->{_journal_paper_doi} = [ unicode2cif( $1 ) ];
                     }
                     if( !$start_page && ( $reference =~ /<pages?>(.*?)<\/pages?>/s ||
                                           $reference =~ /\\pages?\{(.*?)\}/s )) {
