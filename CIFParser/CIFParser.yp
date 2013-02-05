@@ -280,6 +280,8 @@ data_block_head
 		}
 	|	DATA_
                 {
+                        $_[1] =~ m/^(data_)(.*)/si;
+                        $_[0]->{USER}->{CURRENT_DATABLOCK} = $2;
                         unless( $_[0]->{USER}{OPTIONS}{fix_errors} ||
                                 $_[0]->{USER}{OPTIONS}{fix_datablock_names} ) {
                             $_[0]->_Error();
@@ -288,8 +290,8 @@ data_block_head
                 cif_value_list
 		{
                         my $extra_values = join( "_", @{$_[3]} );
-			$_[1] =~ m/^(data_)(.*)/si;
-                        my $datablock_name = $2 . "_" . $extra_values;
+                        my $datablock_name = $_[0]->{USER}->{CURRENT_DATABLOCK} .
+                            "_" . $extra_values;
                         $_[0]->{USER}->{CURRENT_DATABLOCK} = $datablock_name;
                         if( $_[0]->{USER}{OPTIONS}{fix_errors} ||
                             $_[0]->{USER}{OPTIONS}{fix_string_quotes} ) {
