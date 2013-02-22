@@ -131,6 +131,10 @@ do
     echo '$$$$'
 done \
 | perl -0777 -pe 's/^> <.*?>\n\s*\n//mg' \
-| cif-to-utf8
+| cif-to-utf8 \
+| perl -CS -MUnicode::Normalize -pe \
+    "# from http://ahinea.com/en/tech/accented-translate.html:
+     # 2011.12.10
+     \$_ = NFD(\$_); s/\\pM//g;"
 
 rm -rf "${TMP_DIR}"
