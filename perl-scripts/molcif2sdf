@@ -81,6 +81,10 @@ cif_values='cif_values --no-header --no-dataname --no-filename --dont-replace-sp
 
 ## set -x
 
+NMOLS=$(find ${TMP_SPLIT_DIR}/ -name '*.cif' | wc -l)
+
+N=0
+
 for MOL in ${TMP_SPLIT_DIR}/*
 do
     (
@@ -98,7 +102,12 @@ do
     test "${DATABASE_ID}" = "?" && \
         DATABASE_ID=$(${cif_values} _cod_data_source_block $MOL)
     echo '> <PUBCHEM_EXT_DATASOURCE_REGID>'
-    echo ${DATABASE_ID}
+    if [ $NMOLS -gt 1 ]
+    then
+        echo ${DATABASE_ID}_${N}
+    else
+        echo ${DATABASE_ID}
+    fi
     echo ""
     echo '> <PUBCHEM_SUBSTANCE_SYNONYM>'
     (
@@ -129,6 +138,7 @@ do
     echo "http://www.crystallography.net/cod/${DATABASE_ID}.html"
     echo ""
     echo '$$$$'
+    N=$(expr $N + 1)
 done \
 | perl -0777 -pe 's/^> <.*?>\n\s*\n//mg' \
 | cif-to-utf8 \
