@@ -72,6 +72,11 @@ for my $file (@ARGV) {
                 $volume = $1;
             }
 
+            my $doi;
+            if( $article =~ m|<doi[^>]*>(.*?)</doi>|ms ) {
+                $doi = $1;
+            }
+
             my $pages;
             if( $article =~ m|<first_page>(.*?)</first_page>| ) {
                 $pages = $1;
@@ -116,6 +121,7 @@ for my $file (@ARGV) {
             print "<volume>$volume</volume>\n" if defined $volume;
             print "<issue>$issue</issue>\n" if defined $issue;
             print "<pages>$pages</pages>\n" if defined $pages;
+            print "<doi>$doi</doi>\n" if defined $pages;
             print "\n";
         }
     } else {
