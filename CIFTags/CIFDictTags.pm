@@ -169,6 +169,7 @@ _journal_page_last
 _journal.page_last
 _journal_paper_category
 _journal.paper_category
+_journal_paper_doi
 _journal_suppl_publ_number
 _journal.suppl_publ_number
 _journal_suppl_publ_pages
@@ -3623,7 +3624,6 @@ _oxford_reflns_threshold_expression_ref
 _oxford_structure_analysis_title
 _oxford_twin_element_scale_factors
 
-_journal_paper_doi
 _chemical_identifier_inchi
 _chemical_identifier_inchi_key
 _chemical_identifier_inchi_version
