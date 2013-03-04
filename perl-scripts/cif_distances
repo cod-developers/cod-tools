@@ -18,6 +18,7 @@ use lib "../../";
 
 use strict;
 use warnings;
+use Escape;
 use File::Basename; 
 use CIFData::CIFCellContents;
 use CIFParser;
@@ -38,6 +39,9 @@ my $add_filename;
 my $verbose;
 my $format = "%-11.3f";
 my $line_length = 80;
+
+my $escape_sequence = '\\';
+my %escaped_symbols = ("\"" => '"', "\'" => "'");
 
 @ARGV = getOptions( 
 
@@ -688,14 +692,16 @@ sub print_pairwise {
 
         for ( my $j = 1; $j < @{ @$atoms_used[ $i ] }; $j++ ) {
             my $atom_2 = @$atoms_used[ $i ] -> [ $j ];
+
+            my $output_string = "";
             
             if ( @$distances[ $i ] -> [ $j ] eq "-" ) {
-                printf( 'DIST %-6s', "-" );
+                $output_string .= sprintf( 'DIST %-6s', "-" );
             } else {
-                printf( 'DIST %-6.3f', @$distances[ $i ] -> [ $j ] );
+                $output_string .= sprintf( 'DIST %-6.3f', @$distances[ $i ] -> [ $j ] );
             }
 
-            printf( ' %10s %10s %24s %8s ',  
+            $output_string .= sprintf( ' %10s %10s %24s %8s ',  
                     $atom_1 -> { label }."/".$atom_1 -> { chemical_type },
                     $atom_2 -> { label }."/".$atom_2 -> { chemical_type },
                     $atom_2 -> { sym_operator },
@@ -703,9 +709,10 @@ sub print_pairwise {
                     );
 
             if ( $print_filename ) {
-                print basename( $filename );
+               $output_string .= basename( $filename );
             }
-            print "\n";
+            print Escape::escape("$output_string\n", { sequence => $escape_sequence,
+                               escaped_symbols => \%escaped_symbols });
         }
     }
 }
