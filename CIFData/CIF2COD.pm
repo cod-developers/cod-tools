@@ -137,6 +137,7 @@ my @data_fields = @CIF2COD::default_data_fields;
     issue
     firstpage
     lastpage
+    doi
 
     method
     radiation
@@ -393,6 +394,7 @@ sub cif2cod
         $data{issue} = get_tag_or_undef( $values, "_journal_issue", 0 );
         $data{firstpage} = get_tag_or_undef( $values, "_journal_page_first", 0 );
         $data{lastpage} = get_tag_or_undef( $values, "_journal_page_last", 0 );
+        $data{doi} = get_tag_or_undef( $values, "_journal_paper_doi", 0 );
 
         $data{method} = get_experimental_method( $values );
 
