@@ -16,6 +16,7 @@ use strict;
 use lib "./lib/perl5";
 use lib "./CIFParser";
 use CIFParser;
+use CCIFParser;
 use Spacegroups::SpacegroupNames;
 use CIFData::CIFCellContents;
 use CIFData::CIF2COD;
@@ -28,6 +29,8 @@ my $print_header = 0;
 my $print_keywords = 0;
 
 my $user_columns; # User specified list of columns to be printed
+
+my $use_parser = "c";
 
 my %options;
 
@@ -61,6 +64,9 @@ my %options;
 #*     --columns file,flags,Robs
 #*     --columns "file flags Robs"
 #*         Print only columns specified in this option.
+#*
+#*      --use-perl-parser   Use the Perl parser for parsing CIFs
+#*      --use-c-parser      Use the faster C parser for CIFs (default).
 #*
 #*     --help  print a short usage message (this message) and exit.
 #**
@@ -102,6 +108,9 @@ my %options;
         => sub{ $options{use_datablocks_without_coord} = 0 },
     "--skip-datablocks-without-coordinates"
         => sub{ $options{use_datablocks_without_coord} = 0 },
+
+    "--use-perl-parser"       => sub{ $use_parser = "perl" },
+    "--use-c-parser"          => sub{ $use_parser = "c" },
 
     "--help,--usage"  => sub { SUsage::usage; exit },
 );
@@ -151,13 +160,22 @@ if( $print_header ) {
 
 for my $filename (@ARGV) {
 
-    my $parser = new CIFParser;
-    my $data = $parser->Run($filename);
+    my( $data, $error_count );
 
-    if( defined $parser->YYData->{ERRCOUNT} &&
-        $parser->YYData->{ERRCOUNT} > 0 ) {
-        error( $parser->YYData->{ERRCOUNT} .
-               " error(s) encountered while parsing" );
+    if( $use_parser eq "perl" ) {
+        my $parser = new CIFParser;
+
+        $data = $parser->Run($filename, \%options);
+
+        if( defined $parser->YYData->{ERRCOUNT} ) {
+            $error_count = $parser->YYData->{ERRCOUNT};
+        }
+    } else {
+        ( $data, $error_count ) = CCIFParser::parse( $filename, \%options );
+    }
+
+    if( defined $error_count && $error_count > 0 ) {
+        error( $error_count . " error(s) encountered while parsing" );
     }
 
     my $extracted = CIF2COD::cif2cod( $data, $filename, \%options );
