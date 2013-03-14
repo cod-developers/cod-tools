@@ -70,6 +70,7 @@ my $cod_number;
     sgHall
     commonname
     chemname
+    mineral
     formula
     calcformula
     acce_code
@@ -291,12 +292,13 @@ sub cif2cod
         my $common_name =
             get_tag_or_undef( $values, "_chemical_name_common", 0 );
 
-        if( !$common_name ) {
-            $common_name =
-                get_tag_or_undef( $values, "_chemical_name_mineral", 0 );
-        }
-
         undef $common_name
+            if defined $common_name && $common_name =~ /^\s*\?\s*$/sm;
+
+        my $mineral_name =
+                get_tag_or_undef( $values, "_chemical_name_mineral", 0 );
+
+        undef $mineral_name
             if defined $common_name && $common_name =~ /^\s*\?\s*$/sm;
 
         my $formula = get_tag( $values, "_chemical_formula_sum", 0, $filename );
@@ -356,6 +358,7 @@ sub cif2cod
         $data{sgHall} = get_spacegroup_Hall_symbol( $values, $filename );
         $data{commonname} = $common_name;
         $data{chemname} = $systematic_name;
+        $data{mineral} = $mineral_name;
         $data{formula} = $formula ? "- " . $formula . " -" : "?";
         $data{calcformula} = $calculated_formula ?
               "- " . $calculated_formula . " -" : undef;
