@@ -14,7 +14,6 @@ use strict;
 use Spacegroups::SpacegroupNames;
 use CIFData::CIFCellContents;
 use CIFTags::CIFDictTags;
-use CIFData::CIFClassifyer;
 use AtomProperties;
 use Unicode2CIF;
 
@@ -477,18 +476,6 @@ sub cif2cod
             if( entry_has_Fobs( $values )) {
                 $value .= $separator . "has Fobs";
                 $separator = ",";
-            }
-            my $bond_flags;
-            eval {
-                $bond_flags = CIFClassifyer::cif_class_flags
-                    ( $dataset, $filename, \%AtomProperties::atoms,
-                      $bond_safety_margin )
-            };
-            if( defined $bond_flags ) {
-                $bond_flags =~ s/has_(\w+)_(\w+)_bond/has $1-$2 bond/g;
-                if( $bond_flags !~ /^\s*$/ ) {
-                    $value .= "," . $bond_flags;
-                }
             }
             $data{flags} = $value;
         };
