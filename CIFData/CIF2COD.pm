@@ -70,7 +70,6 @@ my $cod_number;
     sgHall
     commonname
     chemname
-    mineral
     formula
     calcformula
     acce_code
@@ -125,6 +124,7 @@ my @data_fields = @CIF2COD::default_data_fields;
 
     commonname
     chemname
+    mineral
     formula
     calcformula
 
