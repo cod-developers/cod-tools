@@ -145,6 +145,10 @@ foreach my $filename ( @ARGV ) {
         my $sym_data = CIFSymmetryGenerator::get_symmetry_operators( 
                                                     $dataset, $filename );
 
+        #   transforms symmetry operators into canonical from
+        @{$sym_data} = map { SymopParse::symop_string_canonical_form( $_ ) } 
+                                                    @{$sym_data};
+
         #   extracts atoms
         my $atoms = get_atoms( $dataset, $ortho_matrix, $filename, $uniquify_atoms );
         
@@ -386,8 +390,6 @@ sub symops_apply {
 
     # computes symmetry operator matrices
     my @sym_operators = map { SymopParse::symop_from_string( $_ ) } @{$sym_data};
-    # converts matrices back to strings all having the same format.
-    @{$sym_data} = map { SymopParse::string_from_symop_reduced( $_ ) } @{sym_operators};
 
     my $sym_atoms = CIFSymmetryGenerator::symop_generate_atoms( 
                                                     \@sym_operators, 
