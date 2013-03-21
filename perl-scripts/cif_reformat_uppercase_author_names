@@ -58,7 +58,10 @@ for my $filename (@ARGV) {
         if( exists $values->{_publ_author_name} ) {
             for my $i (0..$#{$values->{_publ_author_name}}) {
                 my $author = $values->{_publ_author_name}[$i];
-                $author =~ s/([[:upper:]]{2,})/ucfirst(lc($1))/e;
+                my $cif_diacritic = ",(\";%\/?&'`^~>=.<";
+                $author =~ 
+                    s/(\\[$cif_diacritic])?([[:upper:]$cif_diacritic\\]{2,})/
+                    (defined $1?$1:"").ucfirst(lc($2))/gex;
                 $values->{_publ_author_name}[$i] = $author;
                 
             }
