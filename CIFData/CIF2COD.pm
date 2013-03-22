@@ -163,6 +163,7 @@ my @data_fields = @CIF2COD::default_data_fields;
     status
     flags
     text
+    onhold
 );
 
 my %spacegroups = map {
@@ -397,6 +398,7 @@ sub cif2cod
         $data{firstpage} = get_tag_or_undef( $values, "_journal_page_first", 0 );
         $data{lastpage} = get_tag_or_undef( $values, "_journal_page_last", 0 );
         $data{doi} = get_tag_or_undef( $values, "_journal_paper_doi", 0 );
+        $data{onhold} = get_tag_or_undef( $values, "_cod_hold_until_date", 0 );
 
         $data{method} = get_experimental_method( $values );
 
