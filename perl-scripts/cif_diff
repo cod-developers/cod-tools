@@ -37,7 +37,13 @@ my $left    = 1;
 my $right   = 1;
 my $common  = 1;
 
+my $L_option_param;
+
 @ARGV = getOptions(
+    "-L" => \$L_option_param, # Ignore the '-L' option and its argument
+    "-u" => sub { 1; }, # Ignore the '-u' option, so that we can use
+                        # the 'cif_diff' program as the --diff-cmd for
+                        # 'svn diff'
     "-t,--tags" => sub { $compare_only_selected = 1;
                          @selected_tags = split( /\s|,/, get_value()); },
     "-a,--add-tag" => sub { $compare_only_selected = 1;
