@@ -63,6 +63,7 @@ _cod_original_cell_volume
 _cod_suboptimal_structure
 _cod_related_optimal_struct
 _cod_related_suboptimal_struct
+_cod_related_entry
 _cod_chemical_formula_sum_orig
 _cod_chemical_formula_moiety_orig
 _cod_citation_special_details
