@@ -671,7 +671,7 @@ void print_message_generic( const char *progname,
 {
     fflush(NULL);
     if( progname && strlen( progname ) > 0 ) {
-        fprintf( stderr, "%s: %s", progname, filename );
+        fprintf( stderr, "%s: %s", progname, filename ? filename : "" );
     }
     if( line != -1 ) {
         fprintf( stderr, "(%d", line );
