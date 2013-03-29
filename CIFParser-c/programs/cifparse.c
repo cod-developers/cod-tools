@@ -156,13 +156,16 @@ int main( int argc, char *argv[], char *env[] )
                       printf( "%s: file '%s' OK\n", progname, filename );
                   }
               }
-              delete_cif( cif );
-              cif = NULL;
-              filename = NULL;
           } else {
+              retval = 1;
               if( print_cif.value.b == 0 ) {
                   printf( "%s: file '%s' FAILED\n", progname, filename );
               }
+          }
+          if( cif ) {
+              delete_cif( cif );
+              cif = NULL;
+              filename = NULL;
           }
       }
       cexception_catch {
