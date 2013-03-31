@@ -6,6 +6,7 @@
 \*---------------------------------------------------------------------------*/
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <strings.h>
 #include <cexceptions.h>
 #include <getoptions.h>
@@ -80,7 +81,7 @@ static void show_options( struct options *options )
 	    options->output_name.value.s ?
 	        options->output_name.value.s : "<null>" );
 
-    printf( "--flag    = %s\n",  options->flag.value.bool ? "TRUE" : "FALSE" );
+    printf( "--flag    = %s\n",  options->flag.value.b ? "TRUE" : "FALSE" );
     printf( "--integer = %d\n",  (int)options->int_value.value.i );
     printf( "--long    = %ld\n", options->long_value.value.i );
     printf( "--float   = %f\n",  (double)options->float_value.value.f );
