@@ -76,7 +76,7 @@ static void version( int argc, char *argv[], int *i, option_t *option,
 }
 
 static option_value_t fix_errors;
-static option_value_t verbose;
+static option_value_t be_quiet;
 static option_value_t debug;
 static option_value_t print_cif;
 
@@ -86,9 +86,9 @@ static option_t options[] = {
   { "-f-","--dont-fix-syntax", OT_BOOLEAN_FALSE,  &fix_errors },
   { "-c", "--compile-only",    OT_BOOLEAN_FALSE,  &print_cif },
   { "-p", "--print",           OT_BOOLEAN_TRUE,   &print_cif },
-  { "-q", "--quiet",           OT_BOOLEAN_FALSE,  &verbose },
-  { "-q-","--no-quiet",        OT_BOOLEAN_TRUE,   &verbose },
-  { NULL, "--vebose",          OT_BOOLEAN_TRUE,   &verbose },
+  { "-q", "--quiet",           OT_BOOLEAN_TRUE,   &be_quiet },
+  { "-q-","--no-quiet",        OT_BOOLEAN_FALSE,  &be_quiet },
+  { NULL, "--verbose",         OT_BOOLEAN_FALSE,  &be_quiet },
   { NULL, "--help",            OT_FUNCTION, NULL, &usage },
   { NULL, "--version",         OT_FUNCTION, NULL, &version },
   { NULL }
@@ -153,7 +153,9 @@ int main( int argc, char *argv[], char *env[] )
                   if( print_cif.value.b == 1 ) {
                       cif_print( cif );
                   } else {
-                      printf( "%s: file '%s' OK\n", progname, filename );
+                      if( !be_quiet.value.b ) {
+                          printf( "%s: file '%s' OK\n", progname, filename );
+                      }
                   }
               }
           } else {
