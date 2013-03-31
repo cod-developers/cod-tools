@@ -137,7 +137,7 @@ int main( int argc, char *argv[], char *env[] )
             taglen = strchr( tag_pointer, '\0' ) - tag_pointer;
         }
         taglist = reallocx( taglist, sizeof( char * ) * tagcount, &inner );
-        taglist[tagcount - 1] = mallocx( taglen * sizeof( char ), &inner );
+        taglist[tagcount - 1] = mallocx( taglen * sizeof( char ) + 1, &inner );
         strncpy( taglist[tagcount - 1], tag_pointer, taglen );
         taglist[tagcount - 1][taglen] = '\0';
         if( end_pointer != NULL ) {
