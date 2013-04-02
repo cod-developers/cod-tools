@@ -18,6 +18,7 @@ use lib "../../";
 
 use strict;
 use warnings;
+use AtomProperties;
 use Escape;
 use File::Basename; 
 use CIFData::CIFCellContents;
@@ -248,12 +249,23 @@ sub get_atoms {
             ],
         };
 
-        if( !defined $atom->{chemical_type} ) {
+        if( !defined $atom->{chemical_type} || $atom->{chemical_type} eq '?' ) {
             $atom->{chemical_type} = $atom->{label};
-        }
+        
 
-        if( $atom->{chemical_type} =~ m/^([A-Za-z]{1,2})/ ) {
-            $atom->{chemical_type} = ucfirst( lc( $1 ));
+            if( $atom->{chemical_type} =~ m/^([A-Z][a-z]?)/ ) {
+                $atom->{chemical_type} = ucfirst( lc( $1 ));
+            }
+
+            if( ! exists $AtomProperties::atoms{$atom->{chemical_type}}) {
+                print "Unable to determine chemical type of atom";
+                $atom->{chemical_type} = "UN"
+            };
+        
+        } else {
+            if( $atom->{chemical_type} =~ m/^([A-Z][a-z]?)/ ) {
+                $atom->{chemical_type} = ucfirst( lc( $1 ));
+            }
         }
 
         @{$atom->{coordinates_fract}} = map { s/\(\d+\)\s*$//; $_ }
