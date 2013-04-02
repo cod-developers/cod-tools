@@ -228,7 +228,7 @@ sub get_atoms {
     } else {
         error( $0, $filename, $dataset->{name},
                "neither _atom_site_type_symbol nor _atom_site_label were found" );
-	return undef;
+	    return undef;
     }
 
     my @atoms;
@@ -255,10 +255,12 @@ sub get_atoms {
 
             if( $atom->{chemical_type} =~ m/^([A-Z][a-z]?)/ ) {
                 $atom->{chemical_type} = ucfirst( lc( $1 ));
-            }
+            };
 
             if( ! exists $AtomProperties::atoms{$atom->{chemical_type}}) {
-                print "Unable to determine chemical type of atom";
+               warning( $0, $filename, $dataset->{name}, 'Unable to determine ' . 
+                      'chemical type from _atom_site_label ' . $atom->{label}  . 
+                      '. ' . 'Atom chemical type will be set to "UN"');
                 $atom->{chemical_type} = "UN"
             };
         
