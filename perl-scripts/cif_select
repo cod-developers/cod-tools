@@ -23,6 +23,7 @@ use SUsage;
 my @selected_tags;
 
 my $treat_dots_as_underscores = 1;
+my $output_tabular = 0;
 
 #* Usage:
 #*     cif_select [options] input.cif [input2.cif ...]
@@ -49,6 +50,13 @@ my $treat_dots_as_underscores = 1;
 #**    --dont-treat-dots-as-underscores,--no-treat-dots-as-underscores
 #**        Leave original tags as they are.
 #**
+#*     --tabular, --output-tabular
+#*         Output selected tags and their values in tabular format:
+#*         <datablock name> <tag name> <value> <value> ... <value>
+#*
+#*     --cif, --output-cif
+#*         Output selected tags and their values in CIF format (default).
+#*
 #*     --help  print a short usage message (this message) and exit.
 #**
 
@@ -75,6 +83,9 @@ my $treat_dots_as_underscores = 1;
         => sub { $treat_dots_as_underscores = 0 },
     "--no-treat-dots-as-underscores"
         => sub { $treat_dots_as_underscores = 0 },
+
+    "--tabular,--output-tabular" => sub { $output_tabular = 1 },
+    "--cif,--output-cif" => sub { $output_tabular = 0 },
 
     "--help,--usage"  => sub { SUsage::usage; exit },
 );
@@ -124,11 +135,24 @@ for my $filename (@ARGV) {
             }
         }
 
-        CIFTagPrint::print_cif( $dataset,
-                   {
-                       dictionary_tags => \%selected_tags,
-                       dictionary_tag_list => \@selected_tags,
-                       exclude_misspelled_tags => 1,
-                   } );
+        if( $output_tabular ) {
+            local $, = "\t";
+            local $\ = "\n";
+            for my $tag (@selected_tags) {
+                print $dataset->{name},
+                      $tag,
+                      ( exists $dataset->{values}{$tag}
+                            ? join( $,, map{ s/[\n\t]/ /g; $_ }
+                                    @{$dataset->{values}{$tag}} )
+                            : '?' );
+            }
+        } else {
+            CIFTagPrint::print_cif( $dataset,
+                       {
+                           dictionary_tags => \%selected_tags,
+                           dictionary_tag_list => \@selected_tags,
+                           exclude_misspelled_tags => 1,
+                       } );
+        }
     }
 }
