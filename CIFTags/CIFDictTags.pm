@@ -1361,6 +1361,9 @@ _database.code_PDB
 _database_code_PDF
 _database.code_PDF
 _database_code_COD
+_database.code_COD
+_database_code_amcsd
+_database.code_amcsd
 _database_CSD_history
 _database.CSD_history
 _database.entry_id
