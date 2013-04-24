@@ -28,12 +28,15 @@ use SOptions;
 use SUsage;
 
 my $override_tags;
+my $override_all = 0;
 my $merge_tags;
 
 #* USAGE:
 #*     $0 [options] input.cif [input2.cif ...]
 #* 
 #* OPTIONS:
+#*    --override-all    Override all data items in the recipient CIF.
+#*
 #*    --override-tags  _tag1,_tag2
 #*        Replace values for tags listed as an argument (_tag1 and _tag2 in 
 #*        this example) instead of keeping old values.
@@ -48,6 +51,8 @@ my $merge_tags;
 @ARGV = getOptions( 
     "--merge-tags"    => \$merge_tags,
     "--override-tags" => \$override_tags,
+    "--override-all"       => sub { $override_all = 1 },
+    "--dont-override-all"  => sub { $override_all = 0 },
     "--help,--usage"  => sub { SUsage::usage; exit },
 );
 
@@ -153,14 +158,15 @@ for my $filename (@ARGV) {
                     $old_datablock->{types}{$tag} =
                         $new_datablock->{types}{$tag};
                 } else {
-                    if( $merge_tags{$tag} ) {
+                    if( $merge_tags{lc($tag)} ) {
                         for( my $i = 0;
                              $i <= $#{$old_datablock->{values}{$tag}};
                              $i ++ ) {
                             $old_datablock->{values}{$tag}[$i] .= "\n" .
                                 $new_datablock->{values}{$tag}[$i];
                         }
-                    } elsif( defined $override_tags{$tag} ) {
+                    } elsif( defined $override_tags{lc($tag)} ||
+                             $override_all ) {
                         for( my $i = 0;
                              $i <= $#{$old_datablock->{values}{$tag}};
                              $i ++ ) {
