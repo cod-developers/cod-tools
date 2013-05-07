@@ -119,6 +119,8 @@ my $cif_header_file; # The name of an external file that holds a CIF
 my $data_block_nr; # If defined, specifies that data blocks should be
                    # numbered in a COD-like fasion.
 
+my $datablock_format = "%07d";
+
 my %spacegroups = map {
     my $key1 = $_->[1];
     my $key2 = $_->[2];
@@ -242,6 +244,8 @@ my %spacegroups = map {
     "-e,--end-page"     => sub{ $user_biblio = 1; $end_page = get_value() },
     "-y,--year"         => sub{ $user_biblio = 1; $year = get_value() },
     "-B,--bibliography" => \$biblio,
+
+    "-d,--datablock-format" => \$datablock_format,
 
     "-g,--global-priority"     => sub { $global_priority = 1 },
     "-g-,--no-global-priority" => sub { $global_priority = 0 },
@@ -1057,7 +1061,7 @@ for my $filename (@ARGV) {
         # Calculate the data block name:
 
         if( defined $data_block_nr ) {
-            $dataset->{name} = sprintf "%07d", $data_block_nr;
+            $dataset->{name} = sprintf $datablock_format, $data_block_nr;
             if( $update_database_code ) {
                 $dataset->{values}{_cod_database_code}[0] = $dataset->{name};
             }
