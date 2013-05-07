@@ -87,7 +87,7 @@ sub fetch_duplicates_from_database
 
     my %COD = ();
 
-    query_COD_database( $dbh, $database, \%COD, \%structures );
+    query_COD_database( $dbh, $database, \%COD, \%structures, $options );
 
     my @duplicates;
     for my $id (keys %structures) {
@@ -551,18 +551,23 @@ sub database_disconnect
 
 sub query_COD_database
 {
-    my ( $dbh, $database, $COD, $data ) = @_;
+    my ( $dbh, $database, $COD, $data, $options ) = @_;
 
     use DBI;
 
     my @columns = qw( file a b c alpha beta gamma
                       siga sigb sigc sigalpha sigbeta siggamma
                       celltemp diffrtemp cellpressure diffrpressure
-                      thermalhist pressurehist
                       journal year volume issue firstpage lastpage
                       duplicateof optimal status flags );
 
+    my @history_columns = qw( thermalhist pressurehist );
+
     my $column_list = join( ",", @columns );
+
+    if( $options && $options->{check_sample_history} ) {
+        $column_list .= join( ",", @history_columns );
+    }
 
     my $sth = $dbh->prepare(
         "SELECT $column_list FROM `$database->{table}` ".
