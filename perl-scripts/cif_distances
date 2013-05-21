@@ -530,14 +530,16 @@ sub get_distance {
 
 sub check_disorder {
     my ( $atom_1, $atom_2 ) = @_;
-    if ( ( $atom_1 -> {disorder_group} ne "." ) && 
-         ( $atom_2 -> {disorder_group} ne "." ) &&
-         ( $atom_1 -> {disorder_group} ne $atom_2 -> {disorder_group} ) &&
-         ( $atom_1 -> {disorder_assembly} ne "." ) && 
+    if ( ( $atom_1 -> {disorder_assembly} ne "." ) && 
          ( $atom_2 -> {disorder_assembly} ne "." ) &&
-         ( $atom_1 -> {disorder_assembly} eq $atom_2 -> {disorder_assembly} ) ) {
+         ( $atom_1 -> {disorder_assembly} ne $atom_2 -> {disorder_assembly} ) ) {
+        return undef;
+    } elsif ( ( $atom_1 -> {disorder_group} ne "." ) && 
+              ( $atom_2 -> {disorder_group} ne "." ) &&
+              ( $atom_1 -> {disorder_group} ne $atom_2 -> {disorder_group} ) )  {
         return undef;
     }
+
     return 1;
 }
 
