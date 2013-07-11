@@ -41,23 +41,6 @@ sub symop_mul($$)
         }
     }
 
-    if( @$s2 == 3 && @{$s2->[0]} == 4 ) {
-        # The last row of s1 is missing -- need to add t[1,2,3]' to
-        # the result:
-        for( my $k = 0; $k < 3; $k++ ) {
-            $result[$k][3] += $s1->[$k][3];
-        }
-    } elsif( @$s2 == 4 && @{$s2->[0]} == 3 ) {
-        # The last row is a 3-D translation vector:
-        for( my $k = 0; $k < 3; $k++ ) {
-            $result[3][$k] =
-                $s2->[3][0] * $s1->[$k][0] +
-                $s2->[3][1] * $s1->[$k][1] +
-                $s2->[3][2] * $s1->[$k][2] +
-                $s1->[3][$k];
-        }
-    }
-
     return wantarray ? @result : \@result;
 }
 
