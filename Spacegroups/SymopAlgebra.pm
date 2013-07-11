@@ -46,19 +46,19 @@ sub symop_mul($$)
 sub symop_translate($$)
 {
     my ( $symop, $vector ) = @_;
-    return [ [ @{$symop->[0]} ], [ @{$symop->[1]} ], [ @{$symop->[2]} ],
-	     [
-	      $symop->[3][0] + $vector->[0],
-	      $symop->[3][1] + $vector->[1],
-	      $symop->[3][2] + $vector->[2]
-	     ]
-	   ];
-}
 
-sub matrix2x2_det($)
-{
-    my $m = $_[0];
-    return $m->[0][0]*$m->[1][1] - $m->[0][1]*$m->[1][0];
+    my @result = (
+        [ @{$symop->[0]} ],
+        [ @{$symop->[1]} ],
+        [ @{$symop->[2]} ],
+        [ @{$symop->[3]} ],
+        );
+
+    $result[0][3] += $vector->[0];
+    $result[1][3] += $vector->[1];
+    $result[2][3] += $vector->[2];
+
+    return wantarray ? @result : \@result;
 }
 
 sub symop_adjunct($$$)
@@ -69,24 +69,24 @@ sub symop_adjunct($$$)
     my ( $i, $j, $mi, $mj );
     my $coef;
 
-    die unless( $row >= 0 && $row < 3 );
-    die unless( $col >= 0 && $col < 3 );
+    die unless( $row >= 0 && $row < 4 );
+    die unless( $col >= 0 && $col < 4 );
 
     $mi = $mj = 0;
-    for( $i = 0; $i < 3; $i ++ ) {
+    for( $i = 0; $i < 4; $i ++ ) {
         next if( $i == $row );
         $mj = 0;
-        for( $j = 0; $j < 3; $j ++ ) {
+        for( $j = 0; $j < 4; $j ++ ) {
 	    next if( $j == $col );
             $matrix[$mi][$mj] = $s->[$i][$j];
             $mj ++;
         }
         $mi ++;
     }
-    die unless( $mi == 2 );
-    die unless( $mj == 2 );
+    die unless( $mi == 3 );
+    die unless( $mj == 3 );
     $coef = (($row + $col) % 2 == 0) ? +1.0 : -1.0;
-    return $coef * matrix2x2_det( \@matrix );
+    return $coef * symop_det( \@matrix );
 }
 
 sub symop_det( $ )
@@ -107,31 +107,40 @@ sub vector_negate($)
     return [ map {-$_} @{$_[0]} ];
 }
 
-sub symop_inv( $ )
+sub symop_invert( $ )
 {
     my $s = $_[0];
     my @ret;
     my $det = symop_det( $s );
     my ( $i, $j );
 
-    for( $i = 0; $i < 3; $i++ ) {
-        for( $j = 0; $j < 3; $j++ ) {
+    for( my $i = 0; $i < 4; $i++ ) {
+        for( my $j = 0; $j < 4; $j++ ) {
             $ret[$i][$j] = symop_adjunct($s,$j,$i) / $det;
         }
     }
-    $ret[3] = vector_negate( matrix3x3_times_vector( \@ret, $s->[3] ));
-    return \@ret;
+    return wantarray ? @ret : \@ret;
 }
 
 sub symop_apply($$)
 {
     my ( $symop, $vector ) = @_;
-    $vector = matrix3x3_times_vector( $symop, $vector );
-    return [
-	    $vector->[0] + $symop->[3][0],
-	    $vector->[1] + $symop->[3][1],
-	    $vector->[2] + $symop->[3][2]
-	   ];
+    my @result;
+
+    for( my $i = 0; $i < @$vector; $i ++ ) {
+        $result[$i] = 0;
+        for( my $j = 0; $j < @$vector; $j ++ ) {
+            $result[$i] += $symop->[$i][$j] * $vector->[$j];
+        }
+    }
+
+    if( @$vector == 3 ) {
+        for( my $i = 0; $i < @$vector; $i ++ ) {
+            $result[$i] += $symop->[$i][3];
+        }
+    }
+
+    return wantarray ? @result : \@result;
 }
 
 1;
