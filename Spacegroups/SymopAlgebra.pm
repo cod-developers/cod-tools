@@ -102,11 +102,6 @@ sub symop_det( $ )
         - $s->[0][1] * $s->[1][0] * $s->[2][2];
 }
 
-sub vector_negate($)
-{
-    return [ map {-$_} @{$_[0]} ];
-}
-
 sub symop_invert( $ )
 {
     my $s = $_[0];
