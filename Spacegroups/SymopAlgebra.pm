@@ -30,12 +30,11 @@ sub symop_mul($$)
 {
     my ( $s1, $s2 ) = @_;
 
-    my $klimit = @$s2 < @{$s1->[0]} ? @$s2 : @{$s1->[0]};
     my @result;
     for( my $i = 0; $i < @$s1; $i++ ) {
-        for( my $j = 0; $j < @{$s2->[0]}; $j++ ) {
+        for( my $j = 0; $j < @$s2; $j++ ) {
             $result[$i][$j] = 0;
-            for( my $k = 0; $k < $klimit; $k++ ) {
+            for( my $k = 0; $k < @$s2; $k++ ) {
                 $result[$i][$j] += $s1->[$i][$k] * $s2->[$k][$j];
             }
         }
