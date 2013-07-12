@@ -566,7 +566,7 @@ sub query_COD_database
     my $column_list = join( ",", @columns );
 
     if( $options && $options->{check_sample_history} ) {
-        $column_list .= join( ",", @history_columns );
+        $column_list .= "," . join( ",", @history_columns );
     }
 
     my $sth = $dbh->prepare(
