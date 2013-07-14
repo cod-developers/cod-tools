@@ -88,10 +88,10 @@ for my $file (@ARGV) {
                 $pages =~ m/(\d+\s*(:?-\s*\d+)?)/;
                 $pages = $1;
             } else {
-                print STDERR "$0: no <MedlinePgn> or <Pagination> " .
+                print STDERR "$0: WARNING, no <MedlinePgn> or <Pagination> " .
                     "found in the file '$file' ".
                     "article $article_nr\n";
-                die;
+                ## die;
             }
 
             if( $article =~ m|<AuthorList.*?>(.*?)</AuthorList>|ms ) {
@@ -135,7 +135,7 @@ for my $file (@ARGV) {
             print "<year>$year</year>\n";
             print "<volume>$volume</volume>\n" if defined $volume;
             print "<issue>$issue</issue>\n" if defined $issue;
-            print "<pages>$pages</pages>\n";
+            print "<pages>$pages</pages>\n" if $pages;
             print "<doi>$doi</doi>\n" if defined $pages;
             print "\n";
         }
