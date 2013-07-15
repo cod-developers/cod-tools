@@ -60,8 +60,10 @@ _cod_cif_authors_sg_H-M
 _cod_cif_authors_sg_Hall
 _cod_cif_authors_sg_number
 _cod_original_cell_volume
+_cod_original_sg_number
 _cod_original_sg_symbol_Hall
 _cod_original_sg_symbol_H-M
+_cod_original_formula_moiety
 _cod_original_formula_sum
 _cod_original_formula_weight
 _cod_suboptimal_structure
