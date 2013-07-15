@@ -1,8 +1,8 @@
 #--*-perl-*-------------------------------------------------------------
-#$Author: saulius $
-#$Date: 2013-07-11 16:02:49 +0300 (Thu, 11 Jul 2013) $
-#$Revision: 2186 $
-#$URL: svn://cod.ibt.lt/cod-tools/trunk/Spacegroups/SymopAlgebra.pm $
+#$Author$
+#$Date$
+#$Revision$
+#$URL$
 #-----------------------------------------------------------------------
 #*
 # Basic symmetry operator algebra (addition, multiplication, etc.)
