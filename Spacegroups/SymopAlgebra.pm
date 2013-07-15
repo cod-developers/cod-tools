@@ -154,6 +154,20 @@ sub symop_is_inversion
     return 1;
 }
 
+sub symop_matrices_are_equal
+{
+    my ($s1, $s2) = @_;
+
+    for( my $i = 0; $i < 3; $i++ ) {
+        for( my $j = 0; $j < 3; $j++ ) {
+            if( $s1->[$i][$j] != $s2->[$i][$j] ) {
+                return 0;
+            }
+        }
+    }
+    return 1;
+}
+
 sub symop_translation($)
 {
     my ( $symop ) = @_;

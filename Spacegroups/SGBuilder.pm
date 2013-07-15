@@ -76,7 +76,24 @@ sub insert_symop
             $self->{has_inversion} = 1;
             $self->{inversion_translation} = symop_translation( $symop );
         }
+    } else {
+        my $existing_symop;
+        if( defined ($existing_symop = $self->has_matrix( $symop ))) {
+            # ... compute translation ...
+        }
     }
+}
+
+sub has_matrix
+{
+    my ($self, $symop) = @_;
+
+    for my $s (@{$self->{symops}}) {
+        if( symop_matrices_are_equal( $s, $symop )) {
+            return $s;
+        }
+    }
+    return undef;
 }
 
 sub insert_symop_string
