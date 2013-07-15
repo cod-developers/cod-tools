@@ -11,10 +11,11 @@
 package SymopAlgebra;
 
 use strict;
+use warnings;
 
 require Exporter;
-@SymopAlg::ISA = qw(Exporter);
-@SymopAlg::EXPORT = qw( );
+@SymopAlgebra::ISA = qw(Exporter);
+@SymopAlgebra::EXPORT_OK = qw( symop_translation );
 
 #
 # Symop array contains the following values:
@@ -136,6 +137,34 @@ sub symop_apply($$)
     }
 
     return wantarray ? @result : \@result;
+}
+
+sub symop_is_inversion
+{
+    my ($symop) = @_;
+
+    for( my $i = 0; $i < 3; $i++ ) {
+        for( my $j = 0; $j < 3; $j++ ) {
+            if( $i == $j && $symop->[$i][$j] != -1.0 ||
+                $i != $j && $symop->[$i][$j] != 0.0 ) {
+                return 0;
+            }
+        }
+    }
+    return 1;
+}
+
+sub symop_translation($)
+{
+    my ( $symop ) = @_;
+
+    my @translation = (
+        $symop->[0][3],
+        $symop->[1][3],
+        $symop->[2][3]
+    );
+
+    return \@translation;
 }
 
 1;
