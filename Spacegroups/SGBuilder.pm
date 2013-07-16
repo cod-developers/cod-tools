@@ -73,7 +73,6 @@ sub print
     print "\n";
 }
 
-
 sub all_symops
 {
     my ($self) = @_;
@@ -92,7 +91,9 @@ sub all_symops
         for my $translation (@{$self->{centering_translations}}) {
             for my $symop (@{$self->{symops}}) {
                 my $final_symop =
-                    symop_translate( symop_mul( $symop, $inversion ), $translation );
+                    SymopAlgebra::flush_zeros_in_symop(
+                        symop_translate( symop_mul( $symop, $inversion ),
+                                         $translation ));
                 push( @symops, $final_symop );
             }
         }
@@ -105,7 +106,7 @@ sub insert_translation
 {
     my ($self, $translation) = @_;
 
-    $translation = vector_modulo_1( $translation );
+    $translation = vector_modulo_1( round_vector( $translation ));
 
     if( vector_is_zero( $translation )) {
         return
@@ -167,6 +168,15 @@ sub insert_symop
     }
 }
 
+sub insert_symops
+{
+    my ($self, $symops) = @_;
+
+    for my $symop (@$symops) {
+        $self->insert_symop( $symop );
+    }
+}
+
 sub has_matrix
 {
     my ($self, $symop) = @_;
@@ -185,6 +195,15 @@ sub insert_symop_string
 
     my $symop = SymopParse::symop_from_string( $symop_string );
     $self->insert_symop( $symop );
+}
+
+sub insert_symop_strings
+{
+    my ($self, $strings) = @_;
+
+    for my $symop_string (@$strings) {
+        $self->insert_symop_string( $symop_string );
+    }
 }
 
 1;

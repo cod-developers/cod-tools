@@ -224,4 +224,21 @@ sub symop_translation($)
     return \@translation;
 }
 
+sub flush_zeros_in_symop($@)
+{
+    my ( $symop, $epsilon ) = @_;
+
+    $epsilon = 1E-6 unless defined $epsilon;
+
+    for my $row (@$symop) {
+        for my $value (@$row) {
+            if( abs($value) < $epsilon ) {
+                $value = 0.0;
+            }
+        }
+    }
+
+    return $symop;
+}
+
 1;
