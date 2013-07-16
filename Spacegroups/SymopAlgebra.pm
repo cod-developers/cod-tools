@@ -15,7 +15,7 @@ use warnings;
 
 require Exporter;
 @SymopAlgebra::ISA = qw(Exporter);
-@SymopAlgebra::EXPORT_OK = qw( symop_translation );
+@SymopAlgebra::EXPORT_OK = qw( symop_mul symop_translation );
 
 #
 # Symop array contains the following values:
