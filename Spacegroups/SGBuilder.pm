@@ -18,6 +18,7 @@ use VectorAlgebra;
 use SymopParse;
 use SymopAlgebra qw(
     symop_mul symop_modulo_1 symop_translate symop_translation
+    symop_set_translation
 );
 
 use fields qw(
@@ -157,10 +158,23 @@ sub insert_symop
             my $inverted_symop = symop_mul( $inversion_symop, $symop );
             if( defined
                 ($existing_symop = $self->has_matrix( $inverted_symop ))) {
-                my $existing_translation = symop_translation( $existing_symop );
-                my $translation = symop_translation( $inverted_symop );
-                $self->insert_translation(
-                    vector_sub( $existing_translation, $translation ));
+                if( !$self->{has_inversion} ) {
+                    my $existing_translation = symop_translation( $existing_symop );
+                    my $translation = symop_translation( $symop );
+                    $self->{has_inversion} = 1;
+                    $self->{inversion_translation} =
+                        vector_add( $existing_translation, $translation );
+                } else {
+                    my $translated_inversion =
+                        symop_set_translation( $inversion_symop,
+                                               $self->{inversion_translation} );
+                    my $translated_symop =
+                        symop_mul( $existing_symop, $translated_inversion );
+                    my $existing_translation = symop_translation( $translated_symop );
+                    my $translation = symop_translation( $symop );
+                    $self->insert_translation(
+                        vector_add( $existing_translation, $translation ));
+                }
             } else {
                 $self->insert_representative_matrix( $symop );
             }

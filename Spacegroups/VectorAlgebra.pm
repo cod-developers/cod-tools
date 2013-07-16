@@ -17,7 +17,7 @@ use POSIX;
 require Exporter;
 @VectorAlgebra::ISA = qw(Exporter);
 @VectorAlgebra::EXPORT = qw( 
-    vector_sub vector_modulo_1 vector_is_zero
+    vector_sub vector_add vector_modulo_1 vector_is_zero
     vectors_are_equal round_vector
 );
 
@@ -31,6 +31,19 @@ sub vector_sub($$)
 
     for( my $i = 0; $i < @$v1; $i++ ) {
         $result[$i] = $v1->[$i] - $v2->[$i]
+    }
+
+    return \@result;
+}
+
+sub vector_add($$)
+{
+    my ($v1, $v2) = @_;
+
+    my @result;
+
+    for( my $i = 0; $i < @$v1; $i++ ) {
+        $result[$i] = $v1->[$i] + $v2->[$i]
     }
 
     return \@result;
