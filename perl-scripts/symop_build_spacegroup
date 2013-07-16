@@ -17,6 +17,8 @@ use strict;
 use warnings;
 
 use SGBuilder;
+use SymopLookup;
+use SymopParse;
 
 my $spacegroup = new SGBuilder;
 
@@ -27,3 +29,38 @@ while(<>) {
 }
 
 $spacegroup->print();
+
+my @symops = $spacegroup->all_symops();
+
+# Identify the spacegroup from teh symmetry operators:
+
+sub mk_symop_key
+{
+    my ( $symops ) = @_;
+
+    my @canonical = sort 
+        map {SymopParse::symop_string_canonical_form($_)} @$symops;
+    my $key = join( ";", @canonical );
+    return $key;
+}
+
+sub mkhash
+{
+    if( 1 ) {
+        map { (mk_symop_key($_->{symops}), $_) }
+        @SymopLookup::table, @SymopLookup::extra_settings;
+    #} else {
+    #        map { (mk_symop_key($_->{symops}), $_) } @CCP4SymopLookup::table;
+    }
+}
+
+my %symop_lookup_table = mkhash();
+my $key = mk_symop_key( [ map { string_from_symop($_) } @symops ] );
+
+if( exists $symop_lookup_table{$key} ) {
+    my $estimated_sg = $symop_lookup_table{$key};
+    use Serialise;
+    serialiseRef( $estimated_sg );
+} else {
+    print "$0: spacegroup could not be identified\n"
+}
