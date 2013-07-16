@@ -12,12 +12,13 @@ package VectorAlgebra;
 
 use strict;
 use warnings;
+use POSIX;
 
 require Exporter;
 @VectorAlgebra::ISA = qw(Exporter);
 @VectorAlgebra::EXPORT = qw( 
     vector_sub vector_modulo_1 vector_is_zero
-    vectors_are_equal
+    vectors_are_equal round_vector
 );
 
 @VectorAlgebra::EXPORT_OK = qw( modulo_1 );
@@ -38,7 +39,6 @@ sub vector_sub($$)
 sub modulo_1
 {
     my $x = $_[0];
-    use POSIX;
     return $x - POSIX::floor($x);
 }
 
@@ -61,12 +61,25 @@ sub vector_is_zero($)
     return 1;
 }
 
-sub vectors_are_equal($$)
+sub round_vector($@)
 {
-    my ($v1, $v2) = @_;
+    my ($vector, $eps) = @_;
+
+    $eps = 1E-6 unless defined $eps;
+
+    map { $_ = POSIX::floor($_/$eps + 0.5)*$eps } @$vector;
+
+    return $vector;
+}
+
+sub vectors_are_equal($$@)
+{
+    my ($v1, $v2, $eps) = @_;
+
+    $eps = 1E-6 unless defined $eps;
 
     for( my $i = 0; $i < @$v1; $i++ ) {
-        return 0 unless $v1->[$i] == $v2->[$i];
+        return 0 unless abs($v1->[$i] - $v2->[$i]) < $eps;
     }
 
     return 1;
