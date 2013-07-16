@@ -122,19 +122,10 @@ sub insert_representative_matrix
 {
     my ($self, $symop) = @_;
 
-    my @candidates;
-
-    push( @candidates, $symop );
-
-    while( @candidates ) {
-        my $candidate = shift( @candidates );
-        push( @{$self->{symops}}, $candidate );
-        for my $s (@{$self->{symops}}) {
-            my $product = symop_mul( $s, $candidate );
-            if( !$self->has_matrix( $product )) {
-                push( @candidates, $product );
-            }
-        }
+    push( @{$self->{symops}}, $symop );
+    for my $s (@{$self->{symops}}) {
+        my $product = symop_modulo_1( symop_mul( $s, $symop ));
+        $self->insert_symop( $product );
     }
 }
 
@@ -154,24 +145,24 @@ sub insert_symop
             $self->{has_inversion} = 1;
             $self->{inversion_translation} = symop_translation( $symop );
         }
-    }
-
-    my $existing_symop;
-    if( defined ($existing_symop = $self->has_matrix( $symop ))) {
-        my $existing_translation = symop_translation( $existing_symop );
-        my $translation = symop_translation( $symop );
-        $self->insert_translation(
-            vector_sub( $existing_translation, $translation ));
     } else {
-        my $inverted_symop = symop_mul( $inversion_symop, $symop );
-        if( defined
-            ($existing_symop = $self->has_matrix( $inverted_symop ))) {
+        my $existing_symop;
+        if( defined ($existing_symop = $self->has_matrix( $symop ))) {
             my $existing_translation = symop_translation( $existing_symop );
             my $translation = symop_translation( $symop );
             $self->insert_translation(
                 vector_sub( $existing_translation, $translation ));
         } else {
-            $self->insert_representative_matrix( $symop );
+            my $inverted_symop = symop_mul( $inversion_symop, $symop );
+            if( defined
+                ($existing_symop = $self->has_matrix( $inverted_symop ))) {
+                my $existing_translation = symop_translation( $existing_symop );
+                my $translation = symop_translation( $inverted_symop );
+                $self->insert_translation(
+                    vector_sub( $existing_translation, $translation ));
+            } else {
+                $self->insert_representative_matrix( $symop );
+            }
         }
     }
 }
