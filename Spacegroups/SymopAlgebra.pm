@@ -15,7 +15,12 @@ use warnings;
 
 require Exporter;
 @SymopAlgebra::ISA = qw(Exporter);
-@SymopAlgebra::EXPORT_OK = qw( symop_mul symop_translation );
+@SymopAlgebra::EXPORT_OK = qw(
+    symop_mul symop_modulo_1 symop_translation
+    symop_translate symop_set_translation
+);
+
+use VectorAlgebra qw( modulo_1 );
 
 #
 # Symop array contains the following values:
@@ -41,7 +46,26 @@ sub symop_mul($$)
         }
     }
 
-    return wantarray ? @result : \@result;
+    return \@result;
+}
+
+sub symop_modulo_1($)
+{
+    my ( $symop ) = @_;
+
+    my @result = (
+        [ @{$symop->[0]} ],
+        [ @{$symop->[1]} ],
+        [ @{$symop->[2]} ],
+        [ @{$symop->[3]} ],
+    );
+
+    $result[0][3] = modulo_1( $symop->[0][3] );
+    $result[1][3] = modulo_1( $symop->[1][3] );
+    $result[2][3] = modulo_1( $symop->[2][3] );
+    $result[3][3] = 1;
+
+    return \@result;
 }
 
 sub symop_translate($$)
@@ -59,7 +83,26 @@ sub symop_translate($$)
     $result[1][3] += $vector->[1];
     $result[2][3] += $vector->[2];
 
-    return wantarray ? @result : \@result;
+    return \@result;
+}
+
+sub symop_set_translation($$)
+{
+    my ( $symop, $vector ) = @_;
+
+    my @result = (
+        [ @{$symop->[0]} ],
+        [ @{$symop->[1]} ],
+        [ @{$symop->[2]} ],
+        [ @{$symop->[3]} ],
+        );
+
+    $result[0][3] = $vector->[0];
+    $result[1][3] = $vector->[1];
+    $result[2][3] = $vector->[2];
+    $result[3][3] = 1;
+
+    return \@result;
 }
 
 sub symop_adjunct($$$)
@@ -115,7 +158,7 @@ sub symop_invert( $ )
             $ret[$i][$j] = symop_adjunct($s,$j,$i) / $det;
         }
     }
-    return wantarray ? @ret : \@ret;
+    return \@ret;
 }
 
 sub symop_apply($$)
@@ -136,7 +179,7 @@ sub symop_apply($$)
         }
     }
 
-    return wantarray ? @result : \@result;
+    return \@result;
 }
 
 sub symop_is_inversion

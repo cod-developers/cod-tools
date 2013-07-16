@@ -16,9 +16,11 @@ use warnings;
 require Exporter;
 @VectorAlgebra::ISA = qw(Exporter);
 @VectorAlgebra::EXPORT = qw( 
-vector_sub vector_modulo_1 vector_is_zero
-vectors_are_equal
+    vector_sub vector_modulo_1 vector_is_zero
+    vectors_are_equal
 );
+
+@VectorAlgebra::EXPORT_OK = qw( modulo_1 );
 
 sub vector_sub($$)
 {
@@ -30,7 +32,7 @@ sub vector_sub($$)
         $result[$i] = $v1->[$i] - $v2->[$i]
     }
 
-    return wantarray ? @result : \@result;
+    return \@result;
 }
 
 sub modulo_1
@@ -46,7 +48,7 @@ sub vector_modulo_1($)
 
     my @r = map { modulo_1($_) } @$v;
 
-    return wantarray ? @r : \@r;
+    return \@r;
 }
 
 sub vector_is_zero($)

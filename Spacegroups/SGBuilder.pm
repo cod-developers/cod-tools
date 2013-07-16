@@ -15,10 +15,14 @@ use strict;
 use warnings;
 
 use VectorAlgebra;
-use SymopAlgebra qw( symop_mul symop_translation );
 use SymopParse;
+use SymopAlgebra qw(
+    symop_mul symop_modulo_1 symop_translate symop_translation
+);
 
-use fields qw( symops has_inversion inversion_translation centering_translations );
+use fields qw(
+    symops has_inversion inversion_translation centering_translations
+);
 
 my $unity_symop = [
     [ 1, 0, 0, 0 ],
@@ -41,7 +45,7 @@ sub new {
     $self->{symops} = [ $unity_symop ];
     $self->{has_inversion} = 0;
     $self->{inversion_translation} = undef;
-    $self->{centering_translations} = [];
+    $self->{centering_translations} = [ [0,0,0] ];
     return $self;
 }
 
@@ -49,7 +53,16 @@ sub print
 {
     my ($self) = @_;
 
-    print "nsymop:    ", int(@{$self->{symops}}), "\n";
+    print "nrepreset: ", int(@{$self->{symops}}), "\n";
+    print "representatives:\n";
+    for my $symop (@{$self->{symops}}) {
+        print "    ", string_from_symop( $symop ), "\n"
+    }
+    print "nsymops:   ", int(@{$self->all_symops()}), "\n";
+    print "symops:\n";
+    for my $symop (@{$self->all_symops()}) {
+        print "    ", string_from_symop( $symop ), "\n"
+    }
     print "inversion: ", $self->{has_inversion}, "\n";
     print "centering: ";
     for (@{$self->{centering_translations}}) {
@@ -58,6 +71,34 @@ sub print
         print " ";
     }
     print "\n";
+}
+
+
+sub all_symops
+{
+    my ($self) = @_;
+
+    my @inversions = ( $unity_symop );
+
+    if( $self->{has_inversion} ) {
+        push( @inversions,
+              scalar( symop_translate( $inversion_symop,
+                                       $self->{inversion_translation})));
+    }
+
+    my @symops;
+
+    for my $inversion (@inversions) {
+        for my $translation (@{$self->{centering_translations}}) {
+            for my $symop (@{$self->{symops}}) {
+                my $final_symop =
+                    symop_translate( symop_mul( $symop, $inversion ), $translation );
+                push( @symops, $final_symop );
+            }
+        }
+    }
+
+    return wantarray ? @symops : \@symops;
 }
 
 sub insert_translation
@@ -101,6 +142,8 @@ sub insert_symop
 {
     my ($self, $symop) = @_;
 
+    $symop = symop_modulo_1( $symop );
+
     if( SymopAlgebra::symop_is_inversion( $symop )) {
         if( $self->{has_inversion} ) {
             my $translation = SymopAlgebra::symop_translation( $symop );
@@ -118,7 +161,7 @@ sub insert_symop
         my $existing_translation = symop_translation( $existing_symop );
         my $translation = symop_translation( $symop );
         $self->insert_translation(
-            scalar( vector_sub( $existing_translation, $translation )));
+            vector_sub( $existing_translation, $translation ));
     } else {
         my $inverted_symop = symop_mul( $inversion_symop, $symop );
         if( defined
@@ -126,7 +169,7 @@ sub insert_symop
             my $existing_translation = symop_translation( $existing_symop );
             my $translation = symop_translation( $symop );
             $self->insert_translation(
-                scalar( vector_sub( $existing_translation, $translation )));
+                vector_sub( $existing_translation, $translation ));
         } else {
             $self->insert_representative_matrix( $symop );
         }
