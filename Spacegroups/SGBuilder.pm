@@ -173,7 +173,7 @@ sub insert_symop
                     my $existing_translation = symop_translation( $translated_symop );
                     my $translation = symop_translation( $symop );
                     $self->insert_translation(
-                        vector_add( $existing_translation, $translation ));
+                        vector_sub( $existing_translation, $translation ));
                 }
             } else {
                 $self->insert_representative_matrix( $symop );
