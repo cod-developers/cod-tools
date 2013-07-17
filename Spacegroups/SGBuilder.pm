@@ -106,7 +106,7 @@ sub all_symops
 
 sub insert_translation
 {
-    my ($self, $translation) = @_;
+    my ($self, $translation, $symop) = @_;
 
     $translation = vector_modulo_1( round_vector( $translation ));
 
@@ -119,6 +119,21 @@ sub insert_translation
         }
     }
     push( @{$self->{centering_translations}}, $translation );
+
+    for my $s (@{$self->{symops}}) {
+        for my $t (@{$self->{centering_translations}}) {
+            my $product =
+                symop_modulo_1(
+                    symop_mul( symop_set_translation( $s, $t ), $symop ));
+            #print ">>>> ", string_from_symop( $s ), "\n";
+            #print "ppp> ", string_from_symop( $product ), "\n";
+            #$self->insert_symop( $product );
+            if( SymopAlgebra::symop_is_translation( $product )) {
+                $self->insert_translation( 
+                    symop_translation( $product ), $product );
+            }
+        }
+    }
 }
 
 sub insert_representative_matrix
@@ -154,7 +169,7 @@ sub insert_symop
             my $existing_translation = symop_translation( $existing_symop );
             my $translation = symop_translation( $symop );
             $self->insert_translation(
-                vector_sub( $existing_translation, $translation ));
+                vector_sub( $existing_translation, $translation ), $symop );
         } else {
             my $inverted_symop = symop_mul( $inversion_symop, $symop );
             if( defined
@@ -174,7 +189,7 @@ sub insert_symop
                     my $existing_translation = symop_translation( $translated_symop );
                     my $translation = symop_translation( $symop );
                     $self->insert_translation(
-                        vector_sub( $existing_translation, $translation ));
+                        vector_sub( $existing_translation, $translation ), $symop );
                 }
             } else {
                 $self->insert_representative_matrix( $symop );
