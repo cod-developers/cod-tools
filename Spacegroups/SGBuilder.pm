@@ -93,8 +93,9 @@ sub all_symops
             for my $symop (@{$self->{symops}}) {
                 my $final_symop =
                     SymopAlgebra::flush_zeros_in_symop(
-                        symop_translate( symop_mul( $symop, $inversion ),
-                                         $translation ));
+                        symop_modulo_1(
+                            symop_translate( symop_mul( $symop, $inversion ),
+                                             $translation )));
                 push( @symops, $final_symop );
             }
         }
