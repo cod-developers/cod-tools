@@ -124,7 +124,7 @@ sub insert_translation
         for my $t (@{$self->{centering_translations}}) {
             my $product =
                 symop_modulo_1(
-                    symop_mul( symop_set_translation( $s, $t ), $symop ));
+                    symop_mul( symop_translate( $s, $t ), $symop ));
             #print ">>>> ", string_from_symop( $s ), "\n";
             #print "ppp> ", string_from_symop( $product ), "\n";
             #$self->insert_symop( $product );
