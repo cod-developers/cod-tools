@@ -137,10 +137,10 @@ sub filter_and_check
 
     my $hkl_now;
     if( defined $hkl ) {
-        fopen( my $hkl_file_handle, $hkl );
+        open( my $hkl_file_handle, $hkl );
         $hkl_now = join( "\n",
                          map {s/(\n|\r|\r\n)$//;$_} <$hkl_file_handle> );
-        fclose( $hkl_file_handle );
+        close( $hkl_file_handle );
     }
 
     my $number_to_replace;

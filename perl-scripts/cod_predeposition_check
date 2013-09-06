@@ -44,7 +44,7 @@ my $options;
     "--platform"     => \$database{platform},
 
     "--cif" => sub { push( @cif, get_value() ) },
-    "--hkl" => sub { @hkl[@cif-1] = get_value() },
+    "--hkl" => sub { @hkl[(@cif-1 > 0) ? @cif-1 : 0] = get_value() },
 
     "--type,--deposition-type" => \$deposition_type,
 
@@ -77,4 +77,5 @@ for my $i (0..@cif-1) {
                                                  $deposition_type,
                                                  $options );
     print map( "CIF $_\n", split( "\n", $cif ) ) if defined $cif;
+    print map( "HKL $_\n", split( "\n", $hkl ) ) if defined $hkl;
 }
