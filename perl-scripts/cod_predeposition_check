@@ -14,6 +14,7 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #**
 
 use strict;
+use POSIX qw(strftime);
 use CODPredepositionCheck;
 use SOptions;
 
@@ -31,6 +32,8 @@ my @hkl;
 
 my $deposition_type = 'published';
 my $options;
+
+my $print_timestamps = 0;
 
 @ARGV = getOptions(
     "-d,--database"  => \$database{name},
@@ -63,6 +66,10 @@ my $options;
     "--hold-period" => \$options->{hold_period},
     "--journal" => \$options->{journal},
     "--author_name" => \$options->{author_name},
+
+    "--print-timestamps" => sub { $print_timestamps = 1 },
+    "--dont-print-timestamps" => sub { $print_timestamps = 0 },
+    "--no-print-timestamps" => sub { $print_timestamps = 0 },
 );
 
 push( @cif, @ARGV );
@@ -70,12 +77,21 @@ push( @cif, @ARGV );
 @cif = ("-") unless @cif;
 
 for my $i (0..@cif-1) {
-    my( $cif, $hkl ) =
-        CODPredepositionCheck::filter_and_check( $cif[$i],
-                                                 $hkl[$i],
-                                                 \%database,
-                                                 $deposition_type,
-                                                 $options );
-    print map( "CIF $_\n", split( "\n", $cif ) ) if defined $cif;
-    print map( "HKL $_\n", split( "\n", $hkl ) ) if defined $hkl;
+    print "START $cif[$i] " . strftime( "%Y-%m-%d %T\n", localtime )
+        if $print_timestamps;
+    my( $cif, $hkl );
+    eval {
+        ( $cif, $hkl ) =
+            CODPredepositionCheck::filter_and_check( $cif[$i],
+                                                     $hkl[$i],
+                                                     \%database,
+                                                     $deposition_type,
+                                                     $options );
+    };
+    if( !$@ ) {
+        print map( "CIF $_\n", split( "\n", $cif ) ) if defined $cif;
+        print map( "HKL $_\n", split( "\n", $hkl ) ) if defined $hkl;
+    }
+    print "FINISH $cif[$i] " . strftime( "%Y-%m-%d %T\n", localtime )
+        if $print_timestamps;
 }
