@@ -23,6 +23,7 @@ my %database = (
         name  => "cod",
         table => "data",
         password => "",
+        platform => "mysql",
     );
 
 my @cif;
@@ -40,6 +41,7 @@ my $options;
     "-t,--table"     => \$database{table},
     "-u,--user"      => \$database{user},
     "--password"     => \$database{password},
+    "--platform"     => \$database{platform},
 
     "--cif" => sub { push( @cif, get_value() ) },
     "--hkl" => sub { @hkl[@cif-1] = get_value() },
@@ -58,9 +60,9 @@ my $options;
     "--dont-release" => sub { delete( $options->{release} ) },
     "--no-release" => sub { delete( $options->{release} ) },
 
-    "--hold-period" => sub { $options->{hold_period} = get_value() },
-    "--journal" => sub { $options->{journal} = get_value() },
-    "--author_name" => sub { $options->{author_name} = get_value() },
+    "--hold-period" => \$options->{hold_period},
+    "--journal" => \$options->{journal},
+    "--author_name" => \$options->{author_name},
 );
 
 push( @cif, @ARGV );
