@@ -533,7 +533,8 @@ sub database_connect
 {
     my ( $database ) = @_;
     
-    my $dbh = DBI->connect( "dbi:mysql:hostname=$database->{host};".
+    my $dbh = DBI->connect( "dbi:$database->{platform}:" .
+                            "hostname=$database->{host};".
                             "db=$database->{name};".
                             "user=$database->{user};".
                             "password=$database->{password}" )
