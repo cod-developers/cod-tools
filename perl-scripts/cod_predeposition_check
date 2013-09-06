@@ -70,14 +70,11 @@ push( @cif, @ARGV );
 @cif = ("-") unless @cif;
 
 for my $i (0..@cif-1) {
-    my( $cif, $hkl, $errors, $warnings, $notices ) =
+    my( $cif, $hkl ) =
         CODPredepositionCheck::filter_and_check( $cif[$i],
                                                  $hkl[$i],
                                                  \%database,
                                                  $deposition_type,
                                                  $options );
-    print join( "", ( map( "$_\n", @$errors,
-                                   @$warnings,
-                                   @$notices ) ) );
     print map( "CIF $_\n", split( "\n", $cif ) ) if defined $cif;
 }
