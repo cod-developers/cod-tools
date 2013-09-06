@@ -169,18 +169,16 @@ sub filter_and_check
                                            $cif,
                                            $db_conf,
                                            $cif_cod_numbers_opt );
-        my $duplicates_found = 0;
+        my $continue = 1;
         foreach my $dataset (@$duplicates) {
             next if scalar( keys %{$dataset->{duplicates}} ) == 0;
             foreach( keys %{$dataset->{duplicates}} ) {
                 print STDERR "DUPLICATE: $dataset->{formula} " .
                              "is found in COD entry $_\n";
-                $duplicates_found++;
+                $continue = 0;
             }
         }
-        if( $duplicates_found ) {
-            die "$duplicates_found duplicates found";
-        }
+        die unless $continue;
     }
 
     my( $correct_stdout, $correct_stderr ) =
@@ -817,10 +815,10 @@ sub run_command($@)
 sub db_connect
 {
     my ($db_platform, $db_host, $db_name, $db_port, $db_user, $db_pass) = @_;
-    my $dsn = "dbi:$db_platform:$db_name:$db_host";
-    if( defined $db_port ) {
-        $dsn .= ":$db_port";
-    }
+    my $dsn = "dbi:$db_platform:" .
+              "hostname=$db_host;".
+              "db=$db_name".
+              ($db_port ? ";$db_port" : "");
     my $dbh = DBI->connect( $dsn, $db_user, $db_pass );
     if( !$dbh ) {
         die( "could not connect to the database - " . lcfirst( $DBI::errstr ));
