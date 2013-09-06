@@ -1,0 +1,81 @@
+#! /bin/sh
+#!perl -w # --*- Perl -*--
+eval 'exec perl -x $0 ${1+"$@"}'
+    if 0;
+#------------------------------------------------------------------------------
+#$Author$
+#$Date$ 
+#$Revision$
+#$URL$
+#------------------------------------------------------------------------------
+#*
+#  Filter and check pairs of CIF and Fobs files for suitability for
+#  deposition to COD database.
+#**
+
+use strict;
+use CODPredepositionCheck;
+use SOptions;
+
+my %database = (
+        host  => "www.crystallography.net",
+        user  => "cod_reader",
+        name  => "cod",
+        table => "data",
+        password => "",
+    );
+
+my @cif;
+my @hkl;
+
+my $deposition_type = 'published';
+my $options;
+
+@ARGV = getOptions(
+    "-d,--database"  => \$database{name},
+    "-l,--localhost" => sub { $database{host} = 'localhost' },
+    "-h,--host"      => \$database{host},
+    "-p,--port"      => \$database{port},
+    "-s,--server"    => \$database{host},
+    "-t,--table"     => \$database{table},
+    "-u,--user"      => \$database{user},
+    "--password"     => \$database{password},
+
+    "--cif" => sub { push( @cif, get_value() ) },
+    "--hkl" => sub { @hkl[@cif-1] = get_value() },
+
+    "--type,--deposition-type" => \$deposition_type,
+
+    "--bypass-checks" => sub { $options->{bypass_checks} = 1 },
+    "--dont-bypass-checks" => sub { delete( $options->{bypass_checks} ) },
+    "--no-bypass-checks" => sub { delete( $options->{bypass_checks} ) },
+
+    "--replace" => sub { $options->{replace} = 1 },
+    "--dont-replace" => sub { delete( $options->{replace} ) },
+    "--no-replace" => sub { delete( $options->{replace} ) },
+
+    "--release" => sub { $options->{release} = 1 },
+    "--dont-release" => sub { delete( $options->{release} ) },
+    "--no-release" => sub { delete( $options->{release} ) },
+
+    "--hold-period" => sub { $options->{hold_period} = get_value() },
+    "--journal" => sub { $options->{journal} = get_value() },
+    "--author_name" => sub { $options->{author_name} = get_value() },
+);
+
+push( @cif, @ARGV );
+
+@cif = ("-") unless @cif;
+
+for my $i (0..@cif-1) {
+    my( $cif, $hkl, $errors, $warnings, $notices ) =
+        CODPredepositionCheck::filter_and_check( $cif[$i],
+                                                 $hkl[$i],
+                                                 \%database,
+                                                 $deposition_type,
+                                                 $options );
+    print join( "", ( map( "ERROR: $_\n", @$errors ),
+                      map( "WARNING: $_\n", @$warnings ),
+                      map( "NOTE: $_\n", @$notices ) ) );
+    print map( "CIF\t$_\n", split( "\n", @$cif ) ) if defined $cif;
+}
