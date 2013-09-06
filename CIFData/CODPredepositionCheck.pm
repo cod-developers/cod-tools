@@ -194,7 +194,7 @@ sub filter_and_check
     }
 
     my( $correct_stdout, $correct_stderr ) =
-        run_command( 'cif_correct_tags', $cif );
+        run_command( [ 'cif_correct_tags', $cif ] );
 
     if( @$correct_stderr > 0 ) {
         @warnings = @$correct_stderr;
@@ -229,7 +229,8 @@ sub filter_and_check
                     . 'WARNING.*|NOTE.*)',
             );
             foreach( @$ccc_stdout ) {
-                if( /$ccc_warnings{$deposition_type}\n?/ ) {
+                if( defined $ccc_warnings{$deposition_type} &&
+                    /$ccc_warnings{$deposition_type}\n?/ ) {
                     push( @warnings, $_ );
                 } else {
                     push( @errors, $_ );
@@ -873,16 +874,21 @@ sub run_command($@)
 sub db_connect
 {
     my ($db_platform, $db_host, $db_name, $db_port, $db_user, $db_pass) = @_;
-    my $dsn = "dbi:$db_platform:$db_name:$db_host:$db_port";
+    my $dsn = "dbi:$db_platform:$db_name:$db_host";
+    if( defined $db_port ) {
+        $dsn .= ":$db_port";
+    }
     my $dbh = DBI->connect( $dsn, $db_user, $db_pass );
     if( !$dbh ) {
-    die( "could not connect to the database - " . lcfirst( $DBI::errstr ));
+        die( "could not connect to the database - " . lcfirst( $DBI::errstr ));
     }
-    $dbh->do( "SET CHARACTER SET utf8" );
-    $dbh->do( 'set @@character_set_client = utf8' );
-    $dbh->do( 'set @@character_set_connection = utf8' );
-    $dbh->do( 'set @@character_set_server = utf8' );
-    $dbh->do( 'set @@character_set_database = utf8' );
+    if( $db_platform ne 'SQLite' ) {
+        $dbh->do( "SET CHARACTER SET utf8" );
+        $dbh->do( 'set @@character_set_client = utf8' );
+        $dbh->do( 'set @@character_set_connection = utf8' );
+        $dbh->do( 'set @@character_set_server = utf8' );
+        $dbh->do( 'set @@character_set_database = utf8' );
+    }
     return $dbh;
 }
 
