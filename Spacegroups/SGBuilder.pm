@@ -111,28 +111,34 @@ sub insert_translation
     $translation = vector_modulo_1( round_vector( $translation ));
 
     if( vector_is_zero( $translation )) {
+        #print ">> zero\n";
         return
     }
     for my $t (@{$self->{centering_translations}}) {
         if( vectors_are_equal( $t, $translation )) {
+            #print ">> have it\n";
             return
         }
     }
     push( @{$self->{centering_translations}}, $translation );
 
+    #print ">>> translations: ", int(@{$self->{centering_translations}}), "\n";
     for my $s (@{$self->{symops}}) {
         for my $t (@{$self->{centering_translations}}) {
             my $product =
                 symop_modulo_1(
                     symop_mul( symop_translate( $s, $t ), $symop ));
-            #print ">>>> ", string_from_symop( $s ), "\n";
-            #print "ppp> ", string_from_symop( $product ), "\n";
+            print ">>>> ", string_from_symop( $s ), "\n";
+            print "ppp> ", string_from_symop( $product ), "\n";
             #$self->insert_symop( $product );
             if( SymopAlgebra::symop_is_translation( $product )) {
-                $self->insert_translation( 
-                    symop_translation( $product ), $product );
+                $self->insert_translation(
+                    VectorAlgebra::round_vector(
+                        symop_translation( $product )),
+                    $product );
             }
         }
+        #print "\n";
     }
 }
 

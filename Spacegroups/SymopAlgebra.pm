@@ -21,6 +21,7 @@ require Exporter;
 );
 
 use VectorAlgebra qw( modulo_1 );
+use POSIX;
 
 #
 # Symop array contains the following values:
@@ -250,6 +251,21 @@ sub flush_zeros_in_symop($@)
             if( abs($value) < $epsilon ) {
                 $value = 0.0;
             }
+        }
+    }
+
+    return $symop;
+}
+
+sub round_values_in_symop($@)
+{
+    my ( $symop, $eps ) = @_;
+
+    $eps = 1E-6 unless defined $eps;
+
+    for my $row (@$symop) {
+        for my $value (@$row) {
+            $value = POSIX::floor($value/$eps + 0.5)*$eps;
         }
     }
 
