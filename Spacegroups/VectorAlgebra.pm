@@ -64,12 +64,14 @@ sub vector_modulo_1($)
     return \@r;
 }
 
-sub vector_is_zero($)
+sub vector_is_zero($@)
 {
-    my ($vector) = @_;
+    my ($vector, $eps) = @_;
+
+    $eps = 1E-6 unless defined $eps;
 
     for (@$vector) {
-        return 0 if $_ != 0.0;
+        return 0 if abs($_) >= $eps;
     }
     return 1;
 }
