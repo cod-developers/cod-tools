@@ -80,7 +80,7 @@ sub round_vector($@)
 {
     my ($vector, $eps) = @_;
 
-    $eps = 1E-6 unless defined $eps;
+    $eps = 1E-10 unless defined $eps;
 
     map { $_ = POSIX::floor($_/$eps + 0.5)*$eps } @$vector;
 
@@ -91,9 +91,10 @@ sub vectors_are_equal($$@)
 {
     my ($v1, $v2, $eps) = @_;
 
-    $eps = 1E-5 unless defined $eps;
+    $eps = 1E-6 unless defined $eps;
 
     for( my $i = 0; $i < @$v1; $i++ ) {
+        #print "delta = ", abs($v1->[$i] - $v2->[$i]), "\n";
         return 0 unless abs($v1->[$i] - $v2->[$i]) < $eps;
     }
 
