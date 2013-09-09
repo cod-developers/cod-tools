@@ -91,7 +91,7 @@ sub vectors_are_equal($$@)
 {
     my ($v1, $v2, $eps) = @_;
 
-    $eps = 1E-6 unless defined $eps;
+    $eps = 1E-5 unless defined $eps;
 
     for( my $i = 0; $i < @$v1; $i++ ) {
         return 0 unless abs($v1->[$i] - $v2->[$i]) < $eps;

@@ -128,8 +128,8 @@ sub insert_translation
             my $product =
                 symop_modulo_1(
                     symop_mul( symop_translate( $s, $t ), $symop ));
-            print ">>>> ", string_from_symop( $s ), "\n";
-            print "ppp> ", string_from_symop( $product ), "\n";
+            #print ">>>> ", string_from_symop( $s ), "\n";
+            #print "ppp> ", string_from_symop( $product ), "\n";
             #$self->insert_symop( $product );
             if( SymopAlgebra::symop_is_translation( $product )) {
                 $self->insert_translation(
