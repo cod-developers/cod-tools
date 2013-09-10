@@ -597,8 +597,8 @@ sub filter_and_check
             if( !$is_pd_hkl &&
                 !exists $hkl_parameters{'_[local]_cod_data_source_file'} &&
                 !exists $hkl_parameters{'_[local]_cod_data_source_block'} ){
-                $hkl_now =~ s/\n$//;
-                $hkl_now .= '\n' .
+                $hkl_now =~ s/\n+$//s;
+                $hkl_now .= "\n" .
                             "_[local]_cod_data_source_file '" .
                             $original_hkl_filename . "'\n" .
                             "_[local]_cod_data_source_block '" .
