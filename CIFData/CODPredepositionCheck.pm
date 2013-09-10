@@ -51,7 +51,8 @@ sub filter_and_check
             my $first_data_name;
             my $values = $dataset->{values};
             if( !defined $values ) {
-                die "no data in datablock '$dataset->{name}'";
+                critical( $cif, "data_$dataset->{name}",
+                          "no data in datablock '$dataset->{name}'" );
             }
             if( exists $values->{_publ_author_name} ) {
                 my $web_author = lc($options->{author_name});
@@ -65,13 +66,16 @@ sub filter_and_check
                         @{$values->{_publ_author_name}} );
                     my $data_name_now = $dataset->{name};
                     if( $deposition_authors ne $deposition_authors_now ) {
-                        die "author list in the datablock " .
-                             "data_$first_data_name ($deposition_authors) " .
-                             "is no the same as in the datablock " .
-                             "data_$data_name_now ($deposition_authors_now) - " .
-                             "please make sure that all data are authored " .
-                             "by the same people when depositing multiple " .
-                             "data blocks";
+                        critical( $cif, "data_$data_name_now",
+                                  "author list in the datablock " .
+                                  "data_$first_data_name " .
+                                  "($deposition_authors) is not the " .
+                                  "same as in the datablock " .
+                                  "data_$data_name_now " .
+                                  "($deposition_authors_now) -- please " .
+                                  "make sure that all data are authored " .
+                                  "by the same people when depositing " .
+                                  "multiple data blocks" );
                     }
                 }
                 for my $author (@{$values->{_publ_author_name}}) {
@@ -84,13 +88,16 @@ sub filter_and_check
                     $cif_author =~ s/\pM//g;
                     next DATASET if $cif_author eq $web_author;
                 }
-                die "submitting author '$options->{author_name}' " .
-                    "does not match any author in the data_$dataset->{name} " .
-                    "author list (" . join( ', ', map { "'$_'" }
-                    @{$values->{_publ_author_name}}) . ") - will not " .
-                    "deposit the structure, the prepublication structures " .
-                    "and personal communications " .
-                    "must be deposited by one of the authors";
+                critical( $cif, "data_$dataset->{name}",
+                          "submitting author '$options->{author_name}' " .
+                          "does not match any author in the " .
+                          "data_$dataset->{name} author list (" .
+                          join( ', ', map { "'$_'" }
+                          @{$values->{_publ_author_name}}) . ") -- " .
+                          "will not deposit the structure, " .
+                          "the prepublication structures and personal " .
+                          "communications must be deposited by one of " .
+                          "the authors" );
             }
         }
     }
@@ -107,7 +114,8 @@ sub filter_and_check
         for my $dataset (@$data) {
             my $values = $dataset->{values};
             if( !defined $values ) {
-                die "no data in datablock '$dataset->{name}'";
+                critical( $cif, "data_$dataset->{name}",
+                          "no data in datablock '$dataset->{name}'" );
             }
             if( exists $values->{_journal_name_full} ) {
                 if( !defined $range ) {
@@ -122,11 +130,13 @@ sub filter_and_check
                                                  $deposition_type );
                     my $data_name_now = $dataset->{name};
                     if( $range_now ne $range ) {
-                        die "journals '$journal' of data_$data_name " .
-                            "and '$journal_now' of data_$data_name_now " .
-                            "indicate that the datablocks belong " .
-                            "to different COD number ranges, please " .
-                            "submit them as separate CIFs";
+                        critical( $cif, undef,
+                                  "journals '$journal' of " .
+                                  "data_$data_name and '$journal_now' " .
+                                  "of data_$data_name_now " .
+                                  "indicate that the datablocks belong " .
+                                  "to different COD number ranges, " .
+                                  "please submit them as separate CIFs" );
                     }
                 }
             }
@@ -148,13 +158,15 @@ sub filter_and_check
 
         # determining which cif file to replace, if any:
         if( @$data != 1 ) {
-            die "file supplied for replacement " .
-                "should have only one datablock";
+            critical( $cif, undef,
+                      "file supplied for replacement " .
+                      "should have only one datablock" );
         }
         if( !exists $data->[0]{values}{'_cod_database_code'}[0]) {
-            die "CIF file supplied for replacement " .
-                "should have \'_cod_database_code\' value " .
-                "determining which CIF file to replace";
+            critical( $cif, "data_$data->[0]{name}",
+                      "CIF file supplied for replacement " .
+                      "should have \'_cod_database_code\' value " .
+                      "determining which CIF file to replace" );
         }
         $number_to_replace = $data->[0]{values}{'_cod_database_code'}[0];
     } elsif ( !$options->{bypass_checks} ) {
@@ -283,7 +295,7 @@ sub filter_and_check
                           $db_conf->{port},
                           $db_conf->{user},
                           $db_conf->{password} );
-    die "connection to database failed" if !$dbh;
+    critical( undef, undef, "connection to database failed" ) if !$dbh;
 
     my $database_hold_until;
     if( $options->{replace} ) {
@@ -295,9 +307,10 @@ sub filter_and_check
         $sth->execute( $number_to_replace );
 
         if( $sth->fetchrow_arrayref()->[0] == 0 ) {
-            die "entry for structure $number_to_replace " .
-                "does not exist in the COD data table -- " .
-                "can not replace abscent structures";
+            critical( $cif, undef,
+                      "entry for structure $number_to_replace " .
+                      "does not exist in the COD data table -- " .
+                      "can not replace abscent structures" );
         }
 
         $sth = $dbh->prepare( "SELECT onhold FROM data WHERE file = ?" );
@@ -306,8 +319,9 @@ sub filter_and_check
 
         if( $options->{release} ) {
             if( !defined $database_hold_until ) {
-                die "can not release structure that has been deposited " .
-                    "not as prepublication material"
+                critical( $cif, undef,
+                          "can not release structure that has been " .
+                          "deposited not as prepublication material" );
             }
         }
     }
@@ -383,9 +397,11 @@ sub filter_and_check
     }
     
     if( $data_source_nr > 0 && $data_source_nr != $datablock_nr ) {
-        die "only some data blocks in '$cif' have " .
-            "_cod_data_source_file tags - we can not determine the " .
-            "exact source of data; such CIFs are not suitable for COD";
+        critical( $cif, undef,
+                  "only some data blocks in '$cif' have " .
+                  "_cod_data_source_file tags -- we can not " .
+                  "determine the exact source of data; such CIFs " . 
+                  "are not suitable for COD" );
     }
 
     if( $data_source_nr == 0 ) {
@@ -452,9 +468,10 @@ sub filter_and_check
             my $dataname = $line[0];
             if( $line[11] ne '?' ) { $dataname = $line[11]; }
             if( exists $hkl_values{$dataname} ) {
-                die "HKL file contains more than one datablock " .
-                    "named '" . $dataname . "', please use " .
-                    "unique datablock names";
+                critical( $hkl, undef,
+                          "HKL file contains more than one datablock " .
+                          "named '" . $dataname . "' -- please use " .
+                          "unique datablock names" );
             }
             $hkl_values{$dataname} = {};
             for( my $i = 1; $i < @line; $i++ ) {
@@ -487,13 +504,17 @@ sub filter_and_check
             if( $is_pd_hkl ) {
                 # We have powder diffraction experiment HKL data
                 # To be done later:
-                die "powder diffraction experiment HKL files can not be " .
-                    "processed now - this function is not implemented yet";
+                critical( $cif, undef,
+                          "powder diffraction experiment HKL files " .
+                          "can not be processed now -- this function " .
+                          "is not implemented yet" );
             } else {
-                die "supplied HKL file has more than one datablock and " .
-                    "and does not describe data from powder diffraction " .
-                    "experiment - only powder diffraction HKL files can " .
-                    "have more than one datablock";
+                critical( $cif, undef,
+                          "supplied HKL file has more than one " .
+                          "datablock and does not describe data from " .
+                          "powder diffraction experiment -- only " .
+                          "powder diffraction HKL files can have more " .
+                          "than one datablock" );
             }
         }
 
@@ -512,9 +533,10 @@ sub filter_and_check
             my $dataname = $line[1];
             if( $line[11] ne '?' ) { $dataname = $line[11]; }
             if( exists $cif_parameters{$dataname} ) {
-                die "CIF file contains more than one datablock " .
-                    "named '" . $dataname . "', please use " .
-                    "unique datablock names";
+                critical( $cif, undef,
+                          "CIF file contains more than one datablock " .
+                          "named '" . $dataname . "', please use " .
+                          "unique datablock names" );
             }
             $cif_parameters{$dataname} = {};
             $cif_parameters{$dataname}->{name} = $line[0];
@@ -539,15 +561,17 @@ sub filter_and_check
                         if( !can_be_equal(
                             $cif_parameters{$hkl_parameters{name}}->{$tag}[0],
                             $hkl_parameters{$tag}->[0] ) ) {
-                            die "can not confirm relation " .
-                                "between datablocks named '" . 
-                                $hkl_parameters{name} .
-                                "' from supplied CIF and Fobs files - values " .
-                                "of tag '$tag' differ: '" .
-                                $cif_parameters{$hkl_parameters{name}}->{$tag}[0] .
-                                "' (CIF) and '" .
-                                $hkl_parameters{$tag}->[0] .
-                                "' (Fobs)";
+                            critical( $cif, undef,
+                                      "can not confirm relation " .
+                                      "between datablocks named '" . 
+                                      $hkl_parameters{name} .
+                                      "' from supplied CIF and Fobs " .
+                                      "files -- values of tag '$tag' " .
+                                      "differ: '" .
+                                      $cif_parameters{$hkl_parameters{name}}->{$tag}[0] .
+                                      "' (CIF) and '" .
+                                      $hkl_parameters{$tag}->[0] .
+                                      "' (Fobs)" );
                         }
                     } elsif( $tag eq '_publ_author_name' ) {
                         my $cif_authors = lc( join( ';',
@@ -557,37 +581,42 @@ sub filter_and_check
                             @{$hkl_parameters{$tag}} ) );
                         $hkl_authors =~ s/\s//g;
                         if( $cif_authors ne $hkl_authors ) {
-                            die "can not confirm relation " .
-                                "between datablocks named '" . 
-                                $hkl_parameters{name} .
-                                "' from supplied CIF and Fobs files - " .
-                                "publication author lists differ: '" .
-                                join( ', ', map { "'$_'" }
+                            critical( $cif, undef,
+                                      "can not confirm relation " .
+                                      "between datablocks named '" . 
+                                      $hkl_parameters{name} .
+                                      "' from supplied CIF and Fobs " .
+                                      "files -- publication author " .
+                                      "lists differ: '" .
+                                      join( ', ', map { "'$_'" }
                                       @{$cif_parameters{$hkl_parameters{name}}->{$tag}} ) .
-                                "' (CIF) and '" . join( ', ', map { "'$_'" }
-                                    @{$hkl_parameters{$tag}} ) .
-                                "' (Fobs)";
+                                      "' (CIF) and '" . join( ', ', map { "'$_'" }
+                                        @{$hkl_parameters{$tag}} ) .
+                                      "' (Fobs)" );
                         }
                     } else {
                         if( $cif_parameters{$hkl_parameters{name}}->{$tag}[0] ne
                             $hkl_parameters{$tag}->[0] ) {
-                            die "can not confirm relation " .
-                                "between datablocks named '" .
-                                $hkl_parameters{name} .
-                                "' from supplied CIF and Fobs files - values " .
-                                "of tag '$tag' differ: '" .
-                                $cif_parameters{$hkl_parameters{name}}->{$tag}[0] .
-                                "' (CIF) and '" .
-                                $hkl_parameters{$tag}->[0] .
-                                "' (Fobs)";
+                            critical( $cif, undef,
+                                      "can not confirm relation " .
+                                      "between datablocks named '" .
+                                      $hkl_parameters{name} .
+                                      "' from supplied CIF and Fobs " .
+                                      "files -- values of tag '$tag' " .
+                                      "differ: '" .
+                                      $cif_parameters{$hkl_parameters{name}}->{$tag}[0] .
+                                      "' (CIF) and '" .
+                                      $hkl_parameters{$tag}->[0] .
+                                      "' (Fobs)" );
                         }
                     }
                 }
             }
         } else {
-            die "could not relate supplied HKL file to any " .
-                "datablock from CIF file - CIF datablock with name '" .
-                $hkl_parameters{name} . "' is not found";
+            critical( $cif, undef,
+                      "could not relate supplied HKL file to any " .
+                      "datablock from CIF file -- CIF datablock " .
+                      "with name '$hkl_parameters{name}' is not found" );
         }
         if( $cif_for_hkl ) {
 
@@ -1019,6 +1048,18 @@ sub can_be_equal
             $open_intervals += $_->[1];
             if( $open_intervals > 1 ) { return 1; }
         }
+    }
+}
+
+sub critical
+{
+    my( $file, $datablock, $message ) = @_;
+    if( !defined $file ) {
+        die $message;
+    } elsif( defined $datablock ) {
+        die "$file $datablock: $message";
+    } else {
+        die "$file: $message";
     }
 }
 
