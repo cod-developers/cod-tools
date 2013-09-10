@@ -398,7 +398,7 @@ sub filter_and_check
     
     if( $data_source_nr > 0 && $data_source_nr != $datablock_nr ) {
         critical( $cif, undef,
-                  "only some data blocks in '$cif' have " .
+                  "ERROR, only some data blocks in '$cif' have " .
                   "_cod_data_source_file tags -- we can not " .
                   "determine the exact source of data; such CIFs " . 
                   "are not suitable for COD" );
