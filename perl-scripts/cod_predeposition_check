@@ -35,6 +35,8 @@ my $options;
 
 my $print_timestamps = 0;
 
+my $tmp_file = "tmp-cod_predeposition_check-$$.tmp";
+
 @ARGV = getOptions(
     "-d,--database"  => \$database{name},
     "-l,--localhost" => sub { $database{host} = 'localhost' },
@@ -86,6 +88,7 @@ for my $i (0..@cif-1) {
                                                      $hkl[$i],
                                                      \%database,
                                                      $deposition_type,
+                                                     $tmp_file,
                                                      $options );
     };
     if( !$@ ) {
@@ -96,4 +99,5 @@ for my $i (0..@cif-1) {
     }
     print "FINISH $cif[$i] " . strftime( "%Y-%m-%d %T\n", localtime )
         if $print_timestamps;
+    unlink $tmp_file if -e $tmp_file;
 }

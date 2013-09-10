@@ -21,7 +21,8 @@ use Encode;
 
 sub filter_and_check
 {
-    my( $cif, $hkl, $db_conf, $deposition_type, $options ) = @_;
+    my( $cif, $hkl, $db_conf, $deposition_type, $tmp_file,
+        $options ) = @_;
     # Possible options:
     # -- bypass_checks
     # -- replace
@@ -32,12 +33,97 @@ sub filter_and_check
     # -- use_perl_parser (default)
     # -- author_name
 
-    my $original_cif_filename = $cif;
-    my $original_hkl_filename = $hkl;
+    my @filter_opt = qw(
+        --fix-syntax-errors
+        --fold-title
+        --leave-title
+        --global-priority
+        --reformat-spacegroup
+        --estimate-spacegroup
+        --keep-unrecognised-spacegroups
+        --parse-formula-sum
+        --calculate-cell-volume
+        --exclude-empty-tags
+        --preserve-loop-order
+    );
+
+    if( $deposition_type eq 'prepublication' ) {
+        push( @filter_opt, '--dont-exclude-publication-details' );
+    }
+
+    my( $filter_stdout, $filter_stderr ) =
+        run_command( [ 'cif_filter', @filter_opt, $cif ] );
+
+    my $continue = 1;
+    foreach( @$filter_stderr ) {
+        print STDERR "$_\n";
+        if( !/: tag '.*' is not recognised$/ ) {
+            $continue = 0;
+        }
+    }
+    die unless $continue;
+
+    my( $fix_values_stdout, $fix_values_stderr ) =
+        run_command( [ 'cif_fix_values' ], $filter_stdout );
+
+    foreach( @$fix_values_stderr ) {
+        print STDERR "$_\n";
+    }
+
+    my( $correct_stdout, $correct_stderr ) =
+        run_command( [ 'cif_correct_tags' ], $fix_values_stdout );
+
+    foreach( @$correct_stderr ) {
+        print STDERR "$_\n";
+    }
+    die if @$correct_stderr > 0;
+
+    if( !$options->{bypass_checks} ) {
+        my $ccc_opt;
+        if(      $deposition_type eq 'published' ) {
+            $ccc_opt = [ '--do-not-check-authors',
+                         '--do-not-check-limits' ];
+        } else {
+            $ccc_opt = [ '--do-not-check-temperature-factors' ];
+        }
+
+        my( $ccc_stdout, $ccc_stderr ) =
+            run_command( [ 'cif_cod_check', @$ccc_opt ],
+                         $correct_stdout );
+
+        if( $ccc_stdout->[0] !~ /OK$/) {
+            my %ccc_warnings = (
+                'published'         => undef,
+                'prepublication'    => ': ((?:_journal_name_full|'
+                    . '_publ_author_name) is undefined|'
+                    . 'neither _journal_(?:year nor _journal_volume|'
+                    . 'page_first nor _journal_article_reference) is defined|'
+                    . 'WARNING.*|NOTE.*)',
+                'personal'          => ': ((?:_journal_name_full|'
+                    . '_publ_author_name) is undefined|'
+                    . 'neither _journal_(?:year nor _journal_volume|'
+                    . 'page_first nor _journal_article_reference) is defined|'
+                    . 'WARNING.*|NOTE.*)',
+            );
+            my $continue = 1;
+            foreach( @$ccc_stdout ) {
+                print STDERR "$_\n";
+                if( defined $ccc_warnings{$deposition_type} &&
+                    !/$ccc_warnings{$deposition_type}\n?/ ) {
+                    $continue = 0;
+                }
+            }
+            die unless $continue;
+        }
+    }
+
+    open( my $inp, ">", $tmp_file );
+    print $inp join( "\n", @$correct_stdout );
+    close( $inp );    
 
     use CIFParser;
     my $parser = new CIFParser;
-    my $data = $parser->Run( $cif );
+    my $data = $parser->Run( $tmp_file );
 
     # Checking whether names in pre-deposition CIFs and in personal
     # communication CIFs match the depositor name:
@@ -193,53 +279,6 @@ sub filter_and_check
         die unless $continue;
     }
 
-    my( $correct_stdout, $correct_stderr ) =
-        run_command( [ 'cif_correct_tags', $cif ] );
-
-    foreach( @$correct_stderr ) {
-        print STDERR "$_\n";
-    }
-    die if @$correct_stderr > 0;
-
-    if( !$options->{bypass_checks} ) {
-        my $ccc_opt;
-        if(      $deposition_type eq 'published' ) {
-            $ccc_opt = [ '--do-not-check-authors',
-                         '--do-not-check-limits' ];
-        } else {
-            $ccc_opt = [ '--do-not-check-temperature-factors' ];
-        }
-
-        my( $ccc_stdout, $ccc_stderr ) =
-            run_command( [ 'cif_cod_check', @$ccc_opt ],
-                         $correct_stdout );
-
-        if( $ccc_stdout->[0] !~ /OK$/) {
-            my %ccc_warnings = (
-                'published'         => undef,
-                'prepublication'    => ': ((?:_journal_name_full|'
-                    . '_publ_author_name) is undefined|'
-                    . 'neither _journal_(?:year nor _journal_volume|'
-                    . 'page_first nor _journal_article_reference) is defined|'
-                    . 'WARNING.*|NOTE.*)',
-                'personal'          => ': ((?:_journal_name_full|'
-                    . '_publ_author_name) is undefined|'
-                    . 'neither _journal_(?:year nor _journal_volume|'
-                    . 'page_first nor _journal_article_reference) is defined|'
-                    . 'WARNING.*|NOTE.*)',
-            );
-            my $continue = 1;
-            foreach( @$ccc_stdout ) {
-                print STDERR "$_\n";
-                if( defined $ccc_warnings{$deposition_type} &&
-                    !/$ccc_warnings{$deposition_type}\n?/ ) {
-                    $continue = 0;
-                }
-            }
-            die unless $continue;
-        }
-    }
-
     my @journal_regexp = (
         [ 'Acta.*Cryst.*C', 'Acta Cryst. Section C' ],
         [ 'Acta.*Cryst.*B', 'Acta Cryst. Section B' ],
@@ -367,7 +406,7 @@ sub filter_and_check
     $year =~ /(\d+)/;
     $year = $1;
 
-    my @filter_opt;
+    @filter_opt = ();
     if( $deposition_type eq 'prepublication' ) {
         @filter_opt = ( '--journal', (defined $journal)
                                         ? "To be published in $journal"
@@ -408,18 +447,17 @@ sub filter_and_check
         push( @filter_opt, ( '--original-filename', $cif ) );
     }
 
-    my( $filter_stdout, $filter_stderr ) =
+    ( $filter_stdout, $filter_stderr ) =
         run_command( [ 'cif_filter',
                            '--fold-title',
                            '--parse-formula-sum',
                        @filter_opt ], $correct_stdout );
 
-    my $continue = 1;
+    $continue = 1;
     foreach( @$filter_stderr ) {
+        next if /: tag '.*' is not recognised$/;
         print STDERR "$_\n";
-        if( !/: tag '.*' is not recognised$/ ) {
-            $continue = 0;
-        }
+        $continue = 0;
     }
     die unless $continue;
 
@@ -629,7 +667,7 @@ sub filter_and_check
                 $hkl_now =~ s/\n+$//s;
                 $hkl_now .= "\n" .
                             "_[local]_cod_data_source_file '" .
-                            $original_hkl_filename . "'\n" .
+                            $hkl . "'\n" .
                             "_[local]_cod_data_source_block '" .
                             $hkl_parameters{name} . "'\n";
             }
