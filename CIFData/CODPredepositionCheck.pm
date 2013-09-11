@@ -21,8 +21,8 @@ use Encode;
 
 sub filter_and_check
 {
-    my( $cif, $hkl, $db_conf, $deposition_type, $tmp_file,
-        $options ) = @_;
+    my( $cif, $cif_filename, $hkl, $hkl_filename,
+        $db_conf, $deposition_type, $tmp_file, $options ) = @_;
     # Possible options:
     # -- bypass_checks
     # -- replace
@@ -51,8 +51,14 @@ sub filter_and_check
         push( @filter_opt, '--dont-exclude-publication-details' );
     }
 
-    my( $filter_stdout, $filter_stderr ) =
-        run_command( [ 'cif_filter', @filter_opt, $cif ] );
+    my( $filter_stdout, $filter_stderr );
+    if( ref( $cif ) eq 'ARRAY' ) {
+        ( $filter_stdout, $filter_stderr ) =
+            run_command( [ 'cif_filter', @filter_opt ], $cif );
+    } else {
+        ( $filter_stdout, $filter_stderr ) =
+            run_command( [ 'cif_filter', @filter_opt, $cif ] );
+    }
 
     my $continue = 1;
     foreach( @$filter_stderr ) {
@@ -137,7 +143,7 @@ sub filter_and_check
             my $first_data_name;
             my $values = $dataset->{values};
             if( !defined $values ) {
-                critical( $cif, "data_$dataset->{name}",
+                critical( $cif_filename, "data_$dataset->{name}",
                           "no data in datablock '$dataset->{name}'" );
             }
             if( exists $values->{_publ_author_name} ) {
@@ -152,7 +158,7 @@ sub filter_and_check
                         @{$values->{_publ_author_name}} );
                     my $data_name_now = $dataset->{name};
                     if( $deposition_authors ne $deposition_authors_now ) {
-                        critical( $cif, "data_$data_name_now",
+                        critical( $cif_filename, "data_$data_name_now",
                                   "author list in the datablock " .
                                   "data_$first_data_name " .
                                   "($deposition_authors) is not the " .
@@ -174,7 +180,7 @@ sub filter_and_check
                     $cif_author =~ s/\pM//g;
                     next DATASET if $cif_author eq $web_author;
                 }
-                critical( $cif, "data_$dataset->{name}",
+                critical( $cif_filename, "data_$dataset->{name}",
                           "submitting author '$options->{author_name}' " .
                           "does not match any author in the " .
                           "data_$dataset->{name} author list (" .
@@ -200,7 +206,7 @@ sub filter_and_check
         for my $dataset (@$data) {
             my $values = $dataset->{values};
             if( !defined $values ) {
-                critical( $cif, "data_$dataset->{name}",
+                critical( $cif_filename, "data_$dataset->{name}",
                           "no data in datablock '$dataset->{name}'" );
             }
             if( exists $values->{_journal_name_full} ) {
@@ -216,7 +222,7 @@ sub filter_and_check
                                                  $deposition_type );
                     my $data_name_now = $dataset->{name};
                     if( $range_now ne $range ) {
-                        critical( $cif, undef,
+                        critical( $cif_filename, undef,
                                   "journals '$journal' of " .
                                   "data_$data_name and '$journal_now' " .
                                   "of data_$data_name_now " .
@@ -233,10 +239,14 @@ sub filter_and_check
 
     my $hkl_now;
     if( defined $hkl ) {
-        open( my $hkl_file_handle, $hkl );
-        $hkl_now = join( "\n",
-                         map {s/(\n|\r|\r\n)$//;$_} <$hkl_file_handle> );
-        close( $hkl_file_handle );
+        if( ref( $hkl ) eq 'ARRAY' ) {
+            $hkl_now = join( "\n", @$hkl );
+        } else {
+            open( my $hkl_file_handle, $hkl );
+            $hkl_now = join( "\n",
+                             map {s/(\n|\r|\r\n)$//;$_} <$hkl_file_handle> );
+            close( $hkl_file_handle );
+        }
     }
 
     my $number_to_replace;
@@ -244,12 +254,12 @@ sub filter_and_check
 
         # determining which cif file to replace, if any:
         if( @$data != 1 ) {
-            critical( $cif, undef,
+            critical( $cif_filename, undef,
                       "file supplied for replacement " .
                       "should have only one datablock" );
         }
         if( !exists $data->[0]{values}{'_cod_database_code'}[0]) {
-            critical( $cif, "data_$data->[0]{name}",
+            critical( $cif_filename, "data_$data->[0]{name}",
                       "CIF file supplied for replacement " .
                       "should have \'_cod_database_code\' value " .
                       "determining which CIF file to replace" );
@@ -264,7 +274,7 @@ sub filter_and_check
 
         use CIFCODNumbers;
         my $duplicates = fetch_duplicates( $data,
-                                           $cif,
+                                           $cif_filename,
                                            $db_conf,
                                            $cif_cod_numbers_opt );
         my $continue = 1;
@@ -322,7 +332,7 @@ sub filter_and_check
             } else {
                 print STDERR "journal name is not defined in the " .
                               "first datablock of the published CIF " .
-                              "'$cif'\n";
+                              "'$cif_filename'\n";
             }
         }
     }
@@ -346,7 +356,7 @@ sub filter_and_check
         $sth->execute( $number_to_replace );
 
         if( $sth->fetchrow_arrayref()->[0] == 0 ) {
-            critical( $cif, undef,
+            critical( $cif_filename, undef,
                       "entry for structure $number_to_replace " .
                       "does not exist in the COD data table -- " .
                       "can not replace abscent structures" );
@@ -358,7 +368,7 @@ sub filter_and_check
 
         if( $options->{release} ) {
             if( !defined $database_hold_until ) {
-                critical( $cif, undef,
+                critical( $cif_filename, undef,
                           "can not release structure that has been " .
                           "deposited not as prepublication material" );
             }
@@ -436,15 +446,15 @@ sub filter_and_check
     }
     
     if( $data_source_nr > 0 && $data_source_nr != $datablock_nr ) {
-        critical( $cif, undef,
-                  "ERROR, only some data blocks in '$cif' have " .
-                  "_cod_data_source_file tags -- we can not " .
+        critical( $cif_filename, undef,
+                  "ERROR, only some data blocks in '$cif_filename' " .
+                  "have _cod_data_source_file tags -- we can not " .
                   "determine the exact source of data; such CIFs " . 
                   "are not suitable for COD" );
     }
 
     if( $data_source_nr == 0 ) {
-        push( @filter_opt, ( '--original-filename', $cif ) );
+        push( @filter_opt, ( '--original-filename', $cif_filename ) );
     }
 
     ( $filter_stdout, $filter_stderr ) =
@@ -506,10 +516,10 @@ sub filter_and_check
             my $dataname = $line[0];
             if( $line[11] ne '?' ) { $dataname = $line[11]; }
             if( exists $hkl_values{$dataname} ) {
-                critical( $hkl, undef,
+                critical( $hkl_filename, undef,
                           "HKL file contains more than one datablock " .
-                          "named '" . $dataname . "' -- please use " .
-                          "unique datablock names" );
+                          "named '$dataname' -- please use unique " .
+                          "datablock names" );
             }
             $hkl_values{$dataname} = {};
             for( my $i = 1; $i < @line; $i++ ) {
@@ -533,7 +543,7 @@ sub filter_and_check
             %hkl_parameters = %{$hkl_values{(keys %hkl_values)[0]}};
             $hkl_parameters{name} = (keys %hkl_values)[0];
         } else {
-            foreach( keys  %hkl_values ) {
+            foreach( keys %hkl_values ) {
                 if( exists $hkl_values{$_}->{_pd_block_id} ) {
                     $is_pd_hkl = 1;
                     last;
@@ -542,12 +552,12 @@ sub filter_and_check
             if( $is_pd_hkl ) {
                 # We have powder diffraction experiment HKL data
                 # To be done later:
-                critical( $cif, undef,
+                critical( $hkl_filename, undef,
                           "powder diffraction experiment HKL files " .
                           "can not be processed now -- this function " .
                           "is not implemented yet" );
             } else {
-                critical( $cif, undef,
+                critical( $hkl_filename, undef,
                           "supplied HKL file has more than one " .
                           "datablock and does not describe data from " .
                           "powder diffraction experiment -- only " .
@@ -571,9 +581,9 @@ sub filter_and_check
             my $dataname = $line[1];
             if( $line[11] ne '?' ) { $dataname = $line[11]; }
             if( exists $cif_parameters{$dataname} ) {
-                critical( $cif, undef,
+                critical( $cif_filename, undef,
                           "CIF file contains more than one datablock " .
-                          "named '" . $dataname . "', please use " .
+                          "named '$dataname', please use " .
                           "unique datablock names" );
             }
             $cif_parameters{$dataname} = {};
@@ -599,7 +609,7 @@ sub filter_and_check
                         if( !can_be_equal(
                             $cif_parameters{$hkl_parameters{name}}->{$tag}[0],
                             $hkl_parameters{$tag}->[0] ) ) {
-                            critical( $cif, undef,
+                            critical( $cif_filename, undef,
                                       "can not confirm relation " .
                                       "between datablocks named '" . 
                                       $hkl_parameters{name} .
@@ -619,7 +629,7 @@ sub filter_and_check
                             @{$hkl_parameters{$tag}} ) );
                         $hkl_authors =~ s/\s//g;
                         if( $cif_authors ne $hkl_authors ) {
-                            critical( $cif, undef,
+                            critical( $cif_filename, undef,
                                       "can not confirm relation " .
                                       "between datablocks named '" . 
                                       $hkl_parameters{name} .
@@ -635,7 +645,7 @@ sub filter_and_check
                     } else {
                         if( $cif_parameters{$hkl_parameters{name}}->{$tag}[0] ne
                             $hkl_parameters{$tag}->[0] ) {
-                            critical( $cif, undef,
+                            critical( $cif_filename, undef,
                                       "can not confirm relation " .
                                       "between datablocks named '" .
                                       $hkl_parameters{name} .
@@ -651,7 +661,7 @@ sub filter_and_check
                 }
             }
         } else {
-            critical( $cif, undef,
+            critical( $cif_filename, undef,
                       "could not relate supplied HKL file to any " .
                       "datablock from CIF file -- CIF datablock " .
                       "with name '$hkl_parameters{name}' is not found" );
@@ -667,7 +677,7 @@ sub filter_and_check
                 $hkl_now =~ s/\n+$//s;
                 $hkl_now .= "\n" .
                             "_[local]_cod_data_source_file '" .
-                            $hkl . "'\n" .
+                            $hkl_filename . "'\n" .
                             "_[local]_cod_data_source_block '" .
                             $hkl_parameters{name} . "'\n";
             }
