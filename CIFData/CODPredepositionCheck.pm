@@ -20,6 +20,20 @@ use Unicode::Normalize;
 use Unicode2CIF;
 use Encode;
 
+@CODPredepositionCheck::identity_tags = qw(
+    _cell_length_a
+    _cell_length_b
+    _cell_length_c
+    _cell_angle_alpha
+    _cell_angle_beta
+    _cell_angle_gamma
+    _publ_author_name
+    _symmetry_space_group_name_Hall
+    _symmetry_space_group_name_H-M
+    _[local]_cod_data_source_file
+    _[local]_cod_data_source_block
+);
+
 sub filter_and_check
 {
     my( $cif, $cif_filename, $hkl, $hkl_filename,
@@ -473,23 +487,9 @@ sub filter_and_check
     die unless $continue;
 
     if( $hkl ) {
-        my @identity_tags = qw(
-            _cell_length_a
-            _cell_length_b
-            _cell_length_c
-            _cell_angle_alpha
-            _cell_angle_beta
-            _cell_angle_gamma
-            _publ_author_name
-            _symmetry_space_group_name_Hall
-            _symmetry_space_group_name_H-M
-            _[local]_cod_data_source_file
-            _[local]_cod_data_source_block
-        );
-
         my $hkl_parameters = extract_cif_values( $hkl_now,
                                                  $hkl_filename,
-                                                 [ @identity_tags,
+                                                 [ @CODPredepositionCheck::identity_tags,
                                                    '_pd_block_id' ] );
 
         # Determining whether this HKL describes data from single-crystal
@@ -522,12 +522,12 @@ sub filter_and_check
 
         my $cif_parameters = extract_cif_values( $filter_stdout,
                                                  $cif_filename,
-                                                 \@identity_tags );
+                                                 \@CODPredepositionCheck::identity_tags );
 
         my $cif_for_hkl =
             find_cif_datablock_for_hkl( $cif_parameters,
                                         \%hkl_parameters,
-                                        \@identity_tags,
+                                        \@CODPredepositionCheck::identity_tags,
                                         $cif_filename,
                                         $hkl_filename );
 
