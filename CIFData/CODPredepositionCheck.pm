@@ -503,10 +503,6 @@ sub filter_and_check
             !exists $hkl_parameters->[0]{_pd_block_id} ) {
             # We have single-crystal experiment HKL data
             %hkl_parameters = %{$hkl_parameters->[0]};
-            if( exists $hkl_parameters{'_[local]_cod_data_source_block'} ) {
-                $hkl_parameters{name} =
-                    $hkl_parameters{'_[local]_cod_data_source_block'}[0];
-            }
         } else {
             foreach( @$hkl_parameters ) {
                 if( exists $_->{_pd_block_id} ) {
@@ -527,13 +523,6 @@ sub filter_and_check
         my $cif_parameters = extract_cif_values( $filter_stdout,
                                                  $cif_filename,
                                                  \@identity_tags );
-
-        foreach( @$cif_parameters ) {
-            if( exists $_->{'_[local]_cod_data_source_block'} ) {
-                $_->{name} =
-                    $_->{'_[local]_cod_data_source_block'}[0];
-            }
-        }
 
         my $cif_for_hkl =
             find_cif_datablock_for_hkl( $cif_parameters,
@@ -1039,9 +1028,17 @@ sub find_cif_datablock_for_hkl
 
     # Determining CIF datablock related to supplied HKL file
 
+    my $hkl_dataname = $hkl_parameters{name};
+    if( exists $hkl_parameters{'_[local]_cod_data_source_block'} ) {
+        $hkl_dataname = $hkl_parameters{'_[local]_cod_data_source_block'}[0];
+    }
+
     my $cif_for_hkl;
     for my $i (0..@$cif_parameters-1 ) {
-        if( $cif_parameters->[$i]{name} eq $hkl_parameters{name} ) {
+        if( (exists $cif_parameters->[$i]{'_[local]_cod_data_source_block'} &&
+             $cif_parameters->[$i]{'_[local]_cod_data_source_block'}[0] eq $hkl_dataname) ||
+            (!exists $cif_parameters->[$i]{'_[local]_cod_data_source_block'} &&
+             $cif_parameters->[$i]{name} eq $hkl_dataname ) ) {
             if( !$cif_for_hkl ) {
                 $cif_for_hkl = $i;
                 last;
