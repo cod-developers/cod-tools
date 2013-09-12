@@ -35,6 +35,7 @@ my $options;
 
 my $print_timestamps = 0;
 
+my $tmp_dir;
 my $tmp_file = "tmp-cod_predeposition_check-$$.tmp";
 
 @ARGV = getOptions(
@@ -72,11 +73,17 @@ my $tmp_file = "tmp-cod_predeposition_check-$$.tmp";
     "--print-timestamps" => sub { $print_timestamps = 1 },
     "--dont-print-timestamps" => sub { $print_timestamps = 0 },
     "--no-print-timestamps" => sub { $print_timestamps = 0 },
+
+    "--temp-dir" => \$tmp_dir,
 );
 
 push( @cif, @ARGV );
 
 @cif = ("-") unless @cif;
+
+if( $tmp_dir ) {
+    $tmp_file = $tmp_dir . '/' . $tmp_file;
+}
 
 for my $i (0..@cif-1) {
     print "START $cif[$i] " . strftime( "%Y-%m-%d %T\n", localtime )
