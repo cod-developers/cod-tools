@@ -12,6 +12,7 @@
 package CODPredepositionCheck;
 
 use strict;
+use warnings;
 use IPC::Open3 qw / open3 /;
 use IO::Handle;
 use Symbol;
@@ -272,11 +273,11 @@ sub filter_and_check
         $cif_cod_numbers_opt->{check_bibliography} = 0
             if $deposition_type eq 'personal';
 
-        use CIFCODNumbers;
-        my $duplicates = fetch_duplicates( $data,
-                                           $cif_filename,
-                                           $db_conf,
-                                           $cif_cod_numbers_opt );
+        use CIFData::CIFCODNumbers;
+        my $duplicates = CIFCODNumbers::fetch_duplicates( $data,
+                                                          $cif_filename,
+                                                          $db_conf,
+                                                          $cif_cod_numbers_opt );
         my $continue = 1;
         foreach my $dataset (@$duplicates) {
             next if scalar( keys %{$dataset->{duplicates}} ) == 0;
@@ -471,12 +472,7 @@ sub filter_and_check
     }
     die unless $continue;
 
-    my $is_pd_hkl;
     if( $hkl ) {
-
-        # Enumerating tags for later matching between datablocks of uploaded
-        # CIF and HKL files
-
         my @identity_tags = qw(
             _cell_length_a
             _cell_length_b
@@ -491,196 +487,71 @@ sub filter_and_check
             _[local]_cod_data_source_block
         );
 
-        my $separator  = '|';
-        my $vseparator = '@';
+        my $hkl_parameters = extract_cif_values( $hkl_now,
+                                                 $hkl_filename,
+                                                 [ @identity_tags,
+                                                   '_pd_block_id' ] );
 
-        # Taking values from HKL file for later checks
-
-        my @hkl_identity_tags = ( @identity_tags, '_pd_block_id' );
-        my( $values_stdout, $values_stderr ) =
-            run_command( [ 'cifvalues',
-                               '--tag', join( ',', @hkl_identity_tags ),
-                               '--separator', $separator,
-                               '--vseparator', $vseparator ],
-                         [ split( '\n', $hkl_now ) ] );
-        foreach( @$values_stderr ) {
-            print STDERR "$_\n";
-        }
-        die if @$values_stderr > 0;
-
-        # Extracting data from cifvalues output
-
-        my %hkl_values;
-        foreach( @$values_stdout ) {
-            my @line = split( quotemeta( $separator ), $_ );
-            my $dataname = $line[0];
-            if( $line[11] ne '?' ) { $dataname = $line[11]; }
-            if( exists $hkl_values{$dataname} ) {
-                critical( $hkl_filename, undef,
-                          "HKL file contains more than one datablock " .
-                          "named '$dataname' -- please use unique " .
-                          "datablock names" );
-            }
-            $hkl_values{$dataname} = {};
-            for( my $i = 1; $i < @line; $i++ ) {
-                next unless $line[$i] ne '?';
-                $hkl_values{$dataname}->{$hkl_identity_tags[$i-1]} =
-                    [ split( quotemeta( $vseparator ), $line[$i] ) ];
-            }
-        }
-        
         # Determining whether this HKL describes data from single-crystal
         # or powder diffraction experiment. In the first case, HKL should
         # contain only one datablock and no tags named _pd_block_id.
         # Powder diffraction HKL file can contain more than one datablock
         # and one or more of them should have _pd_block_id tag.
 
-        $is_pd_hkl = 0;
         my %hkl_parameters;
-        if( keys %hkl_values == 1 && 
-            !exists $hkl_values{(keys %hkl_values)[0]}->{_pd_block_id} ) {
+        if( @$hkl_parameters == 1 &&
+            !exists $hkl_parameters->[0]{_pd_block_id} ) {
             # We have single-crystal experiment HKL data
-            %hkl_parameters = %{$hkl_values{(keys %hkl_values)[0]}};
-            $hkl_parameters{name} = (keys %hkl_values)[0];
-        } else {
-            foreach( keys %hkl_values ) {
-                if( exists $hkl_values{$_}->{_pd_block_id} ) {
-                    $is_pd_hkl = 1;
-                    last;
-                }
-            }
-            if( $is_pd_hkl ) {
-                # We have powder diffraction experiment HKL data
-                # To be done later:
-                critical( $hkl_filename, undef,
-                          "powder diffraction experiment HKL files " .
-                          "can not be processed now -- this function " .
-                          "is not implemented yet" );
-            } else {
-                critical( $hkl_filename, undef,
-                          "supplied HKL file has more than one " .
-                          "datablock and does not describe data from " .
-                          "powder diffraction experiment -- only " .
-                          "powder diffraction HKL files can have more " .
-                          "than one datablock" );
-            }
-        }
-
-        ( $values_stdout, $values_stderr ) =
-            run_command( [ 'cifvalues',
-                                '--tag', join( ',', @identity_tags ),
-                                '--separator', $separator,
-                                '--vseparator', $vseparator ],
-                            $filter_stdout );
-
-        # Extracting data from cifvalues output
-
-        my %cif_parameters;
-        foreach( @$values_stdout ) {
-            my @line = split( quotemeta( $separator ), $_ );
-            my $dataname = $line[1];
-            if( $line[11] ne '?' ) { $dataname = $line[11]; }
-            if( exists $cif_parameters{$dataname} ) {
-                critical( $cif_filename, undef,
-                          "CIF file contains more than one datablock " .
-                          "named '$dataname', please use " .
-                          "unique datablock names" );
-            }
-            $cif_parameters{$dataname} = {};
-            $cif_parameters{$dataname}->{name} = $line[0];
-            for( my $i = 1; $i < @line; $i++ ) {
-                next unless $line[$i] ne '?';
-                $cif_parameters{$dataname}->{$identity_tags[$i-1]} =
-                    [ split( quotemeta( $vseparator ), $line[$i] ) ];
-            }
-        }
-
-        # Determining CIF datablock related to supplied HKL file
-
-        my $cif_for_hkl;
-        if( exists $cif_parameters{$hkl_parameters{name}} ) {
-            $cif_parameters{$hkl_parameters{name}}->{name} =~ /(\d{7})/;
-            $cif_for_hkl = $1;           
-            foreach my $tag ( @identity_tags ) {
-                next if $tag =~ /^_\[local\]_cod_data_source_(file|block)$/;
-                if( exists $cif_parameters{$hkl_parameters{name}}->{$tag} &&
-                    exists $hkl_parameters{$tag} ) {
-                    if( $tag =~ /_cell_/ ) {
-                        if( !can_be_equal(
-                            $cif_parameters{$hkl_parameters{name}}->{$tag}[0],
-                            $hkl_parameters{$tag}->[0] ) ) {
-                            critical( $cif_filename, undef,
-                                      "can not confirm relation " .
-                                      "between datablocks named '" . 
-                                      $hkl_parameters{name} .
-                                      "' from supplied CIF and Fobs " .
-                                      "files -- values of tag '$tag' " .
-                                      "differ: '" .
-                                      $cif_parameters{$hkl_parameters{name}}->{$tag}[0] .
-                                      "' (CIF) and '" .
-                                      $hkl_parameters{$tag}->[0] .
-                                      "' (Fobs)" );
-                        }
-                    } elsif( $tag eq '_publ_author_name' ) {
-                        my $cif_authors = lc( join( ';',
-                            @{$cif_parameters{$hkl_parameters{name}}->{$tag}}));
-                        $cif_authors =~ s/\s//g;
-                        my $hkl_authors = lc( join( ';',
-                            @{$hkl_parameters{$tag}} ) );
-                        $hkl_authors =~ s/\s//g;
-                        if( $cif_authors ne $hkl_authors ) {
-                            critical( $cif_filename, undef,
-                                      "can not confirm relation " .
-                                      "between datablocks named '" . 
-                                      $hkl_parameters{name} .
-                                      "' from supplied CIF and Fobs " .
-                                      "files -- publication author " .
-                                      "lists differ: '" .
-                                      join( ', ', map { "'$_'" }
-                                      @{$cif_parameters{$hkl_parameters{name}}->{$tag}} ) .
-                                      "' (CIF) and '" . join( ', ', map { "'$_'" }
-                                        @{$hkl_parameters{$tag}} ) .
-                                      "' (Fobs)" );
-                        }
-                    } else {
-                        if( $cif_parameters{$hkl_parameters{name}}->{$tag}[0] ne
-                            $hkl_parameters{$tag}->[0] ) {
-                            critical( $cif_filename, undef,
-                                      "can not confirm relation " .
-                                      "between datablocks named '" .
-                                      $hkl_parameters{name} .
-                                      "' from supplied CIF and Fobs " .
-                                      "files -- values of tag '$tag' " .
-                                      "differ: '" .
-                                      $cif_parameters{$hkl_parameters{name}}->{$tag}[0] .
-                                      "' (CIF) and '" .
-                                      $hkl_parameters{$tag}->[0] .
-                                      "' (Fobs)" );
-                        }
-                    }
-                }
+            %hkl_parameters = %{$hkl_parameters->[0]};
+            if( exists $hkl_parameters{'_[local]_cod_data_source_block'} ) {
+                $hkl_parameters{name} =
+                    $hkl_parameters{'_[local]_cod_data_source_block'}[0];
             }
         } else {
-            critical( $cif_filename, undef,
-                      "could not relate supplied HKL file to any " .
-                      "datablock from CIF file -- CIF datablock " .
-                      "with name '$hkl_parameters{name}' is not found" );
-        }
-        if( $cif_for_hkl ) {
-
-            # Write HKL contents to file, change the datablock name and
-            # record original file and block names
-
-            if( !$is_pd_hkl &&
-                !exists $hkl_parameters{'_[local]_cod_data_source_file'} &&
-                !exists $hkl_parameters{'_[local]_cod_data_source_block'} ){
-                $hkl_now =~ s/\n+$//s;
-                $hkl_now .= "\n" .
-                            "_[local]_cod_data_source_file '" .
-                            $hkl_filename . "'\n" .
-                            "_[local]_cod_data_source_block '" .
-                            $hkl_parameters{name} . "'\n";
+            foreach( @$hkl_parameters ) {
+                if( exists $_->{_pd_block_id} ) {
+                    critical( $hkl_filename, undef,
+                              "powder diffraction experiment HKL files " .
+                              "can not be processed now -- this function " .
+                              "is not implemented yet" );
+                }
             }
+            critical( $hkl_filename, undef,
+                      "supplied HKL file has more than one " .
+                      "datablock and does not describe data from " .
+                      "powder diffraction experiment -- only " .
+                      "powder diffraction HKL files can have more " .
+                      "than one datablock" );
+        }
+
+        my $cif_parameters = extract_cif_values( $filter_stdout,
+                                                 $cif_filename,
+                                                 \@identity_tags );
+
+        foreach( @$cif_parameters ) {
+            if( exists $_->{'_[local]_cod_data_source_block'} ) {
+                $_->{name} =
+                    $_->{'_[local]_cod_data_source_block'}[0];
+            }
+        }
+
+        my $cif_for_hkl =
+            find_cif_datablock_for_hkl( $cif_parameters,
+                                        \%hkl_parameters,
+                                        \@identity_tags,
+                                        $cif_filename,
+                                        $hkl_filename );
+
+        # Record original file and block names
+
+        if( !exists $hkl_parameters{'_[local]_cod_data_source_file'} &&
+            !exists $hkl_parameters{'_[local]_cod_data_source_block'} ){
+            $hkl_now =~ s/\n+$//s;
+            $hkl_now .= "\n" .
+                        "_[local]_cod_data_source_file '" .
+                        $hkl_filename . "'\n" .
+                        "_[local]_cod_data_source_block '" .
+                        $hkl_parameters{name} . "'\n";
         }
     }
 
@@ -1109,6 +980,145 @@ sub critical
     } else {
         die "$file: $message";
     }
+}
+
+sub extract_cif_values
+{
+    my( $file, $filename, $tags ) = @_;
+    
+    my $separator  = '|';
+    my $vseparator = '@';
+
+    my $file_now;
+    if( ref( $file ) eq 'ARRAY' ) {
+        $file_now = $file;
+    } else {
+        $file_now = [ split( '\n', $file ) ];
+    }
+
+    my( $values_stdout, $values_stderr ) =
+        run_command( [ 'cifvalues',
+                           '--tag', join( ',', @$tags ),
+                           '--separator', $separator,
+                           '--vseparator', $vseparator ],
+                     $file_now );
+    foreach( @$values_stderr ) {
+        print STDERR "$_\n";
+    }
+    die if @$values_stderr > 0;
+
+    my $data = [];
+    my %seen_datanames;
+    foreach( @$values_stdout ) {
+        my @line = split( quotemeta( $separator ), $_ );
+        my $dataname = shift @line;
+        if( exists $seen_datanames{$dataname} ) {
+            critical( $filename, undef,
+                      "file contains more than one datablock " .
+                      "named '$dataname' -- please use unique " .
+                      "datablock names" );
+        }
+        my $values = { name => $dataname };
+        for( my $i = 0; $i < @line; $i++ ) {
+            next unless $line[$i] ne '?';
+            $values->{$tags->[$i]} =
+                [ split( quotemeta( $vseparator ), $line[$i] ) ];
+        }
+        push( @$data, $values );
+    }
+
+    return $data;
+}
+
+sub find_cif_datablock_for_hkl
+{
+    my( $cif_parameters, $hkl_parameters, $identity_tags,
+        $cif_filename, $hkl_filename ) = @_;
+
+    my %hkl_parameters = %$hkl_parameters;
+
+    # Determining CIF datablock related to supplied HKL file
+
+    my $cif_for_hkl;
+    for my $i (0..@$cif_parameters-1 ) {
+        if( $cif_parameters->[$i]{name} eq $hkl_parameters{name} ) {
+            if( !$cif_for_hkl ) {
+                $cif_for_hkl = $i;
+                last;
+            } else {
+                critical( $cif_filename, undef,
+                          "CIF file contains more than one datablock " .
+                          "named $hkl_parameters{name}?" );
+            }
+        }
+    }
+    if( !defined $cif_for_hkl ) {
+        critical( $cif_filename, undef,
+                  "could not relate supplied HKL file to any " .
+                  "datablock from CIF file -- CIF datablock " .
+                  "with name '$hkl_parameters{name}' is not found" );
+    }
+    my %cif_parameters = %{ $cif_parameters->[$cif_for_hkl] };
+
+    foreach my $tag ( @$identity_tags ) {
+        next if $tag =~ /^_\[local\]_cod_data_source_(file|block)$/;
+        if( exists $cif_parameters{$tag} && exists $hkl_parameters{$tag} ) {
+            if( $tag =~ /_cell_/ ) {
+                if( !can_be_equal(
+                    $cif_parameters{$tag}->[0],
+                    $hkl_parameters{$tag}->[0] ) ) {
+                    critical( $cif_filename, undef,
+                              "can not confirm relation " .
+                              "between datablocks named '" . 
+                              $hkl_parameters{name} .
+                              "' from supplied CIF and Fobs " .
+                              "files -- values of tag '$tag' " .
+                              "differ: '" .
+                              $cif_parameters{$tag}->[0] .
+                              "' (CIF) and '" .
+                              $hkl_parameters{$tag}->[0] .
+                              "' (Fobs)" );
+                }
+            } elsif( $tag eq '_publ_author_name' ) {
+                my $cif_authors = lc( join( ';',
+                    @{$cif_parameters{$tag}}));
+                $cif_authors =~ s/\s//g;
+                my $hkl_authors = lc( join( ';',
+                    @{$hkl_parameters{$tag}} ) );
+                $hkl_authors =~ s/\s//g;
+                if( $cif_authors ne $hkl_authors ) {
+                    critical( $cif_filename, undef,
+                              "can not confirm relation " .
+                              "between datablocks named '" . 
+                              $hkl_parameters{name} .
+                              "' from supplied CIF and Fobs " .
+                              "files -- publication author " .
+                              "lists differ: '" .
+                              join( ', ', map { "'$_'" }
+                              @{$cif_parameters{$tag}} ) .
+                              "' (CIF) and '" . join( ', ', map { "'$_'" }
+                                @{$hkl_parameters{$tag}} ) .
+                              "' (Fobs)" );
+                }
+            } else {
+                if( $cif_parameters{$tag}->[0] ne
+                    $hkl_parameters{$tag}->[0] ) {
+                    critical( $cif_filename, undef,
+                              "can not confirm relation " .
+                              "between datablocks named '" .
+                              $hkl_parameters{name} .
+                              "' from supplied CIF and Fobs " .
+                              "files -- values of tag '$tag' " .
+                              "differ: '" .
+                              $cif_parameters{$tag}->[0] .
+                              "' (CIF) and '" .
+                              $hkl_parameters{$tag}->[0] .
+                              "' (Fobs)" );
+                }
+            }
+        }
+    }
+    return $cif_for_hkl;
 }
 
 1;
