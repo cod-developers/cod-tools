@@ -292,16 +292,20 @@ sub filter_and_check
                                                           $cif_filename,
                                                           $db_conf,
                                                           $cif_cod_numbers_opt );
-        my $continue = 1;
+        my %duplicate_cod_entries;
         foreach my $dataset (@$duplicates) {
             next if scalar( keys %{$dataset->{duplicates}} ) == 0;
             foreach( keys %{$dataset->{duplicates}} ) {
                 print STDERR "DUPLICATE: $dataset->{formula} " .
                              "is found in COD entry $_\n";
-                $continue = 0;
+                $duplicate_cod_entries{$_} = 1;
             }
         }
-        die unless $continue;
+        if( keys %duplicate_cod_entries > 0 ) {
+            die "DUPLICATE: file has (at least some) structures that " .
+                "have been deposited to COD previously in entries " .
+                join( ", ", sort keys %duplicate_cod_entries );
+        }
     }
 
     my @journal_regexp = (
