@@ -302,9 +302,11 @@ sub filter_and_check
             }
         }
         if( keys %duplicate_cod_entries > 0 ) {
-            die "DUPLICATE: file has (at least some) structures that " .
-                "have been deposited to COD previously in entries " .
-                join( ", ", sort keys %duplicate_cod_entries );
+            critical( $cif_filename, undef,
+                      "DUPLICATE: file has (at least some) structures " .
+                      "that have been deposited to COD previously in " .
+                      "entries " .
+                      join( ", ", sort keys %duplicate_cod_entries ) );
         }
     }
 
