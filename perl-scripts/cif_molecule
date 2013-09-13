@@ -1058,6 +1058,11 @@ sub extract_atom
             $values->{_atom_site_symmetry_multiplicity}[$number];
     }
 
+    if( exists $values->{_atom_site_attached_hydrogens} ) {
+        $atom_info{attached_hydrogens} =
+            $values->{_atom_site_attached_hydrogens}[$number];
+    }
+
     return \%atom_info;
 }
 
@@ -2096,6 +2101,7 @@ sub print_molecule
 
     my $has_disorder = 0;
     my $is_polymer   = 0;
+    my $has_attached_hydrogens = 0;
     foreach my $atom ( @{$molecule->{atoms_c}} ) {
         if( $atom->{group} ne '.' || $atom->{assembly} ne '.' ) {
             $has_disorder = 1;
@@ -2103,7 +2109,10 @@ sub print_molecule
         if( exists $atom->{is_polymer} && $atom->{is_polymer} == 1 ) {
             $is_polymer = 1;
         }
-        if( $has_disorder && $is_polymer ) { last; }
+        if( $atom->{attached_hydrogens} ) {
+            $has_attached_hydrogens = 1;
+        }
+        last if $has_disorder && $is_polymer && $has_attached_hydrogens;
     }
 
     print "_symmetry_space_group_name_H-M   \'P 1\'\n";
@@ -2123,6 +2132,8 @@ sub print_molecule
         if $use_one_output_datablock && $has_disorder;
     print "_atom_site_disorder_group\n"
         if $use_one_output_datablock && $has_disorder;
+    print "_atom_site_attached_hydrogens\n"
+        if $has_attached_hydrogens;
 
     my $print_format = join( " ", ($format)x3 );
     foreach my $atom ( sort {
@@ -2158,6 +2169,10 @@ sub print_molecule
             CIFTagPrint::print_value( $atom->{assembly} );
             print " ";
             CIFTagPrint::print_value( $atom->{group} );
+        }
+        if( $has_attached_hydrogens ) {
+            print " ";
+            CIFTagPrint::print_value( $atom->{attached_hydrogens} );
         }
         print "\n";
     }
