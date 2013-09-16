@@ -151,12 +151,12 @@ sub filter_and_check
     # communication CIFs match the depositor name:
 
     my $deposition_authors;
+    my $first_data_name;
 
     if( $deposition_type eq 'prepublication' ||
         $deposition_type eq 'personal' ) {
           DATASET:
         for my $dataset (@$data) {
-            my $first_data_name;
             my $values = $dataset->{values};
             if( !defined $values ) {
                 critical( $cif_filename, $dataset->{name}, "ERROR",
