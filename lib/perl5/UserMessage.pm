@@ -14,7 +14,7 @@ use strict;
 use warnings;
 require Exporter;
 @UserMessage::ISA = qw(Exporter);
-@UserMessage::EXPORT = qw( error warning );
+@UserMessage::EXPORT = qw( print_message error warning );
 
 #==============================================================================
 # Print a message, reporting a program name, file name, data block
