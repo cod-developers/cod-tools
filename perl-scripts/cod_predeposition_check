@@ -85,6 +85,14 @@ if( $tmp_dir ) {
     $tmp_file = $tmp_dir . '/' . $tmp_file;
 }
 
+if( exists $options->{release} ) {
+    $options->{replace} = 1;
+}
+if( $options->{release} && $deposition_type eq 'prepublication' ) {
+    die "$0: structure can be released either as published or " .
+        "personal communication";
+}
+
 for my $i (0..@cif-1) {
     print "START $cif[$i] " . strftime( "%Y-%m-%d %T\n", localtime )
         if $print_timestamps;
