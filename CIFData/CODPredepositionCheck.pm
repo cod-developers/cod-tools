@@ -1037,4 +1037,28 @@ sub find_cif_datablock_for_hkl
     return $cif_for_hkl;
 }
 
+sub can_bypass_checks
+{
+    my( $client_password, $host_pass_string ) = @_;
+    my $host_password = $host_pass_string;
+    if( $host_pass_string =~ /^(MD5|SHA1)\((.+)\)$/ ) {
+        my $algorithm = $1;
+        $host_password = $2;
+        if( $algorithm eq 'MD5' ) {
+            use Digest::MD5 qw/ md5_hex /;
+            $client_password = Digest::MD5::md5_hex( $client_password );
+        } elsif( $algorithm eq 'SHA1' ) {
+            use Digest::SHA qw/ sha1_hex /;
+            $client_password = Digest::SHA::sha1_hex( $client_password );
+        } else {
+            die "Unknown hashing algorithm: $algorithm";
+        }
+    }
+    if( defined $client_password && $client_password eq $host_password ) {
+        return 1;
+    } else {
+        return 0;
+    }
+}
+
 1;
