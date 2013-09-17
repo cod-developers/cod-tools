@@ -35,6 +35,9 @@ use UserMessage qw / print_message /;
     _[local]_cod_data_source_block
 );
 
+$CODPredepositionCheck::max_hold_period = 12;
+$CODPredepositionCheck::default_hold_period = 6;
+
 sub filter_and_check
 {
     my( $cif, $cif_filename, $hkl, $hkl_filename,
@@ -1059,6 +1062,37 @@ sub can_bypass_checks
     } else {
         return 0;
     }
+}
+
+sub check_hold_period
+{
+    my( $deposition_type, $filename, $hold_period, $replace ) = @_;
+    my $hold_period_now;
+    if( $deposition_type eq 'prepublication' ) {
+        # If it is an update and hold_period is not specified,
+        # it should be left unchanged
+        if( defined $hold_period ) {
+            $hold_period_now = $hold_period;
+            if( $hold_period > $CODPredepositionCheck::max_hold_period ) {
+                critical( $filename, undef, "WARNING",
+                         "hold period $hold_period_now months is too " .
+                         "large -- only holds up to " .
+                         $CODPredepositionCheck::max_hold_period .
+                         " months are accepted" );
+            }
+        } else {
+            if( !$replace ) {
+                $hold_period_now =
+                    $CODPredepositionCheck::default_hold_period;
+                print_message( $0, $filename, undef, "NOTE",
+                               "hold period not specified, " .
+                               "(or specified incorrectly), " .
+                               "defaulting to $hold_period_now " .
+                               "months" );
+            }
+        }
+    }
+    return $hold_period_now;
 }
 
 1;
