@@ -794,8 +794,8 @@ for my $filename (@ARGV) {
 
         for my $tag (@{$dataset->{tags}}) {
             unless( exists $dictionary_tags{$tag} ) {
-                print STDERR basename( $0 ) . ": ";
-                print STDERR "tag '$tag' is not recognised\n";
+                warning( $0, $filename, $dataset->{name},
+                         "tag '$tag' is not recognised" );
             }
         }
 
@@ -891,7 +891,7 @@ for my $filename (@ARGV) {
                     my $error = SymopParse::check_symmetry_operator( $symop );
                     if( $error ) {
                         $has_errors = 1;
-                        print STDERR "$0: $filename: $error\n";
+                        error( $0, $filename, $dataset->{name}, $error );
                     }
                 }
                 if( !$has_errors ) {
@@ -967,8 +967,10 @@ for my $filename (@ARGV) {
                     }
                 }
             } else {
-                print STDERR "$0: the ", defined $filename ? "'$filename' " : "",
-                "data_$dataset->{name} does not contain symmetry operators\n";
+                warning( $0, $filename, $dataset->{name},
+                         "the " . (defined $filename ? "'$filename' " : "") .
+                         "data_$dataset->{name} does not contain " .
+                         "symmetry operators" );
             }
         }
 
@@ -1032,9 +1034,10 @@ for my $filename (@ARGV) {
                 }
                 $datablok->{"_cell_volume"}[0] = $V;
             } else {
-                warn "file '${filename}', datablock $dataset->{name} " .
-                    "has no unit cell info -- "  .
-                    "can't compute cell volume";
+                warning( $0, $filename, $dataset->{name},
+                         "file '${filename}', datablock $dataset->{name} " .
+                         "has no unit cell info -- "  .
+                         "can't compute cell volume" );
             }
         }
 
