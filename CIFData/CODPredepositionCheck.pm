@@ -79,14 +79,14 @@ sub filter_and_check
             run_command( [ 'cif_filter', @filter_opt, $cif ] );
     }
 
-    my $continue = 1;
+    my $warnings = 0;
     foreach( @$filter_stderr ) {
         print STDERR "$_\n";
-        if( !/: tag '.*' is not recognised$/ ) {
-            $continue = 0;
+        if( !/tag '.*' is not recognised/ ) {
+            $warnings++;
         }
     }
-    die unless $continue;
+    die "cif-filter encountered $warnings warning(s)" if $warnings;
 
     my( $fix_values_stdout, $fix_values_stderr ) =
         run_command( [ 'cif_fix_values' ], $filter_stdout );
@@ -101,7 +101,8 @@ sub filter_and_check
     foreach( @$correct_stderr ) {
         print STDERR "$_\n";
     }
-    die if @$correct_stderr > 0;
+    die 'cif_correct_tags encountered ' . @$correct_stderr . ' ' .
+        'warning(s)' if @$correct_stderr > 0;
 
     if( !$options->{bypass_checks} ) {
         my $ccc_opt;
@@ -130,15 +131,16 @@ sub filter_and_check
                     . 'page_first nor _journal_article_reference) is defined|'
                     . 'WARNING.*|NOTE.*)',
             );
-            my $continue = 1;
+            my $warnings = 0;
             foreach( @$ccc_stdout ) {
                 if( defined $ccc_warnings{$deposition_type} &&
                     !/$ccc_warnings{$deposition_type}\n?/ ) {
                     print STDERR "$_\n";
-                    $continue = 0;
+                    $warnings++;
                 }
             }
-            die unless $continue;
+            die "cif_cod_check encountered $warnings warning(s)"
+                if $warnings;
         }
     }
 
@@ -372,7 +374,7 @@ sub filter_and_check
                           $db_conf->{port},
                           $db_conf->{user},
                           $db_conf->{password} );
-    die( "connection to database failed" ) if !$dbh;
+    die "connection to database failed" if !$dbh;
 
     my $database_hold_until;
     if( $options->{replace} ) {
@@ -491,13 +493,13 @@ sub filter_and_check
                            '--parse-formula-sum',
                        @filter_opt ], $correct_stdout );
 
-    $continue = 1;
+    $warnings = 0;
     foreach( @$filter_stderr ) {
-        next if /: tag '.*' is not recognised$/;
+        next if /tag '.*' is not recognised/;
         print STDERR "$_\n";
-        $continue = 0;
+        $warnings++;
     }
-    die unless $continue;
+    die "cif_filter encountered $warnings warning(s)" if $warnings;
 
     if( $hkl ) {
         my $hkl_parameters = extract_cif_values( $hkl_now,
@@ -890,7 +892,7 @@ sub critical
 {
     my( $file, $datablock, $level, $message ) = @_;
     print_message( $0, $file, $datablock, $level, $message );
-    die;
+    die $message;
 }
 
 sub extract_cif_values
@@ -916,7 +918,8 @@ sub extract_cif_values
     foreach( @$values_stderr ) {
         print STDERR "$_\n";
     }
-    die if @$values_stderr > 0;
+    die 'cifvalues encountered ' . @$values_stderr . ' ' .
+        'warning(s)' if @$values_stderr > 0;
 
     my $data = [];
     my %seen_datanames;
@@ -1054,7 +1057,7 @@ sub can_bypass_checks
             use Digest::SHA qw/ sha1_hex /;
             $client_password = Digest::SHA::sha1_hex( $client_password );
         } else {
-            die "Unknown hashing algorithm: $algorithm";
+            die "unknown hashing algorithm: $algorithm";
         }
     }
     if( defined $client_password && $client_password eq $host_password ) {
