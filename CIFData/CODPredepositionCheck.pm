@@ -132,9 +132,9 @@ sub filter_and_check
             );
             my $continue = 1;
             foreach( @$ccc_stdout ) {
-                print STDERR "$_\n";
                 if( defined $ccc_warnings{$deposition_type} &&
                     !/$ccc_warnings{$deposition_type}\n?/ ) {
+                    print STDERR "$_\n";
                     $continue = 0;
                 }
             }
