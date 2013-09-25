@@ -47,7 +47,7 @@ sub parse_message($)
     if( $message =~ /^
                         (?<program>[^:]+):\ 
                         (?<filename>[^:]+?)
-                            (?:\((?<line>\d+)(?:,(?<column>\d+))\))?
+                            (?:\((?<line>\d+)(?:,(?<column>\d+))?\))?
                             (?:\ data_(?<datablock>[^:]+?))?
                         :\ 
                         (?:(?<errlevel>[^,:\ ]+?)[,:]\ )?
