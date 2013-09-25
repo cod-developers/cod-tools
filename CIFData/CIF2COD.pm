@@ -355,8 +355,8 @@ sub cif2cod
             get_tag_or_undef( $values, "_exptl_crystal_pressure_history", 0 );
 
         $data{nel} = $nel;
-        $data{sg} = get_spacegroup_info( $values, $filename );
-        $data{sgHall} = get_spacegroup_Hall_symbol( $values, $filename );
+        $data{sg} = get_spacegroup_info( $values, $filename, $dataset );
+        $data{sgHall} = get_spacegroup_Hall_symbol( $values, $filename, $dataset );
         $data{commonname} = $common_name;
         $data{chemname} = $systematic_name;
         $data{mineral} = $mineral_name;
@@ -500,7 +500,7 @@ sub error
     print STDERR $0, ": ";
     print STDERR $filename
         if $filename;
-    print STDERR " ",  $dataset->{name}
+    print STDERR " data_",  $dataset->{name}
         if $dataset && exists $dataset->{name};
     print STDERR ": "
         if $filename || $dataset;
@@ -624,7 +624,7 @@ sub get_and_check_tag
 
 sub get_spacegroup_info
 {
-    my ($values, $filename ) = @_;
+    my ($values, $filename, $dataset) = @_;
     
     my @spacegroup_tags = map {lc} qw (
         _space_group_name_H-M_alt
@@ -652,7 +652,7 @@ sub get_spacegroup_info
         }
     }
     if( !defined $spacegroup ) {
-        error( "no spacegroup information found", $filename );
+        error( "no spacegroup information found", $filename, $dataset );
     } else {
         $spacegroup =~ s/^\s*|\s*$//g;
     }
@@ -661,7 +661,7 @@ sub get_spacegroup_info
 
 sub get_spacegroup_Hall_symbol
 {
-    my ($values, $filename ) = @_;
+    my ($values, $filename, $dataset) = @_;
     
     my @spacegroup_tags = map {lc} qw (
         _space_group_name_Hall
@@ -677,7 +677,7 @@ sub get_spacegroup_Hall_symbol
         }
     }
     if( !defined $spacegroup ) {
-        error( "no Hall spacegroup symbol found", $filename );
+        error( "no Hall spacegroup symbol found", $filename, $dataset );
     } else {
         $spacegroup =~ s/^\s*|\s*$//g;
     }
