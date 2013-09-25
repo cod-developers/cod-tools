@@ -84,15 +84,17 @@ sub filter_and_check
         my $parsed = parse_message( $_ );
         if( defined $parsed ) {
             for( $parsed->{message} ) {
-                if( /DOS EOF symbol .* was encountered and ignored/ ||
-                    /the dataname apparently had spaces in it - replaced/ ||
-                    /(single|double)-quoted string is missing a closing quote -- fixed/ ||
-                    /string with spaces without quotes/ ||
-                    /tag .+ is not recognised/ ) {
+                s/:$//;
+                if( /tag .+ is not recognised/ ) {
                     $parsed->{errlevel} = 'NOTE';
                     last;
                 }
-                if( /non-ascii symbols encountered in the text field, replaced/ ) {
+                if( /the dataname apparently had spaces in it - replaced/ ||
+                    /non-ascii symbols encountered in the text/ ||
+                    /DOS EOF symbol .* was encountered and ignored/ ||
+                    /string with spaces without quotes/ ||
+                    /(single|double)-quoted string is missing a closing quote -- fixed/ ||
+                    /no data block heading .* found/ ) {
                     $parsed->{errlevel} = 'NOTE';
                     $parsed->{line} = undef;
                     $parsed->{column} = undef;
@@ -109,7 +111,8 @@ sub filter_and_check
                     last;
                 }
                 if( /STOP_ symbol detected in line/ ||
-                    /syntax error/ ) {
+                    /syntax error/ ||
+                    /wrong number of elements in the loop block/ ) {
                     $parsed->{errlevel} = 'ERROR';
                     last;
                 }
