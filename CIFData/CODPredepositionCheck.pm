@@ -20,6 +20,7 @@ use Unicode::Normalize;
 use Unicode2CIF;
 use Encode;
 use UserMessage qw / print_message /;
+use CIF2COD;
 
 @CODPredepositionCheck::identity_tags = qw(
     _cell_length_a
@@ -130,7 +131,7 @@ sub filter_and_check
             );
             my $warnings = 0;
             foreach( @$ccc_stdout ) {
-                if( defined $ccc_warnings{$deposition_type} &&
+                if( !defined $ccc_warnings{$deposition_type} ||
                     !/$ccc_warnings{$deposition_type}\n?/ ) {
                     print STDERR "$_\n";
                     $warnings++;
@@ -556,6 +557,13 @@ sub filter_and_check
                         $hkl_parameters{name} . "'\n";
         }
     }
+
+    # Test run for CIF2COD
+
+    my @data_columns = @CIF2COD::new_data_fields;
+    my $extracted = CIF2COD::cif2cod( $data,
+                                      $cif_filename,
+                                      { continue_on_errors => 1 } );
 
     return( join( "\n", @$filter_stdout ), $hkl_now );
 }
