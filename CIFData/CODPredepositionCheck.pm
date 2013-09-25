@@ -19,7 +19,7 @@ use Symbol;
 use Unicode::Normalize;
 use Unicode2CIF;
 use Encode;
-use UserMessage qw / print_message /;
+use UserMessage qw / print_message parse_message /;
 use CIF2COD;
 
 @CODPredepositionCheck::identity_tags = qw(
@@ -80,7 +80,55 @@ sub filter_and_check
             run_command( [ 'cif_filter', @filter_opt, $cif ] );
     }
 
-    print STDERR join( "", map( "$_\n", @$filter_stderr ) );
+    foreach( @$filter_stderr ) {
+        my $parsed = parse_message( $_ );
+        if( defined $parsed ) {
+            for( $parsed->{message} ) {
+                if( /DOS EOF symbol .* was encountered and ignored/ ||
+                    /the dataname apparently had spaces in it - replaced/ ||
+                    /(single|double)-quoted string is missing a closing quote -- fixed/ ||
+                    /string with spaces without quotes/ ||
+                    /tag .+ is not recognised/ ) {
+                    $parsed->{errlevel} = 'NOTE';
+                    last;
+                }
+                if( /non-ascii symbols encountered in the text field, replaced/ ) {
+                    $parsed->{errlevel} = 'NOTE';
+                    $parsed->{line} = undef;
+                    $parsed->{column} = undef;
+                    last;
+                }
+                if( /stray CIF values at the beginning of the input file/ ) {
+                    $parsed->{errlevel} = 'WARNING';
+                    last;
+                }
+                if( /end of file encountered while in text field starting in line/ ) {
+                    $parsed->{errlevel} = 'ERROR';
+                    $parsed->{line} = undef;
+                    $parsed->{column} = undef;
+                    last;
+                }
+                if( /STOP_ symbol detected in line/ ||
+                    /syntax error/ ) {
+                    $parsed->{errlevel} = 'ERROR';
+                    last;
+                }
+                if( !defined $parsed->{errlevel} ) {
+                    $parsed->{errlevel} = 'NOTE';
+                }
+            }
+            print_message( $0,
+                           $cif_filename,
+                           $parsed->{datablock},
+                           $parsed->{errlevel},
+                           $parsed->{message},
+                           $parsed->{line},
+                           $parsed->{column} );
+        } elsif( /^[^:]+cif_filter: (.*)/ ) { # Ad-hoc parse for some messages
+            print STDERR "$0: $1\n";
+        }
+    }
+
     if( @$filter_stdout == 0 ) {
         die "file '$cif_filename' became empty after filtering " .
             "with cif_filter";
@@ -90,14 +138,34 @@ sub filter_and_check
         run_command( [ 'cif_fix_values' ], $filter_stdout );
 
     foreach( @$fix_values_stderr ) {
-        print STDERR "$_\n";
+        my $parsed = parse_message( $_ );
+        if( defined $parsed ) {
+            if( $parsed->{message} !~ /value '[^']*' should be one of these:/ ) {
+                print_message( $0,
+                               $cif_filename,
+                               $parsed->{datablock},
+                               'NOTE',
+                               $parsed->{message},
+                               $parsed->{line},
+                               $parsed->{column} );
+            }
+        }
     }
 
     my( $correct_stdout, $correct_stderr ) =
         run_command( [ 'cif_correct_tags' ], $fix_values_stdout );
 
     foreach( @$correct_stderr ) {
-        print STDERR "$_\n";
+        my $parsed = parse_message( $_ );
+        if( defined $parsed ) {
+            print_message( $0,
+                           $cif_filename,
+                           $parsed->{datablock},
+                           'NOTE',
+                           $parsed->{message},
+                           $parsed->{line},
+                           $parsed->{column} );
+        }
     }
     die 'cif_correct_tags encountered ' . @$correct_stderr . ' ' .
         'warning(s)' if @$correct_stderr > 0;
@@ -130,11 +198,31 @@ sub filter_and_check
                     . 'WARNING.*|NOTE.*)',
             );
             my $warnings = 0;
+            CCCMESSAGE:
             foreach( @$ccc_stdout ) {
-                if( !defined $ccc_warnings{$deposition_type} ||
-                    !/$ccc_warnings{$deposition_type}\n?/ ) {
-                    print STDERR "$_\n";
-                    $warnings++;
+                my $parsed = parse_message( $_ );
+                if( defined $parsed ) {
+                    for( $parsed->{message} ) {
+                        if( $deposition_type ne 'published' &&
+                            ( /(_journal_name_full|_publ_author_name) is undefined/ ||
+                              /neither _journal_year nor _journal_volume is defined/ ||
+                              /neither _journal_page_first nor _journal_article_reference is defined/ ||
+                              ( defined $parsed->{errlevel} && uc( $parsed->{errlevel} ) eq 'WARNING' ) ||
+                              ( defined $parsed->{errlevel} && uc( $parsed->{errlevel} ) eq 'NOTE' ) ) ) {
+                            next CCCMESSAGE;
+                        }
+                        if( !defined $parsed->{errlevel} ) {
+                            $parsed->{errlevel} = 'WARNING';
+                        }
+                        $warnings++;
+                    }
+                    print_message( $0,
+                                   $cif_filename,
+                                   $parsed->{datablock},
+                                   $parsed->{errlevel},
+                                   $parsed->{message},
+                                   $parsed->{line},
+                                   $parsed->{column} );
                 }
             }
             die "cif_cod_check encountered $warnings warning(s)"
@@ -492,8 +580,18 @@ sub filter_and_check
                        @filter_opt ], $correct_stdout );
 
     foreach( @$filter_stderr ) {
-        next if /tag '.*' is not recognised/;
-        print STDERR "$_\n";
+        my $parsed = parse_message( $_ );
+        if( defined $parsed ) {
+            next if $parsed->{message} =~ /tag .+ is not recognised/;
+            $parsed->{errlevel} = 'NOTE' if !defined $parsed->{errlevel};
+            print_message( $0,
+                           $cif_filename,
+                           $parsed->{datablock},
+                           $parsed->{errlevel},
+                           $parsed->{message},
+                           $parsed->{line},
+                           $parsed->{column} );
+        }
     }
     if( @$filter_stdout == 0 ) {
         die "file '$cif_filename' became empty after filtering " .
