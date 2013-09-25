@@ -111,8 +111,10 @@ sub filter_and_check
                     last;
                 }
                 if( /STOP_ symbol detected in line/ ||
+                    /GLOBAL_ symbol detected/ ||
                     /syntax error/ ||
-                    /wrong number of elements in the loop block/ ) {
+                    /wrong number of elements in the loop block/ ||
+                    /tag .* appears more than once$/ ) {
                     $parsed->{errlevel} = 'ERROR';
                     last;
                 }
