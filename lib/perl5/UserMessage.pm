@@ -29,8 +29,8 @@ sub print_message($$$$$@)
     my ( $program, $filename, $datablock, $errlevel, $message, $line, $column ) = @_;
 
     print STDERR $program, ": ", $filename,
-    defined $datablock ? " data_" . $datablock : "",
     defined $line ? "($line" . (defined $column ? ",$column" : "" ) . ")" : "",
+    defined $datablock ? " data_" . $datablock : "",
     defined $errlevel ? ": " . $errlevel : "",
     ", ", $message, ".\n";
 }
@@ -47,8 +47,8 @@ sub parse_message($)
     if( $message =~ /^
                         (?<program>[^:]+):\ 
                         (?<filename>[^:]+?)
-                            (?:\ data_(?<datablock>[^:]+?))?
                             (?:\((?<line>\d+)(?:,(?<column>\d+))\))?
+                            (?:\ data_(?<datablock>[^:]+?))?
                         :\ 
                         (?:(?<errlevel>[^,:\ ]+?)[,:]\ )?
                         (?<message>.+?)\.?
