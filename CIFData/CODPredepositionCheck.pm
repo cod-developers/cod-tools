@@ -79,14 +79,11 @@ sub filter_and_check
             run_command( [ 'cif_filter', @filter_opt, $cif ] );
     }
 
-    my $warnings = 0;
-    foreach( @$filter_stderr ) {
-        print STDERR "$_\n";
-        if( !/tag '.*' is not recognised/ ) {
-            $warnings++;
-        }
+    print STDERR join( "", map( "$_\n", @$filter_stderr ) );
+    if( @$filter_stdout == 0 ) {
+        die "file '$cif_filename' became empty after filtering " .
+            "with cif_filter";
     }
-    die "cif-filter encountered $warnings warning(s)" if $warnings;
 
     my( $fix_values_stdout, $fix_values_stderr ) =
         run_command( [ 'cif_fix_values' ], $filter_stdout );
@@ -493,13 +490,14 @@ sub filter_and_check
                            '--parse-formula-sum',
                        @filter_opt ], $correct_stdout );
 
-    $warnings = 0;
     foreach( @$filter_stderr ) {
         next if /tag '.*' is not recognised/;
         print STDERR "$_\n";
-        $warnings++;
     }
-    die "cif_filter encountered $warnings warning(s)" if $warnings;
+    if( @$filter_stdout == 0 ) {
+        die "file '$cif_filename' became empty after filtering " .
+            "with cif_filter";
+    }
 
     if( $hkl ) {
         my $hkl_parameters = extract_cif_values( $hkl_now,
