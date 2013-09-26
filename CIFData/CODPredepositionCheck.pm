@@ -43,6 +43,7 @@ sub filter_and_check
 {
     my( $cif, $cif_filename, $hkl, $hkl_filename,
         $db_conf, $deposition_type, $tmp_file, $options ) = @_;
+
     # Possible options:
     # -- bypass_checks
     # -- replace
@@ -52,6 +53,11 @@ sub filter_and_check
     # -- use_c_parser (not implemented)
     # -- use_perl_parser (default)
     # -- author_name
+
+    $options->{hold_period} = check_hold_period( $deposition_type,
+                                                 $cif_filename,
+                                                 $options->{hold_period},
+                                                 $options->{replace} );
 
     my @filter_opt = qw(
         --fix-syntax-errors
