@@ -502,42 +502,6 @@ sub filter_and_check
         }
     }
 
-    # Calculating the date for holding on the structure
-
-    my $hold_until;
-    if( $deposition_type eq 'prepublication' ) {
-        if( $options->{replace} ) {
-            if( !$options->{hold_period} ) {
-                $hold_until = $database_hold_until;
-            } else {
-                my @hold_date = split( "-", $database_hold_until );
-                $hold_date[1] += $options->{hold_period};
-                while( $hold_date[1] > 12 ) {
-                    $hold_date[1] -= 12;
-                    $hold_date[0]++;
-                }
-                $hold_until = sprintf( "%04d-%02d-%02d",
-                                       $hold_date[0],
-                                       $hold_date[1],
-                                       $hold_date[2] );
-            }
-        } else {
-            my @now_date = localtime( time() );
-            my( $year, $month, $day ) = ( $now_date[5] + 1900,
-                                          $now_date[4],
-                                          $now_date[3] );
-            $month += $options->{hold_period};
-            while( $month > 12 ) {
-                $month -= 12;
-                $year++;
-            }
-            $hold_until = sprintf( "%04d-%02d-%02d",
-                                   $year,
-                                   $month,
-                                   $day );
-        }
-    }
-
     my $year = `date +%Y`;
     $year =~ /(\d+)/;
     $year = $1;
