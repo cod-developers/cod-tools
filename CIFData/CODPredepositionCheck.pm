@@ -530,7 +530,6 @@ sub filter_and_check
                                    $month,
                                    $day );
         }
-        push( @$correct_stdout, "_cod_hold_until_date $hold_until" );
     }
 
     my $year = `date +%Y`;
