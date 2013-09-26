@@ -1042,13 +1042,13 @@ sub find_cif_datablock_for_hkl
              $cif_parameters->[$i]{'_[local]_cod_data_source_block'}[0] eq $hkl_dataname) ||
             (!exists $cif_parameters->[$i]{'_[local]_cod_data_source_block'} &&
              $cif_parameters->[$i]{name} eq $hkl_dataname ) ) {
-            if( !$cif_for_hkl ) {
+            if( !defined $cif_for_hkl ) {
                 $cif_for_hkl = $i;
                 last;
             } else {
                 critical( $cif_filename, undef, "ERROR",
                           "CIF file contains more than one datablock " .
-                          "named $hkl_parameters{name}?" );
+                          "named $hkl_dataname?" );
             }
         }
     }
@@ -1056,7 +1056,7 @@ sub find_cif_datablock_for_hkl
         critical( $cif_filename, undef, "ERROR",
                   "could not relate supplied HKL file to any " .
                   "datablock from CIF file -- CIF datablock " .
-                  "with name '$hkl_parameters{name}' is not found" );
+                  "with name '$hkl_dataname' is not found" );
     }
     my %cif_parameters = %{ $cif_parameters->[$cif_for_hkl] };
 
@@ -1070,7 +1070,7 @@ sub find_cif_datablock_for_hkl
                     critical( $cif_filename, undef, "ERROR",
                               "can not confirm relation " .
                               "between datablocks named '" . 
-                              $hkl_parameters{name} .
+                              $hkl_dataname .
                               "' from supplied CIF and Fobs " .
                               "files -- values of tag '$tag' " .
                               "differ: '" .
@@ -1090,7 +1090,7 @@ sub find_cif_datablock_for_hkl
                     critical( $cif_filename, undef, "ERROR",
                               "can not confirm relation " .
                               "between datablocks named '" . 
-                              $hkl_parameters{name} .
+                              $hkl_dataname .
                               "' from supplied CIF and Fobs " .
                               "files -- publication author " .
                               "lists differ: '" .
@@ -1106,7 +1106,7 @@ sub find_cif_datablock_for_hkl
                     critical( $cif_filename, undef, "ERROR",
                               "can not confirm relation " .
                               "between datablocks named '" .
-                              $hkl_parameters{name} .
+                              $hkl_dataname .
                               "' from supplied CIF and Fobs " .
                               "files -- values of tag '$tag' " .
                               "differ: '" .
