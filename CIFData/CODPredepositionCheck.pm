@@ -19,6 +19,7 @@ use Symbol;
 use Unicode::Normalize;
 use Unicode2CIF;
 use Encode;
+use Capture::Tiny ':all';
 use UserMessage qw / print_message parse_message /;
 use CIF2COD;
 
@@ -195,19 +196,6 @@ sub filter_and_check
                          $correct_stdout );
 
         if( $ccc_stdout->[0] !~ /OK$/) {
-            my %ccc_warnings = (
-                'published'         => undef,
-                'prepublication'    => ': ((?:_journal_name_full|'
-                    . '_publ_author_name) is undefined|'
-                    . 'neither _journal_(?:year nor _journal_volume|'
-                    . 'page_first nor _journal_article_reference) is defined|'
-                    . 'WARNING.*|NOTE.*)',
-                'personal'          => ': ((?:_journal_name_full|'
-                    . '_publ_author_name) is undefined|'
-                    . 'neither _journal_(?:year nor _journal_volume|'
-                    . 'page_first nor _journal_article_reference) is defined|'
-                    . 'WARNING.*|NOTE.*)',
-            );
             my $warnings = 0;
             CCCMESSAGE:
             foreach( @$ccc_stdout ) {
@@ -632,10 +620,30 @@ sub filter_and_check
 
     # Test run for CIF2COD
 
-    my @data_columns = @CIF2COD::new_data_fields;
-    my $extracted = CIF2COD::cif2cod( $data,
-                                      $cif_filename,
-                                      { continue_on_errors => 1 } );
+    my( $cif2cod_stdout, $cif2cod_stderr ) = capture {
+        CIF2COD::cif2cod( $data,
+                          $cif_filename,
+                          { continue_on_errors => 1 } );
+    };
+
+    C2CMESSAGE:
+    foreach( split( "\n", $cif2cod_stderr ) ) {
+        if( /[^: ]+: [^: ]+: tag '([^']+)' is absent/ ) {
+            my $tag = $1;
+            if( $deposition_type eq 'published' ) {
+                next C2CMESSAGE if $tag eq '_journal_volume';
+            } else {
+                if( $tag eq '_publ_section_title' ||
+                    $tag eq '_journal_name_full' ||
+                    $tag eq '_journal_year' ||
+                    $tag eq '_journal_volume' ||
+                    $tag eq '_journal_page_first' ) {
+                    next C2CMESSAGE;
+                }
+            }
+        }
+        print STDERR "$_\n";
+    }
 
     return( join( "\n", @$filter_stdout ), $hkl_now );
 }
