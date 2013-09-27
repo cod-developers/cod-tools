@@ -205,15 +205,13 @@ sub filter_and_check
                         if( $deposition_type ne 'published' &&
                             ( /(_journal_name_full|_publ_author_name) is undefined/ ||
                               /neither _journal_year nor _journal_volume is defined/ ||
-                              /neither _journal_page_first nor _journal_article_reference is defined/ ||
-                              ( defined $parsed->{errlevel} && uc( $parsed->{errlevel} ) eq 'WARNING' ) ||
-                              ( defined $parsed->{errlevel} && uc( $parsed->{errlevel} ) eq 'NOTE' ) ) ) {
+                              /neither _journal_page_first nor _journal_article_reference is defined/ ) ) {
                             next CCCMESSAGE;
                         }
                         if( !defined $parsed->{errlevel} ) {
                             $parsed->{errlevel} = 'WARNING';
                         }
-                        $warnings++;
+                        $warnings++ if $parsed->{errlevel} ne 'NOTE';
                     }
                     print_message( $0,
                                    $cif_filename,
