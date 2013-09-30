@@ -305,6 +305,32 @@ sub filter_and_check
     # complete bibliography; if the do they should be deposited as
     # "published structures":
 
+    if( $deposition_type eq 'personal' ) {
+        for my $dataset (@$data) {
+            my $values = $dataset->{values};
+            if( !defined $values ) {
+                critical( $cif_filename, $dataset->{name}, "WARNING",
+                          "no data in datablock '$dataset->{name}'" );
+            }
+            if( (exists $values->{_journal_volume} ||
+                 exists $values->{_journal_issue}) &&
+                 exists $values->{_journal_year} &&
+                 exists $values->{_journal_page_first} ) {
+                critical( $cif_filename, $dataset->{name}, "WARNING",
+                          "the data_$dataset->{name} datablock " .
+                          "seems to have a complete bibliography " .
+                          "(journal year, volume/issue and page) - " .
+                          "it should then rather be deposited as " .
+                          "a published structure, not as a personal " .
+                          "communication" );
+            }
+        }
+    }
+
+    # Checking that all structures in the uploaded CIF are published
+    # in the same journal, so that they can be assigned to the same
+    # COD number range:
+
     if( $deposition_type eq 'published' ) {
         my ($range, $journal, $data_name);
         for my $dataset (@$data) {
