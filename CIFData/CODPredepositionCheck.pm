@@ -365,6 +365,52 @@ sub filter_and_check
         }
     }
 
+    # Checking local COD tags: removing tags '_cod_database_code' and
+    # '_cod_hold_until_date' in case they are not adequate, warning about
+    # presence of '_cod_database_fobs_code' when Fobs file is not supplied:
+
+    for my $dataset (@$data) {
+        my $values = $dataset->{values};
+        if( !$options->{replace} &&
+            exists $values->{_cod_database_code} &&
+            defined $values->{_cod_database_code}[0] ) {
+            print_message( $0, $cif_filename, $dataset->{name}, "NOTE",
+                           "tag '_cod_database_code' value '" .
+                           $values->{_cod_database_code}[0] . "' " .
+                           "will be overwritten upon deposition" );
+        }
+        if( $deposition_type ne 'prepublication' &&
+            exists $values->{_cod_hold_until_date} &&
+            defined $values->{_cod_hold_until_date}[0] ) {
+            print_message( $0, $cif_filename, $dataset->{name}, "NOTE",
+                           "tag '_cod_hold_until_date' value '" .
+                           $values->{_cod_hold_until_date}[0] .
+                           "' will be removed from '$cif_filename' " .
+                           "upon deposition -- only prepublication " .
+                           "CIF files can contain this tag" );
+        }
+        if( exists $values->{_cod_database_fobs_code} ) {
+            if( !defined $hkl ) {
+                critical( $cif_filename, $dataset->{name}, "WARNING",
+                          "CIF file contains tag " .
+                          "'_cod_database_fobs_code', but Fobs file " .
+                          "is not supplied -- can not continue" );
+            }
+            if( !$options->{replace} &&
+                defined $values->{_cod_database_fobs_code}[0] ) {
+                    print_message( $0,
+                                   $cif_filename,
+                                   $dataset->{name},
+                                   "NOTE",
+                                   "tag '_cod_database_fobs_code' " .
+                                   "value '" .
+                                   $values->{_cod_database_fobs_code}[0] .
+                                   "' will be overwritten upon " .
+                                   "deposition" );
+            }
+        }
+    }
+
     # Handle the uploaded HKL file
 
     my $hkl_now;
