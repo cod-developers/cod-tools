@@ -1077,7 +1077,20 @@ sub extract_cif_values
                            '--vseparator', $vseparator ],
                      $file_now );
     foreach( @$values_stderr ) {
-        print STDERR "$_\n";
+        my $parsed = parse_message( $_ );
+        if( defined $parsed ) {
+            next if $parsed->{message} =~ /compiler could not recover from errors/;
+            $parsed->{message} =~ s/:$//;
+            print_message( $0,
+               $filename,
+               $parsed->{datablock},
+               ($parsed->{errlevel} ? $parsed->{errlevel} : 'WARNING'),
+               $parsed->{message},
+               $parsed->{line},
+               $parsed->{column} );
+        } else {
+            print STDERR "$_\n";
+        }
     }
     die 'cifvalues encountered ' . @$values_stderr . ' ' .
         'warning(s)' if @$values_stderr > 0;
