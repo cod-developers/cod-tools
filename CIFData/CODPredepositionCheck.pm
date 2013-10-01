@@ -520,6 +520,11 @@ sub filter_and_check
                                "'$cif_filename'" );
             }
         }
+    } elsif( $deposition_type eq 'prepublication' &&
+             exists $data->[0]{values}{_journal_name_full} &&
+             $data->[0]{values}{_journal_name_full}[0] =~
+                /^To be published in ([a-zA-Z0-9 _\-\.]+)$/ ) {
+        $journal = $1;
     }
 
     use DBI;
