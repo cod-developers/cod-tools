@@ -638,6 +638,7 @@ sub filter_and_check
     if( $hkl ) {
         my $hkl_parameters = extract_cif_values( $hkl_now,
                                                  $hkl_filename,
+                                                 $tmp_file,
                                                  [ @CODPredepositionCheck::identity_tags,
                                                    '_pd_block_id' ] );
 
@@ -671,6 +672,7 @@ sub filter_and_check
 
         my $cif_parameters = extract_cif_values( $filter_stdout,
                                                  $cif_filename,
+                                                 $tmp_file,
                                                  \@CODPredepositionCheck::identity_tags );
 
         my $cif_for_hkl =
@@ -798,6 +800,10 @@ sub run_command($@)
         if( @{ $list[1] } > 0 ) {
             my $written =
                 syswrite( $stdin, $input_text, $input_rest, $stdin_pos );
+            if( !defined $written ) {
+                die( "syswrite() failed for external script " .
+                     "'$$command[0]': $!" );
+            }
             $stdin_pos += $written;
             $input_rest -= $written;
             use Carp::Assert;
@@ -1058,7 +1064,7 @@ sub critical
 
 sub extract_cif_values
 {
-    my( $file, $filename, $tags ) = @_;
+    my( $file, $filename, $tmp_file, $tags ) = @_;
     
     my $separator  = '|';
     my $vseparator = '@';
@@ -1070,12 +1076,20 @@ sub extract_cif_values
         $file_now = [ split( '\n', $file ) ];
     }
 
+    # Using temporary file as input for 'cifvalues': printing input lines
+    # to STDIN of 'cifvalues' causes broken pipe exception when input
+    # size exceeds 65536 bytes. The reason is not investigated yet
+
+    open( my $inp, ">", $tmp_file );
+    print $inp join( "\n", @$file_now ) . "\n";
+    close( $inp );
+
     my( $values_stdout, $values_stderr ) =
         run_command( [ 'cifvalues',
                            '--tag', join( ',', @$tags ),
                            '--separator', $separator,
-                           '--vseparator', $vseparator ],
-                     $file_now );
+                           '--vseparator', $vseparator,
+                           $tmp_file ] );
     foreach( @$values_stderr ) {
         my $parsed = parse_message( $_ );
         if( defined $parsed ) {
