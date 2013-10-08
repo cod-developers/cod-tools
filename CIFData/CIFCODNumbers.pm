@@ -535,7 +535,7 @@ sub database_connect
     
     my $dbh = DBI->connect( "dbi:$database->{platform}:" .
                             "hostname=$database->{host};".
-                            "db=$database->{name};".
+                            "dbname=$database->{name};".
                             "user=$database->{user};".
                             "password=$database->{password}" )
         || die "cannot connect do the database -- $DBI::errstr";
