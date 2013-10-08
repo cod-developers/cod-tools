@@ -850,7 +850,7 @@ sub db_connect
     my ($db_platform, $db_host, $db_name, $db_port, $db_user, $db_pass) = @_;
     my $dsn = "dbi:$db_platform:" .
               "hostname=$db_host;".
-              "db=$db_name".
+              "dbname=$db_name".
               ($db_port ? ";$db_port" : "");
     my $dbh = DBI->connect( $dsn, $db_user, $db_pass );
     if( !$dbh ) {
