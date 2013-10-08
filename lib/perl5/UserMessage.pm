@@ -45,16 +45,23 @@ sub parse_message($)
 {
     my( $message ) = @_;
     if( $message =~ /^
-                        (?<program>[^:]+):\ 
-                        (?<filename>[^:]+?)
-                            (?:\((?<line>\d+)(?:,(?<column>\d+))?\))?
-                            (?:\ data_(?<datablock>[^:]+?))?
+                        ([^:]+):\ 
+                        ([^:]+?)
+                            (?:\((\d+)(?:,(\d+))?\))?
+                            (?:\ data_([^:]+?))?
                         :\ 
-                        (?:(?<errlevel>[^,:\ ]+?)[,:]\ )?
-                        (?<message>.+?)\.?
+                        (?:([^,:\ ]+?)[,:]\ )?
+                        (.+?)\.?
                     $/x ) {
-        return { map { $_ => $+{$_} }
-                 qw( program filename datablock line column errlevel message ) };
+        return {
+            program   => $1,
+            filename  => $2,
+            line      => $3,
+            column    => $4,
+            datablock => $5,
+            errlevel  => $6,
+            message   => $7
+        };
     } else {
         return undef;
     }
