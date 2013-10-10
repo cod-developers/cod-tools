@@ -20,7 +20,7 @@ use Unicode::Normalize;
 use Unicode2CIF;
 use Encode;
 use Capture::Tiny ':all';
-use UserMessage qw / print_message parse_message /;
+use UserMessage;
 use CIF2COD;
 
 @CODPredepositionCheck::identity_tags = qw(
@@ -1284,6 +1284,199 @@ sub check_hold_period
         }
     }
     return $hold_period_now;
+}
+
+sub check_pdcif_relations
+{
+    my( $data, $filename, $options ) = @_;
+    $options = {} unless defined $options;
+
+    my $overall_info_datablock;
+    my $overall_info_datablock_name;
+    my $overall_info_datablock_count = 0;
+    if( exists $options->{overall_info_datablock_name} ) {
+        $overall_info_datablock_name =
+            $options->{overall_info_datablock_name};
+    }
+
+    my $pd_ids = {};
+    my $type = {};
+
+    for( my $i = 0; $i < @$data; $i++ ) {
+        if( defined $overall_info_datablock_name ) {
+            if( $overall_info_datablock_name eq $data->[$i]{name} ) {
+                $overall_info_datablock_count++;
+                if( !defined $overall_info_datablock ) {
+                    $overall_info_datablock = $i;
+                }
+            }
+        }
+        next unless exists $data->[$i]{values}{_pd_block_id};
+        my $pd_block_id = $data->[$i]{values}{_pd_block_id}[0];
+        if( exists $pd_ids->{$pd_block_id} ) {
+            error( $0, $filename, undef,
+                   "two or more datablocks with _pd_block_id " .
+                   "'$pd_block_id' were found -- _pd_block_id must " .
+                   "be unique for each datablock" );
+            return 0;
+        }
+        $pd_ids->{$pd_block_id} = $i;
+    }
+    if( defined $overall_info_datablock_name ) {
+        if( $overall_info_datablock_count > 1 ) {
+            print_message( $0, $filename, undef, "NOTE",
+                           "$overall_info_datablock_count datablocks " .
+                           "named '$overall_info_datablock_name' were " .
+                           "found -- assuming that the first occurence " .
+                           "is the overall information datablock" );
+        } elsif( $overall_info_datablock_count == 0 ) {
+            error( $0, $filename, undef,
+                   "datablock '$overall_info_datablock_name' was not " .
+                   "found in supplied file -- skipping the checks" );
+            return 0;
+        }
+    } else {
+        for( my $i = 0; $i < @$data; $i++ ) {
+            if( exists $data->[$i]{values}{_pd_phase_block_id} &&
+                exists $data->[$i]{values}{_pd_block_diffractogram_id} ) {
+                $overall_info_datablock = $i;
+                print_message( $0, $filename, $data->[$i]{name}, 'NOTE',
+                               "assuming that datablock 'data_" .
+                               $data->[$i]{name} . "' is the overall " .
+                               "information datablock" );
+                last;
+            }
+        }
+    }
+    if( !defined $overall_info_datablock ) {
+        error( $0, $filename, undef,
+               "no datablock containing both _pd_phase_block_id and " .
+               "_pd_block_diffractogram_id tags can be found -- file " .
+               "has no overall information datablock?" );
+        return 0;
+    }
+
+    my $overall_datablock = $data->[$overall_info_datablock];
+    foreach( @{$overall_datablock->{values}{_pd_phase_block_id}} ) {
+        if( !exists $pd_ids->{$_} ) {
+            error( $0, $filename, undef,
+                   "phase block with _pd_block_id '$_' does not exist" );
+            return 0;
+        }
+        $type->{$pd_ids->{$_}} = 'phase';
+    }
+    foreach( @{$overall_datablock->{values}{_pd_block_diffractogram_id}} ) {
+        if( !exists $pd_ids->{$_} ) {
+            error( $0, $filename, undef,
+                   "diffractogram block with _pd_block_id '$_' " .
+                   "does not exist" );
+            return 0;
+        }
+        $type->{$pd_ids->{$_}} = 'diffractogram';
+    }
+
+    # Simple breadth-first algorithm
+    my %not_visited = map{ $_ => 1 } keys %$type;
+    while( scalar( keys %not_visited ) > 0 ) {
+        my @queue;
+        my @island;
+        my $selected = (sort keys %not_visited)[0];
+        delete( $not_visited{$selected} );
+        push( @queue, $selected );
+        while( @queue > 0 ) {
+            my $element = shift @queue;
+            push( @island, $element );
+            my $tag = ( $type->{$element} eq 'phase' )
+                ? '_pd_block_diffractogram_id'
+                : '_pd_phase_block_id';
+            foreach( @{$data->[$element]{values}{$tag}} ) {
+                if( !exists $pd_ids->{$_} ) {
+                    error( $0, $filename, $data->[$element]{name},
+                           "datablock with _pd_block_id '$_' " .
+                           "does not exist" );
+                    return 0;
+                }
+                if( !exists $type->{$pd_ids->{$_}} ) {
+                    error( $0, $filename, undef,
+                           "_pd_block_id '$_' seems to be not " .
+                           "mentioned in overall information " .
+                           "datablock -- can not continue" );
+                    return 0;
+                }
+                if( exists $not_visited{$pd_ids->{$_}} ) {
+                    push( @queue, $pd_ids->{$_} );
+                    delete( $not_visited{$pd_ids->{$_}} );
+                }
+            }
+        }
+        if( $options->{print_groups} ) {
+            print "$filename: group:\n    " .
+                 join( "\n    ",
+                 map( $data->[$_]{values}{_pd_block_id}[0], sort @island ) ) . "\n";
+        }
+        my @phases;
+        my @diffractograms;
+        foreach my $block ( @island ) {
+            if( $type->{$block} eq 'phase' ) {
+                push( @phases, $data->[$block]{values}{_pd_block_id}[0] );
+            } else {
+                push( @diffractograms, $data->[$block]{values}{_pd_block_id}[0] );
+            }
+        }
+        @phases = sort @phases;
+        @diffractograms = sort @diffractograms;
+        foreach my $block ( sort @island ) {
+            my( $cmp_array, $tag );
+            if( $type->{$block} eq 'phase' ) {
+                $cmp_array = \@diffractograms;
+                $tag = '_pd_block_diffractogram_id';
+            } else {
+                $cmp_array = \@phases;
+                $tag = '_pd_phase_block_id';
+            }
+            my @comm = @{ comm_array( $cmp_array,
+                [sort @{$data->[$block]{values}{$tag}}] ) };
+            foreach my $line ( @comm ) {
+                if( defined $line->[0] ) {
+                    warning( $0, $filename, $data->[$block]{name},
+                             "value '$line->[0]' is missing ".
+                             "in $tag loop" );
+                }
+            }
+        }
+    }
+    return 1;
+}
+
+sub comm_array
+{
+    my( $arr1, $arr2 ) = @_;
+    my @arr1 = @$arr1;
+    my @arr2 = @$arr2;
+    my @comm;
+    while( scalar( @arr1 ) + scalar( @arr2 ) > 0 ) {
+        if( @arr1 == 0 ) {
+            push( @comm, [ undef, undef, shift @arr2 ] );
+            next;
+        }
+        if( @arr2 == 0 ) {
+            push( @comm, [ shift @arr1, undef, undef ] );
+            next;
+        }
+        if( $arr1[0] ne $arr2[0] ) {
+            if( $arr1[0] lt $arr2[0] ) {
+                push( @comm, [ shift @arr1, undef, undef ] );
+            } else {
+                push( @comm, [ undef, undef, shift @arr2 ] );
+            }
+        } else {
+            push( @comm, [ undef, $arr1[0], undef ] );
+            shift @arr1;
+            shift @arr2;
+        }
+        next;
+    }
+    return \@comm;
 }
 
 1;
