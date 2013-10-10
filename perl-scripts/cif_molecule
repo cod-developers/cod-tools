@@ -125,6 +125,13 @@ my $use_one_output_datablock = 0; # Put all molecules, and all
 my $merge_disorder_groups = 0; # Put all alternative conformations
                                # into one data block.
 
+my $preserve_stoichiometry = 0; # If true (1), apply symmetry
+                                # operators from cosets of a point
+                                # group in each molecule to all other
+                                # molecules, to preserve molecular
+                                # stoichiometry (charge balance,
+                                # etc.).
+
 @ARGV = getOptions
 (
 #** -1,--one-datablock-output
@@ -181,8 +188,17 @@ my $merge_disorder_groups = 0; # Put all alternative conformations
 #**                    Do not use atoms woth 0 occupancies in calculations
 #**                    (defalut).
 #**                    
-#** --dont-exclude-zero-occupancies, --no-exclude-zero-occupancies
-#**                    Use all atoms regardless of their occupancy.
+#** --dont-continue-on-errors, --no-continue-on-errors
+#**                    Stop immediately when an error is encountered.
+#**                    
+#** --preserve-stoichemetry
+#**                    Apply necessary symmetry operators to preserve molecular
+#**                    stoichemotry (charges, etc.)
+#**                    
+#** --dont-preserve-stoichemetry, --no-preserve-stoichemetry
+#**                    Do not apply any more symmetry operators than needed to
+#**                    reconstruct covalently connected networks; may
+#**                    break stoiceometry of salts and complexes (defalut).
 #**
 #** --dump-atoms 
 #**       Dump atoms (including symmetry-equivalent) in CIF
@@ -254,6 +270,10 @@ my $merge_disorder_groups = 0; # Put all alternative conformations
     "--remove-duplicate-molecules"      => sub { $uniquify_molecules = 1; },
     "--no-remove-duplicate-molecules"   => sub { $uniquify_molecules = 0; },
     "--dont-remove-duplicate-molecules" => sub { $uniquify_molecules = 0; },
+
+    "--preserve-stoichemetry" => sub { $preserve_stoichiometry = 1 },
+    "--dont-preserve-stoichemetry, --no-preserve-stoichemetry" =>
+        sub { $preserve_stoichiometry = 0 },
 
     "--bump-distance-factor" => \$bump_distance_factor,
 
@@ -399,6 +419,13 @@ for my $filename (@ARGV) {
                 }
 
                 # Build molecule point group here...
+                if( $preserve_stoichiometry ) {
+                    my $sg = new SGBuilder();
+                    my @original_atoms = ();
+                    for my $atom (@{$molecule->{atoms_c}}) {
+                        
+                    }
+                }
 
                 print_molecule( $id, $audit, $molecule, $Id,
                                 $dataset, $dataset_name, $filename, $sym_data );
