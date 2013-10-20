@@ -59,6 +59,7 @@ use CCIFParser;
 use CIFTagCanonicalNames;
 use SymopParse;
 use SymopLookup;
+use SymopAlgebra qw(symop_mul symop_invert);
 use SGBuilder; # Spacegroup builder
 use CIFTagPrint;
 use CIFTagManage;
@@ -421,10 +422,24 @@ for my $filename (@ARGV) {
                 # Build molecule point group here...
                 if( $preserve_stoichiometry ) {
                     my $sg = new SGBuilder();
-                    my @original_atoms = ();
+                    my %original_atoms = ();
                     for my $atom (@{$molecule->{atoms_c}}) {
-                        
+                        my $atom_label = $atom->{original_label};
+                        if( !exists $original_atoms{$atom_label} ) {
+                            $original_atoms{$atom_label} = $atom;
+                        } else {
+                            my $symop1 = $original_atoms
+                            {$atom_label}{transform_matrices}[0];
+                            my $inverted_symop1 = 
+                                symop_invert( $symop1 );
+                            for my $symop2 (@{$atom->{transform_matrices}}) {
+                                $sg->insert_symop(
+                                    symop_mul( $inverted_symop1, $symop2 ));
+                            }
+                        }
                     }
+                    $sg->print();
+                    #$molecule;
                 }
 
                 print_molecule( $id, $audit, $molecule, $Id,
