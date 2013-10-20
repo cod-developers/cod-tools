@@ -16,7 +16,7 @@ use warnings;
 require Exporter;
 @SymopAlgebra::ISA = qw(Exporter);
 @SymopAlgebra::EXPORT_OK = qw(
-    symop_mul symop_modulo_1 symop_translation
+    symop_mul symop_invert symop_modulo_1 symop_translation
     symop_translate symop_set_translation
 );
 
