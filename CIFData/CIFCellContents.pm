@@ -35,13 +35,13 @@ require Exporter;
 
 $::format = "%g";
 
-sub atomic_composition( $$$ );
+sub atomic_composition( $$$@ );
 sub print_composition( $ );
 sub get_atoms( $$$ );
 
-sub cif_cell_contents( $$$ )
+sub cif_cell_contents( $$$@ )
 {
-    my ($dataset, $filename, $user_Z) = @_;
+    my ($dataset, $filename, $user_Z, $use_attached_hydrogens) = @_;
 
     my $values = $dataset->{values};
 
@@ -121,7 +121,10 @@ sub cif_cell_contents( $$$ )
         }
     }
 
-    my %composition = atomic_composition( $sym_atoms, $Z, int(@sym_operators));
+    my %composition = atomic_composition( $sym_atoms,
+                                          $Z,
+                                          int(@sym_operators),
+                                          $use_attached_hydrogens );
 
     ## print_composition( \%composition );
 
@@ -130,9 +133,10 @@ sub cif_cell_contents( $$$ )
         FormulaPrint::sprint_formula( \%composition, $::format );
 }
 
-sub atomic_composition($$$)
+sub atomic_composition($$$@)
 {
-    my ( $sym_atoms, $Z, $gp_multiplicity ) = @_;
+    my ( $sym_atoms, $Z, $gp_multiplicity, $use_attached_hydrogens ) = @_;
+    $use_attached_hydrogens = 0 unless defined $use_attached_hydrogens;
     my %composition;
 
     for my $atom ( @$sym_atoms ) { 
@@ -140,6 +144,12 @@ sub atomic_composition($$$)
         my $occupancy = defined $atom->{occupancy} ? $atom->{occupancy} : 1;
         my $amount = $occupancy  * $atom->{multiplicity};
         $composition{$type} += $amount;
+        my $hydrogen_amount =
+            $occupancy * $atom->{multiplicity} * $atom->{attached_hydrogens};
+        if( $hydrogen_amount > 0 && $use_attached_hydrogens ) {
+            $composition{H} = 0 if !exists $composition{H};
+            $composition{H} += $hydrogen_amount;
+        }
     }
 
     my $abundance_ration = $Z * $gp_multiplicity;
@@ -199,6 +209,11 @@ sub get_atoms( $$$ )
                 $values->{_atom_site_fract_y}[$i],
                 $values->{_atom_site_fract_z}[$i]
             ],
+            attached_hydrogens =>
+                exists $values->{_atom_site_attached_hydrogens} &&
+                $values->{_atom_site_attached_hydrogens}[$i] ne '.' &&
+                $values->{_atom_site_attached_hydrogens}[$i] ne '?'
+                    ? $values->{_atom_site_attached_hydrogens}[$i] : 0,
         };
 
         if( !defined $atom->{atom_type} ) {

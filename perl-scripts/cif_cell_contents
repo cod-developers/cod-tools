@@ -29,6 +29,7 @@ use SUsage;
 
 my $format = "%g";
 my $Z_value;
+my $use_attached_hydrogens = 0;
 
 #* Usage:
 #*     cif_cell_constants [options] input.cif
@@ -46,6 +47,11 @@ my $Z_value;
 @ARGV = getOptions(
 
     "-Z,--cell-formula-units-Z" => \$Z_value,
+
+    "--use-attached-hydrogens" => sub { $use_attached_hydrogens = 1 },
+    "--dont-use-attached-hydrogens" => sub { $use_attached_hydrogens = 0 },
+    "--no-use-attached-hydrogens" => sub { $use_attached_hydrogens = 0 },
+    "--ignore-attached-hydrogens" => sub { $use_attached_hydrogens = 0 },
 
     "--help,--usage" => sub { SUsage::usage; exit },
 );
@@ -66,7 +72,8 @@ for my $filename (@ARGV) {
 
         my $formula = CIFCellContents::cif_cell_contents( $dataset, 
                                                           $filename,
-                                                          $Z_value );
+                                                          $Z_value,
+                                                          $use_attached_hydrogens );
         print $formula, "\n" if defined $formula;
     }
 }
