@@ -411,9 +411,9 @@ for my $filename (@ARGV) {
 		@$unique_molecules;
 	    }
 
-            my $molecular_symmetry = new SGBuilder();
-
             if( $preserve_stoichiometry ) {
+                my $molecular_symmetry = new SGBuilder();
+
                 foreach my $molecule (@$unique_molecules) {
                 # Build molecule point group here...
                     my $sg = new SGBuilder();
@@ -434,7 +434,18 @@ for my $filename (@ARGV) {
                         }
                     }
                     ## $sg->print();
-                    $molecular_symmetry->insert_symops( $sg->all_symops() );
+                    $molecule->{symmetry} = $sg;
+                    $molecular_symmetry->insert_symops( $sg->all_symops_ref() );
+                }
+
+                my @stoichiometric_molecules;
+                foreach my $molecule (@$unique_molecules) {
+                    use Cosets;
+                    my @cosets = Cosets::find_right_cosets(
+                        $molecular_symmetry->all_symops_ref(),
+                        $molecule->{symmetry}->all_symops_ref()
+                    );
+                    ## use Serialise; serialiseRef( \@cosets );
                 }
             }
 
@@ -448,6 +459,7 @@ for my $filename (@ARGV) {
 
                 print_molecule( $id, $audit, $molecule, $Id,
                                 $dataset, $dataset_name, $filename, $sym_data );
+
                 $molecule_id++;
             }
 	}
