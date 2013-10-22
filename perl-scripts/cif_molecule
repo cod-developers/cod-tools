@@ -411,16 +411,11 @@ for my $filename (@ARGV) {
 		@$unique_molecules;
 	    }
 
-            foreach my $molecule (@$unique_molecules) {
-                my $id;
-                unless( $use_one_output_datablock && $merge_disorder_groups ) {
-                    $id = $molecule_id;
-                } else {
-                    $id = undef;
-                }
+            my $molecular_symmetry = new SGBuilder();
 
+            if( $preserve_stoichiometry ) {
+                foreach my $molecule (@$unique_molecules) {
                 # Build molecule point group here...
-                if( $preserve_stoichiometry ) {
                     my $sg = new SGBuilder();
                     my %original_atoms = ();
                     for my $atom (@{$molecule->{atoms_c}}) {
@@ -439,7 +434,16 @@ for my $filename (@ARGV) {
                         }
                     }
                     ## $sg->print();
-                    $molecule->{sgbuilder_spacegroup} = $sg;
+                    $molecular_symmetry->insert_symops( $sg->all_symops() );
+                }
+            }
+
+            foreach my $molecule (@$unique_molecules) {
+                my $id;
+                unless( $use_one_output_datablock && $merge_disorder_groups ) {
+                    $id = $molecule_id;
+                } else {
+                    $id = undef;
                 }
 
                 print_molecule( $id, $audit, $molecule, $Id,
