@@ -1302,6 +1302,8 @@ sub check_pdcif_relations
     my $pd_ids = {};
     my $type = {};
 
+    # Looking for overall information datablock if such is specified
+    # explicitly; recording _pd_block_ids of structure's datablocks:
     for( my $i = 0; $i < @$data; $i++ ) {
         if( defined $overall_info_datablock_name ) {
             if( $overall_info_datablock_name eq $data->[$i]{name} ) {
@@ -1318,7 +1320,7 @@ sub check_pdcif_relations
                    "two or more datablocks with _pd_block_id " .
                    "'$pd_block_id' were found -- _pd_block_id must " .
                    "be unique for each datablock" );
-            return 0;
+            return undef;
         }
         $pd_ids->{$pd_block_id} = $i;
     }
@@ -1333,9 +1335,12 @@ sub check_pdcif_relations
             error( $0, $filename, undef,
                    "datablock '$overall_info_datablock_name' was not " .
                    "found in supplied file -- skipping the checks" );
-            return 0;
+            return undef;
         }
     } else {
+        # If overall information datablock name is not specified,
+        # datablock having both _pd_phase_block_id and
+        # _pd_block_diffractogram_id tags is taken:
         for( my $i = 0; $i < @$data; $i++ ) {
             if( exists $data->[$i]{values}{_pd_phase_block_id} &&
                 exists $data->[$i]{values}{_pd_block_diffractogram_id} ) {
@@ -1353,16 +1358,19 @@ sub check_pdcif_relations
                "no datablock containing both _pd_phase_block_id and " .
                "_pd_block_diffractogram_id tags can be found -- file " .
                "has no overall information datablock?" );
-        return 0;
+        return undef;
     }
 
     my $overall_datablock = $data->[$overall_info_datablock];
+    my @phases;
+    my @diffractograms;
     foreach( @{$overall_datablock->{values}{_pd_phase_block_id}} ) {
         if( !exists $pd_ids->{$_} ) {
             error( $0, $filename, undef,
                    "phase block with _pd_block_id '$_' does not exist" );
-            return 0;
+            return undef;
         }
+        push( @phases, $pd_ids->{$_} );
         $type->{$pd_ids->{$_}} = 'phase';
     }
     foreach( @{$overall_datablock->{values}{_pd_block_diffractogram_id}} ) {
@@ -1370,82 +1378,131 @@ sub check_pdcif_relations
             error( $0, $filename, undef,
                    "diffractogram block with _pd_block_id '$_' " .
                    "does not exist" );
-            return 0;
+            return undef;
         }
+        push( @diffractograms, $pd_ids->{$_} );
         $type->{$pd_ids->{$_}} = 'diffractogram';
     }
 
-    # Simple breadth-first algorithm
-    my %not_visited = map{ $_ => 1 } keys %$type;
-    while( scalar( keys %not_visited ) > 0 ) {
-        my @queue;
-        my @island;
-        my $selected = (sort keys %not_visited)[0];
-        delete( $not_visited{$selected} );
-        push( @queue, $selected );
-        while( @queue > 0 ) {
-            my $element = shift @queue;
-            push( @island, $element );
-            my $tag = ( $type->{$element} eq 'phase' )
-                ? '_pd_block_diffractogram_id'
-                : '_pd_phase_block_id';
-            foreach( @{$data->[$element]{values}{$tag}} ) {
-                if( !exists $pd_ids->{$_} ) {
-                    error( $0, $filename, $data->[$element]{name},
-                           "datablock with _pd_block_id '$_' " .
-                           "does not exist" );
-                    return 0;
+    # Looking for stray powder diffraction datablocks -- each datablock
+    # with _pd_block_id should be listed in overall information
+    # datablock (except publication datablock and the overall information
+    # datablock itself):
+    for my $pd_block_id (sort keys %$pd_ids) {
+        my $datablock_id = $pd_ids->{$pd_block_id};
+        # Assuming that all datablocks before the overall information
+        # datablock are publication datablocks
+        next if $datablock_id < $overall_info_datablock;
+        next if $datablock_id == $overall_info_datablock;
+        if( !exists $type->{$datablock_id} ) {
+            error( $0, $filename, $data->[$datablock_id]{name},
+                   "stray powder diffraction datablock -- datablock " .
+                   "'data_" . $data->[$datablock_id]{name} .
+                   "' (_pd_block_id '$pd_block_id') is not listed in " .
+                   "overall information datablock" );
+            return undef;
+        }
+    }
+
+    my $map = [];
+    for my $phase (@phases) {
+        if( !exists $data->[$phase]{values}{_pd_block_diffractogram_id} ) {
+            error( $0, $filename, $data->[$phase]{name},
+                   "phase datablock 'data_" . $data->[$phase]{name} .
+                   "' does not contain diffractogram list" );
+            return undef;
+        }
+        for my $diffractogram_id (@{$data->[$phase]{values}{_pd_block_diffractogram_id}}) {
+            if( !exists $pd_ids->{$diffractogram_id} ) {
+                error( $0, $filename, $data->[$phase]{name},
+                       "diffractogram datablock with _pd_block_id " .
+                       "$diffractogram_id does not exist" );
+                return undef;
+            }
+            my $diffractogram = $pd_ids->{$diffractogram_id};
+            if( !exists $data->[$diffractogram]{values}{_pd_phase_block_id} ) {
+                error( $0, $filename, $data->[$diffractogram]{name},
+                       "diffractogram datablock 'data_" .
+                       $data->[$diffractogram]{name} . "' does not " .
+                       "contain phase list" );
+                return undef;
+            }
+            my $found = 0;
+            for my $phase_id (@{$data->[$diffractogram]{values}{_pd_phase_block_id}}) {
+                if( !exists $pd_ids->{$phase_id} ) {
+                    error( $0, $filename, $data->[$diffractogram]{name},
+                           "phase datablock with _pd_block_id " .
+                           "$phase_id does not exist" );
+                    return undef;
                 }
-                if( !exists $type->{$pd_ids->{$_}} ) {
-                    error( $0, $filename, undef,
-                           "_pd_block_id '$_' seems to be not " .
-                           "mentioned in overall information " .
-                           "datablock -- can not continue" );
-                    return 0;
-                }
-                if( exists $not_visited{$pd_ids->{$_}} ) {
-                    push( @queue, $pd_ids->{$_} );
-                    delete( $not_visited{$pd_ids->{$_}} );
+                if( $pd_ids->{$phase_id} == $phase ) {
+                    $found = 1;
+                    last;
                 }
             }
-        }
-        if( $options->{print_groups} ) {
-            print "$filename: group:\n    " .
-                 join( "\n    ",
-                 map( $data->[$_]{values}{_pd_block_id}[0], sort @island ) ) . "\n";
-        }
-        my @phases;
-        my @diffractograms;
-        foreach my $block ( @island ) {
-            if( $type->{$block} eq 'phase' ) {
-                push( @phases, $data->[$block]{values}{_pd_block_id}[0] );
-            } else {
-                push( @diffractograms, $data->[$block]{values}{_pd_block_id}[0] );
+            if( !$found ) {
+                warning( $0, $filename, $data->[$diffractogram]{name},
+                         "value '" . $data->[$phase]{values}{_pd_block_id}[0] .
+                         "' seems missing in _pd_phase_block_id list of " .
+                         "'data_" . $data->[$diffractogram]{name} . "'" );
             }
         }
-        @phases = sort @phases;
-        @diffractograms = sort @diffractograms;
-        foreach my $block ( sort @island ) {
-            my( $cmp_array, $tag );
-            if( $type->{$block} eq 'phase' ) {
-                $cmp_array = \@diffractograms;
-                $tag = '_pd_block_diffractogram_id';
-            } else {
-                $cmp_array = \@phases;
-                $tag = '_pd_phase_block_id';
+        push( @$map, {
+                publication => [ 0..($overall_info_datablock-1) ],
+                overall => $overall_info_datablock,
+                phase => $phase,
+                diffractograms => [ map( $pd_ids->{$_},
+                                         @{$data->[$phase]{values}{_pd_block_diffractogram_id}} ) ],
+            } );
+    }
+
+    for my $diffractogram (@diffractograms) {
+        if( !exists $data->[$diffractogram]{values}{_pd_phase_block_id} ) {
+            error( $0, $filename, $data->[$diffractogram]{name},
+                   "diffractogram datablock 'data_" .
+                   $data->[$diffractogram]{name} . "' does not " .
+                   "contain phase list" );
+            return undef;
+        }
+        for my $phase_id (@{$data->[$diffractogram]{values}{_pd_phase_block_id}}) {
+            if( !exists $pd_ids->{$phase_id} ) {
+                error( $0, $filename, $data->[$diffractogram]{name},
+                       "phase datablock with _pd_block_id " .
+                       "$phase_id does not exist" );
+                return undef;
             }
-            my @comm = @{ comm_array( $cmp_array,
-                [sort @{$data->[$block]{values}{$tag}}] ) };
-            foreach my $line ( @comm ) {
-                if( defined $line->[0] ) {
-                    warning( $0, $filename, $data->[$block]{name},
-                             "value '$line->[0]' is missing ".
-                             "in $tag loop" );
+            my $phase = $pd_ids->{$phase_id};
+            if( !exists $data->[$phase]{values}{_pd_block_diffractogram_id} ) {
+                error( $0, $filename, $data->[$phase]{name},
+                       "phase datablock 'data_" .
+                       $data->[$phase]{name} . "' does not " .
+                       "contain diffractogram list" );
+                return undef;
+            }
+            my $found = 0;
+            for my $diffractogram_id (@{$data->[$phase]{values}{_pd_block_diffractogram_id}}) {
+                if( !exists $pd_ids->{$diffractogram_id} ) {
+                    error( $0, $filename, $data->[$phase]{name},
+                           "diffractogram datablock with _pd_block_id " .
+                           "$diffractogram_id does not exist" );
+                    return undef;
                 }
+                if( $pd_ids->{$diffractogram_id} == $diffractogram ) {
+                    $found = 1;
+                    last;
+                }
+            }
+            if( !$found ) {
+                error( $0, $filename, $data->[$phase]{name},
+                       "value '" . $data->[$diffractogram]{values}{_pd_block_id}[0] .
+                       "' seems missing in _pd_block_diffractogram_id list of " .
+                       "'data_" . $data->[$phase]{name} . "'" );
+                return undef;
             }
         }
     }
-    return 1;
+
+    return $map;
 }
 
 sub comm_array

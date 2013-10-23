@@ -68,7 +68,16 @@ foreach my $filename ( @ARGV ) {
             $overall_info_datablock_name;
     }
 
-    my $result = CODPredepositionCheck::check_pdcif_relations( $data,
-                                                               $filename,
-                                                               $options );
+    my $map = CODPredepositionCheck::check_pdcif_relations( $data,
+                                                            $filename,
+                                                            $options );
+    if( defined $map && $print_groups ) {
+        for( my $i = 0; $i < @$map; $i++ ) {
+            print "$filename: group \#$i:\n";
+            print "\tpublication: [ " . join( ", ", map( $data->[$_]{name}, @{$map->[$i]{publication}} ) ) . " ]\n";
+            print "\toverall: " . $data->[$map->[$i]{overall}]{name} . "\n";
+            print "\tphase: " . $data->[$map->[$i]{phase}]{name} . "\n";
+            print "\tdiffractograms: [ " . join( ", ", map( $data->[$_]{name}, @{$map->[$i]{diffractograms}} ) ) . " ]\n";
+        }
+    }
 }
