@@ -2586,7 +2586,17 @@ sub find_molecule($$$$$$$$$$$$)
                                      $sym_atom->{original_label},
                                      $dist, $bump_distance_factor );
 
-            if( $is_bump ) {
+            if( $is_bump &&
+                ( ( !defined $current_atom->{group} &&
+                    !defined $current_atom->{assembly} &&
+                    !defined $sym_atom->{group} &&
+                    !defined $sym_atom->{assembly} ) ||
+                  ( $current_atom->{group} eq $sym_atom->{group} &&
+                    $current_atom->{assembly} eq $sym_atom->{assembly} ) ||
+                  ( $current_atom->{assembly} eq "." && 
+                    $current_atom->{group} eq "." ) ||
+                  ( $sym_atom->{assembly} eq "." && 
+                    $sym_atom->{group} eq "." ) )) {
                 if( not exists $checked_pairs->{$sym_label}{$new_label} ) {
                     my $message =  "atoms \"$current_atom->{label}\" and " .
                         "\"$sym_atom->{label}\" are too close " .
