@@ -92,6 +92,7 @@ my $use_parser = "perl";
 my $parse_formula_sum = 0;
 my $fix_errors = 0;
 my $use_datablocks_without_coord = 0;
+my $use_datablocks_with_fobs = 0;
 my $update_database_code = 1; # Specifies whether to update
                               # _cod_database_code tag value upon
                               # renumbering.
@@ -212,6 +213,11 @@ my %spacegroups = map {
 #*    --no-use-datablocks-without-coordinates
 #*    --skip-datablocks-without-coordinates
 #*
+#*    --use-datablocks-with-structure-factors
+#*    --dont-use-datablocks-with-structure-factors
+#*    --no-use-datablocks-with-structure-factors
+#*    --skip-datablocks-with-structure-factors
+#*
 #*    --folding-width 78
 #*
 #*    --fold-title
@@ -331,6 +337,15 @@ my %spacegroups = map {
     "--skip-datablocks-without-coordinates"
         => sub{ $use_datablocks_without_coord = 0 },
 
+    "--use-datablocks-with-structure-factors"
+        => sub{ $use_datablocks_with_fobs = 1 },
+    "--dont-use-datablocks-with-structure-factors"
+        => sub{ $use_datablocks_with_fobs = 0 },
+    "--no-use-datablocks-with-structure-factors"
+        => sub{ $use_datablocks_with_fobs = 0 },
+    "--skip-datablocks-with-structure-factors"
+        => sub{ $use_datablocks_with_fobs = 0 },
+
     "--folding-width"         => \$folding_width,
     "--fold-title"            => sub{ $fold_title = 1 },
     "--dont-fold-title"       => sub{ $fold_title = 0 },
@@ -356,7 +371,7 @@ my @extra_tags = ();
 if( $extra_tag_file ) {
     open( EXTRA, "$extra_tag_file" ) or
         die( "could not open tag list '$extra_tag_file' for reading: $!" );
-    @extra_tags = map {s/\s//g;lc($_)} map {split} grep /^\s*_/, <EXTRA>;
+    @extra_tags = map {s,\s,,g;lc($_)} map {split} grep /^\s*_/, <EXTRA>;
     close( EXTRA ) or
         die( "error while closing file '$extra_tag_file' after reading" );
 
@@ -463,6 +478,48 @@ for my $filename (@ARGV) {
             . "taking one into account, other were removed"
     }
 
+    my $pd_datablocks = grep( $_->{values}{_pd_block_id}, @$data );
+
+    my %pd_global_publ_data = ();
+
+    my $pd_publ_datablock_nr = 0;
+    my $pd_overall_info_datablock_nr = 0;
+
+    if( $pd_datablocks > 0 ) {
+        for my $dataset (@$data) {
+            my $datablok = $dataset->{values};
+            if( exists $datablok->{_pd_phase_block_id} &&
+                exists $datablok->{_pd_block_diffractogram_id} ) {
+                $pd_overall_info_datablock_nr++;
+            } elsif( grep( /^_(audit|publ|journal)_*/, keys %$datablok ) > 0 &&
+                     grep( /^_refln_index_.$/, keys %$datablok ) == 0 &&
+                     !exists $datablok->{_atom_site_label} ) {
+                $pd_publ_datablock_nr++;
+            } else {
+                next;
+            }
+
+            merge_new_tag_values( [ grep( !/^(_pd_block_id|
+                                              _pd_phase_block_id|
+                                              _pd_block_diffractogram_id)$/x,
+                                          keys %$datablok ) ],
+                                  \%pd_global_publ_data,
+                                  $dataset );
+        }
+    }
+
+    if( $pd_publ_datablock_nr > 1 ) {
+        warn "file '${filename}' had $pd_publ_datablock_nr powder "
+            . "diffraction publication sections, taking one "
+            . "into account, other were removed"
+    }
+
+    if( $pd_overall_info_datablock_nr > 1 ) {
+        warn "file '${filename}' had $pd_overall_info_datablock_nr "
+            . "powder overall information datablocks, taking one "
+            . "into account, other were removed"
+    }
+
     # Assume that there are no datablocks with coordinates until a datablock
     # with coordinates is found 
 
@@ -483,12 +540,20 @@ for my $filename (@ARGV) {
                                   $dataset, \%global_bibliography );
         }
 
+        if( $pd_publ_datablock_nr ) {
+            merge_new_tag_values( [keys %{$pd_global_publ_data{values}}],
+                                  $dataset, \%pd_global_publ_data );
+        }
+
         # convert all tags to a "cannonical" form:
 
         canonicalize_names( $dataset );
 
         next if !defined $datablok;
-        next if !$use_datablocks_without_coord && !defined $datablok->{_atom_site_label};
+        next if !$use_datablocks_without_coord &&
+                !defined $datablok->{_atom_site_label} &&
+                ( grep( /^_refln_index_.$/, keys %$datablok ) == 0 ||
+                  !$use_datablocks_with_fobs );
 
         $no_coordinates = 0;
 
