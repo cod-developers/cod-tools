@@ -92,7 +92,7 @@ my $use_parser = "perl";
 my $parse_formula_sum = 0;
 my $fix_errors = 0;
 my $use_datablocks_without_coord = 0;
-my $use_datablocks_with_fobs = 0;
+my $use_datablocks_with_fobs = 1;
 my $update_database_code = 1; # Specifies whether to update
                               # _cod_database_code tag value upon
                               # renumbering.
@@ -477,6 +477,15 @@ for my $filename (@ARGV) {
         warn "file '${filename}' had $global_section_nr global sections, "
             . "taking one into account, other were removed"
     }
+
+#
+# Locate publication and overall information datablocks in powder
+# diffraction CIF files. Publication datablock is recognised as having
+# _audit_*, _publ_* or _journal_* tags and having no coordinates or
+# structure factors. Overall information datablock contains both
+# _pd_phase_block_id and _pd_block_diffractogram_id loops.
+# See Toby et al., Journal of Applied Crystallography (2003).
+#
 
     my $pd_datablocks = grep( $_->{values}{_pd_block_id}, @$data );
 
