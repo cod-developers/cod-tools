@@ -449,6 +449,31 @@ for my $filename (@ARGV) {
                 }
             }
 
+            ## use Serialise; serialiseRef( $unique_molecules );
+            # Split init atoms into assemblies and groups, if requested
+            if( !$merge_disorder_groups ) {
+                my @split_molecules;
+                my $n = 1;
+                for my $molecule (@$unique_molecules) {
+                    ## print ">>> molecule No. ", $n++, "\n";
+                    my $atom_list = $molecule->{atoms_c};
+                    my $disorder_groups = atom_groups($atom_list);
+                    ## print ">>> ngroups = ", int(@$disorder_groups), "\n";
+                    ## use Serialise; serialiseRef( $disorder_groups );
+                    for my $disorder_representative (@$disorder_groups) {
+                        push( @split_molecules,
+                              {
+                                  atoms_c =>
+                                      $disorder_representative,
+                                  chemical_formula_sum =>
+                                      $molecule->{chemical_formula_sum},
+                              }
+                        );
+                    }
+                }
+                $unique_molecules = \@split_molecules;
+            }
+
             foreach my $molecule (@$unique_molecules) {
                 my $id;
                 unless( $use_one_output_datablock && $merge_disorder_groups ) {
@@ -540,12 +565,16 @@ sub get_molecules
         return [];
     }
 
-    # Split init atoms into assemblies and groups, if requested
     my $atom_groups;
-    if( $merge_disorder_groups ) {
-        $atom_groups = [ $atom_list ];
+    if( 1 ) {
+        # Split init atoms into assemblies and groups, if requested
+        if( $merge_disorder_groups ) {
+            $atom_groups = [ $atom_list ];
+        } else {
+            $atom_groups = atom_groups($atom_list);
+        }
     } else {
-        $atom_groups = atom_groups($atom_list);
+        $atom_groups = [ $atom_list ];
     }
 
     my $max_covalent_radius = get_max_covalent_radius( $atom_properties );
@@ -824,16 +853,15 @@ sub atom_groups
 
     my $assemblies = assemblies($initial_atoms);
 
-#     for my $assembly (keys %$assemblies)
-#     {
-#         print STDERR "Assembly $assembly\n";
-#
-#         foreach my $group (@{$assemblies->{$assembly}})
-#         {
-#             print STDERR "$group ";
-#         }
-#         print STDERR "\n";
-#     }
+    if( 0 ) {
+        for my $assembly (keys %$assemblies) {
+            print ">>> Assembly: $assembly\n";
+            foreach my $group (@{$assemblies->{$assembly}}) {
+                print ">>> group: $group ";
+            }
+            print "\n";
+        }
+    }
 
     if((keys %$assemblies) == 0)
     {
