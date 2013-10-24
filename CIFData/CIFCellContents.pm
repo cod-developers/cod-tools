@@ -41,7 +41,8 @@ sub get_atoms( $$$ );
 
 sub cif_cell_contents( $$$@ )
 {
-    my ($dataset, $filename, $user_Z, $use_attached_hydrogens) = @_;
+    my ($dataset, $filename, $user_Z, $use_attached_hydrogens,
+        $assume_full_occupancies) = @_;
 
     my $values = $dataset->{values};
 
@@ -124,7 +125,8 @@ sub cif_cell_contents( $$$@ )
     my %composition = atomic_composition( $sym_atoms,
                                           $Z,
                                           int(@sym_operators),
-                                          $use_attached_hydrogens );
+                                          $use_attached_hydrogens,
+                                          $assume_full_occupancies );
 
     ## print_composition( \%composition );
 
@@ -135,13 +137,17 @@ sub cif_cell_contents( $$$@ )
 
 sub atomic_composition($$$@)
 {
-    my ( $sym_atoms, $Z, $gp_multiplicity, $use_attached_hydrogens ) = @_;
+    my ( $sym_atoms, $Z, $gp_multiplicity, $use_attached_hydrogens,
+         $assume_full_occupancies ) = @_;
     $use_attached_hydrogens = 0 unless defined $use_attached_hydrogens;
+    $assume_full_occupancies = 0 unless defined $assume_full_occupancies;
     my %composition;
 
     for my $atom ( @$sym_atoms ) { 
         my $type = $atom->{atom_type};
-        my $occupancy = defined $atom->{occupancy} ? $atom->{occupancy} : 1;
+        my $occupancy = 
+            defined $atom->{occupancy} && !$assume_full_occupancies
+                ? $atom->{occupancy} : 1;
         my $amount = $occupancy  * $atom->{multiplicity};
         $composition{$type} += $amount;
         my $hydrogen_amount =

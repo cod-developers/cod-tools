@@ -30,6 +30,7 @@ use SUsage;
 my $format = "%g";
 my $Z_value;
 my $use_attached_hydrogens = 0;
+my $assume_full_occupancies = 0;
 
 #* Usage:
 #*     cif_cell_constants [options] input.cif
@@ -40,6 +41,26 @@ my $use_attached_hydrogens = 0;
 #*         Specify number of formula sum units in the unit cell.
 #*         Default: taken from the input CIF if present, otherwise
 #*         assumed to be 1.
+#*
+#*     --use-attached-hydrogens
+#*         Include number of implicit hydrogens, specified using
+#*         _atom_site_attached_hydrogens tag, into the formula sum.
+#*
+#*     --dont-use-attached-hydrogens,
+#*     --no-use-attached-hydrogens,
+#*     --ignore-attached-hydrogens
+#*         Ignore number of implicit hydrogens, specified using
+#*         _atom_site_attached_hydrogens tag, in calculation of the
+#*         formula sum. Default option.
+#*
+#*     --assume-full-occupancies
+#*         Assume that all atoms have full (1.0) occupancies.
+#*
+#*     --dont-assume-full-occupancies,
+#*     --no-assume-full-occupancies,
+#*     --use-original-occupancies
+#*         Use original atom site occupancies, as given in CIF file.
+#*         Default option.
 #*
 #*     --help  print a short usage message (this message) and exit.
 #**
@@ -52,6 +73,11 @@ my $use_attached_hydrogens = 0;
     "--dont-use-attached-hydrogens" => sub { $use_attached_hydrogens = 0 },
     "--no-use-attached-hydrogens" => sub { $use_attached_hydrogens = 0 },
     "--ignore-attached-hydrogens" => sub { $use_attached_hydrogens = 0 },
+
+    "--assume-full-occupancies" => sub { $assume_full_occupancies = 1 },
+    "--dont-assume-full-occupancies" => sub { $assume_full_occupancies = 0 },
+    "--no-assume-full-occupancies" => sub { $assume_full_occupancies = 0 },
+    "--use-original-occupancies" => sub { $assume_full_occupancies = 0 },
 
     "--help,--usage" => sub { SUsage::usage; exit },
 );
@@ -73,7 +99,8 @@ for my $filename (@ARGV) {
         my $formula = CIFCellContents::cif_cell_contents( $dataset, 
                                                           $filename,
                                                           $Z_value,
-                                                          $use_attached_hydrogens );
+                                                          $use_attached_hydrogens,
+                                                          $assume_full_occupancies );
         print $formula, "\n" if defined $formula;
     }
 }
