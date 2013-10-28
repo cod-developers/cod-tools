@@ -26,6 +26,7 @@ use ShowStruct;
 use Spacegroups::SpacegroupNames;
 use Spacegroups::SymopLookup;
 use File::Basename;
+use UserMessage;
 use SOptions;
 use SUsage;
 
@@ -410,6 +411,7 @@ for my $filename (@ARGV) {
         $warnings += check_simultaneous_presence( $dataset, $filename )
             if $check_simultaneous_presence;
     }
+    $warnings += check_pdcif_relations( $data, $filename );
     printf "%-30s: OK\n", $filename if $warnings == 0;
 }
 
@@ -691,6 +693,224 @@ sub check_temperature_factors
         $max_year_temperature_factors_optional . ", but does not contain " .
         "temperature factors" );
     $warnings++;
+    return $warnings;
+}
+
+sub check_pdcif_relations
+{
+    my( $data, $filename ) = @_;
+
+    my $overall_info_datablock;
+    my $overall_info_datablock_count = 0;
+
+    my $warnings = 0;
+    my $pd_ids = {};
+
+    my @phases;
+    my @diffractograms;
+
+    for( my $i = 0; $i < @$data; $i++ ) {
+        my $dataset = $data->[$i];
+        my $datablock = $dataset->{values};
+        if( exists $datablock->{_pd_block_id} ) {
+            my $datablock_pd_id = $datablock->{_pd_block_id}[0];
+            if( exists $pd_ids->{$datablock_pd_id} ) {
+                error( $0, $filename, undef,
+                       "two or more datablocks with _pd_block_id " .
+                       "'$datablock_pd_id' were found -- _pd_block_id " .
+                       "must be unique for each datablock" );
+                $warnings++;
+            } else {
+                $pd_ids->{$datablock_pd_id} = $i;
+                if( exists $datablock->{_atom_site_label} ) {
+                    push( @phases, $i );
+                } elsif( grep( /^_refln_index.$/, keys %$datablock ) > 0 ) {
+                    push( @diffractograms, $i );
+                }
+            }
+        }
+        if( exists $datablock->{_pd_phase_block_id} &&
+            exists $datablock->{_pd_block_diffractogram_id} ) {
+            if( !defined $overall_info_datablock ) {
+                $overall_info_datablock = $i;
+            }
+            $overall_info_datablock_count++;
+        }
+    }
+
+    return $warnings if @phases + @diffractograms == 0;
+
+    if( $overall_info_datablock_count > 1 ) {
+        print_message( $0, $filename, undef, "NOTE",
+                       "$overall_info_datablock_count datablocks " .
+                       "having both _pd_phase_block_id and " .
+                       "_pd_block_diffractogram_id were found -- " .
+                       "taking the first occurence as the overall " .
+                       "information datablock" );
+        $warnings++;
+    }
+
+    # Checking whether all powder diffraction IDs from the overall
+    # information datablock (if such exists) point to existing
+    # datablocks. Also, checking whether all phases and diffractograms
+    # are listed in overall information datablock:
+
+    if( $overall_info_datablock_count > 0 ) {
+        my $overall_block = $data->[$overall_info_datablock];
+        my $overall_data = $overall_block->{values};
+        for my $phase_id (@{$overall_data->{_pd_phase_block_id}}) {
+            if( !exists $pd_ids->{$phase_id} ) {
+                error( $0, $filename, $overall_block->{names},
+                       "phase datablock with _pd_block_id " .
+                       "'$phase_id' does not exist" );
+                $warnings++;
+            }
+        }
+        for my $diffractogram_id (@{$overall_data->{_pd_block_diffractogram_id}}) {
+            if( !exists $pd_ids->{$diffractogram_id} ) {
+                error( $0, $filename, $overall_block->{names},
+                       "diffractogram datablock with _pd_block_id " .
+                       "'$diffractogram_id' does not exist" );
+                $warnings++;
+            }
+        }
+        for my $phase_nr (@phases) {
+            my $phase_block = $data->[$phase_nr];
+            my $phase_data = $phase_block->{values};
+            if( grep( $_ eq $phase_data->{_pd_block_id}[0],
+                      @{$overall_data->{_pd_phase_block_id}} ) == 0 ) {
+                error( $0, $filename, $overall_block->{names},
+                       "phase datablock 'data_" . $phase_block->{name} .
+                       "' is not listed in _pd_phase_block_id loop of " .
+                       "overall information datablock" );
+                $warnings++;
+            }
+        }
+        for my $diffractogram_nr (@diffractograms) {
+            my $diffractogram_block = $data->[$diffractogram_nr];
+            my $diffractogram_data = $diffractogram_block->{values};
+            if( grep( $_ eq $diffractogram_data->{_pd_block_id}[0],
+                      @{$overall_data->{_pd_block_diffractogram_id}} ) == 0 ) {
+                error( $0, $filename, $overall_block->{names},
+                       "diffractogram datablock 'data_" .
+                       $diffractogram_block->{name} . "' is not listed in " .
+                       "_pd_block_diffractogram_id loop of overall " .
+                       "information datablock" );
+                $warnings++;
+            }
+        }
+    }
+
+    # Looking for stray powder diffraction datablocks -- each datablock
+    # with _pd_block_id should be listed in overall information
+    # datablock (except publication datablock and the overall information
+    # datablock itself):
+
+    for my $phase_nr (@phases) {
+        my $phase_block = $data->[$phase_nr];
+        my $phase_data = $phase_block->{values};
+        if( !exists $phase_data->{_pd_block_diffractogram_id} ) {
+            error( $0, $filename, $phase_block->{name},
+                   "phase datablock 'data_" . $phase_block->{name} .
+                   "' does not contain diffractogram list" );
+            $warnings++;
+            next;
+        }
+        for my $diffractogram_id (@{$phase_data->{_pd_block_diffractogram_id}}) {
+            if( !exists $pd_ids->{$diffractogram_id} ) {
+                error( $0, $filename, $phase_block->{name},
+                       "diffractogram datablock with _pd_block_id " .
+                       "'$diffractogram_id' does not exist" );
+                $warnings++;
+                next;
+            }
+            my $diffractogram_nr = $pd_ids->{$diffractogram_id};
+            my $diffractogram_block = $data->[$diffractogram_nr];
+            my $diffractogram_data = $diffractogram_block->{values};
+            if( !exists $diffractogram_data->{_pd_phase_block_id} ) {
+                error( $0, $filename, $diffractogram_block->{name},
+                       "diffractogram datablock 'data_" .
+                       $diffractogram_block->{name} . "' does not " .
+                       "contain phase list" );
+                $warnings++;
+                next;
+            }
+            my $found = 0;
+            for my $phase_id (@{$diffractogram_data->{_pd_phase_block_id}}) {
+                if( !exists $pd_ids->{$phase_id} ) {
+                    error( $0, $filename, $diffractogram_block->{name},
+                           "phase datablock with _pd_block_id " .
+                           "'$phase_id' does not exist" );
+                    $warnings++;
+                }
+                if( $pd_ids->{$phase_id} == $phase_nr ) {
+                    $found = 1;
+                    last;
+                }
+            }
+            if( !$found ) {
+                warning( $0, $filename, $diffractogram_block->{name},
+                         "value '" . $phase_data->{_pd_block_id}[0] .
+                         "' seems missing in _pd_phase_block_id list of " .
+                         "'data_" . $diffractogram_block->{name} . "'" );
+                $warnings++;
+            }
+        }
+    }
+
+    for my $diffractogram_nr (@diffractograms) {
+        my $diffractogram_block = $data->[$diffractogram_nr];
+        my $diffractogram_data = $diffractogram_block->{values};
+        if( !exists $diffractogram_data->{_pd_phase_block_id} ) {
+            error( $0, $filename, $diffractogram_block->{name},
+                   "diffractogram datablock 'data_" .
+                   $diffractogram_block->{name} . "' does not " .
+                   "contain phase list" );
+            $warnings++;
+            next;
+        }
+        for my $phase_id (@{$diffractogram_data->{_pd_phase_block_id}}) {
+            if( !exists $pd_ids->{$phase_id} ) {
+                error( $0, $filename, $diffractogram_block->{name},
+                       "phase datablock with _pd_block_id " .
+                       "'$phase_id' does not exist" );
+                $warnings++;
+                next;
+            }
+            my $phase_nr = $pd_ids->{$phase_id};
+            my $phase_block = $data->[$phase_nr];
+            my $phase_data = $phase_block->{values};
+            if( !exists $phase_data->{_pd_block_diffractogram_id} ) {
+                error( $0, $filename, $phase_block->{name},
+                       "phase datablock 'data_" .
+                       $phase_block->{name} . "' does not " .
+                       "contain diffractogram list" );
+                $warnings++;
+                next;
+            }
+            my $found = 0;
+            for my $diffractogram_id (@{$phase_data->{_pd_block_diffractogram_id}}) {
+                if( !exists $pd_ids->{$diffractogram_id} ) {
+                    error( $0, $filename, $phase_block->{name},
+                           "diffractogram datablock with _pd_block_id " .
+                           "'$diffractogram_id' does not exist" );
+                    $warnings++;
+                }
+                if( $pd_ids->{$diffractogram_id} == $diffractogram_nr ) {
+                    $found = 1;
+                    last;
+                }
+            }
+            if( !$found ) {
+                error( $0, $filename, $phase_block->{name},
+                       "value '" . $phase_data->{_pd_block_id}[0] .
+                       "' seems missing in _pd_block_diffractogram_id list of " .
+                       "'data_" . $phase_block->{name} . "'" );
+                $warnings++;
+            }
+        }
+    }
+
     return $warnings;
 }
 
