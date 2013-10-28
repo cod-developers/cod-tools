@@ -20,9 +20,10 @@ use Unicode::Normalize;
 use Unicode2CIF;
 use Encode;
 use Capture::Tiny ':all';
-use UserMessage;
 use CIF2COD;
 use CIFTagPrint;
+use Precision;
+use UserMessage;
 
 @CODPredepositionCheck::identity_tags = qw(
     _cell_length_a
@@ -1032,29 +1033,18 @@ sub grep_journal_name
 sub unpack_cif_number
 {
     my ($value) = @_;
-    my $number_pos =
-        '(?:\+?' .
-        '(?:\d+(?:\.\d*)?|\.\d+))'; 
-    my $number_neg =
-        '(?:\-' .
-        '(?:\d+(?:\.\d*)?|\.\d+))'; 
-    my $exponent =
-        '(?:[eE][-+]?\d+)';
-    my $sigma =
-        '(?:\(\d+\))';
-    $value =~ /($number_pos|$number_neg)($exponent?)($sigma?)/;
-    my ($number_part, $exponent_part, $sigma_part ) = ($1, $2, $3);
-    $sigma_part =~ s/\((\d+)\)/$1/;
-    $exponent_part =~ s/[eE]([-+]?\d+)/$1/;
-    $exponent_part = 0 if $exponent_part eq "";
-    $sigma_part = 0 if $sigma_part eq "";
-    my $converted = 10 ** $exponent_part * $number_part;
-    my $digits_after_period = 0;
-    if( $number_part =~ /\.(\d+)$/ ) {
-        $digits_after_period = length($1);
-    }
-    my $precision = $sigma_part / 10 ** $digits_after_period;
-    return ($converted, $precision);
+    $value =~ /
+                ([\+\-])?             # sign
+                (\d+(?:\.\d*)?|\.\d+) # number
+                (?:e([-+]?\d+))?      # exponent
+                (?:\((\d+)\))?        # sigma
+              /ix;
+    my $number = (defined $1 ? $1 : "") . $2;
+    my $exponent = (defined $3 ? $3 : 0);
+    my $sigma = (defined $4 ? $4 : 0);
+    $number = 10 ** $exponent * $number;
+    my $precision = unpack_precision( $number, $sigma );
+    return ($number, $precision);
 }
 
 # Checks if two CIF format numbers are (possibly) equal.
