@@ -849,6 +849,8 @@ sub check_pdcif_relations
                 }
             }
             if( !$found ) {
+                # If diffractogram datablock does not contain a backlink 
+                # to the phase block, we assume that the backlink is:
                 warning( $0, $filename, $diffractogram_block->{name},
                          "value '" . $phase_data->{_pd_block_id}[0] .
                          "' seems missing in _pd_phase_block_id list of " .
@@ -902,10 +904,12 @@ sub check_pdcif_relations
                 }
             }
             if( !$found ) {
+                # If phase datablock does not contain a backlink to the 
+                # diffractogram, we are not sure if it is omitted or added:
                 error( $0, $filename, $phase_block->{name},
-                       "value '" . $phase_data->{_pd_block_id}[0] .
+                       "value '" . $diffractogram_data->{_pd_block_id}[0] .
                        "' seems missing in _pd_block_diffractogram_id list of " .
-                       "'data_" . $phase_block->{name} . "'" );
+                       "'data_" . $diffractogram_block->{name} . "'" );
                 $warnings++;
             }
         }
