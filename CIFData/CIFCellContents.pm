@@ -144,18 +144,23 @@ sub atomic_composition($$$@)
     my %composition;
 
     for my $atom ( @$sym_atoms ) { 
-        my $type = $atom->{atom_type};
         my $occupancy = 
             defined $atom->{occupancy} && !$assume_full_occupancies
                 ? $atom->{occupancy} : 1;
-        my $amount = $occupancy  * $atom->{multiplicity};
-        $composition{$type} += $amount;
+
         my $hydrogen_amount =
             $occupancy * $atom->{multiplicity} * $atom->{attached_hydrogens};
         if( $hydrogen_amount > 0 && $use_attached_hydrogens ) {
             $composition{H} = 0 if !exists $composition{H};
             $composition{H} += $hydrogen_amount;
         }
+
+        my $type = $atom->{atom_type};
+
+        next if $atom->{atom_type} eq ".";
+
+        my $amount = $occupancy  * $atom->{multiplicity};
+        $composition{$type} += $amount;
     }
 
     my $abundance_ration = $Z * $gp_multiplicity;
@@ -233,9 +238,15 @@ sub get_atoms( $$$ )
         @{$atom->{coordinates_fract}} = map { s/\(\d+\)\s*$//; $_ }
             @{$atom->{coordinates_fract}};
 
-        $atom->{coordinates_ortho} =
-            CIFSymmetryGenerator::mat_vect_mul( $ortho_matrix,
-                                                $atom->{coordinates_fract} );
+        if( $atom->{coordinates_fract}[0] ne "." and
+            $atom->{coordinates_fract}[1] ne "." and
+            $atom->{coordinates_fract}[2] ne "." ) {
+            $atom->{coordinates_ortho} =
+                CIFSymmetryGenerator::mat_vect_mul
+                ( $ortho_matrix, $atom->{coordinates_fract} );
+        } else {
+            $atom->{coordinates_ortho} = [ ".", ".", "." ];
+        }
 
         if( defined $values->{_atom_site_occupancy} ) {
             if( $values->{_atom_site_occupancy}[$i] ne '?' &&
