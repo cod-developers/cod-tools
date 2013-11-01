@@ -104,6 +104,13 @@ sub all_symops
     return wantarray ? @symops : \@symops;
 }
 
+sub all_symops_ref
+{
+    my ($self) = @_;
+    my @symops = $self->all_symops();
+    return \@symops;
+}
+
 sub insert_translation
 {
     my ($self, $translation, $symop) = @_;
