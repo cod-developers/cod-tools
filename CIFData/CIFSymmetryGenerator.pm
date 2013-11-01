@@ -107,16 +107,20 @@ sub symop_apply_to_atom_mod1($$$$)
     my ( $symop, $atom, $n, $f2o ) = @_;
 
     my $new_atom = copy_atom( $atom );
-    my $new_coord = mat_vect_mul( $symop, $atom->{coordinates_fract} );
-
-    $new_atom->{coordinates_fract} = [ map { modulo_1($_) } @{$new_coord} ];
 
     if( $n != 0 ) {
         $new_atom->{atom_name} .= "_" . $n;
     }
 
-    $new_atom->{coordinates_ortho} =
-        mat_vect_mul( $f2o, $new_atom->{coordinates_fract} );
+    if( $atom->{coordinates_fract}[0] ne "." and
+        $atom->{coordinates_fract}[1] ne "." and
+        $atom->{coordinates_fract}[2] ne "." ) {
+        my $new_coord = mat_vect_mul( $symop, $atom->{coordinates_fract} );
+        $new_atom->{coordinates_fract} =
+            [ map { modulo_1($_) } @{$new_coord} ];
+        $new_atom->{coordinates_ortho} =
+            mat_vect_mul( $f2o, $new_atom->{coordinates_fract} );
+    }
 
     ## serialiseRef( $new_atom );
 
@@ -129,7 +133,14 @@ sub atoms_coincide($$$)
 {
     my ( $old_atom, $new_atom, $f2o ) = @_;
 
+    if( $old_atom->{coordinates_fract}[0] eq "." or
+        $old_atom->{coordinates_fract}[1] eq "." or
+        $old_atom->{coordinates_fract}[2] eq "." ) {
+        return 0;
+    }
+
     my $old_coord = [ map { modulo_1($_) } @{$old_atom->{coordinates_fract}} ];
+
     my $old_xyz = mat_vect_mul( $f2o, $old_coord );
 
     my $new_coord = [ map { modulo_1($_) } @{$new_atom->{coordinates_fract}} ];
