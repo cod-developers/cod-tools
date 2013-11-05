@@ -192,6 +192,9 @@ sub cif2cod
     $use_datablocks_without_coord =
         $options->{use_datablocks_without_coord}
         if exists $options->{use_datablocks_without_coord};
+    my $use_attached_hydrogens =
+        (exists $options->{use_attached_hydrogens})
+            ? $options->{use_attached_hydrogens} : 0;
 
     my @extracted;
     for my $dataset (@$data) {
@@ -231,7 +234,8 @@ sub cif2cod
 
         eval {
             $calculated_formula =
-                CIFCellContents::cif_cell_contents( $dataset, $filename, undef );
+                CIFCellContents::cif_cell_contents( $dataset, $filename, undef,
+                                                    $use_attached_hydrogens );
         };
         if( $@ ) {
             error( "summary formula could not be calculated",
