@@ -1487,14 +1487,6 @@ sub translate_atom
         ($new_atom->{translation}[1]+5).
         ($new_atom->{translation}[2]+5);
 
-#     $new_atom->{symop}[0][3] +=
-#         $new_atom->{translation}[0] - $atom->{translation}[0];
-#     $new_atom->{symop}[1][3] +=
-#         $new_atom->{translation}[1] - $atom->{translation}[1];
-#     $new_atom->{symop}[2][3] +=
-#         $new_atom->{translation}[2] - $atom->{translation}[2];
-
-
     if( defined $new_atom->{unity_matrix_applied} &&
         $new_atom->{unity_matrix_applied} &&
         $new_atom->{translation}[0] == 0 &&
@@ -1753,45 +1745,6 @@ sub symop_apply_to_atoms
     return \@sym_atoms;
 }
 
-
-#===============================================================#
-# Multiplies two vectors
-
-sub vect_vect_mul($$)
-{
-    my( $vect1, $vect2 ) = @_;
-
-    my $product = 0;
-
-    for(my $i = 0; $i < scalar @$vect1; $i++ ) {
-        $product += $vect1->[$i] * $vect2->[$i];
-    }
-
-    return $product;
-}
-
-#===============================================================#
-# Multiplies two symmetry operator matrices
-
-sub mat_mat_mul($$)
-{
-    my( $matrix1, $matrix2 ) = @_;
-    
-    my @new_matrix;
-    for(my $i = 0; $i < 4; $i++ ) {
-        my @matrix_line;
-        for(my $j = 0; $j < 4; $j++ ) {
-            push( @matrix_line, vect_vect_mul(
-                $matrix1->[$i],
-                [ $matrix2->[0][$j], $matrix2->[1][$j],
-                  $matrix2->[2][$j], $matrix2->[3][$j] ] ) );
-        }
-        push( @new_matrix, \@matrix_line );
-    }
-
-    return wantarray ? @new_matrix : \@new_matrix;
-}
-
 #===============================================================#
 # Multiplies an ortho matrix with a vector.
 
@@ -2010,9 +1963,6 @@ sub shift_atom($$)
                         $atom_info->{"symop_id"} . "_" .
                         $shift_label;
                     $new_atom_info->{"translation_id"} = $shift_label;
-#                     $new_atom_info->{"symop"}[0][3] += $shifting_params[$i];
-#                     $new_atom_info->{"symop"}[1][3] += $shifting_params[$j];
-#                     $new_atom_info->{"symop"}[2][3] += $shifting_params[$k];
                 }
                 $new_atom_info->{coordinates_ortho} =
                     mat_vect_mul( $f2o, \@new_atom_xyz );
@@ -3017,24 +2967,6 @@ sub get_symmetry_operators($$)
     }
 
     return $sym_data;
-}
-
-#===========================================================================
-# Return unique symmetry operators (in matrix form) whilst preserving the
-# input order
-
-sub unique_symops
-{
-    my @symops = @_;
-    my %seen_symops;
-    my @unique_symops;
-    for my $symop ( @symops ) {
-        my $symop_string = string_from_symop( $symop );
-        next if exists $seen_symops{$symop_string};
-        push( @unique_symops, $symop );
-        $seen_symops{$symop_string} = 1;
-    }
-    return @unique_symops;
 }
 
 #===========================================================================
