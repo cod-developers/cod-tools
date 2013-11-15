@@ -139,6 +139,9 @@ my $preserve_stoichiometry = 0; # If true (1), apply symmetry
 my $largest_molecule_only = 0; # Output only the largest (having the
                                # greatest number of atoms) molecule.
 
+my $output_geom_bond = 0; # Compute and output the _geom_bond_... data
+                          # items (bond lengths, valencies, etc.)
+
 @ARGV = getOptions
 (
 #** -1,--one-datablock-output
@@ -151,6 +154,13 @@ my $largest_molecule_only = 0; # Output only the largest (having the
 #**
 #** -c,--covalent-sensitivity
 #**                    Set a new covalent sensitivity value (default 0.35)
+#**
+#** -g, --geom-bond-output
+#**                     Output _geom_bond_... data items (bond lengths, 
+#**                     valencies, etc.).
+#**
+#** -g-, --no-geom-bond-output
+#**                     Do not output _geom_bond_... information (default).
 #**
 #** -h, --cif-header-file input_header.txt
 #**                    Comments from the beginning of this file wil be
@@ -263,6 +273,9 @@ my $largest_molecule_only = 0; # Output only the largest (having the
 
     "-c,--covalent-sensitivity" => \$covalent_sensitivity,
 
+    "-g,--geom-bond-output"     => sub { $output_geom_bond = 1 },
+    "-g-,--no-geom-bond-output" => sub { $output_geom_bond = 0 },
+
     "-h,--add-cif-header" => \$cif_header_file,
 
     "-i,--ignore-bumps"   => sub{ $ignore_bumps = 1 },
@@ -334,6 +347,7 @@ my $largest_molecule_only = 0; # Output only the largest (having the
 #==============================================================================#
 # Forward subroutine definitions:
 
+sub get_unit_cell( $$$ );
 sub symgen_atom( $$$ );
 sub symgen_all_atoms( $$$ );
 sub apply_shifts( $$ );
@@ -344,6 +358,7 @@ sub initial_atoms( $$$$$$$ );
 sub get_symmetry_operators( $$ );
 
 sub test_bump( $$$$$$$ );
+sub mat_vect_mul( $$ );
 
 # Error reporting (message formatting) subroutines:
 
@@ -542,8 +557,28 @@ for my $filename (@ARGV) {
                     $id = undef;
                 }
 
+                if( $output_geom_bond ) {
+                    my @cell =
+                        get_unit_cell( $values, $filename, $dataset->{name} );
+
+                    my $f2o = symop_ortho_from_fract( @cell );
+
+                    for my $atom (@{$molecule->{atoms}}) {
+                        if( !exists $atom->{coordinates_ortho} ) {
+                            $atom->{coordinates_ortho} =
+                                mat_vect_mul( $f2o,
+                                              $atom->{coordinates_fract} );
+                        }
+                    }
+
+                    $molecule->{bonds} = atom_bonds( $molecule->{atoms},
+                                                     \%AtomProperties::atoms,
+                                                     $covalent_sensitivity );
+                }
+
                 print_molecule( $id, $audit, $molecule, $Id,
                                 $dataset, $dataset_name, $filename, $sym_data );
+
                 last if $largest_molecule_only;
 
                 $molecule_id++;
@@ -1591,6 +1626,7 @@ sub symop_apply_modulo1
         mat_vect_mul( $symop, $atom_xyz );
 
     $new_atom_info->{"coordinates_fract"} = \@new_atom_xyz;
+    delete $new_atom_info->{"coordinates_ortho"};
 
     return symop_register_applied_symop( $new_atom_info, $symop, $symop_id );
 }
@@ -1634,6 +1670,7 @@ sub symop_apply_NO_modulo_1
         mat_vect_mul( $symop, $atom_xyz );
 
     $new_atom_info->{"coordinates_fract"} = \@new_atom_xyz;
+    delete $new_atom_info->{"coordinates_ortho"};
 
     return symop_register_applied_symop( $new_atom_info, $symop, $symop_id );
 }
@@ -2500,6 +2537,26 @@ sub print_molecule
             }
         }
     }
+
+    if( $output_geom_bond ) {
+        if( exists $molecule->{bonds} ) {
+            print "loop_\n";
+            print "_geom_bond_atom_site_label_1\n";
+            print "_geom_bond_atom_site_label_2\n";
+            print "_geom_bond_distance\n";
+            print "_geom_bond_valence\n";
+            for my $bond (@{$molecule->{bonds}}) {
+                printf "%s %s %8.5f %d\n",
+                $bond->{atom1}{name}, $bond->{atom2}{name},
+                $bond->{distance},
+                $bond->{order};
+            }
+        } else {
+            warning( $0, $filename, $dataset_name,
+                     "bond data necessary to compute _geom_bond_ data " .
+                     "items was not calculated" );
+        }
+    }
 }
 
 #===============================================================#
@@ -2545,8 +2602,15 @@ sub print_molecule
 #                                             }
 # Returns an array of
 # %molecule = (
-#               atoms=>[\%atom_info1, \%atom_info2], #covalent bond
-#               chemical_formula_sum=>"C6 H6",
+#               atoms => [
+#                   \%atom1_info, \%atom2_info, \%atom3_info, \%atom4_info
+#               ],
+#               bonds => [
+#                   [ \%atom1_info, \%atom2_info ],
+#                   [ \%atom1_info, \%atom3_info ],
+#                   [ \%atom4_info, \%atom3_info ],
+#               ] # covalent bond description
+#               chemical_formula_sum => "C6 H6",
 #             );
 
 sub find_molecules($$$$$$$$$)
@@ -2972,3 +3036,129 @@ sub unique_symops
     }
     return @unique_symops;
 }
+
+#===========================================================================
+# Return a list of chemical bonds (represented as atom pairs, each
+# pair being two references to two %atom_info structures describing
+# the bondsd atoms).
+
+sub atom_bonds
+{
+    my ($atoms, $atom_properties, $covalent_sensitivity) = @_;
+
+    my $max_covalent_radius = get_max_covalent_radius( $atom_properties );
+
+    my $bricks = AtomBricks::build_bricks( $atoms,
+                                           $max_covalent_radius * 2 +
+                                           $covalent_sensitivity );
+
+    my %used_atoms;
+    my @bonds;
+
+    for my $atom (@$atoms) {
+
+        $used_atoms{$atom->{name}} = $atom;
+
+        my $coordinates = $atom->{coordinates_ortho};
+
+        my ($i, $j, $k) =
+            AtomBricks::get_atom_index( $bricks, @$coordinates );
+
+        my ( $min_i, $max_i, $min_j, $max_j, $min_k, $max_k );
+
+        eval {
+            ( $min_i, $max_i, $min_j, $max_j, $min_k, $max_k ) =
+                AtomBricks::get_search_span( $bricks, $i, $j, $k );
+        };
+        if( $@ ) {
+            use Serialise;
+            serialiseRef( $coordinates );
+            serialiseRef( [ $i, $j, $k ] );
+            serialiseRef( $bricks );
+            die( $@ );
+        }
+
+        ## foreach my $sym_atom (@$symmetric_atoms)
+        for $i ($min_i .. $max_i) {
+        for $j ($min_j .. $max_j) {
+        for $k ($min_k .. $max_k) {
+            for my $neighbour ( @{$bricks->{atoms}[$i][$j][$k]} ) {
+
+                next if exists $used_atoms{$neighbour->{name}};
+
+                my $neighbour_coords = $neighbour->{coordinates_ortho};
+
+                if( $atom == $neighbour ) {
+                    # We have found the same atom, no need to add bond or
+                    # neighbour
+                    next;
+                }
+
+                my $distance = distance( $coordinates, $neighbour_coords );
+
+                my $is_bond = test_bond($atom_properties,
+                                        $atom->{chemical_type},
+                                        $neighbour->{chemical_type},
+                                        $distance,
+                                        $covalent_sensitivity);
+
+                if( $is_bond &&
+                    ( ( !defined $atom->{group} &&
+                        !defined $atom->{assembly} &&
+                        !defined $neighbour->{group} &&
+                        !defined $neighbour->{assembly} ) ||
+                      ( $atom->{group} eq $neighbour->{group} &&
+                        $atom->{assembly} eq $neighbour->{assembly} ) ||
+                      ( $atom->{assembly} eq "." && 
+                        $atom->{group} eq "." ) ||
+                      ( $neighbour->{assembly} eq "." && 
+                        $neighbour->{group} eq "." ) )) {
+
+                    do {
+                        use Serialise;
+                        local $" = ' ';
+                        print STDERR ">>> found bond:\n";
+                        serialiseRef( { "original atom" => $atom,
+                                        "neighbour atom" => $neighbour } );
+                    } if $debug;
+
+                    my $bond_order =
+                        get_bond_order( $distance,
+                                        $atom->{chemical_type},
+                                        $neighbour->{chemical_type},
+                                        $atom_properties );
+
+                    push( @bonds, {
+                        atom1 => $atom,
+                        atom2 => $neighbour,
+                        distance => $distance,
+                        order => $bond_order,
+                    });
+                }
+            }
+        }}}
+    }
+
+    return \@bonds;
+}
+
+#==============================================================================
+# Use heuristics to guess bond order from its length:
+
+sub get_bond_order
+{
+    my( $distance, $atom1_type, $atom2_type, $atom_properties ) = @_;
+
+    if( $atom1_type eq "C" and $atom2_type eq "C" ) {
+        if( $distance <= 1.34 ) {
+            return 3;
+        } elsif( $distance <= 1.5 ) {
+            return 2;
+        } else {
+            return 1;
+        }
+    } else {
+        return 1;
+    }
+}
+
