@@ -466,6 +466,11 @@ for my $filename (@ARGV) {
                         }
                         if( !exists $original_atoms{$atom_label} ) {
                             $original_atoms{$atom_label} = $atom;
+                        } else {
+                            my $symop1 = $original_atoms{$atom_label}{symop};
+                            my $inverted_symop1 = symop_invert( $symop1 );
+                            $sg->insert_symop( symop_mul( $inverted_symop1,
+                                                          $atom->{symop} ) );
                         }
                     }
                     ## $sg->print();
