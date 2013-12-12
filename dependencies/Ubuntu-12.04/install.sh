@@ -9,3 +9,5 @@ sudo apt-get install -y libcapture-tiny-perl
 sudo apt-get install -y libcarp-assert-perl
 sudo apt-get install -y libdigest-sha-perl
 sudo apt-get install -y openbabel
+sudo apt-get install bison
+sudo apt-get install flex
