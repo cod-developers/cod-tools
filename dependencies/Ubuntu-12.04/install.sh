@@ -12,3 +12,5 @@ sudo apt-get install -y openbabel
 
 sudo apt-get install -y bison
 sudo apt-get install -y flex
+
+sudo apt-get install -y libinline-perl
