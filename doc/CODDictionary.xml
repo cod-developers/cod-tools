@@ -558,30 +558,138 @@ and open the template in the editor.
         <IUCrDescriptionUrl>http://www.iucr.org/__data/iucr/cifdic_html/1/cif_core.dic/Irefine_ls_goodness_of_fit_ref.html</IUCrDescriptionUrl>
     </CODParameter> 
     <CODParameter name="duplicateof">
-        <Definition>???</Definition>
+        <Definition>
+          Specifies that the COD entry containing this data item is
+          considered to be a duplicate of another entry. The COD
+          number of this other entry, which is considered to be
+          "primary" entry for the structure, is specified as a value
+          of this column.
+        </Definition>
+        <CODCIFTags>
+          <CODCIFTag>_cod_duplicate_entry</CODCIFTag>
+        </CODCIFTags>
+        <CODDescriptionUrl>http://www.crystallography.net/cif/dictionaries/cif_cod.dic</CODDescriptionUrl>
     </CODParameter> 
     <CODParameter name="optimal">
-        <Definition>???</Definition>
+        <Definition>
+          Contains a COD database code for the COD entry that contains
+          optimally solved structure for the crystall or compound
+          under consideration. This optimal structure should be used
+          for all inferences; the current suboptimal structure is
+          provided for illustration purposes only.
+        </Definition>
+        <CODCIFTags>
+          <CODCIFTag>_cod_related_optimal_struct</CODCIFTag>
+        </CODCIFTags>
+        <CODDescriptionUrl>http://www.crystallography.net/cif/dictionaries/cif_cod.dic</CODDescriptionUrl>
     </CODParameter> 
     <CODParameter name="status">
-        <Definition>???</Definition>
+        <Definition>
+          Describes the severity of errors if such are detected in COD
+          entries.
+
+          Currently, permitted values are: NULL, 'none', 'warnings',
+          'errors', 'retracted'.
+        </Definition>
+        <CODCIFTags>
+          <CODCIFTag>_cod_error_flag</CODCIFTag>
+        </CODCIFTags>
+        <CODDescriptionUrl>http://www.crystallography.net/cif/dictionaries/cif_cod.dic</CODDescriptionUrl>
     </CODParameter> 
     <CODParameter name="flags">
-        <Definition>???</Definition>
+        <Definition>
+          A set (as in SQL or Pascal) that describes various
+          conditions of a COD record:
+
+          "has coordinates": the enrty has atomic coordinates
+          specified;
+
+          "has disorder": some atoms were modeled as disorderd in the
+          unit cell of this entry;
+
+          "has Fobs": there is a corresponding X-ray reflection file
+          (Fobs or Iobs data) in the COD for this entry, contaning the
+          original reflection intensities used to determine this
+          structure.
+        </Definition>
     </CODParameter> 
     <CODParameter name="text">
-        <Definition>???</Definition>
+        <Definition>
+          A concatenation of all descriptive fields in the table:
+
+          my $text = join( '\n', map { Unicode2CIF::cif2unicode($_) }
+                         ( $authors, $title, $journal, $volume .
+                           ( $issue? ( $volume ? "($issue)" : 
+                                       "(issue $issue)") : "" ),
+                           "(" . $year . ")",
+                           ( $last_page ? $first_page . "-" . $last_page :
+                             $first_page )) 
+                       );
+
+          Retained here for compatibility with the first version of
+          the COD.
+        </Definition>
     </CODParameter> 
     <CODParameter name="svnrevision">
-        <Definition>???</Definition>
+        <Definition>
+          The Subversion revision at of the file that was used to
+          produce the SQL table row.
+        </Definition>
+        <Explanation>
+          In the COD, all data are kept as files in CIF format and
+          versioned in the COD Subversion repository. If a small
+          corrections are made that do not warrant a new entry, a nee
+          revision is created.
+
+          The Subversion CIFs are held to be authoritative and all SQL
+          tables are (re)generated from them. The 'svnrevision'
+          columns holds the revision number of the CIF from which the
+          SQl table row under consideration was generated.
+
+          Small corrections are addition of missing information
+          (bibliography, compound names, etc.), spelling corretions,
+          or obvious data corrections attested by the original paper
+          or by the authors.
+        </Explanation>
     </CODParameter> 
     <CODParameter name="date">
-        <Definition>The date the crystal structure was published to COD database.</Definition>
+        <Definition>
+          The date the current row of the table was inserted to COD
+          database.
+        </Definition>
     </CODParameter> 
     <CODParameter name="time">
-        <Definition>The time the crystal structure was published to COD database.</Definition>
+        <Definition>
+          The time the current row of the table was inserted to COD
+          database.
+        </Definition>
     </CODParameter> 
     <CODParameter name="onhold">
-        <Definition>???</Definition>
+        <Definition>
+          Specifies the date when the atomic coordinates of the entry,
+          which might be currently on hold (not public), will become
+          available publicly.
+        </Definition>
+        <Explanation>
+          When an author deposits a structure prior to publication in
+          a scientific journal, she/he may wish to withold the
+          structure temporarily from public display by COD so that
+          structure is deemed original for publication purposes, or
+          for possible patent applications. Still, the authors may
+          need to obtain a COD identifier for their structure, to
+          present in their publication(s).
+
+          The 'onhold' column indicates such situation; if this column
+          is not NULL, it indicates that the structure is "on hold"
+          (i.e. not displayed publicly) for the above mentioned
+          purposes. The value of this column then contains a planned
+          release (publication) date of the structure.
+
+          Before the structure is released, only cell constants,
+          spacegroup, summary formula and compunds names (if provided)
+          are displayed publicly by COD, along with the structure
+          author names. The coordinates of the atoms are not made
+          available to the public before the release date.
+        </Explanation>
     </CODParameter> 
 </CODDictionary>
