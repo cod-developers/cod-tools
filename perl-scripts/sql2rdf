@@ -1,0 +1,142 @@
+#! /bin/sh
+#!perl -w # --*- Perl -*--
+eval 'exec perl -x $0 ${1+"$@"}'
+    if 0;
+#------------------------------------------------------------------------------
+#$Author$
+#$Date$ 
+#$Revision$
+#$URL$
+#------------------------------------------------------------------------------
+#*
+#  Describe (in RDF format) outreaching links of specified entries in
+#  given database. The program fetches link descriptions from relational
+#  SQL database.
+#**
+
+use strict;
+use warnings;
+
+use DBI;
+use SOptions;
+
+my %database = (
+        host  => "www.crystallography.net",
+        user  => "cod_reader",
+        name  => "cod",
+        definition_table => "databases",
+        database_name    => "cod",
+        url_prefix  => "http://www.crystallography.net/cod/",
+        url_postfix => ".html",
+        password => "",
+        platform => "mysql",
+);
+
+@ARGV = getOptions(
+    "-d,--database"  => \$database{name},
+    "-l,--localhost" => sub { $database{host} = 'localhost' },
+    "-h,--host"      => \$database{host},
+    "-p,--port"      => \$database{port},
+    "-s,--server"    => \$database{host},
+    "--def-table,--definition-table" => \$database{definition_table},
+    "--db-name,--database-name"      => \$database{database_name},
+    "--prefix,--db-url-prefix"       => \$database{url_prefix},
+    "--postfix,--db-url-postfix"     => \$database{url_postfix},
+    "-u,--user"      => \$database{user},
+    "--password"     => \$database{password},
+    "--platform"     => \$database{platform},
+);
+
+my $dbh = db_connect( $database{platform},
+                      $database{host},
+                      $database{name},
+                      $database{port},
+                      $database{user},
+                      $database{password} );
+die "connection to database failed" if !$dbh;
+
+my $databases = $dbh->selectall_arrayref(
+    "SELECT name, url_prefix, url_postfix " .
+    "FROM $database{definition_table}",
+    { Slice => {} }
+);
+
+my %databases = map{ lc($_->{name}) => { url_prefix => $_->{url_prefix},
+                                         url_postfix => $_->{url_postfix} } }
+                     @$databases;
+
+my $ids = join( ", ", @ARGV );
+my $data = {};
+my %vocabularies;
+
+for my $database (keys %databases) {
+    my $table = $database . "_x_" . $database{database_name};
+    my $db_data = $dbh->selectall_arrayref( <<"SQLEND"
+        SELECT $database{database_name}_id AS db_id,
+               ext_id,
+               relation,
+               vocabulary,
+               rdf_relations.uri_prefix AS vocabulary_uri_prefix
+        FROM $table
+        JOIN rdf_relations
+            ON relation_id = rdf_relations.id
+        WHERE $database{database_name}_id IN ($ids)               
+SQLEND
+        , { Slice => {} }
+    );
+
+    for my $entry (@$db_data) {
+        my $db_id = $entry->{db_id};
+        $vocabularies{$entry->{vocabulary}} =
+            $entry->{vocabulary_uri_prefix};
+        $data->{$db_id} = () unless exists $data->{$db_id};
+        push( @{$data->{$db_id}},
+            {
+                db => $database,
+                ext_id => $entry->{ext_id},
+                relation => $entry->{relation},
+                vocabulary => $entry->{vocabulary},
+            } );
+    }
+}
+
+print "<?xml version=\"1.0\"?>\n";
+print "<rdf:RDF xmlns:rdf=\"http://www.w3.org/1999/02/22-rdf-syntax-ns#\"";
+print "\n" if keys %vocabularies > 0;
+print join( "\n", map( " " x 9 . "xmlns:$_=\"$vocabularies{$_}\"",
+                       sort keys %vocabularies ) ) . ">\n";
+for my $entry (sort keys %$data) {
+    print "  <rdf:Description rdf:about=\"" . $database{url_prefix} .
+          $entry . $database{url_postfix} . "\">\n";
+    for my $prop (@{$data->{$entry}}) {
+        my $db = $prop->{db};
+        print "\t<" . $prop->{vocabulary} . ":" . $prop->{relation} . "\n";
+        print "\t rdf:resource=\"" .
+            $databases{$db}->{url_prefix} . $prop->{ext_id} .
+            $databases{$db}->{url_postfix} . "\" />\n";
+    }
+    print "  </rdf:Description>\n";
+}
+print "</rdf:RDF>\n";
+
+# Function used to connect to database
+sub db_connect
+{
+    my ($db_platform, $db_host, $db_name, $db_port, $db_user, $db_pass) = @_;
+    my $dsn = "dbi:$db_platform:" .
+              "hostname=$db_host;".
+              "dbname=$db_name".
+              ($db_port ? ";$db_port" : "");
+    my $dbh = DBI->connect( $dsn, $db_user, $db_pass );
+    if( !$dbh ) {
+        die( "could not connect to the database - " . lcfirst( $DBI::errstr ));
+    }
+    if( $db_platform ne 'SQLite' ) {
+        $dbh->do( "SET CHARACTER SET utf8" );
+        $dbh->do( 'set @@character_set_client = utf8' );
+        $dbh->do( 'set @@character_set_connection = utf8' );
+        $dbh->do( 'set @@character_set_server = utf8' );
+        $dbh->do( 'set @@character_set_database = utf8' );
+    }
+    return $dbh;
+}
