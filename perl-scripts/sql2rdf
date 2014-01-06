@@ -57,7 +57,7 @@ die "connection to database failed" if !$dbh;
 
 my $databases = $dbh->selectall_arrayref(
     "SELECT name, url_prefix, url_postfix " .
-    "FROM $database{definition_table}",
+    "FROM `$database{definition_table}`",
     { Slice => {} }
 );
 
@@ -77,10 +77,10 @@ for my $database (keys %databases) {
                relation,
                vocabulary,
                rdf_relations.uri_prefix AS vocabulary_uri_prefix
-        FROM $table
+        FROM `$table`
         JOIN rdf_relations
             ON relation_id = rdf_relations.id
-        WHERE $database{database_name}_id IN ($ids)               
+        WHERE $database{database_name}_id IN ($ids)
 SQLEND
         , { Slice => {} }
     );
