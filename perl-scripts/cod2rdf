@@ -1,0 +1,117 @@
+#! /bin/sh
+#!perl -w # --*- Perl -*--
+eval 'exec perl -x $0 ${1+"$@"}'
+    if 0;
+#------------------------------------------------------------------------------
+#$Author$
+#$Date$ 
+#$Revision$
+#$URL$
+#------------------------------------------------------------------------------
+#*
+#  Describe (in RDF format) properties of COD structures.
+#**
+
+use strict;
+use warnings;
+
+use DBI;
+use SOptions;
+
+my $vocabulary_name = "cod";
+my $vocabulary_url_prefix = "http://www.crystallography.net/cod/doc/rdf/";
+my $url_prefix  = "http://www.crystallography.net/cod/";
+my $url_postfix = ".html";
+my $split_author_names = 1;
+
+my %database = (
+        host  => "www.crystallography.net",
+        user  => "cod_reader",
+        name  => "cod",
+        password => "",
+        platform => "mysql",
+);
+
+@ARGV = getOptions(
+    "-d,--database"  => \$database{name},
+    "-l,--localhost" => sub { $database{host} = 'localhost' },
+    "-h,--host"      => \$database{host},
+    "-p,--port"      => \$database{port},
+    "-s,--server"    => \$database{host},
+    "--vocabulary-name" => \$vocabulary_name,
+    "--vocabulary-url-prefix" => \$vocabulary_url_prefix,
+    "--prefix,--db-url-prefix"   => \$url_prefix,
+    "--postfix,--db-url-postfix" => \$url_postfix,
+    "-u,--user"      => \$database{user},
+    "--password"     => \$database{password},
+    "--platform"     => \$database{platform},
+
+    "--split-author-names" => sub { $split_author_names = 1 },
+    "--no-split-author-names" => sub { $split_author_names = 0 },
+    "--dont-split-author-names" => sub { $split_author_names = 0 },
+);
+
+my $dbh = db_connect( $database{platform},
+                      $database{host},
+                      $database{name},
+                      $database{port},
+                      $database{user},
+                      $database{password} );
+die "connection to database failed" if !$dbh;
+
+my $data = $dbh->selectall_arrayref(
+    "SELECT * FROM data " .
+    "WHERE file IN (" . join( ", ", @ARGV ) . ")",
+    { Slice => {} }
+);
+
+print "<?xml version=\"1.0\"?>\n";
+print "<rdf:RDF xmlns:rdf=\"http://www.w3.org/1999/02/22-rdf-syntax-ns#\"\n";
+print " " x 9 . "xmlns:${vocabulary_name}=" .
+                "\"${vocabulary_url_prefix}\">\n";
+
+for my $struct (@$data) {
+    print "  <rdf:Description rdf:about=\"${url_prefix}" .
+        $struct->{file} . "${url_postfix}\">\n";
+    for my $field (sort keys %$struct) {
+        next if $field eq 'file' || $field eq 'text' || $field eq 'flags';
+        next if !$struct->{$field};
+        if( $field ne 'authors' || !$split_author_names ) {
+            print "    <${vocabulary_name}:$field>";
+            print $struct->{$field};
+            print "</${vocabulary_name}:$field>\n";
+        } else {
+            print "    <${vocabulary_name}:$field>\n";
+            print " " x 6 . "<rdf:Seq>\n";
+            print join( "\n",
+                        map( " " x 8 . "<rdf:li>$_</rdf:li>",
+                             split( /\s*;\s*/, $struct->{$field} ) ) ) . "\n";
+            print " " x 6 . "</rdf:Seq>\n";
+            print "    </${vocabulary_name}:$field>\n";
+        }
+    }
+    print "  </rdf:Description>\n";
+}
+print "</rdf:RDF>\n";
+
+# Function used to connect to database
+sub db_connect
+{
+    my ($db_platform, $db_host, $db_name, $db_port, $db_user, $db_pass) = @_;
+    my $dsn = "dbi:$db_platform:" .
+              "hostname=$db_host;".
+              "dbname=$db_name".
+              ($db_port ? ";$db_port" : "");
+    my $dbh = DBI->connect( $dsn, $db_user, $db_pass );
+    if( !$dbh ) {
+        die( "could not connect to the database - " . lcfirst( $DBI::errstr ));
+    }
+    if( $db_platform ne 'SQLite' ) {
+        $dbh->do( "SET CHARACTER SET utf8" );
+        $dbh->do( 'set @@character_set_client = utf8' );
+        $dbh->do( 'set @@character_set_connection = utf8' );
+        $dbh->do( 'set @@character_set_server = utf8' );
+        $dbh->do( 'set @@character_set_database = utf8' );
+    }
+    return $dbh;
+}
