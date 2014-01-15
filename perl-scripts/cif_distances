@@ -228,7 +228,7 @@ sub get_atoms {
     } else {
         error( $0, $filename, $dataset->{name},
                "neither _atom_site_type_symbol nor _atom_site_label were found" );
-	    return undef;
+        return undef;
     }
 
     my @atoms;
@@ -248,27 +248,35 @@ sub get_atoms {
                 $values->{_atom_site_fract_z}[$i]
             ],
         };
-
+        
+        # get atoms chemical type 
+        # Chemical type is determined from _atom_site_type_symbol or 
+        # _atom_site_label if the previous tag is not present.
         if( !defined $atom->{chemical_type} || $atom->{chemical_type} eq '?' ) {
             $atom->{chemical_type} = $atom->{label};
-        
-
-            if( $atom->{chemical_type} =~ m/^([A-Z][a-z]?)/ ) {
+            if( $atom->{chemical_type} =~ m/^([A-Za-z]{1,2})/ ) {
                 $atom->{chemical_type} = ucfirst( lc( $1 ));
             };
-
-            if( ! exists $AtomProperties::atoms{$atom->{chemical_type}}) {
-               warning( $0, $filename, $dataset->{name}, 'Unable to determine ' . 
-                      'chemical type from _atom_site_label ' . $atom->{label}  . 
-                      '. ' . 'Atom chemical type will be set to "UN"');
-                $atom->{chemical_type} = "UN"
-            };
-        
         } else {
-            if( $atom->{chemical_type} =~ m/^([A-Z][a-z]?)/ ) {
+            if( $atom->{chemical_type} =~ m/^([A-Za-z]{1,2})/ ) {
                 $atom->{chemical_type} = ucfirst( lc( $1 ));
             }
         }
+
+        # If the two letter chemical type abbreviation is not recognised
+        # it is assumed that only the first letter defines the type.
+        # If the type is still not recognised, the type is marked as 
+        # unrecognised "UN".
+        if( ! exists $AtomProperties::atoms{$atom->{chemical_type}}) {
+            chop $atom->{chemical_type};
+            if( ! exists $AtomProperties::atoms{$atom->{chemical_type}}) {
+                warning( $0, $filename, $dataset->{name},  
+                         'Unable to determine chemical type of atom with ' . 
+                         '_atom_site_label ' . $atom->{label}  . 
+                         'Atom chemical type will be set to "UN"' );
+                $atom->{chemical_type} = "UN"
+            }
+        };
 
         @{$atom->{coordinates_fract}} = map { s/\(\d+\)\s*$//; $_ }
             @{$atom->{coordinates_fract}};  
