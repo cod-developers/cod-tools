@@ -16,6 +16,8 @@ use strict;
 use warnings;
 
 use DBI;
+use Encode;
+use HTML::Entities;
 use SOptions;
 
 my $vocabulary_name = "cod";
@@ -88,17 +90,19 @@ for my $struct (@$data) {
     for my $field (sort keys %$struct) {
         next if $field eq 'file' || $field eq 'text' || $field eq 'flags';
         next if !$struct->{$field};
+        $struct->{$field} = decode( 'UTF-8', $struct->{$field} );
         if( $field eq 'formula' || $field eq 'calcformula' ) {
             $struct->{$field} =~ s/^-\s*//;
             $struct->{$field} =~ s/\s*-$//;
         }
         if( $field ne 'authors' || !$split_author_names ) {
             print "    <${vocabulary_name}:$field>";
-            print $struct->{$field};
+            print encode_entities( $struct->{$field} );
             print "</${vocabulary_name}:$field>\n";
         } else {
             print join( "\n",
-                        map( "    <${vocabulary_name}:author>$_" .
+                        map( "    <${vocabulary_name}:author>" .
+                             encode_entities( $_ ) .
                              "</${vocabulary_name}:author>",
                              split( /\s*;\s*/, $struct->{$field} ) ) ) . "\n";
         }
