@@ -81,13 +81,10 @@ for my $struct (@$data) {
             print $struct->{$field};
             print "</${vocabulary_name}:$field>\n";
         } else {
-            print "    <${vocabulary_name}:$field>\n";
-            print " " x 6 . "<rdf:Seq>\n";
             print join( "\n",
-                        map( " " x 8 . "<rdf:li>$_</rdf:li>",
+                        map( "    <${vocabulary_name}:$field>$_" .
+                             "</${vocabulary_name}:$field>",
                              split( /\s*;\s*/, $struct->{$field} ) ) ) . "\n";
-            print " " x 6 . "</rdf:Seq>\n";
-            print "    </${vocabulary_name}:$field>\n";
         }
     }
     print "  </rdf:Description>\n";
