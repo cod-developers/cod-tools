@@ -65,6 +65,18 @@ my $data = $dbh->selectall_arrayref(
     { Slice => {} }
 );
 
+my $any_data_seen = 0;
+my %seen_cod_ids = map { $_->{file} => 1 } @$data;
+for my $codid (@ARGV) {
+    if( !exists $seen_cod_ids{$codid} ) {
+        print STDERR "$0: structure $codid can not be found " .
+                     "in the COD database\n";
+    } else {
+        $any_data_seen = 1;
+    }
+}
+die "no data for RDF was found in the database" if !$any_data_seen;
+
 print "<?xml version=\"1.0\"?>\n";
 print "<rdf:RDF xmlns:rdf=\"http://www.w3.org/1999/02/22-rdf-syntax-ns#\"\n";
 print " " x 9 . "xmlns:${vocabulary_name}=" .
