@@ -76,6 +76,10 @@ for my $struct (@$data) {
     for my $field (sort keys %$struct) {
         next if $field eq 'file' || $field eq 'text' || $field eq 'flags';
         next if !$struct->{$field};
+        if( $field eq 'formula' || $field eq 'calcformula' ) {
+            $struct->{$field} =~ s/^-\s*//;
+            $struct->{$field} =~ s/\s*-$//;
+        }
         if( $field ne 'authors' || !$split_author_names ) {
             print "    <${vocabulary_name}:$field>";
             print $struct->{$field};
