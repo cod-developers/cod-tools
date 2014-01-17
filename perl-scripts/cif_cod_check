@@ -518,12 +518,19 @@ sub check_authors
             my $UCS_author = cif2unicode( $author );
             if( $UCS_author =~ /^([^[:alpha:]])/ ||
                 $UCS_author =~ /([^-\.,[:alpha:]'()\s])/ ) {
+                my $symbol_escaped = $1;
+                my $author_escaped = $author;
+                my $UCS_author_escaped = $UCS_author;
+                $symbol_escaped =~ s/\n/\\n/g;
+                $author_escaped =~ s/\n/\\n/g;
+                $UCS_author_escaped =~ s/\n/\\n/g;
                 error_reporter( $filename, undef, $dataset->{name},
                                 "WARNING, " .
-                                "name '$author'" .
+                                "name '$author_escaped'" .
                                 ( $author eq $UCS_author ?
-                                    "" : " ('$UCS_author')" ) .
-                                " contains symbol '$1' that is not permitted in names" );
+                                    "" : " ('$UCS_author_escaped')" ) .
+                                " contains symbol '$symbol_escaped' " .
+                                "that is not permitted in names" );
                 if( ! $name_syntax_explained ) {
                     error_reporter( undef, undef, undef,
                                     "WARNING, " .
