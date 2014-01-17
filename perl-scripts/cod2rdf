@@ -90,9 +90,18 @@ for my $struct (@$data) {
     print "  <rdf:Description rdf:about=\"${url_prefix}" .
         $struct->{file} . "${url_postfix}\">\n";
     for my $field (sort keys %$struct) {
-        next if $field eq 'file' || $field eq 'text' || $field eq 'flags';
+        next if $field eq 'file' ||
+                $field eq 'text' ||
+                $field eq 'flags';
         next if !$struct->{$field};
-        $struct->{$field} = encode_entities( decode( 'UTF-8', $struct->{$field} ), "\"'<>\&" );
+        $struct->{$field} = decode( 'UTF-8', $struct->{$field} );
+        $struct->{$field} = encode_entities( $struct->{$field},
+                                             "\"'<>\&" );
+        $struct->{$field} =
+            join( "", map { ord($_) > 255
+                                ? sprintf("\&\#x%04X;", ord($_))
+                                : $_ }
+                            split "", $struct->{$field} );
         if( $field eq 'formula' || $field eq 'calcformula' ) {
             $struct->{$field} =~ s/^-\s*//;
             $struct->{$field} =~ s/\s*-$//;
@@ -106,7 +115,8 @@ for my $struct (@$data) {
                         map( "    <${vocabulary_name}:author>" .
                              $_ .
                              "</${vocabulary_name}:author>",
-                             split( /\s*;\s*/, $struct->{$field} ) ) ) . "\n";
+                             split( /\s*;\s*/, $struct->{$field} ) ) );
+            print "\n";
         }
     }
     print "  </rdf:Description>\n";
