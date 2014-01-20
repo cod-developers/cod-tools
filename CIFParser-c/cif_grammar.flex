@@ -503,7 +503,9 @@ char *clean_string( char *src, int is_textfield )
     int non_ascii_explained = 0;
     while( *src != '\0' ) {
         if( ( (*src & 255 ) < 16 || (*src & 255 ) > 127 )
-            && (*src & 255 ) != '\n' && (*src & 255 ) != '\t' ) {
+            && (*src & 255 ) != '\n'
+            && (*src & 255 ) != '\t'
+            && (*src & 255 ) != '\r' ) {
             if( ( cif_flex_lexer_flags &
                   CIF_FLEX_LEXER_FIX_NON_ASCII_SYMBOLS ) > 0 ) {
                 /* Do magic with non-ascii symbols */
@@ -542,6 +544,12 @@ char *clean_string( char *src, int is_textfield )
                 }
                 dest--; /* Omit non-ascii symbols */
             }
+        } else if( (*src & 255 ) == '\t' ) {
+            *dest = '\0';
+            length += 3;
+            new = realloc( new, length + 1 );
+            strcat( new, "    " );
+            dest = new + strlen( new ) - 1;
         } else {
             *dest = *src;
         }
