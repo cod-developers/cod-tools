@@ -9,6 +9,7 @@
 
  /* %option yylineno */
 
+%s  leftmost
 %x	text
 
 ORDINARY_CHAR  [a-zA-Z0-9!%&\(\)\*\+,-\.\/\:<=>\?@\\\^`{\|}~]
@@ -152,6 +153,7 @@ char *lowercase( char *str );
                 storeCurrentLine(yytext, yyleng);
             }
             RESET_MARK;
+            BEGIN(leftmost);
             yyless(0);
           %}
 \n    COUNT_LINES; /** count lines **/
@@ -163,6 +165,7 @@ char *lowercase( char *str );
  /**************** process multi-line text fields **************************/
 
 [ \t\r];{NON_BLANK_CHAR}* %{ MARK;
+                             BEGIN(INITIAL);
                              if( cif_flex_debug_flags &
 			             CIF_FLEX_DEBUG_YYLVAL )
                                  printf("yylval.s = %s\n", yytext);
@@ -170,10 +173,16 @@ char *lowercase( char *str );
                              return _UQSTRING;
 			   %}
 
-\n;.*			%{    MARK;
-                          lineCnt++;
+ /*
+   call of yyless() somehow removes the start of line mark from the
+   input (http://sourceforge.net/mailarchive/message.php?msg_id=27749490),
+   so start condition "leftmost" was introduced to mark the beginning of
+   the line.
+ */
+
+<leftmost>;.*       %{    MARK;
                           BEGIN(text);
-                          yylval.s = strclone( yytext + 2 );
+                          yylval.s = strclone( yytext + 1 );
                           if( strlen( yylval.s ) > 0
                               && yylval.s[strlen( yylval.s )-1] == '\r' ) {
                               yylval.s[strlen( yylval.s )-1] = '\0';
@@ -217,20 +226,30 @@ char *lowercase( char *str );
 
  /**************** eat up whitespace ************************/
 
-[ \t\r]			ADVANCE_MARK;
+[ \t\r]			%{
+                          ADVANCE_MARK;
+                          BEGIN(INITIAL);
+                %}
 
  /*********************** keywords ***************************/
 
-data_{NON_BLANK_CHAR}+ { MARK; yylval.s = strclone(yytext + 5); return _DATA_; }
+data_{NON_BLANK_CHAR}+ %{
+                          MARK;
+                          BEGIN(INITIAL);
+                          yylval.s = strclone(yytext + 5);
+                          return _DATA_;
+                        %}
 data_({NON_BLANK_CHAR}|{HIGH_CHAR})+    %{
                            MARK;
+                           BEGIN(INITIAL);
                            yylval.s = clean_string(yytext + 5, 0);
                            return _DATA_;
             %}
-data_            { MARK; yylval.s = NULL;  return _DATA_; }
-loop_            { MARK; return _LOOP_; }
+data_            { MARK; BEGIN(INITIAL); yylval.s = NULL;  return _DATA_; }
+loop_            { MARK; BEGIN(INITIAL); return _LOOP_; }
 _{NON_BLANK_CHAR}+    %{
                            MARK;
+                           BEGIN(INITIAL);
                            yylval.s = lowercase( yytext );
                            return _TAG;
             %}
@@ -240,6 +259,7 @@ _({NON_BLANK_CHAR}|{HIGH_CHAR})+ %{
                                REJECT;
                            }
                            MARK;
+                           BEGIN(INITIAL);
                            /* First clean, then lowercase --
                               as Perl CIF parser does */
                            yylval.s = clean_string( yytext, 0 );
@@ -251,6 +271,7 @@ _({NON_BLANK_CHAR}|{HIGH_CHAR})+ %{
 
 {REAL_ESD}		%{
                            MARK;
+                           BEGIN(INITIAL);
                            yylval.s = strnclone(yytext, yyleng);
 			   /* sscanf( yytext, "%lf", &yylval.r ); */
 			   return _REAL_CONST;
@@ -258,6 +279,7 @@ _({NON_BLANK_CHAR}|{HIGH_CHAR})+ %{
 
 {INTEGER_ESD}		%{
                            MARK;
+                           BEGIN(INITIAL);
                            yylval.s = strnclone(yytext, yyleng);
 			   return _INTEGER_CONST;
 			%}
@@ -266,6 +288,7 @@ _({NON_BLANK_CHAR}|{HIGH_CHAR})+ %{
 
 {DSTRING}		%{
                            MARK;
+                           BEGIN(INITIAL);
                            assert(yyleng > 1);
                            yylval.s = strnclone(yytext + 1, yyleng - 2);
                            return _DQSTRING;
@@ -277,6 +300,7 @@ _({NON_BLANK_CHAR}|{HIGH_CHAR})+ %{
                                REJECT;
                            }
                            MARK;
+                           BEGIN(INITIAL);
                            assert(yyleng > 1);
                            yylval.s = clean_string(
                                strnclone(yytext + 1, yyleng - 2), 0 );
@@ -290,6 +314,7 @@ _({NON_BLANK_CHAR}|{HIGH_CHAR})+ %{
                                REJECT;
                            }
                            MARK;
+                           BEGIN(INITIAL);
                            yynote( "warning, double-quoted string is missing "
                                    "a closing quote -- fixed" );
                            assert(yyleng > 0);
@@ -302,6 +327,7 @@ _({NON_BLANK_CHAR}|{HIGH_CHAR})+ %{
 
 {SSTRING}		%{
                            MARK;
+                           BEGIN(INITIAL);
                            assert(yyleng > 1);
                            yylval.s = strnclone(yytext + 1, yyleng - 2);
                            return _SQSTRING;
@@ -313,6 +339,7 @@ _({NON_BLANK_CHAR}|{HIGH_CHAR})+ %{
                                REJECT;
                            }
                            MARK;
+                           BEGIN(INITIAL);
                            assert(yyleng > 1);
                            yylval.s = clean_string(
                                strnclone(yytext + 1, yyleng - 2), 0 );
@@ -325,6 +352,7 @@ _({NON_BLANK_CHAR}|{HIGH_CHAR})+ %{
                                REJECT;
                            }
                            MARK;
+                           BEGIN(INITIAL);
                            yynote( "warning, single-quoted string is missing "
                                    "a closing quote -- fixed" );
                            assert(yyleng > 0);
@@ -339,6 +367,7 @@ _({NON_BLANK_CHAR}|{HIGH_CHAR})+ %{
 
 {UQSTRING}  %{
                            MARK;
+                           BEGIN(INITIAL);
                            if( cif_flex_debug_flags &
 			           CIF_FLEX_DEBUG_YYLVAL )
                                printf("yylval.s = %s\n", yytext);
@@ -352,6 +381,7 @@ _({NON_BLANK_CHAR}|{HIGH_CHAR})+ %{
                                REJECT;
                            }
                            MARK;
+                           BEGIN(INITIAL);
                            if( cif_flex_debug_flags &
                        CIF_FLEX_DEBUG_YYLVAL )
                                printf("yylval.s = %s\n", yytext);
@@ -365,6 +395,7 @@ _({NON_BLANK_CHAR}|{HIGH_CHAR})+ %{
                                REJECT;
                            }
                            MARK;
+                           BEGIN(INITIAL);
                            if( cif_flex_debug_flags &
                        CIF_FLEX_DEBUG_YYLVAL )
                                printf("yylval.s = %s\n", yytext);
@@ -378,6 +409,7 @@ _({NON_BLANK_CHAR}|{HIGH_CHAR})+ %{
                                REJECT;
                            }
                            MARK;
+                           BEGIN(INITIAL);
                            if( cif_flex_debug_flags &
                        CIF_FLEX_DEBUG_YYLVAL )
                                printf("yylval.s = %s\n", yytext);
@@ -385,7 +417,7 @@ _({NON_BLANK_CHAR}|{HIGH_CHAR})+ %{
                            return _UQSTRING;
             %}
 
-.			{ MARK; return clean_string(yytext, 0); }
+.			{ MARK; BEGIN(INITIAL); return clean_string(yytext, 0); }
 
 <<EOF>>     { REMEMBER; yyterminate(); }
 
