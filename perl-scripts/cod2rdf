@@ -236,13 +236,85 @@ if ($output_format eq "xml") {
         }
         print "  </rdf:Description>\n";
     }
-    print "</rdf:RDF>\n";    
+    print "</rdf:RDF>\n";
 } elsif ($output_format eq "n3") {
-    die "output in N3 format is not implemented yet";
     # n3 implementation code
+    print "\@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>.\n";
+    print "\@prefix ${vocabulary_name}: " . "<${vocabulary_url_prefix}>.\n";
+    print "\n";
+
+    foreach my $codid (sort keys %$data) {
+        my $struct = $data->{$codid};
+        print "<${url_prefix}" . $struct->{file} . "${url_postfix}>\n";
+
+        for my $prop (@{$struct->{links}}) {
+            my $db = $prop->{db};
+            print "  " . $prop->{vocabulary} . ":" . $prop->{relation} . 
+                  " <" .
+                $databases{$db}->{url_prefix} . $prop->{ext_id} .
+                $databases{$db}->{url_postfix} . ">;\n";
+        }
+        
+        my $first_line = 1;
+        for my $field (sort keys %$struct) {
+            next if $field eq 'file' || $field eq 'links';
+            next if !$struct->{$field};
+            
+            print ";\n" if !$first_line;
+            $struct->{$field} = decode( 'UTF-8', $struct->{$field} );
+            $struct->{$field} = encode_entities( $struct->{$field},
+                                                 "\"'<>\&" );
+            if( $field eq 'formula' || $field eq 'calcformula' ) {
+                $struct->{$field} =~ s/^-\s*//;
+                $struct->{$field} =~ s/\s*-$//;
+            }
+            # Escaping "\"
+            $struct->{$field} =~ s/((['"\\]))/\\$1/g;
+            $struct->{$field} =~ s/\n/\\n/g;
+            $struct->{$field} =~ s/\r/\\r/g;
+            $struct->{$field} =~ s/\r/\\t/g;
+            if( $field ne 'authors' || !$split_author_names ) {
+                # Adding '"' or '"""'quotes on a literal
+                $struct->{$field} = quote_literals( $struct->{$field} );
+                if( defined $replace_utf_code_points_from ) {
+                    $struct->{$field} =
+                        replace_utf_codepoints( $struct->{$field},
+                                                $replace_utf_code_points_from );
+                }
+                print "  ${vocabulary_name}:$field ";
+                print $struct->{$field};
+            } else {
+                print "  ${vocabulary_name}:author ";
+                my $length = length("  ${vocabulary_name}:author ");
+                my $authors = (join( ",\n",
+                            map( 
+                                 ( defined $replace_utf_code_points_from
+                                     ? replace_utf_codepoints( 
+                                       (" "x$length ) . quote_literals($_),
+                                               $replace_utf_code_points_from )
+                                     : (" "x$length ). quote_literals($_) ),
+                                 split( /\s*;\s*/, $struct->{$field} ) ) ) );
+                $authors =~ s/\s*//;
+                print $authors;
+            }
+            $first_line = 0;
+        }
+        print ".\n";
+    }
 } elsif ($output_format eq "turtle") {
     die "output in turtle format is not implemented yet";
     # turtle implementation code
+}
+
+sub quote_literals
+{
+    my ( $string ) = @_;
+    if ( $string =~ m/(\n|'|")/ ) {
+        $string = '"""' . $string . '"""';
+    } else {
+        $string = '"' . $string . '"';
+   }
+   return $string;
 }
 
 sub replace_utf_codepoints
