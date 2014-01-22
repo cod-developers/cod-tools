@@ -26,6 +26,7 @@ my $url_prefix  = "http://www.crystallography.net/cod/";
 my $url_postfix = ".html";
 
 my $split_author_names = 1;
+my $output_format = "xml";
 my $replace_utf_code_points_from;
 
 my %database = (
@@ -53,6 +54,10 @@ my %database = (
     "--split-author-names" => sub { $split_author_names = 1 },
     "--no-split-author-names" => sub { $split_author_names = 0 },
     "--dont-split-author-names" => sub { $split_author_names = 0 },
+
+    "--xml-output"     => sub { $output_format = "xml" },
+    "--n3-output"       => sub { $output_format = "n3" },
+    "--turtle-output"   => sub { $output_format = "turtle"},
 
     "--replace-utf-codepoints-from" => \$replace_utf_code_points_from,
     "--no-replace-utf-codepoints" =>
@@ -89,50 +94,57 @@ for my $codid (@ARGV) {
 }
 die "no data for RDF was found in the database" if !$any_data_seen;
 
-print "<?xml version=\"1.0\"?>\n";
-print "<rdf:RDF xmlns:rdf=\"http://www.w3.org/1999/02/22-rdf-syntax-ns#\"\n";
-print " " x 9 . "xmlns:${vocabulary_name}=" .
-                "\"${vocabulary_url_prefix}\">\n";
+if ($output_format eq "xml") {
+    print "<?xml version=\"1.0\"?>\n";
+    print "<rdf:RDF xmlns:rdf=\"http://www.w3.org/1999/02/22-rdf-syntax-ns#\"\n";
+    print " " x 9 . "xmlns:${vocabulary_name}=" .
+                    "\"${vocabulary_url_prefix}\">\n";
 
-for my $struct (@$data) {
-    print "  <rdf:Description rdf:about=\"${url_prefix}" .
-        $struct->{file} . "${url_postfix}\">\n";
-    for my $field (sort keys %$struct) {
-        next if $field eq 'file' ||
-                $field eq 'text' ||
-                $field eq 'flags';
-        next if !$struct->{$field};
-        $struct->{$field} = decode( 'UTF-8', $struct->{$field} );
-        $struct->{$field} = encode_entities( $struct->{$field},
-                                             "\"'<>\&" );
-        if( $field eq 'formula' || $field eq 'calcformula' ) {
-            $struct->{$field} =~ s/^-\s*//;
-            $struct->{$field} =~ s/\s*-$//;
-        }
-        if( $field ne 'authors' || !$split_author_names ) {
-            if( defined $replace_utf_code_points_from ) {
-                $struct->{$field} =
-                    replace_utf_codepoints( $struct->{$field},
-                                            $replace_utf_code_points_from );
+    for my $struct (@$data) {
+        print "  <rdf:Description rdf:about=\"${url_prefix}" .
+            $struct->{file} . "${url_postfix}\">\n";
+        for my $field (sort keys %$struct) {
+            next if $field eq 'file' ||
+                    $field eq 'text' ||
+                    $field eq 'flags';
+            next if !$struct->{$field};
+            $struct->{$field} = decode( 'UTF-8', $struct->{$field} );
+            $struct->{$field} = encode_entities( $struct->{$field},
+                                                 "\"'<>\&" );
+            if( $field eq 'formula' || $field eq 'calcformula' ) {
+                $struct->{$field} =~ s/^-\s*//;
+                $struct->{$field} =~ s/\s*-$//;
             }
-            print "    <${vocabulary_name}:$field>";
-            print $struct->{$field};
-            print "</${vocabulary_name}:$field>\n";
-        } else {
-            print join( "\n",
-                        map( "    <${vocabulary_name}:author>" .
-                             ( defined $replace_utf_code_points_from
-                                 ? replace_utf_codepoints( $_,
-                                                           $replace_utf_code_points_from )
-                                 : $_ ) .
-                             "</${vocabulary_name}:author>",
-                             split( /\s*;\s*/, $struct->{$field} ) ) );
-            print "\n";
+            if( $field ne 'authors' || !$split_author_names ) {
+                if( defined $replace_utf_code_points_from ) {
+                    $struct->{$field} =
+                        replace_utf_codepoints( $struct->{$field},
+                                                $replace_utf_code_points_from );
+                }
+                print "    <${vocabulary_name}:$field>";
+                print $struct->{$field};
+                print "</${vocabulary_name}:$field>\n";
+            } else {
+                print join( "\n",
+                            map( "    <${vocabulary_name}:author>" .
+                                 ( defined $replace_utf_code_points_from
+                                     ? replace_utf_codepoints( $_,
+                                               $replace_utf_code_points_from )
+                                     : $_ ) .
+                                 "</${vocabulary_name}:author>",
+                                 split( /\s*;\s*/, $struct->{$field} ) ) );
+                print "\n";
+            }
         }
+        print "  </rdf:Description>\n";
     }
-    print "  </rdf:Description>\n";
+    print "</rdf:RDF>\n";    
+} elsif ($output_format eq "n3") {
+        # n3 implementation code
+} elsif ($output_format eq "turtle") {
+        # turtle implementation code
 }
-print "</rdf:RDF>\n";
+
 
 sub replace_utf_codepoints
 {
