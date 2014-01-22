@@ -30,6 +30,10 @@ my $split_author_names = 1;
 my $output_format = "xml";
 my $replace_utf_code_points_from;
 
+my $from;
+my $to;
+my $revision;
+
 my %database = (
     host  => "www.crystallography.net",
     user  => "cod_reader",
@@ -56,6 +60,13 @@ my %database = (
     "--def-table,--definition-table" => \$database{definition_table},
     "--db-name,--database-name" => \$refering_db_name,
 
+    "--from" => \$from,
+    "--to" => \$to,
+    "--range" => sub { get_value() =~ /^(\d+)[,\-](\d+)$/;
+                       $from = $1;
+                       $to = $2; },
+    "--revision" => \$revision,
+
     "--split-author-names" => sub { $split_author_names = 1 },
     "--no-split-author-names" => sub { $split_author_names = 0 },
     "--dont-split-author-names" => sub { $split_author_names = 0 },
@@ -81,22 +92,44 @@ my $dbh = db_connect( $database{platform},
                       $database{password} );
 die "connection to database failed" if !$dbh;
 
+my $where_condition = "";
+if( defined $from && defined $to ) {
+    $where_condition .= "file >= $from AND file <= $to";
+} elsif( defined $from ) {
+    $where_condition .= "file >= $from";
+} elsif( defined $to ) {
+    $where_condition .= "file <= $to";
+}
+if( defined $revision ) {
+    if( $where_condition ) {
+        $where_condition .= " AND (svnrevision IS NULL OR svnrevision <= $revision)";
+    } else {
+        $where_condition = "svnrevision IS NULL OR svnrevision <= $revision";
+    }
+}
+if( @ARGV ) {
+    if( $where_condition ) {
+        $where_condition = "($where_condition) OR ";
+    }
+    $where_condition .= "file IN (" . join( ",", @ARGV ) . ")";
+}
+
 my $data = $dbh->selectall_arrayref(
                 "SELECT * FROM data " .
-                "WHERE file IN (" . join( ", ", @ARGV ) . ")",
+                "WHERE $where_condition",
                 { Slice => {} }
            );
 
 $data = { map { $_->{file} => $_ } @$data };
 
-my $any_data_seen = 0;
+my $any_data_seen = (defined $from || defined $to || defined $revision) &&
+                     keys %$data > 0;
 for my $codid (@ARGV) {
     if( !exists $data->{$codid} ) {
         print STDERR "$0: structure $codid can not be found " .
                      "in the COD database\n";
     } else {
         $any_data_seen = 1;
-        last;
     }
 }
 die "no data for RDF was found in the database" if !$any_data_seen;
