@@ -1,0 +1,94 @@
+#! /bin/sh
+#!perl -w # --*- Perl -*--
+eval 'exec perl -x $0 ${1+"$@"}'
+    if 0;
+#------------------------------------------------------------------------------
+#$Author$
+#$Date$
+#$Revision$
+#$URL$
+#------------------------------------------------------------------------------
+#*
+# Set specified CIF data items to the given values
+#**
+
+use strict;
+use warnings;
+use CIFParser;
+use CCIFParser;
+use CIFTagCanonicalNames;
+use CIFTagPrint;
+use SOptions;
+use SUsage;
+
+my $Id = '$Id$';
+
+#* USAGE:
+#*     $0 [options] input.cif [input2.cif ...]
+#*
+#* OPTIONS:
+#*   --tag _atom_site_occupancy       Specify which data item to set
+#*   --value 1.0                      Specify a new value for that data item
+#*
+#*   --use-perl-parser
+#*   --use-c-parser
+#*     Specify parser to parse CIF files. C parser is default.
+#*
+#**  --help,--usage     Print a short usage message (this message) and exit.
+
+my $use_parser = "perl";
+
+my $tag = "_atom_site_occupancy";
+my $value = 1.0;
+
+@ARGV = getOptions(
+    "--help,--usage" => sub{ SUsage::usage; exit },
+    "-t,--tag"       => \$tag,
+    "-v,--value"     => \$value,
+ 
+    "--use-perl-parser"       => sub{ $use_parser = "perl" },
+    "--use-c-parser"          => sub{ $use_parser = "c" },
+);
+
+@ARGV = ("-") unless @ARGV;
+
+for my $filename (@ARGV) {
+    my( $data, $error_count );
+    if( $use_parser eq "perl" ) {
+        my $parser = new CIFParser;
+        $data = $parser->Run( $filename );
+        if( defined $parser->YYData->{ERRCOUNT} &&
+            $parser->YYData->{ERRCOUNT} > 0 ) {
+            $error_count = $parser->YYData->{ERRCOUNT};
+        }
+    } else {
+        ( $data, $error_count ) = CCIFParser::parse( $filename );
+    }
+
+    if( defined $error_count && $error_count > 0 ) {
+        print STDERR "$0: $filename: ",
+        $error_count,
+        " error(s) encountered while parsing CIF data\n";
+        ## exit -1;
+        next;
+    }
+
+    canonicalize_all_names( $data );
+
+    for my $dataset (@$data) {
+        if( exists $dataset->{values}{$tag} ) {
+            for my $cif_value (@{$dataset->{values}{$tag}}) {
+                $cif_value = $value;
+            }
+        }
+    }
+
+    for my $dataset( @$data ) {
+        print_cif( $dataset, {
+            exclude_misspelled_tags => 0,
+            preserve_loop_order => 1,
+            fold_long_fields => 0,
+            keep_tag_order => 1,
+        });
+    }
+}
