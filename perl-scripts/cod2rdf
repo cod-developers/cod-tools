@@ -24,17 +24,19 @@ my $vocabulary_name = "cod";
 my $vocabulary_url_prefix = "http://www.crystallography.net/cod/doc/rdf/";
 my $url_prefix  = "http://www.crystallography.net/cod/";
 my $url_postfix = ".html";
+my $refering_db_name = "cod";
 
 my $split_author_names = 1;
 my $output_format = "xml";
 my $replace_utf_code_points_from;
 
 my %database = (
-        host  => "www.crystallography.net",
-        user  => "cod_reader",
-        name  => "cod",
-        password => "",
-        platform => "mysql",
+    host  => "www.crystallography.net",
+    user  => "cod_reader",
+    name  => "cod",
+    password => "",
+    platform => "mysql",
+    definition_table => "databases",
 );
 
 @ARGV = getOptions(
@@ -43,13 +45,16 @@ my %database = (
     "-h,--host"      => \$database{host},
     "-p,--port"      => \$database{port},
     "-s,--server"    => \$database{host},
+    "-u,--user"      => \$database{user},
+    "--password"     => \$database{password},
+    "--platform"     => \$database{platform},
+
     "--vocabulary-name" => \$vocabulary_name,
     "--vocabulary-url-prefix" => \$vocabulary_url_prefix,
     "--prefix,--db-url-prefix"   => \$url_prefix,
     "--postfix,--db-url-postfix" => \$url_postfix,
-    "-u,--user"      => \$database{user},
-    "--password"     => \$database{password},
-    "--platform"     => \$database{platform},
+    "--def-table,--definition-table" => \$database{definition_table},
+    "--db-name,--database-name" => \$refering_db_name,
 
     "--split-author-names" => sub { $split_author_names = 1 },
     "--no-split-author-names" => sub { $split_author_names = 0 },
@@ -77,36 +82,96 @@ my $dbh = db_connect( $database{platform},
 die "connection to database failed" if !$dbh;
 
 my $data = $dbh->selectall_arrayref(
-    "SELECT * FROM data " .
-    "WHERE file IN (" . join( ", ", @ARGV ) . ")",
-    { Slice => {} }
-);
+                "SELECT * FROM data " .
+                "WHERE file IN (" . join( ", ", @ARGV ) . ")",
+                { Slice => {} }
+           );
+
+$data = { map { $_->{file} => $_ } @$data };
 
 my $any_data_seen = 0;
-my %seen_cod_ids = map { $_->{file} => 1 } @$data;
 for my $codid (@ARGV) {
-    if( !exists $seen_cod_ids{$codid} ) {
+    if( !exists $data->{$codid} ) {
         print STDERR "$0: structure $codid can not be found " .
                      "in the COD database\n";
     } else {
         $any_data_seen = 1;
+        last;
     }
 }
 die "no data for RDF was found in the database" if !$any_data_seen;
 
+for my $entry (values %$data) {
+    delete $entry->{text};
+    delete $entry->{flags};
+}
+
+my $databases = $dbh->selectall_arrayref(
+    "SELECT name, url_prefix, url_postfix " .
+    "FROM `$database{definition_table}`",
+    { Slice => {} }
+);
+
+my %databases = map{ lc($_->{name}) => { url_prefix => $_->{url_prefix},
+                                         url_postfix => $_->{url_postfix} } }
+                     @$databases;
+
+my $ids = join( ", ", @ARGV );
+my %vocabularies = ( $vocabulary_name => $vocabulary_url_prefix );
+
+for my $database (keys %databases) {
+    my $table = $database . "_x_" . $refering_db_name;
+    my $db_data = $dbh->selectall_arrayref( <<"SQLEND"
+        SELECT ${refering_db_name}_id AS db_id,
+               ext_id,
+               relation,
+               vocabulary,
+               rdf_relations.uri_prefix AS vocabulary_uri_prefix
+        FROM `$table`
+        JOIN rdf_relations
+            ON relation_id = rdf_relations.id
+        WHERE ${refering_db_name}_id IN ($ids)
+SQLEND
+        , { Slice => {} }
+    );
+
+    for my $entry (@$db_data) {
+        my $db_id = $entry->{db_id};
+        $vocabularies{$entry->{vocabulary}} =
+            $entry->{vocabulary_uri_prefix};
+        $data->{$db_id}{links} = [] unless exists $data->{$db_id}{links};
+        push( @{$data->{$db_id}{links}},
+            {
+                db => $database,
+                ext_id => $entry->{ext_id},
+                relation => $entry->{relation},
+                vocabulary => $entry->{vocabulary},
+            } );
+    }
+}
+
 if ($output_format eq "xml") {
     print "<?xml version=\"1.0\"?>\n";
-    print "<rdf:RDF xmlns:rdf=\"http://www.w3.org/1999/02/22-rdf-syntax-ns#\"\n";
-    print " " x 9 . "xmlns:${vocabulary_name}=" .
-                    "\"${vocabulary_url_prefix}\">\n";
+    print "<rdf:RDF xmlns:rdf=\"http://www.w3.org/1999/02/22-rdf-syntax-ns#\"";
+    print "\n" if keys %vocabularies > 0;
+    print join( "\n", map( " " x 9 . "xmlns:$_=\"$vocabularies{$_}\"",
+                           sort keys %vocabularies ) ) . ">\n";
 
-    for my $struct (@$data) {
+    foreach my $codid (sort keys %$data) {
+        my $struct = $data->{$codid};
         print "  <rdf:Description rdf:about=\"${url_prefix}" .
             $struct->{file} . "${url_postfix}\">\n";
+
+        for my $prop (@{$struct->{links}}) {
+            my $db = $prop->{db};
+            print "    <" . $prop->{vocabulary} . ":" . $prop->{relation} . "\n";
+            print "     rdf:resource=\"" .
+                $databases{$db}->{url_prefix} . $prop->{ext_id} .
+                $databases{$db}->{url_postfix} . "\" />\n";
+        }
+
         for my $field (sort keys %$struct) {
-            next if $field eq 'file' ||
-                    $field eq 'text' ||
-                    $field eq 'flags';
+            next if $field eq 'file' || $field eq 'links';
             next if !$struct->{$field};
             $struct->{$field} = decode( 'UTF-8', $struct->{$field} );
             $struct->{$field} = encode_entities( $struct->{$field},
@@ -140,11 +205,12 @@ if ($output_format eq "xml") {
     }
     print "</rdf:RDF>\n";    
 } elsif ($output_format eq "n3") {
-        # n3 implementation code
+    die "output in N3 format is not implemented yet";
+    # n3 implementation code
 } elsif ($output_format eq "turtle") {
-        # turtle implementation code
+    die "output in turtle format is not implemented yet";
+    # turtle implementation code
 }
-
 
 sub replace_utf_codepoints
 {
