@@ -176,24 +176,24 @@ for my $filename (@ARGV) {
             note( $0, $filename, $dataname,
                   "$assembly_count_diff site(s) were marked " .
                   "as disorder assemblies" );
+
+            my $atom_site_tag;
+
+            if( exists $values->{"_atom_site_label"} ) {
+                $atom_site_tag = "_atom_site_label";
+            } else {
+                $atom_site_tag = "_atom_site_type_symbol";
+            }
+
+            set_loop_tag( $dataset,
+                          '_atom_site_disorder_assembly',
+                          $atom_site_tag,
+                          \@assemblies );
+            set_loop_tag( $dataset,
+                          '_atom_site_disorder_group',
+                          $atom_site_tag,
+                          \@groups );
         }
-
-        my $atom_site_tag;
-
-        if( exists $values->{"_atom_site_label"} ) {
-            $atom_site_tag = "_atom_site_label";
-        } else {
-            $atom_site_tag = "_atom_site_type_symbol";
-        }
-
-        set_loop_tag( $dataset,
-                      '_atom_site_disorder_assembly',
-                      $atom_site_tag,
-                      \@assemblies );
-        set_loop_tag( $dataset,
-                      '_atom_site_disorder_group',
-                      $atom_site_tag,
-                      \@groups );
 
         print_cif( $dataset,
                    {
@@ -390,20 +390,7 @@ sub initial_atoms($$$$$)
 	    }
 
         my $atom_info = extract_atom( $label, $values, $i, $f2o );
-
-        if (exists $atom_properties->{ $atom_info->{"chemical_type"}}) {
-            push( @atom_list, $atom_info );
-        } else {
-            my $message = "unknown chemical type '" .
-                $atom_info->{chemical_type} . "'";
-
-            if( $continue_on_errors ) {
-                warning( $0, $filename, $dataname, $message );
-            } else {
-                error( $0, $filename, $dataname, $message );
-                exit(1);
-            }
-        }
+        push( @atom_list, $atom_info );
     }
 
     return \@atom_list;
