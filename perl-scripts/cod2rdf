@@ -19,6 +19,7 @@ use DBI;
 use Encode;
 use HTML::Entities;
 use SOptions;
+use SUsage;
 
 my $vocabulary_name = "cod";
 my $vocabulary_url_prefix = "http://www.crystallography.net/cod/doc/rdf/";
@@ -38,10 +39,77 @@ my %database = (
     host  => "www.crystallography.net",
     user  => "cod_reader",
     name  => "cod",
+    port  => 3306,
     password => "",
     platform => "mysql",
     definition_table => "databases",
 );
+
+#* USAGE:
+#*     $0 [options] 1000000 [1000001 ...]
+#* 
+#* OPTIONS:
+#*     -d, --database  cod
+#*        Use database "cod" to query for structures.
+#*
+#*     -h, --host   www.crystallography.net
+#*     -s, --server www.crystallography.net
+#*        Query COD database on the host 'www.crystallography.net'.
+#*
+#*     -l, --localhost
+#*        Use database server on the localhost to query the COD database.
+#*
+#*     -p, --port 3306
+#*        Use the specified port (default 3306) to query structures.
+#*
+#*     --platform mysql
+#*        Use specified SQL platform (default mysql).
+#*
+#*     -u, --user cod_reader
+#*        Use user name "cod_reader" to access COD database; this reader
+#*        sould be granted SELECT priviledge, i.e. should be able to read
+#*        the COD database, whithout supplying a password.
+#*
+#*     --password
+#*        Use the specified password (default empty) to connect.
+#*
+#*     --vocabulary-name
+#*
+#*     --vocabulary-url-prefix
+#*
+#*     --prefix, --db-url-prefix
+#*
+#*     --postfix, --db-url-postfix
+#*
+#*     --def-table, --definition-table
+#*
+#*     --db-name, --database-name
+#*
+#*     --from
+#*
+#*     --to
+#*
+#*     --range
+#*
+#*     --revision
+#*
+#*     --split-author-names
+#*     --no-split-author-names, --dont-split-author-names
+#*
+#*     --xml-output
+#*
+#*     --n3-output
+#*
+#*     --turtle-output
+#*
+#*     --ntriples-output
+#*
+#*     --replace-utf-codepoints-from
+#*     --no-replace-utf-codepoints, --dont-replace-utf-code-points
+#*
+#*     --help,--usage
+#*        Print short usage message (this message) and exit.
+#**
 
 @ARGV = getOptions(
     "-d,--database"  => \$database{name},
@@ -81,6 +149,8 @@ my %database = (
         sub { $replace_utf_code_points_from = undef },
     "--dont-replace-utf-code-points" =>
         sub { $replace_utf_code_points_from = undef },
+
+    "--help,--usage"            => sub { SUsage::usage; exit },
 );
 
 binmode( STDOUT, ":utf8" );
