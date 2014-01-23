@@ -150,20 +150,22 @@ for my $filename (@ARGV) {
                                              $dataname,
                                              $f2o );
 
-        my $last_assembly;
-        my $assembly_count = 1;
-        my $rename_dot_assembly = 0;
-        if( exists $values->{_atom_site_disorder_group} ) {
-            my %assemblies =
-                map  {$_->{assembly} => 1}
-                grep {$_->{group} ne '.' || $_->{assembly} ne '.'}
-                     @$atom_list;
-            $assembly_count = scalar keys %assemblies;
-            $rename_dot_assembly =
-                (exists $assemblies{'.'} && $assembly_count > 0) ? 1 : 0;
-            my @assemblies = sort keys %assemblies;
-            $last_assembly = $assemblies[-1];
-        }
+        my %assemblies = map{ $_->{assembly} => 1 }
+                         grep{ $_->{assembly} ne '.' ||
+                               $_->{group} ne '.' }
+                         @$atom_list;
+
+        my $has_dot_assembly = exists $assemblies{'.'};
+
+        my $assembly_count = scalar keys %assemblies;
+
+        my $rename_dot_assembly =
+            ($has_dot_assembly && ($assembly_count > 1 ||
+                                   scalar( keys %$alternatives ) > 0));
+
+        my @all_assemblies = sort keys %assemblies;
+        my $last_assembly = $all_assemblies[-1];
+
         if( defined $last_assembly && $rename_dot_assembly ) {
             if( $last_assembly eq '.' ) {
                 $last_assembly = 'A';
@@ -216,7 +218,9 @@ for my $filename (@ARGV) {
             }
         }
 
-        my $assembly_count_now = scalar keys { map { $_ => 1 } @assemblies };
+        my $assembly_count_now = scalar keys { map { $_ => 1 }
+                                               grep { $_ ne '.' }
+                                               @assemblies };
         my $assembly_count_diff = $assembly_count_now - $assembly_count;
         if( $assembly_count_diff > 0 ) {
             note( $0, $filename, $dataname,
