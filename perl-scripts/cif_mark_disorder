@@ -38,10 +38,17 @@ my $use_parser = "c";
 my $uniquify_atoms = 1;
 my $exclude_zero_occupancies = 1;
 my $continue_on_errors = 0;
+my $report_marked_disorders = 1;
 
 @ARGV = getOptions
 (
     "-h,--add-cif-header" => \$cif_header_file,
+
+    "--report-marked-disorders" => sub { $report_marked_disorders = 1 },
+    "--no-report-marked-disorders" =>
+        sub { $report_marked_disorders = 0 },
+    "--dont-report-marked-disorders" =>
+        sub { $report_marked_disorders = 0 },
 );
 
 my $cif_header;
@@ -166,9 +173,12 @@ for my $filename (@ARGV) {
         }
 
         my $assembly_count_now = scalar keys { map { $_ => 1 } @assemblies };
-        note( $0, $filename, $dataname,
-              ($assembly_count_now - $assembly_count) .
-              " site(s) were marked as disorder assemblies" );
+        my $assembly_count_diff = $assembly_count_now - $assembly_count;
+        if( $assembly_count_diff > 0 ) {
+            note( $0, $filename, $dataname,
+                  "$assembly_count_diff site(s) were marked " .
+                  "as disorder assemblies" );
+        }
 
         my $atom_site_tag;
 
@@ -267,6 +277,12 @@ sub get_alternatives
                            "site contains more than two " .
                            "alternatives?" );
                     next;
+                }
+
+                if( $report_marked_disorders ) {
+                    note( $0, $filename, $dataname,
+                          "atoms '$name1' and '$name2' were marked " .
+                          "as alternatives" );
                 }
 
                 my $index2 = $atom->{index};
