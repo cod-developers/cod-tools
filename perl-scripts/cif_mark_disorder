@@ -25,17 +25,15 @@ use Fractional;
 use UserMessage;
 use SOptions;
 
-sub initial_atoms($$$$$$);
+sub initial_atoms($$$$$);
 sub mat_vect_mul($$);
 sub get_unit_cell($$$);
-sub uniquify_atom_names($$$$);
 
 my $same_site_distance_sensivity = 0.000001;
 my $same_site_occupancy_sensivity = 0.01;
 my $brick_size = 1;
 my $cif_header_file;
 my $use_parser = "c";
-my $uniquify_atoms = 1;
 my $exclude_zero_occupancies = 1;
 my $continue_on_errors = 0;
 my $report_marked_disorders = 1;
@@ -99,8 +97,7 @@ for my $filename (@ARGV) {
                                        $dataset,
                                        $filename,
                                        $dataname,
-                                       $f2o,
-                                       $uniquify_atoms );
+                                       $f2o );
 
         my $bricks = AtomBricks::build_bricks( $atom_list,
                                                $brick_size );
@@ -233,32 +230,15 @@ sub get_alternatives
             for my $atom ( @{$bricks->{atoms}[$i][$j][$k]} ) {
                 my $atom_coords_ortho = $atom->{coordinates_ortho};
                 my $name2 = $atom->{name};
+                my $index2 = $atom->{index};
 
-                next if $name1 ge $name2;
+                next if $index1 ge $index2;
 
                 my $dist = distance( $atom_in_unit_cell_coords_ortho,
                                      $atom_coords_ortho );
                 next if $dist > $same_site_distance_sensivity;
 
-#                 # Skipping atom pairs whose occupancies do not sum
-#                 # to approx. 1:
-#                 if( exists $current_atom->{atom_site_occupancy} &&
-#                     exists $atom->{atom_site_occupancy} &&
-#                     abs( $current_atom->{atom_site_occupancy} +
-#                          $atom->{atom_site_occupancy} - 1 ) >
-#                     $same_site_occupancy_sensivity ) {
-# 
-#                     my $occupancy_sum =
-#                         $current_atom->{atom_site_occupancy} +
-#                         $atom->{atom_site_occupancy};
-#                     warning( $0, $filename, $dataname,
-#                              "atoms '$name1' and '$name2' share " .
-#                              "same site, but the sum of their " .
-#                              "occupancies is $occupancy_sum" );
-#                     next;
-#                 }
-
-                # Skipping already marked disordered atoms:
+                # Skipping initially marked disordered atoms:
                 if( exists $current_atom->{assembly} &&
                     exists $atom->{assembly} &&
                     $current_atom->{assembly} eq $atom->{assembly} &&
@@ -268,7 +248,6 @@ sub get_alternatives
                     next;
                 }
 
-                my $index2 = $atom->{index};
                 if( !exists $in_assembly{$index1} &&
                     !exists $in_assembly{$index2} ) {
                     # Creating new assembly
@@ -365,10 +344,9 @@ sub get_alternatives
 #                   multiplicity_ratio=>"1",
 #              }
 #
-sub initial_atoms($$$$$$)
+sub initial_atoms($$$$$)
 {
-    my ($atom_properties, $dataset, $filename, $dataname, $f2o,
-    	$uniquify_atoms ) = @_;
+    my ($atom_properties, $dataset, $filename, $dataname, $f2o ) = @_;
     my $values = $dataset->{values};
 
     my $atom_site_tag;
@@ -428,8 +406,7 @@ sub initial_atoms($$$$$$)
         }
     }
 
-    return uniquify_atom_names( \@atom_list, $uniquify_atoms,
-				$filename, $dataname);
+    return \@atom_list;
 }
 
 #===============================================================#
@@ -562,78 +539,6 @@ sub get_unit_cell($$$)
     }
 
     return @cell;
-}
-
-# ============================================================================ #
-# Accepts an array of
-#
-#   $atom_info = {
-#                   site_label=>"C1",
-#                   name=>"C1_2",
-#                   chemical_type=>"C",
-#                   coordinates_fract=>[1.0, 1.0, 1.0],
-#                   unity_matrix_applied=>1,
-#                   assembly=>"A", # "."
-#                   group=>"1", # "."
-#              }
-#
-sub uniquify_atom_names($$$$)
-{
-    my ($init_atoms, $uniquify_atoms, $filename, $dataset_name) = @_;
-
-    my $max_label_suffix = 30000; # Maximum number to be appened to labels 
-                                  # when trying to produce unique names.
-
-    my @checked_initial_atoms;
-
-    my %used_labels;
-    my @labels_to_be_renamed;
-
-    foreach my $atom (@{$init_atoms})
-    {
-        my $atom_copy = copy_atom( $atom );
-        my $label = $atom->{name};
-
-        push( @checked_initial_atoms, $atom_copy );
-
-        if( ! exists $used_labels{$label} ) {
-            $used_labels{$label}{atoms} = [ $atom_copy ];
-        } else {
-            push( @{$used_labels{$label}{atoms}}, $atom_copy );
-            warning( $0, $filename, $dataset_name,
-                     "atom label '$label' is not unique" );
-            push( @labels_to_be_renamed, $label );
-        }
-        $used_labels{$label}{count} ++;
-    }
-
-    if( $uniquify_atoms )
-    {
-        foreach my $label (@labels_to_be_renamed)
-        {
-            foreach my $renamed_atom (@{$used_labels{$label}{atoms}}) {
-                my $id = 0;
-                while( exists $used_labels{$label . "_" .$id} &&
-                       $id <= $max_label_suffix ) {
-                    $id ++;
-                }
-                if( $id > $max_label_suffix ) {
-                    error( $0, $filename, $dataset_name,
-                           "could not generate unique atom name for ".
-                           "atom '$label', even after $id iterations" );
-                }
-                my $new_label = $label . "_" . $id;
-                warning( $0, $filename, $dataset_name,
-                         "renaming atom '$label' " .
-                         "to '" . $new_label . "'" );
-                $renamed_atom->{name}       = $new_label;
-                $renamed_atom->{site_label} = $new_label;
-                $used_labels{$new_label}{count} ++;
-            }
-        }
-    }
-
-    return \@checked_initial_atoms;
 }
 
 #===============================================================#
