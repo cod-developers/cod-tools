@@ -350,7 +350,8 @@ if ($output_format eq "xml") {
     }
     print "</rdf:RDF>\n";
 } elsif ($output_format eq "n3" or $output_format eq "turtle") {
-    # n3 implementation code
+# a similar parser and validator can be found at 
+# http://www.rdfabout.com/demo/validator/validate.xpd
     print "\@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>.\n";
 
     print "\@prefix ${vocabulary_name}: " . "<${vocabulary_url_prefix}>.\n";
@@ -379,7 +380,7 @@ if ($output_format eq "xml") {
             $struct->{$field} =~ s/((['"\\]))/\\$1/g;
             $struct->{$field} =~ s/\n/\\n/g;
             $struct->{$field} =~ s/\r/\\r/g;
-            $struct->{$field} =~ s/\r/\\t/g;
+            $struct->{$field} =~ s/\t/\\t/g;
             if( $field ne 'authors' || !$split_author_names ) {
                 # Adding '"' or '"""'quotes on a literal
                 $struct->{$field} = quote_literals( $struct->{$field} );
@@ -409,6 +410,8 @@ if ($output_format eq "xml") {
         print ".\n";
     }
 } elsif ($output_format eq "ntriples") {
+# a similar parser and validator can be found at 
+# http://www.rdfabout.com/demo/validator/validate.xpd
     foreach my $codid (sort keys %$data) {
         my $struct = $data->{$codid};
         
@@ -429,7 +432,6 @@ if ($output_format eq "xml") {
             $struct->{$field} = decode( 'UTF-8', $struct->{$field} );
             $struct->{$field} = encode_entities( $struct->{$field},
                                                  "\"'<>\&" );
-            #http://www.rdfabout.com/demo/validator/validate.xpd
             if( $field eq 'formula' || $field eq 'calcformula' ) {
                 $struct->{$field} =~ s/^-\s*//;
                 $struct->{$field} =~ s/\s*-$//;
@@ -438,19 +440,19 @@ if ($output_format eq "xml") {
             $struct->{$field} =~ s/((["\\]))/\\$1/g;
             $struct->{$field} =~ s/\n/\\n/g;
             $struct->{$field} =~ s/\r/\\r/g;
-            $struct->{$field} =~ s/\r/\\t/g;
+            $struct->{$field} =~ s/\t/\\t/g;
             if( $field ne 'authors' || !$split_author_names ) {
-                # Adding '"' or '"""'quotes on a literal
-                $struct->{$field} = quote_literals( $struct->{$field} );
+                # Adding '"' quotes on a literal
+                $struct->{$field} = '"' . $struct->{$field} . '"';
                 $struct->{$field} = replace_utf_codepoints( $struct->{$field}, 128 );
                 print "$subject " .
                       "<${vocabulary_url_prefix}$field> " . 
-                      $struct->{$field} . ".\n";
+                       $struct->{$field} . ".\n";
             } else {
                 foreach ( split( /\s*;\s*/, $struct->{$field} ) ) {
                     print "$subject " .
                           "<${vocabulary_url_prefix}author> " .
-                          replace_utf_codepoints( quote_literals($_), 128 ) . 
+                          replace_utf_codepoints( '"' . $_ . '"', 128 ) . 
                           ".\n";
                 }
             }
