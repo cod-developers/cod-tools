@@ -350,12 +350,13 @@ if ($output_format eq "xml") {
     }
     print "</rdf:RDF>\n";
 } elsif ($output_format eq "n3" or $output_format eq "turtle") {
-# a similar parser and validator can be found at 
+# Implemmented as described in http://www.w3.org/TeamSubmission/n3/#grammar
+# A similar parser and validator can be found at 
 # http://www.rdfabout.com/demo/validator/validate.xpd
     print "\@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>.\n";
-
-    print "\@prefix ${vocabulary_name}: " . "<${vocabulary_url_prefix}>.\n";
-    print "\n";
+    print join( "\n", map( "\@prefix $_: <$vocabularies{$_}>.",
+                           sort keys %vocabularies ) ) . "\n";
+    print "\n" if keys %vocabularies > 0;
 
     foreach my $codid (sort keys %$data) {
         my $struct = $data->{$codid};
@@ -373,10 +374,10 @@ if ($output_format eq "xml") {
         for my $field (sort keys %$struct) {
             next if $field eq 'file' || $field eq 'links';
             next if !$struct->{$field};
-            
+
             print ";\n" if !$first_line;
             $struct->{$field} = decode( 'UTF-8', $struct->{$field} );
-            # Escaping "\"
+            # Escaping special symbols with "\"
             $struct->{$field} =~ s/((['"\\]))/\\$1/g;
             $struct->{$field} =~ s/\n/\\n/g;
             $struct->{$field} =~ s/\r/\\r/g;
@@ -410,13 +411,14 @@ if ($output_format eq "xml") {
         print ".\n";
     }
 } elsif ($output_format eq "ntriples") {
-# a similar parser and validator can be found at 
+# Implemmented as described in http://www.w3.org/TR/n-triples/#canonical-ntriples
+# A similar parser and validator can be found at 
 # http://www.rdfabout.com/demo/validator/validate.xpd
     foreach my $codid (sort keys %$data) {
         my $struct = $data->{$codid};
-        
+
         my $subject = "<${url_prefix}" . $struct->{file} . "${url_postfix}>";
-        
+
         for my $prop (@{$struct->{links}}) {
             my $db = $prop->{db};
             print "$subject " . 
@@ -424,19 +426,13 @@ if ($output_format eq "xml") {
                   " <" . $databases{$db}->{url_prefix} . $prop->{ext_id} .
                          $databases{$db}->{url_postfix} . ">.\n";
         }
-        
+
         for my $field (sort keys %$struct) {
             next if $field eq 'file' || $field eq 'links';
             next if !$struct->{$field};
-            
+
             $struct->{$field} = decode( 'UTF-8', $struct->{$field} );
-            $struct->{$field} = encode_entities( $struct->{$field},
-                                                 "\"'<>\&" );
-            if( $field eq 'formula' || $field eq 'calcformula' ) {
-                $struct->{$field} =~ s/^-\s*//;
-                $struct->{$field} =~ s/\s*-$//;
-            }
-            # Escaping "\"
+            # Escaping special symbols with "\"
             $struct->{$field} =~ s/((["\\]))/\\$1/g;
             $struct->{$field} =~ s/\n/\\n/g;
             $struct->{$field} =~ s/\r/\\r/g;
@@ -444,16 +440,24 @@ if ($output_format eq "xml") {
             if( $field ne 'authors' || !$split_author_names ) {
                 # Adding '"' quotes on a literal
                 $struct->{$field} = '"' . $struct->{$field} . '"';
-                $struct->{$field} = replace_utf_codepoints( $struct->{$field}, 128 );
+                if( defined $replace_utf_code_points_from ) {
+                    $struct->{$field} =
+                        replace_utf_codepoints ( $struct->{$field},
+                                                $replace_utf_code_points_from );
+                }
                 print "$subject " .
                       "<${vocabulary_url_prefix}$field> " . 
                        $struct->{$field} . ".\n";
             } else {
-                foreach ( split( /\s*;\s*/, $struct->{$field} ) ) {
+                foreach my $object ( split( /\s*;\s*/, $struct->{$field} ) ) {
+                    if( defined $replace_utf_code_points_from ) {
+                        $object = replace_utf_codepoints ( $object,
+                                                $replace_utf_code_points_from );
+                    }
+
                     print "$subject " .
                           "<${vocabulary_url_prefix}author> " .
-                          replace_utf_codepoints( '"' . $_ . '"', 128 ) . 
-                          ".\n";
+                          '"' . $object . '"' . ".\n";
                 }
             }
         }
