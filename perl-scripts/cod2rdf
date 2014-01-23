@@ -73,39 +73,75 @@ my %database = (
 #*     --password
 #*        Use the specified password (default empty) to connect.
 #*
-#*     --vocabulary-name
+#*     --vocabulary-namespace cod
+#*        Use vocabulary namespace "cod" to prefix properties native to
+#*        the queried database.
 #*
-#*     --vocabulary-url-prefix
+#*     --vocabulary-url-prefix http://www.crystallography.net/cod/doc/rdf/
+#*        Specify URL prefix for database's native namespace.
 #*
-#*     --prefix, --db-url-prefix
+#*     --prefix, --db-url-prefix http://www.crystallography.net/cod/
+#*        Specify URL prefix for all objects in the queried database.
 #*
-#*     --postfix, --db-url-postfix
+#*     --postfix, --db-url-postfix .html
+#*        Specify URL postfix for all objects in the queried database.
 #*
-#*     --def-table, --definition-table
+#*     --def-table, --definition-table databases
+#*        Look "databases" table for descriptions of remote databases.
 #*
-#*     --db-name, --database-name
+#*     --db-name, --database-name cod
+#*        Use "cod" as the abbreviation of queried databases. This
+#*        abbreviation is used in construction of cross-referencing table
+#*        names, i.e. "pubchem_x_cod".
 #*
 #*     --from
+#*        Generate RDFs for all database entries starting at specified
+#*        entry and ending at either the entry specified using '--to'
+#*        command line option or the last entry in the database.
 #*
 #*     --to
+#*        Generate RDFs for all database entries from either the entry
+#*        specified using '--from' command line option or the first entry
+#*        in the database.
 #*
 #*     --range
+#*        Generate RDFs for all database entries in the specified range.
+#*        Range should be specified in the form 'X-Y', where X is the
+#*        first and Y is the last entry.
 #*
 #*     --revision
+#*        Generate RDFs for all database entries deposited in the
+#*        specified or older Subversion revision of the database.
 #*
 #*     --split-author-names
+#*        Split author names in internal database representation at
+#*        semicolons (';') to produce RDF-parsable list of author names.
+#*        Each author in such list is marked with "author" property
+#*        instead of "authors", which is used for non-splitted value.
+#*        Default option.
+#*
 #*     --no-split-author-names, --dont-split-author-names
+#*        Make no assumptions about internal database representation of
+#*        author list.
 #*
 #*     --xml-output
+#*        Output RDF in XML carrier format. Default option.
 #*
 #*     --n3-output
+#*        Output RDF in N3 (Notation3) carrier format.
 #*
 #*     --turtle-output
+#*        Output RDF in Turtle carrier format.
 #*
-#*     --ntriples-output
+#*     --ntriples-output, --n-triples-output
+#*        Output RDF in N-Triples carrier format.
 #*
 #*     --replace-utf-codepoints-from
+#*        Replace Unicode code points starting at specified point with
+#*        carrier format-specific entites.
+#*
 #*     --no-replace-utf-codepoints, --dont-replace-utf-code-points
+#*        Leave Unicode code points unescaped. Default option.
 #*
 #*     --help,--usage
 #*        Print short usage message (this message) and exit.
@@ -121,7 +157,7 @@ my %database = (
     "--password"     => \$database{password},
     "--platform"     => \$database{platform},
 
-    "--vocabulary-name" => \$vocabulary_name,
+    "--vocabulary-namespace" => \$vocabulary_name,
     "--vocabulary-url-prefix" => \$vocabulary_url_prefix,
     "--prefix,--db-url-prefix"   => \$url_prefix,
     "--postfix,--db-url-postfix" => \$url_postfix,
@@ -130,7 +166,7 @@ my %database = (
 
     "--from" => \$from,
     "--to" => \$to,
-    "--range" => sub { get_value() =~ /^(\d+)[,\-](\d+)$/;
+    "--range" => sub { get_value() =~ /^(\d+)\-(\d+)$/;
                        $from = $1;
                        $to = $2; },
     "--revision" => \$revision,
@@ -143,6 +179,7 @@ my %database = (
     "--n3-output"       => sub { $output_format = "n3" },
     "--turtle-output"   => sub { $output_format = "turtle"},
     "--ntriples-output" => sub { $output_format = "ntriples"},
+    "--n-triples-output" => sub { $output_format = "ntriples"},
 
     "--replace-utf-codepoints-from" => \$replace_utf_code_points_from,
     "--no-replace-utf-codepoints" =>
