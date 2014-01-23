@@ -37,6 +37,7 @@ my $cif_header_file;
 my $use_parser = "c";
 my $exclude_zero_occupancies = 1;
 my $report_marked_disorders = 1;
+my $ignore_occupancies = 0;
 
 #* USAGE:
 #*     $0 [options] input1.cif [input2.cif ...]
@@ -51,6 +52,10 @@ my $report_marked_disorders = 1;
 #*     --exclude-zero-occupancies
 #*     --no-exclude-zero-occupancies
 #*     --dont-exclude-zero-occupancies
+#*
+#*     --ignore-occupancies
+#*     --no-ignore-occupancies
+#*     --dont-ignore-occupancies
 #*
 #*     --report-marked-disorders
 #*     --no-report-marked-disorders
@@ -76,6 +81,10 @@ my $report_marked_disorders = 1;
     "--exclude-zero-occupancies"    => sub { $exclude_zero_occupancies = 1; },
     "--no-exclude-zero-occupancies" => sub { $exclude_zero_occupancies = 0; },
     "--dont-exclude-zero-occupancies" => sub { $exclude_zero_occupancies = 0; },
+
+    "--ignore-occupancies" => sub { $ignore_occupancies = 1 },
+    "--no-ignore-occupancies" => sub { $ignore_occupancies = 0 },
+    "--dont-ignore-occupancies" => sub { $ignore_occupancies = 0 },
 
     "--report-marked-disorders" => sub { $report_marked_disorders = 1 },
     "--no-report-marked-disorders" =>
@@ -347,7 +356,8 @@ sub get_alternatives
         my $occupancy_sum =
             sum( map( $atom_list->[$_]{atom_site_occupancy},
                       @$assembly ) );
-        if( abs( $occupancy_sum - 1 ) > $same_site_occupancy_sensivity ) {
+        if( abs( $occupancy_sum - 1 ) > $same_site_occupancy_sensivity &&
+            !$ignore_occupancies ) {
             my @names = sort map( $atom_list->[$_]{name},
                                   @$assembly );
             warning( $0, $filename, $dataname,
@@ -531,6 +541,10 @@ sub extract_atom
     if( exists $values->{_atom_site_occupancy} ) {
         $atom_info{atom_site_occupancy} =
             $values->{_atom_site_occupancy}[$number];
+    } else {
+        # Assuming full occupancies if '_atom_site_occupancy' tag is
+        # missing in CIF file:
+        $atom_info{atom_site_occupancy} = 1;
     }
 
     return \%atom_info;
