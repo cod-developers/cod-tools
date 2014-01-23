@@ -138,6 +138,14 @@ die "no data for RDF was found in the database" if !$any_data_seen;
 for my $entry (values %$data) {
     delete $entry->{text};
     delete $entry->{flags};
+    if( exists $entry->{formula} ) {
+        $entry->{formula} =~ s/^-\s*//;
+        $entry->{formula} =~ s/\s*-$//;
+    }
+    if( exists $entry->{calcformula} ) {
+        $entry->{calcformula} =~ s/^-\s*//;
+        $entry->{calcformula} =~ s/\s*-$//;
+    }
 }
 
 my $databases = $dbh->selectall_arrayref(
@@ -210,10 +218,6 @@ if ($output_format eq "xml") {
             $struct->{$field} = decode( 'UTF-8', $struct->{$field} );
             $struct->{$field} = encode_entities( $struct->{$field},
                                                  "\"'<>\&" );
-            if( $field eq 'formula' || $field eq 'calcformula' ) {
-                $struct->{$field} =~ s/^-\s*//;
-                $struct->{$field} =~ s/\s*-$//;
-            }
             if( $field ne 'authors' || !$split_author_names ) {
                 if( defined $replace_utf_code_points_from ) {
                     $struct->{$field} =
@@ -263,10 +267,6 @@ if ($output_format eq "xml") {
             
             print ";\n" if !$first_line;
             $struct->{$field} = decode( 'UTF-8', $struct->{$field} );
-            if( $field eq 'formula' || $field eq 'calcformula' ) {
-                $struct->{$field} =~ s/^-\s*//;
-                $struct->{$field} =~ s/\s*-$//;
-            }
             # Escaping "\"
             $struct->{$field} =~ s/((['"\\]))/\\$1/g;
             $struct->{$field} =~ s/\n/\\n/g;
