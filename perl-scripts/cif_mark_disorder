@@ -153,19 +153,23 @@ for my $filename (@ARGV) {
         my $last_assembly;
         my $assembly_count = 1;
         my $rename_dot_assembly = 0;
-        if( exists $values->{_atom_site_disorder_assembly} ) {
+        if( exists $values->{_atom_site_disorder_group} ) {
             my %assemblies =
                 map  {$_->{assembly} => 1}
                 grep {$_->{group} ne '.' || $_->{assembly} ne '.'}
                      @$atom_list;
             $assembly_count = scalar keys %assemblies;
             $rename_dot_assembly =
-                (exists $assemblies{'.'} && $assembly_count > 1) ? 1 : 0;
+                (exists $assemblies{'.'} && $assembly_count > 0) ? 1 : 0;
             my @assemblies = sort keys %assemblies;
             $last_assembly = $assemblies[-1];
         }
         if( defined $last_assembly && $rename_dot_assembly ) {
-            $last_assembly = chr( ord( $last_assembly ) + 1 );
+            if( $last_assembly eq '.' ) {
+                $last_assembly = 'A';
+            } else {
+                $last_assembly = chr( ord( $last_assembly ) + 1 );
+            }
         }
         my $first_assembly;
         if( defined $last_assembly ) {
