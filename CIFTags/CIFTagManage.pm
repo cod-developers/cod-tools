@@ -19,6 +19,7 @@ require Exporter;
     exclude_empty_tags
     exclude_empty_non_loop_tags
     set_tag
+    set_loop_tag
 );
 
 sub exclude_tag
@@ -120,6 +121,23 @@ sub set_tag
         push( @{$cif->{tags}}, $tag );
     }
     $cif->{values}{$tag}[0] = $value;
+}
+
+sub set_loop_tag
+{
+    my( $cif, $tag, $in_loop, $values ) = @_;
+    if( !exists $cif->{values}{$tag} ) {
+        push( @{$cif->{tags}}, $tag );
+        if( !defined $in_loop || $tag eq $in_loop ) {
+            push( $cif->{loops}, [ $tag ] );
+            $cif->{inloop}{$tag} = @{$cif->{loops}} - 1;
+        } else {
+            my $nloop = $cif->{inloop}{$in_loop};
+            push( @{$cif->{loops}[$nloop]}, $tag );
+            $cif->{inloop}{$tag} = $nloop;
+        }
+    }
+    $cif->{values}{$tag} = $values;
 }
 
 1;

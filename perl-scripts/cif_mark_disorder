@@ -144,11 +144,12 @@ for my $filename (@ARGV) {
         my @groups;
         for my $atom (@$atom_list) {
             my $name = $atom->{name};
-            if( exists $alternatives->{$name} ) {
+            my $index = $atom->{index};
+            if( exists $alternatives->{$index} ) {
                 push( @assemblies,
                       chr( ord( $first_assembly ) +
-                                $alternatives->{$name}[0] ) );
-                push( @groups, $alternatives->{$name}[1] );
+                                $alternatives->{$index}[0] ) );
+                push( @groups, $alternatives->{$index}[1] );
             } elsif( exists $atom->{assembly} &&
                      exists $atom->{group} &&
                      $atom->{assembly} ne '.' ) {
@@ -209,8 +210,8 @@ for my $filename (@ARGV) {
 sub get_alternatives
 {
     my( $atom_list, $bricks, $filename, $dataname, $f2o ) = @_;
-    my %alternatives;
-    my $count = 0;
+    my @assemblies;
+    my %in_assembly;
 
     for my $current_atom (@$atom_list) {
         my $atom_in_unit_cell_coords_ortho =
@@ -239,23 +240,23 @@ sub get_alternatives
                                      $atom_coords_ortho );
                 next if $dist > $same_site_distance_sensivity;
 
-                # Skipping atom pairs whose occupancies do not sum
-                # to approx. 1:
-                if( exists $current_atom->{atom_site_occupancy} &&
-                    exists $atom->{atom_site_occupancy} &&
-                    abs( $current_atom->{atom_site_occupancy} +
-                         $atom->{atom_site_occupancy} - 1 ) >
-                    $same_site_occupancy_sensivity ) {
-
-                    my $occupancy_sum =
-                        $current_atom->{atom_site_occupancy} +
-                        $atom->{atom_site_occupancy};
-                    warning( $0, $filename, $dataname,
-                             "atoms '$name1' and '$name2' share " .
-                             "same site, but the sum of their " .
-                             "occupancies is $occupancy_sum" );
-                    next;
-                }
+#                 # Skipping atom pairs whose occupancies do not sum
+#                 # to approx. 1:
+#                 if( exists $current_atom->{atom_site_occupancy} &&
+#                     exists $atom->{atom_site_occupancy} &&
+#                     abs( $current_atom->{atom_site_occupancy} +
+#                          $atom->{atom_site_occupancy} - 1 ) >
+#                     $same_site_occupancy_sensivity ) {
+# 
+#                     my $occupancy_sum =
+#                         $current_atom->{atom_site_occupancy} +
+#                         $atom->{atom_site_occupancy};
+#                     warning( $0, $filename, $dataname,
+#                              "atoms '$name1' and '$name2' share " .
+#                              "same site, but the sum of their " .
+#                              "occupancies is $occupancy_sum" );
+#                     next;
+#                 }
 
                 # Skipping already marked disordered atoms:
                 if( exists $current_atom->{assembly} &&
@@ -267,35 +268,83 @@ sub get_alternatives
                     next;
                 }
 
-                if( exists $alternatives{$name1} ||
-                    exists $alternatives{$name2} ) {
-                    error( $0, $filename, $dataname,
-                           "atoms '$name1' and '$name2' share " .
-                           "same site, but one of both of them " .
-                           "are already assigned to other " .
-                           "disorder assembly (assemblies) -- " .
-                           "site contains more than two " .
-                           "alternatives?" );
-                    next;
-                }
-
-                if( $report_marked_disorders ) {
-                    note( $0, $filename, $dataname,
-                          "atoms '$name1' and '$name2' were marked " .
-                          "as alternatives" );
-                }
-
                 my $index2 = $atom->{index};
-                $alternatives{$name1} = [ $count,
-                                          (($index1 <=> $index2) + 1) / 2 + 1 ];
-                $alternatives{$name2} = [ $count,
-                                          (($index2 <=> $index1) + 1) / 2 + 1 ];
-                $count++;
+                if( !exists $in_assembly{$index1} &&
+                    !exists $in_assembly{$index2} ) {
+                    # Creating new assembly
+                    $in_assembly{$index1} = scalar @assemblies;
+                    $in_assembly{$index2} = scalar @assemblies;
+                    push( @assemblies, [ $index1, $index2 ] );
+                } elsif( exists $in_assembly{$index1} &&
+                         exists $in_assembly{$index2} ) {
+                    my $assembly1 = $in_assembly{$index1};
+                    my $assembly2 = $in_assembly{$index2};
+                    next if $assembly1 == $assembly2;
+
+                    # Merging two assemblies
+                    my @new_assembly;
+                    foreach( @{$assemblies[$assembly1]} ) {
+                        $in_assembly{$_} = scalar @assemblies;                        
+                        push( @new_assembly, $_ );
+                    }
+                    $assemblies[$assembly1] = [];
+                    foreach( @{$assemblies[$assembly2]} ) {
+                        $in_assembly{$_} = scalar @assemblies;
+                        push( @new_assembly, $_ );
+                    }
+                    $assemblies[$assembly2] = [];
+                    push( @assemblies, \@new_assembly );
+                } else {
+                    # Joining one atom to the assembly
+                    if( exists $in_assembly{$index1} ) {
+                        push( @{$assemblies[$in_assembly{$index1}]},
+                              $index2 );
+                        $in_assembly{$index2} = $in_assembly{$index1};
+                    } else {
+                        push( @{$assemblies[$in_assembly{$index2}]},
+                              $index1 );
+                        $in_assembly{$index1} = $in_assembly{$index2};
+                    }
+                }
             }
         }}}
     }
 
-    return \%alternatives;
+    my $count = 0;
+    my %assemblies_now;
+
+    for my $assembly (@assemblies) {
+        next if @$assembly == 0;
+        my $occupancy_sum =
+            sum( map( $atom_list->[$_]{atom_site_occupancy},
+                      @$assembly ) );
+        if( abs( $occupancy_sum - 1 ) > $same_site_occupancy_sensivity ) {
+            my @names = sort map( $atom_list->[$_]{name},
+                                  @$assembly );
+            warning( $0, $filename, $dataname,
+                     "atoms " . join( ", ", map( "'$_'", @names ) ) .
+                     " share the same site, but the sum of their " .
+                     "occupancies is $occupancy_sum" );
+            next;
+        }
+        if( $report_marked_disorders ) {
+            note( $0, $filename, $dataname,
+                  "atoms " . join( ", ",
+                                   sort map( "'" .
+                                             $atom_list->[$_]{name} .
+                                             "'",
+                                             @$assembly ) ) .
+                  " were marked as alternatives" );
+        }
+        my $group_nr = 1;
+        foreach( sort @$assembly ) {
+            $assemblies_now{$_} = [ $count, $group_nr ];
+            $group_nr++;
+        }
+        $count++;
+    }
+
+    return \%assemblies_now;
 }
 
 # ============================================================================ #
@@ -708,4 +757,11 @@ sub mat_vect_mul($$)
     }
 
     return wantarray ? @new_coordinates : \@new_coordinates;
+}
+
+sub sum
+{
+    my $sum = 0.0;
+    foreach( @_ ) { $sum += $_; }
+    return $sum;
 }
