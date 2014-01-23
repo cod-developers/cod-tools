@@ -315,6 +315,7 @@ if ($output_format eq "xml") {
 } elsif ($output_format eq "n3" or $output_format eq "turtle") {
     # n3 implementation code
     print "\@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>.\n";
+
     print "\@prefix ${vocabulary_name}: " . "<${vocabulary_url_prefix}>.\n";
     print "\n";
 
@@ -347,7 +348,7 @@ if ($output_format eq "xml") {
                 $struct->{$field} = quote_literals( $struct->{$field} );
                 if( defined $replace_utf_code_points_from ) {
                     $struct->{$field} =
-                        replace_utf_codepoints_html( $struct->{$field},
+                        replace_utf_codepoints ( $struct->{$field},
                                                 $replace_utf_code_points_from );
                 }
                 print "  ${vocabulary_name}:$field ";
@@ -358,7 +359,7 @@ if ($output_format eq "xml") {
                 my $authors = (join( ",\n",
                             map( 
                                  ( defined $replace_utf_code_points_from
-                                     ? replace_utf_codepoints_html( 
+                                     ? replace_utf_codepoints ( 
                                        (" "x$length ) . quote_literals($_),
                                                $replace_utf_code_points_from )
                                      : (" "x$length ). quote_literals($_) ),
@@ -397,7 +398,7 @@ if ($output_format eq "xml") {
                 $struct->{$field} =~ s/\s*-$//;
             }
             # Escaping "\"
-            $struct->{$field} =~ s/((['"\\]))/\\$1/g;
+            $struct->{$field} =~ s/((["\\]))/\\$1/g;
             $struct->{$field} =~ s/\n/\\n/g;
             $struct->{$field} =~ s/\r/\\r/g;
             $struct->{$field} =~ s/\r/\\t/g;
@@ -436,7 +437,7 @@ sub replace_utf_codepoints
     my( $string, $from ) = @_;
     my $hex = sprintf( "%x", $from );
     $string =~
-        s/([\x{$hex}-\x{7FFFFFFF}])/sprintf("u\\%04X", ord($1))/eg;
+        s/([\x{$hex}-\x{7FFFFFFF}])/sprintf("\\u%04X", ord($1))/eg;
     return $string;
 }
 
