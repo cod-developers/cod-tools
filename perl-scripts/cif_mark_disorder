@@ -24,6 +24,7 @@ use CIFTagPrint;
 use Fractional;
 use UserMessage;
 use SOptions;
+use SUsage;
 
 sub initial_atoms($$$$$);
 sub mat_vect_mul($$);
@@ -35,18 +36,59 @@ my $brick_size = 1;
 my $cif_header_file;
 my $use_parser = "c";
 my $exclude_zero_occupancies = 1;
-my $continue_on_errors = 0;
 my $report_marked_disorders = 1;
+
+#* USAGE:
+#*     $0 [options] input1.cif [input2.cif ...]
+#* 
+#* OPTIONS:
+#*     -d, --distance-sensivity  0.000001
+#*
+#*     --occupancy-sensivity  0.01
+#*
+#*     -h, --add-cif-header
+#*
+#*     --exclude-zero-occupancies
+#*     --no-exclude-zero-occupancies
+#*     --dont-exclude-zero-occupancies
+#*
+#*     --report-marked-disorders
+#*     --no-report-marked-disorders
+#*     --dont-report-marked-disorders
+#*
+#*     --brick-size  1
+#*
+#*     --use-perl-parser
+#*
+#*     --use-c-parser
+#*
+#*     --help,--usage
+#*        Print short usage message (this message) and exit.
+#**
 
 @ARGV = getOptions
 (
+    "-d,--distance-sensivity" => \$same_site_distance_sensivity,
+    "--occupancy-sensivity" => \$same_site_occupancy_sensivity,
+
     "-h,--add-cif-header" => \$cif_header_file,
+
+    "--exclude-zero-occupancies"    => sub { $exclude_zero_occupancies = 1; },
+    "--no-exclude-zero-occupancies" => sub { $exclude_zero_occupancies = 0; },
+    "--dont-exclude-zero-occupancies" => sub { $exclude_zero_occupancies = 0; },
 
     "--report-marked-disorders" => sub { $report_marked_disorders = 1 },
     "--no-report-marked-disorders" =>
         sub { $report_marked_disorders = 0 },
     "--dont-report-marked-disorders" =>
         sub { $report_marked_disorders = 0 },
+
+    "--brick-size" => \$brick_size,
+
+    "--use-perl-parser" => sub{ $use_parser = "perl" },
+    "--use-c-parser"    => sub{ $use_parser = "c" },
+
+    "--help,--usage" => sub { SUsage::usage; exit },
 );
 
 my $cif_header;
