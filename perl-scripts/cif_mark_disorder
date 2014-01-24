@@ -163,6 +163,7 @@ for my $filename (@ARGV) {
                                        $filename,
                                        $dataname,
                                        $f2o );
+        next if @$atom_list == 0;
 
         my $bricks = AtomBricks::build_bricks( $atom_list,
                                                $brick_size );
@@ -198,6 +199,23 @@ for my $filename (@ARGV) {
 
         my $first_assembly;
         if( defined $last_assembly ) {
+            if( $last_assembly !~ /^[a-zA-Z0-9]$/ ) {
+                error( $0, $filename, $dataname,
+                       "can not generate name for next disorder " .
+                       "assembly from the name of the last " .
+                       "assembly ('$last_assembly') -- " .
+                       "only single alphanumeric ([a-zA-Z0-9]) " .
+                       "characters are used by the script currently" );
+                next;
+            }
+            if( $last_assembly =~ /^([z9])$/i ) {
+                error( $0, $filename, $dataname,
+                       "names for disorder assemblies in input " .
+                       "file have already reached '$1' -- " .
+                       "script can not generate names not from " .
+                       "single alphanumeric ([a-zA-Z0-9]) characters" );
+                next;
+            }
             $first_assembly = chr( ord( $last_assembly ) + 1 );
         } else {
             $first_assembly = 'A';
@@ -234,10 +252,20 @@ for my $filename (@ARGV) {
 
         my %assemblies_now = map { $_ => 1 }
                              grep { $_ ne '.' } @assemblies;
-        my $assembly_count_now = scalar keys %assemblies_now;
+        my @assemblies_now = sort keys %assemblies_now;
+
+        my $assembly_count_now = scalar @assemblies_now;
         my $assembly_count_diff = $assembly_count_now - $assembly_count;
         if( $assembly_count_diff > 0 ||
             defined $rename_dot_assembly_with ) {
+
+            if( join( "", @assemblies ) !~ /^[a-zA-Z0-9\.]*$/ ) {
+                error( $0, $filename, $dataname,
+                       "newly generated assembly names have overflowed " .
+                       "single alphanumeric ([a-zA-Z0-9]) character " .
+                       "class, exiting" );
+                next;
+            }
 
             my @messages;
             if( defined $rename_dot_assembly_with ) {
@@ -465,9 +493,10 @@ sub initial_atoms($$$$$)
                "A serial number will be appended " .
                "to _atom_site_type_symbol to make atom labels" );
     } else {
-        die( "neither _atom_site_type_symbol nor _atom_site_label " .
-             "were found" );
-    	return undef;
+        error( $0, $filename, $dataset->{name},
+               "neither _atom_site_type_symbol nor " .
+               "_atom_site_label were found, can not continue" );
+        return [];
     }
 
     my $atom_labels = $values->{$atom_site_tag};
