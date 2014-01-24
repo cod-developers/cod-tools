@@ -129,7 +129,7 @@ sub set_loop_tag
     if( !exists $cif->{values}{$tag} ) {
         push( @{$cif->{tags}}, $tag );
         if( !defined $in_loop || $tag eq $in_loop ) {
-            push( $cif->{loops}, [ $tag ] );
+            push( @{$cif->{loops}}, [ $tag ] );
             $cif->{inloop}{$tag} = @{$cif->{loops}} - 1;
         } else {
             my $nloop = $cif->{inloop}{$in_loop};
