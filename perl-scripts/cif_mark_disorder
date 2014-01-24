@@ -165,6 +165,15 @@ for my $filename (@ARGV) {
                                        $f2o );
         next if @$atom_list == 0;
 
+        my %assemblies = map{ $_->{assembly} => 1 }
+                         grep{ $_->{assembly} ne '.' ||
+                               $_->{group} ne '.' }
+                         @$atom_list;
+        my @all_assemblies = sort {($a =~ /^\d+$/ && $b =~ /^\d+$/)
+                                        ? $a <=> $b
+                                        : $a cmp $b} keys %assemblies;
+        my $assembly_count = scalar @all_assemblies;
+
         my $bricks = AtomBricks::build_bricks( $atom_list,
                                                $brick_size );
 
@@ -174,51 +183,48 @@ for my $filename (@ARGV) {
                                              $dataname,
                                              $f2o );
 
-        my %assemblies = map{ $_->{assembly} => 1 }
-                         grep{ $_->{assembly} ne '.' ||
-                               $_->{group} ne '.' }
-                         @$atom_list;
+        my @new_assemblies;
+        for my $atom_index (keys %$alternatives) {
+            my $assembly_nr = $alternatives->{$atom_index}[0];
+            if( !defined $new_assemblies[$assembly_nr] ) {
+                $new_assemblies[$assembly_nr] = [];
+            }
+            push( @{$new_assemblies[$assembly_nr]}, $atom_index );
+        }
 
         my $has_dot_assembly = exists $assemblies{'.'};
-
-        my $assembly_count = scalar keys %assemblies;
-        my @all_assemblies = sort keys %assemblies;
-        my $last_assembly = $all_assemblies[-1];
-
         my $rename_dot_assembly_with;
         if( $has_dot_assembly && ($assembly_count > 1 ||
                                    scalar( keys %$alternatives ) > 0) ) {
-            if( $last_assembly eq '.' ) {
+            if( $all_assemblies[-1] eq '.' ) {
                 $rename_dot_assembly_with = 'A';
-            } else {
+            } elsif( grep { !/^[A-Y]$/ } @all_assemblies == 0 ) {
                 $rename_dot_assembly_with =
-                    chr( ord( $last_assembly ) + 1 );
+                    chr( ord( $all_assemblies[-1] ) + 1 );
+            } else {
+                my @numeric = grep { /^\d+$/ } @all_assemblies;
+                $rename_dot_assembly_with = $all_assemblies[-1] + 1;
             }
-            $last_assembly = $rename_dot_assembly_with;
+            @all_assemblies = sort {($a =~ /^\d+$/ && $b =~ /^\d+$/)
+                                        ? $a <=> $b
+                                        : $a cmp $b}
+                              (@all_assemblies, $rename_dot_assembly_with );
         }
 
-        my $first_assembly;
-        if( defined $last_assembly ) {
-            if( $last_assembly !~ /^[a-zA-Z0-9]$/ ) {
-                error( $0, $filename, $dataname,
-                       "can not generate name for next disorder " .
-                       "assembly from the name of the last " .
-                       "assembly ('$last_assembly') -- " .
-                       "only single alphanumeric ([a-zA-Z0-9]) " .
-                       "characters are used by the script currently" );
-                next;
-            }
-            if( $last_assembly =~ /^([z9])$/i ) {
-                error( $0, $filename, $dataname,
-                       "names for disorder assemblies in input " .
-                       "file have already reached '$1' -- " .
-                       "script can not generate names not from " .
-                       "single alphanumeric ([a-zA-Z0-9]) characters" );
-                next;
-            }
-            $first_assembly = chr( ord( $last_assembly ) + 1 );
+        my @assembly_names;
+        if( @all_assemblies == 0 &&
+            ord( 'A' ) + @new_assemblies <= ord( 'Z' ) ) {
+            @assembly_names = map { chr( ord( 'A' ) + $_ - 1 ) }
+                                  1..@new_assemblies;
+        } elsif( @all_assemblies > 0 &&
+                 scalar( grep { !/^[A-Z\.]$/ } @all_assemblies ) == 0 &&
+                 ord( $all_assemblies[-1] ) + @new_assemblies <= ord( 'Z' ) ) {
+            @assembly_names = map { chr( ord( $all_assemblies[-1] ) + $_ ) }
+                                  1..@new_assemblies;
         } else {
-            $first_assembly = 'A';
+            my @numeric = grep { /^\d+$/ } @all_assemblies;
+            my $first = (@numeric > 0) ? $numeric[-1] : 0;
+            @assembly_names = map { $first + $_ } 1..@new_assemblies;
         }
 
         my @assemblies;
@@ -228,8 +234,7 @@ for my $filename (@ARGV) {
             my $index = $atom->{index};
             if( exists $alternatives->{$index} ) {
                 push( @assemblies,
-                      chr( ord( $first_assembly ) +
-                                $alternatives->{$index}[0] ) );
+                      $assembly_names[$alternatives->{$index}[0]] );
                 push( @groups, $alternatives->{$index}[1] );
             } elsif( exists $atom->{assembly} &&
                      exists $atom->{group} &&
@@ -250,22 +255,7 @@ for my $filename (@ARGV) {
             }
         }
 
-        my %assemblies_now = map { $_ => 1 }
-                             grep { $_ ne '.' } @assemblies;
-        my @assemblies_now = sort keys %assemblies_now;
-
-        my $assembly_count_now = scalar @assemblies_now;
-        my $assembly_count_diff = $assembly_count_now - $assembly_count;
-        if( $assembly_count_diff > 0 ||
-            defined $rename_dot_assembly_with ) {
-
-            if( join( "", @assemblies ) !~ /^[a-zA-Z0-9\.]*$/ ) {
-                error( $0, $filename, $dataname,
-                       "newly generated assembly names have overflowed " .
-                       "single alphanumeric ([a-zA-Z0-9]) character " .
-                       "class, exiting" );
-                next;
-            }
+        if( @new_assemblies > 0 || defined $rename_dot_assembly_with ) {
 
             my @messages;
             if( defined $rename_dot_assembly_with ) {
@@ -275,14 +265,6 @@ for my $filename (@ARGV) {
                 note( $0, $filename, $dataname, $msg );
             }
 
-            my @new_assemblies;
-            for my $atom_index (keys %$alternatives) {
-                my $assembly_nr = $alternatives->{$atom_index}[0];
-                if( !defined $new_assemblies[$assembly_nr] ) {
-                    $new_assemblies[$assembly_nr] = [];
-                }
-                push( @{$new_assemblies[$assembly_nr]}, $atom_index );
-            }
             for my $assembly (@new_assemblies) {
                 my @names = sort map( $atom_list->[$_]{name},
                                       @$assembly );
@@ -295,10 +277,10 @@ for my $filename (@ARGV) {
                 }
             }
 
-            if( $assembly_count_diff > 0 ) {
+            if( @new_assemblies > 0 ) {
                 note( $0, $filename, $dataname,
-                      "$assembly_count_diff site(s) were marked " .
-                      "as disorder assemblies" );
+                      scalar( @new_assemblies ) . " site(s) " .
+                      "were marked as disorder assemblies" );
             }
 
             my $atom_site_tag;
