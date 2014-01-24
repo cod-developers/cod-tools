@@ -167,21 +167,21 @@ for my $filename (@ARGV) {
         my $has_dot_assembly = exists $assemblies{'.'};
 
         my $assembly_count = scalar keys %assemblies;
-
-        my $rename_dot_assembly =
-            ($has_dot_assembly && ($assembly_count > 1 ||
-                                   scalar( keys %$alternatives ) > 0));
-
         my @all_assemblies = sort keys %assemblies;
         my $last_assembly = $all_assemblies[-1];
 
-        if( defined $last_assembly && $rename_dot_assembly ) {
+        my $rename_dot_assembly_with;
+        if( $has_dot_assembly && ($assembly_count > 1 ||
+                                   scalar( keys %$alternatives ) > 0) ) {
             if( $last_assembly eq '.' ) {
-                $last_assembly = 'A';
+                $rename_dot_assembly_with = 'A';
             } else {
-                $last_assembly = chr( ord( $last_assembly ) + 1 );
+                $rename_dot_assembly_with =
+                    chr( ord( $last_assembly ) + 1 );
             }
+            $last_assembly = $rename_dot_assembly_with;
         }
+
         my $first_assembly;
         if( defined $last_assembly ) {
             $first_assembly = chr( ord( $last_assembly ) + 1 );
@@ -189,9 +189,10 @@ for my $filename (@ARGV) {
             $first_assembly = 'A';
         }
 
-        if( $rename_dot_assembly ) {
+        if( defined $rename_dot_assembly_with ) {
             note( $0, $filename, $dataname,
-                  "disorder assembly '.' was renamed to 'A'" );
+                  "disorder assembly '.' was renamed to " .
+                  "'$rename_dot_assembly_with'" );
         }
 
         my @assemblies;
@@ -207,19 +208,15 @@ for my $filename (@ARGV) {
             } elsif( exists $atom->{assembly} &&
                      exists $atom->{group} &&
                      $atom->{assembly} ne '.' ) {
-                if( $rename_dot_assembly ) {
-                    push( @assemblies,
-                          chr( ord( $atom->{assembly} ) + 1 ) );
-                } else {
-                    push( @assemblies, $atom->{assembly} );
-                }
+                push( @assemblies, $atom->{assembly} );
                 push( @groups, $atom->{group} );
-            } elsif( $rename_dot_assembly &&
+            } elsif( defined $rename_dot_assembly_with &&
                      exists $atom->{assembly} &&
                      exists $atom->{group} &&
                      $atom->{assembly} eq '.' &&
                      $atom->{group} ne '.' ) {
-                push( @assemblies, 'A' );
+                push( @assemblies,
+                      $rename_dot_assembly_with );
                 push( @groups, $atom->{group} );
             } else {
                 push( @assemblies, '.' );
@@ -231,10 +228,13 @@ for my $filename (@ARGV) {
                                                grep { $_ ne '.' }
                                                @assemblies };
         my $assembly_count_diff = $assembly_count_now - $assembly_count;
-        if( $assembly_count_diff > 0 ) {
-            note( $0, $filename, $dataname,
-                  "$assembly_count_diff site(s) were marked " .
-                  "as disorder assemblies" );
+        if( $assembly_count_diff > 0 ||
+            defined $rename_dot_assembly_with ) {
+            if( $assembly_count_diff > 0 ) {
+                note( $0, $filename, $dataname,
+                      "$assembly_count_diff site(s) were marked " .
+                      "as disorder assemblies" );
+            }
 
             my $atom_site_tag;
 
