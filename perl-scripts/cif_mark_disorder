@@ -233,9 +233,18 @@ for my $filename (@ARGV) {
                 note( $0, $filename, $dataname, $msg );
             }
 
+#             use Serialise;
+#             serialiseRef( $alternatives );
+#             exit( 0 );
+
+
             my @new_assemblies;
-            for my $atom_index (%$assemblies) {
-                $new_assemblies[$assemblies->{$atom_index}] = $atom_index;
+            for my $atom_index (keys %$alternatives) {
+                my $assembly_nr = $alternatives->{$atom_index}[0];
+                if( !defined $new_assemblies[$assembly_nr] ) {
+                    $new_assemblies[$assembly_nr] = [];
+                }
+                push( @{$new_assemblies[$assembly_nr]}, $atom_index );
             }
             for my $assembly (@new_assemblies) {
                 my @names = sort map( $atom_list->[$_]{name},
@@ -244,8 +253,9 @@ for my $filename (@ARGV) {
                                            map( "'$_'", @names ) ) .
                           " were marked as alternatives";
                 push( @messages, $msg );
-                if( 
-                note( $0, $filename, $dataname, $msg );
+                if( $report_marked_disorders ) {
+                    note( $0, $filename, $dataname, $msg );
+                }
             }
 
             if( $assembly_count_diff > 0 ) {
@@ -383,15 +393,6 @@ sub get_alternatives
                      " share the same site, but the sum of their " .
                      "occupancies is $occupancy_sum" );
             next;
-        }
-        if( $report_marked_disorders ) {
-            note( $0, $filename, $dataname,
-                  "atoms " . join( ", ",
-                                   sort map( "'" .
-                                             $atom_list->[$_]{name} .
-                                             "'",
-                                             @$assembly ) ) .
-                  " were marked as alternatives" );
         }
         my $group_nr = 1;
         foreach( sort @$assembly ) {
