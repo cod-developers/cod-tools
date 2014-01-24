@@ -189,12 +189,6 @@ for my $filename (@ARGV) {
             $first_assembly = 'A';
         }
 
-        if( defined $rename_dot_assembly_with ) {
-            note( $0, $filename, $dataname,
-                  "disorder assembly '.' was renamed to " .
-                  "'$rename_dot_assembly_with'" );
-        }
-
         my @assemblies;
         my @groups;
         for my $atom (@$atom_list) {
@@ -230,6 +224,30 @@ for my $filename (@ARGV) {
         my $assembly_count_diff = $assembly_count_now - $assembly_count;
         if( $assembly_count_diff > 0 ||
             defined $rename_dot_assembly_with ) {
+
+            my @messages;
+            if( defined $rename_dot_assembly_with ) {
+                my $msg = "disorder assembly '.' was renamed to " .
+                          "'$rename_dot_assembly_with'";
+                push( @messages, $msg );
+                note( $0, $filename, $dataname, $msg );
+            }
+
+            my @new_assemblies;
+            for my $atom_index (%$assemblies) {
+                $new_assemblies[$assemblies->{$atom_index}] = $atom_index;
+            }
+            for my $assembly (@new_assemblies) {
+                my @names = sort map( $atom_list->[$_]{name},
+                                      @$assembly );
+                my $msg = "atoms " . join( ", ",
+                                           map( "'$_'", @names ) ) .
+                          " were marked as alternatives";
+                push( @messages, $msg );
+                if( 
+                note( $0, $filename, $dataname, $msg );
+            }
+
             if( $assembly_count_diff > 0 ) {
                 note( $0, $filename, $dataname,
                       "$assembly_count_diff site(s) were marked " .
