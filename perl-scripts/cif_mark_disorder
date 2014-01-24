@@ -40,6 +40,7 @@ my $use_parser = "c";
 my $exclude_zero_occupancies = 1;
 my $report_marked_disorders = 1;
 my $ignore_occupancies = 0;
+my $messages_to_depositor_comments = 1;
 
 #* USAGE:
 #*     $0 [options] input1.cif [input2.cif ...]
@@ -62,6 +63,10 @@ my $ignore_occupancies = 0;
 #*     --report-marked-disorders
 #*     --no-report-marked-disorders
 #*     --dont-report-marked-disorders
+#*
+#*     --add-depositor-comments
+#*     --no-add-depositor-comments
+#*     --dont-add-depositor-comments
 #*
 #*     --brick-size  1
 #*
@@ -93,6 +98,13 @@ my $ignore_occupancies = 0;
         sub { $report_marked_disorders = 0 },
     "--dont-report-marked-disorders" =>
         sub { $report_marked_disorders = 0 },
+
+    "--add-depositor-comments" =>
+        sub { $messages_to_depositor_comments = 1 },
+    "--no-add-depositor-comments" =>
+        sub { $messages_to_depositor_comments = 0 },
+    "--dont-add-depositor-comments" =>
+        sub { $messages_to_depositor_comments = 0 },
 
     "--brick-size" => \$brick_size,
 
@@ -235,11 +247,6 @@ for my $filename (@ARGV) {
                 note( $0, $filename, $dataname, $msg );
             }
 
-#             use Serialise;
-#             serialiseRef( $alternatives );
-#             exit( 0 );
-
-
             my @new_assemblies;
             for my $atom_index (keys %$alternatives) {
                 my $assembly_nr = $alternatives->{$atom_index}[0];
@@ -282,6 +289,22 @@ for my $filename (@ARGV) {
                           '_atom_site_disorder_group',
                           $atom_site_tag,
                           \@groups );
+
+            if( $messages_to_depositor_comments ) {
+                my $comment = "  The following automatic conversions " .
+                              "were performed:\n\n";
+                $comment .= join( "\n", map( "  " . ucfirst($_) . ".",
+                                             @messages ) ) . "\n\n";
+                $comment .= "  Automatic conversion script\n  $Id";
+                if( !$values->{_cod_depositor_comments} ) {
+                    set_tag( $dataset,
+                             '_cod_depositor_comments',
+                             "\n$comment" );
+                } else {
+                    $values->{_cod_depositor_comments}[-1] .=
+                        "\n\n$comment";
+                }
+            }
         }
 
         print_cif( $dataset,
