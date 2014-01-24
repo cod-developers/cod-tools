@@ -29,6 +29,7 @@ my $refering_db_name = "cod";
 
 my $split_author_names = 1;
 my $output_format = "xml";
+my $utf_code_point_format = "&#x%04X;"; # default is HTML escapes
 my $replace_utf_code_points_from;
 
 my $from;
@@ -177,15 +178,19 @@ my %database = (
 
     "--xml-output"      => sub { $output_format = "xml" },
     "--n3-output"       => sub { $output_format = "n3" },
-    "--turtle-output"   => sub { $output_format = "turtle"},
-    "--ntriples-output" => sub { $output_format = "ntriples"},
-    "--n-triples-output" => sub { $output_format = "ntriples"},
+    "--turtle-output"   => sub { $output_format = "turtle" },
+    "--ntriples-output" => sub { $output_format = "ntriples" },
+    "--n-triples-output" => sub { $output_format = "ntriples" },
 
     "--replace-utf-codepoints-from" => \$replace_utf_code_points_from,
     "--no-replace-utf-codepoints" =>
         sub { $replace_utf_code_points_from = undef },
     "--dont-replace-utf-code-points" =>
         sub { $replace_utf_code_points_from = undef },
+
+    "--html-utf-escapes" => sub { $utf_code_point_format = "&#x%04X;" },
+    "--internal-utf-escapes" => sub { $utf_code_point_format = "\\u%04X" },
+    "--utf-escape-format"    => \$utf_code_point_format,
 
     "--help,--usage"            => sub { SUsage::usage; exit },
 );
@@ -328,8 +333,9 @@ if ($output_format eq "xml") {
             if( $field ne 'authors' || !$split_author_names ) {
                 if( defined $replace_utf_code_points_from ) {
                     $struct->{$field} =
-                        replace_utf_codepoints_html( $struct->{$field},
-                                                $replace_utf_code_points_from );
+                        replace_utf_codepoints( $struct->{$field},
+                                                $replace_utf_code_points_from,
+                                                $utf_code_point_format );
                 }
                 print "    <${vocabulary_name}:$field>";
                 print $struct->{$field};
@@ -338,8 +344,9 @@ if ($output_format eq "xml") {
                 print join( "\n",
                             map( "    <${vocabulary_name}:author>" .
                                  ( defined $replace_utf_code_points_from
-                                     ? replace_utf_codepoints_html( $_,
-                                               $replace_utf_code_points_from )
+                                     ? replace_utf_codepoints( $_,
+                                               $replace_utf_code_points_from,
+                                               $utf_code_point_format )
                                      : $_ ) .
                                  "</${vocabulary_name}:author>",
                                  split( /\s*;\s*/, $struct->{$field} ) ) );
@@ -388,7 +395,8 @@ if ($output_format eq "xml") {
                 if( defined $replace_utf_code_points_from ) {
                     $struct->{$field} =
                         replace_utf_codepoints ( $struct->{$field},
-                                                $replace_utf_code_points_from );
+                                                $replace_utf_code_points_from,
+                                                $utf_code_point_format );
                 }
                 print "  ${vocabulary_name}:$field ";
                 print $struct->{$field};
@@ -400,7 +408,8 @@ if ($output_format eq "xml") {
                                  ( defined $replace_utf_code_points_from
                                      ? replace_utf_codepoints ( 
                                        (" "x$length ) . quote_literals($_),
-                                               $replace_utf_code_points_from )
+                                        $replace_utf_code_points_from,
+                                        $utf_code_point_format )
                                      : (" "x$length ). quote_literals($_) ),
                                  split( /\s*;\s*/, $struct->{$field} ) ) ) );
                 $authors =~ s/\s*//;
@@ -442,8 +451,9 @@ if ($output_format eq "xml") {
                 $struct->{$field} = '"' . $struct->{$field} . '"';
                 if( defined $replace_utf_code_points_from ) {
                     $struct->{$field} =
-                        replace_utf_codepoints ( $struct->{$field},
-                                                $replace_utf_code_points_from );
+                        replace_utf_codepoints( $struct->{$field},
+                                                $replace_utf_code_points_from,
+                                                $utf_code_point_format );
                 }
                 print "$subject " .
                       "<${vocabulary_url_prefix}$field> " . 
@@ -452,7 +462,8 @@ if ($output_format eq "xml") {
                 foreach my $object ( split( /\s*;\s*/, $struct->{$field} ) ) {
                     if( defined $replace_utf_code_points_from ) {
                         $object = replace_utf_codepoints ( $object,
-                                                $replace_utf_code_points_from );
+                                                $replace_utf_code_points_from,
+                                                $utf_code_point_format );
                     }
 
                     print "$subject " .
@@ -477,19 +488,10 @@ sub quote_literals
 
 sub replace_utf_codepoints
 {
-    my( $string, $from ) = @_;
+    my ( $string, $from, $format ) = @_;
     my $hex = sprintf( "%x", $from );
     $string =~
-        s/([\x{$hex}-\x{7FFFFFFF}])/sprintf("\\u%04X", ord($1))/eg;
-    return $string;
-}
-
-sub replace_utf_codepoints_html
-{
-    my( $string, $from ) = @_;
-    my $hex = sprintf( "%x", $from );
-    $string =~
-        s/([\x{$hex}-\x{7FFFFFFF}])/sprintf("&#x%04X;", ord($1))/eg;
+        s/([\x{$hex}-\x{7FFFFFFF}])/sprintf($format, ord($1))/eg;
     return $string;
 }
 
