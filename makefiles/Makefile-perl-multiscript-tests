@@ -63,6 +63,8 @@ endif
 
 TEST_DIR       = ./inputs
 OUTPUT_DIR     = ./outputs
+DESC_EXT       = tst
+DIFF_EXT       = diff
 
 TEST_FILES = ${wildcard ${TEST_DIR}/*${EXT}}
 RES_FILES  = ${patsubst ${TEST_DIR}/%${EXT},${OUTPUT_DIR}/%.out,${TEST_FILES}}
@@ -260,6 +262,20 @@ listdiff: # test
 	@-( test -d ${SHELL_OUTDIR} && \
 	    ls -l ${SHELL_OUTDIR}/*.diff | awk '{if( $$5 > 0 ) print}' ) || \
 	    true
+
+blame:
+	@-( test -d ${OUTPUT_DIR} && \
+	    ls -l ${OUTPUT_DIR}/*.${DIFF_EXT} |  awk '{if( $$5 > 0 ) print $$9}' | \
+	    xargs -n1 basename | \
+	    perl -pe "s/(.*)\.${DIFF_EXT}/\.inputs\/\$$1.${DESC_EXT}/" |  \
+	    xargs -i sh -c \
+	           'echo "{}:"; \
+	            if test -f {}; \
+	                then cat {}; \
+	                else echo "No description is given for this test."; fi; \
+	            echo' \
+	            )  ||\
+	    true 
 
 #------------------------------------------------------------------------------
 
