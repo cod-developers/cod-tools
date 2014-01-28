@@ -40,6 +40,16 @@ setvar OUTPUT_MODE  = "html"
 
 setvar BASENAME = "`basename $0`"
 
+# CIF_HEADER:
+#
+# curl http://www.crystallography.net/cod/cgi-bin/cif-deposit.pl -F
+# header=crystaleye <kiti parametrai>
+# 
+# Taip pat galima nurodyti ir kitas mūsų naudojamas antraštes: 'common',
+# 'amcsd' ir 'iucr'.
+# 
+setvar CIF_HEADER = common 
+
 # Executables:
 
 curl=curl
@@ -70,6 +80,11 @@ curl=curl
 #**  --replace
 #**      Specify that given files are replacements for previously
 #**      deposited data
+#**
+#**  --common-cif-header      Use a standard COD CIF header (default)
+#**  --iucr-cif-header        Use a COD CIF header agreed with IUCr
+#**  --amcsd-cif-header       Use a COD CIF header agreed with R.D.
+#**  --crystaleye-cif-header  Use a COD CIF header agreed with P.M.-R.
 #**
 #**  -P, --progress
 #**      Ask cif-deposit.pl to report progress of the deposition.
@@ -136,6 +151,27 @@ do
           ;;
       --release|--release-data)
           RELEASE=true
+          ;;
+      --common-cif-header|--common-cif-heade|--common-cif-head|\
+      --common-cif-hea|--common-cif-he|--common-cif-he|--common-cif|\
+      --common-ci|--common-c|--common|--commo|--comm|--com)
+          CIF_HEADER=common
+          ;;
+      --iucr-cif-header|--iucr-cif-heade|--iucr-cif-head|--iucr-cif-hea|\
+      --iucr-cif-h|--iucr-cif|--iucr-ci|--iucr-c|--iucr|--iuc|--iu|--i)
+          CIF_HEADER=iucr
+          ;;
+      --crystaleye-cif-header|--crystaleye-cif-heade|--crystaleye-cif-head|\
+      --crystaleye-cif-hea|--crystaleye-cif-he|--crystaleye-cif-h|\
+      --crystaleye-cif|--crystaleye-ci|--crystaleye-c|\
+      --crystaleye|--crystaley|--crystale|--crystal|--crysta|--cryst|--crys|\
+      --cry|--cr)
+          CIF_HEADER=crystaleye
+          ;;
+      --amcsd-cif-header|--amcsd-cif-heade|--amcsd-cif-head|--amcsd-cif-hea|\
+      --amcsd-cif-h|--amcsd-cif|--amcsd-ci|--amcsd-c|\
+      --amcsd|--amcs|--amc|--am|--a)
+          CIF_HEADER=amcsd
           ;;
       --script|--scrip|--scri|--scr|--sc|--s)
           curl="script curl"
@@ -295,6 +331,7 @@ then
             ${REPLACE_ARG} \
             ${MESSAGE_ARG} \
             ${RELEASE_ARG} \
+            -F header=${CIF_HEADER} \
             -F "output_mode=${OUTPUT_MODE}" \
             -F "username=<${TMP_USERNAME}" \
             -F "password=<${TMP_PASSWRD}" \
@@ -327,6 +364,7 @@ else
             ${REPLACE_ARG} \
             ${MESSAGE_ARG} \
             ${RELEASE_ARG} \
+            -F header=${CIF_HEADER} \
             -F "output_mode=${OUTPUT_MODE}" \
             -F "username=<${TMP_USERNAME}" \
             -F "password=<${TMP_PASSWRD}" \
