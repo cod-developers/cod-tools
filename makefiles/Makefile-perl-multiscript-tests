@@ -266,7 +266,7 @@ listdiff: # test
 
 blame:
 	@-( test -d ${OUTPUT_DIR} && \
-	    ls -l ${OUTPUT_DIR}/*.${DIFF_EXT} |  awk '{if( $$5 > 0 ) print $$9}' | \
+	    ls -l ${OUTPUT_DIR}/*.${DIFF_EXT} |  awk '{if( $$5 > 0 ) print $$NF}' | \
 	    xargs -n1 basename | \
 	    perl -pe "s/(.*)\.${DIFF_EXT}/\.inputs\/\$$1.${DESC_EXT}/" |  \
 	    xargs -i sh -c \
@@ -276,7 +276,7 @@ blame:
 	                else echo "No description is given for this test."; fi; \
 	            echo' \
 	            )  ||\
-	    true 
+	    true
 
 #------------------------------------------------------------------------------
 
