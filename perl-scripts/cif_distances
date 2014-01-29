@@ -30,14 +30,13 @@ use SOptions;
 use SUsage;
 use UserMessage;
 
-my $print_distance_matrix = 1;
 my $uniquify_atoms = 1;
 my $include_null_distances = 0;
-my $print_pairwise;
 my $print_original;
 my $print_symmetrical;
 my $print_shifted;
 my $add_filename;
+my $output_format = "matrix";
 my $verbose;
 my $format = "%-11.3f";
 my $line_length = 80;
@@ -101,15 +100,13 @@ my %escaped_symbols = ("\"" => '"', "\'" => "'");
     "--do-not-print-filename"  => sub { $add_filename = undef },
     "-H,--shifted-atoms"       => sub { $print_shifted = 1 },
     "--no-shifted-atoms"       => sub { $print_shifted = undef },
-    "-M,--distance-matrix"     => sub { $print_distance_matrix = 1;
-                                       $print_pairwise = undef },
+    "-M,--distance-matrix"     => sub { $output_format = "matrix" },
     "-O,--original-atoms"      => sub { $print_original = 1 },
     "--no-original-atoms"      => sub { $print_original = undef },
     "--include-null-distances" => sub { $include_null_distances = 1 },
     "--no-null-distances"      => sub { $include_null_distances = 0 },
     "--exclude-null-distances" => sub { $include_null_distances = 0 },
-    "-P,--pairwise-distance"   => sub { $print_pairwise = 1;
-                                       $print_distance_matrix = undef },
+    "-P,--pairwise-distance"   => sub { $output_format = "pairwise"; },
     "-S,--symetrical-atoms"    => sub { $print_symmetrical = 1 },
     "--no-symetrical-atoms"    => sub { $print_symmetrical = undef },
     "-l,--matrix-line-length"  => sub { $line_length = get_value() },
@@ -129,11 +126,11 @@ my %escaped_symbols = ("\"" => '"', "\'" => "'");
 
 @ARGV = ( "-" ) unless @ARGV; 
 
-if ( $print_pairwise ) {
+if ( $output_format eq "pairwise" ) {
     print "FORMAT pairwise_distance v1.0 svn://www.crystallography.net/" . 
           "cod-tools/trunk/perl-scripts/docs/" .
           "cif_distances_pairwise_distance_v1.0\n"
-} else {
+} elsif ( $output_format eq "matrix" ) {
     print "FORMAT distance_matrix v1.0 svn://www.crystallography.net/cod-tools/" .
           "trunk/perl-scripts/docs/cif_distances_distance_matrix_v1.0\n";
 }
@@ -172,11 +169,11 @@ foreach my $filename ( @ARGV ) {
         my $printable_properties = [ "label", "chemical_type", 
                                      "coordinates_ortho", "coordinates_fract",
                                      "disorder_group", "disorder_assembly" ];
-    
+
         if ( $print_original ) {
             print_atoms( $atoms, $printable_properties );
         }
-    
+
         #   generates atoms by applying symmetry operators.
         #   at this subroutine original atoms are fitted into the first octant
         #   by applying x,y,z operator modulus 1        
@@ -188,25 +185,23 @@ foreach my $filename ( @ARGV ) {
         if ( $print_symmetrical ) {
             print_atoms( $sym_atoms, $printable_properties );
         }
-    
+
         my @shifted_atoms = map { shift_atom( $_, $ortho_matrix ) } @{$sym_atoms};
-    
+
         push @$printable_properties, "shift_vector";
         if ( $print_shifted ) {
             print_atoms( \@shifted_atoms, $printable_properties );
         }
-    
+
         my ( $distances, $headers, $atoms_used ) = get_distances( \@shifted_atoms, 
                                                                   $symop_count );
-    
-        if ( $print_distance_matrix ) {
+
+        if ( $output_format eq "pairwise" ) {
+            print_pairwise( $distances, $atoms_used, $filename, $add_filename );
+        } elsif ( $output_format eq "matrix" ) {
             print_distance_matrix( $distances, $headers, $format, $line_length );
         }
-    
-        if ( $print_pairwise ) {
-            print_pairwise( $distances, $atoms_used, $filename, $add_filename );
-        }
-        
+
         }; warn $@ if $@;
     }
 }
