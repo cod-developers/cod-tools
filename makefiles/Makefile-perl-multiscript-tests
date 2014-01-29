@@ -268,11 +268,11 @@ blame:
 	@-( test -d ${OUTPUT_DIR} && \
 	    ls -l ${OUTPUT_DIR}/*.${DIFF_EXT} |  awk '{if( $$5 > 0 ) print $$NF}' | \
 	    xargs -n1 basename | \
-	    perl -pe "s/(.*)\.${DIFF_EXT}/\.inputs\/\$$1.${DESC_EXT}/" |  \
-	    xargs -i sh -c \
-	           'echo "{}:"; \
-	            if test -f {}; \
-	                then cat {}; \
+	    perl -pe "s/(.*)\.${DIFF_EXT}/\$$1/" | xargs -i sh -c '\
+	            DESC_FILE="${SCRIPT_TST_DIR}/{}.${DESC_EXT}"; \
+	            echo "{}:"; \
+	            if test -f "$${DESC_FILE}"; \
+	                then cat $${DESC_FILE}; \
 	                else echo "No description is given for this test."; fi; \
 	            echo' \
 	            )  ||\
