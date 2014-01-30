@@ -32,6 +32,7 @@ use UserMessage;
 
 my $uniquify_atoms = 1;
 my $include_null_distances = 0;
+my $include_self_distances = 0;
 my $print_original;
 my $print_symmetrical;
 my $print_shifted;
@@ -72,6 +73,12 @@ my %escaped_symbols = ("\"" => '"', "\'" => "'");
 #**                     atoms from different disorder groups of the same 
 #**                     disorder assembly in pairwise distances output format
 #**                     (default).
+#** --include-self-distances
+#**                     Include entries of distances between symmetry-related 
+#**                     instances of the same atom.
+#** --no-self-distances, --exclude-self-distances
+#**                     Exclude entries of distances between symmetry-related
+#**                     instances of the same atom (default).
 #** -P, --pairwise-distance
 #**                     Set pairwise distance output format.
 #** -S, --symetrical-atoms
@@ -106,6 +113,9 @@ my %escaped_symbols = ("\"" => '"', "\'" => "'");
     "--include-null-distances" => sub { $include_null_distances = 1 },
     "--no-null-distances"      => sub { $include_null_distances = 0 },
     "--exclude-null-distances" => sub { $include_null_distances = 0 },
+    "--include-self-distances" => sub { $include_self_distances = 1 },
+    "--no-self-distances"      => sub { $include_self_distances = 0 },
+    "--exclude-self-distances" => sub { $include_self_distances = 0 },
     "-P,--pairwise-distance"   => sub { $output_format = "pairwise"; },
     "-S,--symetrical-atoms"    => sub { $print_symmetrical = 1 },
     "--no-symetrical-atoms"    => sub { $print_symmetrical = undef },
@@ -471,40 +481,45 @@ sub get_distances {
         my @atom_rows_used;
         push @atom_rows_used, $atom_1;
         my @distance_row;
-        push @distance_row, 0;
+       # push @distance_row, 0;
         
         # $j holds the index of the second group
-        for ( my $j = $i + 1; $j < $number_of_groups; $j++ ) {
-            my $atom_2 = $all_atoms->[ $j * $group_size ];
+        for ( my $j = $i; $j < $number_of_groups; $j++ ) {
+            my $atom_2 = $all_atoms->[ $j * $group_size + 1 ];
             #
             my $min_distance;
             my $min_index = 0;
             
+            #$start_index = 1 if ($i == $j);
+
             if ( check_disorder( $atom_1, $atom_2 ) ) {
 
                 $min_distance = get_distance( $atom_1->{coordinates_ortho}, 
                                               $atom_2->{coordinates_ortho} );
+                $min_distance = 5000;
 
                 # $k holds the element index in the second group 
                 for ( my $k = 0; $k < $group_size; $k++ ) {
                     $atom_2 = $all_atoms -> [ $j * $group_size + $k ];
                     my $distance = get_distance( $atom_1->{coordinates_ortho}, 
                                                  $atom_2->{coordinates_ortho} );
-                
-                    if ( $distance < $min_distance ) {
-                         $min_distance = $distance;
-                         $min_index = $k;
+                    
+                    if ( !( equalss($distance, 0, 3) && $i == $j ) ) {
+                        if ( $distance < $min_distance ) {
+                            ( $min_index, $min_distance ) = ( $k, $distance )
+                        }
                     }
                 }
             } else {
                 $min_distance = "-";
             }
             #
+           # print $min_distance . "\n";
             push @distance_row, $min_distance;
             push @atom_rows_used, $all_atoms -> [ $j * $group_size + $min_index ];
 
         }
-
+      #  print @atom_rows_used . "\n";
         push @distances, \@distance_row;
         push @atoms_used, \@atom_rows_used;
     }
@@ -724,13 +739,15 @@ sub print_pairwise {
       for ( my $j = 1; $j < @{ @$atoms_used[ $i ] }; $j++ ) {
         my $atom_2 = @$atoms_used[ $i ] -> [ $j ];
 
-        my $output_string = "";
+        # atoms are not simmetry-related or it is allowed to print them
+        if ( ( $j - 1 ) != 0 || $include_self_distances ) {
+            my $output_string = "";
 
-        if ( @$distances[ $i ] -> [ $j ] ne "-" ) {
-            $output_string .= sprintf( 'DIST %-6.3f', @$distances[ $i ] -> [ $j ] )
-        } elsif( $include_null_distances ) {
-            $output_string .= sprintf( 'DIST %-6s', "-" )
-        }
+            if ( @$distances[ $i ] -> [ $j-1 ] ne "-" ) {
+                $output_string .= sprintf( 'DIST %-6.3f', @$distances[ $i ] -> [ $j-1 ] )
+            } elsif( $include_null_distances ) {
+                $output_string .= sprintf( 'DIST %-6s', "-" )
+            }
 
             $output_string .= sprintf( ' %10s %10s %24s %8s ',  
                     $atom_1 -> { label }."/".$atom_1 -> { chemical_type },
@@ -745,5 +762,11 @@ sub print_pairwise {
             print Escape::escape("$output_string\n", { sequence => $escape_sequence,
                                escaped_symbols => \%escaped_symbols });
         }
+      }
     }
 }
+
+sub equalss {
+    my ($float_1, $float_2, $dp) = @_;
+    return ( sprintf("%.${dp}f", $float_1) eq sprintf("%.${dp}f", $float_2) );
+  }
