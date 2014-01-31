@@ -136,16 +136,18 @@ my %escaped_symbols = ("\"" => '"', "\'" => "'");
 
 @ARGV = ( "-" ) unless @ARGV; 
 
+# Print output format header
 if ( $output_format eq "pairwise" ) {
-    print "FORMAT pairwise_distance v1.0 svn://www.crystallography.net/" . 
+    print "FORMAT pairwise_distance v1.0 svn://www.crystallography.net/" .
           "cod-tools/trunk/perl-scripts/docs/" .
           "cif_distances_pairwise_distance_v1.0\n"
 } elsif ( $output_format eq "matrix" ) {
-    print "FORMAT distance_matrix v1.0 svn://www.crystallography.net/cod-tools/" .
-          "trunk/perl-scripts/docs/cif_distances_distance_matrix_v1.0\n";
+    print "FORMAT distance_matrix v1.0 svn://www.crystallography.net/" .
+          "cod-tools/trunk/perl-scripts/docs/" .
+          "cif_distances_distance_matrix_v1.0\n";
 }
 
-foreach my $filename ( @ARGV ) { 
+foreach my $filename ( @ARGV ) {
 
     my $parser = new CIFParser;
 
@@ -154,13 +156,12 @@ foreach my $filename ( @ARGV ) {
     foreach my $dataset ( @$data ) {
 
         eval {
-
         #   extracts cell constants
         my @unit_cell =
             CIFSymmetryGenerator::get_cell( $dataset->{values}, $filename, 
                                             $dataset->{name} );
 
-        my $ortho_matrix = symop_ortho_from_fract( @unit_cell );
+        my $ortho_matrix = Fractional::symop_ortho_from_fract( @unit_cell );
 
         #   extracts symmetry operators
         my $sym_data = CIFSymmetryGenerator::get_symmetry_operators( 
@@ -172,17 +173,15 @@ foreach my $filename ( @ARGV ) {
 
         #   extracts atoms
         my $atoms = get_atoms( $dataset, $ortho_matrix, $filename, $uniquify_atoms );
-        
+
         @$atoms = sort { ( $a -> {chemical_type} cmp $b -> {chemical_type} ) ||
                          ( $a -> {label} cmp $b -> {label} ) } @$atoms;
-        
+
         my $printable_properties = [ "label", "chemical_type", 
                                      "coordinates_ortho", "coordinates_fract",
                                      "disorder_group", "disorder_assembly" ];
 
-        if ( $print_original ) {
-            print_atoms( $atoms, $printable_properties );
-        }
+        print_atoms( $atoms, $printable_properties ) if ( $print_original );
 
         #   generates atoms by applying symmetry operators.
         #   at this subroutine original atoms are fitted into the first octant
@@ -192,16 +191,14 @@ foreach my $filename ( @ARGV ) {
                                                         $ortho_matrix );
 
         push @$printable_properties, "sym_operator";
-        if ( $print_symmetrical ) {
-            print_atoms( $sym_atoms, $printable_properties );
-        }
+
+        print_atoms( $sym_atoms, $printable_properties ) if ( $print_symmetrical );
 
         my @shifted_atoms = map { shift_atom( $_, $ortho_matrix ) } @{$sym_atoms};
 
         push @$printable_properties, "shift_vector";
-        if ( $print_shifted ) {
-            print_atoms( \@shifted_atoms, $printable_properties );
-        }
+
+        print_atoms( \@shifted_atoms, $printable_properties ) if ( $print_shifted );
 
         my ( $distances, $headers, $atoms_used ) = get_distances( \@shifted_atoms, 
                                                                   $symop_count );
@@ -297,7 +294,7 @@ sub get_atoms {
         };
 
         @{$atom->{coordinates_fract}} = map { s/\(\d+\)\s*$//; $_ }
-            @{$atom->{coordinates_fract}};  
+            @{$atom->{coordinates_fract}};
 
         $atom->{coordinates_ortho} =
             CIFSymmetryGenerator::mat_vect_mul( $ortho_matrix,
@@ -360,8 +357,7 @@ sub uniquify_atom_names()
     my %used_labels;
     my @labels_to_be_renamed;
 
-    foreach my $atom ( @{$init_atoms} )
-    {
+    foreach my $atom ( @{$init_atoms} ) {
         my $atom_copy = CIFSymmetryGenerator::copy_atom( $atom );
         my $label = $atom->{label};
 
@@ -378,8 +374,7 @@ sub uniquify_atom_names()
         $used_labels{$label}{count} ++;
     }
 
-    if( $uniquify_atoms )
-    {
+    if( $uniquify_atoms ) {
         foreach my $label (@labels_to_be_renamed)
         {
             foreach my $renamed_atom (@{$used_labels{$label}{atoms}}) {
@@ -437,16 +432,12 @@ sub symops_apply {
                                                     $ortho_matrix );
 
     # It might be better to make a copy of the symop_generate_atoms 
-    # subroutine and add the symmetry opperator directly there    
+    # subroutine and add the symmetry opperator directly there
     my $i = 0;
     foreach ( @{ $sym_atoms } ) {
         $_ -> { "sym_operator" } = @$sym_data[ $i ];
-        
-        $i++;
-        if ( $i >= @$sym_data ) {
-            $i = 0;
-        };
-    }    
+        $i = ( $i + 1 ) % @$sym_data;
+    }
 
     return $sym_atoms, scalar( @sym_operators );
 }
@@ -504,7 +495,7 @@ sub get_distances {
                     my $distance = get_distance( $atom_1->{coordinates_ortho}, 
                                                  $atom_2->{coordinates_ortho} );
                     
-                    if ( !( equalss($distance, 0, 3) && $i == $j ) ) {
+                    if ( !( equals( $distance, 0, 3 ) && $i == $j ) ) {
                         if ( $distance < $min_distance ) {
                             ( $min_index, $min_distance ) = ( $k, $distance )
                         }
@@ -766,7 +757,7 @@ sub print_pairwise {
     }
 }
 
-sub equalss {
+sub equals {
     my ($float_1, $float_2, $dp) = @_;
     return ( sprintf("%.${dp}f", $float_1) eq sprintf("%.${dp}f", $float_2) );
   }
