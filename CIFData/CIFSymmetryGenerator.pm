@@ -287,7 +287,7 @@ sub get_cell($$$)
             $cell_lengths_and_angles[-1] =~ s/\(\d+\)$//;
         } else {
             error( $0, $filename, $dataname,
-                   "cell angle '$cif_tag' not present" );
+                   "cell length '$cif_tag' not present" );
         }
     }
 
