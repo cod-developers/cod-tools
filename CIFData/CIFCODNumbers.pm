@@ -466,6 +466,15 @@ sub bibliographies_are_the_same($$)
 
     my %tags = map {($_,$_)} ( keys %$biblio1, keys %$biblio2 );
 
+    # If DOIs exists, their comparison gives a definitve answer to
+    # whether we are analysing the same paper (data source) or not:
+
+    if( exists $biblio1->{_journal_paper_doi} &&
+        exists $biblio2->{_journal_paper_doi} ) {
+        return
+            $biblio1->{_journal_paper_doi} eq $biblio2->{_journal_paper_doi};
+    }
+
     for my $tag ( keys %tags ) {
         next if( $skip_tag{$tag} );
         if( defined $biblio1->{$tag} && defined $biblio2->{$tag} ) {
@@ -559,7 +568,7 @@ sub query_COD_database
     my @columns = qw( file a b c alpha beta gamma
                       siga sigb sigc sigalpha sigbeta siggamma
                       celltemp diffrtemp cellpressure diffrpressure
-                      journal year volume issue firstpage lastpage
+                      journal year volume issue firstpage lastpage doi
                       duplicateof optimal status flags );
 
     my @history_columns = qw( thermalhist pressurehist );
@@ -651,6 +660,9 @@ sub query_COD_database
 
                         $structure->{bibliography}{_journal_page_last} =
                             $row->{lastpage} if defined $row->{lastpage};
+
+                        $structure->{bibliography}{_journal_paper_doi} =
+                            $row->{doi} if defined $row->{doi};
 
                         push( @{$COD->{$formula}}, $structure );
                     }
