@@ -23,9 +23,7 @@ use CCIFParser;
 use CIFTagCanonicalNames;
 use SymopParse;
 use SymopLookup;
-use SymopAlgebra qw(symop_mul symop_invert);
-use CIFTagPrint;
-use CIFTagManage;
+use SymopAlgebra qw(symop_mul symop_invert symop_modulo_1);
 use File::Basename;
 use SOptions;
 use SUsage;
@@ -42,6 +40,7 @@ my $format = "%8.6f";
 my $continue_on_errors = 0;
 my $audit = 1;
 my $uniquify_atoms = 1;
+my $exclude_equiv_voids = 1;
 my $exclude_zero_occupancies = 1; # Do not use atoms with zero
                                   # occupancies
 
@@ -72,6 +71,12 @@ my $output_geom_bond = 0; # Compute and output the _geom_bond_... data
 
 @ARGV = getOptions
 (
+#** --exclude-equivalent-voids
+#**                    Exclude symmetrically equivalent voids. Default.
+#**
+#** --dont-exclude-equivalent-voids, --no-exclude-equivalent-voids
+#**                    Leave symmetrically equivalent voids.
+#**
 #** --uniquify-atoms
 #**                    Makes unique the labels of atoms (default).
 #**
@@ -125,6 +130,10 @@ my $output_geom_bond = 0; # Compute and output the _geom_bond_... data
 #**                    (default)
 #** --no-audit         do not print audit information to the generated CIF file
 #** --help,--usage     print short usage message (this message) and exit
+
+    "--exclude-equivalent-voids"      => sub { $exclude_equiv_voids = 1 },
+    "--dont-exclude-equivalent-voids" => sub { $exclude_equiv_voids = 0 },
+    "--no-exclude-equivalent-voids"   => sub { $exclude_equiv_voids = 0 },
 
     "--uniquify-atoms"      => sub { $uniquify_atoms = 1; },
     "--no-uniquify-atoms"   => sub { $uniquify_atoms = 0; },
@@ -219,6 +228,7 @@ for my $filename (@ARGV) {
             my $i = 1;
             for my $void_group (@$void_groups) {
                 for my $void (@$void_group) {
+                    next if $void->{radius} <= 0;
                     my $coords = $void->{coordinates_ortho};
                     if( $jmol_isosurface ) {
                         print "isoSurface isosurface$i center {" .
@@ -226,6 +236,11 @@ for my $filename (@ARGV) {
                                     map( sprintf( $format, $_ ),
                                          @$coords ) ),
                               "} sphere " . $void->{radius} . "\n";
+                        print "select ",
+                            $void->{atom1_name}, ", ",
+                            $void->{atom2_name}, ", ",
+                            $void->{atom3_name}, ", ",
+                            $void->{atom4_name}, "\n";
                         $i++;
                     } else {
                         print "VOID ",
@@ -233,6 +248,11 @@ for my $filename (@ARGV) {
                                   map( sprintf( $format, $_ ),
                                        @$coords ) ),
                             " " . $void->{radius} . "\n";
+                        print "ATOMS ",
+                            $void->{atom1_name}, " ",
+                            $void->{atom2_name}, " ",
+                            $void->{atom3_name}, " ",
+                            $void->{atom4_name}, "\n",
                     }
                 }
             }
@@ -1376,6 +1396,8 @@ sub symgen_atom($$$)
         for my $atom (@$sym_atoms) {
             if( !defined $to_be_deleted{$atom->{name}} ) {
                 $atom->{site_symops} = $symops_mapping_to_self;
+                $atom->{site_symops_inv} = [ map { symop_invert( $_ ) }
+                                                 @$symops_mapping_to_self ];
                 push( @unique_atoms, $atom );
             }
         }
@@ -1601,7 +1623,10 @@ sub find_voids
     {
         print $voronota_in join( " ", @{$atom->{coordinates_ortho}} ) . " ";
         print $voronota_in $atom_properties->{$atom->{chemical_type}}
-                                             {covalent_radius} . "\n";
+                                             {vdw_radius} . "\n";
+        foreach my $symop (@{$atom->{site_symops}}) {
+            $symop = symop_mul( $atom->{symop}, $symop );
+        }
     }
     close( $voronota_in );
 
@@ -1609,7 +1634,11 @@ sub find_voids
         while( <$voronota_err> ) { print STDERR $_; }
     }
 
+    my $symops;
+
+    my $voids = {};
     my @voids;
+    VOID:
     while( <$voronota_out> )
     {
         next if /^\s*$/;
@@ -1624,21 +1653,148 @@ sub find_voids
                 last;
             }
         }
-        if( $contains_initial_atom ) {
-            push( @voids,
-                {
-                    atom1_name => $symmetric_atoms->[$atom1]{name},
-                    atom2_name => $symmetric_atoms->[$atom2]{name},
-                    atom3_name => $symmetric_atoms->[$atom3]{name},
-                    atom4_name => $symmetric_atoms->[$atom4]{name},
-                    coordinates_ortho => [ $x, $y, $z ],
-                    radius => $radius,
+        next if !$contains_initial_atom;
+        my @order = map { $symmetric_atoms->[$_] }
+                    sort { $symmetric_atoms->[$a]{site_label} cmp
+                           $symmetric_atoms->[$b]{site_label} }
+                    ($atom1, $atom2, $atom3, $atom4);
+
+        my @labels = map { $_->{site_label} } @order;
+
+        if( $exclude_equiv_voids &&
+            exists $symops->{$labels[0]}
+                            {$labels[1]}
+                            {$labels[2]}
+                            {$labels[3]} ) {
+            my $seen_symops = {};
+            for my $i (0..@order-1) {
+                my $seen_symops_now = {};
+                for my $op_inv (@{$order[$i]->{site_symops_inv}}) {
+                    for my $op (values %{$symops->{$labels[0]}
+                                                  {$labels[1]}
+                                                  {$labels[2]}
+                                                  {$labels[3]}[$i]}) {
+                        my $product = symop_mul( $op, $op_inv );
+                        $product = symop_modulo_1( $product );
+                        my $sn = string_from_symop( $product );
+                        if( exists $seen_symops->{$sn} || $i == 0 ) {
+                            $seen_symops_now->{$sn} = $product;
+                            next VOID if $i == @order-1;
+                        }
+                    }
                 }
-            );
+                last if scalar keys %$seen_symops_now == 0;
+                $seen_symops = $seen_symops_now;
+            }
         }
+
+        push( @voids,
+            {
+                atom1_name => $symmetric_atoms->[$atom1]{name},
+                atom2_name => $symmetric_atoms->[$atom2]{name},
+                atom3_name => $symmetric_atoms->[$atom3]{name},
+                atom4_name => $symmetric_atoms->[$atom4]{name},
+                coordinates_ortho => [ $x, $y, $z ],
+                radius => $radius,
+            }
+        );
+
+        if( !exists $symops->{$labels[0]}
+                             {$labels[1]}
+                             {$labels[2]}
+                             {$labels[3]} ) {
+            if(      $labels[0] eq $labels[1] &&
+                     $labels[0] eq $labels[2] &&
+                     $labels[0] eq $labels[3] ) {
+                my $hashref = {};
+                $symops->{$labels[0]}
+                         {$labels[1]}
+                         {$labels[2]}
+                         {$labels[3]} = [ $hashref, $hashref,
+                                          $hashref, $hashref ];
+            } elsif( $labels[0] eq $labels[1] &&
+                     $labels[0] eq $labels[2] ) {
+                my $hashref = {};
+                $symops->{$labels[0]}
+                         {$labels[1]}
+                         {$labels[2]}
+                         {$labels[3]} = [ $hashref, $hashref,
+                                          $hashref, {} ];
+            } elsif( $labels[0] eq $labels[1] ) {
+                my $hashref1 = {};
+                $symops->{$labels[0]}
+                         {$labels[1]}
+                         {$labels[2]}
+                         {$labels[3]} = [ $hashref1, $hashref1, {}, {} ];
+                if(  $labels[2] eq $labels[3] ) {
+                    my $hashref2 = {};
+                    $symops->{$labels[0]}
+                             {$labels[1]}
+                             {$labels[2]}
+                             {$labels[3]}[2] = $hashref2;
+                    $symops->{$labels[0]}
+                             {$labels[1]}
+                             {$labels[2]}
+                             {$labels[3]}[3] = $hashref2;
+                }
+            } elsif( $labels[1] eq $labels[2] &&
+                     $labels[1] eq $labels[3] ) {
+                my $hashref = {};
+                $symops->{$labels[0]}
+                         {$labels[1]}
+                         {$labels[2]}
+                         {$labels[3]} = [ {}, $hashref,
+                                          $hashref, $hashref ];
+            } elsif( $labels[1] eq $labels[2] ) {
+                my $hashref = {};
+                $symops->{$labels[0]}
+                         {$labels[1]}
+                         {$labels[2]}
+                         {$labels[3]} = [ {}, $hashref, $hashref, {} ];
+            } elsif( $labels[2] eq $labels[3] ) {
+                my $hashref = {};
+                $symops->{$labels[0]}
+                         {$labels[1]}
+                         {$labels[2]}
+                         {$labels[3]} = [ {}, {}, $hashref, $hashref ];
+            } else {
+                $symops->{$labels[0]}
+                         {$labels[1]}
+                         {$labels[2]}
+                         {$labels[3]} = [ {}, {}, {}, {} ];
+            }
+        }
+
+        for( my $i = 0; $i < 4; $i++ ) {
+            register_seen_symops( $symops, \@labels, $i,
+                                  $order[$i]->{site_symops} );
+        }
+
+        # Links may be prepared earlier with Perl methods!
+
     }
 
     return @voids;
+}
+
+sub register_seen_symops
+{
+    my( $symop_data, $atom_labels, $position, $symops ) = @_;
+    for my $symop (@$symops) {
+        my $symop_string = string_from_symop( $symop );
+        next if exists $symop_data->{$atom_labels->[0]}
+                                    {$atom_labels->[1]}
+                                    {$atom_labels->[2]}
+                                    {$atom_labels->[3]}
+                                    [$position]
+                                    {$symop_string};
+        $symop_data->{$atom_labels->[0]}
+                     {$atom_labels->[1]}
+                     {$atom_labels->[2]}
+                     {$atom_labels->[3]}
+                     [$position]
+                     {$symop_string} = $symop;
+    }
 }
 
 sub dump_atoms_as_cif
