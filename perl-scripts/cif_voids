@@ -30,11 +30,13 @@ use SUsage;
 use UserMessage;
 use Fractional;
 use AtomProperties;
+use CODPredepositionCheck qw(run_command);
 
 my $Id = '$Id$';
 
 my $debug = 0;
 my $dump_atoms = 0;
+my $dump_balls = 0;
 my $jmol_isosurface = 0;
 my $format = "%8.6f";
 my $continue_on_errors = 0;
@@ -103,6 +105,13 @@ my $output_geom_bond = 0; # Compute and output the _geom_bond_... data
 #** --dont-dump-atoms, --no-dump-atoms
 #**       Do not dump atoms (default)
 #**
+#** --dump-atom-balls
+#**       Dump atoms and their radii in linear XYZ+R format, as used by
+#**       'voronota'. Comments identifying atoms are also appended.
+#**
+#** --dont-dump-atom-balls, --no-dump-atom-balls
+#**       Do not dump atoms in linear XYZ+R format (default).
+#**
 #** --dump-jmol-isosurfaces
 #**       Dump Jmol isoSurface commands enabling visualisation of the
 #**       void spheres with Jmol.
@@ -155,6 +164,10 @@ my $output_geom_bond = 0; # Compute and output the _geom_bond_... data
     "--dump-atoms"      => sub{ $dump_atoms = 1 },
     "--dont-dump-atoms" => sub{ $dump_atoms = 0 },
     "--no-dump-atoms"   => sub{ $dump_atoms = 0 },
+
+    "--dump-atom-balls"      => sub{ $dump_balls = 1 },
+    "--dont-dump-atom-balls" => sub{ $dump_balls = 0 },
+    "--no-dump-atom-balls"   => sub{ $dump_balls = 0 },
 
     "--dump-jmol-isosurfaces"      => sub{ $jmol_isosurface = 1 },
     "--dont-dump-jmol-isosurfaces" => sub{ $jmol_isosurface = 0 },
@@ -1396,8 +1409,6 @@ sub symgen_atom($$$)
         for my $atom (@$sym_atoms) {
             if( !defined $to_be_deleted{$atom->{name}} ) {
                 $atom->{site_symops} = $symops_mapping_to_self;
-                $atom->{site_symops_inv} = [ map { symop_invert( $_ ) }
-                                                 @$symops_mapping_to_self ];
                 push( @unique_atoms, $atom );
             }
         }
@@ -1612,26 +1623,37 @@ sub find_voids
 
     my %initial_names = map { $_->{name} => 1 } @$initial_atoms;
 
-    my( $voronota_in, $voronota_out, $voronota_err );
-
-    my $voronota_pid = open3( $voronota_in,
-                              $voronota_out,
-                              $voronota_err,
-                              'voronota --mode calculate-vertices -' );
-
+    my @voronota_in;
+    my $i = 0;
     foreach my $atom (@$symmetric_atoms)
     {
-        print $voronota_in join( " ", @{$atom->{coordinates_ortho}} ) . " ";
-        print $voronota_in $atom_properties->{$atom->{chemical_type}}
-                                             {vdw_radius} . "\n";
+        push( @voronota_in,
+              join( " ", @{$atom->{coordinates_ortho}} ) . " " .
+              $atom_properties->{$atom->{chemical_type}}
+                                {vdw_radius} . " # $i " .
+              $atom->{name} );
         foreach my $symop (@{$atom->{site_symops}}) {
             $symop = symop_mul( $atom->{symop}, $symop );
         }
+        $atom->{site_symops_inv} = [ map { symop_invert( $_ ) }
+                                         @{$atom->{site_symops}} ];
+        $i++;
     }
-    close( $voronota_in );
+
+    if( $dump_balls ) {
+        print join( "\n", @voronota_in ) . "\n";
+        exit 0;
+    }
+
+    my( $voronota_out, $voronota_err ) =
+        CODPredepositionCheck::run_command( [ 'voronota',
+                                              '--mode',
+                                              'calculate-vertices',
+                                              '-' ],
+                                            \@voronota_in );
 
     if( defined $voronota_err ) {
-        while( <$voronota_err> ) { print STDERR $_; }
+        foreach( @$voronota_err ) { print STDERR "$_\n"; }
     }
 
     my $symops;
@@ -1639,7 +1661,7 @@ sub find_voids
     my $voids = {};
     my @voids;
     VOID:
-    while( <$voronota_out> )
+    foreach( @$voronota_out )
     {
         next if /^\s*$/;
         my( $atom1, $atom2, $atom3, $atom4, $x, $y, $z, $radius ) =
@@ -1659,6 +1681,14 @@ sub find_voids
                            $symmetric_atoms->[$b]{site_label} }
                     ($atom1, $atom2, $atom3, $atom4);
 
+        # Preserving chirality. Enumerating atoms according to right-hand
+        # rule: if currently vectors constitute a left-hand system, atoms
+        # have to be rearranged.
+        my $vol = det3( [ map { $_->{coordinates_ortho} } @order ] );
+        if( $vol < 0 ) {
+            @order = ($order[0], $order[1], $order[3], $order[2]);
+        }
+
         my @labels = map { $_->{site_label} } @order;
 
         if( $exclude_equiv_voids &&
@@ -1666,25 +1696,28 @@ sub find_voids
                             {$labels[1]}
                             {$labels[2]}
                             {$labels[3]} ) {
-            my $seen_symops = {};
-            for my $i (0..@order-1) {
-                my $seen_symops_now = {};
-                for my $op_inv (@{$order[$i]->{site_symops_inv}}) {
-                    for my $op (values %{$symops->{$labels[0]}
-                                                  {$labels[1]}
-                                                  {$labels[2]}
-                                                  {$labels[3]}[$i]}) {
-                        my $product = symop_mul( $op, $op_inv );
-                        $product = symop_modulo_1( $product );
-                        my $sn = string_from_symop( $product );
-                        if( exists $seen_symops->{$sn} || $i == 0 ) {
-                            $seen_symops_now->{$sn} = $product;
-                            next VOID if $i == @order-1;
+            for my $void (@{$symops->{$labels[0]}
+                                     {$labels[1]}
+                                     {$labels[2]}
+                                     {$labels[3]}} ) {
+                # Check if void is not equivalent
+                my $seen_symops = {};
+                for my $i (0..@order-1) {
+                    my $seen_symops_now = {};
+                    for my $op_inv (@{$order[$i]->{site_symops_inv}}) {
+                        for my $op (@{$void->[$i]{site_symops}}) {
+                            my $product = symop_mul( $op_inv, $op );
+                            $product = symop_modulo_1( $product );
+                            my $sn = string_from_symop( $product );
+                            if( exists $seen_symops->{$sn} || $i == 0 ) {
+                                $seen_symops_now->{$sn} = $product;
+                                next VOID if $i == @order-1;
+                            }
                         }
                     }
+                    last if scalar keys %$seen_symops_now == 0;
+                    $seen_symops = $seen_symops_now;
                 }
-                last if scalar keys %$seen_symops_now == 0;
-                $seen_symops = $seen_symops_now;
             }
         }
 
@@ -1699,82 +1732,90 @@ sub find_voids
             }
         );
 
+        next if !$exclude_equiv_voids;
         if( !exists $symops->{$labels[0]}
                              {$labels[1]}
                              {$labels[2]}
                              {$labels[3]} ) {
-            if(      $labels[0] eq $labels[1] &&
-                     $labels[0] eq $labels[2] &&
-                     $labels[0] eq $labels[3] ) {
-                my $hashref = {};
-                $symops->{$labels[0]}
-                         {$labels[1]}
-                         {$labels[2]}
-                         {$labels[3]} = [ $hashref, $hashref,
-                                          $hashref, $hashref ];
-            } elsif( $labels[0] eq $labels[1] &&
-                     $labels[0] eq $labels[2] ) {
-                my $hashref = {};
-                $symops->{$labels[0]}
-                         {$labels[1]}
-                         {$labels[2]}
-                         {$labels[3]} = [ $hashref, $hashref,
-                                          $hashref, {} ];
-            } elsif( $labels[0] eq $labels[1] ) {
-                my $hashref1 = {};
-                $symops->{$labels[0]}
-                         {$labels[1]}
-                         {$labels[2]}
-                         {$labels[3]} = [ $hashref1, $hashref1, {}, {} ];
-                if(  $labels[2] eq $labels[3] ) {
-                    my $hashref2 = {};
-                    $symops->{$labels[0]}
-                             {$labels[1]}
-                             {$labels[2]}
-                             {$labels[3]}[2] = $hashref2;
-                    $symops->{$labels[0]}
-                             {$labels[1]}
-                             {$labels[2]}
-                             {$labels[3]}[3] = $hashref2;
-                }
-            } elsif( $labels[1] eq $labels[2] &&
-                     $labels[1] eq $labels[3] ) {
-                my $hashref = {};
-                $symops->{$labels[0]}
-                         {$labels[1]}
-                         {$labels[2]}
-                         {$labels[3]} = [ {}, $hashref,
-                                          $hashref, $hashref ];
-            } elsif( $labels[1] eq $labels[2] ) {
-                my $hashref = {};
-                $symops->{$labels[0]}
-                         {$labels[1]}
-                         {$labels[2]}
-                         {$labels[3]} = [ {}, $hashref, $hashref, {} ];
-            } elsif( $labels[2] eq $labels[3] ) {
-                my $hashref = {};
-                $symops->{$labels[0]}
-                         {$labels[1]}
-                         {$labels[2]}
-                         {$labels[3]} = [ {}, {}, $hashref, $hashref ];
-            } else {
-                $symops->{$labels[0]}
-                         {$labels[1]}
-                         {$labels[2]}
-                         {$labels[3]} = [ {}, {}, {}, {} ];
-            }
+            $symops->{$labels[0]}
+                     {$labels[1]}
+                     {$labels[2]}
+                     {$labels[3]} = [];
         }
 
-        for( my $i = 0; $i < 4; $i++ ) {
-            register_seen_symops( $symops, \@labels, $i,
-                                  $order[$i]->{site_symops} );
+        my $similar_void_symops = $symops->{$labels[0]}
+                                           {$labels[1]}
+                                           {$labels[2]}
+                                           {$labels[3]};
+
+        my $permutations;
+        if(      $labels[0] eq $labels[1] &&
+                 $labels[0] eq $labels[2] &&
+                 $labels[0] eq $labels[3] ) {
+            $permutations = [ permutate4( \@order ) ];
+        } elsif( $labels[0] eq $labels[1] &&
+                 $labels[0] eq $labels[2] ) {
+            $permutations = [
+                [ $order[0], $order[1], $order[2], $order[3] ],
+                [ $order[1], $order[2], $order[0], $order[3] ],
+                [ $order[2], $order[0], $order[2], $order[3] ] ];
+        } elsif( $labels[1] eq $labels[2] &&
+                 $labels[1] eq $labels[3] ) {
+            $permutations = [
+                [ $order[0], $order[1], $order[2], $order[3] ],
+                [ $order[0], $order[2], $order[3], $order[1] ],
+                [ $order[0], $order[3], $order[1], $order[2] ] ];
+        } elsif( $labels[0] eq $labels[1] ) {
+            $permutations = [
+                [ $order[0], $order[1], $order[2], $order[3] ],
+                [ $order[1], $order[0], $order[3], $order[2] ] ];
+        } elsif( $labels[1] eq $labels[2] ) {
+            $permutations = [
+                [ $order[0], $order[1], $order[2], $order[3] ],
+                [ $order[0], $order[2], $order[3], $order[1] ] ];
+        } else {
+            $permutations = [ \@order ];
         }
 
-        # Links may be prepared earlier with Perl methods!
-
+        for my $permutation (@$permutations) {
+            push( @$similar_void_symops, $permutation );
+        }
     }
 
     return @voids;
+}
+
+sub det3
+{
+    my ($m) = @_;
+
+    return
+          $m->[0][0] * $m->[1][1] * $m->[2][2]
+        + $m->[1][0] * $m->[2][1] * $m->[0][2]
+        + $m->[0][1] * $m->[1][2] * $m->[2][0]
+        - $m->[0][2] * $m->[1][1] * $m->[2][0]
+        - $m->[0][1] * $m->[1][0] * $m->[2][2]
+        - $m->[0][0] * $m->[2][1] * $m->[1][2];
+}
+
+sub permutate4
+{
+    my ($a) = @_;
+    return( [ $a->[0], $a->[1], $a->[2], $a->[3] ],
+            [ $a->[0], $a->[2], $a->[3], $a->[1] ],
+            [ $a->[0], $a->[3], $a->[1], $a->[2] ],
+
+            [ $a->[1], $a->[0], $a->[3], $a->[2] ],
+            [ $a->[1], $a->[3], $a->[2], $a->[0] ],
+            [ $a->[1], $a->[2], $a->[0], $a->[3] ],
+
+            [ $a->[2], $a->[0], $a->[1], $a->[3] ],
+            [ $a->[2], $a->[1], $a->[3], $a->[0] ],
+            [ $a->[2], $a->[3], $a->[0], $a->[1] ],
+
+            [ $a->[3], $a->[0], $a->[2], $a->[1] ],
+            [ $a->[3], $a->[2], $a->[1], $a->[0] ],
+            [ $a->[3], $a->[1], $a->[0], $a->[2] ] );
 }
 
 sub register_seen_symops
