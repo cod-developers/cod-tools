@@ -238,6 +238,7 @@ TMP_JOURNAL="${TMP_DIR}/journal"
 TMP_CLIENT_IP="${TMP_DIR}/web_client_ip"
 TMP_BYPASS_PASSWD="${TMP_DIR}/bypass_password"
 TMP_MESSAGE="${TMP_DIR}/message"
+TMP_DEPOSIT_LIST="${TMP_DIR}/deposition_list"
 
 perl -lne "print \$1 if /^username=(.*)/" < ${INPUT_CONFIG} > ${TMP_USERNAME}
 perl -lne "print \$1 if /^password=(.*)/" < ${INPUT_CONFIG} > ${TMP_PASSWRD}
@@ -311,6 +312,13 @@ DEPOSIT_LOGGER="cat"
 
 if [ ${READ_STDIN} = true ]
 then
+    cat "$@" > ${TMP_DEPOSIT_LIST}
+else
+    perl -e 'while( @ARGV ) { print shift( @ARGV ), "\n"; }' \
+        ${FILES} > ${TMP_DEPOSIT_LIST}
+fi
+
+cat ${TMP_DEPOSIT_LIST} | \
     while read line
     do
         CIF=${line%${SEPARATOR}*}
@@ -326,6 +334,7 @@ then
             DEPOSIT_LOGGER="cat > \"${SEPARATE_OUT_DIR}/$(basename $i .cif).html\""
         fi
         ${curl} \
+            --silent \
             ${DEBUG_ARG} \
             ${PROGRESS_ARG} \
             ${REPLACE_ARG} \
@@ -349,40 +358,6 @@ then
             | eval ${DEPOSIT_LOGGER}
         echo ${BASENAME}: ${CIF}: NOTE: Deposition finished at $(date)
     done
-else
-    for i in ${FILES}
-    do
-        echo ${BASENAME}: $i: NOTE: Deposition started at $(date)
-        if [ -n "${SEPARATE_OUT_DIR}" ]
-        then
-            DEPOSIT_LOGGER="cat > \"${SEPARATE_OUT_DIR}/$(basename $i .cif).html\""
-        fi
-        ${curl} \
-            --silent \
-            ${DEBUG_ARG} \
-            ${PROGRESS_ARG} \
-            ${REPLACE_ARG} \
-            ${MESSAGE_ARG} \
-            ${RELEASE_ARG} \
-            -F header=${CIF_HEADER} \
-            -F "output_mode=${OUTPUT_MODE}" \
-            -F "username=<${TMP_USERNAME}" \
-            -F "password=<${TMP_PASSWRD}" \
-            ${JOURNAL_ARG} \
-            ${EMAIL_ARG} \
-            ${AUTHOR_NAME_ARG} \
-            ${AUTHOR_EMAIL_ARG} \
-            ${WEB_CLIENT_IP_ARG} \
-            ${BYPASS_PASSWD_ARG} \
-            ${HOLD_PERIOD_ARG} \
-            -F "cif=@$i;filename=$(basename $i)" \
-            -F "deposition_type=${DEPOSITION_TYPE}" \
-            ${DEPOSIT_URL} \
-            | eval ${DEPOSIT_LOGGER}
-        echo ${BASENAME}: $i: NOTE: Deposition finished at $(date)
-    done
-fi
-
 
 if which wipe >/dev/null 2>&1
 then
