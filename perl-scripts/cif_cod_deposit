@@ -37,6 +37,7 @@ setvar PROGRESS = false
 setvar REPLACE  = false
 setvar RELEASE  = false
 setvar OUTPUT_MODE  = "html"
+setvar STRICT   = true
 
 setvar BASENAME = "`basename $0`"
 
@@ -80,6 +81,15 @@ curl=curl
 #**  --replace
 #**      Specify that given files are replacements for previously
 #**      deposited data
+#**
+#**  --strict,
+#**  --no-ignore-unpaired-datablocks, --dont-ignore-unpaired-datablocks
+#**      Stop the deposition if any CIF datablock can not be paired to
+#**      any Fobs datablocks (provided that any unpaired datablocks
+#**      exist). Default option.
+#**
+#**  --silent, --ignore-unpaired-datablocks
+#**      Ignore unpaired CIF and Fobs datablocks.
 #**
 #**  --common-cif-header      Use a standard COD CIF header (default)
 #**  --iucr-cif-header        Use a COD CIF header agreed with IUCr
@@ -152,6 +162,15 @@ do
       --release|--release-data)
           RELEASE=true
           ;;
+      --ignore-unpaired-datablocks|--ignore-unpaired|\
+      --silent)
+          STRICT=false
+          ;;
+      --no-ignore-unpaired-datablocks|--no-ignore-unpaired|\
+      --dont-ignore-unpaired-datablocks|--dont-ignore-unpaired|\
+      --strict)
+          STRICT=true
+          ;;
       --common-cif-header|--common-cif-heade|--common-cif-head|\
       --common-cif-hea|--common-cif-he|--common-cif-he|--common-cif|\
       --common-ci|--common-c|--common|--commo|--comm|--com)
@@ -222,6 +241,13 @@ then
     RELEASE_ARG='-F release=1'
 else
     RELEASE_ARG=''
+fi
+
+if [ $STRICT = true ]
+then
+    STRICT_ARG='-F strict=1'
+else
+    STRICT_ARG='-F silent=1'
 fi
 
 test -z "${TMP_DIR}" && TMP_DIR="/tmp"
@@ -340,6 +366,7 @@ cat ${TMP_DEPOSIT_LIST} | \
             ${REPLACE_ARG} \
             ${MESSAGE_ARG} \
             ${RELEASE_ARG} \
+            ${STRICT_ARG} \
             -F header=${CIF_HEADER} \
             -F "output_mode=${OUTPUT_MODE}" \
             -F "username=<${TMP_USERNAME}" \
