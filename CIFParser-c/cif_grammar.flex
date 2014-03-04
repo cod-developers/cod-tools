@@ -175,6 +175,21 @@ char *lowercase( char *str );
                              return _UQSTRING;
 			   %}
 
+^;.*(\r?\n[^;\n\r].*|\r?\n)*\r?\n; %{
+        MARK;
+        {
+            char *ch = yytext;
+            while( *ch ) {
+                if( *ch == '\n' ) {
+                    lineCnt ++;
+                }
+                ch ++;
+            }
+        }
+        yylval.s = strclone( yytext );
+        return _TEXT_FIELD;
+    %}
+
 \r?\n;.*(\r?\n[^;\n\r].*|\r?\n)*\r?\n; %{
                           MARK;
                           char *ch = yytext;
