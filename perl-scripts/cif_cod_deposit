@@ -27,10 +27,11 @@ setvar DEPOSIT_PATH    = "cgi-bin/cif-deposit.pl"
 setvar DEPOSIT_URL     = "${SERVER}/${DEPOSIT_PATH}"
 setvar DEPOSITION_TYPE = "published"
 
-setvar FILES    = ''
+setvar CIF_FILES        = ''
+setvar HKL_FILES        = ''
 setvar SEPARATE_OUT_DIR = ''
-setvar SEPARATOR = ' '
-setvar READ_STDIN = false
+setvar SEPARATOR        = ' '
+setvar READ_STDIN       = false
 
 setvar DEBUG    = false
 setvar PROGRESS = false
@@ -38,6 +39,7 @@ setvar REPLACE  = false
 setvar RELEASE  = false
 setvar OUTPUT_MODE  = "html"
 setvar STRICT   = true
+setvar TIMESTAMPS = true
 
 setvar BASENAME = "`basename $0`"
 
@@ -119,6 +121,28 @@ curl=curl
 while [ $# -gt 0 ]
 do
   case $1 in
+      --cif)
+          CIF_FILES="$2"
+          shift
+          ;;
+      --add-cif)
+          CIF_FILES="$CIF_FILES $2"
+          shift
+          ;;
+      --clear-cif)
+          CIF_FILES=""
+          ;;
+      --hkl|--fobs)
+          HKL_FILES="$2"
+          shift
+          ;;
+      --add-hkl|--add-fobs)
+          HKL_FILES="$HKL_FILES $2"
+          shift
+          ;;
+      --clear-hkl|--clear-fobs)
+          HKL_FILES=""
+          ;;
       -c|--config|--confi|--conf|--con|--co|--co)
           INPUT_CONFIG="$2"
           shift
@@ -140,6 +164,12 @@ do
       -s|--separate-outputs|--separate)
           SEPARATE_OUT_DIR="$2"
           shift
+          ;;
+      --print-timestamps)
+          TIMESTAMPS=true
+          ;;
+      --no-print-timestamps|--dont-print-timestamps)
+          TIMESTAMPS=false
           ;;
       -d|--deposition-type)
           DEPOSITION_TYPE="$2"
@@ -216,13 +246,20 @@ do
 	    exit
 	    ;;      
       -*) echo "`basename $0`: unknown option $1" >&2 ; exit 1 ;;
-      *)  FILES="$FILES $1" ;;
+      *)  CIF_FILES="$CIF_FILES $1" ;;
     esac
     shift
 done
 
-## echo ${FILES}
-eval set -- "${FILES}"
+## echo ${CIF_FILES}
+eval set -- "${CIF_FILES}"
+
+if [ "$(echo ${CIF_FILES} | wc -w)" -gt 1 -a -n "${HKL_FILES}" ]
+then
+    echo "`basename $0`: can not accept Fobs files together with \
+more than one CIF file" >&2
+    exit 1
+fi
 
 if [ $DEBUG = true ]
 then
@@ -349,8 +386,13 @@ if [ ${READ_STDIN} = true ]
 then
     cat "$@" > ${TMP_DEPOSIT_LIST}
 else
-    perl -e 'while( @ARGV ) { print shift( @ARGV ), "\n"; }' \
-        ${FILES} > ${TMP_DEPOSIT_LIST}
+    if [ -n "${HKL_FILES}" ]
+    then
+        echo ${CIF_FILES} ${HKL_FILES} > ${TMP_DEPOSIT_LIST}
+    else
+        perl -e 'while( @ARGV ) { print shift( @ARGV ), "\n"; }' \
+            ${CIF_FILES} > ${TMP_DEPOSIT_LIST}
+    fi
 fi
 
 cat ${TMP_DEPOSIT_LIST} | \
@@ -358,7 +400,10 @@ cat ${TMP_DEPOSIT_LIST} | \
     do
         CIF=$(echo "$line" | cut -d "${SEPARATOR}" -f 1)
         HKL=$(echo "$line" | cut -d "${SEPARATOR}" -f 2-)
-        echo ${BASENAME}: ${CIF}: NOTE: Deposition started at $(date)
+        if [ ${TIMESTAMPS} = true ]
+        then
+            echo ${BASENAME}: ${CIF}: NOTE: Deposition started at $(date)
+        fi
         CIF_ARG="-F cif=@${CIF};filename=$(basename ${CIF})"
         HKL_ARG=""
         if [ "${line}" != "${line/${SEPARATOR}/}" ]
@@ -397,7 +442,10 @@ cat ${TMP_DEPOSIT_LIST} | \
             -F "deposition_type=${DEPOSITION_TYPE}" \
             ${DEPOSIT_URL} \
             | eval ${DEPOSIT_LOGGER}
-        echo ${BASENAME}: ${CIF}: NOTE: Deposition finished at $(date)
+        if [ ${TIMESTAMPS} = true ]
+        then
+            echo ${BASENAME}: ${CIF}: NOTE: Deposition finished at $(date)
+        fi
     done
 
 if which wipe >/dev/null 2>&1
