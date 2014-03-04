@@ -57,6 +57,11 @@ my $special_position_cutoff = 0.01;
 
 my $max_polymer_atoms = 100;
 
+# A minimal radius of a void to be printed. If not defined, then all
+# voids will be presented in the output:
+
+my $min_output_void_radius;
+
 my $cif_header_file; # Comments from the beginning of this file wil be
                      # prepended to the output.
 
@@ -139,6 +144,8 @@ my $output_geom_bond = 0; # Compute and output the _geom_bond_... data
 #**                    (default)
 #** --no-audit         do not print audit information to the generated CIF file
 #** --help,--usage     print short usage message (this message) and exit
+
+    "--min-void-radius" => \$min_output_void_radius,
 
     "--exclude-equivalent-voids"      => sub { $exclude_equiv_voids = 1 },
     "--dont-exclude-equivalent-voids" => sub { $exclude_equiv_voids = 0 },
@@ -242,6 +249,8 @@ for my $filename (@ARGV) {
             for my $void_group (@$void_groups) {
                 for my $void (@$void_group) {
                     next if $void->{radius} <= 0;
+                    next if defined $min_output_void_radius &&
+                        $void->{radius} < $min_output_void_radius;
                     my $coords = $void->{coordinates_ortho};
                     if( $jmol_isosurface ) {
                         print "isoSurface isosurface$i center {" .
@@ -1758,7 +1767,7 @@ sub find_voids
             $permutations = [
                 [ $order[0], $order[1], $order[2], $order[3] ],
                 [ $order[1], $order[2], $order[0], $order[3] ],
-                [ $order[2], $order[0], $order[2], $order[3] ] ];
+                [ $order[2], $order[0], $order[1], $order[3] ] ];
         } elsif( $labels[1] eq $labels[2] &&
                  $labels[1] eq $labels[3] ) {
             $permutations = [
@@ -1769,10 +1778,6 @@ sub find_voids
             $permutations = [
                 [ $order[0], $order[1], $order[2], $order[3] ],
                 [ $order[1], $order[0], $order[3], $order[2] ] ];
-        } elsif( $labels[1] eq $labels[2] ) {
-            $permutations = [
-                [ $order[0], $order[1], $order[2], $order[3] ],
-                [ $order[0], $order[2], $order[3], $order[1] ] ];
         } else {
             $permutations = [ \@order ];
         }
