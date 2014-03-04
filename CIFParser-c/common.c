@@ -13,6 +13,9 @@
 #include <stdlib.h>
 #include <string.h>
 
+
+/* FIXME: use exceptions or return NULL pointers and check in
+   strclone() and its clones: */
 #define merror( s ) \
 if( (s) == NULL ) \
    { \
