@@ -78,6 +78,15 @@ curl=curl
 #**  -s, --separate-outputs folder-to-put-deposition-outputs/
 #**      Specify a folder to put deposition output for each deposited file
 #**
+#**  --read-stdin
+#**      Read list of CIF and Fobs file names from the standard input in
+#**      format
+#**      <CIF file> [<Fobs file> ]*
+#**      for example:
+#**      Ice.cif
+#**      bi5014sup1.cif all.hkl
+#**      bi5005sup1.cif bi50051sup2.hkl bi50052sup3.hkl
+#**
 #**  --replace
 #**      Specify that given files are replacements for previously
 #**      deposited data
@@ -347,13 +356,18 @@ fi
 cat ${TMP_DEPOSIT_LIST} | \
     while read line
     do
-        CIF=${line%${SEPARATOR}*}
-        HKL=${line#*${SEPARATOR}}
+        CIF=$(echo "$line" | cut -d "${SEPARATOR}" -f 1)
+        HKL=$(echo "$line" | cut -d "${SEPARATOR}" -f 2-)
         echo ${BASENAME}: ${CIF}: NOTE: Deposition started at $(date)
         CIF_ARG="-F cif=@${CIF};filename=$(basename ${CIF})"
         HKL_ARG=""
         if [ "${line}" != "${line/${SEPARATOR}/}" ]
-            then HKL_ARG="-F hkl=@${HKL};filename=$(basename ${HKL})"
+            then HKL_ARG=$(echo "${HKL}" \
+                            | perl -lne 'use File::Basename;
+                                         for my $hkl (split( "'"${SEPARATOR}"'", $_ ) ) {
+                                             print "-F hkl=\@${hkl};filename=",
+                                                   basename( $hkl );
+                                         }')
         fi
         if [ -n "${SEPARATE_OUT_DIR}" ]
         then
