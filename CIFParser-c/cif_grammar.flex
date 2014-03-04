@@ -9,11 +9,9 @@
 
  /* %option yylineno */
 
-%s  leftmost
-%x	text
-
 ORDINARY_CHAR  [a-zA-Z0-9!%&\(\)\*\+,-\.\/\:<=>\?@\\\^`{\|}~]
 SPECIAL_CHAR   ["#\$'_\[\]]
+/* " */
 NON_BLANK_CHAR {ORDINARY_CHAR}|{SPECIAL_CHAR}|;
 ANY_PRINT_CHAR {NON_BLANK_CHAR}|[ \t]
 HIGH_CHAR      [\x80-\xFF]
@@ -32,9 +30,11 @@ REAL_ESD       {REAL}(\({INTEGER}\))?
  /* Double and single quoted strings */
 
 DSTRING         \"(({ORDINARY_CHAR}|[#\$'_\[\] \t;])|\"{NON_BLANK_CHAR})*\"?\"
+/* ' */
 SSTRING         '(({ORDINARY_CHAR}|["#\$_\[\] \t;])|\'{NON_BLANK_CHAR})*\'?'
 
 HIGH_DSTRING    \"(({ORDINARY_CHAR}|{HIGH_CHAR}|[#\$'_\[\] \t;])|\"({NON_BLANK_CHAR}|{HIGH_CHAR}))*\"?\"
+/* ' */
 HIGH_SSTRING    '(({ORDINARY_CHAR}|{HIGH_CHAR}|["#\$_\[\] \t;])|\'({NON_BLANK_CHAR}|{HIGH_CHAR}))*\'?'
 
 STRING          {DSTRING}|{SSTRING}
@@ -42,7 +42,9 @@ STRING          {DSTRING}|{SSTRING}
  /* Unterminated double and single quoted strings */
 
 UDSTRING        \"({ORDINARY_CHAR}|[#\$'_\[\]\t;])*
+/* ' */
 USSTRING        '({ORDINARY_CHAR}|["#\$_\[\]\t;])*
+/* ' */
 USTRING         {UDSTRING}|{USSTRING}
 
 %{
@@ -153,9 +155,9 @@ char *lowercase( char *str );
                 storeCurrentLine(yytext, yyleng);
             }
             RESET_MARK;
-            BEGIN(leftmost);
             yyless(0);
           %}
+
 \n    COUNT_LINES; /** count lines **/
 
  /**************** eat up comments **************************/
@@ -173,52 +175,27 @@ char *lowercase( char *str );
                              return _UQSTRING;
 			   %}
 
- /*
-   call of yyless() somehow removes the start of line mark from the
-   input (http://sourceforge.net/mailarchive/message.php?msg_id=27749490),
-   so start condition "leftmost" was introduced to mark the beginning of
-   the line.
- */
-
-<leftmost>;.*       %{    MARK;
-                          BEGIN(text);
-                          yylval.s = strclone( yytext + 1 );
-                          if( strlen( yylval.s ) > 0
-                              && yylval.s[strlen( yylval.s )-1] == '\r' ) {
-                              yylval.s[strlen( yylval.s )-1] = '\0';
+\r?\n;.*(\r?\n[^;\n\r].*|\r?\n)*\r?\n; %{
+                          MARK;
+                          char *ch = yytext;
+                          while( *ch ) {
+                              if( *ch == '\n' ) {
+                                  lineCnt ++;
+                              }
+                              ch ++;
                           }
-                        %}
-<text>^[^;].*		%{
-                          RESET_MARK;
-                          REMEMBER;
-                          storeCurrentLine(yytext, yyleng);
-                          if( strlen( yytext ) > 0
-                              && yytext[strlen( yytext )-1] == '\r' ) {
-                              yytext[strlen( yytext )-1] = '\0';
+                          if( yytext[0] == '\r' ) {
+                              yylval.s = strclone( yytext + 3 );
+                          } else {
+                              yylval.s = strclone( yytext + 2 );
                           }
-                          yylval.s = strappend( yylval.s, yytext );
-                        %}
-<text>\n+		{ COUNT_LINES; yylval.s = strappend( yylval.s, yytext ); }
-<text>^;	        %{ 
-                          ssize_t length = strlen( yylval.s );
-                          ADVANCE_MARK;
-                          BEGIN(INITIAL);
-                          if( length > 0 ) {
-                              yylval.s[length-1] = '\0'; /* remove the last "\n" character from the value */
-                          }
-                          if( length > 1 && yylval.s[length-2] == '\r') {
-                              yylval.s[length-2] = '\0'; /* remove the last "\r" character from the value */
-                          }
-                          yylval.s = clean_string( yylval.s, 1 );
-                          return _TEXT_FIELD; 
-                        %}
-
-<text><<EOF>>           %{
-                          length = strlen( yylval.s );
-                          yyerrorf( "unterminated text field" );
-                          BEGIN(INITIAL);
-                          if( length > 1 ) {
-                              yylval.s[length-1] = '\0'; /* remove the last "\n" character from the value */
+                          if( strlen( yylval.s ) > 1 ) {
+                              if( strlen( yylval.s ) > 2 && 
+                                  yylval.s[strlen( yylval.s )-1] == '\r' ) {
+                                  yylval.s[strlen( yylval.s )-3] = '\0';
+                              } else {
+                                  yylval.s[strlen( yylval.s )-2] = '\0';
+                              }
                           }
                           yylval.s = clean_string( yylval.s, 1 );
                           return _TEXT_FIELD;
@@ -254,16 +231,17 @@ _{NON_BLANK_CHAR}+    %{
                            return _TAG;
             %}
 _({NON_BLANK_CHAR}|{HIGH_CHAR})+ %{
+                           MARK;
                            if( ( cif_flex_lexer_flags &
                                CIF_FLEX_LEXER_FIX_NON_ASCII_SYMBOLS ) == 0 ) {
-                               REJECT;
+                               yyerror( "syntax error" );
+                               yylval.s = strnclone(yytext, yyleng);
+                           } else {
+                               /* First clean, then lowercase --
+                                  as Perl CIF parser does */
+                               yylval.s = clean_string( yytext, 0 );
+                               yylval.s = lowercase( yylval.s );
                            }
-                           MARK;
-                           BEGIN(INITIAL);
-                           /* First clean, then lowercase --
-                              as Perl CIF parser does */
-                           yylval.s = clean_string( yytext, 0 );
-                           yylval.s = lowercase( yylval.s );
                            return _TAG;
             %}
 
@@ -295,33 +273,35 @@ _({NON_BLANK_CHAR}|{HIGH_CHAR})+ %{
 			%}
 
 {HIGH_DSTRING}  %{
+                           MARK;
+                           assert(yyleng > 1);
                            if( ( cif_flex_lexer_flags &
                                CIF_FLEX_LEXER_FIX_NON_ASCII_SYMBOLS ) == 0 ) {
-                               REJECT;
+                               yyerror( "syntax error" );
+                               yylval.s = strnclone(yytext, yyleng);
+                           } else {
+                               yylval.s = clean_string(
+                                   strnclone(yytext + 1, yyleng - 2), 0 );
                            }
-                           MARK;
-                           BEGIN(INITIAL);
-                           assert(yyleng > 1);
-                           yylval.s = clean_string(
-                               strnclone(yytext + 1, yyleng - 2), 0 );
                            return _DQSTRING;
             %}
 
 
 {UDSTRING}   %{
+                           MARK;
+                           assert(yyleng > 0);
                            if( (cif_flex_lexer_flags &
                                CIF_FLEX_LEXER_FIX_MISSING_CLOSING_DOUBLE_QUOTE) == 0 ) {
-                               REJECT;
+                               yyerror( "syntax error" );
+                               yylval.s = strnclone(yytext, yyleng);
+                           } else {
+                               yynote( "warning, double-quoted string is missing "
+                                       "a closing quote -- fixed" );
+                               yylval.s = yyleng > 1 ?
+                                             clean_string(
+                                                 strnclone(yytext + 1, yyleng - 1), 0
+                                             ) : strclone("");
                            }
-                           MARK;
-                           BEGIN(INITIAL);
-                           yynote( "warning, double-quoted string is missing "
-                                   "a closing quote -- fixed" );
-                           assert(yyleng > 0);
-                           yylval.s = yyleng > 1 ?
-                                         clean_string(
-                                             strnclone(yytext + 1, yyleng - 1), 0
-                                         ) : strclone("");
                            return _DQSTRING;
 			%}
 
@@ -334,32 +314,34 @@ _({NON_BLANK_CHAR}|{HIGH_CHAR})+ %{
 			%}
 
 {HIGH_SSTRING}  %{
+                           MARK;
+                           assert(yyleng > 1);
                            if( ( cif_flex_lexer_flags &
                                CIF_FLEX_LEXER_FIX_NON_ASCII_SYMBOLS ) == 0 ) {
-                               REJECT;
+                               yyerror( "syntax error" );
+                               yylval.s = strnclone(yytext, yyleng);
+                           } else {
+                               yylval.s = clean_string(
+                                   strnclone(yytext + 1, yyleng - 2), 0 );
                            }
-                           MARK;
-                           BEGIN(INITIAL);
-                           assert(yyleng > 1);
-                           yylval.s = clean_string(
-                               strnclone(yytext + 1, yyleng - 2), 0 );
                            return _SQSTRING;
             %}
 
 {USSTRING}   %{
+                           MARK;
+                           assert(yyleng > 0);
                            if( (cif_flex_lexer_flags &
                                CIF_FLEX_LEXER_FIX_MISSING_CLOSING_SINGLE_QUOTE) == 0 ) {
-                               REJECT;
+                               yyerror( "syntax error" );
+                               yylval.s = strnclone(yytext, yyleng);
+                           } else {
+                               yynote( "warning, single-quoted string is missing "
+                                       "a closing quote -- fixed" );
+                               yylval.s = yyleng > 1 ?
+                                             clean_string(
+                                                 strnclone(yytext + 1, yyleng - 1), 0
+                                             ) : strclone("");
                            }
-                           MARK;
-                           BEGIN(INITIAL);
-                           yynote( "warning, single-quoted string is missing "
-                                   "a closing quote -- fixed" );
-                           assert(yyleng > 0);
-                           yylval.s = yyleng > 1 ?
-                                         clean_string(
-                                             strnclone(yytext + 1, yyleng - 1), 0
-                                         ) : strclone("");
                            return _SQSTRING;
 			%}
 
@@ -376,48 +358,51 @@ _({NON_BLANK_CHAR}|{HIGH_CHAR})+ %{
 			%}
 
 {HIGH_UQSTRING} %{
+                           MARK;
                            if( ( cif_flex_lexer_flags &
                                CIF_FLEX_LEXER_FIX_NON_ASCII_SYMBOLS ) == 0 ) {
-                               REJECT;
+                               yyerror( "syntax error" );
+                               yylval.s = strnclone(yytext, yyleng);
+                           } else {
+                               if( cif_flex_debug_flags &
+                                   CIF_FLEX_DEBUG_YYLVAL )
+                                   printf("yylval.s = %s\n", yytext);
+                               yylval.s = clean_string(yytext, 0);
                            }
-                           MARK;
-                           BEGIN(INITIAL);
-                           if( cif_flex_debug_flags &
-                       CIF_FLEX_DEBUG_YYLVAL )
-                               printf("yylval.s = %s\n", yytext);
-                           yylval.s = clean_string(yytext, 0);
                            return _UQSTRING;
             %}
 
 {HIGH_CHAR}+ %{
+                           MARK;
                            if( ( cif_flex_lexer_flags &
                                CIF_FLEX_LEXER_FIX_NON_ASCII_SYMBOLS ) == 0 ) {
-                               REJECT;
+                               yyerror( "syntax error" );
+                               yylval.s = strnclone(yytext, yyleng);
+                           } else {
+                               if( cif_flex_debug_flags &
+                                   CIF_FLEX_DEBUG_YYLVAL )
+                                   printf("yylval.s = %s\n", yytext);
+                               yylval.s = clean_string(yytext, 0);
                            }
-                           MARK;
-                           BEGIN(INITIAL);
-                           if( cif_flex_debug_flags &
-                       CIF_FLEX_DEBUG_YYLVAL )
-                               printf("yylval.s = %s\n", yytext);
-                           yylval.s = clean_string(yytext, 0);
                            return _UQSTRING;
             %}
 
 \[{UQSTRING} %{
+                           MARK;
                            if( ( cif_flex_lexer_flags &
                                CIF_FLEX_LEXER_ALLOW_UQSTRING_BRACKETS ) == 0 ) {
-                               REJECT;
+                               yyerror( "syntax error" );
+                               yylval.s = strnclone(yytext, yyleng);
+                           } else {
+                               if( cif_flex_debug_flags &
+                                   CIF_FLEX_DEBUG_YYLVAL )
+                                   printf("yylval.s = %s\n", yytext);
+                               yylval.s = clean_string(yytext, 0);
                            }
-                           MARK;
-                           BEGIN(INITIAL);
-                           if( cif_flex_debug_flags &
-                       CIF_FLEX_DEBUG_YYLVAL )
-                               printf("yylval.s = %s\n", yytext);
-                           yylval.s = clean_string(yytext, 0);
                            return _UQSTRING;
             %}
 
-.			{ MARK; BEGIN(INITIAL); return clean_string(yytext, 0); }
+.	    { MARK; clean_string(yytext, 0); return yytext[0]; }
 
 <<EOF>>     { REMEMBER; yyterminate(); }
 
@@ -530,6 +515,7 @@ char *clean_string( char *src, int is_textfield )
     int DELTA = 8;
     ssize_t length = strlen( src );
     char *new = malloc( length + 1 );
+    /* !!! FIXME: the result of malloc() MUST be checked before use! */
     char *dest = new;
     char *start = src;
     int non_ascii_explained = 0;
@@ -544,6 +530,11 @@ char *clean_string( char *src, int is_textfield )
                 *dest = '\0';
                 length += DELTA;
                 new = realloc( new, length + 1 );
+                /* !!! FIXME: the result of realloc() MUST be checked
+                       before use, it MAY return NULL! */
+                /* !!! FIXME: if returning NULL, realloc *does not*
+                       free the origial block -- it MUST be freed
+                       afterwards to avoid memory leaks. */
                 strcat( new, cxprintf( "&#x%04X;", *src & 255 ) );
                 dest = new + strlen( new ) - 1;
                 if( non_ascii_explained == 0 ) {
@@ -582,6 +573,8 @@ char *clean_string( char *src, int is_textfield )
             new = realloc( new, length + 1 );
             strcat( new, "    " );
             dest = new + strlen( new ) - 1;
+        } else if( (*src & 255) == '\r' ) {
+            dest--; /* Skip carriage return symbols */
         } else {
             *dest = *src;
         }
