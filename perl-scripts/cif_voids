@@ -40,7 +40,6 @@ my $dump_balls = 0;
 my $jmol_isosurface = 0;
 my $format = "%8.6f";
 my $continue_on_errors = 0;
-my $audit = 1;
 my $uniquify_atoms = 1;
 my $exclude_equiv_voids = 1;
 my $exclude_zero_occupancies = 1; # Do not use atoms with zero
@@ -51,30 +50,15 @@ my $exclude_zero_occupancies = 1; # Do not use atoms with zero
 
 my $special_position_cutoff = 0.01;
 
-# A maximum alowed count of polymer example atoms: more than this
-# amount of symmetry (translational) equivalen atoms, for each AU
-# atom, will not be written to the output file:
-
-my $max_polymer_atoms = 100;
-
 # A minimal radius of a void to be printed. If not defined, then all
 # voids will be presented in the output:
 
 my $min_output_void_radius;
 
-my $cif_header_file; # Comments from the beginning of this file wil be
-                     # prepended to the output.
-
 my $use_parser = "c"; # Used CIF parser
 
 my $merge_disorder_groups = 0; # Put all alternative conformations
                                # into one data block.
-
-my $largest_molecule_only = 0; # Output only the largest (having the
-                               # greatest number of atoms) molecule.
-
-my $output_geom_bond = 0; # Compute and output the _geom_bond_... data
-                          # items (bond lengths, valencies, etc.)
 
 @ARGV = getOptions
 (
@@ -190,8 +174,6 @@ my $output_geom_bond = 0; # Compute and output the _geom_bond_... data
     "--use-perl-parser"       => sub{ $use_parser = "perl" },
     "--use-c-parser"          => sub{ $use_parser = "c" },
 
-    "--audit"                   => sub { $audit = 1; },
-    "--no-audit"                => sub { $audit = 0; },
     "--help,--usage"            => sub { SUsage::usage; exit },
 );
 
