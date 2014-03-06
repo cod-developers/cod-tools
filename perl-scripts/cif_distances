@@ -33,6 +33,7 @@ use UserMessage;
 my $uniquify_atoms = 1;
 my $include_null_distances = 0;
 my $include_self_distances = 0;
+my $include_unknown_types  = 0;
 my $print_original;
 my $print_symmetrical;
 my $print_shifted;
@@ -79,6 +80,12 @@ my %escaped_symbols = ("\"" => '"', "\'" => "'");
 #** --no-self-distances, --exclude-self-distances
 #**                     Exclude entries of distances between symmetry-related
 #**                     instances of the same atom (default).
+#** --include-unknown-types
+#**                     Include entries containing atoms of undetermined 
+#**                     chemical type. Atom type will be marked as 'UN'.
+#** --no-unknown-types, --exclude-unknown-atoms
+#**                     Exclude entries containing atoms of undetermined 
+#**                     chemical type (default).
 #** -P, --pairwise-distance
 #**                     Set pairwise distance output format.
 #** -S, --symetrical-atoms
@@ -102,36 +109,39 @@ my %escaped_symbols = ("\"" => '"', "\'" => "'");
 #**                    Print no additional information.
 #** --help,--usage     Print a short usage message (this message) and exit.
 
-    "-F,--add-filename"        => sub { $add_filename = 1 },
-    "--no-add-filename"        => sub { $add_filename = undef },
-    "--do-not-print-filename"  => sub { $add_filename = undef },
-    "-H,--shifted-atoms"       => sub { $print_shifted = 1 },
-    "--no-shifted-atoms"       => sub { $print_shifted = undef },
-    "-M,--distance-matrix"     => sub { $output_format = "matrix" },
-    "-O,--original-atoms"      => sub { $print_original = 1 },
-    "--no-original-atoms"      => sub { $print_original = undef },
-    "--include-null-distances" => sub { $include_null_distances = 1 },
-    "--no-null-distances"      => sub { $include_null_distances = 0 },
-    "--exclude-null-distances" => sub { $include_null_distances = 0 },
-    "--include-self-distances" => sub { $include_self_distances = 1 },
-    "--no-self-distances"      => sub { $include_self_distances = 0 },
-    "--exclude-self-distances" => sub { $include_self_distances = 0 },
-    "-P,--pairwise-distance"   => sub { $output_format = "pairwise"; },
-    "-S,--symetrical-atoms"    => sub { $print_symmetrical = 1 },
-    "--no-symetrical-atoms"    => sub { $print_symmetrical = undef },
-    "-l,--matrix-line-length"  => sub { $line_length = get_value() },
-    "--format"                 => sub { $format = get_value() },
-    "-v,--verbose"             => sub { $verbose = 1;
-                                       $print_shifted = 1;
-                                       $print_original = 1;
-                                       $print_symmetrical = 1 },
-    "--uniquify-atoms"         => sub { $uniquify_atoms = 1; },
-    "--no-uniquify-atoms"      => sub { $uniquify_atoms = 0; },
-    "-s,--silent,--quiet"      => sub { $verbose = undef;
-                                       $print_shifted = undef;
-                                       $print_original = undef;
-                                       $print_symmetrical = undef },
-    "--help,--usage"          => sub { SUsage::usage; exit }
+    "-F,--add-filename"          => sub { $add_filename = 1 },
+    "--no-add-filename"          => sub { $add_filename = undef },
+    "--do-not-print-filename"    => sub { $add_filename = undef },
+    "-H,--shifted-atoms"         => sub { $print_shifted = 1 },
+    "--no-shifted-atoms"         => sub { $print_shifted = undef },
+    "-M,--distance-matrix"       => sub { $output_format = "matrix" },
+    "-O,--original-atoms"        => sub { $print_original = 1 },
+    "--no-original-atoms"        => sub { $print_original = undef },
+    "--include-null-distances"   => sub { $include_null_distances = 1 },
+    "--no-null-distances"        => sub { $include_null_distances = 0 },
+    "--exclude-null-distances"   => sub { $include_null_distances = 0 },
+    "--include-self-distances"   => sub { $include_self_distances = 1 },
+    "--no-self-distances"        => sub { $include_self_distances = 0 },
+    "--exclude-self-distances"   => sub { $include_self_distances = 0 },
+    "-U,--include-unknown-types" => sub { $include_unknown_types = 1 },
+    "--no-unknown-types"         => sub { $include_unknown_types = 0 },
+    "--exclude-unknown-types"    => sub { $include_unknown_types = 0 },
+    "-P,--pairwise-distance"     => sub { $output_format = "pairwise"; },
+    "-S,--symetrical-atoms"      => sub { $print_symmetrical = 1 },
+    "--no-symetrical-atoms"      => sub { $print_symmetrical = undef },
+    "-l,--matrix-line-length"    => sub { $line_length = get_value() },
+    "--format"                   => sub { $format = get_value() },
+    "-v,--verbose"               => sub { $verbose = 1;
+                                          $print_shifted = 1;
+                                          $print_original = 1;
+                                          $print_symmetrical = 1 },
+    "--uniquify-atoms"           => sub { $uniquify_atoms = 1; },
+    "--no-uniquify-atoms"        => sub { $uniquify_atoms = 0; },
+    "-s,--silent,--quiet"        => sub { $verbose = undef;
+                                          $print_shifted = undef;
+                                          $print_original = undef;
+                                          $print_symmetrical = undef },
+    "--help,--usage"             => sub { SUsage::usage; exit }
 );
 
 @ARGV = ( "-" ) unless @ARGV; 
@@ -296,11 +306,19 @@ sub get_atoms {
         if( ! exists $AtomProperties::atoms{$atom->{chemical_type}}) {
             chop $atom->{chemical_type};
             if( ! exists $AtomProperties::atoms{$atom->{chemical_type}}) {
-                warning( $0, $filename, $dataset->{name},
-                         'Unable to determine chemical type of atom with ' . 
-                         '_atom_site_label ' . $atom->{label}  . 
-                         'Atom chemical type will be set to "UN"' );
-                $atom->{chemical_type} = "UN"
+                if ( $include_unknown_types ) {
+                    warning( $0, $filename, $dataset->{name},
+                         "unable to determine chemical type of atom with " . 
+                         "_atom_site_label '" . $atom->{label} . "'. " . 
+                         "Atom chemical type will be set to 'UN'" );
+                    $atom->{chemical_type} = "UN"
+                } else {
+                    warning( $0, $filename, $dataset->{name},
+                         "unable to determine chemical type of atom with " . 
+                         "_atom_site_label '" . $atom->{label} . "'. " .
+                         'Atom will be removed' );
+                    next;
+                }
             }
         };
 
@@ -708,8 +726,6 @@ sub print_distance_matrix {
             };
             print "\n";
         }
-
-        print "\n";
         $print_iteration++;
     }
 }
