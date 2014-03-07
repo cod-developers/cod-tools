@@ -145,6 +145,8 @@ do
           ;;
       -c|--config|--confi|--conf|--con|--co|--co)
           INPUT_CONFIG="$2"
+          DEPOSIT_URL="$(perl -lne "print \$1 if /^server_url=(.*)/" \
+                         < ${INPUT_CONFIG})"
           shift
           ;;
       -h|--host|--hos|--ho|--h)
@@ -322,7 +324,6 @@ perl -lne "print \$1 if /^web_client_ip=(.*)/"   < ${INPUT_CONFIG} > ${TMP_CLIEN
 perl -lne "print \$1 if /^bypass_password=(.*)/" < ${INPUT_CONFIG} > ${TMP_BYPASS_PASSWD}
 perl -lne "print \$1 if /^message=(.*)/" < ${INPUT_CONFIG} > ${TMP_MESSAGE}
 HOLD_PERIOD=$(perl -lne "print \$1 if /^hold_period=(.*)/" < ${INPUT_CONFIG})
-
 
 if [ -s ${TMP_JOURNAL} ]
 then
