@@ -130,6 +130,7 @@ sub fetch_duplicates_from_database
 
         push( @duplicates,
                 { formula => $final_formula,
+                  datablock => $structures{$id},
                   duplicates => \%structures_found } );
     }
 
