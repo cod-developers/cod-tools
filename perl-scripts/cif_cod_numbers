@@ -31,6 +31,7 @@ my %database = (
     );
 
 my $use_parser = "perl";
+my $print_datablock_name = 0;
 
 my %options;
 
@@ -61,6 +62,12 @@ my %options;
 #*
 #*     --password
 #*        Use the specified password (default empty) to connect.
+#*
+#*     -P, --print-datablock-name
+#*        Print datablock name as the first column
+#*
+#*     -P-, --dont-print-datablock-name, --no-print-datablock-name
+#*        Do not print datablock names (default)
 #*
 #*     -S, --series 9
 #*        Check only COD entries starting with 9 (so called 9* series).
@@ -120,6 +127,10 @@ my %options;
     "--password"     => \$database{password},
     "--platform"     => \$database{platform},
 
+    "-P,--print-datablock-name"     => sub{ $print_datablock_name = 1 },
+    "-P-,--no-print-datablock-name" => sub{ $print_datablock_name = 0 },
+    "--dont-print-datablock-name"   => sub{ $print_datablock_name = 0 },
+
     "-S,--series" => \$options{cod_series_prefix},
 
     "--max-cell-length-difference" => \$options{max_cell_length_diff},
@@ -173,6 +184,9 @@ for my $file (@ARGV) {
         if( keys %{ $datablock->{duplicates} } > 0 ) {
             for my $key (sort keys %{ $datablock->{duplicates} } ) {
                 my $COD_entry = $datablock->{duplicates}{$key};
+                if( $print_datablock_name ) {
+                    printf "%-15s ", $datablock->{datablock}{id};
+                }
                 printf
                     "%-35s %15s %3d %s\n",
                     $datablock->{formula},
@@ -181,9 +195,13 @@ for my $file (@ARGV) {
                     $file;
             }
         } else {
+            if( $print_datablock_name ) {
+                printf "%-15s ", $datablock->{datablock}{id};
+            }
             printf
                 "%-35s %15s %3d %s\n",
-                $datablock->{formula}, "?", 0, $file;
+                $datablock->{formula}, "?", 0,
+                $file;
         }
     }
 }
