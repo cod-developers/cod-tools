@@ -38,8 +38,9 @@ setvar PROGRESS = false
 setvar REPLACE  = false
 setvar RELEASE  = false
 setvar OUTPUT_MODE  = "html"
-setvar STRICT   = true
+setvar STRICT     = true
 setvar TIMESTAMPS = true
+setvar USE_WIPE   = true
 
 setvar BASENAME = "`basename $0`"
 
@@ -101,6 +102,10 @@ curl=curl
 #**
 #**  --silent, --ignore-unpaired-datablocks
 #**      Ignore unpaired CIF and Fobs datablocks.
+#**
+#**  --use-wipe, --dont-use-wipe, --use-rm
+#**      Specifies whether to use 'wipe' comand (if present) or 'rm'
+#**      command to remove temporary password files.
 #**
 #**  --common-cif-header      Use a standard COD CIF header (default)
 #**  --iucr-cif-header        Use a COD CIF header agreed with IUCr
@@ -206,6 +211,13 @@ do
       --ignore-unpaired-datablocks|--ignore-unpaired|\
       --silent)
           STRICT=false
+          ;;
+      --use-wipe|--use-wip|--use-wi|--use-w)
+          USE_WIPE=true
+          ;;
+      --use-rm|--use-r|\
+      --dont-use-wipe|--dont-use-wip|--dont-use-wi|--dont-use-w)
+          USE_WIPE=false
           ;;
       --no-ignore-unpaired-datablocks|--no-ignore-unpaired|\
       --dont-ignore-unpaired-datablocks|--dont-ignore-unpaired|\
@@ -449,7 +461,8 @@ cat ${TMP_DEPOSIT_LIST} | \
         fi
     done
 
-if which wipe >/dev/null 2>&1
+if which wipe > /dev/null 2>&1 && \
+   [ $USE_WIPE = true ]
 then
     wipe -rf "${TMP_DIR}"
 else
