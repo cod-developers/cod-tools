@@ -352,6 +352,17 @@ for my $filename (@ARGV) {
     }
 }
 
+#==============================================================================#
+# Find alternatives among CIF atoms
+# Accepts
+#    atom_list - CIF atom list, as returned by initial_atoms()
+#    bricks    - CIF atom bricks, as returned by AtomBricks::build_bricks()
+#    filename  - CIF file name
+#    dataname  - CIF datablock name
+# Returns
+#    $alternatives = {
+#       $atom_number => [ $assembly, $group ]
+#    }
 sub get_alternatives
 {
     my( $atom_list, $bricks, $filename, $dataname, $f2o ) = @_;
@@ -381,6 +392,11 @@ sub get_alternatives
                 my $index2 = $atom->{index};
 
                 next if $index1 ge $index2;
+                next if !exists $atom->{atom_site_occupancy} ||
+                       ($atom->{atom_site_occupancy} eq '0.0' &&
+                        $exclude_zero_occupancies) || 
+                        $atom->{atom_site_occupancy} eq '?' ||
+                        $atom->{atom_site_occupancy} eq '.';
 
                 my $dist = distance( $atom_in_unit_cell_coords_ortho,
                                      $atom_coords_ortho );
@@ -513,16 +529,6 @@ sub initial_atoms($$$$$)
 
     for (my $i = 0; $i < @{$atom_labels}; $i++)
     {
-        if( $exclude_zero_occupancies &&
-            defined $values->{_atom_site_occupancy} ) {
-            my $occupancy = $values->{_atom_site_occupancy}[$i];
-            $occupancy =~ s/\(\d+\)$//; # remove precission
-            if( $occupancy eq "?" || $occupancy eq "." ||
-                $occupancy == 0.0 ) {
-                next;
-            }
-        }
-
 	    my $label;
         if ( $atom_site_tag eq "_atom_site_type_symbol" ) {
 	        $label = $values->{$atom_site_tag}[$i] . $i;
