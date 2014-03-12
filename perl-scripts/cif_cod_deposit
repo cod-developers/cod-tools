@@ -52,7 +52,7 @@ setvar BASENAME = "`basename $0`"
 # Taip pat galima nurodyti ir kitas mūsų naudojamas antraštes: 'common',
 # 'amcsd' ir 'iucr'.
 # 
-setvar CIF_HEADER = common 
+setvar CIF_HEADER = '' 
 
 # Executables:
 
@@ -310,6 +310,13 @@ else
     STRICT_ARG='-F silent=1'
 fi
 
+if [ -n "$CIF_HEADER" ]
+then
+    CIF_HEADER_ARG="-F header=${CIF_HEADER}"
+else
+    CIF_HEADER_ARG=''
+fi
+
 test -z "${TMP_DIR}" && TMP_DIR="/tmp"
 TMP_DIR="${TMP_DIR}/tmp-${BASENAME}-$$"
 umask 077
@@ -439,7 +446,7 @@ cat ${TMP_DEPOSIT_LIST} | \
             ${MESSAGE_ARG} \
             ${RELEASE_ARG} \
             ${STRICT_ARG} \
-            -F header=${CIF_HEADER} \
+            ${CIF_HEADER_ARG} \
             -F "output_mode=${OUTPUT_MODE}" \
             -F "username=<${TMP_USERNAME}" \
             -F "password=<${TMP_PASSWRD}" \
