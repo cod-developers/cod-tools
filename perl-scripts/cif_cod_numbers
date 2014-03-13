@@ -184,24 +184,26 @@ for my $file (@ARGV) {
         if( keys %{ $datablock->{duplicates} } > 0 ) {
             for my $key (sort keys %{ $datablock->{duplicates} } ) {
                 my $COD_entry = $datablock->{duplicates}{$key};
-                if( $print_datablock_name ) {
-                    printf "%-15s ", $datablock->{datablock}{id};
-                }
                 printf
-                    "%-35s %15s %3d %s\n",
+                    "%-35s %15s %3d %s",
                     $datablock->{formula},
                     $COD_entry->{filename},
                     scalar keys %{ $datablock->{duplicates} },
                     $file;
+                if( $print_datablock_name ) {
+                    printf " %s", $datablock->{datablock}{id};
+                }
+                print "\n"
             }
         } else {
-            if( $print_datablock_name ) {
-                printf "%-15s ", $datablock->{datablock}{id};
-            }
             printf
-                "%-35s %15s %3d %s\n",
+                "%-35s %15s %3d %s",
                 $datablock->{formula}, "?", 0,
                 $file;
+            if( $print_datablock_name ) {
+                printf "%s", $datablock->{datablock}{id};
+            }
+            print "\n"
         }
     }
 }
