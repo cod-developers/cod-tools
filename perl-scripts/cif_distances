@@ -7,7 +7,7 @@
 #$URL$
 #------------------------------------------------------------------------------
 #*
-#   Calculates minimal distance between atoms read from a cif file.
+# Calculates minimal distance between atoms read from a CIF file.
 #**
 
 use lib "../../CIFData/";
@@ -23,6 +23,7 @@ use Escape;
 use File::Basename; 
 use CIFData::CIFCellContents;
 use CIFParser;
+use CIFTagManage;
 use Fractional;
 use Spacegroups::SymopParse;
 use Spacegroups::SpacegroupNames;
@@ -31,6 +32,8 @@ use SUsage;
 use UserMessage;
 
 my $uniquify_atoms = 1;
+my $include_disord_struct  = 1;
+my $include_dup_struct     = 0;
 my $include_self_distances = 1;
 my $include_null_distances = 0;
 my $include_unknown_types  = 0;
@@ -45,16 +48,38 @@ my %escaped_symbols = ("\"" => '"', "\'" => "'");
 
 @ARGV = getOptions(
 
+#** -M, --distance-matrix
+#**                     Set distance matrix output format.
+#** -P, --pairwise-distance
+#**                     Set pairwise distance output format (default).
+#** -l, --matrix-line-length "80"
+#**                     Maximum length of an output line in distance 
+#**                     matrix format (default 80).
+#** --format "%8.6f"
+#**                     Use the specified format for distance matrix 
+#**                     format printout (default "%-11.3f").
 #** -F, --add-filename
 #**                     Add a filename field at the end of pairwise 
 #**                     distance format lines.
 #** --no-add-filename,--do-not-add-filename
 #**                     Do not add a filename field at the end of 
 #**                     pairwise distance format lines (default).
-#** -M, --distance-matrix
-#**                     Set distance matrix output format.
-#** -P, --pairwise-distance
-#**                     Set pairwise distance output format (default).
+#** --process-disordered-structures,
+#** --include-disordered-structures
+#**                     Force processing of disordered structures (default).
+#** --no-process-disordered-structures,
+#** --exclude-disordered-structures,
+#** --skip-disordered-structures
+#**                     Skip disordered structures.
+#** --process-duplicate-structures,
+#** --include-duplicate-structures,
+#**                     Force processing of structures, that are flagged 
+#**                     as duplicates with '_cod_duplicate_entry' or 
+#**                     '_[local]_cod_duplicate_entry' tags.
+#** --no-process-duplicate-structures,
+#** --exclude-disordered-structures,
+#** --skip-duplicate-structures
+#**                     Skip duplicate structures (default).
 #** --include-null-distances
 #**                     Include entries of null distance relationship between 
 #**                     atoms from different disorder groups of the same 
@@ -76,12 +101,6 @@ my %escaped_symbols = ("\"" => '"', "\'" => "'");
 #** --no-unknown-types, --exclude-unknown-atoms
 #**                     Exclude entries containing atoms of undetermined 
 #**                     chemical type (default).
-#** -l, --matrix-line-length "80"
-#**                     Maximum length of an output line in distance 
-#**                     matrix format (default 80).
-#** --format "%8.6f"
-#**                     Use the specified format for distance matrix 
-#**                     format printout (default "%-11.3f").
 #** --uniquify-atoms
 #**                    Makes unique the labels of atoms (default).
 #** --no-uniquify-atoms
@@ -92,25 +111,43 @@ my %escaped_symbols = ("\"" => '"', "\'" => "'");
 #**                    Print no additional information.
 #** --help,--usage     Print a short usage message (this message) and exit.
 
+    "-M,--distance-matrix"       => sub { $output_format = "matrix" },
+    "-P,--pairwise-distance"     => sub { $output_format = "pairwise"; },
+    "-l,--matrix-line-length"    => \$line_length,
+    "--format"                   => \$format,
+
     "-F,--add-filename"          => sub { $add_filename = 1 },
     "--no-add-filename"          => sub { $add_filename = 0 },
     "--do-not-print-filename"    => sub { $add_filename = 0 },
-    "-M,--distance-matrix"       => sub { $output_format = "matrix" },
-    "-P,--pairwise-distance"     => sub { $output_format = "pairwise"; },
+
+    "--process-disordered-structures"    => sub { $include_disord_struct = 1 },
+    "--include-disordered-structures"    => sub { $include_disord_struct = 1 },
+    "--no-process-disordered-structures" => sub { $include_disord_struct = 0 },
+    "--exclude-disordered-structures"    => sub { $include_disord_struct = 0 },
+    "--skip-disordered-structures"       => sub { $include_disord_struct = 0 },
+
+    "--process-duplicate-structures"     => sub { $include_dup_struct = 1 },
+    "--include-duplicate-structures"     => sub { $include_dup_struct = 1 },
+    "--no-process-duplicate-structures"  => sub { $include_dup_struct = 0 },
+    "--exclude-duplicate-structures"     => sub { $include_dup_struct = 0 },
+    "--skip-duplicate-structures"        => sub { $include_dup_struct = 0 },
+
     "--include-null-distances"   => sub { $include_null_distances = 1 },
     "--no-null-distances"        => sub { $include_null_distances = 0 },
     "--exclude-null-distances"   => sub { $include_null_distances = 0 },
+
     "--include-self-distances"   => sub { $include_self_distances = 1 },
     "--no-self-distances"        => sub { $include_self_distances = 0 },
     "--exclude-self-distances"   => sub { $include_self_distances = 0 },
+
     "-U,--include-unknown-types" => sub { $include_unknown_types = 1 },
     "--no-unknown-types"         => sub { $include_unknown_types = 0 },
     "--exclude-unknown-types"    => sub { $include_unknown_types = 0 },
-    "-l,--matrix-line-length"    => \$line_length,
-    "--format"                   => \$format,
-    "-v,--verbose"               => sub { $verbose = 1; },
+
     "--uniquify-atoms"           => sub { $uniquify_atoms = 1; },
     "--no-uniquify-atoms"        => sub { $uniquify_atoms = 0; },
+
+    "-v,--verbose"               => sub { $verbose = 1; },
     "-s,--silent,--quiet"        => sub { $verbose = 0; },
     "--help,--usage"             => sub { SUsage::usage; exit }
 );
@@ -135,6 +172,20 @@ foreach my $filename ( @ARGV ) {
   my $data = $parser->Run( $filename );
 
   foreach my $dataset ( @$data ) {
+
+    if( !$include_dup_struct && data_is_duplicate( $dataset ) ) {
+        warning( $0, $filename, $dataset->{name},
+                 "dataset is marked as duplicate and should not " .
+                 "be used for statistics -- dataset will be skipped" );
+        next;
+    }
+
+    if( !($include_disord_struct == 1) && data_contain_disorder( $dataset ) ) {
+        warning( $0, $filename, $dataset->{name},
+                 "dataset contains disorder and cannot " .
+                 "be used for statistics -- dataset will be skipped" );
+        next;
+    }
 
     my $ortho_matrix;
 
@@ -606,7 +657,6 @@ sub shift_atom {
         }
       }
     }
-
     return @shifted_atoms;
 }
 
@@ -745,7 +795,68 @@ sub print_pairwise {
     }
 }
 
+##
+# Checks if dataset contains disorder sites.
+# @param $dataset
+#       Reference to the dataset.
+# @return
+#       1 if dataset contains disorder sites, 0 otherwise.
+##
+
+sub data_contain_disorder
+{
+    my ($dataset) = @_;
+    my $values = $dataset->{values};
+
+    for my $disorder_tag (qw( _atom_site_disorder_assembly
+                           _atom_site.disorder_assembly
+                           _atom_site_disorder_group
+                           _atom_site.disorder_group )) {
+        if( exists $values->{$disorder_tag} &&
+            ! tag_is_empty( $dataset, $disorder_tag )) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
+##
+# Checks if dataset is a duplicate of another data set.
+# @param $dataset
+#       Reference to the dataset.
+# @return
+#       1 if dataset is a duplicate, 0 otherwise.
+##
+
+sub data_is_duplicate
+{
+    my ($dataset) = @_;
+    my $values = $dataset->{values};
+
+    for my $duplicate_tag (qw( _cod_duplicate_entry
+                            _[local]_cod_duplicate_entry )) {
+        if( exists $values->{$duplicate_tag} &&
+            ! tag_is_empty( $dataset, $duplicate_tag )) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
+##
+# Compares two floating point numbers using given decimal point precision.
+# @param $float_1
+#       First floating point number.
+# @param $float_2
+#       Second floating point number.
+# @param $float_2
+#       Decimal point digit precision.
+# @return
+#       1 if numbers are equal, 0 otherwise.
+##
+
 sub equals {
     my ($float_1, $float_2, $dp) = @_;
-    return ( sprintf("%.${dp}f", $float_1) eq sprintf("%.${dp}f", $float_2) );
+    return ( sprintf("%.${dp}f", $float_1) eq 
+             sprintf("%.${dp}f", $float_2) ) ? 1 : 0;
 }
