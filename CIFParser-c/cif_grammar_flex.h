@@ -12,23 +12,23 @@
 #include <unistd.h> /* for ssize_t */
 #include <cexceptions.h>
 
+typedef enum {
+  CIF_FLEX_LEXER_FIX_CTRL_Z = 0x01,
+  CIF_FLEX_LEXER_FIX_NON_ASCII_SYMBOLS = 0x02,
+  CIF_FLEX_LEXER_FIX_MISSING_CLOSING_DOUBLE_QUOTE = 0x04,
+  CIF_FLEX_LEXER_FIX_MISSING_CLOSING_SINGLE_QUOTE = 0x08,
+  CIF_FLEX_LEXER_ALLOW_UQSTRING_BRACKETS = 0x16,
+} CIF_FLEX_LEXER_FLAGS;
+
+extern int yy_flex_debug;
+
 void cif_flex_debug_off( void );
 void cif_flex_debug_yyflex( void );
 void cif_flex_debug_yylval( void );
 void cif_flex_debug_yytext( void );
 void cif_flex_debug_lines( void );
 
-void cif_flex_reset_counters( void );
-
-int cif_flex_current_line_number( void );
-void cif_flex_set_current_line_number( ssize_t line );
-int cif_flex_current_position( void );
-void cif_flex_set_current_position( ssize_t pos );
-const char *cif_flex_current_line( void );
-
-int cif_flex_previous_line_number( void );
-int cif_flex_previous_position( void );
-const char *cif_flex_previous_line( void );
+int cif_lexer_has_flags( int flags );
 
 void set_lexer_fix_ctrl_z( void );
 void set_lexer_fix_non_ascii_symbols( void );
