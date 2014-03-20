@@ -20,6 +20,7 @@
 #include <stdiox.h>
 #include <cif_grammar_flex.h>
 #include <yy.h>
+#include <cif_lexer.h>
 #include <assert.h>
 
 struct COMPILER_OPTIONS {
