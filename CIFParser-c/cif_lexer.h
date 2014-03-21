@@ -9,6 +9,7 @@
 #define __CIF_LEXER_H
 
 #include <stdio.h>
+#include <stdlib.h> /* for ssize_t */
 
 int yylex( void );
 void yyrestart( void );
