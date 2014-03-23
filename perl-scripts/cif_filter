@@ -1148,6 +1148,14 @@ for my $filename (@ARGV) {
             $data_block_nr ++;
         }
 
+        # Make sure we do not print out datasets with empty names if
+        # we fix CIFs:
+
+        if( $dataset->{name} eq "" ) {
+            $dataset->{name} = $filename;
+            $dataset->{name} =~ s/\s/_/g;
+        }
+
         # Print out requested tags:
 
         print_cif( $dataset, { 
