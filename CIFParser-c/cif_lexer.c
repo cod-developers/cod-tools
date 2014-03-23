@@ -88,6 +88,18 @@ int cif_lexer( FILE *in )
 
     while( ch != EOF ) {
         switch( ch ) {
+        case '\032': /* DOS EOF (^Z, Ctrl-Z) character */
+            thisTokenPos = current_pos > 0 ? current_pos - 1 : 0;
+            if( cif_lexer_has_flags
+                (CIF_FLEX_LEXER_FIX_CTRL_Z) ) {
+                yynote( "DOS EOF symbol ^Z was encountered and ignored" );
+            } else {
+                yyerror( "DOS EOF symbol ^Z was encountered, "
+                         "it is not permitted in CIFs" );
+            }
+            prevchar = ch;
+            ch = getlinec( in );
+            break;
         case '\n': case '\r': case ' ': case '\t': case '\0':
             /* skip spaces after comments: */
             prevchar = ch;
