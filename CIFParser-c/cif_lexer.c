@@ -404,6 +404,7 @@ void ungetlinec( char ch, FILE *in )
        pushed back at the end of a DOS new line: */
     if( ch == '\n' || ch == '\r' ) {
         thisTokenLine = lastTokenLine;
+        /* currLine --; */
     }
     ungetc( ch, in );
 }
@@ -439,11 +440,12 @@ static int getlinec( FILE *in )
         /* printf( ">>> lastTokenLine = '%s'\n", lastTokenLine ); */
         /* printf( ">>> thisTokenLine = '%s'\n", thisTokenLine ); */
     }
+    currLine = lineCnt;
     ungot_ch = 0;
     return ch;
 }
 
-int cif_flex_current_line_number( void ) { return lineCnt; }
+int cif_flex_current_line_number( void ) { return currLine; }
 int cif_flex_previous_line_number( void ) { return prevLine; }
 void cif_flex_set_current_line_number( ssize_t line ) { lineCnt = line; }
 int cif_flex_current_position( void ) { return thisTokenPos; }
