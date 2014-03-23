@@ -404,7 +404,7 @@ void ungetlinec( char ch, FILE *in )
        pushed back at the end of a DOS new line: */
     if( ch == '\n' || ch == '\r' ) {
         thisTokenLine = lastTokenLine;
-        /* currLine --; */
+        currLine --;
     }
     ungetc( ch, in );
 }
