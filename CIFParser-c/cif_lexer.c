@@ -297,11 +297,28 @@ int cif_lexer( FILE *in )
                 yylval.s = clean_string( token, /* is_textfield = */ 0 );
                 return _LOOP_;
             } else {
-                if( yy_flex_debug ) {
-                    printf( ">>> UQSTRING: '%s'\n", token );
+                if( token[0] == '[' ) {
+                    /* bracket is a reserved symbol, unquoted strings
+                       may not start with it: */
+                    if( !cif_lexer_has_flags
+                        (CIF_FLEX_LEXER_ALLOW_UQSTRING_BRACKETS)) {
+                        yyerror( "opening square brackets are reserved "
+                                 "and may not start an unquoted string" );
+                    }
                 }
-                yylval.s = check_and_clean( token, /* is_textfield = */ 0 );
-                return _UQSTRING;
+                if( token[0] != '[' ) {
+                    if( yy_flex_debug ) {
+                        printf( ">>> UQSTRING: '%s'\n", token );
+                    }
+                    yylval.s = check_and_clean( token, /* is_textfield = */ 0 );
+                    return _UQSTRING;
+                } else {
+                    if( yy_flex_debug ) {
+                        printf( ">>> SQSTRING (corrected bracket): '%s'\n", token );
+                    }
+                    yylval.s = check_and_clean( token, /* is_textfield = */ 0 );
+                    return _SQSTRING;
+                }
             }
         }
     }
