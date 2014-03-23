@@ -388,7 +388,11 @@ static void pushchar( char **buf, size_t *length, size_t pos, int ch )
 void ungetlinec( char ch, FILE *in )
 {
     ungot_ch = 1;
-    thisTokenLine = lastTokenLine;
+    /* CHECKME: see if the lines are switched correctly when '\n' is
+       pushed back at the end of a DOS new line: */
+    if( ch == '\n' || ch == '\r' ) {
+        thisTokenLine = lastTokenLine;
+    }
     ungetc( ch, in );
 }
 
