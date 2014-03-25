@@ -31,12 +31,21 @@ my $format = "%g";
 my $Z_value;
 my $use_attached_hydrogens = 0;
 my $assume_full_occupancies = 0;
+my $continue_on_errors = 0;
 my $print_datablock_name = 0;
 
 #* Usage:
 #*     cif_cell_constants [options] input.cif
 #*
 #* Options:
+#*
+#*     -c, --continue-on-errors
+#*         Keep processing subsequent data blocks even if one datablock
+#*         had fatal processing errors
+#*
+#*     -c-, --dont-continue-on-errors
+#*         Terminate script immediately if some data block could not be
+#*         processed (default).
 #*
 #*     -Z, --cell-formula-units-Z  1
 #*         Specify number of formula sum units in the unit cell.
@@ -74,6 +83,11 @@ my $print_datablock_name = 0;
 
 @ARGV = getOptions(
 
+    "-c,--continue-on-errors" => sub { $continue_on_errors = 1 },
+    "-c-,--dont-continue-on-errors" => sub { $continue_on_errors = 0 },
+    "--do-not-continue-on-errors" => sub { $continue_on_errors = 0 },
+    "--no-continue-on-errors" => sub { $continue_on_errors = 0 },
+
     "-Z,--cell-formula-units-Z" => \$Z_value,
 
     "--use-attached-hydrogens" => sub { $use_attached_hydrogens = 1 },
@@ -108,11 +122,20 @@ for my $filename (@ARGV) {
 
         my $values = $dataset->{values};
 
-        my $formula = CIFCellContents::cif_cell_contents( $dataset, 
-                                                          $filename,
-                                                          $Z_value,
-                                                          $use_attached_hydrogens,
-                                                          $assume_full_occupancies );
+        my $formula;
+        eval {
+            $formula = CIFCellContents::cif_cell_contents
+                ( $dataset,  $filename, $Z_value,
+                  $use_attached_hydrogens, $assume_full_occupancies );
+        };
+        if( $@ ) {
+            if( $continue_on_errors ) {
+                warn $@;
+            } else {
+                die $@;
+            }
+        }
+
         if( $print_datablock_name ) {
             print $dataset->{name}, "\t";
         }
