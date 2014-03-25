@@ -31,6 +31,7 @@ my $format = "%g";
 my $Z_value;
 my $use_attached_hydrogens = 0;
 my $assume_full_occupancies = 0;
+my $print_datablock_name = 0;
 
 #* Usage:
 #*     cif_cell_constants [options] input.cif
@@ -62,6 +63,12 @@ my $assume_full_occupancies = 0;
 #*         Use original atom site occupancies, as given in CIF file.
 #*         Default option.
 #*
+#*     --print-datablock-name
+#*         Print datablock name, tab-separated, before each formula.
+#*
+#*     --dont-print-datablock-name, --no-print-datablock-name
+#*         Do not print datablock name (default).
+#*
 #*     --help  print a short usage message (this message) and exit.
 #**
 
@@ -78,6 +85,11 @@ my $assume_full_occupancies = 0;
     "--dont-assume-full-occupancies" => sub { $assume_full_occupancies = 0 },
     "--no-assume-full-occupancies" => sub { $assume_full_occupancies = 0 },
     "--use-original-occupancies" => sub { $assume_full_occupancies = 0 },
+
+    "--print-datablock-name" => sub{ $print_datablock_name = 1 },
+    "--no-print-datablock-name" => sub{ $print_datablock_name = 0 },
+    "--dont-print-datablock-name" => sub{ $print_datablock_name = 0 },
+    "--do-not-print-datablock-name" => sub{ $print_datablock_name = 0 },
 
     "--help,--usage" => sub { SUsage::usage; exit },
 );
@@ -101,6 +113,9 @@ for my $filename (@ARGV) {
                                                           $Z_value,
                                                           $use_attached_hydrogens,
                                                           $assume_full_occupancies );
+        if( $print_datablock_name ) {
+            print $dataset->{name}, "\t";
+        }
         print $formula, "\n" if defined $formula;
     }
 }
