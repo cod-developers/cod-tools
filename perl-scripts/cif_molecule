@@ -1842,9 +1842,8 @@ sub symgen_atom($$$)
 {
     my ( $atom, $sym_operators, $f2o ) = @_;
 
-    my( $sym_atoms, $multiplicity, $multiplicity_ratio,
-        $symops_mapping_to_self ) =
-            symops_apply_modulo1( $atom, $sym_operators, $f2o );
+    my( $sym_atoms, $multiplicity, $multiplicity_ratio ) =
+        symops_apply_modulo1( $atom, $sym_operators, $f2o );
 
     if( $multiplicity_ratio == 1 ) {
         return @$sym_atoms;
@@ -1861,7 +1860,6 @@ sub symgen_atom($$$)
         }
         for my $atom (@$sym_atoms) {
             if( !defined $to_be_deleted{$atom->{name}} ) {
-                $atom->{site_symops} = $symops_mapping_to_self;
                 push( @unique_atoms, $atom );
             }
         }
@@ -1914,10 +1912,10 @@ sub symops_apply_modulo1
     for my $atom (@sym_atoms) {
         $atom->{multiplicity} = $multiplicity;
         $atom->{multiplicity_ratio} = $multiplicity_ratio;
+        $atom->{site_symops} = \@symops_mapping_to_self;
     }
 
-    return ( \@sym_atoms, $multiplicity, $multiplicity_ratio,
-             \@symops_mapping_to_self );
+    return ( \@sym_atoms, $multiplicity, $multiplicity_ratio );
 }
 
 #===============================================================#
