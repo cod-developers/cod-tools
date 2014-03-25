@@ -130,7 +130,9 @@ for my $filename (@ARGV) {
         };
         if( $@ ) {
             if( $continue_on_errors ) {
-                warn $@;
+                $@ =~ s/^Died /... /;
+                print STDERR $@;
+                next;
             } else {
                 die $@;
             }
