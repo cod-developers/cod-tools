@@ -1909,10 +1909,18 @@ sub symops_apply_modulo1
 
     my $multiplicity = $gp_multiplicity / $multiplicity_ratio;
 
+    # generate site symop strings in canonical form:
+    my @symop_strings =
+        map { symop_string_canonical_form (string_from_symop( $_ )) }
+    @symops_mapping_to_self;
+
+    my $symop_ids = join( ";", @symop_strings );
+
     for my $atom (@sym_atoms) {
         $atom->{multiplicity} = $multiplicity;
         $atom->{multiplicity_ratio} = $multiplicity_ratio;
         $atom->{site_symops} = \@symops_mapping_to_self;
+        $atom->{site_symop_strings} = $symop_ids;
     }
 
     return ( \@sym_atoms, $multiplicity, $multiplicity_ratio );
