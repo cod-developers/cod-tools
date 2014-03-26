@@ -445,7 +445,7 @@ for my $filename (@ARGV) {
 						    \%AtomProperties::atoms,
 						    $uniquify_atoms );
 
-#       prints molecule to the CIF file
+            #   prints molecule to the CIF file
 
 	    if( $sort_molecules || $largest_molecule_only ) {
 		@$unique_molecules = sort {@{$b->{atoms}} <=> @{$a->{atoms}}}
@@ -1909,18 +1909,10 @@ sub symops_apply_modulo1
 
     my $multiplicity = $gp_multiplicity / $multiplicity_ratio;
 
-    # generate site symop strings in canonical form:
-    my @symop_strings =
-        map { symop_string_canonical_form (string_from_symop( $_ )) }
-    @symops_mapping_to_self;
-
-    my $symop_ids = join( ";", @symop_strings );
-
     for my $atom (@sym_atoms) {
         $atom->{multiplicity} = $multiplicity;
         $atom->{multiplicity_ratio} = $multiplicity_ratio;
         $atom->{site_symops} = \@symops_mapping_to_self;
-        $atom->{site_symop_strings} = $symop_ids;
     }
 
     return ( \@sym_atoms, $multiplicity, $multiplicity_ratio );
@@ -2098,6 +2090,28 @@ sub rename_tags($$$)
     }
     return wantarray ? %renamed_tags : \%renamed_tags;
 }
+
+#===============================================================#
+# Trim a polymer -- remove atoms outside of the specified polymer
+# span:
+
+sub trim_polymer
+{
+    my ($atoms, $max_polymer_span) = @_;
+
+    my @trimmed_atoms;
+
+    for my $atom (@$atoms) {
+        if( abs($atom->{translation}[0]) <= $max_polymer_span &&
+            abs($atom->{translation}[1]) <= $max_polymer_span &&
+            abs($atom->{translation}[2]) <= $max_polymer_span ) {
+            push( @trimmed_atoms, $atom );
+        }
+    }
+
+    return \@trimmed_atoms;
+}
+
 
 #===============================================================#
 # Prints molecule to the CIF file.
@@ -2396,6 +2410,14 @@ sub print_molecule
         }
     }
 
+    my $trimmed_atoms;
+
+    if( $is_polymer ) {
+        $trimmed_atoms = trim_polymer( $molecule->{atoms}, $max_polymer_span );
+    } else {
+        $trimmed_atoms = $molecule->{atoms};
+    }
+
     print "_symmetry_space_group_name_H-M   \'P 1\'\n";
     print "loop_ _symmetry_equiv_pos_as_xyz \'x, y, z\'\n";
     print "loop_\n";
@@ -2429,7 +2451,7 @@ sub print_molecule
         length($a->{name}) == length($b->{name}) ?
             $a->{name} cmp $b->{name} :
             length($a->{name}) <=> length($b->{name})
-        } @{$molecule->{atoms}} )
+        } @{$trimmed_atoms} )
     {
         CIFTagPrint::print_value( $atom->{"name"} );
         print " ";
@@ -2510,7 +2532,7 @@ sub print_molecule
         length($a->{name}) == length($b->{name}) ?
             $a->{name} cmp $b->{name} :
             length($a->{name}) <=> length($b->{name})
-        } @{$molecule->{atoms}} )
+        } @{$trimmed_atoms} )
     {
         CIFTagPrint::print_value( $atom->{"name"} );
         print " ";
@@ -2553,7 +2575,7 @@ sub print_molecule
             length($a->{name}) == length($b->{name}) ?
                 $a->{name} cmp $b->{name} :
                 length($a->{name}) <=> length($b->{name})
-            } @{$molecule->{atoms}} )
+            } @{$trimmed_atoms} )
         {
             foreach my $symop ( @{$atom->{"site_symops"}} ) {
                 CIFTagPrint::print_value( $atom->{name} );
