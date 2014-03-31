@@ -32,6 +32,7 @@ use SUsage;
 
 my $name_syntax_explained = 0;
 my $check_bibliography = 1;
+my $require_only_doi = 0;
 my $check_authors = 1;
 my $check_chemical_formula_sum = 1;
 my $check_spacegroup_info = 1;
@@ -209,6 +210,11 @@ my $use_parser = "perl";
     "--dont-check-bibliography,--no-check-bibliography," .
     "--do-not-check-bibliography"
         => sub{ $check_bibliography = 0 },
+
+    "--require-only-doi"
+        => sub{ $require_only_doi = 1 },
+    "--require-full-bibliography"
+        => sub{ $require_only_doi = 0 },
 
     "--check-authors"
         => sub{ $check_authors = 1 },
@@ -437,6 +443,11 @@ sub check_bibliography
 
     my $warnings = 0;
     my $values = $dataset->{values};
+
+    if( $require_only_doi &&
+        defined $values->{_journal_paper_doi} ) {
+        return 0;
+    }
 
     if( !defined $values->{_journal_name_full} ) {
         error_reporter($filename, undef, $dataset->{name},
