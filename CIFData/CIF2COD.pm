@@ -29,6 +29,7 @@ my $bond_safety_margin = 0.2; # Angstroems; a bond safety marging for a CIF clas
 
 my $reformat_spacegroup = 0;
 my $use_datablocks_without_coord = 0;
+my $require_only_doi = 0;
 my $print_header = 0; # Indicates whether to print out a header with
                       # column names.
 my $print_keywords = 0;
@@ -183,6 +184,8 @@ sub cif2cod
         if exists $options->{cod_number};
     $continue_on_errors = $options->{continue_on_errors}
         if exists $options->{continue_on_errors};
+    $require_only_doi = $options->{require_only_doi}
+        if exists $options->{require_only_doi};
     $print_header = $options->{print_header}
         if exists $options->{print_header};
     $print_keywords = $options->{print_keywords}
@@ -215,16 +218,26 @@ sub cif2cod
 
         my $authors = join( "; ", @authors );
 
-        my $title = get_tag( $values, "_publ_section_title", 0, $filename );
-        my $journal = get_tag( $values, "_journal_name_full", 0, $filename );
-        my $year = get_tag( $values, "_journal_year", 0, $filename );
-        my $volume = get_tag( $values, "_journal_volume", 0, $filename );
-        
-        my $first_page;
-        if( exists $values->{_journal_article_reference} ) {
-            $first_page = get_tag_silently( $values, "_journal_page_first", 0 );
-        } else {
-            $first_page = get_tag( $values, "_journal_page_first", 0, $filename );
+        my( $title, $journal, $year, $volume, $first_page );
+        my %opt_biblio_tags = ( '_publ_section_title' => \$title,
+                                '_journal_name_full'  => \$journal,
+                                '_journal_year'       => \$year,
+                                '_journal_volume'     => \$volume,
+                                '_journal_page_first' => \$first_page );
+        for my $tag (keys %opt_biblio_tags) {
+            if( ($require_only_doi &&
+                 exists $values->{_journal_paper_doi}) ||
+                ($tag eq '_journal_page_first' &&
+                 exists $values->{_journal_article_reference}) ) {
+                ${$opt_biblio_tags{$tag}} = get_tag_silently( $values,
+                                                              $tag,
+                                                              0 );
+            } else {
+                ${$opt_biblio_tags{$tag}} = get_tag( $values,
+                                                     $tag,
+                                                     0,
+                                                     $filename );
+            }
         }
 
         my $last_page = get_tag_silently( $values, "_journal_page_last", 0 );
