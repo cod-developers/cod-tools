@@ -44,6 +44,8 @@ setvar USE_WIPE   = true
 
 setvar BASENAME = "`basename $0`"
 
+setvar REQUIRE_ONLY_DOI_ARG = ''
+
 # CIF_HEADER:
 #
 # curl http://www.crystallography.net/cod/cgi-bin/cif-deposit.pl -F
@@ -102,6 +104,14 @@ curl=curl
 #**
 #**  --silent, --ignore-unpaired-datablocks
 #**      Ignore unpaired CIF and Fobs datablocks.
+#**
+#**  --require-doi-only
+#**      Do not require any other bibliographic information to be
+#**      present if CIF datablock contains resolvable DOI.
+#**
+#**  --require-full-bibliography
+#**      Require all bibliographic information to be present in submitted
+#**      CIF file. Default option.
 #**
 #**  --use-wipe, --dont-use-wipe, --use-rm
 #**      Specifies whether to use 'wipe' comand (if present) or 'rm'
@@ -223,6 +233,18 @@ do
       --dont-ignore-unpaired-datablocks|--dont-ignore-unpaired|\
       --strict)
           STRICT=true
+          ;;
+      --require-doi-only|--require-doi-onl|--require-doi-on|\
+      --require-doi-o|--require-doi|--require-do|--require-d)
+          REQUIRE_ONLY_DOI_ARG='-F only_doi=1'
+          ;;
+      --require-full-bibliography|--require-full-bibliograph|\
+      --require-full-bibliograp|--require-full-bibliogra|\
+      --require-full-bibliogr|--require-full-bibliog|\
+      --require-full-biblio|--require-full-bibli|--require-full-bibl|\
+      --require-full-bib|--require-full-bi|--require-full-b|\
+      --require-full|--require-ful|--require-fu|--require-f)
+          REQUIRE_ONLY_DOI_ARG=''
           ;;
       --common-cif-header|--common-cif-heade|--common-cif-head|\
       --common-cif-hea|--common-cif-he|--common-cif-he|--common-cif|\
@@ -446,6 +468,7 @@ cat ${TMP_DEPOSIT_LIST} | \
             ${MESSAGE_ARG} \
             ${RELEASE_ARG} \
             ${STRICT_ARG} \
+            ${REQUIRE_ONLY_DOI_ARG} \
             ${CIF_HEADER_ARG} \
             -F "output_mode=${OUTPUT_MODE}" \
             -F "username=<${TMP_USERNAME}" \
