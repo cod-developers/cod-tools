@@ -224,7 +224,7 @@ sub cif2cod
                                 '_journal_year'       => \$year,
                                 '_journal_volume'     => \$volume,
                                 '_journal_page_first' => \$first_page );
-        for my $tag (keys %opt_biblio_tags) {
+        for my $tag (sort keys %opt_biblio_tags) {
             if( ($require_only_doi &&
                  exists $values->{_journal_paper_doi}) ||
                 ($tag eq '_journal_page_first' &&
