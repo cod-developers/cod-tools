@@ -15,6 +15,7 @@ eval 'exec perl -x $0 ${1+"$@"}'
 use strict;
 use File::Basename;
 use CIFParser;
+use CIFTagCanonicalNames;
 use CIFTags::CIFTagManage;
 use CIFTags::CIFTagPrint;
 use SOptions;
@@ -23,6 +24,7 @@ use SUsage;
 my @selected_tags;
 
 my $treat_dots_as_underscores = 1;
+my $canonicalize_tag_names = 0;
 my $output_tabular = 0;
 
 #* Usage:
@@ -87,6 +89,13 @@ my $output_tabular = 0;
     "--tabular,--output-tabular" => sub { $output_tabular = 1 },
     "--cif,--output-cif" => sub { $output_tabular = 0 },
 
+    "--canonicalize-tag-names"
+        => sub { $canonicalize_tag_names = 1 },
+    "--dont-canonicalize-tag-names"
+        => sub { $canonicalize_tag_names = 0 },
+    "--no-canonicalize-tag-names"
+        => sub { $canonicalize_tag_names = 0 },
+
     "--help,--usage"  => sub { SUsage::usage; exit },
 );
 
@@ -140,19 +149,28 @@ for my $filename (@ARGV) {
             local $\ = "\n";
             for my $tag (@selected_tags) {
                 print $dataset->{name},
-                      $tag,
+                      ( $canonicalize_tag_names
+                            ? canonical_tag_name( $tag )
+                            : $tag ),
                       ( exists $dataset->{values}{$tag}
                             ? join( $,, map{ s/[\n\t]/ /g; $_ }
                                     @{$dataset->{values}{$tag}} )
                             : '?' );
             }
         } else {
+            if( $canonicalize_tag_names ) {
+                canonicalize_names( $dataset );
+                @selected_tags = map{ canonical_tag_name( $_ ) }
+                                      @selected_tags;
+                %selected_tags = map{ ($_, $_) }
+                                      @selected_tags;
+            }
             CIFTagPrint::print_cif( $dataset,
-                       {
-                           dictionary_tags => \%selected_tags,
-                           dictionary_tag_list => \@selected_tags,
-                           exclude_misspelled_tags => 1,
-                       } );
+               {
+                   dictionary_tags => \%selected_tags,
+                   dictionary_tag_list => \@selected_tags,
+                   exclude_misspelled_tags => 1,
+               } );
         }
     }
 }
