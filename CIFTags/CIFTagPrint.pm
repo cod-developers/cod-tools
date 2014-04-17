@@ -30,7 +30,7 @@ sub print_cif
     my %dictionary_tags = ();
 
     my ( $exclude_misspelled_tags, $preserve_loop_order ) = ( 0 ) x 2;
-    my $fold_long_fields = 1;
+    my $fold_long_fields = 0;
     my $keep_tag_order = 0;
     my $folding_width;
 
