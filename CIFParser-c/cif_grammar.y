@@ -639,6 +639,9 @@ void add_tag_value( char * tag, char * value, cif_value_type_t type,
                                         tag_nr, 0)));
                         cif_overwrite_value( cif_cc->cif, tag_nr, 0,
                                              value, type );
+                    } else {
+                        yywarning
+                            (cxprintf( "tag %s appears more than once", tag ));
                     }
                 } else {
                     yywarning
