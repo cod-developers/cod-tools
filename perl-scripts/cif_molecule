@@ -360,6 +360,38 @@ sub get_symmetry_operators( $$ );
 sub test_bump( $$$$$$$ );
 sub mat_vect_mul( $$ );
 
+# Find the Gretest Common Divisor (GCD) of an array of numbers:
+
+sub gcd2
+{
+    my ($x, $y) = @_;
+
+    die if $x <= 0;
+    die if $y <= 0;
+    die if $x != int($x);
+    die if $y != int($y);
+
+    while( $x != $y ) {
+        if( $x > $y ) {
+            $x -= $y;
+        } else {
+            $y -= $x;
+        }
+    }
+
+    return $x;
+}
+
+sub gcd
+{
+    my $gcd = pop( @_ );
+    for (@_) {
+        $gcd = gcd2( $gcd, $_ );
+    }
+
+    return $gcd;
+}
+
 # Error reporting (message formatting) subroutines:
 
 # In order to follow SPOT these almost identical subroutines are taken from
@@ -447,11 +479,6 @@ for my $filename (@ARGV) {
 
             #   prints molecule to the CIF file
 
-	    if( $sort_molecules || $largest_molecule_only ) {
-		@$unique_molecules = sort {@{$b->{atoms}} <=> @{$a->{atoms}}}
-		@$unique_molecules;
-	    }
-
             if( $preserve_stoichiometry ) {
                 my $molecular_symmetry = new SGBuilder();
 
@@ -511,8 +538,40 @@ for my $filename (@ARGV) {
                         ## use Serialise; serialiseRef( \%additional_molecule );
                     }
                 }
+
+                # Find molecular Z value:
+
+                my %molecules;
+                for my $molecule (@stoichiometric_molecules) {
+                    my $molecule_key =
+                        join( "\0", sort map {$_->{site_label}}
+                              @{$molecule->{atoms}} );
+                    push( @{$molecules{$molecule_key}}, $molecule );
+                }
+                my $Z = gcd( map { int(@$_) } values %molecules );
+
+                ## print STDERR ">>> Z = $Z\n";
+
+                # Simplify molecular formula:
+
+                if( $Z > 1 ) {
+                    @stoichiometric_molecules = ();
+                    for my $molecule_key (keys %molecules) {
+                        my $N = int(@{$molecules{$molecule_key}});
+                        for my $i (0 .. $N/$Z - 1) {
+                            push( @stoichiometric_molecules,
+                                  $molecules{$molecule_key}[$i] );
+                        }
+                    }
+                }
+
                 $unique_molecules = \@stoichiometric_molecules;
-            }
+            } # Preserve stoichiometry
+
+	    if( $sort_molecules || $largest_molecule_only ) {
+		@$unique_molecules = sort {@{$b->{atoms}} <=> @{$a->{atoms}}}
+		@$unique_molecules;
+	    }
 
             if( $use_one_output_datablock ) {
                 my @all_atoms = map { @{$_->{atoms}} } @$unique_molecules;
