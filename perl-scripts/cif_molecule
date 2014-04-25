@@ -493,41 +493,8 @@ for my $filename (@ARGV) {
                     ## use Serialise; serialiseRef( $molecule );
                     ## use Serialise; serialiseRef( \@cosets );
                     push( @stoichiometric_molecules, $molecule );
-                  COSET:
                     for my $coset (@cosets[1..$#cosets]) {
                         ## use Serialise; serialiseRef( [@cosets[1..$#cosets]] );
-
-                        # Check if a coset has at least one symmetry
-                        # operator that is *not* a symetry operator of
-                        # any molecule. If so, it would simply
-                        # multiply the number of equivalent molecules
-                        # and this coset can actually be skipped:
-                        for my $coset_symop (@{$coset}) {
-                            my $count = 0;
-                          MOLECULE:
-                            for my $molecule (@{$unique_molecules}) {
-                                my $symops = $molecule->{symmetry}->all_symops_ref();
-                                for my $molecule_symop (@{$symops}) {
-                                    if( SymopAlgebra::symop_matrices_are_equal
-                                        ( $coset_symop, $molecule_symop )) {
-                                        $count++;
-                                        last MOLECULE;
-                                    }
-                                }
-                            }
-                            # if $count == 0, then there is not a
-                            # single molecule that would be mapped to
-                            # itself by $coset_symop -- there is no
-                            # need to appy this coset's symop:
-                            next COSET if $count == 0;
-                        }
-
-                        # We come to this place in code if at least
-                        # one molecule is mapped to self by every
-                        # symop in the coset -- we apply one
-                        # (arbitrary) symop of the $coset to the
-                        # current molecule to preserve stoichiometry:
-
                         my $symop = $coset->[0];
                         my $symop_key = Cosets::canonical_string_from_symop( $symop );
                         my $symop_id = $symop_ids{$symop_key};
