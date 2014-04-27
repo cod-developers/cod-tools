@@ -1,0 +1,346 @@
+#! /bin/sh
+#!perl -w # --*- Perl -*--
+eval 'exec perl -x $0 ${1+"$@"}'
+    if 0;
+#------------------------------------------------------------------------------
+#$Author$
+#$Date$ 
+#$Revision$
+#$URL$
+#------------------------------------------------------------------------------
+#*
+#  Expland atoms in CIF to the P1 spacegroup, preserving molecules
+#  (i.e. outputing atoms that are bonded at bond distances from each
+#  other).
+#**
+
+use strict;
+use warnings;
+
+use AtomBricks;
+use CIFParser;
+use CCIFParser;
+use CIFTagCanonicalNames;
+use SymopParse;
+use SymopLookup;
+use CIFTagPrint;
+use CIFTagManage;
+use SOptions;
+use SUsage;
+use UserMessage;
+use Fractional;
+use AtomProperties;
+
+my $Id = '$Id: cif_molecule 2616 2014-04-25 13:35:07Z saulius $';
+
+my $use_parser = "c";
+
+# Program flags that can be set from options:
+
+my $continue_on_errors = 0;
+my $exclude_zero_occupancies = 1; # Do not use atoms with zero
+                                  # occupancies
+
+#* USAGE:
+#*     $0 --options input1.cif input*.cif
+#* 
+#* OPTIONS:
+#*    --continue-on-errors
+#*        Do not stop if errors such as unrecognised atoms are
+#*        encountered; the output may be incorrect and missing
+#*        some atoms if this otion is used!
+#*   
+#*    --dont-continue-on-errors, --no-continue-on-errors
+#*        Stop immediately when an error is encountered.
+#*                       
+#*    --exclude-zero-occupancies
+#*        Do not use atoms woth 0 occupancies in calculations
+#*        (defalut).
+#*                       
+#*    --dont-continue-on-errors, --no-continue-on-errors
+#*        Stop immediately when an error is encountered.
+#*                       
+#*    --use-perl-parser  Use development CIF parser written in Perl
+#*    --use-c-parser     Use faster C/Yacc CIF parser (default)
+#*
+#*    --help,--usage         Print a short usage message (this message) and exit.
+#**
+
+@ARGV = getOptions( 
+    "--continue-on-errors" => sub{ $continue_on_errors = 1 },
+    "--no-continue-on-errors" => sub{ $continue_on_errors = 0 },
+    "--dont-continue-on-errors" => sub{ $continue_on_errors = 0 },
+
+    "--exclude-zero-occupancies"    => sub { $exclude_zero_occupancies = 1; },
+    "--no-exclude-zero-occupancies" => sub { $exclude_zero_occupancies = 0; },
+    "--dont-exclude-zero-occupancies" => sub { $exclude_zero_occupancies = 0; },
+
+    "--use-perl-parser"  => sub{ $use_parser = "perl" },
+    "--use-c-parser"     => sub{ $use_parser = "c" },
+
+    "--options"          => sub { 
+        print "$0: The '--options' option is a placehoder.\n";
+        print "$0: It should be replaced by one of the following options:\n";
+        ## SUsage::usage;
+        open( SCRIPT, $0 ) or die $!;
+        while( <SCRIPT> ) {
+            if( /^#\*\s+OPTIONS:/../^#\*\*/ ) {
+                s/^#\*\s+OPTIONS://;
+                s/^#\*\*?\s+//;
+                print;
+            }
+        }
+        close( SCRIPT );
+        exit
+    },
+    "--help,--usage"     => sub { SUsage::usage; exit },
+);
+
+# The "atom" hash structure used by this script:
+
+if( 0 ) {
+    my $atom = {
+        site_label    => "C1",
+        cell_label    => "C1_2",
+        name          => "C1_2_436",
+        chemical_type => "C",
+        fractional => [ 1.5, 0.22, 1.0 ], # Fractional atom coordinates
+        cartesian  => [ 150., 21.7, 50 ], # Orthogonal coordinates
+        f2o        => [
+            # Othogonalistion matrix used to convert fractional
+            # coordinates to orthogonal (Cartesian) ones:
+            [ 100,  0,  0 ],
+            [   0, 50,  0 ],
+            [   0,  0, 30 ]
+        ],
+        occupancy => 1.0,
+        multiplicity => 8,
+        assembly => "A", # "."
+        group    => "1", # "."
+    }
+}
+
+@ARGV = ( "-" ) unless @ARGV;
+
+for my $filename (@ARGV) {
+
+    my( $data, $error_count );
+
+    if( $use_parser eq "perl" ) {
+        my $parser = new CIFParser;
+
+        $data = $parser->Run( $filename );
+
+        if( defined $parser->YYData->{ERRCOUNT} ) {
+            $error_count = $parser->YYData->{ERRCOUNT};
+        }
+    } else {
+        ( $data, $error_count ) = CCIFParser::parse( $filename );
+    }
+
+    if( defined $error_count && $error_count > 0 ) {
+        print STDERR "$0: ", $error_count,
+        " error(s) encountered while parsing file '${filename}'\n";
+        die;
+    }
+
+    if( !@$data || !defined $data->[0] || !defined $data->[0]{name} ) {
+        warn( "file '$filename' seems to be empty" );
+        next;
+    }
+
+    for my $datablock (@$data) {
+        # Build an atom array from the CIF data structure:
+        my @atoms = atom_array_from_cif( $datablock, \%AtomProperties::atoms,
+                                         $filename );
+        use Serialise;
+        serialiseRef( \@atoms );
+    }
+}
+
+# End of main program:
+exit 0;
+
+# Subroutines:
+
+sub atom_array_from_cif
+{
+    my ($datablock, $atom_properties, $filename ) = @_;
+
+    my $values = $datablock->{values};
+    my $dataname = $datablock->{name};
+
+    my $atom_site_tag;
+
+    if( exists $values->{"_atom_site_label"} ) {
+        $atom_site_tag = "_atom_site_label";
+    } elsif( exists $values->{"_atom_site_type_symbol"} ) {
+        $atom_site_tag = "_atom_site_type_symbol";
+
+        error( $0, $filename, $dataname,
+               "_atom_site_label tag was not found. " .
+               "A serial number will be appended " .
+               "to _atom_site_type_symbol to make atom labels" );
+    } else {
+        error( $0, $filename, $dataname,
+               "neither _atom_site_type_symbol nor _atom_site_label " .
+               "were found" );
+	return undef;
+    }
+
+    my $atom_labels = $values->{$atom_site_tag};
+
+    my @atom_list;
+
+    for (my $i = 0; $i < @{$atom_labels}; $i++)
+    {
+        if( $exclude_zero_occupancies &&
+            defined $values->{_atom_site_occupancy} ) {
+            my $occupancy = $values->{_atom_site_occupancy}[$i];
+            $occupancy =~ s/\(\d+\)$//; # remove precission
+            if( $occupancy eq "?" || $occupancy eq "." ||
+                $occupancy == 0.0 ) {
+                next;
+            }
+        }
+
+	my $label;
+        if ( $atom_site_tag eq "_atom_site_type_symbol" ) {
+	    $label = $values->{$atom_site_tag}[$i] . $i;
+	} else {
+	    $label = $values->{$atom_site_tag}[$i];
+	}
+
+        my $f2o;
+        my $atom = atom_from_cif_values( $label, $values, $i, $f2o );
+
+        if (exists $atom_properties->{ $atom->{"chemical_type"}}) {
+            push( @atom_list, $atom );
+        } else {
+            my $message = "unknown chemical type '" .
+                $atom->{chemical_type} . "'";
+
+            if( $continue_on_errors ) {
+                warning( $0, $filename, $dataname, $message );
+            } else {
+                error( $0, $filename, $dataname, $message );
+                exit(1);
+            }
+        }
+    }
+
+    return \@atom_list;
+}
+
+#===============================================================#
+# Extracts atom information from the CIF file.
+#
+# Accepts
+#     values     - a hash where a data from the CIF file is stored
+#     atom_label - atom site label or atom site type symbol from the CIF file
+#     number     - a number of the current atom
+#
+# Returns a reference to %atom as described above.
+
+sub atom_from_cif_values
+{
+    my($atom_label, $values, $number, $f2o) = @_;
+
+    my %atom;
+    my @atom_xyz;
+
+    for my $cif_fract ( "_atom_site_fract_x",
+                        "_atom_site_fract_y",
+                        "_atom_site_fract_z",)
+    {
+        push(@atom_xyz, $values->{$cif_fract}[$number]);
+        $atom_xyz[-1] =~ s/\(\d+\)$//;
+    }
+
+    @atom_xyz = map { modulo_1($_) } @atom_xyz;
+
+    $atom{fractional} = \@atom_xyz;
+    $atom{name}       = $atom_label;
+    $atom{site_label} = $atom_label;
+
+
+    ## $atom{coordinates_ortho} =
+    ##    mat_vect_mul( $f2o, \@atom_xyz );
+
+    my $atom_type;
+
+    if( exists $values->{_atom_site_type_symbol}  &&
+        defined $values->{_atom_site_type_symbol}[$number] &&
+        $values->{_atom_site_type_symbol}[$number] ne '?' ) {
+        $atom_type = $values->{_atom_site_type_symbol}[$number];
+        $atom{atom_site_type_symbol} = $atom_type;
+        if( $atom_type =~ m/^([A-Za-z]{1,2})/ ) {
+            $atom_type = ucfirst( lc( $1 ));
+        }
+    } else {
+        if( $values->{_atom_site_label}[$number] =~
+            m/^([A-Za-z]{1,2})/ ) {
+            $atom_type = ucfirst( lc( $1 ));
+        } else {
+            die( "could not determine atom type for atom " .
+                 "'$values->{_atom_site_label}[$number]'" );
+        }
+    }
+
+    $atom{chemical_type} = $atom_type;
+
+    if( exists $values->{_atom_site_disorder_assembly}[$number]) {
+        $atom{assembly} =
+	    $values->{_atom_site_disorder_assembly}[$number];
+    } else {
+        $atom{assembly} = ".";
+    }
+
+    if( exists $values->{_atom_site_disorder_group}[$number] ) {
+        $atom{group} = $values->{_atom_site_disorder_group}[$number];
+    } else {
+        $atom{group} = ".";
+    }
+
+    if( exists $values->{_atom_site_occupancy} ) {
+        $atom{atom_site_occupancy} =
+            $values->{_atom_site_occupancy}[$number];
+    }
+
+    if( exists $values->{_atom_site_U_iso_or_equiv} ) {
+        $atom{atom_site_U_iso_or_equiv} =
+            $values->{_atom_site_U_iso_or_equiv}[$number];
+    }
+
+    if( exists $values->{_atom_site_symmetry_multiplicity} ) {
+        $atom{multiplicity} =
+            $values->{_atom_site_symmetry_multiplicity}[$number];
+    }
+
+    if( exists $values->{_atom_site_attached_hydrogens} ) {
+        $atom{attached_hydrogens} =
+            $values->{_atom_site_attached_hydrogens}[$number];
+    }
+
+    if( exists $values->{_atom_site_refinement_flags} ) {
+        $atom{refinement_flags} =
+            $values->{_atom_site_refinement_flags}[$number];
+    }
+
+    if( exists $values->{_atom_site_refinement_posn} ) {
+        $atom{refinement_flags_position} =
+            $values->{_atom_site_refinement_posn}[$number];
+    }
+
+    if( exists $values->{_atom_site_refinement_adp} ) {
+        $atom{refinement_flags_adp} =
+            $values->{_atom_site_refinement_adp}[$number];
+    }
+
+    if( exists $values->{_atom_site_refinement_occupancy} ) {
+        $atom{refinement_flags_occupancy} =
+            $values->{_atom_site_refinement_occupancy}[$number];
+    }
+
+    return \%atom;
+}
