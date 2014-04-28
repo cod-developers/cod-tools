@@ -120,6 +120,11 @@ if( 0 ) {
     }
 }
 
+# Function prototypes to be checked:
+
+sub unit_cell_from_cif($$);
+sub mat_vect_mul($$);
+
 @ARGV = ( "-" ) unless @ARGV;
 
 for my $filename (@ARGV) {
@@ -170,6 +175,15 @@ sub atom_array_from_cif
     my $values = $datablock->{values};
     my $dataname = $datablock->{name};
 
+    # Get the unit cell information and construct the fract->ortho and
+    # ortho->fract conversion matrices:
+
+    my @cell = unit_cell_from_cif( $datablock, $filename );
+    my $f2o = symop_ortho_from_fract( @cell );
+
+    # Determine which atom site label tag is present and which can be
+    # used for identifying atoms:
+
     my $atom_site_tag;
 
     if( exists $values->{"_atom_site_label"} ) {
@@ -211,7 +225,6 @@ sub atom_array_from_cif
 	    $label = $values->{$atom_site_tag}[$i];
 	}
 
-        my $f2o;
         my $atom = atom_from_cif_values( $label, $values, $i, $f2o );
 
         if (exists $atom_properties->{ $atom->{"chemical_type"}}) {
@@ -263,9 +276,8 @@ sub atom_from_cif_values
     $atom{name}       = $atom_label;
     $atom{site_label} = $atom_label;
 
-
-    ## $atom{coordinates_ortho} =
-    ##    mat_vect_mul( $f2o, \@atom_xyz );
+    $atom{f2o} = $f2o;
+    $atom{cartesian} = mat_vect_mul( $f2o, \@atom_xyz );
 
     my $atom_type;
 
@@ -343,4 +355,90 @@ sub atom_from_cif_values
     }
 
     return \%atom;
+}
+
+#===============================================================#
+# Get unit cell angles and lengths.
+#
+# Accepts
+#     datablock - a hash where parsed data from the CIF file are stored
+# Returns
+#     cell - an array  with stored information.
+
+sub unit_cell_from_cif($$)
+{
+    my( $datablock, $filename ) = @_;
+
+    my $dataname = $datablock->{name};
+    my $values = $datablock->{values};
+
+    my @cell;
+
+    for my $cif_tag (qw(_cell_length_a
+                        _cell_length_b
+                        _cell_length_c
+                        )) {
+        push(@cell, $values->{$cif_tag}[0]);
+        $cell[-1] =~ s/\(\d+\)$//;
+    }
+
+    for my $cif_tag (qw(_cell_angle_alpha
+                        _cell_angle_beta
+                        _cell_angle_gamma
+                        )) {
+        if( exists $values->{$cif_tag} ) {
+            push( @cell, $values->{$cif_tag}[0] );
+            $cell[-1] =~ s/\(\d+\)$//;
+        } else {
+            warning( $0, $filename, $dataname,
+                     "cell angle '$cif_tag' not present -- " .
+                     "taking default value 90 degress." );
+            push( @cell, 90 );
+        }
+    }
+
+    return @cell;
+}
+
+#===============================================================#
+# Multiplies an ortho matrix with a vector.
+
+# my $matrix = [
+#     [ m11 m12 m13 m14 ],
+#     [ m21 m22 m23 m24 ],
+#     [ m31 m32 m33 m34 ],
+#     [ m41 m42 m43 m44 ]
+# ]
+
+# Or:
+
+# my $matrix = [
+#     [ r11 r12 r13 ],
+#     [ r21 r22 r23 ],
+#     [ r31 r32 r33 ],
+#     [ t1  t2  t3  ]
+# ]
+
+sub mat_vect_mul($$)
+{
+    my($matrix, $vector) = @_;
+
+    my @new_coordinates;
+
+    for(my $i = 0; $i < @{$vector}; $i++)
+    {
+        $new_coordinates[$i] = 0;
+        for(my $j = 0; $j < @{$vector}; $j++)
+        {
+            $new_coordinates[$i] += ${$matrix}[$i][$j] * ${$vector}[$j];
+        }
+    }
+
+    if( @$vector == 3 && @$matrix == 4 ) {
+        $new_coordinates[0] += $matrix->[0][3];
+        $new_coordinates[1] += $matrix->[1][3];
+        $new_coordinates[2] += $matrix->[2][3];
+    }
+
+    return wantarray ? @new_coordinates : \@new_coordinates;
 }
