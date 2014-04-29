@@ -596,14 +596,27 @@ for my $filename (@ARGV) {
 		@$unique_molecules;
 	    }
 
+            my $Z = 1;
             if( $use_one_output_datablock ) {
                 my @all_atoms = map { @{$_->{atoms}} } @$unique_molecules;
                 if( @all_atoms > 0 ) {
+                    # Find molecular Z value, once more:
+
+                    my %moieties;
+                    for my $moiety (@$unique_molecules) {
+                        my $moiety_key =
+                            join( "\0", sort map {$_->{site_label}}
+                                  @{$moiety->{atoms}} );
+                        push( @{$moieties{$moiety_key}}, $moiety );
+                    }
+
+                    $Z = gcd( map { int(@$_) } values %moieties );
+
                     $unique_molecules = [{
                         atoms =>
                             \@all_atoms,
                         chemical_formula_sum =>
-                            chemical_formula_sum( \@all_atoms ),
+                            chemical_formula_sum( \@all_atoms, $Z ),
                     }];
                 }
             }
@@ -626,7 +639,7 @@ for my $filename (@ARGV) {
                                       $disorder_representative,
                                   chemical_formula_sum =>
                                       chemical_formula_sum
-                                          ( $disorder_representative ),
+                                          ( $disorder_representative, $Z ),
                               }
                         );
                     }
@@ -664,7 +677,8 @@ for my $filename (@ARGV) {
                 }
 
                 print_molecule( $id, $audit, $molecule, $Id,
-                                $dataset, $dataset_name, $filename, $sym_data );
+                                $dataset, $dataset_name, $filename,
+                                $sym_data, $Z );
 
                 last if $largest_molecule_only;
 
@@ -1626,7 +1640,9 @@ sub translate_atom
 
 sub chemical_formula_sum
 {
-    my ($atoms) = @_;
+    my ($atoms, $Z) = @_;
+
+    $Z = 1 unless defined $Z;
 
     my %chemical_types;
 
@@ -1641,6 +1657,10 @@ sub chemical_formula_sum
         {
             $chemical_types{$chemical_type} = 1;
         }
+    }
+
+    for my $chemical_type (keys %chemical_types) {
+        $chemical_types{$chemical_type} /= $Z;
     }
 
     my $formula_sum = "";
@@ -2224,7 +2244,7 @@ sub trim_polymer
 sub print_molecule
 {
     my( $molecule_id, $audit, $molecule, $Id, $dataset, $dataset_name,
-        $filename, $sym_data ) = @_;
+        $filename, $sym_data, $Z ) = @_;
 
     $dataset->{name} = $dataset_name;
 
@@ -2436,6 +2456,7 @@ sub print_molecule
                             _chemical_formula_sum
                             _cod_data_source_file
                             _cod_data_source_block
+                            _cell_formula_units_Z
     );
 
     foreach my $data_tag (@data2generate)
@@ -2453,6 +2474,10 @@ sub print_molecule
         {
             print_single_tag_and_value( $data_tag,
                                         $molecule->{chemical_formula_sum} );
+        }
+        elsif ( $data_tag eq "_cell_formula_units_Z" )
+        {
+            print_single_tag_and_value( $data_tag, $Z );
         }
         elsif ( $data_tag =~ /_cod_data_source_file/ )
         {
