@@ -724,45 +724,28 @@ sub get_molecules
         return [];
     }
 
-    my $atom_groups;
-    if( 0 ) {
-        # Split init atoms into assemblies and groups, if requested
-        if( $merge_disorder_groups ) {
-            $atom_groups = [ $atom_list ];
-        } else {
-            $atom_groups = atom_groups($atom_list);
-        }
-    } else {
-        $atom_groups = [ $atom_list ];
-    }
-
     my $max_covalent_radius = get_max_covalent_radius( $atom_properties );
 
     my @unique_molecules;
     my %seen_molecules;
 
-    my $n = 1;
-    foreach my $atom_group ( @{$atom_groups} )
-    {
-        my @symmetric_atoms = apply_shifts(
-            symgen_all_atoms( $atom_group, \@sym_operators, $f2o ), $f2o );
+    my @symmetric_atoms = apply_shifts(
+        symgen_all_atoms( $atom_list, \@sym_operators, $f2o ), $f2o );
 
-        foreach my $atom (@symmetric_atoms)
-        {
-            $atom->{coordinates_ortho} =
-                mat_vect_mul( $f2o, $atom->{coordinates_fract} );
-        }
+    foreach my $atom (@symmetric_atoms) {
+        $atom->{coordinates_ortho} =
+            mat_vect_mul( $f2o, $atom->{coordinates_fract} );
+    }
 
-        if( $dump_atoms ) {
-            dump_atoms_as_cif( $n++, \@symmetric_atoms, \@cell );
-            next
-        }
+    if( $dump_atoms ) {
+        dump_atoms_as_cif( 1, \@symmetric_atoms, \@cell );
+    } else {
 
-        my %atom_group_labels = map { $_->{name} => 1 } @$atom_group;
+        my %atom_list_names = map { $_->{name} => 1 } @$atom_list;
         my @initial_atoms;
         foreach my $symmetric_atom ( @symmetric_atoms ) {
             push( @initial_atoms, $symmetric_atom )
-                if exists $atom_group_labels{$symmetric_atom->{name}};
+                if exists $atom_list_names{$symmetric_atom->{name}};
         }
 
         my $bricks = AtomBricks::build_bricks( \@symmetric_atoms,
