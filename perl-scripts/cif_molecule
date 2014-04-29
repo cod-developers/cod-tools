@@ -142,6 +142,10 @@ my $largest_molecule_only = 0; # Output only the largest (having the
 my $output_geom_bond = 0; # Compute and output the _geom_bond_... data
                           # items (bond lengths, valencies, etc.)
 
+my $expand_to_p1 = 0; # Do we want a full P1 unit cell that can be used
+                      # to re-create the whole crystal using only the
+                      # lattice translations?
+
 @ARGV = getOptions
 (
 #** -1,--one-datablock-output
@@ -181,6 +185,15 @@ my $output_geom_bond = 0; # Compute and output the _geom_bond_... data
 #** -i-,--dont-sort-molecules,--no-sort-molecules
 #**                     Do not sort molecules, print them out in the order they
 #**                     are detected.
+#**
+#** --expand-to-P1, --expand-to-p1
+#**                    Expand all atoms to the P1 unit cell, so that the
+#**                    translation operators can be be used to restore the
+#**                    whole crystal.
+#**
+#** --dont-expand-to-P1, --no-expand-to-p1
+#**                    Do not expand to P1, output only the minimal molecule 
+#**                    list.
 #**
 #** --uniquify-atoms
 #**                    Makes unique the labels of atoms (default).
@@ -266,6 +279,11 @@ my $output_geom_bond = 0; # Compute and output the _geom_bond_... data
 
     "-1,--one-datablock-output" => sub { $use_one_output_datablock = 1; },
     "-1-,--multiple-datablocks-output" => sub { $use_one_output_datablock = 0; },
+
+    "--expand-to-p1,--expand-to-P1" => sub { $expand_to_p1 = 1 },
+    "--no-expand-to-p1,--no-expand-to-P1" => sub { $expand_to_p1 = 0 },
+    "--dont-expand-to-p1,--dont-expand-to-P1" => sub { $expand_to_p1 = 0 },
+    "--do-not-expand-to-p1,--do-not-expand-to-P1" => sub { $expand_to_p1 = 0 },
 
     "--uniquify-atoms"      => sub { $uniquify_atoms = 1; },
     "--no-uniquify-atoms"   => sub { $uniquify_atoms = 0; },
@@ -729,24 +747,30 @@ sub get_molecules
     my @unique_molecules;
     my %seen_molecules;
 
-    my @symmetric_atoms = apply_shifts(
-        symgen_all_atoms( $atom_list, \@sym_operators, $f2o ), $f2o );
+    my $unit_cell_atoms =
+        symgen_all_atoms( $atom_list, \@sym_operators, $f2o );
+    
+    my @symmetric_atoms = apply_shifts( $unit_cell_atoms, $f2o );
 
     foreach my $atom (@symmetric_atoms) {
         $atom->{coordinates_ortho} =
             mat_vect_mul( $f2o, $atom->{coordinates_fract} );
     }
 
-    if( $dump_atoms ) {
-        dump_atoms_as_cif( 1, \@symmetric_atoms, \@cell );
+    my @initial_atoms;
+    if( $expand_to_p1 ) {
+        @initial_atoms = @$unit_cell_atoms;
     } else {
-
         my %atom_list_names = map { $_->{name} => 1 } @$atom_list;
-        my @initial_atoms;
         foreach my $symmetric_atom ( @symmetric_atoms ) {
             push( @initial_atoms, $symmetric_atom )
                 if exists $atom_list_names{$symmetric_atom->{name}};
         }
+    }
+
+    if( $dump_atoms ) {
+        dump_atoms_as_cif( 1, \@initial_atoms, \@cell );
+    } else {
 
         my $bricks = AtomBricks::build_bricks( \@symmetric_atoms,
                                                $max_covalent_radius * 2 +
