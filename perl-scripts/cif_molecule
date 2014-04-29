@@ -186,12 +186,13 @@ my $expand_to_p1 = 0; # Do we want a full P1 unit cell that can be used
 #**                     Do not sort molecules, print them out in the order they
 #**                     are detected.
 #**
-#** --expand-to-P1, --expand-to-p1
+#** --expand-to-P1, --P1-expand, --p1-expand
 #**                    Expand all atoms to the P1 unit cell, so that the
 #**                    translation operators can be be used to restore the
 #**                    whole crystal.
 #**
-#** --dont-expand-to-P1, --no-expand-to-p1
+#** --dont-expand-to-P1, --no-expand-to-P1
+#** --dont-P1-expand, --no-p1-expand
 #**                    Do not expand to P1, output only the minimal molecule 
 #**                    list.
 #**
@@ -278,12 +279,16 @@ my $expand_to_p1 = 0; # Do we want a full P1 unit cell that can be used
 #** --help,--usage     print short usage message (this message) and exit
 
     "-1,--one-datablock-output" => sub { $use_one_output_datablock = 1; },
-    "-1-,--multiple-datablocks-output" => sub { $use_one_output_datablock = 0; },
+    "-1-,--multiple-datablocks-output" =>
+        sub { $use_one_output_datablock = 0; },
 
-    "--expand-to-p1,--expand-to-P1" => sub { $expand_to_p1 = 1 },
-    "--no-expand-to-p1,--no-expand-to-P1" => sub { $expand_to_p1 = 0 },
-    "--dont-expand-to-p1,--dont-expand-to-P1" => sub { $expand_to_p1 = 0 },
-    "--do-not-expand-to-p1,--do-not-expand-to-P1" => sub { $expand_to_p1 = 0 },
+    "--expand-to-P1,--P1-expand,--p1-expand" => sub { $expand_to_p1 = 1 },
+    "--no-expand-to-P1,--no-P1-expand,--no-p1-expand" =>
+        sub { $expand_to_p1 = 0 },
+    "--dont-expand-to-P1,--dont-P1-expand,--dont-p1-expand" =>
+        sub { $expand_to_p1 = 0 },
+    "--do-not-expand-to-P1,--do-not-P1-expand,--do-not-p1-expand" => 
+        sub { $expand_to_p1 = 0 },
 
     "--uniquify-atoms"      => sub { $uniquify_atoms = 1; },
     "--no-uniquify-atoms"   => sub { $uniquify_atoms = 0; },
@@ -1249,6 +1254,7 @@ sub extract_atom
     $atom_info{"coordinates_fract"}     = \@atom_xyz;
     $atom_info{"name"}                  = $atom_label;
     $atom_info{"site_label"}            = $atom_label;
+    $atom_info{"cell_label"}            = $atom_label;
     $atom_info{"symop"}                 =
       [
         [ 1, 0, 0, 0 ],
@@ -1777,12 +1783,25 @@ sub symop_register_applied_symop
         (5+$translation[0]) . (5+$translation[1]) . (5+$translation[2]);
 
     if( $new_atom_info->{"unity_matrix_applied"} ) {
+        ## die unless $new_atom_info->{"translation_id"} eq "555";
         $new_atom_info->{"name"} = $new_atom_info->{"site_label"};
     } else {
         $new_atom_info->{"name"} =
             $new_atom_info->{"site_label"} . "_" .
             $new_atom_info->{"symop_id"} . "_" .
             $new_atom_info->{"translation_id"};
+    }
+
+    if( $expand_to_p1 ) {
+        if( $new_atom_info->{"unity_matrix_applied"} ) {
+            $new_atom_info->{"cell_label"} = $new_atom_info->{"site_label"};
+        } else {
+            $new_atom_info->{"cell_label"} =
+                $new_atom_info->{"site_label"} . "_" .
+                $new_atom_info->{"symop_id"};
+        }
+    } else {
+        $new_atom_info->{"cell_label"} = $new_atom_info->{"site_label"};
     }
 
     do {
@@ -2747,8 +2766,15 @@ sub find_molecules($$$$$$$$$)
 
     foreach my $initial_atom (@$initial_atoms)
     {
-        if ((not exists $used_originals{$initial_atom->{site_label}})) {
+        if ((not exists $used_originals{$initial_atom->{cell_label}})) {
 	    print STDERR ">>>> starting new molecule\n" if $debug;
+
+            ## if( ! $expand_to_p1 &&
+            ##     $initial_atom->{cell_label} ne $initial_atom->{site_label} ) {
+            ##     print STDERR
+            ##         ">>>> site: $initial_atom->{site_label}, " .
+            ##         "cell: $initial_atom->{cell_label}\n";
+            ## }
 
             my @molecule_atoms = find_molecule( $covalent_sensitivity,
                                                 $atom_properties,
@@ -2823,8 +2849,8 @@ sub find_molecule($$$$$$$$$$$$)
             {$current_atom->{translation_id}} = $current_atom;
     }; # end no warnings
 
-    $used_originals->{$current_atom->{site_label}} =
-	$current_atom->{site_label};
+    $used_originals->{$current_atom->{cell_label}} =
+	$current_atom->{cell_label};
 
     do {
         no warnings;
@@ -2879,7 +2905,7 @@ sub find_molecule($$$$$$$$$$$$)
     print STDERR
 	">>> considering atom $current_atom->{name} " .
         "(@{$atom_in_unit_cell_coords_ortho}) " .
-	"($current_atom->{site_label}/" .
+	"($current_atom->{cell_label}/" .
 	"$current_atom->{symop_id}/$current_atom->{translation_id})\n"
 	if $debug;
 
