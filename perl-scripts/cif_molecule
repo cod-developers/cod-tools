@@ -61,6 +61,8 @@ use AtomBricks;
 use CIFParser;
 use CCIFParser;
 use CIFTagCanonicalNames;
+use COD::AtomNeighbours;
+use COD::MorganFingerprints;
 use SymopParse;
 use SymopLookup;
 use SymopAlgebra qw(symop_mul symop_invert);
@@ -121,6 +123,9 @@ my $cif_header_file; # Comments from the beginning of this file wil be
                      # prepended to the output.
 
 my $use_parser = "c"; # Used CIF parser
+
+my $use_morgan_fingerprints = 0; # Use Morgan fingerprints to identify
+                                 # duplicated moieties
 
 my $use_one_output_datablock = 0; # Put all molecules, and all
                                   # disorder groups, into a single
@@ -202,6 +207,17 @@ my $expand_to_p1 = 0; # Do we want a full P1 unit cell that can be used
 #** --no-uniquify-atoms,--dont-uniquify-atoms
 #**                    Do not makes unique labels for atoms,
 #**                    exclude duplicates.
+#**
+#** --use-morgan-fingerprints
+#**                    Use Morgan fingerprints to identify and skip
+#**                    duplicated moieties.
+#**
+#** --no-use-morgan-fingerprints, --dont-use-morgan-fingerprints
+#**                    Use atom labels to identify and skip duplicated
+#**                    moieties. This method is default, however under
+#**                    certain circumstances it leaves duplicate moieties,
+#**                    as asymmetric unit can initially contain more than
+#**                    one copy of a single moiety.
 #**
 #*  --bump-distance-factor 0.75
 #*         A fraction of covalent bond radii sum used to determine when
@@ -293,6 +309,13 @@ my $expand_to_p1 = 0; # Do we want a full P1 unit cell that can be used
     "--uniquify-atoms"      => sub { $uniquify_atoms = 1; },
     "--no-uniquify-atoms"   => sub { $uniquify_atoms = 0; },
     "--dont-uniquify-atoms" => sub { $uniquify_atoms = 0; },
+
+    "--use-morgan-fingerprints" =>
+        sub { $use_morgan_fingerprints = 1 },
+    "--no-use-morgan-fingerprints" =>
+        sub { $use_morgan_fingerprints = 0 },
+    "--dont-use-morgan-fingerprints" =>
+        sub { $use_morgan_fingerprints = 0 },
 
     "-c,--covalent-sensitivity" => \$covalent_sensitivity,
 
@@ -604,11 +627,45 @@ for my $filename (@ARGV) {
                 if( @all_atoms > 0 ) {
                     # Find molecular Z value, once more:
 
+                    my $f2o;
+                    if( $use_morgan_fingerprints ) {
+                        # Compute orthogonal coordinates for all atoms -- will
+                        # not be necessary when f2o will be the part of all
+                        # atoms, and when apply_symop... functions will always
+                        # compute orthogonal coordinates:
+                        my @cell = get_unit_cell( $values,
+                                                  $filename,
+                                                  $dataset->{name},
+                                                  1 );
+                        $f2o = symop_ortho_from_fract( @cell );
+                    }
+
                     my %moieties;
                     for my $moiety (@$unique_molecules) {
-                        my $moiety_key =
-                            join( "\0", sort map {$_->{site_label}}
-                                  @{$moiety->{atoms}} );
+                        my $moiety_key;
+                        if( $use_morgan_fingerprints ) {
+                            for my $atom (@{$moiety->{atoms}}) {
+                                if( !defined $atom->{coordinates_ortho} ) {
+                                    $atom->{coordinates_ortho} =
+                                        mat_vect_mul( $f2o, $atom->
+                                                      {coordinates_fract} );
+                                }
+                            }
+                            my $neighbours =
+                                AtomNeighbours::make_neighbour_list(
+                                    $moiety->{atoms},
+                                    $covalent_sensitivity,
+                                    $bump_distance_factor,
+                                    \%AtomProperties::atoms,
+                                    1 );
+                            $moiety_key =
+                                MorganFingerprints::make_morgan_fingerprint(
+                                    $neighbours );
+                        } else {
+                            $moiety_key =
+                                join( "\0", sort map {$_->{site_label}}
+                                      @{$moiety->{atoms}} );
+                        }
                         push( @{$moieties{$moiety_key}}, $moiety );
                     }
 
@@ -648,37 +705,6 @@ for my $filename (@ARGV) {
                 }
                 $unique_molecules = \@split_molecules;
             }
-
-            do {
-                # Compute orthogonal coordinates for all atoms -- will
-                # not be necessary when f2o will be the part of all
-                # atoms, and when apply_symop... functions will always
-                # compute orthogonal coordinates:
-                my @cell =
-                    get_unit_cell( $values, $filename, $dataset->{name}, 1 );
-
-                my $f2o = symop_ortho_from_fract( @cell );
-                for my $molecule (@{$unique_molecules}) {
-                    for my $atom (@{$molecule->{atoms}}) {
-                        if( !defined $atom->{coordinates_ortho} ) {
-                            $atom->{coordinates_ortho} =
-                                mat_vect_mul( $f2o, $atom->
-                                              {coordinates_fract} );
-                        }
-                    }
-                }
-
-                use COD::AtomNeighbours;
-                if( @{$unique_molecules} &&
-                    exists $unique_molecules->[0]{atoms} ) {
-                    my $neighbours = AtomNeighbours::make_neighbour_list
-                        ( $unique_molecules->[0]{atoms}, $covalent_sensitivity,
-                          $bump_distance_factor, \%AtomProperties::atoms, 1 );
-                }
-                ## use Serialise;
-                ## serialiseRef( $neighbours );
-                ## exit;
-            };
 
             foreach my $molecule (@$unique_molecules) {
                 my $id;
