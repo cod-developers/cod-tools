@@ -370,7 +370,7 @@ my $expand_to_p1 = 0; # Do we want a full P1 unit cell that can be used
 #==============================================================================#
 # Forward subroutine definitions:
 
-sub get_unit_cell( $$$ );
+sub get_unit_cell( $$$@ );
 sub symgen_atom( $$$ );
 sub symgen_all_atoms( $$$ );
 sub apply_shifts( $$ );
@@ -383,7 +383,7 @@ sub get_symmetry_operators( $$ );
 sub test_bump( $$$$$$$ );
 sub mat_vect_mul( $$ );
 
-# Find the Gretest Common Divisor (GCD) of an array of numbers:
+# Find the Gretest Common Divisor (GCD) of two numbers:
 
 sub gcd2
 {
@@ -404,6 +404,8 @@ sub gcd2
 
     return $x;
 }
+
+# Find the Gretest Common Divisor (GCD) of an array of numbers:
 
 sub gcd
 {
@@ -646,6 +648,37 @@ for my $filename (@ARGV) {
                 }
                 $unique_molecules = \@split_molecules;
             }
+
+            do {
+                # Compute orthogonal coordinates for all atoms -- will
+                # not be necessary when f2o will be the part of all
+                # atoms, and when apply_symop... functions will always
+                # compute orthogonal coordinates:
+                my @cell =
+                    get_unit_cell( $values, $filename, $dataset->{name}, 1 );
+
+                my $f2o = symop_ortho_from_fract( @cell );
+                for my $molecule (@{$unique_molecules}) {
+                    for my $atom (@{$molecule->{atoms}}) {
+                        if( !defined $atom->{coordinates_ortho} ) {
+                            $atom->{coordinates_ortho} =
+                                mat_vect_mul( $f2o, $atom->
+                                              {coordinates_fract} );
+                        }
+                    }
+                }
+
+                use COD::AtomNeighbours;
+                if( @{$unique_molecules} &&
+                    exists $unique_molecules->[0]{atoms} ) {
+                    my $neighbours = AtomNeighbours::make_neighbour_list
+                        ( $unique_molecules->[0]{atoms}, $covalent_sensitivity,
+                          $bump_distance_factor, \%AtomProperties::atoms, 1 );
+                }
+                ## use Serialise;
+                ## serialiseRef( $neighbours );
+                ## exit;
+            };
 
             foreach my $molecule (@$unique_molecules) {
                 my $id;
@@ -1204,11 +1237,13 @@ sub assemblies
 # Returns
 #     cell - an array  with stored information.
 
-sub get_unit_cell($$$)
+sub get_unit_cell($$$@)
 {
-    my( $values, $filename, $dataname ) = @_;
+    my( $values, $filename, $dataname, $silent ) = @_;
 
     my @cell;
+
+    $silent = 0 unless defined $silent;
 
     for my $cif_tag (qw(_cell_length_a
                         _cell_length_b
@@ -1230,7 +1265,8 @@ sub get_unit_cell($$$)
         } else {
             warning( $0, $filename, $dataname,
                      "cell angle '$cif_tag' not present -- " .
-                     "taking default value 90 degress." );
+                     "taking default value 90 degress." )
+                unless $silent;
             push( @cell, 90 );
         }
     }
@@ -1631,7 +1667,7 @@ sub translate_atom
 # Finds a molecule chemical formula sum.
 
 # Accepts an array of atoms:
-# $atom =      {label=>"C1_2",
+# $atom =      {name=>"C1_2",
 #               chemical_type=>"C",
 #               coordinates_fract=>[1.0, 1.0, 1.0],
 #               unity_matrix_applied=>1}
