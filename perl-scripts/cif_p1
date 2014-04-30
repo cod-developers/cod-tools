@@ -109,8 +109,8 @@ if( 0 ) {
         cell_label    => "C1_2",
         name          => "C1_2_436",
         chemical_type => "C",
-        fractional => [ 1.5, 0.22, 1.0 ], # Fractional atom coordinates
-        cartesian  => [ 150., 21.7, 50 ], # Orthogonal coordinates
+        coordinates_fract => [ 1.5, 0.22, 1.0 ], # Fractional atom coordinates
+        coordinates_ortho => [ 150., 21.7, 50 ], # Orthogonal coordinates
         f2o        => [
             # Othogonalistion matrix used to convert fractional
             # coordinates to orthogonal (Cartesian) ones:
@@ -285,12 +285,12 @@ sub atom_from_cif_values
 
     @atom_xyz = map { modulo_1($_) } @atom_xyz;
 
-    $atom{fractional} = \@atom_xyz;
+    $atom{coordinates_fract} = \@atom_xyz;
     $atom{name}       = $atom_label;
     $atom{site_label} = $atom_label;
 
     $atom{f2o} = $f2o;
-    $atom{cartesian} = mat_vect_mul( $f2o, \@atom_xyz );
+    $atom{coordinates_ortho} = mat_vect_mul( $f2o, \@atom_xyz );
 
     my $atom_type;
 
@@ -642,14 +642,14 @@ sub symop_apply_modulo1
 
     my $new_atom = copy_atom( $atom );
 
-    my $atom_xyz = $atom->{fractional};
+    my $atom_xyz = $atom->{coordinates_fract};
 
     my @new_atom_xyz =
         map { modulo_1($_) }
         mat_vect_mul( $symop, $atom_xyz );
 
-    $new_atom->{fractional} = \@new_atom_xyz;
-    $new_atom->{cartesian} = mat_vect_mul( $atom->{f2o}, \@new_atom_xyz );
+    $new_atom->{coordinates_fract} = \@new_atom_xyz;
+    $new_atom->{coordinates_ortho} = mat_vect_mul( $atom->{f2o}, \@new_atom_xyz );
 
     return symop_register_applied_symop( $new_atom, $symop, $symop_id );
 }
@@ -662,7 +662,7 @@ sub symop_register_applied_symop
     $new_atom_info->{symop_id} = $symop_id;
     $new_atom_info->{unity_matrix_applied} = symop_is_unity($symop);
 
-    my $atom_xyz = $new_atom_info->{fractional};
+    my $atom_xyz = $new_atom_info->{coordinates_fract};
     my @translation = (
         int($atom_xyz->[0] - modulo_1($atom_xyz->[0])),
         int($atom_xyz->[1] - modulo_1($atom_xyz->[1])),
@@ -709,8 +709,8 @@ sub symops_apply_to_atom_modulo1($$)
         my %to_be_deleted;
         for my $i (0..$#$sym_atoms-1) {
             for my $j ($i+1..$#$sym_atoms) {
-                if( distance( $sym_atoms->[$i]{fractional},
-                              $sym_atoms->[$j]{fractional}) < 0.0001 ) {
+                if( distance( $sym_atoms->[$i]{coordinates_fract},
+                              $sym_atoms->[$j]{coordinates_fract}) < 0.0001 ) {
                     $to_be_deleted{$sym_atoms->[$j]{name}} = 1;
                 }
             }
@@ -803,10 +803,10 @@ sub atoms_coincide($$$)
 {
     my ( $old_atom, $new_atom, $f2o ) = @_;
 
-    my $old_coord = [ map { modulo_1($_) } @{$old_atom->{fractional}} ];
+    my $old_coord = [ map { modulo_1($_) } @{$old_atom->{coordinates_fract}} ];
     my $old_xyz = mat_vect_mul( $f2o, $old_coord );
 
-    my $new_coord = [ map { modulo_1($_) } @{$new_atom->{fractional}} ];
+    my $new_coord = [ map { modulo_1($_) } @{$new_atom->{coordinates_fract}} ];
 
     for my $dx (-1, 0, 1) {
     for my $dy (-1, 0, 1) {
