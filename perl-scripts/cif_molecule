@@ -394,11 +394,11 @@ my $expand_to_p1 = 0; # Do we want a full P1 unit cell that can be used
 # Forward subroutine definitions:
 
 sub get_unit_cell( $$@ );
-sub symgen_atom( $$$ );
-sub symgen_all_atoms( $$$$$ );
-sub apply_shifts( $$ );
-sub find_molecules( $$$$$$$$$ );
-sub find_molecule( $$$$$$$$$$$$ );
+sub symgen_atom( $$ );
+sub symgen_all_atoms( $$$$ );
+sub apply_shifts( $ );
+sub find_molecules( $$$$$$$$ );
+sub find_molecule( $$$$$$$$$$$ );
 sub uniquify_atom_names( $$$$ );
 sub atom_array_from_cif($$$$);
 sub get_symmetry_operators( $$ );
@@ -764,13 +764,6 @@ sub get_molecules
     # Parse symmetry operators:
     my @sym_operators = map { symop_from_string($_) } @{$sym_data};
 
-    # Get cell angles(alpha, beta, gama) and lengths(a, b, c)
-    my @cell = get_unit_cell( $dataset, $filename, $dataname );
-
-    # Make a matric to convert from fractional coordinates to
-    # orthogonal:
-    my $f2o = symop_ortho_from_fract(@cell);
-
     # Extract atoms fract coordinates
     my $atom_list = atom_array_from_cif( $dataset, $atom_properties, $filename,
                                          $uniquify_atoms );
@@ -791,15 +784,9 @@ sub get_molecules
     my %seen_molecules;
 
     my $unit_cell_atoms =
-        symgen_all_atoms( $atom_list, \@sym_operators, $f2o,
-        $filename, $dataname );
+        symgen_all_atoms( $atom_list, \@sym_operators, $filename, $dataname );
     
-    my @symmetric_atoms = apply_shifts( $unit_cell_atoms, $f2o );
-
-    foreach my $atom (@symmetric_atoms) {
-        $atom->{coordinates_ortho} =
-            mat_vect_mul( $f2o, $atom->{coordinates_fract} );
-    }
+    my @symmetric_atoms = apply_shifts( $unit_cell_atoms );
 
     my @initial_atoms;
     if( $expand_to_p1 ) {
@@ -813,7 +800,8 @@ sub get_molecules
     }
 
     if( $dump_atoms ) {
-        dump_atoms_as_cif( 1, \@initial_atoms, \@cell );
+        dump_atoms_as_cif( 1, \@initial_atoms,
+                           [ get_unit_cell( $dataset, $filename ) ] );
     } else {
 
         my $bricks = AtomBricks::build_bricks( \@symmetric_atoms,
@@ -827,8 +815,7 @@ sub get_molecules
                                                         \@initial_atoms,
                                                         $bricks,
                                                         $filename, $dataname,
-                                                        \%seen_molecules,
-                                                        $f2o );
+                                                        \%seen_molecules );
 
         push( @unique_molecules, @current_ordered_molecules );
     }
@@ -1939,12 +1926,12 @@ sub mat_vect_mul($$)
 #===============================================================#
 # Checks whether atoms are in the same point in space:
 
-sub atoms_coincide($$$)
+sub atoms_coincide($$)
 {
-    my ( $old_atom, $new_atom, $f2o ) = @_;
+    my ( $old_atom, $new_atom ) = @_;
 
     my $old_coord = [ map { modulo_1($_) } @{$old_atom->{coordinates_fract}} ];
-    my $old_xyz = mat_vect_mul( $f2o, $old_coord );
+    my $old_xyz = mat_vect_mul( $old_atom->{f2o}, $old_coord );
 
     my $new_coord = [ map { modulo_1($_) } @{$new_atom->{coordinates_fract}} ];
 
@@ -1956,7 +1943,7 @@ sub atoms_coincide($$$)
             $new_coord->[1] + $dy,
             $new_coord->[2] + $dz,
         ];
-        my $new_xyz = mat_vect_mul( $f2o, $shifted_coord );
+        my $new_xyz = mat_vect_mul( $new_atom->{f2o}, $shifted_coord );
         if( distance( $new_xyz, $old_xyz ) < $special_position_cutoff ) {
             ## local $, = ", ";
             ## print ">>> mapped to self: @{$new_xyz} / @{$old_xyz}\n";
@@ -1971,11 +1958,11 @@ sub atoms_coincide($$$)
 # Generate symmetry equivalents of an atom, exclude duplicates
 # on special positions
 
-sub symgen_atom($$$)
+sub symgen_atom($$)
 {
-    my ( $atom, $sym_operators, $f2o ) = @_;
+    my ( $atom, $sym_operators ) = @_;
 
-    my $sym_atoms = symops_apply_modulo1( $atom, $sym_operators, $f2o );
+    my $sym_atoms = symops_apply_modulo1( $atom, $sym_operators );
 
     if( $sym_atoms && 
         ( @{$sym_atoms} == 0 ||
@@ -2008,7 +1995,7 @@ sub symgen_atom($$$)
 
 sub symops_apply_modulo1
 {
-    my ( $atom, $sym_operators, $f2o ) = @_;
+    my ( $atom, $sym_operators ) = @_;
 
     my @sym_atoms;
     my @symops_mapping_to_self;
@@ -2026,7 +2013,7 @@ sub symops_apply_modulo1
     for my $symop ( @{$sym_operators} ) {
         my $new_atom = symop_apply_modulo1( $atom, $symop, $n++ );
         if( !symop_is_unity( $symop ) &&
-            atoms_coincide( $atom, $new_atom, $f2o )) {
+            atoms_coincide( $atom, $new_atom )) {
             push( @symops_mapping_to_self, $symop );
             $multiplicity_ratio ++;
         } else {
@@ -2064,14 +2051,14 @@ sub symops_apply_modulo1
 # duplicates on special positions. Check the multiplicity values
 # provided in the original file.
 
-sub symgen_all_atoms($$$$$)
+sub symgen_all_atoms($$$$)
 {
-    my ( $atoms, $sym_operators, $f2o, $filename, $dataname ) = @_;
+    my ( $atoms, $sym_operators, $filename, $dataname ) = @_;
 
     my @sym_atoms = ();
 
     for my $atom (@{$atoms}) {
-        push( @sym_atoms, symgen_atom( $atom, $sym_operators, $f2o ));
+        push( @sym_atoms, symgen_atom( $atom, $sym_operators ));
     }
 
     my $nr_multiplicity_ratios_found = 0;
@@ -2122,19 +2109,17 @@ sub symgen_all_atoms($$$$$)
 #               unity_matrix_applied=>1}, returns an array of references of
 # above-mentioned hashes
 #
-sub shift_atom($$)
+sub shift_atom($)
 {
-    my($atom_info, $f2o) = @_;
+    my($atom_info) = @_;
 
     my @shifted_atoms;
     my @shifting_params = (0, -1, 1);
 
     for(my $i = 0; $i < @shifting_params; $i++)
     {
-        for(my $j = 0; $j < @shifting_params; $j++)
-        {
-            for(my $k = 0; $k < @shifting_params; $k++)
-            {
+        for(my $j = 0; $j < @shifting_params; $j++) {
+            for(my $k = 0; $k < @shifting_params; $k++) {
                 my $new_atom_info = copy_atom($atom_info);
                 $new_atom_info->{translation} = [ $shifting_params[$i],
                                                   $shifting_params[$j],
@@ -2142,8 +2127,7 @@ sub shift_atom($$)
                 my @new_atom_xyz;
                 if($shifting_params[$i] != 0 || $shifting_params[$j] != 0 ||
                    $shifting_params[$k] != 0 ||
-                   $atom_info->{"unity_matrix_applied"} != 1)
-                {
+                   $atom_info->{"unity_matrix_applied"} != 1) {
                     $new_atom_xyz[0] = $atom_info->{"coordinates_fract"}[0] +
                                                            $shifting_params[$i];
                     $new_atom_xyz[1] = $atom_info->{"coordinates_fract"}[1] +
@@ -2155,14 +2139,14 @@ sub shift_atom($$)
                         ($shifting_params[$j]+5).
                         ($shifting_params[$k]+5);
                     $new_atom_info->{"coordinates_fract"} = \@new_atom_xyz;
+                    $new_atom_info->{coordinates_ortho} =
+                        mat_vect_mul( $atom_info->{f2o}, \@new_atom_xyz );
                     $new_atom_info->{"name"} =
                         $atom_info->{"site_label"} . "_" .
                         $atom_info->{"symop_id"} . "_" .
                         $shift_label;
                     $new_atom_info->{"translation_id"} = $shift_label;
                 }
-                $new_atom_info->{coordinates_ortho} =
-                    mat_vect_mul( $f2o, \@new_atom_xyz );
                 push(@shifted_atoms, $new_atom_info);
             }
         }
@@ -2175,14 +2159,14 @@ sub shift_atom($$)
 # Generate symmetry equivalents of an atom, exclude duplicates
 # on special positions
 
-sub apply_shifts($$)
+sub apply_shifts($)
 {
-    my ($atoms, $f2o) = @_;
+    my ($atoms) = @_;
 
     my @shifted = ();
 
     for my $atom (@{$atoms}) {
-        push( @shifted, shift_atom( $atom, $f2o ));
+        push( @shifted, shift_atom( $atom ));
     }
 
     return @shifted;
@@ -2841,7 +2825,7 @@ sub print_molecule
 #               chemical_formula_sum => "C6 H6",
 #             );
 
-sub find_molecules($$$$$$$$$)
+sub find_molecules($$$$$$$$)
 {
     my $covalent_sensitivity = shift(@_);
     my $atom_properties      = shift(@_);
@@ -2851,7 +2835,6 @@ sub find_molecules($$$$$$$$$)
     my $filename             = shift(@_);
     my $dataname             = shift(@_);
     my $seen_molecules       = shift(@_);
-    my $ortho_matrix         = shift(@_);
 
     my @unique_molecules;
     my %used_atoms;
@@ -2879,8 +2862,7 @@ sub find_molecules($$$$$$$$$)
                                                 \%used_uc_atoms,
                                                 \%checked_pairs,
                                                 $initial_atom, $bricks,
-                                                $filename, $dataname,
-                                                $ortho_matrix );
+                                                $filename, $dataname );
 
             if( @molecule_atoms > 0 ) {
                 my %molecule = (
@@ -2901,7 +2883,7 @@ sub find_molecules($$$$$$$$$)
 
 # ============================================================================ #
 
-sub find_molecule($$$$$$$$$$$$)
+sub find_molecule($$$$$$$$$$$)
 {
     my $covalent_sensitivity = shift(@_);
     my $atom_properties      = shift(@_);
@@ -2914,13 +2896,12 @@ sub find_molecule($$$$$$$$$$$$)
     my $bricks               = shift(@_);
     my $filename             = shift(@_);
     my $dataname             = shift(@_);
-    my $ortho_matrix         = shift(@_);
 
     my @current_coords_fract_modulo_1 =
         map { modulo_1($_) } @{$current_atom->{coordinates_fract}};
 
     my $atom_in_unit_cell_coords_ortho =
-	mat_vect_mul( $ortho_matrix, \@current_coords_fract_modulo_1 );
+	mat_vect_mul( $current_atom->{f2o}, \@current_coords_fract_modulo_1 );
 
     my $current_translation = translation( $current_atom->{coordinates_fract},
                                            \@current_coords_fract_modulo_1 );
@@ -3138,8 +3119,7 @@ sub find_molecule($$$$$$$$$$$$)
                                                 $checked_pairs,
                                                 $back_shifted_sym_atom,
                                                 $bricks,
-                                                $filename, $dataname,
-                                                $ortho_matrix ));
+                                                $filename, $dataname ));
             }
         }
     }}}
