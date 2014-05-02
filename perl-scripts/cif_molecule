@@ -393,7 +393,7 @@ my $expand_to_p1 = 0; # Do we want a full P1 unit cell that can be used
 #==============================================================================#
 # Forward subroutine definitions:
 
-sub get_unit_cell( $$@ );
+sub get_unit_cell( $$ );
 sub symgen_atom( $$ );
 sub symgen_all_atoms( $$$$ );
 sub apply_shifts( $ );
@@ -1197,16 +1197,14 @@ sub assemblies
 # Returns
 #     cell - an array  with stored information.
 
-sub get_unit_cell($$@)
+sub get_unit_cell($$)
 {
-    my( $datablock, $filename, $silent ) = @_;
+    my( $datablock, $filename ) = @_;
 
     my $values = $datablock->{values};
     my $dataname = $datablock->{name};
 
     my @cell;
-
-    $silent = 0 unless defined $silent;
 
     for my $cif_tag (qw(_cell_length_a
                         _cell_length_b
@@ -1228,8 +1226,7 @@ sub get_unit_cell($$@)
         } else {
             warning( $0, $filename, $dataname,
                      "cell angle '$cif_tag' not present -- " .
-                     "taking default value 90 degress." )
-                unless $silent;
+                     "taking default value 90 degress." );
             push( @cell, 90 );
         }
     }
