@@ -393,14 +393,14 @@ my $expand_to_p1 = 0; # Do we want a full P1 unit cell that can be used
 #==============================================================================#
 # Forward subroutine definitions:
 
-sub get_unit_cell( $$$@ );
+sub get_unit_cell( $$@ );
 sub symgen_atom( $$$ );
-sub symgen_all_atoms( $$$ );
+sub symgen_all_atoms( $$$$$ );
 sub apply_shifts( $$ );
 sub find_molecules( $$$$$$$$$ );
 sub find_molecule( $$$$$$$$$$$$ );
 sub uniquify_atom_names( $$$$ );
-sub initial_atoms( $$$$$$$ );
+sub atom_array_from_cif($$$$);
 sub get_symmetry_operators( $$ );
 
 sub test_bump( $$$$$$$ );
@@ -633,9 +633,8 @@ for my $filename (@ARGV) {
                         # not be necessary when f2o will be the part of all
                         # atoms, and when apply_symop... functions will always
                         # compute orthogonal coordinates:
-                        my @cell = get_unit_cell( $values,
+                        my @cell = get_unit_cell( $dataset,
                                                   $filename,
-                                                  $dataset->{name},
                                                   1 );
                         $f2o = symop_ortho_from_fract( @cell );
                     }
@@ -718,7 +717,7 @@ for my $filename (@ARGV) {
 
                 if( $output_geom_bond ) {
                     my @cell =
-                        get_unit_cell( $values, $filename, $dataset->{name} );
+                        get_unit_cell( $dataset, $filename );
 
                     my $f2o = symop_ortho_from_fract( @cell );
 
@@ -799,16 +798,15 @@ sub get_molecules
     my @sym_operators = map { symop_from_string($_) } @{$sym_data};
 
     # Get cell angles(alpha, beta, gama) and lengths(a, b, c)
-    my @cell = get_unit_cell( $values, $filename, $dataname );
+    my @cell = get_unit_cell( $dataset, $filename, $dataname );
 
     # Make a matric to convert from fractional coordinates to
     # orthogonal:
     my $f2o = symop_ortho_from_fract(@cell);
 
     # Extract atoms fract coordinates
-    my $atom_list = initial_atoms( $atom_properties, $dataset,
-				   $filename, $dataname, $f2o,
-				   \@sym_operators, $uniquify_atoms );
+    my $atom_list = atom_array_from_cif( $dataset, $atom_properties, $filename,
+                                         $uniquify_atoms );
 
     return [] unless defined $atom_list;
 
@@ -826,7 +824,8 @@ sub get_molecules
     my %seen_molecules;
 
     my $unit_cell_atoms =
-        symgen_all_atoms( $atom_list, \@sym_operators, $f2o );
+        symgen_all_atoms( $atom_list, \@sym_operators, $f2o,
+        $filename, $dataname );
     
     my @symmetric_atoms = apply_shifts( $unit_cell_atoms, $f2o );
 
@@ -966,11 +965,21 @@ sub uniquify_atom_names($$$$)
 #                   multiplicity_ratio=>"1",
 #              }
 #
-sub initial_atoms($$$$$$$)
+sub atom_array_from_cif($$$$)
 {
-    my( $atom_properties, $dataset, $filename, $dataname, $f2o,
-        $sym_operators, $uniquify_atoms ) = @_;
-    my $values = $dataset->{values};
+    my( $datablock, $atom_properties, $filename, $uniquify_atoms ) = @_;
+
+    my $values = $datablock->{values};
+    my $dataname = $datablock->{name};
+
+    # Get the unit cell information and construct the fract->ortho and
+    # ortho->fract conversion matrices:
+
+    my @cell = get_unit_cell( $datablock, $filename );
+    my $f2o = symop_ortho_from_fract( @cell );
+
+    # Determine which atom site label tag is present and which can be
+    # used for identifying atoms:
 
     my $atom_site_tag;
 
@@ -979,12 +988,12 @@ sub initial_atoms($$$$$$$)
     } elsif( exists $values->{"_atom_site_type_symbol"} ) {
         $atom_site_tag = "_atom_site_type_symbol";
 
-        error( $0, $filename, $dataset->{name},
+        error( $0, $filename, $dataname,
                "_atom_site_label tag was not found. " .
                "A serial number will be appended " .
                "to _atom_site_type_symbol to make atom labels" );
     } else {
-        error( $0, $filename, $dataset->{name},
+        error( $0, $filename, $dataname,
                "neither _atom_site_type_symbol nor _atom_site_label " .
                "were found" );
 	return undef;
@@ -992,7 +1001,7 @@ sub initial_atoms($$$$$$$)
 
     my $atom_labels = $values->{$atom_site_tag};
 
-    my $nr_multiplicity_ratios_found = 0;
+    ## my $nr_multiplicity_ratios_found = 0;
 
     my @atom_list;
 
@@ -1017,32 +1026,39 @@ sub initial_atoms($$$$$$$)
 
         my $atom_info = extract_atom( $label, $values, $i, $f2o );
 
-        # Originaly the code was "my( $sym_atoms, $multiplicity, ...",
-        # but the "$sym_atoms" variable is not used further in this
-        # function, therefore it was changed to "undef" to indicate
-        # this fact:
-        my( undef, $multiplicity, $multiplicity_ratio ) =
-            symops_apply_modulo1( $atom_info, $sym_operators, $f2o );
+        ## # Originaly the code was "my( $sym_atoms, $multiplicity, ...",
+        ## # but the "$sym_atoms" variable is not used further in this
+        ## # function, therefore it was changed to "undef" to indicate
+        ## # this fact:
+        ## my( undef, $multiplicity, $multiplicity_ratio ) =
+        ##     symops_apply_modulo1( $atom_info, $sym_operators, $f2o );
+        ## 
+        ## if( exists $values->{_atom_site_symmetry_multiplicity} &&
+        ##     $values->{_atom_site_symmetry_multiplicity}[$i] ne '?' &&
+        ##     $values->{_atom_site_symmetry_multiplicity}[$i] !=
+        ##     $multiplicity ) {
+        ##     if( $values->{_atom_site_symmetry_multiplicity}[$i] ==
+        ##         $multiplicity_ratio ) {
+        ##         $nr_multiplicity_ratios_found++;
+        ##     } else {
+        ##         warning( $0, $filename, $dataname,
+        ##             "given multiplicity value '" .
+        ##             $values->{_atom_site_symmetry_multiplicity}[$i] .
+        ##             "' for atom " . $atom_info->{name} . 
+        ##             " is different from calculated value '" .
+        ##             $multiplicity . "' -- taking calculated value" );
+        ##     }
+        ## }
+            
+        ## $atom_info->{multiplicity} = $multiplicity;
+        ## $atom_info->{multiplicity_ratio} = $multiplicity_ratio;
 
         if( exists $values->{_atom_site_symmetry_multiplicity} &&
             $values->{_atom_site_symmetry_multiplicity}[$i] ne '?' &&
-            $values->{_atom_site_symmetry_multiplicity}[$i] !=
-            $multiplicity ) {
-            if( $values->{_atom_site_symmetry_multiplicity}[$i] ==
-                $multiplicity_ratio ) {
-                $nr_multiplicity_ratios_found++;
-            } else {
-                warning( $0, $filename, $dataname,
-                    "given multiplicity value '" .
-                    $values->{_atom_site_symmetry_multiplicity}[$i] .
-                    "' for atom " . $atom_info->{name} . 
-                    " is different from calculated value '" .
-                    $multiplicity . "' -- taking calculated value" );
-            }
+            $values->{_atom_site_symmetry_multiplicity}[$i] ne '.' ) {
+            $atom_info->{_atom_site_symmetry_multiplicity} =
+                $values->{_atom_site_symmetry_multiplicity}[$i];
         }
-            
-        $atom_info->{multiplicity} = $multiplicity;
-        $atom_info->{multiplicity_ratio} = $multiplicity_ratio;
 
         if (exists $atom_properties->{ $atom_info->{"chemical_type"}}) {
             push( @atom_list, $atom_info );
@@ -1059,12 +1075,12 @@ sub initial_atoms($$$$$$$)
         }
     }
 
-    if( $nr_multiplicity_ratios_found > 0 ) {
-        warning( $0, $filename, $dataname,
-                 "multiplicity ratios are given instead of " . 
-                 "multiplicities for $nr_multiplicity_ratios_found " .
-                 "atoms -- taking calculated values" );
-    }
+    ## if( $nr_multiplicity_ratios_found > 0 ) {
+    ##     warning( $0, $filename, $dataname,
+    ##              "multiplicity ratios are given instead of " . 
+    ##              "multiplicities for $nr_multiplicity_ratios_found " .
+    ##              "atoms -- taking calculated values" );
+    ## }
 
     return uniquify_atom_names( \@atom_list, $uniquify_atoms,
 				$filename, $dataname);
@@ -1263,9 +1279,12 @@ sub assemblies
 # Returns
 #     cell - an array  with stored information.
 
-sub get_unit_cell($$$@)
+sub get_unit_cell($$@)
 {
-    my( $values, $filename, $dataname, $silent ) = @_;
+    my( $datablock, $filename, $silent ) = @_;
+
+    my $values = $datablock->{values};
+    my $dataname = $datablock->{name};
 
     my @cell;
 
@@ -1807,7 +1826,7 @@ sub symop_apply_modulo1
 
     my @new_atom_xyz =
         map { modulo_1($_) }
-        mat_vect_mul( $symop, $atom_xyz );
+    mat_vect_mul( $symop, $atom_xyz );
 
     $new_atom_info->{"coordinates_fract"} = \@new_atom_xyz;
     delete $new_atom_info->{"coordinates_ortho"};
@@ -2023,10 +2042,11 @@ sub symgen_atom($$$)
 {
     my ( $atom, $sym_operators, $f2o ) = @_;
 
-    my( $sym_atoms, $multiplicity, $multiplicity_ratio ) =
-        symops_apply_modulo1( $atom, $sym_operators, $f2o );
+    my $sym_atoms = symops_apply_modulo1( $atom, $sym_operators, $f2o );
 
-    if( $multiplicity_ratio == 1 ) {
+    if( $sym_atoms && 
+        ( @{$sym_atoms} == 0 ||
+          $sym_atoms->[0]{multiplicity_ratio} == 1 )) {
         return @$sym_atoms;
     } else {
         my @unique_atoms;
@@ -2050,7 +2070,8 @@ sub symgen_atom($$$)
 
 #===============================================================#
 # Generate symmetry equivalents of an atom, evaluate atom's
-# multiplicity and multiplicity ratio
+# multiplicity and multiplicity ratio. Exclude atoms mapping to the
+# original one.
 
 sub symops_apply_modulo1
 {
@@ -2090,22 +2111,29 @@ sub symops_apply_modulo1
 
     my $multiplicity = $gp_multiplicity / $multiplicity_ratio;
 
+    # Update the original atom structure:
+    $atom->{multiplicity} = $multiplicity;
+    $atom->{multiplicity_ratio} = $multiplicity_ratio;
+
+    # Update all symmetry-generated atoms (including ones that were
+    # generated using the unity matrix):
     for my $atom (@sym_atoms) {
         $atom->{multiplicity} = $multiplicity;
         $atom->{multiplicity_ratio} = $multiplicity_ratio;
         $atom->{site_symops} = \@symops_mapping_to_self;
     }
 
-    return ( \@sym_atoms, $multiplicity, $multiplicity_ratio );
+    return \@sym_atoms;
 }
 
 #===============================================================#
 # Generate symmetry equivalents of all atoms from a list, exclude
-# duplicates on special positions
+# duplicates on special positions. Check the multiplicity values
+# provided in the original file.
 
-sub symgen_all_atoms($$$)
+sub symgen_all_atoms($$$$$)
 {
-    my ( $atoms, $sym_operators, $f2o ) = @_;
+    my ( $atoms, $sym_operators, $f2o, $filename, $dataname ) = @_;
 
     my @sym_atoms = ();
 
@@ -2113,6 +2141,39 @@ sub symgen_all_atoms($$$)
         push( @sym_atoms, symgen_atom( $atom, $sym_operators, $f2o ));
     }
 
+    my $nr_multiplicity_ratios_found = 0;
+
+    for my $atom (@{$atoms}) {
+        my $multiplicity = $atom->{multiplicity};
+        my $multiplicity_ratio = $atom->{multiplicity_ratio};
+
+        if( exists $atom->{_atom_site_symmetry_multiplicity} &&
+            $atom->{_atom_site_symmetry_multiplicity} ne '?' &&
+            $atom->{_atom_site_symmetry_multiplicity} ne '.' &&
+            $atom->{_atom_site_symmetry_multiplicity} !=
+            $multiplicity ) {
+            if( $atom->{_atom_site_symmetry_multiplicity} ==
+                $multiplicity_ratio ) {
+                $nr_multiplicity_ratios_found++;
+            } else {
+                warning( $0, $filename, $dataname,
+                         "given multiplicity value '" .
+                         $atom->{_atom_site_symmetry_multiplicity} .
+                         "' for atom " . $atom->{name} . 
+                         " is different from calculated value '" .
+                         $multiplicity . "' -- taking calculated value" );
+            }
+        }
+
+    }
+
+    if( $nr_multiplicity_ratios_found > 0 ) {
+        warning( $0, $filename, $dataname,
+                 "multiplicity ratios are given instead of " . 
+                 "multiplicities for $nr_multiplicity_ratios_found " .
+                 "atoms -- taking calculated values" );
+    }
+    
     return \@sym_atoms;
 }
 
