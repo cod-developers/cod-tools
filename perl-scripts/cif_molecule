@@ -626,30 +626,10 @@ for my $filename (@ARGV) {
                 my @all_atoms = map { @{$_->{atoms}} } @$unique_molecules;
                 if( @all_atoms > 0 ) {
                     # Find molecular Z value, once more:
-
-                    my $f2o;
-                    if( $use_morgan_fingerprints ) {
-                        # Compute orthogonal coordinates for all atoms -- will
-                        # not be necessary when f2o will be the part of all
-                        # atoms, and when apply_symop... functions will always
-                        # compute orthogonal coordinates:
-                        my @cell = get_unit_cell( $dataset,
-                                                  $filename,
-                                                  1 );
-                        $f2o = symop_ortho_from_fract( @cell );
-                    }
-
                     my %moieties;
                     for my $moiety (@$unique_molecules) {
                         my $moiety_key;
                         if( $use_morgan_fingerprints ) {
-                            for my $atom (@{$moiety->{atoms}}) {
-                                if( !defined $atom->{coordinates_ortho} ) {
-                                    $atom->{coordinates_ortho} =
-                                        mat_vect_mul( $f2o, $atom->
-                                                      {coordinates_fract} );
-                                }
-                            }
                             my $neighbours =
                                 AtomNeighbours::make_neighbour_list(
                                     $moiety->{atoms},
@@ -716,19 +696,6 @@ for my $filename (@ARGV) {
                 }
 
                 if( $output_geom_bond ) {
-                    my @cell =
-                        get_unit_cell( $dataset, $filename );
-
-                    my $f2o = symop_ortho_from_fract( @cell );
-
-                    for my $atom (@{$molecule->{atoms}}) {
-                        if( !exists $atom->{coordinates_ortho} ) {
-                            $atom->{coordinates_ortho} =
-                                mat_vect_mul( $f2o,
-                                              $atom->{coordinates_fract} );
-                        }
-                    }
-
                     $molecule->{bonds} = atom_bonds( $molecule->{atoms},
                                                      \%AtomProperties::atoms,
                                                      $covalent_sensitivity );
