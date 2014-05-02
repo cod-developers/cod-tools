@@ -503,13 +503,13 @@ for my $filename (@ARGV) {
     }
 
     for my $dataset (@$data) {
-        #   extracts atom site label or atom site type symbol
+        # Extracts atom site label or atom site type symbol
 	my $values = $dataset->{"values"};
 
-        #   extracts symmetry operators
+        # Extracts symmetry operators
 	my $sym_data = get_symmetry_operators( $dataset, $filename );
 
-	if(not defined $sym_data) {
+	if( not defined $sym_data ) {
 	    error( $0, $filename, $dataset->{name},
 		   "no symmetry information found" );
 	}
@@ -518,12 +518,12 @@ for my $filename (@ARGV) {
 	    my $molecule_id = 0;
 	    my $dataset_name = $dataset->{name};
 
-	    my $unique_molecules = get_molecules (  $covalent_sensitivity,
-						    $filename, $dataset_name,
-						    $sym_data,
-						    $dataset,
-						    \%AtomProperties::atoms,
-						    $uniquify_atoms );
+	    my $unique_molecules = get_molecules( $covalent_sensitivity,
+                                                  $filename, $dataset_name,
+                                                  $sym_data,
+                                                  $dataset,
+                                                  \%AtomProperties::atoms,
+                                                  $uniquify_atoms );
 
             #   prints molecule to the CIF file
 
@@ -869,7 +869,7 @@ sub get_molecules
     # Calculates chemical formula sum
     foreach my $molecule (@unique_molecules) {
         $molecule->{chemical_formula_sum} =
-            chemical_formula_sum( $molecule->{atoms});
+            chemical_formula_sum( $molecule->{atoms} );
     }
 
     return \@unique_molecules;
