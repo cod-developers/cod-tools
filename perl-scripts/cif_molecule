@@ -1001,8 +1001,6 @@ sub atom_array_from_cif($$$$)
 
     my $atom_labels = $values->{$atom_site_tag};
 
-    ## my $nr_multiplicity_ratios_found = 0;
-
     my @atom_list;
 
     for (my $i = 0; $i < @{$atom_labels}; $i++)
@@ -1026,33 +1024,6 @@ sub atom_array_from_cif($$$$)
 
         my $atom_info = extract_atom( $label, $values, $i, $f2o );
 
-        ## # Originaly the code was "my( $sym_atoms, $multiplicity, ...",
-        ## # but the "$sym_atoms" variable is not used further in this
-        ## # function, therefore it was changed to "undef" to indicate
-        ## # this fact:
-        ## my( undef, $multiplicity, $multiplicity_ratio ) =
-        ##     symops_apply_modulo1( $atom_info, $sym_operators, $f2o );
-        ## 
-        ## if( exists $values->{_atom_site_symmetry_multiplicity} &&
-        ##     $values->{_atom_site_symmetry_multiplicity}[$i] ne '?' &&
-        ##     $values->{_atom_site_symmetry_multiplicity}[$i] !=
-        ##     $multiplicity ) {
-        ##     if( $values->{_atom_site_symmetry_multiplicity}[$i] ==
-        ##         $multiplicity_ratio ) {
-        ##         $nr_multiplicity_ratios_found++;
-        ##     } else {
-        ##         warning( $0, $filename, $dataname,
-        ##             "given multiplicity value '" .
-        ##             $values->{_atom_site_symmetry_multiplicity}[$i] .
-        ##             "' for atom " . $atom_info->{name} . 
-        ##             " is different from calculated value '" .
-        ##             $multiplicity . "' -- taking calculated value" );
-        ##     }
-        ## }
-            
-        ## $atom_info->{multiplicity} = $multiplicity;
-        ## $atom_info->{multiplicity_ratio} = $multiplicity_ratio;
-
         if( exists $values->{_atom_site_symmetry_multiplicity} &&
             $values->{_atom_site_symmetry_multiplicity}[$i] ne '?' &&
             $values->{_atom_site_symmetry_multiplicity}[$i] ne '.' ) {
@@ -1074,13 +1045,6 @@ sub atom_array_from_cif($$$$)
             }
         }
     }
-
-    ## if( $nr_multiplicity_ratios_found > 0 ) {
-    ##     warning( $0, $filename, $dataname,
-    ##              "multiplicity ratios are given instead of " . 
-    ##              "multiplicities for $nr_multiplicity_ratios_found " .
-    ##              "atoms -- taking calculated values" );
-    ## }
 
     return uniquify_atom_names( \@atom_list, $uniquify_atoms,
 				$filename, $dataname);
