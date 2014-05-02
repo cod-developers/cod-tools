@@ -591,9 +591,23 @@ for my $filename (@ARGV) {
 
                 my %molecules;
                 for my $molecule (@stoichiometric_molecules) {
-                    my $molecule_key =
-                        join( "\0", sort map {$_->{site_label}}
-                              @{$molecule->{atoms}} );
+                    my $molecule_key;
+                    if( $use_morgan_fingerprints ) {
+                        my $neighbours =
+                            AtomNeighbours::make_neighbour_list(
+                                $molecule->{atoms},
+                                $covalent_sensitivity,
+                                $bump_distance_factor,
+                                \%AtomProperties::atoms,
+                                1 );
+                        $molecule_key =
+                            MorganFingerprints::make_morgan_fingerprint(
+                                $neighbours );
+                    } else {
+                        $molecule_key =
+                            join( "\0", sort map {$_->{site_label}}
+                                  @{$molecule->{atoms}} );
+                    }
                     push( @{$molecules{$molecule_key}}, $molecule );
                 }
                 my $Z = gcd( map { int(@$_) } values %molecules );
