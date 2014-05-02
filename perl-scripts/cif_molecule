@@ -1316,8 +1316,7 @@ sub extract_atom
 
     for my $cif_fract ( "_atom_site_fract_x",
                         "_atom_site_fract_y",
-                        "_atom_site_fract_z",)
-    {
+                        "_atom_site_fract_z" ) {
         push(@atom_xyz, $values->{$cif_fract}[$number]);
         $atom_xyz[-1] =~ s/\(\d+\)$//;
     }
@@ -1340,6 +1339,7 @@ sub extract_atom
     $atom_info{"translation_id"}        = "555";
     $atom_info{"translation"}           = [ 0, 0, 0 ];
 
+    $atom_info{f2o} = $f2o;
     $atom_info{coordinates_ortho} =
         mat_vect_mul( $f2o, \@atom_xyz );
 
@@ -1629,7 +1629,7 @@ sub translation
 
 sub translate_atom
 {
-    my($atom, $translation, $f2o) = @_;
+    my($atom, $translation) = @_;
 
     my $new_atom = copy_atom( $atom );
     my @new_atom_xyz;
@@ -1643,7 +1643,7 @@ sub translate_atom
 
     $new_atom->{"coordinates_fract"} = \@new_atom_xyz;
     $new_atom->{coordinates_ortho} =
-        mat_vect_mul( $f2o, \@new_atom_xyz );
+        mat_vect_mul( $atom->{f2o}, \@new_atom_xyz );
 
     $new_atom->{translation} = [
         $new_atom_xyz[0] - modulo_1($new_atom_xyz[0]),
@@ -1792,8 +1792,7 @@ sub symop_apply_modulo1
         map { modulo_1($_) }
     mat_vect_mul( $symop, $atom_xyz );
 
-    $new_atom_info->{"coordinates_fract"} = \@new_atom_xyz;
-    delete $new_atom_info->{"coordinates_ortho"};
+    $new_atom_info->{coordinates_fract} = \@new_atom_xyz;
 
     return symop_register_applied_symop( $new_atom_info, $symop, $symop_id );
 }
@@ -1837,7 +1836,6 @@ sub symop_apply_NO_modulo_1
         mat_vect_mul( $symop, $atom_xyz );
 
     $new_atom_info->{"coordinates_fract"} = \@new_atom_xyz;
-    delete $new_atom_info->{"coordinates_ortho"};
 
     return symop_register_applied_symop( $new_atom_info, $symop, $symop_id );
 }
@@ -1851,6 +1849,10 @@ sub symop_register_applied_symop
     $new_atom_info->{"unity_matrix_applied"} = symop_is_unity($symop);
 
     my $atom_xyz = $new_atom_info->{"coordinates_fract"};
+
+    $new_atom_info->{"coordinates_ortho"} =
+        mat_vect_mul( $new_atom_info->{f2o}, $atom_xyz );
+
     my @translation = (
         int($atom_xyz->[0] - modulo_1($atom_xyz->[0])),
         int($atom_xyz->[1] - modulo_1($atom_xyz->[1])),
@@ -3151,13 +3153,13 @@ sub find_molecule($$$$$$$$$$$$)
                 } if $debug;
 
                 my $back_shifted_sym_atom =
-                    translate_atom( $sym_atom, $current_translation,
-                                    $ortho_matrix );
+                    translate_atom( $sym_atom, $current_translation );
 
                 do {
                     use Serialise;
                     print ">>>> back-shifted atom:\n";
-                    serialiseRef( { sym_atom => $sym_atom, backshifted => $back_shifted_sym_atom } );
+                    serialiseRef( { sym_atom => $sym_atom,
+                                    backshifted => $back_shifted_sym_atom } );
                 } if $debug;
 
                 push(@neighbors, find_molecule( $covalent_sensitivity,
