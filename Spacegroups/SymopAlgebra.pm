@@ -174,7 +174,7 @@ sub symop_apply($$)
         }
     }
 
-    if( @$vector == 3 ) {
+    if( @$vector == 3 && @$symop == 4 ) {
         for( my $i = 0; $i < @$vector; $i ++ ) {
             $result[$i] += $symop->[$i][3];
         }
