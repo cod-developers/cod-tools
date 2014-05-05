@@ -232,12 +232,25 @@ int cif_lexer( FILE *in )
                 prevchar = token[pos-1];
                 pushchar( &token, &length, pos, '\0' );
                 yylval.s = check_and_clean( token, /* is_textfield = */ 0 );
-                if( cif_lexer_has_flags
-                    (CIF_FLEX_LEXER_FIX_MISSING_CLOSING_DOUBLE_QUOTE) ) {
-                    yynote( "warning, double-quoted string is missing "
-                            "a closing quote -- fixed" );
-                } else {
-                    yyerror( "syntax error" );
+                switch( quote ) {
+                    case '"':
+                        if( cif_lexer_has_flags
+                            (CIF_FLEX_LEXER_FIX_MISSING_CLOSING_DOUBLE_QUOTE) ) {
+                            yynote( "warning, double-quoted string is "
+                                "missing a closing quote -- fixed" );
+                        } else {
+                            yyerror( "syntax error" );
+                        }
+                        break;
+                    case '\'':
+                        if( cif_lexer_has_flags
+                            (CIF_FLEX_LEXER_FIX_MISSING_CLOSING_SINGLE_QUOTE) ) {
+                            yynote( "warning, single-quoted string is "
+                                "missing a closing quote -- fixed" );
+                        } else {
+                            yyerror( "syntax error" );
+                        }
+                        break;
                 }
                 return quote == '"' ? _DQSTRING : _SQSTRING;
             }
