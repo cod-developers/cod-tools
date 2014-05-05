@@ -17,7 +17,7 @@ use lib "./lib/perl5";
 use lib "../lib/perl5/COD";
 use lib "./CIFParser";
 use CIFParser;
-use SymopAlgebra;
+use SymopAlgebra qw( symop_apply symop_mul symop_invert );
 use AtomOverlay;
 use Fractional;
 use UserMessage;
@@ -56,14 +56,40 @@ while( @ARGV > 0 ) {
             warn "file '$filename1' has more data blocks than '$filename2'";
             last;
         }
-        print $dataset1->{name}, " ", $dataset2->{name}, "\n";
+        print "FILE1\t", $filename1, "\n";
+        print "FILE2\t", $filename2, "\n";
+        print "DBLOCK1\t", $dataset1->{name}, "\n";
+        print "DBLOCK2\t", $dataset2->{name}, "\n";
         my $atoms1 = atom_array_from_cif( $dataset1, $filename1 );
         my $atoms2 = atom_array_from_cif( $dataset2, $filename2 );
 
-        print int(@$atoms1), " ", int(@$atoms2), "\n";
+        print "ATMCNTS\t", int(@$atoms1), " ", int(@$atoms2), "\n";
 
         my $overlay_symop = overlay_atoms( $atoms1, $atoms2 );
-        print SymopAlgebra::symop_det( $overlay_symop ), "\n";
+        printf "RDET\t%8.6f\n", SymopAlgebra::symop_det( $overlay_symop );
+
+        ## use Serialise;
+        ## serialiseRef( $atoms1->[0]{f2o} );
+
+        my $fract_overlay = symop_mul( symop_invert($atoms1->[0]{f2o}),
+                                       symop_mul( $overlay_symop,
+                                                  $atoms1->[0]{f2o} ));
+
+        do {
+            local $, = "\t";
+            local $\ = "\n";
+            printf "SYMOP1\t%9.6f\t%9.6f\t%9.6f\t%9.6f\n", @{$fract_overlay->[0]};
+            printf "SYMOP2\t%9.6f\t%9.6f\t%9.6f\t%9.6f\n", @{$fract_overlay->[1]};
+            printf "SYMOP3\t%9.6f\t%9.6f\t%9.6f\t%9.6f\n", @{$fract_overlay->[2]};
+            print "SYMOP4", @{$fract_overlay->[3]};
+        };
+
+        my $atoms1_on_atoms2 = symop_apply_to_atoms( $atoms1, $fract_overlay );
+
+        ## use Serialise;
+        ## serialiseRef( $atoms1_on_atoms2 );
+
+        printf "RMS\t%8.6f\n", atom_rms( $atoms2, $atoms1_on_atoms2 );
     }
 }
 
@@ -97,6 +123,11 @@ sub atom_array_from_cif($$)
 
     my @cell = get_unit_cell( $datablock, $filename );
     my $f2o = symop_ortho_from_fract( @cell );
+
+    push( @{$f2o->[0]}, 0 );
+    push( @{$f2o->[1]}, 0 );
+    push( @{$f2o->[2]}, 0 );
+    push( @$f2o, [0,0,0,1] );
 
     # Determine which atom site label tag is present and which can be
     # used for identifying atoms:
@@ -320,4 +351,63 @@ sub get_unit_cell($$)
     }
 
     return @cell;
+}
+
+#===============================================================#
+# Apply symmetry operator to all atoms in the list
+#
+# Accepts
+#     $atoms -- a reference to an atom array
+#     $symop -- a symmetry operator to be applied to all atoms
+# Returns
+#     a reference to an array with copies of atoms transformed 
+#     by $symop.
+
+sub symop_apply_to_atoms
+{
+    my ($atoms, $symop) = @_;
+
+    my @applied;
+
+    for my $atom (@{$atoms}) {
+        my %new_atom = %$atom;
+
+        $new_atom{coordinates_fract} =
+            symop_apply( $symop, $atom->{coordinates_fract} );
+
+        $new_atom{coordinates_ortho} =
+            symop_apply( $atom->{f2o}, $new_atom{coordinates_fract} );
+
+        push( @applied, \%new_atom );
+    }
+
+    return \@applied;
+}
+
+#===============================================================#
+# Apply symmetry operator to all atoms in the list
+#
+# Accepts
+#     $atoms1, $atoms2 -- references to two atom arrays
+# Returns
+#     an RMS deviation between atoms
+sub atom_rms
+{
+    my ( $atoms1, $atoms2 ) = @_;
+
+    my $N = @$atoms1 < @$atoms2 ? @$atoms1 : @$atoms2;
+    my $sum = 0.0;
+
+    return 0.0 if $N == 0;
+
+    for( my $i = 0; $i < $N; $i++ ) {
+        my $a1 = $atoms1->[$i];
+        my $a2 = $atoms2->[$i];
+
+        $sum +=
+            ($a1->{coordinates_ortho}[0]-$a2->{coordinates_ortho}[0])**2 +
+            ($a1->{coordinates_ortho}[1]-$a2->{coordinates_ortho}[1])**2 +
+            ($a1->{coordinates_ortho}[2]-$a2->{coordinates_ortho}[2])**2;
+    }
+    return sqrt($sum/$N);
 }
