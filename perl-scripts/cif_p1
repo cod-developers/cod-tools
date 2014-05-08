@@ -54,6 +54,11 @@ my $use_one_output_datablock = 1; # Put all molecules, and all
 my $merge_disorder_groups = 0; # Put all alternative conformations
                                # into one data block.
 
+my $simplify_formula = 0; # Simplify chemical formula and output not the whole 
+                          # P1 cell but only a minimal stoichiometric set of
+                          # molecules. Should have the same result as 
+                          # 'cif_molecule --preserve-stoichiometry'
+
 # Extra distance added to covalent radii sum when testing if two atoms
 # form a covalent bond:
 my $covalent_sensitivity = 0.35;
@@ -96,6 +101,15 @@ my $max_polymer_atoms = 100;
 #*
 #*     -c,--covalent-sensitivity
 #*        Set a new covalent sensitivity value (default 0.35)
+#*
+#*    --simplify-formula
+#*        Simplify chemical formula and output not the whole 
+#*        P1 cell but only a minimal stoichiometric set of
+#*        molecules. Should have the same result as 
+#*        'cif_molecule --preserve-stoichiometry'
+#*
+#*    --dont-simplify-formula, --no-simplify-formula
+#*        Do not simplify formula, output the whole P1 cell (default).
 #*
 #*    --continue-on-errors
 #*        Do not stop if errors such as unrecognised atoms are
@@ -174,6 +188,11 @@ my $max_polymer_atoms = 100;
     "-i,--ignore-bumps"   => sub{ $ignore_bumps = 1 },
     "--no-ignore-bumps"   => sub{ $ignore_bumps = 0 },
     "--dont-ignore-bumps" => sub{ $ignore_bumps = 0 },
+
+    "--simplify-formula"  => sub{ $simplify_formula = 1 },
+    "--no-simplify-formula"     => sub{ $simplify_formula = 0 },
+    "--dont-simplify-formula"   => sub{ $simplify_formula = 0 },
+    "--do-not-simplify-formula" => sub{ $simplify_formula = 0 },
 
     "--continue-on-errors" => sub{ $continue_on_errors = 1 },
     "--no-continue-on-errors" => sub{ $continue_on_errors = 0 },
@@ -331,29 +350,43 @@ for my $filename (@ARGV) {
         @$molecules = sort {@{$b->{atoms}} <=> @{$a->{atoms}}}
         @$molecules;
 
+        # Find molecular Z value:
+
         my $Z = 1;
+        my %moieties;
+        for my $moiety (@$molecules) {
+            my $moiety_key;
+            $moiety_key =
+                join( "\0", sort map {$_->{site_label}}
+                      @{$moiety->{atoms}} );
+            push( @{$moieties{$moiety_key}}, $moiety );
+        }
+
+        $Z = gcd( map { int(@$_) } values %moieties );
+
+        if( $simplify_formula ) {
+            # Simplify molecular formula:
+            if( $Z > 1 ) {
+                my @stoichiometric_molecules = ();
+                for my $molecule_key (keys %moieties) {
+                    my $N = int(@{$moieties{$molecule_key}});
+                    for my $i (0 .. $N/$Z - 1) {
+                        push( @stoichiometric_molecules,
+                              $moieties{$molecule_key}[$i] );
+                    }
+                }
+                $molecules = \@stoichiometric_molecules;
+            }
+        }
+
         if( $use_one_output_datablock ) {
             my @all_atoms = map { @{$_->{atoms}} } @$molecules;
-            if( @all_atoms > 0 ) {
-                # Find molecular Z value, once more:
-                my %moieties;
-                for my $moiety (@$molecules) {
-                    my $moiety_key;
-                    $moiety_key =
-                        join( "\0", sort map {$_->{site_label}}
-                              @{$moiety->{atoms}} );
-                    push( @{$moieties{$moiety_key}}, $moiety );
-                }
-
-                $Z = gcd( map { int(@$_) } values %moieties );
-
-                $molecules = [{
-                    atoms =>
-                        \@all_atoms,
-                        chemical_formula_sum =>
-                        chemical_formula_sum( \@all_atoms, $Z ),
-                                     }];
-            }
+            $molecules = [{
+                atoms =>
+                    \@all_atoms,
+                    chemical_formula_sum =>
+                    chemical_formula_sum( \@all_atoms, $Z ),
+                          }];
         }
 
         # Split init atoms into assemblies and groups, if requested
