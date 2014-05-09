@@ -95,6 +95,8 @@ my $uniquify_atoms = 1;
 my $exclude_zero_occupancies = 1; # Do not use atoms with zero
                                   # occupancies
 
+my $force_unit_occupancies = 0; # Forcibly set occupancies to 1.0.
+
 # A fraction of covalent bond radii Used to determine when atoms are
 # too close and are considered a bump:
 
@@ -247,6 +249,17 @@ my $expand_to_p1 = 0; # Do we want a full P1 unit cell that can be used
 #**                    reconstruct covalently connected networks; may
 #**                    break stoiceometry of salts and complexes (defalut).
 #**
+#** --force-unit-occupancies
+#**       Set occupancies of all output atoms to 1.0.
+#**
+#**       Some programs, notably Jumbo converter's cif2cml, assume unresolved
+#**       disorder and do not recognise aromatic rings if occupancies are not
+#**       unities. Obviously, this flag has only sense in combination with
+#**       --split-disorder.
+#**
+#** --dont-force-unit-occupancies
+#**       Leave occupancies as they are (default)
+#**
 #** --dump-atoms 
 #**       Dump atoms (including symmetry-equivalent) in CIF
 #**       format, for inspecion with some graphics program
@@ -353,6 +366,11 @@ my $expand_to_p1 = 0; # Do we want a full P1 unit cell that can be used
     "--no-debug" => sub { $debug = 0 },
 
     "--format" => \$format,
+
+    "--force-unit-occupancies" => sub { $force_unit_occupancies = 1 },
+    "--no-force-unit-occupancies" => sub { $force_unit_occupancies = 0 },
+    "--dont-force-unit-occupancies" => sub { $force_unit_occupancies = 0 },
+    "--do-not-force-unit-occupancies" => sub { $force_unit_occupancies = 0 },
 
     "--dump-atoms"      => sub{ $dump_atoms = 1 },
     "--dont-dump-atoms" => sub{ $dump_atoms = 0 },
@@ -2661,7 +2679,11 @@ sub print_molecule
         }
         if( defined $atom_site_occupancy ) {
             print " ";
-            CIFTagPrint::print_value( $atom->{atom_site_occupancy} );
+            if( $force_unit_occupancies ) {
+                print "1.0";
+            } else {
+                CIFTagPrint::print_value( $atom->{atom_site_occupancy} );
+            }
         }
         if( $has_refinement_flags ) {
             print " ";
