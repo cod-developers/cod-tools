@@ -1,0 +1,132 @@
+#! /bin/sh
+#------------------------------------------------------------------------------
+#$Author$
+#$Date$
+#$Revision$
+#$URL$
+#------------------------------------------------------------------------------
+#*
+# Append COD-specific meta-information to an SDF file in a format
+# suitable for PubChem.
+#
+# Usage: $0 --cod-cif cod-input.cif file1.sdf
+# Usage: $0 --cod-cif cod-input.cif file1.sdf > output.sdf
+# Usage: $0 --cod-cif cod-input.cif < file1.sdf > output.sdf
+#**
+
+TMP_DIR="${TMPDIR}"
+
+set -ue
+## set -x
+
+script() { echo "# $*"; cat; }
+setvar() { eval $1="'$3'"; }
+
+setvar Id = '$Id: script.sh 11 2011-01-06 12:57:08Z saulius $'
+
+setvar FILES = ""
+
+setvar BASENAME = "`basename $0`"
+
+setvar COD_CIF = ""
+
+#** OPTIONS:
+#**  -C, --cod-cif 1000000.cif
+#**      Provide the original COD CIF to extract structure metadata
+#**
+#**  --tmp-dir /tmp    Use the specified trmporary directory (default is /tmp)
+#**  --help            Print short help message (this message) and exit
+while [ $# -gt 0 ]
+do
+  case $1 in
+      -C|--cod-cif|--cod-ci|--cod-c|--cod|--co|--c)
+          COD_CIF="$2"
+          shift
+          ;;
+      --tmp-dir|--tmp-di|--tmp-d|--tmp|--tm|--t)
+          TMP_DIR="$2"
+          shift
+          ;;
+      --help|--hel|--he|--h)
+            awk '/#\*/,/#\*\*/ {
+                    sub("^ *#[*]?[*]?", ""); \
+                    gsub("\\$0","'$0'"); \
+                    print $0
+                }' $0
+	    exit
+	    ;;      
+      --options|--option|--optio|--opti|--opt|--op|--o)
+            awk '/#\*\*/ {
+                    sub("^ *#[*]?[*]?", ""); \
+                    gsub("\\$0","'$0'"); \
+                    print $0
+                }' $0
+	    exit
+	    ;;      
+      -*) echo "`basename $0`: unknown option $1" >&2 ; exit 1 ;;
+      *)  FILES="$FILES '$1'" ;;
+    esac
+    shift
+done
+
+## echo ${FILES}
+eval set -- "${FILES}"
+
+test -z "${TMP_DIR}" && TMP_DIR="/tmp"
+TMP_DIR="${TMP_DIR}/tmp-${BASENAME}-$$"
+mkdir "${TMP_DIR}"
+
+cif_values='cif_values --no-header --no-dataname --no-filename --dont-replace-spaces --tags'
+
+## set -x
+
+grep -v '^\$\$\$\$' ${1+"$@"}
+
+(
+    DATABASE_ID=$(${cif_values} _cod_database_code $COD_CIF)
+    test "${DATABASE_ID}" = "?" && \
+        DATABASE_ID=$(${cif_values} _cod_data_source_block $COD_CIF)
+    echo '> <PUBCHEM_EXT_DATASOURCE_REGID>'
+    echo ${DATABASE_ID}
+    echo ""
+    echo '> <PUBCHEM_SUBSTANCE_SYNONYM>'
+    (
+        ${cif_values} _chemical_name_systematic $COD_CIF
+        ${cif_values} _chemical_name_common $COD_CIF
+    ) \
+        | ( grep -v '^\?' || true ) \
+        | perl -0777 -pe 's/[ \t]+/ /g; s/^\s*|\s*$//g'
+    echo ""
+    echo ""
+    echo '> <PUBCHEM_SUBSTANCE_COMMENT>'
+    (
+        ${cif_values} _publ_author_name --value-separator "; " $COD_CIF
+        echo "("$(${cif_values} _journal_year $COD_CIF)")"
+        ${cif_values} _publ_section_title $COD_CIF
+        ${cif_values} _journal_name_full $COD_CIF
+        ${cif_values} _journal_volume $COD_CIF
+        ${cif_values} _journal_issue $COD_CIF
+        echo $(${cif_values} _journal_page_first $COD_CIF)-$(${cif_values} \
+            _journal_page_last $COD_CIF)
+        echo DOI:$(${cif_values} _journal_paper_doi $COD_CIF)
+    ) \
+        | perl -pe 's/-\?//; s/\(\?\)/?/; s/\?-/?/; s/\?+/?/g' \
+        | ( grep -Ev '^\?|DOI:\?' || true ) \
+        | perl -0777 -pe 's/\n(.)/, $1/g; s/[ \t]+/ /g'
+    echo ""
+    echo '> <PUBCHEM_EXT_DATASOURCE_URL>'
+    echo 'http://www.crystallography.net/'
+    echo ""
+    echo '> <PUBCHEM_EXT_SUBSTANCE_URL>'
+    echo "http://www.crystallography.net/cod/${DATABASE_ID}.html"
+    echo ""
+    echo '$$$$'
+) \
+| perl -0777 -pe 's/^> <.*?>\n\s*\n//mg' \
+| cif-to-utf8 \
+| perl -CS -MUnicode::Normalize -pe \
+    "# from http://ahinea.com/en/tech/accented-translate.html:
+     # 2011.12.10
+     \$_ = NFD(\$_); s/\\pM//g;"
+
+rm -rf "${TMP_DIR}"
