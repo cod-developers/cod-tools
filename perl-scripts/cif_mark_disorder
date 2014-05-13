@@ -189,7 +189,6 @@ for my $filename (@ARGV) {
                                        $filename,
                                        $dataname,
                                        $f2o );
-        next if @$atom_list == 0;
 
         my %assemblies = map{ $_->{assembly} => 1 }
                          grep{ $_->{assembly} ne '.' ||
@@ -536,8 +535,13 @@ sub initial_atoms($$$$$)
 	        $label = $values->{$atom_site_tag}[$i];
 	    }
 
-        my $atom_info = extract_atom( $label, $values, $i, $f2o );
-        push( @atom_list, $atom_info );
+        my $atom_info = extract_atom( $label,
+                                      $values,
+                                      $i,
+                                      $filename,
+                                      $dataname,
+                                      $f2o );
+        push( @atom_list, $atom_info ) unless !defined $atom_info;
     }
 
     return \@atom_list;
@@ -569,7 +573,7 @@ sub initial_atoms($$$$$)
 
 sub extract_atom
 {
-    my($atom_label, $values, $number, $f2o) = @_;
+    my($atom_label, $values, $number, $filename, $dataname, $f2o) = @_;
 
     my %atom_info;
     my @atom_xyz;
@@ -578,6 +582,7 @@ sub extract_atom
                         "_atom_site_fract_y",
                         "_atom_site_fract_z",)
     {
+        return undef if $values->{$cif_fract}[$number] eq '?';
         push(@atom_xyz, $values->{$cif_fract}[$number]);
         $atom_xyz[-1] =~ s/\(\d+\)$//;
     }
@@ -605,8 +610,9 @@ sub extract_atom
             m/^([A-Za-z]{1,2})/ ) {
             $atom_type = ucfirst( lc( $1 ));
         } else {
-            die( "could not determine atom type for atom " .
-                 "'$values->{_atom_site_label}[$number]'" );
+            warning( $0, $filename, $dataname,
+                     "could not determine atom type for atom " .
+                     "'$values->{_atom_site_label}[$number]'" );
         }
     }
 
