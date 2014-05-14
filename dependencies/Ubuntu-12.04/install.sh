@@ -14,3 +14,4 @@ sudo apt-get install -y bison
 sudo apt-get install -y flex
 
 sudo apt-get install -y libinline-perl
+sudo apt-get install -y libhtml-parser-perl
