@@ -171,7 +171,8 @@ sub insert_symop
             my $translation = SymopAlgebra::symop_translation( $symop );
             my $new_centering = vector_sub( $self->{inversion_translation},
                                             $translation );
-            $self->insert_translation( $new_centering );
+            $self->insert_translation( $new_centering,
+                                       symop_mul( $inversion_symop, $symop ));
         } else {
             $self->{has_inversion} = 1;
             $self->{inversion_translation} = symop_translation( $symop );
