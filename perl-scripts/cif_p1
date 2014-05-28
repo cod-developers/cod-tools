@@ -1396,8 +1396,8 @@ sub symops_apply_to_atom_modulo1($$)
         my %to_be_deleted;
         for my $i (0..$#$sym_atoms-1) {
             for my $j ($i+1..$#$sym_atoms) {
-                if( distance( $sym_atoms->[$i]{coordinates_fract},
-                              $sym_atoms->[$j]{coordinates_fract}) < 0.0001 ) {
+                if( atoms_coincide( $sym_atoms->[$i], $sym_atoms->[$j],
+                                    $sym_atoms->[$i]{f2o} )) {
                     $to_be_deleted{$sym_atoms->[$j]{name}} = 1;
                 }
             }
@@ -1505,8 +1505,8 @@ sub atoms_coincide($$$)
         ];
         my $new_xyz = mat_vect_mul( $f2o, $shifted_coord );
         if( distance( $new_xyz, $old_xyz ) < $special_position_cutoff ) {
-            ## local $, = ", ";
-            ## print ">>> mapped to self: @{$new_xyz} / @{$old_xyz}\n";
+            ## local $, = ", "; my $label =  $old_atom->{site_label};
+            ## print STDERR ">>> mapped to self: $label @{$new_xyz} / @{$old_xyz}\n";
             return 1;
         }
     }}}
