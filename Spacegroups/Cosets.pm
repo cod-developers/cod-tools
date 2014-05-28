@@ -113,7 +113,8 @@ sub find_left_cosets
         my $current_symop_key = $group_symop_keys[0];
         my $current_symop = $group_symops{$current_symop_key};
         for my $subgroup_symop (@$subgroup_symops) {
-            my $coset_symop = symop_mul( $current_symop, $subgroup_symop );
+            my $coset_symop = SymopAlgebra::round_values_in_symop(
+                symop_mul( $current_symop, $subgroup_symop ));
             my $coset_symop_key = canonical_string_from_symop( $coset_symop );
             ## print ">>> Coset element: ", $coset_symop_key, " ";
             die unless exists $group_symops{$coset_symop_key};
