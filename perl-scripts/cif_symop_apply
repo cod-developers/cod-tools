@@ -9,7 +9,7 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #$URL$
 #------------------------------------------------------------------------------
 #*
-#  Appy a symmetry operator to all atoms in a CIF.
+#  Apply symmetry operator(s) to all atoms in a CIF.
 #**
 
 use strict;
@@ -29,7 +29,7 @@ use SUsage;
 
 my $use_parser = "c";
 
-my $symop = "-x,-y,z";
+my @symops = ();
 
 #* USAGE:
 #*     $0 [options] input1.cif input*.cif
@@ -38,6 +38,9 @@ my $symop = "-x,-y,z";
 #*    -s, --symmetry-operator -x,-y,z
 #*        Apply the specified symmetry operator.
 #*
+#*    -a, ---add-symmetry-operator -x,-y,z
+#*        Add the specified symmetry operator to the applied operato list.
+#*
 #*    --use-perl-parser  Use development CIF parser written in Perl
 #*    --use-c-parser     Use faster C/Yacc CIF parser (default)
 #*
@@ -45,7 +48,8 @@ my $symop = "-x,-y,z";
 #**
 
 @ARGV = getOptions( 
-    "-s,--symop,--symmetry-operator" => \$symop,
+    "-s,--symop,--symmetry-operator" => sub { @symops = (&get_value) },
+    "-a,--add-symop,--add-symmetry-operator" => \@symops,
     "--use-perl-parser"  => sub{ $use_parser = "perl" },
     "--use-c-parser"     => sub{ $use_parser = "c" },
 
@@ -54,7 +58,12 @@ my $symop = "-x,-y,z";
 
 @ARGV = ( "-" ) unless @ARGV;
 
-my $symop_matrix = SymopParse::symop_from_string( $symop );
+my $symop_matrix = SymopParse::symop_from_string( "x,y,z");
+
+for my $symop (@symops) {
+    $symop_matrix = SymopAlgebra::symop_mul
+        ( $symop_matrix, SymopParse::symop_from_string( $symop ));
+}
 
 for my $filename (@ARGV) {
 
