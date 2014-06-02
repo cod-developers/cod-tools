@@ -774,13 +774,18 @@ sub filter_and_check
 #     - a scalar with the command exit status.
 sub run_command($@)
 {
-    my ($command, $input) = @_;
+    my ($command, $input, $options) = @_;
 
     use IO::Select;
 
     if( !ref $command ) {
         $command = [ $command ];
     }
+
+    my $timeout = 1000;
+
+    $options = {} unless $options;
+    $timeout = $options->{timeout} if exists $options->{timeout};
 
     my ($stdin, $stdout, $stderr);
     $stderr = gensym();
@@ -826,7 +831,7 @@ sub run_command($@)
             last
         }
         my @list = IO::Select->select( $read_selector, $write_selector,
-                                       undef, 1000 );
+                                       undef, $timeout );
 
         if( ! @list ) {
             die( "execution of external script \'"
