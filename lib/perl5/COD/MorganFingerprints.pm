@@ -13,6 +13,8 @@ package MorganFingerprints;
 use strict;
 use warnings;
 
+no warnings 'recursion';
+
 sub make_morgan_fingerprint
 {
     my( $neighbours ) = @_;
@@ -75,6 +77,91 @@ sub make_morgan_fingerprint
 }
 
 sub traverse_graph
+{
+    my( $atom, $neighbours, $atom_order, $orders, $seen_atoms ) = @_;
+
+    $seen_atoms->{$atom} = 1;
+
+    my @neighbours = @{ $neighbours->{neighbours}[$atom] };
+    my @fingerprints;
+    my @sorted_neighbours = sort { $atom_order->[$a] <=>
+                                   $atom_order->[$b] } @neighbours;
+    my @equivalent_neighbours;
+    while( @sorted_neighbours > 0 ) {
+        # Select a subset of atom's neighbours, that have same orders and
+        # are of same chemical type
+        my $atom2 = $sorted_neighbours[0];
+        my $search_order = $orders->[$atom2];
+        my $search_type  = $neighbours->{atoms}[$atom2]{chemical_type};
+        my @equivalent_neighbours =
+            grep { $orders->[$_] == $search_order &&
+                   $neighbours->{atoms}[$_]{chemical_type} eq $search_type }
+            @sorted_neighbours;
+        @sorted_neighbours =
+            grep { $orders->[$_] != $search_order ||
+                   $neighbours->{atoms}[$_]{chemical_type} ne $search_type }
+            @sorted_neighbours;
+
+        # Remove already visited atoms from the subset
+        my @equivalent_neighbours_now;
+        foreach( @equivalent_neighbours ) {
+            next if exists $seen_atoms->{$_};
+            push( @equivalent_neighbours_now, $_ );
+        }
+
+        next if @equivalent_neighbours_now == 0;
+
+        my @fingerprints_by_atoms;
+        if( @equivalent_neighbours_now == 1 ) {
+            @fingerprints_by_atoms =
+                ( { atom => $equivalent_neighbours_now[0] } );
+        } else {
+            # Generate fingerprints for each member of subset
+            # independently (giving identical sets of seen atoms)
+            foreach (@equivalent_neighbours_now) {
+                my %seen_atoms = %$seen_atoms;
+                my $fingerprint = traverse_graph( $_,
+                                                  $neighbours,
+                                                  $atom_order,
+                                                  $orders,
+                                                  \%seen_atoms );
+                push( @fingerprints_by_atoms,
+                      { atom => $_,
+                        fingerprint => $fingerprint } );
+            }
+
+            # Sort atoms in subset by their fingerprints
+            @fingerprints_by_atoms =
+                sort { $a->{fingerprint} cmp $b->{fingerprint} }
+                @fingerprints_by_atoms;
+        }
+
+        # Generate the fingerprints one more time as the correct order
+        # is determined and there should not be any randomness now
+        foreach (@fingerprints_by_atoms) {
+            my $atom = $_->{atom};
+            next if exists $seen_atoms->{$atom};
+            my $fingerprint = traverse_graph( $atom,
+                                              $neighbours,
+                                              $atom_order,
+                                              $orders,
+                                              $seen_atoms );
+            push( @fingerprints, $fingerprint );
+        }
+
+        @equivalent_neighbours = ();
+    }
+
+    my $fingerprint = $neighbours->{atoms}[$atom]{chemical_type} .
+                      "[" . $orders->[$atom] . "]";
+    if( @fingerprints > 0 ) {
+        $fingerprint .= "(" . join( "", @fingerprints ) . ")";
+    }
+
+    return $fingerprint;
+}
+
+sub traverse_graph_old
 {
     my( $atom, $neighbours, $atom_order, $orders, $seen_atoms ) = @_;
 
