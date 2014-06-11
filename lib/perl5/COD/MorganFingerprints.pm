@@ -15,13 +15,45 @@ use warnings;
 
 sub make_morgan_fingerprint
 {
-    my( $neighbours ) = @_;
+    my( $neighbours, $use_atom_classes, $classification_level,
+        $max_ring_size, $flat_planarity ) = @_;
 
     my $nr = scalar @{ $neighbours->{atoms} };
     return "" if $nr == 0;
 
     if( scalar @{ $neighbours->{neighbours} } == 0 ) {
         return $neighbours->{atoms}[0]{chemical_type}
+    }
+
+    if( $use_atom_classes ) {
+        require AtomClassifier;
+
+        my $neighbours_old = [];
+        for( my $i = 0; $i < $nr; $i++ ) {
+            my %atom = %{ $neighbours->{atoms}[$i] };
+            $atom{index} = $i;
+            $atom{atom_name} = $atom{name};
+            $atom{atom_type} = $atom{chemical_type};
+            push( @$neighbours_old, [ \%atom ] );
+        }
+
+        for( my $i = 0; $i < $nr; $i++ ) {
+            $neighbours_old->[$i][1] =
+                [ map { $neighbours_old->[$_][0] }
+                      @{$neighbours->{neighbours}[$i]} ];
+        }
+
+        AtomClassifier::assign_atom_planarities( $neighbours_old,
+                                                 $flat_planarity );
+        AtomClassifier::classify_atoms( $neighbours_old,
+                                        $classification_level,
+                                        $max_ring_size,
+                                        $flat_planarity );
+
+        for( my $i = 0; $i < $nr; $i++ ) {
+            $neighbours->{atoms}[$i]{atom_class} =
+                $neighbours_old->[$i][0]{atom_class};
+        }
     }
 
     my @orders;
@@ -54,10 +86,19 @@ sub make_morgan_fingerprint
     }
 
     # Order atoms according to the connectivity values
-    my @sorted_order = sort { $orders[$b] <=> $orders[$a] ||
-                              $neighbours->{atoms}[$a]{chemical_type} cmp
-                              $neighbours->{atoms}[$b]{chemical_type} }
-                       0..$#orders;
+    my @sorted_order;
+    if( $use_atom_classes ) {
+        @sorted_order = sort { $orders[$b] <=> $orders[$a] ||
+                               $neighbours->{atoms}[$a]{atom_class} cmp
+                               $neighbours->{atoms}[$b]{atom_class} }
+                             0..$#orders;
+    } else {
+        @sorted_order = sort { $orders[$b] <=> $orders[$a] ||
+                               $neighbours->{atoms}[$a]{chemical_type} cmp
+                               $neighbours->{atoms}[$b]{chemical_type} }
+                             0..$#orders;
+    }
+
     my @atom_order;
     for( my $i = 0; $i < $nr; $i++ ) {
         $atom_order[$sorted_order[$i]] = $i;
@@ -70,13 +111,15 @@ sub make_morgan_fingerprint
                                       $neighbours,
                                       \@atom_order,
                                       \@orders,
-                                      {} );
+                                      {},
+                                      $use_atom_classes );
     return $fingerprint;
 }
 
 sub traverse_graph
 {
-    my( $atom, $neighbours, $atom_order, $orders, $seen_atoms ) = @_;
+    my( $atom, $neighbours, $atom_order, $orders, $seen_atoms,
+        $use_atom_classes ) = @_;
 
     $seen_atoms->{$atom} = 1;
 
@@ -88,12 +131,16 @@ sub traverse_graph
                                           $neighbours,
                                           $atom_order,
                                           $orders,
-                                          $seen_atoms );
+                                          $seen_atoms,
+                                          $use_atom_classes );
         push( @fingerprints, $fingerprint );
     }
 
-    my $fingerprint = $neighbours->{atoms}[$atom]{chemical_type} .
-                      "[" . $orders->[$atom] . "]";
+    my $atom_identifyer =
+        $use_atom_classes ? 'atom_class' : 'chemical_type';
+
+    my $fingerprint = $neighbours->{atoms}[$atom]{$atom_identifyer} .
+                      "{" . $orders->[$atom] . "}";
     if( @fingerprints > 0 ) {
         $fingerprint .= "(" . join( "", @fingerprints ) . ")";
     }
