@@ -448,7 +448,7 @@ sub apply_shifts( $ );
 sub find_molecules( $$$$$$$$ );
 sub find_molecule( $$$$$$$$$$$ );
 sub uniquify_atom_names( $$$$ );
-sub atom_array_from_cif($$$$);
+sub atom_array_from_cif( $$$$$ );
 sub get_symmetry_operators( $$ );
 
 sub test_bump( $$$$$$$ );
@@ -851,7 +851,7 @@ sub get_molecules
 
     # Extract atoms fract coordinates
     my $atom_list = atom_array_from_cif( $dataset, $atom_properties, $filename,
-                                         $uniquify_atoms );
+                                         $uniquify_atoms, $sym_data );
 
     return [] unless defined $atom_list;
 
@@ -1004,9 +1004,10 @@ sub uniquify_atom_names($$$$)
 #                   multiplicity_ratio=>"1",
 #              }
 #
-sub atom_array_from_cif($$$$)
+sub atom_array_from_cif($$$$$)
 {
-    my( $datablock, $atom_properties, $filename, $uniquify_atoms ) = @_;
+    my( $datablock, $atom_properties, $filename, $uniquify_atoms,
+        $sym_data ) = @_;
 
     my $values = $datablock->{values};
     my $dataname = $datablock->{name};
@@ -1038,6 +1039,14 @@ sub atom_array_from_cif($$$$)
 	return undef;
     }
 
+    my $symop_list = { symops => [ map { symop_from_string($_) } @$sym_data ],
+                       symop_ids => {} };
+    for (my $i = 0; $i < @{$sym_data}; $i++)
+    {
+        $symop_list->{symop_ids}
+                     {symop_string_canonical_form($sym_data->[$i])} = $i;
+    }
+
     my $atom_labels = $values->{$atom_site_tag};
 
     my @atom_list;
@@ -1061,7 +1070,8 @@ sub atom_array_from_cif($$$$)
             $label = $values->{$atom_site_tag}[$i];
         }
 
-        my $atom_info = extract_atom( $label, $values, $i, $f2o );
+        my $atom_info = extract_atom( $label, $values, $i, $f2o,
+                                      $symop_list );
 
         if( exists $values->{_atom_site_symmetry_multiplicity} &&
             $values->{_atom_site_symmetry_multiplicity}[$i] ne '?' &&
@@ -1343,7 +1353,7 @@ sub get_unit_cell($$)
 
 sub extract_atom
 {
-    my($atom_label, $values, $number, $f2o) = @_;
+    my($atom_label, $values, $number, $f2o, $symop_list) = @_;
 
     my %atom_info;
     my @atom_xyz;
@@ -1372,6 +1382,7 @@ sub extract_atom
     $atom_info{"unity_matrix_applied"}  = 1;
     $atom_info{"translation_id"}        = "555";
     $atom_info{"translation"}           = [ 0, 0, 0 ];
+    $atom_info{"symop_list"}            = $symop_list;
 
     $atom_info{f2o} = $f2o;
     $atom_info{coordinates_ortho} =
@@ -1878,9 +1889,20 @@ sub symop_register_applied_symop
 {
     my($new_atom_info, $symop, $symop_id) = @_;
 
+    my $symop_now = symop_mul( $new_atom_info->{symop}, $symop );
+    my $symop_string =
+        symop_string_canonical_form(
+            string_from_symop(
+                SymopAlgebra::flush_zeros_in_symop(
+                    SymopAlgebra::symop_modulo_1( $symop_now ) ) ) );
+
     $new_atom_info->{"symop"} = $symop;
-    $new_atom_info->{"symop_id"} = $symop_id;
-    $new_atom_info->{"unity_matrix_applied"} = symop_is_unity($symop);
+    $new_atom_info->{"symop_id"} =
+        $new_atom_info->{symop_list}
+                        {symop_ids}
+                        {$symop_string} + 1;
+    $new_atom_info->{"unity_matrix_applied"} =
+        symop_is_unity( $symop_now );
 
     my $atom_xyz = $new_atom_info->{"coordinates_fract"};
 
