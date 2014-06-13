@@ -81,6 +81,7 @@ no warnings 'recursion';
 my $Id = '$Id$';
 
 my $debug;
+my $verbose = 0;
 
 my $sort_molecules = 1; # A flag indicating whether molecules should
                         # be sorted in the output (descending by atom
@@ -323,6 +324,10 @@ my $expand_to_p1 = 0; # Do we want a full P1 unit cell that can be used
 #** --audit            print audit information to the generated CIF file
 #**                    (default)
 #** --no-audit         do not print audit information to the generated CIF file
+#**
+#** --verbose          Print warning messages in long format.
+#** --no-verbose       Print warning messages in concise format (default)
+#**
 #** --help,--usage     print short usage message (this message) and exit
 
     "-1,--one-datablock-output" => sub { $use_one_output_datablock = 1; },
@@ -415,6 +420,9 @@ my $expand_to_p1 = 0; # Do we want a full P1 unit cell that can be used
 
     "--audit"                   => sub { $audit = 1; },
     "--no-audit"                => sub { $audit = 0; },
+
+    "--verbose"                 => sub { $verbose = 1; },
+    "--no-verbose"              => sub { $verbose = 0; },
     "--help,--usage"            => sub { SUsage::usage; exit },
 
 # The following options are left only for compatibility with historic
@@ -2916,6 +2924,7 @@ sub find_molecules($$$$$$$$)
     my %used_originals;
     my %used_uc_atoms;
     my %checked_pairs;
+    my $nbumps = 0;
 
     foreach my $initial_atom (@$initial_atoms)
     {
@@ -2929,15 +2938,19 @@ sub find_molecules($$$$$$$$)
             ##         "cell: $initial_atom->{cell_label}\n";
             ## }
 
-            my @molecule_atoms = find_molecule( $covalent_sensitivity,
-                                                $atom_properties,
-                                                $symmetric_atoms,
-                                                \%used_atoms,
-                                                \%used_originals,
-                                                \%used_uc_atoms,
-                                                \%checked_pairs,
-                                                $initial_atom, $bricks,
-                                                $filename, $dataname );
+            my( $molecule_atoms, $mol_nbumps ) =
+                find_molecule( $covalent_sensitivity,
+                               $atom_properties,
+                               $symmetric_atoms,
+                               \%used_atoms,
+                               \%used_originals,
+                               \%used_uc_atoms,
+                               \%checked_pairs,
+                               $initial_atom, $bricks,
+                               $filename, $dataname );
+
+            my @molecule_atoms = @$molecule_atoms;
+            $nbumps += $mol_nbumps;
 
             if( @molecule_atoms > 0 ) {
                 my %molecule = (
@@ -2951,6 +2964,12 @@ sub find_molecules($$$$$$$$)
                          "found molecule with no atoms - strange..." );
             }
         }
+    }
+
+    if( !$verbose && $nbumps > 0 ) {
+        warning( $0, $filename, $dataname,
+                 "$nbumps pair(s) of atoms are too close to each " .
+                 "other and are considered as bumps" );
     }
 
     return @unique_molecules;
@@ -2992,7 +3011,7 @@ sub find_molecule($$$$$$$$$$$)
             print STDERR "<<<< atom labeled '$current_atom->{name}' " .
                 "is already in some molecule, returning\n"
                 if $debug;
-            return @neighbors;
+            return ( \@neighbors, 0 );
         }
 
         $used_atoms->{$current_atom->{site_label}}
@@ -3034,7 +3053,7 @@ sub find_molecule($$$$$$$$$$$)
                     "memory consumption)";
                 if( $continue_on_errors ) {
                     warning( $0, $filename, $dataname, $message );
-                    return ();
+                    return ( [], 0 );
                 } else {
                     error( $0, $filename, $dataname, $message );
                     exit(1);
@@ -3044,7 +3063,7 @@ sub find_molecule($$$$$$$$$$$)
             if( abs($current_atom->{translation}[0]) > $max_polymer_span ||
                 abs($current_atom->{translation}[1]) > $max_polymer_span ||
                 abs($current_atom->{translation}[2]) > $max_polymer_span ) {
-                return ();
+                return ( [], 0 );
             }
         }
 
@@ -3086,6 +3105,8 @@ sub find_molecule($$$$$$$$$$$)
 	    ">>> now scanning its distinct neighbours " .
 	    "around @{$atom_in_unit_cell_coords_ortho}:\n";
     };
+
+    my $nbumps = 0;
 
     ## foreach my $sym_atom (@$symmetric_atoms)
     for $i ($min_i .. $max_i) {
@@ -3137,7 +3158,11 @@ sub find_molecule($$$$$$$$$$$)
                         sprintf( "%6.4f", $dist ) .
                         ") and are considered a bump";
                     if( $ignore_bumps ) {
-                        warning( $0, $filename, $dataname, $message );
+                        if( $verbose ) {
+                            warning( $0, $filename, $dataname, $message );
+                        } else {
+                            $nbumps++;
+                        }
                     } else {
                         error( $0, $filename, $dataname, $message );
                         print STDERR "$0: Aborting calculations.\n";
@@ -3185,16 +3210,20 @@ sub find_molecule($$$$$$$$$$$)
                                     backshifted => $back_shifted_sym_atom } );
                 } if $debug;
 
-                push(@neighbors, find_molecule( $covalent_sensitivity,
-                                                $atom_properties,
-                                                $symmetric_atoms,
-                                                $used_atoms,
-                                                $used_originals,
-                                                $used_uc_atoms,
-                                                $checked_pairs,
-                                                $back_shifted_sym_atom,
-                                                $bricks,
-                                                $filename, $dataname ));
+                my( $neighbours, $mol_nbumps ) =
+                    find_molecule( $covalent_sensitivity,
+                                   $atom_properties,
+                                   $symmetric_atoms,
+                                   $used_atoms,
+                                   $used_originals,
+                                   $used_uc_atoms,
+                                   $checked_pairs,
+                                   $back_shifted_sym_atom,
+                                   $bricks,
+                                   $filename, $dataname );
+
+                push(@neighbors, @$neighbours);
+                $nbumps += $mol_nbumps;
             }
         }
     }}}
@@ -3207,7 +3236,7 @@ sub find_molecule($$$$$$$$$$$)
         serialiseRef( \@neighbors );
     } if $debug;
 
-    return @neighbors;
+    return ( \@neighbors, $nbumps );
 }
 
 sub dump_atoms_as_cif
