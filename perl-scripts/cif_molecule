@@ -2141,7 +2141,13 @@ sub symops_apply_modulo1
     for my $atom (@sym_atoms) {
         $atom->{multiplicity} = $multiplicity;
         $atom->{multiplicity_ratio} = $multiplicity_ratio;
-        $atom->{site_symops} = \@symops_mapping_to_self;
+
+        my $atom_symop = $atom->{symop};
+        my $inv_atom_symop = symop_invert( $atom_symop );
+        $atom->{site_symops} = [
+            map { symop_mul( $atom_symop, symop_mul( $_, $inv_atom_symop )) }
+            @symops_mapping_to_self
+        ];
     }
 
     return \@sym_atoms;
