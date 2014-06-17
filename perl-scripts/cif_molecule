@@ -616,11 +616,6 @@ for my $filename (@ARGV) {
                     $molecular_symmetry->insert_symops( $sg->all_symops_ref() );
                 }
 
-                my $n = 0;
-                my %symop_ids =
-                    map { (symop_string_canonical_form($_), $n++) }
-                @$sym_data;
-
                 my @stoichiometric_molecules;
                 foreach my $molecule (@$unique_molecules) {
                     use Cosets;
@@ -635,12 +630,10 @@ for my $filename (@ARGV) {
                         ## use Serialise; serialiseRef( [@cosets[1..$#cosets]] );
                         my $symop = $coset->[0];
                         my $symop_key = Cosets::canonical_string_from_symop( $symop );
-                        my $symop_id = $symop_ids{$symop_key};
                         my %additional_molecule = (
                             atoms =>
                                 symop_apply_to_atoms( $molecule->{atoms},
-                                                      $symop,
-                                                      ++$symop_id ),
+                                                      $symop ),
                             chemical_formula_sum => 
                                 $molecule->{chemical_formula_sum}
                         );
@@ -1827,7 +1820,7 @@ sub chemical_formula_sum
 #
 sub symop_apply_modulo1
 {
-    my($atom_info, $symop, $symop_id) = @_;
+    my($atom_info, $symop) = @_;
 
     my $new_atom_info = copy_atom($atom_info);
 
@@ -1839,7 +1832,7 @@ sub symop_apply_modulo1
 
     $new_atom_info->{coordinates_fract} = \@new_atom_xyz;
 
-    return symop_register_applied_symop( $new_atom_info, $symop, $symop_id );
+    return symop_register_applied_symop( $new_atom_info, $symop );
 }
 
 #===============================================================#
@@ -1871,7 +1864,7 @@ sub symop_apply_modulo1
 
 sub symop_apply_NO_modulo_1
 {
-    my($atom_info, $symop, $symop_id) = @_;
+    my($atom_info, $symop) = @_;
 
     my $new_atom_info = copy_atom($atom_info);
 
@@ -1882,12 +1875,12 @@ sub symop_apply_NO_modulo_1
 
     $new_atom_info->{"coordinates_fract"} = \@new_atom_xyz;
 
-    return symop_register_applied_symop( $new_atom_info, $symop, $symop_id );
+    return symop_register_applied_symop( $new_atom_info, $symop );
 }
 
 sub symop_register_applied_symop
 {
-    my($new_atom_info, $symop, $symop_id) = @_;
+    my($new_atom_info, $symop) = @_;
 
     my $symop_now = symop_mul( $new_atom_info->{symop}, $symop );
     my $symop_string =
@@ -1983,11 +1976,11 @@ sub symop_register_applied_symop
 
 sub symop_apply_to_atoms
 {
-    my($atom_list, $symop, $symop_id) = @_;
+    my($atom_list, $symop) = @_;
 
     my @sym_atoms = ();
     for my $atom (@$atom_list) {
-        push( @sym_atoms, symop_apply_NO_modulo_1( $atom, $symop, $symop_id ));
+        push( @sym_atoms, symop_apply_NO_modulo_1( $atom, $symop ));
     }
 
     return \@sym_atoms;
@@ -2111,10 +2104,8 @@ sub symops_apply_modulo1
         serialiseRef( $sym_operators );
     } if 0;
 
-    my $n = 1;
-
     for my $symop ( @{$sym_operators} ) {
-        my $new_atom = symop_apply_modulo1( $atom, $symop, $n++ );
+        my $new_atom = symop_apply_modulo1( $atom, $symop );
         if( !symop_is_unity( $symop ) &&
             atoms_coincide( $atom, $new_atom )) {
             push( @symops_mapping_to_self, $symop );
