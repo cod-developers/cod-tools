@@ -1896,13 +1896,15 @@ sub symop_register_applied_symop
                 SymopAlgebra::flush_zeros_in_symop(
                     SymopAlgebra::symop_modulo_1( $symop_now ) ) ) );
 
-    $new_atom_info->{"symop"} = $symop;
+    $new_atom_info->{"symop"} = $symop_now;
     $new_atom_info->{"symop_id"} =
         $new_atom_info->{symop_list}
                         {symop_ids}
                         {$symop_string} + 1;
     $new_atom_info->{"unity_matrix_applied"} =
         symop_is_unity( $symop_now );
+
+    delete $new_atom_info->{site_symop};
 
     my $atom_xyz = $new_atom_info->{"coordinates_fract"};
 
