@@ -373,7 +373,6 @@ sub get_atoms {
     @atoms = @{ uniquify_atom_names( \@atoms, $uniquify_atoms, 
                                      $filename, $dataset->{name} ); };
 
-
     @atoms = sort { ( $a -> {chemical_type} cmp $b -> {chemical_type} ) ||
                     ( $a -> {label} cmp $b -> {label} ) } @atoms;
 
@@ -431,6 +430,10 @@ sub uniquify_atom_names()
         }
         $used_labels{$label}{count} ++;
     }
+
+   # taking only unique labels in need of renaming
+   #my %seen;
+   #@labels_to_be_renamed = grep { ! $seen{$_}++ } @labels_to_be_renamed;
 
     if( $uniquify_atoms ) {
         foreach my $label (@labels_to_be_renamed) {
@@ -739,10 +742,19 @@ sub print_distance_matrix {
         for ( my $i = 0; $i < @distances; $i++ ) {
             printf( "%-${cell_width}s", @$header_ref[ $i ] );
             for ( my $j = $start_cell_index; $j < $finish_cell_index; $j++ ) {
+              my $distance;
               if ( $j > $i ) {
-                    printf( $format, $distances[ $i ][ $j - $i ] );
+                    $distance = $distances[ $i ][ $j - $i ];
                 } else {
-                    printf( $format, $distances[ $j ][ $i - $j ] );
+                    $distance = $distances[ $j ][ $i - $j ];
+                }
+
+               #  $distance = -1 unless $distance ne "-";
+
+                if ( $distance eq "-" ) {
+                    printf( "%-${cell_width}s", $distance );
+                } else {
+                    printf( $format, $distance );
                 }
             };
             print "\n";
@@ -763,34 +775,39 @@ sub print_distance_matrix {
 
 sub print_pairwise {
     my ( $distances, $atoms_used, $filename, $print_filename ) = @_;
-    
+
     for ( my $i = 0; $i < @$atoms_used; $i++ ) {
       my $atom_1 = @$atoms_used[ $i ] -> [ 0 ];
 
       for ( my $j = 1; $j < @{ @$atoms_used[ $i ] }; $j++ ) {
         my $atom_2 = @$atoms_used[ $i ] -> [ $j ];
 
-        # atoms are not simmetry-related or it is allowed to print them
-        if ( ( $j - 1 ) != 0 || $include_self_distances ) {
-            my $output_string = "";
+        my $distance = @$distances[ $i ] -> [ $j-1 ];
 
-            if ( @$distances[ $i ] -> [ $j-1 ] ne "-" ) {
-                $output_string .= sprintf( 'DIST %-6.3f', @$distances[ $i ] -> [ $j-1 ] )
-            } elsif( $include_null_distances ) {
-                $output_string .= sprintf( 'DIST %-6s', "-" )
-            }
+        # check if atoms are self simmetry-related
+        next if ( ( $j - 1 ) == 0  && !$include_self_distances );
+        # check if atoms distances contain null value ("-")
+        next if ( $distance eq "-" && !$include_null_distances );
 
-            $output_string .= sprintf( ' %10s %10s %24s %8s ',  
+        my $output_string = "";
+
+        if ( $distance eq "-" ) {
+            $output_string .= sprintf( 'DIST %-6s', "-" )
+        } else { 
+            $output_string .= sprintf( 'DIST %-6.3f', $distance )
+        }
+
+        $output_string .= sprintf( ' %10s %10s %24s %8s ', 
                     $atom_1 -> { label }."/".$atom_1 -> { chemical_type },
                     $atom_2 -> { label }."/".$atom_2 -> { chemical_type },
                     $atom_2 -> { sym_operator },
                     $atom_2 -> { shift_vector },
                     );
 
-            $output_string .= basename( $filename ) if ( $print_filename );
-            print Escape::escape("$output_string\n", { sequence => $escape_sequence,
+        $output_string .= basename( $filename ) if ( $print_filename );
+        print Escape::escape("$output_string\n", { sequence => $escape_sequence,
                                escaped_symbols => \%escaped_symbols });
-        }
+        
       }
     }
 }
