@@ -81,6 +81,7 @@ no warnings 'recursion';
 my $Id = '$Id$';
 
 my $debug;
+my $symdebug;
 my $verbose = 0;
 
 my $sort_molecules = 1; # A flag indicating whether molecules should
@@ -316,6 +317,8 @@ my $expand_to_p1 = 0; # Do we want a full P1 unit cell that can be used
 #** --use-c-parser
 #**       Specify parser to parse CIF files. C parser is default.
 #**
+#** --symdebug         Print debug output for symmetry reconstruction
+#** --no-symdebug      Do not print any symmery debug output (default)
 #** --debug            Print some human-readable debug output
 #** --no-debug         Suppress any debug output (default)
 #**
@@ -388,6 +391,9 @@ my $expand_to_p1 = 0; # Do we want a full P1 unit cell that can be used
 
     "--max-polymer-span" => \$max_polymer_span,
     "--max-polymer-atoms" => \$max_polymer_atoms ,
+
+    "--symdebug"    => sub { $symdebug = 1 },
+    "--no-symdebug" => sub { $symdebug = 0 },
 
     "--debug"    => sub { $debug = 1 },
     "--no-debug" => sub { $debug = 0 },
@@ -611,9 +617,16 @@ for my $filename (@ARGV) {
                                                           $inverted_symop1 ));
                         }
                     }
-                    ## $sg->print();
+                    if( $symdebug ) {
+                        print "Molecule symmetry for molecule '$molecule->{chemical_formula_sum}':\n";
+                        $sg->print();
+                    }
                     $molecule->{symmetry} = $sg;
                     $molecular_symmetry->insert_symops( $sg->all_symops_ref() );
+                }
+                if( $symdebug ) {
+                    print "Molecule cluster symmetry:\n";
+                    $molecular_symmetry->print();
                 }
 
                 my @stoichiometric_molecules;
@@ -623,8 +636,13 @@ for my $filename (@ARGV) {
                         $molecular_symmetry->all_symops_ref(),
                         $molecule->{symmetry}->all_symops_ref()
                     );
-                    ## use Serialise; serialiseRef( $molecule );
-                    ## use Serialise; serialiseRef( \@cosets );
+                    if( $symdebug ) {
+                        use Serialise;
+                        print "Molecule '$molecule->{chemical_formula_sum}':\n";
+                        serialiseRef( $molecule );
+                        print "Cosets for '$molecule->{chemical_formula_sum}':\n";
+                        serialiseRef( \@cosets );
+                    }
                     push( @stoichiometric_molecules, $molecule );
                     for my $coset (@cosets[1..$#cosets]) {
                         ## use Serialise; serialiseRef( [@cosets[1..$#cosets]] );
