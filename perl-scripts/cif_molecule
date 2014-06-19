@@ -948,7 +948,7 @@ sub uniquify_atom_names($$$$)
     my @checked_initial_atoms;
 
     my %used_labels;
-    my @labels_to_be_renamed;
+    my %labels_to_be_renamed;
 
     foreach my $atom (@{$init_atoms})
     {
@@ -963,14 +963,15 @@ sub uniquify_atom_names($$$$)
             push( @{$used_labels{$label}{atoms}}, $atom_copy );
             warning( $0, $filename, $dataset_name,
                      "atom label '$label' is not unique" );
-            push( @labels_to_be_renamed, $label );
+
+            $labels_to_be_renamed{$label} ++;
         }
         $used_labels{$label}{count} ++;
     }
 
     if( $uniquify_atoms )
     {
-        foreach my $label (@labels_to_be_renamed)
+        foreach my $label (sort keys %labels_to_be_renamed)
         {
             foreach my $renamed_atom (@{$used_labels{$label}{atoms}}) {
                 my $id = 0;
