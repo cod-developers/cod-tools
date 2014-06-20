@@ -1,16 +1,28 @@
 TARGET = cif2ref
 
-PERL_MODULE_DIRS =  ../CIFParser ../Formulae
+CWD := ${shell pwd}
+TOP := ${dir ${CWD}}
+
+PERL_MODULE_DIRS =  ${TOP}/CIFParser ${TOP}/Formulae
 YAPP_MODULE_DIRS := ${PERL_MODULE_DIRS}
 
-LOCAL_LIB_FILES = ../CIFParser-c/libs/cexceptions/libcexceptions.a ../CIFParser-c/libs/getoptions/libgetoptions.a ../CIFParser-c/libCIFParser-c.a
+INLINE_SRC_DIR := ${TOP}/CCIFParser
+INLINE_BIN_DIR := _Inline/lib/auto/CCIFParser
+INLINE_SOURCES := $(wildcard ${INLINE_SRC_DIR}/*.pm)
+INLINE_MODULES := ${INLINE_SOURCES:${INLINE_SRC_DIR}/%.pm=${INLINE_BIN_DIR}/%.so}
 
-PERL5LIB := ..:../lib/perl5:${PERL5LIB}
-PERL5LIB := ../CIFParser:${PERL5LIB}
-PERL5LIB := ../CCIFParser:${PERL5LIB}
-PERL5LIB := ../CIFTags:${PERL5LIB}
-PERL5LIB := ../CIFData:${PERL5LIB}
-PERL5LIB := ../Spacegroups:${PERL5LIB}
+C_PARSER_LIB_DIR = ${TOP}/CIFParser-c/libs
+LOCAL_LIB_FILES  = ${C_PARSER_LIB_DIR}/cexceptions/libcexceptions.a \
+                   ${C_PARSER_LIB_DIR}/getoptions/libgetoptions.a \
+                   ${TOP}/CIFParser-c/libCIFParser-c.a \
+                   ${INLINE_MODULES}
+
+PERL5LIB := ${TOP}:${TOP}/lib/perl5:${PERL5LIB}
+PERL5LIB := ${TOP}/CIFParser:${PERL5LIB}
+PERL5LIB := ${TOP}/CCIFParser:${PERL5LIB}
+PERL5LIB := ${TOP}/CIFTags:${PERL5LIB}
+PERL5LIB := ${TOP}/CIFData:${PERL5LIB}
+PERL5LIB := ${TOP}/Spacegroups:${PERL5LIB}
 
 export PERL5LIB
 
