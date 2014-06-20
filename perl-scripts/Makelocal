@@ -1,4 +1,10 @@
 LOCAL_CLEAN_TARGETS = local_clean_inline
 
+# Rule to make required Inline::C libraries
+
+${INLINE_BIN_DIR}/%.so: ${INLINE_SRC_DIR}/%.pm
+	rm -f $(@D)/$*.*
+	perl -m$* -e '1'
+
 local_clean_inline:
 	rm -rf _Inline/*
