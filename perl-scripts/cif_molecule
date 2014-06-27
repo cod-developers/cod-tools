@@ -1524,18 +1524,36 @@ sub copy_atom
         croak;
     }
 
-    return copy_struct_deep($old_atom);
+    my $atom_copy = copy_struct_deep( $old_atom,
+                                      { excluded_hash_keys =>
+                                        [ 'symop_list' ] } );
+
+    $atom_copy->{symop_list} = $old_atom->{symop_list};
+
+    return $atom_copy;
 }
 
 # Performs deep copying of structure passed via reference
 
 sub copy_struct_deep
 {
-    my($struct) = @_;
+    my( $struct, $options ) = @_;
+
+    $options = {} unless defined $options;
+
     return $struct if !ref $struct;
     return [ map( copy_struct_deep($_), @$struct ) ] if ref $struct eq "ARRAY";
-    return { map{ $_ => copy_struct_deep( $struct->{$_} ) } keys %$struct }
-        if ref $struct eq "HASH";
+
+    my %excluded_hash_keys;
+    if( exists $options->{excluded_hash_keys} ) {
+        %excluded_hash_keys = map { $_ => 1 }
+                                  @{ $options->{excluded_hash_keys} };
+    }
+
+    return { map { $_ => copy_struct_deep( $struct->{$_} ) }
+             map { (exists $excluded_hash_keys{$_}) ? () : $_ }
+                 keys %$struct } if ref $struct eq "HASH";
+
     die( "deep copy failed: 'copy_struct_deep' does not know how to " .
          "copy object '" . ref( $struct ) . "'" );
 }
