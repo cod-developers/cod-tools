@@ -28,6 +28,7 @@ sub print_message($$$$$@)
 {
     my ( $program, $filename, $datablock, $errlevel, $message, $line, $column ) = @_;
 
+    $message =~ s/\.?\n$//;
     print STDERR $program, ": ", $filename,
     defined $line ? "($line" . (defined $column ? ",$column" : "" ) . ")" : "",
     defined $datablock ? " data_" . $datablock : "",
