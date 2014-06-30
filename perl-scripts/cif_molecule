@@ -1524,11 +1524,15 @@ sub copy_atom
         croak;
     }
 
+    my @shallow_copied_keys = qw( symop_list f2o site_symops );
+
     my $atom_copy = copy_struct_deep( $old_atom,
                                       { excluded_hash_keys =>
-                                        [ 'symop_list' ] } );
+                                        \@shallow_copied_keys } );
 
-    $atom_copy->{symop_list} = $old_atom->{symop_list};
+    for my $key ( @shallow_copied_keys ) {
+        $atom_copy->{$key} = $old_atom->{$key};
+    }
 
     return $atom_copy;
 }
