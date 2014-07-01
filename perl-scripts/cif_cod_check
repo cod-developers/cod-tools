@@ -29,6 +29,7 @@ use File::Basename;
 use UserMessage;
 use SOptions;
 use SUsage;
+use SymopParse;
 
 my $name_syntax_explained = 0;
 my $check_bibliography = 1;
@@ -657,6 +658,11 @@ sub check_spacegroup_info
                     error_reporter( $filename, undef, $dataset->{name},
                                     "unrecognised spacegroup '$spacegroup'");
                     $warnings ++;
+                } else {
+                    $spacegroup_found =
+                        (exists $spacegroups{$spacegroup} )
+                              ? $spacegroups{$spacegroup}
+                              : $spacegroups{$no_spaces};
                 }
             }
             last
@@ -672,6 +678,52 @@ sub check_spacegroup_info
         }
         $warnings ++;
     }
+
+    if( defined $symops && defined $spacegroup_found ) {
+        my $spacegroup_info = lookup_spacegroup( 'hermann_mauguin',
+                                                 $spacegroup_found );
+        if( defined $spacegroup_info ) {
+            my %symops_cannonical =
+                map { SymopParse::symop_string_canonical_form( $_ ) => $_ }
+                @$symops;
+            my %sg_symops_cannonical =
+                map { SymopParse::symop_string_canonical_form( $_ ) => $_ }
+                @{ $spacegroup_info->{symops} };
+
+            my @missing_symops;
+            for my $s (sort keys %sg_symops_cannonical) {
+                next if exists $symops_cannonical{$s};
+                push( @missing_symops, $s );
+            }
+            if( @missing_symops > 0 ) {
+                my $single = (@missing_symops == 1);
+                error_reporter( $filename, undef, $dataset->{name},
+                                "symmetry operator" . (!$single ? "s " : " ") .
+                                join( ", ", map { "'$_'" } @missing_symops ) .
+                                " " . ($single ? "is" : "are") .
+                                " missing, although required by " .
+                                "the spacegroup '$spacegroup_found'" );
+                $warnings ++;
+            }
+
+            my @excess_symops;
+            for my $s (sort keys %symops_cannonical) {
+                next if exists $sg_symops_cannonical{$s};
+                push( @excess_symops, $symops_cannonical{$s} );
+            }
+            if( @excess_symops > 0 ) {
+                my $single = (@excess_symops == 1);
+                error_reporter( $filename, undef, $dataset->{name},
+                                "symmetry operator" . (!$single ? "s " : " ") .
+                                join( ", ", map { "'$_'" } @excess_symops ) .
+                                " " . ($single ? "is" : "are") .
+                                " found, although not required by " .
+                                "the spacegroup '$spacegroup_found'" );
+                $warnings ++;
+            }
+        }
+    }
+
     return $warnings;
 }
 
