@@ -371,6 +371,13 @@ sub get_alternatives
     my %in_assembly;
 
     for my $current_atom (@$atom_list) {
+        # Skipping dummy atoms
+        if( $current_atom->{coordinates_fract}[0] eq '.' ||
+            $current_atom->{coordinates_fract}[1] eq '.' ||
+            $current_atom->{coordinates_fract}[2] eq '.' ) {
+            next;
+        }
+
         my $atom_in_unit_cell_coords_ortho =
             mat_vect_mul( $f2o, $current_atom->{coordinates_fract} );
 
