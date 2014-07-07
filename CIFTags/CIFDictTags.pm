@@ -6,6 +6,8 @@
 #------------------------------------------------------------------------
 #* 
 #  A list of CIF dictionary tags.
+#
+#  Contains at least all tags from Core CIF dictionary Version 2.4.4
 #**
 
 package CIFDictTags;
@@ -98,6 +100,7 @@ _publ_section_introduction
 _publ.section_introduction
 _publ_section_references
 _publ.section_references
+_publ_section_related_literature
 _publ_section_synopsis
 _publ.section_synopsis
 _publ_section_table_legends
@@ -107,6 +110,7 @@ _publ.section_title
 _publ_section_title_footnote
 _publ.section_title_footnote
 _publ_vrn_code
+_publ_section_keywords
 
 _journal_[]
 _journal_coden_ASTM
@@ -198,6 +202,10 @@ _chemical_absolute_configuration
 _chemical.absolute_configuration
 _chemical_compound_source
 _chemical.compound_source
+_chemical_enantioexcess_bulk
+_chemical_enantioexcess_bulk_technique
+_chemical_enantioexcess_crystal
+_chemical_enantioexcess_crystal_technique
 _chemical_conn_atom_[]
 _chemical_conn_atom_charge
 _chemical_conn_atom.charge
@@ -650,6 +658,8 @@ _atom_site_refinement_flags_posn
 _atom_site.refinement_flags_posn
 _atom_site_restraints
 _atom_site.restraints
+_atom_site_site_symmetry_multiplicity
+_atom_site_site_symmetry_order
 _atom_site_[rho]
 _atom_site_rot_Fourier_[]
 _atom_site_rot_Fourier_atom_site_label
@@ -1585,8 +1595,10 @@ _diffrn_radiation.probe
 _diffrn_radiation_source
 _diffrn_radiation_type
 _diffrn_radiation.type
-_diffrn_radiation_wavelength
 _diffrn_radiation_wavelength_[]
+_diffrn_radiation_wavelength
+_diffrn_radiation_wavelength_details
+_diffrn_radiation_wavelength_determination
 _diffrn_radiation_wavelength_id
 _diffrn_radiation_wavelength.id
 _diffrn_radiation.wavelength_id
@@ -1664,6 +1676,8 @@ _diffrn_reflns_av_sigmaI/netI
 _diffrn_reflns.av_sigmaI_over_netI
 _diffrn_reflns_av_unetI/netI
 _diffrn_reflns.av_unetI/netI
+_diffrn_reflns_laue_measured_fraction_full
+_diffrn_reflns_laue_measured_fraction_max
 _diffrn_refln_scale_group_code
 _diffrn_refln.scale_group_code
 _diffrn_refln_scan_mode
@@ -1729,6 +1743,8 @@ _diffrn_reflns.limit_l_min
 _diffrn_reflns_[ms]
 _diffrn_reflns_number
 _diffrn_reflns.number
+_diffrn_reflns_point_group_measured_fraction_full
+_diffrn_reflns_point_group_measured_fraction_max
 _diffrn_reflns_reduction_process
 _diffrn_reflns.reduction_process
 _diffrn_reflns_resolution_full
@@ -2041,6 +2057,8 @@ _exptl.entry_id
 _exptl.method
 _exptl.method_details
 _exptl_special_details
+_exptl_transmission_factor_max
+_exptl_transmission_factor_min
 _geom_[]
 _geom_angle
 _geom_angle_[]
@@ -2130,6 +2148,7 @@ _geom_bond_distance_min
 _geom_bond_distance_nm
 _geom_bond_distance_pm
 _geom_bond.dist_esd
+_geom_bond_multiplicity
 _geom_bond_[ms]
 _geom_bond_publ_flag
 _geom_bond.publ_flag
@@ -2907,6 +2926,9 @@ _refine_ls_extinction_expression
 _refine.ls_extinction_expression
 _refine_ls_extinction_method
 _refine.ls_extinction_method
+_refine_ls_F_calc_details
+_refine_ls_F_calc_formula
+_refine_ls_F_calc_precision
 _refine_ls_goodness_of_fit_all
 _refine.ls_goodness_of_fit_all
 _refine.ls_goodness_of_fit_all_esd
@@ -3146,6 +3168,8 @@ _reflns_d_resolution_low_pm
 _reflns.entry_id
 _reflns_Friedel_coverage
 _reflns.Friedel_coverage
+_reflns_friedel_fraction_full
+_reflns_friedel_fraction_max
 _refln_sint/lambda
 _refln_sint/lambda_nm
 _refln_sint/lambda_pm
@@ -3630,7 +3654,6 @@ _oxford_twin_element_scale_factors
 _chemical_identifier_inchi
 _chemical_identifier_inchi_key
 _chemical_identifier_inchi_version
-_diffrn_radiation_wavelength_details
 
 _iucr_refine_instructions_details
 
