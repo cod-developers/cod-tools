@@ -679,13 +679,38 @@ sub check_spacegroup_info
         $warnings ++;
     }
 
+    my %symops_cannonical;
+    if( defined $symops ) {
+        my %duplicate_symops;
+        for my $symop (@$symops) {
+            my $cannonical_symop =
+                SymopParse::symop_string_canonical_form( $symop );
+            if( !exists $duplicate_symops{$cannonical_symop} ) {
+                $duplicate_symops{$cannonical_symop} = [];
+            }
+            push( @{$duplicate_symops{$cannonical_symop}}, $symop );
+        }
+        for my $cannonical_symop (sort keys %duplicate_symops) {
+            $symops_cannonical{$cannonical_symop} =
+                $duplicate_symops{$cannonical_symop}[0];
+            if( @{ $duplicate_symops{$cannonical_symop} } > 1 ) {
+                error_reporter( $filename, undef, $dataset->{name},
+                                "NOTE, symmetry operator " .
+                                "'$cannonical_symop' is repeated " .
+                                scalar( @{ $duplicate_symops{$cannonical_symop} } ) .
+                                " times (as " .
+                                join( ", ", map { "'$_'" }
+                                            @{ $duplicate_symops{$cannonical_symop} } ) .
+                                ") in symmetry operator list" );
+                $warnings ++;
+            }
+        }
+    }
+
     if( defined $symops && defined $spacegroup_found ) {
         my $spacegroup_info = lookup_spacegroup( 'hermann_mauguin',
                                                  $spacegroup_found );
         if( defined $spacegroup_info ) {
-            my %symops_cannonical =
-                map { SymopParse::symop_string_canonical_form( $_ ) => $_ }
-                @$symops;
             my %sg_symops_cannonical =
                 map { SymopParse::symop_string_canonical_form( $_ ) => $_ }
                 @{ $spacegroup_info->{symops} };
@@ -698,7 +723,8 @@ sub check_spacegroup_info
             if( @missing_symops > 0 ) {
                 my $single = (@missing_symops == 1);
                 error_reporter( $filename, undef, $dataset->{name},
-                                "symmetry operator" . (!$single ? "s " : " ") .
+                                "NOTE, symmetry operator" .
+                                (!$single ? "s " : " ") .
                                 join( ", ", map { "'$_'" } @missing_symops ) .
                                 " " . ($single ? "is" : "are") .
                                 " missing, although required by " .
@@ -714,7 +740,8 @@ sub check_spacegroup_info
             if( @excess_symops > 0 ) {
                 my $single = (@excess_symops == 1);
                 error_reporter( $filename, undef, $dataset->{name},
-                                "symmetry operator" . (!$single ? "s " : " ") .
+                                "NOTE, symmetry operator" .
+                                (!$single ? "s " : " ") .
                                 join( ", ", map { "'$_'" } @excess_symops ) .
                                 " " . ($single ? "is" : "are") .
                                 " found, although not required by " .
