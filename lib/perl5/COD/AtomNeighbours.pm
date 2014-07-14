@@ -130,6 +130,17 @@ sub make_neighbour_list($$$$@)
 
                 next if $atom1 == $atom2;
 
+                next if exists $atom1->{atom_assembly} &&
+                        exists $atom2->{atom_assembly} &&
+                        $atom1->{atom_assembly} ne '.' &&
+                        $atom2->{atom_assembly} ne '.' &&
+                        $atom1->{atom_assembly} eq $atom2->{atom_assembly} &&
+                        exists $atom1->{atom_group} &&
+                        exists $atom2->{atom_group} &&
+                        $atom1->{atom_group} ne '.' &&
+                        $atom2->{atom_group} ne '.' &&
+                        $atom1->{atom_group} ne $atom2->{atom_group};
+
                 my $atom1_type =  $atom1->{chemical_type};
                 my $atom2_type =  $atom2->{chemical_type};
 
@@ -146,19 +157,26 @@ sub make_neighbour_list($$$$@)
                     distance( $atom1->{coordinates_ortho},
                               $atom2->{coordinates_ortho} );
 
+                next if $bond_distance >= $max_bond_distance;
+
                 if( $bond_distance <
-                    $bump_distance_factor * $nominal_bond_distance &&
-                    !$ignore_bumps ) {
-                    croak( "atoms \"$atom_list->[$i]{name}\" and " .
-                           "\"$atom2->{name}\" are too close " .
-                           "(distance = " .
-                           sprintf( "%6.4f", $bond_distance ) .
-                           "), and are considered a bump " .
-                           "-- aborting calculations" );
-                } elsif( $bond_distance < $max_bond_distance ) {
-                    push( @{$neighbour_list{neighbours}[$i]},
-                          $atom2->{index});
+                    $bump_distance_factor * $nominal_bond_distance ) {
+                    if( !$ignore_bumps ) {
+                        croak( "atoms \"$atom_list->[$i]{name}\" and " .
+                               "\"$atom2->{name}\" are too close " .
+                               "(distance = " .
+                               sprintf( "%6.4f", $bond_distance ) .
+                               "), and are considered a bump " .
+                               "-- aborting calculations" );
+                        next;
+                    } else {
+                        $atom1->{is_bump} = 1;
+                        $atom2->{is_bump} = 1;
+                    }
                 }
+
+                push( @{$neighbour_list{neighbours}[$i]},
+                      $atom2->{index} );
             }
         }}}
     }

@@ -28,32 +28,16 @@ sub make_morgan_fingerprint
     if( $use_atom_classes ) {
         require AtomClassifier;
 
-        my $neighbours_old = [];
-        for( my $i = 0; $i < $nr; $i++ ) {
-            my %atom = %{ $neighbours->{atoms}[$i] };
-            $atom{index} = $i;
-            $atom{atom_name} = $atom{name};
-            $atom{atom_type} = $atom{chemical_type};
-            push( @$neighbours_old, [ \%atom ] );
+        foreach my $atom (@{$neighbours->{atoms}}) {
+            $atom->{original_label} = $atom->{site_label};
         }
 
-        for( my $i = 0; $i < $nr; $i++ ) {
-            $neighbours_old->[$i][1] =
-                [ map { $neighbours_old->[$_][0] }
-                      @{$neighbours->{neighbours}[$i]} ];
-        }
-
-        AtomClassifier::assign_atom_planarities( $neighbours_old,
+        AtomClassifier::assign_atom_planarities( $neighbours,
                                                  $flat_planarity );
-        AtomClassifier::classify_atoms( $neighbours_old,
+        AtomClassifier::classify_atoms( $neighbours,
                                         $classification_level,
                                         $max_ring_size,
                                         $flat_planarity );
-
-        for( my $i = 0; $i < $nr; $i++ ) {
-            $neighbours->{atoms}[$i]{atom_class} =
-                $neighbours_old->[$i][0]{atom_class};
-        }
     }
 
     my @orders;
