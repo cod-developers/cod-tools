@@ -1,8 +1,8 @@
 #------------------------------------------------------------------------------
-#$Author: andrius $
-#$Date: 2012-11-19 13:08:00 +0200 (Mon, 19 Nov 2012) $ 
-#$Revision: 374 $
-#$URL: svn://saulius-grazulis.lt/atomclasses/trunk/lib/perl5/AtomNeighbours.pm $
+#$Author$
+#$Date$ 
+#$Revision$
+#$URL$
 #------------------------------------------------------------------------------
 #*
 #  Build a list of neighbours for each atom from an atom list.
