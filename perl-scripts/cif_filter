@@ -142,6 +142,7 @@ my %spacegroups = map {
 #*    --start-page   123
 #*    -e, --end-page 132
 #*    -y, --year     1999
+#*    -D, --doi      10.1010/xyz9999
 #*        Specify bibliographic data to be included into the output.
 #*
 #*    -B, --bibliography bibliography.cif
@@ -250,6 +251,7 @@ my %spacegroups = map {
     "--start-page"      => sub{ $user_biblio = 1; $start_page = get_value() },
     "-e,--end-page"     => sub{ $user_biblio = 1; $end_page = get_value() },
     "-y,--year"         => sub{ $user_biblio = 1; $year = get_value() },
+    "-D,--doi"          => sub{ $user_biblio = 1; $doi = get_value() },
     "-B,--bibliography" => \$biblio,
 
     "-d,--datablock-format" => \$datablock_format,
@@ -829,6 +831,9 @@ for my $filename (@ARGV) {
 
             $datablok->{_journal_page_last} = [ $end_page ]
                 if defined $end_page;
+
+            $datablok->{_journal_paper_doi} = [ $doi ]
+                if defined $doi;
         }
 
         # Restore the full final page number if only trailing digits of
