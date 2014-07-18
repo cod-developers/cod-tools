@@ -139,6 +139,10 @@ int main( int argc, char *argv[], char *env[] )
         taglist = reallocx( taglist, sizeof( char * ) * tagcount, &inner );
         taglist[tagcount - 1] = mallocx( taglen * sizeof( char ) + 1, &inner );
         strncpy( taglist[tagcount - 1], tag_pointer, taglen );
+        int i;
+        for( i = 0; i < taglen; i++ ) {
+            taglist[tagcount - 1][i] = tolower( taglist[tagcount - 1][i] );
+        }
         taglist[tagcount - 1][taglen] = '\0';
         if( end_pointer != NULL ) {
             tag_pointer = end_pointer + 1;
