@@ -319,7 +319,13 @@ int cif_lexer( FILE *in )
                                  "and may not start an unquoted string" );
                     }
                 }
-                if( token[0] != '[' ) {
+                if( token[0] == '$' ) {
+                    /* dollar is a reserved symbol, unquoted strings
+                       may not start with it: */
+                    yyerror( "dollar symbol ('$') must not start an "
+                             "unquoted string" );
+                }
+                if( token[0] != '[' && token[0] != '$' ) {
                     if( yy_flex_debug ) {
                         printf( ">>> UQSTRING: '%s'\n", token );
                     }
