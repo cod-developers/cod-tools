@@ -1435,44 +1435,20 @@ sub extract_atom
         $atom_info{group} = ".";
     }
 
-    if( exists $values->{_atom_site_occupancy} ) {
-        $atom_info{atom_site_occupancy} =
-            $values->{_atom_site_occupancy}[$number];
-    }
+    my %to_copy = (
+        _atom_site_occupancy             => 'atom_site_occupancy',
+        _atom_site_U_iso_or_equiv        => 'atom_site_U_iso_or_equiv',
+        _atom_site_symmetry_multiplicity => 'multiplicity',
+        _atom_site_attached_hydrogens    => 'attached_hydrogens',
+        _atom_site_refinement_flags      => 'refinement_flags',
+        _atom_site_refinement_posn       => 'refinement_flags_position',
+        _atom_site_refinement_adp        => 'refinement_flags_adp',
+        _atom_site_refinement_occupancy  => 'refinement_flags_occupancy',
+    );
 
-    if( exists $values->{_atom_site_U_iso_or_equiv} ) {
-        $atom_info{atom_site_U_iso_or_equiv} =
-            $values->{_atom_site_U_iso_or_equiv}[$number];
-    }
-
-    if( exists $values->{_atom_site_symmetry_multiplicity} ) {
-        $atom_info{multiplicity} =
-            $values->{_atom_site_symmetry_multiplicity}[$number];
-    }
-
-    if( exists $values->{_atom_site_attached_hydrogens} ) {
-        $atom_info{attached_hydrogens} =
-            $values->{_atom_site_attached_hydrogens}[$number];
-    }
-
-    if( exists $values->{_atom_site_refinement_flags} ) {
-        $atom_info{refinement_flags} =
-            $values->{_atom_site_refinement_flags}[$number];
-    }
-
-    if( exists $values->{_atom_site_refinement_posn} ) {
-        $atom_info{refinement_flags_position} =
-            $values->{_atom_site_refinement_posn}[$number];
-    }
-
-    if( exists $values->{_atom_site_refinement_adp} ) {
-        $atom_info{refinement_flags_adp} =
-            $values->{_atom_site_refinement_adp}[$number];
-    }
-
-    if( exists $values->{_atom_site_refinement_occupancy} ) {
-        $atom_info{refinement_flags_occupancy} =
-            $values->{_atom_site_refinement_occupancy}[$number];
+    for my $tag (keys %to_copy) {
+        next if !exists $values->{$tag};
+        $atom_info{$to_copy{$tag}} = $values->{$tag}[$number];
     }
 
     return \%atom_info;
