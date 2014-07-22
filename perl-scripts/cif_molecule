@@ -866,12 +866,28 @@ sub get_molecules
 
     return [] unless defined $atom_list;
 
+    my $dummy_atoms = [ grep { exists $_->{calc_flag} &&
+                               $_->{calc_flag} eq 'dum' } @$atom_list ];
+    my $dummy_molecule;
+    if( @$dummy_atoms > 0 ) {
+        map { $_->{multiplicity_ratio} = '?' } @$dummy_atoms;
+        $dummy_molecule = { atoms => $dummy_atoms,
+                            chemical_formula_sum => "" };
+    }
+
+    $atom_list = [ grep { !exists $_->{calc_flag} ||
+                          $_->{calc_flag} ne 'dum' } @$atom_list ];
+
     if( @$atom_list == 0 ) {
         warning( $0, $filename, $dataname,
                  "no atoms suitable for processing were found; " .
                  "maybe all occupancies were unknown, zero, or " .
                  "all atom types were unrecognised?" );
-        return [];
+        if( defined $dummy_molecule ) {
+            return [ $dummy_molecule ];
+        } else {
+            return [];
+        }
     }
 
     my $max_covalent_radius = get_max_covalent_radius( $atom_properties );
@@ -914,6 +930,10 @@ sub get_molecules
                                                         \%seen_molecules );
 
         push( @unique_molecules, @current_ordered_molecules );
+    }
+
+    if( defined $dummy_molecule ) {
+        push( @unique_molecules, $dummy_molecule );
     }
 
     # Calculates chemical formula sum
@@ -1421,21 +1441,12 @@ sub extract_atom
     }
 
     $atom_info{chemical_type} = $atom_type;
-
-    if( exists $values->{_atom_site_disorder_assembly}[$number]) {
-        $atom_info{assembly} =
-	    $values->{_atom_site_disorder_assembly}[$number];
-    } else {
-        $atom_info{assembly} = ".";
-    }
-
-    if( exists $values->{_atom_site_disorder_group}[$number] ) {
-        $atom_info{group} = $values->{_atom_site_disorder_group}[$number];
-    } else {
-        $atom_info{group} = ".";
-    }
+    $atom_info{assembly} = ".";
+    $atom_info{group}    = ".";
 
     my %to_copy = (
+        _atom_site_disorder_assembly     => 'assembly',
+        _atom_site_disorder_group        => 'group',
         _atom_site_occupancy             => 'atom_site_occupancy',
         _atom_site_U_iso_or_equiv        => 'atom_site_U_iso_or_equiv',
         _atom_site_symmetry_multiplicity => 'multiplicity',
@@ -1444,6 +1455,7 @@ sub extract_atom
         _atom_site_refinement_posn       => 'refinement_flags_position',
         _atom_site_refinement_adp        => 'refinement_flags_adp',
         _atom_site_refinement_occupancy  => 'refinement_flags_occupancy',
+        _atom_site_calc_flag             => 'calc_flag',
     );
 
     for my $tag (keys %to_copy) {
@@ -2660,6 +2672,7 @@ sub print_molecule
     my $has_posn_refinement_flags = 0;
     my $has_adp_refinement_flags = 0;
     my $has_occupancy_refinement_flags = 0;
+    my $has_calc_flag = 0;
     foreach my $atom ( @{$molecule->{atoms}} ) {
         if( $atom->{group} ne '.' || $atom->{assembly} ne '.' ) {
             $has_disorder = 1;
@@ -2670,7 +2683,7 @@ sub print_molecule
         if( $atom->{attached_hydrogens} ) {
             $has_attached_hydrogens = 1;
         }
-        if( exists $atom->{site_symops} && @{$atom->{site_symops}} > 0 ) {
+        if( $atom->{site_symops} && @{$atom->{site_symops}} > 0 ) {
             $has_site_symops = 1;
         }
         if( exists $atom->{refinement_flags} &&
@@ -2688,6 +2701,9 @@ sub print_molecule
         if( exists $atom->{refinement_flags_occupancy} &&
             $atom->{refinement_flags_occupancy} ne '.' ) {
             $has_occupancy_refinement_flags = 1;
+        }
+        if( exists $atom->{calc_flag} && $atom->{calc_flag} ne '.' ) {
+            $has_calc_flag = 1;
         }
     }
 
@@ -2726,6 +2742,7 @@ sub print_molecule
         if $use_one_output_datablock && $has_disorder;
     print "_atom_site_attached_hydrogens\n"
         if $has_attached_hydrogens;
+    print "_atom_site_calc_flag\n" if $has_calc_flag;
 
     my $print_format = join( " ", ($format)x3 );
     foreach my $atom ( sort {
@@ -2744,10 +2761,14 @@ sub print_molecule
                 print "? ";
             }
         }
-        printf $print_format,
-               $atom->{"coordinates_fract"}[0],
-               $atom->{"coordinates_fract"}[1],
-               $atom->{"coordinates_fract"}[2];
+        if( !exists $atom->{calc_flag} || $atom->{calc_flag} ne 'dum' ) {
+            printf $print_format,
+                   $atom->{"coordinates_fract"}[0],
+                   $atom->{"coordinates_fract"}[1],
+                   $atom->{"coordinates_fract"}[2];
+        } else {
+            print ". . .";
+        }
         if( defined $atom_site_U_iso_or_equiv ) {
             print " ";
             CIFTagPrint::print_value( $atom->{atom_site_U_iso_or_equiv} );
@@ -2789,6 +2810,10 @@ sub print_molecule
         if( $has_attached_hydrogens ) {
             print " ";
             CIFTagPrint::print_value( $atom->{attached_hydrogens} );
+        }
+        if( $has_calc_flag ) {
+            print " ";
+            CIFTagPrint::print_value( $atom->{calc_flag} );
         }
         print "\n";
     }
