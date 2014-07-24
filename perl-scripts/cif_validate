@@ -28,6 +28,7 @@ use CCIFParser;
 use CIFTagCanonicalNames;
 use ShowStruct;
 use SOptions;
+use UserMessage;
 
 #
 # here we define variables
@@ -222,23 +223,19 @@ for( @{$outputOptions} ) {
             )
         $/six;
         if( !defined $1 ) {
-            print STDERR $0. ': Output option "' . $_ . '" is not'
-                    . ' valid.'
-                    . ' Options MUST contain only letters,'
-                    . ' underscore "_" and minus "-" signs.' . "\n";
+            print_message( $0, undef, undef, undef,
+                           'Output option "' . $_ . '" is not ' .
+                           'valid. Options MUST contain only letters, ' .
+                           'underscore "_" and minus "-" signs' );
             next ITERATEOPTIONS;
         }
         my $opt = lc( $1 );
         if( !exists $showMap{$opt}
             && $opt ne 'all' ) {
-            print STDERR $0. ': Output option '
-                    . "'" . $1 . "'"
-                    . ' is not '
-                    . 'known. '
-                    . 'Options should be one of these: ['
-                    . join(', ', keys(%showMap))
-                    . '].'
-                    . "\n";
+            print_message( $0, undef, undef, undef,
+                           'Output option ' . "'" . $1 . "' " .
+                           'is not known. Options should be one of ' .
+                           'these: [' . join(', ', keys(%showMap)) . ']' );
             next ITERATEOPTIONS;
         }
         if( $opt eq 'all' ) {
@@ -262,8 +259,8 @@ while( my($k, $v) = each %showMap ) {
     $anyTestIsTurnedOn = 1 if $v;
 }
 if( !$anyTestIsTurnedOn ) {
-    print STDERR $0. ': No test is chosen to be performed. Exiting.'
-        . "\n";
+    print_message( $0, undef, undef, undef,
+                   'No test is chosen to be performed. Exiting.' );
     exit( 0 );
 }
 undef $anyTestIsTurnedOn;
@@ -286,10 +283,9 @@ if( @$dictFiles )
         undef $parsed;
     }
     if( keys( %$dictTags ) == 0 ) {
-        print STDERR $0 . ': '
-                . join( ",", @$dictFiles )
-                . ': No tags were defined in dictionaries.'
-                . "\n";
+        print_message( $0, undef, undef, undef,
+                       join( ",", @$dictFiles ) .
+                       ': No tags were defined in dictionaries.' );
         exit 1;
     }
 } else {
@@ -999,18 +995,14 @@ sub showValidationMessage {
         # if this return happens - there must be a bug left
         return 0;
     }
-    my $output = $0 . ": ";
-    $output .= $file;
-    if( defined $dataBlockName && $dataBlockName ) {
-        $output .= " data_" . $dataBlockName;
-    }
-    $output .= ": ";
-    if( defined $severity && $severity ) {
-        $output .= severityName( $severity ) . ", ";
-    }
-    $output .= $message;
-    $output .= "\n";
-    print $output;
+    my $formatted =
+        UserMessage::sprint_message( $0, $file, $dataBlockName,
+                                     (defined $severity
+                                        ? severityName( $severity )
+                                        : undef),
+                                     $message );
+    $formatted =~ s/\.?\n$/\n/;
+    print $formatted;
 }
 
 sub getDict
