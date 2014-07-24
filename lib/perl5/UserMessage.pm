@@ -24,16 +24,30 @@ require Exporter;
 # probably not contain a colon (":") since colon is used to separate
 # different parts of the error message.
 
-sub print_message($$$$$@)
+sub sprint_message($$$$$@)
 {
-    my ( $program, $filename, $datablock, $errlevel, $message, $line, $column ) = @_;
+    my ( $program, $filename, $datablock, $errlevel,
+         $message, $line, $column ) = @_;
 
     $message =~ s/\.?\n$//;
-    print STDERR $program, ": ", $filename,
-    defined $line ? "($line" . (defined $column ? ",$column" : "" ) . ")" : "",
-    defined $datablock ? " data_" . $datablock : "",
-    defined $errlevel ? ": " . $errlevel : "",
-    ", ", $message, ".\n";
+    return $program . ": " . $filename .
+           (defined $line
+                ? "($line" . (defined $column ? ",$column" : "" ) . ")"
+                : "") .
+           (defined $datablock ? " data_" . $datablock : "") .
+           (defined $errlevel ? ": " . $errlevel : "") .
+           ", " . $message . ".\n";
+}
+
+#==============================================================================
+# Generic function for printing messages to STDERR
+
+sub print_message($$$$$@)
+{
+    my ( $program, $filename, $datablock, $errlevel,
+         $message, $line, $column ) = @_;
+    print STDERR sprint_message( $program, $filename, $datablock,
+                                 $errlevel, $message, $line, $column );
 }
 
 #==============================================================================
