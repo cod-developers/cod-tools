@@ -584,6 +584,21 @@ for my $filename (@ARGV) {
 	}
 
 	if((defined $sym_data) && ($sym_data != 0)) {
+        my $unity_operator_found = 0;
+        for my $symop (@$sym_data) {
+            if( symop_is_unity( symop_from_string( $symop ) ) ) {
+                $unity_operator_found = 1;
+                last;
+            }
+        }
+
+        if( !$unity_operator_found ) {
+            warning( $0, $filename, $dataset->{name},
+                     "unity symmetry operator ('x,y,z') is not " .
+                     "found in the symmetry operator list, " .
+                     "results may be incorrect" );
+        }
+
 	    my $molecule_id = 0;
 	    my $dataset_name = $dataset->{name};
 
