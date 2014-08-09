@@ -13,12 +13,17 @@ endif
 
 CWD := ${shell pwd}
 TOP := ${dir ${CWD}}
+
+ifeq ("${TEST_INSTALL}","")
 PERL5LIB := ${CWD}/lib/perl5:${PERL5LIB}
 PERL5LIB := ${TOP}/lib/perl5:${PERL5LIB}
 export PERL5LIB
 
 PATH := ${CWD}:${TOP}/CIFParser-c:${PATH}
 export PATH
+
+BIN_DIR = ./
+endif
 
 YAPP_SOURCES := $(wildcard $(addsuffix /*.yp, ${YAPP_MODULE_DIRS}))
 YAPP_MODULES := ${YAPP_SOURCES:%.yp=%.pm}
@@ -135,7 +140,7 @@ ${TARGET}: ${YAPP_MODULES}
 
 ${OUTPUT_DIR}/%.diff: ${TARGET} ${TEST_DIR}/%${EXT}
 	-@printf "%-30s " "$*:" ; \
-	( ./$< ${word 2, $^} ${TEST_OPTIONS} \
+	( ${BIN_DIR}$< ${word 2, $^} ${TEST_OPTIONS} \
 	| ${buffer_output} ) 2>&1 \
 	| ${filter_perl_messages} \
 	| diff ${OUTPUT_DIR}/$*.out - > $@ ; \
@@ -144,7 +149,7 @@ ${OUTPUT_DIR}/%.diff: ${TARGET} ${TEST_DIR}/%${EXT}
 ${OUTPUT_DIR}/%.out: ${TARGET} ${TEST_DIR}/%${EXT}
 	-@test -f $@ || echo "$@:"
 	-@test -f $@ || \
-	( ./$< ${word 2, $^} ${TEST_OPTIONS} \
+	( ${BIN_DIR}$< ${word 2, $^} ${TEST_OPTIONS} \
 	| ${buffer_output} ) 2>&1 \
 	| ${filter_perl_messages} \
 	| tee $@
@@ -155,7 +160,7 @@ ${OUTPUT_DIR}/%.out: ${TARGET} ${TEST_DIR}/%${EXT}
 ${OUTPUT_DIR}/%.diff: ${SCRIPT_TST_DIR}/%${INP} ${SCRIPT_TST_DIR}/%${OPT} \
                       ${SCRIPT_FILES} ${YAPP_MODULES}
 	-@printf "%-30s " "$<:" ; \
-	( ./$(shell echo $* | sed -e 's/_[0-9]*$$//') \
+	( ${BIN_DIR}$(shell echo $* | sed -e 's/_[0-9]*$$//') \
 	    $(shell grep -v '^#' ${word 2, $^}) \
 	    $< \
 	| ${buffer_output} ) 2>&1 \
@@ -165,7 +170,7 @@ ${OUTPUT_DIR}/%.diff: ${SCRIPT_TST_DIR}/%${INP} ${SCRIPT_TST_DIR}/%${OPT} \
 
 ${OUTPUT_DIR}/%.diff: ${SCRIPT_TST_DIR}/%${INP} ${SCRIPT_FILES} ${YAPP_MODULES}
 	-@printf "%-30s " "$<:" ; \
-	( ./$(shell echo $* | sed -e 's/_[0-9]*$$//') $< \
+	( ${BIN_DIR}$(shell echo $* | sed -e 's/_[0-9]*$$//') $< \
 	| ${buffer_output} ) 2>&1 \
 	| ${filter_perl_messages} \
 	| diff ${OUTPUT_DIR}/$*.out - > $@ ; \
@@ -173,7 +178,7 @@ ${OUTPUT_DIR}/%.diff: ${SCRIPT_TST_DIR}/%${INP} ${SCRIPT_FILES} ${YAPP_MODULES}
 
 ${OUTPUT_DIR}/%.diff: ${SCRIPT_TST_DIR}/%${OPT} ${SCRIPT_FILES} ${YAPP_MODULES}
 	-@printf "%-30s " "$<:" ; \
-	( ./$(shell echo $* | sed -e 's/_[0-9]*$$//') \
+	( ${BIN_DIR}$(shell echo $* | sed -e 's/_[0-9]*$$//') \
 	     $(shell grep -v '^#' ${word 1, $^}) \
 	| ${buffer_output} ) 2>&1 \
 	| ${filter_perl_messages} \
@@ -183,7 +188,7 @@ ${OUTPUT_DIR}/%.diff: ${SCRIPT_TST_DIR}/%${OPT} ${SCRIPT_FILES} ${YAPP_MODULES}
 ${OUTPUT_DIR}/%.out: ${SCRIPT_TST_DIR}/%${INP} ${SCRIPT_TST_DIR}/%${OPT} ${YAPP_MODULES}
 	-@test -f $@ || echo "$@:"
 	-@test -f $@ || \
-	( ./$(shell echo $* | sed -e 's/_[0-9]*$$//') \
+	( ${BIN_DIR}$(shell echo $* | sed -e 's/_[0-9]*$$//') \
 	    $(shell grep -v '^#' ${word 2, $^}) \
 	    $< \
 	| ${buffer_output} ) 2>&1 \
@@ -194,7 +199,7 @@ ${OUTPUT_DIR}/%.out: ${SCRIPT_TST_DIR}/%${INP} ${SCRIPT_TST_DIR}/%${OPT} ${YAPP_
 ${OUTPUT_DIR}/%.out: ${SCRIPT_TST_DIR}/%${INP} ${YAPP_MODULES}
 	-@test -f $@ || echo "$@:"
 	-@test -f $@ || \
-	( ./$(shell echo $* | sed -e 's/_[0-9]*$$//') \
+	( ${BIN_DIR}$(shell echo $* | sed -e 's/_[0-9]*$$//') \
 	    $< \
 	| ${buffer_output} ) 2>&1 \
 	| ${filter_perl_messages} \
@@ -204,7 +209,7 @@ ${OUTPUT_DIR}/%.out: ${SCRIPT_TST_DIR}/%${INP} ${YAPP_MODULES}
 ${OUTPUT_DIR}/%.out: ${SCRIPT_TST_DIR}/%${OPT} ${YAPP_MODULES}
 	-@test -f $@ || echo "$@:"
 	-@test -f $@ || \
-	( ./$(shell echo $* | sed -e 's/_[0-9]*$$//') \
+	( ${BIN_DIR}$(shell echo $* | sed -e 's/_[0-9]*$$//') \
 	    $(shell grep -v '^#' ${word 1, $^}) \
 	| ${buffer_output} ) 2>&1 \
 	| ${filter_perl_messages} \
@@ -222,7 +227,7 @@ ${TST_OUT_DIR}/%.out: ${TST_EXE_DIR}/% ${YAPP_MODULES}
 
 ${TST_OUT_DIR}/%.diff: ${TST_EXE_DIR}/% ${YAPP_MODULES}
 	-@printf "%-30s " "$*:" ; \
-	(./$< \
+	( ${BIN_DIR}$< \
 	| ${buffer_output} ) 2>&1 \
 	| ${filter_perl_messages} \
 	| diff ${TST_OUT_DIR}/$*.out - > $@ ; \

@@ -79,3 +79,6 @@ installdirs:
 	test -d ${BIN_DIR} || mkdir -p ${BIN_DIR}
 	test -d ${PERL5_LIB_DIR} || mkdir -p ${PERL5_LIB_DIR}
 	test -d ${COD_LIB_DIR} || mkdir -p ${COD_LIB_DIR}
+
+testinstall:
+	$(MAKE) -C perl-scripts tests TEST_INSTALL=1
