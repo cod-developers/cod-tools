@@ -11,8 +11,17 @@ DEPENDENCIES = $(shell grep install ${DEPENDENCY_LIST} \
                  | xargs perl -e 'print join ", ", ( "debhelper (>=9)", @ARGV )')
 PERL5_BINS = $(shell find perl-scripts/ -maxdepth 1 -type f -a -executable)
 
-PERL5_LIBS = $(shell find . -name .svn -prune -o -name COD -prune -o -name \*.pm -print)
+PERL5_LIBS = $(shell find . -name .svn -prune \
+                 -o -name COD -prune \
+                 -o -name STAR -prune \
+                 -o -name Formulae -prune \
+                 -o -name \*.pm -print)
 COD_LIBS   = $(shell find lib/perl5/COD -name .svn -prune -o -name \*.pm -print)
+STAR_LIBS  = $(shell find lib/perl5/STAR -name .svn -prune -o -name \*.pm -print)
+DATA_LIBS  = $(shell find CIFData -name .svn -prune -o -name \*.pm -print)
+TAGS_LIBS  = $(shell find CIFTags -name .svn -prune -o -name \*.pm -print)
+SG_LIBS    = $(shell find Spacegroups -name .svn -prune -o -name \*.pm -print)
+FRML_LIBS  = $(shell find Formulae -name .svn -prune -o -name \*.pm -print)
 
 PKGNAME = cod-tools
 
@@ -24,6 +33,11 @@ PREFIX = /usr/local
 BIN_DIR       = ${PREFIX}/bin
 PERL5_LIB_DIR = ${PREFIX}/lib/perl/5.14.2
 COD_LIB_DIR   = ${PERL5_LIB_DIR}/COD
+STAR_LIB_DIR  = ${PERL5_LIB_DIR}/STAR
+DATA_LIB_DIR  = ${PERL5_LIB_DIR}/CIFData
+TAGS_LIB_DIR  = ${PERL5_LIB_DIR}/CIFTags
+SG_LIB_DIR    = ${PERL5_LIB_DIR}/Spacegroups
+FRML_LIB_DIR  = ${PERL5_LIB_DIR}/Formulae
 
 define newline
 
@@ -74,11 +88,21 @@ install: build installdirs
 	install ${PERL5_BINS} ${BIN_DIR}
 	install --mode 644 ${PERL5_LIBS} ${PERL5_LIB_DIR}
 	install --mode 644 ${COD_LIBS} ${COD_LIB_DIR}
+	install --mode 644 ${STAR_LIBS} ${STAR_LIB_DIR}
+	install --mode 644 ${DATA_LIBS} ${DATA_LIB_DIR}
+	install --mode 644 ${TAGS_LIBS} ${TAGS_LIB_DIR}
+	install --mode 644 ${SG_LIBS} ${SG_LIB_DIR}
+	install --mode 644 ${FRML_LIBS} ${FRML_LIB_DIR}
 
 installdirs:
 	test -d ${BIN_DIR} || mkdir -p ${BIN_DIR}
 	test -d ${PERL5_LIB_DIR} || mkdir -p ${PERL5_LIB_DIR}
 	test -d ${COD_LIB_DIR} || mkdir -p ${COD_LIB_DIR}
+	test -d ${STAR_LIB_DIR} || mkdir -p ${STAR_LIB_DIR}
+	test -d ${DATA_LIB_DIR} || mkdir -p ${DATA_LIB_DIR}
+	test -d ${TAGS_LIB_DIR} || mkdir -p ${TAGS_LIB_DIR}
+	test -d ${SG_LIB_DIR} || mkdir -p ${SG_LIB_DIR}
+	test -d ${FRML_LIB_DIR} || mkdir -p ${FRML_LIB_DIR}
 
 testinstall:
 	$(MAKE) -C perl-scripts tests TEST_INSTALL=1
