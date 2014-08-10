@@ -42,7 +42,7 @@ INLINE_FILES = $(shell find ${REL_INLINE_DIR} -name .svn -prune -o -type f -prin
 
 BIN_DIR       = ${PREFIX}/bin
 LIB_DIR       = ${PREFIX}/lib
-PERL5_LIB_DIR = ${LIB_DIR}/perl/5.14.2
+PERL5_LIB_DIR = ${LIB_DIR}/perl5
 COD_LIB_DIR   = ${PERL5_LIB_DIR}/COD
 STAR_LIB_DIR  = ${PERL5_LIB_DIR}/STAR
 DATA_LIB_DIR  = ${PERL5_LIB_DIR}/CIFData
