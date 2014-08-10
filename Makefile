@@ -11,12 +11,17 @@ CHANGELOG = ${DEBIAN}/changelog
 CONTROL   = ${DEBIAN}/control
 COPYRIGHT = ${DEBIAN}/copyright
 
-# Taking the dependencies from install.sh:
+# Taking the dependencies from {build,run}.sh:
 
-DEPENDENCY_LIST = dependencies/Ubuntu-12.04/install.sh
-DEPENDENCIES = $(shell grep install ${DEPENDENCY_LIST} \
+BUILD_DEPS_LIST = dependencies/Ubuntu-12.04/build.sh
+RUN_DEPS_LIST   = dependencies/Ubuntu-12.04/run.sh
+
+BUILD_DEPS = $(shell grep install ${BUILD_DEPS_LIST} \
                  | awk '{print $$NF}' \
                  | xargs perl -e 'print join ", ", ( "debhelper (>=9)", @ARGV )')
+RUN_DEPS = $(shell grep install ${RUN_DEPS_LIST} \
+                 | awk '{print $$NF}' \
+                 | xargs perl -e 'print join ", ", @ARGV')
 
 # Collecting Perl binaries and libraries:
 
@@ -77,11 +82,11 @@ Maintainer: ${AUTHOR_NAME} <${AUTHOR_EMAIL}>
 Section: misc
 Priority: optional
 Standards-Version: 3.9.3
-Build-Depends: ${DEPENDENCIES}
+Build-Depends: ${BUILD_DEPS}
 
 Package: ${PKGNAME}
 Architecture: any
-Depends: ${DEPENDENCIES}
+Depends: ${RUN_DEPS}
 Description: tools for Crystallography Open Database
  CIF management tools
 endef
