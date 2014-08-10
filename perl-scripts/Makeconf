@@ -7,7 +7,7 @@ PERL_MODULE_DIRS =  ${TOP}/CIFParser ${TOP}/Formulae
 YAPP_MODULE_DIRS := ${PERL_MODULE_DIRS}
 
 INLINE_SRC_DIR := ${TOP}/CCIFParser
-INLINE_BIN_DIR := _Inline/lib/auto/CCIFParser
+INLINE_BIN_DIR := ${TOP}/lib/cod-tools
 INLINE_SOURCES := $(wildcard ${INLINE_SRC_DIR}/*.pm)
 INLINE_MODULES := ${INLINE_SOURCES:${INLINE_SRC_DIR}/%.pm=${INLINE_BIN_DIR}/%.so}
 
@@ -17,6 +17,7 @@ LOCAL_LIB_FILES  = ${C_PARSER_LIB_DIR}/cexceptions/libcexceptions.a \
                    ${TOP}/CIFParser-c/libCIFParser-c.a \
                    ${INLINE_MODULES}
 
+ifeq ("${TEST_INSTALL}","")
 PERL5LIB := ${TOP}:${TOP}/lib/perl5:${PERL5LIB}
 PERL5LIB := ${TOP}/CIFParser:${PERL5LIB}
 PERL5LIB := ${TOP}/CCIFParser:${PERL5LIB}
@@ -25,6 +26,7 @@ PERL5LIB := ${TOP}/CIFData:${PERL5LIB}
 PERL5LIB := ${TOP}/Spacegroups:${PERL5LIB}
 
 export PERL5LIB
+endif
 
 EXT = .cif
 TEST_OPTIONS =

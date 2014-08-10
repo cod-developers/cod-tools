@@ -1,16 +1,27 @@
+PKGNAME = cod-tools
+AUTHOR_NAME  = Saulius Gražulis
+AUTHOR_EMAIL = grazulis@ibt.lt
+REVISION  = $(shell svnversion)
+DATE      = $(shell date --rfc-2822)
+
+PREFIX = /usr/local
+
 DEBIAN    = debian
 CHANGELOG = ${DEBIAN}/changelog
 CONTROL   = ${DEBIAN}/control
 COPYRIGHT = ${DEBIAN}/copyright
-REVISION  = $(shell svnversion)
-DATE      = $(shell date --rfc-2822)
+
+# Taking the dependencies from install.sh:
 
 DEPENDENCY_LIST = dependencies/Ubuntu-12.04/install.sh
 DEPENDENCIES = $(shell grep install ${DEPENDENCY_LIST} \
                  | awk '{print $$NF}' \
                  | xargs perl -e 'print join ", ", ( "debhelper (>=9)", @ARGV )')
-PERL5_BINS = $(shell find perl-scripts/ -maxdepth 1 -type f -a -executable)
 
+# Collecting Perl binaries and libraries:
+
+C_BINS     = $(shell find CIFParser-c/ -maxdepth 1 -type f -a -executable)
+PERL5_BINS = $(shell find perl-scripts/ -maxdepth 1 -type f -a -executable)
 PERL5_LIBS = $(shell find . -name .svn -prune \
                  -o -name COD -prune \
                  -o -name STAR -prune \
@@ -23,21 +34,29 @@ TAGS_LIBS  = $(shell find CIFTags -name .svn -prune -o -name \*.pm -print)
 SG_LIBS    = $(shell find Spacegroups -name .svn -prune -o -name \*.pm -print)
 FRML_LIBS  = $(shell find Formulae -name .svn -prune -o -name \*.pm -print)
 
-PKGNAME = cod-tools
+REL_INLINE_DIR     = lib/cod-tools
+REL_INLINE_LIB_DIR = ${REL_INLINE_DIR}/lib/auto/CCIFParser
+INLINE_FILES = $(shell find ${REL_INLINE_DIR} -name .svn -prune -o -type f -print)
 
-AUTHOR_NAME  = Saulius Gražulis
-AUTHOR_EMAIL = grazulis@ibt.lt
-
-PREFIX = /usr/local
+# Listing the paths to be installed
 
 BIN_DIR       = ${PREFIX}/bin
-PERL5_LIB_DIR = ${PREFIX}/lib/perl/5.14.2
+LIB_DIR       = ${PREFIX}/lib
+PERL5_LIB_DIR = ${LIB_DIR}/perl/5.14.2
 COD_LIB_DIR   = ${PERL5_LIB_DIR}/COD
 STAR_LIB_DIR  = ${PERL5_LIB_DIR}/STAR
 DATA_LIB_DIR  = ${PERL5_LIB_DIR}/CIFData
 TAGS_LIB_DIR  = ${PERL5_LIB_DIR}/CIFTags
 SG_LIB_DIR    = ${PERL5_LIB_DIR}/Spacegroups
 FRML_LIB_DIR  = ${PERL5_LIB_DIR}/Formulae
+
+INLINE_DIR     = ${PREFIX}/${REL_INLINE_DIR}
+INLINE_LIB_DIR = ${PREFIX}/${REL_INLINE_LIB_DIR}
+
+INSTALLED_DIRS = ${BIN_DIR} ${PERL5_LIB_DIR} ${COD_LIB_DIR} \
+                 ${STAR_LIB_DIR} ${DATA_LIB_DIR} ${TAGS_LIB_DIR} \
+                 ${SG_LIB_DIR} ${FRML_LIB_DIR} ${INLINE_DIR} \
+                 ${INLINE_LIB_DIR}
 
 define newline
 
@@ -77,7 +96,7 @@ ${COPYRIGHT}:
 	cat README-COPYING COPYING > $@
 
 all build:
-	# $(MAKE) -C perl-scripts
+	$(MAKE) -C perl-scripts
 	$(MAKE) -C CIFParser
 	$(MAKE) -C CIFParser-c
 
@@ -85,7 +104,7 @@ deb: build ${CHANGELOG} ${CONTROL} ${COPYRIGHT}
 	fakeroot debian/rules binary
 
 install: build installdirs
-	install ${PERL5_BINS} ${BIN_DIR}
+	install ${C_BINS} ${PERL5_BINS} ${BIN_DIR}
 	install --mode 644 ${PERL5_LIBS} ${PERL5_LIB_DIR}
 	install --mode 644 ${COD_LIBS} ${COD_LIB_DIR}
 	install --mode 644 ${STAR_LIBS} ${STAR_LIB_DIR}
@@ -93,16 +112,17 @@ install: build installdirs
 	install --mode 644 ${TAGS_LIBS} ${TAGS_LIB_DIR}
 	install --mode 644 ${SG_LIBS} ${SG_LIB_DIR}
 	install --mode 644 ${FRML_LIBS} ${FRML_LIB_DIR}
+	install --mode 644 ${REL_INLINE_LIB_DIR}/CCIFParser.bs \
+	                   ${REL_INLINE_LIB_DIR}/CCIFParser.so \
+	                   ${REL_INLINE_LIB_DIR}/CCIFParser.inl \
+	                   ${INLINE_LIB_DIR}
+	install --mode 644 ${REL_INLINE_DIR}/config-* ${INLINE_DIR}
 
 installdirs:
-	test -d ${BIN_DIR} || mkdir -p ${BIN_DIR}
-	test -d ${PERL5_LIB_DIR} || mkdir -p ${PERL5_LIB_DIR}
-	test -d ${COD_LIB_DIR} || mkdir -p ${COD_LIB_DIR}
-	test -d ${STAR_LIB_DIR} || mkdir -p ${STAR_LIB_DIR}
-	test -d ${DATA_LIB_DIR} || mkdir -p ${DATA_LIB_DIR}
-	test -d ${TAGS_LIB_DIR} || mkdir -p ${TAGS_LIB_DIR}
-	test -d ${SG_LIB_DIR} || mkdir -p ${SG_LIB_DIR}
-	test -d ${FRML_LIB_DIR} || mkdir -p ${FRML_LIB_DIR}
+	for i in ${INSTALLED_DIRS}; \
+	do \
+	    test -d $$i || mkdir -p $$i; \
+	done
 
 testinstall:
 	$(MAKE) -C perl-scripts tests TEST_INSTALL=1
