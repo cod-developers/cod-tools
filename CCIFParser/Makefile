@@ -40,5 +40,5 @@ cleanAll: clean
 	rm -f ${SWIG_SO_FILE} ${SWIG_MODULE}
 
 try: so
-	perl -mCCIFParserSWIG -e 'my $$c = CCIFParserSWIG::parse_cif( "../perl-scripts/tests/cif_filter_147.inp" ); print CCIFParserSWIG::CIF::swig_nerrors_get($$c) . "\n"'
-	perl -mCCIFParserSWIG -e 'my $$c = CCIFParserSWIG::parse_cif( "../perl-scripts/tests/cif_filter_148.inp" ); print CCIFParserSWIG::CIF::swig_nerrors_get($$c) . "\n"'
+	-perl -mCCIFParserSWIG -e 'my $$c = CCIFParserSWIG::parse_cif( "../perl-scripts/tests/cif_filter_147.inp" ); print CCIFParserSWIG::CIF::swig_nerrors_get($$c) . "\n"'
+	-perl -mCCIFParserSWIG -e 'my $$c = CCIFParserSWIG::parse_cif( "../perl-scripts/tests/cif_filter_148.inp" ); print CCIFParserSWIG::CIF::swig_nerrors_get($$c) . "\n"'
