@@ -22,7 +22,9 @@
     #include <cif.h>
     #include <datablock.h>
 
-    SV * parse_cif( char * fname, char * prog );
+    SV * parse_cif( char * fname, char * prog, SV * options );
+    COMPILER_OPTIONS * translate_compiler_options( HV * options,
+                                                   cexception_t * ex );
 %}
 
 %perlcode %{
@@ -30,7 +32,8 @@ use Precision;
 sub parse
 {
     my( $filename, $options ) = @_;
-    my $parse_result = parse_cif( $filename, $0 );
+    $options = {} unless $options;
+    my $parse_result = parse_cif( $filename, $0, $options );
     my $data = $parse_result->{datablocks};
     my $nerrors = $parse_result->{nerrors};
 
@@ -93,4 +96,6 @@ sub parse
 #include <cif.h>
 #include <datablock.h>
 
-SV * parse_cif( char * fname, char * prog );
+SV * parse_cif( char * fname, char * prog, SV * options );
+COMPILER_OPTIONS * translate_compiler_options( HV * options,
+                                               cexception_t * ex );

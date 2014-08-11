@@ -22,14 +22,74 @@
 
 char *progname = "cifparser";
 
-SV * parse_cif( char * fname, char * prog ) 
+
+COMPILER_OPTIONS * translate_compiler_options( HV * options,
+                                               cexception_t * ex )
+{
+    COMPILER_OPTIONS * co = NULL;
+
+    cexception_t inner;
+    cexception_guard( inner ) {
+        co = new_compiler_options( &inner );
+    }
+    cexception_catch {
+        fprintf( stderr,
+                 "could not allocate CIF parser options in CCIFparser.pm\n" );
+        co = NULL;
+        cexception_reraise( inner, ex );
+    }
+    if( hv_exists( options, "do_not_unprefix_text", 20 ) ) {
+        set_do_not_unprefix_text( co );
+    }
+    if( hv_exists( options, "do_not_unfold_text", 18 ) ) {
+        set_do_not_unfold_text( co );
+    }
+    if( hv_exists( options, "fix_errors", 10 ) ) {
+        set_fix_errors( co );
+    }
+    if( hv_exists( options, "fix_duplicate_tags_with_same_values", 35 ) ) {
+        set_fix_duplicate_tags_with_same_values( co );
+    }
+    if( hv_exists( options, "fix_duplicate_tags_with_empty_values", 36 ) ) {
+        set_fix_duplicate_tags_with_empty_values( co );
+    }
+    if( hv_exists( options, "fix_data_header", 15 ) ) {
+        set_fix_data_header( co );
+    }
+    if( hv_exists( options, "fix_datablock_names", 19 ) ) {
+        set_fix_datablock_names( co );
+    }
+    if( hv_exists( options, "fix_string_quotes", 17 ) ) {
+        set_fix_string_quotes( co );
+    }
+    if( hv_exists( options, "fix_missing_closing_double_quote", 32 ) ) {
+        set_fix_missing_closing_double_quote();
+    }
+    if( hv_exists( options, "fix_missing_closing_single_quote", 32 ) ) {
+        set_fix_missing_closing_single_quote();
+    }
+    if( hv_exists( options, "fix_ctrl_z", 10 ) ) {
+        set_fix_ctrl_z();
+    }
+    if( hv_exists( options, "fix_non_ascii_symbols", 21 ) ) {
+        set_fix_non_ascii_symbols();
+    }
+    if( hv_exists( options, "allow_uqstring_brackets", 23 ) ) {
+        set_allow_uqstring_brackets();
+    }
+
+    return( co );
+}
+
+SV * parse_cif( char * fname, char * prog, SV * options )
 {
     cexception_t inner;
     cif_yy_debug_off();
     cif_flex_debug_off();
     cif_debug_off();
     CIF * volatile cif = NULL;
-    COMPILER_OPTIONS * volatile co = NULL;
+    COMPILER_OPTIONS * co =
+        translate_compiler_options( SvRV( options ), &inner );
 
     if( strlen( fname ) == 1 && fname[0] == '-' ) {
         fname = NULL;
@@ -60,6 +120,8 @@ SV * parse_cif( char * fname, char * prog )
             nerrors++;
         }
     }
+    free( co );
+
     if( cif ) {
         DATABLOCK *datablock;
         foreach_datablock( datablock, cif_datablock_list( cif ) ) {
