@@ -34,7 +34,7 @@ ${SWIG_WRAPPER} ${SWIG_MODULE}: ${SWIG_INP_FILE} ${SWIG_SOURCE}
 	swig -perl5 $<
 
 clean:
-	rm -f ${SWIG_WRAPPER} ${OBJ} ${SWIG_WRAPPER_OBJ}
+	rm -f ${SWIG_WRAPPER} ${OBJ} ${SWIG_WRAPPER_OBJ} *~
 
 cleanAll: clean
 	rm -f ${SWIG_SO_FILE} ${SWIG_MODULE}
