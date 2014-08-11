@@ -1,5 +1,8 @@
 %module CCIFParserSWIG
 %{
+    #include <EXTERN.h>
+    #include <perl.h>
+    #include <XSUB.h>
     #include <stdio.h>
     #include <stdlib.h>
     #include <unistd.h>
@@ -30,6 +33,9 @@
     CIF * parse_cif( char * fname );
     void set_progname( char * name );
 %}
+#include <EXTERN.h>
+#include <perl.h>
+#include <XSUB.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
