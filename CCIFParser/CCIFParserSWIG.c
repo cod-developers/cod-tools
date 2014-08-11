@@ -89,7 +89,7 @@ SV * parse_cif( char * fname, char * prog, SV * options )
     cif_debug_off();
     CIF * volatile cif = NULL;
     COMPILER_OPTIONS * co =
-        translate_compiler_options( SvRV( options ), &inner );
+        translate_compiler_options( (HV*) SvRV( options ), &inner );
 
     if( strlen( fname ) == 1 && fname[0] == '-' ) {
         fname = NULL;
@@ -99,15 +99,6 @@ SV * parse_cif( char * fname, char * prog, SV * options )
 
     int nerrors = 0;
     AV * datablocks = newAV();
-
-    cexception_guard( inner ) {
-        co = new_compiler_options( &inner );
-    }
-    cexception_catch {
-        fprintf( stderr,
-                 "could not allocate CIF parser options in CCIFparser.pm\n" );
-        co = NULL;
-    }
 
     cexception_guard( inner ) {
         cif = new_cif_from_cif_file( fname, co, &inner );
@@ -147,7 +138,7 @@ SV * parse_cif( char * fname, char * prog, SV * options )
             ssize_t j;
             for( i = 0; i < loop_count; i++ ) {
                 AV * loop = newAV();
-                av_push( loops, newRV_inc( loop ) );
+                av_push( loops, newRV_inc( (SV*) loop ) );
             }
 
             for( i = 0; i < length; i++ ) {
@@ -177,25 +168,26 @@ SV * parse_cif( char * fname, char * prog, SV * options )
                     av_push( typevalues, type );
                 }
                 hv_store( valuehash, tags[i], strlen( tags[i] ),
-                    newRV_inc( tagvalues ), 0 );
+                    newRV_inc( (SV*) tagvalues ), 0 );
                 hv_store( typehash,  tags[i], strlen( tags[i] ),
-                    newRV_inc( typevalues ), 0 );
+                    newRV_inc( (SV*) typevalues ), 0 );
 
                 if( inloop[i] != -1 ) {
                     hv_store( loopid, tags[i], strlen( tags[i] ),
                         newSViv( inloop[i] ), 0 );
                     SV **current_loop = av_fetch( loops, inloop[i], 0 );
-                    av_push( SvRV( current_loop[0] ), newSVpv( tags[i], 0 ) );
+                    av_push( (AV*) SvRV( current_loop[0] ),
+                             newSVpv( tags[i], 0 ) );
                 }
             }
 
-            hv_store( current_datablock, "tags",   4, newRV_inc( taglist ),   0 );
-            hv_store( current_datablock, "values", 6, newRV_inc( valuehash ), 0 );
-            hv_store( current_datablock, "types",  5, newRV_inc( typehash ), 0 );
-            hv_store( current_datablock, "inloop", 6, newRV_inc( loopid ), 0 );
-            hv_store( current_datablock, "loops",  5, newRV_inc( loops ), 0 );
+            hv_store( current_datablock, "tags",   4, newRV_inc( (SV*) taglist ), 0 );
+            hv_store( current_datablock, "values", 6, newRV_inc( (SV*) valuehash ), 0 );
+            hv_store( current_datablock, "types",  5, newRV_inc( (SV*) typehash ), 0 );
+            hv_store( current_datablock, "inloop", 6, newRV_inc( (SV*) loopid ), 0 );
+            hv_store( current_datablock, "loops",  5, newRV_inc( (SV*) loops ), 0 );
        
-            av_push( datablocks, newRV_inc( current_datablock ) );
+            av_push( datablocks, newRV_inc( (SV*) current_datablock ) );
         }
         nerrors = cif_nerrors( cif );
         delete_cif( cif );
