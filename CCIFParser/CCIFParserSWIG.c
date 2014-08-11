@@ -22,7 +22,7 @@
 
 char *progname = "cifparser";
 
-SV * parse_cif( char * fname ) 
+SV * parse_cif( char * fname, char * prog ) 
 {
     cexception_t inner;
     cif_yy_debug_off();
@@ -34,6 +34,8 @@ SV * parse_cif( char * fname )
     if( strlen( fname ) == 1 && fname[0] == '-' ) {
         fname = NULL;
     }
+
+    progname = prog;
 
     int nerrors = 0;
     AV * datablocks = newAV();
@@ -141,8 +143,4 @@ SV * parse_cif( char * fname )
     hv_store( ret, "datablocks", 10, newRV_inc( (SV*) datablocks ), 0 );
     hv_store( ret, "nerrors",     7, newSViv( nerrors ), 0 );
     return( newRV_inc( (SV*) ret ) );
-}
-
-void set_progname( char * name ) {
-    progname = name;
 }

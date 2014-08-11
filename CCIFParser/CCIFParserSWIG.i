@@ -22,16 +22,7 @@
     #include <cif.h>
     #include <datablock.h>
 
-    struct CIF {
-        int nerrors;
-        DATABLOCK *datablock_list;
-        DATABLOCK *last_datablock; /* points to the end of the
-                                      datablock_list; SHOULD not be freed
-                                      when the CIF structure is deleted.*/
-    };
-
-    SV * parse_cif( char * fname );
-    void set_progname( char * name );
+    SV * parse_cif( char * fname, char * prog );
 %}
 
 %perlcode %{
@@ -39,7 +30,7 @@ use Precision;
 sub parse
 {
     my( $filename, $options ) = @_;
-    my $parse_result = parse_cif( $filename );
+    my $parse_result = parse_cif( $filename, $0 );
     my $data = $parse_result->{datablocks};
     my $nerrors = $parse_result->{nerrors};
 
@@ -102,13 +93,4 @@ sub parse
 #include <cif.h>
 #include <datablock.h>
 
-struct CIF {
-    int nerrors;
-    DATABLOCK *datablock_list;
-    DATABLOCK *last_datablock; /* points to the end of the
-                                  datablock_list; SHOULD not be freed
-                                  when the CIF structure is deleted.*/
-};
-
-SV * parse_cif( char * fname );
-void set_progname( char * name );
+SV * parse_cif( char * fname, char * prog );
