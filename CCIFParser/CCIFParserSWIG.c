@@ -1,3 +1,6 @@
+#include <EXTERN.h>
+#include <perl.h>
+#include <XSUB.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
