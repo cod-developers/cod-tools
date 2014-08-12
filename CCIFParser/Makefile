@@ -31,7 +31,7 @@ ${OBJ} ${SWIG_WRAPPER_OBJ}: ${SWIG_SOURCE} ${SWIG_WRAPPER}
 		$+
 
 ${SWIG_WRAPPER} ${SWIG_MODULE}: ${SWIG_INP_FILE} ${SWIG_SOURCE}
-	swig -perl5 $<
+	swig -perl5 -Wall $<
 
 clean:
 	rm -f ${SWIG_WRAPPER} ${OBJ} ${SWIG_WRAPPER_OBJ} *~

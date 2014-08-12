@@ -1,11 +1,6 @@
 #include <EXTERN.h>
 #include <perl.h>
 #include <XSUB.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <setjmp.h>
-#include <string.h>
 #include <cif_grammar_y.h>
 #include <cif_grammar_flex.h>
 #include <allocx.h>
@@ -14,21 +9,21 @@
 #include <cexceptions.h>
 #include <stdiox.h>
 #include <stringx.h>
-#include <stdarg.h>
 #include <yy.h>
-#include <assert.h>
 #include <cif.h>
 #include <datablock.h>
 
 char *progname = "cifparser";
 
-
-COMPILER_OPTIONS * translate_compiler_options( HV * options,
-                                               cexception_t * ex )
+SV * parse_cif( char * fname, char * prog, SV * opt )
 {
+    cexception_t inner;
+    cif_yy_debug_off();
+    cif_flex_debug_off();
+    cif_debug_off();
+    CIF * volatile cif = NULL;
     COMPILER_OPTIONS * co = NULL;
 
-    cexception_t inner;
     cexception_guard( inner ) {
         co = new_compiler_options( &inner );
     }
@@ -36,8 +31,9 @@ COMPILER_OPTIONS * translate_compiler_options( HV * options,
         fprintf( stderr,
                  "could not allocate CIF parser options in CCIFparser.pm\n" );
         co = NULL;
-        cexception_reraise( inner, ex );
     }
+
+    HV * options = (HV*) SvRV( opt );
     if( hv_exists( options, "do_not_unprefix_text", 20 ) ) {
         set_do_not_unprefix_text( co );
     }
@@ -77,19 +73,6 @@ COMPILER_OPTIONS * translate_compiler_options( HV * options,
     if( hv_exists( options, "allow_uqstring_brackets", 23 ) ) {
         set_allow_uqstring_brackets();
     }
-
-    return( co );
-}
-
-SV * parse_cif( char * fname, char * prog, SV * options )
-{
-    cexception_t inner;
-    cif_yy_debug_off();
-    cif_flex_debug_off();
-    cif_debug_off();
-    CIF * volatile cif = NULL;
-    COMPILER_OPTIONS * co =
-        translate_compiler_options( (HV*) SvRV( options ), &inner );
 
     if( strlen( fname ) == 1 && fname[0] == '-' ) {
         fname = NULL;
@@ -138,7 +121,7 @@ SV * parse_cif( char * fname, char * prog, SV * options )
             ssize_t j;
             for( i = 0; i < loop_count; i++ ) {
                 AV * loop = newAV();
-                av_push( loops, newRV_inc( (SV*) loop ) );
+                av_push( loops, newRV_noinc( (SV*) loop ) );
             }
 
             for( i = 0; i < length; i++ ) {
@@ -168,9 +151,9 @@ SV * parse_cif( char * fname, char * prog, SV * options )
                     av_push( typevalues, type );
                 }
                 hv_store( valuehash, tags[i], strlen( tags[i] ),
-                    newRV_inc( (SV*) tagvalues ), 0 );
+                    newRV_noinc( (SV*) tagvalues ), 0 );
                 hv_store( typehash,  tags[i], strlen( tags[i] ),
-                    newRV_inc( (SV*) typevalues ), 0 );
+                    newRV_noinc( (SV*) typevalues ), 0 );
 
                 if( inloop[i] != -1 ) {
                     hv_store( loopid, tags[i], strlen( tags[i] ),
@@ -181,20 +164,20 @@ SV * parse_cif( char * fname, char * prog, SV * options )
                 }
             }
 
-            hv_store( current_datablock, "tags",   4, newRV_inc( (SV*) taglist ), 0 );
-            hv_store( current_datablock, "values", 6, newRV_inc( (SV*) valuehash ), 0 );
-            hv_store( current_datablock, "types",  5, newRV_inc( (SV*) typehash ), 0 );
-            hv_store( current_datablock, "inloop", 6, newRV_inc( (SV*) loopid ), 0 );
-            hv_store( current_datablock, "loops",  5, newRV_inc( (SV*) loops ), 0 );
+            hv_store( current_datablock, "tags",   4, newRV_noinc( (SV*) taglist ), 0 );
+            hv_store( current_datablock, "values", 6, newRV_noinc( (SV*) valuehash ), 0 );
+            hv_store( current_datablock, "types",  5, newRV_noinc( (SV*) typehash ), 0 );
+            hv_store( current_datablock, "inloop", 6, newRV_noinc( (SV*) loopid ), 0 );
+            hv_store( current_datablock, "loops",  5, newRV_noinc( (SV*) loops ), 0 );
        
-            av_push( datablocks, newRV_inc( (SV*) current_datablock ) );
+            av_push( datablocks, newRV_noinc( (SV*) current_datablock ) );
         }
         nerrors = cif_nerrors( cif );
         delete_cif( cif );
     }
 
     HV * ret = newHV();
-    hv_store( ret, "datablocks", 10, newRV_inc( (SV*) datablocks ), 0 );
+    hv_store( ret, "datablocks", 10, newRV_noinc( (SV*) datablocks ), 0 );
     hv_store( ret, "nerrors",     7, newSViv( nerrors ), 0 );
-    return( newRV_inc( (SV*) ret ) );
+    return( newRV_noinc( (SV*) ret ) );
 }
