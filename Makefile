@@ -91,6 +91,8 @@ Description: tools for Crystallography Open Database
  CIF management tools
 endef
 
+all: build
+
 ${CHANGELOG}:
 	echo '$(subst $(newline),\n,${changelog_body})' > $@
 
@@ -100,7 +102,7 @@ ${CONTROL}:
 ${COPYRIGHT}:
 	cat README-COPYING COPYING > $@
 
-all build:
+build:
 	$(MAKE) -C perl-scripts
 	$(MAKE) -C CIFParser
 	$(MAKE) -C CIFParser-c
