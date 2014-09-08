@@ -388,12 +388,16 @@ if ($output_format eq "xml") {
         my $struct = $data->{$codid};
         print "<${url_prefix}" . $struct->{file} . "${url_postfix}>\n";
 
-        for my $prop (@{$struct->{links}}) {
-            my $db = $prop->{db};
-            print "  " . $prop->{vocabulary} . ":" . $prop->{relation} . 
-                  " <" .
-                $databases{$db}->{url_prefix} . $prop->{ext_id} .
-                $databases{$db}->{url_postfix} . ">;\n";
+        if( exists $struct->{links} ) {
+            for my $prop (sort { $a->{db} cmp $b->{db} ||
+                                 $a->{ext_id} cmp $b->{ext_id} }
+                               @{$struct->{links}}) {
+                my $db = $prop->{db};
+                print "  " . $prop->{vocabulary} . ":" . $prop->{relation} . 
+                      " <" .
+                    $databases{$db}->{url_prefix} . $prop->{ext_id} .
+                    $databases{$db}->{url_postfix} . ">;\n";
+            }
         }
         
         my $first_line = 1;
@@ -447,12 +451,16 @@ if ($output_format eq "xml") {
 
         my $subject = "<${url_prefix}" . $struct->{file} . "${url_postfix}>";
 
-        for my $prop (@{$struct->{links}}) {
-            my $db = $prop->{db};
-            print "$subject " . 
-                  "<${vocabulary_url_prefix}$prop->{relation}>" . 
-                  " <" . $databases{$db}->{url_prefix} . $prop->{ext_id} .
-                         $databases{$db}->{url_postfix} . ">.\n";
+        if( exists $struct->{links} ) {
+            for my $prop (sort { $a->{db} cmp $b->{db} ||
+                                 $a->{ext_id} cmp $b->{ext_id} }
+                               @{$struct->{links}}) {
+                my $db = $prop->{db};
+                print "$subject " . 
+                      "<${vocabulary_url_prefix}$prop->{relation}>" . 
+                      " <" . $databases{$db}->{url_prefix} . $prop->{ext_id} .
+                             $databases{$db}->{url_postfix} . ">.\n";
+            }
         }
 
         for my $field (sort keys %$struct) {
