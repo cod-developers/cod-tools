@@ -90,7 +90,8 @@ sub fetch_duplicates_from_database
     query_COD_database( $dbh, $database, \%COD, \%structures, $options );
 
     my @duplicates;
-    for my $id (keys %structures) {
+    for my $id (sort { $structures{$a}->{index} <=>
+                       $structures{$b}->{index} } keys %structures) {
         my $formula = $structures{$id}{chemical_formula_sum};
         my $cell_contents = $structures{$id}{cell_contents};
 
@@ -171,19 +172,18 @@ sub cif_fill_data
     my ( $data, $file ) = @_;
 
     my %structures = ();
-    my $id;
+    my $n = 0;
 
     for my $dataset ( @$data ) {
         my $values = $dataset->{values};
         my $sigmas = $dataset->{precisions};
         my $id = $dataset->{name};
 
-        if( defined $id ) {
-            $structures{$id}{id} = $id;
-            $structures{$id}{filename} = File::Basename::basename( $file );
-        } else {
-            next
-        }
+        next if !defined $id;
+        $structures{$id}{id} = $id;
+        $structures{$id}{filename} = File::Basename::basename( $file );
+        $structures{$id}{index} = $n;
+        $n++;
 
         if( defined $values->{_chemical_formula_sum} ) {
             my $formula = $values->{_chemical_formula_sum}[0];
