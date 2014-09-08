@@ -2624,10 +2624,14 @@ sub print_molecule
     my $atom_site_U_iso_or_equiv =
         $dataset->{values}{_atom_site_U_iso_or_equiv};
 
-    my %renamed_tags = rename_tags( $dataset, \@data2rename, "_cod_src" );
+    my $src_tag_prefix = "_cod_src";
+    my %renamed_tags = rename_tags( $dataset,
+                                    \@data2rename,
+                                    $src_tag_prefix );
+    my @renamed_tags = map { $src_tag_prefix . $_ } @data2rename;
 
     my %known_tags = ( %data2copy, %renamed_tags );
-    my @known_tags = ( @data2copy, keys %renamed_tags );
+    my @known_tags = ( @data2copy, @renamed_tags );
 
     print_cif( $dataset,
                         {
