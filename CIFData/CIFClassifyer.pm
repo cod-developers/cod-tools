@@ -201,7 +201,7 @@ sub cif_has_C_bonds( $$$$ )
         }
     }
 
-    return keys %flags;
+    return sort keys %flags;
 }
 
 # ============================================================================ #
