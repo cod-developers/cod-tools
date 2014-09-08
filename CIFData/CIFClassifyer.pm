@@ -48,7 +48,7 @@ sub cif_class_flags( $$$$ )
     @flags = cif_has_C_bonds
         ( $datablock, $filename, $atom_properties, $bond_safety_margin );
 
-    return wantarray? @flags : join( ",", @flags );
+    return wantarray ? sort @flags : join( ",", sort @flags );
 }
 
 sub cif_has_C_bonds( $$$$ )
@@ -201,7 +201,7 @@ sub cif_has_C_bonds( $$$$ )
         }
     }
 
-    return sort keys %flags;
+    return keys %flags;
 }
 
 # ============================================================================ #
