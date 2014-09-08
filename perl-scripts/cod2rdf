@@ -330,12 +330,17 @@ if ($output_format eq "xml") {
         print "  <rdf:Description rdf:about=\"${url_prefix}" .
             $struct->{file} . "${url_postfix}\">\n";
 
-        for my $prop (@{$struct->{links}}) {
-            my $db = $prop->{db};
-            print "    <" . $prop->{vocabulary} . ":" . $prop->{relation} . "\n";
-            print "     rdf:resource=\"" .
-                $databases{$db}->{url_prefix} . $prop->{ext_id} .
-                $databases{$db}->{url_postfix} . "\" />\n";
+        if( exists $struct->{links} ) {
+            for my $prop (sort { $a->{db} cmp $b->{db} ||
+                                 $a->{ext_id} cmp $b->{ext_id} }
+                               @{$struct->{links}}) {
+                my $db = $prop->{db};
+                print "    <" . $prop->{vocabulary} . ":" .
+                    $prop->{relation} . "\n";
+                print "     rdf:resource=\"" .
+                    $databases{$db}->{url_prefix} . $prop->{ext_id} .
+                    $databases{$db}->{url_postfix} . "\" />\n";
+            }
         }
 
         for my $field (sort keys %$struct) {
