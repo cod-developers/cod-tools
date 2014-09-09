@@ -698,7 +698,8 @@ sub atom_groups
         return \@one_assembly;
     }
 
-    my @keys = keys %$assemblies;
+    my @keys = sort { ($a eq ".") ? -1 : ($b eq ".") ? 1 : $a cmp $b }
+               keys %$assemblies;
     my @atom_groups;
 
     if(@keys == 1) {
@@ -780,7 +781,10 @@ sub assemblies
         }
     }
 
-    for my $assembly (keys %assemblies) {
+    my @keys = sort { ($a eq ".") ? -1 : ($b eq ".") ? 1 : $a cmp $b }
+               keys %assemblies;
+
+    for my $assembly (@keys) {
         my %unique_groups;
 
         foreach my $atom (@$init_atoms) {
@@ -793,7 +797,7 @@ sub assemblies
         }
     }
 
-    for my $assembly (keys %assemblies) {
+    for my $assembly (@keys) {
         if(@{$assemblies{$assembly}} == 0) {
             delete $assemblies{$assembly};
         }
