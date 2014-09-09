@@ -61,7 +61,7 @@ sub find_right_cosets
     # The rest of cosets must be extracted:
     while( %group_symops ) {
         my @coset;
-        my @group_symop_keys = keys %group_symops;
+        my @group_symop_keys = sort keys %group_symops;
         my $current_symop_key = $group_symop_keys[0];
         my $current_symop = $group_symops{$current_symop_key};
         for my $subgroup_symop (@$subgroup_symops) {
@@ -109,7 +109,7 @@ sub find_left_cosets
     # The rest of cosets must be extracted:
     while( %group_symops ) {
         my @coset;
-        my @group_symop_keys = keys %group_symops;
+        my @group_symop_keys = sort keys %group_symops;
         my $current_symop_key = $group_symop_keys[0];
         my $current_symop = $group_symops{$current_symop_key};
         for my $subgroup_symop (@$subgroup_symops) {
