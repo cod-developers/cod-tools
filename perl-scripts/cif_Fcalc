@@ -12,6 +12,14 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #  Compute the structure factors from CIF files.
 #**
 
+# The implementation in this programm follows the principles published
+# in:
+
+# (Yvon1977) Yvon, K.; Jeitschko, W. & Parthé, E. it LAZY PULVERIX, a
+# computer program, for calculating X-ray and neutron diffraction
+# powder patterns Journal of Applied Crystallography, 1977, 10, 73-74
+# http://dx.doi.org/10.1107/S0021889877012898
+
 use strict;
 use lib "./lib/perl5";
 use lib "./CIFParser";
@@ -26,6 +34,8 @@ use Spacegroups::SymopParse;
 use Spacegroups::SymopLookup;
 use SOptions;
 use SUsage;
+
+use Fractional;
 
 my $use_parser = "c";
 
@@ -61,6 +71,149 @@ my $use_parser = "c";
     "--help,--usage"     => sub { SUsage::usage; exit },
 );
 
+#===============================================================#
+# Extract unit cell angles and lengths.
+#
+# Accepts
+#     values - a hash where a data from the CIF file is stored
+# Returns
+#     cell - an array  with stored information.
+
+sub get_unit_cell($$)
+{
+    my( $datablock, $filename ) = @_;
+
+    my $values = $datablock->{values};
+    my $dataname = $datablock->{name};
+
+    my @cell;
+
+    for my $cif_tag (qw(_cell_length_a
+                        _cell_length_b
+                        _cell_length_c
+                        )) {
+        push(@cell, $values->{$cif_tag}[0]);
+        $cell[-1] =~ s/\(\d+\)$//;
+    }
+
+    for my $cif_tag (qw(_cell_angle_alpha
+                        _cell_angle_beta
+                        _cell_angle_gamma
+                        )) {
+        if( exists $values->{$cif_tag} ) {
+            push( @cell, $values->{$cif_tag}[0] );
+            $cell[-1] =~ s/\(\d+\)$//;
+        } else {
+            warning( $0, $filename, $dataname,
+                     "cell angle '$cif_tag' not present -- " .
+                     "taking default value 90 degress." );
+            push( @cell, 90 );
+        }
+    }
+
+    return @cell;
+}
+
+#===============================================================#
+# Multiplies an ortho matrix with a vector.
+
+# my $ortho = [
+#     [ o11 o12 o13 ]
+#     [ 0   o22 o23 ]
+#     [ 0   0   o33 ]
+# ]
+#
+
+sub mat_vect_mul($$)
+{
+    my($matrix, $vector) = @_;
+
+    my @new_coordinates;
+
+    for(my $i = 0; $i < @{$vector}; $i++)
+    {
+        $new_coordinates[$i] = 0;
+        for(my $j = 0; $j < @{$vector}; $j++)
+        {
+            $new_coordinates[$i] += ${$matrix}[$i][$j] * ${$vector}[$j];
+        }
+    }
+
+    if( @$vector == 3 && @$matrix == 4 ) {
+        $new_coordinates[0] += $matrix->[0][3];
+        $new_coordinates[1] += $matrix->[1][3];
+        $new_coordinates[2] += $matrix->[2][3];
+    }
+
+    return wantarray ? @new_coordinates : \@new_coordinates;
+}
+
+#-------------------------------------------------------------------#
+# Remove the standart deviation (standard uncertainties) components
+# from input data; 
+# Parameters: reference to an array with scalar
+# values; for ex.: 0.21582(8) 
+# Return: reference to an array without
+# std. deviations; for ex.: 0.21582
+sub remove_standard_uncertainties
+{
+    my ( $input ) = @_;
+    return [ map { my $value = $_;
+                   $value =~ s/\(\d+\)//; $value } @{$input} ];
+}
+
+#--------------------------------------------------------------------#
+# Function of extracting atom information from the CIF file.
+#
+# Parameters:
+#    values - a reference to array of hashes where a data from the CIF
+#    file is stored
+#
+# Returns:
+# @atoms = (
+#           # [0]
+#           {
+#               site_label => "O10",
+#               chemical_type => "O",
+#               coordinates_fract" => [0.1, 0.2, 0.3],
+#           },
+#           # [1]
+#           {
+#               site_label => "C11",
+#               chemical_type => "C",
+#               coordinates_fract" => [0.2, 0.25, 0.35],
+#           },
+#  );   
+sub atoms_from_cif 
+{ 
+    my ( $values ) = @_;
+    my @atoms;
+    my ( $label, $chemical_type ) =
+        map { $values->{values}{$_} } (
+            "_atom_site_label", "_atom_site_type_symbol", 
+    );
+    my @xyz_arrays =
+        map{ remove_standard_uncertainties( $values->{values}{$_} ) } (
+            "_atom_site_fract_x", "_atom_site_fract_y", 
+            "_atom_site_fract_z", 
+    );    
+    my $l_counter = 0;
+    foreach my $atom_label (@{$label}) {
+        my $anonymous = { };
+        foreach ( ["label", $label],
+                  ["chemical_type", $chemical_type], ) {
+            $anonymous->{${$_}[0]} = ${$_}[1]->[$l_counter];
+        }
+        foreach ( ["coordinates_fract",
+                   [ map {$_->[$l_counter]}@xyz_arrays ] ], ) {
+            $anonymous->{${$_}[0]} = ${$_}[1];
+        }
+        $l_counter++;
+        push( @atoms, $anonymous);
+    }
+    return \@atoms;
+}
+
 @ARGV = ( "-" ) unless @ARGV;
 
 for my $filename (@ARGV) {
@@ -89,5 +242,26 @@ for my $filename (@ARGV) {
         warn( "file '$filename' seems to be empty" );
         next;
     }
-
+    
+    for my $datablock (@$data) {
+        
+        my @cell = get_unit_cell( $datablock, $filename );
+        my $f2o = symop_ortho_from_fract( @cell );
+        ## print "@{$f2o->[0]}\n";
+        
+        my $atoms = atoms_from_cif( $datablock );
+      
+        # testing of extracted values;
+        if( 1 ) { 
+            foreach my $atom (@$atoms) {
+                my $ortho_xyz = 
+                    mat_vect_mul ( $f2o, $atom->{coordinates_fract} );
+                print "@{$ortho_xyz}\n";
+                ## print "$atoms_datablock";
+                print "$datablock->{name}: "."$atom->{label}"." ".
+                    "$atom->{chemical_type} ".
+                    "@{$atom->{coordinates_fract}}\n";
+            }
+        }
+    }
 }
