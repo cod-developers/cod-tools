@@ -38,6 +38,7 @@ use SUsage;
 use Fractional;
 
 my $use_parser = "c";
+my $dump_xyz_coordinates = 0;
 
 #* USAGE:
 #*     $0 --options input1.cif input*.cif
@@ -68,6 +69,7 @@ my $use_parser = "c";
         close( SCRIPT );
         exit
     },
+    "--dump-xyz-coordinates"    => sub { $dump_xyz_coordinates = 1 } ,
     "--help,--usage"     => sub { SUsage::usage; exit },
 );
 
@@ -252,15 +254,13 @@ for my $filename (@ARGV) {
         my $atoms = atoms_from_cif( $datablock );
       
         # testing of extracted values;
-        if( 1 ) { 
+        if( $dump_xyz_coordinates ) { 
+            print $#$atoms+1, "\n";
+            print "$datablock->{name}\n";
             foreach my $atom (@$atoms) {
                 my $ortho_xyz = 
                     mat_vect_mul ( $f2o, $atom->{coordinates_fract} );
-                print "@{$ortho_xyz}\n";
-                ## print "$atoms_datablock";
-                print "$datablock->{name}: "."$atom->{label}"." ".
-                    "$atom->{chemical_type} ".
-                    "@{$atom->{coordinates_fract}}\n";
+                printf "%2s %.5f %.5f %.5f\n", $atom->{chemical_type}, @{$ortho_xyz};
             }
         }
     }
