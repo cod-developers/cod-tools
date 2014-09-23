@@ -152,7 +152,7 @@ my %escaped_symbols = ("\"" => '"', "\'" => "'");
     "--help,--usage"             => sub { SUsage::usage; exit }
 );
 
-@ARGV = ( "-" ) unless @ARGV; 
+@ARGV = ( "-" ) unless @ARGV;
 
 # Print output format header
 if ( $output_format eq "pairwise" ) {
@@ -285,7 +285,7 @@ sub get_atoms {
     } else {
         error( $0, $filename, $dataset->{name},
                "neither '_atom_site_label' nor '_atom_site_type_symbol' " .
-               "present -- dataset will be skipped" );
+               "present -- dataset will not be processed" );
         return undef;
     }
 
@@ -514,6 +514,12 @@ sub symops_apply {
 #       applying symmetry and shift operators.
 # @param $sym_operator_count
 #       Number of symmetry operators that have been applied.
+# @return $distances
+#       An array of shortest interatomic distances.
+# @return $headers
+#       An array of labels for the shortest interatomic distances.
+# @return $atoms_used
+#       An array of atoms for which the distances were generated.
 ##
 
 sub get_distances {
