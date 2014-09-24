@@ -123,6 +123,7 @@ for my $filename (@ARGV) {
             foreach my $atom (@$atoms) {
                 printf "%2s %.5f %.5f %.5f\n", $atom->{chemical_type}, 
                 @{$atom->{coordinates_ortho}};
+                ## print ">>> $atom->{occupancy}\n";
             }
         }
     }
@@ -257,7 +258,10 @@ sub atoms_from_cif
             "_atom_site_fract_x", "_atom_site_fract_y", 
             "_atom_site_fract_z", 
     );    
-    
+    my ( $occupancy ) = 
+        map{ remove_standard_uncertainties( $values->{values}{$_} ) } (
+            "_atom_site_occupancy"
+    );
     for my $i ( 0..$#{$label} ) {
         my $fract_xyz = [ $xyz_arrays[0]->[$i],
                           $xyz_arrays[1]->[$i],
@@ -269,7 +273,8 @@ sub atoms_from_cif
             label => $label->[$i],
             chemical_type => $chemical_type->[$i],
             coordinates_fract => $fract_xyz,
-            coordinates_ortho => $ortho_xyz
+            coordinates_ortho => $ortho_xyz,
+            occupancy => $occupancy->[$i]
             );
         $i++;
         push( @atoms, \%anonymous );
