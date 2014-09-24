@@ -73,6 +73,63 @@ my $dump_xyz_coordinates = 0;
     "--help,--usage"     => sub { SUsage::usage; exit },
 );
 
+#==============================================================================#
+# Forward subroutine definitions:
+sub mat_vect_mul( $$ );
+sub get_unit_cell( $$ );
+
+
+@ARGV = ( "-" ) unless @ARGV;
+
+for my $filename (@ARGV) {
+
+    my( $data, $error_count );
+
+    if( $use_parser eq "perl" ) {
+        my $parser = new CIFParser;
+
+        $data = $parser->Run( $filename );
+
+        if( defined $parser->YYData->{ERRCOUNT} ) {
+            $error_count = $parser->YYData->{ERRCOUNT};
+        }
+    } else {
+        ( $data, $error_count ) = CCIFParser::parse( $filename );
+    }
+
+    if( defined $error_count && $error_count > 0 ) {
+        print STDERR "$0: ", $error_count,
+        " error(s) encountered while parsing file '${filename}'\n";
+        die;
+    }
+
+    if( !@$data || !defined $data->[0] || !defined $data->[0]{name} ) {
+        warn( "file '$filename' seems to be empty" );
+        next;
+    }
+    
+    for my $datablock (@$data) {
+        
+        my @cell = get_unit_cell( $datablock, $filename );
+        my $f2o = symop_ortho_from_fract( @cell );
+        ## print "@{$f2o->[0]}\n";
+        
+        my $atoms = atoms_from_cif( $datablock );
+      
+        # testing of extracted values;
+        if( $dump_xyz_coordinates ) { 
+            print $#$atoms+1, "\n";
+            print "$datablock->{name}\n";
+            foreach my $atom (@$atoms) {
+                my $ortho_xyz = 
+                    mat_vect_mul ( $f2o, $atom->{coordinates_fract} );
+                printf "%2s %.5f %.5f %.5f\n", $atom->{chemical_type}, @{$ortho_xyz};
+            }
+        }
+    }
+}
+
+
 #===============================================================#
 # Extract unit cell angles and lengths.
 #
@@ -157,6 +214,7 @@ sub mat_vect_mul($$)
 # values; for ex.: 0.21582(8) 
 # Return: reference to an array without
 # std. deviations; for ex.: 0.21582
+
 sub remove_standard_uncertainties
 {
     my ( $input ) = @_;
@@ -186,6 +244,7 @@ sub remove_standard_uncertainties
 #               coordinates_fract" => [0.2, 0.25, 0.35],
 #           },
 #  );   
+
 sub atoms_from_cif 
 { 
     my ( $values ) = @_;
@@ -214,54 +273,4 @@ sub atoms_from_cif
         push( @atoms, $anonymous);
     }
     return \@atoms;
-}
-
-@ARGV = ( "-" ) unless @ARGV;
-
-for my $filename (@ARGV) {
-
-    my( $data, $error_count );
-
-    if( $use_parser eq "perl" ) {
-        my $parser = new CIFParser;
-
-        $data = $parser->Run( $filename );
-
-        if( defined $parser->YYData->{ERRCOUNT} ) {
-            $error_count = $parser->YYData->{ERRCOUNT};
-        }
-    } else {
-        ( $data, $error_count ) = CCIFParser::parse( $filename );
-    }
-
-    if( defined $error_count && $error_count > 0 ) {
-        print STDERR "$0: ", $error_count,
-        " error(s) encountered while parsing file '${filename}'\n";
-        die;
-    }
-
-    if( !@$data || !defined $data->[0] || !defined $data->[0]{name} ) {
-        warn( "file '$filename' seems to be empty" );
-        next;
-    }
-    
-    for my $datablock (@$data) {
-        
-        my @cell = get_unit_cell( $datablock, $filename );
-        my $f2o = symop_ortho_from_fract( @cell );
-        ## print "@{$f2o->[0]}\n";
-        
-        my $atoms = atoms_from_cif( $datablock );
-      
-        # testing of extracted values;
-        if( $dump_xyz_coordinates ) { 
-            print $#$atoms+1, "\n";
-            print "$datablock->{name}\n";
-            foreach my $atom (@$atoms) {
-                my $ortho_xyz = 
-                    mat_vect_mul ( $f2o, $atom->{coordinates_fract} );
-                printf "%2s %.5f %.5f %.5f\n", $atom->{chemical_type}, @{$ortho_xyz};
-            }
-        }
-    }
 }
