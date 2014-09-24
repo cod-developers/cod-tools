@@ -258,19 +258,17 @@ sub atoms_from_cif
             "_atom_site_fract_x", "_atom_site_fract_y", 
             "_atom_site_fract_z", 
     );    
-    my $l_counter = 0;
-    foreach my $atom_label (@{$label}) {
-        my $anonymous = { };
-        foreach ( ["label", $label],
-                  ["chemical_type", $chemical_type], ) {
-            $anonymous->{${$_}[0]} = ${$_}[1]->[$l_counter];
-        }
-        foreach ( ["coordinates_fract",
-                   [ map {$_->[$l_counter]}@xyz_arrays ] ], ) {
-            $anonymous->{${$_}[0]} = ${$_}[1];
-        }
-        $l_counter++;
-        push( @atoms, $anonymous);
+    
+    for my $i ( 0..$#{$label} ) {
+        my %anonymous = ( 
+            label => $label->[$i],
+            chemical_type => $chemical_type->[$i],
+            coordinates_fract => [ $xyz_arrays[0]->[$i],
+                                   $xyz_arrays[1]->[$i],
+                                   $xyz_arrays[2]->[$i] ]
+            );
+        $i++;
+        push( @atoms, \%anonymous );
     }
     return \@atoms;
 }
