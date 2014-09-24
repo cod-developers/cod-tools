@@ -69,7 +69,7 @@ my $dump_xyz_coordinates = 0;
         close( SCRIPT );
         exit
     },
-    "--dump-xyz-coordinates"    => sub { $dump_xyz_coordinates = 1 } ,
+    "--dump-xyz-coordinates"    => sub { $dump_xyz_coordinates = 1 },
     "--help,--usage"     => sub { SUsage::usage; exit },
 );
 
@@ -114,16 +114,15 @@ for my $filename (@ARGV) {
         my $f2o = symop_ortho_from_fract( @cell );
         ## print "@{$f2o->[0]}\n";
         
-        my $atoms = atoms_from_cif( $datablock );
+        my $atoms = atoms_from_cif( $datablock, $f2o );
       
         # testing of extracted values;
         if( $dump_xyz_coordinates ) { 
             print $#$atoms+1, "\n";
             print "$datablock->{name}\n";
             foreach my $atom (@$atoms) {
-                my $ortho_xyz = 
-                    mat_vect_mul ( $f2o, $atom->{coordinates_fract} );
-                printf "%2s %.5f %.5f %.5f\n", $atom->{chemical_type}, @{$ortho_xyz};
+                printf "%2s %.5f %.5f %.5f\n", $atom->{chemical_type}, 
+                @{$atom->{coordinates_ortho}};
             }
         }
     }
@@ -247,7 +246,7 @@ sub remove_standard_uncertainties
 
 sub atoms_from_cif 
 { 
-    my ( $values ) = @_;
+    my ( $values, $f2o ) = @_;
     my @atoms;
     my ( $label, $chemical_type ) =
         map { $values->{values}{$_} } (
@@ -260,12 +259,17 @@ sub atoms_from_cif
     );    
     
     for my $i ( 0..$#{$label} ) {
+        my $fract_xyz = [ $xyz_arrays[0]->[$i],
+                          $xyz_arrays[1]->[$i],
+                          $xyz_arrays[2]->[$i] ];
+        my $ortho_xyz = 
+            mat_vect_mul( $f2o,  $fract_xyz );
+        
         my %anonymous = ( 
             label => $label->[$i],
             chemical_type => $chemical_type->[$i],
-            coordinates_fract => [ $xyz_arrays[0]->[$i],
-                                   $xyz_arrays[1]->[$i],
-                                   $xyz_arrays[2]->[$i] ]
+            coordinates_fract => $fract_xyz,
+            coordinates_ortho => $ortho_xyz
             );
         $i++;
         push( @atoms, \%anonymous );
