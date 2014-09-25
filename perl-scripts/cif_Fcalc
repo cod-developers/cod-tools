@@ -125,7 +125,8 @@ for my $filename (@ARGV) {
                 ## print ">>> $atom->{occupancy}\n";
                 ## print ">>> $atom->{B_factor}\n";
                 ## print ">>> $atom->{U_value_of_B_factor}\n";
-                
+                ## print $atom->{aniso_value_Uij}->[0] ? 
+                ##    ">>> @{$atom->{aniso_value_Uij}}\n" : "Empty\n";               
             }
         }
     }
@@ -268,6 +269,20 @@ sub atoms_from_cif
     my $squared_displacement_U = 
         remove_standard_uncertainties( 
             $datablock_values->{_atom_site_u_iso_or_equiv} );
+    my @anisotrophic_U_ij_values = 
+        ( remove_standard_uncertainties( 
+              $datablock_values->{_atom_site_aniso_u_11} ),
+          remove_standard_uncertainties( 
+              $datablock_values->{_atom_site_aniso_u_22} ),
+          remove_standard_uncertainties( 
+              $datablock_values->{_atom_site_aniso_u_33} ),
+          remove_standard_uncertainties( 
+              $datablock_values->{_atom_site_aniso_u_23} ),
+          remove_standard_uncertainties( 
+              $datablock_values->{_atom_site_aniso_u_13} ),
+          remove_standard_uncertainties( 
+              $datablock_values->{_atom_site_aniso_u_12} ) );
+    
     for my $i (0..$#{$datablock_values->{_atom_site_label}}) {
         my $fract_xyz = [ $xyz_arrays[0]->[$i],
                           $xyz_arrays[1]->[$i],
@@ -282,7 +297,13 @@ sub atoms_from_cif
             coordinates_ortho => $ortho_xyz,
             occupancy => $occupancy->[$i],
             B_factor => $thermal_parameter_B->[$i],
-            U_value_of_B_factor => $squared_displacement_U->[$i]            
+            U_value_of_B_factor => $squared_displacement_U->[$i],
+            aniso_value_Uij => [ $anisotrophic_U_ij_values[0]->[$i],
+                                 $anisotrophic_U_ij_values[1]->[$i],
+                                 $anisotrophic_U_ij_values[2]->[$i],
+                                 $anisotrophic_U_ij_values[3]->[$i],
+                                 $anisotrophic_U_ij_values[4]->[$i],
+                                 $anisotrophic_U_ij_values[5]->[$i] ]
             );
         $i++;
         push( @atoms, \%atom_info );
