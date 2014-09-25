@@ -123,6 +123,9 @@ for my $filename (@ARGV) {
                 printf "%2s %.5f %.5f %.5f\n", $atom->{chemical_type}, 
                 @{$atom->{coordinates_ortho}};
                 ## print ">>> $atom->{occupancy}\n";
+                ## print ">>> $atom->{B_factor}\n";
+                ## print ">>> $atom->{U_value_of_B_factor}\n";
+                
             }
         }
     }
@@ -258,8 +261,13 @@ sub atoms_from_cif
               $datablock_values->{_atom_site_fract_z} ) );    
     my $occupancy = 
         remove_standard_uncertainties( 
-            $datablock_values->{_atom_site_occupancy } );
-    
+            $datablock_values->{_atom_site_occupancy} );
+    my $thermal_parameter_B = 
+        remove_standard_uncertainties( 
+            $datablock_values->{_atom_site_b_iso_or_equiv} );
+    my $squared_displacement_U = 
+        remove_standard_uncertainties( 
+            $datablock_values->{_atom_site_u_iso_or_equiv} );
     for my $i (0..$#{$datablock_values->{_atom_site_label}}) {
         my $fract_xyz = [ $xyz_arrays[0]->[$i],
                           $xyz_arrays[1]->[$i],
@@ -272,7 +280,9 @@ sub atoms_from_cif
             chemical_type => $datablock_values->{_atom_site_type_symbol}[$i],
             coordinates_fract => $fract_xyz,
             coordinates_ortho => $ortho_xyz,
-            occupancy => $occupancy->[$i]
+            occupancy => $occupancy->[$i],
+            B_factor => $thermal_parameter_B->[$i],
+            U_value_of_B_factor => $squared_displacement_U->[$i]            
             );
         $i++;
         push( @atoms, \%atom_info );
