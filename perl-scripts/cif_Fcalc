@@ -116,7 +116,6 @@ for my $filename (@ARGV) {
         
         my $atoms = atoms_from_cif( $datablock, $f2o );
       
-        # testing of extracted values;
         if( $dump_xyz_coordinates ) { 
             print $#$atoms+1, "\n";
             print "$datablock->{name}\n";
@@ -217,7 +216,7 @@ sub mat_vect_mul($$)
 
 sub remove_standard_uncertainties
 {
-    my ( $input ) = @_;
+    my ($input) = @_;
     return [ map { my $value = $_;
                    $value =~ s/\(\d+\)//; $value } @{$input} ];
 }
@@ -247,37 +246,36 @@ sub remove_standard_uncertainties
 
 sub atoms_from_cif 
 { 
-    my ( $values, $f2o ) = @_;
+    my ($datablock, $f2o) = @_;
     my @atoms;
-    my ( $label, $chemical_type ) =
-        map { $values->{values}{$_} } (
-            "_atom_site_label", "_atom_site_type_symbol", 
-    );
+    my $datablock_values = $datablock->{values};
     my @xyz_arrays =
-        map{ remove_standard_uncertainties( $values->{values}{$_} ) } (
-            "_atom_site_fract_x", "_atom_site_fract_y", 
-            "_atom_site_fract_z", 
-    );    
-    my ( $occupancy ) = 
-        map{ remove_standard_uncertainties( $values->{values}{$_} ) } (
-            "_atom_site_occupancy"
-    );
-    for my $i ( 0..$#{$label} ) {
+        ( remove_standard_uncertainties( 
+              $datablock_values->{_atom_site_fract_x} ),
+          remove_standard_uncertainties( 
+              $datablock_values->{_atom_site_fract_y} ),
+          remove_standard_uncertainties( 
+              $datablock_values->{_atom_site_fract_z} ) );    
+    my $occupancy = 
+        remove_standard_uncertainties( 
+            $datablock_values->{_atom_site_occupancy } );
+    
+    for my $i (0..$#{$datablock_values->{_atom_site_label}}) {
         my $fract_xyz = [ $xyz_arrays[0]->[$i],
                           $xyz_arrays[1]->[$i],
                           $xyz_arrays[2]->[$i] ];
         my $ortho_xyz = 
             mat_vect_mul( $f2o,  $fract_xyz );
         
-        my %anonymous = ( 
-            label => $label->[$i],
-            chemical_type => $chemical_type->[$i],
+        my %atom_info = ( 
+            label => $datablock_values->{_atom_site_label}[$i],
+            chemical_type => $datablock_values->{_atom_site_type_symbol}[$i],
             coordinates_fract => $fract_xyz,
             coordinates_ortho => $ortho_xyz,
             occupancy => $occupancy->[$i]
             );
         $i++;
-        push( @atoms, \%anonymous );
+        push( @atoms, \%atom_info );
     }
     return \@atoms;
 }
