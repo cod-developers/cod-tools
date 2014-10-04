@@ -473,7 +473,8 @@ sub bibliographies_are_the_same($$)
     if( exists $biblio1->{_journal_paper_doi} &&
         exists $biblio2->{_journal_paper_doi} ) {
         return
-            $biblio1->{_journal_paper_doi} eq $biblio2->{_journal_paper_doi};
+            lc($biblio1->{_journal_paper_doi}) eq 
+            lc($biblio2->{_journal_paper_doi});
     }
 
     for my $tag ( keys %tags ) {
