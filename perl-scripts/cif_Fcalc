@@ -42,6 +42,9 @@ my $dump_xyz_coordinates = 0;
 my $dump_Cromer_Mann_parameters = 0;
 my $dump_cell_parameters = 0;
 
+# constants
+my $ANG = 10**-10;
+
 #* USAGE:
 #*     $0 --options input1.cif input*.cif
 #* 
@@ -141,17 +144,25 @@ for my $filename (@ARGV) {
             print "$datablock->{name}\n";
             foreach my $atom (@$atoms) {
                 print "$atom->{label} "."$atom->{chemical_type} ",
-                    $atom->{Crommer_Mann_coefficients}[0] ? "@{$atom->{Crommer_Mann_coefficients}}\n" : "Empty\n";
+                $atom->{Crommer_Mann_coefficients}[0] ? 
+                    "@{$atom->{Crommer_Mann_coefficients}}\n" : "Empty\n";
             }
         }        
         if ( $dump_cell_parameters ) {
             my $cell_parameters = get_unit_cell_parameters ( $datablock );
             print "$datablock->{name}\n";
-            printf "%15s %0.5f %0.5f %0.5f %0.5f %0.5f %0.5f\n", "Direct cell    ", 
-            @{$cell_parameters->{crystal_cell}};
-            printf "%15s %0.5f %0.5f %0.5f %0.5f %0.5f %0.5f\n", "Reciprocal cell", 
-            @{$cell_parameters->{reciprocal_cell}};
-            printf "%15s %0.5f\n", "Volume         ", $cell_parameters->{cell_volume};
+            printf "%15s %0.5f %0.5f %0.5f %0.5f %0.5f %0.5f\n", 
+            "Direct cell    ", @{$cell_parameters->{crystal_cell}};
+            printf "%15s %0.5f %0.5f %0.5f %0.5f %0.5f %0.5f\n", 
+            "Reciprocal cell", @{$cell_parameters->{reciprocal_cell}};
+            printf "%15s %0.5f\n", 
+            "Volume         ", $cell_parameters->{cell_volume};
+        }
+        if ( 0 ) {
+            my $cell_parameters = get_unit_cell_parameters ( $datablock );
+            my $dis = 
+                spacing_d_hkl( 1, 1, 1, @{$cell_parameters->{reciprocal_cell}} );
+            print "$dis\n";
         }
     }
 }
@@ -509,8 +520,10 @@ sub get_unit_cell_parameters
 # Function of converting lattice parameters (length of cell edges):
 # from direct space to reciprocal.
 #
-# Parameters and return:
+# Parameters:
 # for example  c* = d2r_length( a, b, angle(a,b), cell_volume );
+# Return:
+# for example 0.554 [angstrom**-1]
 sub d2r_length 
 {
     my ($c_length1, $c_length2, $angle1_2, $cell_vol) = @_;
@@ -534,3 +547,23 @@ sub d2r_angle
          (POSIX::sin( $angle1 ) * POSIX::sin( $angle2 ));    
 }
 
+#----------------------------------------------------------------------#
+# Function for calculation the distance(resolution) between hkl layers.
+#
+# Parameters:
+# hkl (index of reflection), reciprocal lattice.
+# for ex.: spacing_d_hkl( h, k, l, a*, b*, c*, alpha*, beta*, gamma* )
+# Return
+# hkl resolution (in angstrom): 5. 
+sub spacing_d_hkl {
+    my ($h, $k, $l, 
+        $a_star, $b_star, $c_star,
+        $alpha_star, $beta_star, $gamma_star) = @_;
+    return 1 /
+	sqrt( ($h ** 2) * ($a_star ** 2) +
+              ($k ** 2) * ($b_star ** 2) +
+              ($l ** 2) * ($c_star ** 2) +
+              2 * $h * $k * $a_star * $b_star * POSIX::cos( $gamma_star ) +
+              2 * $h * $l * $a_star * $c_star * POSIX::cos( $beta_star ) +
+              2 * $k * $l * $b_star * $c_star * POSIX::cos( $alpha_star ) );
+}
