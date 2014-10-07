@@ -40,6 +40,7 @@ use Fractional;
 my $use_parser = "c";
 my $dump_xyz_coordinates = 0;
 my $dump_Cromer_Mann_parameters = 0;
+my $dump_cell_parameters = 0;
 
 #* USAGE:
 #*     $0 --options input1.cif input*.cif
@@ -49,7 +50,7 @@ my $dump_Cromer_Mann_parameters = 0;
 #*    --use-c-parser     Use faster C/Yacc CIF parser (default)
 #*    --dump-xyz-coordinates Print a XYZ file 
 #*    --dump-Cromer-Mann Print a Cromer-Mann coefficients from CIF file
-#*
+#*    --dump-cell-parameters Print a short usage message with cell parameters
 #*    --help,--usage         Print a short usage message (this message) and exit.
 #**
 
@@ -74,6 +75,7 @@ my $dump_Cromer_Mann_parameters = 0;
     },
     "--dump-xyz-coordinates"    => sub { $dump_xyz_coordinates = 1 },
     "--dump-Cromer-Mann"    => sub { $dump_Cromer_Mann_parameters = 1 },
+    "--dump-cell-parameters"    => sub { $dump_cell_parameters = 1 },
     "--help,--usage"     => sub { SUsage::usage; exit },
 );
 
@@ -134,8 +136,7 @@ for my $filename (@ARGV) {
                 ##  print $atom->{Crommer_Mann_coefficients}[0] ? 
                 ## "@{$atom->{Crommer_Mann_coefficients}}\n" : "Empty\n";
             }
-        }
-        
+        }      
         if ( $dump_Cromer_Mann_parameters ) {
             print "$datablock->{name}\n";
             foreach my $atom (@$atoms) {
@@ -143,7 +144,7 @@ for my $filename (@ARGV) {
                     $atom->{Crommer_Mann_coefficients}[0] ? "@{$atom->{Crommer_Mann_coefficients}}\n" : "Empty\n";
             }
         }        
-        if ( 0 ) {
+        if ( $dump_cell_parameters ) {
             my $cell_parameters = get_unit_cell_parameters ( $datablock );
             print "$datablock->{name}\n";
             printf "%15s %0.5f %0.5f %0.5f %0.5f %0.5f %0.5f\n", "Direct cell    ", 
@@ -463,6 +464,7 @@ sub get_thermal
 # $a = {
 #        crystall_cell => [a, b, c, alpha, beta, gamma ],    
 #        cell_volume => 14.055,
+#        reciprocal_cell => [a*, b*, c*, alpha*, beta*, gamma*]
 #      }
 sub get_unit_cell_parameters
 {
