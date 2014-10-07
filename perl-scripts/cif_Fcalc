@@ -284,26 +284,9 @@ sub atoms_from_cif
     my $occupancy = 
         remove_standard_uncertainties( 
             $datablock_values->{_atom_site_occupancy} );
-    my $thermal_parameter_B = 
-        remove_standard_uncertainties( 
-            $datablock_values->{_atom_site_b_iso_or_equiv} );
-    my $squared_displacement_U = 
-        remove_standard_uncertainties( 
-            $datablock_values->{_atom_site_u_iso_or_equiv} );
-    my @anisotrophic_U_ij_values = 
-        ( remove_standard_uncertainties( 
-              $datablock_values->{_atom_site_aniso_u_11} ),
-          remove_standard_uncertainties( 
-              $datablock_values->{_atom_site_aniso_u_22} ),
-          remove_standard_uncertainties( 
-              $datablock_values->{_atom_site_aniso_u_33} ),
-          remove_standard_uncertainties( 
-              $datablock_values->{_atom_site_aniso_u_23} ),
-          remove_standard_uncertainties( 
-              $datablock_values->{_atom_site_aniso_u_13} ),
-          remove_standard_uncertainties( 
-              $datablock_values->{_atom_site_aniso_u_12} ) );
+    
     my $Cromer_Mann_coefficients = get_Cromer_Mann_coefficients( $datablock );
+    my $themal_coefficients = get_thermal( $datablock );
     
     for my $i (0..$#{$datablock_values->{_atom_site_label}}) {
         my $fract_xyz = [ $xyz_arrays[0]->[$i],
@@ -317,25 +300,18 @@ sub atoms_from_cif
             chemical_type => $datablock_values->{_atom_site_type_symbol}[$i],
             coordinates_fract => $fract_xyz,
             coordinates_ortho => $ortho_xyz,
-            occupancy => $occupancy->[$i],
-            B_factor => $thermal_parameter_B->[$i],
-            U_value_of_B_factor => $squared_displacement_U->[$i],
-            aniso_value_Uij => [ $anisotrophic_U_ij_values[0]->[$i],
-                                 $anisotrophic_U_ij_values[1]->[$i],
-                                 $anisotrophic_U_ij_values[2]->[$i],
-                                 $anisotrophic_U_ij_values[3]->[$i],
-                                 $anisotrophic_U_ij_values[4]->[$i],
-                                 $anisotrophic_U_ij_values[5]->[$i] ],                       
+            occupancy => $occupancy->[$i]                     
             );
         # 
         %atom_info = (%atom_info, %{$Cromer_Mann_coefficients->[$i]});
+        %atom_info = (%atom_info, %{$themal_coefficients->[$i]});
         push( @atoms, \%atom_info );
     }
     return \@atoms;
 }
 
 #--------------------------------------------------------------------#
-# Function of extracting atoms anisotropic thermal parameteres the CIF file.
+# Function of extracting atoms Crommer-Mann coefficients the CIF file.
 #
 # Parameters:
 #    values - a reference to array of hashes where a data from the CIF
@@ -400,3 +376,68 @@ sub get_Cromer_Mann_coefficients
     return \@atoms_aniso_coefficients;
 }
 
+#--------------------------------------------------------------------#
+# Function of extracting atoms anisotropic and isotropic 
+# thermal parameteres the CIF file.
+#
+# Parameters:
+#    values - a reference to array of hashes where a data from the CIF
+#    file is stored
+#
+# Returns:
+# \@ = (
+#           # [0]
+#           {
+#               B_factor => 0.78,
+#               U_value_of_B_factor => 0.03,
+#               aniso_value_Uij => [0.01, 0.002, 0.003,..,0.006] # 6 values,
+#           },
+#           # [1]
+#           {
+#               B_factor => 0.78,
+#               U_value_of_B_factor => 0.03,
+#               aniso_value_Uij => [0.01, 0.002, 0.003,..,0.006] # 6 values,
+#           },
+#  );  
+
+sub get_thermal
+{
+    my ($datablock) = @_;
+    my $datablock_values = $datablock->{values};
+    my @atoms_thermal_coefficients;
+    
+    my $thermal_parameter_B = 
+        remove_standard_uncertainties( 
+            $datablock_values->{_atom_site_b_iso_or_equiv} );
+    my $squared_displacement_U = 
+        remove_standard_uncertainties( 
+            $datablock_values->{_atom_site_u_iso_or_equiv} );
+    my @anisotrophic_U_ij_values = 
+        ( remove_standard_uncertainties( 
+              $datablock_values->{_atom_site_aniso_u_11} ),
+          remove_standard_uncertainties( 
+              $datablock_values->{_atom_site_aniso_u_22} ),
+          remove_standard_uncertainties( 
+              $datablock_values->{_atom_site_aniso_u_33} ),
+          remove_standard_uncertainties( 
+              $datablock_values->{_atom_site_aniso_u_23} ),
+          remove_standard_uncertainties( 
+              $datablock_values->{_atom_site_aniso_u_13} ),
+          remove_standard_uncertainties( 
+              $datablock_values->{_atom_site_aniso_u_12} ) );
+    
+    for my $i (0..$#{$datablock_values->{_atom_site_label}}) {
+        my %thermal_info = (
+            B_factor => $thermal_parameter_B->[$i],
+            U_value_of_B_factor => $squared_displacement_U->[$i],
+            aniso_value_Uij => [ $anisotrophic_U_ij_values[0]->[$i],
+                                 $anisotrophic_U_ij_values[1]->[$i],
+                                 $anisotrophic_U_ij_values[2]->[$i],
+                                 $anisotrophic_U_ij_values[3]->[$i],
+                                 $anisotrophic_U_ij_values[4]->[$i],
+                                 $anisotrophic_U_ij_values[5]->[$i] ]
+            );
+        push ( @atoms_thermal_coefficients, \%thermal_info );
+    }
+    return \@atoms_thermal_coefficients;
+}
