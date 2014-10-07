@@ -39,6 +39,7 @@ use Fractional;
 
 my $use_parser = "c";
 my $dump_xyz_coordinates = 0;
+my $dump_Cromer_Mann_parameters = 0;
 
 #* USAGE:
 #*     $0 --options input1.cif input*.cif
@@ -70,6 +71,7 @@ my $dump_xyz_coordinates = 0;
         exit
     },
     "--dump-xyz-coordinates"    => sub { $dump_xyz_coordinates = 1 },
+    "--dump-Cromer-Mann"    => sub { $dump_Cromer_Mann_parameters = 1 },
     "--help,--usage"     => sub { SUsage::usage; exit },
 );
 
@@ -126,9 +128,19 @@ for my $filename (@ARGV) {
                 ## print ">>> $atom->{B_factor}\n";
                 ## print ">>> $atom->{U_value_of_B_factor}\n";
                 ## print $atom->{aniso_value_Uij}->[0] ? 
-                ##    ">>> @{$atom->{aniso_value_Uij}}\n" : "Empty\n";               
+                ##    ">>> @{$atom->{aniso_value_Uij}}\n" : "Empty\n";   
+                ##  print $atom->{Crommer_Mann_coefficients}[0] ? 
+                ## "@{$atom->{Crommer_Mann_coefficients}}\n" : "Empty\n";
             }
         }
+        
+        if ( $dump_Cromer_Mann_parameters ) {
+            print "$datablock->{name}\n";
+            foreach my $atom (@$atoms) {
+                print "$atom->{label} "."$atom->{chemical_type} ",
+                    $atom->{Crommer_Mann_coefficients}[0] ? "@{$atom->{Crommer_Mann_coefficients}}\n" : "Empty\n";
+            }
+       }        
     }
 }
 
@@ -233,7 +245,7 @@ sub remove_standard_uncertainties
 #    file is stored
 #
 # Returns:
-# @atoms = (
+# \@atoms = (
 #           # [0]
 #           {
 #               site_label => "O10",
@@ -243,7 +255,9 @@ sub remove_standard_uncertainties
 #               occupancy => 0.5,
 #               B_factor => 0.78,
 #               U_value_of_B_factor => 0.03,
-#               aniso_value_Uij => [0.01, 0.002, 0.003,..,0.006] # 6 values
+#               aniso_value_Uij => [0.01, 0.002, 0.003,..,0.006] # 6 values,
+#               Crommer_Mann_coefficients => [1.10, .., .., ] # 9 values;
+# a1, a2, .., b1, b2.., b4, c.
 #           },
 #           # [1]
 #           {
@@ -287,6 +301,7 @@ sub atoms_from_cif
               $datablock_values->{_atom_site_aniso_u_13} ),
           remove_standard_uncertainties( 
               $datablock_values->{_atom_site_aniso_u_12} ) );
+    my $Cromer_Mann_coefficients = get_thermal_aniso( $datablock );
     
     for my $i (0..$#{$datablock_values->{_atom_site_label}}) {
         my $fract_xyz = [ $xyz_arrays[0]->[$i],
@@ -308,10 +323,79 @@ sub atoms_from_cif
                                  $anisotrophic_U_ij_values[2]->[$i],
                                  $anisotrophic_U_ij_values[3]->[$i],
                                  $anisotrophic_U_ij_values[4]->[$i],
-                                 $anisotrophic_U_ij_values[5]->[$i] ]
+                                 $anisotrophic_U_ij_values[5]->[$i] ],                       
             );
-        $i++;
+        # 
+        %atom_info = (%atom_info, %{$Cromer_Mann_coefficients->[$i]});
         push( @atoms, \%atom_info );
     }
     return \@atoms;
 }
+
+#--------------------------------------------------------------------#
+# Function of extracting atoms anisotropic thermal parameteres the CIF file.
+#
+# Parameters:
+#    values - a reference to array of hashes where a data from the CIF
+#    file is stored
+#
+# Returns:
+# \@ = (
+#           # [0]
+#           {
+#               Crommer_Mann_coefficients => [1.10, .., .., ] # 9 values;
+# a1, a2, .., b1, b2.., b4, c.
+#           },
+#           # [1]
+#           {
+#               Crommer_Mann_coefficients => [1.10, .., .., ]
+#           },
+#  );   
+
+
+sub get_thermal_aniso
+{
+    my ($datablock) = @_;
+    my $datablock_values = $datablock->{values};
+    my @atoms_aniso_coefficients;
+    
+    my $labels = $datablock_values->{_atom_site_label};
+    my $chemical_type_of_aniso_propierties_loop = 
+        $datablock_values->{_atom_type_symbol};
+    my $Cromer_Mann_coefficients = 
+        [ $datablock_values->{_atom_type_scat_cromer_mann_a1},
+          $datablock_values->{_atom_type_scat_cromer_mann_a2},
+          $datablock_values->{_atom_type_scat_cromer_mann_a3},
+          $datablock_values->{_atom_type_scat_cromer_mann_a4},
+          $datablock_values->{_atom_type_scat_cromer_mann_b1},
+          $datablock_values->{_atom_type_scat_cromer_mann_b2},
+          $datablock_values->{_atom_type_scat_cromer_mann_b3},
+          $datablock_values->{_atom_type_scat_cromer_mann_b4},
+          $datablock_values->{_atom_type_scat_cromer_mann_c} ];
+    for my $i (0..$#{$labels}) {
+        my $atom_chemical_type = 
+            $datablock_values->{_atom_site_type_symbol}[$i];
+        for my $y (0..$#{$chemical_type_of_aniso_propierties_loop}) {
+            
+            if ( $atom_chemical_type eq 
+                 $chemical_type_of_aniso_propierties_loop->[$y] ) {
+                my %thermal = (
+                    Crommer_Mann_coefficients => [
+                        $Cromer_Mann_coefficients->[0][$y],
+                        $Cromer_Mann_coefficients->[1][$y],
+                        $Cromer_Mann_coefficients->[2][$y],
+                        $Cromer_Mann_coefficients->[3][$y],
+                        $Cromer_Mann_coefficients->[4][$y],
+                        $Cromer_Mann_coefficients->[5][$y],
+                        $Cromer_Mann_coefficients->[6][$y],
+                        $Cromer_Mann_coefficients->[7][$y],
+                        $Cromer_Mann_coefficients->[8][$y] ]
+                    ); 
+                push ( @atoms_aniso_coefficients, \%thermal );
+                
+            } # end of if;
+        } # second for     
+    } # first for 
+    return \@atoms_aniso_coefficients;
+}
+
