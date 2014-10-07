@@ -146,8 +146,11 @@ for my $filename (@ARGV) {
         if ( 0 ) {
             my $cell_parameters = get_unit_cell_parameters ( $datablock );
             print "$datablock->{name}\n";
-            print "@{$cell_parameters->{crystal_cell}}\n";
-            print "$cell_parameters->{cell_volume}\n";
+            printf "%15s %0.5f %0.5f %0.5f %0.5f %0.5f %0.5f\n", "Direct cell    ", 
+            @{$cell_parameters->{crystal_cell}};
+            printf "%15s %0.5f %0.5f %0.5f %0.5f %0.5f %0.5f\n", "Reciprocal cell", 
+            @{$cell_parameters->{reciprocal_cell}};
+            printf "%15s %0.5f\n", "Volume         ", $cell_parameters->{cell_volume};
         }
     }
 }
@@ -478,13 +481,54 @@ sub get_unit_cell_parameters
                                     $datablock_values->{_cell_angle_beta} )}[0],
                              ${ remove_standard_uncertainties( 
                                     $datablock_values->{_cell_angle_gamma} )}[0] );
+    # @crystal_lattice = ( a[0], b[1], c[2], alpha[3], beta[4], gamma[5] );
     my $cell_volume = ${ remove_standard_uncertainties( 
         $datablock_values->{_cell_volume} )}[0];
+    my ($a, $b, $c, $alpha, $beta, $gamma) = @crystal_lattice;
+    # alpha between b and c; beta between a and c; gamma between a and b.
+    # @star_crystal_lattice = ( a*[0], b*[1], c*[2], alpha*, beta*, gamma*[5] );
+    my @star_crystal_lattice = (
+        d2r_length( $b, $c, $alpha, $cell_volume ), # a*
+        d2r_length( $a, $c, $beta, $cell_volume ), # b*
+        d2r_length( $a, $b, $gamma, $cell_volume ), # c*
+        d2r_angle( $beta, $gamma, $alpha ), # alpha*
+        d2r_angle( $alpha, $gamma, $beta ), # beta*
+        d2r_angle( $alpha, $beta, $gamma ) # gamma* 
+        );
     my $crystal_par = { 
         crystal_cell => \@crystal_lattice,
-        cell_volume => $cell_volume
+        cell_volume => $cell_volume,
+        reciprocal_cell => \@star_crystal_lattice
     };
     return $crystal_par;
 }
 
+#--------------------------------------------------------------------#
+# Function of converting lattice parameters (length of cell edges):
+# from direct space to reciprocal.
+#
+# Parameters and return:
+# for example  c* = d2r_length( a, b, angle(a,b), cell_volume );
+sub d2r_length 
+{
+    my ($c_length1, $c_length2, $angle1_2, $cell_vol) = @_;
+    return ($c_length1 * $c_length2 * POSIX::sin( $angle1_2 )) / $cell_vol;
+} 
+
+#--------------------------------------------------------------------#
+# Function of converting lattice parameters (cell angles):
+# from direct space to reciprocal.
+#
+# Parameters and return:
+# gamma* = d2r_angle( alpha, beta, GAMMA );
+# beta* = d2r_angle( alpha, gamma, BETA );
+# alpha* = d2r_angle( beta, gamma, ALPHA );
+sub d2r_angle 
+{
+    my ($angle1, $angle2, $angle_which_converts) = @_;
+    return 
+        (POSIX::cos( $angle1 ) * POSIX::cos( $angle2 ) -
+         POSIX::cos( $angle_which_converts)) / 
+         (POSIX::sin( $angle1 ) * POSIX::sin( $angle2 ));    
+}
 
