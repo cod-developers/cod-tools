@@ -142,7 +142,13 @@ for my $filename (@ARGV) {
                 print "$atom->{label} "."$atom->{chemical_type} ",
                     $atom->{Crommer_Mann_coefficients}[0] ? "@{$atom->{Crommer_Mann_coefficients}}\n" : "Empty\n";
             }
-       }        
+        }        
+        if ( 0 ) {
+            my $cell_parameters = get_unit_cell_parameters ( $datablock );
+            print "$datablock->{name}\n";
+            print "@{$cell_parameters->{crystal_cell}}\n";
+            print "$cell_parameters->{cell_volume}\n";
+        }
     }
 }
 
@@ -441,3 +447,44 @@ sub get_thermal
     }
     return \@atoms_thermal_coefficients;
 }
+
+
+#--------------------------------------------------------------------#
+# Function of extracting unit-cell parameters of the CIF file.
+#
+# Parameters:
+#    values - a reference to array of hashes where a data from the CIF
+#    file is stored
+#
+# Return
+# $a = {
+#        crystall_cell => [a, b, c, alpha, beta, gamma ],    
+#        cell_volume => 14.055,
+#      }
+sub get_unit_cell_parameters
+{
+    my ($datablock) = @_;
+    my $datablock_values = $datablock->{values};
+    
+    my @crystal_lattice =  ( ${ remove_standard_uncertainties( 
+                                    $datablock_values->{_cell_length_a} )}[0],
+                             ${ remove_standard_uncertainties( 
+                                    $datablock_values->{_cell_length_b} )}[0],
+                             ${ remove_standard_uncertainties( 
+                                    $datablock_values->{_cell_length_c} )}[0],
+                             ${ remove_standard_uncertainties( 
+                                    $datablock_values->{_cell_angle_alpha} )}[0],        
+                             ${ remove_standard_uncertainties( 
+                                    $datablock_values->{_cell_angle_beta} )}[0],
+                             ${ remove_standard_uncertainties( 
+                                    $datablock_values->{_cell_angle_gamma} )}[0] );
+    my $cell_volume = ${ remove_standard_uncertainties( 
+        $datablock_values->{_cell_volume} )}[0];
+    my $crystal_par = { 
+        crystal_cell => \@crystal_lattice,
+        cell_volume => $cell_volume
+    };
+    return $crystal_par;
+}
+
+
