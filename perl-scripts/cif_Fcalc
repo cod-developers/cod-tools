@@ -158,11 +158,13 @@ for my $filename (@ARGV) {
             printf "%15s %0.5f\n", 
             "Volume         ", $cell_parameters->{cell_volume};
         }
-        if ( 0 ) {
+        if ( 0 ) { # temporary tests 
             my $cell_parameters = get_unit_cell_parameters ( $datablock );
             my $dis = 
                 spacing_d_hkl( 1, 1, 1, @{$cell_parameters->{reciprocal_cell}} );
             print "$dis\n";
+            my $hkl_limits = hkl_limits( $datablock );
+            print "hkl limits: @{$hkl_limits}\n";
         }
     }
 }
@@ -566,4 +568,25 @@ sub spacing_d_hkl {
               2 * $h * $k * $a_star * $b_star * POSIX::cos( $gamma_star ) +
               2 * $h * $l * $a_star * $c_star * POSIX::cos( $beta_star ) +
               2 * $k * $l * $b_star * $c_star * POSIX::cos( $alpha_star ) );
+}
+
+#----------------------------------------------------------------------#
+# Function for extracting the limits of the Miller indices.
+#
+# Parameters:
+#    values - a reference to array of hashes where a data from the CIF
+#    file is stored
+#
+# Return
+# \(h_max,h_min,k_max,k_min,l_max,l_min);
+sub hkl_limits
+{
+    my ($datablock) = @_;
+    my $datablock_values = $datablock->{values};
+    return [ ${$datablock_values->{_diffrn_reflns_limit_h_max}}[0],
+             ${$datablock_values->{_diffrn_reflns_limit_h_min}}[0],
+             ${$datablock_values->{_diffrn_reflns_limit_k_max}}[0],
+             ${$datablock_values->{_diffrn_reflns_limit_k_min}}[0],
+             ${$datablock_values->{_diffrn_reflns_limit_l_max}}[0],
+             ${$datablock_values->{_diffrn_reflns_limit_l_min}}[0] ];   
 }
