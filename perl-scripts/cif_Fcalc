@@ -162,14 +162,6 @@ for my $filename (@ARGV) {
             printf "%15s %0.5f\n", 
             "Volume         ", $cell_parameters->{cell_volume};
         }
-        if ( 0 ) { # temporary tests 
-            my $cell_parameters = get_unit_cell_parameters ( $datablock );
-            my $dis = 
-                spacing_d_hkl( 1, 1, 1, @{$cell_parameters->{reciprocal_cell}} );
-            print "$dis\n";
-            my $hkl_limits = hkl_limits( $datablock );
-            print "hkl limits: @{$hkl_limits}\n";
-        }
         unless ( $dump_Cromer_Mann_parameters || $dump_cell_parameters || 
                  $dump_xyz_coordinates ) {
             my $cell_parameters = get_unit_cell_parameters ( $datablock );
@@ -186,7 +178,8 @@ for my $filename (@ARGV) {
                 my $resolution_hkl = 
                     spacing_d_hkl( @hkl, 
                                    @{$cell_parameters->{reciprocal_cell_radians}} );
-                ## print "$h_limit $k_limit $l_limit: $resolution_hkl\n";
+                ## printf "%3s %3s %3s: %0.5f %0.5f\n", $h_limit, $k_limit, $l_limit, 
+                ## $resolution_hkl, ;
             }}}
             
         }
@@ -648,3 +641,4 @@ sub rad2deg
     my $radians = $_[0];
     return ($radians * 180) / $PI;
 }
+
