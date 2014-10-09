@@ -44,6 +44,7 @@ my $dump_cell_parameters = 0;
 
 # constants
 my $ANG = 10**-10;
+my $PI = 4*atan2( 1, 1 );
 
 #* USAGE:
 #*     $0 --options input1.cif input*.cif
@@ -152,9 +153,13 @@ for my $filename (@ARGV) {
             my $cell_parameters = get_unit_cell_parameters ( $datablock );
             print "$datablock->{name}\n";
             printf "%15s %0.5f %0.5f %0.5f %0.5f %0.5f %0.5f\n", 
-            "Direct cell    ", @{$cell_parameters->{crystal_cell}};
+            "Direct cell     (deg)", @{$cell_parameters->{crystal_cell_degrees}};
             printf "%15s %0.5f %0.5f %0.5f %0.5f %0.5f %0.5f\n", 
-            "Reciprocal cell", @{$cell_parameters->{reciprocal_cell}};
+            "Direct cell     (rad)", @{$cell_parameters->{crystal_cell_radians}};
+            printf "%15s %0.5f %0.5f %0.5f %0.5f %0.5f %0.5f\n", 
+            "Reciprocal cell (deg)", @{$cell_parameters->{reciprocal_cell_degrees}};
+            printf "%15s %0.5f %0.5f %0.5f %0.5f %0.5f %0.5f\n", 
+            "Reciprocal cell (rad)", @{$cell_parameters->{reciprocal_cell_radians}};
             printf "%15s %0.5f\n", 
             "Volume         ", $cell_parameters->{cell_volume};
         }
@@ -165,6 +170,26 @@ for my $filename (@ARGV) {
             print "$dis\n";
             my $hkl_limits = hkl_limits( $datablock );
             print "hkl limits: @{$hkl_limits}\n";
+        }
+        unless ( $dump_Cromer_Mann_parameters || $dump_cell_parameters || 
+                 $dump_xyz_coordinates ) {
+            my $cell_parameters = get_unit_cell_parameters ( $datablock );
+            my ($h_max, $h_min, 
+                $k_max, $k_min, 
+                $l_max, $l_min) = @{ hkl_limits( $datablock )};
+            foreach my $h_limit ($h_min..$h_max) {
+            foreach my $k_limit ($k_min..$k_max) {   
+            foreach my $l_limit ($l_min..$l_max) {  
+                my @hkl = ($h_limit, $k_limit, $l_limit);
+                next if ($h_limit==0 || $k_limit==0 || $l_limit==0);
+                local $,=' ';
+                print @hkl,"\n";
+                my $resolution_hkl = 
+                    spacing_d_hkl( @hkl, 
+                                   @{$cell_parameters->{reciprocal_cell_radians}} );
+                print "$h_limit $k_limit $l_limit: $resolution_hkl\n";
+            }}}
+            
         }
     }
 }
@@ -497,23 +522,39 @@ sub get_unit_cell_parameters
                              ${ remove_standard_uncertainties( 
                                     $datablock_values->{_cell_angle_gamma} )}[0] );
     # @crystal_lattice = ( a[0], b[1], c[2], alpha[3], beta[4], gamma[5] );
-    my $cell_volume = ${ remove_standard_uncertainties( 
+    my $cell_volume = ${remove_standard_uncertainties( 
         $datablock_values->{_cell_volume} )}[0];
     my ($a, $b, $c, $alpha, $beta, $gamma) = @crystal_lattice;
+    my @crystal_cell_radians = 
+        ($a, $b, $c, deg2rad( $alpha ),  deg2rad( $beta ), deg2rad( $gamma ));
     # alpha between b and c; beta between a and c; gamma between a and b.
     # @star_crystal_lattice = ( a*[0], b*[1], c*[2], alpha*, beta*, gamma*[5] );
-    my @star_crystal_lattice = (
-        d2r_length( $b, $c, $alpha, $cell_volume ), # a*
-        d2r_length( $a, $c, $beta, $cell_volume ), # b*
-        d2r_length( $a, $b, $gamma, $cell_volume ), # c*
-        d2r_angle( $beta, $gamma, $alpha ), # alpha*
-        d2r_angle( $alpha, $gamma, $beta ), # beta*
-        d2r_angle( $alpha, $beta, $gamma ) # gamma* 
-        );
+    my @abc_star_values = ( 
+        d2r_length( $b, $c, deg2rad( $alpha ), $cell_volume ), # a*
+        d2r_length( $a, $c, deg2rad( $beta ), $cell_volume ), # b*
+        d2r_length( $a, $b, deg2rad( $gamma ), $cell_volume )  # c*
+        ); 
+    my @alpha_beta_gamma_star_radians = (
+        d2r_angle( deg2rad( $beta ), 
+                   deg2rad( $gamma ), deg2rad( $alpha ) ), # alpha*
+        d2r_angle( deg2rad( $alpha ), 
+                   deg2rad( $gamma ), deg2rad( $beta) ),  # beta*
+        d2r_angle( deg2rad( $alpha ), 
+                   deg2rad( $beta ), deg2rad( $gamma) ));  # gamma*
+    my  @alpha_beta_gamma_star_degrees = (
+        rad2deg( $alpha_beta_gamma_star_radians[0] ),
+        rad2deg( $alpha_beta_gamma_star_radians[1] ),
+        rad2deg( $alpha_beta_gamma_star_radians[2] ));
+    my @star_crystal_cell_parameters_degrees = 
+        (@abc_star_values, @alpha_beta_gamma_star_degrees);
+    my @star_crystal_cell_parameters_radians = 
+        (@abc_star_values, @alpha_beta_gamma_star_radians);
     my $crystal_par = { 
-        crystal_cell => \@crystal_lattice,
+        crystal_cell_degrees => \@crystal_lattice,
+        crystal_cell_radians => \@crystal_cell_radians,
         cell_volume => $cell_volume,
-        reciprocal_cell => \@star_crystal_lattice
+        reciprocal_cell_degrees => \@star_crystal_cell_parameters_degrees,
+        reciprocal_cell_radians => \@star_crystal_cell_parameters_radians
     };
     return $crystal_par;
 }
@@ -543,10 +584,10 @@ sub d2r_length
 sub d2r_angle 
 {
     my ($angle1, $angle2, $angle_which_converts) = @_;
-    return 
+    return POSIX::acos(
         (POSIX::cos( $angle1 ) * POSIX::cos( $angle2 ) -
          POSIX::cos( $angle_which_converts)) / 
-         (POSIX::sin( $angle1 ) * POSIX::sin( $angle2 ));    
+        (POSIX::sin( $angle1 ) * POSIX::sin( $angle2 )) );    
 }
 
 #----------------------------------------------------------------------#
@@ -589,4 +630,22 @@ sub hkl_limits
              ${$datablock_values->{_diffrn_reflns_limit_k_min}}[0],
              ${$datablock_values->{_diffrn_reflns_limit_l_max}}[0],
              ${$datablock_values->{_diffrn_reflns_limit_l_min}}[0] ];   
+}
+
+#----------------------------------------------------------------------#
+# Function converts degree to radian.
+# deg2rad( 180 ) = Pi;
+sub deg2rad
+{
+    my $degree = $_[0];
+    return ($degree * $PI) / 180;
+}
+
+#----------------------------------------------------------------------#
+# Function converts radian to degree.
+# rad2deg( Pi ) = 180;
+sub rad2deg
+{
+    my $radians = $_[0];
+    return ($radians * 180) / $PI;
 }
