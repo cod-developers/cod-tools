@@ -42,8 +42,7 @@ my $dump_xyz_coordinates = 0;
 my $dump_Cromer_Mann_parameters = 0;
 my $dump_cell_parameters = 0;
 
-# constants
-my $ANG = 10**-10;
+# constants;
 my $PI = 4*atan2( 1, 1 );
 
 #* USAGE:
@@ -182,12 +181,12 @@ for my $filename (@ARGV) {
             foreach my $l_limit ($l_min..$l_max) {  
                 my @hkl = ($h_limit, $k_limit, $l_limit);
                 next if ($h_limit==0 || $k_limit==0 || $l_limit==0);
-                local $,=' ';
-                print @hkl,"\n";
+                ## local $,=' ';
+                ## print @hkl,"\n";
                 my $resolution_hkl = 
                     spacing_d_hkl( @hkl, 
                                    @{$cell_parameters->{reciprocal_cell_radians}} );
-                print "$h_limit $k_limit $l_limit: $resolution_hkl\n";
+                ## print "$h_limit $k_limit $l_limit: $resolution_hkl\n";
             }}}
             
         }
@@ -570,7 +569,7 @@ sub get_unit_cell_parameters
 sub d2r_length 
 {
     my ($c_length1, $c_length2, $angle1_2, $cell_vol) = @_;
-    return ($c_length1 * $c_length2 * POSIX::sin( $angle1_2 )) / $cell_vol;
+    return ($c_length1 * $c_length2 * sin( $angle1_2 )) / $cell_vol;
 } 
 
 #--------------------------------------------------------------------#
@@ -585,9 +584,9 @@ sub d2r_angle
 {
     my ($angle1, $angle2, $angle_which_converts) = @_;
     return POSIX::acos(
-        (POSIX::cos( $angle1 ) * POSIX::cos( $angle2 ) -
-         POSIX::cos( $angle_which_converts)) / 
-        (POSIX::sin( $angle1 ) * POSIX::sin( $angle2 )) );    
+        (cos( $angle1 ) * cos( $angle2 ) -
+         cos( $angle_which_converts)) / 
+        (sin( $angle1 ) * sin( $angle2 )) );    
 }
 
 #----------------------------------------------------------------------#
@@ -606,9 +605,9 @@ sub spacing_d_hkl {
 	sqrt( ($h ** 2) * ($a_star ** 2) +
               ($k ** 2) * ($b_star ** 2) +
               ($l ** 2) * ($c_star ** 2) +
-              2 * $h * $k * $a_star * $b_star * POSIX::cos( $gamma_star ) +
-              2 * $h * $l * $a_star * $c_star * POSIX::cos( $beta_star ) +
-              2 * $k * $l * $b_star * $c_star * POSIX::cos( $alpha_star ) );
+              2 * $h * $k * $a_star * $b_star * cos( $gamma_star ) +
+              2 * $h * $l * $a_star * $c_star * cos( $beta_star ) +
+              2 * $k * $l * $b_star * $c_star * cos( $alpha_star ) );
 }
 
 #----------------------------------------------------------------------#
