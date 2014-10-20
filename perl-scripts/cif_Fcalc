@@ -119,12 +119,16 @@ for my $filename (@ARGV) {
     
     for my $datablock (@$data) {
         
+        my $radiation_wavelength = 
+            $datablock->{values}{_diffrn_radiation_wavelength};
+        
         my @cell = get_unit_cell( $datablock, $filename );
         my $f2o = symop_ortho_from_fract( @cell );
         ## print "@{$f2o->[0]}\n";
         
         my $atoms = atoms_from_cif( $datablock, $f2o );
-      
+        my $cell_parameters = get_unit_cell_parameters ( $datablock );
+        
         if( $dump_xyz_coordinates ) { 
             print $#$atoms+1, "\n";
             print "$datablock->{name}\n";
@@ -148,23 +152,11 @@ for my $filename (@ARGV) {
                     "@{$atom->{Crommer_Mann_coefficients}}\n" : "Empty\n";
             }
         }        
-        if ( $dump_cell_parameters ) {
-            my $cell_parameters = get_unit_cell_parameters ( $datablock );
-            print "$datablock->{name}\n";
-            printf "%15s %0.5f %0.5f %0.5f %0.5f %0.5f %0.5f\n", 
-            "Direct cell     (deg)", @{$cell_parameters->{crystal_cell_degrees}};
-            printf "%15s %0.5f %0.5f %0.5f %0.5f %0.5f %0.5f\n", 
-            "Direct cell     (rad)", @{$cell_parameters->{crystal_cell_radians}};
-            printf "%15s %0.5f %0.5f %0.5f %0.5f %0.5f %0.5f\n", 
-            "Reciprocal cell (deg)", @{$cell_parameters->{reciprocal_cell_degrees}};
-            printf "%15s %0.5f %0.5f %0.5f %0.5f %0.5f %0.5f\n", 
-            "Reciprocal cell (rad)", @{$cell_parameters->{reciprocal_cell_radians}};
-            printf "%15s %0.5f\n", 
-            "Volume         ", $cell_parameters->{cell_volume};
+        if ( $dump_cell_parameters ) {            
+            printing_of_dump_cell_parameters( $datablock, $cell_parameters );
         }
         unless ( $dump_Cromer_Mann_parameters || $dump_cell_parameters || 
                  $dump_xyz_coordinates ) {
-            my $cell_parameters = get_unit_cell_parameters ( $datablock );
             my ($h_max, $h_min, 
                 $k_max, $k_min, 
                 $l_max, $l_min) = @{ hkl_limits( $datablock )};
@@ -640,3 +632,20 @@ sub rad2deg
     return map { ($_ * 180) / $PI } @_;
 }
 
+#----------------------------------------------------------------------#
+# Print output of option --dump-cell-parameters.
+sub printing_of_dump_cell_parameters
+{  
+    my ($datablock, $cell_parameters) = @_;
+    print "$datablock->{name}\n";
+    printf "%15s %0.5f %0.5f %0.5f %0.5f %0.5f %0.5f\n", 
+    "Direct cell     (deg)", @{$cell_parameters->{crystal_cell_degrees}};
+    printf "%15s %0.5f %0.5f %0.5f %0.5f %0.5f %0.5f\n", 
+    "Direct cell     (rad)", @{$cell_parameters->{crystal_cell_radians}};
+    printf "%15s %0.5f %0.5f %0.5f %0.5f %0.5f %0.5f\n", 
+    "Reciprocal cell (deg)", @{$cell_parameters->{reciprocal_cell_degrees}};
+    printf "%15s %0.5f %0.5f %0.5f %0.5f %0.5f %0.5f\n", 
+    "Reciprocal cell (rad)", @{$cell_parameters->{reciprocal_cell_radians}};
+    printf "%15s %0.5f\n", 
+    "Volume         ", $cell_parameters->{cell_volume}; 
+}
