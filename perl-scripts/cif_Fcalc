@@ -119,13 +119,16 @@ for my $filename (@ARGV) {
     
     for my $datablock (@$data) {
         
-        my $radiation_wavelength = 
-            $datablock->{values}{_diffrn_radiation_wavelength};
+        my $radiation_wavelengths = remove_standard_uncertainties(
+            $datablock->{values}{_diffrn_radiation_wavelength} );
+        die "The value of Xray radiation wavelength is empty." 
+            if (!defined $radiation_wavelengths->[0]);
+        die "The CIF contains more than one value of Xray radiation wavelength." 
+            if ($#{$radiation_wavelengths}>0);
         
         my @cell = get_unit_cell( $datablock, $filename );
         my $f2o = symop_ortho_from_fract( @cell );
         ## print "@{$f2o->[0]}\n";
-        
         my $atoms = atoms_from_cif( $datablock, $f2o );
         my $cell_parameters = get_unit_cell_parameters ( $datablock );
         
@@ -135,13 +138,6 @@ for my $filename (@ARGV) {
             foreach my $atom (@$atoms) {
                 printf "%2s %.5f %.5f %.5f\n", $atom->{chemical_type}, 
                 @{$atom->{coordinates_ortho}};
-                ## print ">>> $atom->{occupancy}\n";
-                ## print ">>> $atom->{B_factor}\n";
-                ## print ">>> $atom->{U_value_of_B_factor}\n";
-                ## print $atom->{aniso_value_Uij}->[0] ? 
-                ##    ">>> @{$atom->{aniso_value_Uij}}\n" : "Empty\n";   
-                ##  print $atom->{Crommer_Mann_coefficients}[0] ? 
-                ## "@{$atom->{Crommer_Mann_coefficients}}\n" : "Empty\n";
             }
         }      
         if ( $dump_Cromer_Mann_parameters ) {
