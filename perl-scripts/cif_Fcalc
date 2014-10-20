@@ -178,6 +178,7 @@ for my $filename (@ARGV) {
                 my $resolution_hkl = 
                     spacing_d_hkl( @hkl, 
                                    @{$cell_parameters->{reciprocal_cell_radians}} );
+                # my $sin_teta_hkl = 
                 ## printf "%3s %3s %3s: %0.5f %0.5f\n", $h_limit, $k_limit, $l_limit, 
                 ## $resolution_hkl, ;
             }}}
@@ -518,7 +519,7 @@ sub get_unit_cell_parameters
         $datablock_values->{_cell_volume} )}[0];
     my ($a, $b, $c, $alpha, $beta, $gamma) = @crystal_lattice;
     my @crystal_cell_radians = 
-        ($a, $b, $c, deg2rad( $alpha ),  deg2rad( $beta ), deg2rad( $gamma ));
+        ($a, $b, $c, deg2rad( $alpha, $beta, $gamma ));
     # alpha between b and c; beta between a and c; gamma between a and b.
     # @star_crystal_lattice = ( a*[0], b*[1], c*[2], alpha*, beta*, gamma*[5] );
     my @abc_star_values = ( 
@@ -527,12 +528,9 @@ sub get_unit_cell_parameters
         d2r_length( $a, $b, deg2rad( $gamma ), $cell_volume )  # c*
         ); 
     my @alpha_beta_gamma_star_radians = (
-        d2r_angle( deg2rad( $beta ), 
-                   deg2rad( $gamma ), deg2rad( $alpha ) ), # alpha*
-        d2r_angle( deg2rad( $alpha ), 
-                   deg2rad( $gamma ), deg2rad( $beta) ),  # beta*
-        d2r_angle( deg2rad( $alpha ), 
-                   deg2rad( $beta ), deg2rad( $gamma) ));  # gamma*
+        d2r_angle( deg2rad( $beta, $gamma, $alpha ) ), # alpha*
+        d2r_angle( deg2rad( $alpha, $gamma, $beta) ),  # beta*
+        d2r_angle( deg2rad( $alpha, $beta, $gamma) ));  # gamma*
     my  @alpha_beta_gamma_star_degrees = (
         rad2deg( $alpha_beta_gamma_star_radians[0] ),
         rad2deg( $alpha_beta_gamma_star_radians[1] ),
@@ -627,18 +625,18 @@ sub hkl_limits
 #----------------------------------------------------------------------#
 # Function converts degree to radian.
 # deg2rad( 180 ) = Pi;
+# deg2rad( angle1(deg), angle2(deg), .. ) = ( angle1(rad) , angle2(rad), .. );
 sub deg2rad
 {
-    my $degree = $_[0];
-    return ($degree * $PI) / 180;
+    return map{ ($_ * $PI) / 180 } @_;
 }
 
 #----------------------------------------------------------------------#
 # Function converts radian to degree.
 # rad2deg( Pi ) = 180;
+# rad2deg( angle1(rad), angle2(rad), .. ) = ( angle1(deg) , angle2(deg), .. );
 sub rad2deg
 {
-    my $radians = $_[0];
-    return ($radians * 180) / $PI;
+    return map { ($_ * 180) / $PI } @_;
 }
 
