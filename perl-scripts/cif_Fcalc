@@ -166,7 +166,23 @@ for my $filename (@ARGV) {
                 my $resolution_hkl = 
                     spacing_d_hkl( @hkl, 
                                    @{$cell_parameters->{reciprocal_cell_radians}} );
-                # my $sin_teta_hkl = 
+                my $sin_teta_hkl = $radiation_wavelengths->[0] / (2 * $resolution_hkl);
+                
+                # Temporary local test which will be removed after creating *pm with 
+                # outer Cromer Mann coefficients.
+                # --------------------------------------------
+                die "CIF file does not contain Crommer-Mann coefficients." 
+                    if ( !defined $atoms->[0]{Crommer_Mann_coefficients}[0] ); 
+                #------------------------------------------------------------------
+                
+                foreach my $atom (@$atoms) {
+                    my $atom_structure_factor = 
+                        atom_structure_factor_from_coefficients( 
+                            $atom->{Crommer_Mann_coefficients}, 
+                            $radiation_wavelengths->[0],
+                            $sin_teta_hkl );
+                    ## print "$atom_structure_factor\n";
+                }
                 ## printf "%3s %3s %3s: %0.5f %0.5f\n", $h_limit, $k_limit, $l_limit, 
                 ## $resolution_hkl, ;
             }}}
@@ -644,4 +660,26 @@ sub printing_of_dump_cell_parameters
     "Reciprocal cell (rad)", @{$cell_parameters->{reciprocal_cell_radians}};
     printf "%15s %0.5f\n", 
     "Volume         ", $cell_parameters->{cell_volume}; 
+}
+
+#----------------------------------------------------------------------#
+# Function for atom structure factor calculation.
+#
+# Parameters:
+# [ Cromer_Mann coefficients: a1, .., a4, b1, .., b4, c ], diff. wavelength,
+# sin(teta_hkl);
+#
+# Return:
+# Value of atom structure factor which depends on wavelength and sin(teta_hkl)
+# for ex.:
+# atom_structure_factor_from_coefficient([a1,..,c],1.54, 0.33) = 1.4;
+sub atom_structure_factor_from_coefficients {
+    my ($Cromer_Mann, $wavelenth, $sin_theta_hkl) = @_;
+    my ($a1, $a2, $a3, $a4, $b1, $b2, $b3, $b4, $c) = @{$Cromer_Mann};
+    return 
+	$a1 * exp( -$b1 * ($sin_theta_hkl / $wavelenth)**2 ) +
+	$a2 * exp( -$b2 * ($sin_theta_hkl / $wavelenth)**2 ) +
+	$a3 * exp( -$b3 * ($sin_theta_hkl / $wavelenth)**2 ) +
+	$a4 * exp( -$b4 * ($sin_theta_hkl / $wavelenth)**2 ) +
+	$c;
 }
