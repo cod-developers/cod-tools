@@ -128,8 +128,6 @@ my @data_fields = @CIF2COD::default_data_fields;
     mineral
     formula
     calcformula
-    Z
-    Zprime
 
     acce_code
     authors
