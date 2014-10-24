@@ -383,6 +383,7 @@ sub cif2cod
         $data{calcformula} = $calculated_formula ?
               "- " . $calculated_formula . " -" : undef;
         $data{Z} = get_tag_or_undef( $values, "_cell_formula_units_z", 0 );
+        $data{Zprime} = compute_Zprime( $data{Z}, $data{sg} );
 
         if( exists $values->{_journal_coeditor_code} ) {
             $data{acce_code} = uc( get_tag_or_undef( $values, 
@@ -835,6 +836,22 @@ sub get_experimental_method
     }
 
     return undef;
+}
+
+sub compute_Zprime
+{
+    my ( $Z, $spacegroup_H_M ) = @_;
+
+    use SymopLookup;
+    my @sg_description = 
+        grep { $spacegroup_H_M eq $_->{universal_h_m} } @SymopLookup::table;
+
+    if( int(@sg_description) == 1 ) {
+        my $AU_count = int(@{$sg_description[0]{symops}});
+        return $Z / $AU_count;
+    } else {
+        return undef;
+    }
 }
 
 1;
