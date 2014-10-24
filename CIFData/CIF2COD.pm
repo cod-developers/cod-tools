@@ -842,6 +842,8 @@ sub compute_Zprime
 {
     my ( $Z, $spacegroup_H_M ) = @_;
 
+    return undef unless defined $spacegroup_H_M;
+
     use SymopLookup;
     my @sg_description = 
         grep { $spacegroup_H_M eq $_->{universal_h_m} } @SymopLookup::table;
