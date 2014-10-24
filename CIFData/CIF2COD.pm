@@ -128,6 +128,8 @@ my @data_fields = @CIF2COD::default_data_fields;
     mineral
     formula
     calcformula
+    Z
+    Zprime
 
     acce_code
     authors
@@ -380,6 +382,7 @@ sub cif2cod
         $data{formula} = $formula ? "- " . $formula . " -" : "?";
         $data{calcformula} = $calculated_formula ?
               "- " . $calculated_formula . " -" : undef;
+        $data{Z} = get_tag_or_undef( $values, "_cell_formula_units_z", 0 );
 
         if( exists $values->{_journal_coeditor_code} ) {
             $data{acce_code} = uc( get_tag_or_undef( $values, 
