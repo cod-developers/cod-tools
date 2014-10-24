@@ -846,7 +846,7 @@ sub compute_Zprime
     my @sg_description = 
         grep { $spacegroup_H_M eq $_->{universal_h_m} } @SymopLookup::table;
 
-    if( int(@sg_description) == 1 ) {
+    if( int(@sg_description) == 1 && defined $Z ) {
         my $AU_count = int(@{$sg_description[0]{symops}});
         return $Z / $AU_count;
     } else {
