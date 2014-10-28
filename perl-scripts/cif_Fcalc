@@ -160,7 +160,7 @@ for my $filename (@ARGV) {
             foreach my $k_limit ($k_min..$k_max) {   
             foreach my $l_limit ($l_min..$l_max) {  
                 my @hkl = ($h_limit, $k_limit, $l_limit);
-                next if ($h_limit==0 || $k_limit==0 || $l_limit==0);
+                next if ($h_limit==0 && $k_limit==0 && $l_limit==0);
                 ## local $,=' ';
                 ## print @hkl,"\n";
                 my $resolution_hkl = spacing_d_hkl( 
@@ -176,21 +176,29 @@ for my $filename (@ARGV) {
                 die "CIF file does not contain Crommer-Mann coefficients." 
                     if ( !defined $atoms->[0]{Crommer_Mann_coefficients}[0] ); 
                 #--------------------------------------------------------------
-                
+                my ($F_cos_component, $F_sin_component) = (0,0);
                 foreach my $atom (@$atoms) {
                     my $atom_structure_factor = 
                         atom_structure_factor_from_coefficients( 
                             $atom->{Crommer_Mann_coefficients}, 
                             $radiation_wavelengths->[0],
                             $sin_teta_hkl );
-                    my $atom_hkl_phase = atom_phase_hkl( 
+                    my $atom_hkl_phase = atom_phase_hkl_rad( 
                         @hkl, 
                         @{$atom->{coordinates_fract}}, 
-                        @{$cell_parameters->{reciprocal_cell_radians}}[0..2] );
+                        @{$cell_parameters->{crystal_cell_degrees}}[0..2] );
                     ## print "$atom_structure_factor\n";
+                    $F_cos_component += $atom->{occupancy} * 
+                        $atom_structure_factor * cos( $atom_hkl_phase );
+                    $F_sin_component += $atom->{occupancy} * 
+                        $atom_structure_factor * sin( $atom_hkl_phase );
                 }
-                ## printf "%3s %3s %3s: %0.5f %0.5f\n", $h_limit, $k_limit, $l_limit, 
-                ## $resolution_hkl, ;
+               
+                my $sqrted_structure_factor_of_hkl = 
+                    $F_cos_component**2 + $F_sin_component**2;
+              ##  printf "%3s %3s %3s: %0.5f %0.5f\n", $h_limit, 
+              ##  $k_limit, $l_limit, $resolution_hkl, $sqrted_structure_factor_of_hkl;
+                
             }}}
             
         }
@@ -541,10 +549,8 @@ sub get_unit_cell_parameters
         d2r_angle( deg2rad( $beta, $gamma, $alpha ) ), # alpha*
         d2r_angle( deg2rad( $alpha, $gamma, $beta) ),  # beta*
         d2r_angle( deg2rad( $alpha, $beta, $gamma) ));  # gamma*
-    my  @alpha_beta_gamma_star_degrees = (
-        rad2deg( $alpha_beta_gamma_star_radians[0] ),
-        rad2deg( $alpha_beta_gamma_star_radians[1] ),
-        rad2deg( $alpha_beta_gamma_star_radians[2] ));
+    my  @alpha_beta_gamma_star_degrees = 
+        rad2deg( @alpha_beta_gamma_star_radians );
     my @star_crystal_cell_parameters_degrees = 
         (@abc_star_values, @alpha_beta_gamma_star_degrees);
     my @star_crystal_cell_parameters_radians = 
@@ -699,7 +705,7 @@ sub atom_structure_factor_from_coefficients {
 # phase(in radians)
 # for ex.: 
 # phase_hkl( @hkl, @xyz_fract, @cell_length_abc) = 1.12;
-sub atom_phase_hkl {
+sub atom_phase_hkl_rad {
     my ($h, $k, $l,
         $fract_x, $fract_y, $fract_z,
         $cell_length_a, $cell_length_b, $cell_length_c) = @_;
