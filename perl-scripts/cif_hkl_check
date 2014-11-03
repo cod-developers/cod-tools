@@ -17,7 +17,6 @@ eval 'exec perl -x $0 ${1+"$@"}'
 use strict;
 use warnings;
 use CIFParser;
-use CCIFParser;
 use CIFDiff;
 use SOptions;
 
@@ -33,6 +32,7 @@ sub parse_file
             $errors = $parser->YYData->{ERRCOUNT};
         }
     } else {
+        require CCIFParser;
         ( $data, $errors ) = CCIFParser::parse( $file );
     }
     return( $data, $errors );

@@ -24,7 +24,6 @@ use lib "./lib/perl5";
 use lib "./CIFParser";
 use lib "./CCIFParser";
 use CIFParser;
-use CCIFParser;
 use CIFTagCanonicalNames;
 use ShowStruct;
 use SOptions;
@@ -274,6 +273,7 @@ if( @$dictFiles )
             $parsed = $parser->Run( $_ );
             next DICTFILE if $parsed == 1;
         } else {
+            require CCIFParser;
             my $error_count;
             ( $parsed, $error_count ) = CCIFParser::parse( $_ );
             next DICTFILE if $error_count > 0;
