@@ -168,7 +168,7 @@ for my $filename (@ARGV) {
                     @{$cell_parameters->{reciprocal_cell_radians}} );
                 my $sin_teta_hkl = 
                     $radiation_wavelengths->[0] / (2 * $resolution_hkl);
-                
+                ## print "$sin_teta_hkl\n";
                 # Temporary local test which will be removed after
                 # creating *pm with outer Cromer Mann coefficients.
 
@@ -192,12 +192,15 @@ for my $filename (@ARGV) {
                         $atom_structure_factor * cos( $atom_hkl_phase );
                     $F_sin_component += $atom->{occupancy} * 
                         $atom_structure_factor * sin( $atom_hkl_phase );
+                    ## print "$atom->{chemical_type}>>>  $atom_structure_factor\n";
+                    
                 }
-               
+                
                 my $sqrted_structure_factor_of_hkl = 
-                    $F_cos_component**2 + $F_sin_component**2;
-              ##  printf "%3s %3s %3s: %0.5f %0.5f\n", $h_limit, 
-              ##  $k_limit, $l_limit, $resolution_hkl, $sqrted_structure_factor_of_hkl;
+                    sqrt( $F_cos_component**2 + $F_sin_component**2 );
+             ##  printf "%3s %3s %3s: %0.5f %0.5f %0.5f\n", $h_limit, 
+             ##  $k_limit, $l_limit, $resolution_hkl, $sin_teta_hkl, 
+             ##  $sqrted_structure_factor_of_hkl;
                 
             }}}
             
