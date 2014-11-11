@@ -154,8 +154,19 @@ for my $filename (@ARGV) {
         if ( $dump_cell_parameters ) {            
             printing_of_dump_cell_parameters( $datablock, $cell_parameters );
         }
+        
         unless ( $dump_Cromer_Mann_parameters || $dump_cell_parameters || 
                  $dump_xyz_coordinates ) {
+            #--------------------------------------------------
+            # temporary code for testing
+            if (0) {
+                print "$datablock->{name}\n";
+                foreach my $atom (@$atoms) {
+                    print "$atom->{label} "."$atom->{chemical_type} ".
+                        "$atom->{U_value_of_B_factor}  $atom->{B_factor}\n"
+                }
+            }
+            #-------------------------------------------------
             my ($h_max, $h_min, 
                 $k_max, $k_min, 
                 $l_max, $l_min) = @{ hkl_limits( $datablock )};
@@ -500,11 +511,13 @@ sub get_thermal
           remove_standard_uncertainties( 
               $datablock_values->{_atom_site_aniso_u_13} ),
           remove_standard_uncertainties( 
-              $datablock_values->{_atom_site_aniso_u_12} ) );
+              $datablock_values->{_atom_site_aniso_u_12} ) ); 
     
     for my $i (0..$#{$datablock_values->{_atom_site_label}}) {
         my %thermal_info = (
-            B_factor => $thermal_parameter_B->[$i],
+            B_factor => ($thermal_parameter_B->[$i] ? $thermal_parameter_B->[$i] : 
+             8 * ($PI**2) * $squared_displacement_U->[$i]
+            ),
             U_value_of_B_factor => $squared_displacement_U->[$i],
             aniso_value_Uij => [ $anisotrophic_U_ij_values[0]->[$i],
                                  $anisotrophic_U_ij_values[1]->[$i],
@@ -728,3 +741,4 @@ sub atom_phase_hkl_rad {
     return 2 * $PI * ( $h * $fract_x + $k * $fract_y +
                        $l * $fract_z );   
 }
+
