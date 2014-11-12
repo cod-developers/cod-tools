@@ -140,8 +140,15 @@ sub reduce
         }
         last
     }
-    printf "%s  %6.2f %6.2f %6.2f %6.2f %6.2f %6.2f\n", 
-    "  ", $A, $B, $C, $ksi, $eta, $dzeta, " " if $KG76::debug;
+    if( $KG76::debug ) {
+        use POSIX;
+        printf "%s  %6.2f %6.2f %6.2f %6.2f %6.2f %6.2f\n", 
+        "  ", $A, $B, $C, $ksi, $eta, $dzeta, " ";
+        print "CELL", sqrt($A), sqrt($B), sqrt($C),
+        180*acos($ksi/(2*sqrt($B)*sqrt($C)))/$Pi,
+        180*acos($eta/(2*sqrt($A)*sqrt($C)))/$Pi,
+        180*acos($dzeta/(2*sqrt($A)*sqrt($B)))/$Pi;
+    }
 }
 
 1;
