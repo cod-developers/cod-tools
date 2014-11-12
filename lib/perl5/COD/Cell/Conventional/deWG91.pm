@@ -48,7 +48,7 @@ sub conventional_cell
 # show some reversals, e.g. 4 and 5.
 # Lattice Bravais Transformation to a
 # No. Type D E F symmetry type conventional basis
-# A=B=C _ _
+# A = B = C
 
     local $, = " ";
     local $\ = "\n";
@@ -67,7 +67,7 @@ sub conventional_cell
 # 7 II D* E E Tetragonal tI 101/110/011
 # 8 II D* E F Orthorhombic oI -1-10/-10-1/0-1-1
 
-# A= B, no conditions on C _ __
+# A = B, no conditions on C
 
 # 9 I A/2 A/2 A/2 Rhombohedral hR 100/-110/-1-13
 # 10 I D D F Monoclinic mC 110/1-10/00-1
@@ -79,7 +79,7 @@ sub conventional_cell
 # 14 II D D F Monoclinic mC 110/-110/001;
 # 17 II D* E F Monoclinic mC 1-10/110/-10-1
 
-# B = C, no conditions on A _ __
+# B = C, no conditions on A
 
 # 18 I A/4 A/2 A/2 Tetragonal tI 0-11/1-1-1/100
 # 19 I D A/2 A/2 Orthorhombic oI -100/0-11/-111
@@ -96,7 +96,7 @@ sub conventional_cell
 # 24 II D* -A/3 -A/3 Rhombohedral hR 121/0-11/100
 # 25 II D E E Monoclinic mC 011/0-11/100
 
-# No conditions on A, B, C _ _
+# No conditions on A, B, C
 
 # 26 I A/4 A/2 A/2 Orthorhombic oF 100/-120/-102
 # 27 I D A/2 A/2 Monoclinic mC -120/-100/0-11
@@ -117,17 +117,6 @@ sub conventional_cell
 # 39 II D 0 -A/2 Monoclinic mC -1-20/-100/00-1
 # 43 II D E F Monoclinic mI -100/-1-1-2/0-10
 # 44 II D E F Triclinic aP 100/010/001
-
-# *ﬂD+E+H=A+R
-
-# ’rAs footnote * plus: |2D+ F| = B.
-
-# it The capital letter of the symbols in this column indicates the
-# centring type of the cell as obtained by the transformation in the
-# last column. For this reason the standard symbols mS and OS are not
-# used here.
-
-
 }
 
 1;
