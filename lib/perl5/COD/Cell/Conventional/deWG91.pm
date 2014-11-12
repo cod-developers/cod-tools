@@ -59,64 +59,64 @@ sub conventional_cell
         $A, $B, $C, $D, $E, $F if $KG76::debug;
         return [ [1,-1,1], [1,1,-1], [-1,1,1] ];
     }
-# 2 I D D D Rhombohedral hR 110/ 101/ 111
-# 3 II 0 0 0 Cubic cP 100/ 010/001
-# 5 11 -A/3 -A/3 -A/3 Cubic cI 191/110/9;;
-# 4 II D D D Rhombohedral hR 110/ 101/ 111
+# 2 I D D D Rhombohedral hR 1-10/-101/-1-1-1
+# 3 II 0 0 0 Cubic cP 100/010/001
+# 5 11 -A/3 -A/3 -A/3 Cubic cI 101/110/011
+# 4 II D D D Rhombohedral hR 1-10/-101/-1-1-1
 # 6 II D* D F Tetragonal tI 011/101/110
 # 7 II D* E E Tetragonal tI 101/110/011
-# 8 II D* E F Orthorhombic oI 110/ 101/011
+# 8 II D* E F Orthorhombic oI -1-10/-10-1/0-1-1
 
 # A= B, no conditions on C _ __
 
-# 9 I A/2 A/2 A/2 Rhombohedral hR 100/1 10/11;
-# 10 I D D F Monoclinic mC 1 10/ 1 10/ 001
-# 11 II 0 0 0 Tetragonal tP 100/ 010/ 001
-# 12 II 0 0 -A/2 Hexagonal hP 100/(_)10/001
-# 13 II 0 0 F Orthorhombic oC 110/ 110/001
-# 15 II -A/2 -A/2 0 Tetragonal tI _1_Q0/010/ 112
-# 16 II D* D F Orthorhombic oF 110/110/112
-# 14 II D D F Monoclinic mC 110/110/go;
-# 17 II D* E F Monoclinic mC 110/ 110/101
+# 9 I A/2 A/2 A/2 Rhombohedral hR 100/-110/-1-13
+# 10 I D D F Monoclinic mC 110/1-10/00-1
+# 11 II 0 0 0 Tetragonal tP 100/010/001
+# 12 II 0 0 -A/2 Hexagonal hP 100/010/001
+# 13 II 0 0 F Orthorhombic oC 110/-110/001
+# 15 II -A/2 -A/2 0 Tetragonal tI 100/010/112
+# 16 II D* D F Orthorhombic oF -1-10/1-10/112
+# 14 II D D F Monoclinic mC 110/-110/001;
+# 17 II D* E F Monoclinic mC 1-10/110/-10-1
 
 # B = C, no conditions on A _ __
 
-# 18 I A/4 A/2 A/2 Tetragonal tI 011/ 111/100
-# 19 I D A/2 A/2 Orthorhombic oI 100/011/_1_1 1
-# 20 I D E E Monoclinic mC 011/011/100
-# 21 II 0 0 0 Tetragonal tP 010/001 / 100
+# 18 I A/4 A/2 A/2 Tetragonal tI 0-11/1-1-1/100
+# 19 I D A/2 A/2 Orthorhombic oI -100/0-11/-111
+# 20 I D E E Monoclinic mC 011/01-1/-100
+# 21 II 0 0 0 Tetragonal tP 010/001/100
 
-    # 22 II -B/2 0 0 Hexagonal hP 010/ 001 / 100
+    # 22 II -B/2 0 0 Hexagonal hP 010/001/100
     if( abs($D+$B/2) < $eps && abs($E) < $eps && abs($F) < $eps ) {
         printf "22. %5.1f %5.1f %5.1f %5.1f %5.1f %5.1f Hexagonal hP\n",
         $A, $B, $C, $D, $E, $F if $KG76::debug;
         return [ [0,1,0], [0,0,1], [1,0,0] ];
     }
-# 23 II D 0 0 Orthorhombic oC 01 1/011/ 100
-# 24 II D* -A/3 -A/3 Rhombohedral hR 121/011/100
-# 25 II D E E Monoclinic mC 011/011/100
+# 23 II D 0 0 Orthorhombic oC 011/0-11/100
+# 24 II D* -A/3 -A/3 Rhombohedral hR 121/0-11/100
+# 25 II D E E Monoclinic mC 011/0-11/100
 
 # No conditions on A, B, C _ _
 
-# 26 I A/4 A/2 A/2 Orthorhombic oF 100/120] 102
-# 27 I D A/2 A/2 Monoclinic mC 120/100/011
-# 28 I D A/2 2D Monoclinic mC 100/ 102/010
-# 29 I D 2D A/2 Monoclinic mC 100/12(_)/001
-# 30 I B/2 E 2E Monoclinic mC 010/ 012/ 100
-# 31 I D E F Triclinic aP 100/ 010/ 001
-# 32 II 0 0 0 Orthorhombic oP 100/ 010/ (_)01
-# 40 II -B/2 0 0 Orthorhombic oC 010/912/109
-# 35 II D 0 0 Monoclinic mP 010/ 100/ 001
-# 36 II 0 -A/2 0 Orthorhombic oC 100/ 102/010
-# 33 II 0 E 0 Monoclinic mP 100/ 010/ 001
-# 38 II 0 0 -A/2 Orthorhombic oC 100/ 120/001
-# 34 II 0 0 F Monoclinic mP 100/091/010
-# 42 II -B/2 -A/2 0 Orthorhombic oI 199/010/112
-# 41 II -B/2 E 0 Monoclinic mC 012/ 010/ 100
+# 26 I A/4 A/2 A/2 Orthorhombic oF 100/-120/-102
+# 27 I D A/2 A/2 Monoclinic mC -120/-100/0-11
+# 28 I D A/2 2D Monoclinic mC -100/-102/010
+# 29 I D 2D A/2 Monoclinic mC 100/1-20/00-1
+# 30 I B/2 E 2E Monoclinic mC 010/01-2/-100
+# 31 I D E F Triclinic aP 100/010/001
+# 32 II 0 0 0 Orthorhombic oP 100/010/001
+# 40 II -B/2 0 0 Orthorhombic oC 0-10/012/-100
+# 35 II D 0 0 Monoclinic mP 0-10/-100/00-1
+# 36 II 0 -A/2 0 Orthorhombic oC 100/-10-2/010
+# 33 II 0 E 0 Monoclinic mP 100/010/001
+# 38 II 0 0 -A/2 Orthorhombic oC -100/120/00-1
+# 34 II 0 0 F Monoclinic mP -100/00-1/0-10
+# 42 II -B/2 -A/2 0 Orthorhombic oI -100/0-10/112
+# 41 II -B/2 E 0 Monoclinic mC 0-1-2/0-10/-100
 # 37 II D -A/2 0 Monoclinic mC 102/100/010
-# 39 II D 0 -A/2 Monoclinic mC 120/100/001
-# 43 II D E F Monoclinic mI 100/112/010
-# 44 II D E F Triclinic aP 100/ 010/001
+# 39 II D 0 -A/2 Monoclinic mC -1-20/-100/00-1
+# 43 II D E F Monoclinic mI -100/-1-1-2/0-10
+# 44 II D E F Triclinic aP 100/010/001
 
 # *ﬂD+E+H=A+R
 
