@@ -53,7 +53,7 @@ sub conventional_cell
     local $, = " ";
     local $\ = "\n";
 
-# 1 I A/2 A/2 A/2 Cubic cF 1_1_1/111/ii_1_
+    # 1 I A/2 A/2 A/2 Cubic cF 1-11/11-1/-111
     if( abs($D-$A/2) < $eps && abs($E-$A/2) < $eps && abs($F-$A/2) < $eps ) {
         printf "1. %5.1f %5.1f %5.1f %5.1f %5.1f %5.1f Cubic cF\n",
         $A, $B, $C, $D, $E, $F if $KG76::debug;
@@ -81,7 +81,13 @@ sub conventional_cell
 # 19 I D A/ 2 A/ 2 Orthorhombic oI 100/011/_1_1 1
 # 20 I D E E Monoclinic mC 011/011/100
 # 21 II 0 0 0 Tetragonal IP 010/001 / 100
-# 22 II -B/ 2 0 0 Hexagonal hP 010/ 001 / 100
+
+    # 22 II -B/2 0 0 Hexagonal hP 010/ 001 / 100
+    if( abs($D+$B/2) < $eps && abs($E) < $eps && abs($F) < $eps ) {
+        printf "22. %5.1f %5.1f %5.1f %5.1f %5.1f %5.1f Hexagonal hP\n",
+        $A, $B, $C, $D, $E, $F if $KG76::debug;
+        return [ [0,1,0], [0,0,1], [1,0,0] ];
+    }
 # 23 II D 0 0 Orthorhombic 0C 01 1/011/ 100
 # 24 II D‘ —A/ 3 —A/ 3 Rhombohedral hR 121/011/100
 # 25 II D E E Monoclinic mC 011/011/100
