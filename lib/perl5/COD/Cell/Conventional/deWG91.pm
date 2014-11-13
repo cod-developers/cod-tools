@@ -225,19 +225,19 @@ sub conventional_cell
         return [ [-1,2,0], [-1,0,0], [0,-1,1] ];
     }
     # 28 I D A/2 2D Monoclinic mC -100/-102/010
-    if( abs($D-$D) < $eps && abs($E-$A/2) < $eps && abs($F-2$D) < $eps ) {
+    if( abs($D-$D) < $eps && abs($E-$A/2) < $eps && abs($F-2*$D) < $eps ) {
         printf "1. %5.1f %5.1f %5.1f %5.1f %5.1f %5.1f Monoclinic mC\n",
         $A, $B, $C, $D, $E, $F if $KG76::debug;
         return [ [-1,0,0], [-1,0,2], [0,1,0] ];
     }
     # 29 I D 2D A/2 Monoclinic mC 100/1-20/00-1
-    if( abs($D-$D) < $eps && abs($E-2$D) < $eps && abs($F-$A/2) < $eps ) {
+    if( abs($D-$D) < $eps && abs($E-2*$D) < $eps && abs($F-$A/2) < $eps ) {
         printf "1. %5.1f %5.1f %5.1f %5.1f %5.1f %5.1f Monoclinic mC\n",
         $A, $B, $C, $D, $E, $F if $KG76::debug;
         return [ [1,0,0], [1,-2,0], [0,0,-1] ];
     }
     # 30 I B/2 E 2E Monoclinic mC 010/01-2/-100
-    if( abs($D-$B/2) < $eps && abs($E-$E) < $eps && abs($F-2$E) < $eps ) {
+    if( abs($D-$B/2) < $eps && abs($E-$E) < $eps && abs($F-2*$E) < $eps ) {
         printf "1. %5.1f %5.1f %5.1f %5.1f %5.1f %5.1f Monoclinic mC\n",
         $A, $B, $C, $D, $E, $F if $KG76::debug;
         return [ [0,1,0], [0,1,-2], [-1,0,0] ];
