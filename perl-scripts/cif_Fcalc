@@ -190,7 +190,7 @@ for my $filename (@ARGV) {
                 die "CIF file does not contain Crommer-Mann coefficients." 
                     if ( !defined $atoms->[0]{Crommer_Mann_coefficients}[0] ); 
                 #--------------------------------------------------------------
-                my ($F_cos_component, $F_sin_component) = (0,0);
+                my ($F_cos_comp_w_Tf_and_cor, $F_sin_comp_w_Tf_and_cor) = (0,0);
                 foreach my $atom (@$atoms) {
                     my $atom_structure_factor = 
                         atom_structure_factor_from_coefficients( 
@@ -204,29 +204,28 @@ for my $filename (@ARGV) {
                         @{$atom->{coordinates_fract}} );
                     # print "Phase of atom: $atom_hkl_phase\n";
                     ## print "$atom_structure_factor\n";
-                    $F_cos_component += $atom->{occupancy} * 
+                    $F_cos_comp_w_Tf_and_cor += $atom->{occupancy} * 
                         $atom_structure_factor * cos( $atom_hkl_phase );
-                    $F_sin_component += $atom->{occupancy} * 
+                    $F_sin_comp_w_Tf_and_cor += $atom->{occupancy} * 
                         $atom_structure_factor * sin( $atom_hkl_phase );
                     ## print "Cos: $F_cos_component Sin: $F_sin_component\n";
                     ## print "$atom->{chemical_type}>>>  $atom_structure_factor\n";
                     
                 }
                 
-                my $sqrted_structure_factor_of_hkl = 
-                    sqrt( $F_cos_component**2 + $F_sin_component**2 );
+                my $F_hkl_without_Tf_and_cor = 
+                    sqrt( $F_cos_comp_w_Tf_and_cor**2 + 
+                          $F_sin_comp_w_Tf_and_cor**2 );
                 
                 if ( $synthetic_test1 ) {
                     print "  H   K   L  RESO  sin(theta)  F  1/2d   F_cos  "
                         ."F_sin\n";
                     printf "%3s %3s %3s  %0.3f %0.5f %0.3f %0.3f %0.3f "
-                        ."%0.3f\n", 
-                        $h_limit, $k_limit, $l_limit, $resolution_hkl, 
-                        $sin_teta_hkl, $sqrted_structure_factor_of_hkl, 
-                        1/(2 * $resolution_hkl), $F_cos_component, 
-                        $F_sin_component;
+                        ."%0.3f\n", @hkl, $resolution_hkl, $sin_teta_hkl, 
+                        $F_hkl_without_Tf_and_cor, 1/(2 * $resolution_hkl), 
+                        $F_cos_comp_w_Tf_and_cor, $F_sin_comp_w_Tf_and_cor;
                 }
-                
+               
             }}}
             
         }
