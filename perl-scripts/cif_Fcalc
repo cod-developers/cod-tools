@@ -190,7 +190,8 @@ for my $filename (@ARGV) {
                 die "CIF file does not contain Crommer-Mann coefficients." 
                     if ( !defined $atoms->[0]{Crommer_Mann_coefficients}[0] ); 
                 #--------------------------------------------------------------
-                my ($F_cos_comp_w_Tf_and_cor, $F_sin_comp_w_Tf_and_cor) = (0,0);
+                my ($F_cos_comp_w_Tf_and_cor, $F_sin_comp_w_Tf_and_cor,
+                    $F_cos_comp_w_cor, $F_sin_comp_w_cor) = (0,0,0,0);
                 foreach my $atom (@$atoms) {
                     my $atom_structure_factor = 
                         atom_structure_factor_from_coefficients( 
@@ -202,21 +203,37 @@ for my $filename (@ARGV) {
                     my $atom_hkl_phase = atom_phase_hkl_rad( 
                         @hkl, 
                         @{$atom->{coordinates_fract}} );
+                    if (0) {
+                        if ($atom->{label} eq "Cl1") {
+                            printf "%3s %3s %3s  %0.3f %0.3f %0.4f\n", 
+                            @hkl, $resolution_hkl, 1/(2 * $resolution_hkl),
+                            $atom_structure_factor;
+                        }
+                    }
                     # print "Phase of atom: $atom_hkl_phase\n";
                     ## print "$atom_structure_factor\n";
                     $F_cos_comp_w_Tf_and_cor += $atom->{occupancy} * 
                         $atom_structure_factor * cos( $atom_hkl_phase );
                     $F_sin_comp_w_Tf_and_cor += $atom->{occupancy} * 
                         $atom_structure_factor * sin( $atom_hkl_phase );
-                    ## print "Cos: $F_cos_component Sin: $F_sin_component\n";
-                    ## print "$atom->{chemical_type}>>>  $atom_structure_factor\n";
-                    
+                    my $temperature_factor_ISO = 
+                        exp( ( -$atom->{B_factor}/4 ) * 
+                             ( 1/$resolution_hkl )**2 );
+                    $F_cos_comp_w_cor += 
+                        $atom->{occupancy} * $atom_structure_factor * 
+                        $temperature_factor_ISO * cos( $atom_hkl_phase );
+                    $F_sin_comp_w_cor +=
+                        $atom->{occupancy} * $atom_structure_factor * 
+                        $temperature_factor_ISO * sin( $atom_hkl_phase );
                 }
                 
                 my $F_hkl_without_Tf_and_cor = 
                     sqrt( $F_cos_comp_w_Tf_and_cor**2 + 
                           $F_sin_comp_w_Tf_and_cor**2 );
+                my $F_hkl_iso_without_cor = 
+                    sqrt( $F_cos_comp_w_cor**2 + $F_sin_comp_w_cor**2 ); 
                 
+
                 if ( $synthetic_test1 ) {
                     print "  H   K   L  RESO  sin(theta)  F  1/2d   F_cos  "
                         ."F_sin\n";
@@ -225,7 +242,13 @@ for my $filename (@ARGV) {
                         $F_hkl_without_Tf_and_cor, 1/(2 * $resolution_hkl), 
                         $F_cos_comp_w_Tf_and_cor, $F_sin_comp_w_Tf_and_cor;
                 }
-               
+                
+                if (0) {
+                    printf "%3s %3s %3s  %0.3f %0.5f %0.5f %0.5f\n", 
+                    @hkl, $resolution_hkl, 
+                    $F_hkl_without_Tf_and_cor, $F_hkl_iso_without_cor,
+                    $F_hkl_iso_without_cor**2;
+                }
             }}}
             
         }
