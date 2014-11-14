@@ -24,6 +24,19 @@ my $Pi = 4 * atan2(1,1);
 
 $KG76::debug = 1;
 
+# Check for Type I cell:
+sub is_type_I
+{
+    my ($D, $E, $F) = @_;
+    return $D > 0 && $E > 0 && $F > 0;
+}
+
+# Check for Type II cell:
+sub is_type_II
+{
+    return not &is_type_I
+}
+
 sub conventional_cell
 {
     my @cell = @_;
@@ -55,57 +68,68 @@ sub conventional_cell
     # A = B = C
 
     # 1 I A/2 A/2 A/2 Cubic cF 1-11/11-1/-111
-    if( abs($A-$B) < $eps && abs($A-$C) < $eps && abs($B-$C) < $eps &&
+    if( is_type_I( $D, $E, $F ) &&
+        abs($A-$B) < $eps && abs($A-$C) < $eps && abs($B-$C) < $eps &&
         abs($D-$A/2) < $eps && abs($E-$A/2) < $eps && abs($F-$A/2) < $eps ) {
         printf "1. %5.1f %5.1f %5.1f %5.1f %5.1f %5.1f Cubic cF\n",
         $A, $B, $C, $D, $E, $F if $KG76::debug;
         return [ [1,-1,1], [1,1,-1], [-1,1,1] ];
     }
     # 2 I D D D Rhombohedral hR 1-10/-101/-1-1-1
-    if( abs($A-$B) < $eps && abs($A-$C) < $eps && abs($B-$C) < $eps &&
+    if( is_type_I( $D, $E, $F ) &&
+        abs($A-$B) < $eps && abs($A-$C) < $eps && abs($B-$C) < $eps &&
         abs($E-$D) < $eps && abs($F-$D) < $eps ) {
         printf "2. %5.1f %5.1f %5.1f %5.1f %5.1f %5.1f Rhombohedral hR\n",
         $A, $B, $C, $D, $E, $F if $KG76::debug;
         return [ [1,-1,0], [-1,0,1], [-1,-1,-1] ];
     }
     # 3 II 0 0 0 Cubic cP 100/010/001
-    if( abs($A-$B) < $eps && abs($A-$C) < $eps && abs($B-$C) < $eps &&
+    if( is_type_II( $D, $E, $F ) &&
+        abs($A-$B) < $eps && abs($A-$C) < $eps && abs($B-$C) < $eps &&
         abs($D) < $eps && abs($E) < $eps && abs($F) < $eps ) {
         printf "3. %5.1f %5.1f %5.1f %5.1f %5.1f %5.1f Cubic cP\n",
         $A, $B, $C, $D, $E, $F if $KG76::debug;
         return [ [1,0,0], [0,1,0], [0,0,1] ];
     }
-    # 5 11 -A/3 -A/3 -A/3 Cubic cI 101/110/011
-    if( abs($A-$B) < $eps && abs($A-$C) < $eps && abs($B-$C) < $eps &&
+    # 5 II -A/3 -A/3 -A/3 Cubic cI 101/110/011
+    if( is_type_II( $D, $E, $F ) &&
+        abs($A-$B) < $eps && abs($A-$C) < $eps && abs($B-$C) < $eps &&
         abs($D+$A/3) < $eps && abs($E+$A/3) < $eps && abs($F+$A/3) < $eps ) {
         printf "5. %5.1f %5.1f %5.1f %5.1f %5.1f %5.1f Cubic cI\n",
         $A, $B, $C, $D, $E, $F if $KG76::debug;
         return [ [1,0,1], [1,1,0], [0,1,1] ];
     }
     # 4 II D D D Rhombohedral hR 1-10/-101/-1-1-1
-    if( abs($A-$B) < $eps && abs($A-$C) < $eps && abs($B-$C) < $eps &&
+    if( is_type_II( $D, $E, $F ) &&
+        abs($A-$B) < $eps && abs($A-$C) < $eps && abs($B-$C) < $eps &&
         abs($E-$D) < $eps && abs($F-$D) < $eps ) {
         printf "4. %5.1f %5.1f %5.1f %5.1f %5.1f %5.1f Rhombohedral hR\n",
         $A, $B, $C, $D, $E, $F if $KG76::debug;
         return [ [1,-1,0], [-1,0,1], [-1,-1,-1] ];
     }
     # 6 II D* D F Tetragonal tI 011/101/110
-    if( abs($A-$B) < $eps && abs($A-$C) < $eps && abs($B-$C) < $eps &&
-        abs($E-$D) < $eps ) {
+    if( is_type_II( $D, $E, $F ) &&
+        abs($A-$B) < $eps && abs($A-$C) < $eps && abs($B-$C) < $eps &&
+        abs($E-$D) < $eps &&
+        abs( 2*abs($D+$E+$F) - $A - $B ) < $eps ) {
         printf "6. %5.1f %5.1f %5.1f %5.1f %5.1f %5.1f Tetragonal tI\n",
         $A, $B, $C, $D, $E, $F if $KG76::debug;
         return [ [0,1,1], [1,0,1], [1,1,0] ];
     }
     # 7 II D* E E Tetragonal tI 101/110/011
-    if( abs($A-$B) < $eps && abs($A-$C) < $eps && abs($B-$C) < $eps &&
-        abs($F-$E) < $eps ) {
+    if( is_type_II( $D, $E, $F ) &&
+        abs($A-$B) < $eps && abs($A-$C) < $eps && abs($B-$C) < $eps &&
+        abs($F-$E) < $eps &&
+        abs( 2*abs($D+$E+$F) - $A - $B ) < $eps ) {
         printf "7. %5.1f %5.1f %5.1f %5.1f %5.1f %5.1f Tetragonal tI\n",
         $A, $B, $C, $D, $E, $F if $KG76::debug;
         return [ [1,0,1], [1,1,0], [0,1,1] ];
     }
     # 8 II D* E F Orthorhombic oI -1-10/-10-1/0-1-1
-    if( abs($A-$B) < $eps && abs($A-$C) < $eps && abs($B-$C) < $eps &&
-        abs($F-$F) < $eps ) {
+    if( is_type_II( $D, $E, $F ) &&
+        abs($A-$B) < $eps && abs($A-$C) < $eps && abs($B-$C) < $eps &&
+        abs($F-$F) < $eps &&
+        abs( 2*abs($D+$E+$F) - $A - $B ) < $eps ) {
         printf "8. %5.1f %5.1f %5.1f %5.1f %5.1f %5.1f Orthorhombic oI\n",
         $A, $B, $C, $D, $E, $F if $KG76::debug;
         return [ [-1,-1,0], [-1,0,-1], [0,-1,-1] ];
@@ -114,64 +138,75 @@ sub conventional_cell
     # A = B, no conditions on C
 
     # 9 I A/2 A/2 A/2 Rhombohedral hR 100/-110/-1-13
-    if( abs($A-$B) < $eps &&
+    if( is_type_I( $D, $E, $F ) &&
+        abs($A-$B) < $eps &&
         abs($D-$A/2) < $eps && abs($E-$A/2) < $eps && abs($F-$A/2) < $eps ) {
         printf "9. %5.1f %5.1f %5.1f %5.1f %5.1f %5.1f Rhombohedral hR\n",
         $A, $B, $C, $D, $E, $F if $KG76::debug;
         return [ [1,0,0], [-1,1,0], [-1,-1,3] ];
     }
     # 10 I D D F Monoclinic mC 110/1-10/00-1
-    if( abs($A-$B) < $eps &&
+    if( is_type_I( $D, $E, $F ) &&
+        abs($A-$B) < $eps &&
         abs($E-$D) < $eps ) {
         printf "10. %5.1f %5.1f %5.1f %5.1f %5.1f %5.1f Monoclinic mC\n",
         $A, $B, $C, $D, $E, $F if $KG76::debug;
         return [ [1,1,0], [1,-1,0], [0,0,-1] ];
     }
     # 11 II 0 0 0 Tetragonal tP 100/010/001
-    if( abs($A-$B) < $eps &&
+    if( is_type_II( $D, $E, $F ) &&
+        abs($A-$B) < $eps &&
         abs($D) < $eps && abs($E) < $eps && abs($F) < $eps ) {
         printf "11. %5.1f %5.1f %5.1f %5.1f %5.1f %5.1f Tetragonal tP\n",
         $A, $B, $C, $D, $E, $F if $KG76::debug;
         return [ [1,0,0], [0,1,0], [0,0,1] ];
     }
     # 12 II 0 0 -A/2 Hexagonal hP 100/010/001
-    if( abs($A-$B) < $eps &&
+    if( is_type_II( $D, $E, $F ) &&
+        abs($A-$B) < $eps &&
         abs($D) < $eps && abs($E) < $eps && abs($F+$A/2) < $eps ) {
         printf "12. %5.1f %5.1f %5.1f %5.1f %5.1f %5.1f Hexagonal hP\n",
         $A, $B, $C, $D, $E, $F if $KG76::debug;
         return [ [1,0,0], [0,1,0], [0,0,1] ];
     }
     # 13 II 0 0 F Orthorhombic oC 110/-110/001
-    if( abs($A-$B) < $eps &&
+    if( is_type_II( $D, $E, $F ) &&
+        abs($A-$B) < $eps &&
         abs($D) < $eps && abs($E) < $eps ) {
         printf "13. %5.1f %5.1f %5.1f %5.1f %5.1f %5.1f Orthorhombic oC\n",
         $A, $B, $C, $D, $E, $F if $KG76::debug;
         return [ [1,1,0], [-1,1,0], [0,0,1] ];
     }
     # 15 II -A/2 -A/2 0 Tetragonal tI 100/010/112
-    if( abs($A-$B) < $eps &&
+    if( is_type_II( $D, $E, $F ) &&
+        abs($A-$B) < $eps &&
         abs($D+$A/2) < $eps && abs($E+$A/2) < $eps && abs($F) < $eps ) {
         printf "15. %5.1f %5.1f %5.1f %5.1f %5.1f %5.1f Tetragonal tI\n",
         $A, $B, $C, $D, $E, $F if $KG76::debug;
         return [ [1,0,0], [0,1,0], [1,1,2] ];
     }
     # 16 II D* D F Orthorhombic oF -1-10/1-10/112
-    if( abs($A-$B) < $eps &&
-        abs($E-$D) < $eps ) {
+    if( is_type_II( $D, $E, $F ) &&
+        abs($A-$B) < $eps &&
+        abs($E-$D) < $eps &&
+        abs( 2*abs($D+$E+$F) - $A - $B ) < $eps ) {
         printf "16. %5.1f %5.1f %5.1f %5.1f %5.1f %5.1f Orthorhombic oF\n",
         $A, $B, $C, $D, $E, $F if $KG76::debug;
         return [ [-1,-1,0], [1,-1,0], [1,1,2] ];
     }
     # 14 II D D F Monoclinic mC 110/-110/001;
-    if( abs($A-$B) < $eps &&
+    if( is_type_II( $D, $E, $F ) &&
+        abs($A-$B) < $eps &&
         abs($E-$D) < $eps ) {
         printf "14. %5.1f %5.1f %5.1f %5.1f %5.1f %5.1f Monoclinic mC\n",
         $A, $B, $C, $D, $E, $F if $KG76::debug;
         return [ [1,1,0], [-1,1,0], [0,0,1] ];
     }
     # 17 II D* E F Monoclinic mC 1-10/110/-10-1
-    if( abs($A-$B) < $eps &&
-        abs($F-$F) < $eps ) {
+    if( is_type_II( $D, $E, $F ) &&
+        abs($A-$B) < $eps &&
+        abs($F-$F) < $eps &&
+        abs( 2*abs($D+$E+$F) - $A - $B ) < $eps ) {
         printf "17. %5.1f %5.1f %5.1f %5.1f %5.1f %5.1f Monoclinic mC\n",
         $A, $B, $C, $D, $E, $F if $KG76::debug;
         return [ [1,-1,0], [1,1,0], [-1,0,-1] ];
@@ -180,56 +215,65 @@ sub conventional_cell
 # B = C, no conditions on A
 
     # 18 I A/4 A/2 A/2 Tetragonal tI 0-11/1-1-1/100
-    if( abs($B-$C) < $eps &&
+    if( is_type_I( $D, $E, $F ) &&
+        abs($B-$C) < $eps &&
         abs($D-$A/4) < $eps && abs($E-$A/2) < $eps && abs($F-$A/2) < $eps ) {
         printf "18. %5.1f %5.1f %5.1f %5.1f %5.1f %5.1f Tetragonal tI\n",
         $A, $B, $C, $D, $E, $F if $KG76::debug;
         return [ [0,-1,1], [1,-1,-1], [1,0,0] ];
     }
     # 19 I D A/2 A/2 Orthorhombic oI -100/0-11/-111
-    if( abs($B-$C) < $eps &&
+    if( is_type_I( $D, $E, $F ) &&
+        abs($B-$C) < $eps &&
         abs($E-$A/2) < $eps && abs($F-$A/2) < $eps ) {
         printf "19. %5.1f %5.1f %5.1f %5.1f %5.1f %5.1f Orthorhombic oI\n",
         $A, $B, $C, $D, $E, $F if $KG76::debug;
         return [ [-1,0,0], [0,-1,1], [-1,1,1] ];
     }
     # 20 I D E E Monoclinic mC 011/01-1/-100
-    if( abs($B-$C) < $eps &&
+    if( is_type_I( $D, $E, $F ) &&
+        abs($B-$C) < $eps &&
         abs($F-$E) < $eps ) {
         printf "20. %5.1f %5.1f %5.1f %5.1f %5.1f %5.1f Monoclinic mC\n",
         $A, $B, $C, $D, $E, $F if $KG76::debug;
         return [ [0,1,1], [0,1,-1], [-1,0,0] ];
     }
     # 21 II 0 0 0 Tetragonal tP 010/001/100
-    if( abs($B-$C) < $eps &&
+    if( is_type_II( $D, $E, $F ) &&
+        abs($B-$C) < $eps &&
         abs($D) < $eps && abs($E) < $eps && abs($F) < $eps ) {
         printf "21. %5.1f %5.1f %5.1f %5.1f %5.1f %5.1f Tetragonal tP\n",
         $A, $B, $C, $D, $E, $F if $KG76::debug;
         return [ [0,1,0], [0,0,1], [1,0,0] ];
     }
     # 22 II -B/2 0 0 Hexagonal hP 010/001/100
-    if( abs($B-$C) < $eps &&
+    if( is_type_II( $D, $E, $F ) &&
+        abs($B-$C) < $eps &&
         abs($D+$B/2) < $eps && abs($E) < $eps && abs($F) < $eps ) {
         printf "22. %5.1f %5.1f %5.1f %5.1f %5.1f %5.1f Hexagonal hP\n",
         $A, $B, $C, $D, $E, $F if $KG76::debug;
         return [ [0,1,0], [0,0,1], [1,0,0] ];
     }
     # 23 II D 0 0 Orthorhombic oC 011/0-11/100
-    if( abs($B-$C) < $eps &&
+    if( is_type_II( $D, $E, $F ) &&
+        abs($B-$C) < $eps &&
         abs($E) < $eps && abs($F) < $eps ) {
         printf "23. %5.1f %5.1f %5.1f %5.1f %5.1f %5.1f Orthorhombic oC\n",
         $A, $B, $C, $D, $E, $F if $KG76::debug;
         return [ [0,1,1], [0,-1,1], [1,0,0] ];
     }
     # 24 II D* -A/3 -A/3 Rhombohedral hR 121/0-11/100
-    if( abs($B-$C) < $eps &&
-        abs($E+$A/3) < $eps && abs($F+$A/3) < $eps ) {
+    if( is_type_II( $D, $E, $F ) &&
+        abs($B-$C) < $eps &&
+        abs($E+$A/3) < $eps && abs($F+$A/3) < $eps &&
+        abs( 2*abs($D+$E+$F) - $A - $B ) < $eps ) {
         printf "24. %5.1f %5.1f %5.1f %5.1f %5.1f %5.1f Rhombohedral hR\n",
         $A, $B, $C, $D, $E, $F if $KG76::debug;
         return [ [1,2,1], [0,-1,1], [1,0,0] ];
     }
     # 25 II D E E Monoclinic mC 011/0-11/100
-    if( abs($B-$C) < $eps &&
+    if( is_type_II( $D, $E, $F ) &&
+        abs($B-$C) < $eps &&
         abs($F-$E) < $eps ) {
         printf "25. %5.1f %5.1f %5.1f %5.1f %5.1f %5.1f Monoclinic mC\n",
         $A, $B, $C, $D, $E, $F if $KG76::debug;
@@ -239,111 +283,132 @@ sub conventional_cell
     # No conditions on A, B, C
 
     # 26 I A/4 A/2 A/2 Orthorhombic oF 100/-120/-102
-    if( abs($D-$A/4) < $eps && abs($E-$A/2) < $eps && abs($F-$A/2) < $eps ) {
+    if( is_type_I( $D, $E, $F ) &&
+        abs($D-$A/4) < $eps && abs($E-$A/2) < $eps && abs($F-$A/2) < $eps ) {
         printf "26. %5.1f %5.1f %5.1f %5.1f %5.1f %5.1f Orthorhombic oF\n",
         $A, $B, $C, $D, $E, $F if $KG76::debug;
         return [ [1,0,0], [-1,2,0], [-1,0,2] ];
     }
     # 27 I D A/2 A/2 Monoclinic mC -120/-100/0-11
-    if( abs($E-$A/2) < $eps && abs($F-$A/2) < $eps ) {
+    if( is_type_I( $D, $E, $F ) &&
+        abs($E-$A/2) < $eps && abs($F-$A/2) < $eps ) {
         printf "27. %5.1f %5.1f %5.1f %5.1f %5.1f %5.1f Monoclinic mC\n",
         $A, $B, $C, $D, $E, $F if $KG76::debug;
         return [ [-1,2,0], [-1,0,0], [0,-1,1] ];
     }
     # 28 I D A/2 2D Monoclinic mC -100/-102/010
-    if( abs($E-$A/2) < $eps && abs($F-2*$D) < $eps ) {
+    if( is_type_I( $D, $E, $F ) &&
+        abs($E-$A/2) < $eps && abs($F-2*$D) < $eps ) {
         printf "28. %5.1f %5.1f %5.1f %5.1f %5.1f %5.1f Monoclinic mC\n",
         $A, $B, $C, $D, $E, $F if $KG76::debug;
         return [ [-1,0,0], [-1,0,2], [0,1,0] ];
     }
     # 29 I D 2D A/2 Monoclinic mC 100/1-20/00-1
-    if( abs($E-2*$D) < $eps && abs($F-$A/2) < $eps ) {
+    if( is_type_I( $D, $E, $F ) &&
+        abs($E-2*$D) < $eps && abs($F-$A/2) < $eps ) {
         printf "29. %5.1f %5.1f %5.1f %5.1f %5.1f %5.1f Monoclinic mC\n",
         $A, $B, $C, $D, $E, $F if $KG76::debug;
         return [ [1,0,0], [1,-2,0], [0,0,-1] ];
     }
     # 30 I B/2 E 2E Monoclinic mC 010/01-2/-100
-    if( abs($D-$B/2) < $eps && abs($F-2*$E) < $eps ) {
+    if( is_type_I( $D, $E, $F ) &&
+        abs($D-$B/2) < $eps && abs($F-2*$E) < $eps ) {
         printf "30. %5.1f %5.1f %5.1f %5.1f %5.1f %5.1f Monoclinic mC\n",
         $A, $B, $C, $D, $E, $F if $KG76::debug;
         return [ [0,1,0], [0,1,-2], [-1,0,0] ];
     }
     # 31 I D E F Triclinic aP 100/010/001
-    if( abs($F-$F) < $eps ) {
+    if( is_type_I( $D, $E, $F ) &&
+        abs($F-$F) < $eps ) {
         printf "31. %5.1f %5.1f %5.1f %5.1f %5.1f %5.1f Triclinic aP\n",
         $A, $B, $C, $D, $E, $F if $KG76::debug;
         return [ [1,0,0], [0,1,0], [0,0,1] ];
     }
     # 32 II 0 0 0 Orthorhombic oP 100/010/001
-    if( abs($D) < $eps && abs($E) < $eps && abs($F) < $eps ) {
+    if( is_type_I( $D, $E, $F ) &&
+        abs($D) < $eps && abs($E) < $eps && abs($F) < $eps ) {
         printf "32. %5.1f %5.1f %5.1f %5.1f %5.1f %5.1f Orthorhombic oP\n",
         $A, $B, $C, $D, $E, $F if $KG76::debug;
         return [ [1,0,0], [0,1,0], [0,0,1] ];
     }
     # 40 II -B/2 0 0 Orthorhombic oC 0-10/012/-100
-    if( abs($D+$B/2) < $eps && abs($E) < $eps && abs($F) < $eps ) {
+    if( is_type_II( $D, $E, $F ) &&
+        abs($D+$B/2) < $eps && abs($E) < $eps && abs($F) < $eps ) {
         printf "40. %5.1f %5.1f %5.1f %5.1f %5.1f %5.1f Orthorhombic oC\n",
         $A, $B, $C, $D, $E, $F if $KG76::debug;
         return [ [0,-1,0], [0,1,2], [-1,0,0] ];
     }
     # 35 II D 0 0 Monoclinic mP 0-10/-100/00-1
-    if( abs($E) < $eps && abs($F) < $eps ) {
+    if( is_type_II( $D, $E, $F ) &&
+        abs($E) < $eps && abs($F) < $eps ) {
         printf "35. %5.1f %5.1f %5.1f %5.1f %5.1f %5.1f Monoclinic mP\n",
         $A, $B, $C, $D, $E, $F if $KG76::debug;
         return [ [0,-1,0], [-1,0,0], [0,0,-1] ];
     }
     # 36 II 0 -A/2 0 Orthorhombic oC 100/-10-2/010
-    if( abs($D) < $eps && abs($E+$A/2) < $eps && abs($F) < $eps ) {
+    if( is_type_II( $D, $E, $F ) &&
+        abs($D) < $eps && abs($E+$A/2) < $eps && abs($F) < $eps ) {
         printf "36. %5.1f %5.1f %5.1f %5.1f %5.1f %5.1f Orthorhombic oC\n",
         $A, $B, $C, $D, $E, $F if $KG76::debug;
         return [ [1,0,0], [-1,0,-2], [0,1,0] ];
     }
     # 33 II 0 E 0 Monoclinic mP 100/010/001
-    if( abs($D) < $eps && abs($F) < $eps ) {
+    if( is_type_II( $D, $E, $F ) &&
+        abs($D) < $eps && abs($F) < $eps ) {
         printf "33. %5.1f %5.1f %5.1f %5.1f %5.1f %5.1f Monoclinic mP\n",
         $A, $B, $C, $D, $E, $F if $KG76::debug;
         return [ [1,0,0], [0,1,0], [0,0,1] ];
     }
     # 38 II 0 0 -A/2 Orthorhombic oC -100/120/00-1
-    if( abs($D) < $eps && abs($E) < $eps && abs($F+$A/2) < $eps ) {
+    if( is_type_II( $D, $E, $F ) &&
+        abs($D) < $eps && abs($E) < $eps && abs($F+$A/2) < $eps ) {
         printf "38. %5.1f %5.1f %5.1f %5.1f %5.1f %5.1f Orthorhombic oC\n",
         $A, $B, $C, $D, $E, $F if $KG76::debug;
         return [ [-1,0,0], [1,2,0], [0,0,-1] ];
     }
     # 34 II 0 0 F Monoclinic mP -100/00-1/0-10
-    if( abs($D) < $eps && abs($E) < $eps ) {
+    if( is_type_II( $D, $E, $F ) &&
+        abs($D) < $eps && abs($E) < $eps ) {
         printf "34. %5.1f %5.1f %5.1f %5.1f %5.1f %5.1f Monoclinic mP\n",
         $A, $B, $C, $D, $E, $F if $KG76::debug;
         return [ [-1,0,0], [0,0,-1], [0,-1,0] ];
     }
     # 42 II -B/2 -A/2 0 Orthorhombic oI -100/0-10/112
-    if( abs($D+$B/2) < $eps && abs($E+$A/2) < $eps && abs($F) < $eps ) {
+    if( is_type_II( $D, $E, $F ) &&
+        abs($D+$B/2) < $eps && abs($E+$A/2) < $eps && abs($F) < $eps ) {
         printf "42. %5.1f %5.1f %5.1f %5.1f %5.1f %5.1f Orthorhombic oI\n",
         $A, $B, $C, $D, $E, $F if $KG76::debug;
         return [ [-1,0,0], [0,-1,0], [1,1,2] ];
     }
     # 41 II -B/2 E 0 Monoclinic mC 0-1-2/0-10/-100
-    if( abs($D+$B/2) < $eps && abs($F) < $eps ) {
+    if( is_type_II( $D, $E, $F ) &&
+        abs($D+$B/2) < $eps && abs($F) < $eps ) {
         printf "41. %5.1f %5.1f %5.1f %5.1f %5.1f %5.1f Monoclinic mC\n",
         $A, $B, $C, $D, $E, $F if $KG76::debug;
         return [ [0,-1,-2], [0,-1,0], [-1,0,0] ];
     }
     # 37 II D -A/2 0 Monoclinic mC 102/100/010
-    if( abs($E+$A/2) < $eps && abs($F) < $eps ) {
+    if( is_type_II( $D, $E, $F ) &&
+        abs($E+$A/2) < $eps && abs($F) < $eps ) {
         printf "37. %5.1f %5.1f %5.1f %5.1f %5.1f %5.1f Monoclinic mC\n",
         $A, $B, $C, $D, $E, $F if $KG76::debug;
         return [ [1,0,2], [1,0,0], [0,1,0] ];
     }
     # 39 II D 0 -A/2 Monoclinic mC -1-20/-100/00-1
-    if( abs($E) < $eps && abs($F+$A/2) < $eps ) {
+    if( is_type_II( $D, $E, $F ) &&
+        abs($E) < $eps && abs($F+$A/2) < $eps ) {
         printf "39. %5.1f %5.1f %5.1f %5.1f %5.1f %5.1f Monoclinic mC\n",
         $A, $B, $C, $D, $E, $F if $KG76::debug;
         return [ [-1,-2,0], [-1,0,0], [0,0,-1] ];
     }
     # 43 II D E F Monoclinic mI -100/-1-1-2/0-10
-    printf "43. %5.1f %5.1f %5.1f %5.1f %5.1f %5.1f Monoclinic mI\n",
-    $A, $B, $C, $D, $E, $F if $KG76::debug;
-    return [ [-1,0,0], [-1,-1,-2], [0,-1,0] ];
+    if( is_type_II( $D, $E, $F ) &&
+        abs( 2*abs($D+$E+$F) - $A - $B ) < $eps &&
+        abs( abs(2*$D+$F) - $B ) < $eps ) {
+        printf "43. %5.1f %5.1f %5.1f %5.1f %5.1f %5.1f Monoclinic mI\n",
+        $A, $B, $C, $D, $E, $F if $KG76::debug;
+        return [ [-1,0,0], [-1,-1,-2], [0,-1,0] ];
+    }
     # 44 II D E F Triclinic aP 100/010/001
     printf "44. %5.1f %5.1f %5.1f %5.1f %5.1f %5.1f Triclinic aP\n",
     $A, $B, $C, $D, $E, $F if $KG76::debug;
