@@ -70,7 +70,7 @@ sub conventional_cell
     }
     # 3 II 0 0 0 Cubic cP 100/010/001
     if( abs($A-$B) < $eps && abs($A-$C) < $eps && abs($B-$C) < $eps &&
-        abs($D) < $eps && abs($E-0) < $eps && abs($F-0) < $eps ) {
+        abs($D) < $eps && abs($E) < $eps && abs($F) < $eps ) {
         printf "3. %5.1f %5.1f %5.1f %5.1f %5.1f %5.1f Cubic cP\n",
         $A, $B, $C, $D, $E, $F if $KG76::debug;
         return [ [1,0,0], [0,1,0], [0,0,1] ];
