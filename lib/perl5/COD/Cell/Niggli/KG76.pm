@@ -149,6 +149,10 @@ sub reduce
         180*acos($eta/(2*sqrt($A)*sqrt($C)))/$Pi,
         180*acos($dzeta/(2*sqrt($A)*sqrt($B)))/$Pi;
     }
+    return (sqrt($A), sqrt($B), sqrt($C),
+            180*acos($ksi/(2*sqrt($B)*sqrt($C)))/$Pi,
+            180*acos($eta/(2*sqrt($A)*sqrt($C)))/$Pi,
+            180*acos($dzeta/(2*sqrt($A)*sqrt($B)))/$Pi);
 }
 
 1;
