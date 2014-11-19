@@ -124,6 +124,7 @@ for my $filename (@ARGV) {
         
         my $radiation_wavelengths = remove_standard_uncertainties(
             $datablock->{values}{_diffrn_radiation_wavelength} );
+        ## print "$radiation_wavelengths->[0]\n";
         die "The value of Xray radiation wavelength is empty." 
             if (!defined $radiation_wavelengths->[0]);
         die "The CIF contains more than one value of Xray radiation wavelength." 
@@ -134,7 +135,7 @@ for my $filename (@ARGV) {
         ## print "@{$f2o->[0]}\n";
         my $atoms = atoms_from_cif( $datablock, $f2o );
         my $cell_parameters = get_unit_cell_parameters ( $datablock );
-        
+        ## print "@cell\n";
         if( $dump_xyz_coordinates ) { 
             print $#$atoms+1, "\n";
             print "$datablock->{name}\n";
@@ -163,7 +164,8 @@ for my $filename (@ARGV) {
                 print "$datablock->{name}\n";
                 foreach my $atom (@$atoms) {
                     print "$atom->{label} "."$atom->{chemical_type} ".
-                        "$atom->{U_value_of_B_factor}  $atom->{B_factor}\n"
+                        "$atom->{U_value_of_B_factor} $atom->{B_factor} ".
+                        "@{$atom->{aniso_value_Uij}}\n";
                 }
             }
             #-------------------------------------------------
@@ -190,9 +192,14 @@ for my $filename (@ARGV) {
                 die "CIF file does not contain Crommer-Mann coefficients." 
                     if ( !defined $atoms->[0]{Crommer_Mann_coefficients}[0] ); 
                 #--------------------------------------------------------------
-                my ($F_cos_comp_w_Tf_and_cor, $F_sin_comp_w_Tf_and_cor,
-                    $F_cos_comp_w_cor, $F_sin_comp_w_cor) = (0,0,0,0);
+                my $F_cos_comp_w_Tf_and_cor = 0; 
+                my $F_sin_comp_w_Tf_and_cor = 0;
+                my $F_cos_comp_w_cor = 0;
+                my $F_sin_comp_w_cor = 0;
+                my ($F_cos_comp_aniso_w_cor, 
+                    $F_sin_comp_aniso_w_cor) = (0,0);
                 foreach my $atom (@$atoms) {
+                    
                     my $atom_structure_factor = 
                         atom_structure_factor_from_coefficients( 
                             $atom->{Crommer_Mann_coefficients}, 
@@ -203,7 +210,7 @@ for my $filename (@ARGV) {
                     my $atom_hkl_phase = atom_phase_hkl_rad( 
                         @hkl, 
                         @{$atom->{coordinates_fract}} );
-                    if (0) {
+                    if (0) { # local temporary test for atomic struct.factor;
                         if ($atom->{label} eq "Cl1") {
                             printf "%3s %3s %3s  %0.3f %0.3f %0.4f\n", 
                             @hkl, $resolution_hkl, 1/(2 * $resolution_hkl),
@@ -212,19 +219,41 @@ for my $filename (@ARGV) {
                     }
                     # print "Phase of atom: $atom_hkl_phase\n";
                     ## print "$atom_structure_factor\n";
-                    $F_cos_comp_w_Tf_and_cor += $atom->{occupancy} * 
+                    $F_cos_comp_w_Tf_and_cor +=
+                        $atom->{occupancy} * 
                         $atom_structure_factor * cos( $atom_hkl_phase );
-                    $F_sin_comp_w_Tf_and_cor += $atom->{occupancy} * 
+                    $F_sin_comp_w_Tf_and_cor +=
+                        $atom->{occupancy} * 
                         $atom_structure_factor * sin( $atom_hkl_phase );
                     my $temperature_factor_ISO = 
                         exp( ( -$atom->{B_factor}/4 ) * 
                              ( 1/$resolution_hkl )**2 );
-                    $F_cos_comp_w_cor += 
+                    # print "$atom->{chemical_type}  $temperature_factor_ISO\n";
+                    # structure factor components without corrections;
+                    $F_cos_comp_w_cor +=
                         $atom->{occupancy} * $atom_structure_factor * 
                         $temperature_factor_ISO * cos( $atom_hkl_phase );
-                    $F_sin_comp_w_cor +=
+                    $F_sin_comp_w_cor += 
                         $atom->{occupancy} * $atom_structure_factor * 
                         $temperature_factor_ISO * sin( $atom_hkl_phase );
+                    # structure factor components
+                    my $temperature_factor_ANISO = 1;
+              ##  if ($atom->{chemical_type} eq "H") {
+              ##      $temperature_factor_ANISO = 1;
+              ##  } else {
+              ##      $temperature_factor_ANISO = 
+              ##          temperature_factor_aniso( 
+              ##              @{$atom->{aniso_value_Uij}},
+              ##              @hkl,
+              ##              @{$cell_parameters->{reciprocal_cell_radians}} );
+              ##  }
+                    $F_cos_comp_aniso_w_cor += 
+                        $atom->{occupancy} * $atom_structure_factor *
+                        $temperature_factor_ANISO * cos( $atom_hkl_phase );
+                    $F_sin_comp_aniso_w_cor += 
+                        $atom->{occupancy} * $atom_structure_factor *
+                        $temperature_factor_ANISO * sin( $atom_hkl_phase );
+                        
                 }
                 
                 my $F_hkl_without_Tf_and_cor = 
@@ -232,7 +261,9 @@ for my $filename (@ARGV) {
                           $F_sin_comp_w_Tf_and_cor**2 );
                 my $F_hkl_iso_without_cor = 
                     sqrt( $F_cos_comp_w_cor**2 + $F_sin_comp_w_cor**2 ); 
-                
+                my $F_hkl_aniso_without_cor = 
+                    sqrt( $F_cos_comp_aniso_w_cor**2 + 
+                          $F_sin_comp_aniso_w_cor**2);
 
                 if ( $synthetic_test1 ) {
                     print "  H   K   L  RESO  sin(theta)  F  1/2d   F_cos  "
@@ -244,9 +275,11 @@ for my $filename (@ARGV) {
                 }
                 
                 if (0) {
-                    printf "%3s %3s %3s  %0.3f %0.5f %0.5f %0.5f\n", 
+                    printf "%3s %3s %3s %0.3f %0.3f %0.3f %0.3f %0.3f\n", 
                     @hkl, $resolution_hkl, 
-                    $F_hkl_without_Tf_and_cor, $F_hkl_iso_without_cor,
+                    $F_hkl_without_Tf_and_cor, 
+                    $F_hkl_iso_without_cor,
+                    $F_hkl_aniso_without_cor,
                     $F_hkl_iso_without_cor**2;
                 }
             }}}
@@ -541,6 +574,7 @@ sub get_thermal
              8 * ($PI**2) * $squared_displacement_U->[$i]
             ),
             U_value_of_B_factor => $squared_displacement_U->[$i],
+            # KLAIDA
             aniso_value_Uij => [ $anisotrophic_U_ij_values[0]->[$i],
                                  $anisotrophic_U_ij_values[1]->[$i],
                                  $anisotrophic_U_ij_values[2]->[$i],
@@ -764,3 +798,28 @@ sub atom_phase_hkl_rad {
                        $l * $fract_z );   
 }
 
+# Function for temperature factor calculation (anisotropic);
+# equation from "Principles of protein X-ray crystallography",
+# Jan Drenth, page 94; T(aniso; hkl)=..
+# 
+# Parameters:
+# temperature_factor_aniso( U11, U22, U33, U23, U13, U12, h, k, l, a*, b*, c* );
+# Return:
+# T(aniso, hkl).
+sub temperature_factor_aniso {
+    my ($U_11, $U_22, $U_33, 
+        $U_23, $U_13, $U_12,
+        $h, $k, $l,
+        $repro_length_a, $repro_length_b, $repro_length_c,
+        $alpha_star, $beta_star, $gamma_star) = @_;
+    return exp( ( -2 * $PI**2 ) *
+                ($U_11 * ($h**2) * ($repro_length_a**2) +
+                 $U_22 * ($k**2) * ($repro_length_b**2) +
+                 $U_33 * ($l**2) * ($repro_length_c**2) +
+                 2 * $U_12 * $h * $k * $repro_length_a * $repro_length_b * 
+                 cos( $gamma_star ) +
+                 2 * $U_13 * $h * $l * $repro_length_a * $repro_length_c * 
+                 cos( $beta_star )+
+                 2 * $U_23 * $k * $l * $repro_length_b * $repro_length_c * 
+                 cos( $alpha_star ) ) );
+}
