@@ -174,6 +174,8 @@ for my $filename (@ARGV) {
             my ($h_max, $h_min, 
                 $k_max, $k_min, 
                 $l_max, $l_min) = @{ hkl_limits( $datablock )};
+	    my @abc_star = @{$cell_parameters->{reciprocal_cell_radians}}[0..2];
+	    
             foreach my $h_limit ($h_min..$h_max) {
             foreach my $k_limit ($k_min..$k_max) {   
             foreach my $l_limit ($l_min..$l_max) {  
@@ -200,8 +202,8 @@ for my $filename (@ARGV) {
                 my $F_sin_comp_w_cor = 0;
                 my ($F_cos_comp_aniso_w_cor, 
                     $F_sin_comp_aniso_w_cor) = (0,0);
-                foreach my $atom (@$atoms) {
-                    
+		
+                foreach my $atom (@$atoms) {                
                     my $atom_structure_factor = 
                         atom_structure_factor_from_coefficients( 
                             $atom->{Crommer_Mann_coefficients}, 
@@ -239,22 +241,23 @@ for my $filename (@ARGV) {
                         $atom->{occupancy} * $atom_structure_factor * 
                         $temperature_factor_ISO * sin( $atom_hkl_phase );
                     # structure factor components
-                    my $temperature_factor_ANISO = 1;
-              ##  if ($atom->{chemical_type} eq "H") {
-              ##      $temperature_factor_ANISO = 1;
-              ##  } else {
-              ##      $temperature_factor_ANISO = 
-              ##          temperature_factor_aniso( 
-              ##              @{$atom->{aniso_value_Uij}},
-              ##              @hkl,
-              ##              @{$cell_parameters->{reciprocal_cell_radians}} );
-              ##  }
-                    $F_cos_comp_aniso_w_cor += 
-                        $atom->{occupancy} * $atom_structure_factor *
-                        $temperature_factor_ANISO * cos( $atom_hkl_phase );
-                    $F_sin_comp_aniso_w_cor += 
-                        $atom->{occupancy} * $atom_structure_factor *
-                        $temperature_factor_ANISO * sin( $atom_hkl_phase );
+		    unless ($synthetic_test1) {
+			my $temperature_factor_ANISO;
+			if ($atom->{chemical_type} eq "H") {
+			    $temperature_factor_ANISO = 1;
+			} else {
+			    $temperature_factor_ANISO = 
+				temperature_factor_aniso( 
+				    @{$atom->{aniso_value_Uij}},
+				    @hkl, @abc_star);
+			}
+			$F_cos_comp_aniso_w_cor += 
+			    $atom->{occupancy} * $atom_structure_factor *
+			    $temperature_factor_ANISO * cos( $atom_hkl_phase );
+			$F_sin_comp_aniso_w_cor += 
+			    $atom->{occupancy} * $atom_structure_factor *
+			    $temperature_factor_ANISO * sin( $atom_hkl_phase );
+		    } # end unless;
                         
                 }
                 
@@ -819,17 +822,13 @@ sub atom_phase_hkl_rad {
 sub temperature_factor_aniso {
     my ($U_11, $U_22, $U_33, 
         $U_23, $U_13, $U_12,
-        $h, $k, $l,
-        $repro_length_a, $repro_length_b, $repro_length_c,
-        $alpha_star, $beta_star, $gamma_star) = @_;
+        $h, $k, $l, $repro_length_a, 
+	$repro_length_b, $repro_length_c) = @_;
     return exp( ( -2 * $PI**2 ) *
                 ($U_11 * ($h**2) * ($repro_length_a**2) +
                  $U_22 * ($k**2) * ($repro_length_b**2) +
                  $U_33 * ($l**2) * ($repro_length_c**2) +
-                 2 * $U_12 * $h * $k * $repro_length_a * $repro_length_b * 
-                 cos( $gamma_star ) +
-                 2 * $U_13 * $h * $l * $repro_length_a * $repro_length_c * 
-                 cos( $beta_star )+
-                 2 * $U_23 * $k * $l * $repro_length_b * $repro_length_c * 
-                 cos( $alpha_star ) ) );
+                 2 * $U_12 * $h * $k * $repro_length_a * $repro_length_b +
+                 2 * $U_13 * $h * $l * $repro_length_a * $repro_length_c +
+                 2 * $U_23 * $k * $l * $repro_length_b * $repro_length_c ) );
 }
