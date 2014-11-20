@@ -163,9 +163,11 @@ for my $filename (@ARGV) {
             if (0) {
                 print "$datablock->{name}\n";
                 foreach my $atom (@$atoms) {
+                    local $,=' ';
                     print "$atom->{label} "."$atom->{chemical_type} ".
-                        "$atom->{U_value_of_B_factor} $atom->{B_factor} ".
-                        "@{$atom->{aniso_value_Uij}}\n";
+                        "$atom->{U_value_of_B_factor} $atom->{B_factor}",
+                        $atom->{aniso_value_Uij}[0] ? 
+                        @{$atom->{aniso_value_Uij}} : "EMPTY" ,"\n";
                 }
             }
             #-------------------------------------------------
@@ -567,20 +569,28 @@ sub get_thermal
               $datablock_values->{_atom_site_aniso_u_13} ),
           remove_standard_uncertainties( 
               $datablock_values->{_atom_site_aniso_u_12} ) ); 
-    
+    # _atom_site_aniso_label needs for extracting of anisotrophic values; 
+    my %temporary_aniso_data;
+    for my $i (0..$#{$datablock_values->{_atom_site_aniso_label}}) {
+        my $atom_aniso_label = 
+            $datablock_values->{_atom_site_aniso_label}[$i];
+        $temporary_aniso_data{$atom_aniso_label} = 
+            [ $anisotrophic_U_ij_values[0]->[$i],
+              $anisotrophic_U_ij_values[1]->[$i],
+              $anisotrophic_U_ij_values[2]->[$i],
+              $anisotrophic_U_ij_values[3]->[$i],
+              $anisotrophic_U_ij_values[4]->[$i],
+              $anisotrophic_U_ij_values[5]->[$i] ];
+    }
+    # 
     for my $i (0..$#{$datablock_values->{_atom_site_label}}) {
+        my $atom_label = $datablock_values->{_atom_site_label}[$i];
         my %thermal_info = (
             B_factor => ($thermal_parameter_B->[$i] ? $thermal_parameter_B->[$i] : 
              8 * ($PI**2) * $squared_displacement_U->[$i]
             ),
             U_value_of_B_factor => $squared_displacement_U->[$i],
-            # KLAIDA
-            aniso_value_Uij => [ $anisotrophic_U_ij_values[0]->[$i],
-                                 $anisotrophic_U_ij_values[1]->[$i],
-                                 $anisotrophic_U_ij_values[2]->[$i],
-                                 $anisotrophic_U_ij_values[3]->[$i],
-                                 $anisotrophic_U_ij_values[4]->[$i],
-                                 $anisotrophic_U_ij_values[5]->[$i] ]
+            aniso_value_Uij => $temporary_aniso_data{$atom_label}
             );
         push ( @atoms_thermal_coefficients, \%thermal_info );
     }
