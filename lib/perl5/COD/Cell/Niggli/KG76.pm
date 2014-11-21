@@ -57,7 +57,14 @@ sub reduce
 
     local $, = " ";
     local $\ = "\n";
+
+    my $max_n = 1000;
+    my $n = 1;
     while(1) {
+        if( ++$n > $max_n ) {
+            print STDERR "reduce(): could not reduce cell in $max_n steps";
+            return undef;
+        }
         # 1.
         if( $A - $eps > $B or
             (abs($A-$B) < $eps && abs($ksi) - $eps > abs($eta)) ) {
