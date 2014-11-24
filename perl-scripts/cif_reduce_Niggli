@@ -1,4 +1,16 @@
-#!/usr/bin/perl
+#! /bin/sh
+#!perl -w # --*- Perl -*--
+eval 'exec perl -x $0 ${1+"$@"}'
+    if 0;
+#------------------------------------------------------------------------------
+#$Author$
+#$Date$ 
+#$Revision$
+#$URL$
+#------------------------------------------------------------------------------
+#*
+#  Performs Niggli cell reduction of CIF files.
+#**
 
 use strict;
 use warnings;
@@ -9,11 +21,35 @@ use COD::Cell::Niggli::KG76;
 use Fractional;
 use Spacegroups::SymopAlgebra;
 use UserMessage;
+use SOptions;
+use SUsage;
 
 sub get_unit_cell($$$);
 sub mat_vect_mul($$);
 
-my $use_parser = 'perl';
+my $use_parser = 'c';
+
+#* USAGE:
+#*     $0 [options] input.cif [input2.cif ...]
+#* 
+#* OPTIONS:
+#*     --use-perl-parser
+#*        Use Perl parser for CIF parsing.
+#*
+#*     --use-c-parser
+#*        Use Perl & C parser for CIF parsing.
+#*
+#*     --help,--usage
+#*        Print short usage message (this message) and exit.
+#**
+
+@ARGV = getOptions
+(
+    "--use-perl-parser" => sub{ $use_parser = "perl" },
+    "--use-c-parser"    => sub{ $use_parser = "c" },
+
+    "--help,--usage" => sub { SUsage::usage; exit },
+);
 
 @ARGV = ( "-" ) unless @ARGV;
 
@@ -154,4 +190,3 @@ sub mat_vect_mul($$)
 
     return wantarray ? @new_coordinates : \@new_coordinates;
 }
-
