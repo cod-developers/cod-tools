@@ -1,0 +1,147 @@
+#! /bin/sh
+#!perl -w # --*- Perl -*--
+eval 'exec perl -x $0 ${1+"$@"}'
+    if 0;
+#------------------------------------------------------------------------------
+#$Author$
+#$Date$ 
+#$Revision$
+#$URL$
+#------------------------------------------------------------------------------
+#*
+#  Prepares a calculation tree from descriptions in TCOD CIF file.
+#**
+
+use strict;
+use warnings;
+use CIFParser;
+use CIFTagCanonicalNames;
+use CIFTagPrint;
+use Digest::MD5 qw( md5_hex );
+use File::Basename;
+use MIME::Base64 qw( decode_base64 );
+use UserMessage;
+use SOptions;
+use SUsage;
+use HTML::Entities qw( encode_entities decode_entities );
+
+my $use_parser = 'c';
+my $output_dir = '.';
+
+#* USAGE:
+#*     $0 [options] input.cif [input2.cif ...]
+#* 
+#* OPTIONS:
+#*     -o, --output-dir our/
+#*        Base path of the created tree.
+#*
+#*     --use-perl-parser
+#*        Use Perl parser for CIF parsing.
+#*
+#*     --use-c-parser
+#*        Use Perl & C parser for CIF parsing.
+#*
+#*     --help,--usage
+#*        Print short usage message (this message) and exit.
+#**
+
+@ARGV = getOptions
+(
+    "-o,--output-dir" => \$output_dir,
+
+    "--use-perl-parser" => sub{ $use_parser = "perl" },
+    "--use-c-parser"    => sub{ $use_parser = "c" },
+
+    "--help,--usage" => sub { SUsage::usage; exit },
+);
+
+@ARGV = ( "-" ) unless @ARGV;
+
+my %created_dirs = ('.' => 1);
+
+for my $filename (@ARGV) {
+
+    my( $data, $error_count );
+
+    if( $use_parser eq "perl" ) {
+        my $parser = new CIFParser;
+
+        $data = $parser->Run($filename);
+
+        if( defined $parser->YYData->{ERRCOUNT} ) {
+            $error_count = $parser->YYData->{ERRCOUNT};
+        }
+    } else {
+        require CCIFParser;
+        ( $data, $error_count ) = CCIFParser::parse($filename);
+    }
+
+    canonicalize_all_names( $data );
+
+    for my $datablock (@$data) {
+        my $values   = $datablock->{values};
+        my $dataname = $datablock->{name};
+
+        for my $i (0..$#{$values->{_tcod_file_id}}) {
+            my $path     = $values->{_tcod_file_name}[$i];
+            my $dirname  = dirname( $values->{_tcod_file_name}[$i] );
+            my $contents = $values->{_tcod_file_contents}[$i];
+            my $role     = $values->{_tcod_file_role}[$i];
+            my $md5sum   = $values->{_tcod_file_md5sum}[$i];
+            my $encoding;
+            if( exists $values->{_tcod_file_content_encoding} ) {
+                $encoding = $values->{_tcod_file_content_encoding}[$i];
+                $encoding = undef if $encoding eq '.';
+            }
+            if( !exists $created_dirs{$dirname} ) {
+                die "can not create path $output_dir/$dirname -- " .
+                    "already exists" if -e "$output_dir/$dirname";
+                mkdir "$output_dir/$dirname";
+                $created_dirs{$dirname} = 1;
+            }
+            if(      $encoding && $encoding eq 'base64' ) {
+                $contents = decode_base64($contents);
+            } elsif( $encoding && $encoding eq 'ncr' ) {
+                # Decoding all XML entities and encoding non-ASCII symbols
+                # back in order to make the CIF file valid.
+                $contents = decode_entities( $contents );
+                $contents = encode_entities( $contents,
+                                             '^\n\x09\x0a\x0d\x20-\x7e' );
+            } elsif( $encoding ) {
+                warning( $0, $filename, $dataname,
+                         "unknown contents encoding '$encoding' for " .
+                         "file '$path' -- will not decode contents" );
+            }
+
+            if( $md5sum ) {
+                if( md5_hex($contents) ne $md5sum ) {
+                    warning( $0, $filename, $dataname,
+                             "MD5 checksums of the original '$path' and " .
+                             "decoded files are different" );
+                }
+            }
+
+            open( my $out, '>', "$output_dir/$path" );
+            print $out $contents;
+            close( $out );
+            chmod( 0775, "$output_dir/$path" ) if $role eq 'script';
+        }
+
+        my $main_exec_path = "$output_dir/main.sh";
+        open( my $main_fh, '>', $main_exec_path );
+        print $main_fh "#!/bin/bash\n\n";
+
+        for my $i (0..$#{$values->{_tcod_computation_step}}) {
+            my $env = $values->{_tcod_computation_environment}[$i];
+            my $command = $values->{_tcod_computation_command}[$i];
+            print $main_fh "(\n";
+            if( $env ) {
+                map {print $main_fh "    $_\n" } split( "\n", $env );
+                print $main_fh "\n";
+            }
+            print $main_fh "    $command\n)\n";
+        }
+        close( $main_fh );
+        chmod( 0775, $main_exec_path );
+    }
+}
