@@ -20,6 +20,7 @@ use CIFTagPrint;
 use Digest::MD5 qw( md5_hex );
 use File::Basename;
 use MIME::Base64 qw( decode_base64 );
+use MIME::QuotedPrint qw( decode_qp );
 use UserMessage;
 use SOptions;
 use SUsage;
@@ -101,6 +102,8 @@ for my $filename (@ARGV) {
             }
             if(      $encoding && $encoding eq 'base64' ) {
                 $contents = decode_base64($contents);
+            } elsif( $encoding && $encoding eq 'quoted-printable' ) {
+                $contents = decode_qp($contents);
             } elsif( $encoding && $encoding eq 'ncr' ) {
                 # Decoding all XML entities and encoding non-ASCII symbols
                 # back in order to make the CIF file valid.
