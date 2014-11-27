@@ -20,6 +20,7 @@ use CIFTagPrint;
 use COD::Cell::Niggli::KG76;
 use Fractional;
 use Spacegroups::SymopAlgebra;
+use Spacegroups::SymopParse;
 use UserMessage;
 use SOptions;
 use SUsage;
@@ -46,6 +47,9 @@ $KG76::debug = 0;
 
 @ARGV = getOptions
 (
+    "--debug"    => sub{ $KG76::debug = 1 },
+    "--no-debug" => sub{ $KG76::debug = 0 },
+
     "--use-perl-parser" => sub{ $use_parser = "perl" },
     "--use-c-parser"    => sub{ $use_parser = "c" },
 
@@ -77,9 +81,7 @@ for my $filename (@ARGV) {
         my $values = $datablock->{values};
         my @cell = get_unit_cell( $values, $filename, $datablock->{name} );
         my @niggli = KG76::reduce( @cell );
-        my $M = symop_ortho_from_fract( @cell );
-        my $N = symop_ortho_from_fract( @niggli );
-        my $T = SymopAlgebra::symop_mul( mat3_inv( $N ), $M );
+        my $CoB = SymopAlgebra::symop_transpose( pop( @niggli ) );
 
         $values->{_cell_length_a}[0] = $niggli[0];
         $values->{_cell_length_b}[0] = $niggli[1];
@@ -96,10 +98,24 @@ for my $filename (@ARGV) {
                                         _atom_site_fract_z );
 
             my @new_coordinates =
-                mat_vect_mul( $T, \@old_coordinates );
+                mat_vect_mul( $CoB, \@old_coordinates );
             $values->{_atom_site_fract_x}[$i] = $new_coordinates[0];
             $values->{_atom_site_fract_y}[$i] = $new_coordinates[1];
             $values->{_atom_site_fract_z}[$i] = $new_coordinates[2];
+        }
+
+        # Extending 3x3 symop to 4x4
+        push( @{$CoB->[0]}, 0 );
+        push( @{$CoB->[1]}, 0 );
+        push( @{$CoB->[2]}, 0 );
+        push( @$CoB, [ 0, 0, 0, 1 ] );
+
+        for my $i (0..$#{$values->{_symmetry_equiv_pos_as_xyz}}) {
+            my $symop = SymopParse::symop_from_string(
+                $values->{_symmetry_equiv_pos_as_xyz}[$i]);
+            my $symop_now = SymopAlgebra::symop_mul( $symop, $CoB );
+            $values->{_symmetry_equiv_pos_as_xyz}[$i] =
+                SymopParse::string_from_symop( $symop_now );
         }
 
         print_cif( $datablock,
