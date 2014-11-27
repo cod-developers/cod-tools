@@ -17,7 +17,7 @@ require Exporter;
 @SymopAlgebra::ISA = qw(Exporter);
 @SymopAlgebra::EXPORT_OK = qw(
     symop_mul symop_apply symop_invert symop_modulo_1 symop_translation
-    symop_translate symop_set_translation
+    symop_translate symop_set_translation symop_transpose
 );
 
 use VectorAlgebra qw( modulo_1 );
@@ -270,6 +270,20 @@ sub round_values_in_symop($@)
     }
 
     return $symop;
+}
+
+sub symop_transpose($)
+{
+    my( $symop ) = @_;
+
+    my $result = [];
+    for my $i (0..$#{$symop}) {
+        for my $j (0..$#{$symop->[$i]}) {
+            push( @$result, [] ) if @$result <= $j;
+            $result->[$j][$i] = $symop->[$i][$j];
+        }
+    }
+    return $result;
 }
 
 1;
