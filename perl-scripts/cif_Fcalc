@@ -155,6 +155,11 @@ for my $filename (@ARGV) {
         if ( $dump_cell_parameters ) {            
             printing_of_dump_cell_parameters( $datablock, $cell_parameters );
         }
+        # for &cell_filling_sym testing;
+        if (0) {
+            cell_filling_sym( $datablock, $filename, $atoms, $f2o);
+            exit;
+        }
         
         unless ( $dump_Cromer_Mann_parameters || $dump_cell_parameters || 
                  $dump_xyz_coordinates ) {
@@ -831,4 +836,171 @@ sub temperature_factor_aniso {
                  2 * $U_12 * $h * $k * $repro_length_a * $repro_length_b +
                  2 * $U_13 * $h * $l * $repro_length_a * $repro_length_c +
                  2 * $U_23 * $k * $l * $repro_length_b * $repro_length_c ) );
+}
+
+
+# Symmetric transformations of atom positions for receiving of 
+# symmetrical atoms.
+
+sub cell_filling_sym {
+    my ($datablock, $filename, $atoms_data, $f2o) = @_;
+    my $values =  $datablock->{values};
+    # my 
+        
+    my $sym_data;    
+    if(exists $values->{"_symmetry_equiv_pos_as_xyz"})
+    {
+        $sym_data = $values->{"_symmetry_equiv_pos_as_xyz"};
+    }
+    ## print "@{$sym_data}\n";
+
+    if(exists $values->{"_symmetry_space_group_name_hall"} &&                  
+       (not defined $sym_data)) {
+        
+        my $hall = $values->{"_symmetry_space_group_name_hall"}[0];
+        $sym_data = get_symops("hall", $hall);        
+        if($sym_data == 0)
+        {
+            print STDERR "ERR: " . &File::Basename::fileparse($0) . ": ";
+            print STDERR "'$filename': ";
+            print STDERR "There was incorrect _symmetry_space_group_name_Hall "
+                . $hall . "\n";
+        }
+        
+    }
+    ## print "@{$sym_data}\n";
+    
+    if(exists $values->{"_symmetry_space_group_name_h-m"} &&                   
+       ((not defined $sym_data) or $sym_data == 0)) {
+        my $h_m = $values->{"_symmetry_space_group_name_h-m"}[0];
+        $sym_data = get_symops("hermann_mauguin", $h_m);
+        
+        if($sym_data == 0)
+        {
+            print STDERR "ERR: " . &File::Basename::fileparse($0) . ": ";
+            print STDERR "'$filename': ";
+            print STDERR "There was incorrect _symmetry_space_group_name_H-M "
+                . $h_m . "\n";
+            die; # data of space group is empty or incorrect;
+        }
+    }
+    ## print "@{$sym_data}\n";
+    
+    my @sym_operators = map{ SymopParse::symop_from_string($_) } @{$sym_data};
+    #-----------------------------------------------------------------------
+    # print for @sym_operators values only for testing purpose;
+    if (0) { 
+        foreach my $what (map{ @{$_} } @sym_operators) {
+            print @{$what},"\n";
+        };
+    }
+    #------------------------------------------------------------------------
+    ## my $inloop = $datablock->{"inloop"};
+    ## foreach (keys %{$inloop}) {
+    ##      print  $inloop->{$_}, $_,"\n";
+    ##}
+    ## print @{$datablock->{"loops"}},"\n";
+    ## print ">> ",@{$datablock->{"loops"}[4]},"\n";
+    
+    my $atoms_number_of_cell = 0;
+    for(my $i = 0; $i < @sym_operators; $i++) {
+        my $symop = $sym_operators[$i]; # 
+        ## print "$symop\n";
+        foreach my $atom (@{$atoms_data}) {
+            my $new_xyz_fract = 
+                symop_apply( [@{$atom->{coordinates_fract}}, 1], $symop);
+            $new_xyz_fract = [ @{$new_xyz_fract}[0..2] ];
+            ## print "@{$new_xyz_fract}\n";
+            my $new_xyz_ortho = 
+                mat_vect_mul( $f2o, $new_xyz_fract );
+            ## print "@{$new_xyz_ortho}\n";
+            $atoms_number_of_cell++;
+            
+            if (exists $atom->{symmetrical_xyz_fract}) { 
+                push( @{$atom->{symmetrical_xyz_fract}}, $new_xyz_fract);
+            } else {
+                $atom->{symmetrical_xyz_fract} = [$new_xyz_fract];
+            } 
+            if (exists $atom->{symmetrical_xyz_ortho}) { 
+                push( @{$atom->{symmetrical_xyz_ortho}}, $new_xyz_ortho);
+            } else {
+                $atom->{symmetrical_xyz_ortho} = [$new_xyz_ortho];
+            } 
+            
+        }
+    } # end of for;
+    if( 0 ) { 
+        print $atoms_number_of_cell, "\n";
+        print "$datablock->{name}\n";
+        foreach my $atom (@$atoms_data) {
+            foreach my $sym_xyz (@{$atom->{symmetrical_xyz_ortho}}) {
+                printf "%2s %.5f %.5f %.5f\n", $atom->{chemical_type}, 
+                @{$sym_xyz};
+            }
+        }
+    }   
+    
+}
+
+
+#---------------------------------------------------------------
+# functions get_symops() and symop_apply() code was 
+# copied from 'cif_fillcell' script. rev. 1440;
+#===============================================================#
+# @SymopLookup::table =
+# (
+# {
+#     number          => 1,
+#     hall            => ' P 1',
+#     schoenflies     => 'C1^1',
+#     hermann_mauguin => 'P 1',
+#     universal_h_m   => 'P 1',
+#     symops => [
+#         'x,y,z',
+#     ],
+#     ncsym => [
+#         'x,y,z',
+#     ]
+# },
+# );
+
+sub get_symops
+{
+    my ($option, $param) = @_;
+
+    $param =~ s/ //g;
+    $param =~ s/_//g;
+
+    foreach my $hash (@SymopLookup::table)
+    {
+        my $value = $hash->{$option};
+        $value =~ s/ //g;
+        $value =~ s/_//g;
+
+        if($value eq $param)
+        {
+            return $hash->{symops};
+        }
+    }
+    return 0;
+}
+
+#===============================================================#
+sub symop_apply
+{
+        my($atom_xyz, $symop) = @_;
+        my @new_atom_xyz;
+
+        for(my $i = 0; $i < @{$symop}; $i++)
+        {
+                $new_atom_xyz[$i] = 0;
+                for(my $j = 0; $j < @{$symop}; $j++)
+                {
+                        ${$atom_xyz}[$j] =~ s/\(\d+\)$//;
+                        $new_atom_xyz[$i] += ${$atom_xyz}[$j] * ${$symop}[$i][$j];
+                }
+                $new_atom_xyz[$i] = SymopParse::modulo_1($new_atom_xyz[$i]);
+        }
+
+        return \@new_atom_xyz;
 }
