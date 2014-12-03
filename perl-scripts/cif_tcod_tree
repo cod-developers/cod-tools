@@ -18,6 +18,7 @@ use CIFParser;
 use CIFTagCanonicalNames;
 use CIFTagPrint;
 use Digest::MD5 qw( md5_hex );
+use Digest::SHA qw( sha1_hex );
 use File::Basename;
 use File::Path qw( make_path );
 use IO::Uncompress::Gunzip qw(gunzip $GunzipError);
@@ -91,6 +92,7 @@ for my $filename (@ARGV) {
             my $contents = $values->{_tcod_file_contents}[$i];
             my $role     = $values->{_tcod_file_role}[$i];
             my $md5sum   = $values->{_tcod_file_md5sum}[$i];
+            my $sha1sum  = $values->{_tcod_file_sha1sum}[$i];
             my $uri      = $values->{_tcod_file_uri}[$i];
             my $encoding;
             if( exists $values->{_tcod_file_content_encoding} ) {
@@ -142,6 +144,13 @@ for my $filename (@ARGV) {
                 if( md5_hex($contents) ne $md5sum ) {
                     warning( $0, $filename, $dataname,
                              "MD5 checksums of the original '$path' and " .
+                             "decoded files are different" );
+                }
+            }
+            if( $sha1sum ) {
+                if( sha1_hex($contents) ne $sha1sum ) {
+                    warning( $0, $filename, $dataname,
+                             "SHA1 checksums of the original '$path' and " .
                              "decoded files are different" );
                 }
             }
