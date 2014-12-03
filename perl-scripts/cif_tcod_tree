@@ -89,6 +89,7 @@ for my $filename (@ARGV) {
             my $contents = $values->{_tcod_file_contents}[$i];
             my $role     = $values->{_tcod_file_role}[$i];
             my $md5sum   = $values->{_tcod_file_md5sum}[$i];
+            my $uri      = $values->{_tcod_file_uri}[$i];
             my $encoding;
             if( exists $values->{_tcod_file_content_encoding} ) {
                 $encoding = $values->{_tcod_file_content_encoding}[$i];
@@ -99,6 +100,20 @@ for my $filename (@ARGV) {
                     "already exists" if -e "$output_dir/$dirname";
                 mkdir "$output_dir/$dirname";
                 $created_dirs{$dirname} = 1;
+            }
+            if( !defined $contents && defined $uri ) {
+                # If the URI is given instead of contents, it has to be
+                # fetched
+                use WWW::Curl::Easy;
+                my $curl = WWW::Curl::Easy->new();
+                #$curl->setopt( CURLOPT_HEADER, 1 );
+                $curl->setopt( CURLOPT_URL, $uri );
+                $curl->setopt( CURLOPT_WRITEDATA, \$contents );
+                if( $curl->perform ) {
+                    warning( $0, $filename, $dataname,
+                             "unable to fetch URI '$uri': " .
+                             $curl->errbuf );
+                }
             }
             if(      $encoding && $encoding eq 'base64' ) {
                 $contents = decode_base64($contents);
@@ -127,7 +142,9 @@ for my $filename (@ARGV) {
             open( my $out, '>', "$output_dir/$path" );
             print $out $contents;
             close( $out );
-            chmod( 0775, "$output_dir/$path" ) if $role eq 'script';
+            if( $role && $role eq 'script' ) {
+                chmod( 0775, "$output_dir/$path" );
+            }
         }
 
         my $main_exec_path = "$output_dir/main.sh";
