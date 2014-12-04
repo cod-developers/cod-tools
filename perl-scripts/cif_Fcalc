@@ -156,9 +156,9 @@ for my $filename (@ARGV) {
             printing_of_dump_cell_parameters( $datablock, $cell_parameters );
         }
         # for &cell_filling_sym testing;
-        if (0) {
+        if (1) {
             cell_filling_sym( $datablock, $filename, $atoms, $f2o);
-            exit;
+            # exit;
         }
         
         unless ( $dump_Cromer_Mann_parameters || $dump_cell_parameters || 
@@ -890,45 +890,54 @@ sub cell_filling_sym
         };
     }
     #------------------------------------------------------------------------
-    
-    my $atoms_number_of_cell = 0;
-    for(my $i = 0; $i < @sym_operators; $i++) {
-        my $symop = $sym_operators[$i]; # 
-        ## print "$symop\n";
-        foreach my $atom (@{$atoms_data}) {
+        
+    my $atoms_number_of_cell = 0;    
+    my @sym_atom_info;
+    foreach my $atom (@{$atoms_data}) {
+        my %sym_atom_coordinates;
+        
+        for(my $i = 0; $i < @sym_operators; $i++) {
+            my $symop = $sym_operators[$i]; # 
+            ## print "$symop\n";
+            
             my $new_xyz_fract = 
                 symop_apply( [@{$atom->{coordinates_fract}}, 1], $symop);
             $new_xyz_fract = [ @{$new_xyz_fract}[0..2] ];
             ## print "@{$new_xyz_fract}\n";
-            my $new_xyz_ortho = 
-                mat_vect_mul( $f2o, $new_xyz_fract );
+            my $new_xyz_ortho = mat_vect_mul( $f2o, 
+                                              $new_xyz_fract );
             ## print "@{$new_xyz_ortho}\n";
             $atoms_number_of_cell++;
             
             if(exists $atom->{symmetrical_xyz_fract}) { 
-                push( @{$atom->{symmetrical_xyz_fract}}, $new_xyz_fract);
+                push( @{$atom->{symmetrical_xyz_fract}}, 
+                      $new_xyz_fract);
             } else {
-                $atom->{symmetrical_xyz_fract} = [$new_xyz_fract];
+                $atom->{symmetrical_xyz_fract} = 
+                    [$new_xyz_fract];
             } 
             if(exists $atom->{symmetrical_xyz_ortho}) { 
-                push( @{$atom->{symmetrical_xyz_ortho}}, $new_xyz_ortho );
+                push( @{$atom->{symmetrical_xyz_ortho}}, 
+                      $new_xyz_ortho );
             } else {
-                $atom->{symmetrical_xyz_ortho} = [$new_xyz_ortho];
+                $atom->{symmetrical_xyz_ortho} = 
+                    [$new_xyz_ortho];
             }             
-        }
-    } # end of for;
+        } # end of for;
+        push( @sym_atom_info, \%sym_atom_coordinates);
+    } # end of foreach;
     
     
-    if( 0 ) { 
-        print $atoms_number_of_cell, "\n";
-        print "$datablock->{name}\n";
-        foreach my $atom (@$atoms_data) {
-            foreach my $sym_xyz (@{$atom->{symmetrical_xyz_ortho}}) {
-                printf "%2s %.5f %.5f %.5f\n", $atom->{chemical_type}, 
-                @{$sym_xyz};
-            }
-        }
-    }   
+  ## if( 0 ) { 
+  ##     print $atoms_number_of_cell, "\n";
+  ##     print "$datablock->{name}\n";
+  ##     foreach my $atom (@$atoms_data) {
+  ##         foreach my $sym_xyz (@{$atom->{symmetrical_xyz_ortho}}) {
+  ##             printf "%2s %.5f %.5f %.5f\n", $atom->{chemical_type}, 
+  ##             @{$sym_xyz};
+  ##         }
+  ##     }
+  ## }   
     
 }
 
