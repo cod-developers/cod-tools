@@ -842,25 +842,23 @@ sub temperature_factor_aniso {
 # Symmetric transformations of atom positions for receiving of 
 # symmetrical atoms.
 
-sub cell_filling_sym {
+sub cell_filling_sym 
+{
     my ($datablock, $filename, $atoms_data, $f2o) = @_;
     my $values =  $datablock->{values};
-    # my 
-        
+    
     my $sym_data;    
     if(exists $values->{"_symmetry_equiv_pos_as_xyz"})
     {
         $sym_data = $values->{"_symmetry_equiv_pos_as_xyz"};
     }
-    ## print "@{$sym_data}\n";
 
     if(exists $values->{"_symmetry_space_group_name_hall"} &&                  
        (not defined $sym_data)) {
         
         my $hall = $values->{"_symmetry_space_group_name_hall"}[0];
         $sym_data = get_symops("hall", $hall);        
-        if($sym_data == 0)
-        {
+        if($sym_data == 0) {
             print STDERR "ERR: " . &File::Basename::fileparse($0) . ": ";
             print STDERR "'$filename': ";
             print STDERR "There was incorrect _symmetry_space_group_name_Hall "
@@ -868,15 +866,13 @@ sub cell_filling_sym {
         }
         
     }
-    ## print "@{$sym_data}\n";
     
     if(exists $values->{"_symmetry_space_group_name_h-m"} &&                   
        ((not defined $sym_data) or $sym_data == 0)) {
         my $h_m = $values->{"_symmetry_space_group_name_h-m"}[0];
         $sym_data = get_symops("hermann_mauguin", $h_m);
         
-        if($sym_data == 0)
-        {
+        if($sym_data == 0) {
             print STDERR "ERR: " . &File::Basename::fileparse($0) . ": ";
             print STDERR "'$filename': ";
             print STDERR "There was incorrect _symmetry_space_group_name_H-M "
@@ -884,7 +880,6 @@ sub cell_filling_sym {
             die; # data of space group is empty or incorrect;
         }
     }
-    ## print "@{$sym_data}\n";
     
     my @sym_operators = map{ SymopParse::symop_from_string($_) } @{$sym_data};
     #-----------------------------------------------------------------------
@@ -895,12 +890,6 @@ sub cell_filling_sym {
         };
     }
     #------------------------------------------------------------------------
-    ## my $inloop = $datablock->{"inloop"};
-    ## foreach (keys %{$inloop}) {
-    ##      print  $inloop->{$_}, $_,"\n";
-    ##}
-    ## print @{$datablock->{"loops"}},"\n";
-    ## print ">> ",@{$datablock->{"loops"}[4]},"\n";
     
     my $atoms_number_of_cell = 0;
     for(my $i = 0; $i < @sym_operators; $i++) {
@@ -916,19 +905,20 @@ sub cell_filling_sym {
             ## print "@{$new_xyz_ortho}\n";
             $atoms_number_of_cell++;
             
-            if (exists $atom->{symmetrical_xyz_fract}) { 
+            if(exists $atom->{symmetrical_xyz_fract}) { 
                 push( @{$atom->{symmetrical_xyz_fract}}, $new_xyz_fract);
             } else {
                 $atom->{symmetrical_xyz_fract} = [$new_xyz_fract];
             } 
-            if (exists $atom->{symmetrical_xyz_ortho}) { 
-                push( @{$atom->{symmetrical_xyz_ortho}}, $new_xyz_ortho);
+            if(exists $atom->{symmetrical_xyz_ortho}) { 
+                push( @{$atom->{symmetrical_xyz_ortho}}, $new_xyz_ortho );
             } else {
                 $atom->{symmetrical_xyz_ortho} = [$new_xyz_ortho];
-            } 
-            
+            }             
         }
     } # end of for;
+    
+    
     if( 0 ) { 
         print $atoms_number_of_cell, "\n";
         print "$datablock->{name}\n";
