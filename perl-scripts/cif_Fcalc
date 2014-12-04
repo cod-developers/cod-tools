@@ -40,6 +40,7 @@ my $use_parser = "c";
 my $dump_xyz_coordinates = 0;
 my $dump_Cromer_Mann_parameters = 0;
 my $dump_cell_parameters = 0;
+my $dump_cell_xyz_coordinates = 0;
 my $synthetic_test1 = 0;
 
 # constants;
@@ -81,6 +82,7 @@ my $PI = 4*atan2( 1, 1 );
     "--dump-Cromer-Mann"    => sub { $dump_Cromer_Mann_parameters = 1 },
     "--dump-cell-parameters"    => sub { $dump_cell_parameters = 1 },
     "--synthetic-test1"    => sub { $synthetic_test1 = 1 },
+    "--dump-cell-xyz-coordinates"    => sub { $dump_cell_xyz_coordinates = 1 },
     "--help,--usage"     => sub { SUsage::usage; exit },
 );
 
@@ -133,7 +135,7 @@ for my $filename (@ARGV) {
         my @cell = get_unit_cell( $datablock, $filename );
         my $f2o = symop_ortho_from_fract( @cell );
         ## print "@{$f2o->[0]}\n";
-        my $atoms = atoms_from_cif( $datablock, $f2o );
+        my $atoms = atoms_from_cif( $datablock, $f2o, $filename);
         my $cell_parameters = get_unit_cell_parameters ( $datablock );
         ## print "@cell\n";
         if( $dump_xyz_coordinates ) { 
@@ -144,7 +146,7 @@ for my $filename (@ARGV) {
                 @{$atom->{coordinates_ortho}};
             }
         }      
-        if ( $dump_Cromer_Mann_parameters ) {
+        if( $dump_Cromer_Mann_parameters ) {
             print "$datablock->{name}\n";
             foreach my $atom (@$atoms) {
                 print "$atom->{label} "."$atom->{chemical_type} ",
@@ -152,17 +154,25 @@ for my $filename (@ARGV) {
                     "@{$atom->{Crommer_Mann_coefficients}}\n" : "Empty\n";
             }
         }        
-        if ( $dump_cell_parameters ) {            
+        if( $dump_cell_parameters ) {            
             printing_of_dump_cell_parameters( $datablock, $cell_parameters );
         }
-        # for &cell_filling_sym testing;
-        if (1) {
-            cell_filling_sym( $datablock, $filename, $atoms, $f2o);
-            # exit;
-        }
+        
+	if( $dump_cell_xyz_coordinates ) { 
+	    print $atoms->[0]{count_of_cell_atoms}, "\n";
+	    print "$datablock->{name}\n";
+	    foreach my $atom (@$atoms) {
+		foreach my $sym_xyz (@{$atom->{symmetrical_xyz_ortho}}) {
+		    printf "%2s %.5f %.5f %.5f\n", $atom->{chemical_type}, 
+		    @{$sym_xyz};
+		}
+	    }
+	    exit;
+	}   
+        
         
         unless ( $dump_Cromer_Mann_parameters || $dump_cell_parameters || 
-                 $dump_xyz_coordinates ) {
+                 $dump_xyz_coordinates || $dump_cell_xyz_coordinates) {
             #--------------------------------------------------
             # temporary code for testing
             if (0) {
@@ -423,7 +433,7 @@ sub remove_standard_uncertainties
 
 sub atoms_from_cif 
 { 
-    my ($datablock, $f2o) = @_;
+    my ($datablock, $f2o, $filename) = @_;
     my @atoms;
     my $datablock_values = $datablock->{values};
     my @xyz_arrays =
@@ -439,6 +449,7 @@ sub atoms_from_cif
     
     my $Cromer_Mann_coefficients = get_Cromer_Mann_coefficients( $datablock );
     my $themal_coefficients = get_thermal( $datablock );
+    my $sym_atoms_and_their_count = cell_filling_sym( $datablock, $filename, $f2o);
     
     for my $i (0..$#{$datablock_values->{_atom_site_label}}) {
         my $fract_xyz = [ $xyz_arrays[0]->[$i],
@@ -457,6 +468,7 @@ sub atoms_from_cif
         # 
         %atom_info = (%atom_info, %{$Cromer_Mann_coefficients->[$i]});
         %atom_info = (%atom_info, %{$themal_coefficients->[$i]});
+	%atom_info = (%atom_info, %{$sym_atoms_and_their_count->[$i]});
         push( @atoms, \%atom_info );
     }
     return \@atoms;
@@ -844,8 +856,15 @@ sub temperature_factor_aniso {
 
 sub cell_filling_sym 
 {
-    my ($datablock, $filename, $atoms_data, $f2o) = @_;
-    my $values =  $datablock->{values};
+    my ($datablock, $filename, $f2o) = @_;
+    my $values =  $datablock->{values};    
+    my @xyz_arrays =
+        ( remove_standard_uncertainties( 
+              $values->{_atom_site_fract_x} ),
+          remove_standard_uncertainties( 
+              $values->{_atom_site_fract_y} ),
+          remove_standard_uncertainties( 
+              $values->{_atom_site_fract_z} ) ); 
     
     my $sym_data;    
     if(exists $values->{"_symmetry_equiv_pos_as_xyz"})
@@ -893,15 +912,18 @@ sub cell_filling_sym
         
     my $atoms_number_of_cell = 0;    
     my @sym_atom_info;
-    foreach my $atom (@{$atoms_data}) {
+    foreach my $i (0..$#{$values->{_atom_site_label}}) {
         my %sym_atom_coordinates;
-        
+        my $fract_xyz = [ $xyz_arrays[0]->[$i],
+                          $xyz_arrays[1]->[$i],
+                          $xyz_arrays[2]->[$i] ];
+	
         for(my $i = 0; $i < @sym_operators; $i++) {
             my $symop = $sym_operators[$i]; # 
             ## print "$symop\n";
             
             my $new_xyz_fract = 
-                symop_apply( [@{$atom->{coordinates_fract}}, 1], $symop);
+                symop_apply( [@{$fract_xyz}, 1], $symop);
             $new_xyz_fract = [ @{$new_xyz_fract}[0..2] ];
             ## print "@{$new_xyz_fract}\n";
             my $new_xyz_ortho = mat_vect_mul( $f2o, 
@@ -909,36 +931,27 @@ sub cell_filling_sym
             ## print "@{$new_xyz_ortho}\n";
             $atoms_number_of_cell++;
             
-            if(exists $atom->{symmetrical_xyz_fract}) { 
-                push( @{$atom->{symmetrical_xyz_fract}}, 
+            if(exists $sym_atom_coordinates{symmetrical_xyz_fract}) { 
+                push( @{$sym_atom_coordinates{symmetrical_xyz_fract}}, 
                       $new_xyz_fract);
             } else {
-                $atom->{symmetrical_xyz_fract} = 
+                $sym_atom_coordinates{symmetrical_xyz_fract} = 
                     [$new_xyz_fract];
             } 
-            if(exists $atom->{symmetrical_xyz_ortho}) { 
-                push( @{$atom->{symmetrical_xyz_ortho}}, 
+            if(exists $sym_atom_coordinates{symmetrical_xyz_ortho}) { 
+                push( @{$sym_atom_coordinates{symmetrical_xyz_ortho}}, 
                       $new_xyz_ortho );
             } else {
-                $atom->{symmetrical_xyz_ortho} = 
+                $sym_atom_coordinates{symmetrical_xyz_ortho} = 
                     [$new_xyz_ortho];
             }             
         } # end of for;
         push( @sym_atom_info, \%sym_atom_coordinates);
     } # end of foreach;
+    # only for first element adding the full count of crystal cell;
+    $sym_atom_info[0]{count_of_cell_atoms} = $atoms_number_of_cell;
     
-    
-  ## if( 0 ) { 
-  ##     print $atoms_number_of_cell, "\n";
-  ##     print "$datablock->{name}\n";
-  ##     foreach my $atom (@$atoms_data) {
-  ##         foreach my $sym_xyz (@{$atom->{symmetrical_xyz_ortho}}) {
-  ##             printf "%2s %.5f %.5f %.5f\n", $atom->{chemical_type}, 
-  ##             @{$sym_xyz};
-  ##         }
-  ##     }
-  ## }   
-    
+    return \@sym_atom_info;
 }
 
 
