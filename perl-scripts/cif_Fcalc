@@ -226,57 +226,59 @@ for my $filename (@ARGV) {
                             $sin_teta_hkl );
                     # print "Atom structure factor: $atom_structure_factor\n";
                     ## print "$atom_structure_factor\n";
-                    my $atom_hkl_phase = atom_phase_hkl_rad( 
-                        @hkl, 
-                        @{$atom->{coordinates_fract}} );
-                    if (0) { # local temporary test for atomic struct.factor;
-                        if ($atom->{label} eq "Cl1") {
-                            printf "%3s %3s %3s  %0.3f %0.3f %0.4f\n", 
-                            @hkl, $resolution_hkl, 1/(2 * $resolution_hkl),
-                            $atom_structure_factor;
-                        }
-                    }
-                    # print "Phase of atom: $atom_hkl_phase\n";
-                    ## print "$atom_structure_factor\n";
-                    $F_cos_comp_w_Tf_and_cor +=
-                        $atom->{occupancy} * 
-                        $atom_structure_factor * cos( $atom_hkl_phase );
-                    $F_sin_comp_w_Tf_and_cor +=
-                        $atom->{occupancy} * 
-                        $atom_structure_factor * sin( $atom_hkl_phase );
-                    my $temperature_factor_ISO = 
-                        exp( ( -$atom->{B_factor}/4 ) * 
-                             ( 1/$resolution_hkl )**2 );
-                    # print "$atom->{chemical_type}  $temperature_factor_ISO\n";
-                    # structure factor components without corrections;
-                    $F_cos_comp_w_cor +=
-                        $atom->{occupancy} * $atom_structure_factor * 
-                        $temperature_factor_ISO * cos( $atom_hkl_phase );
-                    $F_sin_comp_w_cor += 
-                        $atom->{occupancy} * $atom_structure_factor * 
-                        $temperature_factor_ISO * sin( $atom_hkl_phase );
-                    # structure factor components
-		    unless ($synthetic_test1) {
-			my $temperature_factor_ANISO;
-			if ($atom->{chemical_type} eq "H") {
-			    $temperature_factor_ANISO = 1;
-			} else {
-			    $temperature_factor_ANISO = 
-				temperature_factor_aniso( 
-				    @{$atom->{aniso_value_Uij}},
-				    @hkl, @abc_star);
+		    if (0) { # local temporary test for atomic struct.factor;
+			if ($atom->{label} eq "Cl1") {
+			    printf "%3s %3s %3s  %0.3f %0.3f %0.4f\n", 
+			    @hkl, $resolution_hkl, 1/(2 * $resolution_hkl),
+			    $atom_structure_factor;
 			}
-			$F_cos_comp_aniso_w_cor += 
-			    $atom->{occupancy} * $atom_structure_factor *
-			    $temperature_factor_ANISO * cos( $atom_hkl_phase );
-			$F_sin_comp_aniso_w_cor += 
-			    $atom->{occupancy} * $atom_structure_factor *
-			    $temperature_factor_ANISO * sin( $atom_hkl_phase );
-		    } # end unless;
-                        
-                }
-                
-                my $F_hkl_without_Tf_and_cor = 
+		    }
+		    
+		    foreach my $sym_xyz (@{$atom->{symmetrical_xyz_fract}}) {
+			my $atom_hkl_phase = atom_phase_hkl_rad( 
+			    @hkl, @{$sym_xyz} );
+		
+			# print "Phase of atom: $atom_hkl_phase\n";
+			## print "$atom_structure_factor\n";
+			$F_cos_comp_w_Tf_and_cor +=
+			    $atom->{occupancy} * 
+			    $atom_structure_factor * cos( $atom_hkl_phase );
+			$F_sin_comp_w_Tf_and_cor +=
+			    $atom->{occupancy} * 
+			    $atom_structure_factor * sin( $atom_hkl_phase );
+			my $temperature_factor_ISO = 
+			    exp( ( -$atom->{B_factor}/4 ) * 
+				 ( 1/$resolution_hkl )**2 );
+			# print "$atom->{chemical_type}  $temperature_factor_ISO\n";
+			# structure factor components without corrections;
+			$F_cos_comp_w_cor +=
+			    $atom->{occupancy} * $atom_structure_factor * 
+			    $temperature_factor_ISO * cos( $atom_hkl_phase );
+			$F_sin_comp_w_cor += 
+			    $atom->{occupancy} * $atom_structure_factor * 
+			    $temperature_factor_ISO * sin( $atom_hkl_phase );
+			# structure factor components
+			unless ($synthetic_test1) {
+			    my $temperature_factor_ANISO;
+			    if ($atom->{chemical_type} eq "H") {
+				$temperature_factor_ANISO = 1;
+			    } else {
+				$temperature_factor_ANISO = 
+				    temperature_factor_aniso( 
+					@{$atom->{aniso_value_Uij}},
+					@hkl, @abc_star);
+			    }
+			    $F_cos_comp_aniso_w_cor += 
+				$atom->{occupancy} * $atom_structure_factor *
+				$temperature_factor_ANISO * cos( $atom_hkl_phase );
+			    $F_sin_comp_aniso_w_cor += 
+				$atom->{occupancy} * $atom_structure_factor *
+				    $temperature_factor_ANISO * sin( $atom_hkl_phase );
+			} # end unless;
+		    } # foreach of cell atoms;
+		} # foreach of assimetric unit atoms;
+		    
+		my $F_hkl_without_Tf_and_cor = 
                     sqrt( $F_cos_comp_w_Tf_and_cor**2 + 
                           $F_sin_comp_w_Tf_and_cor**2 );
                 my $F_hkl_iso_without_cor = 
