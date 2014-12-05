@@ -56,6 +56,7 @@ my $PI = 4*atan2( 1, 1 );
 #*    --dump-Cromer-Mann Print a Cromer-Mann coefficients from CIF file
 #*    --dump-cell-parameters Print a short usage message with cell parameters
 #*    --synthetic-test1 Print a short usage message of various parameters.
+#*    --dump-cell-xyz-coordinates Print a XYZ file which contains all atoms of cell.
 #*    --help,--usage         Print a short usage message (this message) and exit.
 #**
 
@@ -136,43 +137,10 @@ for my $filename (@ARGV) {
         my $f2o = symop_ortho_from_fract( @cell );
         ## print "@{$f2o->[0]}\n";
         my $atoms = atoms_from_cif( $datablock, $f2o, $filename);
-        my $cell_parameters = get_unit_cell_parameters ( $datablock );
+        my $cell_parameters = get_unit_cell_parameters( $datablock );
         ## print "@cell\n";
-        if( $dump_xyz_coordinates ) { 
-            print $#$atoms+1, "\n";
-            print "$datablock->{name}\n";
-            foreach my $atom (@$atoms) {
-                printf "%2s %.5f %.5f %.5f\n", $atom->{chemical_type}, 
-                @{$atom->{coordinates_ortho}};
-            }
-            exit;
-        }      
-        if( $dump_Cromer_Mann_parameters ) {
-            print "$datablock->{name}\n";
-            foreach my $atom (@$atoms) {
-                print "$atom->{label} "."$atom->{chemical_type} ",
-                $atom->{Crommer_Mann_coefficients}[0] ? 
-                    "@{$atom->{Crommer_Mann_coefficients}}\n" : "Empty\n";
-            }
-            exit;
-        }        
-        if( $dump_cell_parameters ) {            
-            printing_of_dump_cell_parameters( $datablock, $cell_parameters );
-            exit;
-        }
-        
-	if( $dump_cell_xyz_coordinates ) { 
-	    print $atoms->[0]{count_of_cell_atoms}, "\n";
-	    print "$datablock->{name}\n";
-	    foreach my $atom (@$atoms) {
-		foreach my $sym_xyz (@{$atom->{symmetrical_xyz_ortho}}) {
-		    printf "%2s %.5f %.5f %.5f\n", $atom->{chemical_type}, 
-		    @{$sym_xyz};
-		}
-	    }
-	    exit;
-	}   
-        
+ 
+        tests_outputs( $atoms, $filename, $cell_parameters );       
         
         unless ( $dump_Cromer_Mann_parameters || $dump_cell_parameters || 
                  $dump_xyz_coordinates || $dump_cell_xyz_coordinates) {
@@ -775,8 +743,8 @@ sub rad2deg
 # Print output of option --dump-cell-parameters.
 sub printing_of_dump_cell_parameters
 {  
-    my ($datablock, $cell_parameters) = @_;
-    print "$datablock->{name}\n";
+    my ($file_name, $cell_parameters) = @_;
+    print "$file_name\n";
     printf "%15s %0.5f %0.5f %0.5f %0.5f %0.5f %0.5f\n", 
     "Direct cell     (deg)", @{$cell_parameters->{crystal_cell_degrees}};
     printf "%15s %0.5f %0.5f %0.5f %0.5f %0.5f %0.5f\n", 
@@ -1020,4 +988,52 @@ sub symop_apply
         }
 
         return \@new_atom_xyz;
+}
+
+#----------------------------------------------------------------------#
+# Function which contains tests block;
+#
+# Parameters:
+#    f.e. tests_outputs( 1, 2, 3), where
+#    1. output of atoms_from_cif(); 2. name of file; 3.
+#    output of get_unit_cell_parameters;
+# 
+# Return:
+# Print outputs of tests.
+sub tests_outputs 
+{
+    my ($atoms, $file_name, $cell_parameters) = @_;
+    if( $dump_xyz_coordinates ) { 
+        print $#$atoms+1, "\n";
+        print "$file_name\n";
+            foreach my $atom (@$atoms) {
+                printf "%2s %.5f %.5f %.5f\n", $atom->{chemical_type}, 
+                @{$atom->{coordinates_ortho}};
+            }
+        exit;
+    }      
+    if( $dump_Cromer_Mann_parameters ) {
+        print "$file_name\n";
+        foreach my $atom (@$atoms) {
+            print "$atom->{label} "."$atom->{chemical_type} ",
+            $atom->{Crommer_Mann_coefficients}[0] ? 
+                "@{$atom->{Crommer_Mann_coefficients}}\n" : "Empty\n";
+        }
+        exit;
+    }        
+    if( $dump_cell_parameters ) {            
+        printing_of_dump_cell_parameters( $file_name, $cell_parameters );
+        exit;
+    }    
+    if( $dump_cell_xyz_coordinates ) { 
+        print $atoms->[0]{count_of_cell_atoms}, "\n";
+        print "$file_name\n";
+        foreach my $atom (@$atoms) {
+            foreach my $sym_xyz (@{$atom->{symmetrical_xyz_ortho}}) {
+                printf "%2s %.5f %.5f %.5f\n", $atom->{chemical_type}, 
+                @{$sym_xyz};
+            }
+        }
+        exit;
+    }
 }
