@@ -145,6 +145,7 @@ for my $filename (@ARGV) {
                 printf "%2s %.5f %.5f %.5f\n", $atom->{chemical_type}, 
                 @{$atom->{coordinates_ortho}};
             }
+            exit;
         }      
         if( $dump_Cromer_Mann_parameters ) {
             print "$datablock->{name}\n";
@@ -153,9 +154,11 @@ for my $filename (@ARGV) {
                 $atom->{Crommer_Mann_coefficients}[0] ? 
                     "@{$atom->{Crommer_Mann_coefficients}}\n" : "Empty\n";
             }
+            exit;
         }        
         if( $dump_cell_parameters ) {            
             printing_of_dump_cell_parameters( $datablock, $cell_parameters );
+            exit;
         }
         
 	if( $dump_cell_xyz_coordinates ) { 
@@ -175,16 +178,16 @@ for my $filename (@ARGV) {
                  $dump_xyz_coordinates || $dump_cell_xyz_coordinates) {
             #--------------------------------------------------
             # temporary code for testing
-            if (0) {
-                print "$datablock->{name}\n";
-                foreach my $atom (@$atoms) {
-                    local $,=' ';
-                    print "$atom->{label} "."$atom->{chemical_type} ".
-                        "$atom->{U_value_of_B_factor} $atom->{B_factor}",
-                        $atom->{aniso_value_Uij}[0] ? 
-                        @{$atom->{aniso_value_Uij}} : "EMPTY" ,"\n";
-                }
-            }
+            ## if (0) {
+            ##     print "$datablock->{name}\n";
+            ##     foreach my $atom (@$atoms) {
+            ##         local $,=' ';
+            ##         print "$atom->{label} "."$atom->{chemical_type} ".
+            ##             "$atom->{U_value_of_B_factor} $atom->{B_factor}",
+            ##             $atom->{aniso_value_Uij}[0] ? 
+            ##             @{$atom->{aniso_value_Uij}} : "EMPTY" ,"\n";
+            ##     }
+            ## }
             #-------------------------------------------------
             my ($h_max, $h_min, 
                 $k_max, $k_min, 
@@ -206,17 +209,14 @@ for my $filename (@ARGV) {
                 ## print "$sin_teta_hkl\n";
                 # Temporary local test which will be removed after
                 # creating *pm with outer Cromer Mann coefficients.
-
                 # --------------------------------------------
                 die "CIF file does not contain Crommer-Mann coefficients." 
                     if ( !defined $atoms->[0]{Crommer_Mann_coefficients}[0] ); 
                 #--------------------------------------------------------------
-                my $F_cos_comp_w_Tf_and_cor = 0; 
-                my $F_sin_comp_w_Tf_and_cor = 0;
-                my $F_cos_comp_w_cor = 0;
-                my $F_sin_comp_w_cor = 0;
-                my ($F_cos_comp_aniso_w_cor, 
-                    $F_sin_comp_aniso_w_cor) = (0,0);
+                my ($F_cos_comp_w_Tf_and_cor, $F_sin_comp_w_Tf_and_cor,
+                    $F_cos_comp_w_cor, $F_sin_comp_w_cor, 
+                    $F_cos_comp_aniso_w_cor, $F_sin_comp_aniso_w_cor) = 
+                        (0,0,0,0,0,0);
 		
                 foreach my $atom (@$atoms) {                
                     my $atom_structure_factor = 
@@ -226,18 +226,11 @@ for my $filename (@ARGV) {
                             $sin_teta_hkl );
                     # print "Atom structure factor: $atom_structure_factor\n";
                     ## print "$atom_structure_factor\n";
-		    if (0) { # local temporary test for atomic struct.factor;
-			if ($atom->{label} eq "Cl1") {
-			    printf "%3s %3s %3s  %0.3f %0.3f %0.4f\n", 
-			    @hkl, $resolution_hkl, 1/(2 * $resolution_hkl),
-			    $atom_structure_factor;
-			}
-		    }
 		    
 		    foreach my $sym_xyz (@{$atom->{symmetrical_xyz_fract}}) {
 			my $atom_hkl_phase = atom_phase_hkl_rad( 
 			    @hkl, @{$sym_xyz} );
-		
+                        
 			# print "Phase of atom: $atom_hkl_phase\n";
 			## print "$atom_structure_factor\n";
 			$F_cos_comp_w_Tf_and_cor +=
@@ -249,7 +242,8 @@ for my $filename (@ARGV) {
 			my $temperature_factor_ISO = 
 			    exp( ( -$atom->{B_factor}/4 ) * 
 				 ( 1/$resolution_hkl )**2 );
-			# print "$atom->{chemical_type}  $temperature_factor_ISO\n";
+			# print "$atom->{chemical_type} ".
+                        # "$temperature_factor_ISO\n";
 			# structure factor components without corrections;
 			$F_cos_comp_w_cor +=
 			    $atom->{occupancy} * $atom_structure_factor * 
@@ -270,14 +264,16 @@ for my $filename (@ARGV) {
 			    }
 			    $F_cos_comp_aniso_w_cor += 
 				$atom->{occupancy} * $atom_structure_factor *
-				$temperature_factor_ANISO * cos( $atom_hkl_phase );
+				$temperature_factor_ANISO * 
+                                cos( $atom_hkl_phase );
 			    $F_sin_comp_aniso_w_cor += 
 				$atom->{occupancy} * $atom_structure_factor *
-				    $temperature_factor_ANISO * sin( $atom_hkl_phase );
+                                $temperature_factor_ANISO * 
+                                sin( $atom_hkl_phase );
 			} # end unless;
 		    } # foreach of cell atoms;
 		} # foreach of assimetric unit atoms;
-		    
+                
 		my $F_hkl_without_Tf_and_cor = 
                     sqrt( $F_cos_comp_w_Tf_and_cor**2 + 
                           $F_sin_comp_w_Tf_and_cor**2 );
@@ -903,14 +899,6 @@ sub cell_filling_sym
     }
     
     my @sym_operators = map{ SymopParse::symop_from_string($_) } @{$sym_data};
-    #-----------------------------------------------------------------------
-    # print for @sym_operators values only for testing purpose;
-    if (0) { 
-        foreach my $what (map{ @{$_} } @sym_operators) {
-            print @{$what},"\n";
-        };
-    }
-    #------------------------------------------------------------------------
         
     my $atoms_number_of_cell = 0;    
     my @sym_atom_info;
@@ -950,7 +938,7 @@ sub cell_filling_sym
         } # end of for;
         push( @sym_atom_info, \%sym_atom_coordinates);
     } # end of foreach;
-    # only for first element adding the full count of crystal cell;
+    # only for first element adding the atoms full count of crystal cell;
     $sym_atom_info[0]{count_of_cell_atoms} = $atoms_number_of_cell;
     
     return \@sym_atom_info;
