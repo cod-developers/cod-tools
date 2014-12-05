@@ -420,12 +420,13 @@ sub remove_standard_uncertainties
 #               aniso_value_Uij => [0.01, 0.002, 0.003,..,0.006] # 6 values,
 #               Crommer_Mann_coefficients => [1.10, .., .., ] # 9 values;
 # a1, a2, .., b1, b2.., b4, c.
+#               symmetrical_xyz_fract => [\@xyz1, \@xyz2, .. ],
+#               symmetrical_xyz_ortho => [\@xyz1, \@xyz2, .. ],
+#               count_of_cell_atoms => 10, # only for first atom;
 #           },
 #           # [1]
 #           {
-#               site_label => "C11",
-#               chemical_type => "C",
-#               coordinates_fract" => [0.2, 0.25, 0.35],
+#             ...
 #           },
 #  );   
 
@@ -849,9 +850,24 @@ sub temperature_factor_aniso {
 }
 
 
-# Symmetric transformations of atom positions for receiving of 
+# Function for symmetric transformations of atom positions for receiving of 
 # symmetrical atoms.
-
+#
+# Parameters: 
+# 1. values - a reference to array of hashes where a data from the CIF
+# file is stored; 2. name of CIF file; 3. refence to orthogonalization matrix
+# for orthogonal coordinates calculation.
+# f.e.: cell_filling_sym( \[\%1, \%2, ..], "0022254", \matrix );
+#
+# Return: 
+# \@sym_atom_info = (
+#           # [0]
+#           {
+#               symmetrical_xyz_fract => [\@xyz1, \@xyz2, .. ],
+#               symmetrical_xyz_ortho => [\@xyz1, \@xyz2, .. ],
+#               
+#            }, 
+#        .. )
 sub cell_filling_sym 
 {
     my ($datablock, $filename, $f2o) = @_;
@@ -869,7 +885,7 @@ sub cell_filling_sym
     {
         $sym_data = $values->{"_symmetry_equiv_pos_as_xyz"};
     }
-
+    
     if(exists $values->{"_symmetry_space_group_name_hall"} &&                  
        (not defined $sym_data)) {
         
@@ -881,7 +897,6 @@ sub cell_filling_sym
             print STDERR "There was incorrect _symmetry_space_group_name_Hall "
                 . $hall . "\n";
         }
-        
     }
     
     if(exists $values->{"_symmetry_space_group_name_h-m"} &&                   
@@ -894,12 +909,12 @@ sub cell_filling_sym
             print STDERR "'$filename': ";
             print STDERR "There was incorrect _symmetry_space_group_name_H-M "
                 . $h_m . "\n";
-            die; # data of space group is empty or incorrect;
+            die;          # data of space group is empty or incorrect;
         }
     }
     
     my @sym_operators = map{ SymopParse::symop_from_string($_) } @{$sym_data};
-        
+
     my $atoms_number_of_cell = 0;    
     my @sym_atom_info;
     foreach my $i (0..$#{$values->{_atom_site_label}}) {
@@ -907,11 +922,11 @@ sub cell_filling_sym
         my $fract_xyz = [ $xyz_arrays[0]->[$i],
                           $xyz_arrays[1]->[$i],
                           $xyz_arrays[2]->[$i] ];
-	
+
         for(my $i = 0; $i < @sym_operators; $i++) {
             my $symop = $sym_operators[$i]; # 
             ## print "$symop\n";
-            
+
             my $new_xyz_fract = 
                 symop_apply( [@{$fract_xyz}, 1], $symop);
             $new_xyz_fract = [ @{$new_xyz_fract}[0..2] ];
@@ -920,7 +935,7 @@ sub cell_filling_sym
                                               $new_xyz_fract );
             ## print "@{$new_xyz_ortho}\n";
             $atoms_number_of_cell++;
-            
+
             if(exists $sym_atom_coordinates{symmetrical_xyz_fract}) { 
                 push( @{$sym_atom_coordinates{symmetrical_xyz_fract}}, 
                       $new_xyz_fract);
@@ -935,12 +950,12 @@ sub cell_filling_sym
                 $sym_atom_coordinates{symmetrical_xyz_ortho} = 
                     [$new_xyz_ortho];
             }             
-        } # end of for;
+        }                       # end of for;
         push( @sym_atom_info, \%sym_atom_coordinates);
-    } # end of foreach;
+    }                           # end of foreach;
     # only for first element adding the atoms full count of crystal cell;
     $sym_atom_info[0]{count_of_cell_atoms} = $atoms_number_of_cell;
-    
+
     return \@sym_atom_info;
 }
 
