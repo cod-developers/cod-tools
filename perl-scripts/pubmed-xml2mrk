@@ -90,6 +90,11 @@ for my $file (@ARGV) {
                     "article $article_nr\n";
             }
 
+            my $abstract;
+            if( $article =~ m|<AbstractText>(.*?)</AbstractText>|ms ) {
+                $abstract = $1;
+            }
+
             if( $article =~ m|<AuthorList.*?>(.*?)</AuthorList>|ms ) {
                 my $author_list = $1;
 
@@ -133,6 +138,7 @@ for my $file (@ARGV) {
             print "<issue>$issue</issue>\n" if defined $issue;
             print "<pages>$pages</pages>\n" if $pages;
             print "<doi>$doi</doi>\n" if defined $doi;
+            print "<abstract>$abstract</abstract>\n" if defined $abstract;
             print "\n";
         }
     } else {
