@@ -9,7 +9,7 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #$URL$
 #------------------------------------------------------------------------------
 #*
-#  Convert Pubmed XML bibliography records to may own XML-like markup
+#  Convert Pubmed XML bibliography records to my own XML-like markup.
 #**
 
 use strict;
@@ -38,18 +38,16 @@ for my $file (@ARGV) {
             if( $article =~ m|<Title.*?>(.*?)</Title>|ms ) {
                 $journal = $1;
             } else {
-                print STDERR "$0: no <Title> (Journal title) " .
+                print STDERR "$0: WARNING, no <Title> (Journal title) " .
                     "found in the file '$file' article $article_nr\n";
-                die;
             }
 
             my $title;
             if( $article =~ m|<ArticleTitle.*?>(.*?)</ArticleTitle>|ms ) {
                 $title = $1;
             } else {
-                print STDERR "$0: no <ArticleTitle> found in the file '$file' ".
+                print STDERR "$0: WARNING, no <ArticleTitle> found in the file '$file' ".
                     "article $article_nr\n";
-                die;
             }
 
             my $year;
@@ -60,9 +58,8 @@ for my $file (@ARGV) {
                 }
             }
             if( !defined $year ) {
-                print STDERR "$0: no <Year...> found in the file '$file' ".
+                print STDERR "$0: WARNING, no <Year...> found in the file '$file' ".
                     "article $article_nr\n";
-                die;
             }
 
             my $issue;
@@ -91,7 +88,6 @@ for my $file (@ARGV) {
                 print STDERR "$0: WARNING, no <MedlinePgn> or <Pagination> " .
                     "found in the file '$file' ".
                     "article $article_nr\n";
-                ## die;
             }
 
             if( $article =~ m|<AuthorList.*?>(.*?)</AuthorList>|ms ) {
@@ -122,7 +118,7 @@ for my $file (@ARGV) {
                     if( defined $junior ) {
                         $author_name .= ", " . $junior;
                     }
-                    $author_name .= ", " . $first;
+                    $author_name .= ", " . ( defined $first ? $first : "?" );
                     print $separator, $author_name;
                     $separator = "; ";
                 }
@@ -130,9 +126,9 @@ for my $file (@ARGV) {
 
             print "</authors>\n";
 
-            print "<title>$title</title>\n";
-            print "<journal>$journal</journal>\n";
-            print "<year>$year</year>\n";
+            print "<title>$title</title>\n" if defined $title;
+            print "<journal>$journal</journal>\n" if defined $journal;
+            print "<year>$year</year>\n" if defined $year;
             print "<volume>$volume</volume>\n" if defined $volume;
             print "<issue>$issue</issue>\n" if defined $issue;
             print "<pages>$pages</pages>\n" if $pages;
@@ -140,7 +136,8 @@ for my $file (@ARGV) {
             print "\n";
         }
     } else {
-        print STDERR "$0: <PubmedArticleSet> is not found in file '$file'\n";
+        print STDERR "$0: ERROR, <PubmedArticleSet> is not found in file '$file'\n";
+        die
     }
 
     close F;
