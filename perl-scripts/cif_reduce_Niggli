@@ -80,8 +80,10 @@ for my $filename (@ARGV) {
     for my $datablock (@$data) {
         my $values = $datablock->{values};
         my @cell = get_unit_cell( $values, $filename, $datablock->{name} );
+        my $f2o = symop_ortho_from_fract( @cell );
         my @niggli = KG76::reduce( @cell );
-        my $CoB = SymopAlgebra::symop_transpose( pop( @niggli ) );
+        my $o2f = symop_fract_from_ortho( @niggli );
+        my $CoB = pop( @niggli );
 
         $values->{_cell_length_a}[0] = $niggli[0];
         $values->{_cell_length_b}[0] = $niggli[1];
@@ -97,11 +99,26 @@ for my $filename (@ARGV) {
                                         _atom_site_fract_y
                                         _atom_site_fract_z );
 
-            my @new_coordinates =
-                mat_vect_mul( $CoB, \@old_coordinates );
-            $values->{_atom_site_fract_x}[$i] = $new_coordinates[0];
-            $values->{_atom_site_fract_y}[$i] = $new_coordinates[1];
-            $values->{_atom_site_fract_z}[$i] = $new_coordinates[2];
+            my $M = [
+                [ mat_vect_mul( $f2o, [ $old_coordinates[0], 0, 0 ] ) ],
+                [ mat_vect_mul( $f2o, [ 0, $old_coordinates[1], 0 ] ) ],
+                [ mat_vect_mul( $f2o, [ 0, 0, $old_coordinates[2] ] ) ]
+            ];
+
+            my $Gprime =
+                symop_mul(
+                           symop_mul( symop_transpose( $CoB ),
+                                      symop_mul( $M, symop_transpose( $M ) ) ),
+                           $CoB
+                         );
+
+
+            my $new_coordinates = [ map { [mat_vect_mul( $o2f, $_ )] }
+                                        @{cholesky( $Gprime )} ];
+
+            $values->{_atom_site_fract_x}[$i] = $new_coordinates->[0][0] . "";
+            $values->{_atom_site_fract_y}[$i] = $new_coordinates->[1][1] . "";
+            $values->{_atom_site_fract_z}[$i] = $new_coordinates->[2][2] . "";
         }
 
         # Extending 3x3 symop to 4x4
@@ -206,4 +223,33 @@ sub mat_vect_mul($$)
     }
 
     return wantarray ? @new_coordinates : \@new_coordinates;
+}
+
+sub cholesky($)
+{
+    my( $m ) = @_;
+    return [[0,0,0],[0,0,0],[0,0,0]] if $m->[0][0] == 0;
+
+    my $a = sqrt($m->[0][0]);
+    my $b = 0;
+    my $c = 0;
+    my $d = $m->[1][0] / $a;
+    my $g = $m->[2][0] / $a;
+
+    my $e = sqrt($m->[1][1] - $d**2);
+    my $f = 0;
+    my $h = ($m->[2][1] - $d*$g) / $e;
+
+    my $i = sqrt($m->[2][2] - $g**2 - $h**2);
+    return [[$a,$b,$c],[$d,$e,$f],[$g,$h,$i]];
+}
+
+sub symop_transpose
+{
+    return &SymopAlgebra::symop_transpose;
+}
+
+sub symop_mul
+{
+    return &SymopAlgebra::symop_mul;
 }
