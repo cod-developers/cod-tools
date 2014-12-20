@@ -16,6 +16,8 @@ require Exporter;
 @JacobiEigen::EXPORT = qw( jacobi_eigenvv );
 
 $JacobiEigen::max_iterations = 100;
+# used for float comparison
+$JacobiEigen::delta  = 1e-100;
 
 # jacobi_eigenvv
 # expects 2-d array (symmetrical matrix) for which eigenvalues/eigenvectors
@@ -40,7 +42,7 @@ sub jacobi_eigenvv ## ( @ )
 
     for( $sweep_count = 0; $sweep_count < $JacobiEigen::max_iterations; 
 	 $sweep_count++ ) {
-        if( &sum_off_diag(@a) == 0 ) {
+        if( &sum_off_diag(@a) < $JacobiEigen::delta ) {
 	    return ( \@eigenvectors, \@eigenvalues, $sweep_count );
 	}
 	&jacobi_sweep( \@a, \@eigenvalues, \@eigenvectors );
