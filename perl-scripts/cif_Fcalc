@@ -145,9 +145,9 @@ for my $filename (@ARGV) {
 	
         my $temperature_factor_key;
 	if(defined $atoms->[0]{aniso_value_Uij}[0]) {
-	    $temperature_factor_key = 1; # using of aniso temp. factor;
+	    $temperature_factor_key = 1; # using aniso temp. factor;
 	} else {
-	    $temperature_factor_key = 0; # using of iso temp. factor;
+	    $temperature_factor_key = 0; # using iso temp. factor;
 	}
 
         unless ( $dump_Cromer_Mann_parameters || $dump_cell_parameters || 
@@ -196,7 +196,10 @@ for my $filename (@ARGV) {
                             $atom->{Crommer_Mann_coefficients}, 
                             $radiation_wavelengths->[0],
                             $sin_teta_hkl );
- 		    
+                    ##print "$atom->{chemical_type} ".
+                    ##    "$atom->{scat_dispesion_real} ".
+                    ##    "$atom->{scat_dispesion_imag}\n";
+                    
 		    foreach my $sym_xyz (@{$atom->{symmetrical_xyz_fract}}) {
 			my $atom_hkl_phase = atom_phase_hkl_rad( 
 			    @hkl, @{$sym_xyz} );
@@ -472,6 +475,10 @@ sub get_Cromer_Mann_coefficients
           $datablock_values->{_atom_type_scat_cromer_mann_b3},
           $datablock_values->{_atom_type_scat_cromer_mann_b4},
           $datablock_values->{_atom_type_scat_cromer_mann_c} ];
+    my $atom_scat_dispersion_real = 
+        $datablock_values->{_atom_type_scat_dispersion_real};
+    my $atom_scat_dispersion_imag = 
+        $datablock_values->{_atom_type_scat_dispersion_imag};
     for my $i (0..$#{$labels}) {
         my $atom_chemical_type = 
             $datablock_values->{_atom_site_type_symbol}[$i];
@@ -489,7 +496,9 @@ sub get_Cromer_Mann_coefficients
                         $Cromer_Mann_coefficients->[5][$y],
                         $Cromer_Mann_coefficients->[6][$y],
                         $Cromer_Mann_coefficients->[7][$y],
-                        $Cromer_Mann_coefficients->[8][$y] ]
+                        $Cromer_Mann_coefficients->[8][$y] ],
+                    scat_dispesion_real => $atom_scat_dispersion_real->[$y],
+                    scat_dispesion_imag => $atom_scat_dispersion_imag->[$y]
                     ); 
                 push ( @atoms_aniso_coefficients, \%thermal );
                 
