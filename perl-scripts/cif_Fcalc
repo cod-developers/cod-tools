@@ -149,7 +149,11 @@ for my $filename (@ARGV) {
 	} else {
 	    $temperature_factor_key = 0; # using iso temp. factor;
 	}
-
+        my $scat_dispersion_key = 0;
+        if (defined $atoms->[0]{scat_dispesion_real}) {
+            $scat_dispersion_key = 1;
+        }
+        
         unless ( $dump_Cromer_Mann_parameters || $dump_cell_parameters || 
                  $dump_xyz_coordinates || $dump_cell_xyz_coordinates) {
             #--------------------------------------------------
@@ -189,7 +193,8 @@ for my $filename (@ARGV) {
                 #--------------------------------------------------------------
 
                 my ($F_cos_comp_w_Tf_and_cor, $F_sin_comp_w_Tf_and_cor,
-                    $F_cos_comp_w_cor, $F_sin_comp_w_cor) = (0,0,0,0);		
+                    $F_cos_comp_w_cor, $F_sin_comp_w_cor,
+                    $F_cos_comp, $F_sin_comp) = (0,0,0,0,0,0);		
                 foreach my $atom (@$atoms) {                
                     my $atom_structure_factor = 
                         atom_structure_factor_from_coefficients( 
@@ -199,6 +204,13 @@ for my $filename (@ARGV) {
                     ##print "$atom->{chemical_type} ".
                     ##    "$atom->{scat_dispesion_real} ".
                     ##    "$atom->{scat_dispesion_imag}\n";
+                    my $atom_structure_factor_corrected;
+                    if ($scat_dispersion_key) {
+                        $atom_structure_factor_corrected = 
+                            sqrt( ($atom_structure_factor + 
+                                   $atom->{scat_dispesion_real})**2 + 
+                               $atom->{scat_dispesion_real}**2 );
+                    }
                     
 		    foreach my $sym_xyz (@{$atom->{symmetrical_xyz_fract}}) {
 			my $atom_hkl_phase = atom_phase_hkl_rad( 
@@ -235,6 +247,12 @@ for my $filename (@ARGV) {
 			    $F_sin_comp_w_cor += 
 				$atom->{occupancy} * $atom_structure_factor * 
 				$temperature_factor * sin( $atom_hkl_phase );
+                            $F_cos_comp += $atom->{occupancy} * 
+                                $atom_structure_factor_corrected * 
+				$temperature_factor * cos( $atom_hkl_phase );
+                            $F_sin_comp += $atom->{occupancy} * 
+                                $atom_structure_factor_corrected * 
+				$temperature_factor * sin( $atom_hkl_phase );
 			}
 		    } # foreach of cell atoms;
 		} # foreach of assimetric unit atoms;
@@ -244,7 +262,9 @@ for my $filename (@ARGV) {
                           $F_sin_comp_w_Tf_and_cor**2 );
                 my $F_hkl_iso_without_cor = 
                     sqrt( $F_cos_comp_w_cor**2 + $F_sin_comp_w_cor**2 ); 
-		
+		my $F_hkl_sguared = 
+                    $F_cos_comp**2 + $F_sin_comp**2; 
+                
                 if ($synthetic_test1) {
                     print "  H   K   L  RESO  sin(theta)  F  1/2d   F_cos  "
                         ."F_sin\n";
@@ -256,12 +276,13 @@ for my $filename (@ARGV) {
                 }
                 
                 if (0) {
-                    printf "%3s %3s %3s %0.3f %0.3f %0.3f %0.3f\n", 
+                    printf "%3s %3s %3s %0.3f %0.3f %0.3f %0.3f %0.3f\n", 
                     @hkl, $resolution_hkl, 
                     $F_hkl_without_Tf_and_cor, 
                     $F_hkl_iso_without_cor,
 		    # $F_hkl_aniso_without_cor,
-                    $F_hkl_iso_without_cor**2;
+                    $F_hkl_iso_without_cor**2,
+                    $F_hkl_sguared;
                 }
             }}}
             
