@@ -142,13 +142,20 @@ for my $filename (@ARGV) {
 	# using tests function
         tests_outputs( $atoms, $filename, $cell_parameters ); 
 	#-------------------------------------------------------------
-	
-        my $temperature_factor_key;
-	if(defined $atoms->[0]{aniso_value_Uij}[0]) {
-	    $temperature_factor_key = 1; # using aniso temp. factor;
-	} else {
-	    $temperature_factor_key = 0; # using iso temp. factor;
-	}
+	# test of aniso koefficients: if not all atoms (without H and D)
+        # contains aniso coef. then isotrophic koef. are using.
+        my $temperature_factor_key = 1;
+        foreach my $atom (@{$atoms}) {
+            if (!defined $atom->{aniso_value_Uij}[0] &&
+                $atom->{label} !~ /[H|D]\d++/) {
+                $temperature_factor_key = 0;
+                warn( "The CIF file '$filename' don't contain the full data ".
+                      "of the standard anisotropic atomic displacement "."
+                      components" );
+                last;
+            }
+        }
+        
         my $scat_dispersion_key = 0;
         if (defined $atoms->[0]{scat_dispesion_real}) {
             $scat_dispersion_key = 1;
@@ -384,7 +391,7 @@ sub remove_standard_uncertainties
 # \@atoms = (
 #           # [0]
 #           {
-#               site_label => "O10",
+#               label => "O10",
 #               chemical_type => "O",
 #               coordinates_fract" => [0.1, 0.2, 0.3],
 #               coordinates_ortho => [10, 20.5, 25.2],
@@ -580,9 +587,9 @@ sub get_thermal
               $anisotrophic_U_ij_values[2]->[$i],
               $anisotrophic_U_ij_values[3]->[$i],
               $anisotrophic_U_ij_values[4]->[$i],
-              $anisotrophic_U_ij_values[5]->[$i] ];
+              $anisotrophic_U_ij_values[5]->[$i] ];      
     }
-    # 
+    
     for my $i (0..$#{$datablock_values->{_atom_site_label}}) {
         my $atom_label = $datablock_values->{_atom_site_label}[$i];
         my %thermal_info = (
@@ -594,6 +601,7 @@ sub get_thermal
             );
         push ( @atoms_thermal_coefficients, \%thermal_info );
     }
+    
     return \@atoms_thermal_coefficients;
 }
 
