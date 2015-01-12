@@ -139,7 +139,7 @@ for my $filename (@ARGV) {
         my $cell_parameters = get_unit_cell_parameters( $datablock );
         ## print "@cell\n";
 	#---------------------------------------------------------
-	# usinf function of tests
+	# using tests function
         tests_outputs( $atoms, $filename, $cell_parameters ); 
 	#-------------------------------------------------------------
 	
@@ -156,19 +156,7 @@ for my $filename (@ARGV) {
         
         unless ( $dump_Cromer_Mann_parameters || $dump_cell_parameters || 
                  $dump_xyz_coordinates || $dump_cell_xyz_coordinates) {
-            #--------------------------------------------------
-            # temporary code for testing
-            ## if (0) {
-            ##     print "$datablock->{name}\n";
-            ##     foreach my $atom (@$atoms) {
-            ##         local $,=' ';
-            ##         print "$atom->{label} "."$atom->{chemical_type} ".
-            ##             "$atom->{U_value_of_B_factor} $atom->{B_factor}",
-            ##             $atom->{aniso_value_Uij}[0] ? 
-            ##             @{$atom->{aniso_value_Uij}} : "EMPTY" ,"\n";
-            ##     }
-            ## }
-            #-------------------------------------------------
+            
             my ($h_max, $h_min, 
                 $k_max, $k_min, 
                 $l_max, $l_min) = @{ hkl_limits( $datablock )};
@@ -209,7 +197,7 @@ for my $filename (@ARGV) {
                         $atom_structure_factor_corrected = 
                             sqrt( ($atom_structure_factor + 
                                    $atom->{scat_dispesion_real})**2 + 
-                               $atom->{scat_dispesion_real}**2 );
+                                  $atom->{scat_dispesion_real}**2 );
                     }
                     
 		    foreach my $sym_xyz (@{$atom->{symmetrical_xyz_fract}}) {
@@ -275,12 +263,11 @@ for my $filename (@ARGV) {
 		    exit;
                 }
                 
-                if (0) {
+                if (1) {
                     printf "%3s %3s %3s %0.3f %0.3f %0.3f %0.3f %0.3f\n", 
                     @hkl, $resolution_hkl, 
                     $F_hkl_without_Tf_and_cor, 
                     $F_hkl_iso_without_cor,
-		    # $F_hkl_aniso_without_cor,
                     $F_hkl_iso_without_cor**2,
                     $F_hkl_sguared;
                 }
