@@ -156,12 +156,10 @@ for my $filename (@ARGV) {
         
         unless ( $dump_Cromer_Mann_parameters || $dump_cell_parameters || 
                  $dump_xyz_coordinates || $dump_cell_xyz_coordinates) {
-            
-            my ($h_max, $h_min, 
-                $k_max, $k_min, 
-                $l_max, $l_min) = @{ hkl_limits( $datablock )};
+            my ($h_max, $h_min, $k_max, $k_min, $l_max, $l_min) = 
+                @{ hkl_limits( $datablock, $filename )};
 	    my @abc_star = @{$cell_parameters->{reciprocal_cell_radians}}[0..2];
-	    
+            
             foreach my $h_limit ($h_min..$h_max) {
             foreach my $k_limit ($k_min..$k_max) {   
             foreach my $l_limit ($l_min..$l_max) {  
@@ -235,12 +233,17 @@ for my $filename (@ARGV) {
 			    $F_sin_comp_w_cor += 
 				$atom->{occupancy} * $atom_structure_factor * 
 				$temperature_factor * sin( $atom_hkl_phase );
-                            $F_cos_comp += $atom->{occupancy} * 
-                                $atom_structure_factor_corrected * 
-				$temperature_factor * cos( $atom_hkl_phase );
-                            $F_sin_comp += $atom->{occupancy} * 
-                                $atom_structure_factor_corrected * 
-				$temperature_factor * sin( $atom_hkl_phase );
+                            if ($scat_dispersion_key) { 
+                                $F_cos_comp += $atom->{occupancy} * 
+                                    $atom_structure_factor_corrected * 
+                                    $temperature_factor * cos( $atom_hkl_phase );
+                                $F_sin_comp += $atom->{occupancy} * 
+                                    $atom_structure_factor_corrected * 
+                                    $temperature_factor * sin( $atom_hkl_phase );
+                            } else {
+                                warn( "The CIF file '$filename' don't contain the data ".
+                                      "of anomalous-dispersion scattering factor" );
+                            }
 			}
 		    } # foreach of cell atoms;
 		} # foreach of assimetric unit atoms;
@@ -471,8 +474,9 @@ sub get_Cromer_Mann_coefficients
     my @atoms_aniso_coefficients;
     
     my $labels = $datablock_values->{_atom_site_label};
-    my $chemical_type_of_aniso_propierties_loop = 
-        $datablock_values->{_atom_type_symbol};
+    my $chemical_type_of_aniso_propierties_loop =
+        [ map{ ucfirst(lc( $_ )) 
+          }@{$datablock_values->{_atom_type_symbol}} ];
     my $Cromer_Mann_coefficients = 
         [ $datablock_values->{_atom_type_scat_cromer_mann_a1},
           $datablock_values->{_atom_type_scat_cromer_mann_a2},
@@ -720,8 +724,18 @@ sub spacing_d_hkl {
 # \(h_max,h_min,k_max,k_min,l_max,l_min);
 sub hkl_limits
 {
-    my ($datablock) = @_;
+    my ($datablock, $filename) = @_;
     my $datablock_values = $datablock->{values};
+    unless (defined ${$datablock_values->{_diffrn_reflns_limit_h_max}}[0] | 
+            defined ${$datablock_values->{_diffrn_reflns_limit_h_min}}[0] | 
+            defined ${$datablock_values->{_diffrn_reflns_limit_k_max}}[0] |
+            defined ${$datablock_values->{_diffrn_reflns_limit_k_min}}[0] |
+            defined ${$datablock_values->{_diffrn_reflns_limit_l_max}}[0] |
+            defined ${$datablock_values->{_diffrn_reflns_limit_l_min}}[0]) {
+        warn( "The CIF file '$filename' don't contain the full data ".
+              "of limits on the Milers indices" );
+        exit;
+    }
     return [ ${$datablock_values->{_diffrn_reflns_limit_h_max}}[0],
              ${$datablock_values->{_diffrn_reflns_limit_h_min}}[0],
              ${$datablock_values->{_diffrn_reflns_limit_k_max}}[0],
