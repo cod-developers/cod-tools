@@ -454,11 +454,8 @@ sub atoms_from_cif
                     lc( substr( 
                             $datablock_values->{_atom_site_label}[$i], 0, 2
                         )));
-            $atom_chemical_type =~ s/\d/ /;          
-        } elsif (defined $datablock_values->{_atom_site_type_symbol}[$i] && 
-                 length( $atom_chemical_type ) == 1) {
-            ## $atom_chemical_type = $atom_chemical_type." ";
-        }     
+            $atom_chemical_type =~ s/\d//;          
+        }   
         my %atom_info = ( 
             label => $datablock_values->{_atom_site_label}[$i],
             chemical_type => $atom_chemical_type,
@@ -502,9 +499,12 @@ sub get_Cromer_Mann_coefficients
     my @atoms_aniso_coefficients;
     
     my $labels = $datablock_values->{_atom_site_label};
-    my $chemical_type_of_Cromer_Mann_loop =
-        [ map{ ucfirst( lc( substr( $_,0,2 ))) 
-          }@{$datablock_values->{_atom_type_symbol}} ];
+    my $chemical_type_of_Cromer_Mann_loop = [];
+    foreach (@{$datablock_values->{_atom_type_symbol}}) {
+        my $double_sym = ucfirst( lc( substr( $_,0,2 )));
+        $double_sym =~ s/\s//g;
+        push(@{$chemical_type_of_Cromer_Mann_loop}, $double_sym);
+    }
     my $Cromer_Mann_coefficients = 
         [ $datablock_values->{_atom_type_scat_cromer_mann_a1},
           $datablock_values->{_atom_type_scat_cromer_mann_a2},
@@ -525,19 +525,16 @@ sub get_Cromer_Mann_coefficients
         if (!defined $atom_chemical_type) {
             $atom_chemical_type = 
                 ucfirst( lc( substr($labels->[$i],0,2)));
-            $atom_chemical_type =~ s/\d/ /;          
-        } elsif (defined $atom_chemical_type && 
-                 length( $atom_chemical_type ) == 1) {
-            ## $atom_chemical_type = $atom_chemical_type." ";
+            $atom_chemical_type =~ s/\d//;
+            
         }
         for my $y (0..$#{$chemical_type_of_Cromer_Mann_loop}) {
-         ##  print length($chemical_type_of_Cromer_Mann_loop->[$y]), 
-         ##  ">>> $chemical_type_of_Cromer_Mann_loop->[$y]\n";
-         ##  print length($atom_chemical_type), 
-         ##  "<<< $atom_chemical_type\n";
+        ## print length($chemical_type_of_Cromer_Mann_loop->[$y]), 
+        ## ">>> $chemical_type_of_Cromer_Mann_loop->[$y]\n";
+        ## print length($atom_chemical_type), 
+        ## "<<< $atom_chemical_type\n";
             if ( $atom_chemical_type eq 
-                 $chemical_type_of_Cromer_Mann_loop->[$y] ) {
-                
+                 $chemical_type_of_Cromer_Mann_loop->[$y] ) {                
                 my %thermal = (
                     Crommer_Mann_coefficients => [
                         $Cromer_Mann_coefficients->[0][$y],
