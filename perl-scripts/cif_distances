@@ -41,6 +41,7 @@ my $verbose = 0;
 my $add_filename;
 my $output_format = "pairwise";
 my $format = "%-11.3f";
+my $pairwise_format = "%-6.3f";
 my $line_length = 80;
 
 my $escape_sequence = '\\';
@@ -57,7 +58,8 @@ my %escaped_symbols = ("\"" => '"', "\'" => "'");
 #**                     matrix format (default 80).
 #** --format "%8.6f"
 #**                     Use the specified format for distance matrix 
-#**                     format printout (default "%-11.3f").
+#**                     and pairwise printout format (default "%-11.3f" for
+#**                     matrix, "%-6.3f" for pairwise).
 #** -F, --add-filename
 #**                     Add a filename field at the end of pairwise 
 #**                     distance format lines.
@@ -114,7 +116,8 @@ my %escaped_symbols = ("\"" => '"', "\'" => "'");
     "-M,--distance-matrix"       => sub { $output_format = "matrix" },
     "-P,--pairwise-distance"     => sub { $output_format = "pairwise"; },
     "-l,--matrix-line-length"    => \$line_length,
-    "--format"                   => \$format,
+    "--format"                   =>
+        sub { $format = $pairwise_format = &get_value },
 
     "-F,--add-filename"          => sub { $add_filename = 1 },
     "--no-add-filename"          => sub { $add_filename = 0 },
@@ -797,7 +800,7 @@ sub print_pairwise {
         if ( $distance eq "-" ) {
             $output_string .= sprintf( 'DIST %-6s', "-" )
         } else { 
-            $output_string .= sprintf( 'DIST %-6.3f', $distance )
+            $output_string .= sprintf( 'DIST ' . $pairwise_format, $distance )
         }
 
         $output_string .= sprintf( ' %10s %10s %24s %8s ', 
