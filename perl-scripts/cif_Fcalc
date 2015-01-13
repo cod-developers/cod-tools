@@ -172,6 +172,8 @@ for my $filename (@ARGV) {
                  $dump_xyz_coordinates || $dump_cell_xyz_coordinates) {
             my ($h_max, $h_min, $k_max, $k_min, $l_max, $l_min) = 
                 @{ hkl_limits( $datablock, $filename )};
+         ## print "$h_max, $h_min, $k_max, $k_min, $l_max, $l_min\n";
+         ## exit;
 	    my @abc_star = @{$cell_parameters->{reciprocal_cell_radians}}[0..2];
             
             foreach my $h_limit ($h_min..$h_max) {
@@ -444,10 +446,22 @@ sub atoms_from_cif
                           $xyz_arrays[2]->[$i] ];
         my $ortho_xyz = 
             mat_vect_mul( $f2o,  $fract_xyz );
-        
+        my $atom_chemical_type = 
+            $datablock_values->{_atom_site_type_symbol}[$i];
+        if (!defined $datablock_values->{_atom_site_type_symbol}[$i]) {
+            $atom_chemical_type = 
+                ucfirst( 
+                    lc( substr( 
+                            $datablock_values->{_atom_site_label}[$i], 0, 2
+                        )));
+            $atom_chemical_type =~ s/\d/ /;          
+        } elsif (defined $datablock_values->{_atom_site_type_symbol}[$i] && 
+                 length( $atom_chemical_type ) == 1) {
+            ## $atom_chemical_type = $atom_chemical_type." ";
+        }     
         my %atom_info = ( 
             label => $datablock_values->{_atom_site_label}[$i],
-            chemical_type => $datablock_values->{_atom_site_type_symbol}[$i],
+            chemical_type => $atom_chemical_type,
             coordinates_fract => $fract_xyz,
             coordinates_ortho => $ortho_xyz,
             occupancy => $occupancy->[$i]                     
@@ -488,8 +502,8 @@ sub get_Cromer_Mann_coefficients
     my @atoms_aniso_coefficients;
     
     my $labels = $datablock_values->{_atom_site_label};
-    my $chemical_type_of_aniso_propierties_loop =
-        [ map{ ucfirst(lc( $_ )) 
+    my $chemical_type_of_Cromer_Mann_loop =
+        [ map{ ucfirst( lc( substr( $_,0,2 ))) 
           }@{$datablock_values->{_atom_type_symbol}} ];
     my $Cromer_Mann_coefficients = 
         [ $datablock_values->{_atom_type_scat_cromer_mann_a1},
@@ -508,10 +522,22 @@ sub get_Cromer_Mann_coefficients
     for my $i (0..$#{$labels}) {
         my $atom_chemical_type = 
             $datablock_values->{_atom_site_type_symbol}[$i];
-        for my $y (0..$#{$chemical_type_of_aniso_propierties_loop}) {
-            
+        if (!defined $atom_chemical_type) {
+            $atom_chemical_type = 
+                ucfirst( lc( substr($labels->[$i],0,2)));
+            $atom_chemical_type =~ s/\d/ /;          
+        } elsif (defined $atom_chemical_type && 
+                 length( $atom_chemical_type ) == 1) {
+            ## $atom_chemical_type = $atom_chemical_type." ";
+        }
+        for my $y (0..$#{$chemical_type_of_Cromer_Mann_loop}) {
+         ##  print length($chemical_type_of_Cromer_Mann_loop->[$y]), 
+         ##  ">>> $chemical_type_of_Cromer_Mann_loop->[$y]\n";
+         ##  print length($atom_chemical_type), 
+         ##  "<<< $atom_chemical_type\n";
             if ( $atom_chemical_type eq 
-                 $chemical_type_of_aniso_propierties_loop->[$y] ) {
+                 $chemical_type_of_Cromer_Mann_loop->[$y] ) {
+                
                 my %thermal = (
                     Crommer_Mann_coefficients => [
                         $Cromer_Mann_coefficients->[0][$y],
@@ -741,12 +767,12 @@ sub hkl_limits
 {
     my ($datablock, $filename) = @_;
     my $datablock_values = $datablock->{values};
-    unless (defined ${$datablock_values->{_diffrn_reflns_limit_h_max}}[0] | 
-            defined ${$datablock_values->{_diffrn_reflns_limit_h_min}}[0] | 
-            defined ${$datablock_values->{_diffrn_reflns_limit_k_max}}[0] |
-            defined ${$datablock_values->{_diffrn_reflns_limit_k_min}}[0] |
-            defined ${$datablock_values->{_diffrn_reflns_limit_l_max}}[0] |
-            defined ${$datablock_values->{_diffrn_reflns_limit_l_min}}[0]) {
+    if (!defined ${$datablock_values->{_diffrn_reflns_limit_h_max}}[0] | 
+        !defined ${$datablock_values->{_diffrn_reflns_limit_h_min}}[0] | 
+        !defined ${$datablock_values->{_diffrn_reflns_limit_k_max}}[0] |
+        !defined ${$datablock_values->{_diffrn_reflns_limit_k_min}}[0] |
+        !defined ${$datablock_values->{_diffrn_reflns_limit_l_max}}[0] |
+        !defined ${$datablock_values->{_diffrn_reflns_limit_l_min}}[0]) {
         warn( "The CIF file '$filename' don't contain the full data ".
               "of limits on the Milers indices" );
         exit;
