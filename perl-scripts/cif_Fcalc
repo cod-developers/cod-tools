@@ -42,6 +42,7 @@ my $dump_Cromer_Mann_parameters = 0;
 my $dump_cell_parameters = 0;
 my $dump_cell_xyz_coordinates = 0;
 my $synthetic_test1 = 0;
+my $iso_temperature_factor = 0;
 
 # constants;
 my $PI = 4*atan2( 1, 1 );
@@ -57,6 +58,7 @@ my $PI = 4*atan2( 1, 1 );
 #*    --dump-cell-parameters Print a short usage message with cell parameters
 #*    --synthetic-test1 Print a short usage message of various parameters.
 #*    --dump-cell-xyz-coordinates Print a XYZ file which contains all atoms of cell.
+#*    --isotropic-Tf Use isotropic temperature factor for structure factor calculations
 #*    --help,--usage         Print a short usage message (this message) and exit.
 #**
 
@@ -84,6 +86,7 @@ my $PI = 4*atan2( 1, 1 );
     "--dump-cell-parameters"    => sub { $dump_cell_parameters = 1 },
     "--synthetic-test1"    => sub { $synthetic_test1 = 1 },
     "--dump-cell-xyz-coordinates"    => sub { $dump_cell_xyz_coordinates = 1 },
+    "--isotropic-Tf"    => sub { $iso_temperature_factor = 1 },
     "--help,--usage"     => sub { SUsage::usage; exit },
 );
 
@@ -142,6 +145,7 @@ for my $filename (@ARGV) {
 	# using tests function
         tests_outputs( $atoms, $filename, $cell_parameters ); 
 	#-------------------------------------------------------------
+        
 	# test of aniso koefficients: if not all atoms (without H and D)
         # contains aniso coef. then isotrophic koef. are using.
         my $temperature_factor_key = 1;
@@ -150,12 +154,15 @@ for my $filename (@ARGV) {
                 $atom->{label} !~ /[H|D]\d++/) {
                 $temperature_factor_key = 0;
                 warn( "The CIF file '$filename' don't contain the full data ".
-                      "of the standard anisotropic atomic displacement "."
-                      components" );
+                      "of the standard anisotropic atomic displacement ".
+                      "components" );
                 last;
             }
         }
-        
+        if ($iso_temperature_factor) {
+            $temperature_factor_key = 0; # if option --isotropic-Tf;
+        }
+
         my $scat_dispersion_key = 0;
         if (defined $atoms->[0]{scat_dispesion_real}) {
             $scat_dispersion_key = 1;
