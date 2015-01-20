@@ -136,11 +136,11 @@ for my $filename (@ARGV) {
         die "The CIF contains more than one value of Xray radiation wavelength." 
             if ($#{$radiation_wavelengths}>0);
         
-        my @cell = get_unit_cell( $datablock, $filename );
-        my $f2o = symop_ortho_from_fract( @cell );
-        my $atoms = atoms_from_cif( $datablock, $f2o, $filename);
         my $cell_parameters = get_unit_cell_parameters( $datablock );
-        ## print "@cell\n";
+        my $f2o = symop_ortho_from_fract( 
+            @{$cell_parameters->{crystal_cell_degrees}} );
+        my $atoms = atoms_from_cif( $datablock, $f2o, $filename);
+      
 	#---------------------------------------------------------
 	# using tests function
         tests_outputs( $atoms, $filename, $cell_parameters ); 
@@ -291,49 +291,6 @@ for my $filename (@ARGV) {
     }
 }
 
-
-#===============================================================#
-# Extract unit cell angles and lengths.
-#
-# Accepts
-#     values - a hash where a data from the CIF file is stored
-# Returns
-#     cell - an array  with stored information.
-
-sub get_unit_cell($$)
-{
-    my( $datablock, $filename ) = @_;
-
-    my $values = $datablock->{values};
-    my $dataname = $datablock->{name};
-
-    my @cell;
-
-    for my $cif_tag (qw(_cell_length_a
-                        _cell_length_b
-                        _cell_length_c
-                        )) {
-        push(@cell, $values->{$cif_tag}[0]);
-        $cell[-1] =~ s/\(\d+\)$//;
-    }
-
-    for my $cif_tag (qw(_cell_angle_alpha
-                        _cell_angle_beta
-                        _cell_angle_gamma
-                        )) {
-        if( exists $values->{$cif_tag} ) {
-            push( @cell, $values->{$cif_tag}[0] );
-            $cell[-1] =~ s/\(\d+\)$//;
-        } else {
-            warning( $0, $filename, $dataname,
-                     "cell angle '$cif_tag' not present -- " .
-                     "taking default value 90 degress." );
-            push( @cell, 90 );
-        }
-    }
-
-    return @cell;
-}
 
 #===============================================================#
 # Multiplies an ortho matrix with a vector.
@@ -640,7 +597,8 @@ sub get_thermal
 #
 # Return
 # $a = {
-#        crystall_cell => [a, b, c, alpha, beta, gamma ],    
+#        crystal_cell_degrees => [a, b, c, alpha, beta, gamma ],
+#        crystal_cell_radians => [a, b, c, alpha_rad, beta_rad, gamma_rad ],
 #        cell_volume => 14.055,
 #        reciprocal_cell => [a*, b*, c*, alpha*, beta*, gamma*]
 #      }
