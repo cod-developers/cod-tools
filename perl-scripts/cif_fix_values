@@ -266,8 +266,8 @@ sub insert_report_to_comments {
         my $reports_value = join( "\n\n",@$insert_reports );
         my $title =
             "The following automatic conversions were performed:\n\n" .
-            join( "\n", map { "" . $_ }
-                  CIFTagPrint::fold( 70, " +", " ", $reports_value ));
+            join( "\n", map { CIFTagPrint::fold( 70, " +", " ", $_ ) }
+                  split( "\n", $reports_value ));
         
         if( exists $values->{$comments_tag} ) {
             $values->{$comments_tag}[0] .= "\n\n" . $title;
