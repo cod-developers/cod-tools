@@ -172,8 +172,7 @@ for my $filename (@ARGV) {
                  $dump_xyz_coordinates || $dump_cell_xyz_coordinates) {
             my ($h_max, $h_min, $k_max, $k_min, $l_max, $l_min) = 
                 @{ hkl_limits( $datablock, $filename )};
-         ## print "$h_max, $h_min, $k_max, $k_min, $l_max, $l_min\n";
-         ## exit;
+
 	    my @abc_star = @{$cell_parameters->{reciprocal_cell_radians}}[0..2];
             
             foreach my $h_limit ($h_min..$h_max) {
@@ -203,9 +202,7 @@ for my $filename (@ARGV) {
                             $atom->{Crommer_Mann_coefficients}, 
                             $radiation_wavelengths->[0],
                             $sin_teta_hkl );
-                    ##print "$atom->{chemical_type} ".
-                    ##    "$atom->{scat_dispesion_real} ".
-                    ##    "$atom->{scat_dispesion_imag}\n";
+
                     my $atom_structure_factor_corrected;
                     if ($scat_dispersion_key) {
                         $atom_structure_factor_corrected = 
@@ -579,6 +576,7 @@ sub get_Cromer_Mann_coefficients
 #           },
 #  );  
 
+
 sub get_thermal
 {
     my ($datablock) = @_;
@@ -629,7 +627,6 @@ sub get_thermal
             );
         push ( @atoms_thermal_coefficients, \%thermal_info );
     }
-    
     return \@atoms_thermal_coefficients;
 }
 
@@ -736,14 +733,14 @@ sub d2r_angle
 # for ex.: spacing_d_hkl( h, k, l, a*, b*, c*, alpha*, beta*, gamma* )
 # Return
 # hkl resolution (in angstrom): 5. 
-sub spacing_d_hkl {
-    my ($h, $k, $l, 
-        $a_star, $b_star, $c_star,
+sub spacing_d_hkl 
+{
+    my ($h, $k, $l, $a_star, $b_star, $c_star,
         $alpha_star, $beta_star, $gamma_star) = @_;
     return 1 /
-	sqrt( ($h ** 2) * ($a_star ** 2) +
-              ($k ** 2) * ($b_star ** 2) +
-              ($l ** 2) * ($c_star ** 2) +
+	sqrt( $h**2 * $a_star**2 +
+              $k**2 * $b_star**2 +
+              $l**2 * $c_star**2 +
               2 * $h * $k * $a_star * $b_star * cos( $gamma_star ) +
               2 * $h * $l * $a_star * $c_star * cos( $beta_star ) +
               2 * $k * $l * $b_star * $c_star * cos( $alpha_star ) );
@@ -827,7 +824,8 @@ sub printing_of_dump_cell_parameters
 # Value of atom structure factor which depends on wavelength and sin(teta_hkl)
 # for ex.:
 # atom_structure_factor_from_coefficient([a1,..,c],1.54, 0.33) = 1.4;
-sub atom_structure_factor_from_coefficients {
+sub atom_structure_factor_from_coefficients 
+{
     my ($Cromer_Mann, $wavelenth, $sin_theta_hkl) = @_;
     my ($a1, $a2, $a3, $a4, $b1, $b2, $b3, $b4, $c) = @{$Cromer_Mann};
     return 
@@ -847,11 +845,11 @@ sub atom_structure_factor_from_coefficients {
 # phase(in radians)
 # for ex.: 
 # phase_hkl( @hkl, @xyz_fract, @cell_length_abc) = 1.12;
-sub atom_phase_hkl_rad {
-    my ($h, $k, $l,
-        $fract_x, $fract_y, $fract_z) = @_;
-    return 2 * $PI * ( $h * $fract_x + $k * $fract_y +
-                       $l * $fract_z );   
+sub atom_phase_hkl_rad 
+{
+    my ($h, $k, $l, $fract_x, $fract_y, $fract_z) = @_;
+    return 2 * $PI * ($h * $fract_x + $k * $fract_y +
+                       $l * $fract_z);   
 }
 
 # Function for temperature factor calculation (anisotropic);
@@ -862,12 +860,11 @@ sub atom_phase_hkl_rad {
 # temperature_factor_aniso( U11, U22, U33, U23, U13, U12, h, k, l, a*, b*, c* );
 # Return:
 # T(aniso, hkl).
-sub temperature_factor_aniso {
-    my ($U_11, $U_22, $U_33, 
-        $U_23, $U_13, $U_12,
-        $h, $k, $l, $repro_length_a, 
-	$repro_length_b, $repro_length_c) = @_;
-    return exp( ( -2 * $PI**2 ) *
+sub temperature_factor_aniso 
+{
+    my ($U_11, $U_22, $U_33, $U_23, $U_13, $U_12,
+        $h, $k, $l, $repro_length_a, $repro_length_b, $repro_length_c) = @_;
+    return exp( (-2 * $PI**2) *
                 ($U_11 * ($h**2) * ($repro_length_a**2) +
                  $U_22 * ($k**2) * ($repro_length_b**2) +
                  $U_33 * ($l**2) * ($repro_length_c**2) +
@@ -1070,7 +1067,7 @@ sub tests_outputs
                 @{$atom->{coordinates_ortho}};
             }
         exit;
-    }      
+    }
     if( $dump_Cromer_Mann_parameters ) {
         print "$file_name\n";
         foreach my $atom (@$atoms) {
@@ -1079,7 +1076,7 @@ sub tests_outputs
                 "@{$atom->{Crommer_Mann_coefficients}}\n" : "Empty\n";
         }
         exit;
-    }        
+    }
     if( $dump_cell_parameters ) {            
         printing_of_dump_cell_parameters( $file_name, $cell_parameters );
         exit;
