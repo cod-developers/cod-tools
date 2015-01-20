@@ -40,6 +40,7 @@ my $fix_misspelled_values = 1;
 my $replacement_file;
 my $fix_temperature = 1;
 my $fix_enums = 1;
+my $fix_value_of_exptl_crystal_density_meas = 1;
 
 my $treat_as_set = 1;
 
@@ -56,6 +57,7 @@ sub dont_fix_any {
     $fix_temperature = 0;
     $fix_enums = 0;
     $treat_as_set = 0;
+    $fix_value_of_exptl_crystal_density_meas = 0;
 }
 
 my %default_enums = (
@@ -504,6 +506,52 @@ sub fix_misspelled_values($$$) {
     return @reports;
 }
 
+my $number_pos =
+    '(?:\+?' .
+    '(?:\d+(?:\.\d*)?|\.\d+)' .
+    '(?:[eE][-+]?\d+)?)';
+my $number_neg =
+    '(?:\-' .
+    '(?:\d+(?:\.\d*)?|\.\d+)' .
+    '(?:[eE][-+]?\d+)?)';
+my $temp_K  =
+    '(?:(?i:K(?i:elvin?)?)|(?i:K))';
+my $temp_C  =
+    '(?:(?i:deg\.?(?:rees?)?)?\s*(?i:C(?i:el[sc]ius)?)|' .
+    '(?i:Deg\.?(?:rees?)?\s*[Cc]?)|' .
+    '(?:(?:(?i:[\\\/]+o)|(?i:O)|(?:[\\\/]*\%))' .
+    '(?:[-_\s]*)(?i:C\.?)?)|' .
+    '(?i:(?i:degrees?)?(?:[-_\s]*)centigrades?))';
+my $temp_RT =
+    '(?:(?:(?i:temp\\\\\'erature)\s*ambi[ae]nte?)|' .
+    '(?:(?:(?i:room)|(?i:amb(?i:i[ae]nte?)))' .
+    '\s*(?i:tem[pt](?:erature)?)?)|(?i:rt))';
+my $temp_undef =
+    '(?:(?i:ye?s?)|(?i:no?(?i:ne)?)|(?i:unknown)|' .
+    '(?i:not?\s*(?:(?i:meas*ure?d?)|(?i:important)|' .
+    '(?i:determine?d?)|(?i:avai?lable?)|(?i:relevant)|' .
+    '(?i:recorde?d?)))|(?i:N\/?(?i:[DA]))|\s*|[-])';
+my $sigma = '(?:\d+\.\d+|\d+\.|\.\d+|\d+)';
+my $temp_dec =
+    '(?i: d\.?(?i:ec\.?)?' .
+    '(?i:omp\.?)?(?i:os(?i:e[ds]?|ition))?\s*(?i:at)?)';
+my $value_not_measured = qr/
+    (?:
+        not[ _]measured|none|na|n\.a\.|n\/[ad]|
+        -+|no|nm|n|no[ntr]|
+            (?:[mn]oi?[ntr]|nit|npt|no|pas|nicht)
+            [- _']+
+            (?:[mn]ea?s?a?urt?e*[ds]|meas|measurement|
+            mes(?:ua|ou|asu)red|meas(?:e|y|ua|ou|us|ru|hu)red|
+            meausred|measused|measure|measrued|measued|mesur\\'ee|
+            performed|determined|applied|available|done|gemessen)
+        |
+        notmeasured|not[ ]being[ ]measured|
+        unknown|\?none|mone|nnoe|nonne|noref|nonr|
+        not[ ]measured'\?|\?|\?"|0\?|\?0|\?\/|'[ ]'|\/
+    )
+    /ix;
+
 sub fix_temperature($$) {
     my( $dataset, $filename ) = @_;
     my $dataname = 'data_' . $dataset->{name};
@@ -516,36 +564,6 @@ sub fix_temperature($$) {
             '_diffrn_ambient_temperature',
             '_exptl_crystal_density_meas_temp',
             '_chemical_melting_point' );
-    my $number_pos =
-        '(?:\+?' .
-        '(?:\d+(?:\.\d*)?|\.\d+)' .
-        '(?:[eE][-+]?\d+)?)';
-    my $number_neg =
-        '(?:\-' .
-        '(?:\d+(?:\.\d*)?|\.\d+)' .
-        '(?:[eE][-+]?\d+)?)';
-    my $temp_K  =
-        '(?:(?i:K(?i:elvin?)?)|(?i:K))';
-    my $temp_C  =
-        '(?:(?i:deg\.?(?:rees?)?)?\s*(?i:C(?i:el[sc]ius)?)|' .
-        '(?i:Deg\.?(?:rees?)?\s*[Cc]?)|' .
-        '(?:(?:(?i:[\\\/]+o)|(?i:O)|(?:[\\\/]*\%))' .
-        '(?:[-_\s]*)(?i:C\.?)?)|' .
-        '(?i:(?i:degrees?)?(?:[-_\s]*)centigrades?))';
-    my $temp_RT =
-        '(?:(?:(?i:temp\\\\\'erature)\s*ambi[ae]nte?)|' .
-        '(?:(?:(?i:room)|(?i:amb(?i:i[ae]nte?)))' .
-        '\s*(?i:tem[pt](?:erature)?)?)|(?i:rt))';
-    my $temp_undef =
-        '(?:(?i:ye?s?)|(?i:no?(?i:ne)?)|(?i:unknown)|' .
-        '(?i:not?\s*(?:(?i:meas*ure?d?)|(?i:important)|' .
-        '(?i:determine?d?)|(?i:avai?lable?)|(?i:relevant)|' .
-        '(?i:recorde?d?)))|(?i:N\/?(?i:[DA]))|\s*|[-])';
-    my $sigma = '(?:\d+\.\d+|\d+\.|\.\d+|\d+)';
-    my $temp_dec =
-        '(?i: d\.?(?i:ec\.?)?' .
-        '(?i:omp\.?)?(?i:os(?i:e[ds]?|ition))?\s*(?i:at)?)';
-
     for my $tag( @temp_tags ) {
         if( exists $values->{$tag} ) {
             for my $i( 0..$#{$values->{$tag}} ) {
@@ -950,6 +968,52 @@ sub fix_temperature($$) {
     return @insert_reports
 }
 
+sub fix_value_of_exptl_crystal_density_meas($$) {
+    my( $dataset, $filename ) = @_;
+    my $dataname = 'data_' . $dataset->{name};
+    my @insert_reports = ();
+    my $values = $dataset->{values};
+    my @value_tags = (
+        '_exptl_crystal_density_meas',
+        );
+    for my $tag( @value_tags ) {
+        if( exists $values->{$tag} ) {
+            for my $i( 0..$#{$values->{$tag}} ) {
+                my $value = $values->{$tag}[$i];
+                my $value_modif = $value;
+		$value_modif =~ s/^\s+|\s+$//g;
+		
+                if( $value_modif =~ /^[.?]$/ ) {
+                    next;
+                }
+                if( $value_modif =~
+                    /^($number_pos|$number_pos\(\d+\))$/ ) {
+                    next;
+                }
+
+                if( $value_modif =~
+                    /^
+                        (?: ' \s*)?
+                        $value_not_measured
+                        (?: \s* ')?
+                    $/x ) {
+                    $values->{$tag}[$i] = "?";
+                    my $report_msg =
+                        "'$tag' value '$value' ".
+                        "was changed to '?' - the " .
+                        "value is perceived as not measured.";
+                    push( @insert_reports, $report_msg );
+                    print STDERR
+                        "$0: $filename $dataname: NOTE, $report_msg\n";
+                    next;
+                }
+ 
+            }
+        }
+    }
+    return @insert_reports
+}
+
 sub fix_enums($$) {
     my( $dataset, $filename ) = @_;
     my $dataname = 'data_' . $dataset->{name};
@@ -1101,6 +1165,12 @@ for my $filename (@ARGV) {
             my @enums_reports = 
                 fix_enums( $dataset, $filename );
             push( @insert_reports, @enums_reports );
+        }
+        if ( $fix_value_of_exptl_crystal_density_meas ) {
+            my @reports_of_exptl_crystal_density_meas =
+                &fix_value_of_exptl_crystal_density_meas
+                    ( $dataset, $filename );
+            push( @insert_reports, @reports_of_exptl_crystal_density_meas );
         }
 #        if( $treat_as_set ) {
 #            my @set_reports =
