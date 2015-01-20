@@ -156,8 +156,14 @@ for my $filename (@ARGV) {
                 warn( "The CIF file '$filename' don't contain the full data ".
                       "of the standard anisotropic atomic displacement ".
                       "components" );
+                if( $atom->{U_value_of_B_factor} !~ /\d\.\d++/ &&
+                    $atom->{B_factor} !~ /\d\.\d++/) {
+                    die "The CIF '$filename' does not contain the correct values for ".
+                        "temperature factor calculation"; 
+                }
                 last;
             }
+            
         }
         if( $iso_temperature_factor ) {
             $temperature_factor_key = 0; # if option --isotropic-Tf;
@@ -172,8 +178,7 @@ for my $filename (@ARGV) {
                 $dump_xyz_coordinates || $dump_cell_xyz_coordinates ) {
             my ( $h_max, $h_min, $k_max, $k_min, $l_max, $l_min ) = 
                 @{hkl_limits( $datablock, $filename )};
-            
-	    my @abc_star = @{$cell_parameters->{reciprocal_cell_radians}}[0..2];
+            my @abc_star = @{$cell_parameters->{reciprocal_cell_radians}}[0..2];
             
             foreach my $h_limit ( $h_min..$h_max ) {
             foreach my $k_limit ( $k_min..$k_max ) {   
@@ -413,7 +418,7 @@ sub atoms_from_cif
             chemical_type => $atom_chemical_type,
             coordinates_fract => $fract_xyz,
             coordinates_ortho => $ortho_xyz,
-            occupancy => $occupancy->[$i]                     
+            occupancy => $occupancy->[$i]                
             );
         # 
         %atom_info = (%atom_info, %{$Cromer_Mann_coefficients->[$i]});
@@ -576,8 +581,10 @@ sub get_thermal
     for my $i (0..$#{$datablock_values->{_atom_site_label}}) {
         my $atom_label = $datablock_values->{_atom_site_label}[$i];
         my %thermal_info = (
-            B_factor => ($thermal_parameter_B->[$i] ? $thermal_parameter_B->[$i] : 
-             8 * ($PI**2) * $squared_displacement_U->[$i]
+            B_factor => ($thermal_parameter_B->[$i] || 
+                         $squared_displacement_U->[$i] !~ /\d\.\d++/ ? 
+                         $thermal_parameter_B->[$i] : 
+                         8 * ($PI**2) * $squared_displacement_U->[$i]
             ),
             U_value_of_B_factor => $squared_displacement_U->[$i],
             aniso_value_Uij => $temporary_aniso_data{$atom_label}
@@ -600,7 +607,8 @@ sub get_thermal
 #        crystal_cell_degrees => [a, b, c, alpha, beta, gamma ],
 #        crystal_cell_radians => [a, b, c, alpha_rad, beta_rad, gamma_rad ],
 #        cell_volume => 14.055,
-#        reciprocal_cell => [a*, b*, c*, alpha*, beta*, gamma*]
+#        reciprocal_cell_degrees => [a*, b*, c*, alpha*, beta*, gamma*],
+#        reciprocal_cell_radians => [a*,b*,c*,alpha_rad*,beta_rad*,gamma_rad*],
 #      }
 sub get_unit_cell_parameters
 {
