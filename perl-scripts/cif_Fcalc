@@ -150,8 +150,8 @@ for my $filename (@ARGV) {
         # contains aniso coef. then isotrophic koef. are using.
         my $temperature_factor_key = 1;
         foreach my $atom (@{$atoms}) {
-            if (!defined $atom->{aniso_value_Uij}[0] &&
-                $atom->{label} !~ /[H|D]\d++/) {
+            if( !defined $atom->{aniso_value_Uij}[0] &&
+                $atom->{label} !~ /[H|D]\d++/ ) {
                 $temperature_factor_key = 0;
                 warn( "The CIF file '$filename' don't contain the full data ".
                       "of the standard anisotropic atomic displacement ".
@@ -159,27 +159,27 @@ for my $filename (@ARGV) {
                 last;
             }
         }
-        if ($iso_temperature_factor) {
+        if( $iso_temperature_factor ) {
             $temperature_factor_key = 0; # if option --isotropic-Tf;
         }
-
+        
         my $scat_dispersion_key = 0;
-        if (defined $atoms->[0]{scat_dispesion_real}) {
+        if( defined $atoms->[0]{scat_dispesion_real} ) {
             $scat_dispersion_key = 1;
         }
         
-        unless ( $dump_Cromer_Mann_parameters || $dump_cell_parameters || 
-                 $dump_xyz_coordinates || $dump_cell_xyz_coordinates) {
-            my ($h_max, $h_min, $k_max, $k_min, $l_max, $l_min) = 
-                @{ hkl_limits( $datablock, $filename )};
-
+        unless( $dump_Cromer_Mann_parameters || $dump_cell_parameters || 
+                $dump_xyz_coordinates || $dump_cell_xyz_coordinates ) {
+            my ( $h_max, $h_min, $k_max, $k_min, $l_max, $l_min ) = 
+                @{hkl_limits( $datablock, $filename )};
+            
 	    my @abc_star = @{$cell_parameters->{reciprocal_cell_radians}}[0..2];
             
-            foreach my $h_limit ($h_min..$h_max) {
-            foreach my $k_limit ($k_min..$k_max) {   
-            foreach my $l_limit ($l_min..$l_max) {  
+            foreach my $h_limit ( $h_min..$h_max ) {
+            foreach my $k_limit ( $k_min..$k_max ) {   
+            foreach my $l_limit ( $l_min..$l_max ) {  
                 my @hkl = ($h_limit, $k_limit, $l_limit);
-                next if ($h_limit==0 && $k_limit==0 && $l_limit==0);
+                next if( $h_limit==0 && $k_limit==0 && $l_limit==0 );
                 my $resolution_hkl = spacing_d_hkl( 
                     @hkl, 
                     @{$cell_parameters->{reciprocal_cell_radians}} );
@@ -190,12 +190,12 @@ for my $filename (@ARGV) {
                 # creating *pm with outer Cromer Mann coefficients.
                 # --------------------------------------------
                 die "CIF file does not contain Crommer-Mann coefficients." 
-                    if ( !defined $atoms->[0]{Crommer_Mann_coefficients}[0] ); 
+                    if( !defined $atoms->[0]{Crommer_Mann_coefficients}[0] ); 
                 #--------------------------------------------------------------
 
-                my ($F_cos_comp_w_Tf_and_cor, $F_sin_comp_w_Tf_and_cor,
-                    $F_cos_comp_w_cor, $F_sin_comp_w_cor,
-                    $F_cos_comp, $F_sin_comp) = (0,0,0,0,0,0);		
+                my ( $F_cos_comp_w_Tf_and_cor, $F_sin_comp_w_Tf_and_cor,
+                     $F_cos_comp_w_cor, $F_sin_comp_w_cor,
+                     $F_cos_comp, $F_sin_comp ) = (0,0,0,0,0,0);		
                 foreach my $atom (@$atoms) {                
                     my $atom_structure_factor = 
                         atom_structure_factor_from_coefficients( 
@@ -204,10 +204,10 @@ for my $filename (@ARGV) {
                             $sin_teta_hkl );
 
                     my $atom_structure_factor_corrected;
-                    if ($scat_dispersion_key) {
+                    if( $scat_dispersion_key ) {
                         $atom_structure_factor_corrected = 
-                            sqrt( ($atom_structure_factor + 
-                                   $atom->{scat_dispesion_real})**2 + 
+                            sqrt( ( $atom_structure_factor + 
+                                    $atom->{scat_dispesion_real} )**2 + 
                                   $atom->{scat_dispesion_real}**2 );
                     }
                     
@@ -216,9 +216,9 @@ for my $filename (@ARGV) {
 			    @hkl, @{$sym_xyz} );
 			
 			my $temperature_factor;
-			if ($temperature_factor_key) {
+			if( $temperature_factor_key ) {
 			    # calculation of aniso temperature factor;
-			    if ($atom->{chemical_type} eq "H") {
+			    if( $atom->{chemical_type} eq "H" ) {
 				$temperature_factor = 1;
 			    } else {
 				$temperature_factor = 
@@ -246,7 +246,7 @@ for my $filename (@ARGV) {
 			    $F_sin_comp_w_cor += 
 				$atom->{occupancy} * $atom_structure_factor * 
 				$temperature_factor * sin( $atom_hkl_phase );
-                            if ($scat_dispersion_key) { 
+                            if( $scat_dispersion_key ) { 
                                 $F_cos_comp += $atom->{occupancy} * 
                                     $atom_structure_factor_corrected * 
                                     $temperature_factor * cos( $atom_hkl_phase );
@@ -269,7 +269,7 @@ for my $filename (@ARGV) {
 		my $F_hkl_sguared = 
                     $F_cos_comp**2 + $F_sin_comp**2; 
                 
-                if ($synthetic_test1) {
+                if( $synthetic_test1 ) {
                     print "  H   K   L  RESO  sin(theta)  F  1/2d   F_cos  "
                         ."F_sin\n";
                     printf "%3s %3s %3s  %0.3f %0.5f %0.3f %0.3f %0.3f "
@@ -279,7 +279,7 @@ for my $filename (@ARGV) {
 		    exit;
                 }
                 
-                if (1) {
+                if( 1 ) {
                     printf "%3s %3s %3s %0.3f %0.3f %0.3f\n", 
                     @hkl,  
                     $F_hkl_without_Tf_and_cor**2, 
@@ -379,7 +379,7 @@ sub mat_vect_mul($$)
 
 sub remove_standard_uncertainties
 {
-    my ($input) = @_;
+    my( $input ) = @_;
     return [ map { my $value = $_;
                    $value =~ s/\(\d+\)//; $value } @{$input} ];
 }
@@ -417,7 +417,7 @@ sub remove_standard_uncertainties
 
 sub atoms_from_cif 
 { 
-    my ($datablock, $f2o, $filename) = @_;
+    my( $datablock, $f2o, $filename ) = @_;
     my @atoms;
     my $datablock_values = $datablock->{values};
     my @xyz_arrays =
@@ -443,7 +443,7 @@ sub atoms_from_cif
             mat_vect_mul( $f2o,  $fract_xyz );
         my $atom_chemical_type = 
             $datablock_values->{_atom_site_type_symbol}[$i];
-        if (!defined $datablock_values->{_atom_site_type_symbol}[$i]) {
+        if( !defined $datablock_values->{_atom_site_type_symbol}[$i] ) {
             $atom_chemical_type = 
                 ucfirst( 
                     lc( substr( 
@@ -489,7 +489,7 @@ sub atoms_from_cif
 
 sub get_Cromer_Mann_coefficients
 {
-    my ($datablock) = @_;
+    my( $datablock ) = @_;
     my $datablock_values = $datablock->{values};
     my @atoms_aniso_coefficients;
     
@@ -498,7 +498,7 @@ sub get_Cromer_Mann_coefficients
     foreach (@{$datablock_values->{_atom_type_symbol}}) {
         my $double_sym = ucfirst( lc( substr( $_,0,2 )));
         $double_sym =~ s/\s//g;
-        push(@{$chemical_type_of_Cromer_Mann_loop}, $double_sym);
+        push( @{$chemical_type_of_Cromer_Mann_loop}, $double_sym );
     }
     my $Cromer_Mann_coefficients = 
         [ $datablock_values->{_atom_type_scat_cromer_mann_a1},
@@ -517,7 +517,7 @@ sub get_Cromer_Mann_coefficients
     for my $i (0..$#{$labels}) {
         my $atom_chemical_type = 
             $datablock_values->{_atom_site_type_symbol}[$i];
-        if (!defined $atom_chemical_type) {
+        if( !defined $atom_chemical_type ) {
             $atom_chemical_type = 
                 ucfirst( lc( substr($labels->[$i],0,2)));
             $atom_chemical_type =~ s/\d//;
@@ -528,7 +528,7 @@ sub get_Cromer_Mann_coefficients
         ## ">>> $chemical_type_of_Cromer_Mann_loop->[$y]\n";
         ## print length($atom_chemical_type), 
         ## "<<< $atom_chemical_type\n";
-            if ( $atom_chemical_type eq 
+            if( $atom_chemical_type eq 
                  $chemical_type_of_Cromer_Mann_loop->[$y] ) {                
                 my %thermal = (
                     Crommer_Mann_coefficients => [
@@ -579,7 +579,7 @@ sub get_Cromer_Mann_coefficients
 
 sub get_thermal
 {
-    my ($datablock) = @_;
+    my( $datablock ) = @_;
     my $datablock_values = $datablock->{values};
     my @atoms_thermal_coefficients;
     
@@ -625,7 +625,7 @@ sub get_thermal
             U_value_of_B_factor => $squared_displacement_U->[$i],
             aniso_value_Uij => $temporary_aniso_data{$atom_label}
             );
-        push ( @atoms_thermal_coefficients, \%thermal_info );
+        push( @atoms_thermal_coefficients, \%thermal_info );
     }
     return \@atoms_thermal_coefficients;
 }
@@ -646,7 +646,7 @@ sub get_thermal
 #      }
 sub get_unit_cell_parameters
 {
-    my ($datablock) = @_;
+    my( $datablock ) = @_;
     my $datablock_values = $datablock->{values};
     
     my @crystal_lattice =  ( ${ remove_standard_uncertainties( 
@@ -664,9 +664,9 @@ sub get_unit_cell_parameters
     # @crystal_lattice = ( a[0], b[1], c[2], alpha[3], beta[4], gamma[5] );
     my $cell_volume = ${remove_standard_uncertainties( 
         $datablock_values->{_cell_volume} )}[0];
-    my ($a, $b, $c, $alpha, $beta, $gamma) = @crystal_lattice;
+    my( $a, $b, $c, $alpha, $beta, $gamma ) = @crystal_lattice;
     my @crystal_cell_radians = 
-        ($a, $b, $c, deg2rad( $alpha, $beta, $gamma ));
+        ( $a, $b, $c, deg2rad( $alpha, $beta, $gamma ));
     # alpha between b and c; beta between a and c; gamma between a and b.
     # @star_crystal_lattice = ( a*[0], b*[1], c*[2], alpha*, beta*, gamma*[5] );
     my @abc_star_values = ( 
@@ -704,7 +704,7 @@ sub get_unit_cell_parameters
 # for example 0.554 [angstrom**-1]
 sub d2r_length 
 {
-    my ($c_length1, $c_length2, $angle1_2, $cell_vol) = @_;
+    my( $c_length1, $c_length2, $angle1_2, $cell_vol ) = @_;
     return ($c_length1 * $c_length2 * sin( $angle1_2 )) / $cell_vol;
 } 
 
@@ -718,7 +718,7 @@ sub d2r_length
 # alpha* = d2r_angle( beta, gamma, ALPHA );
 sub d2r_angle 
 {
-    my ($angle1, $angle2, $angle_which_converts) = @_;
+    my( $angle1, $angle2, $angle_which_converts ) = @_;
     return POSIX::acos(
         (cos( $angle1 ) * cos( $angle2 ) -
          cos( $angle_which_converts)) / 
@@ -735,8 +735,8 @@ sub d2r_angle
 # hkl resolution (in angstrom): 5. 
 sub spacing_d_hkl 
 {
-    my ($h, $k, $l, $a_star, $b_star, $c_star,
-        $alpha_star, $beta_star, $gamma_star) = @_;
+    my( $h, $k, $l, $a_star, $b_star, $c_star,
+         $alpha_star, $beta_star, $gamma_star ) = @_;
     return 1 /
 	sqrt( $h**2 * $a_star**2 +
               $k**2 * $b_star**2 +
@@ -757,14 +757,14 @@ sub spacing_d_hkl
 # \(h_max,h_min,k_max,k_min,l_max,l_min);
 sub hkl_limits
 {
-    my ($datablock, $filename) = @_;
+    my( $datablock, $filename ) = @_;
     my $datablock_values = $datablock->{values};
-    if (!defined ${$datablock_values->{_diffrn_reflns_limit_h_max}}[0] | 
+    if( !defined ${$datablock_values->{_diffrn_reflns_limit_h_max}}[0] | 
         !defined ${$datablock_values->{_diffrn_reflns_limit_h_min}}[0] | 
         !defined ${$datablock_values->{_diffrn_reflns_limit_k_max}}[0] |
         !defined ${$datablock_values->{_diffrn_reflns_limit_k_min}}[0] |
         !defined ${$datablock_values->{_diffrn_reflns_limit_l_max}}[0] |
-        !defined ${$datablock_values->{_diffrn_reflns_limit_l_min}}[0]) {
+        !defined ${$datablock_values->{_diffrn_reflns_limit_l_min}}[0] ) {
         warn( "The CIF file '$filename' don't contain the full data ".
               "of limits on the Milers indices" );
         exit;
@@ -799,7 +799,7 @@ sub rad2deg
 # Print output of option --dump-cell-parameters.
 sub printing_of_dump_cell_parameters
 {  
-    my ($file_name, $cell_parameters) = @_;
+    my( $file_name, $cell_parameters ) = @_;
     print "$file_name\n";
     printf "%15s %0.5f %0.5f %0.5f %0.5f %0.5f %0.5f\n", 
     "Direct cell     (deg)", @{$cell_parameters->{crystal_cell_degrees}};
@@ -826,8 +826,8 @@ sub printing_of_dump_cell_parameters
 # atom_structure_factor_from_coefficient([a1,..,c],1.54, 0.33) = 1.4;
 sub atom_structure_factor_from_coefficients 
 {
-    my ($Cromer_Mann, $wavelenth, $sin_theta_hkl) = @_;
-    my ($a1, $a2, $a3, $a4, $b1, $b2, $b3, $b4, $c) = @{$Cromer_Mann};
+    my( $Cromer_Mann, $wavelenth, $sin_theta_hkl ) = @_;
+    my( $a1, $a2, $a3, $a4, $b1, $b2, $b3, $b4, $c ) = @{$Cromer_Mann};
     return 
 	$a1 * exp( -$b1 * ($sin_theta_hkl / $wavelenth)**2 ) +
 	$a2 * exp( -$b2 * ($sin_theta_hkl / $wavelenth)**2 ) +
@@ -847,7 +847,7 @@ sub atom_structure_factor_from_coefficients
 # phase_hkl( @hkl, @xyz_fract, @cell_length_abc) = 1.12;
 sub atom_phase_hkl_rad 
 {
-    my ($h, $k, $l, $fract_x, $fract_y, $fract_z) = @_;
+    my( $h, $k, $l, $fract_x, $fract_y, $fract_z ) = @_;
     return 2 * $PI * ($h * $fract_x + $k * $fract_y +
                        $l * $fract_z);   
 }
@@ -862,8 +862,8 @@ sub atom_phase_hkl_rad
 # T(aniso, hkl).
 sub temperature_factor_aniso 
 {
-    my ($U_11, $U_22, $U_33, $U_23, $U_13, $U_12,
-        $h, $k, $l, $repro_length_a, $repro_length_b, $repro_length_c) = @_;
+    my( $U_11, $U_22, $U_33, $U_23, $U_13, $U_12,
+        $h, $k, $l, $repro_length_a, $repro_length_b, $repro_length_c ) = @_;
     return exp( (-2 * $PI**2) *
                 ($U_11 * ($h**2) * ($repro_length_a**2) +
                  $U_22 * ($k**2) * ($repro_length_b**2) +
@@ -894,7 +894,7 @@ sub temperature_factor_aniso
 #        .. )
 sub cell_filling_sym 
 {
-    my ($datablock, $filename, $f2o) = @_;
+    my( $datablock, $filename, $f2o ) = @_;
     my $values =  $datablock->{values};    
     my @xyz_arrays =
         ( remove_standard_uncertainties( 
@@ -905,17 +905,17 @@ sub cell_filling_sym
               $values->{_atom_site_fract_z} ) ); 
     
     my $sym_data;    
-    if(exists $values->{"_symmetry_equiv_pos_as_xyz"})
+    if( exists $values->{"_symmetry_equiv_pos_as_xyz"} )
     {
         $sym_data = $values->{"_symmetry_equiv_pos_as_xyz"};
     }
     
-    if(exists $values->{"_symmetry_space_group_name_hall"} &&                  
-       (not defined $sym_data)) {
+    if( exists $values->{"_symmetry_space_group_name_hall"} &&                  
+       (not defined $sym_data) ) {
         
         my $hall = $values->{"_symmetry_space_group_name_hall"}[0];
         $sym_data = get_symops("hall", $hall);        
-        if($sym_data == 0) {
+        if( $sym_data == 0 ) {
             print STDERR "ERR: " . &File::Basename::fileparse($0) . ": ";
             print STDERR "'$filename': ";
             print STDERR "There was incorrect _symmetry_space_group_name_Hall "
@@ -923,12 +923,12 @@ sub cell_filling_sym
         }
     }
     
-    if(exists $values->{"_symmetry_space_group_name_h-m"} &&                   
-       ((not defined $sym_data) or $sym_data == 0)) {
+    if( exists $values->{"_symmetry_space_group_name_h-m"} &&                   
+       ((not defined $sym_data) or $sym_data == 0) ) {
         my $h_m = $values->{"_symmetry_space_group_name_h-m"}[0];
         $sym_data = get_symops("hermann_mauguin", $h_m);
         
-        if($sym_data == 0) {
+        if( $sym_data == 0 ) {
             print STDERR "ERR: " . &File::Basename::fileparse($0) . ": ";
             print STDERR "'$filename': ";
             print STDERR "There was incorrect _symmetry_space_group_name_H-M "
@@ -960,7 +960,7 @@ sub cell_filling_sym
             ## print "@{$new_xyz_ortho}\n";
             $atoms_number_of_cell++;
 
-            if(exists $sym_atom_coordinates{symmetrical_xyz_fract}) { 
+            if( exists $sym_atom_coordinates{symmetrical_xyz_fract} ) { 
                 push( @{$sym_atom_coordinates{symmetrical_xyz_fract}}, 
                       $new_xyz_fract);
             } else {
@@ -1058,7 +1058,7 @@ sub symop_apply
 # Print outputs of tests.
 sub tests_outputs 
 {
-    my ($atoms, $file_name, $cell_parameters) = @_;
+    my( $atoms, $file_name, $cell_parameters ) = @_;
     if( $dump_xyz_coordinates ) { 
         print $#$atoms+1, "\n";
         print "$file_name\n";
@@ -1093,3 +1093,4 @@ sub tests_outputs
         exit;
     }
 }
+
