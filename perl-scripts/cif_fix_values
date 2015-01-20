@@ -192,6 +192,10 @@ my @default_set_tags = ( "_atom_site_refinement_flags",
 #*     otherwise script uses the built-in table from CIF Core
 #*     dictionary.
 #*
+#*   --fix-density-meas
+#*     Corrects value of data item '_exptl_crystal_density_meas':
+#*     values which are perceived as 'not measured' are changed to '?'.
+#*
 #*   -d, --dictionary cif_core.dic
 #*      Any valid CIF file, with CIF dictionary (according to DDL2).
 #*      You can define any number of CIF dictionaries, in a way like
@@ -246,6 +250,16 @@ my @default_set_tags = ( "_atom_site_refinement_flags",
         => sub{ dont_fix_any(); $fix_enums = 1; },
     "--do-not-fix-enums,--dont-fix-enums,-no-fix-enums"
         => sub{ $fix_enums = 0; },
+
+    "--fix-density-meas" 
+        => sub{ $fix_value_of_exptl_crystal_density_meas = 1; },
+    "--fix-only-density-meas"
+        => sub{ dont_fix_any(); 
+            $fix_value_of_exptl_crystal_density_meas = 1; },
+    "--do-not-fix-density-meas," .
+    "--no-fix-density-meas," .
+    "--dont-fix-density-meas"
+        => sub{ $fix_value_of_exptl_crystal_density_meas = 0; },
 
     "-d,--dictionary" => sub{ @dictionaries = &get_value; },
     "-D,--add-dictionaries" => sub{ push( @dictionaries, &get_value ); },
