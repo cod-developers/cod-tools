@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!--
+
+ Author: Andrius Merkys <andrius.merkys@gmail.com>
+ Copyright (C) 2015 Andrius Merkys <andrius.merkys@gmail.com>
+
+ GtkSourceView is free software; you can redistribute it and/or
+ modify it under the terms of the GNU Lesser General Public
+ License as published by the Free Software Foundation; either
+ version 2.1 of the License, or (at your option) any later version.
+
+ GtkSourceView is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ Lesser General Public License for more details.
+
+ You should have received a copy of the GNU Lesser General Public
+ License along with this library; if not, write to the Free Software
+ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+
+ Usage: the file is tested to work with gtksourceview-3.0. In order to
+ enable syntax highlight for CIF in gedit, place this file under one of
+ the following paths:
+
+ /usr/share/gtksourceview-3.0/language-specs/
+ ${HOME}/.local/share/gtksourceview-3.0/language-specs/
+
+-->
+<language id="cif" _name="CIF" version="2.0" _section="Source">
+  <metadata>
+    <property name="mimetypes">text/plain</property>
+    <property name="globs">*.cif;*.dic;*.ddl</property>
+    <property name="line-comment-start">#</property>
+  </metadata>
+  <styles>
+    <style id="keyword" _name="Constant" map-to="def:keyword" />
+  </styles>
+  <definitions>
+    <context id="cif">
+      <include>
+        <context id="comment" style-ref="def:comment">
+          <start>#</start>
+          <end>$</end>
+        </context>
+        <context id="multivalue" style-ref="def:string">
+          <start>^;</start>
+          <end>^;</end>
+        </context>
+        <context id="quoted" style-ref="def:string">
+          <start>'</start>
+          <end>'</end>
+        </context>
+        <context id="dquoted" style-ref="def:string">
+          <start>"</start>
+          <end>"</end>
+        </context>
+        <context id="datahead" style-ref="def:identifier" class="no-spell-check">
+          <match>(data_[a-zA-Z0-9_/]*)</match>
+        </context>
+        <context id="tag" style-ref="def:keyword" class="no-spell-check">
+          <match>(_[a-zA-Z0-9_/-]*)</match>
+        </context>
+        <context id="statement" style-ref="def:statement" class="no-spell-check">
+          <match>loop_</match>
+        </context>
+        <context id="anyvalue" style-ref="def:string">
+          <match>\S*</match>
+        </context>
+      </include>
+    </context>
+  </definitions>
+</language>
