@@ -16,7 +16,7 @@
 package AtomOverlay;
 
 use strict;
-use JacobiEigen;
+use JacobiEigenNew;
 use SymopAlgebra;
 
 require Exporter;
