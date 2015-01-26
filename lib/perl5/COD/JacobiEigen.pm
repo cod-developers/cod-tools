@@ -11,7 +11,7 @@
 # Flannery, P. B.
 #-----------------------------------------------------------------------
 
-package JacobiEigenNew;
+package JacobiEigen;
 
 use strict;
 use warnings;
