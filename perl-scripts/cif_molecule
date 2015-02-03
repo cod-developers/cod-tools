@@ -14,7 +14,7 @@ eval 'exec perl -x $0 ${1+"$@"}'
 
 # Note: this script assumes that atoms have unique labels in the input
 # CIF file; most often these are labels given by the _atom_site_label
-# tag. If the assumption of uniqness does not hold, the script
+# tag. If the assumption of uniqueness does not hold, the script
 # attempts by default to create unique labels itself, appending numeric
 # prefixes to the duplicate labels.
 #
@@ -22,7 +22,7 @@ eval 'exec perl -x $0 ${1+"$@"}'
 # special positions, and most importantly in the code removing
 # duplicate molecules.
 #
-# Although there is an option to switch off this diversifivation of
+# Although there is an option to switch off this diversification of
 # labels, the algorithms employed in this script will most probably
 # break and give incorrect results (e.g. some atoms, namely ones with
 # duplicate labels, will be missing from the output). Thus, use option
@@ -49,7 +49,7 @@ eval 'exec perl -x $0 ${1+"$@"}'
 # is 0,0,0 translation). For larger translations, ":" character
 # separator will be used, e.g. 10:5:-11.
 #
-# These three components, concatenated with underscors ("_"), will be
+# These three components, concatenated with underscores ("_"), will be
 # used as unique atom names (the "name" key in the $atom_info hash).
 
 use strict;
@@ -112,17 +112,17 @@ my $ignore_bumps = 0; # detect and warn about close atom "bumps"
 my $special_position_cutoff = 0.01;
 
 # A span, in +/- unit cells, in which polymeric molecules (repeating
-# units) will be contruscted:
+# units) will be constructed:
 
 my $max_polymer_span = 4;
 
-# A maximum alowed count of polymer example atoms: more than this
-# amount of symmetry (translational) equivalen atoms, for each AU
+# A maximum allowed count of polymer example atoms: more than this
+# amount of symmetry (translational) equivalent atoms, for each AU
 # atom, will not be written to the output file:
 
 my $max_polymer_atoms = 100;
 
-my $cif_header_file; # Comments from the beginning of this file wil be
+my $cif_header_file; # Comments from the beginning of this file will be
                      # prepended to the output.
 
 my $use_parser = "c"; # Used CIF parser
@@ -183,7 +183,7 @@ my $expand_to_p1 = 0; # Do we want a full P1 unit cell that can be used
 #**                     Do not output _geom_bond_... information (default).
 #**
 #** -h, --cif-header-file input_header.txt
-#**                    Comments from the beginning of this file wil be
+#**                    Comments from the beginning of this file will be
 #**                    prepended to the output.
 #**
 #** -i,--ignore-bumps
@@ -196,7 +196,7 @@ my $expand_to_p1 = 0; # Do we want a full P1 unit cell that can be used
 #**
 #** -s,--sort-molecules
 #**                     Sort molecules descending bey their atom types before
-#**                     outputing them into the output CIF.
+#**                     outputting them into the output CIF.
 #**
 #** -i-,--dont-sort-molecules,--no-sort-molecules
 #**                     Do not sort molecules, print them out in the order they
@@ -241,38 +241,39 @@ my $expand_to_p1 = 0; # Do we want a full P1 unit cell that can be used
 #**                    fingerprints instead of COD atom classes.
 #**
 #** --bump-distance-factor 0.75
-#**        A fraction of covalent bond radii sum used to determine when
-#**        atoms are too close and are considered a bump:
+#**                    A fraction of covalent bond radii sum used to
+#**                    determine when atoms are too close and are
+#**                    considered a bump.
 #**
 #** --continue-on-errors
-#**                    Do not stop if errors such as unrecognised atoms are
+#**                    Do not stop if errors such as unrecognized atoms are
 #**                    encountered; the output may be incorrect and missing
-#**                    some atoms if this otion is used!
+#**                    some atoms if this option is used!
 #**
 #** --dont-continue-on-errors, --no-continue-on-errors
 #**                    Stop immediately when an error is encountered.
 #**                    
 #** --exclude-zero-occupancies
-#**                    Do not use atoms woth 0 occupancies in calculations
-#**                    (defalut).
+#**                    Do not use atoms with 0 occupancies in calculations
+#**                    (default).
 #**                    
 #** --dont-continue-on-errors, --no-continue-on-errors
 #**                    Stop immediately when an error is encountered.
 #**                    
 #** --preserve-stoichiometry
 #**                    Apply necessary symmetry operators to preserve molecular
-#**                    stoichemotry (charges, etc.)
+#**                    stoichiometry (charges, etc.)
 #**                    
 #** --dont-preserve-stoichiometry, --no-preserve-stoichiometry
 #**                    Do not apply any more symmetry operators than needed to
 #**                    reconstruct covalently connected networks; may
-#**                    break stoiceometry of salts and complexes (defalut).
+#**                    break stoichiometry of salts and complexes (default).
 #**
 #** --force-unit-occupancies
 #**       Set occupancies of all output atoms to 1.0.
 #**
 #**       Some programs, notably Jumbo converter's cif2cml, assume unresolved
-#**       disorder and do not recognise aromatic rings if occupancies are not
+#**       disorder and do not recognize aromatic rings if occupancies are not
 #**       unities. Obviously, this flag has only sense in combination with
 #**       --split-disorder.
 #**
@@ -281,19 +282,19 @@ my $expand_to_p1 = 0; # Do we want a full P1 unit cell that can be used
 #**
 #** --dump-atoms 
 #**       Dump atoms (including symmetry-equivalent) in CIF
-#**       format, for inspecion with some graphics program
+#**       format, for inspection with some graphics program.
 #**
 #** --dont-dump-atoms, --no-dump-atoms
 #**       Do not dump atoms (default)
 #**
 #** --max-polymer-span 4
 #**       A span, in +/- unit cells, in which polymeric molecules (repeating
-#**       units) will be contruscted:
+#**       units) will be constructed.
 #**
 #** --max-polymer-atoms 100
-#**       A maximum alowed count of polymer example atoms: more than this
-#**       amount of symmetry (translational) equivalen atoms, for each AU
-#**       atom, will not be written to the output file:
+#**       A maximum allowed count of polymer example atoms: more than this
+#**       amount of symmetry (translational) equivalent atoms, for each AU
+#**       atom, will not be written to the output:
 #**
 #**       Using --max-polymer-span=0 --max-polymer-atoms=1 essentially
 #**       switches off the polymer detection.
@@ -317,7 +318,7 @@ my $expand_to_p1 = 0; # Do we want a full P1 unit cell that can be used
 #**       Specify parser to parse CIF files. C parser is default.
 #**
 #** --symdebug         Print debug output for symmetry reconstruction
-#** --no-symdebug      Do not print any symmery debug output (default)
+#** --no-symdebug      Do not print any symmetry debug output (default)
 #** --debug            Print some human-readable debug output
 #** --no-debug         Suppress any debug output (default)
 #**
@@ -459,7 +460,7 @@ sub get_symmetry_operators( $$ );
 sub test_bump( $$$$$$$ );
 sub mat_vect_mul( $$ );
 
-# Find the Gretest Common Divisor (GCD) of two numbers:
+# Find the Greatest Common Divisor (GCD) of two numbers:
 
 sub gcd2
 {
@@ -481,7 +482,7 @@ sub gcd2
     return $x;
 }
 
-# Find the Gretest Common Divisor (GCD) of an array of numbers:
+# Find the Greatest Common Divisor (GCD) of an array of numbers:
 
 sub gcd
 {
@@ -1103,7 +1104,7 @@ sub atom_array_from_cif($$$$$)
         if( $exclude_zero_occupancies &&
             defined $values->{_atom_site_occupancy} ) {
             my $occupancy = $values->{_atom_site_occupancy}[$i];
-            $occupancy =~ s/\(\d+\)$//; # remove precission
+            $occupancy =~ s/\(\d+\)$//; # remove precision
             if( $occupancy eq "?" || $occupancy eq "." ||
                 $occupancy == 0.0 ) {
                 next;
@@ -1150,7 +1151,7 @@ sub atom_array_from_cif($$$$$)
 #============================================================================= #
 # It's a function where atom groups are made according disorder information. If
 # there is only one disorder assembly then all possible atom groups will be
-# generated. If there is more then one disorder assembly desicion will be made
+# generated. If there is more then one disorder assembly, decision will be made
 # according the following example:
 # an assembly disorder A has three disorder groups and B - two. Then the
 # following groups will be made: (1,1) (2,2) (3,2).
@@ -1857,7 +1858,7 @@ sub chemical_formula_sum
 #               chemical_type=>"C",
 #               coordinates_fract=>[1.0, 1.0, 1.0],
 #               unity_matrix_applied=>1} and
-# a refernce to an array - symmetry operator
+# a reference to an array - symmetry operator
 # my $symop = [
 #     [ r11 r12 r13 t1 ]
 #     [ r21 r22 r23 t1 ]
@@ -1896,7 +1897,7 @@ sub symop_apply_modulo1
 #               coordinates_fract=>[1.0, 1.0, 1.0],
 #               unity_matrix_applied=>1} 
 
-# and a refernce to an array - symmetry operator
+# and a reference to an array - symmetry operator
 
 # my $symop = [
 #     [ r11 r12 r13 t1 ]
@@ -2011,7 +2012,7 @@ sub symop_register_applied_symop
 #                 $atom4_info
 #              ]
 #
-# and a refernce to an array - symmetry operator:
+# and a reference to an array - symmetry operator:
 #
 # my $symop = [
 #     [ r11 r12 r13 t1 ]
@@ -2956,7 +2957,7 @@ sub print_molecule
 # 2.2  Finds a translation from initial atom to atom_modulo_1
 # 2.3  Searches for all neighbors of atom_modulo_1
 # 2.4  For each neighbor of atom_modulo_1 does 2.1 -- 2.4
-# 2.5  atom_modulo_1 and all its neigbors translates according translation
+# 2.5  atom_modulo_1 and all its neighbors translates according translation
 #       vector. atom_modulo_1 now becomes initial atom. The others - accordingly
 # 3. Stops and does the step 1 until there is no left any initial atom.
 
@@ -3364,7 +3365,7 @@ sub dump_atoms_as_cif
 #===========================================================================
 # Extract symmetry operators from a parsed CIF datablock
 #
-# Returns a list of symmetry operators as ASCII strings with generap
+# Returns a list of symmetry operators as ASCII strings with general
 # position formulae (e.g. -y,-x,z+1/2).
 
 sub get_symmetry_operators($$)
