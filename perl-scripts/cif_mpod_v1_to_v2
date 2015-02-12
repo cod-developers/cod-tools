@@ -9,9 +9,8 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #$URL$
 #------------------------------------------------------------------------------
 #*
-#  Classify a CIF structure -- find out if it is organic compound,
-#  inorganic, mineral, etc.
-#
+#  Convert MPOD structures from MPOD dictionary V1 to MPOD dict. V2 based
+#  data names.
 #**
 
 use strict;
@@ -22,6 +21,8 @@ use lib "./CIFTags";
 use lib ".";
 use File::Basename;
 use CIFParser;
+use CIFTags::CIFTagManage;
+use CIFTags::CIFTagPrint;
 use Spacegroups::SpacegroupNames;
 use Spacegroups::SymopParse;
 use Spacegroups::SymopLookup;
@@ -160,6 +161,13 @@ for my $filename (@ARGV) {
         my $values = $datablock->{values};
         my $tags = $datablock->{tags};
 
+        my @conditions = ();
+        for my $condition (@condition_tags) {
+            my $condition_key = lc( $condition );
+            if( exists $values->{$condition_key} ) {
+                push( @conditions, $condition );
+            }
+        }
         for my $property (@property_tags) {
             my $property_key = lc( $property );
             if( exists $values->{$property_key} ) {
@@ -168,25 +176,57 @@ for my $filename (@ARGV) {
                 for my $i (0..$#{$values->{_prop_data_label}}) {
                     if( $property_label eq $values->{_prop_data_label}[$i] ) {
                         my $tensorial_index = $values->{_prop_data_tensorial_index}[$i];
-                        $property_data{$tensorial_index}{$property} =
-                        { value => $values->{_prop_data_value}[$i] };
+                        my $separator = "";
+                        my $condition_key = "";
+                        for (@conditions) {
+                            $condition_key .= $separator . 
+                                $values->{$_}[$i];
+                            $separator = " ";
+                        }
+                        $property_data
+                            {$condition_key}
+                            {$tensorial_index}
+                            {$property} =
+                                $values->{_prop_data_value}[$i];
                     }
                 }
             }
         }
+        # Delete version 1 value tags:
+        for my $tag (@condition_tags, @property_tags, @data_tags) {
+            CIFTagManage::exclude_tag( $datablock, lc($tag) );
+        }
+        # Print out the rest of the CIF data:
+        CIFTagPrint::print_cif( $datablock, {
+            exclude_misspelled_tags => 0,
+            preserve_loop_order => 1,
+            fold_long_fields => 1,
+            folding_width => 78,
+            dictionary_tags => { map {$_,$_} @{$datablock->{tags}} },
+            dictionary_tag_list => $datablock->{tags},
+            keep_tag_order => 1,
+        });
         # Print out the collected tensor values:
         print "loop_\n";
         print "_prop_tensorial_index\n";
         for my $key (sort keys %property_names) {
             print $key, "\n";
         }
-        for my $tensorial_index (sort keys %property_data) {
-            print $tensorial_index, " ";
-            for my $property (sort keys %property_names) {
-                print
-                    $property_data{$tensorial_index}{$property}{value}, " ",
+        for my $key (@conditions) {
+            print $key, "\n";
+        }
+        for my $condition_value (sort keys %property_data) {
+            for my $tensorial_index
+                (sort keys %{$property_data{$condition_value}}) {
+                    print $tensorial_index, " ";
+                    for my $property (sort keys %property_names) {
+                        print
+                            $property_data{$condition_value}
+                        {$tensorial_index}{$property}, " ",
+                    }
+                    print $condition_value;
+                    print "\n";
             }
-            print "\n";
         }
     }
 }
