@@ -86,13 +86,13 @@ my $PI = 4*atan2( 1, 1 );
         close( SCRIPT );
         exit
     },
-    "--dump-xyz-coordinates"    => sub { $dump_xyz_coordinates = 1 },
-    "--dump-Cromer-Mann"    => sub { $dump_Cromer_Mann_parameters = 1 },
-    "--dump-cell-parameters"    => sub { $dump_cell_parameters = 1 },
-    "--synthetic-test1"    => sub { $synthetic_test1 = 1 },
-    "--dump-cell-xyz-coordinates"    => sub { $dump_cell_xyz_coordinates = 1 },
-    "--isotropic-Tf"    => sub { $iso_temperature_factor = 1 },
-    "--help,--usage"     => sub { SUsage::usage; exit },
+    "--dump-xyz-coordinates"       => sub { $dump_xyz_coordinates = 1 },
+    "--dump-Cromer-Mann"           => sub { $dump_Cromer_Mann_parameters = 1 },
+    "--dump-cell-parameters"       => sub { $dump_cell_parameters = 1 },
+    "--synthetic-test1"            => sub { $synthetic_test1 = 1 },
+    "--dump-cell-xyz-coordinates"  => sub { $dump_cell_xyz_coordinates = 1 },
+    "--isotropic-Tf"               => sub { $iso_temperature_factor = 1 },
+    "--help,--usage"               => sub { SUsage::usage; exit },
 );
 
 #==============================================================================#
@@ -137,9 +137,9 @@ for my $filename (@ARGV) {
             $datablock->{values}{_diffrn_radiation_wavelength} );
         ## print "$radiation_wavelengths->[0]\n";
         die "The value of Xray radiation wavelength is empty." 
-            if (!defined $radiation_wavelengths->[0]);
+            if( !defined $radiation_wavelengths->[0] );
         die "The CIF contains more than one value of Xray radiation wavelength." 
-            if ($#{$radiation_wavelengths}>0);
+            if( $#{$radiation_wavelengths} > 0 );
         
         my $cell_parameters = get_unit_cell_parameters( $datablock );
         my $f2o = symop_ortho_from_fract( 
@@ -147,33 +147,32 @@ for my $filename (@ARGV) {
         my $atoms = atoms_from_cif( $datablock, $f2o, $filename);
       
 	#---------------------------------------------------------
-	# using tests function
+
         tests_outputs( $atoms, $filename, $cell_parameters ); 
+
 	#-------------------------------------------------------------
         
-	# test of aniso koefficients: if not all atoms (without H and D)
-        # contains aniso coef. then isotrophic koef. are using.
-        my $temperature_factor_key = 1;
-        foreach my $atom (@{$atoms}) {
-            if( !defined $atom->{aniso_value_Uij}[0] &&
-                $atom->{label} !~ /[H|D]\d++/ ) {
-                $temperature_factor_key = 0;
-                warn( "The CIF file '$filename' don't contain the full data ".
-                      "of the standard anisotropic atomic displacement ".
-                      "components" );
-                if( $atom->{U_value_of_B_factor} !~ /\d\.\d++/ &&
-                    $atom->{B_factor} !~ /\d\.\d++/) {
-                    die "The CIF '$filename' does not contain the correct values for ".
-                        "temperature factor calculation"; 
+	# Test of aniso koefficients: if not all atoms (except H and
+        # D) contains aniso coef. then isotrophic koef. are using.
+
+        if( !$iso_temperature_factor ) {
+            foreach my $atom (@{$atoms}) {
+                if( !defined $atom->{aniso_value_Uij}[0] &&
+                    $atom->{label} !~ /[H|D]\d++/ ) {
+                    warn( "The CIF file '$filename' don't contain the full data " .
+                          "of the standard anisotropic atomic displacement " .
+                          "components" );
+                    if( $atom->{U_value_of_B_factor} !~ /\d\.\d++/ &&
+                        $atom->{B_factor} !~ /\d\.\d++/) {
+                        die "The CIF '$filename' does not contain the correct values for " .
+                            "temperature factor calculation";
+                    }
+                    $iso_temperature_factor = 1;
+                    last;
                 }
-                last;
             }
-            
         }
-        if( $iso_temperature_factor ) {
-            $temperature_factor_key = 0; # if option --isotropic-Tf;
-        }
-        
+
         my $scat_dispersion_key = 0;
         if( defined $atoms->[0]{scat_dispesion_real} ) {
             $scat_dispersion_key = 1;
@@ -226,7 +225,7 @@ for my $filename (@ARGV) {
 			    @hkl, @{$sym_xyz} );
 			
 			my $temperature_factor;
-			if( $temperature_factor_key ) {
+			if( !$iso_temperature_factor ) {
 			    # calculation of aniso temperature factor;
 			    if( $atom->{chemical_type} eq "H" ) {
 				$temperature_factor = 1;
