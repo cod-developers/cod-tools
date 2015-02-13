@@ -43,7 +43,7 @@ my $dump_cell_parameters = 0;
 my $dump_cell_xyz_coordinates = 0;
 my $iso_temperature_factor = 0;
 my $max_resolution = 1.5; # Anstremum
-
+my @hkl_default = (5, -5, 5, -5, 5, -5); # hmax, hmin, k.., l..
 # constants;
 my $PI = 4*atan2( 1, 1 );
 
@@ -133,22 +133,21 @@ for my $filename (@ARGV) {
     for my $datablock (@$data) {
         
         ## my $radiation_wavelengths = remove_standard_uncertainties(
-        ##     $datablock->{values}{_diffrn_radiation_wavelength} );
-        
+        ##     $datablock->{values}{_diffrn_radiation_wavelength} );     
         my $cell_parameters = get_unit_cell_parameters( $datablock );
         my $f2o = symop_ortho_from_fract( 
             @{$cell_parameters->{crystal_cell_degrees}} );
         my $atoms = atoms_from_cif( $datablock, $f2o, $filename);
       
 	#---------------------------------------------------------
-
+        
         tests_outputs( $atoms, $filename, $cell_parameters ); 
-
+        
 	#-------------------------------------------------------------
         
 	# Test of aniso koefficients: if not all atoms (except H and
         # D) contains aniso coef. then isotrophic koef. are using.
-
+        
         if( !$iso_temperature_factor ) {
             foreach my $atom (@{$atoms}) {
                 if( !defined $atom->{aniso_value_Uij}[0] &&
@@ -186,8 +185,8 @@ for my $filename (@ARGV) {
                 my $resolution_hkl = spacing_d_hkl( 
                     @hkl, 
                     @{$cell_parameters->{reciprocal_cell_radians}} );              
-                next if($resolution_hkl <= $max_resolution);
-
+                next if($resolution_hkl < $max_resolution);
+                
                 # Temporary local check which will be removed when a
                 # Perl module with outer Cromer Mann coefficients will
                 # be created.
@@ -240,24 +239,24 @@ for my $filename (@ARGV) {
 			$F_sin_comp_w_Tf_and_cor +=
 			    $atom->{occupancy} * 
 			    $atom_structure_factor * sin( $atom_hkl_phase );
-			    # structure factor components without corrections;
-			    $F_cos_comp_w_cor +=
-				$atom->{occupancy} * $atom_structure_factor * 
-				$temperature_factor * cos( $atom_hkl_phase );
-			    $F_sin_comp_w_cor += 
-				$atom->{occupancy} * $atom_structure_factor * 
-				$temperature_factor * sin( $atom_hkl_phase );
-                            if( $scat_dispersion_key ) { 
-                                $F_cos_comp += $atom->{occupancy} * 
-                                    $atom_structure_factor_corrected * 
-                                    $temperature_factor * cos( $atom_hkl_phase );
-                                $F_sin_comp += $atom->{occupancy} * 
-                                    $atom_structure_factor_corrected * 
-                                    $temperature_factor * sin( $atom_hkl_phase );
-                            } else {
-                                warn( "The CIF file '$filename' don't contain the data ".
-                                      "of anomalous-dispersion scattering factor" );
-                            }
+                        # structure factor components without corrections;
+                        $F_cos_comp_w_cor +=
+                            $atom->{occupancy} * $atom_structure_factor * 
+                            $temperature_factor * cos( $atom_hkl_phase );
+                        $F_sin_comp_w_cor += 
+                            $atom->{occupancy} * $atom_structure_factor * 
+                            $temperature_factor * sin( $atom_hkl_phase );
+                        if( $scat_dispersion_key ) { 
+                            $F_cos_comp += $atom->{occupancy} * 
+                                $atom_structure_factor_corrected * 
+                                $temperature_factor * cos( $atom_hkl_phase );
+                            $F_sin_comp += $atom->{occupancy} * 
+                                $atom_structure_factor_corrected * 
+                                $temperature_factor * sin( $atom_hkl_phase );
+                        } else {
+                            warn( "The CIF file '$filename' don't contain the data ".
+                                  "of anomalous-dispersion scattering factor" );
+                        }
 		    } # foreach of cell atoms;
 		} # foreach of assimetric unit atoms;
                 
@@ -959,7 +958,8 @@ sub cell_filling_sym
     # deleting of symmetic atom twins;
     for my $i (0..$#temporary_sym_all) {
         if( defined $temporary_sym_all[$i]->[0] ) {
-            foreach my $del_position ( reverse( sort( @{$temporary_sym_all[$i]} )) ) {
+            my @number_sort_reverse = sort {$b <=> $a} @{$temporary_sym_all[$i]};            
+            foreach my $del_position ( @number_sort_reverse  ) {
                 ## print "$del_position\n";
                 ## print @{$sym_atom_info[$i]->{symmetrical_xyz_ortho}},">>>\n";
                 splice( @{$sym_atom_info[$i]->{symmetrical_xyz_ortho}},
