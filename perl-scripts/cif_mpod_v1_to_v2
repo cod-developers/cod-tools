@@ -187,11 +187,21 @@ for my $filename (@ARGV) {
                                 $values->{$_}[$idx];
                             $separator = " ";
                         }
-                        $property_data
-                            {$condition_key}
+                        if( !exists $property_data{$condition_key}
                             {$tensorial_index}
-                            {$property} =
-                                $values->{_prop_data_value}[$i];
+                            {$property} ) {
+                            $property_data
+                                {$condition_key}
+                                {$tensorial_index}
+                                {$property} =
+                                    $values->{_prop_data_value}[$i];
+                        } else {
+                            warn( "property '$property' for index " .
+                                  "'$tensorial_index' " .
+                                  ($condition_key ? "(at conditions " .
+                                   "$condition_key) " : "") .
+                                  "is defined more than once" );
+                        }
                         if( exists $values->{_prop_measurement_method} ) {
                             my $idx = 0;
                             if( exists 
@@ -237,13 +247,23 @@ for my $filename (@ARGV) {
             for my $tensorial_index
                 (sort keys %{$property_data{$condition_value}}) {
                     print $tensorial_index, " ";
-                    print 
-                        $property_data{$condition_value}
-                    {$tensorial_index}{_prop_measurement_method}, " ";
-                    for my $property (sort keys %property_names) {
-                        print
+                    if( defined $property_data{$condition_value}
+                        {$tensorial_index}{_prop_measurement_method} ) {
+                        print 
                             $property_data{$condition_value}
-                        {$tensorial_index}{$property}, " ",
+                        {$tensorial_index}{_prop_measurement_method}, " ";
+                    } else {
+                        print ". ";
+                    }
+                    for my $property (sort keys %property_names) {
+                        if( defined $property_data{$condition_value}
+                            {$tensorial_index}{$property} ) {
+                            print
+                                $property_data{$condition_value}
+                            {$tensorial_index}{$property}, " ";
+                        } else {
+                            print ". ";
+                        }
                     }
                     print $condition_value;
                     print "\n";
