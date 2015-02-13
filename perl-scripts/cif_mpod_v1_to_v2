@@ -48,6 +48,25 @@ my $use_parser = "c";
     "--help,--usage"     => sub { SUsage::usage; exit },
 );
 
+my @scalar_property_tags = qw(
+    _prop_heat_capacity_C
+    _prop_optical_index_ordinary_no
+    _prop_optical_index_extraordinary_ne
+    _prop_residual_resistivity_ratio
+    _prop_residual_resistivity_ratio_high_temperature
+    _prop_residual_resistivity_ratio_low_temperature
+    _prop_superconducting_critical_temperature_thermodynamic
+    _prop_superconducting_critical_temperature_onset
+    _prop_superconducting_critical_temperature_onset_90
+    _prop_superconducting_critical_temperature_mid_50
+    _prop_superconducting_critical_temperature_offset_10
+    _prop_superconducting_zero_resistivity_temperature
+    _prop_superconducting_resistivity_transition_width
+    _prop_magnetic_paramagnetic_critical_temperature_Neel
+    _prop_magnetic_paramagnetic_critical_temperature_Neel_transitionwidth
+    _prop_magnetic_antiferromagnetic_ordering_temperature_Neel
+);
+
 my @property_tags = qw(
     _prop_dielectric_permittivity_relative_epsrij
     _prop_dielectric_permittivity_relative_epsrijS
@@ -63,26 +82,13 @@ my @property_tags = qw(
     _prop_electric_resistivity_rhoeij
     _prop_electric_remnant_polarisation_Pri
     _prop_electric_coercive_field_Eci
-    _prop_heat_capacity_C
     _prop_internal_friction_Qij-1
     _prop_electromechanical_coupling_kij
-    _prop_optical_index_ordinary_no
-    _prop_optical_index_extraordinary_ne
     _prop_piezoelectric_gij
     _prop_piezoelectric_eij
     _prop_piezoelectric_hij
     _prop_piezoelectric_dij
     _prop_piezooptic_piij
-    _prop_residual_resistivity_ratio
-    _prop_residual_resistivity_ratio_high_temperature
-    _prop_residual_resistivity_ratio_low_temperature
-    _prop_superconducting_critical_temperature_thermodynamic
-    _prop_superconducting_critical_temperature_onset
-    _prop_superconducting_critical_temperature_onset_90
-    _prop_superconducting_critical_temperature_mid_50
-    _prop_superconducting_critical_temperature_offset_10
-    _prop_superconducting_zero_resistivity_temperature
-    _prop_superconducting_resistivity_transition_width
     _prop_superconducting_critical_field1_Hc1i
     _prop_superconducting_critical_field2_Hc2i
     _prop_superconducting_irreversibility_field_Hirri
@@ -96,9 +102,6 @@ my @property_tags = qw(
     _prop_thermal_expansion_alphaij
     _prop_thermal_expansion_Tij
     _prop_thermoelectric_Seebeck_Seij
-    _prop_magnetic_paramagnetic_critical_temperature_Neel
-    _prop_magnetic_paramagnetic_critical_temperature_Neel_transitionwidth
-    _prop_magnetic_antiferromagnetic_ordering_temperature_Neel
 );
 
 my @condition_tags = qw(
@@ -233,6 +236,7 @@ for my $filename (@ARGV) {
             dictionary_tag_list => $datablock->{tags},
             keep_tag_order => 1,
         });
+
         # Print out the collected tensor values:
         print "loop_\n";
         print "_prop_tensorial_index\n";
