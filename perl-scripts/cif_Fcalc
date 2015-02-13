@@ -41,7 +41,6 @@ my $dump_xyz_coordinates = 0;
 my $dump_Cromer_Mann_parameters = 0;
 my $dump_cell_parameters = 0;
 my $dump_cell_xyz_coordinates = 0;
-my $synthetic_test1 = 0;
 my $iso_temperature_factor = 0;
 
 # constants;
@@ -56,7 +55,6 @@ my $PI = 4*atan2( 1, 1 );
 #*    --dump-xyz-coordinates   Print an XYZ file 
 #*    --dump-Cromer-Mann       Print a Cromer-Mann coefficients from CIF file
 #*    --dump-cell-parameters   Print a short usage message with cell parameters
-#*    --synthetic-test1        Print a short usage message of various parameters
 #*
 #*    --dump-cell-xyz-coordinates
 #*        Print a XYZ file which contains all atoms of cell.
@@ -89,7 +87,6 @@ my $PI = 4*atan2( 1, 1 );
     "--dump-xyz-coordinates"       => sub { $dump_xyz_coordinates = 1 },
     "--dump-Cromer-Mann"           => sub { $dump_Cromer_Mann_parameters = 1 },
     "--dump-cell-parameters"       => sub { $dump_cell_parameters = 1 },
-    "--synthetic-test1"            => sub { $synthetic_test1 = 1 },
     "--dump-cell-xyz-coordinates"  => sub { $dump_cell_xyz_coordinates = 1 },
     "--isotropic-Tf"               => sub { $iso_temperature_factor = 1 },
     "--help,--usage"               => sub { SUsage::usage; exit },
@@ -188,12 +185,10 @@ for my $filename (@ARGV) {
             foreach my $k_limit ( $k_min..$k_max ) {   
             foreach my $l_limit ( $l_min..$l_max ) {  
                 my @hkl = ($h_limit, $k_limit, $l_limit);
-                next if( $h_limit==0 && $k_limit==0 && $l_limit==0 );
+                next if( $h_limit == 0 && $k_limit == 0 && $l_limit == 0 );
                 my $resolution_hkl = spacing_d_hkl( 
                     @hkl, 
-                    @{$cell_parameters->{reciprocal_cell_radians}} );
-                my $sin_teta_hkl = 
-                    $radiation_wavelengths->[0] / (2 * $resolution_hkl);
+                    @{$cell_parameters->{reciprocal_cell_radians}} );              
 
                 # Temporary local check which will be removed when a
                 # Perl module with outer Cromer Mann coefficients will
@@ -210,8 +205,7 @@ for my $filename (@ARGV) {
                     my $atom_structure_factor = 
                         atom_structure_factor_from_coefficients( 
                             $atom->{Crommer_Mann_coefficients}, 
-                            $radiation_wavelengths->[0],
-                            $sin_teta_hkl );
+                            $resolution_hkl );
 
                     my $atom_structure_factor_corrected;
                     if( $scat_dispersion_key ) {
@@ -248,7 +242,6 @@ for my $filename (@ARGV) {
 			$F_sin_comp_w_Tf_and_cor +=
 			    $atom->{occupancy} * 
 			    $atom_structure_factor * sin( $atom_hkl_phase );
-			unless ($synthetic_test1) {
 			    # structure factor components without corrections;
 			    $F_cos_comp_w_cor +=
 				$atom->{occupancy} * $atom_structure_factor * 
@@ -267,7 +260,6 @@ for my $filename (@ARGV) {
                                 warn( "The CIF file '$filename' don't contain the data ".
                                       "of anomalous-dispersion scattering factor" );
                             }
-			}
 		    } # foreach of cell atoms;
 		} # foreach of assimetric unit atoms;
                 
@@ -278,16 +270,6 @@ for my $filename (@ARGV) {
                     sqrt( $F_cos_comp_w_cor**2 + $F_sin_comp_w_cor**2 ); 
 		my $F_hkl_sguared = 
                     $F_cos_comp**2 + $F_sin_comp**2; 
-                
-                if( $synthetic_test1 ) {
-                    print "  H   K   L  RESO  sin(theta)  F  1/2d   F_cos  "
-                        . "F_sin\n";
-                    printf "%3s %3s %3s  %0.3f %0.5f %0.3f %0.3f %0.3f "
-                        . "%0.3f\n", @hkl, $resolution_hkl, $sin_teta_hkl, 
-                        $F_hkl_without_Tf_and_cor, 1/(2 * $resolution_hkl), 
-                        $F_cos_comp_w_Tf_and_cor, $F_sin_comp_w_Tf_and_cor;
-		    exit;
-                }
                 
                 if( 1 ) {
                     printf "%3s %3s %3s %0.3f %0.3f %0.3f\n", 
@@ -797,13 +779,16 @@ sub printing_of_dump_cell_parameters
 # atom_structure_factor_from_coefficient([a1,..,c],1.54, 0.33) = 1.4;
 sub atom_structure_factor_from_coefficients 
 {
-    my( $Cromer_Mann, $wavelenth, $sin_theta_hkl ) = @_;
+    my( $Cromer_Mann, 
+        ## $wavelenth, $sin_theta_hkl 
+        $resolution ) = @_;
     my( $a1, $a2, $a3, $a4, $b1, $b2, $b3, $b4, $c ) = @{$Cromer_Mann};
+    my $sin_teta_div_wavelength = 1 / (2 * $resolution);
     return 
-	$a1 * exp( -$b1 * ($sin_theta_hkl / $wavelenth)**2 ) +
-	$a2 * exp( -$b2 * ($sin_theta_hkl / $wavelenth)**2 ) +
-	$a3 * exp( -$b3 * ($sin_theta_hkl / $wavelenth)**2 ) +
-	$a4 * exp( -$b4 * ($sin_theta_hkl / $wavelenth)**2 ) +
+	$a1 * exp( -$b1 * $sin_teta_div_wavelength**2 ) +
+	$a2 * exp( -$b2 * $sin_teta_div_wavelength**2 ) +
+	$a3 * exp( -$b3 * $sin_teta_div_wavelength**2 ) +
+	$a4 * exp( -$b4 * $sin_teta_div_wavelength**2 ) +
 	$c;
 }
 
