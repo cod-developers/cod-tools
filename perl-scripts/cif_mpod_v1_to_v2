@@ -188,6 +188,18 @@ for my $filename (@ARGV) {
                             {$tensorial_index}
                             {$property} =
                                 $values->{_prop_data_value}[$i];
+                        if( exists $values->{_prop_measurement_method} ) {
+                            my $idx = 0;
+                            if( exists 
+                                $values->{inloop}{_prop_measurement_method} ) {
+                                $idx = $i;
+                            }
+                            $property_data
+                                {$condition_key}
+                                {$tensorial_index}
+                                {_prop_measurement_method} =
+                                    $values->{_prop_measurement_method}[$idx];
+                        }
                     }
                 }
             }
@@ -196,6 +208,7 @@ for my $filename (@ARGV) {
         for my $tag (@condition_tags, @property_tags, @data_tags) {
             CIFTagManage::exclude_tag( $datablock, lc($tag) );
         }
+        CIFTagManage::exclude_tag( $datablock, "_prop_measurement_method" );
         # Print out the rest of the CIF data:
         CIFTagPrint::print_cif( $datablock, {
             exclude_misspelled_tags => 0,
@@ -209,6 +222,7 @@ for my $filename (@ARGV) {
         # Print out the collected tensor values:
         print "loop_\n";
         print "_prop_tensorial_index\n";
+        print "_prop_measurement_method\n";
         for my $key (sort keys %property_names) {
             print $key, "\n";
         }
@@ -219,6 +233,9 @@ for my $filename (@ARGV) {
             for my $tensorial_index
                 (sort keys %{$property_data{$condition_value}}) {
                     print $tensorial_index, " ";
+                    print 
+                        $property_data{$condition_value}
+                    {$tensorial_index}{_prop_measurement_method}, " ";
                     for my $property (sort keys %property_names) {
                         print
                             $property_data{$condition_value}
