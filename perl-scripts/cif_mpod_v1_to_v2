@@ -179,8 +179,12 @@ for my $filename (@ARGV) {
                         my $separator = "";
                         my $condition_key = "";
                         for (@conditions) {
+                            my $idx = 0;
+                            if( exists $datablock->{inloop}{$_} ) {
+                                $idx = $i
+                            }
                             $condition_key .= $separator . 
-                                $values->{$_}[$i];
+                                $values->{$_}[$idx];
                             $separator = " ";
                         }
                         $property_data
@@ -191,7 +195,7 @@ for my $filename (@ARGV) {
                         if( exists $values->{_prop_measurement_method} ) {
                             my $idx = 0;
                             if( exists 
-                                $values->{inloop}{_prop_measurement_method} ) {
+                                $datablock->{inloop}{_prop_measurement_method} ) {
                                 $idx = $i;
                             }
                             $property_data
