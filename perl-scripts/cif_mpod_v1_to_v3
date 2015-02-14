@@ -207,6 +207,7 @@ for my $filename (@ARGV) {
                             $values->{_prop_data_tensorial_index}[$i] : ".";
                         my $separator = "";
                         my $condition_key = "";
+                        my $this_condition_id;
                         for (@conditions) {
                             my $idx = 0;
                             if( exists $datablock->{inloop}{$_} ) {
@@ -216,6 +217,10 @@ for my $filename (@ARGV) {
                                 $values->{$_}[$idx];
                             $separator = " ";
                         }
+                        if( !exists $condition_data{$condition_key} ) {
+                            $condition_data{$condition_key} = $condition_id++;
+                        }
+                        $this_condition_id = $condition_data{$condition_key};
                         
                         if( !exists $property_data{$condition_key}
                             {$tensorial_index}
@@ -253,8 +258,24 @@ for my $filename (@ARGV) {
             keep_tag_order => 1,
         });
 
+        # Print out the condition table:
+        if( %condition_data ) {
+            my %condition_ids;
+            while( my ($key, $id) = each %condition_data ) {
+                $condition_ids{$id} = $key;
+            }
+            print "loop_\n";
+            print "_prop_conditions_id\n";
+            for (@conditions) {
+                print $_, "\n";
+            }
+            for my $key (sort keys %condition_ids) {
+                print $key, " ", $condition_ids{$key}, "\n";
+            }
+        }
+
         # Print out the collected tensor values if there are any:
-        if( %property_data ) {
+        if( 0 && %property_data ) {
             print "loop_\n";
             print "_prop_tensorial_index\n";
             for my $key (sort keys %property_names) {
