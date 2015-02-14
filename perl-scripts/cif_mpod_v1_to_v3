@@ -1,0 +1,286 @@
+#! /bin/sh
+#!perl -w # --*- Perl -*--
+eval 'exec perl -x $0 ${1+"$@"}'
+    if 0;
+#------------------------------------------------------------------------------
+#$Author$
+#$Date$ 
+#$Revision$
+#$URL$
+#------------------------------------------------------------------------------
+#*
+#  Convert MPOD structures from MPOD dictionary V1 to MPOD dict. V3 based
+#  data names.
+#**
+
+use strict;
+use lib "./lib/perl5";
+use lib "./CIFParser";
+use lib "./CCIFParser";
+use lib "./CIFTags";
+use lib ".";
+use File::Basename;
+use CIFParser;
+use CIFTags::CIFTagManage;
+use CIFTags::CIFTagPrint;
+use Spacegroups::SpacegroupNames;
+use Spacegroups::SymopParse;
+use Spacegroups::SymopLookup;
+use SOptions;
+use SUsage;
+
+my $use_parser = "c";
+
+#* USAGE:
+#*     $0 [options] input1.cif input*.cif
+#* 
+#* OPTIONS:
+#*    --use-perl-parser  Use development CIF parser written in Perl
+#*    --use-c-parser     Use faster C/Yacc CIF parser (default)
+#*
+#*    --help,--usage         Print a short usage message (this message) and exit.
+#**
+
+@ARGV = getOptions( 
+    "--use-perl-parser"  => sub{ $use_parser = "perl" },
+    "--use-c-parser"     => sub{ $use_parser = "c" },
+
+    "--help,--usage"     => sub { SUsage::usage; exit },
+);
+
+my @scalar_property_tags = qw(
+    _prop_residual_resistivity_ratio
+    _prop_residual_resistivity_ratio_high_temperature
+    _prop_residual_resistivity_ratio_low_temperature
+    _prop_superconducting_critical_temperature_thermodynamic
+    _prop_superconducting_critical_temperature_onset
+    _prop_superconducting_critical_temperature_onset_90
+    _prop_superconducting_critical_temperature_mid_50
+    _prop_superconducting_critical_temperature_offset_10
+    _prop_superconducting_zero_resistivity_temperature
+    _prop_superconducting_resistivity_transition_width
+    _prop_magnetic_paramagnetic_critical_temperature_Neel
+    _prop_magnetic_paramagnetic_critical_temperature_Neel_transitionwidth
+    _prop_magnetic_antiferromagnetic_ordering_temperature_Neel
+);
+
+my @property_tags = qw(
+    _prop_heat_capacity_C
+    _prop_dielectric_permittivity_relative_epsrij
+    _prop_dielectric_permittivity_relative_epsrijS
+    _prop_dielectric_permittivity_relative_epsrijT
+    _prop_dielectric_stiffness_relative_betrijS
+    _prop_dielectric_stiffness_relative_betrijT
+    _prop_elastic_stiffness_cij
+    _prop_elastic_stiffness_cijD
+    _prop_elastic_stiffness_cijE
+    _prop_elastic_compliance_sij
+    _prop_elastic_compliance_sijD
+    _prop_elastic_compliance_sijE
+    _prop_electric_resistivity_rhoeij
+    _prop_electric_remnant_polarisation_Pri
+    _prop_electric_coercive_field_Eci
+    _prop_internal_friction_Qij-1
+    _prop_electromechanical_coupling_kij
+    _prop_optical_index_ordinary_no
+    _prop_optical_index_extraordinary_ne
+    _prop_piezoelectric_gij
+    _prop_piezoelectric_eij
+    _prop_piezoelectric_hij
+    _prop_piezoelectric_dij
+    _prop_piezooptic_piij
+    _prop_superconducting_critical_field1_Hc1i
+    _prop_superconducting_critical_field2_Hc2i
+    _prop_superconducting_irreversibility_field_Hirri
+    _prop_superconducting_coherence_length_ksii
+    _prop_superconducting_penetration_depth_lambdai
+    _prop_electrostriction_Dij
+    _prop_electrostriction_Dprimeij
+    _prop_photoelastic_pij
+    _prop_thermal_conductivity_kappaij
+    _prop_thermal_diffusivity_kappadij
+    _prop_thermal_expansion_alphaij
+    _prop_thermal_expansion_Tij
+    _prop_thermoelectric_Seebeck_Seij
+);
+
+my @condition_tags = qw(
+    _prop_conditions_temperature
+    _prop_conditions_temperature_range_begin
+    _prop_conditions_temperature_range_end
+    _prop_conditions_temperature_cycle
+    _prop_conditions_pressure
+    _prop_conditions_frequency
+    _prop_conditions_magnetic_field
+    _prop_conditions_wavelength
+);
+
+my @measurement_tags = qw(
+    _prop_measurement_method
+    _prop_measurement_poling
+    _prop_frame
+);
+
+my @data_tags = qw(
+    _prop_data_label
+    _prop_data_value
+    _prop_data_tensorial_index
+);
+
+my @categories = qw(
+    prop_dielectric
+    prop_elastic
+    prop_electric
+    prop_electromechanical_coupling
+    prop_electrostriction
+    prop_frame
+    prop_heat_capacity
+    prop_internal_friction
+    prop_magnetic
+    prop_measurement
+    prop_optical
+    prop_photoelastic
+    prop_piezoelectric
+    prop_piezooptic
+    prop_residual_resistivity
+    prop_superconducting
+    prop_symmetry
+    prop_thermal
+    prop_thermoelectric
+);
+
+@ARGV = ( "-" ) unless @ARGV;
+
+for my $filename (@ARGV) {
+
+    my( $data, $error_count );
+
+    if( $use_parser eq "perl" ) {
+        my $parser = new CIFParser;
+
+        $data = $parser->Run( $filename );
+
+        if( defined $parser->YYData->{ERRCOUNT} ) {
+            $error_count = $parser->YYData->{ERRCOUNT};
+        }
+    } else {
+        require CCIFParser;
+        ( $data, $error_count ) = CCIFParser::parse( $filename );
+    }
+
+    if( defined $error_count && $error_count > 0 ) {
+        print STDERR "$0: ", $error_count,
+        " error(s) encountered while parsing file '${filename}'\n";
+        die;
+    }
+
+    if( !@$data || !defined $data->[0] || !defined $data->[0]{name} ) {
+        warn( "file '$filename' seems to be empty" );
+        next;
+    }
+
+    for my $datablock (@$data) {
+        my $values = $datablock->{values};
+        my $tags = $datablock->{tags};
+
+        my @conditions = ();
+        for my $condition (@condition_tags) {
+            my $condition_key = lc( $condition );
+            if( exists $values->{$condition_key} ) {
+                push( @conditions, $condition );
+            }
+        }
+
+        my %condition_data = ();
+        my $condition_id = 1;
+        my %property_data = ();
+        my %property_names = ();
+        for my $property (@property_tags) {
+            my $property_key = lc( $property );
+            if( exists $values->{$property_key} ) {
+                $property_names{$property} = 1;
+                my $property_label = $values->{$property_key}[0];
+                for my $i (0..$#{$values->{_prop_data_label}}) {
+                    if( $property_label eq $values->{_prop_data_label}[$i] ) {
+                        my $tensorial_index =
+                            defined $values->{_prop_data_tensorial_index}[$i] ?
+                            $values->{_prop_data_tensorial_index}[$i] : ".";
+                        my $separator = "";
+                        my $condition_key = "";
+                        for (@conditions) {
+                            my $idx = 0;
+                            if( exists $datablock->{inloop}{$_} ) {
+                                $idx = $i
+                            }
+                            $condition_key .= $separator . 
+                                $values->{$_}[$idx];
+                            $separator = " ";
+                        }
+                        
+                        if( !exists $property_data{$condition_key}
+                            {$tensorial_index}
+                            {$property} ) {
+                            $property_data
+                                {$condition_key}
+                                {$tensorial_index}
+                                {$property} =
+                                    $values->{_prop_data_value}[$i];
+                        } else {
+                            warn( "$filename($datablock->{name}):" .
+                                  "property '$property' for index " .
+                                  "'$tensorial_index' " .
+                                  ($condition_key ? "(at conditions " .
+                                   "$condition_key) " : "") .
+                                  "is defined more than once" );
+                        }
+                    }
+                }
+            }
+        }
+        # Delete version 1 value tags:
+        for my $tag (@condition_tags, @property_tags, @data_tags) {
+            CIFTagManage::exclude_tag( $datablock, lc($tag) );
+        }
+        CIFTagManage::exclude_tag( $datablock, "_prop_measurement_method" );
+        # Print out the rest of the CIF data:
+        CIFTagPrint::print_cif( $datablock, {
+            exclude_misspelled_tags => 0,
+            preserve_loop_order => 1,
+            fold_long_fields => 1,
+            folding_width => 78,
+            dictionary_tags => { map {$_,$_} @{$datablock->{tags}} },
+            dictionary_tag_list => $datablock->{tags},
+            keep_tag_order => 1,
+        });
+
+        # Print out the collected tensor values if there are any:
+        if( %property_data ) {
+            print "loop_\n";
+            print "_prop_tensorial_index\n";
+            for my $key (sort keys %property_names) {
+                print $key, "\n";
+            }
+            for my $key (@conditions) {
+                print $key, "\n";
+            }
+            for my $condition_value (sort keys %property_data) {
+                for my $tensorial_index
+                    (sort keys %{$property_data{$condition_value}}) {
+                        print $tensorial_index, " ";
+                        for my $property (sort keys %property_names) {
+                            if( defined $property_data{$condition_value}
+                                {$tensorial_index}{$property} ) {
+                                print
+                                    $property_data{$condition_value}
+                                {$tensorial_index}{$property}, " ";
+                            } else {
+                                print ". ";
+                            }
+                        }
+                        print $condition_value;
+                        print "\n";
+                }
+            }
+        }
+    }
+}
