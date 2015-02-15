@@ -234,6 +234,22 @@ for my $filename (@ARGV) {
                                 $condition_data{$condition_key};
                         }
 
+                        for (qw(_prop_measurement_method)) {
+                            if( exists $values->{$_} ) {
+                                my $idx = 0;
+                                if( exists
+                                    $datablock->{inloop}{$_} ) {
+                                    $idx = $i
+                                }
+                                $property_data
+                                {$category}
+                                {$condition_key}
+                                {$tensorial_index}
+                                {"_".$category."_measurement_method"} =
+                                    $values->{$_}[$idx];
+                            }
+                        }
+
                         if( !exists $property_data
                             {$category}
                             {$condition_key}
@@ -295,6 +311,7 @@ for my $filename (@ARGV) {
                 print "loop_\n";
                 print "_${category}_tensorial_index\n";
                 print "_${category}_condition_label\n";
+                print "_${category}_measurement_method\n";
                 for my $key (sort keys %{$property_names{$category}}) {
                     print $key, "\n";
                 }
@@ -304,7 +321,9 @@ for my $filename (@ARGV) {
                         (sort keys %{$category_data->{$condition_value}}) {
                             print $tensorial_index, " ";
                             print $condition_data{$condition_value};
-                            for my $property (sort keys %{$property_names{$category}}) {
+                            for my $property (
+                                ("_".$category."_measurement_method"),
+                                sort keys %{$property_names{$category}}) {
                                 if( defined $category_data->{$condition_value}
                                     {$tensorial_index}{$property} ) {
                                     print " ",
