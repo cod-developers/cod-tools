@@ -209,7 +209,6 @@ for my $filename (@ARGV) {
                             $values->{_prop_data_tensorial_index}[$i] : ".";
                         my $separator = "";
                         my $condition_key = "";
-                        my $this_condition_id;
                         for (@conditions) {
                             my $idx = 0;
                             if( exists $datablock->{inloop}{$_} ) {
@@ -219,6 +218,19 @@ for my $filename (@ARGV) {
                                 $values->{$_}[$idx];
                             $separator = " ";
                         }
+                        
+                        my $measurement_method = "?";
+                        for (qw(_prop_measurement_method)) {
+                            if( exists $values->{$_} ) {
+                                my $idx = 0;
+                                if( exists
+                                    $datablock->{inloop}{$_} ) {
+                                    $idx = $i
+                                }
+                                $measurement_method = $values->{$_}[$idx];
+                            }
+                        }
+
                         if( $condition_key ) {
                             if( !exists $condition_data{$condition_key} ) {
                                 $condition_data{$condition_key} =
@@ -229,35 +241,22 @@ for my $filename (@ARGV) {
                             $property_data
                             {$category}
                             {$condition_key}
+                            {$measurement_method}
                             {$tensorial_index}
                             {$condition_label} =
                                 $condition_data{$condition_key};
                         }
 
-                        for (qw(_prop_measurement_method)) {
-                            if( exists $values->{$_} ) {
-                                my $idx = 0;
-                                if( exists
-                                    $datablock->{inloop}{$_} ) {
-                                    $idx = $i
-                                }
-                                $property_data
-                                {$category}
-                                {$condition_key}
-                                {$tensorial_index}
-                                {"_".$category."_measurement_method"} =
-                                    $values->{$_}[$idx];
-                            }
-                        }
-
                         if( !exists $property_data
                             {$category}
                             {$condition_key}
+                            {$measurement_method}
                             {$tensorial_index}
                             {$property} ) {
                             $property_data
                                 {$category}
                                 {$condition_key}
+                                {$measurement_method}
                                 {$tensorial_index}
                                 {$property} =
                                     $values->{_prop_data_value}[$i];
@@ -317,25 +316,26 @@ for my $filename (@ARGV) {
                 }
                 my $category_data = $property_data{$category};
                 for my $condition_value (sort keys %{$category_data}) {
-                    for my $tensorial_index
-                        (sort keys %{$category_data->{$condition_value}}) {
-                            print $tensorial_index, " ";
-                            print 
-                                defined $condition_data{$condition_value} ?
-                                $condition_data{$condition_value} : "?";
-                            for my $property (
-                                ("_".$category."_measurement_method"),
-                                sort keys %{$property_names{$category}}) {
-                                if( defined $category_data->{$condition_value}
+                    for my $method (sort keys %{$category_data->{$condition_value}}) {
+                        for my $tensorial_index
+                            (sort keys %{$category_data->{$condition_value}{$method}}) {
+                                print $tensorial_index, " ";
+                                print 
+                                    defined $condition_data{$condition_value} ?
+                                    $condition_data{$condition_value} : "?", " ";
+                                print $method;
+                                for my $property (sort keys %{$property_names{$category}}) {
+                                    if( defined $category_data->{$condition_value}{$method}
                                     {$tensorial_index}{$property} ) {
                                     print " ",
-                                        $category_data->{$condition_value}
+                                    $category_data->{$condition_value}{$method}
                                     {$tensorial_index}{$property};
                                 } else {
                                     print " ?";
                                 }
                             }
                             print "\n";
+                        }
                     }
                 }
             }
