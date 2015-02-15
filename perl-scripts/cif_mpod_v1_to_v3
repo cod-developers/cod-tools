@@ -197,9 +197,11 @@ for my $filename (@ARGV) {
         my %property_names = ();
         for my $property (@property_tags) {
             my $property_key = lc( $property );
+
             if( exists $values->{$property_key} ) {
-                $property_names{$property} = 1;
+                my $category = get_category( $property );
                 my $property_label = $values->{$property_key}[0];
+                $property_names{$category}{$property} = 1;
                 for my $i (0..$#{$values->{_prop_data_label}}) {
                     if( $property_label eq $values->{_prop_data_label}[$i] ) {
                         my $tensorial_index =
@@ -222,14 +224,23 @@ for my $filename (@ARGV) {
                                 $condition_data{$condition_key} =
                                     $condition_id++;
                             }
-                            $this_condition_id =
+                            my $condition_label =
+                                "_".$category."_condition_label";
+                            $property_data
+                            {$category}
+                            {$condition_key}
+                            {$tensorial_index}
+                            {$condition_label} =
                                 $condition_data{$condition_key};
                         }
-                        
-                        if( !exists $property_data{$condition_key}
+
+                        if( !exists $property_data
+                            {$category}
+                            {$condition_key}
                             {$tensorial_index}
                             {$property} ) {
                             $property_data
+                                {$category}
                                 {$condition_key}
                                 {$tensorial_index}
                                 {$property} =
@@ -269,7 +280,7 @@ for my $filename (@ARGV) {
                 $condition_ids{$id} = $key;
             }
             print "loop_\n";
-            print "_prop_conditions_id\n";
+            print "_prop_conditions_label\n";
             for (@conditions) {
                 print $_, "\n";
             }
@@ -279,33 +290,47 @@ for my $filename (@ARGV) {
         }
 
         # Print out the collected tensor values if there are any:
-        if( 0 && %property_data ) {
-            print "loop_\n";
-            print "_prop_tensorial_index\n";
-            for my $key (sort keys %property_names) {
-                print $key, "\n";
-            }
-            for my $key (@conditions) {
-                print $key, "\n";
-            }
-            for my $condition_value (sort keys %property_data) {
-                for my $tensorial_index
-                    (sort keys %{$property_data{$condition_value}}) {
-                        print $tensorial_index, " ";
-                        for my $property (sort keys %property_names) {
-                            if( defined $property_data{$condition_value}
-                                {$tensorial_index}{$property} ) {
-                                print
-                                    $property_data{$condition_value}
-                                {$tensorial_index}{$property}, " ";
-                            } else {
-                                print ". ";
+        if( %property_data ) {
+            for my $category (sort keys %property_data) {
+                print "loop_\n";
+                print "_${category}_tensorial_index\n";
+                print "_${category}_condition_label\n";
+                for my $key (sort keys %{$property_names{$category}}) {
+                    print $key, "\n";
+                }
+                my $category_data = $property_data{$category};
+                for my $condition_value (sort keys %{$category_data}) {
+                    for my $tensorial_index
+                        (sort keys %{$category_data->{$condition_value}}) {
+                            print $tensorial_index, " ";
+                            print $condition_data{$condition_value}, " ";
+                            for my $property (sort keys %{$property_names{$category}}) {
+                                if( defined $category_data->{$condition_value}
+                                    {$tensorial_index}{$property} ) {
+                                    print
+                                        $category_data->{$condition_value}
+                                    {$tensorial_index}{$property};
+                                } else {
+                                    print ".";
+                                }
                             }
-                        }
-                        print $condition_value;
-                        print "\n";
+                            print "\n";
+                    }
                 }
             }
         }
     }
+}
+
+sub get_category
+{
+    my ( $property ) = @_;
+
+    for my $category (@categories) {
+        if( $property =~ /^_${category}_/ ) {
+            return $category
+        }
+    }
+
+    return undef
 }
