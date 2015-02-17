@@ -51,6 +51,7 @@ my $iso_temperature_factor = 0;
 my $max_resolution = 1.5; # Anstremum
 my @hkl_default = (5, -5, 5, -5, 5, -5); # hmax, hmin, k.., l...
 # constants;
+my $dump_descending_sort_Fhkl = 0;
 my $PI = 4*atan2( 1, 1 );
 
 #* USAGE:
@@ -63,6 +64,7 @@ my $PI = 4*atan2( 1, 1 );
 #*    --dump-Cromer-Mann       Print a Cromer-Mann coefficients from CIF file
 #*    --dump-cell-parameters   Print a short usage message with cell parameters
 #*    --max-resolution         Selection of resolution 
+#8    --dump-sorted-Fhkl       Sort Fhkl numerically descending
 #*
 #*    --dump-cell-xyz-coordinates
 #*        Print a XYZ file which contains all atoms of cell.
@@ -97,6 +99,7 @@ my $PI = 4*atan2( 1, 1 );
     "--dump-cell-parameters"       => sub { $dump_cell_parameters = 1 },
     "--dump-cell-xyz-coordinates"  => sub { $dump_cell_xyz_coordinates = 1 },
     "--isotropic-Tf"               => sub { $iso_temperature_factor = 1 },
+    "--dump-sorted-F"               => sub { $dump_descending_sort_Fhkl = 1 },
     "--help,--usage"               => sub { SUsage::usage; exit },
 );
 
@@ -292,7 +295,7 @@ for my $filename (@ARGV) {
         
         my $hkl_and_F_sorted = sort_Fhkl( \@hkl_and_F );
         # ----------------------------------------------------
-        if( 0 ) {    
+        if( $dump_descending_sort_Fhkl ) {    
             foreach (@{$hkl_and_F_sorted}) {
                 printf "%3s %3s %3s %0.3f\n",
                 @{$_->[1]}, $_->[0];
