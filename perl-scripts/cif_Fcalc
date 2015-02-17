@@ -139,7 +139,7 @@ for my $filename (@ARGV) {
     for my $datablock (@$data) {
         
         my @hkl_and_F;
-        my @hkl_and_F_sorted;
+        
         ## my $radiation_wavelengths = remove_standard_uncertainties(
         ##     $datablock->{values}{_diffrn_radiation_wavelength} );     
         my $cell_parameters = get_unit_cell_parameters( $datablock );
@@ -290,32 +290,14 @@ for my $filename (@ARGV) {
             }}} # end for            
         } # end unless
         
-    ##   my $max_flag = 0;
-    ##   until( $max_flag ) {
-    ##       my $k = 0;
-    ##       my $mak_k;
-    ##       foreach my $ref (@hkl_and_F) {
-    ##           # print "$ref->[0]\n";
-    ##           if( $max_flag < $ref->[0] ) {
-    ##               $max_flag = $ref->[0];
-    ##               $mak_k = $k;
-    ##           }
-    ##           $k++;
-    ##       };
-    ##       ## print "array pos: $mak_k Factor value: $max_flag\n";
-    ##       push( @hkl_and_F_sorted, $hkl_and_F[$mak_k] );
-    ##       splice( @hkl_and_F, $mak_k, 1 );
-    ##       if( $#hkl_and_F == 0 ) { 
-    ##           $max_flag = 1;  
-    ##       }  else {
-    ##           $max_flag = 0;  
-    ##       }
-    ##   }
-    ##   # ----------------------------------------------------
-    ##   foreach (@hkl_and_F_sorted) {
-    ##       printf "%3s %3s %3s %0.3f\n",
-    ##       @{$_->[1]}, $_->[0];
-    ##   }
+        my $hkl_and_F_sorted = sort_Fhkl( \@hkl_and_F );
+         # ----------------------------------------------------
+        if( 0 ) {
+            foreach (@{$hkl_and_F_sorted}) {
+                printf "%3s %3s %3s %0.3f\n",
+                @{$_->[1]}, $_->[0];
+            }
+        }
         
     } # end foreach @data
 }
@@ -1159,4 +1141,51 @@ sub compare_number {
         return 1 if( $number == $template ); 
     }
     return 0;
+}
+
+
+#------------------------------------------------------------------------------
+# Function for Fhkl descending sorting
+#
+# Parameters: 
+# \@array = (
+#           # [0]
+#           [F_value1, [h1,k1,l1] ],
+#           # [1]
+#           [F_value2, [h2,k2,l2] ],
+#
+# Return:
+# sorted \@array against F values;
+
+sub sort_Fhkl 
+{
+    my( $ref_to_Fhkl ) = @_;
+    
+    my $copied_ref_to_Fhkl = $ref_to_Fhkl;
+    my @Fhkl_sorted;
+    
+    my $max_flag = 0; # control of 'until' running 
+    # and keeping of Fmax value in Fhkl array;
+    until( $max_flag ) {
+        my $k = 0; # counter
+        my $mak_k; # keep of Fmax index value in array; 
+        foreach my $ref (@{$copied_ref_to_Fhkl}) {
+            # print "$ref->[0]\n";
+            if( $max_flag < $ref->[0] ) {
+                $max_flag = $ref->[0];
+                $mak_k = $k;
+            }
+            $k++;
+        };
+        ## print "array pos: $mak_k Factor value: $max_flag\n";
+        push( @Fhkl_sorted, $copied_ref_to_Fhkl->[$mak_k] );
+        splice( @{$copied_ref_to_Fhkl}, $mak_k, 1 ); # deleting Fmax value from
+        # array and searching of new Fmax;
+        if( $#{$copied_ref_to_Fhkl} == 0 ) { 
+            $max_flag = 1; # stop 'until'  
+        }  else {
+            $max_flag = 0; # run  
+        }
+    } # end until;
+    return \@Fhkl_sorted;
 }
