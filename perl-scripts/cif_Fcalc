@@ -49,7 +49,7 @@ my $dump_cell_parameters = 0;
 my $dump_cell_xyz_coordinates = 0;
 my $iso_temperature_factor = 0;
 my $max_resolution = 1.5; # Anstremum
-my @hkl_default = (5, -5, 5, -5, 5, -5); # hmax, hmin, k.., l..
+my @hkl_default = (5, -5, 5, -5, 5, -5); # hmax, hmin, k.., l...
 # constants;
 my $PI = 4*atan2( 1, 1 );
 
@@ -291,13 +291,25 @@ for my $filename (@ARGV) {
         } # end unless
         
         my $hkl_and_F_sorted = sort_Fhkl( \@hkl_and_F );
-         # ----------------------------------------------------
-        if( 0 ) {
+        # ----------------------------------------------------
+        if( 0 ) {    
             foreach (@{$hkl_and_F_sorted}) {
                 printf "%3s %3s %3s %0.3f\n",
                 @{$_->[1]}, $_->[0];
             }
         }
+        
+        if( 0 ) {
+            my $search_equal_intensities = sort_Friedel( $hkl_and_F_sorted );
+            
+            # -------------------------------------------------------
+            foreach my $Fri_Fhkl (@{$search_equal_intensities}) {
+                my $adding_field = (" %3s %3s %3s")x$#{$Fri_Fhkl};
+                printf "%0.3f".$adding_field."\n",
+                $Fri_Fhkl->[0], map{ @{$_} } @{$Fri_Fhkl}[1..$#{$Fri_Fhkl}];
+            }
+        }
+        
         
     } # end foreach @data
 }
@@ -1188,4 +1200,74 @@ sub sort_Fhkl
         }
     } # end until;
     return \@Fhkl_sorted;
+}
+
+#------------------------------------------------------------------------------
+# Function for Fhkl sorting against Friedel's lows;
+#
+# Parameters: 
+# sort_Fhkl() outputs. 
+#
+# Return:
+# \@array = (
+#           # [0]
+#           [F_value1, [h1,k1,l1], [h1,k1,l1] ],
+#           # [1]
+#           [F_value2, [h2,k2,l2], [h2,k2,l2] ]
+
+sub sort_Friedel
+{
+    my( $ref_to_sorted_Fhkl ) = @_;    
+    my @output; # 
+    my $cur_i = 0; # remember of $ref_to_sorted_Fhkl index value;
+    my $adding_i = 0; # remember of @output index value;
+    my $add = 1; # change $cur_i; 
+    
+    # 
+    while( 1 ) {
+        
+        last if( !defined $ref_to_sorted_Fhkl->[$cur_i][0] ); # go out;
+        
+        my $comp;
+        if( defined $ref_to_sorted_Fhkl->[$cur_i][0] && 
+            defined $ref_to_sorted_Fhkl->[$cur_i + $add][0] ) {
+            $comp = 
+                ( (sprintf "%.4f", $ref_to_sorted_Fhkl->[$cur_i][0]) ==
+                  (sprintf "%.4f", $ref_to_sorted_Fhkl->[$cur_i + $add][0]) );
+        } elsif ( !defined $ref_to_sorted_Fhkl->[$cur_i + $add][0] ) {
+            $comp = 0; # last element not exist;
+        } else {
+            $comp = 0; # elements are not eqaul;
+        }
+        ## print "Condition 1: $a == $b \n";
+        # ... then merging of Fhkl values;
+        if( !defined $output[$adding_i] && $comp ) {
+            # Friedel's twins are detected, creating;
+            $output[$adding_i] =  
+                [ @{$ref_to_sorted_Fhkl->[$cur_i]},
+                  $ref_to_sorted_Fhkl->[$cur_i + $add][1] ];
+            $add++; # seaching ..;
+        } elsif ( !defined $output[$adding_i] && !$comp ) {
+            # if not equal and last element don't exist; creating and
+            # next;
+            $output[$adding_i] =  
+                $ref_to_sorted_Fhkl->[$cur_i]; # the Friedel's 
+            # twins not detected;
+            $adding_i++; # next element ;
+            $cur_i += 1; # go to next element in sorted array
+            $add = 1; # restart;
+            next; 
+        } elsif ($add > 1 && $comp) {
+            # more same Friedel's twins are detected, adding;
+            push( @{$output[$adding_i]}, 
+                  $ref_to_sorted_Fhkl->[$cur_i + $add][1]);         
+            $add++; # seraching more;            
+        } else {
+            $adding_i++;
+            $cur_i += $add;
+            $add = 1;
+            next;
+        }                  
+    } # end while 
+    return \@output;
 }
