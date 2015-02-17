@@ -232,11 +232,14 @@ for my $filename (@ARGV) {
                     my @property_data_row =
                         ( $property_label, $tensorial_index,
                           $values->{$property_key}[$i], $measurement_method );
-                    if( exists $values->{$property_condition_link} ) {
+                    if( @conditions &&
+                        exists $values->{$property_condition_link} ) {
                         my $condition_key =
                             $values->{$property_condition_link}[$i];
-                        push( @property_data_row,
-                              $condition_values{$condition_key} );
+                        if( defined $condition_values{$condition_key} ) {
+                            push( @property_data_row,
+                                  $condition_values{$condition_key} );
+                        }
                     }
                     push( @property_data, \@property_data_row );
                 }
