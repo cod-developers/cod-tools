@@ -318,10 +318,17 @@ for my $filename (@ARGV) {
         if( 1 ) {
             my $search_equal_intensities = sort_Friedel( $hkl_and_F_sorted );
             if( defined $max_number_print_of_F ) {
-                $search_equal_intensities = 
-                    [ @{$search_equal_intensities}[0..($max_number_print_of_F - 1)] ];
+                if( ($max_number_print_of_F - 1) > 
+                    $#{$search_equal_intensities} ) {
+                    warn( "The value of --max-Fhkl-number is large than ".
+                          "number of calculated structure factors.  ".
+                          "Printing out of full structure factors number. " );
+                } else {
+                    $search_equal_intensities = 
+                        [ @{$search_equal_intensities}[0..($max_number_print_of_F - 1)] ];
+                }
             }
-            
+                
             foreach my $Fri_Fhkl (@{$search_equal_intensities}) {
                 my $adding_field = (" %3s %3s %3s")x$#{$Fri_Fhkl};
                 printf "%0.3f".$adding_field."\n",
