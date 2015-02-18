@@ -52,6 +52,8 @@ my $max_resolution = 1.5; # Anstremum
 my @hkl_default = (5, -5, 5, -5, 5, -5); # hmax, hmin, k.., l...
 # constants;
 my $dump_descending_sort_Fhkl = 0;
+my $dump_test_Fhkl = 0; # 
+
 my $PI = 4*atan2( 1, 1 );
 
 #* USAGE:
@@ -64,7 +66,12 @@ my $PI = 4*atan2( 1, 1 );
 #*    --dump-Cromer-Mann       Print a Cromer-Mann coefficients from CIF file
 #*    --dump-cell-parameters   Print a short usage message with cell parameters
 #*    --max-resolution         Selection of resolution 
-#8    --dump-sorted-Fhkl       Sort Fhkl numerically descending
+#*    --dump-sorted-F          Sort Fhkl numerically descending
+#*
+#*    --dump-test-Fhkl         
+#*        Print a following list: h k l F(phase)^2 F(phase, T.factor)^2 
+#*          F(phase, T.factor, anomalous-dispersion)^2
+#*                              
 #*
 #*    --dump-cell-xyz-coordinates
 #*        Print a XYZ file which contains all atoms of cell.
@@ -99,7 +106,8 @@ my $PI = 4*atan2( 1, 1 );
     "--dump-cell-parameters"       => sub { $dump_cell_parameters = 1 },
     "--dump-cell-xyz-coordinates"  => sub { $dump_cell_xyz_coordinates = 1 },
     "--isotropic-Tf"               => sub { $iso_temperature_factor = 1 },
-    "--dump-sorted-F"               => sub { $dump_descending_sort_Fhkl = 1 },
+    "--dump-sorted-F"              => sub { $dump_descending_sort_Fhkl = 1 },
+    "--dump-test-Fhkl"             => sub { $dump_test_Fhkl = 1 },
     "--help,--usage"               => sub { SUsage::usage; exit },
 );
 
@@ -280,7 +288,7 @@ for my $filename (@ARGV) {
 		my $F_hkl_sguared = 
                     $F_cos_comp**2 + $F_sin_comp**2; 
                 
-                if( 1 ) {
+                if( $dump_test_Fhkl ) {
                     printf "%3s %3s %3s %0.3f %0.3f %0.3f\n", 
                     @hkl,  
                     $F_hkl_without_Tf_and_cor**2, 
@@ -290,7 +298,8 @@ for my $filename (@ARGV) {
                 
                 push( @hkl_and_F, [ $F_hkl_sguared ,\@hkl ] );
                
-            }}} # end for            
+            }}} # end for        
+            exit if( $dump_test_Fhkl );
         } # end unless
         
         my $hkl_and_F_sorted = sort_Fhkl( \@hkl_and_F );
@@ -300,9 +309,10 @@ for my $filename (@ARGV) {
                 printf "%3s %3s %3s %0.3f\n",
                 @{$_->[1]}, $_->[0];
             }
+            exit;
         }
         
-        if( 0 ) {
+        if( 1 ) {
             my $search_equal_intensities = sort_Friedel( $hkl_and_F_sorted );
             
             # -------------------------------------------------------
@@ -1214,9 +1224,9 @@ sub sort_Fhkl
 # Return:
 # \@array = (
 #           # [0]
-#           [F_value1, [h1,k1,l1], [h1,k1,l1] ],
+#           [F_value1, [h1,k1,l1], [h1,k1,l1], .. ],
 #           # [1]
-#           [F_value2, [h2,k2,l2], [h2,k2,l2] ]
+#           [F_value2, [h2,k2,l2], [h2,k2,l2], .. ]
 
 sub sort_Friedel
 {
