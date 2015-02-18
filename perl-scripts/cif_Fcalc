@@ -53,6 +53,7 @@ my @hkl_default = (5, -5, 5, -5, 5, -5); # hmax, hmin, k.., l...
 # constants;
 my $dump_descending_sort_Fhkl = 0;
 my $dump_test_Fhkl = 0; # 
+my $max_number_print_of_F;
 
 my $PI = 4*atan2( 1, 1 );
 
@@ -67,11 +68,12 @@ my $PI = 4*atan2( 1, 1 );
 #*    --dump-cell-parameters   Print a short usage message with cell parameters
 #*    --max-resolution         Selection of resolution 
 #*    --dump-sorted-F          Sort Fhkl numerically descending
+#*    --max-Fhkl-number        
+#*        Selection of sorted (numerically and Friedel's low) Fhkl number
 #*
 #*    --dump-test-Fhkl         
 #*        Print a following list: h k l F(phase)^2 F(phase, T.factor)^2 
-#*          F(phase, T.factor, anomalous-dispersion)^2
-#*                              
+#*          F(phase, T.factor, anomalous-dispersion)^2                      
 #*
 #*    --dump-cell-xyz-coordinates
 #*        Print a XYZ file which contains all atoms of cell.
@@ -103,6 +105,7 @@ my $PI = 4*atan2( 1, 1 );
     "--dump-xyz-coordinates"       => sub { $dump_xyz_coordinates = 1 },
     "--dump-Cromer-Mann"           => sub { $dump_Cromer_Mann_parameters = 1 },
     "--max-resolution"             => \$max_resolution,
+    "--max-Fhkl-number"            => \$max_number_print_of_F,
     "--dump-cell-parameters"       => sub { $dump_cell_parameters = 1 },
     "--dump-cell-xyz-coordinates"  => sub { $dump_cell_xyz_coordinates = 1 },
     "--isotropic-Tf"               => sub { $iso_temperature_factor = 1 },
@@ -314,15 +317,17 @@ for my $filename (@ARGV) {
         
         if( 1 ) {
             my $search_equal_intensities = sort_Friedel( $hkl_and_F_sorted );
+            if( defined $max_number_print_of_F ) {
+                $search_equal_intensities = 
+                    [ @{$search_equal_intensities}[0..($max_number_print_of_F - 1)] ];
+            }
             
-            # -------------------------------------------------------
             foreach my $Fri_Fhkl (@{$search_equal_intensities}) {
                 my $adding_field = (" %3s %3s %3s")x$#{$Fri_Fhkl};
                 printf "%0.3f".$adding_field."\n",
                 $Fri_Fhkl->[0], map{ @{$_} } @{$Fri_Fhkl}[1..$#{$Fri_Fhkl}];
-            }
-        }
-        
+            }            
+        } # if(1) end
         
     } # end foreach @data
 }
