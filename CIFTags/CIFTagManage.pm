@@ -15,9 +15,11 @@ use strict;
 
 require Exporter;
 @CIFTagManage::ISA = qw(Exporter);
-@CIFTagManage::EXPORT = qw( exclude_tag tag_is_empty
+@CIFTagManage::EXPORT = qw( exclude_tag tag_is_empty tag_is_unknown
     exclude_empty_tags
     exclude_empty_non_loop_tags
+    exclude_unknown_tags
+    exclude_unknown_non_loop_tags
     set_tag
     set_loop_tag
 );
@@ -78,6 +80,53 @@ sub exclude_empty_non_loop_tags
 
     for my $tag (@{$cif->{tags}}) {
         if( tag_is_empty( $cif, $tag ) &&
+            !exists $cif->{inloop}{$tag} ) {
+            push( @empty_tags, $tag );
+        }
+    }
+    for my $empty_tag (@empty_tags) {
+        exclude_tag( $cif, $empty_tag );
+    }
+}
+
+sub tag_is_unknown
+{
+    my ($cif, $tag) = @_;
+    my $is_empty =1;
+
+    if( exists $cif->{values}{$tag} ) {
+        for my $val (@{$cif->{values}{$tag}}) {
+            if( defined $val && $val ne "?" ) {
+                $is_empty = 0;
+                last;
+            }
+        }
+    }
+    return $is_empty;
+}
+
+sub exclude_unknown_tags
+{
+    my $cif = $_[0];
+    my @empty_tags = ();
+
+    for my $tag (@{$cif->{tags}}) {
+        if( tag_is_unknown( $cif, $tag )) {
+            push( @empty_tags, $tag );
+        }
+    }
+    for my $empty_tag (@empty_tags) {
+        exclude_tag( $cif, $empty_tag );
+    }
+}
+
+sub exclude_unknown_non_loop_tags
+{
+    my $cif = $_[0];
+    my @empty_tags = ();
+
+    for my $tag (@{$cif->{tags}}) {
+        if( tag_is_unknown( $cif, $tag ) &&
             !exists $cif->{inloop}{$tag} ) {
             push( @empty_tags, $tag );
         }
