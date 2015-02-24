@@ -76,6 +76,8 @@ my $global_priority = 0; # if set to says that bibliography in
 my $estimate_spacegroup = 0;
 my $exclude_empty_tags = 0;
 my $exclude_empty_non_loop_tags = 0;
+my $exclude_unknown_tags = 0;
+my $exclude_unknown_non_loop_tags = 0;
 my $preserve_tag_order = 0;
 my $preserve_loop_order = 0;
 my $reformat_spacegroup = 0;
@@ -163,6 +165,9 @@ my %spacegroups = map {
 #*
 #*    --exclude-empty-tags
 #*    --dont-exclude-empty-tags, --no-exclude-empty-tags
+#*
+#*    --exclude-unknown-tags
+#*    --dont-exclude-unknown-tags, --no-exclude-unknown-tags
 #*
 #*    --exclude-misspelled-tags
 #*    --dont-exclude-misspelled-tags, --no-exclude-misspelled-tags
@@ -273,6 +278,14 @@ my %spacegroups = map {
     "--exclude-empty-non-loop-tags"      => sub { $exclude_empty_non_loop_tags = 1; },
     "--dont-exclude-non-loop-empty-tags" => sub { $exclude_empty_non_loop_tags = 0; },
     "--no-exclude-non-loop-empty-tags"   => sub { $exclude_empty_non_loop_tags = 0; },
+
+    "--exclude-unknown-tags"      => sub { $exclude_unknown_tags = 1; },
+    "--dont-exclude-unknown-tags" => sub { $exclude_unknown_tags = 0; },
+    "--no-exclude-unknown-tags"   => sub { $exclude_unknown_tags = 0; },
+
+    "--exclude-unknown-non-loop-tags"      => sub { $exclude_unknown_non_loop_tags = 1; },
+    "--dont-exclude-non-loop-unknown-tags" => sub { $exclude_unknown_non_loop_tags = 0; },
+    "--no-exclude-non-loop-unknown-tags"   => sub { $exclude_unknown_non_loop_tags = 0; },
 
     "--exclude-misspelled-tags"      => sub { $exclude_misspelled_tags = 1; },
     "--dont-exclude-misspelled-tags" => sub { $exclude_misspelled_tags = 0; },
@@ -626,6 +639,16 @@ for my $filename (@ARGV) {
 
         if( $exclude_empty_non_loop_tags ) {
             CIFTagManage::exclude_empty_non_loop_tags( $dataset );
+        }
+
+        # Remove unknown tags, if requested:
+
+        if( $exclude_unknown_tags ) {
+            CIFTagManage::exclude_unknown_tags( $dataset );
+        }
+
+        if( $exclude_unknown_non_loop_tags ) {
+            CIFTagManage::exclude_unknown_non_loop_tags( $dataset );
         }
 
         # Process the bibliography file that was supplied on the command
