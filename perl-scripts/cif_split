@@ -27,6 +27,7 @@ use UserMessage;
 my $verbose = 1;
 my $output_dir = "";
 my $output_prefixed = 0;
+my $output_tar = 0;
 my $cif_header_file;
 
 my $use_parser = "c";
@@ -38,6 +39,9 @@ my $use_parser = "c";
 #** -p, --prefixed, --output-prefixed
 #**     Print splitted datablocks to the STDOUT, each line prefixed
 #**     by the datablock name. Do not create any files.
+#**
+#** --output-tar
+#**     Produce TAR archive with split files to the STDOUT.
 #**
 #** -h, --add-cif-header header_file.cif
 #**     Comments from the beginning of this file wil be prepended
@@ -55,8 +59,12 @@ my $use_parser = "c";
 #** --help,--usage     print short usage message (this message) and exit
 
    "-o,--output-dir" => sub { $output_dir = get_value(),
+                              $output_prefixed = 0;
+                              $output_tar = 0 },
+   "-p,--prefixed,--output-prefixed" => sub { $output_prefixed = 1;
+                                              $output_tar = 0 },
+   "--output-tar"    => sub { $output_tar = 1;
                               $output_prefixed = 0 },
-   "-p,--prefixed,--output-prefixed" => sub { $output_prefixed = 1 },
    "-h,--add-cif-header" => \$cif_header_file,
    "-v,--verbose"    => sub { $verbose = 1 },
    "-q,--quiet"      => sub { $verbose = 0 },
@@ -83,6 +91,11 @@ if( $cif_header_file ) {
 $output_dir =~ s./+$..;
 
 my %files = ();
+my $tar;
+if( $output_tar ) {
+    require Archive::Tar;
+    $tar = Archive::Tar->new;
+}
 
 @ARGV = ("-") unless @ARGV;
 
@@ -166,22 +179,30 @@ for my $filename (@ARGV) {
             } else {
                 $output_file = "${suffix}.cif";
             }
-            if( $output_dir ne "" ) {
-                $output_file = $output_dir . "/" . $output_file;
-            }
-            if( !exists $files{$output_file} ) {
-                $files{$output_file} = $output_file;
-
-                print STDERR "$output_file\n" if $verbose;
-                open( STDOUT, ">$output_file" ) or
-                    die( "Could not open file '${output_file}' for writing: $!" );
-                print $cif_contents;
+            if( $output_tar ) {
+                $tar->add_data( $output_file, $cif_contents );
             } else {
-                open( STDOUT, ">>$output_file" ) or
-                    die( "Could not open file '${output_file}' for appending: $!" );
-                
-                print STDERR "$output_file (appending)\n" if $verbose;
+                if( $output_dir ne "" ) {
+                    $output_file = $output_dir . "/" . $output_file;
+                }
+                if( !exists $files{$output_file} ) {
+                    $files{$output_file} = $output_file;
+
+                    print STDERR "$output_file\n" if $verbose;
+                    open( STDOUT, ">$output_file" ) or
+                        die( "Could not open file '${output_file}' for writing: $!" );
+                    print $cif_contents;
+                } else {
+                    open( STDOUT, ">>$output_file" ) or
+                        die( "Could not open file '${output_file}' for appending: $!" );
+                    
+                    print STDERR "$output_file (appending)\n" if $verbose;
+                }
             }
         }
     }
+}
+
+if( $output_tar ) {
+    print $tar->write();
 }
