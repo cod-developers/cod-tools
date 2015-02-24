@@ -25,12 +25,17 @@ use UserMessage;
 
 my $verbose = 1;
 my $output_dir = "";
+my $cif_header_file;
 
 my $use_parser = "c";
 
 @ARGV = getOptions(
 #** -o, --output-dir out/
 #**     Put all split files into the directory out/.
+#**
+#** -h, --add-cif-header header_file.cif
+#**     Comments from the beginning of this file wil be prepended
+#**     to each of the output files.
 #**
 #** -v, --verbose      print names of the generated files to STDERR
 #** -q, --quiet        do not print file names to STDERR
@@ -44,10 +49,28 @@ my $use_parser = "c";
 #** --help,--usage     print short usage message (this message) and exit
 
    "-o,--output-dir" => \$output_dir,
+   "-h,--add-cif-header" => \$cif_header_file,
    "-v,--verbose"    => sub { $verbose = 1 },
    "-q,--quiet"      => sub { $verbose = 0 },
    "--help,--usage"  => sub { SUsage::usage; exit },
 );
+
+my $cif_header;
+
+if( $cif_header_file ) {
+    open( HDR, "$cif_header_file" ) or
+        die( "$0: could not open header file '$cif_header_file' " .
+             "for input - $!" );
+
+    $cif_header = "";
+    while( <HDR> ) {
+        last unless /^#/;
+        $cif_header .= $_;
+    }
+
+    close( HDR ) or
+        die( "$0: error reading header file '$cif_header_file' - $!" );
+}
 
 $output_dir =~ s./+$..;
 
@@ -115,6 +138,9 @@ for my $filename (@ARGV) {
             $files{$output_file} = $output_file;
 
             print STDERR "$output_file\n" if $verbose;
+            if( $cif_header ) {
+                print $cif_header;
+            }
             if( $data_global ) {
                 print_cif( $data_global,
                            {
