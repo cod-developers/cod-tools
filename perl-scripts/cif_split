@@ -124,66 +124,64 @@ for my $filename (@ARGV) {
             next;
         }
 
-        my $suffix = $dataname;
-        $suffix =~ s/[^-+._a-zA-Z0-9]/_/g;
-
-        my $basename = basename( $filename, ".cif" );
-        my $output_file;
-        if( $basename ne "-" ) {
-            $output_file = basename( $filename, ".cif" ) . "_${suffix}" . ".cif";
-        } else {
-            $output_file = "${suffix}" . ".cif";
-        }
-        if( $output_dir ne "" ) {
-            $output_file = $output_dir . "/" . $output_file;
-        }
-        if( $output_prefixed || !exists $files{$output_file} ) {
-            $files{$output_file} = $output_file;
-
-            print STDERR "$output_file\n" if $verbose;
-
-            my( $data_global_stdout, $data_global_stderr );
-            if( $data_global ) {
-                ( $data_global_stdout, $data_global_stderr ) =
-                    capture {
-                        print_cif( $data_global,
-                                   {
-                                        preserve_loop_order => 1,
-                                        keep_tag_order => 1
-                                   }
-                                 );
-                    };
-            }
-
-            my( $print_cif_stdout, $print_cif_stderr ) =
+        my( $data_global_stdout, $data_global_stderr );
+        if( $data_global ) {
+            ( $data_global_stdout, $data_global_stderr ) =
                 capture {
-                    print_cif( $dataset,
+                    print_cif( $data_global,
                                {
                                     preserve_loop_order => 1,
                                     keep_tag_order => 1
                                }
                              );
                 };
+        }
 
-            my $cif_contents = "";
-            $cif_contents .= $cif_header if $cif_header;
-            $cif_contents .= $data_global_stdout if $data_global;
-            $cif_contents .= $print_cif_stdout;
+        my( $print_cif_stdout, $print_cif_stderr ) =
+            capture {
+                print_cif( $dataset,
+                           {
+                                preserve_loop_order => 1,
+                                keep_tag_order => 1
+                           }
+                         );
+            };
 
-            if( $output_prefixed ) {
-                map { print $dataset->{name}, "\t", $_, "\n" }
+        my $cif_contents = "";
+        $cif_contents .= $cif_header if $cif_header;
+        $cif_contents .= $data_global_stdout if $data_global;
+        $cif_contents .= $print_cif_stdout;
+
+        if( $output_prefixed ) {
+            map { print $dataset->{name}, "\t", $_, "\n" }
                     split( "\n", $cif_contents );
+        } else {
+            my $suffix = $dataname;
+            $suffix =~ s/[^-+._a-zA-Z0-9]/_/g;
+
+            my $basename = basename( $filename, ".cif" );
+            my $output_file;
+            if( $basename ne "-" ) {
+                $output_file = "${basename}_${suffix}.cif";
             } else {
+                $output_file = "${suffix}.cif";
+            }
+            if( $output_dir ne "" ) {
+                $output_file = $output_dir . "/" . $output_file;
+            }
+            if( !exists $files{$output_file} ) {
+                $files{$output_file} = $output_file;
+
+                print STDERR "$output_file\n" if $verbose;
                 open( STDOUT, ">$output_file" ) or
                     die( "Could not open file '${output_file}' for writing: $!" );
                 print $cif_contents;
+            } else {
+                open( STDOUT, ">>$output_file" ) or
+                    die( "Could not open file '${output_file}' for appending: $!" );
+                
+                print STDERR "$output_file (appending)\n" if $verbose;
             }
-
-        } else {
-            open( STDOUT, ">>$output_file" ) or
-                die( "Could not open file '${output_file}' for appending: $!" );
-            
-            print STDERR "$output_file (appending)\n" if $verbose;
         }
     }
 }
