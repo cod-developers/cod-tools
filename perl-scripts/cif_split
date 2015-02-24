@@ -16,6 +16,7 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #**
 
 use strict;
+use Capture::Tiny ':all';
 use CIFTagCanonicalNames;
 use CIFTagPrint;
 use File::Basename;
@@ -25,6 +26,7 @@ use UserMessage;
 
 my $verbose = 1;
 my $output_dir = "";
+my $output_prefixed = 0;
 my $cif_header_file;
 
 my $use_parser = "c";
@@ -32,6 +34,10 @@ my $use_parser = "c";
 @ARGV = getOptions(
 #** -o, --output-dir out/
 #**     Put all split files into the directory out/.
+#**
+#** -p, --prefixed, --output-prefixed
+#**     Print splitted datablocks to the STDOUT, each line prefixed
+#**     by the datablock name. Do not create any files.
 #**
 #** -h, --add-cif-header header_file.cif
 #**     Comments from the beginning of this file wil be prepended
@@ -48,7 +54,9 @@ my $use_parser = "c";
 #**
 #** --help,--usage     print short usage message (this message) and exit
 
-   "-o,--output-dir" => \$output_dir,
+   "-o,--output-dir" => sub { $output_dir = get_value(),
+                              $output_prefixed = 0 },
+   "-p,--prefixed,--output-prefixed" => sub { $output_prefixed = 1 },
    "-h,--add-cif-header" => \$cif_header_file,
    "-v,--verbose"    => sub { $verbose = 1 },
    "-q,--quiet"      => sub { $verbose = 0 },
@@ -116,45 +124,61 @@ for my $filename (@ARGV) {
             next;
         }
 
-        close STDOUT;
-
         my $suffix = $dataname;
         $suffix =~ s/[^-+._a-zA-Z0-9]/_/g;
 
         my $basename = basename( $filename, ".cif" );
         my $output_file;
         if( $basename ne "-" ) {
-            $output_file = basename( $ARGV, ".cif" ) . "_${suffix}" . ".cif";
+            $output_file = basename( $filename, ".cif" ) . "_${suffix}" . ".cif";
         } else {
             $output_file = "${suffix}" . ".cif";
         }
         if( $output_dir ne "" ) {
             $output_file = $output_dir . "/" . $output_file;
         }
-        if( !exists $files{$output_file} ) {
-            open( STDOUT, ">$output_file" ) or
-                die( "Could not open file '${output_file}' for writing: $!" );
-
+        if( $output_prefixed || !exists $files{$output_file} ) {
             $files{$output_file} = $output_file;
 
             print STDERR "$output_file\n" if $verbose;
-            if( $cif_header ) {
-                print $cif_header;
-            }
+
+            my( $data_global_stdout, $data_global_stderr );
             if( $data_global ) {
-                print_cif( $data_global,
-                           {
-                                preserve_loop_order => 1,
-                                keep_tag_order => 1
-                           }
-                         );
+                ( $data_global_stdout, $data_global_stderr ) =
+                    capture {
+                        print_cif( $data_global,
+                                   {
+                                        preserve_loop_order => 1,
+                                        keep_tag_order => 1
+                                   }
+                                 );
+                    };
             }
-            print_cif( $dataset,
-                       {
-                            preserve_loop_order => 1,
-                            keep_tag_order => 1
-                       }
-                     );
+
+            my( $print_cif_stdout, $print_cif_stderr ) =
+                capture {
+                    print_cif( $dataset,
+                               {
+                                    preserve_loop_order => 1,
+                                    keep_tag_order => 1
+                               }
+                             );
+                };
+
+            my $cif_contents = "";
+            $cif_contents .= $cif_header if $cif_header;
+            $cif_contents .= $data_global_stdout if $data_global;
+            $cif_contents .= $print_cif_stdout;
+
+            if( $output_prefixed ) {
+                map { print $dataset->{name}, "\t", $_, "\n" }
+                    split( "\n", $cif_contents );
+            } else {
+                open( STDOUT, ">$output_file" ) or
+                    die( "Could not open file '${output_file}' for writing: $!" );
+                print $cif_contents;
+            }
+
         } else {
             open( STDOUT, ">>$output_file" ) or
                 die( "Could not open file '${output_file}' for appending: $!" );
