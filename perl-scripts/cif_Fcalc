@@ -49,12 +49,12 @@ my $dump_cell_parameters = 0;
 my $dump_cell_xyz_coordinates = 0;
 my $iso_temperature_factor = 0;
 my $max_resolution = 1.5; # Anstremum
-my @hkl_default = (5, -5, 5, -5, 5, -5); # hmax, hmin, k.., l...
+my @hkl_default = (10, -10, 10, -10, 10, -10); # hmax, hmin, k.., l...
 # constants;
 my $dump_descending_sort_Fhkl = 0;
 my $dump_test_Fhkl = 0; # 
 my $max_number_print_of_F;
-
+my $Miller_indexes;
 my $PI = 4*atan2( 1, 1 );
 
 #* USAGE:
@@ -80,6 +80,10 @@ my $PI = 4*atan2( 1, 1 );
 #*
 #*    --isotropic-Tf
 #*        Use isotropic temperature factor for structure factor calculations.
+#*
+#*    --Miller-indexes "5 6 7 -1 2 -6"
+#*        Providing of the limits on the Miller indices. Default value are 
+#*        (hmax, hmin, kmax, kmin, lmax, lmin) = (10, -10, 10, -10, 10, -10).
 #*
 #*    --help,--usage         Print a short usage message (this message) and exit.
 #**
@@ -110,6 +114,7 @@ my $PI = 4*atan2( 1, 1 );
     "--dump-cell-xyz-coordinates"  => sub { $dump_cell_xyz_coordinates = 1 },
     "--isotropic-Tf"               => sub { $iso_temperature_factor = 1 },
     "--dump-sorted-F"              => sub { $dump_descending_sort_Fhkl = 1 },
+    "--Miller-indexes"     => \$Miller_indexes,
     "--dump-test-Fhkl"             => sub { $dump_test_Fhkl = 1 },
     "--help,--usage"               => sub { SUsage::usage; exit },
 );
@@ -119,6 +124,18 @@ my $PI = 4*atan2( 1, 1 );
 sub mat_vect_mul( $$ );
 sub get_unit_cell( $$ );
 
+# tests for options
+# --provide-Miller-indexes
+if(defined $Miller_indexes) {
+    foreach( split /\s/, $Miller_indexes ) {
+        ##  print "$_\n";
+        if($_!~/\d/) {
+            warn( "The option --provide-Miller-indexes contains".               
+              " incorrect argument" );
+            exit;
+        }
+    }
+}
 
 @ARGV = ( "-" ) unless @ARGV;
 
@@ -195,8 +212,16 @@ for my $filename (@ARGV) {
         
         unless( $dump_Cromer_Mann_parameters || $dump_cell_parameters || 
                 $dump_xyz_coordinates || $dump_cell_xyz_coordinates ) {
-            my ( $h_max, $h_min, $k_max, $k_min, $l_max, $l_min ) = 
-                @{hkl_limits( $datablock, $filename )};
+
+            my( $h_max, $h_min, $k_max, $k_min, $l_max, $l_min );
+            if(!defined $Miller_indexes) {
+                ( $h_max, $h_min, $k_max, $k_min, $l_max, $l_min ) = 
+                    @hkl_default;
+            } else {
+                ( $h_max, $h_min, $k_max, $k_min, $l_max, $l_min ) = 
+                    split /\s/, $Miller_indexes
+            }
+            
             my @abc_star = @{$cell_parameters->{reciprocal_cell_radians}}[0..2];
             
             foreach my $h_limit ( $h_min..$h_max ) {
@@ -755,36 +780,6 @@ sub spacing_d_hkl
               2 * $k * $l * $b_star * $c_star * cos( $alpha_star ) );
 }
 
-#----------------------------------------------------------------------#
-# Function for extracting the limits of the Miller indices.
-#
-# Parameters:
-#    values - a reference to array of hashes where a data from the CIF
-#    file is stored
-#
-# Return
-# \(h_max,h_min,k_max,k_min,l_max,l_min);
-sub hkl_limits
-{
-    my( $datablock, $filename ) = @_;
-    my $datablock_values = $datablock->{values};
-    if( !defined ${$datablock_values->{_diffrn_reflns_limit_h_max}}[0] | 
-        !defined ${$datablock_values->{_diffrn_reflns_limit_h_min}}[0] | 
-        !defined ${$datablock_values->{_diffrn_reflns_limit_k_max}}[0] |
-        !defined ${$datablock_values->{_diffrn_reflns_limit_k_min}}[0] |
-        !defined ${$datablock_values->{_diffrn_reflns_limit_l_max}}[0] |
-        !defined ${$datablock_values->{_diffrn_reflns_limit_l_min}}[0] ) {
-        warn( "The CIF file '$filename' don't contain the full data ".
-              "of limits on the Milers indices" );
-        exit;
-    }
-    return [ ${$datablock_values->{_diffrn_reflns_limit_h_max}}[0],
-             ${$datablock_values->{_diffrn_reflns_limit_h_min}}[0],
-             ${$datablock_values->{_diffrn_reflns_limit_k_max}}[0],
-             ${$datablock_values->{_diffrn_reflns_limit_k_min}}[0],
-             ${$datablock_values->{_diffrn_reflns_limit_l_max}}[0],
-             ${$datablock_values->{_diffrn_reflns_limit_l_min}}[0] ];   
-}
 
 #----------------------------------------------------------------------#
 # Function converts degree to radian.
