@@ -372,11 +372,7 @@ if( defined $replacement_file ) {
             next;
         }
         if( /^(\S+)\s+(\S+)\s+(\S+)$/ ) {
-            if( !defined $value_spelling{$1} ) {
-                $value_spelling{$1} = {};
-            }
-            $value_spelling{$1}->{$2} = $3;
-            next;
+            push( @{ $value_spelling{$1} }, [ $2, $3 ] );
         } else {
             warn "unrecognized string '$_' in file '$replacement_file'";
         }
@@ -492,20 +488,30 @@ sub fix_misspelled_values($$$) {
             if( $tag_value =~ /^[.?]$/ ){
                 next;
             }
-            my $lc_tag_value = lc $tag_value;
-            if(! exists ${ $value_spelling{$tag}}{$lc_tag_value} ){
-                next;
-            }
+            
+            my $count = 0;
             my $old_value = $tag_value;
-            my $correct = ${ $value_spelling{$tag}}{$lc_tag_value};
-            $tag_value = $correct;
-            my $report_key =
-                "'$tag' tag value '$old_value' " .
-                "was replaced with '$correct' value";
-            if(! exists $reports{$report_key} ) {
-                $reports{$report_key} = 0;
+            foreach my $pair( @{ $value_spelling{$tag} } ){
+                my $regex = $pair->[0];
+                my $replacement = $pair->[1];
+
+                if ( $tag_value =~ /^ $regex $/xi ){
+                    $tag_value =~ s/^ $regex $/$replacement/xi;
+                    $count++;
+                }
             }
-            $reports{$report_key} ++;
+            if( $count > 1 ) {
+                 warn "more than 1 different substitutions " .
+                 "were applied on value '$old_value'";
+            } elsif( $count == 1 ) {
+                 my $report_key = 
+                     "'$tag' tag value '$old_value' " .
+                     "was replaced with '$tag_value' value";
+                 if(! exists $reports{$report_key} ) {
+                     $reports{$report_key} = 0;
+                 }
+                 $reports{$report_key} ++;
+            }
         }
     }
     foreach my $message( sort keys %reports  ) {
