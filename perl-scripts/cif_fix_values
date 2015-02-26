@@ -367,7 +367,8 @@ if( defined $replacement_file ) {
     open( LIST, $replacement_file ) or
         die "$0: $replacement_file: can not open file for input - $!";
     foreach( <LIST> ) {
-        if( /^#/ ) {
+        chomp;
+        if( /^#/ or /^\s*$/ ) {
             next;
         }
         if( /^(\S+)\s+(\S+)\s+(\S+)$/ ) {
@@ -376,6 +377,8 @@ if( defined $replacement_file ) {
             }
             $value_spelling{$1}->{$2} = $3;
             next;
+        } else {
+            warn "unrecognized string '$_' in file '$replacement_file'";
         }
     }
     close( LIST ) or
