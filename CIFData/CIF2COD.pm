@@ -307,17 +307,26 @@ sub cif2cod
         undef $systematic_name
             if defined $systematic_name && $systematic_name =~ /^\s*\?\s*$/sm;
 
+        $systematic_name = Unicode2CIF::cif2unicode($systematic_name)
+            if defined $systematic_name;
+
         my $common_name =
             get_tag_or_undef( $values, "_chemical_name_common", 0 );
 
         undef $common_name
             if defined $common_name && $common_name =~ /^\s*\?\s*$/sm;
 
+        $common_name = Unicode2CIF::cif2unicode($common_name)
+            if defined $common_name;
+
         my $mineral_name =
-                get_tag_or_undef( $values, "_chemical_name_mineral", 0 );
+            get_tag_or_undef( $values, "_chemical_name_mineral", 0 );
 
         undef $mineral_name
-            if defined $common_name && $common_name =~ /^\s*\?\s*$/sm;
+            if defined $mineral_name && $mineral_name =~ /^\s*\?\s*$/sm;
+
+        $mineral_name = Unicode2CIF::cif2unicode($mineral_name)
+            if defined $mineral_name;
 
         my $formula = get_tag( $values, "_chemical_formula_sum", 0, $filename );
 
