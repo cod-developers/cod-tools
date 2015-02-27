@@ -181,7 +181,12 @@ for my $filename (@ARGV) {
         my $f2o = symop_ortho_from_fract( 
             @{$cell_parameters->{crystal_cell_degrees}} );
         my $atoms = atoms_from_cif( $datablock, $f2o, $filename);
-      
+        
+        my %atom_index; # contains a index in $atoms using 'label' key.
+        foreach (@{$atoms}) {
+            $atom_index{$_->{label}} = $_->{my_index};
+        }
+        
 	#---------------------------------------------------------
         
         tests_outputs( $atoms, $filename, $cell_parameters ); 
@@ -249,7 +254,12 @@ for my $filename (@ARGV) {
                 my ( $F_cos_comp_w_Tf_and_cor, $F_sin_comp_w_Tf_and_cor,
                      $F_cos_comp_w_cor, $F_sin_comp_w_cor,
                      $F_cos_comp, $F_sin_comp ) = (0,0,0,0,0,0);		
-                foreach my $atom (@$atoms) {                
+                foreach my $atom (@$atoms) {         
+
+                    ## my $cur_label = $atoms->[$atom->{my_index}]{label};                    
+                    ## print "$atom->{my_index} => $atom->{label} == "
+                    ## ."$cur_label\n";
+                    
                     my $atom_structure_factor = 
                         atom_structure_factor_from_coefficients( 
                             $atom->{Crommer_Mann_coefficients}, 
@@ -270,11 +280,21 @@ for my $filename (@ARGV) {
 			my $temperature_factor;
 			if( !$iso_temperature_factor ) {
 			    # calculation of aniso temperature factor;
-                            #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-                               ##  get_neighbors( $datablock );
+                            # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
                             
 			    if( $atom->{chemical_type} eq "H" ) {
-				$temperature_factor = 1;
+                                if( defined $atom->{neighbors}[0] ) {
+                                    my $H_neighbor_label = $atom->{neighbors}[0];
+                                    my $H_neighbor_index = $atom_index{$H_neighbor_label};
+                                    ## print "$H_neighbor_index $H_neighbor_label\n";                                    
+                                    $temperature_factor = 
+                                        temperature_factor_aniso( 
+                                            @{$atoms->[$H_neighbor_index]->{aniso_value_Uij}},
+                                            @hkl, @abc_star);
+                                    ## print "$temperature_factor\n";
+                                } else {
+                                    $temperature_factor = 1;
+                                }                                
 			    } else {
 				$temperature_factor = 
 				    temperature_factor_aniso( 
@@ -446,6 +466,7 @@ sub remove_standard_uncertainties
 #               symmetrical_xyz_fract => [\@xyz1, \@xyz2, .. ],
 #               symmetrical_xyz_ortho => [\@xyz1, \@xyz2, .. ],
 #               count_of_cell_atoms => 10, # only for first atom;
+#               neighbors => [C23, C25],
 #           },
 #           # [1]
 #           {
@@ -495,7 +516,8 @@ sub atoms_from_cif
             chemical_type => $atom_chemical_type,
             coordinates_fract => $fract_xyz,
             coordinates_ortho => $ortho_xyz,
-            occupancy => $occupancy->[$i]                
+            occupancy => $occupancy->[$i],
+            my_index => $i
             );
         # 
         %atom_info = (%atom_info, %{$Cromer_Mann_coefficients->[$i]});
@@ -1312,7 +1334,23 @@ sub sort_Friedel
 
 #------------------------------------------------------------------------------
 # Function for extracting of data details about
-# bonds
+# covalent bonds
+#
+# Parameters:
+#    values - a reference to array of hashes where a data from the CIF
+#    file is stored
+#
+# Returns:
+# \@ = (
+#           # [0]
+#           {
+#               neighbors => [H134,H135],
+#           },
+#           # [1]
+#           {
+#               neighbors => [C13,C15],
+#           },
+#
 
 sub get_neighbors
 {
@@ -1336,8 +1374,7 @@ sub get_neighbors
             
             if( $label eq $atom1_label ) {               
                 if( !exists $atom_info{neighbors} ) {
-                    $atom_info{neighbors} = [$atom2_label];        
-                    print "";
+                    $atom_info{neighbors} = [$atom2_label];
                 } else {
                     push( @{$atom_info{neighbors}}, $atom2_label );
                 }                
@@ -1346,16 +1383,11 @@ sub get_neighbors
                     $atom_info{neighbors} = [$atom1_label];                    
                 } else {
                     push( @{$atom_info{neighbors}}, $atom1_label );
-                }  
-            }        
+                }
+            }    
         } # end of for $i;
         push( @neighbors, \%atom_info );
     } # end of for $k
- ##  foreach(@neighbors) {
- ##      local $, = " ";
- ##      print @{$_->{neighbors}}, "\n";
- ##      
- ##  }
- ##   exit;
+    
     return \@neighbors;
 }
