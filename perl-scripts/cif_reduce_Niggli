@@ -32,6 +32,8 @@ sub cholesky($);
 my $use_parser = 'c';
 $KG76::debug = 0;
 
+my $Pi = 4 * atan2(1,1);
+
 #* USAGE:
 #*     $0 [options] input.cif [input2.cif ...]
 #* 
@@ -93,47 +95,35 @@ for my $filename (@ARGV) {
         $values->{_cell_angle_beta}[0]  = $niggli[4];
         $values->{_cell_angle_gamma}[0] = $niggli[5];
 
+        my( $a, $b, $c ) = @cell;
+        my( $ca, $cb, $cg ) = map { cos( $Pi * $_ / 180 ) }
+                                  @cell[3..5];
+
         for my $i (0..$#{$values->{_atom_site_label}}) {
-            my @old_coordinates = map { s/(\(\d+\))?$//; $_ }
+            my( $fx, $fy, $fz ) = map { s/(\(\d+\))?$//; $_ }
                                   map { $values->{$_}[$i] }
                                     qw( _atom_site_fract_x
                                         _atom_site_fract_y
                                         _atom_site_fract_z );
 
+            my( $x, $y, $z ) = ( $a*$fx, $b*$fy, $c*$fz );
+
             my $M = [
-                [ mat_vect_mul( $f2o, [ $old_coordinates[0], 0, 0 ] ) ],
-                [ mat_vect_mul( $f2o, [ 0, $old_coordinates[1], 0 ] ) ],
-                [ mat_vect_mul( $f2o, [ 0, 0, $old_coordinates[2] ] ) ]
+                [     $x*$x, $x*$y*$cg, $x*$z*$cb ],
+                [ $x*$y*$cg,     $y*$y, $y*$z*$ca ],
+                [ $x*$z*$cb, $y*$z*$ca,     $z*$z ],
             ];
 
             my $Gprime =
-                symop_mul(
-                           symop_mul( symop_transpose( $CoB ),
-                                      symop_mul( $M, symop_transpose( $M ) ) ),
-                           $CoB
-                         );
+                symop_mul( symop_mul( symop_transpose( $CoB ), $M ), $CoB );
 
+            my $new_coordinates = [ sqrt($Gprime->[0][0])/$niggli[0],
+                                    sqrt($Gprime->[1][1])/$niggli[1],
+                                    sqrt($Gprime->[2][2])/$niggli[2] ];
 
-            my $new_coordinates = [ map { [mat_vect_mul( $o2f, $_ )] }
-                                        @{cholesky( $Gprime )} ];
-
-            $values->{_atom_site_fract_x}[$i] = $new_coordinates->[0][0] . "";
-            $values->{_atom_site_fract_y}[$i] = $new_coordinates->[1][1] . "";
-            $values->{_atom_site_fract_z}[$i] = $new_coordinates->[2][2] . "";
-        }
-
-        # Extending 3x3 symop to 4x4
-        push( @{$CoB->[0]}, 0 );
-        push( @{$CoB->[1]}, 0 );
-        push( @{$CoB->[2]}, 0 );
-        push( @$CoB, [ 0, 0, 0, 1 ] );
-
-        for my $i (0..$#{$values->{_symmetry_equiv_pos_as_xyz}}) {
-            my $symop = SymopParse::symop_from_string(
-                $values->{_symmetry_equiv_pos_as_xyz}[$i]);
-            my $symop_now = SymopAlgebra::symop_mul( $symop, $CoB );
-            $values->{_symmetry_equiv_pos_as_xyz}[$i] =
-                SymopParse::string_from_symop( $symop_now );
+            $values->{_atom_site_fract_x}[$i] = $new_coordinates->[0];
+            $values->{_atom_site_fract_y}[$i] = $new_coordinates->[1];
+            $values->{_atom_site_fract_z}[$i] = $new_coordinates->[2];
         }
 
         print_cif( $datablock,
