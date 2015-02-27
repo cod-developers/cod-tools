@@ -49,6 +49,7 @@ my $dump_cell_parameters = 0;
 my $dump_cell_xyz_coordinates = 0;
 my $iso_temperature_factor = 0;
 my $max_resolution = 1.5; # Anstremum
+my $dump_atoms_and_neighbors = 0;
 my @hkl_default = (10, -10, 10, -10, 10, -10); # hmax, hmin, k.., l...
 # constants;
 my $dump_descending_sort_Fhkl = 0;
@@ -68,6 +69,8 @@ my $PI = 4*atan2( 1, 1 );
 #*    --dump-cell-parameters   Print a short usage message with cell parameters
 #*    --max-resolution         Selection of resolution 
 #*    --dump-sorted-F          Sort Fhkl numerically descending
+#*    --dump-atoms-and-neighbors
+#*      Print a labels of atoms and their neighbors from CIF file
 #*    --max-Fhkl-number        
 #*        Selection of sorted (numerically and Friedel's low) Fhkl number
 #*
@@ -114,7 +117,8 @@ my $PI = 4*atan2( 1, 1 );
     "--dump-cell-xyz-coordinates"  => sub { $dump_cell_xyz_coordinates = 1 },
     "--isotropic-Tf"               => sub { $iso_temperature_factor = 1 },
     "--dump-sorted-F"              => sub { $dump_descending_sort_Fhkl = 1 },
-    "--Miller-indexes"     => \$Miller_indexes,
+    "--dump-atoms-and-neighbors"   => sub { $dump_atoms_and_neighbors = 1 },
+    "--Miller-indexes"             => \$Miller_indexes,
     "--dump-test-Fhkl"             => sub { $dump_test_Fhkl = 1 },
     "--help,--usage"               => sub { SUsage::usage; exit },
 );
@@ -266,6 +270,9 @@ for my $filename (@ARGV) {
 			my $temperature_factor;
 			if( !$iso_temperature_factor ) {
 			    # calculation of aniso temperature factor;
+                            #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+                               ##  get_neighbors( $datablock );
+                            
 			    if( $atom->{chemical_type} eq "H" ) {
 				$temperature_factor = 1;
 			    } else {
@@ -274,6 +281,7 @@ for my $filename (@ARGV) {
 					@{$atom->{aniso_value_Uij}},
 					@hkl, @abc_star);
 			    }
+
 			} else { # calculation of iso temperature factor;
 			    $temperature_factor = 
 				exp( ( -$atom->{B_factor}/4 ) * 
@@ -339,7 +347,7 @@ for my $filename (@ARGV) {
             }
             exit;
         }
-        
+                
         if( 1 ) {
             my $search_equal_intensities = sort_Friedel( $hkl_and_F_sorted );
             if( defined $max_number_print_of_F ) {
@@ -464,6 +472,7 @@ sub atoms_from_cif
     my $Cromer_Mann_coefficients = get_Cromer_Mann_coefficients( $datablock );
     my $themal_coefficients = get_thermal( $datablock );
     my $sym_atoms_and_their_count = cell_filling_sym( $datablock, $filename, $f2o);
+    my $atoms_neighbors = get_neighbors( $datablock );
     
     for my $i (0..$#{$datablock_values->{_atom_site_label}}) {
         my $fract_xyz = [ $xyz_arrays[0]->[$i],
@@ -492,6 +501,7 @@ sub atoms_from_cif
         %atom_info = (%atom_info, %{$Cromer_Mann_coefficients->[$i]});
         %atom_info = (%atom_info, %{$themal_coefficients->[$i]});
 	%atom_info = (%atom_info, %{$sym_atoms_and_their_count->[$i]});
+        %atom_info = (%atom_info, %{$atoms_neighbors->[$i]});
         push( @atoms, \%atom_info );
     }
     return \@atoms;
@@ -1145,6 +1155,13 @@ sub tests_outputs
         }
         exit;
     }
+    if( $dump_atoms_and_neighbors ) {
+        foreach (@{$atoms}) {
+            local $, = " ";
+            print $_->{label},": " , @{$_->{neighbors}}, "\n";
+        }
+        exit;
+    }
 }
 
 #--------------------------------------------------------------------------
@@ -1290,4 +1307,55 @@ sub sort_Friedel
         }                  
     } # end while 
     return \@output;
+}
+
+
+#------------------------------------------------------------------------------
+# Function for extracting of data details about
+# bonds
+
+sub get_neighbors
+{
+    my( $datablock ) = @_;
+    my $values = $datablock->{values};
+    
+    my $bond_atoms_1 = $values->{_geom_bond_atom_site_label_1};
+    my $bond_atoms_2 = $values->{_geom_bond_atom_site_label_2};
+    ## print "@{$bond_atoms_1} \n";
+    
+    my @neighbors;
+    my $labels = $values->{_atom_site_label};
+    for my $k (0..$#{$labels}) {
+        my $label = $labels->[$k];              
+        
+        my %atom_info;
+        for my $i (0..$#{$bond_atoms_1}) {
+            
+            my $atom1_label = $bond_atoms_1->[$i];
+            my $atom2_label = $bond_atoms_2->[$i];  
+            
+            if( $label eq $atom1_label ) {               
+                if( !exists $atom_info{neighbors} ) {
+                    $atom_info{neighbors} = [$atom2_label];        
+                    print "";
+                } else {
+                    push( @{$atom_info{neighbors}}, $atom2_label );
+                }                
+            } elsif( $label eq $atom2_label ) {
+                if( !exists $atom_info{neighbors} ) {
+                    $atom_info{neighbors} = [$atom1_label];                    
+                } else {
+                    push( @{$atom_info{neighbors}}, $atom1_label );
+                }  
+            }        
+        } # end of for $i;
+        push( @neighbors, \%atom_info );
+    } # end of for $k
+ ##  foreach(@neighbors) {
+ ##      local $, = " ";
+ ##      print @{$_->{neighbors}}, "\n";
+ ##      
+ ##  }
+ ##   exit;
+    return \@neighbors;
 }
