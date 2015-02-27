@@ -65,7 +65,9 @@ _cod_original_sg_symbol_Hall
 _cod_original_sg_symbol_H-M
 _cod_original_formula_moiety
 _cod_original_formula_sum
+_cod_original_formula_units_Z
 _cod_original_formula_weight
+_cod_same_crystal_as
 _cod_suboptimal_structure
 _cod_related_optimal_struct
 _cod_related_suboptimal_struct
