@@ -96,8 +96,8 @@ sub reduce
             printf "%s  %6.2f %6.2f %6.2f %6.2f %6.2f %6.2f [[%s]]\n",
             "3.", $A, $B, $C, $ksi, $eta, $dzeta,
             join("], [", map {join(",", @$_)} @$CoB) if $KG76::debug;
-            my $i = ($ksi < 0)   ? -1 : 1;
-            my $j = ($eta < 0)   ? -1 : 1;
+            my $i = ($ksi   < 0) ? -1 : 1;
+            my $j = ($eta   < 0) ? -1 : 1;
             my $k = ($dzeta < 0) ? -1 : 1;
             my $Cm = [ [$i,0,0], [0,$j,0], [0,0,$k] ];
             $CoB = SymopAlgebra::symop_mul( $CoB, $Cm );
@@ -108,24 +108,13 @@ sub reduce
             printf "%s  %6.2f %6.2f %6.2f %6.2f %6.2f %6.2f [[%s]]\n",
             "4.", $A, $B, $C, $ksi, $eta, $dzeta,
             join("], [", map {join(",", @$_)} @$CoB) if $KG76::debug;
-            my ($i, $j, $k, $p) = (1, 1, 1);
-            if( $ksi - $eps > 0 ) {
-                $i = -1;
-            } elsif( !($ksi < 0) ) {
-                $p = \$i;
-            }
-            if( $eta - $eps > 0 ) {
-                $j = -1;
-            } elsif( !($eta < 0) ) {
-                $p = \$j
-            }
-            if( $dzeta - $eps > 0 ) {
-                $k = -1;
-            } elsif( !($dzeta < 0) ) {
-                $p = \$k;
-            }
-            if( $i * $j * $k < 0 ) {
-                $$p = -1;
+            my $i = ($ksi   > $eps) ? -1 : 1;
+            my $j = ($eta   > $eps) ? -1 : 1;
+            my $k = ($dzeta > $eps) ? -1 : 1;
+            if( $i * $j * $k == -1 ) {
+                $i = -1 if abs($ksi)   < $eps;
+                $j = -1 if abs($eta)   < $eps;
+                $k = -1 if abs($dzeta) < $eps;
             }
             my $Cm = [ [$i,0,0], [0,$j,0], [0,0,$k] ];
             $CoB = SymopAlgebra::symop_mul( $CoB, $Cm );
