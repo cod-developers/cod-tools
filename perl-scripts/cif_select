@@ -26,6 +26,7 @@ my @selected_tags;
 my $treat_dots_as_underscores = 1;
 my $canonicalize_tag_names = 0;
 my $output_tabular = 0;
+my $invert = 0;
 
 #* Usage:
 #*     cif_select [options] input.cif [input2.cif ...]
@@ -45,6 +46,10 @@ my $output_tabular = 0;
 #*
 #*     -c, --clear-tags
 #*         Clear the list of printed tags accumulated so far.
+#*
+#*     --invert
+#*         Invert the sense of selection. Exclude values of the tags from
+#*         the supplied list.
 #*
 #**    --treat-dots-as-underscores
 #**        Convert all dots in tag names into underscores (default)
@@ -78,6 +83,8 @@ my $output_tabular = 0;
             die( "$0: $filename: ERROR, could not close file '$filename' " .
                  "after reading - $!" );
     },
+
+    "--invert" => sub { $invert = 1 },
 
     "--treat-dots-as-underscores"
         => sub { $treat_dots_as_underscores = 1 },
@@ -144,10 +151,24 @@ for my $filename (@ARGV) {
             }
         }
 
+        if( $invert ) {
+            for my $tag (@selected_tags) {
+                CIFTagManage::exclude_tag( $dataset, $tag );
+            }
+        }
+
+        my @printed_tags;
+        if( !$invert ) {
+            @printed_tags = @selected_tags;
+        } else {
+            @printed_tags = @{ $dataset->{tags} };
+        }
+        my %printed_tags = map { ($_, $_) } @printed_tags;
+
         if( $output_tabular ) {
             local $, = "\t";
             local $\ = "\n";
-            for my $tag (@selected_tags) {
+            for my $tag (@printed_tags) {
                 print $dataset->{name},
                       ( $canonicalize_tag_names
                             ? canonical_tag_name( $tag )
@@ -160,15 +181,15 @@ for my $filename (@ARGV) {
         } else {
             if( $canonicalize_tag_names ) {
                 canonicalize_names( $dataset );
-                @selected_tags = map{ canonical_tag_name( $_ ) }
-                                      @selected_tags;
-                %selected_tags = map{ ($_, $_) }
-                                      @selected_tags;
+                @printed_tags = map{ canonical_tag_name( $_ ) }
+                                     @printed_tags;
+                %printed_tags = map{ ($_, $_) }
+                                     @printed_tags;
             }
             CIFTagPrint::print_cif( $dataset,
                {
-                   dictionary_tags => \%selected_tags,
-                   dictionary_tag_list => \@selected_tags,
+                   dictionary_tags => \%printed_tags,
+                   dictionary_tag_list => \@printed_tags,
                    exclude_misspelled_tags => 1,
                } );
         }
