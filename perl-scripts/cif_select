@@ -28,6 +28,8 @@ my $canonicalize_tag_names = 0;
 my $output_tabular = 0;
 my $invert = 0;
 
+my $use_parser = 'c';
+
 #* Usage:
 #*     cif_select [options] input.cif [input2.cif ...]
 #*
@@ -63,6 +65,12 @@ my $invert = 0;
 #*
 #*     --cif, --output-cif
 #*         Output selected tags and their values in CIF format (default).
+#*
+#*     --use-perl-parser
+#*        Use Perl parser for CIF parsing.
+#*
+#*     --use-c-parser
+#*        Use Perl & C parser for CIF parsing.
 #*
 #*     --help  print a short usage message (this message) and exit.
 #**
@@ -103,6 +111,9 @@ my $invert = 0;
     "--no-canonicalize-tag-names"
         => sub { $canonicalize_tag_names = 0 },
 
+    "--use-perl-parser" => sub{ $use_parser = "perl" },
+    "--use-c-parser"    => sub{ $use_parser = "c" },
+
     "--help,--usage"  => sub { SUsage::usage; exit },
 );
 
@@ -120,13 +131,23 @@ my %selected_tags = map { ($_, $_) } @selected_tags;
 
 for my $filename (@ARGV) {
 
-    my $parser = new CIFParser;
+    my( $data, $error_count );
 
-    my $data = $parser->Run($filename);
+    if( $use_parser eq "perl" ) {
+        my $parser = new CIFParser;
 
-    if( defined $parser->YYData->{ERRCOUNT} &&
-        $parser->YYData->{ERRCOUNT} > 0 ) {
-        print STDERR "$0: ", $parser->YYData->{ERRCOUNT},
+        $data = $parser->Run($filename);
+
+        if( defined $parser->YYData->{ERRCOUNT} ) {
+            $error_count = $parser->YYData->{ERRCOUNT};
+        }
+    } else {
+        require CCIFParser;
+        ( $data, $error_count ) = CCIFParser::parse($filename);
+    }
+
+    if( defined $error_count && $error_count > 0 ) {
+        print STDERR "$0: ", $error_count,
         " error(s) encountered while parsing file '${filename}'\n";
         die;
     }
