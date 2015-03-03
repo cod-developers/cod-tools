@@ -1,0 +1,115 @@
+#! /bin/sh
+#!perl -w # --*- Perl -*--
+
+eval 'exec perl -x $0 ${1+"$@"}'
+    if 0;
+
+use strict;
+
+## print "La\n";
+my $charged_elements=[]; # charged
+my $elements=[]; # uncharged
+my %record_data_by_symbol;
+while( <> ) {
+    ## print "$_";
+    chomp( $_ );
+    my($cif_file, $element, $a1, $a2, $a3, $a4, 
+       $b1, $b2, $b3, $b4, $c1, $source) = split("\t", $_);
+    my @data = ($cif_file, $element, $a1, $a2, $a3, $a4, 
+                $b1, $b2, $b3, $b4, $c1, $source);
+    ## print "$cif_file $element, $a1, $a2, $a3, $a4, $b1, ".
+    ## "$b2, $b3, $b4, $c1, $source\n";
+    
+    if( $element=~ /^[A-Za-z]+$/) { # without charge f.e. O,K, Zn
+        unless( compare_symbol( $elements, $element ) ) {
+            push( @{$elements}, $element );
+            $record_data_by_symbol{$element} = [\@data];
+            
+        } elsif( compare_symbol( $elements, $element ) ) {
+            ## print "ok\n";
+            push( @{$record_data_by_symbol{$element}},
+                  \@data );
+        }
+        ## print "$element\n";
+    } elsif( $element=~ /^[A-Za-z]+[\+\-]\d/ ) { # f.e. Ca+2
+        
+        ## print "$element\n";
+        $element=~ /^([A-Za-z]+)([\+\-])(\d)/;
+        unless( compare_symbol( $charged_elements, $1.$3.$2 ) ) { 
+            # element, number, charge;
+            push( @{$charged_elements}, $1.$3.$2 ); 
+        }
+        
+    } elsif( $element=~ /^[A-Za-z]+\d[\+\-]/ ) { # f.e. Ca2+
+        
+        $element=~ /^([A-Za-z]+)(\d)([\+\-])/;
+        unless( compare_symbol( $charged_elements, $1.$2.$3 ) ) {
+            push( @{$charged_elements}, $1.$2.$3 );
+        }
+        
+    } elsif( $element=~ /^[A-Za-z]+\d[p,m]/ ) { # f.e. Cap2
+
+        $element=~ /^([A-Za-z]+)(\d)([p,m])/;
+        if( $3 eq "p" ) {            
+            unless( compare_symbol( $charged_elements, $1.$2."+" ) ) {
+                push( @{$charged_elements}, $1.$2."+" );
+            }
+            ## print "$1.$2."+"\n";
+            
+        } elsif( $3 eq "m") {
+            unless( compare_symbol( $charged_elements, $1.$2."-" ) ) {
+                push( @{$charged_elements}, $1.$2."-" );
+            }
+            ## print "yra\n";
+        }
+        
+    } elsif( $element=~ /^[A-Za-z]+[p,m]\d/ && 
+             $element !~ /^(Np|Pm|Sm|Tm|AM|Cm|Fm)/) { # f.e. Ca2p
+        
+        $element=~ /^([A-Za-z]+)([p,m])(\d)/;
+        if( $2 eq "p" ) {
+            unless( compare_symbol( $charged_elements, $1.$3."+" ) ) {
+                push( @{$charged_elements}, $1.$3."+" );
+            }
+            ##  print "$1$3+\n";
+            ##  print "$element\n"
+        } elsif( $2 eq "m") {
+            unless( compare_symbol( $charged_elements, $1.$3."-" ) ) {
+                push( @{$charged_elements}, $1.$3."-" );
+                ## print "$1$3-\n";
+            }
+        }
+        
+    } else { # other cases
+        print "Unknown symbol $element: CIF $cif_file\n";
+    }
+    
+}
+
+# adding carged elements names to $elements;
+push( @{$elements}, @{$charged_elements} );
+print "These symbols were detected: @{$elements} \n";
+print "Total number:  $#{$elements} \n";
+
+if(0) {
+    foreach (@{$record_data_by_symbol{"C"}}) {
+        print "C @{$_}\n";
+    }
+}
+
+
+
+#XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+# Field of function;
+#---------------------------------------------------------------------------
+# Function for checking of elements in array
+# Parameters: compare_symbol( \to_array, atom_elements )
+# Return: 1 if array contains this element
+#         0 if array does not contain 
+sub compare_symbol {
+    my( $reference_to_array, $template ) = @_;
+    foreach my $symbol ( @{$reference_to_array} ) {
+        return 1 if( $symbol eq $template ); 
+    }
+    return 0;
+}
