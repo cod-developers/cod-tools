@@ -15,17 +15,16 @@ eval 'exec perl -x $0 ${1+"$@"}'
 use strict;
 use warnings;
 use CIFParser;
+use CIFSymmetryGenerator;
 use CIFTagCanonicalNames;
 use CIFTagPrint;
 use COD::Cell::Niggli::KG76;
 use Fractional;
 use Spacegroups::SymopAlgebra;
-use Spacegroups::SymopParse;
 use UserMessage;
 use SOptions;
 use SUsage;
 
-sub get_unit_cell($$$);
 sub mat_vect_mul($$);
 sub cholesky($);
 
@@ -82,7 +81,7 @@ for my $filename (@ARGV) {
 
     for my $datablock (@$data) {
         my $values = $datablock->{values};
-        my @cell = get_unit_cell( $values, $filename, $datablock->{name} );
+        my @cell = get_cell( $values, $filename, $datablock->{name} );
         my $f2o = symop_ortho_from_fract( @cell );
         my @niggli = KG76::reduce( @cell );
         my $o2f = symop_fract_from_ortho( @niggli );
@@ -133,48 +132,6 @@ for my $filename (@ARGV) {
            }
         );
     }
-}
-
-#===============================================================#
-# Extract unit cell angles and lengths.
-#
-# Accepts
-#     values - a hash where a data from the CIF file is stored
-# Returns
-#     cell - an array  with stored information.
-
-sub get_unit_cell($$$)
-{
-    my( $values, $filename, $dataname ) = @_;
-
-    my @cell;
-
-    for my $cif_tag (qw(_cell_length_a
-                        _cell_length_b
-                        _cell_length_c
-                        ))
-    {
-        push(@cell, $values->{$cif_tag}[0]);
-        $cell[-1] =~ s/\(\d+\)$//;
-    }
-
-    for my $cif_tag (qw(_cell_angle_alpha
-                        _cell_angle_beta
-                        _cell_angle_gamma
-                        ))
-    {
-        if( exists $values->{$cif_tag} ) {
-            push( @cell, $values->{$cif_tag}[0] );
-            $cell[-1] =~ s/\(\d+\)$//;
-        } else {
-            warning( $0, $filename, $dataname,
-                     "cell angle '$cif_tag' not present -- " .
-                     "taking default value 90 degress." );
-            push( @cell, 90 );
-        }
-    }
-
-    return @cell;
 }
 
 sub mat3_inv

@@ -59,6 +59,7 @@ use lib "./CIFTags";
 use lib "./Spacegroups";
 use AtomBricks;
 use CIFParser;
+use CIFSymmetryGenerator qw(get_cell);
 use CIFTagCanonicalNames;
 use COD::AtomNeighbours;
 use COD::MorganFingerprints;
@@ -447,7 +448,6 @@ my $expand_to_p1 = 0; # Do we want a full P1 unit cell that can be used
 #==============================================================================#
 # Forward subroutine definitions:
 
-sub get_unit_cell( $$ );
 sub symgen_atom( $$ );
 sub symgen_all_atoms( $$$$ );
 sub apply_shifts( $ );
@@ -929,7 +929,7 @@ sub get_molecules
 
     if( $dump_atoms ) {
         dump_atoms_as_cif( 1, \@initial_atoms,
-                           [ get_unit_cell( $dataset, $filename ) ] );
+                           [ get_cell( $values, $filename, $dataname ) ] );
     } else {
 
         my $bricks = AtomBricks::build_bricks( \@symmetric_atoms,
@@ -1063,7 +1063,7 @@ sub atom_array_from_cif($$$$$)
     # Get the unit cell information and construct the fract->ortho and
     # ortho->fract conversion matrices:
 
-    my @cell = get_unit_cell( $datablock, $filename );
+    my @cell = get_cell( $values, $filename, $dataname );
     my $f2o = symop_ortho_from_fract( @cell );
 
     # Determine which atom site label tag is present and which can be
@@ -1334,49 +1334,6 @@ sub assemblies
     }
 
    return \%assemblies;
-}
-
-#===============================================================#
-# Extract unit cell angles and lengths.
-#
-# Accepts
-#     values - a hash where a data from the CIF file is stored
-# Returns
-#     cell - an array  with stored information.
-
-sub get_unit_cell($$)
-{
-    my( $datablock, $filename ) = @_;
-
-    my $values = $datablock->{values};
-    my $dataname = $datablock->{name};
-
-    my @cell;
-
-    for my $cif_tag (qw(_cell_length_a
-                        _cell_length_b
-                        _cell_length_c
-                        )) {
-        push(@cell, $values->{$cif_tag}[0]);
-        $cell[-1] =~ s/\(\d+\)$//;
-    }
-
-    for my $cif_tag (qw(_cell_angle_alpha
-                        _cell_angle_beta
-                        _cell_angle_gamma
-                        )) {
-        if( exists $values->{$cif_tag} ) {
-            push( @cell, $values->{$cif_tag}[0] );
-            $cell[-1] =~ s/\(\d+\)$//;
-        } else {
-            warning( $0, $filename, $dataname,
-                     "cell angle '$cif_tag' not present -- " .
-                     "taking default value 90 degress." );
-            push( @cell, 90 );
-        }
-    }
-
-    return @cell;
 }
 
 #===============================================================#

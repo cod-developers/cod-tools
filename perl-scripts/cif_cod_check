@@ -19,6 +19,7 @@ use lib "./lib/perl5";
 use lib "./CIFParser";
 use lib "./CCIFParser";
 use CIFParser;
+use CIFSymmetryGenerator;
 use CIFTagCanonicalNames;
 use CIFTagManage;
 use ShowStruct;
@@ -1143,39 +1144,6 @@ sub get_spacegroup_descriptions
     return ( $sym_data, $warnings );
 }
 
-sub get_unit_cell($$)
-{
-    my( $dataset, $filename ) = @_;
-    my $values = $dataset->{values};
-
-    my @cell;
-
-    for my $cif_tag (qw(_cell_length_a
-                        _cell_length_b
-                        _cell_length_c
-                        )) {
-        push(@cell, $values->{$cif_tag}[0]);
-        $cell[-1] =~ s/\(\d+\)$//;
-    }
-
-    for my $cif_tag (qw(_cell_angle_alpha
-                        _cell_angle_beta
-                        _cell_angle_gamma
-                        )) {
-        if( exists $values->{$cif_tag} ) {
-            push( @cell, $values->{$cif_tag}[0] );
-            $cell[-1] =~ s/\(\d+\)$//;
-        } else {
-            error_reporter( $filename, undef, $dataset->{name},
-                     "cell angle '$cif_tag' not present -- " .
-                     "taking default value 90 degrees." );
-            push( @cell, 90 );
-        }
-    }
-
-    return @cell;
-}
-
 sub get_unit_cell_sigmas($$)
 {
     my( $dataset, $filename ) = @_;
@@ -1286,7 +1254,7 @@ sub check_spacegroup_constraints
     my $constraints = $spacegroup_descr->{constraints};
     my $cryst_class = $spacegroup_descr->{crystal_class};
     my $h_m_symbol = $spacegroup_descr->{universal_h_m};
-    my @cell = get_unit_cell( $dataset, $filename );
+    my @cell = get_cell( $dataset->{values}, $filename, $dataset->{name} );
     my @cellsig = get_unit_cell_sigmas( $dataset, $filename );
 
     do {

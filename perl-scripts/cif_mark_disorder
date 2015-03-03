@@ -17,6 +17,7 @@ use warnings;
 use AtomBricks;
 use AtomProperties;
 use CIFParser;
+use CIFSymmetryGenerator;
 use CIFTagCanonicalNames;
 use CIFTagManage;
 use CIFTagPrint;
@@ -29,7 +30,6 @@ my $Id = '$Id$';
 
 sub initial_atoms($$$$$);
 sub mat_vect_mul($$);
-sub get_unit_cell($$$);
 
 my $same_site_distance_sensivity = 0.000001;
 my $same_site_occupancy_sensivity = 0.01;
@@ -177,7 +177,7 @@ for my $filename (@ARGV) {
         my $dataname = $dataset->{name};
         
         # Get cell angles(alpha, beta, gama) and lengths(a, b, c)
-        my @cell = get_unit_cell( $values, $filename, $dataname );
+        my @cell = get_cell( $values, $filename, $dataname );
 
         # Make a matric to convert from fractional coordinates to
         # orthogonal:
@@ -652,48 +652,6 @@ sub extract_atom
     }
 
     return \%atom_info;
-}
-
-#===============================================================#
-# Extract unit cell angles and lengths.
-#
-# Accepts
-#     values - a hash where a data from the CIF file is stored
-# Returns
-#     cell - an array  with stored information.
-
-sub get_unit_cell($$$)
-{
-    my( $values, $filename, $dataname ) = @_;
-
-    my @cell;
-
-    for my $cif_tag (qw(_cell_length_a
-                        _cell_length_b
-                        _cell_length_c
-                        ))
-    {
-        push(@cell, $values->{$cif_tag}[0]);
-        $cell[-1] =~ s/\(\d+\)$//;
-    }
-
-    for my $cif_tag (qw(_cell_angle_alpha
-                        _cell_angle_beta
-                        _cell_angle_gamma
-                        ))
-    {
-        if( exists $values->{$cif_tag} ) {
-            push( @cell, $values->{$cif_tag}[0] );
-            $cell[-1] =~ s/\(\d+\)$//;
-        } else {
-            warning( $0, $filename, $dataname,
-                     "cell angle '$cif_tag' not present -- " .
-                     "taking default value 90 degress." );
-            push( @cell, 90 );
-        }
-    }
-
-    return @cell;
 }
 
 #===============================================================#

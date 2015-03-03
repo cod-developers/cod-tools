@@ -16,6 +16,7 @@ use strict;
 use warnings;
 use AtomProperties;
 use CIFParser;
+use CIFSymmetryGenerator;
 use Fractional;
 use SOptions;
 use SUsage;
@@ -84,7 +85,7 @@ for my $filename (@ARGV) {
     for my $dataset (@$data) {
         my $values = $dataset->{values};
 
-        my @cell = get_unit_cell( $values, $filename, $dataset->{name} );
+        my @cell = get_cell( $values, $filename, $dataset->{name} );
 
         my $f2o = symop_ortho_from_fract(@cell);
         # perform fractional to orthogonal conversion here
@@ -153,48 +154,6 @@ for my $filename (@ARGV) {
                   '# ', $atom_labels->[$i], "\n";
         }
     }
-}
-
-#===============================================================#
-# Extract unit cell angles and lengths.
-#
-# Accepts
-#     values - a hash where a data from the CIF file is stored
-# Returns
-#     cell - an array  with stored information.
-
-sub get_unit_cell
-{
-    my( $values, $filename, $dataname ) = @_;
-
-    my @cell;
-
-    for my $cif_tag (qw(_cell_length_a
-                        _cell_length_b
-                        _cell_length_c
-                        ))
-    {
-        push(@cell, $values->{$cif_tag}[0]);
-        $cell[-1] =~ s/\(\d+\)$//;
-    }
-
-    for my $cif_tag (qw(_cell_angle_alpha
-                        _cell_angle_beta
-                        _cell_angle_gamma
-                        ))
-    {
-        if( exists $values->{$cif_tag} ) {
-            push( @cell, $values->{$cif_tag}[0] );
-            $cell[-1] =~ s/\(\d+\)$//;
-        } else {
-            warning( $0, $filename, $dataname,
-                     "cell angle '$cif_tag' not present -- " .
-                     "taking default value 90 degress." );
-            push( @cell, 90 );
-        }
-    }
-
-    return @cell;
 }
 
 #===============================================================#
