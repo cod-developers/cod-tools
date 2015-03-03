@@ -30,7 +30,7 @@ package KG76;
 
 use strict;
 use warnings;
-use Spacegroups::SymopAlgebra;
+use SymopAlgebra qw(symop_mul);
 require Exporter;
 @KG76::ISA = qw(Exporter);
 @KG76::EXPORT_OK = qw( reduce );

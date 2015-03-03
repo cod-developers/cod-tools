@@ -65,7 +65,7 @@ use COD::AtomNeighbours;
 use COD::MorganFingerprints;
 use SymopParse;
 use SymopLookup;
-use SymopAlgebra qw(symop_mul symop_invert);
+use SymopAlgebra qw(symop_mul symop_invert symop_is_unity);
 use SGBuilder; # Spacegroup builder
 use CIFTagPrint;
 use CIFTagManage;
@@ -2295,37 +2295,6 @@ sub distance
         $dist += (${$vector1}[$k] - ${$vector2}[$k])**2;
     }
     return sqrt($dist);
-}
-
-#===============================================================#
-# Tests if a symmetry operator is   (1, 0, 0)
-#                                   (0, 1, 0)
-#                                   (0, 0, 1)
-
-sub symop_is_unity
-{
-    my($symop) = @_;
-    my $eps = 1e-10;
-
-    for(my $i = 0; $i < @{$symop}; $i++)
-    {
-        for(my $j = 0; $j < @{$symop}; $j++)
-        {
-            if($i == $j)
-            {
-                if(abs(${$symop}[$i][$j] - 1) > $eps) {
-                    return 0;
-                }
-            }
-            else
-            {
-                if(abs(${$symop}[$i][$j] - 0) > $eps) {
-                    return 0;
-                }
-            }
-        }
-    }
-    return 1;
 }
 
 #===============================================================#

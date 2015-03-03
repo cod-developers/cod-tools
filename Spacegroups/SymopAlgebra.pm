@@ -18,6 +18,7 @@ require Exporter;
 @SymopAlgebra::EXPORT_OK = qw(
     symop_mul symop_apply symop_invert symop_modulo_1 symop_translation
     symop_translate symop_set_translation symop_transpose
+    symop_is_unity
 );
 
 use VectorAlgebra qw( modulo_1 );
@@ -284,6 +285,32 @@ sub symop_transpose($)
         }
     }
     return $result;
+}
+
+sub symop_is_unity($)
+{
+    my($symop) = @_;
+    my $eps = 1e-10;
+
+    for(my $i = 0; $i < @{$symop}; $i++)
+    {
+        for(my $j = 0; $j < @{$symop}; $j++)
+        {
+            if($i == $j)
+            {
+                if(abs(${$symop}[$i][$j] - 1) > $eps) {
+                    return 0;
+                }
+            }
+            else
+            {
+                if(abs(${$symop}[$i][$j] - 0) > $eps) {
+                    return 0;
+                }
+            }
+        }
+    }
+    return 1;
 }
 
 1;

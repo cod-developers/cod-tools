@@ -20,6 +20,7 @@ use warnings;
 use AtomBricks;
 use CIFParser;
 use CIFTagCanonicalNames;
+use SymopAlgebra qw(symop_is_unity);
 use SymopParse;
 use SymopLookup;
 use CIFTagPrint;
@@ -1470,32 +1471,6 @@ sub copy_struct_deep
         if ref $struct eq "HASH";
     die( "deep copy failed: 'copy_struct_deep' does not know how to " .
          "copy object '" . ref( $struct ) . "'" );
-}
-
-#===============================================================#
-# Tests if a symmetry operator is   (1, 0, 0)
-#                                   (0, 1, 0)
-#                                   (0, 0, 1)
-
-sub symop_is_unity
-{
-    my($symop) = @_;
-    my $eps = 1e-10;
-
-    for(my $i = 0; $i < @{$symop}; $i++) {
-        for(my $j = 0; $j < @{$symop}; $j++) {
-            if($i == $j) {
-                if(abs(${$symop}[$i][$j] - 1) > $eps) {
-                    return 0;
-                }
-            } else {
-                if(abs(${$symop}[$i][$j] - 0) > $eps) {
-                    return 0;
-                }
-            }
-        }
-    }
-    return 1;
 }
 
 #===============================================================#
