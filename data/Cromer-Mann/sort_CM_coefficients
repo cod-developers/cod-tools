@@ -89,15 +89,75 @@ while( <> ) {
 # adding carged elements names to $elements;
 push( @{$elements}, @{$charged_elements} );
 print "These symbols were detected: @{$elements} \n";
-print "Total number:  $#{$elements} \n";
+print "Total number of elements:  $#{$elements} \n";
 
-if(0) {
+if( 1 ) {
+    my @CM_of_element_synonyms;
+    print "Cromer Mann coefficients of C element \n";
+    print "Total  number of ".$#{$record_data_by_symbol{"C"}},"\n";
     foreach (@{$record_data_by_symbol{"C"}}) {
-        print "C @{$_}\n";
-    }
+        
+        if(!defined $CM_of_element_synonyms[0]) {
+            push( @CM_of_element_synonyms, $_ );
+            ## print "C @{$_}\n";
+        } else {
+            
+            my $finish = $#CM_of_element_synonyms;
+            my $new_addtion_flag = 1;
+            for my $k (0..$finish) { # loop of @CM_of_element_synonyms;
+                
+                ## print "Sablonas @{$CM_of_element_synonyms[$k]}\n";
+                my $condition = 1;
+                for my $i (2..10) {
+                    $condition = $condition && 
+                        ((sprintf "%.4f", $CM_of_element_synonyms[$k]->[$i]) == 
+                     (sprintf "%.4f", $_->[$i]));
+                    ## print "salyga $condition\n";
+                }
+                
+                ## print "$condition\n";
+                if( $condition ) {
+                    ## print "iseinu\n";
+                    ## print "Su kuo @{$_}\n";
+                    $new_addtion_flag = $new_addtion_flag && 0;                    
+                    last;
+                    ## print "pagavau\n";
+                    
+                } 
+                
+            } # end for k
+            push( @CM_of_element_synonyms, $_ ) 
+                if( $new_addtion_flag );
+            ## print "Kiek ideta $#CM_of_element_synonyms \n";
+            ## print "@{$_}\n" if( $new_addtion_flag );
+        }
+    } # end foreach data;
+    # frequency;
+    my $total = $#{$record_data_by_symbol{"C"}};
+    for my $unical_element_i (0..$#CM_of_element_synonyms) {
+        ## print "$unical_element_i\n";
+        my $unical_element_CM = 
+            $CM_of_element_synonyms[$unical_element_i];
+       
+        my $frequency = 0;
+        foreach my $all_cases_of_element (@{$record_data_by_symbol{"C"}}) {
+            my $condition = 1;
+            for my $i (2..10) {
+                $condition = $condition && 
+                    ((sprintf "%.4f", $unical_element_CM->[$i]) == 
+                     (sprintf "%.4f", $all_cases_of_element->[$i]));
+                ## print "salyga $condition\n";
+            }
+            if($condition) {
+                $frequency++;
+            }
+        }
+        print "@{$unical_element_CM}\n";
+        printf "Frequency %.4f\n", $frequency/$total;
+    } # for end unical;
 }
 
-
+    
 
 #XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 # Field of function;
