@@ -14,6 +14,7 @@ package CIFSymmetryGenerator;
 
 use strict;
 use warnings;
+use SymopAlgebra qw(symop_is_unity);
 use SymopParse;
 use SymopLookup;
 use Spacegroups::SpacegroupNames;
@@ -48,38 +49,6 @@ sub symop_generate_atoms($$$);
 sub copy_atom($);
 sub copy_array($);
 sub mat_vect_mul($$);
-
-#===============================================================#
-# Tests if a symmetry operator is   (1, 0, 0, 0)
-#                                   (0, 1, 0, 0)
-#                                   (0, 0, 1, 0)
-#                                   (0, 0, 0, 1)
-
-sub symop_is_unity($)
-{
-    my($symop) = @_;
-    my $eps = 1e-10;
-
-    for(my $i = 0; $i < @{$symop}; $i++)
-    {
-        for(my $j = 0; $j < @{$symop}; $j++)
-        {
-            if($i == $j)
-            {
-                if(abs(${$symop}[$i][$j] - 1) > $eps) {
-                    return 0;
-                }
-            }
-            else
-            {
-                if(abs(${$symop}[$i][$j] - 0) > $eps) {
-                    return 0;
-                }
-            }
-        }
-    }
-    return 1;
-}
 
 #===============================================================#
 # Calculates distance between two given vectors.
