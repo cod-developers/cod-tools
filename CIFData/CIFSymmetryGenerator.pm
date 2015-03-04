@@ -14,7 +14,7 @@ package CIFSymmetryGenerator;
 
 use strict;
 use warnings;
-use SymopAlgebra qw(symop_is_unity);
+use SymopAlgebra qw(symop_is_unity symop_vector_mul);
 use SymopParse;
 use SymopLookup;
 use Spacegroups::SpacegroupNames;
@@ -397,26 +397,7 @@ sub get_symmetry_operators($$)
 
 sub mat_vect_mul($$)
 {
-    my($matrix, $vector) = @_;
-
-    my @new_coordinates;
-
-    for(my $i = 0; $i < @{$vector}; $i++)
-    {
-        $new_coordinates[$i] = 0;
-        for(my $j = 0; $j < @{$vector}; $j++)
-        {
-            $new_coordinates[$i] += ${$matrix}[$i][$j] * ${$vector}[$j];
-        }
-    }
-
-    if( @$vector == 3 && @$matrix == 4 ) {
-        $new_coordinates[0] += $matrix->[0][3];
-        $new_coordinates[1] += $matrix->[1][3];
-        $new_coordinates[2] += $matrix->[2][3];
-    }
-
-    return \@new_coordinates;
+    return &symop_vector_mul;
 }
 
 #===============================================================#

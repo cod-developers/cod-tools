@@ -18,7 +18,7 @@ require Exporter;
 @SymopAlgebra::EXPORT_OK = qw(
     symop_mul symop_apply symop_invert symop_modulo_1 symop_translation
     symop_translate symop_set_translation symop_transpose
-    symop_is_unity
+    symop_is_unity symop_vector_mul
 );
 
 use VectorAlgebra qw( modulo_1 );
@@ -311,6 +311,30 @@ sub symop_is_unity($)
         }
     }
     return 1;
+}
+
+sub symop_vector_mul($$)
+{
+    my($symop, $vector) = @_;
+
+    my @new_coordinates;
+
+    for(my $i = 0; $i < @{$vector}; $i++)
+    {
+        $new_coordinates[$i] = 0;
+        for(my $j = 0; $j < @{$vector}; $j++)
+        {
+            $new_coordinates[$i] += ${$symop}[$i][$j] * ${$vector}[$j];
+        }
+    }
+
+    if( @$vector == 3 && @$symop == 4 ) {
+        $new_coordinates[0] += $symop->[0][3];
+        $new_coordinates[1] += $symop->[1][3];
+        $new_coordinates[2] += $symop->[2][3];
+    }
+
+    return wantarray ? @new_coordinates : \@new_coordinates;
 }
 
 1;
