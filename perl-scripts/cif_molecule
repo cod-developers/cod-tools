@@ -1489,13 +1489,14 @@ sub copy_atom
         croak;
     }
 
-    my @shallow_copied_keys = qw( symop_list f2o site_symops );
+    my @shallow_copied_keys = qw( symop_list f2o site_symops symop );
 
     my $atom_copy = copy_struct_deep( $old_atom,
                                       { excluded_hash_keys =>
                                         \@shallow_copied_keys } );
 
     for my $key ( @shallow_copied_keys ) {
+        next if !exists $old_atom->{$key};
         $atom_copy->{$key} = $old_atom->{$key};
     }
 
@@ -1508,10 +1509,10 @@ sub copy_struct_deep
 {
     my( $struct, $options ) = @_;
 
-    $options = {} unless defined $options;
-
     return $struct if !ref $struct;
     return [ map( copy_struct_deep($_), @$struct ) ] if ref $struct eq "ARRAY";
+
+    $options = {} unless defined $options;
 
     my %excluded_hash_keys;
     if( exists $options->{excluded_hash_keys} ) {
