@@ -103,9 +103,9 @@ ${COPYRIGHT}:
 	cat README-COPYING COPYING > $@
 
 build:
-	$(MAKE) -C perl-scripts
-	$(MAKE) -C CIFParser
 	$(MAKE) -C CIFParser-c
+	$(MAKE) -C CIFParser
+	$(MAKE) -C perl-scripts
 
 deb: build ${CHANGELOG} ${CONTROL} ${COPYRIGHT}
 	fakeroot debian/rules binary

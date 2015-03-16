@@ -21,14 +21,31 @@ require Exporter;
 @CCIFParser::ISA = qw(Exporter);
 @CCIFParser::EXPORT = qw( parse );
 
+use Inline;
+
+sub get_inline_inc
+{
+    my @inc_relative_paths = (
+        "../CIFParser-c",
+        "../CIFParser-c/libs/cexceptions",
+        "../CIFParser-c/libs/getoptions",
+    );
+    if( Inline->VERSION > 0.5 ) {
+        return join " ",
+               map { "-I" . dirname(abs_path($0)) . "/$_" }
+                   @inc_relative_paths;
+    } else {
+        return [ map { "-I" . dirname(abs_path($0)) . "/$_" }
+                     @inc_relative_paths ];
+    }
+}
+
 use Inline C => Config =>
     LIBS => "-L" . dirname(abs_path($0)) . "/../CIFParser-c " .
             "-L" . dirname(abs_path($0)) . "/../CIFParser-c/libs/cexceptions " .
             "-L" . dirname(abs_path($0)) . "/../CIFParser-c/libs/getoptions " .
             "-lCIFParser-c -lcexceptions -lgetoptions",
-    INC => [ "-I" . dirname(abs_path($0)) . "/../CIFParser-c",
-             "-I" . dirname(abs_path($0)) . "/../CIFParser-c/libs/cexceptions",
-             "-I" . dirname(abs_path($0)) . "/../CIFParser-c/libs/getoptions" ],
+    INC => get_inline_inc(),
     DIRECTORY =>  dirname(dirname(abs_path($0))) . "/lib/cod-tools",
     NAME => 'CCIFParser';
 use Inline C => <<'END_OF_C_CODE';
