@@ -14,7 +14,7 @@ use strict;
 use warnings;
 require Exporter;
 @UserMessage::ISA = qw(Exporter);
-@UserMessage::EXPORT = qw( print_message error warning parse_message );
+@UserMessage::EXPORT = qw( print_message error warning note parse_message );
 
 #==============================================================================
 # Print a message, reporting a program name, file name, data block
@@ -95,7 +95,7 @@ sub error($$$$)
 }
 
 #==============================================================================
-# Report a warning message. Warning are indicated with the "WARNING"
+# Report a warning message. Warnings are indicated with the "WARNING"
 # keyword. Program can probably continue after warnings and give a
 # reasonable result, but it might be not the result which the user
 # expected.
@@ -104,6 +104,17 @@ sub warning($$$$)
 {
     my ( $program, $filename, $datablock, $message ) = @_;
     print_message( $program, $filename, $datablock, "WARNING", $message );
+}
+
+#==============================================================================
+# Report a note message. Notes are indicated with the "NOTE"
+# keyword. Program can always continue after issuing notes as the intent
+# of note is just to provide information on the progress.
+
+sub note($$$$)
+{
+    my ( $program, $filename, $datablock, $message ) = @_;
+    print_message( $program, $filename, $datablock, "NOTE", $message );
 }
 
 1;
