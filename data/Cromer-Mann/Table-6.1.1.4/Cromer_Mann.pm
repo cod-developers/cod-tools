@@ -1,15 +1,15 @@
-package CoefficientsOfScatteringFactors;
+package Cromer_Mann;
 use strict;
 require Exporter;
-@CoefficientsOfScatteringFactors::ISA = qw(Exporter);
-@CoefficientsOfScatteringFactors::EXPORT = qw( ok );
+@Cromer_Mann::ISA = qw(Exporter);
+@Cromer_Mann::EXPORT = qw( ok );
 
 # This package which contains Crommer-Mann coefficients 
 # has been created using data from the table 6.1.1.4. 
 # of the book "International Tables for Crystallography, vol. C" 
 # (IUCr, published: Oct 2004; isbn:1402019009). 
 
-%CoefficientsOfScatteringFactors::atoms = (
+%Cromer_Mann::atoms = (
 
 # The Crommer-Mann coefficents are in following range: a1 a2 a3 a4 b1 b2 b3 b4 c
 "H"	=>	[0.493002,0.322912,0.140191,0.040810,10.5109,26.1257,3.14236,57.7997,0.003038],
