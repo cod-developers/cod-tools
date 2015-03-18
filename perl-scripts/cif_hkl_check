@@ -56,23 +56,13 @@ while( @ARGV > 0 ) {
             next PAIR;
         }
     }
-    my $hkl_dataname =
-        ( exists $hkl_data->[0]{values}{'_[local]_cod_data_source_block'} )
-            ? $hkl_data->[0]{values}{'_[local]_cod_data_source_block'}[0]
-            : $hkl_data->[0]{name};
+    my $hkl_dataname = get_source_block_name( $hkl_data->[0] );
     my $cif_index;
     for( my $i = 0; $i < @$cif_data; $i++ ) {
-        if( exists $cif_data->[$i]{values}{'_[local]_cod_data_source_block'} ) {
-            if( $cif_data->[$i]{values}{'_[local]_cod_data_source_block'}[0] eq
-                $hkl_dataname ) {
-                $cif_index = $i;
-                last;
-            }
-        } else {
-            if( $cif_data->[$i]{name} eq $hkl_dataname ) {
-                $cif_index = $i;
-                last;
-            }
+        my $cif_dataname = get_source_block_name( $cif_data->[$i] );
+        if( $cif_dataname eq $hkl_dataname ) {
+            $cif_index = $i;
+            last;
         }
     }
     if( !defined $cif_index ) {
@@ -86,11 +76,15 @@ while( @ARGV > 0 ) {
         {
             'compare_only' =>
                 [
-                    '_cell_length_a', '_cell_length_b', '_cell_length_c',
-                    '_cell_angle_alpha', '_cell_angle_beta',
-                    '_cell_angle_gamma', '_publ_author_name',
+                    '_cell_length_a',
+                    '_cell_length_b',
+                    '_cell_length_c',
+                    '_cell_angle_alpha',
+                    '_cell_angle_beta',
+                    '_cell_angle_gamma',
+                    '_publ_author_name',
                     '_symmetry_space_group_name_Hall',
-                    '_symmetry_space_group_name_H-M'
+                    '_symmetry_space_group_name_H-M',
                 ],
             'comparators'  =>
                 {
@@ -100,7 +94,7 @@ while( @ARGV > 0 ) {
                     '_cell_angle_alpha' => \&compare_cif_numbers,
                     '_cell_angle_beta'  => \&compare_cif_numbers,
                     '_cell_angle_gamma' => \&compare_cif_numbers,
-                    '_publ_author_name' => \&compare_lc_strings
+                    '_publ_author_name' => \&compare_lc_strings,
                 }
         } );
     foreach my $line ( @$comm ) {
@@ -221,4 +215,19 @@ sub can_be_equal
             if( $open_intervals > 1 ) { return 1; }
         }
     }
+}
+
+# Returns datablock name. Original source data block name, if specified, is
+# prefered. If not specified, current data block name is returned.
+sub get_source_block_name
+{
+    my( $datablock ) = @_;
+    my $values = $datablock->{values};
+    if( exists $values->{'_cod_data_source_block'} ) {
+        return $values->{'_cod_data_source_block'};
+    }
+    if( exists $values->{'_[local]_cod_data_source_block'} ) {
+        return $values->{'_[local]_cod_data_source_block'};
+    }
+    return $datablock->{name};
 }
