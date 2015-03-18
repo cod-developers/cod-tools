@@ -31,6 +31,7 @@ use lib "./lib/perl5";
 use lib "./CIFParser";
 use lib "./CCIFParser";
 use lib "./CIFTags";
+use lib "../data/Cromer-Mann/Table-6.1.1.4";
 use lib ".";
 use File::Basename;
 use CIFParser;
@@ -38,6 +39,7 @@ use Spacegroups::SpacegroupNames;
 use Spacegroups::SymopParse;
 use Spacegroups::SymopLookup;
 use SOptions;
+use Cromer_Mann;
 use SUsage;
 
 use Fractional;
@@ -56,6 +58,7 @@ my $dump_descending_sort_Fhkl = 0;
 my $dump_test_Fhkl = 0; # 
 my $max_number_print_of_F;
 my $Miller_indexes;
+my $external_CR_table = 0;
 my $PI = 4*atan2( 1, 1 );
 
 #* USAGE:
@@ -73,6 +76,9 @@ my $PI = 4*atan2( 1, 1 );
 #*      Print a labels of atoms and their neighbors from CIF file
 #*    --max-Fhkl-number        
 #*        Selection of sorted (numerically and Friedel's low) Fhkl number
+#*
+#*     --external_CR_table     
+#*        Use Cromer Mann coefficients from external source: table 6.1.1.4
 #*
 #*    --dump-test-Fhkl         
 #*        Print a following list: h k l F(phase)^2 F(phase, T.factor)^2 
@@ -118,6 +124,7 @@ my $PI = 4*atan2( 1, 1 );
     "--isotropic-Tf"               => sub { $iso_temperature_factor = 1 },
     "--dump-sorted-F"              => sub { $dump_descending_sort_Fhkl = 1 },
     "--dump-atoms-and-neighbors"   => sub { $dump_atoms_and_neighbors = 1 },
+    "--external_CR_table"          => sub { $external_CR_table = 1 },
     "--Miller-indexes"             => \$Miller_indexes,
     "--dump-test-Fhkl"             => sub { $dump_test_Fhkl = 1 },
     "--help,--usage"               => sub { SUsage::usage; exit },
@@ -140,6 +147,15 @@ if(defined $Miller_indexes) {
         }
     }
 }
+
+
+## my $coefficients =
+##     $Cromer_Mann::atoms{"F1-"};
+## print "$coefficients\n";
+## print "@{$coefficients}\n";
+## exit;
+
+
 
 @ARGV = ( "-" ) unless @ARGV;
 
@@ -243,14 +259,16 @@ for my $filename (@ARGV) {
                     @{$cell_parameters->{reciprocal_cell_radians}} );              
                 next if($resolution_hkl < $max_resolution);
                 
-                # Temporary local check which will be removed when a
-                # Perl module with outer Cromer Mann coefficients will
-                # be created.
-                # --------------------------------------------
-                die "CIF file does not contain Crommer-Mann coefficients." 
-                    if( !defined $atoms->[0]{Crommer_Mann_coefficients}[0] ); 
-                #--------------------------------------------------------------
-
+                unless( $external_CR_table ) { 
+                    # Temporary local check which will be removed when a
+                    # Perl module with outer Cromer Mann coefficients will
+                    # be created.
+                    # --------------------------------------------
+                    die "CIF file does not contain Crommer-Mann coefficients." 
+                        if( !defined $atoms->[0]{Crommer_Mann_coefficients}[0] ); 
+                    #--------------------------------------------------------------
+                }
+                
                 my ( $F_cos_comp_w_Tf_and_cor, $F_sin_comp_w_Tf_and_cor,
                      $F_cos_comp_w_cor, $F_sin_comp_w_cor,
                      $F_cos_comp, $F_sin_comp ) = (0,0,0,0,0,0);		
@@ -259,12 +277,20 @@ for my $filename (@ARGV) {
                     ## my $cur_label = $atoms->[$atom->{my_index}]{label};                    
                     ## print "$atom->{my_index} => $atom->{label} == "
                     ## ."$cur_label\n";
+                    my $CromerManncoeff;
+                    if( $external_CR_table ) {
+                        $CromerManncoeff = 
+                            $Cromer_Mann::atoms{ $atom->{chemical_type} };
+                        ## print "@{$CromerManncoeff}\n";
+                    } else {
+                        $CromerManncoeff = 
+                            $atom->{Crommer_Mann_coefficients};
+                    }
                     
                     my $atom_structure_factor = 
                         atom_structure_factor_from_coefficients( 
-                            $atom->{Crommer_Mann_coefficients}, 
-                            $resolution_hkl );
-
+                            $CromerManncoeff, $resolution_hkl );
+                    
                     my $atom_structure_factor_corrected;
                     if( $scat_dispersion_key ) {
                         $atom_structure_factor_corrected = 
