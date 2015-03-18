@@ -22,7 +22,7 @@ use UserMessage;
 use SOptions;
 use SUsage;
 
-my $use_parser = "perl";
+my $use_parser = "c";
 
 #* USAGE:
 #*     $0 [options] input.cif input.hkl [input2.cif input2.hkl ...]
@@ -55,8 +55,24 @@ while( @ARGV > 0 ) {
 
     my( $cif_data, $cif_errors ) = parse_file( $cif_file, $use_parser );
     next if $cif_errors > 0;
+
+    if( !@$cif_data || !defined $cif_data->[0] ||
+        !defined $cif_data->[0]{name} ) {
+        warning( $0, $cif_file, undef,
+                 "file '$cif_file' seems to be empty" );
+        next;
+    }
+
     my( $hkl_data, $hkl_errors ) = parse_file( $hkl_file, $use_parser );
     next if $hkl_errors > 0;
+
+    if( !@$hkl_data || !defined $hkl_data->[0] ||
+        !defined $hkl_data->[0]{name} ) {
+        warning( $0, $cif_file, undef,
+                 "file '$hkl_file' seems to be empty" );
+        next;
+    }
+
     if( @$hkl_data > 1 ) {
         warning( $0, $cif_file, undef, "file '$hkl_file' contains more " .
                                        "than one datablock" );
