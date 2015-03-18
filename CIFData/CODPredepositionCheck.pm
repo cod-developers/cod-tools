@@ -1029,62 +1029,6 @@ sub grep_journal_name
     return undef;
 }
 
-# Unpacks CIF number to the value that can be processed with Perl
-# Parameters:
-#       -- $cif_number
-# Return:
-#       -- $unpacked_number
-#       -- $precision
-sub unpack_cif_number
-{
-    my ($value) = @_;
-    $value =~ /
-                ([\+\-])?             # sign
-                (\d+(?:\.\d*)?|\.\d+) # number
-                (?:e([-+]?\d+))?      # exponent
-                (?:\((\d+)\))?        # sigma
-              /ix;
-    my $number = (defined $1 ? $1 : "") . $2;
-    my $exponent = (defined $3 ? $3 : 0);
-    my $sigma = (defined $4 ? $4 : 0);
-    $number = 10 ** $exponent * $number;
-    my $precision = unpack_precision( $number, $sigma );
-    return ($number, $precision);
-}
-
-# Checks if two CIF format numbers are (possibly) equal.
-# Parameters:
-#       -- $first_cif_number
-#       -- $second_cif_number
-# Return:
-#       -- 1 if numbers are equal, 0 otherwise
-sub can_be_equal
-{
-    my ($x, $y) = @_;
-    my @x = unpack_cif_number($x);
-    my @y = unpack_cif_number($y);
-    if( $x[1] == 0 && $y[1] == 0 ) {
-        return $x[0] == $y[0];
-    } elsif( $x[1] == 0 ) {
-        return $x[0] > $y[0] - $y[1] && $x[0] < $y[0] + $y[1];
-    } elsif( $y[1] == 0 ) {
-        return $y[0] > $x[0] - $x[1] && $y[0] < $x[0] + $x[1];
-    } elsif( $x[0] + $x[1] == $y[0] - $y[1] ||
-             $y[0] + $y[1] == $x[0] - $x[1] ) {
-        return 0; # Intervals are open (?)
-    } else {
-        my @edges = (   [ $x[0] - $x[1],  1 ],
-                        [ $x[0] + $x[1], -1 ],
-                        [ $y[0] - $y[1],  1 ],
-                        [ $y[0] + $y[1], -1 ]  );
-        my $open_intervals = 0;
-        foreach( sort { $a->[0] <=> $b->[0] } @edges) {
-            $open_intervals += $_->[1];
-            if( $open_intervals > 1 ) { return 1; }
-        }
-    }
-}
-
 sub critical
 {
     my( $file, $datablock, $level, $message ) = @_;
@@ -1204,7 +1148,7 @@ sub find_cif_datablock_for_hkl
         next if $tag =~ /^_\[local\]_cod_data_source_(file|block)$/;
         if( exists $cif_parameters{$tag} && exists $hkl_parameters{$tag} ) {
             if( $tag =~ /_cell_/ ) {
-                if( !can_be_equal(
+                if( cmp_cif_numbers(
                     $cif_parameters{$tag}->[0],
                     $hkl_parameters{$tag}->[0] ) ) {
                     critical( $cif_filename, undef, "ERROR",
