@@ -18,14 +18,30 @@ use strict;
 use warnings;
 use CIFParser;
 use CIFDiff;
-use SOptions;
 use UserMessage;
+use SOptions;
+use SUsage;
 
 my $use_parser = "perl";
 
+#* USAGE:
+#*     $0 [options] input.cif input.hkl [input2.cif input2.hkl ...]
+#*
+#* OPTIONS:
+#*     --use-perl-parser
+#*        Use Perl parser for CIF parsing.
+#*
+#*     --use-c-parser
+#*        Use Perl & C parser for CIF parsing.
+#*
+#*     --help,--usage
+#*        Print short usage message (this message) and exit.
+#**
+
 @ARGV = getOptions(
-    "--use-perl-parser"       => sub{ $use_parser = "perl" },
-    "--use-c-parser"          => sub{ $use_parser = "c" }
+    "--use-perl-parser" => sub{ $use_parser = "perl" },
+    "--use-c-parser"    => sub{ $use_parser = "c" },
+    "--help,--usage" => sub { SUsage::usage; exit },
 );
 
 PAIR:
@@ -46,8 +62,10 @@ while( @ARGV > 0 ) {
                                        "than one datablock" );
         next;
     }
+    my $hkl_dataset = $hkl_data->[0];
+    my $hkl_values = $hkl_dataset->{values};
     foreach( 'h', 'k', 'l' ) {
-        if( !exists $hkl_data->[0]{values}{"_refln_index_$_"} ) {
+        if( !exists $hkl_values->{"_refln_index_$_"} ) {
             warning( $0, $cif_file, undef,
                      "can not confirm that file '$hkl_file' contains " .
                      "Fobs data: one or more tags from list " .
@@ -56,7 +74,7 @@ while( @ARGV > 0 ) {
             next PAIR;
         }
     }
-    my $hkl_dataname = get_source_block_name( $hkl_data->[0] );
+    my $hkl_dataname = get_source_block_name( $hkl_dataset );
     my $cif_index;
     for( my $i = 0; $i < @$cif_data; $i++ ) {
         my $cif_dataname = get_source_block_name( $cif_data->[$i] );
@@ -72,7 +90,7 @@ while( @ARGV > 0 ) {
                  "the same name in both files" );
         next PAIR;
     }
-    my $comm = CIFDiff::comm( $cif_data->[$cif_index], $hkl_data->[0],
+    my $comm = CIFDiff::comm( $cif_data->[$cif_index], $hkl_dataset,
         {
             'compare_only' =>
                 [
@@ -108,7 +126,7 @@ while( @ARGV > 0 ) {
             $reason .= ": '" . join( ', ', map { "'$_'" }
                   @{$cif_data->[$cif_index]{values}{$line->[0]}} ) .
                   "' (CIF) and '" . join( ', ', map { "'$_'" }
-                  @{$hkl_data->[0]{values}{$line->[0]}} ) .
+                  @{$hkl_values->{$line->[0]}} ) .
                   "' (Fobs)";
             warning( $0, $cif_file, undef,
                      "can not confirm relation between datablocks named " .
