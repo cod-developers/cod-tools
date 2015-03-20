@@ -82,13 +82,13 @@ while( @ARGV > 0 ) {
 
     if( !@$hkl_data || !defined $hkl_data->[0] ||
         !defined $hkl_data->[0]{name} ) {
-        warning( $0, $cif_file, undef,
+        warning( $0, $hkl_file, undef,
                  "file '$hkl_file' seems to be empty" );
         next;
     }
 
     if( @$hkl_data > 1 ) {
-        warning( $0, $cif_file, undef, "file '$hkl_file' contains more " .
+        warning( $0, $hkl_file, undef, "file '$hkl_file' contains more " .
                                        "than one datablock" );
         next;
     }
@@ -96,7 +96,7 @@ while( @ARGV > 0 ) {
     my $hkl_values = $hkl_dataset->{values};
     if( !contains_hkl( $hkl_values ) &&
         !contains_powder_diffraction_intensities( $hkl_values ) ) {
-        warning( $0, $cif_file, undef,
+        warning( $0, $hkl_file, undef,
                  "can not confirm that file '$hkl_file' contains " .
                  "Fobs or powder diffraction data: one or more tags " .
                  "from list ( " .
@@ -164,7 +164,7 @@ while( @ARGV > 0 ) {
                   "' (CIF) and '" . join( ', ', map { "'$_'" }
                   @{$hkl_values->{$line->[0]}} ) .
                   "' (Fobs)";
-            warning( $0, $cif_file, undef,
+            warning( $0, $cif_file, $hkl_dataname,
                      "can not confirm relation between datablocks named " .
                      "'$hkl_dataname' from supplied CIF and Fobs files -- " .
                      $reason );
