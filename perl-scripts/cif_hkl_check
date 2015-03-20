@@ -18,6 +18,7 @@ use strict;
 use warnings;
 use CIFParser;
 use CIFDiff;
+use CIFTagCanonicalNames;
 use Precision;
 use UserMessage;
 use SOptions;
@@ -77,6 +78,8 @@ while( @ARGV > 0 ) {
         next;
     }
 
+    canonicalize_all_names( $cif_data );
+
     my( $hkl_data, $hkl_errors ) = parse_file( $hkl_file, $use_parser );
     next if $hkl_errors > 0;
 
@@ -86,6 +89,8 @@ while( @ARGV > 0 ) {
                  "file '$hkl_file' seems to be empty" );
         next;
     }
+
+    canonicalize_all_names( $hkl_data );
 
     if( @$hkl_data > 1 ) {
         warning( $0, $hkl_file, undef, "file '$hkl_file' contains more " .
