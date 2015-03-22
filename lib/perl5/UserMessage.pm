@@ -29,7 +29,7 @@ sub sprint_message($$$$$@)
     my ( $program, $filename, $datablock, $errlevel,
          $message, $line, $column ) = @_;
 
-    $message =~ s/\.?\n$//;
+    $message =~ s/\.?\n?$//;
     return $program . ": " . $filename .
            (defined $line
                 ? "($line" . (defined $column ? ",$column" : "" ) . ")"
