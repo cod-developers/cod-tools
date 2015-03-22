@@ -41,7 +41,6 @@ my $replacement_file;
 my $fix_temperature = 1;
 my $fix_enums = 1;
 my $fix_value_of_exptl_crystal_density_meas = 1;
-
 my $treat_as_set = 1;
 
 my $use_parser = "perl";
@@ -65,13 +64,11 @@ my %default_enums = (
                                                   "Umpe", "Bani", "Biso", "Bovl" ],
     '_atom_site_calc_flag'                   => [ "d", "calc", "c", "dum" ],
     '_atom_site_refinement_flags_adp'        => [ ".", "T", "U", "TU" ],
-#    '_atom_site_refinement_flags_adp'        => [ ".", "T", "U" ],
     '_atom_site_refinement_flags_occupancy'  => [ ".", "P" ],
     '_atom_site_refinement_flags_posn'       => [ ".", "D", "G", "R", "S",
                                                   "DG", "DR", "DS", "GR",
                                                   "GS", "RS", "DGR", "DGS",
                                                   "DRS", "GRS", "DGRS" ],
-#    '_atom_site_refinement_flags_posn'       => [ ".", "D", "G", "R", "S" ],
     '_atom_site_refinement_flags'            => [ ".", "S", "G", "R",
                                                   "D", "T", "U", "P" ],
     '_atom_sites_solution_hydrogens'         => [ "difmap", "vecmap", "heavy",
@@ -168,9 +165,7 @@ my %default_enums = (
     );
 my $default_enums = \%default_enums;
 
-my @default_set_tags = ( "_atom_site_refinement_flags",
-                         "_atom_site_refinement_flags_adp",
-                         "_atom_site_refinement_flags_posn" );
+my @default_set_tags = ( "_atom_site_refinement_flags" );
 
 #* USAGE:
 #*     $0 [options] input.cif [input2.cif ...]
@@ -191,6 +186,12 @@ my @default_set_tags = ( "_atom_site_refinement_flags",
 #*     Provide dioctionaries using option --dictionary (or -d), 
 #*     otherwise script uses the built-in table from CIF Core
 #*     dictionary.
+#*
+#*   --treat-as-set
+#*     Treats certain enumeration values as set data type in the CIF
+#*     against CIF dictionaries (default). Provide dictionaries using
+#*     --dictionary (or -d) option, otherwise script uses the built-in
+#*     table from CIF Core dictionary.
 #*
 #*   --fix-density-meas
 #*     Corrects value of data item '_exptl_crystal_density_meas'.
@@ -213,13 +214,6 @@ my @default_set_tags = ( "_atom_site_refinement_flags",
 #*      You can clear all dictionaries used for checking
 #*      CIF file, in a way like this:
 #*      $0 --clear-dictionary
-#*
-#*   --treat-as-set
-#*     Checks and fixes enumeration values that should be treated 
-#*     as set data type in the CIF agaisnt CIF dictionaries.
-#*     Provide dioctionaries using option --dictionary (or -d), 
-#*     otherwise script uses the built-in table from CIF Core
-#*     dictionary.
 #*
 #*   --use-perl-parser
 #*   --use-c-parser
@@ -250,8 +244,12 @@ my @default_set_tags = ( "_atom_site_refinement_flags",
     "--fix-enums" => sub{ $fix_enums = 1; },
     "--fix-only-enums"
         => sub{ dont_fix_any(); $fix_enums = 1; },
-    "--do-not-fix-enums,--dont-fix-enums,-no-fix-enums"
+    "--do-not-fix-enums,--dont-fix-enums,--no-fix-enums"
         => sub{ $fix_enums = 0; },
+
+    "--treat-as-set"    => sub{ $treat_as_set = 1; },
+    "--do-not-treat-as-set,--dont-treat-as-set," .
+    "--no-treat-as-set" => sub{ $treat_as_set = 0; },
 
     "--fix-density-meas" 
         => sub{ $fix_value_of_exptl_crystal_density_meas = 1; },
@@ -266,8 +264,7 @@ my @default_set_tags = ( "_atom_site_refinement_flags",
     "-d,--dictionary" => sub{ @dictionaries = &get_value; },
     "-D,--add-dictionaries" => sub{ push( @dictionaries, &get_value ); },
     "--clear-dictionaries" => sub{ @dictionaries = (); },
-    
-    "--treat-as-set" => sub{ $treat_as_set = 1; },
+
     "--use-perl-parser"       => sub{ $use_parser = "perl" },
     "--use-c-parser"          => sub{ $use_parser = "c" },
 );
@@ -1153,16 +1150,15 @@ sub fix_enums($$) {
     my $values = $dataset->{values};
     my $tags = $dataset->{tags};
     foreach my $tag( @$tags ) {
-        #if( $tag =~ /_atom_site_refinement_flags/) {
-        #    next;
-        #}
         if( defined $values->{$tag} ) {
             foreach my $tag_value( @{$values->{$tag}} ) {
-                if( $tag_value =~ /^[.?]$/ ) {
-                    next;
-                }
-                if( exists $dictTags{$tag} ) {
+                next if ( $treat_as_set && grep( /^$tag$/, @default_set_tags ) );
+
+                next if( $tag_value =~ /^[.?]$/ );
+
+                if ( exists $dictTags{$tag} ) {
                     my $message_key;
+
                     my @replacement_list =
                         replacement_candidates( $tag_value,
                                                 $dictTags{$tag} );
@@ -1214,6 +1210,7 @@ sub fix_enums($$) {
             }
         }
     }
+
     my @report_messages =
         make_count( \%reports , \@uniq_messages );
     foreach my $report( @report_messages ) {
@@ -1223,31 +1220,105 @@ sub fix_enums($$) {
             push( @insert_reports, $comment_message );
         }
     }
+
     return @insert_reports;
 }
 
-#sub treat_as_set($$) {
-#    my( $dataset, $filename ) = @_;
-#    my $dataname = 'data_' . $dataset->{name};
-#    my %reports;
-#    my @uniq_messages;
-#    my @insert_reports = ();
-#    my $values = $dataset->{values};
-#    my $tags = $dataset->{tags};
-#    foreach my $tag( @$tags ) {
-#        foreach my $set_tag( @default_set_tags ) {
-#            if( $tag = $set_tag ) {
-#                if( defined $values->{$tag} ) {
-#                    foreach my $tag_value( @{$values->{$tag}} ) {
-#                        if( $tag_value =~ /^[.?]$/ ) {
-#                            next;
-#                        }
-#                    }
-#                }
-#            }
-#        }
-#    }
-#}
+sub treat_as_set($$) {
+    my( $dataset, $filename ) = @_;
+    my $dataname = 'data_' . $dataset->{name};
+    my %reports;
+    my @uniq_messages;
+    my @insert_reports = ();
+    my $values = $dataset->{values};
+    my $tags = $dataset->{tags};
+    foreach my $tag( @$tags ) {
+        if ( grep( /^$tag$/, @default_set_tags ) ) {
+            if( defined $values->{$tag} ) {
+                my $set_values = join "", @{$default_enums{$tag}};
+                # '.' specifies that none of the flags were set so it should 
+                # not be in the concatinated string
+                $set_values =~ s/\.//;
+                my $dict_info = (defined $tagDicts{$tag}[1] ?
+                                " named '$tagDicts{$tag}[1]'" : "") .
+                                (defined $tagDicts{$tag}[2] ?
+                                " version $tagDicts{$tag}[2]" : "") .
+                                (defined $tagDicts{$tag}[3] ?
+                                " from $tagDicts{$tag}[3]" : "");
+
+                foreach my $tag_value( @{$values->{$tag}} ) {
+                    next if( $tag_value =~ /^[.?]$/ );
+
+                    my $message_key = undef;
+                    if ( $tag_value =~ /[^$set_values]/i ) {
+                        my $dict_values = join( ", ", @{$default_enums{$tag}} );
+                        my $val = $tag_value;
+                        $val =~ s/^\n|\n$//g; 
+                        if( length($val) > 30 ) {
+                            $val = substr $val, 0, 30;
+                            $val .= "...";
+                        }
+                        $message_key = "WARNING, '$tag' value '$val' " .
+                                       "should only contain a combination " .
+                                       "of these values: [$dict_values] " .
+                                       "according to $tagDicts{$tag}[0] " .
+                                       "dictionary" . $dict_info;
+                    } else {
+                        my $new_value = "";
+                        my $val = $tag_value;
+                        foreach( split "", $val ) {
+                            my @replacement_list =
+                                replacement_candidates( $_, $dictTags{$tag} );
+
+                            if( scalar( @replacement_list ) == 1 ) {
+                                $new_value .= shift( @replacement_list );
+                            } else  {
+                                $new_value .= $_;
+                            }
+                        }
+
+                        my $old_value = $tag_value;
+
+                        if ($new_value =~ /([$values])[^\1]*\1/ ) {
+                            $message_key =
+                                "WARNING, '$tag' value '$new_value' " .
+                                "('$old_value' before processing) " .
+                                "should not contain duplicate values " .
+                                "according to $tagDicts{$tag}[0] " .
+                                "dictionary" . $dict_info;
+                        } elsif ($tag_value ne $new_value) {
+                            $tag_value = $new_value;
+                            $message_key =
+                                "NOTE, '$tag' value '$old_value' " .
+                                "changed to '$new_value' " .
+                                "according to $tagDicts{$tag}[0] " .
+                                "dictionary" . $dict_info;
+                        }
+                    }
+
+                    if ( defined $message_key ) {
+                        if(! exists $reports{$message_key} ) {
+                            $reports{$message_key} = 0;
+                            push( @uniq_messages, $message_key );
+                        }
+                        $reports{$message_key} ++;
+                    }
+                }
+            }
+        }
+    }
+
+    my @report_messages = make_count( \%reports, \@uniq_messages );
+    foreach my $report( @report_messages ) {
+        print STDERR "$0: $filename $dataname: $report\n";
+        if( $report =~ /^(NOTE,\s+)(.+)$/ ) {
+            my $comment_message = $2;
+            push( @insert_reports, $comment_message );
+        }
+    }
+
+    return @insert_reports;
+}
 
 my @dictionary_tags = ( @CIFDictTags::tag_list, @CIFCODTags::tag_list );
 my %dictionary_tags = map { $_, $_ } @dictionary_tags;
@@ -1302,11 +1373,13 @@ for my $filename (@ARGV) {
                     ( $dataset, $filename );
             push( @insert_reports, @reports_of_exptl_crystal_density_meas );
         }
-#        if( $treat_as_set ) {
-#            my @set_reports =
-#                treat_as_set( $dataset, $filename );
-#            push( @insert_reports, @set_reports );
-#        }
+
+        if( $treat_as_set ) {
+            my @set_reports =
+                treat_as_set( $dataset, $filename );
+            push( @insert_reports, @set_reports );
+        }
+
         insert_report_to_comments( $dataset , \@insert_reports );
         print_cif( $dataset, {
             exclude_misspelled_tags => 0,
