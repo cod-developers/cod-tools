@@ -9,14 +9,18 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #$URL$
 #------------------------------------------------------------------------------
 #*
-#  Corrects temperature values which have units specified or converts
-#  between Celsius degrees and Kelvins. Changes 'room/ambiante 
-#  temperature' to the appropriate numeric value.
-#  Fixes other undefined values (no, not measured, etc.) to '?' symbol.
-#  Determine a report about changes made into standard I/O streams.
+#  Corrects various CIF file values and outputs the made changes into the 
+#  standard I/O streams. The script is capable of making these corrections:
+#    - Converting temperature from Celsius degrees to Kelvins degrees,
+#      removing temperature units of measurement, processing other
+#      undefined temperature values;
+#    - Fixing misspelled values by using the provided replacement value file;
+#    - Fixing enumeration values in CIF file against CIF dictionaries;
+#    - Correcting values of '_exptl_crystal_density_meas' tag.
 #
-#  Fixes enumeration values in CIF file against CIF dictionaries.
-#
+#  All described corrections are enabled by default, but can be disabled by 
+#  prefixing the corresponding options by '--do-not', '--dont' or '--no'
+#  (for example, '--no-fix-temperature').
 #**
 
 use strict;
@@ -50,7 +54,7 @@ my $parser = new CIFParser;
 my @dictionaries = ();
 my %dictTags;
 my %tagDicts;
- 
+
 sub dont_fix_any {
     $fix_misspelled_values = 0;
     $fix_temperature = 0;
@@ -175,7 +179,7 @@ my @default_set_tags = ( "_atom_site_refinement_flags" );
 #*     Corrects temperature values which have units specified
 #*     or converts between Celsius degrees and Kelvins.
 #*     Changes 'room/ambiante temperature' to the appropriate numeric value.
-#*     Fixes other undefined values ('none', 'not given') to '?' simbol.
+#*     Fixes other undefined values ('none', 'not given') to '?' symbol.
 #*
 #*   --fix-misspelled replacement_value.lst
 #*     Corrects misspelled values in the CIF file. Provide a file
@@ -183,7 +187,7 @@ my @default_set_tags = ( "_atom_site_refinement_flags" );
 #*
 #*   --fix-enums 
 #*     Corrects enumeration values in the CIF against CIF dictionaries.
-#*     Provide dioctionaries using option --dictionary (or -d), 
+#*     Provide dictionaries using option --dictionary (or -d), 
 #*     otherwise script uses the built-in table from CIF Core
 #*     dictionary.
 #*
@@ -297,7 +301,7 @@ sub insert_report_to_comments {
     }
 }
 
-# Counts sigma value for the &pack_presicion subroutine
+# Counts sigma value for the &pack_precision subroutine
 
 sub get_sigma($$) {
     my( $value , $sig ) = @_;
@@ -342,11 +346,11 @@ sub make_count($$) {
     my @messages = @{ $_[1] };
     my @reports;
     foreach my $message( @messages ) {
-	if(! exists $notes_warnings{$message} ) {
-	    die( "$0: Error while counting " .
+        if(! exists $notes_warnings{$message} ) {
+            die( "$0: Error while counting " .
                  "'$message' audit message.\n"  );
-	}
-	if( exists $notes_warnings{$message} ) {
+        }
+        if( exists $notes_warnings{$message} ) {
             my $count = $notes_warnings{$message};
             my $times =
                 ( $count =~ /^(\d*[02-9])?1$/ ) ? "time" : "times";
@@ -356,7 +360,7 @@ sub make_count($$) {
                 $message .= " ($count $times).";
             }
             push( @reports, $message );
-	}
+        }
     }
     return @reports;
 }
@@ -396,7 +400,6 @@ if( @dictionaries ) {
             ( $data, $error_count ) = CCIFParser::parse( $dict_file_name );
         }
 
-        
         if( defined $error_count && $error_count > 0 ) {
             print STDERR "$0: $dict_file_name: ",
             $error_count,
@@ -404,9 +407,9 @@ if( @dictionaries ) {
             ## exit -1;
             next;
         }
-        
+
         canonicalize_all_names( $data );
-        
+
         my( $dict_name , $dict_version , $dict_update );
         for my $dataset( @$data ) {
             next unless $dataset->{name} eq 'on_this_dictionary' &&
@@ -488,7 +491,7 @@ sub fix_misspelled_values($$$) {
             if( $tag_value =~ /^[.?]$/ ){
                 next;
             }
-            
+
             my $count = 0;
             my $old_value = $tag_value;
             foreach my $pair( @{ $value_spelling{$tag} } ){
@@ -605,8 +608,8 @@ sub fix_temperature($$) {
             for my $i( 0..$#{$values->{$tag}} ) {
                 my $temperature = $values->{$tag}[$i];
                 my $temperature_modif = $temperature;
-		$temperature_modif =~ s/^\s+|^\n+|\n+$|\s+$//g;
-		
+                $temperature_modif =~ s/^\s+|^\n+|\n+$|\s+$//g;
+
                 if( $temperature_modif =~ /^[.?]$/ ) {
                     next;
                 }
@@ -664,7 +667,7 @@ sub fix_temperature($$) {
                                 CIFTagPrint::pack_precision
                                 ( $number + 273.15 , $sig );
                             my $new_val = $values->{$tag}[$i];
-                            
+
                             my $new_tag = $old_tag . "_gt";
                             CIFTagManage::rename_tag
                                 ( $dataset, $tag, $new_tag );
@@ -879,7 +882,7 @@ sub fix_temperature($$) {
                             "'$new_val' - it was converted from degrees " .
                             "Celsius(C) to Kelvins(K), the " .
                             "average value was taken and " .
-			    "precision was estimated.";
+                            "precision was estimated.";
                         push( @insert_reports, $report_msg );
                         print STDERR
                             "$0: $filename $dataname: NOTE, $report_msg\n";
@@ -956,7 +959,7 @@ sub fix_temperature($$) {
                         my $report_msg =
                             "'$old_tag' tag was changed to '$new_tag' " .
                             "since the value had been given as " .
-			    "'$temperature'. " .
+                            "'$temperature'. " .
                             "The value '$temperature' was changed to " .
                             "'$new_val' - " .
                             "it was converted from degrees Celsius(C) " .
@@ -994,7 +997,7 @@ sub fix_temperature($$) {
                         "but it should be numeric, " .
                         "i.e. 'FLOAT or 'INT', permitted " .
                         "range is [0.0;+inf], the value " .
-			"should be in Kelvins(K) ".
+                        "should be in Kelvins(K) ".
                         "without a unit designator.\n";
                     next;
                 }
@@ -1017,8 +1020,8 @@ sub fix_value_of_exptl_crystal_density_meas($$) {
             for my $i( 0..$#{$values->{$tag}} ) {
                 my $value = $values->{$tag}[$i];
                 my $value_modif = $value;
-		$value_modif =~ s/^\s+|\s+$//g;
-		
+                $value_modif =~ s/^\s+|\s+$//g;
+
                 if( $value_modif =~ /^[.?]$/ ) {
                     next;
                 }
@@ -1060,7 +1063,7 @@ sub fix_value_of_exptl_crystal_density_meas($$) {
                     $/x ) {
 
           ##          print join "|", map eval "\$$_" // "", 1 .. 8;
-                    
+
                     my $meas_number = $1;
                     my $meas_sigma = $2;
                     my $units = $3;
@@ -1069,9 +1072,9 @@ sub fix_value_of_exptl_crystal_density_meas($$) {
                     my $temp_sigma = $6;
                     my $temp_Celsius = $7;
                     my $temp_Kelvins = $8;
-                    
+
                     my $report_msg;
-                    
+
                     if( defined $temp_number && $temp_number < 0 
                         && ! defined $temp_Celsius ){
                         next;
@@ -1081,7 +1084,7 @@ sub fix_value_of_exptl_crystal_density_meas($$) {
                         && ! defined $temp_number ){
                         next;
                     }
-                    
+
                     if( defined $meas_sigma ){
                         $meas_sigma = get_sigma( $meas_number, $meas_sigma );
                     }
@@ -1090,44 +1093,42 @@ sub fix_value_of_exptl_crystal_density_meas($$) {
                         $values->{$tag}[$i] = 
                         CIFTagPrint::pack_precision
                         ( $meas_number, $meas_sigma );
-                    
-                    $report_msg = "Tag '$tag' value '$value' was modified " . 
-                        "to '$new_meas_value'.";
+
+                    $report_msg = "Tag '$tag' value '$value' was modified " .
+                                  "to '$new_meas_value'.";
 
                     if( defined $units ){
-                        $report_msg .= " Units '$units' were correct but unnecessary" .
-                            ", so they were removed.";
+                        $report_msg .= " Units '$units' were correct but " .
+                                       "unnecessary, so they were removed.";
                     }
-                    
+
                     if( defined $room_temp || defined $temp_number ){
-                        
+
                         my $new_tag = $tag . "_temp";
                         my $temp_value;
 
                         if( defined $room_temp ){
                             $temp_value = '295(2)';
                         }
-                        
+
                         if( defined $temp_number ){
                             if( defined $temp_sigma ){
                                 $temp_sigma = get_sigma( $temp_number, $temp_sigma );
                             }
                             $temp_value = CIFTagPrint::pack_precision
-                            ( $temp_number + ( defined $temp_Celsius ? 273.15 : 0 ), 
-                              $temp_sigma );    
+                            ( $temp_number + ( defined $temp_Celsius ? 273.15 : 0 ),
+                              $temp_sigma );
                         }
-                        
+
                         CIFTagManage::set_tag
                             ( $dataset, $new_tag, $temp_value );
-                        
 
                         $report_msg .=
-                            " New tag '$new_tag' was created. The value of " . 
-                            "new tag set to - '$temp_value'" . 
+                            " New tag '$new_tag' was created. The value of " .
+                            "new tag set to - '$temp_value'" .
                                 ( defined $temp_Celsius ? ", it was converted " .
-                                 "from degrees Celsius(C) to Kelvins(K)" : "" ) . 
+                                 "from degrees Celsius(C) to Kelvins(K)" : "" ) .
                             ".";
-
                     }
 
                     push( @insert_reports, $report_msg );
@@ -1187,7 +1188,7 @@ sub fix_enums($$) {
                         if( length($val) > 30 ) {
                             $val = substr $val, 0, 30;
                             $val .= "...";
-                        } 
+                        }
                         $message_key =
                             "WARNING, '$tag' value '$val' " .
                             "should be one of these: [" .
@@ -1237,7 +1238,7 @@ sub treat_as_set($$) {
             if( defined $values->{$tag} ) {
                 my $set_values = join "", @{$default_enums{$tag}};
                 # '.' specifies that none of the flags were set so it should 
-                # not be in the concatinated string
+                # not be in the concatenated string
                 $set_values =~ s/\.//;
                 my $dict_info = (defined $tagDicts{$tag}[1] ?
                                 " named '$tagDicts{$tag}[1]'" : "") .
