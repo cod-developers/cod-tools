@@ -36,7 +36,7 @@ use CIFTagPrint;
 use CIFTagManage;
 use SOptions;
 use SUsage;
-#use UserMessage;
+use UserMessage;
 
 my $Id = '$Id$';
 my $keep_tag_order = 0;
@@ -342,14 +342,16 @@ sub replacement_candidates($$) {
     }
 }
 
-sub make_count($$) {
+sub make_count($$$) {
     my %notes_warnings = %{ $_[0] };
     my @messages = @{ $_[1] };
+    my $filename = $_[2];
     my @reports;
     foreach my $message( @messages ) {
         if(! exists $notes_warnings{$message} ) {
-            die( "$0: Error while counting " .
-                 "'$message' audit message.\n"  );
+            error( $0, $filename, undef,
+                   "error while counting '$message' audit message" );
+            exit 1;
         }
         if( exists $notes_warnings{$message} ) {
             my $count = $notes_warnings{$message};
@@ -369,7 +371,7 @@ sub make_count($$) {
 my %value_spelling = ();
 if( defined $replacement_file ) {
     open( LIST, $replacement_file ) or
-        die "$0: $replacement_file: can not open file for input - $!";
+        die "$0: $replacement_file: cannot open file for input - $!";
     foreach( <LIST> ) {
         chomp;
         if( /^#/ or /^\s*$/ ) {
@@ -380,6 +382,7 @@ if( defined $replacement_file ) {
         } else {
             print STDERR "$0: WARNING, unrecognized string '$_' in " .
                          "replacement value file '$replacement_file'.\n";
+
         }
     }
     close( LIST ) or
@@ -402,9 +405,9 @@ if( @dictionaries ) {
         }
 
         if( defined $error_count && $error_count > 0 ) {
-            print STDERR "$0: $dict_file_name: ",
-            $error_count,
-            " error(s) encountered while parsing CIF dictionary\n";
+            warning ($0, $dict_file_name, undef,
+                     "$error_count error(s) encountered while parsing " .
+                     "CIF dictionary");
             ## exit -1;
             next;
         }
@@ -416,10 +419,15 @@ if( @dictionaries ) {
             next unless $dataset->{name} eq 'on_this_dictionary' &&
                 exists $dataset->{values};
             my $values = $dataset->{values};
-            die( "$0: $dict_file_name $dataset->{name}: dictionary " .
-                 "'$dict_file_name' " .
-                 "data_$dataset->{name} does not contain data" )
-            unless defined $values;
+
+             if ( ! defined $values ) {
+                 error( $0, $dict_file_name, $dataset->{name},
+                        "dictionary '$dict_file_name' " .
+                        "$dataset->{name} does not " .
+                        "contain data" ); 
+                 exit 1;
+             };
+
             $dict_name = $values->{_dictionary_name};
             $dict_version = $values->{_dictionary_version};
             $dict_update = $values->{_dictionary_update};
@@ -482,7 +490,7 @@ sub fix_misspelled_values($$$) {
     my %reports = ();
     my @insert_reports = ();
     my @uniq_messages;
-    my $dataname = "data_" . $dataset->{name};
+    my $dataname = $dataset->{name};
     my $tags = $dataset->{tags};
     my $values = $dataset->{values};
     foreach my $tag( @$tags ) {
@@ -523,13 +531,12 @@ sub fix_misspelled_values($$$) {
         }
     }
 
-    my @report_messages = make_count( \%reports, \@uniq_messages );
+    my @report_messages = make_count( \%reports, \@uniq_messages, $filename );
 
     foreach my $report( @report_messages ) {
-        print STDERR "$0: $filename $dataname: $report\n";
         if( $report =~ /^(NOTE,\s+)(.+)$/ ) {
-            #note($0, $filename, $dataname, $message);
             my $comment_message = $2;
+            note($0, $filename, $dataname, $comment_message);
             push( @insert_reports, $comment_message );
         }
     }
@@ -596,7 +603,7 @@ my $units_equiv_Mg_per_m3 = qr/
 
 sub fix_temperature($$) {
     my( $dataset, $filename ) = @_;
-    my $dataname = 'data_' . $dataset->{name};
+    my $dataname = $dataset->{name};
     my @insert_reports = ();
     my $values = $dataset->{values};
     my @temp_tags =
@@ -641,8 +648,7 @@ sub fix_temperature($$) {
                             "The value '$temperature' was changed to " .
                             "'$new_val'.";
                         push( @insert_reports, $report_msg );
-                        print STDERR
-                            "$0: $filename $dataname: NOTE, $report_msg\n";
+                        note( $0, $filename, $dataname, $report_msg);
                         next;
                     }
                 }
@@ -683,8 +689,7 @@ sub fix_temperature($$) {
                                 "'$new_val' - it was converted from " .
                                 "degrees Celsius(C) to Kelvins(K).";
                             push( @insert_reports, $report_msg );
-                            print STDERR
-                                "$0: $filename $dataname: NOTE, $report_msg\n";
+                            note($0, $filename, $dataname, $report_msg);
                             next;
                         }
                         if( $sign =~ /\</ ) {
@@ -704,8 +709,7 @@ sub fix_temperature($$) {
                                 "'$new_val' - it was converted from " .
                                 "degrees Celsius(C) to Kelvins(K).";
                             push ( @insert_reports, $report_msg );
-                            print STDERR
-                                "$0: $filename $dataname: NOTE, $report_msg\n";
+                            note($0, $filename, $dataname, $report_msg);
                             next;
                         }
                     }
@@ -744,8 +748,7 @@ sub fix_temperature($$) {
                                 "'$new_val' - it should be numeric " .
                                 "and without a unit designator.";
                             push( @insert_reports, $report_msg );
-                            print STDERR
-                                "$0: $filename $dataname: NOTE, $report_msg\n";
+                            note($0, $filename, $dataname, $report_msg);
                             next;
                         }
                         if( $sign =~ /\</ ) {
@@ -765,8 +768,7 @@ sub fix_temperature($$) {
                                 "'$new_val' - it should be numeric " .
                                 "and without a unit designator.";
                             push( @insert_reports, $report_msg );
-                            print STDERR
-                                "$0: $filename $dataname: NOTE, $report_msg\n";
+                            note($0, $filename, $dataname, $report_msg);
                             next;
                         }
                     }
@@ -788,16 +790,14 @@ sub fix_temperature($$) {
                             "'$tag' value '$temperature' was changed to " .
                             "'$new_val' - the value was reformatted.";
                         push( @insert_reports, $report_msg );
-                        print STDERR
-                            "$0: $filename $dataname: NOTE, $report_msg\n";
+                        note($0, $filename, $dataname, $report_msg);
                         next;
                     } else {
                         my $report_msg =
                             "'$tag' value '$temperature' was changed to " .
                             "'$new_val' - precision was estimated.";
                         push( @insert_reports, $report_msg );
-                        print STDERR
-                            "$0: $filename $dataname: NOTE, $report_msg\n";
+                        note($0, $filename, $dataname, $report_msg);
                         next;
                     }
                 }
@@ -814,8 +814,7 @@ sub fix_temperature($$) {
                         "'$new_val' - the value should be numeric " .
                         "and without a unit designator.";
                     push( @insert_reports, $report_msg );
-                    print STDERR
-                        "$0: $filename $dataname: NOTE, $report_msg\n";
+                    note($0, $filename, $dataname, $report_msg);
                     next;
                 }
                 if( $temperature_modif =~
@@ -836,8 +835,7 @@ sub fix_temperature($$) {
                         "'$new_val' - it was converted from degrees " .
                         "Celsius(C) to Kelvins(K).";
                     push( @insert_reports, $report_msg );
-                    print STDERR
-                        "$0: $filename $dataname: NOTE, $report_msg\n";
+                    note($0, $filename, $dataname, $report_msg);
                     next;
                 }
                 if( $temperature_modif =~
@@ -850,8 +848,7 @@ sub fix_temperature($$) {
                         "'295(2)' - the room/ambient temperature " .
                         "average [293;298] in Kelvins(K) was taken.";
                     push( @insert_reports, $report_msg );
-                    print STDERR
-                        "$0: $filename $dataname: NOTE, $report_msg\n";
+                    note($0, $filename, $dataname, $report_msg);
                     next;
                 }
                 if( $temperature_modif =~
@@ -864,8 +861,7 @@ sub fix_temperature($$) {
                         "was changed to '?' - the " .
                         "value is undefined or not given.";
                     push( @insert_reports, $report_msg );
-                    print STDERR
-                        "$0: $filename $dataname: NOTE, $report_msg\n";
+                    note($0, $filename, $dataname, $report_msg);
                     next;
                 }
                 if( $temperature_modif =~
@@ -887,8 +883,7 @@ sub fix_temperature($$) {
                             "average value was taken and " .
                             "precision was estimated.";
                         push( @insert_reports, $report_msg );
-                        print STDERR
-                            "$0: $filename $dataname: NOTE, $report_msg\n";
+                        note($0, $filename, $dataname, $report_msg);
                         next;
                     }
                 }
@@ -919,8 +914,7 @@ sub fix_temperature($$) {
                                 "'$new_val' - the average value was " .
                                 "taken and precision was estimated.";
                             push( @insert_reports, $report_msg );
-                            print STDERR
-                                "$0: $filename $dataname: NOTE, $report_msg\n";
+                            note($0, $filename, $dataname, $report_msg);
                             next;
                         } else {
                             $values->{$tag}[$i] =
@@ -932,8 +926,7 @@ sub fix_temperature($$) {
                                 "'$new_val' - the average value was taken " .
                                 "and precision was estimated.";
                             push( @insert_reports, $report_msg );
-                            print STDERR
-                                "$0: $filename $dataname: NOTE, $report_msg\n";
+                            note($0, $filename, $dataname, $report_msg);
                             next;
                         }
                     }
@@ -968,8 +961,7 @@ sub fix_temperature($$) {
                             "it was converted from degrees Celsius(C) " .
                             "to Kelvins(K).";
                         push( @insert_reports, $report_msg );
-                        print STDERR
-                            "$0: $filename $dataname: NOTE, $report_msg\n";
+                        note($0, $filename, $dataname, $report_msg);
                         next;
                     } else {
                         $values->{$tag}[$i] =
@@ -981,8 +973,7 @@ sub fix_temperature($$) {
                             "'$new_val' - it was converted from degrees " .
                             "Celsius(C) to Kelvins(K).";
                         push( @insert_reports, $report_msg );
-                        print STDERR
-                            "$0: $filename $dataname: NOTE, $report_msg\n";
+                        note($0, $filename, $dataname, $report_msg);
                         next;
                     }
                 }
@@ -994,14 +985,13 @@ sub fix_temperature($$) {
                             $temperature = substr $temperature, 0, 40;
                             $temperature .= "...";
                         }
-                    print STDERR
-                        "$0: $filename $dataname: WARNING, " .
-                        "'$tag' value is '$temperature', " .
-                        "but it should be numeric, " .
-                        "i.e. 'FLOAT or 'INT', permitted " .
-                        "range is [0.0;+inf], the value " .
-                        "should be in Kelvins(K) ".
-                        "without a unit designator.\n";
+                    warning($0, $filename, $dataname,
+                            "'$tag' value is '$temperature', " .
+                            "but it should be numeric, " .
+                            "i.e. 'FLOAT or 'INT', permitted " .
+                            "range is [0.0;+inf], the value " .
+                            "should be in Kelvins(K) ".
+                            "without a unit designator");
                     next;
                 }
             }
@@ -1012,7 +1002,7 @@ sub fix_temperature($$) {
 
 sub fix_value_of_exptl_crystal_density_meas($$) {
     my( $dataset, $filename ) = @_;
-    my $dataname = 'data_' . $dataset->{name};
+    my $dataname = $dataset->{name};
     my @insert_reports = ();
     my $values = $dataset->{values};
     my @value_tags = (
@@ -1045,8 +1035,7 @@ sub fix_value_of_exptl_crystal_density_meas($$) {
                         "was changed to '?' - the " .
                         "value is perceived as not measured.";
                     push( @insert_reports, $report_msg );
-                    print STDERR
-                        "$0: $filename $dataname: NOTE, $report_msg\n";
+                    note($0, $filename, $dataname, $report_msg);
                     next;
                 }
 
@@ -1135,8 +1124,7 @@ sub fix_value_of_exptl_crystal_density_meas($$) {
                     }
 
                     push( @insert_reports, $report_msg );
-                    print STDERR
-                        "$0: $filename $dataname: NOTE, $report_msg\n";
+                    note($0, $filename, $dataname, $report_msg);
                     next;
                 }
             }
@@ -1147,7 +1135,7 @@ sub fix_value_of_exptl_crystal_density_meas($$) {
 
 sub fix_enums($$) {
     my( $dataset, $filename ) = @_;
-    my $dataname = 'data_' . $dataset->{name};
+    my $dataname = $dataset->{name};
     my %reports;
     my @uniq_messages;
     my @insert_reports = ();
@@ -1215,22 +1203,22 @@ sub fix_enums($$) {
         }
     }
 
-    my @report_messages =
-        make_count( \%reports , \@uniq_messages );
+    my @report_messages = make_count( \%reports, \@uniq_messages, $filename );
     foreach my $report( @report_messages ) {
-        print STDERR "$0: $filename $dataname: $report\n";
-        if( $report =~ /^(NOTE,\s+)(.+)$/ ) {
-            my $comment_message = $2;
-            push( @insert_reports, $comment_message );
+        if ( $report =~ /^(WARNING,\s+)(.+)$/ ) {
+            warning( $0, $filename, $dataname, $2 );
+        } elsif( $report =~ /^(NOTE,\s+)(.+)$/ ) {
+            note( $0, $filename, $dataname, $2 );
+            push( @insert_reports, $2 );
         }
-    }
+    };
 
     return @insert_reports;
 }
 
 sub treat_as_set($$) {
     my( $dataset, $filename ) = @_;
-    my $dataname = 'data_' . $dataset->{name};
+    my $dataname = $dataset->{name};
     my %reports;
     my @uniq_messages;
     my @insert_reports = ();
@@ -1312,14 +1300,15 @@ sub treat_as_set($$) {
         }
     }
 
-    my @report_messages = make_count( \%reports, \@uniq_messages );
+    my @report_messages = make_count( \%reports, \@uniq_messages, $filename );
     foreach my $report( @report_messages ) {
-        print STDERR "$0: $filename $dataname: $report\n";
-        if( $report =~ /^(NOTE,\s+)(.+)$/ ) {
-            my $comment_message = $2;
-            push( @insert_reports, $comment_message );
+        if ( $report =~ /^(WARNING,\s+)(.+)$/ ) {
+            warning( $0, $filename, $dataname, $2 );
+        } elsif( $report =~ /^(NOTE,\s+)(.+)$/ ) {
+            note( $0, $filename, $dataname, $2 );
+            push( @insert_reports, $2 );
         }
-    }
+    };
 
     return @insert_reports;
 }
@@ -1344,9 +1333,9 @@ for my $filename (@ARGV) {
     }
 
     if( defined $error_count && $error_count > 0 ) {
-        print STDERR "$0: $filename: ",
-        $error_count,
-        " error(s) encountered while parsing CIF data\n";
+        error($0, $filename, undef,
+              "$error_count error(s) encountered " .
+              "while parsing CIF data");
         ## exit -1;
         next;
     }
