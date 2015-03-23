@@ -9,7 +9,10 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #$URL$
 #------------------------------------------------------------------------------
 #*
-#  Correct misspelled tags in a CIF file. 
+#  Corrects misspelled tags in a CIF file and outputs made changes into the 
+#  standard I/O streams. By default, only tags from CIF Core and CIF COD 
+#  dictionaries with extra '^_+' prefixes are corrected. Additionally, a 
+#  replacement list file can be provided for the correction of misspelled tags.
 #**
 
 use strict;
@@ -29,11 +32,25 @@ my $keep_tag_order = 0;
 my $Id = '$Id$';
 my $replacement_list;
 
+#* USAGE:
+#*     $0 [options] input.cif [input2.cif ...]
+#*
+#* OPTIONS:
+#*   --keep-tag-order
+#*                      Keep the original tag order in CIF file (default).
+#*   --sort-tags
+#*                      Reorder tags in CIF file according to COD.
+#*   -r, --replacement-list "replacement-file.lst"
+#*                      Name of the multi-line replacement list file with 
+#*                      entries of form '_incorrect_tag _correct_tag' to be 
+#*                      used in the correction of misspelled tags.
+#**  --help,--usage     Print a short usage message (this message) and exit.
+
 @ARGV = getOptions(
     "--keep-tag-order" => sub { $keep_tag_order = 1; },
     "--sort-tags"      => sub { $keep_tag_order = 0; },
-    "--help,--usage"   => sub { SUsage::usage; exit },
-    "--replacement-list" => \$replacement_list,
+    "-r,--replacement-list" => \$replacement_list,
+    "--help,--usage"   => sub { SUsage::usage; exit }
 );
 
 sub insert_report_to_comments 
