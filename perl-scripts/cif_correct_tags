@@ -23,6 +23,7 @@ use CIFTagManage;
 use CIFTagPrint;
 use SOptions;
 use SUsage;
+use UserMessage;
 
 my $keep_tag_order = 0;
 my $Id = '$Id$';
@@ -101,6 +102,7 @@ for my $filename (@ARGV) {
         my @insert_reports = ();
         my $tags = $dataset->{tags};
         my $values = $dataset->{values};
+        my $dataname = $dataset->{name};
 
         for my $tag (@$tags) {
             if( exists $tag_spelling{$tag} ) {
@@ -109,9 +111,11 @@ for my $filename (@ARGV) {
                 if( !exists $values->{$correct} ) {
                     CIFTagManage::rename_tag( $dataset, $tag, $correct );
                     my $report_msg = 
-                    "'$old_tag' tag replaced with '$correct'.";
+                    "'$old_tag' tag replaced with '$correct' tag " .
+                    "as specified in the replacement file " .
+                    "'$replacement_list'.";
                     push (@insert_reports, $report_msg);
-                    print STDERR "$0: $filename: NOTE, $report_msg\n";
+                    note( $0, $filename, $dataname, $report_msg );
                 }
             }
             if( $tag =~ /^_+(_[^_].*)$/ ) {
@@ -120,10 +124,10 @@ for my $filename (@ARGV) {
                 if( exists $dictionary_tags{$correct} &&
                     !exists $values->{$correct} ) {
                     CIFTagManage::rename_tag( $dataset, $tag, $correct );
-                    my $report_msg = 
-                    "'$old_tag' tag replaced with '$correct'.";
+                    my $report_msg = "'$old_tag' tag replaced with " .
+                                     "'$correct' tag.";
                     push (@insert_reports, $report_msg);
-                    print STDERR "$0: $filename: NOTE, $report_msg\n";
+                    note( $0, $filename, $dataname, $report_msg );
                 }
             }
         }
