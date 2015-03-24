@@ -31,13 +31,18 @@ use HTML::Entities qw( encode_entities decode_entities );
 
 my $use_parser = 'c';
 my $output_dir = '.';
+my $dry_run = 0;
 
 #* USAGE:
 #*     $0 [options] input.cif [input2.cif ...]
 #* 
 #* OPTIONS:
-#*     -o, --output-dir our/
+#*     -o, --output-dir out/
 #*        Base path of the created tree.
+#*
+#*     --dry-run
+#*        Do not create any folders and files, just extract the files and
+#*        compare their checksums.
 #*
 #*     --use-perl-parser
 #*        Use Perl parser for CIF parsing.
@@ -52,6 +57,8 @@ my $output_dir = '.';
 @ARGV = getOptions
 (
     "-o,--output-dir" => \$output_dir,
+
+    "--dry-run" => sub{ $dry_run = 1 },
 
     "--use-perl-parser" => sub{ $use_parser = "perl" },
     "--use-c-parser"    => sub{ $use_parser = "c" },
@@ -100,9 +107,11 @@ for my $filename (@ARGV) {
                 $encoding = undef if $encoding eq '.';
             }
             if( !exists $created_dirs{$dirname} ) {
-                die "can not create path $output_dir/$dirname -- " .
-                    "already exists" if -e "$output_dir/$dirname";
-                make_path( "$output_dir/$dirname" );
+                if( !$dry_run ) {
+                    die "can not create path $output_dir/$dirname -- " .
+                        "already exists" if -e "$output_dir/$dirname";
+                    make_path( "$output_dir/$dirname" );
+                }
                 $created_dirs{$dirname} = 1;
             }
             next if $path =~ /\/$/; # Skipping folders
@@ -165,29 +174,33 @@ for my $filename (@ARGV) {
                 }
             }
 
-            open( my $out, '>', "$output_dir/$path" );
-            print $out $contents;
-            close( $out );
-            if( $role && $role eq 'script' ) {
-                chmod( 0775, "$output_dir/$path" );
+            if( !$dry_run ) {
+                open( my $out, '>', "$output_dir/$path" );
+                print $out $contents;
+                close( $out );
+                if( $role && $role eq 'script' ) {
+                    chmod( 0775, "$output_dir/$path" );
+                }
             }
         }
 
-        my $main_exec_path = "$output_dir/main.sh";
-        open( my $main_fh, '>', $main_exec_path );
-        print $main_fh "#!/bin/bash\n\n";
+        if( !$dry_run ) {
+            my $main_exec_path = "$output_dir/main.sh";
+            open( my $main_fh, '>', $main_exec_path );
+            print $main_fh "#!/bin/bash\n\n";
 
-        for my $i (0..$#{$values->{_tcod_computation_step}}) {
-            my $env = $values->{_tcod_computation_environment}[$i];
-            my $command = $values->{_tcod_computation_command}[$i];
-            print $main_fh "(\n";
-            if( $env ) {
-                map {print $main_fh "    $_\n" } split( "\n", $env );
-                print $main_fh "\n";
+            for my $i (0..$#{$values->{_tcod_computation_step}}) {
+                my $env = $values->{_tcod_computation_environment}[$i];
+                my $command = $values->{_tcod_computation_command}[$i];
+                print $main_fh "(\n";
+                if( $env ) {
+                    map {print $main_fh "    $_\n" } split( "\n", $env );
+                    print $main_fh "\n";
+                }
+                print $main_fh "    $command\n)\n";
             }
-            print $main_fh "    $command\n)\n";
+            close( $main_fh );
+            chmod( 0775, $main_exec_path );
         }
-        close( $main_fh );
-        chmod( 0775, $main_exec_path );
     }
 }
