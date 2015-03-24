@@ -32,6 +32,7 @@ use HTML::Entities qw( encode_entities decode_entities );
 my $use_parser = 'c';
 my $output_dir = '.';
 my $dry_run = 0;
+my $list = 0;
 
 #* USAGE:
 #*     $0 [options] input.cif [input2.cif ...]
@@ -43,6 +44,9 @@ my $dry_run = 0;
 #*     --dry-run
 #*        Do not create any folders and files, just extract the files and
 #*        compare their checksums.
+#*
+#*     -l, --list
+#*        Print the list of created folders and files.
 #*
 #*     --use-perl-parser
 #*        Use Perl parser for CIF parsing.
@@ -59,6 +63,8 @@ my $dry_run = 0;
     "-o,--output-dir" => \$output_dir,
 
     "--dry-run" => sub{ $dry_run = 1 },
+
+    "-l,--list" => sub{ $list = 1 },
 
     "--use-perl-parser" => sub{ $use_parser = "perl" },
     "--use-c-parser"    => sub{ $use_parser = "c" },
@@ -112,6 +118,7 @@ for my $filename (@ARGV) {
                         "already exists" if -e "$output_dir/$dirname";
                     make_path( "$output_dir/$dirname" );
                 }
+                print "$output_dir/$dirname\n" if $list;
                 $created_dirs{$dirname} = 1;
             }
             next if $path =~ /\/$/; # Skipping folders
@@ -182,8 +189,10 @@ for my $filename (@ARGV) {
                     chmod( 0775, "$output_dir/$path" );
                 }
             }
+            print "$output_dir/$path\n" if $list;
         }
 
+        print "$output_dir/main.sh\n" if $list;
         if( !$dry_run ) {
             my $main_exec_path = "$output_dir/main.sh";
             open( my $main_fh, '>', $main_exec_path );

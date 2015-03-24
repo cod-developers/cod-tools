@@ -4,7 +4,7 @@ set -ue
 
 cif_tcod_tree=./cif_tcod_tree
 
-CIF=./inputs/cif_tcod_tree_002.cif
+CIF=./inputs/tcod-crafted.cif
 
 BASENAME="`basename $0 .sh`"
 

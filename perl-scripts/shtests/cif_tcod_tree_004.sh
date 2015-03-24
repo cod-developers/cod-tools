@@ -24,7 +24,7 @@ loop_
   _tcod_file_md5sum
   _tcod_file_name
 0
-file://${cwd}/inputs/cif_tcod_tree_002.cif 
+file://${cwd}/inputs/tcod-crafted.cif 
 ca8955e79b28e812cbd496476f8f6a73
 test.cif
 END
