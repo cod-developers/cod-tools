@@ -59,6 +59,7 @@ my $dump_test_Fhkl = 0; #
 my $max_number_print_of_F;
 my $Miller_indexes;
 my $external_CR_table = 0;
+my $get_hkl_data;
 my $PI = 4*atan2( 1, 1 );
 
 #* USAGE:
@@ -93,6 +94,8 @@ my $PI = 4*atan2( 1, 1 );
 #*    --Miller-indexes "5 6 7 -1 2 -6"
 #*        Providing of the limits on the Miller indices. Default value are 
 #*        (hmax, hmin, kmax, kmin, lmax, lmin) = (10, -10, 10, -10, 10, -10).
+#*    --get-hkl-data
+#*        Providing of a path to COD file which contains hkl data.
 #*
 #*    --help,--usage         Print a short usage message (this message) and exit.
 #**
@@ -126,6 +129,7 @@ my $PI = 4*atan2( 1, 1 );
     "--dump-atoms-and-neighbors"   => sub { $dump_atoms_and_neighbors = 1 },
     "--external_CR_table"          => sub { $external_CR_table = 1 },
     "--Miller-indexes"             => \$Miller_indexes,
+    "--get-hkl-data"               => \$get_hkl_data,
     "--dump-test-Fhkl"             => sub { $dump_test_Fhkl = 1 },
     "--help,--usage"               => sub { SUsage::usage; exit },
 );
@@ -152,6 +156,7 @@ if(defined $Miller_indexes) {
 
 @ARGV = ( "-" ) unless @ARGV;
 
+my $hkl_and_F_sorted;
 for my $filename (@ARGV) {
 
     my( $data, $error_count );
@@ -408,7 +413,7 @@ for my $filename (@ARGV) {
             exit if( $dump_test_Fhkl );
         } # end unless
         
-        my $hkl_and_F_sorted = sort_Fhkl( \@hkl_and_F );
+        $hkl_and_F_sorted = sort_Fhkl( \@hkl_and_F );
         # ----------------------------------------------------
         if( $dump_descending_sort_Fhkl ) {    
             foreach (@{$hkl_and_F_sorted}) {
@@ -431,16 +436,100 @@ for my $filename (@ARGV) {
                         [ @{$search_equal_intensities}[0..($max_number_print_of_F - 1)] ];
                 }
             }
-                
-            foreach my $Fri_Fhkl (@{$search_equal_intensities}) {
-                my $adding_field = (" %3s %3s %3s")x$#{$Fri_Fhkl};
-                printf "%0.3f".$adding_field."\n",
-                $Fri_Fhkl->[0], map{ @{$_} } @{$Fri_Fhkl}[1..$#{$Fri_Fhkl}];
-            }            
+            if( !defined $get_hkl_data ) {
+                foreach my $Fri_Fhkl (@{$search_equal_intensities}) {
+                    my $adding_field = (" %3s %3s %3s")x$#{$Fri_Fhkl};
+                    printf "%0.3f".$adding_field."\n",
+                    $Fri_Fhkl->[0], map{ @{$_} } @{$Fri_Fhkl}[1..$#{$Fri_Fhkl}];
+                }     
+            }
         } # if(1) end
         
     } # end foreach @data
 }
+
+# for hkl data extracting from CIF.hkl and comparison with my calculated 
+# values;
+if( defined $get_hkl_data ) {
+    print "Yra: $get_hkl_data\n";
+    my( $hkl_data, $hkl_error_count );
+    
+    if( $use_parser eq "perl" ) {
+        my $parser = new CIFParser;
+        
+        $hkl_data = $parser->Run( $get_hkl_data );
+        
+        if( defined $parser->YYData->{ERRCOUNT} ) {
+            $hkl_error_count = $parser->YYData->{ERRCOUNT};
+        }
+    } else {
+        require CCIFParser;
+        ( $hkl_data, $hkl_error_count ) = CCIFParser::parse( $get_hkl_data );
+    }
+    
+    # take a top segment of my calculated and sorted structure factors;
+    if( defined $max_number_print_of_F ) {
+        if( ($max_number_print_of_F - 1) > 
+            $#{$hkl_and_F_sorted} ) {
+            warn( "The value of --max-Fhkl-number is large than ".
+                  "number of calculated structure factors.  ".
+                  "Printing out of full structure factors number. " );
+        } else {
+            $hkl_and_F_sorted = 
+                [ @{$hkl_and_F_sorted}[0..($max_number_print_of_F - 1)] ];
+        }
+    }
+    
+
+    for my $hkl_datablock (@$hkl_data) {
+        my $values = $hkl_datablock->{values};
+        my( $h_values, $k_values, $l_values,
+            $F_sguared_mes, 
+            $F_squared_calc, 
+            $F_squared_sigma_mes ) = 
+                ( $values->{_refln_index_h},
+                  $values->{_refln_index_k},
+                  $values->{_refln_index_l},
+                  $values->{_refln_f_squared_meas},
+                  $values->{_refln_f_squared_calc},
+                  $values->{_refln_f_squared_sigma} );
+        
+        foreach my $calculated (@{$hkl_and_F_sorted}) {
+            my $set_flag = 0;
+            for my $i (0..$#{$values->{_refln_index_h}}) {
+                my $condition = 
+                    ( $calculated->[1][0] == $h_values->[$i] &&
+                      $calculated->[1][1] == $k_values->[$i] &&
+                      $calculated->[1][2] == $l_values->[$i] );
+                if( $condition ) {
+                    if( 
+                        ($calculated->[0] > 
+                         ($F_sguared_mes->[$i] - $F_squared_sigma_mes->[$i])) && 
+                        ($calculated->[0] < 
+                         ($F_sguared_mes->[$i] + $F_squared_sigma_mes->[$i])) 
+                        ) {
+                        print "Y ";
+                    } else {
+                        print "N ";
+                    };
+                    my $error_squared = 
+                        ( abs( $F_sguared_mes->[$i] - $calculated->[0] ) /
+                          $F_sguared_mes->[$i] ) * 100 ;                    
+                    print "My Calc: $calculated->[0] "
+                        ."Mes: $F_sguared_mes->[$i] "
+                        ."Their Calc: $F_squared_calc->[$i] "
+                        ."Sigma: $F_squared_sigma_mes->[$i] "
+                        ." My Error: $error_squared\n";
+                    $set_flag = 1;
+                }
+                last if( $set_flag );
+            } # end for 
+        } # end foreach         
+    } # end for datablocks
+    
+} 
+
+
 
 
 #===============================================================#
