@@ -46,6 +46,7 @@ my $replacement_file;
 my $fix_temperature = 1;
 my $fix_enums = 1;
 my $fix_value_of_exptl_crystal_density_meas = 1;
+my $fix_value_of_refine_ls_weighting_scheme = 1;
 my $treat_as_set = 1;
 
 my $use_parser = "perl";
@@ -62,6 +63,7 @@ sub dont_fix_any {
     $fix_enums = 0;
     $treat_as_set = 0;
     $fix_value_of_exptl_crystal_density_meas = 0;
+    $fix_value_of_refine_ls_weighting_scheme = 0;
 }
 
 my %default_enums = (
@@ -204,6 +206,13 @@ my @default_set_tags = ( "_atom_site_refinement_flags" );
 #*     The correct units are deleted. The new tag is created 
 #*     if there are information about temperature.
 #*
+#*   --fix-weighting-scheme
+#*     Changes the value of the data item '_refine_ls_weighting_scheme'
+#*     to the value 'calc' if it contains details which seems to have
+#*     a formula, and creates new data item '_refine_ls_weighting_details'
+#*     to store that information. If value is equal to number one, then
+#*     then it is changed to enumeration value 'unit'.
+#*
 #*   -d, --dictionary cif_core.dic
 #*      Any valid CIF file, with CIF dictionary (according to DDL2).
 #*      You can define any number of CIF dictionaries, in a way like
@@ -265,6 +274,16 @@ my @default_set_tags = ( "_atom_site_refinement_flags" );
     "--no-fix-density-meas," .
     "--dont-fix-density-meas"
         => sub{ $fix_value_of_exptl_crystal_density_meas = 0; },
+
+    "--fix-weighting-scheme"
+        => sub{ $fix_value_of_refine_ls_weighting_scheme = 1;},
+    "--fix-only-weighting-scheme"
+        => sub{ dont_fix_any();
+            $fix_value_of_refine_ls_weighting_scheme = 1; },
+    "--do-not-fix-weighting-scheme," .
+    "--no-fix-weighting-scheme," .
+    "--dont-fix-weighting-scheme"
+        => sub{ $fix_value_of_refine_ls_weighting_scheme = 0 },
 
     "-d,--dictionary" => sub{ @dictionaries = &get_value; },
     "-D,--add-dictionaries" => sub{ push( @dictionaries, &get_value ); },
@@ -600,6 +619,7 @@ my $units_equiv_Mg_per_m3 = qr/
     |   g  \/   cm \^?  3 \^?
     )
     /x;
+my $unit_weights = '(?i:unit\s+weights?\s*(?:applied)?)';
 
 sub fix_temperature($$) {
     my( $dataset, $filename ) = @_;
@@ -1133,6 +1153,117 @@ sub fix_value_of_exptl_crystal_density_meas($$) {
     return @insert_reports
 }
 
+sub fix_value_of_refine_ls_weighting_scheme($$) {
+    my( $dataset, $filename ) = @_;
+    my $dataname = $dataset->{name};
+    my @insert_reports = ();
+    my $values = $dataset->{values};
+    my $tag = '_refine_ls_weighting_scheme';
+    my $enums = join "|", @{ $default_enums{$tag} };
+
+        if( exists $values->{$tag} ) {
+            for my $i( 0..$#{$values->{$tag}} ) {
+                my $value = $values->{$tag}[$i];
+                my $value_modif = $value;
+                $value_modif =~ s/^\s+|\s+$//g;
+
+                # Silently removes spaces
+                if( $value_modif =~ /^([.?]|$enums)$/ ) {
+                    $values->{$tag}[$i] = $1;
+                    next;
+                }
+
+                next if( $value_modif =~ /\?$/ );
+
+                if( $value_modif =~ /^$value_not_measured$/ ) {
+                    $values->{$tag}[$i] = '?';
+
+                    my $report_msg =
+                        "'$tag' value '$value' ".
+                        "was changed to '?' - the " .
+                        "value is perceived as not measured.";
+                    push( @insert_reports, $report_msg );
+                    note($0, $filename, $dataname, $report_msg);
+                    next;
+                }
+                    
+                if( $value_modif =~ /^\s*
+                    (?: 1 (?:\.0*)? |
+                        $unit_weights 
+                    ) \s*
+                    $/xi ) {
+                    my $new_value = 'unit';
+                    $values->{$tag}[$i] = $new_value;
+
+                    my $report_msg =
+                        "'$tag' value '$value' ".
+                        "was changed to '$new_value'.";
+                    push( @insert_reports, $report_msg );
+                    note($0, $filename, $dataname, $report_msg);
+                    next;
+                }
+
+                if( $value_modif =~
+                    /^
+                        (?: (calc\b)? \s* 
+                            (w \s* (?:\^-1\^)? \s* ={1,2} \s*)?
+                            (.*)
+                        )
+                    $/xi ) {
+
+                    my $calc = $1;
+                    my $w = $2;
+                    my $weighting_value = $3;
+
+                    if( defined $w || $weighting_value =~ m/^ \s*
+                            (?:  $number_pos \s* \/
+                            |    4\(?F 
+                            |    [\[({](?!w) 
+                            )
+                        /xi ) {
+                                                            
+                        $values->{$tag}[$i] = "calc";
+                    
+                        my $report_msg;
+
+                        $report_msg =
+                            "'$tag' value '$value' ".
+                            "was changed to 'calc'." ;
+
+                        my $new_value = ( defined $w ? $w : "w = " ) . 
+                                          $weighting_value;
+                    
+                        my $new_tag = '_refine_ls_weighting_details';
+
+                        CIFTagManage::set_tag
+                                ( $dataset, $new_tag, $new_value );
+
+                        $report_msg .= " New tag '$new_tag' was created. " .
+                            "The value of the new tag was set to " .
+                            "'$new_value'.";
+
+                        push( @insert_reports, $report_msg );
+                        note($0, $filename, $dataname, $report_msg);
+                        next;
+
+                    }
+
+                    if( length($value_modif) > 40 ) {
+                            $value_modif = substr $value_modif, 0, 40;
+                            $value_modif .= "...";
+                        }
+                    warning($0, $filename, $dataname,
+                            "'$tag' value is '$value_modif', " .
+                            "but it should be one of these: [" .
+                            join( ", ", @{ $default_enums{$tag} } ) .
+                            "]" );
+                }
+
+            }
+        }
+    return @insert_reports
+}
+
 sub fix_enums($$) {
     my( $dataset, $filename ) = @_;
     my $dataname = $dataset->{name};
@@ -1365,6 +1496,12 @@ for my $filename (@ARGV) {
                 &fix_value_of_exptl_crystal_density_meas
                     ( $dataset, $filename );
             push( @insert_reports, @reports_of_exptl_crystal_density_meas );
+        }
+        if( $fix_value_of_refine_ls_weighting_scheme ) {
+            my @reports_of_refine_ls_weighting_scheme =
+                &fix_value_of_refine_ls_weighting_scheme
+                ( $dataset, $filename );
+            push( @insert_reports, @reports_of_refine_ls_weighting_scheme );
         }
 
         if( $treat_as_set ) {
