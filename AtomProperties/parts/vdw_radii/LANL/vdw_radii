@@ -1,0 +1,46 @@
+#!/usr/bin/perl
+
+#------------------------------------------------------------------------------
+#$Author$
+#$Date$ 
+#$Rev$
+#$URL$
+#------------------------------------------------------------------------------
+#*
+# Filters van der Waals radii information from a yaml file. Outputs filtered 
+# data in yaml file with metadata attached in comments.
+#*
+#* Usage:
+#*     $0 file1.yaml
+#**
+
+use strict;
+use warnings;
+
+use YAML qw(Dump Bless Load LoadFile);
+
+@ARGV = ( "-" ) unless @ARGV;
+
+my $atoms;
+
+my $filename = $ARGV[0];
+
+if ( $filename eq "-" ) {
+    my $text = do { local $/; <STDIN> };
+    $atoms = Load($text);
+} else {
+    $atoms = LoadFile($filename)
+}
+
+foreach ( sort keys %{$atoms} ) {
+
+    delete $atoms -> {$_} -> {"atomic_weight"};
+    delete $atoms -> {$_} -> {"common_charge"};
+}
+
+print '#$Date$' . "\n";
+print "#Original file: $ARGV[0]\n";
+print "#Source: Los Alamos National Lab website, " . 
+      "http://periodic.lanl.gov/index.shtml\n";
+
+print Dump $atoms;

@@ -1,0 +1,85 @@
+#!/usr/bin/perl
+
+#------------------------------------------------------------------------------
+#$Author$
+#$Date$ 
+#$Rev$
+#$URL$
+#------------------------------------------------------------------------------
+#*
+# Extracts atom charge and common charge information and outputs it in YAML 
+# format.
+#*
+#* Usage:
+#*     $0 oxidation_states.html
+#**
+
+use strict;
+use warnings;
+use SUsage;
+
+use YAML qw(Dump Bless);
+
+my $inert_noble_gas = 0;
+
+my %atoms;
+
+my $text = do { local $/; <> };
+
+# extract table with atom information
+$text =~ s|.*<table class="wikitable">(.*?)</table>.*|$1|s;
+
+# remove first two table lines (headers)
+$text =~ s|(<tr.*?>.*?</tr>.*?){2}||s;
+
+my $atomic_number = 0;
+while ( $text =~ m|<tr(.*?)>(.*?)</tr>|sg ) {
+
+    #noble gases contain additional text in <tr> opening tag
+    my $noble_gas = ($1 ne "" ? 1 : 0 );
+    my $element_block = $2;
+    $atomic_number++;
+
+    my %charges;
+    my $element;
+
+    # remove table cells that contain only references
+    $element_block =~ s|<td.*class="reference.*</td>||g;
+
+    #  zero charge is especially common for noble gases
+    $charges{0} = $noble_gas;
+    while ( $element_block =~ m|<td.*?background.*?>(.*?)</td>|sg ) {
+        my $line = $1;
+        $line =~ s/−/-/g;
+        # extract chemical element symbol
+        if ( $line =~ m|<a.*?>(.{1,3})</a>| ) {
+            $element = $1;
+        # bold tags mark charges that are more common
+        } elsif ( $line =~ m|<b>(.+)</b>| ) {
+            $charges{$1} = 1;
+        } elsif ( $line =~ m|(.+)| ) {
+            $charges{$1} = 0;
+        }
+    }
+
+    my @charges        = sort { $a <=> $b } ( keys %charges );
+    my @common_charges = sort { $a <=> $b } ( grep { $charges{$_} eq 1 } 
+                                              keys %charges );
+
+    $atoms{ $element }  = { "atomic_number" => $atomic_number,
+                            "charge"        => \@charges,
+                            "common_charge" => \@common_charges }
+
+}
+
+print '#$Date$' . "\n";
+print "#Original file: $ARGV[0] \n" if exists $ARGV[0];
+print "#Descrp: Primary source of charges and common charges.\n";
+print "#Source: http://en.wikipedia.org/wiki/List_of_oxidation_states_of_the_elements \n";
+
+my @order = sort { $atoms{$a} -> {"atomic_number"} <=> 
+                   $atoms{$b} -> {"atomic_number"} 
+                            } keys %atoms;
+
+Bless(\%atoms)->keys(\@order);
+print Dump \%atoms;

@@ -1,0 +1,87 @@
+#!/usr/bin/perl
+
+#------------------------------------------------------------------------------
+#$Author$
+#$Date$ 
+#$Rev$
+#$URL$
+#------------------------------------------------------------------------------
+#*
+# Downloads and parses atom information from Los Alamos National Lab website.
+# Outpus data in YAML format.
+#*
+#* Usage:
+#*     $0 file1.yaml
+#**
+use strict;
+use warnings;
+use SOptions;
+use SUsage;
+
+use YAML qw(Dump Bless);
+
+my %atoms;
+#119
+for (my $i = 1; $i < 0; $i++ ) { 
+    my $text = `curl -s http://periodic.lanl.gov/$i.shtml`;
+
+    if ( $text =~ m|.*(<h2 class="feature">.*?</table>).*|sg ) {
+        my $info_table = $1;
+
+        my %atom;
+
+        if ( $info_table =~ m|<h2 class="feature">(.*)</h2>| ) {
+            $atom{"name"} = $1;
+            $atom{"name"} =~ s|\s*<.*>||g;
+        }
+
+        my $atomic_symbol = 0;
+
+        while ( $info_table =~ 
+                   m|<td.*?>(<.*?>)+(.*?)<.*?td>.*?>(.*?)</td>|sg ) {
+
+            if ( $3 ne "--" ) {
+                if ( $2 eq "Atomic Number:" ) {
+                    $atom{"atomic_number"} = $3
+                } elsif ( $2 eq "Atomic Radius:" ) {
+                    $3 =~ /(\d+)/;
+                    $atom{"vdw_radius"} = $1/100 ; # originaly in pm
+                } elsif ( $2 eq "Atomic Symbol:" ) {
+                    $atomic_symbol = $3;
+                } elsif ( $2 eq "Atomic Weight:" ) {
+                    $3 =~ /(\d+)/;
+                    $atom{"atomic_weight"} = $1;
+                } elsif ( $2 eq "Oxidation States:" ) {
+                    my @oxi_states = sort (split ", ", $3 );
+                    $atom{"common_charge"} = \@oxi_states;
+                }
+
+                elsif ( $2 eq "Melting Point:" ) {}
+                elsif ( $2 eq "Boiling Point:" ) {}
+                elsif ( $2 eq "Electron Configuration:") {}
+            }
+        }
+
+        if ($atomic_symbol) {
+            $atomic_symbol =~ s/ \(temporary\)//;
+            $atoms{$atomic_symbol} = \%atom;
+        }
+    }
+}
+
+my @order = sort { $atoms{$a} -> {"atomic_number"} <=> 
+                   $atoms{$b} -> {"atomic_number"} 
+                            } keys %atoms;
+
+print "#" . "-"x78 . "\n" .
+      "#\$Author\$\n" .
+      "#\$Date\$\n" .
+      "#\$Rev\$\n" .
+      "#\$URL\$\n" .
+      "#" . "-"x78 . "\n" .
+      "#*\n" .
+      "# Data for this dataset was extrated from Los Alamos National Lab " .
+      "website,\n# http://periodic.lanl.gov/index.shtml\n";
+
+Bless(\%atoms)->keys(\@order);
+print Dump \%atoms;
