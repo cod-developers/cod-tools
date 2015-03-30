@@ -1,0 +1,48 @@
+#!/usr/bin/perl
+
+#------------------------------------------------------------------------------
+#$Author$
+#$Date$ 
+#$Rev$
+#$URL$
+#------------------------------------------------------------------------------
+#*
+# Filters covalent radii information from a yaml file. Outputs filtered data 
+# in yaml file with metadata attached in comments.
+#*
+#* Usage:
+#*     $0 file1.yaml
+#**
+
+use strict;
+use warnings;
+
+use List::Util qw(max);
+use YAML qw(Dump Bless Load LoadFile);
+
+@ARGV = ( "-" ) unless @ARGV;
+
+my $atoms;
+
+my $filename = $ARGV[0];
+
+if ( $filename eq "-" ) {
+    my $text = do { local $/; <STDIN> };
+    $atoms = Load($text);
+} else {
+    $atoms = LoadFile($filename)
+}
+
+foreach ( sort keys %{$atoms} ) {
+   my $longest = max(values $atoms -> {$_} -> {"covalent_radii"});
+   $atoms -> {$_} -> {"covalent_radius"} = $longest;
+
+}
+
+print '#$Date$' . "\n";
+print "#Original file: $ARGV[0]\n";
+print "#Descrp: Primary source of covalent radii information.\n";
+print "#Source: 'Molecular Double-Bond Covalent Radii for Elements Li–E112', " .
+      "2009, Pyykkö and Atsumi, doi: 10.1002/chem.200901472\n";
+
+print Dump $atoms;

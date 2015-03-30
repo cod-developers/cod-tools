@@ -1,0 +1,74 @@
+#!/usr/bin/perl
+
+#------------------------------------------------------------------------------
+#$Author$
+#$Date$ 
+#$Rev$
+#$URL$
+#------------------------------------------------------------------------------
+#*
+# Extracts atom valence information and outputs it in YAML format.
+#*
+#* Usage:
+#*     $0 input.yaml
+#**
+
+use strict;
+use warnings;
+use SUsage;
+
+use YAML qw(Dump Bless);
+
+my $inert_noble_gas = 0;
+
+use YAML qw(Dump Bless Load LoadFile);
+
+@ARGV = ( "-" ) unless @ARGV;
+
+my $atoms;
+
+my $filename = $ARGV[0];
+
+if ( $filename eq "-" ) {
+    my $text = do { local $/; <STDIN> };
+    $atoms = Load($text);
+} else {
+    $atoms = LoadFile($filename)
+}
+
+my @noble_gas = ("He", "Ne", "Ar", "Kr", "Xe", "Rn");
+
+foreach my $symbol ( keys %{$atoms} ) {
+
+    my @charge = @{$atoms->{$symbol}{charge}};
+
+    if ( !grep { $_ eq $symbol } @noble_gas ) {
+        my $index = 0;
+        $index++ until $charge[$index] eq '0';
+        splice(@charge, $index, 1);
+    }
+
+    # remove charge signs (+/-) and valency duplicates
+    my @valencies = map { ( my $val = $_ ) =~ s/[+-]//g; $val } @charge;
+
+    my %seen;
+    @seen{@valencies} = ();
+    @valencies = sort ( keys %seen );
+
+    $atoms->{$symbol}{valence} = \@valencies;
+
+    delete $atoms->{$symbol}{charge};
+    delete $atoms->{$symbol}{common_charge};
+}
+
+print '#$Date$' . "\n";
+print "#Original file: $ARGV[0]\n";
+print "#Descrp: Primary source of atom valence information.\n";
+print "#Source: http://en.wikipedia.org/wiki/List_of_oxidation_states_of_the_elements.\n";
+
+my @order = sort { $atoms->{$a}{"atomic_number"} <=> 
+                   $atoms->{$b}{"atomic_number"} 
+                            } keys %{$atoms};
+
+Bless($atoms)->keys(\@order);
+print Dump $atoms;

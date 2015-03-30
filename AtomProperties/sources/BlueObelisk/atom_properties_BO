@@ -1,0 +1,140 @@
+#!/usr/bin/perl
+
+#------------------------------------------------------------------------------
+#$Author$
+#$Date$ 
+#$Rev$
+#$URL$
+#------------------------------------------------------------------------------
+#*
+# Extracts atom information from Blue Obelisk xml file  and outputs it in 
+# YAML format.
+#*
+#* Usage:
+#*     $0 elements.xml
+#**
+
+use strict;
+use warnings;
+use SOptions;
+use SUsage;
+use UserMessage;
+
+use XML::Simple;
+use YAML qw(Dump Bless);
+
+my @excluded_elements = ("Xx");
+
+@ARGV = getOptions(
+
+#** Options:
+#**
+#** -e,--exclude-elements
+#**                     Comma separated list of chemical element symbol to be 
+#**                     removed from the final output. "Xx" marks a dummy 
+#**                     atom and whitespaces are ignored (default 'Xx').
+#** --help,--usage      Print a short usage message (this message) and exit.
+
+    "-e,--exclude-elements" => sub { @excluded_elements = map {
+                                        my $element = $_;
+                                        $element =~ s/\s+//g;
+                                        $element;
+                                     } split (",", get_value ) 
+                               },
+    "--help,--usage"        => sub { SUsage::usage; exit }
+);
+
+my $xml = new XML::Simple;
+
+@ARGV = ( "-" ) unless @ARGV;
+
+foreach (@ARGV) {
+    my $data = $xml->XMLin( $_ );
+
+    my $atomsBO = $data->{'atom'};
+
+    my $atoms = BO_2_COD($atomsBO, $_);
+
+    # removing dummy entry and specified atoms
+    foreach(@excluded_elements) {
+        delete $atoms -> {$_};
+    }
+
+    my @print_order = sort { $atoms -> {$a} -> {"atomic_number"} <=> 
+                             $atoms -> {$b} -> {"atomic_number"} 
+                           } keys %{$atoms};
+
+    Bless($atoms)->keys(\@print_order);
+    print Dump $atoms;
+}
+
+sub BO_2_COD {
+
+    my ( $atomsBO, $filename ) = @_;
+
+    my %atoms;
+
+    foreach ( keys $atomsBO ) {
+        my $atomInfo = $atomsBO -> {$_};
+        my $atom_symbol;
+        my %atom;
+
+        foreach my $node ( @{ $atomInfo -> {'label'} } ) {
+            my $nodeName    = $node -> {"dictRef"};
+            my $nodeValue = $node -> {"value"};
+
+            if ( $nodeName eq "bo:symbol" ) {
+                $atom_symbol = $nodeValue
+            } elsif ( $nodeName eq "bo:name" ) { 
+                $atom{ "name" } = $nodeValue
+            } else {
+                warning($0, $filename, undef, "unrecognised dictionary" . 
+                        "reference '$nodeName' -- entry line will be ignored" );
+            }
+        }
+
+        foreach my $node ( @{ $atomInfo -> {'scalar'} } ) {
+            my $nodeName    = $node -> {"dictRef"};
+            my $value = $node -> {"content"};
+
+            if ( $nodeName eq "bo:atomicNumber" ) {
+                $atom{ "atomic_number" } = $value;
+            } elsif ( $nodeName eq "bo:radiusCovalent" ) {
+                $atom{ "covalent_radius" } = $value;
+            } elsif ( $nodeName eq "bo:radiusVDW" ) {
+                $atom{ "vdw_radius" } = $value;
+            } elsif ( $nodeName eq "bo:period" ) {
+                $atom{ "period" } = $value;
+            } elsif ( $nodeName eq "bo:group" ) {
+                $atom{ "group" } = $value;
+            } elsif ( $nodeName eq "bo:periodTableBlock" ) {
+                $atom{ "block" } = $value;
+            } elsif ( $nodeName eq "bo:family" ) {
+                $atom{ "family" } = $value; 
+            } elsif ( $nodeName eq "bo:mass" ) {
+            # IUPAC official masses (standart atomic weight)
+                $atom{ "atomic_weight" } = $value;
+            } elsif ( $nodeName eq "bo:exactMass" ) {
+            # exact mass of the most common isotope
+                $atom{ "atomic_mass" } = $value;
+            }
+            # fields in BO xml file that are currently not parsed
+            elsif ( $nodeName eq "bo:ionization" ) {}
+            elsif ( $nodeName eq "bo:electronAffinity" ) {}
+            elsif ( $nodeName eq "bo:electronegativityPauling" ) {}
+            elsif ( $nodeName eq "bo:nameOrigin" ) {}
+            elsif ( $nodeName eq "bo:boilingpoint" ) {}
+            elsif ( $nodeName eq "bo:meltingpoint" ) {}
+            elsif ( $nodeName eq "bo:discoveryDate" ) {}
+            elsif ( $nodeName eq "bo:electronicConfiguration" ) {}
+            else { 
+                warning($0, $filename, undef, "Unrecognised dictionary " .
+                        "reference '$nodeName' -- entry line will be ignored" );
+            }
+        }
+
+        $atoms{ $atom_symbol } = \%atom;
+    };
+
+    return \%atoms;
+}

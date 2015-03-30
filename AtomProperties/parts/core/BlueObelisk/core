@@ -1,0 +1,45 @@
+#!/usr/bin/perl
+
+#------------------------------------------------------------------------------
+#$Author$
+#$Date$ 
+#$Rev$
+#$URL$
+#------------------------------------------------------------------------------
+#*
+# Filters core atom information (atomic number, mass, ect.) from a yaml file. 
+# Outputs filtered data in yaml file with metadata attached in comments.
+#*
+#* Usage:
+#*     $0 input.yaml
+#**
+
+use strict;
+use warnings;
+
+use YAML qw(Dump Bless Load LoadFile);
+
+@ARGV = ( "-" ) unless @ARGV;
+
+my $atoms;
+
+my $filename = $ARGV[0];
+
+if ( $filename eq "-" ) {
+    my $text = do { local $/; <STDIN> };
+    $atoms = Load($text);
+} else {
+    $atoms = LoadFile($filename)
+}
+
+foreach ( keys %{$atoms} ) {
+    delete $atoms->{$_}{covalent_radius};
+    delete $atoms->{$_}{vdw_radius};
+}
+
+print '#$Date$' . "\n";
+print "#Original file: $ARGV[0]\n";
+print "#Descrp: Primary source of core atom information.\n";
+print "#Source: elements.xml file from BlueObelisk 'bodr' git repository.\n";
+
+print Dump $atoms;
