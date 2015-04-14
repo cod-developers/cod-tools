@@ -21,7 +21,7 @@ cp ${cif_split} ${TMP_DIR}
     CIF_BASE="`basename ${CIF}`"
     script_base="`basename ${cif_split}`"
 
-    ./${script_base} < ${CIF_BASE}
+    ./${script_base} < ${CIF_BASE} || true
 
     rm ${CIF_BASE}
     rm ${script_base}

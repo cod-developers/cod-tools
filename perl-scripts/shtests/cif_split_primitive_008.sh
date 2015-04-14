@@ -25,7 +25,7 @@ cp ${cif_split} ${TMP_DIR}
 
     mkdir ${CIF_CORE}
 
-    ./${script_base} --output-dir=${CIF_CORE}/ < ${CIF_BASE}
+    ./${script_base} --output-dir=${CIF_CORE}/ < ${CIF_BASE} || true
 
     rm ${CIF_BASE}
     rm ${script_base}
