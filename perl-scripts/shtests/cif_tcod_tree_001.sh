@@ -12,7 +12,7 @@ TMP_DIR="./tmp-${BASENAME}"
 
 mkdir ${TMP_DIR}
 
-${cif_tcod_tree} ${CIF} --out ${TMP_DIR}
+${cif_tcod_tree} ${CIF} --out ${TMP_DIR} || true
 
 set -x
 

@@ -12,7 +12,7 @@ TMP_DIR="./tmp-${BASENAME}"
 
 mkdir ${TMP_DIR}
 
-${cif_split} < ${CIF} -o ${TMP_DIR} 2>&1 | xargs -n1 basename
+${cif_split} < ${CIF} -o ${TMP_DIR} 2>&1 | xargs -n1 basename || true
 
 for i in $(find ${TMP_DIR} -name \*.cif | sort)
 do
