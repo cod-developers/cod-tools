@@ -1,5 +1,7 @@
-#!/usr/bin/perl
-
+#! /bin/sh
+#!perl -w # --*- Perl -*--
+eval 'exec perl -x $0 ${1+"$@"}'
+    if 0;
 #------------------------------------------------------------------------------
 #$Author$
 #$Date$ 
@@ -7,26 +9,29 @@
 #$URL$
 #------------------------------------------------------------------------------
 #*
-# Calculates minimal distance between atoms read from a CIF file.
+#  Calculates minimal distance between atoms read from a CIF file.
 #**
 
-use lib "../../CIFData/";
-use lib "../../Spacegroups/";
-use lib "../../CIFParser/";
 use lib "../../lib/perl5/";
-use lib "../../";
+use lib "../Spacegroups/";
+use lib "../CIFTags/";
+use lib "../CIFData/";
+use lib "../";
 
 use strict;
 use warnings;
+use File::Basename;
 use AtomProperties;
 use Escape;
-use File::Basename; 
-use CIFData::CIFCellContents;
-use CIFParser;
-use CIFTagManage;
-use Fractional;
-use Spacegroups::SymopParse;
-use Spacegroups::SpacegroupNames;
+use CIFParser::CIFParser;
+use CIFTagManage qw(tag_is_empty);
+use SymopAlgebra qw( symop_vector_mul );
+use CIFSymmetryGenerator qw( get_symmetry_operators
+                             symop_generate_atoms
+                             copy_atom
+                             get_cell );
+use Fractional qw(symop_ortho_from_fract);
+use SymopParse qw(symop_string_canonical_form symop_from_string);
 use SOptions;
 use SUsage;
 use UserMessage;
@@ -191,9 +196,11 @@ foreach my $filename ( @ARGV ) {
     }
 
     my $ortho_matrix;
-
     eval {
-        $ortho_matrix = get_ortho_matrix( $dataset, $filename );
+        my @unit_cell = get_cell( $dataset->{values}, $filename, 
+                                  $dataset->{name} );
+        local $SIG{__WARN__} = sub {}; # not printing division by zero errors
+        $ortho_matrix = symop_ortho_from_fract( @unit_cell );
     };
 
     if ( $@ ) {
@@ -251,15 +258,6 @@ foreach my $filename ( @ARGV ) {
 }
 
 exit;
-
-sub get_ortho_matrix {
-    my ( $dataset, $filename ) = @_;
-    #   extracts cell constants
-    my @unit_cell = CIFSymmetryGenerator::get_cell( $dataset->{values}, 
-                                                    $filename, 
-                                                    $dataset->{name} );
-    return Fractional::symop_ortho_from_fract( @unit_cell );
-}
 
 ##
 # Extracts atom information from given dataset.
@@ -351,8 +349,7 @@ sub get_atoms {
             @{$atom->{coordinates_fract}};
 
         $atom->{coordinates_ortho} =
-            CIFSymmetryGenerator::mat_vect_mul( $ortho_matrix,
-                                                $atom->{coordinates_fract} );
+            symop_vector_mul( $ortho_matrix, $atom->{coordinates_fract} );
 
         if( defined $values->{_atom_site_occupancy} ) {
             if( $values->{_atom_site_occupancy}[$i] ne '?' &&
@@ -418,7 +415,7 @@ sub uniquify_atom_names()
     my %labels_to_be_renamed;
 
     foreach my $atom ( @{$init_atoms} ) {
-        my $atom_copy = CIFSymmetryGenerator::copy_atom( $atom );
+        my $atom_copy = copy_atom( $atom );
         my $label = $atom->{label};
 
         push( @checked_initial_atoms, $atom_copy );
@@ -481,19 +478,15 @@ sub symops_apply {
     my ( $dataset, $atoms, $ortho_matrix, $filename ) = @_;
 
     #   extracts symmetry operators
-    my $sym_data = CIFSymmetryGenerator::get_symmetry_operators( 
-                                                    $dataset, $filename );
+    my $sym_data = get_symmetry_operators( $dataset, $filename );
 
     #   transforms symmetry operators into canonical from
-    @{$sym_data} = map { SymopParse::symop_string_canonical_form( $_ ) } 
-                                                    @{$sym_data};
+    @{$sym_data} = map { symop_string_canonical_form( $_ ) } @{$sym_data};
 
     # Computes symmetry operator matrices
-    my @symop = map { SymopParse::symop_from_string( $_ ) } @{$sym_data};
+    my @symop = map { symop_from_string( $_ ) } @{$sym_data};
 
-    my $sym_atoms = CIFSymmetryGenerator::symop_generate_atoms( 
-                                                    \@symop, $atoms,
-                                                    $ortho_matrix );
+    my $sym_atoms = symop_generate_atoms( \@symop, $atoms, $ortho_matrix );
 
     # Adds applied symmetry operator to the atom property hash
     my $i = 0;
@@ -648,14 +641,14 @@ sub shift_atom {
       foreach my $y ( @shifting_param ) {
         foreach my $z ( @shifting_param ) {
            if ( $x != 0 || $y != 0 || $z != 0 ) {
-            my $new_atom = CIFSymmetryGenerator::copy_atom($original_atom);
+            my $new_atom = copy_atom($original_atom);
 
             $new_atom -> { coordinates_fract }[0] += $x;
             $new_atom -> { coordinates_fract }[1] += $y;
             $new_atom -> { coordinates_fract }[2] += $z;
 
             $new_atom -> { coordinates_ortho } =
-                          CIFSymmetryGenerator::mat_vect_mul( $ortho_matrix,
+                        symop_vector_mul( $ortho_matrix,
                                           $new_atom -> { coordinates_fract } );
 
             $new_atom->{ shift_vector } = ( 5 + $x ) . "," .
@@ -883,3 +876,4 @@ sub equals {
     return ( sprintf("%.${dp}f", $float_1) eq 
              sprintf("%.${dp}f", $float_2) ) ? 1 : 0;
 }
+
