@@ -29,7 +29,7 @@ do
                 if( $getoptions_seen ) {
                     last if /^\);$/;
                     if( /^\s*(["])(-[^\1]+?)\1/ ) {
-                        push( @file_options, split( ",", $2 ) );
+                        push( @file_options, split( /,\s*/, $2 ) );
                     }
                 } else {
                     $getoptions_seen = 1 if /@ARGV\s+=\s+getOptions/;
