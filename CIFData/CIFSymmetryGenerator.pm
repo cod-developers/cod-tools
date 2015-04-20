@@ -21,12 +21,13 @@ use Spacegroups::SpacegroupNames;
 use UserMessage;
 
 require Exporter;
-@CIFSymmetryGenerator::ISA = qw(Exporter);
-@CIFSymmetryGenerator::EXPORT = qw(
+our @ISA = qw(Exporter);
+our @EXPORT = qw(
     get_cell
     get_symmetry_operators
     symop_generate_atoms
 );
+our @EXPORT_OK = qw ( copy_atom );
 
 my %sg_name_abbrev =
     map { my $key = $_->[1]; $key =~ s/\s+//g; ( $key, $_->[2] ) }
