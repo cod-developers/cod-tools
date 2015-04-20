@@ -4,7 +4,7 @@
 # script and it's help in order to locate non-described and non-existing
 # command line options.
 
-for i in cif_tcod_tree $(find . -maxdepth 1 -name \*~ -prune -o -type f -a -executable -print)
+for i in $(find . -maxdepth 1 -name \*~ -prune -o -type f -a -executable -print)
 do
     ./$i --help </dev/null 2>/dev/null \
         | perl -e '
@@ -17,7 +17,7 @@ do
             my @help_options;
 
             while( <> ) {
-                if( /^\s*(-[a-zA-Z\-_\d]+,\s*)*(-[a-zA-Z\-_\d]+)/ ) {
+                if( /^\s*((?:-[a-zA-Z\-_\d]+,\s*)*)(-[a-zA-Z\-_\d]+)/ ) {
                     push( @help_options, $2 );
                     push( @help_options, split( /,\s*/, $1 ) ) if $1;
                 }
