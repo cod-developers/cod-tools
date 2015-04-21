@@ -17,6 +17,7 @@ use strict;
 use POSIX qw(strftime);
 use COD::CIFData::CODPredepositionCheck qw(filter_and_check);
 use COD::SOptions;
+use COD::SUsage;
 
 my %database = (
         host  => "www.crystallography.net",
@@ -37,6 +38,38 @@ my $print_timestamps = 0;
 
 my $tmp_dir;
 my $tmp_file = "tmp-cod_predeposition_check-$$.tmp";
+
+#* USAGE:
+#*     $0 [options] input.cif [input2.cif ...]
+#* 
+#* OPTIONS:
+#*     -d, --database  cod
+#*        Use database "cod" to query for strctures.
+#*
+#*     -h, --host   www.crystallography.net
+#*     -s, --server www.crystallography.net
+#*        Query COD database on the host 'www.crystallography.net'.
+#*
+#*     -l, --localhost
+#*        Use database server on the localhost to query the COD database.
+#*
+#*     -p, --port 3306
+#*        Use use the specified port (default 3306) to query structures.
+#*
+#*     -t, --table  data
+#*        Use SQL table "data" to query for strctures.
+#*
+#*     -u, --user cod_reader
+#*        Use user name "cod_reader" to access COD database; this reader
+#*        sould be granted SELECT priviledge, i.e. should be able to read
+#*        the COD database, whithout supplying a password.
+#*
+#*     --password
+#*        Use the specified password (default empty) to connect.
+#*
+#*     --help,--usage
+#*        Print a short usage message (this message) and exit.
+#**
 
 @ARGV = getOptions(
     "-d,--database"  => \$database{name},
@@ -79,6 +112,8 @@ my $tmp_file = "tmp-cod_predeposition_check-$$.tmp";
     "--no-print-timestamps" => sub { $print_timestamps = 0 },
 
     "--temp-dir" => \$tmp_dir,
+
+    "--help,--usage"   => sub { usage; exit },
 );
 
 push( @cif, @ARGV );
