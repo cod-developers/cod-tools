@@ -37,6 +37,61 @@ my $common  = 1;
 my $L_option_param;
 
 @ARGV = getOptions(
+
+#** USAGE:
+#**     $0 [options] input.cif [input2.cif ...]
+#** 
+#** OPTIONS:
+#** -t, --tags
+#**     Whitespace- or comma-separated list of tags to compare. When
+#**     present, only tags enumerated with this option are compared.
+#**
+#** -a, --add-tag
+#**     Add a tag to the list of compared tags.
+#**
+#** -c, --clear-tags
+#**     Clear the list of compared tags.
+#**
+#** -f, --file-with-tags
+#**     Specify a file with tags to be compared.
+#**
+#** --compare-all-tags
+#**     Compare all tags present in the compared files. Default action.
+#**
+#** --compare-datablock-names
+#** --dont-compare-datablock-names
+#**     Also compare the names of CIF datablocks. Default: on.
+#**
+#** --compare-numeric _cell_length_a
+#**     Force numeric comparison for given tag.
+#**
+#** --compare-string _cell_length_a
+#**     Force string comparison for given tag.
+#**
+#** --no-left
+#**     Do not print tags present in the left file only. Similar to
+#**     'comm -1'.
+#**
+#** --no-right
+#**     Do not print tags present in the right file only. Similar to
+#**     'comm -2'.
+#**
+#** --no-common
+#**     Do not print tags with the same values in both files.
+#**
+#** --folding-width 72
+#**     Specify the length of the longest unfolded line.
+#**
+#** --fold-long-fields
+#** --dont-fold-long-fields
+#**     Fold fields, longer than folding width. Default: on.
+#**
+#** -L, -u
+#**     Ignored options. Used to make this script usable as --diff-cmd for
+#**     'svn diff'.
+#**
+#** --help,--usage     Print a short usage message (this message) and exit.
+
     "-L" => \$L_option_param, # Ignore the '-L' option and its argument
     "-u" => sub { 1; }, # Ignore the '-u' option, so that we can use
                         # the 'cif_diff' program as the --diff-cmd for
@@ -73,6 +128,7 @@ my $L_option_param;
     "--no-left"     => sub{ $left   = 0 },
     "--no-right"    => sub{ $right  = 0 },
     "--no-common"   => sub{ $common = 0 },
+    "--help,--usage" => sub { usage; exit }
 );
 
 push( @ARGV, "-" ) unless @ARGV > 1;

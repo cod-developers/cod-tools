@@ -22,6 +22,19 @@ use COD::SUsage;
 my $use_parser = 'c';
 my %options;
 @ARGV = getOptions(
+
+#** USAGE:
+#**     $0 [options] input.cif [input2.cif ...]
+#** 
+#** OPTIONS:
+#** --use-perl-parser
+#**    Use Perl parser for CIF parsing.
+#**
+#** --use-c-parser
+#**    Use Perl & C parser for CIF parsing.
+#**
+#** --help,--usage     print short usage message (this message) and exit
+
     "--use-perl-parser" => sub{ $use_parser = 'perl' },
     "--use-c-parser"    => sub{ $use_parser = 'c' },
     "--do-not-unprefix-text" => sub{ $options{do_not_unprefix_text} = 1 },
@@ -40,6 +53,7 @@ my %options;
         sub{ $options{fix_missing_closing_single_quote} = 1 },
     "--fix-ctrl-z"  => sub{ $options{fix_ctrl_z} = 1 },
     "--allow-uqstring-brackets" => sub{ $options{allow_uqstring_brackets} = 1 },
+    "--help,--usage"  => sub { usage; exit },
 );
 
 @ARGV = ( "-" ) unless @ARGV;
