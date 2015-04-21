@@ -1,0 +1,143 @@
+#! /bin/sh
+#!perl -w # --*- Perl -*--
+eval 'exec perl -x $0 ${1+"$@"}'
+    if 0;
+#------------------------------------------------------------------------------
+#$Author$
+#$Revision$
+#$URL$
+#$Date$
+#$Id$
+#------------------------------------------------------------------------------
+#*
+#  Parse two CIF files and compare their content
+#**
+
+use strict;
+use COD::CIFParser::CIFParser;
+use COD::CIFTags::CIFDiff;
+use COD::SOptions;
+use COD::SUsage;
+
+my $compare_datablock_names = 1;
+my $fold_long_fields        = 1;
+my $folding_width           = 72;
+my %comparators = ();
+
+sub numeric_compare { return $_[0] <=> $_[1]; }
+sub string_compare  { return $_[0] cmp $_[1]; }
+
+my $compare_only_selected = 0;
+my @selected_tags = ();
+
+my $left    = 1;
+my $right   = 1;
+my $common  = 1;
+
+my $L_option_param;
+
+@ARGV = getOptions(
+    "-L" => \$L_option_param, # Ignore the '-L' option and its argument
+    "-u" => sub { 1; }, # Ignore the '-u' option, so that we can use
+                        # the 'cif_diff' program as the --diff-cmd for
+                        # 'svn diff'
+    "-t,--tags" => sub { $compare_only_selected = 1;
+                         @selected_tags = split( /\s|,/, get_value()); },
+    "-a,--add-tag" => sub { $compare_only_selected = 1;
+                            push( @selected_tags, get_value() ); },
+    "-c,--clear-tags" => sub { $compare_only_selected = 1;
+                               @selected_tags = () },
+    "-f,--file-with-tags" => sub {
+        $compare_only_selected = 1;
+        my $filename = get_value();
+        open( TAGS, $filename ) or
+            die( "$0: $filename: ERROR, could not open file '$filename' " .
+                 "for reading - $!" );
+        @selected_tags = ( @selected_tags,
+                          map { s/^\s*|\s*$//g; $_ }
+                          grep !/^\#/, <TAGS> );
+        close( TAGS ) or
+            die( "$0: $filename: ERROR, could not close file '$filename' " .
+                 "after reading - $!" );
+    },
+    "--compare-all-tags" => sub{ $compare_only_selected = 0; },
+    "--compare-datablock-names"         => sub{ $compare_datablock_names = 1 },
+    "--dont-compare-datablock-names"    => sub{ $compare_datablock_names = 0 },
+    "--compare-numeric" =>
+        sub{ $comparators{ get_value() } = \&numeric_compare },
+    "--compare-string" =>
+        sub{ $comparators{ get_value() } = \&string_compare },
+    "--folding-width"         => \$folding_width,
+    "--fold-long-fields"      => sub{ $fold_long_fields = 1 },
+    "--dont-fold-long-fields" => sub{ $fold_long_fields = 0 },
+    "--no-left"     => sub{ $left   = 0 },
+    "--no-right"    => sub{ $right  = 0 },
+    "--no-common"   => sub{ $common = 0 },
+);
+
+push( @ARGV, "-" ) unless @ARGV > 1;
+if( @ARGV != 2 ) {
+    die( "please supply two files for comparison" );
+}
+
+my $parser1 = new COD::CIFParser::CIFParser;
+my $data1 = $parser1->Run($ARGV[0]);
+my $parser2 = new COD::CIFParser::CIFParser;
+my $data2 = $parser2->Run($ARGV[1]);
+
+my $min_datablocks  = scalar @$data1;
+if( scalar @$data1 != scalar @$data2 ) {
+    if( $min_datablocks > scalar @$data2 ) {
+        $min_datablocks = scalar @$data2;
+    }
+    print "number of datablocks in supplied files is different, " .
+          "taking first $min_datablocks datablocks for comparison\n";
+}
+
+my $options = {
+        'compare_datablock_names' => $compare_datablock_names,
+        'fold'                    => $fold_long_fields,
+        'folding_width'           => $folding_width,
+        'comparators'             => \%comparators,
+        'suppress_left'           => !$left,
+        'suppress_right'          => !$right,
+        'suppress_common'         => !$common };
+if( $compare_only_selected == 1 ) {
+    @selected_tags = map { lc($_) } @selected_tags;
+    $options->{compare_only} = \@selected_tags;
+}
+
+for( my $i = 0; $i < $min_datablocks; $i++ ) {
+    diff( $data1->[$i], $data2->[$i], $options );
+}
+
+# Printout of parsed file contents
+
+if( 0 ) {
+    foreach my $datablock ( @$data1 ) {
+        foreach my $key ( keys %$datablock ) {
+            next unless ref( $datablock->{$key} ) eq 'HASH';
+            print "$key:\n";
+            foreach( keys %{$datablock->{$key}} ) {
+                print $_ . ": " . ref( $datablock->{$key}{$_} ) . " ";
+                if( $key eq 'inloop' ) {
+                    print $datablock->{$key}{$_};
+                }
+                if( $key eq 'values' ) {
+                    print join( " ", @{$datablock->{$key}{$_}} );
+                }
+                if( $key eq 'precisions' ) {
+                    print join( " ", @{$datablock->{$key}{$_}} );
+                }
+                print "\n";
+            }
+        }
+        print "\n\n";
+        print join( "\n", @{$datablock->{tags}} );
+        print "\n\n";
+        foreach my $loop ( @{$datablock->{loops}} ) {
+            print  "\n$loop\n    ";
+            print join( "\n    ", @$loop );
+        }
+    }
+}

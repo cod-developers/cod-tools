@@ -1,0 +1,37 @@
+#! /bin/sh
+#!perl -w # --*- Perl -*--
+eval 'exec perl -x $0 ${1+"$@"}'
+    if 0;
+#------------------------------------------------------------------------------
+#$Author: saulius $
+#$Date: 2009-04-03 13:01:55 +0300 (Fri, 03 Apr 2009) $ 
+#$Revision: 728 $
+#$URL: svn+ssh2224://vartai.ibt.lt/home/xray/svn-repositories/cif-tools/trunk/perl-scripts/cif_dictionary_tags $
+#------------------------------------------------------------------------------
+#*
+#  Calculate Z value (i.e. the number of "chemical fomula units" in the unit cell
+#  using the provided cell volume, crystal density and molecular weight.
+#**
+
+use strict;
+use COD::CIFParser::CIFParser;
+use COD::CIFData::CIFEstimateZ;
+
+@ARGV = ( "-" ) unless @ARGV;
+
+for my $filename (@ARGV) {
+
+    my $parser = new COD::CIFParser::CIFParser;
+
+    my $data = $parser->Run($filename, { fix_errors => 1 });
+
+    for my $dataset (@$data) {
+        eval {
+            print cif_estimate_z( $dataset ), "\n";
+        };
+        if( $@ ) {
+            print STDERR $@;
+        }  
+    }
+}
+

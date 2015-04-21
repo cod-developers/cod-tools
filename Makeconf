@@ -1,0 +1,31 @@
+#--*- Makefile -*--------------------------------------------------------------
+#$Author$
+#$Revision$
+#$Date$
+#$URL$
+#------------------------------------------------------------------------------
+
+CWD := ${shell pwd}
+TOP := ${CWD}
+
+PERL_SOURCE_DIRS = ${TOP}/src/lib/perl5/COD
+PYTHON_SOURCE_DIRS = ${TOP}/src/lib/python2.7
+
+YAPP_MODULE_DIRS := ${PERL_SOURCE_DIRS}/CIFParser ${PERL_SOURCE_DIRS}/Formulae
+SWIG_MODULE_DIRS := ${PERL_SOURCE_DIRS}/CCIFParser
+
+C_PARSER_LIB_DIR = ${TOP}/src/components/codcif
+LOCAL_LIB_FILES  = ${TOP}/src/externals/cexceptions/lib/libcexceptions.a \
+                   ${TOP}/src/externals/getoptions/lib/libgetoptions.a \
+                   ${C_PARSER_LIB_DIR}/lib/libcodcif.a
+
+ifeq ("${TEST_INSTALL}","")
+PERL5LIB := ${TOP}/src/lib/perl5:${PERL5LIB}
+PYTHONPATH := ${PYTHON_SOURCE_DIRS}:${PYTHONPATH}
+
+export PERL5LIB
+export PYTHONPATH
+endif
+
+EXT = .cif
+TEST_OPTIONS =

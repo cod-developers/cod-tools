@@ -1,0 +1,51 @@
+#!/bin/sh
+#------------------------------------------------------------------------------
+#$Author$
+#$Date$ 
+#$Revision$
+#$URL$
+#------------------------------------------------------------------------------
+#*
+# Extract essential data from the input CIF file and format it
+# using the rules of the Crystallography Open Database (COD).
+#**
+
+set -ue
+
+## set -x
+
+file="$1"
+
+if head $file | grep -q '^#' > /dev/null 2>&1
+then
+    awk '{if( match( $0, "^#" )) print; else exit}' $file
+else
+    cat <<EOF
+#------------------------------------------------------------------------------
+#\$Date\$
+#\$Revision\$
+#\$URL\$
+#------------------------------------------------------------------------------
+#
+# This file is available in the Crystallography Open Database (COD),
+# http://www.crystallography.net/
+#
+# All data on this site have been placed in the public domain by the
+# contributors.
+#
+EOF
+fi
+
+NUMBER=`basename ${file} .cif | sed -e 's/[^0-9]//g'`
+
+cif_filter \
+    --renumber \
+    --start-data="${NUMBER}" \
+    --exclude-empty-non-loop-tags \
+    --estimate-spacegroup \
+    --reformat-spacegroup \
+    --keep-unrecognised-spacegroup \
+    --parse-formula-sum \
+    --calculate-cell-volume \
+    --use-all-datablocks \
+    ${1+"$@"}

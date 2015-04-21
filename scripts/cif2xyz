@@ -1,0 +1,158 @@
+#! /bin/sh
+#!perl -w # --*- Perl -*--
+eval 'exec perl -x $0 ${1+"$@"}'
+    if 0;
+#------------------------------------------------------------------------------
+#$Author$
+#$Date$ 
+#$Revision$
+#$URL$
+#------------------------------------------------------------------------------
+#*
+#  Read CIF files and print atom coordinates in XYZ format.
+#**
+
+use strict;
+use warnings;
+use COD::AtomProperties;
+use COD::CIFParser::CIFParser;
+use COD::CIFData::CIFSymmetryGenerator;
+use COD::Fractional;
+use COD::SOptions;
+use COD::SUsage;
+use COD::UserMessage;
+use COD::Spacegroups::SymopAlgebra qw(symop_vector_mul);
+
+my $print_radii = 0;
+my $use_parser = "c"; # Used CIF parser
+
+@ARGV = getOptions(
+#* Usage:
+#*     $0 --options input.cif
+#*
+#* Options:
+#*     --print-radii
+#*         Append covalent radii to the atom coordinates.
+#*
+#*     --no-print-radii, --dont-print-radii, --xyz-only
+#*         Print only Cartesian XYZ coordinates for input atoms
+#*         (default behaviour)
+#*
+#*     --use-perl-parser
+#*     --use-c-parser
+#*         Specify parser to parse CIF files. C parser is default.
+#*
+#*     --help, --usage
+#*         Print a short usage message (this message) and exit.
+#**
+    "--print-radii" => sub{ $print_radii = 1 },
+    "--no-print-radii,--dont-print-radii" => sub{ $print_radii = 0 },
+    "--xyz-only" => sub{ $print_radii = 0 },
+
+    "--use-perl-parser" => sub{ $use_parser = "perl" },
+    "--use-c-parser"    => sub{ $use_parser = "c" },
+
+    "--help,--usage" => sub { usage; exit },
+);
+
+@ARGV = ("-") unless @ARGV;
+
+for my $filename (@ARGV) {
+
+    my( $data, $nerrors );
+    if( $use_parser eq "perl" ) {
+        my $parser = new COD::CIFParser::CIFParser;
+        $data = $parser->Run($filename);
+        if( defined $parser->YYData->{ERRCOUNT} ) {
+            $nerrors = $parser->YYData->{ERRCOUNT};
+        }            
+    } else {
+        require COD::CCIFParser::CCIFParser;
+        ( $data, $nerrors ) = COD::CCIFParser::CCIFParser::parse($filename);
+    }
+
+    if( defined $nerrors && $nerrors > 0 ) {
+        error( $0, $filename, undef,
+               "$nerrors error(s) encountered while " .
+               "parsing file '$filename'" );
+        exit(255);
+    }
+
+    if( !@{$data} || !defined $data->[0] || !defined $data->[0]{name} ) {
+        warning( $0, $filename, undef, "file '$filename' seems to be empty" );
+        next;
+    }
+
+    for my $dataset (@$data) {
+        my $values = $dataset->{values};
+
+        my @cell = get_cell( $values, $filename, $dataset->{name} );
+
+        my $f2o = symop_ortho_from_fract(@cell);
+        # perform fractional to orthogonal conversion here
+
+        my $atom_site_tag;
+
+        if( exists $values->{"_atom_site_label"} ) {
+            $atom_site_tag = "_atom_site_label";
+        } elsif( exists $values->{"_atom_site_type_symbol"} ) {
+            $atom_site_tag = "_atom_site_type_symbol";
+
+            error( $0, $filename, $dataset->{name},
+                   "_atom_site_label tag was not found. " .
+                   "A serial number will be appended " .
+                   "to _atom_site_type_symbol to make atom labels" );
+        } else {
+            error( $0, $filename, $dataset->{name},
+                   "neither _atom_site_type_symbol nor _atom_site_label " .
+                   "were found" );
+            return undef;
+        }
+
+        my $atom_labels = $values->{$atom_site_tag};
+
+        for (my $i = 0; $i < @{$atom_labels}; $i++) {
+            my $covalent_radius;
+            if( $print_radii ) {
+                my $atom_type;
+                if( exists $values->{_atom_site_type_symbol} &&
+                    defined $values->{_atom_site_type_symbol}[$i] &&
+                    $values->{_atom_site_type_symbol}[$i] ne '?' ) {
+                    $atom_type = $values->{_atom_site_type_symbol}[$i];
+                    if( $atom_type =~ m/^([A-Za-z]{1,2})/ ) {
+                        $atom_type = ucfirst( lc( $1 ));
+                    }
+                } else {
+                    if( $values->{_atom_site_label}[$i] =~
+                        m/^([A-Za-z]{1,2})/ ) {
+                        $atom_type = ucfirst( lc( $1 ));
+                    } else {
+                        die( "could not determine atom type for atom " .
+                             "'$values->{_atom_site_label}[$i]'" );
+                    }
+                }
+                if( !exists $COD::AtomProperties::atoms{$atom_type} ) {
+                    die( "unknown atom type: '$atom_type'" );
+                }
+                $covalent_radius =
+                    $COD::AtomProperties::atoms{$atom_type}->{covalent_radius};
+            }
+
+            my @atom_xyz;
+            for my $cif_fract ( "_atom_site_fract_x",
+                                "_atom_site_fract_y",
+                                "_atom_site_fract_z",)
+            {
+                push( @atom_xyz, $values->{$cif_fract}[$i] );
+                $atom_xyz[-1] =~ s/\(\d+\)$//;
+            }
+            my @coordinates_ortho = mat_vect_mul( $f2o, \@atom_xyz );
+
+            print $coordinates_ortho[0], " ",
+                  $coordinates_ortho[1], " ",
+                  $coordinates_ortho[2], " ",
+                  ($print_radii ? "$covalent_radius " : ""),
+                  '# ', $atom_labels->[$i], "\n";
+        }
+    }
+}
