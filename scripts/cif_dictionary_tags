@@ -1,0 +1,54 @@
+#! /bin/sh
+#!perl -w # --*- Perl -*--
+eval 'exec perl -x $0 ${1+"$@"}'
+    if 0;
+#------------------------------------------------------------------------------
+#$Author$
+#$Date$ 
+#$Revision$
+#$URL$
+#------------------------------------------------------------------------------
+#*
+#  Parse a CIF file
+#**
+
+use strict;
+use COD::CIFParser::CIFParser;
+use COD::ShowStruct;
+
+my $filename = shift(@ARGV);
+
+my $parser = new COD::CIFParser::CIFParser;
+
+my $data = $parser->Run($filename);
+
+
+for my $dataset (@$data) {
+    my $values = $dataset->{values};
+
+    if( defined $values && defined $values->{_name} ) {
+
+        my @name = @{$values->{_name}};
+
+        for my $name (@name) {
+            print "$name\n";
+        }
+    }
+
+    my $save_blocks = $dataset->{save_blocks};
+
+    if( defined $save_blocks ) {
+        for my $save_block (@{$save_blocks}) {
+            my $values = $save_block->{values};
+            
+            if( defined $values && defined $values->{"_item.name"} ) {
+
+                my @name = @{$values->{"_item.name"}};
+
+                for my $name (@name) {
+                    print "$name\n";
+                }
+            }
+        }
+    }
+}

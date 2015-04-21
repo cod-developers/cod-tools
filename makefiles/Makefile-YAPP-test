@@ -1,4 +1,10 @@
 
+MAKECONF_FILES = ${filter-out %~, ${wildcard Makeconf*}}
+
+ifneq ("${MAKECONF_FILES}","")
+include ${MAKECONF_FILES}
+endif
+
 TEST_DIR = tests
 OUTP_DIR = outputs
 
@@ -30,7 +36,7 @@ run: ${PM_FILES} ${WORK_TESTS}
 	( \
 		echo === $$file ===; \
 		set -x; \
-		perl -e 'use ${TEST_MODULE:%.pm=%}; my $$p=new ${TEST_MODULE:%.pm=%}; $$p->Run' \
+		perl -e 'use ${PKG_PREFIX}${TEST_MODULE:%.pm=%}; my $$p=new ${PKG_PREFIX}${TEST_MODULE:%.pm=%}; $$p->Run' \
 			< $$file \
 	); \
 	done
@@ -40,7 +46,7 @@ times: ${PM_FILES} ${WORK_TESTS}
 	( \
 		echo === $$file ===; \
 		set -x; \
-		time perl -e 'use ${TEST_MODULE:%.pm=%}; my $$p=new ${TEST_MODULE:%.pm=%}; $$p->Run' \
+		time perl -e 'use ${PKG_PREFIX}${TEST_MODULE:%.pm=%}; my $$p=new ${PKG_PREFIX}${TEST_MODULE:%.pm=%}; $$p->Run' \
 			< $$file \
 	); \
 	done
@@ -54,11 +60,11 @@ test: ${DIFF_FILES}
 out outputs: ${OUTP_FILES}
 
 %.pm: %.yp
-	yapp -v -o $@ $<
+	yapp -v -m ${PKG_PREFIX}$* -o $@ $<
 
 ${OUTP_DIR}/%.diff: ${TEST_MODULE} ${TEST_DIR}/%.inp
 	-@printf "%-30s " "$*:" ; \
-	perl -e 'use ${TEST_MODULE:%.pm=%}; my $$p=new ${TEST_MODULE:%.pm=%}; $$p->Run' \
+	perl -e 'use ${PKG_PREFIX}${TEST_MODULE:%.pm=%}; my $$p=new ${PKG_PREFIX}${TEST_MODULE:%.pm=%}; $$p->Run' \
          < ${word 2, $^} 2>&1 \
      | diff ${OUTP_DIR}/$*.out - \
      > $@ ; \
@@ -67,7 +73,7 @@ ${OUTP_DIR}/%.diff: ${TEST_MODULE} ${TEST_DIR}/%.inp
 ${OUTP_DIR}/%.out: ${TEST_MODULE} ${TEST_DIR}/%.inp
 	-@test -f $@ || echo "$@:"
 	-@test -f $@ || \
-	perl -e 'use ${TEST_MODULE:%.pm=%}; my $$p=new ${TEST_MODULE:%.pm=%}; $$p->Run' \
+	perl -e 'use ${PKG_PREFIX}${TEST_MODULE:%.pm=%}; my $$p=new ${PKG_PREFIX}${TEST_MODULE:%.pm=%}; $$p->Run' \
 	< ${word 2, $^} 2>&1 \
 	| tee $@
 	-@touch $@

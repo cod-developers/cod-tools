@@ -1,0 +1,1 @@
+Tests --help option.

@@ -1,0 +1,208 @@
+#!/bin/sh
+#!perl -w # --*- Perl -*--
+eval 'exec perl -x $0 ${1+"$@"}'
+    if 0;
+#-----------------------------------------------------------------------
+#$Author$
+#$Date$ 
+#$Revision$
+#$URL$
+#------------------------------------------------------------------------
+#*
+# Split CIF files into separate files with one data_ section each.
+#
+# This script parses given CIF files to separate the datablocks, so is
+# capable of splitting non-correctly formatted and nested CIF files.
+#**
+
+use strict;
+use COD::CIFTags::CIFTagCanonicalNames;
+use COD::CIFTags::CIFTagPrint;
+use File::Basename;
+use COD::SOptions;
+use COD::SUsage;
+use COD::UserMessage;
+
+my $verbose = 1;
+my $output_dir = "";
+my $output_prefixed = 0;
+my $output_tar = 0;
+my $cif_header_file;
+
+my $use_parser = "c";
+
+@ARGV = getOptions(
+#** -o, --output-dir out/
+#**     Put all split files into the directory out/.
+#**
+#** -p, --prefixed, --output-prefixed
+#**     Print splitted datablocks to the STDOUT, each line prefixed
+#**     by the datablock name. Do not create any files.
+#**
+#** --output-tar
+#**     Produce TAR archive with split files to the STDOUT.
+#**
+#** -h, --add-cif-header header_file.cif
+#**     Comments from the beginning of this file wil be prepended
+#**     to each of the output files.
+#**
+#** -v, --verbose      print names of the generated files to STDERR
+#** -q, --quiet        do not print file names to STDERR
+#**
+#** --use-perl-parser
+#**    Use Perl parser for CIF parsing.
+#**
+#** --use-c-parser
+#**    Use Perl & C parser for CIF parsing.
+#**
+#** --help,--usage     print short usage message (this message) and exit
+
+   "-o,--output-dir" => sub { $output_dir = get_value(),
+                              $output_prefixed = 0;
+                              $output_tar = 0 },
+   "-p,--prefixed,--output-prefixed" => sub { $output_prefixed = 1;
+                                              $output_tar = 0 },
+   "--output-tar"    => sub { $output_tar = 1;
+                              $output_prefixed = 0 },
+   "-h,--add-cif-header" => \$cif_header_file,
+   "-v,--verbose"    => sub { $verbose = 1 },
+   "-q,--quiet"      => sub { $verbose = 0 },
+   "--help,--usage"  => sub { usage; exit },
+);
+
+my $cif_header;
+
+if( $cif_header_file ) {
+    open( HDR, "$cif_header_file" ) or
+        die( "$0: could not open header file '$cif_header_file' " .
+             "for input - $!" );
+
+    $cif_header = "";
+    while( <HDR> ) {
+        last unless /^#/;
+        $cif_header .= $_;
+    }
+
+    close( HDR ) or
+        die( "$0: error reading header file '$cif_header_file' - $!" );
+}
+
+$output_dir =~ s./+$..;
+
+my %files = ();
+my $tar;
+if( $output_tar ) {
+    require Archive::Tar;
+    $tar = Archive::Tar->new;
+}
+
+@ARGV = ("-") unless @ARGV;
+
+for my $filename (@ARGV) {
+    my $data;
+    my $error_count;
+    if( $use_parser eq "perl" ) {
+        require CIFParser;
+        my $parser = new COD::CIFParser::CIFParser;
+        $data = $parser->Run($filename);
+
+        if( defined $parser->YYData->{ERRCOUNT} ) {
+            $error_count = $parser->YYData->{ERRCOUNT};
+        }
+    } else {
+        require COD::CCIFParser::CCIFParser;
+        ( $data, $error_count ) = COD::CCIFParser::CCIFParser::parse($filename);
+    }
+
+    if( defined $error_count && $error_count > 0 ) {
+        error( $0, $filename, undef,
+               $error_count . " error(s) encountered while parsing" );
+        next;
+    }
+
+    canonicalize_all_names( $data );
+
+    my $data_global;
+    for my $dataset (@$data) {
+        my $dataname = $dataset->{name};
+
+        if( $dataname eq 'global' ) {
+            if( !$data_global ) {
+                $data_global = $dataset;
+            } else {
+                warning( $0, $filename, $dataname,
+                         "second data_global encountered -- skipping" );
+            }
+            next;
+        }
+
+        my $data_global_stdout;
+        if( $data_global ) {
+            local *STDOUT;
+            open( STDOUT, '>', \$data_global_stdout );
+            print_cif( $data_global,
+                       {
+                            preserve_loop_order => 1,
+                            keep_tag_order => 1
+                       }
+                     );
+        }
+
+        my $print_cif_stdout;
+        do {
+            local *STDOUT;
+            open( STDOUT, '>', \$print_cif_stdout );
+            print_cif( $dataset,
+                       {
+                            preserve_loop_order => 1,
+                            keep_tag_order => 1
+                       }
+                     );
+        };
+
+        my $cif_contents = "";
+        $cif_contents .= $cif_header if $cif_header;
+        $cif_contents .= $data_global_stdout if $data_global;
+        $cif_contents .= $print_cif_stdout;
+
+        if( $output_prefixed ) {
+            map { print $dataset->{name}, "\t", $_, "\n" }
+                    split( "\n", $cif_contents );
+        } else {
+            my $suffix = $dataname;
+            $suffix =~ s/[^-+._a-zA-Z0-9]/_/g;
+
+            my $basename = basename( $filename, ".cif" );
+            my $output_file;
+            if( $basename ne "-" ) {
+                $output_file = "${basename}_${suffix}.cif";
+            } else {
+                $output_file = "${suffix}.cif";
+            }
+            if( $output_tar ) {
+                $tar->add_data( $output_file, $cif_contents );
+            } else {
+                if( $output_dir ne "" ) {
+                    $output_file = $output_dir . "/" . $output_file;
+                }
+                if( !exists $files{$output_file} ) {
+                    $files{$output_file} = $output_file;
+
+                    print STDERR "$output_file\n" if $verbose;
+                    open( STDOUT, ">$output_file" ) or
+                        die( "Could not open file '${output_file}' for writing: $!" );
+                    print $cif_contents;
+                } else {
+                    open( STDOUT, ">>$output_file" ) or
+                        die( "Could not open file '${output_file}' for appending: $!" );
+                    
+                    print STDERR "$output_file (appending)\n" if $verbose;
+                }
+            }
+        }
+    }
+}
+
+if( $output_tar ) {
+    print $tar->write();
+}

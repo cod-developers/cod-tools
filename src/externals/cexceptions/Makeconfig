@@ -1,0 +1,35 @@
+#---*- Makefile -*-------------------------------------------------------------
+#$Author: $
+#$Revision: -1 $
+#$Date: $
+#$URL: svn+ssh://saulius-grazulis.lt/home/saulius/svn-repositories/libraries/trunk/c/cexceptions/Makeconfig.example $
+#------------------------------------------------------------------------------
+#
+# The following variables of the main Makefile can be overriden here:
+
+SO_MAJOR = 0
+SO_MINOR = 01
+
+SO_VERSION = ${SO_MAJOR}.${SO_MINOR}
+
+#------------------------------------------------------------------------------
+
+PWD         = ${shell pwd}
+PACKAGE     = ${notdir ${PWD}}
+LIBNAME     = ${addprefix lib, ${PACKAGE}}
+
+DATE        := ${shell date +%Y.%m.%d}
+PREFIX      = ${HOME}/install/${PACKAGE}/${PACKAGE}-${SO_VERSION}-${DATE}
+INCLUDE_DIR = ${PREFIX}/include
+LIB_DIR     = ${PREFIX}/lib
+
+#------------------------------------------------------------------------------
+
+## EXTRA_INC_DIRS = ${HOME}/include
+## EXTRA_LIB_DIRS = ${HOME}/lib
+
+EXTRA_INC_DIRS = ../cexceptions
+EXTRA_LIB_DIRS = ../cexceptions/lib
+
+EXTRA_INC_CFLAGS  = ${addprefix -I, ${EXTRA_INC_DIRS}}
+EXTRA_LIB_LDFLAGS = ${addprefix -L, ${EXTRA_LIB_DIRS}}

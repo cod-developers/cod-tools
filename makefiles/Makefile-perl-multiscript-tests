@@ -1,8 +1,8 @@
 #------------------------------------------------------------------------------
-#$Author: saulius $
+#$Author$
 #$Revision$
 #$Date$
-#$URL: svn+ssh://kolibris.ibt.lt/home/saulius/svn-repositories/compilers/MasterMakefile $
+#$URL$
 #------------------------------------------------------------------------------
 
 MAKECONF_FILES = ${filter-out %~, ${wildcard Makeconf*}}
@@ -11,22 +11,26 @@ ifneq ("${MAKECONF_FILES}","")
 include ${MAKECONF_FILES}
 endif
 
-CWD := ${shell pwd}
-TOP := ${dir ${CWD}}
+CWD ?= ${shell pwd}
+TOP ?= ${CWD}
 
-ifeq ("${TEST_INSTALL}","")
-PERL5LIB := ${CWD}/lib/perl5:${PERL5LIB}
 PERL5LIB := ${TOP}/lib/perl5:${PERL5LIB}
 export PERL5LIB
 
-PATH := ${CWD}:${TOP}/CIFParser-c:${PATH}
+PATH := ${TOP}/scripts:${TOP}/src/components/codcif:${PATH}
 export PATH
 
+ifeq ("${TEST_INSTALL}","")
 BIN_DIR = ./
 endif
 
 YAPP_SOURCES := $(wildcard $(addsuffix /*.yp, ${YAPP_MODULE_DIRS}))
 YAPP_MODULES := ${YAPP_SOURCES:%.yp=%.pm}
+
+SWIG_SOURCES := $(wildcard $(addsuffix /*.i, ${SWIG_MODULE_DIRS}))
+SWIG_MODULES := ${SWIG_SOURCES:%.i=%.pm}
+
+COMPILED_PERL_MODULES := ${YAPP_MODULES} ${SWIG_MODULES}
 
 .PRECIOUS: %.pm
 
@@ -44,12 +48,17 @@ all: tests
 #------------------------------------------------------------------------------
 
 %.pm: %.yp
-	yapp -o $@ $<
+	${MAKE} -C $(dir $@) $(notdir $@) tests
+
+%.pm: %.c %.i
+	${MAKE} -C $(@D) $(@F)
 
 # Rule to make required library files
 
 %.a:
-	${MAKE} -C ${dir $@} ${notdir $@}
+	${MAKE} -C $(dir $(patsubst %/,%,${dir $@})) \
+		$(notdir $(patsubst %/,%,${dir $@}))/${notdir $@}
+	${MAKE} -C $(dir $(patsubst %/,%,${dir $@})) tests
 
 #------------------------------------------------------------------------------
 
@@ -61,24 +70,21 @@ endif
 
 #------------------------------------------------------------------------------
 
-# When 'make test' is invoked, a TARGET executable will be run for
-# every file in inputs that has extension ${EXT}. The outputs will be
-# compared with the sample outputs files in ./outputs/*.out, and any
-# differences will be recorded in ./outputs/*.diff #
+SCRIPT_DIR = scripts/
 
-TEST_DIR       = ./inputs
-OUTPUT_DIR     = ./outputs
+## TEST_DIR       = ./tests/inputs
+OUTPUT_DIR     = ./tests/outputs
 DESC_EXT       = tst
 DIFF_EXT       = diff
-
-TEST_FILES = ${wildcard ${TEST_DIR}/*${EXT}}
-RES_FILES  = ${patsubst ${TEST_DIR}/%${EXT},${OUTPUT_DIR}/%.out,${TEST_FILES}}
-DIFF_FILES = ${patsubst ${TEST_DIR}/%${EXT},${OUTPUT_DIR}/%.diff,${TEST_FILES}}
+## 
+## TEST_FILES = ${wildcard ${TEST_DIR}/*${EXT}}
+## RES_FILES  = ${patsubst ${TEST_DIR}/%${EXT},${OUTPUT_DIR}/%.out,${TEST_FILES}}
+## DIFF_FILES = ${patsubst ${TEST_DIR}/%${EXT},${OUTPUT_DIR}/%.diff,${TEST_FILES}}
 
 
 INP            = .inp
 OPT            = .opt
-SCRIPT_TST_DIR = ./tests
+SCRIPT_TST_DIR = ./tests/cases
 SCRIPT_INPUTS  = ${wildcard ${SCRIPT_TST_DIR}/*${INP}}
 SCRIPT_OPTIONS = ${wildcard ${SCRIPT_TST_DIR}/*${OPT}}
 SCRIPT_TESTS   = $(sort ${SCRIPT_INPUTS:%${INP}=%} ${SCRIPT_OPTIONS:%${OPT}=%})
@@ -89,8 +95,8 @@ SCRIPT_DIFFS   = ${SCRIPT_TESTS:${SCRIPT_TST_DIR}/%=${OUTPUT_DIR}/%.diff}
 # Outputs and tests from the shell-driven tests
 #
 
-SHELL_TSTDIR = ./shtests
-SHELL_OUTDIR = ./shoutputs
+SHELL_TSTDIR = ./tests/shtests
+SHELL_OUTDIR = ./tests/shoutputs
 
 SHELL_TESTS   = ${wildcard ${SHELL_TSTDIR}/*.sh}
 SHELL_BASES   = ${notdir ${SHELL_TESTS}}
@@ -107,7 +113,10 @@ ALL_INPUTS = $(wildcard ${SCRIPT_TST_DIR}/*.*)
 .diff.depend: ${ALL_INPUTS}
 	@perl -le \
 		'for(@ARGV){ print "${OUTPUT_DIR}/",$$1,"_",$$2,".diff: ",$$1 if m|/(.*?)_(\d{2,4})\.\w{3}$$| }' \
-	$^ | sort | uniq \
+	$^ \
+	| sed 's,: cases/,: scripts/,' \
+	| sed 's,tests/outputs/cases/,tests/outputs/,' \
+	| sort | uniq \
 	> $@
 
 #------------------------------------------------------------------------------
@@ -119,7 +128,8 @@ perl -pe 's/Id: [-\w]+ \d+ [-\d]+ [:\dZ]+ \w+/Id: <script_name> <revision_nr> <d
 | perl -pe 's/(Use of uninitialized value in pattern match \(m\/\/\) at )([a-zA-Z0-9\-\/]+)\/([a-zA-Z0-9\-\.]+) line \d+, <([^>])+> line \d+/$$1$$3 line <line_no>/g' \
 | perl -pe 's/OpenBabel\d+.*/OpenBabel9999999999D/' \
 | perl -pe 's/(_cod_hold_until_date .* )(\d{4}-\d{2}-\d{2})/$$1<date>/' \
-| perl -pe 's/^(CIF\s+_journal_year\s+)\d{4}/$$1<year>/'
+| perl -pe 's/^(CIF\s+_journal_year\s+)\d{4}/$$1<year>/' \
+| perl -pe 's|^/usr/bin|.|'
 endef
 
 define buffer_output
@@ -128,39 +138,20 @@ endef
 
 .PHONY: out outputs test
 
-out outputs: ${RES_FILES} ${TST_OUTPUTS} ${SCRIPT_OUTPUTS}
+out outputs: ${TST_OUTPUTS} ${SCRIPT_OUTPUTS}
 
-test: ${DIFF_FILES} ${TST_DIFFS} ${SCRIPT_DIFFS}
+test: ${TST_DIFFS} ${SCRIPT_DIFFS}
 
 # Rule to ensure that libraries, required for tested scripts, are compiled
 
-${DIFF_FILES}: ${LOCAL_LIB_FILES}
-
-${TARGET}: ${YAPP_MODULES}
-
-${OUTPUT_DIR}/%.diff: ${TARGET} ${TEST_DIR}/%${EXT}
-	-@printf "%-30s " "$*:" ; \
-	( ${BIN_DIR}$< ${word 2, $^} ${TEST_OPTIONS} \
-	| ${buffer_output} ) 2>&1 \
-	| ${filter_perl_messages} \
-	| diff ${OUTPUT_DIR}/$*.out - > $@ ; \
-	if [ $$? = 0 ]; then echo "OK"; else echo "FAILED:"; cat $@; fi
-
-${OUTPUT_DIR}/%.out: ${TARGET} ${TEST_DIR}/%${EXT}
-	-@test -f $@ || echo "$@:"
-	-@test -f $@ || \
-	( ${BIN_DIR}$< ${word 2, $^} ${TEST_OPTIONS} \
-	| ${buffer_output} ) 2>&1 \
-	| ${filter_perl_messages} \
-	| tee $@
-	-@touch $@
+${TST_DIFFS} ${SCRIPT_DIFFS}: ${LOCAL_LIB_FILES}
 
 # Rules to run script-specific tests
 
 ${OUTPUT_DIR}/%.diff: ${SCRIPT_TST_DIR}/%${INP} ${SCRIPT_TST_DIR}/%${OPT} \
-                      ${SCRIPT_FILES} ${YAPP_MODULES}
+                      ${SCRIPT_FILES} ${COMPILED_PERL_MODULES}
 	-@printf "%-30s " "$<:" ; \
-	( ${BIN_DIR}$(shell echo $* | sed -e 's/_[0-9]*$$//') \
+	( ${SCRIPT_DIR}$(shell echo $* | sed -e 's/_[0-9]*$$//') \
 	    $(shell grep -v '^#' ${word 2, $^}) \
 	    $< \
 	| ${buffer_output} ) 2>&1 \
@@ -168,27 +159,27 @@ ${OUTPUT_DIR}/%.diff: ${SCRIPT_TST_DIR}/%${INP} ${SCRIPT_TST_DIR}/%${OPT} \
 	| diff ${OUTPUT_DIR}/$*.out - > $@ ; \
 	if [ $$? = 0 ]; then echo "OK"; else echo "FAILED:"; cat $@; fi
 
-${OUTPUT_DIR}/%.diff: ${SCRIPT_TST_DIR}/%${INP} ${SCRIPT_FILES} ${YAPP_MODULES}
+${OUTPUT_DIR}/%.diff: ${SCRIPT_TST_DIR}/%${INP} ${SCRIPT_FILES} ${COMPILED_PERL_MODULES}
 	-@printf "%-30s " "$<:" ; \
-	( ${BIN_DIR}$(shell echo $* | sed -e 's/_[0-9]*$$//') $< \
+	( ${SCRIPT_DIR}$(shell echo $* | sed -e 's/_[0-9]*$$//') $< \
 	| ${buffer_output} ) 2>&1 \
 	| ${filter_perl_messages} \
 	| diff ${OUTPUT_DIR}/$*.out - > $@ ; \
 	if [ $$? = 0 ]; then echo "OK"; else echo "FAILED:"; cat $@; fi
 
-${OUTPUT_DIR}/%.diff: ${SCRIPT_TST_DIR}/%${OPT} ${SCRIPT_FILES} ${YAPP_MODULES}
+${OUTPUT_DIR}/%.diff: ${SCRIPT_TST_DIR}/%${OPT} ${SCRIPT_FILES} ${COMPILED_PERL_MODULES}
 	-@printf "%-30s " "$<:" ; \
-	( ${BIN_DIR}$(shell echo $* | sed -e 's/_[0-9]*$$//') \
+	( ${SCRIPT_DIR}$(shell echo $* | sed -e 's/_[0-9]*$$//') \
 	     $(shell grep -v '^#' ${word 1, $^}) \
 	| ${buffer_output} ) 2>&1 \
 	| ${filter_perl_messages} \
 	| diff ${OUTPUT_DIR}/$*.out - > $@ ; \
 	if [ $$? = 0 ]; then echo "OK"; else echo "FAILED:"; cat $@; fi
 
-${OUTPUT_DIR}/%.out: ${SCRIPT_TST_DIR}/%${INP} ${SCRIPT_TST_DIR}/%${OPT} ${YAPP_MODULES}
+${OUTPUT_DIR}/%.out: ${SCRIPT_TST_DIR}/%${INP} ${SCRIPT_TST_DIR}/%${OPT} ${COMPILED_PERL_MODULES}
 	-@test -f $@ || echo "$@:"
 	-@test -f $@ || \
-	( ${BIN_DIR}$(shell echo $* | sed -e 's/_[0-9]*$$//') \
+	( ${SCRIPT_DIR}$(shell echo $* | sed -e 's/_[0-9]*$$//') \
 	    $(shell grep -v '^#' ${word 2, $^}) \
 	    $< \
 	| ${buffer_output} ) 2>&1 \
@@ -196,20 +187,20 @@ ${OUTPUT_DIR}/%.out: ${SCRIPT_TST_DIR}/%${INP} ${SCRIPT_TST_DIR}/%${OPT} ${YAPP_
 	| tee $@
 	-@touch $@
 
-${OUTPUT_DIR}/%.out: ${SCRIPT_TST_DIR}/%${INP} ${YAPP_MODULES}
+${OUTPUT_DIR}/%.out: ${SCRIPT_TST_DIR}/%${INP} ${COMPILED_PERL_MODULES}
 	-@test -f $@ || echo "$@:"
 	-@test -f $@ || \
-	( ${BIN_DIR}$(shell echo $* | sed -e 's/_[0-9]*$$//') \
+	( ${SCRIPT_DIR}$(shell echo $* | sed -e 's/_[0-9]*$$//') \
 	    $< \
 	| ${buffer_output} ) 2>&1 \
 	| ${filter_perl_messages} \
 	| tee $@
 	-@touch $@
 
-${OUTPUT_DIR}/%.out: ${SCRIPT_TST_DIR}/%${OPT} ${YAPP_MODULES}
+${OUTPUT_DIR}/%.out: ${SCRIPT_TST_DIR}/%${OPT} ${COMPILED_PERL_MODULES}
 	-@test -f $@ || echo "$@:"
 	-@test -f $@ || \
-	( ${BIN_DIR}$(shell echo $* | sed -e 's/_[0-9]*$$//') \
+	( ${SCRIPT_DIR}$(shell echo $* | sed -e 's/_[0-9]*$$//') \
 	    $(shell grep -v '^#' ${word 1, $^}) \
 	| ${buffer_output} ) 2>&1 \
 	| ${filter_perl_messages} \
@@ -218,16 +209,16 @@ ${OUTPUT_DIR}/%.out: ${SCRIPT_TST_DIR}/%${OPT} ${YAPP_MODULES}
 
 # Rules to run standalone executable test drives:
 
-${TST_OUT_DIR}/%.out: ${TST_EXE_DIR}/% ${YAPP_MODULES}
+${TST_OUT_DIR}/%.out: ${TST_EXE_DIR}/% ${COMPILED_PERL_MODULES}
 	-@test -f $@ || echo "$@:"
 	-@test -f $@ || \
 	( $< | ${buffer_output} ) 2>&1 \
 	| ${filter_perl_messages} | tee $@
 	-@touch $@
 
-${TST_OUT_DIR}/%.diff: ${TST_EXE_DIR}/% ${YAPP_MODULES}
+${TST_OUT_DIR}/%.diff: ${TST_EXE_DIR}/% ${COMPILED_PERL_MODULES}
 	-@printf "%-30s " "$*:" ; \
-	( ${BIN_DIR}$< \
+	( ${SCRIPT_DIR}$< \
 	| ${buffer_output} ) 2>&1 \
 	| ${filter_perl_messages} \
 	| diff ${TST_OUT_DIR}/$*.out - > $@ ; \
@@ -239,21 +230,26 @@ shoutputs shout: ${SHELL_OUTPUTS}
 
 shtest shtests: ${SHELL_DIFFS}
 
-${SHELL_OUTDIR}/%.out: ${SHELL_TSTDIR}/%.sh ${TARGET} ${YAPP_MODULES}
+${SHELL_OUTDIR}/%.out: ${SHELL_TSTDIR}/%.sh ${COMPILED_PERL_MODULES}
 	-@test -f $@ || echo "$@:"
 	-@test -f $@ || \
-	( $< ./${TARGET} \
+	( $< \
 	| ${buffer_output} ) 2>&1 \
 	| ${filter_perl_messages} | tee $@
 	-@touch $@
 
-${SHELL_OUTDIR}/%.diff: ${SHELL_TSTDIR}/%.sh ${TARGET} ${YAPP_MODULES}
+${SHELL_OUTDIR}/%.diff: ${SHELL_TSTDIR}/%.sh ${COMPILED_PERL_MODULES}
 	-@printf "%-30s " "$*:" ; \
-	( $< ./${TARGET} \
+	if [ ! -f ${SHELL_TSTDIR}/$*.chk ] || ${SHELL_TSTDIR}/$*.chk; \
+	then \
+	( $< \
 	| ${buffer_output} ) 2>&1 \
 	| ${filter_perl_messages} \
 	| diff ${SHELL_OUTDIR}/$*.out - > $@ ; \
-	if [ $$? = 0 ]; then echo "OK"; else echo "FAILED:"; cat $@; fi
+	if [ $$? = 0 ]; then echo "OK"; else echo "FAILED:"; cat $@; fi; \
+	else \
+	touch $@; \
+	fi
 
 .PHONY: tests alltests
 
@@ -287,10 +283,9 @@ blame:
 
 clean:
 	rm -f *~
-	rm -f ${DIFF_FILES}
 	rm -f ${SCRIPT_DIFFS}
 	rm -f ${TST_DIFFS}
 	rm -f ${SHELL_DIFFS}
 
 cleanAll: clean ${LOCAL_CLEAN_TARGETS}
-	rm -f ${YAPP_MODULES}
+	rm -f ${COMPILED_PERL_MODULES}
