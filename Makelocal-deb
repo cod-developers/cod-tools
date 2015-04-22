@@ -17,6 +17,7 @@ DEBIAN    = debian
 CHANGELOG = ${DEBIAN}/changelog
 CONTROL   = ${DEBIAN}/control
 COPYRIGHT = ${DEBIAN}/copyright
+MAN_DIR   = ${DEBIAN}/man
 
 # Taking the dependencies from {build,run}.sh:
 
@@ -51,6 +52,8 @@ PYTHON_LIB_DIR = ${LIB_DIR}/python2.7
 INSTALLED_DIRS = ${BIN_DIR} ${PERL5_LIB_DIR} \
                  $(dir ${PERL5_LIBS:src/%=${PREFIX}/%}) \
                  $(dir ${PYTHON_LIBS:src/%=${PREFIX}/%})
+
+MAN_FILES = ${PERL5_BINS:scripts/%=${MAN_DIR}/%.1}
 
 define newline
 
@@ -92,7 +95,7 @@ ${COPYRIGHT}:
 build:
 	$(MAKE) -C src/
 
-deb: build ${CHANGELOG} ${CONTROL} ${COPYRIGHT}
+deb: build ${CHANGELOG} ${CONTROL} ${COPYRIGHT} ${MAN_FILES}
 	fakeroot debian/rules binary
 
 install: build installdirs
@@ -107,6 +110,9 @@ installdirs:
 	do \
 	    test -d $$i || mkdir -p $$i; \
 	done
+
+${MAN_DIR}/%.1: scripts/%
+	-help2man $< --bugs-email ${AUTHOR_EMAIL} > $@
 
 testinstall:
 	$(MAKE) -C perl-scripts tests TEST_INSTALL=1
