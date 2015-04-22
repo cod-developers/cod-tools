@@ -27,11 +27,22 @@ our $maxIteration = 100;
 
 require Exporter;
 our @ISA = qw(Exporter);
-our @EXPORT_OK = qw( overlay_atoms );
+our @EXPORT_OK = qw( overlay_atoms overlay_points );
 
-sub overlay_atoms($$$);
+sub overlay_atoms($$);
+sub overlay_points($$$);
 
-sub overlay_atoms($$$)
+sub overlay_atoms($$)
+{
+    my ( $atoms1, $atoms2 ) = @_;
+
+    my $set1 = [ map {$_->{coordinates_ortho}} @$atoms1 ];
+    my $set2 = [ map {$_->{coordinates_ortho}} @$atoms2 ];
+
+    return overlay_points( $set1, $set2, {} );
+}
+
+sub overlay_points($$$)
 {
     my ( $set1, $set2, $centers ) = @_;
 

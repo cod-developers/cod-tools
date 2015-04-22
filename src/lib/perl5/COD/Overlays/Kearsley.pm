@@ -31,10 +31,41 @@ use COD::JacobiEigen qw(jacobi_eigenvv);
 
 require Exporter;
 our @ISA = qw(Exporter);
-our @EXPORT_OK = qw( overlay_atoms get_rotation_matrix );
+our @EXPORT_OK = qw( overlay_atoms overlay_points get_rotation_matrix );
 
-sub overlay_atoms($$$);
+sub overlay_atoms($$);
+sub overlay_points($$$);
 sub get_rotation_matrix($$);
+
+sub overlay_atoms($$);
+sub overlay_points($$$);
+
+##
+# Overlays two sets of atoms. A wrapper subroutine for overlay_points.
+#
+# @param $set1, $set2
+#       Sets of points to be superimposed. $set1 is superimposed on $set2.
+#
+# @returns $symop
+#       Rotation (r) and translation (t) matrix following the affine form:
+#       [
+#          [ r11 r12 r13 t1 ]
+#          [ r21 r22 r23 t2 ]
+#          [ r31 r32 r33 t3 ]
+#          [   0   0   0  1 ]
+#       ]
+# @returns $rmsd
+#       Minimal root mean square deviation between the two sets of points.
+##
+sub overlay_atoms($$)
+{
+    my ( $set1, $set2 ) = @_;
+
+    $set1 = [ map {$_->{coordinates_ortho}} @$set1 ];
+    $set2 = [ map {$_->{coordinates_ortho}} @$set2 ];
+
+    return overlay_points( $set1, $set2, {} );
+}
 
 ##
 # Constructs best operator matrix to superimpose two sets of points.
@@ -59,7 +90,7 @@ sub get_rotation_matrix($$);
 # @returns $rmsd
 #       Minimal root mean square deviation between the two sets of points.
 ##
-sub overlay_atoms($$$)
+sub overlay_points($$$)
 {
     my ( $set1, $set2, $centers ) = @_;
 
@@ -148,7 +179,7 @@ sub get_rotation_matrix($$)
     my $eigenvector = @$eigenvectors[$min];
     my $eigenvalue  = @$eigenvalues[$min];
 
-    my $rmsd = $eigenvalue > 0 ? sqrt($eigenvalue/$N) : undef;
+    my $rmsd = $eigenvalue > 0 ? sqrt(abs($eigenvalue)/$N) : undef;
 
     my $R = construct_rotation_matrix($eigenvector);
 
