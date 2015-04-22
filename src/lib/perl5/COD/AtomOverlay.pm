@@ -1,8 +1,8 @@
 #--*-perl-*-------------------------------------------------------------
-#$Author: saulius $
-#$Date: 2006-05-12 09:40:28 +0300 (Fri, 12 May 2006) $
-#$Revision: 1056 $
-#$URL: svn+ssh://lokys.ibt.lt/home/saulius/svn-repositories/cce/modules/PDBOverlay.pm $
+#$Author$
+#$Date$
+#$Revision$
+#$URL$
 #-----------------------------------------------------------------------
 #*
 # finds the best (in a least squares sence) symmetry operator to move
