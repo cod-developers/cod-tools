@@ -22,7 +22,7 @@
 
 # To test, run in trunk/"
 
-# PERL5LIB=lib/perl5/COD perl -MCell::Niggli::KG76 -e 'KG76::reduce(3,5.196,2,103+55/60,109+28/60,134+53/60)'
+# PERL5LIB=src/lib/perl5/ perl -MCOD::Cell::Niggli::KG76 -e 'COD::Cell::Niggli::KG76::reduce(3,5.196,2,103+55/60,109+28/60,134+53/60)'
 
 #**
 
