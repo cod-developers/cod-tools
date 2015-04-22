@@ -30,8 +30,8 @@ ${OBJ} ${SWIG_WRAPPER_OBJ}: ${SWIG_SOURCE} ${SWIG_WRAPPER}
 		-I/usr/local/include \
 		-I/usr/include/python2.7 -lpython2.7 \
 		-I${CIF_PARSER_C_DIR} \
-		-I${EXTERNALS_C_DIR}/cexceptions \
-		-I${EXTERNALS_C_DIR}/getoptions -c \
+		-I${CEXCEPTIONS_DIR} \
+		-I${GETOPTIONS_DIR} -c \
 		-O2 -fPIC \
 		$+
 
