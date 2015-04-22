@@ -8,11 +8,16 @@
 CWD := ${shell pwd}
 TOP := ${CWD}
 
-PERL_SOURCE_DIRS = ${TOP}/src/lib/perl5/COD
-PYTHON_SOURCE_DIRS = ${TOP}/src/lib/python2.7
+LOCAL_PERL_LIB   = ${TOP}/src/lib/perl5
+LOCAL_PYTHON_LIB = ${TOP}/src/lib/python2.7
+
+PERL_SOURCE_DIRS   = ${LOCAL_PERL_LIB}/COD
+PYTHON_SOURCE_DIRS = ${LOCAL_PYTHON_LIB}/cod
 
 YAPP_MODULE_DIRS := ${PERL_SOURCE_DIRS}/CIFParser ${PERL_SOURCE_DIRS}/Formulae
-SWIG_MODULE_DIRS := ${PERL_SOURCE_DIRS}/CCIFParser
+
+PERL_SWIG_MODULE_DIRS   := ${PERL_SOURCE_DIRS}/CCIFParser
+PYTHON_SWIG_MODULE_DIRS := ${PYTHON_SOURCE_DIRS}/ccifparser
 
 C_PARSER_LIB_DIR = ${TOP}/src/components/codcif
 LOCAL_LIB_FILES  = ${TOP}/src/externals/cexceptions/lib/libcexceptions.a \
@@ -20,8 +25,8 @@ LOCAL_LIB_FILES  = ${TOP}/src/externals/cexceptions/lib/libcexceptions.a \
                    ${C_PARSER_LIB_DIR}/lib/libcodcif.a
 
 ifeq ("${TEST_INSTALL}","")
-PERL5LIB := ${TOP}/src/lib/perl5:${PERL5LIB}
-PYTHONPATH := ${PYTHON_SOURCE_DIRS}:${PYTHONPATH}
+PERL5LIB   := ${LOCAL_PERL_LIB}:${PERL5LIB}
+PYTHONPATH := ${LOCAL_PYTHON_LIB}:${PYTHONPATH}
 
 export PERL5LIB
 export PYTHONPATH

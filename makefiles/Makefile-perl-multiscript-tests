@@ -27,12 +27,17 @@ endif
 YAPP_SOURCES := $(wildcard $(addsuffix /*.yp, ${YAPP_MODULE_DIRS}))
 YAPP_MODULES := ${YAPP_SOURCES:%.yp=%.pm}
 
-SWIG_SOURCES := $(wildcard $(addsuffix /*.i, ${SWIG_MODULE_DIRS}))
-SWIG_MODULES := ${SWIG_SOURCES:%.i=%.pm}
+PERL_SWIG_SOURCES := $(wildcard $(addsuffix /*.i, ${PERL_SWIG_MODULE_DIRS}))
+PERL_SWIG_MODULES := ${PERL_SWIG_SOURCES:%.i=%.pm}
 
-COMPILED_PERL_MODULES := ${YAPP_MODULES} ${SWIG_MODULES}
+PYTHON_SWIG_SOURCES := $(wildcard $(addsuffix /*.i, ${PYTHON_SWIG_MODULE_DIRS}))
+PYTHON_SWIG_MODULES := ${PYTHON_SWIG_SOURCES:%.i=%.py}
 
-.PRECIOUS: %.pm
+SWIG_MODULES := ${PERL_SWIG_MODULES} ${PYTHON_SWIG_MODULES}
+
+COMPILED_MODULES := ${YAPP_MODULES} ${SWIG_MODULES}
+
+.PRECIOUS: %.pm %.py
 
 #
 # TEST variable should be defined in the Makeconf file, or on the
@@ -50,7 +55,7 @@ all: tests
 %.pm: %.yp
 	${MAKE} -C $(dir $@) $(notdir $@) tests
 
-%.pm: %.c %.i
+%.pm %.py: %.c %.i
 	${MAKE} -C $(@D) $(@F) all
 
 # Rule to make required library files
@@ -149,7 +154,7 @@ ${TST_DIFFS} ${SCRIPT_DIFFS}: ${LOCAL_LIB_FILES}
 # Rules to run script-specific tests
 
 ${OUTPUT_DIR}/%.diff: ${SCRIPT_TST_DIR}/%${INP} ${SCRIPT_TST_DIR}/%${OPT} \
-                      ${SCRIPT_FILES} ${COMPILED_PERL_MODULES}
+                      ${SCRIPT_FILES} ${COMPILED_MODULES}
 	-@printf "%-30s " "$<:" ; \
 	( ${SCRIPT_DIR}$(shell echo $* | sed -e 's/_[0-9]*$$//') \
 	    $(shell grep -v '^#' ${word 2, $^}) \
@@ -159,7 +164,7 @@ ${OUTPUT_DIR}/%.diff: ${SCRIPT_TST_DIR}/%${INP} ${SCRIPT_TST_DIR}/%${OPT} \
 	| diff ${OUTPUT_DIR}/$*.out - > $@ ; \
 	if [ $$? = 0 ]; then echo "OK"; else echo "FAILED:"; cat $@; fi
 
-${OUTPUT_DIR}/%.diff: ${SCRIPT_TST_DIR}/%${INP} ${SCRIPT_FILES} ${COMPILED_PERL_MODULES}
+${OUTPUT_DIR}/%.diff: ${SCRIPT_TST_DIR}/%${INP} ${SCRIPT_FILES} ${COMPILED_MODULES}
 	-@printf "%-30s " "$<:" ; \
 	( ${SCRIPT_DIR}$(shell echo $* | sed -e 's/_[0-9]*$$//') $< \
 	| ${buffer_output} ) 2>&1 \
@@ -167,7 +172,7 @@ ${OUTPUT_DIR}/%.diff: ${SCRIPT_TST_DIR}/%${INP} ${SCRIPT_FILES} ${COMPILED_PERL_
 	| diff ${OUTPUT_DIR}/$*.out - > $@ ; \
 	if [ $$? = 0 ]; then echo "OK"; else echo "FAILED:"; cat $@; fi
 
-${OUTPUT_DIR}/%.diff: ${SCRIPT_TST_DIR}/%${OPT} ${SCRIPT_FILES} ${COMPILED_PERL_MODULES}
+${OUTPUT_DIR}/%.diff: ${SCRIPT_TST_DIR}/%${OPT} ${SCRIPT_FILES} ${COMPILED_MODULES}
 	-@printf "%-30s " "$<:" ; \
 	( ${SCRIPT_DIR}$(shell echo $* | sed -e 's/_[0-9]*$$//') \
 	     $(shell grep -v '^#' ${word 1, $^}) \
@@ -176,7 +181,7 @@ ${OUTPUT_DIR}/%.diff: ${SCRIPT_TST_DIR}/%${OPT} ${SCRIPT_FILES} ${COMPILED_PERL_
 	| diff ${OUTPUT_DIR}/$*.out - > $@ ; \
 	if [ $$? = 0 ]; then echo "OK"; else echo "FAILED:"; cat $@; fi
 
-${OUTPUT_DIR}/%.out: ${SCRIPT_TST_DIR}/%${INP} ${SCRIPT_TST_DIR}/%${OPT} ${COMPILED_PERL_MODULES}
+${OUTPUT_DIR}/%.out: ${SCRIPT_TST_DIR}/%${INP} ${SCRIPT_TST_DIR}/%${OPT} ${COMPILED_MODULES}
 	-@test -f $@ || echo "$@:"
 	-@test -f $@ || \
 	( ${SCRIPT_DIR}$(shell echo $* | sed -e 's/_[0-9]*$$//') \
@@ -187,7 +192,7 @@ ${OUTPUT_DIR}/%.out: ${SCRIPT_TST_DIR}/%${INP} ${SCRIPT_TST_DIR}/%${OPT} ${COMPI
 	| tee $@
 	-@touch $@
 
-${OUTPUT_DIR}/%.out: ${SCRIPT_TST_DIR}/%${INP} ${COMPILED_PERL_MODULES}
+${OUTPUT_DIR}/%.out: ${SCRIPT_TST_DIR}/%${INP} ${COMPILED_MODULES}
 	-@test -f $@ || echo "$@:"
 	-@test -f $@ || \
 	( ${SCRIPT_DIR}$(shell echo $* | sed -e 's/_[0-9]*$$//') \
@@ -197,7 +202,7 @@ ${OUTPUT_DIR}/%.out: ${SCRIPT_TST_DIR}/%${INP} ${COMPILED_PERL_MODULES}
 	| tee $@
 	-@touch $@
 
-${OUTPUT_DIR}/%.out: ${SCRIPT_TST_DIR}/%${OPT} ${COMPILED_PERL_MODULES}
+${OUTPUT_DIR}/%.out: ${SCRIPT_TST_DIR}/%${OPT} ${COMPILED_MODULES}
 	-@test -f $@ || echo "$@:"
 	-@test -f $@ || \
 	( ${SCRIPT_DIR}$(shell echo $* | sed -e 's/_[0-9]*$$//') \
@@ -209,14 +214,14 @@ ${OUTPUT_DIR}/%.out: ${SCRIPT_TST_DIR}/%${OPT} ${COMPILED_PERL_MODULES}
 
 # Rules to run standalone executable test drives:
 
-${TST_OUT_DIR}/%.out: ${TST_EXE_DIR}/% ${COMPILED_PERL_MODULES}
+${TST_OUT_DIR}/%.out: ${TST_EXE_DIR}/% ${COMPILED_MODULES}
 	-@test -f $@ || echo "$@:"
 	-@test -f $@ || \
 	( $< | ${buffer_output} ) 2>&1 \
 	| ${filter_perl_messages} | tee $@
 	-@touch $@
 
-${TST_OUT_DIR}/%.diff: ${TST_EXE_DIR}/% ${COMPILED_PERL_MODULES}
+${TST_OUT_DIR}/%.diff: ${TST_EXE_DIR}/% ${COMPILED_MODULES}
 	-@printf "%-30s " "$*:" ; \
 	( ${SCRIPT_DIR}$< \
 	| ${buffer_output} ) 2>&1 \
@@ -230,7 +235,7 @@ shoutputs shout: ${SHELL_OUTPUTS}
 
 shtest shtests: ${SHELL_DIFFS}
 
-${SHELL_OUTDIR}/%.out: ${SHELL_TSTDIR}/%.sh ${COMPILED_PERL_MODULES}
+${SHELL_OUTDIR}/%.out: ${SHELL_TSTDIR}/%.sh ${COMPILED_MODULES}
 	-@test -f $@ || echo "$@:"
 	-@test -f $@ || \
 	( $< \
@@ -238,7 +243,7 @@ ${SHELL_OUTDIR}/%.out: ${SHELL_TSTDIR}/%.sh ${COMPILED_PERL_MODULES}
 	| ${filter_perl_messages} | tee $@
 	-@touch $@
 
-${SHELL_OUTDIR}/%.diff: ${SHELL_TSTDIR}/%.sh ${COMPILED_PERL_MODULES}
+${SHELL_OUTDIR}/%.diff: ${SHELL_TSTDIR}/%.sh ${COMPILED_MODULES}
 	-@printf "%-30s " "$*:" ; \
 	if [ ! -f ${SHELL_TSTDIR}/$*.chk ] || ${SHELL_TSTDIR}/$*.chk; \
 	then \
@@ -288,4 +293,4 @@ clean:
 	rm -f ${SHELL_DIFFS}
 
 cleanAll: clean ${LOCAL_CLEAN_TARGETS}
-	rm -f ${COMPILED_PERL_MODULES}
+	rm -f ${COMPILED_MODULES}
