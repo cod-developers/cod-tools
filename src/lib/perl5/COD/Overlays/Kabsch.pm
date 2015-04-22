@@ -13,15 +13,15 @@
 # mol2approx[] = symop_apply( operator_2_from_1, mol1[] );
 #**
 
-package COD::AtomOverlay;
+package COD::Overlays::Kabsch;
 
 use strict;
 use COD::JacobiEigen;
 use COD::Spacegroups::SymopAlgebra qw( symop_apply );
 
 require Exporter;
-@COD::AtomOverlay::ISA = qw(Exporter);
-@COD::AtomOverlay::EXPORT = qw( overlay_atoms );
+our @ISA = qw(Exporter);
+our @EXPORT_OK = qw( overlay_atoms );
 
 sub find_center($)
 {
@@ -67,54 +67,54 @@ sub find_best_fit($$$)
 
     for( $n = 0; $n < $N; $n++ ) {
         for( $i = 0; $i < 3; $i++ ) {
-	    for( $j = 0; $j < 3; $j++ ) {
-	        my $m1i = $m1->[$n]{coordinates_ortho}[$i] - $center1[$i];
-		my $m1j = $m1->[$n]{coordinates_ortho}[$j] - $center1[$j];
-		my $m2i = $m2->[$n]{coordinates_ortho}[$i] - $center2[$i];
-	        $s[$i][$j] += $m1i * $m1j;
-	        $r[$i][$j] += $m2i * $m1j;
-	    }
-	}
+            for( $j = 0; $j < 3; $j++ ) {
+                my $m1i = $m1->[$n]{coordinates_ortho}[$i] - $center1[$i];
+                my $m1j = $m1->[$n]{coordinates_ortho}[$j] - $center1[$j];
+                my $m2i = $m2->[$n]{coordinates_ortho}[$i] - $center2[$i];
+                $s[$i][$j] += $m1i * $m1j;
+                $r[$i][$j] += $m2i * $m1j;
+            }
+        }
     }
 
     # RRT = transpose(R) * R
     my @rrt;
     for( $i = 0; $i < 3; $i++ ) {
         for( $j = 0; $j < 3; $j++ ) {
-	    $rrt[$i][$j] = 0.0;
-	    for( $k = 0; $k < 3; $k++ ) {
-	        $rrt[$i][$j] += $r[$k][$i] * $r[$k][$j];
-	    }
-	}
+            $rrt[$i][$j] = 0.0;
+            for( $k = 0; $k < 3; $k++ ) {
+                $rrt[$i][$j] += $r[$k][$i] * $r[$k][$j];
+            }
+        }
     }
 
     my( $v, $ev ) = jacobi_eigenvv( @rrt );
 
     for( $i = 0; $i < 3; $i++ ) {
-        die( "Eigenvalue of the Kabsch's matrix < 0" ) if( $ev->[$i] < 0.0 );
+        die( "eigenvalue of the Kabsch's matrix < 0" ) if( $ev->[$i] < 0.0 );
         $ev->[$i] = sqrt($ev->[$i]);
     }
 
     my @b;
     for( $i = 0; $i < 3; $i++ ) {
         for( $j = 0; $j < 3; $j++ ) {
-	    $b[$i][$j] = 0.0;
-	    for( $k = 0; $k < 3; $k++ ) {
-	        $b[$i][$j] += $r[$i][$k] * $v->[$k][$j];
-	    }
-	    die( "Eigenvalue of Kabsch's matrix == 0" ) if( $ev->[$j] <= 0.0 );
+            $b[$i][$j] = 0.0;
+            for( $k = 0; $k < 3; $k++ ) {
+                $b[$i][$j] += $r[$i][$k] * $v->[$k][$j];
+            }
+            die( "eigenvalue of Kabsch's matrix == 0" ) if( $ev->[$j] <= 0.0 );
             $b[$i][$j] /= $ev->[$j];
-	}
+        }
     }
 
     my @best_rotation;
     for( $i = 0; $i < 3; $i++ ) {
         for( $j = 0; $j < 3; $j++ ) {
-	    $best_rotation[$i][$j] = 0.0;
-	    for( $k = 0; $k < 3; $k++ ) {
-	        $best_rotation[$i][$j] += $b[$i][$k] * $v->[$j][$k];
-	    }
-	}
+            $best_rotation[$i][$j] = 0.0;
+            for( $k = 0; $k < 3; $k++ ) {
+                $best_rotation[$i][$j] += $b[$i][$k] * $v->[$j][$k];
+            }
+        }
     }
 
     return ( \@best_rotation, \@center1, \@center2 );
@@ -129,7 +129,7 @@ sub overlay_atoms($$)
     my $N = $n1 < $n2 ? $n1 : $n2;
 
     my ($rotation, $center1, $center2 ) =
-	find_best_fit( $molecule1, $molecule2, $N );
+        find_best_fit( $molecule1, $molecule2, $N );
 
     my $t = symop_apply( $rotation,
                            [ -$center1->[0],
