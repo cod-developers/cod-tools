@@ -17,7 +17,7 @@ use COD::CIFParser::CIFParser;
 use COD::CIFData::CIFSymmetryGenerator;
 use COD::Spacegroups::SymopAlgebra qw( symop_apply symop_mul
                                        symop_invert symop_det );
-use COD::AtomOverlay;
+use COD::Overlays::Kabsch qw( overlay_atoms );
 use COD::Fractional;
 use COD::UserMessage;
 use COD::ShowStruct;
@@ -145,7 +145,7 @@ sub atom_array_from_cif($$)
         error( $0, $filename, $dataname,
                "neither _atom_site_type_symbol nor _atom_site_label " .
                "were found" );
-	return undef;
+        return undef;
     }
 
     my $atom_labels = $values->{$atom_site_tag};
