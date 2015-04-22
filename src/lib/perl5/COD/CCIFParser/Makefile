@@ -31,8 +31,8 @@ ${SWIG_SO_FILE}: ${OBJS}
 ${OBJ} ${SWIG_WRAPPER_OBJ}: ${SWIG_SOURCE} ${SWIG_WRAPPER}
 	gcc \
 		-I${CIF_PARSER_C_DIR} \
-		-I${EXTERNALS_C_DIR}/cexceptions \
-		-I${EXTERNALS_C_DIR}/getoptions -c \
+		-I${CEXCEPTIONS_DIR} \
+		-I${GETOPTIONS_DIR} -c \
 		`perl -MConfig -e 'print join(" ", @Config{qw(ccflags optimize cccdlflags)}, "-I$$Config{archlib}/CORE")'` \
 		$+
 
@@ -58,5 +58,5 @@ cleanAll: clean
 	rm -f ${SWIG_SO_FILE} ${SWIG_MODULE}
 
 try: ${SWIG_MODULE}
-	-perl -mCCIFParser -le 'my $$c = CCIFParser::parse_cif( "../../../../../perl-scripts/tests/cif_filter_147.inp", $$0, {} )'
-	-perl -mCCIFParser -le 'my $$c = CCIFParser::parse_cif( "../../../../../perl-scripts/tests/cif_filter_148.inp", $$0, {} )'
+	-perl -mCCIFParser -le 'my $$c = COD::CCIFParser::CCIFParser::parse_cif( "../../../../../perl-scripts/tests/cif_filter_147.inp", $$0, {} )'
+	-perl -mCCIFParser -le 'my $$c = COD::CCIFParser::CCIFParser::parse_cif( "../../../../../perl-scripts/tests/cif_filter_148.inp", $$0, {} )'
