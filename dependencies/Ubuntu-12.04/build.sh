@@ -9,3 +9,5 @@ sudo apt-get install -y libparse-yapp-perl
 sudo apt-get install -y libcarp-assert-perl
 sudo apt-get install -y swig
 sudo apt-get install -y python-dev
+
+sudo apt-get install -y libmodule-scandeps-perl
