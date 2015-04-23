@@ -18,7 +18,7 @@ use File::Basename;
 use COD::AtomProperties;
 use COD::Escape;
 use COD::CIFParser::CIFParser;
-use COD::CIFTags::CIFTagManage qw(tag_is_empty);
+use COD::CIFData::CIFExcludeFromStatistics qw( exclude_from_statistics );
 use COD::Spacegroups::SymopAlgebra qw( symop_vector_mul );
 use COD::CIFData::CIFSymmetryGenerator qw( get_symmetry_operators
                                            symop_generate_atoms
@@ -174,19 +174,22 @@ foreach my $filename ( @ARGV ) {
 
   my $data = $parser->Run( $filename );
 
+  # Initial check to skip structures not fit for statistics
+  my $criteria = { "duplicates"     => $include_dup_struct,
+                   "disordered"     => $include_disord_struct,
+                   "suboptimal"     => 1,
+                   "retracted"      => 1,
+                   "on-hold"        => 1,
+                   "has_warnings"   => 0,
+                   "has_errors"     => 1
+                 };
+
   foreach my $dataset ( @$data ) {
 
-    if( !$include_dup_struct && data_is_duplicate( $dataset ) ) {
+    my ($status, $msg) = exclude_from_statistics( $dataset, $criteria );
+    if ( $status ) {
         warning( $0, $filename, $dataset->{name},
-                 "dataset is marked as duplicate and should not " .
-                 "be used for statistics -- dataset will be skipped" );
-        next;
-    }
-
-    if( !($include_disord_struct == 1) && data_contain_disorder( $dataset ) ) {
-        warning( $0, $filename, $dataset->{name},
-                 "dataset contains disorder and cannot " .
-                 "be used for statistics -- dataset will be skipped" );
+                "$msg -- dataset will be skipped");
         next;
     }
 
