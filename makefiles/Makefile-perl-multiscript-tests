@@ -113,16 +113,35 @@ SHELL_DIFFS   = ${addprefix ${SHELL_OUTDIR}/, ${SHELL_BASES:%.sh=%.diff}}
 
 include .diff.depend
 
+ALL_SCRIPTS = ${wildcard ${SCRIPT_DIR}/*}
+SCRIPT_DEPENDS = ${ALL_SCRIPTS:${SCRIPT_DIR}/%=${SCRIPT_DIR}/.%.d}
+
 ALL_INPUTS = $(wildcard ${SCRIPT_TST_DIR}/*.*)
 
-.diff.depend: ${ALL_INPUTS}
+.diff.depend: .script.depend ${ALL_INPUTS}
 	@perl -le \
 		'for(@ARGV){ print "${OUTPUT_DIR}/",$$1,"_",$$2,".diff: ",$$1 if m|/(.*?)_(\d{2,4})\.\w{3}$$| }' \
-	$^ \
+	${filter-out .script.depend,$^} \
 	| sed 's,: cases/,: scripts/,' \
 	| sed 's,tests/outputs/cases/,tests/outputs/,' \
 	| sort | uniq \
 	> $@
+	@test -s $< && sed 's/: /:/' $@ \
+	| sort | uniq \
+	| sort -t ':' -d --key 2 \
+	| join -t ':' -1 2 -2 1 - $< \
+	| perl -lne 'my @a = split(":", $$_ ); push( @a, shift @a); print shift @a,": ",join(" ", @a)' \
+	| sponge $@ || true
+
+${SCRIPT_DIR}/.%.d: ${SCRIPT_DIR}/%
+	-@perl -lmModule::ScanDeps -e \
+		'print "$<: ",join " ", sort map {"src/lib/perl5/$$_"} grep {/^COD/} keys Module::ScanDeps::scan_deps(files => ["$<"], recurse => 1)' \
+	| sed 's,//,/,g' \
+	> $@ 2>/dev/null || true
+	@touch $@
+
+.script.depend: ${SCRIPT_DEPENDS}
+	@sed 's/: /:/' $+ | sort -t ':' --key 1,1 > $@
 
 #------------------------------------------------------------------------------
 
@@ -294,3 +313,4 @@ clean:
 
 cleanAll: clean ${LOCAL_CLEAN_TARGETS}
 	rm -f ${COMPILED_MODULES}
+	rm -f ${SCRIPT_DEPENDS}
