@@ -11,3 +11,5 @@ sudo apt-get install -y swig
 sudo apt-get install -y python-dev
 
 sudo apt-get install -y libmodule-scandeps-perl
+
+sudo apt-get install -y moreutils
