@@ -180,13 +180,6 @@ for my $filename (@ARGV) {
         # extracts atom site label or atom site type symbol
         my $values = $dataset->{values};
         my $dataname = $dataset->{name};
-        
-        # Get cell angles(alpha, beta, gama) and lengths(a, b, c)
-        my @cell = get_cell( $values, $filename, $dataname );
-
-        # Make a matric to convert from fractional coordinates to
-        # orthogonal:
-        my $f2o = symop_ortho_from_fract(@cell);
 
         # Extract atoms fract coordinates
         my $atom_list = atom_array_from_cif( $dataset,
@@ -204,6 +197,13 @@ for my $filename (@ARGV) {
         my $assembly_count = scalar @all_assemblies;
 
         my $bricks = build_bricks( $atom_list, $brick_size );
+        
+        # Get cell angles(alpha, beta, gama) and lengths(a, b, c)
+        my @cell = get_cell( $values, $filename, $dataname );
+
+        # Make a matric to convert from fractional coordinates to
+        # orthogonal:
+        my $f2o = symop_ortho_from_fract(@cell);
 
         my $alternatives = get_alternatives( $atom_list,
                                              $bricks,
