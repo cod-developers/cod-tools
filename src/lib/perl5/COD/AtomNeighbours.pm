@@ -18,6 +18,9 @@ require Exporter;
 @COD::AtomNeighbours::EXPORT = qw(
     make_neighbour_list
 );
+@COD::AtomNeighbours::EXPORT_OK = qw(
+    get_max_covalent_radius
+);
 
 use Carp;
 use COD::AtomBricks qw(build_bricks get_atom_index get_search_span);

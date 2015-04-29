@@ -19,7 +19,9 @@ use COD::UserMessage;
 
 require Exporter;
 @COD::CIFData::CIFAtomList::ISA = qw(Exporter);
-@COD::CIFData::CIFAtomList::EXPORT_OK = qw( atom_array_from_cif extract_atom );
+@COD::CIFData::CIFAtomList::EXPORT_OK = qw( atom_array_from_cif
+                                            uniquify_atom_names
+                                            extract_atom );
 
 #===============================================================#
 # Extracts atom information from the CIF file.
