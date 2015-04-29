@@ -25,14 +25,15 @@ use COD::Spacegroups::SymopAlgebra qw(symop_is_unity symop_vector_mul);
 use COD::Spacegroups::SymopParse;
 use COD::Spacegroups::SymopLookup;
 use COD::CIFData::CIFAtomList qw(atom_array_from_cif);
-use COD::CIFData::CIFSymmetryGenerator qw(get_cell);
+use COD::CIFData::CIFSymmetryGenerator qw(distance get_cell
+                                          get_symmetry_operators
+                                          mat_vect_mul);
 use COD::CIFTags::CIFTagCanonicalNames;
 use COD::CIFTags::CIFTagManage;
 use COD::CIFTags::CIFTagPrint;
 use COD::SOptions;
 use COD::SUsage;
 use COD::UserMessage;
-use COD::Fractional;
 
 no warnings 'recursion';
 
@@ -285,8 +286,6 @@ if( 0 ) {
 
 # Function prototypes to be checked:
 
-sub mat_vect_mul($$);
-sub symop_strings_from_cif($$);
 sub symops_apply_to_atom_modulo1($$);
 sub symops_apply_to_atoms_modulo1($$);
 sub apply_shifts($);
@@ -346,7 +345,7 @@ for my $filename (@ARGV) {
                                          $filename,
                                          $cif_atom_list_options );
 
-        my $symop_strings = symop_strings_from_cif( $datablock, $filename );
+        my $symop_strings = get_symmetry_operators( $datablock, $filename );
         my @symops = map { symop_from_string($_) } @{$symop_strings};
 
         my $unit_cell_atoms =
@@ -661,145 +660,6 @@ sub gcd
     }
 
     return $gcd;
-}
-
-#===============================================================#
-# Multiplies an ortho matrix with a vector.
-
-# my $matrix = [
-#     [ m11 m12 m13 m14 ],
-#     [ m21 m22 m23 m24 ],
-#     [ m31 m32 m33 m34 ],
-#     [ m41 m42 m43 m44 ]
-# ]
-
-# Which, as a rule, will have the following layout:
-
-# my $symop_matrix = [
-#     [ r11 r12 r13 t1 ],
-#     [ r21 r22 r23 t2 ],
-#     [ r31 r32 r33 t3 ],
-#     [   0   0   0  1 ]
-# ]
-
-# Or:
-
-# my $matrix = [
-#     [ r11 r12 r13 ],
-#     [ r21 r22 r23 ],
-#     [ r31 r32 r33 ],
-#     [ t1  t2  t3  ]
-# ]
-
-sub mat_vect_mul($$)
-{
-    return &symop_vector_mul;
-}
-
-#===========================================================================
-# Extract symmetry operators from a parsed CIF datablock
-#
-# Returns a list of symmetry operators as ASCII strings with generap
-# position formulae (e.g. -y,-x,z+1/2).
-
-sub symop_strings_from_cif($$)
-{
-    my ($dataset, $filename) = @_;
-    my $values = $dataset->{values};
-    my $sym_data;
-
-    if( exists $values->{"_space_group_symop_operation_xyz"} ) {
-        $sym_data = $values->{"_space_group_symop_operation_xyz"};
-    } elsif( exists $values->{"_symmetry_equiv_pos_as_xyz"} ) {
-        $sym_data = $values->{"_symmetry_equiv_pos_as_xyz"};
-    }
-
-    if( exists $values->{"_space_group_name_Hall"} &&
-        not defined $sym_data ) {
-        my $hall = $values->{"_space_group_name_Hall"}[0];
-        $sym_data = get_library_symops("hall", $hall);
-
-        if( !defined $sym_data ) {
-            error( $0, $filename, $dataset->{name},
-                   "incorrect _space_group_name_Hall '$hall'" );
-        }
-    } elsif( exists $values->{"_symmetry_space_group_name_Hall"} &&
-             not defined $sym_data ) {
-        my $hall = $values->{"_symmetry_space_group_name_Hall"}[0];
-        $sym_data = get_library_symops("hall", $hall);
-
-        if( !defined $sym_data ) {
-            error( $0, $filename, $dataset->{name},
-                   "incorrect _symmetry_space_group_name_Hall '$hall'" );
-        }
-    }
-
-    if( exists $values->{"_space_group_name_H-M_alt"} &&
-       not defined $sym_data) {
-        my $h_m = $values->{"_space_group_name_H-M_alt"}[0];
-        $sym_data = get_library_symops("hermann_mauguin", $h_m);
-
-        if( !defined $sym_data ) {
-            error( $0, $filename, $dataset->{name},
-                   "incorrect _space_group_name_H-M_alt '$h_m'" );
-        }
-    } elsif( exists $values->{"_symmetry_space_group_name_H-M"} &&
-            not defined $sym_data) {
-        my $h_m = $values->{"_symmetry_space_group_name_H-M"}[0];
-        $sym_data = get_library_symops("hermann_mauguin", $h_m);
-
-        if( !defined $sym_data ) {
-            error( $0, $filename, $dataset->{name},
-                   "incorrect _symmetry_space_group_name_H-M '$h_m'" );
-        }
-    }
-
-    return $sym_data;
-}
-
-#===============================================================#
-# Gets symmetry operators if they are not directly represented in the CIF file.
-
-# Accepts
-#     option - an option, for example, "hall"
-#     param  - according to an option a value given in the CIF file
-
-# Uses @COD::Spacegroups::SymopLookup::table =
-# (
-# {
-#     number          => 1,
-#     hall            => ' P 1',
-#     schoenflies     => 'C1^1',
-#     hermann_mauguin => 'P 1',
-#     universal_h_m   => 'P 1',
-#     symops => [
-#         'x,y,z',
-#     ],
-#     ncsym => [
-#         'x,y,z',
-#     ]
-# },
-# );
-
-# Return a reference to symmetry operators.
-
-sub get_library_symops
-{
-    my ($option, $param) = @_;
-
-    $param =~ s/ //g;
-    $param =~ s/_//g;
-
-    foreach my $hash (@COD::Spacegroups::SymopLookup::table) {
-        my $value = $hash->{$option};
-        $value =~ s/ //g;
-        $value =~ s/_//g;
-
-        if($value eq $param) {
-            return $hash->{symops};
-        }
-    }
-    return undef;
 }
 
 #===============================================================#
@@ -1264,24 +1124,6 @@ sub atoms_coincide($$$)
     }}}
 
     return 0;
-}
-
-#===============================================================#
-# Calculates distance between two given vectors.
-
-# Accepts two arrays of vectors coordinates_fract.
-
-# Returns a distance.
-
-sub distance
-{
-    my($vector1, $vector2) = @_;
-    my $dist = 0;
-
-    for(my $k = 0; $k < @{$vector1}; $k++) {
-        $dist += (${$vector1}[$k] - ${$vector2}[$k])**2;
-    }
-    return sqrt($dist);
 }
 
 #==============================================================================#
