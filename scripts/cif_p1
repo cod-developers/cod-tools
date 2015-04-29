@@ -18,18 +18,21 @@ use strict;
 use warnings;
 
 use COD::AtomBricks qw(build_bricks get_atom_index get_search_span);
+use COD::AtomNeighbours qw(get_max_covalent_radius);
+use COD::AtomProperties;
 use COD::CIFParser::CIFParser;
-use COD::CIFTags::CIFTagCanonicalNames;
 use COD::Spacegroups::SymopAlgebra qw(symop_is_unity symop_vector_mul);
 use COD::Spacegroups::SymopParse;
 use COD::Spacegroups::SymopLookup;
-use COD::CIFTags::CIFTagPrint;
+use COD::CIFData::CIFAtomList qw(uniquify_atom_names);
+use COD::CIFData::CIFSymmetryGenerator qw(get_cell);
+use COD::CIFTags::CIFTagCanonicalNames;
 use COD::CIFTags::CIFTagManage;
+use COD::CIFTags::CIFTagPrint;
 use COD::SOptions;
 use COD::SUsage;
 use COD::UserMessage;
 use COD::Fractional;
-use COD::AtomProperties;
 
 no warnings 'recursion';
 
@@ -282,14 +285,12 @@ if( 0 ) {
 
 # Function prototypes to be checked:
 
-sub unit_cell_from_cif($$);
 sub mat_vect_mul($$);
 sub symop_strings_from_cif($$);
 sub symops_apply_to_atom_modulo1($$);
 sub symops_apply_to_atoms_modulo1($$);
 sub apply_shifts($);
 sub shift_atom($);
-sub uniquify_atom_names($$$$);
 sub get_molecules($$$$$);
 sub find_molecules($$$$$$$$);
 sub find_molecule($$$$$$$$$$$);
@@ -348,7 +349,9 @@ for my $filename (@ARGV) {
 
         if( $dump_atoms ) {
             dump_atoms_as_cif( 1, $unit_cell_atoms,
-                               [ unit_cell_from_cif( $datablock, $filename ) ] 
+                               [ get_cell( $datablock->{values},
+                                           $filename,
+                                           $dataname ) ] 
                 );
             next;
         }
@@ -468,7 +471,7 @@ sub atom_array_from_cif
     # Get the unit cell information and construct the fract->ortho and
     # ortho->fract conversion matrices:
 
-    my @cell = unit_cell_from_cif( $datablock, $filename );
+    my @cell = get_cell( $values, $filename, $dataname );
     my $f2o = symop_ortho_from_fract( @cell );
 
     # Determine which atom site label tag is present and which can be
@@ -807,49 +810,6 @@ sub assemblies
     }
 
    return \%assemblies;
-}
-
-#===============================================================#
-# Get unit cell angles and lengths.
-#
-# Accepts
-#     datablock - a hash where parsed data from the CIF file are stored
-# Returns
-#     cell - an array  with stored information.
-
-sub unit_cell_from_cif($$)
-{
-    my( $datablock, $filename ) = @_;
-
-    my $dataname = $datablock->{name};
-    my $values = $datablock->{values};
-
-    my @cell;
-
-    for my $cif_tag (qw(_cell_length_a
-                        _cell_length_b
-                        _cell_length_c
-                        )) {
-        push(@cell, $values->{$cif_tag}[0]);
-        $cell[-1] =~ s/\(\d+\)$//;
-    }
-
-    for my $cif_tag (qw(_cell_angle_alpha
-                        _cell_angle_beta
-                        _cell_angle_gamma
-                        )) {
-        if( exists $values->{$cif_tag} ) {
-            push( @cell, $values->{$cif_tag}[0] );
-            $cell[-1] =~ s/\(\d+\)$//;
-        } else {
-            warning( $0, $filename, $dataname,
-                     "cell angle '$cif_tag' not present -- " .
-                     "taking default value 90 degress." );
-            push( @cell, 90 );
-        }
-    }
-
-    return @cell;
 }
 
 # Find the Gretest Common Divisor (GCD) of two numbers:
@@ -1507,75 +1467,6 @@ sub distance
     return sqrt($dist);
 }
 
-# ============================================================================ #
-# Accepts an array of
-#
-#   $atom_info = {
-#                   site_label=>"C1",
-#                   name=>"C1_2",
-#                   chemical_type=>"C",
-#                   coordinates_fract=>[1.0, 1.0, 1.0],
-#                   unity_matrix_applied=>1,
-#                   assembly=>"A", # "."
-#                   group=>"1", # "."
-#              }
-#
-sub uniquify_atom_names($$$$)
-{
-    my ($atoms, $uniquify_atoms, $filename, $dataname) = @_;
-
-    my $max_label_suffix = 30000; # Maximum number to be appened to labels
-                                  # when trying to produce unique names.
-
-    my @checked_initial_atoms;
-
-    my %used_labels;
-    my %labels_to_be_renamed;
-
-    foreach my $atom (@{$atoms}) {
-        my $atom_copy = copy_atom( $atom );
-        my $label = $atom->{name};
-
-        push( @checked_initial_atoms, $atom_copy );
-
-        if( ! exists $used_labels{$label} ) {
-            $used_labels{$label}{atoms} = [ $atom_copy ];
-        } else {
-            push( @{$used_labels{$label}{atoms}}, $atom_copy );
-            warning( $0, $filename, $dataname,
-                     "atom label '$label' is not unique" );
-            $labels_to_be_renamed{$label} ++;
-        }
-        $used_labels{$label}{count} ++;
-    }
-
-    if( $uniquify_atoms ) {
-        foreach my $label (sort keys %labels_to_be_renamed) {
-            foreach my $renamed_atom (@{$used_labels{$label}{atoms}}) {
-                my $id = 0;
-                while( exists $used_labels{$label . "_" .$id} &&
-                       $id <= $max_label_suffix ) {
-                    $id ++;
-                }
-                if( $id > $max_label_suffix ) {
-                    error( $0, $filename, $dataname,
-                           "could not generate unique atom name for ".
-                           "atom '$label', even after $id iterations" );
-                }
-                my $new_label = $label . "_" . $id;
-                warning( $0, $filename, $dataname,
-                         "renaming atom '$label' " .
-                         "to '" . $new_label . "'" );
-                $renamed_atom->{name}       = $new_label;
-                $renamed_atom->{site_label} = $new_label;
-                $used_labels{$new_label}{count} ++;
-            }
-        }
-    }
-
-    return \@checked_initial_atoms;
-}
-
 #==============================================================================#
 # This is the main function where other functions such as find_molecules are
 # called.
@@ -2059,24 +1950,6 @@ sub dump_atoms_as_cif
     }
 }
 
-#==============================================================================#
-# Find a maximal covalent radius in the atom property list
-
-sub get_max_covalent_radius($)
-{
-    my ($atom_properties) = @_;
-
-    my $max_radius = 0;
-
-    for my $atom (keys %$atom_properties) {
-        if( $max_radius < $atom_properties->{$atom}{covalent_radius} ) {
-            $max_radius = $atom_properties->{$atom}{covalent_radius};
-        }
-    }
-
-    return $max_radius;
-}
-
 #===============================================================#
 # Generate symmetry equivalents of an atom, exclude duplicates
 # on special positions
@@ -2093,6 +1966,7 @@ sub apply_shifts($)
 
     return @shifted;
 }
+
 #===============================================================#
 # Shifts a given atom according shifting params. If shifting params are
 # (-1, 0, 1) then 27 shifts are made.
