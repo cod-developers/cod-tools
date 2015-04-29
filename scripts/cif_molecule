@@ -56,7 +56,7 @@ use strict;
 use File::Basename;
 use COD::AtomBricks qw(build_bricks get_atom_index get_search_span);
 use COD::CIFParser::CIFParser;
-use COD::CIFData::CIFSymmetryGenerator qw(get_cell);
+use COD::CIFData::CIFSymmetryGenerator qw(get_cell get_symmetry_operators);
 use COD::CIFData::CIFAtomList qw(atom_array_from_cif);
 use COD::CIFTags::CIFTagCanonicalNames;
 use COD::AtomNeighbours;
@@ -66,7 +66,6 @@ use COD::Spacegroups::SymopParse qw(symop_from_string
                                     string_from_symop
                                     symop_string_canonical_form
                                     modulo_1);
-use COD::Spacegroups::SymopLookup;
 use COD::Spacegroups::SymopAlgebra qw(symop_mul symop_invert
                                       symop_is_unity symop_vector_mul
                                       symop_modulo_1 flush_zeros_in_symop);
@@ -459,7 +458,6 @@ sub symgen_all_atoms( $$$$ );
 sub apply_shifts( $ );
 sub find_molecules( $$$$$$$$ );
 sub find_molecule( $$$$$$$$$$$ );
-sub get_symmetry_operators( $$ );
 
 sub test_bump( $$$$$$$ );
 sub mat_vect_mul( $$ );
@@ -3029,73 +3027,6 @@ sub dump_atoms_as_cif
 	    $atom->{coordinates_fract}[1], " ",
 	    $atom->{coordinates_fract}[2];
     }
-}
-
-#===========================================================================
-# Extract symmetry operators from a parsed CIF datablock
-#
-# Returns a list of symmetry operators as ASCII strings with general
-# position formulae (e.g. -y,-x,z+1/2).
-
-sub get_symmetry_operators($$)
-{
-    my ($dataset, $filename) = @_;
-    my $values = $dataset->{values};
-    my $sym_data;
-
-    if( exists $values->{"_space_group_symop_operation_xyz"} ) {
-        $sym_data = $values->{"_space_group_symop_operation_xyz"};
-    } elsif( exists $values->{"_symmetry_equiv_pos_as_xyz"} ) {
-        $sym_data = $values->{"_symmetry_equiv_pos_as_xyz"};
-    }
-
-    if( exists $values->{"_space_group_name_Hall"} &&
-        not defined $sym_data ) {
-        my $hall = $values->{"_space_group_name_Hall"}[0];
-        $sym_data = get_symops("hall", $hall);
-
-        if( !defined $sym_data )
-        {
-            error( $0, $filename, $dataset->{name},
-                   "incorrect _space_group_name_Hall '$hall'" );
-        }
-    } elsif( exists $values->{"_symmetry_space_group_name_Hall"} &&
-        not defined $sym_data ) {
-        my $hall = $values->{"_symmetry_space_group_name_Hall"}[0];
-        $sym_data = get_symops("hall", $hall);
-
-        if( !defined $sym_data )
-        {
-            error( $0, $filename, $dataset->{name},
-                   "incorrect _symmetry_space_group_name_Hall '$hall'" );
-        }
-    }
-
-    if(exists $values->{"_space_group_name_H-M_alt"} &&
-       not defined $sym_data)
-    {
-        my $h_m = $values->{"_space_group_name_H-M_alt"}[0];
-        $sym_data = get_symops("hermann_mauguin", $h_m);
-
-        if( !defined $sym_data )
-        {
-            error( $0, $filename, $dataset->{name},
-                   "incorrect _space_group_name_H-M_alt '$h_m'" );
-        }
-    } elsif(exists $values->{"_symmetry_space_group_name_H-M"} &&
-            not defined $sym_data)
-    {
-        my $h_m = $values->{"_symmetry_space_group_name_H-M"}[0];
-        $sym_data = get_symops("hermann_mauguin", $h_m);
-
-        if( !defined $sym_data )
-        {
-            error( $0, $filename, $dataset->{name},
-                   "incorrect _symmetry_space_group_name_H-M '$h_m'" );
-        }
-    }
-
-    return $sym_data;
 }
 
 #===========================================================================
