@@ -24,7 +24,7 @@ use COD::CIFParser::CIFParser;
 use COD::Spacegroups::SymopAlgebra qw(symop_is_unity symop_vector_mul);
 use COD::Spacegroups::SymopParse;
 use COD::Spacegroups::SymopLookup;
-use COD::CIFData::CIFAtomList qw(uniquify_atom_names);
+use COD::CIFData::CIFAtomList qw(atom_array_from_cif);
 use COD::CIFData::CIFSymmetryGenerator qw(get_cell);
 use COD::CIFTags::CIFTagCanonicalNames;
 use COD::CIFTags::CIFTagManage;
@@ -299,6 +299,14 @@ sub rename_tags($$$);
 
 @ARGV = ( "-" ) unless @ARGV;
 
+my $cif_atom_list_options = {
+    continue_on_unknown_atom_type => 1,
+    continue_on_errors => $continue_on_errors,
+    modulo_1 => 1,
+    uniquify_atom_names => 1,
+    uniquify_atoms => $uniquify_atoms,
+};
+
 for my $filename (@ARGV) {
 
     my( $data, $error_count );
@@ -333,10 +341,10 @@ for my $filename (@ARGV) {
         my $dataname = $datablock->{name};
 
         # Build an atom array from the CIF data structure:
-        my $atoms = uniquify_atom_names(
-            atom_array_from_cif( $datablock, \%COD::AtomProperties::atoms,
-                                 $filename ),
-            $uniquify_atoms, $filename, $dataname );
+        my $atoms = atom_array_from_cif( $datablock,
+                                         \%COD::AtomProperties::atoms,
+                                         $filename,
+                                         $cif_atom_list_options );
 
         my $symop_strings = symop_strings_from_cif( $datablock, $filename );
         my @symops = map { symop_from_string($_) } @{$symop_strings};
@@ -458,197 +466,6 @@ for my $filename (@ARGV) {
 
 # End of main program:
 exit 0;
-
-# Subroutines:
-
-sub atom_array_from_cif
-{
-    my ($datablock, $atom_properties, $filename ) = @_;
-
-    my $values = $datablock->{values};
-    my $dataname = $datablock->{name};
-
-    # Get the unit cell information and construct the fract->ortho and
-    # ortho->fract conversion matrices:
-
-    my @cell = get_cell( $values, $filename, $dataname );
-    my $f2o = symop_ortho_from_fract( @cell );
-
-    # Determine which atom site label tag is present and which can be
-    # used for identifying atoms:
-
-    my $atom_site_tag;
-
-    if( exists $values->{"_atom_site_label"} ) {
-        $atom_site_tag = "_atom_site_label";
-    } elsif( exists $values->{"_atom_site_type_symbol"} ) {
-        $atom_site_tag = "_atom_site_type_symbol";
-
-        error( $0, $filename, $dataname,
-               "_atom_site_label tag was not found. " .
-               "A serial number will be appended " .
-               "to _atom_site_type_symbol to make atom labels" );
-    } else {
-        error( $0, $filename, $dataname,
-               "neither _atom_site_type_symbol nor _atom_site_label " .
-               "were found" );
-	return undef;
-    }
-
-    my $atom_labels = $values->{$atom_site_tag};
-
-    my @atom_list;
-
-    for (my $i = 0; $i < @{$atom_labels}; $i++)
-    {
-        if( $exclude_zero_occupancies &&
-            defined $values->{_atom_site_occupancy} ) {
-            my $occupancy = $values->{_atom_site_occupancy}[$i];
-            $occupancy =~ s/\(\d+\)$//; # remove precission
-            if( $occupancy eq "?" || $occupancy eq "." ||
-                $occupancy == 0.0 ) {
-                next;
-            }
-        }
-
-	my $label;
-        if ( $atom_site_tag eq "_atom_site_type_symbol" ) {
-	    $label = $values->{$atom_site_tag}[$i] . $i;
-	} else {
-	    $label = $values->{$atom_site_tag}[$i];
-	}
-
-        my $atom = atom_from_cif_values( $label, $values, $i, $f2o );
-
-        if (exists $atom_properties->{ $atom->{"chemical_type"}}) {
-            push( @atom_list, $atom );
-        } else {
-            my $message = "unknown chemical type '" .
-                $atom->{chemical_type} . "'";
-
-            if( $continue_on_errors ) {
-                warning( $0, $filename, $dataname, $message );
-            } else {
-                error( $0, $filename, $dataname, $message );
-                exit(1);
-            }
-        }
-    }
-
-    return \@atom_list;
-}
-
-#===============================================================#
-# Extracts atom information from the CIF file.
-#
-# Accepts
-#     values     - a hash where a data from the CIF file is stored
-#     atom_label - atom site label or atom site type symbol from the CIF file
-#     number     - a number of the current atom
-#
-# Returns a reference to %atom as described above.
-
-sub atom_from_cif_values
-{
-    my($atom_label, $values, $number, $f2o) = @_;
-
-    my %atom;
-    my @atom_xyz;
-
-    for my $cif_fract ( "_atom_site_fract_x",
-                        "_atom_site_fract_y",
-                        "_atom_site_fract_z" ) {
-        push(@atom_xyz, $values->{$cif_fract}[$number]);
-        $atom_xyz[-1] =~ s/\(\d+\)$//;
-    }
-
-    @atom_xyz = map { modulo_1($_) } @atom_xyz;
-
-    $atom{coordinates_fract} = \@atom_xyz;
-    $atom{name}       = $atom_label;
-    $atom{site_label} = $atom_label;
-    $atom{cell_label} = $atom_label;
-
-    $atom{f2o} = $f2o;
-    $atom{coordinates_ortho} = mat_vect_mul( $f2o, \@atom_xyz );
-
-    my $atom_type;
-
-    if( exists $values->{_atom_site_type_symbol}  &&
-        defined $values->{_atom_site_type_symbol}[$number] &&
-        $values->{_atom_site_type_symbol}[$number] ne '?' ) {
-        $atom_type = $values->{_atom_site_type_symbol}[$number];
-        $atom{atom_site_type_symbol} = $atom_type;
-        if( $atom_type =~ m/^([A-Za-z]{1,2})/ ) {
-            $atom_type = ucfirst( lc( $1 ));
-        }
-    } else {
-        if( $values->{_atom_site_label}[$number] =~
-            m/^([A-Za-z]{1,2})/ ) {
-            $atom_type = ucfirst( lc( $1 ));
-        } else {
-            die( "could not determine atom type for atom " .
-                 "'$values->{_atom_site_label}[$number]'" );
-        }
-    }
-
-    $atom{chemical_type} = $atom_type;
-
-    if( exists $values->{_atom_site_disorder_assembly}[$number]) {
-        $atom{assembly} =
-	    $values->{_atom_site_disorder_assembly}[$number];
-    } else {
-        $atom{assembly} = ".";
-    }
-
-    if( exists $values->{_atom_site_disorder_group}[$number] ) {
-        $atom{group} = $values->{_atom_site_disorder_group}[$number];
-    } else {
-        $atom{group} = ".";
-    }
-
-    if( exists $values->{_atom_site_occupancy} ) {
-        $atom{atom_site_occupancy} =
-            $values->{_atom_site_occupancy}[$number];
-    }
-
-    if( exists $values->{_atom_site_U_iso_or_equiv} ) {
-        $atom{atom_site_U_iso_or_equiv} =
-            $values->{_atom_site_U_iso_or_equiv}[$number];
-    }
-
-    if( exists $values->{_atom_site_symmetry_multiplicity} ) {
-        $atom{multiplicity} =
-            $values->{_atom_site_symmetry_multiplicity}[$number];
-    }
-
-    if( exists $values->{_atom_site_attached_hydrogens} ) {
-        $atom{attached_hydrogens} =
-            $values->{_atom_site_attached_hydrogens}[$number];
-    }
-
-    if( exists $values->{_atom_site_refinement_flags} ) {
-        $atom{refinement_flags} =
-            $values->{_atom_site_refinement_flags}[$number];
-    }
-
-    if( exists $values->{_atom_site_refinement_posn} ) {
-        $atom{refinement_flags_position} =
-            $values->{_atom_site_refinement_posn}[$number];
-    }
-
-    if( exists $values->{_atom_site_refinement_adp} ) {
-        $atom{refinement_flags_adp} =
-            $values->{_atom_site_refinement_adp}[$number];
-    }
-
-    if( exists $values->{_atom_site_refinement_occupancy} ) {
-        $atom{refinement_flags_occupancy} =
-            $values->{_atom_site_refinement_occupancy}[$number];
-    }
-
-    return \%atom;
-}
 
 #============================================================================= #
 # It's a function where atom groups are made according disorder information. If
