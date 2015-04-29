@@ -20,6 +20,7 @@ use COD::UserMessage;
 require Exporter;
 @COD::CIFData::CIFAtomList::ISA = qw(Exporter);
 @COD::CIFData::CIFAtomList::EXPORT_OK = qw( atom_array_from_cif
+                                            dump_atoms_as_cif
                                             uniquify_atom_names
                                             extract_atom );
 
@@ -437,3 +438,37 @@ sub copy_struct_deep
     die( "deep copy failed: 'copy_struct_deep' does not know how to " .
          "copy object '" . ref( $struct ) . "'" );
 }
+
+sub dump_atoms_as_cif
+{
+    my ($datablock_name, $atom_list, $cell) = @_;
+
+    local $\ = "\n";
+
+    print "data_", $datablock_name;
+
+    print "_symmetry_space_group_name_H-M ", "'P 1'";
+    print "_cell_length_a ", $$cell[0] if defined $$cell[0];
+    print "_cell_length_b ", $$cell[1] if defined $$cell[1];
+    print "_cell_length_c ", $$cell[2] if defined $$cell[2];
+
+    print "_cell_angle_alpha ", $$cell[3] if defined $$cell[3];
+    print "_cell_angle_beta  ", $$cell[4] if defined $$cell[4];
+    print "_cell_angle_gamma ", $$cell[5] if defined $$cell[5];
+
+    print "loop_";
+    print "_atom_site_label";
+    print "_atom_site_fract_x";
+    print "_atom_site_fract_y";
+    print "_atom_site_fract_z";
+
+    for my $atom (@$atom_list) {
+	print
+	    $atom->{name}, " ",
+	    $atom->{coordinates_fract}[0], " ",
+	    $atom->{coordinates_fract}[1], " ",
+	    $atom->{coordinates_fract}[2];
+    }
+}
+
+1;

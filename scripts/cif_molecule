@@ -56,8 +56,10 @@ use strict;
 use File::Basename;
 use COD::AtomBricks qw(build_bricks get_atom_index get_search_span);
 use COD::CIFParser::CIFParser;
-use COD::CIFData::CIFSymmetryGenerator qw(get_cell get_symmetry_operators);
-use COD::CIFData::CIFAtomList qw(atom_array_from_cif);
+use COD::CIFData::CIFSymmetryGenerator qw(get_cell
+                                          get_symmetry_operators
+                                          mat_vect_mul);
+use COD::CIFData::CIFAtomList qw(atom_array_from_cif dump_atoms_as_cif);
 use COD::CIFTags::CIFTagCanonicalNames;
 use COD::AtomNeighbours;
 use COD::AtomProperties;
@@ -1723,21 +1725,6 @@ sub symop_apply_to_atoms
 }
 
 #===============================================================#
-# Multiplies an ortho matrix with a vector.
-
-# my $ortho = [
-#     [ o11 o12 o13 ]
-#     [ 0   o22 o23 ]
-#     [ 0   0   o33 ]
-# ]
-#
-
-sub mat_vect_mul($$)
-{
-    return &symop_vector_mul;
-}
-
-#===============================================================#
 # Checks whether atoms are in the same point in space:
 
 sub atoms_coincide($$)
@@ -2995,38 +2982,6 @@ sub find_molecule($$$$$$$$$$$)
     } if $debug;
 
     return ( \@neighbors, $nbumps );
-}
-
-sub dump_atoms_as_cif
-{
-    my ($datablock_name, $atom_list, $cell) = @_;
-
-    local $\ = "\n";
-
-    print "data_", $datablock_name;
-
-    print "_symmetry_space_group_name_H-M ", "'P 1'";
-    print "_cell_length_a ", $$cell[0] if defined $$cell[0];
-    print "_cell_length_b ", $$cell[1] if defined $$cell[1];
-    print "_cell_length_c ", $$cell[2] if defined $$cell[2];
-
-    print "_cell_angle_alpha ", $$cell[3] if defined $$cell[3];
-    print "_cell_angle_beta  ", $$cell[4] if defined $$cell[4];
-    print "_cell_angle_gamma ", $$cell[5] if defined $$cell[5];
-
-    print "loop_";
-    print "_atom_site_label";
-    print "_atom_site_fract_x";
-    print "_atom_site_fract_y";
-    print "_atom_site_fract_z";
-
-    for my $atom (@$atom_list) {
-	print
-	    $atom->{name}, " ",
-	    $atom->{coordinates_fract}[0], " ",
-	    $atom->{coordinates_fract}[1], " ",
-	    $atom->{coordinates_fract}[2];
-    }
 }
 
 #===========================================================================

@@ -24,7 +24,7 @@ use COD::CIFParser::CIFParser;
 use COD::Spacegroups::SymopAlgebra qw(symop_is_unity symop_vector_mul);
 use COD::Spacegroups::SymopParse;
 use COD::Spacegroups::SymopLookup;
-use COD::CIFData::CIFAtomList qw(atom_array_from_cif);
+use COD::CIFData::CIFAtomList qw(atom_array_from_cif dump_atoms_as_cif);
 use COD::CIFData::CIFSymmetryGenerator qw(distance get_cell
                                           get_symmetry_operators
                                           mat_vect_mul);
@@ -1573,40 +1573,6 @@ sub find_molecule($$$$$$$$$$$)
     } if $debug;
 
     return ( \@neighbors, $nbumps );
-}
-
-#==============================================================================
-
-sub dump_atoms_as_cif
-{
-    my ($datablock_name, $atom_list, $cell) = @_;
-
-    local $\ = "\n";
-
-    print "data_", $datablock_name;
-
-    print "_symmetry_space_group_name_H-M ", "'P 1'";
-    print "_cell_length_a ", $$cell[0] if defined $$cell[0];
-    print "_cell_length_b ", $$cell[1] if defined $$cell[1];
-    print "_cell_length_c ", $$cell[2] if defined $$cell[2];
-
-    print "_cell_angle_alpha ", $$cell[3] if defined $$cell[3];
-    print "_cell_angle_beta  ", $$cell[4] if defined $$cell[4];
-    print "_cell_angle_gamma ", $$cell[5] if defined $$cell[5];
-
-    print "loop_";
-    print "_atom_site_label";
-    print "_atom_site_fract_x";
-    print "_atom_site_fract_y";
-    print "_atom_site_fract_z";
-
-    for my $atom (@$atom_list) {
-	print
-	    $atom->{name}, " ",
-	    $atom->{coordinates_fract}[0], " ",
-	    $atom->{coordinates_fract}[1], " ",
-	    $atom->{coordinates_fract}[2];
-    }
 }
 
 #===============================================================#
