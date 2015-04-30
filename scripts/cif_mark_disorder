@@ -463,25 +463,21 @@ sub mark_disorder
 
     # Creating arrays of assembly and groups symbols to be recorded in
     # CIF loops
-    my @assemblies;
-    my @groups;
     for my $atom (@$atom_list) {
-        my $name = $atom->{name};
         my $index = $atom->{index};
         if( exists $alternatives->{$index} ) {
-            push( @assemblies,
-                  $assembly_names[$alternatives->{$index}[0]] );
-            push( @groups, $alternatives->{$index}[1] );
-        } elsif( exists $atom->{assembly} &&
-                 exists $atom->{group} &&
-                 $atom->{assembly} ne '.' ) {
-            push( @assemblies, $atom->{assembly} );
-            push( @groups, $atom->{group} );
-        } else {
-            push( @assemblies, '.' );
-            push( @groups, '.' );
+            $atom->{assembly} = $assembly_names[$alternatives->{$index}[0]];
+            $atom->{group} = $alternatives->{$index}[1];
+        } elsif( !exists $atom->{assembly} ||
+                 !exists $atom->{group} ||
+                 $atom->{assembly} eq '.' ) {
+            $atom->{assembly} = '.';
+            $atom->{group} = '.';
         }
     }
+
+    my @assemblies = map { $_->{assembly} } @$atom_list;
+    my @groups = map { $_->{group} } @$atom_list;
 
     # Modifying the CIF data structure and issuing messages
     if( @new_assemblies > 0 || defined $rename_dot_assembly_with ) {
