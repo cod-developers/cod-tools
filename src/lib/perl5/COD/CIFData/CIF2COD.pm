@@ -13,7 +13,7 @@ package COD::CIFData::CIF2COD;
 use strict;
 use COD::Spacegroups::SpacegroupNames;
 use COD::CIFData::CIFCellContents;
-use COD::CIFData::CODFlags qw(is_disordered);
+use COD::CIFData::CODFlags qw(is_disordered has_coordinates has_Fobs);
 use COD::CIFTags::CIFDictTags;
 use COD::AtomProperties;
 use COD::Unicode2CIF;
@@ -21,9 +21,6 @@ use COD::Unicode2CIF;
 require Exporter;
 @COD::CIFData::CIF2COD::ISA = qw(Exporter);
 @COD::CIFData::CIF2COD::EXPORT_OK = qw( cif2cod @default_data_fields @new_data_fields );
-
-sub entry_has_coordinates($);
-sub entry_has_Fobs($);
 
 my $bond_safety_margin = 0.2; # Angstroems; a bond safety marging for a CIF classifier.
 
@@ -498,7 +495,7 @@ sub cif2cod
         do {
             my $separator = "";
             my $value = "";
-            if( entry_has_coordinates( $values )) {
+            if( has_coordinates( $dataset )) {
                 $value = "has coordinates";
                 $separator = ",";
             }
@@ -506,7 +503,7 @@ sub cif2cod
                 $value .= $separator . "has disorder";
                 $separator = ",";
             }
-            if( entry_has_Fobs( $values )) {
+            if( has_Fobs( $dataset )) {
                 $value .= $separator . "has Fobs";
                 $separator = ",";
             }
@@ -740,65 +737,6 @@ sub cell_volume
     my $V = $a * $b * $c * sqrt( $sg**2 - $ca**2 - $cb**2 + 2*$ca*$cb*$cg );
 
     return $V;
-}
-
-sub entry_has_coordinates($)
-{
-    my ($values) = @_;
-
-    my @tags = qw(
-        _atom_site_fract_x
-        _atom_site.fract_x
-        _atom_site_fract_y
-        _atom_site.fract_y
-        _atom_site_fract_z
-        _atom_site.fract_z
-        _atom_site_Cartn_x
-        _atom_site.Cartn_x
-        _atom_site_Cartn_x_nm
-        _atom_site_Cartn_x_pm
-        _atom_site_Cartn_y
-        _atom_site.Cartn_y
-        _atom_site_Cartn_y_nm
-        _atom_site_Cartn_y_pm
-        _atom_site_Cartn_z
-        _atom_site.Cartn_z
-        _atom_site_Cartn_z_nm
-        _atom_site_Cartn_z_pm
-    );
-
-    for my $tag ( @tags ) {
-        if( exists $values->{$tag} ) {
-            for my $value (@{$values->{$tag}}) {
-                if( defined $value && $value ne '.' && $value ne '?' ) {
-                    return 1;
-                }
-            }
-        }
-    }
-
-    return 0;
-}
-
-sub entry_has_Fobs($)
-{
-    my ($values) = @_;
-
-    my @tags = qw(
-        _cod_database_fobs_code
-    );
-
-    for my $tag ( @tags ) {
-        if( exists $values->{$tag} ) {
-            for my $value (@{$values->{$tag}}) {
-                if( defined $value && $value ne '.' && $value ne '?' ) {
-                    return 1;
-                }
-            }
-        }
-    }
-
-    return 0;
 }
 
 sub get_experimental_method

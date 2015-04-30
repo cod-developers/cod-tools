@@ -19,6 +19,8 @@ our @EXPORT = qw( is_on_hold
                   is_retracted
                   is_disordered
                   is_suboptimal
+                  has_coordinates
+                  has_Fobs
                   has_errors
                   has_warnings
                 );
@@ -28,6 +30,8 @@ sub is_disordered($);
 sub is_suboptimal($);
 sub is_on_hold($);
 sub is_retracted($);
+sub has_coordinates($);
+sub has_Fobs($);
 sub has_warnings($);
 sub has_errors($);
 
@@ -116,6 +120,53 @@ sub is_retracted($)
             };
         };
     };
+
+    return 0;
+}
+
+sub has_coordinates($)
+{
+    my ( $dataset ) = @_;
+
+    my @coordinate_tags = qw(
+        _atom_site_fract_x
+        _atom_site.fract_x
+        _atom_site_fract_y
+        _atom_site.fract_y
+        _atom_site_fract_z
+        _atom_site.fract_z
+        _atom_site_Cartn_x
+        _atom_site.Cartn_x
+        _atom_site_Cartn_x_nm
+        _atom_site_Cartn_x_pm
+        _atom_site_Cartn_y
+        _atom_site.Cartn_y
+        _atom_site_Cartn_y_nm
+        _atom_site_Cartn_y_pm
+        _atom_site_Cartn_z
+        _atom_site.Cartn_z
+        _atom_site_Cartn_z_nm
+        _atom_site_Cartn_z_pm
+    );
+
+    for my $tag ( @coordinate_tags ) {
+        return 1 if !tag_is_empty( $dataset, $tag );
+    }
+
+    return 0;
+}
+
+sub has_Fobs($)
+{
+    my ( $dataset ) = @_;
+
+    my @Fobs_tags = qw(
+        _cod_database_fobs_code
+    );
+
+    for my $tag ( @Fobs_tags ) {
+        return 1 if !tag_is_empty( $dataset, $tag );
+    }
 
     return 0;
 }
