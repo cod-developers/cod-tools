@@ -156,13 +156,6 @@ if( $cif_header_file ) {
 
 @ARGV = ("-") unless @ARGV;
 
-my $cif_atom_list_options = {
-    ignore_unknown_chemical_types => 1,
-    continue_on_unknown_atom_type => 1,
-    stop_if_coordinates_unknown => 1,
-    assume_full_occupancy => 1,
-};
-
 for my $filename (@ARGV) {
     my $data;
     if( $use_parser eq "perl" ) {
@@ -177,176 +170,21 @@ for my $filename (@ARGV) {
 
     print $cif_header if $cif_header;
     for my $dataset (@$data) {
-        # extracts atom site label or atom site type symbol
-        my $values = $dataset->{values};
-        my $dataname = $dataset->{name};
-
-        # Extract atoms fract coordinates
-        my $atom_list = atom_array_from_cif( $dataset,
-                                             \%COD::AtomProperties::atoms,
-                                             $filename,
-                                             $cif_atom_list_options );
-
-        my %assemblies = map{ $_->{assembly} => 1 }
-                         grep{ $_->{assembly} ne '.' ||
-                               $_->{group} ne '.' }
-                         @$atom_list;
-        my @all_assemblies = sort {($a =~ /^\d+$/ && $b =~ /^\d+$/)
-                                        ? $a <=> $b
-                                        : $a cmp $b} keys %assemblies;
-        my $assembly_count = scalar @all_assemblies;
-
-        my $bricks = build_bricks( $atom_list, $brick_size );
-        
-        # Get cell angles(alpha, beta, gama) and lengths(a, b, c)
-        my @cell = get_cell( $values, $filename, $dataname );
-
-        # Make a matric to convert from fractional coordinates to
-        # orthogonal:
-        my $f2o = symop_ortho_from_fract(@cell);
-
-        my $alternatives = get_alternatives( $atom_list,
-                                             $bricks,
-                                             $filename,
-                                             $dataname,
-                                             $f2o );
-
-        my @new_assemblies;
-        for my $atom_index (keys %$alternatives) {
-            my $assembly_nr = $alternatives->{$atom_index}[0];
-            if( !defined $new_assemblies[$assembly_nr] ) {
-                $new_assemblies[$assembly_nr] = [];
-            }
-            push( @{$new_assemblies[$assembly_nr]}, $atom_index );
-        }
-
-        my $has_dot_assembly = exists $assemblies{'.'};
-        my $rename_dot_assembly_with;
-        if( $has_dot_assembly && ($assembly_count > 1 ||
-                                   scalar( keys %$alternatives ) > 0) ) {
-            if( $all_assemblies[-1] eq '.' ) {
-                $rename_dot_assembly_with = 'A';
-            } elsif( grep { !/^[A-Y]$/ } @all_assemblies == 0 ) {
-                $rename_dot_assembly_with =
-                    chr( ord( $all_assemblies[-1] ) + 1 );
-            } else {
-                my @numeric = grep { /^\d+$/ } @all_assemblies;
-                $rename_dot_assembly_with = $all_assemblies[-1] + 1;
-            }
-            @all_assemblies = sort {($a =~ /^\d+$/ && $b =~ /^\d+$/)
-                                        ? $a <=> $b
-                                        : $a cmp $b}
-                              (@all_assemblies, $rename_dot_assembly_with );
-        }
-
-        my @assembly_names;
-        if( @all_assemblies == 0 &&
-            ord( 'A' ) + @new_assemblies <= ord( 'Z' ) ) {
-            @assembly_names = map { chr( ord( 'A' ) + $_ - 1 ) }
-                                  1..@new_assemblies;
-        } elsif( @all_assemblies > 0 &&
-                 scalar( grep { !/^[A-Z\.]$/ } @all_assemblies ) == 0 &&
-                 ord( $all_assemblies[-1] ) + @new_assemblies <= ord( 'Z' ) ) {
-            @assembly_names = map { chr( ord( $all_assemblies[-1] ) + $_ ) }
-                                  1..@new_assemblies;
-        } else {
-            my @numeric = grep { /^\d+$/ } @all_assemblies;
-            my $first = (@numeric > 0) ? $numeric[-1] : 0;
-            @assembly_names = map { $first + $_ } 1..@new_assemblies;
-        }
-
-        my @assemblies;
-        my @groups;
-        for my $atom (@$atom_list) {
-            my $name = $atom->{name};
-            my $index = $atom->{index};
-            if( exists $alternatives->{$index} ) {
-                push( @assemblies,
-                      $assembly_names[$alternatives->{$index}[0]] );
-                push( @groups, $alternatives->{$index}[1] );
-            } elsif( exists $atom->{assembly} &&
-                     exists $atom->{group} &&
-                     $atom->{assembly} ne '.' ) {
-                push( @assemblies, $atom->{assembly} );
-                push( @groups, $atom->{group} );
-            } elsif( defined $rename_dot_assembly_with &&
-                     exists $atom->{assembly} &&
-                     exists $atom->{group} &&
-                     $atom->{assembly} eq '.' &&
-                     $atom->{group} ne '.' ) {
-                push( @assemblies,
-                      $rename_dot_assembly_with );
-                push( @groups, $atom->{group} );
-            } else {
-                push( @assemblies, '.' );
-                push( @groups, '.' );
-            }
-        }
-
-        if( @new_assemblies > 0 || defined $rename_dot_assembly_with ) {
-
-            my @messages;
-            if( defined $rename_dot_assembly_with ) {
-                my $msg = "disorder assembly '.' was renamed to " .
-                          "'$rename_dot_assembly_with'";
-                push( @messages, $msg );
-                note( $0, $filename, $dataname, $msg );
-            }
-
-            for my $assembly (@new_assemblies) {
-                my @names = sort map( $atom_list->[$_]{name},
-                                      @$assembly );
-                my $msg = "atoms " . join( ", ",
-                                           map( "'$_'", @names ) ) .
-                          " were marked as alternatives";
-                push( @messages, $msg );
-                if( $report_marked_disorders ) {
-                    note( $0, $filename, $dataname, $msg );
-                }
-            }
-
-            if( @new_assemblies > 0 ) {
-                note( $0, $filename, $dataname,
-                      scalar( @new_assemblies ) . " site(s) " .
-                      "were marked as disorder assemblies" );
-            }
-
-            my $atom_site_tag;
-
-            if( exists $values->{"_atom_site_label"} ) {
-                $atom_site_tag = "_atom_site_label";
-            } else {
-                $atom_site_tag = "_atom_site_type_symbol";
-            }
-
-            set_loop_tag( $dataset,
-                          '_atom_site_disorder_assembly',
-                          $atom_site_tag,
-                          \@assemblies );
-            set_loop_tag( $dataset,
-                          '_atom_site_disorder_group',
-                          $atom_site_tag,
-                          \@groups );
-
-            if( $messages_to_depositor_comments ) {
-                my $signature = $Id;
-                $signature =~ s/^\$|\$$//g;
-                my $comment = "  The following automatic conversions " .
-                              "were performed:\n\n";
-                $comment .= join( "\n", map( "  " . ucfirst($_) . ".",
-                                             @messages ) ) . "\n\n";
-                $comment .= "  Automatic conversion script\n  $signature";
-                if( !$values->{_cod_depositor_comments} ) {
-                    set_tag( $dataset,
-                             '_cod_depositor_comments',
-                             "\n$comment" );
-                } else {
-                    $values->{_cod_depositor_comments}[-1] .=
-                        "\n\n$comment";
-                }
-            }
-        }
-
+        mark_disorder( $dataset, 
+                       \%COD::AtomProperties::atoms,
+                       $filename,
+                       { same_site_distance_sensivity =>
+                            $same_site_distance_sensivity,
+                         same_site_occupancy_sensivity =>
+                            $same_site_occupancy_sensivity,
+                         brick_size => $brick_size,
+                         exclude_zero_occupancies =>
+                            $exclude_zero_occupancies,
+                         report_marked_disorders =>
+                            $report_marked_disorders,
+                         ignore_occupancies => $ignore_occupancies,
+                         messages_to_depositor_comments =>
+                            $messages_to_depositor_comments } );
         print_cif( $dataset,
                    {
                         preserve_loop_order => 1,
@@ -491,6 +329,227 @@ sub get_alternatives
     }
 
     return \%assemblies_now;
+}
+
+#==============================================================================#
+# Find and mark disorder in a given CIF datablock (overwrites old values)
+# Accepts
+#    dataset         - CIF datablock, as produced by COD::CIFParser
+#    atom_properties - atom properties structure, as from COD::AtomProperties
+#    filename        - CIF file name
+#    options         - various options to control the algorithm
+sub mark_disorder
+{
+    my( $dataset, $atom_properties, $filename, $options ) = @_;
+    my $dataname = $dataset->{name};
+    my $values = $dataset->{values};
+
+    $options = {} unless $options;
+    my $default_options = {
+        same_site_distance_sensivity => 0.000001,
+        same_site_occupancy_sensivity => 0.01,
+        brick_size => 1,
+        exclude_zero_occupancies => 1,
+        report_marked_disorders => 1,
+        ignore_occupancies => 0,
+        messages_to_depositor_comments => 1,
+    };
+    for my $key (keys %$default_options) {
+        next if exists $options->{$key};
+        $options->{$key} = $default_options->{$key};
+    }
+
+    # Extract atoms fract coordinates
+    my $atom_list = atom_array_from_cif( $dataset,
+                                         $atom_properties,
+                                         $filename,
+                                         { ignore_unknown_chemical_types => 1,
+                                           continue_on_unknown_atom_type => 1,
+                                           stop_if_coordinates_unknown => 1,
+                                           assume_full_occupancy => 1 } );
+
+    my %assemblies = map{ $_->{assembly} => 1 }
+                     grep{ $_->{assembly} ne '.' ||
+                           $_->{group} ne '.' }
+                     @$atom_list;
+    my @all_assemblies = sort {($a =~ /^\d+$/ && $b =~ /^\d+$/)
+                                    ? $a <=> $b
+                                    : $a cmp $b} keys %assemblies;
+    my $assembly_count = scalar @all_assemblies;
+
+    my $bricks = build_bricks( $atom_list, $options->{brick_size} );
+    
+    # Get cell angles(alpha, beta, gama) and lengths(a, b, c)
+    my @cell = get_cell( $values, $filename, $dataname );
+
+    # Make a matric to convert from fractional coordinates to
+    # orthogonal:
+    my $f2o = symop_ortho_from_fract(@cell);
+
+    my $alternatives = get_alternatives( $atom_list,
+                                         $bricks,
+                                         $filename,
+                                         $dataname,
+                                         $f2o );
+
+    my @new_assemblies;
+    for my $atom_index (keys %$alternatives) {
+        my $assembly_nr = $alternatives->{$atom_index}[0];
+        if( !defined $new_assemblies[$assembly_nr] ) {
+            $new_assemblies[$assembly_nr] = [];
+        }
+        push( @{$new_assemblies[$assembly_nr]}, $atom_index );
+    }
+
+    my $rename_dot_assembly_with;
+    if( has_dot_assembly( $atom_list ) &&
+        ($assembly_count > 1 || scalar( keys %$alternatives ) > 0) ) {
+        if( $all_assemblies[-1] eq '.' ) {
+            $rename_dot_assembly_with = 'A';
+        } elsif( grep { !/^[A-Y]$/ } @all_assemblies == 0 ) {
+            $rename_dot_assembly_with =
+                chr( ord( $all_assemblies[-1] ) + 1 );
+        } else {
+            my @numeric = grep { /^\d+$/ } @all_assemblies;
+            $rename_dot_assembly_with = $all_assemblies[-1] + 1;
+        }
+        rename_dot_assembly( $atom_list, $rename_dot_assembly_with );
+        push( @all_assemblies, $rename_dot_assembly_with );
+        @all_assemblies = sort {($a =~ /^\d+$/ && $b =~ /^\d+$/)
+                                    ? $a <=> $b
+                                    : $a cmp $b}
+                          @all_assemblies;
+    }
+
+    my @assembly_names;
+    if( @all_assemblies == 0 &&
+        ord( 'A' ) + @new_assemblies <= ord( 'Z' ) ) {
+        @assembly_names = map { chr( ord( 'A' ) + $_ - 1 ) }
+                              1..@new_assemblies;
+    } elsif( @all_assemblies > 0 &&
+             scalar( grep { !/^[A-Z\.]$/ } @all_assemblies ) == 0 &&
+             ord( $all_assemblies[-1] ) + @new_assemblies <= ord( 'Z' ) ) {
+        @assembly_names = map { chr( ord( $all_assemblies[-1] ) + $_ ) }
+                              1..@new_assemblies;
+    } else {
+        my @numeric = grep { /^\d+$/ } @all_assemblies;
+        my $first = (@numeric > 0) ? $numeric[-1] : 0;
+        @assembly_names = map { $first + $_ } 1..@new_assemblies;
+    }
+
+    # Creating arrays of assembly and groups symbols to be recorded in
+    # CIF loops
+    my @assemblies;
+    my @groups;
+    for my $atom (@$atom_list) {
+        my $name = $atom->{name};
+        my $index = $atom->{index};
+        if( exists $alternatives->{$index} ) {
+            push( @assemblies,
+                  $assembly_names[$alternatives->{$index}[0]] );
+            push( @groups, $alternatives->{$index}[1] );
+        } elsif( exists $atom->{assembly} &&
+                 exists $atom->{group} &&
+                 $atom->{assembly} ne '.' ) {
+            push( @assemblies, $atom->{assembly} );
+            push( @groups, $atom->{group} );
+        } else {
+            push( @assemblies, '.' );
+            push( @groups, '.' );
+        }
+    }
+
+    # Modifying the CIF data structure and issuing messages
+    if( @new_assemblies > 0 || defined $rename_dot_assembly_with ) {
+
+        my @messages;
+        if( defined $rename_dot_assembly_with ) {
+            my $msg = "disorder assembly '.' was renamed to " .
+                      "'$rename_dot_assembly_with'";
+            push( @messages, $msg );
+            note( $0, $filename, $dataname, $msg );
+        }
+
+        for my $assembly (@new_assemblies) {
+            my @names = sort map( $atom_list->[$_]{name},
+                                  @$assembly );
+            my $msg = "atoms " . join( ", ",
+                                       map( "'$_'", @names ) ) .
+                      " were marked as alternatives";
+            push( @messages, $msg );
+            if( $report_marked_disorders ) {
+                note( $0, $filename, $dataname, $msg );
+            }
+        }
+
+        if( @new_assemblies > 0 ) {
+            note( $0, $filename, $dataname,
+                  scalar( @new_assemblies ) . " site(s) " .
+                  "were marked as disorder assemblies" );
+        }
+
+        my $atom_site_tag;
+
+        if( exists $values->{"_atom_site_label"} ) {
+            $atom_site_tag = "_atom_site_label";
+        } else {
+            $atom_site_tag = "_atom_site_type_symbol";
+        }
+
+        set_loop_tag( $dataset,
+                      '_atom_site_disorder_assembly',
+                      $atom_site_tag,
+                      \@assemblies );
+        set_loop_tag( $dataset,
+                      '_atom_site_disorder_group',
+                      $atom_site_tag,
+                      \@groups );
+
+        if( $messages_to_depositor_comments ) {
+            my $signature = $Id;
+            $signature =~ s/^\$|\$$//g;
+            my $comment = "  The following automatic conversions " .
+                          "were performed:\n\n";
+            $comment .= join( "\n", map( "  " . ucfirst($_) . ".",
+                                         @messages ) ) . "\n\n";
+            $comment .= "  Automatic conversion script\n  $signature";
+            if( !$values->{_cod_depositor_comments} ) {
+                set_tag( $dataset,
+                         '_cod_depositor_comments',
+                         "\n$comment" );
+            } else {
+                $values->{_cod_depositor_comments}[-1] .=
+                    "\n\n$comment";
+            }
+        }
+    }
+}
+
+#==============================================================================#
+# Indicates whether supplied atom list contains dot assembly.
+sub has_dot_assembly
+{
+    my( $atom_list ) = @_;
+    my %assemblies = map{ $_->{assembly} => 1 }
+                     grep{ $_->{assembly} ne '.' ||
+                           $_->{group} ne '.' }
+                     @$atom_list;
+    return (exists $assemblies{'.'}) + 0;
+}
+
+#==============================================================================#
+# Renames dot assembly with a given symbol.
+sub rename_dot_assembly
+{
+    my( $atom_list, $new_assembly ) = @_;
+    for my $atom (@$atom_list) {
+        next if !exists $atom->{assembly};
+        next if !exists $atom->{group};
+        if( $atom->{assembly} eq '.' &&
+            $atom->{group} ne '.' ) {
+            $atom->{assembly} = $new_assembly;
+        }
+    }
 }
 
 sub sum
