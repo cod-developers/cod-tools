@@ -13,6 +13,7 @@ package COD::CIFData::CIF2COD;
 use strict;
 use COD::Spacegroups::SpacegroupNames;
 use COD::CIFData::CIFCellContents;
+use COD::CIFData::CODFlags qw(is_disordered);
 use COD::CIFTags::CIFDictTags;
 use COD::AtomProperties;
 use COD::Unicode2CIF;
@@ -22,7 +23,6 @@ require Exporter;
 @COD::CIFData::CIF2COD::EXPORT_OK = qw( cif2cod @default_data_fields @new_data_fields );
 
 sub entry_has_coordinates($);
-sub entry_has_disorder($);
 sub entry_has_Fobs($);
 
 my $bond_safety_margin = 0.2; # Angstroems; a bond safety marging for a CIF classifier.
@@ -502,7 +502,7 @@ sub cif2cod
                 $value = "has coordinates";
                 $separator = ",";
             }
-            if( entry_has_disorder( $values )) {
+            if( is_disordered( $dataset )) {
                 $value .= $separator . "has disorder";
                 $separator = ",";
             }
@@ -765,30 +765,6 @@ sub entry_has_coordinates($)
         _atom_site.Cartn_z
         _atom_site_Cartn_z_nm
         _atom_site_Cartn_z_pm
-    );
-
-    for my $tag ( @tags ) {
-        if( exists $values->{$tag} ) {
-            for my $value (@{$values->{$tag}}) {
-                if( defined $value && $value ne '.' && $value ne '?' ) {
-                    return 1;
-                }
-            }
-        }
-    }
-
-    return 0;
-}
-
-sub entry_has_disorder($)
-{
-    my ($values) = @_;
-
-    my @tags = qw(
-        _atom_site_disorder_assembly
-        _atom_site.disorder_assembly
-        _atom_site_disorder_group
-        _atom_site.disorder_group
     );
 
     for my $tag ( @tags ) {
