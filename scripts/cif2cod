@@ -15,6 +15,7 @@ eval 'exec perl -x $0 ${1+"$@"}'
 use strict;
 use COD::CIFParser::CIFParser;
 use COD::CIFData::CIF2COD qw(cif2cod);
+use COD::UserMessage;
 use COD::SOptions;
 use COD::SUsage;
 
@@ -158,26 +159,6 @@ my %options;
     "--help,--usage"  => sub { usage; exit },
 );
 
-sub error
-{
-    my ( $message, $filename, $dataset, $explanation ) = @_;
-
-    print STDERR $0, ": ";
-    print STDERR $filename
-        if $filename;
-    print STDERR " ",  $dataset->{name}
-        if $dataset && exists $dataset->{name};
-    print STDERR ": "
-        if $filename || $dataset;
-    print STDERR $message
-        if defined $message;
-    print STDERR "\n", $explanation
-        if defined $explanation;
-    print STDERR "\n";
-
-    die unless $options{continue_on_errors};
-}
-
 my @print_columns;
 
 if( defined $user_columns ) {
@@ -221,7 +202,9 @@ for my $filename (@ARGV) {
     }
 
     if( defined $error_count && $error_count > 0 ) {
-        error( $error_count . " error(s) encountered while parsing" );
+        error( $0, $filename, undef,
+               "$error_count error(s) encountered while parsing" );
+        die unless $options{continue_on_errors};
     }
 
     my $extracted = cif2cod( $data, $filename, \%options );
