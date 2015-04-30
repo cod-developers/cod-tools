@@ -98,8 +98,15 @@ sub extract_atom
     }
 
     $atom_info{f2o} = $f2o;
-    $atom_info{coordinates_ortho} =
-        mat_vect_mul( $f2o, \@atom_xyz );
+    if( $atom_xyz[0] eq '.' &&
+        $atom_xyz[1] eq '.' &&
+        $atom_xyz[2] eq '.' &&
+        $options->{copy_dummy_coordinates} ) {
+        $atom_info{coordinates_ortho} = [ '.', '.', '.' ];
+    } else {
+        $atom_info{coordinates_ortho} =
+            mat_vect_mul( $f2o, \@atom_xyz );
+    }
 
     my $atom_type;
 
