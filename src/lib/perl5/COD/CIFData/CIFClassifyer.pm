@@ -16,7 +16,11 @@ use warnings;
 
 use COD::Spacegroups::SymopParse;
 use COD::Fractional;
-use COD::CIFData::CIFSymmetryGenerator;
+use COD::CIFData::CIFSymmetryGenerator qw( distance
+                                           get_cell
+                                           get_symmetry_operators
+                                           mat_vect_mul
+                                           symop_generate_atoms );
 use COD::UserMessage;
 
 require Exporter;
