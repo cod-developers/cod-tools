@@ -207,7 +207,20 @@ for my $filename (@ARGV) {
 #    }
 sub get_alternatives
 {
-    my( $atom_list, $bricks, $filename, $dataname, $f2o ) = @_;
+    my( $atom_list, $bricks, $filename, $dataname, $f2o, $options ) = @_;
+
+    $options = {} unless $options;
+    my $default_options = {
+        same_site_distance_sensivity => 0.000001,
+        same_site_occupancy_sensivity => 0.01,
+        exclude_zero_occupancies => 1,
+        ignore_occupancies => 0,
+    };
+    for my $key (keys %$default_options) {
+        next if exists $options->{$key};
+        $options->{$key} = $default_options->{$key};
+    }
+
     my @assemblies;
     my %in_assembly;
 
@@ -242,13 +255,13 @@ sub get_alternatives
                 next if $index1 ge $index2;
                 next if !exists $atom->{atom_site_occupancy} ||
                        ($atom->{atom_site_occupancy} eq '0.0' &&
-                        $exclude_zero_occupancies) || 
+                        $options->{exclude_zero_occupancies}) ||
                         $atom->{atom_site_occupancy} eq '?' ||
                         $atom->{atom_site_occupancy} eq '.';
 
                 my $dist = distance( $atom_in_unit_cell_coords_ortho,
                                      $atom_coords_ortho );
-                next if $dist > $same_site_distance_sensivity;
+                next if $dist > $options->{same_site_distance_sensivity};
 
                 # Skipping initially marked disordered atoms:
                 if( exists $current_atom->{assembly} &&
@@ -310,8 +323,9 @@ sub get_alternatives
             sum( map { /(.*?)(\(\d+\))?$/; $1 }
                  map { $atom_list->[$_]{atom_site_occupancy} }
                  @$assembly );
-        if( abs( $occupancy_sum - 1 ) > $same_site_occupancy_sensivity &&
-            !$ignore_occupancies ) {
+        if( abs( $occupancy_sum - 1 ) >
+            $options->{same_site_occupancy_sensivity} &&
+            !$options->{ignore_occupancies} ) {
             my @names = sort map( $atom_list->[$_]{name},
                                   @$assembly );
             warning( $0, $filename, $dataname,
@@ -360,13 +374,14 @@ sub mark_disorder
     }
 
     # Extract atoms fract coordinates
-    my $atom_list = atom_array_from_cif( $dataset,
-                                         $atom_properties,
-                                         $filename,
-                                         { ignore_unknown_chemical_types => 1,
-                                           continue_on_unknown_atom_type => 1,
-                                           stop_if_coordinates_unknown => 1,
-                                           assume_full_occupancy => 1 } );
+    my $atom_list =
+        atom_array_from_cif( $dataset,
+                             $atom_properties,
+                             $filename,
+                             { ignore_unknown_chemical_types => 1,
+                               continue_on_unknown_atom_type => 1,
+                               stop_if_coordinates_unknown => 1,
+                               assume_full_occupancy => 1 } );
 
     my %assemblies = map{ $_->{assembly} => 1 }
                      grep{ $_->{assembly} ne '.' ||
@@ -386,11 +401,20 @@ sub mark_disorder
     # orthogonal:
     my $f2o = symop_ortho_from_fract(@cell);
 
-    my $alternatives = get_alternatives( $atom_list,
-                                         $bricks,
-                                         $filename,
-                                         $dataname,
-                                         $f2o );
+    my $alternatives =
+        get_alternatives( $atom_list,
+                          $bricks,
+                          $filename,
+                          $dataname,
+                          $f2o,
+                          { same_site_distance_sensivity =>
+                                $options->{same_site_distance_sensivity},
+                            same_site_occupancy_sensivity =>
+                                $options->{same_site_occupancy_sensivity},
+                            exclude_zero_occupancies =>
+                                $options->{exclude_zero_occupancies},
+                            ignore_occupancies =>
+                                $options->{ignore_occupancies} } );
 
     my @new_assemblies;
     for my $atom_index (keys %$alternatives) {
@@ -477,7 +501,7 @@ sub mark_disorder
                                        map( "'$_'", @names ) ) .
                       " were marked as alternatives";
             push( @messages, $msg );
-            if( $report_marked_disorders ) {
+            if( $options->{report_marked_disorders} ) {
                 note( $0, $filename, $dataname, $msg );
             }
         }
@@ -505,7 +529,7 @@ sub mark_disorder
                       $atom_site_tag,
                       \@groups );
 
-        if( $messages_to_depositor_comments ) {
+        if( $options->{messages_to_depositor_comments} ) {
             my $signature = $Id;
             $signature =~ s/^\$|\$$//g;
             my $comment = "  The following automatic conversions " .
