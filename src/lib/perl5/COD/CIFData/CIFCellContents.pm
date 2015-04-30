@@ -20,15 +20,16 @@ use COD::Spacegroups::SymopLookup;
 use COD::Spacegroups::SpacegroupNames;
 use COD::Formulae::FormulaPrint;
 use COD::CIFData::CIFEstimateZ;
-use COD::CIFData::CIFSymmetryGenerator;
+use COD::CIFData::CIFSymmetryGenerator qw( get_cell
+                                           get_symmetry_operators
+                                           mat_vect_mul
+                                           symop_generate_atoms );
 use COD::UserMessage;
 
 require Exporter;
 @COD::CIFData::CIFCellContents::ISA = qw(Exporter);
 @COD::CIFData::CIFCellContents::EXPORT = qw(
     cif_cell_contents
-    get_symmetry_operators
-    symop_generate_atoms
     atomic_composition
     print_composition
 );
