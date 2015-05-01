@@ -22,7 +22,6 @@ use COD::CIFData::CIFAtomList qw( atom_array_from_cif );
 use COD::CIFData::CIFEstimateZ;
 use COD::CIFData::CIFSymmetryGenerator qw( get_cell
                                            get_symmetry_operators
-                                           mat_vect_mul
                                            symop_generate_atoms );
 use COD::UserMessage;
 

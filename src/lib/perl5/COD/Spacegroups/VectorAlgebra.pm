@@ -21,7 +21,9 @@ require Exporter;
     vectors_are_equal round_vector
 );
 
-@COD::Spacegroups::VectorAlgebra::EXPORT_OK = qw( modulo_1 distance );
+@COD::Spacegroups::VectorAlgebra::EXPORT_OK = qw( distance
+                                                  matrix_vector_mul
+                                                  modulo_1);
 
 sub vector_sub($$)
 {
@@ -111,6 +113,24 @@ sub distance($$)
         $sqsum += $_**2;
     }
     return sqrt($sqsum);
+}
+
+sub matrix_vector_mul($$)
+{
+    my($matrix, $vector) = @_;
+
+    my @new_coordinates;
+
+    for(my $i = 0; $i < @{$vector}; $i++)
+    {
+        $new_coordinates[$i] = 0;
+        for(my $j = 0; $j < @{$vector}; $j++)
+        {
+            $new_coordinates[$i] += ${$matrix}[$i][$j] * ${$vector}[$j];
+        }
+    }
+
+    return wantarray ? @new_coordinates : \@new_coordinates;
 }
 
 1;

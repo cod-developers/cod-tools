@@ -14,13 +14,13 @@ package COD::CIFData::CIFClassifyer;
 use strict;
 use warnings;
 
-use COD::Spacegroups::SymopParse;
-use COD::Fractional;
 use COD::CIFData::CIFSymmetryGenerator qw( get_cell
                                            get_symmetry_operators
-                                           mat_vect_mul
                                            symop_generate_atoms );
-use COD::Spacegroups::VectorAlgebra qw(distance);
+use COD::Fractional;
+use COD::Spacegroups::SymopAlgebra qw(symop_vector_mul);
+use COD::Spacegroups::SymopParse;
+use COD::Spacegroups::VectorAlgebra qw(distance matrix_vector_mul);
 use COD::UserMessage;
 
 require Exporter;
@@ -276,7 +276,7 @@ sub get_atoms($$$)
         }
 
         $atom->{coordinates_ortho} =
-            mat_vect_mul( $ortho_matrix, $atom->{coordinates_fract} );
+            symop_vector_mul( $ortho_matrix, $atom->{coordinates_fract} );
 
         if( defined $values->{_atom_site_occupancy} ) {
             if( $values->{_atom_site_occupancy}[$i] ne '?' &&
@@ -362,7 +362,7 @@ sub vsub( $$ )
 sub length_of_fractional_vector( $$ )
 {
     my ( $v, $g ) = @_;
-    return vdot( $v, mat_vect_mul( $g, $v ));
+    return vdot( $v, matrix_vector_mul( $g, $v ));
 }
 
 sub distance_fractional( $$$ )
