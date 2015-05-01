@@ -15,3 +15,4 @@ sudo apt-get install -y curl
 sudo apt-get install -y libhtml-parser-perl
 sudo apt-get install -y tree
 sudo apt-get install -y libwww-curl-perl
+sudo apt-get install -y libjson-perl
