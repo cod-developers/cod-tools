@@ -11,8 +11,10 @@
 package COD::CIFData::CIF2COD;
 
 use strict;
+use COD::Cell qw(cell_volume);
 use COD::Spacegroups::SpacegroupNames;
 use COD::CIFData::CIFCellContents;
+use COD::CIFData::CIFSymmetryGenerator qw(get_cell);
 use COD::CIFData::CODFlags qw(is_disordered has_coordinates has_Fobs);
 use COD::CIFTags::CIFDictTags;
 use COD::AtomProperties;
@@ -202,6 +204,7 @@ sub cif2cod
         my $nel;
         my $values = $dataset->{values};
         my $sigmas = $dataset->{precisions};
+        my $dataname = $dataset->{name};
 
         next unless exists $values->{_atom_site_fract_x} ||
             $use_datablocks_without_coord;
@@ -338,7 +341,7 @@ sub cif2cod
         if( defined $cod_number ) {
             $data{file} = $cod_number;
         } else {
-            $data{file} = $dataset->{name};
+            $data{file} = $dataname;
         }
         $data{a} = get_num_or_undef( $values, "_cell_length_a", 0 );
         $data{siga} = get_num_or_undef( $sigmas, "_cell_length_a", 0 );
@@ -356,8 +359,9 @@ sub cif2cod
         my $cell_volume = get_num_or_undef( $values, "_cell_volume", 0 );
 
         if( !defined $cell_volume ) {
-            my @cell = get_cell( $values );
-            $cell_volume = sprintf( "%7.2f", cell_volume( @cell ));
+            my @cell = get_cell( $values, $filename, $dataname,
+                                 { silent => 1 } );
+            $cell_volume = sprintf( "%7.2f", scalar cell_volume( @cell ));
         }
 
         $data{vol} = $cell_volume;
@@ -707,36 +711,6 @@ sub get_spacegroup_Hall_symbol
         $spacegroup =~ s/^\s*|\s*$//g;
     }
     return $spacegroup;
-}
-
-sub get_cell
-{
-    my $datablok = $_[0];
-
-    return (
-        $datablok->{_cell_length_a}[0],
-        $datablok->{_cell_length_b}[0],
-        $datablok->{_cell_length_c}[0],
-        $datablok->{_cell_angle_alpha}[0],
-        $datablok->{_cell_angle_beta}[0],
-        $datablok->{_cell_angle_gamma}[0]
-    );
-}
-
-sub cell_volume
-{
-    my @cell = map { s/\(.*\)//g; $_ } @_;
-
-    my $Pi = 4 * atan2(1,1);
-
-    my ($a, $b, $c) = @cell[0..2];
-    my ($alpha, $beta, $gamma) = map {$Pi * $_ / 180} @cell[3..5];
-    my ($ca, $cb, $cg) = map {cos} ($alpha, $beta, $gamma);
-    my $sg = sin($gamma);
-    
-    my $V = $a * $b * $c * sqrt( $sg**2 - $ca**2 - $cb**2 + 2*$ca*$cb*$cg );
-
-    return $V;
 }
 
 sub get_experimental_method

@@ -16,6 +16,7 @@ package COD::CIFData::CIFEstimateZ;
 
 use strict;
 use warnings;
+use COD::Cell qw(cell_volume);
 
 require Exporter;
 @COD::CIFData::CIFEstimateZ::ISA = qw(Exporter);
@@ -106,7 +107,7 @@ sub get_volume
             defined $values->{_cell_length_b} &&
             defined $values->{_cell_length_c} ) {
             my @cell = get_unit_cell( $values );
-            return calculate_cell_volume( @cell );
+            return cell_volume( @cell );
         } else {
             return undef
         }
@@ -129,22 +130,6 @@ sub get_unit_cell
         defined $values->{_cell_angle_gamma} ?
             $values->{_cell_angle_gamma}[0] : 90
     );
-}
-
-sub calculate_cell_volume
-{
-    my @cell = map { s/\(.*\)//g; $_ } @_;
-
-    my $Pi = 4 * atan2(1,1);
-
-    my ($a, $b, $c) = @cell[0..2];
-    my ($alpha, $beta, $gamma) = map {$Pi * $_ / 180} @cell[3..5];
-    my ($ca, $cb, $cg) = map {cos} ($alpha, $beta, $gamma);
-    my $sg = sin($gamma);
-    
-    my $V = $a * $b * $c * sqrt( $sg**2 - $ca**2 - $cb**2 + 2*$ca*$cb*$cg );
-
-    return $V;
 }
 
 1;
