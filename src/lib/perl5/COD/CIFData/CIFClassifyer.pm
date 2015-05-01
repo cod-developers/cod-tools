@@ -32,7 +32,6 @@ require Exporter;
 
 sub get_atoms( $$$ );
 
-sub mvmul( $$ );
 sub vdot( $$ );
 sub vsub( $$ );
 sub length_of_fractional_vector( $$ );
@@ -336,20 +335,6 @@ sub metric_tensor_from_cell
     return $g;
 }
 
-sub mvmul( $$ )
-{
-    my ($m, $v) = @_;
-    my @r;
-
-    for( my $i = 0; $i <= $#$m; $i++ ) {
-        $r[$i] = 0;
-        for( my $j = 0; $j <= $#{$m->[$i]}; $j++ ) {
-            $r[$i] += $m->[$i][$j] * $v->[$j]
-        }
-    }
-    return wantarray? @r : \@r
-}
-
 sub vdot( $$ )
 {
     my ($v1, $v2) = @_;
@@ -377,7 +362,7 @@ sub vsub( $$ )
 sub length_of_fractional_vector( $$ )
 {
     my ( $v, $g ) = @_;
-    return vdot( $v, mvmul( $g, $v ));
+    return vdot( $v, mat_vect_mul( $g, $v ));
 }
 
 sub distance_fractional( $$$ )
