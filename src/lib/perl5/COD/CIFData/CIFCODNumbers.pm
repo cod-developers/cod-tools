@@ -14,6 +14,7 @@ use strict;
 use File::Basename;
 use COD::Formulae::AdHocParser;
 use COD::CIFData::CIFCellContents;
+use COD::Precision qw(eqsig);
 
 require Exporter;
 @COD::CIFData::CIFCODNumbers::ISA = qw(Exporter);
@@ -339,16 +340,6 @@ sub get_cell($)
         $datablok->{_cell_angle_beta},
         $datablok->{_cell_angle_gamma}
     );
-}
-
-sub eqsig
-{
-    my ( $x, $sigx, $y, $sigy ) = @_;
-
-    $sigx = 0.0 unless defined $sigx;
-    $sigy = 0.0 unless defined $sigy;
-
-    return ($x - $y)**2 <= 9 * $sigx**2 + $sigy**2;
 }
 
 sub cells_are_the_same($$$$)
@@ -678,33 +669,3 @@ sub query_COD_database
 }
 
 1;
-
-## sub cell_volume
-## {
-##     my @cell = @_;
-## 
-##     if( !defined $cell[0] || !defined $cell[1] || !defined $cell[2] ||
-##         !defined $cell[3] || !defined $cell[4] || !defined $cell[5] ) {
-##         return -1;
-##     }
-## 
-##     my $Pi = 3.14159265358979;
-## 
-##     @cell = map { s/\(.*\)//g; $_ } @_;
-## 
-##     my ($a, $b, $c) = @cell[0..2];
-##     my ($alpha, $beta, $gamma) = map {$Pi * $_ / 180} @cell[3..5];
-##     my ($ca, $cb, $cg) = map {cos} ($alpha, $beta, $gamma);
-##     my $sg = sin($gamma);
-##     
-##     my $V = $a * $b * $c * sqrt( $sg**2 - $ca**2 - $cb**2 + 2*$ca*$cb*$cg );
-## 
-##     return $V;
-## }
-## 
-## sub compute_datablock_cell_volume
-## {
-##     my $values = $_[0];
-##     my @cell = get_cell( $values );
-##     return cell_volume( @cell );
-## }
