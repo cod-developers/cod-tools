@@ -11,7 +11,10 @@ use strict;
 
 require Exporter;
 @COD::Precision::ISA = qw(Exporter);
-@COD::Precision::EXPORT = qw(unpack_precision unpack_cif_number cmp_cif_numbers);
+@COD::Precision::EXPORT = qw(cmp_cif_numbers
+                             eqsig
+                             unpack_precision
+                             unpack_cif_number);
 
 sub unpack_precision
 {
@@ -51,34 +54,23 @@ sub unpack_cif_number
     return wantarray ? ( $number, $precision ) : $number;
 }
 
+sub eqsig
+{
+    my ( $x, $sigx, $y, $sigy ) = @_;
+
+    $sigx = 0.0 unless defined $sigx;
+    $sigy = 0.0 unless defined $sigy;
+
+    return ($x - $y)**2 <= 9 * ($sigx**2 + $sigy**2);
+}
+
 sub cmp_cif_numbers
 {
     my( $x, $y ) = @_;
-    my @x = unpack_cif_number( $x );
-    my @y = unpack_cif_number( $y );
-    return $x[0] <=> $y[0] if !$x[1] && !$y[1];
-    if( !$x[1] ) {
-        return 0 if $x[0] > $y[0] - $y[1] && $x[0] < $y[0] + $y[1];
-        return $x[0] <=> $y[0];
-    }
-    if( !$y[1] ) {
-        return 0 if $y[0] > $x[0] - $x[1] && $y[0] < $x[0] + $x[1];
-        return $x[0] <=> $y[0];
-    }
-    if( $x[0] + $x[1] == $y[0] - $y[1] ||
-        $y[0] + $y[1] == $x[0] - $x[1] ) {
-        return $x[0] <=> $y[0];
-    }
-    my @edges = ( [ $x[0] - $x[1],  1 ],
-                  [ $x[0] + $x[1], -1 ],
-                  [ $y[0] - $y[1],  1 ],
-                  [ $y[0] + $y[1], -1 ] );
-    my $open_intervals = 0;
-    foreach (sort { $a->[0] <=> $b->[0] } @edges) {
-        $open_intervals += $_->[1];
-        return 0 if $open_intervals > 1;
-    }
-    return $x[0] <=> $y[0];
+    my( $xval, $sigx ) = unpack_cif_number( $x );
+    my( $yval, $sigy ) = unpack_cif_number( $y );
+    return 0 if eqsig( $xval, $sigx, $yval, $sigy );
+    return $xval <=> $yval;
 }
 
 1;
