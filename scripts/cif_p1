@@ -21,6 +21,7 @@ use COD::AtomBricks qw(build_bricks get_atom_index get_search_span);
 use COD::AtomNeighbours qw(get_max_covalent_radius);
 use COD::AtomProperties;
 use COD::CIFParser::CIFParser;
+use COD::Formulae::FormulaPrint;
 use COD::Spacegroups::SymopAlgebra qw(symop_is_unity symop_vector_mul);
 use COD::Spacegroups::SymopParse;
 use COD::Spacegroups::SymopLookup;
@@ -890,51 +891,7 @@ sub chemical_formula_sum
         $chemical_types{$chemical_type} /= $Z;
     }
 
-    my $formula_sum = "";
-
-    # Chemical formulas, according the IUCr recommendations, should
-    # use the 'Hill' system used by Chemical Abstracts:
-    #
-    # the order of the elements within any group or moiety depends on
-    # whether carbon is present or not. If carbon is present, the
-    # order should be: C, then H, then the other elements in
-    # alphabetical order of their symbol. If carbon is not present,
-    # the elements are listed purely in alphabetical order of their
-    # symbol.
-
-    # References:
-    # 1. http://www.iucr.org/__data/iucr/cifdic_html/1/cif_core.dic/Cchemical_formula.html
-    # (2009-06-25)
-    #
-    # 2. Dictionary of organic compounds By J. I. G. (John Ivan
-    # George) Cadogan, American Chemical Society. Chemical Abstracts
-    # Service, P. H. Rhodes, Steven V Ley; page 106 (found by Google
-    # book search on 2009-06-25)
-
-    if( exists $chemical_types{C} ) {
-        if( $chemical_types{C} == 1 ) {
-            $formula_sum = "C ";
-        } else {
-            $formula_sum = "C" . $chemical_types{C} . " ";
-        }
-        delete $chemical_types{C};
-        if( exists $chemical_types{H} ) {
-            if( $chemical_types{H} == 1 ) {
-                $formula_sum .= "H ";
-            } else {
-                $formula_sum .= "H" . $chemical_types{H} . " ";
-            }
-            delete $chemical_types{H};
-        }
-    }
-
-    foreach my $key (sort keys %chemical_types) {
-        if($chemical_types{$key} == 1) {
-            $formula_sum .= $key . " ";
-        } else {
-            $formula_sum .= $key . $chemical_types{$key} . " ";
-        }
-    }
+    my $formula_sum = sprint_formula( \%chemical_types );
     $formula_sum =~ s/\s$//;
 
     return $formula_sum;
