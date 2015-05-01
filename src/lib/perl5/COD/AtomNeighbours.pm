@@ -24,21 +24,7 @@ require Exporter;
 
 use Carp;
 use COD::AtomBricks qw(build_bricks get_atom_index get_search_span);
-
-#==============================================================================
-# Calculate Euclidean distance between two points given as Cartesian
-# (orthogonal) coordinates.
-
-sub distance($$)
-{
-    my ($xyz1, $xyz2) = @_;
-
-    return sqrt(
-        ($xyz1->[0] - $xyz2->[0]) ** 2 +
-        ($xyz1->[1] - $xyz2->[1]) ** 2 +
-        ($xyz1->[2] - $xyz2->[2]) ** 2
-    );
-}
+use COD::Spacegroups::VectorAlgebra qw(distance);
 
 #==============================================================================#
 # Find a maximal covalent radius in the atom property list.

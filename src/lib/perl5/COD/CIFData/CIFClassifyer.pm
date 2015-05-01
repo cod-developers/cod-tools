@@ -20,7 +20,9 @@ use COD::CIFData::CIFSymmetryGenerator qw( get_cell
 use COD::Fractional;
 use COD::Spacegroups::SymopAlgebra qw(symop_vector_mul);
 use COD::Spacegroups::SymopParse;
-use COD::Spacegroups::VectorAlgebra qw(distance matrix_vector_mul);
+use COD::Spacegroups::VectorAlgebra qw(distance
+                                       matrix_vector_mul
+                                       vector_sub);
 use COD::UserMessage;
 
 require Exporter;
@@ -33,7 +35,6 @@ require Exporter;
 sub get_atoms( $$$ );
 
 sub vdot( $$ );
-sub vsub( $$ );
 sub length_of_fractional_vector( $$ );
 sub distance_fractional( $$$ );
 
@@ -347,18 +348,6 @@ sub vdot( $$ )
     return $r;
 }
 
-sub vsub( $$ )
-{
-    my ($v1, $v2) = @_;
-    my @r = ();
-
-    for( my $i = 0; $i <= $#$v1; $i++ ) {
-        $r[$i] = $v1->[$i] - $v2->[$i]
-    }
-
-    return wantarray? @r : \@r;    
-}
-
 sub length_of_fractional_vector( $$ )
 {
     my ( $v, $g ) = @_;
@@ -368,7 +357,7 @@ sub length_of_fractional_vector( $$ )
 sub distance_fractional( $$$ )
 {
     my ( $v1, $v2, $g ) = @_;
-    return sqrt( length_of_fractional_vector( vsub($v1, $v2), $g ));
+    return sqrt( length_of_fractional_vector( vector_sub($v1, $v2), $g ));
 }
 
 1;

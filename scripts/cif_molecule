@@ -59,7 +59,9 @@ use COD::CIFParser::CIFParser;
 use COD::CIFData::CIFSymmetryGenerator qw(atoms_coincide
                                           get_cell
                                           get_symmetry_operators);
-use COD::CIFData::CIFAtomList qw(atom_array_from_cif dump_atoms_as_cif);
+use COD::CIFData::CIFAtomList qw(atom_array_from_cif
+                                 copy_struct_deep
+                                 dump_atoms_as_cif);
 use COD::CIFTags::CIFTagCanonicalNames;
 use COD::AtomNeighbours qw(get_max_covalent_radius make_neighbour_list);
 use COD::AtomProperties;
@@ -1188,31 +1190,6 @@ sub copy_atom
     }
 
     return $atom_copy;
-}
-
-# Performs deep copying of structure passed via reference
-
-sub copy_struct_deep
-{
-    my( $struct, $options ) = @_;
-
-    return $struct if !ref $struct;
-    return [ map( copy_struct_deep($_), @$struct ) ] if ref $struct eq "ARRAY";
-
-    $options = {} unless defined $options;
-
-    my %excluded_hash_keys;
-    if( exists $options->{excluded_hash_keys} ) {
-        %excluded_hash_keys = map { $_ => 1 }
-                                  @{ $options->{excluded_hash_keys} };
-    }
-
-    return { map { $_ => copy_struct_deep( $struct->{$_} ) }
-             map { (exists $excluded_hash_keys{$_}) ? () : $_ }
-                 keys %$struct } if ref $struct eq "HASH";
-
-    die( "deep copy failed: 'copy_struct_deep' does not know how to " .
-         "copy object '" . ref( $struct ) . "'" );
 }
 
 #===============================================================#
