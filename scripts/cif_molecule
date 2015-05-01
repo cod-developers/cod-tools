@@ -58,8 +58,7 @@ use COD::AtomBricks qw(build_bricks get_atom_index get_search_span);
 use COD::CIFParser::CIFParser;
 use COD::CIFData::CIFSymmetryGenerator qw(atoms_coincide
                                           get_cell
-                                          get_symmetry_operators
-                                          mat_vect_mul);
+                                          get_symmetry_operators);
 use COD::CIFData::CIFAtomList qw(atom_array_from_cif dump_atoms_as_cif);
 use COD::CIFTags::CIFTagCanonicalNames;
 use COD::AtomNeighbours qw(get_max_covalent_radius make_neighbour_list);
@@ -464,7 +463,6 @@ sub find_molecules( $$$$$$$$ );
 sub find_molecule( $$$$$$$$$$$ );
 
 sub test_bump( $$$$$$$ );
-sub mat_vect_mul( $$ );
 
 # Find the Greatest Common Divisor (GCD) of two numbers:
 
@@ -1376,7 +1374,7 @@ sub translate_atom
 
     $new_atom->{"coordinates_fract"} = \@new_atom_xyz;
     $new_atom->{coordinates_ortho} =
-        mat_vect_mul( $atom->{f2o}, \@new_atom_xyz );
+        symop_vector_mul( $atom->{f2o}, \@new_atom_xyz );
 
     $new_atom->{translation} = [
         $new_atom_xyz[0] - modulo_1($new_atom_xyz[0]),
@@ -1523,7 +1521,7 @@ sub symop_apply_modulo1
 
     my @new_atom_xyz =
         map { modulo_1($_) }
-    mat_vect_mul( $symop, $atom_xyz );
+    symop_vector_mul( $symop, $atom_xyz );
 
     $new_atom_info->{coordinates_fract} = \@new_atom_xyz;
 
@@ -1566,7 +1564,7 @@ sub symop_apply_NO_modulo_1
     my $atom_xyz = $atom_info->{"coordinates_fract"};
 
     my @new_atom_xyz =
-        mat_vect_mul( $symop, $atom_xyz );
+        symop_vector_mul( $symop, $atom_xyz );
 
     $new_atom_info->{"coordinates_fract"} = \@new_atom_xyz;
 
@@ -1597,7 +1595,7 @@ sub symop_register_applied_symop
     my $atom_xyz = $new_atom_info->{"coordinates_fract"};
 
     $new_atom_info->{"coordinates_ortho"} =
-        mat_vect_mul( $new_atom_info->{f2o}, $atom_xyz );
+        symop_vector_mul( $new_atom_info->{f2o}, $atom_xyz );
 
     my @translation = (
         int($atom_xyz->[0] - modulo_1($atom_xyz->[0])),
@@ -1872,7 +1870,7 @@ sub shift_atom($)
                         ($shifting_params[$k]+5);
                     $new_atom_info->{"coordinates_fract"} = \@new_atom_xyz;
                     $new_atom_info->{coordinates_ortho} =
-                        mat_vect_mul( $atom_info->{f2o}, \@new_atom_xyz );
+                        symop_vector_mul( $atom_info->{f2o}, \@new_atom_xyz );
                     $new_atom_info->{"name"} =
                         $atom_info->{"site_label"} . "_" .
                         $atom_info->{"symop_id"} . "_" .
@@ -2649,7 +2647,7 @@ sub find_molecule($$$$$$$$$$$)
         map { modulo_1($_) } @{$current_atom->{coordinates_fract}};
 
     my $atom_in_unit_cell_coords_ortho =
-	mat_vect_mul( $current_atom->{f2o}, \@current_coords_fract_modulo_1 );
+	symop_vector_mul( $current_atom->{f2o}, \@current_coords_fract_modulo_1 );
 
     my $current_translation = translation( $current_atom->{coordinates_fract},
                                            \@current_coords_fract_modulo_1 );

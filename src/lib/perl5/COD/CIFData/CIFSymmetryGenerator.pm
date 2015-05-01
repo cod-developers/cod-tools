@@ -29,7 +29,6 @@ our @EXPORT_OK = qw(
     get_cell
     get_symmetry_operators
     symop_generate_atoms
-    mat_vect_mul
 );
 
 my %sg_name_abbrev =
@@ -54,7 +53,6 @@ sub get_symmetry_operators($$);
 sub symop_generate_atoms($$$);
 sub copy_atom($);
 sub copy_array($);
-sub mat_vect_mul($$);
 
 #===============================================================#
 
@@ -71,11 +69,12 @@ sub symop_apply_to_atom_mod1($$$$)
     if( $atom->{coordinates_fract}[0] ne "." and
         $atom->{coordinates_fract}[1] ne "." and
         $atom->{coordinates_fract}[2] ne "." ) {
-        my $new_coord = mat_vect_mul( $symop, $atom->{coordinates_fract} );
+        my $new_coord = symop_vector_mul( $symop,
+                                          $atom->{coordinates_fract} );
         $new_atom->{coordinates_fract} =
             [ map { modulo_1($_) } @{$new_coord} ];
         $new_atom->{coordinates_ortho} =
-            mat_vect_mul( $f2o, $new_atom->{coordinates_fract} );
+            symop_vector_mul( $f2o, $new_atom->{coordinates_fract} );
     }
 
     ## serialiseRef( $new_atom );
@@ -98,7 +97,7 @@ sub atoms_coincide($$$)
     my $old_coord = [ map { modulo_1($_) }
                       @{$old_atom->{coordinates_fract}} ];
 
-    my $old_xyz = mat_vect_mul( $f2o, $old_coord );
+    my $old_xyz = symop_vector_mul( $f2o, $old_coord );
 
     my $new_coord = [ map { modulo_1($_) }
                       @{$new_atom->{coordinates_fract}} ];
@@ -111,7 +110,7 @@ sub atoms_coincide($$$)
             $new_coord->[1] + $dy,
             $new_coord->[2] + $dz,
         ];
-        my $new_xyz = mat_vect_mul( $f2o, $shifted_coord );
+        my $new_xyz = symop_vector_mul( $f2o, $shifted_coord );
         if( distance( $new_xyz, $old_xyz ) < $special_position_cutoff ) {
             ## local $, = ", ";
             ## print ">>> mapped to self: @{$new_xyz} / @{$old_xyz}\n";
@@ -367,32 +366,6 @@ sub get_symmetry_operators($$)
     }
 
     return $sym_data;
-}
-
-#======================================================================#
-# Multiplies an ortho matrix with a vector. If the matrix is 3x4 (rows
-# x columns), it assumes that the 4-th column is a translation vector
-# and adds it to the result vector, thus implementing 3D symmetry
-# operators.
-#
-# Examples of matrices:
-#
-# my $ortho = [
-#     [ o11 o12 o13 ]
-#     [ 0   o22 o23 ]
-#     [ 0   0   o33 ]
-# ]
-#
-# my $symop = [
-#     [ o11 o12 o13 t1 ]
-#     [ 0   o22 o23 t2 ]
-#     [ 0   0   o33 t3 ]
-# ]
-#
-
-sub mat_vect_mul($$)
-{
-    return &symop_vector_mul;
 }
 
 #===============================================================#

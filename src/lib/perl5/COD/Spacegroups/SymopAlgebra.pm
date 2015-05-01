@@ -23,7 +23,7 @@ require Exporter;
     symop_det round_values_in_symop
 );
 
-use COD::Spacegroups::VectorAlgebra qw( modulo_1 );
+use COD::Spacegroups::VectorAlgebra qw( modulo_1 matrix_vector_mul );
 use POSIX;
 
 #
@@ -319,16 +319,7 @@ sub symop_vector_mul($$)
 {
     my($symop, $vector) = @_;
 
-    my @new_coordinates;
-
-    for(my $i = 0; $i < @{$vector}; $i++)
-    {
-        $new_coordinates[$i] = 0;
-        for(my $j = 0; $j < @{$vector}; $j++)
-        {
-            $new_coordinates[$i] += ${$symop}[$i][$j] * ${$vector}[$j];
-        }
-    }
+    my @new_coordinates = matrix_vector_mul($symop, $vector);
 
     if( @$vector == 3 && @$symop == 4 ) {
         $new_coordinates[0] += $symop->[0][3];

@@ -16,7 +16,7 @@ use strict;
 use warnings;
 use COD::AtomProperties;
 use COD::CIFParser::CIFParser;
-use COD::CIFData::CIFSymmetryGenerator qw(get_cell mat_vect_mul);
+use COD::CIFData::CIFSymmetryGenerator qw(get_cell);
 use COD::Fractional;
 use COD::Spacegroups::SymopAlgebra qw(symop_vector_mul);
 use COD::UserMessage;
@@ -146,7 +146,7 @@ for my $filename (@ARGV) {
                 push( @atom_xyz, $values->{$cif_fract}[$i] );
                 $atom_xyz[-1] =~ s/\(\d+\)$//;
             }
-            my @coordinates_ortho = mat_vect_mul( $f2o, \@atom_xyz );
+            my @coordinates_ortho = symop_vector_mul( $f2o, \@atom_xyz );
 
             print $coordinates_ortho[0], " ",
                   $coordinates_ortho[1], " ",

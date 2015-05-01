@@ -12,7 +12,8 @@
 package COD::CIFData::CIFAtomList;
 
 use strict;
-use COD::CIFData::CIFSymmetryGenerator qw( get_cell mat_vect_mul );
+use COD::CIFData::CIFSymmetryGenerator qw( get_cell );
+use COD::Spacegroups::SymopAlgebra qw( symop_vector_mul );
 use COD::Spacegroups::VectorAlgebra qw( modulo_1 );
 use COD::Fractional qw( symop_ortho_from_fract );
 use COD::UserMessage;
@@ -105,7 +106,7 @@ sub extract_atom
         $atom_info{coordinates_ortho} = [ '.', '.', '.' ];
     } else {
         $atom_info{coordinates_ortho} =
-            mat_vect_mul( $f2o, \@atom_xyz );
+            symop_vector_mul( $f2o, \@atom_xyz );
     }
 
     my $atom_type;

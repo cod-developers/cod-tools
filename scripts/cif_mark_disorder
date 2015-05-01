@@ -17,13 +17,14 @@ use warnings;
 use COD::AtomBricks qw(build_bricks get_atom_index get_search_span);
 use COD::AtomProperties;
 use COD::CIFParser::CIFParser;
-use COD::CIFData::CIFSymmetryGenerator qw( get_cell mat_vect_mul );
+use COD::CIFData::CIFSymmetryGenerator qw( get_cell );
 use COD::CIFData::CIFAtomList qw( atom_array_from_cif );
 use COD::CIFTags::CIFTagCanonicalNames;
 use COD::CIFTags::CIFTagManage;
 use COD::CIFTags::CIFTagPrint;
 use COD::Fractional;
 use COD::UserMessage;
+use COD::Spacegroups::SymopAlgebra qw( symop_vector_mul );
 use COD::Spacegroups::VectorAlgebra qw( distance );
 use COD::SOptions;
 use COD::SUsage;
@@ -234,7 +235,7 @@ sub get_alternatives
         }
 
         my $atom_in_unit_cell_coords_ortho =
-            mat_vect_mul( $f2o, $current_atom->{coordinates_fract} );
+            symop_vector_mul( $f2o, $current_atom->{coordinates_fract} );
 
         my ($i, $j, $k) =
             get_atom_index( $bricks, @{$atom_in_unit_cell_coords_ortho});
