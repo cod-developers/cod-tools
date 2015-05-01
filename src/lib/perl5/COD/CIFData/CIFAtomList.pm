@@ -21,6 +21,7 @@ use COD::UserMessage;
 require Exporter;
 @COD::CIFData::CIFAtomList::ISA = qw(Exporter);
 @COD::CIFData::CIFAtomList::EXPORT_OK = qw( atom_array_from_cif
+                                            copy_struct_deep
                                             dump_atoms_as_cif
                                             uniquify_atom_names
                                             extract_atom );
@@ -428,23 +429,26 @@ sub copy_struct_deep
 {
     my( $struct, $options ) = @_;
 
-    return $struct if !ref $struct;
-    return [ map( copy_struct_deep($_), @$struct ) ] if ref $struct eq "ARRAY";
+    if(      !ref $struct ) {
+        return $struct;
+    } elsif( ref $struct eq "ARRAY" ) {
+        return [ map( copy_struct_deep($_), @$struct ) ];
+    } elsif( ref $struct eq "HASH" ) {
+        $options = {} unless defined $options;
 
-    $options = {} unless defined $options;
+        my %excluded_hash_keys;
+        if( exists $options->{excluded_hash_keys} ) {
+            %excluded_hash_keys = map { $_ => 1 }
+                                      @{ $options->{excluded_hash_keys} };
+        }
 
-    my %excluded_hash_keys;
-    if( exists $options->{excluded_hash_keys} ) {
-        %excluded_hash_keys = map { $_ => 1 }
-                                  @{ $options->{excluded_hash_keys} };
+        return { map { $_ => copy_struct_deep( $struct->{$_} ) }
+                 map { (exists $excluded_hash_keys{$_}) ? () : $_ }
+                     keys %$struct };
+    } else {
+        die "deep copy failed: 'copy_struct_deep' does not know " .
+            "how to copy object '" . ref( $struct ) . "'";
     }
-
-    return { map { $_ => copy_struct_deep( $struct->{$_} ) }
-             map { (exists $excluded_hash_keys{$_}) ? () : $_ }
-                 keys %$struct } if ref $struct eq "HASH";
-
-    die( "deep copy failed: 'copy_struct_deep' does not know how to " .
-         "copy object '" . ref( $struct ) . "'" );
 }
 
 sub dump_atoms_as_cif

@@ -25,7 +25,9 @@ use COD::Spacegroups::SymopAlgebra qw(symop_is_unity symop_vector_mul);
 use COD::Spacegroups::SymopParse;
 use COD::Spacegroups::SymopLookup;
 use COD::Spacegroups::VectorAlgebra qw(distance);
-use COD::CIFData::CIFAtomList qw(atom_array_from_cif dump_atoms_as_cif);
+use COD::CIFData::CIFAtomList qw(atom_array_from_cif
+                                 copy_struct_deep
+                                 dump_atoms_as_cif);
 use COD::CIFData::CIFSymmetryGenerator qw(atoms_coincide
                                           get_cell
                                           get_symmetry_operators);
@@ -1083,19 +1085,6 @@ sub copy_atom
     }
 
     return copy_struct_deep($old_atom);
-}
-
-# Performs deep copying of structure passed via reference
-
-sub copy_struct_deep
-{
-    my($struct) = @_;
-    return $struct if !ref $struct;
-    return [ map( copy_struct_deep($_), @$struct ) ] if ref $struct eq "ARRAY";
-    return { map{ $_ => copy_struct_deep( $struct->{$_} ) } keys %$struct }
-        if ref $struct eq "HASH";
-    die( "deep copy failed: 'copy_struct_deep' does not know how to " .
-         "copy object '" . ref( $struct ) . "'" );
 }
 
 #==============================================================================#
