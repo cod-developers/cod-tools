@@ -56,12 +56,14 @@ use strict;
 use File::Basename;
 use COD::AtomBricks qw(build_bricks get_atom_index get_search_span);
 use COD::CIFParser::CIFParser;
-use COD::CIFData::CIFSymmetryGenerator qw(get_cell
+use COD::CIFData::CIFSymmetryGenerator qw(atoms_coincide
+                                          distance
+                                          get_cell
                                           get_symmetry_operators
                                           mat_vect_mul);
 use COD::CIFData::CIFAtomList qw(atom_array_from_cif dump_atoms_as_cif);
 use COD::CIFTags::CIFTagCanonicalNames;
-use COD::AtomNeighbours;
+use COD::AtomNeighbours qw(get_max_covalent_radius make_neighbour_list);
 use COD::AtomProperties;
 use COD::MorganFingerprints;
 use COD::Spacegroups::SymopParse qw(symop_from_string
@@ -828,24 +830,6 @@ for my $filename (@ARGV) {
             }
 	}
     }
-}
-
-#==============================================================================#
-# Find a maximal covalent radius in the atom property list
-
-sub get_max_covalent_radius($)
-{
-    my ($atom_properties) = @_;
-
-    my $max_radius = 0;
-
-    for my $atom (keys %$atom_properties) {
-        if( $max_radius < $atom_properties->{$atom}{covalent_radius} ) {
-            $max_radius = $atom_properties->{$atom}{covalent_radius};
-        }
-    }
-
-    return $max_radius;
 }
 
 #==============================================================================#
@@ -1725,37 +1709,6 @@ sub symop_apply_to_atoms
 }
 
 #===============================================================#
-# Checks whether atoms are in the same point in space:
-
-sub atoms_coincide($$)
-{
-    my ( $old_atom, $new_atom ) = @_;
-
-    my $old_coord = [ map { modulo_1($_) } @{$old_atom->{coordinates_fract}} ];
-    my $old_xyz = mat_vect_mul( $old_atom->{f2o}, $old_coord );
-
-    my $new_coord = [ map { modulo_1($_) } @{$new_atom->{coordinates_fract}} ];
-
-    for my $dx (-1, 0, 1) {
-    for my $dy (-1, 0, 1) {
-    for my $dz (-1, 0, 1) {
-        my $shifted_coord = [
-            $new_coord->[0] + $dx,
-            $new_coord->[1] + $dy,
-            $new_coord->[2] + $dz,
-        ];
-        my $new_xyz = mat_vect_mul( $new_atom->{f2o}, $shifted_coord );
-        if( distance( $new_xyz, $old_xyz ) < $special_position_cutoff ) {
-            ## local $, = ", ";
-            ## print ">>> mapped to self: @{$new_xyz} / @{$old_xyz}\n";
-            return 1;
-        }
-    }}}
-
-    return 0;
-}
-
-#===============================================================#
 # Generate symmetry equivalents of an atom, exclude duplicates
 # on special positions
 
@@ -1774,7 +1727,9 @@ sub symgen_atom($$)
         my %to_be_deleted;
         for my $i (0..$#$sym_atoms-1) {
             for my $j ($i+1..$#$sym_atoms) {
-                if( atoms_coincide( $sym_atoms->[$i], $sym_atoms->[$j] )) {
+                if( atoms_coincide( $sym_atoms->[$i],
+                                    $sym_atoms->[$j],
+                                    $sym_atoms->[$i]{f2o} )) {
                     $to_be_deleted{$sym_atoms->[$j]{name}} = 1;
                 }
             }
@@ -1811,7 +1766,7 @@ sub symops_apply_modulo1
     for my $symop ( @{$sym_operators} ) {
         my $new_atom = symop_apply_modulo1( $atom, $symop );
         if( !symop_is_unity( $symop ) &&
-            atoms_coincide( $atom, $new_atom )) {
+            atoms_coincide( $atom, $new_atom, $atom->{f2o} )) {
             push( @symops_mapping_to_self, $symop );
             $multiplicity_ratio ++;
         } else {
@@ -1974,25 +1929,6 @@ sub apply_shifts($)
     }
 
     return @shifted;
-}
-
-#===============================================================#
-# Calculates distance between two given vectors.
-
-# Accepts two arrays of vectors coordinates_fract.
-
-# Returns a distance.
-
-sub distance
-{
-    my($vector1, $vector2) = @_;
-    my $dist = 0;
-
-    for(my $k = 0; $k < @{$vector1}; $k++)
-    {
-        $dist += (${$vector1}[$k] - ${$vector2}[$k])**2;
-    }
-    return sqrt($dist);
 }
 
 #===============================================================#

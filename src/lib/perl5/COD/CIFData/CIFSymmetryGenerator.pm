@@ -24,6 +24,7 @@ use COD::UserMessage;
 require Exporter;
 our @ISA = qw(Exporter);
 our @EXPORT_OK = qw(
+    atoms_coincide
     copy_atom
     get_cell
     get_symmetry_operators
@@ -48,6 +49,7 @@ my $special_position_cutoff = 0.01; # Angstroems
 # than $special_position_cutoff are considered to be the same atom on
 # a special position.
 
+sub atoms_coincide($$$);
 sub get_cell($$$);
 sub get_symmetry_operators($$);
 sub symop_generate_atoms($$$);
