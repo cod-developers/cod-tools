@@ -19,6 +19,7 @@ use COD::CIFParser::CIFParser;
 use COD::CIFData::CIFSymmetryGenerator qw(get_cell);
 use COD::CIFTags::CIFTagCanonicalNames;
 use COD::CIFTags::CIFTagManage;
+use COD::Precision qw(eqsig);
 use COD::ShowStruct;
 use COD::Spacegroups::SpacegroupNames;
 use COD::Spacegroups::SymopLookup;
@@ -1161,16 +1162,6 @@ sub get_unit_cell_sigmas($$)
     }
 
     return @cellsig;
-}
-
-sub eqsig
-{
-    my ( $x, $sigx, $y, $sigy ) = @_;
-
-    $sigx = 0.0 unless defined $sigx;
-    $sigy = 0.0 unless defined $sigy;
-
-    return ($x - $y)**2 <= 9 * ($sigx**2 + $sigy**2);
 }
 
 sub regularize_cell($$$$)
