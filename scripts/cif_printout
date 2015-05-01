@@ -18,8 +18,11 @@ use COD::CIFParser::CIFParser;
 use COD::CIFData::CIFDiff;
 use COD::SOptions;
 use COD::SUsage;
+use JSON;
 
 my $use_parser = 'c';
+my $input_json  = 0;
+my $output_json = 0;
 my %options;
 @ARGV = getOptions(
 
@@ -27,6 +30,20 @@ my %options;
 #**     $0 [options] input.cif [input2.cif ...]
 #** 
 #** OPTIONS:
+#** --input-cif,
+#** --input-json
+#**    Specify the format of input file(s). Default CIF.
+#**
+#** --output-cif,
+#** --output-json
+#**    Specify the format for output. Default CIF.
+#**
+#** --cif
+#**    Set both input and output formats to CIF.
+#**
+#** --json
+#**    Set both input and output formats to JSON.
+#**
 #** --use-perl-parser
 #**    Use Perl parser for CIF parsing.
 #**
@@ -53,6 +70,16 @@ my %options;
         sub{ $options{fix_missing_closing_single_quote} = 1 },
     "--fix-ctrl-z"  => sub{ $options{fix_ctrl_z} = 1 },
     "--allow-uqstring-brackets" => sub{ $options{allow_uqstring_brackets} = 1 },
+
+    "--input-json"  => sub { $input_json  = 1 },
+    "--input-cif"   => sub { $input_json  = 0 },
+
+    "--output-json" => sub { $output_json = 1 },
+    "--output-cif"  => sub { $output_json = 0 },
+
+    "--cif"  => sub { $input_json = 0; $output_json = 0 },
+    "--json" => sub { $input_json = 1; $output_json = 1 },
+
     "--help,--usage"  => sub { usage; exit },
 );
 
@@ -61,53 +88,64 @@ my %options;
 foreach( @ARGV ) {
 
     my( $data, $errcount );
-    if( $use_parser eq 'perl' ) {
-        my $parser = new COD::CIFParser::CIFParser;
-        $data = $parser->Run( $_, \%options );
-        if( defined $parser->YYData->{ERRCOUNT} ) {
-            $errcount = $parser->YYData->{ERRCOUNT};
-        } else {
-            $errcount = 0;
-        }
-    } elsif( $use_parser eq 'c' ) {
-        require COD::CCIFParser::CCIFParser;
-        ( $data, $errcount ) = COD::CCIFParser::CCIFParser::parse( $_, \%options );
+    if( $input_json ) {
+        open( my $inp, $_ );
+        $data = decode_json( join( "\n", <$inp> ) );
+        close( $inp );
+        $errcount = 0;
     } else {
-        die( "$0: unknown parser: $use_parser" );
+        if( $use_parser eq 'perl' ) {
+            my $parser = new COD::CIFParser::CIFParser;
+            $data = $parser->Run( $_, \%options );
+            if( defined $parser->YYData->{ERRCOUNT} ) {
+                $errcount = $parser->YYData->{ERRCOUNT};
+            } else {
+                $errcount = 0;
+            }
+        } elsif( $use_parser eq 'c' ) {
+            require COD::CCIFParser::CCIFParser;
+            ( $data, $errcount ) = COD::CCIFParser::CCIFParser::parse( $_, \%options );
+        } else {
+            die( "$0: unknown parser: $use_parser" );
+        }
     }
 
-    foreach my $datablock ( @$data ) {
-        print  $datablock->{name} . "\n";
-        print "Values:\n";
-        foreach my $tag ( sort { lc( $a ) cmp lc( $b ) } @{$datablock->{tags}} ) {
-            print "    " . $tag . " ("
-                . scalar( @{$datablock->{values}{$tag}} ) . ") ";
-            print join( " ", map{ "[$_]" } @{$datablock->{values}{$tag}} )
-                . "\n";
-        }
-        if( exists $datablock->{precisions} ) {
-            print "Precisions:\n";
-            foreach my $tag ( sort keys %{$datablock->{precisions}} ) {
+    if( $output_json ) {
+        print encode_json( $data );
+    } else {
+        foreach my $datablock ( @$data ) {
+            print  $datablock->{name} . "\n";
+            print "Values:\n";
+            foreach my $tag ( sort { lc( $a ) cmp lc( $b ) } @{$datablock->{tags}} ) {
                 print "    " . $tag . " ("
-                    . scalar( @{$datablock->{precisions}{$tag}} ) . ") ";
-                print join( " ", map{ ( defined $_ ) ? $_ : "undef" }
-                    @{$datablock->{precisions}{$tag}} ) . "\n";
+                    . scalar( @{$datablock->{values}{$tag}} ) . ") ";
+                print join( " ", map{ "[$_]" } @{$datablock->{values}{$tag}} )
+                    . "\n";
             }
-        }
-        if( exists $datablock->{types} ) {
-            print "Types:\n";
-            foreach my $tag ( sort keys %{$datablock->{types}} ) {
-                print "    " . $tag . " ";
-                print join( " ", @{$datablock->{types}{$tag}} ) . "\n";
+            if( exists $datablock->{precisions} ) {
+                print "Precisions:\n";
+                foreach my $tag ( sort keys %{$datablock->{precisions}} ) {
+                    print "    " . $tag . " ("
+                        . scalar( @{$datablock->{precisions}{$tag}} ) . ") ";
+                    print join( " ", map{ ( defined $_ ) ? $_ : "undef" }
+                        @{$datablock->{precisions}{$tag}} ) . "\n";
+                }
             }
-        }
-        print "Inloops:\n";
-        foreach my $tag ( sort keys %{$datablock->{inloop}} ) {
-            print "    " . $tag . " " . $datablock->{inloop}{$tag} . "\n";
-        }
-        print "Loops:\n";
-        foreach my $loop ( @{$datablock->{loops}} ) {
-            print join( " ", @$loop ) . "\n";
+            if( exists $datablock->{types} ) {
+                print "Types:\n";
+                foreach my $tag ( sort keys %{$datablock->{types}} ) {
+                    print "    " . $tag . " ";
+                    print join( " ", @{$datablock->{types}{$tag}} ) . "\n";
+                }
+            }
+            print "Inloops:\n";
+            foreach my $tag ( sort keys %{$datablock->{inloop}} ) {
+                print "    " . $tag . " " . $datablock->{inloop}{$tag} . "\n";
+            }
+            print "Loops:\n";
+            foreach my $loop ( @{$datablock->{loops}} ) {
+                print join( " ", @$loop ) . "\n";
+            }
         }
     }
     print STDERR "$errcount error(s) detected\n";
