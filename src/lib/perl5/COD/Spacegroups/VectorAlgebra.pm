@@ -21,7 +21,7 @@ require Exporter;
     vectors_are_equal round_vector
 );
 
-@COD::Spacegroups::VectorAlgebra::EXPORT_OK = qw( modulo_1 );
+@COD::Spacegroups::VectorAlgebra::EXPORT_OK = qw( modulo_1 distance );
 
 sub vector_sub($$)
 {
@@ -99,6 +99,18 @@ sub vectors_are_equal($$@)
     }
 
     return 1;
+}
+
+sub distance($$)
+{
+    my ($v1, $v2) = @_;
+
+    my $diff = vector_sub( $v1, $v2 );
+    my $sqsum = 0;
+    foreach (@$diff) {
+        $sqsum += $_**2;
+    }
+    return sqrt($sqsum);
 }
 
 1;

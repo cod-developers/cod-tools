@@ -18,7 +18,7 @@ use COD::Spacegroups::SymopAlgebra qw(symop_is_unity symop_vector_mul);
 use COD::Spacegroups::SymopParse;
 use COD::Spacegroups::SymopLookup;
 use COD::Spacegroups::SpacegroupNames;
-use COD::Spacegroups::VectorAlgebra;
+use COD::Spacegroups::VectorAlgebra qw(distance);
 use COD::UserMessage;
 
 require Exporter;
@@ -30,7 +30,6 @@ our @EXPORT_OK = qw(
     get_symmetry_operators
     symop_generate_atoms
     mat_vect_mul
-    distance
 );
 
 my %sg_name_abbrev =
@@ -56,25 +55,6 @@ sub symop_generate_atoms($$$);
 sub copy_atom($);
 sub copy_array($);
 sub mat_vect_mul($$);
-
-#===============================================================#
-# Calculates distance between two given vectors.
-
-# Accepts two arrays of vectors coordinates_fract.
-
-# Returns a distance.
-
-sub distance($$)
-{
-    my($vector1, $vector2) = @_;
-    my $dist = 0;
-
-    for(my $k = 0; $k < @{$vector1}; $k++)
-    {
-        $dist += (${$vector1}[$k] - ${$vector2}[$k])**2;
-    }
-    return sqrt($dist);
-}
 
 #===============================================================#
 
