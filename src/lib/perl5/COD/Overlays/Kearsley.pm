@@ -171,15 +171,30 @@ sub get_rotation_matrix($$)
 
     my( $eigenvectors, $eigenvalues ) = jacobi_eigenvv( @qmatrix );
 
-    my $min = 0;
-    for (my $i = 1; $i < @$eigenvalues; $i++) {
-        $min = $i if @$eigenvalues[$i] < @$eigenvalues[$min];
+    my $min;
+    my $found_negative_eigenvalues = 0;
+    for (my $i = 0; $i < @$eigenvalues; $i++) {
+        if (@$eigenvalues[$i] > 0) {
+            $found_negative_eigenvalues = 1;
+            next;
+        }
+
+        if (!defined $min || @$eigenvalues[$i] <= @$eigenvalues[$min]) {
+            $min = $i;
+        }
+    }
+
+    if ( !defined $min ) {
+        die "no positive eigenvalues were produced";
+    } elsif ( $found_negative_eigenvalues ) {
+        warn "negative eigenvalues were produced, taking the smallest " .
+             "positive eigenvalue";
     }
 
     my $eigenvector = @$eigenvectors[$min];
     my $eigenvalue  = @$eigenvalues[$min];
 
-    my $rmsd = $eigenvalue > 0 ? sqrt(abs($eigenvalue)/$N) : undef;
+    my $rmsd = sqrt(abs($eigenvalue)/$N);
 
     my $R = construct_rotation_matrix($eigenvector);
 
