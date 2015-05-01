@@ -25,7 +25,9 @@ use COD::Spacegroups::SymopAlgebra qw(symop_is_unity symop_vector_mul);
 use COD::Spacegroups::SymopParse;
 use COD::Spacegroups::SymopLookup;
 use COD::CIFData::CIFAtomList qw(atom_array_from_cif dump_atoms_as_cif);
-use COD::CIFData::CIFSymmetryGenerator qw(distance get_cell
+use COD::CIFData::CIFSymmetryGenerator qw(atoms_coincide
+                                          distance
+                                          get_cell
                                           get_symmetry_operators
                                           mat_vect_mul);
 use COD::CIFTags::CIFTagCanonicalNames;
@@ -1034,7 +1036,8 @@ sub symops_apply_to_atom_modulo1($$)
         my %to_be_deleted;
         for my $i (0..$#$sym_atoms-1) {
             for my $j ($i+1..$#$sym_atoms) {
-                if( atoms_coincide( $sym_atoms->[$i], $sym_atoms->[$j],
+                if( atoms_coincide( $sym_atoms->[$i],
+                                    $sym_atoms->[$j],
                                     $sym_atoms->[$i]{f2o} )) {
                     $to_be_deleted{$sym_atoms->[$j]{name}} = 1;
                 }
@@ -1093,37 +1096,6 @@ sub copy_struct_deep
         if ref $struct eq "HASH";
     die( "deep copy failed: 'copy_struct_deep' does not know how to " .
          "copy object '" . ref( $struct ) . "'" );
-}
-
-#===============================================================#
-# Checks whether atoms are in the same point in space:
-
-sub atoms_coincide($$$)
-{
-    my ( $old_atom, $new_atom, $f2o ) = @_;
-
-    my $old_coord = [ map { modulo_1($_) } @{$old_atom->{coordinates_fract}} ];
-    my $old_xyz = mat_vect_mul( $f2o, $old_coord );
-
-    my $new_coord = [ map { modulo_1($_) } @{$new_atom->{coordinates_fract}} ];
-
-    for my $dx (-1, 0, 1) {
-    for my $dy (-1, 0, 1) {
-    for my $dz (-1, 0, 1) {
-        my $shifted_coord = [
-            $new_coord->[0] + $dx,
-            $new_coord->[1] + $dy,
-            $new_coord->[2] + $dz,
-        ];
-        my $new_xyz = mat_vect_mul( $f2o, $shifted_coord );
-        if( distance( $new_xyz, $old_xyz ) < $special_position_cutoff ) {
-            ## local $, = ", "; my $label =  $old_atom->{site_label};
-            ## print STDERR ">>> mapped to self: $label @{$new_xyz} / @{$old_xyz}\n";
-            return 1;
-        }
-    }}}
-
-    return 0;
 }
 
 #==============================================================================#
