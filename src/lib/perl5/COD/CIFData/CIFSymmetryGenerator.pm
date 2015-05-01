@@ -50,7 +50,7 @@ my $special_position_cutoff = 0.01; # Angstroems
 # a special position.
 
 sub atoms_coincide($$$);
-sub get_cell($$$);
+sub get_cell($$$@);
 sub get_symmetry_operators($$);
 sub symop_generate_atoms($$$);
 sub copy_atom($);
@@ -250,9 +250,10 @@ sub lookup_symops
 # Returns
 #     cell_lengths_and_angles - an array  with stored information.
 
-sub get_cell($$$)
+sub get_cell($$$@)
 {
-    my( $values, $filename, $dataname ) = @_;
+    my( $values, $filename, $dataname, $options ) = @_;
+    $options = {} unless $options;
 
     my @cell_lengths_and_angles;
 
@@ -264,6 +265,8 @@ sub get_cell($$$)
         if( exists $values->{$cif_tag} ) {
             push(@cell_lengths_and_angles, $values->{$cif_tag}[0]);
             $cell_lengths_and_angles[-1] =~ s/\(\d+\)$//;
+        } elsif( $options->{silent} ) {
+            push(@cell_lengths_and_angles, undef);
         } else {
             error( $0, $filename, $dataname,
                    "cell length '$cif_tag' not present" );
@@ -278,6 +281,8 @@ sub get_cell($$$)
         if( exists $values->{$cif_tag} ) {
             push( @cell_lengths_and_angles, $values->{$cif_tag}[0] );
             $cell_lengths_and_angles[-1] =~ s/\(\d+\)$//;
+        } elsif( $options->{silent} ) {
+            push(@cell_lengths_and_angles, undef);
         } else {
             warning( $0, $filename, $dataname,
                      "cell angle '$cif_tag' not present -- " .
