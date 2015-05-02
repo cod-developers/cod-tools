@@ -29,7 +29,7 @@ ${SWIG_SO_FILE}: ${OBJS}
 	gcc `perl -MConfig -e 'print $$Config{lddlflags}'` ${OBJS} -o $@
 
 ${OBJ} ${SWIG_WRAPPER_OBJ}: ${SWIG_SOURCE} ${SWIG_WRAPPER}
-	gcc \
+	gcc -Wall -Wno-unused-value \
 		-I${CIF_PARSER_C_DIR} \
 		-I${CEXCEPTIONS_DIR} \
 		-I${GETOPTIONS_DIR} -c \

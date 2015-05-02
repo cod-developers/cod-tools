@@ -26,7 +26,7 @@ ${SWIG_SO_FILE}: ${OBJS}
 	gcc -shared ${OBJS} -o $@
 
 ${OBJ} ${SWIG_WRAPPER_OBJ}: ${SWIG_SOURCE} ${SWIG_WRAPPER}
-	gcc \
+	gcc -Wall -Wno-unused-value \
 		-I/usr/local/include \
 		-I/usr/include/python2.7 -lpython2.7 \
 		-I${CIF_PARSER_C_DIR} \

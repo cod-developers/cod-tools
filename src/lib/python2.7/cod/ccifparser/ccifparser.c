@@ -1,6 +1,7 @@
 #include <Python.h>
 #include <cif_grammar_y.h>
 #include <cif_grammar_flex.h>
+#include <cif_options.h>
 #include <allocx.h>
 #include <cxprintf.h>
 #include <getoptions.h>
@@ -20,56 +21,47 @@ PyObject * parse_cif( char * fname, char * prog, PyObject * opt )
     cif_flex_debug_off();
     cif_debug_off();
     CIF * volatile cif = NULL;
-    COMPILER_OPTIONS * co = NULL;
-
-    cexception_guard( inner ) {
-        co = new_compiler_options( &inner );
-    }
-    cexception_catch {
-        fprintf( stderr,
-                 "could not allocate CIF parser options in ccifparser.py\n" );
-        co = NULL;
-    }
+    cif_option_t co = cif_option_default();
 
     PyObject * options = opt;
     if( PyDict_Contains( options, PyString_FromString( "do_not_unprefix_text" ) ) ) {
-        set_do_not_unprefix_text( co );
+        co = cif_option_set_do_not_unprefix_text( co );
     }
     if( PyDict_Contains( options, PyString_FromString( "do_not_unfold_text" ) ) ) {
-        set_do_not_unfold_text( co );
+        co = cif_option_set_do_not_unfold_text( co );
     }
     if( PyDict_Contains( options, PyString_FromString( "fix_errors" ) ) ) {
-        set_fix_errors( co );
+        co = cif_option_set_fix_errors( co );
     }
     if( PyDict_Contains( options, PyString_FromString( "fix_duplicate_tags_with_same_values" ) ) ) {
-        set_fix_duplicate_tags_with_same_values( co );
+        co = cif_option_set_fix_duplicate_tags_with_same_values( co );
     }
     if( PyDict_Contains( options, PyString_FromString( "fix_duplicate_tags_with_empty_values" ) ) ) {
-        set_fix_duplicate_tags_with_empty_values( co );
+        co = cif_option_set_fix_duplicate_tags_with_empty_values( co );
     }
     if( PyDict_Contains( options, PyString_FromString( "fix_data_header" ) ) ) {
-        set_fix_data_header( co );
+        co = cif_option_set_fix_data_header( co );
     }
     if( PyDict_Contains( options, PyString_FromString( "fix_datablock_names" ) ) ) {
-        set_fix_datablock_names( co );
+        co = cif_option_set_fix_datablock_names( co );
     }
     if( PyDict_Contains( options, PyString_FromString( "fix_string_quotes" ) ) ) {
-        set_fix_string_quotes( co );
+        co = cif_option_set_fix_string_quotes( co );
     }
     if( PyDict_Contains( options, PyString_FromString( "fix_missing_closing_double_quote" ) ) ) {
-        set_fix_missing_closing_double_quote();
+        set_lexer_fix_missing_closing_double_quote();
     }
     if( PyDict_Contains( options, PyString_FromString( "fix_missing_closing_single_quote" ) ) ) {
-        set_fix_missing_closing_single_quote();
+        set_lexer_fix_missing_closing_single_quote();
     }
     if( PyDict_Contains( options, PyString_FromString( "fix_ctrl_z" ) ) ) {
-        set_fix_ctrl_z();
+        set_lexer_fix_ctrl_z();
     }
     if( PyDict_Contains( options, PyString_FromString( "fix_non_ascii_symbols" ) ) ) {
-        set_fix_non_ascii_symbols();
+        set_lexer_fix_non_ascii_symbols();
     }
     if( PyDict_Contains( options, PyString_FromString( "allow_uqstring_brackets" ) ) ) {
-        set_allow_uqstring_brackets();
+        set_lexer_allow_uqstring_brackets();
     }
 
     if( strlen( fname ) == 1 && fname[0] == '-' ) {
@@ -92,7 +84,6 @@ PyObject * parse_cif( char * fname, char * prog, PyObject * opt )
             nerrors++;
         }
     }
-    free( co );
 
     if( cif ) {
         DATABLOCK *datablock;

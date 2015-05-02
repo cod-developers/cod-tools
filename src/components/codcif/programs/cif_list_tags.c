@@ -64,7 +64,8 @@ int main( int argc, char *argv[], char *env[] )
       char * volatile filename = NULL;
       cexception_guard( inner ) {
           filename = files[i] ? files[i] : "-";
-          cif = new_cif_from_cif_file( files[i], NULL, &inner );
+          cif = new_cif_from_cif_file( files[i], cif_option_default(),
+                                       &inner );
 
           if( cif && cif_nerrors( cif ) == 0 ) {
               if( debug.present && strstr(debug.value.s, "dump") != NULL ) {
