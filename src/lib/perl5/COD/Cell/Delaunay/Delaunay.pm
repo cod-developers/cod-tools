@@ -14,6 +14,12 @@
 # perl -MDelaunay -le '
 #    $v = COD::Cell::Delaunay::Delaunay::reduce( 4.693, 4.936, 7.524, 131, 89.57, 90.67 );
 #    print join(" ", map {sprintf("%5.3f",$_)} @{$v->[0]})'
+#
+# The output, as specified in the tables, should be:
+# a=4.693, b=5.678, c=4.936, alpha=90, beta=90.67, gamma=90 .
+#
+# The actual output is:
+# 4.693 4.936 5.678 90.002 90.013 90.670
 
 package COD::Cell::Delaunay::Delaunay;
 
