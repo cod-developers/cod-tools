@@ -23,54 +23,27 @@
 #include <cif_lexer.h>
 #include <assert.h>
 
-struct COMPILER_OPTIONS {
-    int options;
-};
-
-typedef struct {
+typedef struct CIF_COMPILER {
     char *filename;
     CIF *cif;
-    COMPILER_OPTIONS *options;
+    cif_option_t options;
 } CIF_COMPILER;
-
-typedef enum {
-    DO_NOT_UNPREFIX_TEXT = 1,
-    DO_NOT_UNFOLD_TEXT   = 2,
-    FIX_ERRORS           = 4,
-    FIX_DUPLICATE_TAGS_WITH_SAME_VALUES  = 8,
-    FIX_DUPLICATE_TAGS_WITH_EMPTY_VALUES = 16,
-    FIX_DATA_HEADER      = 32,
-    FIX_DATABLOCK_NAMES  = 64,
-    FIX_STRING_QUOTES    = 128,
-} compiler_option;
-
-COMPILER_OPTIONS *new_compiler_options( cexception_t *ex )
-{
-    COMPILER_OPTIONS *co = callocx( 1, sizeof(COMPILER_OPTIONS), ex );
-    co->options = 0;
-    /* Setting of default options should be done here */
-    return co;
-}
 
 static void delete_cif_compiler( CIF_COMPILER *c )
 {
     if( c ) {
         if( c->filename ) free( c->filename );
         if( c->cif ) delete_cif( c->cif );
-#warning "possibly a memory leak here: c->options are not deleted. S.G."
         free( c );
     }
 }
 
 static CIF_COMPILER *new_cif_compiler( char *filename,
-                                       COMPILER_OPTIONS *co,
+                                       cif_option_t co,
                                        cexception_t *ex )
 {
     cexception_t inner;
     CIF_COMPILER *cc = callocx( 1, sizeof(CIF_COMPILER), ex );
-    if( co == NULL ) {
-        co = new_compiler_options( ex );
-    }
 
     cexception_guard( inner ) {
         cc->options  = co;
@@ -87,7 +60,7 @@ static CIF_COMPILER *new_cif_compiler( char *filename,
     return cc;
 }
 
-static CIF_COMPILER * volatile cif_cc;
+static CIF_COMPILER * volatile cif_cc; /* CIF current compiler */
 
 static cexception_t *px; /* parser exception */
 
@@ -96,14 +69,14 @@ void add_tag_value( char * tag, char * value, cif_value_type_t type,
     cexception_t *ex );
 int yyerror_previous( const char *message );
 
-int isset_do_not_unprefix_text( COMPILER_OPTIONS * co );
-int isset_do_not_unfold_text( COMPILER_OPTIONS * co );
-int isset_fix_errors( COMPILER_OPTIONS * co );
-int isset_fix_duplicate_tags_with_same_values( COMPILER_OPTIONS * co );
-int isset_fix_duplicate_tags_with_empty_values( COMPILER_OPTIONS * co );
-int isset_fix_data_header( COMPILER_OPTIONS * co );
-int isset_fix_datablock_names( COMPILER_OPTIONS * co );
-int isset_fix_string_quotes( COMPILER_OPTIONS * co );
+int isset_do_not_unprefix_text( CIF_COMPILER *co );
+int isset_do_not_unfold_text( CIF_COMPILER *co );
+int isset_fix_errors( CIF_COMPILER *co );
+int isset_fix_duplicate_tags_with_same_values( CIF_COMPILER *co );
+int isset_fix_duplicate_tags_with_empty_values( CIF_COMPILER *co );
+int isset_fix_data_header( CIF_COMPILER *co );
+int isset_fix_datablock_names( CIF_COMPILER *co );
+int isset_fix_string_quotes( CIF_COMPILER *co );
 
 int loop_tag_count = 0;
 int loop_value_count = 0;
@@ -155,8 +128,8 @@ cif_file
 stray_cif_value_list
         : cif_value
         {
-            if( isset_fix_errors( cif_cc->options ) ||
-                isset_fix_data_header( cif_cc->options ) ) {
+            if( isset_fix_errors( cif_cc ) ||
+                isset_fix_data_header( cif_cc ) ) {
                     print_message( "warning, stray CIF values at the "
                                    "beginning of the input file",
                                     cif_flex_current_line_number(), -1 );
@@ -169,8 +142,8 @@ stray_cif_value_list
         }
         | cif_value
         {
-            if( isset_fix_errors( cif_cc->options ) ||
-                isset_fix_data_header( cif_cc->options ) ) {
+            if( isset_fix_errors( cif_cc ) ||
+                isset_fix_data_header( cif_cc ) ) {
                     print_message( "warning, stray CIF values at the "
                                    "beginning of the input file",
                                     cif_flex_current_line_number(), -1 );
@@ -198,8 +171,8 @@ headerless_data_block
 	:	data_item
         {
             extern char *progname;
-            if( isset_fix_errors( cif_cc->options ) ||
-                isset_fix_data_header( cif_cc->options ) ) {
+            if( isset_fix_errors( cif_cc ) ||
+                isset_fix_data_header( cif_cc ) ) {
                     print_message_generic( progname, cif_cc->filename,
                         NULL, "warning, no data block heading (i.e. "
                               "data_somecif) found",
@@ -255,12 +228,12 @@ data_block_head
             }
             buf[strlen($1)+strlen($2.vstr)+1] = '\0';
             cif_start_datablock( cif_cc->cif, buf, px );
-            if( !isset_fix_errors( cif_cc->options ) &&
-                !isset_fix_datablock_names( cif_cc->options ) ) {
+            if( !isset_fix_errors( cif_cc ) &&
+                !isset_fix_datablock_names( cif_cc ) ) {
                 yyerror_previous( "syntax error:" );
             }
-            if( isset_fix_errors( cif_cc->options ) ||
-                isset_fix_string_quotes( cif_cc->options ) ) {
+            if( isset_fix_errors( cif_cc ) ||
+                isset_fix_string_quotes( cif_cc ) ) {
                 yynote( "warning, the dataname apparently had spaces "
                         "in it - replaced spaces by underscores" );
             }
@@ -292,8 +265,8 @@ cif_entry
         | _TAG cif_value cif_value_list
     	    {
                 assert_datablock_exists( px );
-                if( isset_fix_errors( cif_cc->options ) ||
-                    isset_fix_string_quotes( cif_cc->options ) ) {
+                if( isset_fix_errors( cif_cc ) ||
+                    isset_fix_string_quotes( cif_cc ) ) {
                     yynote( "warning, string with spaces without quotes" );
                     char *buf = mallocx(strlen($2.vstr)+strlen($3.vstr)+2,px);
                     buf = strcpy( buf, $2.vstr );
@@ -403,10 +376,10 @@ string
 textfield
         :	_TEXT_FIELD
         { $$.vstr = $1;
-          if( isset_do_not_unprefix_text( cif_cc->options ) == 0 ) {
+          if( isset_do_not_unprefix_text( cif_cc ) == 0 ) {
               $$.vstr = cif_unprefix_textfield( $$.vstr );
           }
-          if( isset_do_not_unfold_text( cif_cc->options ) == 0 &&
+          if( isset_do_not_unfold_text( cif_cc ) == 0 &&
               $$.vstr[0] == '\\' ) {
               $$.vstr = cif_unfold_textfield( $$.vstr );
           }
@@ -447,7 +420,7 @@ static void cif_compile_file( char *filename, cexception_t *ex )
     fclosex( yyin, ex );
 }
 
-CIF *new_cif_from_cif_file( char *filename, COMPILER_OPTIONS * co, cexception_t *ex )
+CIF *new_cif_from_cif_file( char *filename, cif_option_t co, cexception_t *ex )
 {
     volatile int nerrors;
     cexception_t inner;
@@ -612,15 +585,15 @@ void add_tag_value( char * tag, char * value, cif_value_type_t type,
             if( strcmp
                 (datablock_value
                  (cif_last_datablock(cif_cc->cif), tag_nr, 0), value) == 0 &&
-                (isset_fix_errors(cif_cc->options) == 1 ||
+                (isset_fix_errors(cif_cc) == 1 ||
                  isset_fix_duplicate_tags_with_same_values
-                 (cif_cc->options) == 1)) {
+                 (cif_cc) == 1)) {
                 yynote( cxprintf( "warning, tag %s appears more than "
                                   "once with the same value", tag ) );
             } else {
-                if( isset_fix_errors(cif_cc->options) == 1 ||
+                if( isset_fix_errors(cif_cc) == 1 ||
                     isset_fix_duplicate_tags_with_empty_values
-                    (cif_cc->options) == 1 ) {
+                    (cif_cc) == 1 ) {
                     if( is_tag_value_unknown( value ) ) {
                         yynote( cxprintf( "warning, tag %s appears more "
                                           "than once, the second occurence "
@@ -784,128 +757,50 @@ void cif_yy_debug_off( void )
 #endif
 }
 
-void set_do_not_unprefix_text( COMPILER_OPTIONS * co )
+int isset_do_not_unprefix_text( CIF_COMPILER *ccc )
 {
-    compiler_option copt = DO_NOT_UNPREFIX_TEXT;
-    co->options |= copt;
+    cif_option_t copt = DO_NOT_UNPREFIX_TEXT;
+    assert( ccc ); return ( ( ccc->options & copt ) != 0 );
 }
 
-void set_do_not_unfold_text( COMPILER_OPTIONS * co )
+int isset_do_not_unfold_text( CIF_COMPILER *ccc )
 {
-    compiler_option copt = DO_NOT_UNFOLD_TEXT;
-    co->options |= copt;
+    cif_option_t copt = DO_NOT_UNFOLD_TEXT;
+    assert( ccc ); return ( ( ccc->options & copt ) != 0 );
 }
 
-void set_fix_errors( COMPILER_OPTIONS * co )
+int isset_fix_errors( CIF_COMPILER *ccc )
 {
-    set_lexer_fix_ctrl_z();
-    set_lexer_fix_non_ascii_symbols();
-    set_lexer_fix_missing_closing_double_quote();
-    set_lexer_fix_missing_closing_single_quote();
-    set_lexer_allow_uqstring_brackets();
-    compiler_option copt = FIX_ERRORS;
-    co->options |= copt;
+    cif_option_t copt = FIX_ERRORS;
+    assert( ccc ); return ( ( ccc->options & copt ) != 0 );
 }
 
-void set_fix_duplicate_tags_with_same_values( COMPILER_OPTIONS * co )
+int isset_fix_duplicate_tags_with_same_values( CIF_COMPILER *ccc )
 {
-    compiler_option copt = FIX_DUPLICATE_TAGS_WITH_SAME_VALUES;
-    co->options |= copt;
+    cif_option_t copt = FIX_DUPLICATE_TAGS_WITH_SAME_VALUES;
+    assert( ccc ); return ( ( ccc->options & copt ) != 0 );
 }
 
-void set_fix_duplicate_tags_with_empty_values( COMPILER_OPTIONS * co )
+int isset_fix_duplicate_tags_with_empty_values( CIF_COMPILER *ccc )
 {
-    compiler_option copt = FIX_DUPLICATE_TAGS_WITH_EMPTY_VALUES;
-    co->options |= copt;
+    cif_option_t copt = FIX_DUPLICATE_TAGS_WITH_EMPTY_VALUES;
+    assert( ccc ); return ( ( ccc->options & copt ) != 0 );
 }
 
-void set_fix_data_header( COMPILER_OPTIONS * co )
+int isset_fix_data_header( CIF_COMPILER *ccc )
 {
-    compiler_option copt = FIX_DATA_HEADER;
-    co->options |= copt;
+    cif_option_t copt = FIX_DATA_HEADER;
+    assert( ccc ); return ( ( ccc->options & copt ) != 0 );
 }
 
-void set_fix_datablock_names( COMPILER_OPTIONS * co )
+int isset_fix_datablock_names( CIF_COMPILER *ccc )
 {
-    compiler_option copt = FIX_DATABLOCK_NAMES;
-    co->options |= copt;
+    cif_option_t copt = FIX_DATABLOCK_NAMES;
+    assert( ccc ); return ( ( ccc->options & copt ) != 0 );
 }
 
-void set_fix_string_quotes( COMPILER_OPTIONS * co )
+int isset_fix_string_quotes( CIF_COMPILER *ccc )
 {
-    compiler_option copt = FIX_STRING_QUOTES;
-    co->options |= copt;
-}
-
-void set_fix_missing_closing_double_quote()
-{
-    set_lexer_fix_missing_closing_double_quote();
-}
-
-void set_fix_missing_closing_single_quote()
-{
-    set_lexer_fix_missing_closing_single_quote();
-}
-
-void set_fix_ctrl_z( void )
-{
-    set_lexer_fix_ctrl_z();
-}
-
-void set_fix_non_ascii_symbols( void )
-{
-    set_lexer_fix_non_ascii_symbols();
-}
-
-void set_allow_uqstring_brackets( void )
-{
-    set_lexer_allow_uqstring_brackets();
-}
-
-int isset_do_not_unprefix_text( COMPILER_OPTIONS * co )
-{
-    compiler_option copt = DO_NOT_UNPREFIX_TEXT;
-    return ( ( co->options & copt ) != 0 );
-}
-
-int isset_do_not_unfold_text( COMPILER_OPTIONS * co )
-{
-    compiler_option copt = DO_NOT_UNFOLD_TEXT;
-    return ( ( co->options & copt ) != 0 );
-}
-
-int isset_fix_errors( COMPILER_OPTIONS * co )
-{
-    compiler_option copt = FIX_ERRORS;
-    return ( ( co->options & copt ) != 0 );
-}
-
-int isset_fix_duplicate_tags_with_same_values( COMPILER_OPTIONS * co )
-{
-    compiler_option copt = FIX_DUPLICATE_TAGS_WITH_SAME_VALUES;
-    return ( ( co->options & copt ) != 0 );
-}
-
-int isset_fix_duplicate_tags_with_empty_values( COMPILER_OPTIONS * co )
-{
-    compiler_option copt = FIX_DUPLICATE_TAGS_WITH_EMPTY_VALUES;
-    return ( ( co->options & copt ) != 0 );
-}
-
-int isset_fix_data_header( COMPILER_OPTIONS * co )
-{
-    compiler_option copt = FIX_DATA_HEADER;
-    return ( ( co->options & copt ) != 0 );
-}
-
-int isset_fix_datablock_names( COMPILER_OPTIONS * co )
-{
-    compiler_option copt = FIX_DATABLOCK_NAMES;
-    return ( ( co->options & copt ) != 0 );
-}
-
-int isset_fix_string_quotes( COMPILER_OPTIONS * co )
-{
-    compiler_option copt = FIX_STRING_QUOTES;
-    return ( ( co->options & copt ) != 0 );
+    cif_option_t copt = FIX_STRING_QUOTES;
+    assert( ccc ); return ( ( ccc->options & copt ) != 0 );
 }

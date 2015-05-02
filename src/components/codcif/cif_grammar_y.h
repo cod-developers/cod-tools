@@ -9,16 +9,13 @@
 #define __CIF_GRAMMAR_Y_H
 
 #include <cif.h>
+#include <cif_options.h>
 #include <cexceptions.h>
 
-typedef struct COMPILER_OPTIONS COMPILER_OPTIONS;
+typedef struct CIF_COMPILER CIF_COMPILER;
 
-COMPILER_OPTIONS *new_compiler_options( cexception_t *ex );
-
-void set_fix_errors( COMPILER_OPTIONS * co );
-
-CIF *new_cif_from_cif_file( char *filename, COMPILER_OPTIONS *co,
-    cexception_t *ex );
+CIF *new_cif_from_cif_file( char *filename, cif_option_t co,
+                            cexception_t *ex );
 
 void cif_printf( cexception_t *ex, char *format, ... );
 char * cif_unprefix_textfield( char * tf );

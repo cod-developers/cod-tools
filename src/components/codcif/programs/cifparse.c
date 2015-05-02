@@ -101,7 +101,6 @@ int main( int argc, char *argv[], char *env[] )
   cexception_t inner;
   char ** volatile files = NULL;
   CIF * volatile cif = NULL;
-  COMPILER_OPTIONS * volatile compiler_options = NULL;
   int retval = 0;
   int i;
 
@@ -137,11 +136,12 @@ int main( int argc, char *argv[], char *env[] )
   for( i = 0; i == 0 || files[i] != NULL; i++ ) {
       char * volatile filename = NULL;
       cexception_guard( inner ) {
+          cif_option_t compiler_options = cif_option_default();
           filename = files[i] ? files[i] : "-";
 
           if( fix_errors.value.b == 1 ) {
-              compiler_options = new_compiler_options( &inner );
-              set_fix_errors( compiler_options );
+              compiler_options =
+                  cif_option_set_fix_errors( compiler_options );
           }
 
           cif = new_cif_from_cif_file( files[i], compiler_options, &inner );
