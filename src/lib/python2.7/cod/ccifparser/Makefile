@@ -20,6 +20,8 @@ CIF_PARSER_OBJS  = ${CIF_PARSER_OBJ_SOURCES:${CIF_PARSER_C_DIR}/%.c=${CIF_PARSER
 
 OBJS = ${OBJ} ${SWIG_WRAPPER_OBJ} ${CIF_PARSER_OBJS}
 
+.PHONY: all
+
 all: ${SWIG_MODULE} ${SWIG_SO_FILE}
 
 ${SWIG_SO_FILE}: ${OBJS}
@@ -50,10 +52,12 @@ ${CEXCEPTIONS_DIR}/obj/%.o: ${CEXCEPTIONS_DIR}/%.c
 ${GETOPTIONS_DIR}/obj/%.o: ${GETOPTIONS_DIR}/%.c
 	${MAKE} -C ${GETOPTIONS_DIR} obj/$*.o
 
+.PHONY: clean cleanAll distclean try
+
 clean:
 	rm -f ${SWIG_WRAPPER} ${OBJ} ${SWIG_WRAPPER_OBJ} *~
 
-cleanAll: clean
+cleanAll distclean: clean
 	rm -f ${SWIG_SO_FILE} ${SWIG_MODULE}
 
 try: ${SWIG_MODULE}
