@@ -46,7 +46,7 @@ COMPILED_MODULES := ${YAPP_MODULES} ${SWIG_MODULES}
 # is invoked.
 #
 
-.PHONY: tests
+.PHONY: all tests
 
 all: tests
 
@@ -306,12 +306,19 @@ blame:
 
 #------------------------------------------------------------------------------
 
+.PHONY: clean cleanAll distclean
+
 clean:
 	rm -f *~
 	rm -f ${SCRIPT_DIFFS}
 	rm -f ${TST_DIFFS}
 	rm -f ${SHELL_DIFFS}
 
-cleanAll: clean ${LOCAL_CLEAN_TARGETS}
+MAKE_DIRS = $(dir $(wildcard */Makefile))
+
+cleanAll distclean: clean ${LOCAL_CLEAN_TARGETS}
 	rm -f ${COMPILED_MODULES}
 	rm -f ${SCRIPT_DEPENDS}
+	for DIR in ${MAKE_DIRS}; do \
+		${MAKE} -C $$DIR $@; \
+	done
