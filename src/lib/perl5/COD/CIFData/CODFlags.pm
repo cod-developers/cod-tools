@@ -20,10 +20,27 @@ our @EXPORT = qw( is_on_hold
                   is_disordered
                   is_suboptimal
                   has_coordinates
+                  has_hkl
+                  has_powder_diffraction_intensities
                   has_Fobs
                   has_errors
                   has_warnings
+                  @hkl_tags
+                  @powder_diffraction_intensity_tags
                 );
+
+our @hkl_tags = qw(
+    _refln_index_h
+    _refln_index_k
+    _refln_index_l
+);
+
+our @powder_diffraction_intensity_tags = qw(
+    _pd_meas_counts_total
+    _pd_meas_intensity_total
+    _pd_proc_intensity_net
+    _pd_proc_intensity_total
+);
 
 sub is_duplicate($);
 sub is_disordered($);
@@ -31,6 +48,8 @@ sub is_suboptimal($);
 sub is_on_hold($);
 sub is_retracted($);
 sub has_coordinates($);
+sub has_hkl($);
+sub has_powder_diffraction_intensities($);
 sub has_Fobs($);
 sub has_warnings($);
 sub has_errors($);
@@ -87,6 +106,7 @@ sub is_suboptimal($)
     foreach ( @$suboptimal_tags ) {
         return 1 if exists $values->{$_};
     }
+
     return 0;
 }
 
@@ -156,6 +176,28 @@ sub has_coordinates($)
     return 0;
 }
 
+sub has_hkl($)
+{
+    my ( $dataset ) = @_;
+
+    for my $tag ( @hkl_tags ) {
+        return 0 if !exists $dataset->{values}{$tag};
+    }
+
+    return 1;
+}
+
+sub has_powder_diffraction_intensities($)
+{
+    my ( $dataset ) = @_;
+
+    for my $tag ( @powder_diffraction_intensity_tags ) {
+        return 1 if !tag_is_empty( $dataset, $tag );
+    }
+
+    return 0;
+}
+
 sub has_Fobs($)
 {
     my ( $dataset ) = @_;
@@ -205,6 +247,7 @@ sub has_errors($)
             };
         };
     };
+
     return 0;
 }
 
