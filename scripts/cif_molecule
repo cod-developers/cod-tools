@@ -58,7 +58,9 @@ use COD::AtomBricks qw(build_bricks get_atom_index get_search_span);
 use COD::CIFParser::CIFParser;
 use COD::CIFData::CIFSymmetryGenerator qw(atoms_coincide
                                           get_cell
-                                          get_symmetry_operators);
+                                          get_symmetry_operators
+                                          test_bond
+                                          test_bump);
 use COD::CIFData::CIFAtomList qw(atom_array_from_cif
                                  copy_struct_deep
                                  dump_atoms_as_cif);
@@ -1237,76 +1239,6 @@ sub get_symops
         }
     }
     return undef;
-}
-#===============================================================#
-# Made a decision if a chemical bond exists.
-
-# Accepts distance matrix, atom id and a reference to a hash of atom properties
-# %atoms = (
-#           H => { #(chemical_type)
-#                     name => Hydrogen,
-#                     period => 1,
-#                     group => 1,
-#                     block => s,
-#                     atomic_number => "1",
-#                     atomic_weight => 1.008,
-#                     covalent_radius => 0.23,
-#                     vdw_radius => 1.09,
-#                     valency => [1],
-#                     },
-#          );
-
-sub test_bond
-{
-    my ($atom_properties, $chemical_type1, $chemical_type2, $distance,
-        $covalent_sensitivity) = @_;
-
-    my $cov_radius1 = $atom_properties->{$chemical_type1}->{covalent_radius};
-    my $cov_radius2 = $atom_properties->{$chemical_type2}->{covalent_radius};
-
-    if($distance < $cov_radius1 + $cov_radius2 + $covalent_sensitivity)
-    {
-        return 1;
-    }
-
-    return 0;
-}
-
-#===============================================================#
-# Makes a decision if atoms are too close to each other, i.e if they
-# make a "bump:
-
-# Accepts distance, atom id and a reference to a hash of atom properties
-# %atoms = (
-#           H => { #(chemical_type)
-#                     name => Hydrogen,
-#                     period => 1,
-#                     group => 1,
-#                     block => s,
-#                     atomic_number => "1",
-#                     atomic_weight => 1.008,
-#                     covalent_radius => 0.23,
-#                     vdw_radius => 1.09,
-#                     valency => [1],
-#                     },
-#          );
-
-sub test_bump($$$$$$$)
-{
-    my ( $atom_properties, $chemical_type1, $chemical_type2,
-         $atom1_label, $atom2_label,
-         $dist, $bump_factor ) = @_;
-
-    my $cov_radius1 = $atom_properties->{$chemical_type1}->{covalent_radius};
-    my $cov_radius2 = $atom_properties->{$chemical_type2}->{covalent_radius};
-
-    if( $dist < $bump_factor * ($cov_radius1 + $cov_radius2) &&
-        ($dist > $special_position_cutoff ||
-         $atom1_label ne $atom2_label)) {
-        return 1;
-    }
-
-    return 0;
 }
 
 #==============================================================#

@@ -29,6 +29,8 @@ our @EXPORT_OK = qw(
     get_cell
     get_symmetry_operators
     symop_generate_atoms
+    test_bond
+    test_bump
 );
 
 my %sg_name_abbrev =
@@ -51,6 +53,8 @@ sub atoms_coincide($$$);
 sub get_cell($$$@);
 sub get_symmetry_operators($$);
 sub symop_generate_atoms($$$);
+sub test_bond($$$$$);
+sub test_bump($$$$$$$);
 sub copy_atom($);
 sub copy_array($);
 
@@ -366,6 +370,79 @@ sub get_symmetry_operators($$)
     }
 
     return $sym_data;
+}
+
+#===============================================================#
+# Made a decision if a chemical bond exists.
+#
+# Accepts a pair of chemical types, distance between atoms and a reference
+# to a hash of atom properties
+# %atoms = (
+#           H => { #(chemical_type)
+#                     name => Hydrogen,
+#                     period => 1,
+#                     group => 1,
+#                     block => s,
+#                     atomic_number => "1",
+#                     atomic_weight => 1.008,
+#                     covalent_radius => 0.23,
+#                     vdw_radius => 1.09,
+#                     valency => [1],
+#                     },
+#          );
+
+sub test_bond($$$$$)
+{
+    my ($atom_properties, $chemical_type1, $chemical_type2, $distance,
+        $covalent_sensitivity) = @_;
+
+    my $cov_radius1 = $atom_properties->{$chemical_type1}->{covalent_radius};
+    my $cov_radius2 = $atom_properties->{$chemical_type2}->{covalent_radius};
+
+    if($distance < $cov_radius1 + $cov_radius2 + $covalent_sensitivity)
+    {
+        return 1;
+    }
+
+    return 0;
+}
+
+#===============================================================#
+# Makes a decision if atoms are too close to each other, i.e if they
+# make a "bump":
+#
+# Accepts a pair of atom labels, their chemical types and distance between
+# them as well as a reference to a hash of atom properties
+# %atoms = (
+#           H => { #(chemical_type)
+#                     name => Hydrogen,
+#                     period => 1,
+#                     group => 1,
+#                     block => s,
+#                     atomic_number => "1",
+#                     atomic_weight => 1.008,
+#                     covalent_radius => 0.23,
+#                     vdw_radius => 1.09,
+#                     valency => [1],
+#                     },
+#          );
+
+sub test_bump($$$$$$$)
+{
+    my ( $atom_properties, $chemical_type1, $chemical_type2,
+         $atom1_label, $atom2_label,
+         $dist, $bump_factor ) = @_;
+
+    my $cov_radius1 = $atom_properties->{$chemical_type1}->{covalent_radius};
+    my $cov_radius2 = $atom_properties->{$chemical_type2}->{covalent_radius};
+
+    if( $dist < $bump_factor * ($cov_radius1 + $cov_radius2) &&
+        ($dist > $special_position_cutoff ||
+         $atom1_label ne $atom2_label)) {
+        return 1;
+    }
+
+    return 0;
 }
 
 #===============================================================#
