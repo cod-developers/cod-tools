@@ -18,24 +18,15 @@ use strict;
 use warnings;
 use COD::CIFParser::CIFParser;
 use COD::CIFData::CIFDiff;
+use COD::CIFData::CODFlags qw(has_hkl
+                              has_powder_diffraction_intensities
+                              @hkl_tags
+                              @powder_diffraction_intensity_tags);
 use COD::CIFTags::CIFTagCanonicalNames;
 use COD::Precision;
 use COD::UserMessage;
 use COD::SOptions;
 use COD::SUsage;
-
-my @hkl_tags = qw(
-    _refln_index_h
-    _refln_index_k
-    _refln_index_l
-);
-
-my @powder_diffraction_tags = qw(
-    _pd_meas_counts_total
-    _pd_meas_intensity_total
-    _pd_proc_intensity_net
-    _pd_proc_intensity_total
-);
 
 my $use_parser = "c";
 
@@ -99,15 +90,17 @@ while( @ARGV > 0 ) {
     }
     my $hkl_dataset = $hkl_data->[0];
     my $hkl_values = $hkl_dataset->{values};
-    if( !contains_hkl( $hkl_values ) &&
-        !contains_powder_diffraction_intensities( $hkl_values ) ) {
+    if( !has_hkl( $hkl_dataset ) &&
+        !has_powder_diffraction_intensities( $hkl_dataset ) ) {
         warning( $0, $hkl_file, undef,
                  "can not confirm that file '$hkl_file' contains " .
                  "Fobs or powder diffraction data: one or more tags " .
                  "from list ( " .
-                 join( ", ", map { "'$_'" } @hkl_tags ) .
+                 join( ", ",
+                       map { "'$_'" } @hkl_tags ) .
                  " ) or all tags from list ( " .
-                 join( ", ", map { "'$_'" } @powder_diffraction_tags ) .
+                 join( ", ",
+                       map { "'$_'" } @powder_diffraction_intensity_tags ) .
                  " ) are missing" );
         next PAIR;
     }
@@ -217,22 +210,4 @@ sub get_source_block_name
         return $values->{'_[local]_cod_data_source_block'}[0];
     }
     return $datablock->{name};
-}
-
-sub contains_hkl
-{
-    my( $values ) = @_;
-    foreach( @hkl_tags ) {
-        return 0 if !exists $values->{$_};
-    }
-    return 1;
-}
-
-sub contains_powder_diffraction_intensities
-{
-    my( $values ) = @_;
-    foreach( @powder_diffraction_tags ) {
-        return 1 if exists $values->{$_};
-    }
-    return 0;
 }
