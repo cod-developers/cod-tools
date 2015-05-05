@@ -16,18 +16,21 @@ eval 'exec perl -x $0 ${1+"$@"}'
 
 use strict;
 use COD::CIFParser::CIFParser;
-use COD::CIFData qw(get_cell);
+use COD::CIFData qw(get_cell get_content_encodings);
 use COD::CIFTags::CIFTagCanonicalNames;
 use COD::CIFTags::CIFTagManage;
+use COD::Escape qw( decode_textfield );
 use COD::Precision qw(eqsig);
 use COD::ShowStruct;
 use COD::Spacegroups::SpacegroupNames;
 use COD::Spacegroups::SymopLookup;
-use File::Basename;
 use COD::UserMessage;
 use COD::SOptions;
 use COD::SUsage;
 use COD::Spacegroups::SymopParse;
+use Digest::MD5 qw( md5_hex );
+use Digest::SHA qw( sha1_hex );
+use File::Basename;
 
 my $name_syntax_explained = 0;
 my $check_bibliography = 1;
@@ -41,6 +44,7 @@ my $check_limits = 1;
 my $use_precisions = 1;
 my $check_temperature_factors = 1;
 my $check_simultaneous_presence = 1;
+my $check_embedded_file_integrity = 1;
 
 sub dont_check_any
 {
@@ -53,6 +57,7 @@ sub dont_check_any
     $check_limits = 0;
     $check_temperature_factors = 0;
     $check_simultaneous_presence = 0;
+    $check_embedded_file_integrity = 0;
 }
 
 sub check_all
@@ -66,6 +71,7 @@ sub check_all
     $check_limits = 1;
     $check_temperature_factors = 1;
     $check_simultaneous_presence = 1;
+    $check_embedded_file_integrity = 1;
 }
 
 my $useReporter = 0;
@@ -307,6 +313,17 @@ my $use_parser = "perl";
     "--max-year-temperature-factors-optional" =>
         \$max_year_temperature_factors_optional,
 
+    "--check-embedded-file-integrity" =>
+        sub { $check_embedded_file_integrity = 1; },
+    "--dont-check-embedded-file-integrity" =>
+        sub { $check_embedded_file_integrity = 0; },
+    "--do-not-check-embedded-file-integrity" =>
+        sub { $check_embedded_file_integrity = 0; },
+    "--no-check-embedded-file-integrity" =>
+        sub { $check_embedded_file_integrity = 0; },
+    "--check-only-embedded-file-integrity" =>
+        sub { dont_check_any(); $check_embedded_file_integrity = 1; },
+
     "--check-all"
         => \&check_all,
 
@@ -417,6 +434,8 @@ for my $filename (@ARGV) {
             if $check_temperature_factors;
         $warnings += check_simultaneous_presence( $dataset, $filename )
             if $check_simultaneous_presence;
+        $warnings += check_embedded_file_integrity( $dataset, $filename )
+            if $check_embedded_file_integrity;
     }
     $warnings += check_pdcif_relations( $data, $filename );
     printf "%-30s: OK\n", $filename if $warnings == 0;
@@ -1541,4 +1560,80 @@ sub check_all_tags_present
     } else {
         return 0;
     }
+}
+
+sub check_embedded_file_integrity
+{
+    my( $dataset, $filename ) = @_;
+    my $warnings = 0;
+    my $values = $dataset->{values};
+
+    my $encodings;
+    eval {
+        $encodings = get_content_encodings( $dataset, $filename );
+    };
+    if( $@ ) {
+        $warnings++;
+    }
+
+    for my $i (0..$#{$values->{_tcod_file_contents}}) {
+        my $content  = $values->{_tcod_file_contents}[$i];
+        my $path     = $values->{_tcod_file_name}[$i];
+        my $md5sum   = $values->{_tcod_file_md5sum}[$i];
+        my $sha1sum  = $values->{_tcod_file_sha1sum}[$i];
+        my $encoding;
+        if( exists $values->{_tcod_file_content_encoding} ) {
+            $encoding = $values->{_tcod_file_content_encoding}[$i];
+            $encoding = undef if $encoding eq '.';
+        }
+
+        next if $content eq '.' || $content eq '?';
+        next if ($md5sum  eq '.' || $md5sum  eq '?') &&
+                ($sha1sum eq '.' || $sha1sum eq '?');
+
+        eval {
+            if( !$encoding || !$encodings ||
+                !exists $encodings->{$encoding} ) {
+                if( $encoding && $encodings &&
+                    !exists $encodings->{$encoding} ) {
+                    error_reporter( $filename, undef, $dataset->{name},
+                                    "content encoding stack '$encoding' " .
+                                    "is not described, trying to guess" );
+                    $warnings ++;
+                }
+                # Perform a default decoding, try to guess the encoding
+                # layer type from the encoding ID
+                $content = decode_textfield( $content, $encoding );
+            } else {
+                for my $layer (reverse @{$encodings->{$encoding}}) {
+                    $content = decode_textfield( $content, $layer );
+                }
+            }
+        };
+        if( $@ ) {
+            error_reporter( $filename, undef, $dataset->{name},
+                            "could not decode contents for file '$path' -- " .
+                            "$@; will not decode contents" );
+            $warnings ++;
+            $content = $values->{_tcod_file_contents}[$i];
+        }
+
+        if( $md5sum ) {
+            if( md5_hex( $content ) ne $md5sum ) {
+                error_reporter( $filename, undef, $dataset->{name},
+                         "MD5 checksums of the original '$path' and " .
+                         "decoded files are different" );
+                $warnings ++;
+            }
+        }
+        if( $sha1sum ) {
+            if( sha1_hex( $content ) ne $sha1sum ) {
+                error_reporter( $filename, undef, $dataset->{name},
+                         "SHA1 checksums of the original '$path' and " .
+                         "decoded files are different" );
+                $warnings ++;
+            }
+        }
+    }
+    return $warnings;
 }
