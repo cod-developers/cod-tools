@@ -21,6 +21,7 @@ require Exporter;
 our @ISA = qw(Exporter);
 our @EXPORT_OK = qw(
     get_cell
+    get_content_encodings
     get_symmetry_operators
 );
 
@@ -176,6 +177,66 @@ sub get_symmetry_operators($$)
     }
 
     return $sym_data;
+}
+
+sub get_content_encodings($$)
+{
+    my ( $dataset, $filename ) = @_;
+
+    my $values = $dataset->{values};
+
+    if( !exists $values->{_tcod_content_encoding_id} ||
+        !exists $values->{_tcod_content_encoding_layer_type} ) {
+        return undef;
+    }
+
+    my %encodings;
+
+    for( my $i = 0; $i < @{$values->{_tcod_content_encoding_id}}; $i++ ) {
+        my $id         = $values->{_tcod_content_encoding_id}[$i];
+        my $layer_type = $values->{_tcod_content_encoding_layer_type}[$i];
+        my $layer_id;
+
+        if( exists $values->{_tcod_content_encoding_layer_id} ) {
+            $layer_id = $values->{_tcod_content_encoding_layer_id}[$i];
+        }
+
+        if( exists $encodings{$id} && !defined $layer_id ) {
+            error( $0, $filename, $dataset->{name},
+                   "content encoding '$id' has more than unnumbered " .
+                   "layer, can not unambiguously reconstruct the " .
+                   "encoding stack" );
+            die;
+        }
+
+        $layer_id = 0 if !defined $layer_id;
+        if( int($layer_id) != $layer_id ) {
+            error( $0, $filename, $dataset->{name},
+                   "non-integer content encoding layer ID detected: " .
+                   "'$layer_id'" );
+            die;
+        }
+
+        if( !exists $encodings{$id} ) {
+            $encodings{$id} = {};
+        }
+
+        if( !exists $encodings{$id}{$layer_id} ) {
+            $encodings{$id}{$layer_id} = $layer_type;
+        } else {
+            error( $0, $filename, $dataset->{name},
+                   "more than one content encoding layer numbered " .
+                   "$layer_id detected" );
+            die;
+        }
+    }
+
+    my %encodings_now;
+    for my $stack (keys %encodings) {
+        $encodings_now{$stack} = [ map { $encodings{$stack}{$_} }
+                                   sort keys %{$encodings{$stack}} ];
+    }
+    return \%encodings_now;
 }
 
 #===============================================================#

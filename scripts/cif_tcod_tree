@@ -14,6 +14,7 @@ eval 'exec perl -x $0 ${1+"$@"}'
 
 use strict;
 use warnings;
+use COD::CIFData qw( get_content_encodings );
 use COD::CIFParser::CIFParser;
 use COD::CIFTags::CIFTagCanonicalNames;
 use COD::CIFTags::CIFTagPrint;
@@ -96,6 +97,8 @@ for my $filename (@ARGV) {
         my $values   = $datablock->{values};
         my $dataname = $datablock->{name};
 
+        my $encodings = get_content_encodings( $datablock, $filename );
+
         for my $i (0..$#{$values->{_tcod_file_id}}) {
             my $path     = $values->{_tcod_file_name}[$i];
             my $dirname  = dirname( $values->{_tcod_file_name}[$i] );
@@ -144,11 +147,21 @@ for my $filename (@ARGV) {
             }
 
             eval {
-                if( $encoding && $encoding eq 'gzip+base64' ) {
-                    $contents = decode_textfield( $contents, 'base64' );
-                    $contents = decode_textfield( $contents, 'gzip' );
-                } else {
+                if( !$encoding || !$encodings ||
+                    !exists $encodings->{$encoding} ) {
+                    if( $encoding && $encodings &&
+                        !exists $encodings->{$encoding} ) {
+                        warning( $0, $filename, $dataname,
+                                 "content encoding stack '$encoding' " .
+                                 "is not described, trying to guess" );
+                    }
+                    # Perform a default decoding, try to guess the encoding
+                    # layer type from the encoding ID
                     $contents = decode_textfield( $contents, $encoding );
+                } else {
+                    for my $layer (reverse @{$encodings->{$encoding}}) {
+                        $contents = decode_textfield( $contents, $layer );
+                    }
                 }
             };
             if( $@ ) {
