@@ -19,6 +19,14 @@ require Exporter;
     escape
     unescape
 );
+@COD::Escape::EXPORT_OK = qw(
+    decode_textfield
+);
+
+use HTML::Entities qw( encode_entities decode_entities );
+use IO::Uncompress::Gunzip qw(gunzip $GunzipError);
+use MIME::Base64 qw( decode_base64 );
+use MIME::QuotedPrint qw( decode_qp );
 
 sub unescape_special
 {
@@ -60,6 +68,29 @@ sub unescape
                 $plain_seq x (length($1)/2) .
                 unescape_special($escaped_symbols, $2)|ge;
     return $text;
+}
+
+sub decode_textfield
+{
+    my( $content, $encoding ) = @_;
+    return $content if !$encoding;
+
+    if(      $encoding eq 'base64' ) {
+        return decode_base64($content);
+    } elsif( $encoding eq 'quoted-printable' ) {
+        return decode_qp($content);
+    } elsif( $encoding eq 'ncr' ) {
+        # Decoding all XML entities and encoding non-ASCII symbols
+        # back in order to make the CIF file valid.
+        return encode_entities( decode_entities( $content ),
+                                '^\n\x09\x0a\x0d\x20-\x7e' );
+    } elsif( $encoding eq 'gzip' ) {
+        my $decoded;
+        gunzip( \$content, \$decoded ) or die $GunzipError;
+        return $decoded;
+    } else {
+        die "unknown contents encoding '$encoding'";
+    }
 }
 
 1;

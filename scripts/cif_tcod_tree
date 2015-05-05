@@ -17,17 +17,14 @@ use warnings;
 use COD::CIFParser::CIFParser;
 use COD::CIFTags::CIFTagCanonicalNames;
 use COD::CIFTags::CIFTagPrint;
+use COD::Escape qw( decode_textfield );
+use COD::UserMessage;
+use COD::SOptions;
+use COD::SUsage;
 use Digest::MD5 qw( md5_hex );
 use Digest::SHA qw( sha1_hex );
 use File::Basename;
 use File::Path qw( make_path );
-use IO::Uncompress::Gunzip qw(gunzip $GunzipError);
-use MIME::Base64 qw( decode_base64 );
-use MIME::QuotedPrint qw( decode_qp );
-use COD::UserMessage;
-use COD::SOptions;
-use COD::SUsage;
-use HTML::Entities qw( encode_entities decode_entities );
 
 my $use_parser = 'c';
 my $output_dir = '.';
@@ -145,25 +142,20 @@ for my $filename (@ARGV) {
                     next
                 }
             }
-            if(      $encoding && $encoding eq 'base64' ) {
-                $contents = decode_base64($contents);
-            } elsif( $encoding && $encoding eq 'quoted-printable' ) {
-                $contents = decode_qp($contents);
-            } elsif( $encoding && $encoding eq 'ncr' ) {
-                # Decoding all XML entities and encoding non-ASCII symbols
-                # back in order to make the CIF file valid.
-                $contents = decode_entities( $contents );
-                $contents = encode_entities( $contents,
-                                             '^\n\x09\x0a\x0d\x20-\x7e' );
-            } elsif( $encoding && $encoding eq 'gzip+base64' ) {
-                $contents = decode_base64($contents);
-                my $decoded;
-                gunzip( \$contents, \$decoded ) or die $GunzipError;
-                $contents = $decoded;
-            } elsif( $encoding ) {
+
+            eval {
+                if( $encoding && $encoding eq 'gzip+base64' ) {
+                    $contents = decode_textfield( $contents, 'base64' );
+                    $contents = decode_textfield( $contents, 'gzip' );
+                } else {
+                    $contents = decode_textfield( $contents, $encoding );
+                }
+            };
+            if( $@ ) {
                 warning( $0, $filename, $dataname,
-                         "unknown contents encoding '$encoding' for " .
-                         "file '$path' -- will not decode contents" );
+                         "could not decode contents for file '$path' -- " .
+                         "$@; will not decode contents" );
+                $contents = $values->{_tcod_file_contents}[$i];
             }
 
             if( $md5sum ) {
