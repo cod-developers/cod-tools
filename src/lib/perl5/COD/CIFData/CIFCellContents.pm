@@ -18,11 +18,10 @@ use COD::AtomProperties;
 use COD::Fractional;
 use COD::Spacegroups::SymopParse qw( symop_from_string );
 use COD::Formulae::FormulaPrint;
+use COD::CIFData qw( get_cell get_symmetry_operators );
 use COD::CIFData::CIFAtomList qw( atom_array_from_cif );
 use COD::CIFData::CIFEstimateZ;
-use COD::CIFData::CIFSymmetryGenerator qw( get_cell
-                                           get_symmetry_operators
-                                           symop_generate_atoms );
+use COD::CIFData::CIFSymmetryGenerator qw( symop_generate_atoms );
 use COD::UserMessage;
 
 require Exporter;

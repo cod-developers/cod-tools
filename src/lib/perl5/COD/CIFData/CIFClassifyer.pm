@@ -14,9 +14,8 @@ package COD::CIFData::CIFClassifyer;
 use strict;
 use warnings;
 
-use COD::CIFData::CIFSymmetryGenerator qw( get_cell
-                                           get_symmetry_operators
-                                           symop_generate_atoms );
+use COD::CIFData qw( get_cell get_symmetry_operators );
+use COD::CIFData::CIFSymmetryGenerator qw( symop_generate_atoms );
 use COD::Fractional;
 use COD::Spacegroups::SymopAlgebra qw(symop_vector_mul);
 use COD::Spacegroups::SymopParse;

@@ -12,7 +12,7 @@
 package COD::CIFData::CIFAtomList;
 
 use strict;
-use COD::CIFData::CIFSymmetryGenerator qw( get_cell );
+use COD::CIFData qw( get_cell );
 use COD::Spacegroups::SymopAlgebra qw( symop_vector_mul );
 use COD::Spacegroups::VectorAlgebra qw( modulo_1 );
 use COD::Fractional qw( symop_ortho_from_fract );
