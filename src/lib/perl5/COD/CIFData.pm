@@ -1,8 +1,8 @@
 #------------------------------------------------------------------------------
-#$Author: andrius $
-#$Date: 2015-05-04 09:01:02 +0200 (Mon, 04 May 2015) $ 
-#$Revision: 1551 $
-#$URL: svn://www.crystallography.net/cod-tools/trunk/src/lib/perl5/COD/CIFData/CIFSymmetryGenerator.pm $
+#$Author$
+#$Date$ 
+#$Revision$
+#$URL$
 #------------------------------------------------------------------------------
 #*
 #  Common subroutines for extracting data/creating data structures from
