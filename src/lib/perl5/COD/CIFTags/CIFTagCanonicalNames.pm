@@ -20,10 +20,12 @@ require Exporter;
 use COD::CIFTags::CIFDictTags;
 use COD::CIFTags::CIFCODTags;
 use COD::CIFTags::CIFTCODTags;
+use COD::CIFTags::CIFDFTTags;
 
 my @dictionary_tags = ( @COD::CIFTags::CIFDictTags::tag_list,
                         @COD::CIFTags::CIFCODTags::tag_list,
-                        @COD::CIFTags::CIFTCODTags::tag_list );
+                        @COD::CIFTags::CIFTCODTags::tag_list,
+                        @COD::CIFTags::CIFDFTTags::tag_list );
 
 my %cif_tags_lc = map {(lc($_),$_)} @dictionary_tags;
 
