@@ -89,7 +89,11 @@ foreach( @ARGV ) {
 
     my( $data, $errcount );
     if( $input_json ) {
-        local $SIG{__DIE__}  = sub { die "$0: $_: @_" };
+        local $SIG{__DIE__} =
+            sub { my( $msg ) = @_;
+                  $msg =~ s/at \S+ line \d+(, <[^>]*> line \d+.?)?$//;
+                  die "$0: $_: $msg"
+            };
         open( my $inp, $_ );
         $data = json2cif( join( "\n", <$inp> ) );
         close( $inp );
