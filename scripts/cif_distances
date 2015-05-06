@@ -20,6 +20,7 @@ use COD::Escape;
 use COD::CIFParser::CIFParser;
 use COD::CIFData::CIFExcludeFromStatistics qw( exclude_from_statistics );
 use COD::Spacegroups::SymopAlgebra qw( symop_vector_mul );
+use COD::Spacegroups::VectorAlgebra qw( distance );
 use COD::CIFData qw( get_cell get_symmetry_operators );
 use COD::CIFData::CIFSymmetryGenerator qw( copy_atom
                                            symop_generate_atoms );
@@ -256,8 +257,6 @@ foreach my $filename ( @ARGV ) {
   }
 }
 
-exit;
-
 ##
 # Extracts atom information from given dataset.
 # @param $dataset
@@ -395,16 +394,15 @@ sub get_atoms {
 #       Logical value which determines whether atoms should be uniquified.
 # @param $filename
 #       Name of the file that is currently proccessed.
-# @dataset_name
+# @dataname
 #       Name of the proccessed dataset.
 # @return
 #       Reference to an array of proccessed atoms.
 ##
 
-sub uniquify_atom_names()
+sub uniquify_atom_names
 {
-    my ( $init_atoms, $uniquify_atoms, $filename, $dataset_name ) = @_;
-    use COD::CIFData::CIFSymmetryGenerator qw( copy_atom );
+    my ( $init_atoms, $uniquify_atoms, $filename, $dataname ) = @_;
 
     my $max_label_suffix = 30000; # Maximum number to be appened to labels 
                                   # when trying to produce unique names.
@@ -424,7 +422,7 @@ sub uniquify_atom_names()
             $used_labels{$label}{atoms} = [ $atom_copy ];
         } else {
             push( @{$used_labels{$label}{atoms}}, $atom_copy );
-            warning( $0, $filename, $dataset_name,
+            warning( $0, $filename, $dataname,
                      "atom label '$label' is not unique" );
 
             $labels_to_be_renamed{$label} ++;
@@ -441,12 +439,12 @@ sub uniquify_atom_names()
                     $id ++;
                 }
                 if( $id > $max_label_suffix ) {
-                    error( $0, $filename, $dataset_name,
+                    error( $0, $filename, $dataname,
                            "could not generate unique atom name for ".
                            "atom '$label', even after $id iterations" );
                 }
                 my $new_label = $label . "_" . $id;
-                warning( $0, $filename, $dataset_name,
+                warning( $0, $filename, $dataname,
                          "renaming atom '$label' " .
                          "to '" . $new_label . "'" );
                 $renamed_atom->{label}          = $new_label;
@@ -546,15 +544,15 @@ sub get_distances {
 
             if ( check_disorder( $atom_1, $atom_2 ) ) {
 
-                $min_distance = get_distance( $atom_1->{coordinates_ortho}, 
-                                              $atom_2->{coordinates_ortho} );
+                $min_distance = distance( $atom_1->{coordinates_ortho}, 
+                                          $atom_2->{coordinates_ortho} );
                 $min_distance = 5000;
 
                 # $k holds the element index in the second group 
                 for ( my $k = 0; $k < $group_size; $k++ ) {
                     $atom_2 = $all_atoms -> [ $j * $group_size + $k ];
-                    my $distance = get_distance( $atom_1->{coordinates_ortho}, 
-                                                 $atom_2->{coordinates_ortho} );
+                    my $distance = distance( $atom_1->{coordinates_ortho}, 
+                                             $atom_2->{coordinates_ortho} );
 
                     if ( !( equals( $distance, 0, 3 ) && $i == $j ) ) {
                         if ( $distance < $min_distance ) {
@@ -576,26 +574,6 @@ sub get_distances {
 return ( \@distances, \@headers, \@atoms_used );
 }
 
-##
-# Calculates distance between two equal length vectors.
-# @param $vector1
-#       Reference to an array of coordinates of the first vector.
-# @param $vector2
-#       Reference to an array of coordinates of the second vector.
-# @return
-#       Distance between vectors.
-##
-
-sub get_distance {
-    my ( $vector1, $vector2 ) = @_;
-    my $dist = 0;
-
-    for ( my $i = 0; $i < @{$vector1}; $i++ ) {
-        $dist += ( ${$vector1}[ $i ] - ${$vector2}[ $i ] ) ** 2;
-    }
-    return sqrt( $dist );
-}
- 
 ##
 # Checks if the atoms belong to the same disorder group.
 # @param $atom_1
@@ -812,54 +790,6 @@ sub print_pairwise {
 }
 
 ##
-# Checks if dataset contains disorder sites.
-# @param $dataset
-#       Reference to the dataset.
-# @return
-#       1 if dataset contains disorder sites, 0 otherwise.
-##
-
-sub data_contain_disorder
-{
-    my ($dataset) = @_;
-    my $values = $dataset->{values};
-
-    for my $disorder_tag (qw( _atom_site_disorder_assembly
-                           _atom_site.disorder_assembly
-                           _atom_site_disorder_group
-                           _atom_site.disorder_group )) {
-        if( exists $values->{$disorder_tag} &&
-            ! tag_is_empty( $dataset, $disorder_tag )) {
-            return 1;
-        }
-    }
-    return 0;
-}
-
-##
-# Checks if dataset is a duplicate of another data set.
-# @param $dataset
-#       Reference to the dataset.
-# @return
-#       1 if dataset is a duplicate, 0 otherwise.
-##
-
-sub data_is_duplicate
-{
-    my ($dataset) = @_;
-    my $values = $dataset->{values};
-
-    for my $duplicate_tag (qw( _cod_duplicate_entry
-                            _[local]_cod_duplicate_entry )) {
-        if( exists $values->{$duplicate_tag} &&
-            ! tag_is_empty( $dataset, $duplicate_tag )) {
-            return 1;
-        }
-    }
-    return 0;
-}
-
-##
 # Compares two floating point numbers using given decimal point precision.
 # @param $float_1
 #       First floating point number.
@@ -876,4 +806,3 @@ sub equals {
     return ( sprintf("%.${dp}f", $float_1) eq 
              sprintf("%.${dp}f", $float_2) ) ? 1 : 0;
 }
-
