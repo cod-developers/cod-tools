@@ -15,10 +15,10 @@ eval 'exec perl -x $0 ${1+"$@"}'
 
 use strict;
 use COD::CIFParser::CIFParser;
+use COD::CIF2JSON;
 use COD::CIFData::CIFDiff;
 use COD::SOptions;
 use COD::SUsage;
-use JSON;
 
 my $use_parser = 'c';
 my $input_json  = 0;
@@ -89,8 +89,9 @@ foreach( @ARGV ) {
 
     my( $data, $errcount );
     if( $input_json ) {
+        local $SIG{__DIE__}  = sub { die "$0: $_: @_" };
         open( my $inp, $_ );
-        $data = decode_json( join( "\n", <$inp> ) );
+        $data = json2cif( join( "\n", <$inp> ) );
         close( $inp );
         $errcount = 0;
     } else {
@@ -111,7 +112,7 @@ foreach( @ARGV ) {
     }
 
     if( $output_json ) {
-        print encode_json( $data );
+        print cif2json( $data );
     } else {
         foreach my $datablock ( @$data ) {
             print  $datablock->{name} . "\n";
