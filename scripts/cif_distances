@@ -22,6 +22,7 @@ use COD::CIFData::CIFExcludeFromStatistics qw( exclude_from_statistics );
 use COD::Spacegroups::SymopAlgebra qw( symop_vector_mul );
 use COD::Spacegroups::VectorAlgebra qw( distance );
 use COD::CIFData qw( get_cell get_symmetry_operators );
+use COD::CIFData::CIFAtomList qw(uniquify_atom_names);
 use COD::CIFData::CIFSymmetryGenerator qw( copy_atom
                                            symop_generate_atoms );
 use COD::Fractional qw(symop_ortho_from_fract);
@@ -213,7 +214,7 @@ foreach my $filename ( @ARGV ) {
     #   Extract atoms and order them alphabetically by type and label.
     my $atoms = get_atoms( $dataset, $ortho_matrix, $filename, $uniquify_atoms );
 
-    my $printable_properties = [ "label", "chemical_type", 
+    my $printable_properties = [ "name", "chemical_type", 
                                  "coordinates_ortho", "coordinates_fract",
                                  "disorder_group", "disorder_assembly" ];
 
@@ -292,7 +293,7 @@ sub get_atoms {
 
     for my $i ( 0 .. $#{$values->{$atom_site_tag}} ) {
         my $atom = {
-            label => $values->{$atom_site_tag}[$i],
+            name => $values->{$atom_site_tag}[$i],
             chemical_type => exists $values->{_atom_site_type_symbol} ?
                 $values->{_atom_site_type_symbol}[$i] : undef,
             disorder_group => exists $values->{_atom_site_disorder_group}[$i] ?
@@ -310,7 +311,7 @@ sub get_atoms {
         # Chemical type is determined from _atom_site_type_symbol or 
         # _atom_site_label if the previous tag is not present.
         if( !defined $atom->{chemical_type} || $atom->{chemical_type} eq '?' ) {
-            $atom->{chemical_type} = $atom->{label};
+            $atom->{chemical_type} = $atom->{name};
             if( $atom->{chemical_type} =~ m/^([A-Za-z]{1,2})/ ) {
                 $atom->{chemical_type} = ucfirst( lc( $1 ));
             };
@@ -330,13 +331,13 @@ sub get_atoms {
                 if ( $include_unknown_types ) {
                     warning( $0, $filename, $dataset->{name},
                          "unable to determine chemical type of atom with " . 
-                         "_atom_site_label '" . $atom->{label} . "'. " . 
+                         "_atom_site_label '" . $atom->{name} . "'. " . 
                          "Atom chemical type will be set to 'UN'" );
                     $atom->{chemical_type} = "UN"
                 } else {
                     warning( $0, $filename, $dataset->{name},
                          "unable to determine chemical type of atom with " . 
-                         "_atom_site_label '" . $atom->{label} . "'. " .
+                         "_atom_site_label '" . $atom->{name} . "'. " .
                          'Atom will be removed' );
                     next;
                 }
@@ -372,89 +373,9 @@ sub get_atoms {
                                      $filename, $dataset->{name} ); };
 
     @atoms = sort { ( $a -> {chemical_type} cmp $b -> {chemical_type} ) ||
-                    ( $a -> {label} cmp $b -> {label} ) } @atoms;
+                    ( $a -> {name} cmp $b -> {name} ) } @atoms;
 
     return \@atoms;
-}
-
-##
-# Renames atoms upon them having identical names.
-# @param $init_atoms
-#       Reference to an array of
-#       $atom_info = {
-#                     label=>"C1_2",
-#                     chemical_type=>"C",
-#                     coordinates_fract=>[1.0, 1.0, 1.0],
-#                     coordinates_ortho=>[5.3, 6.1, 5.3],
-#                     disorder_assembly=>"A", # ".",
-#                     disorder_group=>"1", # ".",
-#                     occupancy=>"1"
-#                    }
-# @param $uniquify_atoms
-#       Logical value which determines whether atoms should be uniquified.
-# @param $filename
-#       Name of the file that is currently proccessed.
-# @dataname
-#       Name of the proccessed dataset.
-# @return
-#       Reference to an array of proccessed atoms.
-##
-
-sub uniquify_atom_names
-{
-    my ( $init_atoms, $uniquify_atoms, $filename, $dataname ) = @_;
-
-    my $max_label_suffix = 30000; # Maximum number to be appened to labels 
-                                  # when trying to produce unique names.
-
-    my @checked_initial_atoms;
-
-    my %used_labels;
-    my %labels_to_be_renamed;
-
-    foreach my $atom ( @{$init_atoms} ) {
-        my $atom_copy = copy_atom( $atom );
-        my $label = $atom->{label};
-
-        push( @checked_initial_atoms, $atom_copy );
-
-        if( ! exists $used_labels{$label} ) {
-            $used_labels{$label}{atoms} = [ $atom_copy ];
-        } else {
-            push( @{$used_labels{$label}{atoms}}, $atom_copy );
-            warning( $0, $filename, $dataname,
-                     "atom label '$label' is not unique" );
-
-            $labels_to_be_renamed{$label} ++;
-        }
-        $used_labels{$label}{count} ++;
-    }
-
-    if( $uniquify_atoms ) {
-        foreach my $label (sort keys %labels_to_be_renamed) {
-            foreach my $renamed_atom (@{$used_labels{$label}{atoms}}) {
-                my $id = 0;
-                while( exists $used_labels{$label . "_" .$id} &&
-                       $id <= $max_label_suffix ) {
-                    $id ++;
-                }
-                if( $id > $max_label_suffix ) {
-                    error( $0, $filename, $dataname,
-                           "could not generate unique atom name for ".
-                           "atom '$label', even after $id iterations" );
-                }
-                my $new_label = $label . "_" . $id;
-                warning( $0, $filename, $dataname,
-                         "renaming atom '$label' " .
-                         "to '" . $new_label . "'" );
-                $renamed_atom->{label}          = $new_label;
-                $renamed_atom->{original_label} = $new_label;
-                $used_labels{$new_label}{count} ++;
-            }
-        }
-    }
-
-    return \@checked_initial_atoms;
 }
 
 ##
@@ -528,7 +449,7 @@ sub get_distances {
     for ( my $i  = 0; $i < $number_of_groups; $i++ ) {
         my $atom_1 = $all_atoms -> [ $i * $group_size ]; # acquiring first atom
 
-        push @headers, "$atom_1->{label}/$atom_1->{chemical_type}";
+        push @headers, "$atom_1->{name}/$atom_1->{chemical_type}";
         my @atom_rows_used;
         push @atom_rows_used, $atom_1;
         my @distance_row;
@@ -643,15 +564,15 @@ sub shift_atom {
 ##
 # Prints atoms fieldname values from an array.
 # @param $array_ref
-#       Reference to an array from which the atoms are printed.  
+#       Reference to an array from which the atoms are printed.
 ##
 
 sub print_atoms {
     my ( $array_ref, $properties ) = @_;
     foreach my $atom_ref ( @$array_ref ) {
         foreach my $property ( @$properties ) {
-            if ( $property eq "label" ) {
-                print "Atom name: $atom_ref->{label} \n";
+            if ( $property eq "name" ) {
+                print "Atom name: $atom_ref->{name} \n";
             } elsif ( $property eq "chemical_type" ) {
                 print "Chemical type: $atom_ref->{chemical_type} \n";
             } elsif ( $property eq "occupancy" ) {
@@ -709,13 +630,13 @@ sub print_distance_matrix {
         if ( $finish_cell_index > @distances ) {
             $finish_cell_index = @distances;
         }
-        
+
         printf( "%-${cell_width}s", "ATOMS" );
         for ( my $k = $start_cell_index; $k < $finish_cell_index; $k++ ) {
             printf( "%-${cell_width}s", @$header_ref[ $k ] );
         }
         print "\n";
-        
+
         for ( my $i = 0; $i < @distances; $i++ ) {
             printf( "%-${cell_width}s", @$header_ref[ $i ] );
             for ( my $j = $start_cell_index; $j < $finish_cell_index; $j++ ) {
@@ -725,8 +646,6 @@ sub print_distance_matrix {
                 } else {
                     $distance = $distances[ $j ][ $i - $j ];
                 }
-
-               #  $distance = -1 unless $distance ne "-";
 
                 if ( $distance eq "-" ) {
                     printf( "%-${cell_width}s", $distance );
@@ -775,8 +694,8 @@ sub print_pairwise {
         }
 
         $output_string .= sprintf( ' %10s %10s %24s %8s ', 
-                    $atom_1 -> { label }."/".$atom_1 -> { chemical_type },
-                    $atom_2 -> { label }."/".$atom_2 -> { chemical_type },
+                    $atom_1 -> { name }."/".$atom_1 -> { chemical_type },
+                    $atom_2 -> { name }."/".$atom_2 -> { chemical_type },
                     $atom_2 -> { sym_operator },
                     $atom_2 -> { shift_vector },
                     );
@@ -800,7 +719,6 @@ sub print_pairwise {
 # @return
 #       1 if numbers are equal, 0 otherwise.
 ##
-
 sub equals {
     my ($float_1, $float_2, $dp) = @_;
     return ( sprintf("%.${dp}f", $float_1) eq 
