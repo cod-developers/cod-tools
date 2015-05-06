@@ -19,12 +19,12 @@ use COD::Fractional qw( symop_ortho_from_fract );
 use COD::UserMessage;
 
 require Exporter;
-@COD::CIFData::CIFAtomList::ISA = qw(Exporter);
-@COD::CIFData::CIFAtomList::EXPORT_OK = qw( atom_array_from_cif
-                                            copy_struct_deep
-                                            dump_atoms_as_cif
-                                            uniquify_atom_names
-                                            extract_atom );
+our @ISA = qw(Exporter);
+our @EXPORT_OK = qw( atom_array_from_cif
+                     copy_struct_deep
+                     dump_atoms_as_cif
+                     uniquify_atom_names
+                     extract_atom );
 
 #===============================================================#
 # Extracts atom information from the CIF file.
@@ -284,7 +284,7 @@ sub atom_array_from_cif($$$@)
     if( $options->{uniquify_atom_names} ) {
         return uniquify_atom_names( \@atom_list,
                                     $options->{uniquify_atoms},
-                    				$filename,
+                                    $filename,
                                     $dataname);
     } else {
         return \@atom_list;
@@ -475,11 +475,11 @@ sub dump_atoms_as_cif
     print "_atom_site_fract_z";
 
     for my $atom (@$atom_list) {
-	print
-	    $atom->{name}, " ",
-	    $atom->{coordinates_fract}[0], " ",
-	    $atom->{coordinates_fract}[1], " ",
-	    $atom->{coordinates_fract}[2];
+        print
+            $atom->{name}, " ",
+            $atom->{coordinates_fract}[0], " ",
+            $atom->{coordinates_fract}[1], " ",
+            $atom->{coordinates_fract}[2];
     }
 }
 
