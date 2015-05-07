@@ -29,6 +29,7 @@ use COD::UserMessage;
 my $keep_tag_order = 0;
 my $Id = '$Id$';
 my $replacement_list;
+my $use_parser = "c";
 
 #* USAGE:
 #*     $0 [options] input.cif [input2.cif ...]
@@ -42,13 +43,17 @@ my $replacement_list;
 #*                      Name of the multi-line replacement list file with 
 #*                      entries of form '_incorrect_tag _correct_tag' to be 
 #*                      used in the correction of misspelled tags.
+#*   --use-perl-parser  Use the Perl-only CIF parser.
+#*   --use-c-parser     Use the speed-optimised C/Perl parser. Default.
 #**  --help,--usage     Print a short usage message (this message) and exit.
 
 @ARGV = getOptions(
-    "--keep-tag-order" => sub { $keep_tag_order = 1; },
-    "--sort-tags"      => sub { $keep_tag_order = 0; },
+    "--keep-tag-order"  => sub { $keep_tag_order = 1; },
+    "--sort-tags"       => sub { $keep_tag_order = 0; },
     "-r,--replacement-list" => \$replacement_list,
-    "--help,--usage"   => sub { usage; exit }
+    "--use-perl-parser" => sub{ $use_parser = "perl" },
+    "--use-c-parser"    => sub{ $use_parser = "c" },
+    "--help,--usage"    => sub { usage; exit }
 );
 
 sub insert_report_to_comments 
@@ -100,15 +105,29 @@ my %dictionary_tags = map { $_, $_ } @dictionary_tags;
 @ARGV = ("-") unless @ARGV;
 
 for my $filename (@ARGV) {
-    my $parser = new COD::CIFParser::CIFParser;
-    my $data = $parser->Run($filename);
+    my( $data, $error_count );
 
-    if( defined $parser->YYData->{ERRCOUNT} &&
-        $parser->YYData->{ERRCOUNT} > 0 ) {
-            print STDERR "$0: $filename: ",
-            $parser->YYData->{ERRCOUNT},
-            " error(s) encountered while parsing CIF data\n";
-            exit -1;
+    if(      $use_parser eq "perl" ) {
+        my $parser = new COD::CIFParser::CIFParser;
+
+        $data = $parser->Run($filename);
+
+        if( defined $parser->YYData->{ERRCOUNT} ) {
+            $error_count = $parser->YYData->{ERRCOUNT};
+        }
+    } elsif( $use_parser eq "c" ) {
+        require COD::CCIFParser::CCIFParser;
+        ( $data, $error_count ) =
+            COD::CCIFParser::CCIFParser::parse( $filename );
+    } else {
+        error( $0, undef, undef, "unknown parser: $use_parser" );
+        die;
+    }
+
+    if( defined $error_count && $error_count > 0 ) {
+        error( $0, $filename, undef,
+               "$error_count error(s) encountered while parsing CIF data" );
+        exit -1; # Should go on to the next file?
     }
 
     canonicalize_all_names( $data );
