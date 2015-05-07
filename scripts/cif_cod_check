@@ -19,6 +19,7 @@ use COD::CIFParser::CIFParser;
 use COD::CIFData qw(get_cell get_content_encodings);
 use COD::CIFTags::CIFTagCanonicalNames;
 use COD::CIFTags::CIFTagManage;
+use COD::CIF2JSON;
 use COD::Escape qw( decode_textfield );
 use COD::Precision qw(eqsig);
 use COD::ShowStruct;
@@ -204,6 +205,8 @@ my $use_parser = "perl";
 #*
 #*    --use-c-parser
 #*
+#*    --use-json-parser
+#*
 #*    --help,--usage         Print a short usage message (this message) and exit.
 #**
 
@@ -340,6 +343,7 @@ my $use_parser = "perl";
 
     "--use-perl-parser" => sub{ $use_parser = "perl" },
     "--use-c-parser"    => sub{ $use_parser = "c" },
+    "--use-json-parser" => sub{ $use_parser = "json" },
 
     "--help,--usage" => sub { usage; exit },
 );
@@ -400,9 +404,17 @@ for my $filename (@ARGV) {
         if( defined $parser->YYData->{ERRCOUNT} ) {
             $error_count = $parser->YYData->{ERRCOUNT};
         }
-    } else {
+    } elsif( $use_parser eq "c" ) {
         require COD::CCIFParser::CCIFParser;
         ( $data, $error_count ) = COD::CCIFParser::CCIFParser::parse( $filename );
+    } elsif( $use_parser eq "json" ) {
+        open( my $inp, $filename );
+        my $json = join( "\n", <$inp> );
+        close( $inp );
+        $data = json2cif( $json );
+    } else {
+        error( $0, $filename, undef, "unknown parser '$use_parser'" );
+        die;
     }
     
     if( defined $error_count && $error_count > 0 ) {
