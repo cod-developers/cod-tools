@@ -16,6 +16,7 @@ use strict;
 use File::Basename;
 use COD::CIFParser::CIFParser;
 use COD::Formulae::AdHocParser;
+use COD::CIF2JSON;
 use COD::CIFData::CIFCODNumbers;
 use COD::SOptions;
 use COD::SUsage;
@@ -111,6 +112,7 @@ my %options;
 #*
 #*     --use-perl-parser  Use the Perl-only CIF parser
 #*     --use-c-parser     Use the speed-optimised C/Perl parser
+#*     --use-json-parser  Use the JSON parser (input is in JSON format)
 #*
 #*     --help  print a short usage message (this message) and exit.
 #**
@@ -154,6 +156,7 @@ my %options;
 
     "--use-perl-parser"       => sub{ $use_parser = "perl" },
     "--use-c-parser"          => sub{ $use_parser = "c" },
+    "--use-json-parser"       => sub{ $use_parser = "json" },
 
     "--help,--usage" => sub { usage; exit },
 );
@@ -223,9 +226,14 @@ sub load_cif_file
             $parser->YYData->{ERRCOUNT} > 0 ) {
             $error_count = defined $parser->YYData->{ERRCOUNT};
         }
-    } else {
+    } elsif( $use_parser eq "c" ) {
         require COD::CCIFParser::CCIFParser;
         ( $data, $error_count ) = COD::CCIFParser::CCIFParser::parse( $file );
+    } elsif( $use_parser eq "json" ) {
+        open( my $inp, $file );
+        my $json = join( "\n", <$inp> );
+        close( $inp );
+        $data = json2cif( $json );
     }
 
     if( defined $error_count && $error_count > 0 ) {
