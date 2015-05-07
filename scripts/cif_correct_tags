@@ -22,6 +22,7 @@ use COD::CIFTags::CIFDictTags;
 use COD::CIFTags::CIFCODTags;
 use COD::CIFTags::CIFTagManage;
 use COD::CIFTags::CIFTagPrint;
+use COD::CIF2JSON;
 use COD::SOptions;
 use COD::SUsage;
 use COD::UserMessage;
@@ -30,6 +31,7 @@ my $keep_tag_order = 0;
 my $Id = '$Id$';
 my $replacement_list;
 my $use_parser = "c";
+my $output_format = "cif";
 
 #* USAGE:
 #*     $0 [options] input.cif [input2.cif ...]
@@ -45,6 +47,9 @@ my $use_parser = "c";
 #*                      used in the correction of misspelled tags.
 #*   --use-perl-parser  Use the Perl-only CIF parser.
 #*   --use-c-parser     Use the speed-optimised C/Perl parser. Default.
+#*   --use-json-parser  Use the JSON parser (input is in JSON format)
+#*   --output-cif       Output CIF. Default option.
+#*   --output-json      Output internal data structure in JSON.
 #**  --help,--usage     Print a short usage message (this message) and exit.
 
 @ARGV = getOptions(
@@ -53,6 +58,9 @@ my $use_parser = "c";
     "-r,--replacement-list" => \$replacement_list,
     "--use-perl-parser" => sub{ $use_parser = "perl" },
     "--use-c-parser"    => sub{ $use_parser = "c" },
+    "--use-json-parser" => sub{ $use_parser = "json" },
+    "--output-cif"      => sub{ $output_format = "cif" },
+    "--output-json"     => sub{ $output_format = "json" },
     "--help,--usage"    => sub { usage; exit }
 );
 
@@ -119,6 +127,11 @@ for my $filename (@ARGV) {
         require COD::CCIFParser::CCIFParser;
         ( $data, $error_count ) =
             COD::CCIFParser::CCIFParser::parse( $filename );
+    } elsif( $use_parser eq "json" ) {
+        open( my $inp, $filename );
+        my $json = join( "\n", <$inp> );
+        close( $inp );
+        $data = json2cif( $json );
     } else {
         error( $0, undef, undef, "unknown parser: $use_parser" );
         die;
@@ -167,13 +180,23 @@ for my $filename (@ARGV) {
             }
         }
         insert_report_to_comments ($dataset,\@insert_reports);
-        print_cif( $dataset, {
-            exclude_misspelled_tags => 0,
-            preserve_loop_order => 1,
-            fold_long_fields => 0,
-            dictionary_tags => \%dictionary_tags,
-            dictionary_tag_list => \@dictionary_tags,
-            keep_tag_order => $keep_tag_order,
-        } );
+    }
+
+    if( $output_format eq "cif" ) {
+        for my $dataset (@$data) {
+            print_cif( $dataset, {
+                exclude_misspelled_tags => 0,
+                preserve_loop_order => 1,
+                fold_long_fields => 0,
+                dictionary_tags => \%dictionary_tags,
+                dictionary_tag_list => \@dictionary_tags,
+                keep_tag_order => $keep_tag_order,
+            } );
+        }
+    } elsif( $output_format eq "json" ) {
+        print cif2json( $data );
+    } else {
+        error( $0, undef, undef, "unknown output format: $output_format" );
+        die;
     }
 }
