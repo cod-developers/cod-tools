@@ -172,7 +172,7 @@ LINK_OBJ_FILES = ${YYOBJ} ${FLEXOBJ} ${OTHER_OBJS}
 
 .PRECIOUS: %.o %.c %.lex.c %.tab.c %.a
 
-.PHONY: all lib libs clean cleanAll FORCE
+.PHONY: all lib libs clean distclean cleanAll FORCE
 
 all: ${LOCAL_LIB} ${EXE_FILES} ${TST_DRIVERS}
 
@@ -402,7 +402,7 @@ clean:
 	rm -f ${DIFF_FILES} ${TST_DIFFS}
 	rm -f ${SHELL_DIFFS}
 
-cleanAll: clean ${LOCAL_CLEAN_TARGETS}
+cleanAll distclean: clean ${LOCAL_CLEAN_TARGETS}
 	rm -f ${EXE_FILES} ${TST_DRIVERS}
 	rm -f ${DEPEND_FILES}
 	rm -f ${LOCAL_LIB}
