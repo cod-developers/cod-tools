@@ -12,8 +12,6 @@
 #include <cif_options.h>
 #include <cexceptions.h>
 
-typedef struct CIF_COMPILER CIF_COMPILER;
-
 CIF *new_cif_from_cif_file( char *filename, cif_option_t co,
                             cexception_t *ex );
 
