@@ -9,7 +9,10 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #$URL$
 #------------------------------------------------------------------------------
 #*
-#  Calculates minimal distance between atoms read from a CIF file.
+#*  Calculates minimal distance between atoms read from a CIF file.
+#*
+#* USAGE:
+#*    $0 [options] input.cif [input2.cif ...]
 #**
 
 use strict;
@@ -49,7 +52,7 @@ my $escape_sequence = '\\';
 my %escaped_symbols = ("\"" => '"', "\'" => "'");
 
 @ARGV = getOptions(
-
+#** OPTIONS:
 #** -M, --distance-matrix
 #**                     Set distance matrix output format.
 #** -P, --pairwise-distance
@@ -80,7 +83,7 @@ my %escaped_symbols = ("\"" => '"', "\'" => "'");
 #**                     as duplicates with '_cod_duplicate_entry' or 
 #**                     '_[local]_cod_duplicate_entry' tags.
 #** --no-process-duplicate-structures,
-#** --exclude-disordered-structures,
+#** --exclude-duplicate-structures,
 #** --skip-duplicate-structures
 #**                     Skip duplicate structures (default).
 #** --include-null-distances
@@ -98,10 +101,10 @@ my %escaped_symbols = ("\"" => '"', "\'" => "'");
 #** --no-self-distances, --exclude-self-distances
 #**                     Exclude entries of distances between symmetry-related
 #**                     instances of the same atom.
-#** --include-unknown-types
+#** -U, --include-unknown-types
 #**                     Include entries containing atoms of undetermined 
 #**                     chemical type. Atom type will be marked as 'UN'.
-#** --no-unknown-types, --exclude-unknown-atoms
+#** --no-unknown-types, --exclude-unknown-types
 #**                     Exclude entries containing atoms of undetermined 
 #**                     chemical type (default).
 #** --uniquify-atoms
@@ -120,9 +123,9 @@ my %escaped_symbols = ("\"" => '"', "\'" => "'");
     "--format"                   =>
         sub { $format = $pairwise_format = &get_value },
 
-    "-F,--add-filename"          => sub { $add_filename = 1 },
-    "--no-add-filename"          => sub { $add_filename = 0 },
-    "--do-not-print-filename"    => sub { $add_filename = 0 },
+    "-F,--add-filename"      => sub { $add_filename = 1 },
+    "--no-add-filename"      => sub { $add_filename = 0 },
+    "--do-not-add-filename"  => sub { $add_filename = 0 },
 
     "--process-disordered-structures"    => sub { $include_disord_struct = 1 },
     "--include-disordered-structures"    => sub { $include_disord_struct = 1 },
