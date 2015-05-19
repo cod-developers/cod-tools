@@ -31,6 +31,7 @@ use COD::CIFTags::CIFExcludedTags;
 use COD::CIFTags::CIFTagManage;
 use COD::CIFTags::CIFTagPrint;
 use COD::CIFTags::CIFTagCanonicalNames;
+use COD::CIF2JSON;
 use COD::Spacegroups::SpacegroupNames;
 use COD::Spacegroups::SymopParse;
 use COD::Spacegroups::SymopLookup;
@@ -246,6 +247,9 @@ my %spacegroups = map {
 #*    --use-c-parser
 #*          Use Perl & C parser for CIF parsing.
 #*
+#*    --use-json-parser
+#*          Use the JSON parser (input is in JSON format).
+#*
 #*    --leave-bibliography
 #*    --discard-bibliography
 #*
@@ -380,6 +384,7 @@ my %spacegroups = map {
 
     "--use-perl-parser"       => sub{ $use_parser = "perl" },
     "--use-c-parser"          => sub{ $use_parser = "c" },
+    "--use-json-parser"       => sub{ $use_parser = "json" },
 
     "--leave-bibliography"   => sub{ $leave_biblio = 1 },
     "--discard-bibliography" => sub{ $leave_biblio = 0 },
@@ -496,9 +501,17 @@ for my $filename (@ARGV) {
         if( defined $parser->YYData->{ERRCOUNT} ) {
             $error_count = $parser->YYData->{ERRCOUNT};
         }
-    } else {
+    } elsif( $use_parser eq "c" ) {
         require COD::CCIFParser::CCIFParser;
         ( $data, $error_count ) = COD::CCIFParser::CCIFParser::parse( $filename, \%options );
+    } elsif( $use_parser eq "json" ) {
+        open( my $inp, $filename );
+        my $json = join( "\n", <$inp> );
+        close( $inp );
+        $data = json2cif( $json );
+    } else {
+        error( $0, $filename, undef, "unknown parser '$use_parser'" );
+        die;
     }
 
     if( defined $error_count && $error_count > 0 ) {
