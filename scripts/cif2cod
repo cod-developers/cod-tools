@@ -15,6 +15,7 @@ eval 'exec perl -x $0 ${1+"$@"}'
 use strict;
 use COD::CIFParser::CIFParser;
 use COD::CIFData::CIF2COD qw(cif2cod);
+use COD::CIF2JSON;
 use COD::UserMessage;
 use COD::SOptions;
 use COD::SUsage;
@@ -99,8 +100,9 @@ my %options;
 #*     --columns "file flags Robs"
 #*         Print only columns specified in this option.
 #*
-#*      --use-perl-parser   Use the Perl parser for parsing CIFs
-#*      --use-c-parser      Use the faster C parser for CIFs (default).
+#*     --use-perl-parser   Use the Perl parser for parsing CIFs
+#*     --use-c-parser      Use the faster C parser for CIFs (default).
+#*     --use-json-parser  Use the JSON parser (input is in JSON format)
 #*
 #*     --help,--usage  print a short usage message (this message) and exit.
 #**
@@ -155,6 +157,7 @@ my %options;
 
     "--use-perl-parser"       => sub{ $use_parser = "perl" },
     "--use-c-parser"          => sub{ $use_parser = "c" },
+    "--use-json-parser"       => sub{ $use_parser = "json" },
 
     "--help,--usage"  => sub { usage; exit },
 );
@@ -196,9 +199,17 @@ for my $filename (@ARGV) {
         if( defined $parser->YYData->{ERRCOUNT} ) {
             $error_count = $parser->YYData->{ERRCOUNT};
         }
-    } else {
+    } elsif( $use_parser eq "c" ) {
         require COD::CCIFParser::CCIFParser;
-        ( $data, $error_count ) = COD::CCIFParser::CCIFParser::parse( $filename, \%options );
+        ( $data, $error_count ) = COD::CCIFParser::CCIFParser::parse( $filename );
+    } elsif( $use_parser eq "json" ) {
+        open( my $inp, $filename );
+        my $json = join( "\n", <$inp> );
+        close( $inp );
+        $data = json2cif( $json );
+    } else {
+        error( $0, $filename, undef, "unknown parser '$use_parser'" );
+        die;
     }
 
     if( defined $error_count && $error_count > 0 ) {
