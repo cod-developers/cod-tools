@@ -144,22 +144,18 @@ for my $filename (@ARGV) {
             next;
         }
 
-        my $data_global_stdout;
-        if( $data_global ) {
-            local *STDOUT;
-            open( STDOUT, '>', \$data_global_stdout );
-            print_cif( $data_global,
-                       {
-                            preserve_loop_order => 1,
-                            keep_tag_order => 1
-                       }
-                     );
-        }
-
         my $print_cif_stdout;
         do {
             local *STDOUT;
             open( STDOUT, '>', \$print_cif_stdout );
+            if( $data_global ) {
+                print_cif( $data_global,
+                           {
+                                preserve_loop_order => 1,
+                                keep_tag_order => 1
+                           }
+                         );
+            }
             print_cif( $dataset,
                        {
                             preserve_loop_order => 1,
@@ -170,7 +166,6 @@ for my $filename (@ARGV) {
 
         my $cif_contents = "";
         $cif_contents .= $cif_header if $cif_header;
-        $cif_contents .= $data_global_stdout if $data_global;
         $cif_contents .= $print_cif_stdout;
 
         if( $output_prefixed ) {
