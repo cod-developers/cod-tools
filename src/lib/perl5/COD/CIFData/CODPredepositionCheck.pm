@@ -16,7 +16,7 @@ use warnings;
 
 require Exporter;
 @COD::CIFData::CODPredepositionCheck::ISA = qw(Exporter);
-@COD::CIFData::CODPredepositionCheck::EXPORT_OK = qw(filter_and_check);
+@COD::CIFData::CODPredepositionCheck::EXPORT_OK = qw(filter_and_check run_command);
 
 use IPC::Open3 qw / open3 /;
 use IO::Handle;

@@ -17,6 +17,7 @@ eval 'exec perl -x $0 ${1+"$@"}'
 use strict;
 use COD::CIFParser::CIFParser;
 use COD::CIFData qw(get_cell get_content_encodings);
+use COD::CIFData::CIFEstimateZ;
 use COD::CIFTags::CIFTagCanonicalNames;
 use COD::CIFTags::CIFTagManage;
 use COD::CIF2JSON;
@@ -46,6 +47,7 @@ my $use_precisions = 1;
 my $check_temperature_factors = 1;
 my $check_simultaneous_presence = 1;
 my $check_embedded_file_integrity = 1;
+my $check_z = 0;
 
 sub dont_check_any
 {
@@ -59,6 +61,7 @@ sub dont_check_any
     $check_temperature_factors = 0;
     $check_simultaneous_presence = 0;
     $check_embedded_file_integrity = 0;
+    $check_z = 0;
 }
 
 sub check_all
@@ -73,6 +76,7 @@ sub check_all
     $check_temperature_factors = 1;
     $check_simultaneous_presence = 1;
     $check_embedded_file_integrity = 1;
+    $check_z = 1;
 }
 
 my $useReporter = 0;
@@ -196,6 +200,10 @@ my $use_parser = "perl";
 #*    --check-temperature-factors
 #*
 #*    --max-year-temperature-factors-optional 1969
+#*
+#*    --check-embedded-file-integrity
+#*
+#*    --check-z
 #*
 #*    --check-all
 #*
@@ -327,6 +335,12 @@ my $use_parser = "perl";
     "--check-only-embedded-file-integrity" =>
         sub { dont_check_any(); $check_embedded_file_integrity = 1; },
 
+    "--check-z"        => sub { $check_z = 1; },
+    "--check-only-z"   => sub { dont_check_any(); $check_z = 1; },
+    "--no-check-z"     => sub { $check_z = 0; },
+    "--dont-check-z"   => sub { $check_z = 0; },
+    "--do-not-check-z" => sub { $check_z = 0; },
+
     "--check-all"
         => \&check_all,
 
@@ -448,6 +462,8 @@ for my $filename (@ARGV) {
             if $check_simultaneous_presence;
         $warnings += check_embedded_file_integrity( $dataset, $filename )
             if $check_embedded_file_integrity;
+        $warnings += check_z( $dataset, $filename )
+            if $check_z;
     }
     $warnings += check_pdcif_relations( $data, $filename );
     printf "%-30s: OK\n", $filename if $warnings == 0;
@@ -1647,5 +1663,26 @@ sub check_embedded_file_integrity
             }
         }
     }
+    return $warnings;
+}
+
+sub check_z
+{
+    my( $dataset, $filename ) = @_;
+    my $warnings = 0;
+
+    return $warnings if !tag_is_empty( $dataset, '_cell_formula_units_Z' );
+
+    eval {
+        cif_estimate_z( $dataset );
+    };
+    if( $@ ) {
+        $@ =~ s/\n/ /;
+        $@ =~ s/\n$//;
+        $@ =~ s/\n/, /g;
+        error_reporter( $filename, undef, $dataset->{name}, $@ );        
+        $warnings ++;
+    }
+
     return $warnings;
 }

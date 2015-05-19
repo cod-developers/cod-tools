@@ -4,7 +4,7 @@
 # script and it's help in order to locate non-described and non-existing
 # command line options.
 
-for i in $(find scripts -maxdepth 1 -name \*~ -prune -o -type f -a -executable -print)
+for i in $(find scripts -maxdepth 1 -name \*~ -prune -o -type f -a -executable -print | sort)
 do
     ./$i --help </dev/null 2>/dev/null \
         | perl -e '

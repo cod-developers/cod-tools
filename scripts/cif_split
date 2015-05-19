@@ -16,6 +16,7 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #**
 
 use strict;
+use COD::CIF2JSON;
 use COD::CIFTags::CIFTagCanonicalNames;
 use COD::CIFTags::CIFTagPrint;
 use File::Basename;
@@ -59,6 +60,9 @@ my $use_parser = "c";
 #** --use-c-parser
 #**    Use Perl & C parser for CIF parsing.
 #**
+#** --use-json-parser
+#**    Use the JSON parser (input is in JSON format).
+#**
 #** --help,--usage     print short usage message (this message) and exit
 
    "-o,--output-dir" => sub { $output_dir = get_value(),
@@ -74,6 +78,7 @@ my $use_parser = "c";
 
    "--use-perl-parser" => sub{ $use_parser = "perl" },
    "--use-c-parser"    => sub{ $use_parser = "c" },
+   "--use-json-parser" => sub{ $use_parser = "json" },
 
    "--help,--usage"  => sub { usage; exit },
 );
@@ -117,9 +122,17 @@ for my $filename (@ARGV) {
         if( defined $parser->YYData->{ERRCOUNT} ) {
             $error_count = $parser->YYData->{ERRCOUNT};
         }
-    } else {
+    } elsif( $use_parser eq "c" ) {
         require COD::CCIFParser::CCIFParser;
-        ( $data, $error_count ) = COD::CCIFParser::CCIFParser::parse($filename);
+        ( $data, $error_count ) = COD::CCIFParser::CCIFParser::parse( $filename );
+    } elsif( $use_parser eq "json" ) {
+        open( my $inp, $filename );
+        my $json = join( "\n", <$inp> );
+        close( $inp );
+        $data = json2cif( $json );
+    } else {
+        error( $0, $filename, undef, "unknown parser '$use_parser'" );
+        die;
     }
 
     if( defined $error_count && $error_count > 0 ) {
@@ -144,22 +157,18 @@ for my $filename (@ARGV) {
             next;
         }
 
-        my $data_global_stdout;
-        if( $data_global ) {
-            local *STDOUT;
-            open( STDOUT, '>', \$data_global_stdout );
-            print_cif( $data_global,
-                       {
-                            preserve_loop_order => 1,
-                            keep_tag_order => 1
-                       }
-                     );
-        }
-
         my $print_cif_stdout;
         do {
             local *STDOUT;
             open( STDOUT, '>', \$print_cif_stdout );
+            if( $data_global ) {
+                print_cif( $data_global,
+                           {
+                                preserve_loop_order => 1,
+                                keep_tag_order => 1
+                           }
+                         );
+            }
             print_cif( $dataset,
                        {
                             preserve_loop_order => 1,
@@ -170,7 +179,6 @@ for my $filename (@ARGV) {
 
         my $cif_contents = "";
         $cif_contents .= $cif_header if $cif_header;
-        $cif_contents .= $data_global_stdout if $data_global;
         $cif_contents .= $print_cif_stdout;
 
         if( $output_prefixed ) {

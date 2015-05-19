@@ -3,7 +3,7 @@
 # This Shell test checks whether all of the scripts in perl-scripts/ accept
 # '--help' command line option and prints out some useful information.
 
-for i in $(find scripts -maxdepth 1 -name \*~ -prune -o -type f -a -executable -print)
+for i in $(find scripts -maxdepth 1 -name \*~ -prune -o -type f -a -executable -print | sort)
 do
     HELP=$(./$i --help </dev/null)
     if [ "$?" = 0 ]
