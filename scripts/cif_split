@@ -31,6 +31,7 @@ my $output_tar = 0;
 my $cif_header_file;
 
 my $use_parser = "c";
+my $format = "cif";
 
 @ARGV = getOptions(
 #** USAGE:
@@ -54,6 +55,12 @@ my $use_parser = "c";
 #** -v, --verbose      print names of the generated files to STDERR
 #** -q, --quiet        do not print file names to STDERR
 #**
+#** --format-cif
+#**    Output stand-alone CIF files (default option).
+#**
+#** --format-json
+#**    Output internal representation of parsed CIF file in JSON.
+#**
 #** --use-perl-parser
 #**    Use Perl parser for CIF parsing.
 #**
@@ -72,6 +79,10 @@ my $use_parser = "c";
                                               $output_tar = 0 },
    "--output-tar"    => sub { $output_tar = 1;
                               $output_prefixed = 0 },
+
+   "--format-cif"  => sub { $format = "cif" },
+   "--format-json" => sub { $format = "json" },
+
    "-h,--add-cif-header" => \$cif_header_file,
    "-v,--verbose"    => sub { $verbose = 1 },
    "-q,--quiet"      => sub { $verbose = 0 },
@@ -158,7 +169,7 @@ for my $filename (@ARGV) {
         }
 
         my $print_cif_stdout;
-        do {
+        if( $format eq "cif" ) {
             local *STDOUT;
             open( STDOUT, '>', \$print_cif_stdout );
             if( $data_global ) {
@@ -175,10 +186,18 @@ for my $filename (@ARGV) {
                             keep_tag_order => 1
                        }
                      );
-        };
+        } else {
+            my @to_json = ( $dataset );
+            if( $data_global ) {
+                unshift( @to_json, $data_global );
+            }
+            $print_cif_stdout = cif2json( \@to_json );
+        }
 
         my $cif_contents = "";
-        $cif_contents .= $cif_header if $cif_header;
+        if( $format eq "cif" ) {
+            $cif_contents .= $cif_header if $cif_header;
+        }
         $cif_contents .= $print_cif_stdout;
 
         if( $output_prefixed ) {
