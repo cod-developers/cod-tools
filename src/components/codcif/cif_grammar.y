@@ -130,11 +130,11 @@ stray_cif_value_list
         {
             if( isset_fix_errors( cif_cc ) ||
                 isset_fix_data_header( cif_cc ) ) {
-                    print_message( "warning, stray CIF values at the "
+                    print_message( "WARNING", "stray CIF values at the "
                                    "beginning of the input file",
                                     cif_flex_current_line_number(), -1 );
             } else {
-                    print_message( "stray CIF values at the "
+                    print_message( "ERROR", "stray CIF values at the "
                                    "beginning of the input file",
                                     cif_flex_current_line_number(), -1 );
                     yyincrease_error_counter();
@@ -144,11 +144,11 @@ stray_cif_value_list
         {
             if( isset_fix_errors( cif_cc ) ||
                 isset_fix_data_header( cif_cc ) ) {
-                    print_message( "warning, stray CIF values at the "
+                    print_message( "WARNING", "stray CIF values at the "
                                    "beginning of the input file",
                                     cif_flex_current_line_number(), -1 );
             } else {
-                    print_message( "stray CIF values at the "
+                    print_message( "ERROR", "stray CIF values at the "
                                    "beginning of the input file",
                                     cif_flex_current_line_number(), -1 );
                     yyincrease_error_counter();
@@ -170,17 +170,16 @@ data_block_list
 headerless_data_block
 	:	data_item
         {
-            extern char *progname;
             if( isset_fix_errors( cif_cc ) ||
                 isset_fix_data_header( cif_cc ) ) {
-                    print_message_generic( progname, cif_cc->filename,
-                        NULL, "warning, no data block heading (i.e. "
-                              "data_somecif) found",
+                    print_message( 
+                              "WARNING", "no data block heading " 
+                              "(i.e. data_somecif) found",
                                cif_flex_previous_line_number(), -1 );
             } else {
-                    print_message_generic( progname, cif_cc->filename,
-                        NULL, "no data block heading (i.e. "
-                              "data_somecif) found",
+                    print_message( 
+                              "ERROR", "no data block heading "
+                              "(i.e. data_somecif) found",
                                cif_flex_previous_line_number(), -1 );
                     yyincrease_error_counter();
             }
@@ -234,7 +233,7 @@ data_block_head
             }
             if( isset_fix_errors( cif_cc ) ||
                 isset_fix_string_quotes( cif_cc ) ) {
-                yynote( "warning, the dataname apparently had spaces "
+                yynote( "the dataname apparently had spaces "
                         "in it - replaced spaces by underscores" );
             }
         }
@@ -263,11 +262,11 @@ cif_entry
             add_tag_value( $1, $2.vstr, $2.vtype, px );
         }
         | _TAG cif_value cif_value_list
-    	    {
+            {
                 assert_datablock_exists( px );
                 if( isset_fix_errors( cif_cc ) ||
                     isset_fix_string_quotes( cif_cc ) ) {
-                    yynote( "warning, string with spaces without quotes" );
+                    yywarning( "string with spaces without quotes" );
                     char *buf = mallocx(strlen($2.vstr)+strlen($3.vstr)+2,px);
                     buf = strcpy( buf, $2.vstr );
                     buf = strcat( buf, " \0" );
@@ -639,12 +638,19 @@ void cif_yy_reset_error_count( void )
     errcount = 0;
 }
 
-void print_message_generic( const char *progname,
-                            const char *filename,
-                            const char *datablock,
-                            const char *message,
-                            int line, int position )
+void print_message( const char *errlevel, const char *message,
+                    int line, int position )
 {
+    extern char *progname;
+
+    char *filename = cif_cc->filename;
+
+    char *datablock = NULL;
+    if( cif_cc->cif && cif_last_datablock( cif_cc->cif ) && 
+        strlen( datablock_name( cif_last_datablock( cif_cc->cif ) ) ) > 0 ) {
+        datablock = datablock_name( cif_last_datablock( cif_cc->cif ) );
+    }
+
     fflush(NULL);
     if( progname && strlen( progname ) > 0 ) {
         fprintf( stderr, "%s: %s", progname, filename ? filename : "-" );
@@ -659,19 +665,8 @@ void print_message_generic( const char *progname,
     if( datablock ) {
         fprintf( stderr, " data_%s", datablock );
     }
-    fprintf( stderr, ": %s\n", message );
+    fprintf( stderr, ": %s, %s\n", errlevel, message );
     fflush(NULL);
-}
-
-void print_message( const char *message, int line, int position )
-{
-    extern char *progname;
-    char *datablock = NULL;
-    if( cif_cc->cif && cif_last_datablock( cif_cc->cif ) ) {
-        datablock = datablock_name( cif_last_datablock( cif_cc->cif ) );
-    }
-    print_message_generic( progname, cif_cc->filename, datablock,
-        message, line, position );
 }
 
 void print_current_trace( void ) {
@@ -695,8 +690,8 @@ int yyerror( const char *message )
     if( strcmp( message, "syntax error" ) == 0 ) {
         message = "syntax error:";
     }
-    print_message( message, cif_flex_current_line_number(),
-                            cif_flex_current_position()+1 );
+    print_message( "ERROR", message, cif_flex_current_line_number(),
+                   cif_flex_current_position()+1 );
     print_current_trace();
     errcount++;
     return 0;
@@ -704,16 +699,10 @@ int yyerror( const char *message )
 
 int yyerror_previous( const char *message )
 {
-    print_message( message, cif_flex_previous_line_number(),
+    print_message( "ERROR", message, cif_flex_previous_line_number(),
                             cif_flex_previous_position()+1 );
     print_previous_trace();
     errcount++;
-    return 0;
-}
-
-int yynote( const char *message )
-{
-    print_message( message, cif_flex_previous_line_number(), -1 );
     return 0;
 }
 
@@ -722,9 +711,15 @@ void yyincrease_error_counter( void )
     errcount++;
 }
 
+int yynote( const char *message )
+{
+    print_message( "NOTE", message, cif_flex_previous_line_number(), -1 );
+    return 0;
+}
+
 int yywarning( const char *message )
 {
-    yynote( message );
+    print_message( "WARNING", message, cif_flex_previous_line_number(), -1 );
     errcount++;
     return 0;
 }
