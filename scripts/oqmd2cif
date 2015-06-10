@@ -25,6 +25,7 @@ my %database = (
     },
     password => "",
     platform => "mysql",
+    dbh => undef,
 );
 
 my %options;
@@ -74,12 +75,12 @@ my %options;
     "--help,--usage" => sub { usage; exit },
 );
 
-my $dbh = database_connect( \%database );
+my $connected_db = database_connect( \%database );
 
 my @structure_ids = @ARGV;
 
 if( !@structure_ids ) {
-    @structure_ids = query_OQMD_structure_ids( $dbh, \%database );
+    @structure_ids = query_OQMD_structure_ids( $connected_db );
 }
 
 do {
@@ -94,6 +95,8 @@ for my $structure_id (@structure_ids) {
     
 }
 
+database_disconnect( $connected_db );
+
 #------------------------------------------------------------------------------
 
 sub database_connect
@@ -107,19 +110,27 @@ sub database_connect
                             "password=$database->{password}" )
         || die "cannot connect do the database -- $DBI::errstr";
 
-    return $dbh;
+    my %connected_db = %{$database};
+
+    $connected_db{dbh} = $dbh;
+
+    return wantarray ? %connected_db : \%connected_db;
 }
 
 sub database_disconnect
 {
-    my ( $dbh ) = @_;
+    my ( $database ) = @_;
 
-    $dbh->disconnect || die "cannot disconnect -- $DBI::errstr";
+    $database->{dbh}->disconnect || die "cannot disconnect -- $DBI::errstr";
+
+    $database->{dbh} = undef;
 }
 
 sub query_OQMD_structure_ids
 {
-    my ( $dbh, $database ) = @_;
+    my ( $database ) = @_;
+
+    my $dbh = $database->{dbh};
 
     use DBI;
 
