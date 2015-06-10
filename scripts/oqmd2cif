@@ -29,11 +29,19 @@ my %database = (
 );
 
 my %options;
+my $limit;
 
 #*Usage:
 #*     $0 [options] [structure1_id  ...]
 #*
 #*Options:
+#*     -L, --limit 10, --limit 1000,10
+#*        Add the limit clause to the structure query statement
+#*        (default: all structures are output from teh database)
+#*
+#*     -L-, --no-limit
+#*        Remove any previously set query limits.
+#*
 #*     -d, --database  cod
 #*        Use database "cod" to query for strctures.
 #*
@@ -72,6 +80,9 @@ my %options;
     "--password"     => \$database{password},
     "--platform"     => \$database{platform},
 
+    "-L,--limit"     => \$limit,
+    "-L-,--no-limit" => sub { $limit = undef },
+
     "--help,--usage" => sub { usage; exit },
 );
 
@@ -80,19 +91,11 @@ my $connected_db = database_connect( \%database );
 my @structure_ids = @ARGV;
 
 if( !@structure_ids ) {
-    @structure_ids = query_OQMD_structure_ids( $connected_db );
+    @structure_ids = query_OQMD_structure_ids( $connected_db, $limit );
 }
 
-do {
-    local $, = "\n";
-    local $\ = "\n";
-    print @structure_ids;
-};
-
-exit;
-
 for my $structure_id (@structure_ids) {
-    
+    print "data_", $structure_id, "\n";
 }
 
 database_disconnect( $connected_db );
@@ -128,14 +131,15 @@ sub database_disconnect
 
 sub query_OQMD_structure_ids
 {
-    my ( $database ) = @_;
+    my ( $database, $limit ) = @_;
 
     my $dbh = $database->{dbh};
 
     use DBI;
 
     my $sth = $dbh->prepare(
-        "SELECT id FROM `$database->{tables}{structures}` ORDER BY ID;"
+        "SELECT id FROM `$database->{tables}{structures}` ORDER BY id" .
+        (defined $limit ? " LIMIT " . $limit : "") . ";"
         );
 
     $sth->execute();
