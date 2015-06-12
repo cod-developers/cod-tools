@@ -9,7 +9,7 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #$URL$
 #------------------------------------------------------------------------------
 #*
-#  Retrieve structures from teh Open Quantum Mechanics Database and
+#  Retrieve structures from the Open Quantum Mechanics Database and
 #  write them out in CIF format.
 #**
 
@@ -28,6 +28,9 @@ my %database = (
     name  => "oqmd",
     tables => {
         structures => "structures",
+        atoms => "atoms",
+        sites => "sites",
+        wyckoffsites => "wyckoffsites",
     },
     password => "",
     platform => "mysql",
@@ -132,6 +135,10 @@ for my $structure_id (@structure_ids) {
     printf "%-32s %12.8f\n", "_cell_angle_alpha", $cell[3];
     printf "%-32s %12.8f\n", "_cell_angle_beta",  $cell[4];
     printf "%-32s %12.8f\n", "_cell_angle_gamma", $cell[5];
+
+    my $atoms = query_OQMD_atoms( $connected_db, $structure_id );
+
+    serialiseRef( $atoms ) if $debug;
 }
 
 database_disconnect( $connected_db );
@@ -198,6 +205,35 @@ sub query_OQMD_structure
     $sth->execute( $id );
 
     return $sth->fetchrow_hashref();
+}
+
+sub query_OQMD_atoms
+{
+    my ( $database, $id ) = @_;
+
+    my $dbh = $database->{dbh};
+
+    my $sth = $dbh->prepare(
+        "SELECT atoms.id as atom_id, element_id,
+                atoms.x as x, atoms.y as y, atoms.z as z,
+                sites.x as sx, sites.y as sy, sites.z as sz,
+                fx, fy, fz, magmom, charge, 
+                symbol, multiplicity, spacegroup_id,
+                wyckoffsites.x as wx,
+                wyckoffsites.x as wy,
+                wyckoffsites.z as wz
+         FROM `$database->{tables}{atoms}`
+         JOIN `$database->{tables}{sites}` 
+             ON site_id = `$database->{tables}{sites}`.id 
+         JOIN `$database->{tables}{wyckoffsites}`
+             ON `$database->{tables}{sites}`.wyckoff_id = 
+                `$database->{tables}{wyckoffsites}`.id
+         WHERE `$database->{tables}{atoms}`.structure_id = ?;"
+        );
+
+    $sth->execute( $id );
+
+    return $sth->fetchall_hashref( "atom_id" );
 }
 
 sub compute_cell_parameters
