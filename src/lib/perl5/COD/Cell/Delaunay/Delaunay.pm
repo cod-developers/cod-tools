@@ -60,7 +60,7 @@ sub reduce
         vangle($reduced_vectors->[0], $reduced_vectors->[1])
     );
 
-    return [ \@reduced_cell, $reduced_vectors ];
+    return ( @reduced_cell, $reduced_vectors );
 }
 
 sub vlen
