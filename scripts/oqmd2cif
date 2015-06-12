@@ -29,6 +29,7 @@ my %database = (
     name  => "oqmd",
     tables => {
         structures => "structures",
+        spacegroups => "spacegroups",
         atoms => "atoms",
         sites => "sites",
         wyckoffsites => "wyckoffsites",
@@ -137,8 +138,6 @@ for my $structure_id (@structure_ids) {
     printf "%-32s %12.8f\n", "_cell_angle_beta",  $cell[4];
     printf "%-32s %12.8f\n", "_cell_angle_gamma", $cell[5];
 
-    ## my @spacegroup_data = 
-
     print "_chemical_formula_sum           '",
         $structure_data->{composition_id}, "'\n";
 
@@ -160,6 +159,22 @@ for my $structure_id (@structure_ids) {
         for (values %{$formula_atoms}) { $formula_atom_count += $_ }
         print "_cell_formula_units_Z           ",
             $coord_atom_count/$formula_atom_count, "\n";
+    }
+
+    if( defined $structure_data->{spacegroup_id} ) {
+        local $\ = "\n";
+        my $spacegroup_data =
+            query_OQMD_spacegroup( $connected_db,
+                                   $structure_data->{spacegroup_id} );
+        serialiseRef( $spacegroup_data ) if $debug;
+        print "_oqmd_symmetry_space_group_name_H-M   ",
+            $spacegroup_data->{hm};
+        print "_oqmd_symmetry_space_group_name_Hall  ",
+            $spacegroup_data->{hall};
+        print "_oqmd_symmetry_cell_setting           ",
+            lc($spacegroup_data->{lattice_system});
+        print "_oqmd_space_group_IT_number           ",
+            lc($spacegroup_data->{number});
     }
 
     print "loop_\n";
@@ -239,6 +254,22 @@ sub query_OQMD_structure
         );
 
     $sth->execute( $id );
+
+    return $sth->fetchrow_hashref();
+}
+
+sub query_OQMD_spacegroup
+{
+    my ( $database, $spacegroup_number ) = @_;
+
+    my $dbh = $database->{dbh};
+
+    my $sth = $dbh->prepare(
+        "SELECT number, hm, hall, schoenflies, lattice_system 
+         FROM `$database->{tables}{spacegroups}` WHERE number = ?;"
+        );
+
+    $sth->execute( $spacegroup_number );
 
     return $sth->fetchrow_hashref();
 }
