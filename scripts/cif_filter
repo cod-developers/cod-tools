@@ -21,6 +21,7 @@ eval 'exec perl -x $0 ${1+"$@"}'
 use strict;
 use File::Basename;
 use COD::Cell qw(cell_volume);
+use COD::CIFIO qw(readfile);
 use COD::CIFParser::CIFParser;
 use COD::CIFTags::CIFDictTags;
 use COD::CIFTags::CIFCODTags;
@@ -31,7 +32,6 @@ use COD::CIFTags::CIFExcludedTags;
 use COD::CIFTags::CIFTagManage;
 use COD::CIFTags::CIFTagPrint;
 use COD::CIFTags::CIFTagCanonicalNames;
-use COD::CIF2JSON;
 use COD::Spacegroups::SpacegroupNames;
 use COD::Spacegroups::SymopParse;
 use COD::Spacegroups::SymopLookup;
@@ -486,38 +486,16 @@ if( defined $biblio ) {
 
 for my $filename (@ARGV) {
 
-    my( $data, $error_count );
     my %options;
+    $options{fix_errors} = 1 if $fix_errors;
 
-    if( $fix_errors ) {
-        $options{fix_errors} = 1;
-    }
-
-    if( $use_parser eq "perl" ) {
-        my $parser = new COD::CIFParser::CIFParser;
-
-        $data = $parser->Run($filename, \%options);
-
-        if( defined $parser->YYData->{ERRCOUNT} ) {
-            $error_count = $parser->YYData->{ERRCOUNT};
-        }
-    } elsif( $use_parser eq "c" ) {
-        require COD::CCIFParser::CCIFParser;
-        ( $data, $error_count ) = COD::CCIFParser::CCIFParser::parse( $filename, \%options );
-    } elsif( $use_parser eq "json" ) {
-        open( my $inp, $filename );
-        my $json = join( "\n", <$inp> );
-        close( $inp );
-        $data = json2cif( $json );
-    } else {
-        error( $0, $filename, undef, "unknown parser '$use_parser'" );
-        die;
-    }
-
-    if( defined $error_count && $error_count > 0 ) {
-        print STDERR "$0: ", $error_count,
-        " error(s) encountered while parsing file '${filename}'\n";
-        die;
+    my $data;
+    eval {
+        $data = readfile( $filename, $use_parser, \%options );
+    };
+    if( $@ ) {
+        error( $0, $filename, undef, $@ );
+        next;
     }
 
     if( !@$data || !defined $data->[0] || !defined $data->[0]{name} ) {

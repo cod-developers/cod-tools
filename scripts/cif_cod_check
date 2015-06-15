@@ -15,12 +15,11 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #**
 
 use strict;
-use COD::CIFParser::CIFParser;
 use COD::CIFData qw(get_cell get_content_encodings);
 use COD::CIFData::CIFEstimateZ;
+use COD::CIFIO qw(readfile);
 use COD::CIFTags::CIFTagCanonicalNames;
 use COD::CIFTags::CIFTagManage;
-use COD::CIF2JSON;
 use COD::Escape qw( decode_textfield );
 use COD::Precision qw(eqsig);
 use COD::ShowStruct;
@@ -405,38 +404,15 @@ $| = 1; # Flush buffers immediately, to avoid mixing lines of STDOUT
 
 for my $filename (@ARGV) {
 
-    my( $data, $error_count );
-
-    if( $use_parser eq "perl" ) {
-        my $parser = new COD::CIFParser::CIFParser;
-        if( $useReporter == 1 )
-        {
-            $data = $parser->Run($filename, \&parser_error_reporter );
-        } else {
-            $data = $parser->Run($filename);
-        }
-        if( defined $parser->YYData->{ERRCOUNT} ) {
-            $error_count = $parser->YYData->{ERRCOUNT};
-        }
-    } elsif( $use_parser eq "c" ) {
-        require COD::CCIFParser::CCIFParser;
-        ( $data, $error_count ) = COD::CCIFParser::CCIFParser::parse( $filename );
-    } elsif( $use_parser eq "json" ) {
-        open( my $inp, $filename );
-        my $json = join( "\n", <$inp> );
-        close( $inp );
-        $data = json2cif( $json );
-    } else {
-        error( $0, $filename, undef, "unknown parser '$use_parser'" );
-        die;
-    }
-    
-    if( defined $error_count && $error_count > 0 ) {
-        print STDERR "$0: $filename: ", $error_count,
-        " error(s) encountered while parsing CIF data\n";
+    my $data;
+    eval {
+        $data = readfile( $filename, $use_parser );
+    };
+    if( $@ ) {
+        error( $0, $filename, undef, $@ );
         exit -1;
     }
-    
+
     canonicalize_all_names( $data );
     
     my $warnings = 0;
