@@ -236,8 +236,8 @@ int cif_lexer( FILE *in )
                     case '"':
                         if( cif_lexer_has_flags
                             (CIF_FLEX_LEXER_FIX_MISSING_CLOSING_DOUBLE_QUOTE) ) {
-                            yynote( "double-quoted string is "
-                                    "missing a closing quote -- fixed" );
+                            yywarning( "double-quoted string is missing "
+                                       "a closing quote -- fixed" );
                         } else {
                             yyerror( "syntax error" );
                         }
@@ -245,8 +245,8 @@ int cif_lexer( FILE *in )
                     case '\'':
                         if( cif_lexer_has_flags
                             (CIF_FLEX_LEXER_FIX_MISSING_CLOSING_SINGLE_QUOTE) ) {
-                            yynote( "single-quoted string is "
-                                    "missing a closing quote -- fixed" );
+                            yywarning( "single-quoted string is missing "
+                                       "a closing quote -- fixed" );
                         } else {
                             yyerror( "syntax error" );
                         }

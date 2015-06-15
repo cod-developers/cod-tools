@@ -307,8 +307,8 @@ loop
        loop_tags loop_values
        {
            if( loop_value_count % loop_tag_count != 0 ) {
-               yywarning( cxprintf( "wrong number of elements in the "
-                                    "loop block starting in line %d",
+               yyerror( cxprintf( "wrong number of elements in the "
+                                  "loop block starting in line %d",
                                     loop_start ) ); 
                cexception_raise( px, CIF_UNRECOVERABLE_ERROR,
                    cxprintf( "wrong number of elements in the "
@@ -587,46 +587,46 @@ void add_tag_value( char * tag, char * value, cif_value_type_t type,
                 (isset_fix_errors(cif_cc) == 1 ||
                  isset_fix_duplicate_tags_with_same_values
                  (cif_cc) == 1)) {
-                yynote( cxprintf( "warning, tag %s appears more than "
-                                  "once with the same value", tag ) );
+                yywarning( cxprintf( "tag %s appears more than once "
+                                     "with the same value '%s'", tag, value ) );
             } else {
                 if( isset_fix_errors(cif_cc) == 1 ||
                     isset_fix_duplicate_tags_with_empty_values
                     (cif_cc) == 1 ) {
                     if( is_tag_value_unknown( value ) ) {
-                        yynote( cxprintf( "warning, tag %s appears more "
-                                          "than once, the second occurence "
-                                          "'%s' is ignored",
-                                          tag, value ));
+                        yywarning( cxprintf( "tag %s appears more than once, "
+                                             "the second occurence '%s' is "
+                                             "ignored", tag, value ) );
                     } else if( is_tag_value_unknown
                                (datablock_value
                                 (cif_last_datablock(cif_cc->cif),
                                  tag_nr, 0))) {
-                        yynote
-                            (cxprintf( "warning, tag %s appears more "
-                                       "than once, the previous value "
-                                       "'%s' is overwritten", tag,
-                                       datablock_value
-                                       (cif_last_datablock(cif_cc->cif),
-                                        tag_nr, 0)));
+                        yywarning( cxprintf( "tag %s appears more than once, "
+                                             "the previous value '%s' is "
+                                             "overwritten", tag,
+                                             datablock_value
+                                             (cif_last_datablock(cif_cc->cif),
+                                             tag_nr, 0)));
                         cif_overwrite_value( cif_cc->cif, tag_nr, 0,
                                              value, type );
                     } else {
-                        yywarning
+                        yyerror_previous
                             (cxprintf( "tag %s appears more than once", tag ));
                     }
                 } else {
-                    yywarning
+                    yyerror_previous
                         (cxprintf( "tag %s appears more than once", tag ));
                 }
             }
         } else {
-            yywarning( cxprintf( "tag %s appears more than once", tag ));
+            yyerror_previous( cxprintf( "tag %s appears more than once", tag ));
         }
     }
 }
 
 static int errcount = 0;
+static int warncount = 0;
+static int notecount = 0;
 
 int cif_yy_error_number( void )
 {
@@ -714,13 +714,14 @@ void yyincrease_error_counter( void )
 int yynote( const char *message )
 {
     print_message( "NOTE", message, cif_flex_previous_line_number(), -1 );
+    notecount++;
     return 0;
 }
 
 int yywarning( const char *message )
 {
     print_message( "WARNING", message, cif_flex_previous_line_number(), -1 );
-    errcount++;
+    warncount++;
     return 0;
 }
 
