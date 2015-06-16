@@ -24,6 +24,7 @@ use COD::CIFParser::CIFParser;
 use COD::CIFTags::CIFTagCanonicalNames;
 use COD::ShowStruct;
 use COD::SOptions;
+use COD::SUsage;
 use COD::UserMessage;
 
 #
@@ -89,9 +90,6 @@ my %showMap = (
 # subroutine to print module version and copyright notice
 sub VersionMessage;
 
-# subroutine to print help on module usage
-sub HelpMessage;
-
 # subroutine to print validation message (for SPOT purposes)
 # list of arguments:
 #     1. severity level (# ../doc/error-levels.txt)
@@ -140,6 +138,190 @@ sub getRelatedMandatory;
 # in CIF core dictionary.
 push @$setOfEnum, '_atom_site_refinement_flags';
 
+#** OPTIONS:
+#** --output cid_validate.log
+#**                     This meant - you can define some file, that is 
+#**                     writable for current user and this script output will 
+#**                     be redirected to it. I.e. '--output output.log'
+#** --dictionary cif_core.dic
+#**                     Any valid CIF file, with CIF dictionary (according 
+#**                     to DDL2). You can define any number of CIF 
+#**                     dictionaries, in a way like this:
+#**                     $0 --dictionary cif_core.dic --dictionary cod_core.dic
+#** --quiet
+#**                     Minimize program output.
+#** --no-quiet
+#**                     Maximize program output.
+#** --error-level 4
+#**                     Define verbosity of script.
+#**                     This is a subject to change. So far it is used for 
+#**                     debugging purposes to maximise program output.
+#**                     Default verbosity level is 4. It can go up as far as 
+#**                     to 65536. Higher than 4 levels are intended for 
+#**                     debugging purposes only.
+#** --version
+#**                     Print version message and exits.
+#** --help, --usage
+#**                     Print short usage message (this message) and exit.
+#** --treat-as-set, --set-of-enum
+#**                     If tag name is given to this parameter and tag 
+#**                     specified has some enumeration values to check 
+#**                     against, they are treated as set, i.e. more than one 
+#**                     of enumeration values could be defined for one single 
+#**                     element. By default it is turned on for tag 
+#**                     '_atom_site_refinement_flags', which is documented as 
+#**                     set, but only in it's description.
+#** --no-treat-as-set, --no-set-emulation
+#**                     This parameter turns off all so far defined exceptions, 
+#**                     that emulates enumeration treating as set 
+#                       (see --treat-as-set).
+#** --check. --show
+#**                     Provide a list of options, what tests should be 
+#**                     performed. Please see list of options further.
+#** --check-all
+#**                     Turn on all tests (see below).
+#** --check-tag-exists
+#**                     Turn on test 'tag-exists'. It tests, whereas tag is 
+#**                     defined in dictionary. Default.
+#** --do-not-check-tag-exists
+#**                     Turn off test 'tag-exists'.
+#** --check-tag-exists-local
+#**                     Turn on test 'tag-exists-local'. This test enforces 
+#**                     check of tags marked as local, i.e. 
+#**                     _[local]_cod_depositor_comments. Otherwise these tags 
+#**                     are ignored.
+#** --do-not-check-tag-exists-local
+#**                     Turn off test 'tag-exists-local'. Default.
+#** --check-tag-deprecated
+#**                     Turn on test 'tag-deprecated'. This test checks 
+#**                     whereas tag was not replaced by new one.
+#** --do-not-check-tag-deprecated
+#**                     Turn off test 'tag-deprecated'. Default.
+#** --check-tags-grouped
+#**                     Turn on test 'tags-grouped'. This test checks, whereas 
+#**                     list of tags must be together in loop. I.e. if you 
+#**                     define '_atom_site_fract_x' values for
+#**                     '_atom_site_fract_y' and '_atom_site_fract_z' must be 
+#**                     defined as well. It is turned off, because so far it 
+#**                     might give too much false-warnings.
+#** --do-not-check-tags-grouped
+#**                     Turn off test 'tags-grouped'. Default.
+#** --check-list-only
+#**                     Turn on test 'list-only'. This test checks whereas tag
+#**                     MUST be in loop. It means it can not be defined 
+#**                     anywhere in data_ block, only within some loop.
+#**                     Default.
+#** --do-not-check-list-only
+#**                     Turn off test 'list-only'.
+#** --check-ref-list-mandatory
+#**                     Turn on test 'ref-list-mandatory'. This test is used 
+#**                     to check, whereas there is some tag associated
+#**                     with any others, that must be present in loop. I.e. if 
+#**                     you define '_atom_site_fract_x' tag '_atom_site_label' 
+#**                     must be defined somewhere as well.
+#** --do-not-check-ref-list-mandatory
+#**                     Turn off test 'ref-list-mandatory'. Default.
+#** --check-values-enum
+#**                     Turn on test 'values-enum'. This test is used to check, 
+#**                     whereas tag values are restricted to some list and if 
+#**                     yes - whereas they fit in. I.e. tag
+#**                     '_exptl_absorpt_correction_type' is restricted to 
+#**                     values 'analytical, cylinder, empirical, ...'.
+#**                     Default.
+#** --do-not-check-values-enum
+#**                     Turn off test 'values-enum'.
+#** --check-values-enum-nocase
+#**                     Turn on tests 'values-enum-nocase' and 'values-enum'.
+#**                     This is a test option, indicating that case must be 
+#**                     ignored, while checking them against list 
+#**                     (see 'values-enum'). This option is only actual if 
+#**                     values-enum test is ON. I.e. '_atom_site_adp_type'
+#**                     is restricted to values ('Uani', 'Uiso', 'Uovl', ...) 
+#**                     and 'UANI' would be incorrect, if values-enum-nocase 
+#**                     is turned off.
+#** --do-not-check-values-enum-nocase
+#**                     Turn off test 'values-enum-nocase'. Default.
+#** --check-values-range
+#**                     Turn on test 'values-range'. The test is used to check, 
+#**                     whereas some boundaries were defined. I.e. 
+#**                     '_refine_ls_abs_structure_Flack' must be between 
+#**                     '0.0' and '1.0'. Default.
+#** --do-not-check-values-range
+#**                     Turn off test 'values-range'.
+#** --check-value-type
+#**                     Turn on tests 'value-type' and 'values-enum'.
+#**                     This test is used to check, if type implied by 
+#**                     dictionary (i.e. numb) does match the type in file, 
+#**                     as detected by CIFParser (i.e. FLOAT). So far applies 
+#**                     only to nummeric types, as UQSTRING, as such, might be
+#**                     treated as numeric value by human and vice-versa.
+#**                     Default.
+#** --do-not-check-value-type
+#**                     Turn off test 'value-type'.
+#** --check-none
+#**                     Turns of all tests.
+#** --use-perl-parser
+#**             Use Perl parser to parse CIF files. Default option.
+#** --use-c-parser
+#**             Use C parser to parse CIF files.
+#**
+#** Selecting tests, that should be performed:
+#**    Option '--check' accepts comma separated list of test names.
+#**    Tests are listed below, and any other value than that is not 
+#**    accepted. NOTE that test names consists only of letters, minus sign 
+#**    (i.e. '-') and underscore symbol (i.e. '_').
+#**    Test name could be preceded by plus '+', or minus '-' sign, and by 
+#**    this test could be turned on (in case of plus sign), or turned off 
+#**    (in case of minus sign). NOTE: if you do not supply any of these 
+#**    symbols, the validator expects it to be a plus sign and turns on the 
+#**    test indicated.
+#**    Some tests are turned on by default, but you could turn them off by 
+#**    setting prefixing with minus in '--check' option.
+#**    Special option is 'all'. If you put 'all-', then it turns OFF all 
+#**    tests, if you put 'all+', or plain 'all' it turns ON all tests.
+#**    NOTE: later declarations of '--check' will override previously 
+#**    turned on/off tests.
+#**    List of tests:
+#**        o tag-exists - this test is ON by default. It is meant to check 
+#**                    whereas tag DO exist in dictionary.
+#**        o tag-exists-local - this test enforces check of tags marked as 
+#**                    local, i.e. _[local]_cod_depositor_comments. 
+#**                    Otherwise these tags are ignored.
+#**        o tag-deprecated - this test is OFF by default. If turned on it 
+#**                    checks whereas tag was not replaced by new one.
+#**        o tags-grouped - this test is OFF by default. It is meant to 
+#**                    check, whereas list of tags must be together in 
+#**                    loop. I.e. if you define '_atom_site_fract_x' values 
+#**                    for '_atom_site_fract_y' and '_atom_site_fract_z' 
+#**                    must be defined as well.
+#**                    It is turned off, because so far it might give too 
+#**                    much false-warnings.
+#**        o list-only - this test is ON by default. It checks whereas 
+#**                    tag MUST be in loop. It means it can not be defined 
+#**                   anywhere in data_ block, only within some loop.
+#**        o ref-list-mandatory - this test is OFF by default. It is used 
+#**                    to check, whereas there is some tag associated with 
+#**                    any others, that must be present in loop. I.e. if 
+#**                    you define '_atom_site_fract_x' tag
+#**                    '_atom_site_label' must be defined somewhere as 
+#**                    well.
+#**        o values-enum - this test is ON by default. The test checks, 
+#**                    whereas tag values are restricted to some list and 
+#**                    if yes - whereas they fit in. I.e. tag
+#**                    '_exptl_absorpt_correction_type' is restricted to 
+#**                    values 'analytical, cylinder, empirical, ...'.
+#**        o values-enum-nocase - this is a test option, indicating that
+#**                    case must be ignored, while checking them against 
+#**                    list. This option is only actual if values-enum 
+#**                    test is ON. I.e. '_atom_site_adp_type' is restricted 
+#**                    to values ('Uani', 'Uiso', 'Uovl', ...) and 'UANI' 
+#**                    would be incorrect, if values-enum-nocase is turned 
+#**                    off.
+#**        o values-range - this test is ON by default. The test is used to 
+#**                    check, whereas some boundaries were defined. I.e. 
+#**                    '_refine_ls_abs_structure_Flack' must be between 
+#**                    '0.0' and '1.0'.
+
 # check parameters passed
 @ARGV = getOptions(
         "--output"
@@ -159,7 +341,7 @@ push @$setOfEnum, '_atom_site_refinement_flags';
         "--error-level"
             => \$errorLevel,
         "--help"
-            => sub{ HelpMessage() },
+            => sub{ usage; exit; },
         "--check"
             => $outputOptions,
         "--show"
@@ -712,252 +894,15 @@ the GNU General Public License <http://www.gnu.org/licenses/gpl.html>.
 There is NO WARRANTY, to the extent permitted by law.
 
 Written by Justas Butkus.
-END_M
-    exit 0;
-}
 
-sub HelpMessage
-{
-        print <<END_M;
 NOTICE: this is a development version.
 Any interfaces are a matter to change.
 Please be careful not to include it in any public system, or carefully 
 revise in case of updates.
 
-Options available:
-    --output cid_validate.log
-        This meant - you can define some file, that is writable for 
-        current user and this script output will be redirected to it.
-        I.e. '--output output.log'
-    --dictionary cif_core.dic
-        Any valid CIF file, with CIF dictionary (according to DDL2).
-        You can define any number of CIF dictionaries, in a way like 
-        this:
-        $0 --dictionary cif_core.dic --dictionary cod_core.dic
-    --quiet
-        Minimizes program output.
-    --no-quiet
-        Maximizes program output.
-    --error-level 4
-        Define verbosity of script.
-        This is a subject to change. So far it is used for debugging 
-        purposes to maximise program output.
-        Default verbosity level is 4. It can go up as far as to 65536.
-        Higher than 4 levels are intended for debugging purposes only.
-    --version
-        Prints version message and exits.
-    --help
-        Prints this message and exits.
-    --treat-as-set, --set-of-enum
-        If tag name is given to this parameter and tag specified has 
-        some enumeration values to check against, they are treated as 
-        set, i.e. more than one of enumeration values could be defined 
-        for one single element. By default it is turned on for tag 
-        '_atom_site_refinement_flags', which is documented as set, but 
-        only in it's description.
-    --no-treat-as-set, --no-set-emulation
-        This parameter turns off all so far defined exceptions, that 
-        emulates enumeration treating as set (see --set-of-enum).
-    --check
-        Provide a list of options, what tests should be performed.
-        Please see list of options further.
-    --show
-        Alias for '--check'.
-    --check-all
-        Turn on all tests (see below).
-    --check-tag-exists
-        Turn on test 'tag-exists'.
-        This test is ON by default.
-        It tests, whereas tag is defined in dictionary.
-    --check-tag-exists-local
-        Turn on test 'tag-exists-local'.
-        This test is OFF by default.
-        This test enforces check of tags marked as local, i.e.
-         _[local]_cod_depositor_comments.
-        Otherwise these tags are ignored.
-    --check-tag-deprecated
-        Turn on test 'tag-deprecated'.
-        This test is OFF by default.
-        This test checks whereas tag was not replaced by new one.
-    --check-tags-grouped
-        Turn on test 'tags-grouped'.
-        This test is OFF by default.
-        This test checks, whereas list of tags must be together in loop.
-        I.e. if you define '_atom_site_fract_x' values for
-        '_atom_site_fract_y' and '_atom_site_fract_z' must be defined as
-        well.
-        It is turned off, because so far it might give too much
-        false-warnings.
-    --check-list-only
-        Turn on test 'list-only'.
-        This test is ON by default.
-        This test checks whereas tag MUST be in loop. It means it can not
-        be defined anywhere in data_ block, only within some loop.
-    --check-ref-list-mandatory
-        Turn on test 'ref-list-mandatory'.
-        This test is OFF by default.
-        This test is used to check, whereas there is some tag associated
-        with any others, that must be present in loop. I.e. if you define
-        '_atom_site_fract_x' tag '_atom_site_label' must be defined
-        somewhere as well.
-    --check-values-enum
-        Turn on test 'values-enum'.
-        This test is ON by default.
-        This test is used to check, whereas tag values are restricted to
-        some list and if yes - whereas they fit in. I.e. tag
-        '_exptl_absorpt_correction_type' is restricted to values
-        'analytical, cylinder, empirical, ...'.
-    --check-values-enum-nocase
-        Turn on tests 'values-enum-nocase' and 'values-enum'.
-        This test is OFF by default.
-        This is a test option, indicating that case must be ignored, while
-        checking them against list (see 'values-enum'). This option is
-        only actual if values-enum test is ON. I.e. '_atom_site_adp_type'
-        is restricted to values ('Uani', 'Uiso', 'Uovl', ...) and 'UANI' 
-        would be incorrect, if values-enum-nocase is turned off.
-    --check-values-range
-        Turn on test 'values-range'.
-        This test is ON by default.
-        The test is used to check, whereas some boundaries were defined.
-        I.e. '_refine_ls_abs_structure_Flack' must be between '0.0' and
-        '1.0'.
-    --check-value-type
-        Turn on tests 'value-type' and 'values-enum'.
-        This test is ON by default.
-        This test is used to check, if type implied by dictionary (i.e. numb)
-        does match the type in file, as detected by CIFParser (i.e. FLOAT).
-        So far applies only to nummeric types, as UQSTRING, as such, might be
-        treated as numeric value by human and vice-versa.
-    --check-none
-        Turns of all tests.
-    --do-not-check-tag-exists
-        Turn off test 'tag-exists'.
-        This test is ON by default.
-        It tests, whereas tag is defined in dictionary.
-    --do-not-check-tag-exists-local
-        Turn off test 'tag-exists-local'.
-        This test is OFF by default.
-        This test enforces check of tags marked as local, i.e.
-         _[local]_cod_depositor_comments.
-        Otherwise these tags are ignored.
-    --do-not-check-tag-deprecated
-        Turn off test 'tag-deprecated'.
-        This test is OFF by default.
-        This test checks whereas tag was not replaced by new one.
-    --do-not-check-tags-grouped
-        Turn off test 'tags-grouped'.
-        This test is OFF by default.
-        This test checks, whereas list of tags must be together in loop.
-        I.e. if you define '_atom_site_fract_x' values for
-        '_atom_site_fract_y' and '_atom_site_fract_z' must be defined as
-        well.
-        It is turned off, because so far it might give too much
-        false-warnings.
-    --do-not-check-list-only
-        Turn off test 'list-only'.
-        This test is ON by default.
-        This test checks whereas tag MUST be in loop. It means it can not
-        be defined anywhere in data_ block, only within some loop.
-    --do-not-check-ref-list-mandatory
-        Turn off test 'ref-list-mandatory'.
-        This test is OFF by default.
-        This test is used to check, whereas there is some tag associated
-        with any others, that must be present in loop. I.e. if you define
-        '_atom_site_fract_x' tag '_atom_site_label' must be defined
-        somewhere as well.
-    --do-not-check-values-enum
-        Turn off test 'values-enum'.
-        This test is ON by default.
-        This test is used to check, whereas tag values are restricted to
-        some list and if yes - whereas they fit in. I.e. tag
-        '_exptl_absorpt_correction_type' is restricted to values
-        'analytical, cylinder, empirical, ...'.
-    --do-not-check-values-enum-nocase
-        Turn off test 'values-enum-nocase'.
-        This test is OFF by default.
-        This is a test option, indicating that case must be ignored, while
-        checking them against list (see 'values-enum'). This option is
-        only actual if values-enum test is ON. I.e. '_atom_site_adp_type'
-        is restricted to values ('Uani', 'Uiso', 'Uovl', ...) and 'UANI' 
-        would be incorrect, if values-enum-nocase is turned off.
-    --do-not-check-values-range
-        Turn off test 'values-range'.
-        This test is ON by default.
-        The test is used to check, whereas some boundaries were defined.
-        I.e. '_refine_ls_abs_structure_Flack' must be between '0.0' and
-        '1.0'.
-    --do-not-check-value-type
-        Turn off test 'value-type'.
-        This test is ON by default.
-        This test is used to check, if type implied by dictionary (i.e. numb)
-        does match the type in file, as detected by CIFParser (i.e. FLOAT).
-        So far applies only to nummeric types, as UQSTRING, as such, might be
-        treated as numeric value by human and vice-versa.
-    --use-perl-parser
-        Use Perl parser to parse CIF files. Default option.
-    --use-c-parser
-        Use C parser to parse CIF files.
-
-Selecting tests, that should be performed:
-    Option '--check' accepts comma separated list of test names.
-    Tests are listed below, and any other value than that is not 
-    accepted. NOTE that test names consists only of letters, minus sign 
-    (i.e. '-') and underscore symbol (i.e. '_').
-    Test name could be preceded by plus '+', or minus '-' sign, and by 
-    this test could be turned on (in case of plus sign), or turned off 
-    (in case of minus sign). NOTE: if you do not supply any of these 
-    symbols, the validator expects it to be a plus sign and turns on the 
-    test indicated.
-    Some tests are turned on by default, but you could turn them off by 
-    setting prefixing with minus in '--check' option.
-    Special option is 'all'. If you put 'all-', then it turns OFF all 
-    tests, if you put 'all+', or plain 'all' it turns ON all tests.
-    NOTE: later declarations of '--check' will override previously 
-    turned on/off tests.
-    List of tests:
-        o tag-exists - this test is ON by default. It is meant to check 
-                    whereas tag DO exist in dictionary.
-        o tag-exists-local - this test enforces check of tags marked as 
-                    local, i.e. _[local]_cod_depositor_comments. 
-                    Otherwise these tags are ignored.
-        o tag-deprecated - this test is OFF by default. If turned on it 
-                    checks whereas tag was not replaced by new one.
-        o tags-grouped - this test is OFF by default. It is meant to 
-                    check, whereas list of tags must be together in 
-                    loop. I.e. if you define '_atom_site_fract_x' values 
-                    for '_atom_site_fract_y' and '_atom_site_fract_z' 
-                    must be defined as well.
-                    It is turned off, because so far it might give too 
-                    much false-warnings.
-        o list-only - this test is ON by default. It checks whereas 
-                    tag MUST be in loop. It means it can not be defined 
-                    anywhere in data_ block, only within some loop.
-        o ref-list-mandatory - this test is OFF by default. It is used 
-                    to check, whereas there is some tag associated with 
-                    any others, that must be present in loop. I.e. if 
-                    you define '_atom_site_fract_x' tag
-                    '_atom_site_label' must be defined somewhere as 
-                    well.
-        o values-enum - this test is ON by default. The test checks, 
-                    whereas tag values are restricted to some list and 
-                    if yes - whereas they fit in. I.e. tag
-                    '_exptl_absorpt_correction_type' is restricted to 
-                    values 'analytical, cylinder, empirical, ...'.
-        o values-enum-nocase - this is a test option, indicating that
-                    case must be ignored, while checking them against 
-                    list. This option is only actual if values-enum 
-                    test is ON. I.e. '_atom_site_adp_type' is restricted 
-                    to values ('Uani', 'Uiso', 'Uovl', ...) and 'UANI' 
-                    would be incorrect, if values-enum-nocase is turned 
-                    off.
-        o values-range - this test is ON by default. The test is used to 
-                    check, whereas some boundaries were defined. I.e. 
-                    '_refine_ls_abs_structure_Flack' must be between 
-                    '0.0' and '1.0'.
 END_M
     exit 0;
 }
-#' restart normal text colouring in Emacs
 
 # Return a string that describes "severity level" in a human readable
 # form (for discussions of severity levels, see
