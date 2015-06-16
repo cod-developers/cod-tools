@@ -5,14 +5,14 @@
 #$URL$
 #------------------------------------------------------------------------
 #* 
-#  A list of TCOD CIF dictionary tags. Compiled from version 0.004 of
+#  A list of TCOD CIF dictionary tags. Compiled from version 0.006 of
 #  cif_tcod.dic:
 #
 #  URL: svn://www.crystallography.net/tcod/cif/dictionaries/cif_tcod.dic
 #  Relative URL: ^/cif/dictionaries/cif_tcod.dic
 #  Repository Root: svn://www.crystallography.net/tcod
 #  Repository UUID: f3fa9230-7ed6-4b69-bb24-8fd292b8517b
-#  Revision: 263
+#  Revision: 274
 #**
 
 package COD::CIFTags::CIFTCODTags;
@@ -63,6 +63,7 @@ _tcod_computation_wallclock_time
 _tcod_content_encoding_id
 _tcod_content_encoding_layer_id
 _tcod_content_encoding_layer_type
+_tcod_database_code
 _tcod_ff_citation_id
 _tcod_ff_id
 _tcod_ff_name

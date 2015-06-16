@@ -96,6 +96,7 @@ my $use_datablocks_with_fobs = 1;
 my $update_database_code = 1; # Specifies whether to update
                               # _cod_database_code tag value upon
                               # renumbering.
+my $database_code_tag = '_cod_database_code'; # Tag for database code.
 
 my $extra_tag_file;
 my $original_filename;
@@ -209,6 +210,8 @@ my %spacegroups = map {
 #*
 #*    --update-database-code
 #*    --dont-update-database-code
+#*
+#*    --database-code-tag _cod_database_code
 #*
 #*    -S, --start-data-block-number 1234567
 #*
@@ -344,6 +347,8 @@ my %spacegroups = map {
 
     "--update-database-code"          => sub { $update_database_code = 1; },
     "--dont-update-database-code"     => sub { $update_database_code = 0; },
+
+    "--database-code-tag" => \$database_code_tag,
 
     "-S,--start-data-block-number"    => \$data_block_nr,
     "-R,--renumber-data-blocks"       => sub { $data_block_nr = 7000001 },
@@ -1197,7 +1202,8 @@ for my $filename (@ARGV) {
         if( defined $data_block_nr ) {
             $dataset->{name} = sprintf $datablock_format, $data_block_nr;
             if( $update_database_code ) {
-                $dataset->{values}{_cod_database_code}[0] = $dataset->{name};
+                $dataset->{values}{$database_code_tag}[0] =
+                    $dataset->{name};
             }
             $data_block_nr ++;
         }
