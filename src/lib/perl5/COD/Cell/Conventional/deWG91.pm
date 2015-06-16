@@ -18,11 +18,13 @@ use strict;
 use warnings;
 require Exporter;
 @COD::Cell::Conventional::deWG91::ISA = qw(Exporter);
-@COD::Cell::Conventional::deWG91::EXPORT_OK = qw(  );
+@COD::Cell::Conventional::deWG91::EXPORT_OK = qw(conventional_cell);
+
+use COD::Spacegroups::SymopAlgebra qw(symop_apply);
 
 my $Pi = 4 * atan2(1,1);
 
-$COD::Cell::Conventional::deWG91::debug = 0;
+$COD::Cell::Conventional::deWG91::debug = 1;
 
 # Check for Type I cell:
 sub is_type_I
@@ -54,6 +56,9 @@ sub conventional_cell
     # The Change-of-Basis matrix, initially unity:
     my $CoB = [ [1,0,0], [0,1,0], [0,0,1] ];
 
+    # Crystal system compatible with the cell:
+    my $crystal_system;
+
 # P. M. DE WOLFF AND B. GRUBER 35
 # Table 2. Theparameters D = b . c, E = a . c andF = a . b ofthe 44 lattice characters (A = a . a, B = b . b, C = c . c)
 #
@@ -78,6 +83,7 @@ sub conventional_cell
         printf "1. %5.1f %5.1f %5.1f %5.1f %5.1f %5.1f Cubic cF\n",
         $A, $B, $C, $D, $E, $F if $COD::Cell::Conventional::deWG91::debug;
         $CoB = [ [1,-1,1], [1,1,-1], [-1,1,1] ];
+        $crystal_system = "cF";
     }
     # 2 I D D D Rhombohedral hR 1-10/-101/-1-1-1
     if( is_type_I( $D, $E, $F, $eps ) &&
@@ -86,6 +92,7 @@ sub conventional_cell
         printf "2. %5.1f %5.1f %5.1f %5.1f %5.1f %5.1f Rhombohedral hR\n",
         $A, $B, $C, $D, $E, $F if $COD::Cell::Conventional::deWG91::debug;
         $CoB = [ [1,-1,0], [-1,0,1], [-1,-1,-1] ];
+        $crystal_system = "hR";
     }
     # 3 II 0 0 0 Cubic cP 100/010/001
     if( is_type_II( $D, $E, $F, $eps ) &&
@@ -94,6 +101,7 @@ sub conventional_cell
         printf "3. %5.1f %5.1f %5.1f %5.1f %5.1f %5.1f Cubic cP\n",
         $A, $B, $C, $D, $E, $F if $COD::Cell::Conventional::deWG91::debug;
         $CoB = [ [1,0,0], [0,1,0], [0,0,1] ];
+        $crystal_system = "cP";
     }
     # 5 II -A/3 -A/3 -A/3 Cubic cI 101/110/011
     if( is_type_II( $D, $E, $F, $eps ) &&
@@ -102,6 +110,7 @@ sub conventional_cell
         printf "5. %5.1f %5.1f %5.1f %5.1f %5.1f %5.1f Cubic cI\n",
         $A, $B, $C, $D, $E, $F if $COD::Cell::Conventional::deWG91::debug;
         $CoB = [ [1,0,1], [1,1,0], [0,1,1] ];
+        $crystal_system = "cI";
     }
     # 4 II D D D Rhombohedral hR 1-10/-101/-1-1-1
     if( is_type_II( $D, $E, $F, $eps ) &&
@@ -110,6 +119,7 @@ sub conventional_cell
         printf "4. %5.1f %5.1f %5.1f %5.1f %5.1f %5.1f Rhombohedral hR\n",
         $A, $B, $C, $D, $E, $F if $COD::Cell::Conventional::deWG91::debug;
         $CoB = [ [1,-1,0], [-1,0,1], [-1,-1,-1] ];
+        $crystal_system = "hR";
     }
     # 6 II D* D F Tetragonal tI 011/101/110
     if( is_type_II( $D, $E, $F, $eps ) &&
@@ -119,6 +129,7 @@ sub conventional_cell
         printf "6. %5.1f %5.1f %5.1f %5.1f %5.1f %5.1f Tetragonal tI\n",
         $A, $B, $C, $D, $E, $F if $COD::Cell::Conventional::deWG91::debug;
         $CoB = [ [0,1,1], [1,0,1], [1,1,0] ];
+        $crystal_system = "tI";
     }
     # 7 II D* E E Tetragonal tI 101/110/011
     if( is_type_II( $D, $E, $F, $eps ) &&
@@ -128,6 +139,7 @@ sub conventional_cell
         printf "7. %5.1f %5.1f %5.1f %5.1f %5.1f %5.1f Tetragonal tI\n",
         $A, $B, $C, $D, $E, $F if $COD::Cell::Conventional::deWG91::debug;
         $CoB = [ [1,0,1], [1,1,0], [0,1,1] ];
+        $crystal_system = "tI";
     }
     # 8 II D* E F Orthorhombic oI -1-10/-10-1/0-1-1
     if( is_type_II( $D, $E, $F, $eps ) &&
@@ -137,6 +149,7 @@ sub conventional_cell
         printf "8. %5.1f %5.1f %5.1f %5.1f %5.1f %5.1f Orthorhombic oI\n",
         $A, $B, $C, $D, $E, $F if $COD::Cell::Conventional::deWG91::debug;
         $CoB = [ [-1,-1,0], [-1,0,-1], [0,-1,-1] ];
+        $crystal_system = "oI";
     }
 
     # A = B, no conditions on C
@@ -148,6 +161,7 @@ sub conventional_cell
         printf "9. %5.1f %5.1f %5.1f %5.1f %5.1f %5.1f Rhombohedral hR\n",
         $A, $B, $C, $D, $E, $F if $COD::Cell::Conventional::deWG91::debug;
         $CoB = [ [1,0,0], [-1,1,0], [-1,-1,3] ];
+        $crystal_system = "hR";
     }
     # 10 I D D F Monoclinic mC 110/1-10/00-1
     if( is_type_I( $D, $E, $F, $eps ) &&
@@ -156,6 +170,7 @@ sub conventional_cell
         printf "10. %5.1f %5.1f %5.1f %5.1f %5.1f %5.1f Monoclinic mC\n",
         $A, $B, $C, $D, $E, $F if $COD::Cell::Conventional::deWG91::debug;
         $CoB = [ [1,1,0], [1,-1,0], [0,0,-1] ];
+        $crystal_system = "mC";
     }
     # 11 II 0 0 0 Tetragonal tP 100/010/001
     if( is_type_II( $D, $E, $F, $eps ) &&
@@ -164,6 +179,7 @@ sub conventional_cell
         printf "11. %5.1f %5.1f %5.1f %5.1f %5.1f %5.1f Tetragonal tP\n",
         $A, $B, $C, $D, $E, $F if $COD::Cell::Conventional::deWG91::debug;
         $CoB = [ [1,0,0], [0,1,0], [0,0,1] ];
+        $crystal_system = "tP";
     }
     # 12 II 0 0 -A/2 Hexagonal hP 100/010/001
     if( is_type_II( $D, $E, $F, $eps ) &&
@@ -172,6 +188,7 @@ sub conventional_cell
         printf "12. %5.1f %5.1f %5.1f %5.1f %5.1f %5.1f Hexagonal hP\n",
         $A, $B, $C, $D, $E, $F if $COD::Cell::Conventional::deWG91::debug;
         $CoB = [ [1,0,0], [0,1,0], [0,0,1] ];
+        $crystal_system = "hP";
     }
     # 13 II 0 0 F Orthorhombic oC 110/-110/001
     if( is_type_II( $D, $E, $F, $eps ) &&
@@ -180,6 +197,7 @@ sub conventional_cell
         printf "13. %5.1f %5.1f %5.1f %5.1f %5.1f %5.1f Orthorhombic oC\n",
         $A, $B, $C, $D, $E, $F if $COD::Cell::Conventional::deWG91::debug;
         $CoB = [ [1,1,0], [-1,1,0], [0,0,1] ];
+        $crystal_system = "oC";
     }
     # 15 II -A/2 -A/2 0 Tetragonal tI 100/010/112
     if( is_type_II( $D, $E, $F, $eps ) &&
@@ -188,6 +206,7 @@ sub conventional_cell
         printf "15. %5.1f %5.1f %5.1f %5.1f %5.1f %5.1f Tetragonal tI\n",
         $A, $B, $C, $D, $E, $F if $COD::Cell::Conventional::deWG91::debug;
         $CoB = [ [1,0,0], [0,1,0], [1,1,2] ];
+        $crystal_system = "tI";
     }
     # 16 II D* D F Orthorhombic oF -1-10/1-10/112
     if( is_type_II( $D, $E, $F, $eps ) &&
@@ -197,6 +216,7 @@ sub conventional_cell
         printf "16. %5.1f %5.1f %5.1f %5.1f %5.1f %5.1f Orthorhombic oF\n",
         $A, $B, $C, $D, $E, $F if $COD::Cell::Conventional::deWG91::debug;
         $CoB = [ [-1,-1,0], [1,-1,0], [1,1,2] ];
+        $crystal_system = "oF";
     }
     # 14 II D D F Monoclinic mC 110/-110/001;
     if( is_type_II( $D, $E, $F, $eps ) &&
@@ -205,6 +225,7 @@ sub conventional_cell
         printf "14. %5.1f %5.1f %5.1f %5.1f %5.1f %5.1f Monoclinic mC\n",
         $A, $B, $C, $D, $E, $F if $COD::Cell::Conventional::deWG91::debug;
         $CoB = [ [1,1,0], [-1,1,0], [0,0,1] ];
+        $crystal_system = "mC";
     }
     # 17 II D* E F Monoclinic mC 1-10/110/-10-1
     if( is_type_II( $D, $E, $F, $eps ) &&
@@ -214,6 +235,7 @@ sub conventional_cell
         printf "17. %5.1f %5.1f %5.1f %5.1f %5.1f %5.1f Monoclinic mC\n",
         $A, $B, $C, $D, $E, $F if $COD::Cell::Conventional::deWG91::debug;
         $CoB = [ [1,-1,0], [1,1,0], [-1,0,-1] ];
+        $crystal_system = "mC";
     }
 
 # B = C, no conditions on A
@@ -225,6 +247,7 @@ sub conventional_cell
         printf "18. %5.1f %5.1f %5.1f %5.1f %5.1f %5.1f Tetragonal tI\n",
         $A, $B, $C, $D, $E, $F if $COD::Cell::Conventional::deWG91::debug;
         $CoB = [ [0,-1,1], [1,-1,-1], [1,0,0] ];
+        $crystal_system = "tI";
     }
     # 19 I D A/2 A/2 Orthorhombic oI -100/0-11/-111
     if( is_type_I( $D, $E, $F, $eps ) &&
@@ -233,6 +256,7 @@ sub conventional_cell
         printf "19. %5.1f %5.1f %5.1f %5.1f %5.1f %5.1f Orthorhombic oI\n",
         $A, $B, $C, $D, $E, $F if $COD::Cell::Conventional::deWG91::debug;
         $CoB = [ [-1,0,0], [0,-1,1], [-1,1,1] ];
+        $crystal_system = "oI";
     }
     # 20 I D E E Monoclinic mC 011/01-1/-100
     if( is_type_I( $D, $E, $F, $eps ) &&
@@ -241,6 +265,7 @@ sub conventional_cell
         printf "20. %5.1f %5.1f %5.1f %5.1f %5.1f %5.1f Monoclinic mC\n",
         $A, $B, $C, $D, $E, $F if $COD::Cell::Conventional::deWG91::debug;
         $CoB = [ [0,1,1], [0,1,-1], [-1,0,0] ];
+        $crystal_system = "mC";
     }
     # 21 II 0 0 0 Tetragonal tP 010/001/100
     if( is_type_II( $D, $E, $F, $eps ) &&
@@ -249,6 +274,7 @@ sub conventional_cell
         printf "21. %5.1f %5.1f %5.1f %5.1f %5.1f %5.1f Tetragonal tP\n",
         $A, $B, $C, $D, $E, $F if $COD::Cell::Conventional::deWG91::debug;
         $CoB = [ [0,1,0], [0,0,1], [1,0,0] ];
+        $crystal_system = "tP";
     }
     # 22 II -B/2 0 0 Hexagonal hP 010/001/100
     if( is_type_II( $D, $E, $F, $eps ) &&
@@ -257,6 +283,7 @@ sub conventional_cell
         printf "22. %5.1f %5.1f %5.1f %5.1f %5.1f %5.1f Hexagonal hP\n",
         $A, $B, $C, $D, $E, $F if $COD::Cell::Conventional::deWG91::debug;
         $CoB = [ [0,1,0], [0,0,1], [1,0,0] ];
+        $crystal_system = "hP";
     }
     # 23 II D 0 0 Orthorhombic oC 011/0-11/100
     if( is_type_II( $D, $E, $F, $eps ) &&
@@ -265,6 +292,7 @@ sub conventional_cell
         printf "23. %5.1f %5.1f %5.1f %5.1f %5.1f %5.1f Orthorhombic oC\n",
         $A, $B, $C, $D, $E, $F if $COD::Cell::Conventional::deWG91::debug;
         $CoB = [ [0,1,1], [0,-1,1], [1,0,0] ];
+        $crystal_system = "oC";
     }
     # 24 II D* -A/3 -A/3 Rhombohedral hR 121/0-11/100
     if( is_type_II( $D, $E, $F, $eps ) &&
@@ -274,6 +302,7 @@ sub conventional_cell
         printf "24. %5.1f %5.1f %5.1f %5.1f %5.1f %5.1f Rhombohedral hR\n",
         $A, $B, $C, $D, $E, $F if $COD::Cell::Conventional::deWG91::debug;
         $CoB = [ [1,2,1], [0,-1,1], [1,0,0] ];
+        $crystal_system = "hR";
     }
     # 25 II D E E Monoclinic mC 011/0-11/100
     if( is_type_II( $D, $E, $F, $eps ) &&
@@ -282,6 +311,7 @@ sub conventional_cell
         printf "25. %5.1f %5.1f %5.1f %5.1f %5.1f %5.1f Monoclinic mC\n",
         $A, $B, $C, $D, $E, $F if $COD::Cell::Conventional::deWG91::debug;
         $CoB = [ [0,1,1], [0,-1,1], [1,0,0] ];
+        $crystal_system = "mC";
     }
 
     # No conditions on A, B, C
@@ -292,6 +322,7 @@ sub conventional_cell
         printf "26. %5.1f %5.1f %5.1f %5.1f %5.1f %5.1f Orthorhombic oF\n",
         $A, $B, $C, $D, $E, $F if $COD::Cell::Conventional::deWG91::debug;
         $CoB = [ [1,0,0], [-1,2,0], [-1,0,2] ];
+        $crystal_system = "oF";
     }
     # 27 I D A/2 A/2 Monoclinic mC -120/-100/0-11
     if( is_type_I( $D, $E, $F, $eps ) &&
@@ -299,6 +330,7 @@ sub conventional_cell
         printf "27. %5.1f %5.1f %5.1f %5.1f %5.1f %5.1f Monoclinic mC\n",
         $A, $B, $C, $D, $E, $F if $COD::Cell::Conventional::deWG91::debug;
         $CoB = [ [-1,2,0], [-1,0,0], [0,-1,1] ];
+        $crystal_system = "mC";
     }
     # 28 I D A/2 2D Monoclinic mC -100/-102/010
     if( is_type_I( $D, $E, $F, $eps ) &&
@@ -313,6 +345,7 @@ sub conventional_cell
         printf "29. %5.1f %5.1f %5.1f %5.1f %5.1f %5.1f Monoclinic mC\n",
         $A, $B, $C, $D, $E, $F if $COD::Cell::Conventional::deWG91::debug;
         $CoB = [ [1,0,0], [1,-2,0], [0,0,-1] ];
+        $crystal_system = "mC";
     }
     # 30 I B/2 E 2E Monoclinic mC 010/01-2/-100
     if( is_type_I( $D, $E, $F, $eps ) &&
@@ -320,6 +353,7 @@ sub conventional_cell
         printf "30. %5.1f %5.1f %5.1f %5.1f %5.1f %5.1f Monoclinic mC\n",
         $A, $B, $C, $D, $E, $F if $COD::Cell::Conventional::deWG91::debug;
         $CoB = [ [0,1,0], [0,1,-2], [-1,0,0] ];
+        $crystal_system = "mC";
     }
     # 31 I D E F Triclinic aP 100/010/001
     if( is_type_I( $D, $E, $F, $eps ) &&
@@ -327,6 +361,7 @@ sub conventional_cell
         printf "31. %5.1f %5.1f %5.1f %5.1f %5.1f %5.1f Triclinic aP\n",
         $A, $B, $C, $D, $E, $F if $COD::Cell::Conventional::deWG91::debug;
         $CoB = [ [1,0,0], [0,1,0], [0,0,1] ];
+        $crystal_system = "aP";
     }
     # 32 II 0 0 0 Orthorhombic oP 100/010/001
     if( is_type_I( $D, $E, $F, $eps ) &&
@@ -334,6 +369,7 @@ sub conventional_cell
         printf "32. %5.1f %5.1f %5.1f %5.1f %5.1f %5.1f Orthorhombic oP\n",
         $A, $B, $C, $D, $E, $F if $COD::Cell::Conventional::deWG91::debug;
         $CoB = [ [1,0,0], [0,1,0], [0,0,1] ];
+        $crystal_system = "oP";
     }
     # 40 II -B/2 0 0 Orthorhombic oC 0-10/012/-100
     if( is_type_II( $D, $E, $F, $eps ) &&
@@ -341,6 +377,7 @@ sub conventional_cell
         printf "40. %5.1f %5.1f %5.1f %5.1f %5.1f %5.1f Orthorhombic oC\n",
         $A, $B, $C, $D, $E, $F if $COD::Cell::Conventional::deWG91::debug;
         $CoB = [ [0,-1,0], [0,1,2], [-1,0,0] ];
+        $crystal_system = "oC";
     }
     # 35 II D 0 0 Monoclinic mP 0-10/-100/00-1
     if( is_type_II( $D, $E, $F, $eps ) &&
@@ -348,6 +385,7 @@ sub conventional_cell
         printf "35. %5.1f %5.1f %5.1f %5.1f %5.1f %5.1f Monoclinic mP\n",
         $A, $B, $C, $D, $E, $F if $COD::Cell::Conventional::deWG91::debug;
         $CoB = [ [0,-1,0], [-1,0,0], [0,0,-1] ];
+        $crystal_system = "mP";
     }
     # 36 II 0 -A/2 0 Orthorhombic oC 100/-10-2/010
     if( is_type_II( $D, $E, $F, $eps ) &&
@@ -355,6 +393,7 @@ sub conventional_cell
         printf "36. %5.1f %5.1f %5.1f %5.1f %5.1f %5.1f Orthorhombic oC\n",
         $A, $B, $C, $D, $E, $F if $COD::Cell::Conventional::deWG91::debug;
         $CoB = [ [1,0,0], [-1,0,-2], [0,1,0] ];
+        $crystal_system = "oC";
     }
     # 33 II 0 E 0 Monoclinic mP 100/010/001
     if( is_type_II( $D, $E, $F, $eps ) &&
@@ -362,6 +401,7 @@ sub conventional_cell
         printf "33. %5.1f %5.1f %5.1f %5.1f %5.1f %5.1f Monoclinic mP\n",
         $A, $B, $C, $D, $E, $F if $COD::Cell::Conventional::deWG91::debug;
         $CoB = [ [1,0,0], [0,1,0], [0,0,1] ];
+        $crystal_system = "mP";
     }
     # 38 II 0 0 -A/2 Orthorhombic oC -100/120/00-1
     if( is_type_II( $D, $E, $F, $eps ) &&
@@ -369,6 +409,7 @@ sub conventional_cell
         printf "38. %5.1f %5.1f %5.1f %5.1f %5.1f %5.1f Orthorhombic oC\n",
         $A, $B, $C, $D, $E, $F if $COD::Cell::Conventional::deWG91::debug;
         $CoB = [ [-1,0,0], [1,2,0], [0,0,-1] ];
+        $crystal_system = "oC";
     }
     # 34 II 0 0 F Monoclinic mP -100/00-1/0-10
     if( is_type_II( $D, $E, $F, $eps ) &&
@@ -376,6 +417,7 @@ sub conventional_cell
         printf "34. %5.1f %5.1f %5.1f %5.1f %5.1f %5.1f Monoclinic mP\n",
         $A, $B, $C, $D, $E, $F if $COD::Cell::Conventional::deWG91::debug;
         $CoB = [ [-1,0,0], [0,0,-1], [0,-1,0] ];
+        $crystal_system = "mP";
     }
     # 42 II -B/2 -A/2 0 Orthorhombic oI -100/0-10/112
     if( is_type_II( $D, $E, $F, $eps ) &&
@@ -383,6 +425,7 @@ sub conventional_cell
         printf "42. %5.1f %5.1f %5.1f %5.1f %5.1f %5.1f Orthorhombic oI\n",
         $A, $B, $C, $D, $E, $F if $COD::Cell::Conventional::deWG91::debug;
         $CoB = [ [-1,0,0], [0,-1,0], [1,1,2] ];
+        $crystal_system = "oI";
     }
     # 41 II -B/2 E 0 Monoclinic mC 0-1-2/0-10/-100
     if( is_type_II( $D, $E, $F, $eps ) &&
@@ -390,6 +433,7 @@ sub conventional_cell
         printf "41. %5.1f %5.1f %5.1f %5.1f %5.1f %5.1f Monoclinic mC\n",
         $A, $B, $C, $D, $E, $F if $COD::Cell::Conventional::deWG91::debug;
         $CoB = [ [0,-1,-2], [0,-1,0], [-1,0,0] ];
+        $crystal_system = "mC";
     }
     # 37 II D -A/2 0 Monoclinic mC 102/100/010
     if( is_type_II( $D, $E, $F, $eps ) &&
@@ -397,6 +441,7 @@ sub conventional_cell
         printf "37. %5.1f %5.1f %5.1f %5.1f %5.1f %5.1f Monoclinic mC\n",
         $A, $B, $C, $D, $E, $F if $COD::Cell::Conventional::deWG91::debug;
         $CoB = [ [1,0,2], [1,0,0], [0,1,0] ];
+        $crystal_system = "mC";
     }
     # 39 II D 0 -A/2 Monoclinic mC -1-20/-100/00-1
     if( is_type_II( $D, $E, $F, $eps ) &&
@@ -404,6 +449,7 @@ sub conventional_cell
         printf "39. %5.1f %5.1f %5.1f %5.1f %5.1f %5.1f Monoclinic mC\n",
         $A, $B, $C, $D, $E, $F if $COD::Cell::Conventional::deWG91::debug;
         $CoB = [ [-1,-2,0], [-1,0,0], [0,0,-1] ];
+        $crystal_system = "mC";
     }
     # 43 II D E F Monoclinic mI -100/-1-1-2/0-10
     if( is_type_II( $D, $E, $F, $eps ) &&
@@ -412,21 +458,67 @@ sub conventional_cell
         printf "43. %5.1f %5.1f %5.1f %5.1f %5.1f %5.1f Monoclinic mI\n",
         $A, $B, $C, $D, $E, $F if $COD::Cell::Conventional::deWG91::debug;
         $CoB = [ [-1,0,0], [-1,-1,-2], [0,-1,0] ];
+        $crystal_system = "mI";
     }
     # 44 II D E F Triclinic aP 100/010/001
     printf "44. %5.1f %5.1f %5.1f %5.1f %5.1f %5.1f Triclinic aP\n",
     $A, $B, $C, $D, $E, $F if $COD::Cell::Conventional::deWG91::debug;
     $CoB = [ [1,0,0], [0,1,0], [0,0,1] ];
+    $crystal_system = "aP";
 
+    use COD::Fractional qw(symop_ortho_from_fract);
+
+    my $f2o = symop_ortho_from_fract( @cell );
     my $basis_vectors = [
         symop_apply( $f2o, [1,0,0] ),
         symop_apply( $f2o, [0,1,0] ),
         symop_apply( $f2o, [0,0,1] )
     ];
+    my $new_basis = [
+        symop_apply( $CoB, $basis_vectors->[0] ),
+        symop_apply( $CoB, $basis_vectors->[1] ),
+        symop_apply( $CoB, $basis_vectors->[2] )
+    ];
+    my @new_cell = (
+        vlen(  $new_basis->[0]),
+        vlen(  $new_basis->[1]),
+        vlen(  $new_basis->[2]),
+        vangle($new_basis->[1], $new_basis->[2]),
+        vangle($new_basis->[0], $new_basis->[2]),
+        vangle($new_basis->[0], $new_basis->[1])
+    );
 
-    my $new_cell = symop_apply( $CoB, $basis_vectors );
+    return ( @new_cell, $CoB, $crystal_system );
+}
 
-    return ( @$new_cell, $CoB );
+sub vlen
+{
+    return sqrt( vlen2( $_[0] ));
+}
+
+sub vangle
+{
+    use Math::Trig;
+    my ($v1, $v2) = @_;
+    my $cosine = vdot( $v1, $v2 ) / ( vlen($v1) * vlen($v2) );
+    return 180*Math::Trig::acos($cosine)/$Pi;
+}
+
+sub vdot
+{
+    my ($v1, $v2) = @_;
+    return $v1->[0]*$v2->[0] + $v1->[1]*$v2->[1] + $v1->[2]*$v2->[2];
+}
+
+sub vsum
+{
+    my ($v1, $v2) = @_;
+    return [ $v1->[0] + $v2->[0], $v1->[1] + $v2->[1],  $v1->[2] + $v2->[2] ];
+}
+
+sub vlen2
+{
+    return vdot( $_[0], $_[0] );
 }
 
 1;
