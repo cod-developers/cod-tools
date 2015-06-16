@@ -1,0 +1,162 @@
+#! /bin/sh
+#!perl -w # --*- Perl -*--
+eval 'exec perl -x $0 ${1+"$@"}'
+    if 0;
+#------------------------------------------------------------------------------
+#$Author$
+#$Date$ 
+#$Revision$
+#$URL$
+#------------------------------------------------------------------------------
+#*
+#  Performs reductions of the unit cell using different algorithms.
+#**
+
+use strict;
+use warnings;
+use COD::CIFParser::CIFParser;
+use COD::CIFData qw(get_cell);
+use COD::CIFTags::CIFTagCanonicalNames;
+use COD::CIFTags::CIFTagManage;
+use COD::CIFTags::CIFTagPrint;
+use COD::Cell::Niggli::KG76;
+use COD::Cell::Delaunay::Delaunay;
+use COD::UserMessage;
+use COD::SOptions;
+use COD::SUsage;
+use File::Basename qw(basename);
+
+my $base0 = basename( $0 );
+
+my $use_parser = 'c';
+my $debug = 0;
+my $epsilon = 1E-6;
+
+# Default formats for floating-point numbers (for unit cell
+# parameters) -- large enough for IEEE double precision floating point
+# number:
+my $cell_fformat = "%.12g";
+
+my $Pi = 4 * atan2(1,1);
+
+#* USAGE:
+#*     $0 [options] input.cif [input2.cif ...]
+#* 
+#* OPTIONS:
+#*     --use-perl-parser
+#*        Use Perl parser for CIF parsing.
+#*
+#*     --use-c-parser
+#*        Use Perl & C parser for CIF parsing.
+#*
+#*     -F, --float-format "%15.12f"
+#*        Specify format to print out floating point numbers.
+#*
+#*     -C, --cell-format "%15.12f"
+#*        Specify format to print out floating point numbers for atomic
+#*        coordinates.
+#*
+#*     -e, --epsilon 1E-6
+#*        Tollerance to compare cell parameter equality in cell reductions.
+#*
+#*     --debug, --no-debug
+#*        Turn on/off the debug prints of reduction algorithm. Default off.
+#*
+#*     --help,--usage
+#*        Print short usage message (this message) and exit.
+#**
+
+@ARGV = getOptions
+(
+    "--debug"    => sub{ $debug = 1 },
+    "--no-debug" => sub{ $debug = 0 },
+
+    "-e,--epsilon" => \$epsilon,
+
+    "-F,--float-format" => sub { $cell_fformat = &get_value },
+    "-C,--cell-format" => \$cell_fformat,
+
+    "--use-perl-parser" => sub{ $use_parser = "perl" },
+    "--use-c-parser"    => sub{ $use_parser = "c" },
+
+    "--help,--usage" => sub { usage; exit },
+);
+
+@ARGV = ( "-" ) unless @ARGV;
+
+for my $filename (@ARGV) {
+
+    my( $data, $error_count );
+
+    if( $use_parser eq "perl" ) {
+        my $parser = new COD::CIFParser::CIFParser;
+
+        $data = $parser->Run($filename);
+
+        if( defined $parser->YYData->{ERRCOUNT} ) {
+            $error_count = $parser->YYData->{ERRCOUNT};
+        }
+    } else {
+        require COD::CCIFParser::CCIFParser;
+        ( $data, $error_count ) = COD::CCIFParser::CCIFParser::parse($filename);
+    }
+
+    canonicalize_all_names( $data );
+
+    for my $datablock (@$data) {
+        my $values = $datablock->{values};
+        my @cell = get_cell( $values, $filename, $datablock->{name} );
+
+        ## my @niggli = reduce( @cell );
+        # Niggly reduction:
+        use COD::Cell::Niggli::KG76;
+        $COD::Cell::Niggli::KG76::debug = $debug;
+
+        my @Niggli_cell =
+            COD::Cell::Niggli::KG76::reduce( @cell, $epsilon );
+
+        my $tag_prefix = "_[local]_Niggli_${base0}";
+        set_tag( $datablock, $tag_prefix."_length_a",
+                 sprintf( $cell_fformat, $Niggli_cell[0] ));
+        set_tag( $datablock, $tag_prefix."_length_b",
+                 sprintf( $cell_fformat, $Niggli_cell[1] ));
+        set_tag( $datablock, $tag_prefix."_length_c",
+                 sprintf( $cell_fformat, $Niggli_cell[2] ));
+        set_tag( $datablock, $tag_prefix."_angle_alpha",
+                 sprintf( $cell_fformat, $Niggli_cell[3] ));
+        set_tag( $datablock, $tag_prefix."_angle_beta",
+                 sprintf( $cell_fformat, $Niggli_cell[4] ));
+        set_tag( $datablock, $tag_prefix."_angle_gamma",
+                 sprintf( $cell_fformat, $Niggli_cell[5] ));
+
+        # Delaunay reduction:
+        use COD::Cell::Delaunay::Delaunay qw(reduce);
+        $COD::Cell::Delaunay::Delaunay::debug = $debug;
+
+        my @Delaunay_cell =
+            COD::Cell::Delaunay::Delaunay::reduce( @cell, $epsilon );
+
+        $tag_prefix = "_[local]_Delaunay_${base0}";
+        set_tag( $datablock, $tag_prefix."_length_a",
+                 sprintf( $cell_fformat, $Delaunay_cell[0] ));
+        set_tag( $datablock, $tag_prefix."_length_b",
+                 sprintf( $cell_fformat, $Delaunay_cell[1] ));
+        set_tag( $datablock, $tag_prefix."_length_c",
+                 sprintf( $cell_fformat, $Delaunay_cell[2] ));
+        set_tag( $datablock, $tag_prefix."_angle_alpha",
+                 sprintf( $cell_fformat, $Delaunay_cell[3] ));
+        set_tag( $datablock, $tag_prefix."_angle_beta",
+                 sprintf( $cell_fformat, $Delaunay_cell[4] ));
+        set_tag( $datablock, $tag_prefix."_angle_gamma",
+                 sprintf( $cell_fformat, $Delaunay_cell[5] ));
+
+        $COD::CIFTags::CIFTagPrint::max_cif_tag_len = 46;
+
+        print_cif( $datablock,
+           {
+                preserve_loop_order => 1,
+                keep_tag_order => 1
+           }
+        );
+    }
+}
