@@ -168,15 +168,15 @@ for my $structure_id (@structure_ids) {
     print "_space_group_symop_operation_xyz\n";
     print "1 x,y,z\n";
 
-    # Reduce unit cell
-
+    # Reduce unit cell:
     use File::Basename qw(basename);
     my $base0 = basename( $0 );
 
-    use COD::Cell::Niggli::KG76 qw(reduce);
+    # Niggly reduction:
+    use COD::Cell::Niggli::KG76;
     $COD::Cell::Niggli::KG76::debug = $debug;
 
-    my @Niggli_cell = reduce( @cell, 1E-6);
+    my @Niggli_cell = COD::Cell::Niggli::KG76::reduce( @cell, 1E-6);
 
     my $tag_prefix = "_[local]_${base0}_Niggli_cell";
     printf $tag_prefix."_length_a    ".$cell_fformat."\n", $Niggli_cell[0];
@@ -185,6 +185,22 @@ for my $structure_id (@structure_ids) {
     printf $tag_prefix."_angle_alpha ".$cell_fformat."\n", $Niggli_cell[3];
     printf $tag_prefix."_angle_beta  ".$cell_fformat."\n", $Niggli_cell[4];
     printf $tag_prefix."_angle_gamma ".$cell_fformat."\n", $Niggli_cell[5];
+
+    # Delaunay reduction:
+    use COD::Cell::Delaunay::Delaunay qw(reduce);
+    $COD::Cell::Delaunay::Delaunay::debug = $debug;
+
+    my @Delaunay_cell = COD::Cell::Delaunay::Delaunay::reduce( @cell, 1E-6);
+
+    my $tag_prefix = "_[local]_${base0}_Delaunay_cell";
+    printf $tag_prefix."_length_a    ".$cell_fformat."\n", $Delaunay_cell[0];
+    printf $tag_prefix."_length_b    ".$cell_fformat."\n", $Delaunay_cell[1];
+    printf $tag_prefix."_length_c    ".$cell_fformat."\n", $Delaunay_cell[2];
+    printf $tag_prefix."_angle_alpha ".$cell_fformat."\n", $Delaunay_cell[3];
+    printf $tag_prefix."_angle_beta  ".$cell_fformat."\n", $Delaunay_cell[4];
+    printf $tag_prefix."_angle_gamma ".$cell_fformat."\n", $Delaunay_cell[5];
+
+    # Get fractional atom coordinates from the OQMD database:
 
     my $atoms = query_OQMD_atoms( $connected_db, $structure_id );
 
