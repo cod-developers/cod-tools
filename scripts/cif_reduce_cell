@@ -107,7 +107,6 @@ for my $filename (@ARGV) {
         my $values = $datablock->{values};
         my @cell = get_cell( $values, $filename, $datablock->{name} );
 
-        ## my @niggli = reduce( @cell );
         # Niggly reduction:
         use COD::Cell::Niggli::KG76;
         $COD::Cell::Niggli::KG76::debug = $debug;
@@ -150,6 +149,31 @@ for my $filename (@ARGV) {
         set_tag( $datablock, $tag_prefix."_angle_gamma",
                  sprintf( $cell_fformat, $Delaunay_cell[5] ));
 
+        # Estimate conventional cell:
+        use COD::Cell::Conventional::deWG91 qw(conventional_cell);
+        $COD::Cell::Conventional::deWG91::debug = $debug;
+
+        my @primitive_cell = @Niggli_cell[0..5];
+        my @conventional_cell = conventional_cell( @primitive_cell, $epsilon );
+
+        $tag_prefix = "_[local]_Niggli_conv_${base0}";
+        set_tag( $datablock, $tag_prefix."_length_a",
+                 sprintf( $cell_fformat, $conventional_cell[0] ));
+        set_tag( $datablock, $tag_prefix."_length_b",
+                 sprintf( $cell_fformat, $conventional_cell[1] ));
+        set_tag( $datablock, $tag_prefix."_length_c",
+                 sprintf( $cell_fformat, $conventional_cell[2] ));
+        set_tag( $datablock, $tag_prefix."_angle_alpha",
+                 sprintf( $cell_fformat, $conventional_cell[3] ));
+        set_tag( $datablock, $tag_prefix."_angle_beta",
+                 sprintf( $cell_fformat, $conventional_cell[4] ));
+        set_tag( $datablock, $tag_prefix."_angle_gamma",
+                 sprintf( $cell_fformat, $conventional_cell[5] ));
+
+        set_tag( $datablock, $tag_prefix."_crystal_system",
+                 $conventional_cell[7] );
+
+        # Print out CIF data:
         $COD::CIFTags::CIFTagPrint::max_cif_tag_len = 46;
 
         print_cif( $datablock,
