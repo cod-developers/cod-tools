@@ -42,6 +42,11 @@ my %database = (
 my $debug = 0;
 my %options;
 my $limit;
+my $atom_fformat = "%.12g";
+my $cell_fformat = $atom_fformat;
+# Default formats for floating-point numbers (for unit cell parameters
+# and for atomic coordinates) -- large enough for IEEE double
+# precision floating point number.
 
 #*Usage:
 #*     $0 [options] [structure1_id  ...]
@@ -53,6 +58,17 @@ my $limit;
 #*
 #*     -L-, --no-limit
 #*        Remove any previously set query limits.
+#*
+#*     -F, --float-format "%15.12f"
+#*        Specify format to print out floating point numbers.
+#*
+#*     -A, --atom-format "%15.12f"
+#*        Specify format to print out floating point numbers for unit cell
+#*        parameters.
+#*
+#*     -C, --cell-format "%15.12f"
+#*        Specify format to print out floating point numbers for atomic
+#*        coordinates.
 #*
 #*     -d, --database  cod
 #*        Use database "cod" to query for strctures.
@@ -98,6 +114,10 @@ my $limit;
     "-L,--limit"     => \$limit,
     "-L-,--no-limit" => sub { $limit = undef },
 
+    "-F,--float-format" => sub { $atom_fformat = $cell_fformat = &get_value },
+    "-A,--atom-format" => \$atom_fformat,
+    "-C,--cell-format" => \$cell_fformat,
+
     "--debug" => sub{ $debug = 1 },
     "--no-debug" => sub{ $debug = 0 },
 
@@ -131,12 +151,12 @@ for my $structure_id (@structure_ids) {
 
     my @cell = compute_cell_parameters( @cell_vectors );
 
-    printf "%-32s %12.8f\n", "_cell_length_a", $cell[0];
-    printf "%-32s %12.8f\n", "_cell_length_b", $cell[1];
-    printf "%-32s %12.8f\n", "_cell_length_c", $cell[2];
-    printf "%-32s %12.8f\n", "_cell_angle_alpha", $cell[3];
-    printf "%-32s %12.8f\n", "_cell_angle_beta",  $cell[4];
-    printf "%-32s %12.8f\n", "_cell_angle_gamma", $cell[5];
+    printf "%-32s ".$cell_fformat."\n", "_cell_length_a", $cell[0];
+    printf "%-32s ".$cell_fformat."\n", "_cell_length_b", $cell[1];
+    printf "%-32s ".$cell_fformat."\n", "_cell_length_c", $cell[2];
+    printf "%-32s ".$cell_fformat."\n", "_cell_angle_alpha", $cell[3];
+    printf "%-32s ".$cell_fformat."\n", "_cell_angle_beta",  $cell[4];
+    printf "%-32s ".$cell_fformat."\n", "_cell_angle_gamma", $cell[5];
 
     print "_chemical_formula_sum           '",
         $structure_data->{composition_id}, "'\n";
@@ -188,9 +208,9 @@ for my $structure_id (@structure_ids) {
     print "_atom_site_fract_z\n";
     for my $atom (values %{$atoms}) {
         print $atom->{element_id};
-        print " ", $atom->{x};
-        print " ", $atom->{y};
-        print " ", $atom->{z};
+        printf " ".$atom_fformat, $atom->{x};
+        printf " ".$atom_fformat, $atom->{y};
+        printf " ".$atom_fformat, $atom->{z};
         print "\n";
     }
 
