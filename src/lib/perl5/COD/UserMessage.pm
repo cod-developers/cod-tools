@@ -30,13 +30,15 @@ sub sprint_message($$$$$@)
          $message, $line, $column ) = @_;
 
     $message =~ s/\.?\n?$//;
-    return $program . ": " . $filename .
-           (defined $line
-                ? "($line" . (defined $column ? ",$column" : "" ) . ")"
-                : "") .
-           (defined $datablock ? " data_" . $datablock : "") .
-           (defined $errlevel ? ": " . $errlevel : "") .
-           ", " . $message . ".\n";
+    return $program . ": " .
+           (defined $filename ? $filename .
+                (defined $line ? "($line" .
+                    (defined $column ? ",$column" : "" ) . ")"
+                : "") . 
+                (defined $datablock ? " data_" . $datablock : "") . ": "
+           : "") .
+           (defined $errlevel ? $errlevel . ", " : "") .
+           $message . ".\n";
 }
 
 #==============================================================================
@@ -61,10 +63,12 @@ sub parse_message($)
     my( $message ) = @_;
     if( $message =~ /^
                         ([^:]+):\ 
-                        ([^:]+?)
+                        (?:
+                          ([^:]+?)
                             (?:\((\d+)(?:,(\d+))?\))?
                             (?:\ data_([^:]+?))?
-                        :\ 
+                            :\ 
+                        )?
                         (?:([^,:\ ]+?)[,:]\ )?
                         (.+?)\.?
                     $/x ) {
