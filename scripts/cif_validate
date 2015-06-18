@@ -666,22 +666,17 @@ sub severityName($)
 }
 
 sub showValidationMessage {
-    my ($severity, $file, $dataBlockName, $message)
-        = (shift, shift, shift, shift);
+    my ($severity, $file, $dataBlockName, $message) = @_;
+
     if( $severity > $errorLevel ) {
         return 0;
     }
 
-    $message =~ s/\n/\\n/g;
-    my $formatted =
-        sprint_message( $0, $file, $dataBlockName,
+    print_message( $0, $file, $dataBlockName,
                                      (defined $severity
                                         ? severityName( $severity )
                                         : undef),
                                      $message );
-    $formatted =~ s/\.?\n$/\n/;
-    print $formatted;
-
 }
 
 sub getDict
