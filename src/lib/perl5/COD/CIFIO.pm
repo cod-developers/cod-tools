@@ -39,7 +39,7 @@ sub readfile
         ( $data, $error_count ) =
             COD::CCIFParser::CCIFParser::parse( $filename, $options );
     } elsif( $parser eq "json" ) {
-        open( my $inp, $filename );
+        open( my $inp, $filename ) or die "unable to open the file\n";
         my $json = join( "\n", <$inp> );
         close( $inp );
         $data = json2cif( $json );
