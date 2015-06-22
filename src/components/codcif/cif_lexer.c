@@ -101,6 +101,7 @@ int cif_lexer( FILE *in )
             ch = getlinec( in );
             break;
         case '\n': case '\r': case ' ': case '\t': case '\0':
+        case '\v': case '\014':
             /* skip spaces after comments: */
             prevchar = ch;
             ch = getlinec( in );
