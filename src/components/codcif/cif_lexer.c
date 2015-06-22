@@ -87,6 +87,18 @@ int cif_lexer( FILE *in )
     int pos;
 
     while( ch != EOF ) {
+        /* It is important that the predicate that checks for spaces
+           in the fi() statement below is the same as the ispace()
+           predicate in the 'default:' branch of the next switch
+           statement; otherwise we can end up in an infinite loop if a
+           character is regarded as space by the 'default:' branch but
+           not skipped here. S.G. */
+        if( isspace( ch ) || ch == '\0' ) {
+            /* skip spaces: */
+            prevchar = ch;
+            ch = getlinec( in );
+            continue;
+        }
         switch( ch ) {
         case '\032': /* DOS EOF (^Z, Ctrl-Z) character */
             thisTokenPos = current_pos > 0 ? current_pos - 1 : 0;
@@ -97,12 +109,6 @@ int cif_lexer( FILE *in )
                 yyerror( "DOS EOF symbol ^Z was encountered, "
                          "it is not permitted in CIFs" );
             }
-            prevchar = ch;
-            ch = getlinec( in );
-            break;
-        case '\n': case '\r': case ' ': case '\t': case '\0':
-        case '\v': case '\014':
-            /* skip spaces after comments: */
             prevchar = ch;
             ch = getlinec( in );
             break;
