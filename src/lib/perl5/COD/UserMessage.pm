@@ -13,8 +13,9 @@ package COD::UserMessage;
 use strict;
 use warnings;
 require Exporter;
-@COD::UserMessage::ISA = qw(Exporter);
-@COD::UserMessage::EXPORT = qw( print_message error warning note parse_message sprint_message );
+our @ISA = qw(Exporter);
+our @EXPORT = qw( print_message error warning note parse_message sprint_message );
+our @EXPORT_OK = qw( debug_note );
 
 #==============================================================================
 # Print a message, reporting a program name, file name, data block
@@ -119,6 +120,17 @@ sub note($$$$)
 {
     my ( $program, $filename, $datablock, $message ) = @_;
     print_message( $program, $filename, $datablock, "NOTE", $message );
+}
+
+#==============================================================================
+# Report a debug message. Notes are indicated with the "DEBUG"
+# keyword. Debug messages should only be printed uppon user request to output
+# additional information.
+
+sub debug_note($$$$)
+{
+    my ( $program, $filename, $datablock, $message ) = @_;
+    print_message( $program, $filename, $datablock, "DEBUG", $message );
 }
 
 1;
