@@ -65,67 +65,63 @@ push @$setOfEnum, '_atom_site_refinement_flags';
 
 #** OPTIONS:
 #** --dictionary cif_core.dic
-#**                     Any valid CIF file, with CIF dictionary (according 
-#**                     to DDL2). You can define any number of CIF 
-#**                     dictionaries, in a way like this:
+#**                     Any valid CIF file, with CIF dictionary (according
+#**                     to DDL2). Any number of CIF dictionaries can be
+#**                     provided in the following way:
 #**                     $0 --dictionary cif_core.dic --dictionary cod_core.dic
-#** --quiet
-#**                     Minimize program output.
-#** --no-quiet, --not-quiet, --verbose
-#**                     Maximize program output.
-#** -v, --version
-#**                     Print version message and exits.
-#** --help, --usage
-#**                     Print short usage message (this message) and exit.
-#** --treat-as-set
-#**                     If tag name is given to this parameter and tag 
-#**                     specified has some enumeration values to check 
-#**                     against, they are treated as set, i.e. more than one 
-#**                     of enumeration values could be defined for one single 
-#**                     element. By default it is turned on for tag 
-#**                     '_atom_site_refinement_flags', which is documented as 
-#**                     set, but only in it's description.
+#** --treat-as-set _atom_site_refinement_flags
+#**                     Treat values of given tags as a set. For example,
+#**                     more than one enumeration value could be defined
+#**                     for a single element. Any number of tags can be
+#**                     provided in the following way:
+#**                     $0 --treat-as-set _tag_1 --treat-as-set _tag_2
+#**                     Default is the '_atom_site_refinement_flags' tag.
 #** --no-treat-as-set, dont-treat-as-set
-#**                     This parameter turns off all so far defined exceptions, 
-#**                     that emulates enumeration treating as set 
+#**                     Do not treat values of any tags as sets.
 #**                     (see --treat-as-set).
 #** --report-local-tags
-#**                     Turn on test 'tag-exists-local'. This test enforces 
-#**                     check of tags marked as local, i.e. 
-#**                     _[local]_cod_depositor_comments. Otherwise these tags 
-#**                     are ignored.
+#**                     Validate tags prefixed with '_[local]'. This prefix
+#**                     was used in COD to denote locally used tags prior to
+#**                     the creation of cif_cod.dic. The default is to ignore
+#**                     these tags.
 #** --no-report-local-tags, --ignore-local-tags
-#**                     Turn off test 'tag-exists-local'. Default.
+#**                     Ignore tags prefixed with '_[local]'. Default.
 #** --ignore-case
-#**                     Turn on tests 'values-enum-nocase' and 'values-enum'.
-#**                     This is a test option, indicating that case must be 
-#**                     ignored, while checking them against list 
-#**                     (see 'values-enum'). This option is only actual if 
-#**                     values-enum test is ON. I.e. '_atom_site_adp_type'
-#**                     is restricted to values ('Uani', 'Uiso', 'Uovl', ...) 
-#**                     and 'UANI' would be incorrect, if values-enum-nocase 
-#**                     is turned off.
+#**                     Ignore letter case while validating enumeration values.
+#**                     For example, even though '_atom_site_adp_type' is
+#**                     restricted to values ('Uani', 'Uiso', 'Uovl', ...),
+#**                     value 'UANI' would still be treated as valid.
 #** --respect-case, --case-sensitive, --dont-ignore-case
-#**                     Turn off test 'values-enum-nocase'. Default.
+#**                     Respect letter case while validating enumeration 
+#**                     values. Default.
 #** --report-deprecated
-#**                     Turn on test 'tag-deprecated'. This test checks 
-#**                     whereas tag was not replaced by new one.
+#**                     Report tags that are marked as deprecated in the 
+#**                     dictionaries. Tag deprecation usually means that it 
+#**                     has been replaced with an another tag(s).
 #** --ignore-deprecated
-#**                     Turn off test 'tag-deprecated'. Default.
-#** --debug
-#**                     Output extra information for debugging purposes.
+#**                     Do not report tags that are marked as deprecated in the 
+#**                     dictionaries. Default.
 #** --use-perl-parser
 #**                     Use Perl parser to parse CIF files. Default option.
 #** --use-c-parser
 #**                     Use C parser to parse CIF files.
+#** --quiet
+#**                     Minimize program output.
+#** --no-quiet, --not-quiet, --verbose
+#**                     Maximize program output.
+#** --debug
+#**                     Output extra information for debugging purposes.
+#** -v, --version
+#**                     Print version message and exits.
+#** --help, --usage
+#**                     Print short usage message (this message) and exit.
 
 # check parameters passed
 @ARGV = getOptions(
-        "--dictionary"
-            => $dictFiles,
+        "--dictionary"                      => $dictFiles,
 
-        "--treat-as-set"    => $setOfEnum,
-        "--no-treat-as-set" => sub{ $setOfEnum = [] },
+        "--treat-as-set"                    => $setOfEnum,
+        "--no-treat-as-set"                 => sub{ $setOfEnum = [] },
 
         "--ignore-case"                     => sub{ $caseSensitive = 0 },
         "--dont-ignore-case,--respect-case" => sub{ $caseSensitive = 1 },
