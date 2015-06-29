@@ -19,36 +19,20 @@ use warnings;
 use Scalar::Util;
 use COD::CIFParser::CIFParser;
 use COD::CIFTags::CIFTagCanonicalNames;
-use COD::ShowStruct;
 use COD::SOptions;
 use COD::SUsage;
 use COD::UserMessage qw( note warning error debug_note );
 
-#
-# here we define variables
-#        first - constant values
-#        then  - common variables
-#
 my $version = 0.1;
 
-my $CIFfile = ();
-my $CIFtags;
 my @dictFiles;
-my $setOfEnum = [];
-my $dictFilesParsed = [];
-my $dictTags = {};
-my $verbose  = 1;
 my $use_parser = "perl";
+my $setOfEnum  = ['_atom_site_refinement_flags'];
 my $caseSensitive    = 1;
 my $reportLocalTags  = 0;
 my $reportDeprecated = 0;
-my $debug = 0;
+my $debug   = 0;
 
-# TODO: 'errorLevel' and 'quiet' options must be removed later in 
-# accordance to this option. Some 'debug' option might be created, to 
-# report more information than it is necessary to understand validation 
-# errors.
-#
 sub VersionMessage();
 sub severityName($);
 sub getDict($);
@@ -56,10 +40,6 @@ sub checkAgainstRange($$$$);
 sub checkAgainstRangeNumb($$$);
 sub checkAgainstRangeChar($$);
 sub getRelatedMandatory($$$);
-
-# Treat '_atom_site_refinement_flags' by default, as it is so documented 
-# in CIF core dictionary.
-push @$setOfEnum, '_atom_site_refinement_flags';
 
 #** OPTIONS:
 #** -d, --dictionaries "cif_core.dic,cif_cod.dic"
@@ -108,10 +88,6 @@ push @$setOfEnum, '_atom_site_refinement_flags';
 #**                     Use Perl parser to parse CIF files. Default option.
 #** --use-c-parser
 #**                     Use C parser to parse CIF files.
-#** --quiet
-#**                     Minimize program output.
-#** --no-quiet, --not-quiet, --verbose
-#**                     Maximize program output.
 #** --debug
 #**                     Output extra information for debugging purposes.
 #** -v, --version
@@ -139,9 +115,6 @@ push @$setOfEnum, '_atom_site_refinement_flags';
         "--report-deprecated"               => sub{ $reportDeprecated = 1},
         "--ignore-deprecated"               => sub{ $reportDeprecated = 0},
 
-        "--quiet"                           => sub{ $verbose = 0 },
-        "--verbose,--no-quiet,--not-quiet"  => sub{ $verbose = 1 },
-
         "--use-perl-parser"                 => sub{ $use_parser = "perl" },
         "--use-c-parser"                    => sub{ $use_parser = "c" },
 
@@ -149,6 +122,8 @@ push @$setOfEnum, '_atom_site_refinement_flags';
         "--help,--usage"    => sub{ usage; exit; },
         "--debug"           => sub{ $debug = 1 }
     );
+
+my %dictTags;
 
 if( @dictFiles ) {
     my $tag_count = 0;
@@ -164,12 +139,11 @@ if( @dictFiles ) {
             ( $parsed, $error_count ) = COD::CCIFParser::CCIFParser::parse( $_ );
             next if $error_count > 0;
         }
-        push( @$dictFilesParsed, $parsed );
-        $$dictTags{$_} = getDict( $parsed );
-        if ( scalar( keys( $$dictTags{$_} ) ) == 0 ) {
+        $dictTags{$_} = getDict( $parsed );
+        if ( scalar( keys( $dictTags{$_} ) ) == 0 ) {
             warning( $0, $_, undef, "no tag definitions found." )
         }
-        $tag_count += scalar( keys( $$dictTags{$_} ) );
+        $tag_count += scalar( keys( $dictTags{$_} ) );
     }
 
     if( ! $tag_count ) {
@@ -203,22 +177,11 @@ CIFFILEANAL: for my $cifF ( @ARGV ) {
     # CIFTags modules ;):
     canonicalize_all_names( $data );
     next CIFFILEANAL if ( !defined $data || $data == 1 );
-    #
-    # start-iterate-trough-CIF-file-data-blocks
-    #
+
     for my $block ( @$data ) {
         if( $debug ) {
             debug_note( $0, $cifF, $$block{name}, 'analysis start' );
         }
-        #
-        # hash tagsListedInLoops
-        # If a tag (key is lowercased tag name) appears in this hash it 
-        # means, that it must appear within loop.
-        # Value is enum('yes', 'no'). Depending on this we know, whereas 
-        # tag was correctly (i.e. together with other tags) defined 
-        # within some loop.
-        #
-        my %tagsListedInLoops;
         #
         # hash baseNamesOfRefTags
         # A tag listed in this hash depends on some other loop_ tag, and
@@ -243,9 +206,9 @@ CIFFILEANAL: for my $cifF ( @ARGV ) {
                 ++$defined;
             }
             #
-            # start-iterate-through-dictionaries
+            # start iteration through dictionaries
             #
-            while( my($dictF, $dictD) = each %$dictTags ) {
+            while( my($dictF, $dictD) = each %dictTags ) {
                 # check if tags are defined in the dictionary
                 if( exists $$dictD{$lc_tagAnalysed} ) {
                     $defined = 1;
