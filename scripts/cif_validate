@@ -22,7 +22,7 @@ use COD::CIFTags::CIFTagCanonicalNames;
 use COD::ShowStruct;
 use COD::SOptions;
 use COD::SUsage;
-use COD::UserMessage qw( note debug_note );
+use COD::UserMessage qw( note warning error debug_note );
 
 #
 # here we define variables
@@ -89,8 +89,10 @@ sub getRelatedMandatory;
 # in CIF core dictionary.
 push @$setOfEnum, '_atom_site_refinement_flags';
 
+# // adds a new dict --add-dictionary | --dictionaries priima tarpais ar kableliais priskirtus
+
 #** OPTIONS:
-#** --dictionary cif_core.dic // adds a new dict --add-dictionary | --dictionaries priima tarpais ar kableliais priskirtus
+#** --dictionary cif_core.dic
 #**                     Any valid CIF file, with CIF dictionary (according 
 #**                     to DDL2). You can define any number of CIF 
 #**                     dictionaries, in a way like this:
@@ -99,7 +101,7 @@ push @$setOfEnum, '_atom_site_refinement_flags';
 #**                     Minimize program output.
 #** --no-quiet, --not-quiet, --verbose
 #**                     Maximize program output.
-#** --version
+#** -v, --version
 #**                     Print version message and exits.
 #** --help, --usage
 #**                     Print short usage message (this message) and exit.
@@ -134,10 +136,11 @@ push @$setOfEnum, '_atom_site_refinement_flags';
 #** --respect-case, --case-sensitive, --dont-ignore-case
 #**                     Turn off test 'values-enum-nocase'. Default.
 #** --report-deprecated
-#**
+#**                     Turn on test 'tag-deprecated'. This test checks 
+#**                     whereas tag was not replaced by new one.
 #** --ignore-deprecated
-#**
-#** -d, --debug
+#**                     Turn off test 'tag-deprecated'. Default.
+#** --debug
 #**                     Output extra information for debugging purposes.
 #** --use-perl-parser
 #**                     Use Perl parser to parse CIF files. Default option.
@@ -169,39 +172,45 @@ push @$setOfEnum, '_atom_site_refinement_flags';
         "--use-perl-parser"                 => sub{ $use_parser = "perl" },
         "--use-c-parser"                    => sub{ $use_parser = "c" },
 
-        "--version"         => sub{ VersionMessage(), exit },
+        "-v,--version"      => sub{ VersionMessage(), exit; },
         "--help,--usage"    => sub{ usage; exit; },
-        "-d,--debug"        => sub{ $debug = 1 }
+        "--debug"           => sub{ $debug = 1 }
     );
 
-if( @$dictFiles )
-{
-    DICTFILE: for( @{$dictFiles} ) {
+if( @$dictFiles ) {
+    my $tag_count = 0;
+    foreach ( @{$dictFiles} ) {
         my $parsed;
         if( $use_parser eq "perl" ) {
             my $parser = new COD::CIFParser::CIFParser;
             $parsed = $parser->Run( $_ );
-            next DICTFILE if $parsed == 1;
+            next if $parsed == 1;
         } else {
             require COD::CCIFParser::CCIFParser;
             my $error_count;
             ( $parsed, $error_count ) = COD::CCIFParser::CCIFParser::parse( $_ );
-            next DICTFILE if $error_count > 0;
+            next if $error_count > 0;
         }
         push( @$dictFilesParsed, $parsed );
         $$dictTags{$_} = getDict( $parsed );
-        undef $parsed;
+        if ( scalar( keys( $$dictTags{$_} ) ) == 0 ) {
+            warning( $0, $_, undef, "no tag definitions found." )
+        }
+        $tag_count += scalar( keys( $$dictTags{$_} ) );
     }
-    if( keys( %$dictTags ) == 0 ) {
-        print_message( $0, undef, undef, undef,
-                       join( ",", @$dictFiles ) .
-                       ': No tags were defined in dictionaries.' );
+
+    if( ! $tag_count ) {
+        error( $0, undef, undef, 'no tag definitions were ' .
+               "found in the provided dictionary files ('" .
+                join( "', '", @$dictFiles ) . "')" );
         exit 1;
     }
 } else {
-    die "You must specify dictionary using '--dictionary'. Automatic "
-            . "dictionary download is not implemeted yet.\n";
+    error( $0, undef, undef, "at least one dictionary file should be " .
+           "provided by using the '--dictionary' option. Automatic " .
+           "dictionary download is not implemeted yet." );
     my $dictIUCRURI = "ftp://ftp.iucr.org/pub/cif_core.dic";
+    exit 1;
 }
 
 @ARGV = ("-") unless @ARGV;
@@ -245,14 +254,14 @@ CIFFILEANAL: for my $cifF ( @ARGV ) {
         #
         my %baseNamesOfRefTags;
         #
-        # start-iterate-trough-CIF-values
+        # start iteration through CIF values
         #
         for my $tagAnalysed ( @{$block->{tags}} ) {
             if(!defined $block->{types}{$tagAnalysed}) {
                 if ( $debug ) {
                     warning( $0, $cifF, $$block{name},
                       "tag '$tagAnalysed' has no associated type which," .
-                      'probably, means that error in CIFParser occured' );
+                      'probably, means that error in CIFParser had occured' );
                 }
             }
             my $lc_tagAnalysed = lc $tagAnalysed;
@@ -260,7 +269,6 @@ CIFFILEANAL: for my $cifF ( @ARGV ) {
             if( ! $reportLocalTags && $lc_tagAnalysed =~ m/^_\[local\]/ ) {
                 ++$defined;
             }
-            my $correctDataType = 0;
             #
             # start-iterate-through-dictionaries
             #
@@ -519,12 +527,7 @@ CIFFILEANAL: for my $cifF ( @ARGV ) {
 sub VersionMessage
 {
 print <<END_M;
-cif_check_dict (using CIFParser v.$COD::CIFParser::CIFParser::version) v.$version
-This is free software. You may redistribute copies of it under the terms of
-the GNU General Public License <http://www.gnu.org/licenses/gpl.html>.
-There is NO WARRANTY, to the extent permitted by law.
-
-Written by Justas Butkus.
+cif_validate (using CIFParser v.$COD::CIFParser::CIFParser::version) v.$version
 
 END_M
 }
@@ -572,7 +575,8 @@ sub getDict
     return $tags;
 }
 
-sub checkAgainstRange {
+sub checkAgainstRange
+{
     my $type  = shift; # char or numb
     my $range = shift;
     my $value = shift;
@@ -589,10 +593,10 @@ sub checkAgainstRange {
     return 0;
 }
 
-sub checkAgainstRangeNumb {
-    my $range = shift;
-    my $value = shift;
-    my $sigma = shift;
+sub checkAgainstRangeNumb
+{
+    my ( $range, $value, $sigma ) = @_;
+
     if( ! Scalar::Util::looks_like_number($value) ) {
         return 0;
     }
@@ -617,9 +621,10 @@ sub checkAgainstRangeNumb {
     return 0;
 }
 
-sub checkAgainstRangeChar {
-    my $range = shift;
-    my $value = shift;
+sub checkAgainstRangeChar
+{
+    my ( $range, $value ) = @_;
+
     if(
         ( !exists $$range{max} || $value le $$range{max} )
         &&
@@ -630,11 +635,11 @@ sub checkAgainstRangeChar {
     return 0;
 }
 
-sub getRelatedMandatory {
-    my $dict = shift;
-    my $tag = shift;
+sub getRelatedMandatory
+{
+    my ( $dict, $tag, $reccurentCall ) = @_;
+
     $tag = lc $tag;
-    my $reccurentCall = shift;
     my $requeryTag = undef;
     if( !exists $dict->{$tag} ) {
         return undef;
@@ -650,5 +655,5 @@ sub getRelatedMandatory {
     if( !defined $requeryTag ) {
         return undef;
     }
-    return getRelatedMandatory $dict, $requeryTag, 1;
+    return getRelatedMandatory( $dict, $requeryTag, 1 );
 }
