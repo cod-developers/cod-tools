@@ -49,41 +49,13 @@ my $debug = 0;
 # report more information than it is necessary to understand validation 
 # errors.
 #
-
-# subroutine to print module version and copyright notice
-sub VersionMessage;
-
-# subroutine to extract tags from dictionary (parsed using CIFParser)
-# it takes reference to CIFParser output
-# returns hash of tags and related references to parsed data blocks
-sub getDict;
-
-# subroutine to check value against range (defined in dictionary)
-# Arguments:
-#   1. type of value (numb or char);
-#   2. reference to range as $$range{min} and $$range{max};
-#   3. value, that must be checked.
-sub checkAgainstRange;
-
-# subroutine to check number value against range (defined in dictionary)
-# Arguments:
-#   1. reference to range as $$range{min} and $$range{max};
-#   2. value, that must be checked.
-sub checkAgainstRangeNumb;
-
-# subroutine to check character value against range (defined in dictionary)
-# Arguments:
-#   1. reference to range as $$range{min} and $$range{max};
-#   2. value, that must be checked.
-sub checkAgainstRangeChar;
-
-# subroutine to return name of closest (according to dictionary) 
-#     mandatory tag, if applicable. Return undef, if no mandatory tag is 
-#     related to tag analysed
-# Arguments:
-#   1. reference to dictionary
-#   2. lowercased name of currently analysed tag
-sub getRelatedMandatory;
+sub VersionMessage();
+sub severityName($);
+sub getDict($);
+sub checkAgainstRange($$$$);
+sub checkAgainstRangeNumb($$$);
+sub checkAgainstRangeChar($$);
+sub getRelatedMandatory($$$);
 
 # Treat '_atom_site_refinement_flags' by default, as it is so documented 
 # in CIF core dictionary.
@@ -312,7 +284,7 @@ CIFFILEANAL: for my $cifF ( @ARGV ) {
                 }
 
                 # check referenced list mandatory
-                my $mandatoryRTag = getRelatedMandatory($dictD, $lc_tagAnalysed);
+                my $mandatoryRTag = getRelatedMandatory($dictD, $lc_tagAnalysed, 0);
                 if( defined $mandatoryRTag
                     && !exists($baseNamesOfRefTags{$mandatoryRTag})
                  ) {
@@ -521,10 +493,10 @@ CIFFILEANAL: for my $cifF ( @ARGV ) {
     }
 }
 
-#
-# here goes all subroutines bodies
-#
-sub VersionMessage
+##
+# Prints program version message.
+##
+sub VersionMessage()
 {
 print <<END_M;
 cif_validate (using CIFParser v.$COD::CIFParser::CIFParser::version) v.$version
@@ -532,13 +504,17 @@ cif_validate (using CIFParser v.$COD::CIFParser::CIFParser::version) v.$version
 END_M
 }
 
-# Return a string that describes "severity level" in a human readable
-# form (for discussions of severity levels, see
-# ../doc/error-levels.txt.
-
+##
+# Returns a string that describes "severity level" in a human readable
+# form (for discussions of severity levels, see ../doc/error-levels.txt.
+# @params $severity
+#       Code number of the error severity level.
+# @return
+#       Error severity level text string.
+##
 sub severityName($)
 {
-    my $severity = $_[0];
+    my ($severity) = @_;
 
     if( $severity & 1 ) {
         return "ERROR";
@@ -559,9 +535,16 @@ sub severityName($)
     }
 }
 
-sub getDict
+##
+# Extracts tags from dictionary (parsed using CIFParser).
+# @param $dictF
+#       Reference to CIFParser output CIF object.
+# @return
+#       Hash of tags and related references to parsed data blocks.
+##
+sub getDict($)
 {
-    my $dictF = shift;
+    my ($dictF) = @_;
     my $tags = {};
     my $datan = 0;
     while( $datan < @$dictF ) {
@@ -575,12 +558,25 @@ sub getDict
     return $tags;
 }
 
-sub checkAgainstRange
+##
+# Check value against range (defined in dictionary).
+# @param $type
+#       String, representing the type of value ("numb" or "char").
+# @param $range
+#       Reference to range hash as $$range{min} and $$range{max}.
+# @param $value
+#       Value that must be checked.
+# @param $sigma
+#       Standard deviation to be used when comparing numbers.
+# @return
+#       -1 if no ranges were provided for the value;
+#        0 if the value is out of the provided range;
+#        1 if the value is in the provided range.
+##
+sub checkAgainstRange($$$$)
 {
-    my $type  = shift; # char or numb
-    my $range = shift;
-    my $value = shift;
-    my $sigma = shift;
+    my ($type, $range, $value, $sigma) = @_;
+
     if( !exists $$range{min} &&
         !exists $$range{max} ) {
         return -1;
@@ -590,10 +586,24 @@ sub checkAgainstRange
     } else {
         return checkAgainstRangeChar( $range, $value );
     }
-    return 0;
 }
 
-sub checkAgainstRangeNumb
+##
+# Checks number value against range (defined in dictionary).
+# @param $range
+#       Reference to range hash as $$range{min} and $$range{max}.
+# @param $value
+#       Value, that must be checked.
+# @param $sigma
+#       Standard deviation to be used when comparing numeric values
+#       (3 sigma rule). If sigma is set to 'undef', values are compared 
+#       disregarding standard deviation.
+# @return
+#        0 if the value is out of the provided range or is not a number
+#          at all;
+#        1 if the value is in the provided range.
+##
+sub checkAgainstRangeNumb($$$)
 {
     my ( $range, $value, $sigma ) = @_;
 
@@ -621,7 +631,17 @@ sub checkAgainstRangeNumb
     return 0;
 }
 
-sub checkAgainstRangeChar
+##
+# Check character value against range (defined in dictionary).
+# @param $range
+#       Reference to range hash as $$range{min} and $$range{max}.
+# @param $value
+#       Value, that must be checked.
+# @return
+#       0 if the value is out of the provided range;
+#       1 if the value is in the provided range.
+##
+sub checkAgainstRangeChar($$)
 {
     my ( $range, $value ) = @_;
 
@@ -635,7 +655,20 @@ sub checkAgainstRangeChar
     return 0;
 }
 
-sub getRelatedMandatory
+##
+# Returns name of the closest (according to dictionary) mandatory tag
+# (if applicable).
+# @param $dict
+#       Reference to a parsed dictionary object.
+# @param $tag
+#       Lowercased name of the tag to analyse.
+# @param reccurentCall
+#       Logical value to distinguish if the subroutine call is reccursive.
+# @return
+#       Closest mandatory tag or 'undef' if no mandatory tag is related to 
+#       the analysed tag.
+##
+sub getRelatedMandatory($$$)
 {
     my ( $dict, $tag, $reccurentCall ) = @_;
 
@@ -644,7 +677,7 @@ sub getRelatedMandatory
     if( !exists $dict->{$tag} ) {
         return undef;
     }
-    if( defined $reccurentCall
+    if( $reccurentCall
         && exists $dict->{$tag}{values}{_list_mandatory}
         && $dict->{$tag}{values}{_list_mandatory}[0] eq 'yes' ) {
         return $tag;
