@@ -33,7 +33,7 @@ my $version = 0.1;
 
 my $CIFfile = ();
 my $CIFtags;
-my $dictFiles = [];
+my @dictFiles;
 my $setOfEnum = [];
 my $dictFilesParsed = [];
 my $dictTags = {};
@@ -61,14 +61,17 @@ sub getRelatedMandatory($$$);
 # in CIF core dictionary.
 push @$setOfEnum, '_atom_site_refinement_flags';
 
-# // adds a new dict --add-dictionary | --dictionaries priima tarpais ar kableliais priskirtus
-
 #** OPTIONS:
-#** --dictionary cif_core.dic
-#**                     Any valid CIF file, with CIF dictionary (according
-#**                     to DDL2). Any number of CIF dictionaries can be
-#**                     provided in the following way:
-#**                     $0 --dictionary cif_core.dic --dictionary cod_core.dic
+#** -d, --dictionaries "cif_core.dic,cif_cod.dic"
+#**                     A list of CIF dictionary files (according to DDL2)
+#**                     to be used in CIF file validation. List elements
+#**                     are separated by either by "," or by " ". To include
+#**                     dictionaries with filenames containing these symbols,
+#**                     the --add-dictionary option is used.
+#** -D, --add-dictionary "cif new dictionary.dic"
+#**                     Add additional CIF dictionary to the list.
+#** --clear-dictionaries
+#**                     Remove all CIF dictionaries from the list.
 #** --treat-as-set _atom_site_refinement_flags
 #**                     Treat values of given tags as a set. For example,
 #**                     more than one enumeration value could be defined
@@ -118,7 +121,9 @@ push @$setOfEnum, '_atom_site_refinement_flags';
 
 # check parameters passed
 @ARGV = getOptions(
-        "--dictionary"                      => $dictFiles,
+        "-d,--dictionaries"    => sub{ @dictFiles = split( ',|\s+', &get_value );},
+        "-D,--add-dictionary"  => sub{ push( @dictFiles, &get_value ); },
+        "--clear-dictionaries" => sub{ @dictFiles = (); },
 
         "--treat-as-set"                    => $setOfEnum,
         "--no-treat-as-set"                 => sub{ $setOfEnum = [] },
@@ -145,9 +150,9 @@ push @$setOfEnum, '_atom_site_refinement_flags';
         "--debug"           => sub{ $debug = 1 }
     );
 
-if( @$dictFiles ) {
+if( @dictFiles ) {
     my $tag_count = 0;
-    foreach ( @{$dictFiles} ) {
+    foreach ( @dictFiles ) {
         my $parsed;
         if( $use_parser eq "perl" ) {
             my $parser = new COD::CIFParser::CIFParser;
@@ -170,12 +175,12 @@ if( @$dictFiles ) {
     if( ! $tag_count ) {
         error( $0, undef, undef, 'no tag definitions were ' .
                "found in the provided dictionary files ('" .
-                join( "', '", @$dictFiles ) . "')" );
+                join( "', '", @dictFiles ) . "')" );
         exit 1;
     }
 } else {
     error( $0, undef, undef, "at least one dictionary file should be " .
-           "provided by using the '--dictionary' option. Automatic " .
+           "provided by using the '--dictionaryies' option. Automatic " .
            "dictionary download is not implemeted yet." );
     my $dictIUCRURI = "ftp://ftp.iucr.org/pub/cif_core.dic";
     exit 1;
