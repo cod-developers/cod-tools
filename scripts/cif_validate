@@ -40,6 +40,7 @@ sub checkAgainstRange($$$$);
 sub checkAgainstRangeNumb($$$);
 sub checkAgainstRangeChar($$);
 sub getRelatedMandatory($$$);
+sub getReplacementTags($$);
 
 #* USAGE:
 #*     $0 --dictionaries "cif_core.dic,cif_cod.dic" [options] input.cif [input2.cif ...]
@@ -228,26 +229,13 @@ CIFFILEANAL: for my $cifF ( @ARGV ) {
                 }
 
                 # check if tags are deprecated (replaced with other tags)
-                if( exists $$dictD{$lc_tagAnalysed} &&
-                    exists $dictD->{$lc_tagAnalysed}{values}{_related_item}) {
-                    my $replaceWith = [];
-                    for( my $i = 0;
-                         $i < @{$dictD->{$lc_tagAnalysed}{values}{_related_item}};
-                         $i++ )
-                    {
-                        if($dictD->{$lc_tagAnalysed}{values}{_related_function}[$i]
-                           eq 'replace') {
-                            push @{$replaceWith},
-                            $dictD->{$lc_tagAnalysed}{values}{_related_item}[$i];
-                        }
-                    }
-                    if( $reportDeprecated && @$replaceWith != 0 ) {
-                        note( $0, $cifF, $$block{name},
-                              "tag '" . $tagAnalysed . "' has been" .
-                              ' replaced by tag(-s): [' .
-                              join(', ', @$replaceWith) .
-                              '] according to ' . $dictF );
-                    }
+                my $replTags = getReplacementTags($dictD, $lc_tagAnalysed);
+
+                if( $reportDeprecated && @$replTags != 0 ) {
+                    note( $0, $cifF, $$block{name},
+                          "tag '$tagAnalysed' has been replaced by tag(-s): "
+                        . '[' . join(', ', @$replTags) . ']'
+                        . "according to $dictF" );
                 }
 
                 # check referenced list mandatory
@@ -555,6 +543,34 @@ sub getDict($)
         $datan++;
     }
     return $tags;
+}
+
+##
+# Returns tag names that have superseded the tag.
+# @param $dict
+#       Reference to dictionary object as returned by 'getDict' subroutine.
+# @param $tag
+#       Name of the tag.
+# @return
+#       Array of tag names that have superseded the tag. If the tag has not
+#       been deprecated, an empty array is returned.
+##
+sub getReplacementTags($$)
+{
+    my ( $dict, $tag, ) = @_;
+
+    my $tagValues = $dict->{lc $tag}{values};
+
+    my @replaceWith;
+    # check if tags are deprecated (replaced with other tags)
+    if( defined $tagValues->{_related_item} ) {
+        for( my $i = 0; $i < @{$tagValues->{_related_item}}; $i++ ) {
+            if( $tagValues->{_related_function}[$i] eq 'replace') {
+                push @replaceWith, $tagValues->{_related_item}[$i];
+            }
+        }
+    }
+    return \@replaceWith;
 }
 
 ##
