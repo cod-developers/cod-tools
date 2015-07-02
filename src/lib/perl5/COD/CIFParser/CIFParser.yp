@@ -426,42 +426,51 @@ cif_value_list
 ;
 
 loop
-    :	LOOP_ loop_tags loop_values
-		{
-		        my $val = {};
-		        my $tags = $_[2];
-			my @values = @{$_[3]};
+    :   LOOP_ loop_tags loop_values
+        {
+            my $val = {};
+            my $tags = $_[2];
+            my @values = @{$_[3]};
+            my %has_precisions;
 
-			## push( @{$val->{loops}}, $tags );
-                        $val->{loops} = [ [ @{$tags} ] ];
-                        $val->{tags} = $tags;
+            ## push( @{$val->{loops}}, $tags );
+            $val->{loops} = [ [ @{$tags} ] ];
+            $val->{tags} = $tags;
 
-		      VALUES:
-			while( int( @values ) > 0 ) {
-			    for my $tag (@{$tags}) {
-				my $value = shift( @values );
-				if( defined $value ) {
-				    push( @{$val->{values}{$tag}},
-					  $value->{value} );
-				    push( @{$val->{types}{$tag}},
-					  $value->{type} );
-				    if( exists $value->{precision} ) {
-					push( @{$val->{precisions}{$tag}},
-					      $value->{precision} );
-				    }
-				    $val->{inloop}{$tag} = 0;
-				} else {
-				    $_[0]->YYData->{ERRMSG} =
-					"wrong number of elements in the"
-					. " loop block starting in line "
-					. $_[0]->YYData->{VARS}{loop_begin};
-				    $_[0]->YYError();
-				    last VALUES;
-				}
-			    }
-			}
-                        return $val;
-		}
+        VALUES:
+            while( int( @values ) > 0 ) {
+                for my $tag (@{$tags}) {
+                    my $value = shift( @values );
+                    if( defined $value ) {
+                        push( @{$val->{values}{$tag}}, $value->{value} );
+                        push( @{$val->{types}{$tag}},  $value->{type} );
+                        if( exists $value->{precision} ) {
+                            push( @{$val->{precisions}{$tag}},
+                                  $value->{precision} );
+                            $has_precisions{$tag} = 1;
+                        } else {
+                            push( @{$val->{precisions}{$tag}}, undef );
+                        }
+                        $val->{inloop}{$tag} = 0;
+                    } else {
+                        $_[0]->YYData->{ERRMSG} =
+                            "wrong number of elements in the " .
+                            "loop block starting in line " .
+                        $_[0]->YYData->{VARS}{loop_begin};
+                        $_[0]->YYError();
+                        last VALUES;
+                    }
+                }
+            }
+
+            foreach my $tag (@{$tags}) {
+                if ( !defined $has_precisions{$tag} ) {
+                    $val->{precisions}{$tag} = undef;
+                }
+            }
+
+        return $val;
+        }
 ;
 
 loop_tags
