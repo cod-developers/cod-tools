@@ -318,11 +318,13 @@ CIFFILEANAL: for my $cifF ( @ARGV ) {
                         $rangeForPrint{max} = '<any>';
                     }
                 }
+
                 CIFVALUE: for my $tagIndex ( 0..$#{$block->{values}{$tagAnalysed}} ) {
                     my $tagValue = $block->{values}{$tagAnalysed}[$tagIndex];
+
                     next CIFVALUE if $tagValue eq '.' or $tagValue eq '?';
                     my $value = $tagValue;
-                    my $sigma = $block->{precisions}{$tagAnalysed}[$tagIndex];
+
                     #
                     # if check values in enumeration list
                     #
@@ -414,13 +416,42 @@ CIFFILEANAL: for my $cifF ( @ARGV ) {
                         }
                     }
 
+                    my $dictTagValues = $dictD->{$lc_tagAnalysed}{values};
+                    # check if standard uncertainty is permitted
+                    # some non 'numb' type values might have been parsed
+                    # as numbers (s.u. values recorded separately) so
+                    # type checking is used to avoid false positive alert
+                    my $su_permitted = 0;
+                    if ( defined $dictTagValues->{_type} ) {
+                        if ( $dictTagValues->{_type}[0] ne 'numb' ) {
+                            $su_permitted = 1
+                        } elsif (defined $dictTagValues->{_type_conditions} ) {
+                            foreach (@{$dictTagValues->{_type_conditions}}) {
+                                if ( $_ eq 'esd' || $_ eq 'su' ) {
+                                    $su_permitted = 1 ;
+                                }
+                            }
+                        }
+                    }
+
+                    my $sigma = $block->{precisions}{$tagAnalysed}[$tagIndex];
+                    if ( defined $sigma && !$su_permitted ) {
+                        $value =~ /(\(\d+\))$/;
+                        note( $0, $cifF, $$block{name}, 
+                              "tag '$tagAnalysed' value \"$value\" is not " .
+                              'permitted to contain standard uncertainty ' .
+                              '"' . $1 . '" -- standard uncertainty will ' .
+                              'be ignored in further validation' );
+                        $sigma = undef;
+                    }
+
                     #
                     # Check values against enumeration_range
                     #
                     if( %$range ) {
                         my $valueWOPrecision = $value;
                         if( exists $dictD->{$lc_tagAnalysed} &&
-                            $dictD->{$lc_tagAnalysed}{values}{_type}[0] 
+                            $dictD->{$lc_tagAnalysed}{values}{_type}[0]
                             eq 'numb' ) {
                             $valueWOPrecision =~ s/\s*\(.*$//;
                         }
