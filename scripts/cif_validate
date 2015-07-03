@@ -39,7 +39,7 @@ sub getDict($);
 sub checkAgainstRange($$$$);
 sub checkAgainstRangeNumb($$$);
 sub checkAgainstRangeChar($$);
-sub getRelatedMandatory($$$);
+sub getListReferenceTags($$);
 sub getReplacementTags($$);
 
 #* USAGE:
@@ -186,13 +186,9 @@ CIFFILEANAL: for my $cifF ( @ARGV ) {
         if( $debug ) {
             debug_note( $0, $cifF, $$block{name}, 'analysis start' );
         }
-        #
-        # hash baseNamesOfRefTags
-        # A tag listed in this hash depends on some other loop_ tag, and
-        # is correctly referenced (parent tag is defined within same 
-        # loop). Value is enum('yes', 'no').
-        #
-        my %baseNamesOfRefTags;
+        # 2-D array ( [loop_number][list_of_tags] ) to store names of looped 
+        # list reference tags that have been reported as missing
+        my @reportedBlockReferences;
         #
         # start iteration through CIF values
         #
@@ -230,7 +226,6 @@ CIFFILEANAL: for my $cifF ( @ARGV ) {
 
                 # check if tags are deprecated (replaced with other tags)
                 my $replTags = getReplacementTags($dictD, $lc_tagAnalysed);
-
                 if( $reportDeprecated && @$replTags != 0 ) {
                     note( $0, $cifF, $$block{name},
                           "tag '$tagAnalysed' has been replaced by tag(-s): "
@@ -238,39 +233,47 @@ CIFFILEANAL: for my $cifF ( @ARGV ) {
                         . "according to $dictF" );
                 }
 
-                # check referenced list mandatory
-                my $mandatoryRTag = getRelatedMandatory($dictD, $lc_tagAnalysed, 0);
-                if( defined $mandatoryRTag
-                    && !exists($baseNamesOfRefTags{$mandatoryRTag})
-                 ) {
-                  for my $loopAnalysed ( @{$block->{loops}} ) {
-                    if( grep $_ eq $tagAnalysed, @{$loopAnalysed} ) {
-                        if( grep lc($_) eq $mandatoryRTag, @{$loopAnalysed} ) {
+            # check if looped lists contain reference tags required by 
+            # other tags in the looped list (together acting as a unique key)
+            my $dictTagValues = $dictD->{$lc_tagAnalysed}{values};
+
+            if ( exists $block->{inloop}{$tagAnalysed} ) {
+                my $refTags = getListReferenceTags($dictD, $lc_tagAnalysed);
+                for ( my $i = 0; $i < @{$block->{loops}}; $i++ ) {
+                  if( grep $_ eq $tagAnalysed, @{$block->{loops}[$i]} ) {
+                    foreach my $loopRefTag (@$refTags) {
+                        # TO-DO: the reference property is also transitional 
+                        # to the 'alternate' tags and this must be tested
+                        if( grep lc($_) eq $loopRefTag, @{$block->{loops}[$i]} ) {
                             if ( $debug ) {
                                 debug_note ( $0, $cifF, $$block{name},
-                                  "tag '$mandatoryRTag' is mandatory " .
-                                  "in loop when tag(s) [" .
-                                  join(', ', 
-                                  @{$dictD->{$lc_tagAnalysed}{values}{_name}}) .
-                                  "] are defined according to $dictF and was" .
-                                  ' found' );
+                                   "tag '$loopRefTag' is mandatory "
+                                 . 'in loop when tag(s) ['
+                                 . join(', ', @{$dictTagValues->{_name}})
+                                 . '] are defined according to '
+                                 . "$dictF and was found" );
                             }
-                            $baseNamesOfRefTags{$mandatoryRTag} = 'yes';
-                            last;
-                        } else {
-                            note( $0, $cifF, $$block{name},
-                                  "tag '$mandatoryRTag' is mandatory in loop " .
-                                  "when tag(s) [" .
-                                  join(', ', 
-                                  @{$dictD->{$lc_tagAnalysed}{values}{_name}}) .
-                                  '] are defined according to ' . $dictF .
-                                  ' but was not found' );
-                            $baseNamesOfRefTags{$mandatoryRTag} = 'no';
-                            last;
+                        } elsif (!grep { $_ eq $loopRefTag }
+                                             @{$reportedBlockReferences[$i]}) {
+                                note( $0, $cifF, $$block{name},
+                                   "tag '$loopRefTag' is mandatory in loop "
+                                 . "when tag(s) ["
+                                 . join(', ', @{$dictTagValues->{_name}})
+                                 . "] are defined according to $dictF "
+                                 . 'but was not found' );
+                                push $reportedBlockReferences[$i], $loopRefTag;
                         }
                     }
                   }
                 }
+            } else {
+                if ( $debug ) {
+                    debug_note( $0, $cifF, $$block{name}, "tag $tagAnalysed "
+                              . 'is not in loop -- test for missing looped '
+                              . 'list reference tags will be skipped' );
+                }
+            }
+
                 # check list mandatory
                 if( exists $dictD->{$lc_tagAnalysed}
                     && exists $dictD->{$lc_tagAnalysed}{values}{_list}
@@ -404,7 +407,6 @@ CIFFILEANAL: for my $cifF ( @ARGV ) {
                         }
                     }
 
-                    my $dictTagValues = $dictD->{$lc_tagAnalysed}{values};
                     # check if standard uncertainty is permitted
                     # some non 'numb' type values might have been parsed
                     # as numbers (s.u. values recorded separately) so
@@ -539,16 +541,18 @@ sub getDict($)
             !exists $$dictF[$datan]{values}{_type};
         for ( @{$$dictF[$datan]{values}{_name}} ) {
             $$tags{lc $_} = $$dictF[$datan];
+            $$tags{lc $_}{values}{_dataname} = $$dictF[$datan]{name};
         }
         $datan++;
     }
+
     return $tags;
 }
 
 ##
 # Returns tag names that have superseded the tag.
 # @param $dict
-#       Reference to dictionary object as returned by 'getDict' subroutine.
+#       Reference to a dictionary object as returned by 'getDict' subroutine.
 # @param $tag
 #       Name of the tag.
 # @return
@@ -671,37 +675,33 @@ sub checkAgainstRangeChar($$)
 }
 
 ##
-# Returns name of the closest (according to dictionary) mandatory tag
-# (if applicable).
+# Returns an array of tags that are required to be present in the loop 
+# containing the analyzed tag.
 # @param $dict
-#       Reference to a parsed dictionary object.
+#       Reference to a dictionary object as returned by 'getDict' subroutine.
 # @param $tag
-#       Lowercased name of the tag to analyse.
-# @param reccurentCall
-#       Logical value to distinguish if the subroutine call is reccursive.
-# @return
-#       Closest mandatory tag or 'undef' if no mandatory tag is related to 
-#       the analysed tag.
+#       Name of the tag to analyze.
+# @return $listReferenceTags;
+#       A reference to an array of tags that are required to be present in the 
+#       loop containing the analyzed tag.
 ##
-sub getRelatedMandatory($$$)
+sub getListReferenceTags($$)
 {
-    my ( $dict, $tag, $reccurentCall ) = @_;
+    my ( $dict, $tag ) = @_;
 
-    $tag = lc $tag;
-    my $requeryTag = undef;
-    if( !exists $dict->{$tag} ) {
-        return undef;
+    my $tagValues = $dict->{lc $tag}{values};
+    my @listReferenceTags;
+    if ( defined $tagValues && defined $tagValues->{_list_reference} ) {
+        # _list_reference identifies data item(s) that must collectively be
+        # in a loop. They are referenced by the names of their data blocks
+        foreach my $refDataname (@{$tagValues->{_list_reference}}) {
+          foreach my $tags ( keys $dict ) {
+              if ( "_" . $dict->{$tags}{values}{_dataname} eq $refDataname ) {
+                  push @listReferenceTags, $tags;
+              }
+          }
+        }
     }
-    if( $reccurentCall
-        && exists $dict->{$tag}{values}{_list_mandatory}
-        && $dict->{$tag}{values}{_list_mandatory}[0] eq 'yes' ) {
-        return $tag;
-    }
-    if( exists $dict->{$tag}{values}{_list_reference} ) {
-        $requeryTag = $dict->{$tag}{values}{_list_reference}[0];
-    }
-    if( !defined $requeryTag ) {
-        return undef;
-    }
-    return getRelatedMandatory( $dict, $requeryTag, 1 );
+
+    return \@listReferenceTags;
 }
