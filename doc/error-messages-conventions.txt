@@ -32,56 +32,62 @@ Below, we provide the formal grammar of the error messages in BNF[2] and
 Yacc/Bison[3] formats:
 
 @BEGIN BNF
-<error_report> :==
+<error_report> ::=
     <progname> ':' <spaces> <message> |
     <progname> ':' <spaces> <location> ':' <spaces> <message> ;
 
-<location> :==
+<location> ::=
     <file_position> <spaces> <additional_position> |
     <file_position> |
     <filename>; 
    
-<file_position> :==
+<file_position> ::=
     <filename> <spaces> '(' <lineno> ',' <linepos> ')' ;
 
-<message> :==
+<message> ::=
     <status> ',' <spaces> <msgtext> |
     <msgtext> ;
 
-<msgtext> :==
+<msgtext> ::=
     <text> <spaces> '-' <spaces> <text> |
     <text> ;
 
-// Lexical tokens:
+# Lexical tokens:
 
-<spaces> :== "" | <space> | <spaces> <space>
+<spaces> ::= "" | <space> | <spaces> <space>;
 
-<space> :== " " | "\t" ;
+<space> ::= " " | "\t" ;
 
-<text> :== <word> | <text> <spaces> <word>
+<text> ::= <word> | <text> <spaces> <word>;
 
-<word> :== <word_char> | "-" <word_char> | <word> <word_char> | <word> "-" ;
+<word> ::= <word_char> | "-" <word_char> | <word> <word_char> | <word> "-" ;
 
-<leter> :== "a" - "z" | "A" - "Z" | "_" ;
+<leter> ::= "a" | "b" | "c" | "d" | "e" | "f" | "g" | "h" | "i" | "j"
+          | "k" | "l" | "m" | "n" | "o" | "p" | "q" | "r" | "s" | "t" | "u"
+          | "v" | "w" | "x" | "y" | "z" 
+          | "A" | "B" | "C" | "D" | "E" | "F" | "G" | "H" | "I" | "J" 
+          | "K" | "L" | "M" | "N" | "O" | "P" | "Q" | "R" | "S" | "T"
+          | "U" | "V" | "W" | "X" | "Y" | "Z"
+          | "_" ;
 
-<digit> :== "0" - "9" ;
+<digit> ::= "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" ;
 
-<quote> :== '"' | "'" ;
+<quote> ::= '"' | "'" ;
 
-<braces> :== "(" | ")" | "[" | "]" | "{" | "}" ;
+<braces> ::= "(" | ")" | "[" | "]" | "{" | "}" ;
 
-// Puncuators for error messages SHOULD NOT include ":" and "-":
-<punctuator> :==
+# Puncuators for error messages SHOULD NOT include ":" and "-":
+<punctuator> ::=
     "~" | "`" | "," | ";" | "!" | "?" | "." | "@" | "%" | "^" |
     "&" | "*" | "|" | "#" | "$" | "+" | "=" | "/" | "<" | ">" |
     '\' |
     <braces> ;
 
-<word_char> :== <letter> | <digit> | <quote> | <punctuator> ;
+<word_char> ::= <letter> | <digit> | <quote> | <punctuator> ;
 
-<filename> :== <filename_char> | <filename> <filename_char> ;
+<filename> ::= <filename_char> | <filename> <filename_char> ;
 
-<filename_char> :== <word_char> | "-";
+<filename_char> ::= <word_char> | "-";
 
 @END BNF
 
