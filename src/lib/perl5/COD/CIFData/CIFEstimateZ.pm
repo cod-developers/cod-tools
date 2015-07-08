@@ -19,8 +19,8 @@ use warnings;
 use COD::Cell qw(cell_volume);
 
 require Exporter;
-@COD::CIFData::CIFEstimateZ::ISA = qw(Exporter);
-@COD::CIFData::CIFEstimateZ::EXPORT = qw(
+our @ISA = qw(Exporter);
+our @EXPORT = qw(
     cif_estimate_z
 );
 
@@ -51,7 +51,7 @@ sub cif_estimate_z($)
             if( !defined $molwt ) {
                 $error .= "molecular weight undefined\n";
             }
-            die "not enough data in '$dataset->{name}' to estimate Z:\n" . $error;
+            die "not enough data in '$dataset->{name}' to estimate Z;\n" . $error;
         }
     }
 }
