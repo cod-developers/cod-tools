@@ -25,8 +25,8 @@ use COD::CIFData::CIFSymmetryGenerator qw( symop_generate_atoms );
 use COD::UserMessage;
 
 require Exporter;
-@COD::CIFData::CIFCellContents::ISA = qw(Exporter);
-@COD::CIFData::CIFCellContents::EXPORT = qw(
+our @ISA = qw(Exporter);
+our @EXPORT = qw(
     cif_cell_contents
     atomic_composition
     print_composition
@@ -107,7 +107,7 @@ sub cif_cell_contents( $$$@ )
             if( $@ ) {
                 my $msg = $@;
                 $msg =~ s/\n$//;
-                $msg =~ s/:\n/: /g;
+                $msg =~ s/;\n/; /g;
                 $msg =~ s/\n/; /g;
                 $Z = 1;
                 warning( $0, $filename, $dataset->{name},
