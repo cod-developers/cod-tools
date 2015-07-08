@@ -1279,10 +1279,9 @@ sub fix_value_of_refine_ls_weighting_scheme($$) {
                             $value_modif .= "...";
                         }
                     warning($0, $filename, $dataname,
-                            "'$tag' value is '$value_modif', " .
-                            "but it should be one of these: [" .
-                            join( ", ", @{ $default_enums{$tag} } ) .
-                            "]" );
+                            "'$tag' value is '$value_modif', but it must be "
+                          . 'one of the enumeration values '
+                          . '[' .join( ", ", @{$default_enums{$tag}} ) . ']' );
                 }
 
             }
@@ -1338,11 +1337,9 @@ sub fix_enums($$) {
                             $val .= "...";
                         }
                         $message_key =
-                            "WARNING, '$tag' value '$val' " .
-                            "should be one of these: [" .
-                            "$dict_values] " .
-                            "according to $tagDicts{$tag}[0] " .
-                            "dictionary" .
+                            "WARNING, '$tag' value '$val' must be one of "
+                          . 'the enumeration values [' . $dict_values . '] '
+                          . "according to $tagDicts{$tag}[0] dictionary" .
                             (defined $tagDicts{$tag}[1] ?
                              " named '$tagDicts{$tag}[1]'" : "") .
                              (defined $tagDicts{$tag}[2] ?
@@ -1407,11 +1404,11 @@ sub treat_as_set($$) {
                             $val = substr $val, 0, 30;
                             $val .= "...";
                         }
-                        $message_key = "WARNING, '$tag' value '$val' " .
-                                       "should only contain a combination " .
-                                       "of these values: [$dict_values] " .
-                                       "according to $tagDicts{$tag}[0] " .
-                                       "dictionary" . $dict_info;
+                        $message_key = "WARNING, '$tag' value '$val' should "
+                                     . "only contain a combination of the "
+                                     . "enumeration values [$dict_values] "
+                                     . "according to $tagDicts{$tag}[0] "
+                                     . "dictionary" . $dict_info;
                     } else {
                         my $new_value = "";
                         my $val = $tag_value;
