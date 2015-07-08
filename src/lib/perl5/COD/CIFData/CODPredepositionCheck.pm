@@ -160,7 +160,8 @@ sub filter_and_check
     foreach( @$fix_values_stderr ) {
         my $parsed = parse_message( $_ );
         if( defined $parsed ) {
-            if( $parsed->{message} !~ /value '[^']*' should be one of these:/ ) {
+            if( $parsed->{message} !~ 
+                       /value '[^']*' must be one of the enumeration values/ ) {
                 print_message( $0,
                                $cif_filename,
                                $parsed->{datablock},
