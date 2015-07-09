@@ -1378,7 +1378,7 @@ sub parser_error_reporter
 
 sub check_limits {
     my( $dataset, $filename ) = @_;
-    my $dataname = 'data_' . $dataset->{name};
+    my $dataname = $dataset->{name};
     my $warnings = 0;
     
     if(! defined $dataset->{values} ) {
@@ -1395,23 +1395,23 @@ sub check_limits {
                 next;
             }
             if( $value !~ /^([+-]?(?:\d+(?:\.\d*)?|\.\d+))\(?(\d*)\)?$/ ) {
-                print STDERR "$0: $filename $dataname: ERROR, tag '$tag' " .
-                    "value '$value' is not numeric.\n";
+                error($0, $filename, $dataname,
+                      "tag '$tag' value '$value' is not numeric");
                 $warnings++;
                 next;
             } else {
                 my $number = $1;
                 my $precision = $2;
                 if( ($tag =~ /_w?R_factor_/) && ( $precision ) ) {
-                    print STDERR "$0: $filename $dataname: WARNING, '$tag' " .
-                        "value is '$value', but it should be numeric and " .
-                        "without precision (esd value).\n";
+                    warning( $0, $filename, $dataname,
+                             "'$tag' value is '$value', but it should be "
+                           . "numeric and without precision (esd value)" );
                     $warnings++;
                     next;
                 }
                 if( $number < 0 ) {
-                    print STDERR "$0: $filename $dataname: WARNING, '$tag' " .
-                        "value '$value' should be in range [0.0;+inf].\n";
+                    warning( $0, $filename, $dataname, "'$tag' value "
+                          . "'$value' should be in range [0.0;+inf]" );
                     $warnings++;
                     next;
                 } elsif(! defined $limits_table->{$tag}[0][1] ) {
@@ -1668,7 +1668,7 @@ sub check_z
         $@ =~ s/\n/ /;
         $@ =~ s/\n$//;
         $@ =~ s/\n/, /g;
-        error_reporter( $filename, undef, $dataset->{name}, $@ );        
+        error_reporter( $filename, undef, $dataset->{name}, $@ );
         $warnings ++;
     }
 
