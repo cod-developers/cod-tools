@@ -17,11 +17,13 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #**
 
 use strict;
+use warnings;
 use COD::CIFTags::CIFTagCanonicalNames;
 use COD::CIFTags::CIFTagPrint;
 use COD::CIFParser::CIFParser;
 use COD::SOptions;
 use COD::SUsage;
+use COD::UserMessage;
 
 my $override_tags;
 my $override_all = 0;
@@ -82,13 +84,13 @@ for my $filename (@ARGV) {
     canonicalize_all_names( $data );
 
     if( defined $parser->YYData->{ERRCOUNT} && $parser->YYData->{ERRCOUNT} > 0 ) {
-        print STDERR "$0: ", $parser->YYData->{ERRCOUNT},
-        " error(s) encountered while parsing file '${filename}'\n";
+        error( $0, $filename, undef, "$parser->YYData->{ERRCOUNT}, "
+                    . "error(s) encountered while parsing the file" );
         die;
     }
 
     if( !@$data || !defined $data->[0] || !defined $data->[0]{name} ) {
-        warn( "file '$filename' seems to be empty" );
+        warning( $0, $filename, undef, "file seems to be empty" );
         next;
     }
 
@@ -121,12 +123,11 @@ for my $filename (@ARGV) {
                                 if( int( @{$old_datablock->
                                             {values}{$loop_tag}} ) !=
                                     int( @{$new_datablock->{values}{$tag}} )) {
-                                    print STDERR
-                                        "$0: ${filename}: ERROR, ", 
-                                        "loop tag '$loop_tag' has different ".
-                                        "number of values than the tag '$tag' ".
-                                        "in '${filename}, but '$tag' must end ".
-                                        "up in the same loop\n";
+                                    error( $0, $filename, $data_name,
+                                        "loop tag '$loop_tag' has different "
+                                      . "number of values than the tag '$tag' "
+                                      . "in '${filename}, but '$tag' must end "
+                                      . "up in the same loop" );
                                     die;
                                 }
                                 last;
@@ -137,7 +138,7 @@ for my $filename (@ARGV) {
                                   $tag );
                             $old_datablock->{inloop}{$tag} = $old_loop_id;
                             ## print ">>> pushing '$tag' to old loop $old_loop_id\n";
-                            ## print ">>> it already has tags @{$old_datablock->{loops}[$old_loop_id]}\n";                            
+                            ## print ">>> it already has tags @{$old_datablock->{loops}[$old_loop_id]}\n";
                         } else {
                             push( @{$old_datablock->{loops}}, [ $tag ] );
                             $old_datablock->{inloop}{$tag} =
@@ -175,7 +176,8 @@ for my $filename (@ARGV) {
                         }
                     } elsif( !values_are_equal( $old_datablock->{values}{$tag},
                                            $new_datablock->{values}{$tag} )) {
-                        warn( "values for tag '$tag' in '$data_name' differ" );
+                        warning( $0, $filename, $data_name, "values for "
+                               . "tag '$tag' in '$data_name' differ" );
                     }
                 }
             }
