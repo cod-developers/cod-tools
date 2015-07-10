@@ -14,11 +14,13 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #**
 
 use strict;
+use warnings;
 use COD::CIFParser::CIFParser;
 use COD::CIFTags::CIFTagCanonicalNames;
 use COD::CIFTags::CIFDictTags;
 use COD::CIFTags::CIFCODTags;
 use COD::CIFTags::CIFTagPrint;
+use COD::UserMessage;
 use COD::SOptions;
 use COD::SUsage;
 
@@ -45,9 +47,6 @@ my @dictionary_tags = ( @COD::CIFTags::CIFDictTags::tag_list,
                         @COD::CIFTags::CIFCODTags::tag_list );
 my %dictionary_tags = map { $_, $_ } @dictionary_tags;
 
-sub get_pressure_unit_coefficient($);
-sub get_temperature_unit_shift($);
-
 @ARGV = ("-") unless @ARGV;
 
 for my $filename (@ARGV) {
@@ -56,9 +55,8 @@ for my $filename (@ARGV) {
 
     if( defined $parser->YYData->{ERRCOUNT} &&
         $parser->YYData->{ERRCOUNT} > 0 ) {
-        print STDERR "$0: $filename: ",
-        $parser->YYData->{ERRCOUNT},
-        " error(s) encountered while parsing CIF data\n";
+        error( $0, $filename, undef, $parser->YYData->{ERRCOUNT}
+             . " error(s) encountered while parsing CIF data" );
         exit -1;
     }
 
