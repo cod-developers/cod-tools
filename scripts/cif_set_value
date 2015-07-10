@@ -17,6 +17,7 @@ use warnings;
 use COD::CIFParser::CIFParser;
 use COD::CIFTags::CIFTagCanonicalNames;
 use COD::CIFTags::CIFTagPrint;
+use COD::UserMessage;
 use COD::SOptions;
 use COD::SUsage;
 
@@ -66,9 +67,8 @@ for my $filename (@ARGV) {
     }
 
     if( defined $error_count && $error_count > 0 ) {
-        print STDERR "$0: $filename: ",
-        $error_count,
-        " error(s) encountered while parsing CIF data\n";
+        error( $0, $filename, undef, $error_count
+             . " error(s) encountered while parsing CIF data" );
         ## exit -1;
         next;
     }
