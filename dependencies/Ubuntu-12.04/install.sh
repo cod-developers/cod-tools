@@ -1,4 +1,4 @@
 #!/bin/sh
 
-$(dirname $0)/build.sh
-$(dirname $0)/run.sh
+dependencies/Ubuntu-12.04/build.sh
+dependencies/Ubuntu-12.04/run.sh
