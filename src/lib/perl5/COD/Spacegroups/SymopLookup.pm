@@ -19580,6 +19580,36 @@ require Exporter;
     ]
 },
 
+{
+    number          => 11,
+    hall            => '-P 2yb (1/2*x,y,-1/2*x+z)',
+    schoenflies     => 'C2h^2',
+    hermann_mauguin => 'B 1 21/m 1',
+    universal_h_m   => 'B 1 21/m 1',
+    crystal_class   => 'monoclinic',
+    constraints     => '$alpha == 90 && $gamma == 90',
+    symops => [
+        "x,y,z",
+        "-x,y+1/2,-z",
+        "-x,-y,-z",
+        "x,-y-1/2,z",
+        "x+1/2,y,z+1/2",
+        "-x+1/2,y+1/2,-z+1/2",
+        "-x+1/2,-y,-z+1/2",
+        "x+1/2,-y-1/2,z+1/2",
+    ],
+    ncsym => [
+        "x,y,z",
+        "-x,y+1/2,-z",
+        "-x,-y,-z",
+        "x,-y-1/2,z",
+        "x+1/2,y,z+1/2",
+        "-x+1/2,y+1/2,-z+1/2",
+        "-x+1/2,-y,-z+1/2",
+        "x+1/2,-y-1/2,z+1/2",
+    ]
+}
+
 );
 
 1;
