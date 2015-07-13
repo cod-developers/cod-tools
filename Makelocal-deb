@@ -34,7 +34,8 @@ RUN_DEPS = $(shell grep install ${RUN_DEPS_LIST} \
 # Collecting Perl binaries and libraries:
 
 C_BINS     = $(shell find ${C_PARSER_LIB_DIR} -maxdepth 1 -type f -a -executable)
-PERL5_BINS = $(shell find scripts/ -maxdepth 1 -type f -a -executable)
+PERL5_BINS = $(shell find scripts/ -maxdepth 1 -name \*~ -prune -o \
+                                               -type f -a -executable -print)
 PERL5_LIBS = $(shell find src/lib/perl5 -name .svn -prune -o \
                                         -name \*.pm -print -o \
                                         -name \*.so -print)
@@ -95,8 +96,8 @@ ${COPYRIGHT}:
 build:
 	$(MAKE) -C src/
 
-deb: build ${CHANGELOG} ${CONTROL} ${COPYRIGHT} ${MAN_FILES}
-	fakeroot debian/rules binary
+deb: ${CHANGELOG} ${CONTROL} ${COPYRIGHT} ${MAN_FILES}
+	fakeroot debian/rules binary PREFIX=debian/cod-tools/usr
 
 install: build installdirs
 	install ${C_BINS} ${PERL5_BINS} ${BIN_DIR}
