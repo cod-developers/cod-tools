@@ -1,0 +1,67 @@
+#! /bin/sh
+#!perl -w # --*- Perl -*--
+eval 'exec perl -x $0 ${1+"$@"}'
+    if 0;
+#------------------------------------------------------------------------------
+#$Author$
+#$Revision$
+#$URL$
+#$Date$
+#$Id: cif_diff 3294 2015-04-22 10:12:45Z andrius $
+#------------------------------------------------------------------------------
+#*
+#  Parse COD error messages and output the results in the desired format.
+#
+# USAGE:
+#    $0 [options] input.cif [input2.cif ...]
+#**
+
+use strict;
+use warnings;
+use COD::UserMessage qw( parse_message note );
+use COD::SOptions    qw( getOptions );
+use COD::SUsage;
+
+my $format    = 'dsv';
+my $delimiter = "\t";
+my @dsv_print_order = ( qw(
+                            program
+                            filename
+                            line
+                            column
+                            datablock
+                            errlevel
+                            message
+                        ) );
+
+@ARGV = getOptions
+(
+#** OPTIONS:
+#** -d, --delimiter "\t"
+#**                    Delimiter that is used to separate fields in the
+#**                    delimiter-separated values (dsv) output format
+#**                   (default "\t").
+#** --dsv
+#**                    Output results in delimiter-separated values (dsv) 
+#**                    format (default).
+#** --help,--usage     Print short usage message (this message) and exit.
+    "-d,--delimiter"            => \$delimiter,
+    "--dsv"                     => sub { $format= 'dsv' },
+    "--help,--usage"            => sub { usage; exit },
+);
+
+while (<>) {
+    next if $_ =~ /^\s*#/;
+    my $parsed_msg = parse_message( $_ );
+    if ( defined $parsed_msg ) {
+        if ( $format eq 'dsv' ) {
+            print join $delimiter, map { ( defined $parsed_msg->{$_} ) ?
+                                                   $parsed_msg->{$_} :
+                                                   '' } @dsv_print_order;
+            print "\n";
+        }
+    } else {
+        chomp($_);
+        note($0, $ARGV, undef, "unable to parse error message '$_'");
+    }
+}
