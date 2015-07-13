@@ -97,7 +97,7 @@ build:
 	$(MAKE) -C src/
 
 deb: ${CHANGELOG} ${CONTROL} ${COPYRIGHT} ${MAN_FILES}
-	fakeroot debian/rules binary PREFIX=debian/cod-tools/usr
+	fakeroot debian/rules binary PREFIX=${DEBIAN}/${PKGNAME}/usr
 
 install: build installdirs
 	install ${C_BINS} ${PERL5_BINS} ${BIN_DIR}
@@ -116,4 +116,4 @@ ${MAN_DIR}/%.1: scripts/%
 	-help2man $< --bugs-email ${AUTHOR_EMAIL} > $@
 
 testinstall:
-	$(MAKE) -C perl-scripts tests TEST_INSTALL=1
+	$(MAKE) tests TEST_INSTALL=1
