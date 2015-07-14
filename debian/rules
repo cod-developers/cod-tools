@@ -2,21 +2,8 @@
 
 PROJECT = cod-tools
 
-build:
-	dh_testdir
-	$(MAKE)
-
-clean:
-	dh_testdir
-	dh_testroot
-	dh_clean
-
-install: build
-	dh_testdir
-	dh_testroot
-	dh_clean -k
-	dh_installdirs usr/bin
-	$(MAKE) install PREFIX=$(CURDIR)/debian/${PROJECT}/usr
+%:
+	dh $@
 
 binary-indep:   build install
 binary-arch:    build install
@@ -33,5 +20,3 @@ binary-arch:    build install
 	dh_gencontrol
 	dh_md5sums
 	dh_builddeb --destdir debian
-
-binary: binary-indep binary-arch

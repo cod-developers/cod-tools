@@ -1,0 +1,370 @@
+#! /bin/sh
+#!perl -w # --*- Perl -*--
+eval 'exec perl -x $0 ${1+"$@"}'
+    if 0;
+#------------------------------------------------------------------------------
+#$Author$
+#$Date$
+#$Revision$
+#$URL$
+#------------------------------------------------------------------------------
+#*
+#  Retrieve structures from the Open Quantum Mechanics Database and
+#  write them out in CIF format.
+#**
+
+use strict;
+use POSIX qw(acos);
+use COD::SOptions;
+use COD::SUsage;
+use COD::Formulae::AdHocParser;
+
+use DBI;
+
+my $Pi = 4 * atan2(1,1);
+
+my %database = (
+    host  => "localhost",
+    user  => "reader",
+    name  => "oqmd",
+    tables => {
+        structures => "structures",
+        spacegroups => "spacegroups",
+        atoms => "atoms",
+        sites => "sites",
+        wyckoffsites => "wyckoffsites",
+    },
+    password => "",
+    platform => "mysql",
+    dbh => undef,
+);
+
+my $debug = 0;
+my %options;
+my $limit;
+my $atom_fformat = "%.12g";
+my $cell_fformat = $atom_fformat;
+# Default formats for floating-point numbers (for unit cell parameters
+# and for atomic coordinates) -- large enough for IEEE double
+# precision floating point number.
+
+#*Usage:
+#*     $0 [options] [structure1_id  ...]
+#*
+#*Options:
+#*     -L, --limit 10, --limit 1000,10
+#*        Add the limit clause to the structure query statement
+#*        (default: all structures are output from teh database)
+#*
+#*     -L-, --no-limit
+#*        Remove any previously set query limits.
+#*
+#*     -F, --float-format "%15.12f"
+#*        Specify format to print out floating point numbers.
+#*
+#*     -A, --atom-format "%15.12f"
+#*        Specify format to print out floating point numbers for unit cell
+#*        parameters.
+#*
+#*     -C, --cell-format "%15.12f"
+#*        Specify format to print out floating point numbers for atomic
+#*        coordinates.
+#*
+#*     -d, --database  cod
+#*        Use database "cod" to query for strctures.
+#*
+#*     -h, --host   www.crystallography.net
+#*     -s, --server www.crystallography.net
+#*        Query COD database on the host 'www.crystallography.net'.
+#*
+#*     -l, --localhost
+#*        Use database server on the localhost to query the COD database.
+#*
+#*     -p, --port 3306
+#*        Use use the specified port (default 3306) to query structures.
+#*
+#*     -t, --table  data
+#*        Use SQL table "data" to query for strctures.
+#*
+#*     -u, --user cod_reader
+#*        Use user name "cod_reader" to access COD database; this reader
+#*        sould be granted SELECT priviledge, i.e. should be able to read
+#*        the COD database, whithout supplying a password.
+#*
+#*     --debug, --no-debug
+#*        Switch on or off debug printouts.
+#*
+#*     --password
+#*        Use the specified password (default empty) to connect.
+#*
+#*     --help, --usage
+#*        Print a short usage message (this message) and exit.
+#**
+
+@ARGV = getOptions( 
+    "-d,--database"  => \$database{name},
+    "-l,--localhost" => sub { $database{host} = 'localhost' },
+    "-h,--host"      => \$database{host},
+    "-p,--port"      => \$database{port},
+    "-s,--server"    => \$database{host},
+    "-t,--table"     => \$database{table},
+    "-u,--user"      => \$database{user},
+    "--password"     => \$database{password},
+    "--platform"     => \$database{platform},
+
+    "-L,--limit"     => \$limit,
+    "-L-,--no-limit" => sub { $limit = undef },
+
+    "-F,--float-format" => sub { $atom_fformat = $cell_fformat = &get_value },
+    "-A,--atom-format" => \$atom_fformat,
+    "-C,--cell-format" => \$cell_fformat,
+
+    "--debug" => sub{ $debug = 1 },
+    "--no-debug" => sub{ $debug = 0 },
+
+    "--help,--usage" => sub { usage; exit },
+);
+
+my $connected_db = database_connect( \%database );
+
+my @structure_ids = @ARGV;
+
+if( !@structure_ids ) {
+    @structure_ids = query_OQMD_structure_ids( $connected_db, $limit );
+}
+
+if( $debug ) {
+    use COD::Serialise;
+}
+
+for my $structure_id (@structure_ids) {
+    print "data_", $structure_id, "\n";
+
+    my $structure_data = query_OQMD_structure( $connected_db, $structure_id );
+
+    serialiseRef( $structure_data ) if $debug;
+
+    my @cell_vectors = (
+        [ $structure_data->{x1}, $structure_data->{x2}, $structure_data->{x3} ],
+        [ $structure_data->{y1}, $structure_data->{y2}, $structure_data->{y3} ],
+        [ $structure_data->{z1}, $structure_data->{z2}, $structure_data->{z3} ],
+        );
+
+    my @cell = compute_cell_parameters( @cell_vectors );
+
+    printf "%-32s ".$cell_fformat."\n", "_cell_length_a", $cell[0];
+    printf "%-32s ".$cell_fformat."\n", "_cell_length_b", $cell[1];
+    printf "%-32s ".$cell_fformat."\n", "_cell_length_c", $cell[2];
+    printf "%-32s ".$cell_fformat."\n", "_cell_angle_alpha", $cell[3];
+    printf "%-32s ".$cell_fformat."\n", "_cell_angle_beta",  $cell[4];
+    printf "%-32s ".$cell_fformat."\n", "_cell_angle_gamma", $cell[5];
+
+    print "_chemical_formula_sum           '",
+        $structure_data->{composition_id}, "'\n";
+
+    print "_symmetry_space_group_name_H-M  'P 1'\n";
+    print "_symmetry_space_group_name_Hall ' P 1'\n";
+    print "loop_\n";
+    print "_space_group_symop_id\n";
+    print "_space_group_symop_operation_xyz\n";
+    print "1 x,y,z\n";
+
+    # Get fractional atom coordinates from the OQMD database:
+
+    my $atoms = query_OQMD_atoms( $connected_db, $structure_id );
+
+    serialiseRef( $atoms ) if $debug;
+
+    # Calculate Z:
+    my $formula_parser = new COD::Formulae::AdHocParser;
+    my $formula_atoms =
+        $formula_parser->ParseString( $structure_data->{composition_id} );
+
+    if( $formula_atoms ) {
+        my $coord_atom_count = scalar(keys %{$atoms});
+        my $formula_atom_count = 0;
+        for (values %{$formula_atoms}) { $formula_atom_count += $_ }
+        print "_cell_formula_units_Z           ",
+            $coord_atom_count/$formula_atom_count, "\n";
+    }
+
+    if( defined $structure_data->{spacegroup_id} ) {
+        local $\ = "\n";
+        my $spacegroup_data =
+            query_OQMD_spacegroup( $connected_db,
+                                   $structure_data->{spacegroup_id} );
+        serialiseRef( $spacegroup_data ) if $debug;
+        print "_oqmd_space_group_name_H-M   '",
+            $spacegroup_data->{hm}, "'";
+        print "_oqmd_space_group_name_Hall  '",
+            $spacegroup_data->{hall}, "'";
+        print "_oqmd_space_group_crystal_system      ",
+            lc($spacegroup_data->{lattice_system});
+        print "_oqmd_space_group_IT_number           ",
+            lc($spacegroup_data->{number});
+    }
+
+    print "loop_\n";
+    print "_atom_site_label\n";
+    print "_atom_site_fract_x\n";
+    print "_atom_site_fract_y\n";
+    print "_atom_site_fract_z\n";
+    for my $atom (values %{$atoms}) {
+        print $atom->{element_id};
+        printf " ".$atom_fformat, $atom->{x};
+        printf " ".$atom_fformat, $atom->{y};
+        printf " ".$atom_fformat, $atom->{z};
+        print "\n";
+    }
+
+}
+
+database_disconnect( $connected_db );
+
+#------------------------------------------------------------------------------
+
+sub database_connect
+{
+    my ( $database ) = @_;
+    
+    my $dbh = DBI->connect( "dbi:$database->{platform}:" .
+                            "hostname=$database->{host};".
+                            "dbname=$database->{name};".
+                            "user=$database->{user};".
+                            "password=$database->{password}" )
+        || die "cannot connect do the database -- $DBI::errstr";
+
+    my %connected_db = %{$database};
+
+    $connected_db{dbh} = $dbh;
+
+    return wantarray ? %connected_db : \%connected_db;
+}
+
+sub database_disconnect
+{
+    my ( $database ) = @_;
+
+    $database->{dbh}->disconnect || die "cannot disconnect -- $DBI::errstr";
+
+    $database->{dbh} = undef;
+}
+
+sub query_OQMD_structure_ids
+{
+    my ( $database, $limit ) = @_;
+
+    my $dbh = $database->{dbh};
+
+    my $sth = $dbh->prepare(
+        "SELECT id FROM `$database->{tables}{structures}` ORDER BY id" .
+        (defined $limit ? " LIMIT " . $limit : "") . ";"
+        );
+
+    $sth->execute();
+
+    my @ids = map { $_->[0] } @{$sth->fetchall_arrayref()};
+
+    return @ids;
+}
+
+sub query_OQMD_structure
+{
+    my ( $database, $id ) = @_;
+
+    my $dbh = $database->{dbh};
+
+    my $sth = $dbh->prepare(
+        "SELECT id, x1, x2, x3, y1, y2, y3, z1, z2, z3,
+                entry_id, composition_id, spacegroup_id
+         FROM `$database->{tables}{structures}` WHERE id = ?;"
+        );
+
+    $sth->execute( $id );
+
+    return $sth->fetchrow_hashref();
+}
+
+sub query_OQMD_spacegroup
+{
+    my ( $database, $spacegroup_number ) = @_;
+
+    my $dbh = $database->{dbh};
+
+    my $sth = $dbh->prepare(
+        "SELECT number, hm, hall, schoenflies, lattice_system 
+         FROM `$database->{tables}{spacegroups}` WHERE number = ?;"
+        );
+
+    $sth->execute( $spacegroup_number );
+
+    return $sth->fetchrow_hashref();
+}
+
+sub query_OQMD_atoms
+{
+    my ( $database, $id ) = @_;
+
+    my $dbh = $database->{dbh};
+
+    my $sth = $dbh->prepare(
+        "SELECT atoms.id as atom_id, element_id,
+                atoms.x as x, atoms.y as y, atoms.z as z,
+                sites.x as sx, sites.y as sy, sites.z as sz,
+                fx, fy, fz, magmom, charge, 
+                symbol, multiplicity, spacegroup_id,
+                wyckoffsites.x as wx,
+                wyckoffsites.x as wy,
+                wyckoffsites.z as wz
+         FROM `$database->{tables}{atoms}`
+         JOIN `$database->{tables}{sites}` 
+             ON site_id = `$database->{tables}{sites}`.id 
+         JOIN `$database->{tables}{wyckoffsites}`
+             ON `$database->{tables}{sites}`.wyckoff_id = 
+                `$database->{tables}{wyckoffsites}`.id
+         WHERE `$database->{tables}{atoms}`.structure_id = ?;"
+        );
+
+    $sth->execute( $id );
+
+    return $sth->fetchall_hashref( "atom_id" );
+}
+
+sub compute_cell_parameters
+{
+    my ( $v1, $v2, $v3 ) = @_;
+
+    return (
+        vlength( $v1 ),
+        vlength( $v2 ),
+        vlength( $v3 ),
+        vangle( $v2, $v3 ),
+        vangle( $v1, $v3 ),
+        vangle( $v1, $v2 ),
+    );
+}
+
+sub vlength
+{
+    my $v = $_[0];
+    return sqrt( $v->[0]**2 + $v->[1]**2 + $v->[2]**2 );
+}
+
+sub vdot
+{
+    my ( $v1, $v2 ) = @_;
+    return 
+        $v1->[0] * $v2->[0] +
+        $v1->[1] * $v2->[1] +
+        $v1->[2] * $v2->[2];
+}
+
+sub vangle
+{
+    my ( $v1, $v2 ) = @_;
+
+    my $angle_radians =
+        acos( vdot( $v1, $v2 ) / (vlength($v1) * vlength($v2)));
+
+    return $angle_radians * 180 / $Pi;
+}

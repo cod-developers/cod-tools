@@ -271,7 +271,14 @@ cif_entry
                     buf = strcpy( buf, $2.vstr );
                     buf = strcat( buf, " \0" );
                     buf = strcat( buf, $3.vstr );
-                    add_tag_value( $1, buf, CIF_SQSTRING, px );
+                    cif_value_type_t tag_type = CIF_SQSTRING;
+                    if( index( buf, '\n' ) != NULL ||
+                        index( buf, '\r' ) != NULL ||
+                        index( buf, '\'' ) != NULL ||
+                        index( buf, '\"' ) != NULL ) {
+                        tag_type = CIF_TEXT;
+                    }
+                    add_tag_value( $1, buf, tag_type, px );
                 } else {
                     yyerror_previous( "syntax error:" );
                 }

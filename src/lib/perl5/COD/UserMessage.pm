@@ -13,8 +13,17 @@ package COD::UserMessage;
 use strict;
 use warnings;
 require Exporter;
-@COD::UserMessage::ISA = qw(Exporter);
-@COD::UserMessage::EXPORT = qw( print_message error warning note parse_message sprint_message );
+our @ISA = qw(Exporter);
+our @EXPORT = qw( print_message error warning note parse_message sprint_message );
+our @EXPORT_OK = qw( debug_note );
+
+# characters that will be escaped as HTML5 entities
+# '#' symbol is used for starting comment lines
+my %program_escape   = ( '&' => "&amp;", ':' => "&colon;", '#' => "&num;");
+my %filename_escape  = ( '&' => "&amp;", ':' => "&colon;",
+                         '(' => "&lpar;", ')' => "&rpar;" );
+my %datablock_escape = ( '&' => "&amp;", ':' => "&colon;" );
+my %message_escape   = ( '&' => "&amp;", ':' => "&colon;" ); # ',' => "&comma;"
 
 #==============================================================================
 # Print a message, reporting a program name, file name, data block
@@ -30,13 +39,23 @@ sub sprint_message($$$$$@)
          $message, $line, $column ) = @_;
 
     $message =~ s/\.?\n?$//;
-    return $program . ": " . $filename .
-           (defined $line
-                ? "($line" . (defined $column ? ",$column" : "" ) . ")"
-                : "") .
-           (defined $datablock ? " data_" . $datablock : "") .
-           (defined $errlevel ? ": " . $errlevel : "") .
-           ", " . $message . ".\n";
+
+    $program = "perl -e '...'" if ( $program eq '-e' );
+
+    $program   = escape_meta( $program,   \%program_escape   );
+    $filename  = escape_meta( $filename,  \%filename_escape  );
+    $datablock = escape_meta( $datablock, \%datablock_escape );
+    $message   = escape_meta( $message,   \%message_escape   );
+
+    return $program . ": " .
+           (defined $filename ? $filename .
+                (defined $line ? "($line" .
+                    (defined $column ? ",$column" : "" ) . ")"
+                : "") . 
+                (defined $datablock ? " data_" . $datablock : "") . ": "
+           : "") .
+           (defined $errlevel ? $errlevel . ", " : "") .
+           $message . ".\n";
 }
 
 #==============================================================================
@@ -61,21 +80,23 @@ sub parse_message($)
     my( $message ) = @_;
     if( $message =~ /^
                         ([^:]+):\ 
-                        ([^:]+?)
+                        (?:
+                          ([^:]+?)
                             (?:\((\d+)(?:,(\d+))?\))?
                             (?:\ data_([^:]+?))?
-                        :\ 
+                            :\ 
+                        )?
                         (?:([^,:\ ]+?)[,:]\ )?
                         (.+?)\.?
                     $/x ) {
         return {
-            program   => $1,
-            filename  => $2,
+            program   => unescape_meta($1, \%program_escape ),
+            filename  => unescape_meta($2, \%filename_escape),
             line      => $3,
             column    => $4,
-            datablock => $5,
+            datablock => unescape_meta($5, \%datablock_escape),
             errlevel  => $6,
-            message   => $7
+            message   => unescape_meta($7, \%message_escape)
         };
     } else {
         return undef;
@@ -115,6 +136,43 @@ sub note($$$$)
 {
     my ( $program, $filename, $datablock, $message ) = @_;
     print_message( $program, $filename, $datablock, "NOTE", $message );
+}
+
+#==============================================================================
+# Report a debug message. Notes are indicated with the "DEBUG"
+# keyword. Debug messages should only be printed uppon user request to output
+# additional information.
+
+sub debug_note($$$$)
+{
+    my ( $program, $filename, $datablock, $message ) = @_;
+    print_message( $program, $filename, $datablock, "DEBUG", $message );
+}
+
+sub escape_meta {
+    my ( $text, $escaped_symbols ) = @_;
+
+    return undef if !defined $text;
+
+    my $symbols = join "|", map { $_ = "\\$_" } keys %{$escaped_symbols};
+
+    $text =~ s/($symbols)/$escaped_symbols->{"$1"}/g;
+
+    return $text;
+}
+
+sub unescape_meta {
+    my ( $text, $escaped_symbols ) = @_;
+
+    return undef if !defined $text;
+
+    my %unescaped_symbols = reverse %{$escaped_symbols};
+
+    my $symbols = join "|", keys %unescaped_symbols;
+
+    $text =~ s/($symbols)/$unescaped_symbols{"$1"}/g;
+
+    return $text;
 }
 
 1;

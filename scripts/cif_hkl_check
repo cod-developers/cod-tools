@@ -94,7 +94,7 @@ while( @ARGV > 0 ) {
         !has_powder_diffraction_intensities( $hkl_dataset ) ) {
         warning( $0, $hkl_file, undef,
                  "can not confirm that file '$hkl_file' contains " .
-                 "Fobs or powder diffraction data: one or more tags " .
+                 "Fobs or powder diffraction data -- one or more tags " .
                  "from list ( " .
                  join( ", ",
                        map { "'$_'" } @hkl_tags ) .
@@ -117,12 +117,12 @@ while( @ARGV > 0 ) {
     }
     if( !defined $cif_index ) {
         warning( $0, $cif_file, undef,
-                 "can not confirm relation between any datablocks in " .
-                 "CIF and diffraction data files -- there are no " .
-                 "datablocks with the same name in both files (CIF " .
-                 "datablock(s): " .
-                 join( ", ", map { "'$_'" } @cif_datanames ) .
-                 ", diffraction data datablock: '$hkl_dataname')" );
+                 "can not confirm relation between any datablocks in CIF "
+               . "and diffraction data files -- there are no datablocks "
+               . "with the same name in both files (" 
+               . join( ", ", map { "'$_'" } @cif_datanames )
+               . " (CIF datablock(s)) and '$hkl_dataname' "
+               . "(diffraction data datablock))" );
         next PAIR;
     }
     my $comm = comm( $cif_data->[$cif_index], $hkl_dataset,
@@ -158,11 +158,11 @@ while( @ARGV > 0 ) {
             } else {
                 $reason = "values of tag '$line->[0]' differ";
             }
-            $reason .= ": '" . join( ', ', map { "'$_'" }
+            $reason .= " ('" . join( ', ', map { "'$_'" }
                   @{$cif_data->[$cif_index]{values}{$line->[0]}} ) .
                   "' (CIF) and '" . join( ', ', map { "'$_'" }
                   @{$hkl_values->{$line->[0]}} ) .
-                  "' (diffraction data)";
+                  "' (diffraction data))";
             warning( $0, $cif_file, $hkl_dataname,
                      "can not confirm relation between datablocks named " .
                      "'$hkl_dataname' from supplied CIF and diffraction " .

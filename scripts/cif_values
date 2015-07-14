@@ -13,9 +13,11 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #**
 
 use strict;
+use warnings;
 use File::Basename;
 use COD::CIFParser::CIFParser;
 use COD::CIFTags::CIFTagManage;
+use COD::UserMessage;
 use COD::SOptions;
 use COD::SUsage;
 
@@ -77,7 +79,7 @@ my $use_parser = "c";
 #*     --add-uniquified-tag _tag1
 #*         Add tag '_tag' to the uniquified tag list
 #*
-#*     -u-, --dont-uniquify-tags
+#*     -u-, --dont-uniquify-tags, --no-uniquify-tags
 #*         Print all values of all tags, do not uniquify any tags
 #*
 #*     --tab-separator
@@ -112,7 +114,7 @@ my $use_parser = "c";
 #*     --use-c-parser
 #*         Specify parser to parse CIF files. C parser is default.
 #*
-#*     --help  print a short usage message (this message) and exit.
+#*     --help, --usage  Print a short usage message (this message) and exit.
 #**
 
 @ARGV = getOptions(
@@ -207,13 +209,13 @@ for my $filename (@ARGV) {
     }
 
     if( defined $error_count && $error_count > 0 ) {
-        print STDERR "$0: ", $error_count,
-        " error(s) encountered while parsing file '${filename}'\n";
+        error( $0, $filename, undef, $error_count
+             . " error(s) encountered while parsing the file" );
         die;
     }
 
     if( !@{$data} || !defined $data->[0] || !defined $data->[0]{name} ) {
-        warn( "file '$filename' seems to be empty" );
+        warning( $0, $filename, undef, "file '$filename' seems to be empty" );
         next;
     }
 

@@ -1,0 +1,20 @@
+# Escaped special characters in the program name ("&", ":" , "#")
+program&amp;co&amp;sons: ERROR, syntax error.
+program&colon;deep&colon;deeper: ERROR, syntax error.
+&num;not-a-comment: ERROR, syntax error.
+# Escaped special characters in the filename ("&", ":" , "(", ")")
+program: file&amp;co&amp;daughters: ERROR, syntax error.
+program: file&colon;deep&colon;deeper: ERROR, syntax error.
+program: file&lpar;42&rpar;&lpar;13,37&rpar;: ERROR, syntax error.
+program: file&lpar;42&rpar;(13,37): ERROR, syntax error.
+# However the number symbol ('#') is allowed in the filename and the 
+# &num; entity is not unescaped
+program: &num;rare&num;filename&num;: ERROR, syntax error.
+program: #rare#filename#: ERROR, syntax error.
+# Escaped special characters in additional position information (datablock)
+# and the message itself ("&", ":")
+program: filename: data_data: ERROR, error.
+program: filename data_additional&colon;information&amp;position: ERROR, syntax error&colon; this &amp; that.
+# Escaping the first symbol of escape sequences to allow them in the plain text
+# of all fields
+program&amp;amp;relatives: file&amp;amp;children data_datablock&amp;amp;info: ERROR, syntax error &amp;amp; crash results.
