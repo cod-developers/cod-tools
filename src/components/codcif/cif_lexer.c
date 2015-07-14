@@ -243,8 +243,8 @@ int cif_lexer( FILE *in )
                     case '"':
                         if( cif_lexer_has_flags
                             (CIF_FLEX_LEXER_FIX_MISSING_CLOSING_DOUBLE_QUOTE) ) {
-                            yynote( "warning, double-quoted string is "
-                                "missing a closing quote -- fixed" );
+                            yywarning( "double-quoted string is missing "
+                                       "a closing quote -- fixed" );
                         } else {
                             yyerror( "syntax error" );
                         }
@@ -252,8 +252,8 @@ int cif_lexer( FILE *in )
                     case '\'':
                         if( cif_lexer_has_flags
                             (CIF_FLEX_LEXER_FIX_MISSING_CLOSING_SINGLE_QUOTE) ) {
-                            yynote( "warning, single-quoted string is "
-                                "missing a closing quote -- fixed" );
+                            yywarning( "single-quoted string is missing "
+                                       "a closing quote -- fixed" );
                         } else {
                             yyerror( "syntax error" );
                         }
@@ -526,14 +526,14 @@ static char *clean_string( char *src, int is_textfield )
                 dest = new + strlen( new ) - 1;
                 if( non_ascii_explained == 0 ) {
                     if( is_textfield == 0 ) {
-                        print_message( "warning, non-ascii symbols "
+                        print_message( "WARNING", "non-ascii symbols "
                                        "encountered in the text:",
                                        cif_flex_current_line_number(),
                                        -1 );
                         fprintf( stderr, "'%s'\n", cif_flex_current_line() );
                         non_ascii_explained = 1;
                     } else {
-                        print_message( "warning, non-ascii symbols "
+                        print_message( "WARNING", "non-ascii symbols "
                                        "encountered in the text field, "
                                        "replaced by XML entities:",
                                         cif_flex_current_line_number(), -1 );
@@ -545,8 +545,8 @@ static char *clean_string( char *src, int is_textfield )
                 if( is_textfield == 0 ) {
                     yyerror( "syntax error:" );
                 } else if( non_ascii_explained == 0 ) {
-                    print_message( "non-ascii symbols encountered in the "
-                                   "text field:",
+                    print_message( "WARNING", "non-ascii symbols encountered "
+                                   "in the text field:",
                                     cif_flex_current_line_number(), -1 );
                     fprintf( stderr, ";%s\n;\n\n", start );
                     yyincrease_error_counter();
