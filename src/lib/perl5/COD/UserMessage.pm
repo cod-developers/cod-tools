@@ -40,6 +40,8 @@ sub sprint_message($$$$$@)
 
     $message =~ s/\.?\n?$//;
 
+    $program = "perl -e '...'" if ( $program eq '-e' );
+
     $program   = escape_meta( $program,   \%program_escape   );
     $filename  = escape_meta( $filename,  \%filename_escape  );
     $datablock = escape_meta( $datablock, \%datablock_escape );
