@@ -590,75 +590,60 @@ number
 
 sub _Error
 {
-    my $script = $0 eq '-e' ? "" : "$0: ";
-    my $filename = $_[0]->YYData->{FILENAME} eq '-' ?
-        "file '-'" : $_[0]->YYData->{FILENAME};
-    my $options = ( defined $_[1] ) ? $_[1] : {};
+    my $script = $0 eq '-e' ? "perl -e '...'" : "$0";
+    my $filename = $_[0]->YYData->{FILENAME};
+    my $dataname = defined $_[0]->{USER}->{CURRENT_DATABLOCK} ? " data_"
+                         . $_[0]->{USER}->{CURRENT_DATABLOCK} : "";
+
+    my $line = $_[0]->YYData->{VARS}{lines};
+    my $pos  = $_[0]->YYData->{VARS}{token_prev_pos} + 1;
+    my $ppos = $_[0]->YYData->{VARS}{token_prev_pos};
+
+    my $options = $_[1];
+    if (defined $options) {
+        $line = $options->{line} if exists $options->{line};
+        if ( exists $options->{pos} ) {
+            $pos  = $options->{pos};
+            $ppos = $options->{pos};
+        }
+    }
 
     $_[0]->YYData->{ERRCOUNT}++;
-    exists $_[0]->YYData->{ERRMSG}
-	and do {
-            print STDERR $script;
-            print STDERR $filename;
-            if( exists $options->{line} ) {
-                print STDERR "(", $options->{line}, ")";
-            } else {
-                print STDERR "(", $_[0]->YYData->{VARS}{lines}, ")";
-            }
-            if( defined $_[0]->{USER}->{CURRENT_DATABLOCK} ) {
-                print STDERR " data_",
-                $_[0]->{USER}->{CURRENT_DATABLOCK};
-            }
-            print STDERR ": ";
-            print STDERR $_[0]->YYData->{ERRMSG}, "\n";
-            delete $_[0]->YYData->{ERRMSG};
-            return;
-	};
-    print STDERR "$script", $filename;
-    if( exists $options->{line} && exists $options->{pos} ) {
-        print STDERR "(", $options->{line}, ",", $options->{pos}, ")";
+
+    my $message = "$script: $filename";
+    if ( exists $_[0]->YYData->{ERRMSG} ) {
+        $message .= "($line)" . "$dataname: ";
+        $message .= "ERROR, " . $_[0]->YYData->{ERRMSG} . "\n";
+        delete $_[0]->YYData->{ERRMSG};
     } else {
-        print STDERR 
-            "(", $_[0]->YYData->{VARS}{lines} . ",",
-            $_[0]->YYData->{VARS}{token_prev_pos}+1 . ")";
+        $message .= "($line,$pos)" . "$dataname: ";
+        $message .= "ERROR, incorrect CIF syntax\n"
+                   . $_[0]->YYData->{VARS}{current_line}
+                   . "\n";
+        $message .= " " x $ppos;
+        $message .= "^\n";
     }
-    if( defined $_[0]->{USER}->{CURRENT_DATABLOCK} ) {
-        print STDERR " data_",
-        $_[0]->{USER}->{CURRENT_DATABLOCK};
-    }
-    print STDERR 
-        ": ERROR, incorrect CIF syntax\n",
-        $_[0]->YYData->{VARS}{current_line};
-    print STDERR "\n";
-    if( exists $options->{line} && exists $options->{pos} ) {
-        print STDERR " " x $options->{pos};
-    } else {
-        print STDERR " " x $_[0]->YYData->{VARS}{token_prev_pos};
-    }
-    print STDERR "^\n";
+
+    #push $_[0]->{USER}->{ERROR_MESSAGES}, $message;
+    print STDERR $message;
 }
 
 sub _Warning
 {
-    my $script = $0 eq '-e' ? "" : "$0: ";
-    my $filename = $_[0]->YYData->{FILENAME} eq '-' ?
-        "file '-'" : $_[0]->YYData->{FILENAME};
+    my $script = $0 eq '-e' ? "perl -e '...'" : "$0";
+    my $filename = $_[0]->YYData->{FILENAME};
+    my $dataname = defined $_[0]->{USER}->{CURRENT_DATABLOCK} ? " data_"
+                         . $_[0]->{USER}->{CURRENT_DATABLOCK} : "";
+
     my $options = ( defined $_[1] ) ? $_[1] : {};
 
+    my $line = defined $options->{line} ? $options->{line}
+                                        : $_[0]->YYData->{VARS}{lines};
+
     if( exists $_[0]->YYData->{ERRMSG} ) {
-        print STDERR $script;
-        print STDERR $filename;
-        if( exists $options->{line} ) {
-            print STDERR "(", $options->{line}, ")";
-        } else {
-            print STDERR "(", $_[0]->YYData->{VARS}{lines}, ")";
-        }
-        if( defined $_[0]->{USER}->{CURRENT_DATABLOCK} ) {
-            print STDERR " data_",
-            $_[0]->{USER}->{CURRENT_DATABLOCK};
-        }
-        print STDERR ": WARNING, ";
-        print STDERR $_[0]->YYData->{ERRMSG}, "\n";
+        my $message = "$script: $filename($line)" . "$dataname: ";
+        $message .= "WARNING, " . $_[0]->YYData->{ERRMSG} . "\n";
+        print STDERR $message;
         delete $_[0]->YYData->{ERRMSG};
     }
 }
@@ -780,7 +765,7 @@ my $UQSTRING_INLINE     =       qr/^(?:
 			return('FLOAT', $1);
 		}
 		#matching integers:
-                if(s/^($INTEGER (?:\([0-9]+\))?)(\s|$)//sx)
+            if(s/^($INTEGER (?:\([0-9]+\))?)(\s|$)//sx)
 		{
 			advance_token($parser, length($1 . $2));
 			return('INT', $1);
@@ -1018,44 +1003,34 @@ sub Run
 {
     my ($self, $filename, $options, $reporter) = @_;
 
-
     if( ref $options eq "CODE" ) {
-	$self->{reporter} = $options; # old syntax,
+        $self->{reporter} = $options; # old syntax,
         # $reporter ref passed as 3rd arg.
-    } else {
-	if( defined $reporter ) {
-	    $self->{reporter} = $reporter;
-	} else {
-	    if( defined $options && exists $options->{reporter} ) {
-		$self->{reporter} = $options->{reporter};
-	    }
-	}
+    } elsif( defined $reporter ) {
+        $self->{reporter} = $reporter;
+    } elsif( defined $options && exists $options->{reporter} ) {
+        $self->{reporter} = $options->{reporter};
     }
 
     if( ref $options eq "HASH" ) {
-	$self->{USER}{OPTIONS} = $options;
+        $self->{USER}{OPTIONS} = $options;
     }
 
     $filename = "-" unless $filename;
 
     $self->{USER}{FILENAME} = $filename;
     $self->{USER}->{CIFfile} = undef;
+   # $self->{USER}->{ERROR_MESSAGES} = [];
 
     if( ref $options eq "HASH"  && defined $options->{filehandle} ) {
         $COD::CIFParser::CIFParser::FILEIN = $options->{filehandle};
     } else {
+        my $program = $0 eq '-e' ? "perl -e '...'" : $0;
         $COD::CIFParser::CIFParser::FILEIN = new FileHandle $filename;
-        my $scriptNamePrint = $0 eq '-e' ? "" : "$0: ";
-        my $filenamePrint = $filename eq '-' ?
-            "file '-'" : $filename;
         if( !defined $COD::CIFParser::CIFParser::FILEIN ) {
-            print STDERR $scriptNamePrint;
-            print STDERR $filenamePrint;
-            print STDERR ": Unable to open file '"
-                . $filenamePrint
-                . "' for reading: "
-                . $!
-                . ".\n";
+            print STDERR "$program: $filename: ERROR, "
+                       . "unable to open file '$filename' for reading -- "
+                       . lcfirst $! . "\n";
             return 1;
         }
     }
