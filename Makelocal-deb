@@ -106,7 +106,7 @@ build:
 	$(MAKE) -C src/
 
 deb: ${CHANGELOG} ${CONTROL} ${COPYRIGHT} ${MAN_FILES}
-	fakeroot debian/rules binary PREFIX=${DEBIAN}/${PKGNAME}/usr
+	fakeroot debian/rules binary
 
 install: build install-codtools install-libcod-perl install-libcodcif install-pycodcif
 
@@ -144,6 +144,11 @@ install-libcodcif:
 
 ${MAN_DIR}/%.1: scripts/%
 	-help2man $< --bugs-email ${AUTHOR_EMAIL} > $@
+
+clean-deb:
+	rm -rf ${DEBIAN}/${CODTOOLS} ${DEBIAN}/${LIBCOD_PERL}
+	rm -rf ${DEBIAN}/${LIBCODCIF} ${DEBIAN}/${PYCODCIF}
+	rm -f ${DEBIAN}/*.debhelper.log ${DEBIAN}/*.substvars
 
 testinstall:
 	$(MAKE) tests TEST_INSTALL=1
