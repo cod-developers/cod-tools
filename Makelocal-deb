@@ -21,7 +21,7 @@ DEBIAN    = debian
 CHANGELOG = ${DEBIAN}/changelog
 CONTROL   = ${DEBIAN}/control
 COPYRIGHT = ${DEBIAN}/copyright
-MAN_DIR   = ${DEBIAN}/man
+MAN_DIR   = doc/man
 
 LIBCODCIF_A_DEST  = ${DEBIAN}/${LIBCODCIF}/usr/lib
 LIBCODCIF_INC_DEST = ${DEBIAN}/${LIBCODCIF}/usr/include
@@ -63,7 +63,7 @@ CEXCEPTIONS_H = ${wildcard src/externals/cexceptions/*.h}
 GETOPTIONS_A = src/externals/getoptions/lib/libgetoptions.a
 GETOPTIONS_H = ${wildcard src/externals/getoptions/*.h}
 
-MAN_FILES = ${PERL5_BINS:scripts/%=${MAN_DIR}/%.1}
+MAN_FILES = ${CODTOOLS_SCRIPTS:scripts/%=${MAN_DIR}/%.1}
 
 define newline
 
@@ -102,6 +102,8 @@ ${CONTROL}:
 ${COPYRIGHT}:
 	cat README-COPYING COPYING > $@
 
+man: ${MAN_FILES}
+
 build:
 	$(MAKE) -C src/
 
@@ -110,7 +112,7 @@ deb: ${CHANGELOG} ${CONTROL} ${COPYRIGHT} ${MAN_FILES}
 
 install: build install-codtools install-libcod-perl install-libcodcif install-pycodcif
 
-install-codtools:
+install-codtools: man
 	test -d ${DEBIAN}/${CODTOOLS}/bin || mkdir -p ${DEBIAN}/${CODTOOLS}/bin
 	install ${CODTOOLS_SCRIPTS} ${DEBIAN}/${CODTOOLS}/bin
 	for i in ${CODTOOLS_LIBS:src/%=%}; \
