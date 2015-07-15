@@ -21,7 +21,6 @@ DEBIAN    = debian
 CHANGELOG = ${DEBIAN}/changelog
 CONTROL   = ${DEBIAN}/control
 COPYRIGHT = ${DEBIAN}/copyright
-MAN_DIR   = doc/man
 
 LIBCODCIF_A_DEST  = ${DEBIAN}/${LIBCODCIF}/usr/lib
 LIBCODCIF_INC_DEST = ${DEBIAN}/${LIBCODCIF}/usr/include
@@ -40,8 +39,6 @@ RUN_DEPS = $(shell grep install ${RUN_DEPS_LIST} \
 
 # Collecting Perl binaries and libraries:
 
-CODTOOLS_SCRIPTS = $(shell find scripts/ -maxdepth 1 -name \*~ -prune -o \
-                                                     -type f -a -executable -print)
 CODTOOLS_LIBS = $(shell find src/lib/perl5 -name .svn -prune -o \
                                            -name CCIFParser -prune -o \
                                            -name \*.pm -print)
@@ -62,8 +59,6 @@ CEXCEPTIONS_H = ${wildcard src/externals/cexceptions/*.h}
 
 GETOPTIONS_A = src/externals/getoptions/lib/libgetoptions.a
 GETOPTIONS_H = ${wildcard src/externals/getoptions/*.h}
-
-MAN_FILES = ${CODTOOLS_SCRIPTS:scripts/%=${MAN_DIR}/%.1}
 
 define newline
 
@@ -102,17 +97,15 @@ ${CONTROL}:
 ${COPYRIGHT}:
 	cat README-COPYING COPYING > $@
 
-man: ${MAN_FILES}
-
 build:
 	$(MAKE) -C src/
 
-deb: ${CHANGELOG} ${CONTROL} ${COPYRIGHT} ${MAN_FILES}
+deb: ${CHANGELOG} ${CONTROL} ${COPYRIGHT}
 	fakeroot debian/rules binary
 
 install: build install-codtools install-libcod-perl install-libcodcif install-pycodcif
 
-install-codtools: man
+install-codtools:
 	test -d ${DEBIAN}/${CODTOOLS}/bin || mkdir -p ${DEBIAN}/${CODTOOLS}/bin
 	install ${CODTOOLS_SCRIPTS} ${DEBIAN}/${CODTOOLS}/bin
 	for i in ${CODTOOLS_LIBS:src/%=%}; \
@@ -143,9 +136,6 @@ install-libcodcif:
 	test -d ${LIBCODCIF_INC_DEST} || mkdir -p ${LIBCODCIF_INC_DEST}
 	install --mode 644 ${LIBCODCIF_A} ${CEXCEPTIONS_A} ${GETOPTIONS_A} ${LIBCODCIF_A_DEST}
 	install --mode 644 ${LIBCODCIF_H} ${CEXCEPTIONS_H} ${GETOPTIONS_H} ${LIBCODCIF_INC_DEST}
-
-${MAN_DIR}/%.1: scripts/%
-	-help2man $< --bugs-email ${AUTHOR_EMAIL} > $@
 
 clean-deb:
 	rm -rf ${DEBIAN}/${CODTOOLS} ${DEBIAN}/${LIBCOD_PERL}
