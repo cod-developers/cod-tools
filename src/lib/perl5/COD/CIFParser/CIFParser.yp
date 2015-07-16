@@ -412,16 +412,16 @@ cif_entry
 ;
 
 cif_value_list
-: cif_value
-{
-    my $values = [ $_[1]->{value} ];
-    return $values;
-}
-| cif_value_list cif_value
-{
-    my $values = [ @{$_[1]}, $_[2]->{value} ];
-    return $values;
-}
+    : cif_value
+    {
+        my $values = [ $_[1]->{value} ];
+        return $values;
+    }
+    | cif_value_list cif_value
+    {
+        my $values = [ @{$_[1]}, $_[2]->{value} ];
+        return $values;
+    }
 ;
 
 loop
@@ -646,27 +646,28 @@ sub _Error
         $message .= "^\n";
     }
 
-    #push $_[0]->{USER}->{ERROR_MESSAGES}, $message;
-    print STDERR $message;
+    push $_[0]->{YYData}->{ERROR_MESSAGES}, $message;
+    print STDERR $message if $_[0]->{USER}{OPTIONS}{print_error_messages};
 }
 
 sub _Warning
 {
-    my $script = $0 eq '-e' ? "perl -e '...'" : "$0";
-    my $filename = $_[0]->YYData->{FILENAME};
-    my $dataname = defined $_[0]->{USER}->{CURRENT_DATABLOCK} ? " data_"
-                         . $_[0]->{USER}->{CURRENT_DATABLOCK} : "";
-
-    my $options = ( defined $_[1] ) ? $_[1] : {};
-
-    my $line = defined $options->{line} ? $options->{line}
-                                        : $_[0]->YYData->{VARS}{lines};
-
     if( exists $_[0]->YYData->{ERRMSG} ) {
+        my $script = $0 eq '-e' ? "perl -e '...'" : "$0";
+        my $filename = $_[0]->YYData->{FILENAME};
+        my $dataname = defined $_[0]->{USER}->{CURRENT_DATABLOCK} ? " data_"
+                             . $_[0]->{USER}->{CURRENT_DATABLOCK} : "";
+
+        my $options = ( defined $_[1] ) ? $_[1] : {};
+
+        my $line = defined $options->{line} ? $options->{line}
+                                            : $_[0]->YYData->{VARS}{lines};
+
         my $message = "$script: $filename($line)" . "$dataname: ";
         $message .= "WARNING, " . $_[0]->YYData->{ERRMSG} . "\n";
-        print STDERR $message;
         delete $_[0]->YYData->{ERRMSG};
+        push   $_[0]->{YYData}->{ERROR_MESSAGES}, $message;
+        print STDERR $message if $_[0]->{USER}{OPTIONS}{print_error_messages};
     }
 }
 
@@ -822,10 +823,9 @@ my $UQSTRING_INLINE     =       qr/^(?:
             return('DQSTRING', $value . '"');
         }
         #matching single quoted strings without a closing quote
-        if( ( $parser->{USER}{OPTIONS}{fix_errors} ||
-                      $parser->{USER}{OPTIONS}
-                      {fix_missing_closing_single_quote} ) &&
-                    s/^('${ANY_PRINT_CHAR}*?)(\s|$)//s)
+        if ( ( $parser->{USER}{OPTIONS}{fix_errors} ||
+               $parser->{USER}{OPTIONS}{fix_missing_closing_single_quote} ) &&
+                    s/^('${ANY_PRINT_CHAR}*?)(\s|$)//s )
         {
             my $value = $1;
             my $space = $2;
@@ -1035,11 +1035,16 @@ sub Run
         $self->{USER}{OPTIONS} = $options;
     }
 
+    # Default value of print_error_messages is to be discussed
+    if (!defined $self->{USER}{OPTIONS}{print_error_messages}) {
+        $self->{USER}{OPTIONS}{print_error_messages} = 1;
+    }
+
     $filename = "-" unless $filename;
 
     $self->{USER}{FILENAME} = $filename;
     $self->{USER}->{CIFfile} = undef;
-   # $self->{USER}->{ERROR_MESSAGES} = [];
+    $self->{YYData}->{ERROR_MESSAGES} = [];
 
     if( ref $options eq "HASH"  && defined $options->{filehandle} ) {
         $COD::CIFParser::CIFParser::FILEIN = $options->{filehandle};
