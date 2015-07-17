@@ -407,7 +407,8 @@ for my $filename (@ARGV) {
         my $parser = new COD::CIFParser::CIFParser;
         if( $useReporter == 1 )
         {
-            $data = $parser->Run($filename, \&parser_error_reporter );
+            $data = $parser->Run( $filename, 
+                                  { reporter => \&parser_error_reporter });
         } else {
             $data = $parser->Run($filename);
         }
@@ -1419,7 +1420,7 @@ sub check_limits {
                         my $limit = @{ $limits_table->{$tag}->[$i]}[0];
                         if( $number > $limit ) {
                             error_reporter($filename, undef, $dataset->{name},
-                                           $report_names[$i] .       
+                                           $report_names[$i] .
                                            ", tag '$tag' value '$value' " .
                                            "is > " . $limit . ".");
                             $warnings ++;
@@ -1432,7 +1433,7 @@ sub check_limits {
                         my $end = @{ $limits_table->{$tag}->[$i]}[1];
                         if( ($number < $begin) || ($number > $end) ) {
                             error_reporter( $filename, undef, $dataset->{name},
-                                            $report_names[$i] .       
+                                            $report_names[$i] .
                                             ", tag '$tag' value '$value' " .
                                             "lies outside the range " . 
                                             $begin . " <> " . $end . "." );
