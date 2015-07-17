@@ -204,10 +204,10 @@ sub filter_and_check
             run_command( [ 'cif_cod_check', @$ccc_opt ],
                          $correct_stdout );
 
-        if( $ccc_stdout->[0] !~ /OK$/) {
+        if( !defined $ccc_stdout->[0] || $ccc_stdout !~ /OK$/) {
             my $warnings = 0;
             CCCMESSAGE:
-            foreach( @$ccc_stdout ) {
+            foreach( @$ccc_stderr ) {
                 my $parsed = parse_message( $_ );
                 if( defined $parsed ) {
                     for( $parsed->{message} ) {
@@ -220,6 +220,7 @@ sub filter_and_check
                         if( !defined $parsed->{errlevel} ) {
                             $parsed->{errlevel} = 'WARNING';
                         }
+
                         $warnings++ if $parsed->{errlevel} ne 'NOTE';
                     }
                     print_message( $0,
