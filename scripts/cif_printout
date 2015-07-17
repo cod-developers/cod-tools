@@ -21,8 +21,8 @@ use COD::SOptions;
 use COD::SUsage;
 
 my $use_parser = 'c';
+my $output_format = 'dump';
 my $input_json  = 0;
-my $output_json = 0;
 my %options;
 @ARGV = getOptions(
 
@@ -34,12 +34,11 @@ my %options;
 #** --input-json
 #**    Specify the format of input file(s). Default CIF.
 #**
-#** --output-cif,
-#** --output-json
-#**    Specify the format for output. Default CIF.
+#** --output-dump
+#**    Output parsed CIF file in internal dump format. Default.
 #**
-#** --cif
-#**    Set both input and output formats to CIF.
+#** --output-json
+#**    Output generated structure in JSON.
 #**
 #** --json
 #**    Set both input and output formats to JSON.
@@ -74,11 +73,10 @@ my %options;
     "--input-json"  => sub { $input_json  = 1 },
     "--input-cif"   => sub { $input_json  = 0 },
 
-    "--output-json" => sub { $output_json = 1 },
-    "--output-cif"  => sub { $output_json = 0 },
+    "--output-dump" => sub { $output_format = 'dump' },
+    "--output-json" => sub { $output_format = 'json' },
 
-    "--cif"  => sub { $input_json = 0; $output_json = 0 },
-    "--json" => sub { $input_json = 1; $output_json = 1 },
+    "--json" => sub { $input_json = 1; $output_format = 'json' },
 
     "--help,--usage"  => sub { usage; exit },
 );
@@ -115,7 +113,7 @@ foreach( @ARGV ) {
         }
     }
 
-    if( $output_json ) {
+    if( $output_format eq 'json' ) {
         print cif2json( $data );
     } else {
         foreach my $datablock ( @$data ) {
