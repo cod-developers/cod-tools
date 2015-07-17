@@ -31,6 +31,7 @@ For meaning of words SHOULD, MAY, etc. please refer to rfc2119[1].
 Below, we provide the formal grammar of the error messages in EBNF[4,5]:
 
 (* @BEGIN EBNF *)
+(*
 error_report = progname, ':', [spaces], [ location, ':', [spaces] ], message ;
 
 location = file_position, [ [spaces], additional_position ] ;
@@ -66,6 +67,8 @@ integer = digit, {digit} ;
 text = word, { [spaces], word } ;
 
 word = word_char, { word_char } ; (* | "-", word_char | { word_char }, "-" ; *)
+*)
+word_char = letter | digit | quote | punctuator ;
 
 letter = lowercase_letter | uppercase_letter | "_" ;
 
@@ -85,12 +88,10 @@ quote = '"' | "'" ;
 braces = "(" | ")" | "[" | "]" | "{" | "}" ;
 
 (* Puncuators for error messages SHOULD NOT include ":" and "-": *)
-punctuator = "!" | '"' | "#" | "$" | "%" | "&" | "'" | "*" | "+" | ","
+punctuator = "!" | "#" | "$" | "%" | "&" | "*" | "+" | ","
            | (* "-" | *) "." | "/" | (* ":" | *) ";" | "<" | "=" | ">" | "?" | "@"
-           | "\" | "^" | "_" | "`"
+           | "\" | "^" | "`"
            | braces ;
-
-word_char = letter | digit | quote | punctuator ;
 
 (* @END EBNF *)
 
