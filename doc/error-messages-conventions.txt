@@ -32,41 +32,51 @@ Below, we provide the formal grammar of the error messages in EBNF[4,5]:
 
 (* @BEGIN EBNF *)
 error_report =
-    progname, ':', spaces, message |
-    progname, ':', spaces, location, ':', spaces, message ;
+    progname, ':', [spaces], message |
+    progname, ':', [spaces], location, ':', [spaces], message ;
 
 location =
-    file_position, spaces, additional_position |
+    file_position, [spaces], additional_position |
     file_position |
     filename ;
 
 file_position =
-    filename, spaces, '(', lineno, ',', linepos, ')' |
-    filename, spaces, '(', lineno, ')' ;
+    filename, [spaces], '(', lineno, ',', linepos, ')' |
+    filename, [spaces], '(', lineno, ')' ;
 
 message =
-    status, ',', spaces, msgtext |
+    status, ',', [spaces], msgtext |
     msgtext ;
 
 msgtext =
-    text, spaces, '-', spaces, text |
+    text, [spaces], '-', [spaces], text |
     text ;
 
-lineno = digit | lineno, digit ;
+lineno = digit ;
 
-linepos = digit | linepos, digit ;
+linepos = digit ;
 
 additional_position = text ;
 
+status = uppercase_letter, { uppercase_letter | digit | "-" | "_" } ;
+
+filename = filename_char, { filename_char };
+
+progname = filename_char, { filename_char };
+
+filename_char = word_char | "-" ;
+
 (* Lexical tokens: *)
 
-spaces = {space} ;
+spaces = space, {space} ;
 
 space = " " | "\t" ;
 
-text = word | text, spaces, word ;
+integter = digit, {digit} ;
 
-word = word_char | "-", word_char | word, word_char | word, "-" ;
+text = word, { [spaces], word } ;
+
+word = word_char, { word_char } | "-", word_char | { word_char }, "-" ;
 
 letter = lowercase_letter | uppercase_letter | "_" ;
 
@@ -92,17 +102,6 @@ punctuator = "!" | '"' | "#" | "$" | "%" | "&" | "'" | "*" | "+" | ","
            | braces ;
 
 word_char = letter | digit | quote | punctuator ;
-
-status = uppercase_letter | 
-             status, uppercase_letter |
-             status, "_", status | 
-             status, "-", status;
-
-filename = filename_char, { filename_char };
-
-progname = filename_char, { filename_char };
-
-filename_char = word_char | "-" ;
 
 (* @END EBNF *)
 
