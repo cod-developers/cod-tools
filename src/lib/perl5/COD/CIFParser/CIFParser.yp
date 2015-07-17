@@ -690,7 +690,8 @@ sub _Lexer
             $parser->YYData->{INPUT} = <$COD::CIFParser::CIFParser::FILEIN>;
             $parser->YYData->{VARS}{lines}++;
             if( defined $parser->{reporter} &&
-                $parser->YYData->{VARS}{lines} % 100 == 0 ) {
+                $parser->YYData->{VARS}{lines} % 100 == 0 )
+            {
                 &{$parser->{reporter}}( $parser->{USER}{FILENAME},
                                         $parser->YYData->{VARS}{lines},
                                         $parser->{USER}{CURRENT_DATABLOCK} );
@@ -1020,19 +1021,13 @@ sub advance_token
 
 sub Run
 {
-    my ($self, $filename, $options, $reporter) = @_;
-
-    if( ref $options eq "CODE" ) {
-        $self->{reporter} = $options; # old syntax,
-        # $reporter ref passed as 3rd arg.
-    } elsif( defined $reporter ) {
-        $self->{reporter} = $reporter;
-    } elsif( defined $options && exists $options->{reporter} ) {
-        $self->{reporter} = $options->{reporter};
-    }
+    my ($self, $filename, $options ) = @_;
 
     if( ref $options eq "HASH" ) {
         $self->{USER}{OPTIONS} = $options;
+        if ( exists $options->{reporter} ) {
+            $self->{reporter} = $options->{reporter};
+        }
     }
 
     # Default value of print_error_messages is to be discussed
