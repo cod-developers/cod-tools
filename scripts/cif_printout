@@ -17,6 +17,7 @@ use strict;
 use COD::CIFParser::CIFParser;
 use COD::CIF2JSON;
 use COD::CIFData::CIFDiff;
+use COD::ShowStruct;
 use COD::SOptions;
 use COD::SUsage;
 
@@ -39,6 +40,9 @@ my %options;
 #**
 #** --output-json
 #**    Output generated structure in JSON.
+#**
+#** --output-struct
+#**    Output generated structure using COD::ShowStruct module.
 #**
 #** --json
 #**    Set both input and output formats to JSON.
@@ -73,8 +77,9 @@ my %options;
     "--input-json"  => sub { $input_json  = 1 },
     "--input-cif"   => sub { $input_json  = 0 },
 
-    "--output-dump" => sub { $output_format = 'dump' },
-    "--output-json" => sub { $output_format = 'json' },
+    "--output-dump"   => sub { $output_format = 'dump' },
+    "--output-json"   => sub { $output_format = 'json' },
+    "--output-struct" => sub { $output_format = 'struct' },
 
     "--json" => sub { $input_json = 1; $output_format = 'json' },
 
@@ -113,8 +118,12 @@ foreach( @ARGV ) {
         }
     }
 
-    if( $output_format eq 'json' ) {
+    if(      $output_format eq 'json' ) {
         print cif2json( $data );
+    } elsif( $output_format eq 'struct' ) {
+        foreach my $datablock ( @$data ) {
+            showRef( $datablock );
+        }
     } else {
         foreach my $datablock ( @$data ) {
             print  $datablock->{name} . "\n";
