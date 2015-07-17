@@ -274,6 +274,11 @@ int cif_lexer( FILE *in )
                         ( prevchar == '\n' || prevchar == '\r' )) {
                         /* end of the text field detected: */
                         prevchar = ch;
+                        char after = getlinec( in );
+                        ungetlinec( after, in );
+                        if( !isspace( after ) && after != EOF ) {
+                            yyerror( "syntax error" );
+                        }
                         token[pos-1] = '\0'; /* delete the last '\n' char */
                         if( yy_flex_debug ) {
                             printf( ">>> TEXT FIELD: '%s'\n", token );
