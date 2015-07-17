@@ -31,26 +31,15 @@ For meaning of words SHOULD, MAY, etc. please refer to rfc2119[1].
 Below, we provide the formal grammar of the error messages in EBNF[4,5]:
 
 (* @BEGIN EBNF *)
-error_report =
-    progname, ':', [spaces], message |
-    progname, ':', [spaces], location, ':', [spaces], message ;
+error_report = progname, ':', [spaces], [ location, ':', [spaces] ], message ;
 
-location =
-    file_position, [spaces], additional_position |
-    file_position |
-    filename ;
+location = file_position, [ [spaces], additional_position ] ;
 
-file_position =
-    filename, [spaces], '(', lineno, ',', linepos, ')' |
-    filename, [spaces], '(', lineno, ')' ;
+file_position = filename, [ [spaces], '(', lineno, ',', linepos, ')' ] ;
 
-message =
-    status, ',', [spaces], msgtext |
-    msgtext ;
+message = [ status, ',', [spaces] ], msgtext ;
 
-msgtext =
-    text, [spaces], '-', [spaces], text |
-    text ;
+msgtext = text, [ [spaces], '-', [spaces], text ] ;
 
 lineno = integer ;
 
@@ -60,9 +49,9 @@ additional_position = text ;
 
 status = uppercase_letter, { uppercase_letter | digit | "-" | "_" } ;
 
-filename = filename_char, { filename_char };
+filename = filename_char, { filename_char } ;
 
-progname = filename_char, { filename_char };
+progname = filename_char, { filename_char } ;
 
 filename_char = word_char | "-" ;
 
