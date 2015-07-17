@@ -28,87 +28,83 @@ For meaning of words SHOULD, MAY, etc. please refer to rfc2119[1].
 =====================================================================
 2. FORMAL GRAMMAR
 
-Below, we provide the formal grammar of the error messages in BNF[2] and
-Yacc/Bison[3] formats:
+Below, we provide the formal grammar of the error messages in EBNF[4,5]:
 
-@BEGIN BNF
-<error_report> ::=
-    <progname> ':' <spaces> <message> |
-    <progname> ':' <spaces> <location> ':' <spaces> <message> ;
+(* @BEGIN EBNF *)
+error_report =
+    progname, ':', spaces, message |
+    progname, ':', spaces, location, ':', spaces, message ;
 
-<location> ::=
-    <file_position> <spaces> <additional_position> |
-    <file_position> |
-    <filename>;
+location =
+    file_position, spaces, additional_position |
+    file_position |
+    filename ;
 
-<file_position> ::=
-    <filename> <spaces> '(' <lineno> ',' <linepos> ')' |
-    <filename> <spaces> '(' <lineno> ')';
+file_position =
+    filename, spaces, '(', lineno, ',', linepos, ')' |
+    filename, spaces, '(', lineno, ')' ;
 
-<message> ::=
-    <status> ',' <spaces> <msgtext> |
-    <msgtext> ;
+message =
+    status, ',', spaces, msgtext |
+    msgtext ;
 
-<msgtext> ::=
-    <text> <spaces> '-' <spaces> <text> |
-    <text> ;
+msgtext =
+    text, spaces, '-', spaces, text |
+    text ;
 
-<lineno>  ::= <digit> | <lineno>  <digit> ;
+lineno = digit | lineno, digit ;
 
-<linepos> ::= <digit> | <linepos> <digit> ;
+linepos = digit | linepos, digit ;
 
-<additional_position> ::= <text> ;
+additional_position = text ;
 
-# Lexical tokens:
+(* Lexical tokens: *)
 
-<spaces> ::= "" | <space> | <spaces> <space> ;
+spaces = {space} ;
 
-<space> ::= " " | "\t" ;
+space = " " | "\t" ;
 
-<text> ::= <word> | <text> <spaces> <word>;
+text = word | text, spaces, word ;
 
-<word> ::= <word_char> | "-" <word_char> | <word> <word_char> | <word> "-" ;
+word = word_char | "-" word_char | word, word_char | word, "-" ;
 
-<letter> ::= "a" | "b" | "c" | "d" | "e" | "f" | "g" | "h" | "i" | "j"
+letter = "a" | "b" | "c" | "d" | "e" | "f" | "g" | "h" | "i" | "j"
            | "k" | "l" | "m" | "n" | "o" | "p" | "q" | "r" | "s" | "t"
            | "u" | "v" | "w" | "x" | "y" | "z"
            | uppercase_letter
            | "_" ;
 
-<uppercase_letter> ::=
+uppercase_letter =
              "A" | "B" | "C" | "D" | "E" | "F" | "G" | "H" | "I" | "J" 
            | "K" | "L" | "M" | "N" | "O" | "P" | "Q" | "R" | "S" | "T"
            | "U" | "V" | "W" | "X" | "Y" | "Z" ;
 
-<digit> ::= "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" ;
+digit = "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" ;
 
-<quote> ::= '"' | "'" ;
+quote = '"' | "'" ;
 
-<braces> ::= "(" | ")" | "[" | "]" | "{" | "}" ;
+braces = "(" | ")" | "[" | "]" | "{" | "}" ;
 
-# Puncuators for error messages SHOULD NOT include ":" and "-":
-<punctuator> ::=
-    "~" | "`" | "," | ";" | "!" | "?" | "." | "@" | "%" | "^" |
-    "&" | "*" | "|" | "#" | "$" | "+" | "=" | "/" | "<" | ">" |
-    '\' |
-    <braces> ;
+(* Puncuators for error messages SHOULD NOT include ":" and "-": *)
+punctuator = "!" | '"' | "#" | "$" | "%" | "&" | "'" | "*" | "+" | ","
+           | (* "-" | *) "." | "/" | (* ":" | *) ";" | "<" | "=" | ">" | "?" | "@"
+           | "\" | "^" | "_" | "`"
+           | braces ;
 
-<word_char> ::= <letter> | <digit> | <quote> | <punctuator> ;
+word_char = letter | digit | quote | punctuator ;
 
-<status> ::= <uppercase_letter> | 
-             <status> <uppercase_letter> |
-             <status> "_" <status> | 
-             <status> "-" <status>;
+status = uppercase_letter | 
+             status, uppercase_letter |
+             status, "_", status | 
+             status, "-", status;
 
-<filename> ::= <filename_char> | <filename> <filename_char> ;
+filename = filename_char, { filename_char };
 
-<filename_char> ::= <word_char> | "-";
+progname = filename_char, { filename_char };
 
-@END BNF
+filename_char = word_char | "-" ;
 
-@BEGIN YACC
-/* FIXME: Yacc/Bison grammar to be provided... S.G. */
-@END YACC
+(* @END EBNF *)
 
 =====================================================================
 3. OVERVIEW
@@ -274,3 +270,10 @@ safe to set up your tools to check for errors in this format.
 
 [3] Free Software Foundation, "GNU Bison - The Yacc-compatible Parser
     Generator", https://www.gnu.org/software/bison/manual/
+
+[4] Wikipedia, The Free Encyclopedia, "Extended Backus–Naur Form",
+    https://en.wikipedia.org/wiki/Extended_Backus%E2%80%93Naur_Form
+
+[5] ISO/IEC 14977 : 1996(E), "Information technology — Syntactic
+    metalanguage — Extended BNF",
+    http://www.cl.cam.ac.uk/~mgk25/iso-14977.pdf
