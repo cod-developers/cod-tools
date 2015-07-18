@@ -13,6 +13,7 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #**
 
 use strict;
+use warnings;
 use COD::CIFParser::CIFParser;
 use COD::CIF::Data::CIF2COD qw(cif2cod);
 use COD::UserMessage;
@@ -197,8 +198,8 @@ for my $filename (@ARGV) {
             $error_count = $parser->YYData->{ERRCOUNT};
         }
     } else {
-        require COD::CCIFParser::CCIFParser;
-        ( $data, $error_count ) = COD::CCIFParser::CCIFParser::parse( $filename, \%options );
+        require COD::CIF::Parser::Bison::Bison;
+        ( $data, $error_count )  = COD::CIF::Parser::Bison::Bison::parse($filename, \%options );
     }
 
     if( defined $error_count && $error_count > 0 ) {

@@ -1,4 +1,4 @@
-%module(package="COD::CCIFParser::CCIFParser") "COD::CCIFParser"
+%module(package="COD::CIF::Parser::Bison::Bison") "COD::CIF::Parser::Bison"
 %{
     #include <EXTERN.h>
     #include <perl.h>

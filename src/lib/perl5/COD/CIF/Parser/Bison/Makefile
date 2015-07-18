@@ -1,14 +1,14 @@
-SWIG_SOURCE   = CCIFParser.c
+SWIG_SOURCE   = Bison.c
 SWIG_WRAPPER  = ${SWIG_SOURCE:%.c=%_wrap.c}
-SWIG_MODULE	  = ${SWIG_SOURCE:%.c=%.pm}
+SWIG_MODULE   = ${SWIG_SOURCE:%.c=%.pm}
 SWIG_INP_FILE = ${SWIG_SOURCE:%.c=%.i}
 
-OBJ 			 = ${SWIG_SOURCE:%.c=%.o}
+OBJ              = ${SWIG_SOURCE:%.c=%.o}
 SWIG_WRAPPER_OBJ = ${SWIG_WRAPPER:%.c=%.o}
-SWIG_SO_FILE 	 = ../../auto/COD/CCIFParser/${SWIG_SOURCE:%.c=%.so}
+SWIG_SO_FILE     = ../../../../auto/COD/CIF/Parser/Bison/${SWIG_SOURCE:%.c=%.so}
 
-CIF_PARSER_C_DIR = ../../../../components/codcif
-EXTERNALS_C_DIR  = ../../../../externals
+CIF_PARSER_C_DIR = ../../../../../../components/codcif
+EXTERNALS_C_DIR  = ../../../../../../externals
 CEXCEPTIONS_DIR  = ${EXTERNALS_C_DIR}/cexceptions
 GETOPTIONS_DIR   = ${EXTERNALS_C_DIR}/getoptions
 CIF_PARSER_OBJ_SOURCES  = $(wildcard ${CIF_PARSER_C_DIR}/*.c)
@@ -20,7 +20,7 @@ CIF_PARSER_OBJS  = ${CIF_PARSER_OBJ_SOURCES:${CIF_PARSER_C_DIR}/%.c=${CIF_PARSER
 
 OBJS = ${OBJ} ${SWIG_WRAPPER_OBJ} ${CIF_PARSER_OBJS}
 
-PERL5LIB := ../../COD:../..
+PERL5LIB := ../../../../COD:../../../..
 export PERL5LIB
 
 all: ${SWIG_MODULE} ${SWIG_SO_FILE}
@@ -58,5 +58,5 @@ cleanAll: clean
 	rm -f ${SWIG_SO_FILE} ${SWIG_MODULE}
 
 try: ${SWIG_MODULE}
-	-perl -mCCIFParser -le 'my $$c = COD::CCIFParser::CCIFParser::parse_cif( "../../../../../perl-scripts/tests/cif_filter_147.inp", $$0, {} )'
-	-perl -mCCIFParser -le 'my $$c = COD::CCIFParser::CCIFParser::parse_cif( "../../../../../perl-scripts/tests/cif_filter_148.inp", $$0, {} )'
+	-perl -mBison -le 'my $$c = COD::CIF::Parser::Bison::Bison::parse_cif( "../../../../../../../perl-scripts/tests/cif_filter_147.inp", $$0, {} )'
+	-perl -mBison -le 'my $$c = COD::CIF::Parser::Bison::Bison::parse_cif( "../../../../../../../perl-scripts/tests/cif_filter_148.inp", $$0, {} )'
