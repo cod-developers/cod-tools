@@ -26,7 +26,7 @@ use COD::Unicode2CIF;
 use Encode;
 use Capture::Tiny ':all';
 use COD::CIF::Data::CIF2COD qw(cif2cod);
-use COD::CIFTags::CIFTagPrint;
+use COD::CIF::Tags::TagPrint;
 use COD::Precision;
 use COD::UserMessage;
 

@@ -9,13 +9,14 @@
 #  representation of a CIF file returned by the CIFParser module.
 #**
 
-package COD::CIFTags::CIFTagManage;
+package COD::CIF::Tags::TagManage;
 
 use strict;
+use warnings;
 
 require Exporter;
-@COD::CIFTags::CIFTagManage::ISA = qw(Exporter);
-@COD::CIFTags::CIFTagManage::EXPORT = qw( exclude_tag tag_is_empty tag_is_unknown
+our @ISA = qw(Exporter);
+our @EXPORT = qw( exclude_tag tag_is_empty tag_is_unknown
     exclude_empty_tags
     exclude_empty_non_loop_tags
     exclude_unknown_tags

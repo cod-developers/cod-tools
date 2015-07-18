@@ -22,15 +22,15 @@ use strict;
 use File::Basename;
 use COD::Cell qw(cell_volume);
 use COD::CIFParser::CIFParser;
-use COD::CIFTags::CIFDictTags;
-use COD::CIFTags::CIFCODTags;
-use COD::CIFTags::CIFAMCSDTags;
-use COD::CIFTags::CIFTCODTags;
-use COD::CIFTags::CIFDFTTags;
-use COD::CIFTags::CIFExcludedTags;
-use COD::CIFTags::CIFTagManage;
-use COD::CIFTags::CIFTagPrint;
-use COD::CIFTags::CIFTagCanonicalNames;
+use COD::CIF::Tags::DictTags;
+use COD::CIF::Tags::COD;
+use COD::CIF::Tags::AMCSD;
+use COD::CIF::Tags::TCOD;
+use COD::CIF::Tags::DFT;
+use COD::CIF::Tags::Excluded;
+use COD::CIF::Tags::TagManage;
+use COD::CIF::Tags::TagPrint;
+use COD::CIF::Tags::TagCanonicalNames;
 use COD::Spacegroups::SpacegroupNames;
 use COD::Spacegroups::SymopParse;
 use COD::Spacegroups::SymopLookup;
@@ -410,13 +410,13 @@ if( $extra_tag_file ) {
     ## print @extra_tags;
 }
 
-my %excluded_tags  = map { ($_,$_) } @COD::CIFTags::CIFExcludedTags::tag_list;
+my %excluded_tags  = map { ($_,$_) } @COD::CIF::Tags::Excluded::tag_list;
 
-my @dictionary_tags = ( @COD::CIFTags::CIFDictTags::tag_list,
-                        @COD::CIFTags::CIFCODTags::tag_list,
-                        @COD::CIFTags::CIFAMCSDTags::tag_list,
-                        @COD::CIFTags::CIFTCODTags::tag_list,
-                        @COD::CIFTags::CIFDFTTags::tag_list,
+my @dictionary_tags = ( @COD::CIF::Tags::DictTags::tag_list,
+                        @COD::CIF::Tags::COD::tag_list,
+                        @COD::CIF::Tags::AMCSD::tag_list,
+                        @COD::CIF::Tags::TCOD::tag_list,
+                        @COD::CIF::Tags::DFT::tag_list,
                         @extra_tags );
 
 my %dictionary_tags = map { $_, $_ } @dictionary_tags;

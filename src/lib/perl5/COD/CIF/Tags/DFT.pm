@@ -15,15 +15,16 @@
 #  Revision: 263
 #**
 
-package COD::CIFTags::CIFDFTTags;
+package COD::CIF::Tags::DFT;
 
 use strict;
+use warnings;
 
 require Exporter;
-@COD::CIFTags::CIFDFTTags::ISA = qw(Exporter);
-@COD::CIFTags::CIFDFTTags::EXPORT_OK = qw( @tag_list );
+our @ISA = qw(Exporter);
+our @EXPORT_OK = qw( @tag_list );
 
-@COD::CIFTags::CIFDFTTags::tag_list = qw (
+our @tag_list = qw (
 _dft_1e_energy
 _dft_2e_energy
 _dft_alloy_method

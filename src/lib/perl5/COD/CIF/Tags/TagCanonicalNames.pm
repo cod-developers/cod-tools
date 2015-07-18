@@ -9,23 +9,23 @@
 #  representation of a CIF file returned by the CIFParser module.
 #**
 
-package COD::CIFTags::CIFTagCanonicalNames;
+package COD::CIF::Tags::TagCanonicalNames;
 
 use strict;
 
 require Exporter;
-@COD::CIFTags::CIFTagCanonicalNames::ISA = qw(Exporter);
-@COD::CIFTags::CIFTagCanonicalNames::EXPORT = qw( canonical_tag_name canonicalize_names canonicalize_all_names );
+our @ISA = qw(Exporter);
+our @EXPORT = qw( canonical_tag_name canonicalize_names canonicalize_all_names );
 
-use COD::CIFTags::CIFDictTags;
-use COD::CIFTags::CIFCODTags;
-use COD::CIFTags::CIFTCODTags;
-use COD::CIFTags::CIFDFTTags;
+use COD::CIF::Tags::DictTags;
+use COD::CIF::Tags::COD;
+use COD::CIF::Tags::TCOD;
+use COD::CIF::Tags::DFT;
 
-my @dictionary_tags = ( @COD::CIFTags::CIFDictTags::tag_list,
-                        @COD::CIFTags::CIFCODTags::tag_list,
-                        @COD::CIFTags::CIFTCODTags::tag_list,
-                        @COD::CIFTags::CIFDFTTags::tag_list );
+my @dictionary_tags = ( @COD::CIF::Tags::DictTags::tag_list,
+                        @COD::CIF::Tags::COD::tag_list,
+                        @COD::CIF::Tags::TCOD::tag_list,
+                        @COD::CIF::Tags::DFT::tag_list );
 
 my %cif_tags_lc = map {(lc($_),$_)} @dictionary_tags;
 

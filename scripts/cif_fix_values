@@ -26,13 +26,13 @@ eval 'exec perl -x $0 ${1+"$@"}'
 use strict;
 use warnings;
 use COD::CIFParser::CIFParser;
-use COD::CIFTags::CIFTagCanonicalNames qw( canonicalize_all_names );
-use COD::CIFTags::CIFDictTags;
-use COD::CIFTags::CIFCODTags;
-use COD::CIFTags::CIFTCODTags;
-use COD::CIFTags::CIFDFTTags;
-use COD::CIFTags::CIFTagPrint qw( print_cif pack_precision fold );
-use COD::CIFTags::CIFTagManage qw( set_tag rename_tag );
+use COD::CIF::Tags::TagCanonicalNames qw( canonicalize_all_names );
+use COD::CIF::Tags::DictTags;
+use COD::CIF::Tags::COD;
+use COD::CIF::Tags::TCOD;
+use COD::CIF::Tags::DFT;
+use COD::CIF::Tags::TagPrint qw( print_cif pack_precision fold );
+use COD::CIF::Tags::TagManage qw( set_tag rename_tag );
 use COD::SOptions;
 use COD::SUsage;
 use COD::UserMessage;
@@ -1464,10 +1464,10 @@ sub treat_as_set($$) {
     return @insert_reports;
 }
 
-my @dictionary_tags = ( @COD::CIFTags::CIFDictTags::tag_list,
-                        @COD::CIFTags::CIFCODTags::tag_list,
-                        @COD::CIFTags::CIFTCODTags::tag_list,
-                        @COD::CIFTags::CIFDFTTags::tag_list );
+my @dictionary_tags = ( @COD::CIF::Tags::DictTags::tag_list,
+                        @COD::CIF::Tags::COD::tag_list,
+                        @COD::CIF::Tags::TCOD::tag_list,
+                        @COD::CIF::Tags::DFT::tag_list );
 my %dictionary_tags = map { $_, $_ } @dictionary_tags;
 
 @ARGV = ("-") unless @ARGV;

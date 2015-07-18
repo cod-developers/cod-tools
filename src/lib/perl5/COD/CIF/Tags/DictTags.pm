@@ -10,15 +10,16 @@
 #  Contains at least all tags from Core CIF dictionary Version 2.4.4
 #**
 
-package COD::CIFTags::CIFDictTags;
+package COD::CIF::Tags::DictTags;
 
 use strict;
+use warnings;
 
 require Exporter;
-@COD::CIFTags::CIFDictTags::ISA = qw(Exporter);
-@COD::CIFTags::CIFDictTags::EXPORT_OK = qw( @tag_list );
+our @ISA = qw(Exporter);
+our @EXPORT_OK = qw( @tag_list );
 
-@COD::CIFTags::CIFDictTags::tag_list = qw (
+our @tag_list = qw (
 _publ_[]
 _publ_author_[]
 _publ_author_address

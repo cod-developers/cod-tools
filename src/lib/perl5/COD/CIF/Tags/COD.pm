@@ -8,15 +8,16 @@
 #  A list of CIF dictionary tags.
 #**
 
-package COD::CIFTags::CIFCODTags;
+package COD::CIF::Tags::COD;
 
 use strict;
+use warnings;
 
 require Exporter;
-@COD::CIFTags::CIFCODTags::ISA = qw(Exporter);
-@COD::CIFTags::CIFCODTags::EXPORT_OK = qw( @tag_list );
+our @ISA = qw(Exporter);
+our @EXPORT_OK = qw( @tag_list );
 
-@COD::CIFTags::CIFCODTags::tag_list = qw (
+our @tag_list = qw (
 _[local]_cod_duplicate_entry
 _[local]_cod_superseeded_by
 _[local]_cod_data_source_file

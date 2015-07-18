@@ -14,9 +14,10 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #**
 
 use strict;
+use warnings;
 use COD::CIFParser::CIFParser;
-use COD::CIFTags::CIFDictTags;
-use COD::CIFTags::CIFExcludedTags;
+use COD::CIF::Tags::DictTags;
+use COD::CIF::Tags::Excluded;
 use COD::Unicode2CIF;
 use COD::SOptions;
 use COD::SUsage;
@@ -123,13 +124,13 @@ my @generated_tags = (
     @xrf_tags,
 );
 
-my %excluded_tags  = map { ($_,$_) } @COD::CIFTags::CIFExcludedTags::tag_list;
+my %excluded_tags  = map { ($_,$_) } @COD::CIF::Tags::Excluded::tag_list;
 ## my %generated_tags = map { ($_,$_) } @generated_tags;
 my %xrf_tags = map { ($_,$_) } @xrf_tags;
 
 my @requested_cif_tags = map {
     (exists $excluded_tags{$_} || exists $xrf_tags{$_} )? () : $_
-} @COD::CIFTags::CIFDictTags::tag_list;
+} @COD::CIF::Tags::DictTags::tag_list;
 
 my %cif_tags_lc = map {(lc($_),$_)} @requested_cif_tags, @generated_tags;
 

@@ -8,14 +8,15 @@
 #  A list of CIF dictionary tags excluded from COD files.
 #**
 
-package COD::CIFTags::CIFExcludedTags;
+package COD::CIF::Tags::Excluded;
 
 use strict;
+use warnings;
 require Exporter;
-@COD::CIFTags::CIFExcludedTags::ISA = qw(Exporter);
-@COD::CIFTags::CIFExcludedTags::EXPORT_OK = qw(@tag_list);
+our @ISA = qw(Exporter);
+our @EXPORT_OK = qw(@tag_list);
 
-@COD::CIFTags::CIFExcludedTags::iurc_tags = qw (
+our @iurc_tags = qw (
 _iucr_compatibility_tag
 _geom_extra_table_[]
 _geom_extra_tableA_col_1
@@ -75,7 +76,7 @@ _vrf_[]
 _vrf_VALIDATOR_comments
 );
 
-@COD::CIFTags::CIFExcludedTags::ccdc_tags = qw (
+our @ccdc_tags = qw (
 _database_code_depnum_ccdc_archive
 _database.code_depnum_ccdc_archive
 _database_code_depnum_ccdc_fiz
@@ -89,12 +90,12 @@ _database_code_CSD
 _database.code_CSD
 );
 
-@COD::CIFTags::CIFExcludedTags::icsd_tags = qw (
+our @icsd_tags = qw (
 _database_code_ICSD
 _database.code_ICSD
 );
 
-@COD::CIFTags::CIFExcludedTags::potentially_copyrighted_tags = qw(
+our @potentially_copyrighted_tags = qw(
 _publ_body_[]
 _publ_body_contents
 _publ_body.contents
@@ -178,11 +179,11 @@ _publ_contact_letter
 _publ.contact_letter
 );
 
-@COD::CIFTags::CIFExcludedTags::tag_list = (
-    @COD::CIFTags::CIFExcludedTags::iurc_tags,
-    @COD::CIFTags::CIFExcludedTags::ccdc_tags,
-    @COD::CIFTags::CIFExcludedTags::icsd_tags,
-    @COD::CIFTags::CIFExcludedTags::potentially_copyrighted_tags
+our @tag_list = (
+    @iurc_tags,
+    @ccdc_tags,
+    @icsd_tags,
+    @potentially_copyrighted_tags
 );
 
 1;

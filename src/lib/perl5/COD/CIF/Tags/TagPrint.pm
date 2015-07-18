@@ -9,20 +9,18 @@
 #  representation of a CIF file returned by the CIFParser module.
 #**
 
-package COD::CIFTags::CIFTagPrint;
+package COD::CIF::Tags::TagPrint;
 
 use strict;
 
 require Exporter;
-@COD::CIFTags::CIFTagPrint::ISA = qw(Exporter);
-@COD::CIFTags::CIFTagPrint::EXPORT =
-    qw( print_cif print_single_tag_and_value print_tag print_value
-        pack_precision fold );
+our @ISA = qw(Exporter);
+our @EXPORT = qw( print_cif print_single_tag_and_value print_tag
+                  print_value pack_precision fold );
 
-$COD::CIFTags::CIFTagPrint::max_cif_line_len = 80;
-$COD::CIFTags::CIFTagPrint::default_folding_width =
-    $COD::CIFTags::CIFTagPrint::max_cif_line_len - 1;
-$COD::CIFTags::CIFTagPrint::max_cif_tag_len = 32;
+our $max_cif_line_len = 80;
+our $default_folding_width = $max_cif_line_len - 1;
+our $max_cif_tag_len = 32;
 
 sub print_cif
 {
@@ -171,24 +169,22 @@ sub print_single_tag_and_value($$@)
     $fold_long_fields = 0
         unless defined $fold_long_fields;
 
-    $folding_width = $COD::CIFTags::CIFTagPrint::default_folding_width
+    $folding_width = $default_folding_width
         unless defined $folding_width;
 
     my $value = sprint_value( $val, $fold_long_fields, $folding_width );
-    my $key_len = length($tag) > $COD::CIFTags::CIFTagPrint::max_cif_tag_len ?
-        length($tag) : $COD::CIFTags::CIFTagPrint::max_cif_tag_len;
+    my $key_len = length($tag) > $max_cif_tag_len ?
+                                     length($tag) : $max_cif_tag_len;
     my $val_len = length($value);
 
     if( $value =~ /\s/ ) {
         $val_len += 2;
     }
-    if( $key_len + $val_len + 1 >
-        $COD::CIFTags::CIFTagPrint::max_cif_line_len &&
-        $value !~ /\n/ ) {
+    if( $key_len + $val_len + 1 > $max_cif_line_len && $value !~ /\n/ ) {
         printf "%s\n", $tag;
     } else {
         if( $value !~ /\n/ ) {
-            printf "%-" . $COD::CIFTags::CIFTagPrint::max_cif_tag_len . "s ", $tag;
+            printf "%-" . $max_cif_tag_len . "s ", $tag;
         } else {
             printf "%s", $tag;
         }
@@ -247,8 +243,7 @@ sub print_loop
                 $lines .= $val;
                 $line = $line_prefix;
                 $folding_separator = "\n";
-            } elsif( length( $line ) + length( $val ) + 1 
-                     < $COD::CIFTags::CIFTagPrint::max_cif_line_len ) {
+            } elsif( length( $line ) + length( $val ) + 1 < $max_cif_line_len ) {
                 if( $line eq $line_prefix ) {
                     $line .= $val;
                 } else {
@@ -291,7 +286,7 @@ sub sprint_value
     $fold_long_fields = 0
         unless defined $fold_long_fields;
 
-    $folding_width = $COD::CIFTags::CIFTagPrint::default_folding_width
+    $folding_width = $default_folding_width
         unless defined $folding_width;
 
     if( $fold_long_fields && maxlen($val) > $folding_width - 2 ) {

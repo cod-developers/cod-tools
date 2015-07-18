@@ -15,15 +15,16 @@
 #  Revision: 274
 #**
 
-package COD::CIFTags::CIFTCODTags;
+package COD::CIF::Tags::TCOD;
 
 use strict;
+use warnings;
 
 require Exporter;
-@COD::CIFTags::CIFTCODTags::ISA = qw(Exporter);
-@COD::CIFTags::CIFTCODTags::EXPORT_OK = qw( @tag_list );
+our @ISA = qw(Exporter);
+our @EXPORT_OK = qw( @tag_list );
 
-@COD::CIFTags::CIFTCODTags::tag_list = qw (
+our @tag_list = qw (
 _tcod_atom_site_initial_Cartn_x
 _tcod_atom_site_initial_Cartn_y
 _tcod_atom_site_initial_Cartn_z
