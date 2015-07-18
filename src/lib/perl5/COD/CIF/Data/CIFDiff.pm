@@ -9,14 +9,15 @@
 #  representation of a CIF file returned by the CIFParser module.
 #**
 
-package COD::CIFData::CIFDiff;
+package COD::CIF::Data::CIFDiff;
 
 use strict;
+use warnings;
 use COD::CIFTags::CIFTagPrint;
 
 require Exporter;
-@COD::CIFData::CIFDiff::ISA = qw(Exporter);
-@COD::CIFData::CIFDiff::EXPORT = qw( diff comm );
+our @ISA = qw(Exporter);
+our @EXPORT = qw( diff comm );
 
 sub diff
 {

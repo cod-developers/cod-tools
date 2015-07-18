@@ -12,7 +12,7 @@
 #  representation data structure as produced by CIFParser module.
 #**
 
-package COD::CIFData::CIFEstimateZ;
+package COD::CIF::Data::CIFEstimateZ;
 
 use strict;
 use warnings;

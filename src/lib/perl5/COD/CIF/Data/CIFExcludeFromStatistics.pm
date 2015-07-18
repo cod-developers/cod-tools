@@ -8,11 +8,11 @@
 # the statistics.
 #-----------------------------------------------------------------------
 
-package COD::CIFData::CIFExcludeFromStatistics;
+package COD::CIF::Data::CIFExcludeFromStatistics;
 
 use strict;
 use warnings;
-use COD::CIFData::CODFlags;
+use COD::CIF::Data::CODFlags;
 require Exporter;
 our @ISA = qw(Exporter);
 our @EXPORT_OK = qw( exclude_from_statistics );

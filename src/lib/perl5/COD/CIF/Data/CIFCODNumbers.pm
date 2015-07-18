@@ -8,17 +8,18 @@
 #  Find COD numbers of duplicate structures.
 #**
 
-package COD::CIFData::CIFCODNumbers;
+package COD::CIF::Data::CIFCODNumbers;
 
 use strict;
+use warnings;
 use File::Basename;
 use COD::Formulae::AdHocParser;
-use COD::CIFData::CIFCellContents;
+use COD::CIF::Data::CIFCellContents;
 use COD::Precision qw(eqsig);
 
 require Exporter;
-@COD::CIFData::CIFCODNumbers::ISA = qw(Exporter);
-@COD::CIFData::CIFCODNumbers::EXPORT = qw(fetch_duplicates fetch_duplicates_from_database);
+our @ISA = qw(Exporter);
+our @EXPORT = qw(fetch_duplicates fetch_duplicates_from_database);
 
 my %has_numeric_value = (
     "_journal_year"   => 1,

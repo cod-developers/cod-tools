@@ -9,7 +9,7 @@
 #  the parsed CIF data structures.
 #**
 
-package COD::CIFData;
+package COD::CIF::Data;
 
 use strict;
 use warnings;

@@ -9,14 +9,14 @@
 #  deposition to COD database.
 #**
 
-package COD::CIFData::CODPredepositionCheck;
+package COD::CIF::Data::CODPredepositionCheck;
 
 use strict;
 use warnings;
 
 require Exporter;
-@COD::CIFData::CODPredepositionCheck::ISA = qw(Exporter);
-@COD::CIFData::CODPredepositionCheck::EXPORT_OK = qw(filter_and_check run_command);
+our @ISA = qw(Exporter);
+our @EXPORT_OK = qw(filter_and_check run_command);
 
 use IPC::Open3 qw / open3 /;
 use IO::Handle;
@@ -25,12 +25,12 @@ use Unicode::Normalize;
 use COD::Unicode2CIF;
 use Encode;
 use Capture::Tiny ':all';
-use COD::CIFData::CIF2COD qw(cif2cod);
+use COD::CIF::Data::CIF2COD qw(cif2cod);
 use COD::CIFTags::CIFTagPrint;
 use COD::Precision;
 use COD::UserMessage;
 
-@COD::CIFData::CODPredepositionCheck::identity_tags = qw(
+our @identity_tags = qw(
     _cell_length_a
     _cell_length_b
     _cell_length_c
@@ -44,8 +44,8 @@ use COD::UserMessage;
     _[local]_cod_data_source_block
 );
 
-$COD::CIFData::CODPredepositionCheck::max_hold_period = 12;
-$COD::CIFData::CODPredepositionCheck::default_hold_period = 6;
+our $max_hold_period = 12;
+our $default_hold_period = 6;
 
 sub filter_and_check
 {
@@ -493,7 +493,7 @@ sub filter_and_check
         $cif_cod_numbers_opt->{check_bibliography} = 0
             if $deposition_type eq 'personal';
 
-        use COD::CIFData::CIFCODNumbers;
+        use COD::CIF::Data::CIFCODNumbers;
         my $duplicates = fetch_duplicates( $data,
                                            $cif_filename,
                                            $db_conf,
@@ -685,8 +685,7 @@ sub filter_and_check
             $hkl_now,
             $hkl_filename,
             $tmp_file,
-            [ @COD::CIFData::CODPredepositionCheck::identity_tags,
-            '_pd_block_id' ]
+            [ @identity_tags, '_pd_block_id' ]
         );
 
         # Determining whether this HKL describes data from single-crystal
@@ -713,14 +712,14 @@ sub filter_and_check
             $filter_stdout,
             $cif_filename,
             $tmp_file,
-            \@COD::CIFData::CODPredepositionCheck::identity_tags
+            \@identity_tags
         );
 
         my $cif_for_hkl =
             find_cif_datablock_for_hkl(
                 $cif_parameters,
                 \%hkl_parameters,
-                \@COD::CIFData::CODPredepositionCheck::identity_tags,
+                \@identity_tags,
                 $cif_filename,
                 $hkl_filename
         );
@@ -1251,18 +1250,16 @@ sub check_hold_period
         # it should be left unchanged
         if( defined $hold_period ) {
             $hold_period_now = $hold_period;
-            if( $hold_period >
-                $COD::CIFData::CODPredepositionCheck::max_hold_period ) {
+            if( $hold_period > $max_hold_period ) {
                 critical( $filename, undef, "WARNING",
                          "hold period $hold_period_now months is too " .
                          "large -- only holds up to " .
-                         $COD::CIFData::CODPredepositionCheck::max_hold_period .
+                         $max_hold_period .
                          " months are accepted" );
             }
         } else {
             if( !$replace ) {
-                $hold_period_now =
-                    $COD::CIFData::CODPredepositionCheck::default_hold_period;
+                $hold_period_now = $default_hold_period;
                 print_message( $0, $filename, undef, "NOTE",
                                "hold period not specified, " .
                                "(or specified incorrectly), " .

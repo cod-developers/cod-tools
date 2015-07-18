@@ -9,13 +9,12 @@
 #  inorganic, mineral, etc.
 #**
 
-package COD::CIFData::CIFClassifyer;
+package COD::CIF::Data::CIFClassifyer;
 
 use strict;
 use warnings;
-
-use COD::CIFData qw( get_cell get_symmetry_operators );
-use COD::CIFData::CIFSymmetryGenerator qw( symop_generate_atoms );
+use COD::CIF::Data qw( get_cell get_symmetry_operators );
+use COD::CIF::Data::CIFSymmetryGenerator qw( symop_generate_atoms );
 use COD::Fractional;
 use COD::Spacegroups::SymopAlgebra qw(symop_vector_mul);
 use COD::Spacegroups::SymopParse;
@@ -25,8 +24,8 @@ use COD::Spacegroups::VectorAlgebra qw(distance
 use COD::UserMessage;
 
 require Exporter;
-@COD::CIFData::CIFClassifyer::ISA = qw(Exporter);
-@COD::CIFData::CIFClassifyer::EXPORT = qw(
+our @ISA = qw(Exporter);
+our @EXPORT = qw(
     cif_class_flags
     cif_has_C_bonds
 );

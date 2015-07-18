@@ -9,10 +9,11 @@
 #  a CIF file.
 #**
 
-package COD::CIFData::CIFAtomList;
+package COD::CIF::Data::CIFAtomList;
 
 use strict;
-use COD::CIFData qw( get_cell );
+use warnings;
+use COD::CIF::Data qw( get_cell );
 use COD::Spacegroups::SymopAlgebra qw( symop_vector_mul );
 use COD::Spacegroups::VectorAlgebra qw( modulo_1 );
 use COD::Fractional qw( symop_ortho_from_fract );

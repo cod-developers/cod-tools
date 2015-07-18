@@ -7,7 +7,7 @@
 # Test dataset on various criteria.
 #-----------------------------------------------------------------------
 
-package COD::CIFData::CODFlags;
+package COD::CIF::Data::CODFlags;
 
 use strict;
 use warnings;

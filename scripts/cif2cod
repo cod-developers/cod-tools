@@ -14,7 +14,7 @@ eval 'exec perl -x $0 ${1+"$@"}'
 
 use strict;
 use COD::CIFParser::CIFParser;
-use COD::CIFData::CIF2COD qw(cif2cod);
+use COD::CIF::Data::CIF2COD qw(cif2cod);
 use COD::UserMessage;
 use COD::SOptions;
 use COD::SUsage;
@@ -164,7 +164,7 @@ my @print_columns;
 if( defined $user_columns ) {
     @print_columns = map { split( " ", $_ ) } split( ",", $user_columns );
 } else {
-    @print_columns = @COD::CIFData::CIF2COD::new_data_fields;
+    @print_columns = @COD::CIF::Data::CIF2COD::new_data_fields;
 }
 
 binmode( STDOUT, ":utf8" );
@@ -214,7 +214,7 @@ for my $filename (@ARGV) {
 
         # Print out the collected data fields:
         
-        my @data_fields = @COD::CIFData::CIF2COD::default_data_fields;
+        my @data_fields = @COD::CIF::Data::CIF2COD::default_data_fields;
         if( $print_header || defined $user_columns ) {
             @data_fields = @print_columns;
         }

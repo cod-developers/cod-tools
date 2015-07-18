@@ -8,21 +8,21 @@
 #  Parse a CIF file, prepare a COD database table entry from it.
 #**
 
-package COD::CIFData::CIF2COD;
+package COD::CIF::Data::CIF2COD;
 
 use strict;
 use COD::Cell qw(cell_volume);
 use COD::Spacegroups::SpacegroupNames;
-use COD::CIFData qw(get_cell);
-use COD::CIFData::CIFCellContents;
-use COD::CIFData::CODFlags qw(is_disordered has_coordinates has_Fobs);
+use COD::CIF::Data qw(get_cell);
+use COD::CIF::Data::CIFCellContents;
+use COD::CIF::Data::CODFlags qw(is_disordered has_coordinates has_Fobs);
 use COD::CIFTags::CIFDictTags;
 use COD::AtomProperties;
 use COD::Unicode2CIF;
 
 require Exporter;
-@COD::CIFData::CIF2COD::ISA = qw(Exporter);
-@COD::CIFData::CIF2COD::EXPORT_OK = qw( cif2cod @default_data_fields @new_data_fields );
+our @ISA = qw(Exporter);
+our @EXPORT_OK = qw( cif2cod @default_data_fields @new_data_fields );
 
 my $bond_safety_margin = 0.2; # Angstroems; a bond safety marging for a CIF classifier.
 
@@ -39,7 +39,7 @@ my $cod_number;
 # The default sql table data field that was taken from the 
 # cod-add-data.sh script.
 
-@COD::CIFData::CIF2COD::default_data_fields = qw (
+our @default_data_fields = qw (
     file
     a
     siga
@@ -88,11 +88,11 @@ my $cod_number;
     text
 );
 
-my @data_fields = @COD::CIFData::CIF2COD::default_data_fields;
+my @data_fields = @default_data_fields;
 
 # New sql table data fields.
 
-@COD::CIFData::CIF2COD::new_data_fields = qw (
+our @new_data_fields = qw (
     file
     a
     siga
