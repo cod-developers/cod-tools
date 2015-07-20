@@ -7,6 +7,9 @@ OBJ              = ${SWIG_SOURCE:%.c=%.o}
 SWIG_WRAPPER_OBJ = ${SWIG_WRAPPER:%.c=%.o}
 SWIG_SO_FILE     = ../../../../auto/COD/CIF/Parser/Bison/${SWIG_SOURCE:%.c=%.so}
 
+INSTALL_DIR   = ..
+INSTALL_FILES = ${INSTALL_DIR}/${SWIG_MODULE}
+
 CIF_PARSER_C_DIR = ../../../../../../components/codcif
 EXTERNALS_C_DIR  = ../../../../../../externals
 CEXCEPTIONS_DIR  = ${EXTERNALS_C_DIR}/cexceptions
@@ -24,6 +27,11 @@ PERL5LIB := ../../../../COD:../../../..
 export PERL5LIB
 
 all: ${SWIG_MODULE} ${SWIG_SO_FILE}
+
+install: ${INSTALL_FILES}
+
+${INSTALL_FILES}: ${SWIG_MODULE} ${SWIG_SO_FILE}
+	cp -f -v $< $@
 
 ${SWIG_SO_FILE}: ${OBJS}
 	gcc `perl -MConfig -e 'print $$Config{lddlflags}'` ${OBJS} -o $@
@@ -58,5 +66,5 @@ cleanAll: clean
 	rm -f ${SWIG_SO_FILE} ${SWIG_MODULE}
 
 try: ${SWIG_MODULE}
-	-perl -mBison -le 'my $$c = COD::CIF::Parser::Bison::Bison::parse_cif( "../../../../../../../perl-scripts/tests/cif_filter_147.inp", $$0, {} )'
-	-perl -mBison -le 'my $$c = COD::CIF::Parser::Bison::Bison::parse_cif( "../../../../../../../perl-scripts/tests/cif_filter_148.inp", $$0, {} )'
+	-perl -mBison -le 'my $$c = COD::CIF::Parser::Bison::parse_cif( "../../../../../../../perl-scripts/tests/cif_filter_147.inp", $$0, {} )'
+	-perl -mBison -le 'my $$c = COD::CIF::Parser::Bison::parse_cif( "../../../../../../../perl-scripts/tests/cif_filter_148.inp", $$0, {} )'
