@@ -39,7 +39,9 @@ error_report = progname, ':', [spaces], location, ':', [spaces],
 
 location = file_position, [ [spaces], additional_position ] ;
 
-file_position = filename, [ [spaces], '(', lineno, ',', linepos, ')' ] ;
+file_position = filename, [ [spaces], file_line_column ] ;
+
+file_line_column = '(', lineno, ',', linepos, ')';
 
 message = status, ',', [spaces], msgtext ;
 
@@ -57,7 +59,7 @@ filename = filename_char, { filename_char } ;
 
 progname = filename_char, { filename_char } ;
 
-filename_char = word_char | "-" ;
+filename_char = letter | digit | quote | punctuator | "-" ;
 
 (* Lexical tokens: *)
 
@@ -73,7 +75,7 @@ text = word, { [spaces], word, [spaces] } ;
 
 word = word_char, { word_char | "-" } ;
 
-word_char = letter | digit | quote | punctuator ;
+word_char = letter | digit | quote | punctuator | braces ;
 
 letter = lowercase_letter | uppercase_letter | "_" ;
 
@@ -95,8 +97,7 @@ braces = "(" | ")" | "[" | "]" | "{" | "}" ;
 (* Puncuators for error messages SHOULD NOT include ":" and "-": *)
 punctuator = "!" | "#" | "$" | "%" | "&" | "*" | "+" | ","
            | (* "-" | *) "." | "/" | (* ":" | *) ";" | "<" | "=" | ">" | "?" | "@"
-           | "\" | "^" | "`"
-           | braces ;
+           | "\" | "^" | "`" ;
 
 (* @END EBNF *)
 
