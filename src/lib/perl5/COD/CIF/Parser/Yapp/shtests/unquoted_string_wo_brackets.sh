@@ -13,13 +13,10 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #**
 
 use strict;
-
-use lib ".";
-use lib "lib/perl5";
-use lib "CIFParser";
+use warnings;
 
 use File::Basename;
-use COD::CIFParser::CIFParser;
+use COD::CIF::Parser::Yapp;
 
 my $script_dir  = File::Basename::dirname( $0 );
 my $script_name = File::Basename::basename( $0 );
@@ -28,13 +25,24 @@ $script_name =~ s/\.sh$//;
 
 my $filename = "${script_dir}/${script_name}.inp";
 
-my $parser = new COD::CIFParser::CIFParser;
+my $parser = new COD::CIF::Parser::Yapp;
 
-my $data = $parser->Run($filename);
+my %options;
 
-while(my($k,$v) = each(%{$data->[0]{values}})) {
-    print "Tag '" . $k . "' values:\n";
-    local $, = "\n";
-    print @{$v};
-    print "\n" . '-' x 20 . "\n";
+$options{allow_uqstring_brackets} = 0;
+
+my $data = $parser->Run($filename, \%options);
+
+if (!defined $data) {
+    print "Unable to parse the CIF file.\n";
 }
+
+while(my($k,$v) = each %{$data->[0]{values}}) {
+    print "Values for '$k':\n";
+    for my $mas(@{$v}) {
+        print $mas . "\n";
+    }
+    print "-" x 20 . "\n";
+}
+
+exit 0;

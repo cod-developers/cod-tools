@@ -18,7 +18,7 @@ use COD::ShowStruct;
 use FileHandle;
 use COD::Precision;
 
-$COD::CIFParser::CIFParser::version = '1.0';
+$COD::CIF::Parser::Yapp::version = '1.0';
 
 my $SVNID = '$Id$';
 
@@ -26,7 +26,7 @@ my $SVNID = '$Id$';
 # 1 - only YAPP output (type -> value)
 # 2 - lex & yapp output
 # 3 - generated array dump
-$COD::CIFParser::CIFParser::debug = 0;
+$COD::CIF::Parser::Yapp::debug = 0;
 
 sub merge_data_lists($$$)
 {
@@ -128,7 +128,7 @@ cif_file
         }
     |   data_block_list
         {
-            if($COD::CIFParser::CIFParser::debug >= 3)
+            if($COD::CIF::Parser::Yapp::debug >= 3)
             {
                 showRef($_[1]);
             }
@@ -137,7 +137,7 @@ cif_file
     |   headerless_data_block
         {
             my $val = $_[1];
-            if($COD::CIFParser::CIFParser::debug >= 3)
+            if($COD::CIF::Parser::Yapp::debug >= 3)
             {
                 showRef($_[1]);
             }
@@ -147,7 +147,7 @@ cif_file
         {
             my $val = $_[2];
             unshift( @{$val}, $_[1] );
-            if($COD::CIFParser::CIFParser::debug >= 3)
+            if($COD::CIF::Parser::Yapp::debug >= 3)
             {
                 showRef($_[1]);
             }
@@ -376,8 +376,8 @@ cif_entry
                          type => $_[2]->{type}
                 };
             }
-            if( $COD::CIFParser::CIFParser::debug >= 1 &&
-                $COD::CIFParser::CIFParser::debug <= 2)
+            if( $COD::CIF::Parser::Yapp::debug >= 1 &&
+                $COD::CIF::Parser::Yapp::debug <= 2)
             {
                 showRef($val);
             }
@@ -403,8 +403,8 @@ cif_entry
                         value => join( " ", $_[2]->{value}, @{$_[4]} ),
                         type => 'SQSTRING'
                       };
-            if( $COD::CIFParser::CIFParser::debug >= 1 &&
-                $COD::CIFParser::CIFParser::debug <= 2 ) {
+            if( $COD::CIF::Parser::Yapp::debug >= 1 &&
+                $COD::CIF::Parser::Yapp::debug <= 2 ) {
                 showRef($val);
             }
             return $val;
@@ -519,8 +519,8 @@ save_block
 cif_value
     :   string
         {
-            if( $COD::CIFParser::CIFParser::debug >= 1 &&
-                $COD::CIFParser::CIFParser::debug <= 2 )
+            if( $COD::CIF::Parser::Yapp::debug >= 1 &&
+                $COD::CIF::Parser::Yapp::debug <= 2 )
             {
                 print $_[1]->{type} . "\t->\t"
                     . $_[1]->{value} . "\n"
@@ -529,8 +529,8 @@ cif_value
         }
     |   number
         {
-            if( $COD::CIFParser::CIFParser::debug >= 1 &&
-                $COD::CIFParser::CIFParser::debug <= 2 )
+            if( $COD::CIF::Parser::Yapp::debug >= 1 &&
+                $COD::CIF::Parser::Yapp::debug <= 2 )
             {
                 print $_[1]->{type} . "\t\t->\t"
                     . $_[1]->{value} . " -- "
@@ -541,8 +541,8 @@ cif_value
         }
     |   textfield
         {
-            if( $COD::CIFParser::CIFParser::debug >= 1 &&
-                $COD::CIFParser::CIFParser::debug <= 2 )
+            if( $COD::CIF::Parser::Yapp::debug >= 1 &&
+                $COD::CIF::Parser::Yapp::debug <= 2 )
             {
                 print "TFIELD\t\t->\t"
                      . $_[1]->{value} . "\n"
@@ -687,7 +687,7 @@ sub _Lexer
     {
         do
         {
-            $parser->YYData->{INPUT} = <$COD::CIFParser::CIFParser::FILEIN>;
+            $parser->YYData->{INPUT} = <$COD::CIF::Parser::Yapp::FILEIN>;
             $parser->YYData->{VARS}{lines}++;
             if( defined $parser->{reporter} &&
                 $parser->YYData->{VARS}{lines} % 100 == 0 )
@@ -775,8 +775,8 @@ my $UQSTRING_INLINE     =       qr/^(?:
         advance_token($parser, length($1), 1);
     }
 
-    if( $COD::CIFParser::CIFParser::debug >= 2 &&
-        $COD::CIFParser::CIFParser::debug < 3 )
+    if( $COD::CIF::Parser::Yapp::debug >= 2 &&
+        $COD::CIF::Parser::Yapp::debug < 3 )
     {
         print ">>> '", $parser->YYData->{INPUT}, "'\n";
     }
@@ -850,7 +850,7 @@ my $UQSTRING_INLINE     =       qr/^(?:
                 $tfield = $1;
                 while( 1 )
                 {
-                    my $line = <$COD::CIFParser::CIFParser::FILEIN>;
+                    my $line = <$COD::CIF::Parser::Yapp::FILEIN>;
                     if( defined $line )
                     {
                         chomp $line;
@@ -1046,11 +1046,11 @@ sub Run
     $self->{YYData}->{ERROR_MESSAGES} = [];
 
     if( ref $options eq "HASH"  && defined $options->{filehandle} ) {
-        $COD::CIFParser::CIFParser::FILEIN = $options->{filehandle};
+        $COD::CIF::Parser::Yapp::FILEIN = $options->{filehandle};
     } else {
         my $program = $0 eq '-e' ? "perl -e '...'" : $0;
-        $COD::CIFParser::CIFParser::FILEIN = new FileHandle $filename;
-        if( !defined $COD::CIFParser::CIFParser::FILEIN ) {
+        $COD::CIF::Parser::Yapp::FILEIN = new FileHandle $filename;
+        if( !defined $COD::CIF::Parser::Yapp::FILEIN ) {
             print STDERR "$program: $filename: ERROR, "
                        . "unable to open file '$filename' for reading -- "
                        . lcfirst $! . "\n";
@@ -1059,8 +1059,8 @@ sub Run
     }
 
     $| = 1;
-    if( $COD::CIFParser::CIFParser::debug >= 2 &&
-        $COD::CIFParser::CIFParser::debug < 3)
+    if( $COD::CIF::Parser::Yapp::debug >= 2 &&
+        $COD::CIF::Parser::Yapp::debug < 3)
     {
         $self->YYParse( yylex => \&_Lexer,
                         yyerror => \&_Error,
@@ -1070,19 +1070,19 @@ sub Run
     }
     if( $self->YYNberr() == 0 )
     {
-        if( $COD::CIFParser::CIFParser::debug >= 1 &&
-            $COD::CIFParser::CIFParser::debug < 3)
+        if( $COD::CIF::Parser::Yapp::debug >= 1 &&
+            $COD::CIF::Parser::Yapp::debug < 3)
         {
             print "File syntax is CORRECT!\n";
         }
-        undef $COD::CIFParser::CIFParser::FILEIN;
+        undef $COD::CIF::Parser::Yapp::FILEIN;
     } else {
-        if( $COD::CIFParser::CIFParser::debug >= 1 &&
-            $COD::CIFParser::CIFParser::debug < 3)
+        if( $COD::CIF::Parser::Yapp::debug >= 1 &&
+            $COD::CIF::Parser::Yapp::debug < 3)
         {
             print "Syntax check failed.\n";
         }
-        undef $COD::CIFParser::CIFParser::FILEIN;
+        undef $COD::CIF::Parser::Yapp::FILEIN;
     }
     return $self->{USER}->{CIFfile};
 }
