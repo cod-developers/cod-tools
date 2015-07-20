@@ -25,7 +25,7 @@ eval 'exec perl -x $0 ${1+"$@"}'
 
 use strict;
 use warnings;
-use COD::CIFParser::CIFParser;
+use COD::CIF::Parser::Yapp;
 use COD::CIF::Tags::TagCanonicalNames qw( canonicalize_all_names );
 use COD::CIF::Tags::DictTags;
 use COD::CIF::Tags::COD;
@@ -51,7 +51,7 @@ my $treat_as_set = 1;
 my $use_parser = "perl";
 
 my $dictParsed = [];
-my $parser = new COD::CIFParser::CIFParser;
+my $parser = new COD::CIF::Parser::Yapp;
 my @dictionaries = ();
 my %dictTags;
 my %tagDicts;
@@ -410,7 +410,7 @@ if( @dictionaries ) {
     for my $dict_file_name( @dictionaries ) {
         my( $data, $error_count );
         if( $use_parser eq "perl" ) {
-            my $parser = new COD::CIFParser::CIFParser;
+            my $parser = new COD::CIF::Parser::Yapp;
             $data = $parser->Run( $dict_file_name );
             if( defined $parser->YYData->{ERRCOUNT} &&
                 $parser->YYData->{ERRCOUNT} > 0 ) {
@@ -1475,7 +1475,7 @@ my %dictionary_tags = map { $_, $_ } @dictionary_tags;
 for my $filename (@ARGV) {
     my( $data, $error_count );
     if( $use_parser eq "perl" ) {
-        my $parser = new COD::CIFParser::CIFParser;
+        my $parser = new COD::CIF::Parser::Yapp;
         $data = $parser->Run( $filename );
         if( defined $parser->YYData->{ERRCOUNT} &&
             $parser->YYData->{ERRCOUNT} > 0 ) {

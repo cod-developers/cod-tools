@@ -16,7 +16,7 @@ use strict;
 use warnings;
 use COD::AtomBricks qw(build_bricks get_atom_index get_search_span);
 use COD::AtomProperties;
-use COD::CIFParser::CIFParser;
+use COD::CIF::Parser::Yapp;
 use COD::CIF::Data qw( get_cell );
 use COD::CIF::Data::CIFAtomList qw( atom_array_from_cif );
 use COD::CIF::Tags::TagCanonicalNames;
@@ -161,7 +161,7 @@ if( $cif_header_file ) {
 for my $filename (@ARGV) {
     my $data;
     if( $use_parser eq "perl" ) {
-        my $parser = new COD::CIFParser::CIFParser;
+        my $parser = new COD::CIF::Parser::Yapp;
         $data = $parser->Run($filename);
     } else {
         require COD::CIF::Parser::Bison;
@@ -350,7 +350,7 @@ sub get_alternatives
 #==============================================================================#
 # Find and mark disorder in a given CIF datablock (overwrites old values)
 # Accepts
-#    dataset         - CIF datablock, as produced by COD::CIFParser
+#    dataset         - CIF datablock, as produced by COD::CIF::Parser
 #    atom_properties - atom properties structure, as from COD::AtomProperties
 #    filename        - CIF file name
 #    options         - various options to control the algorithm

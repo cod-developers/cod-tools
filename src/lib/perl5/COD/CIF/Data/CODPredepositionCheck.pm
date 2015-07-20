@@ -239,10 +239,10 @@ sub filter_and_check
 
     open( my $out, ">", $tmp_file );
     print $out join( "\n", @$correct_stdout );
-    close( $out );    
+    close( $out );
 
-    use COD::CIFParser::CIFParser;
-    my $parser = new COD::CIFParser::CIFParser;
+    require COD::CIF::Parser::Yapp;
+    my $parser = new COD::CIF::Parser::Yapp;
     my $data = $parser->Run( $tmp_file );
 
     # Splitting powder diffraction CIF datablocks into CIF and HKL:

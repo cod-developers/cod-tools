@@ -52,7 +52,7 @@ eval 'exec perl -x $0 ${1+"$@"}'
 use strict;
 use File::Basename;
 use COD::AtomBricks qw(build_bricks get_atom_index get_search_span);
-use COD::CIFParser::CIFParser;
+use COD::CIF::Parser::Yapp;
 use COD::CIF::Data qw(get_cell get_symmetry_operators);
 use COD::CIF::Data::CIFSymmetryGenerator qw( atoms_coincide
                                              test_bond
@@ -520,7 +520,7 @@ for my $filename (@ARGV) {
 
     my ( $data, $error_count );
     if( $use_parser eq "perl" ) {
-        my $parser = new COD::CIFParser::CIFParser;
+        my $parser = new COD::CIF::Parser::Yapp;
         $data = $parser->Run($filename);
         if( defined $parser->YYData->{ERRCOUNT} ) {
             $error_count = $parser->YYData->{ERRCOUNT};
@@ -1762,7 +1762,7 @@ sub apply_shifts($)
 # Renames CIF data tags so that they are not confused with the
 # original ones.
 
-# Accepts a dataset hash produced by CIFParser, a list of tags to be
+# Accepts a dataset hash produced by COD::CIF::Parser, a list of tags to be
 # renamed, and a prefix to be appended
 
 # Returns a hash with renamed data tags
