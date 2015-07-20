@@ -5,18 +5,21 @@ ifneq ("${MAKECONF_FILES}","")
 include ${MAKECONF_FILES}
 endif
 
-TEST_DIR = tests
-OUTP_DIR = outputs
-
 PERL5LIB := ../lib/perl5:${PERL5LIB}
 export PERL5LIB
 
+YP_FILES  = ${wildcard *.yp}
+PM_FILES  = ${YP_FILES:%.yp=%.pm}
+PKG_TOP   = lib
+PKG_FILES = ${PM_FILES:%.pm=${PKG_TOP}/${PKG_PATH}/%.pm}
+
+INSTALL_DIR   = ../../../..
+INSTALL_FILES = ${PM_FILES:%.pm=${INSTALL_DIR}/${PKG_PATH}/%.pm}
+INSTALL_FILES = ${PKG_FILES:${PKG_TOP}/%.pm=${INSTALL_DIR}/%.pm}
 TEST_MODULE = ${firstword ${PM_FILES}}
-
-YP_FILES   = ${wildcard *.yp}
-PM_FILES   = ${YP_FILES:%.yp=%.pm}
-
 WORK_TESTS = ${wildcard *.inp}
+TEST_DIR = tests
+OUTP_DIR = outputs
 
 TEST_FILES = ${wildcard ${TEST_DIR}/*.inp}
 DIFF_FILES = ${TEST_FILES:${TEST_DIR}/%.inp=${OUTP_DIR}/%.diff}
@@ -31,23 +34,30 @@ all: run
 
 SHELL = /bin/bash
 
-run: ${PM_FILES} ${WORK_TESTS}
+install: ${INSTALL_FILES}
+
+${INSTALL_FILES}: ${PKG_FILES}
+	cp -f -v $< $@
+
+run: ${PKG_FILES} ${WORK_TESTS}
 	@for file in ${WORK_TESTS}; do \
 	( \
 		echo === $$file ===; \
 		set -x; \
-		perl -e 'use ${PKG_PREFIX}${TEST_MODULE:%.pm=%}; my $$p=new ${PKG_PREFIX}${TEST_MODULE:%.pm=%}; $$p->Run' \
-			< $$file \
+		perl -e 'use ${PKG_PREFIX}${TEST_MODULE:%.pm=%};' \
+			 -e 'my $$parser = new ${PKG_PREFIX}${TEST_MODULE:%.pm=%};' \
+			 -e '$$parser->Run' < $$file \
 	); \
 	done
 
-times: ${PM_FILES} ${WORK_TESTS}
-	@for file in ${WORK_TESTS}; do \
+times: ${PKG_FILES} ${WORK_TESTS}
+	for file in ${WORK_TESTS}; do \
 	( \
 		echo === $$file ===; \
 		set -x; \
-		time perl -e 'use ${PKG_PREFIX}${TEST_MODULE:%.pm=%}; my $$p=new ${PKG_PREFIX}${TEST_MODULE:%.pm=%}; $$p->Run' \
-			< $$file \
+		time perl -e 'use ${PKG_PREFIX}${TEST_MODULE:%.pm=%};' \
+				  -e 'my $$parser = new ${PKG_PREFIX}${TEST_MODULE:%.pm=%};' \
+				  -e '$$parser->Run' < $$file \
 	); \
 	done
 
@@ -59,10 +69,10 @@ test: ${DIFF_FILES}
 
 out outputs: ${OUTP_FILES}
 
-%.pm: %.yp
+${PKG_TOP}/${PKG_PATH}/%.pm: %.yp
 	yapp -v -m ${PKG_PREFIX}$* -o $@ $<
 
-${OUTP_DIR}/%.diff: ${TEST_MODULE} ${TEST_DIR}/%.inp
+${OUTP_DIR}/%.diff: ${PKG_TOP}/${PKG_PATH}/${TEST_MODULE} ${TEST_DIR}/%.inp
 	-@printf "%-30s " "$*:" ; \
 	perl -e 'use ${PKG_PREFIX}${TEST_MODULE:%.pm=%}; my $$p=new ${PKG_PREFIX}${TEST_MODULE:%.pm=%}; $$p->Run' \
          < ${word 2, $^} 2>&1 \
@@ -70,7 +80,7 @@ ${OUTP_DIR}/%.diff: ${TEST_MODULE} ${TEST_DIR}/%.inp
      > $@ ; \
 	if [ $$? = 0 ]; then echo "OK"; else echo "FAILED:"; cat $@; fi
 
-${OUTP_DIR}/%.out: ${TEST_MODULE} ${TEST_DIR}/%.inp
+${OUTP_DIR}/%.out: ${TEST_MODULE} ${PKG_TOP}/${PKG_PATH}/${TEST_DIR}/%.inp
 	-@test -f $@ || echo "$@:"
 	-@test -f $@ || \
 	perl -e 'use ${PKG_PREFIX}${TEST_MODULE:%.pm=%}; my $$p=new ${PKG_PREFIX}${TEST_MODULE:%.pm=%}; $$p->Run' \
@@ -98,12 +108,12 @@ shoutputs shout: ${SHELL_OUTPUTS}
 
 shtest shtests: ${SHELL_DIFFS}
 
-${SHELL_OUTDIR}/%.out: ${SHELL_TSTDIR}/%.sh ${TEST_MODULE}
+${SHELL_OUTDIR}/%.out: ${SHELL_TSTDIR}/%.sh ${PKG_TOP}/${PKG_PATH}/${TEST_MODULE}
 	-@test -f $@ || echo "$@:"
 	-@test -f $@ || $< ./${TEST_MODULE} 2>&1 | tee $@
 	-@touch $@
 
-${SHELL_OUTDIR}/%.diff: ${SHELL_TSTDIR}/%.sh ${TEST_MODULE}
+${SHELL_OUTDIR}/%.diff: ${SHELL_TSTDIR}/%.sh ${PKG_TOP}/${PKG_PATH}/${TEST_MODULE}
 	-@printf "%-30s " "$*:" ; \
 	$< ./${TEST_MODULE} 2>&1 | diff ${SHELL_OUTDIR}/$*.out - > $@ ; \
 	if [ $$? = 0 ]; then echo "OK"; else echo "FAILED:"; cat $@; fi
@@ -127,4 +137,4 @@ clean:
 	rm -f ${SHELL_DIFFS}
 
 distclean cleanAll: clean
-	rm -f ${PM_FILES}
+	rm -f ${PKG_FILES}

@@ -23,7 +23,7 @@ use COD::Precision;
 
 $COD::CIF::Parser::Yapp::version = '1.0';
 
-my $SVNID = '$Id: Yapp.yp -1   $';
+my $SVNID = '$Id: Yapp.yp 3563 2015-07-20 18:27:55Z antanas $';
 
 # 0 - no debug
 # 1 - only YAPP output (type -> value)
