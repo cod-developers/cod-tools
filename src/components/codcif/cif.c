@@ -87,6 +87,21 @@ void dispose_cif( CIF * volatile *cif )
     }
 }
 
+CIFMESSAGE *cif_messages( CIF *cif )
+{
+    assert( cif );
+    return cif->messages;
+}
+
+CIFMESSAGE *cif_insert_message( CIF *cif, CIFMESSAGE *message )
+{
+    CIFMESSAGE *messages;
+    assert( cif );
+    messages = cif->messages;
+    cif->messages = message;
+    return messages;
+}
+
 void cif_start_datablock( CIF * volatile cif, const char *name,
                           cexception_t *ex )
 {

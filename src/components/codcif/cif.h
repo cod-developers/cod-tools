@@ -11,6 +11,7 @@
 #include <stdlib.h>
 #include <stdarg.h>
 #include <datablock.h>
+#include <cifmessage.h>
 #include <cexceptions.h>
 
 typedef struct CIF CIF;
@@ -48,6 +49,9 @@ void delete_cif( CIF *bc );
 void create_cif( CIF * volatile *cif, cexception_t *ex );
 
 void dispose_cif( CIF * volatile *cif );
+
+CIFMESSAGE *cif_messages( CIF *cif );
+CIFMESSAGE *cif_insert_message( CIF *cif, CIFMESSAGE *message );
 
 void cif_start_datablock( CIF * volatile cif, const char *name,
                           cexception_t *ex );
