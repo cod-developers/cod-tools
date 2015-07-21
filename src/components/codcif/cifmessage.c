@@ -24,7 +24,7 @@ struct CIFMESSAGE {
     char* message;
     char* explanation;
     char* msgSeparator; /* separator that was used between
-                                   'message' and 'explanation'. */
+                           'message' and 'explanation'. */
 
     CIFMESSAGE *next;
 
