@@ -8,13 +8,13 @@
 #  Find COD numbers of duplicate structures.
 #**
 
-package COD::CIF::Data::CIFCODNumbers;
+package COD::CIF::Data::CODNumbers;
 
 use strict;
 use warnings;
 use File::Basename;
 use COD::Formulae::AdHocParser;
-use COD::CIF::Data::CIFCellContents;
+use COD::CIF::Data::CellContents;
 use COD::Precision qw(eqsig);
 
 require Exporter;

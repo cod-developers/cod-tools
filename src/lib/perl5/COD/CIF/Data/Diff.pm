@@ -9,7 +9,7 @@
 #  representation of a CIF file returned by the CIFParser module.
 #**
 
-package COD::CIF::Data::CIFDiff;
+package COD::CIF::Data::Diff;
 
 use strict;
 use warnings;

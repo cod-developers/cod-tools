@@ -10,7 +10,7 @@
 #  CIFParser.
 #**
 
-package COD::CIF::Data::CIFSymmetryGenerator;
+package COD::CIF::Data::SymmetryGenerator;
 
 use strict;
 use warnings;

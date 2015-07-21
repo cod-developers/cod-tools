@@ -10,7 +10,7 @@
 #  CIFParser.
 #**
 
-package COD::CIF::Data::CIFCellContents;
+package COD::CIF::Data::CellContents;
 
 use strict;
 use warnings;
@@ -19,9 +19,9 @@ use COD::Fractional;
 use COD::Spacegroups::SymopParse qw( symop_from_string );
 use COD::Formulae::FormulaPrint;
 use COD::CIF::Data qw( get_cell get_symmetry_operators );
-use COD::CIF::Data::CIFAtomList qw( atom_array_from_cif );
-use COD::CIF::Data::CIFEstimateZ;
-use COD::CIF::Data::CIFSymmetryGenerator qw( symop_generate_atoms );
+use COD::CIF::Data::AtomList qw( atom_array_from_cif );
+use COD::CIF::Data::EstimateZ;
+use COD::CIF::Data::SymmetryGenerator qw( symop_generate_atoms );
 use COD::UserMessage;
 
 require Exporter;

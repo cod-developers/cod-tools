@@ -8,7 +8,7 @@
 # the statistics.
 #-----------------------------------------------------------------------
 
-package COD::CIF::Data::CIFExcludeFromStatistics;
+package COD::CIF::Data::ExcludeFromStatistics;
 
 use strict;
 use warnings;

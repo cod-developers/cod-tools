@@ -14,7 +14,7 @@ use strict;
 use COD::Cell qw(cell_volume);
 use COD::Spacegroups::SpacegroupNames;
 use COD::CIF::Data qw(get_cell);
-use COD::CIF::Data::CIFCellContents;
+use COD::CIF::Data::CellContents;
 use COD::CIF::Data::CODFlags qw(is_disordered has_coordinates has_Fobs);
 use COD::CIF::Tags::DictTags;
 use COD::AtomProperties;

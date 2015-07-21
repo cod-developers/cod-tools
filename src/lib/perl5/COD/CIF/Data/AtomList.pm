@@ -9,7 +9,7 @@
 #  a CIF file.
 #**
 
-package COD::CIF::Data::CIFAtomList;
+package COD::CIF::Data::AtomList;
 
 use strict;
 use warnings;

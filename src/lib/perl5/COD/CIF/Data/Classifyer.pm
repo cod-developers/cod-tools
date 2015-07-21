@@ -9,12 +9,12 @@
 #  inorganic, mineral, etc.
 #**
 
-package COD::CIF::Data::CIFClassifyer;
+package COD::CIF::Data::Classifyer;
 
 use strict;
 use warnings;
 use COD::CIF::Data qw( get_cell get_symmetry_operators );
-use COD::CIF::Data::CIFSymmetryGenerator qw( symop_generate_atoms );
+use COD::CIF::Data::SymmetryGenerator qw( symop_generate_atoms );
 use COD::Fractional;
 use COD::Spacegroups::SymopAlgebra qw(symop_vector_mul);
 use COD::Spacegroups::SymopParse;
