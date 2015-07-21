@@ -196,13 +196,25 @@ int main( int argc, char *argv[], char *env[] )
                   printf( "%s: file '%s' FAILED\n", progname, filename );
               }
               if( suppress_error_messages.value.b == 0 ) {
-                  fprintf( stderr, "%s: %s: %s\n", argv[0], filename, 
-                           cexception_message( &inner ));
+                  const char *syserror = cexception_syserror( &inner );
+                  if( syserror ) {
+                      fprintf( stderr, "%s: %s: %s - %s\n", argv[0], filename, 
+                               cexception_message( &inner ), syserror );
+                  } else {
+                      fprintf( stderr, "%s: %s: %s\n", argv[0], filename, 
+                               cexception_message( &inner ));
+                  }
               }
           } else {
               if( suppress_error_messages.value.b == 0 ) {
-                  fprintf( stderr, "%s: %s\n", argv[0], 
-                           cexception_message( &inner ));
+                  const char *syserror = cexception_syserror( &inner );
+                  if( syserror ) {
+                      fprintf( stderr, "%s: %s - %s\n", argv[0], 
+                               cexception_message( &inner ), syserror );
+                  } else {
+                      fprintf( stderr, "%s: %s\n", argv[0], 
+                               cexception_message( &inner ));
+                  }
               }
           }
           delete_cif( cif );
