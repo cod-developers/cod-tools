@@ -17,6 +17,7 @@ typedef enum cif_option_t {
     FIX_DATA_HEADER      = 32,
     FIX_DATABLOCK_NAMES  = 64,
     FIX_STRING_QUOTES    = 128,
+    CO_SUPPRESS_MESSAGES = 256,
 } cif_option_t;
 
 cif_option_t cif_option_default();
