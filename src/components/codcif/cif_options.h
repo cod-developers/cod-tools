@@ -21,6 +21,7 @@ typedef enum cif_option_t {
 } cif_option_t;
 
 cif_option_t cif_option_default();
+cif_option_t cif_option_set( cif_option_t options, cif_option_t opt );
 cif_option_t cif_option_set_fix_errors( cif_option_t );
 cif_option_t cif_option_set_do_not_unprefix_text( cif_option_t copt );
 cif_option_t cif_option_set_do_not_unfold_text( cif_option_t copt );
