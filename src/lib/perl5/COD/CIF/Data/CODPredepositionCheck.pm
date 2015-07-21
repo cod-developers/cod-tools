@@ -22,7 +22,7 @@ use IPC::Open3 qw / open3 /;
 use IO::Handle;
 use Symbol;
 use Unicode::Normalize;
-use COD::Unicode2CIF;
+use COD::CIF::Unicode2CIF;
 use Encode;
 use Capture::Tiny ':all';
 use COD::CIF::Data::CIF2COD qw(cif2cod);

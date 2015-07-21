@@ -5,7 +5,7 @@
 #$URL$
 #------------------------------------------------------------------------
 
-package COD::Unicode2CIF;
+package COD::CIF::Unicode2CIF;
 
 use strict;
 use warnings;
