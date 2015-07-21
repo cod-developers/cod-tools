@@ -316,7 +316,7 @@ loop
            if( loop_value_count % loop_tag_count != 0 ) {
                yyerror( cxprintf( "wrong number of elements in the "
                                   "loop block starting in line %d",
-                                    loop_start ) ); 
+                                    loop_start ) );
                cexception_raise( px, CIF_UNRECOVERABLE_ERROR,
                    cxprintf( "wrong number of elements in the "
                              "loop block starting in line %d",

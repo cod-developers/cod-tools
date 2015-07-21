@@ -181,6 +181,20 @@ int main( int argc, char *argv[], char *env[] )
 
           cif = new_cif_from_cif_file( files[i], compiler_options, &inner );
 
+          if( cif && dump_messages.value.b == 1 ) {
+              CIFMESSAGE *messages = cif_messages( cif );
+              CIFMESSAGE *msg;
+
+              foreach_cifmessage( msg, messages ) {
+                  fprintf( stderr, "%s\t%s\t%d\t%d\t%s",
+                           progname, cifmessage_filename( msg ),
+                           cifmessage_lineno( msg ), cifmessage_pos( msg ),
+                           cifmessage_message( msg ));
+                  fprintf( stderr, "\n" );
+              }
+
+          }
+
           if( cif && cif_nerrors( cif ) == 0 ) {
               if( debug.present && strstr(debug.value.s, "dump") != NULL ) {
                   cif_dump( cif );
@@ -199,19 +213,6 @@ int main( int argc, char *argv[], char *env[] )
               if( print_cif.value.b == 0 && !be_quiet.value.b ) {
                   printf( "%s: file '%s' FAILED\n", progname, filename );
               }
-          }
-          if( cif && dump_messages.value.b == 1 ) {
-              CIFMESSAGE *messages = cif_messages( cif );
-              CIFMESSAGE *msg;
-
-              foreach_cifmessage( msg, messages ) {
-                  fprintf( stderr, "%s\t%s\t%d\t%d\t%s",
-                           progname, cifmessage_filename( msg ),
-                           cifmessage_lineno( msg ), cifmessage_pos( msg ),
-                           cifmessage_message( msg ));
-                  fprintf( stderr, "\n" );
-              }
-
           }
 
           if( cif ) {
