@@ -51,6 +51,11 @@ static char *usage_text[2] = {
 "  -q-, --no-quiet, --verbose  Produce verbose output of the parsing "
 "process\n\n"
 
+"  -s, --suppress-errors          Suppress error messages from the parser\n"
+
+"  -s-, --do-not-suppress-errors  Print parser messages to STDERR (default)"
+"\n\n"
+
 "  --version  print program version (SVN Id) and exit\n"
 
 "  --help     print short usage message (this message) and exit\n"
@@ -97,6 +102,8 @@ static option_t options[] = {
   { "-s-","--dont-suppress-errors", 
                                OT_BOOLEAN_FALSE,  &suppress_error_messages },
   { NULL, "--do-not-suppress-errors",
+                               OT_BOOLEAN_FALSE,  &suppress_error_messages },
+  { NULL, "--no-suppress-errors",
                                OT_BOOLEAN_FALSE,  &suppress_error_messages },
   { NULL }
 };
