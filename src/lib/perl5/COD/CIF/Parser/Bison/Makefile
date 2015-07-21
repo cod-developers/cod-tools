@@ -7,8 +7,9 @@ OBJ              = ${SWIG_SOURCE:%.c=%.o}
 SWIG_WRAPPER_OBJ = ${SWIG_WRAPPER:%.c=%.o}
 SWIG_SO_FILE     = ../../../../auto/COD/CIF/Parser/Bison/${SWIG_SOURCE:%.c=%.so}
 
-INSTALL_DIR   = ..
-INSTALL_FILES = ${INSTALL_DIR}/${SWIG_MODULE}
+# Variables used to move perl modules to the proper directory in COD layout
+LIB_DIR   = ..
+LIB_FILES = ${LIB_DIR}/${SWIG_MODULE}
 
 CIF_PARSER_C_DIR = ../../../../../../components/codcif
 EXTERNALS_C_DIR  = ../../../../../../externals
@@ -26,11 +27,9 @@ OBJS = ${OBJ} ${SWIG_WRAPPER_OBJ} ${CIF_PARSER_OBJS}
 PERL5LIB := ../../../../COD:../../../..
 export PERL5LIB
 
-all: ${SWIG_MODULE} ${SWIG_SO_FILE}
+all: ${LIB_FILES}
 
-install: ${INSTALL_FILES}
-
-${INSTALL_FILES}: ${SWIG_MODULE} ${SWIG_SO_FILE}
+${LIB_FILES}: ${SWIG_MODULE} ${SWIG_SO_FILE}
 	cp -f -v $< $@
 
 ${SWIG_SO_FILE}: ${OBJS}

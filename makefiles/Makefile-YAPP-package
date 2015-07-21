@@ -13,9 +13,10 @@ PM_FILES  = ${YP_FILES:%.yp=%.pm}
 PKG_TOP   = lib
 PKG_FILES = ${PM_FILES:%.pm=${PKG_TOP}/${PKG_PATH}/%.pm}
 
-INSTALL_DIR   = ../../../..
-INSTALL_FILES = ${PM_FILES:%.pm=${INSTALL_DIR}/${PKG_PATH}/%.pm}
-INSTALL_FILES = ${PKG_FILES:${PKG_TOP}/%.pm=${INSTALL_DIR}/%.pm}
+# Variables used to move perl modules to the proper directory in COD layout
+LIB_DIR   = ../../../..
+LIB_FILES = ${PKG_FILES:${PKG_TOP}/%.pm=${LIB_DIR}/%.pm}
+
 TEST_MODULE = ${firstword ${PM_FILES}}
 WORK_TESTS = ${wildcard *.inp}
 TEST_DIR = tests
@@ -30,13 +31,11 @@ OUTP_FILES = ${TEST_FILES:${TEST_DIR}/%.inp=${OUTP_DIR}/%.out}
 .PHONY: run times
 
 ## all: ${PM_FILES}
-all: run
+all: run ${LIB_FILES}
 
 SHELL = /bin/bash
 
-install: ${INSTALL_FILES}
-
-${INSTALL_FILES}: ${PKG_FILES}
+${LIB_FILES}: ${PKG_FILES} tests
 	cp -f -v $< $@
 
 run: ${PKG_FILES} ${WORK_TESTS}
