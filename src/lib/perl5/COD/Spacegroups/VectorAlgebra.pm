@@ -15,15 +15,10 @@ use warnings;
 use POSIX;
 
 require Exporter;
-@COD::Spacegroups::VectorAlgebra::ISA = qw(Exporter);
-@COD::Spacegroups::VectorAlgebra::EXPORT = qw( 
-    vector_sub vector_add vector_modulo_1 vector_is_zero
-    vectors_are_equal round_vector
-);
-
-@COD::Spacegroups::VectorAlgebra::EXPORT_OK = qw( distance
-                                                  matrix_vector_mul
-                                                  modulo_1);
+our @ISA = qw(Exporter);
+our @EXPORT = qw( vector_sub vector_add vector_modulo_1 
+                  vector_is_zero vectors_are_equal round_vector );
+our @EXPORT_OK = qw( distance matrix_vector_mul modulo_1);
 
 sub vector_sub($$)
 {

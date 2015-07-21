@@ -16,8 +16,8 @@ package COD::ShowStruct;
 
 use strict;
 require Exporter;
-@COD::ShowStruct::ISA = qw(Exporter);
-@COD::ShowStruct::EXPORT = qw(showHash showArray showRef);
+our @ISA = qw(Exporter);
+our @EXPORT = qw(showHash showArray showRef);
 
 my $separator = "-------------------------";
 

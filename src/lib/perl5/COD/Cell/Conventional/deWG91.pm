@@ -17,8 +17,8 @@ package COD::Cell::Conventional::deWG91;
 use strict;
 use warnings;
 require Exporter;
-@COD::Cell::Conventional::deWG91::ISA = qw(Exporter);
-@COD::Cell::Conventional::deWG91::EXPORT_OK = qw(conventional_cell);
+our @ISA = qw(Exporter);
+our @EXPORT = qw(conventional_cell);
 
 use COD::Spacegroups::SymopAlgebra qw(symop_apply);
 

@@ -14,8 +14,8 @@ use strict;
 use warnings;
 
 require Exporter;
-@COD::Spacegroups::SymopAlgebra::ISA = qw(Exporter);
-@COD::Spacegroups::SymopAlgebra::EXPORT_OK = qw(
+our @ISA = qw(Exporter);
+our @EXPORT_OK = qw(
     symop_mul symop_apply symop_invert symop_modulo_1 symop_translation
     symop_translate symop_set_translation symop_transpose
     symop_is_unity symop_vector_mul flush_zeros_in_symop

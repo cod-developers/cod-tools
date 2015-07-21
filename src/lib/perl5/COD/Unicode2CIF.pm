@@ -8,13 +8,14 @@
 package COD::Unicode2CIF;
 
 use strict;
+use warnings;
 use Unicode::Normalize;
 ## use utf8;
 ## use charnames ':full';
 
 require Exporter;
-@COD::Unicode2CIF::ISA = qw(Exporter);
-@COD::Unicode2CIF::EXPORT = qw(unicode2cif cif2unicode);
+our @ISA = qw(Exporter);
+our @EXPORT = qw(unicode2cif cif2unicode);
 
 my %commands = (
 #

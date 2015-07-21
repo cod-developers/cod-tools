@@ -14,10 +14,11 @@
 package COD::Cromer_Mann;
 
 use strict;
+use warnings;
 
 require Exporter;
-@COD::Cromer_Mann::ISA = qw(Exporter);
-@COD::Cromer_Mann::EXPORT = qw( ok );
+our @ISA = qw(Exporter);
+our @EXPORT = qw( ok );
 
 %COD::Cromer_Mann::atoms = (
 

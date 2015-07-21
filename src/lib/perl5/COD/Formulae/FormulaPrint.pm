@@ -12,10 +12,11 @@
 package COD::Formulae::FormulaPrint;
 
 use strict;
+use warnings;
 
 require Exporter;
-@COD::Formulae::FormulaPrint::ISA = qw(Exporter);
-@COD::Formulae::FormulaPrint::EXPORT = qw( sprint_formula print_formula );
+our @ISA = qw(Exporter);
+our @EXPORT = qw( sprint_formula print_formula );
 
 sub print_formula($@)
 {

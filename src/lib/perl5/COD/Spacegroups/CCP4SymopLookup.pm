@@ -10,10 +10,11 @@
 package COD::Spacegroups::CCP4SymopLookup;
 
 use strict;
+use warnings;
 
 require Exporter;
-@COD::Spacegroups::CCP4SymopLookup::ISA = qw(Exporter);
-@COD::Spacegroups::CCP4SymopLookup::EXPORT = qw( @table );
+our @ISA = qw(Exporter);
+our @EXPORT = qw( @table );
 
 @COD::Spacegroups::CCP4SymopLookup::table =
 (

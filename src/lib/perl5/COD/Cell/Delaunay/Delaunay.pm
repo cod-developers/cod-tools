@@ -26,8 +26,8 @@ package COD::Cell::Delaunay::Delaunay;
 use strict;
 use warnings;
 require Exporter;
-@COD::Cell::Delaunay::Delaunay::ISA = qw(Exporter);
-@COD::Cell::Delaunay::Delaunay::EXPORT_OK = qw( reduce );
+our @ISA = qw(Exporter);
+our @EXPORT_OK = qw( reduce );
 
 my $Pi = 4 * atan2(1,1);
 

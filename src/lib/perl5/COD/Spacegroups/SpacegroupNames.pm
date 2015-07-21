@@ -12,10 +12,11 @@
 package COD::Spacegroups::SpacegroupNames;
 
 use strict;
+use warnings;
 
 require Exporter;
-@COD::Spacegroups::SpacegroupNames::ISA = qw(Exporter);
-@COD::Spacegroups::SpacegroupNames::EXPORT = qw( @names );
+our @ISA = qw(Exporter);
+our @EXPORT = qw( @names );
 
 @COD::Spacegroups::SpacegroupNames::names = (
 [1,        "P 1",        "P 1" ],

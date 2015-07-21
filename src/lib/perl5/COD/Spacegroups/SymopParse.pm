@@ -12,8 +12,8 @@ package COD::Spacegroups::SymopParse;
 use strict;
 
 require Exporter;
-@COD::Spacegroups::SymopParse::ISA = qw(Exporter);
-@COD::Spacegroups::SymopParse::EXPORT = qw( symop_from_string string_from_symop
+our @ISA = qw(Exporter);
+our @EXPORT = qw( symop_from_string string_from_symop
     string_from_symop_reduced symop_string_canonical_form
     check_symmetry_operator modulo_1 symop_translation_modulo_1 symop_print
 );

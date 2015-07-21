@@ -32,8 +32,8 @@ use strict;
 use warnings;
 use COD::Spacegroups::SymopAlgebra qw(symop_mul);
 require Exporter;
-@COD::Cell::Niggli::KG76::ISA = qw(Exporter);
-@COD::Cell::Niggli::KG76::EXPORT_OK = qw( reduce );
+our @ISA = qw(Exporter);
+our @EXPORT_OK = qw( reduce );
 
 my $Pi = 4 * atan2(1,1);
 

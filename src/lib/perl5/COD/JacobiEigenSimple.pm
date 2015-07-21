@@ -11,8 +11,8 @@ package COD::JacobiEigenSimple;
 
 use strict;
 require Exporter;
-@COD::JacobiEigenSimple::ISA = qw(Exporter);
-@COD::JacobiEigenSimple::EXPORT = qw( jacobi_eigenvv );
+our @ISA = qw(Exporter);
+our @EXPORT = qw( jacobi_eigenvv );
 
 $COD::JacobiEigenSimple::max_iterations = 100;
 # used for float comparison

@@ -13,8 +13,8 @@ package COD::Spacegroups::Cosets;
 use strict;
 use warnings;
 require Exporter;
-@COD::Spacegroups::Cosets::ISA = qw(Exporter);
-@COD::Spacegroups::Cosets::EXPORT_OK = qw( find_left_cosets canonical_string_from_symop );
+our @ISA = qw(Exporter);
+our @EXPORT_OK = qw( find_left_cosets canonical_string_from_symop );
 
 use COD::Spacegroups::SymopAlgebra qw( symop_mul round_values_in_symop );
 use COD::Spacegroups::SymopParse;
