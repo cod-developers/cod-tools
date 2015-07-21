@@ -30,6 +30,25 @@ struct CIFMESSAGE {
 
 };
 
+void delete_cifmessage( CIFMESSAGE *cm )
+{
+    CIFMESSAGE *next;
+
+    while( cm ) {
+        freex( cm->addPos );
+        freex( cm->program );
+        freex( cm->filename );
+        freex( cm->status );
+        freex( cm->message );
+        freex( cm->explanation );
+        freex( cm->msgSeparator );
+
+        next = cm->next;
+        freex( cm );
+        cm = next;
+    }
+}
+
 CIFMESSAGE *new_cifmessage( CIFMESSAGE *next, cexception_t *ex )
 {
     CIFMESSAGE *cm = callocx( sizeof(cm[0]), 1, ex );
@@ -79,24 +98,4 @@ CIFMESSAGE *new_cifmessage_from_data( CIFMESSAGE *next,
     }
     cm->next = next;
     return cm;
-}
-
-
-void delete_cifmessage( CIFMESSAGE *cm )
-{
-    CIFMESSAGE *next;
-
-    while( cm ) {
-        freex( cm->addPos );
-        freex( cm->program );
-        freex( cm->filename );
-        freex( cm->status );
-        freex( cm->message );
-        freex( cm->explanation );
-        freex( cm->msgSeparator );
-
-        next = cm->next;
-        freex( cm );
-        cm = next;
-    }
 }
