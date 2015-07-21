@@ -297,3 +297,27 @@ int cif_yyretval( CIF *cif )
     assert( cif );
     return cif->yyretval;
 }
+
+void cif_set_message( CIF *cif,
+                      const char *filename,
+                      const char *errlevel,
+                      const char *message,
+                      const char *syserror,
+                      cexception_t *ex )
+{
+    assert( cif );
+
+    cif_insert_message
+        ( cif, new_cifmessage_from_data
+          ( /* next = */ cif->messages,
+            /* progname = */ NULL,
+            /* filename = */ (char*)filename,
+            /* line = */ -1, /* position = */ -1,
+            /* addPos = */ NULL,
+            /* status = */ (char*)errlevel,
+            /* message = */ (char*)message,
+            /* explanation = */ (char*)syserror,
+            /* separator = */ NULL,
+            ex )
+          );
+}
