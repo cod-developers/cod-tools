@@ -277,3 +277,10 @@ void cif_print_tag_values( CIF *cif, char ** tagnames, int tagcount,
         }
     }
 }
+
+void cif_revert_message_list( CIF *cif )
+{
+    if( cif ) {
+        cif->messages = cifmessage_revert_list( cif->messages );
+    }
+}

@@ -35,4 +35,6 @@ CIFMESSAGE *cifmessage_next( CIFMESSAGE *cm );
 
 void cifmessage_set_line( CIFMESSAGE *cm, char *line, cexception_t *ex );
 
+CIFMESSAGE *cifmessage_revert_list( CIFMESSAGE *msglist  );
+
 #endif
