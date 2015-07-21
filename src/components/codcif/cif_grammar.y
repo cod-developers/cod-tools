@@ -422,8 +422,11 @@ static void cif_compile_file( char *filename, cexception_t *ex )
         }
     }
     cexception_catch {
-        if( yyin ) fclosex( yyin, ex );
-	    cexception_reraise( inner, ex );
+        if( yyin ) {
+            fclosex( yyin, ex );
+            yyin = NULL;
+        }
+        cexception_reraise( inner, ex );
     }
     fclosex( yyin, ex );
 }
@@ -441,13 +444,14 @@ CIF *new_cif_from_cif_file( char *filename, cif_option_t co, cexception_t *ex )
 
     cexception_guard( inner ) {
         cif_compile_file( filename, &inner );
-        nerrors = cif_yy_error_number();
     }
     cexception_catch {
-        delete_cif_compiler( cif_cc );
-        cif_cc = NULL;
         yyrestart();
-        cexception_reraise( inner, ex );
+        if( !(cif_cc->options & CO_SUPPRESS_MESSAGES)) {
+            delete_cif_compiler( cif_cc );
+            cif_cc = NULL;
+            cexception_reraise( inner, ex );
+        }
     }
 
     cif = cif_cc->cif;
@@ -455,6 +459,7 @@ CIF *new_cif_from_cif_file( char *filename, cif_option_t co, cexception_t *ex )
     delete_cif_compiler( cif_cc );
     cif_cc = NULL;
 
+    nerrors = cif_yy_error_number();
     if( cif && nerrors > 0 ) {
         cif_set_nerrors( cif, nerrors );
     }

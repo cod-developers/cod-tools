@@ -31,7 +31,13 @@ CIFMESSAGE *new_cifmessage_from_data( CIFMESSAGE *next,
 CIFMESSAGE *cifmessage_next( CIFMESSAGE *cm );
 
 #define foreach_cifmessage( CM, LIST ) \
-    for( (CM) = (LIST); (CM) != NULL; (CM) = cifmessage_next(LIST) )
+    for( (CM) = (LIST); (CM) != NULL; (CM) = cifmessage_next(CM) )
+
+char* cifmessage_filename( CIFMESSAGE *cm );
+int cifmessage_lineno( CIFMESSAGE *cm );
+int cifmessage_pos( CIFMESSAGE *cm );
+int cifmessage_columnno( CIFMESSAGE *cm );
+char* cifmessage_message( CIFMESSAGE *cm );
 
 void cifmessage_set_line( CIFMESSAGE *cm, char *line, cexception_t *ex );
 
