@@ -724,7 +724,8 @@ void print_current_trace( cexception_t *ex )
     if( cif_cc->cif ) {
         CIFMESSAGE *current_message = cif_messages( cif_cc->cif );
         assert( current_message );
-        cifmessage_set_line( current_message, cif_flex_current_line(), ex );
+        cifmessage_set_line( current_message, 
+                             (char*)cif_flex_current_line(), ex );
     }
 }
 
@@ -740,7 +741,8 @@ void print_previous_trace( cexception_t *ex )
     if( cif_cc->cif ) {
         CIFMESSAGE *current_message = cif_messages( cif_cc->cif );
         assert( current_message );
-        cifmessage_set_line( current_message, cif_flex_previous_line(), ex );
+        cifmessage_set_line( current_message,
+                             (char*)cif_flex_previous_line(), ex );
     }
 }
 
