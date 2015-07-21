@@ -27,4 +27,10 @@ CIFMESSAGE *new_cifmessage_from_data( CIFMESSAGE *next,
                                       char *explanation,
                                       char *separator,
                                       cexception_t *ex );
+
+CIFMESSAGE *cifmessage_next( CIFMESSAGE *cm );
+
+#define foreach_cifmessage( CM, LIST ) \
+    for( (CM) = (LIST); (CM) != NULL; (CM) = cifmessage_next(LIST) )
+
 #endif

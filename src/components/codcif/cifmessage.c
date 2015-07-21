@@ -12,6 +12,7 @@
 #include <cexceptions.h>
 #include <allocx.h>
 #include <stringx.h>
+#include <assert.h>
 
 struct CIFMESSAGE {
     int lineNo;
@@ -98,4 +99,10 @@ CIFMESSAGE *new_cifmessage_from_data( CIFMESSAGE *next,
     }
     cm->next = next;
     return cm;
+}
+
+CIFMESSAGE *cifmessage_next( CIFMESSAGE *cm )
+{
+    assert( cm );
+    return cm->next;
 }
