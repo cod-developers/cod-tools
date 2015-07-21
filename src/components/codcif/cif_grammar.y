@@ -459,6 +459,23 @@ CIF *new_cif_from_cif_file( char *filename, cif_option_t co, cexception_t *ex )
             delete_cif_compiler( cif_cc );
             cif_cc = NULL;
             cexception_reraise( inner, ex );
+        } else {
+            cexception_t inner2;
+            cexception_try( inner2 ) {
+                if( cif_yyretval( cif_cc->cif ) == 0 ) {
+                    cif_set_yyretval( cif_cc->cif, -1 );
+                }
+                cif_set_message( cif_cc->cif,
+                                 filename, "ERROR",
+                                 cexception_message( &inner ),
+                                 cexception_syserror( &inner ),
+                                 &inner2 );
+            }
+            cexception_catch {
+                cexception_raise
+                    ( ex, CIF_OUT_OF_MEMORY_ERROR, "not enough memory to "
+                      "record CIF error message" );
+            }
         }
     }
 

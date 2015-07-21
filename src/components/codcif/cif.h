@@ -32,6 +32,7 @@ typedef enum {
   CIF_UNRECOVERABLE_ERROR,
   CIF_COMPILATION_ERROR,
   CIF_NO_DATABLOCK_ERROR,
+  CIF_OUT_OF_MEMORY_ERROR,
 
   last_CIF_ERROR
 } cif_error_t;
@@ -87,5 +88,12 @@ void cif_revert_message_list( CIF *cif );
 
 void cif_set_yyretval( CIF *cif, int yyretval );
 int cif_yyretval( CIF *cif );
+
+void cif_set_message( CIF *cif,
+                      const char *filename,
+                      const char *errlevel,
+                      const char *message,
+                      const char *syserror,
+                      cexception_t *ex );
 
 #endif

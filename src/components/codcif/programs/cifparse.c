@@ -124,6 +124,21 @@ static option_t options[] = {
   { NULL }
 };
 
+static char *strnonl( char *str )
+{
+    char *start = str;
+    if( str ) {
+        while( *str ) {
+            if( *str == '\n' ) {
+                *str = '\0';
+            }
+            str ++;
+        }
+    }
+
+    return start;
+}
+
 char *progname;
 
 int main( int argc, char *argv[], char *env[] )
@@ -190,7 +205,7 @@ int main( int argc, char *argv[], char *env[] )
                       fprintf( stderr, "%s\t%s\t%d\t%d\t%s",
                                progname, cifmessage_filename( msg ),
                                cifmessage_lineno( msg ), cifmessage_pos( msg ),
-                               cifmessage_message( msg ));
+                               strnonl( cifmessage_message( msg )));
                       fprintf( stderr, "\n" );
                   }
               }
@@ -200,6 +215,10 @@ int main( int argc, char *argv[], char *env[] )
                                               "from errors, quitting now\n"
                                               "%d error(s) detected\n",
                                               cif_nerrors( cif )));
+#if 0
+                                    "compiler could not recover "
+                                    "from errors, quitting now" );
+#endif
               }
           }
 
