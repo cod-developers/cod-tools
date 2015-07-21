@@ -85,4 +85,7 @@ void cif_print_tag_values( CIF *cif, char ** tagnames, int tagcount,
 
 void cif_revert_message_list( CIF *cif );
 
+void cif_set_yyretval( CIF *cif, int yyretval );
+int cif_yyretval( CIF *cif );
+
 #endif

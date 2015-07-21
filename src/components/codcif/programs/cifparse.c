@@ -181,18 +181,26 @@ int main( int argc, char *argv[], char *env[] )
 
           cif = new_cif_from_cif_file( files[i], compiler_options, &inner );
 
-          if( cif && dump_messages.value.b == 1 ) {
-              CIFMESSAGE *messages = cif_messages( cif );
-              CIFMESSAGE *msg;
+          if( cif ) {
+              if( dump_messages.value.b == 1 ) {
+                  CIFMESSAGE *messages = cif_messages( cif );
+                  CIFMESSAGE *msg;
 
-              foreach_cifmessage( msg, messages ) {
-                  fprintf( stderr, "%s\t%s\t%d\t%d\t%s",
-                           progname, cifmessage_filename( msg ),
-                           cifmessage_lineno( msg ), cifmessage_pos( msg ),
-                           cifmessage_message( msg ));
-                  fprintf( stderr, "\n" );
+                  foreach_cifmessage( msg, messages ) {
+                      fprintf( stderr, "%s\t%s\t%d\t%d\t%s",
+                               progname, cifmessage_filename( msg ),
+                               cifmessage_lineno( msg ), cifmessage_pos( msg ),
+                               cifmessage_message( msg ));
+                      fprintf( stderr, "\n" );
+                  }
               }
-
+              if( cif_yyretval( cif ) != 0 ) {
+                  cexception_raise( &inner, CIF_UNRECOVERABLE_ERROR,
+                                    cxprintf( "compiler could not recover "
+                                              "from errors, quitting now\n"
+                                              "%d error(s) detected\n",
+                                              cif_nerrors( cif )));
+              }
           }
 
           if( cif && cif_nerrors( cif ) == 0 ) {
