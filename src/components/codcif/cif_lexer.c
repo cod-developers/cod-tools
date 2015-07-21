@@ -543,8 +543,12 @@ static char *clean_string( char *src, int is_textfield, cexception_t *ex )
                                            "encountered in the text:",
                                            cif_flex_current_line_number(),
                                            -1, ex );
+#if 0
                             fprintf( stderr, "'%s'\n", 
                                      cif_flex_current_line() );
+#else
+                            print_current_trace( ex );
+#endif
                             non_ascii_explained = 1;
                         } else {
                             print_message( "WARNING", "non-ascii symbols "
@@ -552,7 +556,11 @@ static char *clean_string( char *src, int is_textfield, cexception_t *ex )
                                            "replaced by XML entities:",
                                            cif_flex_current_line_number(),
                                            -1, ex );
+#if 0
                             fprintf( stderr, ";%s\n;\n\n", start );
+#else
+                            print_current_text_field( start, ex );
+#endif
                             non_ascii_explained = 1;
                         }
                     }
@@ -565,7 +573,11 @@ static char *clean_string( char *src, int is_textfield, cexception_t *ex )
                                        "in the text field:",
                                        cif_flex_current_line_number(),
                                        -1, ex );
+#if 0
                         fprintf( stderr, ";%s\n;\n\n", start );
+#else
+                        print_current_text_field( start, ex );
+#endif
                         yyincrease_error_counter();
                         non_ascii_explained = 1;
                     }

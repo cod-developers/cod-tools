@@ -712,7 +712,21 @@ void print_message( const char *errlevel, const char *message,
     }
 }
 
-void print_current_trace( cexception_t *ex ) 
+void print_current_text_field( char *text, cexception_t *ex )
+{
+    if( !(cif_cc->options & CO_SUPPRESS_MESSAGES) ) {
+        fflush(NULL);
+        fprintf( stderr, ";%s\n;\n\n", text );
+        fflush(NULL);
+    }
+    if( cif_cc->cif ) {
+        CIFMESSAGE *current_message = cif_messages( cif_cc->cif );
+        assert( current_message );
+        cifmessage_set_line( current_message, text, ex );
+    }
+}
+
+void print_current_trace( cexception_t *ex )
 {
     if( !(cif_cc->options & CO_SUPPRESS_MESSAGES) ) {
         fflush(NULL);

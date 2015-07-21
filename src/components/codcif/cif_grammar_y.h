@@ -21,6 +21,7 @@ char * cif_unfold_textfield( char * tf );
 
 void print_message( const char *errlevel, const char *message, int line,
                     int position, cexception_t *ex );
+void print_current_text_field( char *text, cexception_t *ex );
 void print_current_trace( cexception_t *ex );
 void print_previous_trace( cexception_t *ex );
 void yyincrease_error_counter( void );
