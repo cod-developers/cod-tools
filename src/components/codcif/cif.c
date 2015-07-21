@@ -16,6 +16,7 @@
 #include <stdarg.h>
 #include <string.h>
 #include <datablock.h>
+#include <cifmessage.h>
 #include <allocx.h>
 #include <assert.h>
 #include <cexceptions.h>
@@ -49,6 +50,9 @@ struct CIF {
     DATABLOCK *last_datablock; /* points to the end of the
                                   datablock_list; SHOULD not be freed
                                   when the CIF structure is deleted.*/
+
+    CIFMESSAGE *messages; /* A linked list with error and warning
+                             message data. */
 };
 
 CIF *new_cif( cexception_t *ex )
@@ -61,6 +65,7 @@ void delete_cif( CIF *cif )
 {
     if( cif ) {
         delete_datablock_list( cif->datablock_list );
+        delete_cifmessage( cif->messages );
         freex( cif );
     }
 }

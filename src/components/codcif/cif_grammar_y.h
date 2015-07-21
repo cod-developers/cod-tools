@@ -20,7 +20,7 @@ char * cif_unprefix_textfield( char * tf );
 char * cif_unfold_textfield( char * tf );
 
 void print_message( const char *errlevel, const char *message, int line,
-    int position );
+                    int position, cexception_t *ex );
 void print_current_trace( void );
 void print_previous_trace( void );
 void yyincrease_error_counter( void );
