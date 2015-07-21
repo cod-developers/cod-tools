@@ -37,6 +37,15 @@ CIFMESSAGE *new_cifmessage( CIFMESSAGE *next, cexception_t *ex )
     return cm;
 }
 
+static char *strnulldupx( char *str, cexception_t *ex )
+{
+    if( str ) {
+        return strdupx( str, ex );
+    } else {
+        return NULL;
+    }
+}
+
 CIFMESSAGE *new_cifmessage_from_data( CIFMESSAGE *next,
                                       char *progname,
                                       char *filename,
@@ -53,14 +62,13 @@ CIFMESSAGE *new_cifmessage_from_data( CIFMESSAGE *next,
     CIFMESSAGE * volatile cm = new_cifmessage( NULL, ex );
 
     cexception_guard( inner ) {
-        cm->addPos = strdupx( addPos, &inner );
-
-        cm->program = strdupx( progname, &inner );
-        cm->filename = strdupx( filename, &inner );
-        cm->status = strdupx( status, &inner );
-        cm->message = strdupx( message, &inner );
-        cm->explanation = strdupx( explanation, &inner );
-        cm->msgSeparator = strdupx( separator, &inner );
+        cm->addPos = strnulldupx( addPos, &inner );
+        cm->program = strnulldupx( progname, &inner );
+        cm->filename = strnulldupx( filename, &inner );
+        cm->status = strnulldupx( status, &inner );
+        cm->message = strnulldupx( message, &inner );
+        cm->explanation = strnulldupx( explanation, &inner );
+        cm->msgSeparator = strnulldupx( separator, &inner );
 
         cm->lineNo = line;
         cm->columnNo = col;

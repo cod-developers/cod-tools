@@ -689,6 +689,27 @@ void print_message( const char *errlevel, const char *message,
     if( !(cif_cc->options & CO_SUPPRESS_MESSAGES) ) {
         output_message( errlevel, message, line, position );
     }
+    if( cif_cc->cif ) {
+        char *datablock = NULL;
+        if( cif_cc->cif && cif_last_datablock( cif_cc->cif ) && 
+            strlen( datablock_name( cif_last_datablock( cif_cc->cif ))) > 0 ) {
+            datablock = datablock_name( cif_last_datablock( cif_cc->cif ) );
+        }
+        cif_insert_message
+            ( cif_cc->cif,
+              new_cifmessage_from_data
+              ( /* next = */ cif_messages( cif_cc->cif ),
+                /* progname = */ NULL,
+                /* filename = */ cif_cc->filename,
+                line, position,
+                /* addPos = */ datablock,
+                /* status = */ errlevel,
+                /* message = */ message,
+                /* explanation = */ NULL,
+                /* separator = */ NULL,
+                ex )
+            );
+    }
 }
 
 void print_current_trace( void ) {
