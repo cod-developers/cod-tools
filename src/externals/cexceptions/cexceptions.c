@@ -22,10 +22,12 @@ void cexception_raise_at( int line_nr, const char * filename,
 			  cexception_t *cexception,
 			  const void *subsystem_tag,
 			  int error_code,
-			  const char *message )
+			  const char *message,
+                          const char *syserror )
 {
     if( cexception ) {
         cexception->message = message;
+        cexception->syserror = syserror;
 	cexception->subsystem_tag = subsystem_tag;
 	cexception->error_code = error_code;
 	cexception->source_file = filename;
@@ -43,6 +45,7 @@ void cexception_reraise( cexception_t old_cexception,
 {
     if( new_cexception ) {
         new_cexception->message = old_cexception.message;
+        new_cexception->syserror = old_cexception.syserror;
 	new_cexception->subsystem_tag = old_cexception.subsystem_tag;
 	new_cexception->error_code = old_cexception.error_code;
 	new_cexception->source_file = old_cexception.source_file;
@@ -59,6 +62,18 @@ const char *cexception_message( cexception_t *ex )
 {
     assert( ex );
     return ex->message;
+}
+
+const char *cexception_syserror( cexception_t *ex )
+{
+    assert( ex );
+    return ex->syserror;
+}
+
+const char *cexception_explanation( cexception_t *ex )
+{
+    assert( ex );
+    return ex->syserror;
 }
 
 int cexception_error_code( cexception_t *ex )
