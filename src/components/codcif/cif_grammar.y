@@ -459,6 +459,7 @@ CIF *new_cif_from_cif_file( char *filename, cif_option_t co, cexception_t *ex )
         cif_set_nerrors( cif, nerrors );
     }
 
+    cif_revert_message_list( cif );
     return cif;
 }
 

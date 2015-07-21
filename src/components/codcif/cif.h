@@ -83,4 +83,6 @@ void cif_print_tag_values( CIF *cif, char ** tagnames, int tagcount,
     char * volatile prefix, int append_blkname, char * separator,
     char * vseparator );
 
+void cif_revert_message_list( CIF *cif );
+
 #endif

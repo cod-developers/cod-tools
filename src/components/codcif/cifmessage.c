@@ -121,3 +121,17 @@ void cifmessage_set_line( CIFMESSAGE *cm, char *line, cexception_t *ex )
         cm->line = strdupx( line, ex );
     }
 }
+
+CIFMESSAGE *cifmessage_revert_list( CIFMESSAGE *msglist  )
+{
+    CIFMESSAGE *newlist = NULL;
+
+    while( msglist ) {
+        CIFMESSAGE *next = msglist->next;
+        msglist->next = newlist;
+        newlist = msglist;
+        msglist = next;
+    }
+
+    return newlist;
+}
