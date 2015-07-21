@@ -33,4 +33,6 @@ CIFMESSAGE *cifmessage_next( CIFMESSAGE *cm );
 #define foreach_cifmessage( CM, LIST ) \
     for( (CM) = (LIST); (CM) != NULL; (CM) = cifmessage_next(LIST) )
 
+void cifmessage_set_line( CIFMESSAGE *cm, char *line, cexception_t *ex );
+
 #endif

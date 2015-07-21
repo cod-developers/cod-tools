@@ -27,6 +27,8 @@ struct CIFMESSAGE {
     char* msgSeparator; /* separator that was used between
                            'message' and 'explanation'. */
 
+    char *line; /* A copy of the file line where the error occured. */
+
     CIFMESSAGE *next;
 
 };
@@ -43,6 +45,7 @@ void delete_cifmessage( CIFMESSAGE *cm )
         freex( cm->message );
         freex( cm->explanation );
         freex( cm->msgSeparator );
+        freex( cm->line );
 
         next = cm->next;
         freex( cm );
@@ -105,4 +108,16 @@ CIFMESSAGE *cifmessage_next( CIFMESSAGE *cm )
 {
     assert( cm );
     return cm->next;
+}
+
+void cifmessage_set_line( CIFMESSAGE *cm, char *line, cexception_t *ex )
+{
+    assert( cm );
+    if( cm->line ) {
+        freex( cm->line );
+        cm->line = NULL;
+    }
+    if( line ) {
+        cm->line = strdupx( line, ex );
+    }
 }

@@ -703,8 +703,8 @@ void print_message( const char *errlevel, const char *message,
                 /* filename = */ cif_cc->filename,
                 line, position,
                 /* addPos = */ datablock,
-                /* status = */ errlevel,
-                /* message = */ message,
+                /* status = */ (char*)errlevel,
+                /* message = */ (char*)message,
                 /* explanation = */ NULL,
                 /* separator = */ NULL,
                 ex )
@@ -712,20 +712,36 @@ void print_message( const char *errlevel, const char *message,
     }
 }
 
-void print_current_trace( void ) {
-    fflush(NULL);
-    fprintf( stderr, "%s\n%*s\n",
-            cif_flex_current_line(),
-            cif_flex_current_position()+1, "^" );
-    fflush(NULL);
+void print_current_trace( cexception_t *ex ) 
+{
+    if( !(cif_cc->options & CO_SUPPRESS_MESSAGES) ) {
+        fflush(NULL);
+        fprintf( stderr, "%s\n%*s\n",
+                 cif_flex_current_line(),
+                 cif_flex_current_position()+1, "^" );
+        fflush(NULL);
+    }
+    if( cif_cc->cif ) {
+        CIFMESSAGE *current_message = cif_messages( cif_cc->cif );
+        assert( current_message );
+        cifmessage_set_line( current_message, cif_flex_current_line(), ex );
+    }
 }
 
-void print_previous_trace( void ) {
-    fflush(NULL);
-    fprintf( stderr, "%s\n%*s\n",
-            cif_flex_previous_line(),
-            cif_flex_previous_position()+1, "^" );
-    fflush(NULL);
+void print_previous_trace( cexception_t *ex )
+{
+    if( !(cif_cc->options & CO_SUPPRESS_MESSAGES) ) {
+        fflush(NULL);
+        fprintf( stderr, "%s\n%*s\n",
+                 cif_flex_previous_line(),
+                 cif_flex_previous_position()+1, "^" );
+        fflush(NULL);
+    }
+    if( cif_cc->cif ) {
+        CIFMESSAGE *current_message = cif_messages( cif_cc->cif );
+        assert( current_message );
+        cifmessage_set_line( current_message, cif_flex_previous_line(), ex );
+    }
 }
 
 int yyerror( const char *message )
@@ -735,7 +751,7 @@ int yyerror( const char *message )
     }
     print_message( "ERROR", message, cif_flex_current_line_number(),
                    cif_flex_current_position()+1, px );
-    print_current_trace();
+    print_current_trace( px );
     errcount++;
     return 0;
 }
@@ -744,7 +760,7 @@ int yyerror_previous( const char *message, cexception_t *ex )
 {
     print_message( "ERROR", message, cif_flex_previous_line_number(),
                    cif_flex_previous_position()+1, ex );
-    print_previous_trace();
+    print_previous_trace( ex );
     errcount++;
     return 0;
 }
