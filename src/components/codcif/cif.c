@@ -46,6 +46,7 @@ void cif_debug_off( void )
 
 struct CIF {
     int nerrors;
+    int yyretval;
     DATABLOCK *datablock_list;
     DATABLOCK *last_datablock; /* points to the end of the
                                   datablock_list; SHOULD not be freed
@@ -283,4 +284,16 @@ void cif_revert_message_list( CIF *cif )
     if( cif ) {
         cif->messages = cifmessage_revert_list( cif->messages );
     }
+}
+
+void cif_set_yyretval( CIF *cif, int yyretval )
+{
+    assert( cif );
+    cif->yyretval = yyretval;
+}
+
+int cif_yyretval( CIF *cif )
+{
+    assert( cif );
+    return cif->yyretval;
 }

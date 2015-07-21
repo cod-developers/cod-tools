@@ -317,6 +317,9 @@ loop
                yyerror( cxprintf( "wrong number of elements in the "
                                   "loop block starting in line %d",
                                     loop_start ) );
+               if( cif_cc->cif ) {
+                   cif_set_yyretval( cif_cc->cif, -1 );
+               }
                cexception_raise( px, CIF_UNRECOVERABLE_ERROR,
                    cxprintf( "wrong number of elements in the "
                              "loop block starting in line %d",
@@ -406,14 +409,19 @@ number
 static void cif_compile_file( char *filename, cexception_t *ex )
 {
     cexception_t inner;
+    int yyretval = 0;
 
     cexception_guard( inner ) {
         if( filename ) {
             yyin = fopenx( filename, "r", ex );
         }
         px = &inner; /* catch all parser-generated exceptions */
-        if( yyparse() != 0 ) {
+        if( (yyretval = yyparse()) != 0 ) {
             int errcount = cif_yy_error_number();
+            if( cif_cc->cif ) {
+                cif_set_yyretval( cif_cc->cif, yyretval );
+                cif_set_nerrors( cif_cc->cif, errcount );
+            }
             cexception_raise( &inner, CIF_UNRECOVERABLE_ERROR,
                 cxprintf( "compiler could not recover "
                     "from errors, quitting now\n"
