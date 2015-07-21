@@ -11,6 +11,7 @@
 #include <unistd.h>
 #include <string.h>
 #include <getoptions.h>
+#include <cifmessage.h>
 #include <cif_grammar_y.h>
 #include <cif_grammar_flex.h>
 #include <allocx.h>
@@ -53,8 +54,15 @@ static char *usage_text[2] = {
 
 "  -s, --suppress-errors          Suppress error messages from the parser\n"
 
-"  -s-, --do-not-suppress-errors  Print parser messages to STDERR (default)"
+"  -s-,--do-not-suppress-errors   Print parser messages to STDERR (default)"
 "\n\n"
+
+"  -M, --do-not-dump-messages     Do not use accumulated CIF messages "
+"(default)\n"
+
+"  -M-,--do-not-dump-messages     Dump accumulated message texts from the CIF "
+"object\n\n"
+
 
 "  --version  print program version (SVN Id) and exit\n"
 
@@ -86,6 +94,7 @@ static option_value_t be_quiet;
 static option_value_t debug;
 static option_value_t print_cif;
 static option_value_t suppress_error_messages;
+static option_value_t dump_messages;
 
 static option_t options[] = {
   { "-d", "--debug",           OT_STRING,         &debug },
@@ -105,6 +114,13 @@ static option_t options[] = {
                                OT_BOOLEAN_FALSE,  &suppress_error_messages },
   { NULL, "--no-suppress-errors",
                                OT_BOOLEAN_FALSE,  &suppress_error_messages },
+  { "-M", "--dump-messages",   OT_BOOLEAN_TRUE,   &dump_messages },
+  { "-M-","--dont-dump-messages",
+                               OT_BOOLEAN_FALSE,  &dump_messages },
+  { NULL, "--do-not-dump-messages",
+                               OT_BOOLEAN_FALSE,  &dump_messages },
+  { NULL, "--no-dump-messages",
+                               OT_BOOLEAN_FALSE,  &dump_messages },
   { NULL }
 };
 
@@ -184,6 +200,20 @@ int main( int argc, char *argv[], char *env[] )
                   printf( "%s: file '%s' FAILED\n", progname, filename );
               }
           }
+          if( cif && dump_messages.value.b == 1 ) {
+              CIFMESSAGE *messages = cif_messages( cif );
+              CIFMESSAGE *msg;
+
+              foreach_cifmessage( msg, messages ) {
+                  fprintf( stderr, "%s\t%s\t%d\t%d\t%s",
+                           progname, cifmessage_filename( msg ),
+                           cifmessage_lineno( msg ), cifmessage_pos( msg ),
+                           cifmessage_message( msg ));
+                  fprintf( stderr, "\n" );
+              }
+
+          }
+
           if( cif ) {
               delete_cif( cif );
               cif = NULL;

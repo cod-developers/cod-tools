@@ -110,6 +110,36 @@ CIFMESSAGE *cifmessage_next( CIFMESSAGE *cm )
     return cm->next;
 }
 
+char* cifmessage_filename( CIFMESSAGE *cm )
+{
+    assert( cm );
+    return cm->filename;
+}
+
+int cifmessage_lineno( CIFMESSAGE *cm )
+{
+    assert( cm );
+    return cm->lineNo;
+}
+
+int cifmessage_pos( CIFMESSAGE *cm )
+{
+    assert( cm );
+    return cm->columnNo;
+}
+
+int cifmessage_columnno( CIFMESSAGE *cm )
+{
+    assert( cm );
+    return cm->columnNo;
+}
+
+char* cifmessage_message( CIFMESSAGE *cm )
+{
+    assert( cm );
+    return cm->message;
+}
+
 void cifmessage_set_line( CIFMESSAGE *cm, char *line, cexception_t *ex )
 {
     assert( cm );
