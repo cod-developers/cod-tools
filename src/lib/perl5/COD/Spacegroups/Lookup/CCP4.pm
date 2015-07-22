@@ -7,7 +7,7 @@
 #* 
 #**
 
-package COD::Spacegroups::CCP4SymopLookup;
+package COD::Spacegroups::Lookup::CCP4;
 
 use strict;
 use warnings;
@@ -16,7 +16,7 @@ require Exporter;
 our @ISA = qw(Exporter);
 our @EXPORT = qw( @table );
 
-@COD::Spacegroups::CCP4SymopLookup::table =
+@COD::Spacegroups::Lookup::CCP4::table =
 (
 {
     spacegroup_name => 'A 2 1 1',

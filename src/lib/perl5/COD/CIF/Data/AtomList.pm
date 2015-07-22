@@ -14,7 +14,7 @@ package COD::CIF::Data::AtomList;
 use strict;
 use warnings;
 use COD::CIF::Data qw( get_cell );
-use COD::Spacegroups::SymopAlgebra qw( symop_vector_mul );
+use COD::Spacegroups::Symop::Algebra qw( symop_vector_mul );
 use COD::Spacegroups::VectorAlgebra qw( modulo_1 );
 use COD::Fractional qw( symop_ortho_from_fract );
 use COD::UserMessage;

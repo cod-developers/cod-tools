@@ -8,7 +8,7 @@
 # Basic symmetry operator algebra (addition, multiplication, etc.)
 #**
 
-package COD::Spacegroups::SymopAlgebra;
+package COD::Spacegroups::Symop::Algebra;
 
 use strict;
 use warnings;

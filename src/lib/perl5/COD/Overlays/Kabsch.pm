@@ -17,7 +17,7 @@ package COD::Overlays::Kabsch;
 
 use strict;
 use COD::JacobiEigen;
-use COD::Spacegroups::SymopAlgebra qw( symop_apply );
+use COD::Spacegroups::Symop::Algebra qw( symop_apply );
 
 require Exporter;
 our @ISA = qw(Exporter);

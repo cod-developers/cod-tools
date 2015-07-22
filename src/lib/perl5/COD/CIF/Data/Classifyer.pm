@@ -16,8 +16,8 @@ use warnings;
 use COD::CIF::Data qw( get_cell get_symmetry_operators );
 use COD::CIF::Data::SymmetryGenerator qw( symop_generate_atoms );
 use COD::Fractional;
-use COD::Spacegroups::SymopAlgebra qw(symop_vector_mul);
-use COD::Spacegroups::SymopParse;
+use COD::Spacegroups::Symop::Algebra qw(symop_vector_mul);
+use COD::Spacegroups::Symop::Parse;
 use COD::Spacegroups::VectorAlgebra qw(distance
                                        matrix_vector_mul
                                        vector_sub);

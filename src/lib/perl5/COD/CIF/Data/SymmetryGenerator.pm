@@ -14,9 +14,9 @@ package COD::CIF::Data::SymmetryGenerator;
 
 use strict;
 use warnings;
-use COD::Spacegroups::SymopAlgebra qw(symop_is_unity symop_vector_mul);
-use COD::Spacegroups::SymopParse;
-use COD::Spacegroups::SpacegroupNames;
+use COD::Spacegroups::Symop::Algebra qw(symop_is_unity symop_vector_mul);
+use COD::Spacegroups::Symop::Parse;
+use COD::Spacegroups::Names;
 use COD::Spacegroups::VectorAlgebra qw(distance);
 use COD::UserMessage;
 

@@ -12,7 +12,7 @@ package COD::CIF::Data::CIF2COD;
 
 use strict;
 use COD::Cell qw(cell_volume);
-use COD::Spacegroups::SpacegroupNames;
+use COD::Spacegroups::Names;
 use COD::CIF::Data qw(get_cell);
 use COD::CIF::Data::CellContents;
 use COD::CIF::Data::CODFlags qw(is_disordered has_coordinates has_Fobs);
@@ -172,7 +172,7 @@ my %spacegroups = map {
     $key1 =~ s/\s//g;
     $key2 =~ s/\s//g;
     ($key1, $_->[2], $key2, $_->[2] )
-} @COD::Spacegroups::SpacegroupNames::names;
+} @COD::Spacegroups::Names::names;
 
 sub cif2cod
 {
@@ -739,10 +739,10 @@ sub compute_Zprime
 
     return undef unless defined $spacegroup_H_M;
 
-    use COD::Spacegroups::SymopLookup;
+    use COD::Spacegroups::Lookup::COD;
     my @sg_description = 
         grep { $spacegroup_H_M eq $_->{universal_h_m} }
-             @COD::Spacegroups::SymopLookup::table;
+             @COD::Spacegroups::Lookup::COD::table;
 
     if( int(@sg_description) == 1 && defined $Z ) {
         my $AU_count = int(@{$sg_description[0]{symops}});

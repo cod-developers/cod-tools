@@ -64,14 +64,14 @@ use COD::AtomNeighbours qw(get_max_covalent_radius make_neighbour_list);
 use COD::AtomProperties;
 use COD::Formulae::Print;
 use COD::MorganFingerprints;
-use COD::Spacegroups::SymopParse qw(symop_from_string
-                                    string_from_symop
-                                    symop_string_canonical_form
-                                    modulo_1);
-use COD::Spacegroups::SymopAlgebra qw(symop_mul symop_invert
-                                      symop_is_unity symop_vector_mul
-                                      symop_modulo_1 flush_zeros_in_symop);
-use COD::Spacegroups::SGBuilder; # Spacegroup builder
+use COD::Spacegroups::Symop::Parse qw(symop_from_string
+                                      string_from_symop
+                                      symop_string_canonical_form
+                                      modulo_1);
+use COD::Spacegroups::Symop::Algebra qw(symop_mul symop_invert
+                                        symop_is_unity symop_vector_mul
+                                        symop_modulo_1 flush_zeros_in_symop);
+use COD::Spacegroups::Builder;
 use COD::Spacegroups::VectorAlgebra qw(distance);
 use COD::CIF::Tags::CanonicalNames;
 use COD::CIF::Tags::Print;
@@ -589,11 +589,11 @@ for my $filename (@ARGV) {
             #   prints molecule to the CIF file
 
             if( $preserve_stoichiometry ) {
-                my $molecular_symmetry = new COD::Spacegroups::SGBuilder();
+                my $molecular_symmetry = new COD::Spacegroups::Builder();
 
                 foreach my $molecule (@$unique_molecules) {
                 # Build molecule point group here...
-                    my $sg = new COD::Spacegroups::SGBuilder();
+                    my $sg = new COD::Spacegroups::Builder();
                     my %original_atoms = ();
                     for my $atom (@{$molecule->{atoms}}) {
                         my $atom_label = $atom->{site_label};
@@ -1195,7 +1195,7 @@ sub copy_atom
 #     option - an option, for example, "hall"
 #     param  - according to an option a value given in the CIF file
 
-# Uses @COD::Spacegroups::SymopLookup::table =
+# Uses @COD::Spacegroups::Lookup::COD::table =
 # (
 # {
 #     number          => 1,
@@ -1221,7 +1221,7 @@ sub get_symops
     $param =~ s/ //g;
     $param =~ s/_//g;
 
-    foreach my $hash (@COD::Spacegroups::SymopLookup::table)
+    foreach my $hash (@COD::Spacegroups::Lookup::COD::table)
     {
         my $value = $hash->{$option};
         $value =~ s/ //g;

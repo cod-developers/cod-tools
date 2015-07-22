@@ -7,9 +7,10 @@
 #* 
 #**
 
-package COD::Spacegroups::SymopParse;
+package COD::Spacegroups::Symop::Parse;
 
 use strict;
+use warnings;
 
 require Exporter;
 our @ISA = qw(Exporter);

@@ -13,10 +13,11 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #**
 
 use strict;
+use warnings;
 use COD::CIF::Parser::Yapp;
-use COD::Spacegroups::SymopLookup;
-use COD::Spacegroups::CCP4SymopLookup;
-use COD::Spacegroups::SymopParse;
+use COD::Spacegroups::Lookup::COD;
+use COD::Spacegroups::Lookup::CCP4;
+use COD::Spacegroups::Symop::Parse;
 use COD::ShowStruct;
 
 sub mk_symop_key
@@ -33,11 +34,11 @@ sub mkhash
 {
     if( 1 ) {
         map { (mk_symop_key($_->{symops}), $_) }
-        @COD::Spacegroups::SymopLookup::table,
-        @COD::Spacegroups::SymopLookup::extra_settings;
+        @COD::Spacegroups::Lookup::COD::table,
+        @COD::Spacegroups::Lookup::COD::extra_settings;
     } else {
         map { (mk_symop_key($_->{symops}), $_) }
-            @COD::Spacegroups::CCP4SymopLookup::table;
+            @COD::Spacegroups::Lookup::CCP4::table;
     }
 }
 

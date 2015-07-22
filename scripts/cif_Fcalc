@@ -27,11 +27,12 @@ eval 'exec perl -x $0 ${1+"$@"}'
 # http://www.iucr.org/__data/assets/pdf_file/0015/13083/3.pdf
 
 use strict;
+use warnings;
 use File::Basename;
 use COD::CIF::Parser::Yapp;
-use COD::Spacegroups::SpacegroupNames;
-use COD::Spacegroups::SymopParse;
-use COD::Spacegroups::SymopLookup;
+use COD::Spacegroups::Names;
+use COD::Spacegroups::Symop::Parse;
+use COD::Spacegroups::Lookup::COD;
 use COD::Cromer_Mann;
 use COD::Fractional;
 use COD::UserMessage;
@@ -1199,7 +1200,7 @@ sub cell_filling_sym
 # functions get_symops() and symop_apply() code was 
 # copied from 'cif_fillcell' script. rev. 1440;
 #===============================================================#
-# @COD::Spacegroups::SymopLookup::table =
+# @COD::Spacegroups::Lookup::COD::table =
 # (
 # {
 #     number          => 1,
@@ -1223,7 +1224,7 @@ sub get_symops
     $param =~ s/ //g;
     $param =~ s/_//g;
 
-    foreach my $hash (@COD::Spacegroups::SymopLookup::table)
+    foreach my $hash (@COD::Spacegroups::Lookup::COD::table)
     {
         my $value = $hash->{$option};
         $value =~ s/ //g;

@@ -19,6 +19,7 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #**
 
 use strict;
+use warnings;
 use File::Basename;
 use COD::Cell qw(cell_volume);
 use COD::CIF::Parser::Yapp;
@@ -31,9 +32,9 @@ use COD::CIF::Tags::Excluded;
 use COD::CIF::Tags::Manage;
 use COD::CIF::Tags::Print;
 use COD::CIF::Tags::CanonicalNames;
-use COD::Spacegroups::SpacegroupNames;
-use COD::Spacegroups::SymopParse;
-use COD::Spacegroups::SymopLookup;
+use COD::Spacegroups::Names;
+use COD::Spacegroups::Symop::Parse;
+use COD::Spacegroups::Lookup::COD;
 use COD::Formulae::Parser::AdHoc;
 use COD::CIF::Unicode2CIF;
 use COD::UserMessage;
@@ -54,10 +55,11 @@ sub mkhash
 {
     if( 1 ) {
         map { (mk_symop_key($_->{symops}), $_) }
-        @COD::Spacegroups::SymopLookup::table,
-        @COD::Spacegroups::SymopLookup::extra_settings;
+        @COD::Spacegroups::Lookup::COD::table,
+        @COD::Spacegroups::Lookup::COD::extra_settings;
     #} else {
-    #        map { (mk_symop_key($_->{symops}), $_) } @CCP4SymopLookup::table;
+    #    map { (mk_symop_key($_->{symops}), $_) }
+    #    @COD::Spacegroups::Lookup::CCP4::table;
     }
 }
 
@@ -130,7 +132,7 @@ my %spacegroups = map {
     $key1 =~ s/\s//g;
     $key2 =~ s/\s//g;
     ($key1, $_->[2], $key2, $_->[2] )
-} @COD::Spacegroups::SpacegroupNames::names;
+} @COD::Spacegroups::Names::names;
 
 #* USAGE:
 #*     $0 [options] input.cif [input2.cif ...]

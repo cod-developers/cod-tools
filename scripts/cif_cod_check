@@ -23,12 +23,12 @@ use COD::CIF::Tags::Manage;
 use COD::Escape qw( decode_textfield );
 use COD::Precision qw(eqsig);
 use COD::ShowStruct;
-use COD::Spacegroups::SpacegroupNames;
-use COD::Spacegroups::SymopLookup;
+use COD::Spacegroups::Symop::Parse;
+use COD::Spacegroups::Lookup::COD;
+use COD::Spacegroups::Names;
 use COD::UserMessage;
 use COD::SOptions;
 use COD::SUsage;
-use COD::Spacegroups::SymopParse;
 use Digest::MD5 qw( md5_hex );
 use Digest::SHA qw( sha1_hex );
 use File::Basename;
@@ -389,10 +389,10 @@ my %spacegroups = map {
     $key1 =~ s/\s//g;
     $key2 =~ s/\s//g;
     ($_->[2], $_->[2], $_->[1], $_->[2], $key1, $_->[2], $key2, $_->[2] )
-} @COD::Spacegroups::SpacegroupNames::names,
+} @COD::Spacegroups::Names::names,
   map { [ $_->{'number'}, $_->{'hermann_mauguin'}, $_->{'universal_h_m'} ] }
-      @COD::Spacegroups::SymopLookup::table,
-      @COD::Spacegroups::SymopLookup::extra_settings;
+      @COD::Spacegroups::Lookup::COD::table,
+      @COD::Spacegroups::Lookup::COD::extra_settings;
 
 $| = 1; # Flush buffers immediately, to avoid mixing lines of STDOUT
         # and STDERR.
@@ -1047,7 +1047,7 @@ sub check_pdcif_relations
 #     option - an option, for example, "hall"
 #     param  - according to an option a value given in the CIF file
 
-# Uses @COD::Spacegroups::SymopLookup::table =
+# Uses @COD::Spacegroups::Lookup::COD::table =
 # (
 # {
 #     number          => 1,
@@ -1067,7 +1067,7 @@ sub check_pdcif_relations
 # );
 
 # Returns a reference to the spacegroup descriptor
-# (a @COD::Spacegroups::SymopLookup::table element).
+# (a @COD::Spacegroups::Lookup::COD::table element).
 
 sub lookup_spacegroup
 {
@@ -1076,8 +1076,8 @@ sub lookup_spacegroup
     $param =~ s/ //g;
     $param =~ s/_//g;
 
-    foreach my $hash (@COD::Spacegroups::SymopLookup::table,
-                      @COD::Spacegroups::SymopLookup::extra_settings) {
+    foreach my $hash (@COD::Spacegroups::Lookup::COD::table,
+                      @COD::Spacegroups::Lookup::COD::extra_settings) {
         my $value = $hash->{$option};
         $value =~ s/ //g;
         $value =~ s/_//g;

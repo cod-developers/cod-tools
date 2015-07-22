@@ -13,8 +13,8 @@ package COD::CIF::Data;
 
 use strict;
 use warnings;
-use COD::Spacegroups::SymopLookup;
-use COD::Spacegroups::SpacegroupNames;
+use COD::Spacegroups::Lookup::COD;
+use COD::Spacegroups::Names;
 use COD::UserMessage;
 
 require Exporter;
@@ -27,10 +27,10 @@ our @EXPORT_OK = qw(
 
 my %sg_name_abbrev =
     map { my $key = $_->[1]; $key =~ s/\s+//g; ( $key, $_->[2] ) }
-    @COD::Spacegroups::SpacegroupNames::names,
+    @COD::Spacegroups::Names::names,
     map { [ $_->{number}, $_->{hermann_mauguin}, $_->{universal_h_m} ] }
-    @COD::Spacegroups::SymopLookup::table,
-    @COD::Spacegroups::SymopLookup::extra_settings;
+    @COD::Spacegroups::Lookup::COD::table,
+    @COD::Spacegroups::Lookup::COD::extra_settings;
 
 #===============================================================#
 # Extract unit cell angles and lengths.
@@ -240,7 +240,7 @@ sub get_content_encodings($$)
 }
 
 #===============================================================#
-# @COD::Spacegroups::SymopLookup::table =
+# @COD::Spacegroups::Lookup::COD::table =
 # (
 # {
 #     number          => 1,
@@ -269,8 +269,8 @@ sub lookup_symops
     $sg_full = "" unless defined $sg_full;
     $sg_full =~ s/\s+//g;
 
-    foreach my $hash (@COD::Spacegroups::SymopLookup::table,
-                      @COD::Spacegroups::SymopLookup::extra_settings)
+    foreach my $hash (@COD::Spacegroups::Lookup::COD::table,
+                      @COD::Spacegroups::Lookup::COD::extra_settings)
     {
         my $value = $hash->{$option};
         $value =~ s/ //g;

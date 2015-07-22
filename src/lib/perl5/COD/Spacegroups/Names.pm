@@ -9,7 +9,7 @@
 # spelling.
 #**
 
-package COD::Spacegroups::SpacegroupNames;
+package COD::Spacegroups::Names;
 
 use strict;
 use warnings;
@@ -18,7 +18,7 @@ require Exporter;
 our @ISA = qw(Exporter);
 our @EXPORT = qw( @names );
 
-@COD::Spacegroups::SpacegroupNames::names = (
+@COD::Spacegroups::Names::names = (
 [1,        "P 1",        "P 1" ],
 [2,        "P -1",        "P -1" ],
 [2,        "P 1-",        "P -1" ],

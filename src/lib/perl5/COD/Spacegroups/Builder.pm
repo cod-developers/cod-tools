@@ -10,13 +10,13 @@
 #  list.
 #**
 
-package COD::Spacegroups::SGBuilder;
+package COD::Spacegroups::Builder;
 use strict;
 use warnings;
 
 use COD::Spacegroups::VectorAlgebra;
-use COD::Spacegroups::SymopParse;
-use COD::Spacegroups::SymopAlgebra qw(
+use COD::Spacegroups::Symop::Parse;
+use COD::Spacegroups::Symop::Algebra qw(
     symop_mul symop_modulo_1 symop_translate symop_translation
     symop_set_translation symop_is_inversion symop_matrices_are_equal
     flush_zeros_in_symop symop_is_translation

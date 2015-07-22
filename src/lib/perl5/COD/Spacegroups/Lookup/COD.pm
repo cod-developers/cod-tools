@@ -7,7 +7,7 @@
 #* 
 #**
 
-package COD::Spacegroups::SymopLookup;
+package COD::Spacegroups::Lookup::COD;
 
 use strict;
 
@@ -21,7 +21,7 @@ our @EXPORT = qw( @table @extra_settings );
 # for the rhombohedral setting universal_h_m values do not match this
 # pattern.
 
-@COD::Spacegroups::SymopLookup::table =
+@COD::Spacegroups::Lookup::COD::table =
 (
 {
     number          => 1,
@@ -19368,7 +19368,7 @@ our @EXPORT = qw( @table @extra_settings );
 }
 );
 
-@COD::Spacegroups::SymopLookup::extra_settings = (
+@COD::Spacegroups::Lookup::COD::extra_settings = (
 {
     number          => 1,
     hall            => 'P 1 (1/2*x+1/2*y,1/2*x-1/2*y,-z)',
