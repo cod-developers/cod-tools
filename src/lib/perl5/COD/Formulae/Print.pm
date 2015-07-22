@@ -9,7 +9,7 @@
 #  representation of a CIF file returned by the CIFParser module.
 #**
 
-package COD::Formulae::FormulaPrint;
+package COD::Formulae::Print;
 
 use strict;
 use warnings;
