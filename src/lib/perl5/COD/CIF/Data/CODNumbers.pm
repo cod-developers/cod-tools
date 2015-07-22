@@ -13,7 +13,7 @@ package COD::CIF::Data::CODNumbers;
 use strict;
 use warnings;
 use File::Basename;
-use COD::Formulae::AdHocParser;
+use COD::Formulae::Parser::AdHoc;
 use COD::CIF::Data::CellContents;
 use COD::Precision qw(eqsig);
 
@@ -196,7 +196,7 @@ sub cif_fill_data
                 $formula =~ s/^\s*|\s*$//g;
                 $formula =~ s/\s+/ /g;
 
-                my $formula_parser = new COD::Formulae::AdHocParser;
+                my $formula_parser = new COD::Formulae::Parser::AdHoc;
 
                 eval {
                     $formula_parser->ParseString( $formula );

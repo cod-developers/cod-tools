@@ -12,7 +12,7 @@ use warnings;
 use COD::ShowStruct;
 use FileHandle;
 
-$COD::Formulae::AdHocParser::version = '1.0';
+$COD::Formulae::Parser::AdHoc::version = '1.0';
 
 my $SVNID = '$Id$';
 
@@ -20,7 +20,7 @@ my $SVNID = '$Id$';
 # 1 - only YAPP output (type -> value)
 # 2 - lex & yapp output
 # 3 - generated array dump
-$COD::Formulae::AdHocParser::debug = 0;
+$COD::Formulae::Parser::AdHoc::debug = 0;
 
 %}
 # --------------------------------------------------------------
@@ -343,8 +343,8 @@ sub ParseString
 
     $| = 1;
 
-    if( $COD::Formulae::AdHocParser::debug >= 2 &&
-        $COD::Formulae::AdHocParser::debug < 3) {
+    if( $COD::Formulae::Parser::AdHoc::debug >= 2 &&
+        $COD::Formulae::Parser::AdHoc::debug < 3) {
         $self->YYParse( yylex => \&_Lexer,
                         yyerror => \&_Error,
                         yydebug => 0x05 );
@@ -352,13 +352,13 @@ sub ParseString
         $self->YYParse( yylex => \&_Lexer, yyerror => \&_Error );
     }
     if( $self->YYNberr() == 0 ) {
-        if( $COD::Formulae::AdHocParser::debug >= 1 &&
-            $COD::Formulae::AdHocParser::debug < 3 ) {
+        if( $COD::Formulae::Parser::AdHoc::debug >= 1 &&
+            $COD::Formulae::Parser::AdHoc::debug < 3 ) {
             print "File syntax is CORRECT!\n";
         }
     } else {
-        if( $COD::Formulae::AdHocParser::debug >= 1 &&
-            $COD::Formulae::AdHocParser::debug < 3 ) {
+        if( $COD::Formulae::Parser::AdHoc::debug >= 1 &&
+            $COD::Formulae::Parser::AdHoc::debug < 3 ) {
             print "Syntax check failed.\n";
         }
     }
