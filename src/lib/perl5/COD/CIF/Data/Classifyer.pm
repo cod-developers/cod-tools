@@ -18,9 +18,9 @@ use COD::CIF::Data::SymmetryGenerator qw( symop_generate_atoms );
 use COD::Fractional;
 use COD::Spacegroups::Symop::Algebra qw(symop_vector_mul);
 use COD::Spacegroups::Symop::Parse;
-use COD::Spacegroups::VectorAlgebra qw(distance
-                                       matrix_vector_mul
-                                       vector_sub);
+use COD::Algebra::Vector qw(distance
+                            matrix_vector_mul
+                            vector_sub);
 use COD::UserMessage;
 
 require Exporter;

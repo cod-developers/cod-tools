@@ -17,7 +17,7 @@ use warnings;
 use COD::Spacegroups::Symop::Algebra qw(symop_is_unity symop_vector_mul);
 use COD::Spacegroups::Symop::Parse;
 use COD::Spacegroups::Names;
-use COD::Spacegroups::VectorAlgebra qw(distance);
+use COD::Algebra::Vector qw(distance);
 use COD::UserMessage;
 
 require Exporter;

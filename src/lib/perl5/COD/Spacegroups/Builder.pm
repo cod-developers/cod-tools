@@ -14,7 +14,7 @@ package COD::Spacegroups::Builder;
 use strict;
 use warnings;
 
-use COD::Spacegroups::VectorAlgebra;
+use COD::Algebra::Vector;
 use COD::Spacegroups::Symop::Parse;
 use COD::Spacegroups::Symop::Algebra qw(
     symop_mul symop_modulo_1 symop_translate symop_translation

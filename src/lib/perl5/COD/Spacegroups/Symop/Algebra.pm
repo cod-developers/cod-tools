@@ -13,6 +13,9 @@ package COD::Spacegroups::Symop::Algebra;
 use strict;
 use warnings;
 
+use COD::Algebra::Vector qw( modulo_1 matrix_vector_mul );
+use POSIX;
+
 require Exporter;
 our @ISA = qw(Exporter);
 our @EXPORT_OK = qw(
@@ -23,8 +26,6 @@ our @EXPORT_OK = qw(
     symop_det round_values_in_symop
 );
 
-use COD::Spacegroups::VectorAlgebra qw( modulo_1 matrix_vector_mul );
-use POSIX;
 
 #
 # Symop array contains the following values:

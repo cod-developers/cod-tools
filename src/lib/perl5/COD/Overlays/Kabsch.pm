@@ -16,7 +16,8 @@
 package COD::Overlays::Kabsch;
 
 use strict;
-use COD::JacobiEigen;
+use warnings;
+use COD::Algebra::JacobiEigen;
 use COD::Spacegroups::Symop::Algebra qw( symop_apply );
 
 require Exporter;

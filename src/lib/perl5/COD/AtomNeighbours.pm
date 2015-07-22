@@ -20,7 +20,7 @@ our @EXPORT_OK = qw(get_max_covalent_radius);
 
 use Carp;
 use COD::AtomBricks qw(build_bricks get_atom_index get_search_span);
-use COD::Spacegroups::VectorAlgebra qw(distance);
+use COD::Algebra::Vector qw(distance);
 
 #==============================================================================#
 # Find a maximal covalent radius in the atom property list.

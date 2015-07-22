@@ -8,7 +8,7 @@
 # Basic symmetry operator algebra (addition, multiplication, etc.)
 #**
 
-package COD::Spacegroups::VectorAlgebra;
+package COD::Algebra::Vector;
 
 use strict;
 use warnings;
@@ -18,7 +18,7 @@ require Exporter;
 our @ISA = qw(Exporter);
 our @EXPORT = qw( vector_sub vector_add vector_modulo_1 
                   vector_is_zero vectors_are_equal round_vector );
-our @EXPORT_OK = qw( distance matrix_vector_mul modulo_1);
+our @EXPORT_OK = qw( distance matrix_vector_mul modulo_1 );
 
 sub vector_sub($$)
 {

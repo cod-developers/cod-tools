@@ -11,7 +11,7 @@
 # Flannery, P. B.
 #-----------------------------------------------------------------------
 
-package COD::JacobiEigen;
+package COD::Algebra::JacobiEigen;
 
 use strict;
 use warnings;

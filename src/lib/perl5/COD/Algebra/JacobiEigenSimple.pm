@@ -7,16 +7,16 @@
 # Find all eigenvalues and eigenvectors of a symmetric matrix a of order n.
 #-----------------------------------------------------------------------
 
-package COD::JacobiEigenSimple;
+package COD::Algebra::JacobiEigenSimple;
 
 use strict;
 require Exporter;
 our @ISA = qw(Exporter);
 our @EXPORT = qw( jacobi_eigenvv );
 
-$COD::JacobiEigenSimple::max_iterations = 100;
+$COD::Algebra::JacobiEigenSimple::max_iterations = 100;
 # used for float comparison
-$COD::JacobiEigenSimple::delta  = 1e-100;
+$COD::Algebra::JacobiEigenSimple::delta  = 1e-100;
 
 # jacobi_eigenvv
 # expects 2-d array (symmetrical matrix) for which eigenvalues/eigenvectors
@@ -39,9 +39,9 @@ sub jacobi_eigenvv ## ( @ )
         $eigenvectors[$i][$i] = 1.0;
     }
 
-    for( $sweep_count = 0; $sweep_count < $COD::JacobiEigenSimple::max_iterations; 
+    for( $sweep_count = 0; $sweep_count < $COD::Algebra::JacobiEigenSimple::max_iterations; 
          $sweep_count++ ) {
-        if( &sum_off_diag(@a) < $COD::JacobiEigenSimple::delta ) {
+        if( &sum_off_diag(@a) < $COD::Algebra::JacobiEigenSimple::delta ) {
             return ( \@eigenvectors, \@eigenvalues, $sweep_count );
         }
         &jacobi_sweep( \@a, \@eigenvalues, \@eigenvectors );
