@@ -431,28 +431,19 @@ static int is_real( char *s )
 
     if( !s || !*s ) return 0;
 
-    // printf( ">>> is_real(): leading char is '%c'\n", *s );
-
     if( !isdigit(*s) && *s != '+' && *s != '-' && *s != '.' ) {
         return 0;
     }
 
-    // printf( ">>> is_real(): found start\n" );
-
     if( *s == '+' || *s == '-' ) s++;
-
-    // printf( ">>> is_real(): accepting leading decimal point\n" );
 
     /* decimal point may follow the sign, as in +.0123 */
     if( *s == '.' ) {
         s ++;
         has_decimal = 1;
-        // printf( ">>> is_real(): accepted leading decimal point\n" );
     }
 
     if( !isdigit(*s) ) return 0;
-
-    // printf( ">>> is_real(): accepted leading digits\n" );    
 
     while( isdigit(*s) ) {
         s++;
@@ -461,12 +452,10 @@ static int is_real( char *s )
 
     if( *s == '.' ) {
         if( has_decimal ) {
-            // printf( ">>> is_real(): rejecting second decimal point\n" );
             return 0;
         } else {
             has_decimal = 1;
             s ++;
-            // printf( ">>> is_real(): accepting middle decimal point\n" );
         }
     }
 
@@ -474,8 +463,6 @@ static int is_real( char *s )
         s++;
         has_digits = 1;
     }
-
-    // printf( ">>> is_real(): skipped digits after the decimal point; has_digits = %d\n", has_digits );
 
     if( !has_digits ) return 0;
 
@@ -487,8 +474,6 @@ static int is_real( char *s )
        correct ;): */
     if( *s == '\0' ) return 1;
 
-    // printf( ">>> is_real(): will now check exponent...\n" );
-
     if( *s != '(' &&
         *s != 'E' && *s != 'e' &&
         *s != 'D' && *s != 'd' /* Fortranish :) */
@@ -499,19 +484,14 @@ static int is_real( char *s )
     if( *s == 'E' || *s == 'e' ||
         *s == 'D' || *s == 'd' ) {
         s ++;
-        // printf( ">>> is_real(): found and skipped exponent\n" );
         if( *s == '+' || *s == '-' ) s++;
         if( !isdigit(*s) ) {
             return 0;
         }
-        // printf( ">>> is_real(): skipped exponent sign\n" );
         while( isdigit(*s) ) s++;
-        // printf( ">>> is_real(): skipped exponent digits\n" );
     }
 
     if( *s == '\0' ) return 1;
-    // printf( ">>> is_real(): line not ended, will check ESU\n" );
-    // printf( ">>> is_real(): skipped opening brace\n" );
     if( *s != '(' )
         return 0;
     else
