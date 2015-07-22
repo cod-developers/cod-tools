@@ -33,11 +33,17 @@ CIFMESSAGE *cifmessage_next( CIFMESSAGE *cm );
 #define foreach_cifmessage( CM, LIST ) \
     for( (CM) = (LIST); (CM) != NULL; (CM) = cifmessage_next(CM) )
 
+char* cifmessage_addpos( CIFMESSAGE *cm );
+char* cifmessage_program( CIFMESSAGE *cm );
 char* cifmessage_filename( CIFMESSAGE *cm );
 int cifmessage_lineno( CIFMESSAGE *cm );
 int cifmessage_pos( CIFMESSAGE *cm );
 int cifmessage_columnno( CIFMESSAGE *cm );
 char* cifmessage_message( CIFMESSAGE *cm );
+char* cifmessage_explanation( CIFMESSAGE *cm );
+char* cifmessage_msgseparator( CIFMESSAGE *cm );
+char* cifmessage_status( CIFMESSAGE *cm );
+char* cifmessage_line( CIFMESSAGE *cm );
 
 void cifmessage_set_line( CIFMESSAGE *cm, char *line, cexception_t *ex );
 
