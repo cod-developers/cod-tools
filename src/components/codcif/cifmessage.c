@@ -110,6 +110,18 @@ CIFMESSAGE *cifmessage_next( CIFMESSAGE *cm )
     return cm->next;
 }
 
+char* cifmessage_addpos( CIFMESSAGE *cm )
+{
+    assert( cm );
+    return cm->addPos;
+}
+
+char* cifmessage_program( CIFMESSAGE *cm )
+{
+    assert( cm );
+    return cm->program;
+}
+
 char* cifmessage_filename( CIFMESSAGE *cm )
 {
     assert( cm );
@@ -138,6 +150,30 @@ char* cifmessage_message( CIFMESSAGE *cm )
 {
     assert( cm );
     return cm->message;
+}
+
+char* cifmessage_explanation( CIFMESSAGE *cm )
+{
+    assert( cm );
+    return cm->explanation;
+}
+
+char* cifmessage_msgseparator( CIFMESSAGE *cm )
+{
+    assert( cm );
+    return cm->msgSeparator;
+}
+
+char* cifmessage_status( CIFMESSAGE *cm )
+{
+    assert( cm );
+    return cm->status;
+}
+
+char* cifmessage_line( CIFMESSAGE *cm )
+{
+    assert( cm );
+    return cm->line;
 }
 
 void cifmessage_set_line( CIFMESSAGE *cm, char *line, cexception_t *ex )
