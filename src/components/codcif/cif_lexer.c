@@ -167,7 +167,7 @@ int cif_lexer( FILE *in, cexception_t *ex )
             return _TAG;
             break;
 
-        case '+': case '-': case '0': case '1': case '2': case '3':
+        case '.': case '+': case '-': case '0': case '1': case '2': case '3':
         case '4': case '5': case '6': case '7': case '8': case '9':
             pos = 0;
             advance_mark();
@@ -427,6 +427,100 @@ static int is_integer( char *s )
 
 static int is_real( char *s )
 {
+    int has_decimal = 0, has_digits = 0;
+
+    if( !s || !*s ) return 0;
+
+    // printf( ">>> is_real(): leading char is '%c'\n", *s );
+
+    if( !isdigit(*s) && *s != '+' && *s != '-' && *s != '.' ) {
+        return 0;
+    }
+
+    // printf( ">>> is_real(): found start\n" );
+
+    if( *s == '+' || *s == '-' ) s++;
+
+    // printf( ">>> is_real(): accepting leading decimal point\n" );
+
+    /* decimal point may follow the sign, as in +.0123 */
+    if( *s == '.' ) {
+        s ++;
+        has_decimal = 1;
+        // printf( ">>> is_real(): accepted leading decimal point\n" );
+    }
+
+    if( !isdigit(*s) ) return 0;
+
+    // printf( ">>> is_real(): accepted leading digits\n" );    
+
+    while( isdigit(*s) ) {
+        s++;
+        has_digits = 1;
+    }
+
+    if( *s == '.' ) {
+        if( has_decimal ) {
+            // printf( ">>> is_real(): rejecting second decimal point\n" );
+            return 0;
+        } else {
+            has_decimal = 1;
+            s ++;
+            // printf( ">>> is_real(): accepting middle decimal point\n" );
+        }
+    }
+
+    while( isdigit(*s) ) {
+        s++;
+        has_digits = 1;
+    }
+
+    // printf( ">>> is_real(): skipped digits after the decimal point; has_digits = %d\n", has_digits );
+
+    if( !has_digits ) return 0;
+
+    /* By now, of we have seen digits and the string has ended, we
+       accept reg real number. We could insist here that we have a
+       decimal point so that integers are not counte das reals, but
+       since integer will be checked before reals we can happily
+       accept integers as reals as well (which is mathematically more
+       correct ;): */
+    if( *s == '\0' ) return 1;
+
+    // printf( ">>> is_real(): will now check exponent...\n" );
+
+    if( *s != '(' &&
+        *s != 'E' && *s != 'e' &&
+        *s != 'D' && *s != 'd' /* Fortranish :) */
+        ) {
+        return 0;
+    }
+
+    if( *s == 'E' || *s == 'e' ||
+        *s == 'D' || *s == 'd' ) {
+        s ++;
+        // printf( ">>> is_real(): found and skipped exponent\n" );
+        if( *s == '+' || *s == '-' ) s++;
+        if( !isdigit(*s) ) {
+            return 0;
+        }
+        // printf( ">>> is_real(): skipped exponent sign\n" );
+        while( isdigit(*s) ) s++;
+        // printf( ">>> is_real(): skipped exponent digits\n" );
+    }
+
+    if( *s == '\0' ) return 1;
+    // printf( ">>> is_real(): line not ended, will check ESU\n" );
+    // printf( ">>> is_real(): skipped opening brace\n" );
+    if( *s != '(' )
+        return 0;
+    else
+        s++;
+    if( !isdigit(*s) ) return 0;
+    while( isdigit(*s) ) s++;
+    if( *s == ')' ) s++;
+    if( *s != '\0' ) return 0;
+
     return 1;
 }
 
