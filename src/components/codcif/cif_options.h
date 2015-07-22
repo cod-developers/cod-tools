@@ -32,5 +32,6 @@ cif_option_set_fix_duplicate_tags_with_empty_values( cif_option_t copt );
 cif_option_t cif_option_set_fix_data_header( cif_option_t copt );
 cif_option_t cif_option_set_fix_datablock_names( cif_option_t copt );
 cif_option_t cif_option_set_fix_string_quotes( cif_option_t copt );
+cif_option_t cif_option_suppress_messages( cif_option_t copt );
 
 #endif

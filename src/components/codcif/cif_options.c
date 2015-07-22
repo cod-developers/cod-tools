@@ -71,3 +71,8 @@ cif_option_t cif_option_set_fix_string_quotes( cif_option_t copt )
 {
     return copt | FIX_STRING_QUOTES;
 }
+
+cif_option_t cif_option_suppress_messages( cif_option_t copt )
+{
+    return copt | CO_SUPPRESS_MESSAGES;
+}
