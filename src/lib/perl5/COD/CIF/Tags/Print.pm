@@ -9,7 +9,7 @@
 #  representation of a CIF file returned by the CIFParser module.
 #**
 
-package COD::CIF::Tags::TagPrint;
+package COD::CIF::Tags::Print;
 
 use strict;
 

@@ -9,7 +9,7 @@
 #  representation of a CIF file returned by the CIFParser module.
 #**
 
-package COD::CIF::Tags::TagManage;
+package COD::CIF::Tags::Manage;
 
 use strict;
 use warnings;

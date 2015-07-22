@@ -13,7 +13,7 @@ package COD::CIF::Data::Diff;
 
 use strict;
 use warnings;
-use COD::CIF::Tags::TagPrint;
+use COD::CIF::Tags::Print;
 
 require Exporter;
 our @ISA = qw(Exporter);

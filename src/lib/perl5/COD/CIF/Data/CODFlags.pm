@@ -11,7 +11,7 @@ package COD::CIF::Data::CODFlags;
 
 use strict;
 use warnings;
-use COD::CIF::Tags::TagManage qw( tag_is_empty );
+use COD::CIF::Tags::Manage qw( tag_is_empty );
 require Exporter;
 our @ISA = qw(Exporter);
 our @EXPORT = qw( is_on_hold
