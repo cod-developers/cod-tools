@@ -18,7 +18,6 @@ use COD::Spacegroups::Symop::Algebra qw(symop_is_unity symop_vector_mul);
 use COD::Spacegroups::Symop::Parse;
 use COD::Spacegroups::Names;
 use COD::Algebra::Vector qw(distance);
-use COD::UserMessage;
 
 require Exporter;
 our @ISA = qw(Exporter);

@@ -1,2 +1,2 @@
-Tests parsing of correctly former error messages with no special characters 
+Tests parsing of correctly formed error messages with no special characters 
 to escape.

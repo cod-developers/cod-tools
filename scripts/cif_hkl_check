@@ -24,7 +24,7 @@ use COD::CIF::Data::CODFlags qw(has_hkl
                               @powder_diffraction_intensity_tags);
 use COD::CIF::Tags::CanonicalNames;
 use COD::Precision;
-use COD::UserMessage;
+use COD::UserMessage qw(note warning error prefix_dataname);
 use COD::SOptions;
 use COD::SUsage;
 
@@ -163,7 +163,7 @@ while( @ARGV > 0 ) {
                   "' (CIF) and '" . join( ', ', map { "'$_'" }
                   @{$hkl_values->{$line->[0]}} ) .
                   "' (diffraction data))";
-            warning( $0, $cif_file, $hkl_dataname,
+            warning( $0, $cif_file, prefix_dataname($hkl_dataname),
                      "can not confirm relation between datablocks named " .
                      "'$hkl_dataname' from supplied CIF and diffraction " .
                      "data files -- $reason" );

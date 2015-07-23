@@ -23,9 +23,9 @@ use COD::CIF::Tags::CanonicalNames;
 use COD::CIF::Tags::Manage;
 use COD::CIF::Tags::Print;
 use COD::Fractional;
-use COD::UserMessage;
 use COD::Spacegroups::Symop::Algebra qw( symop_vector_mul );
 use COD::Algebra::Vector qw( distance );
+use COD::UserMessage qw(note warning prefix_dataname);
 use COD::SOptions;
 use COD::SUsage;
 
@@ -357,7 +357,7 @@ sub get_alternatives
 sub mark_disorder
 {
     my( $dataset, $atom_properties, $filename, $options ) = @_;
-    my $dataname = $dataset->{name};
+    my $dataname = prefix_dataname($dataset->{name});
     my $values = $dataset->{values};
 
     $options = {} unless $options;

@@ -35,7 +35,7 @@ use COD::Spacegroups::Symop::Parse;
 use COD::Spacegroups::Lookup::COD;
 use COD::Cromer_Mann;
 use COD::Fractional;
-use COD::UserMessage;
+use COD::UserMessage qw(warning error prefix_dataname);
 use COD::SOptions;
 use COD::SUsage;
 
@@ -165,8 +165,9 @@ for my $filename (@ARGV) {
 
     for my $datablock (@$data) {
 
-        my @hkl_and_F;
+        my $dataname = prefix_dataname($datablock->{name});
 
+        my @hkl_and_F;
         ## my $radiation_wavelengths = remove_standard_uncertainties(
         ##     $datablock->{values}{_diffrn_radiation_wavelength} );
         my $cell_parameters = get_unit_cell_parameters( $datablock );
@@ -192,13 +193,13 @@ for my $filename (@ARGV) {
             foreach my $atom (@{$atoms}) {
                 if( !defined $atom->{aniso_value_Uij}[0] &&
                     $atom->{label} !~ /[H|D]\d++/ ) {
-                    warning( $0, $filename, $datablock->{name},
+                    warning( $0, $filename, $dataname,
                              'the CIF file does not contain the full data '
                            . 'of the standard anisotropic atomic displacement '
                            . 'components' );
                     if( $atom->{U_value_of_B_factor} !~ /\d\.\d++/ &&
                         $atom->{B_factor} !~ /\d\.\d++/) {
-                        error( $0, $filename, $datablock->{name},
+                        error( $0, $filename, $dataname,
                                'the CIF  does not contain the correct values '
                              . 'for temperature factor calculation' );
                         exit 1;
@@ -246,7 +247,7 @@ for my $filename (@ARGV) {
                 #----------------------------------------------------
                 ## print "@{$CromerManncoeff}\n";
                 if( !defined $CromerManncoeff->[0] ) {
-                    error( $0, $filename, $datablock->{name},
+                    error( $0, $filename, $dataname,
                            'the Cromer-Mann coefficients "are not defined in '
                          . 'external source/CIF file for element '
                          . "'$atom->{chemical_type}'" );
@@ -369,7 +370,7 @@ for my $filename (@ARGV) {
                         $atom_structure_factor_corrected *
                         $temperature_factor * sin( $atom_hkl_phase );
                 } else {
-                        warning( $0, $filename, $datablock->{name},
+                        warning( $0, $filename, $dataname,
                                  'the CIF file does not contain the data '
                                . 'of anomalous-dispersion scattering '
                                . 'factor' );
@@ -415,7 +416,7 @@ for my $filename (@ARGV) {
             if( defined $max_number_print_of_F ) {
                 if( ($max_number_print_of_F - 1) >
                     $#{$search_equal_intensities} ) {
-                    warning( $0, $filename, $datablock->{name},
+                    warning( $0, $filename, $dataname,
                             'The value of --max-Fhkl-number is large than '
                           . 'number of calculated structure factors. '
                           . 'Printing out of full structure factors number.' );
@@ -1064,6 +1065,7 @@ sub cell_filling_sym
 {
     my( $datablock, $filename, $f2o ) = @_;
     my $values =  $datablock->{values};
+    my $dataname = prefix_dataname($datablock->{name});
     my @xyz_arrays =
         ( remove_standard_uncertainties(
               $values->{_atom_site_fract_x} ),
@@ -1084,7 +1086,7 @@ sub cell_filling_sym
         my $hall = $values->{"_symmetry_space_group_name_hall"}[0];
         $sym_data = get_symops("hall", $hall);
         if( $sym_data == 0 ) {
-            error( $0, $filename, $datablock->{name},
+            error( $0, $filename, $dataname,
                    "'_symmetry_space_group_name_Hall' tag value '$hall' "
                  . "was not recognised as a space group name" );
         }
@@ -1096,7 +1098,7 @@ sub cell_filling_sym
         $sym_data = get_symops("hermann_mauguin", $h_m);
 
         if( $sym_data == 0 ) {
-            error( $0, $filename, $datablock->{name},
+            error( $0, $filename, $dataname,
                    "'_symmetry_space_group_name_H-M' tag value '$h_m' "
                  . "was not recognised as a space group name" );
             die;          # data of space group is empty or incorrect;
@@ -1446,14 +1448,14 @@ sub sort_Friedel
         } elsif ($add > 1 && $comp) {
             # more same Friedel's twins are detected, adding;
             push( @{$output[$adding_i]}, 
-                  $ref_to_sorted_Fhkl->[$cur_i + $add][1]);         
-            $add++; # seraching more;            
+                  $ref_to_sorted_Fhkl->[$cur_i + $add][1]);
+            $add++; # searching more;
         } else {
             $adding_i++;
             $cur_i += $add;
             $add = 1;
             next;
-        }                  
+        }
     } # end while 
     return \@output;
 }

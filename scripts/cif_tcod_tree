@@ -19,7 +19,7 @@ use COD::CIF::Parser::Yapp;
 use COD::CIF::Tags::CanonicalNames;
 use COD::CIF::Tags::Print;
 use COD::Escape qw( decode_textfield );
-use COD::UserMessage;
+use COD::UserMessage qw( warning prefix_dataname );
 use COD::SOptions;
 use COD::SUsage;
 use Digest::MD5 qw( md5_hex );
@@ -95,7 +95,7 @@ for my $filename (@ARGV) {
 
     for my $datablock (@$data) {
         my $values   = $datablock->{values};
-        my $dataname = $datablock->{name};
+        my $dataname = prefix_dataname($datablock->{name});
 
         my $encodings = get_content_encodings( $datablock, $filename );
 

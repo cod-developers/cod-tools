@@ -15,15 +15,15 @@ use warnings;
 require Exporter;
 our @ISA = qw(Exporter);
 our @EXPORT = qw( print_message error warning note parse_message sprint_message );
-our @EXPORT_OK = qw( debug_note );
+our @EXPORT_OK = qw( debug_note prefix_dataname );
 
 # characters that will be escaped as HTML5 entities
 # '#' symbol is used for starting comment lines
-my %program_escape   = ( '&' => "&amp;", ':' => "&colon;", '#' => "&num;");
-my %filename_escape  = ( '&' => "&amp;", ':' => "&colon;",
-                         '(' => "&lpar;", ')' => "&rpar;" );
-my %datablock_escape = ( '&' => "&amp;", ':' => "&colon;" );
-my %message_escape   = ( '&' => "&amp;", ':' => "&colon;" ); # ',' => "&comma;"
+my %program_escape   = ( '&' => '&amp;',  ':' => '&colon;', '#' => '&num;' );
+my %filename_escape  = ( '&' => '&amp;', ':' => '&colon;', ' ' => '&nbsp;',
+                         '(' => '&lpar;', ')' => '&rpar;' );
+my %datablock_escape = ( '&' => '&amp;', ':' => '&colon;', ' ' => '&nbsp;' );
+my %message_escape   = ( '&' => '&amp;', ':' => '&colon;' ); # ',' => '&comma;'
 
 #==============================================================================
 # Print a message, reporting a program name, file name, data block
@@ -52,7 +52,7 @@ sub sprint_message($$$$$@)
                 (defined $line ? "($line" .
                     (defined $column ? ",$column" : "" ) . ")"
                 : "") . 
-                (defined $datablock ? " data_" . $datablock : "") . ": "
+                (defined $datablock ? " $datablock" : "") . ": "
            : "") .
            (defined $errlevel ? $errlevel . ", " : "") .
            $message . ".\n";
@@ -83,7 +83,7 @@ sub parse_message($)
                         (?:
                           ([^:]+?)
                             (?:\((\d+)(?:,(\d+))?\))?
-                            (?:\ data_([^:]+?))?
+                            (?:\ ([^:]+?))?
                             :\ 
                         )?
                         (?:([^,:\ ]+?)[,:]\ )?
@@ -175,4 +175,12 @@ sub unescape_meta {
     return $text;
 }
 
+sub prefix_dataname($)
+{
+    my ($dataname) = @_;
+
+    $dataname = "data_" . $dataname if defined $dataname;
+
+    return $dataname;
+}
 1;

@@ -20,7 +20,7 @@ use COD::CIF::Parser::Yapp;
 use COD::CIF::Tags::CanonicalNames;
 use COD::SOptions;
 use COD::SUsage;
-use COD::UserMessage qw( note warning error debug_note );
+use COD::UserMessage qw( note warning error debug_note prefix_dataname );
 
 my $version = 0.1;
 
@@ -182,8 +182,11 @@ CIFFILEANAL: for my $cifF ( @ARGV ) {
     next CIFFILEANAL if ( !defined $data || $data == 1 );
 
     for my $block ( @$data ) {
+
+        my $dataname = prefix_dataname($block->{name});
+
         if( $debug ) {
-            debug_note( $0, $cifF, $$block{name}, 'analysis start' );
+            debug_note( $0, $cifF, $dataname, 'analysis start' );
         }
         # 2-D array ( [loop_number][list_of_tags] ) to store names of looped 
         # list reference tags that have been reported as missing
@@ -194,7 +197,7 @@ CIFFILEANAL: for my $cifF ( @ARGV ) {
         for my $tagAnalysed ( @{$block->{tags}} ) {
             if(!defined $block->{types}{$tagAnalysed}) {
                 if ( $debug ) {
-                    warning( $0, $cifF, $$block{name},
+                    warning( $0, $cifF, $dataname,
                       "tag '$tagAnalysed' has no associated type which," .
                       'probably, means that error in CIF parser had occured' );
                 }
@@ -213,12 +216,12 @@ CIFFILEANAL: for my $cifF ( @ARGV ) {
                 if( exists $$dictD{$lc_tagAnalysed} ) {
                     $defined = 1;
                     if ( $debug ) {
-                      debug_note( $0, $cifF, $$block{name},
+                      debug_note( $0, $cifF, $dataname,
                       "tag '$tagAnalysed' is defined in dictionary $dictF" );
                     }
                 } else {
                     if ( $debug ) {
-                      debug_note( $0, $cifF, $$block{name},
+                      debug_note( $0, $cifF, $dataname,
                       "tag '$tagAnalysed' is not defined in dictionary $dictF" );
                     }
                     next;
@@ -227,7 +230,7 @@ CIFFILEANAL: for my $cifF ( @ARGV ) {
                 # check if tags are deprecated (replaced with other tags)
                 my $replTags = getReplacementTags($dictD, $lc_tagAnalysed);
                 if( $reportDeprecated && @$replTags != 0 ) {
-                    note( $0, $cifF, $$block{name},
+                    note( $0, $cifF, $dataname,
                           "tag '$tagAnalysed' has been replaced by tag(-s) "
                         . '[' . join(', ', @$replTags) . '] '
                         . "according to $dictF" );
@@ -246,7 +249,7 @@ CIFFILEANAL: for my $cifF ( @ARGV ) {
                             # to the 'alternate' tags and this must be tested
                             if( grep lc($_) eq $loopRefTag, @{$block->{loops}[$i]} ) {
                                 if ( $debug ) {
-                                    debug_note ( $0, $cifF, $$block{name},
+                                    debug_note ( $0, $cifF, $dataname,
                                        "tag '$loopRefTag' is mandatory "
                                      . 'in loop when tag(s) ['
                                      . join(', ', @{$dictTagValues->{_name}})
@@ -255,7 +258,7 @@ CIFFILEANAL: for my $cifF ( @ARGV ) {
                                 }
                             } elsif (!grep { $_ eq $loopRefTag }
                                                  @{$reportedBlockReferences[$i]}) {
-                                    note( $0, $cifF, $$block{name},
+                                    note( $0, $cifF, $dataname,
                                        "tag '$loopRefTag' is mandatory in loop "
                                      . "when tag(s) ["
                                      . join(', ', @{$dictTagValues->{_name}})
@@ -267,7 +270,7 @@ CIFFILEANAL: for my $cifF ( @ARGV ) {
                       }
                     }
                 } elsif( $debug ) {
-                    debug_note( $0, $cifF, $$block{name}, "tag $tagAnalysed "
+                    debug_note( $0, $cifF, $dataname, "tag $tagAnalysed "
                               . 'is not in loop -- test for missing looped '
                               . 'list reference tags will be skipped' );
                 }
@@ -279,12 +282,12 @@ CIFFILEANAL: for my $cifF ( @ARGV ) {
                 {
                     if( exists $block->{inloop}{$tagAnalysed} ) {
                         if ( $debug ) {
-                            debug_note( $0, $cifF, $$block{name}, 
+                            debug_note( $0, $cifF, $dataname,
                                 "tag '$tagAnalysed' must be in a loop " .
                                 "according to $dictF and is in a loop" );
                         }
                     } else {
-                        note( $0, $cifF, $$block{name},
+                        note( $0, $cifF, $dataname,
                               "tag '$tagAnalysed' must be in a loop " .
                               "according to $dictF but is not in a loop" );
                     }
@@ -356,7 +359,7 @@ CIFFILEANAL: for my $cifF ( @ARGV ) {
                        }
 
                        if( $valueFoundInList == 0 ) {
-                            note( $0, $cifF, $$block{name},
+                            note( $0, $cifF, $dataname,
                                   "tag '$tagAnalysed' value \"$value\" must "
                                 . 'be one of the enumeration values '
                                 . "[$listEnumValuesForTag]" );
@@ -371,7 +374,7 @@ CIFFILEANAL: for my $cifF ( @ARGV ) {
                                                               if( $emulateSet );
 
                             if ($debug) {
-                                debug_note( $0, $cifF, $$block{name}, $message );
+                                debug_note( $0, $cifF, $dataname, $message );
                             }
                        }
                     }
@@ -386,7 +389,7 @@ CIFFILEANAL: for my $cifF ( @ARGV ) {
                         if(defined $block->{types}{$tagAnalysed}) {
                             if('FLOAT' ne $block->{types}{$tagAnalysed}[$tagIndex]
                                 && 'INT' ne $block->{types}{$tagAnalysed}[$tagIndex]) {
-                                note( $0, $cifF, $$block{name},
+                                note( $0, $cifF, $dataname,
                                       "tag '$tagAnalysed' value \"" . 
                                      $block->{values}{$tagAnalysed}[$tagIndex] .
                                      "\" is of type '" .
@@ -394,7 +397,7 @@ CIFFILEANAL: for my $cifF ( @ARGV ) {
                                      "' while it should be numeric, i.e. " .
                                      "'FLOAT', or 'INT'" );
                             } elsif( $debug ) {
-                                debug_note( $0, $cifF, $$block{name}, 
+                                debug_note( $0, $cifF, $dataname,
                                             "tag '$tagAnalysed' is of type '" .
                                             $block->{types}{$tagAnalysed}[$tagIndex] .
                                             "' as expected, as it should be either " .
@@ -423,7 +426,7 @@ CIFFILEANAL: for my $cifF ( @ARGV ) {
                     my $sigma = $block->{precisions}{$tagAnalysed}[$tagIndex];
                     if ( defined $sigma && !$su_permitted ) {
                         $value =~ /(\(\d+\))$/;
-                        note( $0, $cifF, $$block{name}, 
+                        note( $0, $cifF, $dataname,
                               "tag '$tagAnalysed' value \"$value\" is not " .
                               'permitted to contain standard uncertainty ' .
                               '"' . $1 . '" -- standard uncertainty will ' .
@@ -445,20 +448,20 @@ CIFFILEANAL: for my $cifF ( @ARGV ) {
                             checkAgainstRange(
                                 $dictD->{$lc_tagAnalysed}{values}{_type}[0],
                                 $range, $valueWOPrecision, $sigma) <= 0 ) {
-                                note( $0, $cifF, $$block{name},
+                                note( $0, $cifF, $dataname,
                                       "tag '$tagAnalysed' value " .
                                       "\"$value\" should be in range (" .
                                       $rangeForPrint{min} .
                                       ', ' . $rangeForPrint{max} . ')' );
                         } elsif( $debug ) {
-                            debug_note( $0, $cifF, $$block{name},
+                            debug_note( $0, $cifF, $dataname,
                                         "tag '$tagAnalysed' value " .
                                         "\"$value\" is in range (" .
                                         "$rangeForPrint{min}, " .
                                         "$rangeForPrint{max})" );
                         }
                     } elsif( $debug ) {
-                        debug_note( $0, $cifF, $$block{name},
+                        debug_note( $0, $cifF, $dataname,
                                     'there are no range restrictions ' .
                                     "for tag \"$tagAnalysed\" -- " .
                                     "skipping range test" );
@@ -467,7 +470,7 @@ CIFFILEANAL: for my $cifF ( @ARGV ) {
             }
 
             if( !$defined ) {
-                note( $0, $cifF, $$block{name}, 
+                note( $0, $cifF, $dataname,
                      "tag '$tagAnalysed' was not found in dictionaries" );
             }
         }

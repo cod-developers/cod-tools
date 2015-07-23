@@ -17,7 +17,7 @@ use COD::CIF::Data qw( get_cell );
 use COD::Spacegroups::Symop::Algebra qw( symop_vector_mul );
 use COD::Algebra::Vector qw( modulo_1 );
 use COD::Fractional qw( symop_ortho_from_fract );
-use COD::UserMessage;
+use COD::UserMessage qw( warning error prefix_dataname );
 
 require Exporter;
 our @ISA = qw(Exporter);
@@ -59,6 +59,8 @@ sub extract_atom
 {
     my($atom_label, $values, $number, $f2o, $filename, $dataname,
        $options) = @_;
+
+    $dataname = prefix_dataname($dataname);
 
     $options = {} unless $options;
 
@@ -191,12 +193,12 @@ sub atom_array_from_cif($$$@)
     $options = {} unless $options;
 
     my $values = $datablock->{values};
-    my $dataname = $datablock->{name};
+    my $dataname = prefix_dataname($datablock->{name});
 
     # Get the unit cell information and construct the fract->ortho and
     # ortho->fract conversion matrices:
 
-    my @cell = get_cell( $values, $filename, $dataname );
+    my @cell = get_cell( $values, $filename, $datablock->{name} );
     my $f2o = symop_ortho_from_fract( @cell );
 
     if( $options->{homogenize_transform_matrices} ) {
@@ -251,7 +253,7 @@ sub atom_array_from_cif($$$@)
         }
 
         my $atom_info = extract_atom( $label, $values, $i, $f2o,
-                                      $filename, $dataname,
+                                      $filename, $datablock->{name},
                                       $options );
 
         # Some of the code used to return undef from extract_atom in case
@@ -286,7 +288,7 @@ sub atom_array_from_cif($$$@)
         return uniquify_atom_names( \@atom_list,
                                     $options->{uniquify_atoms},
                                     $filename,
-                                    $dataname);
+                                    $datablock->{name});
     } else {
         return \@atom_list;
     }
@@ -307,10 +309,12 @@ sub atom_array_from_cif($$$@)
 #
 sub uniquify_atom_names($$$$)
 {
-    my ($init_atoms, $uniquify_atoms, $filename, $dataset_name) = @_;
+    my ($init_atoms, $uniquify_atoms, $filename, $dataname) = @_;
 
     my $max_label_suffix = 30000; # Maximum number to be appened to labels 
                                   # when trying to produce unique names.
+
+    $dataname = prefix_dataname($dataname);
 
     my @checked_initial_atoms;
 
@@ -328,7 +332,7 @@ sub uniquify_atom_names($$$$)
             $used_labels{$label}{atoms} = [ $atom_copy ];
         } else {
             push( @{$used_labels{$label}{atoms}}, $atom_copy );
-            warning( $0, $filename, $dataset_name,
+            warning( $0, $filename, $dataname,
                      "atom label '$label' is not unique" );
 
             $labels_to_be_renamed{$label} ++;
@@ -347,12 +351,12 @@ sub uniquify_atom_names($$$$)
                     $id ++;
                 }
                 if( $id > $max_label_suffix ) {
-                    error( $0, $filename, $dataset_name,
+                    error( $0, $filename, $dataname,
                            "could not generate unique atom name for ".
                            "atom '$label', even after $id iterations" );
                 }
                 my $new_label = $label . "_" . $id;
-                warning( $0, $filename, $dataset_name,
+                warning( $0, $filename, $dataname,
                          "renaming atom '$label' " .
                          "to '" . $new_label . "'" );
                 $renamed_atom->{name}       = $new_label;
