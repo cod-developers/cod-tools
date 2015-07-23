@@ -753,7 +753,10 @@ void print_current_text_field( char *text, cexception_t *ex )
     if( cif_cc->cif ) {
         CIFMESSAGE *current_message = cif_messages( cif_cc->cif );
         assert( current_message );
-        cifmessage_set_line( current_message, text, ex );
+
+        char *buf = mallocx( strlen(text) + 5, ex );
+        sprintf( buf, ";%s\n;\n", text );
+        cifmessage_set_line( current_message, buf, ex );
     }
 }
 
