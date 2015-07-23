@@ -35,7 +35,7 @@ use COD::CIF::Tags::Print qw( print_cif pack_precision fold );
 use COD::CIF::Tags::Manage qw( set_tag rename_tag );
 use COD::SOptions;
 use COD::SUsage;
-use COD::UserMessage;
+use COD::UserMessage qw( note warning error prefix_dataname );
 
 my $Id = '$Id$';
 my $keep_tag_order = 0;
@@ -436,9 +436,10 @@ if( @dictionaries ) {
             next unless $dataset->{name} eq 'on_this_dictionary' &&
                 exists $dataset->{values};
             my $values = $dataset->{values};
+            my $dataname = prefix_dataname($dataset->{name});
 
              if ( ! defined $values ) {
-                 error( $0, $dict_file_name, $dataset->{name},
+                 error( $0, $dict_file_name, $dataname,
                         "dictionary '$dict_file_name' " .
                         "$dataset->{name} does not " .
                         "contain data" ); 
@@ -505,7 +506,7 @@ sub fix_misspelled_values($$$) {
     my %reports = ();
     my @insert_reports = ();
     my @uniq_messages;
-    my $dataname = $dataset->{name};
+    my $dataname = prefix_dataname($dataset->{name});
     my $tags = $dataset->{tags};
     my $values = $dataset->{values};
     foreach my $tag( @$tags ) {
@@ -620,7 +621,7 @@ my $unit_weights = '(?i:unit\s+weights?\s*(?:applied)?)';
 
 sub fix_temperature($$) {
     my( $dataset, $filename ) = @_;
-    my $dataname = $dataset->{name};
+    my $dataname = prefix_dataname($dataset->{name});
     my @insert_reports = ();
     my $values = $dataset->{values};
     my @temp_tags =
@@ -1045,7 +1046,7 @@ sub fix_temperature($$) {
 
 sub fix_value_of_exptl_crystal_density_meas($$) {
     my( $dataset, $filename ) = @_;
-    my $dataname = $dataset->{name};
+    my $dataname = prefix_dataname($dataset->{name});
     my @insert_reports = ();
     my $values = $dataset->{values};
     my @value_tags = (
@@ -1178,7 +1179,7 @@ sub fix_value_of_exptl_crystal_density_meas($$) {
 
 sub fix_value_of_refine_ls_weighting_scheme($$) {
     my( $dataset, $filename ) = @_;
-    my $dataname = $dataset->{name};
+    my $dataname = prefix_dataname($dataset->{name});
     my @insert_reports = ();
     my $values = $dataset->{values};
     my $tag = '_refine_ls_weighting_scheme';
@@ -1288,7 +1289,7 @@ sub fix_value_of_refine_ls_weighting_scheme($$) {
 
 sub fix_enums($$) {
     my( $dataset, $filename ) = @_;
-    my $dataname = $dataset->{name};
+    my $dataname = prefix_dataname($dataset->{name});
     my %reports;
     my @uniq_messages;
     my @insert_reports = ();
@@ -1369,7 +1370,7 @@ sub fix_enums($$) {
 
 sub treat_as_set($$) {
     my( $dataset, $filename ) = @_;
-    my $dataname = $dataset->{name};
+    my $dataname = prefix_dataname($dataset->{name});
     my %reports;
     my @uniq_messages;
     my @insert_reports = ();

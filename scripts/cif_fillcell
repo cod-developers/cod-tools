@@ -19,7 +19,7 @@ use COD::CIF::Tags::CanonicalNames;
 use COD::ShowStruct;
 use COD::Spacegroups::Symop::Parse;
 use COD::Spacegroups::Lookup::COD;
-use COD::UserMessage;
+use COD::UserMessage qw(error prefix_dataname);
 use File::Basename;
 
 my $Id = '$Id$';
@@ -34,8 +34,8 @@ for my $dataset (@$data)
 {
     canonicalize_names( $dataset );
 
-    my $dataname = $dataset->{'name'};
-    my $values   = $dataset->{'values'};
+    my $values   = $dataset->{values};
+    my $dataname = prefix_dataname($dataset->{name});
 
 #   extracts atom site label or atom site type symbol
     my $loop_tag;

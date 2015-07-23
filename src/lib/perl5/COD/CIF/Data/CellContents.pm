@@ -20,9 +20,9 @@ use COD::Spacegroups::Symop::Parse qw( symop_from_string );
 use COD::Formulae::Print;
 use COD::CIF::Data qw( get_cell get_symmetry_operators );
 use COD::CIF::Data::AtomList qw( atom_array_from_cif );
-use COD::CIF::Data::EstimateZ;
+use COD::CIF::Data::EstimateZ qw( cif_estimate_z );
 use COD::CIF::Data::SymmetryGenerator qw( symop_generate_atoms );
-use COD::UserMessage;
+use COD::UserMessage qw( warning error prefix_dataname );
 
 require Exporter;
 our @ISA = qw(Exporter);
@@ -43,6 +43,7 @@ sub cif_cell_contents( $$$@ )
         $assume_full_occupancies) = @_;
 
     my $values = $dataset->{values};
+    my $dataname = prefix_dataname($dataset->{name});
 
 #   extracts atom site label or atom site type symbol.
 #   The check is left only for error message/output compatibility,
@@ -50,7 +51,7 @@ sub cif_cell_contents( $$$@ )
 #   CIFAtomList::atom_array_from_cif().
     if( !exists $values->{"_atom_site_label"} &&
         !exists $values->{"_atom_site_type_symbol"} ) {
-        error( $0, $filename, $dataset->{name},
+        error( $0, $filename, $dataname,
                "neither _atom_site_label " .
                "nor _atom_site_type_symbol was found in the input file" );
         return undef;
@@ -92,7 +93,7 @@ sub cif_cell_contents( $$$@ )
         if( exists $values->{_cell_formula_units_z} ) {
             my $file_Z = $values->{_cell_formula_units_z}[0];
             if( $Z != $file_Z ) {
-                warning( $0, $filename, $dataset->{name},
+                warning( $0, $filename, $dataname,
                          "overriding _cell_formula_units_Z ($file_Z) " .
                          "with command-line value $Z" );
             }
@@ -110,11 +111,11 @@ sub cif_cell_contents( $$$@ )
                 $msg =~ s/;\n/; /g;
                 $msg =~ s/\n/; /g;
                 $Z = 1;
-                warning( $0, $filename, $dataset->{name},
+                warning( $0, $filename, $dataname,
                          "$msg -- " .
                          "assuming Z = $Z" );
             } else {
-                warning( $0, $filename, $dataset->{name},
+                warning( $0, $filename, $dataname,
                          "_cell_formula_units_Z is missing -- " .
                          "assuming Z = $Z" );
             }

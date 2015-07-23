@@ -23,7 +23,7 @@ use COD::CIF::Tags::Print;
 use COD::CIF::Parser::Yapp;
 use COD::SOptions;
 use COD::SUsage;
-use COD::UserMessage;
+use COD::UserMessage qw(warning error prefix_dataname);
 
 my $override_tags;
 my $override_all = 0;
@@ -95,13 +95,13 @@ for my $filename (@ARGV) {
     }
 
     for my $datablock (@$data) {
-        my $data_name = $datablock->{name};
-        if( !exists $merged_datablocks{$data_name} ) {
-            push( @merged_datablock_names, $data_name );
-            $merged_datablocks{$data_name} = $datablock;
+        my $dataname = prefix_dataname($datablock->{name});
+        if( !exists $merged_datablocks{$dataname} ) {
+            push( @merged_datablock_names, $dataname );
+            $merged_datablocks{$dataname} = $datablock;
         } else {
             my $new_datablock = $datablock;
-            my $old_datablock = $merged_datablocks{$data_name};
+            my $old_datablock = $merged_datablocks{$dataname};
             for my $tag (@{$new_datablock->{tags}}) {
                 if( !exists $old_datablock->{values}{$tag} ) {
                     ## print ">>> old datablock does not have tag $tag\n";
@@ -123,7 +123,7 @@ for my $filename (@ARGV) {
                                 if( int( @{$old_datablock->
                                             {values}{$loop_tag}} ) !=
                                     int( @{$new_datablock->{values}{$tag}} )) {
-                                    error( $0, $filename, $data_name,
+                                    error( $0, $filename, $dataname,
                                         "loop tag '$loop_tag' has different "
                                       . "number of values than the tag '$tag' "
                                       . "in '${filename}, but '$tag' must end "
@@ -176,8 +176,8 @@ for my $filename (@ARGV) {
                         }
                     } elsif( !values_are_equal( $old_datablock->{values}{$tag},
                                            $new_datablock->{values}{$tag} )) {
-                        warning( $0, $filename, $data_name, "values for "
-                               . "tag '$tag' in '$data_name' differ" );
+                        warning( $0, $filename, $dataname, "values for "
+                               . "tag '$tag' in '$datablock->{name}' differ" );
                     }
                 }
             }
@@ -188,8 +188,8 @@ for my $filename (@ARGV) {
 ## use COD::Serialise;
 ## serialiseRef( \%merged_datablocks );
 
-for my $data_name (@merged_datablock_names) {
-    print_cif( $merged_datablocks{$data_name},
+for my $dataname (@merged_datablock_names) {
+    print_cif( $merged_datablocks{$dataname},
                { keep_tag_order => 1, preserve_loop_order => 1 } );
 }
 

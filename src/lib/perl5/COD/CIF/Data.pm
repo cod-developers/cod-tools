@@ -15,7 +15,7 @@ use strict;
 use warnings;
 use COD::Spacegroups::Lookup::COD;
 use COD::Spacegroups::Names;
-use COD::UserMessage;
+use COD::UserMessage qw(warning error prefix_dataname);
 
 require Exporter;
 our @ISA = qw(Exporter);
@@ -44,6 +44,8 @@ sub get_cell($$$@)
 {
     my( $values, $filename, $dataname, $options ) = @_;
     $options = {} unless $options;
+
+    $dataname = prefix_dataname($dataname);
 
     my @cell_lengths_and_angles;
 
@@ -89,6 +91,7 @@ sub get_symmetry_operators($$)
     my ( $dataset, $filename ) = @_;
 
     my $values = $dataset->{values};
+    my $dataname = prefix_dataname($dataset->{name});
 
     my $sym_data;
 
@@ -110,7 +113,7 @@ sub get_symmetry_operators($$)
                 $sym_data = lookup_symops("hall", $hall);
 
                 if( !$sym_data ) {
-                    error( $0, $filename, $dataset->{name},
+                    error( $0, $filename, $dataname,
                            "$tag value '$hall' is not recognised" );
                 } else {
                     last
@@ -133,7 +136,7 @@ sub get_symmetry_operators($$)
                 $sym_data = lookup_symops("hermann_mauguin", $h_m);
 
                 if( !$sym_data ) {
-                    error( $0, $filename, $dataset->{name},
+                    error( $0, $filename, $dataname,
                            "$tag value '$h_m' is not recognised" );
                 } else {
                     last
@@ -158,7 +161,7 @@ sub get_symmetry_operators($$)
                 $sym_data = lookup_symops("hermann_mauguin", $h_m);
 
                 if( !$sym_data ) {
-                    error( $0, $filename, $dataset->{name},
+                    error( $0, $filename, $dataname,
                            "$tag value '$ssg_name' yielded H-M " .
                            "symbol '$h_m' which is not in our tables" );
                 } else {
@@ -169,7 +172,7 @@ sub get_symmetry_operators($$)
     }
 
     if( not defined $sym_data ) {
-        error( $0, $filename, $dataset->{name},
+        error( $0, $filename, $dataname,
                "neither symmetry operators, " .
                "nor Hall spacegroup symbol, " .
                "nor Hermann-Mauguin spacegroup symbol could be processed" );
@@ -184,6 +187,7 @@ sub get_content_encodings($$)
     my ( $dataset, $filename ) = @_;
 
     my $values = $dataset->{values};
+    my $dataname = prefix_dataname($dataset->{name});
 
     if( !exists $values->{_tcod_content_encoding_id} ||
         !exists $values->{_tcod_content_encoding_layer_type} ) {
@@ -202,7 +206,7 @@ sub get_content_encodings($$)
         }
 
         if( exists $encodings{$id} && !defined $layer_id ) {
-            error( $0, $filename, $dataset->{name},
+            error( $0, $filename, $dataname,
                    "content encoding '$id' has more than unnumbered " .
                    "layer, can not unambiguously reconstruct the " .
                    "encoding stack" );
@@ -211,7 +215,7 @@ sub get_content_encodings($$)
 
         $layer_id = 0 if !defined $layer_id;
         if( int($layer_id) != $layer_id ) {
-            error( $0, $filename, $dataset->{name},
+            error( $0, $filename, $dataname,
                    "non-integer content encoding layer ID detected: " .
                    "'$layer_id'" );
             die;
@@ -224,7 +228,7 @@ sub get_content_encodings($$)
         if( !exists $encodings{$id}{$layer_id} ) {
             $encodings{$id}{$layer_id} = $layer_type;
         } else {
-            error( $0, $filename, $dataset->{name},
+            error( $0, $filename, $dataname,
                    "more than one content encoding layer numbered " .
                    "$layer_id detected" );
             die;

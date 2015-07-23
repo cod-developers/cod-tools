@@ -20,7 +20,7 @@ use COD::CIF::Tags::CanonicalNames;
 use COD::CIF::Tags::DictTags;
 use COD::CIF::Tags::COD;
 use COD::CIF::Tags::Print;
-use COD::UserMessage;
+use COD::UserMessage qw(note warning error prefix_dataname);
 use COD::SOptions;
 use COD::SUsage;
 
@@ -68,6 +68,7 @@ for my $filename (@ARGV) {
     for my $dataset (@$data) {
 
         my $values = $dataset->{values};
+        my $dataname = prefix_dataname($dataset->{name});
 
         my $temperature_is_processing = 0;
 
@@ -77,7 +78,7 @@ for my $filename (@ARGV) {
                  (P(?:ressure)?|T(?:emperature)?)\s*=\s*([-+0-9.E]+)\s*
                  ((?:deg(?:ree(?:s)?)?\s+)?[\w]+)/xi
                 ) {
-                warning( $0, $filename, $dataset->{name},
+                warning( $0, $filename, $dataname,
                          "structure marked as '$1', not taking "
                        . ($1 eq "P" ? "pressure" : "temperature") . ' value' );
                 $temperature_is_processing = 1;
@@ -172,7 +173,7 @@ for my $filename (@ARGV) {
                     $coefficient = get_pressure_unit_coefficient( $units );
                 };
                 if( $@ ) {
-                    error( $0, $filename, $dataset->{name}, $@ );
+                    error( $0, $filename, $dataname, $@ );
                     next;
                 }
                 my $pressure_kPa =
@@ -180,13 +181,13 @@ for my $filename (@ARGV) {
                 $pressure_kPa =~ s/\s//g;
                 if( !exists $values->{_diffrn_ambient_pressure} ) {
                     $values->{_diffrn_ambient_pressure}[0] = $pressure_kPa;
-                    note( $0, $filename, $dataset->{name},
+                    note( $0, $filename, $dataname,
                           "P = $pressure, $units, $coefficient" );
 
                 } else {
                     if( $values->{_diffrn_ambient_pressure}[0] !=
                         $pressure_kPa ) {
-                        warning( $0, $filename, $dataset->{name},
+                        warning( $0, $filename, $dataname,
                             "pressure given in '$tag' value, interpreted as "
                           . " $pressure $units "
                           . ($units eq "kPa" ? "" : "($pressure_kPa kPa) ")
@@ -207,18 +208,18 @@ for my $filename (@ARGV) {
                     $shift = get_temperature_unit_shift( $units );
                 };
                 if( $@ ) {
-                    error( $0, $filename, $dataset->{name}, $@ );
+                    error( $0, $filename, $dataname, $@ );
                     next;
                 }
                 my $temp_K = $temperature + $shift;
                 if( !exists $values->{_diffrn_ambient_temperature} ) {
                     $values->{_diffrn_ambient_temperature}[0] = $temp_K;
-                    note( $0, $filename, $dataset->{name},
+                    note( $0, $filename, $dataname,
                           "T = $temperature, $units, $shift" );
                 } else {
                     if( abs($values->{_diffrn_ambient_temperature}[0] - $temp_K)
                         >= 0.001 ) {
-                        warning( $0, $filename, $dataset->{name},
+                        warning( $0, $filename, $dataname,
                                  "temperature given in '$tag' value, "
                                . "interpreted as $temperature $units "
                                . ($units eq "K" ? "" : "($temp_K K) ")

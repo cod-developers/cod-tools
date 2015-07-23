@@ -28,7 +28,7 @@ use Capture::Tiny ':all';
 use COD::CIF::Data::CIF2COD qw(cif2cod);
 use COD::CIF::Tags::Print;
 use COD::Precision;
-use COD::UserMessage;
+use COD::UserMessage qw(prefix_dataname print_message parse_message);
 
 our @identity_tags = qw(
     _cell_length_a
@@ -291,8 +291,9 @@ sub filter_and_check
           DATASET:
         for my $dataset (@$data) {
             my $values = $dataset->{values};
+            my $dataname = prefix_dataname($dataset->{name});
             if( !defined $values ) {
-                critical( $cif_filename, $dataset->{name}, "ERROR",
+                critical( $cif_filename, $dataname, "ERROR",
                           "no data in datablock '$dataset->{name}'" );
             }
             if( exists $values->{_publ_author_name} ) {
@@ -307,7 +308,9 @@ sub filter_and_check
                         @{$values->{_publ_author_name}} );
                     my $data_name_now = $dataset->{name};
                     if( $deposition_authors ne $deposition_authors_now ) {
-                        critical( $cif_filename, $data_name_now, "WARNING",
+                        critical( $cif_filename,
+                                  prefix_dataname($data_name_now),
+                                  "WARNING",
                                   "author list in the datablock " .
                                   "data_$first_data_name " .
                                   "($deposition_authors) is not the " .
@@ -329,10 +332,10 @@ sub filter_and_check
                     $cif_author =~ s/\pM//g;
                     next DATASET if $cif_author eq $web_author;
                 }
-                critical( $cif_filename, $dataset->{name}, "WARNING",
+                critical( $cif_filename, $dataname, "WARNING",
                           "submitting author '$options->{author_name}' " .
                           "does not match any author in the " .
-                          "data_$dataset->{name} author list (" .
+                          "$dataname author list (" .
                           join( ', ', map { "'$_'" }
                           @{$values->{_publ_author_name}}) . ") -- " .
                           "will not deposit the structure, " .
@@ -353,16 +356,17 @@ sub filter_and_check
     if( $deposition_type eq 'personal' ) {
         for my $dataset (@$data) {
             my $values = $dataset->{values};
+            my $dataname = prefix_dataname($dataset->{name});
             if( !defined $values ) {
-                critical( $cif_filename, $dataset->{name}, "WARNING",
+                critical( $cif_filename, $dataname, "WARNING",
                           "no data in datablock '$dataset->{name}'" );
             }
             if( (exists $values->{_journal_volume} ||
                  exists $values->{_journal_issue}) &&
                  exists $values->{_journal_year} &&
                  exists $values->{_journal_page_first} ) {
-                critical( $cif_filename, $dataset->{name}, "WARNING",
-                          "the data_$dataset->{name} datablock " .
+                critical( $cif_filename, $dataname, "WARNING",
+                          "the $dataname datablock " .
                           "seems to have a complete bibliography " .
                           "(journal year, volume/issue and page) - " .
                           "it should then rather be deposited as " .
@@ -380,8 +384,9 @@ sub filter_and_check
         my ($range, $journal, $data_name);
         for my $dataset (@$data) {
             my $values = $dataset->{values};
+            my $dataname = prefix_dataname($dataset->{name});
             if( !defined $values ) {
-                critical( $cif_filename, $dataset->{name}, "WARNING",
+                critical( $cif_filename, $dataname, "WARNING",
                           "no data in datablock '$dataset->{name}'" );
             }
             if( exists $values->{_journal_name_full} ) {
@@ -416,10 +421,12 @@ sub filter_and_check
 
     for my $dataset (@$data) {
         my $values = $dataset->{values};
+        my $dataname = prefix_dataname($dataset->{name});
+
         if( !$options->{replace} &&
             exists $values->{_cod_database_code} &&
             defined $values->{_cod_database_code}[0] ) {
-            print_message( $0, $cif_filename, $dataset->{name}, "NOTE",
+            print_message( $0, $cif_filename, $dataname, "NOTE",
                            "tag '_cod_database_code' value '" .
                            $values->{_cod_database_code}[0] . "' " .
                            "will be overwritten upon deposition" );
@@ -427,7 +434,7 @@ sub filter_and_check
         if( $deposition_type ne 'prepublication' &&
             exists $values->{_cod_hold_until_date} &&
             defined $values->{_cod_hold_until_date}[0] ) {
-            print_message( $0, $cif_filename, $dataset->{name}, "NOTE",
+            print_message( $0, $cif_filename, $dataname, "NOTE",
                            "tag '_cod_hold_until_date' value '" .
                            $values->{_cod_hold_until_date}[0] .
                            "' will be removed from '$cif_filename' " .
@@ -436,7 +443,7 @@ sub filter_and_check
         }
         if( exists $values->{_cod_database_fobs_code} ) {
             if( !defined $hkl ) {
-                critical( $cif_filename, $dataset->{name}, "WARNING",
+                critical( $cif_filename, $dataname, "WARNING",
                           "CIF file contains tag " .
                           "'_cod_database_fobs_code', but Fobs file " .
                           "is not supplied -- can not continue" );
@@ -445,7 +452,7 @@ sub filter_and_check
                 defined $values->{_cod_database_fobs_code}[0] ) {
                     print_message( $0,
                                    $cif_filename,
-                                   $dataset->{name},
+                                   $dataname,
                                    "NOTE",
                                    "tag '_cod_database_fobs_code' " .
                                    "value '" .
@@ -480,7 +487,8 @@ sub filter_and_check
                       "should have only one datablock" );
         }
         if( !exists $data->[0]{values}{'_cod_database_code'}[0]) {
-            critical( $cif_filename, $data->[0]{name}, "WARNING",
+            critical( $cif_filename, prefix_dataname($data->[0]{name}),
+                      "WARNING",
                       "CIF file supplied for replacement " .
                       "should have \'_cod_database_code\' value " .
                       "determining which CIF file to replace" );

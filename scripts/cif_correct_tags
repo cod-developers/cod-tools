@@ -25,7 +25,7 @@ use COD::CIF::Tags::Manage;
 use COD::CIF::Tags::Print;
 use COD::SOptions;
 use COD::SUsage;
-use COD::UserMessage;
+use COD::UserMessage qw(note error prefix_dataname);
 
 my $keep_tag_order = 0;
 my $Id = '$Id$';
@@ -138,7 +138,7 @@ for my $filename (@ARGV) {
         my @insert_reports = ();
         my $tags = $dataset->{tags};
         my $values = $dataset->{values};
-        my $dataname = $dataset->{name};
+        my $dataname = prefix_dataname($dataset->{name});
 
         for my $tag (@$tags) {
             if( exists $tag_spelling{$tag} ) {
