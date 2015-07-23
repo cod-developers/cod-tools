@@ -72,7 +72,11 @@ sub parse
                                   $message->{columnno},
                                   $message->{line} );
 
-        print STDERR $msg;
+        if( !exists $options->{print_error_messages} ||
+            $options->{print_error_messages} == 1 ) {
+            print STDERR $msg;
+        }
+
         push @error_messages, $msg;
     }
 
