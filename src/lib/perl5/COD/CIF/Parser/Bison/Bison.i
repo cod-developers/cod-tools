@@ -102,6 +102,11 @@ sub Run
 
     $self->{YYData} = { ERRCOUNT => $nerrors,
                         ERROR_MESSAGES => $error_messages };
+
+    if( ref $options eq "HASH" ) {
+        $self->{USER}{OPTIONS} = $options;
+    }
+
     return $data;
 }
 
