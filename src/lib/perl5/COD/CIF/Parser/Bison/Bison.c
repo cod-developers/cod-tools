@@ -13,6 +13,7 @@
 #include <yy.h>
 #include <cif.h>
 #include <datablock.h>
+#include <cifmessage.h>
 
 char *progname = "cifparser";
 
@@ -65,6 +66,7 @@ SV * parse_cif( char * fname, char * prog, SV * opt )
     if( hv_exists( options, "allow_uqstring_brackets", 23 ) ) {
         set_lexer_allow_uqstring_brackets();
     }
+    co = cif_option_suppress_messages( co );
 
     if( strlen( fname ) == 1 && fname[0] == '-' ) {
         fname = NULL;
@@ -74,6 +76,7 @@ SV * parse_cif( char * fname, char * prog, SV * opt )
 
     int nerrors = 0;
     AV * datablocks = newAV();
+    AV * error_messages = newAV();
 
     cexception_guard( inner ) {
         cif = new_cif_from_cif_file( fname, co, &inner );
@@ -163,12 +166,32 @@ SV * parse_cif( char * fname, char * prog, SV * opt )
        
             av_push( datablocks, newRV_noinc( (SV*) current_datablock ) );
         }
+
+        CIFMESSAGE *cifmessage;
+        foreach_cifmessage( cifmessage, cif_messages( cif ) ) {
+            HV * current_cifmessage = newHV();
+
+            hv_store( current_cifmessage, "lineno",        6, newSViv( cifmessage_lineno( cifmessage ) ), 0 );
+            hv_store( current_cifmessage, "columnno",      8, newSViv( cifmessage_columnno( cifmessage ) ), 0 );
+            hv_store( current_cifmessage, "addpos",        6, newSVpv( cifmessage_addpos( cifmessage ), 0 ), 0 );
+            hv_store( current_cifmessage, "program",       7, newSVpv( progname, 0 ), 0 );
+            hv_store( current_cifmessage, "filename",      8, newSVpv( cifmessage_filename( cifmessage ), 0 ), 0 );
+            hv_store( current_cifmessage, "status",        6, newSVpv( cifmessage_status( cifmessage ), 0 ), 0 );
+            hv_store( current_cifmessage, "message",       7, newSVpv( cifmessage_message( cifmessage ), 0 ), 0 );
+            hv_store( current_cifmessage, "explanation",  11, newSVpv( cifmessage_explanation( cifmessage ), 0 ), 0 );
+            hv_store( current_cifmessage, "msgseparator", 12, newSVpv( cifmessage_msgseparator( cifmessage ), 0 ), 0 );
+            hv_store( current_cifmessage, "line",          4, newSVpv( cifmessage_line( cifmessage ), 0 ), 0 );
+
+            av_push( error_messages, newRV_noinc( (SV*) current_cifmessage ) );
+        }
+
         nerrors = cif_nerrors( cif );
         delete_cif( cif );
     }
 
     HV * ret = newHV();
     hv_store( ret, "datablocks", 10, newRV_noinc( (SV*) datablocks ), 0 );
+    hv_store( ret, "messages",    8, newRV_noinc( (SV*) error_messages ), 0 );
     hv_store( ret, "nerrors",     7, newSViv( nerrors ), 0 );
     return( newRV_noinc( (SV*) ret ) );
 }

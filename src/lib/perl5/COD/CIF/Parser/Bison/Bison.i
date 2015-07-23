@@ -14,18 +14,21 @@
     #include <yy.h>
     #include <cif.h>
     #include <datablock.h>
+    #include <cifmessage.h>
 
     SV * parse_cif( char * fname, char * prog, SV * options );
 %}
 
 %perlcode %{
 use COD::Precision;
+use COD::UserMessage;
 sub parse
 {
     my( $filename, $options ) = @_;
     $options = {} unless $options;
     my $parse_result = parse_cif( $filename, $0, $options );
     my $data = $parse_result->{datablocks};
+    my $messages = $parse_result->{messages};
     my $nerrors = $parse_result->{nerrors};
 
     foreach my $datablock ( @$data ) {
@@ -57,6 +60,22 @@ sub parse
         }
     }
 
+    foreach my $message ( @$messages ) {
+        print_message( $message->{program},
+                       $message->{filename},
+                       $message->{addpos},
+                       $message->{status},
+                       $message->{message},
+                       $message->{lineno},
+                       $message->{columnno} );
+        if( $message->{line} ) {
+            print STDERR $message->{line} . "\n";
+            if( defined $message->{columnno} ) {
+                print STDERR " " x ( $message->{columnno} - 1 ) . "^\n";
+            }
+        }
+    }
+
     if( wantarray ) {
         return( $data, $nerrors );
     } else {
@@ -79,5 +98,6 @@ sub parse
 #include <yy.h>
 #include <cif.h>
 #include <datablock.h>
+#include <cifmessage.h>
 
 SV * parse_cif( char * fname, char * prog, SV * options );
