@@ -10,12 +10,11 @@ export PERL5LIB
 
 YP_FILES  = ${wildcard *.yp}
 PM_FILES  = ${YP_FILES:%.yp=%.pm}
+# Variables used to make module in the local package lib layout
 PKG_TOP   = lib
 PKG_FILES = ${PM_FILES:%.pm=${PKG_TOP}/${PKG_PATH}/%.pm}
-
 # Variables used to move perl modules to the proper directory in COD layout
-LIB_DIR   = ../../../..
-LIB_FILES = ${PKG_FILES:${PKG_TOP}/%.pm=${LIB_DIR}/%.pm}
+LIB_FILES = ${PM_FILES:%.pm=${LIB_DIR}/%.pm}
 
 TEST_MODULE = ${firstword ${PM_FILES}}
 WORK_TESTS = ${wildcard *.inp}
@@ -26,17 +25,17 @@ TEST_FILES = ${wildcard ${TEST_DIR}/*.inp}
 DIFF_FILES = ${TEST_FILES:${TEST_DIR}/%.inp=${OUTP_DIR}/%.diff}
 OUTP_FILES = ${TEST_FILES:${TEST_DIR}/%.inp=${OUTP_DIR}/%.out}
 
-.PRECIOUS: %.pm
+.PRECIOUS: %.pm ${LIB_FILES}
 .PHONY: all clean cleanAll distclean test tests alltests out outputs
 .PHONY: run times
 
 ## all: ${PM_FILES}
-all: run ${LIB_FILES}
+all: run tests ${LIB_FILES}
 
 SHELL = /bin/bash
 
-${LIB_FILES}: ${PKG_FILES} tests
-	cp -f -v $< $@
+${LIB_FILES}: ${PKG_FILES}
+	cp -f $< $@
 
 run: ${PKG_FILES} ${WORK_TESTS}
 	@for file in ${WORK_TESTS}; do \
@@ -136,4 +135,4 @@ clean:
 	rm -f ${SHELL_DIFFS}
 
 distclean cleanAll: clean
-	rm -f ${PKG_FILES}
+	rm -f ${PKG_FILES} ${LIB_FILES}

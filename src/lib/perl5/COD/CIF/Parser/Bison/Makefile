@@ -1,3 +1,9 @@
+MAKECONF_FILES = ${filter-out %~, ${wildcard Makeconf*}}
+
+ifneq ("${MAKECONF_FILES}","")
+include ${MAKECONF_FILES}
+endif
+
 SWIG_SOURCE   = Bison.c
 SWIG_WRAPPER  = ${SWIG_SOURCE:%.c=%_wrap.c}
 SWIG_MODULE   = ${SWIG_SOURCE:%.c=%.pm}
@@ -8,7 +14,6 @@ SWIG_WRAPPER_OBJ = ${SWIG_WRAPPER:%.c=%.o}
 SWIG_SO_FILE     = ../../../../auto/COD/CIF/Parser/Bison/${SWIG_SOURCE:%.c=%.so}
 
 # Variables used to move perl modules to the proper directory in COD layout
-LIB_DIR   = ..
 LIB_FILES = ${LIB_DIR}/${SWIG_MODULE}
 
 CIF_PARSER_C_DIR = ../../../../../../components/codcif
