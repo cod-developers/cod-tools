@@ -25,14 +25,14 @@ eval 'exec perl -x $0 ${1+"$@"}'
 
 use strict;
 use warnings;
-use COD::CIFParser::CIFParser;
-use COD::CIFTags::CIFTagCanonicalNames qw( canonicalize_all_names );
-use COD::CIFTags::CIFDictTags;
-use COD::CIFTags::CIFCODTags;
-use COD::CIFTags::CIFTCODTags;
-use COD::CIFTags::CIFDFTTags;
-use COD::CIFTags::CIFTagPrint qw( print_cif pack_precision fold );
-use COD::CIFTags::CIFTagManage qw( set_tag rename_tag );
+use COD::CIF::Parser::Yapp;
+use COD::CIF::Tags::CanonicalNames qw( canonicalize_all_names );
+use COD::CIF::Tags::DictTags;
+use COD::CIF::Tags::COD;
+use COD::CIF::Tags::TCOD;
+use COD::CIF::Tags::DFT;
+use COD::CIF::Tags::Print qw( print_cif pack_precision fold );
+use COD::CIF::Tags::Manage qw( set_tag rename_tag );
 use COD::SOptions;
 use COD::SUsage;
 use COD::UserMessage;
@@ -51,7 +51,7 @@ my $treat_as_set = 1;
 my $use_parser = "perl";
 
 my $dictParsed = [];
-my $parser = new COD::CIFParser::CIFParser;
+my $parser = new COD::CIF::Parser::Yapp;
 my @dictionaries = ();
 my %dictTags;
 my %tagDicts;
@@ -410,15 +410,15 @@ if( @dictionaries ) {
     for my $dict_file_name( @dictionaries ) {
         my( $data, $error_count );
         if( $use_parser eq "perl" ) {
-            my $parser = new COD::CIFParser::CIFParser;
+            my $parser = new COD::CIF::Parser::Yapp;
             $data = $parser->Run( $dict_file_name );
             if( defined $parser->YYData->{ERRCOUNT} &&
                 $parser->YYData->{ERRCOUNT} > 0 ) {
                 $error_count = $parser->YYData->{ERRCOUNT};
             }
         } else {
-            require COD::CCIFParser::CCIFParser;
-            ( $data, $error_count ) = COD::CCIFParser::CCIFParser::parse( $dict_file_name );
+            require COD::CIF::Parser::Bison;
+            ( $data, $error_count ) = COD::CIF::Parser::Bison::parse( $dict_file_name );
         }
 
         if( defined $error_count && $error_count > 0 ) {
@@ -1464,10 +1464,10 @@ sub treat_as_set($$) {
     return @insert_reports;
 }
 
-my @dictionary_tags = ( @COD::CIFTags::CIFDictTags::tag_list,
-                        @COD::CIFTags::CIFCODTags::tag_list,
-                        @COD::CIFTags::CIFTCODTags::tag_list,
-                        @COD::CIFTags::CIFDFTTags::tag_list );
+my @dictionary_tags = ( @COD::CIF::Tags::DictTags::tag_list,
+                        @COD::CIF::Tags::COD::tag_list,
+                        @COD::CIF::Tags::TCOD::tag_list,
+                        @COD::CIF::Tags::DFT::tag_list );
 my %dictionary_tags = map { $_, $_ } @dictionary_tags;
 
 @ARGV = ("-") unless @ARGV;
@@ -1475,15 +1475,15 @@ my %dictionary_tags = map { $_, $_ } @dictionary_tags;
 for my $filename (@ARGV) {
     my( $data, $error_count );
     if( $use_parser eq "perl" ) {
-        my $parser = new COD::CIFParser::CIFParser;
+        my $parser = new COD::CIF::Parser::Yapp;
         $data = $parser->Run( $filename );
         if( defined $parser->YYData->{ERRCOUNT} &&
             $parser->YYData->{ERRCOUNT} > 0 ) {
             $error_count = $parser->YYData->{ERRCOUNT};
         }
     } else {
-        require COD::CCIFParser::CCIFParser;
-        ( $data, $error_count ) = COD::CCIFParser::CCIFParser::parse( $filename );
+        require COD::CIF::Parser::Bison;
+        ( $data, $error_count ) = COD::CIF::Parser::Bison::parse( $filename );
     }
 
     if( defined $error_count && $error_count > 0 ) {

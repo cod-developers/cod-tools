@@ -14,9 +14,9 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #**
 
 use strict;
-use COD::CIFParser::CIFParser;
+use COD::CIF::Parser::Yapp;
 use COD::CIF2JSON;
-use COD::CIFData::CIFDiff;
+use COD::CIF::Data::Diff;
 use COD::ShowStruct;
 use COD::SOptions;
 use COD::SUsage;
@@ -103,7 +103,7 @@ foreach( @ARGV ) {
         $errcount = 0;
     } else {
         if( $use_parser eq 'perl' ) {
-            my $parser = new COD::CIFParser::CIFParser;
+            my $parser = new COD::CIF::Parser::Yapp;
             $data = $parser->Run( $_, \%options );
             if( defined $parser->YYData->{ERRCOUNT} ) {
                 $errcount = $parser->YYData->{ERRCOUNT};
@@ -111,8 +111,8 @@ foreach( @ARGV ) {
                 $errcount = 0;
             }
         } elsif( $use_parser eq 'c' ) {
-            require COD::CCIFParser::CCIFParser;
-            ( $data, $errcount ) = COD::CCIFParser::CCIFParser::parse( $_, \%options );
+            require COD::CIF::Parser::Bison;
+            ( $data, $errcount ) = COD::CIF::Parser::Bison::parse( $_, \%options );
         } else {
             die( "$0: unknown parser: $use_parser" );
         }

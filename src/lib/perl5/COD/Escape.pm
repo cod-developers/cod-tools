@@ -14,14 +14,9 @@ use strict;
 use warnings;
 
 require Exporter;
-@COD::Escape::ISA = qw(Exporter);
-@COD::Escape::EXPORT = qw(
-    escape
-    unescape
-);
-@COD::Escape::EXPORT_OK = qw(
-    decode_textfield
-);
+our @ISA = qw(Exporter);
+our @EXPORT = qw( escape unescape );
+our @EXPORT_OK = qw( decode_textfield );
 
 use HTML::Entities qw( encode_entities decode_entities );
 use IO::Uncompress::Gunzip qw(gunzip $GunzipError);

@@ -16,13 +16,13 @@ eval 'exec perl -x $0 ${1+"$@"}'
 
 use strict;
 use warnings;
-use COD::CIFParser::CIFParser;
-use COD::CIFData::CIFDiff;
-use COD::CIFData::CODFlags qw(has_hkl
+use COD::CIF::Parser::Yapp;
+use COD::CIF::Data::Diff;
+use COD::CIF::Data::CODFlags qw(has_hkl
                               has_powder_diffraction_intensities
                               @hkl_tags
                               @powder_diffraction_intensity_tags);
-use COD::CIFTags::CIFTagCanonicalNames;
+use COD::CIF::Tags::CanonicalNames;
 use COD::Precision;
 use COD::UserMessage;
 use COD::SOptions;
@@ -178,15 +178,15 @@ sub parse_file
     my( $file, $use_parser ) = @_;
     my( $data, $errors );
     if( $use_parser eq "perl" ) {
-        my $parser = new COD::CIFParser::CIFParser;
+        my $parser = new COD::CIF::Parser::Yapp;
         $data = $parser->Run($file);
         $errors = 0;
         if( defined $parser->YYData->{ERRCOUNT} ) {
             $errors = $parser->YYData->{ERRCOUNT};
         }
     } else {
-        require COD::CCIFParser::CCIFParser;
-        ( $data, $errors ) = COD::CCIFParser::CCIFParser::parse( $file );
+        require COD::CIF::Parser::Bison;
+        ( $data, $errors ) = COD::CIF::Parser::Bison::parse( $file );
     }
     return( $data, $errors );
 }

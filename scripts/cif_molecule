@@ -52,30 +52,30 @@ eval 'exec perl -x $0 ${1+"$@"}'
 use strict;
 use File::Basename;
 use COD::AtomBricks qw(build_bricks get_atom_index get_search_span);
-use COD::CIFParser::CIFParser;
-use COD::CIFData qw(get_cell get_symmetry_operators);
-use COD::CIFData::CIFSymmetryGenerator qw(atoms_coincide                                          
+use COD::CIF::Parser::Yapp;
+use COD::CIF::Data qw(get_cell get_symmetry_operators);
+use COD::CIF::Data::SymmetryGenerator qw( atoms_coincide
                                           test_bond
-                                          test_bump);
-use COD::CIFData::CIFAtomList qw(atom_array_from_cif
-                                 copy_struct_deep
-                                 dump_atoms_as_cif);
-use COD::CIFTags::CIFTagCanonicalNames;
+                                          test_bump );
+use COD::CIF::Data::AtomList qw(atom_array_from_cif
+                                copy_struct_deep
+                                dump_atoms_as_cif);
 use COD::AtomNeighbours qw(get_max_covalent_radius make_neighbour_list);
 use COD::AtomProperties;
-use COD::Formulae::FormulaPrint;
+use COD::Formulae::Print;
 use COD::MorganFingerprints;
-use COD::Spacegroups::SymopParse qw(symop_from_string
-                                    string_from_symop
-                                    symop_string_canonical_form
-                                    modulo_1);
-use COD::Spacegroups::SymopAlgebra qw(symop_mul symop_invert
-                                      symop_is_unity symop_vector_mul
-                                      symop_modulo_1 flush_zeros_in_symop);
-use COD::Spacegroups::SGBuilder; # Spacegroup builder
-use COD::Spacegroups::VectorAlgebra qw(distance);
-use COD::CIFTags::CIFTagPrint;
-use COD::CIFTags::CIFTagManage;
+use COD::Spacegroups::Symop::Parse qw(symop_from_string
+                                      string_from_symop
+                                      symop_string_canonical_form
+                                      modulo_1);
+use COD::Spacegroups::Symop::Algebra qw(symop_mul symop_invert
+                                        symop_is_unity symop_vector_mul
+                                        symop_modulo_1 flush_zeros_in_symop);
+use COD::Spacegroups::Builder;
+use COD::Algebra::Vector qw(distance);
+use COD::CIF::Tags::CanonicalNames;
+use COD::CIF::Tags::Print;
+use COD::CIF::Tags::Manage;
 use COD::SOptions;
 use COD::SUsage;
 use COD::UserMessage;
@@ -520,14 +520,14 @@ for my $filename (@ARGV) {
 
     my ( $data, $error_count );
     if( $use_parser eq "perl" ) {
-        my $parser = new COD::CIFParser::CIFParser;
+        my $parser = new COD::CIF::Parser::Yapp;
         $data = $parser->Run($filename);
         if( defined $parser->YYData->{ERRCOUNT} ) {
             $error_count = $parser->YYData->{ERRCOUNT};
         }
     } else {
-        require COD::CCIFParser::CCIFParser;
-        ( $data, $error_count )  = COD::CCIFParser::CCIFParser::parse($filename);
+        require COD::CIF::Parser::Bison;
+        ( $data, $error_count )  = COD::CIF::Parser::Bison::parse($filename);
     }
 
     if( defined $error_count && $error_count > 0 ) {
@@ -589,11 +589,11 @@ for my $filename (@ARGV) {
             #   prints molecule to the CIF file
 
             if( $preserve_stoichiometry ) {
-                my $molecular_symmetry = new COD::Spacegroups::SGBuilder();
+                my $molecular_symmetry = new COD::Spacegroups::Builder();
 
                 foreach my $molecule (@$unique_molecules) {
                 # Build molecule point group here...
-                    my $sg = new COD::Spacegroups::SGBuilder();
+                    my $sg = new COD::Spacegroups::Builder();
                     my %original_atoms = ();
                     for my $atom (@{$molecule->{atoms}}) {
                         my $atom_label = $atom->{site_label};
@@ -1195,7 +1195,7 @@ sub copy_atom
 #     option - an option, for example, "hall"
 #     param  - according to an option a value given in the CIF file
 
-# Uses @COD::Spacegroups::SymopLookup::table =
+# Uses @COD::Spacegroups::Lookup::COD::table =
 # (
 # {
 #     number          => 1,
@@ -1221,7 +1221,7 @@ sub get_symops
     $param =~ s/ //g;
     $param =~ s/_//g;
 
-    foreach my $hash (@COD::Spacegroups::SymopLookup::table)
+    foreach my $hash (@COD::Spacegroups::Lookup::COD::table)
     {
         my $value = $hash->{$option};
         $value =~ s/ //g;
@@ -1762,7 +1762,7 @@ sub apply_shifts($)
 # Renames CIF data tags so that they are not confused with the
 # original ones.
 
-# Accepts a dataset hash produced by CIFParser, a list of tags to be
+# Accepts a dataset hash produced by COD::CIF::Parser, a list of tags to be
 # renamed, and a prefix to be appended
 
 # Returns a hash with renamed data tags

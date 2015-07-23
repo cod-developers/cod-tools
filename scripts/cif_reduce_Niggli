@@ -14,17 +14,16 @@ eval 'exec perl -x $0 ${1+"$@"}'
 
 use strict;
 use warnings;
-use COD::CIFParser::CIFParser;
-use COD::CIFData qw(get_cell);
-use COD::CIFTags::CIFTagCanonicalNames;
-use COD::CIFTags::CIFTagPrint;
+use COD::CIF::Parser::Yapp;
+use COD::CIF::Data qw(get_cell);
+use COD::CIF::Tags::CanonicalNames;
+use COD::CIF::Tags::Print;
 use COD::Cell::Niggli::KG76 qw(reduce);
 use COD::Fractional;
 use COD::UserMessage;
 use COD::SOptions;
 use COD::SUsage;
-use COD::Spacegroups::SymopAlgebra qw(symop_transpose
-                                      symop_mul);
+use COD::Spacegroups::Symop::Algebra qw(symop_transpose symop_mul);
 
 sub cholesky($);
 
@@ -68,7 +67,7 @@ for my $filename (@ARGV) {
     my( $data, $error_count );
 
     if( $use_parser eq "perl" ) {
-        my $parser = new COD::CIFParser::CIFParser;
+        my $parser = new COD::CIF::Parser::Yapp;
 
         $data = $parser->Run($filename);
 
@@ -76,8 +75,8 @@ for my $filename (@ARGV) {
             $error_count = $parser->YYData->{ERRCOUNT};
         }
     } else {
-        require COD::CCIFParser::CCIFParser;
-        ( $data, $error_count ) = COD::CCIFParser::CCIFParser::parse($filename);
+        require COD::CIF::Parser::Bison;
+        ( $data, $error_count ) = COD::CIF::Parser::Bison::parse($filename);
     }
 
     canonicalize_all_names( $data );

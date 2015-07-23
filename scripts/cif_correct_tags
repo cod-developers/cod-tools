@@ -16,12 +16,13 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #**
 
 use strict;
-use COD::CIFParser::CIFParser;
-use COD::CIFTags::CIFTagCanonicalNames;
-use COD::CIFTags::CIFDictTags;
-use COD::CIFTags::CIFCODTags;
-use COD::CIFTags::CIFTagManage;
-use COD::CIFTags::CIFTagPrint;
+use warnings;
+use COD::CIF::Parser::Yapp;
+use COD::CIF::Tags::CanonicalNames;
+use COD::CIF::Tags::DictTags;
+use COD::CIF::Tags::COD;
+use COD::CIF::Tags::Manage;
+use COD::CIF::Tags::Print;
 use COD::SOptions;
 use COD::SUsage;
 use COD::UserMessage;
@@ -98,8 +99,8 @@ if( $replacement_list ) {
         die "$0: $replacement_list: error closing file - $!";
 }
 
-my @dictionary_tags = ( @COD::CIFTags::CIFDictTags::tag_list,
-                        @COD::CIFTags::CIFCODTags::tag_list );
+my @dictionary_tags = ( @COD::CIF::Tags::DictTags::tag_list,
+                        @COD::CIF::Tags::COD::tag_list );
 my %dictionary_tags = map { $_, $_ } @dictionary_tags;
 
 @ARGV = ("-") unless @ARGV;
@@ -108,7 +109,7 @@ for my $filename (@ARGV) {
     my( $data, $error_count );
 
     if(      $use_parser eq "perl" ) {
-        my $parser = new COD::CIFParser::CIFParser;
+        my $parser = new COD::CIF::Parser::Yapp;
 
         $data = $parser->Run($filename);
 
@@ -116,9 +117,9 @@ for my $filename (@ARGV) {
             $error_count = $parser->YYData->{ERRCOUNT};
         }
     } elsif( $use_parser eq "c" ) {
-        require COD::CCIFParser::CCIFParser;
+        require COD::CIF::Parser::Bison;
         ( $data, $error_count ) =
-            COD::CCIFParser::CCIFParser::parse( $filename );
+            COD::CIF::Parser::Bison::parse( $filename );
     } else {
         error( $0, undef, undef, "unknown parser: $use_parser" );
         die;

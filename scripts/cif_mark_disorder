@@ -16,16 +16,16 @@ use strict;
 use warnings;
 use COD::AtomBricks qw(build_bricks get_atom_index get_search_span);
 use COD::AtomProperties;
-use COD::CIFParser::CIFParser;
-use COD::CIFData qw( get_cell );
-use COD::CIFData::CIFAtomList qw( atom_array_from_cif );
-use COD::CIFTags::CIFTagCanonicalNames;
-use COD::CIFTags::CIFTagManage;
-use COD::CIFTags::CIFTagPrint;
+use COD::CIF::Parser::Yapp;
+use COD::CIF::Data qw( get_cell );
+use COD::CIF::Data::AtomList qw( atom_array_from_cif );
+use COD::CIF::Tags::CanonicalNames;
+use COD::CIF::Tags::Manage;
+use COD::CIF::Tags::Print;
 use COD::Fractional;
 use COD::UserMessage;
-use COD::Spacegroups::SymopAlgebra qw( symop_vector_mul );
-use COD::Spacegroups::VectorAlgebra qw( distance );
+use COD::Spacegroups::Symop::Algebra qw( symop_vector_mul );
+use COD::Algebra::Vector qw( distance );
 use COD::SOptions;
 use COD::SUsage;
 
@@ -161,11 +161,11 @@ if( $cif_header_file ) {
 for my $filename (@ARGV) {
     my $data;
     if( $use_parser eq "perl" ) {
-        my $parser = new COD::CIFParser::CIFParser;
+        my $parser = new COD::CIF::Parser::Yapp;
         $data = $parser->Run($filename);
     } else {
-        require COD::CCIFParser::CCIFParser;
-        $data = COD::CCIFParser::CCIFParser::parse($filename);
+        require COD::CIF::Parser::Bison;
+        $data = COD::CIF::Parser::Bison::parse($filename);
     }
 
     canonicalize_all_names( $data );
@@ -350,7 +350,7 @@ sub get_alternatives
 #==============================================================================#
 # Find and mark disorder in a given CIF datablock (overwrites old values)
 # Accepts
-#    dataset         - CIF datablock, as produced by COD::CIFParser
+#    dataset         - CIF datablock, as produced by COD::CIF::Parser
 #    atom_properties - atom properties structure, as from COD::AtomProperties
 #    filename        - CIF file name
 #    options         - various options to control the algorithm

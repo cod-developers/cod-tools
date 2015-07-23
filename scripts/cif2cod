@@ -13,8 +13,9 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #**
 
 use strict;
-use COD::CIFParser::CIFParser;
-use COD::CIFData::CIF2COD qw(cif2cod);
+use warnings;
+use COD::CIF::Parser::Yapp;
+use COD::CIF::Data::CIF2COD qw(cif2cod);
 use COD::UserMessage;
 use COD::SOptions;
 use COD::SUsage;
@@ -164,7 +165,7 @@ my @print_columns;
 if( defined $user_columns ) {
     @print_columns = map { split( " ", $_ ) } split( ",", $user_columns );
 } else {
-    @print_columns = @COD::CIFData::CIF2COD::new_data_fields;
+    @print_columns = @COD::CIF::Data::CIF2COD::new_data_fields;
 }
 
 binmode( STDOUT, ":utf8" );
@@ -189,7 +190,7 @@ for my $filename (@ARGV) {
     my( $data, $error_count );
 
     if( $use_parser eq "perl" ) {
-        my $parser = new COD::CIFParser::CIFParser;
+        my $parser = new COD::CIF::Parser::Yapp;
 
         $data = $parser->Run($filename, \%options);
 
@@ -197,8 +198,8 @@ for my $filename (@ARGV) {
             $error_count = $parser->YYData->{ERRCOUNT};
         }
     } else {
-        require COD::CCIFParser::CCIFParser;
-        ( $data, $error_count ) = COD::CCIFParser::CCIFParser::parse( $filename, \%options );
+        require COD::CIF::Parser::Bison;
+        ( $data, $error_count )  = COD::CIF::Parser::Bison::parse($filename, \%options );
     }
 
     if( defined $error_count && $error_count > 0 ) {
@@ -214,7 +215,7 @@ for my $filename (@ARGV) {
 
         # Print out the collected data fields:
         
-        my @data_fields = @COD::CIFData::CIF2COD::default_data_fields;
+        my @data_fields = @COD::CIF::Data::CIF2COD::default_data_fields;
         if( $print_header || defined $user_columns ) {
             @data_fields = @print_columns;
         }
