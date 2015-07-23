@@ -731,7 +731,7 @@ void print_message( const char *errlevel, const char *message,
               new_cifmessage_from_data
               ( /* next = */ cif_messages( cif_cc->cif ),
                 /* progname = */ NULL,
-                /* filename = */ cif_cc->filename,
+                /* filename = */ cif_cc->filename ? cif_cc->filename : "-",
                 line, position,
                 /* addPos = */ datablock,
                 /* status = */ (char*)errlevel,
