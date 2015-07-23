@@ -20,6 +20,7 @@ use Encode;
 use HTML::Entities;
 use COD::SOptions;
 use COD::SUsage;
+use COD::UserMessage qw(warning error);
 
 my $vocabulary_name = "cod";
 my $vocabulary_url_prefix = "http://www.crystallography.net/cod/doc/rdf/";
@@ -215,7 +216,10 @@ my $dbh = db_connect( $database{platform},
                       $database{port},
                       $database{user},
                       $database{password} );
-die "connection to database failed" if !$dbh;
+if (!defined $dbh) {
+    error($0, undef, undef, "connection to the '$database{host}' failed");
+    exit 1;
+}
 
 my $where_condition = "";
 if( defined $from && defined $to ) {
@@ -251,13 +255,16 @@ my $any_data_seen = (defined $from || defined $to || defined $revision) &&
                      keys %$data > 0;
 for my $codid (@ARGV) {
     if( !exists $data->{$codid} ) {
-        print STDERR "$0: structure $codid can not be found " .
-                     "in the COD database\n";
+        warning( $0, undef, undef, "structure '$codid' could not "
+                                 . "be found in the COD database" );
     } else {
         $any_data_seen = 1;
     }
 }
-die "no data for RDF was found in the database" if !$any_data_seen;
+if ( !$any_data_seen ) {
+    error($0, undef, undef, "no data for RDF was found in the COD database");
+    exit 1;
+}
 
 for my $entry (values %$data) {
     delete $entry->{text};
@@ -532,7 +539,9 @@ sub db_connect
               ($db_port ? ";$db_port" : "");
     my $dbh = DBI->connect( $dsn, $db_user, $db_pass );
     if( !$dbh ) {
-        die( "could not connect to the database - " . lcfirst( $DBI::errstr ));
+        error($0, undef, undef,  "could not connect to the database -- "
+                               . lcfirst( $DBI::errstr ) );
+        exit 1;
     }
     if( $db_platform ne 'SQLite' ) {
         $dbh->do( "SET CHARACTER SET utf8" );
