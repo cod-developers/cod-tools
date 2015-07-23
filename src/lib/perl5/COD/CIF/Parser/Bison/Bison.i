@@ -22,6 +22,7 @@
 %perlcode %{
 use COD::Precision;
 use COD::UserMessage;
+
 sub parse
 {
     my( $filename, $options ) = @_;
@@ -82,6 +83,30 @@ sub parse
         return $data;
     }
 }
+
+sub new
+{
+    my( $class ) = @_;
+    my $self = {};
+    bless( $self, $class );
+    return $self;
+}
+
+sub Run
+{
+    my( $self, $filename, $options ) = @_;
+    my( $data, $nerrors ) = parse( $filename, $options );
+
+    $self->{YYData} = { ERRCOUNT => $nerrors };
+    return $data;
+}
+
+sub YYData
+{
+    my( $self ) = @_;
+    return $self->{YYData};
+}
+
 %}
 
 #include <EXTERN.h>
