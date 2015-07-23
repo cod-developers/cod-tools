@@ -69,13 +69,8 @@ sub parse
                                   $message->{status},
                                   $message->{message},
                                   $message->{lineno},
-                                  $message->{columnno} );
-        if( $message->{line} ) {
-            $msg .= $message->{line} . "\n";
-            if( defined $message->{columnno} ) {
-                $msg .= " " x ( $message->{columnno} - 1 ) . "^\n";
-            }
-        }
+                                  $message->{columnno},
+                                  $message->{line} );
 
         print STDERR $msg;
         push @error_messages, $msg;

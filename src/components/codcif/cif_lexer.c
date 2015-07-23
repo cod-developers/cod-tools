@@ -614,9 +614,10 @@ static char *clean_string( char *src, int is_textfield, cexception_t *ex )
                     if( non_ascii_explained == 0 ) {
                         if( is_textfield == 0 ) {
                             print_message( "WARNING", "non-ascii symbols "
-                                           "encountered in the text:",
+                                           "encountered in the text",
                                            cif_flex_current_line_number(),
-                                           -1, ex );
+                                           cif_flex_current_position()+1,
+                                           ex );
 #if 0
                             fprintf( stderr, "'%s'\n", 
                                      cif_flex_current_line() );
@@ -627,7 +628,7 @@ static char *clean_string( char *src, int is_textfield, cexception_t *ex )
                         } else {
                             print_message( "WARNING", "non-ascii symbols "
                                            "encountered in the text field, "
-                                           "replaced by XML entities:",
+                                           "replaced by XML entities",
                                            cif_flex_current_line_number(),
                                            -1, ex );
 #if 0
@@ -640,11 +641,11 @@ static char *clean_string( char *src, int is_textfield, cexception_t *ex )
                     }
                 } else {
                     if( is_textfield == 0 ) {
-                        yyerror( "syntax error:" );
+                        yyerror( "syntax error" );
                     } else if( non_ascii_explained == 0 ) {
                         print_message( "WARNING", "non-ascii symbols "
                                        "encountered "
-                                       "in the text field:",
+                                       "in the text field",
                                        cif_flex_current_line_number(),
                                        -1, ex );
 #if 0
