@@ -27,6 +27,11 @@ endif
 YAPP_SOURCES := $(wildcard $(addsuffix /*.yp, ${YAPP_MODULE_DIRS}))
 YAPP_MODULES := ${YAPP_SOURCES:%.yp=%.pm}
 
+# Getting the name of the perl Yapp module and transforming it to target path
+YAPP_MODULES += $(patsubst ${YAPP_PARSER_SRC_DIR}/%.yp, \
+                           ${YAPP_PARSER_LIB_DIR}/%.pm, \
+                           $(wildcard ${YAPP_PARSER_SRC_DIR}/*.yp))
+
 PERL_SWIG_SOURCES := $(wildcard $(addsuffix /*.i, ${PERL_SWIG_MODULE_DIRS}))
 PERL_SWIG_MODULES := ${PERL_SWIG_SOURCES:%.i=%.pm}
 
@@ -37,7 +42,7 @@ SWIG_MODULES := ${PERL_SWIG_MODULES} ${PYTHON_SWIG_MODULES}
 
 COMPILED_MODULES := ${YAPP_MODULES} ${SWIG_MODULES}
 
-.PRECIOUS: %.pm %.py
+.PRECIOUS: %.pm %.py ${YAPP_MODULES}
 
 #
 # TEST variable should be defined in the Makeconf file, or on the
@@ -52,8 +57,11 @@ all: tests
 
 #------------------------------------------------------------------------------
 
+${YAPP_PARSER_LIB_DIR}/%.pm: ${YAPP_PARSER_SRC_DIR}/%.yp
+	${MAKE} -C $(dir $<) LIB_DIR=${YAPP_PARSER_LIB_DIR}
+
 %.pm: %.yp
-	${MAKE} -C $(dir $@) $(notdir $@) tests
+	${MAKE} -C $(dir $@) all tests #$(notdir $@) tests
 
 %.pm %.py: %.c %.i
 	${MAKE} -C $(@D) $(@F) all
@@ -314,9 +322,8 @@ clean:
 	rm -f ${TST_DIFFS}
 	rm -f ${SHELL_DIFFS}
 
-MAKE_DIRS = $(dir $(wildcard */Makefile))
-
-cleanAll distclean: clean ${LOCAL_CLEAN_TARGETS}
+MAKE_DIRS = $(dir $(wildcard */Makefile)) ${LOCAL_CLEAN_TARGETS}
+cleanAll distclean: clean 
 	rm -f ${COMPILED_MODULES}
 	rm -f ${SCRIPT_DEPENDS}
 	for DIR in ${MAKE_DIRS}; do \

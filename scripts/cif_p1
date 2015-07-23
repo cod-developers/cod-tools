@@ -20,22 +20,21 @@ use warnings;
 use COD::AtomBricks qw(build_bricks get_atom_index get_search_span);
 use COD::AtomNeighbours qw(get_max_covalent_radius);
 use COD::AtomProperties;
-use COD::CIFParser::CIFParser;
-use COD::Formulae::FormulaPrint;
-use COD::Spacegroups::SymopAlgebra qw(symop_is_unity symop_vector_mul);
-use COD::Spacegroups::SymopParse;
-use COD::Spacegroups::SymopLookup;
-use COD::Spacegroups::VectorAlgebra qw(distance);
-use COD::CIFData qw(get_cell get_symmetry_operators);
-use COD::CIFData::CIFAtomList qw(atom_array_from_cif
-                                 copy_struct_deep
-                                 dump_atoms_as_cif);
-use COD::CIFData::CIFSymmetryGenerator qw(atoms_coincide
-                                          test_bond
-                                          test_bump);
-use COD::CIFTags::CIFTagCanonicalNames;
-use COD::CIFTags::CIFTagManage;
-use COD::CIFTags::CIFTagPrint;
+use COD::CIF::Parser::Yapp;
+use COD::Formulae::Print;
+use COD::Spacegroups::Symop::Algebra qw(symop_is_unity symop_vector_mul);
+use COD::Spacegroups::Symop::Parse;
+use COD::Algebra::Vector qw(distance);
+use COD::CIF::Data qw(get_cell get_symmetry_operators);
+use COD::CIF::Data::AtomList qw(atom_array_from_cif
+                                copy_struct_deep
+                                dump_atoms_as_cif);
+use COD::CIF::Data::SymmetryGenerator qw(atoms_coincide
+                                         test_bond
+                                         test_bump);
+use COD::CIF::Tags::CanonicalNames;
+use COD::CIF::Tags::Manage;
+use COD::CIF::Tags::Print;
 use COD::SOptions;
 use COD::SUsage;
 use COD::UserMessage;
@@ -315,7 +314,7 @@ for my $filename (@ARGV) {
     my( $data, $error_count );
 
     if( $use_parser eq "perl" ) {
-        my $parser = new COD::CIFParser::CIFParser;
+        my $parser = new COD::CIF::Parser::Yapp;
 
         $data = $parser->Run( $filename );
 
@@ -323,8 +322,8 @@ for my $filename (@ARGV) {
             $error_count = $parser->YYData->{ERRCOUNT};
         }
     } else {
-        require COD::CCIFParser::CCIFParser;
-        ( $data, $error_count ) = COD::CCIFParser::CCIFParser::parse( $filename );
+        require COD::CIF::Parser::Bison;
+        ( $data, $error_count ) = COD::CIF::Parser::Bison::parse( $filename );
     }
 
     if( defined $error_count && $error_count > 0 ) {
@@ -2005,7 +2004,7 @@ sub print_molecule
 # Renames CIF data tags so that they are not confused with the
 # original ones.
 
-# Accepts a dataset hash produced by CIFParser, a list of tags to be
+# Accepts a dataset hash produced by COD::CIF::Parser, a list of tags to be
 # renamed, and a prefix to be appended
 
 # Returns a hash with renamed data tags

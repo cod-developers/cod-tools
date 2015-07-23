@@ -16,8 +16,8 @@ eval 'exec perl -x $0 ${1+"$@"}'
 use strict;
 use warnings;
 use Scalar::Util;
-use COD::CIFParser::CIFParser;
-use COD::CIFTags::CIFTagCanonicalNames;
+use COD::CIF::Parser::Yapp;
+use COD::CIF::Tags::CanonicalNames;
 use COD::SOptions;
 use COD::SUsage;
 use COD::UserMessage qw( note warning error debug_note );
@@ -133,13 +133,13 @@ if( @dictFiles ) {
     foreach ( @dictFiles ) {
         my $parsed;
         if( $use_parser eq "perl" ) {
-            my $parser = new COD::CIFParser::CIFParser;
+            my $parser = new COD::CIF::Parser::Yapp;
             $parsed = $parser->Run( $_ );
             next if $parsed == 1;
         } else {
-            require COD::CCIFParser::CCIFParser;
+            require COD::CIF::Parser::Bison;
             my $error_count;
-            ( $parsed, $error_count ) = COD::CCIFParser::CCIFParser::parse( $_ );
+            ( $parsed, $error_count ) = COD::CIF::Parser::Bison::parse( $_ );
             next if $error_count > 0;
         }
         $dictTags{$_} = getDict( $parsed );
@@ -171,13 +171,13 @@ if( @dictFiles ) {
 CIFFILEANAL: for my $cifF ( @ARGV ) {
     my $data;
     if( $use_parser eq "perl" ) {
-        my $parser = new COD::CIFParser::CIFParser;
+        my $parser = new COD::CIF::Parser::Yapp;
         $data = $parser->Run( $cifF );
     } else {
-        $data = COD::CCIFParser::CCIFParser::parse( $cifF );
+        $data = COD::CIF::Parser::Bison::parse( $cifF );
     }
     # convert all tags to a "cannonical" form (the one used in the
-    # CIFTags modules ;):
+    # CIF::Tags modules ;):
     canonicalize_all_names( $data );
     next CIFFILEANAL if ( !defined $data || $data == 1 );
 
@@ -196,7 +196,7 @@ CIFFILEANAL: for my $cifF ( @ARGV ) {
                 if ( $debug ) {
                     warning( $0, $cifF, $$block{name},
                       "tag '$tagAnalysed' has no associated type which," .
-                      'probably, means that error in CIFParser had occured' );
+                      'probably, means that error in CIF parser had occured' );
                 }
             }
             my $lc_tagAnalysed = lc $tagAnalysed;
@@ -480,7 +480,7 @@ CIFFILEANAL: for my $cifF ( @ARGV ) {
 sub VersionMessage()
 {
 print <<END_M;
-cif_validate (using CIFParser v.$COD::CIFParser::CIFParser::version) v.$version
+cif_validate (using CIF::Parser::Yapp v.$COD::CIF::Parser::Yapp::version) v.$version
 
 END_M
 }
@@ -517,9 +517,9 @@ sub severityName($)
 }
 
 ##
-# Extracts tags from dictionary (parsed using CIFParser).
+# Extracts tags from dictionary (parsed using COD::CIF::Parser).
 # @param $dictF
-#       Reference to CIFParser output CIF object.
+#       Reference to COD::CIF::Parser output CIF object.
 # @return
 #       Hash of tags and related references to parsed data blocks.
 ##

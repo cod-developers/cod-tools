@@ -16,11 +16,11 @@ eval 'exec perl -x $0 ${1+"$@"}'
 use strict;
 use warnings;
 
-use COD::Spacegroups::SGBuilder;
-use COD::Spacegroups::SymopLookup;
-use COD::Spacegroups::SymopParse;
+use COD::Spacegroups::Builder;
+use COD::Spacegroups::Lookup::COD;
+use COD::Spacegroups::Symop::Parse;
 
-my $spacegroup = new COD::Spacegroups::SGBuilder;
+my $spacegroup = new COD::Spacegroups::Builder;
 
 while(<>) {
     next if /^#/;
@@ -48,10 +48,11 @@ sub mkhash
 {
     if( 1 ) {
         map { (mk_symop_key($_->{symops}), $_) }
-        @COD::Spacegroups::SymopLookup::table,
-        @COD::Spacegroups::SymopLookup::extra_settings;
+        @COD::Spacegroups::Lookup::COD::table,
+        @COD::Spacegroups::Lookup::COD::extra_settings;
     #} else {
-    #        map { (mk_symop_key($_->{symops}), $_) } @CCP4SymopLookup::table;
+    #    map { (mk_symop_key($_->{symops}), $_) }
+    #    @COD::Spacegroups::Lookup::CCP4::table;
     }
 }
 

@@ -1,10 +1,11 @@
 package COD::AtomProperties;
 
 use strict;
+use warnings;
 
 require Exporter;
-@COD::AtomProperties::ISA = qw(Exporter);
-@COD::AtomProperties::EXPORT = qw( ok );
+our @ISA = qw(Exporter);
+our @EXPORT = qw( ok );
 
 # The hash %atoms has been created using data from the folowing sources:
 # http://www.ccdc.cam.ac.uk/products/csd/radii/table.php4 2008-07-16

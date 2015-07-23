@@ -14,9 +14,8 @@ eval 'exec perl -x $0 ${1+"$@"}'
 
 use strict;
 use File::Basename;
-use COD::CIFParser::CIFParser;
-use COD::Formulae::AdHocParser;
-use COD::CIFData::CIFCODNumbers;
+use COD::CIF::Parser::Yapp;
+use COD::CIF::Data::CODNumbers;
 use COD::SOptions;
 use COD::SUsage;
 
@@ -217,15 +216,15 @@ sub load_cif_file
     my $error_count;
 
     if( $use_parser eq "perl" ) {
-        my $parser = new COD::CIFParser::CIFParser;
+        my $parser = new COD::CIF::Parser::Yapp;
         $data = $parser->Run($file);
         if( defined $parser->YYData->{ERRCOUNT} &&
             $parser->YYData->{ERRCOUNT} > 0 ) {
             $error_count = defined $parser->YYData->{ERRCOUNT};
         }
     } else {
-        require COD::CCIFParser::CCIFParser;
-        ( $data, $error_count ) = COD::CCIFParser::CCIFParser::parse( $file );
+        require COD::CIF::Parser::Bison;
+        ( $data, $error_count ) = COD::CIF::Parser::Bison::parse( $file );
     }
 
     if( defined $error_count && $error_count > 0 ) {

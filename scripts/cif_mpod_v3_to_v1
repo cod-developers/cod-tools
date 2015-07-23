@@ -14,13 +14,13 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #**
 
 use strict;
+use warnings;
 use File::Basename;
-use COD::CIFParser::CIFParser;
-use COD::CIFTags::CIFTagManage;
-use COD::CIFTags::CIFTagPrint;
-use COD::Spacegroups::SpacegroupNames;
-use COD::Spacegroups::SymopParse;
-use COD::Spacegroups::SymopLookup;
+use COD::CIF::Parser::Yapp;
+use COD::CIF::Tags::Manage;
+use COD::CIF::Tags::Print;
+use COD::Spacegroups::Names;
+use COD::Spacegroups::Symop::Parse;
 use COD::SOptions;
 use COD::SUsage;
 
@@ -151,7 +151,7 @@ for my $filename (@ARGV) {
     my( $data, $error_count );
 
     if( $use_parser eq "perl" ) {
-        my $parser = new COD::CIFParser::CIFParser;
+        my $parser = new COD::CIF::Parser::Yapp;
 
         $data = $parser->Run( $filename );
 
@@ -159,8 +159,8 @@ for my $filename (@ARGV) {
             $error_count = $parser->YYData->{ERRCOUNT};
         }
     } else {
-        require COD::CCIFParser::CCIFParser;
-        ( $data, $error_count ) = COD::CCIFParser::CCIFParser::parse( $filename );
+        require COD::CIF::Parser::Bison;
+        ( $data, $error_count ) = COD::CIF::Parser::Bison::parse( $filename );
     }
 
     if( defined $error_count && $error_count > 0 ) {

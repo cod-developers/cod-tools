@@ -11,9 +11,10 @@
 package COD::SUsage;
 
 use strict;
+use warnings;
 require Exporter;
-@COD::SUsage::ISA = qw(Exporter);
-@COD::SUsage::EXPORT = qw( usage );
+our @ISA = qw(Exporter);
+our @EXPORT = qw( usage );
 
 sub usage
 {

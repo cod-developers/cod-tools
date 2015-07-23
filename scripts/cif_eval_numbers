@@ -15,9 +15,9 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #**
 
 use strict;
-use COD::CIFParser::CIFParser;
-use COD::CIFTags::CIFTagPrint;
-use COD::CIFTags::CIFTagCanonicalNames;
+use COD::CIF::Parser::Yapp;
+use COD::CIF::Tags::Print;
+use COD::CIF::Tags::CanonicalNames;
 use COD::SOptions;
 use COD::SUsage;
 
@@ -59,10 +59,10 @@ my $debug = 0;
 my $dictionary;
 
 if( defined $dictionary_file ) {
-    my $parser = new COD::CIFParser::CIFParser;
+    my $parser = new COD::CIF::Parser::Yapp;
     $dictionary = $parser->Run($dictionary_file);
 } elsif( !$tags_to_fix ) {
-    my $parser = new COD::CIFParser::CIFParser;
+    my $parser = new COD::CIF::Parser::Yapp;
     $dictionary = $parser->Run($dictionary_file, {filehandle => \*DATA});
 }
 
@@ -98,7 +98,7 @@ my $return_status = 0;
 
 for my $filename (@ARGV) {
 
-    my $parser = new COD::CIFParser::CIFParser;
+    my $parser = new COD::CIF::Parser::Yapp;
     my %options;
 
     if( $fix_errors ) {

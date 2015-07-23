@@ -27,11 +27,12 @@ eval 'exec perl -x $0 ${1+"$@"}'
 # http://www.iucr.org/__data/assets/pdf_file/0015/13083/3.pdf
 
 use strict;
+use warnings;
 use File::Basename;
-use COD::CIFParser::CIFParser;
-use COD::Spacegroups::SpacegroupNames;
-use COD::Spacegroups::SymopParse;
-use COD::Spacegroups::SymopLookup;
+use COD::CIF::Parser::Yapp;
+use COD::Spacegroups::Names;
+use COD::Spacegroups::Symop::Parse;
+use COD::Spacegroups::Lookup::COD;
 use COD::Cromer_Mann;
 use COD::Fractional;
 use COD::UserMessage;
@@ -139,7 +140,7 @@ for my $filename (@ARGV) {
     my( $data, $error_count );
 
     if( $use_parser eq "perl" ) {
-        my $parser = new COD::CIFParser::CIFParser;
+        my $parser = new COD::CIF::Parser::Yapp;
 
         $data = $parser->Run( $filename );
 
@@ -147,8 +148,8 @@ for my $filename (@ARGV) {
             $error_count = $parser->YYData->{ERRCOUNT};
         }
     } else {
-        require COD::CCIFParser::CCIFParser;
-        ( $data, $error_count ) = COD::CCIFParser::CCIFParser::parse( $filename );
+        require COD::CIF::Parser::Bison;
+        ( $data, $error_count ) = COD::CIF::Parser::Bison::parse( $filename );
     }
 
     if( defined $error_count && $error_count > 0 ) {
@@ -441,7 +442,7 @@ if( defined $get_hkl_data ) {
     my( $hkl_data, $hkl_error_count );
 
     if( $use_parser eq "perl" ) {
-        my $parser = new COD::CIFParser::CIFParser;
+        my $parser = new COD::CIF::Parser::Yapp;
 
         $hkl_data = $parser->Run( $get_hkl_data );
 
@@ -449,8 +450,8 @@ if( defined $get_hkl_data ) {
             $hkl_error_count = $parser->YYData->{ERRCOUNT};
         }
     } else {
-        require COD::CCIFParser::CCIFParser;
-        ( $hkl_data, $hkl_error_count ) = COD::CCIFParser::CCIFParser::parse( $get_hkl_data );
+        require COD::CIF::Parser::Bison;
+        ( $hkl_data, $hkl_error_count ) = COD::CIF::Parser::Bison::parse( $get_hkl_data );
     }
 
     # take a top segment of my calculated and sorted structure factors;
@@ -1199,7 +1200,7 @@ sub cell_filling_sym
 # functions get_symops() and symop_apply() code was 
 # copied from 'cif_fillcell' script. rev. 1440;
 #===============================================================#
-# @COD::Spacegroups::SymopLookup::table =
+# @COD::Spacegroups::Lookup::COD::table =
 # (
 # {
 #     number          => 1,
@@ -1223,7 +1224,7 @@ sub get_symops
     $param =~ s/ //g;
     $param =~ s/_//g;
 
-    foreach my $hash (@COD::Spacegroups::SymopLookup::table)
+    foreach my $hash (@COD::Spacegroups::Lookup::COD::table)
     {
         my $value = $hash->{$option};
         $value =~ s/ //g;

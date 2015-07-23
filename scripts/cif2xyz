@@ -15,10 +15,10 @@ eval 'exec perl -x $0 ${1+"$@"}'
 use strict;
 use warnings;
 use COD::AtomProperties;
-use COD::CIFData qw(get_cell);
-use COD::CIFParser::CIFParser;
+use COD::CIF::Data qw(get_cell);
+use COD::CIF::Parser::Yapp;
 use COD::Fractional;
-use COD::Spacegroups::SymopAlgebra qw(symop_vector_mul);
+use COD::Spacegroups::Symop::Algebra qw(symop_vector_mul);
 use COD::UserMessage;
 use COD::SOptions;
 use COD::SUsage;
@@ -61,14 +61,14 @@ for my $filename (@ARGV) {
 
     my( $data, $nerrors );
     if( $use_parser eq "perl" ) {
-        my $parser = new COD::CIFParser::CIFParser;
+        my $parser = new COD::CIF::Parser::Yapp;
         $data = $parser->Run($filename);
         if( defined $parser->YYData->{ERRCOUNT} ) {
             $nerrors = $parser->YYData->{ERRCOUNT};
         }            
     } else {
-        require COD::CCIFParser::CCIFParser;
-        ( $data, $nerrors ) = COD::CCIFParser::CCIFParser::parse($filename);
+        require COD::CIF::Parser::Bison;
+        ( $data, $nerrors ) = COD::CIF::Parser::Bison::parse($filename);
     }
 
     if( defined $nerrors && $nerrors > 0 ) {

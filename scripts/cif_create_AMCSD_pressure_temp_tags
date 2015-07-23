@@ -15,11 +15,11 @@ eval 'exec perl -x $0 ${1+"$@"}'
 
 use strict;
 use warnings;
-use COD::CIFParser::CIFParser;
-use COD::CIFTags::CIFTagCanonicalNames;
-use COD::CIFTags::CIFDictTags;
-use COD::CIFTags::CIFCODTags;
-use COD::CIFTags::CIFTagPrint;
+use COD::CIF::Parser::Yapp;
+use COD::CIF::Tags::CanonicalNames;
+use COD::CIF::Tags::DictTags;
+use COD::CIF::Tags::COD;
+use COD::CIF::Tags::Print;
 use COD::UserMessage;
 use COD::SOptions;
 use COD::SUsage;
@@ -43,8 +43,8 @@ my $keep_tag_order = 0;
     "--help,--usage"   => sub { usage; exit },
 );
 
-my @dictionary_tags = ( @COD::CIFTags::CIFDictTags::tag_list,
-                        @COD::CIFTags::CIFCODTags::tag_list );
+my @dictionary_tags = ( @COD::CIF::Tags::DictTags::tag_list,
+                        @COD::CIF::Tags::COD::tag_list );
 my %dictionary_tags = map { $_, $_ } @dictionary_tags;
 
 sub get_pressure_unit_coefficient($);
@@ -53,7 +53,7 @@ sub get_temperature_unit_shift($);
 @ARGV = ("-") unless @ARGV;
 
 for my $filename (@ARGV) {
-    my $parser = new COD::CIFParser::CIFParser;
+    my $parser = new COD::CIF::Parser::Yapp;
     my $data = $parser->Run($filename);
 
     if( defined $parser->YYData->{ERRCOUNT} &&

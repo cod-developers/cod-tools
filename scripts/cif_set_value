@@ -14,9 +14,9 @@ eval 'exec perl -x $0 ${1+"$@"}'
 
 use strict;
 use warnings;
-use COD::CIFParser::CIFParser;
-use COD::CIFTags::CIFTagCanonicalNames;
-use COD::CIFTags::CIFTagPrint;
+use COD::CIF::Parser::Yapp;
+use COD::CIF::Tags::CanonicalNames;
+use COD::CIF::Tags::Print;
 use COD::UserMessage;
 use COD::SOptions;
 use COD::SUsage;
@@ -55,15 +55,15 @@ my $value = 1.0;
 for my $filename (@ARGV) {
     my( $data, $error_count );
     if( $use_parser eq "perl" ) {
-        my $parser = new COD::CIFParser::CIFParser;
+        my $parser = new COD::CIF::Parser::Yapp;
         $data = $parser->Run( $filename );
         if( defined $parser->YYData->{ERRCOUNT} &&
             $parser->YYData->{ERRCOUNT} > 0 ) {
             $error_count = $parser->YYData->{ERRCOUNT};
         }
     } else {
-        require COD::CCIFParser::CCIFParser;
-        ( $data, $error_count ) = COD::CCIFParser::CCIFParser::parse( $filename );
+        require COD::CIF::Parser::Bison;
+        ( $data, $error_count ) = COD::CIF::Parser::Bison::parse( $filename );
     }
 
     if( defined $error_count && $error_count > 0 ) {
