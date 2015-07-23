@@ -61,24 +61,28 @@ sub parse
         }
     }
 
+    my @error_messages;
     foreach my $message ( @$messages ) {
-        print_message( $message->{program},
-                       $message->{filename},
-                       $message->{addpos},
-                       $message->{status},
-                       $message->{message},
-                       $message->{lineno},
-                       $message->{columnno} );
+        my $msg = sprint_message( $message->{program},
+                                  $message->{filename},
+                                  $message->{addpos},
+                                  $message->{status},
+                                  $message->{message},
+                                  $message->{lineno},
+                                  $message->{columnno} );
         if( $message->{line} ) {
-            print STDERR $message->{line} . "\n";
+            $msg .= $message->{line} . "\n";
             if( defined $message->{columnno} ) {
-                print STDERR " " x ( $message->{columnno} - 1 ) . "^\n";
+                $msg .= " " x ( $message->{columnno} - 1 ) . "^\n";
             }
         }
+
+        print STDERR $msg;
+        push @error_messages, $msg;
     }
 
     if( wantarray ) {
-        return( $data, $nerrors );
+        return( $data, $nerrors, \@error_messages );
     } else {
         return $data;
     }
@@ -95,9 +99,10 @@ sub new
 sub Run
 {
     my( $self, $filename, $options ) = @_;
-    my( $data, $nerrors ) = parse( $filename, $options );
+    my( $data, $nerrors, $error_messages ) = parse( $filename, $options );
 
-    $self->{YYData} = { ERRCOUNT => $nerrors };
+    $self->{YYData} = { ERRCOUNT => $nerrors,
+                        ERROR_MESSAGES => $error_messages };
     return $data;
 }
 
