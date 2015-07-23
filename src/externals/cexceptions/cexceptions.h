@@ -9,11 +9,14 @@
 #define _CEXCEPTIONS_H
 
 #include <setjmp.h>
+#include <stdlib.h>
 
 typedef struct cexception_s {
     int error_code;
     const void *subsystem_tag;
     const char *message;
+    const char *syserror; /* System error message as returned by
+                             strerror(errno), or analogous. */
     const char *source_file;
     int line;
     jmp_buf jmp_buffer;
@@ -26,6 +29,9 @@ typedef struct cexception_s {
 #define cexception_guard(EXCEPTION) \
    if( setjmp((EXCEPTION).jmp_buffer) == 0 )
 
+#define cexception_try(EXCEPTION) \
+   if( setjmp((EXCEPTION).jmp_buffer) == 0 )
+
 #define cexception_catch  else
 
 /*--------------------------------------------------------------------------*/
@@ -36,14 +42,19 @@ void cexception_raise_at( int line_nr, const char * filename,
 			  cexception_t *cexception,
 			  const void *sybsystem_tag,
 			  int error_code,
-			  const char *message );
+			  const char *message,
+                          const char *syserror );
 
 #define cexception_raise( EXCEPTION, CODE, MESSAGE ) \
-    cexception_raise_at( __LINE__, __FILE__, EXCEPTION, NULL, CODE, MESSAGE )
+    cexception_raise_at( __LINE__, __FILE__, EXCEPTION, NULL, CODE, MESSAGE, NULL )
 
 #define cexception_raise_in( EXCEPTION, SUBSYSTEM, CODE, MESSAGE ) \
     cexception_raise_at( __LINE__, __FILE__, EXCEPTION, \
-			 SUBSYSTEM, CODE, MESSAGE )
+			 SUBSYSTEM, CODE, MESSAGE, NULL )
+
+#define cexception_raise_syserror( EXCEPTION, SUBSYSTEM, CODE, MESSAGE, SYSERROR ) \
+    cexception_raise_at( __LINE__, __FILE__, EXCEPTION, \
+			 SUBSYSTEM, CODE, MESSAGE, SYSERROR )
 
 #define cexception_finally( CLEAN, RERAISE ) \
     cexception_catch { \
@@ -66,6 +77,8 @@ void cexception_reraise( cexception_t old_cexception,
 /*--------------------------------------------------------------------------*/
 
 const char *cexception_message( cexception_t *ex );
+const char *cexception_syserror( cexception_t *ex );
+const char *cexception_explanation( cexception_t *ex );
 const void *cexception_subsystem_tag( cexception_t *ex );
 const char *cexception_source_file( cexception_t *ex );
 int cexception_error_code( cexception_t *ex );

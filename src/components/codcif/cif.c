@@ -16,6 +16,7 @@
 #include <stdarg.h>
 #include <string.h>
 #include <datablock.h>
+#include <cifmessage.h>
 #include <allocx.h>
 #include <assert.h>
 #include <cexceptions.h>
@@ -45,10 +46,14 @@ void cif_debug_off( void )
 
 struct CIF {
     int nerrors;
+    int yyretval;
     DATABLOCK *datablock_list;
     DATABLOCK *last_datablock; /* points to the end of the
                                   datablock_list; SHOULD not be freed
                                   when the CIF structure is deleted.*/
+
+    CIFMESSAGE *messages; /* A linked list with error and warning
+                             message data. */
 };
 
 CIF *new_cif( cexception_t *ex )
@@ -61,6 +66,7 @@ void delete_cif( CIF *cif )
 {
     if( cif ) {
         delete_datablock_list( cif->datablock_list );
+        delete_cifmessage( cif->messages );
         freex( cif );
     }
 }
@@ -80,6 +86,21 @@ void dispose_cif( CIF * volatile *cif )
 	delete_cif( *cif );
 	*cif = NULL;
     }
+}
+
+CIFMESSAGE *cif_messages( CIF *cif )
+{
+    assert( cif );
+    return cif->messages;
+}
+
+CIFMESSAGE *cif_insert_message( CIF *cif, CIFMESSAGE *message )
+{
+    CIFMESSAGE *messages;
+    assert( cif );
+    messages = cif->messages;
+    cif->messages = message;
+    return messages;
 }
 
 void cif_start_datablock( CIF * volatile cif, const char *name,
@@ -256,4 +277,47 @@ void cif_print_tag_values( CIF *cif, char ** tagnames, int tagcount,
                 separator, vseparator );
         }
     }
+}
+
+void cif_revert_message_list( CIF *cif )
+{
+    if( cif ) {
+        cif->messages = cifmessage_revert_list( cif->messages );
+    }
+}
+
+void cif_set_yyretval( CIF *cif, int yyretval )
+{
+    assert( cif );
+    cif->yyretval = yyretval;
+}
+
+int cif_yyretval( CIF *cif )
+{
+    assert( cif );
+    return cif->yyretval;
+}
+
+void cif_set_message( CIF *cif,
+                      const char *filename,
+                      const char *errlevel,
+                      const char *message,
+                      const char *syserror,
+                      cexception_t *ex )
+{
+    assert( cif );
+
+    cif_insert_message
+        ( cif, new_cifmessage_from_data
+          ( /* next = */ cif->messages,
+            /* progname = */ NULL,
+            /* filename = */ (char*)filename,
+            /* line = */ -1, /* position = */ -1,
+            /* addPos = */ NULL,
+            /* status = */ (char*)errlevel,
+            /* message = */ (char*)message,
+            /* explanation = */ (char*)syserror,
+            /* separator = */ NULL,
+            ex )
+          );
 }

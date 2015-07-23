@@ -21,9 +21,9 @@ FILE *fopenx( const char *filename, const char *mode, cexception_t *ex )
     FILE *f = fopen( filename, mode );
 
     if( f == NULL ) {
-        cexception_raise_in( ex, stdiox_subsystem, STDIOX_FILE_OPEN_ERROR,
-			     cxprintf( "could not open file '%s': %s",
-				       filename, strerror( errno )));
+        cexception_raise_syserror
+            ( ex, stdiox_subsystem, STDIOX_FILE_OPEN_ERROR,
+              "could not open file", strerror( errno ));
     }
 
     return f;
@@ -32,8 +32,8 @@ FILE *fopenx( const char *filename, const char *mode, cexception_t *ex )
 void fclosex( FILE *file, cexception_t *ex )
 {
     if( fclose( file ) != 0 ) {
-        cexception_raise_in( ex, stdiox_subsystem, STDIOX_FILE_CLOSE_ERROR,
-			     cxprintf( "could not close file: %s",
-				       strerror( errno )));
+        cexception_raise_syserror
+            ( ex, stdiox_subsystem, STDIOX_FILE_CLOSE_ERROR,
+              "could not close file", strerror( errno ));
     }
 }

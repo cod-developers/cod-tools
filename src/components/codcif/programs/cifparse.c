@@ -11,6 +11,7 @@
 #include <unistd.h>
 #include <string.h>
 #include <getoptions.h>
+#include <cifmessage.h>
 #include <cif_grammar_y.h>
 #include <cif_grammar_flex.h>
 #include <allocx.h>
@@ -48,7 +49,20 @@ static char *usage_text[2] = {
 
 "  -q, --quiet                 Be quiet, only output error messages and data\n"
 
-"  -q-, --no-quiet, --verbose  Produce verbose output of the parsing process\n\n"
+"  -q-, --no-quiet, --verbose  Produce verbose output of the parsing "
+"process\n\n"
+
+"  -s, --suppress-errors          Suppress error messages from the parser\n"
+
+"  -s-,--do-not-suppress-errors   Print parser messages to STDERR (default)"
+"\n\n"
+
+"  -M, --do-not-dump-messages     Do not use accumulated CIF messages "
+"(default)\n"
+
+"  -M-,--do-not-dump-messages     Dump accumulated message texts from the CIF "
+"object\n\n"
+
 
 "  --version  print program version (SVN Id) and exit\n"
 
@@ -79,6 +93,8 @@ static option_value_t fix_errors;
 static option_value_t be_quiet;
 static option_value_t debug;
 static option_value_t print_cif;
+static option_value_t suppress_error_messages;
+static option_value_t dump_messages;
 
 static option_t options[] = {
   { "-d", "--debug",           OT_STRING,         &debug },
@@ -91,8 +107,37 @@ static option_t options[] = {
   { NULL, "--verbose",         OT_BOOLEAN_FALSE,  &be_quiet },
   { NULL, "--help",            OT_FUNCTION, NULL, &usage },
   { NULL, "--version",         OT_FUNCTION, NULL, &version },
+  { "-s", "--suppress-errors", OT_BOOLEAN_TRUE,   &suppress_error_messages },
+  { "-s-","--dont-suppress-errors", 
+                               OT_BOOLEAN_FALSE,  &suppress_error_messages },
+  { NULL, "--do-not-suppress-errors",
+                               OT_BOOLEAN_FALSE,  &suppress_error_messages },
+  { NULL, "--no-suppress-errors",
+                               OT_BOOLEAN_FALSE,  &suppress_error_messages },
+  { "-M", "--dump-messages",   OT_BOOLEAN_TRUE,   &dump_messages },
+  { "-M-","--dont-dump-messages",
+                               OT_BOOLEAN_FALSE,  &dump_messages },
+  { NULL, "--do-not-dump-messages",
+                               OT_BOOLEAN_FALSE,  &dump_messages },
+  { NULL, "--no-dump-messages",
+                               OT_BOOLEAN_FALSE,  &dump_messages },
   { NULL }
 };
+
+static char *strnonl( char *str )
+{
+    char *start = str;
+    if( str ) {
+        while( *str ) {
+            if( *str == '\n' ) {
+                *str = '\0';
+            }
+            str ++;
+        }
+    }
+
+    return start;
+}
 
 char *progname;
 
@@ -139,12 +184,43 @@ int main( int argc, char *argv[], char *env[] )
           cif_option_t compiler_options = cif_option_default();
           filename = files[i] ? files[i] : "-";
 
+          if( suppress_error_messages.value.b == 1 ) {
+              compiler_options =
+                  cif_option_set( compiler_options, CO_SUPPRESS_MESSAGES );
+          }
+
           if( fix_errors.value.b == 1 ) {
               compiler_options =
                   cif_option_set_fix_errors( compiler_options );
           }
 
           cif = new_cif_from_cif_file( files[i], compiler_options, &inner );
+
+          if( cif ) {
+              if( dump_messages.value.b == 1 ) {
+                  CIFMESSAGE *messages = cif_messages( cif );
+                  CIFMESSAGE *msg;
+
+                  foreach_cifmessage( msg, messages ) {
+                      fprintf( stderr, "%s\t%s\t%d\t%d\t%s",
+                               progname, cifmessage_filename( msg ),
+                               cifmessage_lineno( msg ), cifmessage_pos( msg ),
+                               strnonl( cifmessage_message( msg )));
+                      fprintf( stderr, "\n" );
+                  }
+              }
+              if( cif_yyretval( cif ) != 0 ) {
+                  cexception_raise( &inner, CIF_UNRECOVERABLE_ERROR,
+                                    cxprintf( "compiler could not recover "
+                                              "from errors, quitting now\n"
+                                              "%d error(s) detected\n",
+                                              cif_nerrors( cif )));
+#if 0
+                                    "compiler could not recover "
+                                    "from errors, quitting now" );
+#endif
+              }
+          }
 
           if( cif && cif_nerrors( cif ) == 0 ) {
               if( debug.present && strstr(debug.value.s, "dump") != NULL ) {
@@ -154,16 +230,18 @@ int main( int argc, char *argv[], char *env[] )
                       cif_print( cif );
                   } else {
                       if( !be_quiet.value.b ) {
-                          printf( "%s: file '%s' OK\n", progname, filename );
+                          printf( "%s: file '%s' OK\n", progname,
+                                  filename );
                       }
                   }
               }
           } else {
               retval = 1;
-              if( print_cif.value.b == 0 ) {
+              if( print_cif.value.b == 0 && !be_quiet.value.b ) {
                   printf( "%s: file '%s' FAILED\n", progname, filename );
               }
           }
+
           if( cif ) {
               delete_cif( cif );
               cif = NULL;
@@ -172,12 +250,30 @@ int main( int argc, char *argv[], char *env[] )
       }
       cexception_catch {
           if( filename ) {
-              if( print_cif.value.b == 0 ) {
+              if( print_cif.value.b == 0 && !be_quiet.value.b ) {
                   printf( "%s: file '%s' FAILED\n", progname, filename );
               }
-              fprintf( stderr, "%s: %s: %s\n", argv[0], filename, cexception_message( &inner ));
+              if( suppress_error_messages.value.b == 0 ) {
+                  const char *syserror = cexception_syserror( &inner );
+                  if( syserror ) {
+                      fprintf( stderr, "%s: %s: %s - %s\n", argv[0], filename, 
+                               cexception_message( &inner ), syserror );
+                  } else {
+                      fprintf( stderr, "%s: %s: %s\n", argv[0], filename, 
+                               cexception_message( &inner ));
+                  }
+              }
           } else {
-              fprintf( stderr, "%s: %s\n", argv[0], cexception_message( &inner ));
+              if( suppress_error_messages.value.b == 0 ) {
+                  const char *syserror = cexception_syserror( &inner );
+                  if( syserror ) {
+                      fprintf( stderr, "%s: %s - %s\n", argv[0], 
+                               cexception_message( &inner ), syserror );
+                  } else {
+                      fprintf( stderr, "%s: %s\n", argv[0], 
+                               cexception_message( &inner ));
+                  }
+              }
           }
           delete_cif( cif );
           retval = 3;

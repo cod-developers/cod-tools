@@ -11,6 +11,7 @@
 #include <stdlib.h>
 #include <stdarg.h>
 #include <datablock.h>
+#include <cifmessage.h>
 #include <cexceptions.h>
 
 typedef struct CIF CIF;
@@ -31,6 +32,7 @@ typedef enum {
   CIF_UNRECOVERABLE_ERROR,
   CIF_COMPILATION_ERROR,
   CIF_NO_DATABLOCK_ERROR,
+  CIF_OUT_OF_MEMORY_ERROR,
 
   last_CIF_ERROR
 } cif_error_t;
@@ -48,6 +50,9 @@ void delete_cif( CIF *bc );
 void create_cif( CIF * volatile *cif, cexception_t *ex );
 
 void dispose_cif( CIF * volatile *cif );
+
+CIFMESSAGE *cif_messages( CIF *cif );
+CIFMESSAGE *cif_insert_message( CIF *cif, CIFMESSAGE *message );
 
 void cif_start_datablock( CIF * volatile cif, const char *name,
                           cexception_t *ex );
@@ -78,5 +83,17 @@ DATABLOCK * cif_last_datablock( CIF *cif );
 void cif_print_tag_values( CIF *cif, char ** tagnames, int tagcount,
     char * volatile prefix, int append_blkname, char * separator,
     char * vseparator );
+
+void cif_revert_message_list( CIF *cif );
+
+void cif_set_yyretval( CIF *cif, int yyretval );
+int cif_yyretval( CIF *cif );
+
+void cif_set_message( CIF *cif,
+                      const char *filename,
+                      const char *errlevel,
+                      const char *message,
+                      const char *syserror,
+                      cexception_t *ex );
 
 #endif
