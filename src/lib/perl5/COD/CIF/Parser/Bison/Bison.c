@@ -171,8 +171,16 @@ SV * parse_cif( char * fname, char * prog, SV * opt )
         foreach_cifmessage( cifmessage, cif_messages( cif ) ) {
             HV * current_cifmessage = newHV();
 
-            hv_store( current_cifmessage, "lineno",        6, newSViv( cifmessage_lineno( cifmessage ) ), 0 );
-            hv_store( current_cifmessage, "columnno",      8, newSViv( cifmessage_columnno( cifmessage ) ), 0 );
+            int lineno = cifmessage_lineno( cifmessage );
+            int columnno = cifmessage_columnno( cifmessage );
+
+            if( lineno != -1 ) {
+                hv_store( current_cifmessage, "lineno",    6, newSViv( lineno ), 0 );
+            }
+            if( columnno != -1 ) {
+                hv_store( current_cifmessage, "columnno",  8, newSViv( columnno ), 0 );
+            }
+
             hv_store( current_cifmessage, "addpos",        6, newSVpv( cifmessage_addpos( cifmessage ), 0 ), 0 );
             hv_store( current_cifmessage, "program",       7, newSVpv( progname, 0 ), 0 );
             hv_store( current_cifmessage, "filename",      8, newSVpv( cifmessage_filename( cifmessage ), 0 ), 0 );
