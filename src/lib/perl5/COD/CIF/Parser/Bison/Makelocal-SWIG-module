@@ -63,11 +63,15 @@ ${CEXCEPTIONS_DIR}/obj/%.o: ${CEXCEPTIONS_DIR}/%.c
 ${GETOPTIONS_DIR}/obj/%.o: ${GETOPTIONS_DIR}/%.c
 	${MAKE} -C ${GETOPTIONS_DIR} obj/$*.o
 
-clean:
+clean-SWIG-module:
 	rm -f ${SWIG_WRAPPER} ${OBJ} ${SWIG_WRAPPER_OBJ} *~
 
-cleanAll: clean
+cleanAll-SWIG-module:
 	rm -f ${SWIG_SO_FILE} ${SWIG_MODULE}
+
+clean: clean-SWIG-module
+
+cleanAll: cleanAll-SWIG-module
 
 try: ${SWIG_MODULE}
 	-perl -mBison -le 'my $$c = COD::CIF::Parser::Bison::parse_cif( "../../../../../../../perl-scripts/tests/cif_filter_147.inp", $$0, {} )'
