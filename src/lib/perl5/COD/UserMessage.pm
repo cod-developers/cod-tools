@@ -33,29 +33,32 @@ my %message_escape   = ( '&' => '&amp;', ':' => '&colon;' ); # ',' => '&comma;'
 # probably not contain a colon (":") since colon is used to separate
 # different parts of the error message.
 
-sub sprint_message($$$$$@)
+sub sprint_message($$$$$$@)
 {
     my ( $program, $filename, $datablock, $errlevel,
-         $message, $line, $column ) = @_;
+         $message, $explanation, $line, $column ) = @_;
 
     $message =~ s/\.?\n?$//;
 
     $program = "perl -e '...'" if ( $program eq '-e' );
 
-    $program   = escape_meta( $program,   \%program_escape   );
-    $filename  = escape_meta( $filename,  \%filename_escape  );
-    $datablock = escape_meta( $datablock, \%datablock_escape );
-    $message   = escape_meta( $message,   \%message_escape   );
+    $program     = escape_meta( $program,     \%program_escape   );
+    $filename    = escape_meta( $filename,    \%filename_escape  );
+    $datablock   = escape_meta( $datablock,   \%datablock_escape );
+    $message     = escape_meta( $message,     \%message_escape   );
+    $explanation = escape_meta( $explanation, \%message_escape   );
 
     return $program . ": " .
            (defined $filename ? $filename .
                 (defined $line ? "($line" .
-                    (defined $column ? ",$column" : "" ) . ")"
-                : "") . 
+                    (defined $column ? ",$column" : "") . ")"
+                : "") .
                 (defined $datablock ? " $datablock" : "") . ": "
            : "") .
            (defined $errlevel ? $errlevel . ", " : "") .
-           $message . ".\n";
+           $message .
+           (defined $explanation ? " -- " . $explanation : "") .
+           ".\n";
 }
 
 #==============================================================================
@@ -64,9 +67,9 @@ sub sprint_message($$$$$@)
 sub print_message($$$$$@)
 {
     my ( $program, $filename, $datablock, $errlevel,
-         $message, $line, $column ) = @_;
-    print STDERR sprint_message( $program, $filename, $datablock,
-                                 $errlevel, $message, $line, $column );
+         $message, $explanation, $line, $column ) = @_;
+    print STDERR sprint_message( $program, $filename, $datablock, $errlevel,
+                                 $message, $explanation, $line, $column );
 }
 
 #==============================================================================

@@ -142,6 +142,7 @@ sub filter_and_check
                            $parsed->{datablock},
                            $parsed->{errlevel},
                            $parsed->{message},
+                           $parsed->{explanation},
                            $parsed->{line},
                            $parsed->{column} );
         } elsif( /^[^:]+cif_filter: (.*)/ ) { # Ad-hoc parse for some messages
@@ -167,6 +168,7 @@ sub filter_and_check
                                $parsed->{datablock},
                                'NOTE',
                                $parsed->{message},
+                               $parsed->{explanation},
                                $parsed->{line},
                                $parsed->{column} );
             }
@@ -184,6 +186,7 @@ sub filter_and_check
                            $parsed->{datablock},
                            'NOTE',
                            $parsed->{message},
+                           $parsed->{explanation},
                            $parsed->{line},
                            $parsed->{column} );
         }
@@ -228,6 +231,7 @@ sub filter_and_check
                                    $parsed->{datablock},
                                    $parsed->{errlevel},
                                    $parsed->{message},
+                                   $parsed->{explanation},
                                    $parsed->{line},
                                    $parsed->{column} );
                 }
@@ -464,7 +468,6 @@ sub filter_and_check
     }
 
     # Handle the uploaded HKL file
-
     my $hkl_now;
     if( defined $hkl ) {
         if( ref( $hkl ) eq 'ARRAY' ) {
@@ -679,6 +682,7 @@ sub filter_and_check
                            $parsed->{datablock},
                            $parsed->{errlevel},
                            $parsed->{message},
+                           $parsed->{explanation},
                            $parsed->{line},
                            $parsed->{column} );
         }
@@ -687,7 +691,6 @@ sub filter_and_check
         die "file '$cif_filename' became empty after filtering " .
             "with cif_filter";
     }
-
     if( $hkl && !$is_pdcif ) {
         my $hkl_parameters = extract_cif_values(
             $hkl_now,
@@ -695,7 +698,6 @@ sub filter_and_check
             $tmp_file,
             [ @identity_tags, '_pd_block_id' ]
         );
-
         # Determining whether this HKL describes data from single-crystal
         # or powder diffraction experiment. In the first case, HKL should
         # contain only one datablock and no tags named _pd_block_id.
@@ -1059,7 +1061,7 @@ sub critical
 sub extract_cif_values
 {
     my( $file, $filename, $tmp_file, $tags ) = @_;
-    
+
     my $separator  = '|';
     my $vseparator = '@';
 
@@ -1094,6 +1096,7 @@ sub extract_cif_values
                $parsed->{datablock},
                ($parsed->{errlevel} ? $parsed->{errlevel} : 'WARNING'),
                $parsed->{message},
+               $parsed->{explanation},
                $parsed->{line},
                $parsed->{column} );
         } else {
@@ -1102,7 +1105,6 @@ sub extract_cif_values
     }
     die 'cifvalues encountered ' . @$values_stderr . ' ' .
         'warning(s)' if @$values_stderr > 0;
-
     my $data = [];
     my %seen_datanames;
     foreach( @$values_stdout ) {
