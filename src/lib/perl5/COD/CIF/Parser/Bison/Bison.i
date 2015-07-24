@@ -63,9 +63,13 @@ sub parse
 
     my @error_messages;
     foreach my $message ( @$messages ) {
+        my $datablock = $message->{addpos};
+        if( defined $datablock ) {
+            $datablock = "data_$datablock";
+        }
         my $msg = sprint_message( $message->{program},
                                   $message->{filename},
-                                  $message->{addpos},
+                                  $datablock,
                                   $message->{status},
                                   $message->{message},
                                   $message->{lineno},
