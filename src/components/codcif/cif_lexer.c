@@ -252,7 +252,7 @@ int cif_lexer( FILE *in, cexception_t *ex )
                             yywarning( "double-quoted string is missing "
                                        "a closing quote -- fixed", ex );
                         } else {
-                            yyerror( "syntax error" );
+                            yyerror( "incorrect CIF syntax" );
                         }
                         break;
                     case '\'':
@@ -262,7 +262,7 @@ int cif_lexer( FILE *in, cexception_t *ex )
                             yywarning( "single-quoted string is missing "
                                        "a closing quote -- fixed", ex );
                         } else {
-                            yyerror( "syntax error" );
+                            yyerror( "incorrect CIF syntax" );
                         }
                         break;
                 }
@@ -284,7 +284,7 @@ int cif_lexer( FILE *in, cexception_t *ex )
                         char after = getlinec( in, ex );
                         ungetlinec( after, in );
                         if( !isspace( after ) && after != EOF ) {
-                            yyerror( "syntax error" );
+                            yyerror( "incorrect CIF syntax" );
                         }
                         token[pos-1] = '\0'; /* delete the last '\n' char */
                         if( yy_flex_debug ) {
@@ -641,7 +641,7 @@ static char *clean_string( char *src, int is_textfield, cexception_t *ex )
                     }
                 } else {
                     if( is_textfield == 0 ) {
-                        yyerror( "syntax error" );
+                        yyerror( "incorrect CIF syntax" );
                     } else if( non_ascii_explained == 0 ) {
                         print_message( "WARNING", "non-ascii symbols "
                                        "encountered "
@@ -702,7 +702,7 @@ static char *check_and_clean( char *token, int is_textfield, cexception_t *ex )
             (CIF_FLEX_LEXER_FIX_NON_ASCII_SYMBOLS) ) {
             s = clean_string( token, is_textfield, ex );
         } else {
-            yyerror( "syntax error" );
+            yyerror( "incorrect CIF syntax" );
             s = strdupx( token, ex );
         }
     } else {

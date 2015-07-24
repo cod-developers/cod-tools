@@ -229,7 +229,7 @@ data_block_head
             cif_start_datablock( cif_cc->cif, buf, px );
             if( !isset_fix_errors( cif_cc ) &&
                 !isset_fix_datablock_names( cif_cc ) ) {
-                yyerror_previous( "syntax error", px );
+                yyerror_previous( "incorrect CIF syntax", px );
             }
             if( isset_fix_errors( cif_cc ) ||
                 isset_fix_string_quotes( cif_cc ) ) {
@@ -280,7 +280,7 @@ cif_entry
                     }
                     add_tag_value( $1, buf, tag_type, px );
                 } else {
-                    yyerror_previous( "syntax error", px );
+                    yyerror_previous( "incorrect CIF syntax", px );
                 }
             }
 ;
