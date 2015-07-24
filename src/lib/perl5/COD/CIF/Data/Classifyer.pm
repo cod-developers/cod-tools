@@ -21,7 +21,6 @@ use COD::Spacegroups::Symop::Parse;
 use COD::Algebra::Vector qw(distance
                             matrix_vector_mul
                             vector_sub);
-use COD::UserMessage;
 
 require Exporter;
 our @ISA = qw(Exporter);

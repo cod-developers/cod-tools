@@ -35,7 +35,7 @@ for my $h (@{$data->[0]{save_blocks}}) {
         next unless $k eq "values";
         print "Keys:\n\to) ";
         local $, = "\n\to) ";
-        print keys %{$v};
+        print sort keys %{$v};
         print "\n";
     }
     print "\n";

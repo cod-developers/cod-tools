@@ -17,6 +17,7 @@ package COD::CIF::Data::EstimateZ;
 use strict;
 use warnings;
 use COD::Cell qw(cell_volume);
+use COD::UserMessage qw(prefix_dataname);
 
 require Exporter;
 our @ISA = qw(Exporter);

@@ -37,7 +37,7 @@ use COD::Spacegroups::Symop::Parse;
 use COD::Spacegroups::Lookup::COD;
 use COD::Formulae::Parser::AdHoc;
 use COD::CIF::Unicode2CIF;
-use COD::UserMessage;
+use COD::UserMessage qw(warning error prefix_dataname);
 use COD::SOptions;
 use COD::SUsage;
 
@@ -620,6 +620,7 @@ for my $filename (@ARGV) {
         ## next unless defined $dataset->{kind} && $dataset->{kind} == "DATA";
 
         my $datablok = $dataset->{values};
+        my $dataname = prefix_dataname($dataset->{name});
 
         # Add bibliography from a global section, if any:
 
@@ -918,7 +919,7 @@ for my $filename (@ARGV) {
 
         for my $tag (@{$dataset->{tags}}) {
             unless( exists $dictionary_tags{$tag} ) {
-                warning( $0, $filename, $dataset->{name},
+                warning( $0, $filename, $dataname,
                          "tag '$tag' is not recognised" );
             }
         }
@@ -1017,7 +1018,7 @@ for my $filename (@ARGV) {
                     my $error = check_symmetry_operator( $symop );
                     if( $error ) {
                         $has_errors = 1;
-                        error( $0, $filename, $dataset->{name}, $error );
+                        error( $0, $filename, $dataname, $error );
                     }
                 }
                 if( !$has_errors ) {
@@ -1097,9 +1098,9 @@ for my $filename (@ARGV) {
                     }
                 }
             } else {
-                warning( $0, $filename, $dataset->{name},
+                warning( $0, $filename,$dataname,
                          "the " . (defined $filename ? "'$filename' " : "") .
-                         "data_$dataset->{name} does not contain " .
+                         "$dataname does not contain " .
                          "symmetry operators" );
             }
         }
@@ -1164,7 +1165,7 @@ for my $filename (@ARGV) {
                 }
                 $datablok->{"_cell_volume"}[0] = $V;
             } else {
-                warning( $0, $filename, $dataset->{name},
+                warning( $0, $filename, $dataname,
                          "file '${filename}', datablock $dataset->{name} " .
                          "has no unit cell info -- "  .
                          "can't compute cell volume" );

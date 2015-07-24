@@ -37,7 +37,7 @@ use COD::CIF::Tags::Manage;
 use COD::CIF::Tags::Print;
 use COD::SOptions;
 use COD::SUsage;
-use COD::UserMessage;
+use COD::UserMessage qw(warning error prefix_dataname);
 
 no warnings 'recursion';
 
@@ -1112,7 +1112,7 @@ sub find_molecules($$$$$$$$)
 
     foreach my $initial_atom (@$initial_atoms) {
         if ((not exists $used_originals{$initial_atom->{cell_label}})) {
-	    print STDERR ">>>> starting new molecule\n" if $debug;
+        print STDERR ">>>> starting new molecule\n" if $debug;
 
             ## if( ! $expand_to_p1 &&
             ##     $initial_atom->{cell_label} ne $initial_atom->{site_label} ) {
@@ -1143,14 +1143,14 @@ sub find_molecules($$$$$$$$)
                 
                 push( @unique_molecules, \%molecule );
             } else {
-                warning( $0, $filename, $dataname,
+                warning( $0, $filename, prefix_dataname($dataname),
                          "found molecule with no atoms - strange..." );
             }
         }
     }
 
     if( !$verbose && $nbumps > 0 ) {
-        warning( $0, $filename, $dataname,
+        warning( $0, $filename, prefix_dataname($dataname),
                  "$nbumps pair(s) of atoms are too close to each " .
                  "other and are considered as bumps" );
     }
@@ -1235,10 +1235,10 @@ sub find_molecule($$$$$$$$$$$)
                     "but expect increased computation times and " .
                     "memory consumption)";
                 if( $continue_on_errors ) {
-                    warning( $0, $filename, $dataname, $message );
+                    warning( $0, $filename, prefix_dataname($dataname), $message );
                     return ( [], 0 );
                 } else {
-                    error( $0, $filename, $dataname, $message );
+                    error( $0, $filename, prefix_dataname($dataname), $message );
                     exit(1);
                 }
             }
