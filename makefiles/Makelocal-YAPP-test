@@ -1,22 +1,13 @@
 
-MAKECONF_FILES = ${filter-out %~, ${wildcard Makeconf*}}
-
-ifneq ("${MAKECONF_FILES}","")
-include ${MAKECONF_FILES}
-endif
-
 PERL5LIB := ../lib/perl5:${PERL5LIB}
 export PERL5LIB
 
-YP_FILES  = ${wildcard *.yp}
-PM_FILES  = ${YP_FILES:%.yp=%.pm}
 # Variables used to make module in the local package lib layout
 PKG_TOP   = lib
-PKG_FILES = ${PM_FILES:%.pm=${PKG_TOP}/${PKG_PATH}/%.pm}
-# Variables used to move perl modules to the proper directory in COD layout
-LIB_FILES = ${PM_FILES:%.pm=${LIB_DIR}/%.pm}
 
-TEST_MODULE = ${firstword ${PM_FILES}}
+CWD = ${notdir $(shell pwd)}
+TEST_MODULE = ${CWD}.pm
+
 WORK_TESTS = ${wildcard *.inp}
 TEST_DIR = tests
 OUTP_DIR = outputs
@@ -25,19 +16,14 @@ TEST_FILES = ${wildcard ${TEST_DIR}/*.inp}
 DIFF_FILES = ${TEST_FILES:${TEST_DIR}/%.inp=${OUTP_DIR}/%.diff}
 OUTP_FILES = ${TEST_FILES:${TEST_DIR}/%.inp=${OUTP_DIR}/%.out}
 
-.PRECIOUS: %.pm ${LIB_FILES}
 .PHONY: all clean cleanAll distclean test tests alltests out outputs
 .PHONY: run times
 
-## all: ${PM_FILES}
-all: run tests ${LIB_FILES}
+all: run tests
 
 SHELL = /bin/bash
 
-${LIB_FILES}: ${PKG_FILES}
-	cp -f $< $@
-
-run: ${PKG_FILES} ${WORK_TESTS}
+run: ${PKG_TOP}/${PKG_PATH}/${TEST_MODULE} ${WORK_TESTS}
 	@for file in ${WORK_TESTS}; do \
 	( \
 		echo === $$file ===; \
@@ -48,7 +34,7 @@ run: ${PKG_FILES} ${WORK_TESTS}
 	); \
 	done
 
-times: ${PKG_FILES} ${WORK_TESTS}
+times: ${PKG_TOP}/${PKG_PATH}/${TEST_MODULE} ${WORK_TESTS}
 	for file in ${WORK_TESTS}; do \
 	( \
 		echo === $$file ===; \
@@ -66,9 +52,6 @@ tests alltests: test shtest
 test: ${DIFF_FILES}
 
 out outputs: ${OUTP_FILES}
-
-${PKG_TOP}/${PKG_PATH}/%.pm: %.yp
-	yapp -v -m ${PKG_PREFIX}$* -o $@ $<
 
 ${OUTP_DIR}/%.diff: ${PKG_TOP}/${PKG_PATH}/${TEST_MODULE} ${TEST_DIR}/%.inp ${TEST_DIR}/%.opt
 	-@printf "%-30s " "$*:" ; \
@@ -160,5 +143,4 @@ clean:
 	rm -f ${DIFF_FILES}
 	rm -f ${SHELL_DIFFS}
 
-distclean cleanAll: clean
-	rm -f ${PKG_FILES} ${LIB_FILES}
+distclean cleanAll: clean clean-YAPP-module
