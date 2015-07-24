@@ -615,7 +615,9 @@ sub _Error
 {
     my $script = $0 eq '-e' ? "perl -e '...'" : "$0";
     my $filename = $_[0]->YYData->{FILENAME};
-    my $dataname = $_[0]->{USER}->{CURRENT_DATABLOCK};
+    my $dataname = defined $_[0]->{USER}->{CURRENT_DATABLOCK} ? "data_"
+                         . $_[0]->{USER}->{CURRENT_DATABLOCK} : undef;
+
 
     my $line = $_[0]->YYData->{VARS}{lines};
     my $pos;
@@ -653,7 +655,9 @@ sub _Warning
     if( exists $_[0]->YYData->{ERRMSG} ) {
         my $script = $0 eq '-e' ? "perl -e '...'" : "$0";
         my $filename = $_[0]->YYData->{FILENAME};
-        my $dataname = $_[0]->{USER}->{CURRENT_DATABLOCK};
+        my $dataname = defined $_[0]->{USER}->{CURRENT_DATABLOCK} ? "data_"
+                             . $_[0]->{USER}->{CURRENT_DATABLOCK} : undef;
+
 
         my $options = ( defined $_[1] ) ? $_[1] : {};
 
@@ -662,13 +666,13 @@ sub _Warning
 
         my $message;
         if( $options->{line_content} ) {
-            $message = sprint_message( $script, $filename, $dataname,
+            $message = sprint_message( $script, $filename, "data_$dataname",
                                        "WARNING", $_[0]->YYData->{ERRMSG},
                                        $line,
                                        $_[0]->YYData->{VARS}{token_pos},
                                        $options->{line_content} );
         } else {
-            $message = sprint_message( $script, $filename, $dataname,
+            $message = sprint_message( $script, $filename, "data_$dataname",
                                        "WARNING", $_[0]->YYData->{ERRMSG},
                                        $line );
         }
