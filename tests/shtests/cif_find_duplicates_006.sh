@@ -15,8 +15,8 @@ TMP_OUT="${TMP_DIR}/$(basename ${find_numbers}).out"
 TMP_ERR="${TMP_DIR}/$(basename ${find_numbers}).err"
 
 ${find_numbers} ./tests/inputs/cifs-with-errors ./tests/inputs/cod-with-errors \
-    > ${TMP_OUT} \
-    2> ${TMP_ERR}
+    2> ${TMP_ERR} \
+    | sort > ${TMP_OUT}
 
 cat ${TMP_OUT}
 cat ${TMP_ERR}
