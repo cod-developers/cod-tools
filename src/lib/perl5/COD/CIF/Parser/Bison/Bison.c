@@ -68,7 +68,8 @@ SV * parse_cif( char * fname, char * prog, SV * opt )
     }
     co = cif_option_suppress_messages( co );
 
-    if( strlen( fname ) == 1 && fname[0] == '-' ) {
+    if( !fname ||
+        ( strlen( fname ) == 1 && fname[0] == '-' ) ) {
         fname = NULL;
     }
 
