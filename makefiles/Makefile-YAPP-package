@@ -70,19 +70,45 @@ out outputs: ${OUTP_FILES}
 ${PKG_TOP}/${PKG_PATH}/%.pm: %.yp
 	yapp -v -m ${PKG_PREFIX}$* -o $@ $<
 
+${OUTP_DIR}/%.diff: ${PKG_TOP}/${PKG_PATH}/${TEST_MODULE} ${TEST_DIR}/%.inp ${TEST_DIR}/%.opt
+	-@printf "%-30s " "$*:" ; \
+	perl -e 'use ${PKG_PREFIX}${TEST_MODULE:%.pm=%};' \
+		 -e 'my $$p=new ${PKG_PREFIX}${TEST_MODULE:%.pm=%};' \
+		 -e '$$p->Run( undef, { map { $$_ => 1 } @ARGV } )' \
+         < ${word 2, $^} 2>&1 \
+         $(shell grep -v '^#' ${word 3, $^}) \
+     | diff ${OUTP_DIR}/$*.out - \
+     > $@ ; \
+	if [ $$? = 0 ]; then echo "OK"; else echo "FAILED:"; cat $@; fi
+
 ${OUTP_DIR}/%.diff: ${PKG_TOP}/${PKG_PATH}/${TEST_MODULE} ${TEST_DIR}/%.inp
 	-@printf "%-30s " "$*:" ; \
-	perl -e 'use ${PKG_PREFIX}${TEST_MODULE:%.pm=%}; my $$p=new ${PKG_PREFIX}${TEST_MODULE:%.pm=%}; $$p->Run' \
+	perl -e 'use ${PKG_PREFIX}${TEST_MODULE:%.pm=%};' \
+		 -e 'my $$p=new ${PKG_PREFIX}${TEST_MODULE:%.pm=%};' \
+		 -e '$$p->Run( undef, { map { $$_ => 1 } @ARGV } )' \
          < ${word 2, $^} 2>&1 \
      | diff ${OUTP_DIR}/$*.out - \
      > $@ ; \
 	if [ $$? = 0 ]; then echo "OK"; else echo "FAILED:"; cat $@; fi
 
+${OUTP_DIR}/%.out: ${PKG_TOP}/${PKG_PATH}/${TEST_MODULE} ${TEST_DIR}/%.inp ${TEST_DIR}/%.opt
+	-@test -f $@ || echo "$@:"
+	-@test -f $@ || \
+	perl -e 'use ${PKG_PREFIX}${TEST_MODULE:%.pm=%};' \
+		 -e 'my $$p=new ${PKG_PREFIX}${TEST_MODULE:%.pm=%};' \
+		 -e '$$p->Run( undef, { map { $$_ => 1 } @ARGV } )' \
+		 < ${word 2, $^} 2>&1 \
+         $(shell grep -v '^#' ${word 3, $^}) \
+	| tee $@
+	-@touch $@
+
 ${OUTP_DIR}/%.out: ${PKG_TOP}/${PKG_PATH}/${TEST_MODULE} ${TEST_DIR}/%.inp
 	-@test -f $@ || echo "$@:"
 	-@test -f $@ || \
-	perl -e 'use ${PKG_PREFIX}${TEST_MODULE:%.pm=%}; my $$p=new ${PKG_PREFIX}${TEST_MODULE:%.pm=%}; $$p->Run' \
-	< ${word 2, $^} 2>&1 \
+	perl -e 'use ${PKG_PREFIX}${TEST_MODULE:%.pm=%};' \
+		 -e 'my $$p=new ${PKG_PREFIX}${TEST_MODULE:%.pm=%};' \
+		 -e '$$p->Run( undef, { map { $$_ => 1 } @ARGV } )' \
+		 < ${word 2, $^} 2>&1 \
 	| tee $@
 	-@touch $@
 
