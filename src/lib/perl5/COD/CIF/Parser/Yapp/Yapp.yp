@@ -626,8 +626,8 @@ sub _Error
         $pos  = $options->{pos};
     }
 
-    my $line_content = $options->{print_input}
-                            ? $_[0]->YYData->{VARS}{current_line} : undef;
+    my $line_content = $options->{line_content}
+                     ? $options->{line_content} : undef;
     my $errmsg;
     if( exists $_[0]->YYData->{ERRMSG} ) {
         $errmsg = $_[0]->YYData->{ERRMSG};
@@ -660,12 +660,12 @@ sub _Warning
                                             : $_[0]->YYData->{VARS}{lines};
 
         my $message;
-        if( $options->{print_input} ) {
+        if( $options->{line_content} ) {
             $message = sprint_message( $script, $filename, $dataname,
                                        "WARNING", $_[0]->YYData->{ERRMSG},
                                        $line,
                                        $_[0]->YYData->{VARS}{token_pos},
-                                       $_[0]->YYData->{INPUT} );
+                                       $options->{line_content} );
         } else {
             $message = sprint_message( $script, $filename, $dataname,
                                        "WARNING", $_[0]->YYData->{ERRMSG},
@@ -737,7 +737,7 @@ sub _Lexer
           $parser->{USER}{OPTIONS}{fix_non_ascii_symbols} ))
         {
         $parser->YYData->{ERRMSG} = "non-ascii symbols encountered in the text";
-        $parser->_Warning( { print_input => 1 } );
+        $parser->_Warning( { line_content => $parser->YYData->{INPUT} } );
         $parser->YYData->{INPUT} =~ s/([^\x10-\x7F])/sprintf("&#x%04X;",ord($1))/eg;
     }
 
@@ -898,15 +898,13 @@ my $UQSTRING_INLINE     =       qr/^(?:
                     {
                         $parser->YYData->{ERRMSG} =
                             "non-ascii symbols encountered in the text field, "
-                          . "replaced by XML entities:\n;"
-                          . $tfield . "\n;\n";
-                        $parser->_Warning();
+                          . "replaced by XML entities";
+                        $parser->_Warning( { line_content => ";\n$tfield\n;" } );
                         $tfield =~ s/([^\x08-\x7F])/sprintf("&#x%04X;",ord($1))/eg;
                     } else {
                         $parser->YYData->{ERRMSG} =
-                            "non-ascii symbols encountered in the text field:\n;"
-                           . $tfield . "\n;\n";
-                        $parser->_Error();
+                            "non-ascii symbols encountered in the text field";
+                        $parser->_Error( { line_content => ";\n$tfield\n;" } );
                     }
                 }
                 if( !$parser->{USER}{OPTIONS}{do_not_unprefix_text} ) {
@@ -934,7 +932,8 @@ my $UQSTRING_INLINE     =       qr/^(?:
                 . ", pos. "
                 . $parser->YYData->{VARS}{token_prev_pos}
                 . " -- it is not acceptable in this version";
-            $parser->_Error( { print_input => 1 } );
+            $parser->_Error( { line_content =>
+                               $parser->YYData->{VARS}{current_line} } );
             return('GLOBAL_', $1);
         }
         #matching SAVE_ head
@@ -959,7 +958,8 @@ my $UQSTRING_INLINE     =       qr/^(?:
                 ", pos. " .
                 $parser->YYData->{VARS}{token_prev_pos} .
                 " -- it is not acceptable in this version";
-            $parser->_Error( { print_input => 1 } );
+            $parser->_Error( { line_content =>
+                               $parser->YYData->{VARS}{current_line} } );
             return('STOP_', $1);
         }
         #matching DATA_ field
