@@ -33,7 +33,8 @@ $options{allow_uqstring_brackets} = 1;
 
 my $data = $parser->Run($filename, \%options);
 
-while(my($k,$v) = each %{$data->[0]{values}}) {
+for my $k (sort keys %{$data->[0]{values}}) {
+    my $v = $data->[0]{values}{$k};
     print "Values for '$k':\n";
     for my $mas(@{$v}) {
         print $mas . "\n";
