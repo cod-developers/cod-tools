@@ -557,7 +557,7 @@ for my $filename (@ARGV) {
 
         if( not defined $sym_data ) {
             error( $0, $filename, prefix_dataname($dataset->{name}),
-                   "no symmetry information found" );
+                   "no symmetry information found", undef );
         }
 
         if((defined $sym_data) && ($sym_data != 0)) {
@@ -572,7 +572,7 @@ for my $filename (@ARGV) {
         if( !$unity_operator_found ) {
             warning( $0, $filename, prefix_dataname($dataset->{name}),
                      "unity symmetry operator ('x,y,z') is not " .
-                     "found in the symmetry operator list, " .
+                     "found in the symmetry operator list",
                      "results may be incorrect" );
         }
 
@@ -875,9 +875,9 @@ sub get_molecules
 
     if( @$atom_list == 0 ) {
         warning( $0, $filename, prefix_dataname($dataname),
-                 "no atoms suitable for processing were found; " .
+                 "no atoms suitable for processing were found",
                  "maybe all occupancies were unknown, zero, or " .
-                 "all atom types were unrecognised?" );
+                 "all atom types were unrecognised" );
         if( defined $dummy_molecule ) {
             return [ $dummy_molecule ];
         } else {
@@ -1667,7 +1667,7 @@ sub symgen_all_atoms($$$$)
                          $atom->{_atom_site_symmetry_multiplicity} .
                          "' for atom " . $atom->{name} . 
                          " is different from calculated value '" .
-                         $multiplicity . "' -- taking calculated value" );
+                         $multiplicity . "'", 'taking calculated value' );
             }
         }
 
@@ -1676,8 +1676,8 @@ sub symgen_all_atoms($$$$)
     if( $nr_multiplicity_ratios_found > 0 ) {
         warning( $0, $filename, prefix_dataname($dataname),
                  "multiplicity ratios are given instead of " . 
-                 "multiplicities for $nr_multiplicity_ratios_found " .
-                 "atoms -- taking calculated values" );
+                 "multiplicities for $nr_multiplicity_ratios_found atoms", 
+                 'taking calculated values' );
     }
     
     return \@sym_atoms;
@@ -2357,7 +2357,7 @@ sub print_molecule
         } else {
             warning( $0, $filename, $dataset_name,
                      "bond data necessary to compute _geom_bond_ data " .
-                     "items was not calculated" );
+                     "items was not calculated", undef );
         }
     }
 }
@@ -2469,7 +2469,7 @@ sub find_molecules($$$$$$$$)
                 push( @unique_molecules, \%molecule );
             } else {
                 warning( $0, $filename, prefix_dataname($dataname),
-                         "found molecule with no atoms - strange..." );
+                         'found molecule with no atoms', 'strange...' );
             }
         }
     }
@@ -2477,7 +2477,7 @@ sub find_molecules($$$$$$$$)
     if( !$verbose && $nbumps > 0 ) {
         warning( $0, $filename, prefix_dataname($dataname),
                  "$nbumps pair(s) of atoms are too close to each " .
-                 "other and are considered as bumps" );
+                 "other and are considered as bumps", undef );
     }
 
     return @unique_molecules;
@@ -2560,10 +2560,12 @@ sub find_molecule($$$$$$$$$$$)
                     "but expect increased computation times and " .
                     "memory consumption)";
                 if( $continue_on_errors ) {
-                    warning( $0, $filename, prefix_dataname($dataname), $message );
+                    warning( $0, $filename, prefix_dataname($dataname),
+                             $message, undef );
                     return ( [], 0 );
                 } else {
-                    error( $0, $filename, prefix_dataname($dataname), $message );
+                    error( $0, $filename, prefix_dataname($dataname), 
+                           $message, undef );
                     exit(1);
                 }
             }
@@ -2667,12 +2669,14 @@ sub find_molecule($$$$$$$$$$$)
                         ") and are considered a bump";
                     if( $ignore_bumps ) {
                         if( $verbose ) {
-                            warning( $0, $filename, prefix_dataname($dataname), $message );
+                            warning( $0, $filename, prefix_dataname($dataname),
+                                     $message, undef );
                         } else {
                             $nbumps++;
                         }
                     } else {
-                        error( $0, $filename, prefix_dataname($dataname), $message );
+                        error( $0, $filename, prefix_dataname($dataname),
+                               $message, undef );
                         print STDERR "$0: Aborting calculations.\n";
                         exit( 254 );
                     }

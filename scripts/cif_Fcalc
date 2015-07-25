@@ -126,7 +126,7 @@ if(defined $Miller_indexes) {
         ##  print "$_\n";
         if($_!~/\d/) {
             error( $0, undef, undef, 'the option --provide-Miller-indexes '
-                 . 'contains incorrect argument' );
+                 . 'contains incorrect argument', undef );
             exit 1;
         }
     }
@@ -154,12 +154,12 @@ for my $filename (@ARGV) {
 
     if( defined $error_count && $error_count > 0 ) {
         error( $0, $filename, undef, $error_count
-             . ' error(s) encountered while parsing the file' );
+             . ' error(s) encountered while parsing the file', undef );
         die;
     }
 
     if( !@$data || !defined $data->[0] || !defined $data->[0]{name} ) {
-        warning( $0, $filename, undef, 'file seems to be empty' );
+        warning( $0, $filename, undef, 'file seems to be empty', undef );
         next;
     }
 
@@ -196,12 +196,12 @@ for my $filename (@ARGV) {
                     warning( $0, $filename, $dataname,
                              'the CIF file does not contain the full data '
                            . 'of the standard anisotropic atomic displacement '
-                           . 'components' );
+                           . 'components', undef );
                     if( $atom->{U_value_of_B_factor} !~ /\d\.\d++/ &&
                         $atom->{B_factor} !~ /\d\.\d++/) {
                         error( $0, $filename, $dataname,
-                               'the CIF  does not contain the correct values '
-                             . 'for temperature factor calculation' );
+                               'the CIF does not contain the correct values '
+                             . 'for temperature factor calculation', undef );
                         exit 1;
                     }
                     $iso_temperature_factor = 1;
@@ -250,7 +250,7 @@ for my $filename (@ARGV) {
                     error( $0, $filename, $dataname,
                            'the Cromer-Mann coefficients "are not defined in '
                          . 'external source/CIF file for element '
-                         . "'$atom->{chemical_type}'" );
+                         . "'$atom->{chemical_type}'", undef );
                     exit 1;
                 }
             }
@@ -373,7 +373,7 @@ for my $filename (@ARGV) {
                         warning( $0, $filename, $dataname,
                                  'the CIF file does not contain the data '
                                . 'of anomalous-dispersion scattering '
-                               . 'factor' );
+                               . 'factor', undef );
                         exit 1;
                 }
             } # foreach of cell atoms;
@@ -417,9 +417,9 @@ for my $filename (@ARGV) {
                 if( ($max_number_print_of_F - 1) >
                     $#{$search_equal_intensities} ) {
                     warning( $0, $filename, $dataname,
-                            'The value of --max-Fhkl-number is large than '
-                          . 'number of calculated structure factors. '
-                          . 'Printing out of full structure factors number.' );
+                            'the value of --max-Fhkl-number is large than '
+                          . 'number of calculated structure factors',
+                            'printing out of full structure factors number' );
                 } else {
                     $search_equal_intensities = 
                         [ @{$search_equal_intensities}[0..($max_number_print_of_F - 1)] ];
@@ -460,8 +460,8 @@ if( defined $get_hkl_data ) {
         if( ($max_number_print_of_F - 1) > $#{$hkl_and_F_sorted} ) {
             warning( $0, undef, undef,
                      'the value of --max-Fhkl-number is large than '
-                   . 'number of calculated structure factors. '
-                   . 'Printing out of full structure factors number' );
+                   . 'number of calculated structure factors',
+                     'printing out of full structure factors number' );
         } else {
             $hkl_and_F_sorted =
                 [ @{$hkl_and_F_sorted}[0..($max_number_print_of_F - 1)] ];
@@ -1088,7 +1088,7 @@ sub cell_filling_sym
         if( $sym_data == 0 ) {
             error( $0, $filename, $dataname,
                    "'_symmetry_space_group_name_Hall' tag value '$hall' "
-                 . "was not recognised as a space group name" );
+                 . "was not recognised as a space group name", undef );
         }
     }
 
@@ -1100,7 +1100,7 @@ sub cell_filling_sym
         if( $sym_data == 0 ) {
             error( $0, $filename, $dataname,
                    "'_symmetry_space_group_name_H-M' tag value '$h_m' "
-                 . "was not recognised as a space group name" );
+                 . "was not recognised as a space group name", undef );
             die;          # data of space group is empty or incorrect;
         }
     }
