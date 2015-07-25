@@ -927,7 +927,7 @@ for my $filename (@ARGV) {
         for my $tag (@{$dataset->{tags}}) {
             unless( exists $dictionary_tags{$tag} ) {
                 warning( $0, $filename, $dataname,
-                         "tag '$tag' is not recognised" );
+                         "tag '$tag' is not recognised", undef );
             }
         }
 
@@ -1025,7 +1025,7 @@ for my $filename (@ARGV) {
                     my $error = check_symmetry_operator( $symop );
                     if( $error ) {
                         $has_errors = 1;
-                        error( $0, $filename, $dataname, $error );
+                        error( $0, $filename, $dataname, $error, undef );
                     }
                 }
                 if( !$has_errors ) {
@@ -1108,7 +1108,7 @@ for my $filename (@ARGV) {
                 warning( $0, $filename,$dataname,
                          "the " . (defined $filename ? "'$filename' " : "") .
                          "$dataname does not contain " .
-                         "symmetry operators" );
+                         "symmetry operators", undef );
             }
         }
 
@@ -1173,9 +1173,8 @@ for my $filename (@ARGV) {
                 $datablok->{"_cell_volume"}[0] = $V;
             } else {
                 warning( $0, $filename, $dataname,
-                         "file '${filename}', datablock $dataset->{name} " .
-                         "has no unit cell info -- "  .
-                         "can't compute cell volume" );
+                         'no unit cell information found',
+                         'cannot compute cell volume' );
             }
         }
 
@@ -1235,8 +1234,7 @@ for my $filename (@ARGV) {
 
     if( $no_coordinates ) {
         warning( $0, $filename, undef,
-                 "file '${filename}' does not contain any datablocks with"
-               . " coordinates" );
+                 'no datablocks that contain coordinates found', undef );
     }
 
 }
