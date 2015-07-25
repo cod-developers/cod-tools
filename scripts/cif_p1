@@ -1002,9 +1002,9 @@ sub get_molecules($$$$$)
 
     if( @$atom_list == 0 ) {
         warning( $0, $filename, $dataname,
-                 "no atoms suitable for processing were found; " .
-                 "maybe all occupancies were unknown, zero, or " .
-                 "all atom types were unrecognised?" );
+                 "no atoms suitable for processing were found",
+                 "maybe all occupancies were unknown, zero, or "
+               . "all atom types were unrecognised" );
         return [];
     }
 
@@ -1144,7 +1144,7 @@ sub find_molecules($$$$$$$$)
                 push( @unique_molecules, \%molecule );
             } else {
                 warning( $0, $filename, prefix_dataname($dataname),
-                         "found molecule with no atoms - strange..." );
+                         'found molecule with no atoms', 'strange...' );
             }
         }
     }
@@ -1152,7 +1152,7 @@ sub find_molecules($$$$$$$$)
     if( !$verbose && $nbumps > 0 ) {
         warning( $0, $filename, prefix_dataname($dataname),
                  "$nbumps pair(s) of atoms are too close to each " .
-                 "other and are considered as bumps" );
+                 "other and are considered as bumps", undef );
     }
 
     return @unique_molecules;
@@ -1235,10 +1235,12 @@ sub find_molecule($$$$$$$$$$$)
                     "but expect increased computation times and " .
                     "memory consumption)";
                 if( $continue_on_errors ) {
-                    warning( $0, $filename, prefix_dataname($dataname), $message );
+                    warning( $0, $filename, prefix_dataname($dataname), 
+                             $message, undef );
                     return ( [], 0 );
                 } else {
-                    error( $0, $filename, prefix_dataname($dataname), $message );
+                    error( $0, $filename, prefix_dataname($dataname),
+                           $message, undef );
                     exit(1);
                 }
             }
@@ -1342,12 +1344,12 @@ sub find_molecule($$$$$$$$$$$)
                         ") and are considered a bump";
                     if( $ignore_bumps ) {
                         if( $verbose ) {
-                            warning( $0, $filename, $dataname, $message );
+                            warning( $0, $filename, $dataname, $message, undef );
                         } else {
                             $nbumps++;
                         }
                     } else {
-                        error( $0, $filename, $dataname, $message );
+                        error( $0, $filename, $dataname, $message, undef );
                         print STDERR "$0: Aborting calculations.\n";
                         exit( 254 );
                     }
@@ -1995,7 +1997,7 @@ sub print_molecule
     ##     } else {
     ##         warning( $0, $filename, $dataset_name,
     ##                  "bond data necessary to compute _geom_bond_ data " .
-    ##                  "items was not calculated" );
+    ##                  "items was not calculated, undef" );
     ##     }
     ## }
 }
