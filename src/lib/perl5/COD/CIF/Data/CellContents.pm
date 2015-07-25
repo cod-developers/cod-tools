@@ -52,8 +52,8 @@ sub cif_cell_contents( $$$@ )
     if( !exists $values->{"_atom_site_label"} &&
         !exists $values->{"_atom_site_type_symbol"} ) {
         error( $0, $filename, $dataname,
-               "neither _atom_site_label " .
-               "nor _atom_site_type_symbol was found in the input file" );
+               'neither _atom_site_label nor _atom_site_type_symbol '
+             . 'was found in the input file', undef );
         return undef;
     }
 
@@ -95,7 +95,7 @@ sub cif_cell_contents( $$$@ )
             if( $Z != $file_Z ) {
                 warning( $0, $filename, $dataname,
                          "overriding _cell_formula_units_Z ($file_Z) " .
-                         "with command-line value $Z" );
+                         "with command-line value $Z", undef );
             }
         }
     } else {
@@ -111,12 +111,10 @@ sub cif_cell_contents( $$$@ )
                 $msg =~ s/;\n/; /g;
                 $msg =~ s/\n/; /g;
                 $Z = 1;
-                warning( $0, $filename, $dataname,
-                         "$msg -- " .
-                         "assuming Z = $Z" );
+                warning( $0, $filename, $dataname, $msg, "assuming Z = $Z" );
             } else {
                 warning( $0, $filename, $dataname,
-                         "_cell_formula_units_Z is missing -- " .
+                         "_cell_formula_units_Z is missing", 
                          "assuming Z = $Z" );
             }
         }

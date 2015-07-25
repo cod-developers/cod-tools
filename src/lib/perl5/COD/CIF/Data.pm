@@ -61,7 +61,7 @@ sub get_cell($$$@)
             push(@cell_lengths_and_angles, undef);
         } else {
             error( $0, $filename, $dataname,
-                   "cell length '$cif_tag' not present" );
+                   "cell length '$cif_tag' not present", undef );
         }
     }
 
@@ -77,7 +77,7 @@ sub get_cell($$$@)
             push(@cell_lengths_and_angles, undef);
         } else {
             warning( $0, $filename, $dataname,
-                     "cell angle '$cif_tag' not present -- " .
+                     "cell angle '$cif_tag' not present",
                      "taking default value 90 degrees" );
             push( @cell_lengths_and_angles, 90 );
         }
@@ -114,7 +114,7 @@ sub get_symmetry_operators($$)
 
                 if( !$sym_data ) {
                     error( $0, $filename, $dataname,
-                           "$tag value '$hall' is not recognised" );
+                           "$tag value '$hall' is not recognised", undef );
                 } else {
                     last
                 }
@@ -137,7 +137,7 @@ sub get_symmetry_operators($$)
 
                 if( !$sym_data ) {
                     error( $0, $filename, $dataname,
-                           "$tag value '$h_m' is not recognised" );
+                           "$tag value '$h_m' is not recognised", undef );
                 } else {
                     last
                 }
@@ -163,7 +163,7 @@ sub get_symmetry_operators($$)
                 if( !$sym_data ) {
                     error( $0, $filename, $dataname,
                            "$tag value '$ssg_name' yielded H-M " .
-                           "symbol '$h_m' which is not in our tables" );
+                           "symbol '$h_m' which is not in our tables", undef );
                 } else {
                     last
                 }
@@ -172,10 +172,9 @@ sub get_symmetry_operators($$)
     }
 
     if( not defined $sym_data ) {
-        error( $0, $filename, $dataname,
-               "neither symmetry operators, " .
-               "nor Hall spacegroup symbol, " .
-               "nor Hermann-Mauguin spacegroup symbol could be processed" );
+        error( $0, $filename, $dataname, 'neither symmetry operators, '
+             . 'nor Hall spacegroup symbol, nor Hermann-Mauguin spacegroup '
+             . 'symbol could be processed', undef );
         die;
     }
 
@@ -207,17 +206,15 @@ sub get_content_encodings($$)
 
         if( exists $encodings{$id} && !defined $layer_id ) {
             error( $0, $filename, $dataname,
-                   "content encoding '$id' has more than unnumbered " .
-                   "layer, can not unambiguously reconstruct the " .
-                   "encoding stack" );
+                   "content encoding '$id' has more than unnumbered layer",
+                   'cannot unambiguously reconstruct encoding stack' );
             die;
         }
 
         $layer_id = 0 if !defined $layer_id;
         if( int($layer_id) != $layer_id ) {
-            error( $0, $filename, $dataname,
-                   "non-integer content encoding layer ID detected: " .
-                   "'$layer_id'" );
+            error( $0, $filename, $dataname, 'the detected content encoding '
+                 . "layer ID '$layer_id' is not an integer", undef );
             die;
         }
 
@@ -230,7 +227,7 @@ sub get_content_encodings($$)
         } else {
             error( $0, $filename, $dataname,
                    "more than one content encoding layer numbered " .
-                   "$layer_id detected" );
+                   "'$layer_id' detected", undef );
             die;
         }
     }

@@ -23,7 +23,7 @@ my %program_escape   = ( '&' => '&amp;',  ':' => '&colon;', '#' => '&num;' );
 my %filename_escape  = ( '&' => '&amp;', ':' => '&colon;', ' ' => '&nbsp;',
                          '(' => '&lpar;', ')' => '&rpar;' );
 my %datablock_escape = ( '&' => '&amp;', ':' => '&colon;', ' ' => '&nbsp;' );
-my %message_escape   = ( '&' => '&amp;', ':' => '&colon;' ); # ',' => '&comma;'
+my %message_escape   = ( '&' => '&amp;', ':' => '&colon;' );#, '-' => "&#45;" ); # ',' => '&comma;'
 
 #==============================================================================
 # Print a message, reporting a program name, file name, data block
@@ -64,7 +64,7 @@ sub sprint_message($$$$$$@)
 #==============================================================================
 # Generic function for printing messages to STDERR
 
-sub print_message($$$$$@)
+sub print_message($$$$$$@)
 {
     my ( $program, $filename, $datablock, $errlevel,
          $message, $explanation, $line, $column ) = @_;
@@ -112,10 +112,11 @@ sub parse_message($)
 # and the program will most probably die() or exit(255) after this
 # message, but the UserMessage package does not enforce this policy.
 
-sub error($$$$)
+sub error($$$$$)
 {
-    my ( $program, $filename, $datablock, $message ) = @_;
-    print_message( $program, $filename, $datablock, "ERROR", $message );
+    my ( $program, $filename, $datablock, $message, $explanation ) = @_;
+    print_message( $program, $filename, $datablock,
+                   "ERROR", $message, $explanation );
 }
 
 #==============================================================================
@@ -124,10 +125,11 @@ sub error($$$$)
 # reasonable result, but it might be not the result which the user
 # expected.
 
-sub warning($$$$)
+sub warning($$$$$)
 {
-    my ( $program, $filename, $datablock, $message ) = @_;
-    print_message( $program, $filename, $datablock, "WARNING", $message );
+    my ( $program, $filename, $datablock, $message, $explanation ) = @_;
+    print_message( $program, $filename, $datablock,
+                   "WARNING", $message, $explanation );
 }
 
 #==============================================================================
@@ -135,10 +137,11 @@ sub warning($$$$)
 # keyword. Program can always continue after issuing notes as the intent
 # of note is just to provide information on the progress.
 
-sub note($$$$)
+sub note($$$$$)
 {
-    my ( $program, $filename, $datablock, $message ) = @_;
-    print_message( $program, $filename, $datablock, "NOTE", $message );
+    my ( $program, $filename, $datablock, $message, $explanation ) = @_;
+    print_message( $program, $filename, $datablock,
+                   "NOTE", $message, $explanation );
 }
 
 #==============================================================================
@@ -146,10 +149,11 @@ sub note($$$$)
 # keyword. Debug messages should only be printed uppon user request to output
 # additional information.
 
-sub debug_note($$$$)
+sub debug_note($$$$$)
 {
-    my ( $program, $filename, $datablock, $message ) = @_;
-    print_message( $program, $filename, $datablock, "DEBUG", $message );
+    my ( $program, $filename, $datablock, $message, $explanation ) = @_;
+    print_message( $program, $filename, $datablock,
+                   "DEBUG", $message, $explanation );
 }
 
 sub escape_meta {
