@@ -5,4 +5,4 @@
 ##
 
 echo "test error" | \
-perl -e 'use COD::UserMessage; while (<>) { error($0, $ARGV, undef, $_ ) }'
+perl -e 'use COD::UserMessage; while (<>) { error($0, $ARGV, undef, $_, undef ) }'

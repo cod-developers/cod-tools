@@ -22,7 +22,7 @@ use COD::CIF::Tags::Print;
 use File::Basename;
 use COD::SOptions;
 use COD::SUsage;
-use COD::UserMessage;
+use COD::UserMessage qw(warning error);
 
 my $verbose = 1;
 my $output_dir = "";
@@ -125,7 +125,7 @@ for my $filename (@ARGV) {
 
     if( defined $error_count && $error_count > 0 ) {
         error( $0, $filename, undef,
-               $error_count . " error(s) encountered while parsing" );
+               $error_count . " error(s) encountered while parsing", undef );
         next;
     }
 
@@ -140,7 +140,7 @@ for my $filename (@ARGV) {
                 $data_global = $dataset;
             } else {
                 warning( $0, $filename, $dataname,
-                         "second data_global encountered -- skipping" );
+                         'second data_global encountered', 'skipping' );
             }
             next;
         }
