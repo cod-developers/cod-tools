@@ -54,7 +54,7 @@ PAIR:
 while( @ARGV > 0 ) {
     my $cif_file = shift( @ARGV );
     if( @ARGV == 0 ) {
-        error( $0, $cif_file, undef, "missing diffraction data file" );
+        error( $0, $cif_file, undef, "missing diffraction data file", undef );
         die;
     }
     my $hkl_file = shift( @ARGV );
@@ -64,8 +64,7 @@ while( @ARGV > 0 ) {
 
     if( !@$cif_data || !defined $cif_data->[0] ||
         !defined $cif_data->[0]{name} ) {
-        warning( $0, $cif_file, undef,
-                 "file '$cif_file' seems to be empty" );
+        warning( $0, $cif_file, undef, 'file seems to be empty', undef );
         next;
     }
 
@@ -76,16 +75,15 @@ while( @ARGV > 0 ) {
 
     if( !@$hkl_data || !defined $hkl_data->[0] ||
         !defined $hkl_data->[0]{name} ) {
-        warning( $0, $hkl_file, undef,
-                 "file '$hkl_file' seems to be empty" );
+        warning( $0, $hkl_file, undef, 'file seems to be empty', undef );
         next;
     }
 
     canonicalize_all_names( $hkl_data );
 
     if( @$hkl_data > 1 ) {
-        warning( $0, $hkl_file, undef, "file '$hkl_file' contains more " .
-                                       "than one datablock" );
+        warning( $0, $hkl_file, undef,
+                 'file contains more than one datablock', undef );
         next;
     }
     my $hkl_dataset = $hkl_data->[0];
@@ -93,8 +91,8 @@ while( @ARGV > 0 ) {
     if( !has_hkl( $hkl_dataset ) &&
         !has_powder_diffraction_intensities( $hkl_dataset ) ) {
         warning( $0, $hkl_file, undef,
-                 "can not confirm that file '$hkl_file' contains " .
-                 "Fobs or powder diffraction data -- one or more tags " .
+                 "cannot confirm that file '$hkl_file' contains " .
+                 'Fobs or powder diffraction data', 'one or more tags ' .
                  "from list ( " .
                  join( ", ",
                        map { "'$_'" } @hkl_tags ) .
@@ -117,8 +115,8 @@ while( @ARGV > 0 ) {
     }
     if( !defined $cif_index ) {
         warning( $0, $cif_file, undef,
-                 "can not confirm relation between any datablocks in CIF "
-               . "and diffraction data files -- there are no datablocks "
+                 "cannot confirm relation between any datablocks in CIF "
+               . 'and diffraction data files', 'there are no datablocks '
                . "with the same name in both files (" 
                . join( ", ", map { "'$_'" } @cif_datanames )
                . " (CIF datablock(s)) and '$hkl_dataname' "
@@ -166,11 +164,11 @@ while( @ARGV > 0 ) {
             warning( $0, $cif_file, prefix_dataname($hkl_dataname),
                      "can not confirm relation between datablocks named " .
                      "'$hkl_dataname' from supplied CIF and diffraction " .
-                     "data files -- $reason" );
+                     "data files", $reason );
             next PAIR;
         }
     }
-    note( $0, $cif_file, undef, "OK" );
+    note( $0, $cif_file, undef, "OK", undef );
 }
 
 sub parse_file
