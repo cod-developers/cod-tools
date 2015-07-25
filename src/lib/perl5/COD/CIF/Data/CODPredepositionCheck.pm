@@ -322,10 +322,10 @@ sub filter_and_check
                                   "($deposition_authors) is not the " .
                                   "same as in the datablock " .
                                   "data_$data_name_now " .
-                                  "($deposition_authors_now)", 'please ' .
-                                  'make sure that all data are authored ' .
-                                  'by the same people when depositing ' .
-                                  'multiple data blocks' );
+                                  "($deposition_authors_now)", 
+                                  'please make sure that all data are '
+                                . 'authored by the same people when '
+                                . 'depositing multiple data blocks' );
                     }
                 }
                 for my $author (@{$values->{_publ_author_name}}) {
@@ -1059,6 +1059,9 @@ sub critical($$$$$)
 {
     my( $file, $datablock, $level, $message, $explanation ) = @_;
     print_message( $0, $file, $datablock, $level, $message, $explanation );
+
+    $message = "$message -- $explanation" if defined $explanation;
+
     die $message;
 }
 
