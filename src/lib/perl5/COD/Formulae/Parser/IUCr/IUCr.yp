@@ -258,6 +258,14 @@ sub _Lexer
 
 sub Run
 {
+    my ( $self, $filename ) = @_;
+
+    $self->ParseFile( $filename );
+    $self->PrintFormula();
+}
+
+sub ParseString
+{
     my ($self, $text) = @_;
 
     $self->YYData->{INPUT} = $text;
@@ -285,6 +293,25 @@ sub Run
 	}
     }
     return $self->{USER}->{FormulaSum};
+}
+
+sub ParseFile
+{
+    my($self) = shift;
+    my($filename) = shift;
+
+    $filename = "-" unless $filename;
+
+    $self->{USER}{FILENAME} = $filename;
+
+    open( FORMULA_FILE, $filename ) or
+        die( "could not open file '$filename' for input: $!" );
+
+    my $formula_text = <FORMULA_FILE>;
+
+    close( FORMULA_FILE );
+
+    return $self->ParseString( $formula_text );
 }
 
 return 1;
