@@ -617,19 +617,25 @@ sub _Error
     my $filename = $_[0]->YYData->{FILENAME};
     my $dataname = defined $_[0]->{USER}->{CURRENT_DATABLOCK} ? "data_"
                          . $_[0]->{USER}->{CURRENT_DATABLOCK} : undef;
-
-
     my $line = $_[0]->YYData->{VARS}{lines};
-    my $pos;
 
     my $options = ( defined $_[1] ) ? $_[1] : {};
+
+    my $line_content = $options->{line_content}
+                     ? $options->{line_content} : undef;
+    my $pos;
+
+    if( exists $_[0]->YYData->{VARS}{print_position} ) {
+        $pos = $_[0]->YYData->{VARS}{token_prev_pos} + 1;
+        delete $_[0]->YYData->{VARS}{print_position};
+        $line_content = $_[0]->YYData->{VARS}{current_line};
+    }
+
     $line = $options->{line} if exists $options->{line};
     if ( exists $options->{pos} ) {
         $pos  = $options->{pos};
     }
 
-    my $line_content = $options->{line_content}
-                     ? $options->{line_content} : undef;
     my $errmsg;
     if( exists $_[0]->YYData->{ERRMSG} ) {
         $errmsg = $_[0]->YYData->{ERRMSG};
@@ -1002,19 +1008,23 @@ my $UQSTRING_INLINE     =       qr/^(?:
                 return('UQSTRING', $1);
             }
         }
-        #matching opening square bracket:
-        if( s/^(\[)// ) {
-            advance_token($parser, length($1));
-            $parser->YYData->{ERRMSG} = "opening square brackets are reserved and may not start an unquoted string";
-            $parser->_Error( { pos => $parser->YYData->{VARS}{token_prev_pos}+1,
-                               line_content =>
-                               $parser->YYData->{VARS}{current_line} } );
-            return($1, $1);
-        }
         #matching any still unmatched symbol:
         if( s/^(.)//m )
         {
             advance_token($parser, length($1), 1);
+            #reporting opening square bracket:
+            if( $1 eq '[' ) {
+                $parser->YYData->{ERRMSG} =
+                    "opening square brackets are reserved and may not " .
+                    "start an unquoted string";
+                $parser->YYData->{VARS}{print_position} = 1;
+            #reporting dollar symbol:
+            } elsif( $1 eq '$' ) {
+                $parser->YYData->{ERRMSG} =
+                    "dollar symbol ('\$') must not start an unquoted " .
+                    "string";
+                $parser->YYData->{VARS}{print_position} = 1;
+            }
             return($1,$1);
         }
     }
