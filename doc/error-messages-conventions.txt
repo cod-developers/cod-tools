@@ -48,11 +48,7 @@ file_position = filename, [spaces], [ file_line_column ] ;
 
 file_line_column = '(', lineno, [ ',', linepos ], ')';
 
-message = main_text, [ '-', {'-'}, spaces, explanation_text ] ;
-
-main_text = text ;
-
-explanation_text = text ;
+message = text ;
 
 lineno = integer ;
 
@@ -70,7 +66,7 @@ anytext = anychar, {anychar} ;
 
 (* Lexical tokens: *)
 
-filename_char = letter | digit | quote | punctuator | "-" ;
+filename_char = letter | digit | quote | punctuator ;
 
 spaces = space, {space} ;
 
@@ -84,7 +80,7 @@ text = word, [spaces], { word, [spaces] } ;
 
 lowercase_word = word_char, { lowercase_letter }, [spaces];
 
-word = word_char, { word_char | "-" } ;
+word = word_char, { word_char } ;
 
 word_char = letter | digit | quote | punctuator | braces ;
 
@@ -109,14 +105,14 @@ braces = "(" | ")" | "[" | "]" | "{" | "}" ;
 
 (* Punctuators for error messages SHOULD NOT include ":" and "-": *)
 punctuator = "!" | "#" | "$" | "%" | "&" | "*" | "+" | "," | "|" | "~"
-           | (* "-" | *) "." | "/" | (* ":" | *) ";" | "<" | "=" | ">" 
+           | "-" | "." | "/" | (* ":" | *) ";" | "<" | "=" | ">" 
            | "?" | "@" | "\" | "^" | "`" ;
 
 (* Delimiters are used to separate distinct parts of the error
    message, but they may be used arbitrarily in the code line that
    follows the structured message text: *)
 
-delimiter = ":" | "-" ;
+delimiter = ":" ;
 
 (* @END EBNF *)
 
