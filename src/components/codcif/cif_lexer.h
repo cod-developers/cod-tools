@@ -29,4 +29,6 @@ int cif_flex_previous_line_number( void );
 int cif_flex_previous_position( void );
 const char *cif_flex_previous_line( void );
 
+int cif_lexer_report_long_lines( int flag );
+
 #endif

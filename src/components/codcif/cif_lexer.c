@@ -41,6 +41,16 @@ static int thisTokenPos = 0;
 
 static int ungot_ch = 0;
 
+static int cif_mandated_line_length = 1024;
+static int report_long_lines = 0;
+
+int cif_lexer_report_long_lines( int flag )
+{
+    int old_value = report_long_lines;
+    report_long_lines = flag;
+    return report_long_lines;
+}
+
 void cif_flex_reset_counters( void )
 {
     lineCnt = 1;
@@ -554,10 +564,19 @@ static int getlinec( FILE *in, cexception_t *ex )
                 prevLine = lineCnt;
                 if( lastTokenLine )
                     freex( lastTokenLine );
-                if( current_line )
+                if( current_line ) {
                     lastTokenLine = strdupx( current_line, ex );
-                else
+#if 1
+                    if( report_long_lines ) {
+                        if( strlen( current_line ) > cif_mandated_line_length ) {
+                            yynote( cxprintf( "line exceeds %d characters", 
+                                              cif_mandated_line_length ), ex );
+                        }
+                    }
+#endif
+                } else {
                     lastTokenLine = NULL;
+                }
             }
             if( ch == '\r' || (ch == '\n' && prevchar != '\r' )) {
                 lineCnt ++;

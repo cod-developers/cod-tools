@@ -18,6 +18,7 @@ typedef enum cif_option_t {
     FIX_DATABLOCK_NAMES  = 64,
     FIX_STRING_QUOTES    = 128,
     CO_SUPPRESS_MESSAGES = 256,
+    CO_DO_NOT_REPORT_LONG_LINES = 512,
 } cif_option_t;
 
 cif_option_t cif_option_default();
