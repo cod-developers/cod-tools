@@ -761,7 +761,7 @@ void print_current_trace( cexception_t *ex )
 {
     if( !(cif_cc->options & CO_SUPPRESS_MESSAGES) ) {
         fflush(NULL);
-        fprintf( stderr, "%s\n%*s\n",
+        fprintf( stderr, " %s\n %*s\n",
                  cif_flex_current_line(),
                  cif_flex_current_position()+1, "^" );
         fflush(NULL);
@@ -778,7 +778,7 @@ void print_previous_trace( cexception_t *ex )
 {
     if( !(cif_cc->options & CO_SUPPRESS_MESSAGES) ) {
         fflush(NULL);
-        fprintf( stderr, "%s\n%*s\n",
+        fprintf( stderr, " %s\n %*s\n",
                  cif_flex_previous_line(),
                  cif_flex_previous_position()+1, "^" );
         fflush(NULL);
