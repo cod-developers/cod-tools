@@ -47,6 +47,11 @@ sub sprint_message($$$$$@)
     $datablock = escape_meta( $datablock, \%datablock_escape );
     $message   = escape_meta( $message,   \%message_escape   );
 
+    if( defined $line_contents ) {
+        $line_contents = join( "\n", map { " $_" }
+                                     split( "\n", $line_contents ) );
+    }
+
     return $program . ": " .
            (defined $filename ? $filename .
                 (defined $line ? "($line" .
@@ -57,7 +62,7 @@ sub sprint_message($$$$$@)
            (defined $errlevel ? $errlevel . ", " : "") .
            $message .
            (defined $line_contents ? ":\n" . $line_contents . "\n" .
-                (defined $column ? " " x ($column-1) . "^\n" : "")
+                (defined $column ? " " . " " x ($column-1) . "^\n" : "")
                 : ".\n");
 }
 
