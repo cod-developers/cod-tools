@@ -330,6 +330,13 @@ int cif_lexer( FILE *in, cexception_t *ex )
                 }
                 yylval.s = clean_string( token, /* is_textfield = */ 0, ex );
                 return _LOOP_;
+            } else if( starts_with_keyword( "stop_", token ) &&
+                strlen( token ) == 5 ) {
+                /* stop field: */
+                yyerrorf( "STOP_ symbol detected in line %i, pos. %i -- "
+                          "it is not acceptable in this version",
+                          cif_flex_current_line_number(),
+                          cif_flex_current_position() );
             } else {
                 if( token[0] == '[' ) {
                     /* bracket is a reserved symbol, unquoted strings
