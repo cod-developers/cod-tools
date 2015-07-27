@@ -14,6 +14,7 @@
 #include <cifmessage.h>
 #include <cif_grammar_y.h>
 #include <cif_grammar_flex.h>
+#include <cif_lexer.h>
 #include <allocx.h>
 #include <cxprintf.h>
 #include <ctype.h>
@@ -52,6 +53,12 @@ static char *usage_text[2] = {
 
 "  -q-, --no-quiet, --verbose  Produce verbose output of the parsing "
 "process\n\n"
+
+"  -r, --report-long-lines     Report CIF lines that are longer than mandated "
+"by the standard\n"
+
+"  -r-, --do-not-report-long-lines  Ignore long lines in CIF, process all data "
+"\n\n"
 
 "  -s, --suppress-errors          Suppress error messages from the parser\n"
 
@@ -96,6 +103,7 @@ static option_value_t debug;
 static option_value_t print_cif;
 static option_value_t suppress_error_messages;
 static option_value_t dump_messages;
+static option_value_t report_long_lines;
 
 static option_t options[] = {
   { "-d", "--debug",           OT_STRING,         &debug },
@@ -115,6 +123,16 @@ static option_t options[] = {
                                OT_BOOLEAN_FALSE,  &suppress_error_messages },
   { NULL, "--no-suppress-errors",
                                OT_BOOLEAN_FALSE,  &suppress_error_messages },
+
+  { "-r", "--report-long-lines",
+                               OT_BOOLEAN_TRUE,   &report_long_lines },
+  { "-r-","--do-not-report-long-lines", 
+                               OT_BOOLEAN_FALSE,  &report_long_lines },
+  { NULL, "--dont-report-long-lines", 
+                               OT_BOOLEAN_FALSE,  &report_long_lines },
+  { NULL, "--no-report-long-lines", 
+                               OT_BOOLEAN_FALSE,  &report_long_lines },
+
   { "-M", "--dump-messages",   OT_BOOLEAN_TRUE,   &dump_messages },
   { "-M-","--dont-dump-messages",
                                OT_BOOLEAN_FALSE,  &dump_messages },
@@ -177,6 +195,10 @@ int main( int argc, char *argv[], char *env[] )
 	  cif_flex_debug_lines();
 	  cif_debug_on();
       }
+  }
+
+  if( report_long_lines.value.b == 1 ) {
+      cif_lexer_report_long_lines( 1 );
   }
 
   for( i = 0; i == 0 || files[i] != NULL; i++ ) {
