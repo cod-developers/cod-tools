@@ -16,6 +16,7 @@
 #include <cif_grammar_flex.h>
 #include <allocx.h>
 #include <cxprintf.h>
+#include <ctype.h>
 
 static char *source_URL = "$URL$";
 
@@ -256,8 +257,9 @@ int main( int argc, char *argv[], char *env[] )
               if( suppress_error_messages.value.b == 0 ) {
                   const char *syserror = cexception_syserror( &inner );
                   if( syserror ) {
-                      fprintf( stderr, "%s: %s: %s - %s\n", argv[0], filename, 
-                               cexception_message( &inner ), syserror );
+                      fprintf( stderr, "%s: %s: %s - %c%s\n", argv[0], filename, 
+                               cexception_message( &inner ),
+                               tolower(*syserror), syserror+1 );
                   } else {
                       fprintf( stderr, "%s: %s: %s\n", argv[0], filename, 
                                cexception_message( &inner ));
@@ -267,8 +269,9 @@ int main( int argc, char *argv[], char *env[] )
               if( suppress_error_messages.value.b == 0 ) {
                   const char *syserror = cexception_syserror( &inner );
                   if( syserror ) {
-                      fprintf( stderr, "%s: %s - %s\n", argv[0], 
-                               cexception_message( &inner ), syserror );
+                      fprintf( stderr, "%s: %s - %c%s\n", argv[0], 
+                               cexception_message( &inner ), 
+                               tolower(*syserror), syserror+1 );
                   } else {
                       fprintf( stderr, "%s: %s\n", argv[0], 
                                cexception_message( &inner ));
