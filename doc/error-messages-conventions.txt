@@ -36,7 +36,7 @@ error_list = error_report, { error_report };
 
 error_report = progname, ':', [spaces], location, ':', [spaces],
                (status, ',', [spaces] | lowercase_word), message,
-               [':'], {newline} ;
+               [ ':', newline, anytext, newline, anytext ], {newline};
 
 location = file_position, [spaces], [ additional_position ] ;
 
@@ -62,6 +62,8 @@ filename = filename_char, { filename_char } ;
 
 progname = filename_char, { filename_char } ;
 
+anytext = anychar, {anychar} ;
+
 (* Lexical tokens: *)
 
 filename_char = letter | digit | quote | punctuator | "-" ;
@@ -81,6 +83,8 @@ lowercase_word = word_char, { lowercase_letter }, [spaces];
 word = word_char, { word_char | "-" } ;
 
 word_char = letter | digit | quote | punctuator | braces ;
+
+anychar = word_char | space | delimiter ;
 
 letter = lowercase_letter | uppercase_letter | "_" ;
 
@@ -103,6 +107,12 @@ braces = "(" | ")" | "[" | "]" | "{" | "}" ;
 punctuator = "!" | "#" | "$" | "%" | "&" | "*" | "+" | "," | "|" | "~"
            | (* "-" | *) "." | "/" | (* ":" | *) ";" | "<" | "=" | ">" 
            | "?" | "@" | "\" | "^" | "`" ;
+
+(* Delimiters are used to separate distinct parts of the error
+   message, but they may be used arbitrarily in the code line that
+   follows the structured message text: *)
+
+delimiter = ":" | "-" ;
 
 (* @END EBNF *)
 

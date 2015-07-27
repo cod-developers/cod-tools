@@ -189,10 +189,10 @@ sub unicode2cif
 {
     my $text = Unicode::Normalize::normalize( 'D', $_[0] );
 
-    for my $pattern (keys %cif) {
+    for my $pattern (sort keys %cif) {
         $text =~ s/$pattern/$cif{$pattern}/g;
     }
-    for my $pattern (keys %combining) {
+    for my $pattern (sort keys %combining) {
         $text =~ s/(.)($pattern)/$2$1/g;
         $text =~ s/$pattern/$combining{$pattern}/g;
     }
@@ -216,7 +216,7 @@ sub cif2unicode
     $text = Encode::decode_utf8($text);
     
     $text =~ s/\\\\db /\x{003D}/g;
-    for my $pattern (keys %commands) {
+    for my $pattern (sort keys %commands) {
         my $value = $commands{$pattern};
             $text =~ s/\Q$value/$pattern/g;
             if( $pattern =~ /\s$/ ) {
@@ -227,13 +227,13 @@ sub cif2unicode
                 $text =~ s/\Q$core\E$/$pattern/g;
             }
     }
-    for my $pattern (keys %letters) {
+    for my $pattern (sort keys %letters) {
         $text =~ s/\Q$letters{$pattern}\E/$pattern/g;
     }
-    for my $pattern (keys %special_signs) {
+    for my $pattern (sort keys %special_signs) {
         $text =~ s/\Q$special_signs{$pattern}\E/$pattern/g;
     }
-    for my $pattern (keys %combining) {
+    for my $pattern (sort keys %combining) {
         $text =~ s/(\Q$combining{$pattern}\E)(.)/$2$1/g;
         $text =~ s/\Q$combining{$pattern}\E/$pattern/g;
     }

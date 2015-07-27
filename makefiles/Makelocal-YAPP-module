@@ -1,0 +1,33 @@
+#---*- Makefile -*-------------------------------------------------------------
+#$Author$
+#$Date$
+#$Revision$
+#$URL$
+#------------------------------------------------------------------------------
+
+CWD = ${notdir $(shell pwd)}
+
+YP_FILE = ${CWD}.yp
+PM_FILE = ${CWD}.pm
+# Variables used to make module in the local package lib layout
+PKG_TOP = lib
+PKG_FILE = ${PM_FILE:%.pm=${PKG_TOP}/${PKG_PATH}/%.pm}
+# Variables used to move perl modules to the proper directory in COD layout
+LIB_FILE = ${PM_FILE:%.pm=${LIB_DIR}/%.pm}
+
+.PRECIOUS: %.pm ${LIB_FILE}
+
+all: ${LIB_FILE}
+
+tests alltests: ${LIB_FILE}
+
+${LIB_FILE}: ${PKG_FILE}
+	cp -f $< $@
+
+${PKG_TOP}/${PKG_PATH}/%.pm: %.yp
+	yapp -v -m ${PKG_PREFIX}$* -o $@ $<
+
+cleanAll-YAPP-module:
+	rm -f ${PKG_FILE} ${LIB_FILE}
+
+cleanAll: cleanAll-YAPP-module
