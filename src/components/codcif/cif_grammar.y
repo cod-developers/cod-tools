@@ -214,27 +214,30 @@ data_block_head
         }
 	|	_DATA_ cif_value_list
         {
-            char buf[strlen($1)+strlen($2.vstr)+2];
-            strcpy( buf, $1 );
-            buf[strlen($1)] = '_';
-            int i;
-            for( i = 0; i < strlen($2.vstr); i++ ) {
-                if( $2.vstr[i] != ' ' ) {
-                    buf[strlen($1)+1+i] = $2.vstr[i];
-                } else {
-                    buf[strlen($1)+1+i] = '_';
-                } 
-            }
-            buf[strlen($1)+strlen($2.vstr)+1] = '\0';
-            cif_start_datablock( cif_cc->cif, buf, px );
-            if( !isset_fix_errors( cif_cc ) &&
-                !isset_fix_datablock_names( cif_cc ) ) {
-                yyerror_previous( "incorrect CIF syntax", px );
-            }
             if( isset_fix_errors( cif_cc ) ||
-                isset_fix_string_quotes( cif_cc ) ) {
-                yynote( "the dataname apparently had spaces "
-                        "in it - replaced spaces by underscores", px );
+                isset_fix_string_quotes( cif_cc ) ||
+                isset_fix_datablock_names( cif_cc ) ) {
+                char buf[strlen($1)+strlen($2.vstr)+2];
+                strcpy( buf, $1 );
+                buf[strlen($1)] = '_';
+                int i;
+                for( i = 0; i < strlen($2.vstr); i++ ) {
+                    if( $2.vstr[i] != ' ' ) {
+                        buf[strlen($1)+1+i] = $2.vstr[i];
+                    } else {
+                        buf[strlen($1)+1+i] = '_';
+                    } 
+                }
+                buf[strlen($1)+strlen($2.vstr)+1] = '\0';
+                cif_start_datablock( cif_cc->cif, buf, px );
+                if( isset_fix_errors( cif_cc ) ||
+                    isset_fix_string_quotes( cif_cc ) ) {
+                    yynote( "the dataname apparently had spaces "
+                            "in it - replaced spaces by underscores", px );
+                }
+            } else {
+                cif_start_datablock( cif_cc->cif, $1, px );
+                yyerror_previous( "incorrect CIF syntax", px );
             }
         }
 ;
