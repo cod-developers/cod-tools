@@ -796,6 +796,9 @@ void print_previous_trace( cexception_t *ex )
 
 int yyerror( const char *message )
 {
+    if( strcmp( message, "syntax error" ) == 0 ) {
+        message = "incorrect CIF syntax";
+    }
     print_message( "ERROR", message, cif_flex_current_line_number(),
                    cif_flex_current_position()+1, px );
     print_current_trace( px );
