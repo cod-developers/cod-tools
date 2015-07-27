@@ -109,7 +109,7 @@ int cif_lexer( FILE *in, cexception_t *ex )
                 yynote( "DOS EOF symbol ^Z was encountered and ignored", ex );
             } else {
                 yyerror( "DOS EOF symbol ^Z was encountered, "
-                         "it is not permitted in CIFs" );
+                         "it is not permitted in CIFs:" );
             }
             prevchar = ch;
             ch = getlinec( in, ex );
@@ -297,7 +297,7 @@ int cif_lexer( FILE *in, cexception_t *ex )
                     pushchar( &token, &length, pos++, ch );
                 }
                 /* Unterminated text field: */
-                yyerrorf( "unterminated text field" );
+                yyerrorf( "unterminated text field:" );
             }
             /* else this is an ordinary unquoted string -- drop
                through to the 'default:' case (no break here,
@@ -337,14 +337,14 @@ int cif_lexer( FILE *in, cexception_t *ex )
                     if( !cif_lexer_has_flags
                         (CIF_FLEX_LEXER_ALLOW_UQSTRING_BRACKETS)) {
                         yyerror( "opening square brackets are reserved "
-                                 "and may not start an unquoted string" );
+                                 "and may not start an unquoted string:" );
                     }
                 }
                 if( token[0] == '$' ) {
                     /* dollar is a reserved symbol, unquoted strings
                        may not start with it: */
                     yyerror( "dollar symbol ('$') must not start an "
-                             "unquoted string" );
+                             "unquoted string:" );
                 }
                 if( token[0] != '[' && token[0] != '$' ) {
                     if( yy_flex_debug ) {
@@ -640,7 +640,7 @@ static char *clean_string( char *src, int is_textfield, cexception_t *ex )
                     }
                 } else {
                     if( is_textfield == 0 ) {
-                        yyerror( "syntax error:" );
+                        yyerror( "syntax error" );
                     } else if( non_ascii_explained == 0 ) {
                         print_message( "WARNING", "non-ascii symbols "
                                        "encountered "

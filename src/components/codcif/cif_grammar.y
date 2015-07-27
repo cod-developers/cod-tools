@@ -655,17 +655,17 @@ void add_tag_value( char * tag, char * value, cif_value_type_t type,
                                              value, type );
                     } else {
                         yyerror_previous
-                            ( cxprintf( "tag %s appears more than once", tag ),
+                            ( cxprintf( "tag %s appears more than once:", tag ),
                               ex );
                     }
                 } else {
                     yyerror_previous
-                        ( cxprintf( "tag %s appears more than once", tag ),
+                        ( cxprintf( "tag %s appears more than once:", tag ),
                           ex );
                 }
             }
         } else {
-            yyerror_previous( cxprintf( "tag %s appears more than once", tag ),
+            yyerror_previous( cxprintf( "tag %s appears more than once:", tag ),
                               ex );
         }
     }
