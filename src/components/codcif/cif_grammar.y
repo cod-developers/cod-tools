@@ -229,7 +229,7 @@ data_block_head
             cif_start_datablock( cif_cc->cif, buf, px );
             if( !isset_fix_errors( cif_cc ) &&
                 !isset_fix_datablock_names( cif_cc ) ) {
-                yyerror_previous( "syntax error:", px );
+                yyerror_previous( "incorrect syntax:", px );
             }
             if( isset_fix_errors( cif_cc ) ||
                 isset_fix_string_quotes( cif_cc ) ) {
@@ -280,7 +280,7 @@ cif_entry
                     }
                     add_tag_value( $1, buf, tag_type, px );
                 } else {
-                    yyerror_previous( "syntax error:", px );
+                    yyerror_previous( "incorrect syntax:", px );
                 }
             }
 ;
@@ -794,7 +794,7 @@ void print_previous_trace( cexception_t *ex )
 int yyerror( const char *message )
 {
     if( strcmp( message, "syntax error" ) == 0 ) {
-        message = "syntax error:";
+        message = "incorrect syntax:";
     }
     print_message( "ERROR", message, cif_flex_current_line_number(),
                    cif_flex_current_position()+1, px );
