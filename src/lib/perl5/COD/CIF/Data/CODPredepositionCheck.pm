@@ -100,8 +100,11 @@ sub filter_and_check
     foreach( @$filter_stderr ) {
         my $parsed = parse_message( $_ );
         if( defined $parsed ) {
-            for( $parsed->{message} ) {
-                s/:$//;
+            $parsed->{message} =~ s/:$//; #in case errors including the line
+            my $message = $parsed->{message};
+            $message .= ' -- ' . $parsed->{explanation}
+                                          if defined $parsed->{explanation};
+            for( $message ) {
                 if( /tag .+ is not recognised/ ) {
                     $parsed->{errlevel} = 'NOTE';
                     last;
