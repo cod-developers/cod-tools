@@ -315,15 +315,17 @@ loop
        {
            if( loop_value_count % loop_tag_count != 0 ) {
                yyerror( cxprintf( "wrong number of elements in the "
-                                  "loop block starting in line %d",
-                                    loop_start ) );
+                                  "loop starting at line %d:",
+                                  loop_start ) );
+#if 0
                if( cif_cc->cif ) {
                    cif_set_yyretval( cif_cc->cif, -1 );
                }
                cexception_raise( px, CIF_UNRECOVERABLE_ERROR,
                    cxprintf( "wrong number of elements in the "
-                             "loop block starting in line %d",
+                             "loop starting at line %d",
                               loop_start ) );
+#endif
            }
            cif_finish_loop( cif_cc->cif, px );
        } 
