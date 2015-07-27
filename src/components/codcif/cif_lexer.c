@@ -48,7 +48,7 @@ int cif_lexer_report_long_lines( int flag )
 {
     int old_value = report_long_lines;
     report_long_lines = flag;
-    return report_long_lines;
+    return old_value;
 }
 
 void cif_flex_reset_counters( void )
