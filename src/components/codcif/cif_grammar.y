@@ -748,12 +748,39 @@ void print_message( const char *errlevel, const char *message,
     }
 }
 
+static ssize_t countchars( char c, char *s )
+{
+    ssize_t sum = 0;
+
+    if( !s || !*s ) return 0;
+    while( *s ) {
+        if( *s++ == c ) sum ++;
+    }
+    return sum;
+}
+
 void print_current_text_field( char *text, cexception_t *ex )
 {
     if( !(cif_cc->options & CO_SUPPRESS_MESSAGES) ) {
+        ssize_t length = strlen( text ) + countchars( '\n', text ) + 1;
+        char *prefixed = length > 0 ? mallocx( length, ex ) : NULL;
+        char *p = prefixed, *t = text;
+        if( p ) {
+            while( t && *t ) {
+                if( *t == '\n' ) {
+                    *p++ = '\n';
+                    *p = ' ';
+                } else {
+                    *p = *t;
+                }
+                t++; p++;
+            }
+            *p = '\0';
+        }
         fflush(NULL);
-        fprintf( stderr, ";%s\n;\n\n", text );
+        fprintf( stderr, " ;%s\n ;\n\n", prefixed );
         fflush(NULL);
+        if( prefixed ) freex( prefixed );
     }
     if( cif_cc->cif ) {
         CIFMESSAGE *current_message = cif_messages( cif_cc->cif );
