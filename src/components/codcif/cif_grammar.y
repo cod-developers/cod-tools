@@ -657,19 +657,19 @@ void add_tag_value( char * tag, char * value, cif_value_type_t type,
                         cif_overwrite_value( cif_cc->cif, tag_nr, 0,
                                              value, type );
                     } else {
-                        yyerror_traceless
+                        yyerror_previous
                             ( cxprintf( "tag %s appears more than once", tag ),
-                             ex );
+                              ex );
                     }
                 } else {
-                    yyerror_traceless
+                    yyerror_previous
                         ( cxprintf( "tag %s appears more than once", tag ),
                           ex );
                 }
             }
         } else {
-            yyerror_traceless( cxprintf( "tag %s appears more than once", tag ),
-                               ex );
+            yyerror_previous( cxprintf( "tag %s appears more than once", tag ),
+                              ex );
         }
     }
 }
@@ -807,14 +807,6 @@ int yyerror( const char *message )
     print_message( "ERROR", message, cif_flex_current_line_number(),
                    cif_flex_current_position()+1, px );
     print_current_trace( px );
-    errcount++;
-    return 0;
-}
-
-int yyerror_traceless( const char *message, cexception_t *ex )
-{
-    print_message( "ERROR", message, cif_flex_previous_line_number(), -1,
-                   ex );
     errcount++;
     return 0;
 }
