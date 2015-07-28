@@ -131,11 +131,11 @@ stray_cif_value_list
             if( isset_fix_errors( cif_cc ) ||
                 isset_fix_data_header( cif_cc ) ) {
                     print_message( "WARNING", "stray CIF values at the "
-                                   "beginning of the input file",
+                                   "beginning of the input file", "",
                                    cif_flex_current_line_number(), -1, px );
             } else {
                     print_message( "ERROR", "stray CIF values at the "
-                                   "beginning of the input file",
+                                   "beginning of the input file", "",
                                    cif_flex_current_line_number(), -1, px );
                     yyincrease_error_counter();
             }
@@ -145,11 +145,11 @@ stray_cif_value_list
             if( isset_fix_errors( cif_cc ) ||
                 isset_fix_data_header( cif_cc ) ) {
                     print_message( "WARNING", "stray CIF values at the "
-                                   "beginning of the input file",
+                                   "beginning of the input file", "",
                                    cif_flex_current_line_number(), -1, px );
             } else {
                     print_message( "ERROR", "stray CIF values at the "
-                                   "beginning of the input file",
+                                   "beginning of the input file", "",
                                    cif_flex_current_line_number(), -1, px );
                     yyincrease_error_counter();
             }
@@ -174,12 +174,12 @@ headerless_data_block
                 isset_fix_data_header( cif_cc ) ) {
                     print_message( 
                               "WARNING", "no data block heading " 
-                              "(i.e. data_somecif) found",
+                              "(i.e. data_somecif) found", "",
                               cif_flex_previous_line_number(), -1, px );
             } else {
                     print_message( 
                               "ERROR", "no data block heading "
-                              "(i.e. data_somecif) found",
+                              "(i.e. data_somecif) found", "",
                               cif_flex_previous_line_number(), -1, px );
                     yyincrease_error_counter();
             }
@@ -237,7 +237,7 @@ data_block_head
                 }
             } else {
                 cif_start_datablock( cif_cc->cif, $1, px );
-                yyerror_previous( "incorrect CIF syntax:", px );
+                yyerror_previous( "incorrect CIF syntax", px );
             }
         }
 ;
@@ -283,7 +283,7 @@ cif_entry
                     }
                     add_tag_value( $1, buf, tag_type, px );
                 } else {
-                    yyerror_previous( "incorrect CIF syntax:", px );
+                    yyerror_previous( "incorrect CIF syntax", px );
                 }
             }
 ;
@@ -318,7 +318,7 @@ loop
        {
            if( loop_value_count % loop_tag_count != 0 ) {
                yyerror( cxprintf( "wrong number of elements in the "
-                                  "loop starting at line %d:",
+                                  "loop starting at line %d",
                                   loop_start ) );
 #if 0
                if( cif_cc->cif ) {
@@ -658,17 +658,17 @@ void add_tag_value( char * tag, char * value, cif_value_type_t type,
                                              value, type );
                     } else {
                         yyerror_previous
-                            ( cxprintf( "tag %s appears more than once:", tag ),
+                            ( cxprintf( "tag %s appears more than once", tag ),
                               ex );
                     }
                 } else {
                     yyerror_previous
-                        ( cxprintf( "tag %s appears more than once:", tag ),
+                        ( cxprintf( "tag %s appears more than once", tag ),
                           ex );
                 }
             }
         } else {
-            yyerror_previous( cxprintf( "tag %s appears more than once:", tag ),
+            yyerror_previous( cxprintf( "tag %s appears more than once", tag ),
                               ex );
         }
     }
@@ -688,8 +688,9 @@ void cif_yy_reset_error_count( void )
     errcount = 0;
 }
 
+static
 void output_message( const char *errlevel, const char *message,
-                    int line, int position )
+                     const char *suffix, int line, int position )
 {
     extern char *progname;
 
@@ -715,15 +716,18 @@ void output_message( const char *errlevel, const char *message,
     if( datablock ) {
         fprintf( stderr, " data_%s", datablock );
     }
-    fprintf( stderr, ": %s, %s\n", errlevel, message );
+    fprintf( stderr, ": %s, %s%s\n", errlevel, message, suffix );
     fflush(NULL);
 }
 
 void print_message( const char *errlevel, const char *message,
+                    const char *suffix, /* ":" or "", dependenig on the
+                                           subsequent citation or not of the
+                                           code line. S.G. */
                     int line, int position, cexception_t *ex )
 {
     if( !(cif_cc->options & CO_SUPPRESS_MESSAGES) ) {
-        output_message( errlevel, message, line, position );
+        output_message( errlevel, message, suffix, line, position );
     }
     if( cif_cc->cif ) {
         char *datablock = NULL;
@@ -829,9 +833,9 @@ void print_previous_trace( cexception_t *ex )
 int yyerror( const char *message )
 {
     if( strcmp( message, "syntax error" ) == 0 ) {
-        message = "incorrect CIF syntax:";
+        message = "incorrect CIF syntax";
     }
-    print_message( "ERROR", message, cif_flex_current_line_number(),
+    print_message( "ERROR", message, ":", cif_flex_current_line_number(),
                    cif_flex_current_position()+1, px );
     print_current_trace( px );
     errcount++;
@@ -840,7 +844,7 @@ int yyerror( const char *message )
 
 int yyerror_previous( const char *message, cexception_t *ex )
 {
-    print_message( "ERROR", message, cif_flex_previous_line_number(),
+    print_message( "ERROR", message, ":", cif_flex_previous_line_number(),
                    cif_flex_previous_position()+1, ex );
     print_previous_trace( ex );
     errcount++;
@@ -854,7 +858,7 @@ void yyincrease_error_counter( void )
 
 int yynote( const char *message, cexception_t *ex )
 {
-    print_message( "NOTE", message, cif_flex_previous_line_number(), -1,
+    print_message( "NOTE", message, "", cif_flex_previous_line_number(), -1,
                    ex );
     notecount++;
     return 0;
@@ -862,7 +866,7 @@ int yynote( const char *message, cexception_t *ex )
 
 int yywarning( const char *message, cexception_t *ex )
 {
-    print_message( "WARNING", message, cif_flex_previous_line_number(), -1,
+    print_message( "WARNING", message, "", cif_flex_previous_line_number(), -1,
                    ex );
     warncount++;
     return 0;
