@@ -427,8 +427,8 @@ static void cif_compile_file( char *filename, cexception_t *ex )
             }
             cexception_raise( &inner, CIF_UNRECOVERABLE_ERROR,
                 cxprintf( "compiler could not recover "
-                    "from errors, quitting now\n"
-                    "%d error(s) detected\n",
+                    "from errors, quitting now -- "
+                    "%d error(s) detected",
                     errcount ));
         }
     }
