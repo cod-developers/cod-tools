@@ -17,6 +17,7 @@ use warnings;
 use COD::ShowStruct qw( showRef );
 use FileHandle;
 use COD::Precision;
+use COD::UserMessage;
 
 $COD::CIF::Parser::Yapp::version = '1.0';
 
@@ -614,37 +615,42 @@ sub _Error
 {
     my $script = $0 eq '-e' ? "perl -e '...'" : "$0";
     my $filename = $_[0]->YYData->{FILENAME};
-    my $dataname = defined $_[0]->{USER}->{CURRENT_DATABLOCK} ? " data_"
-                         . $_[0]->{USER}->{CURRENT_DATABLOCK} : "";
-
+    my $dataname = defined $_[0]->{USER}->{CURRENT_DATABLOCK} ? "data_"
+                         . $_[0]->{USER}->{CURRENT_DATABLOCK} : undef;
     my $line = $_[0]->YYData->{VARS}{lines};
-    my $pos  = $_[0]->YYData->{VARS}{token_prev_pos} + 1;
-    my $ppos = $_[0]->YYData->{VARS}{token_prev_pos};
 
-    my $options = $_[1];
-    if (defined $options) {
-        $line = $options->{line} if exists $options->{line};
-        if ( exists $options->{pos} ) {
-            $pos  = $options->{pos};
-            $ppos = $options->{pos};
-        }
+    my $options = ( defined $_[1] ) ? $_[1] : {};
+
+    my $line_content = $options->{line_content}
+                     ? $options->{line_content} : undef;
+    my $pos;
+
+    if( exists $_[0]->YYData->{VARS}{print_position} ) {
+        $pos = $_[0]->YYData->{VARS}{token_prev_pos} + 1;
+        delete $_[0]->YYData->{VARS}{print_position};
+        $line_content = $_[0]->YYData->{VARS}{current_line};
+    }
+
+    $line = $options->{line} if exists $options->{line};
+    if ( exists $options->{pos} ) {
+        $pos  = $options->{pos};
+    }
+
+    my $errmsg;
+    if( exists $_[0]->YYData->{ERRMSG} ) {
+        $errmsg = $_[0]->YYData->{ERRMSG};
+        delete $_[0]->YYData->{ERRMSG};
+    } else {
+        $errmsg = "incorrect CIF syntax";
+        $pos = $_[0]->YYData->{VARS}{token_prev_pos} + 1;
+        $line_content = $_[0]->YYData->{VARS}{current_line};
     }
 
     $_[0]->YYData->{ERRCOUNT}++;
 
-    my $message = "$script: $filename";
-    if ( exists $_[0]->YYData->{ERRMSG} ) {
-        $message .= "($line)" . "$dataname: ";
-        $message .= "ERROR, " . $_[0]->YYData->{ERRMSG} . "\n";
-        delete $_[0]->YYData->{ERRMSG};
-    } else {
-        $message .= "($line,$pos)" . "$dataname: ";
-        $message .= "ERROR, incorrect CIF syntax\n"
-                   . $_[0]->YYData->{VARS}{current_line}
-                   . "\n";
-        $message .= " " x $ppos;
-        $message .= "^\n";
-    }
+    my $message = sprint_message( $script, $filename, $dataname,
+                                  "ERROR", $errmsg,
+                                  $line, $pos, $line_content );
 
     push $_[0]->{YYData}->{ERROR_MESSAGES}, $message;
     print STDERR $message if $_[0]->{USER}{OPTIONS}{print_error_messages};
@@ -655,16 +661,28 @@ sub _Warning
     if( exists $_[0]->YYData->{ERRMSG} ) {
         my $script = $0 eq '-e' ? "perl -e '...'" : "$0";
         my $filename = $_[0]->YYData->{FILENAME};
-        my $dataname = defined $_[0]->{USER}->{CURRENT_DATABLOCK} ? " data_"
-                             . $_[0]->{USER}->{CURRENT_DATABLOCK} : "";
+        my $dataname = defined $_[0]->{USER}->{CURRENT_DATABLOCK} ? "data_"
+                             . $_[0]->{USER}->{CURRENT_DATABLOCK} : undef;
+
 
         my $options = ( defined $_[1] ) ? $_[1] : {};
 
         my $line = defined $options->{line} ? $options->{line}
                                             : $_[0]->YYData->{VARS}{lines};
 
-        my $message = "$script: $filename($line)" . "$dataname: ";
-        $message .= "WARNING, " . $_[0]->YYData->{ERRMSG} . "\n";
+        my $message;
+        if( $options->{line_content} ) {
+            $message = sprint_message( $script, $filename, $dataname,
+                                       "WARNING", $_[0]->YYData->{ERRMSG},
+                                       $line,
+                                       $_[0]->YYData->{VARS}{token_pos},
+                                       $options->{line_content} );
+        } else {
+            $message = sprint_message( $script, $filename, $dataname,
+                                       "WARNING", $_[0]->YYData->{ERRMSG},
+                                       $line );
+        }
+
         delete $_[0]->YYData->{ERRMSG};
         push   $_[0]->{YYData}->{ERROR_MESSAGES}, $message;
         print STDERR $message if $_[0]->{USER}{OPTIONS}{print_error_messages};
@@ -729,9 +747,8 @@ sub _Lexer
         ( $parser->{USER}{OPTIONS}{fix_errors} ||
           $parser->{USER}{OPTIONS}{fix_non_ascii_symbols} ))
         {
-        $parser->YYData->{ERRMSG} = "non-ascii symbols encountered in the text:\n'" .
-        $parser->YYData->{INPUT} . "'";
-        $parser->_Warning();
+        $parser->YYData->{ERRMSG} = "non-ascii symbols encountered in the text";
+        $parser->_Warning( { line_content => $parser->YYData->{INPUT} } );
         $parser->YYData->{INPUT} =~ s/([^\x10-\x7F])/sprintf("&#x%04X;",ord($1))/eg;
     }
 
@@ -880,10 +897,10 @@ my $UQSTRING_INLINE     =       qr/^(?:
                 }
                 if( !defined $parser->YYData->{INPUT} )
                 {
-                    $parser->YYData->{ERRMSG} = <<END_M;
-end of file encountered while in text field starting in line $tf_line_begin.
-Possible runaway closing semicolon (';')
-END_M
+                    $parser->YYData->{ERRMSG} =
+                        "end of file encountered while in text field "
+                      . "starting in line $tf_line_begin, "
+                      . "possible runaway closing semicolon (';')";
                     $parser->YYError();
                 }
                 if( $tfield !~ /^[\x08-\x7F]*$/ ) {
@@ -892,15 +909,13 @@ END_M
                     {
                         $parser->YYData->{ERRMSG} =
                             "non-ascii symbols encountered in the text field, "
-                          . "replaced by XML entities:\n;"
-                          . $tfield . "\n;\n";
-                        $parser->_Warning();
+                          . "replaced by XML entities";
+                        $parser->_Warning( { line_content => ";\n$tfield\n;" } );
                         $tfield =~ s/([^\x08-\x7F])/sprintf("&#x%04X;",ord($1))/eg;
                     } else {
                         $parser->YYData->{ERRMSG} =
-                            "non-ascii symbols encountered in the text field:\n;"
-                           . $tfield . "\n;\n";
-                        $parser->_Error();
+                            "non-ascii symbols encountered in the text field";
+                        $parser->_Error( { line_content => ";\n$tfield\n;" } );
                     }
                 }
                 if( !$parser->{USER}{OPTIONS}{do_not_unprefix_text} ) {
@@ -927,11 +942,9 @@ END_M
                 . $parser->YYData->{VARS}{lines}
                 . ", pos. "
                 . $parser->YYData->{VARS}{token_prev_pos}
-                . ":\n--\n"
-                . $parser->YYData->{VARS}{current_line}
-                . "\n--\n"
-                . "it is not acceptable in this version";
-            $parser->YYError();
+                . " -- it is not acceptable in this version";
+            $parser->_Error( { line_content =>
+                               $parser->YYData->{VARS}{current_line} } );
             return('GLOBAL_', $1);
         }
         #matching SAVE_ head
@@ -955,11 +968,9 @@ END_M
                 $parser->YYData->{VARS}{lines} .
                 ", pos. " .
                 $parser->YYData->{VARS}{token_prev_pos} .
-                ":\n--\n" .
-                $parser->YYData->{VARS}{current_line} .
-                "\n--\n" .
-                "it is not acceptable in this version";
-            $parser->YYError();
+                " -- it is not acceptable in this version";
+            $parser->_Error( { line_content =>
+                               $parser->YYData->{VARS}{current_line} } );
             return('STOP_', $1);
         }
         #matching DATA_ field
@@ -1001,6 +1012,19 @@ END_M
         if( s/^(.)//m )
         {
             advance_token($parser, length($1), 1);
+            #reporting opening square bracket:
+            if( $1 eq '[' ) {
+                $parser->YYData->{ERRMSG} =
+                    "opening square brackets are reserved and may not " .
+                    "start an unquoted string";
+                $parser->YYData->{VARS}{print_position} = 1;
+            #reporting dollar symbol:
+            } elsif( $1 eq '$' ) {
+                $parser->YYData->{ERRMSG} =
+                    "dollar symbol ('\$') must not start an unquoted " .
+                    "string";
+                $parser->YYData->{VARS}{print_position} = 1;
+            }
             return($1,$1);
         }
     }
