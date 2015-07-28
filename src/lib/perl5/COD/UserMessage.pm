@@ -36,7 +36,7 @@ my %message_escape   = ( '&' => '&amp;', ':' => '&colon;' ); # ',' => '&comma;'
 sub sprint_message($$$$$@)
 {
     my ( $program, $filename, $datablock, $errlevel,
-         $message, $line, $column ) = @_;
+         $message, $line, $column, $line_contents ) = @_;
 
     $message =~ s/\.?\n?$//;
 
@@ -47,6 +47,11 @@ sub sprint_message($$$$$@)
     $datablock = escape_meta( $datablock, \%datablock_escape );
     $message   = escape_meta( $message,   \%message_escape   );
 
+    if( defined $line_contents ) {
+        $line_contents = join( "\n", map { " $_" }
+                                     split( "\n", $line_contents ) );
+    }
+
     return $program . ": " .
            (defined $filename ? $filename .
                 (defined $line ? "($line" .
@@ -55,7 +60,10 @@ sub sprint_message($$$$$@)
                 (defined $datablock ? " $datablock" : "") . ": "
            : "") .
            (defined $errlevel ? $errlevel . ", " : "") .
-           $message . ".\n";
+           $message .
+           (defined $line_contents ? ":\n" . $line_contents . "\n" .
+                (defined $column ? " " . " " x ($column-1) . "^\n" : "")
+                : ".\n");
 }
 
 #==============================================================================
@@ -64,9 +72,10 @@ sub sprint_message($$$$$@)
 sub print_message($$$$$@)
 {
     my ( $program, $filename, $datablock, $errlevel,
-         $message, $line, $column ) = @_;
+         $message, $line, $column, $line_contents ) = @_;
     print STDERR sprint_message( $program, $filename, $datablock,
-                                 $errlevel, $message, $line, $column );
+                                 $errlevel, $message, $line, $column,
+                                 $line_contents );
 }
 
 #==============================================================================
