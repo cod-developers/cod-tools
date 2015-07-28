@@ -665,7 +665,7 @@ static char *clean_string( char *src, int is_textfield, cexception_t *ex )
                     if( non_ascii_explained == 0 ) {
                         if( is_textfield == 0 ) {
                             print_message( "WARNING", "non-ascii symbols "
-                                           "encountered in the text",
+                                           "encountered in the text:",
                                            cif_flex_current_line_number(),
                                            cif_flex_current_position()+1,
                                            ex );
@@ -679,7 +679,7 @@ static char *clean_string( char *src, int is_textfield, cexception_t *ex )
                         } else {
                             print_message( "WARNING", "non-ascii symbols "
                                            "encountered in the text field, "
-                                           "replaced by XML entities",
+                                           "replaced by XML entities:",
                                            cif_flex_current_line_number(),
                                            -1, ex );
 #if 0
@@ -696,7 +696,7 @@ static char *clean_string( char *src, int is_textfield, cexception_t *ex )
                     } else if( non_ascii_explained == 0 ) {
                         print_message( "WARNING", "non-ascii symbols "
                                        "encountered "
-                                       "in the text field",
+                                       "in the text field:",
                                        cif_flex_current_line_number(),
                                        -1, ex );
 #if 0
