@@ -41,6 +41,36 @@ static int thisTokenPos = 0;
 
 static int ungot_ch = 0;
 
+static int cif_mandated_line_length = 80;
+static int cif_mandated_tag_length = 74;
+static int report_long_items = 0;
+
+int cif_lexer_set_report_long_items( int flag )
+{
+    int old_value = report_long_items;
+    report_long_items = flag;
+    return old_value;
+}
+
+int cif_lexer_report_long_items( void )
+{
+    return report_long_items;
+}
+
+int cif_lexer_set_line_length_limit( int max_length )
+{
+    int old_value = cif_mandated_line_length;
+    cif_mandated_line_length = max_length;
+    return old_value;
+}
+
+int cif_lexer_set_tag_length_limit( int max_length )
+{
+    int old_value = cif_mandated_tag_length;
+    cif_mandated_tag_length = max_length;
+    return old_value;
+}
+
 void cif_flex_reset_counters( void )
 {
     lineCnt = 1;
@@ -164,6 +194,13 @@ int cif_lexer( FILE *in, cexception_t *ex )
             if( yy_flex_debug ) {
                 printf( ">>> TAG: '%s'\n", token );
             }
+            if( report_long_items ) {
+                if( strlen( yylval.s ) > cif_mandated_tag_length ) {
+                    yynote( cxprintf( "data name '%s' exceeds %d characters", 
+                                      yylval.s, cif_mandated_tag_length ),
+                            ex );
+                }
+            }
             return _TAG;
             break;
 
@@ -252,7 +289,7 @@ int cif_lexer( FILE *in, cexception_t *ex )
                             yywarning( "double-quoted string is missing "
                                        "a closing quote -- fixed", ex );
                         } else {
-                            yyerror( "syntax error" );
+                            yyerror( "incorrect CIF syntax" );
                         }
                         break;
                     case '\'':
@@ -262,7 +299,7 @@ int cif_lexer( FILE *in, cexception_t *ex )
                             yywarning( "single-quoted string is missing "
                                        "a closing quote -- fixed", ex );
                         } else {
-                            yyerror( "syntax error" );
+                            yyerror( "incorrect CIF syntax" );
                         }
                         break;
                 }
@@ -284,7 +321,7 @@ int cif_lexer( FILE *in, cexception_t *ex )
                         char after = getlinec( in, ex );
                         ungetlinec( after, in );
                         if( !isspace( after ) && after != EOF ) {
-                            yyerror( "syntax error" );
+                            yyerror( "incorrect CIF syntax" );
                         }
                         token[pos-1] = '\0'; /* delete the last '\n' char */
                         if( yy_flex_debug ) {
@@ -330,6 +367,13 @@ int cif_lexer( FILE *in, cexception_t *ex )
                 }
                 yylval.s = clean_string( token, /* is_textfield = */ 0, ex );
                 return _LOOP_;
+            } else if( starts_with_keyword( "stop_", token ) &&
+                strlen( token ) == 5 ) {
+                /* stop field: */
+                yyerrorf( "STOP_ symbol detected in line %i, pos. %i -- "
+                          "it is not acceptable in this version",
+                          cif_flex_current_line_number(),
+                          cif_flex_current_position() );
             } else {
                 if( token[0] == '[' ) {
                     /* bracket is a reserved symbol, unquoted strings
@@ -554,10 +598,17 @@ static int getlinec( FILE *in, cexception_t *ex )
                 prevLine = lineCnt;
                 if( lastTokenLine )
                     freex( lastTokenLine );
-                if( current_line )
+                if( current_line ) {
                     lastTokenLine = strdupx( current_line, ex );
-                else
+                    if( report_long_items ) {
+                        if( strlen( current_line ) > cif_mandated_line_length ) {
+                            yynote( cxprintf( "line exceeds %d characters", 
+                                              cif_mandated_line_length ), ex );
+                        }
+                    }
+                } else {
                     lastTokenLine = NULL;
+                }
             }
             if( ch == '\r' || (ch == '\n' && prevchar != '\r' )) {
                 lineCnt ++;
@@ -614,9 +665,10 @@ static char *clean_string( char *src, int is_textfield, cexception_t *ex )
                     if( non_ascii_explained == 0 ) {
                         if( is_textfield == 0 ) {
                             print_message( "WARNING", "non-ascii symbols "
-                                           "encountered in the text:",
+                                           "encountered in the text",
                                            cif_flex_current_line_number(),
-                                           -1, ex );
+                                           cif_flex_current_position()+1,
+                                           ex );
 #if 0
                             fprintf( stderr, "'%s'\n", 
                                      cif_flex_current_line() );
@@ -627,7 +679,7 @@ static char *clean_string( char *src, int is_textfield, cexception_t *ex )
                         } else {
                             print_message( "WARNING", "non-ascii symbols "
                                            "encountered in the text field, "
-                                           "replaced by XML entities:",
+                                           "replaced by XML entities",
                                            cif_flex_current_line_number(),
                                            -1, ex );
 #if 0
@@ -640,11 +692,11 @@ static char *clean_string( char *src, int is_textfield, cexception_t *ex )
                     }
                 } else {
                     if( is_textfield == 0 ) {
-                        yyerror( "syntax error:" );
+                        yyerror( "incorrect CIF syntax" );
                     } else if( non_ascii_explained == 0 ) {
                         print_message( "WARNING", "non-ascii symbols "
                                        "encountered "
-                                       "in the text field:",
+                                       "in the text field",
                                        cif_flex_current_line_number(),
                                        -1, ex );
 #if 0
@@ -701,7 +753,7 @@ static char *check_and_clean( char *token, int is_textfield, cexception_t *ex )
             (CIF_FLEX_LEXER_FIX_NON_ASCII_SYMBOLS) ) {
             s = clean_string( token, is_textfield, ex );
         } else {
-            yyerror( "syntax error" );
+            yyerror( "incorrect CIF syntax" );
             s = strdupx( token, ex );
         }
     } else {

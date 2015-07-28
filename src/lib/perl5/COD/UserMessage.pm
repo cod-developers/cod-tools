@@ -35,8 +35,8 @@ my %message_escape   = ( '&' => '&amp;', ':' => '&colon;' );
 
 sub sprint_message($$$$$$@)
 {
-    my ( $program, $filename, $datablock, $errlevel,
-         $message, $explanation, $line, $column ) = @_;
+    my ( $program, $filename, $datablock, $errlevel, $message,
+         $explanation, $line, $column, $line_contents ) = @_;
 
     $message =~ s/\.?\n?$//;
     $explanation =~ s/\.?\n?$// if defined $explanation;
@@ -49,6 +49,11 @@ sub sprint_message($$$$$$@)
     $message     = escape_meta( $message,     \%message_escape   );
     $explanation = escape_meta( $explanation, \%message_escape   );
 
+    if( defined $line_contents ) {
+        $line_contents = join( "\n", map { " $_" }
+                                     split( "\n", $line_contents ) );
+    }
+
     return $program . ": " .
            (defined $filename ? $filename .
                 (defined $line ? "($line" .
@@ -59,18 +64,20 @@ sub sprint_message($$$$$$@)
            (defined $errlevel ? $errlevel . ", " : "") .
            $message .
            (defined $explanation ? " -- " . $explanation : "") .
-           ".\n";
-}
+           (defined $line_contents ? ":\n" . $line_contents . "\n" .
+                (defined $column ? " " . " " x ($column-1) . "^\n" : "")
+                : ".\n");}
 
 #==============================================================================
 # Generic function for printing messages to STDERR
 
 sub print_message($$$$$$@)
 {
-    my ( $program, $filename, $datablock, $errlevel,
-         $message, $explanation, $line, $column ) = @_;
+    my ( $program, $filename, $datablock, $errlevel, $message,
+         $explanation, $line, $column, $line_contents ) = @_;
     print STDERR sprint_message( $program, $filename, $datablock, $errlevel,
-                                 $message, $explanation, $line, $column );
+                                 $message, $explanation, $line, $column,
+                                 $line_contents );
 }
 
 #==============================================================================

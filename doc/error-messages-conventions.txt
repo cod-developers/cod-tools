@@ -32,11 +32,15 @@ Below, we provide the formal grammar of the error messages in EBNF[4,5]:
 
 (* @BEGIN EBNF *)
 
-error_list = error_report, { error_report };
+error_list = {[spaces], newline},
+              error_report, { error_report };
 
-error_report = progname, ':', [spaces], location, ':', [spaces],
-               (status, ',', [spaces] | lowercase_word), message,
-               [ ':', newline, anytext, newline, anytext ], {newline};
+error_report = progname, ':', [spaces], [location], ':', [spaces],
+               (status, ',', [spaces] | lowercase_word), [message],
+               [ ':', [spaces], newline, { space, code_line } ],
+               {newline};
+
+code_line = [anytext], newline;
 
 location = file_position, [spaces], [ additional_position ] ;
 
@@ -44,11 +48,7 @@ file_position = filename, [spaces], [ file_line_column ] ;
 
 file_line_column = '(', lineno, [ ',', linepos ], ')';
 
-message = main_text, [ '-', {'-'}, spaces, explanation_text ] ;
-
-main_text = text ;
-
-explanation_text = text ;
+message = text ;
 
 lineno = integer ;
 
@@ -66,7 +66,7 @@ anytext = anychar, {anychar} ;
 
 (* Lexical tokens: *)
 
-filename_char = letter | digit | quote | punctuator | "-" ;
+filename_char = letter | digit | quote | punctuator ;
 
 spaces = space, {space} ;
 
@@ -76,11 +76,11 @@ newline = ? \n ? ;
 
 integer = digit, {digit} ;
 
-text = word, { [spaces], word, [spaces] } ;
+text = word, [spaces], { word, [spaces] } ;
 
 lowercase_word = word_char, { lowercase_letter }, [spaces];
 
-word = word_char, { word_char | "-" } ;
+word = word_char, { word_char } ;
 
 word_char = letter | digit | quote | punctuator | braces ;
 
@@ -105,14 +105,14 @@ braces = "(" | ")" | "[" | "]" | "{" | "}" ;
 
 (* Punctuators for error messages SHOULD NOT include ":" and "-": *)
 punctuator = "!" | "#" | "$" | "%" | "&" | "*" | "+" | "," | "|" | "~"
-           | (* "-" | *) "." | "/" | (* ":" | *) ";" | "<" | "=" | ">" 
+           | "-" | "." | "/" | (* ":" | *) ";" | "<" | "=" | ">" 
            | "?" | "@" | "\" | "^" | "`" ;
 
 (* Delimiters are used to separate distinct parts of the error
    message, but they may be used arbitrarily in the code line that
    follows the structured message text: *)
 
-delimiter = ":" | "-" ;
+delimiter = ":" ;
 
 (* @END EBNF *)
 
@@ -263,7 +263,7 @@ you should check whereas these values exist before printing them... ;)
 7. OUTPUT
 
 Create your scripts with respect. Respect towards users and computers - 
-you never now, who will be your next reader.
+you never know, who will be your next reader.
 
 So far as our scripts are concerned - we will put all our efforts on 
 making error reporting according to these guidelines, so you should be 

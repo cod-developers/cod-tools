@@ -14,18 +14,22 @@
     #include <yy.h>
     #include <cif.h>
     #include <datablock.h>
+    #include <cifmessage.h>
 
     SV * parse_cif( char * fname, char * prog, SV * options );
 %}
 
 %perlcode %{
 use COD::Precision;
+use COD::UserMessage;
+
 sub parse
 {
     my( $filename, $options ) = @_;
     $options = {} unless $options;
     my $parse_result = parse_cif( $filename, $0, $options );
     my $data = $parse_result->{datablocks};
+    my $messages = $parse_result->{messages};
     my $nerrors = $parse_result->{nerrors};
 
     foreach my $datablock ( @$data ) {
@@ -57,12 +61,66 @@ sub parse
         }
     }
 
+    my @error_messages;
+    foreach my $message ( @$messages ) {
+        my $datablock = $message->{addpos};
+        if( defined $datablock ) {
+            $datablock = "data_$datablock";
+        }
+        my $msg = sprint_message( $message->{program},
+                                  $message->{filename},
+                                  $datablock,
+                                  $message->{status},
+                                  $message->{message},
+                                  undef,
+                                  $message->{lineno},
+                                  $message->{columnno},
+                                  $message->{line} );
+
+        if( !exists $options->{print_error_messages} ||
+            $options->{print_error_messages} == 1 ) {
+            print STDERR $msg;
+        }
+
+        push @error_messages, $msg;
+    }
+
     if( wantarray ) {
-        return( $data, $nerrors );
+        return( $data, $nerrors, \@error_messages );
     } else {
         return $data;
     }
 }
+
+sub new
+{
+    my( $class ) = @_;
+    my $self = {};
+    bless( $self, $class );
+    return $self;
+}
+
+sub Run
+{
+    my( $self, $filename, $options ) = @_;
+    my( $data, $nerrors, $error_messages ) = parse( $filename, $options );
+
+    $self->{YYData} = { ERRCOUNT => $nerrors,
+                        ERROR_MESSAGES => $error_messages };
+
+    if( ref $options eq "HASH" ) {
+        $self->{USER}{OPTIONS} = $options;
+    }
+
+    return $data;
+}
+
+sub YYData
+{
+    my( $self ) = @_;
+    return $self->{YYData};
+}
+
 %}
 
 #include <EXTERN.h>
@@ -79,5 +137,6 @@ sub parse
 #include <yy.h>
 #include <cif.h>
 #include <datablock.h>
+#include <cifmessage.h>
 
 SV * parse_cif( char * fname, char * prog, SV * options );

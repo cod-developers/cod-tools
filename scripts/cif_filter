@@ -441,28 +441,24 @@ my $biblio_blocks;
 
 if( defined $biblio ) {
     if( $biblio =~ /\.cif/i ) {
-        my( $error_count );
+        my( $parser );
         my %biblio_options = ( fix_errors => 1 );
+
         # For now, always use Perl parser for biblioraphies, since C
         # parser is not (yet) reenterable :(:
         ## if( $use_parser eq "perl" ) {
         if( 1 ) {
-            my $parser = new COD::CIF::Parser::Yapp;
-
-                $biblio_blocks = $parser->Run($biblio, \%biblio_options);
-
-                if( defined $parser->YYData->{ERRCOUNT} &&
-                    $parser->YYData->{ERRCOUNT} > 0 ) {
-                    $error_count = $parser->YYData->{ERRCOUNT};
-                }
+            $parser = new COD::CIF::Parser::Yapp;
         } else {
             require COD::CIF::Parser::Bison;
-            ( $biblio_blocks, $error_count ) = 
-                COD::CIF::Parser::Bison::parse( $biblio, \%biblio_options );
+            $parser = new COD::CIF::Parser::Bison;
         }
 
-        if( defined $error_count && $error_count > 0 ) {
-            print STDERR "$0: ", $error_count,
+        $biblio_blocks = $parser->Run( $biblio, \%biblio_options );
+
+        if( defined $parser->YYData->{ERRCOUNT} &&
+            $parser->YYData->{ERRCOUNT} > 0 ) {
+            print STDERR "$0: ", $parser->YYData->{ERRCOUNT},
                 " error(s) encountered while parsing",
                 " file '${biblio}'\n";
             die;
@@ -488,7 +484,7 @@ if( defined $biblio ) {
 
 for my $filename (@ARGV) {
 
-    my( $data, $error_count );
+    my( $parser, $data, $error_count );
     my %options;
 
     if( $fix_errors ) {
@@ -496,20 +492,17 @@ for my $filename (@ARGV) {
     }
 
     if( $use_parser eq "perl" ) {
-        my $parser = new COD::CIF::Parser::Yapp;
-
-        $data = $parser->Run($filename, \%options);
-
-        if( defined $parser->YYData->{ERRCOUNT} ) {
-            $error_count = $parser->YYData->{ERRCOUNT};
-        }
+        $parser = new COD::CIF::Parser::Yapp;
     } else {
         require COD::CIF::Parser::Bison;
-        ( $data, $error_count ) = COD::CIF::Parser::Bison::parse( $filename, \%options );
+        $parser = new COD::CIF::Parser::Bison;
     }
 
-    if( defined $error_count && $error_count > 0 ) {
-        print STDERR "$0: ", $error_count,
+    $data = $parser->Run( $filename, \%options );
+
+    if( defined $parser->YYData->{ERRCOUNT} &&
+        $parser->YYData->{ERRCOUNT} > 0 ) {
+        print STDERR "$0: ", $parser->YYData->{ERRCOUNT},
         " error(s) encountered while parsing file '${filename}'\n";
         die;
     }
