@@ -24,6 +24,7 @@ use COD::SUsage;
 
 my $format    = 'dsv';
 my $delimiter = "\t";
+my $ignore_comments = 0;
 my @dsv_print_order = ( qw(
                             program
                             filename
@@ -32,7 +33,6 @@ my @dsv_print_order = ( qw(
                             datablock
                             errlevel
                             message
-                            explanation
                         ) );
 
 @ARGV = getOptions
@@ -41,18 +41,25 @@ my @dsv_print_order = ( qw(
 #** -d, --delimiter "\t"
 #**                    Delimiter that is used to separate fields in the
 #**                    delimiter-separated values (dsv) output format
-#**                   (default "\t").
+#**                    (default "\t").
 #** --dsv
 #**                    Output results in delimiter-separated values (dsv) 
 #**                    format (default).
+#** --ignore-comments
+#**                    Ignore lines starting with a number symbol ('#').
+#** --process-comments
+#**                    Treat lines starting with a number symbol ('#') as
+#**                    error messages. Default.
 #** --help,--usage     Print short usage message (this message) and exit.
     "-d,--delimiter"            => \$delimiter,
     "--dsv"                     => sub { $format= 'dsv' },
+    "--ignore-comments"         => sub { $ignore_comments = 1 },
+    "--process-comments"       => sub { $ignore_comments = 0 },
     "--help,--usage"            => sub { usage; exit },
 );
 
 while (<>) {
-    next if $_ =~ /^\s*#/;
+    next if $ignore_comments && $_ =~ /^\s*#/ ;
     my $parsed_msg = parse_message( $_ );
     if ( defined $parsed_msg ) {
         if ( $format eq 'dsv' ) {

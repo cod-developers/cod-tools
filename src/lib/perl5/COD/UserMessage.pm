@@ -19,11 +19,11 @@ our @EXPORT_OK = qw( debug_note prefix_dataname );
 
 # characters that will be escaped as HTML5 entities
 # '#' symbol is used for starting comment lines
-my %program_escape   = ( '&' => '&amp;',  ':' => '&colon;', '#' => '&num;' );
+my %program_escape   = ( '&' => '&amp;',  ':' => '&colon;' );
 my %filename_escape  = ( '&' => '&amp;', ':' => '&colon;', ' ' => '&nbsp;',
                          '(' => '&lpar;', ')' => '&rpar;' );
 my %datablock_escape = ( '&' => '&amp;', ':' => '&colon;', ' ' => '&nbsp;' );
-my %message_escape   = ( '&' => '&amp;', ':' => '&colon;' );#, '-' => "&#45;" ); # ',' => '&comma;'
+my %message_escape   = ( '&' => '&amp;', ':' => '&colon;' );
 
 #==============================================================================
 # Print a message, reporting a program name, file name, data block
@@ -91,9 +91,7 @@ sub parse_message($)
                             :\ 
                         )?
                         (?:([^,:\ ]+?)[,:]\ )?
-                        (.+?)
-                        (?:\ --\ (.+?))?
-                        \.?
+                        (.+?)\.?
                     $/x ) {
         return {
             program     => unescape_meta($1, \%program_escape ),
