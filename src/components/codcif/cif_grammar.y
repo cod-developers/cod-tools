@@ -237,7 +237,7 @@ data_block_head
                 }
             } else {
                 cif_start_datablock( cif_cc->cif, $1, px );
-                yyerror_previous( "incorrect CIF syntax", px );
+                yyerror_previous( "incorrect CIF syntax:", px );
             }
         }
 ;
@@ -283,7 +283,7 @@ cif_entry
                     }
                     add_tag_value( $1, buf, tag_type, px );
                 } else {
-                    yyerror_previous( "incorrect CIF syntax", px );
+                    yyerror_previous( "incorrect CIF syntax:", px );
                 }
             }
 ;
@@ -318,7 +318,7 @@ loop
        {
            if( loop_value_count % loop_tag_count != 0 ) {
                yyerror( cxprintf( "wrong number of elements in the "
-                                  "loop starting at line %d",
+                                  "loop starting at line %d:",
                                   loop_start ) );
 #if 0
                if( cif_cc->cif ) {
@@ -658,17 +658,17 @@ void add_tag_value( char * tag, char * value, cif_value_type_t type,
                                              value, type );
                     } else {
                         yyerror_previous
-                            ( cxprintf( "tag %s appears more than once", tag ),
+                            ( cxprintf( "tag %s appears more than once:", tag ),
                               ex );
                     }
                 } else {
                     yyerror_previous
-                        ( cxprintf( "tag %s appears more than once", tag ),
+                        ( cxprintf( "tag %s appears more than once:", tag ),
                           ex );
                 }
             }
         } else {
-            yyerror_previous( cxprintf( "tag %s appears more than once", tag ),
+            yyerror_previous( cxprintf( "tag %s appears more than once:", tag ),
                               ex );
         }
     }
@@ -802,7 +802,7 @@ void print_previous_trace( cexception_t *ex )
 int yyerror( const char *message )
 {
     if( strcmp( message, "syntax error" ) == 0 ) {
-        message = "incorrect CIF syntax";
+        message = "incorrect CIF syntax:";
     }
     print_message( "ERROR", message, cif_flex_current_line_number(),
                    cif_flex_current_position()+1, px );

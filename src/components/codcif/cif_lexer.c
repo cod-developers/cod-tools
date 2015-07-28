@@ -139,7 +139,7 @@ int cif_lexer( FILE *in, cexception_t *ex )
                 yynote( "DOS EOF symbol ^Z was encountered and ignored", ex );
             } else {
                 yyerror( "DOS EOF symbol ^Z was encountered, "
-                         "it is not permitted in CIFs" );
+                         "it is not permitted in CIFs:" );
             }
             prevchar = ch;
             ch = getlinec( in, ex );
@@ -289,7 +289,7 @@ int cif_lexer( FILE *in, cexception_t *ex )
                             yywarning( "double-quoted string is missing "
                                        "a closing quote -- fixed", ex );
                         } else {
-                            yyerror( "incorrect CIF syntax" );
+                            yyerror( "incorrect CIF syntax:" );
                         }
                         break;
                     case '\'':
@@ -299,7 +299,7 @@ int cif_lexer( FILE *in, cexception_t *ex )
                             yywarning( "single-quoted string is missing "
                                        "a closing quote -- fixed", ex );
                         } else {
-                            yyerror( "incorrect CIF syntax" );
+                            yyerror( "incorrect CIF syntax:" );
                         }
                         break;
                 }
@@ -321,7 +321,7 @@ int cif_lexer( FILE *in, cexception_t *ex )
                         char after = getlinec( in, ex );
                         ungetlinec( after, in );
                         if( !isspace( after ) && after != EOF ) {
-                            yyerror( "incorrect CIF syntax" );
+                            yyerror( "incorrect CIF syntax:" );
                         }
                         token[pos-1] = '\0'; /* delete the last '\n' char */
                         if( yy_flex_debug ) {
@@ -334,7 +334,7 @@ int cif_lexer( FILE *in, cexception_t *ex )
                     pushchar( &token, &length, pos++, ch );
                 }
                 /* Unterminated text field: */
-                yyerrorf( "unterminated text field" );
+                yyerrorf( "unterminated text field:" );
             }
             /* else this is an ordinary unquoted string -- drop
                through to the 'default:' case (no break here,
@@ -371,7 +371,7 @@ int cif_lexer( FILE *in, cexception_t *ex )
                 strlen( token ) == 5 ) {
                 /* stop field: */
                 yyerrorf( "STOP_ symbol detected in line %i, pos. %i -- "
-                          "it is not acceptable in this version",
+                          "it is not acceptable in this version:",
                           cif_flex_current_line_number(),
                           cif_flex_current_position() );
             } else {
@@ -381,14 +381,14 @@ int cif_lexer( FILE *in, cexception_t *ex )
                     if( !cif_lexer_has_flags
                         (CIF_FLEX_LEXER_ALLOW_UQSTRING_BRACKETS)) {
                         yyerror( "opening square brackets are reserved "
-                                 "and may not start an unquoted string" );
+                                 "and may not start an unquoted string:" );
                     }
                 }
                 if( token[0] == '$' ) {
                     /* dollar is a reserved symbol, unquoted strings
                        may not start with it: */
                     yyerror( "dollar symbol ('$') must not start an "
-                             "unquoted string" );
+                             "unquoted string:" );
                 }
                 if( token[0] != '[' && token[0] != '$' ) {
                     if( yy_flex_debug ) {
@@ -692,7 +692,7 @@ static char *clean_string( char *src, int is_textfield, cexception_t *ex )
                     }
                 } else {
                     if( is_textfield == 0 ) {
-                        yyerror( "incorrect CIF syntax" );
+                        yyerror( "incorrect CIF syntax:" );
                     } else if( non_ascii_explained == 0 ) {
                         print_message( "WARNING", "non-ascii symbols "
                                        "encountered "
@@ -753,7 +753,7 @@ static char *check_and_clean( char *token, int is_textfield, cexception_t *ex )
             (CIF_FLEX_LEXER_FIX_NON_ASCII_SYMBOLS) ) {
             s = clean_string( token, is_textfield, ex );
         } else {
-            yyerror( "incorrect CIF syntax" );
+            yyerror( "incorrect CIF syntax:" );
             s = strdupx( token, ex );
         }
     } else {
