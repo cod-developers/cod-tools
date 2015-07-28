@@ -49,15 +49,21 @@ static char *usage_text[2] = {
 "          code   -- dump intermediate CIF code representation\n"
 "\n"
 
+"  -l, --line-length-limit 80\n"
+"      Set the maximum line length for --report-long checks\n\n"
+
+"  -w, --dataname-length-limit 74  \n"
+"      Set the maximum tag length for --report-long checks\n\n"
+
 "  -q, --quiet                 Be quiet, only output error messages and data\n"
 
 "  -q-, --no-quiet, --verbose  Produce verbose output of the parsing "
 "process\n\n"
 
-"  -r, --report-long-lines     Report CIF lines that are longer than mandated "
-"by the standard\n"
+"  -r, --report-long-items     Report CIF items (lines, data names) that are "
+"longer than mandated by the standard\n"
 
-"  -r-, --do-not-report-long-lines  Ignore long lines in CIF, process all data "
+"  -r-, --do-not-report-long-items  Ignore long items in CIF, process all data "
 "\n\n"
 
 "  -s, --suppress-errors          Suppress error messages from the parser\n"
@@ -103,13 +109,17 @@ static option_value_t debug;
 static option_value_t print_cif;
 static option_value_t suppress_error_messages;
 static option_value_t dump_messages;
-static option_value_t report_long_lines;
+static option_value_t report_long_items;
+static option_value_t line_length_limit;
+static option_value_t dataname_length_limit;
 
 static option_t options[] = {
   { "-d", "--debug",           OT_STRING,         &debug },
   { "-f", "--fix-syntax",      OT_BOOLEAN_TRUE,   &fix_errors },
   { "-f-","--dont-fix-syntax", OT_BOOLEAN_FALSE,  &fix_errors },
   { "-c", "--compile-only",    OT_BOOLEAN_FALSE,  &print_cif },
+  { "-l", "--line-length-limit",
+                               OT_INT,            &line_length_limit},
   { "-p", "--print",           OT_BOOLEAN_TRUE,   &print_cif },
   { "-q", "--quiet",           OT_BOOLEAN_TRUE,   &be_quiet },
   { "-q-","--no-quiet",        OT_BOOLEAN_FALSE,  &be_quiet },
@@ -124,14 +134,17 @@ static option_t options[] = {
   { NULL, "--no-suppress-errors",
                                OT_BOOLEAN_FALSE,  &suppress_error_messages },
 
-  { "-r", "--report-long-lines",
-                               OT_BOOLEAN_TRUE,   &report_long_lines },
-  { "-r-","--do-not-report-long-lines", 
-                               OT_BOOLEAN_FALSE,  &report_long_lines },
-  { NULL, "--dont-report-long-lines", 
-                               OT_BOOLEAN_FALSE,  &report_long_lines },
-  { NULL, "--no-report-long-lines", 
-                               OT_BOOLEAN_FALSE,  &report_long_lines },
+  { "-r", "--report-long-items",
+                               OT_BOOLEAN_TRUE,   &report_long_items },
+  { "-r-","--do-not-report-long-items", 
+                               OT_BOOLEAN_FALSE,  &report_long_items },
+  { NULL, "--dont-report-long-items", 
+                               OT_BOOLEAN_FALSE,  &report_long_items },
+  { NULL, "--no-report-long-items", 
+                               OT_BOOLEAN_FALSE,  &report_long_items },
+
+  { "-w", "--dataname-length-limit",
+                               OT_INT,            &dataname_length_limit},
 
   { "-M", "--dump-messages",   OT_BOOLEAN_TRUE,   &dump_messages },
   { "-M-","--dont-dump-messages",
@@ -197,8 +210,16 @@ int main( int argc, char *argv[], char *env[] )
       }
   }
 
-  if( report_long_lines.value.b == 1 ) {
-      cif_lexer_report_long_lines( 1 );
+  if( report_long_items.value.b == 1 ) {
+      cif_lexer_set_report_long_items( 1 );
+  }
+
+  if( line_length_limit.present ) {
+      cif_lexer_set_line_length_limit( line_length_limit.value.i );
+  }
+
+  if( dataname_length_limit.present ) {
+      cif_lexer_set_tag_length_limit( dataname_length_limit.value.i );
   }
 
   for( i = 0; i == 0 || files[i] != NULL; i++ ) {

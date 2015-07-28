@@ -41,13 +41,33 @@ static int thisTokenPos = 0;
 
 static int ungot_ch = 0;
 
-static int cif_mandated_line_length = 1024;
-static int report_long_lines = 0;
+static int cif_mandated_line_length = 80;
+static int cif_mandated_tag_length = 74;
+static int report_long_items = 0;
 
-int cif_lexer_report_long_lines( int flag )
+int cif_lexer_set_report_long_items( int flag )
 {
-    int old_value = report_long_lines;
-    report_long_lines = flag;
+    int old_value = report_long_items;
+    report_long_items = flag;
+    return old_value;
+}
+
+int cif_lexer_report_long_items( void )
+{
+    return report_long_items;
+}
+
+int cif_lexer_set_line_length_limit( int max_length )
+{
+    int old_value = cif_mandated_line_length;
+    cif_mandated_line_length = max_length;
+    return old_value;
+}
+
+int cif_lexer_set_tag_length_limit( int max_length )
+{
+    int old_value = cif_mandated_tag_length;
+    cif_mandated_tag_length = max_length;
     return old_value;
 }
 
@@ -173,6 +193,13 @@ int cif_lexer( FILE *in, cexception_t *ex )
             yylval.s = clean_string( token, /* is_textfield = */ 0, ex );
             if( yy_flex_debug ) {
                 printf( ">>> TAG: '%s'\n", token );
+            }
+            if( report_long_items ) {
+                if( strlen( yylval.s ) > cif_mandated_tag_length ) {
+                    yynote( cxprintf( "data name '%s' exceeds %d characters", 
+                                      yylval.s, cif_mandated_tag_length ),
+                            ex );
+                }
             }
             return _TAG;
             break;
@@ -573,14 +600,12 @@ static int getlinec( FILE *in, cexception_t *ex )
                     freex( lastTokenLine );
                 if( current_line ) {
                     lastTokenLine = strdupx( current_line, ex );
-#if 1
-                    if( report_long_lines ) {
+                    if( report_long_items ) {
                         if( strlen( current_line ) > cif_mandated_line_length ) {
                             yynote( cxprintf( "line exceeds %d characters", 
                                               cif_mandated_line_length ), ex );
                         }
                     }
-#endif
                 } else {
                     lastTokenLine = NULL;
                 }
