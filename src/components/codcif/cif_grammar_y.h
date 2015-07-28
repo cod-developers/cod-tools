@@ -19,7 +19,8 @@ void cif_printf( cexception_t *ex, char *format, ... );
 char * cif_unprefix_textfield( char * tf );
 char * cif_unfold_textfield( char * tf );
 
-void print_message( const char *errlevel, const char *message, int line,
+void print_message( const char *errlevel, const char *message, 
+                    const char *suffix, int line,
                     int position, cexception_t *ex );
 void print_current_text_field( char *text, cexception_t *ex );
 void print_current_trace( cexception_t *ex );
