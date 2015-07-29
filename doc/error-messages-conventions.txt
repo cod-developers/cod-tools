@@ -60,13 +60,13 @@ status = uppercase_letter, { uppercase_letter | digit | "-" | "_" } ;
 
 filename = filename_char, { filename_char } ;
 
-progname = filename_char, { filename_char } ;
+progname = filename_char, { filename_char | space } ;
 
 anytext = anychar, {anychar} ;
 
 (* Lexical tokens: *)
 
-filename_char = letter | digit | quote | punctuator ;
+filename_char = letter | digit | unicode_symbol | quote | punctuator ;
 
 spaces = space, {space} ;
 
@@ -82,11 +82,13 @@ lowercase_word = word_char, { lowercase_letter }, [spaces];
 
 word = word_char, { word_char } ;
 
-word_char = letter | digit | quote | punctuator | braces ;
+word_char = letter | digit | unicode_symbol | quote | punctuator | braces ;
 
 anychar = word_char | space | delimiter ;
 
 letter = lowercase_letter | uppercase_letter | "_" ;
+
+unicode_symbol = ? [^\p{ASCII}] ?;
 
 lowercase_letter = "a" | "b" | "c" | "d" | "e" | "f" | "g" | "h" | "i" | "j"
                  | "k" | "l" | "m" | "n" | "o" | "p" | "q" | "r" | "s" | "t"
