@@ -1075,10 +1075,12 @@ sub Run
         my $program = $0 eq '-e' ? "perl -e '...'" : $0;
         $COD::CIF::Parser::Yapp::FILEIN = new FileHandle $filename;
         if( !defined $COD::CIF::Parser::Yapp::FILEIN ) {
-            print STDERR "$program: $filename: ERROR, "
-                       . "unable to open file '$filename' for reading -- "
-                       . lcfirst $! . "\n";
-            return 1;
+            my $message = sprint_message( $program, $filename, undef, 'ERROR',
+                                "unable to open file '$filename' for reading"
+                              . " -- " . lcfirst $! );
+            push $self->{YYData}->{ERROR_MESSAGES}, $message;
+            print STDERR $message if $self->{USER}{OPTIONS}{print_error_messages};
+            return [];
         }
     }
 
