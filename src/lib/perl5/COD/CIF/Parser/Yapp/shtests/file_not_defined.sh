@@ -34,6 +34,6 @@ foreach my $datablock (@$data) {
 }
 
 print "Error messages in the returned array:\n";
-foreach ( @{$parser->{YYData}->{ERROR_MESSAGES}} ) {
+foreach ( @{$parser->YYData->{ERROR_MESSAGES}} ) {
     print $_;
 }

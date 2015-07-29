@@ -30,8 +30,7 @@ my $parser = new COD::CIF::Parser::Yapp;
 my $data = $parser->Run($filename, { fix_errors => 1,
                                      print_error_messages => 0 } );
 
-my $i = 0;
-foreach(@{$parser->{YYData}->{ERROR_MESSAGES}}) {
+foreach(@{$parser->YYData->{ERROR_MESSAGES}}) {
     print $_;
 }
 

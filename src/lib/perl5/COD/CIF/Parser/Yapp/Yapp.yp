@@ -652,7 +652,7 @@ sub _Error
                                   "ERROR", $errmsg,
                                   $line, $pos, $line_content );
 
-    push $_[0]->{YYData}->{ERROR_MESSAGES}, $message;
+    push $_[0]->YYData->{ERROR_MESSAGES}, $message;
     print STDERR $message if $_[0]->{USER}{OPTIONS}{print_error_messages};
 }
 
@@ -684,7 +684,7 @@ sub _Warning
         }
 
         delete $_[0]->YYData->{ERRMSG};
-        push   $_[0]->{YYData}->{ERROR_MESSAGES}, $message;
+        push   $_[0]->YYData->{ERROR_MESSAGES}, $message;
         print STDERR $message if $_[0]->{USER}{OPTIONS}{print_error_messages};
     }
 }
@@ -1067,7 +1067,8 @@ sub Run
 
     $self->{USER}{FILENAME} = $filename;
     $self->{USER}->{CIFfile} = undef;
-    $self->{YYData}->{ERROR_MESSAGES} = [];
+    $self->YYData->{ERROR_MESSAGES} = [];
+    $self->YYData->{ERRCOUNT} = 0;
 
     if( ref $options eq "HASH"  && defined $options->{filehandle} ) {
         $COD::CIF::Parser::Yapp::FILEIN = $options->{filehandle};
@@ -1078,7 +1079,7 @@ sub Run
             my $message = sprint_message( $program, $filename, undef, 'ERROR',
                                 "unable to open file '$filename' for reading"
                               . " -- " . lcfirst $! );
-            push $self->{YYData}->{ERROR_MESSAGES}, $message;
+            push $self->YYData->{ERROR_MESSAGES}, $message;
             print STDERR $message if $self->{USER}{OPTIONS}{print_error_messages};
             return [];
         }
