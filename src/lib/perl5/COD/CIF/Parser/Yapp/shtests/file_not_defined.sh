@@ -28,3 +28,12 @@ my $filename = "${script_dir}/${script_name}.inp";
 my $parser = new COD::CIF::Parser::Yapp;
 
 my $data = $parser->Run($filename);
+
+foreach my $datablock (@$data) {
+    print $datablock->{name} . "\n";
+}
+
+print "Error messages in the returned array:\n";
+foreach ( @{$parser->{YYData}->{ERROR_MESSAGES}} ) {
+    print $_;
+}
