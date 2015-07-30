@@ -252,8 +252,9 @@ sub cif2cod
                                    $use_attached_hydrogens );
         };
         if( $@ ) {
-            error( "summary formula could not be calculated",
-                   $filename, $dataset );
+            print_message( $0, $filename, "data_$dataname", undef,
+                           "summary formula could not be calculated" );
+            die unless $continue_on_errors;
         }
 
         my $text = join( '\n', map { cif2unicode($_) }
@@ -523,18 +524,6 @@ sub cif2cod
     return \@extracted;
 }
 
-# Custom error funcion, to be replaced by the one from COD::UserMessage.
-sub error
-{
-    my ( $message, $filename, $dataset ) = @_;
-    my $dataname;
-    if( $dataset && exists $dataset->{name} ) {
-        $dataname = "data_" . $dataset->{name};
-    }
-    print_message( $0, $filename, $dataname, undef, $message );
-    die unless $continue_on_errors;
-}
-
 sub filter_num
 {
     my @nums = map { s/\(.*\)$//; $_ } @_;
@@ -548,11 +537,12 @@ sub check_chem_formula
     my $formula_component = "[a-zA-Z]{1,2}[0-9.]*";
 
     if( $formula !~ /^\s*($formula_component\s+)*($formula_component)\s*$/ ) {
-        error( "chemical formula '$formula' could not be parsed -- " .
-               "a chemical formula should consist of space-seprated " .
-               "chemical element names with optional numeric " .
-               "quantities (e.g. 'C2 H6 O').", $filename );
-
+        print_message( $0, $filename, undef, undef,
+                       "chemical formula '$formula' could not be " .
+                       "parsed -- a chemical formula should consist " .
+                       "of space-seprated chemical element names with " .
+                       "optional numeric quantities (e.g. 'C2 H6 O')." );
+        die unless $continue_on_errors;
     }
 }
 
@@ -630,13 +620,17 @@ sub get_and_check_tag
                 return $val;
             } else {
                 unless( $ignore_errors ) {
-                    error( "tag '$tag' does not have value number $index",
-                           $filename );
+                    print_message( $0, $filename, undef, undef,
+                                   "tag '$tag' does not have value " .
+                                   "number $index" );
+                    die unless $continue_on_errors;
                 }
             }
         } else {
             unless( $ignore_errors ) {
-                error( "tag '$tag' is absent", $filename );
+                print_message( $0, $filename, undef, undef,
+                               "tag '$tag' is absent" );
+                die unless $continue_on_errors;
             }
         }
     }
@@ -673,7 +667,9 @@ sub get_spacegroup_info
         }
     }
     if( !defined $spacegroup ) {
-        error( "no spacegroup information found", $filename, $dataset );
+        print_message( $0, $filename, "data_" . $dataset->{name}, undef,
+                       "no spacegroup information found" );
+        die unless $continue_on_errors;
     } else {
         $spacegroup =~ s/^\s*|\s*$//g;
     }
@@ -698,7 +694,9 @@ sub get_spacegroup_Hall_symbol
         }
     }
     if( !defined $spacegroup ) {
-        error( "no Hall spacegroup symbol found", $filename, $dataset );
+        print_message( $0, $filename, "data_" . $dataset->{name}, undef,
+                       "no Hall spacegroup symbol found" );
+        die unless $continue_on_errors;
     } else {
         $spacegroup =~ s/^\s*|\s*$//g;
     }
