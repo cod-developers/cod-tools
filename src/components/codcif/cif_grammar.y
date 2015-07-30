@@ -470,6 +470,7 @@ CIF *new_cif_from_cif_file( char *filename, cif_option_t co, cexception_t *ex )
                 if( cif_yyretval( cif_cc->cif ) == 0 ) {
                     cif_set_yyretval( cif_cc->cif, -1 );
                 }
+                cif_set_nerrors( cif_cc->cif, cif_nerrors( cif_cc->cif ) + 1 );
                 cif_set_message( cif_cc->cif,
                                  filename, "ERROR",
                                  cexception_message( &inner ),
