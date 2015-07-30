@@ -334,8 +334,8 @@ sub cif2cod
 
         undef $formula if $formula =~ /^\s*\?\s*$/;
 
-        if( defined $formula  ) {
-            check_chem_formula( $formula, $filename );
+        if( defined $formula ) {
+            check_chem_formula( $formula, $filename, $dataname );
         }
 
         $nel = count_number_of_elements( $formula );
@@ -532,12 +532,12 @@ sub filter_num
 
 sub check_chem_formula
 {
-    my ( $formula, $filename ) = @_;
+    my ( $formula, $filename, $dataname ) = @_;
 
     my $formula_component = "[a-zA-Z]{1,2}[0-9.]*";
 
     if( $formula !~ /^\s*($formula_component\s+)*($formula_component)\s*$/ ) {
-        print_message( $0, $filename, undef, undef,
+        print_message( $0, $filename, "data_$dataname", undef,
                        "chemical formula '$formula' could not be " .
                        "parsed -- a chemical formula should consist " .
                        "of space-seprated chemical element names with " .
@@ -593,13 +593,13 @@ sub get_tag
 
 sub get_tag_silently
 {
-    push( @_, ("",1) );
+    push( @_, (undef, 1) );
     &get_and_check_tag;
 }
 
 sub get_tag_or_undef
 {
-    push( @_, ("",2) );
+    push( @_, (undef, 2) );
     &get_and_check_tag;
 }
 
