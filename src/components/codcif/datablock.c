@@ -74,27 +74,12 @@ struct DATABLOCK {
 			array 'tags' of the i-th loop. */
     int *loop_last;  /* loop_last[i] is the last tag index of the i-th loop. */
 
+    struct DATABLOCK *save_frames; /* All save frames in this
+                                      datablock; should not be
+                                      bested */
+
     struct DATABLOCK *next; /* Data blocks can be linked in a linked-list. */
 };
-
-DATABLOCK *new_datablock( const char *name, DATABLOCK *next, cexception_t *ex )
-{
-    cexception_t inner;
-    DATABLOCK * volatile datablock = callocx( 1, sizeof(DATABLOCK), ex );
-
-    cexception_guard( inner ) {
-        datablock->loop_start = -1;
-        if( name ) {
-            datablock->name = strdupx( name, &inner );
-        }
-        datablock->next = next;
-    }
-    cexception_catch {
-        delete_datablock( datablock );
-        cexception_reraise( inner, ex );
-    }
-    return datablock;
-}
 
 void delete_datablock( DATABLOCK *datablock )
 {
@@ -121,8 +106,28 @@ void delete_datablock( DATABLOCK *datablock )
         freex( datablock->types );
         freex( datablock->loop_first );
         freex( datablock->loop_last );
+        delete_datablock( datablock->save_frames );
 	freex( datablock );
     }
+}
+
+DATABLOCK *new_datablock( const char *name, DATABLOCK *next, cexception_t *ex )
+{
+    cexception_t inner;
+    DATABLOCK * volatile datablock = callocx( 1, sizeof(DATABLOCK), ex );
+
+    cexception_guard( inner ) {
+        datablock->loop_start = -1;
+        if( name ) {
+            datablock->name = strdupx( name, &inner );
+        }
+        datablock->next = next;
+    }
+    cexception_catch {
+        delete_datablock( datablock );
+        cexception_reraise( inner, ex );
+    }
+    return datablock;
 }
 
 void delete_datablock_list( DATABLOCK *datablock_list )
