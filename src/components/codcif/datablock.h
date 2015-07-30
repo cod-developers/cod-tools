@@ -49,7 +49,7 @@ void create_datablock( DATABLOCK * volatile *datablock, const char *name,
                        DATABLOCK *next, cexception_t *ex );
 
 DATABLOCK *datablock_start_save_frame( DATABLOCK *datablock, const char *name,
-                                       DATABLOCK *next, cexception_t *ex );
+                                       cexception_t *ex );
 
 void dispose_datablock( DATABLOCK * volatile *datablock );
 

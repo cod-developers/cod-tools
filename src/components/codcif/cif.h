@@ -57,6 +57,11 @@ CIFMESSAGE *cif_insert_message( CIF *cif, CIFMESSAGE *message );
 void cif_start_datablock( CIF * volatile cif, const char *name,
                           cexception_t *ex );
 
+void cif_start_save_frame( CIF * volatile cif, const char *name,
+                          cexception_t *ex );
+
+void cif_finish_save_frame( CIF * volatile cif );
+
 void cif_dump( CIF * volatile cif );
 void cif_print( CIF * volatile cif );
 void cif_list_tags( CIF * volatile cif );
