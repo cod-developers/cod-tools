@@ -17,8 +17,9 @@ use COD::CIF::Data qw(get_cell);
 use COD::CIF::Data::CellContents;
 use COD::CIF::Data::CODFlags qw(is_disordered has_coordinates has_Fobs);
 use COD::CIF::Tags::DictTags;
-use COD::AtomProperties;
 use COD::CIF::Unicode2CIF;
+use COD::AtomProperties;
+use COD::UserMessage qw(print_message);
 
 require Exporter;
 our @ISA = qw(Exporter);
@@ -522,23 +523,15 @@ sub cif2cod
     return \@extracted;
 }
 
+# Custom error funcion, to be replaced by the one from COD::UserMessage.
 sub error
 {
-    my ( $message, $filename, $dataset, $explanation ) = @_;
-
-    print STDERR $0, ": ";
-    print STDERR $filename
-        if $filename;
-    print STDERR " data_",  $dataset->{name}
-        if $dataset && exists $dataset->{name};
-    print STDERR ": "
-        if $filename || $dataset;
-    print STDERR $message
-        if defined $message;
-    print STDERR "\n", $explanation
-        if defined $explanation;
-    print STDERR "\n";
-
+    my ( $message, $filename, $dataset ) = @_;
+    my $dataname;
+    if( $dataset && exists $dataset->{name} ) {
+        $dataname = "data_" . $dataset->{name};
+    }
+    print_message( $0, $filename, $dataname, undef, $message );
     die unless $continue_on_errors;
 }
 
@@ -555,12 +548,11 @@ sub check_chem_formula
     my $formula_component = "[a-zA-Z]{1,2}[0-9.]*";
 
     if( $formula !~ /^\s*($formula_component\s+)*($formula_component)\s*$/ ) {
-        error( "chemical formula '$formula' could not be parsed",
-               $filename, undef,
-               # explanation:
-               "A chemical formula should consist of space-seprated " .
-               "chemical element names\n" .
-               "with optional numeric quantities (e.g. 'C2 H6 O')." );
+        error( "chemical formula '$formula' could not be parsed -- " .
+               "a chemical formula should consist of space-seprated " .
+               "chemical element names with optional numeric " .
+               "quantities (e.g. 'C2 H6 O').", $filename );
+
     }
 }
 
