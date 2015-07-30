@@ -129,7 +129,7 @@ void cif_start_datablock( CIF * volatile cif, const char *name,
 }
 
 void cif_start_save_frame( CIF * volatile cif, const char *name,
-                          cexception_t *ex )
+                           cexception_t *ex )
 {
     DATABLOCK *save_frame = NULL;
 

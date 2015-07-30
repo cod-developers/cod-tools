@@ -93,7 +93,7 @@ int loop_start = 0;
 }
 
 %token <s> _DATA_
-%token _SAVE_HEAD
+%token <s> _SAVE_HEAD
 %token _SAVE_FOOT
 %token <s> _TAG
 %token _LOOP_
@@ -371,7 +371,15 @@ loop_values
 ;
 
 save_block
-	:	_SAVE_HEAD save_item_list _SAVE_FOOT
+	: _SAVE_HEAD
+        {
+            cif_start_save_frame( cif_cc->cif, /* name = */ $1, px );
+        }
+        save_item_list
+        _SAVE_FOOT
+        {
+            cif_finish_save_frame( cif_cc->cif );
+        }
 ;
 
 cif_value
