@@ -22,6 +22,7 @@
 #include <cexceptions.h>
 #include <cxprintf.h>
 #include <stringx.h>
+#include <yy.h>
 
 void *cif_subsystem = &cif_subsystem;
 
@@ -52,15 +53,15 @@ struct CIF {
                                   datablock_list; SHOULD not be freed
                                   when the CIF structure is deleted.*/
 
+    DATABLOCK *current_datablock; /* points to the data block (which
+                                     can represent a data block or a
+                                     save frame) that is currently
+                                     parsed; SHOULD not be freed when
+                                     the CIF structure is deleted.*/
+
     CIFMESSAGE *messages; /* A linked list with error and warning
                              message data. */
 };
-
-CIF *new_cif( cexception_t *ex )
-{
-    CIF *cif = callocx( 1, sizeof(CIF), ex );
-    return cif;
-}
 
 void delete_cif( CIF *cif )
 {
@@ -69,6 +70,12 @@ void delete_cif( CIF *cif )
         delete_cifmessage( cif->messages );
         freex( cif );
     }
+}
+
+CIF *new_cif( cexception_t *ex )
+{
+    CIF *cif = callocx( 1, sizeof(CIF), ex );
+    return cif;
 }
 
 void create_cif( CIF * volatile *cif, cexception_t *ex )
@@ -118,6 +125,30 @@ void cif_start_datablock( CIF * volatile cif, const char *name,
     } else {
         cif->datablock_list = cif->last_datablock = new_block;
     }
+    cif->current_datablock = new_block;
+}
+
+void cif_start_save_frame( CIF * volatile cif, const char *name,
+                           cexception_t *ex )
+{
+    DATABLOCK *save_frame = NULL;
+
+    assert( cif );
+    assert( cif->current_datablock );
+
+    if( cif->current_datablock != cif->last_datablock ) {
+        yyerror( "save frames may not be nested" );
+    }
+
+    save_frame = datablock_start_save_frame( cif->current_datablock, name, ex );
+
+    cif->current_datablock = save_frame;
+}
+
+void cif_finish_save_frame( CIF * volatile cif )
+{
+    assert( cif );
+    cif->current_datablock = cif->last_datablock;
 }
 
 void cif_dump( CIF * volatile cif )
@@ -154,7 +185,7 @@ void cif_list_tags( CIF * volatile cif )
 }
 
 ssize_t cif_tag_index( CIF * cif, char *tag ) {
-    return datablock_tag_index( cif->last_datablock, tag );
+    return datablock_tag_index( cif->current_datablock, tag );
 }
 
 void cif_insert_value( CIF * cif, char *tag,
@@ -164,7 +195,7 @@ void cif_insert_value( CIF * cif, char *tag,
     assert( cif );
 
     if( cif->datablock_list ) {
-        datablock_insert_value( cif->last_datablock, tag, value, vtype, ex );
+        datablock_insert_value( cif->current_datablock, tag, value, vtype, ex );
     } else {
         cexception_raise( ex, CIF_NO_DATABLOCK_ERROR,
                           "attempt to insert a CIF value before a "
@@ -176,7 +207,7 @@ void cif_overwrite_value( CIF * cif, ssize_t tag_nr, ssize_t val_nr,
                           char *value, datablock_value_type_t vtype )
 {
     assert( cif );
-    datablock_overwrite_value( cif->last_datablock, tag_nr, val_nr,
+    datablock_overwrite_value( cif->current_datablock, tag_nr, val_nr,
         value, vtype );
 }
 
@@ -185,7 +216,7 @@ void cif_start_loop( CIF *cif, cexception_t *ex )
     assert( cif );
 
     if( cif->datablock_list ) {
-        datablock_start_loop( cif->last_datablock );
+        datablock_start_loop( cif->current_datablock );
     } else {
         cexception_raise( ex, CIF_NO_DATABLOCK_ERROR,
                           "attempt to start a CIF loop before a "
@@ -198,7 +229,7 @@ void cif_finish_loop( CIF *cif, cexception_t *ex )
     assert( cif );
 
     if( cif->datablock_list ) {
-        datablock_finish_loop( cif->last_datablock, ex );
+        datablock_finish_loop( cif->current_datablock, ex );
     } else {
         cexception_raise( ex, CIF_NO_DATABLOCK_ERROR,
                           "attempt to finish a CIF loop before a "
@@ -210,7 +241,7 @@ void cif_push_loop_value( CIF * cif, char *value, datablock_value_type_t vtype,
                           cexception_t *ex )
 {
     if( cif->datablock_list ) {
-        datablock_push_loop_value( cif->last_datablock, value, vtype, ex );
+        datablock_push_loop_value( cif->current_datablock, value, vtype, ex );
     } else {
         cexception_raise( ex, CIF_NO_DATABLOCK_ERROR,
                           "attempt to push a CIF loop value before a "
