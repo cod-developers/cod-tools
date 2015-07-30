@@ -78,6 +78,11 @@ struct DATABLOCK {
                                       datablock; should not be
                                       bested */
 
+    struct DATABLOCK *last_save_frame; /* Last save frame in the
+                                          save_frames list; SHOULD NOT
+                                          be freed when the SATABLOCK
+                                          structure is deleted. */
+
     struct DATABLOCK *next; /* Data blocks can be linked in a linked-list. */
 };
 
@@ -155,11 +160,19 @@ void create_datablock( DATABLOCK * volatile *datablock, const char *name,
 DATABLOCK *datablock_start_save_frame( DATABLOCK *datablock, const char *name,
                                        cexception_t *ex )
 {
+    DATABLOCK *save_frame = NULL;
     assert( datablock );
 
-    datablock->save_frames = new_datablock( name, datablock->save_frames, ex );
+    save_frame = new_datablock( name, datablock->save_frames, ex );
 
-    return datablock->save_frames;
+    if( datablock->last_save_frame ) {
+        datablock->last_save_frame->next = save_frame;
+        datablock->last_save_frame = save_frame;
+    } else {
+        datablock->save_frames = datablock->last_save_frame = save_frame;
+    }
+
+    return save_frame;
 }
 
 void dispose_datablock( DATABLOCK * volatile *datablock )
