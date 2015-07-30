@@ -48,6 +48,9 @@ void delete_datablock_list( DATABLOCK *datablock_list );
 void create_datablock( DATABLOCK * volatile *datablock, const char *name,
                        DATABLOCK *next, cexception_t *ex );
 
+DATABLOCK *datablock_start_save_frame( DATABLOCK *datablock, const char *name,
+                                       cexception_t *ex );
+
 void dispose_datablock( DATABLOCK * volatile *datablock );
 
 DATABLOCK *datablock_next( DATABLOCK *datablock );

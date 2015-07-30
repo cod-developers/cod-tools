@@ -360,6 +360,23 @@ int cif_lexer( FILE *in, cexception_t *ex )
                 yylval.s = clean_string( token + 5, /* is_textfield = */ 0,
                                          ex );
                 return _DATA_;
+            } else if( starts_with_keyword( "save_", token )) {
+                /* save frame header or termonator: */
+                if( strlen( token ) == 5 /* strlen( "save_" ) */ ) {
+                    /* This is a save frame terminator: */
+                    if( yy_flex_debug ) {
+                        printf( ">>> SAVE_\n" );
+                    }
+                    yylval.s = NULL;
+                    return _SAVE_FOOT;
+                } else {
+                    if( yy_flex_debug ) {
+                        printf( ">>> SAVE_: '%s'\n", token + 5 );
+                    }
+                    yylval.s = clean_string( token + 5, /* is_textfield = */ 0,
+                                             ex );
+                    return _SAVE_HEAD;
+                }
             } else if( starts_with_keyword( "loop_", token )) {
                 /* loop header: */
                 if( yy_flex_debug ) {
