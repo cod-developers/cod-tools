@@ -163,7 +163,7 @@ DATABLOCK *datablock_start_save_frame( DATABLOCK *datablock, const char *name,
     DATABLOCK *save_frame = NULL;
     assert( datablock );
 
-    save_frame = new_datablock( name, datablock->save_frames, ex );
+    save_frame = new_datablock( name, NULL, ex );
 
     if( datablock->last_save_frame ) {
         datablock->last_save_frame->next = save_frame;
