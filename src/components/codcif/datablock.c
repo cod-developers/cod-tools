@@ -106,7 +106,7 @@ void delete_datablock( DATABLOCK *datablock )
         freex( datablock->types );
         freex( datablock->loop_first );
         freex( datablock->loop_last );
-        delete_datablock( datablock->save_frames );
+        delete_datablock_list( datablock->save_frames );
 	freex( datablock );
     }
 }
@@ -150,6 +150,16 @@ void create_datablock( DATABLOCK * volatile *datablock, const char *name,
     assert( !(*datablock) );
 
     *datablock = new_datablock( name, next, ex );
+}
+
+DATABLOCK *datablock_start_save_frame( DATABLOCK *datablock, const char *name,
+                                       DATABLOCK *next, cexception_t *ex )
+{
+    assert( datablock );
+
+    datablock->save_frames = new_datablock( name, datablock->save_frames, ex );
+
+    return datablock->save_frames;
 }
 
 void dispose_datablock( DATABLOCK * volatile *datablock )
