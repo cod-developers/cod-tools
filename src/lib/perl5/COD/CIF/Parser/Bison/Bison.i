@@ -67,12 +67,14 @@ sub parse
         if( defined $datablock ) {
             $datablock = "data_$datablock";
         }
+        my $explanation = $message->{explanation};
+        $explanation = lcfirst $explanation if (defined $explanation);
         my $msg = sprint_message( $message->{program},
                                   $message->{filename},
                                   $datablock,
                                   $message->{status},
                                   $message->{message},
-                                  undef,
+                                  $explanation,
                                   $message->{lineno},
                                   $message->{columnno},
                                   $message->{line} );
