@@ -354,13 +354,13 @@ static int print_loop( DATABLOCK *datablock, ssize_t i )
     return datablock->loop_last[loop];
 }
 
-void datablock_print( DATABLOCK * volatile datablock )
+void datablock_print_frame( DATABLOCK * volatile datablock, char *keyword )
 {
     ssize_t i;
 
     assert( datablock );
 
-    printf( "data_%s\n",  datablock->name );
+    printf( "%s%s\n",  keyword, datablock->name );
 
     for( i = 0; i < datablock->length; i++ ) {
 	if( datablock->in_loop[i] < 0 ) { /* tag is not in a loop */
@@ -371,6 +371,17 @@ void datablock_print( DATABLOCK * volatile datablock )
 	    i = print_loop( datablock, i );
 	}
     }
+
+    DATABLOCK *frame;
+    for( frame = datablock->save_frames; frame; frame = frame->next ) {
+        datablock_print_frame( frame, "save_" );
+        puts( "save_" );
+    }
+}
+
+void datablock_print( DATABLOCK * volatile datablock )
+{
+    datablock_print_frame( datablock, "data_" );
 }
 
 void datablock_list_tags( DATABLOCK * volatile datablock )
