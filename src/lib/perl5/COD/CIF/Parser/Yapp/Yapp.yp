@@ -653,7 +653,6 @@ sub _Error
                                   $line, $pos, $line_content );
 
     push $_[0]->YYData->{ERROR_MESSAGES}, $message;
-    print STDERR $message if $_[0]->{USER}{OPTIONS}{print_error_messages};
 }
 
 sub _Warning
@@ -684,8 +683,7 @@ sub _Warning
         }
 
         delete $_[0]->YYData->{ERRMSG};
-        push   $_[0]->YYData->{ERROR_MESSAGES}, $message;
-        print STDERR $message if $_[0]->{USER}{OPTIONS}{print_error_messages};
+        push   $_[0]->YYData->{WARNING_MESSAGES}, $message;
     }
 }
 
@@ -1059,14 +1057,15 @@ sub Run
     }
 
     # Default value of print_error_messages is to be discussed
-    if (!defined $self->{USER}{OPTIONS}{print_error_messages}) {
-        $self->{USER}{OPTIONS}{print_error_messages} = 1;
+    if (!defined $self->{USER}{OPTIONS}{no_print}) {
+        $self->{USER}{OPTIONS}{no_print} = 0;
     }
 
     $filename = "-" unless $filename;
 
     $self->{USER}{FILENAME} = $filename;
     $self->{USER}->{CIFfile} = undef;
+    $self->YYData->{WARNING_MESSAGES} = [];
     $self->YYData->{ERROR_MESSAGES} = [];
     $self->YYData->{ERRCOUNT} = 0;
 
@@ -1080,7 +1079,7 @@ sub Run
                                           "could not open file", lcfirst $! );
             push $self->YYData->{ERROR_MESSAGES}, $message;
             $self->YYData->{ERRCOUNT}++;
-            print STDERR $message if $self->{USER}{OPTIONS}{print_error_messages};
+            die $message if $self->{USER}{OPTIONS}{no_print} == 0;
             return [];
         }
     }
@@ -1111,6 +1110,19 @@ sub Run
         }
         undef $COD::CIF::Parser::Yapp::FILEIN;
     }
+
+    if( $self->{USER}{OPTIONS}{no_print} == 0 ) {
+        print STDERR $_ foreach( @{$self->YYData->{WARNING_MESSAGES}} );
+        my $last_error = pop $self->YYData->{ERROR_MESSAGES};
+        print STDERR $_ foreach( @{$self->YYData->{ERROR_MESSAGES}} );
+        if (defined $last_error) {
+            die $last_error;
+            push $self->YYData->{ERROR_MESSAGES}, $last_error;
+        }
+    }
+    unshift @{$self->YYData->{ERROR_MESSAGES}}, 
+            @{$self->YYData->{WARNING_MESSAGES}};
+
     return $self->{USER}->{CIFfile};
 }
 

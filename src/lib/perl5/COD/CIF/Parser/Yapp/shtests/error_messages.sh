@@ -27,8 +27,7 @@ $script_name =~ s/\.sh$//;
 my $filename = "${script_dir}/${script_name}.inp";
 
 my $parser = new COD::CIF::Parser::Yapp;
-my $data = $parser->Run($filename, { fix_errors => 1,
-                                     print_error_messages => 0 } );
+my $data = $parser->Run($filename, { fix_errors => 1, no_print => 1 } );
 
 foreach(@{$parser->YYData->{ERROR_MESSAGES}}) {
     print $_;
