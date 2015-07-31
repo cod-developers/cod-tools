@@ -35,7 +35,7 @@ my $default_options = {
     'allow_uqstring_brackets' => 0,
     'do_not_unprefix_text' => 0,
     'do_not_unfold_text' => 0,
-    'print_error_messages' => 1,
+    'no_print' => 0,
     'reporter' => undef,
     'parser' => 'c'
 };
