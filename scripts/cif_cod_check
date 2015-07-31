@@ -404,23 +404,29 @@ for my $filename (@ARGV) {
 
     my( $data, $error_count );
 
+  eval {
     if( $use_parser eq "perl" ) {
         my $parser = new COD::CIF::Parser::Yapp;
         if( $useReporter == 1 )
         {
-            $data = $parser->Run( $filename, 
-                                  { reporter => \&parser_reporter } );
+            $data = $parser->Run( $filename,
+                                  { reporter => \&parser_reporter },
+                                    no_print => 1 );
         } else {
-            $data = $parser->Run($filename);
+            $data = $parser->Run($filename, {no_print => 1});
         }
+
+        print STDERR $_ foreach(@{$parser->YYData->{ERROR_MESSAGES}});
+
         if( defined $parser->YYData->{ERRCOUNT} ) {
-            $error_count = $parser->YYData->{ERRCOUNT};
+            $error_count = $parser->YYData->{ERRCOUNT};;
         }
     } else {
         require COD::CIF::Parser::Bison;
         ( $data, $error_count ) = COD::CIF::Parser::Bison::parse( $filename );
     }
-    
+  };
+
     if( defined $error_count && $error_count > 0 ) {
         error( $0, $filename, undef, "$error_count error(s) "
              . "encountered while parsing CIF data", undef );

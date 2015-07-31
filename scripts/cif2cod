@@ -187,22 +187,21 @@ my $first = 1;
 
 for my $filename (@ARGV) {
 
-    my( $data, $error_count );
+    my( $data, $error_count, $errors );
+    $options{no_print} = 1;
 
     if( $use_parser eq "perl" ) {
         my $parser = new COD::CIF::Parser::Yapp;
-
         $data = $parser->Run($filename, \%options);
-
-        if( defined $parser->YYData->{ERRCOUNT} ) {
-            $error_count = $parser->YYData->{ERRCOUNT};
-        }
+        $error_count = $parser->YYData->{ERRCOUNT};
+        $errors = $parser->YYData->{ERROR_MESSAGES};
     } else {
         require COD::CIF::Parser::Bison;
-        ( $data, $error_count )  = COD::CIF::Parser::Bison::parse($filename, \%options );
+        ( $data, $error_count, $errors )  = COD::CIF::Parser::Bison::parse($filename, \%options );
     }
+    print STDERR $_ foreach @$errors;
 
-    if( defined $error_count && $error_count > 0 ) {
+    if( $error_count > 0 ) {
         error( $0, $filename, undef,
                "$error_count error(s) encountered while parsing", undef );
         die unless $options{continue_on_errors};

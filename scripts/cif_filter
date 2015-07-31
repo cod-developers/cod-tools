@@ -444,7 +444,7 @@ if( defined $biblio ) {
         my( $parser );
         my %biblio_options = ( fix_errors => 1 );
 
-        # For now, always use Perl parser for biblioraphies, since C
+        # For now, always use Perl parser for bibliographies, since C
         # parser is not (yet) reenterable :(:
         ## if( $use_parser eq "perl" ) {
         if( 1 ) {
@@ -485,7 +485,7 @@ if( defined $biblio ) {
 for my $filename (@ARGV) {
 
     my( $parser, $data, $error_count );
-    my %options;
+    my %options = (no_print => 1);
 
     if( $fix_errors ) {
         $options{fix_errors} = 1;
@@ -499,9 +499,9 @@ for my $filename (@ARGV) {
     }
 
     $data = $parser->Run( $filename, \%options );
+    print STDERR $_ foreach @{$parser->YYData->{ERROR_MESSAGES}};
 
-    if( defined $parser->YYData->{ERRCOUNT} &&
-        $parser->YYData->{ERRCOUNT} > 0 ) {
+    if( $parser->YYData->{ERRCOUNT} > 0 ) {
         print STDERR "$0: ", $parser->YYData->{ERRCOUNT},
         " error(s) encountered while parsing file '${filename}'\n";
         die;
