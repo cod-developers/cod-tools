@@ -52,7 +52,7 @@ eval 'exec perl -x $0 ${1+"$@"}'
 use strict;
 use File::Basename;
 use COD::AtomBricks qw(build_bricks get_atom_index get_search_span);
-use COD::CIF::Parser::Yapp;
+use COD::CIF::Parser qw(parse_cif);
 use COD::CIF::Data qw(get_cell get_symmetry_operators);
 use COD::CIF::Data::SymmetryGenerator qw( atoms_coincide
                                           test_bond
@@ -518,23 +518,17 @@ if( $cif_header_file ) {
 
 for my $filename (@ARGV) {
 
-    my ( $data, $error_count );
-    if( $use_parser eq "perl" ) {
-        my $parser = new COD::CIF::Parser::Yapp;
-        $data = $parser->Run($filename);
-        if( defined $parser->YYData->{ERRCOUNT} ) {
-            $error_count = $parser->YYData->{ERRCOUNT};
-        }
-    } else {
-        require COD::CIF::Parser::Bison;
-        ( $data, $error_count )  = COD::CIF::Parser::Bison::parse($filename);
-    }
+    my $options = { 'parser' => $use_parser, 'no_print' => 1 };
+    my ( $data, $err_count, $messages ) = parse_cif( $filename, $options );
 
-    if( defined $error_count && $error_count > 0 ) {
-        print STDERR "$0: ", $error_count,
-        " error(s) encountered while parsing file '${filename}'\n";
-        die;
+    if ( $err_count > 0 ) {
+        print STDERR $_ foreach ( @$messages );
+        error( $0, $filename, undef, "$err_count error(s) "
+             . "encountered while parsing the file", undef );
+        next;
     }
+#        die;
+#    }
 
     if( !ref $data ||
         !@$data || !defined $data->[0] || !defined $data->[0]{name} ) {
@@ -545,7 +539,7 @@ for my $filename (@ARGV) {
     canonicalize_all_names( $data );
 
     if( $cif_header ) {
-	print $cif_header;
+        print $cif_header;
     }
 
     for my $dataset (@$data) {
@@ -576,10 +570,10 @@ for my $filename (@ARGV) {
                      "results may be incorrect" );
         }
 
-	    my $molecule_id = 0;
-	    my $dataset_name = $dataset->{name};
+        my $molecule_id = 0;
+        my $dataset_name = $dataset->{name};
 
-	    my $unique_molecules = get_molecules( $covalent_sensitivity,
+        my $unique_molecules = get_molecules( $covalent_sensitivity,
                                                   $filename, $dataset_name,
                                                   $sym_data,
                                                   $dataset,
@@ -798,7 +792,7 @@ for my $filename (@ARGV) {
 
                 $molecule_id++;
             }
-	}
+        }
     }
 }
 
@@ -1296,12 +1290,12 @@ sub translate_atom
         $new_atom->{translation}[0] == 0 &&
         $new_atom->{translation}[1] == 0 &&
         $new_atom->{translation}[2] == 0 ) {
-	$new_atom->{name} = $new_atom->{site_label};
+        $new_atom->{name} = $new_atom->{site_label};
     } else {
-	$new_atom->{name} =
-	    $new_atom->{site_label} . "_" .
-	    $new_atom->{symop_id} . "_" .
-	    $new_atom->{translation_id};
+        $new_atom->{name} =
+            $new_atom->{site_label} . "_" .
+            $new_atom->{symop_id} . "_" .
+            $new_atom->{translation_id};
     }
 
     return $new_atom;
@@ -2437,7 +2431,7 @@ sub find_molecules($$$$$$$$)
     foreach my $initial_atom (@$initial_atoms)
     {
         if ((not exists $used_originals{$initial_atom->{cell_label}})) {
-	    print STDERR ">>>> starting new molecule\n" if $debug;
+            print STDERR ">>>> starting new molecule\n" if $debug;
 
             ## if( ! $expand_to_p1 &&
             ##     $initial_atom->{cell_label} ne $initial_atom->{site_label} ) {
@@ -2503,7 +2497,7 @@ sub find_molecule($$$$$$$$$$$)
         map { modulo_1($_) } @{$current_atom->{coordinates_fract}};
 
     my $atom_in_unit_cell_coords_ortho =
-	symop_vector_mul( $current_atom->{f2o}, \@current_coords_fract_modulo_1 );
+        symop_vector_mul( $current_atom->{f2o}, \@current_coords_fract_modulo_1 );
 
     my $current_translation = translation( $current_atom->{coordinates_fract},
                                            \@current_coords_fract_modulo_1 );
@@ -2528,7 +2522,7 @@ sub find_molecule($$$$$$$$$$$)
     }; # end no warnings
 
     $used_originals->{$current_atom->{cell_label}} =
-	$current_atom->{cell_label};
+        $current_atom->{cell_label};
 
     do {
         no warnings;
@@ -2583,11 +2577,11 @@ sub find_molecule($$$$$$$$$$$)
     }; # end no warnings
 
     print STDERR
-	">>> considering atom $current_atom->{name} " .
-        "(@{$atom_in_unit_cell_coords_ortho}) " .
-	"($current_atom->{cell_label}/" .
-	"$current_atom->{symop_id}/$current_atom->{translation_id})\n"
-	if $debug;
+        ">>> considering atom $current_atom->{name} " .
+            "(@{$atom_in_unit_cell_coords_ortho}) " .
+        "($current_atom->{cell_label}/" .
+        "$current_atom->{symop_id}/$current_atom->{translation_id})\n"
+        if $debug;
 
     push( @neighbors, $current_atom );
 
@@ -2610,10 +2604,10 @@ sub find_molecule($$$$$$$$$$$)
     }
 
     if( $debug ) {
-	local $" = ", ";
-	print STDERR
-	    ">>> now scanning its distinct neighbours " .
-	    "around @{$atom_in_unit_cell_coords_ortho}:\n";
+        local $" = ", ";
+        print STDERR
+            ">>> now scanning its distinct neighbours " .
+            "around @{$atom_in_unit_cell_coords_ortho}:\n";
     };
 
     my $nbumps = 0;
@@ -2624,14 +2618,14 @@ sub find_molecule($$$$$$$$$$$)
     for $k ($min_k .. $max_k) {
         for my $sym_atom ( @{$bricks->{atoms}[$i][$j][$k]} ) {
             my $sym_atom_coords_ortho = $sym_atom->{coordinates_ortho};
-	    my $new_label = $current_atom->{name};
-	    my $sym_label = $sym_atom->{name};
+            my $new_label = $current_atom->{name};
+            my $sym_label = $sym_atom->{name};
 
-	    if( $current_atom->{name} eq $sym_atom->{name} ) {
-		# We have found the same atom, no need to add bond or
-		# neighbour
-		next;
-	    }
+            if( $current_atom->{name} eq $sym_atom->{name} ) {
+            # We have found the same atom, no need to add bond or
+            # neighbour
+            next;
+            }
 
             my $dist = distance( $atom_in_unit_cell_coords_ortho,
                                  $sym_atom_coords_ortho );
