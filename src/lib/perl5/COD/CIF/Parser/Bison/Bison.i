@@ -103,7 +103,7 @@ sub parse
     unshift @errors, @warnings;
 
     if( wantarray ) {
-        return( $data, $nerrors, \@warnings );
+        return( $data, $nerrors, \@errors );
     } else {
         return $data;
     }
