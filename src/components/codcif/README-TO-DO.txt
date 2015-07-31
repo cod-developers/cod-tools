@@ -31,4 +31,7 @@ Problems with error reporting:
 
 ciftest8.cif:
 - inaccurate line information is reported and inacurate line with an
-  error tex tis printed out;
+  error text is printed out;
+
+-- Error messages containing "incorrect CIF syntax" should probably be revised
+   and changed into more informative ones.
