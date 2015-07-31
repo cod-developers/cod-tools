@@ -14,7 +14,6 @@ package COD::CIF::Parser;
 use strict;
 use warnings;
 use COD::CIF::Parser::Yapp;
-use COD::CIF::Parser::Bison;
 use COD::UserMessage qw( sprint_message warning error );
 
 require Exporter;
@@ -61,6 +60,7 @@ sub parse_cif
 
     my $parser;
     if ( $options->{parser} eq 'c' ) {
+        use COD::CIF::Parser::Bison;
         $parser = new COD::CIF::Parser::Bison;
     } elsif ( $options->{parser} eq 'perl' ) {
         $parser = new COD::CIF::Parser::Yapp;
