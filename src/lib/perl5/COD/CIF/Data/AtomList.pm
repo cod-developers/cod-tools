@@ -130,7 +130,7 @@ sub extract_atom
         } elsif( $options->{continue_on_unknown_atom_type} ) {
             warning( $0, $filename, $dataname,
                      "could not determine atom type for atom " .
-                     "'$values->{_atom_site_label}[$number]'" );
+                     "'$values->{_atom_site_label}[$number]'", undef );
         } else {
             die( "could not determine atom type for atom " .
                  "'$values->{_atom_site_label}[$number]'" );
@@ -219,13 +219,13 @@ sub atom_array_from_cif($$$@)
         $atom_site_tag = "_atom_site_type_symbol";
 
         error( $0, $filename, $dataname,
-               "_atom_site_label tag was not found. " .
-               "A serial number will be appended " .
+               "_atom_site_label tag was not found",
+               "a serial number will be appended " .
                "to _atom_site_type_symbol to make atom labels" );
     } else {
         error( $0, $filename, $dataname,
                "neither _atom_site_type_symbol nor _atom_site_label " .
-               "were found" );
+               "were found", undef );
         return undef;
     }
 
@@ -276,9 +276,9 @@ sub atom_array_from_cif($$$@)
                 $atom_info->{chemical_type} . "'";
 
             if( $options->{continue_on_errors} ) {
-                warning( $0, $filename, $dataname, $message );
+                warning( $0, $filename, $dataname, $message, undef );
             } else {
-                error( $0, $filename, $dataname, $message );
+                error( $0, $filename, $dataname, $message, undef );
                 exit(1);
             }
         }
@@ -333,7 +333,7 @@ sub uniquify_atom_names($$$$)
         } else {
             push( @{$used_labels{$label}{atoms}}, $atom_copy );
             warning( $0, $filename, $dataname,
-                     "atom label '$label' is not unique" );
+                     "atom label '$label' is not unique", undef );
 
             $labels_to_be_renamed{$label} ++;
         }
@@ -353,12 +353,12 @@ sub uniquify_atom_names($$$$)
                 if( $id > $max_label_suffix ) {
                     error( $0, $filename, $dataname,
                            "could not generate unique atom name for ".
-                           "atom '$label', even after $id iterations" );
+                           "atom '$label', even after $id iterations", undef );
                 }
                 my $new_label = $label . "_" . $id;
                 warning( $0, $filename, $dataname,
                          "renaming atom '$label' " .
-                         "to '" . $new_label . "'" );
+                         "to '" . $new_label . "'", undef );
                 $renamed_atom->{name}       = $new_label;
                 $renamed_atom->{site_label} = $new_label;
                 $used_labels{$new_label}{count} ++;

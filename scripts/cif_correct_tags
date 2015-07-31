@@ -121,13 +121,13 @@ for my $filename (@ARGV) {
         ( $data, $error_count ) =
             COD::CIF::Parser::Bison::parse( $filename );
     } else {
-        error( $0, undef, undef, "unknown parser: $use_parser" );
+        error( $0, undef, undef, "unknown parser '$use_parser'", undef );
         die;
     }
 
     if( defined $error_count && $error_count > 0 ) {
-        error( $0, $filename, undef,
-               "$error_count error(s) encountered while parsing CIF data" );
+        error( $0, $filename, undef, $error_count
+             . ' error(s) encountered while parsing CIF data', undef );
         exit -1; # Should go on to the next file?
     }
 
@@ -151,7 +151,7 @@ for my $filename (@ARGV) {
                     "as specified in the replacement file " .
                     "'$replacement_list'.";
                     push (@insert_reports, $report_msg);
-                    note( $0, $filename, $dataname, $report_msg );
+                    note( $0, $filename, $dataname, $report_msg, undef );
                 }
             }
             if( $tag =~ /^_+(_[^_].*)$/ ) {
@@ -163,7 +163,7 @@ for my $filename (@ARGV) {
                     my $report_msg = "'$old_tag' tag replaced with " .
                                      "'$correct' tag.";
                     push (@insert_reports, $report_msg);
-                    note( $0, $filename, $dataname, $report_msg );
+                    note( $0, $filename, $dataname, $report_msg, undef );
                 }
             }
         }

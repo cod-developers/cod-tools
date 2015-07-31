@@ -91,7 +91,7 @@ my %options;
 
 foreach( @ARGV ) {
 
-    my( $data, $errcount );
+    my( $data, $errcount, $errors );
     if( $input_json ) {
         local $SIG{__DIE__} =
             sub { my( $msg ) = @_;
@@ -103,20 +103,19 @@ foreach( @ARGV ) {
         close( $inp );
         $errcount = 0;
     } else {
+        $options{no_print} = 1;
         if( $use_parser eq 'perl' ) {
             my $parser = new COD::CIF::Parser::Yapp;
             $data = $parser->Run( $_, \%options );
-            if( defined $parser->YYData->{ERRCOUNT} ) {
-                $errcount = $parser->YYData->{ERRCOUNT};
-            } else {
-                $errcount = 0;
-            }
+            $errcount = $parser->YYData->{ERRCOUNT};
+            $errors = $parser->YYData->{ERROR_MESSAGES};
         } elsif( $use_parser eq 'c' ) {
             require COD::CIF::Parser::Bison;
-            ( $data, $errcount ) = COD::CIF::Parser::Bison::parse( $_, \%options );
+            ( $data, $errcount, $errors ) = COD::CIF::Parser::Bison::parse( $_, \%options );
         } else {
             die( "$0: unknown parser: $use_parser" );
         }
+        print STDERR $_ foreach @$errors;
     }
 
     if(      $output_format eq 'json' ) {

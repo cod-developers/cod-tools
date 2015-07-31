@@ -27,7 +27,7 @@ my $filename = "${script_dir}/${script_name}.inp";
 
 my $parser = new COD::CIF::Parser::Yapp;
 
-my $data = $parser->Run($filename);
+my $data = $parser->Run($filename, {no_print => 1} );
 
 foreach my $datablock (@$data) {
     print $datablock->{name} . "\n";

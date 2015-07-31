@@ -196,8 +196,7 @@ foreach my $filename ( @ARGV ) {
     my $dataname = prefix_dataname($dataset->{name});
 
     if ( $status ) {
-        warning( $0, $filename, $dataname,
-                "$msg -- dataset will be skipped");
+        warning( $0, $filename, $dataname, $msg, 'dataset will be skipped' );
         next;
     }
 
@@ -212,7 +211,7 @@ foreach my $filename ( @ARGV ) {
     if ( $@ ) {
         error( $0, $filename, $dataname,
                "essential tags for orthogonal matrix computation not " .
-               "present -- dataset will be skipped" );
+               "present", "dataset will be skipped" );
         next;
     }
 
@@ -237,7 +236,7 @@ foreach my $filename ( @ARGV ) {
 
     if ( $@ ) {
         error( $0, $filename, $dataname,
-               "unable to generate symmetrically equivalent atoms -- " .
+               "unable to generate symmetrically equivalent atoms",
                "dataset will be skipped" );
         next;
     }
@@ -291,7 +290,7 @@ sub get_atoms {
     } else {
         error( $0, $filename, $dataname,
                "neither '_atom_site_label' nor '_atom_site_type_symbol' " .
-               "present -- dataset will not be processed" );
+               "present", "dataset will not be processed" );
         return undef;
     }
 
@@ -336,15 +335,15 @@ sub get_atoms {
             if( ! exists $COD::AtomProperties::atoms{$atom->{chemical_type}}) {
                 if ( $include_unknown_types ) {
                     warning( $0, $filename, $dataname,
-                         "unable to determine chemical type of atom with " . 
-                         "_atom_site_label '" . $atom->{name} . "'. " . 
-                         "Atom chemical type will be set to 'UN'" );
+                         "unable to determine chemical type of atom with " .
+                         "_atom_site_label '" . $atom->{name} . "'",
+                         "atom chemical type will be set to 'UN'" );
                     $atom->{chemical_type} = "UN"
                 } else {
                     warning( $0, $filename, $dataname,
                          "unable to determine chemical type of atom with " . 
-                         "_atom_site_label '" . $atom->{name} . "'. " .
-                         'Atom will be removed' );
+                         "_atom_site_label '" . $atom->{name} . "'",
+                         'atom will be removed' );
                     next;
                 }
             }

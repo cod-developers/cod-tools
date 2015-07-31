@@ -223,7 +223,9 @@ sub load_cif_file
     my ( $file ) = @_;
 
     my $parser = new COD::CIF::Parser::Yapp;
-    my @data = @{$parser->Run($file)};
+    my @data = @{$parser->Run($file, {no_print => 1})};
+
+    print STDERR $_ foreach @{$parser->YYData->{ERROR_MESSAGES}};
 
     if( defined $parser->YYData->{ERRCOUNT} && $parser->YYData->{ERRCOUNT} > 0 ) {
         print STDERR "$0: ", $parser->YYData->{ERRCOUNT},
