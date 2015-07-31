@@ -253,7 +253,7 @@ sub cif2cod
         };
         if( $@ ) {
             print_message( $0, $filename, "data_$dataname", undef,
-                           "summary formula could not be calculated" );
+                           "summary formula could not be calculated", undef );
             die unless $continue_on_errors;
         }
 
@@ -539,7 +539,7 @@ sub check_chem_formula
     if( $formula !~ /^\s*($formula_component\s+)*($formula_component)\s*$/ ) {
         print_message( $0, $filename, "data_$dataname", undef,
                        "chemical formula '$formula' could not be " .
-                       "parsed -- a chemical formula should consist " .
+                       "parsed", "a chemical formula should consist " .
                        "of space-seprated chemical element names with " .
                        "optional numeric quantities (e.g. 'C2 H6 O')." );
         die unless $continue_on_errors;
@@ -622,14 +622,14 @@ sub get_and_check_tag
                 unless( $ignore_errors ) {
                     print_message( $0, $filename, undef, undef,
                                    "tag '$tag' does not have value " .
-                                   "number $index" );
+                                   "number $index", undef );
                     die unless $continue_on_errors;
                 }
             }
         } else {
             unless( $ignore_errors ) {
                 print_message( $0, $filename, undef, undef,
-                               "tag '$tag' is absent" );
+                               "tag '$tag' is absent", undef );
                 die unless $continue_on_errors;
             }
         }
@@ -668,7 +668,7 @@ sub get_spacegroup_info
     }
     if( !defined $spacegroup ) {
         print_message( $0, $filename, "data_" . $dataset->{name}, undef,
-                       "no spacegroup information found" );
+                       "no spacegroup information found", undef );
         die unless $continue_on_errors;
     } else {
         $spacegroup =~ s/^\s*|\s*$//g;
@@ -695,7 +695,7 @@ sub get_spacegroup_Hall_symbol
     }
     if( !defined $spacegroup ) {
         print_message( $0, $filename, "data_" . $dataset->{name}, undef,
-                       "no Hall spacegroup symbol found" );
+                       "no Hall spacegroup symbol found", undef );
         die unless $continue_on_errors;
     } else {
         $spacegroup =~ s/^\s*|\s*$//g;

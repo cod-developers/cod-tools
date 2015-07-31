@@ -333,7 +333,7 @@ sub get_alternatives
             warning( $0, $filename, $dataname,
                      "atoms " . join( ", ", map( "'$_'", @names ) ) .
                      " share the same site, but the sum of their " .
-                     "occupancies is $occupancy_sum" );
+                     "occupancies is $occupancy_sum", undef );
             next;
         }
         my $group_nr = 1;
@@ -489,7 +489,7 @@ sub mark_disorder
             my $msg = "disorder assembly '.' was renamed to " .
                       "'$rename_dot_assembly_with'";
             push( @messages, $msg );
-            note( $0, $filename, $dataname, $msg );
+            note( $0, $filename, $dataname, $msg, undef );
         }
 
         for my $assembly (@new_assemblies) {
@@ -500,14 +500,14 @@ sub mark_disorder
                       " were marked as alternatives";
             push( @messages, $msg );
             if( $options->{report_marked_disorders} ) {
-                note( $0, $filename, $dataname, $msg );
+                note( $0, $filename, $dataname, $msg, undef );
             }
         }
 
         if( @new_assemblies > 0 ) {
             note( $0, $filename, $dataname,
                   scalar( @new_assemblies ) . " site(s) " .
-                  "were marked as disorder assemblies" );
+                  "were marked as disorder assemblies", undef );
         }
 
         my $atom_site_tag;

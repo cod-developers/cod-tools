@@ -110,13 +110,13 @@ my @extra_tags = ();
 if( $extra_tag_file ) {
     unless( open( EXTRA, "$extra_tag_file" ) ) {
         error( $0, $extra_tag_file, undef, "could not open tag list "
-             . "'$extra_tag_file' for reading -- " . lcfirst($!) );
+             . "'$extra_tag_file' for reading",  lcfirst($!) );
         exit 1;
     }
     @extra_tags = map {s/\s//g;$_} map {split} grep /^\s*_/, <EXTRA>;
     unless( close( EXTRA ) ) {
         error( $0, $extra_tag_file, undef, "error while closing file "
-                                  . "'$extra_tag_file' after reading" );
+                           . "'$extra_tag_file' after reading", undef );
         exit 1;
     }
 
@@ -138,14 +138,14 @@ my %cif_tags_lc = map {(lc($_),$_)} @dictionary_tags;
 if( defined $cif_header_file ) {
     unless( open( HEADER, "$cif_header_file" ) ) {
         error( $0, $cif_header_file, undef, "could not open CIF header file "
-                       . "'$cif_header_file' for reading -- " . lcfirst($!) );
+                       . "'$cif_header_file' for reading" , lcfirst($!) );
         exit 1;
     }
     local $/; # enable "slurp" mode: read the whole header file.
     $cif_comment_header = <HEADER>;
     unless( close( HEADER ) ) {
         error( $0, $cif_header_file, undef, 'error while closing file '
-                                  . "'$cif_header_file' after reading" );
+                           . "'$cif_header_file' after reading", undef );
         exit 1;
     }
 }
@@ -158,12 +158,12 @@ my @data = @{$parser->Run($filename)};
 
 if( defined $parser->YYData->{ERRCOUNT} && $parser->YYData->{ERRCOUNT} > 0 ) {
     error( $0, $filename, undef, $parser->YYData->{ERRCOUNT}
-         . ' error(s) encountered while parsing the CIF file' );
+         . ' error(s) encountered while parsing the CIF file', undef );
     exit 1;
 }
 
 if( !@data || !defined $data[0] || !defined $data[0]->{name} ) {
-    warning( $0, $filename, undef, "file seems to be empty" );
+    warning( $0, $filename, undef, "file seems to be empty", undef );
     exit( 0 );
 }
 
@@ -219,7 +219,7 @@ for my $dataset (@data) {
     for my $tag (@{$dataset->{tags}}) {
         unless( exists $dictionary_tags{$tag} ) {
             warning( $0, $filename, prefix_dataname($dataset->{name}),
-                     "tag '$tag' is not recognised" );
+                     "tag '$tag' is not recognised", undef );
         }
     }
 

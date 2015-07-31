@@ -31,7 +31,12 @@ my %options;
 
 $options{allow_uqstring_brackets} = 0;
 
-my $data = $parser->Run($filename, \%options);
+my $data;
+eval {
+    $data = $parser->Run($filename, \%options );
+};
+
+print STDERR $@ if $@;
 
 if (!defined $data) {
     print "Unable to parse the CIF file.\n";

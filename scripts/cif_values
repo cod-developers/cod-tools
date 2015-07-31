@@ -17,7 +17,7 @@ use warnings;
 use File::Basename;
 use COD::CIF::Parser::Yapp;
 use COD::CIF::Tags::Manage;
-use COD::UserMessage;
+use COD::UserMessage qw(warning error);
 use COD::SOptions;
 use COD::SUsage;
 
@@ -210,12 +210,12 @@ for my $filename (@ARGV) {
 
     if( defined $error_count && $error_count > 0 ) {
         error( $0, $filename, undef, $error_count
-             . " error(s) encountered while parsing the file" );
+             . ' error(s) encountered while parsing the file', undef );
         die;
     }
 
     if( !@{$data} || !defined $data->[0] || !defined $data->[0]{name} ) {
-        warning( $0, $filename, undef, "file '$filename' seems to be empty" );
+        warning( $0, $filename, undef, 'file seems to be empty', undef );
         next;
     }
 

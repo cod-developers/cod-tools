@@ -27,7 +27,12 @@ my $filename = "${script_dir}/${script_name}.inp";
 
 my $parser = new COD::CIF::Parser::Yapp;
 
-my $data = $parser->Run($filename);
+my $data;
+eval {
+    $data = $parser->Run($filename);
+};
+
+print STDERR $@ if $@;
 
 if (!defined $data) {
     print "Unable to parse the CIF file.\n";

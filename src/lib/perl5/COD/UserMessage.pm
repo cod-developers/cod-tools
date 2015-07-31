@@ -19,11 +19,11 @@ our @EXPORT_OK = qw( debug_note prefix_dataname );
 
 # characters that will be escaped as HTML5 entities
 # '#' symbol is used for starting comment lines
-my %program_escape   = ( '&' => '&amp;',  ':' => '&colon;', '#' => '&num;' );
+my %program_escape   = ( '&' => '&amp;',  ':' => '&colon;' );
 my %filename_escape  = ( '&' => '&amp;', ':' => '&colon;', ' ' => '&nbsp;',
                          '(' => '&lpar;', ')' => '&rpar;' );
 my %datablock_escape = ( '&' => '&amp;', ':' => '&colon;', ' ' => '&nbsp;' );
-my %message_escape   = ( '&' => '&amp;', ':' => '&colon;' ); # ',' => '&comma;'
+my %message_escape   = ( '&' => '&amp;', ':' => '&colon;' );
 
 #==============================================================================
 # Print a message, reporting a program name, file name, data block
@@ -33,19 +33,21 @@ my %message_escape   = ( '&' => '&amp;', ':' => '&colon;' ); # ',' => '&comma;'
 # probably not contain a colon (":") since colon is used to separate
 # different parts of the error message.
 
-sub sprint_message($$$$$@)
+sub sprint_message($$$$$$@)
 {
-    my ( $program, $filename, $datablock, $errlevel,
-         $message, $line, $column, $line_contents ) = @_;
+    my ( $program, $filename, $datablock, $errlevel, $message,
+         $explanation, $line, $column, $line_contents ) = @_;
 
     $message =~ s/\.?\n?$//;
+    $explanation =~ s/\.?\n?$// if defined $explanation;
 
     $program = "perl -e '...'" if ( $program eq '-e' );
 
-    $program   = escape_meta( $program,   \%program_escape   );
-    $filename  = escape_meta( $filename,  \%filename_escape  );
-    $datablock = escape_meta( $datablock, \%datablock_escape );
-    $message   = escape_meta( $message,   \%message_escape   );
+    $program     = escape_meta( $program,     \%program_escape   );
+    $filename    = escape_meta( $filename,    \%filename_escape  );
+    $datablock   = escape_meta( $datablock,   \%datablock_escape );
+    $message     = escape_meta( $message,     \%message_escape   );
+    $explanation = escape_meta( $explanation, \%message_escape   );
 
     if( defined $line_contents ) {
         $line_contents = join( "\n", map { " $_" }
@@ -55,26 +57,26 @@ sub sprint_message($$$$$@)
     return $program . ": " .
            (defined $filename ? $filename .
                 (defined $line ? "($line" .
-                    (defined $column ? ",$column" : "" ) . ")"
-                : "") . 
+                    (defined $column ? ",$column" : "") . ")"
+                : "") .
                 (defined $datablock ? " $datablock" : "") . ": "
            : "") .
            (defined $errlevel ? $errlevel . ", " : "") .
            $message .
+           (defined $explanation ? " -- " . $explanation : "") .
            (defined $line_contents ? ":\n" . $line_contents . "\n" .
                 (defined $column ? " " . " " x ($column-1) . "^\n" : "")
-                : ".\n");
-}
+                : ".\n");}
 
 #==============================================================================
 # Generic function for printing messages to STDERR
 
-sub print_message($$$$$@)
+sub print_message($$$$$$@)
 {
-    my ( $program, $filename, $datablock, $errlevel,
-         $message, $line, $column, $line_contents ) = @_;
-    print STDERR sprint_message( $program, $filename, $datablock,
-                                 $errlevel, $message, $line, $column,
+    my ( $program, $filename, $datablock, $errlevel, $message,
+         $explanation, $line, $column, $line_contents ) = @_;
+    print STDERR sprint_message( $program, $filename, $datablock, $errlevel,
+                                 $message, $explanation, $line, $column,
                                  $line_contents );
 }
 
@@ -99,13 +101,14 @@ sub parse_message($)
                         (.+?)\.?
                     $/x ) {
         return {
-            program   => unescape_meta($1, \%program_escape ),
-            filename  => unescape_meta($2, \%filename_escape),
-            line      => $3,
-            column    => $4,
-            datablock => unescape_meta($5, \%datablock_escape),
-            errlevel  => $6,
-            message   => unescape_meta($7, \%message_escape)
+            program     => unescape_meta($1, \%program_escape ),
+            filename    => unescape_meta($2, \%filename_escape),
+            line        => $3,
+            column      => $4,
+            datablock   => unescape_meta($5, \%datablock_escape),
+            errlevel    => $6,
+            message     => unescape_meta($7, \%message_escape),
+            explanation => unescape_meta($8, \%message_escape)
         };
     } else {
         return undef;
@@ -118,10 +121,11 @@ sub parse_message($)
 # and the program will most probably die() or exit(255) after this
 # message, but the UserMessage package does not enforce this policy.
 
-sub error($$$$)
+sub error($$$$$)
 {
-    my ( $program, $filename, $datablock, $message ) = @_;
-    print_message( $program, $filename, $datablock, "ERROR", $message );
+    my ( $program, $filename, $datablock, $message, $explanation ) = @_;
+    print_message( $program, $filename, $datablock,
+                   "ERROR", $message, $explanation );
 }
 
 #==============================================================================
@@ -130,10 +134,11 @@ sub error($$$$)
 # reasonable result, but it might be not the result which the user
 # expected.
 
-sub warning($$$$)
+sub warning($$$$$)
 {
-    my ( $program, $filename, $datablock, $message ) = @_;
-    print_message( $program, $filename, $datablock, "WARNING", $message );
+    my ( $program, $filename, $datablock, $message, $explanation ) = @_;
+    print_message( $program, $filename, $datablock,
+                   "WARNING", $message, $explanation );
 }
 
 #==============================================================================
@@ -141,10 +146,11 @@ sub warning($$$$)
 # keyword. Program can always continue after issuing notes as the intent
 # of note is just to provide information on the progress.
 
-sub note($$$$)
+sub note($$$$$)
 {
-    my ( $program, $filename, $datablock, $message ) = @_;
-    print_message( $program, $filename, $datablock, "NOTE", $message );
+    my ( $program, $filename, $datablock, $message, $explanation ) = @_;
+    print_message( $program, $filename, $datablock,
+                   "NOTE", $message, $explanation );
 }
 
 #==============================================================================
@@ -152,10 +158,11 @@ sub note($$$$)
 # keyword. Debug messages should only be printed uppon user request to output
 # additional information.
 
-sub debug_note($$$$)
+sub debug_note($$$$$)
 {
-    my ( $program, $filename, $datablock, $message ) = @_;
-    print_message( $program, $filename, $datablock, "DEBUG", $message );
+    my ( $program, $filename, $datablock, $message, $explanation ) = @_;
+    print_message( $program, $filename, $datablock,
+                   "DEBUG", $message, $explanation );
 }
 
 sub escape_meta {

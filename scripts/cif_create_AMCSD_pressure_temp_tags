@@ -59,7 +59,7 @@ for my $filename (@ARGV) {
     if( defined $parser->YYData->{ERRCOUNT} &&
         $parser->YYData->{ERRCOUNT} > 0 ) {
         error( $0, $filename, undef, $parser->YYData->{ERRCOUNT}
-             . " error(s) encountered while parsing CIF data" );
+             . " error(s) encountered while parsing CIF data", undef );
         exit -1;
     }
 
@@ -80,7 +80,8 @@ for my $filename (@ARGV) {
                 ) {
                 warning( $0, $filename, $dataname,
                          "structure marked as '$1', not taking "
-                       . ($1 eq "P" ? "pressure" : "temperature") . ' value' );
+                       . ($1 eq "P" ? "pressure" : "temperature") . ' value',
+                         undef );
                 $temperature_is_processing = 1;
             }
 
@@ -173,7 +174,7 @@ for my $filename (@ARGV) {
                     $coefficient = get_pressure_unit_coefficient( $units );
                 };
                 if( $@ ) {
-                    error( $0, $filename, $dataname, $@ );
+                    error( $0, $filename, $dataname, $@, undef );
                     next;
                 }
                 my $pressure_kPa =
@@ -182,7 +183,7 @@ for my $filename (@ARGV) {
                 if( !exists $values->{_diffrn_ambient_pressure} ) {
                     $values->{_diffrn_ambient_pressure}[0] = $pressure_kPa;
                     note( $0, $filename, $dataname,
-                          "P = $pressure, $units, $coefficient" );
+                          "P = $pressure, $units, $coefficient", undef );
 
                 } else {
                     if( $values->{_diffrn_ambient_pressure}[0] !=
@@ -193,7 +194,8 @@ for my $filename (@ARGV) {
                           . ($units eq "kPa" ? "" : "($pressure_kPa kPa) ")
                           . "is not equal to the value in the "
                           . "_diffrn_ambient_pressure tag ("
-                          . $values->{_diffrn_ambient_pressure}[0] . " GPa)" );
+                          . $values->{_diffrn_ambient_pressure}[0] . " GPa)",
+                             undef );
                     }
                 }
             }
@@ -208,14 +210,14 @@ for my $filename (@ARGV) {
                     $shift = get_temperature_unit_shift( $units );
                 };
                 if( $@ ) {
-                    error( $0, $filename, $dataname, $@ );
+                    error( $0, $filename, $dataname, $@, undef );
                     next;
                 }
                 my $temp_K = $temperature + $shift;
                 if( !exists $values->{_diffrn_ambient_temperature} ) {
                     $values->{_diffrn_ambient_temperature}[0] = $temp_K;
                     note( $0, $filename, $dataname,
-                          "T = $temperature, $units, $shift" );
+                          "T = $temperature, $units, $shift", undef );
                 } else {
                     if( abs($values->{_diffrn_ambient_temperature}[0] - $temp_K)
                         >= 0.001 ) {
@@ -226,7 +228,7 @@ for my $filename (@ARGV) {
                                . "is not equal to the value in the "
                                . "_diffrn_ambient_temperature tag ("
                                . $values->{_diffrn_ambient_temperature}[0]
-                               . " K)" );
+                               . " K)", undef );
                     }
                 }
             }

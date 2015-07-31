@@ -61,31 +61,49 @@ sub parse
         }
     }
 
-    my @error_messages;
+    use strict;
+    use warnings;
+
+    my @errors;
+    my @warnings;
     foreach my $message ( @$messages ) {
         my $datablock = $message->{addpos};
         if( defined $datablock ) {
             $datablock = "data_$datablock";
         }
+        my $explanation = $message->{explanation};
+        $explanation = lcfirst $explanation if (defined $explanation);
         my $msg = sprint_message( $message->{program},
                                   $message->{filename},
                                   $datablock,
                                   $message->{status},
                                   $message->{message},
+                                  $explanation,
                                   $message->{lineno},
                                   $message->{columnno},
                                   $message->{line} );
 
-        if( !exists $options->{print_error_messages} ||
-            $options->{print_error_messages} == 1 ) {
-            print STDERR $msg;
+        if( $message->{status} eq "ERROR" ) {
+            push @errors, $msg;
+        } else {
+            push @warnings, $msg;
         }
-
-        push @error_messages, $msg;
     }
 
+    if( !exists $options->{no_print} || $options->{no_print} == 0 ) {
+        print STDERR $_ foreach( @warnings );
+        my $last_error = pop @errors;
+        print STDERR $_ foreach( @errors );
+        if (defined $last_error) {
+            die $last_error;
+            push @errors, $last_error;
+        }
+    }
+
+    unshift @errors, @warnings;
+
     if( wantarray ) {
-        return( $data, $nerrors, \@error_messages );
+        return( $data, $nerrors, \@errors );
     } else {
         return $data;
     }

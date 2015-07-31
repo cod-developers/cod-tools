@@ -74,7 +74,7 @@ for my $filename (@ARGV) {
     if( defined $nerrors && $nerrors > 0 ) {
         error( $0, $filename, undef,
                "$nerrors error(s) encountered while " .
-               "parsing file '$filename'" );
+               "parsing file '$filename'", undef );
         exit(255);
     }
 
@@ -100,13 +100,12 @@ for my $filename (@ARGV) {
             $atom_site_tag = "_atom_site_type_symbol";
 
             error( $0, $filename, $dataname,
-                   "_atom_site_label tag was not found. " .
-                   "A serial number will be appended " .
-                   "to _atom_site_type_symbol to make atom labels" );
+                   '_atom_site_label tag was not found',
+                   'a serial number will be appended to ' .
+                   '_atom_site_type_symbol to make atom labels' );
         } else {
-            error( $0, $filename, $dataname,
-                   "neither _atom_site_type_symbol nor _atom_site_label " .
-                   "were found" );
+            error( $0, $filename, $dataname, 'neither _atom_site_type_symbol '
+                 . 'nor _atom_site_label were found', undef );
             return undef;
         }
 
