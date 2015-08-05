@@ -68,6 +68,7 @@ void datablock_overwrite_value(  DATABLOCK * datablock, ssize_t tag_nr,
 int *datablock_in_loop( DATABLOCK *datablock );
 datablock_value_type_t **datablock_types( DATABLOCK *datablock );
 int datablock_loop_count( DATABLOCK *datablock );
+DATABLOCK * datablock_save_frame_list( DATABLOCK *datablock );
 
 void datablock_dump( DATABLOCK * volatile datablock );
 void datablock_print( DATABLOCK * volatile datablock );

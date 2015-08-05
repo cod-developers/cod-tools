@@ -17,6 +17,97 @@
 
 char *progname = "cifparser";
 
+SV * convert_datablock( DATABLOCK * datablock )
+{
+    HV * current_datablock = newHV();
+    hv_store( current_datablock, "name", 4,
+        newSVpv( datablock_name( datablock ), 0 ), 0 );
+
+    size_t length = datablock_length( datablock );
+    char **tags   = datablock_tags( datablock );
+    ssize_t * value_lengths = datablock_value_lengths( datablock );
+    char ***values = datablock_values( datablock );
+    int *inloop   = datablock_in_loop( datablock );
+    int  loop_count = datablock_loop_count( datablock );
+    datablock_value_type_t **types = datablock_types( datablock );
+
+    AV * taglist    = newAV();
+    HV * valuehash  = newHV();
+    HV * loopid     = newHV();
+    AV * loops      = newAV();
+    HV * typehash   = newHV();
+    AV * saveframes = newAV();
+
+    size_t i;
+    ssize_t j;
+    for( i = 0; i < loop_count; i++ ) {
+        AV * loop = newAV();
+        av_push( loops, newRV_noinc( (SV*) loop ) );
+    }
+
+    for( i = 0; i < length; i++ ) {
+        av_push( taglist, newSVpv( tags[i], 0 ) );
+
+        AV * tagvalues  = newAV();
+        AV * typevalues = newAV();
+        SV * type;
+        for( j = 0; j < value_lengths[i]; j++ ) {
+            av_push( tagvalues, newSVpv( values[i][j], 0 ) );
+            switch ( types[i][j] ) {
+                case DBLK_INT :
+                    type = newSVpv( "INT", 3 ); break;
+                case DBLK_FLOAT :
+                    type = newSVpv( "FLOAT", 5 ); break;
+                case DBLK_SQSTRING :
+                    type = newSVpv( "SQSTRING", 8 ); break;
+                case DBLK_DQSTRING :
+                    type = newSVpv( "DQSTRING", 8 ); break;
+                case DBLK_UQSTRING :
+                    type = newSVpv( "UQSTRING", 8 ); break;
+                case DBLK_TEXT :
+                    type = newSVpv( "TEXTFIELD", 9 ); break;
+                default :
+                    type = newSVpv( "UNKNOWN", 7 );
+            }
+            av_push( typevalues, type );
+        }
+        hv_store( valuehash, tags[i], strlen( tags[i] ),
+            newRV_noinc( (SV*) tagvalues ), 0 );
+        hv_store( typehash,  tags[i], strlen( tags[i] ),
+            newRV_noinc( (SV*) typevalues ), 0 );
+
+        if( inloop[i] != -1 ) {
+            hv_store( loopid, tags[i], strlen( tags[i] ),
+                newSViv( inloop[i] ), 0 );
+            SV **current_loop = av_fetch( loops, inloop[i], 0 );
+            av_push( (AV*) SvRV( current_loop[0] ),
+                     newSVpv( tags[i], 0 ) );
+        }
+    }
+
+    DATABLOCK * saveframe;
+    foreach_datablock( saveframe,
+                       datablock_save_frame_list( datablock ) ) {
+        av_push( saveframes,
+                 newRV_noinc( convert_datablock( saveframe ) ) );
+    }
+
+    hv_store( current_datablock, "tags", 4,
+              newRV_noinc( (SV*) taglist ), 0 );
+    hv_store( current_datablock, "values", 6,
+              newRV_noinc( (SV*) valuehash ), 0 );
+    hv_store( current_datablock, "types", 5,
+              newRV_noinc( (SV*) typehash ), 0 );
+    hv_store( current_datablock, "inloop", 6,
+              newRV_noinc( (SV*) loopid ), 0 );
+    hv_store( current_datablock, "loops", 5,
+              newRV_noinc( (SV*) loops ), 0 );
+    hv_store( current_datablock, "save_blocks", 11,
+              newRV_noinc( (SV*) saveframes ), 0 );
+
+    return (SV*) current_datablock;
+}
+
 SV * parse_cif( char * fname, char * prog, SV * opt )
 {
     cexception_t inner;
@@ -94,83 +185,7 @@ SV * parse_cif( char * fname, char * prog, SV * opt )
     if( cif ) {
         DATABLOCK *datablock;
         foreach_datablock( datablock, cif_datablock_list( cif ) ) {
-            HV * current_datablock = newHV();
-            hv_store( current_datablock, "name", 4,
-                newSVpv( datablock_name( datablock ), 0 ), 0 );
-
-            size_t length = datablock_length( datablock );
-            char **tags   = datablock_tags( datablock );
-            ssize_t * value_lengths = datablock_value_lengths( datablock );
-            char ***values = datablock_values( datablock );
-            int *inloop   = datablock_in_loop( datablock );
-            int  loop_count = datablock_loop_count( datablock );
-            datablock_value_type_t **types = datablock_types( datablock );
-
-            AV * taglist    = newAV();
-            HV * valuehash  = newHV();
-            HV * loopid     = newHV();
-            AV * loops      = newAV();
-            HV * typehash   = newHV();
-
-            size_t i;
-            ssize_t j;
-            for( i = 0; i < loop_count; i++ ) {
-                AV * loop = newAV();
-                av_push( loops, newRV_noinc( (SV*) loop ) );
-            }
-
-            for( i = 0; i < length; i++ ) {
-                av_push( taglist, newSVpv( tags[i], 0 ) );
-
-                AV * tagvalues  = newAV();
-                AV * typevalues = newAV();
-                SV * type;
-                for( j = 0; j < value_lengths[i]; j++ ) {
-                    av_push( tagvalues, newSVpv( values[i][j], 0 ) );
-                    switch ( types[i][j] ) {
-                        case DBLK_INT :
-                            type = newSVpv( "INT", 3 ); break;
-                        case DBLK_FLOAT :
-                            type = newSVpv( "FLOAT", 5 ); break;
-                        case DBLK_SQSTRING :
-                            type = newSVpv( "SQSTRING", 8 ); break;
-                        case DBLK_DQSTRING :
-                            type = newSVpv( "DQSTRING", 8 ); break;
-                        case DBLK_UQSTRING :
-                            type = newSVpv( "UQSTRING", 8 ); break;
-                        case DBLK_TEXT :
-                            type = newSVpv( "TEXTFIELD", 9 ); break;
-                        default :
-                            type = newSVpv( "UNKNOWN", 7 );
-                    }
-                    av_push( typevalues, type );
-                }
-                hv_store( valuehash, tags[i], strlen( tags[i] ),
-                    newRV_noinc( (SV*) tagvalues ), 0 );
-                hv_store( typehash,  tags[i], strlen( tags[i] ),
-                    newRV_noinc( (SV*) typevalues ), 0 );
-
-                if( inloop[i] != -1 ) {
-                    hv_store( loopid, tags[i], strlen( tags[i] ),
-                        newSViv( inloop[i] ), 0 );
-                    SV **current_loop = av_fetch( loops, inloop[i], 0 );
-                    av_push( (AV*) SvRV( current_loop[0] ),
-                             newSVpv( tags[i], 0 ) );
-                }
-            }
-
-            hv_store( current_datablock, "tags", 4,
-                      newRV_noinc( (SV*) taglist ), 0 );
-            hv_store( current_datablock, "values", 6,
-                      newRV_noinc( (SV*) valuehash ), 0 );
-            hv_store( current_datablock, "types", 5,
-                      newRV_noinc( (SV*) typehash ), 0 );
-            hv_store( current_datablock, "inloop", 6,
-                      newRV_noinc( (SV*) loopid ), 0 );
-            hv_store( current_datablock, "loops", 5,
-                      newRV_noinc( (SV*) loops ), 0 );
-       
-            av_push( datablocks, newRV_noinc( (SV*) current_datablock ) );
+            av_push( datablocks, newRV_noinc( convert_datablock( datablock ) ) );
         }
 
         CIFMESSAGE *cifmessage;
