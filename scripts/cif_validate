@@ -382,9 +382,13 @@ CIFFILEANAL: for my $cifF ( @ARGV ) {
                     # Check if values match the declared types:
                     #
 
-                    if( exists $dictD->{$lc_tagAnalysed} &&
-                        defined $dictD->{$lc_tagAnalysed}{values}{_type} &&
-                        $dictD->{$lc_tagAnalysed}{values}{_type}[0] eq 'numb' ) {
+                    if( exists $dictD->{$lc_tagAnalysed} && (
+                            defined $dictD->{$lc_tagAnalysed}{values}{_type} &&
+                            $dictD->{$lc_tagAnalysed}{values}{_type}[0] eq 'numb' ||
+                            defined $dictD->{$lc_tagAnalysed}{values}{"_item_type.code"} &&
+                            ($dictD->{$lc_tagAnalysed}{values}{"_item_type.code"}[0] eq "float" ||
+                             $dictD->{$lc_tagAnalysed}{values}{"_item_type.code"}[0] eq "int")
+                        )) {
 
                         if(defined $block->{types}{$tagAnalysed}) {
                             if('FLOAT' ne $block->{types}{$tagAnalysed}[$tagIndex]
@@ -532,6 +536,18 @@ sub getDict($)
     my $tags = {};
     my $datan = 0;
     while( $datan < @$dictF ) {
+        if( exists $dictF->[$datan]{save_blocks} ) {
+            for my $saveblk ( @{$dictF->[$datan]{save_blocks}} ) {
+                ## print ">>>> processing save block '$saveblk->{name}'\n";
+                next if !exists $saveblk->{values}{"_item.name"};
+                for ( @{$saveblk->{values}{"_item.name"}} ) {
+                    ## print ">>> defining '$_'\n";
+                    $$tags{lc $_} = $saveblk;
+                    $$tags{lc $_}{values}{_dataname} = $_;
+                }
+            }
+        }
+
         $datan++ and next if
             !exists $$dictF[$datan]{values}{_type};
         for ( @{$$dictF[$datan]{values}{_name}} ) {
@@ -540,6 +556,7 @@ sub getDict($)
         }
         $datan++;
     }
+
 
     return $tags;
 }
