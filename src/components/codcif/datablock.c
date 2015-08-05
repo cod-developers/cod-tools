@@ -249,6 +249,12 @@ int datablock_loop_count( DATABLOCK *datablock )
     return datablock->loop_count;
 }
 
+DATABLOCK * datablock_save_frame_list( DATABLOCK *datablock )
+{
+    assert( datablock );
+    return datablock->save_frames;
+}
+
 void datablock_set_next( DATABLOCK *datablock, DATABLOCK *next )
 {
     if( datablock ) {
