@@ -559,7 +559,8 @@ static int is_real( char *s )
         s++;
     if( !isdigit(*s) ) return 0;
     while( isdigit(*s) ) s++;
-    if( *s == ')' ) s++;
+    if( *s != ')' ) return 0;
+    s++;
     if( *s != '\0' ) return 0;
 
     return 1;
