@@ -78,6 +78,9 @@ static char *usage_text[2] = {
 "object\n\n"
 
 
+"  -u,  --unfold-lines              Unfold long lines (default)\n"
+"  -u-, --do-not-unfold-lines       Leave folded lines as they are\n"
+
 "  --version  print program version (SVN Id) and exit\n"
 
 "  --help     print short usage message (this message) and exit\n"
@@ -112,6 +115,7 @@ static option_value_t dump_messages;
 static option_value_t report_long_items;
 static option_value_t line_length_limit;
 static option_value_t dataname_length_limit;
+static option_value_t do_not_unfold_long_lines;
 
 static option_t options[] = {
   { "-d", "--debug",           OT_STRING,         &debug },
@@ -129,6 +133,13 @@ static option_t options[] = {
   { "-s", "--suppress-errors", OT_BOOLEAN_TRUE,   &suppress_error_messages },
   { "-s-","--dont-suppress-errors", 
                                OT_BOOLEAN_FALSE,  &suppress_error_messages },
+  { "-u", "--unfold-lines",    OT_BOOLEAN_FALSE,  &do_not_unfold_long_lines },
+  { "-u-","--do-not-unfold-lines", 
+                               OT_BOOLEAN_TRUE,   &do_not_unfold_long_lines },
+  { NULL, "--dont-unfold-lines", 
+                               OT_BOOLEAN_TRUE,   &do_not_unfold_long_lines },
+  { NULL, "--no-unfold-lines", 
+                               OT_BOOLEAN_TRUE,   &do_not_unfold_long_lines },
   { NULL, "--do-not-suppress-errors",
                                OT_BOOLEAN_FALSE,  &suppress_error_messages },
   { NULL, "--no-suppress-errors",
@@ -236,6 +247,11 @@ int main( int argc, char *argv[], char *env[] )
           if( fix_errors.value.b == 1 ) {
               compiler_options =
                   cif_option_set_fix_errors( compiler_options );
+          }
+
+          if( do_not_unfold_long_lines.value.b == 1 ) {
+              compiler_options =
+                  cif_option_set( compiler_options, DO_NOT_UNFOLD_TEXT );
           }
 
           cif = new_cif_from_cif_file( files[i], compiler_options, &inner );
