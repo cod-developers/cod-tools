@@ -687,12 +687,7 @@ static char *clean_string( char *src, int is_textfield, cexception_t *ex )
                                            cif_flex_current_line_number(),
                                            cif_flex_current_position()+1,
                                            ex );
-#if 0
-                            fprintf( stderr, "'%s'\n", 
-                                     cif_flex_current_line() );
-#else
                             print_current_trace( ex );
-#endif
                             non_ascii_explained = 1;
                         } else {
                             print_message( "WARNING", "non-ascii symbols "
@@ -700,11 +695,7 @@ static char *clean_string( char *src, int is_textfield, cexception_t *ex )
                                            "replaced by XML entities", ":",
                                            cif_flex_current_line_number(),
                                            -1, ex );
-#if 0
-                            fprintf( stderr, ";%s\n;\n\n", start );
-#else
                             print_current_text_field( start, ex );
-#endif
                             non_ascii_explained = 1;
                         }
                     }
@@ -712,16 +703,12 @@ static char *clean_string( char *src, int is_textfield, cexception_t *ex )
                     if( is_textfield == 0 ) {
                         yyerror( "incorrect CIF syntax" );
                     } else if( non_ascii_explained == 0 ) {
-                        print_message( "WARNING", "non-ascii symbols "
+                        print_message( "ERROR", "non-ascii symbols "
                                        "encountered "
                                        "in the text field", ":",
                                        cif_flex_current_line_number(),
                                        -1, ex );
-#if 0
-                        fprintf( stderr, ";%s\n;\n\n", start );
-#else
                         print_current_text_field( start, ex );
-#endif
                         yyincrease_error_counter();
                         non_ascii_explained = 1;
                     }
