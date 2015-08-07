@@ -15,7 +15,7 @@ eval 'exec perl -x $0 ${1+"$@"}'
 use strict;
 use warnings;
 use File::Basename;
-use COD::CIF::Parser::Yapp;
+use COD::CIF::Parser qw(parse_cif);
 use COD::CIF::Tags::Manage;
 use COD::UserMessage qw(warning error);
 use COD::SOptions;
@@ -188,33 +188,21 @@ if( $header ) {
 
 for my $filename (@ARGV) {
 
-    my( $data, $error_count );
-    my %options;
+    my $options = { fix_errors => $fix_errors,
+                    parser     => $use_parser,
+                    no_print   => 1 };
 
-    if( $fix_errors ) {
-        $options{fix_errors} = 1;
+    my ( $data, $err_count, $messages ) = parse_cif( $filename, $options );
+
+    if ( $err_count > 0 ) {
+        print STDERR $_ foreach ( @$messages );
+        error( $0, $filename, undef, "$err_count error(s) "
+             . "encountered while parsing the file", undef );
+        next;
     }
+    print STDERR $_ foreach ( @$messages );
 
-    if( $use_parser eq "perl" ) {
-        my $parser = new COD::CIF::Parser::Yapp;
-
-        $data = $parser->Run($filename, \%options);
-
-        if( defined $parser->YYData->{ERRCOUNT} ) {
-            $error_count = $parser->YYData->{ERRCOUNT};
-        }
-    } else {
-        require COD::CIF::Parser::Bison;
-        ( $data, $error_count ) = COD::CIF::Parser::Bison::parse( $filename, \%options );
-    }
-
-    if( defined $error_count && $error_count > 0 ) {
-        error( $0, $filename, undef, $error_count
-             . ' error(s) encountered while parsing the file', undef );
-        die;
-    }
-
-    if( !@{$data} || !defined $data->[0] || !defined $data->[0]{name} ) {
+    if( !defined $data->[0] || !defined $data->[0]{name} ) {
         warning( $0, $filename, undef, 'file seems to be empty', undef );
         next;
     }
