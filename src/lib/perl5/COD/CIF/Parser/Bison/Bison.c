@@ -17,6 +17,18 @@
 
 char *progname = "cifparser";
 
+bool is_option_set( HV * options, char * optname ) {
+    int value = 0;
+    if (options) {
+        SV ** value_ref = hv_fetch(options, optname, strlen(optname), 0);
+        if (value_ref && *value_ref) {
+            value = ( SvIV(*value_ref) > 0 ) ? 1 : 0;
+        }
+    }
+
+    return value;
+}
+
 SV * convert_datablock( DATABLOCK * datablock )
 {
     HV * current_datablock = newHV();
@@ -118,43 +130,43 @@ SV * parse_cif( char * fname, char * prog, SV * opt )
     cif_option_t co = cif_option_default();
 
     HV * options = (HV*) SvRV( opt );
-    if( hv_exists( options, "do_not_unprefix_text", 20 ) ) {
+    if( is_option_set( options, "do_not_unprefix_text" ) ) {
         co = cif_option_set_do_not_unprefix_text( co );
     }
-    if( hv_exists( options, "do_not_unfold_text", 18 ) ) {
+    if( is_option_set( options, "do_not_unfold_text" ) ) {
         co = cif_option_set_do_not_unfold_text( co );
     }
-    if( hv_exists( options, "fix_errors", 10 ) ) {
+    if( is_option_set( options, "fix_errors" ) ) {
         co = cif_option_set_fix_errors( co );
     }
-    if( hv_exists( options, "fix_duplicate_tags_with_same_values", 35 ) ) {
+    if( is_option_set( options, "fix_duplicate_tags_with_same_values" ) ) {
         co = cif_option_set_fix_duplicate_tags_with_same_values( co );
     }
-    if( hv_exists( options, "fix_duplicate_tags_with_empty_values", 36 ) ) {
+    if( is_option_set( options, "fix_duplicate_tags_with_empty_values" ) ) {
         co = cif_option_set_fix_duplicate_tags_with_empty_values( co );
     }
-    if( hv_exists( options, "fix_data_header", 15 ) ) {
+    if( is_option_set( options, "fix_data_header" ) ) {
         co = cif_option_set_fix_data_header( co );
     }
-    if( hv_exists( options, "fix_datablock_names", 19 ) ) {
+    if( is_option_set( options, "fix_datablock_names" ) ) {
         co = cif_option_set_fix_datablock_names( co );
     }
-    if( hv_exists( options, "fix_string_quotes", 17 ) ) {
+    if( is_option_set( options, "fix_string_quotes" ) ) {
         co = cif_option_set_fix_string_quotes( co );
     }
-    if( hv_exists( options, "fix_missing_closing_double_quote", 32 ) ) {
+    if( is_option_set( options, "fix_missing_closing_double_quote" ) ) {
         set_lexer_fix_missing_closing_double_quote();
     }
-    if( hv_exists( options, "fix_missing_closing_single_quote", 32 ) ) {
+    if( is_option_set( options, "fix_missing_closing_single_quote" ) ) {
         set_lexer_fix_missing_closing_single_quote();
     }
-    if( hv_exists( options, "fix_ctrl_z", 10 ) ) {
+    if( is_option_set( options, "fix_ctrl_z" ) ) {
         set_lexer_fix_ctrl_z();
     }
-    if( hv_exists( options, "fix_non_ascii_symbols", 21 ) ) {
+    if( is_option_set( options, "fix_non_ascii_symbols" ) ) {
         set_lexer_fix_non_ascii_symbols();
     }
-    if( hv_exists( options, "allow_uqstring_brackets", 23 ) ) {
+    if( is_option_set( options, "allow_uqstring_brackets" ) ) {
         set_lexer_allow_uqstring_brackets();
     }
     co = cif_option_suppress_messages( co );
