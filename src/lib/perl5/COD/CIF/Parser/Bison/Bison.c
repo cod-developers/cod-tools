@@ -29,11 +29,15 @@ bool is_option_set( HV * options, char * optname ) {
     return value;
 }
 
+void hv_put( HV * hash, char * key, SV * scalar ) {
+    hv_store( hash, key, strlen(key), scalar, 0 );
+}
+
 SV * convert_datablock( DATABLOCK * datablock )
 {
     HV * current_datablock = newHV();
-    hv_store( current_datablock, "name", 4,
-        newSVpv( datablock_name( datablock ), 0 ), 0 );
+    hv_put( current_datablock, "name",
+        newSVpv( datablock_name( datablock ), 0 ) );
 
     size_t length = datablock_length( datablock );
     char **tags   = datablock_tags( datablock );
@@ -83,14 +87,11 @@ SV * convert_datablock( DATABLOCK * datablock )
             }
             av_push( typevalues, type );
         }
-        hv_store( valuehash, tags[i], strlen( tags[i] ),
-            newRV_noinc( (SV*) tagvalues ), 0 );
-        hv_store( typehash,  tags[i], strlen( tags[i] ),
-            newRV_noinc( (SV*) typevalues ), 0 );
+        hv_put( valuehash, tags[i], newRV_noinc( (SV*) tagvalues ) );
+        hv_put( typehash,  tags[i], newRV_noinc( (SV*) typevalues ) );
 
         if( inloop[i] != -1 ) {
-            hv_store( loopid, tags[i], strlen( tags[i] ),
-                newSViv( inloop[i] ), 0 );
+            hv_put( loopid, tags[i], newSViv( inloop[i] ) );
             SV **current_loop = av_fetch( loops, inloop[i], 0 );
             av_push( (AV*) SvRV( current_loop[0] ),
                      newSVpv( tags[i], 0 ) );
@@ -104,18 +105,13 @@ SV * convert_datablock( DATABLOCK * datablock )
                  newRV_noinc( convert_datablock( saveframe ) ) );
     }
 
-    hv_store( current_datablock, "tags", 4,
-              newRV_noinc( (SV*) taglist ), 0 );
-    hv_store( current_datablock, "values", 6,
-              newRV_noinc( (SV*) valuehash ), 0 );
-    hv_store( current_datablock, "types", 5,
-              newRV_noinc( (SV*) typehash ), 0 );
-    hv_store( current_datablock, "inloop", 6,
-              newRV_noinc( (SV*) loopid ), 0 );
-    hv_store( current_datablock, "loops", 5,
-              newRV_noinc( (SV*) loops ), 0 );
-    hv_store( current_datablock, "save_blocks", 11,
-              newRV_noinc( (SV*) saveframes ), 0 );
+    hv_put( current_datablock, "tags", newRV_noinc( (SV*) taglist ) );
+    hv_put( current_datablock, "values", newRV_noinc( (SV*) valuehash ) );
+    hv_put( current_datablock, "types", newRV_noinc( (SV*) typehash ) );
+    hv_put( current_datablock, "inloop", newRV_noinc( (SV*) loopid ) );
+    hv_put( current_datablock, "loops", newRV_noinc( (SV*) loops ) );
+    hv_put( current_datablock, "save_blocks",
+            newRV_noinc( (SV*) saveframes ) );
 
     return (SV*) current_datablock;
 }
@@ -208,30 +204,29 @@ SV * parse_cif( char * fname, char * prog, SV * opt )
             int columnno = cifmessage_columnno( cifmessage );
 
             if( lineno != -1 ) {
-                hv_store( current_cifmessage, "lineno", 6,
-                          newSViv( lineno ), 0 );
+                hv_put( current_cifmessage, "lineno", newSViv( lineno ) );
             }
             if( columnno != -1 ) {
-                hv_store( current_cifmessage, "columnno", 8,
-                          newSViv( columnno ), 0 );
+                hv_put( current_cifmessage, "columnno",
+                        newSViv( columnno ) );
             }
 
-            hv_store( current_cifmessage, "addpos", 6,
-                      newSVpv( cifmessage_addpos( cifmessage ), 0 ), 0 );
-            hv_store( current_cifmessage, "program", 7,
-                      newSVpv( progname, 0 ), 0 );
-            hv_store( current_cifmessage, "filename", 8,
-                      newSVpv( cifmessage_filename( cifmessage ), 0 ), 0 );
-            hv_store( current_cifmessage, "status", 6,
-                      newSVpv( cifmessage_status( cifmessage ), 0 ), 0 );
-            hv_store( current_cifmessage, "message", 7,
-                      newSVpv( cifmessage_message( cifmessage ), 0 ), 0 );
-            hv_store( current_cifmessage, "explanation", 11,
-                      newSVpv( cifmessage_explanation( cifmessage ), 0 ), 0 );
-            hv_store( current_cifmessage, "msgseparator", 12,
-                      newSVpv( cifmessage_msgseparator( cifmessage ), 0 ), 0 );
-            hv_store( current_cifmessage, "line", 4,
-                      newSVpv( cifmessage_line( cifmessage ), 0 ), 0 );
+            hv_put( current_cifmessage, "addpos",
+                      newSVpv( cifmessage_addpos( cifmessage ), 0 ) );
+            hv_put( current_cifmessage, "program",
+                      newSVpv( progname, 0 ) );
+            hv_put( current_cifmessage, "filename",
+                      newSVpv( cifmessage_filename( cifmessage ), 0 ) );
+            hv_put( current_cifmessage, "status",
+                      newSVpv( cifmessage_status( cifmessage ), 0 ) );
+            hv_put( current_cifmessage, "message",
+                      newSVpv( cifmessage_message( cifmessage ), 0 ) );
+            hv_put( current_cifmessage, "explanation",
+                      newSVpv( cifmessage_explanation( cifmessage ), 0 ) );
+            hv_put( current_cifmessage, "msgseparator",
+                      newSVpv( cifmessage_msgseparator( cifmessage ), 0 ) );
+            hv_put( current_cifmessage, "line",
+                      newSVpv( cifmessage_line( cifmessage ), 0 ) );
 
             av_push( error_messages, newRV_noinc( (SV*) current_cifmessage ) );
         }
@@ -241,11 +236,8 @@ SV * parse_cif( char * fname, char * prog, SV * opt )
     }
 
     HV * ret = newHV();
-    hv_store( ret, "datablocks", 10,
-              newRV_noinc( (SV*) datablocks ), 0 );
-    hv_store( ret, "messages", 8,
-              newRV_noinc( (SV*) error_messages ), 0 );
-    hv_store( ret, "nerrors", 7,
-              newSViv( nerrors ), 0 );
+    hv_put( ret, "datablocks", newRV_noinc( (SV*) datablocks ) );
+    hv_put( ret, "messages", newRV_noinc( (SV*) error_messages ) );
+    hv_put( ret, "nerrors", newSViv( nerrors ) );
     return( newRV_noinc( (SV*) ret ) );
 }
