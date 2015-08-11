@@ -156,8 +156,8 @@ sub filter_and_check
     }
 
     if( @$filter_stdout == 0 ) {
-        die "file '$cif_filename' became empty after filtering " .
-            "with cif_filter";
+        die "$cif_filename: ERROR, file became empty after "
+          . "filtering with cif_filter";
     }
 
     my( $fix_values_stdout, $fix_values_stderr ) =
@@ -695,8 +695,8 @@ sub filter_and_check
         }
     }
     if( @$filter_stdout == 0 ) {
-        die "file '$cif_filename' became empty after filtering " .
-            "with cif_filter";
+        die "$cif_filename: ERROR, file became empty after "
+          . 'filtering with cif_filter';
     }
     if( $hkl && !$is_pdcif ) {
         my $hkl_parameters = extract_cif_values(
@@ -1251,7 +1251,7 @@ sub can_bypass_checks
             use Digest::SHA qw/ sha1_hex /;
             $client_password = Digest::SHA::sha1_hex( $client_password );
         } else {
-            die "unknown hashing algorithm: $algorithm";
+            die "unknown hashing algorithm '$algorithm'";
         }
     }
     if( defined $client_password && $client_password eq $host_password ) {
