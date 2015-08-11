@@ -29,7 +29,7 @@ eval 'exec perl -x $0 ${1+"$@"}'
 use strict;
 use warnings;
 use File::Basename;
-use COD::CIF::Parser::Yapp;
+use COD::CIF::Parser qw(parse_cif);
 use COD::Spacegroups::Names;
 use COD::Spacegroups::Symop::Parse;
 use COD::Spacegroups::Lookup::COD;
@@ -54,7 +54,7 @@ my $dump_test_Fhkl = 0; #
 my $max_number_print_of_F;
 my $Miller_indexes;
 my $external_CR_table = 0;
-my $get_hkl_data;
+my $hkl_file;
 my $PI = 4*atan2( 1, 1 );
 
 #* USAGE:
@@ -109,7 +109,7 @@ my $PI = 4*atan2( 1, 1 );
     "--dump-atoms-and-neighbors"   => sub { $dump_atoms_and_neighbors = 1 },
     "--external_CR_table"          => sub { $external_CR_table = 1 },
     "--Miller-indexes"             => \$Miller_indexes,
-    "--get-hkl-data"               => \$get_hkl_data,
+    "--get-hkl-data"               => \$hkl_file,
     "--dump-test-Fhkl"             => sub { $dump_test_Fhkl = 1 },
     "--help,--usage"               => sub { usage; exit },
 );
@@ -137,26 +137,16 @@ if(defined $Miller_indexes) {
 my $hkl_and_F_sorted;
 for my $filename (@ARGV) {
 
-    my( $data, $error_count );
+    my $options = { 'parser' => $use_parser, 'no_print' => 1 };
+    my ( $data, $err_count, $messages ) = parse_cif( $filename, $options );
 
-    if( $use_parser eq "perl" ) {
-        my $parser = new COD::CIF::Parser::Yapp;
-
-        $data = $parser->Run( $filename );
-
-        if( defined $parser->YYData->{ERRCOUNT} ) {
-            $error_count = $parser->YYData->{ERRCOUNT};
-        }
-    } else {
-        require COD::CIF::Parser::Bison;
-        ( $data, $error_count ) = COD::CIF::Parser::Bison::parse( $filename );
-    }
-
-    if( defined $error_count && $error_count > 0 ) {
-        error( $0, $filename, undef, $error_count
-             . ' error(s) encountered while parsing the file', undef );
+    if ( $err_count > 0 ) {
+        print STDERR $_ foreach ( @$messages );
+        error( $0, $filename, undef, "$err_count error(s) "
+             . "encountered while parsing the file", undef );
         die;
     }
+    print STDERR $_ foreach ( @$messages );
 
     if( !@$data || !defined $data->[0] || !defined $data->[0]{name} ) {
         warning( $0, $filename, undef, 'file seems to be empty', undef );
@@ -186,7 +176,7 @@ for my $filename (@ARGV) {
 
     #-------------------------------------------------------------
 
-    # Test of aniso koefficients: if not all atoms (except H and D)
+    # Test of aniso coefficients: if not all atoms (except H and D)
     # contains aniso coef. then isotrophic koef. are using.
 
         if( !$iso_temperature_factor ) {
@@ -425,7 +415,7 @@ for my $filename (@ARGV) {
                         [ @{$search_equal_intensities}[0..($max_number_print_of_F - 1)] ];
                 }
             }
-            if( !defined $get_hkl_data ) {
+            if( !defined $hkl_file ) {
                 foreach my $Fri_Fhkl (@{$search_equal_intensities}) {
                     my $adding_field = (" %3s %3s %3s")x$#{$Fri_Fhkl};
                     printf "%0.3f".$adding_field."\n",
@@ -438,22 +428,20 @@ for my $filename (@ARGV) {
 
 # for hkl data extracting from CIF.hkl and comparison with my calculated 
 # values;
-if( defined $get_hkl_data ) {
-    print "Yra: $get_hkl_data\n";
-    my( $hkl_data, $hkl_error_count );
+if( defined $hkl_file ) {
+    print "Yra: $hkl_file\n";
 
-    if( $use_parser eq "perl" ) {
-        my $parser = new COD::CIF::Parser::Yapp;
+    my $hkl_options = { 'parser' => $use_parser, 'no_print' => 1 };
+    my ( $hkl_data, $hkl_err_count, $messages ) =
+                                           parse_cif( $hkl_file, $hkl_options );
 
-        $hkl_data = $parser->Run( $get_hkl_data );
-
-        if( defined $parser->YYData->{ERRCOUNT} ) {
-            $hkl_error_count = $parser->YYData->{ERRCOUNT};
-        }
-    } else {
-        require COD::CIF::Parser::Bison;
-        ( $hkl_data, $hkl_error_count ) = COD::CIF::Parser::Bison::parse( $get_hkl_data );
+    if ( $hkl_err_count > 0 ) {
+        print STDERR $_ foreach ( @$messages );
+        error( $0, $hkl_file, undef, "$hkl_err_count error(s) "
+             . "encountered while parsing the file", undef );
+        next;
     }
+    print STDERR $_ foreach ( @$messages );
 
     # take a top segment of my calculated and sorted structure factors;
     if( defined $max_number_print_of_F ) {
