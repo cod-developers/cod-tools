@@ -16,7 +16,7 @@ eval 'exec perl -x $0 ${1+"$@"}'
 
 use strict;
 use warnings;
-use COD::CIF::Parser::Yapp;
+use COD::CIF::Parser qw(parse_cif);
 use COD::CIF::Data qw(get_cell get_content_encodings);
 use COD::CIF::Data::EstimateZ;
 use COD::CIF::Tags::CanonicalNames;
@@ -153,7 +153,7 @@ sub merge_limits_tables($$) {
 }
 
 my $max_year_temperature_factors_optional = 1969;
-my $use_parser = "perl";
+my $use_parser = "c";
 
 #* USAGE:
 #*    $0 [options] input1.cif [input2.cif ...]
@@ -402,39 +402,23 @@ $| = 1; # Flush buffers immediately, to avoid mixing lines of STDOUT
 
 for my $filename (@ARGV) {
 
-    my( $data, $error_count );
+    my $options = { 'parser' => $use_parser, 'no_print' => 1 };
+    if ( $use_parser eq 'perl' && $useReporter ) {
+        $options->{reporter} = \&parser_reporter;
+    };
 
-  eval {
-    if( $use_parser eq "perl" ) {
-        my $parser = new COD::CIF::Parser::Yapp;
-        if( $useReporter == 1 )
-        {
-            $data = $parser->Run( $filename,
-                                  { reporter => \&parser_reporter },
-                                    no_print => 1 );
-        } else {
-            $data = $parser->Run($filename, {no_print => 1});
-        }
+    my ( $data, $err_count, $messages ) = parse_cif( $filename, $options );
 
-        print STDERR $_ foreach(@{$parser->YYData->{ERROR_MESSAGES}});
-
-        if( defined $parser->YYData->{ERRCOUNT} ) {
-            $error_count = $parser->YYData->{ERRCOUNT};;
-        }
-    } else {
-        require COD::CIF::Parser::Bison;
-        ( $data, $error_count ) = COD::CIF::Parser::Bison::parse( $filename );
-    }
-  };
-
-    if( defined $error_count && $error_count > 0 ) {
-        error( $0, $filename, undef, "$error_count error(s) "
-             . "encountered while parsing CIF data", undef );
+    if ( $err_count > 0 ) {
+        print STDERR $_ foreach ( @$messages );
+        error( $0, $filename, undef, "$err_count error(s) "
+             . "encountered while parsing the file", undef );
         exit -1;
     }
-    
+    print STDERR $_ foreach ( @$messages );
+
     canonicalize_all_names( $data );
-    
+
     my $warnings = 0;
     for my $dataset (@$data) {
         $warnings += check_data( $dataset, $filename );
