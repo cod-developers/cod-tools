@@ -14,9 +14,9 @@ eval 'exec perl -x $0 ${1+"$@"}'
 
 use strict;
 use warnings;
+use COD::CIF::Parser qw(parse_cif);
 use COD::AtomProperties;
 use COD::CIF::Data qw(get_cell);
-use COD::CIF::Parser::Yapp;
 use COD::Fractional;
 use COD::Spacegroups::Symop::Algebra qw(symop_vector_mul);
 use COD::UserMessage qw(error prefix_dataname);
@@ -59,27 +59,19 @@ my $use_parser = "c"; # Used CIF parser
 
 for my $filename (@ARGV) {
 
-    my( $data, $nerrors );
-    if( $use_parser eq "perl" ) {
-        my $parser = new COD::CIF::Parser::Yapp;
-        $data = $parser->Run($filename);
-        if( defined $parser->YYData->{ERRCOUNT} ) {
-            $nerrors = $parser->YYData->{ERRCOUNT};
-        }            
-    } else {
-        require COD::CIF::Parser::Bison;
-        ( $data, $nerrors ) = COD::CIF::Parser::Bison::parse($filename);
-    }
+    my $options = { 'parser' => $use_parser, 'no_print' => 1 };
+    my ( $data, $err_count, $messages ) = parse_cif( $filename, $options );
 
-    if( defined $nerrors && $nerrors > 0 ) {
-        error( $0, $filename, undef,
-               "$nerrors error(s) encountered while " .
-               "parsing file '$filename'", undef );
+    if ( $err_count > 0 ) {
+        print STDERR $_ foreach ( @$messages );
+        error( $0, $filename, undef, "$err_count error(s) "
+             . "encountered while parsing the file", undef );
         exit(255);
     }
+    print STDERR $_ foreach ( @$messages );
 
     if( !@{$data} || !defined $data->[0] || !defined $data->[0]{name} ) {
-        warning( $0, $filename, undef, "file '$filename' seems to be empty" );
+        warning( $0, $filename, undef, "file seems to be empty" );
         next;
     }
 
