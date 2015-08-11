@@ -21,8 +21,8 @@ eval 'exec perl -x $0 ${1+"$@"}'
 use strict;
 use warnings;
 use File::Basename;
+use COD::CIF::Parser qw( parse_cif );
 use COD::Cell qw(cell_volume);
-use COD::CIF::Parser::Yapp;
 use COD::CIF::Tags::DictTags;
 use COD::CIF::Tags::COD;
 use COD::CIF::Tags::AMCSD;
@@ -441,26 +441,20 @@ my $biblio_blocks;
 
 if( defined $biblio ) {
     if( $biblio =~ /\.cif/i ) {
-        my( $parser );
-        my %biblio_options = ( fix_errors => 1 );
-
+        my ($err_count, $messages);
         # For now, always use Perl parser for bibliographies, since C
-        # parser is not (yet) reenterable :(:
-        ## if( $use_parser eq "perl" ) {
-        if( 1 ) {
-            $parser = new COD::CIF::Parser::Yapp;
-        } else {
-            require COD::CIF::Parser::Bison;
-            $parser = new COD::CIF::Parser::Bison;
-        }
+        # parser is not (yet) reenterable :(: (still applicable?)
+        my $biblio_options = { parser     => 'perl',
+                               no_print   => 1,
+                               fix_errors => 1 };
 
-        $biblio_blocks = $parser->Run( $biblio, \%biblio_options );
+        ($biblio_blocks, $err_count, $messages) =
+                                            parse_cif($biblio, $biblio_options);
 
-        if( defined $parser->YYData->{ERRCOUNT} &&
-            $parser->YYData->{ERRCOUNT} > 0 ) {
-            print STDERR "$0: ", $parser->YYData->{ERRCOUNT},
-                " error(s) encountered while parsing",
-                " file '${biblio}'\n";
+        print STDERR $_ foreach ( @$messages );
+        if( $err_count > 0 ) {
+            error( $0, $biblio, undef, "$err_count error(s) "
+                 . 'encountered while parsing the file', undef );
             die;
         }
     } else {
@@ -483,27 +477,16 @@ if( defined $biblio ) {
 @ARGV = ( "-" ) unless @ARGV;
 
 for my $filename (@ARGV) {
+    my $options = { parser     => $use_parser,
+                    no_print   => 1,
+                    fix_errors => $fix_errors };
 
-    my( $parser, $data, $error_count );
-    my %options = (no_print => 1);
+    my ($data, $err_count, $messages) = parse_cif($filename, $options);
 
-    if( $fix_errors ) {
-        $options{fix_errors} = 1;
-    }
-
-    if( $use_parser eq "perl" ) {
-        $parser = new COD::CIF::Parser::Yapp;
-    } else {
-        require COD::CIF::Parser::Bison;
-        $parser = new COD::CIF::Parser::Bison;
-    }
-
-    $data = $parser->Run( $filename, \%options );
-    print STDERR $_ foreach @{$parser->YYData->{ERROR_MESSAGES}};
-
-    if( $parser->YYData->{ERRCOUNT} > 0 ) {
-        print STDERR "$0: ", $parser->YYData->{ERRCOUNT},
-        " error(s) encountered while parsing file '${filename}'\n";
+    print STDERR $_ foreach @$messages;
+    if( $err_count > 0 ) {
+        error( $0, $filename, undef, "$err_count error(s) "
+             . 'encountered while parsing the file', undef );
         die;
     }
 
