@@ -26,6 +26,14 @@ bool is_option_set( PyObject * options, char * optname ) {
     }
 }
 
+void PyDict_PutString( PyObject * dict, char * key, char * value ) {
+    if( value != NULL ) {
+        PyDict_SetItemString( dict, key, PyString_FromString( value ) );
+    } else {
+        PyDict_SetItemString( dict, key, Py_None );
+    }
+}
+
 PyObject * convert_datablock( DATABLOCK * datablock )
 {
     PyObject * current_datablock = PyDict_New();
@@ -204,22 +212,21 @@ PyObject * parse_cif( char * fname, char * prog, PyObject * opt )
                                       PyInt_FromLong( columnno ) );
             }
 
-            PyDict_SetItemString( current_cifmessage, "addpos",
-                      PyString_FromString( cifmessage_addpos( cifmessage ) ) );
-            PyDict_SetItemString( current_cifmessage, "program",
-                      PyString_FromString( progname ) );
-            PyDict_SetItemString( current_cifmessage, "filename",
-                      PyString_FromString( cifmessage_filename( cifmessage ) ) );
-            PyDict_SetItemString( current_cifmessage, "status",
-                      PyString_FromString( cifmessage_status( cifmessage ) ) );
-            PyDict_SetItemString( current_cifmessage, "message",
-                      PyString_FromString( cifmessage_message( cifmessage ) ) );
-            PyDict_SetItemString( current_cifmessage, "explanation",
-                      PyString_FromString( cifmessage_explanation( cifmessage ) ) );
-            PyDict_SetItemString( current_cifmessage, "msgseparator",
-                      PyString_FromString( cifmessage_msgseparator( cifmessage ) ) );
-            PyDict_SetItemString( current_cifmessage, "line",
-                      PyString_FromString( cifmessage_line( cifmessage ) ) );
+            PyDict_PutString( current_cifmessage, "addpos",
+                      cifmessage_addpos( cifmessage ) );
+            PyDict_PutString( current_cifmessage, "program", progname );
+            PyDict_PutString( current_cifmessage, "filename",
+                      cifmessage_filename( cifmessage ) );
+            PyDict_PutString( current_cifmessage, "status",
+                      cifmessage_status( cifmessage ) );
+            PyDict_PutString( current_cifmessage, "message",
+                      cifmessage_message( cifmessage ) );
+            PyDict_PutString( current_cifmessage, "explanation",
+                      cifmessage_explanation( cifmessage ) );
+            PyDict_PutString( current_cifmessage, "msgseparator",
+                      cifmessage_msgseparator( cifmessage ) );
+            PyDict_PutString( current_cifmessage, "line",
+                      cifmessage_line( cifmessage ) );
 
             PyList_Append( error_messages, current_cifmessage );
         }
