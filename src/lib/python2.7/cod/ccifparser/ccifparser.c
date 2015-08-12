@@ -165,7 +165,7 @@ PyObject * parse_cif( char * fname, char * prog, PyObject * opt )
     if( is_option_set( options, "allow_uqstring_brackets" ) ) {
         set_lexer_allow_uqstring_brackets();
     }
-    /* co = cif_option_suppress_messages( co ); */
+    co = cif_option_suppress_messages( co );
 
     if( !fname ||
         ( strlen( fname ) == 1 && fname[0] == '-' ) ) {
