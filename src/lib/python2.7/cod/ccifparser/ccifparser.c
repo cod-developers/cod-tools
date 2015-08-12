@@ -45,6 +45,7 @@ PyObject * convert_datablock( DATABLOCK * datablock )
     PyObject * loopid     = PyDict_New();
     PyObject * loops      = PyList_New(0);
     PyObject * typehash   = PyDict_New();
+    PyObject * saveframes = PyList_New(0);
 
     size_t i;
     ssize_t j;
@@ -89,11 +90,20 @@ PyObject * convert_datablock( DATABLOCK * datablock )
         }
     }
 
+    DATABLOCK * saveframe;
+    foreach_datablock( saveframe,
+                       datablock_save_frame_list( datablock ) ) {
+        PyList_Append( saveframes,
+                       convert_datablock( saveframe ) );
+    }
+
     PyDict_SetItemString( current_datablock, "tags",   taglist );
     PyDict_SetItemString( current_datablock, "values", valuehash );
     PyDict_SetItemString( current_datablock, "types",  typehash );
     PyDict_SetItemString( current_datablock, "inloop", loopid );
     PyDict_SetItemString( current_datablock, "loops",  loops );
+    PyDict_SetItemString( current_datablock, "save_blocks",
+                          saveframes );
 
     return current_datablock;
 }
@@ -177,12 +187,50 @@ PyObject * parse_cif( char * fname, char * prog, PyObject * opt )
         foreach_datablock( datablock, cif_datablock_list( cif ) ) {
             PyList_Append( datablocks, convert_datablock( datablock ) );
         }
+
+        CIFMESSAGE *cifmessage;
+        foreach_cifmessage( cifmessage, cif_messages( cif ) ) {
+            PyObject * current_cifmessage = PyDict_New();
+
+            int lineno = cifmessage_lineno( cifmessage );
+            int columnno = cifmessage_columnno( cifmessage );
+
+            if( lineno != -1 ) {
+                PyDict_SetItemString( current_cifmessage, "lineno",
+                                      PyInt_FromLong( lineno ) );
+            }
+            if( columnno != -1 ) {
+                PyDict_SetItemString( current_cifmessage, "columnno",
+                                      PyInt_FromLong( columnno ) );
+            }
+
+            PyDict_SetItemString( current_cifmessage, "addpos",
+                      PyString_FromString( cifmessage_addpos( cifmessage ) ) );
+            PyDict_SetItemString( current_cifmessage, "program",
+                      PyString_FromString( progname ) );
+            PyDict_SetItemString( current_cifmessage, "filename",
+                      PyString_FromString( cifmessage_filename( cifmessage ) ) );
+            PyDict_SetItemString( current_cifmessage, "status",
+                      PyString_FromString( cifmessage_status( cifmessage ) ) );
+            PyDict_SetItemString( current_cifmessage, "message",
+                      PyString_FromString( cifmessage_message( cifmessage ) ) );
+            PyDict_SetItemString( current_cifmessage, "explanation",
+                      PyString_FromString( cifmessage_explanation( cifmessage ) ) );
+            PyDict_SetItemString( current_cifmessage, "msgseparator",
+                      PyString_FromString( cifmessage_msgseparator( cifmessage ) ) );
+            PyDict_SetItemString( current_cifmessage, "line",
+                      PyString_FromString( cifmessage_line( cifmessage ) ) );
+
+            PyList_Append( error_messages, current_cifmessage );
+        }
+
         nerrors = cif_nerrors( cif );
         delete_cif( cif );
     }
 
     PyObject * ret = PyDict_New();
     PyDict_SetItemString( ret, "datablocks", datablocks );
+    PyDict_SetItemString( ret, "messages", error_messages );
     PyDict_SetItemString( ret, "nerrors", PyInt_FromLong( nerrors ) );
     return( ret );
 }
