@@ -26,6 +26,78 @@ bool is_option_set( PyObject * options, char * optname ) {
     }
 }
 
+PyObject * convert_datablock( DATABLOCK * datablock )
+{
+    PyObject * current_datablock = PyDict_New();
+    PyDict_SetItemString( current_datablock, "name",
+        PyString_FromString( datablock_name( datablock ) ) );
+
+    size_t length = datablock_length( datablock );
+    char **tags   = datablock_tags( datablock );
+    ssize_t * value_lengths = datablock_value_lengths( datablock );
+    char ***values = datablock_values( datablock );
+    int *inloop   = datablock_in_loop( datablock );
+    int  loop_count = datablock_loop_count( datablock );
+    datablock_value_type_t **types = datablock_types( datablock );
+
+    PyObject * taglist    = PyList_New(0);
+    PyObject * valuehash  = PyDict_New();
+    PyObject * loopid     = PyDict_New();
+    PyObject * loops      = PyList_New(0);
+    PyObject * typehash   = PyDict_New();
+
+    size_t i;
+    ssize_t j;
+    for( i = 0; i < loop_count; i++ ) {
+        PyObject * loop = PyList_New(0);
+        PyList_Append( loops, loop );
+    }
+
+    for( i = 0; i < length; i++ ) {
+        PyList_Append( taglist, PyString_FromString( tags[i] ) );
+
+        PyObject * tagvalues  = PyList_New(0);
+        PyObject * typevalues = PyList_New(0);
+        PyObject * type;
+        for( j = 0; j < value_lengths[i]; j++ ) {
+            PyList_Append( tagvalues, PyString_FromString( values[i][j] ) );
+            switch ( types[i][j] ) {
+                case DBLK_INT :
+                    type = PyString_FromString( "INT" ); break;
+                case DBLK_FLOAT :
+                    type = PyString_FromString( "FLOAT" ); break;
+                case DBLK_SQSTRING :
+                    type = PyString_FromString( "SQSTRING" ); break;
+                case DBLK_DQSTRING :
+                    type = PyString_FromString( "DQSTRING" ); break;
+                case DBLK_UQSTRING :
+                    type = PyString_FromString( "UQSTRING" ); break;
+                case DBLK_TEXT :
+                    type = PyString_FromString( "TEXTFIELD" ); break;
+                default :
+                    type = PyString_FromString( "UNKNOWN" );
+            }
+            PyList_Append( typevalues, type );
+        }
+        PyDict_SetItemString( valuehash, tags[i], tagvalues );
+        PyDict_SetItemString( typehash, tags[i], typevalues );
+
+        if( inloop[i] != -1 ) {
+            PyDict_SetItemString( loopid, tags[i], PyInt_FromLong( inloop[i] ) );
+            PyObject * current_loop = PyList_GetItem( loops, inloop[i] );
+            PyList_Append( current_loop, PyString_FromString( tags[i] ) );
+        }
+    }
+
+    PyDict_SetItemString( current_datablock, "tags",   taglist );
+    PyDict_SetItemString( current_datablock, "values", valuehash );
+    PyDict_SetItemString( current_datablock, "types",  typehash );
+    PyDict_SetItemString( current_datablock, "inloop", loopid );
+    PyDict_SetItemString( current_datablock, "loops",  loops );
+
+    return current_datablock;
+}
+
 PyObject * parse_cif( char * fname, char * prog, PyObject * opt )
 {
     cexception_t inner;
@@ -77,7 +149,8 @@ PyObject * parse_cif( char * fname, char * prog, PyObject * opt )
     }
     /* co = cif_option_suppress_messages( co ); */
 
-    if( strlen( fname ) == 1 && fname[0] == '-' ) {
+    if( !fname ||
+        ( strlen( fname ) == 1 && fname[0] == '-' ) ) {
         fname = NULL;
     }
 
@@ -85,6 +158,7 @@ PyObject * parse_cif( char * fname, char * prog, PyObject * opt )
 
     int nerrors = 0;
     PyObject * datablocks = PyList_New(0);
+    PyObject * error_messages = PyList_New(0);
 
     cexception_guard( inner ) {
         cif = new_cif_from_cif_file( fname, co, &inner );
@@ -101,74 +175,7 @@ PyObject * parse_cif( char * fname, char * prog, PyObject * opt )
     if( cif ) {
         DATABLOCK *datablock;
         foreach_datablock( datablock, cif_datablock_list( cif ) ) {
-            PyObject * current_datablock = PyDict_New();
-            PyDict_SetItemString( current_datablock, "name",
-                PyString_FromString( datablock_name( datablock ) ) );
-
-            size_t length = datablock_length( datablock );
-            char **tags   = datablock_tags( datablock );
-            ssize_t * value_lengths = datablock_value_lengths( datablock );
-            char ***values = datablock_values( datablock );
-            int *inloop   = datablock_in_loop( datablock );
-            int  loop_count = datablock_loop_count( datablock );
-            datablock_value_type_t **types = datablock_types( datablock );
-
-            PyObject * taglist    = PyList_New(0);
-            PyObject * valuehash  = PyDict_New();
-            PyObject * loopid     = PyDict_New();
-            PyObject * loops      = PyList_New(0);
-            PyObject * typehash   = PyDict_New();
-
-            size_t i;
-            ssize_t j;
-            for( i = 0; i < loop_count; i++ ) {
-                PyObject * loop = PyList_New(0);
-                PyList_Append( loops, loop );
-            }
-
-            for( i = 0; i < length; i++ ) {
-                PyList_Append( taglist, PyString_FromString( tags[i] ) );
-
-                PyObject * tagvalues  = PyList_New(0);
-                PyObject * typevalues = PyList_New(0);
-                PyObject * type;
-                for( j = 0; j < value_lengths[i]; j++ ) {
-                    PyList_Append( tagvalues, PyString_FromString( values[i][j] ) );
-                    switch ( types[i][j] ) {
-                        case DBLK_INT :
-                            type = PyString_FromString( "INT" ); break;
-                        case DBLK_FLOAT :
-                            type = PyString_FromString( "FLOAT" ); break;
-                        case DBLK_SQSTRING :
-                            type = PyString_FromString( "SQSTRING" ); break;
-                        case DBLK_DQSTRING :
-                            type = PyString_FromString( "DQSTRING" ); break;
-                        case DBLK_UQSTRING :
-                            type = PyString_FromString( "UQSTRING" ); break;
-                        case DBLK_TEXT :
-                            type = PyString_FromString( "TEXTFIELD" ); break;
-                        default :
-                            type = PyString_FromString( "UNKNOWN" );
-                    }
-                    PyList_Append( typevalues, type );
-                }
-                PyDict_SetItemString( valuehash, tags[i], tagvalues );
-                PyDict_SetItemString( typehash, tags[i], typevalues );
-
-                if( inloop[i] != -1 ) {
-                    PyDict_SetItemString( loopid, tags[i], PyInt_FromLong( inloop[i] ) );
-                    PyObject * current_loop = PyList_GetItem( loops, inloop[i] );
-                    PyList_Append( current_loop, PyString_FromString( tags[i] ) );
-                }
-            }
-
-            PyDict_SetItemString( current_datablock, "tags",   taglist );
-            PyDict_SetItemString( current_datablock, "values", valuehash );
-            PyDict_SetItemString( current_datablock, "types",  typehash );
-            PyDict_SetItemString( current_datablock, "inloop", loopid );
-            PyDict_SetItemString( current_datablock, "loops",  loops );
-
-            PyList_Append( datablocks, current_datablock );
+            PyList_Append( datablocks, convert_datablock( datablock ) );
         }
         nerrors = cif_nerrors( cif );
         delete_cif( cif );
