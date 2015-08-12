@@ -6,7 +6,7 @@
 #------------------------------------------------------------------------------
 
 CODTOOLS    = cod-tools
-LIBCOD_PERL = libcod-ccifparser-ccifparser-perl
+LIBCOD_PERL = libcod-cif-parser-bison-perl
 LIBCODCIF   = libcodcif
 PYCODCIF    = pycodcif
 
@@ -40,12 +40,17 @@ RUN_DEPS = $(shell grep install ${RUN_DEPS_LIST} \
 # Collecting Perl binaries and libraries:
 
 CODTOOLS_LIBS = $(shell find src/lib/perl5 -name .svn -prune -o \
-                                           -name CCIFParser -prune -o \
+                                           -name Bison -prune -o \
+                                           -name Bison.pm -prune -o \
+                                           -name Yapp -prune -o \
+                                           -name Precision.pm -prune -o \
+                                           -name UserMessage.pm -prune -o \
                                            -name \*.pm -print)
 
-LIBCOD_PERL_LIBS = $(shell find src/lib/perl5 -name .svn -prune -o \
-                                              -name CCIFParser.pm -print -o \
-                                              -name CCIFParser.so -print)
+LIBCOD_PERL_LIBS = src/lib/perl5/auto/COD/CIF/Parser/Bison/Bison.so \
+                   src/lib/perl5/COD/CIF/Parser/Bison.pm \
+                   src/lib/perl5/COD/Precision.pm \
+                   src/lib/perl5/COD/UserMessage.pm
 
 PYCODCIF_LIBS = $(shell find src/lib/python2.7 -name .svn -prune -o \
                                                -name \*.py -print -o \
@@ -115,9 +120,9 @@ install-codtools:
 install-libcod-perl:
 	for i in ${LIBCOD_PERL_LIBS:src/%=%}; \
 	do \
-	test -d ${DEBIAN}/${LIBCOD_PERL}/$$(dirname $$i) \
-			|| mkdir -p ${DEBIAN}/${LIBCOD_PERL}/$$(dirname $$i); \
-		install --mode 644 src/$$i ${DEBIAN}/${LIBCOD_PERL}/$$i; \
+	test -d ${DEBIAN}/${LIBCOD_PERL}/usr/$$(dirname $$i) \
+			|| mkdir -p ${DEBIAN}/${LIBCOD_PERL}/usr/$$(dirname $$i); \
+		install --mode 644 src/$$i ${DEBIAN}/${LIBCOD_PERL}/usr/$$i; \
 	done
 
 install-pycodcif:
