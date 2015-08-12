@@ -161,7 +161,7 @@ def sprint_message(program, filename, datablock, errlevel, message,
     import re
     message = re.sub('\.?\n?$', '', message)
     if explanation is not None:
-        explanation = re.sub('\.?\n?$', '', message)
+        explanation = re.sub('\.?\n?$', '', explanation)
 
     if program == '-c':
         program = "python -c '...'"
