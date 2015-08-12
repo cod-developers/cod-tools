@@ -14,18 +14,18 @@ eval 'exec perl -x $0 ${1+"$@"}'
 
 use strict;
 use warnings;
+use COD::CIF::Parser qw(parse_cif);
 use COD::AtomBricks qw(build_bricks get_atom_index get_search_span);
 use COD::AtomProperties;
-use COD::CIFParser::CIFParser;
-use COD::CIFData qw( get_cell );
-use COD::CIFData::CIFAtomList qw( atom_array_from_cif );
-use COD::CIFTags::CIFTagCanonicalNames;
-use COD::CIFTags::CIFTagManage;
-use COD::CIFTags::CIFTagPrint;
+use COD::CIF::Data qw( get_cell );
+use COD::CIF::Data::AtomList qw( atom_array_from_cif );
+use COD::CIF::Tags::CanonicalNames;
+use COD::CIF::Tags::Manage;
+use COD::CIF::Tags::Print;
 use COD::Fractional;
-use COD::UserMessage;
-use COD::Spacegroups::SymopAlgebra qw( symop_vector_mul );
-use COD::Spacegroups::VectorAlgebra qw( distance );
+use COD::Spacegroups::Symop::Algebra qw( symop_vector_mul );
+use COD::Algebra::Vector qw( distance );
+use COD::UserMessage qw(note warning prefix_dataname);
 use COD::SOptions;
 use COD::SUsage;
 
@@ -159,14 +159,16 @@ if( $cif_header_file ) {
 @ARGV = ("-") unless @ARGV;
 
 for my $filename (@ARGV) {
-    my $data;
-    if( $use_parser eq "perl" ) {
-        my $parser = new COD::CIFParser::CIFParser;
-        $data = $parser->Run($filename);
-    } else {
-        require COD::CCIFParser::CCIFParser;
-        $data = COD::CCIFParser::CCIFParser::parse($filename);
+    my $options = { 'parser' => $use_parser, 'no_print' => 1 };
+    my ( $data, $err_count, $messages ) = parse_cif( $filename, $options );
+
+    if ( $err_count > 0 ) {
+        print STDERR $_ foreach ( @$messages );
+        error( $0, $filename, undef, "$err_count error(s) "
+             . "encountered while parsing the file", undef );
+        next;
     }
+    print STDERR $_ foreach ( @$messages );
 
     canonicalize_all_names( $data );
 
@@ -290,7 +292,7 @@ sub get_alternatives
                     # Merging two assemblies
                     my @new_assembly;
                     foreach( @{$assemblies[$assembly1]} ) {
-                        $in_assembly{$_} = scalar @assemblies;                        
+                        $in_assembly{$_} = scalar @assemblies;
                         push( @new_assembly, $_ );
                     }
                     $assemblies[$assembly1] = [];
@@ -333,7 +335,7 @@ sub get_alternatives
             warning( $0, $filename, $dataname,
                      "atoms " . join( ", ", map( "'$_'", @names ) ) .
                      " share the same site, but the sum of their " .
-                     "occupancies is $occupancy_sum" );
+                     "occupancies is $occupancy_sum", undef );
             next;
         }
         my $group_nr = 1;
@@ -350,14 +352,14 @@ sub get_alternatives
 #==============================================================================#
 # Find and mark disorder in a given CIF datablock (overwrites old values)
 # Accepts
-#    dataset         - CIF datablock, as produced by COD::CIFParser
+#    dataset         - CIF datablock, as produced by COD::CIF::Parser
 #    atom_properties - atom properties structure, as from COD::AtomProperties
 #    filename        - CIF file name
 #    options         - various options to control the algorithm
 sub mark_disorder
 {
     my( $dataset, $atom_properties, $filename, $options ) = @_;
-    my $dataname = $dataset->{name};
+    my $dataname = prefix_dataname($dataset->{name});
     my $values = $dataset->{values};
 
     $options = {} unless $options;
@@ -489,7 +491,7 @@ sub mark_disorder
             my $msg = "disorder assembly '.' was renamed to " .
                       "'$rename_dot_assembly_with'";
             push( @messages, $msg );
-            note( $0, $filename, $dataname, $msg );
+            note( $0, $filename, $dataname, $msg, undef );
         }
 
         for my $assembly (@new_assemblies) {
@@ -500,14 +502,14 @@ sub mark_disorder
                       " were marked as alternatives";
             push( @messages, $msg );
             if( $options->{report_marked_disorders} ) {
-                note( $0, $filename, $dataname, $msg );
+                note( $0, $filename, $dataname, $msg, undef );
             }
         }
 
         if( @new_assemblies > 0 ) {
             note( $0, $filename, $dataname,
                   scalar( @new_assemblies ) . " site(s) " .
-                  "were marked as disorder assemblies" );
+                  "were marked as disorder assemblies", undef );
         }
 
         my $atom_site_tag;

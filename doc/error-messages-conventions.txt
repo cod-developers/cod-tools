@@ -28,87 +28,95 @@ For meaning of words SHOULD, MAY, etc. please refer to rfc2119[1].
 =====================================================================
 2. FORMAL GRAMMAR
 
-Below, we provide the formal grammar of the error messages in BNF[2] and
-Yacc/Bison[3] formats:
+Below, we provide the formal grammar of the error messages in EBNF[4,5]:
 
-@BEGIN BNF
-<error_report> ::=
-    <progname> ':' <spaces> <message> |
-    <progname> ':' <spaces> <location> ':' <spaces> <message> ;
+(* @BEGIN EBNF *)
 
-<location> ::=
-    <file_position> <spaces> <additional_position> |
-    <file_position> |
-    <filename>;
+error_list = {[spaces], newline},
+              error_report, { error_report };
 
-<file_position> ::=
-    <filename> <spaces> '(' <lineno> ',' <linepos> ')' |
-    <filename> <spaces> '(' <lineno> ')';
+error_report = progname, ':', [spaces], [location], ':', [spaces],
+               (status, ',', [spaces] | lowercase_word), [message],
+               [ ':', [spaces], newline, { space, code_line } ],
+               {newline};
 
-<message> ::=
-    <status> ',' <spaces> <msgtext> |
-    <msgtext> ;
+code_line = [anytext], newline;
 
-<msgtext> ::=
-    <text> <spaces> '-' <spaces> <text> |
-    <text> ;
+location = file_position, [spaces], [ additional_position ] ;
 
-<lineno>  ::= <digit> | <lineno>  <digit> ;
+file_position = filename, [spaces], [ file_line_column ] ;
 
-<linepos> ::= <digit> | <linepos> <digit> ;
+file_line_column = '(', lineno, [ ',', linepos ], ')';
 
-<additional_position> ::= <text> ;
+message = text ;
 
-# Lexical tokens:
+lineno = integer ;
 
-<spaces> ::= "" | <space> | <spaces> <space> ;
+linepos = integer ;
 
-<space> ::= " " | "\t" ;
+additional_position = text ;
 
-<text> ::= <word> | <text> <spaces> <word>;
+status = uppercase_letter, { uppercase_letter | digit | "-" | "_" } ;
 
-<word> ::= <word_char> | "-" <word_char> | <word> <word_char> | <word> "-" ;
+filename = filename_char, { filename_char } ;
 
-<letter> ::= "a" | "b" | "c" | "d" | "e" | "f" | "g" | "h" | "i" | "j"
-           | "k" | "l" | "m" | "n" | "o" | "p" | "q" | "r" | "s" | "t"
-           | "u" | "v" | "w" | "x" | "y" | "z"
-           | uppercase_letter
-           | "_" ;
+progname = filename_char, { filename_char | space } ;
 
-<uppercase_letter> ::=
+anytext = anychar, {anychar} ;
+
+(* Lexical tokens: *)
+
+filename_char = letter | digit | unicode_symbol | quote | punctuator ;
+
+spaces = space, {space} ;
+
+space = " " | "\t" ;
+
+newline = ? \n ? ;
+
+integer = digit, {digit} ;
+
+text = word, [spaces], { word, [spaces] } ;
+
+lowercase_word = word_char, { lowercase_letter }, [spaces];
+
+word = word_char, { word_char } ;
+
+word_char = letter | digit | unicode_symbol | quote | punctuator | braces ;
+
+anychar = word_char | space | delimiter ;
+
+letter = lowercase_letter | uppercase_letter | "_" ;
+
+unicode_symbol = ? [^\p{ASCII}] ?;
+
+lowercase_letter = "a" | "b" | "c" | "d" | "e" | "f" | "g" | "h" | "i" | "j"
+                 | "k" | "l" | "m" | "n" | "o" | "p" | "q" | "r" | "s" | "t"
+                 | "u" | "v" | "w" | "x" | "y" | "z" ;
+
+uppercase_letter =
              "A" | "B" | "C" | "D" | "E" | "F" | "G" | "H" | "I" | "J" 
            | "K" | "L" | "M" | "N" | "O" | "P" | "Q" | "R" | "S" | "T"
            | "U" | "V" | "W" | "X" | "Y" | "Z" ;
 
-<digit> ::= "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" ;
+digit = "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" ;
 
-<quote> ::= '"' | "'" ;
+quote = '"' | "'" ;
 
-<braces> ::= "(" | ")" | "[" | "]" | "{" | "}" ;
+braces = "(" | ")" | "[" | "]" | "{" | "}" ;
 
-# Puncuators for error messages SHOULD NOT include ":" and "-":
-<punctuator> ::=
-    "~" | "`" | "," | ";" | "!" | "?" | "." | "@" | "%" | "^" |
-    "&" | "*" | "|" | "#" | "$" | "+" | "=" | "/" | "<" | ">" |
-    '\' |
-    <braces> ;
+(* Punctuators for error messages SHOULD NOT include the ":" character: *)
+punctuator = "!" | "#" | "$" | "%" | "&" | "*" | "+" | "," | "|" | "~"
+           | "-" | "." | "/" | (* ":" | *) ";" | "<" | "=" | ">" 
+           | "?" | "@" | "\" | "^" | "`" ;
 
-<word_char> ::= <letter> | <digit> | <quote> | <punctuator> ;
+(* Delimiters are used to separate distinct parts of the error
+   message, but they may be used arbitrarily in the code line that
+   follows the structured message text: *)
 
-<status> ::= <uppercase_letter> | 
-             <status> <uppercase_letter> |
-             <status> "_" <status> | 
-             <status> "-" <status>;
+delimiter = ":" ;
 
-<filename> ::= <filename_char> | <filename> <filename_char> ;
-
-<filename_char> ::= <word_char> | "-";
-
-@END BNF
-
-@BEGIN YACC
-/* FIXME: Yacc/Bison grammar to be provided... S.G. */
-@END YACC
+(* @END EBNF *)
 
 =====================================================================
 3. OVERVIEW
@@ -119,10 +127,10 @@ Where:
     - $0 stands for script name; programs convention meaning "my name" - 
       by what name script has been called.
       In case of Perl libraries - $0 returns the name of program which 
-      is calling library and this is correct behaviour here.
+      is calling library and this is correct behavior here.
       If the library is called using -e (here - Perl command line switch 
       indicating next to it written code execution; for similar 
-      behaviour in other programming languages - take a look at 
+      behavior in other programming languages - take a look at 
       respective manual) instead of '$0: <fn>...' we SHOULD output only 
       '<fn>...' as it appears more readable.
     - <fn> means file name. The name with user provided path to the file 
@@ -145,10 +153,10 @@ Where:
 =====================================================================
 4. EXAMPLES
 
-command: message - explanation
+command:: message - explanation
 command: file(10,20): message - explanation
 command: file(10,20) data_xyz: message - explanation
-command: ERROR, message - explanation
+command:: ERROR, message - explanation
 command: file(10,20): ERROR, message - explanation
 command: file(10,20): WARNING, message - explanation
 command: file(10,20) data_xyz: ERROR, message - explanation
@@ -156,9 +164,9 @@ command: file(10,20) data_xyz: ERROR 1234, message - explanation
 command: file(10,20) data_xyz: WARNING, message - explanation
 command: file(10,20) data_xyz: NOTE, message - explanation
 
-command: NOTE, message about file "filename.ext", data_xyz - explanation
+command:: NOTE, message about file "filename.ext", data_xyz - explanation
 
-The 'explantion' part is a system error message if aplicable; in *x
+The 'explanation' part is a system error message if applicable; in *x
 type systems, strerror(errno) gives the suitable message.
 
 e.g.:
@@ -176,9 +184,9 @@ Example 2:
 ./cif_cod_check: comments_in_text.cif data_test: NOTE, _journal_name_full is undefined
 
 Example 3:
-./cif_parse_new: tests/cif_cod_check_006.inp(34,38) data_2009397: ERROR, incorrect CIF syntax
-_symmetry_space_group_name_H-M  'R 3' ccc
-                                      ^
+./cif_parse_new: tests/cif_cod_check_006.inp(34,38) data_2009397: ERROR, incorrect CIF syntax:
+ _symmetry_space_group_name_H-M  'R 3' ccc
+                                       ^
 Example 4:
 ./cif_validate: inputs/cif_core.dic: ERROR, no tags were defined in dictionaries
 
@@ -196,7 +204,7 @@ program: message
 program:source-file-name:lineno: message
 program:source-file-name:lineno:column: message
 
-We could generalise this format to match our needs as follows:
+We could generalize this format to match our needs as follows:
 
 program: NOTE, message
 program:source-file-name:lineno: ERROR, message
@@ -257,10 +265,10 @@ you should check whereas these values exist before printing them... ;)
 7. OUTPUT
 
 Create your scripts with respect. Respect towards users and computers - 
-you never now, who will be your next reader.
+you never know, who will be your next reader.
 
 So far as our scripts are concerned - we will put all our efforts on 
-making error reportings according to these guideliness, so you should be 
+making error reporting according to these guidelines, so you should be 
 safe to set up your tools to check for errors in this format.
 
 =====================================================================
@@ -274,3 +282,10 @@ safe to set up your tools to check for errors in this format.
 
 [3] Free Software Foundation, "GNU Bison - The Yacc-compatible Parser
     Generator", https://www.gnu.org/software/bison/manual/
+
+[4] Wikipedia, The Free Encyclopedia, "Extended Backus–Naur Form",
+    https://en.wikipedia.org/wiki/Extended_Backus%E2%80%93Naur_Form
+
+[5] ISO/IEC 14977 : 1996(E), "Information technology — Syntactic
+    metalanguage — Extended BNF",
+    http://www.cl.cam.ac.uk/~mgk25/iso-14977.pdf

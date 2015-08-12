@@ -14,12 +14,12 @@ eval 'exec perl -x $0 ${1+"$@"}'
 
 use strict;
 use warnings;
-use COD::CIFData qw( get_content_encodings );
-use COD::CIFParser::CIFParser;
-use COD::CIFTags::CIFTagCanonicalNames;
-use COD::CIFTags::CIFTagPrint;
+use COD::CIF::Data qw( get_content_encodings );
+use COD::CIF::Parser::Yapp;
+use COD::CIF::Tags::CanonicalNames;
+use COD::CIF::Tags::Print;
 use COD::Escape qw( decode_textfield );
-use COD::UserMessage;
+use COD::UserMessage qw( warning prefix_dataname );
 use COD::SOptions;
 use COD::SUsage;
 use Digest::MD5 qw( md5_hex );
@@ -79,7 +79,7 @@ for my $filename (@ARGV) {
     my( $data, $error_count );
 
     if( $use_parser eq "perl" ) {
-        my $parser = new COD::CIFParser::CIFParser;
+        my $parser = new COD::CIF::Parser::Yapp;
 
         $data = $parser->Run($filename);
 
@@ -87,15 +87,15 @@ for my $filename (@ARGV) {
             $error_count = $parser->YYData->{ERRCOUNT};
         }
     } else {
-        require COD::CCIFParser::CCIFParser;
-        ( $data, $error_count ) = COD::CCIFParser::CCIFParser::parse($filename);
+        require COD::CIF::Parser::Bison;
+        ( $data, $error_count ) = COD::CIF::Parser::Bison::parse($filename);
     }
 
     canonicalize_all_names( $data );
 
     for my $datablock (@$data) {
         my $values   = $datablock->{values};
-        my $dataname = $datablock->{name};
+        my $dataname = prefix_dataname($datablock->{name});
 
         my $encodings = get_content_encodings( $datablock, $filename );
 
@@ -136,12 +136,12 @@ for my $filename (@ARGV) {
                     if( $curl->perform ) {
                         warning( $0, $filename, $dataname,
                                  "unable to fetch URI '$uri': " .
-                                 $curl->errbuf );
+                                 $curl->errbuf, undef );
                     }
                 } else {
                     warning( $0, $filename, $dataname,
                              "contents for file '$path' are not " .
-                             "provided -- skipping" );
+                             "provided", 'skipping' );
                     next
                 }
             }
@@ -153,7 +153,7 @@ for my $filename (@ARGV) {
                         !exists $encodings->{$encoding} ) {
                         warning( $0, $filename, $dataname,
                                  "content encoding stack '$encoding' " .
-                                 "is not described, trying to guess" );
+                                 "is not described", "trying to guess" );
                     }
                     # Perform a default decoding, try to guess the encoding
                     # layer type from the encoding ID
@@ -166,7 +166,7 @@ for my $filename (@ARGV) {
             };
             if( $@ ) {
                 warning( $0, $filename, $dataname,
-                         "could not decode contents for file '$path' -- " .
+                         "could not decode contents for file '$path'",
                          "$@; will not decode contents" );
                 $contents = $values->{_tcod_file_contents}[$i];
             }
@@ -175,14 +175,14 @@ for my $filename (@ARGV) {
                 if( md5_hex($contents) ne $md5sum ) {
                     warning( $0, $filename, $dataname,
                              "MD5 checksums of the original '$path' and " .
-                             "decoded files are different" );
+                             "decoded files are different", undef );
                 }
             }
             if( $sha1sum ) {
                 if( sha1_hex($contents) ne $sha1sum ) {
                     warning( $0, $filename, $dataname,
                              "SHA1 checksums of the original '$path' and " .
-                             "decoded files are different" );
+                             "decoded files are different", undef );
                 }
             }
 

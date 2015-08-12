@@ -14,17 +14,13 @@ use strict;
 use warnings;
 
 require Exporter;
-@COD::AtomNeighbours::ISA = qw(Exporter);
-@COD::AtomNeighbours::EXPORT = qw(
-    make_neighbour_list
-);
-@COD::AtomNeighbours::EXPORT_OK = qw(
-    get_max_covalent_radius
-);
+our @ISA = qw(Exporter);
+our @EXPORT = qw(make_neighbour_list);
+our @EXPORT_OK = qw(get_max_covalent_radius);
 
 use Carp;
 use COD::AtomBricks qw(build_bricks get_atom_index get_search_span);
-use COD::Spacegroups::VectorAlgebra qw(distance);
+use COD::Algebra::Vector qw(distance);
 
 #==============================================================================#
 # Find a maximal covalent radius in the atom property list.

@@ -8,13 +8,14 @@
 package COD::Precision;
 
 use strict;
+use warnings;
 
 require Exporter;
-@COD::Precision::ISA = qw(Exporter);
-@COD::Precision::EXPORT = qw(cmp_cif_numbers
-                             eqsig
-                             unpack_precision
-                             unpack_cif_number);
+our @ISA = qw(Exporter);
+our @EXPORT = qw(cmp_cif_numbers
+                 eqsig
+                 unpack_precision
+                 unpack_cif_number);
 
 sub unpack_precision
 {

@@ -9,8 +9,8 @@ package COD::Serialise;
 
 use strict;
 require Exporter;
-@COD::Serialise::ISA = qw(Exporter);
-@COD::Serialise::EXPORT = qw(
+our @ISA = qw(Exporter);
+our @EXPORT = qw(
     serialiseHash serialiseArray serialiseRef serialiseScalar
 );
 

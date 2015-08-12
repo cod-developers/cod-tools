@@ -19,24 +19,25 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #**
 
 use strict;
+use warnings;
 use File::Basename;
+use COD::CIF::Parser qw( parse_cif );
 use COD::Cell qw(cell_volume);
-use COD::CIFParser::CIFParser;
-use COD::CIFTags::CIFDictTags;
-use COD::CIFTags::CIFCODTags;
-use COD::CIFTags::CIFAMCSDTags;
-use COD::CIFTags::CIFTCODTags;
-use COD::CIFTags::CIFDFTTags;
-use COD::CIFTags::CIFExcludedTags;
-use COD::CIFTags::CIFTagManage;
-use COD::CIFTags::CIFTagPrint;
-use COD::CIFTags::CIFTagCanonicalNames;
-use COD::Spacegroups::SpacegroupNames;
-use COD::Spacegroups::SymopParse;
-use COD::Spacegroups::SymopLookup;
-use COD::Formulae::AdHocParser;
-use COD::Unicode2CIF;
-use COD::UserMessage;
+use COD::CIF::Tags::DictTags;
+use COD::CIF::Tags::COD;
+use COD::CIF::Tags::AMCSD;
+use COD::CIF::Tags::TCOD;
+use COD::CIF::Tags::DFT;
+use COD::CIF::Tags::Excluded;
+use COD::CIF::Tags::Manage;
+use COD::CIF::Tags::Print;
+use COD::CIF::Tags::CanonicalNames;
+use COD::Spacegroups::Names;
+use COD::Spacegroups::Symop::Parse;
+use COD::Spacegroups::Lookup::COD;
+use COD::Formulae::Parser::AdHoc;
+use COD::CIF::Unicode2CIF;
+use COD::UserMessage qw(warning error prefix_dataname);
 use COD::SOptions;
 use COD::SUsage;
 
@@ -54,10 +55,11 @@ sub mkhash
 {
     if( 1 ) {
         map { (mk_symop_key($_->{symops}), $_) }
-        @COD::Spacegroups::SymopLookup::table,
-        @COD::Spacegroups::SymopLookup::extra_settings;
+        @COD::Spacegroups::Lookup::COD::table,
+        @COD::Spacegroups::Lookup::COD::extra_settings;
     #} else {
-    #        map { (mk_symop_key($_->{symops}), $_) } @CCP4SymopLookup::table;
+    #    map { (mk_symop_key($_->{symops}), $_) }
+    #    @COD::Spacegroups::Lookup::CCP4::table;
     }
 }
 
@@ -130,7 +132,7 @@ my %spacegroups = map {
     $key1 =~ s/\s//g;
     $key2 =~ s/\s//g;
     ($key1, $_->[2], $key2, $_->[2] )
-} @COD::Spacegroups::SpacegroupNames::names;
+} @COD::Spacegroups::Names::names;
 
 #* USAGE:
 #*     $0 [options] input.cif [input2.cif ...]
@@ -410,13 +412,13 @@ if( $extra_tag_file ) {
     ## print @extra_tags;
 }
 
-my %excluded_tags  = map { ($_,$_) } @COD::CIFTags::CIFExcludedTags::tag_list;
+my %excluded_tags  = map { ($_,$_) } @COD::CIF::Tags::Excluded::tag_list;
 
-my @dictionary_tags = ( @COD::CIFTags::CIFDictTags::tag_list,
-                        @COD::CIFTags::CIFCODTags::tag_list,
-                        @COD::CIFTags::CIFAMCSDTags::tag_list,
-                        @COD::CIFTags::CIFTCODTags::tag_list,
-                        @COD::CIFTags::CIFDFTTags::tag_list,
+my @dictionary_tags = ( @COD::CIF::Tags::DictTags::tag_list,
+                        @COD::CIF::Tags::COD::tag_list,
+                        @COD::CIF::Tags::AMCSD::tag_list,
+                        @COD::CIF::Tags::TCOD::tag_list,
+                        @COD::CIF::Tags::DFT::tag_list,
                         @extra_tags );
 
 my %dictionary_tags = map { $_, $_ } @dictionary_tags;
@@ -439,30 +441,20 @@ my $biblio_blocks;
 
 if( defined $biblio ) {
     if( $biblio =~ /\.cif/i ) {
-        my( $error_count );
-        my %biblio_options = ( fix_errors => 1 );
-        # For now, always use Perl parser for biblioraphies, since C
-        # parser is not (yet) reenterable :(:
-        ## if( $use_parser eq "perl" ) {
-        if( 1 ) {
-            my $parser = new COD::CIFParser::CIFParser;
+        my ($err_count, $messages);
+        # For now, always use Perl parser for bibliographies, since C
+        # parser is not (yet) reenterable :(: (still applicable?)
+        my $biblio_options = { parser     => 'perl',
+                               no_print   => 1,
+                               fix_errors => 1 };
 
-                $biblio_blocks = $parser->Run($biblio, \%biblio_options);
+        ($biblio_blocks, $err_count, $messages) =
+                                            parse_cif($biblio, $biblio_options);
 
-                if( defined $parser->YYData->{ERRCOUNT} &&
-                    $parser->YYData->{ERRCOUNT} > 0 ) {
-                    $error_count = $parser->YYData->{ERRCOUNT};
-                }
-        } else {
-            require COD::CCIFParser::CCIFParser;
-            ( $biblio_blocks, $error_count ) = 
-                COD::CCIFParser::CCIFParser::parse( $biblio, \%biblio_options );
-        }
-
-        if( defined $error_count && $error_count > 0 ) {
-            print STDERR "$0: ", $error_count,
-                " error(s) encountered while parsing",
-                " file '${biblio}'\n";
+        print STDERR $_ foreach ( @$messages );
+        if( $err_count > 0 ) {
+            error( $0, $biblio, undef, "$err_count error(s) "
+                 . 'encountered while parsing the file', undef );
             die;
         }
     } else {
@@ -485,30 +477,16 @@ if( defined $biblio ) {
 @ARGV = ( "-" ) unless @ARGV;
 
 for my $filename (@ARGV) {
+    my $options = { parser     => $use_parser,
+                    no_print   => 1,
+                    fix_errors => $fix_errors };
 
-    my( $data, $error_count );
-    my %options;
+    my ($data, $err_count, $messages) = parse_cif($filename, $options);
 
-    if( $fix_errors ) {
-        $options{fix_errors} = 1;
-    }
-
-    if( $use_parser eq "perl" ) {
-        my $parser = new COD::CIFParser::CIFParser;
-
-        $data = $parser->Run($filename, \%options);
-
-        if( defined $parser->YYData->{ERRCOUNT} ) {
-            $error_count = $parser->YYData->{ERRCOUNT};
-        }
-    } else {
-        require COD::CCIFParser::CCIFParser;
-        ( $data, $error_count ) = COD::CCIFParser::CCIFParser::parse( $filename, \%options );
-    }
-
-    if( defined $error_count && $error_count > 0 ) {
-        print STDERR "$0: ", $error_count,
-        " error(s) encountered while parsing file '${filename}'\n";
+    print STDERR $_ foreach @$messages;
+    if( $err_count > 0 ) {
+        error( $0, $filename, undef, "$err_count error(s) "
+             . 'encountered while parsing the file', undef );
         die;
     }
 
@@ -625,6 +603,7 @@ for my $filename (@ARGV) {
         ## next unless defined $dataset->{kind} && $dataset->{kind} == "DATA";
 
         my $datablok = $dataset->{values};
+        my $dataname = prefix_dataname($dataset->{name});
 
         # Add bibliography from a global section, if any:
 
@@ -923,8 +902,8 @@ for my $filename (@ARGV) {
 
         for my $tag (@{$dataset->{tags}}) {
             unless( exists $dictionary_tags{$tag} ) {
-                warning( $0, $filename, $dataset->{name},
-                         "tag '$tag' is not recognised" );
+                warning( $0, $filename, $dataname,
+                         "tag '$tag' is not recognised", undef );
             }
         }
 
@@ -1022,7 +1001,7 @@ for my $filename (@ARGV) {
                     my $error = check_symmetry_operator( $symop );
                     if( $error ) {
                         $has_errors = 1;
-                        error( $0, $filename, $dataset->{name}, $error );
+                        error( $0, $filename, $dataname, $error, undef );
                     }
                 }
                 if( !$has_errors ) {
@@ -1102,10 +1081,10 @@ for my $filename (@ARGV) {
                     }
                 }
             } else {
-                warning( $0, $filename, $dataset->{name},
+                warning( $0, $filename,$dataname,
                          "the " . (defined $filename ? "'$filename' " : "") .
-                         "data_$dataset->{name} does not contain " .
-                         "symmetry operators" );
+                         "$dataname does not contain " .
+                         "symmetry operators", undef );
             }
         }
 
@@ -1115,7 +1094,7 @@ for my $filename (@ARGV) {
             my $formula = $datablok->{_chemical_formula_sum}[0];
             $formula =~ s/\n/ /g;
             $formula =~ s/^\s*|\s*$//g;
-            my $parser = new COD::Formulae::AdHocParser;
+            my $parser = new COD::Formulae::Parser::AdHoc;
             $parser->ParseString( $formula );
             my $new_formula = $parser->SprintFormula;
 
@@ -1169,10 +1148,9 @@ for my $filename (@ARGV) {
                 }
                 $datablok->{"_cell_volume"}[0] = $V;
             } else {
-                warning( $0, $filename, $dataset->{name},
-                         "file '${filename}', datablock $dataset->{name} " .
-                         "has no unit cell info -- "  .
-                         "can't compute cell volume" );
+                warning( $0, $filename, $dataname,
+                         'no unit cell information found',
+                         'cannot compute cell volume' );
             }
         }
 
@@ -1232,8 +1210,7 @@ for my $filename (@ARGV) {
 
     if( $no_coordinates ) {
         warning( $0, $filename, undef,
-                 "file '${filename}' does not contain any datablocks with"
-               . " coordinates" );
+                 'no datablocks that contain coordinates found', undef );
     }
 
 }

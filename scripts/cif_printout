@@ -14,15 +14,17 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #**
 
 use strict;
-use COD::CIFParser::CIFParser;
+use warnings;
+use COD::CIF::Parser::Yapp;
 use COD::CIF2JSON;
-use COD::CIFData::CIFDiff;
+use COD::CIF::Data::Diff;
+use COD::ShowStruct;
 use COD::SOptions;
 use COD::SUsage;
 
 my $use_parser = 'c';
+my $output_format = 'dump';
 my $input_json  = 0;
-my $output_json = 0;
 my %options;
 @ARGV = getOptions(
 
@@ -34,12 +36,14 @@ my %options;
 #** --input-json
 #**    Specify the format of input file(s). Default CIF.
 #**
-#** --output-cif,
-#** --output-json
-#**    Specify the format for output. Default CIF.
+#** --output-dump
+#**    Output parsed CIF file in internal dump format. Default.
 #**
-#** --cif
-#**    Set both input and output formats to CIF.
+#** --output-json
+#**    Output generated structure in JSON.
+#**
+#** --output-struct
+#**    Output generated structure using COD::ShowStruct module.
 #**
 #** --json
 #**    Set both input and output formats to JSON.
@@ -74,11 +78,11 @@ my %options;
     "--input-json"  => sub { $input_json  = 1 },
     "--input-cif"   => sub { $input_json  = 0 },
 
-    "--output-json" => sub { $output_json = 1 },
-    "--output-cif"  => sub { $output_json = 0 },
+    "--output-dump"   => sub { $output_format = 'dump' },
+    "--output-json"   => sub { $output_format = 'json' },
+    "--output-struct" => sub { $output_format = 'struct' },
 
-    "--cif"  => sub { $input_json = 0; $output_json = 0 },
-    "--json" => sub { $input_json = 1; $output_json = 1 },
+    "--json" => sub { $input_json = 1; $output_format = 'json' },
 
     "--help,--usage"  => sub { usage; exit },
 );
@@ -87,7 +91,7 @@ my %options;
 
 foreach( @ARGV ) {
 
-    my( $data, $errcount );
+    my( $data, $errcount, $errors );
     if( $input_json ) {
         local $SIG{__DIE__} =
             sub { my( $msg ) = @_;
@@ -99,24 +103,27 @@ foreach( @ARGV ) {
         close( $inp );
         $errcount = 0;
     } else {
+        $options{no_print} = 1;
         if( $use_parser eq 'perl' ) {
-            my $parser = new COD::CIFParser::CIFParser;
+            my $parser = new COD::CIF::Parser::Yapp;
             $data = $parser->Run( $_, \%options );
-            if( defined $parser->YYData->{ERRCOUNT} ) {
-                $errcount = $parser->YYData->{ERRCOUNT};
-            } else {
-                $errcount = 0;
-            }
+            $errcount = $parser->YYData->{ERRCOUNT};
+            $errors = $parser->YYData->{ERROR_MESSAGES};
         } elsif( $use_parser eq 'c' ) {
-            require COD::CCIFParser::CCIFParser;
-            ( $data, $errcount ) = COD::CCIFParser::CCIFParser::parse( $_, \%options );
+            require COD::CIF::Parser::Bison;
+            ( $data, $errcount, $errors ) = COD::CIF::Parser::Bison::parse( $_, \%options );
         } else {
             die( "$0: unknown parser: $use_parser" );
         }
+        print STDERR $_ foreach @$errors;
     }
 
-    if( $output_json ) {
+    if(      $output_format eq 'json' ) {
         print cif2json( $data );
+    } elsif( $output_format eq 'struct' ) {
+        foreach my $datablock ( @$data ) {
+            showRef( $datablock );
+        }
     } else {
         foreach my $datablock ( @$data ) {
             print  $datablock->{name} . "\n";

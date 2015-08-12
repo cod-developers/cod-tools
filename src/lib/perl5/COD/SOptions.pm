@@ -11,10 +11,11 @@
 package COD::SOptions;
 
 use strict;
+use warnings;
 require Exporter;
-@COD::SOptions::ISA = qw(Exporter);
-@COD::SOptions::EXPORT = qw( getOptions get_value get_int get_ints
-                        get_float get_floats );
+our @ISA = qw(Exporter);
+our @EXPORT = qw( getOptions get_value get_int
+                  get_ints get_float get_floats );
 
 my @args;
 

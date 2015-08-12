@@ -30,6 +30,11 @@ cif_option_t cif_option_set_fix_errors( cif_option_t copt )
     return copt;
 }
 
+cif_option_t cif_option_set( cif_option_t options, cif_option_t opt )
+{
+    return options | opt;
+}
+
 cif_option_t cif_option_set_do_not_unprefix_text( cif_option_t copt )
 {
     return copt | DO_NOT_UNPREFIX_TEXT;
@@ -65,4 +70,9 @@ cif_option_t cif_option_set_fix_datablock_names( cif_option_t copt )
 cif_option_t cif_option_set_fix_string_quotes( cif_option_t copt )
 {
     return copt | FIX_STRING_QUOTES;
+}
+
+cif_option_t cif_option_suppress_messages( cif_option_t copt )
+{
+    return copt | CO_SUPPRESS_MESSAGES;
 }

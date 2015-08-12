@@ -14,8 +14,8 @@ package COD::AtomBricks;
 use strict;
 
 require Exporter;
-@COD::AtomBricks::ISA = qw(Exporter);
-@COD::AtomBricks::EXPORT_OK = qw(build_bricks get_atom_index get_search_span);
+our @ISA = qw(Exporter);
+our @EXPORT_OK = qw(build_bricks get_atom_index get_search_span);
 
 my $debug = 0;
 

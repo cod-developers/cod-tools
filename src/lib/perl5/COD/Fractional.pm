@@ -11,8 +11,8 @@ package COD::Fractional;
 
 use strict;
 require Exporter;
-@COD::Fractional::ISA = qw(Exporter);
-@COD::Fractional::EXPORT = qw(
+our @ISA = qw(Exporter);
+our @EXPORT = qw(
     fract2ortho ortho2fract 
     ortho_from_fract fract_from_ortho
     symop_ortho_from_fract symop_fract_from_ortho

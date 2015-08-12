@@ -14,9 +14,8 @@ eval 'exec perl -x $0 ${1+"$@"}'
 
 use strict;
 use File::Basename;
-use COD::CIFParser::CIFParser;
-use COD::Formulae::AdHocParser;
-use COD::CIFData::CIFCODNumbers;
+use COD::CIF::Parser qw(parse_cif);
+use COD::CIF::Data::CODNumbers;
 use COD::SOptions;
 use COD::SUsage;
 
@@ -161,23 +160,22 @@ my %options;
 @ARGV = ("-") unless @ARGV;
 
 for my $file (@ARGV) {
+    my $parser_options = { 'parser' => $use_parser, 'no_print' => 1 };
+    my ( $data, $err_count, $messages ) = parse_cif( $file, $parser_options );
 
-    my @data;
-
-    eval {
-        @data = load_cif_file( $file );
-    };
-    if( $@ ) {
-        warn $@;
-        next
+    if ( $err_count > 0 ) {
+        print STDERR $_ foreach ( @$messages );
+        error( $0, $file, undef, "$err_count error(s) "
+             . "encountered while parsing the file", undef );
+        next;
     }
+    print STDERR $_ foreach ( @$messages );
 
-    if( !@data || !defined $data[0] || !defined $data[0]->{name} ) {
+    if( !defined $data->[0] || !defined $data->[0]{name} ) {
         warn( "file '$file' seems to be empty" );
     }
 
-    my $duplicates = fetch_duplicates(
-        \@data, $file, \%database, \%options );
+    my $duplicates = fetch_duplicates( $data, $file, \%database, \%options );
 
     for my $datablock ( @$duplicates ) {
         if( keys %{ $datablock->{duplicates} } > 0 ) {
@@ -205,34 +203,4 @@ for my $file (@ARGV) {
             print "\n"
         }
     }
-}
-
-#------------------------------------------------------------------------------
-
-sub load_cif_file
-{
-    my ( $file ) = @_;
-
-    my $data;
-    my $error_count;
-
-    if( $use_parser eq "perl" ) {
-        my $parser = new COD::CIFParser::CIFParser;
-        $data = $parser->Run($file);
-        if( defined $parser->YYData->{ERRCOUNT} &&
-            $parser->YYData->{ERRCOUNT} > 0 ) {
-            $error_count = defined $parser->YYData->{ERRCOUNT};
-        }
-    } else {
-        require COD::CCIFParser::CCIFParser;
-        ( $data, $error_count ) = COD::CCIFParser::CCIFParser::parse( $file );
-    }
-
-    if( defined $error_count && $error_count > 0 ) {
-        print STDERR "$0: ", $error_count,
-        " error(s) encountered while parsing file '${file}'\n";
-        die;
-    }
-
-    return wantarray ? @{$data} : $data;
 }

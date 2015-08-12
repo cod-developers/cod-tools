@@ -14,10 +14,8 @@ use strict;
 use warnings;
 
 require Exporter;
-@COD::MorganFingerprints::ISA = qw(Exporter);
-@COD::MorganFingerprints::EXPORT = qw(
-    make_morgan_fingerprint
-);
+our @ISA = qw(Exporter);
+our @EXPORT = qw(make_morgan_fingerprint);
 
 sub make_morgan_fingerprint
 {

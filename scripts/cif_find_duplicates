@@ -13,10 +13,11 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #**
 
 use strict;
+use warnings;
 use File::Basename;
-use COD::CIFParser::CIFParser;
-use COD::Formulae::AdHocParser;
-use COD::CIFData::CIFCellContents;
+use COD::CIF::Parser::Yapp;
+use COD::Formulae::Parser::AdHoc;
+use COD::CIF::Data::CellContents qw(cif_cell_contents);
 use COD::SOptions;
 use COD::SUsage;
 
@@ -221,8 +222,10 @@ sub load_cif_file
 {
     my ( $file ) = @_;
 
-    my $parser = new COD::CIFParser::CIFParser;
-    my @data = @{$parser->Run($file)};
+    my $parser = new COD::CIF::Parser::Yapp;
+    my @data = @{$parser->Run($file, {no_print => 1})};
+
+    print STDERR $_ foreach @{$parser->YYData->{ERROR_MESSAGES}};
 
     if( defined $parser->YYData->{ERRCOUNT} && $parser->YYData->{ERRCOUNT} > 0 ) {
         print STDERR "$0: ", $parser->YYData->{ERRCOUNT},
@@ -260,7 +263,7 @@ sub cif_fill_data
                 $formula =~ s/^\s*|\s*$//g;
                 $formula =~ s/\s+/ /g;
 
-                my $formula_parser = new COD::Formulae::AdHocParser;
+                my $formula_parser = new COD::Formulae::Parser::AdHoc;
 
                 eval {
                     $formula_parser->ParseString( $formula );

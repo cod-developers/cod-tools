@@ -9,15 +9,15 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #$URL$
 #------------------------------------------------------------------------------
 #*
-#  Check whether SGBuilder.pm correctly builds all spacegroups.
+#  Check whether COD::Spacegroups::Builder.pm correctly builds all spacegroups.
 #**
 
 use strict;
 use warnings;
 
-use COD::Spacegroups::SGBuilder;
-use COD::Spacegroups::SymopLookup;
-use COD::Spacegroups::SymopParse;
+use COD::Spacegroups::Builder;
+use COD::Spacegroups::Lookup::COD;
+use COD::Spacegroups::Symop::Parse;
 
 # Identify the spacegroup from the symmetry operators:
 
@@ -35,16 +35,16 @@ sub mkhash
 {
     if( 1 ) {
         map { (mk_symop_key($_->{symops}), $_) }
-        @COD::Spacegroups::SymopLookup::table,
-        @COD::Spacegroups::SymopLookup::extra_settings;
+        @COD::Spacegroups::Lookup::COD::table,
+        @COD::Spacegroups::Lookup::COD::extra_settings;
     }
 }
 
 my %symop_lookup_table = mkhash();
 
-for my $sg_data (@COD::Spacegroups::SymopLookup::extra_settings) {
+for my $sg_data (@COD::Spacegroups::Lookup::COD::extra_settings) {
 
-    my $spacegroup = new COD::Spacegroups::SGBuilder;
+    my $spacegroup = new COD::Spacegroups::Builder;
 
     $spacegroup->insert_symop_strings( $sg_data->{symops} );
 
