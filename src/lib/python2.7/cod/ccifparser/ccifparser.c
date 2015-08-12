@@ -8,11 +8,23 @@
 #include <cexceptions.h>
 #include <stdiox.h>
 #include <stringx.h>
+#include <stdbool.h>
 #include <yy.h>
 #include <cif.h>
 #include <datablock.h>
+#include <cifmessage.h>
 
 char *progname = "cifparser";
+
+bool is_option_set( PyObject * options, char * optname ) {
+    PyObject * value_ref = PyDict_GetItem( options,
+                                           PyString_FromString( optname ) );
+    if( value_ref == NULL ) {
+        return 0;
+    } else {
+        return ( PyInt_AsLong( value_ref ) > 0 ) ? 1 : 0;
+    }
+}
 
 PyObject * parse_cif( char * fname, char * prog, PyObject * opt )
 {
@@ -24,45 +36,46 @@ PyObject * parse_cif( char * fname, char * prog, PyObject * opt )
     cif_option_t co = cif_option_default();
 
     PyObject * options = opt;
-    if( PyDict_Contains( options, PyString_FromString( "do_not_unprefix_text" ) ) ) {
+    if( is_option_set( options, "do_not_unprefix_text" ) ) {
         co = cif_option_set_do_not_unprefix_text( co );
     }
-    if( PyDict_Contains( options, PyString_FromString( "do_not_unfold_text" ) ) ) {
+    if( is_option_set( options, "do_not_unfold_text" ) ) {
         co = cif_option_set_do_not_unfold_text( co );
     }
-    if( PyDict_Contains( options, PyString_FromString( "fix_errors" ) ) ) {
+    if( is_option_set( options, "fix_errors" ) ) {
         co = cif_option_set_fix_errors( co );
     }
-    if( PyDict_Contains( options, PyString_FromString( "fix_duplicate_tags_with_same_values" ) ) ) {
+    if( is_option_set( options, "fix_duplicate_tags_with_same_values" ) ) {
         co = cif_option_set_fix_duplicate_tags_with_same_values( co );
     }
-    if( PyDict_Contains( options, PyString_FromString( "fix_duplicate_tags_with_empty_values" ) ) ) {
+    if( is_option_set( options, "fix_duplicate_tags_with_empty_values" ) ) {
         co = cif_option_set_fix_duplicate_tags_with_empty_values( co );
     }
-    if( PyDict_Contains( options, PyString_FromString( "fix_data_header" ) ) ) {
+    if( is_option_set( options, "fix_data_header" ) ) {
         co = cif_option_set_fix_data_header( co );
     }
-    if( PyDict_Contains( options, PyString_FromString( "fix_datablock_names" ) ) ) {
+    if( is_option_set( options, "fix_datablock_names" ) ) {
         co = cif_option_set_fix_datablock_names( co );
     }
-    if( PyDict_Contains( options, PyString_FromString( "fix_string_quotes" ) ) ) {
+    if( is_option_set( options, "fix_string_quotes" ) ) {
         co = cif_option_set_fix_string_quotes( co );
     }
-    if( PyDict_Contains( options, PyString_FromString( "fix_missing_closing_double_quote" ) ) ) {
+    if( is_option_set( options, "fix_missing_closing_double_quote" ) ) {
         set_lexer_fix_missing_closing_double_quote();
     }
-    if( PyDict_Contains( options, PyString_FromString( "fix_missing_closing_single_quote" ) ) ) {
+    if( is_option_set( options, "fix_missing_closing_single_quote" ) ) {
         set_lexer_fix_missing_closing_single_quote();
     }
-    if( PyDict_Contains( options, PyString_FromString( "fix_ctrl_z" ) ) ) {
+    if( is_option_set( options, "fix_ctrl_z" ) ) {
         set_lexer_fix_ctrl_z();
     }
-    if( PyDict_Contains( options, PyString_FromString( "fix_non_ascii_symbols" ) ) ) {
+    if( is_option_set( options, "fix_non_ascii_symbols" ) ) {
         set_lexer_fix_non_ascii_symbols();
     }
-    if( PyDict_Contains( options, PyString_FromString( "allow_uqstring_brackets" ) ) ) {
+    if( is_option_set( options, "allow_uqstring_brackets" ) ) {
         set_lexer_allow_uqstring_brackets();
     }
+    /* co = cif_option_suppress_messages( co ); */
 
     if( strlen( fname ) == 1 && fname[0] == '-' ) {
         fname = NULL;
