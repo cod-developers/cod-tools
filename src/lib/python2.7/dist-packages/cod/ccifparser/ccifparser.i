@@ -31,6 +31,7 @@ def parse(filename,options):
         options = {}
     parse_results = parse_cif(filename,prog,options)
     data = parse_results['datablocks']
+    messages = parse_results['messages']
     nerrors = parse_results['nerrors']
 
     for datablock in data:
@@ -58,7 +59,46 @@ def parse(filename,options):
                     prec[len(datablock['types'][tag])-1] = None
                 datablock['precisions'][tag] = prec
 
-    return data,nerrors
+    errors = []
+    warnings = []
+
+    for message in messages:
+        datablock = message['addpos']
+        if datablock is not None:
+            datablock = "data_{}".format(datablock)
+        explanation = message['explanation']
+        if explanation is not None:
+            explanation = explanation[0].lower() + explanation[1:]
+        lineno = None
+        if 'lineno' in message:
+            lineno = message['lineno']
+        columnno = None
+        if 'columnno' in message:
+            columnno = message['columnno']
+        msg = sprint_message(message['program'],
+                             message['filename'],
+                             datablock,
+                             message['status'],
+                             message['message'],
+                             explanation,
+                             lineno,
+                             columnno,
+                             message['line'])
+
+        if message['status'] == 'ERROR':
+            errors.append(msg)
+        else:
+            warnings.append(msg)
+
+    if 'no_print' not in options.keys() or options['no_print'] == 0:
+        for warning in warnings:
+            sys.stdout.write(warning)
+        for error in errors:
+            sys.stdout.write(error)
+        if errors:
+            sys.exit(1) # Different way to exit         
+
+    return data, nerrors, [warnings + errors]
 
 def unpack_precision(value,precision):
     """
@@ -86,6 +126,101 @@ def unpack_precision(value,precision):
         precision = float(precision) / (10**len(mantissa))
     precision = float(precision) * (10**exponent)
     return precision
+
+program_escape = {
+    '&': '&amp;',
+    ':': '&colon;',
+}
+filename_escape = {
+    '&': '&amp;',
+    ':': '&colon;',
+    ' ': '&nbsp;',
+    '(': '&lpar;',
+    ')': '&rpar;',
+}
+datablock_escape = {
+    '&': '&amp;',
+    ':': '&colon;',
+    ' ': '&nbsp;',
+}
+message_escape = {
+    '&': '&amp;',
+    ':': '&colon;'
+}
+
+def sprint_message(program, filename, datablock, errlevel, message,
+                   explanation, line, column, line_contents):
+    """
+    Adapted from:
+    URL: svn://www.crystallography.net/cod-tools/trunk/src/lib/perl5/COD/UserMessage.pm
+    Relative URL: ^/trunk/src/lib/perl5/COD/UserMessage.pm
+    Repository Root: svn://www.crystallography.net/cod-tools
+    Repository UUID: 04be6746-3802-0410-999d-98508da1e98c
+    Revision: 3813
+    """
+    import re
+    message = re.sub('\.?\n?$', '', message)
+    if explanation is not None:
+        explanation = re.sub('\.?\n?$', '', explanation)
+
+    if program == '-c':
+        program = "python -c '...'"
+
+    program     = escape_meta(program,     program_escape)
+    filename    = escape_meta(filename,    filename_escape)
+    datablock   = escape_meta(datablock,   datablock_escape)
+    message     = escape_meta(message,     message_escape)
+    explanation = escape_meta(explanation, message_escape)
+
+    if line_contents is not None:
+        line_contents = '\n'.join([ " {}".format(x) for x in line_contents.split('\n') ])
+
+    msg = "{}: ".format(program)
+    if filename is not None:
+        msg = "{}{}".format(msg, filename)
+        if line is not None:
+            msg = "{}({}".format(msg, line)
+            if column is not None:
+                msg = "{},{}".format(msg, column)
+            msg = "{})".format(msg)
+        if datablock is not None:
+            msg = "{} {}".format(msg, datablock)
+        msg = "{}: ".format(msg)
+    if errlevel is not None:
+        msg = "{}{}, ".format(msg, errlevel)
+    msg = "{}{}".format(msg, message)
+    if explanation is not None:
+        msg = "{} -- {}".format(msg, explanation)
+    if line_contents is not None:
+        msg = "{}:\n{}\n".format(msg, line_contents)
+        if column is not None:
+            msg = "{} {}^\n".format(msg, " "*(column-1))
+    else:
+        msg = "{}.\n".format(msg)
+
+    return msg
+
+def escape_meta(text, escaped_symbols):
+    """
+    Adapted from:
+    URL: svn://www.crystallography.net/cod-tools/trunk/src/lib/perl5/COD/UserMessage.pm
+    Relative URL: ^/trunk/src/lib/perl5/COD/UserMessage.pm
+    Repository Root: svn://www.crystallography.net/cod-tools
+    Repository UUID: 04be6746-3802-0410-999d-98508da1e98c
+    Revision: 3813
+    """
+    import re
+
+    if text is None:
+        return None
+
+    symbols = "|".join(["\\{}".format(x) for x in escaped_symbols.keys()])
+
+    def escape_internal(matchobj):
+        return escaped_symbols(matchobj.group(0))
+
+    return re.sub("({})".format(symbols), escape_internal, text)
+
 %}
 
 #include <Python.h>
