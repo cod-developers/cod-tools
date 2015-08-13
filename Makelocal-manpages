@@ -1,0 +1,19 @@
+#--*- Makefile -*--------------------------------------------------------------
+#$Author$
+#$Revision$
+#$Date$
+#$URL$
+#------------------------------------------------------------------------------
+MAN_DIR = doc/man
+
+MAN_FILES = ${CODTOOLS_SCRIPTS:scripts/%=${MAN_DIR}/%.1}
+
+man: ${MAN_FILES}
+
+all: man
+
+${MAN_DIR}/%.1: scripts/%
+	-help2man $< --bugs-email ${AUTHOR_EMAIL} > $@
+
+clean-man:
+	rm -f ${MAN_FILES}

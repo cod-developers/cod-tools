@@ -9,7 +9,7 @@ CWD := ${shell pwd}
 TOP := ${CWD}
 
 LOCAL_PERL_LIB   = ${TOP}/src/lib/perl5
-LOCAL_PYTHON_LIB = ${TOP}/src/lib/python2.7
+LOCAL_PYTHON_LIB = ${TOP}/src/lib/python2.7/dist-packages
 
 PERL_SOURCE_DIRS   = ${LOCAL_PERL_LIB}/COD
 PYTHON_SOURCE_DIRS = ${LOCAL_PYTHON_LIB}/cod
@@ -28,6 +28,10 @@ C_PARSER_LIB_DIR = ${TOP}/src/components/codcif
 LOCAL_LIB_FILES  = ${TOP}/src/externals/cexceptions/lib/libcexceptions.a \
                    ${TOP}/src/externals/getoptions/lib/libgetoptions.a \
                    ${C_PARSER_LIB_DIR}/lib/libcodcif.a
+
+CODTOOLS_SCRIPTS = $(shell find scripts/ -maxdepth 1 -name \*~ -prune -o \
+                                                     -name cif_printout_Python -prune -o \
+                                                     -type f -a -executable -print)
 
 ifeq ("${TEST_INSTALL}","")
 PERL5LIB   := ${LOCAL_PERL_LIB}:${PERL5LIB}
