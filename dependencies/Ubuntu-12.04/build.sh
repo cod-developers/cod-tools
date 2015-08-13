@@ -13,3 +13,5 @@ sudo apt-get install -y python-dev
 sudo apt-get install -y libmodule-scandeps-perl
 
 sudo apt-get install -y moreutils
+
+sudo apt-get install -y debhelper
