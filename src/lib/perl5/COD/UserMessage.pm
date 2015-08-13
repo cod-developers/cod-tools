@@ -50,8 +50,14 @@ sub sprint_message($$$$$$@)
     $explanation = escape_meta( $explanation, \%message_escape   );
 
     if( defined $line_contents ) {
-        $line_contents = join( "\n", map { " $_" }
-                                     split( "\n", $line_contents ) );
+        # Empty line has to be dealt separately, as split'ting empty
+        # line returns empty array:
+        if( $line_contents ne "" ) {
+            $line_contents = join( "\n", map { " $_" }
+                                         split( "\n", $line_contents ) );
+        } else {
+            $line_contents = " ";
+        }
     }
 
     return $program . ": " .
