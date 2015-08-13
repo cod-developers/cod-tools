@@ -15,10 +15,11 @@ eval 'exec perl -x $0 ${1+"$@"}'
 
 use strict;
 use warnings;
-use COD::CIF::Parser::Yapp;
+use COD::CIF::Parser qw(parse_cif);
 use COD::CIF2JSON;
 use COD::CIF::Data::Diff;
 use COD::ShowStruct;
+use COD::UserMessage qw(error);
 use COD::SOptions;
 use COD::SUsage;
 
@@ -91,7 +92,7 @@ my %options;
 
 foreach( @ARGV ) {
 
-    my( $data, $errcount, $errors );
+    my( $data, $err_count, $messages );
     if( $input_json ) {
         local $SIG{__DIE__} =
             sub { my( $msg ) = @_;
@@ -101,24 +102,14 @@ foreach( @ARGV ) {
         open( my $inp, $_ );
         $data = json2cif( join( "\n", <$inp> ) );
         close( $inp );
-        $errcount = 0;
+        $err_count = 0;
     } else {
         $options{no_print} = 1;
-        if( $use_parser eq 'perl' ) {
-            my $parser = new COD::CIF::Parser::Yapp;
-            $data = $parser->Run( $_, \%options );
-            $errcount = $parser->YYData->{ERRCOUNT};
-            $errors = $parser->YYData->{ERROR_MESSAGES};
-        } elsif( $use_parser eq 'c' ) {
-            require COD::CIF::Parser::Bison;
-            ( $data, $errcount, $errors ) = COD::CIF::Parser::Bison::parse( $_, \%options );
-        } else {
-            die( "$0: unknown parser: $use_parser" );
-        }
-        print STDERR $_ foreach @$errors;
+        ($data, $err_count, $messages) = parse_cif( $_, \%options );
+        print STDERR $_ foreach ( @$messages );
     }
 
-    if(      $output_format eq 'json' ) {
+    if( $output_format eq 'json' ) {
         print cif2json( $data );
     } elsif( $output_format eq 'struct' ) {
         foreach my $datablock ( @$data ) {
@@ -160,5 +151,5 @@ foreach( @ARGV ) {
             }
         }
     }
-    print STDERR "$errcount error(s) detected\n";
+    print STDERR "$err_count error(s) detected\n";
 }

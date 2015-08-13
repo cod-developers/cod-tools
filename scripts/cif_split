@@ -17,6 +17,7 @@ eval 'exec perl -x $0 ${1+"$@"}'
 
 use strict;
 use warnings;
+use COD::CIF::Parser qw(parse_cif);
 use COD::CIF::Tags::CanonicalNames;
 use COD::CIF::Tags::Print;
 use File::Basename;
@@ -108,26 +109,17 @@ if( $output_tar ) {
 @ARGV = ("-") unless @ARGV;
 
 for my $filename (@ARGV) {
-    my ($data, $error_count, $errors);
 
-    my $options = {no_print => 1};
-    if( $use_parser eq "perl" ) {
-        require COD::CIF::Parser::Yapp;
-        my $parser = new COD::CIF::Parser::Yapp;
-        $data = $parser->Run($filename, $options);
-        $error_count = $parser->YYData->{ERRCOUNT};
-        $errors = $parser->YYData->{ERROR_MESSAGES};
-    } else {
-        require COD::CIF::Parser::Bison;
-        ( $data, $error_count, $errors ) = COD::CIF::Parser::Bison::parse($filename, $options);
-    }
-    print STDERR $_ foreach @$errors;
+    my $options = { 'parser' => $use_parser, 'no_print' => 1 };
+    my ( $data, $err_count, $messages ) = parse_cif( $filename, $options );
 
-    if( defined $error_count && $error_count > 0 ) {
-        error( $0, $filename, undef,
-               $error_count . " error(s) encountered while parsing", undef );
+    if ( $err_count > 0 ) {
+        print STDERR $_ foreach ( @$messages );
+        error( $0, $filename, undef, "$err_count error(s) "
+             . "encountered while parsing the file", undef );
         next;
     }
+    print STDERR $_ foreach ( @$messages );
 
     canonicalize_all_names( $data );
 

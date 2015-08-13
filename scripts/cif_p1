@@ -17,10 +17,10 @@ eval 'exec perl -x $0 ${1+"$@"}'
 use strict;
 use warnings;
 
+use COD::CIF::Parser qw(parse_cif);
 use COD::AtomBricks qw(build_bricks get_atom_index get_search_span);
 use COD::AtomNeighbours qw(get_max_covalent_radius);
 use COD::AtomProperties;
-use COD::CIF::Parser::Yapp;
 use COD::Formulae::Print;
 use COD::Spacegroups::Symop::Algebra qw(symop_is_unity symop_vector_mul);
 use COD::Spacegroups::Symop::Parse;
@@ -311,26 +311,16 @@ my $cif_atom_list_options = {
 
 for my $filename (@ARGV) {
 
-    my( $data, $error_count );
+    my $options = { 'parser' => $use_parser, 'no_print' => 1 };
+    my ( $data, $err_count, $messages ) = parse_cif( $filename, $options );
 
-    if( $use_parser eq "perl" ) {
-        my $parser = new COD::CIF::Parser::Yapp;
-
-        $data = $parser->Run( $filename );
-
-        if( defined $parser->YYData->{ERRCOUNT} ) {
-            $error_count = $parser->YYData->{ERRCOUNT};
-        }
-    } else {
-        require COD::CIF::Parser::Bison;
-        ( $data, $error_count ) = COD::CIF::Parser::Bison::parse( $filename );
+    if ( $err_count > 0 ) {
+        print STDERR $_ foreach ( @$messages );
+        error( $0, $filename, undef, "$err_count error(s) "
+             . "encountered while parsing the file", undef );
+        next;
     }
-
-    if( defined $error_count && $error_count > 0 ) {
-        print STDERR "$0: ", $error_count,
-        " error(s) encountered while parsing file '${filename}'\n";
-        die;
-    }
+    print STDERR $_ foreach ( @$messages );
 
     if( !@$data || !defined $data->[0] || !defined $data->[0]{name} ) {
         warn( "file '$filename' seems to be empty" );
