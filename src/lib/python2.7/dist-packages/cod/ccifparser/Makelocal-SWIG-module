@@ -7,8 +7,8 @@ OBJ 			 = ${SWIG_SOURCE:%.c=%.o}
 SWIG_WRAPPER_OBJ = ${SWIG_WRAPPER:%.c=%.o}
 SWIG_SO_FILE 	 = ${SWIG_SOURCE:%.c=_%.so}
 
-CIF_PARSER_C_DIR = ../../../../components/codcif
-EXTERNALS_C_DIR  = ../../../../externals
+CIF_PARSER_C_DIR = ../../../../../components/codcif
+EXTERNALS_C_DIR  = ../../../../../externals
 CEXCEPTIONS_DIR  = ${EXTERNALS_C_DIR}/cexceptions
 GETOPTIONS_DIR   = ${EXTERNALS_C_DIR}/getoptions
 CIF_PARSER_OBJ_SOURCES  = $(wildcard ${CIF_PARSER_C_DIR}/*.c)
@@ -61,4 +61,4 @@ cleanAll distclean: clean
 	rm -f ${SWIG_SO_FILE} ${SWIG_MODULE}
 
 try: ${SWIG_MODULE}
-	-python -c 'import ccifparser;print ccifparser.parse( "../../../../../tests/inputs/1000000.cif", {} )'
+	-python -c 'import ccifparser;print ccifparser.parse( "../../../../../../tests/inputs/1000000.cif", {} )'

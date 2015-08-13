@@ -5,19 +5,25 @@
 #$URL$
 #------------------------------------------------------------------------------
 
-PKGNAME = cod-tools
+CODTOOLS    = cod-tools
+LIBCOD_PERL = libcod-cif-parser-bison-perl
+LIBCODCIF   = libcodcif
+PYCODCIF    = pycodcif
+
 AUTHOR_NAME  = Saulius Gražulis
 AUTHOR_EMAIL = grazulis@ibt.lt
 REVISION  = $(shell svnversion)
 DATE      = $(shell date --rfc-2822)
 
-PREFIX = /usr/local
+PREFIX = ${DEBIAN}/${PKGNAME}
 
 DEBIAN    = debian
 CHANGELOG = ${DEBIAN}/changelog
 CONTROL   = ${DEBIAN}/control
 COPYRIGHT = ${DEBIAN}/copyright
-MAN_DIR   = ${DEBIAN}/man
+
+LIBCODCIF_A_DEST  = ${DEBIAN}/${LIBCODCIF}/usr/lib
+LIBCODCIF_INC_DEST = ${DEBIAN}/${LIBCODCIF}/usr/include
 
 # Taking the dependencies from {build,run}.sh:
 
@@ -33,28 +39,31 @@ RUN_DEPS = $(shell grep install ${RUN_DEPS_LIST} \
 
 # Collecting Perl binaries and libraries:
 
-C_BINS     = $(shell find ${C_PARSER_LIB_DIR} -maxdepth 1 -type f -a -executable)
-PERL5_BINS = $(shell find scripts/ -maxdepth 1 -name \*~ -prune -o \
-                                               -type f -a -executable -print)
-PERL5_LIBS = $(shell find src/lib/perl5 -name .svn -prune -o \
-                                        -name \*.pm -print -o \
-                                        -name \*.so -print)
-PYTHON_LIBS = $(shell find src/lib/python2.7 -name .svn -prune -o \
-                                             -name \*.py -print -o \
-                                             -name \*.so -print)
+CODTOOLS_LIBS = $(shell find src/lib/perl5 -name .svn -prune -o \
+                                           -name Bison -prune -o \
+                                           -name Bison.pm -prune -o \
+                                           -name Yapp -prune -o \
+                                           -name Precision.pm -prune -o \
+                                           -name UserMessage.pm -prune -o \
+                                           -name \*.pm -print)
 
-# Listing the paths to be installed
+LIBCOD_PERL_LIBS = src/lib/perl5/auto/COD/CIF/Parser/Bison/Bison.so \
+                   src/lib/perl5/COD/CIF/Parser/Bison.pm \
+                   src/lib/perl5/COD/Precision.pm \
+                   src/lib/perl5/COD/UserMessage.pm
 
-BIN_DIR       = ${PREFIX}/bin
-LIB_DIR       = ${PREFIX}/lib
-PERL5_LIB_DIR = ${LIB_DIR}/perl5
-PYTHON_LIB_DIR = ${LIB_DIR}/python2.7
+PYCODCIF_LIBS = $(shell find src/lib/python2.7 -name .svn -prune -o \
+                                               -name \*.py -print -o \
+                                               -name \*.so -print)
 
-INSTALLED_DIRS = ${BIN_DIR} ${PERL5_LIB_DIR} \
-                 $(dir ${PERL5_LIBS:src/%=${PREFIX}/%}) \
-                 $(dir ${PYTHON_LIBS:src/%=${PREFIX}/%})
+LIBCODCIF_A = src/components/codcif/lib/libcodcif.a
+LIBCODCIF_H = ${wildcard src/components/codcif/*.h}
 
-MAN_FILES = ${PERL5_BINS:scripts/%=${MAN_DIR}/%.1}
+CEXCEPTIONS_A = src/externals/cexceptions/lib/libcexceptions.a
+CEXCEPTIONS_H = ${wildcard src/externals/cexceptions/*.h}
+
+GETOPTIONS_A = src/externals/getoptions/lib/libgetoptions.a
+GETOPTIONS_H = ${wildcard src/externals/getoptions/*.h}
 
 define newline
 
@@ -62,9 +71,9 @@ define newline
 endef
 
 define changelog_body
-${PKGNAME} (${REVISION}-1) UNRELEASED; urgency=low
+${CODTOOLS} (${REVISION}-1) UNRELEASED; urgency=low
 
-  * Initial release. (Closes: #XXXXXX)
+  * Initial release.
 
  -- ${AUTHOR_NAME} <${AUTHOR_EMAIL}>  ${DATE}
 endef
@@ -90,30 +99,52 @@ ${CHANGELOG}:
 ${CONTROL}:
 	echo '$(subst $(newline),\n,${control_body})' > $@
 
-${COPYRIGHT}:
-	cat README-COPYING COPYING > $@
-
 build:
 	$(MAKE) -C src/
 
-deb: ${CHANGELOG} ${CONTROL} ${COPYRIGHT} ${MAN_FILES}
-	fakeroot debian/rules binary PREFIX=${DEBIAN}/${PKGNAME}/usr
+deb: ${CHANGELOG} ${CONTROL} ${COPYRIGHT}
+	fakeroot debian/rules binary
 
-install: build installdirs
-	install ${C_BINS} ${PERL5_BINS} ${BIN_DIR}
-	for i in ${PERL5_LIBS:src/%=%} ${PYTHON_LIBS:src/%=%}; \
+install: build install-codtools install-libcod-perl install-libcodcif install-pycodcif
+
+install-codtools:
+	test -d ${DEBIAN}/${CODTOOLS}/usr/bin || mkdir -p ${DEBIAN}/${CODTOOLS}/usr/bin
+	install ${CODTOOLS_SCRIPTS} ${DEBIAN}/${CODTOOLS}/usr/bin
+	for i in ${CODTOOLS_LIBS:src/%=%}; \
 	do \
-		install --mode 644 src/$$i ${PREFIX}/$$i; \
+		test -d ${DEBIAN}/${CODTOOLS}/usr/$$(dirname $$i) \
+			|| mkdir -p ${DEBIAN}/${CODTOOLS}/usr/$$(dirname $$i); \
+		install --mode 644 src/$$i ${DEBIAN}/${CODTOOLS}/usr/$$i; \
 	done
 
-installdirs:
-	for i in ${INSTALLED_DIRS}; \
+install-libcod-perl:
+	for i in ${LIBCOD_PERL_LIBS:src/%=%}; \
 	do \
-	    test -d $$i || mkdir -p $$i; \
+	test -d ${DEBIAN}/${LIBCOD_PERL}/usr/$$(dirname $$i) \
+			|| mkdir -p ${DEBIAN}/${LIBCOD_PERL}/usr/$$(dirname $$i); \
+		install --mode 644 src/$$i ${DEBIAN}/${LIBCOD_PERL}/usr/$$i; \
 	done
 
-${MAN_DIR}/%.1: scripts/%
-	-help2man $< --bugs-email ${AUTHOR_EMAIL} > $@
+install-pycodcif:
+	test -d ${DEBIAN}/${PYCODCIF}/usr/bin || mkdir -p ${DEBIAN}/${PYCODCIF}/usr/bin
+	install scripts/cif_printout_Python ${DEBIAN}/${PYCODCIF}/usr/bin
+	for i in ${PYCODCIF_LIBS:src/%=%}; \
+	do \
+	test -d ${DEBIAN}/${PYCODCIF}/usr/$$(dirname $$i) \
+			|| mkdir -p ${DEBIAN}/${PYCODCIF}/usr/$$(dirname $$i); \
+		install --mode 644 src/$$i ${DEBIAN}/${PYCODCIF}/usr/$$i; \
+	done
+
+install-libcodcif:
+	test -d ${LIBCODCIF_A_DEST} || mkdir -p ${LIBCODCIF_A_DEST}
+	test -d ${LIBCODCIF_INC_DEST} || mkdir -p ${LIBCODCIF_INC_DEST}
+	install --mode 644 ${LIBCODCIF_A} ${CEXCEPTIONS_A} ${GETOPTIONS_A} ${LIBCODCIF_A_DEST}
+	install --mode 644 ${LIBCODCIF_H} ${CEXCEPTIONS_H} ${GETOPTIONS_H} ${LIBCODCIF_INC_DEST}
+
+clean-deb:
+	rm -rf ${DEBIAN}/${CODTOOLS} ${DEBIAN}/${LIBCOD_PERL}
+	rm -rf ${DEBIAN}/${LIBCODCIF} ${DEBIAN}/${PYCODCIF}
+	rm -f ${DEBIAN}/*.debhelper ${DEBIAN}/*.debhelper.log ${DEBIAN}/*.substvars
 
 testinstall:
 	$(MAKE) tests TEST_INSTALL=1
