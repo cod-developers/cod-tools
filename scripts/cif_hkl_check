@@ -185,24 +185,6 @@ while( @ARGV > 0 ) {
     note( $0, $cif_file, undef, "OK", undef );
 }
 
-sub parse_file
-{
-    my( $file, $use_parser ) = @_;
-    my( $data, $errors );
-    if( $use_parser eq "perl" ) {
-        my $parser = new COD::CIF::Parser::Yapp;
-        $data = $parser->Run($file);
-        $errors = 0;
-        if( defined $parser->YYData->{ERRCOUNT} ) {
-            $errors = $parser->YYData->{ERRCOUNT};
-        }
-    } else {
-        require COD::CIF::Parser::Bison;
-        ( $data, $errors ) = COD::CIF::Parser::Bison::parse( $file );
-    }
-    return( $data, $errors );
-}
-
 sub compare_lc_strings
 {
     my( $a, $b ) = @_;
