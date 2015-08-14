@@ -37,8 +37,8 @@ void PyDict_PutString( PyObject * dict, char * key, char * value ) {
 PyObject * convert_datablock( DATABLOCK * datablock )
 {
     PyObject * current_datablock = PyDict_New();
-    PyDict_SetItemString( current_datablock, "name",
-        PyString_FromString( datablock_name( datablock ) ) );
+    PyDict_PutString( current_datablock, "name",
+                      datablock_name( datablock ) );
 
     size_t length = datablock_length( datablock );
     char **tags   = datablock_tags( datablock );
