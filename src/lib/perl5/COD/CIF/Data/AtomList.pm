@@ -17,7 +17,6 @@ use COD::CIF::Data qw( get_cell );
 use COD::Spacegroups::Symop::Algebra qw( symop_vector_mul );
 use COD::Algebra::Vector qw( modulo_1 );
 use COD::Fractional qw( symop_ortho_from_fract );
-use COD::UserMessage qw( warning error prefix_dataname );
 
 require Exporter;
 our @ISA = qw(Exporter);
@@ -35,8 +34,6 @@ our @EXPORT_OK = qw( atom_array_from_cif
 #     values     - a hash where a data from the CIF file is stored
 #     number     - a number of the current atom
 #     f2o        - conversion matrix from fractional to Cartesian coordinates
-#     filename   - name of analysed file
-#     dataname   - name of analysed data block
 #     options    - a hash with control options
 #
 # Returns a hash $atom:{
@@ -57,10 +54,7 @@ our @EXPORT_OK = qw( atom_array_from_cif
 
 sub extract_atom
 {
-    my($atom_label, $values, $number, $f2o, $filename, $dataname,
-       $options) = @_;
-
-    $dataname = prefix_dataname($dataname);
+    my($atom_label, $values, $number, $f2o, $options) = @_;
 
     $options = {} unless $options;
 
@@ -128,12 +122,11 @@ sub extract_atom
             m/^([A-Za-z]{1,2})/ ) {
             $atom_type = ucfirst( lc( $1 ));
         } elsif( $options->{continue_on_unknown_atom_type} ) {
-            warning( $0, $filename, $dataname,
-                     "could not determine atom type for atom " .
-                     "'$values->{_atom_site_label}[$number]'", undef );
+            warn "WARNING, could not determine atom type for atom " .
+                 "'$values->{_atom_site_label}[$number]'\n";
         } else {
-            die( "could not determine atom type for atom " .
-                 "'$values->{_atom_site_label}[$number]'" );
+            die "ERROR, could not determine atom type for atom " .
+                "'$values->{_atom_site_label}[$number]'\n";
         }
     }
 
@@ -188,17 +181,16 @@ sub extract_atom
 #
 sub atom_array_from_cif($$$@)
 {
-    my( $datablock, $atom_properties, $filename, $options ) = @_;
+    my( $datablock, $atom_properties, $options ) = @_;
 
     $options = {} unless $options;
 
     my $values = $datablock->{values};
-    my $dataname = prefix_dataname($datablock->{name});
 
     # Get the unit cell information and construct the fract->ortho and
     # ortho->fract conversion matrices:
 
-    my @cell = get_cell( $values, $filename, $datablock->{name} );
+    my @cell = get_cell( $values );
     my $f2o = symop_ortho_from_fract( @cell );
 
     if( $options->{homogenize_transform_matrices} ) {
@@ -218,15 +210,11 @@ sub atom_array_from_cif($$$@)
     } elsif( exists $values->{"_atom_site_type_symbol"} ) {
         $atom_site_tag = "_atom_site_type_symbol";
 
-        error( $0, $filename, $dataname,
-               "_atom_site_label tag was not found",
-               "a serial number will be appended " .
-               "to _atom_site_type_symbol to make atom labels" );
+        die "ERROR, _atom_site_label tag was not found a serial number will "
+          . "be appended to _atom_site_type_symbol to make atom labels\n";
     } else {
-        error( $0, $filename, $dataname,
-               "neither _atom_site_type_symbol nor _atom_site_label " .
-               "were found", undef );
-        return undef;
+        die "ERROR, neither _atom_site_type_symbol nor _atom_site_label " .
+            "were found\n";
     }
 
     my $atom_labels = $values->{$atom_site_tag};
@@ -252,9 +240,7 @@ sub atom_array_from_cif($$$@)
             $label = $values->{$atom_site_tag}[$i];
         }
 
-        my $atom_info = extract_atom( $label, $values, $i, $f2o,
-                                      $filename, $datablock->{name},
-                                      $options );
+        my $atom_info = extract_atom( $label, $values, $i, $f2o, $options );
 
         # Some of the code used to return undef from extract_atom in case
         # an atom has to be skipped, so this is silently done in order to
@@ -276,19 +262,16 @@ sub atom_array_from_cif($$$@)
                 $atom_info->{chemical_type} . "'";
 
             if( $options->{continue_on_errors} ) {
-                warning( $0, $filename, $dataname, $message, undef );
+                warn "WARNING, $message\n";
             } else {
-                error( $0, $filename, $dataname, $message, undef );
-                exit(1);
+                die "ERROR, $message\n";
             }
         }
     }
 
     if( $options->{uniquify_atom_names} ) {
         return uniquify_atom_names( \@atom_list,
-                                    $options->{uniquify_atoms},
-                                    $filename,
-                                    $datablock->{name});
+                                    $options->{uniquify_atoms} );
     } else {
         return \@atom_list;
     }
@@ -307,14 +290,12 @@ sub atom_array_from_cif($$$@)
 #                   group=>"1", # "."
 #              }
 #
-sub uniquify_atom_names($$$$)
+sub uniquify_atom_names($$)
 {
-    my ($init_atoms, $uniquify_atoms, $filename, $dataname) = @_;
+    my ($init_atoms, $uniquify_atoms) = @_;
 
     my $max_label_suffix = 30000; # Maximum number to be appened to labels 
                                   # when trying to produce unique names.
-
-    $dataname = prefix_dataname($dataname);
 
     my @checked_initial_atoms;
 
@@ -332,8 +313,7 @@ sub uniquify_atom_names($$$$)
             $used_labels{$label}{atoms} = [ $atom_copy ];
         } else {
             push( @{$used_labels{$label}{atoms}}, $atom_copy );
-            warning( $0, $filename, $dataname,
-                     "atom label '$label' is not unique", undef );
+            warn "WARNING, atom label '$label' is not unique\n";
 
             $labels_to_be_renamed{$label} ++;
         }
@@ -351,14 +331,11 @@ sub uniquify_atom_names($$$$)
                     $id ++;
                 }
                 if( $id > $max_label_suffix ) {
-                    error( $0, $filename, $dataname,
-                           "could not generate unique atom name for ".
-                           "atom '$label', even after $id iterations", undef );
+                    die "ERROR, could not generate unique atom name for ".
+                        "atom '$label', even after $id iterations\n";
                 }
                 my $new_label = $label . "_" . $id;
-                warning( $0, $filename, $dataname,
-                         "renaming atom '$label' " .
-                         "to '" . $new_label . "'", undef );
+                warn "WARNING, renaming atom '$label' to '$new_label'\n";
                 $renamed_atom->{name}       = $new_label;
                 $renamed_atom->{site_label} = $new_label;
                 $used_labels{$new_label}{count} ++;
@@ -451,8 +428,8 @@ sub copy_struct_deep
                  map { (exists $excluded_hash_keys{$_}) ? () : $_ }
                      keys %$struct };
     } else {
-        die "deep copy failed: 'copy_struct_deep' does not know " .
-            "how to copy object '" . ref( $struct ) . "'";
+        die "ERROR, deep copy failed -- 'copy_struct_deep' does not know " .
+            "how to copy object '" . ref( $struct ) . "'\n";
     }
 }
 

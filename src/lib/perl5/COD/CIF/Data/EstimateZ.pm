@@ -17,7 +17,6 @@ package COD::CIF::Data::EstimateZ;
 use strict;
 use warnings;
 use COD::Cell qw(cell_volume);
-use COD::UserMessage qw(prefix_dataname);
 
 require Exporter;
 our @ISA = qw(Exporter);
@@ -43,16 +42,17 @@ sub cif_estimate_z($)
             return int( 0.5 + $N * $density * $volume / $molwt );
         } else {
             my $error = "";
+            my $sep = "; ";
             if( !defined $volume ) {
-                $error .= "cell volume undefined\n";
+                $error .= $sep . "cell volume undefined";
             }
             if( !defined $density ) {
-                 $error .= "crystal density undefined\n";
+                 $error .= $sep . "crystal density undefined";
             }
             if( !defined $molwt ) {
-                $error .= "molecular weight undefined\n";
+                $error .= $sep . "molecular weight undefined";
             }
-            die "not enough data in '$dataset->{name}' to estimate Z;\n" . $error;
+            die "not enough data in '$dataset->{name}' to estimate Z" . "$error\n";
         }
     }
 }

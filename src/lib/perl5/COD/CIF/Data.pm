@@ -15,7 +15,7 @@ use strict;
 use warnings;
 use COD::Spacegroups::Lookup::COD;
 use COD::Spacegroups::Names;
-use COD::UserMessage qw(warning error prefix_dataname);
+use COD::UserMessage qw(prefix_dataname);
 
 require Exporter;
 our @ISA = qw(Exporter);
@@ -40,12 +40,10 @@ my %sg_name_abbrev =
 # Returns
 #     cell_lengths_and_angles - an array  with stored information.
 
-sub get_cell($$$@)
+sub get_cell($@)
 {
-    my( $values, $filename, $dataname, $options ) = @_;
+    my( $values, $options ) = @_;
     $options = {} unless $options;
-
-    $dataname = prefix_dataname($dataname);
 
     my @cell_lengths_and_angles;
 
@@ -60,8 +58,7 @@ sub get_cell($$$@)
         } elsif( $options->{silent} ) {
             push(@cell_lengths_and_angles, undef);
         } else {
-            error( $0, $filename, $dataname,
-                   "cell length '$cif_tag' not present", undef );
+            die( "ERROR, cell length '$cif_tag' not present\n" );
         }
     }
 
@@ -76,9 +73,8 @@ sub get_cell($$$@)
         } elsif( $options->{silent} ) {
             push(@cell_lengths_and_angles, undef);
         } else {
-            warning( $0, $filename, $dataname,
-                     "cell angle '$cif_tag' not present",
-                     "taking default value 90 degrees" );
+            warn( "WARNING, cell angle '$cif_tag' not present",
+                     "taking default value 90 degrees\n" );
             push( @cell_lengths_and_angles, 90 );
         }
     }
@@ -86,13 +82,11 @@ sub get_cell($$$@)
     return @cell_lengths_and_angles;
 }
 
-sub get_symmetry_operators($$)
+sub get_symmetry_operators($)
 {
-    my ( $dataset, $filename ) = @_;
+    my ( $dataset ) = @_;
 
     my $values = $dataset->{values};
-    my $dataname = prefix_dataname($dataset->{name});
-
     my $sym_data;
 
     if( exists $values->{"_space_group_symop_operation_xyz"} ) {
@@ -113,8 +107,7 @@ sub get_symmetry_operators($$)
                 $sym_data = lookup_symops("hall", $hall);
 
                 if( !$sym_data ) {
-                    error( $0, $filename, $dataname,
-                           "$tag value '$hall' is not recognised", undef );
+                    warn "WARNING, $tag value '$hall' is not recognised\n";
                 } else {
                     last
                 }
@@ -136,8 +129,7 @@ sub get_symmetry_operators($$)
                 $sym_data = lookup_symops("hermann_mauguin", $h_m);
 
                 if( !$sym_data ) {
-                    error( $0, $filename, $dataname,
-                           "$tag value '$h_m' is not recognised", undef );
+                    warn "WARNING, $tag value '$h_m' is not recognised\n";
                 } else {
                     last
                 }
@@ -161,9 +153,8 @@ sub get_symmetry_operators($$)
                 $sym_data = lookup_symops("hermann_mauguin", $h_m);
 
                 if( !$sym_data ) {
-                    error( $0, $filename, $dataname,
-                           "$tag value '$ssg_name' yielded H-M " .
-                           "symbol '$h_m' which is not in our tables", undef );
+                    warn "WARNING, $tag value '$ssg_name' yielded H-M " .
+                         "symbol '$h_m' which is not in our tables\n";
                 } else {
                     last
                 }
@@ -172,10 +163,8 @@ sub get_symmetry_operators($$)
     }
 
     if( not defined $sym_data ) {
-        error( $0, $filename, $dataname, 'neither symmetry operators, '
-             . 'nor Hall spacegroup symbol, nor Hermann-Mauguin spacegroup '
-             . 'symbol could be processed', undef );
-        die;
+        die 'ERROR, neither symmetry operators, nor Hall spacegroup symbol, '
+          . "nor Hermann-Mauguin spacegroup symbol could be processed\n";
     }
 
     return $sym_data;
@@ -205,17 +194,14 @@ sub get_content_encodings($$)
         }
 
         if( exists $encodings{$id} && !defined $layer_id ) {
-            error( $0, $filename, $dataname,
-                   "content encoding '$id' has more than unnumbered layer",
-                   'cannot unambiguously reconstruct encoding stack' );
-            die;
+            die( "ERROR, content encoding '$id' has more than unnumbered layer",
+                 'cannot unambiguously reconstruct encoding stack' . "\n" );
         }
 
         $layer_id = 0 if !defined $layer_id;
         if( int($layer_id) != $layer_id ) {
-            error( $0, $filename, $dataname, 'the detected content encoding '
-                 . "layer ID '$layer_id' is not an integer", undef );
-            die;
+            die( "ERROR, the detected content encoding "
+                . "layer ID '$layer_id' is not an integer\n" );
         }
 
         if( !exists $encodings{$id} ) {
@@ -225,10 +211,8 @@ sub get_content_encodings($$)
         if( !exists $encodings{$id}{$layer_id} ) {
             $encodings{$id}{$layer_id} = $layer_type;
         } else {
-            error( $0, $filename, $dataname,
-                   "more than one content encoding layer numbered " .
-                   "'$layer_id' detected", undef );
-            die;
+            die( "ERROR, more than one content encoding layer numbered " .
+                   "'$layer_id' detected\n" );
         }
     }
 

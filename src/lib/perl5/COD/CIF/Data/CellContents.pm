@@ -22,7 +22,6 @@ use COD::CIF::Data qw( get_cell get_symmetry_operators );
 use COD::CIF::Data::AtomList qw( atom_array_from_cif );
 use COD::CIF::Data::EstimateZ qw( cif_estimate_z );
 use COD::CIF::Data::SymmetryGenerator qw( symop_generate_atoms );
-use COD::UserMessage qw( warning error prefix_dataname );
 
 require Exporter;
 our @ISA = qw(Exporter);
@@ -39,11 +38,10 @@ sub print_composition( $ );
 
 sub cif_cell_contents( $$$@ )
 {
-    my ($dataset, $filename, $user_Z, $use_attached_hydrogens,
+    my ($dataset, $user_Z, $use_attached_hydrogens,
         $assume_full_occupancies) = @_;
 
     my $values = $dataset->{values};
-    my $dataname = prefix_dataname($dataset->{name});
 
 #   extracts atom site label or atom site type symbol.
 #   The check is left only for error message/output compatibility,
@@ -51,26 +49,21 @@ sub cif_cell_contents( $$$@ )
 #   CIFAtomList::atom_array_from_cif().
     if( !exists $values->{"_atom_site_label"} &&
         !exists $values->{"_atom_site_type_symbol"} ) {
-        error( $0, $filename, $dataname,
-               'neither _atom_site_label nor _atom_site_type_symbol '
-             . 'was found in the input file', undef );
-        return undef;
+        die ( 'ERROR, neither _atom_site_label nor _atom_site_type_symbol '
+            . "was found in the input file\n" );
     }
 
 #   extracts cell constants
-    my @unit_cell =
-        get_cell( $values, $filename, $dataset->{name} );
+    my @unit_cell = get_cell( $values );
 
     my $ortho_matrix = symop_ortho_from_fract( @unit_cell );
 
 #   extracts symmetry operators
-    my $sym_data =
-        get_symmetry_operators( $dataset, $filename );
+    my $sym_data = get_symmetry_operators( $dataset );
 
 #   extract atoms
     my $atoms = atom_array_from_cif( $dataset,
                                      \%COD::AtomProperties::atoms,
-                                     $filename,
                                      { copy_dummy_coordinates => 1,
                                        ignore_unknown_chemical_types => 1 } );
 
@@ -93,9 +86,8 @@ sub cif_cell_contents( $$$@ )
         if( exists $values->{_cell_formula_units_z} ) {
             my $file_Z = $values->{_cell_formula_units_z}[0];
             if( $Z != $file_Z ) {
-                warning( $0, $filename, $dataname,
-                         "overriding _cell_formula_units_Z ($file_Z) " .
-                         "with command-line value $Z", undef );
+                warn( "WARNING, overriding _cell_formula_units_Z ($file_Z) " .
+                      "with command-line value $Z\n" );
             }
         }
     } else {
@@ -111,11 +103,10 @@ sub cif_cell_contents( $$$@ )
                 $msg =~ s/;\n/; /g;
                 $msg =~ s/\n/; /g;
                 $Z = 1;
-                warning( $0, $filename, $dataname, $msg, "assuming Z = $Z" );
+                warn( "WARNING, $msg -- assuming Z = $Z\n" );
             } else {
-                warning( $0, $filename, $dataname,
-                         "_cell_formula_units_Z is missing", 
-                         "assuming Z = $Z" );
+                warn( "WARNING, _cell_formula_units_Z is missing -- "
+                     . "assuming Z = $Z\n" );
             }
         }
     }

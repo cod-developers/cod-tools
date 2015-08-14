@@ -21,7 +21,8 @@ use COD::ShowStruct;
 use COD::Serialise;
 use COD::Spacegroups::Symop::Parse;
 use COD::Fractional;
-use File::Basename;
+use File::Basename qw(basename);
+use COD::UserMessage qw(process_warnings process_errors);
 use COD::SOptions;
 use COD::SUsage;
 
@@ -29,7 +30,9 @@ my $format = "%g";
 my $Z_value;
 my $use_attached_hydrogens = 0;
 my $assume_full_occupancies = 0;
-my $continue_on_errors = 0;
+my $die_on_errors   = 1;
+my $die_on_warnings = 0;
+my $die_on_notes    = 0;
 my $print_datablock_name = 0;
 
 #* Usage:
@@ -41,10 +44,22 @@ my $print_datablock_name = 0;
 #*         Keep processing subsequent data blocks even if one datablock
 #*         had fatal processing errors
 #*
-#*     -c-, --dont-continue-on-errors, --do-not-continue-on-errors,
-#*     --no-continue-on-errors
+#*     -c-, --die-on-errors, --dont-continue-on-errors,
+#*     --do-not-continue-on-errors, --no-continue-on-errors
 #*         Terminate script immediately if some data block could not be
 #*         processed (default).
+#*
+#*     --continue-on-warnings
+#*          Do not terminate script if warnings are raised (default)
+#*
+#*     --die-on-warnings
+#*          Terminate script immediately if warnings are raised
+#*
+#*     --continue-on-notes
+#*          Do not terminate script if notes are raised (default)
+#*
+#*     --die-on-notes
+#*          Terminate script immediately if notes are raised
 #*
 #*     -Z, --cell-formula-units-Z  1
 #*         Specify number of formula sum units in the unit cell.
@@ -84,10 +99,17 @@ my $print_datablock_name = 0;
 
 @ARGV = getOptions(
 
-    "-c,--continue-on-errors" => sub { $continue_on_errors = 1 },
-    "-c-,--dont-continue-on-errors" => sub { $continue_on_errors = 0 },
-    "--do-not-continue-on-errors" => sub { $continue_on_errors = 0 },
-    "--no-continue-on-errors" => sub { $continue_on_errors = 0 },
+    "-c,--continue-on-errors"       => sub { $die_on_errors = 0 },
+    "-c-,--dont-continue-on-errors" => sub { $die_on_errors = 1 },
+    "--die-on-errors"               => sub { $die_on_errors = 1 },
+    "--do-not-continue-on-errors"   => sub { $die_on_errors = 1 },
+    "--no-continue-on-errors"       => sub { $die_on_errors = 1 },
+
+    "--continue-on-warnings" => sub { $die_on_warnings = 0 },
+    "--die-on-warnings"      => sub { $die_on_warnings = 1 },
+
+    "--continue-on-notes"    => sub { $die_on_notes = 0 },
+    "--die-on-notes"         => sub { $die_on_notes = 1 },
 
     "-Z,--cell-formula-units-Z" => \$Z_value,
 
@@ -121,22 +143,24 @@ for my $filename (@ARGV) {
 
     for my $dataset (@$data) {
 
+        local $SIG{__WARN__} =
+                   sub {process_warnings( $filename, $dataset->{name}, @_,
+                                          {
+                                            WARNING => $die_on_warnings,
+                                            NOTE    => $die_on_notes,
+                                          }
+                                        ) };
+
         my $values = $dataset->{values};
 
         my $formula;
-        eval {
-            $formula = cif_cell_contents
-                ( $dataset,  $filename, $Z_value,
-                  $use_attached_hydrogens, $assume_full_occupancies );
+        my $success = eval {
+            $formula = cif_cell_contents ( $dataset, $Z_value,
+                                           $use_attached_hydrogens,
+                                           $assume_full_occupancies );
         };
-        if( $@ ) {
-            if( $continue_on_errors ) {
-                $@ =~ s/^Died /... /;
-                print STDERR $@;
-                next;
-            } else {
-                die $@;
-            }
+        if ( !$success ) {
+            process_errors( $filename, $dataset->{name}, $@, $die_on_errors );
         }
 
         if( defined $formula ) {

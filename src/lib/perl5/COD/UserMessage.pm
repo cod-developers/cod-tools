@@ -15,7 +15,8 @@ use warnings;
 require Exporter;
 our @ISA = qw(Exporter);
 our @EXPORT = qw( print_message error warning note parse_message sprint_message );
-our @EXPORT_OK = qw( debug_note prefix_dataname );
+our @EXPORT_OK = qw( debug_note prefix_dataname
+                     process_warnings process_errors );
 
 # characters that will be escaped as HTML5 entities
 # '#' symbol is used for starting comment lines
@@ -202,7 +203,43 @@ sub prefix_dataname($)
     my ($dataname) = @_;
 
     $dataname = "data_" . $dataname if defined $dataname;
-
     return $dataname;
 }
+
+sub process_errors
+{
+    my ( $filename, $dataname, $message, $die ) = @_;
+
+    $message =~ s/^([A-Z]+),\s*//;
+    my $error_level = defined $1 ? $1 : 'ERROR';
+
+    $message = sprint_message( $0,
+                               $filename,
+                               "data_$dataname",
+                               $error_level,
+                               $message,
+                               undef
+                             );
+
+    if ( $error_level ne 'ERROR' || $die ) {
+       CORE::die $message;
+    } else {
+       print STDERR $message;
+    };
+}
+
+sub process_warnings
+{
+    my ( $filename, $dataname, $message, $die ) = @_;
+
+    $message =~ s/^([A-Z]+),\s*//;
+    my $error_level = defined $1 ? $1 : 'WARNING';
+    if ( defined $die->{$error_level} && $die->{$error_level} ) {
+       CORE::die "$error_level, $message";
+    } else {
+       print STDERR sprint_message( $0, $filename, "data_$dataname",
+                                    $error_level, $message, undef );
+    }
+}
+
 1;
