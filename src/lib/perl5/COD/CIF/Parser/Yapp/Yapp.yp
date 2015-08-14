@@ -653,7 +653,7 @@ sub _Error
                                   "ERROR", $errmsg, undef,
                                   $line, $pos, $line_content );
 
-    push $_[0]->YYData->{ERROR_MESSAGES}, $message;
+    push( @{$_[0]->YYData->{ERROR_MESSAGES}}, $message );
 }
 
 sub _Warning
@@ -684,7 +684,7 @@ sub _Warning
         }
 
         delete $_[0]->YYData->{ERRMSG};
-        push   $_[0]->YYData->{WARNING_MESSAGES}, $message;
+        push  ( @{$_[0]->YYData->{WARNING_MESSAGES}}, $message );
     }
 }
 
@@ -1078,7 +1078,7 @@ sub Run
         if( !defined $COD::CIF::Parser::Yapp::FILEIN ) {
             my $message = sprint_message( $program, $filename, undef, 'ERROR',
                                           "could not open file", lcfirst $! );
-            push $self->YYData->{ERROR_MESSAGES}, $message;
+            push ( @{$self->YYData->{ERROR_MESSAGES}}, $message );
             $self->YYData->{ERRCOUNT}++;
             die $message if $self->{USER}{OPTIONS}{no_print} == 0;
             return [];
@@ -1118,7 +1118,7 @@ sub Run
         print STDERR $_ foreach( @{$self->YYData->{ERROR_MESSAGES}} );
         if (defined $last_error) {
             die $last_error;
-            push $self->YYData->{ERROR_MESSAGES}, $last_error;
+            push ( @{$self->YYData->{ERROR_MESSAGES}}, $last_error );
         }
     }
     unshift @{$self->YYData->{ERROR_MESSAGES}}, 
