@@ -78,26 +78,8 @@ ${CODTOOLS} (${REVISION}-1) UNRELEASED; urgency=low
  -- ${AUTHOR_NAME} <${AUTHOR_EMAIL}>  ${DATE}
 endef
 
-define control_body
-Source: ${PKGNAME}
-Maintainer: ${AUTHOR_NAME} <${AUTHOR_EMAIL}>
-Section: misc
-Priority: optional
-Standards-Version: 3.9.3
-Build-Depends: ${BUILD_DEPS}
-
-Package: ${PKGNAME}
-Architecture: any
-Depends: ${RUN_DEPS}, $${perl:Depends}, $${shlibs:Depends}
-Description: tools for Crystallography Open Database
- CIF management tools
-endef
-
 ${CHANGELOG}:
 	echo '$(subst $(newline),\n,${changelog_body})' > $@
-
-${CONTROL}:
-	echo '$(subst $(newline),\n,${control_body})' > $@
 
 build:
 	$(MAKE) -C src/
