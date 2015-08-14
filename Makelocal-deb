@@ -14,6 +14,7 @@ AUTHOR_NAME  = Saulius Gražulis
 AUTHOR_EMAIL = grazulis@ibt.lt
 REVISION  = $(shell svnversion)
 DATE      = $(shell date --rfc-2822)
+DISTRIBUTION = $(shell lsb_release -a 2>/dev/null | grep ^Codename | awk '{print $$2}')
 
 PREFIX = ${DEBIAN}/${PKGNAME}
 
@@ -71,7 +72,7 @@ define newline
 endef
 
 define changelog_body
-${CODTOOLS} (${REVISION}-1) UNRELEASED; urgency=low
+${CODTOOLS} (${REVISION}-1+${DISTRIBUTION}) UNRELEASED; urgency=low
 
   * Initial release.
 
