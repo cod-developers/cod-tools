@@ -101,7 +101,7 @@ sub fetch_duplicates_from_database
         if( defined $formula ) {
             $final_formula = $formula;
         } elsif( defined $cell_contents ) {
-            $final_formula = $cell_contents;            
+            $final_formula = $cell_contents;
         } else {
             $final_formula = '?';
         }
@@ -129,7 +129,7 @@ sub fetch_duplicates_from_database
                     }
                 }
             }
-        }        
+        }
 
         push( @duplicates,
                 { formula => $final_formula,
@@ -224,8 +224,7 @@ sub cif_fill_data
 
         my $calculated_formula;
         eval {
-            $calculated_formula =
-                cif_cell_contents( $dataset, $file, undef );
+            $calculated_formula = cif_cell_contents( $dataset, undef );
         };
 
         $structures{$id}{cell_contents} = $calculated_formula
@@ -615,7 +614,7 @@ sub query_COD_database
                                 _cell_length_c => $row->{sigc},
                                 _cell_angle_alpha => $row->{sigalpha},
                                 _cell_angle_beta  => $row->{sigbeta},
-                                _cell_angle_gamma => $row->{siggamma},                                
+                                _cell_angle_gamma => $row->{siggamma},
                             }
                         };
 

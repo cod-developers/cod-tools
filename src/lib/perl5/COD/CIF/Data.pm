@@ -15,7 +15,6 @@ use strict;
 use warnings;
 use COD::Spacegroups::Lookup::COD;
 use COD::Spacegroups::Names;
-use COD::UserMessage qw(prefix_dataname);
 
 require Exporter;
 our @ISA = qw(Exporter);
@@ -73,8 +72,8 @@ sub get_cell($@)
         } elsif( $options->{silent} ) {
             push(@cell_lengths_and_angles, undef);
         } else {
-            warn( "WARNING, cell angle '$cif_tag' not present",
-                     "taking default value 90 degrees\n" );
+            warn( "WARNING, cell angle '$cif_tag' not present -- "
+                . "taking default value 90 degrees\n" );
             push( @cell_lengths_and_angles, 90 );
         }
     }
@@ -170,12 +169,11 @@ sub get_symmetry_operators($)
     return $sym_data;
 }
 
-sub get_content_encodings($$)
+sub get_content_encodings($)
 {
-    my ( $dataset, $filename ) = @_;
+    my ( $dataset ) = @_;
 
     my $values = $dataset->{values};
-    my $dataname = prefix_dataname($dataset->{name});
 
     if( !exists $values->{_tcod_content_encoding_id} ||
         !exists $values->{_tcod_content_encoding_layer_type} ) {

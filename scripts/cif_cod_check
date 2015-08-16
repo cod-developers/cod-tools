@@ -18,7 +18,7 @@ use strict;
 use warnings;
 use COD::CIF::Parser qw(parse_cif);
 use COD::CIF::Data qw(get_cell get_content_encodings);
-use COD::CIF::Data::EstimateZ;
+use COD::CIF::Data::EstimateZ qw(cif_estimate_z);
 use COD::CIF::Tags::CanonicalNames;
 use COD::CIF::Tags::Manage;
 use COD::Escape qw( decode_textfield );
@@ -1583,7 +1583,7 @@ sub check_embedded_file_integrity
 
     my $encodings;
     eval {
-        $encodings = get_content_encodings( $dataset, $filename );
+        $encodings = get_content_encodings( $dataset );
     };
     if( $@ ) {
         $warnings++;

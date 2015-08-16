@@ -179,7 +179,7 @@ sub extract_atom
 #                   multiplicity_ratio=>"1",
 #              }
 #
-sub atom_array_from_cif($$$@)
+sub atom_array_from_cif($$$)
 {
     my( $datablock, $atom_properties, $options ) = @_;
 
@@ -210,8 +210,8 @@ sub atom_array_from_cif($$$@)
     } elsif( exists $values->{"_atom_site_type_symbol"} ) {
         $atom_site_tag = "_atom_site_type_symbol";
 
-        die "ERROR, _atom_site_label tag was not found a serial number will "
-          . "be appended to _atom_site_type_symbol to make atom labels\n";
+        warn "WARNING, _atom_site_label tag was not found a serial number will "
+           . "be appended to _atom_site_type_symbol to make atom labels\n";
     } else {
         die "ERROR, neither _atom_site_type_symbol nor _atom_site_label " .
             "were found\n";

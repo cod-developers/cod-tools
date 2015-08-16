@@ -374,8 +374,7 @@ sub get_atoms {
         push( @atoms, $atom );
     }
 
-    @atoms = @{ uniquify_atom_names( \@atoms, $uniquify_atoms, 
-                                     $filename, $dataset->{name} ); };
+    @atoms = @{ uniquify_atom_names( \@atoms, $uniquify_atoms ) };
 
     @atoms = sort { ( $a -> {chemical_type} cmp $b -> {chemical_type} ) ||
                     ( $a -> {name} cmp $b -> {name} ) } @atoms;
@@ -402,7 +401,7 @@ sub symops_apply {
     my ( $dataset, $atoms, $ortho_matrix, $filename ) = @_;
 
     #   extracts symmetry operators
-    my $sym_data = get_symmetry_operators( $dataset, $filename );
+    my $sym_data = get_symmetry_operators( $dataset );
 
     #   transforms symmetry operators into canonical from
     @{$sym_data} = map { symop_string_canonical_form( $_ ) } @{$sym_data};

@@ -78,7 +78,7 @@ use COD::CIF::Tags::Print;
 use COD::CIF::Tags::Manage;
 use COD::SOptions;
 use COD::SUsage;
-use COD::UserMessage qw(warning error prefix_dataname);
+use COD::UserMessage qw(warning error prefix_dataname process_errors process_warnings);
 
 no warnings 'recursion';
 
@@ -166,6 +166,10 @@ my $output_geom_bond = 0; # Compute and output the _geom_bond_... data
 my $expand_to_p1 = 0; # Do we want a full P1 unit cell that can be used
                       # to re-create the whole crystal using only the
                       # lattice translations?
+
+my $die_on_errors   = 1;
+my $die_on_warnings = 0;
+my $die_on_notes    = 0;
 
 @ARGV = getOptions
 (
@@ -542,11 +546,22 @@ for my $filename (@ARGV) {
     }
 
     for my $dataset (@$data) {
+
+        local $SIG{__WARN__} =
+                   sub {process_warnings( $filename, $dataset->{name}, @_,
+                                          {
+                                            WARNING => $die_on_warnings,
+                                            NOTE    => $die_on_notes,
+                                          }
+                                        ) };
+
+        eval {
+
         # Extracts atom site label or atom site type symbol
         my $values = $dataset->{"values"};
 
         # Extracts symmetry operators
-        my $sym_data = get_symmetry_operators( $dataset, $filename );
+        my $sym_data = get_symmetry_operators( $dataset );
 
         if( not defined $sym_data ) {
             error( $0, $filename, prefix_dataname($dataset->{name}),
@@ -792,6 +807,12 @@ for my $filename (@ARGV) {
                 $molecule_id++;
             }
         }
+
+        }; # eval block end
+        if ( $@ ) {
+            process_errors( $filename, $dataset->{name}, $@, $die_on_errors );
+        }
+
     }
 }
 
@@ -849,7 +870,6 @@ sub get_molecules
     # Extract atoms fract coordinates
     my $atom_list = atom_array_from_cif( $dataset,
                                          $atom_properties,
-                                         $filename,
                                          $cif_atom_list_options );
 
     return [] unless defined $atom_list;

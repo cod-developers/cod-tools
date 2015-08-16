@@ -248,8 +248,7 @@ sub cif2cod
 
         eval {
             $calculated_formula =
-                cif_cell_contents( $dataset, $filename, undef,
-                                   $use_attached_hydrogens );
+                cif_cell_contents( $dataset, undef, $use_attached_hydrogens );
         };
         if( $@ ) {
             print_message( $0, $filename, "data_$dataname", undef,
@@ -361,8 +360,7 @@ sub cif2cod
         my $cell_volume = get_num_or_undef( $values, "_cell_volume", 0 );
 
         if( !defined $cell_volume ) {
-            my @cell = get_cell( $values, $filename, $dataname,
-                                 { silent => 1 } );
+            my @cell = get_cell( $values, { silent => 1 } );
             $cell_volume = sprintf( "%7.2f", scalar cell_volume( @cell ));
         }
 

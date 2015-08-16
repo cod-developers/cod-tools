@@ -36,7 +36,7 @@ $::format = "%g";
 sub atomic_composition( $$$@ );
 sub print_composition( $ );
 
-sub cif_cell_contents( $$$@ )
+sub cif_cell_contents( $$@ )
 {
     my ($dataset, $user_Z, $use_attached_hydrogens,
         $assume_full_occupancies) = @_;

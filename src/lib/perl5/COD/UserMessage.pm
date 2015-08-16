@@ -217,7 +217,7 @@ sub process_errors
                                $filename,
                                "data_$dataname",
                                $error_level,
-                               $message,
+                               lcfirst($message),
                                undef
                              );
 
@@ -238,7 +238,7 @@ sub process_warnings
        CORE::die "$error_level, $message";
     } else {
        print STDERR sprint_message( $0, $filename, "data_$dataname",
-                                    $error_level, $message, undef );
+                                    $error_level, lcfirst($message), undef );
     }
 }
 

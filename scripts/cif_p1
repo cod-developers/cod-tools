@@ -335,10 +335,9 @@ for my $filename (@ARGV) {
         # Build an atom array from the CIF data structure:
         my $atoms = atom_array_from_cif( $datablock,
                                          \%COD::AtomProperties::atoms,
-                                         $filename,
                                          $cif_atom_list_options );
 
-        my $symop_strings = get_symmetry_operators( $datablock, $filename );
+        my $symop_strings = get_symmetry_operators( $datablock );
         my @symops = map { symop_from_string($_) } @{$symop_strings};
 
         my $unit_cell_atoms =
@@ -349,9 +348,7 @@ for my $filename (@ARGV) {
 
         if( $dump_atoms ) {
             dump_atoms_as_cif( 1, $unit_cell_atoms,
-                               [ get_cell( $datablock->{values},
-                                           $filename,
-                                           $dataname ) ] 
+                               [ get_cell( $datablock->{values}) ]
                 );
             next;
         }
