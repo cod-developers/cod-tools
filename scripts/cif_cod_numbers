@@ -15,7 +15,8 @@ eval 'exec perl -x $0 ${1+"$@"}'
 use strict;
 use File::Basename;
 use COD::CIF::Parser qw(parse_cif);
-use COD::CIF::Data::CODNumbers qw(fetch_duplicates);
+use COD::CIF::Data::CODNumbers qw(cif_fill_data fetch_duplicates);
+use COD::UserMessage qw(process_warnings process_errors);
 use COD::SOptions;
 use COD::SUsage;
 
@@ -29,6 +30,9 @@ my %database = (
     );
 
 my $use_parser = "perl";
+my $die_on_errors   = 1;
+my $die_on_warnings = 0;
+my $die_on_notes    = 0;
 my $print_datablock_name = 0;
 
 my %options;
@@ -159,23 +163,42 @@ my %options;
 
 @ARGV = ("-") unless @ARGV;
 
-for my $file (@ARGV) {
+for my $filename (@ARGV) {
     my $parser_options = { 'parser' => $use_parser, 'no_print' => 1 };
-    my ( $data, $err_count, $messages ) = parse_cif( $file, $parser_options );
+    my ( $data, $err_count, $messages ) = parse_cif( $filename, $parser_options );
 
     if ( $err_count > 0 ) {
         print STDERR $_ foreach ( @$messages );
-        error( $0, $file, undef, "$err_count error(s) "
+        error( $0, $filename, undef, "$err_count error(s) "
              . "encountered while parsing the file", undef );
         next;
     }
     print STDERR $_ foreach ( @$messages );
 
     if( !defined $data->[0] || !defined $data->[0]{name} ) {
-        warn( "file '$file' seems to be empty" );
+        warn( "file '$filename' seems to be empty" );
     }
 
-    my $duplicates = fetch_duplicates( $data, $file, \%database, \%options );
+    my %structures = ();
+    my $index = 0;
+    foreach my $dataset ( @$data ) {
+
+        local $SIG{__WARN__} =
+                   sub {process_warnings( $filename, $dataset->{name}, @_,
+                                          {
+                                            WARNING => $die_on_warnings,
+                                            NOTE    => $die_on_notes,
+                                          }
+                                        ) };
+
+        my $structure = cif_fill_data( $dataset, $filename, $index );
+        if ( defined $structure ) {
+            $structures{$structure->{id}} = $structure;
+            $index++;
+        }
+    }
+
+    my $duplicates = fetch_duplicates( \%structures, \%database, \%options );
 
     for my $datablock ( @$duplicates ) {
         if( keys %{ $datablock->{duplicates} } > 0 ) {
@@ -186,7 +209,7 @@ for my $file (@ARGV) {
                     $datablock->{formula},
                     $COD_entry->{filename},
                     scalar keys %{ $datablock->{duplicates} },
-                    $file;
+                    $filename;
                 if( $print_datablock_name ) {
                     printf " %s", $datablock->{datablock}{id};
                 }
@@ -196,7 +219,7 @@ for my $file (@ARGV) {
             printf
                 "%-35s %15s %3d %s",
                 $datablock->{formula}, "?", 0,
-                $file;
+                $filename;
             if( $print_datablock_name ) {
                 printf " %s", $datablock->{datablock}{id};
             }

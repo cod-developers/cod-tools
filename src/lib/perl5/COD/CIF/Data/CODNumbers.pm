@@ -20,6 +20,7 @@ use COD::Precision qw(eqsig);
 require Exporter;
 our @ISA = qw(Exporter);
 our @EXPORT = qw(fetch_duplicates fetch_duplicates_from_database);
+our @EXPORT_OK = qw(cif_fill_data);
 
 my %has_numeric_value = (
     "_journal_year"   => 1,
@@ -69,7 +70,7 @@ my $cod_series_prefix;
 
 sub fetch_duplicates_from_database
 {
-    my( $data, $file, $database, $dbh, $options ) = @_;
+    my( $structures, $database, $dbh, $options ) = @_;
 
     $options = {} unless defined $options;
     $max_cell_length_diff = $options->{max_cell_length_diff}
@@ -85,7 +86,7 @@ sub fetch_duplicates_from_database
     $cod_series_prefix = $options->{cod_series_prefix}
         if defined $options->{cod_series_prefix};
 
-    my %structures = cif_fill_data( $data, $file );
+    my %structures = %{$structures};
 
     my %COD = ();
 
@@ -156,10 +157,9 @@ sub fetch_duplicates_from_database
 
 sub fetch_duplicates
 {
-    my( $data, $file, $database, $options ) = @_;
+    my( $structures, $database, $options ) = @_;
     my $dbh = database_connect( $database );
-    my $duplicates = fetch_duplicates_from_database( $data,
-                                                     $file,
+    my $duplicates = fetch_duplicates_from_database( $structures,
                                                      $database,
                                                      $dbh,
                                                      $options );
@@ -171,159 +171,152 @@ sub fetch_duplicates
 
 sub cif_fill_data
 {
-    my ( $data, $file ) = @_;
+    my ( $dataset, $file, $index ) = @_;
 
-    my %structures = ();
-    my $n = 0;
+    my %structure;
 
-    for my $dataset ( @$data ) {
-        my $values = $dataset->{values};
-        my $sigmas = $dataset->{precisions};
-        my $id = $dataset->{name};
+    my $values = $dataset->{values};
+    my $sigmas = $dataset->{precisions};
+    my $id = $dataset->{name};
 
-        next if !defined $id;
-        $structures{$id}{id} = $id;
-        $structures{$id}{filename} = File::Basename::basename( $file );
-        $structures{$id}{index} = $n;
-        $n++;
+    return undef if !defined $id;
+    $structure{id} = $id;
+    $structure{filename} = File::Basename::basename( $file );
+    $structure{index} = $index;
 
-        if( defined $values->{_chemical_formula_sum} ) {
-            my $formula = $values->{_chemical_formula_sum}[0];
+    if( defined $values->{_chemical_formula_sum} ) {
+        my $formula = $values->{_chemical_formula_sum}[0];
 
-            if( $formula ne '?' ) {
+        if( $formula ne '?' ) {
 
-                $formula =~ s/^\s*'\s*|\s*'\s*$//g;
-                $formula =~ s/^\s*|\s*$//g;
-                $formula =~ s/\s+/ /g;
+            $formula =~ s/^\s*'\s*|\s*'\s*$//g;
+            $formula =~ s/^\s*|\s*$//g;
+            $formula =~ s/\s+/ /g;
 
-                my $formula_parser = new COD::Formulae::Parser::AdHoc;
+            my $formula_parser = new COD::Formulae::Parser::AdHoc;
 
-                eval {
-                    $formula_parser->ParseString( $formula );
-                    if( defined $formula_parser->YYData->{ERRCOUNT} &&
-                        $formula_parser->YYData->{ERRCOUNT} > 0 ) {
-                        print STDERR "$0: ", $file, " ", $dataset->{name}, ": ",
-                        $formula_parser->YYData->{ERRCOUNT},
-                        " error(s) encountered while parsing chemical formula ",
-                        "sum\n";
-                        die;
-                    } else {
-                        $formula = $formula_parser->SprintFormula;
-                    }
-                };
-                if( $@ ) {
-                    print STDERR "$0: ", $file, " ", $dataset->{name}, ": ",
-                    "could not parse formula '$formula', resorting to ",
-                    "simple split routine\n";
-                    $formula = join( " ", sort {$a cmp $b} 
-                                     split( " ", $formula ));
+            eval {
+                $formula_parser->ParseString( $formula );
+                if( defined $formula_parser->YYData->{ERRCOUNT} &&
+                    $formula_parser->YYData->{ERRCOUNT} > 0 ) {
+                    die "ERROR, $formula_parser->YYData->{ERRCOUNT} "
+                      . "error(s) encountered while parsing chemical "
+                      . "formula sum\n";
+                    ;
+                } else {
+                    $formula = $formula_parser->SprintFormula;
                 }
-            }
-            $structures{$id}{chemical_formula_sum} = $formula;
-        }
-
-        my $calculated_formula;
-        eval {
-            $calculated_formula = cif_cell_contents( $dataset, undef );
-        };
-
-        $structures{$id}{cell_contents} = $calculated_formula
-            if defined $calculated_formula;
-
-        for my $key ( qw( _cell_length_a _cell_length_b _cell_length_c
-                     _cell_angle_alpha _cell_angle_beta _cell_angle_gamma )) {
-            my $val = $values->{$key}[0];
-            if( defined $val ) {
-                $val =~ s/^\s*'\s*|\s*'\s*$//g;
-                $val =~ s/\(.*$//;
-                $val =~ s/[()_a-zA-Z]//g;
-                $structures{$id}{cell}{$key} = sprintf "%f", $val;
+            };
+            if( $@ ) {
+                warn "WARNING, could not parse formula '$formula' "
+                   . "resorting to simple split routine\n";
+                $formula = join( " ", sort {$a cmp $b} split( " ", $formula ));
             }
         }
-        for my $key ( qw( _cell_length_a _cell_length_b _cell_length_c
-                     _cell_angle_alpha _cell_angle_beta _cell_angle_gamma )) {
-            if( exists $sigmas->{$key} ) {
-                my $val = $sigmas->{$key}[0];
-                $structures{$id}{sigcell}{$key} = $val;
-            }
-        }
-        for my $key ( qw( _cell_measurement_temperature
-                          _cell_measurement_temperature_C
-                          _diffrn_ambient_temperature
-                          _diffrn_ambient_temperature_C
-                          _diffrn_ambient_temperature_gt
-                          _diffrn_ambient_temperature_lt
-                          _pd_prep_temperature
-                          _cell_measurement_pressure
-                          _cell_measurement_pressure_gPa
-                          _cell_wave_vectors_pressure_max
-                          _cell_wave_vectors_pressure_min
-                          _diffrn_ambient_pressure
-                          _diffrn.ambient_pressure
-                          _diffrn.ambient_pressure_esd
-                          _diffrn_ambient_pressure_gPa
-                          _diffrn_ambient_pressure_gt
-                          _diffrn.ambient_pressure_gt
-                          _diffrn_ambient_pressure_lt
-                          _diffrn.ambient_pressure_lt
-                          _exptl_crystal_pressure_history
-                          _exptl_crystal_thermal_history
-                          _pd_prep_pressure )) {
-            if( exists $values->{$key} ) {
-                my $val = $values->{$key}[0];
-                if( defined $val ) {
-                    my $parameter;
-                    if( $key =~ /history/ ) {
-                        $parameter = "history";
-                    } elsif( $key =~ /pressure/ ) {
-                        $parameter = "pressure";
-                    } else {
-                        $parameter = "temperature";
-                    }
-                    $structures{$id}{$parameter}{$key} = $val;
-                    $structures{$id}{$parameter}{$key}
-                        =~ s/^\s*'\s*|\s*'\s*$//g;
-                }
-            }
-        }
+            $structure{chemical_formula_sum} = $formula;
+    }
 
-        for my $key ( qw( _cod_enantiomer_of
-                          _cod_related_optimal_struct )) {
-            if( exists $values->{$key} ) {
-                $structures{$id}{enantiomer} = $values->{$key}[0];
-            }
-        }
+    my $calculated_formula;
+    eval {
+        $calculated_formula = cif_cell_contents( $dataset, undef );
+    };
 
-        for my $key ( qw( _cod_related_optimal_struct
-                          _[local]_cod_related_optimal_struct )) {
-            if( exists $values->{$key} ) {
-                $structures{$id}{related_optimal} = $values->{$key}[0];
-            }
-        }
+    $structure{cell_contents} = $calculated_formula
+        if defined $calculated_formula;
 
-        my @journal_keys =
-            grep ! /^_journal_name/,
-            grep /^_journal_[^\s]*$/,
-            keys %{$values};
-
-        for my $key (@journal_keys) {
-            my $val = $values->{$key}[0];
-            if( defined $val ) {
-                $val =~ s/^['"]|["']$//g;
-                $structures{$id}{bibliography}{$key} = $val;
-            }
+    for my $key ( qw( _cell_length_a _cell_length_b _cell_length_c
+                      _cell_angle_alpha _cell_angle_beta _cell_angle_gamma )) {
+        my $val = $values->{$key}[0];
+        if( defined $val ) {
+            $val =~ s/^\s*'\s*|\s*'\s*$//g;
+            $val =~ s/\(.*$//;
+            $val =~ s/[()_a-zA-Z]//g;
+            $structure{cell}{$key} = sprintf "%f", $val;
         }
-        if( defined $values->{'_[local]_cod_suboptimal_structure'} ||
-            defined $values->{_cod_suboptimal_structure} ) {
-            my $val = defined $values->{_cod_suboptimal_structure} ?
-                $values->{_cod_suboptimal_structure}[0] :
-                $values->{'_[local]_cod_suboptimal_structure'}[0];
-            ## print ">>>>>> $val\n";
-            $structures{$id}{suboptimal} = $val;
+    }
+    for my $key ( qw( _cell_length_a _cell_length_b _cell_length_c
+                      _cell_angle_alpha _cell_angle_beta _cell_angle_gamma )) {
+        if( exists $sigmas->{$key} ) {
+            my $val = $sigmas->{$key}[0];
+            $structure{sigcell}{$key} = $val;
+        }
+    }
+    for my $key ( qw( _cell_measurement_temperature
+                      _cell_measurement_temperature_C
+                      _diffrn_ambient_temperature
+                      _diffrn_ambient_temperature_C
+                      _diffrn_ambient_temperature_gt
+                      _diffrn_ambient_temperature_lt
+                      _pd_prep_temperature
+                      _cell_measurement_pressure
+                      _cell_measurement_pressure_gPa
+                      _cell_wave_vectors_pressure_max
+                      _cell_wave_vectors_pressure_min
+                      _diffrn_ambient_pressure
+                      _diffrn.ambient_pressure
+                      _diffrn.ambient_pressure_esd
+                      _diffrn_ambient_pressure_gPa
+                      _diffrn_ambient_pressure_gt
+                      _diffrn.ambient_pressure_gt
+                      _diffrn_ambient_pressure_lt
+                      _diffrn.ambient_pressure_lt
+                      _exptl_crystal_pressure_history
+                      _exptl_crystal_thermal_history
+                      _pd_prep_pressure )) {
+       if( exists $values->{$key} ) {
+           my $val = $values->{$key}[0];
+           if( defined $val ) {
+               my $parameter;
+               if( $key =~ /history/ ) {
+                   $parameter = "history";
+               } elsif( $key =~ /pressure/ ) {
+                   $parameter = "pressure";
+               } else {
+                   $parameter = "temperature";
+               }
+               $structure{$parameter}{$key} = $val;
+               $structure{$parameter}{$key}
+                   =~ s/^\s*'\s*|\s*'\s*$//g;
+            }
         }
     }
 
-    return %structures;
+    for my $key ( qw( _cod_enantiomer_of
+                      _cod_related_optimal_struct )) {
+        if( exists $values->{$key} ) {
+            $structure{enantiomer} = $values->{$key}[0];
+        }
+    }
+
+    for my $key ( qw( _cod_related_optimal_struct
+                      _[local]_cod_related_optimal_struct )) {
+        if( exists $values->{$key} ) {
+            $structure{related_optimal} = $values->{$key}[0];
+        }
+    }
+
+     my @journal_keys =
+        grep ! /^_journal_name/,
+        grep /^_journal_[^\s]*$/,
+        keys %{$values};
+
+    for my $key (@journal_keys) {
+        my $val = $values->{$key}[0];
+        if( defined $val ) {
+            $val =~ s/^['"]|["']$//g;
+            $structure{bibliography}{$key} = $val;
+        }
+    }
+    if( defined $values->{'_[local]_cod_suboptimal_structure'} ||
+        defined $values->{_cod_suboptimal_structure} ) {
+        my $val = defined $values->{_cod_suboptimal_structure} ?
+                  $values->{_cod_suboptimal_structure}[0] :
+                  $values->{'_[local]_cod_suboptimal_structure'}[0];
+        ## print ">>>>>> $val\n";
+        $structure{suboptimal} = $val;
+    }
+
+    return \%structure;
 }
 
 #------------------------------------------------------------------------------
