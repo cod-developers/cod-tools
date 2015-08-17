@@ -33,7 +33,11 @@ use COD::CIF::Data::ExcludeFromStatistics qw( exclude_from_statistics );
 use COD::Fractional qw(symop_ortho_from_fract);
 use COD::SOptions;
 use COD::SUsage;
-use COD::UserMessage qw(warning error prefix_dataname);
+use COD::UserMessage qw(warning error prefix_dataname process_warnings process_errors);
+
+my $die_on_errors   = 1;
+my $die_on_warnings = 0;
+my $die_on_notes    = 0;
 
 my $uniquify_atoms = 1;
 my $include_disord_struct  = 1;
@@ -191,6 +195,14 @@ foreach my $filename ( @ARGV ) {
 
   foreach my $dataset ( @$data ) {
 
+    local $SIG{__WARN__} =
+               sub {process_warnings( $filename, $dataset->{name}, @_,
+                                      {
+                                        WARNING => $die_on_warnings,
+                                        NOTE    => $die_on_notes,
+                                      }
+                                    ) };
+
     my ($status, $msg) = exclude_from_statistics( $dataset, $criteria );
 
     my $dataname = prefix_dataname($dataset->{name});
@@ -203,15 +215,14 @@ foreach my $filename ( @ARGV ) {
     my $ortho_matrix;
 
     eval {
-        my @unit_cell = get_cell( $dataset->{values}, $filename, $dataset->{name} );
+        my @unit_cell = get_cell( $dataset->{values} );
         local $SIG{__WARN__} = sub {}; # not printing division by zero errors
         $ortho_matrix = symop_ortho_from_fract( @unit_cell );
     };
 
     if ( $@ ) {
-        error( $0, $filename, $dataname,
-               "essential tags for orthogonal matrix computation not " .
-               "present", "dataset will be skipped" );
+        $@ =~ s/[A-Z]+, //;
+        error( $0, $filename, $dataname, $@, "dataset will be skipped" );
         next;
     }
 
@@ -233,8 +244,9 @@ foreach my $filename ( @ARGV ) {
         ( $sym_atoms, $symop_count ) = symops_apply( $dataset, $atoms,
                                                      $ortho_matrix, $filename );
     };
-
     if ( $@ ) {
+        $@ =~ s/[A-Z]+, //;
+        error( $0, $filename, $dataname, $@, undef );
         error( $0, $filename, $dataname,
                "unable to generate symmetrically equivalent atoms",
                "dataset will be skipped" );
