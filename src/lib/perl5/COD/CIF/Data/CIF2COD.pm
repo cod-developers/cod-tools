@@ -19,7 +19,6 @@ use COD::CIF::Data::CODFlags qw(is_disordered has_coordinates has_Fobs);
 use COD::CIF::Tags::DictTags;
 use COD::CIF::Unicode2CIF;
 use COD::AtomProperties;
-use COD::UserMessage qw(print_message);
 
 require Exporter;
 our @ISA = qw(Exporter);
