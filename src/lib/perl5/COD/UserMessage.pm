@@ -211,13 +211,14 @@ sub process_errors
     my ( $filename, $dataname, $message, $die ) = @_;
 
     $message =~ s/^([A-Z]+),\s*//;
+    $message = lcfirst($message);
     my $error_level = defined $1 ? $1 : 'ERROR';
 
     $message = sprint_message( $0,
                                $filename,
                                "data_$dataname",
                                $error_level,
-                               lcfirst($message),
+                               $message,
                                undef
                              );
 
@@ -233,12 +234,13 @@ sub process_warnings
     my ( $filename, $dataname, $message, $die ) = @_;
 
     $message =~ s/^([A-Z]+),\s*//;
+    $message = lcfirst($message);
     my $error_level = defined $1 ? $1 : 'WARNING';
     if ( defined $die->{$error_level} && $die->{$error_level} ) {
        CORE::die "$error_level, $message";
     } else {
        print STDERR sprint_message( $0, $filename, "data_$dataname",
-                                    $error_level, lcfirst($message), undef );
+                                    $error_level, $message, undef );
     }
 }
 
