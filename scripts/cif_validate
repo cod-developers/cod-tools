@@ -143,10 +143,10 @@ if( @dictFiles ) {
         print STDERR $_ foreach ( @$messages );
 
         $dictTags{$dict} = getDict( $data );
-        if ( scalar( keys( $dictTags{$dict} ) ) == 0 ) {
+        if ( scalar( keys( %{$dictTags{$dict}} ) ) == 0 ) {
             warning( $0, $dict, undef, "no tag definitions found", undef )
         }
-        $tag_count += scalar( keys( $dictTags{$dict} ) );
+        $tag_count += scalar( keys( %{$dictTags{$dict}} ) );
     }
 
     if( $tag_count == 0 ) {
@@ -264,7 +264,8 @@ CIFFILEANAL: for my $filename ( @ARGV ) {
                                      . join(', ', @{$dictTagValues->{_name}})
                                      . "] are defined according to $dictF "
                                      . 'but was not found', undef );
-                                    push $reportedBlockReferences[$i], $loopRefTag;
+                                    push @{$reportedBlockReferences[$i]},
+                                         $loopRefTag;
                             }
                         }
                       }
@@ -707,7 +708,7 @@ sub getListReferenceTags($$)
         # _list_reference identifies data item(s) that must collectively be
         # in a loop. They are referenced by the names of their data blocks
         foreach my $refDataname (@{$tagValues->{_list_reference}}) {
-          foreach my $tags ( sort keys $dict ) {
+          foreach my $tags ( sort keys %$dict ) {
               if ( "_" . $dict->{$tags}{values}{_dataname} eq $refDataname ) {
                   push @listReferenceTags, $tags;
               }
