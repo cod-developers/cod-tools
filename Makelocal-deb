@@ -16,6 +16,9 @@ REVISION  = $(shell svnversion)
 DATE      = $(shell date --rfc-2822)
 DISTRIBUTION = $(shell lsb_release -a 2>/dev/null | grep ^Codename | awk '{print $$2}')
 
+vendorarch = $(shell perl -le 'use Config; print $$Config{vendorarch}')
+vendorlib  = $(shell perl -le 'use Config; print $$Config{vendorlib}')
+
 PREFIX = ${DEBIAN}/${PKGNAME}
 
 DEBIAN    = debian
@@ -48,8 +51,7 @@ CODTOOLS_LIBS = $(shell find src/lib/perl5 -name .svn -prune -o \
                                            -name UserMessage.pm -prune -o \
                                            -name \*.pm -print)
 
-LIBCOD_PERL_LIBS = src/lib/perl5/auto/COD/CIF/Parser/Bison/Bison.so \
-                   src/lib/perl5/COD/CIF/Parser/Bison.pm \
+LIBCOD_PERL_LIBS = src/lib/perl5/COD/CIF/Parser/Bison.pm \
                    src/lib/perl5/COD/Precision.pm \
                    src/lib/perl5/COD/UserMessage.pm
 
@@ -101,12 +103,16 @@ install-codtools:
 	done
 
 install-libcod-perl:
-	for i in ${LIBCOD_PERL_LIBS:src/%=%}; \
+	for i in ${LIBCOD_PERL_LIBS:src/lib/%=%}; \
 	do \
-	test -d ${DEBIAN}/${LIBCOD_PERL}/usr/$$(dirname $$i) \
-			|| mkdir -p ${DEBIAN}/${LIBCOD_PERL}/usr/$$(dirname $$i); \
-		install --mode 644 src/$$i ${DEBIAN}/${LIBCOD_PERL}/usr/$$i; \
+	test -d ${DEBIAN}/${LIBCOD_PERL}/usr/share/$$(dirname $$i) \
+			|| mkdir -p ${DEBIAN}/${LIBCOD_PERL}/usr/share/$$(dirname $$i); \
+		install --mode 644 src/lib/$$i ${DEBIAN}/${LIBCOD_PERL}/usr/share/$$i; \
 	done
+	test -d ${DEBIAN}/${LIBCOD_PERL}/${vendorarch}/auto/COD/CIF/Parser/Bison/ \
+			|| mkdir -p ${DEBIAN}/${LIBCOD_PERL}/${vendorarch}/auto/COD/CIF/Parser/Bison
+	install --mode 644 src/lib/perl5/auto/COD/CIF/Parser/Bison/Bison.so \
+		${DEBIAN}/${LIBCOD_PERL}/${vendorarch}/auto/COD/CIF/Parser/Bison/Bison.so
 
 install-pycodcif:
 	test -d ${DEBIAN}/${PYCODCIF}/usr/bin || mkdir -p ${DEBIAN}/${PYCODCIF}/usr/bin
