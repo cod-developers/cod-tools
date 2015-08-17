@@ -154,12 +154,12 @@ for my $filename (@ARGV) {
         my $values = $dataset->{values};
 
         my $formula;
-        my $success = eval {
+        eval {
             $formula = cif_cell_contents ( $dataset, $Z_value,
                                            $use_attached_hydrogens,
                                            $assume_full_occupancies );
         };
-        if ( !$success ) {
+        if ( $@ ) {
             process_errors( $filename, $dataset->{name}, $@, $die_on_errors );
         }
 
