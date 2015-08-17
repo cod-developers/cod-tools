@@ -28,7 +28,7 @@ use Capture::Tiny ':all';
 use COD::CIF::Data::CIF2COD qw(cif2cod);
 use COD::CIF::Tags::Print;
 use COD::Precision;
-use COD::UserMessage qw(prefix_dataname print_message parse_message);
+use COD::UserMessage qw(prefix_dataname print_message parse_message process_warnings);
 
 our @identity_tags = qw(
     _cell_length_a
@@ -509,9 +509,26 @@ sub filter_and_check
         $cif_cod_numbers_opt->{check_bibliography} = 0
             if $deposition_type eq 'personal';
 
-        use COD::CIF::Data::CODNumbers;
-        my $duplicates = fetch_duplicates( $data,
-                                           $cif_filename,
+        use COD::CIF::Data::CODNumbers qw(cif_fill_data fetch_duplicates);
+        my %structures = ();
+        my $index = 0;
+        foreach my $dataset ( @$data ) {
+            local $SIG{__WARN__} =
+                sub {process_warnings( $cif_filename, $dataset->{name}, @_,
+                                       {
+                                           WARNING => 0, #$die_on_warnings,
+                                           NOTE    => 0, #$die_on_notes,
+                                       }
+                                     ) };
+
+            my $structure = cif_fill_data( $dataset, $cif_filename, $index );
+            if ( defined $structure ) {
+                $structures{$structure->{id}} = $structure;
+                $index++;
+            }
+        }
+
+        my $duplicates = fetch_duplicates( \%structures,
                                            $db_conf,
                                            $cif_cod_numbers_opt );
         my %duplicate_cod_entries;
@@ -757,14 +774,28 @@ sub filter_and_check
     # Test run for CIF2COD
 
     my( $cif2cod_stdout, $cif2cod_stderr ) = capture {
-        cif2cod( $data,
-                 $cif_filename,
-                 { continue_on_errors => 1 } );
+        my @extracted;
+        foreach my $dataset ( @$data ) {
+           local $SIG{__WARN__} =
+                  sub {process_warnings( $cif_filename, $dataset->{name}, @_,
+                                         {
+                                              WARNING => 0, #$die_on_warnings,
+                                              NOTE    => 0, #$die_on_notes,
+                                         }
+                                       ) };
+            my $extracted_dataset;
+            eval {
+                $extracted_dataset = cif2cod( $dataset,
+                                              $cif_filename,
+                                              { continue_on_errors => 1 } );
+            };
+            push @extracted, $extracted_dataset if defined $extracted_dataset;
+        }
     };
 
     C2CMESSAGE:
     foreach( split( "\n", $cif2cod_stderr ) ) {
-        if( /[^: ]+: [^: ]+: tag '([^']+)' is absent/ ) {
+        if( /[^: ]+: [^:]+: [A-Z]+, tag '([^']+)' is absent/ ) {
             my $tag = $1;
             if( $deposition_type eq 'published' ) {
                 next C2CMESSAGE if $tag eq '_journal_volume';
