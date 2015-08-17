@@ -360,7 +360,9 @@ sub cif2cod
 
     if( !defined $cell_volume ) {
         my @cell = get_cell( $values, { silent => 1 } );
-        $cell_volume = sprintf( "%7.2f", scalar cell_volume( @cell ));
+        $cell_volume = scalar cell_volume( @cell );
+        $cell_volume = defined $cell_volume ? sprintf( "%7.2f", $cell_volume)
+                                            : "NULL";
     }
 
     $data{vol} = $cell_volume;
