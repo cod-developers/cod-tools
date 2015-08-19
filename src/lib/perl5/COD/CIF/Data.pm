@@ -57,7 +57,7 @@ sub get_cell($@)
         } elsif( $options->{silent} ) {
             push(@cell_lengths_and_angles, undef);
         } else {
-            die( "ERROR, cell length '$cif_tag' not present\n" );
+            die "ERROR, cell length '$cif_tag' not present\n";
         }
     }
 
@@ -192,14 +192,14 @@ sub get_content_encodings($)
         }
 
         if( exists $encodings{$id} && !defined $layer_id ) {
-            die( "ERROR, content encoding '$id' has more than unnumbered layer",
-                 'cannot unambiguously reconstruct encoding stack' . "\n" );
+            die "ERROR, content encoding '$id' has more than unnumbered layer"
+              . 'cannot unambiguously reconstruct encoding stack' . "\n" ;
         }
 
         $layer_id = 0 if !defined $layer_id;
         if( int($layer_id) != $layer_id ) {
-            die( "ERROR, the detected content encoding "
-                . "layer ID '$layer_id' is not an integer\n" );
+            die "ERROR, the detected content encoding "
+               . "layer ID '$layer_id' is not an integer\n";
         }
 
         if( !exists $encodings{$id} ) {
@@ -209,8 +209,8 @@ sub get_content_encodings($)
         if( !exists $encodings{$id}{$layer_id} ) {
             $encodings{$id}{$layer_id} = $layer_type;
         } else {
-            die( "ERROR, more than one content encoding layer numbered " .
-                   "'$layer_id' detected\n" );
+            die "ERROR, more than one content encoding layer numbered " .
+                "'$layer_id' detected\n";
         }
     }
 
