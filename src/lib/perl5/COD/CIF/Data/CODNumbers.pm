@@ -20,7 +20,14 @@ use COD::Precision qw(eqsig);
 require Exporter;
 our @ISA = qw(Exporter);
 our @EXPORT = qw(fetch_duplicates fetch_duplicates_from_database);
-our @EXPORT_OK = qw(cif_fill_data);
+our @EXPORT_OK = qw(cif_fill_data
+                    
+                    bibliographies_are_the_same
+                    get_cell
+                    entries_are_the_same
+                    conditions_are_the_same
+                    cells_are_the_same
+                    );
 
 my %has_numeric_value = (
     "_journal_year"   => 1,
