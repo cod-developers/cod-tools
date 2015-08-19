@@ -33,7 +33,6 @@ my $print_header = 0; # Indicates whether to print out a header with
                       # column names.
 my $print_keywords = 0;
 
-my $continue_on_errors = 0;
 my $cod_number;
 
 # The default sql table data field that was taken from the 
@@ -181,8 +180,6 @@ sub cif2cod
     $options = {} unless defined $options;
     $cod_number = $options->{cod_number}
         if exists $options->{cod_number};
-    $continue_on_errors = $options->{continue_on_errors}
-        if exists $options->{continue_on_errors};
     $require_only_doi = $options->{require_only_doi}
         if exists $options->{require_only_doi};
     $print_header = $options->{print_header}

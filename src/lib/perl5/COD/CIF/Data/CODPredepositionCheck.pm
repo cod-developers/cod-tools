@@ -785,9 +785,7 @@ sub filter_and_check
                                        ) };
             my $extracted_dataset;
             eval {
-                $extracted_dataset = cif2cod( $dataset,
-                                              $cif_filename,
-                                              { continue_on_errors => 1 } );
+                $extracted_dataset = cif2cod( $dataset, $cif_filename );
             };
             push @extracted, $extracted_dataset if defined $extracted_dataset;
         }
