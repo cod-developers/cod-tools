@@ -40,58 +40,71 @@ my $die_on_notes    = 0;
 #*     cif_find_duplicates [options] my-cif-dir1/ my-cif-dir2/files*.cif COD-cif-dir/
 #*
 #*OPTIONS:
-#*     -c, --continue-on-errors
-#*         Keep processing subsequent data blocks even if one datablock
-#*         had fatal processing errors
+#* -c, --always-continue
+#*                     Continue processing and return successful return status
+#*                     even if errors are diagnosed.
+#* -c-, --always-die
+#*                     Stop and return error status if errors are diagnosed.
 #*
-#*     -c-, --die-on-errors, --dont-continue-on-errors,
-#*     --do-not-continue-on-errors, --no-continue-on-errors
-#*         Terminate script immediately if some data block could not be
-#*         processed (default).
+#* --max-cell-length-difference 0.5
+#*                     Maximum difference of unit cell lengths allowed for
+#*                     entries regarded as the same, in Angstroems 
+#*                     (default 0.5).
 #*
-#*     --continue-on-warnings
-#*          Do not terminate script if warnings are raised (default)
+#* --max-cell-angle-difference 1.2
+#*                     Maximum difference of unit cell angles allowed for
+#*                     entries regarded as the same, in Angstroems
+#*                     (default 1.2).
 #*
-#*     --die-on-warnings
-#*          Terminate script immediately if warnings are raised
+#* --check-bibliography
+#*                     Only CIFs that have different bibliography data are
+#*                     declared different if all other parameters match.
+#*                     CIFs with missing bibliographies are assumed to have
+#*                     matching bibliographies (default).
 #*
-#*     --continue-on-notes
-#*          Do not terminate script if notes are raised (default)
+#* --dont-check-bibliography, --no-check-bibliography
+#*                     Ignore bibliographic data of all CIFs; thus even files
+#*                     with different bibliographies will be regared the same
+#*                     if their cells, chemical formulae and measurement
+#*                     conditions match.
 #*
-#*     --die-on-notes
-#*          Terminate script immediately if notes are raised
+#* --ignore-sigma, --dont-use-sigma, --no-use-sigma
+#*                     Ignore standard uncertainties (sigmas) when comparing
+#*                     unit cell constants.
 #*
-#*     --max-cell-length-difference 0.5
-#*        Maximum difference of unit cell lengths allowed for 
-#*        entries regarded as the same, in Angstroems.
+#* --dont-ignore-sigma, --no-ignore-sigma, --use-sigma
+#*                     Use standard deviations (sigmas) when comparing unit
+#*                     cell constants (default).
 #*
-#*     --max-cell-angle-difference 1.2
-#*        Maximum difference of unit cell angles allowed for
-#*        entries regarded as the same, in Angstroems.
+#* --check-sample-history
+#*                     Only CIFs that have different sample history data
+#*                     (as recorded in the _exptl_crystal_thermal_history
+#*                     and _exptl_crystal_pressure_history tags) are declared
+#*                     different if all other parameters match.
 #*
-#*     --check-bibliography
-#*        Only CIFs that have different bibliography data are declared different
-#*        if all other parameters match (default). CIFs with missing bibliographies
-#*        are assumed to have matching bibliographies.
+#* --dont-check-sample-history,
+#* --no-check-sample-history,
+#* --disregard-sample-history
+#*                     Ignore sample history of all CIFs; thus even files
+#*                     with different sample histories will be regared the
+#*                     same if their cells, chemical formulae and measurement
+#*                     conditions match (default).
 #*
-#*     --dont-check-bibliography, --no-check-bibliography
-#*        Ignore bibliographic data of all CIFs; thus even files with different
-#*        bibliographies will be regared the same if their cells, chemical
-#*        formulae and measurement conditions match.
+#* --continue-on-errors
+#*                     Do not terminate script if errors are raised.
+#* --die-on-errors, --dont-continue-on-errors,
+#* --do-not-continue-on-errors, --no-continue-on-errors
+#*                     Terminate script immediately if errors are raised (default).
+#* --continue-on-warnings
+#*                     Do not terminate script if warnings are raised (default).
+#* --die-on-warnings
+#*                     Terminate script immediately if warnings are raised.
+#* --continue-on-notes
+#*                     Do not terminate script if notes are raised (default).
+#* --die-on-notes
+#*                     Terminate script immediately if notes are raised.
 #*
-#*     --check-sample-history
-#*        Only CIFs that have different sample history data (as recorded
-#*        in the _exptl_crystal_thermal_history and _exptl_crystal_pressure_history
-#*        tags) are declared different if all other parameters match.
-#*
-#*     --dont-check-sample-history, --no-check-sample-history,
-#*     --disregard-sample-history
-#*        Ignore sample history of all CIFs; thus even files with different
-#*        sample histories will be regared the same if their cells,
-#*        chemical formulae and measurement conditions match.
-#*        (default)
-#*
-#*     --help,--usage  print a short usage message (this message) and exit.
+#* --help,--usage  print a short usage message (this message) and exit.
 #**
 
 @ARGV = getOptions(
@@ -115,8 +128,15 @@ my $die_on_notes    = 0;
     "--dont-use-sigma"  => sub{ $options{ignore_sigma} = 1 },
     "--no-use-sigma"    => sub{ $options{ignore_sigma} = 1 },
 
-    "-c,--continue-on-errors"       => sub { $die_on_errors = 0 },
-    "-c-,--dont-continue-on-errors" => sub { $die_on_errors = 1 },
+    "-c,--always-continue"              => sub { $die_on_errors   = 0;
+                                                 $die_on_warnings = 0;
+                                                 $die_on_notes    = 0 },
+    "-c-,--always-die"                  => sub { $die_on_errors   = 1;
+                                                 $die_on_warnings = 1;
+                                                 $die_on_notes    = 1 },
+
+    "--continue-on-errors"          => sub { $die_on_errors = 0 },
+    "--dont-continue-on-errors"     => sub { $die_on_errors = 1 },
     "--die-on-errors"               => sub { $die_on_errors = 1 },
     "--do-not-continue-on-errors"   => sub { $die_on_errors = 1 },
     "--no-continue-on-errors"       => sub { $die_on_errors = 1 },
