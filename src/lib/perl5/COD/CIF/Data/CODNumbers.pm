@@ -227,12 +227,10 @@ sub cif_fill_data
     };
     if ($@) {
         # ERRORS that originated within the function are downgraded to warnings
-        if ( $@ =~ s/^ERROR/WARNING/ ) {
-            chomp($@);
-            warn "$@ -- chemical formula could not be calculated\n";
-        } else {
-            die $@;
-        }
+        my $error = $@;
+        $error =~ s/[A-Z]+, //;
+        chomp($error);
+        warn "WARNING, summary formula could not be calculated -- $error\n";
     };
 
     $structure{cell_contents} = $calculated_formula
@@ -531,7 +529,7 @@ sub entries_are_the_same
             cells_are_the_same( $entry1->{cell}, $entry2->{cell},
                                 $entry1->{sigcell}, $entry2->{sigcell},
                                 \%options ) &&
-            conditions_are_the_same( $entry1, $entry2 ) &&
+            conditions_are_the_same( $entry1, $entry2, \%options ) &&
             (!defined $entry1->{suboptimal} || $entry1->{suboptimal} ne "yes") &&
             (!defined $entry2->{suboptimal} || $entry2->{suboptimal} ne "yes") &&
             bibliographies_are_the_same( $entry1->{bibliography},
@@ -541,7 +539,7 @@ sub entries_are_the_same
             cells_are_the_same( $entry1->{cell}, $entry2->{cell},
                                 $entry1->{sigcell}, $entry2->{sigcell},
                                 \%options ) &&
-            conditions_are_the_same( $entry1, $entry2 ) &&
+            conditions_are_the_same( $entry1, $entry2, \%options ) &&
             (!defined $entry1->{suboptimal} || $entry1->{suboptimal} ne "yes") &&
             (!defined $entry2->{suboptimal} || $entry2->{suboptimal} ne "yes");
     }
