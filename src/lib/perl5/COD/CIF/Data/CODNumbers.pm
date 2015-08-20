@@ -228,7 +228,8 @@ sub cif_fill_data
     if ($@) {
         # ERRORS that originated within the function are downgraded to warnings
         if ( $@ =~ s/^ERROR/WARNING/ ) {
-            warn $@;
+            chomp($@);
+            warn "$@ -- chemical formula could not be calculated\n";
         } else {
             die $@;
         }
