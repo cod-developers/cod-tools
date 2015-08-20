@@ -19,15 +19,18 @@ use COD::CIF::Parser::Yapp;
 use COD::Formulae::Parser::AdHoc;
 use COD::CIF::Data::CellContents qw(cif_cell_contents);
 use COD::UserMessage qw(process_warnings process_errors);
-use COD::CIF::Data::CODNumbers qw(entries_are_the_same cif_fill_data);
+use COD::CIF::Data::CODNumbers qw(cif_fill_data entries_are_the_same);
 use COD::SOptions;
 use COD::SUsage;
 
-my $max_cell_length_diff = 0.5; # Angstroems
-my $max_cell_angle_diff  = 1.2; # degrees
-
-my $check_bibliography = 1;
-my $check_sample_history = 0;
+# default options
+my %options = (
+    'max_cell_length_diff' => 0.5, # Angstroems
+    'max_cell_angle_diff'  => 1.2, # degrees
+    'check_bibliography'   => 1,
+    'check_sample_history' => 0,
+    'ignore_sigma'         => 0
+);
 
 my $die_on_errors   = 1;
 my $die_on_warnings = 0;
@@ -92,6 +95,26 @@ my $die_on_notes    = 0;
 #**
 
 @ARGV = getOptions(
+    "--max-cell-length-difference" => \$options{max_cell_length_diff},
+    "--max-cell-angle-difference"  => \$options{max_cell_angle_diff},
+
+    "--check-bibliography"      => sub { $options{check_bibliography} = 1 },
+    "--dont-check-bibliography" => sub { $options{check_bibliography} = 0 },
+    "--no-check-bibliography"   => sub { $options{check_bibliography} = 0 },
+
+    "--check-sample-history"      => sub { $options{check_sample_history} = 1 },
+    "--dont-check-sample-history" => sub { $options{check_sample_history} = 0 },
+    "--no-check-sample-history"   => sub { $options{check_sample_history} = 0 },
+    "--disregard-sample-history"  => sub { $options{check_sample_history} = 0 },
+
+    "--ignore-sigma"        => sub{ $options{ignore_sigma} = 1 },
+    "--dont-ignore-sigma"   => sub{ $options{ignore_sigma} = 0 },
+    "--no-ignore-sigma"     => sub{ $options{ignore_sigma} = 0 },
+
+    "--use-sigma"       => sub{ $options{ignore_sigma} = 0 },
+    "--dont-use-sigma"  => sub{ $options{ignore_sigma} = 1 },
+    "--no-use-sigma"    => sub{ $options{ignore_sigma} = 1 },
+
     "-c,--continue-on-errors"       => sub { $die_on_errors = 0 },
     "-c-,--dont-continue-on-errors" => sub { $die_on_errors = 1 },
     "--die-on-errors"               => sub { $die_on_errors = 1 },
@@ -103,18 +126,6 @@ my $die_on_notes    = 0;
 
     "--continue-on-notes"    => sub { $die_on_notes = 0 },
     "--die-on-notes"         => sub { $die_on_notes = 1 },
-
-    "--max-cell-length-difference" => \$max_cell_length_diff,
-    "--max-cell-angle-difference"  => \$max_cell_angle_diff,
-
-    "--check-bibliography"      => sub { $check_bibliography = 1; },
-    "--dont-check-bibliography" => sub { $check_bibliography = 0; },
-    "--no-check-bibliography"   => sub { $check_bibliography = 0; },
-
-    "--check-sample-history"      => sub { $check_sample_history = 1; },
-    "--dont-check-sample-history" => sub { $check_sample_history = 0; },
-    "--no-check-sample-history"   => sub { $check_sample_history = 0; },
-    "--disregard-sample-history"  => sub { $check_sample_history = 0; },
 
     "--help,--usage" => sub { usage; exit },
 );
@@ -262,7 +273,9 @@ for my $filename (@cif_files) {
 
         if( defined $formula && defined $COD{$formula} ) {
             for my $COD_entry (@{$COD{$formula}}) {
-                if( entries_are_the_same( $structures{$id}, $COD_entry )) {
+                if( entries_are_the_same( $structures{$id},
+                                          $COD_entry,
+                                          \%options )) {
                     my $COD_key = $COD_entry->{filename};
                     $structures_found{$COD_key} = $COD_entry;
                 }
@@ -272,7 +285,9 @@ for my $filename (@cif_files) {
             $formula ne $cell_contents ) {
             ## print ">>> formula: '$formula', contents: '$cell_contents'\n";
             for my $COD_entry (@{$COD{$cell_contents}}) {
-                if( entries_are_the_same( $structures{$id}, $COD_entry )) {
+                if( entries_are_the_same( $structures{$id},
+                                          $COD_entry,
+                                          \%options )) {
                     my $COD_key = $COD_entry->{filename};
                     if( !exists $structures_found{$COD_key} ) {
                         $structures_found{$COD_key} = $COD_entry;

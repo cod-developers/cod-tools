@@ -32,14 +32,21 @@ my %skip_tag = (
     "_journal_name_full" => 0,
 );
 
-my $max_cell_length_diff = 0.5; # Angstroems
-my $max_cell_angle_diff  = 1.2; # degrees
+my %default_options = (
+    'max_cell_length_diff' => 0.5, # Angstroems
+    'max_cell_angle_diff'  => 1.2, # degrees
+    'check_bibliography'   => 1,
+    'check_sample_history' => 0,
+    'ignore_sigma'         => 0,
+    'cod_series_prefix'    => ''
+);
 
-my $check_bibliography = 1;
-my $check_sample_history = 0;
-my $ignore_sigma = 0;
-
-my $cod_series_prefix;
+#my $max_cell_length_diff = 0.5; # Angstroems
+#my $max_cell_angle_diff  = 1.2; # degrees
+#my $check_bibliography = 1;
+#my $check_sample_history = 0;
+#my $ignore_sigma = 0;
+#my $cod_series_prefix;
 
 # Returns a list of duplicates for each supplied datablock
 # Parameters:
@@ -70,27 +77,21 @@ my $cod_series_prefix;
 
 sub fetch_duplicates_from_database
 {
-    my( $structures, $database, $dbh, $options ) = @_;
+    my( $structures, $database, $dbh, $user_options ) = @_;
 
-    $options = {} unless defined $options;
-    $max_cell_length_diff = $options->{max_cell_length_diff}
-        if defined $options->{max_cell_length_diff};
-    $max_cell_angle_diff  = $options->{max_cell_angle_diff}
-        if defined $options->{max_cell_angle_diff};
-    $check_bibliography = $options->{check_bibliography}
-        if defined $options->{check_bibliography};
-    $check_sample_history = $options->{check_sample_history}
-        if defined $options->{check_sample_history};
-    $ignore_sigma = $options->{ignore_sigma}
-        if defined $options->{ignore_sigma};
-    $cod_series_prefix = $options->{cod_series_prefix}
-        if defined $options->{cod_series_prefix};
+    $user_options = {} unless defined $user_options;
+    my %options;
+    foreach my $key (keys %default_options) {
+        $options{$key} = defined $user_options->{$key} ?
+                                 $user_options->{$key} :
+                                 $default_options{$key};
+    };
 
     my %structures = %{$structures};
 
     my %COD = ();
 
-    query_COD_database( $dbh, $database, \%COD, \%structures, $options );
+    query_COD_database( $dbh, $database, \%COD, \%structures, \%options );
 
     my @duplicates;
     for my $id (sort { $structures{$a}->{index} <=>
@@ -113,7 +114,9 @@ sub fetch_duplicates_from_database
 
         if( defined $formula && defined $COD{$formula} ) {
             for my $COD_entry (@{$COD{$formula}}) {
-                if( entries_are_the_same( $structures{$id}, $COD_entry )) {
+                if( entries_are_the_same( $structures{$id},
+                                          $COD_entry,
+                                          \%options )) {
                     my $COD_key = $COD_entry->{filename};
                     $structures_found{$COD_key} = $COD_entry;
                 }
@@ -123,7 +126,9 @@ sub fetch_duplicates_from_database
             ( !defined $formula || $formula ne $cell_contents )) {
             ## print ">>> formula: '$formula', contents: '$cell_contents'\n";
             for my $COD_entry (@{$COD{$cell_contents}}) {
-                if( entries_are_the_same( $structures{$id}, $COD_entry )) {
+                if( entries_are_the_same( $structures{$id},
+                                          $COD_entry,
+                                          \%options )) {
                     my $COD_key = $COD_entry->{filename};
                     if( !exists $structures_found{$COD_key} ) {
                         $structures_found{$COD_key} = $COD_entry;
@@ -219,6 +224,14 @@ sub cif_fill_data
     my $calculated_formula;
     eval {
         $calculated_formula = cif_cell_contents( $dataset, undef );
+    };
+    if ($@) {
+        # ERRORS that originated within the function are downgraded to warnings
+        if ( $@ =~ s/^ERROR/WARNING/ ) {
+            warn $@;
+        } else {
+            die $@;
+        }
     };
 
     $structure{cell_contents} = $calculated_formula
@@ -335,9 +348,17 @@ sub get_cell($)
     );
 }
 
-sub cells_are_the_same($$$$)
+sub cells_are_the_same($$$$$)
 {
-    my ($cell1, $cell2, $sigma1, $sigma2) = @_;
+    my ($cell1, $cell2, $sigma1, $sigma2, $user_options) = @_;
+
+    $user_options = {} unless defined $user_options;
+    my %options;
+    foreach my $key (keys %default_options) {
+        $options{$key} = defined $user_options->{$key} ?
+                                 $user_options->{$key} :
+                                 $default_options{$key};
+    };
 
     my @cell1 = get_cell( $cell1 );
     my @cell2 = get_cell( $cell2 );
@@ -354,13 +375,13 @@ sub cells_are_the_same($$$$)
                 $sigma1 = 0 unless defined $sigma1;
                 $sigma2 = 0 unless defined $sigma2;
             }
-            if( defined $sigma1 && ! $ignore_sigma) {
+            if( defined $sigma1 && ! $options{ignore_sigma} ) {
                 if( !eqsig( $length1, $sigma1, $length2, $sigma2 )) {
                     return 0;
                 }
             } else {
                 my $diff = abs( $length1 - $length2 );
-                if( $diff > $max_cell_length_diff ) {
+                if( $diff > $options{max_cell_length_diff} ) {
                     return 0;
                 }
             }
@@ -376,13 +397,13 @@ sub cells_are_the_same($$$$)
                 $sigma1 = 0 unless defined $sigma1;
                 $sigma2 = 0 unless defined $sigma2;
             }
-            if( defined $sigma1 && ! $ignore_sigma ) {
+            if( defined $sigma1 && ! $options{ignore_sigma} ) {
                 if( !eqsig( $angle1, $sigma1, $angle2, $sigma2 )) {
                     return 0;
                 }
             } else {
                 my $diff = abs( $angle1 - $angle2 );
-                if( $diff > $max_cell_angle_diff ) {
+                if( $diff > $options{max_cell_angle_diff} ) {
                     return 0;
                 }
             }
@@ -397,12 +418,20 @@ sub cells_are_the_same($$$$)
 
 sub conditions_are_the_same
 {
-    my ($entry1, $entry2) = @_;
+    my ($entry1, $entry2, $user_options) = @_;
+
+    $user_options = {} unless defined $user_options;
+    my %options;
+    foreach my $key (keys %default_options) {
+        $options{$key} = defined $user_options->{$key} ?
+                                 $user_options->{$key} :
+                                 $default_options{$key};
+    };
 
     my $number = '[-+]?([0-9]+(\.[0-9]*)?|\.[0-9]+)([Ee][-+]?[0-9]+)?';
 
     my @parameters = qw( temperature pressure );
-    if( $check_sample_history ) {
+    if( $options{check_sample_history} ) {
         push( @parameters, "history" );
     }
 
@@ -480,18 +509,27 @@ sub bibliographies_are_the_same($$)
 
 sub entries_are_the_same
 {
-    my ($entry1, $entry2) = @_;
+    my ($entry1, $entry2, $user_options) = @_;
     
     ## print ">>> $entry1->{id}, $entry2->{id}, ",
     ## defined $entry1->{suboptimal} ? $entry1->{suboptimal} : "" , " ", 
     ## defined $entry2->{suboptimal} ? $entry2->{suboptimal} : "", "\n";
 
+    $user_options = {} unless defined $user_options;
+    my %options;
+    foreach my $key (keys %default_options) {
+        $options{$key} = defined $user_options->{$key} ?
+                                 $user_options->{$key} :
+                                 $default_options{$key};
+    };
+
     my $are_the_same;
 
-    if( $check_bibliography ) {
+    if( $options{check_bibliography} ) {
         $are_the_same =
             cells_are_the_same( $entry1->{cell}, $entry2->{cell},
-                                $entry1->{sigcell}, $entry2->{sigcell} ) &&
+                                $entry1->{sigcell}, $entry2->{sigcell},
+                                \%options ) &&
             conditions_are_the_same( $entry1, $entry2 ) &&
             (!defined $entry1->{suboptimal} || $entry1->{suboptimal} ne "yes") &&
             (!defined $entry2->{suboptimal} || $entry2->{suboptimal} ne "yes") &&
@@ -500,7 +538,8 @@ sub entries_are_the_same
     } else {
         $are_the_same =
             cells_are_the_same( $entry1->{cell}, $entry2->{cell},
-                                $entry1->{sigcell}, $entry2->{sigcell} ) &&
+                                $entry1->{sigcell}, $entry2->{sigcell},
+                                \%options ) &&
             conditions_are_the_same( $entry1, $entry2 ) &&
             (!defined $entry1->{suboptimal} || $entry1->{suboptimal} ne "yes") &&
             (!defined $entry2->{suboptimal} || $entry2->{suboptimal} ne "yes");
@@ -547,7 +586,16 @@ sub database_disconnect
 
 sub query_COD_database
 {
-    my ( $dbh, $database, $COD, $data, $options ) = @_;
+    my ( $dbh, $database, $COD, $data, $user_options ) = @_;
+
+    $user_options = {} unless defined $user_options;
+    my %options;
+    foreach my $key (keys %default_options) {
+        $options{$key} = defined $user_options->{$key} ?
+                                 $user_options->{$key} :
+                                 $default_options{$key};
+    };
+    my $cod_series_prefix = $options{cod_series_prefix};
 
     use DBI;
 
@@ -561,7 +609,7 @@ sub query_COD_database
 
     my $column_list = join( ",", @columns );
 
-    if( $options && $options->{check_sample_history} ) {
+    if( $options{check_sample_history} ) {
         $column_list .= "," . join( ",", @history_columns );
     }
 
@@ -653,7 +701,7 @@ sub query_COD_database
                         push( @{$COD->{$formula}}, $structure );
                     }
                 } else {
-                    print STDERR "$0: error fetching formula '${formula}' -- " .
+                    die "ERROR, error fetching formula '${formula}' -- " .
                         "$DBI::errstr";
                 }
             }
