@@ -9,7 +9,10 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #$URL$
 #------------------------------------------------------------------------------
 #*
-#  Parse a CIF file, prepare a COD database table entry from it.
+#*  Parse a CIF file, prepare a COD database table entry from it.
+#*
+#* USAGE:
+#*    $0 --options input.cif inputs*.cif
 #**
 
 use strict;
@@ -32,111 +35,95 @@ my $die_on_warnings = 0;
 my $die_on_notes    = 0;
 
 my %options;
-
-#* USAGE:
-#*     $0 --options input.cif inputs*.cif
-#*
 #* OPTIONS:
-#*     -C, --cod-number 1000000
-#*         Use the specified number, 1000000 in this example, as
-#*         a COD number for this structure; do not take the number
-#*         from the datablock name.
+#* -C, --cod-number 1000000
+#*                     Use the specified number, 1000000 in this example, as
+#*                     a COD number for this structure; do not take the number
+#*                     from the datablock name.
 #*
-#*     -c, --continue-on-errors
-#*         Continue processing and return successful return status
-#*         even if errors are diagnosed.
+#* -c, --always-continue
+#*                     Continue processing and return successful return status
+#*                     even if errors are diagnosed.
+#* -c-, --always-die
+#*                     Stop and return error status if errors are diagnosed
+#*                     (default).
 #*
-#*     -c-, --dont-continue-on-errors, --no-continue-on-errors,
-#*     --exit-on-errors, --do-not-continue-on-errors, --die-on-errors
-#*         Stop and return error status if errors are diagnosed (default).
+#* -h, --print-header
+#*                     Print header with data column names at the first line
+#*                     With this option cif2cod use the new field list for the
+#*                     output file.
 #*
-#*     --continue-on-warnings
-#*          Do not terminate script if warnings are raised (default)
+#* -h-, --dont-print-header, --no-print-header
+#*                     Do not print column names on the first (header) line
+#*                     (default).
 #*
-#*     --die-on-warnings
-#*          Terminate script immediately if warnings are raised
+#* -k, --keywords
+#*                     Print values in separate lines prefixed with keywords.
 #*
-#*     --continue-on-notes
-#*          Do not terminate script if notes are raised (default)
+#* --use-attached-hydrogens
+#*                     Include number of implicit hydrogens, specified using
+#*                     _atom_site_attached_hydrogens tag, into the formula sum.
 #*
-#*     --die-on-notes
-#*          Terminate script immediately if notes are raised
+#* --dont-use-attached-hydrogens,
+#* --no-use-attached-hydrogens,
+#* --ignore-attached-hydrogens
+#*                     Ignore number of implicit hydrogens, specified using
+#*                     _atom_site_attached_hydrogens tag, in calculation of the
+#*                     formula sum. Default option.
 #*
-#*     -h, --print-header
-#*         Print header with data column names at the first line
-#*         With this option cif2cod use the new field list for the
-#*         output file
+#* --reformat-space-group
+#*                     Correct the formatting of Hermann-Mauguin symmetry
+#*                     space group symbol.
 #*
-#*     -h-, --dont-print-header, --no-print-header
-#*         Do not print column names on the first (header) line (default).
+#* --dont-reformat-space-group,
+#* --leave-space-group
+#*                     Do not correct the formatting of Hermann-Mauguin 
+#*                     symmetry space group.
 #*
-#*     -k, --keywords
-#*         Print values in separate lines prefixed with keywords.
+#* --use-datablocks-without-coordinates
+#*                     Do not filter out datablocks without coordinates.
 #*
-#*     --use-attached-hydrogens
-#*         Include number of implicit hydrogens, specified using
-#*         _atom_site_attached_hydrogens tag, into the formula sum.
+#* --do-not-use-datablocks-without-coordinates, --use-all-datablocks
+#* --dont-use-datablocks-without-coordinates
+#* --no-use-datablocks-without-coordinates
+#* --skip-datablocks-without-coordinates
+#*                     Filter out datablocks without coordinates (default).
 #*
-#*     --dont-use-attached-hydrogens,
-#*     --no-use-attached-hydrogens,
-#*     --ignore-attached-hydrogens
-#*         Ignore number of implicit hydrogens, specified using
-#*         _atom_site_attached_hydrogens tag, in calculation of the
-#*         formula sum. Default option.
+#* --require-only-doi
+#*                     Do not require all bibliographic details (authors,
+#*                     journal name, title, year, volume and first page of
+#*                     the publication) to be present if publication DOI is
+#*                     specified.
 #*
-#*     --reformat-space-group
-#*         Correct the formatting of Hermann-Mauguin symmetry space group
-#*         symbol.
+#* --require-full-bibliography
+#*                     Require author names, journal name, volume, publication
+#*                     title, year and first page to be present (default).
 #*
-#*     --dont-reformat-space-group,
-#*     --leave-space-group
-#*         Do not correct the formatting of Hermann-Mauguin symmetry space
-#*         group.
+#* --columns file,flags,Robs
+#* --columns "file flags Robs"
+#*                     Print only columns specified in this option.
 #*
-#*     --use-datablocks-without-coordinates
-#*         Do not filter out datablocks without coordinates.
+#* -c, --continue-on-errors
+#                      Do not terminate script if errors are raised.
+#* -c-, --dont-continue-on-errors, --no-continue-on-errors,
+#* --exit-on-errors, --do-not-continue-on-errors, --die-on-errors
+#*                     Terminate script immediately if errors are raised (default).
+#* --continue-on-warnings
+#*                     Do not terminate script if warnings are raised (default).
+#* --die-on-warnings
+#*                     Terminate script immediately if warnings are raised.
+#* --continue-on-notes
+#*                     Do not terminate script if notes are raised (default).
+#* --die-on-notes
+#*                     Terminate script immediately if notes are raised.
 #*
-#*     --do-not-use-datablocks-without-coordinates, --use-all-datablocks
-#*     --dont-use-datablocks-without-coordinates
-#*     --no-use-datablocks-without-coordinates
-#*     --skip-datablocks-without-coordinates
-#*         Filter out datablocks without coordinates. Default action.
+#* --use-perl-parser   Use the Perl parser for parsing CIFs.
+#* --use-c-parser      Use the faster C parser for CIFs (default).
 #*
-#*     --require-only-doi
-#*         Do not require all bibliographic details (authors, journal
-#*         name, title, year, volume and first page of the publication)
-#*         to be present if publication DOI is specified.
-#*
-#*     --require-full-bibliography
-#*         Require author names, journal name, volume, publication title,
-#*         year and first page to be present. Default behaviour.
-#*
-#*     --columns file,flags,Robs
-#*     --columns "file flags Robs"
-#*         Print only columns specified in this option.
-#*
-#*      --use-perl-parser   Use the Perl parser for parsing CIFs
-#*      --use-c-parser      Use the faster C parser for CIFs (default).
-#*
-#*     --help,--usage  print a short usage message (this message) and exit.
+#* --help,--usage  print a short usage message (this message) and exit.
 #**
-
 @ARGV = getOptions(
-
     "-C,--cod-number" => \$options{cod_number},
-
-    "-c,--continue-on-errors"       => sub { $die_on_errors = 0 },
-    "-c-,--dont-continue-on-errors" => sub { $die_on_errors = 1 },
-    "--die-on-errors"               => sub { $die_on_errors = 1 },
-    "--do-not-continue-on-errors"   => sub { $die_on_errors = 1 },
-    "--no-continue-on-errors"       => sub { $die_on_errors = 1 },
-    "--exit-on-errors"              => sub { $die_on_errors = 1 },
-
-    "--continue-on-warnings" => sub { $die_on_warnings = 0 },
-    "--die-on-warnings"      => sub { $die_on_warnings = 1 },
-
-    "--continue-on-notes"    => sub { $die_on_notes = 0 },
-    "--die-on-notes"         => sub { $die_on_notes = 1 },
 
     "-h,--print-header"       => sub { $print_header = 1 },
     "-h-,--dont-print-header" => sub { $print_header = 0 },
@@ -176,6 +163,26 @@ my %options;
         => sub{ $options{use_datablocks_without_coord} = 0 },
     "--skip-datablocks-without-coordinates"
         => sub{ $options{use_datablocks_without_coord} = 0 },
+
+    "-c,--always-continue"              => sub { $die_on_errors   = 0;
+                                                 $die_on_warnings = 0;
+                                                 $die_on_notes    = 0 },
+    "-c-,--always-die"                  => sub { $die_on_errors   = 1;
+                                                 $die_on_warnings = 1;
+                                                 $die_on_notes    = 1 },
+
+    "--continue-on-errors"          => sub { $die_on_errors = 0 },
+    "--dont-continue-on-errors"     => sub { $die_on_errors = 1 },
+    "--die-on-errors"               => sub { $die_on_errors = 1 },
+    "--do-not-continue-on-errors"   => sub { $die_on_errors = 1 },
+    "--no-continue-on-errors"       => sub { $die_on_errors = 1 },
+    "--exit-on-errors"              => sub { $die_on_errors = 1 },
+
+    "--continue-on-warnings" => sub { $die_on_warnings = 0 },
+    "--die-on-warnings"      => sub { $die_on_warnings = 1 },
+
+    "--continue-on-notes"    => sub { $die_on_notes = 0 },
+    "--die-on-notes"         => sub { $die_on_notes = 1 },
 
     "--use-perl-parser"       => sub{ $use_parser = "perl" },
     "--use-c-parser"          => sub{ $use_parser = "c" },

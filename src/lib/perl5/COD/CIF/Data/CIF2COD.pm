@@ -245,11 +245,11 @@ sub cif2cod
                 cif_cell_contents( $dataset, undef, $use_attached_hydrogens );
     };
     if( $@ ) {
-        my $explanation = $@;
-        $explanation =~ s/[A-Z]+, //;
-        chomp($explanation);
-        warn "WARNING, summary formula could not be calculated -- "
-           . "$explanation\n";
+        # ERRORS that originated within the function are downgraded to warnings
+        my $error = $@;
+        $error =~ s/[A-Z]+, //;
+        chomp($error);
+        warn "WARNING, summary formula could not be calculated -- $error\n";
     }
 
     my $text = join( '\n', map { cif2unicode($_) }
