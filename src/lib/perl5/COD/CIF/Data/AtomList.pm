@@ -108,26 +108,26 @@ sub extract_atom
     }
 
     my $atom_type;
-
-    if( exists $values->{_atom_site_type_symbol}  &&
+    my $atom_properties = $options->{atom_properties};
+    if( exists $values->{_atom_site_type_symbol} &&
         defined $values->{_atom_site_type_symbol}[$number] &&
         $values->{_atom_site_type_symbol}[$number] ne '?' ) {
         $atom_type = $values->{_atom_site_type_symbol}[$number];
         $atom_info{atom_site_type_symbol} = $atom_type;
-        if( $atom_type =~ m/^([A-Za-z]{1,2})/ ) {
-            $atom_type = ucfirst( lc( $1 ));
-        }
-    } else {
-        if( $values->{_atom_site_label}[$number] =~
-            m/^([A-Za-z]{1,2})/ ) {
-            $atom_type = ucfirst( lc( $1 ));
-        } elsif( $options->{continue_on_unknown_atom_type} ) {
-            warn "WARNING, could not determine atom type for atom " .
-                 "'$values->{_atom_site_label}[$number]'\n";
-        } else {
-            die "ERROR, could not determine atom type for atom " .
-                "'$values->{_atom_site_label}[$number]'\n";
-        }
+    } elsif ( exists $values->{_atom_site_label} &&
+              defined $values->{_atom_site_label}[$number] ) {
+        $atom_type = $values->{_atom_site_label}[$number];
+    };
+
+    if ( defined $atom_type &&
+         $atom_type =~ m/^([A-Za-z]{1,2})/ ) {
+        $atom_type = ucfirst( lc( $1 ) );
+    };
+
+    if ( !( exists $atom_properties->{$atom_type} ||
+            $options->{allow_unknown_chemical_types} ) ) {
+        die "ERROR, could not determine chemical type for atom "
+          . "'$values->{_atom_site_label}[$number]'\n";
     }
 
     $atom_info{chemical_type} = $atom_type;
@@ -209,18 +209,16 @@ sub atom_array_from_cif($$$)
         $atom_site_tag = "_atom_site_label";
     } elsif( exists $values->{"_atom_site_type_symbol"} ) {
         $atom_site_tag = "_atom_site_type_symbol";
-
         warn "WARNING, _atom_site_label tag was not found a serial number will "
            . "be appended to _atom_site_type_symbol to make atom labels\n";
     } else {
-        die "ERROR, neither _atom_site_type_symbol nor _atom_site_label " .
-            "were found\n";
+        die "ERROR, neither _atom_site_type_symbol nor _atom_site_label "
+          . "were found\n";
     }
 
     my $atom_labels = $values->{$atom_site_tag};
 
     my @atom_list;
-
     for (my $i = 0; $i < @{$atom_labels}; $i++)
     {
         if( $options->{exclude_zero_occupancies} &&
@@ -240,13 +238,26 @@ sub atom_array_from_cif($$$)
             $label = $values->{$atom_site_tag}[$i];
         }
 
-        my $atom_info = extract_atom( $label, $values, $i, $f2o, $options );
-
+        $options->{atom_properties} = $atom_properties;
+        my $atom_info;
+        eval {
+            $atom_info = extract_atom( $label, $values, $i, $f2o, $options );
+        };
+        if ($@) {
+            $@ =~ s/^[A-Z]+,\s*//;
+            chomp($@);
+            if ($options->{continue_on_errors}) {
+                warn "WARNING, $@ -- atom will be excluded\n";
+            } else {
+                die "ERROR, $@\n";
+            }
+        };
         # Some of the code used to return undef from extract_atom in case
         # an atom has to be skipped, so this is silently done in order to
         # stay compatible with the code.
         next if !defined $atom_info;
 
+        # What is this part used for?
         if( exists $values->{_atom_site_symmetry_multiplicity} &&
             $values->{_atom_site_symmetry_multiplicity}[$i] ne '?' &&
             $values->{_atom_site_symmetry_multiplicity}[$i] ne '.' ) {
@@ -254,19 +265,7 @@ sub atom_array_from_cif($$$)
                 $values->{_atom_site_symmetry_multiplicity}[$i];
         }
 
-        if (exists $atom_properties->{$atom_info->{"chemical_type"}} ||
-            $options->{ignore_unknown_chemical_types} ) {
-            push( @atom_list, $atom_info );
-        } else {
-            my $message = "unknown chemical type '" .
-                $atom_info->{chemical_type} . "'";
-
-            if( $options->{continue_on_errors} ) {
-                warn "WARNING, $message\n";
-            } else {
-                die "ERROR, $message\n";
-            }
-        }
+        push( @atom_list, $atom_info );
     }
 
     if( $options->{uniquify_atom_names} ) {

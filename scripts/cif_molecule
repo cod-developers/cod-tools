@@ -255,14 +255,6 @@ my $die_on_notes    = 0;
 #**                    determine when atoms are too close and are
 #**                    considered a bump.
 #**
-#** --continue-on-errors
-#**                    Do not stop if errors such as unrecognized atoms are
-#**                    encountered; the output may be incorrect and missing
-#**                    some atoms if this option is used!
-#**
-#** --dont-continue-on-errors, --no-continue-on-errors
-#**                    Stop immediately when an error is encountered.
-#**                    
 #** --exclude-zero-occupancies
 #**                    Do not use atoms with 0 occupancies in calculations
 #**                    (default).
@@ -272,11 +264,11 @@ my $die_on_notes    = 0;
 #**                    
 #** --dont-continue-on-errors, --no-continue-on-errors
 #**                    Stop immediately when an error is encountered.
-#**                    
+#**
 #** --preserve-stoichiometry
 #**                    Apply necessary symmetry operators to preserve molecular
 #**                    stoichiometry (charges, etc.)
-#**                    
+#**
 #** --dont-preserve-stoichiometry, --no-preserve-stoichiometry
 #**                    Do not apply any more symmetry operators than needed to
 #**                    reconstruct covalently connected networks; may
@@ -338,9 +330,25 @@ my $die_on_notes    = 0;
 #**
 #** --format "%8.6f"   Use the specified format for output coordinate printout.
 #**
-#** --audit            print audit information to the generated CIF file
+#** --audit            Print audit information to the generated CIF file
 #**                    (default)
-#** --no-audit         do not print audit information to the generated CIF file
+#** --no-audit         Do not print audit information to the generated CIF file
+#**
+#** --continue-on-errors
+#**                    Do not terminate script if errors such as unrecognized
+#**                    atoms are encountered; the output may be incorrect and
+#**                    missing some atoms if this option is used!
+#** --die-on-errors, --dont-continue-on-errors,
+#** --no-continue-on-errors
+#**                    Terminate script immediately if errors are raised (default).
+#** --continue-on-warnings
+#**                    Do not terminate script if warnings are raised (default).
+#** --die-on-warnings
+#**                    Terminate script immediately if warnings are raised.
+#** --continue-on-notes
+#**                    Do not terminate script if notes are raised (default).
+#** --die-on-notes
+#**                    Terminate script immediately if notes are raised.
 #**
 #** --verbose          Print warning messages in long format.
 #** --no-verbose       Print warning messages in concise format (default)
@@ -389,10 +397,6 @@ my $die_on_notes    = 0;
     "--no-sort-molecules"   => sub{ $sort_molecules = 0 },
     "--dont-sort-molecules" => sub{ $sort_molecules = 0 },
 
-    "--continue-on-errors" => sub{ $continue_on_errors = 1 },
-    "--no-continue-on-errors" => sub{ $continue_on_errors = 0 },
-    "--dont-continue-on-errors" => sub{ $continue_on_errors = 0 },
-
     "--exclude-zero-occupancies"    => sub { $exclude_zero_occupancies = 1; },
     "--no-exclude-zero-occupancies" => sub { $exclude_zero_occupancies = 0; },
     "--dont-exclude-zero-occupancies" => sub { $exclude_zero_occupancies = 0; },
@@ -434,6 +438,24 @@ my $die_on_notes    = 0;
         => sub { $largest_molecule_only = 1 },
     "--all,--all-molecules"
         => sub { $largest_molecule_only = 0 },
+
+    "-c,--always-continue"              => sub { $die_on_errors   = 0;
+                                                 $die_on_warnings = 0;
+                                                 $die_on_notes    = 0 },
+    "-c-,--always-die"                  => sub { $die_on_errors   = 1;
+                                                 $die_on_warnings = 1;
+                                                 $die_on_notes    = 1 },
+
+    "--continue-on-errors"          => sub { $die_on_errors = 0 },
+    "--dont-continue-on-errors"     => sub { $die_on_errors = 1 },
+    "--die-on-errors"               => sub { $die_on_errors = 1 },
+    "--no-continue-on-errors"       => sub { $die_on_errors = 1 },
+
+    "--continue-on-warnings" => sub { $die_on_warnings = 0 },
+    "--die-on-warnings"      => sub { $die_on_warnings = 1 },
+
+    "--continue-on-notes"    => sub { $die_on_notes = 0 },
+    "--die-on-notes"         => sub { $die_on_notes = 1 },
 
     "--use-perl-parser"       => sub{ $use_parser = "perl" },
     "--use-c-parser"          => sub{ $use_parser = "c" },
@@ -588,11 +610,11 @@ for my $filename (@ARGV) {
         my $dataset_name = $dataset->{name};
 
         my $unique_molecules = get_molecules( $covalent_sensitivity,
-                                                  $filename, $dataset_name,
-                                                  $sym_data,
-                                                  $dataset,
-                                                  \%COD::AtomProperties::atoms,
-                                                  $uniquify_atoms );
+                                              $filename, $dataset_name,
+                                              $sym_data,
+                                              $dataset,
+                                              \%COD::AtomProperties::atoms,
+                                              $uniquify_atoms );
 
             #   prints molecule to the CIF file
 
@@ -864,7 +886,7 @@ sub get_molecules
         exclude_zero_occupancies => $exclude_zero_occupancies,
         symop_list => $symop_list,
         modulo_1 => 1,
-        continue_on_errors => $continue_on_errors,
+        continue_on_errors => !$die_on_errors
     };
 
     # Extract atoms fract coordinates
@@ -2555,9 +2577,9 @@ sub find_molecule($$$$$$$$$$$)
                 "label $current_atom->{name}/$current_atom->{symop_id}/" .
                 "$current_atom->{translation_id} (${used_uc_atom}-th time)\n"
             if $debug;
-            
+
             $current_atom->{is_polymer} = 1;
-            
+
             if( $used_uc_atoms->
                 {$current_atom->{site_label}}
                 {$current_atom->{symop_id}} > $max_polymer_atoms ) {
@@ -2572,7 +2594,7 @@ sub find_molecule($$$$$$$$$$$)
                     "--max-polymer-span=" . int($max_polymer_span/2) . ", " .
                     "but expect increased computation times and " .
                     "memory consumption)";
-                if( $continue_on_errors ) {
+                if( !$die_on_errors ) {
                     warning( $0, $filename, prefix_dataname($dataname),
                              $message, undef );
                     return ( [], 0 );

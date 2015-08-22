@@ -65,7 +65,7 @@ sub cif_cell_contents( $$@ )
     my $atoms = atom_array_from_cif( $dataset,
                                      \%COD::AtomProperties::atoms,
                                      { copy_dummy_coordinates => 1,
-                                       ignore_unknown_chemical_types => 1 } );
+                                       allow_unknown_chemical_types => 1 } );
 
 #   compute symmetry operator matrices
     my @sym_operators = map { symop_from_string($_) } @{$sym_data};
