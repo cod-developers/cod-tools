@@ -174,6 +174,13 @@ my $die_on_notes    = 0;
 @ARGV = getOptions
 (
 #** OPTIONS:
+#** --always-continue
+#**                    Continue processing and return successful return status
+#**                    even if errors are diagnosed.
+#**
+#** -c-, --always-die
+#**                    Stop and return error status if errors are diagnosed.
+#**
 #** -1,--one-datablock-output
 #**                    Output all molecules and all alternative conformations to
 #**                    a single output datablock.
@@ -439,7 +446,7 @@ my $die_on_notes    = 0;
     "--all,--all-molecules"
         => sub { $largest_molecule_only = 0 },
 
-    "-c,--always-continue"              => sub { $die_on_errors   = 0;
+    "--always-continue"                 => sub { $die_on_errors   = 0;
                                                  $die_on_warnings = 0;
                                                  $die_on_notes    = 0 },
     "-c-,--always-die"                  => sub { $die_on_errors   = 1;
@@ -1696,7 +1703,7 @@ sub symgen_all_atoms($$)
     if( $nr_multiplicity_ratios_found > 0 ) {
         warn "WARNING, multiplicity ratios are given instead of "
            . "multiplicities for $nr_multiplicity_ratios_found atoms -- "
-           . "taking calculated valuesg\n";
+           . "taking calculated values\n";
     }
 
     return \@sym_atoms;
