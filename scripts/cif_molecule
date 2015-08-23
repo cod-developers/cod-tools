@@ -899,7 +899,7 @@ sub get_molecules
                           $_->{calc_flag} ne 'dum' } @$atom_list ];
 
     if( @$atom_list == 0 ) {
-        warn "no atoms suitable for processing were found -- "
+        warn "WARNING, no atoms suitable for processing were found -- "
            . "maybe all occupancies were unknown, zero, or "
            . "all atom types were unrecognised\n";
         if( defined $dummy_molecule ) {
@@ -1684,7 +1684,7 @@ sub symgen_all_atoms($$)
                 $multiplicity_ratio ) {
                 $nr_multiplicity_ratios_found++;
             } else {
-                warn "given multiplicity value "
+                warn "WARNING, given multiplicity value "
                    . "'$atom->{_atom_site_symmetry_multiplicity}' "
                    . "for atom $atom->{name} is different from "
                    . "calculated value '$multiplicity' -- "
@@ -1694,9 +1694,9 @@ sub symgen_all_atoms($$)
     }
 
     if( $nr_multiplicity_ratios_found > 0 ) {
-        warn "multiplicity ratios are given instead of multiplicities for "
-           . "$nr_multiplicity_ratios_found atoms -- "
-           . "taking calculated values\n";
+        warn "WARNING, multiplicity ratios are given instead of "
+           . "multiplicities for $nr_multiplicity_ratios_found atoms -- "
+           . "taking calculated valuesg\n";
     }
 
     return \@sym_atoms;
@@ -2374,7 +2374,7 @@ sub print_molecule
                 $bond->{order};
             }
         } else {
-            warn "bond data necessary to compute _geom_bond_ "
+            warn "WARNING, bond data necessary to compute _geom_bond_ "
                . "data items was not calculated\n";
         }
     }
@@ -2483,13 +2483,13 @@ sub find_molecules($$$$$$)
 
                 push( @unique_molecules, \%molecule );
             } else {
-                warn "found molecule with no atoms -- strange...\n";
+                warn "WARNING, found molecule with no atoms -- strange...\n";
             }
         }
     }
 
     if( !$verbose && $nbumps > 0 ) {
-        warn "$nbumps pair(s) of atoms are too close to "
+        warn "WARNING, $nbumps pair(s) of atoms are too close to "
            . "each other and are considered as bumps\n";
     }
 
