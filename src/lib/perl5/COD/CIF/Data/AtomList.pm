@@ -212,7 +212,7 @@ sub atom_array_from_cif($$$)
         warn "WARNING, _atom_site_label tag was not found a serial number will "
            . "be appended to _atom_site_type_symbol to make atom labels\n";
     } else {
-        die "ERROR, neither _atom_site_type_symbol nor _atom_site_label "
+        die "ERROR, neither _atom_site_label nor _atom_site_type_symbol tags "
           . "were found\n";
     }
 
