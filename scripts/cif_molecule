@@ -583,12 +583,10 @@ for my $filename (@ARGV) {
         eval {
             my $values = $dataset->{"values"};
 
-            # Extracts symmetry operators
+            # Extracts symmetry operators.
+            # Raises warnings upon unrecognised symmetry information.
+            # Raises die if unable to find symmetry information.
             my $sym_data = get_symmetry_operators( $dataset );
-
-            if( not defined $sym_data ) {
-                die "ERROR, no symmetry information found\n";
-            }
 
             if((defined $sym_data) && ($sym_data != 0)) {
                 my $unity_operator_found = 0;
