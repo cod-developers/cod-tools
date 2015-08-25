@@ -37,7 +37,7 @@ use COD::Spacegroups::Symop::Parse;
 use COD::Spacegroups::Lookup::COD;
 use COD::Formulae::Parser::AdHoc;
 use COD::CIF::Unicode2CIF;
-use COD::UserMessage qw(warning error prefix_dataname);
+use COD::UserMessage qw(warning error prefix_dataname sprint_message process_errors process_warnings);
 use COD::SOptions;
 use COD::SUsage;
 
@@ -102,6 +102,10 @@ my $database_code_tag = '_cod_database_code'; # Tag for database code.
 
 my $extra_tag_file;
 my $original_filename;
+
+my $die_on_errors   = 1;
+my $die_on_warnings = 0;
+my $die_on_notes    = 0;
 
 my $journal;
 my $volume;
@@ -222,7 +226,7 @@ my %spacegroups = map {
 #*
 #*    --use-datablocks-without-coordinates
 #*          Do not filter out datablocks without coordinates.
-#*    
+#*
 #*    --do-not-use-datablocks-without-coordinates, --use-all-datablocks
 #*    --dont-use-datablocks-without-coordinates
 #*    --no-use-datablocks-without-coordinates
@@ -425,15 +429,17 @@ my %dictionary_tags = map { $_, $_ } @dictionary_tags;
 
 if( defined $cif_header_file ) {
     open( HEADER, "$cif_header_file" ) or
-        die( "could not open CIF header file '$cif_header_file' for reading: $!" );
-    # local $/; # enable "slurp" mode: read the whole header file.
+        die sprint_message( $0, $cif_header_file, undef, 'ERROR', "could not "
+                          . 'open CIF header file for reading', lcfirst($!) );
     $cif_comment_header = "";
     while( <HEADER> ) {
         last unless /^\#|^\s*$/;
         $cif_comment_header .= $_;
     }
     close( HEADER ) or
-        die( "error while closing file '$cif_header_file' after reading" );
+        die sprint_message( $0, $cif_header_file, undef, 'ERROR', 'error '
+                          . 'while closing CIF header file after reading',
+                             undef );
 }
 
 my $reference;
@@ -459,7 +465,8 @@ if( defined $biblio ) {
         }
     } else {
         open( BIBLIO, "<:utf8", $biblio ) or
-            die( "Could not open file '$biblio' for reading: $!" );
+            die sprint_message( $0, $biblio, undef, 'ERROR', 'could not open '
+                              . 'bibliography file for reading', lcfirst($!) );
         if( $biblio =~ /\.ref/ ) {
             $reference = <BIBLIO>; # read the first line
         } elsif( $biblio =~ /\.xrf/ ) {
@@ -491,7 +498,8 @@ for my $filename (@ARGV) {
     }
 
     if( !@$data || !defined $data->[0] || !defined $data->[0]{name} ) {
-        warn( "file '$filename' seems to be empty" );
+        warn sprint_message( $0, $filename, undef, 'WARNING',
+                             'file seems to be empty', undef );
         next;
     }
 
@@ -600,13 +608,20 @@ for my $filename (@ARGV) {
 
     for my $dataset (@$data) {
 
+        local $SIG{__WARN__} =
+                   sub {process_warnings( $filename, $dataset->{name}, @_,
+                                          {
+                                            WARNING => $die_on_warnings,
+                                            NOTE    => $die_on_notes,
+                                          }
+                                        ) };
+
         ## next unless defined $dataset->{kind} && $dataset->{kind} == "DATA";
 
         my $datablok = $dataset->{values};
         my $dataname = prefix_dataname($dataset->{name});
 
         # Add bibliography from a global section, if any:
-
         if( %global_bibliography ) {
             merge_new_tag_values( [keys %{$global_bibliography{values}}],
                                   $dataset, \%global_bibliography );
@@ -618,7 +633,6 @@ for my $filename (@ARGV) {
         }
 
         # convert all tags to a "cannonical" form:
-
         canonicalize_names( $dataset );
 
         next if !defined $datablok;
@@ -658,9 +672,10 @@ for my $filename (@ARGV) {
             my $bibdata;
 
             if( @{$biblio_blocks} > 1 ) {
-                warn "file '${biblio}' has @{$biblio_blocks} --" .
-                    "will take bibliography from a datablock "  .
-                    "that has the same name as the coordinate datablock";
+                warn "WARNING, the supplied bibliography file '${biblio}' has "
+                   . @{$biblio_blocks} . " bibliography entries -- "
+                   . 'bibliography from a datablock that has the same name as '
+                   . "the coordinate datablock will be used\n";
                 for my $block (@{$biblio_blocks}) {
                     if( $block->{name} eq $dataset->{name} ) {
                         $bibdata = $block->{values};
@@ -671,9 +686,9 @@ for my $filename (@ARGV) {
                 $bibdata = $biblio_blocks->[0]{values};
             }
             if( !defined $bibdata ) {
-                warn "file '${biblio}' matching bibliography datablock " .
-                    "for '$dataset->{name}' --"  .
-                    "no bibliography wil be taken for this datablock";
+                warn "WARNING, the supplied bibliography file '${biblio}' does "
+                   . 'not have a matching bibliography datablock -- no '
+                   . "bibliography will be taken for this datablock\n";
             } else {
                 if( !$leave_biblio ) {
                     for my $key ( grep /_journal_|_publ_section_title|_author_/,
@@ -875,7 +890,6 @@ for my $filename (@ARGV) {
         }
 
         # Fold title if requested:
-
         if( $fold_title && exists $datablok->{_publ_section_title} ) {
             my $cif_title = join( " ", @{$datablok->{_publ_section_title}} );
             $cif_title =~ s/\n/ /g;
@@ -886,7 +900,6 @@ for my $filename (@ARGV) {
         }
 
         # Exclude potentially copyrighted and irrelevant tags if requested:
-
         if( $exclude_publ_details ) {
             my @tag_list = @{$dataset->{tags}};
             for my $tag (@tag_list) {
@@ -908,7 +921,6 @@ for my $filename (@ARGV) {
         }
 
         # Exclude the misspelled tags if requested:
-
         if( $exclude_misspelled_tags ) {
             my @tag_list = @{$dataset->{tags}};
             for my $tag (@tag_list) {
@@ -919,7 +931,6 @@ for my $filename (@ARGV) {
         }
 
         # Add the data source file name, if requested:
-
         if( $record_original_filename ) {
             my $basename;
             if( defined $original_filename ) {
@@ -934,7 +945,6 @@ for my $filename (@ARGV) {
         }
 
         # Clean up the resulting CIF data structure:
-
         for my $excluded_tag (qw( _publ_author_address
                               _publ_author.address
                               _publ_author_email
@@ -1081,10 +1091,8 @@ for my $filename (@ARGV) {
                     }
                 }
             } else {
-                warning( $0, $filename,$dataname,
-                         "the " . (defined $filename ? "'$filename' " : "") .
-                         "$dataname does not contain " .
-                         "symmetry operators", undef );
+                warning( $0, $filename, $dataname, 'the datablock does not '
+                       . 'contain symmetry operators', undef );
             }
         }
 
