@@ -104,6 +104,10 @@ sub filter_and_check
             my $message = $parsed->{message};
             $message .= ' -- ' . $parsed->{explanation}
                                           if defined $parsed->{explanation};
+            # the following line was added for test compatibility since
+            # previously this message was not parsed at all (neither by the
+            # proper, nor by the ad hoc parser
+            next if $message =~ /file seems to be empty/;
             for( $message ) {
                 if( /tag .+ is not recognised/ ) {
                     $parsed->{errlevel} = 'NOTE';
