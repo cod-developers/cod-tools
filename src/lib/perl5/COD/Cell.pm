@@ -38,11 +38,7 @@ sub cell_volume
 
     my $Pi = 4 * atan2(1,1);
 
-    foreach my $component (@cell) {
-
-    }
     # Compute unit cell volume:
-
     my ($a, $b, $c) = @cell[0..2];
     my ($alpha, $beta, $gamma) = map {$Pi * $_ / 180} @cell[3..5];
     my ($ca, $cb, $cg) = map {cos} ($alpha, $beta, $gamma);
