@@ -82,31 +82,17 @@ sub string_from_symop
     my ($symop) = @_;
 
     my @symops = ( "", "", "" );
+    my @axes = ( "x", "y", "z" );
 
     for( my $i = 0; $i < $#{$symop}; $i ++ ) {
-        if( $symop->[$i][0] > 0 ) {
-            $symops[$i] = "x";
-        } elsif( $symop->[$i][0] < 0 ) {
-            $symops[$i] = "-x";
+        my @symop_parts;
+        for( my $j = 0; $j < @symops; $j ++ ) {
+            next if $symop->[$i][$j] == 0;
+            push @symop_parts,
+                 ( $symop->[$i][$j] < 0 ? "-" : "" ) . $axes[$j];
         }
-        if( $symop->[$i][1] > 0 ) {
-            if( $symops[$i] eq "" ) {
-                $symops[$i] = "y";
-            } else {
-                $symops[$i] .= "+y";
-            }
-        } elsif( $symop->[$i][1] < 0 ) {
-            $symops[$i] .= "-y";
-        }
-        if( $symop->[$i][2] > 0 ) {
-            if( $symops[$i] eq "" ) {
-                $symops[$i] = "z";
-            } else {
-                $symops[$i] .= "+z";
-            }
-        } elsif( $symop->[$i][2] < 0 ) {
-            $symops[$i] .= "-z";
-        }
+        $symops[$i] = join "+", @symop_parts;
+        $symops[$i] =~ s/\+-/-/g;
         if( $symop->[$i][3] != 0 ) {
             my $sig = $symop->[$i][3] > 0 ? "+" : "-";
             my $val = abs( $symop->[$i][3] );
@@ -121,31 +107,17 @@ sub string_from_symop_reduced
     my ($symop) = @_;
 
     my @symops = ( "", "", "" );
+    my @axes = ( "x", "y", "z" );
 
     for( my $i = 0; $i < $#{$symop}; $i ++ ) {
-        if( $symop->[$i][0] > 0 ) {
-            $symops[$i] = "x";
-        } elsif( $symop->[$i][0] < 0 ) {
-            $symops[$i] = "-x";
+        my @symop_parts;
+        for( my $j = 0; $j < @symops; $j ++ ) {
+            next if $symop->[$i][$j] == 0;
+            push @symop_parts,
+                 ( $symop->[$i][$j] < 0 ? "-" : "" ) . $axes[$j];
         }
-        if( $symop->[$i][1] > 0 ) {
-            if( $symops[$i] eq "" ) {
-                $symops[$i] = "y";
-            } else {
-                $symops[$i] .= "+y";
-            }
-        } elsif( $symop->[$i][1] < 0 ) {
-            $symops[$i] .= "-y";
-        }
-        if( $symop->[$i][2] > 0 ) {
-            if( $symops[$i] eq "" ) {
-                $symops[$i] = "z";
-            } else {
-                $symops[$i] .= "+z";
-            }
-        } elsif( $symop->[$i][2] < 0 ) {
-            $symops[$i] .= "-z";
-        }
+        $symops[$i] = join "+", @symop_parts;
+        $symops[$i] =~ s/\+-/-/g;
         if( $symop->[$i][3] != 0 ) {
             my $val = $symop->[$i][3];
             my $abs = abs( $val );
