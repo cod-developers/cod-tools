@@ -407,10 +407,12 @@ my @extra_tags = ();
 
 if( $extra_tag_file ) {
     open( EXTRA, "$extra_tag_file" ) or
-        die( "could not open tag list '$extra_tag_file' for reading: $!" );
+        die sprint_message( $0, $extra_tag_file, undef, 'ERROR', 'could not '
+                          . 'open tag list for reading', lcfirst($!) );
     @extra_tags = map {s,\s,,g;lc($_)} map {split} grep /^\s*_/, <EXTRA>;
     close( EXTRA ) or
-        die( "error while closing file '$extra_tag_file' after reading" );
+        die sprint_message( $0, $extra_tag_file, undef, 'ERROR', 'error while '
+                          . 'closing tag list file after reading', undef );
 
     ## local $, = "\n"; local $\ = "\n";
     ## print @extra_tags;
