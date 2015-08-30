@@ -230,20 +230,23 @@ for my $filename (@ARGV) {
     my @extracted;
     foreach my $dataset (@$data) {
 
-        local $SIG{__WARN__} =
-                   sub {process_warnings( $filename, $dataset->{name}, @_,
-                                          {
-                                            WARNING => $die_on_warnings,
-                                            NOTE    => $die_on_notes,
-                                          }
-                                        ) };
+        my $dataname = 'data_' . $dataset->{name};
+
+        local $SIG{__WARN__} = sub {
+                                   process_warnings(
+                                       $filename, $dataname, @_,
+                                       {
+                                         WARNING => $die_on_warnings,
+                                         NOTE    => $die_on_notes,
+                                       }
+                                   ) };
 
         my $extracted_dataset;
         eval {
             $extracted_dataset = cif2cod( $dataset, $filename, \%options );
         };
         if ($@) {
-            process_errors( $filename, $dataset->{name}, $@, $die_on_errors );
+            process_errors( $filename, $dataname, $@, $die_on_errors );
         }
         push @extracted, $extracted_dataset if defined $extracted_dataset;
     }

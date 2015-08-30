@@ -578,13 +578,16 @@ for my $filename (@ARGV) {
 
     for my $dataset (@$data) {
 
-        local $SIG{__WARN__} =
-                   sub {process_warnings( $filename, $dataset->{name}, @_,
-                                          {
-                                            WARNING => $die_on_warnings,
-                                            NOTE    => $die_on_notes,
-                                          }
-                                        ) };
+        my $dataname = 'data_' . $dataset->{name};
+
+        local $SIG{__WARN__} = sub {
+                                   process_warnings(
+                                       $filename, $dataname, @_,
+                                       {
+                                         WARNING => $die_on_warnings,
+                                         NOTE    => $die_on_notes,
+                                       }
+                                   ) };
 
         eval {
             my $values = $dataset->{"values"};
@@ -830,7 +833,7 @@ for my $filename (@ARGV) {
             }
         }; # eval block end
         if ( $@ ) {
-            process_errors( $filename, $dataset->{name}, $@, $die_on_errors );
+            process_errors( $filename, $dataname, $@, $die_on_errors );
         }
 
     }

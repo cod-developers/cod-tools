@@ -517,8 +517,9 @@ sub filter_and_check
         my %structures = ();
         my $index = 0;
         foreach my $dataset ( @$data ) {
+            my $dataname = 'data_' . $dataset->{name};
             local $SIG{__WARN__} =
-                sub {process_warnings( $cif_filename, $dataset->{name}, @_,
+                sub {process_warnings( $cif_filename, $dataname, @_,
                                        {
                                            WARNING => 0, #$die_on_warnings,
                                            NOTE    => 0, #$die_on_notes,
@@ -780,8 +781,9 @@ sub filter_and_check
     my( $cif2cod_stdout, $cif2cod_stderr ) = capture {
         my @extracted;
         foreach my $dataset ( @$data ) {
-           local $SIG{__WARN__} =
-                  sub {process_warnings( $cif_filename, $dataset->{name}, @_,
+            my $dataname = 'data_' . $dataset->{name};
+            local $SIG{__WARN__} =
+                  sub {process_warnings( $cif_filename, $dataname, @_,
                                          {
                                               WARNING => 0, #$die_on_warnings,
                                               NOTE    => 0, #$die_on_notes,

@@ -216,7 +216,7 @@ sub process_errors
 
     $message = sprint_message( $0,
                                $filename,
-                               "data_$dataname",
+                               $dataname,
                                $error_level,
                                $message,
                                undef
@@ -239,7 +239,7 @@ sub process_warnings
     if ( defined $die->{$error_level} && $die->{$error_level} ) {
        CORE::die "$error_level, $message";
     } else {
-       print STDERR sprint_message( $0, $filename, "data_$dataname",
+       print STDERR sprint_message( $0, $filename, $dataname,
                                     $error_level, $message, undef );
     }
 }
