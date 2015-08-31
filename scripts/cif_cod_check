@@ -27,7 +27,7 @@ use COD::ShowStruct;
 use COD::Spacegroups::Symop::Parse;
 use COD::Spacegroups::Lookup::COD;
 use COD::Spacegroups::Names;
-use COD::UserMessage qw(note warning error print_message prefix_dataname process_warnings);
+use COD::UserMessage qw(error print_message process_warnings);
 use COD::SOptions;
 use COD::SUsage;
 use Digest::MD5 qw( md5_hex );
@@ -886,7 +886,7 @@ sub check_pdcif_relations
     if( $overall_info_datablock_count > 0 ) {
         my $overall_block = $data->[$overall_info_datablock];
         my $overall_data = $overall_block->{values};
-        my $overall_dataname = prefix_dataname($overall_block->{name});
+        my $overall_dataname = 'data_' . $overall_block->{name};
 
         for my $phase_id (@{$overall_data->{_pd_phase_block_id}}) {
             if( !exists $pd_ids->{$phase_id} ) {
@@ -943,40 +943,41 @@ sub check_pdcif_relations
     for my $phase_nr (@phases) {
         my $phase_block = $data->[$phase_nr];
         my $phase_data = $phase_block->{values};
-        my $phase_dataname = prefix_dataname($phase_block->{name});
+        my $phase_dataname = 'data_' . $phase_block->{name};
         if( !exists $phase_data->{_pd_block_diffractogram_id} ) {
-            error( $0, $filename, $phase_dataname,
-                   "phase datablock '$phase_dataname' does "
-                 . "not contain diffractogram list", undef );
+            warn "ERROR, phase datablock '$phase_dataname' does not "
+               . "contain a diffractogram list\n";
+            $errors++;
             $warnings++;
             next;
         }
         for my $diffractogram_id (@{$phase_data->{_pd_block_diffractogram_id}}) {
             if( !exists $pd_ids->{$diffractogram_id} ) {
-                error( $0, $filename, $phase_dataname,
-                       "diffractogram datablock with _pd_block_id " .
-                       "'$diffractogram_id' does not exist", undef );
+                warn "ERROR, diffractogram datablock with _pd_block_id "
+                   . "'$diffractogram_id' is listed in the phase datablock "
+                   . "'$phase_dataname', but does not exist'\n";
+                $errors++;
                 $warnings++;
                 next;
             }
             my $diffractogram_nr = $pd_ids->{$diffractogram_id};
             my $diffractogram_block = $data->[$diffractogram_nr];
             my $diffractogram_data = $diffractogram_block->{values};
-            my $diffractogram_dataname =
-                                 prefix_dataname($diffractogram_block->{name});
+            my $diffractogram_dataname = 'data_' . $diffractogram_block->{name};
             if( !exists $diffractogram_data->{_pd_phase_block_id} ) {
-                error( $0, $filename, $diffractogram_dataname,
-                       "diffractogram datablock '$diffractogram_data' "
-                     . "does not contain phase list", undef );
+                warn "ERROR, diffractogram datablock '$diffractogram_dataname' "
+                   . "does not contain a phase list\n";
+                $errors++;
                 $warnings++;
                 next;
             }
             my $found = 0;
             for my $phase_id (@{$diffractogram_data->{_pd_phase_block_id}}) {
                 if( !exists $pd_ids->{$phase_id} ) {
-                    error( $0, $filename, $diffractogram_dataname,
-                           "phase datablock with _pd_block_id " .
-                           "'$phase_id' does not exist", undef );
+                    warn "ERROR, phase datablock with _pd_block_id "
+                       . "'$phase_id' is listed in the difractogram datablock "
+                       . "'$diffractogram_dataname', but does not exist\n";
+                    $errors++;
                     $warnings++;
                 }
                 if( $pd_ids->{$phase_id} == $phase_nr ) {
@@ -987,10 +988,9 @@ sub check_pdcif_relations
             if( !$found ) {
                 # If diffractogram datablock does not contain a backlink 
                 # to the phase block, we assume that the backlink is:
-                warning( $0, $filename, $diffractogram_dataname,
-                         "value '" . $phase_data->{_pd_block_id}[0] .
-                         "' seems missing in _pd_phase_block_id list of " .
-                         "'$diffractogram_dataname'", undef );
+                warn "WARNING, value '" . $phase_data->{_pd_block_id}[0] . "' "
+                   . "seems to be missing in the _pd_phase_block_id list of "
+                   . "the difractogram datablock '$diffractogram_dataname'\n";
                 $warnings++;
             }
         }
@@ -999,40 +999,41 @@ sub check_pdcif_relations
     for my $diffractogram_nr (@diffractograms) {
         my $diffractogram_block = $data->[$diffractogram_nr];
         my $diffractogram_data = $diffractogram_block->{values};
-        my $diffractogram_dataname =
-                            prefix_dataname($diffractogram_block->{name});
+        my $diffractogram_dataname = 'data_' . $diffractogram_block->{name};
         if( !exists $diffractogram_data->{_pd_phase_block_id} ) {
-            error( $0, $filename, $diffractogram_dataname,
-                   "diffractogram datablock '$diffractogram_dataname' " .
-                   "does not contain phase list", undef );
+            warn "ERROR, diffractogram datablock '$diffractogram_dataname' " .
+                 "does not contain a phase list\n";
+            $errors++;
             $warnings++;
             next;
         }
         for my $phase_id (@{$diffractogram_data->{_pd_phase_block_id}}) {
             if( !exists $pd_ids->{$phase_id} ) {
-                error( $0, $filename, $diffractogram_dataname,
-                       "phase datablock with _pd_block_id " .
-                       "'$phase_id' does not exist", undef );
+                warn "ERROR, phase datablock with _pd_block_id '$phase_id' "
+                   . "is listed in the difractogram datablock "
+                   . "'$diffractogram_dataname', but does not exist\n";
+                $errors++;
                 $warnings++;
                 next;
             }
             my $phase_nr = $pd_ids->{$phase_id};
             my $phase_block = $data->[$phase_nr];
             my $phase_data = $phase_block->{values};
-            my $phase_dataname = prefix_dataname($phase_block->{name});
+            my $phase_dataname = 'data_' . $phase_block->{name};
             if( !exists $phase_data->{_pd_block_diffractogram_id} ) {
-                error( $0, $filename, $phase_dataname,
-                       "phase datablock '$phase_dataname' does not " .
-                       "contain diffractogram list", undef );
+                warn "ERROR, phase datablock '$phase_dataname' "
+                   . "does not contain a diffractogram list\n";
+                $errors++;
                 $warnings++;
                 next;
             }
             my $found = 0;
             for my $diffractogram_id (@{$phase_data->{_pd_block_diffractogram_id}}) {
                 if( !exists $pd_ids->{$diffractogram_id} ) {
-                    error( $0, $filename, $phase_dataname,
-                           "diffractogram datablock with _pd_block_id " .
-                           "'$diffractogram_id' does not exist", undef );
+                    warn "ERROR, diffractogram datablock with _pd_block_id "
+                       . "'$diffractogram_id' is listed in the phase "
+                       . "datablock '$phase_dataname', but does not exist\n";
+                    $errors++;
                     $warnings++;
                 }
                 if( $pd_ids->{$diffractogram_id} == $diffractogram_nr ) {
@@ -1043,10 +1044,10 @@ sub check_pdcif_relations
             if( !$found ) {
                 # If phase datablock does not contain a backlink to the 
                 # diffractogram, we are not sure if it is omitted or added:
-                error( $0, $filename, $phase_dataname,
-                       "value '" . $diffractogram_data->{_pd_block_id}[0] .
-                       "' seems missing in _pd_block_diffractogram_id list of " .
-                       "'$phase_dataname'", undef );
+                warn "ERROR, value '" . $diffractogram_data->{_pd_block_id}[0]
+                   . "' " . "seems to be missing in _pd_block_diffractogram_id "
+                   . "list of the phase datablock '$phase_dataname'\n";
+                $errors++;
                 $warnings++;
             }
         }
