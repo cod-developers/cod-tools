@@ -95,17 +95,25 @@ sub print_message($$$$$$@)
 sub parse_message($)
 {
     my( $message ) = @_;
+    
+    my $FNAME  = qr/[A-Za-z0-9_,\-\.\/]+/ms;
+    my $ELEVEL = qr/[A-Z][A-Z_0-9 ]*/ms;
     if( $message =~ /^
-                        ([^:]+):\ 
-                        (?:
-                          ([^:]+?)
-                            (?:\((\d+)(?:,(\d+))?\))?
-                            (?:\ ([^:]+?))?
-                            :\ 
-                        )?
-                        (?:([^,:\ ]+?)[,:]\ )?
-                        (.+?)\.?
-                    $/x ) {
+             ($FNAME):[ ]?
+             (?:
+                 ($FNAME)
+                     (?: \( (\d+) (?:,(\d+))? \) )?
+                     (?: [ ]((?i:data)_[^:]+?) )?
+             )?
+             :[ ]?
+             (?: ($ELEVEL)[,][ ])?
+             ([^\n:]+)?
+             (?: \: \s* \n
+                 (
+                 (?: [ ][^\n]*\n )*
+                 )
+             )?
+         $/msxg ) {
         return {
             program     => unescape_meta($1, \%program_escape ),
             filename    => unescape_meta($2, \%filename_escape),
