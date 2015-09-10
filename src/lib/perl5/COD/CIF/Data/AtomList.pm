@@ -178,9 +178,29 @@ sub extract_atom
         $atom_info{$to_copy_atom_site{$tag}} = $values->{$tag}[$number];
     }
 
-    if( $options->{remove_precision} &&
-        exists $atom_info{atom_site_U_iso_or_equiv} ) {
-        $atom_info{atom_site_U_iso_or_equiv} =~ s/\([0-9]+\)$//;
+    if( $options->{remove_precision} ) {
+        for my $key (qw( atom_site_occupancy atom_site_U_iso_or_equiv )) {
+            next if !exists $atom_info{$key};
+            $atom_info{$key} =~ s/\([0-9]+\)$//;
+        }
+    }
+
+    if( $options->{concat_refinement_flags} ) {
+        my %refinement_flags;
+        for my $key (qw( refinement_flags
+                         refinement_flags_posn
+                         refinement_flags_adp
+                         refinement_flags_occupancy )) {
+            next if !exists $atom_info{$key};
+            next if $atom_info{$key} eq '?' || $atom_info{$key} eq '.';
+            map { $refinement_flags{$_} = 1 }
+                split '', $atom_info{$key};
+            delete $atom_info{$key};
+        }
+        if( %refinement_flags ) {
+            $atom_info{refinement_flags} =
+                join( '', sort keys %refinement_flags );
+        }
     }
 
     # Some of _cod_molecule_* tags override tags from _atom_site_* loop,
@@ -200,14 +220,23 @@ sub extract_atom
 
         if( defined $values->{_cod_molecule_transform_label} &&
             defined $values->{_cod_molecule_transform_symop} ) {
-            my $symop = $values->{_cod_molecule_transform_symop}[$number];
-            if( @transform_matrices ) {
-                my $orig_symop = symop_from_string( $transform_matrices[0] );
-                my $symop_mat = symop_from_string( $symop );
-                my $product = symop_mul( $orig_symop, $symop_mat );
-                $symop = string_from_symop( $product );
+            for my $i (0..$#{$values->{_cod_molecule_transform_label}}) {
+                if( $values->{_cod_molecule_transform_label}[$i] ne
+                    $atom_label ) {
+                    next
+                }
+                my $symop = $values->{_cod_molecule_transform_symop}[$i];
+                if( @transform_matrices ) {
+                    my $orig_symop = symop_from_string( $transform_matrices[0] );
+                    my $symop_mat = symop_from_string( $symop );
+                    my $product = symop_mul( $orig_symop, $symop_mat );
+                    $symop = string_from_symop( $product );
+                }
+                push( @transform_matrices, $symop );
             }
-            push( @transform_matrices, $symop );
+        }
+
+        if( @transform_matrices ) {
             $atom_info{transform_matrix} = [
                 map { symop_from_string( $_ ) }
                     @transform_matrices
