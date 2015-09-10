@@ -122,16 +122,16 @@ sub make_neighbour_list($$$$@)
 
                 next if $atom1 == $atom2;
 
-                next if exists $atom1->{atom_assembly} &&
-                        exists $atom2->{atom_assembly} &&
-                        $atom1->{atom_assembly} ne '.' &&
-                        $atom2->{atom_assembly} ne '.' &&
-                        $atom1->{atom_assembly} eq $atom2->{atom_assembly} &&
-                        exists $atom1->{atom_group} &&
-                        exists $atom2->{atom_group} &&
-                        $atom1->{atom_group} ne '.' &&
-                        $atom2->{atom_group} ne '.' &&
-                        $atom1->{atom_group} ne $atom2->{atom_group};
+                next if exists $atom1->{assembly} &&
+                        exists $atom2->{assembly} &&
+                        $atom1->{assembly} ne '.' &&
+                        $atom2->{assembly} ne '.' &&
+                        $atom1->{assembly} eq $atom2->{assembly} &&
+                        exists $atom1->{group} &&
+                        exists $atom2->{group} &&
+                        $atom1->{group} ne '.' &&
+                        $atom2->{group} ne '.' &&
+                        $atom1->{group} ne $atom2->{group};
 
                 my $atom1_type =  $atom1->{chemical_type};
                 my $atom2_type =  $atom2->{chemical_type};
