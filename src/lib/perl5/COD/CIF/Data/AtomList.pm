@@ -102,6 +102,12 @@ sub extract_atom
         $atom_info{"symop_list"} = $options->{symop_list};
     }
 
+    if( $options->{skip_dummy_atoms} &&
+        defined $values->{_atom_site_calc_flag} &&
+        $values->{_atom_site_calc_flag}[$number] eq 'dum' ) {
+        return undef;
+    }
+
     $atom_info{f2o} = $f2o;
     if( $atom_xyz[0] eq '.' &&
         $atom_xyz[1] eq '.' &&
