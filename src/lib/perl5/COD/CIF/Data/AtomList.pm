@@ -178,7 +178,8 @@ sub extract_atom
         $atom_info{$to_copy_atom_site{$tag}} = $values->{$tag}[$number];
     }
 
-    if( $options->{remove_precision} ) {
+    if( $options->{remove_precision} &&
+        exists $atom_info{atom_site_U_iso_or_equiv} ) {
         $atom_info{atom_site_U_iso_or_equiv} =~ s/\([0-9]+\)$//;
     }
 
