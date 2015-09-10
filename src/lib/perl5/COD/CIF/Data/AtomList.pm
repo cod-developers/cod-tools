@@ -194,6 +194,24 @@ sub extract_atom
                 $symop = string_from_symop( $product );
             }
             push( @transform_matrices, $symop );
+            $atom_info{transform_matrix} = [
+                map { symop_from_string( $_ ) }
+                    @transform_matrices
+            ];
+            $atom_info{transform_matrix_inv} = [
+                map { symop_invert( $_ ) }
+                    @{$atom_info{transform_matrix}}
+            ];
+        }
+
+        if( defined $values->{_cod_molecule_atom_transl_x} &&
+            defined $values->{_cod_molecule_atom_transl_y} &&
+            defined $values->{_cod_molecule_atom_transl_z} ) {
+            $atom_info{translation} = [
+                $values->{_cod_molecule_atom_transl_x}[$number],
+                $values->{_cod_molecule_atom_transl_y}[$number],
+                $values->{_cod_molecule_atom_transl_z}[$number],
+            ];
         }
     }
 
