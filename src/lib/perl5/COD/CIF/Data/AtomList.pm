@@ -178,6 +178,10 @@ sub extract_atom
         $atom_info{$to_copy_atom_site{$tag}} = $values->{$tag}[$number];
     }
 
+    if( $options->{remove_precision} ) {
+        $atom_info{atom_site_U_iso_or_equiv} =~ s/\([0-9]+\)$//;
+    }
+
     # Some of _cod_molecule_* tags override tags from _atom_site_* loop,
     # thus former have to be copied AFTER the former.
 
