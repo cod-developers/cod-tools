@@ -115,7 +115,7 @@ sub extract_atom
 
     my $atom_type;
 
-    if( exists $values->{_atom_site_type_symbol}  &&
+    if( exists $values->{_atom_site_type_symbol} &&
         defined $values->{_atom_site_type_symbol}[$number] &&
         $values->{_atom_site_type_symbol}[$number] ne '?' ) {
         $atom_type = $values->{_atom_site_type_symbol}[$number];
@@ -141,7 +141,7 @@ sub extract_atom
     $atom_info{assembly} = ".";
     $atom_info{group}    = ".";
 
-    my %to_copy = (
+    my %to_copy_atom_site = (
         _atom_site_disorder_assembly     => 'assembly',
         _atom_site_disorder_group        => 'group',
         _atom_site_occupancy             => 'atom_site_occupancy',
@@ -155,9 +155,46 @@ sub extract_atom
         _atom_site_calc_flag             => 'calc_flag',
     );
 
-    for my $tag (keys %to_copy) {
+    my %to_copy_cod_molecule = (
+        _cod_molecule_atom_orig_label    => 'original_label',
+        _cod_molecule_atom_assembly      => 'assembly',
+        _cod_molecule_atom_group         => 'group',
+        _cod_molecule_atom_mult          => 'multiplicity',
+        _cod_molecule_atom_mult_ratio    => 'multiplicity_ratio',
+        _cod_molecule_atom_symop_id      => 'symop_id',
+    );
+
+    for my $tag (keys %to_copy_atom_site) {
         next if !exists $values->{$tag};
-        $atom_info{$to_copy{$tag}} = $values->{$tag}[$number];
+        $atom_info{$to_copy_atom_site{$tag}} = $values->{$tag}[$number];
+    }
+
+    # Some of _cod_molecule_* tags override tags from _atom_site_* loop,
+    # thus former have to be copied AFTER the former.
+
+    if( $options->{use_cod_molecule_tags} ) {
+
+        for my $tag (keys %to_copy_cod_molecule) {
+            next if !exists $values->{$tag};
+            $atom_info{$to_copy_cod_molecule{$tag}} = $values->{$tag}[$number];
+        }
+
+        my @transform_matrices;
+        if( defined $values->{_cod_molecule_atom_symop_xyz} ) {
+            @transform_matrices = ( $values->{_cod_molecule_atom_symop_xyz}[$number] );
+        }
+
+        if( defined $values->{_cod_molecule_transform_label} &&
+            defined $values->{_cod_molecule_transform_symop} ) {
+            my $symop = $values->{_cod_molecule_transform_symop}[$number];
+            if( @transform_matrices ) {
+                my $orig_symop = symop_from_string( $transform_matrices[0] );
+                my $symop_mat = symop_from_string( $symop );
+                my $product = symop_mul( $orig_symop, $symop_mat );
+                $symop = string_from_symop( $product );
+            }
+            push( @transform_matrices, $symop );
+        }
     }
 
     if( !exists $atom_info{atom_site_occupancy} &&
