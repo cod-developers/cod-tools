@@ -27,6 +27,7 @@ our @ISA = qw(Exporter);
 our @EXPORT_OK = qw( atom_array_from_cif
                      copy_struct_deep
                      dump_atoms_as_cif
+                     dump_atoms_as_pdb
                      uniquify_atom_names
                      extract_atom );
 
@@ -583,6 +584,24 @@ sub dump_atoms_as_cif
             $atom->{coordinates_fract}[0], " ",
             $atom->{coordinates_fract}[1], " ",
             $atom->{coordinates_fract}[2];
+    }
+}
+
+sub dump_atoms_as_pdb
+{
+    my ($atom_list) = @_;
+    use PDB;
+
+    my $n = 1;
+    for my $atom (@$atom_list) {
+        my @pdb_atom = (
+            "ATOM  ", $n, $atom->{chemical_type} . $n,
+            "", "XYZ", "", $n, "",
+            @{$atom->{coordinates_ortho}},
+            1.0, 20.0, "", "", $atom->{chemical_type}, ""
+            );
+        PDB::print_pdb( @pdb_atom );
+        $n++
     }
 }
 
