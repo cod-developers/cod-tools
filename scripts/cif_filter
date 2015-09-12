@@ -527,8 +527,9 @@ for my $filename (@ARGV) {
     }
 
     if( !@$data || !defined $data->[0] || !defined $data->[0]{name} ) {
-        warn sprint_message( $0, $filename, undef, 'WARNING',
-                             'file seems to be empty', undef );
+        my $error = sprint_message( $0, $filename, undef, 'WARNING',
+                                    'file seems to be empty', undef );
+        $die_on_warnings ? die $error : warn $error;
         next;
     }
 
