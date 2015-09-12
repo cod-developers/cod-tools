@@ -424,7 +424,7 @@ for my $filename (@ARGV) {
     canonicalize_all_names( $data );
 
     my $warnings = 0;
-    my $errors   = 1;
+    my $errors   = 0;
     for my $dataset (@$data) {
 
         my $dataname = 'data_' . $dataset->{name} if defined $dataset->{name};
@@ -476,9 +476,11 @@ for my $filename (@ARGV) {
                                             NOTE    => $die_on_notes,
                                           }
                                         ) };
-        $warnings += check_pdcif_relations( $data, $filename );
+        my ($f_warnings, $f_errors) = check_pdcif_relations( $data );
+        $warnings += $f_warnings;
+        $errors   += $f_errors;
     };
-    printf "%-30s: OK\n", $filename if $warnings == 0;
+    printf "%-30s: OK\n", $filename if $warnings == 0 && $errors == 0;
 }
 
 sub check_data
@@ -827,14 +829,14 @@ sub check_temperature_factors
 
 sub check_pdcif_relations
 {
-    my( $data, $filename ) = @_;
+    my ($data) = @_;
 
     my $overall_info_datablock;
     my $overall_info_datablock_count = 0;
 
     my $warnings = 0;
-    my $errors = 1;
-    my $pd_ids = {};
+    my $errors   = 0;
+    my $pd_ids   = {};
 
     my @phases;
     my @diffractograms;
@@ -848,7 +850,6 @@ sub check_pdcif_relations
                 warn 'ERROR, two or more datablocks with _pd_block_id '
                    . "'$datablock_pd_id' were found -- "
                    . "_pd_block_id must be unique for each datablock\n";
-                $warnings++;
                 $errors++;
             } else {
                 $pd_ids->{$datablock_pd_id} = $i;
@@ -868,7 +869,7 @@ sub check_pdcif_relations
         }
     }
 
-    return $warnings if @phases + @diffractograms == 0;
+    return ($warnings, $errors) if @phases + @diffractograms == 0;
 
     if( $overall_info_datablock_count > 1 ) {
         warn "NOTE, $overall_info_datablock_count datablocks having both "
@@ -894,7 +895,6 @@ sub check_pdcif_relations
                    . "is listed in the _pd_phase_block_id loop of the "
                    . "overall information datablock '$overall_dataname', "
                    . "but does not exist\n";
-                $warnings++;
                 $errors++;
             }
         }
@@ -904,7 +904,6 @@ sub check_pdcif_relations
                    . "'$diffractogram_id' listed in the "
                    . "_pd_block_diffractogram_id loop of the overall "
                    . "datablock '$overall_dataname', but does not exist\n";
-                $warnings++;
                 $errors++;
             }
         }
@@ -916,7 +915,6 @@ sub check_pdcif_relations
                 warn "ERROR, phase datablock 'data_" . $phase_block->{name}
                    . "' " . "is not listed in _pd_phase_block_id loop of the "
                    . "overall information datablock '$overall_dataname'\n";
-                $warnings++;
                 $errors++;
             }
         }
@@ -929,7 +927,6 @@ sub check_pdcif_relations
                     . $diffractogram_block->{name} . "' is not listed in "
                     . "_pd_block_diffractogram_id loop of the overall "
                     . "information datablock '$overall_dataname'\n";
-                $warnings++;
                 $errors++;
             }
         }
@@ -948,7 +945,6 @@ sub check_pdcif_relations
             warn "ERROR, phase datablock '$phase_dataname' does not "
                . "contain a diffractogram list\n";
             $errors++;
-            $warnings++;
             next;
         }
         for my $diffractogram_id (@{$phase_data->{_pd_block_diffractogram_id}}) {
@@ -957,7 +953,6 @@ sub check_pdcif_relations
                    . "'$diffractogram_id' is listed in the phase datablock "
                    . "'$phase_dataname', but does not exist'\n";
                 $errors++;
-                $warnings++;
                 next;
             }
             my $diffractogram_nr = $pd_ids->{$diffractogram_id};
@@ -968,7 +963,6 @@ sub check_pdcif_relations
                 warn "ERROR, diffractogram datablock '$diffractogram_dataname' "
                    . "does not contain a phase list\n";
                 $errors++;
-                $warnings++;
                 next;
             }
             my $found = 0;
@@ -978,7 +972,6 @@ sub check_pdcif_relations
                        . "'$phase_id' is listed in the difractogram datablock "
                        . "'$diffractogram_dataname', but does not exist\n";
                     $errors++;
-                    $warnings++;
                 }
                 if( $pd_ids->{$phase_id} == $phase_nr ) {
                     $found = 1;
@@ -1004,7 +997,6 @@ sub check_pdcif_relations
             warn "ERROR, diffractogram datablock '$diffractogram_dataname' " .
                  "does not contain a phase list\n";
             $errors++;
-            $warnings++;
             next;
         }
         for my $phase_id (@{$diffractogram_data->{_pd_phase_block_id}}) {
@@ -1013,7 +1005,6 @@ sub check_pdcif_relations
                    . "is listed in the difractogram datablock "
                    . "'$diffractogram_dataname', but does not exist\n";
                 $errors++;
-                $warnings++;
                 next;
             }
             my $phase_nr = $pd_ids->{$phase_id};
@@ -1024,7 +1015,6 @@ sub check_pdcif_relations
                 warn "ERROR, phase datablock '$phase_dataname' "
                    . "does not contain a diffractogram list\n";
                 $errors++;
-                $warnings++;
                 next;
             }
             my $found = 0;
@@ -1034,7 +1024,7 @@ sub check_pdcif_relations
                        . "'$diffractogram_id' is listed in the phase "
                        . "datablock '$phase_dataname', but does not exist\n";
                     $errors++;
-                    $warnings++;
+
                 }
                 if( $pd_ids->{$diffractogram_id} == $diffractogram_nr ) {
                     $found = 1;
@@ -1048,12 +1038,11 @@ sub check_pdcif_relations
                    . "' " . "seems to be missing in _pd_block_diffractogram_id "
                    . "list of the phase datablock '$phase_dataname'\n";
                 $errors++;
-                $warnings++;
             }
         }
     }
 
-    return $warnings;
+    return ($warnings, $errors);
 }
 
 #===============================================================#
