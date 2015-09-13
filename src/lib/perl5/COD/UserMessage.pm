@@ -19,7 +19,7 @@ our @EXPORT_OK = qw( debug_note prefix_dataname );
 
 # characters that will be escaped as HTML5 entities
 # '#' symbol is used for starting comment lines
-my %program_escape   = ( '&' => '&amp;',  ':' => '&colon;' );
+my %program_escape   = ( '&' => '&amp;', ':' => '&colon;', ' ' => '&nbsp;' );
 my %filename_escape  = ( '&' => '&amp;', ':' => '&colon;', ' ' => '&nbsp;',
                          '(' => '&lpar;', ')' => '&rpar;' );
 my %datablock_escape = ( '&' => '&amp;', ':' => '&colon;', ' ' => '&nbsp;' );
@@ -41,7 +41,7 @@ sub sprint_message($$$$$$@)
     $message =~ s/\.?\n?$//;
     $explanation =~ s/\.?\n?$// if defined $explanation;
 
-    $program = "perl -e '...'" if ( $program eq '-e' );
+    #$program = "perl -e '...'" if ( $program eq '-e' );
 
     $program     = escape_meta( $program,     \%program_escape   );
     $filename    = escape_meta( $filename,    \%filename_escape  );
@@ -95,34 +95,34 @@ sub print_message($$$$$$@)
 sub parse_message($)
 {
     my( $message ) = @_;
-    
-    my $FNAME  = qr/[A-Za-z0-9_,\-\.\/]+/ms;
+
+    my $FNAME  = qr/[A-Za-z0-9_,\-\.\/&;#]+/ms;
     my $ELEVEL = qr/[A-Z][A-Z_0-9 ]*/ms;
     if( $message =~ /^
              ($FNAME):[ ]?
              (?:
                  ($FNAME)
                      (?: \( (\d+) (?:,(\d+))? \) )?
-                     (?: [ ]((?i:data)_[^:]+?) )?
+                     (?: [ ]([^:]+?) )?
              )?
              :[ ]?
              (?: ($ELEVEL)[,][ ])?
-             ([^\n:]+)?
-             (?: \: \s* \n
+             (?:([^\n:]+?)(?:\.?\n?)?)
+             (?: \: \s* \n?
                  (
                  (?: [ ][^\n]*\n )*
                  )
              )?
          $/msxg ) {
         return {
-            program     => unescape_meta($1, \%program_escape ),
-            filename    => unescape_meta($2, \%filename_escape),
-            line        => $3,
-            column      => $4,
-            datablock   => unescape_meta($5, \%datablock_escape),
-            errlevel    => $6,
-            message     => unescape_meta($7, \%message_escape),
-            explanation => unescape_meta($8, \%message_escape)
+            program      => unescape_meta($1, \%program_escape ),
+            filename     => unescape_meta($2, \%filename_escape),
+            line         => $3,
+            column       => $4,
+            datablock    => unescape_meta($5, \%datablock_escape),
+            errlevel     => $6,
+            message      => unescape_meta($7, \%message_escape),
+            line_content => $8
         };
     } else {
         return undef;
