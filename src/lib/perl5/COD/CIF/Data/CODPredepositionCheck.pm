@@ -97,13 +97,10 @@ sub filter_and_check
             run_command( [ 'cif_filter', @filter_opt, $cif ] );
     }
 
-    foreach( @$filter_stderr ) {
+    foreach( map { $_ . "\n" } @$filter_stderr ) {
         my $parsed = parse_message( $_ );
         if( defined $parsed ) {
-            $parsed->{message} =~ s/:$//; #in case errors including the line
             my $message = $parsed->{message};
-            $message .= ' -- ' . $parsed->{explanation}
-                                          if defined $parsed->{explanation};
             for( $message ) {
                 if( /tag .+ is not recognised/ ) {
                     $parsed->{errlevel} = 'NOTE';
@@ -151,7 +148,7 @@ sub filter_and_check
                            $parsed->{line},
                            $parsed->{column} );
         } elsif( /^[^:]+cif_filter: (.*)/ ) { # Ad-hoc parse for some messages
-            print STDERR "$0: $1\n";
+            print STDERR "$0: $1";
         }
     }
 
@@ -163,10 +160,10 @@ sub filter_and_check
     my( $fix_values_stdout, $fix_values_stderr ) =
         run_command( [ 'cif_fix_values' ], $filter_stdout );
 
-    foreach( @$fix_values_stderr ) {
+    foreach( map { $_ . "\n" } @$fix_values_stderr ) {
         my $parsed = parse_message( $_ );
         if( defined $parsed ) {
-            if( $parsed->{message} !~ 
+            if( $parsed->{message} !~
                        /value '[^']*' must be one of the enumeration values/ ) {
                 print_message( $0,
                                $cif_filename,
@@ -183,7 +180,7 @@ sub filter_and_check
     my( $correct_stdout, $correct_stderr ) =
         run_command( [ 'cif_correct_tags' ], $fix_values_stdout );
 
-    foreach( @$correct_stderr ) {
+    foreach( map { $_ . "\n" } @$correct_stderr ) {
         my $parsed = parse_message( $_ );
         if( defined $parsed ) {
             print_message( $0,
@@ -215,7 +212,7 @@ sub filter_and_check
         if( !defined $ccc_stdout->[0] || $ccc_stdout !~ /OK$/) {
             my $warnings = 0;
             CCCMESSAGE:
-            foreach( @$ccc_stderr ) {
+            foreach( map { $_ . "\n" } @$ccc_stderr ) {
                 my $parsed = parse_message( $_ );
                 if( defined $parsed ) {
                     for( $parsed->{message} ) {
@@ -679,7 +676,7 @@ sub filter_and_check
                            '--parse-formula-sum',
                        @filter_opt ], $correct_stdout );
 
-    foreach( @$filter_stderr ) {
+    foreach( map { $_ . "\n" } @$filter_stderr ) {
         my $parsed = parse_message( $_ );
         if( defined $parsed ) {
             next if $parsed->{message} =~ /tag .+ is not recognised/;
@@ -1096,11 +1093,10 @@ sub extract_cif_values
                            '--separator', $separator,
                            '--vseparator', $vseparator,
                            $tmp_file ] );
-    foreach( @$values_stderr ) {
+    foreach( map { $_ . "\n" } @$values_stderr ) {
         my $parsed = parse_message( $_ );
         if( defined $parsed ) {
             next if $parsed->{message} =~ /compiler could not recover from errors/;
-            $parsed->{message} =~ s/:$//;
             print_message( $0,
                $filename,
                $parsed->{datablock},
@@ -1110,7 +1106,7 @@ sub extract_cif_values
                $parsed->{line},
                $parsed->{column} );
         } else {
-            print STDERR "$_\n";
+            print STDERR $_;
         }
     }
     die 'cifvalues encountered ' . @$values_stderr . ' ' .
