@@ -60,13 +60,13 @@ sub sprint_message($$$$$$@)
         }
     }
 
-    return $program . ": " .
-           (defined $filename ? $filename .
+    return $program . ":" .
+           (defined $filename ? ' ' . $filename .
                 (defined $line ? "($line" .
                     (defined $column ? ",$column" : "") . ")"
                 : "") .
-                (defined $datablock ? " $datablock" : "") . ": "
-           : "") .
+                (defined $datablock ? " $datablock" : "")
+           : "") . ": " .
            (defined $errlevel ? $errlevel . ", " : "") .
            $message .
            (defined $explanation ? " -- " . $explanation : "") .
