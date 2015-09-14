@@ -49,16 +49,7 @@ sub sprint_message($$$$$$@)
     $message     = escape_meta( $message,     \%message_escape   );
     $explanation = escape_meta( $explanation, \%message_escape   );
 
-    if( defined $line_contents ) {
-        # Empty line has to be dealt separately, as split'ting empty
-        # line returns empty array:
-        if( $line_contents ne "" ) {
-            $line_contents = join( "\n", map { " $_" }
-                                         split( "\n", $line_contents ) );
-        } else {
-            $line_contents = " ";
-        }
-    }
+    $line_contents = prefix_multiline($line_contents);
 
     return $program . ":" .
            (defined $filename ? ' ' . $filename .
@@ -122,7 +113,7 @@ sub parse_message($)
             datablock    => unescape_meta($5, \%datablock_escape),
             errlevel     => $6,
             message      => unescape_meta($7, \%message_escape),
-            line_content => $8
+            line_content => unprefix_multiline($8)
         };
     } else {
         return undef;
@@ -203,6 +194,33 @@ sub unescape_meta {
     $text =~ s/($symbols)/$unescaped_symbols{"$1"}/g;
 
     return $text;
+}
+
+sub prefix_multiline
+{
+    my ($multiline) = @_;
+
+    if( defined $multiline ) {
+        # Empty line has to be dealt separately, as split'ting empty
+        # line returns empty array:
+        if( $multiline ne "" ) {
+            $multiline = join( "\n", map { " $_" }
+                                         split( "\n", $multiline ) );
+        } else {
+            $multiline = " ";
+        }
+    }
+
+    return $multiline;
+}
+
+sub unprefix_multiline
+{
+    my ($multiline) = @_;
+
+    $multiline =~ s/^ //msg if defined $multiline;
+
+    return $multiline;
 }
 
 sub prefix_dataname($)
