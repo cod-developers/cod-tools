@@ -5,14 +5,14 @@
 #$URL$
 #------------------------------------------------------------------------
 #* 
-#  A list of TCOD CIF dictionary tags. Compiled from version 0.006 of
+#  A list of TCOD CIF dictionary tags. Compiled from version 0.008 of
 #  cif_tcod.dic:
 #
 #  URL: svn://www.crystallography.net/tcod/cif/dictionaries/cif_tcod.dic
 #  Relative URL: ^/cif/dictionaries/cif_tcod.dic
 #  Repository Root: svn://www.crystallography.net/tcod
 #  Repository UUID: f3fa9230-7ed6-4b69-bb24-8fd292b8517b
-#  Revision: 274
+#  Revision: 293
 #**
 
 package COD::CIF::Tags::TCOD;
@@ -31,8 +31,16 @@ _tcod_atom_site_initial_Cartn_z
 _tcod_atom_site_initial_fract_x
 _tcod_atom_site_initial_fract_y
 _tcod_atom_site_initial_fract_z
-_tcod_atom_site_residual_force
-_tcod_atom_site_residual_force_magnitude
+_tcod_atom_site_resid_force_Cartn_x
+_tcod_atom_site_resid_force_Cartn_y
+_tcod_atom_site_resid_force_Cartn_z
+_tcod_atom_site_resid_force_dir_cos_x
+_tcod_atom_site_resid_force_dir_cos_y
+_tcod_atom_site_resid_force_dir_cos_z
+_tcod_atom_site_resid_force_fract_x
+_tcod_atom_site_resid_force_fract_y
+_tcod_atom_site_resid_force_fract_z
+_tcod_atom_site_resid_force_magnitude
 _tcod_atom_sites_sim_cell_tran_matrix_11
 _tcod_atom_sites_sim_cell_tran_matrix_12
 _tcod_atom_sites_sim_cell_tran_matrix_13
@@ -61,15 +69,19 @@ _tcod_computation_stderr
 _tcod_computation_stdout
 _tcod_computation_step
 _tcod_computation_wallclock_time
+_tcod_content_encoding_[]
 _tcod_content_encoding_id
 _tcod_content_encoding_layer_id
 _tcod_content_encoding_layer_type
+_tcod_database_[]
 _tcod_database_code
+_tcod_ff_[]
 _tcod_ff_citation_id
 _tcod_ff_id
 _tcod_ff_name
 _tcod_ff_type
 _tcod_ff_version
+_tcod_file_[]
 _tcod_file_content_encoding
 _tcod_file_contents
 _tcod_file_contents_type
@@ -103,21 +115,21 @@ _tcod_software_compiler_options
 _tcod_software_compiler_version
 _tcod_software_executable_path
 _tcod_software_library
-_tcod_software_library_binary_uri
+_tcod_software_library_compilation_date
 _tcod_software_library_compilation_environment
-_tcod_software_library_compilation_timestamp
 _tcod_software_library_compiler_name
 _tcod_software_library_compiler_options
 _tcod_software_library_compiler_version
 _tcod_software_library_id
 _tcod_software_library_path
-_tcod_software_library_source_uri
+_tcod_software_library_uri
 _tcod_software_library_version
-_tcod_software_OS_compilation_timestamp
+_tcod_software_OS_compilation_date
+_tcod_software_OS_version
 _tcod_software_package
 _tcod_software_package_binary_uri
+_tcod_software_package_compilation_date
 _tcod_software_package_compilation_environment
-_tcod_software_package_compilation_timestamp
 _tcod_software_package_source_uri
 _tcod_software_package_version
 _tcod_software_runtime_CPU
@@ -125,10 +137,11 @@ _tcod_software_runtime_CPU_version
 _tcod_software_runtime_OS
 _tcod_software_runtime_OS_binary_uri
 _tcod_software_runtime_OS_source_uri
-_tcod_software_runtime_OS_version
+_tcod_software_source_uri
 _tcod_source_database_name
 _tcod_source_database_URI
 _tcod_source_database_version
+_tcod_source_structure_database_[]
 _tcod_source_structure_database_id
 _tcod_source_structure_database_URI
 _tcod_source_structure_database_uuid
