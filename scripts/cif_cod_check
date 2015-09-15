@@ -1327,24 +1327,15 @@ sub check_symmetry_operators
 
     my $dataname = prefix_dataname($dataset->{name});
 
-    my $symop_term = '(?:x|y|z|\d|\d*\.\d+|\d+\.\d*|\d/\d)';
-    my $symop_component =
-        "(?:(?:-|\\+)?$symop_term|" .
-        "(?:-|\\+)?$symop_term(?:-|\\+)$symop_term|" .
-        "(?:-|\\+)?$symop_term(?:-|\\+)$symop_term(?:-|\\+)$symop_term)";
-
     my $symops = $dataset->{values}{_symmetry_equiv_pos_as_xyz};
 
     if( !defined $symops ) {
         return 0; # Let's not regard missing symmetry operators as error.
     } else {
         for my $symop (@$symops) {
-            my $no_spaces = $symop;
-            $no_spaces =~ s/\s//g;
-            if( $no_spaces !~ 
-                /^($symop_component,){2}($symop_component)$/i ) {
-                warning( $0, $filename, $dataname, 'symmetry operator '
-                       . "'$symop' could not be parsed", undef );
+            my $warning = check_symmetry_operator( $symop );
+            if( defined $warning ) {
+                warning( $0, $filename, $dataname, $warning, undef );
                 return 1;
             }
         }
