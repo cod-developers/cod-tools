@@ -16,9 +16,21 @@ use POSIX;
 
 require Exporter;
 our @ISA = qw(Exporter);
-our @EXPORT = qw( vector_sub vector_add vector_modulo_1 
+our @EXPORT = qw( vdot vector_sub vector_add vector_modulo_1 
                   vector_is_zero vectors_are_equal round_vector );
 our @EXPORT_OK = qw( distance matrix_vector_mul modulo_1 );
+
+sub vdot($$)
+{
+    my ($v1, $v2) = @_;
+    my $r = 0;
+
+    for( my $i = 0; $i <= $#$v1; $i++ ) {
+        $r += $v1->[$i] * $v2->[$i]
+    }
+
+    return $r;
+}
 
 sub vector_sub($$)
 {
