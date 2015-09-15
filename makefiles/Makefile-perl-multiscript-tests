@@ -124,11 +124,17 @@ include .diff.depend
 ALL_SCRIPTS = ${filter-out %~, ${wildcard ${SCRIPT_DIR}/*}}
 SCRIPT_DEPENDS = ${ALL_SCRIPTS:${SCRIPT_DIR}/%=${SCRIPT_DIR}/.%.d}
 
-ALL_INPUTS = $(wildcard ${SCRIPT_TST_DIR}/*.*)
+ALL_INPUTS = $(wildcard ${SCRIPT_TST_DIR}/*.* ${SHELL_TSTDIR}/*.sh)
 
 .diff.depend: .script.depend ${ALL_INPUTS}
-	@perl -le \
-		'for(@ARGV){ print "${OUTPUT_DIR}/",$$1,"_",$$2,".diff: ",$$1 if m|/(.*?)_(\d{2,4})\.\w{3}$$| }' \
+	@perl -l \
+		-e 'for (@ARGV) {'\
+		-e '    if ( m|/(.*?)_(\d{2,4})\.\w{3}$$| ) {' \
+		-e '        print "${OUTPUT_DIR}/",$$1,"_",$$2,".diff: ",$$1 ' \
+		-e '    } elsif (m|.*/(.*?)_(\d{2,4})\.sh$$|) {' \
+		-e '        print "${SHELL_OUTDIR}/$$1_$$2.diff: ${SCRIPT_DIR}/$$1" ' \
+		-e '    } else {  };' \
+		-e '}' \
 	${filter-out .script.depend,$^} \
 	| sed 's,: cases/,: scripts/,' \
 	| sed 's,tests/outputs/cases/,tests/outputs/,' \
@@ -291,6 +297,7 @@ tests alltests: test shtests
 
 .PHONY: listdiff blame
 
+DIFF_DIRS = $(dir ${YAPP_SOURCES} ${YAPP_PARSER_SRC_DIR}/ ${SWIG_MODULES})
 listdiff: # test
 	@-( test -d ${OUTPUT_DIR} && \
 	    ls -l ${OUTPUT_DIR}/*.diff | awk '{if( $$5 > 0 ) print}' ) || \
@@ -298,6 +305,9 @@ listdiff: # test
 	@-( test -d ${SHELL_OUTDIR} && \
 	    ls -l ${SHELL_OUTDIR}/*.diff | awk '{if( $$5 > 0 ) print}' ) || \
 	    true
+	for DIR in ${DIFF_DIRS}; do \
+		${MAKE} -C $$DIR $@; \
+	done
 
 blame:
 	@-( test -d ${OUTPUT_DIR} && \

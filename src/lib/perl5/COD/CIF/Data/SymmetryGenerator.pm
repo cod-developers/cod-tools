@@ -289,13 +289,7 @@ sub copy_atom($)
 sub copy_array($)
 {
     my ($arr) = @_;
-
-    my @copy_arr;
-    foreach my $value (@$arr)
-    {
-        push(@copy_arr, $value);
-    }
-
+    my @copy_arr = @{$arr};
     return \@copy_arr;
 }
 

@@ -5,14 +5,14 @@
 #$URL$
 #------------------------------------------------------------------------
 #* 
-#  A list of DFT CIF dictionary tags. Compiled from version 0.004 of
+#  A list of DFT CIF dictionary tags. Compiled from version 0.009 of
 #  cif_dft.dic:
 #
 #  URL: svn://www.crystallography.net/tcod/cif/dictionaries/cif_dft.dic
 #  Relative URL: ^/cif/dictionaries/cif_dft.dic
 #  Repository Root: svn://www.crystallography.net/tcod
 #  Repository UUID: f3fa9230-7ed6-4b69-bb24-8fd292b8517b
-#  Revision: 263
+#  Revision: 293
 #**
 
 package COD::CIF::Tags::DFT;
@@ -61,22 +61,28 @@ _dft_basisset_URI
 _dft_BZ_integration_citation_id
 _dft_BZ_integration_energy_conv
 _dft_BZ_integration_Froyen_map
-_dft_BZ_integration_grid_[]
-_dft_BZ_integration_grid_X
-_dft_BZ_integration_grid_Y
-_dft_BZ_integration_grid_Z
-_dft_BZ_integration_grid_dens_[]
 _dft_BZ_integration_grid_dens_X
 _dft_BZ_integration_grid_dens_Y
 _dft_BZ_integration_grid_dens_Z
+_dft_BZ_integration_grid_IBZ_point_[]
+_dft_BZ_integration_grid_IBZ_point_id
 _dft_BZ_integration_grid_IBZ_points
-_dft_BZ_integration_grid_shift_[]
+_dft_BZ_integration_grid_IBZ_point_weight
+_dft_BZ_integration_grid_IBZ_point_X
+_dft_BZ_integration_grid_IBZ_point_Y
+_dft_BZ_integration_grid_IBZ_point_Z
 _dft_BZ_integration_grid_shift_X
 _dft_BZ_integration_grid_shift_Y
 _dft_BZ_integration_grid_shift_Z
 _dft_BZ_integration_grid_type
+_dft_BZ_integration_grid_X
+_dft_BZ_integration_grid_Y
+_dft_BZ_integration_grid_Z
 _dft_BZ_integration_method
+_dft_BZ_integration_method_other
 _dft_BZ_integration_MP_order
+_dft_BZ_integration_smearing_method
+_dft_BZ_integration_smearing_method_other
 _dft_BZ_integration_smearing_width
 _dft_cell_density_conv
 _dft_cell_energy
@@ -84,7 +90,6 @@ _dft_cell_energy_conv
 _dft_cell_magn_moment
 _dft_cell_magn_orbital_moment
 _dft_cell_magn_spin_moment
-_dft_cell_periodic_BC_[]
 _dft_cell_periodic_BC_X
 _dft_cell_periodic_BC_Y
 _dft_cell_periodic_BC_Z
@@ -98,13 +103,16 @@ _dft_ewald_energy
 _dft_fermi_energy
 _dft_hartree_energy
 _dft_kinetic_energy
+_dft_kinetic_energy_cutoff_charge_density
+_dft_kinetic_energy_cutoff_EEX
+_dft_kinetic_energy_cutoff_wavefunctions
 _dft_nuclear_repulsion_energy
 _dft_pseudopotential_citation_id
 _dft_pseudopotential_type
 _dft_pseudopotential_type_other_name
 _dft_XC_correlation_functional
 _dft_XC_exchange_functional
-_dft_XC_functional_[]
+_dft_XC_functional
 _dft_XC_functional_citation_id
 _dft_XC_functional_type
 _dft_XC_functional_type_other_name

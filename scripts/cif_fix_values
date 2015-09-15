@@ -1072,11 +1072,14 @@ sub fix_value_of_exptl_crystal_density_meas($$) {
                     note($0, $filename, $dataname, $report_msg, undef);
                     next;
                 }
-
+                
                 if( $value_modif =~
                     /^
                         (?: ' \s*)?
-                        ($number_pos){1}+ \s* (?: \( \s* ($sigma) \s* \) )?
+                        (?> ($number_pos) )
+                        # atomic group is used for not to match 150K
+                        # otherwise it backtracks and matches: [15,0,K]
+                        \s* (?: \( \s* ($sigma) \s* \) )?
                         \s* \(? \s* ($units_equiv_Mg_per_m3)? \s* \)?
                         \s* \(? \s* $measured_at ? \s*
                             (?: ($temp_RT) |

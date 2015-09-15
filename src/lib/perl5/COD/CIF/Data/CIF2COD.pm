@@ -689,7 +689,8 @@ sub get_spacegroup_Hall_symbol
 sub get_experimental_method
 {
     my ($values) = @_;
-    my @powder_tags = grep /^_pd_/, @COD::CIF::Tags::DictTags::tag_list;
+    my @powder_tags = map {lc} grep /^_pd_/,
+                      @COD::CIF::Tags::DictTags::tag_list;
 
     for my $tag (@powder_tags) {
         if( exists $values->{$tag} ) {
