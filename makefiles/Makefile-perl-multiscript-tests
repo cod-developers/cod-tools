@@ -291,6 +291,7 @@ tests alltests: test shtests
 
 .PHONY: listdiff blame
 
+DIFF_DIRS = $(dir ${YAPP_SOURCES} ${YAPP_PARSER_SRC_DIR}/ ${SWIG_MODULES})
 listdiff: # test
 	@-( test -d ${OUTPUT_DIR} && \
 	    ls -l ${OUTPUT_DIR}/*.diff | awk '{if( $$5 > 0 ) print}' ) || \
@@ -298,6 +299,9 @@ listdiff: # test
 	@-( test -d ${SHELL_OUTDIR} && \
 	    ls -l ${SHELL_OUTDIR}/*.diff | awk '{if( $$5 > 0 ) print}' ) || \
 	    true
+	for DIR in ${DIFF_DIRS}; do \
+		${MAKE} -C $$DIR $@; \
+	done
 
 blame:
 	@-( test -d ${OUTPUT_DIR} && \
