@@ -20,6 +20,7 @@ use COD::Spacegroups::Symop::Algebra qw(symop_vector_mul);
 use COD::Spacegroups::Symop::Parse;
 use COD::Algebra::Vector qw(distance
                             matrix_vector_mul
+                            vdot
                             vector_sub);
 
 require Exporter;
@@ -31,7 +32,6 @@ our @EXPORT = qw(
 
 sub get_atoms( $$ );
 
-sub vdot( $$ );
 sub length_of_fractional_vector( $$ );
 sub distance_fractional( $$$ );
 
@@ -327,18 +327,6 @@ sub metric_tensor_from_cell
     $g->[2][1] = $g->[1][2];
 
     return $g;
-}
-
-sub vdot( $$ )
-{
-    my ($v1, $v2) = @_;
-    my $r = 0;
-
-    for( my $i = 0; $i <= $#$v1; $i++ ) {
-        $r += $v1->[$i] * $v2->[$i]
-    }
-
-    return $r;
 }
 
 sub length_of_fractional_vector( $$ )

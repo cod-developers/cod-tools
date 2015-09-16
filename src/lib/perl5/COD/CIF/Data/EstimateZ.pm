@@ -17,6 +17,7 @@ package COD::CIF::Data::EstimateZ;
 use strict;
 use warnings;
 use COD::Cell qw(cell_volume);
+use COD::CIF::Data qw(get_cell);
 
 require Exporter;
 our @ISA = qw(Exporter);
@@ -107,30 +108,14 @@ sub get_volume
         if( defined $values->{_cell_length_a} &&
             defined $values->{_cell_length_b} &&
             defined $values->{_cell_length_c} ) {
-            my @cell = get_unit_cell( $values );
+            my @cell = get_cell( $values, undef, undef, { silent => 1 } );
+            @cell[3..5] = map { defined $_ ? $_ : 90 } @cell[3..5];
             return cell_volume( @cell );
         } else {
             return undef
         }
     }
     return undef
-}
-
-sub get_unit_cell
-{
-    my $values = $_[0];
-
-    return (
-        $values->{_cell_length_a}[0],
-        $values->{_cell_length_b}[0],
-        $values->{_cell_length_c}[0],
-        defined $values->{_cell_angle_alpha} ?
-            $values->{_cell_angle_alpha}[0] : 90,
-        defined $values->{_cell_angle_beta} ?
-            $values->{_cell_angle_beta}[0] : 90,
-        defined $values->{_cell_angle_gamma} ?
-            $values->{_cell_angle_gamma}[0] : 90
-    );
 }
 
 1;
