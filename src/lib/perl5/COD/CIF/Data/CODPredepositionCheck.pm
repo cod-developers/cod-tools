@@ -28,7 +28,8 @@ use Capture::Tiny ':all';
 use COD::CIF::Data::CIF2COD qw(cif2cod);
 use COD::CIF::Tags::Print;
 use COD::Precision;
-use COD::UserMessage qw(prefix_dataname print_message parse_message process_warnings);
+use COD::UserMessage qw(prefix_dataname print_message parse_message);
+use COD::ErrorHandler qw(process_warnings);
 
 our @identity_tags = qw(
     _cell_length_a
