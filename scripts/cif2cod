@@ -21,7 +21,8 @@ use COD::CIF::Parser qw( parse_cif );
 use COD::CIF::Data::CIF2COD qw(cif2cod);
 use COD::SOptions;
 use COD::SUsage;
-use COD::UserMessage qw(error process_warnings process_errors);
+use COD::UserMessage qw( parse_message sprint_message
+                         process_warnings process_errors );
 
 my $print_header = 0;
     # Indicates whether to print out a header with column names
@@ -189,6 +190,12 @@ my %options;
     "--help,--usage"  => sub { usage; exit },
 );
 
+my %die_on_error_level = (
+    ERROR   => $die_on_errors,
+    WARNING => $die_on_warnings,
+    NOTE    => $die_on_notes
+);
+
 my @print_columns;
 
 if( defined $user_columns ) {
@@ -220,12 +227,24 @@ for my $filename (@ARGV) {
 
     my ( $data, $err_count, $messages ) = parse_cif( $filename, $parser_options );
 
-    print STDERR $_ foreach ( @$messages );
-    if ( $err_count > 0 ) {
-        error( $0, $filename, undef, "$err_count error(s) "
-             . "encountered while parsing the file", undef );
-        die if $die_on_errors;
-    }
+    my %err_level_counter;
+    foreach ( @$messages ) {
+        warn $_;
+        my $parsed_message = parse_message($_);
+        if ( defined $parsed_message->{errlevel} ) {
+            $err_level_counter{$parsed_message->{errlevel}}++;
+        }
+    };
+
+    my @error_levels = ( 'NOTE', 'WARNING', 'ERROR' );
+    foreach ( @error_levels ) {
+        if ( defined $err_level_counter{$_} && $err_level_counter{$_} > 0 ) {
+            my $message = sprint_message( $0, $filename, undef, 'ERROR',
+                            "$err_level_counter{$_} $_(s) encountered "
+                          . 'while parsing the file', undef );
+            $die_on_error_level{$_} ? die $message : warn $message;
+        }
+    };
 
     my @extracted;
     foreach my $dataset (@$data) {
@@ -255,7 +274,6 @@ for my $filename (@ARGV) {
         my %data = %$data;
 
         # Print out the collected data fields:
-        
         my @data_fields = @COD::CIF::Data::CIF2COD::default_data_fields;
         if( $print_header || defined $user_columns ) {
             @data_fields = @print_columns;
@@ -267,7 +285,7 @@ for my $filename (@ARGV) {
             for my $key (@data_fields) {
                 my $value = $data{$key};
                 if( defined $value ) {
-                    # remove trailing dot from numbers:
+                    # Remove trailing dot from numbers:
                     $value =~ s/^\s*(\d+)\.\s*$/$1/;
                     print $key . $separator . $value . "\n";
                 }
@@ -277,7 +295,7 @@ for my $filename (@ARGV) {
             for my $key (@data_fields) {
                 my $value = $data{$key};
                 if( defined $value ) {
-                    # remove trailing dot from numbers:
+                    # Remove trailing dot from numbers:
                     $value =~ s/^\s*(\d+)\.\s*$/$1/;
                     if( $key ne "text" ) {
                         $value =~ s/\\/\\\\/g;
