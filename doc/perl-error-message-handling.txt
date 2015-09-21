@@ -1,0 +1,122 @@
+CONTENTS:
+  1. INTRO
+  2. COMMAND LINE OPTIONS
+  3. RAISING AND HANDLING ERROR MESSAGES
+  4. PATTERNS
+    4A. CIF PARSER SCOPE
+    4B. SINGLE DATABLOCK SCOPE
+    4C. ONE-LINER
+  3. DISCUSSION
+=====================================================================
+1. INTRO
+
+The document describes the most common ways Perl error messages should be
+handled in the COD (Crystallography Open Database) software.
+
+Not all error messages are equally severe and it is sometimes desirable for
+the script to differentiate its behaviour in regards to that -- terminate on
+one type of error messages and continue on other. Currently, 3 severity levels
+are used in the COD software -- NOTE, WARNING and ERROR -- which are described
+in [paper citation/add descriptions to the document].
+
+For the error message format used through-out this document, please refer to 
+the 'error-messages-conventions.txt' document.
+
+2. COMMAND LINE OPTIONS
+
+The default behaviour of most COD scripts is to terminate on ERROR level
+warnings and continue on all other. In case the script requires different
+customization on different runs, the following options should be implemented:
+
+#* -c, --always-continue
+#*                     Continue processing and return successful return status
+#*                     despite error messages of any severity being raised.
+#* -c-, --always-die
+#*                     Stop and return error status if error messages of any
+#*                     severity are raised.
+#*
+#* --continue-on-errors
+#*                     Do not terminate script if errors are raised.
+#* --die-on-errors
+#*                     Terminate script immediately if errors are raised (default).
+#*
+#* --continue-on-warnings
+#*                     Do not terminate script if warnings are raised (default).
+#* --die-on-warnings
+#*                     Terminate script immediately if warnings are raised.
+#*
+#* --continue-on-notes
+#*                     Do not terminate script if notes are raised (default).
+#* --die-on-notes
+#*                     Terminate script immediately if notes are raised.
+
+Example of the implementation of these options can be found in 'cod-tools'
+package scripts like 'cif2cod', 'cif_molecule', etc.
+
+3. RAISING ERROR MESSAGES
+
+Error messages are raised via the in-built Perl subroutines warn() and die().
+The die() subroutine is only used to raise ERROR level messages. All messages
+should be prefixed by their severity level followed by a comma and a white
+space (e.g 'NOTE, '). If no severity level is provided, messages raised via
+die() should be treated as ERRORs and messages raised via warn() should be
+treated as WARNINGs.Messages should terminate with a new line symbol ('\n')
+to prevent the concatenation of additional information to the end of the
+message. Messages can be raised in any part of the program (module, subroutine),
+but should be handled in the top level of the script.
+
+4. HANDLING ERROR MESSAGES
+
+Messages raised by warn() are captured and formatted by locally redefining 
+the Perl __WARN__ signal handling subroutine in the top level of the script.
+For example:
+
+{
+    local $SIG{__WARN__} = {
+        my $message = my_formatting_subroutine(@_);
+        $die_on_notes ? die $message : warn $message;
+    };
+
+    warn "NOTE, this warn signal will be handled locally -- " 
+       . "script will even die if required\n";
+}
+
+Handling of messages raised by die() requires a different approach that 
+is most similar to try-catch mechanisms in other languages (JAVA, for example).
+Since there is no way to prevent the script from terminating by simply
+locally overwritting the $SIG{__DIE__} signal handler, the signal itself must
+be caught with the help of eval{} block statement and stored in the $@ variable.
+It can then be passed to an error handling subroutine. For example:
+
+for (my $i = 0; $i++; $i < 3) {
+    eval {
+        die "ERROR, died at iteration $i -- died at iteration 1 is also true\n";
+    };
+    if ($@) {
+        my $message = my_formatting_subroutine($@);
+        $die_on_errors ? die $message : warn $message;
+    }
+};
+
+One of the main differences between the warn() and die() subroutines is that
+the die signal exits all inner blocks along the way until the signal is caught.
+As a result, the only place where the script can continue after the die()
+subroutine call is outside the eval{} block. This is not true for the warn()
+subroutine -- the script can execute statements right after the warn()
+subroutine call.
+
+4. PATTERNS
+
+Error message handling was recognised as a cross-cutting concern and
+COD::ErrorHandler Perl module was developed to aid this task. The module
+contains subroutine that can be used as die and warn signal handlers, as
+well as a subroutine to handle error returned by the COD::CIF::Parser.
+
+4A. CIF PARSER SCOPE
+
+3B. SINGLE DATABLOCK SCOPE
+
+3C. ONE-LINER
+
+3. DISCUSSION
+    TO-DO: Serializing/deserializing additional information?
