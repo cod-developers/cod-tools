@@ -22,7 +22,7 @@ use COD::CIF::Data::CIF2COD qw(cif2cod);
 use COD::SOptions;
 use COD::SUsage;
 use COD::UserMessage qw( parse_message sprint_message );
-use COD::ErrorHandler qw( process_warnings process_errors );
+use COD::ErrorHandler qw( process_warnings process_errors process_parser_messages );
 
 my $print_header = 0;
     # Indicates whether to print out a header with column names
@@ -190,11 +190,11 @@ my %options;
     "--help,--usage"  => sub { usage; exit },
 );
 
-my %die_on_error_level = (
+my $die_on_error_level = {
     ERROR   => $die_on_errors,
     WARNING => $die_on_warnings,
     NOTE    => $die_on_notes
-);
+};
 
 my @print_columns;
 
@@ -226,25 +226,7 @@ for my $filename (@ARGV) {
     my $parser_options = { 'parser' => $use_parser, 'no_print' => 1 };
 
     my ( $data, $err_count, $messages ) = parse_cif( $filename, $parser_options );
-
-    my %err_level_counter;
-    foreach ( @$messages ) {
-        warn $_;
-        my $parsed_message = parse_message($_);
-        if ( defined $parsed_message->{errlevel} ) {
-            $err_level_counter{$parsed_message->{errlevel}}++;
-        }
-    };
-
-    my @error_levels = ( 'NOTE', 'WARNING', 'ERROR' );
-    foreach ( @error_levels ) {
-        if ( defined $err_level_counter{$_} && $err_level_counter{$_} > 0 ) {
-            my $message = sprint_message( $0, $filename, undef, 'ERROR',
-                            "$err_level_counter{$_} $_(s) encountered "
-                          . 'while parsing the file', undef );
-            $die_on_error_level{$_} ? die $message : warn $message;
-        }
-    };
+    process_parser_messages( $messages, $die_on_error_level );
 
     my @extracted;
     foreach my $dataset (@$data) {
@@ -254,10 +236,7 @@ for my $filename (@ARGV) {
         local $SIG{__WARN__} = sub {
                                    process_warnings(
                                        $filename, $dataname, @_,
-                                       {
-                                         WARNING => $die_on_warnings,
-                                         NOTE    => $die_on_notes,
-                                       }
+                                       $die_on_error_level
                                    ) };
 
         my $extracted_dataset;
