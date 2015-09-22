@@ -78,8 +78,9 @@ use COD::CIF::Tags::Print;
 use COD::CIF::Tags::Manage;
 use COD::SOptions;
 use COD::SUsage;
-use COD::UserMessage qw(sprint_message error);
-use COD::ErrorHandler qw(process_errors process_warnings);
+use COD::UserMessage qw(sprint_message);
+use COD::ErrorHandler qw(process_errors process_warnings
+                         process_parser_messages report_message);
 
 no warnings 'recursion';
 
@@ -487,6 +488,12 @@ my $die_on_notes    = 0;
     "--dont-remove-duplicate-molecules" => sub { },
 );
 
+my $die_on_error_level = {
+    ERROR   => $die_on_errors,
+    WARNING => $die_on_warnings,
+    NOTE    => $die_on_notes
+};
+
 #==============================================================================#
 # Forward subroutine definitions:
 
@@ -553,21 +560,17 @@ if( $cif_header_file ) {
 
 for my $filename (@ARGV) {
 
-    my $options = { 'parser' => $use_parser, 'no_print' => 1 };
+    my $options = { 'parser' => $use_parser, 'no_print' => 1, 'fix_errors' =>1 };
     my ( $data, $err_count, $messages ) = parse_cif( $filename, $options );
+    process_parser_messages( $messages, $die_on_error_level );
 
-    if ( $err_count > 0 ) {
-        print STDERR $_ foreach ( @$messages );
-        error( $0, $filename, undef, "$err_count error(s) "
-             . "encountered while parsing the file", undef );
-        next;
-    }
-    print STDERR $_ foreach ( @$messages );
+    # Is this line necessary?
+    # next if ( $err_count > 0 );
 
     if( !ref $data ||
         !@$data || !defined $data->[0] || !defined $data->[0]{name} ) {
-        warn sprint_message( $0, $filename, undef, 'WARNING',
-                             'file seems to be empty', undef );
+        report_message( $0, $filename, undef, 'WARNING',
+                'file seems to be empty', $die_on_warnings );
         next;
     }
 

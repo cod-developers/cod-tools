@@ -27,7 +27,7 @@ use COD::ShowStruct;
 use COD::Spacegroups::Symop::Parse;
 use COD::Spacegroups::Lookup::COD;
 use COD::Spacegroups::Names;
-use COD::UserMessage qw(error print_message);
+use COD::UserMessage qw(error);
 use COD::ErrorHandler qw(process_warnings);
 use COD::SOptions;
 use COD::SUsage;
@@ -433,6 +433,7 @@ for my $filename (@ARGV) {
         local $SIG{__WARN__} =
                    sub {process_warnings( $filename, $dataname, @_,
                                           {
+                                            ERROR   => 0,
                                             WARNING => $die_on_warnings,
                                             NOTE    => $die_on_notes,
                                           }
@@ -473,8 +474,9 @@ for my $filename (@ARGV) {
         local $SIG{__WARN__} =
                    sub {process_warnings( $filename, undef, @_,
                                           {
-                                            WARNING => $die_on_warnings,
-                                            NOTE    => $die_on_notes,
+                                            ERROR   => 0,
+                                            WARNING => 0,
+                                            NOTE    => 0,
                                           }
                                         ) };
         my ($f_warnings, $f_errors) = check_pdcif_relations( $data );

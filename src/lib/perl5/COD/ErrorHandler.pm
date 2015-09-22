@@ -15,11 +15,12 @@ use warnings;
 use COD::UserMessage qw( sprint_message parse_message );
 require Exporter;
 our @ISA = qw(Exporter);
-our @EXPORT_OK = qw( process_warnings process_errors process_parser_messages );
+our @EXPORT_OK = qw( process_warnings process_errors
+                     process_parser_messages report_message );
 
 sub process_parser_messages
 {
-    my ($messages, $die_on_error_level, $print_order) = (@_);
+    my ( $messages, $die_on_error_level, $print_order) = (@_);
     $print_order = [ 'NOTE', 'WARNING', 'ERROR' ] if !defined $print_order;
 
     my $filename;
@@ -49,9 +50,30 @@ sub process_parser_messages
     };
 };
 
+sub report_message
+{
+    my ( $program, $filename, $dataname, $error_level, $message, $exit ) = @_;
+
+    $message = sprint_message( $program,
+                               $filename,
+                               $dataname,
+                               $error_level,
+                               $message,
+                               undef
+                             );
+
+    print STDERR $message;
+    if ( $exit ) {
+        print STDERR sprint_message( $program, $filename, $dataname, 'ERROR',
+                                     "1 $error_level(s) encountered -- die on "
+                                   . "$error_level(s) requested", undef ) ;
+        exit 1;
+    }
+}
+
 sub process_errors
 {
-    my ( $filename, $dataname, $message, $die ) = @_;
+    my ( $filename, $dataname, $message, $exit ) = @_;
 
     $message =~ s/^([A-Z]+),\s*//;
     # Messages with missing STATUS identifiers probably did not originate in
@@ -61,20 +83,9 @@ sub process_errors
         $message = lcfirst($message);
     };
     my $error_level = defined $1 ? $1 : 'ERROR';
+    $exit = 1 if $error_level ne 'ERROR';
 
-    $message = sprint_message( $0,
-                               $filename,
-                               $dataname,
-                               $error_level,
-                               $message,
-                               undef
-                             );
-
-    if ( $error_level ne 'ERROR' || $die ) {
-       CORE::die $message;
-    } else {
-       print STDERR $message;
-    };
+    report_message($0, $filename, $dataname, $error_level, $message, $exit);
 }
 
 sub process_warnings
@@ -89,10 +100,7 @@ sub process_warnings
         $message = lcfirst($message);
     };
     my $error_level = defined $1 ? $1 : 'WARNING';
-    if ( defined $die->{$error_level} && $die->{$error_level} ) {
-       CORE::die "$error_level, $message";
-    } else {
-       print STDERR sprint_message( $0, $filename, $dataname,
-                                    $error_level, $message, undef );
-    }
+    my $exit = defined $die->{$error_level} ? $die->{$error_level} : 1;
+
+    report_message($0, $filename, $dataname, $error_level, $message, $exit);
 }
