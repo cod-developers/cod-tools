@@ -78,7 +78,6 @@ use COD::CIF::Tags::Print;
 use COD::CIF::Tags::Manage;
 use COD::SOptions;
 use COD::SUsage;
-use COD::UserMessage qw(sprint_message);
 use COD::ErrorHandler qw(process_errors process_warnings
                          process_parser_messages report_message);
 
@@ -538,23 +537,24 @@ sub gcd
 }
 
 my $cif_header;
+eval {
+    if( $cif_header_file ) {
+        open( HDR, "$cif_header_file" ) or die "ERROR, "
+          . "could not open header file for input -- ". lcfirst($!) . "\n";
 
-if( $cif_header_file ) {
-    open( HDR, "$cif_header_file" ) or
-        die sprint_message( $0, $cif_header_file, undef, 'ERROR',
-                            "could not open header file for input ",
-                            lcfirst($!) );
+        $cif_header = "";
+        while( <HDR> ) {
+            last unless /^#/;
+            $cif_header .= $_;
+        };
 
-    $cif_header = "";
-    while( <HDR> ) {
-        last unless /^#/;
-        $cif_header .= $_;
+        close( HDR ) or die "ERROR, "
+           . "error reading header file -- " . lcfirst($!) . "\n";
     }
-
-    close( HDR ) or
-        die sprint_message( $0, $cif_header_file, undef, 'ERROR',
-                            "error reading header file", lcfirst($!) );
-}
+};
+if ($@) {
+    process_errors( $cif_header_file, undef, $@, $die_on_errors );
+};
 
 @ARGV = ("-") unless @ARGV;
 
