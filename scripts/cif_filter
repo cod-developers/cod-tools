@@ -38,8 +38,8 @@ use COD::Spacegroups::Symop::Parse qw( is_symop_parsable
 use COD::Spacegroups::Lookup::COD;
 use COD::Formulae::Parser::AdHoc;
 use COD::CIF::Unicode2CIF;
-use COD::UserMessage qw(sprint_message);
-use COD::ErrorHandler qw(process_errors process_warnings);
+use COD::ErrorHandler qw(process_errors process_warnings
+                         process_parser_messages report_message);
 use COD::SOptions;
 use COD::SUsage;
 
@@ -405,26 +405,29 @@ my %spacegroups = map {
     "--help,--usage" => sub { usage; exit },
 );
 
+my $die_on_error_level = {
+    ERROR   => $die_on_errors,
+    WARNING => $die_on_warnings,
+    NOTE    => $die_on_notes
+};
+
 # Constructing a list of recognised data names from various sources
 my @extra_tags = ();
+eval {
+    if( defined $extra_tag_file ) {
+        open( EXTRA, "$extra_tag_file" ) or die 'ERROR, '
+          . 'could not open tag list for reading -- ' . lcfirst($!) . "\n";
 
-if( defined $extra_tag_file ) {
-    open( EXTRA, "$extra_tag_file" ) or do {
-        my $error = sprint_message( $0, $extra_tag_file, undef, "ERROR",
-                                    'could not open tag list for reading',
-                                    lcfirst($!) );
-        $die_on_errors ? die $error : warn $error;
-    };
+        @extra_tags = map {s,\s,,g;lc($_)} map {split} grep /^\s*_/, <EXTRA>;
 
-    @extra_tags = map {s,\s,,g;lc($_)} map {split} grep /^\s*_/, <EXTRA>;
-
-    close( EXTRA ) or do {
-        my $error = sprint_message( $0, $extra_tag_file, undef, 'ERROR',
-                                    'error while closing tag list file '
-                                  . 'after reading', undef );
-        $die_on_errors ? die $error : warn $error;
+        close( EXTRA ) or die 'ERROR, '
+          . 'error while closing tag list file after reading -- '
+          . lcfirst($!) . "\n";
     }
-}
+};
+if ($@) {
+    process_errors( $extra_tag_file, undef, $@, $die_on_errors );
+};
 
 my %excluded_tags  = map { ($_,$_) } @COD::CIF::Tags::Excluded::tag_list;
 
@@ -438,27 +441,25 @@ my @dictionary_tags = ( @COD::CIF::Tags::DictTags::tag_list,
 my %dictionary_tags = map { $_, $_ } @dictionary_tags;
 
 # Reading the header file
-if( defined $cif_header_file ) {
-    open( HEADER, "$cif_header_file" ) or do {
-        my $error = sprint_message( $0, $cif_header_file, undef, 'ERROR',
-                                    'could not open CIF header file for '
-                                  . 'reading', lcfirst($!) );
-        $die_on_errors ? die $error : warn $error;
-    };
+eval {
+    if( defined $cif_header_file ) {
+        open( HEADER, "$cif_header_file" ) or die 'ERROR, '
+          . 'could not open CIF header file for reading -- ' . lcfirst($!) . "\n";
 
-    $cif_comment_header = "";
-    while( <HEADER> ) {
-        last unless /^\#|^\s*$/;
-        $cif_comment_header .= $_;
-    }
+        $cif_comment_header = "";
+        while( <HEADER> ) {
+            last unless /^\#|^\s*$/;
+            $cif_comment_header .= $_;
+        }
 
-    close( HEADER ) or do {
-        my $error = sprint_message( $0, $cif_header_file, undef, 'ERROR',
-                                    'error while closing CIF header file '
-                                  . 'after reading', lcfirst($!) );
-        $die_on_errors ? die $error : warn $error;
+        close( HEADER ) or die 'ERROR, '
+         . 'error while closing CIF header file after reading -- '
+         . lcfirst($!) . "\n";
     }
-}
+};
+if ($@) {
+    process_errors( $cif_header_file, undef, $@, $die_on_errors );
+};
 
 # Reading bibliography from additional sources
 my $reference;
@@ -473,39 +474,31 @@ if( defined $biblio ) {
                             no_print   => 1,
                             fix_errors => 1 };
         ($bib_blocks, $err_count, $messages) = parse_cif($biblio, $bib_options);
-
-        print STDERR $_ foreach ( @$messages );
-        if( $err_count > 0 ) {
-            my $error = sprint_message( $0, $biblio, undef, 'ERROR',
-                        "$err_count error(s) encountered while parsing "
-                      . 'the bibliography file', undef );
-            $die_on_errors ? die $error : warn $error;
-        }
+        process_parser_messages( $messages, $die_on_error_level );
     } else {
-        open( BIBLIO, "<:utf8", $biblio ) or do {
-            my $error = sprint_message( $0, $biblio, undef, 'ERROR',
-                                        'could not open bibliography '
-                                      . 'file for reading', lcfirst($!) );
-            $die_on_errors ? die $error : warn $error;
+        eval {
+            open( BIBLIO, "<:utf8", $biblio ) or die 'ERROR, '
+              . 'could not open bibliography file for reading -- '
+              . lcfirst($!) . "\n";
+
+            if( $biblio =~ /\.ref/ ) {
+                $reference = <BIBLIO>; # read the first line
+            } elsif( $biblio =~ /\.xrf/ ) {
+                my @reference = grep !/^\#/, <BIBLIO>;
+                $reference = $reference[0]; # read the first non-comment line
+            } else {
+                local $/ = undef; # read the whole file
+                $reference = <BIBLIO>;
+            }
+            chomp $reference;
+
+            close BIBLIO or die 'ERROR, '
+              . 'error while closing bibliography file after reading -- '
+              . lcfirst($!) . "\n";
         };
-
-        if( $biblio =~ /\.ref/ ) {
-            $reference = <BIBLIO>; # read the first line
-        } elsif( $biblio =~ /\.xrf/ ) {
-            my @reference = grep !/^\#/, <BIBLIO>;
-            $reference = $reference[0]; # read the first non-comment line
-        } else {
-            local $/ = undef; # read the whole file
-            $reference = <BIBLIO>;
-        }
-        chomp $reference;
-
-        close BIBLIO or do {
-            my $error = sprint_message( $0, $cif_header_file, undef, 'ERROR',
-                                        'error while closing bibliography file '
-                                      . 'after reading', lcfirst($!) );
-            $die_on_errors ? die $error : warn $error;
-        }
+        if ($@) {
+            process_errors( $biblio, undef, $@, $die_on_errors );
+        };
     }
 }
 
@@ -518,19 +511,11 @@ for my $filename (@ARGV) {
                     fix_errors => $fix_errors };
 
     my ($data, $err_count, $messages) = parse_cif($filename, $options);
-
-    print STDERR $_ foreach @$messages;
-    if( $err_count > 0 ) {
-        my $error = sprint_message( $0, $filename, undef, "ERROR",
-                                    "$err_count error(s) encountered "
-                                  . 'while parsing the file', undef );
-        $die_on_errors ? die $error : warn $error;
-    }
+    process_parser_messages( $messages, $die_on_error_level );
 
     if( !@$data || !defined $data->[0] || !defined $data->[0]{name} ) {
-        my $error = sprint_message( $0, $filename, undef, 'WARNING',
-                                    'file seems to be empty', undef );
-        $die_on_warnings ? die $error : warn $error;
+        report_message( $0, $filename, undef, 'WARNING',
+                'file seems to be empty', $die_on_warnings );
         next;
     }
 
@@ -1274,9 +1259,8 @@ for my $filename (@ARGV) {
     };
 
     if( $no_coordinates ) {
-        my $message = sprint_message( $0, $filename, undef, 'WARNING',
-                      'no datablocks that contain coordinates found', undef );
-        $die_on_warnings ? die $message : warn $message;
+        report_message( $0, $filename, undef, 'WARNING', 'no datablocks that '
+                      . 'contain coordinates found', $die_on_warnings );
     }
 }
 
