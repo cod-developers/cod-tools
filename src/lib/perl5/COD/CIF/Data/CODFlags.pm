@@ -19,6 +19,7 @@ our @EXPORT = qw( is_on_hold
                   is_retracted
                   is_disordered
                   is_suboptimal
+                  is_theoretical
                   has_coordinates
                   has_hkl
                   has_powder_diffraction_intensities
@@ -45,6 +46,7 @@ our @powder_diffraction_intensity_tags = qw(
 sub is_duplicate($);
 sub is_disordered($);
 sub is_suboptimal($);
+sub is_theoretical($);
 sub is_on_hold($);
 sub is_retracted($);
 sub has_coordinates($);
@@ -140,6 +142,19 @@ sub is_retracted($)
             };
         };
     };
+
+    return 0;
+}
+
+sub is_theoretical($)
+{
+    my ( $dataset ) = @_;
+    my $values = $dataset->{values};
+
+    if( exists $values->{_cod_struct_determination_method} &&
+        $values->{_cod_struct_determination_method}[0] eq 'theoretical' ) {
+        return 1;
+    }
 
     return 0;
 }
