@@ -27,6 +27,7 @@ use COD::ShowStruct;
 use COD::Spacegroups::Symop::Parse;
 use COD::Spacegroups::Lookup::COD;
 use COD::Spacegroups::Names;
+use COD::UserMessage qw(sprint_message);
 use COD::ErrorHandler qw(process_warnings process_errors
                          process_parser_messages report_message);
 use COD::SOptions;
@@ -50,9 +51,9 @@ my $check_simultaneous_presence = 1;
 my $check_embedded_file_integrity = 1;
 my $check_z = 0;
 
-my $die_on_errors = 1;
+my $die_on_errors   = 0;
 my $die_on_warnings = 0;
-my $die_on_notes = 0;
+my $die_on_notes    = 0;
 
 sub dont_check_any
 {
@@ -172,9 +173,26 @@ my $use_parser = "c";
 #*    $0 [options] input1.cif [input2.cif ...]
 #*
 #* OPTIONS:
+#*  -c, --always-continue
+#*                     Continue processing and return successful return status
+#*                     even if errors are diagnosed.
+#*  -c-, --always-die
+#*                     Stop and return error status if errors are diagnosed.
+#*  --continue-on-errors
+#*                     Do not terminate script if errors are raised (default).
+#*  --die-on-errors
+#*                     Terminate script immediately if errors are raised.
+#*  --continue-on-warnings
+#*                     Do not terminate script if warnings are raised (default).
+#*  --die-on-warnings
+#*                     Terminate script immediately if warnings are raised.
+#*  --continue-on-notes
+#*                     Do not terminate script if notes are raised (default).
+#*  --die-on-notes
+#*                     Terminate script immediately if notes are raised.
+#*
 #* For every --check-xyz option, there are the following corresponding
 #* related options:
-#*
 #*    --check-only-xyz
 #*        Switch off any other checks and check ONLY xyz (the last option on the
 #*        command line wins)
@@ -377,6 +395,22 @@ my $use_parser = "c";
 
     "--use-reporter" => sub{ $useReporter = 1; $reportFile = get_value() },
 
+    "-c,--always-continue"              => sub { $die_on_errors   = 0;
+                                                 $die_on_warnings = 0;
+                                                 $die_on_notes    = 0 },
+    "-c-,--always-die"                  => sub { $die_on_errors   = 1;
+                                                 $die_on_warnings = 1;
+                                                 $die_on_notes    = 1 },
+
+    "--continue-on-errors"          => sub { $die_on_errors = 0 },
+    "--die-on-errors"               => sub { $die_on_errors = 1 },
+
+    "--continue-on-warnings" => sub { $die_on_warnings = 0 },
+    "--die-on-warnings"      => sub { $die_on_warnings = 1 },
+
+    "--continue-on-notes"    => sub { $die_on_notes = 0 },
+    "--die-on-notes"         => sub { $die_on_notes = 1 },
+
     "--use-perl-parser" => sub{ $use_parser = "perl" },
     "--use-c-parser"    => sub{ $use_parser = "c" },
 
@@ -437,8 +471,8 @@ for my $filename (@ARGV) {
         $options->{reporter} = \&parser_reporter;
     };
 
-    my ( $data, $err_count, $messages ) = parse_cif( $filename, $options );
-    process_parser_messages( $messages, $die_on_error_level );
+    my ( $data, $err_count, $parser_messages ) = parse_cif( $filename, $options );
+    process_parser_messages( $parser_messages, $die_on_error_level );
 
     canonicalize_all_names( $data );
 
@@ -449,12 +483,14 @@ for my $filename (@ARGV) {
 
         my $dataname = 'data_' . $dataset->{name} if defined $dataset->{name};
 
+        # Disabling exiting upon warnings, since error messages of all levels
+        # must be reported.
         local $SIG{__WARN__} =
                    sub {process_warnings( $filename, $dataname, @_,
                                           {
                                             ERROR   => 0,
-                                            WARNING => $die_on_warnings,
-                                            NOTE    => $die_on_notes,
+                                            WARNING => 0,
+                                            NOTE    => 0,
                                           }
                                         ) };
 
@@ -505,9 +541,27 @@ for my $filename (@ARGV) {
         $errors   += $f_errors;
     };
 
-    printf "%-30s: OK\n", $filename if $notes    == 0 &&
-                                       $warnings == 0 &&
-                                       $errors   == 0;
+    my %message_count = (
+        'NOTE'    => $notes,
+        'WARNING' => $warnings,
+        'ERROR'   => $errors
+    );
+
+    if ( $notes + $warnings + $errors + @$parser_messages ) {
+        foreach ( 'NOTE', 'WARNING', 'ERROR' ) {
+            if ( $message_count{$_} > 0 ) {
+                my $message = sprint_message(
+                            $0, $filename, undef,
+                            $die_on_error_level->{$_} ? 'ERROR' : 'NOTE',
+                            "$message_count{$_} $_(s) encountered",
+                            $die_on_error_level->{$_} ? 
+                            "die on $_(s) requested" : undef);
+                $die_on_error_level->{$_} ? die $message : warn $message;
+            }
+        };
+    } else {
+        printf "%-30s: OK\n", $filename;
+    };
 }
 
 sub check_data
