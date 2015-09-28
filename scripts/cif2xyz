@@ -19,7 +19,8 @@ use COD::AtomProperties;
 use COD::CIF::Data qw(get_cell);
 use COD::Fractional;
 use COD::Spacegroups::Symop::Algebra qw(symop_vector_mul);
-use COD::UserMessage qw(error prefix_dataname);
+use COD::ErrorHandler qw(process_warnings process_errors
+                         process_parser_messages report_message);
 use COD::SOptions;
 use COD::SUsage;
 
@@ -55,96 +56,107 @@ my $use_parser = "c"; # Used CIF parser
     "--help,--usage" => sub { usage; exit },
 );
 
+my $die_on_errors   = 1;
+my $die_on_warnings = 0;
+
+my $die_on_error_level = {
+    ERROR   => $die_on_errors,
+    WARNING => $die_on_warnings,
+    NOTE    => 0
+};
+
 @ARGV = ("-") unless @ARGV;
 
 for my $filename (@ARGV) {
 
     my $options = { 'parser' => $use_parser, 'no_print' => 1 };
     my ( $data, $err_count, $messages ) = parse_cif( $filename, $options );
-
-    if ( $err_count > 0 ) {
-        print STDERR $_ foreach ( @$messages );
-        error( $0, $filename, undef, "$err_count error(s) "
-             . "encountered while parsing the file", undef );
-        exit(255);
-    }
-    print STDERR $_ foreach ( @$messages );
+    process_parser_messages( $messages, $die_on_error_level );
 
     if( !@{$data} || !defined $data->[0] || !defined $data->[0]{name} ) {
-        warning( $0, $filename, undef, "file seems to be empty" );
+        report_message( $0, $filename, undef, 'WARNING',
+                'file seems to be empty', $die_on_warnings );
         next;
     }
 
     for my $dataset (@$data) {
-        my $values = $dataset->{values};
-        my $dataname = prefix_dataname($dataset->{name});
+        my $dataname = 'data_' . $dataset->{name} if defined $dataset->{name};
 
-        my @cell = get_cell( $values, $filename, $dataset->{name} );
+        local $SIG{__WARN__} =
+                   sub {process_warnings( $filename, $dataname,
+                                          @_, $die_on_error_level
+                                        ) };
 
-        my $f2o = symop_ortho_from_fract(@cell);
-        # perform fractional to orthogonal conversion here
+        eval {
+            my $values = $dataset->{values};
 
-        my $atom_site_tag;
+            my @cell = get_cell( $values, $filename, $dataset->{name} );
 
-        if( exists $values->{"_atom_site_label"} ) {
-            $atom_site_tag = "_atom_site_label";
-        } elsif( exists $values->{"_atom_site_type_symbol"} ) {
-            $atom_site_tag = "_atom_site_type_symbol";
+            my $f2o = symop_ortho_from_fract(@cell);
+            # perform fractional to orthogonal conversion here
 
-            error( $0, $filename, $dataname,
-                   '_atom_site_label tag was not found',
-                   'a serial number will be appended to ' .
-                   '_atom_site_type_symbol to make atom labels' );
-        } else {
-            error( $0, $filename, $dataname, 'neither _atom_site_type_symbol '
-                 . 'nor _atom_site_label were found', undef );
-            return undef;
-        }
+            my $atom_site_tag;
 
-        my $atom_labels = $values->{$atom_site_tag};
+            if( exists $values->{"_atom_site_label"} ) {
+                $atom_site_tag = "_atom_site_label";
+            } elsif( exists $values->{"_atom_site_type_symbol"} ) {
+                $atom_site_tag = "_atom_site_type_symbol";
+                warn 'WARNING, _atom_site_label tag was not found -- '
+                   . 'a serial number will be appended to '
+                   . "_atom_site_type_symbol to make atom labels\n";
+            } else {
+                die 'ERROR, neither _atom_site_label nor '
+                  . "_atom_site_type_symbol tags were found\n";
+            }
 
-        for (my $i = 0; $i < @{$atom_labels}; $i++) {
-            my $covalent_radius;
-            if( $print_radii ) {
-                my $atom_type;
-                if( exists $values->{_atom_site_type_symbol} &&
-                    defined $values->{_atom_site_type_symbol}[$i] &&
-                    $values->{_atom_site_type_symbol}[$i] ne '?' ) {
-                    $atom_type = $values->{_atom_site_type_symbol}[$i];
-                    if( $atom_type =~ m/^([A-Za-z]{1,2})/ ) {
-                        $atom_type = ucfirst( lc( $1 ));
-                    }
-                } else {
-                    if( $values->{_atom_site_label}[$i] =~
-                        m/^([A-Za-z]{1,2})/ ) {
-                        $atom_type = ucfirst( lc( $1 ));
+            my $atom_labels = $values->{$atom_site_tag};
+
+            for (my $i = 0; $i < @{$atom_labels}; $i++) {
+                my $covalent_radius;
+                if( $print_radii ) {
+                    my $atom_type;
+                    if( exists $values->{_atom_site_type_symbol} &&
+                        defined $values->{_atom_site_type_symbol}[$i] &&
+                        $values->{_atom_site_type_symbol}[$i] ne '?' ) {
+                        $atom_type = $values->{_atom_site_type_symbol}[$i];
+                        if( $atom_type =~ m/^([A-Za-z]{1,2})/ ) {
+                            $atom_type = ucfirst( lc( $1 ));
+                        }
                     } else {
-                        die( "could not determine atom type for atom " .
-                             "'$values->{_atom_site_label}[$i]'" );
+                        if( $values->{_atom_site_label}[$i] =~
+                            m/^([A-Za-z]{1,2})/ ) {
+                            $atom_type = ucfirst( lc( $1 ));
+                        } else {
+                            die 'ERROR, could not determine atom type for '
+                              . "atom '$values->{_atom_site_label}[$i]'\n";
+                        }
                     }
+                    if( !exists $COD::AtomProperties::atoms{$atom_type} ) {
+                        die "ERROR, unknown atom type '$atom_type'\n";
+                    }
+                    $covalent_radius =
+                        $COD::AtomProperties::atoms{$atom_type}->{covalent_radius};
                 }
-                if( !exists $COD::AtomProperties::atoms{$atom_type} ) {
-                    die( "unknown atom type: '$atom_type'" );
+
+                my @atom_xyz;
+                for my $cif_fract ( "_atom_site_fract_x",
+                                    "_atom_site_fract_y",
+                                    "_atom_site_fract_z",)
+                {
+                    push( @atom_xyz, $values->{$cif_fract}[$i] );
+                    $atom_xyz[-1] =~ s/\(\d+\)$//;
                 }
-                $covalent_radius =
-                    $COD::AtomProperties::atoms{$atom_type}->{covalent_radius};
-            }
+                my @coordinates_ortho = symop_vector_mul( $f2o, \@atom_xyz );
 
-            my @atom_xyz;
-            for my $cif_fract ( "_atom_site_fract_x",
-                                "_atom_site_fract_y",
-                                "_atom_site_fract_z",)
-            {
-                push( @atom_xyz, $values->{$cif_fract}[$i] );
-                $atom_xyz[-1] =~ s/\(\d+\)$//;
+                print $coordinates_ortho[0], " ",
+                      $coordinates_ortho[1], " ",
+                      $coordinates_ortho[2], " ",
+                      ($print_radii ? "$covalent_radius " : ""),
+                      '# ', $atom_labels->[$i], "\n";
             }
-            my @coordinates_ortho = symop_vector_mul( $f2o, \@atom_xyz );
-
-            print $coordinates_ortho[0], " ",
-                  $coordinates_ortho[1], " ",
-                  $coordinates_ortho[2], " ",
-                  ($print_radii ? "$covalent_radius " : ""),
-                  '# ', $atom_labels->[$i], "\n";
+        };
+        if (@_) {
+            process_errors( $filename, $dataname, $@, $die_on_errors );
         }
     }
 }
