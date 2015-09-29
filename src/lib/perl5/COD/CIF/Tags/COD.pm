@@ -69,6 +69,7 @@ _cod_original_formula_sum
 _cod_original_formula_units_Z
 _cod_original_formula_weight
 _cod_same_crystal_as
+_cod_struct_determination_method
 _cod_suboptimal_structure
 _cod_related_optimal_struct
 _cod_related_suboptimal_struct
