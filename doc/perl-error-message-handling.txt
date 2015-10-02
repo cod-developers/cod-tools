@@ -77,11 +77,11 @@ For example:
         $die_on_notes ? die $message : warn $message;
     };
 
-    warn "NOTE, this warn signal will be handled locally -- " 
+    warn "NOTE, this warn signal will be handled locally -- "
        . "script will even die if required\n";
 }
 
-Handling of messages raised by die() requires a different approach that 
+Handling of messages raised by die() requires a different approach that
 is most similar to try-catch mechanisms in other languages (JAVA, for example).
 Since there is no way to prevent the script from terminating by simply
 locally overwritting the $SIG{__DIE__} signal handler, the signal itself must
@@ -102,21 +102,78 @@ One of the main differences between the warn() and die() subroutines is that
 the die signal exits all inner blocks along the way until the signal is caught.
 As a result, the only place where the script can continue after the die()
 subroutine call is outside the eval{} block. This is not true for the warn()
-subroutine -- the script can execute statements right after the warn()
-subroutine call.
+subroutine -- the script can execute statements that follow right after the
+warn() subroutine call.
 
 4. PATTERNS
 
 Error message handling was recognised as a cross-cutting concern and
 COD::ErrorHandler Perl module was developed to aid this task. The module
-contains subroutine that can be used as die and warn signal handlers, as
+contains subroutines that can be used as die and warn signal handlers, as
 well as a subroutine to handle error returned by the COD::CIF::Parser.
 
 4A. CIF PARSER SCOPE
 
-3B. SINGLE DATABLOCK SCOPE
+COD::CIF::Parser module provides an interface to an error-fixing CIF parser
+via the parse_cif subroutine. The subroutine returns three parameters --
+the parsed structure, number of ERRORs the parser has encountered and the
+list of error messages that are formatted following the error message grammar
+(using the COD::UserMessage module). The last two parameters can be used for
+error handling.
 
-3C. ONE-LINER
+By default, parse_cif subroutine also outputs the formatted error messages
+directly to STDERR, so these messages cannot be captured via the previously
+described warn/die capturing method. However, if the 'no_print' option is
+passed to the subroutine the printing of error messages is supressed. Due to
+this the following approach has been developed:
+1) Print all error messages returned by the parser to STDERR;
+2) Count the number of messages for each error level;
+3) Print an additional error message for each error level that had at least
+   one occurence. The error message should state the error level and the number
+   of messages. If the script is required to terminate on that error level,
+   the message should be printed to STDERR as an ERROR with an additional
+   explanation concatenated to the end of the message; the script should then
+   terminate. Otherwise, the message should be printed to STDERR as a NOTE.
+   It is prefered to print these summarising message in the order of increasing
+   severity. For example:
 
-3. DISCUSSION
+   script: parsed_file: NOTE, 3 NOTE(s) encountered while parsing the file.
+   script: parsed_file: NOTE, 2 WARNING(s) encountered while parsing the file.
+   script: parsed_file: ERROR, 1 ERROR(s) encounteder while parseing the file -- die on ERROR(s) requested.
+
+The described approach has been implemented in the
+COD::ErrorHandler::process_parser_messages subroutine. The pattern illustrating
+how the subroutine should be used is provided bellow.
+
+% START Perl
+use strict;
+use warnings;
+use COD::ErrorHandler qw(process_parser_messages);
+
+# Hash containing terminate/continue flags for each error level
+my $die_on_error_level = {
+    ERROR   => 1,
+    WARNING => 0,
+    NOTE    => 0
+};
+
+@ARGV = ("-") unless @ARGV;
+
+for my $filename (@ARGV) {
+
+    # Suppressing the printing of error messages with 'no_print' option
+    my $options = { 'parser' => 'c', 'no_print' => 1 };
+    my ( $data, $err_count, $messages ) = parse_cif( $filename, $options );
+    process_parser_messages( $messages, $die_on_error_level );
+
+}
+
+% End Perl
+
+4B. SINGLE DATABLOCK SCOPE
+
+4C. ONE-LINER
+
+5. DISCUSSION
     TO-DO: Serializing/deserializing additional information?
+    TO-DO: FATAL error level when dying
