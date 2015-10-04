@@ -19,7 +19,8 @@ require Exporter;
 our @ISA = qw(Exporter);
 our @EXPORT = qw( symop_from_string string_from_symop
     string_from_symop_reduced symop_string_canonical_form
-    check_symmetry_operator modulo_1 symop_translation_modulo_1 symop_print
+    check_symmetry_operator modulo_1 symop_translation_modulo_1
+    symop_print symop_from_ssg_operator
 );
 
 #
@@ -220,6 +221,19 @@ sub check_symmetry_operator
         }
     }
     return undef;
+}
+
+sub symop_from_ssg_operator
+{
+    my ( $m ) = @_;
+
+    return [
+        [ $m->[0][0], $m->[0][1], $m->[0][2], $m->[0][4] ],
+        [ $m->[1][0], $m->[1][1], $m->[1][2], $m->[1][4] ],
+        [ $m->[2][0], $m->[2][1], $m->[2][2], $m->[2][4] ],
+
+        [ $m->[4][0], $m->[4][1], $m->[4][2], $m->[4][4] ],        
+    ];
 }
 
 1;
