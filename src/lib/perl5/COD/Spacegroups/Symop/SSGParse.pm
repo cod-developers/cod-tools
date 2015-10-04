@@ -113,8 +113,8 @@ sub string_from_symop_reduced
 {
     my ($symop) = @_;
 
-    my @symops = ( "", "", "" );
-    my @axes = ( "x", "y", "z" );
+    my @symops = ( "", "", "", "" );
+    my @axes = ( "x1", "x2", "x3", "x4" );
 
     for( my $i = 0; $i < $#{$symop}; $i ++ ) {
         my @symop_parts;
@@ -182,7 +182,7 @@ sub symop_translation_modulo_1
     my ($symop) = @_;
 
     for( my $i = 0; $i < $#{$symop}; $i ++ ) {
-        $symop->[$i][3] = modulo_1( $symop->[$i][3] + 10 );
+        $symop->[$i][4] = modulo_1( $symop->[$i][4] + 10 );
     }
 
     return $symop;
