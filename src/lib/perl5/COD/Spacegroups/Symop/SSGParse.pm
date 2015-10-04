@@ -88,7 +88,7 @@ sub string_from_symop
 {
     my ($symop) = @_;
 
-    my @symops = ( "", "", "" );
+    my @symops = ( "", "", "", "" );
     my @axes = ( "x1", "x2", "x3", "x4" );
 
     for( my $i = 0; $i < $#{$symop}; $i ++ ) {
