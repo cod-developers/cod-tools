@@ -203,7 +203,7 @@ sub check_symmetry_operator
 {
     my ($symop) = @_;
 
-    my $symop_term = '(?:x|y|z|\d|\d*\.\d+|\d+\.\d*|\d/\d)';
+    my $symop_term = '(?:x[1-4]|\d|\d*\.\d+|\d+\.\d*|\d/\d)';
     my $symop_component =
         "(?:(?:-|\\+)?$symop_term|" .
         "(?:-|\\+)?$symop_term(?:-|\\+)$symop_term|" .
@@ -215,7 +215,7 @@ sub check_symmetry_operator
         my $no_spaces = $symop;
         $no_spaces =~ s/\s//g;
         if( $no_spaces !~ 
-            /^($symop_component,){2}($symop_component)$/i ) {
+            /^($symop_component,){3}($symop_component)$/i ) {
             return "symmetry operator '$symop' could not be parsed";
         }
     }
