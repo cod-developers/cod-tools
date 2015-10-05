@@ -206,10 +206,7 @@ sub check_symmetry_operator
 
     my $symop_term = '(?:x[1-4]|\d|\d*\.\d+|\d+\.\d*|\d/\d)';
     my $symop_component =
-        "(?:[-+]?$symop_term|" .
-        "[-+]?$symop_term\[-+]$symop_term|" .
-        "[-+]?$symop_term\[-+]$symop_term\[-+]$symop_term|" .
-        "[-+]?$symop_term\[-+]$symop_term\[-+]$symop_term\[-+]$symop_term)";
+        "(?:[-+]?$symop_term(?:[-+]$symop_term){0,3})";
 
     if( !defined $symop ) {
         return "no symmetry operators";
