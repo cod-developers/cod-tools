@@ -208,7 +208,8 @@ sub check_symmetry_operator
     my $symop_component =
         "(?:[-+]?$symop_term|" .
         "[-+]?$symop_term\[-+]$symop_term|" .
-        "[-+]?$symop_term\[-+]$symop_term\[-+]$symop_term)";
+        "[-+]?$symop_term\[-+]$symop_term\[-+]$symop_term|" .
+        "[-+]?$symop_term\[-+]$symop_term\[-+]$symop_term\[-+]$symop_term)";
 
     if( !defined $symop ) {
         return "no symmetry operators";
