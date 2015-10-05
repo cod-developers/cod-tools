@@ -5,9 +5,11 @@
 #$URL$
 #------------------------------------------------------------------------
 #* 
-# Parse symmetry operators describing Superspacegroups (3+1
+# Parse symmetry operators describing Superspacegroups (N+1
 # dimensional spacegroups) used for the description of the
-# incomensurately modulated structures.
+# incomensurately modulated structures. Current implementation of
+# 
+# limits number of dimensions to 9.
 #**
 
 package COD::Spacegroups::Symop::SSGParse;
@@ -26,11 +28,13 @@ our @EXPORT = qw( symop_from_string string_from_symop
 #
 # Symop array contains the following values:
 # my $symop = [
-#     [ r11 r12 r13 r14 t1 ]
-#     [ r21 r22 r23 r24 t2 ]
-#     [ r31 r32 r33 r34 t3 ]
-#     [ r41 r42 r42 r44 t4 ]
-#     [   0   0   0   0  1 ]
+#     [ r11 r12 r13 r14 ... r1N  t1 ]
+#     [ r21 r22 r23 r24 ... r2N  t2 ]
+#     [ r31 r32 r33 r34 ... r3N  t3 ]
+#     [ r41 r42 r42 r44 ... r4N  t4 ]
+#     [ ... ... ... ... ... ... ... ]
+#     [ rN1 rN2 rN3 rN4 ... rNN  tN ]
+#     [   0   0   0   0 ...   0   1 ]
 # ]
 #
 
@@ -38,41 +42,31 @@ sub symop_from_string
 {
     my ($str) = @_;
 
-    my @symop = ( [0,0,0,0,0], [0,0,0,0,0], [0,0,0,0,0], [0,0,0,0,0], [0,0,0,0,1] );
-    my $n = 0;
-
     $str =~ s/\s+//g;
+    my @lines = split ',', $str;
 
-    while( $n < 4 && $str ne "" && $str =~ s/(^.*?,|^.*?$)// ) {
-        my $symop = $1;
-        $symop =~ s/,//g;
+    my @symop;
+    foreach (@lines) {
+        push @symop, [ ( 0 ) x ( @lines+1 ) ];
+    }
+    push @symop, [ ( 0 ) x @lines, 1 ];
+
+    for my $i (0..$#lines) {
+        my $symop = lc($lines[$i]);
         $symop = lc($symop);
-        while( $symop ne "" && $symop =~ s/([-+]?)([x0-9.\/]+)// ) {
+        while( $symop ne "" && $symop =~ s/([-+]?)([x\d.\/]+)// ) {
             my $sign = defined $1 ? ($1 eq "-" ? -1 : +1 ) : +1;
             my $value = $2;
 
-            if( $value =~ /^x1$/ ) {
-                $symop[$n][0] = $sign;
-            }
-            elsif( $value =~ /^x2$/ ) {
-                $symop[$n][1] = $sign;
-            }
-            elsif( $value =~ /^x3$/ ) {
-                $symop[$n][2] = $sign;
-            }
-            elsif( $value =~ /^x4$/ ) {
-                $symop[$n][3] = $sign;
-            }
-            else {
-                if( $value =~ m/(\d+)\/(\d+)/ ) {
+            if( $value =~ /^x(\d+)/ ) {
+                $symop[$i][$1-1] = $sign;
+            } else {
+                if( $value =~ /(\d+)\/(\d+)/ ) {
                     $value = $1 / $2;
                 }
-                $symop[$n][4] = $sign * $value;
+                $symop[$i][-1] = $sign * $value;
             }
-            #print "sign = $sign; value = $value\n";
         }
-        #print "====\n";
-        $n ++;
     }
 
     return \@symop;
@@ -89,21 +83,20 @@ sub string_from_symop
 {
     my ($symop) = @_;
 
-    my @symops = ( "", "", "", "" );
-    my @axes = ( "x1", "x2", "x3", "x4" );
+    my @symops = ( "" ) x (@$symop-1);
 
     for( my $i = 0; $i < $#{$symop}; $i ++ ) {
         my @symop_parts;
         for( my $j = 0; $j < @symops; $j ++ ) {
             next if $symop->[$i][$j] == 0;
             push @symop_parts,
-                 ( $symop->[$i][$j] < 0 ? "-" : "" ) . $axes[$j];
+                 ( $symop->[$i][$j] < 0 ? "-" : "" ) . "x" . ($j+1);
         }
         $symops[$i] = join "+", @symop_parts;
         $symops[$i] =~ s/\+-/-/g;
-        if( $symop->[$i][4] != 0 ) {
-            my $sig = $symop->[$i][4] > 0 ? "+" : "-";
-            my $val = abs( $symop->[$i][4] );
+        if( $symop->[$i][-1] != 0 ) {
+            my $sig = $symop->[$i][-1] > 0 ? "+" : "-";
+            my $val = abs( $symop->[$i][-1] );
             $symops[$i] .= $sig . $val;
         }
     }
@@ -114,20 +107,19 @@ sub string_from_symop_reduced
 {
     my ($symop) = @_;
 
-    my @symops = ( "", "", "", "" );
-    my @axes = ( "x1", "x2", "x3", "x4" );
+    my @symops = ( "" ) x (@$symop-1);
 
     for( my $i = 0; $i < $#{$symop}; $i ++ ) {
         my @symop_parts;
         for( my $j = 0; $j < @symops; $j ++ ) {
             next if $symop->[$i][$j] == 0;
             push @symop_parts,
-                 ( $symop->[$i][$j] < 0 ? "-" : "" ) . $axes[$j];
+                 ( $symop->[$i][$j] < 0 ? "-" : "" ) . "x" . ($j+1);
         }
         $symops[$i] = join "+", @symop_parts;
         $symops[$i] =~ s/\+-/-/g; # <- finish RE for Emacs...
-        if( $symop->[$i][4] != 0 ) {
-            my $val = $symop->[$i][4];
+        if( $symop->[$i][-1] != 0 ) {
+            my $val = $symop->[$i][-1];
             my $abs = abs( $val );
             my $sig = $val > 0 ? "+" : "-";
             my $maxdiff = 1e-3;
@@ -183,7 +175,7 @@ sub symop_translation_modulo_1
     my ($symop) = @_;
 
     for( my $i = 0; $i < $#{$symop}; $i ++ ) {
-        $symop->[$i][4] = modulo_1( $symop->[$i][4] + 10 );
+        $symop->[$i][-1] = modulo_1( $symop->[$i][-1] + 10 );
     }
 
     return $symop;
@@ -228,11 +220,11 @@ sub symop_from_ssg_operator
     my ( $m ) = @_;
 
     return [
-        [ $m->[0][0], $m->[0][1], $m->[0][2], $m->[0][4] ],
-        [ $m->[1][0], $m->[1][1], $m->[1][2], $m->[1][4] ],
-        [ $m->[2][0], $m->[2][1], $m->[2][2], $m->[2][4] ],
+        [ $m->[0][0],  $m->[0][1],  $m->[0][2],  $m->[0][-1] ],
+        [ $m->[1][0],  $m->[1][1],  $m->[1][2],  $m->[1][-1] ],
+        [ $m->[2][0],  $m->[2][1],  $m->[2][2],  $m->[2][-1] ],
 
-        [ $m->[4][0], $m->[4][1], $m->[4][2], $m->[4][4] ],        
+        [ $m->[-1][0], $m->[-1][1], $m->[-1][2], $m->[-1][-1] ],        
     ];
 }
 
