@@ -38,12 +38,22 @@ sub symop_from_string
 {
     my ($str) = @_;
 
-    my @symop = ( [0,0,0,0,0], [0,0,0,0,0], [0,0,0,0,0], [0,0,0,0,0], [0,0,0,0,1] );
+    my $N = scalar(split(",", $str));
+
+    my @symop;
+    for (1..$N) {
+        my @row = (0) x ($N+1);
+        push( @symop, \@row );
+    }
+    my @row = (0) x ($N+1);
+    $row[$N] = 1;
+    push( @symop, \@row );
+
     my $n = 0;
 
     $str =~ s/\s+//g;
 
-    while( $n < 4 && $str ne "" && $str =~ s/(^.*?,|^.*?$)// ) {
+    while( $str ne "" && $str =~ s/(^.*?,|^.*?$)// ) {
         my $symop = $1;
         $symop =~ s/,//g;
         $symop = lc($symop);
@@ -63,11 +73,14 @@ sub symop_from_string
             elsif( $value =~ /^x4$/ ) {
                 $symop[$n][3] = $sign;
             }
+            elsif( $value =~ /^x5$/ ) {
+                $symop[$n][4] = $sign;
+            }
             else {
                 if( $value =~ m/(\d+)\/(\d+)/ ) {
                     $value = $1 / $2;
                 }
-                $symop[$n][4] = $sign * $value;
+                $symop[$n][$N] = $sign * $value;
             }
             #print "sign = $sign; value = $value\n";
         }
@@ -89,8 +102,12 @@ sub string_from_symop
 {
     my ($symop) = @_;
 
-    my @symops = ( "", "", "", "" );
-    my @axes = ( "x1", "x2", "x3", "x4" );
+    my $n = scalar(@$symop);
+    my @symops = ( "" ) x ($n-1);
+    my @axes;
+    for (1..($n-1)) {
+        push( @axes, "x" . $_ );
+    }
 
     for( my $i = 0; $i < $#{$symop}; $i ++ ) {
         my @symop_parts;
@@ -101,9 +118,9 @@ sub string_from_symop
         }
         $symops[$i] = join "+", @symop_parts;
         $symops[$i] =~ s/\+-/-/g;
-        if( $symop->[$i][4] != 0 ) {
-            my $sig = $symop->[$i][4] > 0 ? "+" : "-";
-            my $val = abs( $symop->[$i][4] );
+        if( $symop->[$i][$n-1] != 0 ) {
+            my $sig = $symop->[$i][$n-1] > 0 ? "+" : "-";
+            my $val = abs( $symop->[$i][$n-1] );
             $symops[$i] .= $sig . $val;
         }
     }
@@ -114,8 +131,12 @@ sub string_from_symop_reduced
 {
     my ($symop) = @_;
 
-    my @symops = ( "", "", "", "" );
-    my @axes = ( "x1", "x2", "x3", "x4" );
+    my $n = scalar(@$symop);
+    my @symops = ( "" ) x ($n-1);
+    my @axes;
+    for (1..($n-1)) {
+        push( @axes, "x" . $_ );
+    }
 
     for( my $i = 0; $i < $#{$symop}; $i ++ ) {
         my @symop_parts;
@@ -126,8 +147,8 @@ sub string_from_symop_reduced
         }
         $symops[$i] = join "+", @symop_parts;
         $symops[$i] =~ s/\+-/-/g; # <- finish RE for Emacs...
-        if( $symop->[$i][4] != 0 ) {
-            my $val = $symop->[$i][4];
+        if( $symop->[$i][$n-1] != 0 ) {
+            my $val = $symop->[$i][$n-1];
             my $abs = abs( $val );
             my $sig = $val > 0 ? "+" : "-";
             my $maxdiff = 1e-3;
@@ -182,8 +203,9 @@ sub symop_translation_modulo_1
 {
     my ($symop) = @_;
 
+    my $n = scalar(@$symop);
     for( my $i = 0; $i < $#{$symop}; $i ++ ) {
-        $symop->[$i][4] = modulo_1( $symop->[$i][4] + 10 );
+        $symop->[$i][$n-1] = modulo_1( $symop->[$i][$n-1] + 10 );
     }
 
     return $symop;
@@ -225,12 +247,14 @@ sub symop_from_ssg_operator
 {
     my ( $m ) = @_;
 
-    return [
-        [ $m->[0][0], $m->[0][1], $m->[0][2], $m->[0][4] ],
-        [ $m->[1][0], $m->[1][1], $m->[1][2], $m->[1][4] ],
-        [ $m->[2][0], $m->[2][1], $m->[2][2], $m->[2][4] ],
+    my $n = $#{$m};
 
-        [ $m->[4][0], $m->[4][1], $m->[4][2], $m->[4][4] ],        
+    return [
+        [ $m->[0][0], $m->[0][1], $m->[0][2], $m->[0][$n] ],
+        [ $m->[1][0], $m->[1][1], $m->[1][2], $m->[1][$n] ],
+        [ $m->[2][0], $m->[2][1], $m->[2][2], $m->[2][$n] ],
+
+        [ $m->[$n][0], $m->[$n][1], $m->[$n][2], $m->[$n][$n] ],        
     ];
 }
 
