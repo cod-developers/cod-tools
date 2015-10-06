@@ -5,7 +5,7 @@
 #$URL$
 #------------------------------------------------------------------------
 #* 
-# Parse symmetry operators describing Superspacegroups (3+1
+# Parse symmetry operators describing Superspacegroups (N+1
 # dimensional spacegroups) used for the description of the
 # incomensurately modulated structures.
 #**
@@ -26,11 +26,13 @@ our @EXPORT = qw( symop_from_string string_from_symop
 #
 # Symop array contains the following values:
 # my $symop = [
-#     [ r11 r12 r13 r14 t1 ]
-#     [ r21 r22 r23 r24 t2 ]
-#     [ r31 r32 r33 r34 t3 ]
-#     [ r41 r42 r42 r44 t4 ]
-#     [   0   0   0   0  1 ]
+#     [ r11 r12 r13 r14 ... r1N  t1 ]
+#     [ r21 r22 r23 r24 ... r2N  t2 ]
+#     [ r31 r32 r33 r34 ... r3N  t3 ]
+#     [ r41 r42 r42 r44 ... r4N  t4 ]
+#     [ ... ... ... ... ... ... ... ]
+#     [ rN1 rN2 rN3 rN4 ... rNN  tN ]
+#     [   0   0   0   0 ...   0   1 ]
 # ]
 #
 
@@ -38,54 +40,32 @@ sub symop_from_string
 {
     my ($str) = @_;
 
-    my $N = scalar(split(",", $str));
+    $str =~ s/\s+//g;
+    my @lines = split ',', $str;
+    my $N = scalar @lines;
 
     my @symop;
-    for (1..$N) {
-        my @row = (0) x ($N+1);
-        push( @symop, \@row );
+    foreach (@lines) {
+        push @symop, [ ( 0 ) x ( $N+1 ) ];
     }
-    my @row = (0) x ($N+1);
-    $row[$N] = 1;
-    push( @symop, \@row );
+    push @symop, [ ( 0 ) x $N, 1 ];
 
-    my $n = 0;
-
-    $str =~ s/\s+//g;
-
-    while( $str ne "" && $str =~ s/(^.*?,|^.*?$)// ) {
-        my $symop = $1;
-        $symop =~ s/,//g;
+    for my $i (0..$#lines) {
+        my $symop = lc($lines[$i]);
         $symop = lc($symop);
-        while( $symop ne "" && $symop =~ s/([-+]?)([x0-9.\/]+)// ) {
+        while( $symop ne "" && $symop =~ s/([-+]?)([x\d.\/]+)// ) {
             my $sign = defined $1 ? ($1 eq "-" ? -1 : +1 ) : +1;
             my $value = $2;
 
-            if( $value =~ /^x1$/ ) {
-                $symop[$n][0] = $sign;
-            }
-            elsif( $value =~ /^x2$/ ) {
-                $symop[$n][1] = $sign;
-            }
-            elsif( $value =~ /^x3$/ ) {
-                $symop[$n][2] = $sign;
-            }
-            elsif( $value =~ /^x4$/ ) {
-                $symop[$n][3] = $sign;
-            }
-            elsif( $value =~ /^x5$/ ) {
-                $symop[$n][4] = $sign;
-            }
-            else {
-                if( $value =~ m/(\d+)\/(\d+)/ ) {
+            if( $value =~ /^x(\d+)/ ) {
+                $symop[$i][$1-1] = $sign;
+            } else {
+                if( $value =~ /(\d+)\/(\d+)/ ) {
                     $value = $1 / $2;
                 }
-                $symop[$n][$N] = $sign * $value;
+                $symop[$i][$N] = $sign * $value;
             }
-            #print "sign = $sign; value = $value\n";
         }
-        #print "====\n";
-        $n ++;
     }
 
     return \@symop;
@@ -104,17 +84,13 @@ sub string_from_symop
 
     my $n = scalar(@$symop);
     my @symops = ( "" ) x ($n-1);
-    my @axes;
-    for (1..($n-1)) {
-        push( @axes, "x" . $_ );
-    }
 
     for( my $i = 0; $i < $#{$symop}; $i ++ ) {
         my @symop_parts;
         for( my $j = 0; $j < @symops; $j ++ ) {
             next if $symop->[$i][$j] == 0;
             push @symop_parts,
-                 ( $symop->[$i][$j] < 0 ? "-" : "" ) . $axes[$j];
+                 ( $symop->[$i][$j] < 0 ? "-" : "" ) . "x" . ($j+1);
         }
         $symops[$i] = join "+", @symop_parts;
         $symops[$i] =~ s/\+-/-/g;
@@ -133,17 +109,13 @@ sub string_from_symop_reduced
 
     my $n = scalar(@$symop);
     my @symops = ( "" ) x ($n-1);
-    my @axes;
-    for (1..($n-1)) {
-        push( @axes, "x" . $_ );
-    }
 
     for( my $i = 0; $i < $#{$symop}; $i ++ ) {
         my @symop_parts;
         for( my $j = 0; $j < @symops; $j ++ ) {
             next if $symop->[$i][$j] == 0;
             push @symop_parts,
-                 ( $symop->[$i][$j] < 0 ? "-" : "" ) . $axes[$j];
+                 ( $symop->[$i][$j] < 0 ? "-" : "" ) . "x" . ($j+1);
         }
         $symops[$i] = join "+", @symop_parts;
         $symops[$i] =~ s/\+-/-/g; # <- finish RE for Emacs...
@@ -226,9 +198,9 @@ sub check_symmetry_operator
 {
     my ($symop) = @_;
 
-    my $symop_term = '(?:x[1-4]|\d|\d*\.\d+|\d+\.\d*|\d/\d)';
+    my $symop_term = '(?:x\d+|\d|\d*\.\d+|\d+\.\d*|\d/\d)';
     my $symop_component =
-        "(?:[-+]?$symop_term(?:[-+]$symop_term){0,3})";
+        "(?:[-+]?$symop_term(?:[-+]$symop_term){0,})";
 
     if( !defined $symop ) {
         return "no symmetry operators";
@@ -236,7 +208,7 @@ sub check_symmetry_operator
         my $no_spaces = $symop;
         $no_spaces =~ s/\s//g;
         if( $no_spaces !~ 
-            /^($symop_component,){3}($symop_component)$/i ) {
+            /^($symop_component,){3,}($symop_component)$/i ) {
             return "symmetry operator '$symop' could not be parsed";
         }
     }
