@@ -21,8 +21,7 @@ use COD::CIF::Tags::CanonicalNames;
 use COD::SOptions;
 use COD::SUsage;
 use COD::UserMessage qw(debug_note);
-use COD::ErrorHandler qw(process_warnings process_errors
-                         process_parser_messages report_message);
+use COD::ErrorHandler qw(process_warnings process_parser_messages report_message);
 
 my $version = 0.1;
 
@@ -183,22 +182,33 @@ if( @dictFiles ) {
 
         $dictTags{$dict} = getDict( $data );
         if ( scalar( keys( %{$dictTags{$dict}} ) ) == 0 ) {
-            report_message( $0, $dict, undef,'WARNING',
-                            'no tag definitions found', $die_on_warnings );
+            report_message( {
+                'program'       => $0,
+                'filename'      => $dict,
+                'err_level'     => 'WARNING',
+                'message'       => 'no tag definitions found'
+            }, $die_on_warnings );
         }
         $tag_count += scalar( keys( %{$dictTags{$dict}} ) );
     }
 
     if( $tag_count == 0 ) {
-        report_message( $0, undef, undef, 'ERROR', 'no tag definitions were ' .
-               "found in the provided dictionary files ('" .
-                join( "', '", @dictFiles ) . "')", $die_on_errors );
+        report_message( {
+            'program'   => $0,
+            'err_level' => 'ERROR',
+            'message'   => 'no tag definitions were found in the '
+                         . "provided dictionary files ('"
+                         . join( "', '", @dictFiles ) . "')"
+        }, $die_on_errors );
     }
 } else {
-    report_message( $0, undef, undef, 'ERROR', "at least one dictionary file "
-                 . "should be provided by using the '--dictionaries' option. "
-                 . "Automatic dictionary download is not implemeted yet",
-                    $die_on_errors );
+    report_message( {
+        'program'   => $0,
+        'err_level' => 'ERROR',
+        'message'   => 'at least one dictionary file should be provided by '
+                     . "using the '--dictionaries' option. Automatic "
+                     . 'dictionary download is not implemeted yet'
+    }, $die_on_errors );
     my $dictIUCRURI = "ftp://ftp.iucr.org/pub/cif_core.dic";
 }
 
@@ -216,9 +226,12 @@ CIFFILEANAL: for my $filename ( @ARGV ) {
     for my $block ( @$data ) {
         my $dataname = 'data_' . $block->{name} if defined $block->{name};
 
-        local $SIG{__WARN__} =
-                   sub { process_warnings( $filename, $dataname,
-                                           @_, $die_on_error_level ) };
+        local $SIG{__WARN__} = sub { process_warnings( {
+                                       'message'       => @_,
+                                       'program'       => $0,
+                                       'filename'      => $filename,
+                                       'add_pos'       => $dataname
+                                     }, $die_on_error_level ) };
 
         if( $debug ) {
             debug_note( $0, $filename, $dataname, 'analysis start', undef );

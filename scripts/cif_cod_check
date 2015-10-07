@@ -144,7 +144,11 @@ sub get_limits_table($) {
            . lcfirst($!) . "\n";
     };
     if ($@) {
-        process_errors( $flimits, undef, $@, $die_on_errors );
+        process_errors ( {
+          'message'       => $@,
+          'program'       => $0,
+          'filename'      => $flimits,
+        }, $die_on_errors )
     };
     return \%ltable;
 }
@@ -440,9 +444,13 @@ sub print_limits {
 }
 
 if( $reportFile =~ m/^\s*-\s*$/ || !-w dirname($reportFile) ) {
-    open reportFileFH, ">&", \*STDOUT or report_message( $0, undef, undef,
-                        'ERROR', 'cannot dup STDOUT -- ' . lcfirst($!) . "\n",
-                        $die_on_warnings );
+    open reportFileFH, ">&", \*STDOUT or
+         report_message( {
+            'program'   => $0,
+            'err_level' => 'ERROR',
+            'message'   => 'cannot dup STDOUT -- ' . lcfirst($!)
+         }, $die_on_errors );
+
 } else {
     open reportFileFH, ">", $reportFile;
 }
@@ -485,14 +493,16 @@ for my $filename (@ARGV) {
 
         # Disabling exiting upon warnings, since error messages of all levels
         # must be reported.
-        local $SIG{__WARN__} =
-                   sub {process_warnings( $filename, $dataname, @_,
-                                          {
-                                            ERROR   => 0,
-                                            WARNING => 0,
-                                            NOTE    => 0,
-                                          }
-                                        ) };
+        local $SIG{__WARN__} = sub { process_warnings( {
+                                       'message'       => @_,
+                                       'program'       => $0,
+                                       'filename'      => $filename,
+                                       'add_pos'       => $dataname
+                                     }, {
+                                       'ERROR'   => 0,
+                                       'WARNING' => 0,
+                                       'NOTE'    => 0,
+                                     } ) };
 
         # Variables to hold errors returned from a single function (f)
         my ($f_notes, $f_warnings, $f_errors);
@@ -527,14 +537,16 @@ for my $filename (@ARGV) {
     }
 
     eval {
-        local $SIG{__WARN__} =
-                   sub {process_warnings( $filename, undef, @_,
-                                          {
-                                            ERROR   => 0,
-                                            WARNING => 0,
-                                            NOTE    => 0,
-                                          }
-                                        ) };
+        local $SIG{__WARN__} = sub { process_warnings( {
+                                       'message'       => @_,
+                                       'program'       => $0,
+                                       'filename'      => $filename,
+                                     }, {
+                                       'ERROR'   => 0,
+                                       'WARNING' => 0,
+                                       'NOTE'    => 0
+                                     } ) };
+
         my ($f_notes, $f_warnings, $f_errors) = check_pdcif_relations( $data );
         $notes    += $f_notes;
         $warnings += $f_warnings;

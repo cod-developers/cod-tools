@@ -52,29 +52,41 @@ sub process_parser_messages
 
 sub report_message
 {
-    my ( $program, $filename, $dataname, $error_level, $message, $exit ) = @_;
+    my ( $details, $exit ) = @_;
 
-    $message = sprint_message( $program,
-                               $filename,
-                               $dataname,
-                               $error_level,
-                               $message,
-                               undef
-                             );
+    my $message    = $details->{message};
+    my $program    = $details->{program};
+    my $filename   = $details->{filename};
+    my $add_pos    = $details->{add_pos};
+    my $line_no    = $details->{line_no};
+    my $column_no  = $details->{column_no};
+    my $err_level  = $details->{err_level};
+    my $content    = $details->{line_content};
 
-    print STDERR $message;
+    print STDERR sprint_message( $program,
+                                 $filename,
+                                 $add_pos,
+                                 $err_level,
+                                 $message,
+                                 undef,
+                                 $line_no,
+                                 $column_no,
+                                 $content
+                               );
+
     if ( $exit ) {
-        print STDERR sprint_message( $program, $filename, $dataname, 'ERROR',
-                                     "1 $error_level(s) encountered -- die on "
-                                   . "$error_level(s) requested", undef ) ;
+        print STDERR sprint_message( $program, $filename, $add_pos, 'ERROR',
+                                     "1 $err_level(s) encountered -- die on "
+                                   . "$err_level(s) requested", undef ) ;
         exit 1;
     }
 }
 
 sub process_errors
 {
-    my ( $filename, $dataname, $message, $exit ) = @_;
+    my ( $details, $exit ) = @_;
 
+    my $message = $details->{message};
     $message =~ s/^([A-Z]+),\s*//;
     # Messages with missing STATUS identifiers probably did not originate in
     # COD modules (for example, system errors) and might start with a
@@ -85,13 +97,17 @@ sub process_errors
     my $error_level = defined $1 ? $1 : 'ERROR';
     $exit = 1 if $error_level ne 'ERROR';
 
-    report_message($0, $filename, $dataname, $error_level, $message, $exit);
+    $details->{message}   = $message;
+    $details->{err_level} = $error_level;
+
+    report_message( $details, $exit );
 }
 
 sub process_warnings
 {
-    my ( $filename, $dataname, $message, $die ) = @_;
+    my ( $details, $die ) = @_;
 
+    my $message = $details->{message};
     $message =~ s/^([A-Z]+),\s*//;
     # Messages with missing STATUS identifiers probably did not originate in
     # COD modules (for example, system errors) and might start with a
@@ -102,5 +118,8 @@ sub process_warnings
     my $error_level = defined $1 ? $1 : 'WARNING';
     my $exit = defined $die->{$error_level} ? $die->{$error_level} : 1;
 
-    report_message($0, $filename, $dataname, $error_level, $message, $exit);
+    $details->{message}   = $message;
+    $details->{err_level} = $error_level;
+
+    report_message( $details, $exit );
 }

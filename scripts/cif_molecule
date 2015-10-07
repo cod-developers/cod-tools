@@ -554,7 +554,11 @@ eval {
     }
 };
 if ($@) {
-    process_errors( $cif_header_file, undef, $@, $die_on_errors );
+    process_errors( {
+      'message'       => $@,
+      'program'       => $0,
+      'filename'      => $cif_header_file,
+    }, $die_on_errors )
 };
 
 @ARGV = ("-") unless @ARGV;
@@ -570,8 +574,12 @@ for my $filename (@ARGV) {
 
     if( !ref $data ||
         !@$data || !defined $data->[0] || !defined $data->[0]{name} ) {
-        report_message( $0, $filename, undef, 'WARNING',
-                'file seems to be empty', $die_on_warnings );
+        report_message( {
+                'filename'  => $filename,
+                'program'   => $0,
+                'err_level' => 'WARNING',
+                'message'   => 'file seems to be empty'
+            }, $die_on_warnings );
         next;
     }
 
@@ -585,14 +593,15 @@ for my $filename (@ARGV) {
 
         my $dataname = 'data_' . $dataset->{name};
 
-        local $SIG{__WARN__} = sub {
-                                   process_warnings(
-                                       $filename, $dataname, @_,
-                                       {
-                                         WARNING => $die_on_warnings,
-                                         NOTE    => $die_on_notes,
-                                       }
-                                   ) };
+        local $SIG{__WARN__} =  sub { process_warnings( {
+                                       'message'       => @_,
+                                       'program'       => $0,
+                                       'filename'      => $filename,
+                                       'add_pos'       => $dataname
+                                     }, {
+                                       WARNING => $die_on_warnings,
+                                       NOTE    => $die_on_notes,
+                                     } ) };
 
         eval {
             my $values = $dataset->{"values"};
@@ -838,9 +847,13 @@ for my $filename (@ARGV) {
             }
         }; # eval block end
         if ( $@ ) {
-            process_errors( $filename, $dataname, $@, $die_on_errors );
+            process_errors( {
+              'message'       => $@,
+              'program'       => $0,
+              'filename'      => $filename,
+              'add_pos'       => $dataname
+            }, $die_on_errors )
         }
-
     }
 }
 

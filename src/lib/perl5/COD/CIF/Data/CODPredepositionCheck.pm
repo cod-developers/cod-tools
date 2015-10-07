@@ -515,14 +515,16 @@ sub filter_and_check
         my %structures = ();
         my $index = 0;
         foreach my $dataset ( @$data ) {
-            my $dataname = 'data_' . $dataset->{name};
-            local $SIG{__WARN__} =
-                sub {process_warnings( $cif_filename, $dataname, @_,
-                                       {
-                                           WARNING => 0, #$die_on_warnings,
-                                           NOTE    => 0, #$die_on_notes,
-                                       }
-                                     ) };
+            my $dataname = 'data_' . $dataset->{name} if defined $dataset->{name};
+            local $SIG{__WARN__} = sub { process_warnings( {
+                                           'message'  => @_,
+                                           'program'  => $0,
+                                           'filename' => $cif_filename,
+                                           'add_pos'  => $dataname },
+                                         {
+                                           'WARNING' => 0, #$die_on_warnings,
+                                           'NOTE'    => 0, #$die_on_notes,
+                                         } ) };
 
             my $structure = cif_fill_data( $dataset, $cif_filename, $index );
             if ( defined $structure ) {
@@ -780,13 +782,16 @@ sub filter_and_check
         my @extracted;
         foreach my $dataset ( @$data ) {
             my $dataname = 'data_' . $dataset->{name};
-            local $SIG{__WARN__} =
-                  sub {process_warnings( $cif_filename, $dataname, @_,
+            local $SIG{__WARN__} = sub { process_warnings( {
+                                           'message'  => @_,
+                                           'program'  => $0,
+                                           'filename' => $cif_filename,
+                                           'add_pos'  => $dataname },
                                          {
-                                              WARNING => 0, #$die_on_warnings,
-                                              NOTE    => 0, #$die_on_notes,
-                                         }
-                                       ) };
+                                           'WARNING' => 0, #$die_on_warnings,
+                                           'NOTE'    => 0, #$die_on_notes,
+                                         } ) };
+
             my $extracted_dataset;
             eval {
                 $extracted_dataset = cif2cod( $dataset, $cif_filename );

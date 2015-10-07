@@ -426,7 +426,11 @@ eval {
     }
 };
 if ($@) {
-    process_errors( $extra_tag_file, undef, $@, $die_on_errors );
+    process_errors( {
+      'message'  => $@,
+      'program'  => $0,
+      'filename' => $extra_tag_file
+    }, $die_on_errors );
 };
 
 my %excluded_tags  = map { ($_,$_) } @COD::CIF::Tags::Excluded::tag_list;
@@ -458,7 +462,11 @@ eval {
     }
 };
 if ($@) {
-    process_errors( $cif_header_file, undef, $@, $die_on_errors );
+    process_errors( {
+      'message'  => $@,
+      'program'  => $0,
+      'filename' => $cif_header_file
+    }, $die_on_errors );
 };
 
 # Reading bibliography from additional sources
@@ -497,7 +505,11 @@ if( defined $biblio ) {
               . lcfirst($!) . "\n";
         };
         if ($@) {
-            process_errors( $biblio, undef, $@, $die_on_errors );
+            process_errors( {
+              'message'  => $@,
+              'program'  => $0,
+              'filename' => $biblio
+            }, $die_on_errors );
         };
     }
 }
@@ -514,8 +526,12 @@ for my $filename (@ARGV) {
     process_parser_messages( $messages, $die_on_error_level );
 
     if( !@$data || !defined $data->[0] || !defined $data->[0]{name} ) {
-        report_message( $0, $filename, undef, 'WARNING',
-                'file seems to be empty', $die_on_warnings );
+        report_message( {
+           'program'   => $0,
+           'filename'  => $filename,
+           'err_level' => 'WARNING',
+           'message'   => 'file seems to be empty'
+        }, $die_on_warnings );
         next;
     }
 
@@ -538,14 +554,14 @@ for my $filename (@ARGV) {
     my %global_biblio_keys = map {($_,$_)} @global_biblio_keys;
 
     eval {
-
-        local $SIG{__WARN__} =
-                   sub {process_warnings( $filename, undef, @_,
-                                          {
-                                            WARNING => $die_on_warnings,
-                                            NOTE    => $die_on_notes,
-                                          }
-                                        ) };
+        local $SIG{__WARN__} = sub { process_warnings( {
+                                       'message'  => @_,
+                                       'program'  => $0,
+                                       'filename' => $filename
+                                     }, {
+                                       'WARNING' => $die_on_warnings,
+                                       'NOTE'    => $die_on_notes
+                                     } ) };
 
 #
 # First, look for a data_global section and extract bibliography
@@ -575,7 +591,11 @@ for my $filename (@ARGV) {
         }
     };
     if ($@) {
-        process_errors( $filename, undef, @_, $die_on_errors );
+        process_errors( {
+          'message'  => $@,
+          'program'  => $0,
+          'filename' => $filename
+        }, $die_on_errors );
     };
 
 #
@@ -595,13 +615,14 @@ for my $filename (@ARGV) {
     my $pd_overall_info_datablock_nr = 0;
 
     eval {
-        local $SIG{__WARN__} =
-                   sub {process_warnings( $filename, undef, @_,
-                                          {
-                                            WARNING => $die_on_warnings,
-                                            NOTE    => $die_on_notes,
-                                          }
-                                        ) };
+        local $SIG{__WARN__} = sub { process_warnings( {
+                                       'message'  => @_,
+                                       'program'  => $0,
+                                       'filename' => $filename
+                                     }, {
+                                       'WARNING' => $die_on_warnings,
+                                       'NOTE'    => $die_on_notes
+                                     } ) };
 
         if( $pd_datablocks > 0 ) {
             for my $dataset (@$data) {
@@ -640,7 +661,11 @@ for my $filename (@ARGV) {
         }
     };
     if ($@) {
-        process_errors( $filename, undef, @_, $die_on_errors )
+        process_errors( {
+          'message'  => $@,
+          'program'  => $0,
+          'filename' => $filename
+        }, $die_on_errors );
     };
 
     # Assume that there are no datablocks with coordinates until a datablock
@@ -655,14 +680,15 @@ for my $filename (@ARGV) {
         my $dataname = 'data_' . $dataset->{name};
         my $datablok = $dataset->{values};
 
-        local $SIG{__WARN__} = sub {
-                                   process_warnings(
-                                       $filename, $dataname, @_,
-                                       {
-                                         WARNING => $die_on_warnings,
-                                         NOTE    => $die_on_notes,
-                                       }
-                                   ) };
+        local $SIG{__WARN__} = sub { process_warnings( {
+                                       'message'  => @_,
+                                       'program'  => $0,
+                                       'filename' => $filename,
+                                       'add_pos'  => $dataname
+                                     }, {
+                                       'WARNING' => $die_on_warnings,
+                                       'NOTE'    => $die_on_notes
+                                     } ) };
 
         ## next unless defined $dataset->{kind} && $dataset->{kind} == "DATA";
 
@@ -1254,13 +1280,22 @@ for my $filename (@ARGV) {
                        } );
         } };
         if ($@) {
-            process_errors( $filename, $dataname, $@, $die_on_errors );
+            process_errors( {
+              'message'       => $@,
+              'program'       => $0,
+              'filename'      => $filename,
+              'add_pos'       => $dataname
+            }, $die_on_errors );
         };
     };
 
     if( $no_coordinates ) {
-        report_message( $0, $filename, undef, 'WARNING', 'no datablocks that '
-                      . 'contain coordinates found', $die_on_warnings );
+        report_message( {
+           'program'   => $0,
+           'filename'  => $filename,
+           'err_level' => 'WARNING',
+           'message'   => 'no datablocks that contain coordinates found'
+        }, $die_on_warnings );
     }
 }
 

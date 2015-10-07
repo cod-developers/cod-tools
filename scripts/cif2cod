@@ -232,18 +232,24 @@ for my $filename (@ARGV) {
 
         my $dataname = 'data_' . $dataset->{name};
 
-        local $SIG{__WARN__} = sub {
-                                   process_warnings(
-                                       $filename, $dataname, @_,
-                                       $die_on_error_level
-                                   ) };
+        local $SIG{__WARN__} = sub { process_warnings( {
+                                       'message'       => @_,
+                                       'program'       => $0,
+                                       'filename'      => $filename,
+                                       'add_pos'       => $dataname
+                                     }, $die_on_error_level ) };
 
         my $extracted_dataset;
         eval {
             $extracted_dataset = cif2cod( $dataset, $filename, \%options );
         };
         if ($@) {
-            process_errors( $filename, $dataname, $@, $die_on_errors );
+            process_errors( {
+              'message'       => $@,
+              'program'       => $0,
+              'filename'      => $filename,
+              'add_pos'       => $dataname
+            }, $die_on_errors )
         }
         push @extracted, $extracted_dataset if defined $extracted_dataset;
     }
