@@ -55566,6 +55566,56 @@ our @EXPORT = qw( @table @extra_settings );
     ]
 },
 
+# Extra settings determined for those structures that are in COD, have
+# X-centered superspacegroups and for which the 3D average spacegroups
+# could not be derived from their symmetry operators:
+
+{
+    number          => 100,
+    hall            => 'P 4 -2ab (x,y,1/2*z)',
+    schoenflies     => 'C4v^2',
+    hermann_mauguin => 'P 4 b m',
+    universal_h_m   => 'P 4 b m (a,b,2*c)',
+    crystal_class   => 'tetragonal',
+    constraints     => '$a == $b && $alpha == 90 && $beta == 90 && $gamma == 90',
+    symops => [
+        'x,y,z',
+        '-y,x,z',
+        '-x,-y,z',
+        'y,-x,z',
+        '-x+1/2,y+1/2,z',
+        '-y+1/2,-x+1/2,z',
+        'x+1/2,-y+1/2,z',
+        'y+1/2,x+1/2,z',
+        'x,y,z+1/2',
+        '-y,x,z+1/2',
+        '-x,-y,z+1/2',
+        'y,-x,z+1/2',
+        '-x+1/2,y+1/2,z+1/2',
+        '-y+1/2,-x+1/2,z+1/2',
+        'x+1/2,-y+1/2,z+1/2',
+        'y+1/2,x+1/2,z+1/2'
+    ],
+    ncsym => [
+        'x,y,z',
+        '-y,x,z',
+        '-x,-y,z',
+        'y,-x,z',
+        '-x+1/2,y+1/2,z',
+        '-y+1/2,-x+1/2,z',
+        'x+1/2,-y+1/2,z',
+        'y+1/2,x+1/2,z',
+        'x,y,z+1/2',
+        '-y,x,z+1/2',
+        '-x,-y,z+1/2',
+        'y,-x,z+1/2',
+        '-x+1/2,y+1/2,z+1/2',
+        '-y+1/2,-x+1/2,z+1/2',
+        'x+1/2,-y+1/2,z+1/2',
+        'y+1/2,x+1/2,z+1/2'
+    ],
+},
+
 );
 
 1;
