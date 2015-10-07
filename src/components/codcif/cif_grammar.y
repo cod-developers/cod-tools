@@ -427,6 +427,8 @@ static void cif_compile_file( char *filename, cexception_t *ex )
     cexception_guard( inner ) {
         if( filename ) {
             yyin = fopenx( filename, "r", ex );
+        } else {
+            yyin = stdin;
         }
         px = &inner; /* catch all parser-generated exceptions */
         if( (yyretval = yyparse()) != 0 ) {
