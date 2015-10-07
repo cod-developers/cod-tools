@@ -55812,6 +55812,32 @@ our @EXPORT = qw( @table @extra_settings );
     ],
 },
 
+{
+    number          => 13,
+    hall            => '-P 2yc (x,1/2*y,z)',
+    schoenflies     => 'C2h^4',
+    hermann_mauguin => 'P 1 2/c 1',
+    universal_h_m   => 'P 1 2/c 1 (a,2*b,c)',
+    crystal_class   => 'monoclinic',
+    constraints     => '$alpha == 90 && $gamma == 90',
+    symops => [
+        'x,y,z',
+        '-x,y,-z+1/2',
+        'x,y+1/2,z',
+        '-x,y+1/2,-z+1/2',
+        '-x,-y,-z',
+        'x,-y,z+1/2',
+        '-x,-y+1/2,-z',
+        'x,-y+1/2,z+1/2',
+    ],
+    ncsym => [
+        'x,y,z',
+        '-x,y,-z+1/2',
+        'x,y+1/2,z',
+        '-x,y+1/2,-z+1/2',
+    ],
+},
+
 );
 
 1;
