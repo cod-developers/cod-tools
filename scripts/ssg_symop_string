@@ -1,0 +1,57 @@
+#! /bin/sh
+#!perl -w # --*- Perl -*--
+eval 'exec perl -x $0 ${1+"$@"}'
+    if 0;
+#------------------------------------------------------------------------------
+#$Author$
+#$Date$ 
+#$Revision$
+#$URL$
+#------------------------------------------------------------------------------
+#*
+#  Parse superspacegoup symmetry operators as described in the CIF
+#  _space_group_symop_ssg_operation_algebraic data items and procued
+#  symmetry matrices for them.
+#**
+
+use strict;
+use warnings;
+
+use COD::Spacegroups::Symop::SSGParse;
+
+my @matrix;
+
+while(<>) {
+    next if /^#/;
+    next if /^\s*$/;
+    chomp;
+    if( /^\s*\[\s*$/ ) {
+        @matrix = ();
+        next;
+    }
+    if( /^\s*\[/ ) { # Matrix row
+        s/^\s*\[\s*|\s*\]\s*$//g;
+        my @row = split( /,\s*/ );
+        push( @matrix, \@row );
+        next;
+    }
+    if( /^\s*\]/ ) {
+        print_commented_matrix( \@matrix );
+        print string_from_symop( \@matrix ), "\n\n";
+    }
+}
+
+sub print_commented_matrix
+{
+    my ($m) = @_;
+
+    print "# [\n";
+    for (@$m) {
+        print "#   [ ";
+        for (@$_) {
+            printf "%2s, ", $_;
+        }
+        print " ]\n";
+    }
+    print "# ]\n";
+}
