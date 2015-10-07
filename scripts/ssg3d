@@ -1,0 +1,98 @@
+#! /bin/sh
+#!perl -w # --*- Perl -*--
+eval 'exec perl -x $0 ${1+"$@"}'
+    if 0;
+#------------------------------------------------------------------------------
+#$Author$
+#$Date$ 
+#$Revision$
+#$URL$
+#------------------------------------------------------------------------------
+#*
+#  Build a three-dimensional space group from (3+1) dimensional
+#  superspacegroup operators.
+#**
+
+use strict;
+use warnings;
+
+use COD::Spacegroups::Builder;
+use COD::Spacegroups::Lookup::COD;
+use COD::Spacegroups::Symop::Parse qw();
+use COD::Spacegroups::Symop::SSGParse;
+
+my $spacegroup = new COD::Spacegroups::Builder;
+
+while(<>) {
+    next if /^#/;
+    next if /^\s*$/;
+    chomp;
+    my $matrix = symop_from_string( $_ );
+    print "# $_ -> ";
+    ## print_matrix( $matrix );
+    my $symop2d = symop_from_ssg_operator( $matrix );
+    print COD::Spacegroups::Symop::Parse::string_from_symop( $symop2d ), "\n";
+    ## print_matrix( $symop2d );
+    $spacegroup->insert_symop( $symop2d );
+}
+
+$spacegroup->print();
+
+my @symops = $spacegroup->all_symops();
+
+# Identify the spacegroup from the symmetry operators:
+
+sub mk_symop_key
+{
+    my ( $symops ) = @_;
+
+    my @canonical = sort 
+        map {COD::Spacegroups::Symop::Parse::symop_string_canonical_form($_)}
+    @$symops;
+    my $key = join( ";", @canonical );
+    return $key;
+}
+
+sub mkhash
+{
+    if( 1 ) {
+        map { (mk_symop_key($_->{symops}), $_) }
+        @COD::Spacegroups::Lookup::COD::table,
+        @COD::Spacegroups::Lookup::COD::extra_settings;
+    #} else {
+    #    map { (mk_symop_key($_->{symops}), $_) }
+    #    @COD::Spacegroups::Lookup::CCP4::table;
+    }
+}
+
+my %symop_lookup_table = mkhash();
+my $key = mk_symop_key(
+    [ 
+      map { COD::Spacegroups::Symop::Parse::string_from_symop($_) } @symops
+    ]
+);
+
+if( exists $symop_lookup_table{$key} ) {
+    my $estimated_sg = $symop_lookup_table{$key};
+    use COD::Serialise;
+    serialiseRef( $estimated_sg );
+} else {
+    print "$0: spacegroup could not be identified\n"
+}
+
+sub print_matrix
+{
+    my ($m) = @_;
+
+    print "[\n";
+    for (@$m) {
+        print "   [ ";
+        my $prefix = "";
+        for (@$_) {
+            printf "%s%2s", $prefix, $_;
+            $prefix = ", ";
+        }
+        print " ]\n";
+    }
+    print "]\n\n";
+}
