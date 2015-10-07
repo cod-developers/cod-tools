@@ -19648,23 +19648,6 @@ our @EXPORT = qw( @table @extra_settings );
 
 {
     number          => 1,
-    hall            => ' P 1 (1/2*x+1/2*y,1/2*x-1/2*y,-z)',
-    schoenflies     => 'C1^1',
-    hermann_mauguin => 'P 1 (a+b,a-b,-c)',
-    universal_h_m   => 'P 1 (a+b,a-b,-c)',
-    crystal_class   => 'triclinic',
-    constraints     => '1',
-    symops => [
-        'x,y,z',
-        'x+1/2,y+1/2,z',
-    ],
-    ncsym => [
-        'x,y,z',
-    ]
-},
-
-{
-    number          => 1,
     hall            => ' P 1 (-1/2*x+1/2*y+1/2*z,1/2*x-1/2*y+1/2*z,1/2*x+1/2*y-1/2*z)',
     schoenflies     => 'C1^1',
     hermann_mauguin => 'P 1 (b+c,a+c,a+b)',
@@ -19696,86 +19679,6 @@ our @EXPORT = qw( @table @extra_settings );
     ],
     ncsym => [
         'x,y,z',
-    ]
-},
-
-{
-    number          => 2,
-    hall            => '-P 1 (-x,-1/2*y+1/2*z,1/2*y+1/2*z)',
-    schoenflies     => 'Ci^1',
-    hermann_mauguin => 'P -1 (-a,-b+c,b+c)',
-    universal_h_m   => 'P -1 (-a,-b+c,b+c)',
-    crystal_class   => 'triclinic',
-    constraints     => '1',
-    symops => [
-        'x,y,z',
-        '-x,-y,-z',
-        'x,y+1/2,z+1/2',
-        '-x,-y+1/2,-z+1/2',
-    ],
-    ncsym => [
-        'x,y,z',
-        '-x,-y,-z',
-    ]
-},
-
-{
-    number          => 2,
-    hall            => '-P 1 (-1/2*x+1/2*z,-y,1/2*x+1/2*z)',
-    schoenflies     => 'Ci^1',
-    hermann_mauguin => 'P -1 (-a+c,-b,a+c)',
-    universal_h_m   => 'P -1 (-a+c,-b,a+c)',
-    crystal_class   => 'triclinic',
-    constraints     => '1',
-    symops => [
-        'x,y,z',
-        '-x,-y,-z',
-        'x+1/2,y,z+1/2',
-        '-x+1/2,-y,-z+1/2',
-    ],
-    ncsym => [
-        'x,y,z',
-        '-x,-y,-z',
-    ]
-},
-
-{
-    number          => 2,
-    hall            => '-P 1 (1/2*x+1/2*y,1/2*x-1/2*y,-z)',
-    schoenflies     => 'Ci^1',
-    hermann_mauguin => 'P -1 (a+b,a-b,-c)',
-    universal_h_m   => 'P -1 (a+b,a-b,-c)',
-    crystal_class   => 'triclinic',
-    constraints     => '1',
-    symops => [
-        'x,y,z',
-        '-x,-y,-z',
-        'x+1/2,y+1/2,z',
-        '-x+1/2,-y+1/2,-z',
-    ],
-    ncsym => [
-        'x,y,z',
-        '-x,-y,-z',
-    ]
-},
-
-{
-    number          => 2,
-    hall            => '-P 1 (-1/2*x+1/2*y+1/2*z,1/2*x-1/2*y+1/2*z,1/2*x+1/2*y-1/2*z)',
-    schoenflies     => 'Ci^1',
-    hermann_mauguin => 'P -1 (b+c,a+c,a+b)',
-    universal_h_m   => 'P -1 (b+c,a+c,a+b)',
-    crystal_class   => 'triclinic',
-    constraints     => '1',
-    symops => [
-        'x,y,z',
-        '-x,-y,-z',
-        'x+1/2,y+1/2,z+1/2',
-        '-x+1/2,-y+1/2,-z+1/2',
-    ],
-    ncsym => [
-        'x,y,z',
-        '-x,-y,-z',
     ]
 },
 
@@ -19904,26 +19807,6 @@ our @EXPORT = qw( @table @extra_settings );
         '-x,y,-z+1/2',
         'x,y+1/2,z+1/2',
         '-x,y+1/2,-z',
-    ],
-    ncsym => [
-        'x,y,z',
-        '-x,y+1/2,-z',
-    ]
-},
-
-{
-    number          => 4,
-    hall            => ' P 2yb (1/2*x,y,-1/2*x+z)',
-    schoenflies     => 'C2^2',
-    hermann_mauguin => 'P 1 21 1 (2*a+c,b,c)',
-    universal_h_m   => 'P 1 21 1 (2*a+c,b,c)',
-    crystal_class   => 'monoclinic',
-    constraints     => '$alpha == 90 && $gamma == 90',
-    symops => [
-        'x,y,z',
-        '-x,y+1/2,-z',
-        'x+1/2,y,z+1/2',
-        '-x+1/2,y+1/2,-z+1/2',
     ],
     ncsym => [
         'x,y,z',
@@ -21004,32 +20887,6 @@ our @EXPORT = qw( @table @extra_settings );
         '-x,y+1/2,-z',
         '-x,-y,-z',
         'x,-y,z+1/2',
-    ],
-    ncsym => [
-        'x,y,z',
-        '-x,y+1/2,-z',
-        '-x,-y,-z',
-        'x,-y+1/2,z',
-    ]
-},
-
-{
-    number          => 11,
-    hall            => '-P 2yb (1/2*x,y,-1/2*x+z)',
-    schoenflies     => 'C2h^2',
-    hermann_mauguin => 'P 1 21/m 1 (2*a+c,b,c)',
-    universal_h_m   => 'P 1 21/m 1 (2*a+c,b,c)',
-    crystal_class   => 'monoclinic',
-    constraints     => '$alpha == 90 && $gamma == 90',
-    symops => [
-        'x,y,z',
-        '-x,y+1/2,-z',
-        '-x,-y,-z',
-        'x,-y+1/2,z',
-        'x+1/2,y,z+1/2',
-        '-x+1/2,y+1/2,-z+1/2',
-        '-x+1/2,-y,-z+1/2',
-        'x+1/2,-y+1/2,z+1/2',
     ],
     ncsym => [
         'x,y,z',
@@ -22329,32 +22186,6 @@ our @EXPORT = qw( @table @extra_settings );
         'x,y+1/2,z+1/2',
         '-x+1/2,y+1/2,-z+1/2',
         '-x,-y+1/2,-z+1/2',
-        'x+1/2,-y+1/2,z+1/2',
-    ],
-    ncsym => [
-        'x,y,z',
-        '-x+1/2,y+1/2,-z+1/2',
-        '-x,-y,-z',
-        'x+1/2,-y+1/2,z+1/2',
-    ]
-},
-
-{
-    number          => 11,
-    hall            => '-P 2yb (1/2*x,y,-1/2*x+z)',
-    schoenflies     => 'C2h^2',
-    hermann_mauguin => 'P 1 21/m 1 (2*a+c,b,c)',
-    universal_h_m   => 'P 1 21/m 1 (2*a+c,b,c)',
-    crystal_class   => 'monoclinic',
-    constraints     => '$alpha == 90 && $gamma == 90',
-    symops => [
-        'x,y,z',
-        '-x,y+1/2,-z',
-        '-x,-y,-z',
-        'x,-y+1/2,z',
-        'x+1/2,y,z+1/2',
-        '-x+1/2,y+1/2,-z+1/2',
-        '-x+1/2,-y,-z+1/2',
         'x+1/2,-y+1/2,z+1/2',
     ],
     ncsym => [
