@@ -22309,32 +22309,6 @@ our @EXPORT = qw( @table @extra_settings );
 },
 
 {
-    number          => 15,
-    hall            => '-C 2yc (x,y,-x+z)',
-    schoenflies     => 'C2h^6',
-    hermann_mauguin => 'I 1 2/c 1',
-    universal_h_m   => 'C 1 2/c 1 (a+c,b,c)',
-    crystal_class   => 'monoclinic',
-    constraints     => '$alpha == 90 && $gamma == 90',
-    symops => [
-        'x,y,z',
-        '-x,y,-z+1/2',
-        '-x,-y,-z',
-        'x,-y,z+1/2',
-        'x+1/2,y+1/2,z+1/2',
-        '-x+1/2,y+1/2,-z',
-        '-x+1/2,-y+1/2,-z+1/2',
-        'x+1/2,-y+1/2,z',
-    ],
-    ncsym => [
-        'x,y,z',
-        '-x+1/2,y+1/2,-z',
-        '-x,-y,-z',
-        'x+1/2,-y+1/2,z',
-    ]
-},
-
-{
     number          => 12,
     hall            => '-C 2y (x-1/2*z,y,1/2*z)',
     schoenflies     => 'C2h^3',
