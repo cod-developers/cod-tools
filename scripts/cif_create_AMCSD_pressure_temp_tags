@@ -9,39 +9,51 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #$URL$
 #------------------------------------------------------------------------------
 #*
-#  Parse a CIF file, reformat author names in AMCSD convention into
-#  COD format.
+#*  Parse a CIF file, determine pressure and temperature tag values from
+#*  the values of other tags. Designed for CIFs from AMCSD.
+#*
+#* USAGE:
+#*    $0 [options] input.cif [input2.cif ...]
 #**
 
 use strict;
 use warnings;
-use COD::CIF::Parser::Yapp;
-use COD::CIF::Tags::CanonicalNames;
+use COD::CIF::Parser qw(parse_cif);
+use COD::CIF::Tags::CanonicalNames qw(canonicalize_all_names);
 use COD::CIF::Tags::DictTags;
 use COD::CIF::Tags::COD;
-use COD::CIF::Tags::Print;
-use COD::UserMessage qw(note warning error prefix_dataname);
+use COD::CIF::Tags::Print qw(print_cif);
+use COD::ErrorHandler qw(process_warnings process_errors process_parser_messages);
 use COD::SOptions;
 use COD::SUsage;
 
 my $keep_tag_order = 0;
+my $use_parser = 'c';
 
-#* USAGE:
-#*     $0 [options] input.cif [input2.cif ...]
-#*
 #* OPTIONS:
 #*   --keep-tag-order
 #*                      Keep the original tag order in CIF file (default).
 #*   --sort-tags
 #*                      Reorder tags in CIF file according to COD.
-#*
-#**  --help,--usage     Print a short usage message (this message) and exit.
-
+#*   --use-c-parser
+#*                      Use the faster C parser for CIFs (default).
+#*   --use-perl-parser
+#*                      Use the Perl parser for parsing CIFs.
+#*   --help,--usage     Print a short usage message (this message) and exit.
+#**
 @ARGV = getOptions(
-    "--keep-tag-order" => sub { $keep_tag_order = 1; },
-    "--sort-tags"      => sub { $keep_tag_order = 0; },
-    "--help,--usage"   => sub { usage; exit },
+    "--keep-tag-order"  => sub { $keep_tag_order = 1; },
+    "--sort-tags"       => sub { $keep_tag_order = 0; },
+    "--use-c-parser"    => sub { $use_parser = "c" },
+    "--use-perl-parser" => sub { $use_parser = "perl" },
+    "--help,--usage"    => sub { usage; exit }
 );
+
+my $die_on_error_level = {
+    ERROR   => 0,
+    WARNING => 0,
+    NOTE    => 0
+};
 
 my @dictionary_tags = ( @COD::CIF::Tags::DictTags::tag_list,
                         @COD::CIF::Tags::COD::tag_list );
@@ -53,186 +65,191 @@ sub get_temperature_unit_shift($);
 @ARGV = ("-") unless @ARGV;
 
 for my $filename (@ARGV) {
-    my $parser = new COD::CIF::Parser::Yapp;
-    my $data = $parser->Run($filename);
 
-    if( defined $parser->YYData->{ERRCOUNT} &&
-        $parser->YYData->{ERRCOUNT} > 0 ) {
-        error( $0, $filename, undef, $parser->YYData->{ERRCOUNT}
-             . " error(s) encountered while parsing CIF data", undef );
-        exit -1;
-    }
+    my $options = { 'parser' => $use_parser, 'no_print' => 1 };
+    my ( $data, $err_count, $messages ) = parse_cif( $filename, $options );
+    process_parser_messages( $messages, { 'ERROR'   => 1,
+                                          'WARNING' => 0,
+                                          'NOTE'    => 0 } );
 
     canonicalize_all_names( $data );
 
     for my $dataset (@$data) {
 
         my $values = $dataset->{values};
-        my $dataname = prefix_dataname($dataset->{name});
+        my $dataname = 'data_' . $dataset->{name} if exists $dataset->{name};
 
-        my $temperature_is_processing = 0;
+        local $SIG{__WARN__} = sub { process_warnings( {
+                                       'message'       => @_,
+                                       'program'       => $0,
+                                       'filename'      => $filename,
+                                       'add_pos'       => $dataname
+                                     }, $die_on_error_level ) };
 
-        for my $tag ( @{$dataset->{tags}} ) {
-            if( $values->{$tag}[0] =~
-                /((?:\w+\s+)?(?:anneal\w*|quench\w*|prepare\w*)(?:\s+\w+)?)\s+
-                 (P(?:ressure)?|T(?:emperature)?)\s*=\s*([-+0-9.E]+)\s*
-                 ((?:deg(?:ree(?:s)?)?\s+)?[\w]+)/xi
-                ) {
-                warning( $0, $filename, $dataname,
-                         "structure marked as '$1', not taking "
-                       . ($1 eq "P" ? "pressure" : "temperature") . ' value',
-                         undef );
-                $temperature_is_processing = 1;
-            }
+        eval {
+            my $temperature_is_processing = 0;
 
-            my $number =
-                '(?:[-+]?' .
-                '(?:\d+(?:\.\d*)?|\.\d+)' .
-                '(?:[eE][-+]?\d+)?)';
-            my $number_word =
-                '(?:one|two|three|four|five|six|seven|eight|nine|ten)';
-            my $number_or_word = "(?:$number|$number_word\\s)";
-            my $temp_units =
-                '(?-i:(?:[KC]/h(?:our)?|[KC]\s+hr?\^-1\^|' .
-                'K|[Cc]|oC|\(C|[Dd]eg(?:rees?)?\s*C))';
-            my $pressure_units = '(?-i:GPa|MPa|kPa|Pa|kbar|bar)';
-            my $time_units =
-                '(?:min|months?|m|seconds?|sec|s|hours?|hrs?|h|days?|d|' .
-                'years?|y|weeks?|[KC]/h(?:our)?|[KC]\s+hr?\^-1\^)';
-            my $initial_words =
-                '(?:initially|after)';
-            my $processing_words =
-                '(?:un)?' .
-                '(?:cool|rate|quench|anneal|heat[ie]|heat-treat' .
-                '|synthe[sz]ized|prepare|isoth?ermally\s+order)';
-            my $synthesis_words =
-                '(?:prepar|synthe[sz]iz)';
+            for my $tag ( @{$dataset->{tags}} ) {
+                if( $values->{$tag}[0] =~
+                    /((?:\w+\s+)?(?:anneal\w*|quench\w*|prepare\w*)(?:\s+\w+)?)\s+
+                     (P(?:ressure)?|T(?:emperature)?)\s*=\s*([-+0-9.E]+)\s*
+                     ((?:deg(?:ree(?:s)?)?\s+)?[\w]+)/xi
+                    ) {
+                    warn "WARNING, structure marked as '$1', not taking "
+                        . ($1 eq "P" ? "pressure" : "temperature") . " value\n";
+                    $temperature_is_processing = 1;
+                }
 
-            for my $units (( $temp_units, $pressure_units )) {
-                my $value;
-                for my $tag_value (split( '(?<![\d\s]min)\.\s',
-                                          $values->{$tag}[0] )) {
-                    while( $tag_value =~
-                       /((?:
-                          (?:^|\s)(?:$initial_words\s+)?$processing_words
-                          .*?\s+$number_or_word+\s*$units
-                          (?:[^\d]*?\s$number_or_word\s*$time_units)?
-                          (?:.*?(?:quench|anneal|heat|synthe[sz]ized)\w*$)?)
-                          |
-                          (?:(?:^|\s)$number_or_word\s*$units
-                           (?:.*\s$number_or_word\s*$time_units)?
-                           (?:.*(?:quench|anneal)\w*))$
-                          |(?:P(?:ressure)?\s*=\s*$number\s*$units\s+
-                              in\s+(?:air|.*\scell)
-                              (?:\s+after\s+decompression)?
-                           )
-                          )(?:\W|$)/imsxg
-                            ) {
-                              my $newval = $1;
-                              $newval =~ s/(?:$initial_words\s+)?
+                my $number =
+                    '(?:[-+]?' .
+                    '(?:\d+(?:\.\d*)?|\.\d+)' .
+                    '(?:[eE][-+]?\d+)?)';
+                my $number_word =
+                    '(?:one|two|three|four|five|six|seven|eight|nine|ten)';
+                my $number_or_word = "(?:$number|$number_word\\s)";
+                my $temp_units =
+                    '(?-i:(?:[KC]/h(?:our)?|[KC]\s+hr?\^-1\^|' .
+                    'K|[Cc]|oC|\(C|[Dd]eg(?:rees?)?\s*C))';
+                my $pressure_units = '(?-i:GPa|MPa|kPa|Pa|kbar|bar)';
+                my $time_units =
+                    '(?:min|months?|m|seconds?|sec|s|hours?|hrs?|h|days?|d|' .
+                    'years?|y|weeks?|[KC]/h(?:our)?|[KC]\s+hr?\^-1\^)';
+                my $initial_words =
+                    '(?:initially|after)';
+                my $processing_words =
+                    '(?:un)?' .
+                    '(?:cool|rate|quench|anneal|heat[ie]|heat-treat' .
+                    '|synthe[sz]ized|prepare|isoth?ermally\s+order)';
+                my $synthesis_words =
+                    '(?:prepar|synthe[sz]iz)';
+
+                for my $units (( $temp_units, $pressure_units )) {
+                    my $value;
+                    for my $tag_value (split( '(?<![\d\s]min)\.\s',
+                                              $values->{$tag}[0] )) {
+                        while( $tag_value =~
+                           /((?:
+                              (?:^|\s)(?:$initial_words\s+)?$processing_words
+                              .*?\s+$number_or_word+\s*$units
+                              (?:[^\d]*?\s$number_or_word\s*$time_units)?
+                              (?:.*?(?:quench|anneal|heat|synthe[sz]ized)\w*$)?)
+                              |
+                              (?:(?:^|\s)$number_or_word\s*$units
+                               (?:.*\s$number_or_word\s*$time_units)?
+                               (?:.*(?:quench|anneal)\w*))$
+                              |(?:P(?:ressure)?\s*=\s*$number\s*$units\s+
+                                  in\s+(?:air|.*\scell)
+                                  (?:\s+after\s+decompression)?
+                               )
+                              )(?:\W|$)/imsxg
+                        ) {
+                            my $newval = $1;
+                            $newval =~ s/(?:$initial_words\s+)?
                                   ($processing_words)(?:ed|i?ng)
                                   (.+\1)
                                   /$1/ixsm;
-                              $newval =~ s/($synthesis_words(?:ed|i?ng)\s+
+                            $newval =~ s/($synthesis_words(?:ed|i?ng)\s+
                                   (?:by|in))
                                   .+($processing_words)
                                   /$2/ixsm;
-                              $value = defined $value ?
+                            $value = defined $value ?
                                   $value . "; " . $newval : $newval;
+                        }
+                    }
+                    if( defined $value ) {
+                        my $key;
+                        if( $units ne $pressure_units ) {
+                            $key  = "_exptl_crystal_thermal_history";
+                        } else {
+                            $key  = "_exptl_crystal_pressure_history";
+                        }
+                        $value =~ s/\n/ /g;
+                        $value =~ s/\s+/ /g;
+                        $value =~ s/^\s+|\s+$//g;
+                        if( $value =~ /^(P(?:ressure)?\s*=\s*)($number)(\s.*)$/ ) {
+                            my $prefix = $1;
+                            my $numeric_value = $2;
+                            my $suffix = $3;
+                            $value =
+                                $prefix . sprintf( "%g", $numeric_value ) . $suffix;
+                        }
+                        if( !exists $values->{$key} ) {
+                            $values->{$key}[0] = $value;
+                        }
                     }
                 }
-                if( defined $value ) {
-                    my $key;
-                    if( $units ne $pressure_units ) {
-                        $key  = "_exptl_crystal_thermal_history";
+            }
+            for my $tag ( @{$dataset->{tags}} ) {
+                if( $values->{$tag}[0] =~
+                    /P(?:ressure)?\s*=\s*([-+0-9.eE]+)\s*([\w]+)/ ) {
+                    my $pressure = $1;
+                    my $units = $2;
+                    my $coefficient;
+                    eval {
+                        $coefficient = get_pressure_unit_coefficient( $units );
+                    };
+                    if( $@ ) {
+                        warn $@;
+                        next;
+                    }
+                    my $pressure_kPa =
+                        sprintf( "%7.5g", $pressure * $coefficient );
+                    $pressure_kPa =~ s/\s//g;
+                    if( !exists $values->{_diffrn_ambient_pressure} ) {
+                        $values->{_diffrn_ambient_pressure}[0] = $pressure_kPa;
+                        warn "NOTE, P = $pressure, $units, $coefficient\n";
                     } else {
-                        $key  = "_exptl_crystal_pressure_history";
-                    }
-                    $value =~ s/\n/ /g;
-                    $value =~ s/\s+/ /g;
-                    $value =~ s/^\s+|\s+$//g;
-                    if( $value =~ /^(P(?:ressure)?\s*=\s*)($number)(\s.*)$/ ) {
-                        my $prefix = $1;
-                        my $numeric_value = $2;
-                        my $suffix = $3;
-                        $value =
-                            $prefix . sprintf( "%g", $numeric_value ) . $suffix;
-                    }
-                    if( !exists $values->{$key} ) {
-                        $values->{$key}[0] = $value;
+                        if( $values->{_diffrn_ambient_pressure}[0] !=
+                            $pressure_kPa ) {
+                            warn "WARNING, pressure given in '$tag' value, "
+                               . "interpreted as $pressure $units "
+                               . ($units eq "kPa" ? "" : "($pressure_kPa kPa) ")
+                               . "is not equal to the value in the "
+                               . "_diffrn_ambient_pressure tag ("
+                               . $values->{_diffrn_ambient_pressure}[0] . " GPa)\n";
+                        }
                     }
                 }
-            }
-        }
-        for my $tag ( @{$dataset->{tags}} ) {
-            if( $values->{$tag}[0] =~
-                /P(?:ressure)?\s*=\s*([-+0-9.eE]+)\s*([\w]+)/ ) {
-                my $pressure = $1;
-                my $units = $2;
-                my $coefficient;
-                eval {
-                    $coefficient = get_pressure_unit_coefficient( $units );
-                };
-                if( $@ ) {
-                    error( $0, $filename, $dataname, $@, undef );
-                    next;
-                }
-                my $pressure_kPa =
-                    sprintf( "%7.5g", $pressure * $coefficient );
-                $pressure_kPa =~ s/\s//g;
-                if( !exists $values->{_diffrn_ambient_pressure} ) {
-                    $values->{_diffrn_ambient_pressure}[0] = $pressure_kPa;
-                    note( $0, $filename, $dataname,
-                          "P = $pressure, $units, $coefficient", undef );
-
-                } else {
-                    if( $values->{_diffrn_ambient_pressure}[0] !=
-                        $pressure_kPa ) {
-                        warning( $0, $filename, $dataname,
-                            "pressure given in '$tag' value, interpreted as "
-                          . " $pressure $units "
-                          . ($units eq "kPa" ? "" : "($pressure_kPa kPa) ")
-                          . "is not equal to the value in the "
-                          . "_diffrn_ambient_pressure tag ("
-                          . $values->{_diffrn_ambient_pressure}[0] . " GPa)",
-                             undef );
-                    }
-                }
-            }
-            if( !$temperature_is_processing &&
-                $values->{$tag}[0] =~
-                  /T(?:emperature)?\s*=\s*([-+0-9.eE]+)\s*
-                ((?:deg(?:ree(?:s)?)?\s+)?[\w]+)/x ) {
-                my $temperature = $1;
-                my $units = $2;
-                my $shift;
-                eval {
-                    $shift = get_temperature_unit_shift( $units );
-                };
-                if( $@ ) {
-                    error( $0, $filename, $dataname, $@, undef );
-                    next;
-                }
-                my $temp_K = $temperature + $shift;
-                if( !exists $values->{_diffrn_ambient_temperature} ) {
-                    $values->{_diffrn_ambient_temperature}[0] = $temp_K;
-                    note( $0, $filename, $dataname,
-                          "T = $temperature, $units, $shift", undef );
-                } else {
-                    if( abs($values->{_diffrn_ambient_temperature}[0] - $temp_K)
-                        >= 0.001 ) {
-                        warning( $0, $filename, $dataname,
-                                 "temperature given in '$tag' value, "
+                if( !$temperature_is_processing &&
+                    $values->{$tag}[0] =~
+                      /T(?:emperature)?\s*=\s*([-+0-9.eE]+)\s*
+                      ((?:deg(?:ree(?:s)?)?\s+)?[\w]+)/x ) {
+                    my $temperature = $1;
+                    my $units = $2;
+                    my $shift;
+                    eval {
+                        $shift = get_temperature_unit_shift( $units );
+                    };
+                    if( $@ ) {
+                        warn $@;
+                        next;
+                    };
+                    my $temp_K = $temperature + $shift;
+                    if( !exists $values->{_diffrn_ambient_temperature} ) {
+                        $values->{_diffrn_ambient_temperature}[0] = $temp_K;
+                        warn "NOTE, T = $temperature, $units, $shift\n";
+                    } else {
+                        if( abs($values->{_diffrn_ambient_temperature}[0] - $temp_K)
+                            >= 0.001 ) {
+                            warn "WARNING, temperature given in '$tag' value, "
                                . "interpreted as $temperature $units "
                                . ($units eq "K" ? "" : "($temp_K K) ")
                                . "is not equal to the value in the "
                                . "_diffrn_ambient_temperature tag ("
-                               . $values->{_diffrn_ambient_temperature}[0]
-                               . " K)", undef );
+                               . $values->{_diffrn_ambient_temperature}[0] . " K)\n";
+                        }
                     }
                 }
             }
-        }
+        };
+        if ($@) {
+            process_errors( {
+              'message'       => $@,
+              'program'       => $0,
+              'filename'      => $filename,
+              'add_pos'       => $dataname
+            }, $die_on_error_level->{'ERROR'} )
+        };
 
         print_cif( $dataset, {
             exclude_misspelled_tags => 0,
@@ -260,7 +277,7 @@ sub get_pressure_unit_coefficient($)
         return 1.0E+6 * 1    if /^GPa$/;
         return 1.0E+6 * 1    if /^Gpa$/;
     }
-    die( "unknown pressure units '$units'" )
+    die "ERROR, unknown pressure units '$units'\n";
 }
 
 sub get_temperature_unit_shift($)
@@ -273,5 +290,5 @@ sub get_temperature_unit_shift($)
         return 273.15 if /^degree C$/;
         return 273.15 if /^degrees C$/;
     }
-    die( "unknown temperature units '$units'" )
+    die "ERROR, unknown temperature units '$units'\n";
 }
