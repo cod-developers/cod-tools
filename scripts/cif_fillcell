@@ -9,7 +9,10 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #$URL$
 #------------------------------------------------------------------------------
 #*
-#  Generate symetric atoms
+#*  Generates symmetric atoms from a CIF file.
+#*
+#* USAGE:
+#*    $0 --options input.cif inputs*.cif
 #**
 
 use strict;
@@ -20,13 +23,27 @@ use COD::ShowStruct;
 use COD::Spacegroups::Symop::Parse;
 use COD::Spacegroups::Lookup::COD;
 use COD::UserMessage qw(error prefix_dataname);
+use COD::SOptions;
+use COD::SUsage;
 use File::Basename;
 
 my $Id = '$Id$';
 my $use_parser = 'c';
 
-# my $filename = shift(@ARGV);
+@ARGV = getOptions(
+    "--use-perl-parser" => sub{ $use_parser = "perl" },
+    "--use-c-parser"    => sub{ $use_parser = "c" },
 
+    "--help,--usage" => sub { usage; exit }
+);
+
+#* OPTIONS:
+#*   --use-c-parser
+#*                      Use the faster C parser for CIFs (default).
+#*   --use-perl-parser
+#*                      Use the Perl parser for parsing CIFs.
+#*   --help,--usage     Print a short usage message (this message) and exit.
+#**
 @ARGV = ("-") unless @ARGV;
 
 foreach my $filename (@ARGV) {
