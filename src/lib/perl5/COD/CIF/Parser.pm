@@ -65,7 +65,7 @@ sub parse_cif
     } elsif ( $options->{parser} eq 'perl' ) {
         $parser = new COD::CIF::Parser::Yapp;
     } else {
-        error( $0, $filename, undef, "parse type '" . $options->{parser}
+        error( $0, $filename, undef, "parser type '" . $options->{parser}
              . "' is not recognised", "please select either 'c' or 'perl' "
              . 'CIF parsers' );
         exit 1;

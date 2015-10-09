@@ -34,7 +34,9 @@ use COD::CIF::Tags::Print;
 use COD::CIF::Tags::CanonicalNames;
 use COD::Spacegroups::Names;
 use COD::Spacegroups::Symop::Parse qw( is_symop_parsable
+                                       string_from_symop
                                        symop_string_canonical_form );
+use COD::Spacegroups::Symop::SSGParse qw(symop_from_ssg_operator);
 use COD::Spacegroups::Lookup::COD;
 use COD::Formulae::Parser::AdHoc;
 use COD::CIF::Unicode2CIF;
@@ -1061,6 +1063,36 @@ for my $filename (@ARGV) {
                         }
                     }
                 }
+            }
+
+            # If no 3D spacegroup information is provided but a SSG
+            # (superspacegroup) operators are provided, extract an
+            # averge space-group (?)
+
+            if( $estimate_spacegroup &&
+                !(exists $datablok->{"_space_group_symop_operation_xyz"} or 
+                  exists $datablok->{"_symmetry_equiv_pos_as_xyz"}) &&
+                exists $datablok->{"_space_group_symop_ssg_operation_algebraic"} ) {
+                my $ssg_symops =
+                    $datablok->{"_space_group_symop_ssg_operation_algebraic"};
+
+                use COD::Spacegroups::Builder;
+
+                my $spacegroup = new COD::Spacegroups::Builder;
+                for my $ssgop (@$ssg_symops) {
+                    my $matrix = 
+                        COD::Spacegroups::Symop::SSGParse::symop_from_string
+                        ( $ssgop );
+                    my $symop3d = symop_from_ssg_operator( $matrix );
+                    $spacegroup->insert_symop( $symop3d );
+                }
+                my @symops = $spacegroup->all_symops();
+                set_loop_tag( $dataset, "_space_group_symop_id",
+                              undef, # set the new in_loop ID
+                              [ 1 .. scalar(@symops) ]  );
+                set_loop_tag( $dataset, "_space_group_symop_operation_xyz",
+                              "_space_group_symop_id", # in_loop ID
+                              [ map {string_from_symop($_)} @symops ] );
             }
 
             # Determine space group symbols from symmetry elements if requested:

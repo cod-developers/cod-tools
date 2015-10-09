@@ -1,0 +1,31 @@
+#! /bin/sh
+#!perl -w # --*- Perl -*--
+eval 'exec perl -x $0 ${1+"$@"}'
+    if 0;
+#------------------------------------------------------------------------------
+#$Author$
+#$Date$ 
+#$Revision$
+#$URL$
+#------------------------------------------------------------------------------
+#*
+#  Check superspacegroup operator syntax.
+#**
+
+use strict;
+use warnings;
+
+use COD::Spacegroups::Symop::SSGParse;
+
+while(<>) {
+    next if /^#/;
+    next if /^\s*$/;
+    chomp;
+    print "\n# $_\n";
+    my $message;
+    if( ($message = check_symmetry_operator( $_ )) ) {
+        print $message, "\n";
+    } else {
+        print "OK\n";
+    }
+}

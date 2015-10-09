@@ -17,6 +17,7 @@ use COD::CIF::Data qw(get_cell);
 use COD::CIF::Data::CellContents qw(cif_cell_contents);
 use COD::CIF::Data::CODFlags qw(is_disordered has_coordinates has_Fobs);
 use COD::CIF::Tags::DictTags;
+use COD::CIF::Tags::Manage;
 use COD::CIF::Unicode2CIF;
 use COD::AtomProperties;
 
@@ -689,6 +690,11 @@ sub get_spacegroup_Hall_symbol
 sub get_experimental_method
 {
     my ($values) = @_;
+
+    if( exists $values->{_cod_struct_determination_method} ) {
+        return $values->{_cod_struct_determination_method}[0];
+    }
+
     my @powder_tags = map {lc} grep /^_pd_/,
                       @COD::CIF::Tags::DictTags::tag_list;
 
