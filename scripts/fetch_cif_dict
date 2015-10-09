@@ -218,19 +218,19 @@ sub fetchDictionary {
 
     # download file
     my $ftpAgent = Net::FTP->new($ftp{host}, Debug => 0, Passive => 1) or die
-                  sprintf_message($0, undef, undef, 'ERROR', 'unable to connect'
-                                . "to ftp '$ftp{host}'", lcfirst($@));
+                  sprint_message($0, undef, undef, 'ERROR', 'unable to connect'
+                               . "to ftp '$ftp{host}'", lcfirst($@));
     $ftpAgent->login('anonymous', $userMail) or die
-                  sprintf_message($0, undef, undef, 'ERROR', 'unable to '
-                                . 'authenticate', lcfirst($ftpAgent->message) );
+                  sprint_message($0, undef, undef, 'ERROR', 'unable to '
+                               . 'authenticate', lcfirst($ftpAgent->message) );
     $ftpAgent->cwd($ftp{path}) or die
-                   sprintf_message($0, undef, undef, 'ERROR', 'unable to '
-                                . "change working directory to '$ftp{path}'",
-                                  lcfirst($ftpAgent->message) );
+                  sprint_message($0, undef, undef, 'ERROR', 'unable to '
+                               . "change working directory to '$ftp{path}'",
+                                 lcfirst($ftpAgent->message) );
     $ftpAgent->get($ftp{file}, $temporaryStore) or die
-                   sprintf_message($0, undef, undef, 'ERROR', 'unable to fetch'
-                                . "file '$ftp{file}'", 
-                                   lcfirst($ftpAgent->message));
+                  sprint_message($0, undef, undef, 'ERROR', 'unable to fetch'
+                               . "file '$ftp{file}'", 
+                                  lcfirst($ftpAgent->message));
     note( $0, $dictFileURI, undef, 'succesfully downloaded the dictionary and '
         . "stored it as '$temporaryStore' for further processing", undef );
     $ftpAgent->quit;
