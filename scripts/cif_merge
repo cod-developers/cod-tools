@@ -18,16 +18,27 @@ eval 'exec perl -x $0 ${1+"$@"}'
 
 use strict;
 use warnings;
-use COD::CIF::Tags::CanonicalNames;
-use COD::CIF::Tags::Print;
-use COD::CIF::Parser::Yapp;
+use COD::CIF::Tags::CanonicalNames qw( canonicalize_all_names );
+use COD::CIF::Tags::Print qw( print_cif );
+use COD::CIF::Parser qw( parse_cif );
 use COD::SOptions;
 use COD::SUsage;
 use COD::UserMessage qw(warning error prefix_dataname);
+use COD::ErrorHandler qw( process_warnings
+                          process_errors
+                          process_parser_messages
+                          report_message );
 
 my $override_tags;
 my $override_all = 0;
 my $merge_tags;
+
+my $die_on_error_level = {
+    ERROR   => 1,
+    WARNING => 0,
+    NOTE    => 0
+};
+my $use_parser = 'c';
 
 #* USAGE:
 #*     $0 [options] input.cif [input2.cif ...]
@@ -77,25 +88,34 @@ my @merged_datablock_names;
 
 for my $filename (@ARGV) {
 
-    my $parser = new COD::CIF::Parser::Yapp;
-
-    my $data = $parser->Run($filename);
+    my $options = { parser => $use_parser, no_print   => 1 };
+    my ($data, $err_count, $messages) = parse_cif($filename, $options);
+    process_parser_messages( $messages, $die_on_error_level );
 
     canonicalize_all_names( $data );
 
-    if( defined $parser->YYData->{ERRCOUNT} && $parser->YYData->{ERRCOUNT} > 0 ) {
-        error( $0, $filename, undef, "$parser->YYData->{ERRCOUNT}, "
-            . 'error(s) encountered while parsing the file', undef );
-        die;
-    }
-
     if( !@$data || !defined $data->[0] || !defined $data->[0]{name} ) {
-        warning( $0, $filename, undef, "file seems to be empty", undef );
+        report_message( {
+           'program'   => $0,
+           'filename'  => $filename,
+           'err_level' => 'WARNING',
+           'message'   => 'file seems to be empty'
+        }, $die_on_error_level->{'WARNING'} );
         next;
     }
 
     for my $datablock (@$data) {
-        my $dataname = prefix_dataname($datablock->{name});
+        my $dataname = 'data_' . $datablock->{name} if defined $datablock->{name};
+
+        local $SIG{__WARN__} = sub { process_warnings( {
+                                       'message'  => @_,
+                                       'program'  => $0,
+                                       'add_pos'  => $dataname,
+                                       'filename' => $filename
+                                   }, $die_on_error_level ) };
+
+        eval {
+
         if( !exists $merged_datablocks{$dataname} ) {
             push( @merged_datablock_names, $dataname );
             $merged_datablocks{$dataname} = $datablock;
@@ -123,12 +143,10 @@ for my $filename (@ARGV) {
                                 if( int( @{$old_datablock->
                                             {values}{$loop_tag}} ) !=
                                     int( @{$new_datablock->{values}{$tag}} )) {
-                                    error( $0, $filename, $dataname,
-                                        "loop tag '$loop_tag' has different "
-                                      . "number of values than the tag '$tag' "
-                                      . "in '${filename}, but '$tag' must end "
-                                      . "up in the same loop", undef );
-                                    die;
+                                    die "ERROR, loop tag '$loop_tag' has "
+                                      . "different number of values than the "
+                                      . "tag '$tag' in '${filename}', but "
+                                      . "'$tag' must end up in the same loop\n";
                                 }
                                 last;
                             }
@@ -176,13 +194,23 @@ for my $filename (@ARGV) {
                         }
                     } elsif( !values_are_equal( $old_datablock->{values}{$tag},
                                            $new_datablock->{values}{$tag} )) {
-                        warning( $0, $filename, $dataname, "values for "
-                               . "tag '$tag' in '$datablock->{name}' differ",
-                                  undef );
+                        warn "WARNING, values for tag '$tag' in "
+                           . "'$datablock->{name}' differ\n";
                     }
                 }
             }
         }
+
+    };
+    if ($@) {
+        process_errors( {
+            'message'       => $@,
+            'program'       => $0,
+            'filename'      => $filename,
+            'add_pos'       => $dataname
+        }, $die_on_error_level->{'ERROR'} );
+    };
+
     }
 }
 
