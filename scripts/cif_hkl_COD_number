@@ -16,7 +16,7 @@ eval 'exec perl -x $0 ${1+"$@"}'
 use strict;
 use warnings;
 use File::Basename;
-use COD::CIF::Parser::Yapp;
+use COD::CIF::Parser qw( parse_cif );
 use COD::CIF::Tags::DictTags;
 use COD::CIF::Tags::COD;
 use COD::CIF::Tags::Excluded;
@@ -28,7 +28,17 @@ use COD::Spacegroups::Names;
 use COD::Spacegroups::Symop::Parse;
 use COD::SOptions;
 use COD::SUsage;
-use COD::UserMessage qw(warning error prefix_dataname);
+use COD::ErrorHandler qw( process_warnings
+                          process_errors
+                          process_parser_messages
+                          report_message );
+
+my $die_on_error_level = {
+    ERROR   => 1,
+    WARNING => 0,
+    NOTE    => 0
+};
+my $use_parser = 'perl';
 
 my $exclude_empty_tags = 0;
 my $preserve_loop_order = 0;
@@ -107,22 +117,28 @@ my $data_block_nr; # If defined, specifies that data blocks should be
 
 my @extra_tags = ();
 
-if( $extra_tag_file ) {
-    unless( open( EXTRA, "$extra_tag_file" ) ) {
-        error( $0, $extra_tag_file, undef, "could not open tag list "
-             . "'$extra_tag_file' for reading",  lcfirst($!) );
-        exit 1;
-    }
-    @extra_tags = map {s/\s//g;$_} map {split} grep /^\s*_/, <EXTRA>;
-    unless( close( EXTRA ) ) {
-        error( $0, $extra_tag_file, undef, "error while closing file "
-                           . "'$extra_tag_file' after reading", undef );
-        exit 1;
-    }
+eval {
+    if( $extra_tag_file ) {
+        open( EXTRA, "$extra_tag_file" ) or die 'ERROR, '
+            . 'could not open extra tag list file for reading -- '
+            . lcfirst($!) . "\n";
 
-    ## local $, = "\n"; local $\ = "\n";
-    ## print @extra_tags;
-}
+        # UNCOMMENT @extra_tags = map {s/\s//g;$_} map {split} grep /^\s*_/, <EXTRA>;
+
+        close( EXTRA ) or die 'ERROR, '
+            . 'error while closing extra tag file after reading -- '
+            . lcfirst($!) . "\n";
+        ## local $, = "\n"; local $\ = "\n";
+        ## print @extra_tags;
+    }
+};
+if ($@) {
+    process_errors( {
+      'message'  => $@,
+      'program'  => $0,
+      'filename' => $extra_tag_file
+    }, $die_on_error_level->{'ERROR'} );
+};
 
 my %excluded_tags  = map { ($_,$_) } @COD::CIF::Tags::Excluded::tag_list;
 
@@ -134,36 +150,42 @@ my %dictionary_tags = map { $_, $_ } @dictionary_tags;
 
 my %cif_tags_lc = map {(lc($_),$_)} @dictionary_tags;
 
+# Reading the header file
+eval {
+    if( defined $cif_header_file ) {
+        open( HEADER, "$cif_header_file" ) or die 'ERROR, '
+          . 'could not open CIF header file for reading -- '
+          . lcfirst($!) . "\n";
 
-if( defined $cif_header_file ) {
-    unless( open( HEADER, "$cif_header_file" ) ) {
-        error( $0, $cif_header_file, undef, "could not open CIF header file "
-                       . "'$cif_header_file' for reading" , lcfirst($!) );
-        exit 1;
+        local $/; # enable "slurp" mode: read the whole header file.
+        $cif_comment_header = <HEADER>;
+
+        close( HEADER ) or die 'ERROR, '
+         . 'error while closing CIF header file after reading -- '
+         . lcfirst($!) . "\n";
     }
-    local $/; # enable "slurp" mode: read the whole header file.
-    $cif_comment_header = <HEADER>;
-    unless( close( HEADER ) ) {
-        error( $0, $cif_header_file, undef, 'error while closing file '
-                           . "'$cif_header_file' after reading", undef );
-        exit 1;
-    }
-}
+};
+if ($@) {
+    process_errors( {
+      'message'  => $@,
+      'program'  => $0,
+      'filename' => $cif_header_file
+    }, $die_on_error_level->{'ERROR'} );
+};
 
 my $filename = shift(@ARGV);
 
-my $parser = new COD::CIF::Parser::Yapp;
+my $options = { parser => $use_parser, no_print   => 1 };
+my ($data, $err_count, $messages) = parse_cif($filename, $options);
+process_parser_messages( $messages, $die_on_error_level );
 
-my @data = @{$parser->Run($filename)};
-
-if( defined $parser->YYData->{ERRCOUNT} && $parser->YYData->{ERRCOUNT} > 0 ) {
-    error( $0, $filename, undef, $parser->YYData->{ERRCOUNT}
-         . ' error(s) encountered while parsing the CIF file', undef );
-    exit 1;
-}
-
-if( !@data || !defined $data[0] || !defined $data[0]->{name} ) {
-    warning( $0, $filename, undef, "file seems to be empty", undef );
+if( !@$data || !defined $data->[0] || !defined $data->[0]{name} ) {
+    report_message( {
+       'program'   => $0,
+       'filename'  => $filename,
+       'err_level' => 'WARNING',
+       'message'   => 'file seems to be empty'
+    }, $die_on_error_level->{'WARNING'} );
     exit( 0 );
 }
 
@@ -171,9 +193,18 @@ if( !@data || !defined $data[0] || !defined $data[0]->{name} ) {
 
 binmode( STDOUT, ":utf8" );
 
-for my $dataset (@data) {
+for my $dataset (@$data) {
 
     my $datablok = $dataset->{values};
+    my $dataname = 'data_' . $dataset->{name} if defined $dataset->{name};
+
+
+    local $SIG{__WARN__} = sub { process_warnings( {
+                                   'message'  => @_,
+                                   'program'  => $0,
+                                   'add_pos'  => $dataname,
+                                   'filename' => $filename
+                                }, $die_on_error_level ) };
 
     canonicalize_names( $dataset );
 
@@ -218,8 +249,7 @@ for my $dataset (@data) {
 
     for my $tag (@{$dataset->{tags}}) {
         unless( exists $dictionary_tags{$tag} ) {
-            warning( $0, $filename, prefix_dataname($dataset->{name}),
-                     "tag '$tag' is not recognised", undef );
+            warn "WARNING, tag '$tag' is not recognised\n";
         }
     }
 
