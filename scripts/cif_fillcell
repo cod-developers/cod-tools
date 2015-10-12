@@ -21,9 +21,9 @@ use COD::CIF::Parser qw(parse_cif);
 use COD::CIF::Tags::CanonicalNames;
 use COD::ShowStruct;
 use COD::CIF::Data qw( get_symmetry_operators );
-use COD::Spacegroups::Symop::Parse;
+use COD::Spacegroups::Symop::Parse qw( symop_from_string modulo_1 );
 use COD::Spacegroups::Lookup::COD;
-use COD::ErrorHandler qw(process_warnings process_errors);
+use COD::ErrorHandler qw(process_warnings process_errors process_parser_messages);
 use COD::SOptions;
 use COD::SUsage;
 use File::Basename;
@@ -33,6 +33,11 @@ my $use_parser = 'c';
 my $die_on_errors    = 1;
 my $die_on_warnings  = 0;
 my $die_on_notes     = 0;
+my $die_on_error_level = {
+    ERROR   => $die_on_errors,
+    WARNING => $die_on_warnings,
+    NOTE    => $die_on_notes
+};
 
 @ARGV = getOptions(
     "--use-perl-parser" => sub{ $use_parser = "perl" },
@@ -53,6 +58,7 @@ my $die_on_notes     = 0;
 foreach my $filename (@ARGV) {
     my $options = { 'parser' => $use_parser, 'no_print' => 1 };
     my ( $data, $err_count, $messages ) = parse_cif( $filename, $options );
+    process_parser_messages( $messages, $die_on_error_level );
 
     foreach my $dataset (@$data) {
         canonicalize_names( $dataset );
@@ -65,10 +71,7 @@ foreach my $filename (@ARGV) {
                                        'program'  => $0,
                                        'filename' => $filename,
                                        'add_pos'  => $dataname
-                                     }, {
-                                       'WARNING' => $die_on_warnings,
-                                       'NOTE'    => $die_on_notes
-                                     } ) };
+                                     }, $die_on_error_level ) };
 
         eval {
             # extracts atom site label or atom site type symbol
