@@ -97,8 +97,8 @@ sub get_symmetry_operators($)
     if( !defined $sym_data ) {
         for my $tag (qw( _space_group_name_Hall
                          _space_group_name_hall
-                         _symmetry_space_group_name_Hall 
-                         _symmetry_space_group_name_hall 
+                         _symmetry_space_group_name_Hall
+                         _symmetry_space_group_name_hall
                      )) {
             if( exists $values->{$tag} ) {
                 my $hall = $values->{$tag}[0];
@@ -106,7 +106,8 @@ sub get_symmetry_operators($)
                 $sym_data = lookup_symops("hall", $hall);
 
                 if( !$sym_data ) {
-                    warn "WARNING, $tag value '$hall' is not recognised\n";
+                    warn "WARNING, '$tag' tag value '$hall' was not "
+                       . "recognised as a space group name\n";
                 } else {
                     last
                 }
@@ -128,7 +129,8 @@ sub get_symmetry_operators($)
                 $sym_data = lookup_symops("hermann_mauguin", $h_m);
 
                 if( !$sym_data ) {
-                    warn "WARNING, $tag value '$h_m' is not recognised\n";
+                    warn "WARNING, '$tag' tag value '$h_m' was not "
+                       . "recognised as a space group name\n";
                 } else {
                     last
                 }
@@ -152,7 +154,7 @@ sub get_symmetry_operators($)
                 $sym_data = lookup_symops("hermann_mauguin", $h_m);
 
                 if( !$sym_data ) {
-                    warn "WARNING, $tag value '$ssg_name' yielded H-M " .
+                    warn "WARNING, '$tag' tag value '$ssg_name' yielded H-M " .
                          "symbol '$h_m' which is not in our tables\n";
                 } else {
                     last
@@ -162,8 +164,10 @@ sub get_symmetry_operators($)
     }
 
     if( not defined $sym_data ) {
-        die 'ERROR, neither symmetry operators, nor Hall spacegroup symbol, '
-          . "nor Hermann-Mauguin spacegroup symbol could be processed\n";
+        die 'ERROR, neither symmetry operator tag values, '
+          . 'nor Hall space group name, '
+          . 'nor Hermann-Mauguin space group name '
+          . "could be processed to acquire symmetry operators\n";
     }
 
     return $sym_data;
