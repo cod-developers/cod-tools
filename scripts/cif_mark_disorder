@@ -19,13 +19,15 @@ use COD::AtomBricks qw(build_bricks get_atom_index get_search_span);
 use COD::AtomProperties;
 use COD::CIF::Data qw( get_cell );
 use COD::CIF::Data::AtomList qw( atom_array_from_cif );
-use COD::CIF::Tags::CanonicalNames;
-use COD::CIF::Tags::Manage;
-use COD::CIF::Tags::Print;
-use COD::Fractional;
+use COD::CIF::Tags::CanonicalNames qw( canonicalize_all_names );
+use COD::CIF::Tags::Manage qw( set_tag set_loop_tag );
+use COD::CIF::Tags::Print qw( print_cif );
+use COD::Fractional qw( symop_ortho_from_fract );
 use COD::Spacegroups::Symop::Algebra qw( symop_vector_mul );
 use COD::Algebra::Vector qw( distance );
-use COD::UserMessage qw(note warning prefix_dataname);
+use COD::ErrorHandler qw( process_warnings
+                          process_errors
+                          process_parser_messages );
 use COD::SOptions;
 use COD::SUsage;
 
@@ -97,7 +99,7 @@ my $messages_to_depositor_comments = 1;
 #*        Use Perl parser for CIF parsing.
 #*
 #*     --use-c-parser
-#*        Use Perl & C parser for CIF parsing.
+#*        Use Perl & C parser for CIF parsing (default).
 #*
 #*     --help,--usage
 #*        Print short usage message (this message) and exit.
@@ -139,62 +141,94 @@ my $messages_to_depositor_comments = 1;
     "--help,--usage" => sub { usage; exit },
 );
 
+my $die_on_errors    = 1;
+my $die_on_warnings  = 0;
+my $die_on_notes     = 0;
+my $die_on_error_level = {
+    ERROR   => $die_on_errors,
+    WARNING => $die_on_warnings,
+    NOTE    => $die_on_notes
+};
+
 my $cif_header;
+eval {
+    if( $cif_header_file ) {
+        open( HDR, "$cif_header_file" ) or die 'ERROR, '
+            . 'could not open CIF header file for reading -- '
+            . lcfirst($!) . "\n";
 
-if( $cif_header_file ) {
-    open( HDR, "$cif_header_file" ) or
-        die( "$0: could not open header file '$cif_header_file' " .
-             "for input - $!" );
+        $cif_header = "";
+        while( <HDR> ) {
+            last unless /^#/;
+            $cif_header .= $_;
+        }
 
-    $cif_header = "";
-    while( <HDR> ) {
-        last unless /^#/;
-        $cif_header .= $_;
+        close( HDR ) or die 'ERROR, '
+            . 'error while closing CIF header file after reading -- '
+            . lcfirst($!) . "\n";
     }
-
-    close( HDR ) or
-        die( "$0: error reading header file '$cif_header_file' - $!" );
-}
+};
+if ($@) {
+    process_errors( {
+      'message'  => $@,
+      'program'  => $0,
+      'filename' => $cif_header_file
+    }, $die_on_errors );
+};
 
 @ARGV = ("-") unless @ARGV;
 
 for my $filename (@ARGV) {
     my $options = { 'parser' => $use_parser, 'no_print' => 1 };
     my ( $data, $err_count, $messages ) = parse_cif( $filename, $options );
+    process_parser_messages( $messages, $die_on_error_level );
 
-    if ( $err_count > 0 ) {
-        print STDERR $_ foreach ( @$messages );
-        error( $0, $filename, undef, "$err_count error(s) "
-             . "encountered while parsing the file", undef );
-        next;
-    }
-    print STDERR $_ foreach ( @$messages );
+    next if $err_count > 0;
 
     canonicalize_all_names( $data );
 
     print $cif_header if $cif_header;
     for my $dataset (@$data) {
-        mark_disorder( $dataset, 
-                       \%COD::AtomProperties::atoms,
-                       $filename,
-                       { same_site_distance_sensivity =>
-                            $same_site_distance_sensivity,
-                         same_site_occupancy_sensivity =>
-                            $same_site_occupancy_sensivity,
-                         brick_size => $brick_size,
-                         exclude_zero_occupancies =>
-                            $exclude_zero_occupancies,
-                         report_marked_disorders =>
-                            $report_marked_disorders,
-                         ignore_occupancies => $ignore_occupancies,
-                         messages_to_depositor_comments =>
-                            $messages_to_depositor_comments } );
-        print_cif( $dataset,
-                   {
-                        preserve_loop_order => 1,
-                        keep_tag_order => 1
-                   }
-                 );
+
+        my $dataname = 'data_' . $dataset->{name} if defined $dataset->{name};
+
+        local $SIG{__WARN__} = sub { process_warnings( {
+                                       'message'  => @_,
+                                       'program'  => $0,
+                                       'filename' => $filename,
+                                       'add_pos'  => $dataname
+                                     }, $die_on_error_level ) };
+
+        eval {
+            mark_disorder( $dataset,
+                           \%COD::AtomProperties::atoms,
+                           { same_site_distance_sensivity =>
+                                $same_site_distance_sensivity,
+                             same_site_occupancy_sensivity =>
+                                $same_site_occupancy_sensivity,
+                             brick_size => $brick_size,
+                             exclude_zero_occupancies =>
+                                $exclude_zero_occupancies,
+                             report_marked_disorders =>
+                                $report_marked_disorders,
+                             ignore_occupancies => $ignore_occupancies,
+                             messages_to_depositor_comments =>
+                                $messages_to_depositor_comments } );
+            print_cif( $dataset,
+                       {
+                            preserve_loop_order => 1,
+                            keep_tag_order => 1
+                       }
+                     );
+        };
+        if ( $@ ) {
+            process_errors( {
+              'message'       => $@,
+              'program'       => $0,
+              'filename'      => $filename,
+              'add_pos'       => $dataname
+            }, $die_on_errors )
+        }
     }
 }
 
@@ -203,15 +237,13 @@ for my $filename (@ARGV) {
 # Accepts
 #    atom_list - CIF atom list, as returned by initial_atoms()
 #    bricks    - CIF atom bricks, as returned by build_bricks()
-#    filename  - CIF file name
-#    dataname  - CIF datablock name
 # Returns
 #    $alternatives = {
 #       $atom_number => [ $assembly, $group ]
 #    }
 sub get_alternatives
 {
-    my( $atom_list, $bricks, $filename, $dataname, $f2o, $options ) = @_;
+    my( $atom_list, $bricks, $f2o, $options ) = @_;
 
     $options = {} unless $options;
     my $default_options = {
@@ -332,10 +364,9 @@ sub get_alternatives
             !$options->{ignore_occupancies} ) {
             my @names = sort map( $atom_list->[$_]{name},
                                   @$assembly );
-            warning( $0, $filename, $dataname,
-                     "atoms " . join( ", ", map( "'$_'", @names ) ) .
-                     " share the same site, but the sum of their " .
-                     "occupancies is $occupancy_sum", undef );
+            warn "WARNING, atoms " . join( ", ", map( "'$_'", @names ) )
+               . " share the same site, but the sum of their "
+               . "occupancies is $occupancy_sum\n";
             next;
         }
         my $group_nr = 1;
@@ -354,12 +385,10 @@ sub get_alternatives
 # Accepts
 #    dataset         - CIF datablock, as produced by COD::CIF::Parser
 #    atom_properties - atom properties structure, as from COD::AtomProperties
-#    filename        - CIF file name
 #    options         - various options to control the algorithm
 sub mark_disorder
 {
-    my( $dataset, $atom_properties, $filename, $options ) = @_;
-    my $dataname = prefix_dataname($dataset->{name});
+    my( $dataset, $atom_properties, $options ) = @_;
     my $values = $dataset->{values};
 
     $options = {} unless $options;
@@ -395,9 +424,9 @@ sub mark_disorder
     my $assembly_count = scalar @all_assemblies;
 
     my $bricks = build_bricks( $atom_list, $options->{brick_size} );
-    
+
     # Get cell angles(alpha, beta, gama) and lengths(a, b, c)
-    my @cell = get_cell( $values, $filename, $dataname );
+    my @cell = get_cell( $values );
 
     # Make a matric to convert from fractional coordinates to
     # orthogonal:
@@ -406,8 +435,6 @@ sub mark_disorder
     my $alternatives =
         get_alternatives( $atom_list,
                           $bricks,
-                          $filename,
-                          $dataname,
                           $f2o,
                           { same_site_distance_sensivity =>
                                 $options->{same_site_distance_sensivity},
@@ -489,7 +516,7 @@ sub mark_disorder
             my $msg = "disorder assembly '.' was renamed to " .
                       "'$rename_dot_assembly_with'";
             push( @messages, $msg );
-            note( $0, $filename, $dataname, $msg, undef );
+            warn "NOTE, $msg\n";
         }
 
         for my $assembly (@new_assemblies) {
@@ -500,14 +527,13 @@ sub mark_disorder
                       " were marked as alternatives";
             push( @messages, $msg );
             if( $options->{report_marked_disorders} ) {
-                note( $0, $filename, $dataname, $msg, undef );
+                warn "NOTE, $msg\n";
             }
         }
 
         if( @new_assemblies > 0 ) {
-            note( $0, $filename, $dataname,
-                  scalar( @new_assemblies ) . " site(s) " .
-                  "were marked as disorder assemblies", undef );
+            warn "NOTE, ". scalar( @new_assemblies ) . " site(s) "
+               . "were marked as disorder assemblies\n";
         }
 
         my $atom_site_tag;
