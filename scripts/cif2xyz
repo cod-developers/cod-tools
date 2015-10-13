@@ -14,13 +14,15 @@ eval 'exec perl -x $0 ${1+"$@"}'
 
 use strict;
 use warnings;
-use COD::CIF::Parser qw(parse_cif);
+use COD::CIF::Parser qw( parse_cif );
 use COD::AtomProperties;
-use COD::CIF::Data qw(get_cell);
-use COD::Fractional;
-use COD::Spacegroups::Symop::Algebra qw(symop_vector_mul);
-use COD::ErrorHandler qw(process_warnings process_errors
-                         process_parser_messages report_message);
+use COD::CIF::Data qw( get_cell );
+use COD::Fractional qw(symop_ortho_from_fract);
+use COD::Spacegroups::Symop::Algebra qw( symop_vector_mul );
+use COD::ErrorHandler qw( process_warnings
+                          process_errors
+                          process_parser_messages
+                          report_message );
 use COD::SOptions;
 use COD::SUsage;
 
@@ -57,11 +59,11 @@ my $use_parser = "c"; # Used CIF parser
 );
 
 my $die_on_errors   = 1;
-my $die_on_warnings = 0;
+
 
 my $die_on_error_level = {
-    ERROR   => $die_on_errors,
-    WARNING => $die_on_warnings,
+    ERROR   => 1,
+    WARNING => 0,
     NOTE    => 0
 };
 
@@ -79,7 +81,7 @@ for my $filename (@ARGV) {
            'filename'  => $filename,
            'err_level' => 'WARNING',
            'message'   => 'file seems to be empty'
-        }, $die_on_warnings );
+        }, $die_on_error_level->{'WARNING'} );
         next;
     }
 
@@ -96,7 +98,7 @@ for my $filename (@ARGV) {
         eval {
             my $values = $dataset->{values};
 
-            my @cell = get_cell( $values, $filename, $dataset->{name} );
+            my @cell = get_cell( $values );
 
             my $f2o = symop_ortho_from_fract(@cell);
             # perform fractional to orthogonal conversion here
@@ -167,7 +169,7 @@ for my $filename (@ARGV) {
               'program'       => $0,
               'filename'      => $filename,
               'add_pos'       => $dataname
-            }, $die_on_errors );
+            }, $die_on_error_level->{'ERROR'} );
         }
     }
 }
