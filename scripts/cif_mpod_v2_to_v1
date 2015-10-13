@@ -16,14 +16,18 @@ eval 'exec perl -x $0 ${1+"$@"}'
 use strict;
 use warnings;
 use File::Basename;
-use COD::CIF::Parser qw(parse_cif);
-use COD::CIF::Tags::Manage;
-use COD::CIF::Tags::Print;
-use COD::Spacegroups::Names;
-use COD::Spacegroups::Symop::Parse;
-use COD::UserMessage qw(error);
+use COD::CIF::Parser qw( parse_cif );
+use COD::CIF::Tags::Manage qw( exclude_tag );
+use COD::CIF::Tags::Print qw( print_cif );
+use COD::ErrorHandler qw( process_parser_messages report_message );
 use COD::SOptions;
 use COD::SUsage;
+
+my $die_on_error_level = {
+    ERROR   => 1,
+    WARNING => 0,
+    NOTE    => 0
+};
 
 my $use_parser = "c";
 
@@ -130,17 +134,15 @@ for my $filename (@ARGV) {
 
     my $options = { 'parser' => $use_parser, 'no_print' => 1 };
     my ( $data, $err_count, $messages ) = parse_cif( $filename, $options );
-
-    if ( $err_count > 0 ) {
-        print STDERR $_ foreach ( @$messages );
-        error( $0, $filename, undef, "$err_count error(s) "
-             . "encountered while parsing the file", undef );
-        die;
-    }
-    print STDERR $_ foreach ( @$messages );
+    process_parser_messages( $messages, $die_on_error_level );
 
     if( !@$data || !defined $data->[0] || !defined $data->[0]{name} ) {
-        warn( "file '$filename' seems to be empty" );
+        report_message( {
+            'program'   => $0,
+            'filename'  => $filename,
+            'err_level' => 'WARNING',
+            'message'   => 'file seems to be empty'
+        }, $die_on_error_level->{'WARNING'} );
         next;
     }
 
