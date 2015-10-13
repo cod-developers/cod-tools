@@ -5,14 +5,14 @@
 #$URL$
 #------------------------------------------------------------------------
 #* 
-#  A list of DFT CIF dictionary tags. Compiled from version 0.009 of
+#  A list of DFT CIF dictionary tags. Compiled from version 0.012 of
 #  cif_dft.dic:
 #
 #  URL: svn://www.crystallography.net/tcod/cif/dictionaries/cif_dft.dic
 #  Relative URL: ^/cif/dictionaries/cif_dft.dic
 #  Repository Root: svn://www.crystallography.net/tcod
 #  Repository UUID: f3fa9230-7ed6-4b69-bb24-8fd292b8517b
-#  Revision: 293
+#  Revision: 341
 #**
 
 package COD::CIF::Tags::DFT;
@@ -58,6 +58,7 @@ _dft_basisset_database_URI
 _dft_basisset_energy_conv
 _dft_basisset_type
 _dft_basisset_URI
+_dft_bulk_modulus
 _dft_BZ_integration_citation_id
 _dft_BZ_integration_energy_conv
 _dft_BZ_integration_Froyen_map
@@ -106,6 +107,7 @@ _dft_kinetic_energy
 _dft_kinetic_energy_cutoff_charge_density
 _dft_kinetic_energy_cutoff_EEX
 _dft_kinetic_energy_cutoff_wavefunctions
+_dft_lattice_energy
 _dft_nuclear_repulsion_energy
 _dft_pseudopotential_citation_id
 _dft_pseudopotential_type
