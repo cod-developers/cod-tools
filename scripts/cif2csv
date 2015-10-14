@@ -94,7 +94,8 @@ for my $filename (@ARGV) {
             local $, = $fields_separator;
             print @$loop;
             print $lines_separator;
-            for my $line(0..@$loop) {
+            my $loop_value_length = $#{$datablock->{values}{$loop->[0]}};
+            for my $line(0..$loop_value_length) {
                 for my $tagName (@{$loop}) {
                     my $precision = undef;
                     if(defined $datablock->{precisions}{$tagName}[0]) {
@@ -136,7 +137,7 @@ sub csv_format($$$) {
         $format = '"' . $format . '"';
     }
     if($format =~ m/"/) {
-        $value =~ tr/"/""/; # as per sections 2.6 & 2.7 of RFC 4180
+        $value =~ s/"/""/g; # as per sections 2.6 & 2.7 of RFC 4180
     }
     $result = sprintf($format, $value);
     if(defined $precision) {
