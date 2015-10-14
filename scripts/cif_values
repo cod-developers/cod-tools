@@ -15,11 +15,18 @@ eval 'exec perl -x $0 ${1+"$@"}'
 use strict;
 use warnings;
 use File::Basename;
-use COD::CIF::Parser qw(parse_cif);
-use COD::CIF::Tags::Manage;
-use COD::UserMessage qw(warning error);
+use COD::CIF::Parser qw( parse_cif );
 use COD::SOptions;
 use COD::SUsage;
+use COD::ErrorHandler qw( process_parser_messages report_message );
+
+my $die_on_error_level = {
+    ERROR   => 1,
+    WARNING => 0,
+    NOTE    => 0
+};
+
+my $use_parser = "c";
 
 my $header = 1;
 my $separator = "\t";
@@ -38,7 +45,6 @@ my $replace_spaces = 1; # indicates whether spaces should be replaced
 my $fix_errors = 0;
 
 my $treat_dots_as_underscores = 1;
-my $use_parser = "c";
 
 #* USAGE:
 #*     cif_values [options] input.cif [input2.cif ...]
@@ -193,17 +199,16 @@ for my $filename (@ARGV) {
                     no_print   => 1 };
 
     my ( $data, $err_count, $messages ) = parse_cif( $filename, $options );
-
-    if ( $err_count > 0 ) {
-        print STDERR $_ foreach ( @$messages );
-        error( $0, $filename, undef, "$err_count error(s) "
-             . "encountered while parsing the file", undef );
-        next;
-    }
-    print STDERR $_ foreach ( @$messages );
+    process_parser_messages( $messages, $die_on_error_level );
+    next if ( $err_count > 0 );
 
     if( !defined $data->[0] || !defined $data->[0]{name} ) {
-        warning( $0, $filename, undef, 'file seems to be empty', undef );
+        report_message( {
+           'program'   => $0,
+           'filename'  => $filename,
+           'err_level' => 'WARNING',
+           'message'   => 'file seems to be empty'
+        }, $die_on_error_level->{WARNING} );
         next;
     }
 
