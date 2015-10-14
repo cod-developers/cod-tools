@@ -28,6 +28,7 @@ use COD::Algebra::Vector qw( distance );
 use COD::UserMessage qw(note warning prefix_dataname);
 use COD::SOptions;
 use COD::SUsage;
+use List::Util qw(sum);
 
 my $Id = '$Id$';
 
@@ -324,9 +325,9 @@ sub get_alternatives
     for my $assembly (@assemblies) {
         next if @$assembly == 0;
         my $occupancy_sum =
-            sum( map { /(.*?)(\(\d+\))?$/; $1 }
-                 map { $atom_list->[$_]{atom_site_occupancy} }
-                 @$assembly );
+            sum( 0.0, map { /(.*?)(\(\d+\))?$/; $1 }
+                      map { $atom_list->[$_]{atom_site_occupancy} }
+                      @$assembly );
         if( abs( $occupancy_sum - 1 ) >
             $options->{same_site_occupancy_sensivity} &&
             !$options->{ignore_occupancies} ) {
@@ -574,11 +575,4 @@ sub rename_dot_assembly
             $atom->{assembly} = $new_assembly;
         }
     }
-}
-
-sub sum
-{
-    my $sum = 0.0;
-    foreach( @_ ) { $sum += $_; }
-    return $sum;
 }
