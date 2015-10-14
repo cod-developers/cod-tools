@@ -15,57 +15,93 @@ eval 'exec perl -x $0 ${1+"$@"}'
 use strict;
 use warnings;
 
-use COD::CIF::Parser::Yapp;
+use COD::CIF::Parser qw( parse_cif );
+use COD::ErrorHandler qw( process_parser_messages report_message );
+use COD::SOptions;
+use COD::SUsage;
 
 sub csv_format($$$);
+
+my $die_on_error_level = {
+    ERROR   => 1,
+    WARNING => 0,
+    NOTE    => 0
+};
+
+my $use_parser = 'c';
+
+#* USAGE:
+#*     $0 --options input1.cif input*.cif
+#*
+#* OPTIONS:
+#*
+#* --use-perl-parser
+#*                     Use development CIF parser written in Perl.
+#* --use-c-parser
+#*                     Use faster C/Yacc CIF parser (default).
+#*
+#* --help,--usage      Print a short usage message (this message) and exit.
+#**
+@ARGV = getOptions(
+    "--use-perl-parser" => sub{ $use_parser = "perl" },
+    "--use-c-parser"    => sub{ $use_parser = "c" },
+
+    "--help,--usage"    => sub { usage; exit }
+);
 
 @ARGV = ("-") unless @ARGV;
 
 my $fields_separator = ','; # as per section 1.4 of RFC 4180
 my $lines_separator  = "\r\n"; # as per section 4.1.1 of RFC 2046
 
-for my $inputFile(@ARGV) {
-    my $parser = new COD::CIF::Parser::Yapp;
-    my $cif;
-    $cif = $parser->Run($inputFile);
-    if(!@{$cif} || !defined $cif->[0] || !defined $cif->[0]{name} ) {
-        print STDERR "File '$inputFile' seems to be empty\n";
+for my $filename (@ARGV) {
+    my $options = { 'parser' => $use_parser, 'no_print' => 1 };
+    my ( $data, $err_count, $messages ) = parse_cif( $filename, $options );
+    process_parser_messages( $messages, $die_on_error_level );
+
+    if( !@$data || !defined $data->[0] || !defined $data->[0]{name} ) {
+        report_message( {
+           'program'   => $0,
+           'filename'  => $filename,
+           'err_level' => 'WARNING',
+           'message'   => 'file seems to be empty'
+        }, $die_on_error_level->{WARNING} );
         next;
     }
 
-    for my $data (@$cif) {
+    for my $datablock (@$data) {
         print STDERR $data->{name} . "\n";
         print 'data_'
-            . $fields_separator . $data->{name}
+            . $fields_separator . $datablock->{name}
             . $lines_separator;
         # print stray values
-        for my $tagName (keys %{$data->{values}}) {
-            if(defined $data->{inloop}->{$tagName}) {
+        for my $tagName (keys %{$datablock->{values}}) {
+            if(defined $datablock->{inloop}->{$tagName}) {
                 next; # print loops after stray values
             }
             my $precision = undef;
-            if(defined $data->{precisions}{$tagName}[0]) {
-                $precision = $data->{precisions}{$tagName}[0];
+            if(defined $datablock->{precisions}{$tagName}[0]) {
+                $precision = $datablock->{precisions}{$tagName}[0];
             }
             print $tagName . $fields_separator;
-            print csv_format($data->{values}{$tagName}[0],
-                             $data->{types}{$tagName}[0],
+            print csv_format($datablock->{values}{$tagName}[0],
+                             $datablock->{types}{$tagName}[0],
                              $precision);
             print $lines_separator;
         }
         # and print loop values
-        for my $loop (@{$data->{loops}}) {
+        for my $loop (@{$datablock->{loops}}) {
             local $, = $fields_separator;
             print @$loop;
             print $lines_separator;
             for my $line(0..@$loop) {
                 for my $tagName (@{$loop}) {
                     my $precision = undef;
-                    if(defined $data->{precisions}{$tagName}[0]) {
-                        $precision = $data->{precisions}{$tagName}[0];
+                    if(defined $datablock->{precisions}{$tagName}[0]) {
+                        $precision = $datablock->{precisions}{$tagName}[0];
                     }
-                    print csv_format($data->{values}{$tagName}[$line],
-                                     $data->{types}{$tagName}[$line],
+                    print csv_format($datablock->{values}{$tagName}[$line],
+                                     $datablock->{types}{$tagName}[$line],
                                      $precision);
                     if($tagName ne $$loop[$#{$loop}]) { # do not print field separator
                         print $fields_separator;        # after last element
@@ -76,7 +112,6 @@ for my $inputFile(@ARGV) {
         }
     }
 }
-
 
 sub csv_format($$$) {
     my ($value, $type, $precision) = (shift,shift,shift);
