@@ -58,7 +58,8 @@ for my $inputFile(@ARGV) {
             local $, = $fields_separator;
             print @$loop;
             print $lines_separator;
-            for my $line(0..@$loop) {
+            my $loop_value_length = $#{$data->{values}{$loop->[0]}};
+            for my $line(0..$loop_value_length) {
                 for my $tagName (@{$loop}) {
                     my $precision = undef;
                     if(defined $data->{precisions}{$tagName}[0]) {
@@ -76,7 +77,6 @@ for my $inputFile(@ARGV) {
         }
     }
 }
-
 
 sub csv_format($$$) {
     my ($value, $type, $precision) = (shift,shift,shift);
