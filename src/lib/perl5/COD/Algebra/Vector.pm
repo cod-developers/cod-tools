@@ -18,7 +18,7 @@ require Exporter;
 our @ISA = qw(Exporter);
 our @EXPORT = qw( vdot vector_sub vector_add vector_modulo_1 
                   vector_is_zero vectors_are_equal round_vector );
-our @EXPORT_OK = qw( distance matrix_vector_mul modulo_1 );
+our @EXPORT_OK = qw( distance matrix_vector_mul modulo_1 vector_matrix_mul );
 
 sub vdot($$)
 {
@@ -134,6 +134,24 @@ sub matrix_vector_mul($$)
         for(my $j = 0; $j < @{$vector}; $j++)
         {
             $new_coordinates[$i] += ${$matrix}[$i][$j] * ${$vector}[$j];
+        }
+    }
+
+    return wantarray ? @new_coordinates : \@new_coordinates;
+}
+
+sub vector_matrix_mul($$)
+{
+    my($vector, $matrix) = @_;
+
+    my @new_coordinates;
+
+    for(my $i = 0; $i < @{$vector}; $i++)
+    {
+        $new_coordinates[$i] = 0;
+        for(my $j = 0; $j < @{$vector}; $j++)
+        {
+            $new_coordinates[$i] += ${$vector}[$j] * ${$matrix}[$j][$i];
         }
     }
 
