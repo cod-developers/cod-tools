@@ -33,36 +33,14 @@ use COD::CIF::Tags::Manage;
 use COD::CIF::Tags::Print;
 use COD::CIF::Tags::CanonicalNames;
 use COD::Spacegroups::Names;
+use COD::Spacegroups::Lookup;
 use COD::Spacegroups::Symop::Parse;
 use COD::Spacegroups::Symop::SSGParse qw(symop_from_ssg_operator);
-use COD::Spacegroups::Lookup::COD;
 use COD::Formulae::Parser::AdHoc;
 use COD::CIF::Unicode2CIF;
 use COD::UserMessage qw(warning error prefix_dataname);
 use COD::SOptions;
 use COD::SUsage;
-
-sub mk_symop_key
-{
-    my ( $symops ) = @_;
-
-    my @canonical = sort 
-        map {symop_string_canonical_form($_)} @$symops;
-    my $key = join( ";", @canonical );
-    return $key;
-}
-
-sub mkhash
-{
-    if( 1 ) {
-        map { (mk_symop_key($_->{symops}), $_) }
-        @COD::Spacegroups::Lookup::COD::table,
-        @COD::Spacegroups::Lookup::COD::extra_settings;
-    #} else {
-    #    map { (mk_symop_key($_->{symops}), $_) }
-    #    @COD::Spacegroups::Lookup::CCP4::table;
-    }
-}
 
 my %symop_lookup_table;
 ## my %symop_lookup_table = mkhash();

@@ -15,32 +15,9 @@ eval 'exec perl -x $0 ${1+"$@"}'
 use strict;
 use warnings;
 use COD::CIF::Parser::Yapp;
-use COD::Spacegroups::Lookup::COD;
-use COD::Spacegroups::Lookup::CCP4;
+use COD::Spacegroups::Lookup;
 use COD::Spacegroups::Symop::Parse;
 use COD::ShowStruct;
-
-sub mk_symop_key
-{
-    my ( $symops ) = @_;
-
-    my @canonical = sort 
-        map {symop_string_canonical_form($_)} @$symops;
-    my $key = join( ";", @canonical );
-    return $key;
-}
-
-sub mkhash
-{
-    if( 1 ) {
-        map { (mk_symop_key($_->{symops}), $_) }
-        @COD::Spacegroups::Lookup::COD::table,
-        @COD::Spacegroups::Lookup::COD::extra_settings;
-    } else {
-        map { (mk_symop_key($_->{symops}), $_) }
-            @COD::Spacegroups::Lookup::CCP4::table;
-    }
-}
 
 my %symop_lookup_table = mkhash();
 
