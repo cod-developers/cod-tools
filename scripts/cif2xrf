@@ -10,7 +10,11 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #------------------------------------------------------------------------------
 #*
 #  Parse a CIF file and print out the essential information in the COD
-#  REF format
+#  xrf format. Accepts optional bibliography file in ref, xrf or plaintext
+#  format as the second command line argument. Bibliography components
+#  provided by the user via the command line parameters have precedence
+#  over all other sources of bibliography (original file and the optional
+#  bibliography file). Uses STAR::Parser to parse CIF files. Legacy script.
 #**
 
 use strict;
@@ -34,6 +38,29 @@ my @authors;
 
 my $no_biblio_tags = 1;
 
+#* USAGE:
+#*     $0 input1.cif optional-bibliography-file.txt --options
+#*
+#* OPTIONS:
+#*
+#* -j, --journal
+#*                     Full name of the journal.
+#* -v, --volume
+#*                     Journal volume.
+#* -p, --page, --start-page
+#*                     The first page of the paper.
+#* -e, --end-page
+#*                     The last page of the paper.
+#* -y, --year
+#*                     Journal publication year.
+#* --leave-bibliography
+#*                     Retain components of the original bibliography that
+#*                     are not explicitly overwritten by command line options.
+#* --discard-bibliography
+#*                     Remove all components of the original bibliography.
+#* --help, --usage
+#*                     Print a short usage message (this message) and exit.
+#**
 @ARGV = getOptions( 
     "-j,--journal"   => sub{ $user_biblio = 1; $journal = get_value() },
     "-v,--volume"    => sub{ $user_biblio = 1; $volume = get_value() },
@@ -375,7 +402,7 @@ for my $dataset (@data) {
     }
 
     # User specified bibliography is processed last since it must take
-    # prcedence over original CIF bibliography and over the
+    # precedence over original CIF bibliography and over the
     # bibliography file data:
 
     if( $user_biblio ) {
