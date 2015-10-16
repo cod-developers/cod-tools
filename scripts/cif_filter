@@ -21,8 +21,9 @@ eval 'exec perl -x $0 ${1+"$@"}'
 use strict;
 use warnings;
 use File::Basename;
-use COD::CIF::Parser qw( parse_cif );
 use COD::Cell qw(cell_volume);
+use COD::CIF::Data qw(get_cell);
+use COD::CIF::Parser qw(parse_cif);
 use COD::CIF::Tags::DictTags;
 use COD::CIF::Tags::COD;
 use COD::CIF::Tags::AMCSD;
@@ -1089,7 +1090,7 @@ for my $filename (@ARGV) {
                     }
                 }
             } else {
-                warning( $0, $filename,$dataname,
+                warning( $0, $filename, $dataname,
                          "the " . (defined $filename ? "'$filename' " : "") .
                          "$dataname does not contain " .
                          "symmetry operators", undef );
@@ -1117,8 +1118,12 @@ for my $filename (@ARGV) {
         # Calculate essential information if it is missing but requested:
 
         if( $calculate_cell_volume ) {
-            my @cell = get_cell( $datablok );
-            my @sigcell = get_cell( $dataset->{precisions} );
+            my @cell = map { defined $_ && /^\s*[?.]\s*$/ ? undef : $_ }
+                           get_cell( $datablok, $filename, $dataname,
+                                     { silent => 1 } );
+            my @sigcell = map { defined $_ && /^\s*[?.]\s*$/ ? undef : $_ }
+                              get_cell( $dataset->{precisions}, $filename, $dataname,
+                                        { silent => 1 } );
             $cell[3] = 90 unless defined $cell[3];
             $cell[4] = 90 unless defined $cell[4];
             $cell[5] = 90 unless defined $cell[5];
@@ -1262,33 +1267,6 @@ sub merge_new_tag_values($$$)
     }
 
     return $dst;
-}
-
-sub get_cell
-{
-    my $datablok = $_[0];
-
-    my @cell = (
-        exists $datablok->{_cell_length_a} ?
-            $datablok->{_cell_length_a}[0] : undef,
-
-        exists $datablok->{_cell_length_b} ?
-            $datablok->{_cell_length_b}[0] : undef,
-
-        exists $datablok->{_cell_length_c} ?
-            $datablok->{_cell_length_c}[0] : undef,
-
-        exists $datablok->{_cell_angle_alpha} ?
-            $datablok->{_cell_angle_alpha}[0] : undef,
-
-        exists $datablok->{_cell_angle_beta} ?
-            $datablok->{_cell_angle_beta}[0] : undef,
-
-        exists $datablok->{_cell_angle_gamma} ?
-            $datablok->{_cell_angle_gamma}[0] : undef
-    );
-
-    return map { defined $_ && /^\s*[?.]\s*$/ ? undef : $_ } @cell;
 }
 
 sub restore_last_page
