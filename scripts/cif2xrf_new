@@ -19,12 +19,14 @@ eval 'exec perl -x $0 ${1+"$@"}'
 
 use strict;
 use warnings;
-use COD::CIF::Parser::Yapp;
+use COD::CIF::Parser qw( parse_cif );
 use COD::CIF::Tags::DictTags;
 use COD::CIF::Tags::Excluded;
 use COD::CIF::Unicode2CIF;
 use COD::SOptions;
 use COD::SUsage;
+
+my $use_parser = 'c';
 
 my $user_biblio = 0;
 my $leave_biblio = 0;
@@ -62,6 +64,10 @@ my $no_biblio_tags = 1;
 #*                     are not explicitly overwritten by command line options.
 #* --discard-bibliography
 #*                     Remove all components of the original bibliography.
+#* --use-perl-parser
+#*                     Use Perl parser to parse CIF files.
+#* --use-c-parser
+#*                     Use C parser to parse CIF files (default).
 #* --help, --usage
 #*                     Print a short usage message (this message) and exit.
 #**
@@ -75,16 +81,15 @@ my $no_biblio_tags = 1;
     "-y,--year"      => sub{ $user_biblio = 1; $year = get_value() },
     "--leave-bibliography"   => sub{ $leave_biblio = 1 },
     "--discard-bibliography" => sub{ $leave_biblio = 0 },
-    "--help,--usage" => sub { usage; exit },
+    "--use-perl-parser" => sub{ $use_parser = "perl" },
+    "--use-c-parser"    => sub{ $use_parser = "c" },
+    "--help,--usage" => sub { usage; exit }
 );
 
 my $filename = @ARGV > 0 ? shift(@ARGV) : "-";
 my $biblio = @ARGV > 0 ? shift(@ARGV) : undef;
-my @data;
 
-my $parser = new COD::CIF::Parser::Yapp;
-
-@data = @{$parser->Run($filename)};
+my ( $data )= parse_cif( $filename, { parser => $use_parser } );
 
 #
 # The @xrf_tags list specifies CIF tags that contain information
@@ -189,7 +194,7 @@ my @global_biblio_keys = (
 
 my $global_section_nr = 0;
 
-for my $dataset (@data) {
+for my $dataset (@$data) {
     next unless $dataset->{name} eq "global";
     my $datablock = $dataset->{values};
 
@@ -212,7 +217,7 @@ my $n = 0;
 
 binmode( STDOUT, ":utf8" );
 
-for my $dataset (@data) {
+for my $dataset (@$data) {
 
     ## next unless defined $dataset->{kind} && $dataset->{kind} == "DATA";
 
