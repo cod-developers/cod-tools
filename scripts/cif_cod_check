@@ -1182,19 +1182,14 @@ sub get_unit_cell_sigmas($$)
     my( $dataset, $filename ) = @_;
     my $values = $dataset->{precisions};
 
-    my @cellsig;
-
-    for my $cif_tag (qw(_cell_length_a
-                        _cell_length_b
-                        _cell_length_c
-                        _cell_angle_alpha
-                        _cell_angle_beta
-                        _cell_angle_gamma
-                        )) {
-        push( @cellsig, $values->{$cif_tag}[0] );
-    }
-
-    return @cellsig;
+    return map { $values->{$_}[0] }
+               qw( _cell_length_a
+                   _cell_length_b
+                   _cell_length_c
+                   _cell_angle_alpha
+                   _cell_angle_beta
+                   _cell_angle_gamma
+               );
 }
 
 sub regularize_cell($$$$)
@@ -1321,23 +1316,20 @@ sub check_symmetry_operators
 {
     my ($dataset, $filename) = @_;
 
-    if( !defined $dataset->{values} ) {
-        return 0;
-    }
+    return 0 if !defined $dataset->{values};
 
     my $dataname = prefix_dataname($dataset->{name});
 
     my $symops = $dataset->{values}{_symmetry_equiv_pos_as_xyz};
 
-    if( !defined $symops ) {
-        return 0; # Let's not regard missing symmetry operators as error.
-    } else {
-        for my $symop (@$symops) {
-            my $warning = check_symmetry_operator( $symop );
-            if( defined $warning ) {
-                warning( $0, $filename, $dataname, $warning, undef );
-                return 1;
-            }
+    # Let's not regard missing symmetry operators as error:
+    return 0 if !defined $symops;
+
+    for my $symop (@$symops) {
+        my $warning = check_symmetry_operator( $symop );
+        if( defined $warning ) {
+            warning( $0, $filename, $dataname, $warning, undef );
+            return 1;
         }
     }
     return 0;
@@ -1374,58 +1366,55 @@ sub check_limits {
     my $values = $dataset->{values};
     
     foreach my $tag( sort keys %$limits_table ) {
-        if( exists $values->{$tag} ) {
-            my $value = $values->{$tag}[0];
-            if( $value =~ /^(\.|\?)$/ ) {
-                next;
-            }
-            if( $value !~ /^([+-]?(?:\d+(?:\.\d*)?|\.\d+))\(?(\d*)\)?$/ ) {
-                error( $0, $filename, $dataname,
-                       "tag '$tag' value '$value' is not numeric", undef );
+        next if !exists $values->{$tag};
+
+        my $value = $values->{$tag}[0];
+        next if $value =~ /^(\.|\?)$/;
+        if( $value !~ /^([+-]?(?:\d+(?:\.\d*)?|\.\d+))\(?(\d*)\)?$/ ) {
+            error( $0, $filename, $dataname,
+                   "tag '$tag' value '$value' is not numeric", undef );
+            $warnings++;
+            next;
+        } else {
+            my $number = $1;
+            my $precision = $2;
+            if( ($tag =~ /_w?R_factor_/) && ( $precision ) ) {
+                warning( $0, $filename, $dataname, "'$tag' value is "
+                       . "'$value', but it should be numeric and "
+                       . 'without precision (esd value)', undef );
                 $warnings++;
                 next;
-            } else {
-                my $number = $1;
-                my $precision = $2;
-                if( ($tag =~ /_w?R_factor_/) && ( $precision ) ) {
-                    warning( $0, $filename, $dataname, "'$tag' value is "
-                           . "'$value', but it should be numeric and "
-                           . 'without precision (esd value)', undef );
-                    $warnings++;
-                    next;
+            }
+            if( $number < 0 ) {
+                warning( $0, $filename, $dataname, "'$tag' value "
+                      . "'$value' should be in range [0.0;+inf]", undef );
+                $warnings++;
+                next;
+            }
+            if( !defined $limits_table->{$tag}[0][1] ) {
+                foreach my $i ( 0..$#{ $limits_table->{$tag} } ) {
+                    my $limit = @{ $limits_table->{$tag}->[$i]}[0];
+                    if( $number > $limit ) {
+                        print_message( $0, $filename, $dataname,
+                                       $report_names[$i],
+                                       "tag '$tag' value '$value' "
+                                     . "is > $limit", undef );
+                        $warnings++;
+                        last;
+                    }
                 }
-                if( $number < 0 ) {
-                    warning( $0, $filename, $dataname, "'$tag' value "
-                          . "'$value' should be in range [0.0;+inf]", undef );
-                    $warnings++;
-                    next;
-                } elsif(! defined $limits_table->{$tag}[0][1] ) {
-                    foreach my $i( 0..$#{ $limits_table->{$tag} } ) {
-                        my $limit = @{ $limits_table->{$tag}->[$i]}[0];
-                        if( $number > $limit ) {
-                            print_message( $0, $filename, $dataname,
-                                           $report_names[$i],
-                                           "tag '$tag' value '$value' "
-                                         . "is > $limit", undef );
-                            $warnings++;
-                            last;
-                        }
+            } else {
+                foreach my $i ( 0..$#{ $limits_table->{$tag} } ) {
+                    my( $begin, $end ) = @{ $limits_table->{$tag}->[$i]};
+                    if( ($number < $begin) || ($number > $end) ) {
+                        print_message( $0, $filename, $dataname,
+                                       $report_names[$i],
+                                       "tag '$tag' value '$value' "
+                                     . 'lies outside the range '
+                                     . "$begin <> $end", undef );
+                        $warnings++;
+                        last;
                     }
-                } else {
-                    foreach my $i( 0..$#{ $limits_table->{$tag} } ) {
-                        my $begin = @{ $limits_table->{$tag}->[$i]}[0];
-                        my $end = @{ $limits_table->{$tag}->[$i]}[1];
-                        if( ($number < $begin) || ($number > $end) ) {
-                            print_message( $0, $filename, $dataname,
-                                           $report_names[$i],
-                                           "tag '$tag' value '$value' "
-                                         . 'lies outside the range '
-                                         . "$begin <> $end", undef );
-                            $warnings++;
-                            last;
-                        } 
-                    }
-                    
                 }
             }
         }
