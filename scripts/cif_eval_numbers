@@ -17,8 +17,8 @@ eval 'exec perl -x $0 ${1+"$@"}'
 use strict;
 use warnings;
 use COD::CIF::Parser::Yapp;
-use COD::CIF::Tags::Print;
-use COD::CIF::Tags::CanonicalNames;
+use COD::CIF::Tags::Print qw( print_cif );
+use COD::CIF::Tags::CanonicalNames qw( canonicalize_names );
 use COD::SOptions;
 use COD::SUsage;
 
@@ -27,19 +27,29 @@ my $dictionary_file;
 my $fix_errors = 0;
 my $debug = 0;
 
-#* Usage:
-#*     cif_eval_numbers [options] input.cif
+#* USAGE:
+#*     cif_eval_numbers --options input1.cif input*.cif
 #*
-#* Options:
+#* OPTIONS:
 #*     -d, --dictionary cif_core.dic
-#*         Use the specified dictionary for determining which values are
-#*         numbers.
-#*
+#*                      Use the specified dictionary for determining which
+#                       values are numberic.
+#*     -t, --tags-to-fix _tag_1,_tag_2,_tag_3
+#*                      Specify an explicit list of tags that should be
+#                       evaluated as numeric, without relying on a
+#                       dictionary.
 #*     --fix-syntax-errors
-#*         Try to fix those syntax errors in input CIFs that can be corrected
-#*          unambiguously.
-#*
-#*     --help  print a short usage message (this message) and exit.
+#*                      Try to fix those syntax errors in input CIFs that can
+#*                      be corrected unambiguously.
+#*     --no-fix-syntax-errors,
+#*     --dont-fix-syntax-errors
+#*                      Do not try to fix syntax errors in input CIFs (default).
+#*     --debug
+#*                      Enable debug messages.
+#*     --no-debug
+#*                      Disable debug messages (default).
+#*     --help, --usage
+#*                      Print a short usage message (this message) and exit.
 #**
 
 @ARGV = getOptions( 
@@ -54,7 +64,7 @@ my $debug = 0;
     "--dont-fix-syntax-errors"  => sub { $fix_errors = 0; },
     "--no-fix-syntax-errors"    => sub { $fix_errors = 0; },
 
-    "--help,--usage"  => sub { usage; exit },
+    "--help,--usage"  => sub { usage; exit }
 );
 
 my $dictionary;
