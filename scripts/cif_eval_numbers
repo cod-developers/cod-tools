@@ -16,16 +16,17 @@ eval 'exec perl -x $0 ${1+"$@"}'
 
 use strict;
 use warnings;
-use COD::CIF::Parser::Yapp;
+use COD::CIF::Parser qw( parse_cif );
 use COD::CIF::Tags::Print qw( print_cif );
 use COD::CIF::Tags::CanonicalNames qw( canonicalize_names );
 use COD::SOptions;
 use COD::SUsage;
 
-my $tags_to_fix;
-my $dictionary_file;
+my $use_parser = 'c';
 my $fix_errors = 0;
 my $debug = 0;
+my $tags_to_fix;
+my $dictionary_file;
 
 #* USAGE:
 #*     cif_eval_numbers --options input1.cif input*.cif
@@ -51,7 +52,6 @@ my $debug = 0;
 #*     --help, --usage
 #*                      Print a short usage message (this message) and exit.
 #**
-
 @ARGV = getOptions( 
     "-d,--dictionary" => \$dictionary_file,
 
@@ -63,6 +63,9 @@ my $debug = 0;
     "--fix-syntax-errors"       => sub { $fix_errors = 1; },
     "--dont-fix-syntax-errors"  => sub { $fix_errors = 0; },
     "--no-fix-syntax-errors"    => sub { $fix_errors = 0; },
+
+    "--use-perl-parser" => sub{ $use_parser = "perl" },
+    "--use-c-parser"    => sub{ $use_parser = "c" },
 
     "--help,--usage"  => sub { usage; exit }
 );
@@ -464,9 +467,8 @@ if( $tags_to_fix ) {
 }
 
 if( defined $dictionary_file ) {
-    my $parser = new COD::CIF::Parser::Yapp;
-    my $dictionary = $parser->Run($dictionary_file);
-    foreach my $entry (@{$dictionary}) {
+    my ( $dict ) = parse_cif( $dictionary_file, { 'parser' => $use_parser } );
+    foreach my $entry (@{$dict}) {
         if( exists $entry->{values}{_type} &&
             $entry->{values}{_type}[0] eq "numb" ) {
             for my $tag_name (@{$entry->{values}{_name}}) {
@@ -495,28 +497,20 @@ my $return_status = 0;
 
 for my $filename (@ARGV) {
 
-    my $parser = new COD::CIF::Parser::Yapp;
-    my %options;
+    my $options = { 'parser' => $use_parser, 'fix_errors' => $fix_errors };
+    my ( $data, $err_count, $messages ) = parse_cif( $filename, $options );
 
-    if( $fix_errors ) {
-        $options{fix_errors} = 1;
+    if( $err_count > 0 ) {
+        die "$0: $filename: WARNING, $err_count error(s) "
+          . "encountered while parsing file\n";
     }
 
-    my @data = @{$parser->Run($filename, \%options)};
-
-    if( defined $parser->YYData->{ERRCOUNT} &&
-        $parser->YYData->{ERRCOUNT} > 0 ) {
-        print STDERR "$0: ", $parser->YYData->{ERRCOUNT},
-        " error(s) encountered while parsing file '${filename}'\n";
-        die;
-    }
-    
-    if( !@data || !defined $data[0] || !defined $data[0]->{name} ) {
-        warn( "file '$filename' seems to be empty" );
+    if( !@$data || !defined $data->[0] || !defined $data->[0]{name} ) {
+        warn "$0: $filename: WARNING, file seems to be empty\n";
         next;
     }
 
-    for my $dataset (@data) {
+    for my $dataset (@$data) {
         canonicalize_names( $dataset );
         # Fix numeric tags:
         for my $tag (@{$dataset->{tags}}) {
@@ -536,7 +530,8 @@ for my $filename (@ARGV) {
                             ## print STDERR ">>> new val '$newval' for '$key'\n";
                         };
                         if( !defined $newval ) {
-                            warn( "error evaluating numeric value '$value'" );
+                            warn "$0: $filename: WARNING, error evaluating "
+                               . "numeric value '$value'\n";
                             $return_status = 2 if $return_status < 2;
                         } else {
                             $value = $newval;
