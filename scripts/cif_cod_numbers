@@ -9,7 +9,7 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #$URL$
 #------------------------------------------------------------------------------
 #*
-#  Find COD numbers for the .cif files in given directories of file lists.
+#  Find COD numbers for the CIF files in given directories of file lists.
 #**
 
 use strict;
@@ -33,12 +33,16 @@ my $print_datablock_name = 0;
 
 my %options;
 
-#*Usage:
+#* USAGE:
 #*     cif_cod_numbers [options] file1.cif [file2.cif ...]
 #*
-#*Options:
+#* OPTIONS:
+#*     --platform 'SQLite'
+#*        Use the SQL database platform 'SQLite' to query structures
+#*        (default 'mysql').
+#*
 #*     -d, --database  cod
-#*        Use database "cod" to query for strctures.
+#*        Use database "cod" to query for structures.
 #*
 #*     -h, --host   www.crystallography.net
 #*     -s, --server www.crystallography.net
@@ -51,12 +55,12 @@ my %options;
 #*        Use use the specified port (default 3306) to query structures.
 #*
 #*     -t, --table  data
-#*        Use SQL table "data" to query for strctures.
+#*        Use SQL table "data" to query for structures.
 #*
 #*     -u, --user cod_reader
 #*        Use user name "cod_reader" to access COD database; this reader
-#*        sould be granted SELECT priviledge, i.e. should be able to read
-#*        the COD database, whithout supplying a password.
+#*        should be granted SELECT privilege, i.e. should be able to read
+#*        the COD database, without supplying a password.
 #*
 #*     --password
 #*        Use the specified password (default empty) to connect.
@@ -87,7 +91,7 @@ my %options;
 #*
 #*     --dont-check-bibliography, --no-check-bibliography
 #*        Ignore bibliographic data of all CIFs; thus even files with different
-#*        bibliographies will be regared the same if their cells, chemical
+#*        bibliographies will be regarded the same if their cells, chemical
 #*        formulae and measurement conditions match.
 #*
 #*     --ignore-sigma, --dont-use-sigma, --no-use-sigma
@@ -104,7 +108,7 @@ my %options;
 #*     --dont-check-sample-history, --no-check-sample-history,
 #*     --disregard-sample-history
 #*        Ignore sample history of all CIFs; thus even files with different
-#*        sample histories will be regared the same if their cells,
+#*        sample histories will be regarded the same if their cells,
 #*        chemical formulae and measurement conditions match.
 #*        (default)
 #*
