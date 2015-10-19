@@ -4,7 +4,7 @@ eval 'exec perl -x $0 ${1+"$@"}'
     if 0;
 #------------------------------------------------------------------------------
 #$Author$
-#$Date$ 
+#$Date$
 #$Revision$
 #$URL$
 #------------------------------------------------------------------------------
@@ -12,8 +12,8 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #  Parse a CIF file and print out essential data values in the CIF
 #  format, the COD CIF style.
 #
-#  This script has also many capabilities -- it can restore spacegroup
-#  symbols from symmetry operators (consulting pre-defined tables),
+#  This script has also many capabilities -- it can restore space group
+#  symbols from symmetry operators (consulting predefined tables),
 #  parse and tidy-up _chemical_formula_sum, compute cell volume,
 #  exclude unknown or "empty" tags, and add specified bibliography data.
 #**
@@ -51,7 +51,7 @@ sub merge_new_tag_values($$$);
 my $user_biblio = 0;
 my $leave_biblio = 0;
 my $leave_title = 0;
-my $global_priority = 0; # if set to says that bibliography in
+my $global_priority = 0; # if set to 1, bibliography in
                          # 'data_global' has priority over
                          # bibliography in each other datablock.
 my $estimate_spacegroup = 0;
@@ -102,7 +102,7 @@ my $cif_header_file; # The name of an external file that holds a CIF
                      # header.
 
 my $data_block_nr; # If defined, specifies that data blocks should be
-                   # numbered in a COD-like fasion.
+                   # numbered in a COD-like fashion.
 
 my $datablock_format = "%07d";
 
@@ -116,8 +116,9 @@ my %spacegroups = map {
 
 #* USAGE:
 #*     $0 [options] input.cif [input2.cif ...]
-#* 
+#*
 #* OPTIONS:
+#*    -a, --authors "John Doe; Jane Doe; Joe Bloggs"
 #*    -j, --journal 'Acta Cryst. A'
 #*    -v, --volume    36
 #*    -i, --issue      1
@@ -130,118 +131,219 @@ my %spacegroups = map {
 #*
 #*    -B, --bibliography bibliography.cif
 #*    --bibliography bibliography.mrk
-#*        Provide a bibliography file, 'bibliography.mrk' in this example,
-#*        with the bibliographic information to be included into the output.
-#*        The bibliography information can be provided in CIF format or in
-#*        a XML-like .mrk file with data items between <authors>, <journal>,
-#*        <volume>, <issue>, <year>, <pages>123-132</pages> tags.
-#*    
+#*        Provide a bibliography file with the bibliographic information
+#*        to be included into the output. The bibliography information can
+#*        be provided in CIF format or in a XML-like .mrk file with data
+#*        items between <authors>, <journal>, <volume>, <issue>, <year>,
+#*        <pages>123-132</pages> tags.
+#*
+#*    --leave-bibliography
+#*        Combine bibliographies from various sources. Values of lower
+#*        precedence are overwritten, but never deleted. List of
+#*        bibliography sources in order of increasing precedence:
+#*          1) the bibliography tags of the original CIF file;
+#*          2) the optional bibliography file;
+#*          3) the user specified command line options.
+#*    --discard-bibliography
+#*        Only retain the bibliography tags from the bibliography source of
+#*        highest precedence (see '--leave-bibliography' option) (default).
+#*    --leave-title
+#*        Do not delete the publication title obtained from the source of lower
+#*        precedence, even if the '--discard-bibliography' option is enabled.
+#*
+#*    -g, --global-priority
+#*        Assume bibliography found in 'data_global' datablock has
+#*        precedence over bibliographies found in all the other datablocks.
+#*    -g-, --no-global-priority
+#*        Assume bibliography found in 'data_global' datablock does not
+#*        have precedence over bibliographies found in all the other datablocks.
+#*        Only missing bibliographic information will be copied from the
+#*        'data_global' datablock (default).
+#*
+#*    --exclude-publication-details
+#*        Exclude potentially copyrighted and irrelevant tags.
+#*    --dont-exclude-publication-details,
+#*    --no-exclude-publication-details
+#*        Do not exclude potentially copyrighted and irrelevant tags.
+#*
 #*    -h, --add-cif-header header_file.cif
 #*        Prepend each of the output files with the comments from the
 #*        beginning of the specified file.
 #*
 #*    -s, --estimate-spacegroup
-#*    -s-, --dont-estimate-spacegroup, --no-estimate-spacegroup
-#*        Estimate spacegroup symbols from the symmetry operators in the
+#*        Estimate space group symbols from the symmetry operators in the
 #*        input.
-#*
-#*    -x,--extra-tag-list tag-list.lst
+#*    -s-, --dont-estimate-spacegroup, --no-estimate-spacegroup
+#*        Do not estimate space group symbols from the symmetry operators
+#*        in the input (default).
 #*
 #*    --exclude-empty-tags
+#*        Remove tags that contain only empty values. A value is
+#*        considered empty if it equal to a single question mark ('?')
+#*        or a single period ('.').
 #*    --dont-exclude-empty-tags, --no-exclude-empty-tags
+#*        Disable the '--exclude-empty-tags' option (default).
+#*
+#*    --exclude-empty-non-loop-tags
+#*        Remove tags that contain empty values and are not contained
+#*        within the CIF _loop structure. For the definition of empty
+#*        values, see '--exclude-empty-tags' option. This option does
+#*        not override the '--exclude-empty-tags' option.
+#*    --dont-exclude-non-loop-empty-tags,
+#*    --no-exclude-non-loop-empty-tags
+#*        Disable the '--exclude-empty-non-loop-tags' option (default).
 #*
 #*    --exclude-unknown-tags
+#*        Remove tags that contain only unknown values. A value is
+#*        considered unknown if it is equal to a single question mark ('?').
 #*    --dont-exclude-unknown-tags, --no-exclude-unknown-tags
+#*        Disable the '--exclude-unknown-tags' option (default).
 #*
+#*    --exclude-unknown-non-loop-tags
+#*        Remove tags that contain unknown values and are not contained
+#*        within the CIF _loop structure. For the definition of unknown
+#*        values, see '--exclude-unknown-tags' option. This option does
+#*        not override the '--exclude-unknown-tags' option.
+#*    --dont-exclude-non-loop-unknown-tags,
+#*    --no-exclude-non-loop-unknown-tags
+#*        Disable the '--exclude-unknown-non-loop-tags' option (default).
+#*
+#*    -x,--extra-tag-list tag-list.lst
+#*        Add additional tags to the list of recognised CIF tags. These
+#*        extra tags are presented in a separate file, one tag per line.
 #*    --exclude-misspelled-tags
-#*    --dont-exclude-misspelled-tags, --no-exclude-misspelled-tags
-#*
-#*    --keep-unrecognised-spacegroups
-#*    --dont-keep-unrecognised-spacegroups, --no-keep-unrecognised-spacegroups
+#*        Remove tags that were not present in the recognised tag list.
+#*    --dont-exclude-misspelled-tags,
+#*    --no-exclude-misspelled-tags
+#*        Disable the '--exclude-misspelled-tags' option.
 #*
 #*    --parse-formula-sum
+#*        Parse '_chemical_formula_sum' tag value and reformat it according
+#*        to the Hill system ordering. If the original and reformatted
+#*        formulae differ, replace the original value with the reformatted
+#*        one and store the original value as the '_cod_original_formula_sum'
+#*        tag value.
 #*    --dont-parse-formula-sum, --no-parse-formula-sum
+#*        Do not parse '_chemical_formula_sum' tag value.
 #*
 #*    --fix-syntax-errors
+#*        Try to fix syntax errors in the input CIF files that can
+#*        be corrected unambiguously.
 #*    --dont-fix-syntax-errors, --no-fix-syntax-errors
-#*
-#*    --preserve-loop-order
-#*    --use-internal-loop-order
+#*        Do not try to fix syntax errors in input CIF files (default).
 #*
 #*    --retain-tag-order
+#*        Print tags in the same order they appeared in the original file.
 #*    --dont-retain-tag-order
+#*        Disregard original tag order while printing the tags (default).
+#*
+#*    --preserve-loop-order
+#*        Print loops in the same order they appeared in the original file.
+#*    --use-internal-loop-order
+#*        Disregard original loop order while printing the tags (default).
+#*
+#*    --keep-unrecognised-spacegroups
+#*        Leave tags with unrecognised space group information as they are.
+#*    --dont-keep-unrecognised-spacegroups,
+#*    --no-keep-unrecognised-spacegroups
+#*        Replace the values of tags with unrecognised space group
+#*        information with unknown values (represented as '?') and store
+#*        the unrecognised space group information in '_cod_original_sg_*'
+#*        tags.
 #*
 #*    --reformat-space-group, --reformat-spacegroup
-#*          Correct the formatting of Hermann-Mauguin symmetry space group
-#*          symbol.
-#*
+#*        Correct the formatting of Hermann-Mauguin symmetry space group
+#*        symbol.
 #*    --dont-reformat-space-group, --leave-space-group
 #*    --dont-reformat-spacegroup, --leave-spacegroup
-#*          Leave the Hermann-Mauguin symmetry space group as is. Default
-#*          action.
+#*        Leave the Hermann-Mauguin symmetry space group symbol as is (default).
 #*
 #*    --calculate-cell-volume
+#*        Calculate the unit cell volume from the cell constants. If the
+#*        calculated value differs from the one already present in the CIF,
+#*        replace the original value with the calculated one and store the
+#*        original value as the '_cod_original_cell_volume' tag value.
 #*    --dont-calculate-cell-volume
+#*        Do not calculate unit cell volume from the cell constants (default).
 #*
 #*    --original-filename data_source.cif
-#*
+#*        Use the provided string as the name of the original file.
+#*        (see --record-original-filename).
 #*    --clear-original-filename
-#*
+#*        Do not use any previously provided strings as the name of
+#*        the original file.
 #*    --record-original-filename
+#*        Record the original filename and the original datablock name for
+#*        each datablock as the '_cod_data_source_*' tag values.
 #*    --dont-record-original-filename
-#*
-#*    --update-database-code
-#*    --dont-update-database-code
-#*
-#*    --database-code-tag _cod_database_code
+#*        Do not record the original filename and the original datablock
+#*        name (default).
 #*
 #*    -S, --start-data-block-number 1234567
-#*
+#*        Use the provided number as the start number when renaming
+#*        datablocks (default '7000001')  Setting this option enables
+#*        the '-R' option.
+#*    -d, --datablock-format '%07d'
+#*        Use the provided format to determine new datablock names from the
+#*        provided datablock numbers (default '%07d').
 #*    -R, --renumber-data-blocks
+#*        Rename all datablocks. The new names are constructed by taking
+#*        a start number (specified by the '-S' option), applying the
+#*        string format (specified by the '-d' option) and then incrementing
+#*        the start number for each sequential datablock.
 #*    -R-, --dont-renumber-data-blocks
+#*        Do not rename datablocks (default). Enabling this option sets
+#*        the '-S' option to default value.
+#*
+#*    --database-code-tag _cod_database_code
+#*        Use the provided tag while adding or updating the database code
+#*        upon renaming the datablocks (default '_cod_database_code').
+#*    --update-database-code
+#*        Update the database code tag value upon renaming the
+#*        datablocks (default).
+#*    --dont-update-database-code
+#*        Do not update the database code tag value upon renaming
+#*        the datablocks.
 #*
 #*    --use-datablocks-without-coordinates
-#*          Do not filter out datablocks without coordinates.
-#*    
+#*        Do not remove datablocks without coordinates.
 #*    --do-not-use-datablocks-without-coordinates, --use-all-datablocks
-#*    --dont-use-datablocks-without-coordinates
-#*    --no-use-datablocks-without-coordinates
+#*    --dont-use-datablocks-without-coordinates,
+#*    --no-use-datablocks-without-coordinates,
 #*    --skip-datablocks-without-coordinates
-#*          Filter out datablocks without coordinates. Default action.
+#*        Remove datablocks without coordinates (default).
 #*
 #*    --use-datablocks-with-structure-factors
-#*    --dont-use-datablocks-with-structure-factors
-#*    --no-use-datablocks-with-structure-factors
+#*        Do not remove datablocks with structure factors (Fobs).
+#*    --dont-use-datablocks-with-structure-factors,
+#*    --no-use-datablocks-with-structure-factors,
 #*    --skip-datablocks-with-structure-factors
+#*        Filter out datablocks with structure factors (Fobs) (default).
 #*
 #*    --folding-width 78
-#*          Specify the length of the longest unfolded line.
+#*        Specify the length of the longest unfolded line (default 76).
 #*
 #*    --fold-title
+#*        Folds the title, if longer than folding width.
 #*    --dont-fold-title
-#*          Folds the title, if longer than folding width. Default: off.
+#*        Do not fold the title (default).
 #*
 #*    --fold-long-fields
+#*        Fold fields, longer than folding width.
 #*    --dont-fold-long-fields
-#*          Fold fields, longer than folding width. Default: off.
+#*        Do not fold fields (default).
 #*
 #*    --use-perl-parser
-#*          Use Perl parser for CIF parsing.
+#*        Use Perl parser for CIF parsing.
 #*
 #*    --use-c-parser
-#*          Use Perl & C parser for CIF parsing.
+#*        Use Perl & C parser for CIF parsing (default).
 #*
-#*    --leave-bibliography
-#*    --discard-bibliography
-#*
-#*    --exclude-publication-details
-#*    --dont-exclude-publication-details, --no-exclude-publication-details
-#*
-#*    --leave-title
-#*    --help,--usage         Print a short usage message (this message) and exit.
+#*    --help,--usage
+#*        Print a short usage message (this message) and exit.
 #**
 
-@ARGV = getOptions( 
+@ARGV = getOptions(
     "-a,--authors"      => sub{ $user_biblio = 1;
                                 @authors = split( /(?:;|:)\s*/,
                                                   get_value()) },
@@ -375,7 +477,7 @@ my %spacegroups = map {
     "--dont-exclude-publication-details" => sub{ $exclude_publ_details = 0 },
     "--no-exclude-publication-details"   => sub{ $exclude_publ_details = 0 },
 
-    "--leave-title"          => sub{ $leave_title  = 1 },
+    "--leave-title"          => sub{ $leave_title = 1 },
     "--help,--usage" => sub { usage; exit },
 );
 
@@ -572,7 +674,7 @@ for my $filename (@ARGV) {
     }
 
     # Assume that there are no datablocks with coordinates until a datablock
-    # with coordinates is found 
+    # with coordinates is found
 
     my $no_coordinates = 1;
 
@@ -597,7 +699,7 @@ for my $filename (@ARGV) {
                                   $dataset, \%pd_global_publ_data );
         }
 
-        # convert all tags to a "cannonical" form:
+        # convert all tags to a "canonical" form:
 
         canonicalize_names( $dataset );
 
@@ -652,8 +754,8 @@ for my $filename (@ARGV) {
             }
             if( !defined $bibdata ) {
                 warn "file '${biblio}' matching bibliography datablock " .
-                    "for '$dataset->{name}' --"  .
-                    "no bibliography wil be taken for this datablock";
+                     "for '$dataset->{name}' -- " .
+                     "no bibliography wil be taken for this datablock";
             } else {
                 if( !$leave_biblio ) {
                     for my $key ( grep /_journal_|_publ_section_title|_author_/,
@@ -965,17 +1067,17 @@ for my $filename (@ARGV) {
         # (superspacegroup) operators are provided, extract an averge space-group (?)
 
         if( $estimate_spacegroup &&
-            !(exists $datablok->{"_space_group_symop_operation_xyz"} or 
+            !(exists $datablok->{"_space_group_symop_operation_xyz"} or
               exists $datablok->{"_symmetry_equiv_pos_as_xyz"}) &&
             exists $datablok->{"_space_group_symop_ssg_operation_algebraic"} ) {
             my $ssg_symops =
                 $datablok->{"_space_group_symop_ssg_operation_algebraic"};
 
             use COD::Spacegroups::Builder;
-            
+           
             my $spacegroup = new COD::Spacegroups::Builder;
             for my $ssgop (@$ssg_symops) {
-                my $matrix = 
+                my $matrix =
                     COD::Spacegroups::Symop::SSGParse::symop_from_string
                     ( $ssgop );
                 my $symop3d = symop_from_ssg_operator( $matrix );
@@ -1003,7 +1105,7 @@ for my $filename (@ARGV) {
             } elsif( exists $datablok->{"_symmetry_equiv_pos_as_xyz"} ) {
                 @symops = @{$datablok->{"_symmetry_equiv_pos_as_xyz"}};
             }
-            
+           
             if( @symops ) {
                 my $has_errors = 0;
                 for my $symop (@symops) {
@@ -1107,7 +1209,7 @@ for my $filename (@ARGV) {
             $parser->ParseString( $formula );
             my $new_formula = $parser->SprintFormula;
 
-            if( defined $new_formula && 
+            if( defined $new_formula &&
                 $datablok->{_chemical_formula_sum}[0] ne $new_formula ) {
                 set_tag( $dataset, "_cod_chemical_formula_sum_orig",
                          $datablok->{_chemical_formula_sum}[0] );
@@ -1209,7 +1311,7 @@ for my $filename (@ARGV) {
 
         # Print out requested tags:
 
-        print_cif( $dataset, { 
+        print_cif( $dataset, {
             exclude_misspelled_tags => $exclude_misspelled_tags,
             preserve_loop_order => $preserve_loop_order,
             fold_long_fields => $fold_long_fields,
