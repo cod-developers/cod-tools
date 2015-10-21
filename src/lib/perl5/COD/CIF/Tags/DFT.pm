@@ -5,14 +5,14 @@
 #$URL$
 #------------------------------------------------------------------------
 #* 
-#  A list of DFT CIF dictionary tags. Compiled from version 0.012 of
+#  A list of DFT CIF dictionary tags. Compiled from version 0.013 of
 #  cif_dft.dic:
 #
 #  URL: svn://www.crystallography.net/tcod/cif/dictionaries/cif_dft.dic
 #  Relative URL: ^/cif/dictionaries/cif_dft.dic
 #  Repository Root: svn://www.crystallography.net/tcod
 #  Repository UUID: f3fa9230-7ed6-4b69-bb24-8fd292b8517b
-#  Revision: 341
+#  Revision: 501
 #**
 
 package COD::CIF::Tags::DFT;
@@ -112,6 +112,27 @@ _dft_nuclear_repulsion_energy
 _dft_pseudopotential_citation_id
 _dft_pseudopotential_type
 _dft_pseudopotential_type_other_name
+_dft_stiffness_tensor_11
+_dft_stiffness_tensor_12
+_dft_stiffness_tensor_13
+_dft_stiffness_tensor_14
+_dft_stiffness_tensor_15
+_dft_stiffness_tensor_16
+_dft_stiffness_tensor_22
+_dft_stiffness_tensor_23
+_dft_stiffness_tensor_24
+_dft_stiffness_tensor_25
+_dft_stiffness_tensor_26
+_dft_stiffness_tensor_33
+_dft_stiffness_tensor_34
+_dft_stiffness_tensor_35
+_dft_stiffness_tensor_36
+_dft_stiffness_tensor_44
+_dft_stiffness_tensor_45
+_dft_stiffness_tensor_46
+_dft_stiffness_tensor_55
+_dft_stiffness_tensor_56
+_dft_stiffness_tensor_66
 _dft_XC_correlation_functional
 _dft_XC_exchange_functional
 _dft_XC_functional

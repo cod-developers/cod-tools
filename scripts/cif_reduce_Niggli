@@ -18,15 +18,16 @@ use COD::CIF::Parser qw( parse_cif );
 use COD::CIF::Data qw( get_cell );
 use COD::CIF::Tags::CanonicalNames qw( canonicalize_all_names );
 use COD::CIF::Tags::Print qw( print_cif );
+use COD::Fractional qw( symop_ortho_from_fract
+                        symop_fract_from_ortho );
+use COD::Algebra::Vector qw( vector_matrix_mul );
+use COD::Spacegroups::Symop::Algebra qw( symop_transpose symop_mul );
 use COD::Cell::Niggli::KG76 qw( reduce );
 use COD::ErrorHandler qw( process_warnings
                           process_errors
                           process_parser_messages );
-use COD::Fractional qw( symop_ortho_from_fract
-                        symop_fract_from_ortho );
 use COD::SOptions;
 use COD::SUsage;
-use COD::Spacegroups::Symop::Algebra qw( symop_transpose symop_mul );
 
 sub cholesky($);
 
@@ -106,8 +107,7 @@ for my $filename (@ARGV) {
             $values->{_cell_angle_gamma}[0] = $niggli[5];
 
             my( $a, $b, $c ) = @cell;
-            my( $ca, $cb, $cg ) = map { cos( $Pi * $_ / 180 ) }
-                                      @cell[3..5];
+            my( $ca, $cb, $cg ) = map { cos( $Pi * $_ / 180 ) } @cell[3..5];
 
             for my $i (0..$#{$values->{_atom_site_label}}) {
                 my( $fx, $fy, $fz ) = map { s/(\(\d+\))?$//; $_ }
@@ -116,31 +116,17 @@ for my $filename (@ARGV) {
                                             _atom_site_fract_y
                                             _atom_site_fract_z );
 
-            my( $x, $y, $z ) = ( $a*$fx, $b*$fy, $c*$fz );
-
-                my $M = [
-                    [     $x*$x, $x*$y*$cg, $x*$z*$cb ],
-                    [ $x*$y*$cg,     $y*$y, $y*$z*$ca ],
-                    [ $x*$z*$cb, $y*$z*$ca,     $z*$z ],
-                ];
-
-                my $Gprime =
-                    symop_mul( symop_mul( symop_transpose( $CoB ), $M ), $CoB );
-
-                my $new_coordinates = [ sqrt($Gprime->[0][0])/$niggli[0],
-                                        sqrt($Gprime->[1][1])/$niggli[1],
-                                        sqrt($Gprime->[2][2])/$niggli[2] ];
-
-                $values->{_atom_site_fract_x}[$i] = $new_coordinates->[0];
-                $values->{_atom_site_fract_y}[$i] = $new_coordinates->[1];
-                $values->{_atom_site_fract_z}[$i] = $new_coordinates->[2];
+                ( $values->{_atom_site_fract_x}[$i],
+                  $values->{_atom_site_fract_y}[$i],
+                  $values->{_atom_site_fract_z}[$i] ) =
+                    vector_matrix_mul( [ $fx, $fy, $fz ], $CoB );
             }
 
             print_cif( $datablock,
-               {
-                    preserve_loop_order => 1,
-                    keep_tag_order => 1
-               }
+              {
+                preserve_loop_order => 1,
+                keep_tag_order => 1
+              }
             );
         };
         if (@_) {

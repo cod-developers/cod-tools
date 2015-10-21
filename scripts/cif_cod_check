@@ -1268,19 +1268,14 @@ sub get_unit_cell_sigmas($)
     my ($dataset) = @_;
     my $values = $dataset->{precisions};
 
-    my @cellsig;
-
-    for my $cif_tag (qw(_cell_length_a
-                        _cell_length_b
-                        _cell_length_c
-                        _cell_angle_alpha
-                        _cell_angle_beta
-                        _cell_angle_gamma
-                        )) {
-        push( @cellsig, $values->{$cif_tag}[0] );
-    }
-
-    return @cellsig;
+    return map { $values->{$_}[0] }
+               qw( _cell_length_a
+                   _cell_length_b
+                   _cell_length_c
+                   _cell_angle_alpha
+                   _cell_angle_beta
+                   _cell_angle_gamma
+               );
 }
 
 sub regularize_cell($$$$)
@@ -1402,18 +1397,14 @@ sub check_symmetry_operators
 {
     my ($dataset) = @_;
 
-    if( !defined $dataset->{values} ) {
-        return 0;
-    }
+    return 0 if !defined $dataset->{values};
 
     my $symops = $dataset->{values}{_symmetry_equiv_pos_as_xyz};
 
-    if( !defined $symops ) {
-        return 0; # Let's not regard missing symmetry operators as error.
-    } else {
-        foreach (@$symops) {
+    return 0 if !defined $symops;
+
+    foreach (@$symops) {
             return 1 if ( !is_symop_parsable($_) );
-        }
     }
 
     return 0;
@@ -1449,58 +1440,55 @@ sub check_limits {
     my @report_names = ( "ERROR", "WARNING", "NOTE" );
     my $numeric = '([+-]?(\d+(\.\d*)?|\.\d+))';
     my $values = $dataset->{values};
-    
+
     foreach my $tag( sort keys %$limits_table ) {
-        if( exists $values->{$tag} ) {
-            my $value = $values->{$tag}[0];
-            if( $value =~ /^(\.|\?)$/ ) {
+        next if !exists $values->{$tag};
+
+        my $value = $values->{$tag}[0];
+        next if $value =~ /^(\.|\?)$/;
+        if( $value !~ /^([+-]?(?:\d+(?:\.\d*)?|\.\d+))\(?(\d*)\)?$/ ) {
+            warn "ERROR, tag '$tag' value '$value' is not numeric\n";
+            $errors++;
+            next;
+        } else {
+            my $number = $1;
+            my $precision = $2;
+            if( ($tag =~ /_w?R_factor_/) && ( $precision ) ) {
+                warn "WARNING, '$tag' value is '$value', but it should "
+                   . "be numeric and without precision (esd value)\n";
+                $warnings++;
                 next;
             }
-            if( $value !~ /^([+-]?(?:\d+(?:\.\d*)?|\.\d+))\(?(\d*)\)?$/ ) {
-                warn "ERROR, tag '$tag' value '$value' is not numeric\n";
-                $errors++;
+            if( $number < 0 ) {
+                warn "WARNING, '$tag' value '$value' should "
+                   . "be in range [0.0;+inf]\n";
+                $warnings++;
                 next;
-            } else {
-                my $number = $1;
-                my $precision = $2;
-                if( ($tag =~ /_w?R_factor_/) && ( $precision ) ) {
-                    warn "WARNING, '$tag' value is '$value', but it should be "
-                       . "numeric and without precision (esd value)\n";
-                    $warnings++;
-                    next;
+            }
+            if(! defined $limits_table->{$tag}[0][1] ) {
+                foreach my $i( 0..$#{ $limits_table->{$tag} } ) {
+                    my $limit = @{ $limits_table->{$tag}->[$i]}[0];
+                    if( $number > $limit ) {
+                        warn "$report_names[$i], tag '$tag' value "
+                           . "'$value' is > $limit\n";
+                        $errors++   if $i == 0; # $i is @report_names index
+                        $warnings++ if $i == 1;
+                        $notes++    if $i == 2;
+                        last;
+                    }
                 }
-                if( $number < 0 ) {
-                    warn "WARNING, '$tag' value '$value' "
-                       . "should be in range [0.0;+inf]\n";
-                    $warnings++;
-                    next;
-                } elsif(! defined $limits_table->{$tag}[0][1] ) {
-                    foreach my $i( 0..$#{ $limits_table->{$tag} } ) {
-                        my $limit = @{ $limits_table->{$tag}->[$i]}[0];
-                        if( $number > $limit ) {
-                            warn "$report_names[$i], tag '$tag' value "
-                               . "'$value' is > $limit\n";
+            } else {
+                foreach my $i( 0..$#{ $limits_table->{$tag} } ) {
+                    my $begin = @{ $limits_table->{$tag}->[$i]}[0];
+                    my $end = @{ $limits_table->{$tag}->[$i]}[1];
+                    if( ($number < $begin) || ($number > $end) ) {
+                        warn "$report_names[$i], tag '$tag' value '$value' "
+                           . "lies outside the range $begin <> $end\n";
                             $errors++   if $i == 0; # $i is @report_names index
                             $warnings++ if $i == 1;
                             $notes++    if $i == 2;
                             last;
-                        }
                     }
-                } else {
-                    foreach my $i( 0..$#{ $limits_table->{$tag} } ) {
-                        my $begin = @{ $limits_table->{$tag}->[$i]}[0];
-                        my $end = @{ $limits_table->{$tag}->[$i]}[1];
-                        if( ($number < $begin) || ($number > $end) ) {
-                            warn "$report_names[$i], tag '$tag' value "
-                               . "'$value' lies outside the range "
-                               . "$begin <> $end\n";
-                            $errors++   if $i == 0; # $i is @report_names index
-                            $warnings++ if $i == 1;
-                            $notes++    if $i == 2;
-                            last;
-                        } 
-                    }
-                    
                 }
             }
         }
@@ -1592,6 +1580,12 @@ sub check_simultaneous_presence
               _dft_BZ_integration_grid_shift_X
               _dft_BZ_integration_grid_shift_Y
               _dft_BZ_integration_grid_shift_Z
+            )
+        ],
+        [ qw(
+              _dft_BZ_integration_grid_IBZ_point_X
+              _dft_BZ_integration_grid_IBZ_point_Y
+              _dft_BZ_integration_grid_IBZ_point_Z
             )
         ],
         [ qw(

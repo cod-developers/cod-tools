@@ -203,7 +203,7 @@ sub filter_and_check
 
     if( !$options->{bypass_checks} ) {
         my $ccc_opt;
-        if(      $deposition_type eq 'published' ) {
+        if( $deposition_type eq 'published' ) {
             $ccc_opt = [ '--do-not-check-authors',
                          '--do-not-check-limits' ];
         } else {
@@ -360,8 +360,8 @@ sub filter_and_check
     $deposition_authors = $options->{author_name} unless
         defined $deposition_authors;
 
-    # Checking whether the pre-deposition/pres. comm. cifs have no
-    # complete bibliography; if the do they should be deposited as
+    # Checking whether the pre-deposition/pers. comm. CIFs have no
+    # complete bibliography; if they do they should be deposited as
     # "published structures":
 
     if( $deposition_type eq 'personal' ) {
