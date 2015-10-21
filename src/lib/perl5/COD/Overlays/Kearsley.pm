@@ -26,8 +26,8 @@ package COD::Overlays::Kearsley;
 
 use strict;
 use warnings;
-use COD::Spacegroups::SymopAlgebra qw(symop_apply);
-use COD::JacobiEigen qw(jacobi_eigenvv);
+use COD::Spacegroups::Symop::Algebra qw(symop_apply);
+use COD::Algebra::JacobiEigen qw(jacobi_eigenvv);
 
 require Exporter;
 our @ISA = qw(Exporter);

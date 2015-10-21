@@ -17,9 +17,12 @@ typedef enum cif_option_t {
     FIX_DATA_HEADER      = 32,
     FIX_DATABLOCK_NAMES  = 64,
     FIX_STRING_QUOTES    = 128,
+    CO_SUPPRESS_MESSAGES = 256,
+    CO_DO_NOT_REPORT_LONG_LINES = 512,
 } cif_option_t;
 
 cif_option_t cif_option_default();
+cif_option_t cif_option_set( cif_option_t options, cif_option_t opt );
 cif_option_t cif_option_set_fix_errors( cif_option_t );
 cif_option_t cif_option_set_do_not_unprefix_text( cif_option_t copt );
 cif_option_t cif_option_set_do_not_unfold_text( cif_option_t copt );
@@ -30,5 +33,6 @@ cif_option_set_fix_duplicate_tags_with_empty_values( cif_option_t copt );
 cif_option_t cif_option_set_fix_data_header( cif_option_t copt );
 cif_option_t cif_option_set_fix_datablock_names( cif_option_t copt );
 cif_option_t cif_option_set_fix_string_quotes( cif_option_t copt );
+cif_option_t cif_option_suppress_messages( cif_option_t copt );
 
 #endif

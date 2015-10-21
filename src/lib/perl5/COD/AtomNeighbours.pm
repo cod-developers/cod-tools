@@ -14,17 +14,13 @@ use strict;
 use warnings;
 
 require Exporter;
-@COD::AtomNeighbours::ISA = qw(Exporter);
-@COD::AtomNeighbours::EXPORT = qw(
-    make_neighbour_list
-);
-@COD::AtomNeighbours::EXPORT_OK = qw(
-    get_max_covalent_radius
-);
+our @ISA = qw(Exporter);
+our @EXPORT = qw(make_neighbour_list);
+our @EXPORT_OK = qw(get_max_covalent_radius);
 
 use Carp;
 use COD::AtomBricks qw(build_bricks get_atom_index get_search_span);
-use COD::Spacegroups::VectorAlgebra qw(distance);
+use COD::Algebra::Vector qw(distance);
 
 #==============================================================================#
 # Find a maximal covalent radius in the atom property list.
@@ -126,16 +122,16 @@ sub make_neighbour_list($$$$@)
 
                 next if $atom1 == $atom2;
 
-                next if exists $atom1->{atom_assembly} &&
-                        exists $atom2->{atom_assembly} &&
-                        $atom1->{atom_assembly} ne '.' &&
-                        $atom2->{atom_assembly} ne '.' &&
-                        $atom1->{atom_assembly} eq $atom2->{atom_assembly} &&
-                        exists $atom1->{atom_group} &&
-                        exists $atom2->{atom_group} &&
-                        $atom1->{atom_group} ne '.' &&
-                        $atom2->{atom_group} ne '.' &&
-                        $atom1->{atom_group} ne $atom2->{atom_group};
+                next if exists $atom1->{assembly} &&
+                        exists $atom2->{assembly} &&
+                        $atom1->{assembly} ne '.' &&
+                        $atom2->{assembly} ne '.' &&
+                        $atom1->{assembly} eq $atom2->{assembly} &&
+                        exists $atom1->{group} &&
+                        exists $atom2->{group} &&
+                        $atom1->{group} ne '.' &&
+                        $atom2->{group} ne '.' &&
+                        $atom1->{group} ne $atom2->{group};
 
                 my $atom1_type =  $atom1->{chemical_type};
                 my $atom2_type =  $atom2->{chemical_type};

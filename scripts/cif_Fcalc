@@ -27,16 +27,17 @@ eval 'exec perl -x $0 ${1+"$@"}'
 # http://www.iucr.org/__data/assets/pdf_file/0015/13083/3.pdf
 
 use strict;
+use warnings;
 use File::Basename;
-use COD::CIFParser::CIFParser;
-use COD::Spacegroups::SpacegroupNames;
-use COD::Spacegroups::SymopParse;
-use COD::Spacegroups::SymopLookup;
-use COD::SOptions;
-use COD::Cromer_Mann;
-use COD::SUsage;
-
+use COD::CIF::Parser qw(parse_cif);
+use COD::Spacegroups::Names;
+use COD::Spacegroups::Symop::Parse;
+use COD::Spacegroups::Lookup::COD;
+use COD::CromerMann;
 use COD::Fractional;
+use COD::UserMessage qw(warning error prefix_dataname);
+use COD::SOptions;
+use COD::SUsage;
 
 my $use_parser = "c";
 my $dump_xyz_coordinates = 0;
@@ -46,14 +47,14 @@ my $dump_cell_xyz_coordinates = 0;
 my $iso_temperature_factor = 0;
 my $max_resolution = 1.5; # Anstremum
 my $dump_atoms_and_neighbors = 0;
-my @hkl_default = (10, -10, 10, -10, 10, -10); # hmax, hmin, k.., l...
+my @hkl_default = (10, -10, 10, -10, 10, -10); # hmax, hmin, k..., l...
 # constants;
 my $dump_descending_sort_Fhkl = 0;
 my $dump_test_Fhkl = 0; # 
 my $max_number_print_of_F;
 my $Miller_indexes;
 my $external_CR_table = 0;
-my $get_hkl_data;
+my $hkl_file;
 my $PI = 4*atan2( 1, 1 );
 
 #* USAGE:
@@ -97,21 +98,6 @@ my $PI = 4*atan2( 1, 1 );
 @ARGV = getOptions( 
     "--use-perl-parser"  => sub{ $use_parser = "perl" },
     "--use-c-parser"     => sub{ $use_parser = "c" },
-    "--options"          => sub { 
-        print "$0: The '--options' option is a placehoder.\n";
-        print "$0: It should be replaced by one of the following options:\n";
-        ## usage;
-        open( SCRIPT, $0 ) or die $!;
-        while( <SCRIPT> ) {
-            if( /^#\*\s+OPTIONS:/../^#\*\*/ ) {
-                s/^#\*\s+OPTIONS://;
-                s/^#\*\*?\s+//;
-                print;
-            }
-        }
-        close( SCRIPT );
-        exit
-    },
     "--dump-xyz-coordinates"       => sub { $dump_xyz_coordinates = 1 },
     "--dump-Cromer-Mann"           => sub { $dump_Cromer_Mann_parameters = 1 },
     "--max-resolution"             => \$max_resolution,
@@ -123,7 +109,7 @@ my $PI = 4*atan2( 1, 1 );
     "--dump-atoms-and-neighbors"   => sub { $dump_atoms_and_neighbors = 1 },
     "--external_CR_table"          => sub { $external_CR_table = 1 },
     "--Miller-indexes"             => \$Miller_indexes,
-    "--get-hkl-data"               => \$get_hkl_data,
+    "--get-hkl-data"               => \$hkl_file,
     "--dump-test-Fhkl"             => sub { $dump_test_Fhkl = 1 },
     "--help,--usage"               => sub { usage; exit },
 );
@@ -139,52 +125,41 @@ if(defined $Miller_indexes) {
     foreach( split /\s/, $Miller_indexes ) {
         ##  print "$_\n";
         if($_!~/\d/) {
-            warn( "The option --provide-Miller-indexes contains".               
-              " incorrect argument" );
-            exit;
+            error( $0, undef, undef, 'the option --provide-Miller-indexes '
+                 . 'contains incorrect argument', undef );
+            exit 1;
         }
     }
 }
-
-
 
 @ARGV = ( "-" ) unless @ARGV;
 
 my $hkl_and_F_sorted;
 for my $filename (@ARGV) {
 
-    my( $data, $error_count );
+    my $options = { 'parser' => $use_parser, 'no_print' => 1 };
+    my ( $data, $err_count, $messages ) = parse_cif( $filename, $options );
 
-    if( $use_parser eq "perl" ) {
-        my $parser = new COD::CIFParser::CIFParser;
-
-        $data = $parser->Run( $filename );
-
-        if( defined $parser->YYData->{ERRCOUNT} ) {
-            $error_count = $parser->YYData->{ERRCOUNT};
-        }
-    } else {
-        require COD::CCIFParser::CCIFParser;
-        ( $data, $error_count ) = COD::CCIFParser::CCIFParser::parse( $filename );
-    }
-
-    if( defined $error_count && $error_count > 0 ) {
-        print STDERR "$0: ", $error_count,
-        " error(s) encountered while parsing file '${filename}'\n";
+    if ( $err_count > 0 ) {
+        print STDERR $_ foreach ( @$messages );
+        error( $0, $filename, undef, "$err_count error(s) "
+             . "encountered while parsing the file", undef );
         die;
     }
+    print STDERR $_ foreach ( @$messages );
 
     if( !@$data || !defined $data->[0] || !defined $data->[0]{name} ) {
-        warn( "file '$filename' seems to be empty" );
+        warning( $0, $filename, undef, 'file seems to be empty', undef );
         next;
     }
-    
+
     for my $datablock (@$data) {
-        
+
+        my $dataname = prefix_dataname($datablock->{name});
+
         my @hkl_and_F;
-        
         ## my $radiation_wavelengths = remove_standard_uncertainties(
-        ##     $datablock->{values}{_diffrn_radiation_wavelength} );     
+        ##     $datablock->{values}{_diffrn_radiation_wavelength} );
         my $cell_parameters = get_unit_cell_parameters( $datablock );
         my $f2o = symop_ortho_from_fract( 
             @{$cell_parameters->{crystal_cell_degrees}} );
@@ -194,27 +169,30 @@ for my $filename (@ARGV) {
         foreach (@{$atoms}) {
             $atom_index{$_->{label}} = $_->{my_index};
         }
-        
-	#---------------------------------------------------------
-        
-        tests_outputs( $atoms, $filename, $cell_parameters ); 
-        
-	#-------------------------------------------------------------
-        
-	# Test of aniso koefficients: if not all atoms (except H and
-        # D) contains aniso coef. then isotrophic koef. are using.
-        
+
+    #---------------------------------------------------------
+
+        tests_outputs( $atoms, $filename, $cell_parameters );
+
+    #-------------------------------------------------------------
+
+    # Test of aniso coefficients: if not all atoms (except H and D)
+    # contains aniso coef. then isotrophic koef. are using.
+
         if( !$iso_temperature_factor ) {
             foreach my $atom (@{$atoms}) {
                 if( !defined $atom->{aniso_value_Uij}[0] &&
                     $atom->{label} !~ /[H|D]\d++/ ) {
-                    warn( "The CIF file '$filename' don't contain the full data " .
-                          "of the standard anisotropic atomic displacement " .
-                          "components" );
+                    warning( $0, $filename, $dataname,
+                             'the CIF file does not contain the full data '
+                           . 'of the standard anisotropic atomic displacement '
+                           . 'components', undef );
                     if( $atom->{U_value_of_B_factor} !~ /\d\.\d++/ &&
                         $atom->{B_factor} !~ /\d\.\d++/) {
-                        die "The CIF '$filename' does not contain the correct values for " .
-                            "temperature factor calculation";
+                        error( $0, $filename, $dataname,
+                               'the CIF does not contain the correct values '
+                             . 'for temperature factor calculation', undef );
+                        exit 1;
                     }
                     $iso_temperature_factor = 1;
                     last;
@@ -228,287 +206,290 @@ for my $filename (@ARGV) {
         }
         # seaching list of chemical elements;
         my $chemical_element_list = [];
-        foreach my $atom (@{$atoms}) {            
-            unless( compare_symbol( $chemical_element_list, 
+        foreach my $atom (@{$atoms}) {
+            unless( compare_symbol( $chemical_element_list,
                                     $atom->{chemical_type} ) ) {
                 push( @{$chemical_element_list}, $atom->{chemical_type} );
             }
         }
         # checking of the possible Cromer Mann coefficients;
-        foreach my $atom (@{$atoms}) {     
-            if( $external_CR_table || 
+        foreach my $atom (@{$atoms}) {
+            if( $external_CR_table ||
                 !defined $atom->
-                {Crommer_Mann_coefficients}[0] ) { # external source        
-                my $CromerManncoeff = 
-                    $COD::Cromer_Mann::atoms{ $atom->{chemical_type}};
+                {Crommer_Mann_coefficients}[0] ) { # external source
+                my $CromerManncoeff =
+                    $COD::CromerMann::atoms{ $atom->{chemical_type}};
                 #-----------------------------------------------------
                 # print out of Cromer Mann coef. from external sources;
-                if( !defined $atom->{Crommer_Mann_coefficients}[0] ) {  
+                if( !defined $atom->{Crommer_Mann_coefficients}[0] ) {
                     my $del_i;
                     for my $i (0..$#{$chemical_element_list}) {
-                        if( $chemical_element_list->[$i] eq 
+                        if( $chemical_element_list->[$i] eq
                             $atom->{chemical_type} ) {
                             print "External CR $atom->{chemical_type}: ";
                             print "@{$CromerManncoeff} \n";
                             $del_i = $i;
                         }
-                    }    
+                    }
                     splice( @{$chemical_element_list}, $del_i, 1 ) 
                         if( defined $del_i);
-                }              
+                }
                 #----------------------------------------------------
                 ## print "@{$CromerManncoeff}\n";
-                die "The Cromer-Mann coefficients "
-                    ."are not defined in external source/CIF file "
-                    ."for element $atom->{chemical_type} " 
-                    if( !defined $CromerManncoeff->[0] );                        
+                if( !defined $CromerManncoeff->[0] ) {
+                    error( $0, $filename, $dataname,
+                           'the Cromer-Mann coefficients "are not defined in '
+                         . 'external source/CIF file for element '
+                         . "'$atom->{chemical_type}'", undef );
+                    exit 1;
+                }
             }
         }
-        
+
         ## print "@{$chemical_element_list}\n";
-        
-        unless( $dump_Cromer_Mann_parameters || $dump_cell_parameters || 
+
+        unless( $dump_Cromer_Mann_parameters || $dump_cell_parameters ||
                 $dump_xyz_coordinates || $dump_cell_xyz_coordinates ) {
 
             my( $h_max, $h_min, $k_max, $k_min, $l_max, $l_min );
             if(!defined $Miller_indexes) {
-                ( $h_max, $h_min, $k_max, $k_min, $l_max, $l_min ) = 
+                ( $h_max, $h_min, $k_max, $k_min, $l_max, $l_min ) =
                     @hkl_default;
             } else {
-                ( $h_max, $h_min, $k_max, $k_min, $l_max, $l_min ) = 
+                ( $h_max, $h_min, $k_max, $k_min, $l_max, $l_min ) =
                     split /\s/, $Miller_indexes
             }
-            
+
             my @abc_star = @{$cell_parameters->{reciprocal_cell_radians}}[0..2];
-            
+
             foreach my $h_limit ( $h_min..$h_max ) {
-            foreach my $k_limit ( $k_min..$k_max ) {   
-            foreach my $l_limit ( $l_min..$l_max ) {  
+            foreach my $k_limit ( $k_min..$k_max ) {
+            foreach my $l_limit ( $l_min..$l_max ) {
                 my @hkl = ($h_limit, $k_limit, $l_limit);
                 next if( $h_limit == 0 && $k_limit == 0 && $l_limit == 0 );
-                my $resolution_hkl = spacing_d_hkl( 
-                    @hkl, 
-                    @{$cell_parameters->{reciprocal_cell_radians}} );              
+                my $resolution_hkl = spacing_d_hkl(
+                    @hkl,
+                    @{$cell_parameters->{reciprocal_cell_radians}} );
                 next if($resolution_hkl < $max_resolution);
-                
+
                 my ( $F_cos_comp_w_Tf_and_cor, $F_sin_comp_w_Tf_and_cor,
                      $F_cos_comp_w_cor, $F_sin_comp_w_cor,
-                     $F_cos_comp, $F_sin_comp ) = (0,0,0,0,0,0);        
-               
-                foreach my $atom (@$atoms) {         
-                    
+                     $F_cos_comp, $F_sin_comp ) = (0,0,0,0,0,0);
+
+                foreach my $atom (@$atoms) {
+
                     #-----------------------------------------------------------
                     my $CromerManncoeff;
                     if( $external_CR_table || 
                         !defined $atom->
-                        {Crommer_Mann_coefficients}[0] ) { # external source                        
-                        $CromerManncoeff = 
-                            $COD::Cromer_Mann::atoms{ $atom->{chemical_type} };                                                                     
-                    } else { # from CIF file or external if does not defined;                        
-                        $CromerManncoeff = 
-                            $atom->{Crommer_Mann_coefficients};  
+                        {Crommer_Mann_coefficients}[0] ) { # external source
+                        $CromerManncoeff =
+                            $COD::CromerMann::atoms{ $atom->{chemical_type} };
+                    } else { # from CIF file or external if does not defined;
+                        $CromerManncoeff =
+                            $atom->{Crommer_Mann_coefficients};
                     }
                     #-----------------------------------------------------------
-                    
-                    my $atom_structure_factor = 
-                        atom_structure_factor_from_coefficients( 
+
+                    my $atom_structure_factor =
+                        atom_structure_factor_from_coefficients(
                             $CromerManncoeff, $resolution_hkl );
-                    
+
                     my $atom_structure_factor_corrected;
                     if( $scat_dispersion_key ) {
-                        $atom_structure_factor_corrected = 
-                            sqrt( ( $atom_structure_factor + 
-                                    $atom->{scat_dispesion_real} )**2 + 
+                        $atom_structure_factor_corrected =
+                            sqrt( ( $atom_structure_factor +
+                                    $atom->{scat_dispesion_real} )**2 +
                                   $atom->{scat_dispesion_real}**2 );
                     }
-                    
-		    foreach my $sym_xyz (@{$atom->{symmetrical_xyz_fract}}) {
-			my $atom_hkl_phase = atom_phase_hkl_rad( 
-			    @hkl, @{$sym_xyz} );
-			
-			my $temperature_factor;
-			if( !$iso_temperature_factor ) {
-			    # calculation of aniso temperature factor;
-                            # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
-                            
-			    if( $atom->{chemical_type} eq "H" ) {
+
+            foreach my $sym_xyz (@{$atom->{symmetrical_xyz_fract}}) {
+                my $atom_hkl_phase = atom_phase_hkl_rad( @hkl, @{$sym_xyz} );
+
+                my $temperature_factor;
+                if( !$iso_temperature_factor ) {
+                # calculation of aniso temperature factor;
+                # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+                    if( $atom->{chemical_type} eq "H" ) {
                                 if( defined $atom->{neighbors}[0] ) {
                                     my $H_neighbor_label = $atom->{neighbors}[0];
                                     my $H_neighbor_index = $atom_index{$H_neighbor_label};
-                                    ## print "$H_neighbor_index $H_neighbor_label\n";                                    
-                                    $temperature_factor = 
-                                        temperature_factor_aniso( 
+                                    ## print "$H_neighbor_index $H_neighbor_label\n";
+                                    $temperature_factor =
+                                        temperature_factor_aniso(
                                             @{$atoms->[$H_neighbor_index]->{aniso_value_Uij}},
                                             @hkl, @abc_star);
                                     ## print "$temperature_factor\n";
                                 } else {
                                     $temperature_factor = 1;
-                                }                                
-			    } else {
-				$temperature_factor = 
-				    temperature_factor_aniso( 
-					@{$atom->{aniso_value_Uij}},
-					@hkl, @abc_star);
-			    }
+                                }
+                    } else {
+                        $temperature_factor =
+                            temperature_factor_aniso(
+                                @{$atom->{aniso_value_Uij}},
+                                @hkl, @abc_star );
+                    }
 
-			} else { # calculation of iso temperature factor;
-			    $temperature_factor = 
-				exp( ( -$atom->{B_factor}/4 ) * 
-				     ( 1/$resolution_hkl )**2 );
-			}
-                        
-			$F_cos_comp_w_Tf_and_cor +=
-			    $atom->{occupancy} * 
-			    $atom_structure_factor * cos( $atom_hkl_phase );
-			$F_sin_comp_w_Tf_and_cor +=
-			    $atom->{occupancy} * 
-			    $atom_structure_factor * sin( $atom_hkl_phase );
-                        # structure factor components without corrections;
-                        $F_cos_comp_w_cor +=
-                            $atom->{occupancy} * $atom_structure_factor * 
-                            $temperature_factor * cos( $atom_hkl_phase );
-                        $F_sin_comp_w_cor += 
-                            $atom->{occupancy} * $atom_structure_factor * 
-                            $temperature_factor * sin( $atom_hkl_phase );
-                        if( $scat_dispersion_key ) { 
-                            $F_cos_comp += $atom->{occupancy} * 
-                                $atom_structure_factor_corrected * 
-                                $temperature_factor * cos( $atom_hkl_phase );
-                            $F_sin_comp += $atom->{occupancy} * 
-                                $atom_structure_factor_corrected * 
-                                $temperature_factor * sin( $atom_hkl_phase );
-                        } else {
-                            warn( "The CIF file '$filename' don't contain the data ".
-                                  "of anomalous-dispersion scattering factor" );
-                            exit;
-                        }
-		    } # foreach of cell atoms;
-		} # foreach of assimetric unit atoms;
-                
-		my $F_hkl_without_Tf_and_cor = 
-                    sqrt( $F_cos_comp_w_Tf_and_cor**2 + 
+                } else { # calculation of iso temperature factor;
+                    $temperature_factor =
+                        exp( ( -$atom->{B_factor}/4 ) *
+                        ( 1/$resolution_hkl )**2 );
+                }
+
+                $F_cos_comp_w_Tf_and_cor +=
+                    $atom->{occupancy} *
+                    $atom_structure_factor * cos( $atom_hkl_phase );
+                $F_sin_comp_w_Tf_and_cor +=
+                    $atom->{occupancy} *
+                    $atom_structure_factor * sin( $atom_hkl_phase );
+                # structure factor components without corrections;
+                $F_cos_comp_w_cor +=
+                    $atom->{occupancy} * $atom_structure_factor *
+                    $temperature_factor * cos( $atom_hkl_phase );
+                $F_sin_comp_w_cor +=
+                    $atom->{occupancy} * $atom_structure_factor *
+                    $temperature_factor * sin( $atom_hkl_phase );
+                if( $scat_dispersion_key ) {
+                    $F_cos_comp +=
+                        $atom->{occupancy} *
+                        $atom_structure_factor_corrected *
+                        $temperature_factor * cos( $atom_hkl_phase );
+                    $F_sin_comp +=
+                        $atom->{occupancy} *
+                        $atom_structure_factor_corrected *
+                        $temperature_factor * sin( $atom_hkl_phase );
+                } else {
+                        warning( $0, $filename, $dataname,
+                                 'the CIF file does not contain the data '
+                               . 'of anomalous-dispersion scattering '
+                               . 'factor', undef );
+                        exit 1;
+                }
+            } # foreach of cell atoms;
+        } # foreach of assimetric unit atoms;
+
+                my $F_hkl_without_Tf_and_cor =
+                    sqrt( $F_cos_comp_w_Tf_and_cor**2 +
                           $F_sin_comp_w_Tf_and_cor**2 );
-                my $F_hkl_iso_without_cor = 
-                    sqrt( $F_cos_comp_w_cor**2 + $F_sin_comp_w_cor**2 ); 
-		my $F_hkl_sguared = 
-                    $F_cos_comp**2 + $F_sin_comp**2; 
-                
+                my $F_hkl_iso_without_cor =
+                    sqrt( $F_cos_comp_w_cor**2 + $F_sin_comp_w_cor**2 );
+                my $F_hkl_sguared =
+                    $F_cos_comp**2 + $F_sin_comp**2;
+
                 if( $dump_test_Fhkl ) {
-                    printf "%3s %3s %3s %0.3f %0.3f %0.3f\n", 
-                    @hkl,  
-                    $F_hkl_without_Tf_and_cor**2, 
+                    printf "%3s %3s %3s %0.3f %0.3f %0.3f\n",
+                    @hkl,
+                    $F_hkl_without_Tf_and_cor**2,
                     $F_hkl_iso_without_cor**2,
                     $F_hkl_sguared;
                 }
-                
+
                 push( @hkl_and_F, [ $F_hkl_sguared ,\@hkl ] );
-               
-            }}} # end for        
+
+            }}} # end for
             exit if( $dump_test_Fhkl );
         } # end unless
-        
+
         $hkl_and_F_sorted = sort_Fhkl( \@hkl_and_F );
         # ----------------------------------------------------
-        if( $dump_descending_sort_Fhkl ) {    
+        if( $dump_descending_sort_Fhkl ) {
             foreach (@{$hkl_and_F_sorted}) {
                 printf "%3s %3s %3s %0.3f\n",
                 @{$_->[1]}, $_->[0];
             }
             exit;
         }
-                
+
         if( 1 ) {
             my $search_equal_intensities = sort_Friedel( $hkl_and_F_sorted );
             if( defined $max_number_print_of_F ) {
-                if( ($max_number_print_of_F - 1) > 
+                if( ($max_number_print_of_F - 1) >
                     $#{$search_equal_intensities} ) {
-                    warn( "The value of --max-Fhkl-number is large than ".
-                          "number of calculated structure factors.  ".
-                          "Printing out of full structure factors number. " );
+                    warning( $0, $filename, $dataname,
+                            'the value of --max-Fhkl-number is large than '
+                          . 'number of calculated structure factors',
+                            'printing out of full structure factors number' );
                 } else {
                     $search_equal_intensities = 
                         [ @{$search_equal_intensities}[0..($max_number_print_of_F - 1)] ];
                 }
             }
-            if( !defined $get_hkl_data ) {
+            if( !defined $hkl_file ) {
                 foreach my $Fri_Fhkl (@{$search_equal_intensities}) {
                     my $adding_field = (" %3s %3s %3s")x$#{$Fri_Fhkl};
                     printf "%0.3f".$adding_field."\n",
                     $Fri_Fhkl->[0], map{ @{$_} } @{$Fri_Fhkl}[1..$#{$Fri_Fhkl}];
-                }     
+                }
             }
         } # if(1) end
-        
     } # end foreach @data
 }
 
 # for hkl data extracting from CIF.hkl and comparison with my calculated 
 # values;
-if( defined $get_hkl_data ) {
-    print "Yra: $get_hkl_data\n";
-    my( $hkl_data, $hkl_error_count );
-    
-    if( $use_parser eq "perl" ) {
-        my $parser = new COD::CIFParser::CIFParser;
-        
-        $hkl_data = $parser->Run( $get_hkl_data );
-        
-        if( defined $parser->YYData->{ERRCOUNT} ) {
-            $hkl_error_count = $parser->YYData->{ERRCOUNT};
-        }
-    } else {
-        require COD::CCIFParser::CCIFParser;
-        ( $hkl_data, $hkl_error_count ) = COD::CCIFParser::CCIFParser::parse( $get_hkl_data );
+if( defined $hkl_file ) {
+    print "Yra: $hkl_file\n";
+
+    my $hkl_options = { 'parser' => $use_parser, 'no_print' => 1 };
+    my ( $hkl_data, $hkl_err_count, $messages ) =
+                                           parse_cif( $hkl_file, $hkl_options );
+
+    if ( $hkl_err_count > 0 ) {
+        print STDERR $_ foreach ( @$messages );
+        error( $0, $hkl_file, undef, "$hkl_err_count error(s) "
+             . "encountered while parsing the file", undef );
+        next;
     }
-    
+    print STDERR $_ foreach ( @$messages );
+
     # take a top segment of my calculated and sorted structure factors;
     if( defined $max_number_print_of_F ) {
-        if( ($max_number_print_of_F - 1) > 
-            $#{$hkl_and_F_sorted} ) {
-            warn( "The value of --max-Fhkl-number is large than ".
-                  "number of calculated structure factors.  ".
-                  "Printing out of full structure factors number. " );
+        if( ($max_number_print_of_F - 1) > $#{$hkl_and_F_sorted} ) {
+            warning( $0, undef, undef,
+                     'the value of --max-Fhkl-number is large than '
+                   . 'number of calculated structure factors',
+                     'printing out of full structure factors number' );
         } else {
-            $hkl_and_F_sorted = 
+            $hkl_and_F_sorted =
                 [ @{$hkl_and_F_sorted}[0..($max_number_print_of_F - 1)] ];
         }
     }
-    
 
     for my $hkl_datablock (@$hkl_data) {
         my $values = $hkl_datablock->{values};
         my( $h_values, $k_values, $l_values,
-            $F_sguared_mes, 
-            $F_squared_calc, 
-            $F_squared_sigma_mes ) = 
+            $F_sguared_mes,
+            $F_squared_calc,
+            $F_squared_sigma_mes ) =
                 ( $values->{_refln_index_h},
                   $values->{_refln_index_k},
                   $values->{_refln_index_l},
                   $values->{_refln_f_squared_meas},
                   $values->{_refln_f_squared_calc},
                   $values->{_refln_f_squared_sigma} );
-        
+
         foreach my $calculated (@{$hkl_and_F_sorted}) {
             my $set_flag = 0;
             for my $i (0..$#{$values->{_refln_index_h}}) {
-                my $condition = 
+                my $condition =
                     ( $calculated->[1][0] == $h_values->[$i] &&
                       $calculated->[1][1] == $k_values->[$i] &&
                       $calculated->[1][2] == $l_values->[$i] );
                 if( $condition ) {
-                    if( 
+                    if(
                         ($calculated->[0] > 
-                         ($F_sguared_mes->[$i] - $F_squared_sigma_mes->[$i])) && 
-                        ($calculated->[0] < 
-                         ($F_sguared_mes->[$i] + $F_squared_sigma_mes->[$i])) 
+                         ($F_sguared_mes->[$i] - $F_squared_sigma_mes->[$i])) &&
+                        ($calculated->[0] <
+                         ($F_sguared_mes->[$i] + $F_squared_sigma_mes->[$i]))
                         ) {
                         print "Y ";
                     } else {
                         print "N ";
                     };
-                    my $error_squared = 
+                    my $error_squared =
                         ( abs( $F_sguared_mes->[$i] - $calculated->[0] ) /
-                          $F_sguared_mes->[$i] ) * 100 ;                    
+                          $F_sguared_mes->[$i] ) * 100 ;
                     print "My Calc: $calculated->[0] "
                         ."Mes: $F_sguared_mes->[$i] "
                         ."Their Calc: $F_squared_calc->[$i] "
@@ -518,13 +499,9 @@ if( defined $get_hkl_data ) {
                 }
                 last if( $set_flag );
             } # end for 
-        } # end foreach         
+        } # end foreach
     } # end for datablocks
-    
-} 
-
-
-
+}
 
 #===============================================================#
 # Multiplies an ortho matrix with a vector.
@@ -655,7 +632,7 @@ sub atoms_from_cif
         # 
         %atom_info = (%atom_info, %{$Cromer_Mann_coefficients->[$i]});
         %atom_info = (%atom_info, %{$themal_coefficients->[$i]});
-	%atom_info = (%atom_info, %{$sym_atoms_and_their_count->[$i]});
+        %atom_info = (%atom_info, %{$sym_atoms_and_their_count->[$i]});
         %atom_info = (%atom_info, %{$atoms_neighbors->[$i]});
         push( @atoms, \%atom_info );
     }
@@ -947,7 +924,7 @@ sub spacing_d_hkl
     my( $h, $k, $l, $a_star, $b_star, $c_star,
          $alpha_star, $beta_star, $gamma_star ) = @_;
     return 1 /
-	sqrt( $h**2 * $a_star**2 +
+    sqrt( $h**2 * $a_star**2 +
               $k**2 * $b_star**2 +
               $l**2 * $c_star**2 +
               2 * $h * $k * $a_star * $b_star * cos( $gamma_star ) +
@@ -1009,11 +986,11 @@ sub atom_structure_factor_from_coefficients
     my( $a1, $a2, $a3, $a4, $b1, $b2, $b3, $b4, $c ) = @{$Cromer_Mann};
     my $sin_teta_div_wavelength = 1 / (2 * $resolution);
     return 
-	$a1 * exp( -$b1 * $sin_teta_div_wavelength**2 ) +
-	$a2 * exp( -$b2 * $sin_teta_div_wavelength**2 ) +
-	$a3 * exp( -$b3 * $sin_teta_div_wavelength**2 ) +
-	$a4 * exp( -$b4 * $sin_teta_div_wavelength**2 ) +
-	$c;
+    $a1 * exp( -$b1 * $sin_teta_div_wavelength**2 ) +
+    $a2 * exp( -$b2 * $sin_teta_div_wavelength**2 ) +
+    $a3 * exp( -$b3 * $sin_teta_div_wavelength**2 ) +
+    $a4 * exp( -$b4 * $sin_teta_div_wavelength**2 ) +
+    $c;
 }
 
 #----------------------------------------------------------------------#
@@ -1025,11 +1002,11 @@ sub atom_structure_factor_from_coefficients
 # phase(in radians)
 # for ex.: 
 # phase_hkl( @hkl, @xyz_fract, @cell_length_abc) = 1.12;
-sub atom_phase_hkl_rad 
+sub atom_phase_hkl_rad
 {
     my( $h, $k, $l, $fract_x, $fract_y, $fract_z ) = @_;
     return 2 * $PI * ($h * $fract_x + $k * $fract_y +
-                       $l * $fract_z);   
+                       $l * $fract_z);
 }
 
 # Function for temperature factor calculation (anisotropic);
@@ -1072,54 +1049,52 @@ sub temperature_factor_aniso
 #               
 #            }, 
 #        .. )
-sub cell_filling_sym 
+sub cell_filling_sym
 {
     my( $datablock, $filename, $f2o ) = @_;
-    my $values =  $datablock->{values};    
+    my $values =  $datablock->{values};
+    my $dataname = prefix_dataname($datablock->{name});
     my @xyz_arrays =
-        ( remove_standard_uncertainties( 
+        ( remove_standard_uncertainties(
               $values->{_atom_site_fract_x} ),
-          remove_standard_uncertainties( 
+          remove_standard_uncertainties(
               $values->{_atom_site_fract_y} ),
-          remove_standard_uncertainties( 
-              $values->{_atom_site_fract_z} ) ); 
-    
-    my $sym_data;    
+          remove_standard_uncertainties(
+              $values->{_atom_site_fract_z} ) );
+
+    my $sym_data;
     if( exists $values->{"_symmetry_equiv_pos_as_xyz"} )
     {
         $sym_data = $values->{"_symmetry_equiv_pos_as_xyz"};
     }
-    
-    if( exists $values->{"_symmetry_space_group_name_hall"} &&                  
+
+    if( exists $values->{"_symmetry_space_group_name_hall"} &&
        (not defined $sym_data) ) {
-        
+
         my $hall = $values->{"_symmetry_space_group_name_hall"}[0];
-        $sym_data = get_symops("hall", $hall);        
+        $sym_data = get_symops("hall", $hall);
         if( $sym_data == 0 ) {
-            print STDERR "ERR: " . &File::Basename::fileparse($0) . ": ";
-            print STDERR "'$filename': ";
-            print STDERR "There was incorrect _symmetry_space_group_name_Hall "
-                . $hall . "\n";
+            error( $0, $filename, $dataname,
+                   "'_symmetry_space_group_name_Hall' tag value '$hall' "
+                 . "was not recognised as a space group name", undef );
         }
     }
-    
-    if( exists $values->{"_symmetry_space_group_name_h-m"} &&                   
+
+    if( exists $values->{"_symmetry_space_group_name_h-m"} &&
        ((not defined $sym_data) or $sym_data == 0) ) {
         my $h_m = $values->{"_symmetry_space_group_name_h-m"}[0];
         $sym_data = get_symops("hermann_mauguin", $h_m);
-        
+
         if( $sym_data == 0 ) {
-            print STDERR "ERR: " . &File::Basename::fileparse($0) . ": ";
-            print STDERR "'$filename': ";
-            print STDERR "There was incorrect _symmetry_space_group_name_H-M "
-                . $h_m . "\n";
+            error( $0, $filename, $dataname,
+                   "'_symmetry_space_group_name_H-M' tag value '$h_m' "
+                 . "was not recognised as a space group name", undef );
             die;          # data of space group is empty or incorrect;
         }
     }
-    
+
     my @sym_operators = map{ symop_from_string($_) } @{$sym_data};
 
-      
     my @sym_atom_info;
     foreach my $i (0..$#{$values->{_atom_site_label}}) {
         
@@ -1127,48 +1102,47 @@ sub cell_filling_sym
         my $fract_xyz = [ $xyz_arrays[0]->[$i],
                           $xyz_arrays[1]->[$i],
                           $xyz_arrays[2]->[$i] ];
-        my $ortho_xyz =  
-            mat_vect_mul( $f2o, $fract_xyz );   
+        my $ortho_xyz =
+            mat_vect_mul( $f2o, $fract_xyz );
 
         for(my $i = 0; $i < @sym_operators; $i++) {
-            my $symop = $sym_operators[$i]; # 
+            my $symop = $sym_operators[$i];
             ## print "$symop\n";
 
             my $new_xyz_fract = 
-                symop_apply( [@{$fract_xyz}, 1], $symop);           
+                symop_apply( [@{$fract_xyz}, 1], $symop);
             $new_xyz_fract = [ @{$new_xyz_fract}[0..2] ];
             ## print "@{$new_xyz_fract}\n";
-            
+
             my $new_xyz_ortho = mat_vect_mul( $f2o, 
                                               $new_xyz_fract );
-            ## print "@{$new_xyz_ortho}\n";         
-            if( !exists $sym_atom_coordinates{symmetrical_xyz_fract} ) { 
-                $sym_atom_coordinates{symmetrical_xyz_fract} = 
+            ## print "@{$new_xyz_ortho}\n";
+            if( !exists $sym_atom_coordinates{symmetrical_xyz_fract} ) {
+                $sym_atom_coordinates{symmetrical_xyz_fract} =
                     [$new_xyz_fract];
             } else {
-                push( @{$sym_atom_coordinates{symmetrical_xyz_fract}}, 
+                push( @{$sym_atom_coordinates{symmetrical_xyz_fract}},
                       $new_xyz_fract );
-            } 
+            }
             if( !exists $sym_atom_coordinates{symmetrical_xyz_ortho} ) {
-                $sym_atom_coordinates{symmetrical_xyz_ortho} = 
+                $sym_atom_coordinates{symmetrical_xyz_ortho} =
                     [$new_xyz_ortho];
             } else {
                 push( @{$sym_atom_coordinates{symmetrical_xyz_ortho}}, 
                       $new_xyz_ortho );
-            }          
+            }
         }                       # end of for;
         push( @sym_atom_info, \%sym_atom_coordinates);
     }                           # end of foreach;
-    
-    
-    # searching of symmetric atom twins;   
+
+    # searching of symmetric atom twins;
     my @temporary_sym_all;
     foreach my $ref (@sym_atom_info) {
         my $sym_atoms_ortho = $ref->{symmetrical_xyz_ortho};
         ## print "$sym_atoms_ortho\n";
         my $sym_atoms_whitout_twins = [];
         my $length_of_ref = $#{$sym_atoms_ortho};
-        for my $i (0..$length_of_ref) { # symmetric atoms            
+        for my $i (0..$length_of_ref) { # symmetric atoms
             for my $k ($i+1..$length_of_ref) { # 
                 my $what_distance = 
                     euclidean_distance_3D( $sym_atoms_ortho->[$i], 
@@ -1176,38 +1150,38 @@ sub cell_filling_sym
                 if( $what_distance < 0.01 ) {
                     unless( compare_number($sym_atoms_whitout_twins, $k) ) {
                         push(@{$sym_atoms_whitout_twins}, $k);
-                    }  # end if unless                       
+                    }  # end if unless
                 } # end if 
-            } # for 3       
+            } # for 3
         } # for 2
         push( @temporary_sym_all, $sym_atoms_whitout_twins );
         ## print "@{$sym_atoms_whitout_twins} $sym_atoms_whitout_twins\n";
     } # for 1
-    
+
     # deleting of symmetic atom twins;
     for my $i (0..$#temporary_sym_all) {
         if( defined $temporary_sym_all[$i]->[0] ) {
-            my @number_sort_reverse = sort {$b <=> $a} @{$temporary_sym_all[$i]};            
+            my @number_sort_reverse = sort {$b <=> $a} @{$temporary_sym_all[$i]};
             foreach my $del_position ( @number_sort_reverse  ) {
                 ## print "$del_position\n";
                 ## print @{$sym_atom_info[$i]->{symmetrical_xyz_ortho}},">>>\n";
                 splice( @{$sym_atom_info[$i]->{symmetrical_xyz_ortho}},
-                        $del_position, 1 ); 
+                        $del_position, 1 );
                 splice( @{$sym_atom_info[$i]->{symmetrical_xyz_fract}},
-                        $del_position, 1 );                
-            } 
+                        $del_position, 1 );
+            }
         } # end if
     }
-    
+
     # only for first element adding the atoms full count of crystal cell;
-    my $atoms_number_of_cell = 0;  
+    my $atoms_number_of_cell = 0;
     foreach my $ref (@sym_atom_info) {
         foreach (@{$ref->{symmetrical_xyz_ortho}}) {
             $atoms_number_of_cell++;
         }
-    }    
+    }
     $sym_atom_info[0]{count_of_cell_atoms} = $atoms_number_of_cell;
-    
+
     return \@sym_atom_info;
 }
 
@@ -1216,7 +1190,7 @@ sub cell_filling_sym
 # functions get_symops() and symop_apply() code was 
 # copied from 'cif_fillcell' script. rev. 1440;
 #===============================================================#
-# @COD::Spacegroups::SymopLookup::table =
+# @COD::Spacegroups::Lookup::COD::table =
 # (
 # {
 #     number          => 1,
@@ -1240,7 +1214,7 @@ sub get_symops
     $param =~ s/ //g;
     $param =~ s/_//g;
 
-    foreach my $hash (@COD::Spacegroups::SymopLookup::table)
+    foreach my $hash (@COD::Spacegroups::Lookup::COD::table)
     {
         my $value = $hash->{$option};
         $value =~ s/ //g;
@@ -1462,14 +1436,14 @@ sub sort_Friedel
         } elsif ($add > 1 && $comp) {
             # more same Friedel's twins are detected, adding;
             push( @{$output[$adding_i]}, 
-                  $ref_to_sorted_Fhkl->[$cur_i + $add][1]);         
-            $add++; # seraching more;            
+                  $ref_to_sorted_Fhkl->[$cur_i + $add][1]);
+            $add++; # searching more;
         } else {
             $adding_i++;
             $cur_i += $add;
             $add = 1;
             next;
-        }                  
+        }
     } # end while 
     return \@output;
 }

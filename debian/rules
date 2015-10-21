@@ -1,37 +1,9 @@
 #!/usr/bin/make -f
 
-PROJECT = cod-tools
+%:
+	dh $@ --with python2
 
-build:
-	dh_testdir
-	$(MAKE)
-
-clean:
-	dh_testdir
-	dh_testroot
-	dh_clean
-
-install: build
-	dh_testdir
-	dh_testroot
-	dh_clean -k
-	dh_installdirs usr/bin
-	$(MAKE) install PREFIX=$(CURDIR)/debian/${PROJECT}/usr
-
-binary-indep:   build install
-binary-arch:    build install
-	dh_testdir
-	dh_testroot
-	# dh_installdocs          CONTRIBUTORS TODO
-	dh_installman             $(CURDIR)/debian/man/*.1
-	# dh_installchangelogs    CHANGES
-	dh_strip
-	dh_compress
-	dh_fixperms
-	dh_installdeb
-	dh_shlibdeps
-	dh_gencontrol
-	dh_md5sums
+override_dh_builddeb:
 	dh_builddeb --destdir debian
 
-binary: binary-indep binary-arch
+override_dh_auto_clean:

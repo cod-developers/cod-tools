@@ -16,15 +16,15 @@ eval 'exec perl -x $0 ${1+"$@"}'
 
 use strict;
 use warnings;
-use COD::CIFParser::CIFParser;
-use COD::CIFData::CIFDiff;
-use COD::CIFData::CODFlags qw(has_hkl
+use COD::CIF::Parser qw(parse_cif);
+use COD::CIF::Data::Diff;
+use COD::CIF::Data::CODFlags qw(has_hkl
                               has_powder_diffraction_intensities
                               @hkl_tags
                               @powder_diffraction_intensity_tags);
-use COD::CIFTags::CIFTagCanonicalNames;
+use COD::CIF::Tags::CanonicalNames;
 use COD::Precision;
-use COD::UserMessage;
+use COD::UserMessage qw(note warning error prefix_dataname);
 use COD::SOptions;
 use COD::SUsage;
 
@@ -54,38 +54,50 @@ PAIR:
 while( @ARGV > 0 ) {
     my $cif_file = shift( @ARGV );
     if( @ARGV == 0 ) {
-        error( $0, $cif_file, undef, "missing diffraction data file" );
+        error( $0, $cif_file, undef, "missing diffraction data file", undef );
         die;
     }
-    my $hkl_file = shift( @ARGV );
 
-    my( $cif_data, $cif_errors ) = parse_file( $cif_file, $use_parser );
-    next if $cif_errors > 0;
+    my $options = { 'parser' => $use_parser, 'no_print' => 1 };
+
+    my $hkl_file = shift( @ARGV );
+    my( $cif_data, $cif_err_count, $cif_messages ) = parse_cif( $cif_file );
+    if ( $cif_err_count > 0 ) {
+        print STDERR $_ foreach ( @$cif_messages );
+        error( $0, $cif_file, undef, "$cif_err_count error(s) "
+             . "encountered while parsing the file", undef );
+        next;
+    }
+    print STDERR $_ foreach ( @$cif_messages );
 
     if( !@$cif_data || !defined $cif_data->[0] ||
         !defined $cif_data->[0]{name} ) {
-        warning( $0, $cif_file, undef,
-                 "file '$cif_file' seems to be empty" );
+        warning( $0, $cif_file, undef, 'file seems to be empty', undef );
         next;
     }
 
     canonicalize_all_names( $cif_data );
 
-    my( $hkl_data, $hkl_errors ) = parse_file( $hkl_file, $use_parser );
-    next if $hkl_errors > 0;
+    my( $hkl_data, $hkl_err_count, $hkl_messages ) = parse_cif( $hkl_file );
+    if ( $hkl_err_count > 0 ) {
+        print STDERR $_ foreach ( @$hkl_messages );
+        error( $0, $cif_file, undef, "$hkl_err_count error(s) "
+             . "encountered while parsing the file", undef );
+        next;
+    }
+    print STDERR $_ foreach ( @$hkl_messages );
 
     if( !@$hkl_data || !defined $hkl_data->[0] ||
         !defined $hkl_data->[0]{name} ) {
-        warning( $0, $hkl_file, undef,
-                 "file '$hkl_file' seems to be empty" );
+        warning( $0, $hkl_file, undef, 'file seems to be empty', undef );
         next;
     }
 
     canonicalize_all_names( $hkl_data );
 
     if( @$hkl_data > 1 ) {
-        warning( $0, $hkl_file, undef, "file '$hkl_file' contains more " .
-                                       "than one datablock" );
+        warning( $0, $hkl_file, undef,
+                 'file contains more than one datablock', undef );
         next;
     }
     my $hkl_dataset = $hkl_data->[0];
@@ -93,8 +105,8 @@ while( @ARGV > 0 ) {
     if( !has_hkl( $hkl_dataset ) &&
         !has_powder_diffraction_intensities( $hkl_dataset ) ) {
         warning( $0, $hkl_file, undef,
-                 "can not confirm that file '$hkl_file' contains " .
-                 "Fobs or powder diffraction data: one or more tags " .
+                 "cannot confirm that file '$hkl_file' contains " .
+                 'Fobs or powder diffraction data', 'one or more tags ' .
                  "from list ( " .
                  join( ", ",
                        map { "'$_'" } @hkl_tags ) .
@@ -117,12 +129,12 @@ while( @ARGV > 0 ) {
     }
     if( !defined $cif_index ) {
         warning( $0, $cif_file, undef,
-                 "can not confirm relation between any datablocks in " .
-                 "CIF and diffraction data files -- there are no " .
-                 "datablocks with the same name in both files (CIF " .
-                 "datablock(s): " .
-                 join( ", ", map { "'$_'" } @cif_datanames ) .
-                 ", diffraction data datablock: '$hkl_dataname')" );
+                 "cannot confirm relation between any datablocks in CIF "
+               . 'and diffraction data files', 'there are no datablocks '
+               . "with the same name in both files (" 
+               . join( ", ", map { "'$_'" } @cif_datanames )
+               . " (CIF datablock(s)) and '$hkl_dataname' "
+               . "(diffraction data datablock))" );
         next PAIR;
     }
     my $comm = comm( $cif_data->[$cif_index], $hkl_dataset,
@@ -158,37 +170,19 @@ while( @ARGV > 0 ) {
             } else {
                 $reason = "values of tag '$line->[0]' differ";
             }
-            $reason .= ": '" . join( ', ', map { "'$_'" }
+            $reason .= " ('" . join( ', ', map { "'$_'" }
                   @{$cif_data->[$cif_index]{values}{$line->[0]}} ) .
                   "' (CIF) and '" . join( ', ', map { "'$_'" }
                   @{$hkl_values->{$line->[0]}} ) .
-                  "' (diffraction data)";
-            warning( $0, $cif_file, $hkl_dataname,
+                  "' (diffraction data))";
+            warning( $0, $cif_file, prefix_dataname($hkl_dataname),
                      "can not confirm relation between datablocks named " .
                      "'$hkl_dataname' from supplied CIF and diffraction " .
-                     "data files -- $reason" );
+                     "data files", $reason );
             next PAIR;
         }
     }
-    note( $0, $cif_file, undef, "OK" );
-}
-
-sub parse_file
-{
-    my( $file, $use_parser ) = @_;
-    my( $data, $errors );
-    if( $use_parser eq "perl" ) {
-        my $parser = new COD::CIFParser::CIFParser;
-        $data = $parser->Run($file);
-        $errors = 0;
-        if( defined $parser->YYData->{ERRCOUNT} ) {
-            $errors = $parser->YYData->{ERRCOUNT};
-        }
-    } else {
-        require COD::CCIFParser::CCIFParser;
-        ( $data, $errors ) = COD::CCIFParser::CCIFParser::parse( $file );
-    }
-    return( $data, $errors );
+    note( $0, $cif_file, undef, "OK", undef );
 }
 
 sub compare_lc_strings

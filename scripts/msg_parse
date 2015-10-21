@@ -1,0 +1,109 @@
+#! /bin/sh
+#!perl -w # --*- Perl -*--
+eval 'exec perl -x $0 ${1+"$@"}'
+    if 0;
+#------------------------------------------------------------------------------
+#$Author$
+#$Revision$
+#$URL$
+#$Date$
+#$Id: cif_diff 3294 2015-04-22 10:12:45Z andrius $
+#------------------------------------------------------------------------------
+#*
+#  Parse COD error messages and output the results in the desired format.
+#
+# USAGE:
+#    $0 [options] input.cif [input2.cif ...]
+#**
+
+use strict;
+use warnings;
+use COD::UserMessage qw( parse_message note );
+use COD::SOptions    qw( getOptions );
+use COD::SUsage;
+
+my $ignore_comments = 0;
+my @dsv_print_order = ( qw(
+                            program
+                            filename
+                            line
+                            column
+                            datablock
+                            errlevel
+                            message
+                        ) );
+my $print_options = {
+    'format'    => 'dsv',
+    'delimiter' => "\t",
+    'dsv_order' => \@dsv_print_order
+};
+
+
+@ARGV = getOptions
+(
+#** OPTIONS:
+#** -d, --delimiter "\t"
+#**                    Delimiter that is used to separate fields in the
+#**                    delimiter-separated values (dsv) output format
+#**                    (default "\t").
+#** --dsv
+#**                    Output results in delimiter-separated values (dsv) 
+#**                    format (default).
+#** --ignore-comments
+#**                    Ignore lines starting with a number symbol ('#').
+#** --process-comments
+#**                    Treat lines starting with a number symbol ('#') as
+#**                    error messages. Default.
+#** --help,--usage     Print short usage message (this message) and exit.
+    "-d,--delimiter"            => \$print_options->{delimiter},
+    "--dsv"                     => sub { $print_options->{format} = 'dsv' },
+    "--ignore-comments"         => sub { $ignore_comments = 1 },
+    "--process-comments"        => sub { $ignore_comments = 0 },
+    "--help,--usage"            => sub { usage; exit },
+);
+
+my $msg;
+while (<>) {
+    next if $ignore_comments && $_ =~ /^\s*#/ ;
+
+    if ( !defined $msg ) {
+        $msg = $_;
+    } elsif ( /^ / && $msg =~ /[^ ].*:\s*$/m) {
+        $msg .= $_;
+    } else {
+        print_parsed_msg($msg, $print_options);
+        $msg = $_;
+    }
+
+    if (eof) {
+        print_parsed_msg($msg, $print_options);
+    }
+}
+
+sub print_parsed_msg
+{
+    my ($msg, $options) = @_;
+
+    my $format = $options->{format};
+    my $delim  = $options->{delimiter};
+    my $order  = $options->{dsv_order};
+
+    my $parsed_msg = parse_message( $msg );
+    if ( defined $parsed_msg ) {
+        if ( $format eq 'dsv' ) {
+            print join $delim, map { ( defined $parsed_msg->{$_} ) ?
+                                               $parsed_msg->{$_} :
+                                               '' } @{$order};
+            if ( defined $parsed_msg->{line_content} ) {
+                print "\t\n$parsed_msg->{line_content}"
+            } else {
+                print "\n";
+            };
+        }
+    } else {
+        chomp($msg);
+        note($0, $ARGV, undef, "unable to parse error message '$msg'", undef);
+    }
+};
+
+

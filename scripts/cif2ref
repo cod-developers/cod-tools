@@ -10,15 +10,30 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #------------------------------------------------------------------------------
 #*
 #  Parse a CIF file and print out the essential information in the COD
-#  REF format
+#  REF format. Accepts optional bibliography file in ref, xrf or plaintext
+#  format as the second command line argument.
 #**
 
 use strict;
+use warnings;
 use STAR::Parser;
-use COD::Unicode2CIF;
+use COD::CIF::Unicode2CIF;
+use COD::SOptions;
+use COD::SUsage;
+
+#* USAGE:
+#*     $0 input1.cif optional-bibliography-file.txt
+#*
+#* OPTIONS:
+#*
+#* --help,--usage      Print a short usage message (this message) and exit.
+#**
+@ARGV = getOptions(
+    "--help,--usage"    => sub { usage; exit }
+);
 
 my $filename = @ARGV > 0 ? shift(@ARGV) : "-";
-my $biblio = @ARGV > 0 ? shift(@ARGV) : undef;
+my $biblio   = @ARGV > 0 ? shift(@ARGV) : undef;
 my @data;
 
 @data = STAR::Parser->parse(-file=>$filename);
@@ -42,7 +57,7 @@ for my $dataset (@data) {
     my $datablok = defined $category ? $category->{"-"} : undef;
 
     next if !defined $datablok;
-    
+
     # Make sure all tags are present in their lowercase form:
 
     foreach my $key (keys %$datablok) {

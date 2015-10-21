@@ -15,7 +15,7 @@ eval 'exec perl -x $0 ${1+"$@"}'
 use strict;
 use warnings;
 
-use COD::CIFParser::CIFParser;
+use COD::CIF::Parser::Yapp;
 
 sub csv_format($$$);
 
@@ -25,7 +25,7 @@ my $fields_separator = ','; # as per section 1.4 of RFC 4180
 my $lines_separator  = "\r\n"; # as per section 4.1.1 of RFC 2046
 
 for my $inputFile(@ARGV) {
-    my $parser = new COD::CIFParser::CIFParser;
+    my $parser = new COD::CIF::Parser::Yapp;
     my $cif;
     $cif = $parser->Run($inputFile);
     if(!@{$cif} || !defined $cif->[0] || !defined $cif->[0]{name} ) {
@@ -39,7 +39,7 @@ for my $inputFile(@ARGV) {
             . $fields_separator . $data->{name}
             . $lines_separator;
         # print stray values
-        for my $tagName (keys %{$data->{values}}) {
+        for my $tagName (sort keys %{$data->{values}}) {
             if(defined $data->{inloop}->{$tagName}) {
                 next; # print loops after stray values
             }
@@ -58,7 +58,8 @@ for my $inputFile(@ARGV) {
             local $, = $fields_separator;
             print @$loop;
             print $lines_separator;
-            for my $line(0..@$loop) {
+            my $loop_value_length = $#{$data->{values}{$loop->[0]}};
+            for my $line(0..$loop_value_length) {
                 for my $tagName (@{$loop}) {
                     my $precision = undef;
                     if(defined $data->{precisions}{$tagName}[0]) {
@@ -76,7 +77,6 @@ for my $inputFile(@ARGV) {
         }
     }
 }
-
 
 sub csv_format($$$) {
     my ($value, $type, $precision) = (shift,shift,shift);
@@ -101,7 +101,7 @@ sub csv_format($$$) {
         $format = '"' . $format . '"';
     }
     if($format =~ m/"/) {
-        $value =~ tr/"/""/; # as per sections 2.6 & 2.7 of RFC 4180
+        $value =~ s/"/""/g; # as per sections 2.6 & 2.7 of RFC 4180
     }
     $result = sprintf($format, $value);
     if(defined $precision) {

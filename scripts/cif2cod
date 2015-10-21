@@ -13,12 +13,13 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #**
 
 use strict;
-use COD::CIFParser::CIFParser;
-use COD::CIFData::CIF2COD qw(cif2cod);
+use warnings;
+use COD::CIF::Parser qw( parse_cif );
+use COD::CIF::Data::CIF2COD qw(cif2cod);
 use COD::CIF2JSON;
-use COD::UserMessage;
 use COD::SOptions;
 use COD::SUsage;
+use COD::UserMessage qw(error);
 
 my $print_header = 0;
     # Indicates whether to print out a header with column names
@@ -30,10 +31,10 @@ my $use_parser = "c";
 
 my %options;
 
-#* Usage:
+#* USAGE:
 #*     $0 --options input.cif inputs*.cif
 #*
-#* Options:
+#* OPTIONS:
 #*     -C, --cod-number 1000000
 #*         Use the specified number, 1000000 in this example, as
 #*         a COD number for this structure; do not take the number
@@ -167,7 +168,7 @@ my @print_columns;
 if( defined $user_columns ) {
     @print_columns = map { split( " ", $_ ) } split( ",", $user_columns );
 } else {
-    @print_columns = @COD::CIFData::CIF2COD::new_data_fields;
+    @print_columns = @COD::CIF::Data::CIF2COD::new_data_fields;
 }
 
 binmode( STDOUT, ":utf8" );
@@ -189,32 +190,14 @@ my $first = 1;
 
 for my $filename (@ARGV) {
 
-    my( $data, $error_count );
+    my $parser_options = { 'parser' => $use_parser, 'no_print' => 1 };
 
-    if( $use_parser eq "perl" ) {
-        my $parser = new COD::CIFParser::CIFParser;
+    my ( $data, $err_count, $messages ) = parse_cif( $filename, $parser_options );
 
-        $data = $parser->Run($filename, \%options);
-
-        if( defined $parser->YYData->{ERRCOUNT} ) {
-            $error_count = $parser->YYData->{ERRCOUNT};
-        }
-    } elsif( $use_parser eq "c" ) {
-        require COD::CCIFParser::CCIFParser;
-        ( $data, $error_count ) = COD::CCIFParser::CCIFParser::parse( $filename );
-    } elsif( $use_parser eq "json" ) {
-        open( my $inp, $filename );
-        my $json = join( "\n", <$inp> );
-        close( $inp );
-        $data = json2cif( $json );
-    } else {
-        error( $0, $filename, undef, "unknown parser '$use_parser'" );
-        die;
-    }
-
-    if( defined $error_count && $error_count > 0 ) {
-        error( $0, $filename, undef,
-               "$error_count error(s) encountered while parsing" );
+    print STDERR $_ foreach ( @$messages );
+    if ( $err_count > 0 ) {
+        error( $0, $filename, undef, "$err_count error(s) "
+             . "encountered while parsing the file", undef );
         die unless $options{continue_on_errors};
     }
 
@@ -225,7 +208,7 @@ for my $filename (@ARGV) {
 
         # Print out the collected data fields:
         
-        my @data_fields = @COD::CIFData::CIF2COD::default_data_fields;
+        my @data_fields = @COD::CIF::Data::CIF2COD::default_data_fields;
         if( $print_header || defined $user_columns ) {
             @data_fields = @print_columns;
         }

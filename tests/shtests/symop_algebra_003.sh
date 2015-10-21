@@ -9,14 +9,14 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #$URL$
 #------------------------------------------------------------------------------
 #*
-#  Unit-test the Spacegroups::SymopAlgebra module
+#  Unit-test the Spacegroups::Symop::Algebra module
 #**
 
 use strict;
 use warnings;
 
-use COD::Spacegroups::SymopAlgebra qw(symop_translate symop_mul symop_apply);
-use COD::Spacegroups::SymopParse;
+use COD::Spacegroups::Symop::Algebra qw(symop_translate symop_mul symop_apply);
+use COD::Spacegroups::Symop::Parse;
 
 sub vector_print
 {

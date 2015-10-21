@@ -9,40 +9,69 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #$URL$
 #------------------------------------------------------------------------------
 #*
-#  Parse a CIF file
+#  Parse a CIF dictionary file and generate a list of tags
+#  with additional information about their loop constraints.
+#  The first column signals whether the tag must be declared
+#  in a looped list ( '0' -- no, '1' -- 'yes', 2 -- 'both'),
+#  the second column signals whether the tag must be present
+#  in the loop structure containing other items of the
+#  designated _category, ( '0' -- no, '1' -- yes) and
+#  the third column is the tag name itself.
 #**
 
 use strict;
-use COD::CIFParser::CIFParser;
-use COD::ShowStruct;
+use warnings;
+use COD::CIF::Parser qw( parse_cif );
+use COD::SOptions;
+use COD::SUsage;
 
-my $filename = shift(@ARGV);
+my $use_parser = 'c';
 
-my $parser = new COD::CIFParser::CIFParser;
+#* USAGE:
+#*     $0 --options input1.dic input*.dic
+#*
+#* OPTIONS:
+#*
+#* --use-perl-parser
+#*                     Use development CIF parser written in Perl.
+#* --use-c-parser
+#*                     Use faster C/Yacc CIF parser (default).
+#*
+#* --help,--usage      Print a short usage message (this message) and exit.
+#**
+@ARGV = getOptions(
+    "--use-perl-parser" => sub{ $use_parser = "perl" },
+    "--use-c-parser"    => sub{ $use_parser = "c" },
 
-my $data = $parser->Run($filename);
+    "--help,--usage"    => sub { usage; exit }
+);
 
+@ARGV = ("-") unless @ARGV;
 
-for my $dataset (@$data) {
-    my $values = $dataset->{values};
+foreach my $filename (@ARGV) {
+    my ( $data ) = parse_cif( $filename, { parser => $use_parser } );
 
-    next unless defined $values;
-    next unless defined $values->{_name};
+    for my $dataset (@$data) {
+        my $values = $dataset->{values};
 
-    my @name = @{$values->{_name}};
-    my ( $inlist, $list_mandatory ) = ( 0, 0 );
-    if( defined $values->{_list} ) {
-        if( $values->{_list}[0] eq "yes" ) {
-            $inlist = 1;
-        } elsif( $values->{_list}[0] eq "both" ) {
-            $inlist = 2;
+        next unless defined $values;
+        next unless defined $values->{_name};
+
+        my @name = @{$values->{_name}};
+        my ( $inlist, $list_mandatory ) = ( 0, 0 );
+        if( defined $values->{_list} ) {
+            if( $values->{_list}[0] eq "yes" ) {
+                $inlist = 1;
+            } elsif( $values->{_list}[0] eq "both" ) {
+                $inlist = 2;
+            }
         }
-    }
-    if( defined $values->{_list_mandatory} and
-        $values->{_list_mandatory}[0] eq "yes" ) {
-        $list_mandatory = 1;
-    }
-    for my $name (@name) {
-        print "$inlist\t$list_mandatory\t$name\n";
+        if( defined $values->{_list_mandatory} and
+            $values->{_list_mandatory}[0] eq "yes" ) {
+            $list_mandatory = 1;
+        }
+       for my $name (@name) {
+           print "$inlist\t$list_mandatory\t$name\n";
+       }
     }
 }

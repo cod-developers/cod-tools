@@ -15,20 +15,21 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #**
 
 use strict;
-use COD::CIFData qw(get_cell get_content_encodings);
-use COD::CIFData::CIFEstimateZ;
-use COD::CIFIO qw(readfile);
-use COD::CIFTags::CIFTagCanonicalNames;
-use COD::CIFTags::CIFTagManage;
+use warnings;
+use COD::CIF::Parser qw(parse_cif);
+use COD::CIF::Data qw(get_cell get_content_encodings);
+use COD::CIF::Data::EstimateZ;
+use COD::CIF::Tags::CanonicalNames;
+use COD::CIF::Tags::Manage;
 use COD::Escape qw( decode_textfield );
 use COD::Precision qw(eqsig);
 use COD::ShowStruct;
-use COD::Spacegroups::SpacegroupNames;
-use COD::Spacegroups::SymopLookup;
-use COD::UserMessage;
+use COD::Spacegroups::Symop::Parse;
+use COD::Spacegroups::Lookup::COD;
+use COD::Spacegroups::Names;
+use COD::UserMessage qw(note warning error print_message prefix_dataname);
 use COD::SOptions;
 use COD::SUsage;
-use COD::Spacegroups::SymopParse;
 use Digest::MD5 qw( md5_hex );
 use Digest::SHA qw( sha1_hex );
 use File::Basename;
@@ -152,7 +153,7 @@ sub merge_limits_tables($$) {
 }
 
 my $max_year_temperature_factors_optional = 1969;
-my $use_parser = "perl";
+my $use_parser = "c";
 
 #* USAGE:
 #*    $0 [options] input1.cif [input2.cif ...]
@@ -392,10 +393,10 @@ my %spacegroups = map {
     $key1 =~ s/\s//g;
     $key2 =~ s/\s//g;
     ($_->[2], $_->[2], $_->[1], $_->[2], $key1, $_->[2], $key2, $_->[2] )
-} @COD::Spacegroups::SpacegroupNames::names,
-  map { [ $_->{number}, $_->{hermann_mauguin}, $_->{universal_h_m} ] }
-      @COD::Spacegroups::SymopLookup::table,
-      @COD::Spacegroups::SymopLookup::extra_settings;
+} @COD::Spacegroups::Names::names,
+  map { [ $_->{'number'}, $_->{'hermann_mauguin'}, $_->{'universal_h_m'} ] }
+      @COD::Spacegroups::Lookup::COD::table,
+      @COD::Spacegroups::Lookup::COD::extra_settings;
 
 $| = 1; # Flush buffers immediately, to avoid mixing lines of STDOUT
         # and STDERR.
@@ -404,17 +405,24 @@ $| = 1; # Flush buffers immediately, to avoid mixing lines of STDOUT
 
 for my $filename (@ARGV) {
 
-    my $data;
-    eval {
-        $data = readfile( $filename, $use_parser );
+    my $options = { 'parser' => $use_parser, 'no_print' => 1 };
+    if ( $use_parser eq 'perl' && $useReporter ) {
+        $options->{reporter} = \&parser_reporter;
     };
-    if( $@ ) {
-        error( $0, $filename, undef, $@ );
+
+    my ( $data, $err_count, $messages ) = parse_cif( $filename, $options );
+
+    if ( $err_count > 0 ) {
+        print STDERR $_ foreach ( @$messages );
+        error( $0, $filename, undef, "$err_count error(s) "
+             . "encountered while parsing the file", undef );
         exit -1;
     }
 
+    print STDERR $_ foreach ( @$messages );
+
     canonicalize_all_names( $data );
-    
+
     my $warnings = 0;
     for my $dataset (@$data) {
         $warnings += check_data( $dataset, $filename );
@@ -449,8 +457,11 @@ sub check_data
 {
     my ($dataset,$filename) = @_;
 
+    my $dataname = prefix_dataname($dataset->{name});
+
     if( !defined $dataset->{values} ) {
-        error_reporter($filename, undef, $dataset->{name}, "no values?!");
+        warning( $0, $filename, $dataname, 'no datablocks found',
+                 'program will now exit' );
         return 1;
     } else {
         return 0;
@@ -465,6 +476,8 @@ sub check_bibliography
         return 0;
     }
 
+    my $dataname = prefix_dataname($dataset->{name});
+
     my $warnings = 0;
     my $values = $dataset->{values};
 
@@ -474,41 +487,41 @@ sub check_bibliography
     }
 
     if( !defined $values->{_journal_name_full} ) {
-        error_reporter($filename, undef, $dataset->{name},
-                       "_journal_name_full is undefined");
-        $warnings ++;
+        warning( $0, $filename, $dataname,
+                 '_journal_name_full is undefined', undef );
+        $warnings++;
     }
     if( !defined $values->{_publ_section_title} ) {
-        error_reporter($filename, undef, $dataset->{name},
-                       "_publ_section_title is undefined");
-        $warnings ++;
+        warning( $0, $filename, $dataname,
+                 '_publ_section_title is undefined', undef );
+        $warnings++;
     }
     if( !defined $values->{_journal_year} &&
         !defined $values->{_journal_volume} ) {
-        error_reporter($filename, undef, $dataset->{name},
-                       "neither _journal_year "
-                       . "nor _journal_volume is defined");
-        $warnings ++;
+        warning( $0, $filename, $dataname, 'neither _journal_year '
+               . 'nor _journal_volume is defined', undef );
+        $warnings++;
     }
     if( !defined $values->{_journal_page_first} &&
         !defined $values->{_journal_article_reference} ) {
-        error_reporter($filename, undef, $dataset->{name},
-                       "neither _journal_page_first "
-                       . "nor _journal_article_reference is defined");
-        $warnings ++;
+        warning( $0, $filename, $dataname, 'neither _journal_page_first '
+               . 'nor _journal_article_reference is defined', undef );
+        $warnings++;
     }
     return $warnings;
 }
 
 sub check_authors
 {
-    use COD::Unicode2CIF;
+    use COD::CIF::Unicode2CIF;
 
     my ($dataset,$filename) = @_;
 
     if( !defined $dataset->{values} ) {
         return 0;
     }
+
+    my $dataname = prefix_dataname($dataset->{name});
 
     my $warnings = 0;
     my $values = $dataset->{values};
@@ -545,9 +558,9 @@ sub check_authors
     my $vonLastNames = qr/(${von}\s+)?${Last}(\s+${Last})*/;
 
     if( !defined $values->{_publ_author_name} ) {
-        error_reporter($filename, undef, $dataset->{name}, "_publ_author_name "
-                       . "is undefined");
-        $warnings ++;
+        warning ( $0, $filename, $dataname,
+                  '_publ_author_name is undefined', undef );
+        $warnings++;
     } else {
         for my $author (@{$values->{_publ_author_name}}) {
             my $UCS_author = cif2unicode( $author );
@@ -559,24 +572,21 @@ sub check_authors
                 $symbol_escaped =~ s/\n/\\n/g;
                 $author_escaped =~ s/\n/\\n/g;
                 $UCS_author_escaped =~ s/\n/\\n/g;
-                error_reporter( $filename, undef, $dataset->{name},
-                                "WARNING, " .
-                                "name '$author_escaped'" .
-                                ( $author eq $UCS_author ?
-                                    "" : " ('$UCS_author_escaped')" ) .
-                                " contains symbol '$symbol_escaped' " .
-                                "that is not permitted in names" );
+                warning( $0, $filename, $dataname,
+                         "name '$author_escaped'"
+                       . ( $author eq $UCS_author 
+                                    ? ""
+                                    : " ('$UCS_author_escaped')" )
+                       . " contains symbol '$symbol_escaped' "
+                       . "that is not permitted in names", undef );
                 if( ! $name_syntax_explained ) {
-                    error_reporter( undef, undef, undef,
-                                    "WARNING, " .
-                                    "names should be written as " .
-                                    "'First von Last', " .
-                                    "'von Last, First', or " .
-                                    "'von Last, Jr, First' (mind the case!)"
-                        );
+                    note( $0, $filename, $dataname,
+                          "names should be written as 'First von Last', "
+                        . "'von Last, First', or 'von Last, Jr, First' "
+                        . "(mind the case!)", undef );
                     $name_syntax_explained = 1;
                 }
-                $warnings ++;
+                $warnings++;
             } elsif( $UCS_author !~
                 /^\s*${FirstNames}\s+${vonLast}\s*$/ &&
                 $UCS_author !~
@@ -592,23 +602,18 @@ sub check_authors
                 $UCS_author !~
                 /^\s*${First}-ur-${Last}\s*$/
                 ) {
-                error_reporter( $filename, undef, $dataset->{name},
-                                "NOTE, " .
-                                "name '$author'" .
-                                ( $author eq $UCS_author ?
-                                    "" : " ('$UCS_author')" ) .
-                                " seems unusual" );
+                note( $0, $filename, $dataname, "name '$author'"
+                    . ( $author eq $UCS_author ? ""
+                                               : " ('$UCS_author')" )
+                    . " seems unusual", undef );
                 if( ! $name_syntax_explained ) {
-                    error_reporter( undef, undef, undef,
-                                    "NOTE, " .
-                                    "names should be written as " .
-                                    "'First von Last', " .
-                                    "'von Last, First', or " .
-                                    "'von Last, Jr, First' (mind the case!)"
-                        );
+                    note( $0, $filename, $dataname,
+                          "names should be written as 'First von Last', "
+                        . "'von Last, First', or 'von Last, Jr, First' "
+                        . "(mind the case!)", undef );
                     $name_syntax_explained = 1;
                 }
-                $warnings ++;
+                $warnings++;
             }
         }
     }
@@ -618,23 +623,24 @@ sub check_authors
 sub check_chemical_formula_sum
 {
     my ($dataset, $filename) = @_;
-    
+
     if( !defined $dataset->{values} ) {
         return 0;
     }
-    
+
+    my $dataname = prefix_dataname($dataset->{name});
+
     my $formula = $dataset->{values}{_chemical_formula_sum}[0];
-    
+
     my $formula_component = "[a-zA-Z]{1,2}[0-9.]*";
-    
+
     if( !defined $formula ) {
-    error_reporter($filename, undef, $dataset->{name}, "no "
-                    . "_chemical_formula_sum");
+        warning( $0, $filename, $dataname, 'no _chemical_formula_sum', undef );
         return 1;
     } elsif( $formula !~
              /^\s*($formula_component\s+)*($formula_component)\s*$/ ) {
-        error_reporter( $filename, undef, $dataset->{name}, "chemical formula "
-                        . "'$formula' could not be parsed");
+        warning( $0, $filename, $dataname, 'chemical formula '
+               . "'$formula' could not be parsed", undef );
         return 1;
     } else {
         return 0;
@@ -648,6 +654,8 @@ sub check_spacegroup_info
     if( !defined $dataset->{values} ) {
         return 0;
     }
+
+    my $dataname = prefix_dataname($dataset->{name});
 
     my $symops = $dataset->{values}{_symmetry_equiv_pos_as_xyz};
     my $values = $dataset->{values};
@@ -678,9 +686,9 @@ sub check_spacegroup_info
                 if( defined $spacegroup &&
                     !exists $spacegroups{$spacegroup} &&
                     !exists $spacegroups{$no_spaces} ) {
-                    error_reporter( $filename, undef, $dataset->{name},
-                                    "unrecognised spacegroup '$spacegroup'");
-                    $warnings ++;
+                    warning( $0, $filename, $dataname,
+                             "unrecognised spacegroup '$spacegroup'", undef );
+                    $warnings++;
                 } else {
                     $spacegroup_found =
                         (exists $spacegroups{$spacegroup} )
@@ -693,13 +701,13 @@ sub check_spacegroup_info
     }
     if( !defined $spacegroup ) {
         if( !defined $symops ) {
-            error_reporter( $filename, undef, $dataset->{name},
-                            "no symmetry information found");
+            warning( $0, $filename, $dataname,
+                     'no symmetry information found', undef );
         } else {
-            error_reporter( $filename, undef, $dataset->{name},
-                            "no spacegroup symbol found");
+            warning( $0, $filename, $dataname,
+                     'no spacegroup symbol found', undef );
         }
-        $warnings ++;
+        $warnings++;
     }
 
     my %symops_cannonical;
@@ -717,15 +725,14 @@ sub check_spacegroup_info
             $symops_cannonical{$cannonical_symop} =
                 $duplicate_symops{$cannonical_symop}[0];
             if( @{ $duplicate_symops{$cannonical_symop} } > 1 ) {
-                error_reporter( $filename, undef, $dataset->{name},
-                                "NOTE, symmetry operator " .
-                                "'$cannonical_symop' is repeated " .
-                                scalar( @{ $duplicate_symops{$cannonical_symop} } ) .
-                                " times (as " .
-                                join( ", ", map { "'$_'" }
-                                            @{ $duplicate_symops{$cannonical_symop} } ) .
-                                ") in symmetry operator list" );
-                $warnings ++;
+                note( $0, $filename, $dataname,
+                      "symmetry operator '$cannonical_symop' is repeated "
+                     . scalar( @{ $duplicate_symops{$cannonical_symop} } )
+                     . " times (as "
+                     . join( ", ", map { "'$_'" }
+                             @{ $duplicate_symops{$cannonical_symop} } )
+                     . ") in symmetry operator list", undef );
+                $warnings++;
             }
         }
     }
@@ -745,14 +752,14 @@ sub check_spacegroup_info
             }
             if( @missing_symops > 0 ) {
                 my $single = (@missing_symops == 1);
-                error_reporter( $filename, undef, $dataset->{name},
-                                "NOTE, symmetry operator" .
-                                (!$single ? "s " : " ") .
-                                join( ", ", map { "'$_'" } @missing_symops ) .
-                                " " . ($single ? "is" : "are") .
-                                " missing, although required by " .
-                                "the spacegroup '$spacegroup_found'" );
-                $warnings ++;
+                note( $0, $filename, $dataname,
+                      "symmetry operator"
+                     . (!$single ? "s " : " ")
+                     . join( ", ", map { "'$_'" } @missing_symops )
+                     . " " . ($single ? "is" : "are")
+                     . " missing, although required by "
+                     . "the spacegroup '$spacegroup_found'", undef );
+                $warnings++;
             }
 
             my @excess_symops;
@@ -762,14 +769,14 @@ sub check_spacegroup_info
             }
             if( @excess_symops > 0 ) {
                 my $single = (@excess_symops == 1);
-                error_reporter( $filename, undef, $dataset->{name},
-                                "NOTE, symmetry operator" .
-                                (!$single ? "s " : " ") .
-                                join( ", ", map { "'$_'" } @excess_symops ) .
-                                " " . ($single ? "is" : "are") .
-                                " found, although not required by " .
-                                "the spacegroup '$spacegroup_found'" );
-                $warnings ++;
+                note( $0, $filename, $dataname,
+                      "symmetry operator"
+                    . (!$single ? "s " : " ")
+                    . join( ", ", map { "'$_'" } @excess_symops )
+                    . " " . ($single ? "is" : "are")
+                    . " found, although not required by "
+                    . "the spacegroup '$spacegroup_found'", undef );
+                $warnings++;
             }
         }
     }
@@ -784,6 +791,8 @@ sub check_temperature_factors
     if( !defined $dataset->{values} ) {
         return 0;
     }
+
+    my $dataname = prefix_dataname($dataset->{name});
 
     my $values = $dataset->{values};
     my $warnings = 0;
@@ -808,10 +817,9 @@ sub check_temperature_factors
             return 0;
         }
     }
-    error_reporter( $filename, undef, $dataset->{name},
-        "structure is published after " . 
-        $max_year_temperature_factors_optional . ", but does not contain " .
-        "temperature factors" );
+    warning( $0, $filename, $dataname, 'structure is published after '
+           . "$max_year_temperature_factors_optional, but does not contain "
+           . 'temperature factors', undef );
     $warnings++;
     return $warnings;
 }
@@ -836,9 +844,9 @@ sub check_pdcif_relations
             my $datablock_pd_id = $datablock->{_pd_block_id}[0];
             if( exists $pd_ids->{$datablock_pd_id} ) {
                 error( $0, $filename, undef,
-                       "two or more datablocks with _pd_block_id " .
-                       "'$datablock_pd_id' were found -- _pd_block_id " .
-                       "must be unique for each datablock" );
+                       'two or more datablocks with _pd_block_id ' .
+                       "'$datablock_pd_id' were found",
+                       '_pd_block_id must be unique for each datablock' );
                 $warnings++;
             } else {
                 $pd_ids->{$datablock_pd_id} = $i;
@@ -864,7 +872,7 @@ sub check_pdcif_relations
         note( $0, $filename, undef,
               "$overall_info_datablock_count datablocks " .
               "having both _pd_phase_block_id and " .
-              "_pd_block_diffractogram_id were found -- " .
+              "_pd_block_diffractogram_id were found",
               "taking the first occurence as the overall " .
               "information datablock" );
         $warnings++;
@@ -878,19 +886,21 @@ sub check_pdcif_relations
     if( $overall_info_datablock_count > 0 ) {
         my $overall_block = $data->[$overall_info_datablock];
         my $overall_data = $overall_block->{values};
+        my $overall_dataname = prefix_dataname($overall_block->{names});
+
         for my $phase_id (@{$overall_data->{_pd_phase_block_id}}) {
             if( !exists $pd_ids->{$phase_id} ) {
-                error( $0, $filename, $overall_block->{names},
+                error( $0, $filename, $overall_dataname,
                        "phase datablock with _pd_block_id " .
-                       "'$phase_id' does not exist" );
+                       "'$phase_id' does not exist", undef );
                 $warnings++;
             }
         }
         for my $diffractogram_id (@{$overall_data->{_pd_block_diffractogram_id}}) {
             if( !exists $pd_ids->{$diffractogram_id} ) {
-                error( $0, $filename, $overall_block->{names},
+                error( $0, $filename, $overall_dataname,
                        "diffractogram datablock with _pd_block_id " .
-                       "'$diffractogram_id' does not exist" );
+                       "'$diffractogram_id' does not exist", undef );
                 $warnings++;
             }
         }
@@ -899,10 +909,10 @@ sub check_pdcif_relations
             my $phase_data = $phase_block->{values};
             if( grep( $_ eq $phase_data->{_pd_block_id}[0],
                       @{$overall_data->{_pd_phase_block_id}} ) == 0 ) {
-                error( $0, $filename, $overall_block->{names},
+                error( $0, $filename, $overall_dataname,
                        "phase datablock 'data_" . $phase_block->{name} .
                        "' is not listed in _pd_phase_block_id loop of " .
-                       "overall information datablock" );
+                       "overall information datablock", undef );
                 $warnings++;
             }
         }
@@ -911,11 +921,11 @@ sub check_pdcif_relations
             my $diffractogram_data = $diffractogram_block->{values};
             if( grep( $_ eq $diffractogram_data->{_pd_block_id}[0],
                       @{$overall_data->{_pd_block_diffractogram_id}} ) == 0 ) {
-                error( $0, $filename, $overall_block->{names},
+                error( $0, $filename, $overall_dataname,
                        "diffractogram datablock 'data_" .
                        $diffractogram_block->{name} . "' is not listed in " .
                        "_pd_block_diffractogram_id loop of overall " .
-                       "information datablock" );
+                       "information datablock", undef );
                 $warnings++;
             }
         }
@@ -929,38 +939,40 @@ sub check_pdcif_relations
     for my $phase_nr (@phases) {
         my $phase_block = $data->[$phase_nr];
         my $phase_data = $phase_block->{values};
+        my $phase_dataname = prefix_dataname($phase_block->{name});
         if( !exists $phase_data->{_pd_block_diffractogram_id} ) {
-            error( $0, $filename, $phase_block->{name},
-                   "phase datablock 'data_" . $phase_block->{name} .
-                   "' does not contain diffractogram list" );
+            error( $0, $filename, $phase_dataname,
+                   "phase datablock '$phase_dataname' does "
+                 . "not contain diffractogram list", undef );
             $warnings++;
             next;
         }
         for my $diffractogram_id (@{$phase_data->{_pd_block_diffractogram_id}}) {
             if( !exists $pd_ids->{$diffractogram_id} ) {
-                error( $0, $filename, $phase_block->{name},
+                error( $0, $filename, $phase_dataname,
                        "diffractogram datablock with _pd_block_id " .
-                       "'$diffractogram_id' does not exist" );
+                       "'$diffractogram_id' does not exist", undef );
                 $warnings++;
                 next;
             }
             my $diffractogram_nr = $pd_ids->{$diffractogram_id};
             my $diffractogram_block = $data->[$diffractogram_nr];
             my $diffractogram_data = $diffractogram_block->{values};
+            my $diffractogram_dataname =
+                                 prefix_dataname($diffractogram_block->{name});
             if( !exists $diffractogram_data->{_pd_phase_block_id} ) {
-                error( $0, $filename, $diffractogram_block->{name},
-                       "diffractogram datablock 'data_" .
-                       $diffractogram_block->{name} . "' does not " .
-                       "contain phase list" );
+                error( $0, $filename, $diffractogram_dataname,
+                       "diffractogram datablock '$diffractogram_data' "
+                     . "does not contain phase list", undef );
                 $warnings++;
                 next;
             }
             my $found = 0;
             for my $phase_id (@{$diffractogram_data->{_pd_phase_block_id}}) {
                 if( !exists $pd_ids->{$phase_id} ) {
-                    error( $0, $filename, $diffractogram_block->{name},
+                    error( $0, $filename, $diffractogram_dataname,
                            "phase datablock with _pd_block_id " .
-                           "'$phase_id' does not exist" );
+                           "'$phase_id' does not exist", undef );
                     $warnings++;
                 }
                 if( $pd_ids->{$phase_id} == $phase_nr ) {
@@ -971,10 +983,10 @@ sub check_pdcif_relations
             if( !$found ) {
                 # If diffractogram datablock does not contain a backlink 
                 # to the phase block, we assume that the backlink is:
-                warning( $0, $filename, $diffractogram_block->{name},
+                warning( $0, $filename, $diffractogram_dataname,
                          "value '" . $phase_data->{_pd_block_id}[0] .
                          "' seems missing in _pd_phase_block_id list of " .
-                         "'data_" . $diffractogram_block->{name} . "'" );
+                         "'$diffractogram_dataname'", undef );
                 $warnings++;
             }
         }
@@ -983,39 +995,40 @@ sub check_pdcif_relations
     for my $diffractogram_nr (@diffractograms) {
         my $diffractogram_block = $data->[$diffractogram_nr];
         my $diffractogram_data = $diffractogram_block->{values};
+        my $diffractogram_dataname =
+                            prefix_dataname($diffractogram_block->{name});
         if( !exists $diffractogram_data->{_pd_phase_block_id} ) {
-            error( $0, $filename, $diffractogram_block->{name},
-                   "diffractogram datablock 'data_" .
-                   $diffractogram_block->{name} . "' does not " .
-                   "contain phase list" );
+            error( $0, $filename, $diffractogram_dataname,
+                   "diffractogram datablock '$diffractogram_dataname' " .
+                   "does not contain phase list", undef );
             $warnings++;
             next;
         }
         for my $phase_id (@{$diffractogram_data->{_pd_phase_block_id}}) {
             if( !exists $pd_ids->{$phase_id} ) {
-                error( $0, $filename, $diffractogram_block->{name},
+                error( $0, $filename, $diffractogram_dataname,
                        "phase datablock with _pd_block_id " .
-                       "'$phase_id' does not exist" );
+                       "'$phase_id' does not exist", undef );
                 $warnings++;
                 next;
             }
             my $phase_nr = $pd_ids->{$phase_id};
             my $phase_block = $data->[$phase_nr];
             my $phase_data = $phase_block->{values};
+            my $phase_dataname = prefix_dataname($phase_block->{name});
             if( !exists $phase_data->{_pd_block_diffractogram_id} ) {
-                error( $0, $filename, $phase_block->{name},
-                       "phase datablock 'data_" .
-                       $phase_block->{name} . "' does not " .
-                       "contain diffractogram list" );
+                error( $0, $filename, $phase_dataname,
+                       "phase datablock '$phase_dataname' does not " .
+                       "contain diffractogram list", undef );
                 $warnings++;
                 next;
             }
             my $found = 0;
             for my $diffractogram_id (@{$phase_data->{_pd_block_diffractogram_id}}) {
                 if( !exists $pd_ids->{$diffractogram_id} ) {
-                    error( $0, $filename, $phase_block->{name},
+                    error( $0, $filename, $phase_dataname,
                            "diffractogram datablock with _pd_block_id " .
-                           "'$diffractogram_id' does not exist" );
+                           "'$diffractogram_id' does not exist", undef );
                     $warnings++;
                 }
                 if( $pd_ids->{$diffractogram_id} == $diffractogram_nr ) {
@@ -1026,10 +1039,10 @@ sub check_pdcif_relations
             if( !$found ) {
                 # If phase datablock does not contain a backlink to the 
                 # diffractogram, we are not sure if it is omitted or added:
-                error( $0, $filename, $phase_block->{name},
+                error( $0, $filename, $phase_dataname,
                        "value '" . $diffractogram_data->{_pd_block_id}[0] .
                        "' seems missing in _pd_block_diffractogram_id list of " .
-                       "'data_" . $phase_block->{name} . "'" );
+                       "'$phase_dataname'", undef );
                 $warnings++;
             }
         }
@@ -1045,7 +1058,7 @@ sub check_pdcif_relations
 #     option - an option, for example, "hall"
 #     param  - according to an option a value given in the CIF file
 
-# Uses @COD::Spacegroups::SymopLookup::table =
+# Uses @COD::Spacegroups::Lookup::COD::table =
 # (
 # {
 #     number          => 1,
@@ -1065,7 +1078,7 @@ sub check_pdcif_relations
 # );
 
 # Returns a reference to the spacegroup descriptor
-# (a @COD::Spacegroups::SymopLookup::table element).
+# (a @COD::Spacegroups::Lookup::COD::table element).
 
 sub lookup_spacegroup
 {
@@ -1074,8 +1087,8 @@ sub lookup_spacegroup
     $param =~ s/ //g;
     $param =~ s/_//g;
 
-    foreach my $hash (@COD::Spacegroups::SymopLookup::table,
-                      @COD::Spacegroups::SymopLookup::extra_settings) {
+    foreach my $hash (@COD::Spacegroups::Lookup::COD::table,
+                      @COD::Spacegroups::Lookup::COD::extra_settings) {
         my $value = $hash->{$option};
         $value =~ s/ //g;
         $value =~ s/_//g;
@@ -1092,6 +1105,7 @@ sub get_spacegroup_descriptions
     my ( $dataset, $filename ) = @_;
 
     my $values = $dataset->{values};
+    my $dataname = prefix_dataname($dataset->{name});
 
     my $sym_data;
     my $warnings = 0;
@@ -1100,10 +1114,10 @@ sub get_spacegroup_descriptions
         not defined $sym_data ) {
         my $hall = $values->{"_space_group_name_Hall"}[0];
         $sym_data = lookup_spacegroup("hall", $hall);
-        
+
         if( !defined $sym_data ) {
-            error_reporter( $filename, undef, $dataset->{name},
-                   "incorrect _space_group_name_Hall '$hall'" );
+            warning( $0, $filename, $dataname,
+                     "incorrect _space_group_name_Hall '$hall'", undef );
             $warnings++;
         }
     } elsif( exists $values->{"_symmetry_space_group_name_Hall"} &&
@@ -1112,8 +1126,8 @@ sub get_spacegroup_descriptions
         $sym_data = lookup_spacegroup("hall", $hall);
         
         if( !defined $sym_data ) {
-            error_reporter( $filename, undef, $dataset->{name},
-                   "incorrect _symmetry_space_group_name_Hall '$hall'" );
+            warning( $0, $filename, $dataname, 'incorrect '
+                   . "_symmetry_space_group_name_Hall '$hall'", undef );
             $warnings++;
         }
     }
@@ -1126,8 +1140,8 @@ sub get_spacegroup_descriptions
             unless defined $sym_data;
         
         if( !defined $sym_data ) {
-            error_reporter( $filename, undef, $dataset->{name},
-                   "incorrect _space_group_name_H-M_alt '$h_m'" );
+            warning( $0, $filename, $dataname,
+                     "incorrect _space_group_name_H-M_alt '$h_m'", undef );
             $warnings++;
         }
     } elsif(exists $values->{"_symmetry_space_group_name_H-M"} &&
@@ -1138,8 +1152,8 @@ sub get_spacegroup_descriptions
             unless defined $sym_data;
         
         if( !defined $sym_data ) {
-            error_reporter( $filename, undef, $dataset->{name},
-                   "incorrect _symmetry_space_group_name_H-M '$h_m'" );
+            warning( $0, $filename, $dataname, 'incorrect '
+                   . "_symmetry_space_group_name_H-M '$h_m'", undef );
             $warnings++;
         }
     }
@@ -1158,8 +1172,8 @@ sub get_spacegroup_descriptions
                     return (undef, 0);
                 }
             }
-            error_reporter( $filename, undef, $dataset->{name},
-                            "no spacegroup symbol to check cell constraints" );
+            warning( $0, $filename, $dataname, 'no spacegroup '
+                   . 'symbol to check cell constraints', undef );
             $warnings = 1;
         }
     }
@@ -1172,19 +1186,14 @@ sub get_unit_cell_sigmas($$)
     my( $dataset, $filename ) = @_;
     my $values = $dataset->{precisions};
 
-    my @cellsig;
-
-    for my $cif_tag (qw(_cell_length_a
-                        _cell_length_b
-                        _cell_length_c
-                        _cell_angle_alpha
-                        _cell_angle_beta
-                        _cell_angle_gamma
-                        )) {
-        push( @cellsig, $values->{$cif_tag}[0] );
-    }
-
-    return @cellsig;
+    return map { $values->{$_}[0] }
+               qw( _cell_length_a
+                   _cell_length_b
+                   _cell_length_c
+                   _cell_angle_alpha
+                   _cell_angle_beta
+                   _cell_angle_gamma
+               );
 }
 
 sub regularize_cell($$$$)
@@ -1250,6 +1259,8 @@ sub check_spacegroup_constraints
         return 0;
     }
 
+    my $dataname = prefix_dataname($dataset->{name});
+
     my ( $spacegroup_descr, $warnings ) =
         get_spacegroup_descriptions( $dataset, $filename );
 
@@ -1258,15 +1269,15 @@ sub check_spacegroup_constraints
     }
 
     if( !exists $spacegroup_descr->{constraints} ) {
-        error_reporter( $filename, undef, $dataset->{name},
-                        "could not find constraints for spacegroup ".
-                        "'$spacegroup_descr->{universal_h_m}'" );
+        warning( $0, $filename, $dataname,
+                 "could not find constraints for spacegroup ".
+                 "'$spacegroup_descr->{universal_h_m}'", undef );
         return $warnings + 1;
     }
 
-    my $constraints = $spacegroup_descr->{constraints};
-    my $cryst_class = $spacegroup_descr->{crystal_class};
-    my $h_m_symbol = $spacegroup_descr->{universal_h_m};
+    my $constraints = $spacegroup_descr->{'constraints'};
+    my $cryst_class = $spacegroup_descr->{'crystal_class'};
+    my $h_m_symbol = $spacegroup_descr->{'universal_h_m'};
     my @cell = get_cell( $dataset->{values}, $filename, $dataset->{name} );
     my @cellsig = get_unit_cell_sigmas( $dataset, $filename );
 
@@ -1289,17 +1300,17 @@ sub check_spacegroup_constraints
 
         if( !eval $constraints ) {
             local $" = " ";
-            error_reporter( $filename, undef, $dataset->{name},
-                            "unit cell '@cell' does not satisfy " .
-                            "constraints '$constraints'" );
-            return $warnings+1;
+            warning( $0, $filename, $dataname,
+                     "unit cell '@cell' does not satisfy " .
+                     "constraints '$constraints'", undef );
+            return $warnings + 1;
         }
 
         do {
             local $" = " ";
-            print( "$0: $filename  $dataset->{name}: " .
-                   "unit cell '$a $b $c $alpha $beta $gamma' IS FINE with " .
-                   "constraints '$constraints'!\n" );
+            note( $0, $filename, $dataname,
+                  "unit cell '$a $b $c $alpha $beta $gamma' IS FINE with " .
+                  "constraints '$constraints'!", undef );
         } if 0;
     };
     return $warnings;
@@ -1309,64 +1320,46 @@ sub check_symmetry_operators
 {
     my ($dataset, $filename) = @_;
 
-    if( !defined $dataset->{values} ) {
-        return 0;
-    }
+    return 0 if !defined $dataset->{values};
 
-    my $symop_term = '(?:x|y|z|\d|\d*\.\d+|\d+\.\d*|\d/\d)';
-    my $symop_component =
-        "(?:(?:-|\\+)?$symop_term|" .
-        "(?:-|\\+)?$symop_term(?:-|\\+)$symop_term|" .
-        "(?:-|\\+)?$symop_term(?:-|\\+)$symop_term(?:-|\\+)$symop_term)";
+    my $dataname = prefix_dataname($dataset->{name});
 
     my $symops = $dataset->{values}{_symmetry_equiv_pos_as_xyz};
 
-    if( !defined $symops ) {
-        return 0; # Let's not regard missing symmetry operators as error.
-    } else {
-        for my $symop (@$symops) {
-            my $no_spaces = $symop;
-            $no_spaces =~ s/\s//g;
-            if( $no_spaces !~ 
-                /^($symop_component,){2}($symop_component)$/i ) {
-                error_reporter( $filename, undef, $dataset->{name},
-                                "symmetry operator "
-                                . "'$symop' could not be parsed");
-                return 1;
-            }
+    # Let's not regard missing symmetry operators as error:
+    return 0 if !defined $symops;
+
+    for my $symop (@$symops) {
+        my $warning = check_symmetry_operator( $symop );
+        if( defined $warning ) {
+            warning( $0, $filename, $dataname, $warning, undef );
+            return 1;
         }
     }
     return 0;
 }
 
-sub error_reporter
-{
-    my ($file, $line, $data, $message) = @_;
-    $line = ( defined $line ) ? '(' . $line . ')' : '';
-    my $output = $0;
-    if( defined $file || defined $data ) {
-        $file = '-' unless $file;
-        $data = ( defined $data ) ? ' data_' . $data : '';
-        $output .= ': ' . $file . $line . $data;
-    }
-    $output .= ': ' . $message . "\n";
-    print reportFileFH $output;
-    flush reportFileFH;
-    return 0;
-}
-
-sub parser_error_reporter
+sub parser_reporter
 {
     my ($file, $line, $data) = @_;
-    return error_reporter($file, $line, $data, "line currently"
-                            ." processed: $line");
+
+    $file = "perl -e '...'" if ( $file eq '-' );
+    $data = ( defined $data ) ? ' data_' . $data : '';
+
+    my $report .= "$0: $file($line)" . $data . ': ';
+    $report .= "number of the currently processed line -- $line.\n";
+
+    print reportFileFH $report;
+    flush reportFileFH;
+
+    return 0;
 }
 
 # To check that the specified XYZ tag value is within expected limits.
 
 sub check_limits {
     my( $dataset, $filename ) = @_;
-    my $dataname = 'data_' . $dataset->{name};
+    my $dataname = prefix_dataname($dataset->{name});
     my $warnings = 0;
     
     if(! defined $dataset->{values} ) {
@@ -1377,58 +1370,55 @@ sub check_limits {
     my $values = $dataset->{values};
     
     foreach my $tag( sort keys %$limits_table ) {
-        if( exists $values->{$tag} ) {
-            my $value = $values->{$tag}[0];
-            if( $value =~ /^(\.|\?)$/ ) {
-                next;
-            }
-            if( $value !~ /^([+-]?(?:\d+(?:\.\d*)?|\.\d+))\(?(\d*)\)?$/ ) {
-                print STDERR "$0: $filename $dataname: ERROR, tag '$tag' " .
-                    "value '$value' is not numeric.\n";
+        next if !exists $values->{$tag};
+
+        my $value = $values->{$tag}[0];
+        next if $value =~ /^(\.|\?)$/;
+        if( $value !~ /^([+-]?(?:\d+(?:\.\d*)?|\.\d+))\(?(\d*)\)?$/ ) {
+            error( $0, $filename, $dataname,
+                   "tag '$tag' value '$value' is not numeric", undef );
+            $warnings++;
+            next;
+        } else {
+            my $number = $1;
+            my $precision = $2;
+            if( ($tag =~ /_w?R_factor_/) && ( $precision ) ) {
+                warning( $0, $filename, $dataname, "'$tag' value is "
+                       . "'$value', but it should be numeric and "
+                       . 'without precision (esd value)', undef );
                 $warnings++;
                 next;
-            } else {
-                my $number = $1;
-                my $precision = $2;
-                if( ($tag =~ /_w?R_factor_/) && ( $precision ) ) {
-                    print STDERR "$0: $filename $dataname: WARNING, '$tag' " .
-                        "value is '$value', but it should be numeric and " .
-                        "without precision (esd value).\n";
-                    $warnings++;
-                    next;
+            }
+            if( $number < 0 ) {
+                warning( $0, $filename, $dataname, "'$tag' value "
+                      . "'$value' should be in range [0.0;+inf]", undef );
+                $warnings++;
+                next;
+            }
+            if( !defined $limits_table->{$tag}[0][1] ) {
+                foreach my $i ( 0..$#{ $limits_table->{$tag} } ) {
+                    my $limit = @{ $limits_table->{$tag}->[$i]}[0];
+                    if( $number > $limit ) {
+                        print_message( $0, $filename, $dataname,
+                                       $report_names[$i],
+                                       "tag '$tag' value '$value' "
+                                     . "is > $limit", undef );
+                        $warnings++;
+                        last;
+                    }
                 }
-                if( $number < 0 ) {
-                    print STDERR "$0: $filename $dataname: WARNING, '$tag' " .
-                        "value '$value' should be in range [0.0;+inf].\n";
-                    $warnings++;
-                    next;
-                } elsif(! defined $limits_table->{$tag}[0][1] ) {
-                    foreach my $i( 0..$#{ $limits_table->{$tag} } ) {
-                        my $limit = @{ $limits_table->{$tag}->[$i]}[0];
-                        if( $number > $limit ) {
-                            error_reporter($filename, undef, $dataset->{name},
-                                           $report_names[$i] .       
-                                           ", tag '$tag' value '$value' " .
-                                           "is > " . $limit . ".");
-                            $warnings ++;
-                            last;
-                        }
+            } else {
+                foreach my $i ( 0..$#{ $limits_table->{$tag} } ) {
+                    my( $begin, $end ) = @{ $limits_table->{$tag}->[$i]};
+                    if( ($number < $begin) || ($number > $end) ) {
+                        print_message( $0, $filename, $dataname,
+                                       $report_names[$i],
+                                       "tag '$tag' value '$value' "
+                                     . 'lies outside the range '
+                                     . "$begin <> $end", undef );
+                        $warnings++;
+                        last;
                     }
-                } else {
-                    foreach my $i( 0..$#{ $limits_table->{$tag} } ) {
-                        my $begin = @{ $limits_table->{$tag}->[$i]}[0];
-                        my $end = @{ $limits_table->{$tag}->[$i]}[1];
-                        if( ($number < $begin) || ($number > $end) ) {
-                            error_reporter( $filename, undef, $dataset->{name},
-                                            $report_names[$i] .       
-                                            ", tag '$tag' value '$value' " .
-                                            "lies outside the range " . 
-                                            $begin . " <> " . $end . "." );
-                            $warnings ++;
-                            last;
-                        } 
-                    }
-                    
                 }
             }
         }
@@ -1523,6 +1513,12 @@ sub check_simultaneous_presence
             )
         ],
         [ qw(
+              _dft_BZ_integration_grid_IBZ_point_X
+              _dft_BZ_integration_grid_IBZ_point_Y
+              _dft_BZ_integration_grid_IBZ_point_Z
+            )
+        ],
+        [ qw(
               _dft_cell_periodic_BC_X
               _dft_cell_periodic_BC_Y
               _dft_cell_periodic_BC_Z
@@ -1542,6 +1538,8 @@ sub check_all_tags_present
     my( $dataset, $filename, $tag_list ) = @_;
     my ( %tags_present, %tags_absent );
 
+    my $dataname = prefix_dataname($dataset->{name});
+
     for my $tag (@{$tag_list}) {
         if( exists $dataset->{values}{$tag} ) {
             $tags_present{$tag} ++;
@@ -1556,10 +1554,10 @@ sub check_all_tags_present
         my @tags_absent = sort {$a cmp $b} keys %tags_absent;
         my $tag = $tags_present[0];
 
-        print STDERR "$0: $filename $dataset->{name}: WARNING, tag '$tag' " .
-            "is present, but tag" . (int(@tags_absent) > 1 ? "s":"") . " ",
-            join( ", ", @tags_absent ),
-            " are absent.\n";
+        warning( $0, $filename, $dataname, "tag '$tag' "
+           . "is present, but tag" . (int(@tags_absent) > 1 ? "s":"") . " "
+           . join( ", ", @tags_absent )
+           . " are absent", undef );
         return 1;
     } else {
         return 0;
@@ -1571,6 +1569,7 @@ sub check_embedded_file_integrity
     my( $dataset, $filename ) = @_;
     my $warnings = 0;
     my $values = $dataset->{values};
+    my $dataname = prefix_dataname($dataset->{name});
 
     my $encodings;
     eval {
@@ -1600,10 +1599,10 @@ sub check_embedded_file_integrity
                 !exists $encodings->{$encoding} ) {
                 if( $encoding && $encodings &&
                     !exists $encodings->{$encoding} ) {
-                    error_reporter( $filename, undef, $dataset->{name},
-                                    "content encoding stack '$encoding' " .
-                                    "is not described, trying to guess" );
-                    $warnings ++;
+                    warning( $0, $filename, $dataname,
+                             "content encoding stack '$encoding' " .
+                             'is not described', 'trying to guess' );
+                    $warnings++;
                 }
                 # Perform a default decoding, try to guess the encoding
                 # layer type from the encoding ID
@@ -1615,27 +1614,27 @@ sub check_embedded_file_integrity
             }
         };
         if( $@ ) {
-            error_reporter( $filename, undef, $dataset->{name},
-                            "could not decode contents for file '$path' -- " .
-                            "$@; will not decode contents" );
-            $warnings ++;
+            warning( $0, $filename, $dataname,
+                     "could not decode contents for file '$path'",
+                     "$@; will not decode contents" );
+            $warnings++;
             $content = $values->{_tcod_file_contents}[$i];
         }
 
         if( $md5sum ) {
             if( md5_hex( $content ) ne $md5sum ) {
-                error_reporter( $filename, undef, $dataset->{name},
+                warning( $0, $filename, $dataname,
                          "MD5 checksums of the original '$path' and " .
-                         "decoded files are different" );
-                $warnings ++;
+                         "decoded files are different", undef );
+                $warnings++;
             }
         }
         if( $sha1sum ) {
             if( sha1_hex( $content ) ne $sha1sum ) {
-                error_reporter( $filename, undef, $dataset->{name},
+                warning( $0, $filename, $dataname,
                          "SHA1 checksums of the original '$path' and " .
-                         "decoded files are different" );
-                $warnings ++;
+                         'decoded files are different', undef );
+                $warnings++;
             }
         }
     }
@@ -1649,6 +1648,8 @@ sub check_z
 
     return $warnings if !tag_is_empty( $dataset, '_cell_formula_units_Z' );
 
+    my $dataname = prefix_dataname($dataset->{name});
+
     eval {
         cif_estimate_z( $dataset );
     };
@@ -1656,8 +1657,8 @@ sub check_z
         $@ =~ s/\n/ /;
         $@ =~ s/\n$//;
         $@ =~ s/\n/, /g;
-        error_reporter( $filename, undef, $dataset->{name}, $@ );        
-        $warnings ++;
+        warning( $0, $filename, $dataname, $@, undef );
+        $warnings++;
     }
 
     return $warnings;

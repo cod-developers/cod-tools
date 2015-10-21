@@ -4,51 +4,87 @@ eval 'exec perl -x $0 ${1+"$@"}'
     if 0;
 #------------------------------------------------------------------------------
 #$Author$
-#$Date$ 
+#$Date$
 #$Revision$
 #$URL$
 #------------------------------------------------------------------------------
 #*
-#  Parse a CIF file
+#  Generate a list of all tags in a CIF dictionary.
 #**
-
 use strict;
-use COD::CIFParser::CIFParser;
-use COD::ShowStruct;
+use warnings;
+use COD::CIF::Parser qw( parse_cif );
+use COD::SOptions;
+use COD::SUsage;
 
-my $filename = shift(@ARGV);
+my $use_parser = 'c';
 
-my $parser = new COD::CIFParser::CIFParser;
+#* USAGE:
+#*     $0 --options input1.cif input*.cif
+#*
+#* OPTIONS:
+#*
+#* --use-perl-parser
+#*                     Use development CIF parser written in Perl.
+#* --use-c-parser
+#*                     Use faster C/Yacc CIF parser (default).
+#*
+#* --help,--usage      Print a short usage message (this message) and exit.
+#**
+@ARGV = getOptions(
+    "--use-perl-parser" => sub{ $use_parser = "perl" },
+    "--use-c-parser"    => sub{ $use_parser = "c" },
 
-my $data = $parser->Run($filename);
+    "--help,--usage"    => sub { usage; exit }
+);
 
+@ARGV = ("-") unless @ARGV;
 
-for my $dataset (@$data) {
-    my $values = $dataset->{values};
+foreach my $filename (@ARGV) {
+    my ( $data ) = parse_cif( $filename, { parser => $use_parser } );
 
-    if( defined $values && defined $values->{_name} ) {
+    for my $dataset (@$data) {
 
-        my @name = @{$values->{_name}};
-
-        for my $name (@name) {
-            print "$name\n";
+        my $values = $dataset->{values};
+        if( defined $values && defined $values->{_name} ) {
+            foreach my $tag ( @{$values->{_name}} ) {
+                my $category = $values->{_category}[0];
+                if ( defined $category && $category ne 'category_overview' ) {
+                    print "$tag\n";
+                };
+            };
         }
-    }
 
-    my $save_blocks = $dataset->{save_blocks};
-
-    if( defined $save_blocks ) {
-        for my $save_block (@{$save_blocks}) {
-            my $values = $save_block->{values};
-            
-            if( defined $values && defined $values->{"_item.name"} ) {
-
-                my @name = @{$values->{"_item.name"}};
-
-                for my $name (@name) {
-                    print "$name\n";
+        # save blocks might contain '_item.name' tags that are in loops and
+        # reference previously seen tags. Due to that, duplicate tags may be
+        # printed out. Pushing all tags to an array and taking the unique
+        # ones seems to be a working approach.
+        #
+        # There are two other possible approaches:
+        # 1) Take the names of save frames (save_[_item.name]) that contain
+        #    '_item_type.code' tag (tag that is mandatory for all proper item
+        #    save frames). This approach works on PDBx/mmCIF dictionary,
+        #    but it seems that there is no strict requirement for the save 
+        #    frame name to match the 'item.name'.
+        # 2) Whenever the '_item.name' is encountered inside a loop, only
+        #    take the first entry, since it usually references the unique
+        #    save frame tag. This approach works on PDBx/mmCIF dictionary,
+        #    but it seems that there is no strict requirement for this to hold
+        #    true in other dictionaries.
+        my $save_blocks = $dataset->{save_blocks};
+        if( defined $save_blocks ) {
+            my @save_block_tags;
+            for my $save_block (@{$save_blocks}) {
+                my $values = $save_block->{values};
+                if( defined $values && defined $values->{'_item.name'} ) {
+                    push @save_block_tags, @{$values->{'_item.name'}};
                 }
             }
+            use List::MoreUtils qw( uniq );
+            @save_block_tags = uniq ( @save_block_tags );
+            @save_block_tags = sort ( @save_block_tags );
+            print "$_\n" foreach @save_block_tags;
         }
+
     }
 }

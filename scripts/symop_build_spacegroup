@@ -16,11 +16,11 @@ eval 'exec perl -x $0 ${1+"$@"}'
 use strict;
 use warnings;
 
-use COD::Spacegroups::SGBuilder;
-use COD::Spacegroups::SymopLookup;
-use COD::Spacegroups::SymopParse;
+use COD::Spacegroups::Builder;
+use COD::Spacegroups::Lookup;
+use COD::Spacegroups::Symop::Parse;
 
-my $spacegroup = new COD::Spacegroups::SGBuilder;
+my $spacegroup = new COD::Spacegroups::Builder;
 
 while(<>) {
     next if /^#/;
@@ -31,29 +31,6 @@ while(<>) {
 $spacegroup->print();
 
 my @symops = $spacegroup->all_symops();
-
-# Identify the spacegroup from the symmetry operators:
-
-sub mk_symop_key
-{
-    my ( $symops ) = @_;
-
-    my @canonical = sort 
-        map {symop_string_canonical_form($_)} @$symops;
-    my $key = join( ";", @canonical );
-    return $key;
-}
-
-sub mkhash
-{
-    if( 1 ) {
-        map { (mk_symop_key($_->{symops}), $_) }
-        @COD::Spacegroups::SymopLookup::table,
-        @COD::Spacegroups::SymopLookup::extra_settings;
-    #} else {
-    #        map { (mk_symop_key($_->{symops}), $_) } @CCP4SymopLookup::table;
-    }
-}
 
 my %symop_lookup_table = mkhash();
 my $key = mk_symop_key( [ map { string_from_symop($_) } @symops ] );

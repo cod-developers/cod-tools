@@ -74,27 +74,17 @@ struct DATABLOCK {
 			array 'tags' of the i-th loop. */
     int *loop_last;  /* loop_last[i] is the last tag index of the i-th loop. */
 
+    struct DATABLOCK *save_frames; /* All save frames in this
+                                      datablock; should not be
+                                      bested */
+
+    struct DATABLOCK *last_save_frame; /* Last save frame in the
+                                          save_frames list; SHOULD NOT
+                                          be freed when the SATABLOCK
+                                          structure is deleted. */
+
     struct DATABLOCK *next; /* Data blocks can be linked in a linked-list. */
 };
-
-DATABLOCK *new_datablock( const char *name, DATABLOCK *next, cexception_t *ex )
-{
-    cexception_t inner;
-    DATABLOCK * volatile datablock = callocx( 1, sizeof(DATABLOCK), ex );
-
-    cexception_guard( inner ) {
-        datablock->loop_start = -1;
-        if( name ) {
-            datablock->name = strdupx( name, &inner );
-        }
-        datablock->next = next;
-    }
-    cexception_catch {
-        delete_datablock( datablock );
-        cexception_reraise( inner, ex );
-    }
-    return datablock;
-}
 
 void delete_datablock( DATABLOCK *datablock )
 {
@@ -121,8 +111,28 @@ void delete_datablock( DATABLOCK *datablock )
         freex( datablock->types );
         freex( datablock->loop_first );
         freex( datablock->loop_last );
+        delete_datablock_list( datablock->save_frames );
 	freex( datablock );
     }
+}
+
+DATABLOCK *new_datablock( const char *name, DATABLOCK *next, cexception_t *ex )
+{
+    cexception_t inner;
+    DATABLOCK * volatile datablock = callocx( 1, sizeof(DATABLOCK), ex );
+
+    cexception_guard( inner ) {
+        datablock->loop_start = -1;
+        if( name ) {
+            datablock->name = strdupx( name, &inner );
+        }
+        datablock->next = next;
+    }
+    cexception_catch {
+        delete_datablock( datablock );
+        cexception_reraise( inner, ex );
+    }
+    return datablock;
 }
 
 void delete_datablock_list( DATABLOCK *datablock_list )
@@ -145,6 +155,24 @@ void create_datablock( DATABLOCK * volatile *datablock, const char *name,
     assert( !(*datablock) );
 
     *datablock = new_datablock( name, next, ex );
+}
+
+DATABLOCK *datablock_start_save_frame( DATABLOCK *datablock, const char *name,
+                                       cexception_t *ex )
+{
+    DATABLOCK *save_frame = NULL;
+    assert( datablock );
+
+    save_frame = new_datablock( name, NULL, ex );
+
+    if( datablock->last_save_frame ) {
+        datablock->last_save_frame->next = save_frame;
+        datablock->last_save_frame = save_frame;
+    } else {
+        datablock->save_frames = datablock->last_save_frame = save_frame;
+    }
+
+    return save_frame;
 }
 
 void dispose_datablock( DATABLOCK * volatile *datablock )
@@ -219,6 +247,12 @@ datablock_value_type_t **datablock_types( DATABLOCK *datablock )
 int datablock_loop_count( DATABLOCK *datablock )
 {
     return datablock->loop_count;
+}
+
+DATABLOCK * datablock_save_frame_list( DATABLOCK *datablock )
+{
+    assert( datablock );
+    return datablock->save_frames;
 }
 
 void datablock_set_next( DATABLOCK *datablock, DATABLOCK *next )
@@ -339,13 +373,13 @@ static int print_loop( DATABLOCK *datablock, ssize_t i )
     return datablock->loop_last[loop];
 }
 
-void datablock_print( DATABLOCK * volatile datablock )
+void datablock_print_frame( DATABLOCK * volatile datablock, char *keyword )
 {
     ssize_t i;
 
     assert( datablock );
 
-    printf( "data_%s\n",  datablock->name );
+    printf( "%s%s\n",  keyword, datablock->name );
 
     for( i = 0; i < datablock->length; i++ ) {
 	if( datablock->in_loop[i] < 0 ) { /* tag is not in a loop */
@@ -356,6 +390,17 @@ void datablock_print( DATABLOCK * volatile datablock )
 	    i = print_loop( datablock, i );
 	}
     }
+
+    DATABLOCK *frame;
+    for( frame = datablock->save_frames; frame; frame = frame->next ) {
+        datablock_print_frame( frame, "save_" );
+        puts( "save_" );
+    }
+}
+
+void datablock_print( DATABLOCK * volatile datablock )
+{
+    datablock_print_frame( datablock, "data_" );
 }
 
 void datablock_list_tags( DATABLOCK * volatile datablock )

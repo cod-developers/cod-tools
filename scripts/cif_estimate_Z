@@ -14,16 +14,24 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #**
 
 use strict;
-use COD::CIFParser::CIFParser;
-use COD::CIFData::CIFEstimateZ;
+use warnings;
+use COD::CIF::Parser qw(parse_cif);
+use COD::UserMessage qw(error);
+use COD::CIF::Data::EstimateZ;
 
 @ARGV = ( "-" ) unless @ARGV;
 
 for my $filename (@ARGV) {
+    my $options = { parser => 'c', no_print => 1, fix_errors => 1 };
+    my ( $data, $err_count, $messages ) = parse_cif( $filename, $options );
 
-    my $parser = new COD::CIFParser::CIFParser;
-
-    my $data = $parser->Run($filename, { fix_errors => 1 });
+    if ( $err_count > 0 ) {
+        print STDERR $_ foreach ( @$messages );
+        error( $0, $filename, undef, "$err_count error(s) "
+             . "encountered while parsing the file", undef );
+        next;
+    }
+    print STDERR $_ foreach ( @$messages );
 
     for my $dataset (@$data) {
         eval {
@@ -31,7 +39,6 @@ for my $filename (@ARGV) {
         };
         if( $@ ) {
             print STDERR $@;
-        }  
+        }
     }
 }
-

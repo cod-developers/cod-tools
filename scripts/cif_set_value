@@ -14,9 +14,10 @@ eval 'exec perl -x $0 ${1+"$@"}'
 
 use strict;
 use warnings;
-use COD::CIFParser::CIFParser;
-use COD::CIFTags::CIFTagCanonicalNames;
-use COD::CIFTags::CIFTagPrint;
+use COD::CIF::Parser qw(parse_cif);
+use COD::CIF::Tags::CanonicalNames;
+use COD::CIF::Tags::Print;
+use COD::UserMessage qw(error);
 use COD::SOptions;
 use COD::SUsage;
 
@@ -35,7 +36,7 @@ my $Id = '$Id$';
 #*
 #**  --help,--usage     Print a short usage message (this message) and exit.
 
-my $use_parser = "perl";
+my $use_parser = 'c';
 
 my $tag = "_atom_site_occupancy";
 my $value = 1.0;
@@ -52,26 +53,17 @@ my $value = 1.0;
 @ARGV = ("-") unless @ARGV;
 
 for my $filename (@ARGV) {
-    my( $data, $error_count );
-    if( $use_parser eq "perl" ) {
-        my $parser = new COD::CIFParser::CIFParser;
-        $data = $parser->Run( $filename );
-        if( defined $parser->YYData->{ERRCOUNT} &&
-            $parser->YYData->{ERRCOUNT} > 0 ) {
-            $error_count = $parser->YYData->{ERRCOUNT};
-        }
-    } else {
-        require COD::CCIFParser::CCIFParser;
-        ( $data, $error_count ) = COD::CCIFParser::CCIFParser::parse( $filename );
-    }
 
-    if( defined $error_count && $error_count > 0 ) {
-        print STDERR "$0: $filename: ",
-        $error_count,
-        " error(s) encountered while parsing CIF data\n";
-        ## exit -1;
+    my $options = { 'parser' => $use_parser, 'no_print' => 1 };
+    my ( $data, $err_count, $messages ) = parse_cif( $filename, $options );
+
+    if ( $err_count > 0 ) {
+        print STDERR $_ foreach ( @$messages );
+        error( $0, $filename, undef, "$err_count error(s) "
+             . "encountered while parsing the file", undef );
         next;
     }
+    print STDERR $_ foreach ( @$messages );
 
     canonicalize_all_names( $data );
 

@@ -47,3 +47,47 @@ sub json2cif($)
     }
     return $decoded->{data};
 }
+
+# Functions for compatibility with object-oriented usage
+
+sub new
+{
+    my( $class ) = @_;
+    my $self = {};
+    bless( $self, $class );
+    return $self;
+}
+
+sub Run
+{
+    my( $self, $filename, $options ) = @_;
+
+    my $data;
+    my $nerrors = 0;
+    my $error_messages = [];
+    eval {
+        open( my $inp, $filename ) or die "unable to open the file";
+        my $json = join( "\n", <$inp> );
+        close( $inp );
+        $data = json2cif( $json );
+    };
+    if( $@ ) {
+        push( @$error_messages, $@ );
+        $nerrors ++;
+    }
+
+    $self->{YYData} = { ERRCOUNT => $nerrors,
+                        ERROR_MESSAGES => $error_messages };
+
+    if( ref $options eq "HASH" ) {
+        $self->{USER}{OPTIONS} = $options;
+    }
+
+    return $data;
+}
+
+sub YYData
+{
+    my( $self ) = @_;
+    return $self->{YYData};
+}

@@ -16,16 +16,17 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #**
 
 use strict;
-use COD::CIFParser::CIFParser;
-use COD::CIFTags::CIFTagCanonicalNames;
-use COD::CIFTags::CIFDictTags;
-use COD::CIFTags::CIFCODTags;
-use COD::CIFTags::CIFTagManage;
-use COD::CIFTags::CIFTagPrint;
+use warnings;
+use COD::CIF::Parser qw(parse_cif);
+use COD::CIF::Tags::CanonicalNames;
+use COD::CIF::Tags::DictTags;
+use COD::CIF::Tags::COD;
+use COD::CIF::Tags::Manage;
+use COD::CIF::Tags::Print;
 use COD::CIF2JSON;
 use COD::SOptions;
 use COD::SUsage;
-use COD::UserMessage;
+use COD::UserMessage qw(note error prefix_dataname);
 
 my $keep_tag_order = 0;
 my $Id = '$Id$';
@@ -106,42 +107,23 @@ if( $replacement_list ) {
         die "$0: $replacement_list: error closing file - $!";
 }
 
-my @dictionary_tags = ( @COD::CIFTags::CIFDictTags::tag_list,
-                        @COD::CIFTags::CIFCODTags::tag_list );
+my @dictionary_tags = ( @COD::CIF::Tags::DictTags::tag_list,
+                        @COD::CIF::Tags::COD::tag_list );
 my %dictionary_tags = map { $_, $_ } @dictionary_tags;
 
 @ARGV = ("-") unless @ARGV;
 
 for my $filename (@ARGV) {
-    my( $data, $error_count );
+    my $options = { 'parser' => $use_parser, 'no_print' => 1 };
+    my ( $data, $err_count, $messages ) = parse_cif( $filename, $options );
 
-    if(      $use_parser eq "perl" ) {
-        my $parser = new COD::CIFParser::CIFParser;
-
-        $data = $parser->Run($filename);
-
-        if( defined $parser->YYData->{ERRCOUNT} ) {
-            $error_count = $parser->YYData->{ERRCOUNT};
-        }
-    } elsif( $use_parser eq "c" ) {
-        require COD::CCIFParser::CCIFParser;
-        ( $data, $error_count ) =
-            COD::CCIFParser::CCIFParser::parse( $filename );
-    } elsif( $use_parser eq "json" ) {
-        open( my $inp, $filename );
-        my $json = join( "\n", <$inp> );
-        close( $inp );
-        $data = json2cif( $json );
-    } else {
-        error( $0, $filename, undef, "unknown parser '$use_parser'" );
-        die;
-    }
-
-    if( defined $error_count && $error_count > 0 ) {
-        error( $0, $filename, undef,
-               "$error_count error(s) encountered while parsing CIF data" );
+    if ( $err_count > 0 ) {
+        print STDERR $_ foreach ( @$messages );
+        error( $0, $filename, undef, "$err_count error(s) "
+             . "encountered while parsing the file", undef );
         exit -1; # Should go on to the next file?
     }
+    print STDERR $_ foreach ( @$messages );
 
     canonicalize_all_names( $data );
 
@@ -150,7 +132,7 @@ for my $filename (@ARGV) {
         my @insert_reports = ();
         my $tags = $dataset->{tags};
         my $values = $dataset->{values};
-        my $dataname = $dataset->{name};
+        my $dataname = prefix_dataname($dataset->{name});
 
         for my $tag (@$tags) {
             if( exists $tag_spelling{$tag} ) {
@@ -163,7 +145,7 @@ for my $filename (@ARGV) {
                     "as specified in the replacement file " .
                     "'$replacement_list'.";
                     push (@insert_reports, $report_msg);
-                    note( $0, $filename, $dataname, $report_msg );
+                    note( $0, $filename, $dataname, $report_msg, undef );
                 }
             }
             if( $tag =~ /^_+(_[^_].*)$/ ) {
@@ -175,7 +157,7 @@ for my $filename (@ARGV) {
                     my $report_msg = "'$old_tag' tag replaced with " .
                                      "'$correct' tag.";
                     push (@insert_reports, $report_msg);
-                    note( $0, $filename, $dataname, $report_msg );
+                    note( $0, $filename, $dataname, $report_msg, undef );
                 }
             }
         }
@@ -196,7 +178,7 @@ for my $filename (@ARGV) {
     } elsif( $output_format eq "json" ) {
         print cif2json( $data );
     } else {
-        error( $0, undef, undef, "unknown output format: $output_format" );
+        error( $0, undef, undef, "unknown output format: $output_format", undef );
         die;
     }
 }

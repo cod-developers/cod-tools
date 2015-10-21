@@ -25,17 +25,17 @@ eval 'exec perl -x $0 ${1+"$@"}'
 
 use strict;
 use warnings;
-use COD::CIFParser::CIFParser;
-use COD::CIFTags::CIFTagCanonicalNames;
-use COD::CIFTags::CIFDictTags;
-use COD::CIFTags::CIFCODTags;
-use COD::CIFTags::CIFTCODTags;
-use COD::CIFTags::CIFDFTTags;
-use COD::CIFTags::CIFTagPrint;
-use COD::CIFTags::CIFTagManage;
+use COD::CIF::Parser qw( parse_cif );
+use COD::CIF::Tags::CanonicalNames qw( canonicalize_all_names );
+use COD::CIF::Tags::DictTags;
+use COD::CIF::Tags::COD;
+use COD::CIF::Tags::TCOD;
+use COD::CIF::Tags::DFT;
+use COD::CIF::Tags::Print qw( print_cif pack_precision fold );
+use COD::CIF::Tags::Manage qw( set_tag rename_tag );
 use COD::SOptions;
 use COD::SUsage;
-use COD::UserMessage;
+use COD::UserMessage qw( note warning error prefix_dataname );
 
 my $Id = '$Id$';
 my $keep_tag_order = 0;
@@ -48,10 +48,9 @@ my $fix_value_of_exptl_crystal_density_meas = 1;
 my $fix_value_of_refine_ls_weighting_scheme = 1;
 my $treat_as_set = 1;
 
-my $use_parser = "perl";
+my $use_parser = "c";
 
 my $dictParsed = [];
-my $parser = new COD::CIFParser::CIFParser;
 my @dictionaries = ();
 my %dictTags;
 my %tagDicts;
@@ -218,10 +217,10 @@ my @default_set_tags = ( "_atom_site_refinement_flags" );
 #*      this:
 #*      $0 --dictionary cif_core.dic --dictionary cod_core.dic
 #*
-#*   -D, --add-dictionary cif_core.dic
+#*   -D, --add-dictionaries cif_core.dic
 #*      You can add CIF dictionary, in a way like
 #*      this:
-#*      $0 --add-dictionary cif_core.dic
+#*      $0 --add-dictionaries cif_core.dic
 #*
 #*   --clear-dictionaries
 #*      You can clear all dictionaries used for checking
@@ -368,7 +367,7 @@ sub make_count($$$) {
     foreach my $message( @messages ) {
         if(! exists $notes_warnings{$message} ) {
             error( $0, $filename, undef,
-                   "error while counting '$message' audit message" );
+                   "error while counting '$message' audit message", undef );
             exit 1;
         }
         if( exists $notes_warnings{$message} ) {
@@ -398,9 +397,8 @@ if( defined $replacement_file ) {
         if( /^(\S+)\s+(\S+)\s+(\S+)$/ ) {
             push( @{ $value_spelling{$1} }, [ $2, $3 ] );
         } else {
-            print STDERR "$0: WARNING, unrecognized string '$_' in " .
-                         "replacement value file '$replacement_file'.\n";
-
+            warning( $0, undef, undef, "unrecognized string '$_' in "
+                   . "replacement value file '$replacement_file'", undef );
         }
     }
     close( LIST ) or
@@ -408,27 +406,16 @@ if( defined $replacement_file ) {
 }
 
 if( @dictionaries ) {
-    for my $dict_file_name( @dictionaries ) {
-        my( $data, $error_count );
-        if( $use_parser eq "perl" ) {
-            my $parser = new COD::CIFParser::CIFParser;
-            $data = $parser->Run( $dict_file_name );
-            if( defined $parser->YYData->{ERRCOUNT} &&
-                $parser->YYData->{ERRCOUNT} > 0 ) {
-                $error_count = $parser->YYData->{ERRCOUNT};
-            }
-        } else {
-            require COD::CCIFParser::CCIFParser;
-            ( $data, $error_count ) = COD::CCIFParser::CCIFParser::parse( $dict_file_name );
-        }
-
-        if( defined $error_count && $error_count > 0 ) {
-            warning ($0, $dict_file_name, undef,
-                     "$error_count error(s) encountered while parsing " .
-                     "CIF dictionary");
-            ## exit -1;
+    my $options = { 'parser' => $use_parser, 'no_print' => 1 };
+    for my $dict ( @dictionaries ) {
+        my ( $data, $err_count, $messages ) = parse_cif( $dict, $options );
+        if ( $err_count > 0 ) {
+            print STDERR $_ foreach ( @$messages );
+            error( $0, $dict, undef, "$err_count error(s) "
+                 . "encountered while parsing the file", undef );
             next;
         }
+        print STDERR $_ foreach ( @$messages );
 
         canonicalize_all_names( $data );
 
@@ -437,12 +424,13 @@ if( @dictionaries ) {
             next unless $dataset->{name} eq 'on_this_dictionary' &&
                 exists $dataset->{values};
             my $values = $dataset->{values};
+            my $dataname = prefix_dataname($dataset->{name});
 
              if ( ! defined $values ) {
-                 error( $0, $dict_file_name, $dataset->{name},
-                        "dictionary '$dict_file_name' " .
+                 error( $0, $dict, $dataname,
+                        "dictionary '$dict' " .
                         "$dataset->{name} does not " .
-                        "contain data" ); 
+                        "contain data", undef ); 
                  exit 1;
              };
 
@@ -462,7 +450,7 @@ if( @dictionaries ) {
                     if( !defined $tagDicts{$_} ) {
                         $dictTags{$_} = \@enums;
                         $tagDicts{$_} = [
-                            $dict_file_name,
+                            $dict,
                             defined $dict_name ?
                             join( ', ', @$dict_name ) : undef,
                             defined $dict_version ?
@@ -471,24 +459,23 @@ if( @dictionaries ) {
                             join( ', ', @$dict_update ) : undef
                             ];
                     } else {
-                        print STDERR
-                            "$0: WARNING, '$_' " .
-                            "tag is already defined by " .
-                            "'$dict_file_name' dictionary.\n";
+                        warning( $0, undef, undef, "tag '$_' is already "
+                               . "defined by dictionary '$dict'", 
+                                 undef );
                     }
                 }
             }
         }
     }
 } else {
-    my $dict_file_name = 'the built-in table from CIF Core'; 
+    my $dict = 'the built-in table from CIF Core'; 
     my $dict_name = 'cif_core.dic';
     my $dict_version = '2.4.1';
     my $dict_update = '2010-06-29';
     foreach my $tag( keys %default_enums ) {
         my $enums = $default_enums{$tag};
-        $dictTags{$tag} = $enums;        
-        $tagDicts{$tag} = [ $dict_file_name, $dict_name, 
+        $dictTags{$tag} = $enums;
+        $tagDicts{$tag} = [ $dict, $dict_name, 
                             $dict_version, $dict_update ];
     }
 }
@@ -508,7 +495,7 @@ sub fix_misspelled_values($$$) {
     my %reports = ();
     my @insert_reports = ();
     my @uniq_messages;
-    my $dataname = $dataset->{name};
+    my $dataname = prefix_dataname($dataset->{name});
     my $tags = $dataset->{tags};
     my $values = $dataset->{values};
     foreach my $tag( @$tags ) {
@@ -532,8 +519,9 @@ sub fix_misspelled_values($$$) {
                 }
             }
             if( $count > 1 ) {
-                 warn "more than 1 different substitutions " .
-                 "were applied on value '$old_value'";
+                 warning( $0, $filename, $dataname, "more than 1 different "
+                        . "substitutions were applied on value '$old_value'",
+                          undef );
             } elsif( $count == 1 ) {
                  my $message_key = 
                      "NOTE, '$tag' tag value '$old_value' " .
@@ -554,7 +542,7 @@ sub fix_misspelled_values($$$) {
     foreach my $report( @report_messages ) {
         if( $report =~ /^(NOTE,\s+)(.+)$/ ) {
             my $comment_message = $2;
-            note($0, $filename, $dataname, $comment_message);
+            note($0, $filename, $dataname, $comment_message, undef);
             push( @insert_reports, $comment_message );
         }
     }
@@ -623,7 +611,7 @@ my $unit_weights = '(?i:unit\s+weights?\s*(?:applied)?)';
 
 sub fix_temperature($$) {
     my( $dataset, $filename ) = @_;
-    my $dataname = $dataset->{name};
+    my $dataname = prefix_dataname($dataset->{name});
     my @insert_reports = ();
     my $values = $dataset->{values};
     my @temp_tags =
@@ -668,7 +656,7 @@ sub fix_temperature($$) {
                             "The value '$temperature' was changed to " .
                             "'$new_val'.";
                         push( @insert_reports, $report_msg );
-                        note( $0, $filename, $dataname, $report_msg);
+                        note( $0, $filename, $dataname, $report_msg, undef );
                         next;
                     }
                 }
@@ -709,7 +697,7 @@ sub fix_temperature($$) {
                                 "'$new_val' - it was converted from " .
                                 "degrees Celsius(C) to Kelvins(K).";
                             push( @insert_reports, $report_msg );
-                            note($0, $filename, $dataname, $report_msg);
+                            note($0, $filename, $dataname, $report_msg, undef);
                             next;
                         }
                         if( $sign =~ /\</ ) {
@@ -729,7 +717,7 @@ sub fix_temperature($$) {
                                 "'$new_val' - it was converted from " .
                                 "degrees Celsius(C) to Kelvins(K).";
                             push ( @insert_reports, $report_msg );
-                            note($0, $filename, $dataname, $report_msg);
+                            note($0, $filename, $dataname, $report_msg, undef);
                             next;
                         }
                     }
@@ -768,7 +756,7 @@ sub fix_temperature($$) {
                                 "'$new_val' - it should be numeric " .
                                 "and without a unit designator.";
                             push( @insert_reports, $report_msg );
-                            note($0, $filename, $dataname, $report_msg);
+                            note($0, $filename, $dataname, $report_msg, undef);
                             next;
                         }
                         if( $sign =~ /\</ ) {
@@ -788,7 +776,7 @@ sub fix_temperature($$) {
                                 "'$new_val' - it should be numeric " .
                                 "and without a unit designator.";
                             push( @insert_reports, $report_msg );
-                            note($0, $filename, $dataname, $report_msg);
+                            note($0, $filename, $dataname, $report_msg, undef);
                             next;
                         }
                     }
@@ -810,14 +798,14 @@ sub fix_temperature($$) {
                             "'$tag' value '$temperature' was changed to " .
                             "'$new_val' - the value was reformatted.";
                         push( @insert_reports, $report_msg );
-                        note($0, $filename, $dataname, $report_msg);
+                        note($0, $filename, $dataname, $report_msg, undef);
                         next;
                     } else {
                         my $report_msg =
                             "'$tag' value '$temperature' was changed to " .
                             "'$new_val' - precision was estimated.";
                         push( @insert_reports, $report_msg );
-                        note($0, $filename, $dataname, $report_msg);
+                        note($0, $filename, $dataname, $report_msg, undef);
                         next;
                     }
                 }
@@ -834,7 +822,7 @@ sub fix_temperature($$) {
                         "'$new_val' - the value should be numeric " .
                         "and without a unit designator.";
                     push( @insert_reports, $report_msg );
-                    note($0, $filename, $dataname, $report_msg);
+                    note($0, $filename, $dataname, $report_msg, undef);
                     next;
                 }
                 if( $temperature_modif =~
@@ -855,7 +843,7 @@ sub fix_temperature($$) {
                         "'$new_val' - it was converted from degrees " .
                         "Celsius(C) to Kelvins(K).";
                     push( @insert_reports, $report_msg );
-                    note($0, $filename, $dataname, $report_msg);
+                    note($0, $filename, $dataname, $report_msg, undef);
                     next;
                 }
                 if( $temperature_modif =~
@@ -868,7 +856,7 @@ sub fix_temperature($$) {
                         "'295(2)' - the room/ambient temperature " .
                         "average [293;298] in Kelvins(K) was taken.";
                     push( @insert_reports, $report_msg );
-                    note($0, $filename, $dataname, $report_msg);
+                    note($0, $filename, $dataname, $report_msg, undef);
                     next;
                 }
                 if( $temperature_modif =~
@@ -881,7 +869,7 @@ sub fix_temperature($$) {
                         "was changed to '?' - the " .
                         "value is undefined or not given.";
                     push( @insert_reports, $report_msg );
-                    note($0, $filename, $dataname, $report_msg);
+                    note($0, $filename, $dataname, $report_msg, undef);
                     next;
                 }
                 if( $temperature_modif =~
@@ -914,7 +902,7 @@ sub fix_temperature($$) {
                                 "average value was taken and " .
                                 "precision was estimated.";
                             push( @insert_reports, $report_msg );
-                            note($0, $filename, $dataname, $report_msg);
+                            note($0, $filename, $dataname, $report_msg, undef);
                             next;
                         } else {
                         $values->{$tag}[$i] =
@@ -928,7 +916,7 @@ sub fix_temperature($$) {
                             "average value was taken and " .
                             "precision was estimated.";
                         push( @insert_reports, $report_msg );
-                        note($0, $filename, $dataname, $report_msg);
+                        note($0, $filename, $dataname, $report_msg, undef);
                         next;
                         }
                     }
@@ -960,7 +948,7 @@ sub fix_temperature($$) {
                                 "'$new_val' - the average value was " .
                                 "taken and precision was estimated.";
                             push( @insert_reports, $report_msg );
-                            note($0, $filename, $dataname, $report_msg);
+                            note($0, $filename, $dataname, $report_msg, undef);
                             next;
                         } else {
                             $values->{$tag}[$i] =
@@ -972,7 +960,7 @@ sub fix_temperature($$) {
                                 "'$new_val' - the average value was taken " .
                                 "and precision was estimated.";
                             push( @insert_reports, $report_msg );
-                            note($0, $filename, $dataname, $report_msg);
+                            note($0, $filename, $dataname, $report_msg, undef);
                             next;
                         }
                     }
@@ -1007,7 +995,7 @@ sub fix_temperature($$) {
                             "it was converted from degrees Celsius(C) " .
                             "to Kelvins(K).";
                         push( @insert_reports, $report_msg );
-                        note($0, $filename, $dataname, $report_msg);
+                        note($0, $filename, $dataname, $report_msg, undef);
                         next;
                     } else {
                         $values->{$tag}[$i] =
@@ -1019,7 +1007,7 @@ sub fix_temperature($$) {
                             "'$new_val' - it was converted from degrees " .
                             "Celsius(C) to Kelvins(K).";
                         push( @insert_reports, $report_msg );
-                        note($0, $filename, $dataname, $report_msg);
+                        note($0, $filename, $dataname, $report_msg, undef);
                         next;
                     }
                 }
@@ -1037,7 +1025,7 @@ sub fix_temperature($$) {
                             "i.e. 'FLOAT or 'INT', permitted " .
                             "range is [0.0;+inf], the value " .
                             "should be in Kelvins(K) ".
-                            "without a unit designator");
+                            "without a unit designator", undef);
                     next;
                 }
             }
@@ -1048,7 +1036,7 @@ sub fix_temperature($$) {
 
 sub fix_value_of_exptl_crystal_density_meas($$) {
     my( $dataset, $filename ) = @_;
-    my $dataname = $dataset->{name};
+    my $dataname = prefix_dataname($dataset->{name});
     my @insert_reports = ();
     my $values = $dataset->{values};
     my @value_tags = (
@@ -1081,14 +1069,17 @@ sub fix_value_of_exptl_crystal_density_meas($$) {
                         "was changed to '?' - the " .
                         "value is perceived as not measured.";
                     push( @insert_reports, $report_msg );
-                    note($0, $filename, $dataname, $report_msg);
+                    note($0, $filename, $dataname, $report_msg, undef);
                     next;
                 }
-
+                
                 if( $value_modif =~
                     /^
                         (?: ' \s*)?
-                        ($number_pos){1}+ \s* (?: \( \s* ($sigma) \s* \) )?
+                        (?> ($number_pos) )
+                        # atomic group is used for not to match 150K
+                        # otherwise it backtracks and matches: [15,0,K]
+                        \s* (?: \( \s* ($sigma) \s* \) )?
                         \s* \(? \s* ($units_equiv_Mg_per_m3)? \s* \)?
                         \s* \(? \s* $measured_at ? \s*
                             (?: ($temp_RT) |
@@ -1170,7 +1161,7 @@ sub fix_value_of_exptl_crystal_density_meas($$) {
                     }
 
                     push( @insert_reports, $report_msg );
-                    note($0, $filename, $dataname, $report_msg);
+                    note($0, $filename, $dataname, $report_msg, undef);
                     next;
                 }
             }
@@ -1181,7 +1172,7 @@ sub fix_value_of_exptl_crystal_density_meas($$) {
 
 sub fix_value_of_refine_ls_weighting_scheme($$) {
     my( $dataset, $filename ) = @_;
-    my $dataname = $dataset->{name};
+    my $dataname = prefix_dataname($dataset->{name});
     my @insert_reports = ();
     my $values = $dataset->{values};
     my $tag = '_refine_ls_weighting_scheme';
@@ -1209,7 +1200,7 @@ sub fix_value_of_refine_ls_weighting_scheme($$) {
                         "was changed to '?' - the " .
                         "value is perceived as not measured.";
                     push( @insert_reports, $report_msg );
-                    note($0, $filename, $dataname, $report_msg);
+                    note($0, $filename, $dataname, $report_msg, undef);
                     next;
                 }
                     
@@ -1225,7 +1216,7 @@ sub fix_value_of_refine_ls_weighting_scheme($$) {
                         "'$tag' value '$value' ".
                         "was changed to '$new_value'.";
                     push( @insert_reports, $report_msg );
-                    note($0, $filename, $dataname, $report_msg);
+                    note($0, $filename, $dataname, $report_msg, undef);
                     next;
                 }
 
@@ -1269,7 +1260,7 @@ sub fix_value_of_refine_ls_weighting_scheme($$) {
                             "'$new_value'.";
 
                         push( @insert_reports, $report_msg );
-                        note($0, $filename, $dataname, $report_msg);
+                        note($0, $filename, $dataname, $report_msg, undef);
                         next;
 
                     }
@@ -1279,10 +1270,10 @@ sub fix_value_of_refine_ls_weighting_scheme($$) {
                             $value_modif .= "...";
                         }
                     warning($0, $filename, $dataname,
-                            "'$tag' value is '$value_modif', " .
-                            "but it should be one of these: [" .
-                            join( ", ", @{ $default_enums{$tag} } ) .
-                            "]" );
+                            "'$tag' value is '$value_modif', but it must be "
+                          . 'one of the enumeration values '
+                          . '[' .join( ", ", @{$default_enums{$tag}} ) . ']',
+                             undef );
                 }
 
             }
@@ -1292,7 +1283,7 @@ sub fix_value_of_refine_ls_weighting_scheme($$) {
 
 sub fix_enums($$) {
     my( $dataset, $filename ) = @_;
-    my $dataname = $dataset->{name};
+    my $dataname = prefix_dataname($dataset->{name});
     my %reports;
     my @uniq_messages;
     my @insert_reports = ();
@@ -1338,11 +1329,9 @@ sub fix_enums($$) {
                             $val .= "...";
                         }
                         $message_key =
-                            "WARNING, '$tag' value '$val' " .
-                            "should be one of these: [" .
-                            "$dict_values] " .
-                            "according to $tagDicts{$tag}[0] " .
-                            "dictionary" .
+                            "WARNING, '$tag' value '$val' must be one of "
+                          . 'the enumeration values [' . $dict_values . '] '
+                          . "according to $tagDicts{$tag}[0] dictionary" .
                             (defined $tagDicts{$tag}[1] ?
                              " named '$tagDicts{$tag}[1]'" : "") .
                              (defined $tagDicts{$tag}[2] ?
@@ -1363,9 +1352,9 @@ sub fix_enums($$) {
     my @report_messages = make_count( \%reports, \@uniq_messages, $filename );
     foreach my $report( @report_messages ) {
         if ( $report =~ /^(WARNING,\s+)(.+)$/ ) {
-            warning( $0, $filename, $dataname, $2 );
+            warning( $0, $filename, $dataname, $2, undef );
         } elsif( $report =~ /^(NOTE,\s+)(.+)$/ ) {
-            note( $0, $filename, $dataname, $2 );
+            note( $0, $filename, $dataname, $2, undef );
             push( @insert_reports, $2 );
         }
     };
@@ -1375,7 +1364,7 @@ sub fix_enums($$) {
 
 sub treat_as_set($$) {
     my( $dataset, $filename ) = @_;
-    my $dataname = $dataset->{name};
+    my $dataname = prefix_dataname($dataset->{name});
     my %reports;
     my @uniq_messages;
     my @insert_reports = ();
@@ -1407,11 +1396,11 @@ sub treat_as_set($$) {
                             $val = substr $val, 0, 30;
                             $val .= "...";
                         }
-                        $message_key = "WARNING, '$tag' value '$val' " .
-                                       "should only contain a combination " .
-                                       "of these values: [$dict_values] " .
-                                       "according to $tagDicts{$tag}[0] " .
-                                       "dictionary" . $dict_info;
+                        $message_key = "WARNING, '$tag' value '$val' should "
+                                     . "only contain a combination of the "
+                                     . "enumeration values [$dict_values] "
+                                     . "according to $tagDicts{$tag}[0] "
+                                     . "dictionary" . $dict_info;
                     } else {
                         my $new_value = "";
                         my $val = $tag_value;
@@ -1460,9 +1449,9 @@ sub treat_as_set($$) {
     my @report_messages = make_count( \%reports, \@uniq_messages, $filename );
     foreach my $report( @report_messages ) {
         if ( $report =~ /^(WARNING,\s+)(.+)$/ ) {
-            warning( $0, $filename, $dataname, $2 );
+            warning( $0, $filename, $dataname, $2, undef );
         } elsif( $report =~ /^(NOTE,\s+)(.+)$/ ) {
-            note( $0, $filename, $dataname, $2 );
+            note( $0, $filename, $dataname, $2, undef );
             push( @insert_reports, $2 );
         }
     };
@@ -1470,35 +1459,25 @@ sub treat_as_set($$) {
     return @insert_reports;
 }
 
-my @dictionary_tags = ( @COD::CIFTags::CIFDictTags::tag_list,
-                        @COD::CIFTags::CIFCODTags::tag_list,
-                        @COD::CIFTags::CIFTCODTags::tag_list,
-                        @COD::CIFTags::CIFDFTTags::tag_list );
+my @dictionary_tags = ( @COD::CIF::Tags::DictTags::tag_list,
+                        @COD::CIF::Tags::COD::tag_list,
+                        @COD::CIF::Tags::TCOD::tag_list,
+                        @COD::CIF::Tags::DFT::tag_list );
 my %dictionary_tags = map { $_, $_ } @dictionary_tags;
 
 @ARGV = ("-") unless @ARGV;
 
 for my $filename (@ARGV) {
-    my( $data, $error_count );
-    if( $use_parser eq "perl" ) {
-        my $parser = new COD::CIFParser::CIFParser;
-        $data = $parser->Run( $filename );
-        if( defined $parser->YYData->{ERRCOUNT} &&
-            $parser->YYData->{ERRCOUNT} > 0 ) {
-            $error_count = $parser->YYData->{ERRCOUNT};
-        }
-    } else {
-        require COD::CCIFParser::CCIFParser;
-        ( $data, $error_count ) = COD::CCIFParser::CCIFParser::parse( $filename );
-    }
+    my $options = { 'parser' => $use_parser, 'no_print' => 1 };
+    my ( $data, $err_count, $messages ) = parse_cif( $filename, $options );
 
-    if( defined $error_count && $error_count > 0 ) {
-        error($0, $filename, undef,
-              "$error_count error(s) encountered " .
-              "while parsing CIF data");
-        ## exit -1;
+    if ( $err_count > 0 ) {
+        print STDERR $_ foreach ( @$messages );
+        error( $0, $filename, undef, "$err_count error(s) "
+             . "encountered while parsing the file", undef );
         next;
     }
+    print STDERR $_ foreach ( @$messages );
 
     canonicalize_all_names( $data );
 

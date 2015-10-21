@@ -17,28 +17,27 @@ eval 'exec perl -x $0 ${1+"$@"}'
 use strict;
 use warnings;
 
+use COD::CIF::Parser qw(parse_cif);
 use COD::AtomBricks qw(build_bricks get_atom_index get_search_span);
 use COD::AtomNeighbours qw(get_max_covalent_radius);
 use COD::AtomProperties;
-use COD::CIFParser::CIFParser;
-use COD::Formulae::FormulaPrint;
-use COD::Spacegroups::SymopAlgebra qw(symop_is_unity symop_vector_mul);
-use COD::Spacegroups::SymopParse;
-use COD::Spacegroups::SymopLookup;
-use COD::Spacegroups::VectorAlgebra qw(distance);
-use COD::CIFData qw(get_cell get_symmetry_operators);
-use COD::CIFData::CIFAtomList qw(atom_array_from_cif
-                                 copy_struct_deep
-                                 dump_atoms_as_cif);
-use COD::CIFData::CIFSymmetryGenerator qw(atoms_coincide
-                                          test_bond
-                                          test_bump);
-use COD::CIFTags::CIFTagCanonicalNames;
-use COD::CIFTags::CIFTagManage;
-use COD::CIFTags::CIFTagPrint;
+use COD::Formulae::Print;
+use COD::Spacegroups::Symop::Algebra qw(symop_is_unity symop_vector_mul);
+use COD::Spacegroups::Symop::Parse;
+use COD::Algebra::Vector qw(distance);
+use COD::CIF::Data qw(get_cell get_symmetry_operators);
+use COD::CIF::Data::AtomList qw(atom_array_from_cif
+                                copy_struct_deep
+                                dump_atoms_as_cif);
+use COD::CIF::Data::SymmetryGenerator qw(atoms_coincide
+                                         test_bond
+                                         test_bump);
+use COD::CIF::Tags::CanonicalNames;
+use COD::CIF::Tags::Manage;
+use COD::CIF::Tags::Print;
 use COD::SOptions;
 use COD::SUsage;
-use COD::UserMessage;
+use COD::UserMessage qw(warning error prefix_dataname);
 
 no warnings 'recursion';
 
@@ -312,26 +311,16 @@ my $cif_atom_list_options = {
 
 for my $filename (@ARGV) {
 
-    my( $data, $error_count );
+    my $options = { 'parser' => $use_parser, 'no_print' => 1 };
+    my ( $data, $err_count, $messages ) = parse_cif( $filename, $options );
 
-    if( $use_parser eq "perl" ) {
-        my $parser = new COD::CIFParser::CIFParser;
-
-        $data = $parser->Run( $filename );
-
-        if( defined $parser->YYData->{ERRCOUNT} ) {
-            $error_count = $parser->YYData->{ERRCOUNT};
-        }
-    } else {
-        require COD::CCIFParser::CCIFParser;
-        ( $data, $error_count ) = COD::CCIFParser::CCIFParser::parse( $filename );
+    if ( $err_count > 0 ) {
+        print STDERR $_ foreach ( @$messages );
+        error( $0, $filename, undef, "$err_count error(s) "
+             . "encountered while parsing the file", undef );
+        next;
     }
-
-    if( defined $error_count && $error_count > 0 ) {
-        print STDERR "$0: ", $error_count,
-        " error(s) encountered while parsing file '${filename}'\n";
-        die;
-    }
+    print STDERR $_ foreach ( @$messages );
 
     if( !@$data || !defined $data->[0] || !defined $data->[0]{name} ) {
         warn( "file '$filename' seems to be empty" );
@@ -1003,9 +992,9 @@ sub get_molecules($$$$$)
 
     if( @$atom_list == 0 ) {
         warning( $0, $filename, $dataname,
-                 "no atoms suitable for processing were found; " .
-                 "maybe all occupancies were unknown, zero, or " .
-                 "all atom types were unrecognised?" );
+                 "no atoms suitable for processing were found",
+                 "maybe all occupancies were unknown, zero, or "
+               . "all atom types were unrecognised" );
         return [];
     }
 
@@ -1113,7 +1102,7 @@ sub find_molecules($$$$$$$$)
 
     foreach my $initial_atom (@$initial_atoms) {
         if ((not exists $used_originals{$initial_atom->{cell_label}})) {
-	    print STDERR ">>>> starting new molecule\n" if $debug;
+        print STDERR ">>>> starting new molecule\n" if $debug;
 
             ## if( ! $expand_to_p1 &&
             ##     $initial_atom->{cell_label} ne $initial_atom->{site_label} ) {
@@ -1144,16 +1133,16 @@ sub find_molecules($$$$$$$$)
                 
                 push( @unique_molecules, \%molecule );
             } else {
-                warning( $0, $filename, $dataname,
-                         "found molecule with no atoms - strange..." );
+                warning( $0, $filename, prefix_dataname($dataname),
+                         'found molecule with no atoms', 'strange...' );
             }
         }
     }
 
     if( !$verbose && $nbumps > 0 ) {
-        warning( $0, $filename, $dataname,
+        warning( $0, $filename, prefix_dataname($dataname),
                  "$nbumps pair(s) of atoms are too close to each " .
-                 "other and are considered as bumps" );
+                 "other and are considered as bumps", undef );
     }
 
     return @unique_molecules;
@@ -1236,10 +1225,12 @@ sub find_molecule($$$$$$$$$$$)
                     "but expect increased computation times and " .
                     "memory consumption)";
                 if( $continue_on_errors ) {
-                    warning( $0, $filename, $dataname, $message );
+                    warning( $0, $filename, prefix_dataname($dataname), 
+                             $message, undef );
                     return ( [], 0 );
                 } else {
-                    error( $0, $filename, $dataname, $message );
+                    error( $0, $filename, prefix_dataname($dataname),
+                           $message, undef );
                     exit(1);
                 }
             }
@@ -1343,12 +1334,12 @@ sub find_molecule($$$$$$$$$$$)
                         ") and are considered a bump";
                     if( $ignore_bumps ) {
                         if( $verbose ) {
-                            warning( $0, $filename, $dataname, $message );
+                            warning( $0, $filename, $dataname, $message, undef );
                         } else {
                             $nbumps++;
                         }
                     } else {
-                        error( $0, $filename, $dataname, $message );
+                        error( $0, $filename, $dataname, $message, undef );
                         print STDERR "$0: Aborting calculations.\n";
                         exit( 254 );
                     }
@@ -1996,7 +1987,7 @@ sub print_molecule
     ##     } else {
     ##         warning( $0, $filename, $dataset_name,
     ##                  "bond data necessary to compute _geom_bond_ data " .
-    ##                  "items was not calculated" );
+    ##                  "items was not calculated, undef" );
     ##     }
     ## }
 }
@@ -2005,7 +1996,7 @@ sub print_molecule
 # Renames CIF data tags so that they are not confused with the
 # original ones.
 
-# Accepts a dataset hash produced by CIFParser, a list of tags to be
+# Accepts a dataset hash produced by COD::CIF::Parser, a list of tags to be
 # renamed, and a prefix to be appended
 
 # Returns a hash with renamed data tags

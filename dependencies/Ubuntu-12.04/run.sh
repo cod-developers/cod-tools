@@ -14,6 +14,8 @@ sudo apt-get install -y openbabel
 sudo apt-get install -y curl
 sudo apt-get install -y libhtml-parser-perl
 sudo apt-get install -y tree
+sudo apt-get install -y gawk
 sudo apt-get install -y libwww-curl-perl
 sudo apt-get install -y libjson-perl
 sudo apt-get install -y python-argparse
+sudo apt-get install -y liblist-moreutils-perl

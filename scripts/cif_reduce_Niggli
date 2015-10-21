@@ -14,17 +14,17 @@ eval 'exec perl -x $0 ${1+"$@"}'
 
 use strict;
 use warnings;
-use COD::CIFParser::CIFParser;
-use COD::CIFData qw(get_cell);
-use COD::CIFTags::CIFTagCanonicalNames;
-use COD::CIFTags::CIFTagPrint;
+use COD::Algebra::Vector qw(vector_matrix_mul);
+use COD::CIF::Parser qw(parse_cif);
+use COD::CIF::Data qw(get_cell);
+use COD::CIF::Tags::CanonicalNames;
+use COD::CIF::Tags::Print;
 use COD::Cell::Niggli::KG76 qw(reduce);
 use COD::Fractional;
 use COD::UserMessage;
 use COD::SOptions;
 use COD::SUsage;
-use COD::Spacegroups::SymopAlgebra qw(symop_transpose
-                                      symop_mul);
+use COD::Spacegroups::Symop::Algebra qw(symop_transpose symop_mul);
 
 sub cholesky($);
 
@@ -65,20 +65,16 @@ my $Pi = 4 * atan2(1,1);
 
 for my $filename (@ARGV) {
 
-    my( $data, $error_count );
+    my $options = { 'parser' => $use_parser, 'no_print' => 1 };
+    my ( $data, $err_count, $messages ) = parse_cif( $filename, $options );
 
-    if( $use_parser eq "perl" ) {
-        my $parser = new COD::CIFParser::CIFParser;
-
-        $data = $parser->Run($filename);
-
-        if( defined $parser->YYData->{ERRCOUNT} ) {
-            $error_count = $parser->YYData->{ERRCOUNT};
-        }
-    } else {
-        require COD::CCIFParser::CCIFParser;
-        ( $data, $error_count ) = COD::CCIFParser::CCIFParser::parse($filename);
+    if ( $err_count > 0 ) {
+        print STDERR $_ foreach ( @$messages );
+        error( $0, $filename, undef, "$err_count error(s) "
+             . "encountered while parsing the file", undef );
+        next;
     }
+    print STDERR $_ foreach ( @$messages );
 
     canonicalize_all_names( $data );
 
@@ -108,24 +104,10 @@ for my $filename (@ARGV) {
                                         _atom_site_fract_y
                                         _atom_site_fract_z );
 
-            my( $x, $y, $z ) = ( $a*$fx, $b*$fy, $c*$fz );
-
-            my $M = [
-                [     $x*$x, $x*$y*$cg, $x*$z*$cb ],
-                [ $x*$y*$cg,     $y*$y, $y*$z*$ca ],
-                [ $x*$z*$cb, $y*$z*$ca,     $z*$z ],
-            ];
-
-            my $Gprime =
-                symop_mul( symop_mul( symop_transpose( $CoB ), $M ), $CoB );
-
-            my $new_coordinates = [ sqrt($Gprime->[0][0])/$niggli[0],
-                                    sqrt($Gprime->[1][1])/$niggli[1],
-                                    sqrt($Gprime->[2][2])/$niggli[2] ];
-
-            $values->{_atom_site_fract_x}[$i] = $new_coordinates->[0];
-            $values->{_atom_site_fract_y}[$i] = $new_coordinates->[1];
-            $values->{_atom_site_fract_z}[$i] = $new_coordinates->[2];
+            ( $values->{_atom_site_fract_x}[$i],
+              $values->{_atom_site_fract_y}[$i],
+              $values->{_atom_site_fract_z}[$i] ) =
+                vector_matrix_mul( [ $fx, $fy, $fz ], $CoB );
         }
 
         print_cif( $datablock,

@@ -14,7 +14,8 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #**
 
 use strict;
-use COD::CIFIO qw(readfile);
+use COD::CIF::Parser qw(parse_cif);
+use COD::CIF::Tags::CanonicalNames;
 use COD::CIF2JSON;
 use COD::UserMessage;
 use COD::SOptions;
@@ -67,14 +68,18 @@ my %options;
 
 for my $filename (@ARGV) {
 
-    my $data;
-    eval {
-        $data = readfile( $filename, $use_parser, \%options );
-    };
-    if( $@ ) {
-        error( $0, $filename, undef, $@ );
+    my $options = { 'parser' => $use_parser, 'no_print' => 1 };
+    my ( $data, $err_count, $messages ) = parse_cif( $filename, $options );
+
+    if ( $err_count > 0 ) {
+        print STDERR $_ foreach ( @$messages );
+        error( $0, $filename, undef, "$err_count error(s) "
+             . "encountered while parsing the file", undef );
         next;
     }
+    print STDERR $_ foreach ( @$messages );
+
+    canonicalize_all_names( $data );
 
     print cif2json( $data );
 }

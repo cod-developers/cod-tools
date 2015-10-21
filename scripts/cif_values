@@ -13,9 +13,10 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #**
 
 use strict;
+use warnings;
 use File::Basename;
-use COD::CIFParser::CIFParser;
-use COD::CIFTags::CIFTagManage;
+use COD::CIF::Parser qw( parse_cif );
+use COD::UserMessage qw( warning error );
 use COD::SOptions;
 use COD::SUsage;
 
@@ -38,10 +39,10 @@ my $fix_errors = 0;
 my $treat_dots_as_underscores = 1;
 my $use_parser = "c";
 
-#* Usage:
+#* USAGE:
 #*     cif_values [options] input.cif [input2.cif ...]
 #*
-#* Options:
+#* OPTIONS:
 #*     -t, --tags _tag1,_tag2,_tag3
 #*     --tags "_tag1 _tag2 _tag3"
 #*         Print out values of tags _tag1, _tag2, and _tag3;
@@ -61,11 +62,11 @@ my $use_parser = "c";
 #*         Do not print out any header.
 #*
 #*     -r, --replace-spaces
-#*         Replace spaces into underscores (default)
+#*         Replace spaces into underscores (default).
 #*
 #*     -r-, --dont-replace-spaces, --no-replace-spaces
 #*         Do not replace spaces into underscores (works satistactory only when
-#*         tabs are used as separators)
+#*         tabs are used as separators).
 #*
 #*     -s, --separator=", "
 #*         Use the specified string as a separator between tag values on a line.
@@ -75,26 +76,35 @@ my $use_parser = "c";
 #*         list of values.
 #*
 #*     --add-uniquified-tag _tag1
-#*         Add tag '_tag' to the uniquified tag list
+#*         Add tag '_tag' to the uniquified tag list.
 #*
-#*     -u-, --dont-uniquify-tags
-#*         Print all values of all tags, do not uniquify any tags
+#*     -u-, --dont-uniquify-tags, --no-uniquify-tags
+#*         Print all values of all tags, do not uniquify any tags (default).
 #*
 #*     --tab-separator
-#*         Use TAB character as a separator between tag values on a line.
+#*         Use TAB character as a separator between tag values on a line
 #*         (default).
 #*
-#**    --treat-dots-as-underscores
-#**        Convert all dots in tag names into underscores (default)
-#**
-#*     --vseparator ',' --value-separator ','
-#*         Use the specified string to separate multiple values of a given tag.
+#*     --vseparator, --value-separator ','
+#*         Use the specified string to separate multiple values of a given tag
+#*         (default ',').
 #*
-#**    --dont-treat-dots-as-underscores,--no-treat-dots-as-underscores
-#**        Leave original tags as they are.
-#**
+#*     --treat-dots-as-underscores
+#*         Convert all dots in tag names into underscores (default).
+#*
+#*     --dont-treat-dots-as-underscores,--no-treat-dots-as-underscores
+#*         Leave original tags as they are.
+#*
 #*     --filename
 #*         Print out full filename at the beginning of each line.
+#*
+#*     --fix-syntax-errors
+#*         Try to fix those syntax errors in input CIFs that can be corrected
+#*         unambiguously.
+#*
+#*     --no-fix-syntax-errors,
+#*     --dont-fix-syntax-errors
+#*          Do not try to fix syntax errors in input CIFs (default).
 #*
 #*     --basename
 #*         Print out basename of each file at the beginning of each line.
@@ -112,7 +122,7 @@ my $use_parser = "c";
 #*     --use-c-parser
 #*         Specify parser to parse CIF files. C parser is default.
 #*
-#*     --help  print a short usage message (this message) and exit.
+#*     --help, --usage  Print a short usage message (this message) and exit.
 #**
 
 @ARGV = getOptions(
@@ -186,34 +196,22 @@ if( $header ) {
 
 for my $filename (@ARGV) {
 
-    my( $data, $error_count );
-    my %options;
+    my $options = { fix_errors => $fix_errors,
+                    parser     => $use_parser,
+                    no_print   => 1 };
 
-    if( $fix_errors ) {
-        $options{fix_errors} = 1;
+    my ( $data, $err_count, $messages ) = parse_cif( $filename, $options );
+
+    if ( $err_count > 0 ) {
+        print STDERR $_ foreach ( @$messages );
+        error( $0, $filename, undef, "$err_count error(s) "
+             . "encountered while parsing the file", undef );
+        next;
     }
+    print STDERR $_ foreach ( @$messages );
 
-    if( $use_parser eq "perl" ) {
-        my $parser = new COD::CIFParser::CIFParser;
-
-        $data = $parser->Run($filename, \%options);
-
-        if( defined $parser->YYData->{ERRCOUNT} ) {
-            $error_count = $parser->YYData->{ERRCOUNT};
-        }
-    } else {
-        require COD::CCIFParser::CCIFParser;
-        ( $data, $error_count ) = COD::CCIFParser::CCIFParser::parse( $filename, \%options );
-    }
-
-    if( defined $error_count && $error_count > 0 ) {
-        print STDERR "$0: ", $error_count,
-        " error(s) encountered while parsing file '${filename}'\n";
-        die;
-    }
-
-    if( !@{$data} || !defined $data->[0] || !defined $data->[0]{name} ) {
-        warn( "file '$filename' seems to be empty" );
+    if( !defined $data->[0] || !defined $data->[0]{name} ) {
+        warning( $0, $filename, undef, 'file seems to be empty', undef );
         next;
     }
 

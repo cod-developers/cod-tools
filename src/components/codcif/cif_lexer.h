@@ -10,11 +10,12 @@
 
 #include <stdio.h>
 #include <stdlib.h> /* for ssize_t */
+#include <cexceptions.h>
 
 int yylex( void );
 void yyrestart( void );
 
-int cif_lexer( FILE *in );
+int cif_lexer( FILE *in, cexception_t *ex );
 
 void cif_flex_reset_counters( void );
 
@@ -27,5 +28,10 @@ const char *cif_flex_current_line( void );
 int cif_flex_previous_line_number( void );
 int cif_flex_previous_position( void );
 const char *cif_flex_previous_line( void );
+
+int cif_lexer_set_report_long_items( int flag );
+int cif_lexer_report_long_items( void );
+int cif_lexer_set_line_length_limit( int max_length );
+int cif_lexer_set_tag_length_limit( int max_length );
 
 #endif

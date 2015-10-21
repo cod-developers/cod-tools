@@ -27,6 +27,11 @@ endif
 YAPP_SOURCES := $(wildcard $(addsuffix /*.yp, ${YAPP_MODULE_DIRS}))
 YAPP_MODULES := ${YAPP_SOURCES:%.yp=%.pm}
 
+# Getting the name of the perl Yapp module and transforming it to target path
+YAPP_MODULES += $(patsubst ${YAPP_PARSER_SRC_DIR}/%.yp, \
+                           ${YAPP_PARSER_LIB_DIR}/%.pm, \
+                           $(wildcard ${YAPP_PARSER_SRC_DIR}/*.yp))
+
 PERL_SWIG_SOURCES := $(wildcard $(addsuffix /*.i, ${PERL_SWIG_MODULE_DIRS}))
 PERL_SWIG_MODULES := ${PERL_SWIG_SOURCES:%.i=%.pm}
 
@@ -37,7 +42,7 @@ SWIG_MODULES := ${PERL_SWIG_MODULES} ${PYTHON_SWIG_MODULES}
 
 COMPILED_MODULES := ${YAPP_MODULES} ${SWIG_MODULES}
 
-.PRECIOUS: %.pm %.py
+.PRECIOUS: %.pm %.py ${YAPP_MODULES}
 
 #
 # TEST variable should be defined in the Makeconf file, or on the
@@ -52,8 +57,11 @@ all: tests
 
 #------------------------------------------------------------------------------
 
+${YAPP_PARSER_LIB_DIR}/%.pm: ${YAPP_PARSER_SRC_DIR}/%.yp
+	${MAKE} -C $(dir $<) LIB_DIR=${YAPP_PARSER_LIB_DIR}
+
 %.pm: %.yp
-	${MAKE} -C $(dir $@) $(notdir $@) tests
+	${MAKE} -C $(dir $@) all tests #$(notdir $@) tests
 
 %.pm %.py: %.c %.i
 	${MAKE} -C $(@D) $(@F) all
@@ -109,18 +117,24 @@ SHELL_OUTPUTS = ${addprefix ${SHELL_OUTDIR}/, ${SHELL_BASES:%.sh=%.out}}
 SHELL_DIFFS   = ${addprefix ${SHELL_OUTDIR}/, ${SHELL_BASES:%.sh=%.diff}}
 
 #------------------------------------------------------------------------------
-# Generate %.diff file dependencies from their respcetive scripts:
+# Generate %.diff file dependencies from their respective scripts:
 
 include .diff.depend
 
 ALL_SCRIPTS = ${filter-out %~, ${wildcard ${SCRIPT_DIR}/*}}
 SCRIPT_DEPENDS = ${ALL_SCRIPTS:${SCRIPT_DIR}/%=${SCRIPT_DIR}/.%.d}
 
-ALL_INPUTS = $(wildcard ${SCRIPT_TST_DIR}/*.*)
+ALL_INPUTS = $(wildcard ${SCRIPT_TST_DIR}/*.* ${SHELL_TSTDIR}/*.sh)
 
 .diff.depend: .script.depend ${ALL_INPUTS}
-	@perl -le \
-		'for(@ARGV){ print "${OUTPUT_DIR}/",$$1,"_",$$2,".diff: ",$$1 if m|/(.*?)_(\d{2,4})\.\w{3}$$| }' \
+	@perl -l \
+		-e 'for (@ARGV) {'\
+		-e '    if ( m|/(.*?)_(\d{2,4})\.\w{3}$$| ) {' \
+		-e '        print "${OUTPUT_DIR}/",$$1,"_",$$2,".diff: ",$$1 ' \
+		-e '    } elsif (m|.*/(.*?)_(\d{2,4})\.sh$$|) {' \
+		-e '        print "${SHELL_OUTDIR}/$$1_$$2.diff: ${SCRIPT_DIR}/$$1" ' \
+		-e '    } else {  };' \
+		-e '}' \
 	${filter-out .script.depend,$^} \
 	| sed 's,: cases/,: scripts/,' \
 	| sed 's,tests/outputs/cases/,tests/outputs/,' \
@@ -148,9 +162,10 @@ ${SCRIPT_DIR}/.%.d: ${SCRIPT_DIR}/%
 
 define filter_perl_messages
 perl -pe 's/Id: [-\w]+ \d+ [-\d]+ [:\dZ]+ \w+/Id: <script_name> <revision_nr> <date> <time> <author>/' \
-| perl -pe 's,at [-\.\/\w\d]+ line \d+\.,at <script_name> line <line_no>.,' \
+| perl -pe 's,at [-\.\/\w\d]+ line \d+\.?,at <script_name> line <line_no>.,' \
 | perl -pe 's/Use of uninitialized value [^\s]+ in/Use of uninitialized value in/g' \
 | perl -pe 's/(Use of uninitialized value in pattern match \(m\/\/\) at )([a-zA-Z0-9\-\/]+)\/([a-zA-Z0-9\-\.]+) line \d+, <([^>])+> line \d+/$$1$$3 line <line_no>/g' \
+| perl -pe 's/(unknown MySQL server host .*?)(\(\d*\)).$)/$$1(<error code>)./' \
 | perl -pe 's/OpenBabel\d+.*/OpenBabel9999999999D/' \
 | perl -pe 's/(_cod_hold_until_date .* )(\d{4}-\d{2}-\d{2})/$$1<date>/' \
 | perl -pe 's/^(CIF\s+_journal_year\s+)\d{4}/$$1<year>/' \
@@ -242,14 +257,14 @@ ${TST_OUT_DIR}/%.out: ${TST_EXE_DIR}/% ${COMPILED_MODULES}
 	-@touch $@
 
 ${TST_OUT_DIR}/%.diff: ${TST_EXE_DIR}/% ${COMPILED_MODULES}
-	-@printf "%-30s " "$*:" ; \
+	-@printf "%-30s " "$<:" ; \
 	( ${SCRIPT_DIR}/$< \
 	| ${buffer_output} ) 2>&1 \
 	| ${filter_perl_messages} \
 	| diff ${TST_OUT_DIR}/$*.out - > $@ ; \
 	if [ $$? = 0 ]; then echo "OK"; else echo "FAILED:"; cat $@; fi
 
-.PHONY: shoutpus shout shtests shtest
+.PHONY: shoutputs shout shtests shtest
 
 shoutputs shout: ${SHELL_OUTPUTS}
 
@@ -264,7 +279,7 @@ ${SHELL_OUTDIR}/%.out: ${SHELL_TSTDIR}/%.sh ${COMPILED_MODULES}
 	-@touch $@
 
 ${SHELL_OUTDIR}/%.diff: ${SHELL_TSTDIR}/%.sh ${COMPILED_MODULES}
-	-@printf "%-30s " "$*:" ; \
+	-@printf "%-30s " "$<:" ; \
 	if [ ! -f ${SHELL_TSTDIR}/$*.chk ] || ${SHELL_TSTDIR}/$*.chk; \
 	then \
 	( $< \
@@ -282,6 +297,7 @@ tests alltests: test shtests
 
 .PHONY: listdiff blame
 
+DIFF_DIRS = $(dir ${YAPP_SOURCES} ${YAPP_PARSER_SRC_DIR}/ ${SWIG_MODULES})
 listdiff: # test
 	@-( test -d ${OUTPUT_DIR} && \
 	    ls -l ${OUTPUT_DIR}/*.diff | awk '{if( $$5 > 0 ) print}' ) || \
@@ -289,11 +305,14 @@ listdiff: # test
 	@-( test -d ${SHELL_OUTDIR} && \
 	    ls -l ${SHELL_OUTDIR}/*.diff | awk '{if( $$5 > 0 ) print}' ) || \
 	    true
+	@-for DIR in ${DIFF_DIRS}; do \
+		${MAKE} -C $$DIR $@; \
+	done
 
 blame:
 	@-( test -d ${OUTPUT_DIR} && \
-	    ls -l ${OUTPUT_DIR}/*.${DIFF_EXT} |  awk '{if( $$5 > 0 ) print $$NF}' | \
-	    xargs -n1 basename | \
+	    ls -l ${OUTPUT_DIR}/*.${DIFF_EXT} | awk '{if( $$5 > 0 ) print $$NF}' | \
+	    ifne xargs -n1 basename | \
 	    perl -pe "s/(.*)\.${DIFF_EXT}/\$$1/" | xargs -i sh -c '\
 	            DESC_FILE="${SCRIPT_TST_DIR}/{}.${DESC_EXT}"; \
 	            echo "{}:"; \
@@ -314,9 +333,8 @@ clean:
 	rm -f ${TST_DIFFS}
 	rm -f ${SHELL_DIFFS}
 
-MAKE_DIRS = $(dir $(wildcard */Makefile))
-
-cleanAll distclean: clean ${LOCAL_CLEAN_TARGETS}
+MAKE_DIRS = $(dir $(wildcard */Makefile)) ${LOCAL_CLEAN_TARGETS}
+cleanAll distclean: clean 
 	rm -f ${COMPILED_MODULES}
 	rm -f ${SCRIPT_DEPENDS}
 	for DIR in ${MAKE_DIRS}; do \

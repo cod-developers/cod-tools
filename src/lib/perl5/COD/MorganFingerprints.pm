@@ -12,12 +12,11 @@ package COD::MorganFingerprints;
 
 use strict;
 use warnings;
+use List::Util qw(sum);
 
 require Exporter;
-@COD::MorganFingerprints::ISA = qw(Exporter);
-@COD::MorganFingerprints::EXPORT = qw(
-    make_morgan_fingerprint
-);
+our @ISA = qw(Exporter);
+our @EXPORT = qw(make_morgan_fingerprint);
 
 sub make_morgan_fingerprint
 {
@@ -62,8 +61,8 @@ sub make_morgan_fingerprint
         my @orders_now;
         for( my $i = 0; $i < $nr; $i++ ) {
             my @neighbour_indices = @{ $neighbours->{neighbours}[$i] };
-            $orders_now[$i] = sum( map { $orders[$_] }
-                                       @neighbour_indices );
+            $orders_now[$i] = sum( 0.0, map { $orders[$_] }
+                                            @neighbour_indices );
         }
         my %unique_orders_now = map { $_ => 1 } @orders_now;
         my $nr_unique_orders_now = scalar keys %unique_orders_now;
@@ -136,13 +135,6 @@ sub traverse_graph
     }
 
     return $fingerprint;
-}
-
-sub sum
-{
-    my $sum = 0.0;
-    foreach( @_ ) { $sum += $_; }
-    return $sum;
 }
 
 1;

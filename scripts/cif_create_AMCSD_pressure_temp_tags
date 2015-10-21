@@ -14,11 +14,13 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #**
 
 use strict;
-use COD::CIFParser::CIFParser;
-use COD::CIFTags::CIFTagCanonicalNames;
-use COD::CIFTags::CIFDictTags;
-use COD::CIFTags::CIFCODTags;
-use COD::CIFTags::CIFTagPrint;
+use warnings;
+use COD::CIF::Parser::Yapp;
+use COD::CIF::Tags::CanonicalNames;
+use COD::CIF::Tags::DictTags;
+use COD::CIF::Tags::COD;
+use COD::CIF::Tags::Print;
+use COD::UserMessage qw(note warning error prefix_dataname);
 use COD::SOptions;
 use COD::SUsage;
 
@@ -41,8 +43,8 @@ my $keep_tag_order = 0;
     "--help,--usage"   => sub { usage; exit },
 );
 
-my @dictionary_tags = ( @COD::CIFTags::CIFDictTags::tag_list,
-                        @COD::CIFTags::CIFCODTags::tag_list );
+my @dictionary_tags = ( @COD::CIF::Tags::DictTags::tag_list,
+                        @COD::CIF::Tags::COD::tag_list );
 my %dictionary_tags = map { $_, $_ } @dictionary_tags;
 
 sub get_pressure_unit_coefficient($);
@@ -51,14 +53,13 @@ sub get_temperature_unit_shift($);
 @ARGV = ("-") unless @ARGV;
 
 for my $filename (@ARGV) {
-    my $parser = new COD::CIFParser::CIFParser;
+    my $parser = new COD::CIF::Parser::Yapp;
     my $data = $parser->Run($filename);
 
     if( defined $parser->YYData->{ERRCOUNT} &&
         $parser->YYData->{ERRCOUNT} > 0 ) {
-        print STDERR "$0: $filename: ",
-        $parser->YYData->{ERRCOUNT},
-        " error(s) encountered while parsing CIF data\n";
+        error( $0, $filename, undef, $parser->YYData->{ERRCOUNT}
+             . " error(s) encountered while parsing CIF data", undef );
         exit -1;
     }
 
@@ -67,6 +68,7 @@ for my $filename (@ARGV) {
     for my $dataset (@$data) {
 
         my $values = $dataset->{values};
+        my $dataname = prefix_dataname($dataset->{name});
 
         my $temperature_is_processing = 0;
 
@@ -76,10 +78,10 @@ for my $filename (@ARGV) {
                  (P(?:ressure)?|T(?:emperature)?)\s*=\s*([-+0-9.E]+)\s*
                  ((?:deg(?:ree(?:s)?)?\s+)?[\w]+)/xi
                 ) {
-                print STDERR "$0: $filename data_$dataset->{name}: ",
-                "WARNING, structure marked as '$1', not taking " . 
-                    ($1 eq "P" ? "pressure" : "temperature") . 
-                    " value\n";
+                warning( $0, $filename, $dataname,
+                         "structure marked as '$1', not taking "
+                       . ($1 eq "P" ? "pressure" : "temperature") . ' value',
+                         undef );
                 $temperature_is_processing = 1;
             }
 
@@ -172,7 +174,7 @@ for my $filename (@ARGV) {
                     $coefficient = get_pressure_unit_coefficient( $units );
                 };
                 if( $@ ) {
-                    print STDERR "$0: $filename data_$dataset->{name}: ", $@;
+                    error( $0, $filename, $dataname, $@, undef );
                     next;
                 }
                 my $pressure_kPa =
@@ -180,20 +182,20 @@ for my $filename (@ARGV) {
                 $pressure_kPa =~ s/\s//g;
                 if( !exists $values->{_diffrn_ambient_pressure} ) {
                     $values->{_diffrn_ambient_pressure}[0] = $pressure_kPa;
-                    print STDERR ">>> $filename: P = " .
-                        "$pressure, $units, $coefficient\n";
+                    note( $0, $filename, $dataname,
+                          "P = $pressure, $units, $coefficient", undef );
 
                 } else {
                     if( $values->{_diffrn_ambient_pressure}[0] !=
                         $pressure_kPa ) {
-                        print STDERR "$0: $filename $dataset->{name}: " .
-                            "pressure given in '$tag' value, interpreted as " .
-                            " $pressure $units " .
-                            ($units eq "kPa" ? "" : "($pressure_kPa kPa) ") .
-                            "is not equal to the value in the " .
-                            "_diffrn_ambient_pressure tag (" .
-                            $values->{_diffrn_ambient_pressure}[0] .
-                            " GPa)\n";
+                        warning( $0, $filename, $dataname,
+                            "pressure given in '$tag' value, interpreted as "
+                          . " $pressure $units "
+                          . ($units eq "kPa" ? "" : "($pressure_kPa kPa) ")
+                          . "is not equal to the value in the "
+                          . "_diffrn_ambient_pressure tag ("
+                          . $values->{_diffrn_ambient_pressure}[0] . " GPa)",
+                             undef );
                     }
                 }
             }
@@ -208,25 +210,25 @@ for my $filename (@ARGV) {
                     $shift = get_temperature_unit_shift( $units );
                 };
                 if( $@ ) {
-                    print STDERR "$0: $filename data_$dataset->{name}: ", $@;
+                    error( $0, $filename, $dataname, $@, undef );
                     next;
                 }
                 my $temp_K = $temperature + $shift;
                 if( !exists $values->{_diffrn_ambient_temperature} ) {
                     $values->{_diffrn_ambient_temperature}[0] = $temp_K;
-                    print STDERR ">>> $filename: T = " .
-                        "$temperature, $units, $shift\n";
+                    note( $0, $filename, $dataname,
+                          "T = $temperature, $units, $shift", undef );
                 } else {
                     if( abs($values->{_diffrn_ambient_temperature}[0] - $temp_K)
                         >= 0.001 ) {
-                        print STDERR "$0: $filename $dataset->{name}: " .
-                            "temperature given in '$tag' value, " .
-                            "interpreted as $temperature $units " .
-                            ($units eq "K" ? "" : "($temp_K K) ") .
-                            "is not equal to the value in the " .
-                            "_diffrn_ambient_temperature tag (" .
-                            $values->{_diffrn_ambient_temperature}[0] .
-                            " K)\n";
+                        warning( $0, $filename, $dataname,
+                                 "temperature given in '$tag' value, "
+                               . "interpreted as $temperature $units "
+                               . ($units eq "K" ? "" : "($temp_K K) ")
+                               . "is not equal to the value in the "
+                               . "_diffrn_ambient_temperature tag ("
+                               . $values->{_diffrn_ambient_temperature}[0]
+                               . " K)", undef );
                     }
                 }
             }

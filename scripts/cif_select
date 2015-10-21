@@ -13,13 +13,15 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #**
 
 use strict;
+use warnings;
 use File::Basename;
-use COD::CIFParser::CIFParser;
-use COD::CIFTags::CIFTagCanonicalNames;
-use COD::CIFTags::CIFTagManage;
-use COD::CIFTags::CIFTagPrint;
+use COD::CIF::Parser qw(parse_cif);
+use COD::CIF::Tags::CanonicalNames;
+use COD::CIF::Tags::Manage;
+use COD::CIF::Tags::Print;
 use COD::SOptions;
 use COD::SUsage;
+use COD::UserMessage;
 
 my @selected_tags;
 
@@ -137,26 +139,16 @@ my %selected_tags = map { ($_, $_) } @selected_tags;
 
 for my $filename (@ARGV) {
 
-    my( $data, $error_count );
+    my $options = { 'parser' => $use_parser, 'no_print' => 1 };
+    my ( $data, $err_count, $messages ) = parse_cif( $filename, $options );
 
-    if( $use_parser eq "perl" ) {
-        my $parser = new COD::CIFParser::CIFParser;
-
-        $data = $parser->Run($filename);
-
-        if( defined $parser->YYData->{ERRCOUNT} ) {
-            $error_count = $parser->YYData->{ERRCOUNT};
-        }
-    } else {
-        require COD::CCIFParser::CCIFParser;
-        ( $data, $error_count ) = COD::CCIFParser::CCIFParser::parse($filename);
-    }
-
-    if( defined $error_count && $error_count > 0 ) {
-        print STDERR "$0: ", $error_count,
-        " error(s) encountered while parsing file '${filename}'\n";
+    if ( $err_count > 0 ) {
+        print STDERR $_ foreach ( @$messages );
+        error( $0, $filename, undef, "$err_count error(s) "
+             . "encountered while parsing the file", undef );
         die;
     }
+    print STDERR $_ foreach ( @$messages );
 
     if( !@{$data} || !defined $data->[0] || !defined $data->[0]{name} ) {
         warn( "file '$filename' seems to be empty" );
