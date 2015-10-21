@@ -23,10 +23,10 @@ use COD::UserMessage qw(error);
 use COD::SOptions;
 use COD::SUsage;
 
-my $use_parser = 'c';
 my $output_format = 'dump';
 my $input_json  = 0;
-my %options;
+my %options = ( no_print => 1 );
+
 @ARGV = getOptions(
 
 #** USAGE:
@@ -57,8 +57,8 @@ my %options;
 #**
 #** --help,--usage     print short usage message (this message) and exit
 
-    "--use-perl-parser" => sub{ $use_parser = 'perl' },
-    "--use-c-parser"    => sub{ $use_parser = 'c' },
+    "--use-perl-parser" => sub{ $options{parser} = 'perl' },
+    "--use-c-parser"    => sub{ $options{parser} = 'c' },
     "--do-not-unprefix-text" => sub{ $options{do_not_unprefix_text} = 1 },
     "--do-not-unfold-text"   => sub{ $options{do_not_unfold_text} = 1 },
     "--fix-errors"           => sub{ $options{fix_errors} = 1 },
@@ -76,14 +76,15 @@ my %options;
     "--fix-ctrl-z"  => sub{ $options{fix_ctrl_z} = 1 },
     "--allow-uqstring-brackets" => sub{ $options{allow_uqstring_brackets} = 1 },
 
-    "--input-json"  => sub { $input_json  = 1 },
-    "--input-cif"   => sub { $input_json  = 0 },
+    # Bison parser is default:
+    "--input-cif"  => sub { $options{parser} = 'c' },
+    "--input-json" => sub { $options{parser} = 'json' },
 
     "--output-dump"   => sub { $output_format = 'dump' },
     "--output-json"   => sub { $output_format = 'json' },
     "--output-struct" => sub { $output_format = 'struct' },
 
-    "--json" => sub { $input_json = 1; $output_format = 'json' },
+    "--json" => sub { $options{parser} = 'json'; $output_format = 'json' },
 
     "--help,--usage"  => sub { usage; exit },
 );
@@ -92,22 +93,8 @@ my %options;
 
 foreach( @ARGV ) {
 
-    my( $data, $err_count, $messages );
-    if( $input_json ) {
-        local $SIG{__DIE__} =
-            sub { my( $msg ) = @_;
-                  $msg =~ s/at \S+ line \d+(, <[^>]*> line \d+.?)?$//;
-                  die "$0: $_: $msg"
-            };
-        open( my $inp, $_ );
-        $data = json2cif( join( "\n", <$inp> ) );
-        close( $inp );
-        $err_count = 0;
-    } else {
-        $options{no_print} = 1;
-        ($data, $err_count, $messages) = parse_cif( $_, \%options );
-        print STDERR $_ foreach ( @$messages );
-    }
+    my( $data, $err_count, $messages ) = parse_cif( $_, \%options );
+    print STDERR $_ foreach ( @$messages );
 
     if( $output_format eq 'json' ) {
         print cif2json( $data );
