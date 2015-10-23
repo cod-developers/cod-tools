@@ -9,21 +9,44 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #$URL$
 #------------------------------------------------------------------------------
 #*
-#  Parse a CIF file
+#  Parse a CIF file.
 #**
 
 use strict;
 use warnings;
-use COD::CIF::Parser::Yapp;
+use COD::CIF::Parser qw( parse_cif );
 use COD::ShowStruct;
+use COD::SOptions;
+use COD::SUsage;
 
-my $filename = shift(@ARGV);
+my $use_parser = 'c';
 
-my $parser = new COD::CIF::Parser::Yapp;
+#* USAGE:
+#*     $0 --options input1.cif input*.cif
+#*
+#* OPTIONS:
+#*
+#* --use-perl-parser
+#*                     Use development CIF parser written in Perl.
+#* --use-c-parser
+#*                     Use faster C/Yacc CIF parser (default).
+#*
+#* --help,--usage      Print a short usage message (this message) and exit.
+#**
+@ARGV = getOptions(
+    "--use-perl-parser" => sub{ $use_parser = "perl" },
+    "--use-c-parser"    => sub{ $use_parser = "c" },
 
-my $data = $parser->Run($filename);
+    "--help,--usage"    => sub { usage; exit }
+);
 
+@ARGV = ("-") unless @ARGV;
 
-for my $dataset (@$data) {
-    showRef( $dataset );
+foreach my $filename ( @ARGV ) {
+
+    my ( $data ) = parse_cif( $filename, { parser => $use_parser } );
+
+    for my $dataset (@$data) {
+        showRef( $dataset );
+    }
 }
