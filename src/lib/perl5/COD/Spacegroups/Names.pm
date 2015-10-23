@@ -79,9 +79,11 @@ our @EXPORT = qw( @names );
 [36,        "C m c 21",        "C m c 21" ],
 [37,        "C c c 2",        "C c c 2" ],
 [38,        "A m m 2",        "A m m 2" ],
-[39,        "A b m 2",        "A b m 2" ],
+[39,        "A e m 2",        "A e m 2" ], # As described in ITC volume A
+[39,        "A b m 2",        "A e m 2" ], # As described in ITC volume A
 [40,        "A m a 2",        "A m a 2" ],
-[41,        "A b a 2",        "A b a 2" ],
+[41,        "A e a 2",        "A e a 2" ], # As described in ITC volume A
+[41,        "A b a 2",        "A e a 2" ], # As described in ITC volume A
 [42,        "F m m 2",        "F m m 2" ],
 [43,        "F d d 2",        "F d d 2" ],
 [44,        "I m m 2",        "I m m 2" ],
@@ -122,8 +124,9 @@ our @EXPORT = qw( @names );
 [62,        "P n m a",        "P n m a" ],
 [63,        "C m c m",        "C 2/m 2/c 21/m" ],
 [63,        "C m c m",        "C m c m" ],
-[64,        "C m c a",        "C 2/m 2/c 21/a" ],
-[64,        "C m c a",        "C m c a" ],
+[64,        "C m c e",        "C 2/m 2/c 21/e" ], # As described in ITC volume A
+[64,        "C m c e",        "C m c e" ],        # As described in ITC volume A
+[64,        "C m c a",        "C m c e" ],        # As described in ITC volume A
 [65,        "C m m m",        "C 2/m 2/m 2/m" ],
 [65,        "C m m m",        "C m m m" ],
 [66,        "C c c m",        "C 2/c 2/c 2/m" ],
@@ -459,21 +462,31 @@ our @EXPORT = qw( @names );
 [38, "B m m 2" , "B m m 2"  ],
 [38, "C 2 m m" , "C 2 m m"  ],
 [38, "C m 2 m" , "C m 2 m"  ],
-[39, "A c 2 m" , "A c 2 m"  ],
-[39, "B 2 c m" , "B 2 c m"  ],
-[39, "B m a 2" , "B m a 2"  ],
-[39, "C 2 m b" , "C 2 m b"  ],
-[39, "C m 2 a" , "C m 2 a"  ],
+[39, "A e 2 m" , "A e 2 m"  ],
+[39, "A c 2 m" , "A e 2 m"  ],
+[39, "B 2 e m" , "B 2 e m"  ],
+[39, "B 2 c m" , "B 2 e m"  ],
+[39, "B m e 2" , "B m e 2"  ],
+[39, "B m a 2" , "B m e 2"  ],
+[39, "C 2 m e" , "C 2 m e"  ],
+[39, "C 2 m b" , "C 2 m e"  ],
+[39, "C m 2 e" , "C m 2 e"  ],
+[39, "C m 2 a" , "C m 2 e"  ],
 [40, "A m 2 a" , "A m 2 a"  ],
 [40, "B 2 m b" , "B 2 m b"  ],
 [40, "B b m 2" , "B b m 2"  ],
 [40, "C 2 c m" , "C 2 c m"  ],
 [40, "C c m 2" , "C c m 2"  ],
-[41, "A c 2 a" , "A c 2 a"  ],
-[41, "B 2 c b" , "B 2 c b"  ],
-[41, "B b a 2" , "B b a 2"  ],
-[41, "C 2 c b" , "C 2 c b"  ],
-[41, "C c 2 a" , "C c 2 a"  ],
+[41, "A e 2 a" , "A e 2 a"  ],
+[41, "A c 2 a" , "A e 2 a"  ],
+[41, "B 2 e b" , "B 2 e b"  ],
+[41, "B 2 c b" , "B 2 e b"  ],
+[41, "B b e 2" , "B b e 2"  ],
+[41, "B b a 2" , "B b e 2"  ],
+[41, "C 2 e b" , "C 2 e b"  ],
+[41, "C 2 c b" , "C 2 e b"  ],
+[41, "C c 2 e" , "C c 2 e"  ],
+[41, "C c 2 a" , "C c 2 e"  ],
 [42, "F 2 m m" , "F 2 m m"  ],
 [42, "F m 2 m" , "F m 2 m"  ],
 [42, "F m m 2" , "F m m 2"  ],
@@ -554,11 +567,16 @@ our @EXPORT = qw( @names );
 [63, "B b m m" , "B b m m"  ],
 [63, "B m m b" , "B m m b"  ],
 [63, "C c m m" , "C c m m"  ],
-[64, "A b m a" , "A b m a"  ],
-[64, "A c a m" , "A c a m"  ],
-[64, "B b c m" , "B b c m"  ],
-[64, "B m a b" , "B m a b"  ],
-[64, "C c m b" , "C c m b"  ],
+[64, "A e m a" , "A e m a"  ],
+[64, "A b m a" , "A e m a"  ],
+[64, "A e a m" , "A e a m"  ],
+[64, "A c a m" , "A e a m"  ],
+[64, "B b e m" , "B b e m"  ],
+[64, "B b c m" , "B b e m"  ],
+[64, "B m e b" , "B m e b"  ],
+[64, "B m a b" , "B m e b"  ],
+[64, "C c m e" , "C c m e"  ],
+[64, "C c m b" , "C c m e"  ],
 [65, "A m m m" , "A m m m"  ],
 [65, "B m m m" , "B m m m"  ],
 [65, "C m m m" , "C m m m"  ],
@@ -569,11 +587,13 @@ our @EXPORT = qw( @names );
 [67, "A c m m" , "A c m m"  ],
 [67, "B m a m" , "B m a m"  ],
 [67, "B m c m" , "B m c m"  ],
+[67, "C m m a" , "C m m a"  ],
 [67, "C m m b" , "C m m b"  ],
 [68, "A b a a" , "A b a a"  ],
 [68, "A c a a" , "A c a a"  ],
 [68, "B b a b" , "B b a b"  ],
 [68, "B b c b" , "B b c b"  ],
+[68, "C c c a" , "C c c a"  ],
 [68, "C c c b" , "C c c b"  ],
 [69, "F m m m" , "F m m m"  ],
 [70, "F d d d" , "F d d d"  ],
@@ -667,18 +687,22 @@ our @EXPORT = qw( @names );
 [59, "P n m m :2", "P n m m :2"],
 [59, "P m n m :1", "P m n m :1"],
 [59, "P m n m :2", "P m n m :2"],
-[68, "C c c a :1", "C c c a :1"],
-[68, "C c c a :2", "C c c a :2"],
-[68, "C c c b :1", "C c c b :1"],
-[68, "C c c b :2", "C c c b :2"],
-[68, "A b a a :1", "A b a a :1"],
-[68, "A b a a :2", "A b a a :2"],
-[68, "A c a a :1", "A c a a :1"],
-[68, "A c a a :2", "A c a a :2"],
-[68, "B b c b :1", "B b c b :1"],
-[68, "B b c b :2", "B b c b :2"],
-[68, "B b a b :1", "B b a b :1"],
-[68, "B b a b :2", "B b a b :2"],
+# The following entires were redefined
+# in accordance to the notation using
+# the 'e' symbol
+#
+#[68, "C c c a :1", "C c c a :1"],
+#[68, "C c c a :2", "C c c a :2"],
+#[68, "C c c b :1", "C c c b :1"],
+#[68, "C c c b :2", "C c c b :2"],
+#[68, "A b a a :1", "A b a a :1"],
+#[68, "A b a a :2", "A b a a :2"],
+#[68, "A c a a :1", "A c a a :1"],
+#[68, "A c a a :2", "A c a a :2"],
+#[68, "B b c b :1", "B b c b :1"],
+#[68, "B b c b :2", "B b c b :2"],
+#[68, "B b a b :1", "B b a b :1"],
+#[68, "B b a b :2", "B b a b :2"],
 [70, "F d d d :1", "F d d d :1"],
 [70, "F d d d :2", "F d d d :2"],
 [85, "P 4/n :1", "P 4/n :1"],
@@ -720,6 +744,61 @@ our @EXPORT = qw( @names );
 [228, "F d -3 c :1", "F d -3 c :1"],
 [228, "F d -3 c :2", "F d -3 c :2"],
 
+# H-M symbols added in order to correctly process the space groups with 'e'
+# notation (see International Tables of Crystallography Volume A)
+
+[67, "A e m m" , "A e m m"  ], # Represents 'A b m m' and 'A c m m'
+[67, "B m e m" , "B m e m"  ], # Represents 'B m a m' and 'B m c m'
+[67, "C m m e" , "C m m e"  ], # Represents 'C m m a' and 'C m m b'
+[67, "A e m m :1", "A e m m :1"],
+[67, "A b m m :1", "A b m m :1"],
+[67, "A c m m :1", "A c m m :1"],
+[67, "A e m m :2", "A e m m :2"],
+[67, "A b m m :2", "A b m m :2"],
+[67, "A c m m :2", "A c m m :2"],
+[67, "B m e m :1", "B m e m :1"],
+[67, "B m a m :1", "B m a m :1"],
+[67, "B m c m :1", "B m c m :1"],
+[67, "B m e m :2", "B m e m :2"],
+[67, "B m a m :2", "B m a m :2"],
+[67, "B m c m :2", "B m c m :2"],
+[67, "C m m e :1", "C m m e :1"],
+[67, "C m m a :1", "C m m a :1"],
+[67, "C m m b :1", "C m m b :1"],
+[67, "C m m e :2", "C m m e :2"],
+[67, "C m m a :2", "C m m a :2"],
+[67, "C m m b :2", "C m m b :2"],
+
+[68, "A e a a" , "A e a a"  ], # Represents 'A b a a' and 'A c a a'
+[68, "B b e b" , "B b e b"  ], # Represents 'B b a b' and 'B b c b'
+[68, "C c c e" , "C c c e"  ], # Represents 'C c c a' and 'C c c b'
+# 'C c c a :1' and 'C c c b :1' have the same symmetry operators,
+# so both are renamed to 'C c c e :1'. The same if not true for
+# 'C c c a :2' and 'C c c b :2'.
+[68, "C c c e :1", "C c c e :1"],
+[68, "C c c a :1", "C c c e :1"],
+[68, "C c c b :1", "C c c e :1"],
+[68, "C c c e :2", "C c c e :2"], # Represents be 'C c c a :2' and 'C c c b :2'
+[68, "C c c a :2", "C c c a :2"],
+[68, "C c c b :2", "C c c b :2"],
+# 'A b a a :1' and 'A c a a :1' have the same symmetry operators,
+# so both are renamed to 'A e a a :1'. The same if not true for
+# 'A b a a :2' and 'A c a a :2'.
+[68, "A e a a :1", "A e a a :1"],
+[68, "A b a a :1", "A e a a :1"],
+[68, "A c a a :1", "A e a a :1"],
+[68, "A e a a :2", "A e a a :2"], # Represents be 'A b a a :2' and 'A c a a :2'
+[68, "A b a a :2", "A b a a :2"],
+[68, "A c a a :2", "A c a a :2"],
+# 'B b c b :1' and 'B b a b :1' have the same symmetry operators,
+# so both are renamed to 'B b e b :1'. The same if not true for
+# 'B b c b :2' and 'B b a b :2'.
+[68, "B b e b :1", "B b e b :1"],
+[68, "B b c b :1", "B b e b :1"],
+[68, "B b a b :1", "B b e b :1"],
+[68, "B b e b :2", "B b e b :2"], # Represents be 'B b c b :2' and 'B b a b :2'
+[68, "B b c b :2", "B b c b :2"],
+[68, "B b a b :2", "B b a b :2"]
 );
 
 1;
