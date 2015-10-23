@@ -4273,12 +4273,14 @@ our @EXPORT = qw( @table @extra_settings );
     ]
 },
 
+# Renamed from 'A b m 2' to 'A e m 2' as described in the 
+# International Tables of Crystallography Volume A
 {
     number          => 39,
     hall            => ' A 2 -2b',
     schoenflies     => 'C2v^15',
-    hermann_mauguin => 'A b m 2',
-    universal_h_m   => 'A b m 2',
+    hermann_mauguin => 'A e m 2',
+    universal_h_m   => 'A e m 2',
     crystal_class   => 'orthorhombic',
     constraints     => '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
@@ -4299,12 +4301,14 @@ our @EXPORT = qw( @table @extra_settings );
     ]
 },
 
+# Renamed from 'B m a 2' to 'B m e 2' as described in the 
+# International Tables of Crystallography Volume A
 {
     number          => 39,
     hall            => ' B 2 -2a',
     schoenflies     => 'C2v^15',
-    hermann_mauguin => 'B m a 2',
-    universal_h_m   => 'B m a 2',
+    hermann_mauguin => 'B m e 2',
+    universal_h_m   => 'B m e 2',
     crystal_class   => 'orthorhombic',
     constraints     => '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
@@ -4325,12 +4329,14 @@ our @EXPORT = qw( @table @extra_settings );
     ]
 },
 
+# Renamed from 'B 2 c m' to 'B 2 e m' as described in the 
+# International Tables of Crystallography Volume A
 {
     number          => 39,
     hall            => ' B -2a 2',
     schoenflies     => 'C2v^15',
-    hermann_mauguin => 'B 2 c m',
-    universal_h_m   => 'B 2 c m',
+    hermann_mauguin => 'B 2 e m',
+    universal_h_m   => 'B 2 e m',
     crystal_class   => 'orthorhombic',
     constraints     => '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
@@ -4351,12 +4357,14 @@ our @EXPORT = qw( @table @extra_settings );
     ]
 },
 
+# Renamed from 'C 2 m b' to 'C 2 m e' as described in the 
+# International Tables of Crystallography Volume A
 {
     number          => 39,
     hall            => ' C -2a 2',
     schoenflies     => 'C2v^15',
-    hermann_mauguin => 'C 2 m b',
-    universal_h_m   => 'C 2 m b',
+    hermann_mauguin => 'C 2 m e',
+    universal_h_m   => 'C 2 m e',
     crystal_class   => 'orthorhombic',
     constraints     => '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
@@ -4377,12 +4385,14 @@ our @EXPORT = qw( @table @extra_settings );
     ]
 },
 
+# Renamed from 'C m 2 a' to 'C m 2 e' as described in the 
+# International Tables of Crystallography Volume A
 {
     number          => 39,
     hall            => ' C -2a -2a',
     schoenflies     => 'C2v^15',
-    hermann_mauguin => 'C m 2 a',
-    universal_h_m   => 'C m 2 a',
+    hermann_mauguin => 'C m 2 e',
+    universal_h_m   => 'C m 2 e',
     crystal_class   => 'orthorhombic',
     constraints     => '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
@@ -4403,12 +4413,14 @@ our @EXPORT = qw( @table @extra_settings );
     ]
 },
 
+# Renamed from 'A c 2 m' to 'A e 2 m' as described in the 
+# International Tables of Crystallography Volume A
 {
     number          => 39,
     hall            => ' A -2b -2b',
     schoenflies     => 'C2v^15',
-    hermann_mauguin => 'A c 2 m',
-    universal_h_m   => 'A c 2 m',
+    hermann_mauguin => 'A e 2 m',
+    universal_h_m   => 'A e 2 m',
     crystal_class   => 'orthorhombic',
     constraints     => '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
@@ -4585,12 +4597,14 @@ our @EXPORT = qw( @table @extra_settings );
     ]
 },
 
+# Renamed from 'A b a 2' to 'A e a 2' as described in the International
+# Tables of Crystallography Volume A
 {
     number          => 41,
     hall            => ' A 2 -2ab',
     schoenflies     => 'C2v^17',
-    hermann_mauguin => 'A b a 2',
-    universal_h_m   => 'A b a 2',
+    hermann_mauguin => 'A e a 2',
+    universal_h_m   => 'A e a 2',
     crystal_class   => 'orthorhombic',
     constraints     => '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
@@ -4611,12 +4625,14 @@ our @EXPORT = qw( @table @extra_settings );
     ]
 },
 
+# Renamed from 'B b a 2' to 'B b e 2' as described in the International
+# Tables of Crystallography Volume A
 {
     number          => 41,
     hall            => ' B 2 -2ab',
     schoenflies     => 'C2v^17',
-    hermann_mauguin => 'B b a 2',
-    universal_h_m   => 'B b a 2',
+    hermann_mauguin => 'B b e 2',
+    universal_h_m   => 'B b e 2',
     crystal_class   => 'orthorhombic',
     constraints     => '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
@@ -4637,12 +4653,14 @@ our @EXPORT = qw( @table @extra_settings );
     ]
 },
 
+# Renamed from 'B 2 c b' to 'B 2 e b' as described in the International
+# Tables of Crystallography Volume A
 {
     number          => 41,
     hall            => ' B -2ab 2',
     schoenflies     => 'C2v^17',
-    hermann_mauguin => 'B 2 c b',
-    universal_h_m   => 'B 2 c b',
+    hermann_mauguin => 'B 2 e b',
+    universal_h_m   => 'B 2 e b',
     crystal_class   => 'orthorhombic',
     constraints     => '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
@@ -4663,12 +4681,14 @@ our @EXPORT = qw( @table @extra_settings );
     ]
 },
 
+# Renamed from 'C 2 c b' to 'C 2 e b' as described in the International
+# Tables of Crystallography Volume A
 {
     number          => 41,
     hall            => ' C -2ac 2',
     schoenflies     => 'C2v^17',
-    hermann_mauguin => 'C 2 c b',
-    universal_h_m   => 'C 2 c b',
+    hermann_mauguin => 'C 2 e b',
+    universal_h_m   => 'C 2 e b',
     crystal_class   => 'orthorhombic',
     constraints     => '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
@@ -4689,12 +4709,14 @@ our @EXPORT = qw( @table @extra_settings );
     ]
 },
 
+# Renamed from 'C c 2 a' to 'C c 2 e' as described in the International
+# Tables of Crystallography Volume A
 {
     number          => 41,
     hall            => ' C -2ac -2ac',
     schoenflies     => 'C2v^17',
-    hermann_mauguin => 'C c 2 a',
-    universal_h_m   => 'C c 2 a',
+    hermann_mauguin => 'C c 2 e',
+    universal_h_m   => 'C c 2 e',
     crystal_class   => 'orthorhombic',
     constraints     => '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
@@ -4715,12 +4737,14 @@ our @EXPORT = qw( @table @extra_settings );
     ]
 },
 
+# Renamed from 'A c 2 a' to 'A e 2 a' as described in the International
+# Tables of Crystallography Volume A
 {
     number          => 41,
     hall            => ' A -2ab -2ab',
     schoenflies     => 'C2v^17',
-    hermann_mauguin => 'A c 2 a',
-    universal_h_m   => 'A c 2 a',
+    hermann_mauguin => 'A e 2 a',
+    universal_h_m   => 'A e 2 a',
     crystal_class   => 'orthorhombic',
     constraints     => '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
@@ -7615,12 +7639,14 @@ our @EXPORT = qw( @table @extra_settings );
     ]
 },
 
+# Renamed from 'C m c a' to 'C m c e' as described in the International
+# Tables of Crystallography Volume A
 {
     number          => 64,
     hall            => '-C 2ac 2',
     schoenflies     => 'D2h^18',
-    hermann_mauguin => 'C m c a',
-    universal_h_m   => 'C m c a',
+    hermann_mauguin => 'C m c e',
+    universal_h_m   => 'C m c e',
     crystal_class   => 'orthorhombic',
     constraints     => '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
@@ -7653,12 +7679,14 @@ our @EXPORT = qw( @table @extra_settings );
     ]
 },
 
+# Renamed from 'C c m b' to 'C c m e' as described in the International
+# Tables of Crystallography Volume A
 {
     number          => 64,
     hall            => '-C 2ac 2ac',
     schoenflies     => 'D2h^18',
-    hermann_mauguin => 'C c m b',
-    universal_h_m   => 'C c m b',
+    hermann_mauguin => 'C c m e',
+    universal_h_m   => 'C c m e',
     crystal_class   => 'orthorhombic',
     constraints     => '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
@@ -7691,12 +7719,14 @@ our @EXPORT = qw( @table @extra_settings );
     ]
 },
 
+# Renamed from 'A b m a' to 'A e m a' as described in the International
+# Tables of Crystallography Volume A
 {
     number          => 64,
     hall            => '-A 2ab 2ab',
     schoenflies     => 'D2h^18',
-    hermann_mauguin => 'A b m a',
-    universal_h_m   => 'A b m a',
+    hermann_mauguin => 'A e m a',
+    universal_h_m   => 'A e m a',
     crystal_class   => 'orthorhombic',
     constraints     => '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
@@ -7729,12 +7759,14 @@ our @EXPORT = qw( @table @extra_settings );
     ]
 },
 
+# Renamed from 'A c a m' to 'A e a m' as described in the International
+# Tables of Crystallography Volume A
 {
     number          => 64,
     hall            => '-A 2 2ab',
     schoenflies     => 'D2h^18',
-    hermann_mauguin => 'A c a m',
-    universal_h_m   => 'A c a m',
+    hermann_mauguin => 'A e a m',
+    universal_h_m   => 'A e a m',
     crystal_class   => 'orthorhombic',
     constraints     => '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
@@ -7767,12 +7799,14 @@ our @EXPORT = qw( @table @extra_settings );
     ]
 },
 
+# Renamed from 'B b c m' to 'B b e m' as described in the International
+# Tables of Crystallography Volume A
 {
     number          => 64,
     hall            => '-B 2 2ab',
     schoenflies     => 'D2h^18',
-    hermann_mauguin => 'B b c m',
-    universal_h_m   => 'B b c m',
+    hermann_mauguin => 'B b e m',
+    universal_h_m   => 'B b e m',
     crystal_class   => 'orthorhombic',
     constraints     => '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
@@ -7805,12 +7839,14 @@ our @EXPORT = qw( @table @extra_settings );
     ]
 },
 
+# Renamed from 'B m a b' to 'B m e b' as described in the International
+# Tables of Crystallography Volume A
 {
     number          => 64,
     hall            => '-B 2ab 2',
     schoenflies     => 'D2h^18',
-    hermann_mauguin => 'B m a b',
-    universal_h_m   => 'B m a b',
+    hermann_mauguin => 'B m e b',
+    universal_h_m   => 'B m e b',
     crystal_class   => 'orthorhombic',
     constraints     => '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
@@ -8071,6 +8107,10 @@ our @EXPORT = qw( @table @extra_settings );
     ]
 },
 
+# According to ITC, Volume A, Hermann-Mauguin symbols of space group number 67
+# should be written using the 'e' ('e' replaces some instances of 'a', 'b' and
+# 'c'). However, since symmetry operators in these groups differ and renaming
+# them would introduce ambiguity, it is not done in this dataset.
 {
     number          => 67,
     hall            => '-C 2a 2',
@@ -8299,12 +8339,15 @@ our @EXPORT = qw( @table @extra_settings );
     ]
 },
 
+# Renamed symmetry groups 'C c c a :1' and 'C c c b :1' to 'C c c e :1' as
+# described in the International Tables of Crystallography Volume A since
+# they contain identical symmetry operators.
 {
     number          => 68,
     hall            => ' C 2 2 -1ac',
     schoenflies     => 'D2h^22',
-    hermann_mauguin => 'C c c a',
-    universal_h_m   => 'C c c a :1',
+    hermann_mauguin => 'C c c e',
+    universal_h_m   => 'C c c e :1',
     crystal_class   => 'orthorhombic',
     constraints     => '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
@@ -8377,44 +8420,6 @@ our @EXPORT = qw( @table @extra_settings );
 
 {
     number          => 68,
-    hall            => ' C 2 2 -1ac',
-    schoenflies     => 'D2h^22',
-    hermann_mauguin => 'C c c b',
-    universal_h_m   => 'C c c b :1',
-    crystal_class   => 'orthorhombic',
-    constraints     => '$alpha == 90 && $beta == 90 && $gamma == 90',
-    symops => [
-        'x,y,z',
-        '-x,-y,z',
-        'x,-y,-z',
-        '-x,y,-z',
-        '-x+1/2,-y,-z+1/2',
-        'x+1/2,y,-z+1/2',
-        '-x+1/2,y,z+1/2',
-        'x+1/2,-y,z+1/2',
-        'x+1/2,y+1/2,z',
-        '-x+1/2,-y+1/2,z',
-        'x+1/2,-y+1/2,-z',
-        '-x+1/2,y+1/2,-z',
-        '-x+1,-y+1/2,-z+1/2',
-        'x+1,y+1/2,-z+1/2',
-        '-x+1,y+1/2,z+1/2',
-        'x+1,-y+1/2,z+1/2',
-    ],
-    ncsym => [
-        'x,y,z',
-        '-x,-y,z',
-        'x,-y,-z',
-        '-x,y,-z',
-        '-x+1/2,-y,-z+1/2',
-        'x+1/2,y,-z+1/2',
-        '-x+1/2,y,z+1/2',
-        'x+1/2,-y,z+1/2',
-    ]
-},
-
-{
-    number          => 68,
     hall            => '-C 2a 2c',
     schoenflies     => 'D2h^22',
     hermann_mauguin => 'C c c b',
@@ -8451,12 +8456,15 @@ our @EXPORT = qw( @table @extra_settings );
     ]
 },
 
+# Renamed symmetry groups 'A b a a :1' and 'A c a a :1' to 'A e a a :1' as
+# described in the International Tables of Crystallography Volume A since
+# they contain identical symmetry operators.
 {
     number          => 68,
     hall            => ' A 2 2 -1ab',
     schoenflies     => 'D2h^22',
-    hermann_mauguin => 'A b a a',
-    universal_h_m   => 'A b a a :1',
+    hermann_mauguin => 'A e a a',
+    universal_h_m   => 'A e a a :1',
     crystal_class   => 'orthorhombic',
     constraints     => '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
@@ -8529,44 +8537,6 @@ our @EXPORT = qw( @table @extra_settings );
 
 {
     number          => 68,
-    hall            => ' A 2 2 -1ab',
-    schoenflies     => 'D2h^22',
-    hermann_mauguin => 'A c a a',
-    universal_h_m   => 'A c a a :1',
-    crystal_class   => 'orthorhombic',
-    constraints     => '$alpha == 90 && $beta == 90 && $gamma == 90',
-    symops => [
-        'x,y,z',
-        '-x,-y,z',
-        'x,-y,-z',
-        '-x,y,-z',
-        '-x+1/2,-y+1/2,-z',
-        'x+1/2,y+1/2,-z',
-        '-x+1/2,y+1/2,z',
-        'x+1/2,-y+1/2,z',
-        'x,y+1/2,z+1/2',
-        '-x,-y+1/2,z+1/2',
-        'x,-y+1/2,-z+1/2',
-        '-x,y+1/2,-z+1/2',
-        '-x+1/2,-y+1,-z+1/2',
-        'x+1/2,y+1,-z+1/2',
-        '-x+1/2,y+1,z+1/2',
-        'x+1/2,-y+1,z+1/2',
-    ],
-    ncsym => [
-        'x,y,z',
-        '-x,-y,z',
-        'x,-y,-z',
-        '-x,y,-z',
-        '-x+1/2,-y+1/2,-z',
-        'x+1/2,y+1/2,-z',
-        '-x+1/2,y+1/2,z',
-        'x+1/2,-y+1/2,z',
-    ]
-},
-
-{
-    number          => 68,
     hall            => '-A 2ab 2b',
     schoenflies     => 'D2h^22',
     hermann_mauguin => 'A c a a',
@@ -8603,12 +8573,15 @@ our @EXPORT = qw( @table @extra_settings );
     ]
 },
 
+# Renamed symmetry groups 'B b a b :1' and 'B b c b :1' to 'B e e b :1' as
+# described in the International Tables of Crystallography Volume A since
+# they contain identical symmetry operators.
 {
     number          => 68,
     hall            => ' B 2 2 -1ab',
     schoenflies     => 'D2h^22',
-    hermann_mauguin => 'B b c b',
-    universal_h_m   => 'B b c b :1',
+    hermann_mauguin => 'B b e b',
+    universal_h_m   => 'B b e b :1',
     crystal_class   => 'orthorhombic',
     constraints     => '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
@@ -8676,44 +8649,6 @@ our @EXPORT = qw( @table @extra_settings );
         'x-1/2,y-1/2,-z',
         '-x,y-1/2,z',
         'x-1/2,-y,z',
-    ]
-},
-
-{
-    number          => 68,
-    hall            => ' B 2 2 -1ab',
-    schoenflies     => 'D2h^22',
-    hermann_mauguin => 'B b a b',
-    universal_h_m   => 'B b a b :1',
-    crystal_class   => 'orthorhombic',
-    constraints     => '$alpha == 90 && $beta == 90 && $gamma == 90',
-    symops => [
-        'x,y,z',
-        '-x,-y,z',
-        'x,-y,-z',
-        '-x,y,-z',
-        '-x+1/2,-y+1/2,-z',
-        'x+1/2,y+1/2,-z',
-        '-x+1/2,y+1/2,z',
-        'x+1/2,-y+1/2,z',
-        'x+1/2,y,z+1/2',
-        '-x+1/2,-y,z+1/2',
-        'x+1/2,-y,-z+1/2',
-        '-x+1/2,y,-z+1/2',
-        '-x+1,-y+1/2,-z+1/2',
-        'x+1,y+1/2,-z+1/2',
-        '-x+1,y+1/2,z+1/2',
-        'x+1,-y+1/2,z+1/2',
-    ],
-    ncsym => [
-        'x,y,z',
-        '-x,-y,z',
-        'x,-y,-z',
-        '-x,y,-z',
-        '-x+1/2,-y+1/2,-z',
-        'x+1/2,y+1/2,-z',
-        '-x+1/2,y+1/2,z',
-        'x+1/2,-y+1/2,z',
     ]
 },
 
@@ -21180,8 +21115,8 @@ our @EXPORT = qw( @table @extra_settings );
     number          => 39,
     hall            => ' A 2 -2b (y-1/4,-x,z+1/4)',
     schoenflies     => 'C2v^15',
-    hermann_mauguin => 'A b m 2 (b,-a+1/4,c-1/4)',
-    universal_h_m   => 'A b m 2 (b,-a+1/4,c-1/4)',
+    hermann_mauguin => 'A e m 2 (b,-a+1/4,c-1/4)',
+    universal_h_m   => 'A e m 2 (b,-a+1/4,c-1/4)',
     crystal_class   => 'orthorhombic',
     constraints     => '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
@@ -21266,8 +21201,8 @@ our @EXPORT = qw( @table @extra_settings );
     number          => 39,
     hall            => ' A 2 -2b (x,y-1/4,z+1/4)',
     schoenflies     => 'C2v^15',
-    hermann_mauguin => 'A b m 2 (a,b+1/4,c-1/4)',
-    universal_h_m   => 'A b m 2 (a,b+1/4,c-1/4)',
+    hermann_mauguin => 'A e m 2 (a,b+1/4,c-1/4)',
+    universal_h_m   => 'A e m 2 (a,b+1/4,c-1/4)',
     crystal_class   => 'orthorhombic',
     constraints     => '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
@@ -21378,8 +21313,8 @@ our @EXPORT = qw( @table @extra_settings );
     number          => 39,
     hall            => ' A 2 -2b (-x,z+1/4,y-1/4)',
     schoenflies     => 'C2v^15',
-    hermann_mauguin => 'A b m 2 (-a,c+1/4,b-1/4)',
-    universal_h_m   => 'A b m 2 (-a,c+1/4,b-1/4)',
+    hermann_mauguin => 'A e m 2 (-a,c+1/4,b-1/4)',
+    universal_h_m   => 'A e m 2 (-a,c+1/4,b-1/4)',
     crystal_class   => 'orthorhombic',
     constraints     => '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
@@ -21516,8 +21451,8 @@ our @EXPORT = qw( @table @extra_settings );
     number          => 39,
     hall            => ' A 2 -2b (y-1/4,z+1/4,x)',
     schoenflies     => 'C2v^15',
-    hermann_mauguin => 'A b m 2 (b,c+1/4,a-1/4)',
-    universal_h_m   => 'A b m 2 (b,c+1/4,a-1/4)',
+    hermann_mauguin => 'A e m 2 (b,c+1/4,a-1/4)',
+    universal_h_m   => 'A e m 2 (b,c+1/4,a-1/4)',
     crystal_class   => 'orthorhombic',
     constraints     => '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
@@ -21722,8 +21657,8 @@ our @EXPORT = qw( @table @extra_settings );
     number          => 41,
     hall            => ' A 2 -2ab (x,y-1/4,z+1/4)',
     schoenflies     => 'C2v^17',
-    hermann_mauguin => 'A b a 2 (a,b+1/4,c-1/4)',
-    universal_h_m   => 'A b a 2 (a,b+1/4,c-1/4)',
+    hermann_mauguin => 'A e a 2 (a,b+1/4,c-1/4)',
+    universal_h_m   => 'A e a 2 (a,b+1/4,c-1/4)',
     crystal_class   => 'orthorhombic',
     constraints     => '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
@@ -21800,8 +21735,8 @@ our @EXPORT = qw( @table @extra_settings );
     number          => 41,
     hall            => ' A 2 -2ab (y-1/4,-x,z+1/4)',
     schoenflies     => 'C2v^17',
-    hermann_mauguin => 'A b a 2 (b,-a+1/4,c-1/4)',
-    universal_h_m   => 'A b a 2 (b,-a+1/4,c-1/4)',
+    hermann_mauguin => 'A e a 2 (b,-a+1/4,c-1/4)',
+    universal_h_m   => 'A e a 2 (b,-a+1/4,c-1/4)',
     crystal_class   => 'orthorhombic',
     constraints     => '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
@@ -21878,8 +21813,8 @@ our @EXPORT = qw( @table @extra_settings );
     number          => 41,
     hall            => ' A 2 -2ab (y-1/4,z+1/4,x)',
     schoenflies     => 'C2v^17',
-    hermann_mauguin => 'A b a 2 (b,c+1/4,a-1/4)',
-    universal_h_m   => 'A b a 2 (b,c+1/4,a-1/4)',
+    hermann_mauguin => 'A e a 2 (b,c+1/4,a-1/4)',
+    universal_h_m   => 'A e a 2 (b,c+1/4,a-1/4)',
     crystal_class   => 'orthorhombic',
     constraints     => '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
@@ -21930,8 +21865,8 @@ our @EXPORT = qw( @table @extra_settings );
     number          => 41,
     hall            => ' A 2 -2ab (-x,z+1/4,y-1/4)',
     schoenflies     => 'C2v^17',
-    hermann_mauguin => 'A b a 2 (-a,c+1/4,b-1/4)',
-    universal_h_m   => 'A b a 2 (-a,c+1/4,b-1/4)',
+    hermann_mauguin => 'A e a 2 (-a,c+1/4,b-1/4)',
+    universal_h_m   => 'A e a 2 (-a,c+1/4,b-1/4)',
     crystal_class   => 'orthorhombic',
     constraints     => '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
@@ -23502,8 +23437,8 @@ our @EXPORT = qw( @table @extra_settings );
     number          => 64,
     hall            => '-C 2ac 2 (z,x+1/4,y+1/4)',
     schoenflies     => 'D2h^18',
-    hermann_mauguin => 'C m c a (c-1/4,a-1/4,b)',
-    universal_h_m   => 'C m c a (c-1/4,a-1/4,b)',
+    hermann_mauguin => 'C m c e (c-1/4,a-1/4,b)',
+    universal_h_m   => 'C m c e (c-1/4,a-1/4,b)',
     crystal_class   => 'orthorhombic',
     constraints     => '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
@@ -23540,8 +23475,8 @@ our @EXPORT = qw( @table @extra_settings );
     number          => 64,
     hall            => '-C 2ac 2 (-x-1/4,z,y+1/4)',
     schoenflies     => 'D2h^18',
-    hermann_mauguin => 'C m c a (-a-1/4,c-1/4,b)',
-    universal_h_m   => 'C m c a (-a-1/4,c-1/4,b)',
+    hermann_mauguin => 'C m c e (-a-1/4,c-1/4,b)',
+    universal_h_m   => 'C m c e (-a-1/4,c-1/4,b)',
     crystal_class   => 'orthorhombic',
     constraints     => '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
@@ -23578,8 +23513,8 @@ our @EXPORT = qw( @table @extra_settings );
     number          => 64,
     hall            => '-C 2ac 2 (y+1/4,z,x+1/4)',
     schoenflies     => 'D2h^18',
-    hermann_mauguin => 'C m c a (b-1/4,c-1/4,a)',
-    universal_h_m   => 'C m c a (b-1/4,c-1/4,a)',
+    hermann_mauguin => 'C m c e (b-1/4,c-1/4,a)',
+    universal_h_m   => 'C m c e (b-1/4,c-1/4,a)',
     crystal_class   => 'orthorhombic',
     constraints     => '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
@@ -23616,8 +23551,8 @@ our @EXPORT = qw( @table @extra_settings );
     number          => 64,
     hall            => '-C 2ac 2 (y+1/4,-x-1/4,z)',
     schoenflies     => 'D2h^18',
-    hermann_mauguin => 'C m c a (b-1/4,-a-1/4,c)',
-    universal_h_m   => 'C m c a (b-1/4,-a-1/4,c)',
+    hermann_mauguin => 'C m c e (b-1/4,-a-1/4,c)',
+    universal_h_m   => 'C m c e (b-1/4,-a-1/4,c)',
     crystal_class   => 'orthorhombic',
     constraints     => '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
@@ -23654,8 +23589,8 @@ our @EXPORT = qw( @table @extra_settings );
     number          => 64,
     hall            => '-C 2ac 2 (x+1/4,y+1/4,z)',
     schoenflies     => 'D2h^18',
-    hermann_mauguin => 'C m c a (a-1/4,b-1/4,c)',
-    universal_h_m   => 'C m c a (a-1/4,b-1/4,c)',
+    hermann_mauguin => 'C m c e (a-1/4,b-1/4,c)',
+    universal_h_m   => 'C m c e (a-1/4,b-1/4,c)',
     crystal_class   => 'orthorhombic',
     constraints     => '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
@@ -23692,8 +23627,8 @@ our @EXPORT = qw( @table @extra_settings );
     number          => 64,
     hall            => '-C 2ac 2 (z,y+1/4,-x-1/4)',
     schoenflies     => 'D2h^18',
-    hermann_mauguin => 'C m c a (c-1/4,b-1/4,-a)',
-    universal_h_m   => 'C m c a (c-1/4,b-1/4,-a)',
+    hermann_mauguin => 'C m c e (c-1/4,b-1/4,-a)',
+    universal_h_m   => 'C m c e (c-1/4,b-1/4,-a)',
     crystal_class   => 'orthorhombic',
     constraints     => '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
