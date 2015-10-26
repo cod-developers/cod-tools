@@ -16,14 +16,14 @@ TEST_MODULE = ${CWD}.pm
 
 WORK_TESTS = ${wildcard *.inp}
 TEST_DIR = tests
-INP_DIR  = ${TEST_DIR}/inputs
+INP_DIR  = ${TEST_DIR}/cases
 OUTP_DIR = ${TEST_DIR}/outputs
 
 TEST_FILES = ${wildcard ${INP_DIR}/*.inp}
 DIFF_FILES = ${TEST_FILES:${INP_DIR}/%.inp=${OUTP_DIR}/%.diff}
 OUTP_FILES = ${TEST_FILES:${INP_DIR}/%.inp=${OUTP_DIR}/%.out}
 
-TEST_DRIVER = ${TEST_DIR}/scripts/test-driver
+SCRIPT_DIR = ${TEST_DIR}/scripts/
 
 .PHONY: all clean cleanAll distclean test tests alltests out outputs
 .PHONY: run times
@@ -58,33 +58,37 @@ test: ${DIFF_FILES}
 
 out outputs: ${OUTP_FILES}
 
-${OUTP_DIR}/%.diff: ${PKG_TOP}/${PKG_PATH}/${TEST_MODULE} ${INP_DIR}/%.inp ${INP_DIR}/%.opt
-	-@printf "%-30s " "$*:" ; \
-	${TEST_DRIVER} < ${word 2, $^} 2>&1 \
-        $(shell grep -v '^#' ${word 3, $^}) \
-        | diff ${OUTP_DIR}/$*.out - \
-        > $@ ; \
+${OUTP_DIR}/%.diff: ${INP_DIR}/%.inp ${INP_DIR}/%.opt ${PKG_TOP}/${PKG_PATH}/${TEST_MODULE}
+	-@printf "%-30s " "$<:" ; \
+	( ${SCRIPT_DIR}/$(shell echo $* | sed -e 's/_[0-9]*$$//') \
+		$(shell grep -v '^#' ${word 2, $^}) \
+		$< ) 2>&1 \
+	| diff ${OUTP_DIR}/$*.out - \
+		> $@ ; \
 	if [ $$? = 0 ]; then echo "OK"; else echo "FAILED:"; cat $@; fi
 
-${OUTP_DIR}/%.diff: ${PKG_TOP}/${PKG_PATH}/${TEST_MODULE} ${INP_DIR}/%.inp
-	-@printf "%-30s " "$*:" ; \
-	${TEST_DRIVER} < ${word 2, $^} 2>&1 \
-        | diff ${OUTP_DIR}/$*.out - \
-        > $@ ; \
+${OUTP_DIR}/%.diff: ${INP_DIR}/%.inp ${PKG_TOP}/${PKG_PATH}/${TEST_MODULE}
+	-@printf "%-30s " "$<:" ; \
+	( ${SCRIPT_DIR}/$(shell echo $* | sed -e 's/_[0-9]*$$//') \
+		$< ) 2>&1 \
+	| diff ${OUTP_DIR}/$*.out - \
+		> $@ ; \
 	if [ $$? = 0 ]; then echo "OK"; else echo "FAILED:"; cat $@; fi
 
-${OUTP_DIR}/%.out: ${PKG_TOP}/${PKG_PATH}/${TEST_MODULE} ${INP_DIR}/%.inp ${INP_DIR}/%.opt
+${OUTP_DIR}/%.out: ${INP_DIR}/%.inp ${INP_DIR}/%.opt ${PKG_TOP}/${PKG_PATH}/${TEST_MODULE}
 	-@test -f $@ || echo "$@:"
 	-@test -f $@ || \
-	${TEST_DRIVER} < ${word 2, $^} 2>&1 \
-        $(shell grep -v '^#' ${word 3, $^}) \
+	( ${SCRIPT_DIR}/$(shell echo $* | sed -e 's/_[0-9]*$$//') \
+		$(shell grep -v '^#' ${word 2, $^}) \
+		$< ) 2>&1 \
 	| tee $@
 	-@touch $@
 
-${OUTP_DIR}/%.out: ${PKG_TOP}/${PKG_PATH}/${TEST_MODULE} ${INP_DIR}/%.inp
+${OUTP_DIR}/%.out: ${INP_DIR}/%.inp ${PKG_TOP}/${PKG_PATH}/${TEST_MODULE}
 	-@test -f $@ || echo "$@:"
 	-@test -f $@ || \
-	${TEST_DRIVER} < ${word 2, $^} 2>&1 \
+	( ${SCRIPT_DIR}/$(shell echo $* | sed -e 's/_[0-9]*$$//') \
+		$< ) 2>&1 \
 	| tee $@
 	-@touch $@
 
@@ -115,7 +119,7 @@ ${SHELL_OUTDIR}/%.out: ${SHELL_TSTDIR}/%.sh ${PKG_TOP}/${PKG_PATH}/${TEST_MODULE
 
 ${SHELL_OUTDIR}/%.diff: ${SHELL_TSTDIR}/%.sh ${PKG_TOP}/${PKG_PATH}/${TEST_MODULE}
 	-@printf "%-30s " "$*:" ; \
-	$< ./${TEST_MODULE} 2>&1 | diff ${SHELL_OUTDIR}/$*.out - > $@ ; \
+	$< ./${TEST_MODULE} 2>&1 | perl -pe 's|tests/shtests/|shtests/|g' | diff ${SHELL_OUTDIR}/$*.out - > $@ ; \
 	if [ $$? = 0 ]; then echo "OK"; else echo "FAILED:"; cat $@; fi
 
 #------------------------------------------------------------------------------
