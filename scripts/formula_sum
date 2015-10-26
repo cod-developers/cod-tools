@@ -9,14 +9,30 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #$URL$
 #------------------------------------------------------------------------------
 #*
-#  Perl script ...
+#  Parse and print the chemical formula sum as described in the CIF
+#  _chemical_formula_sum data item.
 #**
 
 use strict;
 use warnings;
+use COD::SOptions;
+use COD::SUsage;
+
+#* USAGE: $0 sum.lst
+#* USAGE: $0 sum1.lst sum*.lst
+#*
+#* OPTIONS:
+#* --help, --usage
+#*                  Print a short usage message (this message) and exit.
+#**
+@ARGV = getOptions(
+    "--help,--usage"             => sub { usage; exit }
+);
+
 use COD::Formulae::Parser::IUCr;
 
-my $p = new COD::Formulae::Parser::IUCr;
-
-$p->Run($ARGV[0]);
-$p->PrintFormula;
+foreach my $filename ( @ARGV ) {
+    my $p = new COD::Formulae::Parser::IUCr;
+    $p->Run($filename);
+    $p->PrintFormula;
+}
