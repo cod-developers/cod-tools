@@ -9,20 +9,44 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #$URL$
 #------------------------------------------------------------------------------
 #*
-#  Calculate Z value (i.e. the number of "chemical fomula units" in the unit cell
-#  using the provided cell volume, crystal density and molecular weight.
+#  Calculate Z value (i.e. the number of "chemical fomula units" in
+#  the unit cell) using the provided cell volume, crystal density
+#  and molecular weight.
 #**
 
 use strict;
 use warnings;
-use COD::CIF::Parser qw(parse_cif);
+use COD::CIF::Parser qw( parse_cif );
+use COD::CIF::Data::EstimateZ qw( cif_estimate_z );
 use COD::UserMessage qw(error);
-use COD::CIF::Data::EstimateZ;
+use COD::SOptions;
+use COD::SUsage;
+
+my $use_parser = 'c';
+
+#* USAGE:
+#*     $0 --options input1.cif input*.cif
+#*
+#* OPTIONS:
+#*
+#* --use-perl-parser
+#*                     Use development CIF parser written in Perl.
+#* --use-c-parser
+#*                     Use faster C/Yacc CIF parser (default).
+#*
+#* --help,--usage      Print a short usage message (this message) and exit.
+#**
+@ARGV = getOptions(
+    "--use-perl-parser" => sub{ $use_parser = "perl" },
+    "--use-c-parser"    => sub{ $use_parser = "c" },
+
+    "--help,--usage"    => sub { usage; exit }
+);
 
 @ARGV = ( "-" ) unless @ARGV;
 
 for my $filename (@ARGV) {
-    my $options = { parser => 'c', no_print => 1, fix_errors => 1 };
+    my $options = { parser => $use_parser, no_print => 1, fix_errors => 1 };
     my ( $data, $err_count, $messages ) = parse_cif( $filename, $options );
 
     if ( $err_count > 0 ) {
