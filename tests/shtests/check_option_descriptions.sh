@@ -71,6 +71,7 @@ do
                 for ( my $i = 0; $i < scalar(@substr); $i++ ) {
                     # ignore the safeguard catch-all option
                     next if $substr[$i] =~ /-\*/;
+                    next if $substr[$i] =~ /-\+/;
                     my $is_prefix = 0;
                     for ( my $j = ($i+1); $j < scalar(@substr); $j++ ) {
                         # assume short form options will not be prefixes
