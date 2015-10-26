@@ -16,11 +16,14 @@ TEST_MODULE = ${CWD}.pm
 
 WORK_TESTS = ${wildcard *.inp}
 TEST_DIR = tests
-OUTP_DIR = outputs
+INP_DIR  = ${TEST_DIR}/inputs
+OUTP_DIR = ${TEST_DIR}/outputs
 
-TEST_FILES = ${wildcard ${TEST_DIR}/*.inp}
-DIFF_FILES = ${TEST_FILES:${TEST_DIR}/%.inp=${OUTP_DIR}/%.diff}
-OUTP_FILES = ${TEST_FILES:${TEST_DIR}/%.inp=${OUTP_DIR}/%.out}
+TEST_FILES = ${wildcard ${INP_DIR}/*.inp}
+DIFF_FILES = ${TEST_FILES:${INP_DIR}/%.inp=${OUTP_DIR}/%.diff}
+OUTP_FILES = ${TEST_FILES:${INP_DIR}/%.inp=${OUTP_DIR}/%.out}
+
+TEST_DRIVER = ${TEST_DIR}/scripts/test-driver
 
 .PHONY: all clean cleanAll distclean test tests alltests out outputs
 .PHONY: run times
@@ -34,9 +37,7 @@ run: ${PKG_TOP}/${PKG_PATH}/${TEST_MODULE} ${WORK_TESTS}
 	( \
 		echo === $$file ===; \
 		set -x; \
-		perl -e 'use ${PKG_PREFIX}${TEST_MODULE:%.pm=%};' \
-			 -e 'my $$parser = new ${PKG_PREFIX}${TEST_MODULE:%.pm=%};' \
-			 -e '$$parser->Run' < $$file \
+		${TEST_DRIVER} < $$file \
 	); \
 	done
 
@@ -45,9 +46,7 @@ times: ${PKG_TOP}/${PKG_PATH}/${TEST_MODULE} ${WORK_TESTS}
 	( \
 		echo === $$file ===; \
 		set -x; \
-		time perl -e 'use ${PKG_PREFIX}${TEST_MODULE:%.pm=%};' \
-				  -e 'my $$parser = new ${PKG_PREFIX}${TEST_MODULE:%.pm=%};' \
-				  -e '$$parser->Run' < $$file \
+		time ${TEST_DRIVER} < $$file \
 	); \
 	done
 
@@ -59,45 +58,33 @@ test: ${DIFF_FILES}
 
 out outputs: ${OUTP_FILES}
 
-${OUTP_DIR}/%.diff: ${PKG_TOP}/${PKG_PATH}/${TEST_MODULE} ${TEST_DIR}/%.inp ${TEST_DIR}/%.opt
+${OUTP_DIR}/%.diff: ${PKG_TOP}/${PKG_PATH}/${TEST_MODULE} ${INP_DIR}/%.inp ${INP_DIR}/%.opt
 	-@printf "%-30s " "$*:" ; \
-	perl -e 'use ${PKG_PREFIX}${TEST_MODULE:%.pm=%};' \
-		 -e 'my $$p=new ${PKG_PREFIX}${TEST_MODULE:%.pm=%};' \
-		 -e '$$p->Run( undef, { map { $$_ => 1 } @ARGV } )' \
-         < ${word 2, $^} 2>&1 \
-         $(shell grep -v '^#' ${word 3, $^}) \
-     | diff ${OUTP_DIR}/$*.out - \
-     > $@ ; \
+	${TEST_DRIVER} < ${word 2, $^} 2>&1 \
+        $(shell grep -v '^#' ${word 3, $^}) \
+        | diff ${OUTP_DIR}/$*.out - \
+        > $@ ; \
 	if [ $$? = 0 ]; then echo "OK"; else echo "FAILED:"; cat $@; fi
 
-${OUTP_DIR}/%.diff: ${PKG_TOP}/${PKG_PATH}/${TEST_MODULE} ${TEST_DIR}/%.inp
+${OUTP_DIR}/%.diff: ${PKG_TOP}/${PKG_PATH}/${TEST_MODULE} ${INP_DIR}/%.inp
 	-@printf "%-30s " "$*:" ; \
-	perl -e 'use ${PKG_PREFIX}${TEST_MODULE:%.pm=%};' \
-		 -e 'my $$p=new ${PKG_PREFIX}${TEST_MODULE:%.pm=%};' \
-		 -e '$$p->Run( undef, { map { $$_ => 1 } @ARGV } )' \
-         < ${word 2, $^} 2>&1 \
-     | diff ${OUTP_DIR}/$*.out - \
-     > $@ ; \
+	${TEST_DRIVER} < ${word 2, $^} 2>&1 \
+        | diff ${OUTP_DIR}/$*.out - \
+        > $@ ; \
 	if [ $$? = 0 ]; then echo "OK"; else echo "FAILED:"; cat $@; fi
 
-${OUTP_DIR}/%.out: ${PKG_TOP}/${PKG_PATH}/${TEST_MODULE} ${TEST_DIR}/%.inp ${TEST_DIR}/%.opt
+${OUTP_DIR}/%.out: ${PKG_TOP}/${PKG_PATH}/${TEST_MODULE} ${INP_DIR}/%.inp ${INP_DIR}/%.opt
 	-@test -f $@ || echo "$@:"
 	-@test -f $@ || \
-	perl -e 'use ${PKG_PREFIX}${TEST_MODULE:%.pm=%};' \
-		 -e 'my $$p=new ${PKG_PREFIX}${TEST_MODULE:%.pm=%};' \
-		 -e '$$p->Run( undef, { map { $$_ => 1 } @ARGV } )' \
-		 < ${word 2, $^} 2>&1 \
-         $(shell grep -v '^#' ${word 3, $^}) \
+	${TEST_DRIVER} < ${word 2, $^} 2>&1 \
+        $(shell grep -v '^#' ${word 3, $^}) \
 	| tee $@
 	-@touch $@
 
-${OUTP_DIR}/%.out: ${PKG_TOP}/${PKG_PATH}/${TEST_MODULE} ${TEST_DIR}/%.inp
+${OUTP_DIR}/%.out: ${PKG_TOP}/${PKG_PATH}/${TEST_MODULE} ${INP_DIR}/%.inp
 	-@test -f $@ || echo "$@:"
 	-@test -f $@ || \
-	perl -e 'use ${PKG_PREFIX}${TEST_MODULE:%.pm=%};' \
-		 -e 'my $$p=new ${PKG_PREFIX}${TEST_MODULE:%.pm=%};' \
-		 -e '$$p->Run( undef, { map { $$_ => 1 } @ARGV } )' \
-		 < ${word 2, $^} 2>&1 \
+	${TEST_DRIVER} < ${word 2, $^} 2>&1 \
 	| tee $@
 	-@touch $@
 
