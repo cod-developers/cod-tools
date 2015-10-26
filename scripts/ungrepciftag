@@ -1,10 +1,47 @@
 #! /bin/sh
-
-# grep a value of a CIF-like tag; take into account values that are on
-# the next line an that may span several lines
-
-PATTERN="$1"
-shift
+#------------------------------------------------------------------------------
+#$Author: antanas $
+#$Date: 2015-10-18 19:40:55 +0300 (Sun, 18 Oct 2015) $ 
+#$Revision: 4091 $
+#$URL: svn://www.crystallography.net/cod-tools/trunk/scripts/cif_cod_deposit $
+#------------------------------------------------------------------------------
+#*
+#* Print a CIF file, but omit the values of the provided CIF-like tag;
+#* take into account values that are on the next line and that may span
+#* several lines. Only works properly with CIF tags that are not a part
+#* of a loop structure.
+#*
+#* USAGE: $0 _tag_name < input.cif
+#* USAGE: $0 _tag_name input.cif
+#* USAGE: $0 _tag_name input1.cif input*.cif
+#*
+#* OPTIONS:
+#* --help, --usage
+#*     Print a short help message (this message) and exit.
+#**
+while [ $# -gt 0 ]
+do
+  case $1 in
+      --help|--hel|--he|--h|--usage)
+          gawk '/^#\*/,/^#\*\*/ {
+                  sub("^ *#[*]?[*]?", ""); \
+                  gsub("\\$0","'$0'"); \
+                  print $0
+              }' $0
+          exit
+          ;;
+      -+) echo "`basename $0`:: ERROR, unknown option $1" >&2 ; exit 1 ;;
+      *)
+          if [ -z "$PATTERN" ];
+          then
+             PATTERN=$1;
+          else
+             FILES="$FILES $1"
+          fi
+          ;;
+    esac
+    shift
+done
 
 awk "/${PATTERN}/ {
         if( NF == 1 ) {
@@ -19,4 +56,4 @@ awk "/${PATTERN}/ {
         next
     }
     !/${PATTERN}/ { print }
-" ${1+"$@"}
+" $FILES
