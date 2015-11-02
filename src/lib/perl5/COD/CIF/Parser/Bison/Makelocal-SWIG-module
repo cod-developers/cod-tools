@@ -4,12 +4,12 @@ ifneq ("${MAKECONF_FILES}","")
 include ${MAKECONF_FILES}
 endif
 
-PKG_TOP  ?= .
-PKG_PATH ?=
+PKG_LIB_DIR ?= .
+PKG_PATH    ?=
 MODULE_NAME ?= ${notdir $(shell pwd)}
 
-SWIG_MODULE  = ${PKG_TOP}/${PKG_PATH}/${MODULE_NAME}.pm
-SWIG_SO_FILE = ${PKG_TOP}/auto/${PKG_PATH}/${MODULE_NAME}/${MODULE_NAME}.so
+SWIG_MODULE  = ${PKG_LIB_DIR}/${PKG_PATH}/${MODULE_NAME}.pm
+SWIG_SO_FILE = ${PKG_LIB_DIR}/auto/${PKG_PATH}/${MODULE_NAME}/${MODULE_NAME}.so
 
 SWIG_SOURCE   = source.c
 SWIG_WRAPPER  = ${SWIG_SOURCE:%.c=%_wrap.c}
@@ -47,7 +47,7 @@ ${OBJ} ${SWIG_WRAPPER_OBJ}: ${SWIG_SOURCE} ${SWIG_WRAPPER}
 		$+
 
 ${SWIG_WRAPPER} ${SWIG_MODULE}: ${SWIG_INP_FILE} ${SWIG_SOURCE}
-	swig -perl5 -Wall -outdir ${PKG_TOP}/${PKG_PATH}/ $<
+	swig -perl5 -Wall -outdir ${PKG_LIB_DIR}/${PKG_PATH}/ $<
 
 ${CIF_PARSER_C_DIR}/%.tab.o: ${CIF_PARSER_C_DIR}/%.y
 	${MAKE} -C ${dir $@} $*.tab.o
