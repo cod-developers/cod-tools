@@ -27,10 +27,17 @@ endif
 YAPP_SOURCES := $(wildcard $(addsuffix /*.yp, ${YAPP_MODULE_DIRS}))
 YAPP_MODULES := ${YAPP_MODULE_DIRS:${PERL_SOURCE_TOP}/%=${LOCAL_PERL_LIB}/%.pm}
 
-# Getting the name of the perl Yapp module and transforming it to target path
-
-PERL_SWIG_SOURCES := $(wildcard $(addsuffix /*.i, ${PERL_SWIG_MODULE_DIRS}))
-PERL_SWIG_MODULES := ${PERL_SWIG_SOURCES:%.i=%.pm}
+# Upon compiling the interface, SWIG generates shared object (*.so) files.
+# In case of Perl modules (*.pm), these objects are expected to be found in
+# the 'auto' directory. For example, if the directory hierarchy of the compiled
+# package 'X::Y::PackageName' is placed under the 'lib' directory, the following
+# is true:
+#   * path to the .pm file: lib/X/Y/PakageName.pm
+#   * path to the .so file: lib/auto/X/Y/PakageName/PakageName.so
+PERL_SWIG_MODULES   := ${PERL_SWIG_MODULE_DIRS:${PERL_SOURCE_TOP}/%=${LOCAL_PERL_LIB}/%.pm}
+SHARED_SWIG_OBJECTS := $(foreach mod, $(PERL_SWIG_MODULES), \
+    $(mod:${LOCAL_PERL_LIB}/%.pm=${LOCAL_PERL_LIB}/auto/%)/$(patsubst %.pm,%.so,$(notdir $(mod))) \
+)
 
 PYTHON_SWIG_SOURCES := $(wildcard $(addsuffix /*.i, ${PYTHON_SWIG_MODULE_DIRS}))
 PYTHON_SWIG_MODULES := ${PYTHON_SWIG_SOURCES:%.i=%.py}
@@ -39,7 +46,7 @@ SWIG_MODULES := ${PERL_SWIG_MODULES} ${PYTHON_SWIG_MODULES}
 
 COMPILED_MODULES := ${YAPP_MODULES} ${SWIG_MODULES}
 
-.PRECIOUS: %.py %.pm ${YAPP_MODULES}
+.PRECIOUS: %.py %.pm ${COMPILED_MODULES}
 
 #
 # TEST variable should be defined in the Makeconf file, or on the
@@ -57,6 +64,12 @@ all: tests
 ${LOCAL_PERL_LIB}/%.pm: ${PERL_SOURCE_TOP}/%/grammar.yp
 	${MAKE} -C $(dir $<)
 	cp $(dir $<)/lib/$*.pm $@
+
+${LOCAL_PERL_LIB}/%.pm: ${PERL_SOURCE_TOP}/%/source.c \
+                        ${PERL_SOURCE_TOP}/%/source.i
+	${MAKE} -C  $(dir $<)
+	cp $(<D)/lib/$*.pm $@
+	cp $(dir $<)/lib/auto/$*/$(*F).so ${LOCAL_PERL_LIB}/auto/$*/$(*F).so
 
 %.pm %.py: %.c %.i
 	${MAKE} -C $(@D) $(@F) all
@@ -329,8 +342,9 @@ clean:
 	rm -f ${SHELL_DIFFS}
 
 MAKE_DIRS = $(dir $(wildcard */Makefile)) ${LOCAL_CLEAN_TARGETS}
-cleanAll distclean: clean 
+cleanAll distclean: clean
 	rm -f ${COMPILED_MODULES}
+	rm -f ${SHARED_SWIG_OBJECTS}
 	rm -f ${SCRIPT_DEPENDS}
 	for DIR in ${MAKE_DIRS}; do \
 		${MAKE} -C $$DIR $@; \
