@@ -1,0 +1,48 @@
+#---*- Makefile -*-------------------------------------------------------------
+#$Author$
+#$Date$
+#$Revision$
+#$URL$
+#------------------------------------------------------------------------------
+#*
+#  Benchmarks the script.
+#**
+
+# The following variables should be predefined in the Makeconf file:
+# ${BENCH_SCRIPT}
+#                   Full path to the benchmarked script.
+# ${BENCH_DEPEND}
+#                   Additional dependencies that should be assembled
+#                   before carrying out the benchmarks.
+# ${BENCH_FILES}
+#                   List of files that should be used for the benchmark.
+
+BENCH_SCRIPT ?=
+BENCH_DEPEND ?=
+BENCH_FILES  ?= ${wildcard *.inp}
+
+SHELL = /bin/bash
+
+.PHONY: all run times
+
+all:
+
+${BENCH_SCRIPT}: | ${BENCH_DEPEND}
+
+run: ${BENCH_SCRIPT} ${BENCH_FILES}
+	@for file in ${BENCH_FILES}; do \
+	( \
+		echo === $$file ===; \
+		set -x; \
+		${BENCH_SCRIPT} < $$file \
+	); \
+	done
+
+times: ${BENCH_SCRIPT} ${BENCH_FILES}
+	@for file in ${BENCH_FILES}; do \
+	( \
+		echo === $$file ===; \
+		set -x; \
+		time ${BENCH_SCRIPT} < $$file \
+	); \
+	done
