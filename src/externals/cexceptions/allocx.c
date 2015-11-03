@@ -8,7 +8,7 @@
 /* memory allocation functions that use cexception handling */
 
 #include <stdlib.h>
-#include <strings.h>
+#include <string.h> /* memset */
 #include <allocx.h>
 
 void *allocx_subsystem = &allocx_subsystem;
