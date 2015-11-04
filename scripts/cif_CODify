@@ -8,13 +8,46 @@
 #*
 # Extract essential data from the input CIF file and format it
 # using the rules of the Crystallography Open Database (COD).
+#
+# USAGE: $0 --options input.cif
+# USAGE: $0 --options input1.cif input*.cif
 #**
 
 set -ue
+# set -x
 
-## set -x
+arg=""
 
-file="$1"
+#* OPTIONS:
+#* --help, --usage
+#*     Print a short help message (this message) and exit.
+#*
+#* NOTE: this script also accepts all options from the 'cif_filter' script.
+#**
+while [ $# -gt 0 ]
+do
+  case $1 in
+      --help|--hel|--he|--h|--usage)
+          gawk '/^#\*/,/^#\*\*/ {
+                  sub("^ *#[*]?[*]?", ""); \
+                  gsub("\\$0","'$0'"); \
+                  print $0
+              }' $0
+          exit
+          ;;
+      *)
+          if [ -z ${file+1} ];
+          then
+             file=$1
+          else
+             arg="$arg $1"
+          fi
+          ;;
+    esac
+    shift
+done
+
+arg="$file $arg"
 
 if head $file | grep -q '^#' > /dev/null 2>&1
 then
@@ -48,4 +81,4 @@ cif_filter \
     --parse-formula-sum \
     --calculate-cell-volume \
     --use-all-datablocks \
-    ${1+"$@"}
+    ${arg}
