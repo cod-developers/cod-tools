@@ -577,7 +577,8 @@ for my $filename (@ARGV) {
     }
 
     if( !@$data || !defined $data->[0] || !defined $data->[0]{name} ) {
-        warn( "file '$filename' seems to be empty" );
+        warning( $0, $filename, undef,
+                 "file '$filename' seems to be empty", undef );
         next;
     }
 
@@ -622,8 +623,9 @@ for my $filename (@ARGV) {
     }
 
     if( $global_section_nr > 1 ) {
-        warn "file '${filename}' had $global_section_nr global sections, "
-            . "taking one into account, other were removed"
+        warning( $0, $filename, undef,
+                 "file '${filename}' had $global_section_nr global sections, " .
+                 "taking one into account, other were removed", undef );
     }
 
 #
@@ -666,15 +668,17 @@ for my $filename (@ARGV) {
     }
 
     if( $pd_publ_datablock_nr > 1 ) {
-        warn "file '${filename}' had $pd_publ_datablock_nr powder "
-            . "diffraction publication sections, taking one "
-            . "into account, other were removed"
+        warning( $0, $filename, undef,
+                 "file '${filename}' had $pd_publ_datablock_nr powder " .
+                 "diffraction publication sections, taking one " .
+                 "into account, other were removed", undef );
     }
 
     if( $pd_overall_info_datablock_nr > 1 ) {
-        warn "file '${filename}' had $pd_overall_info_datablock_nr "
-            . "powder overall information datablocks, taking one "
-            . "into account, other were removed"
+        warning( $0, $filename, undef,
+                 "file '${filename}' had $pd_overall_info_datablock_nr " .
+                 "powder overall information datablocks, taking one " .
+                 "into account, other were removed", undef );
     }
 
     # Assume that there are no datablocks with coordinates until a datablock
@@ -744,9 +748,11 @@ for my $filename (@ARGV) {
             my $bibdata;
 
             if( @{$biblio_blocks} > 1 ) {
-                warn "file '${biblio}' has @{$biblio_blocks} --" .
-                    "will take bibliography from a datablock "  .
-                    "that has the same name as the coordinate datablock";
+                warning( $0, $filename, undef,
+                         "file '${biblio}' has @{$biblio_blocks} -- " .
+                         "will take bibliography from a datablock "  .
+                         "that has the same name as the coordinate datablock",
+                         undef );
                 for my $block (@{$biblio_blocks}) {
                     if( $block->{name} eq $dataset->{name} ) {
                         $bibdata = $block->{values};
@@ -757,9 +763,11 @@ for my $filename (@ARGV) {
                 $bibdata = $biblio_blocks->[0]{values};
             }
             if( !defined $bibdata ) {
-                warn "file '${biblio}' matching bibliography datablock " .
-                     "for '$dataset->{name}' -- " .
-                     "no bibliography wil be taken for this datablock";
+                warning( $0, $filename, undef,
+                         "file '${biblio}' matching bibliography datablock " .
+                         "for '$dataset->{name}' -- " .
+                         "no bibliography wil be taken for this datablock",
+                         undef );
             } else {
                 if( !$leave_biblio ) {
                     for my $key ( grep /_journal_|_publ_section_title|_author_/,

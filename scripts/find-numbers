@@ -11,12 +11,26 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #*
 #  Find COD numbers for the .cif files in given directories of file lists.
 #
-#  Usage:
-#      find-numbers.pl my-cif-dir1/ my-cif-dir2/files*.cif  COD-cif-dir/ 
+#  USAGE:
+#      $0 my-cif-dir1/ my-cif-dir2/files*.cif COD-cif-dir/
 #**
 
 use strict;
+use warnings;
 use File::Basename;
+use COD::SOptions;
+use COD::SUsage;
+
+#* USAGE:
+#*     $0 input1.cif input1_alt.cif
+#*
+#* OPTIONS:
+#*
+#* --help, --usage     Print a short usage message (this message) and exit.
+#**
+@ARGV = getOptions(
+    "--help,--usage"    => sub { usage; exit }
+);
 
 my $check_bibliography = 1;
 

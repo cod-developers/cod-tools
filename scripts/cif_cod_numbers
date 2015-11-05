@@ -18,6 +18,7 @@ use COD::CIF::Parser qw(parse_cif);
 use COD::CIF::Data::CODNumbers;
 use COD::SOptions;
 use COD::SUsage;
+use COD::UserMessage;
 
 my %database = (
         host  => "www.crystallography.net",
@@ -178,7 +179,8 @@ for my $file (@ARGV) {
     print STDERR $_ foreach ( @$messages );
 
     if( !defined $data->[0] || !defined $data->[0]{name} ) {
-        warn( "file '$file' seems to be empty" );
+        warning( $0, $file, undef,
+                 "file '$file' seems to be empty", undef );
     }
 
     my $duplicates = fetch_duplicates( $data, $file, \%database, \%options );

@@ -47,28 +47,83 @@ my $cif_comment_header; # A header with comments to printed at the
 my $cif_header_file; # The name of an external file that holds a CIF
                      # header.
 
+my $data_block_format = "%07d";
 my $data_block_nr; # If defined, specifies that data blocks should be
                    # numbered in a COD-like fasion.
 
 @ARGV = getOptions(
-
-#** OPTIONS:
-#** -h, --add-cif-header header_file.cif
-#**     Prepend each of the output files with the comments from the
-#**     beginning of the specified file.
+#* USAGE:
+#*     $0 --options input.cif input*.cif
+#*
+#* OPTIONS:
+#* -h, --add-cif-header header_file.cif
+#*     Prepend each of the output files with the comments from the
+#*     beginning of the specified file.
+#*
+#* --exclude-empty-tags
+#*     Remove tags that contain only empty values. A value is
+#*     considered empty if it equal to a single question mark ('?')
+#*     or a single period ('.').
+#* --dont-exclude-empty-tags, --no-exclude-empty-tags
+#*     Disable the '--exclude-empty-tags' option (default).
+#*
+#* -x, --extra-tag-list tag-list.lst
+#*     Add additional tags to the list of recognised CIF tags. These
+#*     extra tags are presented in a separate file, one tag per line.
+#* --exclude-misspelled-tags
+#*     Remove tags that were not present in the recognised tag list.
+#* --dont-exclude-misspelled-tags,
+#* --no-exclude-misspelled-tags
+#*     Disable the '--exclude-misspelled-tags' option.
+#*
+#* --preserve-loop-order
+#*     Print loops in the same order they appeared in the original file.
+#* --use-internal-loop-order
+#*     Disregard original loop order while printing the tags (default).
+#*
+#* --original-filename data_source.cif
+#*     Use the provided string as the name of the original file.
+#*     (see --record-original-filename).
+#* --clear-original-filename
+#*     Do not use any previously provided strings as the name of
+#*     the original file.
+#* --record-original-filename
+#*     Record the original filename and the original datablock name for
+#*     each datablock as the '_cod_data_source_*' tag values.
+#* --dont-record-original-filename
+#*     Do not record the original filename and the original datablock
+#*     name (default).
+#*
+#* -S, --start-data-block-number 1234567
+#*     Use the provided number as the start number when renaming
+#*     datablocks (default '7000001')  Setting this option enables
+#*     the '-R' option.
+#* -d, --data-block-format '%07d'
+#*     Use the provided format to determine new datablock names from the
+#*     provided datablock numbers (default '%07d').
+#* -R, --renumber-data-blocks
+#*     Rename all datablocks. The new names are constructed by taking
+#*     a start number (specified by the '-S' option), applying the
+#*     string format (specified by the '-d' option) and then incrementing
+#*     the start number for each sequential datablock.
+#* -R-, --dont-renumber-data-blocks
+#*     Do not rename datablocks (default). Enabling this option sets
+#*     the '-S' option to default value.
+#*
+#* --folding-width 76
+#*     Specify the length of the longest unfolded line.
+#*
+#* --fold-title
+#* --dont-fold-title
+#*     Folds the title, if longer than folding width. Default: off.
+#*
+#* --fold-long-fields
+#* --dont-fold-long-fields
+#*     Fold fields, longer than folding width. Default: off.
+#*
+#* --help, --usage
+#*     Print a short usage message (this message) and exit.
 #**
-#** --folding-width 76
-#**     Specify the length of the longest unfolded line.
-#**
-#** --fold-title
-#** --dont-fold-title
-#**     Folds the title, if longer than folding width. Default: off.
-#**
-#** --fold-long-fields
-#** --dont-fold-long-fields
-#**     Fold fields, longer than folding width. Default: off.
-#**
-#** --help,--usage         Print a short usage message (this message) and exit.
 
     "-h,--add-cif-header" => \$cif_header_file,
 
@@ -92,6 +147,7 @@ my $data_block_nr; # If defined, specifies that data blocks should be
     "--record-original-filename"      => sub { $record_original_filename = 1; },
     "--dont-record-original-filename" => sub { $record_original_filename = 0; },
 
+    "-d,--data-block-format"          => \$data_block_format,
     "-S,--start-data-block-number"    => \$data_block_nr,
     "-R,--renumber-data-blocks"       => sub { $data_block_nr = 7000001 },
     "-R-,--dont-renumber-data-blocks" => sub { undef $data_block_nr },
@@ -275,7 +331,7 @@ for my $dataset (@data) {
     # Calculate the data block name:
 
     if( defined $data_block_nr ) {
-        $dataset->{name} = sprintf "%07d", $data_block_nr;
+        $dataset->{name} = sprintf $data_block_format, $data_block_nr;
         $data_block_nr ++;
     }
 
