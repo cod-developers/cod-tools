@@ -25,15 +25,19 @@ BIN_DIR = ./
 endif
 
 YAPP_SOURCES := $(wildcard $(addsuffix /*.yp, ${YAPP_MODULE_DIRS}))
-YAPP_MODULES := ${YAPP_SOURCES:%.yp=%.pm}
+YAPP_MODULES := ${YAPP_MODULE_DIRS:${PERL_SOURCE_TOP}/%=${LOCAL_PERL_LIB}/%.pm}
 
-# Getting the name of the perl Yapp module and transforming it to target path
-YAPP_MODULES += $(patsubst ${YAPP_PARSER_SRC_DIR}/%.yp, \
-                           ${YAPP_PARSER_LIB_DIR}/%.pm, \
-                           $(wildcard ${YAPP_PARSER_SRC_DIR}/*.yp))
-
-PERL_SWIG_SOURCES := $(wildcard $(addsuffix /*.i, ${PERL_SWIG_MODULE_DIRS}))
-PERL_SWIG_MODULES := ${PERL_SWIG_SOURCES:%.i=%.pm}
+# Upon compiling the interface, SWIG generates shared object (*.so) files.
+# In case of Perl modules (*.pm), these objects are expected to be found in
+# the 'auto' directory. For example, if the directory hierarchy of the compiled
+# package 'X::Y::PackageName' is placed under the 'lib' directory, the following
+# is true:
+#   * path to the .pm file: lib/X/Y/PakageName.pm
+#   * path to the .so file: lib/auto/X/Y/PakageName/PakageName.so
+PERL_SWIG_MODULES   := ${PERL_SWIG_MODULE_DIRS:${PERL_SOURCE_TOP}/%=${LOCAL_PERL_LIB}/%.pm}
+SHARED_SWIG_OBJECTS := $(foreach mod, $(PERL_SWIG_MODULES), \
+    $(mod:${LOCAL_PERL_LIB}/%.pm=${LOCAL_PERL_LIB}/auto/%)/$(patsubst %.pm,%.so,$(notdir $(mod))) \
+)
 
 PYTHON_SWIG_SOURCES := $(wildcard $(addsuffix /*.i, ${PYTHON_SWIG_MODULE_DIRS}))
 PYTHON_SWIG_MODULES := ${PYTHON_SWIG_SOURCES:%.i=%.py}
@@ -42,7 +46,7 @@ SWIG_MODULES := ${PERL_SWIG_MODULES} ${PYTHON_SWIG_MODULES}
 
 COMPILED_MODULES := ${YAPP_MODULES} ${SWIG_MODULES}
 
-.PRECIOUS: %.pm %.py ${YAPP_MODULES}
+.PRECIOUS: %.py %.pm ${COMPILED_MODULES}
 
 #
 # TEST variable should be defined in the Makeconf file, or on the
@@ -57,11 +61,15 @@ all: tests
 
 #------------------------------------------------------------------------------
 
-${YAPP_PARSER_LIB_DIR}/%.pm: ${YAPP_PARSER_SRC_DIR}/%.yp
-	${MAKE} -C $(dir $<) LIB_DIR=${YAPP_PARSER_LIB_DIR}
+${LOCAL_PERL_LIB}/%.pm: ${PERL_SOURCE_TOP}/%/grammar.yp
+	${MAKE} -C $(dir $<)
+	cp $(dir $<)/lib/$*.pm $@
 
-%.pm: %.yp
-	${MAKE} -C $(dir $@) all tests #$(notdir $@) tests
+${LOCAL_PERL_LIB}/%.pm: ${PERL_SOURCE_TOP}/%/source.c \
+                        ${PERL_SOURCE_TOP}/%/source.i
+	${MAKE} -C  $(dir $<)
+	cp $(<D)/lib/$*.pm $@
+	cp $(dir $<)/lib/auto/$*/$(*F).so ${LOCAL_PERL_LIB}/auto/$*/$(*F).so
 
 %.pm %.py: %.c %.i
 	${MAKE} -C $(@D) $(@F) all
@@ -165,7 +173,7 @@ perl -pe 's/Id: [-\w]+ \d+ [-\d]+ [:\dZ]+ \w+/Id: <script_name> <revision_nr> <d
 | perl -pe 's,at [-\.\/\w\d]+ line \d+\.?,at <script_name> line <line_no>.,' \
 | perl -pe 's/(U|u)se of uninitialized value [^\s]+ in/$$1se of uninitialized value in/g' \
 | perl -pe 's/(Use of uninitialized value in pattern match \(m\/\/\) at )([a-zA-Z0-9\-\/]+)\/([a-zA-Z0-9\-\.]+) line \d+, <([^>])+> line \d+/$$1$$3 line <line_no>/g' \
-| perl -pe 's/(unknown MySQL server host .*?)(\(\d*\)).$)/$$1(<error code>)./' \
+| perl -pe 's/(unknown MySQL server host .*?)(\(\d*\))\.?$$/$$1(<error code>)./' \
 | perl -pe 's/OpenBabel\d+.*/OpenBabel9999999999D/' \
 | perl -pe 's/(_cod_hold_until_date .* )(\d{4}-\d{2}-\d{2})/$$1<date>/' \
 | perl -pe 's/^(CIF\s+_journal_year\s+)\d{4}/$$1<year>/' \
@@ -297,7 +305,7 @@ tests alltests: test shtests
 
 .PHONY: listdiff blame
 
-DIFF_DIRS = $(dir ${YAPP_SOURCES} ${YAPP_PARSER_SRC_DIR}/ ${SWIG_MODULES})
+DIFF_DIRS = $(dir ${YAPP_SOURCES} ${SWIG_MODULES})
 listdiff: # test
 	@-( test -d ${OUTPUT_DIR} && \
 	    ls -l ${OUTPUT_DIR}/*.diff | awk '{if( $$5 > 0 ) print}' ) || \
@@ -334,8 +342,9 @@ clean:
 	rm -f ${SHELL_DIFFS}
 
 MAKE_DIRS = $(dir $(wildcard */Makefile)) ${LOCAL_CLEAN_TARGETS}
-cleanAll distclean: clean 
+cleanAll distclean: clean
 	rm -f ${COMPILED_MODULES}
+	rm -f ${SHARED_SWIG_OBJECTS}
 	rm -f ${SCRIPT_DEPENDS}
 	for DIR in ${MAKE_DIRS}; do \
 		${MAKE} -C $$DIR $@; \

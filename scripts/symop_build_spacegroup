@@ -9,12 +9,25 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #$URL$
 #------------------------------------------------------------------------------
 #*
-#  Determine a spacegroup from a list of symmetry operators
+#  Determine a space group from a list of symmetry operators
 #  (generators), using the Ralf's (Ralf Grosse-Kunstleve) algorithm.
 #**
 
 use strict;
 use warnings;
+use COD::SOptions;
+use COD::SUsage;
+
+#* USAGE: $0 < input.symop
+#* USAGE: $0 input.symop
+#* USAGE: $0 input.symop additional*.symop
+#*
+#* OPTIONS:
+#* --help, --usage    Print short usage message (this message) and exit.
+#**
+@ARGV = getOptions(
+   "--help,--usage"  => sub { usage; exit },
+);
 
 use COD::Spacegroups::Builder;
 use COD::Spacegroups::Lookup;

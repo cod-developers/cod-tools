@@ -9,13 +9,26 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #$URL$
 #------------------------------------------------------------------------------
 #*
-#  Parse superspacegoup symmetry operators as described in the CIF
-#  _space_group_symop_ssg_operation_algebraic data items and procued
+#  Parse superspace group symmetry operators as described in the CIF
+#  _space_group_symop_ssg_operation_algebraic data items and produce
 #  symmetry matrices for them.
 #**
 
 use strict;
 use warnings;
+use COD::SOptions;
+use COD::SUsage;
+
+#* USAGE: $0 < input.symop
+#* USAGE: $0 input.symop
+#* USAGE: $0 input1.symop input*.symop
+#*
+#* OPTIONS:
+#* --help, --usage    Print short usage message (this message) and exit.
+#**
+@ARGV = getOptions(
+   "--help,--usage"  => sub { usage; exit },
+);
 
 use COD::Spacegroups::Symop::SSGParse;
 

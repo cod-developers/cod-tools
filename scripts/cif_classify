@@ -16,11 +16,12 @@ eval 'exec perl -x $0 ${1+"$@"}'
 use strict;
 use warnings;
 use File::Basename;
-use COD::CIF::Parser qw(parse_cif);
-use COD::CIF::Data::Classifyer;
 use COD::AtomProperties;
+use COD::CIF::Data::Classifyer;
+use COD::CIF::Parser qw(parse_cif);
 use COD::SOptions;
 use COD::SUsage;
+use COD::UserMessage qw(prefix_dataname);
 
 my $use_parser = "c";
 
@@ -57,7 +58,8 @@ for my $filename (@ARGV) {
     print STDERR $_ foreach ( @$messages );
 
     if( !@$data || !defined $data->[0] || !defined $data->[0]{name} ) {
-        warn( "$0: $filename: file seems to be empty" );
+        warning( $0, $filename, undef,
+                 "file '$filename' seems to be empty", undef );
         next;
     }
 
@@ -76,7 +78,8 @@ for my $filename (@ARGV) {
             }
         };
         if( $@ ) {
-            warn "$0: $filename $datablock->{name}: ", lcfirst($@)
+            warning( $0, $filename, prefix_dataname( $datablock->{name} ),
+                     lcfirst($@), undef );
         }
     }
 }

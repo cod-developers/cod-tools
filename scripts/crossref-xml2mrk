@@ -9,16 +9,30 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #$URL$
 #------------------------------------------------------------------------------
 #*
-#  Convert Pubmed XML bibliography records to may own XML-like markup
+#  Convert CrossRef XML bibliography records to my own XML-like markup.
 #**
 
 use strict;
+use warnings;
+use COD::SOptions;
+use COD::SUsage;
+
+#* USAGE:
+#*     $0 input1.xml input*.xml
+#*
+#* OPTIONS:
+#* --help, --usage
+#*     Print a short usage message (this message) and exit.
+#**
+@ARGV = getOptions(
+    "--help,--usage"    => sub { usage; exit }
+);
 
 @ARGV = ("-") unless @ARGV;
 
 for my $file (@ARGV) {
     open( F, $file ) or die "$0: could not open file '$file' for reading";
-    
+
     local $/; #  enable "slurp" mode: read the whole header file.
 
     my $xml = <F>; # read in the whole XML file
