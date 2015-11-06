@@ -14,17 +14,17 @@ eval 'exec perl -x $0 ${1+"$@"}'
 
 use strict;
 use warnings;
-use COD::CIF::Data::CellContents qw(cif_cell_contents);
+use File::Basename qw( basename );
+use COD::CIF::Data::CellContents qw( cif_cell_contents );
 use COD::CIF::Parser::Yapp;
 use COD::CIF::Tags::CanonicalNames;
-use COD::ShowStruct;
-use COD::Serialise;
 use COD::Spacegroups::Symop::Parse;
 use COD::Fractional;
-use File::Basename qw(basename);
-use COD::ErrorHandler qw(process_warnings process_errors);
 use COD::SOptions;
-use COD::SUsage;
+use COD::SUsage qw( usage options );
+use COD::ErrorHandler qw( process_warnings process_errors );
+use COD::ShowStruct;
+use COD::Serialise;
 
 my $format = "%g";
 my $Z_value;
@@ -36,10 +36,9 @@ my $die_on_notes    = 0;
 my $print_datablock_name = 0;
 
 #* USAGE:
-#*     cif_cell_constants [options] input.cif
+#*     cif_cell_constants --options input1.cif input*.cif
 #*
 #* OPTIONS:
-#*
 #*     -c, --continue-on-errors
 #*         Keep processing subsequent data blocks even if one datablock
 #*         had fatal processing errors
@@ -75,7 +74,7 @@ my $print_datablock_name = 0;
 #*     --ignore-attached-hydrogens
 #*         Ignore number of implicit hydrogens, specified using
 #*         _atom_site_attached_hydrogens tag, in calculation of the
-#*         formula sum. Default option.
+#*         formula sum (default).
 #*
 #*     --assume-full-occupancies
 #*         Assume that all atoms have full (1.0) occupancies.
@@ -83,8 +82,8 @@ my $print_datablock_name = 0;
 #*     --dont-assume-full-occupancies,
 #*     --no-assume-full-occupancies,
 #*     --use-original-occupancies
-#*         Use original atom site occupancies, as given in CIF file.
-#*         Default option.
+#*         Use original atom site occupancies, as given in CIF file
+#*         (default).
 #*
 #*     --print-datablock-name
 #*         Print datablock name, tab-separated, before each formula.
@@ -94,10 +93,10 @@ my $print_datablock_name = 0;
 #*     --no-print-datablock-name
 #*         Do not print datablock name (default).
 #*
-#*     --help,--usage  print a short usage message (this message) and exit.
+#*     --help, --usage
+#*         Print a short usage message (this message) and exit.
 #**
 @ARGV = getOptions(
-
     "-c,--continue-on-errors"       => sub { $die_on_errors = 0 },
     "-c-,--dont-continue-on-errors" => sub { $die_on_errors = 1 },
     "--die-on-errors"               => sub { $die_on_errors = 1 },
@@ -127,7 +126,8 @@ my $print_datablock_name = 0;
     "--dont-print-datablock-name" => sub{ $print_datablock_name = 0 },
     "--do-not-print-datablock-name" => sub{ $print_datablock_name = 0 },
 
-    "--help,--usage" => sub { usage; exit },
+    "--options"      => sub { options; exit },
+    "--help,--usage" => sub { usage; exit }
 );
 
 my $Id = '$Id$';

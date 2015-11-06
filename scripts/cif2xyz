@@ -17,14 +17,14 @@ use warnings;
 use COD::CIF::Parser qw( parse_cif );
 use COD::AtomProperties;
 use COD::CIF::Data qw( get_cell );
-use COD::Fractional qw(symop_ortho_from_fract);
+use COD::Fractional qw( symop_ortho_from_fract );
 use COD::Spacegroups::Symop::Algebra qw( symop_vector_mul );
+use COD::SOptions;
+use COD::SUsage qw( usage options );
 use COD::ErrorHandler qw( process_warnings
                           process_errors
                           process_parser_messages
                           report_message );
-use COD::SOptions;
-use COD::SUsage;
 
 my $die_on_error_level = {
     ERROR   => 1,
@@ -35,7 +35,6 @@ my $die_on_error_level = {
 my $print_radii = 0;
 my $use_parser = "c"; # Used CIF parser
 
-@ARGV = getOptions(
 #* USAGE:
 #*     $0 --options input.cif
 #*
@@ -54,6 +53,7 @@ my $use_parser = "c"; # Used CIF parser
 #*     --help, --usage
 #*         Print a short usage message (this message) and exit.
 #**
+@ARGV = getOptions(
     "--print-radii" => sub{ $print_radii = 1 },
     "--no-print-radii,--dont-print-radii" => sub{ $print_radii = 0 },
     "--xyz-only" => sub{ $print_radii = 0 },
@@ -61,7 +61,8 @@ my $use_parser = "c"; # Used CIF parser
     "--use-perl-parser" => sub{ $use_parser = "perl" },
     "--use-c-parser"    => sub{ $use_parser = "c" },
 
-    "--help,--usage" => sub { usage; exit },
+    "--options"      => sub { options; exit },
+    "--help,--usage" => sub { usage; exit }
 );
 
 @ARGV = ("-") unless @ARGV;

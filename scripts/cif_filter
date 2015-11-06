@@ -41,10 +41,10 @@ use COD::Spacegroups::Lookup qw( mk_symop_key mkhash );
 use COD::Spacegroups::Symop::SSGParse qw( symop_from_ssg_operator );
 use COD::Formulae::Parser::AdHoc;
 use COD::CIF::Unicode2CIF;
+use COD::SOptions;
+use COD::SUsage qw( usage options );
 use COD::ErrorHandler qw( process_errors process_warnings
                           process_parser_messages report_message );
-use COD::SOptions;
-use COD::SUsage;
 
 my %symop_lookup_table;
 ## my %symop_lookup_table = mkhash();
@@ -122,7 +122,7 @@ my %spacegroups = map {
 } @COD::Spacegroups::Names::names;
 
 #* USAGE:
-#*     $0 [options] input.cif [input2.cif ...]
+#*     $0 --options input1.cif input*.cif
 #*
 #* OPTIONS:
 #*    -a, --authors "John Doe; Jane Doe; Joe Bloggs"
@@ -215,7 +215,7 @@ my %spacegroups = map {
 #*    --no-exclude-non-loop-unknown-tags
 #*        Disable the '--exclude-unknown-non-loop-tags' option (default).
 #*
-#*    -x,--extra-tag-list tag-list.lst
+#*    -x, --extra-tag-list tag-list.lst
 #*        Add additional tags to the list of recognised CIF tags. These
 #*        extra tags are presented in a separate file, one tag per line.
 #*    --exclude-misspelled-tags
@@ -346,10 +346,9 @@ my %spacegroups = map {
 #*    --use-c-parser
 #*        Use Perl & C parser for CIF parsing (default).
 #*
-#*    --help,--usage
+#*    --help, --usage
 #*        Print a short usage message (this message) and exit.
 #**
-
 @ARGV = getOptions(
     "-a,--authors"      => sub{ $user_biblio = 1;
                                 @authors = split( /(?:;|:)\s*/,
@@ -485,7 +484,9 @@ my %spacegroups = map {
     "--no-exclude-publication-details"   => sub{ $exclude_publ_details = 0 },
 
     "--leave-title"          => sub{ $leave_title = 1 },
-    "--help,--usage" => sub { usage; exit },
+
+    "--options"      => sub { options; exit },
+    "--help,--usage" => sub { usage; exit }
 );
 
 my $die_on_error_level = {

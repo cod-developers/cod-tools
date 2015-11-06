@@ -23,11 +23,11 @@ use COD::Fractional qw( symop_ortho_from_fract
 use COD::Algebra::Vector qw( vector_matrix_mul );
 use COD::Spacegroups::Symop::Algebra qw( symop_transpose symop_mul );
 use COD::Cell::Niggli::KG76 qw( reduce );
+use COD::SOptions;
+use COD::SUsage qw(usage options);
 use COD::ErrorHandler qw( process_warnings
                           process_errors
                           process_parser_messages );
-use COD::SOptions;
-use COD::SUsage;
 
 sub cholesky($);
 
@@ -43,8 +43,8 @@ $COD::Cell::Niggli::KG76::debug = 0;
 my $Pi = 4 * atan2(1,1);
 
 #* USAGE:
-#*     $0 [options] input.cif [input2.cif ...]
-#* 
+#*     $0 --options input1.cif input*.cif
+#*
 #* OPTIONS:
 #*     --use-perl-parser
 #*        Use Perl parser for CIF parsing.
@@ -55,19 +55,17 @@ my $Pi = 4 * atan2(1,1);
 #*     --debug, --no-debug
 #*        Turn on/off the debug prints of reduction algorithm. Default off.
 #*
-#*     --help,--usage
+#*     --help, --usage
 #*        Print short usage message (this message) and exit.
 #**
-
-@ARGV = getOptions
-(
+@ARGV = getOptions(
     "--debug"    => sub{ $COD::Cell::Niggli::KG76::debug = 1 },
     "--no-debug" => sub{ $COD::Cell::Niggli::KG76::debug = 0 },
 
-    "--use-perl-parser" => sub{ $use_parser = "perl" },
-    "--use-c-parser"    => sub{ $use_parser = "c" },
-
-    "--help,--usage" => sub { usage; exit },
+    "--use-perl-parser" => sub { $use_parser = "perl" },
+    "--use-c-parser"    => sub { $use_parser = "c" },
+    "--options"         => sub { options; exit },
+    "--help,--usage"    => sub { usage; exit }
 );
 
 @ARGV = ( "-" ) unless @ARGV;

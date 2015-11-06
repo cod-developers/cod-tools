@@ -14,8 +14,9 @@ eval 'exec perl -x $0 ${1+"$@"}'
 
 use strict;
 use warnings;
-use COD::CIF::Parser qw(parse_cif);
-use COD::AtomBricks qw(build_bricks get_atom_index get_search_span);
+use List::Util qw( sum );
+use COD::CIF::Parser qw( parse_cif );
+use COD::AtomBricks qw( build_bricks get_atom_index get_search_span );
 use COD::AtomProperties;
 use COD::CIF::Data qw( get_cell );
 use COD::CIF::Data::AtomList qw( atom_array_from_cif );
@@ -25,12 +26,11 @@ use COD::CIF::Tags::Print qw( print_cif );
 use COD::Fractional qw( symop_ortho_from_fract );
 use COD::Spacegroups::Symop::Algebra qw( symop_vector_mul );
 use COD::Algebra::Vector qw( distance );
+use COD::SOptions;
+use COD::SUsage qw( usage options );
 use COD::ErrorHandler qw( process_warnings
                           process_errors
                           process_parser_messages );
-use COD::SOptions;
-use COD::SUsage;
-use List::Util qw(sum);
 
 my $Id = '$Id$';
 
@@ -45,8 +45,8 @@ my $ignore_occupancies = 0;
 my $messages_to_depositor_comments = 1;
 
 #* USAGE:
-#*     $0 [options] input1.cif [input2.cif ...]
-#* 
+#*     $0 --options input1.cif input*.cif
+#*
 #* OPTIONS:
 #*     -d, --distance-sensivity  0.000001
 #*        Specify maximum distance between two atoms that should be
@@ -79,7 +79,7 @@ my $messages_to_depositor_comments = 1;
 #*     --report-marked-disorders
 #*        Print each of the marked disorder assemblies to the standard
 #*        error, listing atom labels. Default option.
-#*        
+#*
 #*     --no-report-marked-disorders
 #*     --dont-report-marked-disorders
 #*        Do not print marked disorder assemblies to the standard error.
@@ -102,12 +102,10 @@ my $messages_to_depositor_comments = 1;
 #*     --use-c-parser
 #*        Use Perl & C parser for CIF parsing (default).
 #*
-#*     --help,--usage
+#*     --help, --usage
 #*        Print short usage message (this message) and exit.
 #**
-
-@ARGV = getOptions
-(
+@ARGV = getOptions(
     "-d,--distance-sensivity" => \$same_site_distance_sensivity,
     "--occupancy-sensivity" => \$same_site_occupancy_sensivity,
 
@@ -136,10 +134,10 @@ my $messages_to_depositor_comments = 1;
 
     "--brick-size" => \$brick_size,
 
-    "--use-perl-parser" => sub{ $use_parser = "perl" },
-    "--use-c-parser"    => sub{ $use_parser = "c" },
-
-    "--help,--usage" => sub { usage; exit },
+    "--use-perl-parser" => sub { $use_parser = "perl" },
+    "--use-c-parser"    => sub { $use_parser = "c" },
+    "--options"         => sub { options; exit },
+    "--help,--usage"    => sub { usage; exit }
 );
 
 my $die_on_errors    = 1;

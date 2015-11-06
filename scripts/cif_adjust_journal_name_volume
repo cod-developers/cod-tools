@@ -20,9 +20,9 @@ use COD::CIF::Tags::CanonicalNames qw( canonicalize_all_names );
 use COD::CIF::Tags::DictTags;
 use COD::CIF::Tags::COD;
 use COD::CIF::Tags::Print qw( print_cif );
-use COD::ErrorHandler qw( process_parser_messages );
 use COD::SOptions;
-use COD::SUsage;
+use COD::SUsage qw( usage options );
+use COD::ErrorHandler qw( process_parser_messages );
 
 my $die_on_error_level = {
     ERROR   => 1,
@@ -34,7 +34,7 @@ my $keep_tag_order = 0;
 my $use_parser = 'c';
 
 #* USAGE:
-#*     $0 [options] input.cif [input2.cif ...]
+#*     $0 --options input1.cif input*.cif
 #*
 #* OPTIONS:
 #*   --keep-tag-order
@@ -42,12 +42,14 @@ my $use_parser = 'c';
 #*   --sort-tags
 #*                      Reorder tags in CIF file according to COD.
 #*
-#**  --help,--usage     Print a short usage message (this message) and exit.
-
+#*   --help, --usage
+#*                      Print a short usage message (this message) and exit.
+#**
 @ARGV = getOptions(
     "--keep-tag-order" => sub { $keep_tag_order = 1; },
     "--sort-tags"      => sub { $keep_tag_order = 0; },
-    "--help,--usage"   => sub { usage; exit },
+    "--options"        => sub { options; exit },
+    "--help,--usage"   => sub { usage; exit }
 );
 
 my @dictionary_tags = ( @COD::CIF::Tags::DictTags::tag_list,

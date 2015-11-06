@@ -24,7 +24,7 @@ use COD::CIF::Tags::Manage qw( exclude_tag exclude_empty_tags set_tag );
 use COD::CIF::Tags::Print qw( print_cif );
 use COD::CIF::Tags::CanonicalNames qw( canonicalize_names );
 use COD::SOptions;
-use COD::SUsage;
+use COD::SUsage qw(usage options);
 use COD::ErrorHandler qw( process_warnings
                           process_errors
                           process_parser_messages
@@ -58,9 +58,8 @@ my $data_block_format = "%07d";
 my $data_block_nr; # If defined, specifies that data blocks should be
                    # numbered in a COD-like fasion.
 
-@ARGV = getOptions(
 #* USAGE:
-#*     $0 --options input.cif input*.cif
+#*     $0 --options input1.cif input*.cif
 #*
 #* OPTIONS:
 #* -h, --add-cif-header header_file.cif
@@ -136,7 +135,7 @@ my $data_block_nr; # If defined, specifies that data blocks should be
 #* --help, --usage
 #*     Print a short usage message (this message) and exit.
 #**
-
+@ARGV = getOptions(
     "-h,--add-cif-header" => \$cif_header_file,
 
     "-x,--extra-tag-list" => \$extra_tag_file,
@@ -170,10 +169,10 @@ my $data_block_nr; # If defined, specifies that data blocks should be
     "--fold-long-fields"      => sub{ $fold_long_fields = 1 },
     "--dont-fold-long-fields" => sub{ $fold_long_fields = 0 },
 
-    "--use-perl-parser" => sub{ $use_parser = "perl" },
-    "--use-c-parser"    => sub{ $use_parser = "c" },
-
-    "--help,--usage" => sub { usage; exit },
+    "--use-perl-parser" => sub { $use_parser = "perl" },
+    "--use-c-parser"    => sub { $use_parser = "c" },
+    "--options"         => sub { options; exit },
+    "--help,--usage"    => sub { usage; exit }
 );
 
 my @extra_tags = ();

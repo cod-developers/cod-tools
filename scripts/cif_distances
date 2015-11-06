@@ -12,7 +12,7 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #*  Calculates minimal distance between atoms read from a CIF file.
 #*
 #* USAGE:
-#*    $0 [options] input.cif [input2.cif ...]
+#*    $0 --options input1.cif input*.cif
 #**
 
 use strict;
@@ -32,7 +32,7 @@ use COD::CIF::Data::SymmetryGenerator qw( copy_atom
 use COD::CIF::Data::ExcludeFromStatistics qw( exclude_from_statistics );
 use COD::Fractional qw(symop_ortho_from_fract);
 use COD::SOptions;
-use COD::SUsage;
+use COD::SUsage qw(usage options);
 use COD::ErrorHandler qw(process_warnings process_errors);
 
 my $die_on_errors   = 1;
@@ -55,72 +55,73 @@ my $line_length = 80;
 my $escape_sequence = '\\';
 my %escaped_symbols = ("\"" => '"', "\'" => "'");
 
+#* OPTIONS:
+#* -M, --distance-matrix
+#*                     Set distance matrix output format.
+#* -P, --pairwise-distance
+#*                     Set pairwise distance output format (default).
+#* -l, --matrix-line-length "80"
+#*                     Maximum length of an output line in distance 
+#*                     matrix format (default 80).
+#* --format "%8.6f"
+#*                     Use the specified format for distance matrix
+#*                     and pairwise printout format (default "%-11.3f"
+#*                     for matrix, "%-6.3f" for pairwise).
+#* -F, --add-filename
+#*                     Add a filename field at the end of pairwise
+#*                     distance format lines.
+#* --no-add-filename, --do-not-add-filename
+#*                     Do not add a filename field at the end of
+#*                     pairwise distance format lines (default).
+#* --process-disordered-structures,
+#* --include-disordered-structures
+#*                     Force processing of disordered structures (default).
+#* --no-process-disordered-structures,
+#* --exclude-disordered-structures,
+#* --skip-disordered-structures
+#*                     Skip disordered structures.
+#* --process-duplicate-structures,
+#* --include-duplicate-structures,
+#*                     Force processing of structures, that are flagged
+#*                     as duplicates with '_cod_duplicate_entry' or
+#*                     '_[local]_cod_duplicate_entry' tags.
+#* --no-process-duplicate-structures,
+#* --exclude-duplicate-structures,
+#* --skip-duplicate-structures
+#*                     Skip duplicate structures (default).
+#* --include-null-distances
+#*                     Include entries of null distance relationship between
+#*                     atoms from different disorder groups of the same
+#*                     disorder assembly in pairwise distances output format.
+#* --no-null-distances, --exclude-null-distances
+#*                     Exclude entries of null distance relationship between
+#*                     atoms from different disorder groups of the same
+#*                     disorder assembly in pairwise distances output format
+#*                     (default).
+#* --include-self-distances
+#*                     Include entries of distances between symmetry-related
+#*                     instances of the same atom (default).
+#* --no-self-distances, --exclude-self-distances
+#*                     Exclude entries of distances between symmetry-related
+#*                     instances of the same atom.
+#* -U, --include-unknown-types
+#*                     Include entries containing atoms of undetermined
+#*                     chemical type. Atom type will be marked as 'UN'.
+#* --no-unknown-types, --exclude-unknown-types
+#*                     Exclude entries containing atoms of undetermined
+#*                     chemical type (default).
+#* --uniquify-atoms
+#*                    Makes unique the labels of atoms (default).
+#* --no-uniquify-atoms
+#*                    Does not make unique labels for atoms.
+#* -v, --verbose
+#*                    Print additional information for each step of the script.
+#* -s, --silent, --quiet
+#*                    Print no additional information (default).
+#* --help, --usage
+#*                    Print a short usage message (this message) and exit.
+#**
 @ARGV = getOptions(
-#** OPTIONS:
-#** -M, --distance-matrix
-#**                     Set distance matrix output format.
-#** -P, --pairwise-distance
-#**                     Set pairwise distance output format (default).
-#** -l, --matrix-line-length "80"
-#**                     Maximum length of an output line in distance 
-#**                     matrix format (default 80).
-#** --format "%8.6f"
-#**                     Use the specified format for distance matrix 
-#**                     and pairwise printout format (default "%-11.3f" for
-#**                     matrix, "%-6.3f" for pairwise).
-#** -F, --add-filename
-#**                     Add a filename field at the end of pairwise 
-#**                     distance format lines.
-#** --no-add-filename,--do-not-add-filename
-#**                     Do not add a filename field at the end of 
-#**                     pairwise distance format lines (default).
-#** --process-disordered-structures,
-#** --include-disordered-structures
-#**                     Force processing of disordered structures (default).
-#** --no-process-disordered-structures,
-#** --exclude-disordered-structures,
-#** --skip-disordered-structures
-#**                     Skip disordered structures.
-#** --process-duplicate-structures,
-#** --include-duplicate-structures,
-#**                     Force processing of structures, that are flagged 
-#**                     as duplicates with '_cod_duplicate_entry' or 
-#**                     '_[local]_cod_duplicate_entry' tags.
-#** --no-process-duplicate-structures,
-#** --exclude-duplicate-structures,
-#** --skip-duplicate-structures
-#**                     Skip duplicate structures (default).
-#** --include-null-distances
-#**                     Include entries of null distance relationship between 
-#**                     atoms from different disorder groups of the same 
-#**                     disorder assembly in pairwise distances output format.
-#** --no-null-distances, --exclude-null-distances
-#**                     Exclude entries of null distance relationship between 
-#**                     atoms from different disorder groups of the same 
-#**                     disorder assembly in pairwise distances output format
-#**                     (default).
-#** --include-self-distances
-#**                     Include entries of distances between symmetry-related 
-#**                     instances of the same atom (default).
-#** --no-self-distances, --exclude-self-distances
-#**                     Exclude entries of distances between symmetry-related
-#**                     instances of the same atom.
-#** -U, --include-unknown-types
-#**                     Include entries containing atoms of undetermined 
-#**                     chemical type. Atom type will be marked as 'UN'.
-#** --no-unknown-types, --exclude-unknown-types
-#**                     Exclude entries containing atoms of undetermined 
-#**                     chemical type (default).
-#** --uniquify-atoms
-#**                    Makes unique the labels of atoms (default).
-#** --no-uniquify-atoms
-#**                    Does not make unique labels for atoms.
-#** -v, --verbose
-#**                    Print additional information for each step of the script.
-#** -s, --silent, --quiet
-#**                    Print no additional information.
-#** --help,--usage     Print a short usage message (this message) and exit.
-
     "-M,--distance-matrix"       => sub { $output_format = "matrix" },
     "-P,--pairwise-distance"     => sub { $output_format = "pairwise"; },
     "-l,--matrix-line-length"    => \$line_length,
@@ -160,6 +161,7 @@ my %escaped_symbols = ("\"" => '"', "\'" => "'");
 
     "-v,--verbose"               => sub { $verbose = 1; },
     "-s,--silent,--quiet"        => sub { $verbose = 0; },
+    "--options"                  => sub { options; exit },
     "--help,--usage"             => sub { usage; exit }
 );
 

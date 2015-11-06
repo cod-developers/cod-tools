@@ -13,9 +13,6 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #*  standard I/O streams. By default, only tags from CIF Core and CIF COD 
 #*  dictionaries with extra '^_+' prefixes are corrected. Additionally, a
 #*  replacement list file can be provided for the correction of misspelt tags.
-#*
-#*  USAGE:
-#*      $0 [options] input.cif [input2.cif ...]
 #**
 
 use strict;
@@ -28,13 +25,16 @@ use COD::CIF::Tags::Manage qw(rename_tag);
 use COD::CIF::Tags::Print qw(fold print_cif);
 use COD::ErrorHandler qw(process_warnings process_errors process_parser_messages);
 use COD::SOptions;
-use COD::SUsage;
+use COD::SUsage qw(usage options);
 
 my $keep_tag_order = 0;
 my $Id = '$Id$';
 my $replacement_list;
 my $use_parser = "c";
 
+#* USAGE:
+#*     $0 --options input.cif input*.cif
+#*
 #* OPTIONS:
 #*   --keep-tag-order
 #*                      Keep the original tag order in CIF file (default).
@@ -46,17 +46,19 @@ my $use_parser = "c";
 #*                      used in the correction of misspelt tags.
 #*   --use-perl-parser
 #*                      Use the Perl-only CIF parser.
-#*
-#*   --use-c-parser     Use the speed-optimised C/Perl parser (default).
-#*   --help,--usage     Print a short usage message (this message) and exit.
+#*   --use-c-parser
+#*                      Use the speed-optimised C/Perl parser. Default.
+#*   --help, --usage
+#*                      Print a short usage message (this message) and exit.
 #**
-
 @ARGV = getOptions(
     "--keep-tag-order"  => sub { $keep_tag_order = 1; },
     "--sort-tags"       => sub { $keep_tag_order = 0; },
     "-r,--replacement-list" => \$replacement_list,
     "--use-perl-parser" => sub{ $use_parser = "perl" },
     "--use-c-parser"    => sub{ $use_parser = "c" },
+
+    "--options"         => sub { options; exit },
     "--help,--usage"    => sub { usage; exit }
 );
 

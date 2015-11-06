@@ -14,7 +14,7 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #*  does not exist.
 #*
 #* USAGE:
-#*    $0
+#*    $0 --options
 #**
 
 use strict;
@@ -22,10 +22,10 @@ use warnings;
 use Net::FTP;
 use File::Compare;
 use File::Copy;
+use COD::SOptions;
+use COD::SUsage qw(usage options);
 use COD::ShowStruct;
 use COD::UserMessage qw(note warning error sprint_message);
-use COD::SOptions;
-use COD::SUsage;
 
 my $version = '1.0';
 my $cacheDuration = 432000; # 60 * 60 * 24 * 5 = 432000 -> for 5 days
@@ -34,43 +34,45 @@ my $forceOverwrite = 0;     # force overwrite of local file or cache clearance
 my $verbose = 0;
 my $dictFileURI = 'ftp://ftp.iucr.org/pub/cif_core.dic';
 
-#** OPTIONS:
-#** --cache-duration 432000
-#**                    Time in seconds, for which the file will remain
-#**                    untouched unless forced to do otherwise 
-#**                    (see --force-overwrite) (default 432000).
-#** --mail-address fetcher@mail.com
-#**                    The e-mail address that will be used passed to the FTP
-#**                    server as an identifier of the client using the service.
-#**                    It is not mandatory and there is no default, but we
-#**                    insist you to declare it.
-#** --force-overwrite
-#**                    Disregard local file modification time and cache duration
-#**                    values while fetching the requested file.
-#** --no-force-overwrite
-#**                    Respect local file modification time and cache duration
-#**                    values while fetching the requested file (default).
-#** --silent, --quiet
-#**                    Suppress additional messages about the progress of the
-#**                    script. Only fatal errors will be printed.
-#** --verbose, --no-quiet
-#**                    Print additional messages about the progress of the
-#**                    script.
-#** --help, --usage    Print a short usage message (this message) and exit.
+#* OPTIONS:
+#* --cache-duration 432000
+#*                    Time in seconds, for which the file will remain
+#*                    untouched unless forced to do otherwise 
+#*                    (see --force-overwrite) (default 432000).
+#* --mail-address fetcher@mail.com
+#*                    The e-mail address that will be used passed to the FTP
+#*                    server as an identifier of the client using the service.
+#*                    It is not mandatory and there is no default, but we
+#*                    insist you to declare it.
+#* --force-overwrite
+#*                    Disregard local file modification time and cache duration
+#*                    values while fetching the requested file.
+#* --no-force-overwrite
+#*                    Respect local file modification time and cache duration
+#*                    values while fetching the requested file (default).
+#* --silent, --quiet
+#*                    Suppress additional messages about the progress of the
+#*                    script. Only fatal errors will be printed.
+#* --verbose, --no-quiet
+#*                    Print additional messages about the progress of the
+#*                    script.
+#* --help, --usage
+#*                    Print a short usage message (this message) and exit.
+#**
 @ARGV = getOptions(
-        "--cache-duration"   => \$cacheDuration,
-        "--mail-address"     => \$fromMail,
+    "--cache-duration"   => \$cacheDuration,
+    "--mail-address"     => \$fromMail,
 
-        "--force-overwrite"  => sub{ $forceOverwrite = 1 },
-        "--no-force-overwrite" => sub{ $forceOverwrite = 0 },
+    "--force-overwrite"  => sub{ $forceOverwrite = 1 },
+    "--no-force-overwrite" => sub{ $forceOverwrite = 0 },
 
-        "--silent"   => sub{ $verbose = 1 },
-        "--quiet"    => sub{ $verbose = 1 },
-        "--verbose"  => sub{ $verbose = 0 },
-        "--no-quiet" => sub{ $verbose = 0 },
-
-        "--help,--usage"     => sub{ usage; exit }
-    );
+    "--silent"       => sub{ $verbose = 0 },
+    "--quiet"        => sub{ $verbose = 0 },
+    "--verbose"      => sub{ $verbose = 1 },
+    "--no-quiet"     => sub{ $verbose = 1 },
+    "--options"      => sub { options; exit },
+    "--help,--usage" => sub{ usage; exit }
+);
 
 fetchDictionary($dictFileURI, $cacheDuration, $fromMail, $forceOverwrite);
 

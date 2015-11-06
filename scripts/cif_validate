@@ -19,7 +19,7 @@ use Scalar::Util;
 use COD::CIF::Parser qw(parse_cif);
 use COD::CIF::Tags::CanonicalNames;
 use COD::SOptions;
-use COD::SUsage;
+use COD::SUsage qw(usage options);
 use COD::UserMessage qw(debug_note);
 use COD::ErrorHandler qw(process_warnings process_parser_messages report_message);
 
@@ -46,82 +46,81 @@ sub checkAgainstRangeChar($$);
 sub getListReferenceTags($$);
 sub getReplacementTags($$);
 
-#** USAGE:
-#**     $0 --dictionaries "cif_core.dic,cif_cod.dic" [options] input.cif [input2.cif ...]
+#* USAGE:
+#*     $0 --dictionaries "cif_core.dic,cif_cod.dic" --options input1.cif input*.cif
+#*
+#* OPTIONS:
+#* -d, --dictionaries "cif_core.dic,cif_cod.dic"
+#*                     A list of CIF dictionary files (according to DDL2)
+#*                     to be used in CIF file validation. List elements
+#*                     are separated either by "," or by " ". To include
+#*                     dictionaries with filenames containing these symbols,
+#*                     the --add-dictionary option is used.
+#* -D, --add-dictionary "cif new dictionary.dic"
+#*                     Add additional CIF dictionary to the list.
+#* --clear-dictionaries
+#*                     Remove all CIF dictionaries from the list.
+#* --treat-as-set _atom_site_refinement_flags
+#*                     Treat values of given tags as a set. For example,
+#*                     more than one enumeration value could be defined
+#*                     for a single element. Any number of tags can be
+#*                     provided in the following way:
+#*                     $0 --treat-as-set _tag_1 --treat-as-set _tag_2
+#*                     Default is the '_atom_site_refinement_flags' tag.
+#* --no-treat-as-set, dont-treat-as-set
+#*                     Do not treat values of any tags as sets.
+#*                     (see --treat-as-set).
+#*  --report-local-tags
+#*                     Validate tags prefixed with '_[local]'. This prefix
+#*                     was used in COD to denote locally used tags prior to
+#*                     the creation of cif_cod.dic. The default is to ignore
+#*                     these tags.
+#* --no-report-local-tags, --ignore-local-tags
+#*                     Ignore tags prefixed with '_[local]'. Default.
+#* --ignore-case
+#*                     Ignore letter case while validating enumeration values.
+#*                     For example, even though '_atom_site_adp_type' is
+#*                     restricted to values ('Uani', 'Uiso', 'Uovl', ...),
+#*                     value 'UANI' would still be treated as valid.
+#* --respect-case, --case-sensitive, --dont-ignore-case
+#*                     Respect letter case while validating enumeration 
+#*                     values. Default.
+#* --report-deprecated
+#*                     Report tags that are marked as deprecated in the 
+#*                     dictionaries. Tag deprecation usually means that it 
+#*                     has been replaced with an another tag(s).
+#* --ignore-deprecated
+#*                     Do not report tags that are marked as deprecated in the 
+#*                     dictionaries. Default.
+#* --use-perl-parser
+#*                     Use Perl parser to parse CIF files.
+#* --use-c-parser
+#*                     Use C parser to parse CIF files. Default option.
+#*
+#* -c, --always-continue
+#*                     Continue processing and return successful return status
+#*                     even if errors are diagnosed.
+#* -c-, --always-die
+#*                     Stop and return error status if errors are diagnosed.
+#* --continue-on-errors
+#*                     Do not terminate script if errors are raised (default).
+#* --die-on-errors
+#*                     Terminate script immediately if errors are raised.
+#* --continue-on-warnings
+#*                    Do not terminate script if warnings are raised (default).
+#* --die-on-warnings
+#*                    Terminate script immediately if warnings are raised.
+#* --continue-on-notes
+#*                    Do not terminate script if notes are raised (default).
+#* --die-on-notes
+#*                    Terminate script immediately if notes are raised.
+#* --debug
+#*                     Output extra information for debugging purposes.
+#* -v, --version
+#*                     Print version message and exits.
+#* --help, --usage
+#*                     Print short usage message (this message) and exit.
 #**
-#** OPTIONS:
-#** -d, --dictionaries "cif_core.dic,cif_cod.dic"
-#**                     A list of CIF dictionary files (according to DDL2)
-#**                     to be used in CIF file validation. List elements
-#**                     are separated either by "," or by " ". To include
-#**                     dictionaries with filenames containing these symbols,
-#**                     the --add-dictionary option is used.
-#** -D, --add-dictionary "cif new dictionary.dic"
-#**                     Add additional CIF dictionary to the list.
-#** --clear-dictionaries
-#**                     Remove all CIF dictionaries from the list.
-#** --treat-as-set _atom_site_refinement_flags
-#**                     Treat values of given tags as a set. For example,
-#**                     more than one enumeration value could be defined
-#**                     for a single element. Any number of tags can be
-#**                     provided in the following way:
-#**                     $0 --treat-as-set _tag_1 --treat-as-set _tag_2
-#**                     Default is the '_atom_site_refinement_flags' tag.
-#** --no-treat-as-set, dont-treat-as-set
-#**                     Do not treat values of any tags as sets.
-#**                     (see --treat-as-set).
-#** --report-local-tags
-#**                     Validate tags prefixed with '_[local]'. This prefix
-#**                     was used in COD to denote locally used tags prior to
-#**                     the creation of cif_cod.dic. The default is to ignore
-#**                     these tags.
-#** --no-report-local-tags, --ignore-local-tags
-#**                     Ignore tags prefixed with '_[local]'. Default.
-#** --ignore-case
-#**                     Ignore letter case while validating enumeration values.
-#**                     For example, even though '_atom_site_adp_type' is
-#**                     restricted to values ('Uani', 'Uiso', 'Uovl', ...),
-#**                     value 'UANI' would still be treated as valid.
-#** --respect-case, --case-sensitive, --dont-ignore-case
-#**                     Respect letter case while validating enumeration 
-#**                     values. Default.
-#** --report-deprecated
-#**                     Report tags that are marked as deprecated in the 
-#**                     dictionaries. Tag deprecation usually means that it 
-#**                     has been replaced with an another tag(s).
-#** --ignore-deprecated
-#**                     Do not report tags that are marked as deprecated in the 
-#**                     dictionaries. Default.
-#** --use-perl-parser
-#**                     Use Perl parser to parse CIF files.
-#** --use-c-parser
-#**                     Use C parser to parse CIF files. Default option.
-#** -c, --always-continue
-#**                     Continue processing and return successful return status
-#**                     even if errors are diagnosed.
-#** -c-, --always-die
-#**                     Stop and return error status if errors are diagnosed.
-#** --continue-on-errors
-#**                     Do not terminate script if errors are raised (default).
-#** --die-on-errors
-#**                     Terminate script immediately if errors are raised.
-#** --continue-on-warnings
-#**                    Do not terminate script if warnings are raised (default).
-#** --die-on-warnings
-#**                    Terminate script immediately if warnings are raised.
-#** --continue-on-notes
-#**                    Do not terminate script if notes are raised (default).
-#** --die-on-notes
-#**                    Terminate script immediately if notes are raised.
-#**
-#** --debug
-#**                     Output extra information for debugging purposes.
-#** -v, --version
-#**                     Print version message and exits.
-#** --help, --usage
-#**                     Print short usage message (this message) and exit.
-
-# check parameters passed
 @ARGV = getOptions(
     "-d,--dictionaries"    => sub{ @dictFiles = split( ',|\s+', &get_value ) },
     "-D,--add-dictionary"  => sub{ push( @dictFiles, &get_value ) },
@@ -161,6 +160,7 @@ sub getReplacementTags($$);
     "--die-on-notes"         => sub { $die_on_notes = 1 },
 
     "-v,--version"      => sub{ VersionMessage(); exit; },
+    "--options"         => sub { options; exit },
     "--help,--usage"    => sub{ usage; exit; },
     "--debug"           => sub{ $debug = 1 }
 );

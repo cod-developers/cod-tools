@@ -21,7 +21,7 @@ use COD::CIF::Data::CellContents qw( cif_cell_contents );
 use COD::ErrorHandler qw( process_warnings process_errors );
 use COD::CIF::Data::CODNumbers qw( cif_fill_data entries_are_the_same );
 use COD::SOptions;
-use COD::SUsage;
+use COD::SUsage qw( usage options );
 
 # default options
 my %options = (
@@ -38,7 +38,7 @@ my $die_on_notes    = 0;
 
 
 #* USAGE:
-#*     cif_find_duplicates [options] my-cif-dir1/ my-cif-dir2/files*.cif COD-cif-dir/
+#*     cif_find_duplicates --options my-cif-dir1/ my-cif-dir2/files*.cif COD-cif-dir/
 #*
 #* OPTIONS:
 #* -c, --always-continue
@@ -72,7 +72,6 @@ my $die_on_notes    = 0;
 #* --ignore-sigma, --dont-use-sigma, --no-use-sigma
 #*                     Ignore standard uncertainties (sigmas) when comparing
 #*                     unit cell constants.
-#*
 #* --dont-ignore-sigma, --no-ignore-sigma, --use-sigma
 #*                     Use standard deviations (sigmas) when comparing unit
 #*                     cell constants (default).
@@ -105,7 +104,8 @@ my $die_on_notes    = 0;
 #* --die-on-notes
 #*                     Terminate script immediately if notes are raised.
 #*
-#* --help,--usage  print a short usage message (this message) and exit.
+#* --help, --usage
+#*                     Print a short usage message (this message) and exit.
 #**
 @ARGV = getOptions(
     "--max-cell-length-difference" => \$options{max_cell_length_diff},
@@ -147,7 +147,8 @@ my $die_on_notes    = 0;
     "--continue-on-notes"    => sub { $die_on_notes = 0 },
     "--die-on-notes"         => sub { $die_on_notes = 1 },
 
-    "--help,--usage" => sub { usage; exit },
+    "--options"      => sub { options; exit },
+    "--help,--usage" => sub { usage; exit }
 );
 
 my %has_numeric_value = (

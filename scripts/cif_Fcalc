@@ -22,7 +22,7 @@ eval 'exec perl -x $0 ${1+"$@"}'
 
 # Exponential form of the structure factor was expanded how in 
 # (Wallwork, S. C., Introduction to the calculation of structure factors, 
-# pablished Cardiff [Wales] : Published for the International Union of 
+# published Cardiff [Wales] : Published for the International Union of 
 # Crystallography by University College Cardiff Press, 1980.)
 # http://www.iucr.org/__data/assets/pdf_file/0015/13083/3.pdf
 
@@ -35,9 +35,9 @@ use COD::Spacegroups::Symop::Parse;
 use COD::Spacegroups::Lookup::COD;
 use COD::CromerMann;
 use COD::Fractional;
-use COD::UserMessage qw(warning error prefix_dataname);
 use COD::SOptions;
-use COD::SUsage;
+use COD::SUsage qw(usage options);
+use COD::UserMessage qw(warning error prefix_dataname);
 
 my $use_parser = "c";
 my $dump_xyz_coordinates = 0;
@@ -59,43 +59,55 @@ my $PI = 4*atan2( 1, 1 );
 
 #* USAGE:
 #*     $0 --options input1.cif input*.cif
-#* 
+#*
 #* OPTIONS:
-#*    --use-perl-parser        Use development CIF parser written in Perl
-#*    --use-c-parser           Use faster C/Yacc CIF parser (default)
-#*    --dump-xyz-coordinates   Print an XYZ file 
-#*    --dump-Cromer-Mann       Print a Cromer-Mann coefficients from CIF file
-#*    --dump-cell-parameters   Print a short usage message with cell parameters
-#*    --max-resolution         Selection of resolution 
-#*    --dump-sorted-F          Sort Fhkl numerically descending
-#*    --dump-atoms-and-neighbors
-#*      Print a labels of atoms and their neighbors from CIF file
-#*    --max-Fhkl-number        
-#*        Selection of sorted (numerically and Friedel's low) Fhkl number
-#*
-#*     --external_CR_table     
-#*        Use Cromer Mann coefficients from external source: table 6.1.1.4
-#*
-#*    --dump-test-Fhkl         
-#*        Print a following list: h k l F(phase)^2 F(phase, T.factor)^2 
-#*          F(phase, T.factor, anomalous-dispersion)^2                      
-#*
-#*    --dump-cell-xyz-coordinates
-#*        Print a XYZ file which contains all atoms of cell.
-#*
+#*    --max-Fhkl-number
+#*                          Selection of sorted (numerically and Friedel's low)
+#*                          Fhkl number
+#*    --external_CR_table
+#*                          Use Cromer Mann coefficients from external
+#*                          source: table 6.1.1.4.
+#*    --max-resolution
+#*                          Selection of resolution.
 #*    --isotropic-Tf
-#*        Use isotropic temperature factor for structure factor calculations.
-#*
+#*                          Use isotropic temperature factor for structure
+#*                          factor calculations.
 #*    --Miller-indexes "5 6 7 -1 2 -6"
-#*        Providing of the limits on the Miller indices. Default value are 
-#*        (hmax, hmin, kmax, kmin, lmax, lmin) = (10, -10, 10, -10, 10, -10).
+#*                          Provide limits on the Miller indices
+#*                          (hmax, hmin, kmax, kmin, lmax, lmin).
+#*                          Default values are (10, -10, 10, -10, 10, -10).
 #*    --get-hkl-data
-#*        Providing of a path to COD file which contains hkl data.
+#*                          Providing of a path to COD file which contains
+#*                          hkl data.
+#*    --dump-xyz-coordinates
+#*                          Print an XYZ file 
+#*    --dump-Cromer-Mann
+#*                          Print a Cromer-Mann coefficients from CIF file.
+#*    --dump-cell-parameters
+#*                          Print a short usage message with cell parameters.
+#*    --dump-sorted-F
+#*                          Sort Fhkl numerically descending.
+#*    --dump-atoms-and-neighbors
+#*                          Print a labels of atoms and their neighbors from
+#*                          a CIF file.
+#*    --dump-test-Fhkl
+#*                          Print a following list:
+#*                            h k l
+#*                            F(phase)^2
+#*                            F(phase, T.factor)^2
+#*                            F(phase, T.factor,anomalous-dispersion)^2
+#*    --dump-cell-xyz-coordinates
+#*                          Print a XYZ file which contains all atoms of cell.
 #*
-#*    --help,--usage         Print a short usage message (this message) and exit.
+#*    --use-perl-parser
+#*                          Use development CIF parser written in Perl.
+#*    --use-c-parser
+#*                          Use faster C/Yacc CIF parser (default).
+#*
+#*    --help, --usage
+#*        Print a short usage message (this message) and exit.
 #**
-
-@ARGV = getOptions( 
+@ARGV = getOptions(
     "--use-perl-parser"  => sub{ $use_parser = "perl" },
     "--use-c-parser"     => sub{ $use_parser = "c" },
     "--dump-xyz-coordinates"       => sub { $dump_xyz_coordinates = 1 },
@@ -111,7 +123,8 @@ my $PI = 4*atan2( 1, 1 );
     "--Miller-indexes"             => \$Miller_indexes,
     "--get-hkl-data"               => \$hkl_file,
     "--dump-test-Fhkl"             => sub { $dump_test_Fhkl = 1 },
-    "--help,--usage"               => sub { usage; exit },
+    "--options"                    => sub { options; exit },
+    "--help,--usage"               => sub { usage; exit }
 );
 
 #==============================================================================#

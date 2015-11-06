@@ -17,16 +17,18 @@ eval 'exec perl -x $0 ${1+"$@"}'
 
 use strict;
 use warnings;
-use COD::CIF::Parser qw(parse_cif);
+use File::Basename;
+use COD::CIF::Parser qw( parse_cif );
 use COD::CIF::Tags::CanonicalNames;
-use COD::ShowStruct;
 use COD::CIF::Data qw( get_symmetry_operators );
 use COD::Spacegroups::Symop::Parse qw( symop_from_string modulo_1 );
 use COD::Spacegroups::Lookup::COD;
-use COD::ErrorHandler qw(process_warnings process_errors process_parser_messages);
 use COD::SOptions;
-use COD::SUsage;
-use File::Basename;
+use COD::SUsage qw( usage options );
+use COD::ShowStruct;
+use COD::ErrorHandler qw( process_warnings
+                          process_errors
+                          process_parser_messages );
 
 my $Id = '$Id$';
 my $use_parser = 'c';
@@ -39,20 +41,21 @@ my $die_on_error_level = {
     NOTE    => $die_on_notes
 };
 
-@ARGV = getOptions(
-    "--use-perl-parser" => sub{ $use_parser = "perl" },
-    "--use-c-parser"    => sub{ $use_parser = "c" },
-
-    "--help,--usage" => sub { usage; exit }
-);
-
 #* OPTIONS:
 #*   --use-c-parser
 #*                      Use the faster C parser for CIFs (default).
 #*   --use-perl-parser
 #*                      Use the Perl parser for parsing CIFs.
-#*   --help,--usage     Print a short usage message (this message) and exit.
+#*   --help, --usage
+#*                      Print a short usage message (this message) and exit.
 #**
+@ARGV = getOptions(
+    "--use-perl-parser" => sub{ $use_parser = "perl" },
+    "--use-c-parser"    => sub{ $use_parser = "c" },
+    "--options"         => sub { options; exit },
+    "--help,--usage"    => sub { usage; exit }
+);
+
 @ARGV = ("-") unless @ARGV;
 
 foreach my $filename (@ARGV) {
