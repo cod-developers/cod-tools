@@ -35,8 +35,11 @@ setvar COD_CIF = ""
 #*  -C, --cod-cif 1000000.cif
 #*      Provide the original COD CIF to extract structure metadata.
 #*
-#*  --tmp-dir /tmp    Use the specified trmporary directory (default is /tmp)
-#*  --help            Print short help message (this message) and exit,
+#*  --tmp-dir /tmp
+#*      Use the specified trmporary directory (default is /tmp).
+#*
+#*  --help, --usage
+#*      Print a short help message (this message) and exit.
 #**
 while [ $# -gt 0 ]
 do
@@ -49,15 +52,26 @@ do
           TMP_DIR="$2"
           shift
           ;;
-      --help|--hel|--he|--h)
-            awk '/#\*/,/#\*\*/ {
-                    sub("^ *#[*]?[*]?", ""); \
-                    gsub("\\$0","'$0'"); \
-                    print $0
-                }' $0
-            exit
-            ;;
-      -*) echo "`basename $0`: unknown option $1" >&2 ; exit 1 ;;
+      --options|--option|--optio|--opti|--opt|--op|--o)
+          echo "`basename $0`:: The '--options' option is a placehoder."
+          echo "`basename $0`:: It should be replaced by one of the following options:"
+          awk '/#\* OPTIONS:/,/#\*\*/ {
+                  sub("OPTIONS:", ""); \
+                  sub("^ *#[*]?[*]?", ""); \
+                  gsub("\\$0","'$0'"); \
+                  print $0
+              }' $0
+          exit
+          ;;
+      --help|--hel|--he|--h|--usage)
+          awk '/#\*/,/#\*\*/ {
+                  sub("^ *#[*]?[*]?", ""); \
+                  gsub("\\$0","'$0'"); \
+                  print $0
+              }' $0
+          exit
+          ;;
+      -*) echo "`basename $0`:: ERROR, unknown option '$1'." >&2 ; exit 1 ;;
       *)  FILES="$FILES '$1'" ;;
     esac
     shift
