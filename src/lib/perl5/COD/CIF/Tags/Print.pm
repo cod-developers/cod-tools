@@ -313,10 +313,7 @@ sub sprint_value
 
 sub fold
 {
-    my $length = shift;
-    my $separator = shift;
-    my $ors = shift;
-    my $string = shift;
+    my ( $length, $separator, $ors, $string ) = @_;
     my @lines = ();
     my $line = "";
 
