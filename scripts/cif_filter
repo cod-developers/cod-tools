@@ -44,9 +44,8 @@ use COD::SUsage qw(usage options);
 use COD::UserMessage qw(warning error prefix_dataname);
 
 my %symop_lookup_table;
-## my %symop_lookup_table = mkhash();
 
-sub merge_new_tag_values($$$);
+sub merge_new_tag_values($$$$);
 
 my $user_biblio = 0;
 my $leave_biblio = 0;
@@ -614,7 +613,7 @@ for my $filename (@ARGV) {
         %global_bibliography = ();
 
         merge_new_tag_values( \@global_biblio_keys, \%global_bibliography,
-                              $dataset );
+                              $dataset, $global_priority );
 
         ## use COD::ShowStruct; showRef( \%global_bibliography );
     }
@@ -660,7 +659,7 @@ for my $filename (@ARGV) {
                                               _pd_block_diffractogram_id)$/x,
                                           keys %$datablok ) ],
                                   \%pd_global_publ_data,
-                                  $dataset );
+                                  $dataset, $global_priority );
         }
     }
 
@@ -696,12 +695,14 @@ for my $filename (@ARGV) {
 
         if( %global_bibliography ) {
             merge_new_tag_values( [keys %{$global_bibliography{values}}],
-                                  $dataset, \%global_bibliography );
+                                  $dataset, \%global_bibliography,
+                                  $global_priority );
         }
 
         if( $pd_publ_datablock_nr ) {
             merge_new_tag_values( [keys %{$pd_global_publ_data{values}}],
-                                  $dataset, \%pd_global_publ_data );
+                                  $dataset, \%pd_global_publ_data,
+                                  $global_priority );
         }
 
         # convert all tags to a "canonical" form:
@@ -1344,25 +1345,38 @@ for my $filename (@ARGV) {
 # Subroutines:
 #
 
-sub merge_new_tag_values($$$)
+##
+# Merges two CIF structures by copying values of the desired tags
+# from the source CIF structure to the destination CIF structure.
+#
+# @param $tag_list
+#       Reference to an array of tag names, that should be merged.
+# @param $dst
+#       Destination CIF structure that contains original values.
+#       Merged values are stored in this structure.
+# @param $src
+#       Source CIF structure that contains new values.
+# @param $src_priority
+#       Logical value that determines whether source CIF values
+#       should overwrite already existent destination CIF values.
+# @return $dst
+##
+sub merge_new_tag_values($$$$)
 {
-    my ($tag_list, $dst, $src ) = @_;
+    my ($tag_list, $dst, $src, $src_priority) = @_;
 
     my %tag_list = map {($_,1)} @$tag_list;
 
     for my $key (@{$tag_list}) {
-        if( defined $src->{values}{$key}
-            && (!exists $dst->{values}{$key} || $global_priority )) {
+        if( defined $src->{values}{$key} &&
+          ( !exists $dst->{values}{$key} || $src_priority ) ) {
 
-            if( exists $dst->{values}{$key} ) {
-                exclude_tag( $dst, $key );
-            }
-
+            exclude_tag( $dst, $key ) if ( exists $dst->{values}{$key} );
             $dst->{values}{$key} = $src->{values}{$key};
             push( @{$dst->{tags}}, $key );
 
             if( exists $src->{inloop}{$key} &&
-                !exists $dst->{inloop}{$key} ) {
+               !exists $dst->{inloop}{$key} ) {
                 my $loop_nr = $src->{inloop}{$key};
                 my @loop = @{$src->{loops}[$loop_nr]};
                 my $dst_loop_nr =
