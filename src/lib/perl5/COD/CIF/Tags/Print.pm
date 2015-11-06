@@ -12,6 +12,9 @@
 package COD::CIF::Tags::Print;
 
 use strict;
+use warnings;
+
+use COD::CIF::Tags::Manage;
 
 require Exporter;
 our @ISA = qw(Exporter);
@@ -54,107 +57,88 @@ sub print_cif
         @dictionary_tags = sort {$a cmp $b} keys %dictionary_tags;
     }
 
-    my @tags_to_print = ();
-
+    my @tags_to_print;
     if( $keep_tag_order ) {
         @tags_to_print = @{$dataset->{tags}};
         if( !%dictionary_tags ) {
-            %dictionary_tags = map {($_,$_)} @tags_to_print;
+            %dictionary_tags = map { $_ => 1 } @tags_to_print;
         }
     } else {
         @tags_to_print = @dictionary_tags;
     }
 
-    my %printed_loops = ();
+    if( $exclude_misspelled_tags ) {
+        my %tags_to_print = map { $_ => 1 } @tags_to_print;
+        exclude_misspelled_tags( $dataset, \%tags_to_print );
+    }
+
+    my @loop_tags_to_print;
+    if( $preserve_loop_order ) {
+        @loop_tags_to_print = @{$dataset->{tags}};
+    } else {
+        @loop_tags_to_print = @dictionary_tags;
+    }
+
+    order_tags( $dataset, \@tags_to_print, \@loop_tags_to_print,
+                \%dictionary_tags );
 
     if( defined $dataset->{name} ) {
         print "data_", $dataset->{name}, "\n";
     }
 
-    for my $tag (@tags_to_print) {
-        if( defined $datablok->{$tag} ) {
-            if( exists $dictionary_tags{$tag} &&
-                !exists $dataset->{inloop}{$tag} ) {
-                print_tag( $tag, $datablok,
-                           $fold_long_fields, $folding_width );
-            } elsif( $tag eq "_publ_author_name" ) {
-                my $tag_loop_nr = $dataset->{inloop}{$tag};
-                unless( exists $printed_loops{$tag_loop_nr} ) {
-                    print_loop( $tag, $tag_loop_nr, $dataset,
-                                $fold_long_fields, $folding_width );
-                    $printed_loops{$tag_loop_nr} = 1;
-                }
-            }
-        }
-    }
-
-    # Print out any tags that are not in the dictionary (most probably
-    # some misspelled tags):
-
-    if( !$exclude_misspelled_tags && %dictionary_tags ) {
-        my $tags_encountered = 0;
-        for my $tag (@{$dataset->{tags}}) {
-            if( !exists $dictionary_tags{$tag} &&
-                !exists $dataset->{inloop}{$tag} ) {
-                if( !$tags_encountered ) {
+    my $non_loop_tags_encountered = 0;
+    my $loop_tags_encountered = 0;
+    my %printed_loops;
+    for my $tag (@{$dataset->{tags}}) {
+        if( !exists $dataset->{inloop}{$tag} ) {
+            if( !exists $dictionary_tags{$tag} ) {
+                if( !$non_loop_tags_encountered &&
+                    !$exclude_misspelled_tags &&
+                    %dictionary_tags ) {
                     print "#BEGIN Tags that were not found in dictionaries:\n";
-                    $tags_encountered = 1;
+                    $non_loop_tags_encountered = 1;
                 }
-                print_tag( $tag, $datablok, $fold_long_fields,
-                           $folding_width );
+            } else {
+                if( $non_loop_tags_encountered ) {
+                    print "#END Tags that were not found in dictionaries\n";
+                    $non_loop_tags_encountered = 0;
+                }
             }
-        }
-        if( $tags_encountered ) {
-            print "#END Tags that were not found in dictionaries\n";
+            print_tag( $tag, $datablok,
+                       $fold_long_fields, $folding_width );
+        } else {
+            if( $non_loop_tags_encountered ) {
+                print "#END Tags that were not found in dictionaries\n";
+                $non_loop_tags_encountered = 0;
+            }
+            my $tag_loop_nr = $dataset->{inloop}{$tag};
+            if( !exists $dictionary_tags{$tag} ) {
+                if( !$loop_tags_encountered &&
+                    !$exclude_misspelled_tags &&
+                    %dictionary_tags &&
+                    !exists $printed_loops{$tag_loop_nr} ) {
+                    print "#BEGIN Loops that were not found in dictionaries:\n";
+                    $loop_tags_encountered = 1;
+                }
+            } else {
+                if( $loop_tags_encountered ) {
+                    print "#END Loops that were not found in dictionaries\n";
+                    $loop_tags_encountered = 0;
+                }
+            }
+            unless( exists $printed_loops{$tag_loop_nr} ) {
+                print_loop( $tag, $tag_loop_nr, $dataset,
+                            $fold_long_fields, $folding_width );
+                $printed_loops{$tag_loop_nr} = 1;
+            }
         }
     }
 
-    # Print out loops:
-
-    my @tags_for_output;
-
-    if( $preserve_loop_order ) {
-        @tags_for_output = @{$dataset->{tags}}
-    } else {
-        @tags_for_output = @dictionary_tags;
+    if( $non_loop_tags_encountered ) {
+        print "#END Tags that were not found in dictionaries\n";
     }
-
-    for my $tag (@tags_for_output) {
-        if( defined $datablok->{$tag} ) {
-            if( exists $dataset->{inloop}{$tag} ) {
-                my $tag_loop_nr = $dataset->{inloop}{$tag};
-                unless( exists $printed_loops{$tag_loop_nr} ) {
-                    print_loop( $tag, $tag_loop_nr, $dataset,
-                                $fold_long_fields, $folding_width );
-                    $printed_loops{$tag_loop_nr} = 1;
-                }
-            }
-        }
-    }
-
-    # Print out loops that contain only non-dictionary tags:
-
-    if( !$exclude_misspelled_tags && %dictionary_tags ) {
-        my $tags_encountered = 0;
-        for my $tag (@{$dataset->{tags}}) {
-            if( exists $dataset->{inloop}{$tag} && 
-                ! exists $dictionary_tags{$tag} ) {
-                my $tag_loop_nr = $dataset->{inloop}{$tag};
-                unless( exists $printed_loops{$tag_loop_nr} ) {
-                    if( !$tags_encountered ) {
-                        print "#BEGIN Loops that were not found in " .
-                            "dictionaries:\n";
-                        $tags_encountered = 1;
-                    }
-                    print_loop( $tag, $tag_loop_nr, $dataset,
-                                $fold_long_fields, $folding_width );
-                    $printed_loops{$tag_loop_nr} = 1;
-                }
-            }
-        }
-        if( $tags_encountered ) {
-            print "#END Loops that were not found in dictionaries\n";
-        }
+    if( $loop_tags_encountered ) {
+        print "#END Loops that were not found in dictionaries\n";
     }
 }
 
