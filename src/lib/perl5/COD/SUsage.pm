@@ -46,6 +46,7 @@ sub options
         if( /^#\*\s+OPTIONS:/../^#\*\*/ ) {
             s/^#\*\s+OPTIONS://;
             s/^#\*\*?//;
+            s/\$0/$0/g;
             print;
         }
     }
