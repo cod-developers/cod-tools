@@ -13,14 +13,14 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #  Parse COD error messages and output the results in the desired format.
 #
 # USAGE:
-#    $0 [options] input.cif [input2.cif ...]
+#    $0 --options input1.cif input*.cif
 #**
 
 use strict;
 use warnings;
-use COD::UserMessage qw( parse_message note );
-use COD::SOptions    qw( getOptions );
-use COD::SUsage;
+use COD::SOptions qw(getOptions);
+use COD::SUsage qw(usage options);
+use COD::UserMessage qw(parse_message note);
 
 my $ignore_comments = 0;
 my @dsv_print_order = ( qw(
@@ -38,28 +38,29 @@ my $print_options = {
     'dsv_order' => \@dsv_print_order
 };
 
-
-@ARGV = getOptions
-(
-#** OPTIONS:
-#** -d, --delimiter "\t"
-#**                    Delimiter that is used to separate fields in the
-#**                    delimiter-separated values (dsv) output format
-#**                    (default "\t").
-#** --dsv
-#**                    Output results in delimiter-separated values (dsv) 
-#**                    format (default).
-#** --ignore-comments
-#**                    Ignore lines starting with a number symbol ('#').
-#** --process-comments
-#**                    Treat lines starting with a number symbol ('#') as
-#**                    error messages. Default.
-#** --help,--usage     Print short usage message (this message) and exit.
-    "-d,--delimiter"            => \$print_options->{delimiter},
-    "--dsv"                     => sub { $print_options->{format} = 'dsv' },
-    "--ignore-comments"         => sub { $ignore_comments = 1 },
-    "--process-comments"        => sub { $ignore_comments = 0 },
-    "--help,--usage"            => sub { usage; exit },
+#* OPTIONS:
+#* -d, --delimiter "\t"
+#*                    Delimiter that is used to separate fields in the
+#*                    delimiter-separated values (dsv) output format
+#*                    (default "\t").
+#* --dsv
+#*                    Output results in delimiter-separated values (dsv) 
+#*                    format (default).
+#* --ignore-comments
+#*                    Ignore lines starting with a number symbol ('#').
+#* --process-comments
+#*                    Treat lines starting with a number symbol ('#') as
+#*                    error messages (default).
+#* --help, --usage
+#*                    Print short usage message (this message) and exit.
+#**
+@ARGV = getOptions(
+    "-d,--delimiter"     => \$print_options->{delimiter},
+    "--dsv"              => sub { $print_options->{format} = 'dsv' },
+    "--ignore-comments"  => sub { $ignore_comments = 1 },
+    "--process-comments" => sub { $ignore_comments = 0 },
+    "--options"          => sub { options; exit },
+    "--help,--usage"     => sub { usage; exit }
 );
 
 my $msg;

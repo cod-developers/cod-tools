@@ -34,7 +34,7 @@ use COD::CIF::Tags::DFT;
 use COD::CIF::Tags::Print qw( print_cif pack_precision fold );
 use COD::CIF::Tags::Manage qw( set_tag rename_tag );
 use COD::SOptions;
-use COD::SUsage;
+use COD::SUsage qw(usage options);
 use COD::UserMessage qw( note warning error prefix_dataname );
 
 my $Id = '$Id$';
@@ -173,7 +173,7 @@ my $default_enums = \%default_enums;
 my @default_set_tags = ( "_atom_site_refinement_flags" );
 
 #* USAGE:
-#*     $0 [options] input.cif [input2.cif ...]
+#*     $0 --options input1.cif input*.cif
 #*
 #* OPTIONS:
 #*   --fix-temperature
@@ -186,7 +186,7 @@ my @default_set_tags = ( "_atom_site_refinement_flags" );
 #*     Corrects misspelled values in the CIF file. Provide a file
 #*     for the check.
 #*
-#*   --fix-enums 
+#*   --fix-enums
 #*     Corrects enumeration values in the CIF against CIF dictionaries.
 #*     Provide dictionaries using option --dictionary (or -d), 
 #*     otherwise script uses the built-in table from CIF Core
@@ -212,29 +212,29 @@ my @default_set_tags = ( "_atom_site_refinement_flags" );
 #*     then it is changed to enumeration value 'unit'.
 #*
 #*   -d, --dictionary cif_core.dic
-#*      Any valid CIF file, with CIF dictionary (according to DDL2).
-#*      You can define any number of CIF dictionaries, in a way like
-#*      this:
-#*      $0 --dictionary cif_core.dic --dictionary cod_core.dic
+#*     Any valid CIF file, with CIF dictionary (according to DDL2).
+#*     You can define any number of CIF dictionaries, in a way like
+#*     this:
+#*     $0 --dictionary cif_core.dic --dictionary cod_core.dic
 #*
 #*   -D, --add-dictionaries cif_core.dic
-#*      You can add CIF dictionary, in a way like
-#*      this:
-#*      $0 --add-dictionaries cif_core.dic
+#*     You can add CIF dictionary, in a way like
+#*     this:
+#*     $0 --add-dictionaries cif_core.dic
 #*
 #*   --clear-dictionaries
-#*      You can clear all dictionaries used for checking
-#*      CIF file, in a way like this:
-#*      $0 --clear-dictionary
+#*     You can clear all dictionaries used for checking
+#*     CIF file, in a way like this:
+#*     $0 --clear-dictionary
 #*
 #*   --use-perl-parser
 #*   --use-c-parser
 #*     Specify parser to parse CIF files. C parser is default.
 #*
-#**  --help,--usage     Print a short usage message (this message) and exit.
-
+#*   --help, --usage
+#*     Print a short usage message (this message) and exit.
+#**
 @ARGV = getOptions(
-    "--help,--usage"   => sub{ usage; exit },
     "--fix-misspelled" 
         => sub{ $fix_misspelled_values = 1;
                 $replacement_file = get_value(); },
@@ -287,8 +287,10 @@ my @default_set_tags = ( "_atom_site_refinement_flags" );
     "-D,--add-dictionaries" => sub{ push( @dictionaries, &get_value ); },
     "--clear-dictionaries" => sub{ @dictionaries = (); },
 
-    "--use-perl-parser"       => sub{ $use_parser = "perl" },
-    "--use-c-parser"          => sub{ $use_parser = "c" },
+    "--use-perl-parser"       => sub { $use_parser = "perl" },
+    "--use-c-parser"          => sub { $use_parser = "c" },
+    "--options"               => sub { options; exit },
+    "--help,--usage"          => sub { usage; exit }
 );
 
 #

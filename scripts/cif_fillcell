@@ -17,33 +17,34 @@ eval 'exec perl -x $0 ${1+"$@"}'
 
 use strict;
 use warnings;
+use File::Basename;
 use COD::CIF::Parser qw(parse_cif);
 use COD::CIF::Tags::CanonicalNames;
-use COD::ShowStruct;
 use COD::Spacegroups::Symop::Parse;
 use COD::Spacegroups::Lookup::COD;
-use COD::UserMessage qw(error prefix_dataname);
 use COD::SOptions;
-use COD::SUsage;
-use File::Basename;
+use COD::SUsage qw(usage options);
+use COD::ShowStruct;
+use COD::UserMessage qw(error prefix_dataname);
 
 my $Id = '$Id$';
 my $use_parser = 'c';
-
-@ARGV = getOptions(
-    "--use-perl-parser" => sub{ $use_parser = "perl" },
-    "--use-c-parser"    => sub{ $use_parser = "c" },
-
-    "--help,--usage" => sub { usage; exit }
-);
 
 #* OPTIONS:
 #*   --use-c-parser
 #*                      Use the faster C parser for CIFs (default).
 #*   --use-perl-parser
 #*                      Use the Perl parser for parsing CIFs.
-#*   --help,--usage     Print a short usage message (this message) and exit.
+#*   --help, --usage
+#*                      Print a short usage message (this message) and exit.
 #**
+@ARGV = getOptions(
+    "--use-perl-parser" => sub{ $use_parser = "perl" },
+    "--use-c-parser"    => sub{ $use_parser = "c" },
+    "--options"         => sub { options; exit },
+    "--help,--usage"    => sub { usage; exit }
+);
+
 @ARGV = ("-") unless @ARGV;
 
 foreach my $filename (@ARGV) {

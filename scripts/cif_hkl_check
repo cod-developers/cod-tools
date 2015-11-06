@@ -24,14 +24,14 @@ use COD::CIF::Data::CODFlags qw(has_hkl
                               @powder_diffraction_intensity_tags);
 use COD::CIF::Tags::CanonicalNames;
 use COD::Precision;
-use COD::UserMessage qw(note warning error prefix_dataname);
 use COD::SOptions;
-use COD::SUsage;
+use COD::SUsage qw(usage options);
+use COD::UserMessage qw(note warning error prefix_dataname);
 
 my $use_parser = "c";
 
 #* USAGE:
-#*     $0 [options] input.cif input.hkl [input2.cif input2.hkl ...]
+#*     $0 --options input.cif input.hkl input2.cif input2.hkl input*.{cif,hkl}
 #*
 #* OPTIONS:
 #*     --use-perl-parser
@@ -40,14 +40,14 @@ my $use_parser = "c";
 #*     --use-c-parser
 #*        Use Perl & C parser for CIF parsing.
 #*
-#*     --help,--usage
+#*     --help, --usage
 #*        Print short usage message (this message) and exit.
 #**
-
 @ARGV = getOptions(
-    "--use-perl-parser" => sub{ $use_parser = "perl" },
-    "--use-c-parser"    => sub{ $use_parser = "c" },
-    "--help,--usage" => sub { usage; exit },
+    "--use-perl-parser" => sub { $use_parser = "perl" },
+    "--use-c-parser"    => sub { $use_parser = "c" },
+    "--options"         => sub { options; exit },
+    "--help,--usage"    => sub { usage; exit }
 );
 
 PAIR:
