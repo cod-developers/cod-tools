@@ -22,7 +22,7 @@ use COD::CIF::Tags::CanonicalNames;
 use COD::CIF::Tags::Print;
 use File::Basename;
 use COD::SOptions;
-use COD::SUsage;
+use COD::SUsage qw(usage options);
 use COD::UserMessage qw(warning error);
 
 my $verbose = 1;
@@ -33,36 +33,38 @@ my $cif_header_file;
 
 my $use_parser = "c";
 
+#*  USAGE:
+#*      $0 --options input1.cif input*.cif
+#*
+#*  OPTIONS:
+#*  -o, --output-dir out/
+#*      Put all split files into the directory out/.
+#*
+#*  -p, --prefixed, --output-prefixed
+#*      Print splitted datablocks to the STDOUT, each line prefixed
+#*      by the datablock name. Do not create any files.
+#*
+#*  --output-tar
+#*      Produce TAR archive with split files to the STDOUT.
+#*
+#*  -h, --add-cif-header header_file.cif
+#*      Prepend each of the output files with the comments from the
+#*      beginning of the specified file.
+#*
+#*  -v, --verbose
+#*      Print names of the generated files to STDERR.
+#*  -q, --quiet
+#*      Do not print file names to STDERR.
+#*
+#*  --use-perl-parser
+#*      Use Perl parser for CIF parsing.
+#*  --use-c-parser
+#*      Use Perl & C parser for CIF parsing.
+#*
+#*  --help, --usage
+#*      Print short usage message (this message) and exit
+#**
 @ARGV = getOptions(
-#** USAGE:
-#**     $0 [options] input.cif [input2.cif ...]
-#** 
-#** OPTIONS:
-#** -o, --output-dir out/
-#**     Put all split files into the directory out/.
-#**
-#** -p, --prefixed, --output-prefixed
-#**     Print splitted datablocks to the STDOUT, each line prefixed
-#**     by the datablock name. Do not create any files.
-#**
-#** --output-tar
-#**     Produce TAR archive with split files to the STDOUT.
-#**
-#** -h, --add-cif-header header_file.cif
-#**     Prepend each of the output files with the comments from the
-#**     beginning of the specified file.
-#**
-#** -v, --verbose      print names of the generated files to STDERR
-#** -q, --quiet        do not print file names to STDERR
-#**
-#** --use-perl-parser
-#**    Use Perl parser for CIF parsing.
-#**
-#** --use-c-parser
-#**    Use Perl & C parser for CIF parsing.
-#**
-#** --help,--usage     print short usage message (this message) and exit
-
    "-o,--output-dir" => sub { $output_dir = get_value(),
                               $output_prefixed = 0;
                               $output_tar = 0 },
@@ -74,10 +76,10 @@ my $use_parser = "c";
    "-v,--verbose"    => sub { $verbose = 1 },
    "-q,--quiet"      => sub { $verbose = 0 },
 
-   "--use-perl-parser" => sub{ $use_parser = "perl" },
-   "--use-c-parser"    => sub{ $use_parser = "c" },
-
-   "--help,--usage"  => sub { usage; exit },
+   "--use-perl-parser" => sub { $use_parser = "perl" },
+   "--use-c-parser"    => sub { $use_parser = "c" },
+   "--options"         => sub { options; exit },
+   "--help,--usage"    => sub { usage; exit }
 );
 
 my $cif_header;

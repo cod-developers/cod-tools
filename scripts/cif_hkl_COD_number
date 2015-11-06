@@ -27,7 +27,7 @@ use COD::CIF::Unicode2CIF;
 use COD::Spacegroups::Names;
 use COD::Spacegroups::Symop::Parse;
 use COD::SOptions;
-use COD::SUsage;
+use COD::SUsage qw(usage options);
 use COD::UserMessage qw(warning error prefix_dataname);
 
 my $exclude_empty_tags = 0;
@@ -51,9 +51,8 @@ my $data_block_format = "%07d";
 my $data_block_nr; # If defined, specifies that data blocks should be
                    # numbered in a COD-like fasion.
 
-@ARGV = getOptions(
 #* USAGE:
-#*     $0 --options input.cif input*.cif
+#*     $0 --options input1.cif input*.cif
 #*
 #* OPTIONS:
 #* -h, --add-cif-header header_file.cif
@@ -124,7 +123,7 @@ my $data_block_nr; # If defined, specifies that data blocks should be
 #* --help, --usage
 #*     Print a short usage message (this message) and exit.
 #**
-
+@ARGV = getOptions(
     "-h,--add-cif-header" => \$cif_header_file,
 
     "-x,--extra-tag-list" => \$extra_tag_file,
@@ -158,7 +157,8 @@ my $data_block_nr; # If defined, specifies that data blocks should be
     "--fold-long-fields"      => sub{ $fold_long_fields = 1 },
     "--dont-fold-long-fields" => sub{ $fold_long_fields = 0 },
 
-    "--help,--usage" => sub { usage; exit },
+    "--options"      => sub { options; exit },
+    "--help,--usage" => sub { usage; exit }
 );
 
 my @extra_tags = ();

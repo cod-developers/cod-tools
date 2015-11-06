@@ -22,7 +22,7 @@ use COD::CIF::Tags::CanonicalNames;
 use COD::CIF::Tags::Print;
 use COD::CIF::Parser::Yapp;
 use COD::SOptions;
-use COD::SUsage;
+use COD::SUsage qw(usage options);
 use COD::UserMessage qw(warning error prefix_dataname);
 
 my $override_tags;
@@ -30,32 +30,33 @@ my $override_all = 0;
 my $merge_tags;
 
 #* USAGE:
-#*     $0 [options] input.cif [input2.cif ...]
-#* 
+#*     $0 --options input1.cif input*.cif
+#*
 #* OPTIONS:
-#*    --override-all    Override all data items in the recipient CIF.
+#*    --override-all
+#*        Override all data items in the recipient CIF.
 #*
 #*    --dont-override-all
-#*        Do not override all data items in the recipient CIF. Default
-#*        action.
+#*        Do not override all data items in the recipient CIF (default).
 #*
 #*    --override-tags  _tag1,_tag2
-#*        Replace values for tags listed as an argument (_tag1 and _tag2 in 
+#*        Replace values for tags listed as an argument (_tag1 and _tag2 in
 #*        this example) instead of keeping old values.
 #*
 #*    --merge-tags  _tag1,_tag2
-#*        Merge values for tags listed as an argument (_tag1 and _tag2 in 
+#*        Merge values for tags listed as an argument (_tag1 and _tag2 in
 #*        this example).
 #*
-#*    --help,--usage         Print a short usage message (this message) and exit.
+#*    --help, --usage
+#*        Print a short usage message (this message) and exit.
 #**
-
-@ARGV = getOptions( 
+@ARGV = getOptions(
     "--merge-tags"    => \$merge_tags,
     "--override-tags" => \$override_tags,
     "--override-all"       => sub { $override_all = 1 },
     "--dont-override-all"  => sub { $override_all = 0 },
-    "--help,--usage"  => sub { usage; exit },
+    "--options"       => sub { options; exit },
+    "--help,--usage"  => sub { usage; exit }
 );
 
 my ( %override_tags, %merge_tags );

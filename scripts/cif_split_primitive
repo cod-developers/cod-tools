@@ -19,16 +19,16 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #**
 
 use strict;
+use warnings;
 use File::Basename;
 use COD::SOptions;
-use COD::SUsage;
+use COD::SUsage qw(usage options);
 
 my $verbose = 1;
 my $output_dir = "";
 
-@ARGV = getOptions(
 #* USAGE:
-#*     $0 input1.cif input*.cif
+#*     $0 --options input1.cif input*.cif
 #*
 #* OPTIONS:
 #* -o, --output-dir out/
@@ -41,10 +41,12 @@ my $output_dir = "";
 #* --help, --usage
 #*                    Print short usage message (this message) and exit.
 #**
+@ARGV = getOptions(
    "-o,--output-dir" => \$output_dir,
    "-v,--verbose"    => sub { $verbose = 1 },
    "-q,--quiet"      => sub { $verbose = 0 },
-   "--help,--usage"  => sub { usage; exit },
+   "--options"       => sub { options; exit },
+   "--help,--usage"  => sub { usage; exit }
 );
 
 $output_dir =~ s./+$..;

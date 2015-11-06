@@ -13,11 +13,12 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #**
 
 use strict;
+use warnings;
 use File::Basename;
 use COD::CIF::Parser qw(parse_cif);
 use COD::CIF::Data::CODNumbers;
 use COD::SOptions;
-use COD::SUsage;
+use COD::SUsage qw(usage options);
 use COD::UserMessage;
 
 my %database = (
@@ -35,7 +36,7 @@ my $print_datablock_name = 0;
 my %options;
 
 #* USAGE:
-#*     cif_cod_numbers [options] file1.cif [file2.cif ...]
+#*     $0 --options input1.cif input*.cif
 #*
 #* OPTIONS:
 #*     --platform 'SQLite'
@@ -113,13 +114,15 @@ my %options;
 #*        chemical formulae and measurement conditions match.
 #*        (default)
 #*
-#*     --use-perl-parser  Use the Perl-only CIF parser
-#*     --use-c-parser     Use the speed-optimised C/Perl parser
+#*     --use-perl-parser
+#*        Use the Perl-only CIF parser
+#*     --use-c-parser
+#*        Use the speed-optimised C/Perl parser
 #*
-#*     --help, --usage    Print a short usage message (this message) and exit.
+#*     --help, --usage
+#*        Print a short usage message (this message) and exit.
 #**
-
-@ARGV = getOptions( 
+@ARGV = getOptions(
     "-d,--database"  => \$database{name},
     "-l,--localhost" => sub { $database{host} = 'localhost' },
     "-h,--host"      => \$database{host},
@@ -159,7 +162,8 @@ my %options;
     "--use-perl-parser"       => sub{ $use_parser = "perl" },
     "--use-c-parser"          => sub{ $use_parser = "c" },
 
-    "--help,--usage" => sub { usage; exit },
+    "--options"      => sub { options; exit },
+    "--help,--usage" => sub { usage; exit }
 );
 
 @ARGV = ("-") unless @ARGV;

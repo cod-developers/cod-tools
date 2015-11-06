@@ -20,14 +20,14 @@ use COD::CIF::Tags::CanonicalNames;
 use COD::CIF::Tags::DictTags;
 use COD::CIF::Tags::COD;
 use COD::CIF::Tags::Print;
-use COD::UserMessage qw(note warning error prefix_dataname);
 use COD::SOptions;
-use COD::SUsage;
+use COD::SUsage qw(usage options);
+use COD::UserMessage qw(note warning error prefix_dataname);
 
 my $keep_tag_order = 0;
 
 #* USAGE:
-#*     $0 [options] input.cif [input2.cif ...]
+#*     $0 --options input1.cif input*.cif
 #*
 #* OPTIONS:
 #*   --keep-tag-order
@@ -35,12 +35,14 @@ my $keep_tag_order = 0;
 #*   --sort-tags
 #*                      Reorder tags in CIF file according to COD.
 #*
-#**  --help,--usage     Print a short usage message (this message) and exit.
-
+#*   --help, --usage
+#*                      Print a short usage message (this message) and exit.
+#**
 @ARGV = getOptions(
     "--keep-tag-order" => sub { $keep_tag_order = 1; },
     "--sort-tags"      => sub { $keep_tag_order = 0; },
-    "--help,--usage"   => sub { usage; exit },
+    "--options"        => sub { options; exit },
+    "--help,--usage"   => sub { usage; exit }
 );
 
 my @dictionary_tags = ( @COD::CIF::Tags::DictTags::tag_list,

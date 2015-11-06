@@ -19,7 +19,7 @@ use COD::CIF::Parser::Yapp;
 use COD::Formulae::Parser::AdHoc;
 use COD::CIF::Data::CellContents qw(cif_cell_contents);
 use COD::SOptions;
-use COD::SUsage;
+use COD::SUsage qw(usage options);
 
 my $max_cell_length_diff = 0.5; # Angstroems
 my $max_cell_angle_diff  = 1.2; # degrees
@@ -28,7 +28,7 @@ my $check_bibliography = 1;
 my $check_sample_history = 0;
 
 #* USAGE:
-#*     cif_find_duplicates [options] my-cif-dir1/ my-cif-dir2/files*.cif COD-cif-dir/
+#*     cif_find_duplicates --options my-cif-dir1/ my-cif-dir2/files*.cif COD-cif-dir/
 #*
 #* OPTIONS:
 #*     --max-cell-length-difference 0.5
@@ -58,12 +58,12 @@ my $check_sample_history = 0;
 #*     --disregard-sample-history
 #*        Ignore sample history of all CIFs; thus even files with different
 #*        sample histories will be regared the same if their cells,
-#*        chemical formulae and measurement conditions match.
-#*        (default)
+#*        chemical formulae and measurement conditions match (default).
 #*
-#*     --help,--usage  print a short usage message (this message) and exit.
+#*     --help, --usage
+#*        Print a short usage message (this message) and exit.
 #**
-@ARGV = getOptions( 
+@ARGV = getOptions(
     "--max-cell-length-difference" => \$max_cell_length_diff,
     "--max-cell-angle-difference"  => \$max_cell_angle_diff,
 
@@ -76,7 +76,8 @@ my $check_sample_history = 0;
     "--no-check-sample-history"   => sub { $check_sample_history = 0; },
     "--disregard-sample-history"  => sub { $check_sample_history = 0; },
 
-    "--help,--usage" => sub { usage; exit },
+    "--options"      => sub { options; exit },
+    "--help,--usage" => sub { usage; exit }
 );
 
 

@@ -14,12 +14,12 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #**
 
 use strict;
+use warnings;
 use POSIX qw(acos);
-use COD::SOptions;
-use COD::SUsage;
-use COD::Formulae::Parser::AdHoc;
-
 use DBI;
+use COD::Formulae::Parser::AdHoc;
+use COD::SOptions;
+use COD::SUsage qw(usage options);
 
 my $Pi = 4 * atan2(1,1);
 
@@ -49,7 +49,7 @@ my $cell_fformat = $atom_fformat;
 # precision floating point number.
 
 #* USAGE:
-#*     $0 [options] [structure1_id  ...]
+#*     $0 --options structure1_id structure*_id
 #*
 #* OPTIONS:
 #*     -L, --limit 10, --limit 1000,10
@@ -104,8 +104,7 @@ my $cell_fformat = $atom_fformat;
 #*     --help, --usage
 #*        Print a short usage message (this message) and exit.
 #**
-
-@ARGV = getOptions( 
+@ARGV = getOptions(
     "-d,--database"  => \$database{name},
     "-l,--localhost" => sub { $database{host} = 'localhost' },
     "-h,--host"      => \$database{host},
@@ -123,10 +122,10 @@ my $cell_fformat = $atom_fformat;
     "-A,--atom-format" => \$atom_fformat,
     "-C,--cell-format" => \$cell_fformat,
 
-    "--debug" => sub{ $debug = 1 },
-    "--no-debug" => sub{ $debug = 0 },
-
-    "--help,--usage" => sub { usage; exit },
+    "--debug"        => sub { $debug = 1 },
+    "--no-debug"     => sub { $debug = 0 },
+    "--options"      => sub { options; exit },
+    "--help,--usage" => sub { usage; exit }
 );
 
 my $connected_db = database_connect( \%database );

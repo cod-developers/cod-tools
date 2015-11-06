@@ -16,6 +16,9 @@ eval 'exec perl -x $0 ${1+"$@"}'
 
 use strict;
 use warnings;
+use Digest::MD5 qw( md5_hex );
+use Digest::SHA qw( sha1_hex );
+use File::Basename;
 use COD::CIF::Parser qw(parse_cif);
 use COD::CIF::Data qw(get_cell get_content_encodings);
 use COD::CIF::Data::EstimateZ;
@@ -23,16 +26,13 @@ use COD::CIF::Tags::CanonicalNames;
 use COD::CIF::Tags::Manage;
 use COD::Escape qw( decode_textfield );
 use COD::Precision qw(eqsig);
-use COD::ShowStruct;
 use COD::Spacegroups::Symop::Parse;
 use COD::Spacegroups::Lookup::COD;
 use COD::Spacegroups::Names;
-use COD::UserMessage qw(note warning error print_message prefix_dataname);
 use COD::SOptions;
-use COD::SUsage;
-use Digest::MD5 qw( md5_hex );
-use Digest::SHA qw( sha1_hex );
-use File::Basename;
+use COD::SUsage qw(usage options);
+use COD::ShowStruct;
+use COD::UserMessage qw(note warning error print_message prefix_dataname);
 
 my $name_syntax_explained = 0;
 my $check_bibliography = 1;
@@ -156,7 +156,7 @@ my $max_year_temperature_factors_optional = 1969;
 my $use_parser = "c";
 
 #* USAGE:
-#*    $0 [options] input1.cif [input2.cif ...]
+#*    $0 --options input1.cif input*.cif
 #*
 #* OPTIONS:
 #* For every --check-xyz option, there are the following corresponding
@@ -213,9 +213,8 @@ my $use_parser = "c";
 #*
 #*    --use-c-parser
 #*
-#*    --help,--usage         Print a short usage message (this message) and exit.
+#*    --help, --usage        Print a short usage message (this message) and exit.
 #**
-
 @ARGV = getOptions(
     "--check-bibliography"
         => sub{ $check_bibliography = 1 },
@@ -356,7 +355,8 @@ my $use_parser = "c";
     "--use-perl-parser" => sub{ $use_parser = "perl" },
     "--use-c-parser"    => sub{ $use_parser = "c" },
 
-    "--help,--usage" => sub { usage; exit },
+    "--options"      => sub { options; exit },
+    "--help,--usage" => sub { usage; exit }
 );
 
 if( $reportFile =~ m/^\s*-\s*$/ || !-w dirname($reportFile) ) {
