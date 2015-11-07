@@ -40,7 +40,8 @@ use COD::CIF::Tags::Manage qw( exclude_tag
 use COD::CIF::Tags::Print qw( print_cif pack_precision fold );
 use COD::CIF::Tags::CanonicalNames qw( canonicalize_names );
 use COD::Spacegroups::Names;
-use COD::Spacegroups::Lookup qw( mk_symop_key mkhash );
+use COD::Spacegroups::Lookup::COD;
+use COD::Spacegroups::Lookup qw( mkhash mk_symop_key );
 use COD::Spacegroups::Symop::Parse qw( string_from_symop
                                        check_symmetry_operator );
 use COD::Spacegroups::Symop::SSGParse qw( symop_from_string
@@ -1113,7 +1114,10 @@ for my $filename (@ARGV) {
 
         if( $estimate_spacegroup ) {
             if( !%symop_lookup_table ) {
-                %symop_lookup_table = mkhash();
+                %symop_lookup_table = mkhash( [
+                    \@COD::Spacegroups::Lookup::COD::table,
+                    \@COD::Spacegroups::Lookup::COD::extra_settings
+                ] );
             }
 
             my @symops;
