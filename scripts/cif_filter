@@ -20,28 +20,36 @@ eval 'exec perl -x $0 ${1+"$@"}'
 
 use strict;
 use warnings;
-use File::Basename;
-use COD::Cell qw(cell_volume);
-use COD::CIF::Data qw(get_cell);
-use COD::CIF::Parser qw(parse_cif);
+use File::Basename qw( basename );
+use COD::CIF::Parser qw( parse_cif );
+use COD::Cell qw( cell_volume );
+use COD::CIF::Data qw( get_cell );
 use COD::CIF::Tags::DictTags;
 use COD::CIF::Tags::COD;
 use COD::CIF::Tags::AMCSD;
 use COD::CIF::Tags::TCOD;
 use COD::CIF::Tags::DFT;
 use COD::CIF::Tags::Excluded;
-use COD::CIF::Tags::Manage;
-use COD::CIF::Tags::Print;
-use COD::CIF::Tags::CanonicalNames;
+use COD::CIF::Tags::Manage qw( exclude_tag
+                               exclude_empty_tags
+                               exclude_empty_non_loop_tags
+                               exclude_unknown_tags
+                               exclude_unknown_non_loop_tags
+                               set_tag
+                               set_loop_tag );
+use COD::CIF::Tags::Print qw( print_cif pack_precision fold );
+use COD::CIF::Tags::CanonicalNames qw( canonicalize_names );
 use COD::Spacegroups::Names;
-use COD::Spacegroups::Lookup;
-use COD::Spacegroups::Symop::Parse;
-use COD::Spacegroups::Symop::SSGParse qw(symop_from_ssg_operator);
+use COD::Spacegroups::Lookup qw( mk_symop_key mkhash );
+use COD::Spacegroups::Symop::Parse qw( string_from_symop
+                                       check_symmetry_operator );
+use COD::Spacegroups::Symop::SSGParse qw( symop_from_string
+                                          symop_from_ssg_operator );
 use COD::Formulae::Parser::AdHoc;
-use COD::CIF::Unicode2CIF;
+use COD::CIF::Unicode2CIF qw( unicode2cif );
 use COD::SOptions;
-use COD::SUsage qw(usage options);
-use COD::UserMessage qw(warning error prefix_dataname);
+use COD::SUsage qw( usage options );
+use COD::UserMessage qw( warning error prefix_dataname );
 
 my %symop_lookup_table;
 
@@ -1015,9 +1023,9 @@ for my $filename (@ARGV) {
         if( $record_original_filename ) {
             my $basename;
             if( defined $original_filename ) {
-                $basename = File::Basename::basename( $original_filename );
+                $basename = basename( $original_filename );
             } elsif( defined $filename && $filename ne "-" ) {
-                $basename = File::Basename::basename( $filename );
+                $basename = basename( $filename );
             } else {
                 $basename = "?";
             }
@@ -1042,7 +1050,7 @@ for my $filename (@ARGV) {
             }
         }
 
-        # Correct the formatting of the H-M spacegroup symbol:
+        # Correct the formatting of the H-M space group symbol:
 
         if( $reformat_spacegroup ) {
             for my $sg_tag (qw (
@@ -1088,9 +1096,7 @@ for my $filename (@ARGV) {
 
             my $spacegroup = new COD::Spacegroups::Builder;
             for my $ssgop (@$ssg_symops) {
-                my $matrix =
-                    COD::Spacegroups::Symop::SSGParse::symop_from_string
-                    ( $ssgop );
+                my $matrix = symop_from_string( $ssgop );
                 my $symop3d = symop_from_ssg_operator( $matrix );
                 $spacegroup->insert_symop( $symop3d );
             }

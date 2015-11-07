@@ -15,7 +15,7 @@ use Unicode::Normalize;
 
 require Exporter;
 our @ISA = qw(Exporter);
-our @EXPORT = qw(unicode2cif cif2unicode);
+our @EXPORT = qw( unicode2cif cif2unicode );
 
 my %commands = (
 #
