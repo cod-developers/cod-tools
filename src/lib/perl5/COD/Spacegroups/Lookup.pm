@@ -17,19 +17,19 @@ use COD::Spacegroups::Symop::Parse;
 
 require Exporter;
 our @ISA = qw(Exporter);
-our @EXPORT = qw( mk_symop_key mkhash );
+our @EXPORT = qw( make_symop_key make_symop_hash );
 
-sub mk_symop_key
+sub make_symop_key
 {
     my ( $symops ) = @_;
     return join ";", sort map {symop_string_canonical_form($_)} @$symops;
 }
 
-sub mkhash
+sub make_symop_hash
 {
     my ( $space_group_sets ) = @_;
 
-    return map { (mk_symop_key($_->{symops}), $_) }
+    return map { (make_symop_key($_->{symops}), $_) }
                map { @$_ } @$space_group_sets;
 }
 
