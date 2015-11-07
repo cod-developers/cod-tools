@@ -16,15 +16,17 @@ use strict;
 use warnings;
 use File::Basename;
 use COD::CIF::Data::CellContents;
-use COD::CIF::Parser::Yapp;
+use COD::CIF::Parser qw( parse_cif );
 use COD::CIF::Tags::CanonicalNames;
 use COD::Spacegroups::Symop::Parse;
 use COD::Fractional;
 use COD::SOptions;
-use COD::SUsage qw(usage options);
+use COD::SUsage qw( usage options );
 use COD::ShowStruct;
 use COD::Serialise;
+use COD::UserMessage qw( error );
 
+my $use_parser = 'c';
 my $format = "%g";
 my $Z_value;
 my $use_attached_hydrogens = 0;
@@ -78,6 +80,11 @@ my $print_datablock_name = 0;
 #*     --no-print-datablock-name
 #*         Do not print datablock name (default).
 #*
+#*     --use-perl-parser
+#*         Use Perl parser to parse CIF files.
+#*     --use-c-parser
+#*         Use C parser to parse CIF files (default).
+#*
 #*     --help, --usage
 #*         Print a short usage message (this message) and exit.
 #**
@@ -104,8 +111,10 @@ my $print_datablock_name = 0;
     "--dont-print-datablock-name" => sub{ $print_datablock_name = 0 },
     "--do-not-print-datablock-name" => sub{ $print_datablock_name = 0 },
 
-    "--options"      => sub { options; exit },
-    "--help,--usage" => sub { usage; exit }
+    "--use-perl-parser" => sub { $use_parser = "perl" },
+    "--use-c-parser"    => sub { $use_parser = "c" },
+    "--options"         => sub { options; exit },
+    "--help,--usage"    => sub { usage; exit }
 );
 
 my $Id = '$Id$';
@@ -113,10 +122,16 @@ my $Id = '$Id$';
 @ARGV = ( "-" ) unless @ARGV;
 
 for my $filename (@ARGV) {
+    my $options = { 'parser' => $use_parser, 'no_print' => 1 };
+    my ( $data, $err_count, $messages ) = parse_cif( $filename, $options );
 
-    my $parser = new COD::CIF::Parser::Yapp;
-
-    my $data = $parser->Run($filename);
+    if ( $err_count > 0 ) {
+        print STDERR $_ foreach ( @$messages );
+        error( $0, $filename, undef, "$err_count error(s) "
+             . "encountered while parsing the file", undef );
+        next;
+    }
+    print STDERR $_ foreach ( @$messages );
 
     for my $dataset (@$data) {
 
