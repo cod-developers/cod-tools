@@ -15,11 +15,12 @@ eval 'exec perl -x $0 ${1+"$@"}'
 
 use strict;
 use warnings;
-use COD::CIF::Parser::Yapp;
+use COD::CIF::Parser qw( parse_cif );
 use COD::CIF::Data::Diff;
 use COD::SOptions;
-use COD::SUsage qw(usage options);
+use COD::SUsage qw( usage options );
 
+my $use_parser = 'c';
 my $compare_datablock_names = 1;
 my $fold_long_fields        = 1;
 my $folding_width           = 72;
@@ -38,7 +39,7 @@ my $common  = 1;
 my $L_option_param;
 
 #* USAGE:
-#*     $0 --options input1.cif input*.cif
+#*     $0 --options input1.cif input2.cif
 #*
 #* OPTIONS:
 #* -t, --tags
@@ -89,6 +90,11 @@ my $L_option_param;
 #*     Ignored options. Used to make this script usable as --diff-cmd for
 #*     'svn diff'.
 #*
+#* --use-perl-parser
+#*     Use Perl parser to parse CIF files.
+#* --use-c-parser
+#*     Use C parser to parse CIF files (default).
+#*
 #* --help, --usage
 #*     Print a short usage message (this message) and exit.
 #**
@@ -129,8 +135,10 @@ my $L_option_param;
     "--no-left"     => sub{ $left   = 0 },
     "--no-right"    => sub{ $right  = 0 },
     "--no-common"   => sub{ $common = 0 },
-    "--options"      => sub { options; exit },
-    "--help,--usage" => sub { usage; exit }
+    "--use-perl-parser" => sub { $use_parser = "perl" },
+    "--use-c-parser"    => sub { $use_parser = "c" },
+    "--options"         => sub { options; exit },
+    "--help,--usage"    => sub { usage; exit }
 );
 
 push( @ARGV, "-" ) unless @ARGV > 1;
@@ -138,10 +146,26 @@ if( @ARGV != 2 ) {
     die( "please supply two files for comparison" );
 }
 
-my $parser1 = new COD::CIF::Parser::Yapp;
-my $data1 = $parser1->Run($ARGV[0]);
-my $parser2 = new COD::CIF::Parser::Yapp;
-my $data2 = $parser2->Run($ARGV[1]);
+my $parser_options = { 'parser' => $use_parser, 'no_print' => 1 };
+my ( $data1, $data2, $err_count, $messages );
+
+( $data1, $err_count, $messages ) = parse_cif( $ARGV[0], $parser_options );
+if ( $err_count > 0 ) {
+    print STDERR $_ foreach ( @$messages );
+    error( $0, $ARGV[0], undef, "$err_count error(s) "
+         . "encountered while parsing the file", undef );
+    next;
+}
+print STDERR $_ foreach ( @$messages );
+
+( $data2, $err_count, $messages ) = parse_cif( $ARGV[1], $parser_options );
+if ( $err_count > 0 ) {
+    print STDERR $_ foreach ( @$messages );
+    error( $0, $ARGV[1], undef, "$err_count error(s) "
+         . "encountered while parsing the file", undef );
+    next;
+}
+print STDERR $_ foreach ( @$messages );
 
 my $min_datablocks  = scalar @$data1;
 if( scalar @$data1 != scalar @$data2 ) {
