@@ -27,14 +27,9 @@ sub mk_symop_key
 
 sub mkhash
 {
-    if( 1 ) {
-        map { (mk_symop_key($_->{symops}), $_) }
-        @COD::Spacegroups::Lookup::COD::table,
-        @COD::Spacegroups::Lookup::COD::extra_settings;
-    } else {
-        require COD::Spacegroups::Lookup::CCP4;
-        map { (mk_symop_key($_->{symops}), $_) }
-        @COD::Spacegroups::Lookup::CCP4::table;
-    }
+    my ( $space_group_sets ) = @_;
+
+    return map { (mk_symop_key($_->{symops}), $_) }
+               map { @$_ } @$space_group_sets;
 }
 

@@ -15,6 +15,10 @@ eval 'exec perl -x $0 ${1+"$@"}'
 
 use strict;
 use warnings;
+use COD::Spacegroups::Lookup::COD;
+use COD::Spacegroups::Lookup qw( mkhash mk_symop_key );
+use COD::Spacegroups::Symop::Parse qw( string_from_symop );
+use COD::Spacegroups::Builder;
 use COD::SOptions;
 use COD::SUsage;
 
@@ -29,10 +33,6 @@ use COD::SUsage;
    "--help,--usage"  => sub { usage; exit }
 );
 
-use COD::Spacegroups::Builder;
-use COD::Spacegroups::Lookup;
-use COD::Spacegroups::Symop::Parse;
-
 my $spacegroup = new COD::Spacegroups::Builder;
 
 while(<>) {
@@ -45,7 +45,10 @@ $spacegroup->print();
 
 my @symops = $spacegroup->all_symops();
 
-my %symop_lookup_table = mkhash();
+my %symop_lookup_table = mkhash( [
+    \@COD::Spacegroups::Lookup::COD::table,
+    \@COD::Spacegroups::Lookup::COD::extra_settings
+] );
 my $key = mk_symop_key( [ map { string_from_symop($_) } @symops ] );
 
 if( exists $symop_lookup_table{$key} ) {
