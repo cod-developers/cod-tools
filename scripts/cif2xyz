@@ -14,14 +14,14 @@ eval 'exec perl -x $0 ${1+"$@"}'
 
 use strict;
 use warnings;
-use COD::CIF::Parser qw(parse_cif);
+use COD::CIF::Parser qw( parse_cif );
 use COD::AtomProperties;
-use COD::CIF::Data qw(get_cell);
-use COD::Fractional;
-use COD::Spacegroups::Symop::Algebra qw(symop_vector_mul);
+use COD::CIF::Data qw( get_cell );
+use COD::Fractional qw( symop_ortho_from_fract );
+use COD::Spacegroups::Symop::Algebra qw( symop_vector_mul );
 use COD::SOptions;
-use COD::SUsage qw(usage options);
-use COD::UserMessage qw(error prefix_dataname);
+use COD::SUsage qw( usage options );
+use COD::UserMessage qw( warning error prefix_dataname );
 
 my $print_radii = 0;
 my $use_parser = "c"; # Used CIF parser
@@ -72,7 +72,7 @@ for my $filename (@ARGV) {
     print STDERR $_ foreach ( @$messages );
 
     if( !@{$data} || !defined $data->[0] || !defined $data->[0]{name} ) {
-        warning( $0, $filename, undef, "file seems to be empty" );
+        warning( $0, $filename, undef, "file seems to be empty", undef );
         next;
     }
 

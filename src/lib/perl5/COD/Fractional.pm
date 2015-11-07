@@ -13,7 +13,7 @@ use strict;
 require Exporter;
 our @ISA = qw(Exporter);
 our @EXPORT = qw(
-    fract2ortho ortho2fract 
+    fract2ortho ortho2fract
     ortho_from_fract fract_from_ortho
     symop_ortho_from_fract symop_fract_from_ortho
 );
