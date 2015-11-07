@@ -15,13 +15,13 @@ use strict;
 use warnings;
 use COD::CIF::Data qw( get_cell get_symmetry_operators );
 use COD::CIF::Data::SymmetryGenerator qw( symop_generate_atoms );
-use COD::Fractional;
-use COD::Spacegroups::Symop::Algebra qw(symop_vector_mul);
-use COD::Spacegroups::Symop::Parse;
-use COD::Algebra::Vector qw(distance
-                            matrix_vector_mul
-                            vdot
-                            vector_sub);
+use COD::Fractional qw( symop_ortho_from_fract );
+use COD::Spacegroups::Symop::Algebra qw( symop_vector_mul );
+use COD::Spacegroups::Symop::Parse qw( symop_from_string modulo_1 );
+use COD::Algebra::Vector qw( distance
+                             matrix_vector_mul
+                             vdot
+                             vector_sub );
 
 require Exporter;
 our @ISA = qw(Exporter);
