@@ -30,10 +30,13 @@ package COD::Cell::Niggli::KG76;
 
 use strict;
 use warnings;
-use COD::Spacegroups::Symop::Algebra qw(symop_mul);
+use COD::Spacegroups::Symop::Algebra qw( symop_mul );
+
 require Exporter;
-our @ISA = qw(Exporter);
-our @EXPORT_OK = qw( reduce );
+our @ISA = qw( Exporter );
+our @EXPORT_OK = qw(
+    reduce
+);
 
 my $Pi = 4 * atan2(1,1);
 

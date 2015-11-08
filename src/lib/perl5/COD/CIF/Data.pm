@@ -15,10 +15,10 @@ use strict;
 use warnings;
 use COD::Spacegroups::Lookup::COD;
 use COD::Spacegroups::Names;
-use COD::UserMessage qw(warning error prefix_dataname);
+use COD::UserMessage qw( warning error prefix_dataname );
 
 require Exporter;
-our @ISA = qw(Exporter);
+our @ISA = qw( Exporter );
 our @EXPORT_OK = qw(
     get_cell
     get_content_encodings

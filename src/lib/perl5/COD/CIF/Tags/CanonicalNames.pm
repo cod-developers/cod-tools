@@ -13,15 +13,18 @@ package COD::CIF::Tags::CanonicalNames;
 
 use strict;
 use warnings;
-
-require Exporter;
-our @ISA = qw(Exporter);
-our @EXPORT = qw( canonical_tag_name canonicalize_names canonicalize_all_names );
-
 use COD::CIF::Tags::DictTags;
 use COD::CIF::Tags::COD;
 use COD::CIF::Tags::TCOD;
 use COD::CIF::Tags::DFT;
+
+require Exporter;
+our @ISA = qw( Exporter );
+our @EXPORT = qw(
+    canonical_tag_name
+    canonicalize_names
+    canonicalize_all_names
+);
 
 my @dictionary_tags = ( @COD::CIF::Tags::DictTags::tag_list,
                         @COD::CIF::Tags::COD::tag_list,

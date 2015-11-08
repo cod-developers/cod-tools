@@ -12,10 +12,15 @@ package COD::SUsage;
 
 use strict;
 use warnings;
+
 require Exporter;
 our @ISA = qw(Exporter);
-our @EXPORT = qw( usage );
-our @EXPORT_OK = qw( options );
+our @EXPORT = qw(
+    usage
+);
+our @EXPORT_OK = qw(
+    options
+);
 
 sub usage
 {
@@ -52,3 +57,5 @@ sub options
     }
     close( SCRIPT );
 }
+
+1;

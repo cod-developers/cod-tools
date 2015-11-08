@@ -13,11 +13,14 @@ package COD::Spacegroups::Lookup;
 use strict;
 use warnings;
 use COD::Spacegroups::Lookup::COD;
-use COD::Spacegroups::Symop::Parse;
+use COD::Spacegroups::Symop::Parse qw( symop_string_canonical_form );
 
 require Exporter;
-our @ISA = qw(Exporter);
-our @EXPORT = qw( make_symop_key make_symop_hash );
+our @ISA = qw( Exporter );
+our @EXPORT = qw(
+    make_symop_key
+    make_symop_hash
+);
 
 sub make_symop_key
 {
@@ -33,3 +36,4 @@ sub make_symop_hash
                map { @$_ } @$space_group_sets;
 }
 
+1;

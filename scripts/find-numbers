@@ -17,9 +17,9 @@ eval 'exec perl -x $0 ${1+"$@"}'
 
 use strict;
 use warnings;
-use File::Basename;
-use COD::SOptions;
-use COD::SUsage;
+use File::Basename qw( basename );
+use COD::SOptions qw( getOptions );
+use COD::SUsage qw( usage );
 
 #* USAGE:
 #*     $0 input1.cif input1_alt.cif
@@ -77,7 +77,7 @@ for my $file (@COD_cif_files) {
         if( /^\s*data_(.*)/ ) {
             $id = $1;
             $structures{$id}{id} = $id;
-            $structures{$id}{filename} = File::Basename::basename( $file );
+            $structures{$id}{filename} = basename( $file );
         }
         if( /^\s*_chemical_formula_sum\s+(.*)/ ) {
             my $formula = $1;
@@ -118,7 +118,7 @@ for my $file (@COD_cif_files) {
 
     close( CODCIF );
 
-    my $basename = File::Basename::basename( $file );
+    my $basename = basename( $file );
     for my $id (keys %structures) {
         my $formula = $structures{$id}{chemical_formula_sum};
 
@@ -149,7 +149,7 @@ for my $file (@cif_files) {
         if( /^\s*data_(.*)/ ) {
             $id = $1;
             $structures{$id}{id} = $id;
-            $structures{$id}{filename} = File::Basename::basename( $file );
+            $structures{$id}{filename} = basename( $file );
         }
         if( /^\s*_chemical_formula_sum\s+(.*)/ ) {
             my $formula = $1;

@@ -4,7 +4,7 @@
 #$Revision$
 #$URL$
 #------------------------------------------------------------------------
-#* 
+#*
 #  CIF tag management functions that work on the internal
 #  representation of a CIF file returned by the CIFParser module.
 #**
@@ -15,8 +15,11 @@ use strict;
 use warnings;
 
 require Exporter;
-our @ISA = qw(Exporter);
-our @EXPORT = qw( sprint_formula print_formula );
+our @ISA = qw( Exporter );
+our @EXPORT = qw(
+    sprint_formula
+    print_formula
+);
 
 sub print_formula($@)
 {
