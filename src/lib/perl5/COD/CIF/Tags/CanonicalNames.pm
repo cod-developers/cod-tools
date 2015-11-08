@@ -12,6 +12,7 @@
 package COD::CIF::Tags::CanonicalNames;
 
 use strict;
+use warnings;
 
 require Exporter;
 our @ISA = qw(Exporter);

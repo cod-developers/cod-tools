@@ -9,23 +9,23 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #$URL$
 #------------------------------------------------------------------------------
 #*
-#  Corrects misspelled tags in a CIF file and outputs made changes into the 
-#  standard I/O streams. By default, only tags from CIF Core and CIF COD 
-#  dictionaries with extra '^_+' prefixes are corrected. Additionally, a 
+#  Corrects misspelled tags in a CIF file and outputs made changes into the
+#  standard I/O streams. By default, only tags from CIF Core and CIF COD
+#  dictionaries with extra '^_+' prefixes are corrected. Additionally, a
 #  replacement list file can be provided for the correction of misspelled tags.
 #**
 
 use strict;
 use warnings;
-use COD::CIF::Parser qw(parse_cif);
-use COD::CIF::Tags::CanonicalNames;
+use COD::CIF::Parser qw( parse_cif );
+use COD::CIF::Tags::CanonicalNames qw( canonicalize_all_names );
 use COD::CIF::Tags::DictTags;
 use COD::CIF::Tags::COD;
-use COD::CIF::Tags::Manage;
-use COD::CIF::Tags::Print;
-use COD::SOptions;
-use COD::SUsage qw(usage options);
-use COD::UserMessage qw(note error prefix_dataname);
+use COD::CIF::Tags::Manage qw( rename_tag );
+use COD::CIF::Tags::Print qw( print_cif fold );
+use COD::SOptions qw( getOptions );
+use COD::SUsage qw( usage options );
+use COD::UserMessage qw( note error prefix_dataname );
 
 my $keep_tag_order = 0;
 my $Id = '$Id$';
