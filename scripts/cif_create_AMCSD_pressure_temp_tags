@@ -15,7 +15,7 @@ eval 'exec perl -x $0 ${1+"$@"}'
 
 use strict;
 use warnings;
-use COD::CIF::Parser::Yapp;
+use COD::CIF::Parser qw( parse_cif );
 use COD::CIF::Tags::CanonicalNames qw( canonicalize_all_names );
 use COD::CIF::Tags::DictTags;
 use COD::CIF::Tags::COD;
@@ -24,6 +24,7 @@ use COD::SOptions qw( getOptions );
 use COD::SUsage qw( usage options );
 use COD::UserMessage qw( note warning error prefix_dataname );
 
+my $use_parser = 'c';
 my $keep_tag_order = 0;
 
 #* USAGE:
@@ -35,14 +36,21 @@ my $keep_tag_order = 0;
 #*   --sort-tags
 #*                      Reorder tags in CIF file according to COD.
 #*
+#*   --use-perl-parser
+#*                      Use Perl parser to parse CIF files.
+#*   --use-c-parser
+#*                      Use C parser to parse CIF files (default).
+#*
 #*   --help, --usage
 #*                      Print a short usage message (this message) and exit.
 #**
 @ARGV = getOptions(
-    "--keep-tag-order" => sub { $keep_tag_order = 1; },
-    "--sort-tags"      => sub { $keep_tag_order = 0; },
-    "--options"        => sub { options; exit },
-    "--help,--usage"   => sub { usage; exit }
+    "--keep-tag-order"  => sub { $keep_tag_order = 1; },
+    "--sort-tags"       => sub { $keep_tag_order = 0; },
+    "--use-perl-parser" => sub { $use_parser = "perl" },
+    "--use-c-parser"    => sub { $use_parser = "c" },
+    "--options"         => sub { options; exit },
+    "--help,--usage"    => sub { usage; exit }
 );
 
 my @dictionary_tags = ( @COD::CIF::Tags::DictTags::tag_list,
@@ -55,14 +63,13 @@ sub get_temperature_unit_shift($);
 @ARGV = ("-") unless @ARGV;
 
 for my $filename (@ARGV) {
-    my $parser = new COD::CIF::Parser::Yapp;
-    my $data = $parser->Run($filename);
-
-    if( defined $parser->YYData->{ERRCOUNT} &&
-        $parser->YYData->{ERRCOUNT} > 0 ) {
-        error( $0, $filename, undef, $parser->YYData->{ERRCOUNT}
-             . " error(s) encountered while parsing CIF data", undef );
-        exit -1;
+    my $options = { 'parser' => $use_parser, 'no_print' => 1 };
+    my ( $data, $err_count, $messages ) = parse_cif( $filename, $options );
+    if ( $err_count > 0 ) {
+        print STDERR $_ foreach ( @$messages );
+        error( $0, $filename, undef, "$err_count error(s) "
+             . "encountered while parsing the file", undef );
+        exit 1;
     }
 
     canonicalize_all_names( $data );
