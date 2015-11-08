@@ -15,20 +15,19 @@ eval 'exec perl -x $0 ${1+"$@"}'
 
 use strict;
 use warnings;
-use File::Basename;
+use File::Basename qw( basename );
 use COD::CIF::Parser::Yapp;
 use COD::CIF::Tags::DictTags;
 use COD::CIF::Tags::COD;
 use COD::CIF::Tags::Excluded;
-use COD::CIF::Tags::Manage;
-use COD::CIF::Tags::Print;
-use COD::CIF::Tags::CanonicalNames;
-use COD::CIF::Unicode2CIF;
+use COD::CIF::Tags::Manage qw( exclude_tag exclude_empty_tags set_tag );
+use COD::CIF::Tags::Print qw( print_cif fold );
+use COD::CIF::Tags::CanonicalNames qw( canonicalize_names );
 use COD::Spacegroups::Names;
 use COD::Spacegroups::Symop::Parse;
-use COD::SOptions;
-use COD::SUsage qw(usage options);
-use COD::UserMessage qw(warning error prefix_dataname);
+use COD::SOptions qw( getOptions );
+use COD::SUsage qw( usage options );
+use COD::UserMessage qw( warning error prefix_dataname );
 
 my $exclude_empty_tags = 0;
 my $preserve_loop_order = 0;
@@ -295,9 +294,9 @@ for my $dataset (@data) {
     if( $record_original_filename ) {
         my $basename;
         if( defined $original_filename ) {
-            $basename = File::Basename::basename( $original_filename );
+            $basename = basename( $original_filename );
         } elsif( defined $filename && $filename ne "-" ) {
-            $basename = File::Basename::basename( $filename );
+            $basename = basename( $filename );
         } else {
             $basename = "?";
         }

@@ -12,9 +12,8 @@ package COD::Spacegroups::Symop::Algebra;
 
 use strict;
 use warnings;
-
-use COD::Algebra::Vector qw( modulo_1 matrix_vector_mul );
 use POSIX;
+use COD::Algebra::Vector qw( modulo_1 matrix_vector_mul );
 
 require Exporter;
 our @ISA = qw(Exporter);
@@ -126,7 +125,7 @@ sub symop_adjunct($$$)
         next if( $i == $row );
         $mj = 0;
         for( $j = 0; $j < 4; $j ++ ) {
-	    next if( $j == $col );
+            next if( $j == $col );
             $matrix[$mi][$mj] = $s->[$i][$j];
             $mj ++;
         }
