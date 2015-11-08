@@ -10,9 +10,13 @@
 package COD::Algebra::JacobiEigenSimple;
 
 use strict;
+use warnings;
+
 require Exporter;
-our @ISA = qw(Exporter);
-our @EXPORT = qw( jacobi_eigenvv );
+our @ISA = qw( Exporter );
+our @EXPORT = qw(
+    jacobi_eigenvv
+);
 
 $COD::Algebra::JacobiEigenSimple::max_iterations = 100;
 # used for float comparison

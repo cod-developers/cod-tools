@@ -14,12 +14,12 @@ eval 'exec perl -x $0 ${1+"$@"}'
 
 use strict;
 use warnings;
-use File::Basename;
+use File::Basename qw( basename );
 use COD::CIF::Parser::Yapp;
 use COD::Formulae::Parser::AdHoc;
-use COD::CIF::Data::CellContents qw(cif_cell_contents);
-use COD::SOptions;
-use COD::SUsage qw(usage options);
+use COD::CIF::Data::CellContents qw( cif_cell_contents );
+use COD::SOptions qw( getOptions );
+use COD::SUsage qw( usage options );
 
 my $max_cell_length_diff = 0.5; # Angstroems
 my $max_cell_angle_diff  = 1.2; # degrees
@@ -125,7 +125,7 @@ for my $file (@COD_cif_files) {
 
     my %structures = cif_fill_data( \@data, $file );
 
-    my $basename = File::Basename::basename( $file );
+    my $basename = basename( $file );
     for my $id (keys %structures) {
         my $formula = $structures{$id}{chemical_formula_sum};
 

@@ -4,7 +4,7 @@ use strict;
 use warnings;
 
 require Exporter;
-our @ISA = qw(Exporter);
+our @ISA = qw( Exporter );
 our @EXPORT = qw( ok );
 
 # The hash %atoms has been created using data from the folowing sources:

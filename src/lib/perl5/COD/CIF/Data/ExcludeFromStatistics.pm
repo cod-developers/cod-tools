@@ -12,10 +12,21 @@ package COD::CIF::Data::ExcludeFromStatistics;
 
 use strict;
 use warnings;
-use COD::CIF::Data::CODFlags;
+use COD::CIF::Data::CODFlags qw(
+    is_on_hold
+    is_duplicate
+    is_retracted
+    is_disordered
+    is_suboptimal
+    has_errors
+    has_warnings
+);
+
 require Exporter;
-our @ISA = qw(Exporter);
-our @EXPORT_OK = qw( exclude_from_statistics );
+our @ISA = qw( Exporter );
+our @EXPORT_OK = qw(
+    exclude_from_statistics
+);
 
 sub exclude_from_statistics($$);
 

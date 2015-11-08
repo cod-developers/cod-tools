@@ -12,11 +12,18 @@
 package COD::CIF::Tags::Print;
 
 use strict;
+use warnings;
 
 require Exporter;
-our @ISA = qw(Exporter);
-our @EXPORT = qw( print_cif print_single_tag_and_value print_tag
-                  print_value pack_precision fold );
+our @ISA = qw( Exporter );
+our @EXPORT = qw(
+    print_cif
+    print_single_tag_and_value
+    print_tag
+    print_value
+    pack_precision
+    fold
+);
 
 our $max_cif_line_len = 80;
 our $default_folding_width = $max_cif_line_len - 1;

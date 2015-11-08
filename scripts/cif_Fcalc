@@ -34,7 +34,7 @@ use COD::Spacegroups::Names;
 use COD::Spacegroups::Lookup::COD;
 use COD::CromerMann;
 use COD::Fractional qw( symop_ortho_from_fract );
-use COD::SOptions;
+use COD::SOptions qw( getOptions );
 use COD::SUsage qw( usage options );
 use COD::UserMessage qw( warning error prefix_dataname );
 
@@ -107,8 +107,6 @@ my $PI = 4*atan2( 1, 1 );
 #*        Print a short usage message (this message) and exit.
 #**
 @ARGV = getOptions(
-    "--use-perl-parser"  => sub{ $use_parser = "perl" },
-    "--use-c-parser"     => sub{ $use_parser = "c" },
     "--dump-xyz-coordinates"       => sub { $dump_xyz_coordinates = 1 },
     "--dump-Cromer-Mann"           => sub { $dump_Cromer_Mann_parameters = 1 },
     "--max-resolution"             => \$max_resolution,
@@ -122,6 +120,8 @@ my $PI = 4*atan2( 1, 1 );
     "--Miller-indexes"             => \$Miller_indexes,
     "--get-hkl-data"               => \$hkl_file,
     "--dump-test-Fhkl"             => sub { $dump_test_Fhkl = 1 },
+    "--use-perl-parser"            => sub{ $use_parser = "perl" },
+    "--use-c-parser"               => sub{ $use_parser = "c" },
     "--options"                    => sub { options; exit },
     "--help,--usage"               => sub { usage; exit }
 );

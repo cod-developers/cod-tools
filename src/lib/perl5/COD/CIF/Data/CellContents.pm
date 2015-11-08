@@ -25,7 +25,7 @@ use COD::CIF::Data::SymmetryGenerator qw( symop_generate_atoms );
 use COD::UserMessage qw( warning error prefix_dataname );
 
 require Exporter;
-our @ISA = qw(Exporter);
+our @ISA = qw( Exporter );
 our @EXPORT = qw(
     cif_cell_contents
     atomic_composition

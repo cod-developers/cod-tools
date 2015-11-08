@@ -13,16 +13,16 @@ package COD::CIF2JSON;
 
 use strict;
 use warnings;
+use JSON qw( encode_json decode_json );
 
 require Exporter;
-our @ISA = qw(Exporter);
+our @ISA = qw( Exporter );
 our @EXPORT = qw(
-    cif2json json2cif
+    cif2json
+    json2cif
 );
 
 my $format_version = 1.0;
-
-use JSON;
 
 sub cif2json($)
 {
@@ -47,3 +47,5 @@ sub json2cif($)
     }
     return $decoded->{data};
 }
+
+1;

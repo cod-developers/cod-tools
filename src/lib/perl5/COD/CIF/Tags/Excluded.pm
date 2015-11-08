@@ -13,8 +13,10 @@ package COD::CIF::Tags::Excluded;
 use strict;
 use warnings;
 require Exporter;
-our @ISA = qw(Exporter);
-our @EXPORT_OK = qw(@tag_list);
+our @ISA = qw( Exporter );
+our @EXPORT_OK = qw(
+    @tag_list
+);
 
 our @iurc_tags = qw (
 _iucr_compatibility_tag

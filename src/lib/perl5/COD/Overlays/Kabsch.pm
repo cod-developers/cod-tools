@@ -17,12 +17,14 @@ package COD::Overlays::Kabsch;
 
 use strict;
 use warnings;
-use COD::Algebra::JacobiEigen;
+use COD::Algebra::JacobiEigen qw( jacobi_eigenvv );
 use COD::Spacegroups::Symop::Algebra qw( symop_apply );
 
 require Exporter;
-our @ISA = qw(Exporter);
-our @EXPORT_OK = qw( overlay_atoms );
+our @ISA = qw( Exporter );
+our @EXPORT_OK = qw(
+    overlay_atoms
+);
 
 sub find_center($)
 {

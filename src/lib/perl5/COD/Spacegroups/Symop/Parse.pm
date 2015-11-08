@@ -13,10 +13,16 @@ use strict;
 use warnings;
 
 require Exporter;
-our @ISA = qw(Exporter);
-our @EXPORT = qw( symop_from_string string_from_symop
-    string_from_symop_reduced symop_string_canonical_form
-    check_symmetry_operator modulo_1 symop_translation_modulo_1 symop_print
+our @ISA = qw( Exporter );
+our @EXPORT = qw(
+    symop_from_string
+    string_from_symop
+    string_from_symop_reduced
+    symop_string_canonical_form
+    check_symmetry_operator
+    modulo_1
+    symop_translation_modulo_1
+    symop_print
 );
 
 #

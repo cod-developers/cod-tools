@@ -10,10 +10,13 @@
 package COD::Spacegroups::Lookup::COD;
 
 use strict;
+use warnings;
 
 require Exporter;
-our @ISA = qw(Exporter);
-our @EXPORT = qw( @table @extra_settings );
+our @ISA = qw( Exporter );
+our @EXPORT = qw(
+    @table @extra_settings
+);
 
 # NOTE: some code using this table (cif_cod_check) assumes that
 # rhombohedral spacegroups in hexagonal setting have universal_h_m

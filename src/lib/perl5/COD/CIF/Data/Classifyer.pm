@@ -24,7 +24,7 @@ use COD::Algebra::Vector qw( distance
                              vector_sub );
 
 require Exporter;
-our @ISA = qw(Exporter);
+our @ISA = qw( Exporter );
 our @EXPORT = qw(
     cif_class_flags
     cif_has_C_bonds

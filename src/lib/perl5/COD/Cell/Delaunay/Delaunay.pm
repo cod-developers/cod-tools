@@ -25,14 +25,16 @@ package COD::Cell::Delaunay::Delaunay;
 
 use strict;
 use warnings;
-require Exporter;
-our @ISA = qw(Exporter);
-our @EXPORT_OK = qw( reduce );
-
-my $Pi = 4 * atan2(1,1);
-
 use COD::Fractional qw( symop_ortho_from_fract );
 use COD::Spacegroups::Symop::Algebra qw( symop_mul symop_apply );
+
+require Exporter;
+our @ISA = qw( Exporter );
+our @EXPORT_OK = qw(
+    reduce
+);
+
+my $Pi = 4 * atan2(1,1);
 
 our $debug = 1;
 our $epsilon = 1E-5;
