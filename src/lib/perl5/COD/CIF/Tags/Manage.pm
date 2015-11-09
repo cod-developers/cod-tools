@@ -17,13 +17,16 @@ use warnings;
 require Exporter;
 our @ISA = qw( Exporter );
 our @EXPORT_OK = qw(
+    clean_cif
     exclude_tag
     tag_is_empty
     tag_is_unknown
     exclude_empty_tags
     exclude_empty_non_loop_tags
+    exclude_misspelled_tags
     exclude_unknown_tags
     exclude_unknown_non_loop_tags
+    order_tags
     set_tag
     set_loop_tag
     rename_tag
@@ -139,6 +142,133 @@ sub exclude_unknown_non_loop_tags
     for my $empty_tag (@empty_tags) {
         exclude_tag( $cif, $empty_tag );
     }
+}
+
+sub exclude_misspelled_tags
+{
+    my( $cif, $dictionary_tags ) = @_;
+
+    my @misspelled_tags;
+    for my $tag (@{$cif->{tags}}) {
+        if( !exists $dictionary_tags->{$tag} ) {
+            push( @misspelled_tags, $tag );
+        }
+    }
+    my %misspelled_tags = map { $_ => 1 } @misspelled_tags;
+    for my $misspelled_tag (@misspelled_tags) {
+        next if !exists $cif->{values}{$misspelled_tag};
+        if( !exists $cif->{inloop}{$misspelled_tag} ) {
+            exclude_tag( $cif, $misspelled_tag );
+        } else {
+            my $tag_loop_nr = $cif->{inloop}{$misspelled_tag};
+            my $all_tags_excluded = 1;
+            for my $loop_tag (@{$cif->{loops}[$tag_loop_nr]}) {
+                if( !exists $misspelled_tags{$loop_tag} ) {
+                    $all_tags_excluded = 0;
+                    last;
+                }
+            }
+            next if !$all_tags_excluded;
+            for my $loop_tag (@{$cif->{loops}[$tag_loop_nr]}) {
+                exclude_tag( $cif, $loop_tag );
+            }
+        }
+    }
+}
+
+sub order_tags
+{
+    my( $cif, $tags_to_print, $loop_tags_to_print,
+        $dictionary_tags ) = @_;
+    my @new_tag_list;
+
+    # Correct non-loop tags + _publ_author_name
+
+    for my $tag (@$tags_to_print) {
+        if(  exists $cif->{values}{$tag} &&
+             exists $dictionary_tags->{$tag} &&
+           (!exists $cif->{inloop}{$tag} ||
+            $tag eq '_publ_author_name') ) {
+            push( @new_tag_list, $tag );
+        }
+    }
+
+    # Misspelled non-loop tags
+
+    for my $tag (@{$cif->{tags}}) {
+        if( !exists $dictionary_tags->{$tag} &&
+            !exists $cif->{inloop}{$tag} ) {
+            push( @new_tag_list, $tag );
+        }
+    }
+
+    # Correct loop tags
+
+    for my $tag (@$loop_tags_to_print) {
+        if( exists $cif->{values}{$tag} &&
+            exists $cif->{inloop}{$tag} &&
+            $tag ne '_publ_author_name' ) {
+            push( @new_tag_list, $tag );
+        }
+    }
+
+    # Misspelled loop tags
+
+    for my $tag (@{$cif->{tags}}) {
+        if( !exists $dictionary_tags->{$tag} &&
+             exists $cif->{inloop}{$tag} ) {
+            push( @new_tag_list, $tag );
+        }
+    }
+
+    $cif->{tags} = \@new_tag_list;
+}
+
+sub clean_cif
+{
+    my( $cif, $flags ) = @_;
+
+    my @dictionary_tags;
+    my %dictionary_tags = ();
+
+    my ( $exclude_misspelled_tags, $preserve_loop_order ) = ( 0 ) x 2;
+    my $keep_tag_order = 0;
+
+    if( $flags && ref $flags eq "HASH" ) {
+        $exclude_misspelled_tags = $flags->{exclude_misspelled_tags};
+        $preserve_loop_order = $flags->{preserve_loop_order};
+        %dictionary_tags = %{$flags->{dictionary_tags}}
+            if defined $flags->{dictionary_tags};
+        @dictionary_tags = @{$flags->{dictionary_tag_list}}
+            if defined $flags->{dictionary_tag_list};
+        $keep_tag_order = $flags->{keep_tag_order}
+            if defined $flags->{keep_tag_order};
+    }
+
+    if( !@dictionary_tags ) {
+        @dictionary_tags = sort {$a cmp $b} keys %dictionary_tags;
+    }
+
+    my @tags_to_print;
+    if( $keep_tag_order ) {
+        @tags_to_print = @{$cif->{tags}};
+        if( !%dictionary_tags ) {
+            %dictionary_tags = map { $_ => 1 } @tags_to_print;
+        }
+    } else {
+        @tags_to_print = @dictionary_tags;
+    }
+
+    if( $exclude_misspelled_tags ) {
+        my %tags_to_print = map { $_ => 1 } @tags_to_print;
+        exclude_misspelled_tags( $cif, \%tags_to_print );
+    }
+
+    order_tags( $cif,
+                \@tags_to_print,
+                $preserve_loop_order
+                    ? $cif->{tags} : \@dictionary_tags,
+                \%dictionary_tags );
 }
 
 sub rename_tag
