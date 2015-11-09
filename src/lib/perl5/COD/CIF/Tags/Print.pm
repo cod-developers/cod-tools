@@ -14,7 +14,7 @@ package COD::CIF::Tags::Print;
 use strict;
 use warnings;
 
-use COD::CIF::Tags::Manage;
+use COD::CIF::Tags::Manage qw( clean_cif );
 
 require Exporter;
 our @ISA = qw( Exporter );
