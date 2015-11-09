@@ -17,28 +17,29 @@ eval 'exec perl -x $0 ${1+"$@"}'
 
 use strict;
 use warnings;
-use File::Basename;
+use File::Basename qw( basename );
 use COD::AtomProperties;
-use COD::Escape;
-use COD::CIF::Parser::Yapp;
+use COD::Escape qw( escape );
+use COD::CIF::Parser qw( parse_cif );
 use COD::Spacegroups::Symop::Algebra qw( symop_vector_mul );
 use COD::Spacegroups::Symop::Parse qw( symop_string_canonical_form
                                        symop_from_string );
 use COD::Algebra::Vector qw( distance );
 use COD::CIF::Data qw( get_cell get_symmetry_operators );
-use COD::CIF::Data::AtomList qw(uniquify_atom_names);
+use COD::CIF::Data::AtomList qw( uniquify_atom_names );
 use COD::CIF::Data::SymmetryGenerator qw( copy_atom
                                           symop_generate_atoms );
 use COD::CIF::Data::ExcludeFromStatistics qw( exclude_from_statistics );
-use COD::Fractional qw(symop_ortho_from_fract);
-use COD::SOptions;
-use COD::SUsage qw(usage options);
-use COD::ErrorHandler qw(process_warnings process_errors);
+use COD::Fractional qw( symop_ortho_from_fract );
+use COD::SOptions qw( getOptions get_value );
+use COD::SUsage qw( usage options );
+use COD::ErrorHandler qw( process_warnings process_errors );
 
 my $die_on_errors   = 1;
 my $die_on_warnings = 0;
 my $die_on_notes    = 0;
 
+my $use_parser = 'c';
 my $uniquify_atoms = 1;
 my $include_disord_struct  = 1;
 my $include_dup_struct     = 0;
@@ -118,6 +119,10 @@ my %escaped_symbols = ("\"" => '"', "\'" => "'");
 #*                    Print additional information for each step of the script.
 #* -s, --silent, --quiet
 #*                    Print no additional information (default).
+#* --use-perl-parser
+#*                    Use Perl parser to parse CIF files.
+#* --use-c-parser
+#*                    Use C parser to parse CIF files (default).
 #* --help, --usage
 #*                    Print a short usage message (this message) and exit.
 #**
@@ -159,6 +164,9 @@ my %escaped_symbols = ("\"" => '"', "\'" => "'");
     "--uniquify-atoms"           => sub { $uniquify_atoms = 1; },
     "--no-uniquify-atoms"        => sub { $uniquify_atoms = 0; },
 
+    "--use-perl-parser"          => sub { $use_parser = "perl" },
+    "--use-c-parser"             => sub { $use_parser = "c" },
+
     "-v,--verbose"               => sub { $verbose = 1; },
     "-s,--silent,--quiet"        => sub { $verbose = 0; },
     "--options"                  => sub { options; exit },
@@ -180,9 +188,16 @@ if ( $output_format eq "pairwise" ) {
 
 foreach my $filename ( @ARGV ) {
 
-  my $parser = new COD::CIF::Parser::Yapp;
+    my $options = { 'parser' => $use_parser, 'no_print' => 1 };
+    my ( $data, $err_count, $messages ) = parse_cif( $filename, $options );
 
-  my $data = $parser->Run( $filename );
+    if ( $err_count > 0 ) {
+        print STDERR $_ foreach ( @$messages );
+        error( $0, $filename, undef, "$err_count error(s) "
+             . "encountered while parsing the file", undef );
+        next;
+    }
+    print STDERR $_ foreach ( @$messages );
 
   # Initial check to skip structures not fit for statistics
   # 0 means that this type of stucture is excluded

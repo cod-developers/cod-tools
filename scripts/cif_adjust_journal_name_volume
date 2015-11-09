@@ -20,8 +20,9 @@ use COD::CIF::Tags::CanonicalNames qw( canonicalize_all_names );
 use COD::CIF::Tags::DictTags;
 use COD::CIF::Tags::COD;
 use COD::CIF::Tags::Print qw( print_cif );
-use COD::SOptions;
+use COD::SOptions qw( getOptions );
 use COD::SUsage qw( usage options );
+use COD::UserMessage qw( error );
 use COD::ErrorHandler qw( process_parser_messages );
 
 my $die_on_error_level = {
@@ -30,8 +31,8 @@ my $die_on_error_level = {
     NOTE    => 0
 };
 
-my $keep_tag_order = 0;
 my $use_parser = 'c';
+my $keep_tag_order = 0;
 
 #* USAGE:
 #*     $0 --options input1.cif input*.cif
@@ -42,14 +43,21 @@ my $use_parser = 'c';
 #*   --sort-tags
 #*                      Reorder tags in CIF file according to COD.
 #*
+#*   --use-perl-parser
+#*                      Use Perl parser to parse CIF files.
+#*   --use-c-parser
+#*                      Use C parser to parse CIF files (default).
+#*
 #*   --help, --usage
 #*                      Print a short usage message (this message) and exit.
 #**
 @ARGV = getOptions(
-    "--keep-tag-order" => sub { $keep_tag_order = 1; },
-    "--sort-tags"      => sub { $keep_tag_order = 0; },
-    "--options"        => sub { options; exit },
-    "--help,--usage"   => sub { usage; exit }
+    "--keep-tag-order"  => sub { $keep_tag_order = 1; },
+    "--sort-tags"       => sub { $keep_tag_order = 0; },
+    "--use-perl-parser" => sub { $use_parser = "perl" },
+    "--use-c-parser"    => sub { $use_parser = "c" },
+    "--options"         => sub { options; exit },
+    "--help,--usage"    => sub { usage; exit }
 );
 
 my @dictionary_tags = ( @COD::CIF::Tags::DictTags::tag_list,

@@ -18,21 +18,18 @@ use strict;
 use warnings;
 use Digest::MD5 qw( md5_hex );
 use Digest::SHA qw( sha1_hex );
-use File::Basename;
 use COD::CIF::Parser qw( parse_cif );
 use COD::CIF::Data qw( get_cell get_content_encodings );
 use COD::CIF::Data::EstimateZ qw( cif_estimate_z );
-use COD::CIF::Tags::CanonicalNames;
-use COD::CIF::Tags::Manage;
+use COD::CIF::Tags::CanonicalNames qw( canonicalize_all_names );
+use COD::CIF::Tags::Manage qw( tag_is_empty );
 use COD::Escape qw( decode_textfield );
 use COD::Precision qw( eqsig );
-use COD::Spacegroups::Symop::Parse;
-use COD::Spacegroups::Lookup::COD;
-use COD::Spacegroups::Names;
-use COD::UserMessage qw( sprint_message );
-use COD::SOptions;
+use COD::Spacegroups::Symop::Parse qw( symop_string_canonical_form
+                                       is_symop_parsable );
+use COD::SOptions qw( getOptions get_value );
 use COD::SUsage qw( usage options );
-use COD::ShowStruct;
+use COD::UserMessage qw( sprint_message );
 use COD::ErrorHandler qw( process_warnings
                           process_errors
                           process_parser_messages
@@ -630,7 +627,7 @@ sub check_bibliography
 
 sub check_authors
 {
-    use COD::CIF::Unicode2CIF;
+    use COD::CIF::Unicode2CIF qw( cif2unicode );
 
     my ($dataset) = @_;
 
@@ -1406,7 +1403,7 @@ sub check_symmetry_operators
     return 0 if !defined $symops;
 
     foreach (@$symops) {
-            return 1 if ( !is_symop_parsable($_) );
+        return 1 if ( !is_symop_parsable($_) );
     }
 
     return 0;

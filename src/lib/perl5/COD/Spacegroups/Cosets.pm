@@ -12,12 +12,16 @@ package COD::Spacegroups::Cosets;
 
 use strict;
 use warnings;
-require Exporter;
-our @ISA = qw(Exporter);
-our @EXPORT_OK = qw( find_left_cosets canonical_string_from_symop );
-
 use COD::Spacegroups::Symop::Algebra qw( symop_mul round_values_in_symop );
-use COD::Spacegroups::Symop::Parse;
+use COD::Spacegroups::Symop::Parse qw( string_from_symop_reduced
+                                       symop_translation_modulo_1 );
+
+require Exporter;
+our @ISA = qw( Exporter );
+our @EXPORT_OK = qw(
+    find_left_cosets
+    canonical_string_from_symop
+);
 
 sub canonical_string_from_symop
 {

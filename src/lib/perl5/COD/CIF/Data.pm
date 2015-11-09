@@ -17,7 +17,7 @@ use COD::Spacegroups::Lookup::COD;
 use COD::Spacegroups::Names;
 
 require Exporter;
-our @ISA = qw(Exporter);
+our @ISA = qw( Exporter );
 our @EXPORT_OK = qw(
     get_cell
     get_content_encodings

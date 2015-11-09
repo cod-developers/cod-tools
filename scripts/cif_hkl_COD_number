@@ -15,16 +15,16 @@ eval 'exec perl -x $0 ${1+"$@"}'
 
 use strict;
 use warnings;
-use File::Basename;
+use File::Basename qw( basename );
 use COD::CIF::Parser qw( parse_cif );
 use COD::CIF::Tags::DictTags;
 use COD::CIF::Tags::COD;
 use COD::CIF::Tags::Excluded;
 use COD::CIF::Tags::Manage qw( exclude_tag exclude_empty_tags set_tag );
-use COD::CIF::Tags::Print qw( print_cif );
+use COD::CIF::Tags::Print qw( print_cif fold );
 use COD::CIF::Tags::CanonicalNames qw( canonicalize_names );
-use COD::SOptions;
-use COD::SUsage qw(usage options);
+use COD::SOptions qw( getOptions );
+use COD::SUsage qw( usage options );
 use COD::ErrorHandler qw( process_warnings
                           process_errors
                           process_parser_messages
@@ -35,6 +35,7 @@ my $die_on_error_level = {
     WARNING => 0,
     NOTE    => 0
 };
+
 my $use_parser = 'c';
 
 my $exclude_empty_tags = 0;
@@ -128,9 +129,9 @@ my $data_block_nr; # If defined, specifies that data blocks should be
 #*     Fold fields, longer than folding width. Default: off.
 #*
 #* --use-perl-parser
-#*     Use development CIF parser written in Perl.
+#*     Use Perl parser to parse CIF files.
 #* --use-c-parser
-#*     Use faster C/Yacc CIF parser (default).
+#*     Use C parser to parse CIF files (default).
 #*
 #* --help, --usage
 #*     Print a short usage message (this message) and exit.
@@ -246,7 +247,6 @@ if( !@$data || !defined $data->[0] || !defined $data->[0]{name} ) {
        'err_level' => 'WARNING',
        'message'   => 'file seems to be empty'
     }, $die_on_error_level->{'WARNING'} );
-    exit( 0 );
 }
 
 #------------------------------------------------------------------------------
@@ -322,9 +322,9 @@ for my $dataset (@$data) {
         if( $record_original_filename ) {
             my $basename;
             if( defined $original_filename ) {
-                $basename = File::Basename::basename( $original_filename );
+                $basename = basename( $original_filename );
             } elsif( defined $filename && $filename ne "-" ) {
-                $basename = File::Basename::basename( $filename );
+                $basename = basename( $filename );
             } else {
                 $basename = "?";
             }
@@ -347,6 +347,7 @@ for my $dataset (@$data) {
                 #showRef( $dataset );
             }
         }
+
 
         # Print out the CIF header if requested:
         if( defined $cif_comment_header ) {

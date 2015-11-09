@@ -14,14 +14,13 @@ eval 'exec perl -x $0 ${1+"$@"}'
 
 use strict;
 use warnings;
-use File::Basename;
-use COD::CIF::Parser qw(parse_cif);
-use COD::CIF::Tags::CanonicalNames;
-use COD::CIF::Tags::Manage;
-use COD::CIF::Tags::Print;
-use COD::SOptions;
-use COD::SUsage qw(usage options);
-use COD::UserMessage;
+use COD::CIF::Parser qw( parse_cif );
+use COD::CIF::Tags::CanonicalNames qw( canonical_tag_name canonicalize_names );
+use COD::CIF::Tags::Manage qw( exclude_tag );
+use COD::CIF::Tags::Print qw( print_cif );
+use COD::SOptions qw( getOptions get_value );
+use COD::SUsage qw( usage options );
+use COD::UserMessage qw( warning error );
 
 my @selected_tags;
 
@@ -166,7 +165,7 @@ for my $filename (@ARGV) {
                 my $new_tag = $tag;
                 $new_tag =~ s/\./_/g;
                 if( $new_tag ne $tag ) {
-                    $values->{$new_tag} = $values->{$tag};
+                    rename_tag( $dataset, $tag, $new_tag );
                 }
             }
         }

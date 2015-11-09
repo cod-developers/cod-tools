@@ -12,15 +12,19 @@ package COD::CIF::Data::CODNumbers;
 
 use strict;
 use warnings;
-use File::Basename;
+use File::Basename qw( basename );
 use COD::Formulae::Parser::AdHoc;
-use COD::CIF::Data::CellContents;
-use COD::Precision qw(eqsig);
+use COD::CIF::Data::CellContents qw( cif_cell_contents );
+use COD::Precision qw( eqsig );
 
 require Exporter;
-our @ISA = qw(Exporter);
-our @EXPORT = qw(fetch_duplicates fetch_duplicates_from_database);
-our @EXPORT_OK = qw(cif_fill_data entries_are_the_same);
+our @ISA = qw( Exporter );
+our @EXPORT_OK = qw(
+    fetch_duplicates
+    fetch_duplicates_from_database
+    cif_fill_data
+    entries_are_the_same
+);
 
 my %has_numeric_value = (
     "_journal_year"   => 1,
@@ -186,7 +190,7 @@ sub cif_fill_data
 
     return undef if !defined $id;
     $structure{id} = $id;
-    $structure{filename} = File::Basename::basename( $file );
+    $structure{filename} = basename( $file );
     $structure{index} = $index;
 
     if( defined $values->{_chemical_formula_sum} ) {

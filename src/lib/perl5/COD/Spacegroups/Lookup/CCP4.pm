@@ -13,8 +13,10 @@ use strict;
 use warnings;
 
 require Exporter;
-our @ISA = qw(Exporter);
-our @EXPORT = qw( @table );
+our @ISA = qw( Exporter );
+our @EXPORT_OK = qw(
+    @table
+);
 
 @COD::Spacegroups::Lookup::CCP4::table =
 (

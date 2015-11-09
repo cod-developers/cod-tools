@@ -12,17 +12,26 @@ package COD::Spacegroups::Symop::Algebra;
 
 use strict;
 use warnings;
-
+use POSIX qw( floor );
 use COD::Algebra::Vector qw( modulo_1 matrix_vector_mul );
-use POSIX;
 
 require Exporter;
-our @ISA = qw(Exporter);
+our @ISA = qw( Exporter );
 our @EXPORT_OK = qw(
-    symop_mul symop_apply symop_invert symop_modulo_1 symop_translation
-    symop_translate symop_set_translation symop_transpose
-    symop_is_unity symop_vector_mul flush_zeros_in_symop
-    symop_is_inversion symop_matrices_are_equal symop_is_translation
+    symop_mul
+    symop_apply
+    symop_invert
+    symop_modulo_1
+    symop_translation
+    symop_translate
+    symop_set_translation
+    symop_transpose
+    symop_is_unity
+    symop_vector_mul
+    flush_zeros_in_symop
+    symop_is_inversion
+    symop_matrices_are_equal
+    symop_is_translation
     symop_det round_values_in_symop
 );
 
@@ -126,7 +135,7 @@ sub symop_adjunct($$$)
         next if( $i == $row );
         $mj = 0;
         for( $j = 0; $j < 4; $j ++ ) {
-	    next if( $j == $col );
+            next if( $j == $col );
             $matrix[$mi][$mj] = $s->[$i][$j];
             $mj ++;
         }

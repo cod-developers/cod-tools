@@ -14,13 +14,13 @@ package COD::CIF::Data::SymmetryGenerator;
 
 use strict;
 use warnings;
-use COD::Spacegroups::Symop::Algebra qw(symop_is_unity symop_vector_mul);
-use COD::Spacegroups::Symop::Parse;
+use COD::Spacegroups::Symop::Algebra qw( symop_is_unity symop_vector_mul );
+use COD::Spacegroups::Symop::Parse qw( modulo_1 );
 use COD::Spacegroups::Names;
-use COD::Algebra::Vector qw(distance);
+use COD::Algebra::Vector qw( distance );
 
 require Exporter;
-our @ISA = qw(Exporter);
+our @ISA = qw( Exporter );
 our @EXPORT_OK = qw(
     atoms_coincide
     copy_atom

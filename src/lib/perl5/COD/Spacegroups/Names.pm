@@ -15,8 +15,10 @@ use strict;
 use warnings;
 
 require Exporter;
-our @ISA = qw(Exporter);
-our @EXPORT = qw( @names );
+our @ISA = qw( Exporter );
+our @EXPORT_OK = qw(
+    @names
+);
 
 @COD::Spacegroups::Names::names = (
 [1,        "P 1",        "P 1" ],

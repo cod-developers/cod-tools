@@ -8,10 +8,15 @@
 package COD::Serialise;
 
 use strict;
+use warnings;
+
 require Exporter;
-our @ISA = qw(Exporter);
-our @EXPORT = qw(
-    serialiseHash serialiseArray serialiseRef serialiseScalar
+our @ISA = qw( Exporter );
+our @EXPORT_OK = qw(
+    serialiseHash
+    serialiseArray
+    serialiseRef
+    serialiseScalar
 );
 
 my $separator = "#-------------------------\n";
@@ -129,4 +134,4 @@ sub serialiseScalar
    }
 }
 
-return 1;
+1;

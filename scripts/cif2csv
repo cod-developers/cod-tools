@@ -14,13 +14,10 @@ eval 'exec perl -x $0 ${1+"$@"}'
 
 use strict;
 use warnings;
-
 use COD::CIF::Parser qw( parse_cif );
+use COD::SOptions qw( getOptions );
+use COD::SUsage qw( usage options );
 use COD::ErrorHandler qw( process_parser_messages report_message );
-use COD::SOptions;
-use COD::SUsage;
-use COD::SOptions;
-use COD::SUsage;
 
 sub csv_format($$$);
 
@@ -36,19 +33,19 @@ my $use_parser = 'c';
 #*     $0 --options input1.cif input*.cif
 #*
 #* OPTIONS:
-#*
 #* --use-perl-parser
-#*                     Use development CIF parser written in Perl.
+#*                     Use Perl parser to parse CIF files.
 #* --use-c-parser
-#*                     Use faster C/Yacc CIF parser (default).
+#*                     Use C parser to parse CIF files (default).
 #*
-#* --help,--usage      Print a short usage message (this message) and exit.
+#* --help, --usage
+#*                     Print a short usage message (this message) and exit.
 #**
 @ARGV = getOptions(
-    "--use-perl-parser" => sub{ $use_parser = "perl" },
-    "--use-c-parser"    => sub{ $use_parser = "c" },
-
-    "--help, --usage"   => sub { usage; exit }
+    "--use-perl-parser" => sub { $use_parser = "perl" },
+    "--use-c-parser"    => sub { $use_parser = "c" },
+    "--options"         => sub { options; exit },
+    "--help,--usage"    => sub { usage; exit }
 );
 
 @ARGV = ("-") unless @ARGV;

@@ -16,8 +16,10 @@ use strict;
 use warnings;
 
 require Exporter;
-our @ISA = qw(Exporter);
-our @EXPORT_OK = qw( @tag_list );
+our @ISA = qw( Exporter );
+our @EXPORT_OK = qw(
+    @tag_list
+);
 
 our @tag_list = qw (
 _publ_[]

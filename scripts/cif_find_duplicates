@@ -14,14 +14,21 @@ eval 'exec perl -x $0 ${1+"$@"}'
 
 use strict;
 use warnings;
-use File::Basename;
-use COD::CIF::Parser::Yapp;
+use File::Basename qw( basename );
+use COD::CIF::Parser qw( parse_cif );
 use COD::Formulae::Parser::AdHoc;
-use COD::CIF::Data::CellContents qw( cif_cell_contents );
-use COD::ErrorHandler qw( process_warnings process_errors );
 use COD::CIF::Data::CODNumbers qw( cif_fill_data entries_are_the_same );
-use COD::SOptions;
+use COD::CIF::Data::CellContents qw( cif_cell_contents );
+use COD::SOptions qw( getOptions );
 use COD::SUsage qw( usage options );
+use COD::ErrorHandler qw( process_warnings process_errors );
+use COD::UserMessage qw( error );
+
+my $die_on_errors   = 1;
+my $die_on_warnings = 0;
+my $die_on_notes    = 0;
+
+my $use_parser = 'c';
 
 # default options
 my %options = (
@@ -31,11 +38,6 @@ my %options = (
     'check_sample_history' => 0,
     'ignore_sigma'         => 0
 );
-
-my $die_on_errors   = 1;
-my $die_on_warnings = 0;
-my $die_on_notes    = 0;
-
 
 #* USAGE:
 #*     cif_find_duplicates --options my-cif-dir1/ my-cif-dir2/files*.cif COD-cif-dir/
@@ -104,6 +106,11 @@ my $die_on_notes    = 0;
 #* --die-on-notes
 #*                     Terminate script immediately if notes are raised.
 #*
+#* --use-perl-parser
+#*                     Use Perl parser to parse CIF files.
+#* --use-c-parser
+#*                     Use C parser to parse CIF files (default).
+#*
 #* --help, --usage
 #*                     Print a short usage message (this message) and exit.
 #**
@@ -147,6 +154,8 @@ my $die_on_notes    = 0;
     "--continue-on-notes"    => sub { $die_on_notes = 0 },
     "--die-on-notes"         => sub { $die_on_notes = 1 },
 
+    "--use-perl-parser" => sub { $use_parser = "perl" },
+    "--use-c-parser"    => sub { $use_parser = "c" },
     "--options"      => sub { options; exit },
     "--help,--usage" => sub { usage; exit }
 );
@@ -227,7 +236,8 @@ for my $filename (@COD_cif_files) {
         };
     };
 
-    my $basename = File::Basename::basename( $filename );
+    my $basename = basename( $filename );
+
     for my $id (keys %structures) {
         my $formula = $structures{$id}{chemical_formula_sum};
 
@@ -357,18 +367,16 @@ for my $filename (@cif_files) {
 
 sub load_cif_file
 {
-    my ( $file ) = @_;
+    my ( $filename ) = @_;
 
-    my $parser = new COD::CIF::Parser::Yapp;
-    my @data = @{$parser->Run($file, {no_print => 1})};
-
-    print STDERR $_ foreach @{$parser->YYData->{ERROR_MESSAGES}};
-
-    if( defined $parser->YYData->{ERRCOUNT} && $parser->YYData->{ERRCOUNT} > 0 ) {
-        print STDERR "$0: ", $parser->YYData->{ERRCOUNT},
-        " error(s) encountered while parsing file '${file}'\n";
+    my $options = { 'parser' => $use_parser, 'no_print' => 1 };
+    my ( $data, $err_count, $messages ) = parse_cif( $filename, $options );
+    if ( $err_count > 0 ) {
+        print STDERR $_ foreach ( @$messages );
+        error( $0, $filename, undef, "$err_count error(s) "
+             . "encountered while parsing the file", undef );
         die;
     }
 
-    return @data;
+    return @$data;
 }
