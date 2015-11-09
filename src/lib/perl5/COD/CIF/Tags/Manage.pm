@@ -36,17 +36,17 @@ sub exclude_tag
 {
     my ($cif, $tag) = @_;
 
-    delete( $cif->{values}{$tag} );
-    delete( $cif->{precisions}{$tag} );
-    delete( $cif->{types}{$tag} );
+    delete $cif->{values}{$tag};
+    delete $cif->{precisions}{$tag};
+    delete $cif->{types}{$tag};
     @{$cif->{tags}} =
-        grep ! /^\Q$tag\E$/, @{$cif->{tags}};
+        grep $_ ne $tag, @{$cif->{tags}};
 
     if( defined $cif->{inloop}{$tag} ) {
         my $loop_nr = $cif->{inloop}{$tag};
         delete $cif->{inloop}{$tag};
         @{$cif->{loops}[$loop_nr]} =
-            grep ! /^\Q$tag\E$/, @{$cif->{loops}[$loop_nr]};
+            grep $_ ne $tag, @{$cif->{loops}[$loop_nr]};
     }
 }
 
