@@ -78,14 +78,10 @@ sub print_cif
         exclude_misspelled_tags( $dataset, \%tags_to_print );
     }
 
-    my @loop_tags_to_print;
-    if( $preserve_loop_order ) {
-        @loop_tags_to_print = @{$dataset->{tags}};
-    } else {
-        @loop_tags_to_print = @dictionary_tags;
-    }
-
-    order_tags( $dataset, \@tags_to_print, \@loop_tags_to_print,
+    order_tags( $dataset,
+                \@tags_to_print,
+                $preserve_loop_order
+                    ? $dataset->{tags} : \@dictionary_tags,
                 \%dictionary_tags );
 
     if( defined $dataset->{name} ) {
