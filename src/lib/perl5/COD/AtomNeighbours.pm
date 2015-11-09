@@ -18,10 +18,8 @@ use COD::Algebra::Vector qw( distance );
 
 require Exporter;
 our @ISA = qw( Exporter );
-our @EXPORT = qw(
-    make_neighbour_list
-);
 our @EXPORT_OK = qw(
+    make_neighbour_list
     get_max_covalent_radius
 );
 

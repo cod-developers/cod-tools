@@ -5,7 +5,7 @@ use warnings;
 
 require Exporter;
 our @ISA = qw( Exporter );
-our @EXPORT = qw( ok );
+our @EXPORT_OK = qw( ok );
 
 # The hash %atoms has been created using data from the folowing sources:
 # http://www.ccdc.cam.ac.uk/products/csd/radii/table.php4 2008-07-16

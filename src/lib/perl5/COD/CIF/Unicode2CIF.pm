@@ -15,7 +15,7 @@ use Unicode::Normalize  qw( normalize );
 
 require Exporter;
 our @ISA = qw( Exporter );
-our @EXPORT = qw(
+our @EXPORT_OK = qw(
     unicode2cif
     cif2unicode
 );

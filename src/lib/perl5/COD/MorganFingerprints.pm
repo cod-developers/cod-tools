@@ -16,7 +16,7 @@ use List::Util qw( sum );
 
 require Exporter;
 our @ISA = qw( Exporter );
-our @EXPORT = qw(
+our @EXPORT_OK = qw(
     make_morgan_fingerprint
 );
 

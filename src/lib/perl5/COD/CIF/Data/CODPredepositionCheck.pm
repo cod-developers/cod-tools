@@ -507,7 +507,7 @@ sub filter_and_check
         $cif_cod_numbers_opt->{check_bibliography} = 0
             if $deposition_type eq 'personal';
 
-        use COD::CIF::Data::CODNumbers;
+        use COD::CIF::Data::CODNumbers qw( fetch_duplicates );
         my $duplicates = fetch_duplicates( $data,
                                            $cif_filename,
                                            $db_conf,

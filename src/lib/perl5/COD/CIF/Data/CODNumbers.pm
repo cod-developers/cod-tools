@@ -19,7 +19,7 @@ use COD::Precision qw( eqsig );
 
 require Exporter;
 our @ISA = qw( Exporter );
-our @EXPORT = qw(
+our @EXPORT_OK = qw(
     fetch_duplicates
     fetch_duplicates_from_database
 );

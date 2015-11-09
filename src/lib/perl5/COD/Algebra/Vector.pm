@@ -16,7 +16,7 @@ use POSIX qw( floor );
 
 require Exporter;
 our @ISA = qw( Exporter );
-our @EXPORT = qw(
+our @EXPORT_OK = qw(
     vdot
     vector_sub
     vector_add
@@ -24,8 +24,6 @@ our @EXPORT = qw(
     vector_is_zero
     vectors_are_equal
     round_vector
-);
-our @EXPORT_OK = qw(
     distance
     matrix_vector_mul
     modulo_1
