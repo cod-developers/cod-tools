@@ -56,6 +56,9 @@ sub print_cif
         print "data_", $dataset->{name}, "\n";
     }
 
+    my $tag_msg = "Tags that were not found in dictionaries";
+    my $loop_tag_msg = "Loops that were not found in dictionaries";
+
     my $non_loop_tags_encountered = 0;
     my $loop_tags_encountered = 0;
     my %printed_loops;
@@ -64,12 +67,12 @@ sub print_cif
             if( !exists $dictionary_tags{$tag} ) {
                 if( !$non_loop_tags_encountered &&
                     %dictionary_tags ) {
-                    print "#BEGIN Tags that were not found in dictionaries:\n";
+                    print "#BEGIN $tag_msg:\n";
                     $non_loop_tags_encountered = 1;
                 }
             } else {
                 if( $non_loop_tags_encountered ) {
-                    print "#END Tags that were not found in dictionaries\n";
+                    print "#END $tag_msg\n";
                     $non_loop_tags_encountered = 0;
                 }
             }
@@ -77,7 +80,7 @@ sub print_cif
                        $fold_long_fields, $folding_width );
         } else {
             if( $non_loop_tags_encountered ) {
-                print "#END Tags that were not found in dictionaries\n";
+                print "#END $tag_msg\n";
                 $non_loop_tags_encountered = 0;
             }
             my $tag_loop_nr = $dataset->{inloop}{$tag};
@@ -85,12 +88,12 @@ sub print_cif
                 if( !$loop_tags_encountered &&
                     %dictionary_tags &&
                     !exists $printed_loops{$tag_loop_nr} ) {
-                    print "#BEGIN Loops that were not found in dictionaries:\n";
+                    print "#BEGIN $loop_tag_msg:\n";
                     $loop_tags_encountered = 1;
                 }
             } else {
                 if( $loop_tags_encountered ) {
-                    print "#END Loops that were not found in dictionaries\n";
+                    print "#END $loop_tag_msg\n";
                     $loop_tags_encountered = 0;
                 }
             }
@@ -103,10 +106,10 @@ sub print_cif
     }
 
     if( $non_loop_tags_encountered ) {
-        print "#END Tags that were not found in dictionaries\n";
+        print "#END $tag_msg\n";
     }
     if( $loop_tags_encountered ) {
-        print "#END Loops that were not found in dictionaries\n";
+        print "#END $loop_tag_msg\n";
     }
 }
 
