@@ -17,6 +17,7 @@ use warnings;
 require Exporter;
 our @ISA = qw( Exporter );
 our @EXPORT = qw(
+    clean_cif
     exclude_tag
     tag_is_empty
     tag_is_unknown
@@ -221,6 +222,53 @@ sub order_tags
     }
 
     $cif->{tags} = \@new_tag_list;
+}
+
+sub clean_cif
+{
+    my( $cif, $flags ) = @_;
+
+    my @dictionary_tags;
+    my %dictionary_tags = ();
+
+    my ( $exclude_misspelled_tags, $preserve_loop_order ) = ( 0 ) x 2;
+    my $keep_tag_order = 0;
+
+    if( $flags && ref $flags eq "HASH" ) {
+        $exclude_misspelled_tags = $flags->{exclude_misspelled_tags};
+        $preserve_loop_order = $flags->{preserve_loop_order};
+        %dictionary_tags = %{$flags->{dictionary_tags}}
+            if defined $flags->{dictionary_tags};
+        @dictionary_tags = @{$flags->{dictionary_tag_list}}
+            if defined $flags->{dictionary_tag_list};
+        $keep_tag_order = $flags->{keep_tag_order}
+            if defined $flags->{keep_tag_order};
+    }
+
+    if( !@dictionary_tags ) {
+        @dictionary_tags = sort {$a cmp $b} keys %dictionary_tags;
+    }
+
+    my @tags_to_print;
+    if( $keep_tag_order ) {
+        @tags_to_print = @{$cif->{tags}};
+        if( !%dictionary_tags ) {
+            %dictionary_tags = map { $_ => 1 } @tags_to_print;
+        }
+    } else {
+        @tags_to_print = @dictionary_tags;
+    }
+
+    if( $exclude_misspelled_tags ) {
+        my %tags_to_print = map { $_ => 1 } @tags_to_print;
+        exclude_misspelled_tags( $cif, \%tags_to_print );
+    }
+
+    order_tags( $cif,
+                \@tags_to_print,
+                $preserve_loop_order
+                    ? $cif->{tags} : \@dictionary_tags,
+                \%dictionary_tags );
 }
 
 sub rename_tag

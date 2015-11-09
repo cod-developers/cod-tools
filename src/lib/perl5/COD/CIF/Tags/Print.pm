@@ -36,53 +36,23 @@ sub print_cif
     my ( $dataset, $flags ) = @_;
     my $datablok = $dataset->{values};
 
-    my @dictionary_tags;
     my %dictionary_tags = ();
 
-    my ( $exclude_misspelled_tags, $preserve_loop_order ) = ( 0 ) x 2;
+    my $exclude_misspelled_tags = 0;
     my $fold_long_fields = 0;
-    my $keep_tag_order = 0;
     my $folding_width;
 
     if( $flags && ref $flags eq "HASH" ) {
         $exclude_misspelled_tags = $flags->{exclude_misspelled_tags};
-        $preserve_loop_order = $flags->{preserve_loop_order};
         $fold_long_fields = $flags->{fold_long_fields}
             if defined $flags->{fold_long_fields};
         $folding_width = $flags->{folding_width}
             if defined $flags->{folding_width};
         %dictionary_tags = %{$flags->{dictionary_tags}}
             if defined $flags->{dictionary_tags};
-        @dictionary_tags = @{$flags->{dictionary_tag_list}}
-            if defined $flags->{dictionary_tag_list};
-        $keep_tag_order = $flags->{keep_tag_order}
-            if defined $flags->{keep_tag_order};
     }
 
-    if( !@dictionary_tags ) {
-        @dictionary_tags = sort {$a cmp $b} keys %dictionary_tags;
-    }
-
-    my @tags_to_print;
-    if( $keep_tag_order ) {
-        @tags_to_print = @{$dataset->{tags}};
-        if( !%dictionary_tags ) {
-            %dictionary_tags = map { $_ => 1 } @tags_to_print;
-        }
-    } else {
-        @tags_to_print = @dictionary_tags;
-    }
-
-    if( $exclude_misspelled_tags ) {
-        my %tags_to_print = map { $_ => 1 } @tags_to_print;
-        exclude_misspelled_tags( $dataset, \%tags_to_print );
-    }
-
-    order_tags( $dataset,
-                \@tags_to_print,
-                $preserve_loop_order
-                    ? $dataset->{tags} : \@dictionary_tags,
-                \%dictionary_tags );
+    clean_cif( $dataset, $flags );
 
     if( defined $dataset->{name} ) {
         print "data_", $dataset->{name}, "\n";
