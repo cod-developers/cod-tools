@@ -20,8 +20,8 @@
 %}
 
 %perlcode %{
-use COD::Precision;
-use COD::UserMessage;
+use COD::Precision qw( unpack_precision );
+use COD::UserMessage qw( sprint_message );
 
 sub parse
 {
