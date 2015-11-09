@@ -15,8 +15,8 @@ eval 'exec perl -x $0 ${1+"$@"}'
 use strict;
 use warnings;
 
-use COD::Spacegroups::Symop::Algebra qw(symop_translate symop_mul symop_apply);
-use COD::Spacegroups::Symop::Parse;
+use COD::Spacegroups::Symop::Algebra qw( symop_translate symop_mul symop_apply) ;
+use COD::Spacegroups::Symop::Parse qw( symop_print );
 
 sub vector_print
 {
