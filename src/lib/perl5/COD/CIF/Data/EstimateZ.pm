@@ -18,11 +18,10 @@ use strict;
 use warnings;
 use COD::Cell qw( cell_volume );
 use COD::CIF::Data qw( get_cell );
-use COD::UserMessage qw( prefix_dataname );
 
 require Exporter;
 our @ISA = qw( Exporter );
-our @EXPORT = qw(
+our @EXPORT_OK = qw(
     cif_estimate_z
 );
 

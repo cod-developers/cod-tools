@@ -15,15 +15,13 @@ use warnings;
 
 require Exporter;
 our @ISA = qw( Exporter );
-our @EXPORT = qw(
+our @EXPORT_OK = qw(
     print_message
     error
     warning
     note
     parse_message
     sprint_message
-);
-our @EXPORT_OK = qw(
     debug_note
     prefix_dataname
 );

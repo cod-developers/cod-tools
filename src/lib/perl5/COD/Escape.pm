@@ -15,11 +15,9 @@ use warnings;
 
 require Exporter;
 our @ISA = qw( Exporter );
-our @EXPORT = qw(
+our @EXPORT_OK = qw(
     escape
     unescape
-);
-our @EXPORT_OK = qw(
     decode_textfield
 );
 

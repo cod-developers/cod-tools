@@ -9,7 +9,7 @@
 #  inorganic, mineral, etc.
 #**
 
-package COD::CIF::Data::Classifyer;
+package COD::CIF::Data::Classifier;
 
 use strict;
 use warnings;
@@ -25,7 +25,7 @@ use COD::Algebra::Vector qw( distance
 
 require Exporter;
 our @ISA = qw( Exporter );
-our @EXPORT = qw(
+our @EXPORT_OK = qw(
     cif_class_flags
     cif_has_C_bonds
 );

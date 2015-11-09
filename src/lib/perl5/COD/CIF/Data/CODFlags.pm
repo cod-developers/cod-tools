@@ -15,7 +15,7 @@ use COD::CIF::Tags::Manage qw( tag_is_empty );
 
 require Exporter;
 our @ISA = qw( Exporter );
-our @EXPORT = qw(
+our @EXPORT_OK = qw(
     is_on_hold
     is_duplicate
     is_retracted

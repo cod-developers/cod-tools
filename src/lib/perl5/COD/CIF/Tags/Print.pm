@@ -18,7 +18,7 @@ use COD::CIF::Tags::Manage;
 
 require Exporter;
 our @ISA = qw( Exporter );
-our @EXPORT = qw(
+our @EXPORT_OK = qw(
     print_cif
     print_single_tag_and_value
     print_tag

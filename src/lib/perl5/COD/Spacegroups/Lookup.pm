@@ -17,7 +17,7 @@ use COD::Spacegroups::Symop::Parse qw( symop_string_canonical_form );
 
 require Exporter;
 our @ISA = qw( Exporter );
-our @EXPORT = qw(
+our @EXPORT_OK = qw(
     make_symop_key
     make_symop_hash
 );

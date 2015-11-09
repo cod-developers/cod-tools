@@ -17,7 +17,7 @@ use COD::CIF::Tags::Print qw( print_tag );
 
 require Exporter;
 our @ISA = qw( Exporter );
-our @EXPORT = qw(
+our @EXPORT_OK = qw(
     diff
     comm
 );
