@@ -12,7 +12,7 @@ use warnings;
 
 require Exporter;
 our @ISA = qw( Exporter );
-our @EXPORT = qw(
+our @EXPORT_OK = qw(
     cmp_cif_numbers
     eqsig
     unpack_precision

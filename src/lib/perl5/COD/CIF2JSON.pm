@@ -17,7 +17,7 @@ use JSON qw( encode_json decode_json );
 
 require Exporter;
 our @ISA = qw( Exporter );
-our @EXPORT = qw(
+our @EXPORT_OK = qw(
     cif2json
     json2cif
 );

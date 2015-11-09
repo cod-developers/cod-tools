@@ -26,7 +26,7 @@ use COD::UserMessage qw( warning error prefix_dataname );
 
 require Exporter;
 our @ISA = qw( Exporter );
-our @EXPORT = qw(
+our @EXPORT_OK = qw(
     cif_cell_contents
     atomic_composition
     print_composition

@@ -15,11 +15,9 @@ use warnings;
 
 require Exporter;
 our @ISA = qw(Exporter);
-our @EXPORT = qw(
-    usage
-);
 our @EXPORT_OK = qw(
     options
+    usage
 );
 
 sub usage

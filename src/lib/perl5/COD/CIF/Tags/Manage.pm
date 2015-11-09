@@ -16,7 +16,7 @@ use warnings;
 
 require Exporter;
 our @ISA = qw( Exporter );
-our @EXPORT = qw(
+our @EXPORT_OK = qw(
     exclude_tag
     tag_is_empty
     tag_is_unknown

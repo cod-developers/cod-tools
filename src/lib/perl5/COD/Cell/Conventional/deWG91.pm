@@ -20,7 +20,7 @@ use COD::Spacegroups::Symop::Algebra qw( symop_apply );
 
 require Exporter;
 our @ISA = qw( Exporter );
-our @EXPORT = qw(
+our @EXPORT_OK = qw(
     conventional_cell
 );
 
