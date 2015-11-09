@@ -9,7 +9,7 @@
 #  inorganic, mineral, etc.
 #**
 
-package COD::CIF::Data::Classifyer;
+package COD::CIF::Data::Classifier;
 
 use strict;
 use warnings;
