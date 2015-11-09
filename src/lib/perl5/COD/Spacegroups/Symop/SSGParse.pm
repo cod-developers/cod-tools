@@ -16,11 +16,17 @@ use strict;
 use warnings;
 
 require Exporter;
-our @ISA = qw(Exporter);
-our @EXPORT = qw( symop_from_string string_from_symop
-    string_from_symop_reduced symop_string_canonical_form
-    check_symmetry_operator modulo_1 symop_translation_modulo_1
-    symop_print symop_from_ssg_operator
+our @ISA = qw( Exporter );
+our @EXPORT = qw(
+    symop_from_string
+    string_from_symop
+    string_from_symop_reduced
+    symop_string_canonical_form
+    check_symmetry_operator
+    modulo_1
+    symop_translation_modulo_1
+    symop_print
+    symop_from_ssg_operator
 );
 
 #
@@ -226,7 +232,7 @@ sub symop_from_ssg_operator
         [ $m->[1][0], $m->[1][1], $m->[1][2], $m->[1][$n] ],
         [ $m->[2][0], $m->[2][1], $m->[2][2], $m->[2][$n] ],
 
-        [ $m->[$n][0], $m->[$n][1], $m->[$n][2], $m->[$n][$n] ],        
+        [ $m->[$n][0], $m->[$n][1], $m->[$n][2], $m->[$n][$n] ]
     ];
 }
 

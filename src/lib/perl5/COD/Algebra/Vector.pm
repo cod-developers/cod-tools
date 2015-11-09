@@ -5,20 +5,32 @@
 #$URL$
 #-----------------------------------------------------------------------
 #*
-# Basic symmetry operator algebra (addition, multiplication, etc.)
+# Basic symmetry operator algebra (addition, multiplication, etc.).
 #**
 
 package COD::Algebra::Vector;
 
 use strict;
 use warnings;
-use POSIX;
+use POSIX qw( floor );
 
 require Exporter;
-our @ISA = qw(Exporter);
-our @EXPORT = qw( vdot vector_sub vector_add vector_modulo_1 
-                  vector_is_zero vectors_are_equal round_vector );
-our @EXPORT_OK = qw( distance matrix_vector_mul modulo_1 vector_matrix_mul );
+our @ISA = qw( Exporter );
+our @EXPORT = qw(
+    vdot
+    vector_sub
+    vector_add
+    vector_modulo_1
+    vector_is_zero
+    vectors_are_equal
+    round_vector
+);
+our @EXPORT_OK = qw(
+    distance
+    matrix_vector_mul
+    modulo_1
+    vector_matrix_mul
+);
 
 sub vdot($$)
 {

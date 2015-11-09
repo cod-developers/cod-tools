@@ -15,8 +15,14 @@ eval 'exec perl -x $0 ${1+"$@"}'
 
 use strict;
 use warnings;
-use COD::SOptions;
-use COD::SUsage;
+use COD::Spacegroups::Lookup::COD;
+use COD::Spacegroups::Lookup qw( make_symop_hash make_symop_key );
+use COD::Spacegroups::Symop::Parse qw( string_from_symop );
+use COD::Spacegroups::Symop::SSGParse qw( symop_from_string
+                                          symop_from_ssg_operator );
+use COD::Spacegroups::Builder;
+use COD::SOptions qw( getOptions );
+use COD::SUsage qw( usage );
 
 #* USAGE: $0 < input.symop
 #* USAGE: $0 input.symop
@@ -29,11 +35,6 @@ use COD::SUsage;
    "--help,--usage"  => sub { usage; exit }
 );
 
-use COD::Spacegroups::Builder;
-use COD::Spacegroups::Lookup;
-use COD::Spacegroups::Symop::Parse qw();
-use COD::Spacegroups::Symop::SSGParse;
-
 my $spacegroup = new COD::Spacegroups::Builder;
 
 while(<>) {
@@ -44,7 +45,7 @@ while(<>) {
     print "# $_ -> ";
     ## print_matrix( $matrix );
     my $symop2d = symop_from_ssg_operator( $matrix );
-    print COD::Spacegroups::Symop::Parse::string_from_symop( $symop2d ), "\n";
+    print string_from_symop( $symop2d ), "\n";
     ## print_matrix( $symop2d );
     $spacegroup->insert_symop( $symop2d );
 }
@@ -53,10 +54,13 @@ $spacegroup->print();
 
 my @symops = $spacegroup->all_symops();
 
-my %symop_lookup_table = mkhash();
-my $key = mk_symop_key(
+my %symop_lookup_table = make_symop_hash( [
+    \@COD::Spacegroups::Lookup::COD::table,
+    \@COD::Spacegroups::Lookup::COD::extra_settings
+] );
+my $key = make_symop_key(
     [ 
-      map { COD::Spacegroups::Symop::Parse::string_from_symop($_) } @symops
+      map { string_from_symop($_) } @symops
     ]
 );
 

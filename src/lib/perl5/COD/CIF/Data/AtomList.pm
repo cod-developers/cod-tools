@@ -23,12 +23,14 @@ use COD::Fractional qw( symop_ortho_from_fract );
 use COD::UserMessage qw( warning error prefix_dataname );
 
 require Exporter;
-our @ISA = qw(Exporter);
-our @EXPORT_OK = qw( atom_array_from_cif
-                     copy_struct_deep
-                     dump_atoms_as_cif
-                     uniquify_atom_names
-                     extract_atom );
+our @ISA = qw( Exporter );
+our @EXPORT_OK = qw(
+    atom_array_from_cif
+    copy_struct_deep
+    dump_atoms_as_cif
+    uniquify_atom_names
+    extract_atom
+);
 
 #===============================================================#
 # Extracts atom information from the CIF file.

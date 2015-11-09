@@ -15,11 +15,11 @@ eval 'exec perl -x $0 ${1+"$@"}'
 
 use strict;
 use warnings;
-use Scalar::Util;
+use Scalar::Util qw( looks_like_number );
 use COD::CIF::Parser qw( parse_cif );
 use COD::CIF::Tags::CanonicalNames;
-use COD::SOptions;
-use COD::SUsage qw(usage options);
+use COD::SOptions qw( getOptions get_value );
+use COD::SUsage qw( usage options );
 use COD::UserMessage qw( note warning error debug_note prefix_dataname );
 
 my $version = 0.1;
@@ -90,7 +90,7 @@ sub getReplacementTags($$);
 #* --use-perl-parser
 #*                     Use Perl parser to parse CIF files.
 #* --use-c-parser
-#*                     Use C parser to parse CIF files. Default option.
+#*                     Use C parser to parse CIF files (default)
 #* --debug
 #*                     Output extra information for debugging purposes.
 #* -v, --version
@@ -488,7 +488,7 @@ CIFFILEANAL: for my $filename ( @ARGV ) {
 sub VersionMessage()
 {
 print <<END_M;
-cif_validate (using CIF::Parser::Yapp v.$COD::CIF::Parser::Yapp::version) v.$version
+cif_validate v.$version
 
 END_M
 }
@@ -639,7 +639,7 @@ sub checkAgainstRangeNumb($$$)
 {
     my ( $range, $value, $sigma ) = @_;
 
-    if( ! Scalar::Util::looks_like_number($value) ) {
+    if( ! looks_like_number($value) ) {
         return 0;
     }
 

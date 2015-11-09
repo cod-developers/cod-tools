@@ -15,21 +15,19 @@ eval 'exec perl -x $0 ${1+"$@"}'
 
 use strict;
 use warnings;
-use File::Basename;
-use COD::CIF::Parser::Yapp;
+use File::Basename qw( basename );
+use COD::CIF::Parser qw( parse_cif );
 use COD::CIF::Tags::DictTags;
 use COD::CIF::Tags::COD;
 use COD::CIF::Tags::Excluded;
-use COD::CIF::Tags::Manage;
-use COD::CIF::Tags::Print;
-use COD::CIF::Tags::CanonicalNames;
-use COD::CIF::Unicode2CIF;
-use COD::Spacegroups::Names;
-use COD::Spacegroups::Symop::Parse;
-use COD::SOptions;
-use COD::SUsage qw(usage options);
-use COD::UserMessage qw(warning error prefix_dataname);
+use COD::CIF::Tags::Manage qw( exclude_tag exclude_empty_tags set_tag );
+use COD::CIF::Tags::Print qw( print_cif fold );
+use COD::CIF::Tags::CanonicalNames qw( canonicalize_names );
+use COD::SOptions qw( getOptions );
+use COD::SUsage qw( usage options );
+use COD::UserMessage qw( warning error prefix_dataname );
 
+my $use_parser = 'c';
 my $exclude_empty_tags = 0;
 my $preserve_loop_order = 0;
 my $record_original_filename = 0;
@@ -120,6 +118,11 @@ my $data_block_nr; # If defined, specifies that data blocks should be
 #* --dont-fold-long-fields
 #*     Fold fields, longer than folding width. Default: off.
 #*
+#* --use-perl-parser
+#*     Use Perl parser to parse CIF files.
+#* --use-c-parser
+#*     Use C parser to parse CIF files (default).
+#*
 #* --help, --usage
 #*     Print a short usage message (this message) and exit.
 #**
@@ -157,8 +160,10 @@ my $data_block_nr; # If defined, specifies that data blocks should be
     "--fold-long-fields"      => sub{ $fold_long_fields = 1 },
     "--dont-fold-long-fields" => sub{ $fold_long_fields = 0 },
 
-    "--options"      => sub { options; exit },
-    "--help,--usage" => sub { usage; exit }
+    "--use-perl-parser" => sub { $use_parser = "perl" },
+    "--use-c-parser"    => sub { $use_parser = "c" },
+    "--options"         => sub { options; exit },
+    "--help,--usage"    => sub { usage; exit }
 );
 
 my @extra_tags = ();
@@ -208,26 +213,25 @@ if( defined $cif_header_file ) {
 
 my $filename = shift(@ARGV);
 
-my $parser = new COD::CIF::Parser::Yapp;
-
-my @data = @{$parser->Run($filename)};
-
-if( defined $parser->YYData->{ERRCOUNT} && $parser->YYData->{ERRCOUNT} > 0 ) {
-    error( $0, $filename, undef, $parser->YYData->{ERRCOUNT}
-         . ' error(s) encountered while parsing the CIF file', undef );
+my $options = { 'parser' => $use_parser, 'no_print' => 1 };
+my ( $data, $err_count, $messages ) = parse_cif( $filename, $options );
+if ( $err_count > 0 ) {
+    print STDERR $_ foreach ( @$messages );
+    error( $0, $filename, undef, "$err_count error(s) "
+         . "encountered while parsing the file", undef );
     exit 1;
 }
 
-if( !@data || !defined $data[0] || !defined $data[0]->{name} ) {
+if( !@$data || !defined $data->[0] || !defined $data->[0]{name} ) {
     warning( $0, $filename, undef, "file seems to be empty", undef );
-    exit( 0 );
+    exit 0;
 }
 
 #------------------------------------------------------------------------------
 
 binmode( STDOUT, ":utf8" );
 
-for my $dataset (@data) {
+for my $dataset (@$data) {
 
     my $datablok = $dataset->{values};
 
@@ -295,9 +299,9 @@ for my $dataset (@data) {
     if( $record_original_filename ) {
         my $basename;
         if( defined $original_filename ) {
-            $basename = File::Basename::basename( $original_filename );
+            $basename = basename( $original_filename );
         } elsif( defined $filename && $filename ne "-" ) {
-            $basename = File::Basename::basename( $filename );
+            $basename = basename( $filename );
         } else {
             $basename = "?";
         }

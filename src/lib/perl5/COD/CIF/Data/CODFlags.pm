@@ -12,23 +12,25 @@ package COD::CIF::Data::CODFlags;
 use strict;
 use warnings;
 use COD::CIF::Tags::Manage qw( tag_is_empty );
+
 require Exporter;
-our @ISA = qw(Exporter);
-our @EXPORT = qw( is_on_hold
-                  is_duplicate
-                  is_retracted
-                  is_disordered
-                  is_suboptimal
-                  is_theoretical
-                  has_coordinates
-                  has_hkl
-                  has_powder_diffraction_intensities
-                  has_Fobs
-                  has_errors
-                  has_warnings
-                  @hkl_tags
-                  @powder_diffraction_intensity_tags
-                );
+our @ISA = qw( Exporter );
+our @EXPORT = qw(
+    is_on_hold
+    is_duplicate
+    is_retracted
+    is_disordered
+    is_suboptimal
+    is_theoretical
+    has_coordinates
+    has_hkl
+    has_powder_diffraction_intensities
+    has_Fobs
+    has_errors
+    has_warnings
+    @hkl_tags
+    @powder_diffraction_intensity_tags
+);
 
 our @hkl_tags = qw(
     _refln_index_h

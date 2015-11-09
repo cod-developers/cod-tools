@@ -16,11 +16,13 @@ package COD::Cell::Conventional::deWG91;
 
 use strict;
 use warnings;
-require Exporter;
-our @ISA = qw(Exporter);
-our @EXPORT = qw(conventional_cell);
+use COD::Spacegroups::Symop::Algebra qw( symop_apply );
 
-use COD::Spacegroups::Symop::Algebra qw(symop_apply);
+require Exporter;
+our @ISA = qw( Exporter );
+our @EXPORT = qw(
+    conventional_cell
+);
 
 my $Pi = 4 * atan2(1,1);
 

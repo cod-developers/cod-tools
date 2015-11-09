@@ -17,8 +17,10 @@ use strict;
 use warnings;
 
 require Exporter;
-our @ISA = qw(Exporter);
-our @EXPORT = qw( ok );
+our @ISA = qw( Exporter );
+our @EXPORT = qw(
+    ok
+);
 
 %COD::CromerMann::atoms = (
 

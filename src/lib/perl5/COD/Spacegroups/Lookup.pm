@@ -13,28 +13,27 @@ package COD::Spacegroups::Lookup;
 use strict;
 use warnings;
 use COD::Spacegroups::Lookup::COD;
-use COD::Spacegroups::Symop::Parse;
+use COD::Spacegroups::Symop::Parse qw( symop_string_canonical_form );
 
 require Exporter;
-our @ISA = qw(Exporter);
-our @EXPORT = qw( mk_symop_key mkhash );
+our @ISA = qw( Exporter );
+our @EXPORT = qw(
+    make_symop_key
+    make_symop_hash
+);
 
-sub mk_symop_key
+sub make_symop_key
 {
     my ( $symops ) = @_;
     return join ";", sort map {symop_string_canonical_form($_)} @$symops;
 }
 
-sub mkhash
+sub make_symop_hash
 {
-    if( 1 ) {
-        map { (mk_symop_key($_->{symops}), $_) }
-        @COD::Spacegroups::Lookup::COD::table,
-        @COD::Spacegroups::Lookup::COD::extra_settings;
-    } else {
-        require COD::Spacegroups::Lookup::CCP4;
-        map { (mk_symop_key($_->{symops}), $_) }
-        @COD::Spacegroups::Lookup::CCP4::table;
-    }
+    my ( $space_group_sets ) = @_;
+
+    return map { (make_symop_key($_->{symops}), $_) }
+               map { @$_ } @$space_group_sets;
 }
 
+1;

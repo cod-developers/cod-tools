@@ -9,13 +9,16 @@ package COD::CIF::Unicode2CIF;
 
 use strict;
 use warnings;
-use Unicode::Normalize;
+use Unicode::Normalize  qw( normalize );
 ## use utf8;
 ## use charnames ':full';
 
 require Exporter;
-our @ISA = qw(Exporter);
-our @EXPORT = qw(unicode2cif cif2unicode);
+our @ISA = qw( Exporter );
+our @EXPORT = qw(
+    unicode2cif
+    cif2unicode
+);
 
 my %commands = (
 #
@@ -139,9 +142,9 @@ my %letters = (
 
 #
 # Special signs are CIF sequences that need to be transformed after
-# the letters, only if the letters do not match. Since the letetrs
+# the letters, only if the letters do not match. Since the letters
 # themselves must be transformed after the %commands list, these
-# special signs can not be included into the %commands hash.
+# special signs cannot be included into the %commands hash.
 #
 
 my %special_signs = (
@@ -187,7 +190,7 @@ my %cif = ( %commands, %alt_cmd, %letters, %special_signs );
 
 sub unicode2cif
 {
-    my $text = Unicode::Normalize::normalize( 'D', $_[0] );
+    my $text = normalize( 'D', $_[0] );
 
     for my $pattern (sort keys %cif) {
         $text =~ s/$pattern/$cif{$pattern}/g;
@@ -208,13 +211,13 @@ sub cif2unicode
     # 'LATIN SMALL LETTER SHARP S (German eszett)', $text gets
     # incorrectly converted into bytes when its is originally marged
     # as 'bytes' and not 'utf8'. The decode_utf8() should force Perl
-    # beleive that $text is in utf8 and make all substitions
+    # believe that $text is in utf8 and make all substitutions
     # correctly:
 
     use Encode;
 
     $text = Encode::decode_utf8($text);
-    
+
     $text =~ s/\\\\db /\x{003D}/g;
     for my $pattern (sort keys %commands) {
         my $value = $commands{$pattern};
@@ -238,7 +241,7 @@ sub cif2unicode
         $text =~ s/\Q$combining{$pattern}\E/$pattern/g;
     }
     $text =~ s/\&\#x([0-9A-Fa-f]+);/chr(hex($1))/eg;
-    return Unicode::Normalize::normalize( 'C', $text );
+    return normalize( 'C', $text );
 }
 
-return 1;
+1;

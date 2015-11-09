@@ -11,11 +11,12 @@
 #**
 
 package COD::Spacegroups::Builder;
+
 use strict;
 use warnings;
-
-use COD::Algebra::Vector;
-use COD::Spacegroups::Symop::Parse;
+use COD::Algebra::Vector qw( vector_sub vector_add vector_modulo_1
+                             vector_is_zero vectors_are_equal round_vector );
+use COD::Spacegroups::Symop::Parse qw( symop_from_string string_from_symop );
 use COD::Spacegroups::Symop::Algebra qw(
     symop_mul symop_modulo_1 symop_translate symop_translation
     symop_set_translation symop_is_inversion symop_matrices_are_equal

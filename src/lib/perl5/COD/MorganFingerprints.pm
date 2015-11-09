@@ -12,11 +12,13 @@ package COD::MorganFingerprints;
 
 use strict;
 use warnings;
-use List::Util qw(sum);
+use List::Util qw( sum );
 
 require Exporter;
-our @ISA = qw(Exporter);
-our @EXPORT = qw(make_morgan_fingerprint);
+our @ISA = qw( Exporter );
+our @EXPORT = qw(
+    make_morgan_fingerprint
+);
 
 sub make_morgan_fingerprint
 {

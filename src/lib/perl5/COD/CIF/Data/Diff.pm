@@ -13,11 +13,14 @@ package COD::CIF::Data::Diff;
 
 use strict;
 use warnings;
-use COD::CIF::Tags::Print;
+use COD::CIF::Tags::Print qw( print_tag );
 
 require Exporter;
-our @ISA = qw(Exporter);
-our @EXPORT = qw( diff comm );
+our @ISA = qw( Exporter );
+our @EXPORT = qw(
+    diff
+    comm
+);
 
 sub diff
 {

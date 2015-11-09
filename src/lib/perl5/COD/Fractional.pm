@@ -4,16 +4,19 @@
 #$Revision$
 #$URL$
 #-----------------------------------------------------------------------
-#       Convert orthogonal coordinates into fractional and back
-#-----------------------------------------------------------------------
+#*
+#  Convert orthogonal coordinates into fractional and back
+#**
 
 package COD::Fractional;
 
 use strict;
+use warnings;
+
 require Exporter;
-our @ISA = qw(Exporter);
+our @ISA = qw( Exporter );
 our @EXPORT = qw(
-    fract2ortho ortho2fract 
+    fract2ortho ortho2fract
     ortho_from_fract fract_from_ortho
     symop_ortho_from_fract symop_fract_from_ortho
 );
@@ -95,3 +98,4 @@ sub symop_fract_from_ortho
         [    0,            0,                $sg/($c*$D) ],
     ];
 }
+1;

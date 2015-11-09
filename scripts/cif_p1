@@ -16,27 +16,29 @@ eval 'exec perl -x $0 ${1+"$@"}'
 
 use strict;
 use warnings;
-use COD::CIF::Parser qw(parse_cif);
-use COD::AtomBricks qw(build_bricks get_atom_index get_search_span);
-use COD::AtomNeighbours qw(get_max_covalent_radius);
+use COD::CIF::Parser qw( parse_cif );
+use COD::AtomBricks qw( build_bricks get_atom_index get_search_span );
+use COD::AtomNeighbours qw( get_max_covalent_radius );
 use COD::AtomProperties;
-use COD::Formulae::Print;
-use COD::Spacegroups::Symop::Algebra qw(symop_is_unity symop_vector_mul);
-use COD::Spacegroups::Symop::Parse;
-use COD::Algebra::Vector qw(distance);
-use COD::CIF::Data qw(get_cell get_symmetry_operators);
-use COD::CIF::Data::AtomList qw(atom_array_from_cif
-                                copy_struct_deep
-                                dump_atoms_as_cif);
-use COD::CIF::Data::SymmetryGenerator qw(atoms_coincide
-                                         test_bond
-                                         test_bump);
-use COD::CIF::Tags::CanonicalNames;
-use COD::CIF::Tags::Manage;
-use COD::CIF::Tags::Print;
-use COD::SOptions;
-use COD::SUsage qw(usage options);
-use COD::UserMessage qw(warning error prefix_dataname);
+use COD::Formulae::Print qw( sprint_formula );
+use COD::Spacegroups::Symop::Algebra qw( symop_is_unity symop_vector_mul );
+use COD::Spacegroups::Symop::Parse qw( symop_from_string
+                                       string_from_symop
+                                       modulo_1 );
+use COD::Algebra::Vector qw( distance );
+use COD::CIF::Data qw( get_cell get_symmetry_operators );
+use COD::CIF::Data::AtomList qw( atom_array_from_cif
+                                 copy_struct_deep
+                                 dump_atoms_as_cif );
+use COD::CIF::Data::SymmetryGenerator qw( atoms_coincide
+                                          test_bond
+                                          test_bump );
+use COD::CIF::Tags::CanonicalNames qw( canonicalize_all_names );
+use COD::CIF::Tags::Manage qw( set_tag );
+use COD::CIF::Tags::Print qw( print_cif print_single_tag_and_value print_value );
+use COD::SOptions qw( getOptions );
+use COD::SUsage qw( usage options );
+use COD::UserMessage qw( warning error prefix_dataname );
 
 no warnings 'recursion';
 

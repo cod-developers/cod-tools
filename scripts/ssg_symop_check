@@ -14,8 +14,9 @@ eval 'exec perl -x $0 ${1+"$@"}'
 
 use strict;
 use warnings;
-use COD::SOptions;
-use COD::SUsage;
+use COD::SOptions qw( getOptions );
+use COD::SUsage qw( usage );
+use COD::Spacegroups::Symop::SSGParse qw( check_symmetry_operator );
 
 #* USAGE: $0 < input.symop
 #* USAGE: $0 input.symop
@@ -27,8 +28,6 @@ use COD::SUsage;
 @ARGV = getOptions(
    "--help,--usage"  => sub { usage; exit }
 );
-
-use COD::Spacegroups::Symop::SSGParse;
 
 while(<>) {
     next if /^#/;
