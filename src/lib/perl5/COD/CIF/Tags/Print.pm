@@ -38,12 +38,10 @@ sub print_cif
 
     my %dictionary_tags = ();
 
-    my $exclude_misspelled_tags = 0;
     my $fold_long_fields = 0;
     my $folding_width;
 
     if( $flags && ref $flags eq "HASH" ) {
-        $exclude_misspelled_tags = $flags->{exclude_misspelled_tags};
         $fold_long_fields = $flags->{fold_long_fields}
             if defined $flags->{fold_long_fields};
         $folding_width = $flags->{folding_width}
@@ -65,7 +63,6 @@ sub print_cif
         if( !exists $dataset->{inloop}{$tag} ) {
             if( !exists $dictionary_tags{$tag} ) {
                 if( !$non_loop_tags_encountered &&
-                    !$exclude_misspelled_tags &&
                     %dictionary_tags ) {
                     print "#BEGIN Tags that were not found in dictionaries:\n";
                     $non_loop_tags_encountered = 1;
@@ -86,7 +83,6 @@ sub print_cif
             my $tag_loop_nr = $dataset->{inloop}{$tag};
             if( !exists $dictionary_tags{$tag} ) {
                 if( !$loop_tags_encountered &&
-                    !$exclude_misspelled_tags &&
                     %dictionary_tags &&
                     !exists $printed_loops{$tag_loop_nr} ) {
                     print "#BEGIN Loops that were not found in dictionaries:\n";
