@@ -46,7 +46,7 @@ sub canonicalize_all_names
 {
     my ($cif) = @_;
 
-    # convert all tags to a "cannonical" form (the one used in this
+    # convert all tags to a "canonical" form (the one used in this
     # script ;):
 
     for my $dataset (@{$cif}) {
@@ -63,10 +63,10 @@ sub canonicalize_names
         my $lc_key = lc( $key );
         ## print ">>> $key -> $lc_key\n";
         if( defined $cif_tags_lc{$lc_key} ) {
-            my $cannonical_key = $cif_tags_lc{$lc_key};
-            ## print ">>> $key -> $lc_key -> $cannonical_key\n";
-            if( !exists $datablok->{$cannonical_key} ) {
-                rename_tag( $dataset, $key, $cannonical_key );
+            my $canonical_key = $cif_tags_lc{$lc_key};
+            ## print ">>> $key -> $lc_key -> $canonical_key\n";
+            if( !exists $datablok->{$canonical_key} ) {
+                rename_tag( $dataset, $key, $canonical_key );
             }
         }
     }
