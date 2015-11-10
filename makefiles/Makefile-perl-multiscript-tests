@@ -156,11 +156,7 @@ ALL_INPUTS = $(wildcard ${SCRIPT_TST_DIR}/*.* ${SHELL_TSTDIR}/*.sh)
 	| sponge $@ || true
 
 ${SCRIPT_DIR}/.%.d: ${SCRIPT_DIR}/%
-	-perl -lmModule::ScanDeps -e \
-		'print "$<: ",join " ", sort map {"src/lib/perl5/$$_"} grep {/^COD/} keys Module::ScanDeps::scan_deps(files => ["$<"], recurse => 1)' \
-	2>/dev/null \
-	| sed 's,//,/,g' \
-	> $@ || true
+	-tools/mkperldepend $< > $@ 2>/dev/null || true
 	@touch $@
 
 .script.depend: ${SCRIPT_DEPENDS}
