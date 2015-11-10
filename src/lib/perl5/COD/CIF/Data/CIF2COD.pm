@@ -11,20 +11,23 @@
 package COD::CIF::Data::CIF2COD;
 
 use strict;
-use COD::Cell qw(cell_volume);
-use COD::Spacegroups::Names;
-use COD::CIF::Data qw(get_cell);
-use COD::CIF::Data::CellContents;
-use COD::CIF::Data::CODFlags qw(is_disordered has_coordinates has_Fobs);
+use warnings;
+use COD::Cell qw( cell_volume );
+use COD::CIF::Data qw( get_cell );
+use COD::CIF::Data::CellContents qw( cif_cell_contents );
+use COD::CIF::Data::CODFlags qw( is_disordered has_coordinates has_Fobs );
+use COD::CIF::Unicode2CIF qw( cif2unicode );
 use COD::CIF::Tags::DictTags;
-use COD::CIF::Tags::Manage;
-use COD::CIF::Unicode2CIF;
-use COD::AtomProperties;
-use COD::UserMessage qw(print_message);
+use COD::Spacegroups::Names;
+use COD::UserMessage qw( print_message );
 
 require Exporter;
-our @ISA = qw(Exporter);
-our @EXPORT_OK = qw( cif2cod @default_data_fields @new_data_fields );
+our @ISA = qw( Exporter );
+our @EXPORT_OK = qw(
+    cif2cod
+    @default_data_fields
+    @new_data_fields
+);
 
 my $bond_safety_margin = 0.2; # Angstroems; a bond safety marging for a CIF classifier.
 

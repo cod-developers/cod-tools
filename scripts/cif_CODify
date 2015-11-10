@@ -16,23 +16,36 @@
 set -ue
 # set -x
 
+CIF_FILTER="cif_filter"
 arg=""
 
-#* OPTIONS:
-#* --help, --usage
-#*     Print a short help message (this message) and exit.
-#*
-#* NOTE: this script also accepts all options from the 'cif_filter' script.
-#**
 while [ $# -gt 0 ]
 do
   case $1 in
+      --options|--option|--optio|--opti|--opt|--op|--o)
+          echo "`basename $0`:: The '--options' option is a placehoder."
+          echo "`basename $0`:: It should be replaced by one of the following options:"
+          awk '/#\* OPTIONS:/,/#\*\*/ {
+                  sub("OPTIONS:", ""); \
+                  sub("^ *#[*]?[*]?", ""); \
+                  gsub("\\$0","'$0'"); \
+                  print $0
+              }' `which ${CIF_FILTER}` < /dev/null
+          echo "$0:: NOTE, the option list was retrieved from the '${CIF_FILTER}' script."
+          exit
+          ;;
       --help|--hel|--he|--h|--usage)
           gawk '/^#\*/,/^#\*\*/ {
                   sub("^ *#[*]?[*]?", ""); \
                   gsub("\\$0","'$0'"); \
                   print $0
               }' $0
+          awk '/#\* OPTIONS:/,/#\*\*/ {
+                  sub("^ *#[*]?[*]?", ""); \
+                  gsub("\\$0","'$0'"); \
+                  print $0
+              }' `which ${CIF_FILTER}` < /dev/null
+          echo "$0:: NOTE, the option list was retrieved from the '${CIF_FILTER}' script."
           exit
           ;;
       *)
@@ -71,7 +84,7 @@ fi
 
 NUMBER=`basename ${file} .cif | sed -e 's/[^0-9]//g'`
 
-cif_filter \
+${CIF_FILTER} \
     --renumber \
     --start-data="${NUMBER}" \
     --exclude-empty-non-loop-tags \

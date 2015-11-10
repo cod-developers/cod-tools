@@ -16,8 +16,10 @@ package COD::Algebra::JacobiEigen;
 use strict;
 use warnings;
 require Exporter;
-our @ISA = qw(Exporter);
-our @EXPORT = qw(jacobi_eigenvv);
+our @ISA = qw( Exporter );
+our @EXPORT_OK = qw(
+    jacobi_eigenvv
+);
 
 our $max_iterations = 100;
 # used for float comparison

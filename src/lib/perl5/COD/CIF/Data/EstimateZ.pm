@@ -9,20 +9,19 @@
 #  and molecular weight, if they are present.
 #
 #  The exported functions in this module accept CIF internal
-#  representation data structure as produced by CIFParser module.
+#  representation data structure as produced by COD::CIF::Parser module.
 #**
 
 package COD::CIF::Data::EstimateZ;
 
 use strict;
 use warnings;
-use COD::Cell qw(cell_volume);
-use COD::CIF::Data qw(get_cell);
-use COD::UserMessage qw(prefix_dataname);
+use COD::Cell qw( cell_volume );
+use COD::CIF::Data qw( get_cell );
 
 require Exporter;
-our @ISA = qw(Exporter);
-our @EXPORT = qw(
+our @ISA = qw( Exporter );
+our @EXPORT_OK = qw(
     cif_estimate_z
 );
 

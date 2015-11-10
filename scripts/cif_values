@@ -14,11 +14,11 @@ eval 'exec perl -x $0 ${1+"$@"}'
 
 use strict;
 use warnings;
-use File::Basename;
+use File::Basename qw( basename );
 use COD::CIF::Parser qw( parse_cif );
+use COD::SOptions qw( getOptions  get_value );
+use COD::SUsage qw( usage options );
 use COD::UserMessage qw( warning error );
-use COD::SOptions;
-use COD::SUsage;
 
 my $header = 1;
 my $separator = "\t";
@@ -40,7 +40,7 @@ my $treat_dots_as_underscores = 1;
 my $use_parser = "c";
 
 #* USAGE:
-#*     cif_values [options] input.cif [input2.cif ...]
+#*     $0 --options input1.cif input*.cif
 #*
 #* OPTIONS:
 #*     -t, --tags _tag1,_tag2,_tag3
@@ -92,7 +92,7 @@ my $use_parser = "c";
 #*     --treat-dots-as-underscores
 #*         Convert all dots in tag names into underscores (default).
 #*
-#*     --dont-treat-dots-as-underscores,--no-treat-dots-as-underscores
+#*     --dont-treat-dots-as-underscores, --no-treat-dots-as-underscores
 #*         Leave original tags as they are.
 #*
 #*     --filename
@@ -122,9 +122,9 @@ my $use_parser = "c";
 #*     --use-c-parser
 #*         Specify parser to parse CIF files. C parser is default.
 #*
-#*     --help, --usage  Print a short usage message (this message) and exit.
+#*     --help, --usage
+#*         Print a short usage message (this message) and exit.
 #**
-
 @ARGV = getOptions(
     "-t,--tags" => sub { @selected_tags = split( /\s|,/, get_value()) },
     "-a,--add-tag"    => \@selected_tags,
@@ -169,10 +169,10 @@ my $use_parser = "c";
     "--dataname"      => sub { $write_data_name = 1 },
     "--no-dataname"   => sub { $write_data_name = 0 },
 
-    "--use-perl-parser"       => sub{ $use_parser = "perl" },
-    "--use-c-parser"          => sub{ $use_parser = "c" },
-
-    "--help,--usage"  => sub { usage; exit },
+    "--use-perl-parser" => sub { $use_parser = "perl" },
+    "--use-c-parser"    => sub { $use_parser = "c" },
+    "--options"         => sub { options; exit },
+    "--help,--usage"    => sub { usage; exit }
 );
 
 sub sunique(@);

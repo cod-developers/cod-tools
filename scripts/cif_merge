@@ -18,44 +18,54 @@ eval 'exec perl -x $0 ${1+"$@"}'
 
 use strict;
 use warnings;
-use COD::CIF::Tags::CanonicalNames;
-use COD::CIF::Tags::Print;
-use COD::CIF::Parser::Yapp;
-use COD::SOptions;
-use COD::SUsage;
-use COD::UserMessage qw(warning error prefix_dataname);
+use COD::CIF::Parser qw( parse_cif );
+use COD::CIF::Tags::CanonicalNames qw( canonicalize_all_names );
+use COD::CIF::Tags::Print qw( print_cif );
+use COD::SOptions qw( getOptions );
+use COD::SUsage qw( usage options );
+use COD::UserMessage qw( warning error prefix_dataname );
 
+my $use_parser = 'c';
 my $override_tags;
 my $override_all = 0;
 my $merge_tags;
 
 #* USAGE:
-#*     $0 [options] input.cif [input2.cif ...]
-#* 
+#*     $0 --options input1.cif input*.cif
+#*
 #* OPTIONS:
-#*    --override-all    Override all data items in the recipient CIF.
+#*    --override-all
+#*        Override all data items in the recipient CIF.
 #*
 #*    --dont-override-all
-#*        Do not override all data items in the recipient CIF. Default
-#*        action.
+#*        Do not override all data items in the recipient CIF (default).
 #*
 #*    --override-tags  _tag1,_tag2
-#*        Replace values for tags listed as an argument (_tag1 and _tag2 in 
+#*        Replace values for tags listed as an argument (_tag1 and _tag2 in
 #*        this example) instead of keeping old values.
 #*
 #*    --merge-tags  _tag1,_tag2
-#*        Merge values for tags listed as an argument (_tag1 and _tag2 in 
+#*        Merge values for tags listed as an argument (_tag1 and _tag2 in
 #*        this example).
 #*
-#*    --help,--usage         Print a short usage message (this message) and exit.
+#*   --use-perl-parser
+#*        Use Perl parser to parse CIF files.
+#*
+#*   --use-c-parser
+#*         Use C parser to parse CIF files (default).
+#*
+#*    --help, --usage
+#*        Print a short usage message (this message) and exit.
 #**
-
-@ARGV = getOptions( 
-    "--merge-tags"    => \$merge_tags,
-    "--override-tags" => \$override_tags,
+@ARGV = getOptions(
+    "--merge-tags"         => \$merge_tags,
+    "--override-tags"      => \$override_tags,
     "--override-all"       => sub { $override_all = 1 },
     "--dont-override-all"  => sub { $override_all = 0 },
-    "--help,--usage"  => sub { usage; exit },
+    "--use-perl-parser"    => sub { $use_parser = "perl" },
+    "--use-c-parser"       => sub { $use_parser = "c" },
+    "--options"            => sub { options; exit },
+    "--help,--usage"       => sub { usage; exit }
 );
 
 my ( %override_tags, %merge_tags );
@@ -76,18 +86,16 @@ my %merged_datablocks;
 my @merged_datablock_names;
 
 for my $filename (@ARGV) {
-
-    my $parser = new COD::CIF::Parser::Yapp;
-
-    my $data = $parser->Run($filename);
+    my $options = { 'parser' => $use_parser, 'no_print' => 1 };
+    my ( $data, $err_count, $messages ) = parse_cif( $filename, $options );
+    if ( $err_count > 0 ) {
+        print STDERR $_ foreach ( @$messages );
+        error( $0, $filename, undef, "$err_count error(s) "
+             . "encountered while parsing the file", undef );
+        exit 1;
+    }
 
     canonicalize_all_names( $data );
-
-    if( defined $parser->YYData->{ERRCOUNT} && $parser->YYData->{ERRCOUNT} > 0 ) {
-        error( $0, $filename, undef, "$parser->YYData->{ERRCOUNT}, "
-            . 'error(s) encountered while parsing the file', undef );
-        die;
-    }
 
     if( !@$data || !defined $data->[0] || !defined $data->[0]{name} ) {
         warning( $0, $filename, undef, "file seems to be empty", undef );

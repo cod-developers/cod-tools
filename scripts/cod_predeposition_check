@@ -17,8 +17,8 @@ use strict;
 use warnings;
 use POSIX qw( strftime );
 use COD::CIF::Data::CODPredepositionCheck qw( filter_and_check );
-use COD::SOptions;
-use COD::SUsage;
+use COD::SOptions qw( getOptions get_value );
+use COD::SUsage qw( usage options );
 
 my %database = (
         host  => "www.crystallography.net",
@@ -41,8 +41,8 @@ my $tmp_dir;
 my $tmp_file = "tmp-cod_predeposition_check-$$.tmp";
 
 #* USAGE:
-#*     $0 [options] input.cif [input2.cif ...]
-#* 
+#*     $0 --options input.cif input*.cif
+#*
 #* OPTIONS:
 #*     -d, --database  cod
 #*        Use database "cod" to query for structures.
@@ -144,7 +144,6 @@ my $tmp_file = "tmp-cod_predeposition_check-$$.tmp";
 #*     --help, --usage
 #*        Print a short usage message (this message) and exit.
 #**
-
 @ARGV = getOptions(
     "-d,--database"  => \$database{name},
     "-l,--localhost" => sub { $database{host} = 'localhost' },
@@ -187,7 +186,8 @@ my $tmp_file = "tmp-cod_predeposition_check-$$.tmp";
 
     "--tmp-dir,--temp-dir" => \$tmp_dir,
 
-    "--help,--usage"   => sub { usage; exit },
+    "--options"      => sub { options; exit },
+    "--help,--usage" => sub { usage; exit }
 );
 
 push( @cif, @ARGV );

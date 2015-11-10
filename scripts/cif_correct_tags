@@ -9,24 +9,24 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #$URL$
 #------------------------------------------------------------------------------
 #*
-#  Corrects misspelled tags in a CIF file and outputs made changes into the 
-#  standard I/O streams. By default, only tags from CIF Core and CIF COD 
-#  dictionaries with extra '^_+' prefixes are corrected. Additionally, a 
+#  Corrects misspelled tags in a CIF file and outputs made changes into the
+#  standard I/O streams. By default, only tags from CIF Core and CIF COD
+#  dictionaries with extra '^_+' prefixes are corrected. Additionally, a
 #  replacement list file can be provided for the correction of misspelled tags.
 #**
 
 use strict;
 use warnings;
-use COD::CIF::Parser qw(parse_cif);
-use COD::CIF::Tags::CanonicalNames;
+use COD::CIF::Parser qw( parse_cif );
+use COD::CIF::Tags::CanonicalNames qw( canonicalize_all_names );
 use COD::CIF::Tags::DictTags;
 use COD::CIF::Tags::COD;
-use COD::CIF::Tags::Manage;
-use COD::CIF::Tags::Print;
-use COD::CIF2JSON;
-use COD::SOptions;
-use COD::SUsage;
-use COD::UserMessage qw(note error prefix_dataname);
+use COD::CIF::Tags::Manage qw( rename_tag );
+use COD::CIF::Tags::Print qw( print_cif fold );
+use COD::CIF2JSON qw( cif2json );
+use COD::SOptions qw( getOptions );
+use COD::SUsage qw( usage options );
+use COD::UserMessage qw( note error prefix_dataname );
 
 my $keep_tag_order = 0;
 my $Id = '$Id$';
@@ -35,7 +35,7 @@ my $use_parser = "c";
 my $output_format = "cif";
 
 #* USAGE:
-#*     $0 [options] input.cif [input2.cif ...]
+#*     $0 --options input.cif input*.cif
 #*
 #* OPTIONS:
 #*   --keep-tag-order
@@ -46,13 +46,19 @@ my $output_format = "cif";
 #*                      Name of the multi-line replacement list file with 
 #*                      entries of form '_incorrect_tag _correct_tag' to be 
 #*                      used in the correction of misspelled tags.
-#*   --use-perl-parser  Use the Perl-only CIF parser.
-#*   --use-c-parser     Use the speed-optimised C/Perl parser. Default.
-#*   --use-json-parser  Use the JSON parser (input is in JSON format)
-#*   --output-cif       Output CIF. Default option.
-#*   --output-json      Output internal data structure in JSON.
-#**  --help,--usage     Print a short usage message (this message) and exit.
-
+#*   --use-perl-parser
+#*                      Use the Perl-only CIF parser.
+#*   --use-c-parser
+#*                      Use the speed-optimised C/Perl parser. Default.
+#*   --use-json-parser
+#*                      Use the JSON parser (input is in JSON format)
+#*   --output-cif
+#*                      Output CIF. Default option.
+#*   --output-json
+#*                      Output internal data structure in JSON.
+#*   --help, --usage
+#*                      Print a short usage message (this message) and exit.
+#**
 @ARGV = getOptions(
     "--keep-tag-order"  => sub { $keep_tag_order = 1; },
     "--sort-tags"       => sub { $keep_tag_order = 0; },
@@ -62,6 +68,7 @@ my $output_format = "cif";
     "--use-json-parser" => sub{ $use_parser = "json" },
     "--output-cif"      => sub{ $output_format = "cif" },
     "--output-json"     => sub{ $output_format = "json" },
+    "--options"         => sub { options; exit },
     "--help,--usage"    => sub { usage; exit }
 );
 

@@ -14,17 +14,17 @@ eval 'exec perl -x $0 ${1+"$@"}'
 
 use strict;
 use warnings;
-use COD::CIF::Parser qw(parse_cif);
-use COD::CIF::Data qw(get_cell);
-use COD::CIF::Tags::CanonicalNames;
-use COD::CIF::Tags::Manage;
-use COD::CIF::Tags::Print;
+use File::Basename qw( basename );
+use COD::CIF::Parser qw( parse_cif) ;
+use COD::CIF::Data qw( get_cell );
+use COD::CIF::Tags::CanonicalNames qw( canonicalize_all_names );
+use COD::CIF::Tags::Manage qw( set_tag );
+use COD::CIF::Tags::Print qw( print_cif );
 use COD::Cell::Niggli::KG76;
 use COD::Cell::Delaunay::Delaunay;
-use COD::UserMessage;
-use COD::SOptions;
-use COD::SUsage;
-use File::Basename qw(basename);
+use COD::SOptions qw( getOptions get_value );
+use COD::SUsage qw( usage options );
+use COD::UserMessage qw( error );
 
 my $base0 = basename( $0 );
 
@@ -40,8 +40,8 @@ my $cell_fformat = "%.12g";
 my $Pi = 4 * atan2(1,1);
 
 #* USAGE:
-#*     $0 [options] input.cif [input2.cif ...]
-#* 
+#*     $0 --options input1.cif input*.cif
+#*
 #* OPTIONS:
 #*     --use-perl-parser
 #*        Use Perl parser for CIF parsing.
@@ -62,12 +62,10 @@ my $Pi = 4 * atan2(1,1);
 #*     --debug, --no-debug
 #*        Turn on/off the debug prints of reduction algorithm. Default off.
 #*
-#*     --help,--usage
+#*     --help, --usage
 #*        Print short usage message (this message) and exit.
 #**
-
-@ARGV = getOptions
-(
+@ARGV = getOptions(
     "--debug"    => sub{ $debug = 1 },
     "--no-debug" => sub{ $debug = 0 },
 
@@ -76,10 +74,10 @@ my $Pi = 4 * atan2(1,1);
     "-F,--float-format" => sub { $cell_fformat = &get_value },
     "-C,--cell-format" => \$cell_fformat,
 
-    "--use-perl-parser" => sub{ $use_parser = "perl" },
-    "--use-c-parser"    => sub{ $use_parser = "c" },
-
-    "--help,--usage" => sub { usage; exit },
+    "--use-perl-parser" => sub { $use_parser = "perl" },
+    "--use-c-parser"    => sub { $use_parser = "c" },
+    "--options"         => sub { options; exit },
+    "--help,--usage"    => sub { usage; exit }
 );
 
 @ARGV = ( "-" ) unless @ARGV;

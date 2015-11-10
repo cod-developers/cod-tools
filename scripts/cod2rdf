@@ -14,13 +14,12 @@ eval 'exec perl -x $0 ${1+"$@"}'
 
 use strict;
 use warnings;
-
 use DBI;
-use Encode;
-use HTML::Entities;
-use COD::SOptions;
-use COD::SUsage;
-use COD::UserMessage qw(warning error);
+use Encode qw( decode );
+use HTML::Entities qw( encode_entities );
+use COD::SOptions qw( getOptions );
+use COD::SUsage qw( usage options );
+use COD::UserMessage qw( warning error );
 
 my $vocabulary_name = "cod";
 my $vocabulary_url_prefix = "http://www.crystallography.net/cod/doc/rdf/";
@@ -48,8 +47,8 @@ my %database = (
 );
 
 #* USAGE:
-#*     $0 [options] 1000000 [1000001 ...]
-#* 
+#*     $0 --options 1000000 "[1-9][0-9]\{6\}"
+#*
 #* OPTIONS:
 #*     -d, --database  cod
 #*        Use database "cod" to query for structures.
@@ -157,10 +156,9 @@ my %database = (
 #*        Escape unicode code points using format corresponding to the 
 #*        provided formatted string.
 #*
-#*     --help,--usage
+#*     --help, --usage
 #*        Print short usage message (this message) and exit.
 #**
-
 @ARGV = getOptions(
     "-d,--database"  => \$database{name},
     "-l,--localhost" => sub { $database{host} = 'localhost' },
@@ -205,7 +203,8 @@ my %database = (
     "--internal-utf-escapes" => sub { $utf_code_point_format = "\\u%04X" },
     "--utf-escape-format"    => \$utf_code_point_format,
 
-    "--help,--usage"            => sub { usage; exit },
+    "--options"      => sub { options; exit },
+    "--help,--usage" => sub { usage; exit }
 );
 
 binmode( STDOUT, ":utf8" );

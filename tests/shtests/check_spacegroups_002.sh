@@ -17,30 +17,15 @@ use warnings;
 
 use COD::Spacegroups::Builder;
 use COD::Spacegroups::Lookup::COD;
-use COD::Spacegroups::Symop::Parse;
+use COD::Spacegroups::Lookup qw( make_symop_hash make_symop_key );
+use COD::Spacegroups::Symop::Parse qw( string_from_symop
+                                       symop_string_canonical_form );
 
 # Identify the spacegroup from the symmetry operators:
-
-sub mk_symop_key
-{
-    my ( $symops ) = @_;
-
-    my @canonical = sort 
-        map {symop_string_canonical_form($_)} @$symops;
-    my $key = join( ";", @canonical );
-    return $key;
-}
-
-sub mkhash
-{
-    if( 1 ) {
-        map { (mk_symop_key($_->{symops}), $_) }
-        @COD::Spacegroups::Lookup::COD::table,
-        @COD::Spacegroups::Lookup::COD::extra_settings;
-    }
-}
-
-my %symop_lookup_table = mkhash();
+my %symop_lookup_table = make_symop_hash( [
+                            \@COD::Spacegroups::Lookup::COD::table,
+                            \@COD::Spacegroups::Lookup::COD::extra_settings
+                         ] );
 
 for my $sg_data (@COD::Spacegroups::Lookup::COD::extra_settings) {
 
@@ -50,7 +35,7 @@ for my $sg_data (@COD::Spacegroups::Lookup::COD::extra_settings) {
 
     my @symops = $spacegroup->all_symops();
 
-    my $key = mk_symop_key( [ map { string_from_symop($_) } @symops ] );
+    my $key = make_symop_key( [ map { string_from_symop($_) } @symops ] );
 
     if( exists $symop_lookup_table{$key} ) {
         my $estimated_sg = $symop_lookup_table{$key};

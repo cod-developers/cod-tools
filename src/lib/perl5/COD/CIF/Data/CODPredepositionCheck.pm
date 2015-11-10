@@ -13,22 +13,23 @@ package COD::CIF::Data::CODPredepositionCheck;
 
 use strict;
 use warnings;
-
-require Exporter;
-our @ISA = qw(Exporter);
-our @EXPORT_OK = qw(filter_and_check run_command);
-
 use IPC::Open3 qw / open3 /;
 use IO::Handle;
 use Symbol;
-use Unicode::Normalize;
-use COD::CIF::Unicode2CIF;
-use Encode;
+use Unicode::Normalize qw( NFD );
 use Capture::Tiny ':all';
-use COD::CIF::Data::CIF2COD qw(cif2cod);
-use COD::CIF::Tags::Print;
-use COD::Precision;
-use COD::UserMessage qw(prefix_dataname print_message parse_message);
+use COD::CIF::Data::CIF2COD qw( cif2cod );
+use COD::CIF::Unicode2CIF qw( cif2unicode );
+use COD::CIF::Tags::Print qw( print_cif );
+use COD::Precision qw( cmp_cif_numbers );
+use COD::UserMessage qw( prefix_dataname print_message parse_message );
+
+require Exporter;
+our @ISA = qw( Exporter );
+our @EXPORT_OK = qw(
+    filter_and_check
+    run_command
+);
 
 our @identity_tags = qw(
     _cell_length_a
@@ -506,7 +507,7 @@ sub filter_and_check
         $cif_cod_numbers_opt->{check_bibliography} = 0
             if $deposition_type eq 'personal';
 
-        use COD::CIF::Data::CODNumbers;
+        use COD::CIF::Data::CODNumbers qw( fetch_duplicates );
         my $duplicates = fetch_duplicates( $data,
                                            $cif_filename,
                                            $db_conf,

@@ -14,14 +14,13 @@ eval 'exec perl -x $0 ${1+"$@"}'
 
 use strict;
 use warnings;
-use File::Basename;
-use COD::CIF::Parser qw(parse_cif);
-use COD::CIF::Tags::CanonicalNames;
-use COD::CIF::Tags::Manage;
-use COD::CIF::Tags::Print;
-use COD::SOptions;
-use COD::SUsage;
-use COD::UserMessage;
+use COD::CIF::Parser qw( parse_cif );
+use COD::CIF::Tags::CanonicalNames qw( canonical_tag_name canonicalize_names );
+use COD::CIF::Tags::Manage qw( exclude_tag );
+use COD::CIF::Tags::Print qw( print_cif );
+use COD::SOptions qw( getOptions get_value );
+use COD::SUsage qw( usage options );
+use COD::UserMessage qw( warning error );
 
 my @selected_tags;
 
@@ -33,7 +32,7 @@ my $invert = 0;
 my $use_parser = 'c';
 
 #* USAGE:
-#*     cif_select [options] input.cif [input2.cif ...]
+#*     $0 --options input1.cif input*.cif
 #*
 #* OPTIONS:
 #*     -t, --tags _tag1,_tag2,_tag3
@@ -58,7 +57,7 @@ my $use_parser = 'c';
 #*     --treat-dots-as-underscores
 #*         Convert all dots in tag names into underscores (default).
 #*
-#*     --dont-treat-dots-as-underscores,--no-treat-dots-as-underscores
+#*     --dont-treat-dots-as-underscores, --no-treat-dots-as-underscores
 #*         Leave original tags as they are.
 #*
 #*     --tabular, --output-tabular
@@ -71,7 +70,7 @@ my $use_parser = 'c';
 #*     --canonicalize-tag-names
 #*         Output tags in the canonical form.
 #*
-#*     --dont-canonicalize-tag-names,--no-canonicalize-tag-names
+#*     --dont-canonicalize-tag-names, --no-canonicalize-tag-names
 #*         Output tags as they are given in original file(s) (default).
 #*
 #*     --use-perl-parser
@@ -80,7 +79,8 @@ my $use_parser = 'c';
 #*     --use-c-parser
 #*         Use Perl & C parser for CIF parsing.
 #*
-#*     --help,--usage  print a short usage message (this message) and exit.
+#*     --help, --usage
+#*         Print a short usage message (this message) and exit.
 #**
 @ARGV = getOptions(
     "-t,--tags" => sub { @selected_tags = split( /\s|,/, get_value()) },
@@ -118,10 +118,10 @@ my $use_parser = 'c';
     "--no-canonicalize-tag-names"
         => sub { $canonicalize_tag_names = 0 },
 
-    "--use-perl-parser" => sub{ $use_parser = "perl" },
-    "--use-c-parser"    => sub{ $use_parser = "c" },
-
-    "--help,--usage"  => sub { usage; exit },
+    "--use-perl-parser" => sub { $use_parser = "perl" },
+    "--use-c-parser"    => sub { $use_parser = "c" },
+    "--options"         => sub { options; exit },
+    "--help,--usage"    => sub { usage; exit }
 );
 
 sub sunique(@);
@@ -165,7 +165,7 @@ for my $filename (@ARGV) {
                 my $new_tag = $tag;
                 $new_tag =~ s/\./_/g;
                 if( $new_tag ne $tag ) {
-                    $values->{$new_tag} = $values->{$tag};
+                    rename_tag( $dataset, $tag, $new_tag );
                 }
             }
         }

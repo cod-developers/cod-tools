@@ -15,11 +15,11 @@ eval 'exec perl -x $0 ${1+"$@"}'
 
 use strict;
 use warnings;
-use Scalar::Util;
+use Scalar::Util qw( looks_like_number );
 use COD::CIF::Parser qw( parse_cif );
-use COD::CIF::Tags::CanonicalNames;
-use COD::SOptions;
-use COD::SUsage;
+use COD::CIF::Tags::CanonicalNames qw( canonicalize_all_names );
+use COD::SOptions qw( getOptions get_value );
+use COD::SUsage qw( usage options );
 use COD::UserMessage qw( note warning error debug_note prefix_dataname );
 
 my $version = 0.1;
@@ -42,63 +42,62 @@ sub getListReferenceTags($$);
 sub getReplacementTags($$);
 
 #* USAGE:
-#*     $0 --dictionaries "cif_core.dic,cif_cod.dic" [options] input.cif [input2.cif ...]
+#*     $0 --dictionaries "cif_core.dic,cif_cod.dic" --options input1.cif input*.cif
 #*
-#** OPTIONS:
-#** -d, --dictionaries "cif_core.dic,cif_cod.dic"
-#**                     A list of CIF dictionary files (according to DDL2)
-#**                     to be used in CIF file validation. List elements
-#**                     are separated either by "," or by " ". To include
-#**                     dictionaries with filenames containing these symbols,
-#**                     the --add-dictionary option is used.
-#** -D, --add-dictionary "cif new dictionary.dic"
-#**                     Add additional CIF dictionary to the list.
-#** --clear-dictionaries
-#**                     Remove all CIF dictionaries from the list.
-#** --treat-as-set _atom_site_refinement_flags
-#**                     Treat values of given tags as a set. For example,
-#**                     more than one enumeration value could be defined
-#**                     for a single element. Any number of tags can be
-#**                     provided in the following way:
-#**                     $0 --treat-as-set _tag_1 --treat-as-set _tag_2
-#**                     Default is the '_atom_site_refinement_flags' tag.
-#** --no-treat-as-set, dont-treat-as-set
-#**                     Do not treat values of any tags as sets.
-#**                     (see --treat-as-set).
-#** --report-local-tags
-#**                     Validate tags prefixed with '_[local]'. This prefix
-#**                     was used in COD to denote locally used tags prior to
-#**                     the creation of cif_cod.dic. The default is to ignore
-#**                     these tags.
-#** --no-report-local-tags, --ignore-local-tags
-#**                     Ignore tags prefixed with '_[local]'. Default.
-#** --ignore-case
-#**                     Ignore letter case while validating enumeration values.
-#**                     For example, even though '_atom_site_adp_type' is
-#**                     restricted to values ('Uani', 'Uiso', 'Uovl', ...),
-#**                     value 'UANI' would still be treated as valid.
-#** --respect-case, --case-sensitive, --dont-ignore-case
-#**                     Respect letter case while validating enumeration 
-#**                     values. Default.
-#** --report-deprecated
-#**                     Report tags that are marked as deprecated in the 
-#**                     dictionaries. Tag deprecation usually means that it 
-#**                     has been replaced with an another tag(s).
-#** --ignore-deprecated
-#**                     Do not report tags that are marked as deprecated in the 
-#**                     dictionaries. Default.
-#** --use-perl-parser
-#**                     Use Perl parser to parse CIF files.
-#** --use-c-parser
-#**                     Use C parser to parse CIF files. Default option.
-#** --debug
-#**                     Output extra information for debugging purposes.
-#** -v, --version
-#**                     Print version message and exits.
-#** --help, --usage
-#**                     Print short usage message (this message) and exit.
-
-# check parameters passed
+#* OPTIONS:
+#* -d, --dictionaries "cif_core.dic,cif_cod.dic"
+#*                     A list of CIF dictionary files (according to DDL2)
+#*                     to be used in CIF file validation. List elements
+#*                     are separated either by "," or by " ". To include
+#*                     dictionaries with filenames containing these symbols,
+#*                     the --add-dictionary option is used.
+#* -D, --add-dictionary "cif new dictionary.dic"
+#*                     Add additional CIF dictionary to the list.
+#* --clear-dictionaries
+#*                     Remove all CIF dictionaries from the list.
+#* --treat-as-set _atom_site_refinement_flags
+#*                     Treat values of given tags as a set. For example,
+#*                     more than one enumeration value could be defined
+#*                     for a single element. Any number of tags can be
+#*                     provided in the following way:
+#*                     $0 --treat-as-set _tag_1 --treat-as-set _tag_2
+#*                     Default is the '_atom_site_refinement_flags' tag.
+#* --no-treat-as-set, dont-treat-as-set
+#*                     Do not treat values of any tags as sets.
+#*                     (see --treat-as-set).
+#*  --report-local-tags
+#*                     Validate tags prefixed with '_[local]'. This prefix
+#*                     was used in COD to denote locally used tags prior to
+#*                     the creation of cif_cod.dic. The default is to ignore
+#*                     these tags.
+#* --no-report-local-tags, --ignore-local-tags
+#*                     Ignore tags prefixed with '_[local]'. Default.
+#* --ignore-case
+#*                     Ignore letter case while validating enumeration values.
+#*                     For example, even though '_atom_site_adp_type' is
+#*                     restricted to values ('Uani', 'Uiso', 'Uovl', ...),
+#*                     value 'UANI' would still be treated as valid.
+#* --respect-case, --case-sensitive, --dont-ignore-case
+#*                     Respect letter case while validating enumeration 
+#*                     values. Default.
+#* --report-deprecated
+#*                     Report tags that are marked as deprecated in the 
+#*                     dictionaries. Tag deprecation usually means that it 
+#*                     has been replaced with an another tag(s).
+#* --ignore-deprecated
+#*                     Do not report tags that are marked as deprecated in the 
+#*                     dictionaries. Default.
+#* --use-perl-parser
+#*                     Use Perl parser to parse CIF files.
+#* --use-c-parser
+#*                     Use C parser to parse CIF files (default)
+#* --debug
+#*                     Output extra information for debugging purposes.
+#* -v, --version
+#*                     Print version message and exits.
+#* --help, --usage
+#*                     Print short usage message (this message) and exit.
+#**
 @ARGV = getOptions(
     "-d,--dictionaries"    => sub{ @dictFiles = split( ',|\s+', &get_value ) },
     "-D,--add-dictionary"  => sub{ push( @dictFiles, &get_value ) },
@@ -121,9 +120,10 @@ sub getReplacementTags($$);
     "--use-perl-parser"                 => sub{ $use_parser = "perl" },
     "--use-c-parser"                    => sub{ $use_parser = "c" },
 
-    "-v,--version"      => sub{ VersionMessage(); exit; },
-    "--help,--usage"    => sub{ usage; exit; },
-    "--debug"           => sub{ $debug = 1 }
+    "--debug"           => sub { $debug = 1 },
+    "-v,--version"      => sub { VersionMessage(); exit; },
+    "--options"         => sub { options; exit },
+    "--help,--usage"    => sub { usage; exit; }
 );
 
 my %dictTags;
@@ -488,7 +488,7 @@ CIFFILEANAL: for my $filename ( @ARGV ) {
 sub VersionMessage()
 {
 print <<END_M;
-cif_validate (using CIF::Parser::Yapp v.$COD::CIF::Parser::Yapp::version) v.$version
+cif_validate v.$version
 
 END_M
 }
@@ -639,7 +639,7 @@ sub checkAgainstRangeNumb($$$)
 {
     my ( $range, $value, $sigma ) = @_;
 
-    if( ! Scalar::Util::looks_like_number($value) ) {
+    if( ! looks_like_number($value) ) {
         return 0;
     }
 

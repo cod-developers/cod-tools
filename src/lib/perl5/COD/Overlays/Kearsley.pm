@@ -26,12 +26,16 @@ package COD::Overlays::Kearsley;
 
 use strict;
 use warnings;
-use COD::Spacegroups::Symop::Algebra qw(symop_apply);
-use COD::Algebra::JacobiEigen qw(jacobi_eigenvv);
+use COD::Spacegroups::Symop::Algebra qw( symop_apply );
+use COD::Algebra::JacobiEigen qw( jacobi_eigenvv );
 
 require Exporter;
-our @ISA = qw(Exporter);
-our @EXPORT_OK = qw( overlay_atoms overlay_points get_rotation_matrix );
+our @ISA = qw( Exporter );
+our @EXPORT_OK = qw(
+    overlay_atoms
+    overlay_points
+    get_rotation_matrix
+);
 
 sub overlay_atoms($$);
 sub overlay_points($$$);
@@ -295,3 +299,5 @@ sub move_origin($$)
 
     return \@cent_set;
 }
+
+1;

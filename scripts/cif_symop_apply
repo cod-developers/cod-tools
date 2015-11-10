@@ -14,22 +14,21 @@ eval 'exec perl -x $0 ${1+"$@"}'
 
 use strict;
 use warnings;
-use File::Basename;
-use COD::CIF::Parser qw(parse_cif);
-use COD::Spacegroups::Symop::Parse;
-use COD::Spacegroups::Symop::Algebra;
-use COD::CIF::Tags::Print;
-use COD::UserMessage qw(warning error);
-use COD::SOptions;
-use COD::SUsage;
+use COD::CIF::Parser qw( parse_cif );
+use COD::Spacegroups::Symop::Parse qw( symop_from_string );
+use COD::Spacegroups::Symop::Algebra qw( symop_mul symop_apply );
+use COD::CIF::Tags::Print qw( print_cif );
+use COD::SOptions qw( getOptions get_value );
+use COD::SUsage qw( usage options );
+use COD::UserMessage qw( warning error );
 
 my $use_parser = "c";
 
 my @symops = ();
 
 #* USAGE:
-#*     $0 [options] input1.cif input*.cif
-#* 
+#*     $0 --options input1.cif input*.cif
+#*
 #* OPTIONS:
 #*    -s, --symop, --symmetry-operator -x,-y,z
 #*        Apply the specified symmetry operator.
@@ -37,19 +36,21 @@ my @symops = ();
 #*    -a, --add-symop, --add-symmetry-operator -x,-y,z
 #*        Add the specified symmetry operator to the applied operato list.
 #*
-#*    --use-perl-parser  Use development CIF parser written in Perl
-#*    --use-c-parser     Use faster C/Yacc CIF parser (default)
+#*    --use-perl-parser
+#*        Use development CIF parser written in Perl.
+#*    --use-c-parser
+#*        Use faster C/Yacc CIF parser (default).
 #*
-#*    --help,--usage         Print a short usage message (this message) and exit.
+#*    --help, --usage
+#*        Print a short usage message (this message) and exit.
 #**
-
-@ARGV = getOptions( 
+@ARGV = getOptions(
     "-s,--symop,--symmetry-operator" => sub { @symops = (&get_value) },
     "-a,--add-symop,--add-symmetry-operator" => \@symops,
-    "--use-perl-parser"  => sub{ $use_parser = "perl" },
-    "--use-c-parser"     => sub{ $use_parser = "c" },
-
-    "--help,--usage"     => sub { usage; exit },
+    "--use-perl-parser"  => sub { $use_parser = "perl" },
+    "--use-c-parser"     => sub { $use_parser = "c" },
+   "--options"           => sub { options; exit },
+    "--help,--usage"     => sub { usage; exit }
 );
 
 @ARGV = ( "-" ) unless @ARGV;

@@ -15,33 +15,29 @@ eval 'exec perl -x $0 ${1+"$@"}'
 
 use strict;
 use warnings;
-use File::Basename;
-use COD::CIF::Parser qw(parse_cif);
-use COD::CIF::Tags::Manage;
-use COD::CIF::Tags::Print;
-use COD::Spacegroups::Names;
-use COD::Spacegroups::Symop::Parse;
-use COD::UserMessage qw(error);
-use COD::SOptions;
-use COD::SUsage;
+use COD::CIF::Parser qw( parse_cif );
+use COD::CIF::Tags::Manage qw( exclude_tag );
+use COD::CIF::Tags::Print qw( print_cif );
+use COD::SOptions qw( getOptions );
+use COD::SUsage qw( usage options );
+use COD::UserMessage qw( error );
 
 my $use_parser = "c";
 
 #* USAGE:
-#*     $0 [options] input1.cif input*.cif
-#* 
-#* OPTIONS:
-#*    --use-perl-parser  Use development CIF parser written in Perl
-#*    --use-c-parser     Use faster C/Yacc CIF parser (default)
+#*     $0 --options input1.cif input*.cif
 #*
-#*    --help,--usage         Print a short usage message (this message) and exit.
+#* OPTIONS:
+#*    --use-perl-parser  Use development CIF parser written in Perl.
+#*    --use-c-parser     Use faster C/Yacc CIF parser (default).
+#*
+#*    --help, --usage    Print a short usage message (this message) and exit.
 #**
-
 @ARGV = getOptions(
-    "--use-perl-parser"  => sub{ $use_parser = "perl" },
-    "--use-c-parser"     => sub{ $use_parser = "c" },
-
-    "--help,--usage"     => sub { usage; exit },
+    "--use-perl-parser"  => sub { $use_parser = "perl" },
+    "--use-c-parser"     => sub { $use_parser = "c" },
+    "--options"          => sub { options; exit },
+    "--help,--usage"     => sub { usage; exit }
 );
 
 my @scalar_property_tags = qw(

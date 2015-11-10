@@ -12,10 +12,19 @@ package COD::UserMessage;
 
 use strict;
 use warnings;
+
 require Exporter;
-our @ISA = qw(Exporter);
-our @EXPORT = qw( print_message error warning note parse_message sprint_message );
-our @EXPORT_OK = qw( debug_note prefix_dataname );
+our @ISA = qw( Exporter );
+our @EXPORT_OK = qw(
+    print_message
+    error
+    warning
+    note
+    parse_message
+    sprint_message
+    debug_note
+    prefix_dataname
+);
 
 # characters that will be escaped as HTML5 entities
 # '#' symbol is used for starting comment lines
@@ -231,4 +240,5 @@ sub prefix_dataname($)
 
     return $dataname;
 }
+
 1;

@@ -26,8 +26,11 @@ our $tolerance = 1E-200;
 our $maxIteration = 100;
 
 require Exporter;
-our @ISA = qw(Exporter);
-our @EXPORT_OK = qw( overlay_atoms overlay_points );
+our @ISA = qw( Exporter );
+our @EXPORT_OK = qw(
+    overlay_atoms
+    overlay_points
+);
 
 sub overlay_atoms($$);
 sub overlay_points($$$);
@@ -249,3 +252,5 @@ sub move_origin($$)
 
     return \@cent_set;
 }
+
+1;

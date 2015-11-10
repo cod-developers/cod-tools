@@ -12,14 +12,17 @@ package COD::CIF::Data::CODNumbers;
 
 use strict;
 use warnings;
-use File::Basename;
+use File::Basename qw( basename );
 use COD::Formulae::Parser::AdHoc;
-use COD::CIF::Data::CellContents;
-use COD::Precision qw(eqsig);
+use COD::CIF::Data::CellContents qw( cif_cell_contents );
+use COD::Precision qw( eqsig );
 
 require Exporter;
-our @ISA = qw(Exporter);
-our @EXPORT = qw(fetch_duplicates fetch_duplicates_from_database);
+our @ISA = qw( Exporter );
+our @EXPORT_OK = qw(
+    fetch_duplicates
+    fetch_duplicates_from_database
+);
 
 my %has_numeric_value = (
     "_journal_year"   => 1,
@@ -183,7 +186,7 @@ sub cif_fill_data
 
         next if !defined $id;
         $structures{$id}{id} = $id;
-        $structures{$id}{filename} = File::Basename::basename( $file );
+        $structures{$id}{filename} = basename( $file );
         $structures{$id}{index} = $n;
         $n++;
 

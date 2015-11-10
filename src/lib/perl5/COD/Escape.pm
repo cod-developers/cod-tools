@@ -14,12 +14,15 @@ use strict;
 use warnings;
 
 require Exporter;
-our @ISA = qw(Exporter);
-our @EXPORT = qw( escape unescape );
-our @EXPORT_OK = qw( decode_textfield );
+our @ISA = qw( Exporter );
+our @EXPORT_OK = qw(
+    escape
+    unescape
+    decode_textfield
+);
 
 use HTML::Entities qw( encode_entities decode_entities );
-use IO::Uncompress::Gunzip qw(gunzip $GunzipError);
+use IO::Uncompress::Gunzip qw( gunzip $GunzipError );
 use MIME::Base64 qw( decode_base64 );
 use MIME::QuotedPrint qw( decode_qp );
 

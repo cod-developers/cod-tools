@@ -14,18 +14,17 @@ eval 'exec perl -x $0 ${1+"$@"}'
 
 use strict;
 use warnings;
-use COD::CIF::Parser qw(parse_cif);
-use COD::CIF::Data qw( get_content_encodings );
-use COD::CIF::Tags::CanonicalNames;
-use COD::CIF::Tags::Print;
-use COD::Escape qw( decode_textfield );
-use COD::UserMessage qw( warning prefix_dataname );
-use COD::SOptions;
-use COD::SUsage;
 use Digest::MD5 qw( md5_hex );
 use Digest::SHA qw( sha1_hex );
-use File::Basename;
+use File::Basename qw( dirname );
 use File::Path qw( make_path );
+use COD::CIF::Parser qw( parse_cif );
+use COD::CIF::Data qw( get_content_encodings );
+use COD::CIF::Tags::CanonicalNames qw( canonicalize_all_names );
+use COD::Escape qw( decode_textfield );
+use COD::SOptions qw( getOptions );
+use COD::SUsage qw( usage options );
+use COD::UserMessage qw( warning error prefix_dataname );
 
 my $use_parser = 'c';
 my $output_dir = '.';
@@ -33,8 +32,8 @@ my $dry_run = 0;
 my $list = 0;
 
 #* USAGE:
-#*     $0 [options] input.cif [input2.cif ...]
-#* 
+#*     $0 --options input1.cif input2.cif
+#*
 #* OPTIONS:
 #*     -o, --output-dir out/
 #*        Base path of the created tree.
@@ -52,22 +51,20 @@ my $list = 0;
 #*     --use-c-parser
 #*        Use Perl & C parser for CIF parsing.
 #*
-#*     --help,--usage
+#*     --help, --usage
 #*        Print short usage message (this message) and exit.
 #**
-
-@ARGV = getOptions
-(
+@ARGV = getOptions(
     "-o,--output-dir" => \$output_dir,
 
     "--dry-run" => sub{ $dry_run = 1 },
 
     "-l,--list" => sub{ $list = 1 },
 
-    "--use-perl-parser" => sub{ $use_parser = "perl" },
-    "--use-c-parser"    => sub{ $use_parser = "c" },
-
-    "--help,--usage" => sub { usage; exit },
+    "--use-perl-parser" => sub { $use_parser = "perl" },
+    "--use-c-parser"    => sub { $use_parser = "c" },
+    "--options"         => sub { options; exit },
+    "--help,--usage"    => sub { usage; exit }
 );
 
 @ARGV = ( "-" ) unless @ARGV;

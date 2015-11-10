@@ -13,8 +13,34 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #**
 
 use strict;
-
+use warnings;
 use DBD::mysql;
+use COD::SOptions qw( getOptions );
+use COD::SUsage qw( usage options );
+
+my $opt_enabled = 1;
+#* USAGE: $0 --options "search text"
+#* USAGE: $0 --options -- "--search text"
+#*
+#* OPTIONS:
+#* --
+#*     Notify the end of command line options. Only positional
+#*     parameters are accepted after this option. This option
+#*     is mandatory if the positional parameters are prefixed
+#*     with a minus sign ('-').
+#* --help, --usage
+#*     Print a short usage message (this message) and exit.
+#**
+@ARGV = getOptions(
+    "--"             => sub { if ($opt_enabled) { $opt_enabled = 0 } },
+    "--options"      => sub { if ($opt_enabled) { options; exit } },
+    "--help,--usage" => sub { if ($opt_enabled) { usage; exit } }
+);
+
+if ( @ARGV > 1 ) {
+    print STDERR "$0:: WARNING, more than one positional parameters were "
+               . "provided -- only the first one ('$ARGV[0]') will be used.\n";
+}
 
 my $database = "cod";
 my $hostname = "cod.ibt.lt";

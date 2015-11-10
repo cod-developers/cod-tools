@@ -18,8 +18,8 @@ use COD::UserMessage qw( sprint_message warning error );
 use COD::CIF2JSON;
 
 require Exporter;
-our @ISA = qw(Exporter);
-our @EXPORT_OK = qw(parse_cif);
+our @ISA = qw( Exporter );
+our @EXPORT_OK = qw( parse_cif );
 
 my $default_options = {
     'fix_errors' => 0,
@@ -114,3 +114,5 @@ sub check_options
 
     return \%checked_options, \@unrecognised_options;
 }
+
+1;

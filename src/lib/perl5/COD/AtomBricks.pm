@@ -12,10 +12,15 @@
 package COD::AtomBricks;
 
 use strict;
+use warnings;
 
 require Exporter;
-our @ISA = qw(Exporter);
-our @EXPORT_OK = qw(build_bricks get_atom_index get_search_span);
+our @ISA = qw( Exporter );
+our @EXPORT_OK = qw(
+    build_bricks
+    get_atom_index
+    get_search_span
+);
 
 my $debug = 0;
 

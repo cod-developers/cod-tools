@@ -12,10 +12,13 @@ package COD::SUsage;
 
 use strict;
 use warnings;
+
 require Exporter;
 our @ISA = qw(Exporter);
-our @EXPORT = qw( usage );
-our @EXPORT_OK = qw( options );
+our @EXPORT_OK = qw(
+    options
+    usage
+);
 
 sub usage
 {
@@ -46,8 +49,11 @@ sub options
         if( /^#\*\s+OPTIONS:/../^#\*\*/ ) {
             s/^#\*\s+OPTIONS://;
             s/^#\*\*?//;
+            s/\$0/$0/g;
             print;
         }
     }
     close( SCRIPT );
 }
+
+1;

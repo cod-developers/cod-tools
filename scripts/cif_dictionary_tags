@@ -14,8 +14,8 @@ eval 'exec perl -x $0 ${1+"$@"}'
 use strict;
 use warnings;
 use COD::CIF::Parser qw( parse_cif );
-use COD::SOptions;
-use COD::SUsage;
+use COD::SOptions qw( getOptions );
+use COD::SUsage qw( usage options );
 
 my $use_parser = 'c';
 
@@ -29,12 +29,13 @@ my $use_parser = 'c';
 #* --use-c-parser
 #*                     Use faster C/Yacc CIF parser (default).
 #*
-#* --help,--usage      Print a short usage message (this message) and exit.
+#* --help, --usage
+#*                     Print a short usage message (this message) and exit.
 #**
 @ARGV = getOptions(
     "--use-perl-parser" => sub{ $use_parser = "perl" },
     "--use-c-parser"    => sub{ $use_parser = "c" },
-
+    "--options"         => sub { options; exit },
     "--help,--usage"    => sub { usage; exit }
 );
 

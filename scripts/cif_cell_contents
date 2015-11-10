@@ -14,17 +14,13 @@ eval 'exec perl -x $0 ${1+"$@"}'
 
 use strict;
 use warnings;
-use COD::CIF::Data::CellContents;
-use COD::CIF::Parser::Yapp;
-use COD::CIF::Tags::CanonicalNames;
-use COD::ShowStruct;
-use COD::Serialise;
-use COD::Spacegroups::Symop::Parse;
-use COD::Fractional;
-use File::Basename;
-use COD::SOptions;
-use COD::SUsage;
+use COD::CIF::Data::CellContents qw( cif_cell_contents );
+use COD::CIF::Parser qw( parse_cif );
+use COD::SOptions qw( getOptions );
+use COD::SUsage qw( usage options );
+use COD::UserMessage qw( error );
 
+my $use_parser = 'c';
 my $format = "%g";
 my $Z_value;
 my $use_attached_hydrogens = 0;
@@ -33,10 +29,9 @@ my $continue_on_errors = 0;
 my $print_datablock_name = 0;
 
 #* USAGE:
-#*     cif_cell_constants [options] input.cif
+#*     cif_cell_constants --options input1.cif input*.cif
 #*
 #* OPTIONS:
-#*
 #*     -c, --continue-on-errors
 #*         Keep processing subsequent data blocks even if one datablock
 #*         had fatal processing errors
@@ -60,7 +55,7 @@ my $print_datablock_name = 0;
 #*     --ignore-attached-hydrogens
 #*         Ignore number of implicit hydrogens, specified using
 #*         _atom_site_attached_hydrogens tag, in calculation of the
-#*         formula sum. Default option.
+#*         formula sum (default).
 #*
 #*     --assume-full-occupancies
 #*         Assume that all atoms have full (1.0) occupancies.
@@ -68,8 +63,8 @@ my $print_datablock_name = 0;
 #*     --dont-assume-full-occupancies,
 #*     --no-assume-full-occupancies,
 #*     --use-original-occupancies
-#*         Use original atom site occupancies, as given in CIF file.
-#*         Default option.
+#*         Use original atom site occupancies, as given in CIF file
+#*         (default).
 #*
 #*     --print-datablock-name
 #*         Print datablock name, tab-separated, before each formula.
@@ -79,10 +74,15 @@ my $print_datablock_name = 0;
 #*     --no-print-datablock-name
 #*         Do not print datablock name (default).
 #*
-#*     --help,--usage  print a short usage message (this message) and exit.
+#*     --use-perl-parser
+#*         Use Perl parser to parse CIF files.
+#*     --use-c-parser
+#*         Use C parser to parse CIF files (default).
+#*
+#*     --help, --usage
+#*         Print a short usage message (this message) and exit.
 #**
 @ARGV = getOptions(
-
     "-c,--continue-on-errors" => sub { $continue_on_errors = 1 },
     "-c-,--dont-continue-on-errors" => sub { $continue_on_errors = 0 },
     "--do-not-continue-on-errors" => sub { $continue_on_errors = 0 },
@@ -105,7 +105,10 @@ my $print_datablock_name = 0;
     "--dont-print-datablock-name" => sub{ $print_datablock_name = 0 },
     "--do-not-print-datablock-name" => sub{ $print_datablock_name = 0 },
 
-    "--help,--usage" => sub { usage; exit },
+    "--use-perl-parser" => sub { $use_parser = "perl" },
+    "--use-c-parser"    => sub { $use_parser = "c" },
+    "--options"         => sub { options; exit },
+    "--help,--usage"    => sub { usage; exit }
 );
 
 my $Id = '$Id$';
@@ -113,10 +116,16 @@ my $Id = '$Id$';
 @ARGV = ( "-" ) unless @ARGV;
 
 for my $filename (@ARGV) {
+    my $options = { 'parser' => $use_parser, 'no_print' => 1 };
+    my ( $data, $err_count, $messages ) = parse_cif( $filename, $options );
 
-    my $parser = new COD::CIF::Parser::Yapp;
-
-    my $data = $parser->Run($filename);
+    if ( $err_count > 0 ) {
+        print STDERR $_ foreach ( @$messages );
+        error( $0, $filename, undef, "$err_count error(s) "
+             . "encountered while parsing the file", undef );
+        next;
+    }
+    print STDERR $_ foreach ( @$messages );
 
     for my $dataset (@$data) {
 

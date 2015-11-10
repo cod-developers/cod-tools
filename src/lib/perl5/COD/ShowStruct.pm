@@ -15,9 +15,15 @@
 package COD::ShowStruct;
 
 use strict;
+use warnings;
+
 require Exporter;
-our @ISA = qw(Exporter);
-our @EXPORT = qw(showHash showArray showRef);
+our @ISA = qw( Exporter );
+our @EXPORT_OK = qw(
+    showHash
+    showArray
+    showRef
+);
 
 my $separator = "-------------------------";
 
@@ -104,4 +110,4 @@ sub showArray
    print STDOUT $separator if $ident eq "";
 }
 
-return 1;
+1;

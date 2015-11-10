@@ -16,28 +16,29 @@ eval 'exec perl -x $0 ${1+"$@"}'
 
 use strict;
 use warnings;
-
-use COD::CIF::Parser qw(parse_cif);
-use COD::AtomBricks qw(build_bricks get_atom_index get_search_span);
-use COD::AtomNeighbours qw(get_max_covalent_radius);
+use COD::CIF::Parser qw( parse_cif );
+use COD::AtomBricks qw( build_bricks get_atom_index get_search_span );
+use COD::AtomNeighbours qw( get_max_covalent_radius );
 use COD::AtomProperties;
-use COD::Formulae::Print;
-use COD::Spacegroups::Symop::Algebra qw(symop_is_unity symop_vector_mul);
-use COD::Spacegroups::Symop::Parse;
-use COD::Algebra::Vector qw(distance);
-use COD::CIF::Data qw(get_cell get_symmetry_operators);
-use COD::CIF::Data::AtomList qw(atom_array_from_cif
-                                copy_struct_deep
-                                dump_atoms_as_cif);
-use COD::CIF::Data::SymmetryGenerator qw(atoms_coincide
-                                         test_bond
-                                         test_bump);
-use COD::CIF::Tags::CanonicalNames;
-use COD::CIF::Tags::Manage;
-use COD::CIF::Tags::Print;
-use COD::SOptions;
-use COD::SUsage;
-use COD::UserMessage qw(warning error prefix_dataname);
+use COD::Formulae::Print qw( sprint_formula );
+use COD::Spacegroups::Symop::Algebra qw( symop_is_unity symop_vector_mul );
+use COD::Spacegroups::Symop::Parse qw( symop_from_string
+                                       string_from_symop
+                                       modulo_1 );
+use COD::Algebra::Vector qw( distance );
+use COD::CIF::Data qw( get_cell get_symmetry_operators );
+use COD::CIF::Data::AtomList qw( atom_array_from_cif
+                                 copy_struct_deep
+                                 dump_atoms_as_cif );
+use COD::CIF::Data::SymmetryGenerator qw( atoms_coincide
+                                          test_bond
+                                          test_bump );
+use COD::CIF::Tags::CanonicalNames qw( canonicalize_all_names );
+use COD::CIF::Tags::Manage qw( set_tag );
+use COD::CIF::Tags::Print qw( print_cif print_single_tag_and_value print_value );
+use COD::SOptions qw( getOptions );
+use COD::SUsage qw( usage options );
+use COD::UserMessage qw( warning error prefix_dataname );
 
 no warnings 'recursion';
 
@@ -88,7 +89,7 @@ my $ignore_bumps = 1; # detect and warn about close atom "bumps"
 my $special_position_cutoff = 0.01;
 
 # A span, in +/- unit cells, in which polymeric molecules (repeating
-# units) will be contruscted:
+# units) will be constructed:
 
 my $max_polymer_span = 4;
 
@@ -100,24 +101,24 @@ my $max_polymer_atoms = 100;
 
 #* USAGE:
 #*     $0 --options input1.cif input*.cif
-#* 
+#*
 #* OPTIONS:
-#*     -1,--one-datablock-output
+#*     -1, --one-datablock-output
 #*        Output all molecules and all alternative conformations to
 #*        a single output datablock.
-#*   
-#*     -1-,--multiple-datablocks-output
+#*
+#*     -1-, --multiple-datablocks-output
 #*        Separate each molecule and each example of an alternative
 #*        conformation into a separate datablock.
 #*
-#*     -c,--covalent-sensitivity
-#*        Set a new covalent sensitivity value (default 0.35)
+#*     -c, --covalent-sensitivity
+#*        Set a new covalent sensitivity value (default 0.35).
 #*
 #*    --simplify-formula
 #*        Simplify chemical formula and output not the whole 
 #*        P1 cell but only a minimal stoichiometric set of
 #*        molecules. Should have the same result as 
-#*        'cif_molecule --preserve-stoichiometry'
+#*        'cif_molecule --preserve-stoichiometry'.
 #*
 #*    --dont-simplify-formula, --no-simplify-formula
 #*        Do not simplify formula, output the whole P1 cell (default).
@@ -126,25 +127,25 @@ my $max_polymer_atoms = 100;
 #*        Do not stop if errors such as unrecognised atoms are
 #*        encountered; the output may be incorrect and missing
 #*        some atoms if this otion is used!
-#*   
+#*
 #*    --dont-continue-on-errors, --no-continue-on-errors
 #*        Stop immediately when an error is encountered.
-#*                       
+#*
 #*    --exclude-zero-occupancies
 #*        Do not use atoms woth 0 occupancies in calculations
 #*        (defalut).
-#*                       
+#*
 #*    --dont-continue-on-errors, --no-continue-on-errors
 #*        Stop immediately when an error is encountered.
-#*                       
-#*    --dump-atoms 
+#*
+#*    --dump-atoms
 #*        Dump atoms (including symmetry-equivalent) in CIF
-#*        format, for inspecion with some graphics program
+#*        format, for inspecion with some graphics program.
 #*
 #*    --dont-dump-atoms, --no-dump-atoms
-#*        Do not dump atoms (default)
+#*        Do not dump atoms (default).
 #*
-#*    -i,--ignore-bumps
+#*    -i, --ignore-bumps
 #*        Detect and warn about close atom "bumps" but do not
 #*        stop processing.
 #*
@@ -154,45 +155,53 @@ my $max_polymer_atoms = 100;
 #*
 #*    --bump-distance-factor 0.75
 #*        A fraction of covalent bond radii sum used to determine when
-#*        atoms are too close and are considered a bump:
+#*        atoms are too close and are considered a bump.
 #*
 #*    --max-polymer-span 4
 #*        A span, in +/- unit cells, in which polymeric molecules (repeating
-#*        units) will be contruscted:
-#*   
+#*        units) will be constructed.
+#*
 #*    --max-polymer-atoms 100
 #*        A maximum alowed count of polymer example atoms: more than this
 #*        amount of symmetry (translational) equivalen atoms, for each AU
 #*        atom, will not be written to the output file:
-#*   
+#*
 #*        Using --max-polymer-span=0 --max-polymer-atoms=1 essentially
 #*        switches off the polymer detection.
-#*   
+#*
 #*    --split-disorder-groups, --dont-merge-disorder-groups
 #*        Put examples of disorder group conformations into separate data
 #*        blocks (default).
-#*   
+#*
 #*    --merge-disorder-groups, --dont-split-disorder-groups
 #*        Put all disorder groups into one data block.
-#*     
-#*    --use-perl-parser  Use development CIF parser written in Perl
-#*    --use-c-parser     Use faster C/Yacc CIF parser (default)
 #*
-#*    --debug            Print some human-readable debug output
-#*    --no-debug         Suppress any debug output (default)
+#*    --use-perl-parser
+#*        Use development CIF parser written in Perl.
+#*    --use-c-parser
+#*        Use faster C/Yacc CIF parser (default).
 #*
-#*    --format "%8.6f"   Use the specified format for output coordinate printout.
+#*    --debug
+#*        Print some human-readable debug output.
+#*    --no-debug
+#*        Suppress any debug output (default).
 #*
-#*    --audit            Print audit information to the generated CIF file
-#*                       (default)
-#*    --no-audit         Do not print audit information to the generated CIF file
-#*    --verbose          Print warning messages in long format.
-#*    --no-verbose       Print warning messages in concise format (default)
+#*    --format "%8.6f"
+#*        Use the specified format for output coordinate printout.
 #*
-#*    --help,--usage     Print a short usage message (this message) and exit.
+#*    --audit
+#*        Print audit information to the generated CIF file (default).
+#*    --no-audit
+#*        Do not print audit information to the generated CIF file.
+#*    --verbose
+#*        Print warning messages in long format.
+#*    --no-verbose
+#*        Print warning messages in concise format (default).
+#*
+#*    --help, --usage
+#*        Print a short usage message (this message) and exit.
 #**
-
-@ARGV = getOptions( 
+@ARGV = getOptions(
     "-1,--one-datablock-output" => sub { $use_one_output_datablock = 1; },
     "-1-,--multiple-datablocks-output" =>
         sub { $use_one_output_datablock = 0; },
@@ -237,31 +246,16 @@ my $max_polymer_atoms = 100;
     "--do-not-split-disorder-groups,--no-split-disorder-groups"
         => sub { $merge_disorder_groups = 1 },
 
-    "--use-perl-parser"  => sub{ $use_parser = "perl" },
-    "--use-c-parser"     => sub{ $use_parser = "c" },
-
-    "--options"          => sub { 
-        print "$0: The '--options' option is a placehoder.\n";
-        print "$0: It should be replaced by one of the following options:\n";
-        ## usage;
-        open( SCRIPT, $0 ) or die $!;
-        while( <SCRIPT> ) {
-            if( /^#\*\s+OPTIONS:/../^#\*\*/ ) {
-                s/^#\*\s+OPTIONS://;
-                s/^#\*\*?\s+//;
-                print;
-            }
-        }
-        close( SCRIPT );
-        exit
-    },
+    "--use-perl-parser"  => sub { $use_parser = "perl" },
+    "--use-c-parser"     => sub { $use_parser = "c" },
 
     "--audit"            => sub { $audit = 1; },
     "--no-audit"         => sub { $audit = 0; },
 
     "--verbose"          => sub { $verbose = 1; },
     "--no-verbose"       => sub { $verbose = 0; },
-    "--help,--usage"     => sub { usage; exit },
+    "--options"          => sub { options; exit },
+    "--help,--usage"     => sub { usage; exit }
 );
 
 # The "atom" hash structure used by this script:
@@ -1706,7 +1700,7 @@ sub print_molecule
     my %known_tags = ( %data2copy, %renamed_tags );
     my @known_tags = ( @data2copy, @renamed_tags );
 
-    print_cif( $dataset,
+    print_cif( copy_struct_deep( $dataset ),
                         {
                             dictionary_tags => \%known_tags,
                             dictionary_tag_list => \@known_tags,
