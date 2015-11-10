@@ -275,26 +275,36 @@ sub rename_tag
 {
     my ($cif, $old_tag, $new_tag ) = @_;
 
-    if( exists $cif->{values}{$old_tag} ) {
-        $cif->{values}{$new_tag} = $cif->{values}{$old_tag};
-        delete $cif->{values}{$old_tag};
-        if( exists $cif->{inloop}{$old_tag} ) {
-            $cif->{inloop}{$new_tag} = $cif->{inloop}{$old_tag};
-            delete $cif->{inloop}{$old_tag};
+    return if !exists $cif->{values}{$old_tag};
+
+    $cif->{values}{$new_tag} = $cif->{values}{$old_tag};
+    delete $cif->{values}{$old_tag};
+    if( exists $cif->{inloop}{$old_tag} ) {
+        $cif->{inloop}{$new_tag} = $cif->{inloop}{$old_tag};
+        delete $cif->{inloop}{$old_tag};
+    }
+    for my $i ( 0 .. $#{$cif->{tags}} ) {
+        my $tag = $cif->{tags}[$i];
+        if( $tag eq $old_tag ) {
+            $cif->{tags}[$i] = $new_tag;
         }
-        for my $i ( 0 .. $#{$cif->{tags}} ) {
-            my $tag = $cif->{tags}[$i];
-            if( $tag eq $old_tag ) {
-                $cif->{tags}[$i] = $new_tag;
+    }
+    for my $loop ( @{$cif->{loops}} ) {
+        for my $i ( 0 .. $#{$loop} ) {
+            if( $loop->[$i] eq $old_tag ) {
+                $loop->[$i] = $new_tag;
             }
         }
-        for my $loop ( @{$cif->{loops}} ) {
-            for my $i ( 0 .. $#{$loop} ) {
-                if( $loop->[$i] eq $old_tag ) {
-                    $loop->[$i] = $new_tag;
-                }
-            }
-        }
+    }
+    if( exists $cif->{types}{$old_tag} ) {
+        $cif->{types}{$new_tag} =
+            $cif->{types}{$old_tag};
+        delete $cif->{types}{$old_tag};
+    }
+    if( exists $cif->{precisions}{$old_tag} ) {
+        $cif->{precisions}{$new_tag} =
+            $cif->{precisions}{$old_tag};
+        delete $cif->{precisions}{$old_tag};
     }
 }
 
