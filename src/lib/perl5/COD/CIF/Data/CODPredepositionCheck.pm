@@ -22,7 +22,7 @@ use COD::CIF::Data::CIF2COD qw( cif2cod );
 use COD::CIF::Unicode2CIF qw( cif2unicode );
 use COD::CIF::Tags::Print qw( print_cif );
 use COD::Precision qw( cmp_cif_numbers );
-use COD::UserMessage qw( prefix_dataname print_message parse_message );
+use COD::UserMessage qw( print_message parse_message );
 use COD::ErrorHandler qw( process_warnings );
 
 require Exporter;
@@ -303,7 +303,7 @@ sub filter_and_check
           DATASET:
         for my $dataset (@$data) {
             my $values = $dataset->{values};
-            my $dataname = prefix_dataname($dataset->{name});
+            my $dataname = 'data_' . $dataset->{name} if defined $dataset->{name};
             if( !defined $values ) {
                 critical( $cif_filename, $dataname, "ERROR",
                           "no data in datablock '$dataset->{name}'", undef );
@@ -321,14 +321,16 @@ sub filter_and_check
                     my $data_name_now = $dataset->{name};
                     if( $deposition_authors ne $deposition_authors_now ) {
                         critical( $cif_filename,
-                                  prefix_dataname($data_name_now),
+                                  defined $data_name_now
+                                          ? 'data_' . $data_name_now
+                                          : $data_name_now,
                                   "WARNING",
-                                  "author list in the datablock " .
-                                  "data_$first_data_name " .
-                                  "($deposition_authors) is not the " .
-                                  "same as in the datablock " .
-                                  "data_$data_name_now " .
-                                  "($deposition_authors_now)", 
+                                  'author list in the datablock '
+                                . "data_$first_data_name "
+                                . "($deposition_authors) is not the "
+                                . 'same as in the datablock '
+                                . "data_$data_name_now "
+                                . "($deposition_authors_now)",
                                   'please make sure that all data are '
                                 . 'authored by the same people when '
                                 . 'depositing multiple data blocks' );
@@ -368,7 +370,7 @@ sub filter_and_check
     if( $deposition_type eq 'personal' ) {
         for my $dataset (@$data) {
             my $values = $dataset->{values};
-            my $dataname = prefix_dataname($dataset->{name});
+            my $dataname = 'data_' . $dataset->{name} if defined $dataset->{name};
             if( !defined $values ) {
                 critical( $cif_filename, $dataname, "WARNING",
                           "no data in datablock '$dataset->{name}'", undef );
@@ -396,7 +398,7 @@ sub filter_and_check
         my ($range, $journal, $data_name);
         for my $dataset (@$data) {
             my $values = $dataset->{values};
-            my $dataname = prefix_dataname($dataset->{name});
+            my $dataname = 'data_' . $dataset->{name} if defined $dataset->{name};
             if( !defined $values ) {
                 critical( $cif_filename, $dataname, "WARNING",
                           "no data in datablock '$dataset->{name}'", undef );
@@ -433,7 +435,7 @@ sub filter_and_check
 
     for my $dataset (@$data) {
         my $values = $dataset->{values};
-        my $dataname = prefix_dataname($dataset->{name});
+        my $dataname = 'data_' . $dataset->{name} if defined $dataset->{name};
 
         if( !$options->{replace} &&
             exists $values->{_cod_database_code} &&
@@ -498,11 +500,13 @@ sub filter_and_check
                       "should have only one datablock", undef );
         }
         if( !exists $data->[0]{values}{'_cod_database_code'}[0]) {
-            critical( $cif_filename, prefix_dataname($data->[0]{name}),
-                      "WARNING",
-                      "CIF file supplied for replacement " .
-                      "should have \'_cod_database_code\' value " .
-                      "determining which CIF file to replace", undef );
+            critical( $cif_filename,
+                      defined $data->[0]{name}
+                              ? 'data_' . $data->[0]{name}
+                              : $data->[0]{name},
+                      "WARNING", 'CIF file supplied for replacement '
+                    . 'should have \'_cod_database_code\' value '
+                    . 'determining which CIF file to replace', undef );
         }
         $number_to_replace = $data->[0]{values}{'_cod_database_code'}[0];
     } elsif ( !$options->{bypass_checks} ) {

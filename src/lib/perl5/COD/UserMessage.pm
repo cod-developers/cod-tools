@@ -23,7 +23,6 @@ our @EXPORT_OK = qw(
     parse_message
     sprint_message
     debug_note
-    prefix_dataname
 );
 
 # characters that will be escaped as HTML5 entities
@@ -230,14 +229,6 @@ sub unprefix_multiline
     $multiline =~ s/^ //msg if defined $multiline;
 
     return $multiline;
-}
-
-sub prefix_dataname($)
-{
-    my ($dataname) = @_;
-
-    $dataname = "data_" . $dataname if defined $dataname;
-    return $dataname;
 }
 
 1;
