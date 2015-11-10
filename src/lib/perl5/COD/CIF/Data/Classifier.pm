@@ -223,7 +223,7 @@ sub get_atoms($$)
 
     my $values = $dataset->{values};
 
-    my @unit_cell = get_cell( $values, $dataset->{name} );
+    my @unit_cell = get_cell( $values );
 
     if( !@unit_cell || !defined $unit_cell[0] || @unit_cell < 6 ) {
         return;

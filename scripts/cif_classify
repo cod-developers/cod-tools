@@ -20,7 +20,16 @@ use COD::CIF::Data::Classifier qw( cif_class_flags );
 use COD::AtomProperties;
 use COD::SOptions qw( getOptions );
 use COD::SUsage qw( usage options );
-use COD::UserMessage qw( warning error prefix_dataname );
+use COD::ErrorHandler qw( process_warnings
+                          process_errors
+                          process_parser_messages
+                          report_message );
+
+my $die_on_error_level = {
+    ERROR   => 0,
+    WARNING => 0,
+    NOTE    => 0
+};
 
 my $use_parser = "c";
 
@@ -47,24 +56,31 @@ for my $filename (@ARGV) {
 
     my $options = { 'parser' => $use_parser, 'no_print' => 1 };
     my ( $data, $err_count, $messages ) = parse_cif( $filename, $options );
-
-    if ( $err_count > 0 ) {
-        print STDERR $_ foreach ( @$messages );
-        error( $0, $filename, undef, "$err_count error(s) "
-             . "encountered while parsing the file", undef );
-        next;
-    }
-    print STDERR $_ foreach ( @$messages );
+    process_parser_messages( $messages, $die_on_error_level );
+    next if ( $err_count > 0 );
 
     if( !@$data || !defined $data->[0] || !defined $data->[0]{name} ) {
-        warning( $0, $filename, undef,
-                 "file '$filename' seems to be empty", undef );
+        report_message( {
+           'program'   => $0,
+           'filename'  => $filename,
+           'err_level' => 'WARNING',
+           'message'   => 'file seems to be empty'
+        }, $die_on_error_level->{WARNING} );
         next;
     }
 
     my $bond_safety_margin = 0.2; # Angstroems
 
     for my $datablock (@$data) {
+        my $dataname = 'data_' . $datablock->{name} if defined $datablock->{name};
+
+        local $SIG{__WARN__} = sub { process_warnings( {
+                                       'message'  => @_,
+                                       'program'  => $0,
+                                       'filename' => $filename,
+                                       'add_pos'  => $dataname
+                                     }, $die_on_error_level ) };
+
         eval {
             my $flags = cif_class_flags( $datablock,
                                          \%COD::AtomProperties::atoms,
@@ -77,8 +93,13 @@ for my $filename (@ARGV) {
             }
         };
         if( $@ ) {
-            warning( $0, $filename, prefix_dataname( $datablock->{name} ),
-                     lcfirst($@), undef );
+            $@ =~ s/^ERROR,/WARNING,/;
+            process_warnings( {
+              'message'       => $@,
+              'program'       => $0,
+              'filename'      => $filename,
+              'add_pos'       => $dataname,
+            }, $die_on_error_level )
         }
     }
 }
