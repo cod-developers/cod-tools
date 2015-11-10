@@ -17,6 +17,7 @@ use COD::CIF::Tags::DictTags;
 use COD::CIF::Tags::COD;
 use COD::CIF::Tags::TCOD;
 use COD::CIF::Tags::DFT;
+use COD::CIF::Tags::Manage qw( rename_tag );
 
 require Exporter;
 our @ISA = qw( Exporter );
@@ -65,30 +66,7 @@ sub canonicalize_names
             my $cannonical_key = $cif_tags_lc{$lc_key};
             ## print ">>> $key -> $lc_key -> $cannonical_key\n";
             if( !exists $datablok->{$cannonical_key} ) {
-                $datablok->{$cannonical_key} = $datablok->{$key};
-                delete $datablok->{$key};
-                @{$dataset->{tags}} =
-                    map { s/^\Q$key\E$/$cannonical_key/; $_ }
-                @{$dataset->{tags}};
-                if( exists $dataset->{types}{$key} ) {
-                    $dataset->{types}{$cannonical_key} =
-                        $dataset->{types}{$key};
-                    delete $dataset->{types}{$key};
-                }
-                if( exists $dataset->{precisions}{$key} ) {
-                    $dataset->{precisions}{$cannonical_key} =
-                        $dataset->{precisions}{$key};
-                    delete $dataset->{precisions}{$key};
-                }
-                if( exists $dataset->{inloop}{$key} ) {
-                    my $loop_nr = $dataset->{inloop}{$key};
-                    $dataset->{inloop}{$cannonical_key} =
-                        $dataset->{inloop}{$key};
-                    delete $dataset->{inloop}{$key};
-                    @{$dataset->{loops}[$loop_nr]} =
-                        map { s/^\Q$key\E$/$cannonical_key/; $_ }
-                    @{$dataset->{loops}[$loop_nr]};
-                }
+                rename_tag( $dataset, $key, $cannonical_key );
             }
         }
     }
