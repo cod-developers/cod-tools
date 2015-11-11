@@ -71,7 +71,7 @@ sub cif_has_C_bonds( $$$$ )
 
     ## print $datablock->{name}, " ", int(@$atoms), "\n";
 
-    ## use COD::Serialise;
+    ## use COD::Serialise qw( serialiseRef );
     ## serialiseRef( $atoms );
 
     my $symops =
@@ -79,7 +79,7 @@ sub cif_has_C_bonds( $$$$ )
 
     my @symop_matrices = map { symop_from_string($_) } @{$symops};
 
-    ## use COD::Serialise;
+    ## use COD::Serialise qw( serialiseRef );
     ## serialiseRef( $symops );
 
     my @cell =
@@ -93,13 +93,13 @@ sub cif_has_C_bonds( $$$$ )
 
     my $g = metric_tensor_from_cell( @cell );
 
-    ## use COD::Serialise;
+    ## use COD::Serialise qw( serialiseRef );
     ## serialiseRef( $g );
 
     my $sym_atoms =
         symop_generate_atoms( \@symop_matrices, $atoms, $f2o );
 
-    ## use COD::Serialise;
+    ## use COD::Serialise qw( serialiseRef );
     ## serialiseRef( $sym_atoms );
 
     # Search for a C-H or C-C bond:
@@ -139,7 +139,7 @@ sub cif_has_C_bonds( $$$$ )
                 $interatomic_distance < $C_H_covalent_distance ) {
                 ## print ">>> found C-H bond $interatomic_distance " .
                 ##     "$atom1->{atom_name}-$atom2->{atom_name}\n";
-                ## use COD::Serialise;
+                ## use COD::Serialise qw( serialiseRef );
                 ## serialiseRef( [ $atom1, $atom2, $interatomic_distance,
                 ##                 $C_H_covalent_distance  ] );
                 $flags{$has_C_H_bond_flag} = 1;
@@ -148,7 +148,7 @@ sub cif_has_C_bonds( $$$$ )
             if( $atom2->{atom_type} eq "C" &&
                 $interatomic_distance < $C_C_covalent_distance ) {
                 ## print ">>> found C-C bond $interatomic_distance \n";
-                ## use COD::Serialise;
+                ## use COD::Serialise qw( serialiseRef );
                 ## serialiseRef( [ $atom1, $atom2, $interatomic_distance,
                 ##                 $C_H_covalent_distance  ] );
                 $flags{$has_C_C_bond_flag} = 1;
@@ -182,7 +182,7 @@ sub cif_has_C_bonds( $$$$ )
 
                 if( $atom2->{atom_type} eq "H" &&
                     $distance < $C_H_covalent_distance ) {
-                    ## use COD::Serialise;
+                    ## use COD::Serialise qw( serialiseRef );
                     ## serialiseRef( [ $atom1, $atom2, $interatomic_distance,
                     ##                 $C_H_covalent_distance  ] );
                     $flags{$has_C_H_bond_flag} = 1;
@@ -190,7 +190,7 @@ sub cif_has_C_bonds( $$$$ )
                 }
                 if( $atom2->{atom_type} eq "C" &&
                     $distance < $C_C_covalent_distance ) {
-                    ## use COD::Serialise;
+                    ## use COD::Serialise qw( serialiseRef );
                     ## serialiseRef( [ $atom1, $atom2, $interatomic_distance,
                     ##                 $C_H_covalent_distance  ] );
                     $flags{$has_C_C_bond_flag} = 1;
