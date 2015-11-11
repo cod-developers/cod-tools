@@ -97,7 +97,7 @@ sub make_neighbour_list($$$$@)
                                   $extra_bond_distance );
 
     do {
-        use COD::Serialise;
+        use COD::Serialise qw( serialiseRef );
         serialiseRef( $bricks );
     } if 0;
 

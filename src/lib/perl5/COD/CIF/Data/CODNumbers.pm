@@ -549,7 +549,7 @@ sub entries_are_the_same
     }
 
     if( $are_the_same ) {
-        ## use COD::Serialise;
+        ## use COD::Serialise qw( serialiseRef );
         ## serialiseRef( [ $entry1, $entry2 ] );
         if( defined $entry1->{enantiomer} &&
             $entry1->{enantiomer} eq $entry2->{id} ) {
@@ -624,7 +624,7 @@ sub query_COD_database
 
     for my $id (keys %{$data}) {
         ## print ">>> id = $id\n";
-        ## use COD::Serialise;
+        ## use COD::Serialise qw( serialiseRef );
         ## serialiseRef( $data->{$id} );
         for my $formula (( $data->{$id}{chemical_formula_sum},
                            $data->{$id}{cell_contents} )) {
