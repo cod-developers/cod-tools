@@ -19,8 +19,18 @@ use COD::CIF::Parser qw( parse_cif );
 use COD::CIF::Data::Diff qw( diff );
 use COD::SOptions qw( getOptions get_value );
 use COD::SUsage qw( usage options );
+use COD::ErrorHandler qw( process_errors
+                          process_parser_messages
+                          report_message );
 
 my $use_parser = 'c';
+
+my $die_on_error_level = {
+    ERROR   => 1,
+    WARNING => 0,
+    NOTE    => 0
+};
+
 my $compare_datablock_names = 1;
 my $fold_long_fields        = 1;
 my $folding_width           = 72;
@@ -112,15 +122,27 @@ my $L_option_param;
     "-f,--file-with-tags" => sub {
         $compare_only_selected = 1;
         my $filename = get_value();
-        open( TAGS, $filename ) or
-            die( "$0: $filename: ERROR, could not open file '$filename' " .
-                 "for reading - $!" );
-        @selected_tags = ( @selected_tags,
-                          map { s/^\s*|\s*$//g; $_ }
-                          grep !/^\#/, <TAGS> );
-        close( TAGS ) or
-            die( "$0: $filename: ERROR, could not close file '$filename' " .
-                 "after reading - $!" );
+
+        eval {
+            open( TAGS, "$filename" ) or die 'ERROR, '
+                  . 'could not open file for reading -- '
+                  . lcfirst($!) . "\n";
+
+            @selected_tags = ( @selected_tags,
+                                   map { s/^\s*|\s*$//g; $_ }
+                                   grep !/^\#/, <TAGS> );
+
+            close( TAGS ) or die 'ERROR, '
+                 . 'error while closing file after reading -- '
+                 . lcfirst($!) . "\n";
+        };
+        if ($@) {
+            process_errors( {
+              'message'  => $@,
+              'program'  => $0,
+              'filename' => $filename
+            }, $die_on_error_level->{ERROR} );
+        };
     },
     "--compare-all-tags" => sub{ $compare_only_selected = 0; },
     "--compare-datablock-names"         => sub{ $compare_datablock_names = 1 },
@@ -143,37 +165,33 @@ my $L_option_param;
 
 push( @ARGV, "-" ) unless @ARGV > 1;
 if( @ARGV != 2 ) {
-    die( "please supply two files for comparison" );
+    report_message( {
+        'program'   => $0,
+        'err_level' => 'ERROR',
+        'message'   => 'please supply two files for comparison'
+    }, $die_on_error_level->{'ERROR'} );
 }
 
 my $parser_options = { 'parser' => $use_parser, 'no_print' => 1 };
 my ( $data1, $data2, $err_count, $messages );
 
 ( $data1, $err_count, $messages ) = parse_cif( $ARGV[0], $parser_options );
-if ( $err_count > 0 ) {
-    print STDERR $_ foreach ( @$messages );
-    error( $0, $ARGV[0], undef, "$err_count error(s) "
-         . "encountered while parsing the file", undef );
-    exit 1;
-}
-print STDERR $_ foreach ( @$messages );
+process_parser_messages( $messages, $die_on_error_level );
 
 ( $data2, $err_count, $messages ) = parse_cif( $ARGV[1], $parser_options );
-if ( $err_count > 0 ) {
-    print STDERR $_ foreach ( @$messages );
-    error( $0, $ARGV[1], undef, "$err_count error(s) "
-         . "encountered while parsing the file", undef );
-    exit 1;
-}
-print STDERR $_ foreach ( @$messages );
+process_parser_messages( $messages, $die_on_error_level );
 
 my $min_datablocks  = scalar @$data1;
 if( scalar @$data1 != scalar @$data2 ) {
     if( $min_datablocks > scalar @$data2 ) {
         $min_datablocks = scalar @$data2;
     }
-    print "number of datablocks in supplied files is different, " .
-          "taking first $min_datablocks datablocks for comparison\n";
+    report_message( {
+        'program'   => $0,
+        'err_level' => 'WARNING',
+        'message'   => 'number of datablocks in supplied files is different, '
+                     . "taking first $min_datablocks datablocks for comparison"
+    }, $die_on_error_level->{'WARNING'} );
 }
 
 my $options = {
