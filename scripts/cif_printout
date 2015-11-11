@@ -20,9 +20,17 @@ use COD::CIF2JSON qw( cif2json json2cif );
 use COD::SOptions qw( getOptions );
 use COD::SUsage qw( usage options );
 use COD::ShowStruct qw( showRef );
-use COD::UserMessage qw( error );
+use COD::ErrorHandler qw( process_parser_messages
+                          report_message );
 
 my $use_parser = 'c';
+
+my $die_on_error_level = {
+    ERROR   => 0,
+    WARNING => 0,
+    NOTE    => 0
+};
+
 my $output_format = 'dump';
 my $input_json  = 0;
 my %options;
@@ -106,8 +114,9 @@ foreach( @ARGV ) {
         $err_count = 0;
     } else {
         $options{no_print} = 1;
+        $options{parser} = $use_parser;
         ($data, $err_count, $messages) = parse_cif( $_, \%options );
-        print STDERR $_ foreach ( @$messages );
+        process_parser_messages( $messages, $die_on_error_level );
     }
 
     if( $output_format eq 'json' ) {
@@ -152,5 +161,11 @@ foreach( @ARGV ) {
             }
         }
     }
-    print STDERR "$err_count error(s) detected\n";
+
+    report_message( {
+        'program'   => $0,
+        'filename'  => $_,
+        'err_level' => 'NOTE',
+        'message'   =>  "$err_count error(s) encountered while processing the file"
+    }, $die_on_error_level->{'NOTE'} );
 }

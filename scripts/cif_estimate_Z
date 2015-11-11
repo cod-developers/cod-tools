@@ -20,13 +20,12 @@ use COD::CIF::Parser qw( parse_cif );
 use COD::CIF::Data::EstimateZ qw( cif_estimate_z );
 use COD::SOptions qw( getOptions );
 use COD::SUsage qw( usage options );
-use COD::UserMessage qw( error );
 use COD::ErrorHandler qw( process_warnings
                           process_errors
                           process_parser_messages );
 
 my $die_on_error_level = {
-    ERROR   => 0,
+    ERROR   => 1,
     WARNING => 0,
     NOTE    => 0
 };
@@ -58,7 +57,6 @@ for my $filename (@ARGV) {
     my $options = { parser => $use_parser, no_print => 1, fix_errors => 1 };
     my ( $data, $err_count, $messages ) = parse_cif( $filename, $options );
     process_parser_messages( $messages, $die_on_error_level );
-    next if ( $err_count > 0 );
 
     for my $dataset (@$data) {
         my $dataname = 'data_' . $dataset->{name} if defined $dataset->{name};

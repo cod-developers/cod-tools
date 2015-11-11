@@ -94,7 +94,9 @@ sub find_best_fit($$$)
     my( $v, $ev ) = jacobi_eigenvv( @rrt );
 
     for( $i = 0; $i < 3; $i++ ) {
-        die( "eigenvalue of the Kabsch's matrix < 0" ) if( $ev->[$i] < 0.0 );
+        if ( $ev->[$i] < 0.0 ) {
+            die "ERROR, eigenvalue of the Kabsch's matrix < 0\n"
+        };
         $ev->[$i] = sqrt($ev->[$i]);
     }
 
@@ -105,7 +107,9 @@ sub find_best_fit($$$)
             for( $k = 0; $k < 3; $k++ ) {
                 $b[$i][$j] += $r[$i][$k] * $v->[$k][$j];
             }
-            die( "eigenvalue of Kabsch's matrix == 0" ) if( $ev->[$j] <= 0.0 );
+            if ( $ev->[$j] <= 0.0 ) {
+                die "ERROR, eigenvalue of Kabsch's matrix == 0\n";
+            }
             $b[$i][$j] /= $ev->[$j];
         }
     }

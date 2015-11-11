@@ -16,23 +16,31 @@ use strict;
 use warnings;
 use COD::CIF::Parser qw( parse_cif );
 use COD::AtomProperties;
-use COD::CIF::Data qw( get_cell );
 use COD::CIF::Data::AtomList qw( atom_array_from_cif );
 use COD::Spacegroups::Symop::Algebra qw( symop_apply symop_mul
                                          symop_invert symop_det );
 use COD::Overlays::Kabsch qw( overlay_atoms );
 use COD::SOptions qw( getOptions );
 use COD::SUsage qw( usage options );
-use COD::UserMessage qw( error );
+use COD::ErrorHandler qw( process_warnings
+                          process_errors
+                          process_parser_messages
+                          report_message );
 
 my $use_parser = 'c';
+
+my $die_on_error_level = {
+    ERROR   => 1,
+    WARNING => 0,
+    NOTE    => 0
+};
 
 #* USAGE:
 #*     $0 input1.cif input1_alt.cif
 #*
 #* OPTIONS:
 #* --use-perl-parser
-#*         Use Perl parser to parse CIF files.
+#*          Use Perl parser to parse CIF files.
 #* --use-c-parser
 #*          Use C parser to parse CIF files (default).
 #*
@@ -59,58 +67,111 @@ while( @ARGV > 0 ) {
     my $filename2 = shift(@ARGV);
 
     if( !defined $filename2 ) {
-        die "Even number of files required on the command line"
+        report_message( {
+           'program'   => $0,
+           'err_level' => 'ERROR',
+           'message'   => 'even number of files required on the command line'
+        }, $die_on_error_level->{ERROR} );
     }
 
     my $parser_options = { 'parser' => $use_parser, 'no_print' => 1 };
     my ( $data1, $data2, $err_count, $messages );
 
     ( $data1, $err_count, $messages ) = parse_cif( $filename1, $parser_options );
-    if ( $err_count > 0 ) {
-        print STDERR $_ foreach ( @$messages );
-        error( $0, $filename1, undef, "$err_count error(s) "
-             . "encountered while parsing the file", undef );
-        exit 1;
-    }
-    print STDERR $_ foreach ( @$messages );
+    process_parser_messages( $messages, $die_on_error_level );
 
     ( $data2, $err_count, $messages ) = parse_cif( $filename2, $parser_options );
-    if ( $err_count > 0 ) {
-        print STDERR $_ foreach ( @$messages );
-        error( $0, $filename2, undef, "$err_count error(s) "
-             . "encountered while parsing the file", undef );
-        exit 1;
-    }
-    print STDERR $_ foreach ( @$messages );
+    process_parser_messages( $messages, $die_on_error_level );
 
     if( @$data1 < @$data2 ) {
-        warn "file '$filename2' has more data blocks than '$filename1', " .
-            "some will stay unused";
+        report_message( {
+           'program'   => $0,
+           'err_level' => 'WARNING',
+           'message'   => "file '$filename2' has more data blocks than "
+                        . "'$filename1' some will stay unused"
+        }, $die_on_error_level->{WARNING} );
     }
 
     for my $dataset1 (@$data1) {
         my $dataset2 = shift( @$data2 );
         if( !defined $dataset2 ) {
-            warn "file '$filename1' has more data blocks than '$filename2'";
+            report_message( {
+                'program'   => $0,
+                'err_level' => 'WARNING',
+                'message'   => "file '$filename1' has more data blocks than "
+                             . "'$filename2'"
+            }, $die_on_error_level->{WARNING} );
             last;
         }
         print "FILE1\t", $filename1, "\n";
         print "FILE2\t", $filename2, "\n";
         print "DBLOCK1\t", $dataset1->{name}, "\n";
         print "DBLOCK2\t", $dataset2->{name}, "\n";
-        my $atoms1 = atom_array_from_cif( $dataset1,
-                                          \%COD::AtomProperties::atoms,
-                                          $cif_atom_list_options );
-        my $atoms2 = atom_array_from_cif( $dataset2,
-                                          \%COD::AtomProperties::atoms,
-                                          $cif_atom_list_options );
+
+        my $dataname1 = 'data_' . $dataset1->{name} if defined $dataset1->{name};
+        my $dataname2 = 'data_' . $dataset2->{name} if defined $dataset2->{name};
+
+        my $atoms1;
+        eval {
+            local $SIG{__WARN__} = sub { process_warnings( {
+                               'message'       => @_,
+                               'program'       => $0,
+                               'filename'      => $filename1,
+                               'add_pos'       => $dataname1
+                              }, $die_on_error_level ) };
+
+            $atoms1 = atom_array_from_cif( $dataset1,
+                                           \%COD::AtomProperties::atoms,
+                                           $cif_atom_list_options );
+
+        };
+        if ( $@ ) {
+            process_errors( {
+              'message'       => $@,
+              'program'       => $0,
+              'filename'      => $filename1,
+              'add_pos'       => $dataname1
+            }, $die_on_error_level->{ERROR} )
+        };
+
+        my $atoms2;
+        eval {
+            local $SIG{__WARN__} = sub { process_warnings( {
+                               'message'       => @_,
+                               'program'       => $0,
+                               'filename'      => $filename2,
+                               'add_pos'       => $dataname2
+                              }, $die_on_error_level ) };
+
+            $atoms2 = atom_array_from_cif( $dataset2,
+                                           \%COD::AtomProperties::atoms,
+                                           $cif_atom_list_options );
+
+        };
+        if ( $@ ) {
+            process_errors( {
+              'message'       => $@,
+              'program'       => $0,
+              'filename'      => $filename2,
+              'add_pos'       => $dataname2
+            }, $die_on_error_level->{ERROR} )
+        };
 
         print "ATMCNTS\t", int(@$atoms1), " ", int(@$atoms2), "\n";
 
-        my $overlay_symop = overlay_atoms( $atoms1, $atoms2 );
-        printf "RDET\t%8.6f\n", symop_det( $overlay_symop );
+        my $overlay_symop;
+        eval {
+            $overlay_symop = overlay_atoms( $atoms1, $atoms2 );
+            printf "RDET\t%8.6f\n", symop_det( $overlay_symop );
+        };
+        if ( $@ ) {
+            process_errors( {
+              'message'       => $@,
+              'program'       => $0,
+            }, $die_on_error_level->{ERROR} )
+        };
 
-        ## use COD::Serialise;
+        ## use COD::Serialise qw( serialiseRef );
         ## serialiseRef( $atoms1->[0]{f2o} );
 
         my $fract_overlay = symop_mul( symop_invert($atoms1->[0]{f2o}),
@@ -128,7 +189,7 @@ while( @ARGV > 0 ) {
 
         my $atoms1_on_atoms2 = symop_apply_to_atoms( $atoms1, $fract_overlay );
 
-        ## use COD::Serialise;
+        ## use COD::Serialise qw( serialiseRef );
         ## serialiseRef( $atoms1_on_atoms2 );
 
         printf "RMS\t%8.6f\n", atom_rms( $atoms2, $atoms1_on_atoms2 );

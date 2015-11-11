@@ -21,8 +21,10 @@ use COD::CIF::Data::CODNumbers qw( cif_fill_data entries_are_the_same );
 use COD::CIF::Data::CellContents qw( cif_cell_contents );
 use COD::SOptions qw( getOptions );
 use COD::SUsage qw( usage options );
-use COD::ErrorHandler qw( process_warnings process_errors );
-use COD::UserMessage qw( error );
+use COD::ErrorHandler qw( process_warnings
+                          process_errors
+                          process_parser_messages
+                          report_message );
 
 my $die_on_errors   = 1;
 my $die_on_warnings = 0;
@@ -160,6 +162,12 @@ my %options = (
     "--help,--usage" => sub { usage; exit }
 );
 
+my $die_on_error_level = {
+    ERROR   => $die_on_errors,
+    WARNING => $die_on_warnings,
+    NOTE    => $die_on_notes
+};
+
 my %has_numeric_value = (
     "_journal_year"   => 1,
     "_journal_volume" => 1,
@@ -188,24 +196,26 @@ do {
 } if 0;
 
 for my $filename (@COD_cif_files) {
-
     chomp $filename;
+    my $options = { 'parser' => $use_parser, 'no_print' => 1 };
+    my ( $data, $err_count, $messages ) = parse_cif( $filename, $options );
+    process_parser_messages( $messages, $die_on_error_level );
+    next if ( $err_count > 0 );
 
-    my @data;
-
-    eval {
-        @data = load_cif_file( $filename );
-    };
-    next if $@;
-
-    if( !@data || !defined $data[0] || !defined $data[0]->{name} ) {
-        warn( "file '$filename' seems to be empty" );
+    if( !@$data || !defined $data->[0] || !defined $data->[0]{name} ) {
+        report_message( {
+            'program'   => $0,
+            'filename'  => $filename,
+            'err_level' => 'WARNING',
+            'message'   => 'file seems to be empty'
+        }, $die_on_error_level->{'WARNING'} );
+        next;
     }
 
     my %structures = ();
     my $index = 0;
 
-    foreach my $dataset ( @data ) {
+    foreach my $dataset ( @$data ) {
 
         my $dataname = 'data_' . $dataset->{name} if defined $dataset->{name};
 
@@ -214,10 +224,7 @@ for my $filename (@COD_cif_files) {
                                        'program'       => $0,
                                        'filename'      => $filename,
                                        'add_pos'       => $dataname
-                                     }, {
-                                       'WARNING' => $die_on_warnings,
-                                       'NOTE'    => $die_on_notes
-                                     } ) };
+                                     }, $die_on_error_level ) };
 
         eval {
             my $structure = cif_fill_data( $dataset, $filename, $index );
@@ -232,7 +239,7 @@ for my $filename (@COD_cif_files) {
               'program'  => $0,
               'filename' => $filename,
               'add_pos'  => $dataname
-            }, $die_on_errors );
+            }, $die_on_error_level->{'ERROR'} );
         };
     };
 
@@ -264,23 +271,26 @@ do {
 my @cif_files = `find @ARGV -name "*.cif" -o -name "*.CIF" | sort`;
 
 for my $filename (@cif_files) {
-
     chomp $filename;
-    my @data;
+    my $options = { 'parser' => $use_parser, 'no_print' => 1 };
+    my ( $data, $err_count, $messages ) = parse_cif( $filename, $options );
+    process_parser_messages( $messages, $die_on_error_level );
+    next if ( $err_count > 0 );
 
-    eval {
-        @data = load_cif_file( $filename );
-    };
-    next if $@;
-
-    if( !@data || !defined $data[0] || !defined $data[0]->{name} ) {
-        warn( "file '$filename' seems to be empty" );
+    if( !@$data || !defined $data->[0] || !defined $data->[0]{name} ) {
+        report_message( {
+            'program'   => $0,
+            'filename'  => $filename,
+            'err_level' => 'WARNING',
+            'message'   => 'file seems to be empty'
+        }, $die_on_error_level->{'WARNING'} );
+        next;
     }
 
     my %structures = ();
     my $index = 0;
 
-    foreach my $dataset ( @data ) {
+    foreach my $dataset ( @$data ) {
 
         my $dataname = 'data_' . $dataset->{name} if defined $dataset->{name};
 
@@ -289,10 +299,7 @@ for my $filename (@cif_files) {
                                        'program'  => $0,
                                        'filename' => $filename,
                                        'add_pos'  => $dataname
-                                     }, {
-                                       'WARNING' => $die_on_warnings,
-                                       'NOTE'    => $die_on_notes
-                                     } ) };
+                                     }, $die_on_error_level ) };
 
         eval {
             my $structure = cif_fill_data( $dataset, $filename, $index );
@@ -307,7 +314,7 @@ for my $filename (@cif_files) {
               'program'  => $0,
               'filename' => $filename,
               'add_pos'  => $dataname
-            }, $die_on_errors );
+            }, $die_on_error_level->{'ERROR'} );
         };
     };
 
@@ -361,22 +368,4 @@ for my $filename (@cif_files) {
             printf "%-35s %15s %3d %s\n", $final_formula, "?", 0, $filename;
         }
     }
-}
-
-#------------------------------------------------------------------------------
-
-sub load_cif_file
-{
-    my ( $filename ) = @_;
-
-    my $options = { 'parser' => $use_parser, 'no_print' => 1 };
-    my ( $data, $err_count, $messages ) = parse_cif( $filename, $options );
-    if ( $err_count > 0 ) {
-        print STDERR $_ foreach ( @$messages );
-        error( $0, $filename, undef, "$err_count error(s) "
-             . "encountered while parsing the file", undef );
-        die;
-    }
-
-    return @$data;
 }

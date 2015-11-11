@@ -18,9 +18,18 @@ use COD::CIF::Parser qw( parse_cif );
 use COD::CIF::Data::CellContents qw( cif_cell_contents );
 use COD::SOptions qw( getOptions );
 use COD::SUsage qw( usage options );
-use COD::ErrorHandler qw( process_warnings process_errors );
+use COD::ErrorHandler qw( process_warnings
+                          process_errors
+                          process_parser_messages );
 
 my $use_parser = 'c';
+
+my $die_on_error_level = {
+    ERROR   => 1,
+    WARNING => 0,
+    NOTE    => 0
+};
+
 my $format = "%g";
 my $Z_value;
 my $use_attached_hydrogens = 0;
@@ -139,14 +148,8 @@ my $Id = '$Id$';
 for my $filename (@ARGV) {
     my $options = { 'parser' => $use_parser, 'no_print' => 1 };
     my ( $data, $err_count, $messages ) = parse_cif( $filename, $options );
-
-    if ( $err_count > 0 ) {
-        print STDERR $_ foreach ( @$messages );
-        error( $0, $filename, undef, "$err_count error(s) "
-             . "encountered while parsing the file", undef );
-        next;
-    }
-    print STDERR $_ foreach ( @$messages );
+    process_parser_messages( $messages, $die_on_error_level );
+    next if ( $err_count > 0 );
 
     for my $dataset (@$data) {
 
