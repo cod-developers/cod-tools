@@ -181,10 +181,14 @@ my %skip_tag = (
 my %COD = ();
 
 if( @ARGV < 2 ) {
-    print STDERR "$0: please supply two directory names on the command line:\n";
-    print STDERR "first directory with the analysed CIF files,\n";
-    print STDERR "and the second with the COD CIF files.\n";
-    exit -1;
+    report_message( {
+        'program'   => $0,
+        'err_level' => 'ERROR',
+        'message'   => 'please supply at least two directory names on the '
+                     . 'command line -- names of directories with the '
+                     . 'analysed CIF files come first and the name of the '
+                     . 'directory with COD CIF files comes last'
+    }, 1 );
 }
 
 my $COD_cif_dir = pop( @ARGV );
