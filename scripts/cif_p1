@@ -339,7 +339,7 @@ for my $filename (@ARGV) {
         my $unit_cell_atoms =
             symops_apply_to_atoms_modulo1( \@symops, $atoms );
 
-        ## use COD::Serialise;
+        ## use COD::Serialise qw( serialiseRef );
         ## serialiseRef( \@unit_cell_atoms );
 
         if( $dump_atoms ) {
@@ -410,7 +410,7 @@ for my $filename (@ARGV) {
                 my $atom_list = $molecule->{atoms};
                 my $disorder_groups = atom_groups($atom_list);
                 ## print ">>> ngroups = ", int(@$disorder_groups), "\n";
-                ## use COD::Serialise; serialiseRef( $disorder_groups );
+                ## use COD::Serialise qw( serialiseRef ); serialiseRef( $disorder_groups );
                 for my $disorder_representative (@$disorder_groups) {
                     push( @split_molecules,
                           {
@@ -665,7 +665,7 @@ sub symops_apply_modulo1
     my $multiplicity_ratio = 1;
 
     do {
-        use COD::Serialise;
+        use COD::Serialise qw( serialiseRef );
         serialiseRef( $sym_operators );
     } if 0;
 
@@ -883,7 +883,7 @@ sub symop_register_applied_symop
     }
 
     do {
-        use COD::Serialise;
+        use COD::Serialise qw( serialiseRef );
         serialiseRef( { atom => $new_atom_info, symop => $symop } );
     } if 0;
 
@@ -1262,7 +1262,7 @@ sub find_molecule($$$$$$$$$$$)
             get_search_span( $bricks, $i, $j, $k );
     };
     if( $@ ) {
-        use COD::Serialise;
+        use COD::Serialise qw( serialiseRef );
         serialiseRef( $atom_in_unit_cell_coords_ortho );
         serialiseRef( [ $i, $j, $k ] );
         serialiseRef( $bricks );
@@ -1362,7 +1362,7 @@ sub find_molecule($$$$$$$$$$$)
                   ( $sym_atom->{assembly} eq "." && 
                     $sym_atom->{group} eq "." ) )) {
                 do {
-                    use COD::Serialise;
+                    use COD::Serialise qw( serialiseRef );
                     local $" = ' ';
                     print STDERR ">>> found bond:\n";
                     serialiseRef( { "translation" => $current_translation,
@@ -1374,7 +1374,7 @@ sub find_molecule($$$$$$$$$$$)
                     translate_atom( $sym_atom, $current_translation );
 
                 do {
-                    use COD::Serialise;
+                    use COD::Serialise qw( serialiseRef );
                     print ">>>> back-shifted atom:\n";
                     serialiseRef( { sym_atom => $sym_atom,
                                     backshifted => $back_shifted_sym_atom } );
@@ -1400,7 +1400,7 @@ sub find_molecule($$$$$$$$$$$)
     print ">>> Finished checks;\n" if $debug;
 
     do {
-        use COD::Serialise;
+        use COD::Serialise qw( serialiseRef );
         print ">>> Before translation:";
         serialiseRef( \@neighbors );
     } if $debug;
