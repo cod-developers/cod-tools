@@ -20,7 +20,8 @@ use COD::CIF::Tags::Manage qw( exclude_tag );
 use COD::CIF::Tags::Print qw( print_cif );
 use COD::SOptions qw( getOptions get_value );
 use COD::SUsage qw( usage options );
-use COD::ErrorHandler qw( process_parser_messages
+use COD::ErrorHandler qw( process_errors
+                          process_parser_messages
                           report_message );
 
 my $use_parser = 'c';
@@ -94,15 +95,24 @@ my $invert = 0;
     "-c,--clear-tags" => sub { @selected_tags = () },
     "-f,--file-with-tags" => sub {
         my $filename = get_value();
-        open( TAGS, $filename ) or
-            die( "$0: $filename: ERROR, could not open file '$filename' " .
-                 "for reading - $!" );
-        @selected_tags = ( @selected_tags,
-                          map { s/^\s*|\s*$//g; $_ }
-                          grep !/^\#/, <TAGS> );
-        close( TAGS ) or
-            die( "$0: $filename: ERROR, could not close file '$filename' " .
-                 "after reading - $!" );
+        eval {
+            open( TAGS, $filename ) or die 'ERROR, '
+                  . 'could not open file for reading -- '
+                  . lcfirst($!) . "\n";
+            @selected_tags = ( @selected_tags,
+                              map { s/^\s*|\s*$//g; $_ }
+                              grep !/^\#/, <TAGS> );
+            close( TAGS ) or die 'ERROR, '
+                  .'could not close file after reading -- '
+                  . lcfirst($!) . "\n";
+        };
+        if ($@) {
+            process_errors( {
+              'message'  => $@,
+              'program'  => $0,
+              'filename' => $filename
+            }, $die_on_error_level->{ERROR} );
+        };
     },
 
     "--invert" => sub { $invert = 1 },
