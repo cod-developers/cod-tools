@@ -234,6 +234,7 @@ foreach my $filename ( @ARGV ) {
 
     #   Extract atoms and order them alphabetically by type and label.
     my $atoms = get_atoms( $dataset, $ortho_matrix, $filename, $uniquify_atoms );
+    next if !defined $atoms;
 
     my $printable_properties = [ "name", "chemical_type", 
                                  "coordinates_ortho", "coordinates_fract",
@@ -308,7 +309,7 @@ sub get_atoms {
         error( $0, $filename, $dataname,
                "neither '_atom_site_label' nor '_atom_site_type_symbol' " .
                "present", "dataset will not be processed" );
-        return undef;
+        return;
     }
 
     my @atoms;
@@ -524,7 +525,7 @@ return ( \@distances, \@headers, \@atoms_used );
 # @param $atom_2
 #       Reference to a hash, containing information of the second atom.
 # @return
-#       undef is atoms belong to different disorder groups but the same 
+#       0 is atoms belong to different disorder groups but the same 
 #       disorder assembly. 1 otherwise. 
 ##
 
@@ -535,7 +536,7 @@ sub check_disorder {
          ( $atom_2 -> {disorder_group} ne "." ) &&
          ( $atom_1 -> {disorder_assembly} eq $atom_2 -> {disorder_assembly} )
        )  {
-        return undef;
+        return 0;
     }
 
     return 1;
