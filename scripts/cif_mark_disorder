@@ -238,18 +238,18 @@ sub get_alternatives
         my $atom_in_unit_cell_coords_ortho =
             symop_vector_mul( $f2o, $current_atom->{coordinates_fract} );
 
-        my ($i, $j, $k) =
+        my ($i_init, $j_init, $k_init) =
             get_atom_index( $bricks, @{$atom_in_unit_cell_coords_ortho});
 
         my( $min_i, $max_i, $min_j, $max_j, $min_k, $max_k ) =
-                get_search_span( $bricks, $i, $j, $k );
+                get_search_span( $bricks, $i_init, $j_init, $k_init );
 
         my $name1 = $current_atom->{name};
         my $index1 = $current_atom->{index};
 
-        for $i ($min_i .. $max_i) {
-        for $j ($min_j .. $max_j) {
-        for $k ($min_k .. $max_k) {
+        for my $i ($min_i .. $max_i) {
+        for my $j ($min_j .. $max_j) {
+        for my $k ($min_k .. $max_k) {
             for my $atom ( @{$bricks->{atoms}[$i][$j][$k]} ) {
                 my $atom_coords_ortho = $atom->{coordinates_ortho};
                 my $name2 = $atom->{name};
