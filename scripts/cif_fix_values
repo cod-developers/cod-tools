@@ -389,9 +389,9 @@ sub make_count($$$) {
 
 my %value_spelling = ();
 if( defined $replacement_file ) {
-    open( LIST, $replacement_file ) or
+    open( my $list, '<', $replacement_file ) or
         die "$0: $replacement_file: cannot open file for input - $!";
-    foreach( <LIST> ) {
+    foreach( <$list> ) {
         chomp;
         if( /^#/ or /^\s*$/ ) {
             next;
@@ -403,7 +403,7 @@ if( defined $replacement_file ) {
                    . "replacement value file '$replacement_file'", undef );
         }
     }
-    close( LIST ) or
+    close( $list ) or
         die "$0: $replacement_file: error closing file - $!";
 }
 

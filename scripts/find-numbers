@@ -67,13 +67,13 @@ do {
 for my $file (@COD_cif_files) {
 
     chomp $file;
-    open( CODCIF, "<$file" ) or
+    open( my $COD_CIF, '<', "$file" ) or
         die( "$0: could not open file '$file' for reading: $!" );
 
     my %structures = ();
     my $id;
 
-    while( <CODCIF> ) {
+    while( <$COD_CIF> ) {
         if( /^\s*data_(.*)/ ) {
             $id = $1;
             $structures{$id}{id} = $id;
@@ -116,7 +116,7 @@ for my $file (@COD_cif_files) {
         }
     }
 
-    close( CODCIF );
+    close( $COD_CIF );
 
     my $basename = basename( $file );
     for my $id (keys %structures) {
@@ -139,13 +139,13 @@ my @cif_files = `find @ARGV -name "*.cif" -o -name "*.CIF"`;
 
 for my $file (@cif_files) {
     chomp $file;
-    open( CIF, "<$file" ) or
+    open( my $CIF, '<', "$file" ) or
         die( "$0: could not open file '$file' for reading: $!" );
 
     my %structures = ();
     my $id;
 
-    while( <CIF> ) {
+    while( <$CIF> ) {
         if( /^\s*data_(.*)/ ) {
             $id = $1;
             $structures{$id}{id} = $id;
@@ -217,7 +217,7 @@ for my $file (@cif_files) {
         }
     }
 
-    close( CIF );
+    close( $CIF );
 }
 
 #------------------------------------------------------------------------------

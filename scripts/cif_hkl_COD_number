@@ -25,7 +25,7 @@ use COD::CIF::Tags::Print qw( print_cif fold );
 use COD::CIF::Tags::CanonicalNames qw( canonicalize_names );
 use COD::SOptions qw( getOptions );
 use COD::SUsage qw( usage options );
-use COD::UserMessage qw( warning error prefix_dataname );
+use COD::UserMessage qw( warning sprint_message prefix_dataname );
 
 my $use_parser = 'c';
 my $exclude_empty_tags = 0;
@@ -169,17 +169,13 @@ my $data_block_nr; # If defined, specifies that data blocks should be
 my @extra_tags = ();
 
 if( $extra_tag_file ) {
-    unless( open( EXTRA, "$extra_tag_file" ) ) {
-        error( $0, $extra_tag_file, undef, "could not open tag list "
-             . "'$extra_tag_file' for reading",  lcfirst($!) );
-        exit 1;
-    }
-    @extra_tags = map {s/\s//g;$_} map {split} grep /^\s*_/, <EXTRA>;
-    unless( close( EXTRA ) ) {
-        error( $0, $extra_tag_file, undef, "error while closing file "
-                           . "'$extra_tag_file' after reading", undef );
-        exit 1;
-    }
+    open( my $extra, '<', "$extra_tag_file" ) or die
+        sprint_message ( $0, $extra_tag_file, undef, 'ERROR',
+            "could not open tag list '$extra_tag_file' for reading",  lcfirst($!) );
+    @extra_tags = map {s/\s//g;$_} map {split} grep /^\s*_/, <$extra>;
+    close( $extra ) or die
+        sprint_message( $0, $extra_tag_file, undef, 'ERROR', 
+            'error while closing tag file after reading', undef );
 
     ## local $, = "\n"; local $\ = "\n";
     ## print @extra_tags;
@@ -195,20 +191,15 @@ my %dictionary_tags = map { $_, $_ } @dictionary_tags;
 
 my %cif_tags_lc = map {(lc($_),$_)} @dictionary_tags;
 
-
 if( defined $cif_header_file ) {
-    unless( open( HEADER, "$cif_header_file" ) ) {
-        error( $0, $cif_header_file, undef, "could not open CIF header file "
-                       . "'$cif_header_file' for reading" , lcfirst($!) );
-        exit 1;
-    }
+    open( my $header, '<', "$cif_header_file" ) or die
+        sprint_message( $0, $cif_header_file, undef, 'ERROR',
+           'could not open CIF header file for reading' , lcfirst($!) );
     local $/; # enable "slurp" mode: read the whole header file.
-    $cif_comment_header = <HEADER>;
-    unless( close( HEADER ) ) {
-        error( $0, $cif_header_file, undef, 'error while closing file '
-                           . "'$cif_header_file' after reading", undef );
-        exit 1;
-    }
+    $cif_comment_header = <$header>;
+    close( $header ) or die
+        sprint_message( $0, $cif_header_file, undef, 'ERROR',
+           'error while closing file CIF header file after reading', undef );
 }
 
 my $filename = shift(@ARGV);
