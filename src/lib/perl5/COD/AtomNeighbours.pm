@@ -106,18 +106,18 @@ sub make_neighbour_list($$$$@)
     for my $i (0..$#{$atom_list}) {
         my @coordinates = @{$atom_list->[$i]{coordinates_ortho}};
 
-        my ($ai, $aj, $ak) =
+        my ($ai_init, $aj_init, $ak_init) =
             get_atom_index( $bricks, @coordinates );
 
         my ( $min_i, $max_i, $min_j, $max_j, $min_k, $max_k );
         ( $min_i, $max_i, $min_j, $max_j, $min_k, $max_k ) =
-            get_search_span( $bricks, $ai, $aj, $ak );
+            get_search_span( $bricks, $ai_init, $aj_init, $ak_init );
 
         my $atom1 = $atom_list->[$i];
 
-        for $ai ($min_i .. $max_i) {
-        for $aj ($min_j .. $max_j) {
-        for $ak ($min_k .. $max_k) {
+        for my $ai ($min_i .. $max_i) {
+        for my $aj ($min_j .. $max_j) {
+        for my $ak ($min_k .. $max_k) {
             ## for my $j (0..$#{$atom_list}) {
             for my $atom2 ( @{$bricks->{atoms}[$ai][$aj][$ak]} ) {
 

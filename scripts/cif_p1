@@ -1243,55 +1243,54 @@ sub find_molecule($$$$$$$$$$$)
     }; # end no warnings
 
     print STDERR
-	">>> considering atom $current_atom->{name} " .
+        ">>> considering atom $current_atom->{name} " .
         "(@{$atom_in_unit_cell_coords_ortho}) " .
-	"($current_atom->{cell_label}/" .
-	"$current_atom->{symop_id}/$current_atom->{translation_id})\n"
-	if $debug;
+        "($current_atom->{cell_label}/" .
+        "$current_atom->{symop_id}/$current_atom->{translation_id})\n"
+        if $debug;
 
     push( @neighbors, $current_atom );
 
-    my ($i, $j, $k) =
-        get_atom_index( $bricks,
-                                    @{$atom_in_unit_cell_coords_ortho});
+    my ($i_init, $j_init, $k_init) =
+        get_atom_index( $bricks, @{$atom_in_unit_cell_coords_ortho});
 
     my ( $min_i, $max_i, $min_j, $max_j, $min_k, $max_k );
 
     eval {
         ( $min_i, $max_i, $min_j, $max_j, $min_k, $max_k ) =
-            get_search_span( $bricks, $i, $j, $k );
+            get_search_span( $bricks, $i_init, $j_init, $k_init );
     };
     if( $@ ) {
         use COD::Serialise qw( serialiseRef );
         serialiseRef( $atom_in_unit_cell_coords_ortho );
-        serialiseRef( [ $i, $j, $k ] );
+        serialiseRef( [ $i_init, $j_init, $k_init ] );
         serialiseRef( $bricks );
         die( $@ );
     }
 
     if( $debug ) {
-	local $" = ", ";
-	print STDERR
-	    ">>> now scanning its distinct neighbours " .
-	    "around @{$atom_in_unit_cell_coords_ortho}:\n";
+        local $" = ", ";
+        print STDERR
+            ">>> now scanning its distinct neighbours " .
+            "around @{$atom_in_unit_cell_coords_ortho}:\n";
     };
 
     my $nbumps = 0;
 
     ## foreach my $sym_atom (@$symmetric_atoms)
-    for $i ($min_i .. $max_i) {
-    for $j ($min_j .. $max_j) {
-    for $k ($min_k .. $max_k) {
+    for my $i ($min_i .. $max_i) {
+    for my $j ($min_j .. $max_j) {
+    for my $k ($min_k .. $max_k) {
         for my $sym_atom ( @{$bricks->{atoms}[$i][$j][$k]} ) {
             my $sym_atom_coords_ortho = $sym_atom->{coordinates_ortho};
-	    my $new_label = $current_atom->{name};
-	    my $sym_label = $sym_atom->{name};
+            my $new_label = $current_atom->{name};
+            my $sym_label = $sym_atom->{name};
 
-	    if( $current_atom->{name} eq $sym_atom->{name} ) {
-		# We have found the same atom, no need to add bond or
-		# neighbour
-		next;
-	    }
+            if( $current_atom->{name} eq $sym_atom->{name} ) {
+                # We have found the same atom, no need to add bond or
+                # neighbour
+                next;
+            }
 
             my $dist = distance( $atom_in_unit_cell_coords_ortho,
                                  $sym_atom_coords_ortho );
