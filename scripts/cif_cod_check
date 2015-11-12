@@ -112,9 +112,9 @@ my $limits_table = \%limits_table;
 sub get_limits_table($) {
     my( $flimits ) = @_;
     my %ltable;
-    open( LIST, $flimits ) or
+    open( my $list, '<', $flimits ) or
         die "$0: $flimits: can not open file for input - $!";
-    foreach( <LIST> ) {
+    foreach( <$list> ) {
         if( /^#/ ) { next; }
         my @constraints;
         my @data = split( /\s+/, $_, 4 );
@@ -129,7 +129,7 @@ sub get_limits_table($) {
         }
         $ltable{$tag} = \@constraints;
     }
-    close( LIST ) or
+    close( $list ) or
         die "$0: $flimits: error closing file - $!";
     return \%ltable;
 }

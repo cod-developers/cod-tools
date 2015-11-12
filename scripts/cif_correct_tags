@@ -91,16 +91,16 @@ sub insert_report_to_comments
 my %tag_spelling = ();
 
 if( $replacement_list ) {
-    open( LIST, $replacement_list ) or
+    open( my $list, '<', $replacement_list ) or
         die "$0: $replacement_list: can not open file for input - $!";
 
     %tag_spelling =
         map { split }
         grep !/^\#/,
         grep '\.',
-    <LIST>;
+    <$list>;
 
-    close( LIST ) or
+    close( $list ) or
         die "$0: $replacement_list: error closing file - $!";
 }
 

@@ -88,13 +88,13 @@ my $use_parser = 'c';
     "-c,--clear-tags" => sub { @selected_tags = () },
     "-f,--file-with-tags" => sub {
         my $filename = get_value();
-        open( TAGS, $filename ) or
+        open( my $tags, '<', $filename ) or
             die( "$0: $filename: ERROR, could not open file '$filename' " .
                  "for reading - $!" );
         @selected_tags = ( @selected_tags,
                           map { s/^\s*|\s*$//g; $_ }
-                          grep !/^\#/, <TAGS> );
-        close( TAGS ) or
+                          grep !/^\#/, <$tags> );
+        close( $tags ) or
             die( "$0: $filename: ERROR, could not close file '$filename' " .
                  "after reading - $!" );
     },

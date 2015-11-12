@@ -515,17 +515,17 @@ sub gcd
 my $cif_header;
 
 if( $cif_header_file ) {
-    open( HDR, "$cif_header_file" ) or
+    open( my $header, '<',"$cif_header_file" ) or
         die( "$0: could not open header file '$cif_header_file' " .
              "for input - $!" );
 
     $cif_header = "";
-    while( <HDR> ) {
+    while( <$header> ) {
         last unless /^#/;
         $cif_header .= $_;
     }
 
-    close( HDR ) or
+    close( $header ) or
         die( "$0: error reading header file '$cif_header_file' - $!" );
 }
 

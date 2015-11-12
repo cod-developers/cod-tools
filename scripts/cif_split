@@ -85,17 +85,17 @@ my $use_parser = "c";
 my $cif_header;
 
 if( $cif_header_file ) {
-    open( HDR, "$cif_header_file" ) or
+    open( my $header, '<', "$cif_header_file" ) or
         die( "$0: could not open header file '$cif_header_file' " .
              "for input - $!" );
 
     $cif_header = "";
-    while( <HDR> ) {
+    while( <$header> ) {
         last unless /^#/;
         $cif_header .= $_;
     }
 
-    close( HDR ) or
+    close( $header ) or
         die( "$0: error reading header file '$cif_header_file' - $!" );
 }
 
@@ -187,11 +187,11 @@ for my $filename (@ARGV) {
                     $files{$output_file} = $output_file;
 
                     print STDERR "$output_file\n" if $verbose;
-                    open( STDOUT, ">$output_file" ) or
+                    open( STDOUT, '>', "$output_file" ) or
                         die( "Could not open file '${output_file}' for writing: $!" );
                     print $cif_contents;
                 } else {
-                    open( STDOUT, ">>$output_file" ) or
+                    open( STDOUT, '>>', "$output_file" ) or
                         die( "Could not open file '${output_file}' for appending: $!" );
                     
                     print STDERR "$output_file (appending)\n" if $verbose;
