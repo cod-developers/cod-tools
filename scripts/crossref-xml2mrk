@@ -31,7 +31,8 @@ use COD::SUsage qw( usage );
 @ARGV = ("-") unless @ARGV;
 
 for my $file (@ARGV) {
-    open( my $F, '<' . $file ) or die "$0: could not open file '$file' for reading";
+    open( my $F, '<' . $file ) or die
+        "$0: $file: could not open file for reading\n";
 
     local $/; #  enable "slurp" mode: read the whole header file.
 
@@ -142,5 +143,5 @@ for my $file (@ARGV) {
         print STDERR "$0: <query_result> is not found in file '$file'\n";
     }
 
-    close $F;
+    close $F or die "$0: $file: could not close file after reading\n";
 }
