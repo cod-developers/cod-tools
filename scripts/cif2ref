@@ -20,6 +20,13 @@ use STAR::Parser;
 use COD::CIF::Unicode2CIF qw( cif2unicode );
 use COD::SOptions qw( getOptions );
 use COD::SUsage qw( usage );
+use COD::ErrorHandler qw( process_errors );
+
+my $die_on_error_level = {
+    ERROR   => 1,
+    WARNING => 0,
+    NOTE    => 0
+};
 
 #* USAGE:
 #*     $0 input1.cif optional-bibliography-file.txt
@@ -40,7 +47,7 @@ my @data;
 
 my $n = 0;
 
-binmode( STDOUT, ":encoding(UTF-8)" );
+binmode( STDOUT, ':encoding(UTF-8)' );
 
 for my $dataset (@data) {
 
@@ -77,7 +84,7 @@ for my $dataset (@data) {
     if( defined $formula ) {
         $formula =~ s/^\s*|\s*$//g;
     } else {
-        $formula = "?";
+        $formula = '?';
     }
     $formula =~ s/\n/ /g;
     $formula =~ s/\s+/ /g;
@@ -91,7 +98,7 @@ for my $dataset (@data) {
     my $gamma = $datablok->{_cell_angle_gamma}[0];
 
     # Spacegroup:
-    my $spacegroup = $datablok->{"_symmetry_space_group_name_h-m"}[0];
+    my $spacegroup = $datablok->{'_symmetry_space_group_name_h-m'}[0];
 
     # Atom records:
 
@@ -103,7 +110,7 @@ for my $dataset (@data) {
 
     my $q = $datablok->{_atom_site_occupancy};
     my $U = $datablok->{_atom_site_u_iso_or_equiv};
-    
+
     if( !defined $U ) {
         $U = $datablok->{_atom_site_uiso_or_biso};
     }
@@ -130,19 +137,33 @@ for my $dataset (@data) {
     # Print it out:
 
     if( defined $bib_file ) {
-        open( my $biblio, '<', $bib_file ) or
-            die( "Could not open file '$bib_file' for reading: $!" );
         my $reference;
-        if( $bib_file =~ /\.ref/ ) {
-            $reference = <$biblio>; # read the first line
-        } elsif( $bib_file =~ /\.xrf/ ) {
-            my @reference = grep !/^\#/, <$biblio>;
-            $reference = $reference[0]; # read the first non-comment line
-        } else {
-            local $/ = undef; # read the whole file
-            $reference = <$biblio>;
-        }
-        close $biblio;
+        eval {
+            open my $biblio, '<', $bib_file or  die 'ERROR, '
+              . 'could not open bibliography file for reading -- '
+              . lcfirst($!) . "\n";
+
+            if( $bib_file =~ /\.ref/ ) {
+                $reference = <$biblio>; # read the first line
+            } elsif( $bib_file =~ /\.xrf/ ) {
+                my @reference = grep !/^\#/, <$biblio>;
+                $reference = $reference[0]; # read the first non-comment line
+            } else {
+                local $/ = undef; # read the whole file
+                $reference = <$biblio>;
+            }
+
+            close $biblio or die 'ERROR, '
+              . 'error while closing bibliography file after reading -- '
+              . lcfirst($!) . "\n";
+        };
+        if ($@) {
+            process_errors( {
+              'message'  => $@,
+              'program'  => $0,
+              'filename' => $bib_file
+            }, $die_on_error_level->{'ERROR'} );
+        };
         chomp $reference;
         $reference =~ s/\n/ /g;
         print $reference, "\n";
@@ -156,7 +177,7 @@ for my $dataset (@data) {
     }
 
     do {
-        local $, = " ";
+        local $, = ' ';
         local $\ = "\n";
 
         print $formula;
@@ -181,7 +202,7 @@ for my $dataset (@data) {
 
         print $a, $b, $c, $alpha, $beta, $gamma;
 
-        $spacegroup = "?" unless defined $spacegroup;
+        $spacegroup = '?' unless defined $spacegroup;
         $spacegroup =~ s/[\s()~_]//g;
         print $spacegroup;
 
@@ -189,11 +210,11 @@ for my $dataset (@data) {
             $atom->[$i] =~ s/\s//g;
             print
                 $atom->[$i],
-                defined $multiplicity ? $multiplicity->[$i] : "?",
-                defined $Wyckoff_sym ? $Wyckoff_sym->[$i] : "?",
+                defined $multiplicity ? $multiplicity->[$i] : '?',
+                defined $Wyckoff_sym ? $Wyckoff_sym->[$i] : '?',
                 $x->[$i], $y->[$i], $z->[$i],
-                defined $q ? $q->[$i] : "?",
-                defined $U ? $U->[$i] : "?";
+                defined $q ? $q->[$i] : '?',
+                defined $U ? $U->[$i] : '?';
         }
     };
 
@@ -206,7 +227,7 @@ sub get_cif_description
 
     my $text;
 
-    my $separator = " ";
+    my $separator = ' ';
 
     for my $tag (qw(
                     _chemical_name_mineral
@@ -221,25 +242,25 @@ sub get_cif_description
                     _journal_page_first
                     _journal_page_last
                 )) {
-        my $val = "";
+        my $val = '';
         if( exists $datablok->{$tag} ) {
-            $val = join( "; ", @{$datablok->{$tag}} );
+            $val = join( '; ', @{$datablok->{$tag}} );
             $val =~ s/^\s*|\s*$//g;
         }
-        if( $tag eq "_journal_issue" && $val ne "" ) {
-            $val = "(" . $val . ")";
+        if( $tag eq '_journal_issue' && $val ne '' ) {
+            $val = '(' . $val . ')';
         }
         if( defined $text ) {
             $text .= $separator . $val;
         } else {
             $text = $val;
         }
-        if( $tag eq "_journal_year" || $tag eq "_journal_issue" ) {
-            $separator = " ";
-        } elsif( $tag eq "_journal_volume" ) {
-            $separator = "";
-        } elsif( $tag eq "_chemical_name_common" ) {
-            $separator = "|";
+        if( $tag eq '_journal_year' || $tag eq '_journal_issue' ) {
+            $separator = ' ';
+        } elsif( $tag eq '_journal_volume' ) {
+            $separator = '';
+        } elsif( $tag eq '_chemical_name_common' ) {
+            $separator = '|';
         }
     }
     if( defined $text ) {
