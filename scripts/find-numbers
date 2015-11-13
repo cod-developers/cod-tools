@@ -20,7 +20,14 @@ use warnings;
 use File::Basename qw( basename );
 use COD::SOptions qw( getOptions );
 use COD::SUsage qw( usage );
-use COD::ErrorHandler qw( report_message );
+use COD::ErrorHandler qw( process_errors
+                          report_message );
+
+my $die_on_error_level = {
+    ERROR   => 1,
+    WARNING => 0,
+    NOTE    => 0
+};
 
 #* USAGE:
 #*     $0 input1.cif input1_alt.cif
@@ -39,13 +46,13 @@ my $max_cell_length_diff = 0.5; # Angstroems
 my $max_cell_angle_diff  = 1.2; # degrees
 
 my %has_numeric_value = (
-    "_journal_year"   => 1,
-    "_journal_volume" => 1,
-    "_journal_issue"  => 1,
+    '_journal_year'   => 1,
+    '_journal_volume' => 1,
+    '_journal_issue'  => 1,
 );
 
 my %skip_tag = (
-    "_journal_name_full" => 0,
+    '_journal_name_full' => 0,
 );
 
 my %COD = ();
@@ -70,12 +77,14 @@ do {
 } if 0;
 
 for my $file (@COD_cif_files) {
+    my %structures = ();
+
+    eval {
 
     chomp $file;
-    open( my $COD_CIF, '<', "$file" ) or
-        die( "$0: could not open file '$file' for reading: $!" );
+    open( my $COD_CIF, '<', "$file" ) or die 'ERROR, '
+        . 'could not open the CIF file for reading -- ' . lcfirst($!) . "\n";
 
-    my %structures = ();
     my $id;
 
     while( <$COD_CIF> ) {
@@ -108,7 +117,7 @@ for my $file (@COD_cif_files) {
             $structures{$id}{pressure}{$1} = $2;
             $structures{$id}{pressure}{$1} =~ s/^\s*'\s*|\s*'\s*$//g;
         }
-        if( /^\s*(_journal_[^\s]*)\s+(.*)\s*$/ && 
+        if( /^\s*(_journal_[^\s]*)\s+(.*)\s*$/ &&
             ! /^\s*_journal_name/ ) {
             my $key = $1;
             my $value = $2;
@@ -121,7 +130,17 @@ for my $file (@COD_cif_files) {
         }
     }
 
-    close( $COD_CIF );
+    close( $COD_CIF ) or die 'ERROR, '
+        . 'could not close the CIF file after reading -- ' . lcfirst($!) . "\n";
+
+    }; # end of eval
+    if ($@) {
+        process_errors( {
+          'program'       => $0,
+          'filename'      => $file,
+          'message'       => $@,
+        }, $die_on_error_level->{'ERROR'} )
+    };
 
     my $basename = basename( $file );
     for my $id (keys %structures) {
@@ -143,11 +162,14 @@ do {
 my @cif_files = `find @ARGV -name "*.cif" -o -name "*.CIF"`;
 
 for my $file (@cif_files) {
-    chomp $file;
-    open( my $CIF, '<', "$file" ) or
-        die( "$0: could not open file '$file' for reading: $!" );
-
     my %structures = ();
+
+    eval {
+
+    chomp $file;
+    open( my $CIF, '<', "$file" )  or die 'ERROR, '
+        . 'could not open the CIF file for reading -- ' . lcfirst($!) . "\n";
+
     my $id;
     while( <$CIF> ) {
         if( /^\s*data_(.*)/ ) {
@@ -191,6 +213,18 @@ for my $file (@cif_files) {
         }
     }
 
+    close( $CIF ) or die 'ERROR, '
+        . 'could not close the CIF file after reading -- ' . lcfirst($!) . "\n";;
+
+    }; # end of eval
+    if ($@) {
+        process_errors( {
+          'program'       => $0,
+          'filename'      => $file,
+          'message'       => $@,
+        }, $die_on_error_level->{'ERROR'} )
+    };
+
     for my $id (keys %structures) {
         my $formula = $structures{$id}{chemical_formula_sum};
 
@@ -212,23 +246,22 @@ for my $file (@cif_files) {
                 if( entries_are_the_same( $structures{$id}, $COD_entry )) {
                     printf
                         "%-35s %15s %3d %s\n",
-                        $final_formula, 
+                        $final_formula,
                         $COD_entry->{filename}, $n, $file;
                 }
             }
         } else {
-            printf "%-35s %15s %3d %s\n", $final_formula, "?", 0, $file;
+            printf "%-35s %15s %3d %s\n", $final_formula, '?', 0, $file;
         }
     }
 
-    close( $CIF );
 }
 
 #------------------------------------------------------------------------------
 
 sub get_cell($)
 {
-    my $datablok = $_[0];
+    my ( $datablok ) = @_;
 
     return (
         $datablok->{_cell_length_a},
@@ -264,7 +297,7 @@ sub cells_are_the_same($$)
         my $angle1 = $cell1[$i];
         my $angle2 = $cell2[$i];
         if( defined $angle1 and defined $angle2 ) {
-            my $diff = abs( $angle1 - $angle2 );
+            my $diff = abs ( $angle1 - $angle2 );
             if( $max_angle_diff < $diff ) {
                 $max_angle_diff = $diff;
             }
@@ -280,7 +313,7 @@ sub conditions_are_the_same
 {
     my ($entry1, $entry2) = @_;
 
-    for my $parameter ("temperature", "pressure" ) {
+    for my $parameter ('temperature', 'pressure' ) {
 
         my %tags = map {($_,$_)} ( keys %{$entry1->{$parameter}},
                                    keys %{$entry2->{$parameter}} );
@@ -330,7 +363,7 @@ sub data_sections_are_the_same($$)
 sub entries_are_the_same
 {
     my ($entry1, $entry2) = @_;
-    
+
     ## print ">>> $entry1->{id}, $entry2->{id}, ",
     ## defined $entry1->{suboptimal} ? $entry1->{suboptimal} : "" , " ", 
     ## defined $entry2->{suboptimal} ? $entry2->{suboptimal} : "", "\n";
@@ -340,16 +373,16 @@ sub entries_are_the_same
             ! data_sections_are_the_same( $entry1, $entry2 ) &&
             cells_are_the_same( $entry1->{cell}, $entry2->{cell} ) &&
             conditions_are_the_same( $entry1, $entry2 ) &&
-            (!defined $entry1->{suboptimal} || $entry1->{suboptimal} ne "yes") &&
-            (!defined $entry2->{suboptimal} || $entry2->{suboptimal} ne "yes") &&
+            (!defined $entry1->{suboptimal} || $entry1->{suboptimal} ne 'yes') &&
+            (!defined $entry2->{suboptimal} || $entry2->{suboptimal} ne 'yes') &&
             bibliographies_are_the_same( $entry1->{bibliography},
                                          $entry2->{bibliography} );
     } else {
         return
             ! data_sections_are_the_same( $entry1, $entry2 ) &&
             conditions_are_the_same( $entry1, $entry2 ) &&
-            (!defined $entry1->{suboptimal} || $entry1->{suboptimal} ne "yes") &&
-            (!defined $entry2->{suboptimal} || $entry2->{suboptimal} ne "yes") &&
+            (!defined $entry1->{suboptimal} || $entry1->{suboptimal} ne 'yes') &&
+            (!defined $entry2->{suboptimal} || $entry2->{suboptimal} ne 'yes') &&
             cells_are_the_same( $entry1->{cell}, $entry2->{cell} );
     }
 }
