@@ -94,17 +94,17 @@ my $cif_header_file;
 my $cif_header;
 eval {
     if( defined $cif_header_file ) {
-        open( HEADER, "$cif_header_file" ) or die 'ERROR, '
+        open( my $header, '<', "$cif_header_file" ) or die 'ERROR, '
           . 'could not open CIF header file for reading -- '
           . lcfirst($!) . "\n";
 
         $cif_header = "";
-        while( <HEADER> ) {
+        while( <$header> ) {
             last unless /^#/;
             $cif_header .= $_;
         }
 
-        close( HEADER ) or die 'ERROR, '
+        close( $header ) or die 'ERROR, '
          . 'error while closing CIF header file after reading -- '
          . lcfirst($!) . "\n";
     }
@@ -206,12 +206,12 @@ for my $filename (@ARGV) {
                         $files{$output_file} = $output_file;
 
                         print STDERR "$output_file\n" if $verbose;
-                        open( STDOUT, ">$output_file" ) or
+                        open( STDOUT, '>', "$output_file" ) or
                             die "ERROR, could not open file for writing -- "
                                . lcfirst($!) . "\n";
                         print $cif_contents;
                     } else {
-                        open( STDOUT, ">>$output_file" ) or
+                        open( STDOUT, '>>', "$output_file" ) or
                             die "ERROR, could not open file for appending -- "
                               . lcfirst($!) . "\n";
 

@@ -72,13 +72,13 @@ do {
 for my $file (@COD_cif_files) {
 
     chomp $file;
-    open( CODCIF, "<$file" ) or
+    open( my $COD_CIF, '<', "$file" ) or
         die( "$0: could not open file '$file' for reading: $!" );
 
     my %structures = ();
     my $id;
 
-    while( <CODCIF> ) {
+    while( <$COD_CIF> ) {
         if( /^\s*data_(.*)/ ) {
             $id = $1;
             $structures{$id}{id} = $id;
@@ -121,7 +121,7 @@ for my $file (@COD_cif_files) {
         }
     }
 
-    close( CODCIF );
+    close( $COD_CIF );
 
     my $basename = basename( $file );
     for my $id (keys %structures) {
@@ -144,13 +144,12 @@ my @cif_files = `find @ARGV -name "*.cif" -o -name "*.CIF"`;
 
 for my $file (@cif_files) {
     chomp $file;
-    open( CIF, "<$file" ) or
+    open( my $CIF, '<', "$file" ) or
         die( "$0: could not open file '$file' for reading: $!" );
 
     my %structures = ();
     my $id;
-
-    while( <CIF> ) {
+    while( <$CIF> ) {
         if( /^\s*data_(.*)/ ) {
             $id = $1;
             $structures{$id}{id} = $id;
@@ -179,7 +178,7 @@ for my $file (@cif_files) {
             $structures{$id}{pressure}{$1} = $2;
             $structures{$id}{pressure}{$1} =~ s/^\s*'\s*|\s*'\s*$//g;
         }
-        if( /^\s*(_journal_[^\s]*)\s+(.*)\s*$/ && 
+        if( /^\s*(_journal_[^\s]*)\s+(.*)\s*$/ &&
             ! /^\s*_journal_name/ ) {
             my $key = $1;
             my $value = $2;
@@ -192,7 +191,7 @@ for my $file (@cif_files) {
         }
     }
 
-    for $id (keys %structures) {
+    for my $id (keys %structures) {
         my $formula = $structures{$id}{chemical_formula_sum};
 
         $formula = '?' unless defined $formula;
@@ -222,7 +221,7 @@ for my $file (@cif_files) {
         }
     }
 
-    close( CIF );
+    close( $CIF );
 }
 
 #------------------------------------------------------------------------------

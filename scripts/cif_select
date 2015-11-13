@@ -96,13 +96,13 @@ my $invert = 0;
     "-f,--file-with-tags" => sub {
         my $filename = get_value();
         eval {
-            open( TAGS, $filename ) or die 'ERROR, '
+            open( my $tags, '<', $filename ) or die 'ERROR, '
                   . 'could not open file for reading -- '
                   . lcfirst($!) . "\n";
             @selected_tags = ( @selected_tags,
                               map { s/^\s*|\s*$//g; $_ }
-                              grep !/^\#/, <TAGS> );
-            close( TAGS ) or die 'ERROR, '
+                              grep !/^\#/, <$tags> );
+            close( $tags ) or die 'ERROR, '
                   .'could not close file after reading -- '
                   . lcfirst($!) . "\n";
         };

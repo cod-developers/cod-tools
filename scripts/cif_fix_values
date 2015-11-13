@@ -404,11 +404,11 @@ eval {
                                  }, $die_on_error_level ) };
 
     if( defined $replacement_file ) {
-        open( LIST, $replacement_file ) or die "ERROR, "
+        open( my $list, '<', $replacement_file ) or die "ERROR, "
           . "could not open replacement list file for input -- "
           . lcfirst($!) . "\n";
 
-        foreach( <LIST> ) {
+        foreach( <$list> ) {
             chomp;
             if( /^#/ or /^\s*$/ ) {
                 next;
@@ -421,7 +421,7 @@ eval {
             }
         }
 
-        close( LIST ) or die "ERROR, "
+        close( $list ) or die "ERROR, "
            . "error while closing replacement value file after reading -- "
            . lcfirst($!) . "\n";
     }

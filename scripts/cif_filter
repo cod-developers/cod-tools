@@ -105,7 +105,7 @@ my $end_page;
 my $year;
 my $title;
 my @authors;
-my $biblio; # A bibliography file name, possibly marked up by XML-like
+my $bib_file; # A bibliography file name, possibly marked up by XML-like
             # or LaTeX-like tags.
 
 my $cif_comment_header; # A header with comments to printed at the
@@ -367,7 +367,7 @@ my %spacegroups = map {
     "-e,--end-page"     => sub{ $user_biblio = 1; $end_page = get_value() },
     "-y,--year"         => sub{ $user_biblio = 1; $year = get_value() },
     "-D,--doi"          => sub{ $user_biblio = 1; $doi = get_value() },
-    "-B,--bibliography" => \$biblio,
+    "-B,--bibliography" => \$bib_file,
 
     "-d,--datablock-format" => \$datablock_format,
 
@@ -505,12 +505,12 @@ my $die_on_error_level = {
 my @extra_tags = ();
 eval {
     if( defined $extra_tag_file ) {
-        open( EXTRA, "$extra_tag_file" ) or die 'ERROR, '
+        open( my $extra, '<', "$extra_tag_file" ) or die 'ERROR, '
           . 'could not open tag list for reading -- ' . lcfirst($!) . "\n";
 
-        @extra_tags = map {s,\s,,g;lc($_)} map {split} grep /^\s*_/, <EXTRA>;
+        @extra_tags = map {s,\s,,g;lc($_)} map {split} grep /^\s*_/, <$extra>;
 
-        close( EXTRA ) or die 'ERROR, '
+        close( $extra ) or die 'ERROR, '
           . 'error while closing tag list file after reading -- '
           . lcfirst($!) . "\n";
     }
@@ -537,16 +537,16 @@ my %dictionary_tags = map { $_, $_ } @dictionary_tags;
 # Reading the header file
 eval {
     if( defined $cif_header_file ) {
-        open( HEADER, "$cif_header_file" ) or die 'ERROR, '
+        open(  my $header, '<', "$cif_header_file" ) or die 'ERROR, '
           . 'could not open CIF header file for reading -- ' . lcfirst($!) . "\n";
 
         $cif_comment_header = "";
-        while( <HEADER> ) {
+        while( <$header> ) {
             last unless /^\#|^\s*$/;
             $cif_comment_header .= $_;
         }
 
-        close( HEADER ) or die 'ERROR, '
+        close( $header ) or die 'ERROR, '
          . 'error while closing CIF header file after reading -- '
          . lcfirst($!) . "\n";
     }
@@ -563,34 +563,34 @@ if ($@) {
 my $reference;
 my $bib_blocks;
 
-if( defined $biblio ) {
-    if( $biblio =~ /\.cif/i ) {
+if( defined $bib_file ) {
+    if( $bib_file =~ /\.cif/i ) {
         my ($err_count, $messages);
         # For now, always use Perl parser for bibliographies, since C
         # parser is not (yet) reenterable :(: (still applicable?)
         my $bib_options = { parser     => 'perl',
                             no_print   => 1,
                             fix_errors => 1 };
-        ($bib_blocks, $err_count, $messages) = parse_cif($biblio, $bib_options);
+        ($bib_blocks, $err_count, $messages) = parse_cif($bib_file, $bib_options);
         process_parser_messages( $messages, $die_on_error_level );
     } else {
         eval {
-            open( BIBLIO, "<:utf8", $biblio ) or die 'ERROR, '
+            open( my $biblio, "<:encoding(UTF-8)", $bib_file ) or die 'ERROR, '
               . 'could not open bibliography file for reading -- '
               . lcfirst($!) . "\n";
 
-            if( $biblio =~ /\.ref/ ) {
-                $reference = <BIBLIO>; # read the first line
+            if( $bib_file =~ /\.ref/ ) {
+                $reference = <$biblio>; # read the first line
             } elsif( $biblio =~ /\.xrf/ ) {
-                my @reference = grep !/^\#/, <BIBLIO>;
+                my @reference = grep !/^\#/, <$biblio>;
                 $reference = $reference[0]; # read the first non-comment line
             } else {
                 local $/ = undef; # read the whole file
-                $reference = <BIBLIO>;
+                $reference = <$biblio>;
             }
             chomp $reference;
 
-            close BIBLIO or die 'ERROR, '
+            close $biblio or die 'ERROR, '
               . 'error while closing bibliography file after reading -- '
               . lcfirst($!) . "\n";
         };
@@ -598,7 +598,7 @@ if( defined $biblio ) {
             process_errors( {
               'message'  => $@,
               'program'  => $0,
-              'filename' => $biblio
+              'filename' => $bib_file
             }, $die_on_errors );
         };
     }
@@ -763,7 +763,7 @@ for my $filename (@ARGV) {
 
     my $no_coordinates = 1;
 
-    binmode( STDOUT, ":utf8" );
+    binmode( STDOUT, ":encoding(UTF-8)" );
 
     for my $dataset (@$data) {
 
@@ -836,7 +836,7 @@ for my $filename (@ARGV) {
                 my $bibdata;
 
                 if( @{$bib_blocks} > 1 ) {
-                    warn "WARNING, the supplied bibliography file '${biblio}' "
+                    warn "WARNING, the supplied bibliography file '${bib_file}' "
                        . "has " . @{$bib_blocks} . " bibliography entries -- "
                        . 'bibliography from a datablock that has the same name '
                        . "as the coordinate datablock will be used\n";
@@ -850,7 +850,7 @@ for my $filename (@ARGV) {
                     $bibdata = $bib_blocks->[0]{values};
                 }
                 if( !defined $bibdata ) {
-                    warn "WARNING, the supplied bibliography file '${biblio}' "
+                    warn "WARNING, the supplied bibliography file '${bib_file}' "
                        . 'does not have a matching bibliography datablock -- '
                        . "no bibliography will be taken for this datablock\n";
                 } else {

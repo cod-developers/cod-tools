@@ -134,8 +134,7 @@ my %escaped_symbols = ("\"" => '"', "\'" => "'");
     "-M,--distance-matrix"       => sub { $output_format = "matrix" },
     "-P,--pairwise-distance"     => sub { $output_format = "pairwise"; },
     "-l,--matrix-line-length"    => \$line_length,
-    "--format"                   =>
-        sub { $format = $pairwise_format = &get_value },
+    "--format"         => sub { $format = $pairwise_format = get_value() },
 
     "-F,--add-filename"      => sub { $add_filename = 1 },
     "--no-add-filename"      => sub { $add_filename = 0 },
@@ -242,7 +241,7 @@ foreach my $filename ( @ARGV ) {
       #   Extract atoms and order them alphabetically by type and label.
       my $atoms = get_atoms( $dataset, $ortho_matrix, $uniquify_atoms );
 
-      my $printable_properties = [ "name", "chemical_type", 
+      my $printable_properties = [ "name", "chemical_type",
                                    "coordinates_ortho", "coordinates_fract",
                                    "disorder_group", "disorder_assembly" ];
 
@@ -533,7 +532,7 @@ return ( \@distances, \@headers, \@atoms_used );
 # @param $atom_2
 #       Reference to a hash, containing information of the second atom.
 # @return
-#       undef is atoms belong to different disorder groups but the same 
+#       0 is atoms belong to different disorder groups but the same 
 #       disorder assembly. 1 otherwise. 
 ##
 
@@ -544,7 +543,7 @@ sub check_disorder {
          ( $atom_2 -> {disorder_group} ne "." ) &&
          ( $atom_1 -> {disorder_assembly} eq $atom_2 -> {disorder_assembly} )
        )  {
-        return undef;
+        return 0;
     }
 
     return 1;
@@ -584,7 +583,7 @@ sub shift_atom {
             $new_atom->{ shift_vector } = ( 5 + $x ) . "," .
                                           ( 5 + $y ) . "," .
                                           ( 5 + $z );
-            push( @shifted_atoms, $new_atom );
+            push @shifted_atoms, $new_atom;
           }
         }
       }
@@ -627,6 +626,8 @@ sub print_atoms {
             }
         }
     }
+
+    return;
 }
 
 ##
@@ -651,7 +652,7 @@ sub print_distance_matrix {
         $cell_width = $1;
     }
 
-    use POSIX;
+    use POSIX qw( floor ceil );
     my $cell_count = floor ( $line_length / $cell_width ) - 1;
 
     my $print_iteration = 0;
@@ -662,14 +663,14 @@ sub print_distance_matrix {
             $finish_cell_index = @distances;
         }
 
-        printf( "%-${cell_width}s", "ATOMS" );
+        printf "%-${cell_width}s", "ATOMS";
         for ( my $k = $start_cell_index; $k < $finish_cell_index; $k++ ) {
-            printf( "%-${cell_width}s", @$header_ref[ $k ] );
+            printf "%-${cell_width}s", @$header_ref[ $k ];
         }
         print "\n";
 
         for ( my $i = 0; $i < @distances; $i++ ) {
-            printf( "%-${cell_width}s", @$header_ref[ $i ] );
+            printf "%-${cell_width}s", @$header_ref[$i];
             for ( my $j = $start_cell_index; $j < $finish_cell_index; $j++ ) {
               my $distance;
               if ( $j > $i ) {
@@ -679,15 +680,17 @@ sub print_distance_matrix {
                 }
 
                 if ( $distance eq "-" ) {
-                    printf( "%-${cell_width}s", $distance );
+                    printf "%-${cell_width}s", $distance;
                 } else {
-                    printf( $format, $distance );
+                    printf $format, $distance;
                 }
             };
             print "\n";
         }
         $print_iteration++;
     }
+
+    return;
 }
 
 ##
@@ -719,24 +722,24 @@ sub print_pairwise {
         my $output_string = "";
 
         if ( $distance eq "-" ) {
-            $output_string .= sprintf( 'DIST %-6s', "-" )
-        } else { 
-            $output_string .= sprintf( 'DIST ' . $pairwise_format, $distance )
+            $output_string .= sprintf 'DIST %-6s', "-";
+        } else {
+            $output_string .= sprintf 'DIST ' . $pairwise_format, $distance;
         }
 
-        $output_string .= sprintf( ' %10s %10s %24s %8s ', 
+        $output_string .= sprintf ' %10s %10s %24s %8s ',
                     $atom_1 -> { name }."/".$atom_1 -> { chemical_type },
                     $atom_2 -> { name }."/".$atom_2 -> { chemical_type },
                     $atom_2 -> { sym_operator },
-                    $atom_2 -> { shift_vector },
-                    );
+                    $atom_2 -> { shift_vector };
 
         $output_string .= basename( $filename ) if ( $print_filename );
         print escape("$output_string\n", { sequence => $escape_sequence,
                                            escaped_symbols => \%escaped_symbols });
-        
       }
     }
+
+    return
 }
 
 ##
@@ -752,6 +755,6 @@ sub print_pairwise {
 ##
 sub equals {
     my ($float_1, $float_2, $dp) = @_;
-    return ( sprintf("%.${dp}f", $float_1) eq 
-             sprintf("%.${dp}f", $float_2) ) ? 1 : 0;
+    return ( ( sprintf "%.${dp}f", $float_1 ) eq
+             ( sprintf "%.${dp}f", $float_2 ) ) ? 1 : 0;
 }

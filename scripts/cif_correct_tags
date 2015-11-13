@@ -99,7 +99,7 @@ sub insert_report_to_comments
 my %tag_spelling = ();
 eval {
     if( $replacement_list ) {
-        open( LIST, $replacement_list ) or die 'ERROR, '
+        open( my $list, '<', $replacement_list ) or die 'ERROR, '
             . "cannot open replacement list file for input -- "
             . lcfirst($!) . "\n";
 
@@ -107,9 +107,9 @@ eval {
             map { split }
             grep !/^\#/,
             grep '\.',
-        <LIST>;
+        <$list>;
 
-        close( LIST ) or die 'ERROR, '
+        close( $list ) or die 'ERROR, '
             . "error while closing replacement list file after reading -- "
             . lcfirst($!) . "\n";
     }

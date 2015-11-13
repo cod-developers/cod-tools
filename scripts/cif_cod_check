@@ -120,10 +120,10 @@ sub get_limits_table($) {
     my %ltable;
 
     eval {
-        open( LIST, $flimits ) or die "ERROR, "
+        open( my $list, '<', $flimits ) or die "ERROR, "
            . "could not open limits file for input -- ". lcfirst($!) . "\n";
 
-        foreach( <LIST> ) {
+        foreach( <$list> ) {
             if( /^#/ ) { next; }
             my @constraints;
             my @data = split( /\s+/, $_, 4 );
@@ -138,7 +138,7 @@ sub get_limits_table($) {
             }
             $ltable{$tag} = \@constraints;
         }
-        close( LIST ) or die "ERROR, "
+        close( $list ) or die "ERROR, "
            . "error while closing limits file after reading -- "
            . lcfirst($!) . "\n";
     };
@@ -453,7 +453,7 @@ if( $reportFile =~ m/^\s*-\s*$/ || !-w dirname($reportFile) ) {
 } else {
     open reportFileFH, ">", $reportFile;
 }
-binmode( reportFileFH, 'utf8' );
+binmode( reportFileFH, ':encoding(UTF-8)' );
 
 my %spacegroups = map {
     my $key1 = $_->[1];
@@ -1184,7 +1184,7 @@ sub lookup_spacegroup
             return $hash;
         }
     }
-    return undef;
+    return;
 }
 
 sub get_spacegroup_descriptions
@@ -1215,7 +1215,7 @@ sub get_spacegroup_descriptions
             $warnings++;
         }
     }
-    
+
     if(exists $values->{"_space_group_name_H-M_alt"} &&
        not defined $sym_data) {
         my $h_m = $values->{"_space_group_name_H-M_alt"}[0];
@@ -1239,7 +1239,7 @@ sub get_spacegroup_descriptions
             $warnings++;
         }
     }
-    
+
     if(not defined $sym_data) {
         if( $warnings == 0 ) {
             my @spacegroup_tags = qw (

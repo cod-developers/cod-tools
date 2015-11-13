@@ -124,15 +124,15 @@ my $L_option_param;
         my $filename = get_value();
 
         eval {
-            open( TAGS, "$filename" ) or die 'ERROR, '
+            open( my $tags, '<', $filename ) or die 'ERROR, '
                   . 'could not open file for reading -- '
                   . lcfirst($!) . "\n";
 
             @selected_tags = ( @selected_tags,
                                    map { s/^\s*|\s*$//g; $_ }
-                                   grep !/^\#/, <TAGS> );
+                                   grep !/^\#/, <$tags> );
 
-            close( TAGS ) or die 'ERROR, '
+            close( $tags ) or die 'ERROR, '
                  . 'error while closing file after reading -- '
                  . lcfirst($!) . "\n";
         };

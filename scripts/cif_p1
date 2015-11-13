@@ -1287,20 +1287,19 @@ sub find_molecule($$$$$$$$$)
 
     push( @neighbors, $current_atom );
 
-    my ($i, $j, $k) =
-        get_atom_index( $bricks,
-                                    @{$atom_in_unit_cell_coords_ortho});
+    my ($i_init, $j_init, $k_init) =
+        get_atom_index( $bricks, @{$atom_in_unit_cell_coords_ortho});
 
     my ( $min_i, $max_i, $min_j, $max_j, $min_k, $max_k );
 
     eval {
         ( $min_i, $max_i, $min_j, $max_j, $min_k, $max_k ) =
-            get_search_span( $bricks, $i, $j, $k );
+            get_search_span( $bricks, $i_init, $j_init, $k_init );
     };
     if( $@ ) {
         use COD::Serialise qw( serialiseRef );
         serialiseRef( $atom_in_unit_cell_coords_ortho );
-        serialiseRef( [ $i, $j, $k ] );
+        serialiseRef( [ $i_init, $j_init, $k_init ] );
         serialiseRef( $bricks );
         die( $@ );
     }
@@ -1315,9 +1314,9 @@ sub find_molecule($$$$$$$$$)
     my $nbumps = 0;
 
     ## foreach my $sym_atom (@$symmetric_atoms)
-    for $i ($min_i .. $max_i) {
-    for $j ($min_j .. $max_j) {
-    for $k ($min_k .. $max_k) {
+    for my $i ($min_i .. $max_i) {
+    for my $j ($min_j .. $max_j) {
+    for my $k ($min_k .. $max_k) {
         for my $sym_atom ( @{$bricks->{atoms}[$i][$j][$k]} ) {
             my $sym_atom_coords_ortho = $sym_atom->{coordinates_ortho};
             my $new_label = $current_atom->{name};

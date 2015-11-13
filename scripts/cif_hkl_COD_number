@@ -180,17 +180,19 @@ my @extra_tags = ();
 
 eval {
     if( $extra_tag_file ) {
-        open( EXTRA, "$extra_tag_file" ) or die 'ERROR, '
+        open( my $extra, '<', "$extra_tag_file" ) or die 'ERROR, '
             . 'could not open extra tag list file for reading -- '
             . lcfirst($!) . "\n";
 
-        @extra_tags = map {s/\s//g;$_} map {split} grep /^\s*_/, <EXTRA>;
+        @extra_tags = map { s/\s//g; $_ }
+                        map {split}
+                          grep { /^\s*_/ } <$extra>;
 
-        close( EXTRA ) or die 'ERROR, '
+        close( $extra ) or die 'ERROR, '
             . 'error while closing extra tag file after reading -- '
             . lcfirst($!) . "\n";
         ## local $, = "\n"; local $\ = "\n";
-        ## print @extra_tags;
+         print @extra_tags;
     }
 };
 if ($@) {
@@ -214,14 +216,14 @@ my %cif_tags_lc = map {(lc($_),$_)} @dictionary_tags;
 # Reading the header file
 eval {
     if( defined $cif_header_file ) {
-        open( HEADER, "$cif_header_file" ) or die 'ERROR, '
+        open( my $header, '<', "$cif_header_file" ) or die 'ERROR, '
           . 'could not open CIF header file for reading -- '
           . lcfirst($!) . "\n";
 
         local $/; # enable "slurp" mode: read the whole header file.
-        $cif_comment_header = <HEADER>;
+        $cif_comment_header = <$header>;
 
-        close( HEADER ) or die 'ERROR, '
+        close( $header ) or die 'ERROR, '
          . 'error while closing CIF header file after reading -- '
          . lcfirst($!) . "\n";
     }
@@ -251,7 +253,7 @@ if( !@$data || !defined $data->[0] || !defined $data->[0]{name} ) {
 
 #------------------------------------------------------------------------------
 
-binmode( STDOUT, ":utf8" );
+binmode( STDOUT, ":encoding(UTF-8)" );
 
 for my $dataset (@$data) {
 

@@ -272,8 +272,7 @@ sub fold
     my @lines = ();
     my $line = "";
 
-    my $word;
-    for $word (split( $separator, $string )) {
+    for my $word (split( $separator, $string )) {
         $word =~ s/^\s*|\s*$//g;
         if( !$line ) {
             $line = $word;
