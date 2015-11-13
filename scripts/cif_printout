@@ -20,7 +20,8 @@ use COD::CIF2JSON qw( cif2json json2cif );
 use COD::SOptions qw( getOptions );
 use COD::SUsage qw( usage options );
 use COD::ShowStruct qw( showRef );
-use COD::ErrorHandler qw( process_parser_messages
+use COD::ErrorHandler qw( process_errors
+                          process_parser_messages
                           report_message );
 
 my $use_parser = 'c';
@@ -103,15 +104,23 @@ foreach( @ARGV ) {
 
     my( $data, $err_count, $messages );
     if( $input_json ) {
-        local $SIG{__DIE__} =
-            sub { my( $msg ) = @_;
-                  $msg =~ s/at \S+ line \d+(, <[^>]*> line \d+.?)?$//;
-                  die "$0: $_: $msg"
-            };
-        open( my $inp, '<' . $_ );
-        $data = json2cif( join( "\n", <$inp> ) );
-        close( $inp );
-        $err_count = 0;
+        eval {
+            open my $inp, '<' . $_ or die 'ERROR, '
+              . 'could not open bibliography file for reading -- '
+              . lcfirst($!) . "\n";
+            $data = json2cif( join( "\n", <$inp> ) );
+            close $inp or die 'ERROR, '
+              . 'error while closing file after reading -- '
+              . lcfirst($!) . "\n";
+            $err_count = 0;
+        };
+        if ($@) {
+            process_errors( {
+              'program'  => $0,
+              'filename' => $_,
+              'message'  => $@
+            }, 1 );
+        }
     } else {
         $options{no_print} = 1;
         $options{parser} = $use_parser;
