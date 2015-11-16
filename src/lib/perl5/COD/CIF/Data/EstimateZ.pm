@@ -53,7 +53,7 @@ sub cif_estimate_z($)
             if( !defined $molwt ) {
                 $error .= $sep . "molecular weight undefined";
             }
-            die "not enough data to estimate Z" . "$error\n";
+            die 'ERROR, not enough data to estimate Z' . "$error" . "\n";
         }
     }
 }

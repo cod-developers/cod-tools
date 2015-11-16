@@ -49,8 +49,8 @@ sub cif_cell_contents( $$@ )
 #   CIFAtomList::atom_array_from_cif().
     if( !exists $values->{"_atom_site_label"} &&
         !exists $values->{"_atom_site_type_symbol"} ) {
-        die ( 'ERROR, neither _atom_site_label nor _atom_site_type_symbol '
-            . "was found in the input file\n" );
+        die 'ERROR, neither _atom_site_label nor _atom_site_type_symbol '
+          . 'was found in the input file' . "\n";
     }
 
 #   extracts cell constants
@@ -86,8 +86,8 @@ sub cif_cell_contents( $$@ )
         if( exists $values->{_cell_formula_units_z} ) {
             my $file_Z = $values->{_cell_formula_units_z}[0];
             if( $Z != $file_Z ) {
-                warn( "WARNING, overriding _cell_formula_units_Z ($file_Z) " .
-                      "with command-line value $Z\n" );
+                warn "WARNING, overriding _cell_formula_units_Z ($file_Z) " .
+                     "with command-line value $Z" . "\n";
             }
         }
     } else {
@@ -99,14 +99,15 @@ sub cif_cell_contents( $$@ )
             };
             if( $@ ) {
                 my $msg = $@;
+                $msg =~ s/^ERROR, //;
                 $msg =~ s/\n$//;
                 $msg =~ s/;\n/; /g;
                 $msg =~ s/\n/; /g;
                 $Z = 1;
-                warn( "WARNING, $msg -- assuming Z = $Z\n" );
+                warn "WARNING, $msg -- assuming Z = $Z" . "\n";
             } else {
-                warn( "WARNING, _cell_formula_units_Z is missing -- "
-                     . "assuming Z = $Z\n" );
+                warn 'WARNING, _cell_formula_units_Z is missing -- '
+                   . "assuming Z = $Z" . "\n";
             }
         }
     }

@@ -25,12 +25,13 @@ sub cell_volume
 
     for (my $i = 0; $i < scalar(@cell); $i++) {
         if ( !defined $cell[$i] ) {
-            warn "at least one of the lattice parameters has an undefined "
-               . "value -- cell volume could not be calculated\n";
+            warn 'WARNING, at least one of the lattice parameters has an '
+               . 'undefined value -- cell volume could not be calculated' . "\n";
             return undef;
         } elsif ( $cell[$i] =~ /^[.?]$/ ) {
-            warn "at least one of the lattice parameters has a non-numeric "
-               . "value '$1' -- cell volume could not be calculated\n";
+            warn 'WARNING, at least one of the lattice parameters has a '
+               . "non-numeric value '$1' -- cell volume could not be "
+               . 'calculated' . "\n";
             return undef;
         }
         $cell[$i] =~ s/\(.*\)//g;
