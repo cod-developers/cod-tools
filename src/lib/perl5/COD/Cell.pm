@@ -21,12 +21,25 @@ our @EXPORT_OK = qw(
 
 sub cell_volume
 {
-    my @cell = map { s/\(.*\)//g; $_ } @_;
+    my @cell = @_;
+
+    for (my $i = 0; $i < scalar(@cell); $i++) {
+        if ( !defined $cell[$i] ) {
+            warn 'WARNING, at least one of the lattice parameters has an '
+               . 'undefined value -- cell volume could not be calculated' . "\n";
+            return undef;
+        } elsif ( $cell[$i] =~ /^[.?]$/ ) {
+            warn 'WARNING, at least one of the lattice parameters has a '
+               . "non-numeric value '$1' -- cell volume could not be "
+               . 'calculated' . "\n";
+            return undef;
+        }
+        $cell[$i] =~ s/\(.*\)//g;
+    }
 
     my $Pi = 4 * atan2(1,1);
 
     # Compute unit cell volume:
-
     my ($a, $b, $c) = @cell[0..2];
     my ($alpha, $beta, $gamma) = map {$Pi * $_ / 180} @cell[3..5];
     my ($ca, $cb, $cg) = map {cos} ($alpha, $beta, $gamma);

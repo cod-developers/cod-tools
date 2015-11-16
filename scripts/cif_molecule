@@ -84,7 +84,8 @@ use COD::CIF::Tags::Print qw( print_cif print_value
 use COD::CIF::Tags::Manage qw( set_tag );
 use COD::SOptions qw( getOptions );
 use COD::SUsage qw( usage options );
-use COD::UserMessage qw( warning error prefix_dataname );
+use COD::ErrorHandler qw( process_errors process_warnings
+                          process_parser_messages report_message );
 
 no warnings 'recursion';
 
@@ -172,6 +173,10 @@ my $output_geom_bond = 0; # Compute and output the _geom_bond_... data
 my $expand_to_p1 = 0; # Do we want a full P1 unit cell that can be used
                       # to re-create the whole crystal using only the
                       # lattice translations?
+
+my $die_on_errors   = 1;
+my $die_on_warnings = 0;
+my $die_on_notes    = 0;
 
 #* OPTIONS:
 #* -1, --one-datablock-output
@@ -401,10 +406,6 @@ my $expand_to_p1 = 0; # Do we want a full P1 unit cell that can be used
     "--no-sort-molecules"   => sub{ $sort_molecules = 0 },
     "--dont-sort-molecules" => sub{ $sort_molecules = 0 },
 
-    "--continue-on-errors" => sub{ $continue_on_errors = 1 },
-    "--no-continue-on-errors" => sub{ $continue_on_errors = 0 },
-    "--dont-continue-on-errors" => sub{ $continue_on_errors = 0 },
-
     "--exclude-zero-occupancies"    => sub { $exclude_zero_occupancies = 1; },
     "--no-exclude-zero-occupancies" => sub { $exclude_zero_occupancies = 0; },
     "--dont-exclude-zero-occupancies" => sub { $exclude_zero_occupancies = 0; },
@@ -447,6 +448,24 @@ my $expand_to_p1 = 0; # Do we want a full P1 unit cell that can be used
     "--all,--all-molecules"
         => sub { $largest_molecule_only = 0 },
 
+    "--always-continue"                 => sub { $die_on_errors   = 0;
+                                                 $die_on_warnings = 0;
+                                                 $die_on_notes    = 0 },
+    "-c-,--always-die"                  => sub { $die_on_errors   = 1;
+                                                 $die_on_warnings = 1;
+                                                 $die_on_notes    = 1 },
+
+    "--continue-on-errors"          => sub { $die_on_errors = 0 },
+    "--dont-continue-on-errors"     => sub { $die_on_errors = 1 },
+    "--die-on-errors"               => sub { $die_on_errors = 1 },
+    "--no-continue-on-errors"       => sub { $die_on_errors = 1 },
+
+    "--continue-on-warnings" => sub { $die_on_warnings = 0 },
+    "--die-on-warnings"      => sub { $die_on_warnings = 1 },
+
+    "--continue-on-notes"    => sub { $die_on_notes = 0 },
+    "--die-on-notes"         => sub { $die_on_notes = 1 },
+
     "--use-perl-parser"       => sub{ $use_parser = "perl" },
     "--use-c-parser"          => sub{ $use_parser = "c" },
 
@@ -471,14 +490,20 @@ my $expand_to_p1 = 0; # Do we want a full P1 unit cell that can be used
     "--dont-remove-duplicate-molecules" => sub { },
 );
 
+my $die_on_error_level = {
+    ERROR   => $die_on_errors,
+    WARNING => $die_on_warnings,
+    NOTE    => $die_on_notes
+};
+
 #==============================================================================#
 # Forward subroutine definitions:
 
 sub symgen_atom( $$ );
-sub symgen_all_atoms( $$$$ );
+sub symgen_all_atoms( $$ );
 sub apply_shifts( $ );
-sub find_molecules( $$$$$$$$ );
-sub find_molecule( $$$$$$$$$$$ );
+sub find_molecules( $$$$$$ );
+sub find_molecule( $$$$$$$$$ );
 
 # Find the Greatest Common Divisor (GCD) of two numbers:
 
@@ -515,21 +540,29 @@ sub gcd
 }
 
 my $cif_header;
+eval {
+    if( $cif_header_file ) {
+        open( my $header, '<',"$cif_header_file" ) or die "ERROR, "
+          . "could not open header file for input -- ". lcfirst($!) . "\n";
 
-if( $cif_header_file ) {
-    open( my $header, '<',"$cif_header_file" ) or
-        die( "$0: could not open header file '$cif_header_file' " .
-             "for input - $!" );
+        $cif_header = "";
+        while( <$header> ) {
+            last unless /^#/;
+            $cif_header .= $_;
+        };
 
-    $cif_header = "";
-    while( <$header> ) {
-        last unless /^#/;
-        $cif_header .= $_;
+        close( $header ) or die "ERROR, "
+           . "error while closing header file after reading -- "
+           . lcfirst($!) . "\n";
     }
-
-    close( $header ) or
-        die( "$0: error reading header file '$cif_header_file' - $!" );
-}
+};
+if ($@) {
+    process_errors( {
+      'message'       => $@,
+      'program'       => $0,
+      'filename'      => $cif_header_file,
+    }, $die_on_errors )
+};
 
 @ARGV = ("-") unless @ARGV;
 
@@ -537,19 +570,19 @@ for my $filename (@ARGV) {
 
     my $options = { 'parser' => $use_parser, 'no_print' => 1 };
     my ( $data, $err_count, $messages ) = parse_cif( $filename, $options );
+    process_parser_messages( $messages, $die_on_error_level );
 
-    if ( $err_count > 0 ) {
-        print STDERR $_ foreach ( @$messages );
-        error( $0, $filename, undef, "$err_count error(s) "
-             . "encountered while parsing the file", undef );
-        next;
-    }
-    print STDERR $_ foreach ( @$messages );
+    # Is this line necessary?
+    # next if ( $err_count > 0 );
 
     if( !ref $data ||
         !@$data || !defined $data->[0] || !defined $data->[0]{name} ) {
-        warning( $0, $filename, undef,
-                 "file '$filename' seems to be empty", undef );
+        report_message( {
+                'filename'  => $filename,
+                'program'   => $0,
+                'err_level' => 'WARNING',
+                'message'   => 'file seems to be empty'
+            }, $die_on_warnings );
         next;
     }
 
@@ -560,175 +593,130 @@ for my $filename (@ARGV) {
     }
 
     for my $dataset (@$data) {
-        # Extracts atom site label or atom site type symbol
-        my $values = $dataset->{"values"};
 
-        # Extracts symmetry operators
-        my $sym_data = get_symmetry_operators( $dataset, $filename );
+        my $dataname = 'data_' . $dataset->{name};
 
-        if( not defined $sym_data ) {
-            error( $0, $filename, prefix_dataname($dataset->{name}),
-                   "no symmetry information found", undef );
-        }
+        local $SIG{__WARN__} =  sub { process_warnings( {
+                                       'message'       => @_,
+                                       'program'       => $0,
+                                       'filename'      => $filename,
+                                       'add_pos'       => $dataname
+                                     }, {
+                                       WARNING => $die_on_warnings,
+                                       NOTE    => $die_on_notes,
+                                     } ) };
 
-        if((defined $sym_data) && ($sym_data != 0)) {
-            my $unity_operator_found = 0;
-            for my $symop (@$sym_data) {
-                if( symop_is_unity( symop_from_string( $symop ) ) ) {
-                    $unity_operator_found = 1;
-                    last;
-            }
-        }
+        eval {
+            my $values = $dataset->{"values"};
 
-        if( !$unity_operator_found ) {
-            warning( $0, $filename, prefix_dataname($dataset->{name}),
-                     "unity symmetry operator ('x,y,z') is not " .
-                     "found in the symmetry operator list",
-                     "results may be incorrect" );
-        }
+            # Extracts symmetry operators.
+            # Raises warnings upon unrecognised symmetry information.
+            # Raises die if unable to find symmetry information.
+            my $sym_data = get_symmetry_operators( $dataset );
 
-        my $molecule_id = 0;
-        my $dataset_name = $dataset->{name};
-
-        my $unique_molecules = get_molecules( $covalent_sensitivity,
-                                                  $filename, $dataset_name,
-                                                  $sym_data,
-                                                  $dataset,
-                                                  \%COD::AtomProperties::atoms,
-                                                  $uniquify_atoms );
-
-            #   prints molecule to the CIF file
-
-            if( $preserve_stoichiometry ) {
-                my $molecular_symmetry = new COD::Spacegroups::Builder();
-
-                foreach my $molecule (@$unique_molecules) {
-                # Build molecule point group here...
-                    my $sg = new COD::Spacegroups::Builder();
-                    my %original_atoms = ();
-                    for my $atom (@{$molecule->{atoms}}) {
-                        my $atom_label = $atom->{site_label};
-                        if( exists $atom->{site_symops} ) {
-                            $sg->insert_symops( $atom->{site_symops} );
-                        }
-                        if( !exists $original_atoms{$atom_label} ) {
-                            $original_atoms{$atom_label} = $atom;
-                        } else {
-                            my $symop1 = $original_atoms{$atom_label}{symop};
-                            my $inverted_symop1 = symop_invert( $symop1 );
-                            $sg->insert_symop( symop_mul( $atom->{symop},
-                                                          $inverted_symop1 ));
-                        }
+            if((defined $sym_data) && ($sym_data != 0)) {
+                my $unity_operator_found = 0;
+                for my $symop (@$sym_data) {
+                    if( symop_is_unity( symop_from_string( $symop ) ) ) {
+                        $unity_operator_found = 1;
+                        last;
                     }
-                    if( $symdebug ) {
-                        print "Molecule symmetry for molecule '$molecule->{chemical_formula_sum}':\n";
-                        $sg->print();
-                    }
-                    $molecule->{symmetry} = $sg;
-                    $molecular_symmetry->insert_symops( $sg->all_symops_ref() );
                 }
-                if( $symdebug ) {
-                    print "Molecule cluster symmetry:\n";
-                    $molecular_symmetry->print();
+                if( !$unity_operator_found ) {
+                    warn "WARNING, unity symmetry operator ('x,y,z') is not "
+                       . "found in the symmetry operator list -- results may "
+                       . "be incorrect\n";
                 }
 
-                my @stoichiometric_molecules;
-                foreach my $molecule (@$unique_molecules) {
-                    use COD::Spacegroups::Cosets qw(find_left_cosets
-                                                    canonical_string_from_symop);
-                    my @cosets = find_left_cosets(
-                        $molecular_symmetry->all_symops_ref(),
-                        $molecule->{symmetry}->all_symops_ref()
-                    );
-                    if( $symdebug ) {
-                        use COD::Serialise qw( serialiseRef );
-                        print "Molecule '$molecule->{chemical_formula_sum}':\n";
-                        serialiseRef( $molecule );
-                        print "Cosets for '$molecule->{chemical_formula_sum}':\n";
-                        serialiseRef( \@cosets );
+                my $molecule_id = 0;
+                my $dataset_name = $dataset->{name};
+
+                my $unique_molecules = get_molecules( $covalent_sensitivity,
+                                                      $sym_data,
+                                                      $dataset,
+                                                      \%COD::AtomProperties::atoms,
+                                                      $uniquify_atoms );
+
+                if( $preserve_stoichiometry ) {
+                    my $molecular_symmetry = new COD::Spacegroups::Builder();
+
+                    foreach my $molecule (@$unique_molecules) {
+                    # Build molecule point group here...
+                        my $sg = new COD::Spacegroups::Builder();
+                        my %original_atoms = ();
+                        for my $atom (@{$molecule->{atoms}}) {
+                            my $atom_label = $atom->{site_label};
+                            if( exists $atom->{site_symops} ) {
+                                $sg->insert_symops( $atom->{site_symops} );
+                            }
+                            if( !exists $original_atoms{$atom_label} ) {
+                                $original_atoms{$atom_label} = $atom;
+                            } else {
+                                my $symop1 = $original_atoms{$atom_label}{symop};
+                                my $inverted_symop1 = symop_invert( $symop1 );
+                                $sg->insert_symop( symop_mul( $atom->{symop},
+                                                              $inverted_symop1 ));
+                            }
+                        }
+                        if( $symdebug ) {
+                            print "Molecule symmetry for molecule "
+                                . "'$molecule->{chemical_formula_sum}':\n";
+                            $sg->print();
+                        }
+                        $molecule->{symmetry} = $sg;
+                        $molecular_symmetry->insert_symops( $sg->all_symops_ref() );
                     }
-                    push( @stoichiometric_molecules, $molecule );
-                    for my $coset (@cosets[1..$#cosets]) {
-                        ## use COD::Serialise qw( serialiseRef ); serialiseRef( [@cosets[1..$#cosets]] );
-                        my $symop = $coset->[0];
-                        my $symop_key = canonical_string_from_symop( $symop );
-                        my %additional_molecule = (
-                            atoms =>
-                                symop_apply_to_atoms( $molecule->{atoms},
-                                                      $symop ),
-                            chemical_formula_sum => 
-                                $molecule->{chemical_formula_sum}
+                    if( $symdebug ) {
+                        print "Molecule cluster symmetry:\n";
+                        $molecular_symmetry->print();
+                    }
+
+                    my @stoichiometric_molecules;
+                    foreach my $molecule (@$unique_molecules) {
+                        use COD::Spacegroups::Cosets qw( find_left_cosets
+                                                         canonical_string_from_symop );
+                        my @cosets = find_left_cosets(
+                            $molecular_symmetry->all_symops_ref(),
+                            $molecule->{symmetry}->all_symops_ref()
                         );
-                        push( @stoichiometric_molecules,
-                              \%additional_molecule );
-                        ## use COD::Serialise qw( serialiseRef ); serialiseRef( \%additional_molecule );
-                    }
-                }
-
-                # Find molecular Z value:
-
-                my %molecules;
-                for my $molecule (@stoichiometric_molecules) {
-                    my $molecule_key;
-                    if( $use_morgan_fingerprints ) {
-                        my $neighbours =
-                            make_neighbour_list(
-                                $molecule->{atoms},
-                                $covalent_sensitivity,
-                                $bump_distance_factor,
-                                \%COD::AtomProperties::atoms,
-                                1 );
-                        $molecule_key =
-                            make_morgan_fingerprint(
-                                $neighbours,
-                                $use_atom_classes,
-                                $classification_level,
-                                $max_ring_size,
-                                $flat_planarity );
-                    } else {
-                        $molecule_key =
-                            join( "\0", sort map {$_->{site_label}}
-                                  @{$molecule->{atoms}} );
-                    }
-                    push( @{$molecules{$molecule_key}}, $molecule );
-                }
-                my $Z = gcd( map { int(@$_) } values %molecules );
-
-                ## print STDERR ">>> Z = $Z\n";
-
-                # Simplify molecular formula:
-
-                if( $Z > 1 ) {
-                    @stoichiometric_molecules = ();
-                    for my $molecule_key (keys %molecules) {
-                        my $N = int(@{$molecules{$molecule_key}});
-                        for my $i (0 .. $N/$Z - 1) {
+                        if( $symdebug ) {
+                            use COD::Serialise qw( serialiseRef );
+                            print "Molecule '$molecule->{chemical_formula_sum}':\n";
+                            serialiseRef( $molecule );
+                            print "Cosets for '$molecule->{chemical_formula_sum}':\n";
+                            serialiseRef( \@cosets );
+                        }
+                        push( @stoichiometric_molecules, $molecule );
+                        for my $coset (@cosets[1..$#cosets]) {
+                            ## use COD::Serialise qw( serialiseRef ); serialiseRef( [@cosets[1..$#cosets]] );
+                            my $symop = $coset->[0];
+                            my $symop_key = canonical_string_from_symop( $symop );
+                            my %additional_molecule = (
+                                atoms =>
+                                    symop_apply_to_atoms( $molecule->{atoms},
+                                                          $symop ),
+                                chemical_formula_sum => 
+                                    $molecule->{chemical_formula_sum}
+                            );
                             push( @stoichiometric_molecules,
-                                  $molecules{$molecule_key}[$i] );
+                                  \%additional_molecule );
+                            ## use COD::Serialise; serialiseRef( \%additional_molecule );
                         }
                     }
-                }
 
-                $unique_molecules = \@stoichiometric_molecules;
-            } # Preserve stoichiometry
-
-            my $Z = 1;
-            if( $use_one_output_datablock ) {
-                my @all_atoms = map { @{$_->{atoms}} } @$unique_molecules;
-                if( @all_atoms > 0 ) {
-                    # Find molecular Z value, once more:
-                    my %moieties;
-                    for my $moiety (@$unique_molecules) {
-                        my $moiety_key;
+                    # Find molecular Z value:
+                    my %molecules;
+                    for my $molecule (@stoichiometric_molecules) {
+                        my $molecule_key;
                         if( $use_morgan_fingerprints ) {
                             my $neighbours =
                                 make_neighbour_list(
-                                    $moiety->{atoms},
+                                    $molecule->{atoms},
                                     $covalent_sensitivity,
                                     $bump_distance_factor,
                                     \%COD::AtomProperties::atoms,
                                     1 );
-                            $moiety_key =
+                            $molecule_key =
                                 make_morgan_fingerprint(
                                     $neighbours,
                                     $use_atom_classes,
@@ -736,79 +724,138 @@ for my $filename (@ARGV) {
                                     $max_ring_size,
                                     $flat_planarity );
                         } else {
-                            $moiety_key =
+                            $molecule_key =
                                 join( "\0", sort map {$_->{site_label}}
-                                      @{$moiety->{atoms}} );
+                                      @{$molecule->{atoms}} );
                         }
-                        push( @{$moieties{$moiety_key}}, $moiety );
+                        push( @{$molecules{$molecule_key}}, $molecule );
+                    }
+                    my $Z = gcd( map { int(@$_) } values %molecules );
+
+                    ## print STDERR ">>> Z = $Z\n";
+
+                    # Simplify molecular formula:
+
+                    if( $Z > 1 ) {
+                        @stoichiometric_molecules = ();
+                        for my $molecule_key (keys %molecules) {
+                            my $N = int(@{$molecules{$molecule_key}});
+                            for my $i (0 .. $N/$Z - 1) {
+                                push( @stoichiometric_molecules,
+                                      $molecules{$molecule_key}[$i] );
+                            }
+                        }
                     }
 
-                    $Z = gcd( map { int(@$_) } values %moieties );
+                    $unique_molecules = \@stoichiometric_molecules;
+                } # Preserve stoichiometry
 
-                    $unique_molecules = [{
-                        atoms =>
-                            \@all_atoms,
-                        chemical_formula_sum =>
-                            chemical_formula_sum( \@all_atoms, $Z ),
-                    }];
-                }
-            }
+                my $Z = 1;
+                if( $use_one_output_datablock ) {
+                    my @all_atoms = map { @{$_->{atoms}} } @$unique_molecules;
+                    if( @all_atoms > 0 ) {
+                        # Find molecular Z value, once more:
+                        my %moieties;
+                        for my $moiety (@$unique_molecules) {
+                            my $moiety_key;
+                            if( $use_morgan_fingerprints ) {
+                                my $neighbours =
+                                    make_neighbour_list(
+                                        $moiety->{atoms},
+                                        $covalent_sensitivity,
+                                        $bump_distance_factor,
+                                        \%COD::AtomProperties::atoms,
+                                        1 );
+                                $moiety_key =
+                                    make_morgan_fingerprint(
+                                        $neighbours,
+                                        $use_atom_classes,
+                                        $classification_level,
+                                        $max_ring_size,
+                                        $flat_planarity );
+                            } else {
+                                $moiety_key =
+                                    join( "\0", sort map {$_->{site_label}}
+                                          @{$moiety->{atoms}} );
+                            }
+                            push( @{$moieties{$moiety_key}}, $moiety );
+                        }
 
-            ## use COD::Serialise qw( serialiseRef ); serialiseRef( $unique_molecules );
-            # Split init atoms into assemblies and groups, if requested
-            if( !$merge_disorder_groups ) {
-                my @split_molecules;
-                my $n = 1;
-                for my $molecule (@$unique_molecules) {
-                    ## print ">>> molecule No. ", $n++, "\n";
-                    my $atom_list = $molecule->{atoms};
-                    my $disorder_groups = atom_groups($atom_list);
-                    ## print ">>> ngroups = ", int(@$disorder_groups), "\n";
-                    ## use COD::Serialise qw( serialiseRef ); serialiseRef( $disorder_groups );
-                    for my $disorder_representative (@$disorder_groups) {
-                        push( @split_molecules,
-                              {
-                                  atoms =>
-                                      $disorder_representative,
-                                  chemical_formula_sum =>
-                                      chemical_formula_sum
-                                          ( $disorder_representative, $Z ),
-                              }
-                        );
+                        $Z = gcd( map { int(@$_) } values %moieties );
+
+                        $unique_molecules = [{
+                            atoms =>
+                                \@all_atoms,
+                            chemical_formula_sum =>
+                                chemical_formula_sum( \@all_atoms, $Z ),
+                        }];
                     }
                 }
-                $unique_molecules = \@split_molecules;
-            }
 
-            if( $sort_molecules || $largest_molecule_only ) {
-                @$unique_molecules = sort {@{$b->{atoms}} <=> @{$a->{atoms}}}
-                @$unique_molecules;
-            }
-
-            foreach my $molecule (@$unique_molecules) {
-                my $id;
-                unless( ($use_one_output_datablock &&
-                         $merge_disorder_groups) ||
-                         $largest_molecule_only ) {
-                    $id = $molecule_id;
-                } else {
-                    $id = undef;
+                ## use COD::Serialise qw( serialiseRef ); serialiseRef( $unique_molecules );
+                # Split init atoms into assemblies and groups, if requested
+                if( !$merge_disorder_groups ) {
+                    my @split_molecules;
+                    my $n = 1;
+                    for my $molecule (@$unique_molecules) {
+                        ## print ">>> molecule No. ", $n++, "\n";
+                        my $atom_list = $molecule->{atoms};
+                        my $disorder_groups = atom_groups($atom_list);
+                        ## print ">>> ngroups = ", int(@$disorder_groups), "\n";
+                        ## use COD::Serialise qw( serialiseRef ); serialiseRef( $disorder_groups );
+                        for my $disorder_representative (@$disorder_groups) {
+                            push( @split_molecules,
+                                  {
+                                      atoms =>
+                                          $disorder_representative,
+                                      chemical_formula_sum =>
+                                          chemical_formula_sum
+                                              ( $disorder_representative, $Z ),
+                                  }
+                            );
+                        }
+                    }
+                    $unique_molecules = \@split_molecules;
                 }
 
-                if( $output_geom_bond ) {
-                    $molecule->{bonds} = atom_bonds( $molecule->{atoms},
-                                                     \%COD::AtomProperties::atoms,
-                                                     $covalent_sensitivity );
+                if( $sort_molecules || $largest_molecule_only ) {
+                    @$unique_molecules = sort {@{$b->{atoms}} <=> @{$a->{atoms}}}
+                    @$unique_molecules;
                 }
 
-                print_molecule( $id, $audit, $molecule, $Id,
-                                $dataset, $dataset_name, $filename,
-                                $sym_data, $Z );
+                foreach my $molecule (@$unique_molecules) {
+                    my $id;
+                    unless( ($use_one_output_datablock &&
+                             $merge_disorder_groups) ||
+                             $largest_molecule_only ) {
+                        $id = $molecule_id;
+                    } else {
+                        $id = undef;
+                    }
 
-                last if $largest_molecule_only;
+                    if( $output_geom_bond ) {
+                        $molecule->{bonds} = atom_bonds( $molecule->{atoms},
+                                                         \%COD::AtomProperties::atoms,
+                                                         $covalent_sensitivity );
+                    }
 
-                $molecule_id++;
+                    print_molecule( $id, $audit, $molecule, $Id,
+                                    $dataset, $dataset_name, $filename,
+                                    $sym_data, $Z );
+
+                    last if $largest_molecule_only;
+
+                    $molecule_id++;
+                }
             }
+        }; # eval block end
+        if ( $@ ) {
+            process_errors( {
+              'message'       => $@,
+              'program'       => $0,
+              'filename'      => $filename,
+              'add_pos'       => $dataname
+            }, $die_on_errors )
         }
     }
 }
@@ -834,8 +881,6 @@ for my $filename (@ARGV) {
 sub get_molecules
 {
     my $covalent_sensitivity = shift;
-    my $filename             = shift;
-    my $dataname             = shift;
     my $sym_data             = shift;
     my $dataset              = shift;
     my $atom_properties      = shift;
@@ -861,13 +906,12 @@ sub get_molecules
         exclude_zero_occupancies => $exclude_zero_occupancies,
         symop_list => $symop_list,
         modulo_1 => 1,
-        continue_on_errors => $continue_on_errors,
+        continue_on_errors => !$die_on_errors
     };
 
     # Extract atoms fract coordinates
     my $atom_list = atom_array_from_cif( $dataset,
                                          $atom_properties,
-                                         $filename,
                                          $cif_atom_list_options );
 
     return [] unless defined $atom_list;
@@ -885,10 +929,9 @@ sub get_molecules
                           $_->{calc_flag} ne 'dum' } @$atom_list ];
 
     if( @$atom_list == 0 ) {
-        warning( $0, $filename, prefix_dataname($dataname),
-                 "no atoms suitable for processing were found",
-                 "maybe all occupancies were unknown, zero, or " .
-                 "all atom types were unrecognised" );
+        warn "WARNING, no atoms suitable for processing were found -- "
+           . "maybe all occupancies were unknown, zero, or "
+           . "all atom types were unrecognised\n";
         if( defined $dummy_molecule ) {
             return [ $dummy_molecule ];
         } else {
@@ -901,8 +944,7 @@ sub get_molecules
     my @unique_molecules;
     my %seen_molecules;
 
-    my $unit_cell_atoms =
-        symgen_all_atoms( $atom_list, \@sym_operators, $filename, $dataname );
+    my $unit_cell_atoms = symgen_all_atoms( $atom_list, \@sym_operators );
 
     my @symmetric_atoms = apply_shifts( $unit_cell_atoms );
 
@@ -919,7 +961,7 @@ sub get_molecules
 
     if( $dump_atoms ) {
         dump_atoms_as_cif( 1, \@initial_atoms,
-                           [ get_cell( $values, $filename, $dataname ) ] );
+                           [ get_cell( $values ) ] );
     } else {
 
         my $bricks = build_bricks( \@symmetric_atoms,
@@ -932,7 +974,6 @@ sub get_molecules
                                                         \@symmetric_atoms,
                                                         \@initial_atoms,
                                                         $bricks,
-                                                        $filename, $dataname,
                                                         \%seen_molecules );
 
         push( @unique_molecules, @current_ordered_molecules );
@@ -1615,9 +1656,9 @@ sub symops_apply_modulo1
     ## print ">>> $gp_multiplicity / $multiplicity_ratio\n";
 
     if( $gp_multiplicity % $multiplicity_ratio ) {
-        die( "Multiplicity ratio $multiplicity_ratio does not divide " .
-             "multiplicity of a general position $gp_multiplicity" .
-             "-- this can not be." );
+        die "ERROR, multiplicity ratio $multiplicity_ratio does not divide "
+          . "multiplicity of a general position $gp_multiplicity -- "
+          . "this can not be\n";
     }
 
     my $multiplicity = $gp_multiplicity / $multiplicity_ratio;
@@ -1648,14 +1689,14 @@ sub symops_apply_modulo1
 # duplicates on special positions. Check the multiplicity values
 # provided in the original file.
 
-sub symgen_all_atoms($$$$)
+sub symgen_all_atoms($$)
 {
-    my ( $atoms, $sym_operators, $filename, $dataname ) = @_;
+    my ( $atoms, $sym_operators ) = @_;
 
     my @sym_atoms = ();
 
     for my $atom (@{$atoms}) {
-        push( @sym_atoms, symgen_atom( $atom, $sym_operators ));
+        push( @sym_atoms, symgen_atom( $atom, $sym_operators ) );
     }
 
     my $nr_multiplicity_ratios_found = 0;
@@ -1673,24 +1714,21 @@ sub symgen_all_atoms($$$$)
                 $multiplicity_ratio ) {
                 $nr_multiplicity_ratios_found++;
             } else {
-                warning( $0, $filename, prefix_dataname($dataname),
-                         "given multiplicity value '" .
-                         $atom->{_atom_site_symmetry_multiplicity} .
-                         "' for atom " . $atom->{name} . 
-                         " is different from calculated value '" .
-                         $multiplicity . "'", 'taking calculated value' );
+                warn "WARNING, given multiplicity value "
+                   . "'$atom->{_atom_site_symmetry_multiplicity}' "
+                   . "for atom $atom->{name} is different from "
+                   . "calculated value '$multiplicity' -- "
+                   . "taking calculated value\n";
             }
         }
-
     }
 
     if( $nr_multiplicity_ratios_found > 0 ) {
-        warning( $0, $filename, prefix_dataname($dataname),
-                 "multiplicity ratios are given instead of " . 
-                 "multiplicities for $nr_multiplicity_ratios_found atoms", 
-                 'taking calculated values' );
+        warn "WARNING, multiplicity ratios are given instead of "
+           . "multiplicities for $nr_multiplicity_ratios_found atoms -- "
+           . "taking calculated values\n";
     }
-    
+
     return \@sym_atoms;
 }
 
@@ -2080,7 +2118,7 @@ sub print_molecule
         }
         else
         {
-            die( "do not know how to generate tag '$data_tag'" );
+            die "ERROR, do not know how to generate tag '$data_tag'\n";
         }
 
     }
@@ -2365,9 +2403,8 @@ sub print_molecule
                 $bond->{order};
             }
         } else {
-            warning( $0, $filename, $dataset_name,
-                     "bond data necessary to compute _geom_bond_ data " .
-                     "items was not calculated", undef );
+            warn "WARNING, bond data necessary to compute _geom_bond_ "
+               . "data items was not calculated\n";
         }
     }
 }
@@ -2426,15 +2463,13 @@ sub print_molecule
 #               chemical_formula_sum => "C6 H6",
 #             );
 
-sub find_molecules($$$$$$$$)
+sub find_molecules($$$$$$)
 {
     my $covalent_sensitivity = shift(@_);
     my $atom_properties      = shift(@_);
     my $symmetric_atoms      = shift(@_);
     my $initial_atoms        = shift(@_);
     my $bricks               = shift(@_);
-    my $filename             = shift(@_);
-    my $dataname             = shift(@_);
     my $seen_molecules       = shift(@_);
 
     my @unique_molecules;
@@ -2464,8 +2499,7 @@ sub find_molecules($$$$$$$$)
                                \%used_originals,
                                \%used_uc_atoms,
                                \%checked_pairs,
-                               $initial_atom, $bricks,
-                               $filename, $dataname );
+                               $initial_atom, $bricks );
 
             my @molecule_atoms = @$molecule_atoms;
             $nbumps += $mol_nbumps;
@@ -2475,19 +2509,17 @@ sub find_molecules($$$$$$$$)
                     atoms => \@molecule_atoms,
                     chemical_formula_sum => "",
                 );
-                
+
                 push( @unique_molecules, \%molecule );
             } else {
-                warning( $0, $filename, prefix_dataname($dataname),
-                         'found molecule with no atoms', 'strange...' );
+                warn "WARNING, found molecule with no atoms -- strange...\n";
             }
         }
     }
 
     if( !$verbose && $nbumps > 0 ) {
-        warning( $0, $filename, prefix_dataname($dataname),
-                 "$nbumps pair(s) of atoms are too close to each " .
-                 "other and are considered as bumps", undef );
+        warn "WARNING, $nbumps pair(s) of atoms are too close to "
+           . "each other and are considered as bumps\n";
     }
 
     return @unique_molecules;
@@ -2495,7 +2527,7 @@ sub find_molecules($$$$$$$$)
 
 # ============================================================================ #
 
-sub find_molecule($$$$$$$$$$$)
+sub find_molecule($$$$$$$$$)
 {
     my $covalent_sensitivity = shift(@_);
     my $atom_properties      = shift(@_);
@@ -2506,8 +2538,6 @@ sub find_molecule($$$$$$$$$$$)
     my $checked_pairs        = shift(@_);
     my $current_atom         = shift(@_);
     my $bricks               = shift(@_);
-    my $filename             = shift(@_);
-    my $dataname             = shift(@_);
 
     my @current_coords_fract_modulo_1 =
         map { modulo_1($_) } @{$current_atom->{coordinates_fract}};
@@ -2552,9 +2582,9 @@ sub find_molecule($$$$$$$$$$$)
                 "label $current_atom->{name}/$current_atom->{symop_id}/" .
                 "$current_atom->{translation_id} (${used_uc_atom}-th time)\n"
             if $debug;
-            
+
             $current_atom->{is_polymer} = 1;
-            
+
             if( $used_uc_atoms->
                 {$current_atom->{site_label}}
                 {$current_atom->{symop_id}} > $max_polymer_atoms ) {
@@ -2569,14 +2599,11 @@ sub find_molecule($$$$$$$$$$$)
                     "--max-polymer-span=" . int($max_polymer_span/2) . ", " .
                     "but expect increased computation times and " .
                     "memory consumption)";
-                if( $continue_on_errors ) {
-                    warning( $0, $filename, prefix_dataname($dataname),
-                             $message, undef );
+                if( !$die_on_errors ) {
+                    warn "WARNING, $message\n";
                     return ( [], 0 );
                 } else {
-                    error( $0, $filename, prefix_dataname($dataname), 
-                           $message, undef );
-                    exit(1);
+                    die "ERROR, $message\n";
                 }
             }
 
@@ -2602,7 +2629,7 @@ sub find_molecule($$$$$$$$$$$)
     push( @neighbors, $current_atom );
 
     my ($i_init, $j_init, $k_init) =
-        get_atom_index( $bricks, @{$atom_in_unit_cell_coords_ortho});
+        get_atom_index( $bricks, @{$atom_in_unit_cell_coords_ortho} );
 
     my ( $min_i, $max_i, $min_j, $max_j, $min_k, $max_k );
 
@@ -2669,16 +2696,12 @@ sub find_molecule($$$$$$$$$$$)
                         ") and are considered a bump";
                     if( $ignore_bumps ) {
                         if( $verbose ) {
-                            warning( $0, $filename, prefix_dataname($dataname),
-                                     $message, undef );
+                            warn "WARNING, $message\n";
                         } else {
                             $nbumps++;
                         }
                     } else {
-                        error( $0, $filename, prefix_dataname($dataname),
-                               $message, undef );
-                        print STDERR "$0: Aborting calculations.\n";
-                        exit( 254 );
+                        die "ERROR, $message -- aborting calculations\n";
                     }
                 }
             }
@@ -2722,8 +2745,7 @@ sub find_molecule($$$$$$$$$$$)
                                    $used_uc_atoms,
                                    $checked_pairs,
                                    $back_shifted_sym_atom,
-                                   $bricks,
-                                   $filename, $dataname );
+                                   $bricks );
 
                 push(@neighbors, @$neighbours);
                 $nbumps += $mol_nbumps;

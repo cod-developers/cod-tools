@@ -22,7 +22,8 @@ use COD::CIF::Data::CIF2COD qw( cif2cod );
 use COD::CIF::Unicode2CIF qw( cif2unicode );
 use COD::CIF::Tags::Print qw( print_cif );
 use COD::Precision qw( cmp_cif_numbers );
-use COD::UserMessage qw( prefix_dataname print_message parse_message );
+use COD::UserMessage qw( print_message parse_message );
+use COD::ErrorHandler qw( process_warnings );
 
 require Exporter;
 our @ISA = qw( Exporter );
@@ -102,6 +103,10 @@ sub filter_and_check
         my $parsed = parse_message( $_ );
         if( defined $parsed ) {
             my $message = $parsed->{message};
+            # the following line was added for test compatibility since
+            # previously this message was not parsed at all (neither by the
+            # proper, nor by the ad hoc parser
+            next if $message =~ /file seems to be empty/;
             for( $message ) {
                 if( /tag .+ is not recognised/ ) {
                     $parsed->{errlevel} = 'NOTE';
@@ -298,7 +303,7 @@ sub filter_and_check
           DATASET:
         for my $dataset (@$data) {
             my $values = $dataset->{values};
-            my $dataname = prefix_dataname($dataset->{name});
+            my $dataname = 'data_' . $dataset->{name} if defined $dataset->{name};
             if( !defined $values ) {
                 critical( $cif_filename, $dataname, "ERROR",
                           "no data in datablock '$dataset->{name}'", undef );
@@ -316,14 +321,16 @@ sub filter_and_check
                     my $data_name_now = $dataset->{name};
                     if( $deposition_authors ne $deposition_authors_now ) {
                         critical( $cif_filename,
-                                  prefix_dataname($data_name_now),
+                                  defined $data_name_now
+                                          ? 'data_' . $data_name_now
+                                          : $data_name_now,
                                   "WARNING",
-                                  "author list in the datablock " .
-                                  "data_$first_data_name " .
-                                  "($deposition_authors) is not the " .
-                                  "same as in the datablock " .
-                                  "data_$data_name_now " .
-                                  "($deposition_authors_now)", 
+                                  'author list in the datablock '
+                                . "data_$first_data_name "
+                                . "($deposition_authors) is not the "
+                                . 'same as in the datablock '
+                                . "data_$data_name_now "
+                                . "($deposition_authors_now)",
                                   'please make sure that all data are '
                                 . 'authored by the same people when '
                                 . 'depositing multiple data blocks' );
@@ -363,7 +370,7 @@ sub filter_and_check
     if( $deposition_type eq 'personal' ) {
         for my $dataset (@$data) {
             my $values = $dataset->{values};
-            my $dataname = prefix_dataname($dataset->{name});
+            my $dataname = 'data_' . $dataset->{name} if defined $dataset->{name};
             if( !defined $values ) {
                 critical( $cif_filename, $dataname, "WARNING",
                           "no data in datablock '$dataset->{name}'", undef );
@@ -391,7 +398,7 @@ sub filter_and_check
         my ($range, $journal, $data_name);
         for my $dataset (@$data) {
             my $values = $dataset->{values};
-            my $dataname = prefix_dataname($dataset->{name});
+            my $dataname = 'data_' . $dataset->{name} if defined $dataset->{name};
             if( !defined $values ) {
                 critical( $cif_filename, $dataname, "WARNING",
                           "no data in datablock '$dataset->{name}'", undef );
@@ -428,7 +435,7 @@ sub filter_and_check
 
     for my $dataset (@$data) {
         my $values = $dataset->{values};
-        my $dataname = prefix_dataname($dataset->{name});
+        my $dataname = 'data_' . $dataset->{name} if defined $dataset->{name};
 
         if( !$options->{replace} &&
             exists $values->{_cod_database_code} &&
@@ -493,11 +500,13 @@ sub filter_and_check
                       "should have only one datablock", undef );
         }
         if( !exists $data->[0]{values}{'_cod_database_code'}[0]) {
-            critical( $cif_filename, prefix_dataname($data->[0]{name}),
-                      "WARNING",
-                      "CIF file supplied for replacement " .
-                      "should have \'_cod_database_code\' value " .
-                      "determining which CIF file to replace", undef );
+            critical( $cif_filename,
+                      defined $data->[0]{name}
+                              ? 'data_' . $data->[0]{name}
+                              : $data->[0]{name},
+                      "WARNING", 'CIF file supplied for replacement '
+                    . 'should have \'_cod_database_code\' value '
+                    . 'determining which CIF file to replace', undef );
         }
         $number_to_replace = $data->[0]{values}{'_cod_database_code'}[0];
     } elsif ( !$options->{bypass_checks} ) {
@@ -507,9 +516,29 @@ sub filter_and_check
         $cif_cod_numbers_opt->{check_bibliography} = 0
             if $deposition_type eq 'personal';
 
-        use COD::CIF::Data::CODNumbers qw( fetch_duplicates );
-        my $duplicates = fetch_duplicates( $data,
-                                           $cif_filename,
+        use COD::CIF::Data::CODNumbers qw(cif_fill_data fetch_duplicates);
+        my %structures = ();
+        my $index = 0;
+        foreach my $dataset ( @$data ) {
+            my $dataname = 'data_' . $dataset->{name} if defined $dataset->{name};
+            local $SIG{__WARN__} = sub { process_warnings( {
+                                           'message'  => @_,
+                                           'program'  => $0,
+                                           'filename' => $cif_filename,
+                                           'add_pos'  => $dataname },
+                                         {
+                                           'WARNING' => 0, #$die_on_warnings,
+                                           'NOTE'    => 0, #$die_on_notes,
+                                         } ) };
+
+            my $structure = cif_fill_data( $dataset, $cif_filename, $index );
+            if ( defined $structure ) {
+                $structures{$structure->{id}} = $structure;
+                $index++;
+            }
+        }
+
+        my $duplicates = fetch_duplicates( \%structures,
                                            $db_conf,
                                            $cif_cod_numbers_opt );
         my %duplicate_cod_entries;
@@ -755,14 +784,30 @@ sub filter_and_check
     # Test run for CIF2COD
 
     my( $cif2cod_stdout, $cif2cod_stderr ) = capture {
-        cif2cod( $data,
-                 $cif_filename,
-                 { continue_on_errors => 1 } );
+        my @extracted;
+        foreach my $dataset ( @$data ) {
+            my $dataname = 'data_' . $dataset->{name};
+            local $SIG{__WARN__} = sub { process_warnings( {
+                                           'message'  => @_,
+                                           'program'  => $0,
+                                           'filename' => $cif_filename,
+                                           'add_pos'  => $dataname },
+                                         {
+                                           'WARNING' => 0, #$die_on_warnings,
+                                           'NOTE'    => 0, #$die_on_notes,
+                                         } ) };
+
+            my $extracted_dataset;
+            eval {
+                $extracted_dataset = cif2cod( $dataset, $cif_filename );
+            };
+            push @extracted, $extracted_dataset if defined $extracted_dataset;
+        }
     };
 
     C2CMESSAGE:
     foreach( split( "\n", $cif2cod_stderr ) ) {
-        if( /[^: ]+: [^: ]+: tag '([^']+)' is absent/ ) {
+        if( /[^: ]+: [^:]+: [A-Z]+, tag '([^']+)' is absent/ ) {
             my $tag = $1;
             if( $deposition_type eq 'published' ) {
                 next C2CMESSAGE if $tag eq '_journal_volume';

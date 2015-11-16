@@ -22,6 +22,8 @@ our @ISA = qw( Exporter );
 our @EXPORT_OK = qw(
     fetch_duplicates
     fetch_duplicates_from_database
+    cif_fill_data
+    entries_are_the_same
 );
 
 my %has_numeric_value = (
@@ -34,14 +36,21 @@ my %skip_tag = (
     "_journal_name_full" => 0,
 );
 
-my $max_cell_length_diff = 0.5; # Angstroems
-my $max_cell_angle_diff  = 1.2; # degrees
+my %default_options = (
+    'max_cell_length_diff' => 0.5, # Angstroems
+    'max_cell_angle_diff'  => 1.2, # degrees
+    'check_bibliography'   => 1,
+    'check_sample_history' => 0,
+    'ignore_sigma'         => 0,
+    'cod_series_prefix'    => ''
+);
 
-my $check_bibliography = 1;
-my $check_sample_history = 0;
-my $ignore_sigma = 0;
-
-my $cod_series_prefix;
+#my $max_cell_length_diff = 0.5; # Angstroems
+#my $max_cell_angle_diff  = 1.2; # degrees
+#my $check_bibliography = 1;
+#my $check_sample_history = 0;
+#my $ignore_sigma = 0;
+#my $cod_series_prefix;
 
 # Returns a list of duplicates for each supplied datablock
 # Parameters:
@@ -72,27 +81,21 @@ my $cod_series_prefix;
 
 sub fetch_duplicates_from_database
 {
-    my( $data, $file, $database, $dbh, $options ) = @_;
+    my( $structures, $database, $dbh, $user_options ) = @_;
 
-    $options = {} unless defined $options;
-    $max_cell_length_diff = $options->{max_cell_length_diff}
-        if defined $options->{max_cell_length_diff};
-    $max_cell_angle_diff  = $options->{max_cell_angle_diff}
-        if defined $options->{max_cell_angle_diff};
-    $check_bibliography = $options->{check_bibliography}
-        if defined $options->{check_bibliography};
-    $check_sample_history = $options->{check_sample_history}
-        if defined $options->{check_sample_history};
-    $ignore_sigma = $options->{ignore_sigma}
-        if defined $options->{ignore_sigma};
-    $cod_series_prefix = $options->{cod_series_prefix}
-        if defined $options->{cod_series_prefix};
+    $user_options = {} unless defined $user_options;
+    my %options;
+    foreach my $key (keys %default_options) {
+        $options{$key} = defined $user_options->{$key} ?
+                                 $user_options->{$key} :
+                                 $default_options{$key};
+    };
 
-    my %structures = cif_fill_data( $data, $file );
+    my %structures = %{$structures};
 
     my %COD = ();
 
-    query_COD_database( $dbh, $database, \%COD, \%structures, $options );
+    query_COD_database( $dbh, $database, \%COD, \%structures, \%options );
 
     my @duplicates;
     for my $id (sort { $structures{$a}->{index} <=>
@@ -104,7 +107,7 @@ sub fetch_duplicates_from_database
         if( defined $formula ) {
             $final_formula = $formula;
         } elsif( defined $cell_contents ) {
-            $final_formula = $cell_contents;            
+            $final_formula = $cell_contents;
         } else {
             $final_formula = '?';
         }
@@ -115,7 +118,9 @@ sub fetch_duplicates_from_database
 
         if( defined $formula && defined $COD{$formula} ) {
             for my $COD_entry (@{$COD{$formula}}) {
-                if( entries_are_the_same( $structures{$id}, $COD_entry )) {
+                if( entries_are_the_same( $structures{$id},
+                                          $COD_entry,
+                                          \%options )) {
                     my $COD_key = $COD_entry->{filename};
                     $structures_found{$COD_key} = $COD_entry;
                 }
@@ -125,14 +130,16 @@ sub fetch_duplicates_from_database
             ( !defined $formula || $formula ne $cell_contents )) {
             ## print ">>> formula: '$formula', contents: '$cell_contents'\n";
             for my $COD_entry (@{$COD{$cell_contents}}) {
-                if( entries_are_the_same( $structures{$id}, $COD_entry )) {
+                if( entries_are_the_same( $structures{$id},
+                                          $COD_entry,
+                                          \%options )) {
                     my $COD_key = $COD_entry->{filename};
                     if( !exists $structures_found{$COD_key} ) {
                         $structures_found{$COD_key} = $COD_entry;
                     }
                 }
             }
-        }        
+        }
 
         push( @duplicates,
                 { formula => $final_formula,
@@ -159,10 +166,9 @@ sub fetch_duplicates_from_database
 
 sub fetch_duplicates
 {
-    my( $data, $file, $database, $options ) = @_;
+    my( $structures, $database, $options ) = @_;
     my $dbh = database_connect( $database );
-    my $duplicates = fetch_duplicates_from_database( $data,
-                                                     $file,
+    my $duplicates = fetch_duplicates_from_database( $structures,
                                                      $database,
                                                      $dbh,
                                                      $options );
@@ -174,160 +180,160 @@ sub fetch_duplicates
 
 sub cif_fill_data
 {
-    my ( $data, $file ) = @_;
+    my ( $dataset, $file, $index ) = @_;
 
-    my %structures = ();
-    my $n = 0;
+    my %structure;
 
-    for my $dataset ( @$data ) {
-        my $values = $dataset->{values};
-        my $sigmas = $dataset->{precisions};
-        my $id = $dataset->{name};
+    my $values = $dataset->{values};
+    my $sigmas = $dataset->{precisions};
+    my $id = $dataset->{name};
 
-        next if !defined $id;
-        $structures{$id}{id} = $id;
-        $structures{$id}{filename} = basename( $file );
-        $structures{$id}{index} = $n;
-        $n++;
+    return undef if !defined $id;
+    $structure{id} = $id;
+    $structure{filename} = basename( $file );
+    $structure{index} = $index;
 
-        if( defined $values->{_chemical_formula_sum} ) {
-            my $formula = $values->{_chemical_formula_sum}[0];
+    if( defined $values->{_chemical_formula_sum} ) {
+        my $formula = $values->{_chemical_formula_sum}[0];
 
-            if( $formula ne '?' ) {
+        if( $formula ne '?' ) {
 
-                $formula =~ s/^\s*'\s*|\s*'\s*$//g;
-                $formula =~ s/^\s*|\s*$//g;
-                $formula =~ s/\s+/ /g;
+            $formula =~ s/^\s*'\s*|\s*'\s*$//g;
+            $formula =~ s/^\s*|\s*$//g;
+            $formula =~ s/\s+/ /g;
 
-                my $formula_parser = new COD::Formulae::Parser::AdHoc;
+            my $formula_parser = new COD::Formulae::Parser::AdHoc;
 
-                eval {
-                    $formula_parser->ParseString( $formula );
-                    if( defined $formula_parser->YYData->{ERRCOUNT} &&
-                        $formula_parser->YYData->{ERRCOUNT} > 0 ) {
-                        print STDERR "$0: ", $file, " ", $dataset->{name}, ": ",
-                        $formula_parser->YYData->{ERRCOUNT},
-                        " error(s) encountered while parsing chemical formula ",
-                        "sum\n";
-                        die;
-                    } else {
-                        $formula = $formula_parser->SprintFormula;
-                    }
-                };
-                if( $@ ) {
-                    print STDERR "$0: ", $file, " ", $dataset->{name}, ": ",
-                    "could not parse formula '$formula', resorting to ",
-                    "simple split routine\n";
-                    $formula = join( " ", sort {$a cmp $b} 
-                                     split( " ", $formula ));
+            eval {
+                $formula_parser->ParseString( $formula );
+                if( defined $formula_parser->YYData->{ERRCOUNT} &&
+                    $formula_parser->YYData->{ERRCOUNT} > 0 ) {
+                    die "ERROR, $formula_parser->YYData->{ERRCOUNT} "
+                      . "error(s) encountered while parsing chemical "
+                      . "formula sum\n";
+                    ;
+                } else {
+                    $formula = $formula_parser->SprintFormula;
                 }
-            }
-            $structures{$id}{chemical_formula_sum} = $formula;
-        }
-
-        my $calculated_formula;
-        eval {
-            $calculated_formula =
-                cif_cell_contents( $dataset, $file, undef );
-        };
-
-        $structures{$id}{cell_contents} = $calculated_formula
-            if defined $calculated_formula;
-
-        for my $key ( qw( _cell_length_a _cell_length_b _cell_length_c
-                     _cell_angle_alpha _cell_angle_beta _cell_angle_gamma )) {
-            my $val = $values->{$key}[0];
-            if( defined $val ) {
-                $val =~ s/^\s*'\s*|\s*'\s*$//g;
-                $val =~ s/\(.*$//;
-                $val =~ s/[()_a-zA-Z]//g;
-                $structures{$id}{cell}{$key} = sprintf "%f", $val;
+            };
+            if( $@ ) {
+                warn "WARNING, could not parse formula '$formula' "
+                   . "resorting to simple split routine\n";
+                $formula = join( " ", sort {$a cmp $b} split( " ", $formula ));
             }
         }
-        for my $key ( qw( _cell_length_a _cell_length_b _cell_length_c
-                     _cell_angle_alpha _cell_angle_beta _cell_angle_gamma )) {
-            if( exists $sigmas->{$key} ) {
-                my $val = $sigmas->{$key}[0];
-                $structures{$id}{sigcell}{$key} = $val;
-            }
-        }
-        for my $key ( qw( _cell_measurement_temperature
-                          _cell_measurement_temperature_C
-                          _diffrn_ambient_temperature
-                          _diffrn_ambient_temperature_C
-                          _diffrn_ambient_temperature_gt
-                          _diffrn_ambient_temperature_lt
-                          _pd_prep_temperature
-                          _cell_measurement_pressure
-                          _cell_measurement_pressure_gPa
-                          _cell_wave_vectors_pressure_max
-                          _cell_wave_vectors_pressure_min
-                          _diffrn_ambient_pressure
-                          _diffrn.ambient_pressure
-                          _diffrn.ambient_pressure_esd
-                          _diffrn_ambient_pressure_gPa
-                          _diffrn_ambient_pressure_gt
-                          _diffrn.ambient_pressure_gt
-                          _diffrn_ambient_pressure_lt
-                          _diffrn.ambient_pressure_lt
-                          _exptl_crystal_pressure_history
-                          _exptl_crystal_thermal_history
-                          _pd_prep_pressure )) {
-            if( exists $values->{$key} ) {
-                my $val = $values->{$key}[0];
-                if( defined $val ) {
-                    my $parameter;
-                    if( $key =~ /history/ ) {
-                        $parameter = "history";
-                    } elsif( $key =~ /pressure/ ) {
-                        $parameter = "pressure";
-                    } else {
-                        $parameter = "temperature";
-                    }
-                    $structures{$id}{$parameter}{$key} = $val;
-                    $structures{$id}{$parameter}{$key}
-                        =~ s/^\s*'\s*|\s*'\s*$//g;
-                }
-            }
-        }
+            $structure{chemical_formula_sum} = $formula;
+    }
 
-        for my $key ( qw( _cod_enantiomer_of
-                          _cod_related_optimal_struct )) {
-            if( exists $values->{$key} ) {
-                $structures{$id}{enantiomer} = $values->{$key}[0];
-            }
-        }
+    my $calculated_formula;
+    eval {
+        $calculated_formula = cif_cell_contents( $dataset, undef );
+    };
+    if ($@) {
+        # ERRORS that originated within the function are downgraded to warnings
+        my $error = $@;
+        $error =~ s/[A-Z]+, //;
+        chomp($error);
+        warn "WARNING, summary formula could not be calculated -- $error\n";
+    };
 
-        for my $key ( qw( _cod_related_optimal_struct
-                          _[local]_cod_related_optimal_struct )) {
-            if( exists $values->{$key} ) {
-                $structures{$id}{related_optimal} = $values->{$key}[0];
-            }
-        }
+    $structure{cell_contents} = $calculated_formula
+        if defined $calculated_formula;
 
-        my @journal_keys =
-            grep ! /^_journal_name/,
-            grep /^_journal_[^\s]*$/,
-            keys %{$values};
-
-        for my $key (@journal_keys) {
-            my $val = $values->{$key}[0];
-            if( defined $val ) {
-                $val =~ s/^['"]|["']$//g;
-                $structures{$id}{bibliography}{$key} = $val;
-            }
+    for my $key ( qw( _cell_length_a _cell_length_b _cell_length_c
+                      _cell_angle_alpha _cell_angle_beta _cell_angle_gamma )) {
+        my $val = $values->{$key}[0];
+        if( defined $val ) {
+            $val =~ s/^\s*'\s*|\s*'\s*$//g;
+            $val =~ s/\(.*$//;
+            $val =~ s/[()_a-zA-Z]//g;
+            $structure{cell}{$key} = sprintf "%f", $val;
         }
-        if( defined $values->{'_[local]_cod_suboptimal_structure'} ||
-            defined $values->{_cod_suboptimal_structure} ) {
-            my $val = defined $values->{_cod_suboptimal_structure} ?
-                $values->{_cod_suboptimal_structure}[0] :
-                $values->{'_[local]_cod_suboptimal_structure'}[0];
-            ## print ">>>>>> $val\n";
-            $structures{$id}{suboptimal} = $val;
+    }
+    for my $key ( qw( _cell_length_a _cell_length_b _cell_length_c
+                      _cell_angle_alpha _cell_angle_beta _cell_angle_gamma )) {
+        if( exists $sigmas->{$key} ) {
+            my $val = $sigmas->{$key}[0];
+            $structure{sigcell}{$key} = $val;
+        }
+    }
+    for my $key ( map {lc}
+                  qw( _cell_measurement_temperature
+                      _cell_measurement_temperature_C
+                      _diffrn_ambient_temperature
+                      _diffrn_ambient_temperature_C
+                      _diffrn_ambient_temperature_gt
+                      _diffrn_ambient_temperature_lt
+                      _pd_prep_temperature
+                      _cell_measurement_pressure
+                      _cell_measurement_pressure_gPa
+                      _cell_wave_vectors_pressure_max
+                      _cell_wave_vectors_pressure_min
+                      _diffrn_ambient_pressure
+                      _diffrn.ambient_pressure
+                      _diffrn.ambient_pressure_esd
+                      _diffrn_ambient_pressure_gPa
+                      _diffrn_ambient_pressure_gt
+                      _diffrn.ambient_pressure_gt
+                      _diffrn_ambient_pressure_lt
+                      _diffrn.ambient_pressure_lt
+                      _exptl_crystal_pressure_history
+                      _exptl_crystal_thermal_history
+                      _pd_prep_pressure )) {
+       if( exists $values->{$key} ) {
+           my $val = $values->{$key}[0];
+           if( defined $val ) {
+               my $parameter;
+               if( $key =~ /history/ ) {
+                   $parameter = "history";
+               } elsif( $key =~ /pressure/ ) {
+                   $parameter = "pressure";
+               } else {
+                   $parameter = "temperature";
+               }
+               $structure{$parameter}{$key} = $val;
+               $structure{$parameter}{$key}
+                   =~ s/^\s*'\s*|\s*'\s*$//g;
+            }
         }
     }
 
-    return %structures;
+    for my $key ( qw( _cod_enantiomer_of
+                      _cod_related_optimal_struct )) {
+        if( exists $values->{$key} ) {
+            $structure{enantiomer} = $values->{$key}[0];
+        }
+    }
+
+    for my $key ( qw( _cod_related_optimal_struct
+                      _[local]_cod_related_optimal_struct )) {
+        if( exists $values->{$key} ) {
+            $structure{related_optimal} = $values->{$key}[0];
+        }
+    }
+
+     my @journal_keys =
+        grep ! /^_journal_name/,
+        grep /^_journal_[^\s]*$/,
+        keys %{$values};
+
+    for my $key (@journal_keys) {
+        my $val = $values->{$key}[0];
+        if( defined $val ) {
+            $val =~ s/^['"]|["']$//g;
+            $structure{bibliography}{$key} = $val;
+        }
+    }
+    if( defined $values->{'_[local]_cod_suboptimal_structure'} ||
+        defined $values->{_cod_suboptimal_structure} ) {
+        my $val = defined $values->{_cod_suboptimal_structure} ?
+                  $values->{_cod_suboptimal_structure}[0] :
+                  $values->{'_[local]_cod_suboptimal_structure'}[0];
+        ## print ">>>>>> $val\n";
+        $structure{suboptimal} = $val;
+    }
+
+    return \%structure;
 }
 
 #------------------------------------------------------------------------------
@@ -346,9 +352,17 @@ sub get_cell($)
     );
 }
 
-sub cells_are_the_same($$$$)
+sub cells_are_the_same($$$$$)
 {
-    my ($cell1, $cell2, $sigma1, $sigma2) = @_;
+    my ($cell1, $cell2, $sigma1, $sigma2, $user_options) = @_;
+
+    $user_options = {} unless defined $user_options;
+    my %options;
+    foreach my $key (keys %default_options) {
+        $options{$key} = defined $user_options->{$key} ?
+                                 $user_options->{$key} :
+                                 $default_options{$key};
+    };
 
     my @cell1 = get_cell( $cell1 );
     my @cell2 = get_cell( $cell2 );
@@ -365,13 +379,13 @@ sub cells_are_the_same($$$$)
                 $sigma1 = 0 unless defined $sigma1;
                 $sigma2 = 0 unless defined $sigma2;
             }
-            if( defined $sigma1 && ! $ignore_sigma) {
+            if( defined $sigma1 && ! $options{ignore_sigma} ) {
                 if( !eqsig( $length1, $sigma1, $length2, $sigma2 )) {
                     return 0;
                 }
             } else {
                 my $diff = abs( $length1 - $length2 );
-                if( $diff > $max_cell_length_diff ) {
+                if( $diff > $options{max_cell_length_diff} ) {
                     return 0;
                 }
             }
@@ -387,13 +401,13 @@ sub cells_are_the_same($$$$)
                 $sigma1 = 0 unless defined $sigma1;
                 $sigma2 = 0 unless defined $sigma2;
             }
-            if( defined $sigma1 && ! $ignore_sigma ) {
+            if( defined $sigma1 && ! $options{ignore_sigma} ) {
                 if( !eqsig( $angle1, $sigma1, $angle2, $sigma2 )) {
                     return 0;
                 }
             } else {
                 my $diff = abs( $angle1 - $angle2 );
-                if( $diff > $max_cell_angle_diff ) {
+                if( $diff > $options{max_cell_angle_diff} ) {
                     return 0;
                 }
             }
@@ -408,12 +422,20 @@ sub cells_are_the_same($$$$)
 
 sub conditions_are_the_same
 {
-    my ($entry1, $entry2) = @_;
+    my ($entry1, $entry2, $user_options) = @_;
+
+    $user_options = {} unless defined $user_options;
+    my %options;
+    foreach my $key (keys %default_options) {
+        $options{$key} = defined $user_options->{$key} ?
+                                 $user_options->{$key} :
+                                 $default_options{$key};
+    };
 
     my $number = '[-+]?([0-9]+(\.[0-9]*)?|\.[0-9]+)([Ee][-+]?[0-9]+)?';
 
     my @parameters = qw( temperature pressure );
-    if( $check_sample_history ) {
+    if( $options{check_sample_history} ) {
         push( @parameters, "history" );
     }
 
@@ -491,19 +513,28 @@ sub bibliographies_are_the_same($$)
 
 sub entries_are_the_same
 {
-    my ($entry1, $entry2) = @_;
+    my ($entry1, $entry2, $user_options) = @_;
     
     ## print ">>> $entry1->{id}, $entry2->{id}, ",
     ## defined $entry1->{suboptimal} ? $entry1->{suboptimal} : "" , " ", 
     ## defined $entry2->{suboptimal} ? $entry2->{suboptimal} : "", "\n";
 
+    $user_options = {} unless defined $user_options;
+    my %options;
+    foreach my $key (keys %default_options) {
+        $options{$key} = defined $user_options->{$key} ?
+                                 $user_options->{$key} :
+                                 $default_options{$key};
+    };
+
     my $are_the_same;
 
-    if( $check_bibliography ) {
+    if( $options{check_bibliography} ) {
         $are_the_same =
             cells_are_the_same( $entry1->{cell}, $entry2->{cell},
-                                $entry1->{sigcell}, $entry2->{sigcell} ) &&
-            conditions_are_the_same( $entry1, $entry2 ) &&
+                                $entry1->{sigcell}, $entry2->{sigcell},
+                                \%options ) &&
+            conditions_are_the_same( $entry1, $entry2, \%options ) &&
             (!defined $entry1->{suboptimal} || $entry1->{suboptimal} ne "yes") &&
             (!defined $entry2->{suboptimal} || $entry2->{suboptimal} ne "yes") &&
             bibliographies_are_the_same( $entry1->{bibliography},
@@ -511,8 +542,9 @@ sub entries_are_the_same
     } else {
         $are_the_same =
             cells_are_the_same( $entry1->{cell}, $entry2->{cell},
-                                $entry1->{sigcell}, $entry2->{sigcell} ) &&
-            conditions_are_the_same( $entry1, $entry2 ) &&
+                                $entry1->{sigcell}, $entry2->{sigcell},
+                                \%options ) &&
+            conditions_are_the_same( $entry1, $entry2, \%options ) &&
             (!defined $entry1->{suboptimal} || $entry1->{suboptimal} ne "yes") &&
             (!defined $entry2->{suboptimal} || $entry2->{suboptimal} ne "yes");
     }
@@ -558,7 +590,16 @@ sub database_disconnect
 
 sub query_COD_database
 {
-    my ( $dbh, $database, $COD, $data, $options ) = @_;
+    my ( $dbh, $database, $COD, $data, $user_options ) = @_;
+
+    $user_options = {} unless defined $user_options;
+    my %options;
+    foreach my $key (keys %default_options) {
+        $options{$key} = defined $user_options->{$key} ?
+                                 $user_options->{$key} :
+                                 $default_options{$key};
+    };
+    my $cod_series_prefix = $options{cod_series_prefix};
 
     use DBI;
 
@@ -572,7 +613,7 @@ sub query_COD_database
 
     my $column_list = join( ",", @columns );
 
-    if( $options && $options->{check_sample_history} ) {
+    if( $options{check_sample_history} ) {
         $column_list .= "," . join( ",", @history_columns );
     }
 
@@ -618,7 +659,7 @@ sub query_COD_database
                                 _cell_length_c => $row->{sigc},
                                 _cell_angle_alpha => $row->{sigalpha},
                                 _cell_angle_beta  => $row->{sigbeta},
-                                _cell_angle_gamma => $row->{siggamma},                                
+                                _cell_angle_gamma => $row->{siggamma},
                             }
                         };
 
@@ -664,7 +705,7 @@ sub query_COD_database
                         push( @{$COD->{$formula}}, $structure );
                     }
                 } else {
-                    print STDERR "$0: error fetching formula '${formula}' -- " .
+                    die "ERROR, error fetching formula '${formula}' -- " .
                         "$DBI::errstr";
                 }
             }

@@ -33,7 +33,15 @@ use COD::CIF::Data::ExcludeFromStatistics qw( exclude_from_statistics );
 use COD::Fractional qw( symop_ortho_from_fract );
 use COD::SOptions qw( getOptions get_value );
 use COD::SUsage qw( usage options );
-use COD::UserMessage qw( warning error prefix_dataname );
+use COD::ErrorHandler qw( process_warnings
+                          process_errors
+                          process_parser_messages );
+
+my $die_on_error_level = {
+    ERROR   => 0,
+    WARNING => 0,
+    NOTE    => 0
+};
 
 my $use_parser = 'c';
 my $uniquify_atoms = 1;
@@ -185,14 +193,8 @@ foreach my $filename ( @ARGV ) {
 
     my $options = { 'parser' => $use_parser, 'no_print' => 1 };
     my ( $data, $err_count, $messages ) = parse_cif( $filename, $options );
-
-    if ( $err_count > 0 ) {
-        print STDERR $_ foreach ( @$messages );
-        error( $0, $filename, undef, "$err_count error(s) "
-             . "encountered while parsing the file", undef );
-        next;
-    }
-    print STDERR $_ foreach ( @$messages );
+    process_parser_messages( $messages, $die_on_error_level );
+    next if ( $err_count > 0 );
 
   # Initial check to skip structures not fit for statistics
   # 0 means that this type of stucture is excluded
@@ -207,74 +209,86 @@ foreach my $filename ( @ARGV ) {
 
   foreach my $dataset ( @$data ) {
 
+    my $dataname = 'data_' . $dataset->{name} if defined $dataset->{name};
+
+    local $SIG{__WARN__} = sub { process_warnings( {
+                                       'message'  => @_,
+                                       'program'  => $0,
+                                       'filename' => $filename,
+                                       'add_pos'  => $dataname
+                                     }, $die_on_error_level ) };
+
     my ($status, $msg) = exclude_from_statistics( $dataset, $criteria );
 
-    my $dataname = prefix_dataname($dataset->{name});
-
     if ( $status ) {
-        warning( $0, $filename, $dataname, $msg, 'dataset will be skipped' );
+        warn "WARNING, $msg -- dataset will be skipped\n";
         next;
     }
-
-    my $ortho_matrix;
 
     eval {
-        my @unit_cell = get_cell( $dataset->{values}, $filename, $dataset->{name} );
-        local $SIG{__WARN__} = sub {}; # not printing division by zero errors
-        $ortho_matrix = symop_ortho_from_fract( @unit_cell );
+
+      my $ortho_matrix;
+      eval {
+          my @unit_cell = get_cell( $dataset->{values} );
+          $ortho_matrix = symop_ortho_from_fract( @unit_cell );
+      };
+      if ( $@ ) {
+          $@ =~ s/[A-Z]+, //;
+          chomp($@);
+          die "$@ -- dataset will be skipped\n";
+      }
+
+      #   Extract atoms and order them alphabetically by type and label.
+      my $atoms = get_atoms( $dataset, $ortho_matrix, $uniquify_atoms );
+
+      my $printable_properties = [ "name", "chemical_type",
+                                   "coordinates_ortho", "coordinates_fract",
+                                   "disorder_group", "disorder_assembly" ];
+
+      print_atoms( $atoms, $printable_properties ) if ( $verbose );
+
+      #   Generate atoms by applying symmetry operators. This subroutine 
+      #   original atoms are fitted into the first octant by applying x,y,z
+      #   operator modulus 1.
+
+      my ( $sym_atoms, $symop_count );
+      eval {
+          ( $sym_atoms, $symop_count ) = symops_apply( $dataset, $atoms,
+                                                       $ortho_matrix );
+      };
+      if ( $@ ) {
+          $@ =~ s/[A-Z]+, //;
+          warn $@;
+          die "ERROR, unable to generate symmetrically equivalent "
+            . "atoms -- dataset will be skipped\n";
+      }
+
+      push @$printable_properties, "sym_operator";
+
+      print_atoms( $sym_atoms, $printable_properties ) if ( $verbose );
+
+      my @shifted_atoms = map { shift_atom( $_, $ortho_matrix ) } @{$sym_atoms};
+
+      push @$printable_properties, "shift_vector";
+
+      print_atoms( \@shifted_atoms, $printable_properties ) if ( $verbose );
+
+      my ( $distances, $headers, $atoms_used ) = get_distances( \@shifted_atoms,
+                                                                $symop_count );
+
+      if ( $output_format eq "pairwise" ) {
+          print_pairwise( $distances, $atoms_used, $filename, $add_filename );
+      } elsif ( $output_format eq "matrix" ) {
+          print_distance_matrix( $distances, $headers, $format, $line_length );
+      }
     };
-
-    if ( $@ ) {
-        error( $0, $filename, $dataname,
-               "essential tags for orthogonal matrix computation not " .
-               "present", "dataset will be skipped" );
-        next;
-    }
-
-    #   Extract atoms and order them alphabetically by type and label.
-    my $atoms = get_atoms( $dataset, $ortho_matrix, $filename, $uniquify_atoms );
-    next if !defined $atoms;
-
-    my $printable_properties = [ "name", "chemical_type",
-                                 "coordinates_ortho", "coordinates_fract",
-                                 "disorder_group", "disorder_assembly" ];
-
-    print_atoms( $atoms, $printable_properties ) if ( $verbose );
-
-    #   Generate atoms by applying symmetry operators. This subroutine 
-    #   original atoms are fitted into the first octant by applying x,y,z
-    #   operator modulus 1.
-
-    my ( $sym_atoms, $symop_count );
-    eval {
-        ( $sym_atoms, $symop_count ) = symops_apply( $dataset, $atoms,
-                                                     $ortho_matrix, $filename );
-    };
-
-    if ( $@ ) {
-        error( $0, $filename, $dataname,
-               "unable to generate symmetrically equivalent atoms",
-               "dataset will be skipped" );
-        next;
-    }
-
-    push @$printable_properties, "sym_operator";
-
-    print_atoms( $sym_atoms, $printable_properties ) if ( $verbose );
-
-    my @shifted_atoms = map { shift_atom( $_, $ortho_matrix ) } @{$sym_atoms};
-
-    push @$printable_properties, "shift_vector";
-
-    print_atoms( \@shifted_atoms, $printable_properties ) if ( $verbose );
-
-    my ( $distances, $headers, $atoms_used ) = get_distances( \@shifted_atoms, 
-                                                              $symop_count );
-
-    if ( $output_format eq "pairwise" ) {
-        print_pairwise( $distances, $atoms_used, $filename, $add_filename );
-    } elsif ( $output_format eq "matrix" ) {
-        print_distance_matrix( $distances, $headers, $format, $line_length );
+    if ($@) {
+        process_errors( {
+          'message'       => $@,
+          'program'       => $0,
+          'filename'      => $filename,
+          'add_pos'       => $dataname
+        }, $die_on_error_level->{'ERROR'} );
     }
   }
 }
@@ -292,10 +306,9 @@ foreach my $filename ( @ARGV ) {
 
 sub get_atoms {
 
-    my ( $dataset, $ortho_matrix, $filename, $uniquify_atoms ) = @_;
+    my ( $dataset, $ortho_matrix, $uniquify_atoms ) = @_;
 
     my $values = $dataset->{values};
-    my $dataname = prefix_dataname($dataset->{name});
 
     #   extracts atom site label or atom site type symbol
     my $atom_site_tag;
@@ -305,10 +318,8 @@ sub get_atoms {
     } elsif( exists $values->{"_atom_site_type_symbol"} ) {
         $atom_site_tag = "_atom_site_type_symbol";
     } else {
-        error( $0, $filename, $dataname,
-               "neither '_atom_site_label' nor '_atom_site_type_symbol' " .
-               "present", "dataset will not be processed" );
-        return;
+        die "ERROR, neither '_atom_site_label' nor '_atom_site_type_symbol' "
+          . "present -- dataset will not be processed\n";
     }
 
     my @atoms;
@@ -351,16 +362,14 @@ sub get_atoms {
             chop $atom->{chemical_type};
             if( ! exists $COD::AtomProperties::atoms{$atom->{chemical_type}}) {
                 if ( $include_unknown_types ) {
-                    warning( $0, $filename, $dataname,
-                         "unable to determine chemical type of atom with " .
-                         "_atom_site_label '" . $atom->{name} . "'",
-                         "atom chemical type will be set to 'UN'" );
+                    warn "WARNING, unable to determine chemical type of atom "
+                       . "with _atom_site_label '" . $atom->{name} . "' -- "
+                       . "atom chemical type will be set to 'UN'\n";
                     $atom->{chemical_type} = "UN"
                 } else {
-                    warning( $0, $filename, $dataname,
-                         "unable to determine chemical type of atom with " . 
-                         "_atom_site_label '" . $atom->{name} . "'",
-                         'atom will be removed' );
+                    warn "WARNING, unable to determine chemical type of atom "
+                       . "with _atom_site_label '" . $atom->{name} . "' -- "
+                       . "atom will be removed\n";
                     next;
                 }
             }
@@ -391,8 +400,7 @@ sub get_atoms {
         push( @atoms, $atom );
     }
 
-    @atoms = @{ uniquify_atom_names( \@atoms, $uniquify_atoms, 
-                                     $filename, $dataset->{name} ); };
+    @atoms = @{ uniquify_atom_names( \@atoms, $uniquify_atoms ) };
 
     @atoms = sort { ( $a -> {chemical_type} cmp $b -> {chemical_type} ) ||
                     ( $a -> {name} cmp $b -> {name} ) } @atoms;
@@ -416,10 +424,10 @@ sub get_atoms {
 ##
 
 sub symops_apply {
-    my ( $dataset, $atoms, $ortho_matrix, $filename ) = @_;
+    my ( $dataset, $atoms, $ortho_matrix ) = @_;
 
     #   extracts symmetry operators
-    my $sym_data = get_symmetry_operators( $dataset, $filename );
+    my $sym_data = get_symmetry_operators( $dataset );
 
     #   transforms symmetry operators into canonical from
     @{$sym_data} = map { symop_string_canonical_form( $_ ) } @{$sym_data};

@@ -99,7 +99,8 @@ sub overlay_points($$$)
     my ( $set1, $set2, $centers ) = @_;
 
     if ( @{$set1} != @{$set2} ) {
-        die "superpositioned sets do not contain the same number of points";
+        die 'ERROR, superpositioned sets do not contain the same '
+          . 'number of points' "\n";
     };
 
     my $center1 = find_center($set1) if !defined $centers->{center1};
@@ -132,15 +133,16 @@ sub get_rotation_matrix($$)
     my $N = scalar(@{$set1});
 
     if ( @{$set1} != @{$set2} ) {
-        die "superpositioned sets do not contain the same number of points"
+        die 'ERROR, superpositioned sets do not contain the same number of '
+            'points' . "\n";
     };
 
     $set1 = matrix_to_list($set1);
     $set2 = matrix_to_list($set2);
 
     if ( @{$set1} != @{$set2} ) {
-        die "not all points of the superpositioned sets are " .
-            "of the same dimmensions";
+        die 'ERROR, not all points of the superpositioned sets are ' .
+            'of the same dimmensions' . "\n";
     };
 
     my $set_p = [ map { $set2->[$_] + $set1->[$_] } 0..$#$set1 ];
@@ -189,10 +191,10 @@ sub get_rotation_matrix($$)
     }
 
     if ( !defined $min ) {
-        die "no positive eigenvalues were produced";
+        die 'ERROR, no positive eigenvalues were produced' . "\n";
     } elsif ( $found_negative_eigenvalues ) {
-        warn "negative eigenvalues were produced, taking the smallest " .
-             "positive eigenvalue";
+        warn 'WARNING, negative eigenvalues were produced, taking the smallest '
+           . 'positive eigenvalue' . "\n";
     }
 
     my $eigenvector = @$eigenvectors[$min];

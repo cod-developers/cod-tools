@@ -14,18 +14,29 @@ eval 'exec perl -x $0 ${1+"$@"}'
 
 use strict;
 use warnings;
-use COD::CIF::Data::CellContents qw( cif_cell_contents );
 use COD::CIF::Parser qw( parse_cif );
+use COD::CIF::Data::CellContents qw( cif_cell_contents );
 use COD::SOptions qw( getOptions );
 use COD::SUsage qw( usage options );
-use COD::UserMessage qw( error );
+use COD::ErrorHandler qw( process_warnings
+                          process_errors
+                          process_parser_messages );
 
 my $use_parser = 'c';
+
+my $die_on_error_level = {
+    ERROR   => 1,
+    WARNING => 0,
+    NOTE    => 0
+};
+
 my $format = "%g";
 my $Z_value;
 my $use_attached_hydrogens = 0;
 my $assume_full_occupancies = 0;
-my $continue_on_errors = 0;
+my $die_on_errors   = 1;
+my $die_on_warnings = 0;
+my $die_on_notes    = 0;
 my $print_datablock_name = 0;
 
 #* USAGE:
@@ -36,10 +47,22 @@ my $print_datablock_name = 0;
 #*         Keep processing subsequent data blocks even if one datablock
 #*         had fatal processing errors
 #*
-#*     -c-, --dont-continue-on-errors, --do-not-continue-on-errors,
-#*     --no-continue-on-errors
+#*     -c-, --die-on-errors, --dont-continue-on-errors,
+#*     --do-not-continue-on-errors, --no-continue-on-errors
 #*         Terminate script immediately if some data block could not be
 #*         processed (default).
+#*
+#*     --continue-on-warnings
+#*          Do not terminate script if warnings are raised (default)
+#*
+#*     --die-on-warnings
+#*          Terminate script immediately if warnings are raised
+#*
+#*     --continue-on-notes
+#*          Do not terminate script if notes are raised (default)
+#*
+#*     --die-on-notes
+#*          Terminate script immediately if notes are raised
 #*
 #*     -Z, --cell-formula-units-Z  1
 #*         Specify number of formula sum units in the unit cell.
@@ -83,10 +106,17 @@ my $print_datablock_name = 0;
 #*         Print a short usage message (this message) and exit.
 #**
 @ARGV = getOptions(
-    "-c,--continue-on-errors" => sub { $continue_on_errors = 1 },
-    "-c-,--dont-continue-on-errors" => sub { $continue_on_errors = 0 },
-    "--do-not-continue-on-errors" => sub { $continue_on_errors = 0 },
-    "--no-continue-on-errors" => sub { $continue_on_errors = 0 },
+    "-c,--continue-on-errors"       => sub { $die_on_errors = 0 },
+    "-c-,--dont-continue-on-errors" => sub { $die_on_errors = 1 },
+    "--die-on-errors"               => sub { $die_on_errors = 1 },
+    "--do-not-continue-on-errors"   => sub { $die_on_errors = 1 },
+    "--no-continue-on-errors"       => sub { $die_on_errors = 1 },
+
+    "--continue-on-warnings" => sub { $die_on_warnings = 0 },
+    "--die-on-warnings"      => sub { $die_on_warnings = 1 },
+
+    "--continue-on-notes"    => sub { $die_on_notes = 0 },
+    "--die-on-notes"         => sub { $die_on_notes = 1 },
 
     "-Z,--cell-formula-units-Z" => \$Z_value,
 
@@ -118,34 +148,38 @@ my $Id = '$Id$';
 for my $filename (@ARGV) {
     my $options = { 'parser' => $use_parser, 'no_print' => 1 };
     my ( $data, $err_count, $messages ) = parse_cif( $filename, $options );
-
-    if ( $err_count > 0 ) {
-        print STDERR $_ foreach ( @$messages );
-        error( $0, $filename, undef, "$err_count error(s) "
-             . "encountered while parsing the file", undef );
-        next;
-    }
-    print STDERR $_ foreach ( @$messages );
+    process_parser_messages( $messages, $die_on_error_level );
+    next if ( $err_count > 0 );
 
     for my $dataset (@$data) {
 
-        my $values = $dataset->{values};
+        my $dataname = 'data_' . $dataset->{name};
+        my $values   = $dataset->{values};
+
+        local $SIG{__WARN__} = sub { process_warnings( {
+                                       'message'  => @_,
+                                       'program'  => $0,
+                                       'filename' => $filename,
+                                       'add_pos'  => $dataname
+                                     }, {
+                                       'WARNING' => $die_on_warnings,
+                                       'NOTE'    => $die_on_notes
+                                     } ) };
 
         my $formula;
         eval {
-            $formula = cif_cell_contents
-                ( $dataset,  $filename, $Z_value,
-                  $use_attached_hydrogens, $assume_full_occupancies );
+            $formula = cif_cell_contents ( $dataset, $Z_value,
+                                           $use_attached_hydrogens,
+                                           $assume_full_occupancies );
         };
-        if( $@ ) {
-            if( $continue_on_errors ) {
-                $@ =~ s/^Died /... /;
-                print STDERR $@;
-                next;
-            } else {
-                die $@;
-            }
-        }
+        if ( $@ ) {
+            process_errors( {
+              'message'       => $@,
+              'program'       => $0,
+              'filename'      => $filename,
+              'add_pos'       => $dataname
+            }, $die_on_errors )
+        };
 
         if( defined $formula ) {
             if( $print_datablock_name ) {

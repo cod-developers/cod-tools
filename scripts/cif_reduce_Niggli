@@ -24,9 +24,17 @@ use COD::Fractional qw( symop_fract_from_ortho symop_ortho_from_fract );
 use COD::Spacegroups::Symop::Algebra qw( symop_transpose symop_mul );
 use COD::SOptions qw( getOptions );
 use COD::SUsage qw( usage options );
-use COD::UserMessage qw( error );
+use COD::ErrorHandler qw( process_warnings
+                          process_errors
+                          process_parser_messages );
 
 sub cholesky($);
+
+my $die_on_error_level = {
+    ERROR   => 1,
+    WARNING => 0,
+    NOTE    => 0
+};
 
 my $use_parser = 'c';
 $COD::Cell::Niggli::KG76::debug = 0;
@@ -65,55 +73,67 @@ for my $filename (@ARGV) {
 
     my $options = { 'parser' => $use_parser, 'no_print' => 1 };
     my ( $data, $err_count, $messages ) = parse_cif( $filename, $options );
-
-    if ( $err_count > 0 ) {
-        print STDERR $_ foreach ( @$messages );
-        error( $0, $filename, undef, "$err_count error(s) "
-             . "encountered while parsing the file", undef );
-        next;
-    }
-    print STDERR $_ foreach ( @$messages );
+    process_parser_messages( $messages, $die_on_error_level );
+    next if ( $err_count > 0 );
 
     canonicalize_all_names( $data );
 
     for my $datablock (@$data) {
         my $values = $datablock->{values};
-        my @cell = get_cell( $values, $filename, $datablock->{name} );
-        my $f2o = symop_ortho_from_fract( @cell );
-        my @niggli = reduce( @cell );
-        my $o2f = symop_fract_from_ortho( @niggli );
-        my $CoB = pop( @niggli );
+        my $dataname = 'data_' . $datablock->{name} if defined $datablock->{name};
 
-        $values->{_cell_length_a}[0] = $niggli[0];
-        $values->{_cell_length_b}[0] = $niggli[1];
-        $values->{_cell_length_c}[0] = $niggli[2];
-        $values->{_cell_angle_alpha}[0] = $niggli[3];
-        $values->{_cell_angle_beta}[0]  = $niggli[4];
-        $values->{_cell_angle_gamma}[0] = $niggli[5];
+        local $SIG{__WARN__} = sub { process_warnings( {
+                                       'message'       => @_,
+                                       'program'       => $0,
+                                       'filename'      => $filename,
+                                       'add_pos'       => $dataname
+                                     }, $die_on_error_level ) };
 
-        my( $a, $b, $c ) = @cell;
-        my( $ca, $cb, $cg ) = map { cos( $Pi * $_ / 180 ) }
-                                  @cell[3..5];
+        eval {
+            my @cell = get_cell( $values );
+            my $f2o = symop_ortho_from_fract( @cell );
+            my @niggli = reduce( @cell );
+            my $o2f = symop_fract_from_ortho( @niggli );
+            my $CoB = pop( @niggli );
 
-        for my $i (0..$#{$values->{_atom_site_label}}) {
-            my( $fx, $fy, $fz ) = map { s/(\(\d+\))?$//; $_ }
-                                  map { $values->{$_}[$i] }
-                                    qw( _atom_site_fract_x
-                                        _atom_site_fract_y
-                                        _atom_site_fract_z );
+            $values->{_cell_length_a}[0] = $niggli[0];
+            $values->{_cell_length_b}[0] = $niggli[1];
+            $values->{_cell_length_c}[0] = $niggli[2];
+            $values->{_cell_angle_alpha}[0] = $niggli[3];
+            $values->{_cell_angle_beta}[0]  = $niggli[4];
+            $values->{_cell_angle_gamma}[0] = $niggli[5];
 
-            ( $values->{_atom_site_fract_x}[$i],
-              $values->{_atom_site_fract_y}[$i],
-              $values->{_atom_site_fract_z}[$i] ) =
-                vector_matrix_mul( [ $fx, $fy, $fz ], $CoB );
-        }
+            my( $a, $b, $c ) = @cell;
+            my( $ca, $cb, $cg ) = map { cos( $Pi * $_ / 180 ) } @cell[3..5];
 
-        print_cif( $datablock,
-           {
+            for my $i (0..$#{$values->{_atom_site_label}}) {
+                my( $fx, $fy, $fz ) = map { s/(\(\d+\))?$//; $_ }
+                                      map { $values->{$_}[$i] }
+                                        qw( _atom_site_fract_x
+                                            _atom_site_fract_y
+                                            _atom_site_fract_z );
+
+                ( $values->{_atom_site_fract_x}[$i],
+                  $values->{_atom_site_fract_y}[$i],
+                  $values->{_atom_site_fract_z}[$i] ) =
+                    vector_matrix_mul( [ $fx, $fy, $fz ], $CoB );
+            }
+
+            print_cif( $datablock,
+              {
                 preserve_loop_order => 1,
                 keep_tag_order => 1
-           }
-        );
+              }
+            );
+        };
+        if (@_) {
+            process_errors( {
+              'message'       => $@,
+              'program'       => $0,
+              'filename'      => $filename,
+              'add_pos'       => $dataname
+            }, $die_on_error_level->{'ERROR'} );
+        }
     }
 }
 

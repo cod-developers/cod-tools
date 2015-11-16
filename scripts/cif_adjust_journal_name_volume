@@ -22,7 +22,13 @@ use COD::CIF::Tags::COD;
 use COD::CIF::Tags::Print qw( print_cif );
 use COD::SOptions qw( getOptions );
 use COD::SUsage qw( usage options );
-use COD::UserMessage qw( error );
+use COD::ErrorHandler qw( process_parser_messages );
+
+my $die_on_error_level = {
+    ERROR   => 1,
+    WARNING => 0,
+    NOTE    => 0
+};
 
 my $use_parser = 'c';
 my $keep_tag_order = 0;
@@ -62,12 +68,7 @@ my %dictionary_tags = map { $_, $_ } @dictionary_tags;
 for my $filename (@ARGV) {
     my $options = { 'parser' => $use_parser, 'no_print' => 1 };
     my ( $data, $err_count, $messages ) = parse_cif( $filename, $options );
-    if ( $err_count > 0 ) {
-        print STDERR $_ foreach ( @$messages );
-        error( $0, $filename, undef, "$err_count error(s) "
-             . "encountered while parsing the file", undef );
-        exit 1;
-    }
+    process_parser_messages( $messages, $die_on_error_level );
 
     canonicalize_all_names( $data );
 
