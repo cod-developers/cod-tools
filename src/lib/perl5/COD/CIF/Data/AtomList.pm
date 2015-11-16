@@ -25,6 +25,8 @@ require Exporter;
 our @ISA = qw( Exporter );
 our @EXPORT_OK = qw(
     atom_array_from_cif
+    atom_is_disordered
+    atoms_are_alternative
     copy_struct_deep
     dump_atoms_as_cif
     uniquify_atom_names
@@ -504,8 +506,8 @@ sub copy_atom
     return $atom_copy;
 }
 
+#===============================================================#
 # Performs deep copying of structure passed via reference
-
 sub copy_struct_deep
 {
     my( $struct, $options ) = @_;
@@ -530,6 +532,28 @@ sub copy_struct_deep
         die "ERROR, deep copy failed -- 'copy_struct_deep' does not know " .
             "how to copy object '" . ref( $struct ) . "'\n";
     }
+}
+
+#===============================================================#
+# Returns true if atom is disordered, false otherwise
+sub atom_is_disordered($)
+{
+    my( $atom ) = @_;
+    return exists $atom->{assembly} &&
+           exists $atom->{group} &&
+           $atom->{group} ne '.';
+}
+
+#===============================================================#
+# Check whether atoms belong to the same disorder assembly and
+# are alternative (belong to different groups of same assembly).
+sub atoms_are_alternative($$)
+{
+    my( $atom1, $atom2 ) = @_;
+    return atom_is_disordered( $atom1 ) &&
+           atom_is_disordered( $atom2 ) &&
+           $atom1->{assembly} eq $atom2->{assembly} &&
+           $atom1->{group} ne $atom2->{group};
 }
 
 sub dump_atoms_as_cif
