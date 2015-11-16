@@ -15,6 +15,7 @@ use warnings;
 use Carp qw( croak );
 use COD::AtomBricks qw( build_bricks get_atom_index get_search_span );
 use COD::Algebra::Vector qw( distance );
+use COD::CIF::Data::AtomList qw( atoms_are_alternative );
 
 require Exporter;
 our @ISA = qw( Exporter );
@@ -122,17 +123,7 @@ sub make_neighbour_list($$$$@)
             for my $atom2 ( @{$bricks->{atoms}[$ai][$aj][$ak]} ) {
 
                 next if $atom1 == $atom2;
-
-                next if exists $atom1->{assembly} &&
-                        exists $atom2->{assembly} &&
-                        $atom1->{assembly} ne '.' &&
-                        $atom2->{assembly} ne '.' &&
-                        $atom1->{assembly} eq $atom2->{assembly} &&
-                        exists $atom1->{group} &&
-                        exists $atom2->{group} &&
-                        $atom1->{group} ne '.' &&
-                        $atom2->{group} ne '.' &&
-                        $atom1->{group} ne $atom2->{group};
+                next if atoms_are_alternative( $atom1, $atom2 );
 
                 my $atom1_type =  $atom1->{chemical_type};
                 my $atom2_type =  $atom2->{chemical_type};

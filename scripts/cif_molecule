@@ -57,12 +57,14 @@ use File::Basename qw( basename );
 use COD::AtomBricks qw( build_bricks get_atom_index get_search_span );
 use COD::CIF::Parser qw( parse_cif );
 use COD::CIF::Data qw( get_cell get_symmetry_operators );
+use COD::CIF::Data::AtomList qw( atom_array_from_cif
+                                 atom_is_disordered
+                                 atoms_are_alternative
+                                 copy_struct_deep
+                                 dump_atoms_as_cif );
 use COD::CIF::Data::SymmetryGenerator qw( atoms_coincide
                                           test_bond
                                           test_bump );
-use COD::CIF::Data::AtomList qw( atom_array_from_cif
-                                 copy_struct_deep
-                                 dump_atoms_as_cif );
 use COD::AtomNeighbours qw( get_max_covalent_radius make_neighbour_list );
 use COD::AtomProperties;
 use COD::Formulae::Print qw( sprint_formula );
@@ -2658,16 +2660,7 @@ sub find_molecule($$$$$$$$$$$)
                                      $dist, $bump_distance_factor );
 
             if( $is_bump &&
-                ( ( !defined $current_atom->{group} &&
-                    !defined $current_atom->{assembly} &&
-                    !defined $sym_atom->{group} &&
-                    !defined $sym_atom->{assembly} ) ||
-                  ( $current_atom->{group} eq $sym_atom->{group} &&
-                    $current_atom->{assembly} eq $sym_atom->{assembly} ) ||
-                  ( $current_atom->{assembly} eq "." && 
-                    $current_atom->{group} eq "." ) ||
-                  ( $sym_atom->{assembly} eq "." && 
-                    $sym_atom->{group} eq "." ) )) {
+                !atoms_are_alternative( $current_atom, $sym_atom ) ) {
                 if( not exists $checked_pairs->{$sym_label}{$new_label} ) {
                     my $message =  "atoms \"$current_atom->{name}\" and " .
                         "\"$sym_atom->{name}\" are too close " .
@@ -2700,16 +2693,7 @@ sub find_molecule($$$$$$$$$$$)
                                     $covalent_sensitivity);
 
             if( $is_bond &&
-                ( ( !defined $current_atom->{group} &&
-                    !defined $current_atom->{assembly} &&
-                    !defined $sym_atom->{group} &&
-                    !defined $sym_atom->{assembly} ) ||
-                  ( $current_atom->{group} eq $sym_atom->{group} &&
-                    $current_atom->{assembly} eq $sym_atom->{assembly} ) ||
-                  ( $current_atom->{assembly} eq "." && 
-                    $current_atom->{group} eq "." ) ||
-                  ( $sym_atom->{assembly} eq "." && 
-                    $sym_atom->{group} eq "." ) )) {
+                !atoms_are_alternative( $current_atom, $sym_atom ) ) {
                 do {
                     use COD::Serialise qw( serialiseRef );
                     local $" = ' ';
@@ -2824,16 +2808,7 @@ sub atom_bonds
                                         $covalent_sensitivity);
 
                 if( $is_bond &&
-                    ( ( !defined $atom->{group} &&
-                        !defined $atom->{assembly} &&
-                        !defined $neighbour->{group} &&
-                        !defined $neighbour->{assembly} ) ||
-                      ( $atom->{group} eq $neighbour->{group} &&
-                        $atom->{assembly} eq $neighbour->{assembly} ) ||
-                      ( $atom->{assembly} eq "." && 
-                        $atom->{group} eq "." ) ||
-                      ( $neighbour->{assembly} eq "." && 
-                        $neighbour->{group} eq "." ) )) {
+                    !atoms_are_alternative( $atom, $neighbour ) ) {
 
                     do {
                         use COD::Serialise qw( serialiseRef );
