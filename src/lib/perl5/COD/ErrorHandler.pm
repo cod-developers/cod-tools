@@ -16,8 +16,12 @@ use COD::UserMessage qw( sprint_message parse_message );
 
 require Exporter;
 our @ISA = qw( Exporter );
-our @EXPORT_OK = qw( process_warnings process_errors
-                     process_parser_messages report_message );
+our @EXPORT_OK = qw(
+    process_warnings
+    process_errors
+    process_parser_messages
+    report_message
+);
 
 sub process_parser_messages
 {
