@@ -19,7 +19,7 @@ our @EXPORT_OK = qw(
     string_from_symop
     string_from_symop_reduced
     symop_string_canonical_form
-    check_symmetry_operator
+    is_symop_parsable
     modulo_1
     symop_translation_modulo_1
     symop_print
@@ -198,9 +198,11 @@ sub symop_string_canonical_form
     );
 }
 
-sub check_symmetry_operator
+sub is_symop_parsable
 {
     my ($symop) = @_;
+
+    my $status = 1;
 
     my $symop_term = '(?:x|y|z|\d|\d*\.\d+|\d+\.\d*|\d/\d)';
     my $symop_component =
@@ -209,16 +211,17 @@ sub check_symmetry_operator
         "(?:-|\\+)?$symop_term(?:-|\\+)$symop_term(?:-|\\+)$symop_term)";
 
     if( !defined $symop ) {
-        return "no symmetry operators";
+        warn "WARNING, no symmetry operators\n";
+        $status = 0;
     } else {
         my $no_spaces = $symop;
         $no_spaces =~ s/\s//g;
-        if( $no_spaces !~ 
-            /^($symop_component,){2}($symop_component)$/i ) {
-            return "symmetry operator '$symop' could not be parsed";
+        if( $no_spaces !~ /^($symop_component,){2}($symop_component)$/i ) {
+            warn "WARNING, symmetry operator '$symop' could not be parsed\n";
+            $status = 0;
         }
     }
-    return undef;
+    return $status;
 }
 
 1;

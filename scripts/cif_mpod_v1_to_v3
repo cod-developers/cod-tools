@@ -20,7 +20,15 @@ use COD::CIF::Tags::Manage qw( exclude_tag );
 use COD::CIF::Tags::Print qw( print_cif );
 use COD::SOptions qw( getOptions );
 use COD::SUsage qw( usage options );
-use COD::UserMessage qw( error );
+use COD::ErrorHandler qw( process_warnings
+                          process_parser_messages
+                          report_message );
+
+my $die_on_error_level = {
+    ERROR   => 1,
+    WARNING => 0,
+    NOTE    => 0
+};
 
 my $use_parser = "c";
 
@@ -147,23 +155,29 @@ for my $filename (@ARGV) {
 
     my $options = { 'parser' => $use_parser, 'no_print' => 1 };
     my ( $data, $err_count, $messages ) = parse_cif( $filename, $options );
-
-    if ( $err_count > 0 ) {
-        print STDERR $_ foreach ( @$messages );
-        error( $0, $filename, undef, "$err_count error(s) "
-             . "encountered while parsing the file", undef );
-        die;
-    }
-    print STDERR $_ foreach ( @$messages );
+    process_parser_messages( $messages, $die_on_error_level );
 
     if( !@$data || !defined $data->[0] || !defined $data->[0]{name} ) {
-        warn( "file '$filename' seems to be empty" );
+        report_message( {
+            'program'   => $0,
+            'filename'  => $filename,
+            'err_level' => 'WARNING',
+            'message'   => 'file seems to be empty'
+        }, $die_on_error_level->{'WARNING'} );
         next;
     }
 
     for my $datablock (@$data) {
         my $values = $datablock->{values};
         my $tags = $datablock->{tags};
+        my $dataname = 'data_' . $datablock->{name} if defined $datablock->{name};
+
+        local $SIG{__WARN__} = sub { process_warnings( {
+                                       'message'       => @_,
+                                       'program'       => $0,
+                                       'filename'      => $filename,
+                                       'add_pos'       => $dataname
+                                     }, $die_on_error_level ) };
 
         my @conditions = ();
         for my $condition (@condition_tags) {
@@ -243,12 +257,11 @@ for my $filename (@ARGV) {
                                 {$property} =
                                     $values->{_prop_data_value}[$i];
                         } else {
-                            warn( "$filename($datablock->{name}):" .
-                                  "property '$property' for index " .
-                                  "'$tensorial_index' " .
-                                  ($condition_key ? "(at conditions " .
-                                   "$condition_key) " : "") .
-                                  "is defined more than once" );
+                            warn "WARNING, property '$property' for index "
+                                . "'$tensorial_index' "
+                                . ($condition_key ? "(at conditions "
+                                . "$condition_key) " : "")
+                                . "is defined more than once\n";
                         }
                     }
                 }

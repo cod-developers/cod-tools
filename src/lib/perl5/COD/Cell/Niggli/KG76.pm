@@ -66,8 +66,8 @@ sub reduce
     my $n = 1;
     while(1) {
         if( ++$n > $max_n ) {
-            print STDERR "reduce(): could not reduce cell in $max_n steps";
-            return undef;
+            die 'ERROR, reduce() subroutine could not reduce cell in'
+              . "$max_n steps\n";
         }
         # 1.
         if( $A - $eps > $B or

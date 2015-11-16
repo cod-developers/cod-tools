@@ -136,9 +136,9 @@ sub symgen_atom($$$)
     ## print ">>> $gp_multiplicity / $multiplicity_ratio\n";
 
     if( $gp_multiplicity % $multiplicity_ratio ) {
-        die( "Multiplicity ratio $multiplicity_ratio does not divide " .
-             "multiplicity of a general position $gp_multiplicity " .
-             "- this should not happen" );
+        die "ERROR, multiplicity ratio '$multiplicity_ratio' does not divide "
+          . "multiplicity of a general position '$gp_multiplicity' -- "
+          . "this should not happen\n";
     }
 
     my $multiplicity = $gp_multiplicity / $multiplicity_ratio;
@@ -278,8 +278,8 @@ sub copy_atom($)
         } elsif( ref $old_atom->{$key} eq "ARRAY" ) {
             $new_atom{$key} = copy_array($old_atom->{$key});
         } else {
-            die( "assertion failed: 'copy_atom' does not know how to " .
-                 "copy the supplied object" );
+            die "ERROR: assertion failed -- 'copy_atom()' does not know how "
+              . "to copy the supplied object\n";
         }
     }
 

@@ -16,11 +16,14 @@ eval 'exec perl -x $0 ${1+"$@"}'
 use strict;
 use warnings;
 use Scalar::Util qw( looks_like_number );
-use COD::CIF::Parser qw( parse_cif );
+use COD::CIF::Parser qw(parse_cif);
 use COD::CIF::Tags::CanonicalNames qw( canonicalize_all_names );
 use COD::SOptions qw( getOptions get_value );
 use COD::SUsage qw( usage options );
-use COD::UserMessage qw( note warning error debug_note prefix_dataname );
+use COD::UserMessage qw( debug_note );
+use COD::ErrorHandler qw( process_warnings
+                          process_parser_messages
+                          report_message );
 
 my $version = 0.1;
 
@@ -31,6 +34,10 @@ my $caseSensitive    = 1;
 my $reportLocalTags  = 0;
 my $reportDeprecated = 0;
 my $debug   = 0;
+
+my $die_on_errors   = 1;
+my $die_on_warnings = 0;
+my $die_on_notes    = 0;
 
 sub VersionMessage();
 sub severityName($);
@@ -91,6 +98,24 @@ sub getReplacementTags($$);
 #*                     Use Perl parser to parse CIF files.
 #* --use-c-parser
 #*                     Use C parser to parse CIF files (default)
+#*
+#* -c, --always-continue
+#*                     Continue processing and return successful return status
+#*                     even if errors are diagnosed.
+#* -c-, --always-die
+#*                     Stop and return error status if errors are diagnosed.
+#* --continue-on-errors
+#*                     Do not terminate script if errors are raised (default).
+#* --die-on-errors
+#*                     Terminate script immediately if errors are raised.
+#* --continue-on-warnings
+#*                    Do not terminate script if warnings are raised (default).
+#* --die-on-warnings
+#*                    Terminate script immediately if warnings are raised.
+#* --continue-on-notes
+#*                    Do not terminate script if notes are raised (default).
+#* --die-on-notes
+#*                    Terminate script immediately if notes are raised.
 #* --debug
 #*                     Output extra information for debugging purposes.
 #* -v, --version
@@ -120,11 +145,33 @@ sub getReplacementTags($$);
     "--use-perl-parser"                 => sub{ $use_parser = "perl" },
     "--use-c-parser"                    => sub{ $use_parser = "c" },
 
-    "--debug"           => sub { $debug = 1 },
-    "-v,--version"      => sub { VersionMessage(); exit; },
+    "-c,--always-continue"              => sub { $die_on_errors   = 0;
+                                                 $die_on_warnings = 0;
+                                                 $die_on_notes    = 0 },
+    "-c-,--always-die"                  => sub { $die_on_errors   = 1;
+                                                 $die_on_warnings = 1;
+                                                 $die_on_notes    = 1 },
+
+    "--continue-on-errors"          => sub { $die_on_errors = 0 },
+    "--die-on-errors"               => sub { $die_on_errors = 1 },
+
+    "--continue-on-warnings" => sub { $die_on_warnings = 0 },
+    "--die-on-warnings"      => sub { $die_on_warnings = 1 },
+
+    "--continue-on-notes"    => sub { $die_on_notes = 0 },
+    "--die-on-notes"         => sub { $die_on_notes = 1 },
+
+    "-v,--version"      => sub{ VersionMessage(); exit; },
     "--options"         => sub { options; exit },
-    "--help,--usage"    => sub { usage; exit; }
+    "--help,--usage"    => sub{ usage; exit; },
+    "--debug"           => sub{ $debug = 1 }
 );
+
+my $die_on_error_level = {
+    ERROR   => $die_on_errors,
+    WARNING => $die_on_warnings,
+    NOTE    => $die_on_notes
+};
 
 my %dictTags;
 
@@ -133,34 +180,38 @@ if( @dictFiles ) {
     my $options = { 'parser' => $use_parser, 'no_print' => 1 };
     foreach my $dict ( @dictFiles ) {
         my ( $data, $err_count, $messages ) = parse_cif( $dict, $options );
-
-        if ( $err_count > 0 ) {
-            print STDERR $_ foreach ( @$messages );
-            error( $0, $dict, undef, "$err_count error(s) "
-                 . "encountered while parsing the file", undef );
-            next;
-        }
-        print STDERR $_ foreach ( @$messages );
+        process_parser_messages( $messages, $die_on_error_level );
 
         $dictTags{$dict} = getDict( $data );
         if ( scalar( keys( %{$dictTags{$dict}} ) ) == 0 ) {
-            warning( $0, $dict, undef, "no tag definitions found", undef )
+            report_message( {
+                'program'       => $0,
+                'filename'      => $dict,
+                'err_level'     => 'WARNING',
+                'message'       => 'no tag definitions found'
+            }, $die_on_warnings );
         }
         $tag_count += scalar( keys( %{$dictTags{$dict}} ) );
     }
 
     if( $tag_count == 0 ) {
-        error( $0, undef, undef, 'no tag definitions were ' .
-               "found in the provided dictionary files ('" .
-                join( "', '", @dictFiles ) . "')", undef );
-        exit 1;
+        report_message( {
+            'program'   => $0,
+            'err_level' => 'ERROR',
+            'message'   => 'no tag definitions were found in the '
+                         . "provided dictionary files ('"
+                         . join( "', '", @dictFiles ) . "')"
+        }, $die_on_errors );
     }
 } else {
-    error( $0, undef, undef, "at least one dictionary file should be " .
-           "provided by using the '--dictionaries' option. Automatic " .
-           "dictionary download is not implemeted yet", undef );
+    report_message( {
+        'program'   => $0,
+        'err_level' => 'ERROR',
+        'message'   => 'at least one dictionary file should be provided by '
+                     . "using the '--dictionaries' option. Automatic "
+                     . 'dictionary download is not implemeted yet'
+    }, $die_on_errors );
     my $dictIUCRURI = "ftp://ftp.iucr.org/pub/cif_core.dic";
-    exit 1;
 }
 
 @ARGV = ("-") unless @ARGV;
@@ -168,22 +219,21 @@ if( @dictFiles ) {
 CIFFILEANAL: for my $filename ( @ARGV ) {
     my $options = { 'parser' => $use_parser, 'no_print' => 1 };
     my ( $data, $err_count, $messages ) = parse_cif( $filename, $options );
-
-    if ( $err_count > 0 ) {
-        print STDERR $_ foreach ( @$messages );
-        error( $0, $filename, undef, "$err_count error(s) "
-             . "encountered while parsing the file", undef );
-        next;
-    }
-    print STDERR $_ foreach ( @$messages );
+    process_parser_messages( $messages, $die_on_error_level );
 
     # convert all tags to a "cannonical" form
     canonicalize_all_names( $data );
     next CIFFILEANAL if ( !defined $data || $data == 1 );
 
     for my $block ( @$data ) {
+        my $dataname = 'data_' . $block->{name} if defined $block->{name};
 
-        my $dataname = prefix_dataname($block->{name});
+        local $SIG{__WARN__} = sub { process_warnings( {
+                                       'message'       => @_,
+                                       'program'       => $0,
+                                       'filename'      => $filename,
+                                       'add_pos'       => $dataname
+                                     }, $die_on_error_level ) };
 
         if( $debug ) {
             debug_note( $0, $filename, $dataname, 'analysis start', undef );
@@ -197,9 +247,9 @@ CIFFILEANAL: for my $filename ( @ARGV ) {
         for my $tagAnalysed ( @{$block->{tags}} ) {
             if(!defined $block->{types}{$tagAnalysed}) {
                 if ( $debug ) {
-                    warning( $0, $filename, $dataname,
-                      "tag '$tagAnalysed' has no associated type ",
-                      'an error in CIF parser had probably occured' );
+                    debug_note( $0, $filename, $dataname,
+                                "tag '$tagAnalysed' has no associated type ",
+                                'an error in CIF parser had probably occured' );
                 }
             }
             my $lc_tagAnalysed = lc $tagAnalysed;
@@ -230,10 +280,9 @@ CIFFILEANAL: for my $filename ( @ARGV ) {
                 # check if tags are deprecated (replaced with other tags)
                 my $replTags = getReplacementTags($dictD, $lc_tagAnalysed);
                 if( $reportDeprecated && @$replTags != 0 ) {
-                    note( $0, $filename, $dataname,
-                          "tag '$tagAnalysed' has been replaced by tag(-s) "
-                        . '[' . join(', ', @$replTags) . '] '
-                        . "according to $dictF", undef );
+                    warn "NOTE, tag '$tagAnalysed' has been replaced by "
+                        . 'tag(-s) [' . join(', ', @$replTags) . '] '
+                        . "according to $dictF\n";
                 }
 
                 # check if looped lists contain reference tags required by 
@@ -258,12 +307,11 @@ CIFFILEANAL: for my $filename ( @ARGV ) {
                                 }
                             } elsif (!grep { $_ eq $loopRefTag }
                                                  @{$reportedBlockReferences[$i]}) {
-                                    note( $0, $filename, $dataname,
-                                       "tag '$loopRefTag' is mandatory in loop "
-                                     . "when tag(s) ["
-                                     . join(', ', @{$dictTagValues->{_name}})
-                                     . "] are defined according to $dictF "
-                                     . 'but was not found', undef );
+                                    warn "NOTE, tag '$loopRefTag' is "
+                                       . 'mandatory in loop when tag(s) ['
+                                       . join(', ', @{$dictTagValues->{_name}})
+                                       . "] are defined according to $dictF "
+                                       . "but was not found\n";
                                     push @{$reportedBlockReferences[$i]},
                                          $loopRefTag;
                             }
@@ -288,9 +336,8 @@ CIFFILEANAL: for my $filename ( @ARGV ) {
                                 "according to $dictF and is in a loop", undef );
                         }
                     } else {
-                        note( $0, $filename, $dataname,
-                              "tag '$tagAnalysed' must be in a loop " .
-                              "according to $dictF but is not in a loop", undef );
+                        warn "NOTE, tag '$tagAnalysed' must be in a loop "
+                           . "according to $dictF but is not in a loop\n";
                     }
                 }
                 # check types of values
@@ -360,10 +407,9 @@ CIFFILEANAL: for my $filename ( @ARGV ) {
                        }
 
                        if( $valueFoundInList == 0 ) {
-                            note( $0, $filename, $dataname,
-                                  "tag '$tagAnalysed' value \"$value\" must "
-                                . 'be one of the enumeration values '
-                                . "[$listEnumValuesForTag]", undef );
+                            warn "NOTE, tag '$tagAnalysed' value \"$value\" "
+                               . 'must be one of the enumeration values '
+                               . "[$listEnumValuesForTag]\n";
                        } else {
                             my $message = "tag '$tagAnalysed' value \"$value\" "
                                         . 'is one of the enumeration '
@@ -394,13 +440,12 @@ CIFFILEANAL: for my $filename ( @ARGV ) {
                         if(defined $block->{types}{$tagAnalysed}) {
                             if('FLOAT' ne $block->{types}{$tagAnalysed}[$tagIndex]
                                 && 'INT' ne $block->{types}{$tagAnalysed}[$tagIndex]) {
-                                note( $0, $filename, $dataname,
-                                      "tag '$tagAnalysed' value \"" . 
-                                     $block->{values}{$tagAnalysed}[$tagIndex] .
-                                     "\" is of type '" .
-                                     $block->{types}{$tagAnalysed}[$tagIndex] .
-                                     "' while it should be numeric, i.e. " .
-                                     "'FLOAT', or 'INT'", undef );
+                                warn "NOTE, tag '$tagAnalysed' value \""
+                                   . $block->{values}{$tagAnalysed}[$tagIndex]
+                                   . "\" is of type '"
+                                   . $block->{types}{$tagAnalysed}[$tagIndex]
+                                   . "' while it should be numeric, i.e. "
+                                   . "'FLOAT', or 'INT'\n";
                             } elsif( $debug ) {
                                 debug_note( $0, $filename, $dataname,
                                             "tag '$tagAnalysed' is of type '" .
@@ -431,11 +476,10 @@ CIFFILEANAL: for my $filename ( @ARGV ) {
                     my $sigma = $block->{precisions}{$tagAnalysed}[$tagIndex];
                     if ( defined $sigma && !$su_permitted ) {
                         $value =~ /(\(\d+\))$/;
-                        note( $0, $filename, $dataname,
-                              "tag '$tagAnalysed' value \"$value\" is not "
-                            . 'permitted to contain standard uncertainty '
-                            . '"' . $1 . '"', 'standard uncertainty will '
-                            . 'be ignored in further validation' );
+                        warn "NOTE, tag '$tagAnalysed' value \"$value\" is "
+                           . 'not permitted to contain standard uncertainty '
+                           . '"' . $1 . '"' . ' -- ' . 'standard uncertainty '
+                           . "will be ignored in further validation\n";
                         $sigma = undef;
                     }
 
@@ -453,11 +497,10 @@ CIFFILEANAL: for my $filename ( @ARGV ) {
                             checkAgainstRange(
                                 $dictD->{$lc_tagAnalysed}{values}{_type}[0],
                                 $range, $valueWOPrecision, $sigma) <= 0 ) {
-                                note( $0, $filename, $dataname,
-                                      "tag '$tagAnalysed' value " .
-                                      "\"$value\" should be in range (" .
-                                      $rangeForPrint{min} .
-                                      ', ' . $rangeForPrint{max} . ')', undef );
+                                warn "NOTE, tag '$tagAnalysed' value " .
+                                     "\"$value\" should be in range (" .
+                                     $rangeForPrint{min} .
+                                     ', ' . $rangeForPrint{max} . ")\n";
                         } elsif( $debug ) {
                             debug_note( $0, $filename, $dataname,
                                         "tag '$tagAnalysed' value " .
@@ -475,8 +518,7 @@ CIFFILEANAL: for my $filename ( @ARGV ) {
             }
 
             if( !$defined ) {
-                note( $0, $filename, $dataname, "tag '$tagAnalysed' "
-                    . "was not found in dictionaries", undef );
+                warn "NOTE, tag '$tagAnalysed' was not found in dictionaries\n";
             }
         }
     }

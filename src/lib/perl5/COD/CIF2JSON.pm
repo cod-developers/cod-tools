@@ -28,7 +28,7 @@ sub cif2json($)
 {
     my( $data ) = @_;
     return encode_json( { data => $data,
-                          version => sprintf "%2.1f", $format_version } );
+                          version => sprintf '%2.1f', $format_version } );
 }
 
 sub json2cif($)
@@ -36,14 +36,15 @@ sub json2cif($)
     my( $json ) = @_;
     my $decoded = decode_json( $json );
     if( !exists $decoded->{version} ) {
-        die "unknown serialization format version, will not deserialize";
+        die 'ERROR, unknown serialization format version -- will not '
+          . 'deserialize' . "\n";
     }
     my( $our_major )   = split( '\.', $format_version );
     my( $their_major ) = split( '\.', $decoded->{version} );
     if( $our_major != $their_major ) {
-        die "major versions of used serialization format and the " .
-            "deserializer are different (current: $our_major, used: " .
-            "$their_major), will not deserialize";
+        die 'ERROR, major versions of used serialization format and the '
+          . 'deserializer are different (current: ' . $our_major . ', '
+          . 'used: ' . $their_major . ') -- will not deserialize' . "\n";
     }
     return $decoded->{data};
 }

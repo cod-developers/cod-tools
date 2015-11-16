@@ -43,16 +43,17 @@ sub cif_estimate_z($)
             return int( 0.5 + $N * $density * $volume / $molwt );
         } else {
             my $error = "";
+            my $sep = "; ";
             if( !defined $volume ) {
-                $error .= "cell volume undefined\n";
+                $error .= $sep . "cell volume undefined";
             }
             if( !defined $density ) {
-                 $error .= "crystal density undefined\n";
+                 $error .= $sep . "crystal density undefined";
             }
             if( !defined $molwt ) {
-                $error .= "molecular weight undefined\n";
+                $error .= $sep . "molecular weight undefined";
             }
-            die "not enough data in '$dataset->{name}' to estimate Z;\n" . $error;
+            die 'ERROR, not enough data to estimate Z' . "$error" . "\n";
         }
     }
 }

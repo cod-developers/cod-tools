@@ -30,7 +30,7 @@ our @EXPORT_OK = qw(
     cif_has_C_bonds
 );
 
-sub get_atoms( $$$ );
+sub get_atoms( $$ );
 
 sub length_of_fractional_vector( $$ );
 sub distance_fractional( $$$ );
@@ -40,21 +40,21 @@ my $has_C_C_bond_flag = "has_C_C_bond";
 
 my $too_close_distance = 0.3; # Angstroems
 
-sub cif_class_flags( $$$$ )
+sub cif_class_flags( $$$ )
 {
-    my ( $datablock, $filename, $atom_properties, $bond_safety_margin ) = @_;
+    my ( $datablock, $atom_properties, $bond_safety_margin ) = @_;
 
     my @flags = ();
 
     @flags = cif_has_C_bonds
-        ( $datablock, $filename, $atom_properties, $bond_safety_margin );
+        ( $datablock, $atom_properties, $bond_safety_margin );
 
     return wantarray ? sort @flags : join( ",", sort @flags );
 }
 
 sub cif_has_C_bonds( $$$$ )
 {
-    my ( $datablock, $filename, $atom_properties, $bond_safety_margin ) = @_;
+    my ( $datablock, $atom_properties, $bond_safety_margin ) = @_;
 
     my %flags; # accumulate flags that will be returned
 
@@ -67,23 +67,21 @@ sub cif_has_C_bonds( $$$$ )
         $atom_properties->{"C"}{covalent_radius} * 2 +
         $bond_safety_margin;
 
-    my $atoms = get_atoms( $datablock, $filename, "_atom_site_label" );
+    my $atoms = get_atoms( $datablock, "_atom_site_label" );
 
     ## print $datablock->{name}, " ", int(@$atoms), "\n";
 
     ## use COD::Serialise qw( serialiseRef );
     ## serialiseRef( $atoms );
 
-    my $symops =
-        get_symmetry_operators( $datablock, $filename );
+    my $symops = get_symmetry_operators( $datablock );
 
     my @symop_matrices = map { symop_from_string($_) } @{$symops};
 
     ## use COD::Serialise qw( serialiseRef );
     ## serialiseRef( $symops );
 
-    my @cell =
-        get_cell( $datablock->{values}, $filename, $datablock->{name} );
+    my @cell = get_cell( $datablock->{values} );
 
     if( !@cell || !defined $cell[0] || @cell < 6 ) {
         return 0;
@@ -96,8 +94,7 @@ sub cif_has_C_bonds( $$$$ )
     ## use COD::Serialise qw( serialiseRef );
     ## serialiseRef( $g );
 
-    my $sym_atoms =
-        symop_generate_atoms( \@symop_matrices, $atoms, $f2o );
+    my $sym_atoms = symop_generate_atoms( \@symop_matrices, $atoms, $f2o );
 
     ## use COD::Serialise qw( serialiseRef );
     ## serialiseRef( $sym_atoms );
@@ -220,14 +217,13 @@ sub cif_has_C_bonds( $$$$ )
 #              }
 #
 
-sub get_atoms($$$)
+sub get_atoms($$)
 {
-    my ( $dataset, $filename, $loop_tag ) = @_;
+    my ( $dataset, $loop_tag ) = @_;
 
     my $values = $dataset->{values};
 
-    my @unit_cell =
-        get_cell( $values, $filename, $dataset->{name} );
+    my @unit_cell = get_cell( $values );
 
     if( !@unit_cell || !defined $unit_cell[0] || @unit_cell < 6 ) {
         return;

@@ -23,9 +23,16 @@ use warnings;
 use File::Basename qw( basename );
 use COD::SOptions qw( getOptions );
 use COD::SUsage qw( usage options );
+use COD::ErrorHandler qw( report_message );
+
+my $die_on_error_level = {
+    ERROR   => 1,
+    WARNING => 0,
+    NOTE    => 0
+};
 
 my $verbose = 1;
-my $output_dir = "";
+my $output_dir = '';
 
 #* USAGE:
 #*     $0 --options input1.cif input*.cif
@@ -64,21 +71,23 @@ my $data_id;
 while(<>) {
 
     if( /^\s*\#|^\s*$/ && $initial_comments ) {
-        push( @initial_comments, $_ );
+        push @initial_comments, $_;
         next;
     }
 
     $initial_comments = 0;
 
-    if( /^\s*data_global(\s*)$/ || /^\s*data_global\s+/ ) {
+    if( /^\s*data_global\s*$/ || /^\s*data_global\s+/ ) {
         if( int(@data_global) == 0 ) {
-            push( @data_global, $_ );
+            push @data_global, $_;
             $global = 1;
             $skip = 0;
         } else {
-            print STDERR
-                "$0: warning: second data_global encountered ".
-                "-- skipping\n";
+            report_message( {
+                'program'   => $0,
+                'err_level' => 'WARNING',
+                'message'   => 'second data_global encountered -- skipping'
+            }, $die_on_error_level->{'WARNING'} );
             $global = 1;
             $skip = 1;
         }
@@ -92,23 +101,25 @@ while(<>) {
         $global = 0;
         $skip = 0;
 
-        close STDOUT;
+        close STDOUT or die "$0: STDOUT: ERROR, could not close the STDOUT\n";
 
         my $suffix = $data_id;
         $suffix =~ s/[^-+._a-zA-Z0-9]/_/g;
 
-        my $basename = basename( $ARGV, ".cif" );
-        if( $basename ne "-" ) {
-            $output_file = basename( $ARGV, ".cif" ) . "_${suffix}" . ".cif";
+        my $basename = basename( $ARGV, '.cif' );
+        if( $basename ne '-' ) {
+            $output_file = basename( $ARGV, '.cif' ) . "_${suffix}" . '.cif';
         } else {
-            $output_file = "${suffix}" . ".cif";
+            $output_file = $suffix . '.cif';
         }
-        if( $output_dir ne "" ) {
-            $output_file = $output_dir . "/" . $output_file;
+        if( $output_dir ne '' ) {
+            $output_file = $output_dir . '/' . $output_file;
         }
+
         if( !exists $files{$output_file} ) {
-            open( STDOUT, '>', "$output_file" ) or
-                die( "Could not open file '${output_file}' for writing: $!" );
+            open STDOUT, '>', "$output_file" or
+                die "$0: $output_file: ERROR, could not open file for "
+                  . 'writing -- ' . lcfirst($!) . "\n";
 
             $files{$output_file} = $output_file;
 
@@ -120,9 +131,10 @@ while(<>) {
                 print;
             }
         } else {
-            open( STDOUT, '>>', "$output_file" ) or
-                die( "Could not open file '${output_file}' for appending: $!" );
-            
+            open STDOUT, '>>', "$output_file" or
+                die "$0: $output_file: ERROR, could not open file for"
+                  . 'appending -- ' . lcfirst($!) . "\n";
+
             print STDERR "$output_file (appending)\n" if $verbose;
         }
     }
@@ -136,7 +148,7 @@ while(<>) {
     }
 
     if( $global == 1 && $skip == 0 ) {
-        push( @data_global, $_ );
+        push @data_global, $_;
         next;
     }
 
@@ -146,7 +158,7 @@ while(<>) {
 
     print;
 
-    if( eof( ARGV )) {
+    if( eof ARGV ) {
         $output_file = undef;
         @data_global = ();
         @initial_comments = ();
@@ -156,7 +168,8 @@ while(<>) {
     }
 }
 
-close STDOUT;
+close STDOUT or die "$0: $output_file: ERROR, could not close file after "
+                  . 'reading -- ' . lcfirst($!) . "\n";
 ## foreach $output_file (keys %files) {
 ##     unless( defined $has_end{$output_file} ) {
 ##         open( STDOUT, ">>$output_file" ) or

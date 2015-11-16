@@ -58,7 +58,7 @@ sub jacobi_eigenvv ## ( @ )
 
         &jacobi_sweep( \@a, \@eigenvalues, \@eigenvectors, $sweep_count, $tresh );
     }
-    die( "Too many iterations in jacobi_eigenvv()" );
+    die "ERROR, too many iterations in jacobi_eigenvv()\n";
 }
 
 sub sum_off_diag( @ )
