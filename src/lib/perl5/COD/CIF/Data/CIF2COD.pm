@@ -498,23 +498,13 @@ sub cif2cod
     }
 
     # Compose COD flags:
-    do {
-        my $separator = "";
-        my $value = "";
-        if( has_coordinates( $dataset )) {
-            $value = "has coordinates";
-            $separator = ",";
-        }
-        if( is_disordered( $dataset )) {
-            $value .= $separator . "has disorder";
-            $separator = ",";
-        }
-        if( has_Fobs( $dataset )) {
-            $value .= $separator . "has Fobs";
-            $separator = ",";
-        }
-        $data{flags} = $value;
-    };
+    my @flags;
+
+    push( @flags, 'has coordinates' ) if has_coordinates( $dataset );
+    push( @flags, 'has disorder' ) if is_disordered( $dataset );
+    push( @flags, 'has Fobs' ) if has_Fobs( $dataset );
+
+    $data{flags} = join( ",", @flags );
 
     $data{text} = $text;
 
