@@ -41,6 +41,7 @@ sub string_compare  { return $_[0] cmp $_[1]; }
 
 my $compare_only_selected = 0;
 my @selected_tags = ();
+my @excluded_tags = ();
 
 my $left    = 1;
 my $right   = 1;
@@ -67,6 +68,10 @@ my $L_option_param;
 #*
 #* --compare-all-tags
 #*     Compare all tags present in the compared files. Default action.
+#*
+#* --no-compare, --exclude
+#*     Whitespace- or comma-separated list of tags not to compare. When
+#*     present, enumerated tags will be excluded from the comparison.
 #*
 #* --compare-datablock-names
 #* --dont-compare-datablock-names
@@ -145,6 +150,8 @@ my $L_option_param;
         };
     },
     "--compare-all-tags" => sub{ $compare_only_selected = 0; },
+    "--no-compare,--exclude" =>
+        sub{ @excluded_tags = split( /\s|,/, get_value()); },
     "--compare-datablock-names"         => sub{ $compare_datablock_names = 1 },
     "--dont-compare-datablock-names"    => sub{ $compare_datablock_names = 0 },
     "--compare-numeric" =>
@@ -205,6 +212,10 @@ my $options = {
 if( $compare_only_selected == 1 ) {
     @selected_tags = map { lc($_) } @selected_tags;
     $options->{compare_only} = \@selected_tags;
+}
+if( @excluded_tags > 0 ) {
+    @excluded_tags = map { lc($_) } @excluded_tags;
+    $options->{compare_not} = \@excluded_tags;
 }
 
 for( my $i = 0; $i < $min_datablocks; $i++ ) {

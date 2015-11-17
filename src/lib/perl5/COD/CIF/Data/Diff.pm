@@ -79,22 +79,17 @@ sub comm
     $no_common = (exists $options->{suppress_common})
         ? $options->{suppress_common} : 0;
 
-    my( @tags1, @tags2 );
+    my @tags1 = keys %{$cif1->{values}};
+    my @tags2 = keys %{$cif2->{values}};
     if( defined $options->{compare_only} ) {
         my %compare_only = map{ $_ => 1 } @{$options->{compare_only}};
-        foreach( keys %{$cif1->{values}} ) {
-            if( exists $compare_only{$_} ) {
-                push( @tags1, $_ );
-            }
-        }
-        foreach( keys %{$cif2->{values}} ) {
-            if( exists $compare_only{$_} ) {
-                push( @tags2, $_ );
-            }
-        }
-    } else {
-        @tags1 = keys %{$cif1->{values}};
-        @tags2 = keys %{$cif2->{values}};
+        @tags1 = grep { exists $compare_only{$_} } @tags1;
+        @tags2 = grep { exists $compare_only{$_} } @tags2;
+    }
+    if( defined $options->{compare_not} ) {
+        my %compare_not = map{ $_ => 1 } @{$options->{compare_not}};
+        @tags1 = grep { !exists $compare_not{$_} } @tags1;
+        @tags2 = grep { !exists $compare_not{$_} } @tags2;
     }
     @tags1 = sort @tags1;
     @tags2 = sort @tags2;
