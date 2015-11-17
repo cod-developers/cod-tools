@@ -45,17 +45,9 @@ my %default_options = (
     'cod_series_prefix'    => ''
 );
 
-#my $max_cell_length_diff = 0.5; # Angstroems
-#my $max_cell_angle_diff  = 1.2; # degrees
-#my $check_bibliography = 1;
-#my $check_sample_history = 0;
-#my $ignore_sigma = 0;
-#my $cod_series_prefix;
-
 # Returns a list of duplicates for each supplied datablock
 # Parameters:
-#   --  array of datablocks
-#   --  file name
+#   --  hash of datablocks
 #   --  hash of database parameters, i.e.:
 #       { table => "data" }
 #   --  database handle
@@ -153,8 +145,7 @@ sub fetch_duplicates_from_database
 # Wrapper for fetch_duplicates_from_database(), pre-creating database
 # connection from database credential hash
 # Parameters:
-#   --  array of datablocks
-#   --  file name
+#   --  hash of datablocks
 #   --  hash of database parameters, i.e.:
 #       { host  => "www.crystallography.net",
 #         user  => "cod_reader",
@@ -324,13 +315,12 @@ sub cif_fill_data
             $structure{bibliography}{$key} = $val;
         }
     }
-    if( defined $values->{'_[local]_cod_suboptimal_structure'} ||
-        defined $values->{_cod_suboptimal_structure} ) {
-        my $val = defined $values->{_cod_suboptimal_structure} ?
-                  $values->{_cod_suboptimal_structure}[0] :
-                  $values->{'_[local]_cod_suboptimal_structure'}[0];
-        ## print ">>>>>> $val\n";
-        $structure{suboptimal} = $val;
+
+    for my $key ( qw( _cod_suboptimal_structure
+                      _[local]_cod_suboptimal_structure )) {
+        if( exists $values->{$key} ) {
+            $structure{suboptimal} = $values->{$key}[0];
+        }
     }
 
     return \%structure;
