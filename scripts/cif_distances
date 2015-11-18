@@ -328,30 +328,30 @@ sub get_atoms {
     for my $i ( 0 .. $#{$values->{$atom_site_tag}} ) {
         my $atom = {
             name => $values->{$atom_site_tag}[$i],
-            chemical_type => exists $values->{_atom_site_type_symbol} ?
-                $values->{_atom_site_type_symbol}[$i] : undef,
-            group => exists $values->{_atom_site_disorder_group}[$i] ?
-                $values->{_atom_site_disorder_group}[$i] : '.',
-            assembly => exists $values->{_atom_site_disorder_assembly}[$i] ?
-                $values->{_atom_site_disorder_assembly}[$i] : '.',
+            chemical_type => exists $values->{'_atom_site_type_symbol'} ?
+                $values->{'_atom_site_type_symbol'}[$i] : undef,
+            group => exists $values->{'_atom_site_disorder_group'}[$i] ?
+                $values->{'_atom_site_disorder_group'}[$i] : '.',
+            assembly => exists $values->{'_atom_site_disorder_assembly'}[$i] ?
+                $values->{'_atom_site_disorder_assembly'}[$i] : '.',
             coordinates_fract => [
-                $values->{_atom_site_fract_x}[$i],
-                $values->{_atom_site_fract_y}[$i],
-                $values->{_atom_site_fract_z}[$i]
+                $values->{'_atom_site_fract_x'}[$i],
+                $values->{'_atom_site_fract_y'}[$i],
+                $values->{'_atom_site_fract_z'}[$i]
             ],
         };
 
         # get atoms chemical type 
-        # Chemical type is determined from _atom_site_type_symbol or 
+        # Chemical type is determined from _atom_site_type_symbol or
         # _atom_site_label if the previous tag is not present.
-        if( !defined $atom->{chemical_type} || $atom->{chemical_type} eq '?' ) {
-            $atom->{chemical_type} = $atom->{name};
-            if( $atom->{chemical_type} =~ m/^([A-Za-z]{1,2})/ ) {
-                $atom->{chemical_type} = ucfirst( lc( $1 ));
+        if( !defined $atom->{'chemical_type'} || $atom->{'chemical_type'} eq '?' ) {
+            $atom->{'chemical_type'} = $atom->{'name'};
+            if( $atom->{'chemical_type'} =~ m/^([A-Za-z]{1,2})/ ) {
+                $atom->{'chemical_type'} = ucfirst( lc( $1 ));
             };
         } else {
-            if( $atom->{chemical_type} =~ m/^([A-Za-z]{1,2})/ ) {
-                $atom->{chemical_type} = ucfirst( lc( $1 ));
+            if( $atom->{'chemical_type'} =~ m/^([A-Za-z]{1,2})/ ) {
+                $atom->{'chemical_type'} = ucfirst( lc( $1 ));
             }
         }
 
@@ -359,9 +359,9 @@ sub get_atoms {
         # it is assumed that only the first letter defines the type.
         # If the type is still not recognised, the type is marked as 
         # unrecognised "UN".
-        if( ! exists $COD::AtomProperties::atoms{$atom->{chemical_type}}) {
+        if( ! exists $COD::AtomProperties::atoms{$atom->{'chemical_type'}}) {
             chop $atom->{chemical_type};
-            if( ! exists $COD::AtomProperties::atoms{$atom->{chemical_type}}) {
+            if( ! exists $COD::AtomProperties::atoms{$atom->{'chemical_type'}}) {
                 if ( $include_unknown_types ) {
                     warn 'WARNING, unable to determine chemical type of atom '
                        . 'with _atom_site_label ' . "'$atom->{'name'}'" . ' -- '
@@ -467,7 +467,6 @@ sub symops_apply {
 # @return $atoms_used
 #       An array of atoms for which the distances were generated.
 ##
-
 sub get_distances {
     my ( $all_atoms, $sym_operator_count ) = @_;
     my $group_size = $sym_operator_count * 27; # 27 is the number of octants
@@ -487,19 +486,16 @@ sub get_distances {
 
         # $j holds the index of the second group
         for ( my $j = $i; $j < $number_of_groups; $j++ ) {
-            my $atom_2 = $all_atoms->[ $j * $group_size + 1 ];
-            #
-            my $min_distance;
-            my $min_index = 0;
 
-            #$start_index = 1 if ($i == $j);
+            # To avoid comparing the element to itself
+            my $offset = ($i == $j) ? 1 : 0;
+            my $atom_2 = $all_atoms->[ $j * $group_size + $offset ];
+
+            my $min_index = $offset;
+            my $min_distance  = distance( $atom_1->{'coordinates_ortho'},
+                                          $atom_2->{'coordinates_ortho'} );
 
             if ( !atoms_are_alternative( $atom_1, $atom_2 ) ) {
-
-                $min_distance = distance( $atom_1->{'coordinates_ortho'},
-                                          $atom_2->{'coordinates_ortho'} );
-                $min_distance = 5000;
-
                 # $k holds the element index in the second group
                 for ( my $k = 0; $k < $group_size; $k++ ) {
                     $atom_2 = $all_atoms -> [ $j * $group_size + $k ];
