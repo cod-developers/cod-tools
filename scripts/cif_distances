@@ -58,8 +58,9 @@ my $format = '%-11.3f';
 my $pairwise_format = '%-6.3f';
 my $line_length = 80;
 
-my $escape_sequence = '\\';
-my %escaped_symbols = ( "\"" => '"', "\'" => "'" );
+my $escape_sequence = q(\\);
+my %escaped_symbols = ( q(") => q("),
+                        q(') => q(') );
 
 #* OPTIONS:
 #* -M, --distance-matrix
@@ -208,7 +209,7 @@ foreach my $filename ( @ARGV ) {
                    'has_errors'     => 0
                  };
 
-  foreach my $dataset ( @$data ) {
+  foreach my $dataset ( @{$data} ) {
 
     my $dataname = 'data_' . $dataset->{name} if defined $dataset->{name};
 
@@ -264,13 +265,13 @@ foreach my $filename ( @ARGV ) {
             . 'atoms -- dataset will be skipped' . "\n";
       }
 
-      push @$printable_properties, 'sym_operator';
+      push @{$printable_properties}, 'sym_operator';
 
       print_atoms( $sym_atoms, $printable_properties ) if ( $verbose );
 
       my @shifted_atoms = map { shift_atom( $_, $ortho_matrix ) } @{$sym_atoms};
 
-      push @$printable_properties, 'shift_vector';
+      push @{$printable_properties}, 'shift_vector';
 
       print_atoms( \@shifted_atoms, $printable_properties ) if ( $verbose );
 
@@ -446,8 +447,8 @@ sub symops_apply {
     # Adds applied symmetry operator to the atom property hash
     my $i = 0;
     foreach ( @{ $sym_atoms } ) {
-        $_->{'sym_operator'} = @$sym_data[ $i ];
-        $i = ( $i + 1 ) % @$sym_data;
+        $_->{'sym_operator'} = @{$sym_data}[$i];
+        $i = ( $i + 1 ) % @{$sym_data};
     }
 
     return $sym_atoms, scalar( @symop );
@@ -473,7 +474,7 @@ sub get_atom_headers
 {
     my ( $all_atoms ) = @_;
     my @headers;
-    foreach ( @$all_atoms ) {
+    foreach ( @{$all_atoms} ) {
         my $atom = $_->[0];
         push @headers, "$atom->{'name'}/$atom->{'chemical_type'}";
     }
@@ -500,10 +501,11 @@ sub get_atom_headers
 # @return $atoms_used
 #       An array of atoms for which the distances were generated.
 ##
-sub get_distances {
+sub get_distances
+{
     my ( $all_atoms, $sym_operator_count ) = @_;
     my $group_size = $sym_operator_count * 27; # 27 is the number of octants
-    my $number_of_groups = @$all_atoms/$group_size;
+    my $number_of_groups = @{$all_atoms}/$group_size;
     my @distances;
     my @atoms_used;
 
@@ -601,8 +603,8 @@ sub shift_atom {
 
 sub print_atoms {
     my ( $array_ref, $properties ) = @_;
-    foreach my $atom_ref ( @$array_ref ) {
-        foreach my $property ( @$properties ) {
+    foreach my $atom_ref ( @{$array_ref} ) {
+        foreach my $property ( @{$properties} ) {
             if ( $property eq 'name' ) {
                 print "Atom name: $atom_ref->{name} \n";
             } elsif ( $property eq 'chemical_type' ) {
@@ -648,7 +650,7 @@ sub print_atoms {
 
 sub print_distance_matrix {
     my ( $distance_ref, $header_ref, $format, $line_length ) = @_;
-    my @distances = @$distance_ref;
+    my @distances = @{$distance_ref};
     my $cell_width = 11;
     if ( $format =~ /^%\D*(\d+)\D/ ) {
         $cell_width = $1;
@@ -667,12 +669,12 @@ sub print_distance_matrix {
 
         printf "%-${cell_width}s", 'ATOMS';
         for ( my $k = $start_cell_index; $k < $finish_cell_index; $k++ ) {
-            printf "%-${cell_width}s", @$header_ref[ $k ];
+            printf "%-${cell_width}s", @{$header_ref}[$k];
         }
         print "\n";
 
         for ( my $i = 0; $i < @distances; $i++ ) {
-            printf "%-${cell_width}s", @$header_ref[$i];
+            printf "%-${cell_width}s", @{$header_ref}[$i];
             for ( my $j = $start_cell_index; $j < $finish_cell_index; $j++ ) {
               my $distance;
               if ( $j > $i ) {
@@ -708,13 +710,13 @@ sub print_distance_matrix {
 sub print_pairwise {
     my ( $distances, $atoms_used, $filename, $print_filename ) = @_;
 
-    for ( my $i = 0; $i < @$atoms_used; $i++ ) {
-      my $atom_1 = @$atoms_used[ $i ] -> [ 0 ];
+    for ( my $i = 0; $i < @{$atoms_used}; $i++ ) {
+      my $atom_1 = @{$atoms_used}[$i]->[0];
 
-      for ( my $j = 1; $j < @{ @$atoms_used[ $i ] }; $j++ ) {
-        my $atom_2 = @$atoms_used[ $i ] -> [ $j ];
+      for ( my $j = 1; $j < @{@{$atoms_used}[$i]}; $j++ ) {
+        my $atom_2 = @{$atoms_used}[$i]->[$j];
 
-        my $distance = @$distances[ $i ] -> [ $j-1 ];
+        my $distance = @{$distances}[$i]->[$j-1];
 
         # check if atoms are self simmetry-related
         next if ( ( $j - 1 ) == 0  && !$include_self_distances );
