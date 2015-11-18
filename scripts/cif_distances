@@ -271,7 +271,7 @@ foreach my $filename ( @ARGV ) {
 
       my @shifted_atoms = map { shift_atom( $_, $ortho_matrix ) } @{$sym_atoms};
 
-      push @{$printable_properties}, 'shift_vector';
+      push @{$printable_properties}, 'translation_id';
 
       print_atoms( \@shifted_atoms, $printable_properties ) if ( $verbose );
 
@@ -331,14 +331,14 @@ sub get_atoms {
 
     for my $i ( 0 .. $#{$values->{$atom_site_tag}} ) {
         my $atom = {
-            name => $values->{$atom_site_tag}[$i],
-            chemical_type => exists $values->{'_atom_site_type_symbol'} ?
+            'name' => $values->{$atom_site_tag}[$i],
+            'chemical_type' => exists $values->{'_atom_site_type_symbol'} ?
                 $values->{'_atom_site_type_symbol'}[$i] : undef,
-            group => exists $values->{'_atom_site_disorder_group'}[$i] ?
+            'group' => exists $values->{'_atom_site_disorder_group'}[$i] ?
                 $values->{'_atom_site_disorder_group'}[$i] : '.',
-            assembly => exists $values->{'_atom_site_disorder_assembly'}[$i] ?
+            'assembly' => exists $values->{'_atom_site_disorder_assembly'}[$i] ?
                 $values->{'_atom_site_disorder_assembly'}[$i] : '.',
-            coordinates_fract => [
+            'coordinates_fract' => [
                 $values->{'_atom_site_fract_x'}[$i],
                 $values->{'_atom_site_fract_y'}[$i],
                 $values->{'_atom_site_fract_z'}[$i]
@@ -389,16 +389,17 @@ sub get_atoms {
         if( defined $values->{'_atom_site_occupancy'} ) {
             if( $values->{'_atom_site_occupancy'}[$i] ne '?' &&
                 $values->{'_atom_site_occupancy'}[$i] ne '.' ) {
-                $atom->{'occupancy'} = $values->{'_atom_site_occupancy'}[$i];
-                $atom->{'occupancy'} =~ s/\(\d+\)\s*$//;
+                $atom->{'atom_site_occupancy'} =
+                                    $values->{'_atom_site_occupancy'}[$i];
+                $atom->{'atom_site_occupancy'} =~ s/\(\d+\)\s*$//;
             } else {
-                $atom->{'occupancy'} = 1;
+                $atom->{'atom_site_occupancy'} = 1;
             }
         }
 
         if( defined $values->{'_atom_site_symmetry_multiplicity'} &&
             $values->{'_atom_site_symmetry_multiplicity'}[$i] ne '?' ) {
-            $atom->{'cif_multiplicity'} =
+            $atom->{'multiplicity'} =
                 $values->{'_atom_site_symmetry_multiplicity'}[$i];
         }
 
@@ -556,7 +557,7 @@ return ( \@distances, \@atoms_used );
 sub shift_atom {
     my ( $original_atom, $ortho_matrix ) = @_;
 
-    $original_atom->{'shift_vector'} = '5,5,5';
+    $original_atom->{'translation_id'} = '5,5,5';
     my @shifted_atoms;
     push @shifted_atoms, $original_atom;
     my @shifting_param = ( -1, 0, 1 );
@@ -575,9 +576,9 @@ sub shift_atom {
                         symop_vector_mul( $ortho_matrix,
                                           $new_atom->{'coordinates_fract'} );
 
-            $new_atom->{'shift_vector'} = ( 5 + $x ) . ',' .
-                                          ( 5 + $y ) . ',' .
-                                          ( 5 + $z );
+            $new_atom->{'translation_id'} = ( 5 + $x ) . ','
+                                          . ( 5 + $y ) . ','
+                                          . ( 5 + $z );
             push @shifted_atoms, $new_atom;
           }
     } } }
@@ -599,10 +600,10 @@ sub print_atoms {
                 print "Atom name: $atom_ref->{name} \n";
             } elsif ( $property eq 'chemical_type' ) {
                 print "Chemical type: $atom_ref->{'chemical_type'} \n";
-            } elsif ( $property eq 'occupancy' ) {
-                print "Ocupancy: $atom_ref->{'occupancy'} \n";
-            } elsif ( $property eq 'cif_multiplicity' ) {
-                print "cif_multiplicity: $atom_ref->{'cif_multiplicity'} \n";
+            } elsif ( $property eq 'atom_site_occupancy' ) {
+                print "Ocupancy: $atom_ref->{'atom_site_occupancy'} \n";
+            } elsif ( $property eq 'multiplicity' ) {
+                print "multiplicity: $atom_ref->{'multiplicity'} \n";
             } elsif ( $property eq 'group' ) {
                 print "Atom site disorder group: $atom_ref->{'group'} \n";
             } elsif ( $property eq 'assembly' ) {
@@ -613,8 +614,8 @@ sub print_atoms {
             } elsif ( $property eq 'coordinates_fract' ) {
                 printf 'Fractional coordinates: %8.3f %8.3f %8.3f' . "\n",
                     @{ $atom_ref->{'coordinates_fract'} };
-            } elsif ( $property eq 'shift_vector' ) {
-                print "Shift vector: $atom_ref->{'shift_vector'} \n";
+            } elsif ( $property eq 'translation_id' ) {
+                print "Shift vector: $atom_ref->{'translation_id'} \n";
             } elsif ( $property eq 'sym_operator' ) {
                 print "Symmetry operator: $atom_ref->{'sym_operator'} \n";
             }
@@ -725,7 +726,7 @@ sub print_pairwise {
                     $atom_1->{'name'} . '/' . $atom_1->{'chemical_type'},
                     $atom_2->{'name'} . '/' . $atom_2->{'chemical_type'},
                     $atom_2->{'sym_operator'},
-                    $atom_2->{'shift_vector'};
+                    $atom_2->{'translation_id'};
 
         $output_string .= basename( $filename ) if ( $print_filename );
         print escape( "$output_string\n", {
