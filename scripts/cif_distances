@@ -274,8 +274,13 @@ foreach my $filename ( @ARGV ) {
 
       print_atoms( \@shifted_atoms, $printable_properties ) if ( $verbose );
 
-      my ( $distances, $headers, $atoms_used ) = get_distances( \@shifted_atoms,
-                                                                $symop_count );
+      my $group_size = $symop_count * 27; # 27 is the number of octants
+
+      my $grouped_atoms = group_atoms( \@shifted_atoms, $group_size );
+      my $headers = get_atom_headers( $grouped_atoms );
+
+      my ( $distances, $atoms_used ) = get_distances( \@shifted_atoms,
+                                                      $symop_count );
 
       if ( $output_format eq 'pairwise' ) {
           print_pairwise( $distances, $atoms_used, $filename, $add_filename );
@@ -448,6 +453,34 @@ sub symops_apply {
     return $sym_atoms, scalar( @symop );
 }
 
+
+sub group_atoms
+{
+    my ( $all_atoms, $group_size ) = @_;
+
+    # to make the subroutine non-destructive
+    my @proccessed_atoms = @{$all_atoms};
+
+    my @grouped_atoms;
+    while ( my @group_atoms = splice @proccessed_atoms, 0, $group_size ) {
+        push @grouped_atoms, \@group_atoms;
+    }
+
+    return \@grouped_atoms;
+}
+
+sub get_atom_headers
+{
+    my ( $all_atoms ) = @_;
+    my @headers;
+    foreach ( @$all_atoms ) {
+        my $atom = $_->[0];
+        push @headers, "$atom->{'name'}/$atom->{'chemical_type'}";
+    }
+
+    return \@headers;
+}
+
 ##
 # Calculates the minimum distance between two atoms from the given array.
 # It is expected that atoms, derived from the original atom by applying
@@ -471,7 +504,6 @@ sub get_distances {
     my ( $all_atoms, $sym_operator_count ) = @_;
     my $group_size = $sym_operator_count * 27; # 27 is the number of octants
     my $number_of_groups = @$all_atoms/$group_size;
-    my @headers;
     my @distances;
     my @atoms_used;
 
@@ -479,7 +511,6 @@ sub get_distances {
     for ( my $i  = 0; $i < $number_of_groups; $i++ ) {
         my $atom_1 = $all_atoms -> [ $i * $group_size ]; # acquiring first atom
 
-        push @headers, "$atom_1->{'name'}/$atom_1->{'chemical_type'}";
         my @atom_rows_used;
         push @atom_rows_used, $atom_1;
         my @distance_row;
@@ -519,7 +550,7 @@ sub get_distances {
         push @atoms_used, \@atom_rows_used;
     }
 
-return ( \@distances, \@headers, \@atoms_used );
+return ( \@distances, \@atoms_used );
 }
 
 ##
