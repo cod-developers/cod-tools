@@ -225,7 +225,7 @@ foreach my $filename ( @ARGV ) {
       };
       if ( $@ ) {
           $@ =~ s/[A-Z]+, //;
-          chomp($@);
+          chomp $@;
           die "$@ -- dataset will be skipped\n";
       }
 
@@ -294,7 +294,6 @@ foreach my $filename ( @ARGV ) {
 ##
 sub get_atoms
 {
-
     my ( $dataset, $ortho_matrix, $uniquify_atoms ) = @_;
 
     my $values = $dataset->{values};
@@ -364,7 +363,7 @@ sub get_atoms
             }
         };
 
-        @{$atom->{'coordinates_fract'}} = map { s/\(\d+\)\s*$//; $_ }
+        @{$atom->{'coordinates_fract'}} = map { s/[(]\d+[)]\s*$//; $_ }
             @{$atom->{'coordinates_fract'}};
 
         $atom->{'coordinates_ortho'} =
@@ -375,7 +374,7 @@ sub get_atoms
                 $values->{'_atom_site_occupancy'}[$i] ne '.' ) {
                 $atom->{'atom_site_occupancy'} =
                                     $values->{'_atom_site_occupancy'}[$i];
-                $atom->{'atom_site_occupancy'} =~ s/\(\d+\)\s*$//;
+                $atom->{'atom_site_occupancy'} =~ s/[(]\d+[)]\s*$//;
             } else {
                 $atom->{'atom_site_occupancy'} = 1;
             }
@@ -387,7 +386,7 @@ sub get_atoms
                 $values->{'_atom_site_symmetry_multiplicity'}[$i];
         }
 
-        push( @atoms, $atom );
+        push @atoms, $atom;
     }
 
     @atoms = @{ uniquify_atom_names( \@atoms, $uniquify_atoms ) };
@@ -435,7 +434,7 @@ sub symops_apply
         $i = ( $i + 1 ) % @{$symop_strings};
     }
 
-    return $sym_atoms, scalar( @symop );
+    return $sym_atoms, scalar @symop;
 }
 
 sub group_atoms
