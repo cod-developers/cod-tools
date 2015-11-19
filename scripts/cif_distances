@@ -39,9 +39,9 @@ use COD::ErrorHandler qw( process_warnings
                           process_parser_messages );
 
 my $die_on_error_level = {
-    ERROR   => 0,
-    WARNING => 0,
-    NOTE    => 0
+    'ERROR'   => 0,
+    'WARNING' => 0,
+    'NOTE'    => 0
 };
 
 my $use_parser = 'c';
@@ -53,13 +53,9 @@ my $include_null_distances = 0;
 my $include_unknown_types  = 0;
 my $add_filename;
 my $output_format = 'pairwise';
-my $format = '%-11.3f';
 my $pairwise_format = '%-6.3f';
-my $line_length = 80;
-
-my $escape_sequence = q(\\);
-my %escaped_symbols = ( q(") => q("),
-                        q(') => q(') );
+my $matrix_format = '%-11.3f';
+my $matrix_line_length = 80;
 
 #* OPTIONS:
 #* -M, --distance-matrix
@@ -67,7 +63,7 @@ my %escaped_symbols = ( q(") => q("),
 #* -P, --pairwise-distance
 #*                     Set pairwise distance output format (default).
 #* -l, --matrix-line-length "80"
-#*                     Maximum length of an output line in distance 
+#*                     Maximum length of an output line in distance
 #*                     matrix format (default 80).
 #* --format "%8.6f"
 #*                     Use the specified format for distance matrix
@@ -130,8 +126,8 @@ my %escaped_symbols = ( q(") => q("),
 @ARGV = getOptions(
     '-M,--distance-matrix'       => sub { $output_format = 'matrix' },
     '-P,--pairwise-distance'     => sub { $output_format = 'pairwise'; },
-    '-l,--matrix-line-length'    => \$line_length,
-    '--format'         => sub { $format = $pairwise_format = get_value() },
+    '-l,--matrix-line-length'    => \$matrix_line_length,
+    '--format'         => sub { $matrix_format = $pairwise_format = get_value() },
 
     '-F,--add-filename'      => sub { $add_filename = 1 },
     '--no-add-filename'      => sub { $add_filename = 0 },
@@ -204,7 +200,7 @@ foreach my $filename ( @ARGV ) {
 
   foreach my $dataset ( @{$data} ) {
 
-    my $dataname = 'data_' . $dataset->{name} if defined $dataset->{name};
+    my $dataname = 'data_' . $dataset->{'name'} if defined $dataset->{'name'};
 
     local $SIG{__WARN__} = sub { process_warnings( {
                                        'message'  => @_,
@@ -261,9 +257,18 @@ foreach my $filename ( @ARGV ) {
       my ( $distances, $atoms_used ) = get_distances( $grouped_atoms );
 
       if ( $output_format eq 'pairwise' ) {
-          print_pairwise( $distances, $atoms_used, $filename, $add_filename );
+          print_pairwise( $distances, $atoms_used, {
+                            'format'         => $pairwise_format,
+                            'include_null'   => $include_null_distances,
+                            'include_self'   => $include_self_distances,
+                            'print_filename' => $add_filename,
+                            'filename'       => $filename
+                          } );
       } elsif ( $output_format eq 'matrix' ) {
-          print_distance_matrix( $distances, $headers, $format, $line_length );
+          print_distance_matrix( $distances, $headers, {
+                             'format'        => $matrix_format,
+                             'line_length'   => $matrix_line_length
+                          } );
       }
     };
     if ($@) {
@@ -574,14 +579,23 @@ sub shift_atom
 # @param $header_ref;
 #       Reference to an array of strings containing information about 
 #       atoms that were used in the calculation of distances.
-# @param $fraction_precision
-#       Number of fraction digits of the distances that should be printed.
-# @param $line_length
-#       Length of the matrix line in symbols.
+# @param $options
+#       Reference to a hash of pairwise format print options.
+#       The accepted options are:
+#           'format'
+#                   The number format that should be used when printing
+#                   distance values.
+#           'line_length'
+#                   The maximum lenght of the matrix line. Control the way
+#                   the matrix is folded.
 ##
 sub print_distance_matrix
 {
-    my ( $distance_ref, $header_ref, $format, $line_length ) = @_;
+    my ( $distance_ref, $header_ref, $options ) = @_;
+
+    my $format      = $options->{'format'};
+    my $line_length = $options->{'line_length'};
+
     my @distances = @{$distance_ref};
     my $cell_width = 11;
     if ( $format =~ /^%\D*(\d+)\D/ ) {
@@ -589,10 +603,10 @@ sub print_distance_matrix
     }
 
     use POSIX qw( floor ceil );
-    my $cell_count = floor ( $line_length / $cell_width ) - 1;
+    my $cell_count = floor( $line_length/$cell_width ) - 1;
 
     my $print_iteration = 0;
-    while ( $print_iteration < ceil( @distances / $cell_count ) ) {
+    while ( $print_iteration < ceil( @distances/$cell_count ) ) {
         my $start_cell_index = $cell_count * $print_iteration;
         my $finish_cell_index = $cell_count * ( $print_iteration + 1 );
         if ( $finish_cell_index > @distances ) {
@@ -610,9 +624,9 @@ sub print_distance_matrix
             for ( my $j = $start_cell_index; $j < $finish_cell_index; $j++ ) {
               my $distance;
               if ( $j > $i ) {
-                    $distance = $distances[ $i ][ $j - $i ];
+                    $distance = $distances[$i][$j-$i];
                 } else {
-                    $distance = $distances[ $j ][ $i - $j ];
+                    $distance = $distances[$j][$i-$j];
                 }
 
                 if ( $distance eq '-' ) {
@@ -631,49 +645,81 @@ sub print_distance_matrix
 
 ##
 # Prints distances between atoms in an alternative format, defined in
-# cod-tools/trunk/perl-scripts/cif-distances/cif-distances_paired_v.1
+# cod-tools/trunk/doc/formats/cif-distances/cif-distances_paired_v.1
+#
 # @param $distances
 #       Reference to an array distances between atoms.
 # @param $atoms_used
-#       Reference to an array of atoms that were used in the calculation
-#       of the distances.
+#       Reference to an array of atoms that were used in the
+#       calculation of the distances.
+# @param $options
+#       Reference to a hash of pairwise format print options.
+#       The accepted options are:
+#           'format'
+#                   The number format that should be used when printing
+#                   distance values.
+#           include_null
+#                   Flag value, denoting whether null distances should be
+#                   included.
+#           include_self
+#                   Flag value, denoting whether self distance should be
+#                   included.
+#           print_filename
+#                   Flag value, denoting whether the name of the processed
+#                   file should be appended to the end of each line.
+#           filename
+#                   The filename that should be appended to the end of each
+#                   line when the 'print_filename' flag is enabled.
 ##
 sub print_pairwise
 {
-    my ( $distances, $atoms_used, $filename, $print_filename ) = @_;
+    my ( $distances, $atoms_used, $options ) = @_;
+
+    my $format         = $options->{'format'};
+    my $include_self   = $options->{'include_self'};
+    my $include_null   = $options->{'include_null'};
+    my $print_filename = $options->{'print_filename'};
+    my $filename       = $options->{'filename'};
+
+    # Escaped symbols
+    my $escape_sequence = q(\\);
+    my $escaped_symbols = { q(") => q("),
+                            q(') => q(') };
 
     for ( my $i = 0; $i < @{$atoms_used}; $i++ ) {
-      my $atom_1 = @{$atoms_used}[$i]->[0];
+        my $atom_1 = @{$atoms_used}[$i]->[0];
 
-      for ( my $j = 1; $j < @{@{$atoms_used}[$i]}; $j++ ) {
-        my $atom_2 = @{$atoms_used}[$i]->[$j];
+        for ( my $j = 1; $j < @{@{$atoms_used}[$i]}; $j++ ) {
+            my $atom_2 = @{$atoms_used}[$i]->[$j];
 
-        my $distance = @{$distances}[$i]->[$j-1];
+            my $distance = @{$distances}[$i]->[$j-1];
 
-        # check if atoms are self simmetry-related
-        next if ( ( $j - 1 ) == 0  && !$include_self_distances );
-        # check if atoms distances contain null value ('-')
-        next if ( $distance eq '-' && !$include_null_distances );
+            # check if atoms are self simmetry-related
+            next if ( ( $j - 1 ) == 0  && !$include_self );
+            # check if atoms distances contain null value ('-')
+            next if ( $distance eq '-' && !$include_null );
 
-        my $output_string = '';
+            my $output_string = '';
 
-        if ( $distance eq '-' ) {
-            $output_string .= sprintf 'DIST %-6s', '-';
-        } else {
-            $output_string .= sprintf 'DIST ' . $pairwise_format, $distance;
+            if ( $distance eq '-' ) {
+                $output_string .= sprintf 'DIST %-6s', '-';
+            } else {
+                $output_string .= sprintf 'DIST ' . $format, $distance;
+            }
+
+            $output_string .= sprintf ' %10s %10s %24s %8s ',
+                        $atom_1->{'name'} . '/' . $atom_1->{'chemical_type'},
+                        $atom_2->{'name'} . '/' . $atom_2->{'chemical_type'},
+                        $atom_2->{'symop_string'},
+                        $atom_2->{'translation_id'};
+
+            if ( $print_filename ) {
+                $output_string .= basename( $filename );
+            };
+            print escape( "$output_string\n", {
+                            'sequence'        => $escape_sequence,
+                            'escaped_symbols' => $escaped_symbols } );
         }
-
-        $output_string .= sprintf ' %10s %10s %24s %8s ',
-                    $atom_1->{'name'} . '/' . $atom_1->{'chemical_type'},
-                    $atom_2->{'name'} . '/' . $atom_2->{'chemical_type'},
-                    $atom_2->{'symop_string'},
-                    $atom_2->{'translation_id'};
-
-        $output_string .= basename( $filename ) if ( $print_filename );
-        print escape( "$output_string\n", {
-                        'sequence'        => $escape_sequence,
-                        'escaped_symbols' => \%escaped_symbols } );
-      }
     }
 
     return
