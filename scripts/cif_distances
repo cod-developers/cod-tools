@@ -541,7 +541,7 @@ sub shift_atom
 {
     my ( $original_atom, $ortho_matrix ) = @_;
 
-    $original_atom->{'translation_id'} = '5,5,5';
+    $original_atom->{'translation_id'} = '555';
     my @shifted_atoms;
     push @shifted_atoms, $original_atom;
     my @shifting_param = ( -1, 0, 1 );
@@ -560,8 +560,8 @@ sub shift_atom
                         symop_vector_mul( $ortho_matrix,
                                           $new_atom->{'coordinates_fract'} );
 
-            $new_atom->{'translation_id'} = ( 5 + $x ) . ','
-                                          . ( 5 + $y ) . ','
+            $new_atom->{'translation_id'} = ( 5 + $x )
+                                          . ( 5 + $y )
                                           . ( 5 + $z );
             push @shifted_atoms, $new_atom;
           }
@@ -710,7 +710,7 @@ sub print_pairwise
                         $atom_1->{'name'} . '/' . $atom_1->{'chemical_type'},
                         $atom_2->{'name'} . '/' . $atom_2->{'chemical_type'},
                         $atom_2->{'symop_string'},
-                        $atom_2->{'translation_id'};
+                        join ',', split '', $atom_2->{'translation_id'};
 
             if ( $print_filename ) {
                 $output_string .= basename( $filename );
