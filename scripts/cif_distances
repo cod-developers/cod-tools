@@ -51,7 +51,6 @@ my $include_dup_struct     = 0;
 my $include_self_distances = 1;
 my $include_null_distances = 0;
 my $include_unknown_types  = 0;
-my $verbose = 0;
 my $add_filename;
 my $output_format = 'pairwise';
 my $format = '%-11.3f';
@@ -121,10 +120,6 @@ my %escaped_symbols = ( q(") => q("),
 #*                    Makes unique the labels of atoms (default).
 #* --no-uniquify-atoms
 #*                    Does not make unique labels for atoms.
-#* -v, --verbose
-#*                    Print additional information for each step of the script.
-#* -s, --silent, --quiet
-#*                    Print no additional information (default).
 #* --use-perl-parser
 #*                    Use Perl parser to parse CIF files.
 #* --use-c-parser
@@ -172,8 +167,6 @@ my %escaped_symbols = ( q(") => q("),
     '--use-perl-parser'          => sub { $use_parser = 'perl' },
     '--use-c-parser'             => sub { $use_parser = 'c' },
 
-    '-v,--verbose'               => sub { $verbose = 1; },
-    '-s,--silent,--quiet'        => sub { $verbose = 0; },
     '--options'                  => sub { options; exit },
     '--help,--usage'             => sub { usage; exit }
 );
@@ -243,12 +236,6 @@ foreach my $filename ( @ARGV ) {
       #   Extract atoms and order them alphabetically by type and label.
       my $atoms = get_atoms( $dataset, $ortho_matrix, $uniquify_atoms );
 
-      my $printable_properties = [ 'name', 'chemical_type',
-                                   'coordinates_ortho', 'coordinates_fract',
-                                   'group', 'assembly' ];
-
-      print_atoms( $atoms, $printable_properties ) if ( $verbose );
-
       #   Generate atoms by applying symmetry operators. This subroutine 
       #   original atoms are fitted into the first octant by applying x,y,z
       #   operator modulus 1.
@@ -265,15 +252,7 @@ foreach my $filename ( @ARGV ) {
             . 'atoms -- dataset will be skipped' . "\n";
       }
 
-      push @{$printable_properties}, 'symop_string';
-
-      print_atoms( $sym_atoms, $printable_properties ) if ( $verbose );
-
       my @shifted_atoms = map { shift_atom( $_, $ortho_matrix ) } @{$sym_atoms};
-
-      push @{$printable_properties}, 'translation_id';
-
-      print_atoms( \@shifted_atoms, $printable_properties ) if ( $verbose );
 
       my $group_size = $symop_count * 27; # 27 is the number of octants
 
@@ -585,45 +564,6 @@ sub shift_atom
     } } }
 
     return @shifted_atoms;
-}
-
-##
-# Prints atoms fieldname values from an array.
-# @param $array_ref
-#       Reference to an array from which the atoms are printed.
-##
-sub print_atoms
-{
-    my ( $array_ref, $properties ) = @_;
-    foreach my $atom_ref ( @{$array_ref} ) {
-        foreach my $property ( @{$properties} ) {
-            if ( $property eq 'name' ) {
-                print "Atom name: $atom_ref->{name} \n";
-            } elsif ( $property eq 'chemical_type' ) {
-                print "Chemical type: $atom_ref->{'chemical_type'} \n";
-            } elsif ( $property eq 'atom_site_occupancy' ) {
-                print "Ocupancy: $atom_ref->{'atom_site_occupancy'} \n";
-            } elsif ( $property eq 'multiplicity' ) {
-                print "multiplicity: $atom_ref->{'multiplicity'} \n";
-            } elsif ( $property eq 'group' ) {
-                print "Atom site disorder group: $atom_ref->{'group'} \n";
-            } elsif ( $property eq 'assembly' ) {
-                print "Atom site disorder assembly: $atom_ref->{'assembly'} \n";
-            } elsif ( $property eq 'coordinates_ortho' ) {
-                printf 'Orthogonal coordinates: %8.3f %8.3f %8.3f' . "\n",
-                    @{ $atom_ref->{'coordinates_ortho'} };
-            } elsif ( $property eq 'coordinates_fract' ) {
-                printf 'Fractional coordinates: %8.3f %8.3f %8.3f' . "\n",
-                    @{ $atom_ref->{'coordinates_fract'} };
-            } elsif ( $property eq 'translation_id' ) {
-                print "Shift vector: $atom_ref->{'translation_id'} \n";
-            } elsif ( $property eq 'symop_string' ) {
-                print "Symmetry operator: $atom_ref->{'symop_string'} \n";
-            }
-        }
-    }
-
-    return;
 }
 
 ##
