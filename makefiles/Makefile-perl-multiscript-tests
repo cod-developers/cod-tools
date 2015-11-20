@@ -193,7 +193,7 @@ ${TST_DIFFS} ${SCRIPT_DIFFS}: ${LOCAL_LIB_FILES}
 # Rules to run script-specific tests
 
 ${OUTPUT_DIR}/%.diff: ${SCRIPT_TST_DIR}/%${INP} ${SCRIPT_TST_DIR}/%${OPT} \
-                      ${SCRIPT_FILES} ${COMPILED_MODULES}
+                      ${COMPILED_MODULES}
 	-@printf "%-30s " "$<:" ; \
 	( ${SCRIPT_DIR}/$(shell echo $* | sed -e 's/_[0-9]*$$//') \
 	    $(shell grep -v '^#' ${word 2, $^}) \
@@ -203,7 +203,7 @@ ${OUTPUT_DIR}/%.diff: ${SCRIPT_TST_DIR}/%${INP} ${SCRIPT_TST_DIR}/%${OPT} \
 	| diff ${OUTPUT_DIR}/$*.out - > $@ ; \
 	if [ $$? = 0 ]; then echo "OK"; else echo "FAILED:"; cat $@; fi
 
-${OUTPUT_DIR}/%.diff: ${SCRIPT_TST_DIR}/%${INP} ${SCRIPT_FILES} ${COMPILED_MODULES}
+${OUTPUT_DIR}/%.diff: ${SCRIPT_TST_DIR}/%${INP} ${COMPILED_MODULES}
 	-@printf "%-30s " "$<:" ; \
 	( ${SCRIPT_DIR}/$(shell echo $* | sed -e 's/_[0-9]*$$//') $< \
 	| ${buffer_output} ) 2>&1 \
@@ -211,7 +211,7 @@ ${OUTPUT_DIR}/%.diff: ${SCRIPT_TST_DIR}/%${INP} ${SCRIPT_FILES} ${COMPILED_MODUL
 	| diff ${OUTPUT_DIR}/$*.out - > $@ ; \
 	if [ $$? = 0 ]; then echo "OK"; else echo "FAILED:"; cat $@; fi
 
-${OUTPUT_DIR}/%.diff: ${SCRIPT_TST_DIR}/%${OPT} ${SCRIPT_FILES} ${COMPILED_MODULES}
+${OUTPUT_DIR}/%.diff: ${SCRIPT_TST_DIR}/%${OPT} ${COMPILED_MODULES}
 	-@printf "%-30s " "$<:" ; \
 	( ${SCRIPT_DIR}/$(shell echo $* | sed -e 's/_[0-9]*$$//') \
 	     $(shell grep -v '^#' ${word 1, $^}) \
