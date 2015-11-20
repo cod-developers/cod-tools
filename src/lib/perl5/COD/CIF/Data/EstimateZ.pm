@@ -108,8 +108,7 @@ sub get_volume
         if( defined $values->{_cell_length_a} &&
             defined $values->{_cell_length_b} &&
             defined $values->{_cell_length_c} ) {
-            my @cell = get_cell( $values, undef, undef, { silent => 1 } );
-            @cell[3..5] = map { defined $_ ? $_ : 90 } @cell[3..5];
+            my @cell = get_cell( $values );
             return cell_volume( @cell );
         } else {
             return undef
