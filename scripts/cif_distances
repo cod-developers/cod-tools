@@ -19,7 +19,9 @@ use strict;
 use warnings;
 use File::Basename qw( basename );
 use COD::AtomProperties;
-use COD::CIF::Data::AtomList qw( atoms_are_alternative );
+use COD::CIF::Data::AtomList qw( atom_array_from_cif
+                                 uniquify_atom_names
+                                 atoms_are_alternative );
 use COD::Escape qw( escape );
 use COD::CIF::Parser qw( parse_cif );
 use COD::Spacegroups::Symop::Algebra qw( symop_vector_mul );
@@ -27,7 +29,6 @@ use COD::Spacegroups::Symop::Parse qw( symop_string_canonical_form
                                        symop_from_string );
 use COD::Algebra::Vector qw( distance );
 use COD::CIF::Data qw( get_cell get_symmetry_operators );
-use COD::CIF::Data::AtomList qw( uniquify_atom_names );
 use COD::CIF::Data::SymmetryGenerator qw( copy_atom
                                           symop_generate_atoms );
 use COD::CIF::Data::ExcludeFromStatistics qw( exclude_from_statistics );
@@ -217,20 +218,23 @@ foreach my $filename ( @ARGV ) {
     }
 
     eval {
-
-      my $ortho_matrix;
+      #   Extract atoms and order them alphabetically by type and label.
+      my $atoms;
       eval {
-          my @unit_cell = get_cell( $dataset->{values} );
-          $ortho_matrix = symop_ortho_from_fract( @unit_cell );
+        $atoms = atom_array_from_cif( $dataset, $COD::AtomProperties::atoms,
+                        { 'do_not_resolve_chemical_type' => 1,
+                          'uniquify_atom_names'          => $uniquify_atoms,
+                          'uniquify_atoms'               => $uniquify_atoms } );
       };
       if ( $@ ) {
-          $@ =~ s/[A-Z]+, //;
-          chomp $@;
-          die "$@ -- dataset will be skipped\n";
+        chomp $@;
+        die "$@ -- dataset will be skipped\n";
       }
 
-      #   Extract atoms and order them alphabetically by type and label.
-      my $atoms = get_atoms( $dataset, $ortho_matrix, $uniquify_atoms );
+      $atoms = resolve_chemical_type( $atoms, $dataset->{values} );
+
+      @$atoms = sort { ( $a->{'chemical_type'} cmp $b->{'chemical_type'} ) ||
+                       ( $a->{'name'} cmp $b->{'name'} ) } @$atoms;
 
       #   Generate atoms by applying symmetry operators. This subroutine 
       #   original atoms are fitted into the first octant by applying x,y,z
@@ -238,8 +242,7 @@ foreach my $filename ( @ARGV ) {
 
       my ( $sym_atoms, $symop_count );
       eval {
-          ( $sym_atoms, $symop_count ) = symops_apply( $dataset, $atoms,
-                                                       $ortho_matrix );
+          ( $sym_atoms, $symop_count ) = symops_apply( $dataset, $atoms );
       };
       if ( $@ ) {
           $@ =~ s/ERROR, //;
@@ -248,7 +251,7 @@ foreach my $filename ( @ARGV ) {
             . 'atoms -- dataset will be skipped' . "\n";
       }
 
-      my @shifted_atoms = map { shift_atom( $_, $ortho_matrix ) } @{$sym_atoms};
+      my @shifted_atoms = map { shift_atom($_) } @{$sym_atoms};
 
       my $group_size = $symop_count * 27; # 27 is the number of octants
 
@@ -282,51 +285,17 @@ foreach my $filename ( @ARGV ) {
   }
 }
 
-##
-# Extracts atom information from given dataset.
-# @param $dataset
-#       Dataset containing cif file information extracted by a cif file parser.
-# @param $ortho_matrix
-#       Reference to a structure containing matrix information used to convert
-#       fractional coordinates to orthogonal.
-# @return $atoms
-#       Reference to a data structure containing atom information.
-##
-sub get_atoms
+sub resolve_chemical_type
 {
-    my ( $dataset, $ortho_matrix, $uniquify_atoms ) = @_;
+    my ( $atoms, $values ) = @_;
 
-    my $values = $dataset->{values};
+    my @new_atoms;
 
-    #   extracts atom site label or atom site type symbol
-    my $atom_site_tag;
+    foreach my $atom (@$atoms) {
+        my $i = $atom->{'cif_loop_index'};
 
-    if( exists $values->{'_atom_site_label'} ) {
-        $atom_site_tag = '_atom_site_label';
-    } elsif( exists $values->{'_atom_site_type_symbol'} ) {
-        $atom_site_tag = '_atom_site_type_symbol';
-    } else {
-        die 'ERROR, neither \'_atom_site_label\' nor \'_atom_site_type_symbol\' '
-          . 'present -- dataset will not be processed' . "\n";
-    }
-
-    my @atoms;
-
-    for my $i ( 0 .. $#{$values->{$atom_site_tag}} ) {
-        my $atom = {
-            'name' => $values->{$atom_site_tag}[$i],
-            'chemical_type' => exists $values->{'_atom_site_type_symbol'} ?
-                $values->{'_atom_site_type_symbol'}[$i] : undef,
-            'group' => exists $values->{'_atom_site_disorder_group'}[$i] ?
-                $values->{'_atom_site_disorder_group'}[$i] : '.',
-            'assembly' => exists $values->{'_atom_site_disorder_assembly'}[$i] ?
-                $values->{'_atom_site_disorder_assembly'}[$i] : '.',
-            'coordinates_fract' => [
-                $values->{'_atom_site_fract_x'}[$i],
-                $values->{'_atom_site_fract_y'}[$i],
-                $values->{'_atom_site_fract_z'}[$i]
-            ],
-        };
+        $atom->{'chemical_type'} = exists $values->{'_atom_site_type_symbol'} ?
+                                $values->{'_atom_site_type_symbol'}[$i] : undef;
 
         # Get the chemical type of the atom.
         # Chemical type is determined from _atom_site_type_symbol or
@@ -363,38 +332,10 @@ sub get_atoms
             }
         };
 
-        @{$atom->{'coordinates_fract'}} = map { s/[(]\d+[)]\s*$//; $_ }
-            @{$atom->{'coordinates_fract'}};
-
-        $atom->{'coordinates_ortho'} =
-            symop_vector_mul( $ortho_matrix, $atom->{'coordinates_fract'} );
-
-        if( defined $values->{'_atom_site_occupancy'} ) {
-            if( $values->{'_atom_site_occupancy'}[$i] ne '?' &&
-                $values->{'_atom_site_occupancy'}[$i] ne '.' ) {
-                $atom->{'atom_site_occupancy'} =
-                                    $values->{'_atom_site_occupancy'}[$i];
-                $atom->{'atom_site_occupancy'} =~ s/[(]\d+[)]\s*$//;
-            } else {
-                $atom->{'atom_site_occupancy'} = 1;
-            }
-        }
-
-        if( defined $values->{'_atom_site_symmetry_multiplicity'} &&
-            $values->{'_atom_site_symmetry_multiplicity'}[$i] ne '?' ) {
-            $atom->{'multiplicity'} =
-                $values->{'_atom_site_symmetry_multiplicity'}[$i];
-        }
-
-        push @atoms, $atom;
+        push @new_atoms, $atom;
     }
 
-    @atoms = @{ uniquify_atom_names( \@atoms, $uniquify_atoms ) };
-
-    @atoms = sort { ( $a->{'chemical_type'} cmp $b->{'chemical_type'} ) ||
-                    ( $a->{'name'} cmp $b->{'name'} ) } @atoms;
-
-    return \@atoms;
+    return \@new_atoms;
 }
 
 ##
@@ -425,7 +366,7 @@ sub symops_apply
     # Compute symmetry operator matrices
     my @symop = map { symop_from_string( $_ ) } @{$symop_strings};
 
-    my $sym_atoms = symop_generate_atoms( \@symop, $atoms, $ortho_matrix );
+    my $sym_atoms = symop_generate_atoms( \@symop, $atoms, $atoms->[0]{'f2o'} );
 
     # Adds applied symmetry operator to the atom property hash
     my $i = 0;
@@ -539,7 +480,7 @@ return ( \@distances, \@atoms_used );
 ##
 sub shift_atom
 {
-    my ( $original_atom, $ortho_matrix ) = @_;
+    my ( $original_atom ) = @_;
 
     $original_atom->{'translation_id'} = '555';
     my @shifted_atoms;
@@ -557,7 +498,7 @@ sub shift_atom
             $new_atom->{'coordinates_fract'}[2] += $z;
 
             $new_atom->{'coordinates_ortho'} =
-                        symop_vector_mul( $ortho_matrix,
+                        symop_vector_mul( $new_atom->{'f2o'},
                                           $new_atom->{'coordinates_fract'} );
 
             $new_atom->{'translation_id'} = ( 5 + $x )
