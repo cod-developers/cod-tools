@@ -27,7 +27,7 @@ our @EXPORT_OK = qw(
 my %sg_name_abbrev =
     map { my $key = $_->[1]; $key =~ s/\s+//g; ( $key, $_->[2] ) }
     @COD::Spacegroups::Names::names,
-    map { [ $_->{number}, $_->{hermann_mauguin}, $_->{universal_h_m} ] }
+    map { [ $_->{'number'}, $_->{'hermann_mauguin'}, $_->{'universal_h_m'} ] }
     @COD::Spacegroups::Lookup::COD::table,
     @COD::Spacegroups::Lookup::COD::extra_settings;
 
@@ -35,11 +35,21 @@ my %sg_name_abbrev =
 # Extract unit cell angles and lengths.
 
 # Accepts
-#     values - a hash where a data from the CIF file is stored
+#     values
+#               Reference to a hash where data from the CIF file is stored.
+#     options
+#               Reference to a hash that holds subroutine options.
+#               The accepted options are:
+#                   'silent'
+#                           Flag value, that controls the way missing
+#                           values are treated. If set to true,
+#                           'undef' values are returned instead of
+#*                          missing values without raising any warnings,
+#*                          error or assuming default values (default false).
 # Returns
 #     cell_lengths_and_angles - an array  with stored information.
 
-sub get_cell($@)
+sub get_cell
 {
     my( $values, $options ) = @_;
     $options = {} unless $options;
