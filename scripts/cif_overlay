@@ -59,6 +59,7 @@ my $cif_atom_list_options = {
     allow_unknown_chemical_types => 1,
     homogenize_transform_matrices => 1,
     exclude_zero_occupancies => $exclude_zero_occupancies,
+    atom_properties => \%COD::AtomProperties::atoms
 };
 
 while( @ARGV > 0 ) {
@@ -120,9 +121,7 @@ while( @ARGV > 0 ) {
                                'add_pos'       => $dataname1
                               }, $die_on_error_level ) };
 
-            $atoms1 = atom_array_from_cif( $dataset1,
-                                           \%COD::AtomProperties::atoms,
-                                           $cif_atom_list_options );
+            $atoms1 = atom_array_from_cif( $dataset1, $cif_atom_list_options );
 
         };
         if ( $@ ) {
@@ -143,9 +142,7 @@ while( @ARGV > 0 ) {
                                'add_pos'       => $dataname2
                               }, $die_on_error_level ) };
 
-            $atoms2 = atom_array_from_cif( $dataset2,
-                                           \%COD::AtomProperties::atoms,
-                                           $cif_atom_list_options );
+            $atoms2 = atom_array_from_cif( $dataset2, $cif_atom_list_options );
 
         };
         if ( $@ ) {
