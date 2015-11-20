@@ -20,6 +20,7 @@ use COD::Spacegroups::Symop::Parse qw( string_from_symop
                                        symop_from_string );
 use COD::Algebra::Vector qw( modulo_1 );
 use COD::Fractional qw( symop_ortho_from_fract );
+use COD::AtomProperties;
 
 require Exporter;
 our @ISA = qw( Exporter );
@@ -64,6 +65,9 @@ sub extract_atom
     my($atom_label, $values, $number, $f2o, $options) = @_;
 
     $options = {} unless $options;
+    if ( !defined $options->{atom_properties} ) {
+        $options->{atom_properties} = \%COD::AtomProperties::atoms;
+    };
 
     my %atom_info;
     my @atom_xyz;
@@ -287,9 +291,9 @@ sub extract_atom
 #                   multiplicity_ratio=>"1",
 #              }
 #
-sub atom_array_from_cif($$$)
+sub atom_array_from_cif($$)
 {
-    my( $datablock, $atom_properties, $options ) = @_;
+    my( $datablock, $options ) = @_;
 
     $options = {} unless $options;
 
@@ -347,7 +351,6 @@ sub atom_array_from_cif($$$)
             $label = $values->{$atom_site_tag}[$i];
         }
 
-        $options->{atom_properties} = $atom_properties;
         my $atom_info;
         eval {
             $atom_info = extract_atom( $label, $values, $i, $f2o, $options );
