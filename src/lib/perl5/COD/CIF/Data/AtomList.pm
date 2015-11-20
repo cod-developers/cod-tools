@@ -250,13 +250,13 @@ sub extract_atom
             ];
         }
 
-        if( defined $values->{_cod_molecule_atom_transl_x} &&
-            defined $values->{_cod_molecule_atom_transl_y} &&
-            defined $values->{_cod_molecule_atom_transl_z} ) {
-            $atom_info{translation} = [
-                $values->{_cod_molecule_atom_transl_x}[$number],
-                $values->{_cod_molecule_atom_transl_y}[$number],
-                $values->{_cod_molecule_atom_transl_z}[$number],
+        if( defined $values->{'_cod_molecule_atom_transl_x'} &&
+            defined $values->{'_cod_molecule_atom_transl_y'} &&
+            defined $values->{'_cod_molecule_atom_transl_z'} ) {
+            $atom_info{'translation'} = [
+                $values->{'_cod_molecule_atom_transl_x'}[$number],
+                $values->{'_cod_molecule_atom_transl_y'}[$number],
+                $values->{'_cod_molecule_atom_transl_z'}[$number],
             ];
         }
     }
@@ -317,11 +317,12 @@ sub atom_array_from_cif($$$)
         $atom_site_tag = "_atom_site_label";
     } elsif( exists $values->{"_atom_site_type_symbol"} ) {
         $atom_site_tag = "_atom_site_type_symbol";
-        warn "WARNING, _atom_site_label tag was not found a serial number will "
-           . "be appended to _atom_site_type_symbol to make atom labels\n";
+        warn 'WARNING, \'_atom_site_label\' tag was not found -- a serial '
+           . 'number will be appended to the \'_atom_site_type_symbol\' '
+           . 'tag values to make atom labels' . "\n";
     } else {
-        die "ERROR, neither _atom_site_label nor _atom_site_type_symbol tags "
-          . "were found\n";
+        die 'ERROR, neither \'_atom_site_label\' nor '
+          . '\'_atom_site_type_symbol\' tag present' . "\n";
     }
 
     my $atom_labels = $values->{$atom_site_tag};
