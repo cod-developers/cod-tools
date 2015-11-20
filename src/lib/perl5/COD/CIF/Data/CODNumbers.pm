@@ -221,7 +221,7 @@ sub cif_fill_data
         $calculated_formula = cif_cell_contents( $dataset, undef );
     };
     if ($@) {
-        # ERRORS that originated within the function are downgraded to warnings
+        # ERRORs that originated within the function are downgraded to warnings
         my $error = $@;
         $error =~ s/[A-Z]+, //;
         chomp($error);
@@ -304,8 +304,8 @@ sub cif_fill_data
     }
 
      my @journal_keys =
-        grep ! /^_journal_name/,
-        grep /^_journal_[^\s]*$/,
+        grep { ! /^_journal_name/ }
+        grep { /^_journal_[^\s]*$/ }
         keys %{$values};
 
     for my $key (@journal_keys) {
@@ -504,7 +504,7 @@ sub bibliographies_are_the_same($$)
 sub entries_are_the_same
 {
     my ($entry1, $entry2, $user_options) = @_;
-    
+
     ## print ">>> $entry1->{id}, $entry2->{id}, ",
     ## defined $entry1->{suboptimal} ? $entry1->{suboptimal} : "" , " ", 
     ## defined $entry2->{suboptimal} ? $entry2->{suboptimal} : "", "\n";
@@ -517,26 +517,19 @@ sub entries_are_the_same
                                  $default_options{$key};
     };
 
-    my $are_the_same;
+    my $are_the_same =
+        cells_are_the_same(
+            $entry1->{cell}, $entry2->{cell},
+            $entry1->{sigcell}, $entry2->{sigcell},
+            \%options ) &&
+        conditions_are_the_same( $entry1, $entry2, \%options ) &&
+        (!defined $entry1->{suboptimal} || $entry1->{suboptimal} ne "yes") &&
+        (!defined $entry2->{suboptimal} || $entry2->{suboptimal} ne "yes");
 
     if( $options{check_bibliography} ) {
-        $are_the_same =
-            cells_are_the_same( $entry1->{cell}, $entry2->{cell},
-                                $entry1->{sigcell}, $entry2->{sigcell},
-                                \%options ) &&
-            conditions_are_the_same( $entry1, $entry2, \%options ) &&
-            (!defined $entry1->{suboptimal} || $entry1->{suboptimal} ne "yes") &&
-            (!defined $entry2->{suboptimal} || $entry2->{suboptimal} ne "yes") &&
-            bibliographies_are_the_same( $entry1->{bibliography},
-                                         $entry2->{bibliography} );
-    } else {
-        $are_the_same =
-            cells_are_the_same( $entry1->{cell}, $entry2->{cell},
-                                $entry1->{sigcell}, $entry2->{sigcell},
-                                \%options ) &&
-            conditions_are_the_same( $entry1, $entry2, \%options ) &&
-            (!defined $entry1->{suboptimal} || $entry1->{suboptimal} ne "yes") &&
-            (!defined $entry2->{suboptimal} || $entry2->{suboptimal} ne "yes");
+        $are_the_same = $are_the_same && bibliographies_are_the_same(
+                                            $entry1->{bibliography},
+                                            $entry2->{bibliography} );
     }
 
     if( $are_the_same ) {
