@@ -19,15 +19,25 @@ DISTRIBUTION = $(shell lsb_release -a 2>/dev/null | grep ^Codename | awk '{print
 vendorarch = $(shell perl -le 'use Config; print $$Config{vendorarch}')
 vendorlib  = $(shell perl -le 'use Config; print $$Config{vendorlib}')
 
-PREFIX = ${DEBIAN}/${PKGNAME}
-
 DEBIAN    = debian
 CHANGELOG = ${DEBIAN}/changelog
 CONTROL   = ${DEBIAN}/control
 COPYRIGHT = ${DEBIAN}/copyright
 
-LIBCODCIF_A_DEST  = ${DEBIAN}/${LIBCODCIF}/usr/lib
-LIBCODCIF_INC_DEST = ${DEBIAN}/${LIBCODCIF}/usr/include
+CODTOOLS_DEST    = ${DEBIAN}/${CODTOOLS}
+LIBCOD_PERL_DEST = ${DEBIAN}/${LIBCOD_PERL}
+LIBCODCIF_DEST   = ${DEBIAN}/${PYCODCIF}
+PYCODCIF_DEST    = ${DEBIAN}/${LIBCODCIF}
+
+ifeq ($(origin PREFIX), command line)
+    CODTOOLS_DEST    = ${PREFIX}
+    LIBCOD_PERL_DEST = ${PREFIX}
+    LIBCODCIF_DEST   = ${PREFIX}
+    PYCODCIF_DEST    = ${PREFIX}    
+endif
+
+LIBCODCIF_A_DEST  =  ${LIBCODCIF_DEST}/usr/lib
+LIBCODCIF_INC_DEST = ${LIBCODCIF_DEST}/usr/include
 
 # Taking the dependencies from {build,run}.sh:
 
@@ -93,35 +103,35 @@ deb: ${CHANGELOG} ${CONTROL} ${COPYRIGHT}
 install: build install-codtools install-libcod-perl install-libcodcif install-pycodcif
 
 install-codtools:
-	test -d ${DEBIAN}/${CODTOOLS}/usr/bin || mkdir -p ${DEBIAN}/${CODTOOLS}/usr/bin
-	install ${CODTOOLS_SCRIPTS} ${DEBIAN}/${CODTOOLS}/usr/bin
+	test -d ${DEBIAN}/${CODTOOLS}/usr/bin || mkdir -p ${CODTOOLS_DEST}/usr/bin
+	install ${CODTOOLS_SCRIPTS} ${CODTOOLS_DEST}/usr/bin
 	for i in ${CODTOOLS_LIBS:src/lib/%=%}; \
 	do \
-		test -d ${DEBIAN}/${CODTOOLS}/usr/share/$$(dirname $$i) \
-			|| mkdir -p ${DEBIAN}/${CODTOOLS}/usr/share/$$(dirname $$i); \
-		install --mode 644 src/lib/$$i ${DEBIAN}/${CODTOOLS}/usr/share/$$i; \
+		test -d ${CODTOOLS_DEST}/usr/share/$$(dirname $$i) \
+			|| mkdir -p ${CODTOOLS_DEST}/usr/share/$$(dirname $$i); \
+		install --mode 644 src/lib/$$i ${CODTOOLS_DEST}/usr/share/$$i; \
 	done
 
 install-libcod-perl:
 	for i in ${LIBCOD_PERL_LIBS:src/lib/%=%}; \
 	do \
-	test -d ${DEBIAN}/${LIBCOD_PERL}/usr/share/$$(dirname $$i) \
-			|| mkdir -p ${DEBIAN}/${LIBCOD_PERL}/usr/share/$$(dirname $$i); \
-		install --mode 644 src/lib/$$i ${DEBIAN}/${LIBCOD_PERL}/usr/share/$$i; \
+	test -d ${LIBCOD_PERL_DEST}/usr/share/$$(dirname $$i) \
+			|| mkdir -p ${LIBCOD_PERL_DEST}/usr/share/$$(dirname $$i); \
+		install --mode 644 src/lib/$$i ${LIBCOD_PERL_DEST}/usr/share/$$i; \
 	done
-	test -d ${DEBIAN}/${LIBCOD_PERL}/${vendorarch}/auto/COD/CIF/Parser/Bison/ \
-			|| mkdir -p ${DEBIAN}/${LIBCOD_PERL}/${vendorarch}/auto/COD/CIF/Parser/Bison
+	test -d ${LIBCOD_PERL_DEST}/${vendorarch}/auto/COD/CIF/Parser/Bison/ \
+			|| mkdir -p ${LIBCOD_PERL_DEST}/${vendorarch}/auto/COD/CIF/Parser/Bison
 	install --mode 644 src/lib/perl5/auto/COD/CIF/Parser/Bison/Bison.so \
-		${DEBIAN}/${LIBCOD_PERL}/${vendorarch}/auto/COD/CIF/Parser/Bison/Bison.so
+		${LIBCOD_PERL_DEST}/${vendorarch}/auto/COD/CIF/Parser/Bison/Bison.so
 
 install-pycodcif:
-	test -d ${DEBIAN}/${PYCODCIF}/usr/bin || mkdir -p ${DEBIAN}/${PYCODCIF}/usr/bin
-	install scripts/cif_printout_Python ${DEBIAN}/${PYCODCIF}/usr/bin
+	test -d ${PYCODCIF_DEST}/usr/bin || mkdir -p ${PYCODCIF_DEST}/usr/bin
+	install scripts/cif_printout_Python ${PYCODCIF_DEST}/usr/bin
 	for i in ${PYCODCIF_LIBS:src/%=%}; \
 	do \
-	test -d ${DEBIAN}/${PYCODCIF}/usr/$$(dirname $$i) \
-			|| mkdir -p ${DEBIAN}/${PYCODCIF}/usr/$$(dirname $$i); \
-		install --mode 644 src/$$i ${DEBIAN}/${PYCODCIF}/usr/$$i; \
+	test -d ${PYCODCIF_DEST}/usr/$$(dirname $$i) \
+			|| mkdir -p ${PYCODCIF_DEST}/usr/$$(dirname $$i); \
+		install --mode 644 src/$$i ${PYCODCIF_DEST}/usr/$$i; \
 	done
 
 install-libcodcif:
