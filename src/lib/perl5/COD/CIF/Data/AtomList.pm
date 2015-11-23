@@ -28,6 +28,7 @@ our @EXPORT_OK = qw(
     atom_array_from_cif
     atom_is_disordered
     atoms_are_alternative
+    copy_atom
     copy_struct_deep
     dump_atoms_as_cif
     uniquify_atom_names
@@ -389,17 +390,34 @@ sub atom_array_from_cif($$)
 }
 
 # ============================================================================ #
-# Accepts an array of
+# Renames atoms which have identical names by adding a unique suffix to the
+# original atom name.
 #
-#   $atom_info = {
-#                   site_label=>"C1",
-#                   name=>"C1_2",
-#                   chemical_type=>"C",
-#                   coordinates_fract=>[1.0, 1.0, 1.0],
-#                   unity_matrix_applied=>1,
-#                   assembly=>"A", # "."
-#                   group=>"1", # "."
-#              }
+# Accepts:
+#   $init_atoms
+#                   A reference to an array of atom structures, for which
+#                   the names should be uniquified. Example of the accepeted
+#                   atom structure:
+#
+#                   $atom_info = {
+#                         site_label=>"C1",
+#                         name=>"C1_2",
+#                         chemical_type=>"C",
+#                         coordinates_fract=>[1.0, 1.0, 1.0],
+#                         unity_matrix_applied=>1,
+#                         assembly=>"A", # "."
+#                         group=>"1", # "."
+#                   }
+#   $uniquify_atom
+#                   Flag value denoting whether atoms with identical names
+#                   should be renamed. If set to false, warnings about atoms
+#                   having identical names are issued, but the atoms themselves
+#                   are not renamed.
+#
+# Returns:
+#   \@checked_initial_atoms
+#                   A reference to an array of atom structures.
+#
 #
 sub uniquify_atom_names($$)
 {
@@ -431,10 +449,8 @@ sub uniquify_atom_names($$)
         $used_labels{$label}{count} ++;
     }
 
-    if( $uniquify_atoms )
-    {
-        foreach my $label (sort keys %labels_to_be_renamed)
-        {
+    if( $uniquify_atoms ) {
+        foreach my $label (sort keys %labels_to_be_renamed) {
             foreach my $renamed_atom (@{$used_labels{$label}{atoms}}) {
                 my $id = 0;
                 while( exists $used_labels{$label . "_" .$id} &&
