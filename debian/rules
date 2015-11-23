@@ -1,7 +1,15 @@
 #!/usr/bin/make -f
 
+include Makeconf
+
 %:
 	dh $@ --with python2
+
+override_dh_auto_install:
+	$(MAKE) install-codtools PREFIX=debian/${CODTOOLS}/usr
+	$(MAKE) install-libcod-perl PREFIX=debian/${LIBCOD_PERL}/usr
+	$(MAKE) install-pycodcif PREFIX=debian/${LIBCODCIF}/usr
+	$(MAKE) install-libcodcif PREFIX=debian/${PYCODCIF}/usr
 
 override_dh_builddeb:
 	dh_builddeb --destdir debian
