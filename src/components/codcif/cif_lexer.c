@@ -1,6 +1,6 @@
 /*---------------------------------------------------------------------------*\
 **$Author$
-**$Date$ 
+**$Date$
 **$Revision$
 **$URL$
 \*---------------------------------------------------------------------------*/
@@ -120,7 +120,7 @@ int cif_lexer( FILE *in, cexception_t *ex )
 
     while( ch != EOF ) {
         /* It is important that the predicate that checks for spaces
-           in the fi() statement below is the same as the ispace()
+           in the if() statement below is the same as the ispace()
            predicate in the 'default:' branch of the next switch
            statement; otherwise we can end up in an infinite loop if a
            character is regarded as space by the 'default:' branch but
