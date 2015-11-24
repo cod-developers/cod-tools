@@ -158,7 +158,7 @@ sub merge_limits_tables($$) {
    my( $new_limits, $old_limits ) = @_;
    my $merged_limits = $old_limits;
 
-   foreach my $tag( keys %$new_limits ) {
+   foreach my $tag( keys %{$new_limits} ) {
         if( exists $merged_limits->{$tag} ) {
             $merged_limits->{$tag} = $new_limits->{$tag};
             next;
@@ -432,7 +432,7 @@ sub print_limits {
           "# The table of data value limits that 'cif_cod_check' script \n" .
           "# uses under the option '--check-limits'.\n" .
           '#' . '-'x70  . "\n";
-    foreach my $tag( sort keys %$limits_table ) {
+    foreach my $tag ( sort keys %{$limits_table} ) {
         printf '%-32s', $tag;
         for my $i( 0..$#{ $limits_table->{$tag} } ) {
             print "\t" , join( '-', @{ $limits_table->{$tag}[$i]} );
@@ -486,7 +486,7 @@ for my $filename (@ARGV) {
     my $notes    = 0;
     my $warnings = 0;
     my $errors   = 0;
-    for my $dataset (@$data) {
+    for my $dataset (@{$data}) {
 
         my $dataname = 'data_' . $dataset->{name} if defined $dataset->{name};
 
@@ -558,7 +558,7 @@ for my $filename (@ARGV) {
         'ERROR'   => $errors
     );
 
-    if ( $notes + $warnings + $errors + @$parser_messages ) {
+    if ( $notes + $warnings + $errors + @{$parser_messages} ) {
         foreach ( 'NOTE', 'WARNING', 'ERROR' ) {
             if ( $message_count{$_} > 0 ) {
                 my $message = sprint_message(
@@ -813,7 +813,7 @@ sub check_spacegroup_info
     my %symops_cannonical;
     if( defined $symops ) {
         my %duplicate_symops;
-        for my $symop (@$symops) {
+        for my $symop (@{$symops}) {
             my $cannonical_symop =
                 symop_string_canonical_form( $symop );
             if( !exists $duplicate_symops{$cannonical_symop} ) {
@@ -934,7 +934,7 @@ sub check_pdcif_relations
     my @phases;
     my @diffractograms;
 
-    for( my $i = 0; $i < @$data; $i++ ) {
+    for( my $i = 0; $i < @{$data}; $i++ ) {
         my $dataset = $data->[$i];
         my $datablock = $dataset->{values};
         if( exists $datablock->{_pd_block_id} ) {
@@ -948,7 +948,7 @@ sub check_pdcif_relations
                 $pd_ids->{$datablock_pd_id} = $i;
                 if( exists $datablock->{_atom_site_label} ) {
                     push( @phases, $i );
-                } elsif( grep( /^_refln_index_.$/, keys %$datablock ) > 0 ) {
+                } elsif( ( grep { /^_refln_index_.$/ } keys %{$datablock} ) > 0 ) {
                     push( @diffractograms, $i );
                 }
             }
@@ -1003,8 +1003,8 @@ sub check_pdcif_relations
         for my $phase_nr (@phases) {
             my $phase_block = $data->[$phase_nr];
             my $phase_data = $phase_block->{values};
-            if( grep( $_ eq $phase_data->{_pd_block_id}[0],
-                      @{$overall_data->{_pd_phase_block_id}} ) == 0 ) {
+            if( ( grep { $_ eq $phase_data->{_pd_block_id}[0] }
+                         @{$overall_data->{_pd_phase_block_id}} ) == 0 ) {
                 warn 'ERROR, phase datablock \'data_' . $phase_block->{name}
                    . '\' is not listed in _pd_phase_block_id loop of the '
                    . "overall information datablock '$overall_dataname'" . "\n";
@@ -1014,8 +1014,8 @@ sub check_pdcif_relations
         for my $diffractogram_nr (@diffractograms) {
             my $diffractogram_block = $data->[$diffractogram_nr];
             my $diffractogram_data = $diffractogram_block->{values};
-            if( grep( $_ eq $diffractogram_data->{_pd_block_id}[0],
-                      @{$overall_data->{_pd_block_diffractogram_id}} ) == 0 ) {
+            if( ( grep { $_ eq $diffractogram_data->{_pd_block_id}[0] }
+                         @{$overall_data->{_pd_block_diffractogram_id}} ) == 0 ) {
                 warn 'ERROR, diffractogram datablock \'data_'
                     . $diffractogram_block->{name} . '\' is not listed in '
                     . '_pd_block_diffractogram_id loop of the overall '
@@ -1281,9 +1281,9 @@ sub regularize_cell($$$$)
 {
     my ( $cell, $cellsig, $crystal_class, $h_m_symbol ) = @_;
 
-    my @regcell = @$cell;
+    my @regcell = @{$cell};
 
-    my @cellsig = map { defined $_ ? $_ : 0 } @$cellsig;
+    my @cellsig = map { defined $_ ? $_ : 0 } @{$cellsig};
 
     # snap cell lengths:
     if( $crystal_class ne 'triclinic' && $crystal_class ne 'monoclinic' ) {
@@ -1402,7 +1402,7 @@ sub check_symmetry_operators
 
     return 0 if !defined $symops;
 
-    foreach (@$symops) {
+    foreach (@{$symops}) {
         return 1 if ( !is_symop_parsable($_) );
     }
 
@@ -1436,11 +1436,11 @@ sub check_limits {
     if(! defined $dataset->{values} ) {
         return 0;
     }
-    my @report_names = ( 'ERROR', 'WARNING', 'NOTE' );
+    my @report_names = qw( ERROR WARNING NOTE );
     my $numeric = '([+-]?(\d+(\.\d*)?|\.\d+))';
     my $values = $dataset->{values};
 
-    foreach my $tag( sort keys %$limits_table ) {
+    foreach my $tag( sort keys %{$limits_table} ) {
         next if !exists $values->{$tag};
 
         my $value = $values->{$tag}[0];
