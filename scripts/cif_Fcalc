@@ -233,8 +233,7 @@ for my $filename (@ARGV) {
         # seaching list of chemical elements;
         my $chemical_element_list = [];
         foreach my $atom (@{$atoms}) {
-            unless( compare_symbol( $chemical_element_list,
-                                    $atom->{chemical_type} ) ) {
+            if ( !grep { /$atom->{chemical_type}/ } @{$chemical_element_list} ) {
                 push @{$chemical_element_list}, $atom->{chemical_type};
             }
         }
@@ -831,7 +830,6 @@ sub get_thermal
     return \@atoms_thermal_coefficients;
 }
 
-
 #--------------------------------------------------------------------#
 # Function of extracting unit-cell parameters of the CIF file.
 #
@@ -922,6 +920,7 @@ sub d2r_length
 sub d2r_angle
 {
     my( $angle1, $angle2, $angle_which_converts ) = @_;
+    use POSIX;
     return POSIX::acos(
         (cos( $angle1 ) * cos( $angle2 ) -
          cos( $angle_which_converts)) /
@@ -1046,7 +1045,6 @@ sub temperature_factor_aniso
                  2 * $U_13 * $h * $l * $repro_length_a * $repro_length_c +
                  2 * $U_23 * $k * $l * $repro_length_b * $repro_length_c ) );
 }
-
 
 # Function for symmetric transformations of atom positions for receiving of 
 # symmetrical atoms.
@@ -1248,7 +1246,6 @@ sub tests_outputs
 #---------------------------------------------------------------------------
 # Function
 #
-
 sub compare_number
 {
     my( $reference_to_array, $template ) = @_;
@@ -1257,7 +1254,6 @@ sub compare_number
     }
     return 0;
 }
-
 
 #------------------------------------------------------------------------------
 # Function for Fhkl descending sorting
@@ -1434,16 +1430,4 @@ sub get_neighbors
     } # end of for $k
 
     return \@neighbors;
-}
-
-# Function for checking of elements in array
-# Parameters: compare_symbol( \to_array, atom_elements )
-# Return: 1 if array contains this element
-#         0 if array does not contain 
-sub compare_symbol {
-    my( $reference_to_array, $template ) = @_;
-    foreach my $symbol ( @{$reference_to_array} ) {
-        return 1 if( $symbol eq $template );
-    }
-    return 0;
 }
