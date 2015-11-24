@@ -29,6 +29,7 @@ eval 'exec perl -x $0 ${1+"$@"}'
 use strict;
 use warnings;
 use COD::CIF::Parser qw( parse_cif );
+use COD::CIF::Data qw( get_cell );
 use COD::Algebra::Vector qw( distance );
 use COD::Spacegroups::Symop::Parse qw( symop_from_string modulo_1 );
 use COD::Spacegroups::Names;
@@ -141,7 +142,6 @@ my $PI = 4*atan2( 1, 1 );
 #==============================================================================#
 # Forward subroutine definitions:
 sub mat_vect_mul( $$ );
-sub get_unit_cell( $$ );
 
 # tests for options
 # --provide-Miller-indexes
@@ -190,7 +190,7 @@ for my $filename (@ARGV) {
 
         my @hkl_and_F;
         eval {
-        ## my $radiation_wavelengths = remove_standard_uncertainties(
+        ## my $radiation_wavelengths = remove_su(
         ##     $datablock->{values}{_diffrn_radiation_wavelength} );
         my $cell_parameters = get_unit_cell_parameters( $datablock );
         my $f2o = symop_ortho_from_fract(
@@ -514,11 +514,11 @@ if( defined $hkl_file ) {
                     my $error_squared =
                         ( abs( $F_sguared_mes->[$i] - $calculated->[0] ) /
                           $F_sguared_mes->[$i] ) * 100 ;
-                    print "My Calc: $calculated->[0] "
-                        ."Mes: $F_sguared_mes->[$i] "
-                        ."Their Calc: $F_squared_calc->[$i] "
-                        ."Sigma: $F_squared_sigma_mes->[$i] "
-                        ." My Error: $error_squared\n";
+                    print  "My Calc: $calculated->[0] "
+                         . "Mes: $F_sguared_mes->[$i] "
+                         . "Their Calc: $F_squared_calc->[$i] "
+                         . "Sigma: $F_squared_sigma_mes->[$i] "
+                         . " My Error: $error_squared\n";
                     $set_flag = 1;
                 }
                 last if( $set_flag );
@@ -542,11 +542,9 @@ sub mat_vect_mul($$)
 
     my @new_coordinates;
 
-    for(my $i = 0; $i < @{$vector}; $i++)
-    {
+    for(my $i = 0; $i < @{$vector}; $i++) {
         $new_coordinates[$i] = 0;
-        for(my $j = 0; $j < @{$vector}; $j++)
-        {
+        for(my $j = 0; $j < @{$vector}; $j++) {
             $new_coordinates[$i] += ${$matrix}[$i][$j] * ${$vector}[$j];
         }
     }
@@ -567,7 +565,7 @@ sub mat_vect_mul($$)
 # values; for ex.: 0.21582(8) 
 # Return: reference to an array without
 # std. deviations; for ex.: 0.21582
-sub remove_standard_uncertainties
+sub remove_su
 {
     my( $input ) = @_;
     return [ map { my $value = $_;
@@ -611,15 +609,11 @@ sub atoms_from_cif
     my @atoms;
     my $datablock_values = $datablock->{values};
     my @xyz_arrays =
-        ( remove_standard_uncertainties(
-              $datablock_values->{'_atom_site_fract_x'} ),
-          remove_standard_uncertainties(
-              $datablock_values->{'_atom_site_fract_y'} ),
-          remove_standard_uncertainties(
-              $datablock_values->{'_atom_site_fract_z'} ) );
+        ( remove_su( $datablock_values->{'_atom_site_fract_x'} ),
+          remove_su( $datablock_values->{'_atom_site_fract_y'} ),
+          remove_su( $datablock_values->{'_atom_site_fract_z'} ) );
     my $occupancy =
-        remove_standard_uncertainties(
-            $datablock_values->{'_atom_site_occupancy'} );
+        remove_su( $datablock_values->{'_atom_site_occupancy'} );
 
     my $Cromer_Mann_coefficients = get_Cromer_Mann_coefficients( $datablock );
     my $themal_coefficients = get_thermal( $datablock );
@@ -630,8 +624,7 @@ sub atoms_from_cif
         my $fract_xyz = [ $xyz_arrays[0]->[$i],
                           $xyz_arrays[1]->[$i],
                           $xyz_arrays[2]->[$i] ];
-        my $ortho_xyz =
-            mat_vect_mul( $f2o,  $fract_xyz );
+        my $ortho_xyz = mat_vect_mul( $f2o, $fract_xyz );
         my $atom_chemical_type =
             $datablock_values->{_atom_site_type_symbol}[$i];
         if( !defined $datablock_values->{_atom_site_type_symbol}[$i] ) {
@@ -654,7 +647,7 @@ sub atoms_from_cif
         %atom_info = (%atom_info, %{$themal_coefficients->[$i]});
         %atom_info = (%atom_info, %{$sym_atoms_and_their_count->[$i]});
         %atom_info = (%atom_info, %{$atoms_neighbors->[$i]});
-        push( @atoms, \%atom_info );
+        push @atoms, \%atom_info;
     }
     return \@atoms;
 }
@@ -745,7 +738,7 @@ sub get_Cromer_Mann_coefficients
                     scat_dispesion_real => $atom_scat_dispersion_real->[$y],
                     scat_dispesion_imag => $atom_scat_dispersion_imag->[$y]
                     );
-                push( @atoms_aniso_coefficients, \%thermal );
+                push @atoms_aniso_coefficients, \%thermal;
             } # end of if;
         } # second for
     } # first for 
@@ -782,24 +775,16 @@ sub get_thermal
     my @atoms_thermal_coefficients;
 
     my $thermal_parameter_B =
-        remove_standard_uncertainties(
-            $datablock_values->{_atom_site_b_iso_or_equiv} );
+        remove_su( $datablock_values->{_atom_site_b_iso_or_equiv} );
     my $squared_displacement_U =
-        remove_standard_uncertainties(
-            $datablock_values->{_atom_site_u_iso_or_equiv} );
+        remove_su( $datablock_values->{_atom_site_u_iso_or_equiv} );
     my @anisotrophic_U_ij_values =
-        ( remove_standard_uncertainties(
-              $datablock_values->{_atom_site_aniso_u_11} ),
-          remove_standard_uncertainties(
-              $datablock_values->{_atom_site_aniso_u_22} ),
-          remove_standard_uncertainties(
-              $datablock_values->{_atom_site_aniso_u_33} ),
-          remove_standard_uncertainties(
-              $datablock_values->{_atom_site_aniso_u_23} ),
-          remove_standard_uncertainties(
-              $datablock_values->{_atom_site_aniso_u_13} ),
-          remove_standard_uncertainties(
-              $datablock_values->{_atom_site_aniso_u_12} ) );
+        ( remove_su( $datablock_values->{_atom_site_aniso_u_11} ),
+          remove_su( $datablock_values->{_atom_site_aniso_u_22} ),
+          remove_su( $datablock_values->{_atom_site_aniso_u_33} ),
+          remove_su( $datablock_values->{_atom_site_aniso_u_23} ),
+          remove_su( $datablock_values->{_atom_site_aniso_u_13} ),
+          remove_su( $datablock_values->{_atom_site_aniso_u_12} ) );
     # _atom_site_aniso_label needs for extracting of anisotrophic values; 
     my %temporary_aniso_data;
     for my $i (0..$#{$datablock_values->{_atom_site_aniso_label}}) {
@@ -850,21 +835,8 @@ sub get_unit_cell_parameters
     my( $datablock ) = @_;
     my $datablock_values = $datablock->{'values'};
 
-    my @crystal_lattice =  ( ${ remove_standard_uncertainties(
-                                    $datablock_values->{_cell_length_a} )}[0],
-                             ${ remove_standard_uncertainties(
-                                    $datablock_values->{_cell_length_b} )}[0],
-                             ${ remove_standard_uncertainties(
-                                    $datablock_values->{_cell_length_c} )}[0],
-                             ${ remove_standard_uncertainties(
-                                    $datablock_values->{_cell_angle_alpha} )}[0],
-                             ${ remove_standard_uncertainties(
-                                    $datablock_values->{_cell_angle_beta} )}[0],
-                             ${ remove_standard_uncertainties(
-                                    $datablock_values->{_cell_angle_gamma} )}[0] );
-    # @crystal_lattice = ( a[0], b[1], c[2], alpha[3], beta[4], gamma[5] );
-    my $cell_volume = ${remove_standard_uncertainties(
-        $datablock_values->{_cell_volume} )}[0];
+    my @crystal_lattice = get_cell( $datablock->{'values'} );
+    my $cell_volume = ${remove_su( $datablock_values->{_cell_volume} )}[0];
     my( $a, $b, $c, $alpha, $beta, $gamma ) = @crystal_lattice;
     my @crystal_cell_radians =
         ( $a, $b, $c, deg2rad( $alpha, $beta, $gamma ));
@@ -877,8 +849,8 @@ sub get_unit_cell_parameters
         );
     my @alpha_beta_gamma_star_radians = (
         d2r_angle( deg2rad( $beta, $gamma, $alpha ) ), # alpha*
-        d2r_angle( deg2rad( $alpha, $gamma, $beta) ),  # beta*
-        d2r_angle( deg2rad( $alpha, $beta, $gamma) ));  # gamma*
+        d2r_angle( deg2rad( $alpha, $gamma, $beta ) ),  # beta*
+        d2r_angle( deg2rad( $alpha, $beta, $gamma ) ) );  # gamma*
     my  @alpha_beta_gamma_star_degrees =
         rad2deg( @alpha_beta_gamma_star_radians );
     my @star_crystal_cell_parameters_degrees =
@@ -1069,12 +1041,9 @@ sub cell_filling_sym
     my( $datablock, $f2o ) = @_;
     my $values =  $datablock->{values};
     my @xyz_arrays =
-        ( remove_standard_uncertainties(
-              $values->{'_atom_site_fract_x'} ),
-          remove_standard_uncertainties(
-              $values->{'_atom_site_fract_y'} ),
-          remove_standard_uncertainties(
-              $values->{'_atom_site_fract_z'} ) );
+        ( remove_su( $values->{'_atom_site_fract_x'} ),
+          remove_su( $values->{'_atom_site_fract_y'} ),
+          remove_su( $values->{'_atom_site_fract_z'} ) );
 
     my $sym_data = get_symmetry_operators( $datablock );
 
