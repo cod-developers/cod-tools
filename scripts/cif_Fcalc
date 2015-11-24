@@ -29,6 +29,7 @@ eval 'exec perl -x $0 ${1+"$@"}'
 use strict;
 use warnings;
 use COD::CIF::Parser qw( parse_cif );
+use COD::Algebra::Vector qw( distance );
 use COD::Spacegroups::Symop::Parse qw( symop_from_string modulo_1 );
 use COD::Spacegroups::Names;
 use COD::Spacegroups::Lookup::COD;
@@ -1127,9 +1128,8 @@ sub cell_filling_sym
         my $length_of_ref = $#{$sym_atoms_ortho};
         for my $i (0..$length_of_ref) { # symmetric atoms
             for my $k ($i+1..$length_of_ref) {
-                my $what_distance =
-                    euclidean_distance_3D( $sym_atoms_ortho->[$i],
-                                           $sym_atoms_ortho->[$k] );
+                my $what_distance = distance( $sym_atoms_ortho->[$i],
+                                              $sym_atoms_ortho->[$k] );
                 if( $what_distance < 0.01 ) {
                     unless( compare_number($sym_atoms_whitout_twins, $k) ) {
                         push @{$sym_atoms_whitout_twins}, $k;
@@ -1284,22 +1284,6 @@ sub tests_outputs
         exit;
     }
 }
-
-#--------------------------------------------------------------------------
-# Function for euclidean distance calculation (3D)
-# Parameters: two reference to x,y,z coordinate 
-# f.e.: fun( [x1,y1,z2], [x2,y2,z2] )
-# Return 
-# euclidean distance
-
-sub euclidean_distance_3D
-{
-    my( $xyz_1, $xyz_2 ) = @_;
-    return sqrt( (($xyz_1->[0] - $xyz_2->[0])**2 +
-                  ($xyz_1->[1] - $xyz_2->[1])**2 +
-                  ($xyz_1->[2] - $xyz_2->[2])**2)
-        );
-};
 
 #---------------------------------------------------------------------------
 # Function
