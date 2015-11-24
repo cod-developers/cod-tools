@@ -49,24 +49,24 @@ my $die_on_error_level = {
 #*                      Print a short usage message (this message) and exit.
 #**
 @ARGV = getOptions(
-    "--use-perl-parser" => sub{ $use_parser = "perl" },
-    "--use-c-parser"    => sub{ $use_parser = "c" },
-    "--options"         => sub { options; exit },
-    "--help,--usage"    => sub { usage; exit }
+    '--use-perl-parser' => sub{ $use_parser = 'perl' },
+    '--use-c-parser'    => sub{ $use_parser = 'c' },
+    '--options'         => sub { options; exit },
+    '--help,--usage'    => sub { usage; exit }
 );
 
-@ARGV = ("-") unless @ARGV;
+@ARGV = ('-') unless @ARGV;
 
 foreach my $filename (@ARGV) {
     my $options = { 'parser' => $use_parser, 'no_print' => 1 };
     my ( $data, $err_count, $messages ) = parse_cif( $filename, $options );
     process_parser_messages( $messages, $die_on_error_level );
 
-    foreach my $dataset (@$data) {
+    foreach my $dataset (@{$data}) {
         canonicalize_names( $dataset );
 
         my $values   = $dataset->{values};
-        my $dataname = 'data_' . $dataset->{name} if defined $dataset->{name};
+        my $dataname = 'data_' . $dataset->{'name'} if defined $dataset->{'name'};
 
         local $SIG{__WARN__} = sub { process_warnings( {
                                        'message'  => @_,
@@ -79,30 +79,30 @@ foreach my $filename (@ARGV) {
             # extracts atom site label or atom site type symbol
             my $loop_tag;
 
-            if (exists $values->{"_atom_site_label"}) {
-                $loop_tag = "_atom_site_label";
+            if (exists $values->{'_atom_site_label'}) {
+                $loop_tag = '_atom_site_label';
             }
-            elsif (exists $values->{"_atom_site_type_symbol"})
+            elsif (exists $values->{'_atom_site_type_symbol'})
             {
-                $loop_tag = "_atom_site_type_symbol";
+                $loop_tag = '_atom_site_type_symbol';
             }
             else
             {
-                die "ERROR, neither '_atom_site_type_symbol'"
-                  . " nor '_atom_site_label' are present in the file\n";
+                die 'ERROR, neither \'_atom_site_type_symbol\' '
+                  . 'nor \'_atom_site_label\' are present in the file' . "\n";
             }
 
             # extracts symmetry operators
             my $sym_data = get_symmetry_operators($dataset);
 
-            my $inloop = $dataset->{"inloop"};
+            my $inloop = $dataset->{'inloop'};
             my $loop_id = $inloop->{$loop_tag};
-            my $loop = $dataset->{"loops"}[$loop_id];
+            my $loop = $dataset->{'loops'}[$loop_id];
 
             my @sym_operators = map{symop_from_string($_)} @{$sym_data};
 
             # prints additional cif file information
-            print $dataname . "_" . fileparse($0) . "\n";
+            print $dataname . '_' . fileparse($0) . "\n";
             print  "_symmetry_space_group_name_H-M   'P 1'\n";
 
             foreach my $angle (qw(_cell_angle_alpha
@@ -110,7 +110,7 @@ foreach my $filename (@ARGV) {
                                   _cell_angle_gamma))
             {
                 if( defined $values->{$angle}[0] ) {
-                    print $angle . "   " . $values->{$angle}[0]."\n";
+                    print $angle . '   ' . $values->{$angle}[0] . "\n";
                 }
             }
 
@@ -118,15 +118,15 @@ foreach my $filename (@ARGV) {
                                    _cell_length_b
                                    _cell_length_c))
             {
-                print $length . "   " . $values->{$length}[0]."\n";
+                print $length . '   ' . $values->{$length}[0] . "\n";
             }
 
-            print "loop_ " . "_symmetry_equiv_pos_as_xyz" . " 'x, y, z'\n";
+            print 'loop_ ' . '_symmetry_equiv_pos_as_xyz' . " 'x, y, z'\n";
             print "loop_\n";
 
             foreach my $loop_value (@{$loop})
             {
-                if("_atom_site_adp_type" ne $loop_value)
+                if('_atom_site_adp_type' ne $loop_value)
                 {
                     print $loop_value . "\n";
                 }
@@ -141,14 +141,14 @@ foreach my $filename (@ARGV) {
                 for(my $j = 0; $j < @{$values->{$loop_tag}}; $j++)
                 {
                     my @atom_xyz;
-                    foreach my $atom_fract (qw(_atom_site_fract_x
-                                               _atom_site_fract_y
-                                               _atom_site_fract_z))
+                    foreach my $atom_fract ( qw( _atom_site_fract_x
+                                                 _atom_site_fract_y
+                                                 _atom_site_fract_z ) )
                     {
                         my $sym_atom_data = $values->{$atom_fract};
-                        push(@atom_xyz, ${$sym_atom_data}[$j]);
+                        push @atom_xyz, ${$sym_atom_data}[$j];
                     }
-                    push(@atom_xyz, 1);
+                    push @atom_xyz, 1;
 
                     my $new_atom_xyz = shift_atoms(symop_apply(\@atom_xyz, $symop));
                     for(my $m = 0; $m < @{$new_atom_xyz}; $m++)
@@ -157,21 +157,21 @@ foreach my $filename (@ARGV) {
                     {
                         my $sym_atom_data = $values->{${$loop}[$k]};
 
-                        if("_atom_site_adp_type" ne ${$loop}[$k])
+                        if('_atom_site_adp_type' ne ${$loop}[$k])
                         {
-                            if(${$loop}[$k] eq "_atom_site_label")
+                            if(${$loop}[$k] eq '_atom_site_label')
                             {
-                                $sym_atoms[$i][$j][$k] = ${$sym_atom_data}[$j]."_".$i."_".$m;
+                                $sym_atoms[$i][$j][$k] = ${$sym_atom_data}[$j].'_'.$i.'_'.$m;
                             }
-                            elsif(${$loop}[$k] eq "_atom_site_fract_x")
+                            elsif(${$loop}[$k] eq '_atom_site_fract_x')
                             {
                                 $sym_atoms[$i][$j][$k] = ${$new_atom_xyz}[$m][0];
                             }
-                            elsif(${$loop}[$k] eq "_atom_site_fract_y")
+                            elsif(${$loop}[$k] eq '_atom_site_fract_y')
                             {
                                 $sym_atoms[$i][$j][$k] = ${$new_atom_xyz}[$m][1];
                             }
-                            elsif(${$loop}[$k] eq "_atom_site_fract_z")
+                            elsif(${$loop}[$k] eq '_atom_site_fract_z')
                             {
                                 $sym_atoms[$i][$j][$k] = ${$new_atom_xyz}[$m][2];
                             }
@@ -179,7 +179,7 @@ foreach my $filename (@ARGV) {
                             {
                                 $sym_atoms[$i][$j][$k] = ${$sym_atom_data}[$j];
                             }
-                            print $sym_atoms[$i][$j][$k] . "   ";
+                            print $sym_atoms[$i][$j][$k] . '   ';
                         }
                     }
                     print "\n";
@@ -224,22 +224,17 @@ sub shift_atoms
     my($atom_xyz) = @_;
 
     my @shifted_atom_xyz;
-    my @shifting_params = (0, -1, 1);
+    my @shift = (0, -1, 1);
 
     my $counter = 0;
-    for(my $i = 0; $i < @shifting_params; $i++)
-    {
-        for(my $j = 0; $j < @shifting_params; $j++)
-        {
-            for(my $k = 0; $k < @shifting_params; $k++)
-            {
-                $shifted_atom_xyz[$counter][0] = ${$atom_xyz}[0] + $shifting_params[$i];
-                $shifted_atom_xyz[$counter][1] = ${$atom_xyz}[1] + $shifting_params[$j];
-                $shifted_atom_xyz[$counter][2] = ${$atom_xyz}[2] + $shifting_params[$k];
-                $counter++;
-            }
-        }
-    }
+    for ( my $i = 0; $i < @shift; $i++ ) {
+    for ( my $j = 0; $j < @shift; $j++ ) {
+    for ( my $k = 0; $k < @shift; $k++ ) {
+        $shifted_atom_xyz[$counter][0] = ${$atom_xyz}[0] + $shift[$i];
+        $shifted_atom_xyz[$counter][1] = ${$atom_xyz}[1] + $shift[$j];
+        $shifted_atom_xyz[$counter][2] = ${$atom_xyz}[2] + $shift[$k];
+        $counter++;
+    } } }
 
     return \@shifted_atom_xyz;
 }
