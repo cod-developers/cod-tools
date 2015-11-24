@@ -53,129 +53,132 @@ my $die_on_errors   = 1;
 my $die_on_warnings = 0;
 my $die_on_notes    = 0;
 
-my $use_parser = "c";
+my $use_parser = 'c';
 
 my $dictParsed = [];
 my @dictionaries = ();
 my %dictTags;
 my %tagDicts;
 
-sub dont_fix_any {
+sub dont_fix_any
+{
     $fix_misspelled_values = 0;
     $fix_temperature = 0;
     $fix_enums = 0;
     $treat_as_set = 0;
     $fix_value_of_exptl_crystal_density_meas = 0;
     $fix_value_of_refine_ls_weighting_scheme = 0;
+
+    return;
 }
 
 my %default_enums = (
-    '_atom_site_adp_type'                    => [ "Uani", "Uiso", "Uovl",
-                                                  "Umpe", "Bani", "Biso", "Bovl" ],
-    '_atom_site_calc_flag'                   => [ "d", "calc", "c", "dum" ],
-    '_atom_site_refinement_flags_adp'        => [ ".", "T", "U", "TU" ],
-    '_atom_site_refinement_flags_occupancy'  => [ ".", "P" ],
-    '_atom_site_refinement_flags_posn'       => [ ".", "D", "G", "R", "S",
-                                                  "DG", "DR", "DS", "GR",
-                                                  "GS", "RS", "DGR", "DGS",
-                                                  "DRS", "GRS", "DGRS" ],
-    '_atom_site_refinement_flags'            => [ ".", "S", "G", "R",
-                                                  "D", "T", "U", "P" ],
-    '_atom_sites_solution_hydrogens'         => [ "difmap", "vecmap", "heavy",
-                                                  "direct", "geom", "disper",
-                                                  "isomor", "notdet", "dual", "other" ],
-    '_atom_sites_solution_primary'           => [ "difmap", "vecmap", "heavy",
-                                                  "direct", "geom", "disper",
-                                                  "isomor", "notdet", "dual", "other" ],
-    '_atom_sites_solution_secondary'         => [ "difmap", "vecmap", "heavy",
-                                                  "direct", "geom", "disper", 
-                                                  "isomor", "notdet", "dual", "other" ],
-    '_atom_site_thermal_displace_type'       => [ "Uani", "Uiso", "Uovl", "Umpe", 
-                                                  "Bani", "Biso", "Bovl" ],
-    '_chemical_absolute_configuration'       => [ "rm", "ad", "rmad",
-                                                  "syn", "unk", "." ],
-    '_chemical_conn_bond_type'               => [ "sing", "doub", "trip", "quad", 
-                                                  "arom", "poly", "delo", "pi" ],
-    '_chemical_enantioexcess_bulk_technique' => [ "OA", "CD", "EC", "other" ],
-    '_chemical_enantioexcess_crystal_technique' => [ "CD", "EC", "other" ],
-    '_citation_coordinate_linkage'           => [ "no", "n", "yes", "y" ],
-    '_diffrn_radiation_probe'                => [ "x-ray", "neutron",
-                                                  "electron", "gamma" ],
-    '_diffrn_radiation_wavelength_determination' => [ "fundamental",
-                                                      "estimated", "refined" ],
-    '_diffrn_radiation_xray_symbol'          => [ "K-L~3~", "K-L~2~",
-                                                  "K-M~3~", "K-L~2,3~" ],
-    '_diffrn_refln_scan_mode_backgd'         => [ "st", "mo" ],
-    '_diffrn_refln_scan_mode'                => [ "om", "ot", "q" ],
-    '_diffrn_source_target'                  => [ "H", "He", "Li", "Be", "B",
-                                                  "C", "N", "O", "F", "Ne",
-                                                  "Na", "Mg", "Al", "Si", "P",
-                                                  "S", "Cl", "Ar", "K", "Ca",
-                                                  "Sc", "Ti", "V", "Cr", "Mn",
-                                                  "Fe", "Co", "Ni", "Cu", "Zn",
-                                                  "Ga", "Ge", "As", "Se", "Br",
-                                                  "Kr", "Rb", "Sr", "Y", "Zr",
-                                                  "Nb", "Mo", "Tc", "Ru", "Rh",
-                                                  "Pd", "Ag", "Cd", "In", "Sn",
-                                                  "Sb", "Te", "I", "Xe", "Cs",
-                                                  "Ba", "La", "Ce", "Pr", "Nd",
-                                                  "Pm", "Sm", "Eu", "Gd", "Tb",
-                                                  "Dy", "Ho", "Er", "Tm", "Yb",
-                                                  "Lu", "Hf", "Ta", "W", "Re",
-                                                  "Os", "Ir", "Pt", "Au", "Hg",
-                                                  "Tl", "Pb", "Bi", "Po", "At",
-                                                  "Rn", "Fr", "Ra", "Ac", "Th",
-                                                  "Pa", "U", "Np", "Pu", "Am", 
-                                                  "Cm", "Bk", "Cf", "Es", "Fm",
-                                                  "Md", "No", "Lr" ],
-    '_exptl_absorpt_correction_type'         => [ "analytical", "cylinder",
-                                                  "empirical", "gaussian",
-                                                  "integration", "multi-scan",
-                                                  "none", "numerical",
-                                                  "psi-scan", "refdelf", "sphere" ],
-    '_exptl_crystal_colour_lustre'           => [ "metallic", "dull", "clear" ],
-    '_exptl_crystal_colour_modifier'         => [ "light", "dark", "whitish",
-                                                  "blackish", "grayish", "brownish",
-                                                  "reddish", "pinkish", "orangish",
-                                                  "yellowish", "greenish", "bluish" ],
-    '_exptl_crystal_colour_primary'          => [ "colourless", "white", "black", 
-                                                  "gray", "brown", "red", "pink",
-                                                  "orange", "yellow", "green",
-                                                  "blue", "violet" ],
-    '_geom_angle_publ_flag'                  => [ "no", "n", "yes", "y" ],
-    '_geom_bond_publ_flag'                   => [ "no", "n", "yes", "y" ],
-    '_geom_contact_publ_flag'                => [ "no", "n", "yes", "y" ],  
-    '_geom_hbond_publ_flag'                  => [ "no", "n", "yes", "y" ],
-    '_geom_torsion_publ_flag'                => [ "no", "n", "yes", "y" ],
-    '_publ_body_element'                     => [ "section", "subsection",
-                                                  "subsubsection", "appendix",
-                                                  "footnote" ],
-    '_publ_body_format'                      => [ "ascii", "cif", "latex", "rtf", 
-                                                  "sgml", "tex", "troff" ],
-    '_publ_manuscript_incl_extra_defn'       => [ "no", "n", "yes", "y" ],
-    '_publ_requested_category'               => [ "FA", "FI", "FO", "FM", "CI",
-                                                  "CO", "CM", "EI", "EO", "EM",
-                                                  "QI", "QO", "QM", "AD", "SC" ],
-    '_refine_ls_hydrogen_treatment'          => [ "refall", "refxyz", "refU", "noref",
-                                                  "constr", "mixed", "undef" ],
-    '_refine_ls_matrix_type'                 => [ "full", "fullcycle", "atomblock",
-                                                  "userblock", "diagonal", "sparse" ],
-    '_refine_ls_structure_factor_coef'       => [ "F", "Fsqd", "Inet" ],
-    '_refine_ls_weighting_scheme'            => [ "sigma", "unit", "calc" ],
-    '_refln_include_status'                  => [ "o", "<", "-", "x", "h", "l" ],
-    '_refln_observed_status'                 => [ "o", "<", "-", "x", "h", "l" ],
-    '_refln_refinement_status'               => [ "incl", "excl", "extn" ],
-    '_space_group_crystal_system'            => [ "triclinic", "monoclinic",
-                                                  "orthorhombic", "tetragonal",
-                                                  "trigonal", "hexagonal", "cubic" ],
-    '_symmetry_cell_setting'                 => [ "triclinic", "monoclinic",
-                                                  "orthorhombic", "tetragonal",
-                                                  "rhombohedral", "trigonal", 
-                                                  "hexagonal", "cubic" ],
+    '_atom_site_adp_type'                    => [ 'Uani', 'Uiso', 'Uovl',
+                                                  'Umpe', 'Bani', 'Biso', 'Bovl' ],
+    '_atom_site_calc_flag'                   => [ 'd', 'calc', 'c', 'dum' ],
+    '_atom_site_refinement_flags_adp'        => [ '.', 'T', 'U', 'TU' ],
+    '_atom_site_refinement_flags_occupancy'  => [ '.', 'P' ],
+    '_atom_site_refinement_flags_posn'       => [ '.', 'D', 'G', 'R', 'S',
+                                                  'DG', 'DR', 'DS', 'GR',
+                                                  'GS', 'RS', 'DGR', 'DGS',
+                                                  'DRS', 'GRS', 'DGRS' ],
+    '_atom_site_refinement_flags'            => [ '.', 'S', 'G', 'R',
+                                                  'D', 'T', 'U', 'P' ],
+    '_atom_sites_solution_hydrogens'         => [ 'difmap', 'vecmap', 'heavy',
+                                                  'direct', 'geom', 'disper',
+                                                  'isomor', 'notdet', 'dual', 'other' ],
+    '_atom_sites_solution_primary'           => [ 'difmap', 'vecmap', 'heavy',
+                                                  'direct', 'geom', 'disper',
+                                                  'isomor', 'notdet', 'dual', 'other' ],
+    '_atom_sites_solution_secondary'         => [ 'difmap', 'vecmap', 'heavy',
+                                                  'direct', 'geom', 'disper',
+                                                  'isomor', 'notdet', 'dual', 'other' ],
+    '_atom_site_thermal_displace_type'       => [ 'Uani', 'Uiso', 'Uovl', 'Umpe',
+                                                  'Bani', 'Biso', 'Bovl' ],
+    '_chemical_absolute_configuration'       => [ 'rm', 'ad', 'rmad',
+                                                  'syn', 'unk', '.' ],
+    '_chemical_conn_bond_type'               => [ 'sing', 'doub', 'trip', 'quad',
+                                                  'arom', 'poly', 'delo', 'pi' ],
+    '_chemical_enantioexcess_bulk_technique' => [ 'OA', 'CD', 'EC', 'other' ],
+    '_chemical_enantioexcess_crystal_technique' => [ 'CD', 'EC', 'other' ],
+    '_citation_coordinate_linkage'           => [ 'no', 'n', 'yes', 'y' ],
+    '_diffrn_radiation_probe'                => [ 'x-ray', 'neutron',
+                                                  'electron', 'gamma' ],
+    '_diffrn_radiation_wavelength_determination' => [ 'fundamental',
+                                                      'estimated', 'refined' ],
+    '_diffrn_radiation_xray_symbol'          => [ 'K-L~3~', 'K-L~2~',
+                                                  'K-M~3~', 'K-L~2,3~' ],
+    '_diffrn_refln_scan_mode_backgd'         => [ 'st', 'mo' ],
+    '_diffrn_refln_scan_mode'                => [ 'om', 'ot', 'q' ],
+    '_diffrn_source_target'                  => [ 'H', 'He', 'Li', 'Be', 'B',
+                                                  'C', 'N', 'O', 'F', 'Ne',
+                                                  'Na', 'Mg', 'Al', 'Si', 'P',
+                                                  'S', 'Cl', 'Ar', 'K', 'Ca',
+                                                  'Sc', 'Ti', 'V', 'Cr', 'Mn',
+                                                  'Fe', 'Co', 'Ni', 'Cu', 'Zn',
+                                                  'Ga', 'Ge', 'As', 'Se', 'Br',
+                                                  'Kr', 'Rb', 'Sr', 'Y', 'Zr',
+                                                  'Nb', 'Mo', 'Tc', 'Ru', 'Rh',
+                                                  'Pd', 'Ag', 'Cd', 'In', 'Sn',
+                                                  'Sb', 'Te', 'I', 'Xe', 'Cs',
+                                                  'Ba', 'La', 'Ce', 'Pr', 'Nd',
+                                                  'Pm', 'Sm', 'Eu', 'Gd', 'Tb',
+                                                  'Dy', 'Ho', 'Er', 'Tm', 'Yb',
+                                                  'Lu', 'Hf', 'Ta', 'W', 'Re',
+                                                  'Os', 'Ir', 'Pt', 'Au', 'Hg',
+                                                  'Tl', 'Pb', 'Bi', 'Po', 'At',
+                                                  'Rn', 'Fr', 'Ra', 'Ac', 'Th',
+                                                  'Pa', 'U', 'Np', 'Pu', 'Am',
+                                                  'Cm', 'Bk', 'Cf', 'Es', 'Fm',
+                                                  'Md', 'No', 'Lr' ],
+    '_exptl_absorpt_correction_type'         => [ 'analytical', 'cylinder',
+                                                  'empirical', 'gaussian',
+                                                  'integration', 'multi-scan',
+                                                  'none', 'numerical',
+                                                  'psi-scan', 'refdelf', 'sphere' ],
+    '_exptl_crystal_colour_lustre'           => [ 'metallic', 'dull', 'clear' ],
+    '_exptl_crystal_colour_modifier'         => [ 'light', 'dark', 'whitish',
+                                                  'blackish', 'grayish', 'brownish',
+                                                  'reddish', 'pinkish', 'orangish',
+                                                  'yellowish', 'greenish', 'bluish' ],
+    '_exptl_crystal_colour_primary'          => [ 'colourless', 'white', 'black',
+                                                  'gray', 'brown', 'red', 'pink',
+                                                  'orange', 'yellow', 'green',
+                                                  'blue', 'violet' ],
+    '_geom_angle_publ_flag'                  => [ 'no', 'n', 'yes', 'y' ],
+    '_geom_bond_publ_flag'                   => [ 'no', 'n', 'yes', 'y' ],
+    '_geom_contact_publ_flag'                => [ 'no', 'n', 'yes', 'y' ],
+    '_geom_hbond_publ_flag'                  => [ 'no', 'n', 'yes', 'y' ],
+    '_geom_torsion_publ_flag'                => [ 'no', 'n', 'yes', 'y' ],
+    '_publ_body_element'                     => [ 'section', 'subsection',
+                                                  'subsubsection', 'appendix',
+                                                  'footnote' ],
+    '_publ_body_format'                      => [ 'ascii', 'cif', 'latex', 'rtf',
+                                                  'sgml', 'tex', 'troff' ],
+    '_publ_manuscript_incl_extra_defn'       => [ 'no', 'n', 'yes', 'y' ],
+    '_publ_requested_category'               => [ 'FA', 'FI', 'FO', 'FM', 'CI',
+                                                  'CO', 'CM', 'EI', 'EO', 'EM',
+                                                  'QI', 'QO', 'QM', 'AD', 'SC' ],
+    '_refine_ls_hydrogen_treatment'          => [ 'refall', 'refxyz', 'refU', 'noref',
+                                                  'constr', 'mixed', 'undef' ],
+    '_refine_ls_matrix_type'                 => [ 'full', 'fullcycle', 'atomblock',
+                                                  'userblock', 'diagonal', 'sparse' ],
+    '_refine_ls_structure_factor_coef'       => [ 'F', 'Fsqd', 'Inet' ],
+    '_refine_ls_weighting_scheme'            => [ 'sigma', 'unit', 'calc' ],
+    '_refln_include_status'                  => [ 'o', '<', '-', 'x', 'h', 'l' ],
+    '_refln_observed_status'                 => [ 'o', '<', '-', 'x', 'h', 'l' ],
+    '_refln_refinement_status'               => [ 'incl', 'excl', 'extn' ],
+    '_space_group_crystal_system'            => [ 'triclinic', 'monoclinic',
+                                                  'orthorhombic', 'tetragonal',
+                                                  'trigonal', 'hexagonal', 'cubic' ],
+    '_symmetry_cell_setting'                 => [ 'triclinic', 'monoclinic',
+                                                  'orthorhombic', 'tetragonal',
+                                                  'rhombohedral', 'trigonal',
+                                                  'hexagonal', 'cubic' ],
     );
 my $default_enums = \%default_enums;
 
-my @default_set_tags = ( "_atom_site_refinement_flags" );
+my @default_set_tags = ( '_atom_site_refinement_flags' );
 
 #* USAGE:
 #*     $0 --options input1.cif input*.cif
@@ -240,62 +243,62 @@ my @default_set_tags = ( "_atom_site_refinement_flags" );
 #*     Print a short usage message (this message) and exit.
 #**
 @ARGV = getOptions(
-    "--fix-misspelled" 
+    '--fix-misspelled'
         => sub{ $fix_misspelled_values = 1;
                 $replacement_file = get_value(); },
-    "--fix-only-misspelled" 
-        => sub{ dont_fix_any(), $fix_misspelled_values = 1;
+    '--fix-only-misspelled'
+        => sub{ dont_fix_any(); $fix_misspelled_values = 1;
                 $replacement_file = get_value(); },
-    "--do-not-fix-misspelled,--no-fix-misspelled," .
-    "--dont-fix-misspelled"
+    '--do-not-fix-misspelled,--no-fix-misspelled,' .
+    '--dont-fix-misspelled'
         => sub{ $fix_misspelled_values = 0;
                 undef $replacement_file; },
 
-    "--fix-temperature" => sub { $fix_temperature = 1; },
-    "--fix-only-temperature" 
+    '--fix-temperature' => sub { $fix_temperature = 1; },
+    '--fix-only-temperature'
         => sub{ dont_fix_any(); $fix_temperature = 1; },
-    "--do-not-fix-temperature,--no-fix-temperature," .
-    "--dont-fix-temperature"
+    '--do-not-fix-temperature,--no-fix-temperature,' .
+    '--dont-fix-temperature'
         => sub{ $fix_temperature = 0; },
 
-    "--fix-enums" => sub{ $fix_enums = 1; },
-    "--fix-only-enums"
+    '--fix-enums' => sub{ $fix_enums = 1; },
+    '--fix-only-enums'
         => sub{ dont_fix_any(); $fix_enums = 1; },
-    "--do-not-fix-enums,--dont-fix-enums,--no-fix-enums"
+    '--do-not-fix-enums,--dont-fix-enums,--no-fix-enums'
         => sub{ $fix_enums = 0; },
 
-    "--treat-as-set"    => sub{ $treat_as_set = 1; },
-    "--do-not-treat-as-set,--dont-treat-as-set," .
-    "--no-treat-as-set" => sub{ $treat_as_set = 0; },
+    '--treat-as-set'    => sub{ $treat_as_set = 1; },
+    '--do-not-treat-as-set,--dont-treat-as-set,' .
+    '--no-treat-as-set' => sub{ $treat_as_set = 0; },
 
-    "--fix-density-meas" 
+    '--fix-density-meas'
         => sub{ $fix_value_of_exptl_crystal_density_meas = 1; },
-    "--fix-only-density-meas"
-        => sub{ dont_fix_any(); 
+    '--fix-only-density-meas'
+        => sub{ dont_fix_any();
             $fix_value_of_exptl_crystal_density_meas = 1; },
-    "--do-not-fix-density-meas," .
-    "--no-fix-density-meas," .
-    "--dont-fix-density-meas"
+    '--do-not-fix-density-meas,' .
+    '--no-fix-density-meas,' .
+    '--dont-fix-density-meas'
         => sub{ $fix_value_of_exptl_crystal_density_meas = 0; },
 
-    "--fix-weighting-scheme"
+    '--fix-weighting-scheme'
         => sub{ $fix_value_of_refine_ls_weighting_scheme = 1;},
-    "--fix-only-weighting-scheme"
+    '--fix-only-weighting-scheme'
         => sub{ dont_fix_any();
             $fix_value_of_refine_ls_weighting_scheme = 1; },
-    "--do-not-fix-weighting-scheme," .
-    "--no-fix-weighting-scheme," .
-    "--dont-fix-weighting-scheme"
+    '--do-not-fix-weighting-scheme,' .
+    '--no-fix-weighting-scheme,' .
+    '--dont-fix-weighting-scheme'
         => sub{ $fix_value_of_refine_ls_weighting_scheme = 0 },
 
-    "-d,--dictionary" => sub{ @dictionaries = &get_value; },
-    "-D,--add-dictionaries" => sub{ push( @dictionaries, &get_value ); },
-    "--clear-dictionaries" => sub{ @dictionaries = (); },
+    '-d,--dictionary' => sub{ @dictionaries = get_value },
+    '-D,--add-dictionaries' => sub{ push @dictionaries, get_value },
+    '--clear-dictionaries' => sub{ @dictionaries = (); },
 
-    "--use-perl-parser"       => sub { $use_parser = "perl" },
-    "--use-c-parser"          => sub { $use_parser = "c" },
-    "--options"               => sub { options; exit },
-    "--help,--usage"          => sub { usage; exit }
+    '--use-perl-parser'       => sub { $use_parser = 'perl' },
+    '--use-c-parser'          => sub { $use_parser = 'c' },
+    '--options'               => sub { options; exit },
+    '--help,--usage'          => sub { usage; exit }
 );
 
 my $die_on_error_level = {
@@ -308,17 +311,19 @@ my $die_on_error_level = {
 # Subroutines:
 #
 
-sub insert_report_to_comments {
+sub insert_report_to_comments
+{
     my( $dataset, $insert_reports ) = @_;
-    if( @$insert_reports > 0 ) {
+    if( @{$insert_reports} > 0 ) {
         my $comments_tag = '_cod_depositor_comments';
         my $values = $dataset->{values};
-        my $reports_value = join( "\n\n",@$insert_reports );
+        my $reports_value = join "\n\n", @{$insert_reports};
         my $title =
             "The following automatic conversions were performed:\n\n" .
-            join( "\n", map { fold( 70, " +", " ", $_ ) }
-                  split( "\n", $reports_value ));
-        
+            join "\n",
+                 map { fold( 70, ' +', ' ', $_ ) }
+                    split "\n", $reports_value;
+
         if( exists $values->{$comments_tag} ) {
             $values->{$comments_tag}[0] .= "\n\n" . $title;
         } else {
@@ -327,14 +332,17 @@ sub insert_report_to_comments {
         my $signature = $Id;
         $signature =~ s/^\$|\$$//g;
         $values->{$comments_tag}[0] .=
-            "\n\n" . "Automatic conversion script" .
+            "\n\n" . 'Automatic conversion script' .
             "\n" . $signature;
     }
+
+    return;
 }
 
 # Counts sigma value for the &pack_precision subroutine
 
-sub get_sigma($$) {
+sub get_sigma($$)
+{
     my( $value , $sig ) = @_;
     $value =~ m/([^.]*)\.?(\d*)/;
     if( $2 ) {
@@ -344,7 +352,8 @@ sub get_sigma($$) {
     }
 }
 
-sub replacement_candidates($$) {
+sub replacement_candidates($$)
+{
     my( $cif_value, $dict_value_list ) = @_;
     my @candidate_list = ();
     foreach my $dict_tag_value( @{$dict_value_list} ) {
@@ -355,13 +364,13 @@ sub replacement_candidates($$) {
         $test_dict_value =~ s/[-_\s]//g;
         my $test_cif_value = $cif_value;
         $test_cif_value =~ s/[-_\s]//g;
-        
+
         if( lc $test_cif_value eq lc $test_dict_value ) {
-            push( @candidate_list, $dict_tag_value );
+            push @candidate_list, $dict_tag_value;
             next;
         }
         if( lc $cif_value eq lc $dict_tag_value ) {
-            push( @candidate_list, $dict_tag_value );
+            push @candidate_list, $dict_tag_value;
             next;
         }
     }
@@ -372,7 +381,8 @@ sub replacement_candidates($$) {
     }
 }
 
-sub make_count($$) {
+sub make_count($$)
+{
     my %notes_warnings = %{ $_[0] };
     my @messages = @{ $_[1] };
     my @reports;
@@ -383,13 +393,13 @@ sub make_count($$) {
         if( exists $notes_warnings{$message} ) {
             my $count = $notes_warnings{$message};
             my $times =
-                ( $count =~ /^(\d*[02-9])?1$/ ) ? "time" : "times";
+                ( $count =~ /^(\d*[02-9])?1$/ ) ? 'time' : 'times';
             if( $notes_warnings{$message} == 1 ) {
-                $message .= ".";
+                $message .= '.';
             } else {
                 $message .= " ($count $times).";
             }
-            push( @reports, $message );
+            push @reports, $message;
         }
     }
     return @reports;
@@ -404,8 +414,8 @@ eval {
                                  }, $die_on_error_level ) };
 
     if( defined $replacement_file ) {
-        open( my $list, '<', $replacement_file ) or die "ERROR, "
-          . "could not open replacement list file for input -- "
+        open my $list, '<', $replacement_file or die 'ERROR, '
+          . 'could not open replacement list file for input -- '
           . lcfirst($!) . "\n";
 
         foreach( <$list> ) {
@@ -414,15 +424,15 @@ eval {
                 next;
             }
             if( /^(\S+)\s+(\S+)\s+(\S+)$/ ) {
-                push( @{ $value_spelling{$1} }, [ $2, $3 ] );
+                push @{ $value_spelling{$1} }, [ $2, $3 ];
             } else {
                 warn "WARNING, unrecognized string '$_' in "
                    . "replacement value file\n";
             }
         }
 
-        close( $list ) or die "ERROR, "
-           . "error while closing replacement value file after reading -- "
+        close $list or die 'ERROR, '
+           . 'error while closing replacement value file after reading -- '
            . lcfirst($!) . "\n";
     }
 };
@@ -443,7 +453,7 @@ if( @dictionaries ) {
         canonicalize_all_names( $data );
 
         my( $dict_name , $dict_version , $dict_update );
-        for my $dataset( @$data ) {
+        for my $dataset( @{$data} ) {
             next unless $dataset->{name} eq 'on_this_dictionary' &&
                 exists $dataset->{values};
             my $values = $dataset->{values};
@@ -464,24 +474,24 @@ if( @dictionaries ) {
             $dict_update = $values->{_dictionary_update};
             last;
         }
-        for my $dataset( @$data ) {
+        for my $dataset( @{$data} ) {
             my $values = $dataset->{values};
             my $values_name = $values->{_name};
             my $values_enum = $values->{_enumeration};
             if( (defined $values_name) && (defined $values_enum) ) {
-                my @enums = @$values_enum;
-                my @tag_names = @$values_name;
+                my @enums = @{$values_enum};
+                my @tag_names = @{$values_name};
                 foreach( @tag_names ) {
                     if( !defined $tagDicts{$_} ) {
                         $dictTags{$_} = \@enums;
                         $tagDicts{$_} = [
                             $dict,
                             defined $dict_name ?
-                            join( ', ', @$dict_name ) : undef,
+                            join( ', ', @{$dict_name} ) : undef,
                             defined $dict_version ?
-                            join( ', ', @$dict_version ) : undef,
+                            join( ', ', @{$dict_version} ) : undef,
                             defined $dict_update ?
-                            join( ', ', @$dict_update ) : undef
+                            join( ', ', @{$dict_update} ) : undef
                             ];
                     } else {
                         report_message( {
@@ -496,14 +506,14 @@ if( @dictionaries ) {
         }
     }
 } else {
-    my $dict = 'the built-in table from CIF Core'; 
+    my $dict = 'the built-in table from CIF Core';
     my $dict_name = 'cif_core.dic';
     my $dict_version = '2.4.1';
     my $dict_update = '2010-06-29';
     foreach my $tag( keys %default_enums ) {
         my $enums = $default_enums{$tag};
         $dictTags{$tag} = $enums;
-        $tagDicts{$tag} = [ $dict, $dict_name, 
+        $tagDicts{$tag} = [ $dict, $dict_name,
                             $dict_version, $dict_update ];
     }
 }
@@ -525,7 +535,7 @@ sub fix_misspelled_values($$) {
     my @uniq_messages;
     my $tags = $dataset->{tags};
     my $values = $dataset->{values};
-    foreach my $tag( @$tags ) {
+    foreach my $tag( @{$tags} ) {
         if(! exists $value_spelling{$tag} ) {
             next;
         }
@@ -546,17 +556,17 @@ sub fix_misspelled_values($$) {
                 }
             }
             if( $count > 1 ) {
-                 warn "WARNING, more than 1 different substitution "
+                 warn 'WARNING, more than 1 different substitution '
                     . "was applied on value '$old_value'\n";
             } elsif( $count == 1 ) {
-                 my $message_key = 
+                 my $message_key =
                      "NOTE, '$tag' tag value '$old_value' " .
                      "was replaced with '$tag_value' value " .
-                     "as specified in the replacement file " .
+                     'as specified in the replacement file ' .
                      "'$replacement_file'";
                  if(! exists $reports{$message_key} ) {
                      $reports{$message_key} = 0;
-                     push( @uniq_messages, $message_key );
+                     push @uniq_messages, $message_key;
                  }
                  $reports{$message_key} ++;
             }
@@ -569,7 +579,7 @@ sub fix_misspelled_values($$) {
         if( $report =~ /^(NOTE,\s+)(.+)$/ ) {
             my $comment_message = $2;
             warn "NOTE, $comment_message\n";
-            push( @insert_reports, $comment_message );
+            push @insert_reports, $comment_message;
         }
     }
 
@@ -639,13 +649,12 @@ sub fix_temperature($) {
     my( $dataset ) = @_;
     my @insert_reports = ();
     my $values = $dataset->{values};
-    my @temp_tags =
-        (   '_cell_measurement_temperature',
-            '_chemical_temperature_decomposition',
-            '_chemical_temperature_sublimation',
-            '_diffrn_ambient_temperature',
-            '_exptl_crystal_density_meas_temp',
-            '_chemical_melting_point' );
+    my @temp_tags = qw ( _cell_measurement_temperature
+                         _chemical_temperature_decomposition
+                         _chemical_temperature_sublimation
+                         _diffrn_ambient_temperature
+                         _exptl_crystal_density_meas_temp
+                         _chemical_melting_point );
     for my $tag( @temp_tags ) {
         if( exists $values->{$tag} ) {
             for my $i( 0..$#{$values->{$tag}} ) {
@@ -680,7 +689,7 @@ sub fix_temperature($) {
                             "since the value had been '$temperature'. " .
                             "The value '$temperature' was changed to " .
                             "'$new_val'.";
-                        push( @insert_reports, $report_msg );
+                        push @insert_reports, $report_msg;
                         warn "NOTE, $report_msg\n";
                         next;
                     }
@@ -710,18 +719,18 @@ sub fix_temperature($) {
                                 ( $number + 273.15 , $sig );
                             my $new_val = $values->{$tag}[$i];
 
-                            my $new_tag = $old_tag . "_gt";
+                            my $new_tag = $old_tag . '_gt';
                             rename_tag
                                 ( $dataset, $tag, $new_tag );
                             my $report_msg =
                                 "'$tag' tag was changed to " .
                                 "'$new_tag' since the value was " .
-                                "specified 'more than' ('>') a " .
-                                "certain temperature. The value " .
+                                'specified \'more than\' (\'>\') a ' .
+                                'certain temperature. The value ' .
                                 "'$temperature' was changed to " .
                                 "'$new_val' - it was converted from " .
-                                "degrees Celsius(C) to Kelvins(K).";
-                            push( @insert_reports, $report_msg );
+                                'degrees Celsius(C) to Kelvins(K).';
+                            push @insert_reports, $report_msg;
                             warn "NOTE, $report_msg\n";
                             next;
                         }
@@ -730,18 +739,18 @@ sub fix_temperature($) {
                                 pack_precision
                                 ( $number + 273.15 , $sig );
                             my $new_val = $values->{$tag}[$i];
-                            my $new_tag = $old_tag . "_lt";
+                            my $new_tag = $old_tag . '_lt';
                             rename_tag
                                 ( $dataset, $tag, $new_tag );
                             my $report_msg =
                                 "'$tag' tag was changed to " .
                                 "'$new_tag' since the value was " .
-                                "specified 'less than' ('<') a " .
-                                "certain temperature. The value " .
+                                'specified \'less than\' (\'<\') a ' .
+                                'certain temperature. The value ' .
                                 "'$temperature' was changed to " .
                                 "'$new_val' - it was converted from " .
-                                "degrees Celsius(C) to Kelvins(K).";
-                            push ( @insert_reports, $report_msg );
+                                'degrees Celsius(C) to Kelvins(K).';
+                            push @insert_reports, $report_msg;
                             warn "NOTE, $report_msg\n";
                             next;
                         }
@@ -769,18 +778,18 @@ sub fix_temperature($) {
                                 pack_precision
                                 ( $number , $sig );
                             my $new_val = $values->{$tag}[$i];
-                            my $new_tag = $old_tag . "_gt";
+                            my $new_tag = $old_tag . '_gt';
                             rename_tag
                                 ( $dataset, $tag, $new_tag );
                             my $report_msg =
                                 "'$tag' tag was changed to " .
                                 "'$new_tag' since the value was " .
-                                "specified 'more than' ('>') a " .
-                                "certain temperature. The value " .
+                                'specified \'more than\' (\'>\') a ' .
+                                'certain temperature. The value ' .
                                 "'$temperature' was changed to " .
                                 "'$new_val' - it should be numeric " .
-                                "and without a unit designator.";
-                            push( @insert_reports, $report_msg );
+                                'and without a unit designator.';
+                            push @insert_reports, $report_msg;
                             warn "NOTE, $report_msg\n";
                             next;
                         }
@@ -789,18 +798,18 @@ sub fix_temperature($) {
                                 pack_precision
                                 ( $number , $sig );
                             my $new_val = $values->{$tag}[$i];
-                            my $new_tag = $old_tag . "_lt";
+                            my $new_tag = $old_tag . '_lt';
                             rename_tag
                                 ( $dataset, $tag, $new_tag );
                             my $report_msg =
                                 "'$tag' tag was changed to " .
                                 "'$new_tag' since the value was " .
-                                "specified 'less than' ('<') a " .
-                                "certain temperature. The value " .
+                                'specified \'less than\' (\'<\') a ' .
+                                'certain temperature. The value ' .
                                 "'$temperature' was changed to " .
                                 "'$new_val' - it should be numeric " .
-                                "and without a unit designator.";
-                            push( @insert_reports, $report_msg );
+                                'and without a unit designator.';
+                            push @insert_reports, $report_msg;
                             warn "NOTE, $report_msg\n";
                             next;
                         }
@@ -822,14 +831,14 @@ sub fix_temperature($) {
                         my $report_msg =
                             "'$tag' value '$temperature' was changed to " .
                             "'$new_val' - the value was reformatted.";
-                        push( @insert_reports, $report_msg );
+                        push @insert_reports, $report_msg;
                         warn "NOTE, $report_msg\n";
                         next;
                     } else {
                         my $report_msg =
                             "'$tag' value '$temperature' was changed to " .
                             "'$new_val' - precision was estimated.";
-                        push( @insert_reports, $report_msg );
+                        push @insert_reports, $report_msg;
                         warn "NOTE, $report_msg\n";
                         next;
                     }
@@ -845,8 +854,8 @@ sub fix_temperature($) {
                     my $report_msg =
                         "'$tag' value '$temperature' was changed to " .
                         "'$new_val' - the value should be numeric " .
-                        "and without a unit designator.";
-                    push( @insert_reports, $report_msg );
+                        'and without a unit designator.';
+                    push @insert_reports, $report_msg;
                     warn "NOTE, $report_msg\n";
                     next;
                 }
@@ -859,15 +868,15 @@ sub fix_temperature($) {
                     my $sig = $2;
                     if( $sig ) {
                         $sig = get_sigma( $number , $sig );
-                    } 
+                    }
                     $values->{$tag}[$i] =
                         pack_precision( $1 + 273.15, $sig );
                     my $new_val = $values->{$tag}[$i];
                     my $report_msg =
                         "'$tag' value '$temperature' was changed to " .
                         "'$new_val' - it was converted from degrees " .
-                        "Celsius(C) to Kelvins(K).";
-                    push( @insert_reports, $report_msg );
+                        'Celsius(C) to Kelvins(K).';
+                    push @insert_reports, $report_msg;
                     warn "NOTE, $report_msg\n";
                     next;
                 }
@@ -875,12 +884,12 @@ sub fix_temperature($) {
                     /^
                         ($temp_RT)(?:[-_\s]*)$
                         /x ) {
-                    $values->{$tag}[$i] = "295(2)";
+                    $values->{$tag}[$i] = '295(2)';
                     my $report_msg =
                         "'$tag' value '$temperature' was changed to " .
-                        "'295(2)' - the room/ambient temperature " .
-                        "average [293;298] in Kelvins(K) was taken.";
-                    push( @insert_reports, $report_msg );
+                        '\'295(2)\' - the room/ambient temperature ' .
+                        'average [293;298] in Kelvins(K) was taken.';
+                    push @insert_reports, $report_msg;
                     warn "NOTE, $report_msg\n";
                     next;
                 }
@@ -888,12 +897,12 @@ sub fix_temperature($) {
                     /^
                         ($temp_undef)(?:[-_\s]*)$
                         /x ) {
-                    $values->{$tag}[$i] = "?";
+                    $values->{$tag}[$i] = '?';
                     my $report_msg =
                         "'$tag' value '$temperature' ".
-                        "was changed to '?' - the " .
-                        "value is undefined or not given.";
-                    push( @insert_reports, $report_msg );
+                        'was changed to \'?\' - the ' .
+                        'value is undefined or not given.';
+                    push @insert_reports, $report_msg;
                     warn "NOTE, $report_msg\n";
                     next;
                 }
@@ -919,14 +928,14 @@ sub fix_temperature($) {
                                 ( $dataset, $old_tag, $new_tag );
                             my $report_msg =
                                 "'$old_tag' tag was changed to '$new_tag' " .
-                                "since the value had been given as " .
+                                'since the value had been given as ' .
                                 "'$temperature'. " .
                                 "'$tag' value '$temperature' was changed to " .
                                 "'$new_val' - it was converted from degrees " .
-                                "Celsius(C) to Kelvins(K), the " .
-                                "average value was taken and " .
-                                "precision was estimated.";
-                            push( @insert_reports, $report_msg );
+                                'Celsius(C) to Kelvins(K), the ' .
+                                'average value was taken and ' .
+                                'precision was estimated.';
+                            push @insert_reports, $report_msg;
                             warn "NOTE, $report_msg\n";
                             next;
                         } else {
@@ -937,10 +946,10 @@ sub fix_temperature($) {
                         my $report_msg =
                             "'$tag' value '$temperature' was changed to " .
                             "'$new_val' - it was converted from degrees " .
-                            "Celsius(C) to Kelvins(K), the " .
-                            "average value was taken and " .
-                            "precision was estimated.";
-                        push( @insert_reports, $report_msg );
+                            'Celsius(C) to Kelvins(K), the ' .
+                            'average value was taken and ' .
+                            'precision was estimated.';
+                        push @insert_reports, $report_msg;
                         warn "NOTE, $report_msg\n";
                         next;
                         }
@@ -967,12 +976,12 @@ sub fix_temperature($) {
                                 ( $dataset, $old_tag, $new_tag );
                             my $report_msg =
                                 "'$old_tag' tag was changed to '$new_tag' " .
-                                "since the value had been given as " .
+                                'since the value had been given as ' .
                                 "'$temperature'. " .
-                                "The value was changed to " .
+                                'The value was changed to ' .
                                 "'$new_val' - the average value was " .
-                                "taken and precision was estimated.";
-                            push( @insert_reports, $report_msg );
+                                'taken and precision was estimated.';
+                            push @insert_reports, $report_msg;
                             warn "NOTE, $report_msg\n";
                             next;
                         } else {
@@ -983,8 +992,8 @@ sub fix_temperature($) {
                             my $report_msg =
                                 "'$tag' value '$temperature' was changed to " .
                                 "'$new_val' - the average value was taken " .
-                                "and precision was estimated.";
-                            push( @insert_reports, $report_msg );
+                                'and precision was estimated.';
+                            push @insert_reports, $report_msg;
                             warn "NOTE, $report_msg\n";
                             next;
                         }
@@ -1013,13 +1022,13 @@ sub fix_temperature($) {
                             ( $dataset, $old_tag, $new_tag );
                         my $report_msg =
                             "'$old_tag' tag was changed to '$new_tag' " .
-                            "since the value had been given as " .
+                            'since the value had been given as ' .
                             "'$temperature'. " .
                             "The value '$temperature' was changed to " .
                             "'$new_val' - " .
-                            "it was converted from degrees Celsius(C) " .
-                            "to Kelvins(K).";
-                        push( @insert_reports, $report_msg );
+                            'it was converted from degrees Celsius(C) ' .
+                            'to Kelvins(K).';
+                        push @insert_reports, $report_msg;
                         warn "NOTE, $report_msg\n";
                         next;
                     } else {
@@ -1030,8 +1039,8 @@ sub fix_temperature($) {
                         my $report_msg =
                             "'$tag' value '$temperature' was changed to " .
                             "'$new_val' - it was converted from degrees " .
-                            "Celsius(C) to Kelvins(K).";
-                        push( @insert_reports, $report_msg );
+                            'Celsius(C) to Kelvins(K).';
+                        push @insert_reports, $report_msg;
                         warn "NOTE, $report_msg\n";
                         next;
                     }
@@ -1042,12 +1051,12 @@ sub fix_temperature($) {
                         /x ) {
                     if( length($temperature) > 40 ) {
                             $temperature = substr $temperature, 0, 40;
-                            $temperature .= "...";
+                            $temperature .= '...';
                         }
                     warn "WARNING, '$tag' value is '$temperature', but it "
-                       . "should be numeric, i.e. 'FLOAT or 'INT', permitted "
-                       . "range is [0.0;+inf], the value should be in "
-                       . "Kelvins(K) without a unit designator\n";
+                       . 'should be numeric, i.e. \'FLOAT or \'INT\', '
+                       . 'permitted range is [0.0;+inf], the value should be '
+                       . 'in Kelvins(K) without a unit designator' . "\n";
                     next;
                 }
             }
@@ -1084,16 +1093,16 @@ sub fix_value_of_exptl_crystal_density_meas($) {
                         $value_not_measured
                         (?: \s* ')?
                     $/x ) {
-                    $values->{$tag}[$i] = "?";
+                    $values->{$tag}[$i] = '?';
                     my $report_msg =
                         "'$tag' value '$value' ".
-                        "was changed to '?' - the " .
-                        "value is perceived as not measured.";
-                    push( @insert_reports, $report_msg );
+                        'was changed to \'?\' - the ' .
+                        'value is perceived as not measured.';
+                    push @insert_reports, $report_msg;
                     warn "NOTE, $report_msg\n";
                     next;
                 }
-                
+
                 if( $value_modif =~
                     /^
                         (?: ' \s*)?
@@ -1125,12 +1134,12 @@ sub fix_value_of_exptl_crystal_density_meas($) {
 
                     my $report_msg;
 
-                    if( defined $temp_number && $temp_number < 0 
+                    if( defined $temp_number && $temp_number < 0
                         && ! defined $temp_Celsius ){
                         next;
                     }
 
-                    if( ! defined $units && ! defined $room_temp 
+                    if( ! defined $units && ! defined $room_temp
                         && ! defined $temp_number ){
                         next;
                     }
@@ -1139,22 +1148,21 @@ sub fix_value_of_exptl_crystal_density_meas($) {
                         $meas_sigma = get_sigma( $meas_number, $meas_sigma );
                     }
 
-                    my $new_meas_value = 
-                        $values->{$tag}[$i] = 
-                        pack_precision
-                        ( $meas_number, $meas_sigma );
+                    my $new_meas_value =
+                        $values->{$tag}[$i] =
+                        pack_precision( $meas_number, $meas_sigma );
 
                     $report_msg = "Tag '$tag' value '$value' was modified " .
                                   "to '$new_meas_value'.";
 
                     if( defined $units ){
                         $report_msg .= " Units '$units' were correct but " .
-                                       "unnecessary, so they were removed.";
+                                       'unnecessary, so they were removed.';
                     }
 
                     if( defined $room_temp || defined $temp_number ){
 
-                        my $new_tag = $tag . "_temp";
+                        my $new_tag = $tag . '_temp';
                         my $temp_value;
 
                         if( defined $room_temp ){
@@ -1176,12 +1184,12 @@ sub fix_value_of_exptl_crystal_density_meas($) {
                         $report_msg .=
                             " New tag '$new_tag' was created. The value of " .
                             "new tag set to - '$temp_value'" .
-                                ( defined $temp_Celsius ? ", it was converted " .
-                                 "from degrees Celsius(C) to Kelvins(K)" : "" ) .
-                            ".";
+                                ( defined $temp_Celsius ? ', it was converted ' .
+                                 'from degrees Celsius(C) to Kelvins(K)' : '' ) .
+                            '.';
                     }
 
-                    push( @insert_reports, $report_msg );
+                    push @insert_reports, $report_msg;
                     warn "NOTE, $report_msg\n";
                     next;
                 }
@@ -1196,7 +1204,7 @@ sub fix_value_of_refine_ls_weighting_scheme($) {
     my @insert_reports = ();
     my $values = $dataset->{values};
     my $tag = '_refine_ls_weighting_scheme';
-    my $enums = join "|", @{ $default_enums{$tag} };
+    my $enums = join '|', @{ $default_enums{$tag} };
 
         if( exists $values->{$tag} ) {
             for my $i( 0..$#{$values->{$tag}} ) {
@@ -1217,13 +1225,13 @@ sub fix_value_of_refine_ls_weighting_scheme($) {
 
                     my $report_msg =
                         "'$tag' value '$value' ".
-                        "was changed to '?' - the " .
-                        "value is perceived as not measured.";
-                    push( @insert_reports, $report_msg );
+                        'was changed to \'?\' - the ' .
+                        'value is perceived as not measured.';
+                    push @insert_reports, $report_msg;
                     warn "NOTE, $report_msg\n";
                     next;
                 }
-                    
+
                 if( $value_modif =~ /^\s*
                     (?: 1 (?:\.0*)? |
                         $unit_weights 
@@ -1235,14 +1243,14 @@ sub fix_value_of_refine_ls_weighting_scheme($) {
                     my $report_msg =
                         "'$tag' value '$value' ".
                         "was changed to '$new_value'.";
-                    push( @insert_reports, $report_msg );
+                    push @insert_reports, $report_msg;
                     warn "NOTE, $report_msg\n";
                     next;
                 }
 
                 if( $value_modif =~
                     /^
-                        (?: (calc\b)? \s* 
+                        (?: (calc\b)? \s*
                             (w \s* (?:\^-1\^)? \s* ={1,2} \s*)?
                             (.*)
                         )
@@ -1258,28 +1266,26 @@ sub fix_value_of_refine_ls_weighting_scheme($) {
                             |    [\[({](?!w) 
                             )
                         /xi ) {
-                                                            
-                        $values->{$tag}[$i] = "calc";
-                    
+
+                        $values->{$tag}[$i] = 'calc';
+
                         my $report_msg;
 
                         $report_msg =
-                            "'$tag' value '$value' ".
-                            "was changed to 'calc'." ;
+                            "'$tag' value '$value' was changed to 'calc'." ;
 
-                        my $new_value = ( defined $w ? $w : "w = " ) . 
+                        my $new_value = ( defined $w ? $w : 'w = ' ) .
                                           $weighting_value;
-                    
+
                         my $new_tag = '_refine_ls_weighting_details';
 
-                        set_tag
-                                ( $dataset, $new_tag, $new_value );
+                        set_tag( $dataset, $new_tag, $new_value );
 
                         $report_msg .= " New tag '$new_tag' was created. " .
-                            "The value of the new tag was set to " .
+                            'The value of the new tag was set to ' .
                             "'$new_value'.";
 
-                        push( @insert_reports, $report_msg );
+                        push @insert_reports, $report_msg;
                         warn "NOTE, $report_msg\n";
                         next;
 
@@ -1287,11 +1293,11 @@ sub fix_value_of_refine_ls_weighting_scheme($) {
 
                     if( length($value_modif) > 40 ) {
                             $value_modif = substr $value_modif, 0, 40;
-                            $value_modif .= "...";
+                            $value_modif .= '...';
                         }
                     warn "WARNING, '$tag' value is '$value_modif', but it "
                        . 'must be one of the enumeration values '
-                       . '[' .join( ", ", @{$default_enums{$tag}} ) . "]\n";
+                       . '[' . join( ', ', @{$default_enums{$tag}} ) . "]\n";
                 }
 
             }
@@ -1306,10 +1312,10 @@ sub fix_enums($) {
     my @insert_reports = ();
     my $values = $dataset->{values};
     my $tags = $dataset->{tags};
-    foreach my $tag( @$tags ) {
+    foreach my $tag( @{$tags} ) {
         if( defined $values->{$tag} ) {
             foreach my $tag_value( @{$values->{$tag}} ) {
-                next if ( $treat_as_set && grep( /^$tag$/, @default_set_tags ) );
+                next if ( $treat_as_set && grep { /^$tag$/ } @default_set_tags );
 
                 next if( $tag_value =~ /^[.?]$/ );
 
@@ -1322,43 +1328,42 @@ sub fix_enums($) {
                     if(! @replacement_list ) {
                         next;
                     } elsif( scalar( @replacement_list ) == 1 ) {
-                        my $new_value = shift( @replacement_list );
+                        my $new_value = shift @replacement_list;
                         my $old_value = $tag_value;
                         $tag_value = $new_value;
                         $message_key =
                             "NOTE, '$tag' value '$old_value' " .
                             "changed to '$new_value' " .
                             "according to $tagDicts{$tag}[0] " .
-                            "dictionary" .
-                            (defined $tagDicts{$tag}[1] ? 
-                             " named '$tagDicts{$tag}[1]'" : "") .
-                             (defined $tagDicts{$tag}[2] ? 
-                              " version $tagDicts{$tag}[2]" : "") .
+                            'dictionary' .
+                            (defined $tagDicts{$tag}[1] ?
+                             " named '$tagDicts{$tag}[1]'" : '') .
+                             (defined $tagDicts{$tag}[2] ?
+                              " version $tagDicts{$tag}[2]" : '') .
                               (defined $tagDicts{$tag}[3] ?
-                               " from $tagDicts{$tag}[3]" : "");
+                               " from $tagDicts{$tag}[3]" : '');
                     } else {
-                        my $dict_values =
-                            join( ", ", @replacement_list );
+                        my $dict_values = join ', ', @replacement_list;
                         my $val = $tag_value;
-                        $val =~ s/^\n|\n$//g; 
+                        $val =~ s/^\n|\n$//g;
                         if( length($val) > 30 ) {
                             $val = substr $val, 0, 30;
-                            $val .= "...";
+                            $val .= '...';
                         }
                         $message_key =
                             "WARNING, '$tag' value '$val' must be one of "
                           . 'the enumeration values [' . $dict_values . '] '
                           . "according to $tagDicts{$tag}[0] dictionary" .
                             (defined $tagDicts{$tag}[1] ?
-                             " named '$tagDicts{$tag}[1]'" : "") .
+                             " named '$tagDicts{$tag}[1]'" : '') .
                              (defined $tagDicts{$tag}[2] ?
-                              " version $tagDicts{$tag}[2]" : "") .
+                              " version $tagDicts{$tag}[2]" : '') .
                               (defined $tagDicts{$tag}[3] ?
-                               " from $tagDicts{$tag}[3]" : "");
+                               " from $tagDicts{$tag}[3]" : '');
                     }
                     if(! exists $reports{$message_key} ) {
                         $reports{$message_key} = 0;
-                        push( @uniq_messages, $message_key );
+                        push @uniq_messages, $message_key;
                     }
                     $reports{$message_key} ++;
                 }
@@ -1372,7 +1377,7 @@ sub fix_enums($) {
             warn "WARNING, $2\n";
         } elsif( $report =~ /^(NOTE,\s+)(.+)$/ ) {
             warn "NOTE, $2\n";
-            push( @insert_reports, $2 );
+            push @insert_reports, $2;
         }
     };
 
@@ -1386,46 +1391,46 @@ sub treat_as_set($) {
     my @insert_reports = ();
     my $values = $dataset->{values};
     my $tags = $dataset->{tags};
-    foreach my $tag( @$tags ) {
-        if ( grep( /^$tag$/, @default_set_tags ) ) {
+    foreach my $tag( @{$tags} ) {
+        if ( grep { /^$tag$/ } @default_set_tags ) {
             if( defined $values->{$tag} ) {
-                my $set_values = join "", @{$default_enums{$tag}};
+                my $set_values = join '', @{$default_enums{$tag}};
                 # '.' specifies that none of the flags were set so it should 
                 # not be in the concatenated string
                 $set_values =~ s/\.//;
                 my $dict_info = (defined $tagDicts{$tag}[1] ?
-                                " named '$tagDicts{$tag}[1]'" : "") .
+                                " named '$tagDicts{$tag}[1]'" : '') .
                                 (defined $tagDicts{$tag}[2] ?
-                                " version $tagDicts{$tag}[2]" : "") .
+                                " version $tagDicts{$tag}[2]" : '') .
                                 (defined $tagDicts{$tag}[3] ?
-                                " from $tagDicts{$tag}[3]" : "");
+                                " from $tagDicts{$tag}[3]" : '');
 
                 foreach my $tag_value( @{$values->{$tag}} ) {
                     next if( $tag_value =~ /^[.?]$/ );
 
                     my $message_key = undef;
                     if ( $tag_value =~ /[^$set_values]/i ) {
-                        my $dict_values = join( ", ", @{$default_enums{$tag}} );
+                        my $dict_values = join ', ', @{$default_enums{$tag}};
                         my $val = $tag_value;
-                        $val =~ s/^\n|\n$//g; 
+                        $val =~ s/^\n|\n$//g;
                         if( length($val) > 30 ) {
                             $val = substr $val, 0, 30;
-                            $val .= "...";
+                            $val .= '...';
                         }
                         $message_key = "WARNING, '$tag' value '$val' should "
-                                     . "only contain a combination of the "
+                                     . 'only contain a combination of the '
                                      . "enumeration values [$dict_values] "
                                      . "according to $tagDicts{$tag}[0] "
-                                     . "dictionary" . $dict_info;
+                                     . 'dictionary' . $dict_info;
                     } else {
-                        my $new_value = "";
+                        my $new_value = '';
                         my $val = $tag_value;
-                        foreach( split "", $val ) {
+                        foreach( split '', $val ) {
                             my @replacement_list =
                                 replacement_candidates( $_, $dictTags{$tag} );
 
                             if( scalar( @replacement_list ) == 1 ) {
-                                $new_value .= shift( @replacement_list );
+                                $new_value .= shift @replacement_list;
                             } else  {
                                 $new_value .= $_;
                             }
@@ -1437,23 +1442,23 @@ sub treat_as_set($) {
                             $message_key =
                                 "WARNING, '$tag' value '$new_value' " .
                                 "('$old_value' before processing) " .
-                                "should not contain duplicate values " .
+                                'should not contain duplicate values ' .
                                 "according to $tagDicts{$tag}[0] " .
-                                "dictionary" . $dict_info;
+                                'dictionary' . $dict_info;
                         } elsif ($tag_value ne $new_value) {
                             $tag_value = $new_value;
                             $message_key =
                                 "NOTE, '$tag' value '$old_value' " .
                                 "changed to '$new_value' " .
                                 "according to $tagDicts{$tag}[0] " .
-                                "dictionary" . $dict_info;
+                                'dictionary' . $dict_info;
                         }
                     }
 
                     if ( defined $message_key ) {
                         if(! exists $reports{$message_key} ) {
                             $reports{$message_key} = 0;
-                            push( @uniq_messages, $message_key );
+                            push @uniq_messages, $message_key;
                         }
                         $reports{$message_key} ++;
                     }
@@ -1468,7 +1473,7 @@ sub treat_as_set($) {
             warn "WARNING, $2\n";
         } elsif( $report =~ /^(NOTE,\s+)(.+)$/ ) {
             warn "NOTE, $2\n";
-            push( @insert_reports, $2 );
+            push @insert_reports, $2;
         }
     };
 
@@ -1479,9 +1484,9 @@ my @dictionary_tags = ( @COD::CIF::Tags::DictTags::tag_list,
                         @COD::CIF::Tags::COD::tag_list,
                         @COD::CIF::Tags::TCOD::tag_list,
                         @COD::CIF::Tags::DFT::tag_list );
-my %dictionary_tags = map { $_, $_ } @dictionary_tags;
+my %dictionary_tags = map { $_ => $_ } @dictionary_tags;
 
-@ARGV = ("-") unless @ARGV;
+@ARGV = ('-') unless @ARGV;
 
 for my $filename (@ARGV) {
     my $options = { 'parser' => $use_parser, 'no_print' => 1 };
@@ -1490,7 +1495,7 @@ for my $filename (@ARGV) {
 
     canonicalize_all_names( $data );
 
-    for my $dataset( @$data ) {
+    for my $dataset( @{$data} ) {
         my @insert_reports = ();
 
         my $dataname = 'data_' . $dataset->{name} if defined $dataset->{name};
@@ -1505,31 +1510,31 @@ for my $filename (@ARGV) {
         eval {
             if( $fix_temperature ) {
                 my @temperature_reports = fix_temperature( $dataset );
-                push( @insert_reports, @temperature_reports );
+                push @insert_reports, @temperature_reports;
             }
             if( $fix_misspelled_values ) {
                 my @misspell_reports =
                         fix_misspelled_values( $dataset, \%value_spelling );
-                push( @insert_reports, @misspell_reports );
+                push @insert_reports, @misspell_reports;
             }
             if( $fix_enums ) {
                 my @enums_reports = fix_enums( $dataset );
-                push( @insert_reports, @enums_reports );
+                push @insert_reports, @enums_reports;
             }
             if ( $fix_value_of_exptl_crystal_density_meas ) {
                 my @reports_of_exptl_crystal_density_meas =
-                    &fix_value_of_exptl_crystal_density_meas( $dataset );
-                push( @insert_reports, @reports_of_exptl_crystal_density_meas );
+                    fix_value_of_exptl_crystal_density_meas( $dataset );
+                push @insert_reports, @reports_of_exptl_crystal_density_meas;
             }
             if( $fix_value_of_refine_ls_weighting_scheme ) {
                 my @reports_of_refine_ls_weighting_scheme =
-                    &fix_value_of_refine_ls_weighting_scheme( $dataset );
-                push( @insert_reports, @reports_of_refine_ls_weighting_scheme );
+                    fix_value_of_refine_ls_weighting_scheme( $dataset );
+                push @insert_reports, @reports_of_refine_ls_weighting_scheme;
             }
 
             if( $treat_as_set ) {
                 my @set_reports = treat_as_set( $dataset );
-                push( @insert_reports, @set_reports );
+                push @insert_reports, @set_reports;
             }
 
             insert_report_to_comments( $dataset , \@insert_reports );
