@@ -182,8 +182,9 @@ for my $filename (@ARGV) {
         $cif_contents .= $print_cif_stdout;
 
         if( $output_prefixed ) {
-            map { print $dataset->{name}, "\t", $_, "\n" }
-                    split m/\n/, $cif_contents;
+            foreach ( split m/\n/, $cif_contents ) {
+                print $dataset->{name}, "\t", $_, "\n";
+            };
         } else {
             my $suffix = $dataset->{name};
             $suffix =~ s/[^-+._a-zA-Z0-9]/_/g;
