@@ -73,15 +73,16 @@ my $dict_file_uri = 'ftp://ftp.iucr.org/pub/cif_core.dic';
     '--help,--usage' => sub { usage; exit }
 );
 
-fetchDictionary($dict_file_uri, $cache_duration, $from_mail, $force_overwrite);
+fetch_dictionary($dict_file_uri, $cache_duration, $from_mail, $force_overwrite);
 
 # This subroutine is used before fetching new dictionary from FTP.
 # It creates local directory and returns path to it.
 # Parameters:
 #     NONE
 # Example:
-#     prepareLocal;
-sub prepareLocal {
+#     prepare_local();
+sub prepare_local
+{
     my $my_cod_dir = '';
     if( defined $ENV{HOME} ) {
         $my_cod_dir = $ENV{HOME} . '/';
@@ -106,9 +107,10 @@ sub prepareLocal {
 # Parameters:
 #     1) string -- path to local dictionary file
 # Example:
-#     createCopyOfLocalFile '/home/user/.cod/cif_core.dic';
-sub createCopyOfLocalFile {
-    my $local_dict_file = shift;
+#     create_copy_of_local_file( '/home/user/.cod/cif_core.dic' );
+sub create_copy_of_local_file
+{
+    my ($local_dict_file) = @_;
 
     my @local_time = localtime(time);
     my $moved_dist_file = $local_dict_file . '_';
@@ -136,15 +138,16 @@ sub createCopyOfLocalFile {
 # Subroutine to replace fetched dictionary file by new one.
 # This subroutine uses 'File::Compare' to check, if files are equal.
 # There is no need, to replace old file by new if they are equal.
-# If files are not equal and old file exists - createCopyOfLocalFile is
+# If files are not equal and old file exists - create_copy_of_local_file is
 # called.
 # Parameters:
 #     1) string -- path to local dictionary file;
 #     2) string -- path to temporary folder where downloaded file resides.
 # Example:
-#     moveFetchedFileIfDiff '/home/user/.cod/cif_core.dic',
-#                           '/tmp/fetch_cif_dict_17531_cif_core.dic'
-sub moveFetchedFileIfDiff {
+#     move_fetched_file_if_diff( '/home/user/.cod/cif_core.dic',
+#                                '/tmp/fetch_cif_dict_17531_cif_core.dic' )
+sub move_fetched_file_if_diff
+{
     my ($dict_file_path, $new_file_path) = @_;
 
     if( -e $dict_file_path ) {
@@ -157,7 +160,7 @@ sub moveFetchedFileIfDiff {
             return 0;
         }
 
-        return unless createCopyOfLocalFile $dict_file_path;
+        return unless create_copy_of_local_file( $dict_file_path );
     }
 
     if( ! move $new_file_path, $dict_file_path ) {
@@ -182,11 +185,12 @@ sub moveFetchedFileIfDiff {
 #     4) int -- this flag forces download if set to higher than 0 (zero) 
 #         value;
 # Example:
-#     fetchDictionary 'ftp://ftp.iucr.org/pub/cif_core.dic', 432000, 
-#                       'name@example.com', 0;
-sub fetchDictionary {
-    my ($dict_file_uri, $cache_duration, $user_mail, $force_download) =
-            (shift, shift, shift, shift);
+#     fetch_dictionary( 'ftp://ftp.iucr.org/pub/cif_core.dic', 432000,
+#                       'name@example.com', 0 );
+sub fetch_dictionary
+{
+    my ($dict_file_uri, $cache_duration, $user_mail, $force_download) = @_;
+
     $dict_file_uri =~ m/^([a-z]+):\/\/([^\/]+)(\/.*\/)([^\/]+)$/s;
     my %ftp = ( 'protocol' => $1,
                 'host' => $2,
@@ -194,7 +198,7 @@ sub fetchDictionary {
                 'file' => $4
         );
 
-    my $local_path  = prepareLocal;
+    my $local_path  = prepare_local();
     my $local_dict_path = $local_path  . $ftp{file};
 
     return unless $local_path ;
@@ -237,5 +241,5 @@ sub fetchDictionary {
     $ftp_agent->quit;
 
     # attempt to replace file
-    return moveFetchedFileIfDiff $local_dict_path, $temporary_store;
+    return move_fetched_file_if_diff( $local_dict_path, $temporary_store );
 }
