@@ -27,13 +27,13 @@ use COD::ErrorHandler qw( process_warnings
 
 my $version = 0.1;
 
-my @dictFiles;
+my @dict_files;
 my $use_parser = 'c';
-my $setOfEnum  = ['_atom_site_refinement_flags'];
-my $caseSensitive    = 1;
-my $reportLocalTags  = 0;
-my $reportDeprecated = 0;
-my $debug   = 0;
+my $set_of_enum = ['_atom_site_refinement_flags'];
+my $case_sensitive = 1;
+my $report_local_tags = 0;
+my $report_deprecated = 0;
+my $debug = 0;
 
 my $die_on_errors   = 1;
 my $die_on_warnings = 0;
@@ -124,23 +124,23 @@ sub getReplacementTags($$);
 #*                     Print short usage message (this message) and exit.
 #**
 @ARGV = getOptions(
-    '-d,--dictionaries'    => sub{ @dictFiles = split ',|\s+', get_value },
-    '-D,--add-dictionary'  => sub{ push @dictFiles, get_value },
-    '--clear-dictionaries' => sub{ @dictFiles = () },
+    '-d,--dictionaries'    => sub{ @dict_files = split ',|\s+', get_value },
+    '-D,--add-dictionary'  => sub{ push @dict_files, get_value },
+    '--clear-dictionaries' => sub{ @dict_files = () },
 
-    '--treat-as-set'                    => $setOfEnum,
-    '--no-treat-as-set'                 => sub{ $setOfEnum = [] },
+    '--treat-as-set'                    => $set_of_enum,
+    '--no-treat-as-set'                 => sub{ $set_of_enum = [] },
 
-    '--ignore-case'                     => sub{ $caseSensitive = 0 },
-    '--dont-ignore-case,--respect-case' => sub{ $caseSensitive = 1 },
-    '--case-sensitive'                  => sub{ $caseSensitive = 1 },
+    '--ignore-case'                     => sub{ $case_sensitive = 0 },
+    '--dont-ignore-case,--respect-case' => sub{ $case_sensitive = 1 },
+    '--case-sensitive'                  => sub{ $case_sensitive = 1 },
 
-    '--report-local-tags'               => sub{ $reportLocalTags = 1 },
-    '--no-report-local-tags'            => sub{ $reportLocalTags = 0 },
-    '--ignore-local-tags'               => sub{ $reportLocalTags = 0 },
+    '--report-local-tags'               => sub{ $report_local_tags = 1 },
+    '--no-report-local-tags'            => sub{ $report_local_tags = 0 },
+    '--ignore-local-tags'               => sub{ $report_local_tags = 0 },
 
-    '--report-deprecated'               => sub{ $reportDeprecated = 1 },
-    '--ignore-deprecated'               => sub{ $reportDeprecated = 0 },
+    '--report-deprecated'               => sub{ $report_deprecated = 1 },
+    '--ignore-deprecated'               => sub{ $report_deprecated = 0 },
 
     '--use-perl-parser'                 => sub{ $use_parser = 'perl' },
     '--use-c-parser'                    => sub{ $use_parser = 'c' },
@@ -173,17 +173,17 @@ my $die_on_error_level = {
     NOTE    => $die_on_notes
 };
 
-my %dictTags;
+my %dict_tags;
 
-if( @dictFiles ) {
+if( @dict_files ) {
     my $tag_count = 0;
     my $options = { 'parser' => $use_parser, 'no_print' => 1 };
-    foreach my $dict ( @dictFiles ) {
+    foreach my $dict ( @dict_files ) {
         my ( $data, $err_count, $messages ) = parse_cif( $dict, $options );
         process_parser_messages( $messages, $die_on_error_level );
 
-        $dictTags{$dict} = getDict( $data );
-        if ( scalar( keys( %{$dictTags{$dict}} ) ) == 0 ) {
+        $dict_tags{$dict} = getDict( $data );
+        if ( scalar( keys( %{$dict_tags{$dict}} ) ) == 0 ) {
             report_message( {
                 'program'       => $0,
                 'filename'      => $dict,
@@ -191,7 +191,7 @@ if( @dictFiles ) {
                 'message'       => 'no tag definitions found'
             }, $die_on_warnings );
         }
-        $tag_count += scalar( keys( %{$dictTags{$dict}} ) );
+        $tag_count += scalar( keys( %{$dict_tags{$dict}} ) );
     }
 
     if( $tag_count == 0 ) {
@@ -200,7 +200,7 @@ if( @dictFiles ) {
             'err_level' => 'ERROR',
             'message'   => 'no tag definitions were found in the '
                          . 'provided dictionary files '
-                         . '(\'' . join( '\', \'', @dictFiles ) . '\')'
+                         . '(\'' . join( '\', \'', @dict_files ) . '\')'
         }, $die_on_errors );
     }
 } else {
@@ -211,7 +211,7 @@ if( @dictFiles ) {
                      . 'using the \'--dictionaries\' option. Automatic '
                      . 'dictionary download is not implemeted yet'
     }, $die_on_errors );
-    my $dictIUCRURI = 'ftp://ftp.iucr.org/pub/cif_core.dic';
+    my $dict_iucr_uri = 'ftp://ftp.iucr.org/pub/cif_core.dic';
 }
 
 @ARGV = ('-') unless @ARGV;
@@ -240,185 +240,185 @@ CIFFILEANAL: for my $filename ( @ARGV ) {
         }
         # 2-D array ( [loop_number][list_of_tags] ) to store names of looped 
         # list reference tags that have been reported as missing
-        my @reportedBlockReferences;
+        my @reported_block_references;
         #
         # start iteration through CIF values
         #
-        for my $tagAnalysed ( @{$block->{tags}} ) {
-            if(!defined $block->{types}{$tagAnalysed}) {
+        for my $tag_analysed ( @{$block->{tags}} ) {
+            if(!defined $block->{types}{$tag_analysed}) {
                 if ( $debug ) {
                     debug_note( $0, $filename, $dataname,
-                                "tag '$tagAnalysed' has no associated type ",
+                                "tag '$tag_analysed' has no associated type ",
                                 'an error in CIF parser had probably occured' );
                 }
             }
-            my $lc_tagAnalysed = lc $tagAnalysed;
+            my $lc_tag_analysed = lc $tag_analysed;
             my $defined = 0;
-            if( ! $reportLocalTags && $lc_tagAnalysed =~ m/^_\[local\]/ ) {
+            if( ! $report_local_tags && $lc_tag_analysed =~ m/^_\[local\]/ ) {
                 ++$defined;
             }
             #
             # start iteration through dictionaries
             #
-            for my $dictF ( sort keys %dictTags ) {
-                my $dictD = $dictTags{$dictF};
+            for my $dict_f ( sort keys %dict_tags ) {
+                my $dict_d = $dict_tags{$dict_f};
                 # check if tags are defined in the dictionary
-                if( exists $dictD->{$lc_tagAnalysed} ) {
+                if( exists $dict_d->{$lc_tag_analysed} ) {
                     $defined = 1;
                     if ( $debug ) {
-                      debug_note( $0, $filename, $dataname, "tag '$tagAnalysed' "
-                                . "is defined in dictionary $dictF", undef );
+                      debug_note( $0, $filename, $dataname, "tag '$tag_analysed' "
+                                . "is defined in dictionary $dict_f", undef );
                     }
                 } else {
                     if ( $debug ) {
-                      debug_note( $0, $filename, $dataname, "tag '$tagAnalysed' "
-                               . "is not defined in dictionary $dictF", undef );
+                      debug_note( $0, $filename, $dataname, "tag '$tag_analysed' "
+                               . "is not defined in dictionary $dict_f", undef );
                     }
                     next;
                 }
 
                 # check if tags are deprecated (replaced with other tags)
-                my $replTags = getReplacementTags($dictD, $lc_tagAnalysed);
-                if( $reportDeprecated && @{$replTags} != 0 ) {
-                    warn "NOTE, tag '$tagAnalysed' has been replaced by "
-                        . 'tag(-s) [' . join(', ', @{$replTags}) . '] '
-                        . "according to $dictF" . "\n";
+                my $repl_tags = getReplacementTags($dict_d, $lc_tag_analysed);
+                if( $report_deprecated && @{$repl_tags} != 0 ) {
+                    warn "NOTE, tag '$tag_analysed' has been replaced by "
+                        . 'tag(-s) [' . join(', ', @{$repl_tags}) . '] '
+                        . "according to $dict_f" . "\n";
                 }
 
                 # check if looped lists contain reference tags required by 
                 # other tags in the looped list (together acting as a unique key)
-                my $dictTagValues = $dictD->{$lc_tagAnalysed}{values};
+                my $dict_tag_values = $dict_d->{$lc_tag_analysed}{values};
 
-                if ( exists $block->{inloop}{$tagAnalysed} ) {
-                    my $refTags = getListReferenceTags($dictD, $lc_tagAnalysed);
+                if ( exists $block->{inloop}{$tag_analysed} ) {
+                    my $ref_tags = getListReferenceTags($dict_d, $lc_tag_analysed);
                     for ( my $i = 0; $i < @{$block->{loops}}; $i++ ) {
-                      if( grep $_ eq $tagAnalysed, @{$block->{loops}[$i]} ) {
-                        foreach my $loopRefTag (@{$refTags}) {
+                      if( grep $_ eq $tag_analysed, @{$block->{loops}[$i]} ) {
+                        foreach my $loop_ref_tag (@{$ref_tags}) {
                             # TO-DO: the reference property is also transitional 
                             # to the 'alternate' tags and this must be tested
-                            if( grep lc($_) eq $loopRefTag, @{$block->{loops}[$i]} ) {
+                            if( grep lc($_) eq $loop_ref_tag, @{$block->{loops}[$i]} ) {
                                 if ( $debug ) {
                                     debug_note ( $0, $filename, $dataname,
-                                       "tag '$loopRefTag' is mandatory "
+                                       "tag '$loop_ref_tag' is mandatory "
                                      . 'in loop when tag(s) ['
-                                     . join(', ', @{$dictTagValues->{_name}})
+                                     . join(', ', @{$dict_tag_values->{_name}})
                                      . '] are defined according to '
-                                     . "$dictF and was found", undef );
+                                     . "$dict_f and was found", undef );
                                 }
-                            } elsif (!grep { $_ eq $loopRefTag }
-                                                 @{$reportedBlockReferences[$i]}) {
-                                    warn "NOTE, tag '$loopRefTag' is "
+                            } elsif (!grep { $_ eq $loop_ref_tag }
+                                                 @{$reported_block_references[$i]}) {
+                                    warn "NOTE, tag '$loop_ref_tag' is "
                                        . 'mandatory in loop when tag(s) ['
-                                       . join(', ', @{$dictTagValues->{_name}})
-                                       . "] are defined according to $dictF "
+                                       . join(', ', @{$dict_tag_values->{_name}})
+                                       . "] are defined according to $dict_f "
                                        . 'but was not found' . "\n";
-                                    push @{$reportedBlockReferences[$i]},
-                                         $loopRefTag;
+                                    push @{$reported_block_references[$i]},
+                                         $loop_ref_tag;
                             }
                         }
                       }
                     }
                 } elsif( $debug ) {
-                    debug_note( $0, $filename, $dataname, "tag $tagAnalysed "
+                    debug_note( $0, $filename, $dataname, "tag $tag_analysed "
                               . 'is not in loop', 'test for missing looped '
                               . 'list reference tags will be skipped' );
                 }
 
                 # check list mandatory
-                if( exists $dictD->{$lc_tagAnalysed}
-                    && exists $dictD->{$lc_tagAnalysed}{values}{_list}
-                    && $dictD->{$lc_tagAnalysed}{values}{_list}[0] eq 'yes' )
+                if( exists $dict_d->{$lc_tag_analysed}
+                    && exists $dict_d->{$lc_tag_analysed}{values}{_list}
+                    && $dict_d->{$lc_tag_analysed}{values}{_list}[0] eq 'yes' )
                 {
-                    if( exists $block->{inloop}{$tagAnalysed} ) {
+                    if( exists $block->{inloop}{$tag_analysed} ) {
                         if ( $debug ) {
                             debug_note( $0, $filename, $dataname,
-                                "tag '$tagAnalysed' must be in a loop " .
-                                "according to $dictF and is in a loop", undef );
+                                "tag '$tag_analysed' must be in a loop " .
+                                "according to $dict_f and is in a loop", undef );
                         }
                     } else {
-                        warn "NOTE, tag '$tagAnalysed' must be in a loop "
-                           . "according to $dictF but is not in a loop" . "\n";
+                        warn "NOTE, tag '$tag_analysed' must be in a loop "
+                           . "according to $dict_f but is not in a loop" . "\n";
                     }
                 }
                 # check types of values
                 my $range = {};
-                my %rangeForPrint;
-                if( exists $dictD->{$lc_tagAnalysed} &&
-                    exists $dictD->{$lc_tagAnalysed}{values}{_enumeration_range} ) {
+                my %range_for_print;
+                if( exists $dict_d->{$lc_tag_analysed} &&
+                    exists $dict_d->{$lc_tag_analysed}{values}{_enumeration_range} ) {
                     ( $range->{'min'}, $range->{'max'} ) = split(/:/,
-                        $dictD->{$lc_tagAnalysed}{values}{_enumeration_range}[0],
+                        $dict_d->{$lc_tag_analysed}{values}{_enumeration_range}[0],
                         2);
-                    %rangeForPrint = %{$range};
+                    %range_for_print = %{$range};
                     if( length($range->{min}) == 0 ) {
                         delete $range->{min};
-                        $rangeForPrint{min} = '<any>';
+                        $range_for_print{min} = '<any>';
                     }
                     if( length($range->{max}) == 0 ) {
                         delete $range->{max};
-                        $rangeForPrint{max} = '<any>';
+                        $range_for_print{max} = '<any>';
                     }
                 }
 
-                CIFVALUE: for my $tagIndex ( 0..$#{$block->{values}{$tagAnalysed}} ) {
-                    my $tagValue = $block->{values}{$tagAnalysed}[$tagIndex];
+                CIFVALUE: for my $tag_index ( 0..$#{$block->{values}{$tag_analysed}} ) {
+                    my $tag_value = $block->{values}{$tag_analysed}[$tag_index];
 
-                    next CIFVALUE if $tagValue eq '.' or $tagValue eq '?';
-                    my $value = $tagValue;
+                    next CIFVALUE if $tag_value eq '.' or $tag_value eq '?';
+                    my $value = $tag_value;
 
                     #
                     # if check values in enumeration list
                     #
-                    if( exists $dictD->{$lc_tagAnalysed} &&
-                        exists $dictD->{$lc_tagAnalysed}{values}{_enumeration} ) {
-                        my $listEnumValuesForTag = join(', ',
-                            @{$dictD->{$lc_tagAnalysed}{values}{_enumeration}}
+                    if( exists $dict_d->{$lc_tag_analysed} &&
+                        exists $dict_d->{$lc_tag_analysed}{values}{_enumeration} ) {
+                        my $list_enum_values_for_tag = join(', ',
+                            @{$dict_d->{$lc_tag_analysed}{values}{_enumeration}}
                         );
-                        my $valueFoundInList = 0;
-                        my $emulateSet = 0;
-                        if(  grep lc($_) eq $lc_tagAnalysed, @{$setOfEnum} ) {
-                            $emulateSet = 1;
-                            my $setOfEnumValues = join '|',
-                               @{$dictD->{$lc_tagAnalysed}{values}{_enumeration}};
-                            $setOfEnumValues =~ s/\./\\./;
-                            my $regexpSetOfEnumValues =
-                                                 qr/^($setOfEnumValues)+$/s;
-                            if( $caseSensitive ) {
-                                if( $value =~ m/$regexpSetOfEnumValues/s ) {
-                                        $valueFoundInList = 1;
+                        my $value_found_in_list = 0;
+                        my $emulate_set = 0;
+                        if(  grep lc($_) eq $lc_tag_analysed, @{$set_of_enum} ) {
+                            $emulate_set = 1;
+                            my $set_of_enum_values = join '|',
+                               @{$dict_d->{$lc_tag_analysed}{values}{_enumeration}};
+                            $set_of_enum_values =~ s/\./\\./;
+                            my $regexp_set_of_enum_values =
+                                                 qr/^($set_of_enum_values)+$/s;
+                            if( $case_sensitive ) {
+                                if( $value =~ m/$regexp_set_of_enum_values/s ) {
+                                        $value_found_in_list = 1;
                                 }
                             } else {
-                                if( $value =~ m/$regexpSetOfEnumValues/is ) {
-                                    $valueFoundInList = 1;
+                                if( $value =~ m/$regexp_set_of_enum_values/is ) {
+                                    $value_found_in_list = 1;
                                 }
                             }
                         } else {
-                            if( $caseSensitive ) {
+                            if( $case_sensitive ) {
                                 if( grep $_ eq $value,
-                                    @{$dictD->{$lc_tagAnalysed}{values}{_enumeration}} ) {
-                                    $valueFoundInList = 1;
+                                    @{$dict_d->{$lc_tag_analysed}{values}{_enumeration}} ) {
+                                    $value_found_in_list = 1;
                                 }
                             } else {
-                                my $lcValue = lc $value;
-                                if( grep lc($_) eq $lcValue,
-                                    @{$dictD->{$lc_tagAnalysed}{values}{_enumeration}} ) {
-                                    $valueFoundInList = 1;
+                                my $lc_value = lc $value;
+                                if( grep lc($_) eq $lc_value,
+                                    @{$dict_d->{$lc_tag_analysed}{values}{_enumeration}} ) {
+                                    $value_found_in_list = 1;
                                 }
                            }
                        }
 
-                       if( $valueFoundInList == 0 ) {
-                            warn "NOTE, tag '$tagAnalysed' value \"$value\" "
+                       if( $value_found_in_list == 0 ) {
+                            warn "NOTE, tag '$tag_analysed' value \"$value\" "
                                . 'must be one of the enumeration values '
-                               . "[$listEnumValuesForTag]\n";
+                               . "[$list_enum_values_for_tag]\n";
                        } else {
-                            my $message = "tag '$tagAnalysed' value \"$value\" "
+                            my $message = "tag '$tag_analysed' value \"$value\" "
                                         . 'is one of the enumeration '
-                                        . "values [$listEnumValuesForTag]";
+                                        . "values [$list_enum_values_for_tag]";
 
-                            $message .= ' (case ignored)' if( !$caseSensitive );
+                            $message .= ' (case ignored)' if( !$case_sensitive );
 
                             $message .= ', enum was treated as set'
-                                                              if( $emulateSet );
+                                                              if( $emulate_set );
 
                             if ($debug) {
                                 debug_note( $0, $filename, $dataname, $message, undef );
@@ -429,27 +429,27 @@ CIFFILEANAL: for my $filename ( @ARGV ) {
                     # Check if values match the declared types:
                     #
 
-                    if( exists $dictD->{$lc_tagAnalysed} && (
-                            defined $dictD->{$lc_tagAnalysed}{values}{_type} &&
-                            $dictD->{$lc_tagAnalysed}{values}{_type}[0] eq 'numb' ||
-                            defined $dictD->{$lc_tagAnalysed}{values}{'_item_type.code'} &&
-                            ($dictD->{$lc_tagAnalysed}{values}{'_item_type.code'}[0] eq 'float' ||
-                             $dictD->{$lc_tagAnalysed}{values}{'_item_type.code'}[0] eq 'int')
+                    if( exists $dict_d->{$lc_tag_analysed} && (
+                            defined $dict_d->{$lc_tag_analysed}{values}{_type} &&
+                            $dict_d->{$lc_tag_analysed}{values}{_type}[0] eq 'numb' ||
+                            defined $dict_d->{$lc_tag_analysed}{values}{'_item_type.code'} &&
+                            ($dict_d->{$lc_tag_analysed}{values}{'_item_type.code'}[0] eq 'float' ||
+                             $dict_d->{$lc_tag_analysed}{values}{'_item_type.code'}[0] eq 'int')
                         )) {
 
-                        if(defined $block->{types}{$tagAnalysed}) {
-                            if('FLOAT' ne $block->{types}{$tagAnalysed}[$tagIndex]
-                                && 'INT' ne $block->{types}{$tagAnalysed}[$tagIndex]) {
-                                warn "NOTE, tag '$tagAnalysed' value \""
-                                   . $block->{values}{$tagAnalysed}[$tagIndex]
+                        if(defined $block->{types}{$tag_analysed}) {
+                            if('FLOAT' ne $block->{types}{$tag_analysed}[$tag_index]
+                                && 'INT' ne $block->{types}{$tag_analysed}[$tag_index]) {
+                                warn "NOTE, tag '$tag_analysed' value \""
+                                   . $block->{values}{$tag_analysed}[$tag_index]
                                    . '" is of type \''
-                                   . $block->{types}{$tagAnalysed}[$tagIndex]
+                                   . $block->{types}{$tag_analysed}[$tag_index]
                                    . '\' while it should be numeric, i.e. '
                                    . '\'FLOAT\', or \'INT\'' . "\n";
                             } elsif( $debug ) {
                                 debug_note( $0, $filename, $dataname,
-                                            "tag '$tagAnalysed' is of type '" .
-                                            $block->{types}{$tagAnalysed}[$tagIndex] .
+                                            "tag '$tag_analysed' is of type '" .
+                                            $block->{types}{$tag_analysed}[$tag_index] .
                                             '\' as expected, as it should be either ' .
                                             '\'FLOAT\' or \'INT\'', undef );
                             }
@@ -461,11 +461,11 @@ CIFFILEANAL: for my $filename ( @ARGV ) {
                     # as numbers (s.u. values recorded separately) so
                     # type checking is used to avoid false positive alert
                     my $su_permitted = 0;
-                    if ( defined $dictTagValues->{_type} ) {
-                        if ( $dictTagValues->{_type}[0] ne 'numb' ) {
+                    if ( defined $dict_tag_values->{_type} ) {
+                        if ( $dict_tag_values->{_type}[0] ne 'numb' ) {
                             $su_permitted = 1
-                        } elsif (defined $dictTagValues->{_type_conditions} ) {
-                            foreach (@{$dictTagValues->{_type_conditions}}) {
+                        } elsif (defined $dict_tag_values->{_type_conditions} ) {
+                            foreach (@{$dict_tag_values->{_type_conditions}}) {
                                 if ( $_ eq 'esd' || $_ eq 'su' ) {
                                     $su_permitted = 1 ;
                                 }
@@ -473,10 +473,10 @@ CIFFILEANAL: for my $filename ( @ARGV ) {
                         }
                     }
 
-                    my $sigma = $block->{precisions}{$tagAnalysed}[$tagIndex];
+                    my $sigma = $block->{precisions}{$tag_analysed}[$tag_index];
                     if ( defined $sigma && !$su_permitted ) {
                         $value =~ /(\(\d+\))$/;
-                        warn "NOTE, tag '$tagAnalysed' value \"$value\" is "
+                        warn "NOTE, tag '$tag_analysed' value \"$value\" is "
                            . 'not permitted to contain standard uncertainty '
                            . '"' . $1 . '"' . ' -- ' . 'standard uncertainty '
                            . 'will be ignored in further validation' . "\n";
@@ -487,38 +487,38 @@ CIFFILEANAL: for my $filename ( @ARGV ) {
                     # Check values against enumeration_range
                     #
                     if( %{$range} ) {
-                        my $valueWOPrecision = $value;
-                        if( exists $dictD->{$lc_tagAnalysed} &&
-                            $dictD->{$lc_tagAnalysed}{values}{_type}[0]
+                        my $value_wo_su = $value;
+                        if( exists $dict_d->{$lc_tag_analysed} &&
+                            $dict_d->{$lc_tag_analysed}{values}{_type}[0]
                             eq 'numb' ) {
-                            $valueWOPrecision =~ s/\s*\(.*$//;
+                            $value_wo_su =~ s/\s*\(.*$//;
                         }
-                        if( exists $dictD->{$lc_tagAnalysed} &&
+                        if( exists $dict_d->{$lc_tag_analysed} &&
                             checkAgainstRange(
-                                $dictD->{$lc_tagAnalysed}{values}{_type}[0],
-                                $range, $valueWOPrecision, $sigma) <= 0 ) {
-                                warn "NOTE, tag '$tagAnalysed' value " .
+                                $dict_d->{$lc_tag_analysed}{values}{_type}[0],
+                                $range, $value_wo_su, $sigma) <= 0 ) {
+                                warn "NOTE, tag '$tag_analysed' value " .
                                      "\"$value\" should be in range (" .
-                                     $rangeForPrint{min} .
-                                     ', ' . $rangeForPrint{max} . ")\n";
+                                     $range_for_print{min} .
+                                     ', ' . $range_for_print{max} . ")\n";
                         } elsif( $debug ) {
                             debug_note( $0, $filename, $dataname,
-                                        "tag '$tagAnalysed' value " .
+                                        "tag '$tag_analysed' value " .
                                         "\"$value\" is in range (" .
-                                        "$rangeForPrint{min}, " .
-                                        "$rangeForPrint{max})", undef );
+                                        $range_for_print{min} . ", " .
+                                        $range_for_print{max} . ")", undef );
                         }
                     } elsif( $debug ) {
                         debug_note( $0, $filename, $dataname,
                                     'there are no range restrictions ' .
-                                    "for tag \"$tagAnalysed\"",
+                                    "for tag \"$tag_analysed\"",
                                     'skipping range test' );
                     }
                 }
             }
 
             if( !$defined ) {
-                warn "NOTE, tag '$tagAnalysed' was not found in dictionaries\n";
+                warn "NOTE, tag '$tag_analysed' was not found in dictionaries\n";
             }
         }
     }
@@ -568,19 +568,19 @@ sub severityName($)
 
 ##
 # Extracts tags from dictionary (parsed using COD::CIF::Parser).
-# @param $dictF
+# @param $dict_f
 #       Reference to COD::CIF::Parser output CIF object.
 # @return
 #       Hash of tags and related references to parsed data blocks.
 ##
 sub getDict($)
 {
-    my ($dictF) = @_;
+    my ($dict_f) = @_;
     my $tags = {};
     my $datan = 0;
-    while( $datan < @{$dictF} ) {
-        if( exists $dictF->[$datan]{save_blocks} ) {
-            for my $saveblk ( @{$dictF->[$datan]{save_blocks}} ) {
+    while( $datan < @{$dict_f} ) {
+        if( exists $dict_f->[$datan]{save_blocks} ) {
+            for my $saveblk ( @{$dict_f->[$datan]{save_blocks}} ) {
                 ## print ">>>> processing save block '$saveblk->{name}'\n";
                 next if !exists $saveblk->{values}{'_item.name'};
                 for ( @{$saveblk->{values}{'_item.name'}} ) {
@@ -592,10 +592,10 @@ sub getDict($)
         }
 
         $datan++ and next if
-            !exists $dictF->[$datan]{values}{_type};
-        for ( @{$dictF->[$datan]{values}{_name}} ) {
-            $tags->{lc $_} = $dictF->[$datan];
-            $tags->{lc $_}{values}{_dataname} = $dictF->[$datan]{name};
+            !exists $dict_f->[$datan]{values}{_type};
+        for ( @{$dict_f->[$datan]{values}{_name}} ) {
+            $tags->{lc $_} = $dict_f->[$datan];
+            $tags->{lc $_}{values}{_dataname} = $dict_f->[$datan]{name};
         }
         $datan++;
     }
@@ -618,18 +618,18 @@ sub getReplacementTags($$)
 {
     my ( $dict, $tag, ) = @_;
 
-    my $tagValues = $dict->{lc $tag}{values};
+    my $tag_values = $dict->{lc $tag}{values};
 
-    my @replaceWith;
+    my @replace_with;
     # check if tags are deprecated (replaced with other tags)
-    if( defined $tagValues->{_related_item} ) {
-        for( my $i = 0; $i < @{$tagValues->{_related_item}}; $i++ ) {
-            if( $tagValues->{_related_function}[$i] eq 'replace') {
-                push @replaceWith, $tagValues->{_related_item}[$i];
+    if( defined $tag_values->{_related_item} ) {
+        for( my $i = 0; $i < @{$tag_values->{_related_item}}; $i++ ) {
+            if( $tag_values->{_related_function}[$i] eq 'replace') {
+                push @replace_with, $tag_values->{_related_item}[$i];
             }
         }
     }
-    return \@replaceWith;
+    return \@replace_with;
 }
 
 ##
@@ -736,7 +736,7 @@ sub checkAgainstRangeChar($$)
 #       Reference to a dictionary object as returned by 'getDict' subroutine.
 # @param $tag
 #       Name of the tag to analyze.
-# @return $listReferenceTags;
+# @return $list_reference_tags
 #       A reference to an array of tags that are required to be present in the 
 #       loop containing the analyzed tag.
 ##
@@ -744,19 +744,19 @@ sub getListReferenceTags($$)
 {
     my ( $dict, $tag ) = @_;
 
-    my $tagValues = $dict->{lc $tag}{values};
-    my @listReferenceTags;
-    if ( defined $tagValues && defined $tagValues->{_list_reference} ) {
+    my $tag_values = $dict->{lc $tag}{values};
+    my @list_reference_tags;
+    if ( defined $tag_values && defined $tag_values->{_list_reference} ) {
         # _list_reference identifies data item(s) that must collectively be
         # in a loop. They are referenced by the names of their data blocks
-        foreach my $refDataname (@{$tagValues->{_list_reference}}) {
+        foreach my $ref_dataname (@{$tag_values->{_list_reference}}) {
           foreach my $tags ( sort keys %{$dict} ) {
-              if ( '_' . $dict->{$tags}{values}{_dataname} eq $refDataname ) {
-                  push @listReferenceTags, $tags;
+              if ( '_' . $dict->{$tags}{values}{_dataname} eq $ref_dataname ) {
+                  push @list_reference_tags, $tags;
               }
           }
         }
     }
 
-    return \@listReferenceTags;
+    return \@list_reference_tags;
 }
