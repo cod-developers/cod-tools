@@ -361,9 +361,8 @@ sub get_alternatives
         if( abs( $occupancy_sum - 1 ) >
             $options->{same_site_occupancy_sensivity} &&
             !$options->{ignore_occupancies} ) {
-            my @names = sort map( $atom_list->[$_]{name},
-                                  @$assembly );
-            warn "WARNING, atoms " . join( ", ", map( "'$_'", @names ) )
+            my @names = sort map { $atom_list->[$_]{name} } @$assembly;
+            warn "WARNING, atoms " . join( ", ", map { "'$_'" } @names )
                . " share the same site, but the sum of their "
                . "occupancies is $occupancy_sum\n";
             next;
@@ -519,10 +518,8 @@ sub mark_disorder
         }
 
         for my $assembly (@new_assemblies) {
-            my @names = sort map( $atom_list->[$_]{name},
-                                  @$assembly );
-            my $msg = "atoms " . join( ", ",
-                                       map( "'$_'", @names ) ) .
+            my @names = sort map { $atom_list->[$_]{name} } @$assembly;
+            my $msg = "atoms " . join( ', ', map { "'$_'" } @names ) .
                       " were marked as alternatives";
             push( @messages, $msg );
             if( $options->{report_marked_disorders} ) {
@@ -557,8 +554,8 @@ sub mark_disorder
             $signature =~ s/^\$|\$$//g;
             my $comment = "  The following automatic conversions " .
                           "were performed:\n\n";
-            $comment .= join( "\n", map( "  " . ucfirst($_) . ".",
-                                         @messages ) ) . "\n\n";
+            $comment .= join( "\n", map { '  ' . ucfirst($_) . '.' }
+                                            @messages ) . "\n\n";
             $comment .= "  Automatic conversion script\n  $signature";
             if( !$values->{_cod_depositor_comments} ) {
                 set_tag( $dataset,

@@ -344,8 +344,8 @@ if ($output_format eq "xml") {
     print "<?xml version=\"1.0\"?>\n";
     print "<rdf:RDF xmlns:rdf=\"http://www.w3.org/1999/02/22-rdf-syntax-ns#\"";
     print "\n" if keys %vocabularies > 0;
-    print join( "\n", map( " " x 9 . "xmlns:$_=\"$vocabularies{$_}\"",
-                           sort keys %vocabularies ) ) . ">\n";
+    print join( "\n", map { " " x 9 . "xmlns:$_=\"$vocabularies{$_}\"" }
+                           sort keys %vocabularies ) . ">\n";
 
     foreach my $codid (sort keys %$data) {
         my $struct = $data->{$codid};
@@ -383,14 +383,14 @@ if ($output_format eq "xml") {
                 print "</${vocabulary_name}:$field>\n";
             } else {
                 print join( "\n",
-                            map( "    <${vocabulary_name}:author>" .
+                            map { "    <${vocabulary_name}:author>" .
                                  ( defined $replace_utf_code_points_from
                                      ? replace_utf_codepoints( $_,
                                                $replace_utf_code_points_from,
                                                $utf_code_point_format )
                                      : $_ ) .
-                                 "</${vocabulary_name}:author>",
-                                 split( /\s*;\s*/, $struct->{$field} ) ) );
+                                 "</${vocabulary_name}:author>"
+                            } split /\s*;\s*/, $struct->{$field} );
                 print "\n";
             }
         }
@@ -402,8 +402,8 @@ if ($output_format eq "xml") {
 # A similar parser and validator can be found at 
 # http://www.rdfabout.com/demo/validator/validate.xpd
     print "\@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>.\n";
-    print join( "\n", map( "\@prefix $_: <$vocabularies{$_}>.",
-                           sort keys %vocabularies ) ) . "\n";
+    print join( "\n", map { "\@prefix $_: <$vocabularies{$_}>." }
+                           sort keys %vocabularies ) . "\n";
     print "\n" if keys %vocabularies > 0;
 
     foreach my $codid (sort keys %$data) {
@@ -448,15 +448,14 @@ if ($output_format eq "xml") {
             } else {
                 print "  ${vocabulary_name}:author ";
                 my $length = length("  ${vocabulary_name}:author ");
-                my $authors = (join( ",\n",
-                            map( 
-                                 ( defined $replace_utf_code_points_from
-                                     ? replace_utf_codepoints ( 
-                                       (" "x$length ) . quote_literals($_),
-                                        $replace_utf_code_points_from,
-                                        $utf_code_point_format )
-                                     : (" "x$length ). quote_literals($_) ),
-                                 split( /\s*;\s*/, $struct->{$field} ) ) ) );
+                my $authors = (join( ",\n", 
+                                map { defined $replace_utf_code_points_from
+                                          ? replace_utf_codepoints (
+                                              (' 'x$length ) . quote_literals($_),
+                                              $replace_utf_code_points_from,
+                                              $utf_code_point_format )
+                                          : (" "x$length ). quote_literals($_)
+                                } split /\s*;\s*/, $struct->{$field} ) );
                 $authors =~ s/\s*//;
                 print $authors;
             }
