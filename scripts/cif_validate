@@ -15,8 +15,9 @@ eval 'exec perl -x $0 ${1+"$@"}'
 
 use strict;
 use warnings;
+use File::Basename qw( basename );
 use Scalar::Util qw( looks_like_number );
-use COD::CIF::Parser qw(parse_cif);
+use COD::CIF::Parser qw( parse_cif) ;
 use COD::CIF::Tags::CanonicalNames qw( canonicalize_all_names );
 use COD::SOptions qw( getOptions get_value );
 use COD::SUsage qw( usage options );
@@ -25,7 +26,7 @@ use COD::ErrorHandler qw( process_warnings
                           process_parser_messages
                           report_message );
 
-my $version = 0.1;
+our $VERSION = 0.1;
 
 my @dict_files;
 my $use_parser = 'c';
@@ -39,7 +40,6 @@ my $die_on_errors   = 1;
 my $die_on_warnings = 0;
 my $die_on_notes    = 0;
 
-sub version_message();
 sub severity_name($);
 sub get_dict($);
 sub check_against_range($$$$);
@@ -161,8 +161,8 @@ sub get_replacement_tags($$);
     '--continue-on-notes'    => sub { $die_on_notes = 0 },
     '--die-on-notes'         => sub { $die_on_notes = 1 },
 
-    '-v,--version'      => sub{ version_message(); exit; },
-    '--options'         => sub { options; exit },
+    '-v,--version'      => sub{ print basename($0) . " v$VERSION\n"; exit; },
+    '--options'         => sub{ options; exit },
     '--help,--usage'    => sub{ usage; exit; },
     '--debug'           => sub{ $debug = 1 }
 );
@@ -522,19 +522,6 @@ CIFFILEANAL: for my $filename ( @ARGV ) {
             }
         }
     }
-}
-
-##
-# Prints program version message.
-##
-sub version_message()
-{
-print <<"END_M";
-cif_validate v.$version
-
-END_M
-
-return
 }
 
 ##
