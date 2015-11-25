@@ -124,8 +124,8 @@ sub get_replacement_tags($$);
 #*                     Print short usage message (this message) and exit.
 #**
 @ARGV = getOptions(
-    '-d,--dictionaries'    => sub{ @dict_files = split ',|\s+', get_value },
-    '-D,--add-dictionary'  => sub{ push @dict_files, get_value },
+    '-d,--dictionaries'    => sub{ @dict_files = split m/,|\s+/, get_value() },
+    '-D,--add-dictionary'  => sub{ push @dict_files, get_value() },
     '--clear-dictionaries' => sub{ @dict_files = () },
 
     '--treat-as-set'                    => $set_of_enum,
@@ -292,11 +292,11 @@ CIFFILEANAL: for my $filename ( @ARGV ) {
                 if ( exists $block->{inloop}{$tag_analysed} ) {
                     my $ref_tags = get_list_reference_tags($dict_d, $lc_tag_analysed);
                     for ( my $i = 0; $i < @{$block->{loops}}; $i++ ) {
-                      if( grep $_ eq $tag_analysed, @{$block->{loops}[$i]} ) {
+                      if( grep { $_ eq $tag_analysed } @{$block->{loops}[$i]} ) {
                         foreach my $loop_ref_tag (@{$ref_tags}) {
                             # TO-DO: the reference property is also transitional 
                             # to the 'alternate' tags and this must be tested
-                            if( grep lc($_) eq $loop_ref_tag, @{$block->{loops}[$i]} ) {
+                            if( grep { lc($_) eq $loop_ref_tag } @{$block->{loops}[$i]} ) {
                                 if ( $debug ) {
                                     debug_note ( $0, $filename, $dataname,
                                        "tag '$loop_ref_tag' is mandatory "
@@ -375,7 +375,7 @@ CIFFILEANAL: for my $filename ( @ARGV ) {
                         );
                         my $value_found_in_list = 0;
                         my $emulate_set = 0;
-                        if(  grep lc($_) eq $lc_tag_analysed, @{$set_of_enum} ) {
+                        if( grep { lc($_) eq $lc_tag_analysed } @{$set_of_enum} ) {
                             $emulate_set = 1;
                             my $set_of_enum_values = join '|',
                                @{$dict_d->{$lc_tag_analysed}{values}{_enumeration}};
@@ -393,13 +393,13 @@ CIFFILEANAL: for my $filename ( @ARGV ) {
                             }
                         } else {
                             if( $case_sensitive ) {
-                                if( grep $_ eq $value,
+                                if( grep { $_ eq $value }
                                     @{$dict_d->{$lc_tag_analysed}{values}{_enumeration}} ) {
                                     $value_found_in_list = 1;
                                 }
                             } else {
                                 my $lc_value = lc $value;
-                                if( grep lc($_) eq $lc_value,
+                                if( grep { lc($_) eq $lc_value }
                                     @{$dict_d->{$lc_tag_analysed}{values}{_enumeration}} ) {
                                     $value_found_in_list = 1;
                                 }
@@ -474,12 +474,12 @@ CIFFILEANAL: for my $filename ( @ARGV ) {
                     }
 
                     my $sigma = $block->{precisions}{$tag_analysed}[$tag_index];
-                    if ( defined $sigma && !$su_permitted ) {
-                        $value =~ /(\(\d+\))$/;
-                        warn "NOTE, tag '$tag_analysed' value \"$value\" is "
-                           . 'not permitted to contain standard uncertainty '
-                           . '"' . $1 . '"' . ' -- ' . 'standard uncertainty '
-                           . 'will be ignored in further validation' . "\n";
+                    if ( $value =~ /([(]\d+[)])$/ && !$su_permitted ) {
+                        warn "NOTE, tag '$tag_analysed' value \"$value\" "
+                           . 'is not permitted to contain standard '
+                           . 'uncertainty "' . $1 . '"' . ' -- '
+                           . 'standard uncertainty will be ignored in '
+                           . 'further validation' . "\n";
                         $sigma = undef;
                     }
 
@@ -529,10 +529,12 @@ CIFFILEANAL: for my $filename ( @ARGV ) {
 ##
 sub version_message()
 {
-print <<END_M;
+print <<"END_M";
 cif_validate v.$version
 
 END_M
+
+return
 }
 
 ##
@@ -591,12 +593,13 @@ sub get_dict($)
             }
         }
 
-        $datan++ and next if
-            !exists $dict_f->[$datan]{values}{_type};
-        for ( @{$dict_f->[$datan]{values}{_name}} ) {
-            $tags->{lc $_} = $dict_f->[$datan];
-            $tags->{lc $_}{values}{_dataname} = $dict_f->[$datan]{name};
+        if ( exists $dict_f->[$datan]{values}{_type} ) {
+            for ( @{$dict_f->[$datan]{values}{_name}} ) {
+                $tags->{lc $_} = $dict_f->[$datan];
+                $tags->{lc $_}{values}{_dataname} = $dict_f->[$datan]{name};
+            }
         }
+
         $datan++;
     }
 
