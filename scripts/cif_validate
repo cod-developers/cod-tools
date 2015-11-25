@@ -28,7 +28,7 @@ use COD::ErrorHandler qw( process_warnings
 my $version = 0.1;
 
 my @dictFiles;
-my $use_parser = "c";
+my $use_parser = 'c';
 my $setOfEnum  = ['_atom_site_refinement_flags'];
 my $caseSensitive    = 1;
 my $reportLocalTags  = 0;
@@ -49,16 +49,16 @@ sub getListReferenceTags($$);
 sub getReplacementTags($$);
 
 #* USAGE:
-#*     $0 --dictionaries "cif_core.dic,cif_cod.dic" --options input1.cif input*.cif
+#*     $0 --dictionaries 'cif_core.dic,cif_cod.dic' --options input1.cif input*.cif
 #*
 #* OPTIONS:
-#* -d, --dictionaries "cif_core.dic,cif_cod.dic"
+#* -d, --dictionaries 'cif_core.dic,cif_cod.dic'
 #*                     A list of CIF dictionary files (according to DDL2)
 #*                     to be used in CIF file validation. List elements
-#*                     are separated either by "," or by " ". To include
+#*                     are separated either by ',' or by ' '. To include
 #*                     dictionaries with filenames containing these symbols,
 #*                     the --add-dictionary option is used.
-#* -D, --add-dictionary "cif new dictionary.dic"
+#* -D, --add-dictionary 'cif new dictionary.dic'
 #*                     Add additional CIF dictionary to the list.
 #* --clear-dictionaries
 #*                     Remove all CIF dictionaries from the list.
@@ -124,47 +124,47 @@ sub getReplacementTags($$);
 #*                     Print short usage message (this message) and exit.
 #**
 @ARGV = getOptions(
-    "-d,--dictionaries"    => sub{ @dictFiles = split( ',|\s+', &get_value ) },
-    "-D,--add-dictionary"  => sub{ push( @dictFiles, &get_value ) },
-    "--clear-dictionaries" => sub{ @dictFiles = () },
+    '-d,--dictionaries'    => sub{ @dictFiles = split ',|\s+', get_value },
+    '-D,--add-dictionary'  => sub{ push @dictFiles, get_value },
+    '--clear-dictionaries' => sub{ @dictFiles = () },
 
-    "--treat-as-set"                    => $setOfEnum,
-    "--no-treat-as-set"                 => sub{ $setOfEnum = [] },
+    '--treat-as-set'                    => $setOfEnum,
+    '--no-treat-as-set'                 => sub{ $setOfEnum = [] },
 
-    "--ignore-case"                     => sub{ $caseSensitive = 0 },
-    "--dont-ignore-case,--respect-case" => sub{ $caseSensitive = 1 },
-    "--case-sensitive"                  => sub{ $caseSensitive = 1 },
+    '--ignore-case'                     => sub{ $caseSensitive = 0 },
+    '--dont-ignore-case,--respect-case' => sub{ $caseSensitive = 1 },
+    '--case-sensitive'                  => sub{ $caseSensitive = 1 },
 
-    "--report-local-tags"               => sub{ $reportLocalTags = 1 },
-    "--no-report-local-tags"            => sub{ $reportLocalTags = 0 },
-    "--ignore-local-tags"               => sub{ $reportLocalTags = 0 },
+    '--report-local-tags'               => sub{ $reportLocalTags = 1 },
+    '--no-report-local-tags'            => sub{ $reportLocalTags = 0 },
+    '--ignore-local-tags'               => sub{ $reportLocalTags = 0 },
 
-    "--report-deprecated"               => sub{ $reportDeprecated = 1 },
-    "--ignore-deprecated"               => sub{ $reportDeprecated = 0 },
+    '--report-deprecated'               => sub{ $reportDeprecated = 1 },
+    '--ignore-deprecated'               => sub{ $reportDeprecated = 0 },
 
-    "--use-perl-parser"                 => sub{ $use_parser = "perl" },
-    "--use-c-parser"                    => sub{ $use_parser = "c" },
+    '--use-perl-parser'                 => sub{ $use_parser = 'perl' },
+    '--use-c-parser'                    => sub{ $use_parser = 'c' },
 
-    "-c,--always-continue"              => sub { $die_on_errors   = 0;
+    '-c,--always-continue'              => sub { $die_on_errors   = 0;
                                                  $die_on_warnings = 0;
                                                  $die_on_notes    = 0 },
-    "-c-,--always-die"                  => sub { $die_on_errors   = 1;
+    '-c-,--always-die'                  => sub { $die_on_errors   = 1;
                                                  $die_on_warnings = 1;
                                                  $die_on_notes    = 1 },
 
-    "--continue-on-errors"          => sub { $die_on_errors = 0 },
-    "--die-on-errors"               => sub { $die_on_errors = 1 },
+    '--continue-on-errors'          => sub { $die_on_errors = 0 },
+    '--die-on-errors'               => sub { $die_on_errors = 1 },
 
-    "--continue-on-warnings" => sub { $die_on_warnings = 0 },
-    "--die-on-warnings"      => sub { $die_on_warnings = 1 },
+    '--continue-on-warnings' => sub { $die_on_warnings = 0 },
+    '--die-on-warnings'      => sub { $die_on_warnings = 1 },
 
-    "--continue-on-notes"    => sub { $die_on_notes = 0 },
-    "--die-on-notes"         => sub { $die_on_notes = 1 },
+    '--continue-on-notes'    => sub { $die_on_notes = 0 },
+    '--die-on-notes'         => sub { $die_on_notes = 1 },
 
-    "-v,--version"      => sub{ VersionMessage(); exit; },
-    "--options"         => sub { options; exit },
-    "--help,--usage"    => sub{ usage; exit; },
-    "--debug"           => sub{ $debug = 1 }
+    '-v,--version'      => sub{ VersionMessage(); exit; },
+    '--options'         => sub { options; exit },
+    '--help,--usage'    => sub{ usage; exit; },
+    '--debug'           => sub{ $debug = 1 }
 );
 
 my $die_on_error_level = {
@@ -199,8 +199,8 @@ if( @dictFiles ) {
             'program'   => $0,
             'err_level' => 'ERROR',
             'message'   => 'no tag definitions were found in the '
-                         . "provided dictionary files ('"
-                         . join( "', '", @dictFiles ) . "')"
+                         . 'provided dictionary files '
+                         . '(\'' . join( '\', \'', @dictFiles ) . '\')'
         }, $die_on_errors );
     }
 } else {
@@ -208,24 +208,24 @@ if( @dictFiles ) {
         'program'   => $0,
         'err_level' => 'ERROR',
         'message'   => 'at least one dictionary file should be provided by '
-                     . "using the '--dictionaries' option. Automatic "
+                     . 'using the \'--dictionaries\' option. Automatic '
                      . 'dictionary download is not implemeted yet'
     }, $die_on_errors );
-    my $dictIUCRURI = "ftp://ftp.iucr.org/pub/cif_core.dic";
+    my $dictIUCRURI = 'ftp://ftp.iucr.org/pub/cif_core.dic';
 }
 
-@ARGV = ("-") unless @ARGV;
+@ARGV = ('-') unless @ARGV;
 # start-iterate-through-CIF-files
 CIFFILEANAL: for my $filename ( @ARGV ) {
     my $options = { 'parser' => $use_parser, 'no_print' => 1 };
     my ( $data, $err_count, $messages ) = parse_cif( $filename, $options );
     process_parser_messages( $messages, $die_on_error_level );
 
-    # convert all tags to a "cannonical" form
+    # convert all tags to a 'cannonical' form
     canonicalize_all_names( $data );
     next CIFFILEANAL if ( !defined $data || $data == 1 );
 
-    for my $block ( @$data ) {
+    for my $block ( @{$data} ) {
         my $dataname = 'data_' . $block->{name} if defined $block->{name};
 
         local $SIG{__WARN__} = sub { process_warnings( {
@@ -263,7 +263,7 @@ CIFFILEANAL: for my $filename ( @ARGV ) {
             for my $dictF ( sort keys %dictTags ) {
                 my $dictD = $dictTags{$dictF};
                 # check if tags are defined in the dictionary
-                if( exists $$dictD{$lc_tagAnalysed} ) {
+                if( exists $dictD->{$lc_tagAnalysed} ) {
                     $defined = 1;
                     if ( $debug ) {
                       debug_note( $0, $filename, $dataname, "tag '$tagAnalysed' "
@@ -279,10 +279,10 @@ CIFFILEANAL: for my $filename ( @ARGV ) {
 
                 # check if tags are deprecated (replaced with other tags)
                 my $replTags = getReplacementTags($dictD, $lc_tagAnalysed);
-                if( $reportDeprecated && @$replTags != 0 ) {
+                if( $reportDeprecated && @{$replTags} != 0 ) {
                     warn "NOTE, tag '$tagAnalysed' has been replaced by "
-                        . 'tag(-s) [' . join(', ', @$replTags) . '] '
-                        . "according to $dictF\n";
+                        . 'tag(-s) [' . join(', ', @{$replTags}) . '] '
+                        . "according to $dictF" . "\n";
                 }
 
                 # check if looped lists contain reference tags required by 
@@ -293,7 +293,7 @@ CIFFILEANAL: for my $filename ( @ARGV ) {
                     my $refTags = getListReferenceTags($dictD, $lc_tagAnalysed);
                     for ( my $i = 0; $i < @{$block->{loops}}; $i++ ) {
                       if( grep $_ eq $tagAnalysed, @{$block->{loops}[$i]} ) {
-                        foreach my $loopRefTag (@$refTags) {
+                        foreach my $loopRefTag (@{$refTags}) {
                             # TO-DO: the reference property is also transitional 
                             # to the 'alternate' tags and this must be tested
                             if( grep lc($_) eq $loopRefTag, @{$block->{loops}[$i]} ) {
@@ -311,7 +311,7 @@ CIFFILEANAL: for my $filename ( @ARGV ) {
                                        . 'mandatory in loop when tag(s) ['
                                        . join(', ', @{$dictTagValues->{_name}})
                                        . "] are defined according to $dictF "
-                                       . "but was not found\n";
+                                       . 'but was not found' . "\n";
                                     push @{$reportedBlockReferences[$i]},
                                          $loopRefTag;
                             }
@@ -337,7 +337,7 @@ CIFFILEANAL: for my $filename ( @ARGV ) {
                         }
                     } else {
                         warn "NOTE, tag '$tagAnalysed' must be in a loop "
-                           . "according to $dictF but is not in a loop\n";
+                           . "according to $dictF but is not in a loop" . "\n";
                     }
                 }
                 # check types of values
@@ -345,16 +345,16 @@ CIFFILEANAL: for my $filename ( @ARGV ) {
                 my %rangeForPrint;
                 if( exists $dictD->{$lc_tagAnalysed} &&
                     exists $dictD->{$lc_tagAnalysed}{values}{_enumeration_range} ) {
-                    ($$range{min}, $$range{max}) = split(/:/, 
+                    ( $range->{'min'}, $range->{'max'} ) = split(/:/,
                         $dictD->{$lc_tagAnalysed}{values}{_enumeration_range}[0],
                         2);
-                    %rangeForPrint = %$range;
-                    if( length($$range{min}) == 0 ) {
-                        delete $$range{min};
+                    %rangeForPrint = %{$range};
+                    if( length($range->{min}) == 0 ) {
+                        delete $range->{min};
                         $rangeForPrint{min} = '<any>';
                     }
-                    if( length($$range{max}) == 0 ) {
-                        delete $$range{max};
+                    if( length($range->{max}) == 0 ) {
+                        delete $range->{max};
                         $rangeForPrint{max} = '<any>';
                     }
                 }
@@ -380,7 +380,7 @@ CIFFILEANAL: for my $filename ( @ARGV ) {
                             my $setOfEnumValues = join '|',
                                @{$dictD->{$lc_tagAnalysed}{values}{_enumeration}};
                             $setOfEnumValues =~ s/\./\\./;
-                            my $regexpSetOfEnumValues = 
+                            my $regexpSetOfEnumValues =
                                                  qr/^($setOfEnumValues)+$/s;
                             if( $caseSensitive ) {
                                 if( $value =~ m/$regexpSetOfEnumValues/s ) {
@@ -393,13 +393,13 @@ CIFFILEANAL: for my $filename ( @ARGV ) {
                             }
                         } else {
                             if( $caseSensitive ) {
-                                if( grep $_ eq $value, 
+                                if( grep $_ eq $value,
                                     @{$dictD->{$lc_tagAnalysed}{values}{_enumeration}} ) {
                                     $valueFoundInList = 1;
                                 }
                             } else {
                                 my $lcValue = lc $value;
-                                if( grep lc($_) eq $lcValue, 
+                                if( grep lc($_) eq $lcValue,
                                     @{$dictD->{$lc_tagAnalysed}{values}{_enumeration}} ) {
                                     $valueFoundInList = 1;
                                 }
@@ -432,9 +432,9 @@ CIFFILEANAL: for my $filename ( @ARGV ) {
                     if( exists $dictD->{$lc_tagAnalysed} && (
                             defined $dictD->{$lc_tagAnalysed}{values}{_type} &&
                             $dictD->{$lc_tagAnalysed}{values}{_type}[0] eq 'numb' ||
-                            defined $dictD->{$lc_tagAnalysed}{values}{"_item_type.code"} &&
-                            ($dictD->{$lc_tagAnalysed}{values}{"_item_type.code"}[0] eq "float" ||
-                             $dictD->{$lc_tagAnalysed}{values}{"_item_type.code"}[0] eq "int")
+                            defined $dictD->{$lc_tagAnalysed}{values}{'_item_type.code'} &&
+                            ($dictD->{$lc_tagAnalysed}{values}{'_item_type.code'}[0] eq 'float' ||
+                             $dictD->{$lc_tagAnalysed}{values}{'_item_type.code'}[0] eq 'int')
                         )) {
 
                         if(defined $block->{types}{$tagAnalysed}) {
@@ -442,16 +442,16 @@ CIFFILEANAL: for my $filename ( @ARGV ) {
                                 && 'INT' ne $block->{types}{$tagAnalysed}[$tagIndex]) {
                                 warn "NOTE, tag '$tagAnalysed' value \""
                                    . $block->{values}{$tagAnalysed}[$tagIndex]
-                                   . "\" is of type '"
+                                   . '" is of type \''
                                    . $block->{types}{$tagAnalysed}[$tagIndex]
-                                   . "' while it should be numeric, i.e. "
-                                   . "'FLOAT', or 'INT'\n";
+                                   . '\' while it should be numeric, i.e. '
+                                   . '\'FLOAT\', or \'INT\'' . "\n";
                             } elsif( $debug ) {
                                 debug_note( $0, $filename, $dataname,
                                             "tag '$tagAnalysed' is of type '" .
                                             $block->{types}{$tagAnalysed}[$tagIndex] .
-                                            "' as expected, as it should be either " .
-                                            "'FLOAT' or 'INT'", undef );
+                                            '\' as expected, as it should be either ' .
+                                            '\'FLOAT\' or \'INT\'', undef );
                             }
                         }
                     }
@@ -479,14 +479,14 @@ CIFFILEANAL: for my $filename ( @ARGV ) {
                         warn "NOTE, tag '$tagAnalysed' value \"$value\" is "
                            . 'not permitted to contain standard uncertainty '
                            . '"' . $1 . '"' . ' -- ' . 'standard uncertainty '
-                           . "will be ignored in further validation\n";
+                           . 'will be ignored in further validation' . "\n";
                         $sigma = undef;
                     }
 
                     #
                     # Check values against enumeration_range
                     #
-                    if( %$range ) {
+                    if( %{$range} ) {
                         my $valueWOPrecision = $value;
                         if( exists $dictD->{$lc_tagAnalysed} &&
                             $dictD->{$lc_tagAnalysed}{values}{_type}[0]
@@ -548,19 +548,19 @@ sub severityName($)
     my ($severity) = @_;
 
     if( $severity & 1 ) {
-        return "ERROR";
+        return 'ERROR';
     } elsif( $severity & 2 ) {
-        return "WARNING";
+        return 'WARNING';
     } elsif( $severity & 4 ) {
-        return "NOTE";
+        return 'NOTE';
     } elsif( $severity & 8 ) {
-        return "INFO-ERROR";
+        return 'INFO-ERROR';
     } elsif( $severity & 16 ) {
-        return "INFO-WARNING";
+        return 'INFO-WARNING';
     } elsif( $severity & 32 ) {
-        return "INFO-NOTICE";
+        return 'INFO-NOTICE';
     } elsif( $severity & 64 ) {
-        return "INFO-INDICATOR";
+        return 'INFO-INDICATOR';
     } else {
         return "ERROR-LEVEL=$severity";
     }
@@ -578,24 +578,24 @@ sub getDict($)
     my ($dictF) = @_;
     my $tags = {};
     my $datan = 0;
-    while( $datan < @$dictF ) {
+    while( $datan < @{$dictF} ) {
         if( exists $dictF->[$datan]{save_blocks} ) {
             for my $saveblk ( @{$dictF->[$datan]{save_blocks}} ) {
                 ## print ">>>> processing save block '$saveblk->{name}'\n";
-                next if !exists $saveblk->{values}{"_item.name"};
-                for ( @{$saveblk->{values}{"_item.name"}} ) {
+                next if !exists $saveblk->{values}{'_item.name'};
+                for ( @{$saveblk->{values}{'_item.name'}} ) {
                     ## print ">>> defining '$_'\n";
-                    $$tags{lc $_} = $saveblk;
-                    $$tags{lc $_}{values}{_dataname} = $_;
+                    $tags->{lc $_} = $saveblk;
+                    $tags->{lc $_}{values}{_dataname} = $_;
                 }
             }
         }
 
         $datan++ and next if
-            !exists $$dictF[$datan]{values}{_type};
-        for ( @{$$dictF[$datan]{values}{_name}} ) {
-            $$tags{lc $_} = $$dictF[$datan];
-            $$tags{lc $_}{values}{_dataname} = $$dictF[$datan]{name};
+            !exists $dictF->[$datan]{values}{_type};
+        for ( @{$dictF->[$datan]{values}{_name}} ) {
+            $tags->{lc $_} = $dictF->[$datan];
+            $tags->{lc $_}{values}{_dataname} = $dictF->[$datan]{name};
         }
         $datan++;
     }
@@ -635,7 +635,7 @@ sub getReplacementTags($$)
 ##
 # Check value against range (defined in dictionary).
 # @param $type
-#       String, representing the type of value ("numb" or "char").
+#       String, representing the type of value ('numb' or 'char').
 # @param $range
 #       Reference to range hash as $$range{min} and $$range{max}.
 # @param $value
@@ -651,8 +651,8 @@ sub checkAgainstRange($$$$)
 {
     my ($type, $range, $value, $sigma) = @_;
 
-    if( !exists $$range{min} &&
-        !exists $$range{max} ) {
+    if( !exists $range->{min} &&
+        !exists $range->{max} ) {
         return -1;
     }
     if( $type eq 'numb' ) {
@@ -688,11 +688,11 @@ sub checkAgainstRangeNumb($$$)
     my ($min,$max);
 
     if( defined $sigma ) {
-        $min = $$range{min} - 3 * $sigma if exists $$range{min};
-        $max = $$range{max} + 3 * $sigma if exists $$range{max};
+        $min = $range->{min} - 3 * $sigma if exists $range->{min};
+        $max = $range->{max} + 3 * $sigma if exists $range->{max};
     } else {
-        $min = $$range{min} if exists $$range{min};
-        $max = $$range{max} if exists $$range{max};
+        $min = $range->{min} if exists $range->{min};
+        $max = $range->{max} if exists $range->{max};
     }
 
     if(
@@ -720,9 +720,9 @@ sub checkAgainstRangeChar($$)
     my ( $range, $value ) = @_;
 
     if(
-        ( !exists $$range{max} || $value le $$range{max} )
+        ( !exists $range->{max} || $value le $range->{max} )
         &&
-        ( !exists $$range{min} || $value ge $$range{min} )
+        ( !exists $range->{min} || $value ge $range->{min} )
     ) {
         return 1;
     }
@@ -750,8 +750,8 @@ sub getListReferenceTags($$)
         # _list_reference identifies data item(s) that must collectively be
         # in a loop. They are referenced by the names of their data blocks
         foreach my $refDataname (@{$tagValues->{_list_reference}}) {
-          foreach my $tags ( sort keys %$dict ) {
-              if ( "_" . $dict->{$tags}{values}{_dataname} eq $refDataname ) {
+          foreach my $tags ( sort keys %{$dict} ) {
+              if ( '_' . $dict->{$tags}{values}{_dataname} eq $refDataname ) {
                   push @listReferenceTags, $tags;
               }
           }
