@@ -39,14 +39,14 @@ my $die_on_errors   = 1;
 my $die_on_warnings = 0;
 my $die_on_notes    = 0;
 
-sub VersionMessage();
-sub severityName($);
-sub getDict($);
-sub checkAgainstRange($$$$);
-sub checkAgainstRangeNumb($$$);
-sub checkAgainstRangeChar($$);
-sub getListReferenceTags($$);
-sub getReplacementTags($$);
+sub version_message();
+sub severity_name($);
+sub get_dict($);
+sub check_against_range($$$$);
+sub check_against_range_numb($$$);
+sub check_against_range_char($$);
+sub get_list_reference_tags($$);
+sub get_replacement_tags($$);
 
 #* USAGE:
 #*     $0 --dictionaries 'cif_core.dic,cif_cod.dic' --options input1.cif input*.cif
@@ -161,7 +161,7 @@ sub getReplacementTags($$);
     '--continue-on-notes'    => sub { $die_on_notes = 0 },
     '--die-on-notes'         => sub { $die_on_notes = 1 },
 
-    '-v,--version'      => sub{ VersionMessage(); exit; },
+    '-v,--version'      => sub{ version_message(); exit; },
     '--options'         => sub { options; exit },
     '--help,--usage'    => sub{ usage; exit; },
     '--debug'           => sub{ $debug = 1 }
@@ -182,7 +182,7 @@ if( @dict_files ) {
         my ( $data, $err_count, $messages ) = parse_cif( $dict, $options );
         process_parser_messages( $messages, $die_on_error_level );
 
-        $dict_tags{$dict} = getDict( $data );
+        $dict_tags{$dict} = get_dict( $data );
         if ( scalar( keys( %{$dict_tags{$dict}} ) ) == 0 ) {
             report_message( {
                 'program'       => $0,
@@ -278,7 +278,7 @@ CIFFILEANAL: for my $filename ( @ARGV ) {
                 }
 
                 # check if tags are deprecated (replaced with other tags)
-                my $repl_tags = getReplacementTags($dict_d, $lc_tag_analysed);
+                my $repl_tags = get_replacement_tags($dict_d, $lc_tag_analysed);
                 if( $report_deprecated && @{$repl_tags} != 0 ) {
                     warn "NOTE, tag '$tag_analysed' has been replaced by "
                         . 'tag(-s) [' . join(', ', @{$repl_tags}) . '] '
@@ -290,7 +290,7 @@ CIFFILEANAL: for my $filename ( @ARGV ) {
                 my $dict_tag_values = $dict_d->{$lc_tag_analysed}{values};
 
                 if ( exists $block->{inloop}{$tag_analysed} ) {
-                    my $ref_tags = getListReferenceTags($dict_d, $lc_tag_analysed);
+                    my $ref_tags = get_list_reference_tags($dict_d, $lc_tag_analysed);
                     for ( my $i = 0; $i < @{$block->{loops}}; $i++ ) {
                       if( grep $_ eq $tag_analysed, @{$block->{loops}[$i]} ) {
                         foreach my $loop_ref_tag (@{$ref_tags}) {
@@ -494,7 +494,7 @@ CIFFILEANAL: for my $filename ( @ARGV ) {
                             $value_wo_su =~ s/\s*\(.*$//;
                         }
                         if( exists $dict_d->{$lc_tag_analysed} &&
-                            checkAgainstRange(
+                            check_against_range(
                                 $dict_d->{$lc_tag_analysed}{values}{_type}[0],
                                 $range, $value_wo_su, $sigma) <= 0 ) {
                                 warn "NOTE, tag '$tag_analysed' value " .
@@ -505,8 +505,8 @@ CIFFILEANAL: for my $filename ( @ARGV ) {
                             debug_note( $0, $filename, $dataname,
                                         "tag '$tag_analysed' value " .
                                         "\"$value\" is in range (" .
-                                        $range_for_print{min} . ", " .
-                                        $range_for_print{max} . ")", undef );
+                                        $range_for_print{min} . ', ' .
+                                        $range_for_print{max} . ')', undef );
                         }
                     } elsif( $debug ) {
                         debug_note( $0, $filename, $dataname,
@@ -527,7 +527,7 @@ CIFFILEANAL: for my $filename ( @ARGV ) {
 ##
 # Prints program version message.
 ##
-sub VersionMessage()
+sub version_message()
 {
 print <<END_M;
 cif_validate v.$version
@@ -543,7 +543,7 @@ END_M
 # @return
 #       Error severity level text string.
 ##
-sub severityName($)
+sub severity_name($)
 {
     my ($severity) = @_;
 
@@ -573,7 +573,7 @@ sub severityName($)
 # @return
 #       Hash of tags and related references to parsed data blocks.
 ##
-sub getDict($)
+sub get_dict($)
 {
     my ($dict_f) = @_;
     my $tags = {};
@@ -607,14 +607,14 @@ sub getDict($)
 ##
 # Returns tag names that have superseded the tag.
 # @param $dict
-#       Reference to a dictionary object as returned by 'getDict' subroutine.
+#       Reference to a dictionary object as returned by 'get_dict' subroutine.
 # @param $tag
 #       Name of the tag.
 # @return
 #       Array of tag names that have superseded the tag. If the tag has not
 #       been deprecated, an empty array is returned.
 ##
-sub getReplacementTags($$)
+sub get_replacement_tags($$)
 {
     my ( $dict, $tag, ) = @_;
 
@@ -647,7 +647,7 @@ sub getReplacementTags($$)
 #        0 if the value is out of the provided range;
 #        1 if the value is in the provided range.
 ##
-sub checkAgainstRange($$$$)
+sub check_against_range($$$$)
 {
     my ($type, $range, $value, $sigma) = @_;
 
@@ -656,9 +656,9 @@ sub checkAgainstRange($$$$)
         return -1;
     }
     if( $type eq 'numb' ) {
-        return checkAgainstRangeNumb( $range, $value, $sigma );
+        return check_against_range_numb( $range, $value, $sigma );
     } else {
-        return checkAgainstRangeChar( $range, $value );
+        return check_against_range_char( $range, $value );
     }
 }
 
@@ -677,7 +677,7 @@ sub checkAgainstRange($$$$)
 #          at all;
 #        1 if the value is in the provided range.
 ##
-sub checkAgainstRangeNumb($$$)
+sub check_against_range_numb($$$)
 {
     my ( $range, $value, $sigma ) = @_;
 
@@ -715,7 +715,7 @@ sub checkAgainstRangeNumb($$$)
 #       0 if the value is out of the provided range;
 #       1 if the value is in the provided range.
 ##
-sub checkAgainstRangeChar($$)
+sub check_against_range_char($$)
 {
     my ( $range, $value ) = @_;
 
@@ -733,14 +733,14 @@ sub checkAgainstRangeChar($$)
 # Returns an array of tags that are required to be present in the loop 
 # containing the analyzed tag.
 # @param $dict
-#       Reference to a dictionary object as returned by 'getDict' subroutine.
+#       Reference to a dictionary object as returned by 'get_dict' subroutine.
 # @param $tag
 #       Name of the tag to analyze.
 # @return $list_reference_tags
 #       A reference to an array of tags that are required to be present in the 
 #       loop containing the analyzed tag.
 ##
-sub getListReferenceTags($$)
+sub get_list_reference_tags($$)
 {
     my ( $dict, $tag ) = @_;
 
