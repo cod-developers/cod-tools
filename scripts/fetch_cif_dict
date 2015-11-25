@@ -59,18 +59,18 @@ my $dictFileURI = 'ftp://ftp.iucr.org/pub/cif_core.dic';
 #*                    Print a short usage message (this message) and exit.
 #**
 @ARGV = getOptions(
-    "--cache-duration"   => \$cacheDuration,
-    "--mail-address"     => \$fromMail,
+    '--cache-duration'   => \$cacheDuration,
+    '--mail-address'     => \$fromMail,
 
-    "--force-overwrite"    => sub { $forceOverwrite = 1 },
-    "--no-force-overwrite" => sub { $forceOverwrite = 0 },
+    '--force-overwrite'    => sub { $forceOverwrite = 1 },
+    '--no-force-overwrite' => sub { $forceOverwrite = 0 },
 
-    "--silent"       => sub { $verbose = 0 },
-    "--quiet"        => sub { $verbose = 0 },
-    "--verbose"      => sub { $verbose = 1 },
-    "--no-quiet"     => sub { $verbose = 1 },
-    "--options"      => sub { options; exit },
-    "--help,--usage" => sub { usage; exit }
+    '--silent'       => sub { $verbose = 0 },
+    '--quiet'        => sub { $verbose = 0 },
+    '--verbose'      => sub { $verbose = 1 },
+    '--no-quiet'     => sub { $verbose = 1 },
+    '--options'      => sub { options; exit },
+    '--help,--usage' => sub { usage; exit }
 );
 
 fetchDictionary($dictFileURI, $cacheDuration, $fromMail, $forceOverwrite);
@@ -95,7 +95,7 @@ sub prepareLocal {
             return 0;
         }
         note( $0, $myCODDir, undef, 'created directory to store '
-            . "Crystallography Open Database (COD) persistent files", undef );
+            . 'Crystallography Open Database (COD) persistent files', undef );
     }
 
     return $myCODDir;
@@ -150,7 +150,7 @@ sub moveFetchedFileIfDiff {
     if( -e $dictFilePath ) {
         if( compare($dictFilePath, $newFilePath) == 0 ) {
             note( $0, undef, undef, 'new file does not differ from its '
-                . 'previous version', "only its mtime will be changed "
+                . 'previous version', 'only its mtime will be changed '
                 . 'for further processes' );
             utime undef, undef, $dictFilePath;
             unlink $newFilePath;
@@ -167,7 +167,7 @@ sub moveFetchedFileIfDiff {
         return 0;
     }
 
-    note( $0, $dictFilePath, undef, 'new dictionary file was successfuly ' . 
+    note( $0, $dictFilePath, undef, 'new dictionary file was successfuly ' .
           'downloaded', undef );
     return 1;
 }
@@ -230,7 +230,7 @@ sub fetchDictionary {
                                  lcfirst($ftpAgent->message) );
     $ftpAgent->get($ftp{file}, $temporaryStore) or die
                   sprint_message($0, undef, undef, 'ERROR', 'unable to fetch'
-                               . "file '$ftp{file}'", 
+                               . "file '$ftp{file}'",
                                   lcfirst($ftpAgent->message));
     note( $0, $dictFileURI, undef, 'succesfully downloaded the dictionary and '
         . "stored it as '$temporaryStore' for further processing", undef );
