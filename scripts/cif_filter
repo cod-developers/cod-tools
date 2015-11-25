@@ -508,7 +508,8 @@ eval {
         open( my $extra, '<', "$extra_tag_file" ) or die 'ERROR, '
           . 'could not open tag list for reading -- ' . lcfirst($!) . "\n";
 
-        @extra_tags = map {s,\s,,g;lc($_)} map {split} grep /^\s*_/, <$extra>;
+        @extra_tags = map { s,\s,,g;lc($_) }
+                        map { split } grep { /^\s*_/} <$extra>;
 
         close( $extra ) or die 'ERROR, '
           . 'error while closing tag list file after reading -- '
@@ -932,7 +933,7 @@ for my $filename (@ARGV) {
                     }
                     if( !$start_page && ( $reference =~ /<pages?>(.*?)<\/pages?>/s ||
                                           $reference =~ /\\pages?\{(.*?)\}/s )) {
-                        my @pages = map { s/\s//g; $_ } split ( "-", $1 );
+                        my @pages = map { s/\s//g; $_ } split  m/-/, $1;
                         $datablok->{_journal_page_first} = [ unicode2cif( $pages[0] ) ];
                         if( int(@pages) > 1 ) {
                             $datablok->{_journal_page_last} =

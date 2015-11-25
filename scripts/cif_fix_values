@@ -322,7 +322,7 @@ sub insert_report_to_comments
             "The following automatic conversions were performed:\n\n" .
             join "\n",
                  map { fold( 70, ' +', ' ', $_ ) }
-                    split "\n", $reports_value;
+                    split m/\n/, $reports_value;
 
         if( exists $values->{$comments_tag} ) {
             $values->{$comments_tag}[0] .= "\n\n" . $title;
@@ -1425,7 +1425,7 @@ sub treat_as_set($) {
                     } else {
                         my $new_value = '';
                         my $val = $tag_value;
-                        foreach( split '', $val ) {
+                        foreach( split m//, $val ) {
                             my @replacement_list =
                                 replacement_candidates( $_, $dictTags{$tag} );
 
