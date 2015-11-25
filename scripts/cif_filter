@@ -509,7 +509,7 @@ eval {
           . 'could not open tag list for reading -- ' . lcfirst($!) . "\n";
 
         @extra_tags = map { s,\s,,g;lc($_) }
-                        map { split } grep { /^\s*_/} <$extra>;
+                        map { split } grep { /^\s*_/ } <$extra>;
 
         close( $extra ) or die 'ERROR, '
           . 'error while closing tag list file after reading -- '
@@ -583,7 +583,7 @@ if( defined $bib_file ) {
             if( $bib_file =~ /\.ref/ ) {
                 $reference = <$biblio>; # read the first line
             } elsif( $biblio =~ /\.xrf/ ) {
-                my @reference = grep !/^\#/, <$biblio>;
+                my @reference = grep { !/^\#/ } <$biblio>;
                 $reference = $reference[0]; # read the first non-comment line
             } else {
                 local $/ = undef; # read the whole file
@@ -698,7 +698,7 @@ for my $filename (@ARGV) {
 # See Toby et al., Journal of Applied Crystallography (2003).
 #
 
-    my $pd_datablocks = grep( $_->{values}{_pd_block_id}, @$data );
+    my $pd_datablocks = grep { $_->{values}{_pd_block_id} } @$data;
 
     my %pd_global_publ_data = ();
 
@@ -722,20 +722,21 @@ for my $filename (@ARGV) {
                     exists $datablok->{_pd_block_diffractogram_id} ) {
                     $pd_overall_info_datablock_nr++;
                 } elsif (
-                    grep( /^_(audit|publ|journal)_*/, keys %$datablok ) > 0 &&
-                    grep( /^_refln_index_.$/, keys %$datablok ) == 0 &&
+                    ( grep { /^_(audit|publ|journal)_*/ } keys %$datablok ) > 0 &&
+                    ( grep { /^_refln_index_.$/ } keys %$datablok ) == 0 &&
                     !exists $datablok->{_atom_site_label} ) {
                     $pd_publ_datablock_nr++;
                 } else {
                     next;
                 }
 
-                merge_new_tag_values( [ grep( !/^(_pd_block_id|
-                                                  _pd_phase_block_id|
-                                                  _pd_block_diffractogram_id)$/x,
-                                              keys %$datablok ) ],
-                                      \%pd_global_publ_data,
-                                      $dataset, $global_priority );
+                merge_new_tag_values(
+                        [ grep { !/^(_pd_block_id|
+                                     _pd_phase_block_id|
+                                     _pd_block_diffractogram_id)$/x
+                               } keys %$datablok ],
+                        \%pd_global_publ_data,
+                        $dataset, $global_priority );
             }
         }
 
@@ -803,8 +804,8 @@ for my $filename (@ARGV) {
             next if !defined $datablok;
             next if !$use_datablocks_without_coord &&
                     !defined $datablok->{_atom_site_label} &&
-                    ( grep( /^_refln_index_.$/, keys %$datablok ) == 0 ||
-                      !$use_datablocks_with_fobs );
+                    ( ( grep { /^_refln_index_.$/ } keys %$datablok ) == 0 ||
+                      ! $use_datablocks_with_fobs );
 
             $no_coordinates = 0;
 
@@ -856,8 +857,9 @@ for my $filename (@ARGV) {
                        . "no bibliography will be taken for this datablock\n";
                 } else {
                     if( !$leave_biblio ) {
-                        for my $key ( grep /_journal_|_publ_section_title|_author_/,
-                                      keys %{$datablok} ) {
+                        for my $key ( grep { /_journal_|
+                                              _publ_section_title|
+                                              _author_/x } keys %{$datablok} ) {
                             if( $key ne "_journal_coeditor_code" ) {
                                 if( $key ne "_publ_section_title" || !$leave_title ) {
                                     exclude_tag( $dataset, $key );
@@ -888,8 +890,9 @@ for my $filename (@ARGV) {
                 }
             } elsif( defined $reference ) {
                 if( !$leave_biblio ) {
-                    for my $key ( grep /_journal_|_publ_section_title|_author_/,
-                                  keys %{$datablok} ) {
+                    for my $key ( grep { /_journal_|
+                                          _publ_section_title|
+                                          _author_/x } keys %{$datablok} ) {
                         if( $key ne "_journal_coeditor_code" ) {
                             if( $key ne "_publ_section_title" || !$leave_title ) {
                                 exclude_tag( $dataset, $key );
@@ -980,8 +983,9 @@ for my $filename (@ARGV) {
 
             if( $user_biblio ) {
                 if( !$leave_biblio ) {
-                    for my $key ( grep /_journal_|_publ_section_title|_author_/,
-                                  keys %{$datablok} ) {
+                    for my $key ( grep { /_journal_|
+                                          _publ_section_title|
+                                          _author_/x } keys %{$datablok} ) {
                         if( $key ne "_publ_section_title" || !$leave_title ) {
                             exclude_tag( $dataset, $key );
                         }
