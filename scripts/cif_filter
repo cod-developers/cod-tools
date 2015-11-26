@@ -991,17 +991,21 @@ for my $filename (@ARGV) {
                     }
                 }
 
-                do {
+                if ( @authors ) {
                     use Encode 'decode_utf8';
                     ## use encoding 'utf8';
-                    @authors = map { s/\n/ /g; s/\s+/ /g; $_ }
-                               map { s/^\s*|\s*$//g; $_ }
-                               map { unicode2cif( $_ ) }
-                               # Insist that the names are well-formed utf8:
-                               map { decode_utf8($_) }
-                               # This does not work, alas:
-                               ## map { pack('U*', unpack('C*', $_ )) }
-                               @authors;
+                    for my $author (@authors) {
+                        # This does not work, alas:
+                        ## map { pack('U*', unpack('C*', $_ )) }
+
+                        # Insist that the names are well-formed utf8:
+                        $author = decode_utf8($author);
+                        $author = unicode2cif($author);
+                        $author =~ s/^\s*|\s*$//g;
+                        $author =~ s/\n/ /g;
+                        $author =~ s/\s+/ /g;
+                    }
+
                     $datablok->{_publ_author_name} = [ @authors ];
                     my $tag = '_publ_author_name';
                     if( exists $dataset->{inloop}{$tag} ) {
@@ -1016,7 +1020,7 @@ for my $filename (@ARGV) {
                             $dataset->{loops} = [ [ $tag ] ];
                         }
                     }
-                } if @authors;
+                };
 
                 $datablok->{_publ_section_title} = [ $title ]
                     if defined $title;
