@@ -22,9 +22,9 @@ use COD::ErrorHandler qw( process_parser_messages report_message );
 sub csv_format($$$);
 
 my $die_on_error_level = {
-    ERROR   => 1,
-    WARNING => 0,
-    NOTE    => 0
+    'ERROR'   => 1,
+    'WARNING' => 0,
+    'NOTE'    => 0
 };
 
 my $use_parser = 'c';
@@ -42,13 +42,13 @@ my $use_parser = 'c';
 #*                     Print a short usage message (this message) and exit.
 #**
 @ARGV = getOptions(
-    "--use-perl-parser" => sub { $use_parser = "perl" },
-    "--use-c-parser"    => sub { $use_parser = "c" },
-    "--options"         => sub { options; exit },
-    "--help,--usage"    => sub { usage; exit }
+    '--use-perl-parser' => sub { $use_parser = 'perl' },
+    '--use-c-parser'    => sub { $use_parser = 'c' },
+    '--options'         => sub { options; exit },
+    '--help,--usage'    => sub { usage; exit }
 );
 
-@ARGV = ("-") unless @ARGV;
+@ARGV = ('-') unless @ARGV;
 
 my $fields_separator = ','; # as per section 1.4 of RFC 4180
 my $lines_separator  = "\r\n"; # as per section 4.1.1 of RFC 2046
@@ -58,7 +58,7 @@ for my $filename (@ARGV) {
     my ( $data, $err_count, $messages ) = parse_cif( $filename, $options );
     process_parser_messages( $messages, $die_on_error_level );
 
-    if( !@$data || !defined $data->[0] || !defined $data->[0]{name} ) {
+    if( !@{$data} || !defined $data->[0] || !defined $data->[0]{name} ) {
         report_message( {
            'program'   => $0,
            'filename'  => $filename,
@@ -68,8 +68,8 @@ for my $filename (@ARGV) {
         next;
     }
 
-    for my $datablock (@$data) {
-        print STDERR $datablock->{name} . "\n";
+    for my $datablock (@{$data}) {
+        print {*STDERR} $datablock->{name} . "\n";
         print 'data_'
             . $fields_separator . $datablock->{name}
             . $lines_separator;
@@ -91,7 +91,7 @@ for my $filename (@ARGV) {
         # and print loop values
         for my $loop (@{$datablock->{loops}}) {
             local $, = $fields_separator;
-            print @$loop;
+            print @{$loop};
             print $lines_separator;
             my $loop_value_length = $#{$datablock->{values}{$loop->[0]}};
             for my $line(0..$loop_value_length) {
@@ -103,7 +103,7 @@ for my $filename (@ARGV) {
                     print csv_format($datablock->{values}{$tagName}[$line],
                                      $datablock->{types}{$tagName}[$line],
                                      $precision);
-                    if($tagName ne $$loop[$#{$loop}]) { # do not print field separator
+                    if($tagName ne $loop->[$#{$loop}]) { # do not print field separator
                         print $fields_separator;        # after last element
                     }
                 }
@@ -113,8 +113,9 @@ for my $filename (@ARGV) {
     }
 }
 
-sub csv_format($$$) {
-    my ($value, $type, $precision) = (shift,shift,shift);
+sub csv_format($$$)
+{
+    my ($value, $type, $precision) = @_;
     if(0 == length $value) {
         return '';
     }
@@ -138,7 +139,7 @@ sub csv_format($$$) {
     if($format =~ m/"/) {
         $value =~ s/"/""/g; # as per sections 2.6 & 2.7 of RFC 4180
     }
-    $result = sprintf($format, $value);
+    $result = sprintf $format, $value;
     if(defined $precision) {
         $result .= '(' . $precision . ')';
     }
