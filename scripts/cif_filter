@@ -947,19 +947,23 @@ for my $filename (@ARGV) {
                                        $reference =~
                                        /\\authors?(?:\[(.*?)\])?\{(.*?)\}/s )) {
                         my $attributes = $1;
-                        my $author_list = $2;
+                        my $authors_str = $2;
                         my $separator = qr/,\s*and|\sand\s|,/;
                         if( $attributes && $attributes =~ /separator\s*=\s*"(.*?)"/ ) {
                             $separator = qr/$1/;
                         }
-                        $datablok->{_publ_author_name} =
-                            [
-                             map { unicode2cif( $_ ) }
-                             map { s/\n/ /g; s/\s+/ /g; $_ }
-                             map { s/^\s*|\s*$//g; $_ }
-                             split $separator, $author_list
-                            ];
+
+                        my @author_list;
+                        foreach my $author ( split $separator, $authors_str ) {
+                            $author =~ s/^\s*|\s*$//g;
+                            $author =~ s/\n/ /g;
+                            $author =~ s/\s+/ /g;
+                            $author =~ unicode2cif($author);
+                            push @author_list, $author;
+                        }
+
                         my $tag = '_publ_author_name';
+                        $datablok->{$tag} = \@author_list;
                         if( exists $dataset->{inloop}{$tag} ) {
                             my $loop_nr = $dataset->{inloop}{$tag};
                             $dataset->{loops}[$loop_nr] = [ $tag ];
