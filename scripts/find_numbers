@@ -24,9 +24,9 @@ use COD::ErrorHandler qw( process_errors
                           report_message );
 
 my $die_on_error_level = {
-    ERROR   => 1,
-    WARNING => 0,
-    NOTE    => 0
+    'ERROR'   => 1,
+    'WARNING' => 0,
+    'NOTE'    => 0
 };
 
 #* USAGE:
@@ -37,7 +37,7 @@ my $die_on_error_level = {
 #*                     Print a short usage message (this message) and exit.
 #**
 @ARGV = getOptions(
-    "--help,--usage"    => sub { usage; exit }
+    '--help,--usage'    => sub { usage; exit }
 );
 
 my $check_bibliography = 1;
@@ -68,11 +68,11 @@ if( @ARGV < 2 ) {
     }, 1 );
 }
 
-my $COD_cif_dir = pop( @ARGV );
+my $COD_cif_dir = pop @ARGV;
 my @COD_cif_files = `find $COD_cif_dir -name "*.cif" -o -name "*.CIF"`;
 
 do {
-    print int(@COD_cif_files), "\n";
+    print int @COD_cif_files . "\n";
     print "@COD_cif_files";
 } if 0;
 
@@ -82,7 +82,7 @@ for my $file (@COD_cif_files) {
     eval {
 
     chomp $file;
-    open( my $COD_CIF, '<', "$file" ) or die 'ERROR, '
+    open my $COD_CIF, '<', "$file" or die 'ERROR, '
         . 'could not open the CIF file for reading -- ' . lcfirst($!) . "\n";
 
     my $id;
@@ -96,7 +96,7 @@ for my $file (@COD_cif_files) {
             my $formula = $1;
             $formula =~ s/^\s*'\s*|\s*'\s*$//g;
             $formula =~ s/\s+/ /g;
-            my $sorted = join( " ", sort {$a cmp $b} split( " ", $formula ));
+            my $sorted = join ' ', sort {$a cmp $b} split ' ', $formula;
             $structures{$id}{chemical_formula_sum} = $sorted;
         }
         if( /^\s*(_cell_(?:length_a|length_b|length_c|
@@ -106,7 +106,7 @@ for my $file (@COD_cif_files) {
             $val =~ s/^\s*'\s*|\s*'\s*$//g;
             $val =~ s/\(.*$//;
             $val =~ s/[()_a-zA-Z]//g;
-            $structures{$id}{cell}{$key} = sprintf "%f", $val;
+            $structures{$id}{cell}{$key} = sprintf '%f', $val;
         }
         if( /^\s*(_[^\s]*temperature[^\s]*)\s+(.*)/ ) {
             $structures{$id}{temperature}{$1} = $2;
@@ -117,7 +117,7 @@ for my $file (@COD_cif_files) {
             $structures{$id}{pressure}{$1} =~ s/^\s*'\s*|\s*'\s*$//g;
         }
         if( /^\s*(_journal_[^\s]*)\s+(.*)\s*$/ &&
-            ! /^\s*_journal_name/ ) {
+            !( /^\s*_journal_name/ ) ) {
             my $key = $1;
             my $value = $2;
             $value =~ s/^['"]|["']$//g;
@@ -129,7 +129,7 @@ for my $file (@COD_cif_files) {
         }
     }
 
-    close( $COD_CIF ) or die 'ERROR, '
+    close $COD_CIF or die 'ERROR, '
         . 'could not close the CIF file after reading -- ' . lcfirst($!) . "\n";
 
     }; # end of eval
@@ -166,7 +166,7 @@ for my $file (@cif_files) {
     eval {
 
     chomp $file;
-    open( my $CIF, '<', "$file" )  or die 'ERROR, '
+    open my $CIF, '<', "$file" or die 'ERROR, '
         . 'could not open the CIF file for reading -- ' . lcfirst($!) . "\n";
 
     my $id;
@@ -180,7 +180,7 @@ for my $file (@cif_files) {
             my $formula = $1;
             $formula =~ s/^\s*'\s*|\s*'\s*$//g;
             $formula =~ s/\s+/ /g;
-            my $sorted = join( " ", sort {$a cmp $b} split( " ", $formula ));
+            my $sorted = join ' ', sort {$a cmp $b} split ' ', $formula;
             $structures{$id}{chemical_formula_sum} = $sorted;
         }
         if( /^\s*(_cell_(?:length_a|length_b|length_c|
@@ -189,7 +189,7 @@ for my $file (@cif_files) {
             my $val = $2;
             $val =~ s/^\s*'\s*|\s*'\s*$//g;
             $val =~ s/\(.*$//;
-            $structures{$id}{cell}{$key} = sprintf "%f", $val;
+            $structures{$id}{cell}{$key} = sprintf '%f', $val;
         }
         if( /^\s*(_[^\s]*temperature[^\s]*)\s+(.*)/ ) {
             $structures{$id}{temperature}{$1} = $2;
@@ -200,7 +200,7 @@ for my $file (@cif_files) {
             $structures{$id}{pressure}{$1} =~ s/^\s*'\s*|\s*'\s*$//g;
         }
         if( /^\s*(_journal_[^\s]*)\s+(.*)\s*$/ &&
-            ! /^\s*_journal_name/ ) {
+            !(/^\s*_journal_name/) ) {
             my $key = $1;
             my $value = $2;
             $value =~ s/^['"]|["']$//g;
@@ -212,7 +212,7 @@ for my $file (@cif_files) {
         }
     }
 
-    close( $CIF ) or die 'ERROR, '
+    close $CIF or die 'ERROR, '
         . 'could not close the CIF file after reading -- ' . lcfirst($!) . "\n";;
 
     }; # end of eval
@@ -296,7 +296,7 @@ sub cells_are_the_same($$)
         my $angle1 = $cell1[$i];
         my $angle2 = $cell2[$i];
         if( defined $angle1 and defined $angle2 ) {
-            my $diff = abs ( $angle1 - $angle2 );
+            my $diff = abs( $angle1 - $angle2 );
             if( $max_angle_diff < $diff ) {
                 $max_angle_diff = $diff;
             }
@@ -331,7 +331,7 @@ sub bibliographies_are_the_same($$)
 {
     my ($biblio1, $biblio2) = @_;
 
-    my %tags = map {($_,$_)} ( keys %$biblio1, keys %$biblio2 );
+    my %tags = map {($_,$_)} ( keys %{$biblio1}, keys %{$biblio2} );
 
     for my $tag ( keys %tags ) {
         next if( $skip_tag{$tag} );
