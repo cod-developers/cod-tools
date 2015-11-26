@@ -116,16 +116,17 @@ for my $file (@COD_cif_files) {
             $structures{$id}{pressure}{$1} = $2;
             $structures{$id}{pressure}{$1} =~ s/^\s*'\s*|\s*'\s*$//g;
         }
-        if( /^\s*(_journal_[^\s]*)\s+(.*)\s*$/ &&
-            !( /^\s*_journal_name/ ) ) {
-            my $key = $1;
-            my $value = $2;
-            $value =~ s/^['"]|["']$//g;
-            $structures{$id}{bibliography}{$key} = $value;
+        if( !( /^\s*_journal_name/ ) ) {
+            if ( /^\s*(_journal_[^\s]*)\s+(.*)\s*$/ ) {
+                my $key = $1;
+                my $value = $2;
+                $value =~ s/^['"]|["']$//g;
+                $structures{$id}{bibliography}{$key} = $value;
+            }
         }
-        if( /^\s*(_\[local\])?_cod_suboptimal_structure\s+(.*)\s*$/ ) {
+        if( /^\s*(?:_\[local\])?_cod_suboptimal_structure\s+(.*)\s*$/ ) {
             ## print ">>>>>> $2\n";
-            $structures{$id}{suboptimal} = $2;
+            $structures{$id}{suboptimal} = $1;
         }
     }
 
@@ -199,14 +200,15 @@ for my $file (@cif_files) {
             $structures{$id}{pressure}{$1} = $2;
             $structures{$id}{pressure}{$1} =~ s/^\s*'\s*|\s*'\s*$//g;
         }
-        if( /^\s*(_journal_[^\s]*)\s+(.*)\s*$/ &&
-            !(/^\s*_journal_name/) ) {
-            my $key = $1;
-            my $value = $2;
-            $value =~ s/^['"]|["']$//g;
-            $structures{$id}{bibliography}{$key} = $value;
+        if( !(/^\s*_journal_name/) ) {
+            if ( /^\s*(_journal_[^\s]*)\s+(.*)\s*$/ ) {
+                my $key = $1;
+                my $value = $2;
+                $value =~ s/^['"]|["']$//g;
+                $structures{$id}{bibliography}{$key} = $value;
+            }
         }
-        if( /^\s*(_\[local\])?_cod_suboptimal_structure\s+(.*)\s*$/ ) {
+        if( /^\s*(?:_\[local\])?_cod_suboptimal_structure\s+(.*)\s*$/ ) {
             ## print ">>>>>> $2\n";
             $structures{$id}{suboptimal} = $2;
         }
