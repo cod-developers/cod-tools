@@ -540,7 +540,7 @@ eval {
         open my $header, '<', "$cif_header_file" or die 'ERROR, '
           . 'could not open CIF header file for reading -- ' . lcfirst($!) . "\n";
 
-        $cif_comment_header = "";
+        $cif_comment_header = '';
         while( <$header> ) {
             last unless /^\#|^\s*$/;
             $cif_comment_header .= $_;
@@ -560,7 +560,7 @@ if ($@) {
 };
 
 # Reading bibliography from additional sources
-my $reference;
+my $ref_bib;
 my $bib_blocks;
 
 if( defined $bib_file ) {
@@ -574,8 +574,9 @@ if( defined $bib_file ) {
         ($bib_blocks, $err_count, $messages) = parse_cif($bib_file, $bib_options);
         process_parser_messages( $messages, $die_on_error_level );
     } else {
+        my $reference;
         eval {
-            open my $biblio, "<:encoding(UTF-8)", $bib_file or die 'ERROR, '
+            open my $biblio, '<:encoding(UTF-8)', $bib_file or die 'ERROR, '
               . 'could not open bibliography file for reading -- '
               . lcfirst($!) . "\n";
 
@@ -588,7 +589,6 @@ if( defined $bib_file ) {
                 local $/ = undef; # read the whole file
                 $reference = <$biblio>;
             }
-            chomp $reference;
 
             close $biblio or die 'ERROR, '
               . 'error while closing bibliography file after reading -- '
@@ -601,6 +601,11 @@ if( defined $bib_file ) {
               'filename' => $bib_file
             }, $die_on_errors );
         };
+
+        if ( defined $reference ) {
+            chomp $reference;
+            $ref_bib = ref2bib( $reference );
+        }
     }
 }
 
@@ -887,7 +892,7 @@ for my $filename (@ARGV) {
                         }
                     }
                 }
-            } elsif( defined $reference ) {
+            } elsif( defined $ref_bib ) {
                 if( !$leave_biblio ) {
                     for my $key ( grep { /_journal_|
                                           _publ_section_title|
@@ -900,70 +905,57 @@ for my $filename (@ARGV) {
                     }
                 }
 
-                if( $reference =~ /<.*?>.*?<.*?>/s ||
-                    $reference =~ /\\.*?(?:\[.*?\])?\{.*?\}/s ) {
-                    if( !$title && ( $reference =~ /<title>(.*?)<\/title>/s ||
-                                     $reference =~ /\\title\{(.*?)\}/s )) {
-                        my $cif_title = unicode2cif( $1 );
-                        $cif_title =~ s/\n/ /g;
-                        $datablok->{_publ_section_title} = [
+                if ( scalar keys %{$ref_bib} ) {
+
+                    if ( !$title && defined $ref_bib->{'title'} ) {
+                        my $cif_title = unicode2cif( $ref_bib->{'title'} );
+                        $datablok->{'_publ_section_title'} = [
                             "\n" . join( "\n", map { ' ' . $_ }
                                          fold( 71, ' +', ' ', $cif_title ))
                             ];
                     }
-                    if( !$journal && ( $reference =~ /<journal>(.*?)<\/journal>/s ||
-                                       $reference =~ /\\journal\{(.*?)\}/s )) {
-                        $datablok->{_journal_name_full} = [ unicode2cif( $1 ) ];
-                    }
-                    if( !$issue && ( $reference =~ /<issue>(.*?)<\/issue>/s ||
-                                     $reference =~ /\\issue\{(.*?)\}/s )) {
-                        $datablok->{_journal_issue} = [ unicode2cif( $1 ) ];
-                    }
-                    if( !$volume && ( $reference =~ /<volume>(.*?)<\/volume>/s ||
-                                      $reference =~ /\\volume\{(.*?)\}/s )) {
-                        $datablok->{_journal_volume} = [ unicode2cif( $1 ) ];
-                    }
-                    if( !$year && ( $reference =~ /<year>(.*?)<\/year>/s ||
-                                    $reference =~ /\\year\{(.*?)\}/s )) {
-                        my $y = $1;
-                        $y =~ s/[^0-9]//g;
-                        $datablok->{_journal_year} = [ unicode2cif( $y ) ];
-                    }
-                    if( !$doi && ( $reference =~ /<doi>(.*?)<\/doi>/s ||
-                                      $reference =~ /\\doi\{(.*?)\}/s )) {
-                        $datablok->{_journal_paper_doi} = [ unicode2cif( $1 ) ];
-                    }
-                    if( !$start_page && ( $reference =~ /<pages?>(.*?)<\/pages?>/s ||
-                                          $reference =~ /\\pages?\{(.*?)\}/s )) {
-                        my @pages = map { s/\s//g; $_ } split  m/-/, $1;
-                        $datablok->{_journal_page_first} = [ unicode2cif( $pages[0] ) ];
-                        if( int(@pages) > 1 ) {
-                            $datablok->{_journal_page_last} =
-                                [ unicode2cif( $pages[1] ) ];
-                        }
-                    }
-                    if( !@authors && ( $reference =~
-                                       /<authors?\s?(.*?)>(.*?)<\/authors?>/s ||
-                                       $reference =~
-                                       /\\authors?(?:\[(.*?)\])?\{(.*?)\}/s )) {
-                        my $attributes = $1;
-                        my $authors_str = $2;
-                        my $separator = qr/,\s*and|\sand\s|,/;
-                        if( $attributes && $attributes =~ /separator\s*=\s*"(.*?)"/ ) {
-                            $separator = qr/$1/;
-                        }
 
-                        my @author_list;
-                        foreach my $author ( split $separator, $authors_str ) {
-                            $author =~ s/^\s*|\s*$//g;
-                            $author =~ s/\n/ /g;
-                            $author =~ s/\s+/ /g;
-                            $author =~ unicode2cif($author);
-                            push @author_list, $author;
+                    if ( !$journal && defined $ref_bib->{'journal'} ) {
+                        $datablok->{'_journal_name_full'} =
+                                        [ unicode2cif( $ref_bib->{'journal'} ) ];
+                    }
+
+                    if ( !$issue && defined $ref_bib->{'issue'} ) {
+                        $datablok->{'_journal_issue'} =
+                                        [ unicode2cif( $ref_bib->{'issue'} ) ];
+                    }
+
+                    if ( !$volume && defined $ref_bib->{'volume'} ) {
+                        $datablok->{'_journal_volume'} =
+                                        [ unicode2cif( $ref_bib->{'volume'} ) ];
+                    }
+
+                    if ( !$year && defined $ref_bib->{'year'} ) {
+                        $datablok->{'_journal_year'} =
+                                        [ unicode2cif( $ref_bib->{'year'} ) ];
+                    }
+
+                    if ( !$doi && defined $ref_bib->{'doi'} ) {
+                        $datablok->{'_journal_paper_doi'} =
+                                        [ unicode2cif( $ref_bib->{'doi'} ) ];
+                    }
+
+                    if ( !$start_page && defined $ref_bib->{'page_first'} ) {
+                        $datablok->{'_journal_page_first'} =
+                                        [ unicode2cif( $ref_bib->{'page_first'} ) ];
+                        if ( defined $ref_bib->{'page_last'} ) {
+                            $datablok->{'_journal_page_last'} =
+                                        [ unicode2cif( $ref_bib->{'page_last'} ) ];
                         }
+                    }
+
+                    if ( !@authors && defined $ref_bib->{'authors'} ) {
+
+                        my $author_list =
+                            [ map { unicode2cif($_) } @{$ref_bib->{'authors'}} ];
 
                         my $tag = '_publ_author_name';
-                        $datablok->{$tag} = \@author_list;
+                        $datablok->{$tag} = $author_list;
                         if( exists $dataset->{inloop}{$tag} ) {
                             my $loop_nr = $dataset->{inloop}{$tag};
                             $dataset->{loops}[$loop_nr] = [ $tag ];
@@ -1056,8 +1048,8 @@ for my $filename (@ARGV) {
 
             if( defined $datablok->{_journal_page_first} &&
                 defined $datablok->{_journal_page_last} &&
-                $datablok->{_journal_page_first}[0] =~ /^[0-9]+$/ &&
-                $datablok->{_journal_page_last}[0] =~ /^[0-9]+$/ &&
+                $datablok->{_journal_page_first}[0] =~ /^\d+$/ &&
+                $datablok->{_journal_page_last}[0] =~ /^\d+$/ &&
                 $datablok->{_journal_page_first}[0] >
                 $datablok->{_journal_page_last}[0] ) {
                 $datablok->{_journal_page_last}[0] =
@@ -1081,7 +1073,7 @@ for my $filename (@ARGV) {
                 for my $tag (@tag_list) {
                     if( exists $excluded_tags{$tag} || $tag =~ /^_vrf_/ ) {
                         exclude_tag( $dataset, $tag );
-                        #use COD::ShowStruct qw( showRef );;
+                        #use COD::ShowStruct qw( showRef );
                         #showRef( $dataset );
                     }
                 }
@@ -1485,6 +1477,106 @@ sub merge_new_tag_values($$$$)
     }
 
     return $dst;
+}
+
+##
+# Parses a bibliographic reference string into a bibliography hash.
+#
+# @param $reference
+#       Bibliographic reference text.
+# @return $bibliography
+#       Reference to the bibliography hash. An example of the returned
+#       structure with all possible key-value pairs:
+#
+#       $bibliography = {
+#           'title'      => 'Title of the paper',
+#           'journal'    => 'Name of the journal',
+#           'issue'      => '1',
+#           'volume'     => '2',
+#           'year'       => '2015'
+#           'doi'        => '10.1000/182'
+#           'page_first' => '7'
+#           'page_last'  => '42'
+#           'authors'    => [ 'Author, First',
+#                             'Second Author',
+#                             'Author, T.' ]
+#       }
+##
+sub ref2bib
+{
+    my ( $reference ) = @_;
+
+    my %bibliography;
+
+    if ( $reference =~ /<.*?>.*?<.*?>/s ||
+         $reference =~ /\\.*?(?:\[.*?\])?\{.*?\}/s ) {
+
+        if ( $reference =~ /<title>(.*?)<\/title>/s ||
+             $reference =~ /\\title\{(.*?)\}/s ) {
+            my $title = $1;
+            $title =~ s/\n/ /g;
+            $bibliography{'title'} = $title;
+        }
+
+        if ( $reference =~ /<journal>(.*?)<\/journal>/s ||
+             $reference =~ /\\journal\{(.*?)\}/s ) {
+            $bibliography{'journal'} = $1;
+        }
+
+        if ( $reference =~ /<issue>(.*?)<\/issue>/s ||
+             $reference =~ /\\issue\{(.*?)\}/s ) {
+            $bibliography{'issue'} = $1;
+        }
+
+        if ( $reference =~ /<volume>(.*?)<\/volume>/s ||
+             $reference =~ /\\volume\{(.*?)\}/s ) {
+            $bibliography{'volume'} = $1;
+        }
+
+        if ( $reference =~ /<year>(.*?)<\/year>/s ||
+             $reference =~ /\\year\{(.*?)\}/s ) {
+            my $year = $1;
+            $year =~ s/\D//g;
+            $bibliography{'year'} = $year;
+        }
+
+        if ( $reference =~ /<doi>(.*?)<\/doi>/s ||
+             $reference =~ /\\doi\{(.*?)\}/s ) {
+            $bibliography{'doi'} = $1;
+        }
+
+        if ( !$start_page && ( $reference =~ /<pages?>(.*?)<\/pages?>/s ||
+                               $reference =~ /\\pages?\{(.*?)\}/s )) {
+            my @pages = split  m/-/, $1;
+            foreach (@pages) { $_ =~ s/\s//g };
+            $bibliography{'page_first'} = $pages[0];
+            if ( scalar @pages > 1 ) {
+                $bibliography{'page_last'} = $pages[1];
+            }
+        }
+
+        if ( $reference =~ /<authors?\s?(.*?)>(.*?)<\/authors?>/s ||
+             $reference =~ /\\authors?(?:\[(.*?)\])?\{(.*?)\}/s ) {
+            my $attributes = $1;
+            my $author_list = $2;
+            my $separator = qr/,\s*and|\sand\s|,/;
+            if( $attributes && $attributes =~ /separator\s*=\s*"(.*?)"/ ) {
+                $separator = qr/$1/;
+            }
+
+            my @authors;
+            foreach my $author ( split $separator, $author_list ) {
+                $author =~ s/^\s*|\s*$//g;
+                $author =~ s/\n/ /g;
+                $author =~ s/\s+/ /g;
+                $author =~ unicode2cif($author);
+                push @authors, $author;
+            }
+            $bibliography{'authors'} = \@authors;
+        }
+    }
+
+    return \%bibliography;
 }
 
 sub restore_last_page
