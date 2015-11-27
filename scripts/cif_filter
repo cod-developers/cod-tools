@@ -908,11 +908,8 @@ for my $filename (@ARGV) {
                 if ( scalar keys %{$ref_bib} ) {
 
                     if ( !$title && defined $ref_bib->{'title'} ) {
-                        my $cif_title = unicode2cif( $ref_bib->{'title'} );
-                        $datablok->{'_publ_section_title'} = [
-                            "\n" . join( "\n", map { ' ' . $_ }
-                                         fold( 71, ' +', ' ', $cif_title ))
-                            ];
+                        $datablok->{'_publ_section_title'} =
+                                        [ unicode2cif( $ref_bib->{'title'} ) ];
                     }
 
                     if ( !$journal && defined $ref_bib->{'journal'} ) {
@@ -942,11 +939,12 @@ for my $filename (@ARGV) {
 
                     if ( !$start_page && defined $ref_bib->{'page_first'} ) {
                         $datablok->{'_journal_page_first'} =
-                                        [ unicode2cif( $ref_bib->{'page_first'} ) ];
-                        if ( defined $ref_bib->{'page_last'} ) {
-                            $datablok->{'_journal_page_last'} =
-                                        [ unicode2cif( $ref_bib->{'page_last'} ) ];
-                        }
+                                        [ unicode2cif( $ref_bib->{'page_first'} ) ];;
+                    }
+
+                    if ( !$end_page && defined $ref_bib->{'page_last'} ) {
+                        $datablok->{'_journal_page_last'} =
+                                        [ unicode2cif( $ref_bib->{'page_last'} ) ]
                     }
 
                     if ( !@authors && defined $ref_bib->{'authors'} ) {
