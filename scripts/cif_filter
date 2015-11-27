@@ -57,7 +57,6 @@ my %symop_lookup_table;
 
 sub merge_new_tag_values($$$$);
 
-my $user_biblio = 0;
 my $leave_biblio = 0;
 my $leave_title = 0;
 my $global_priority = 0; # if set to 1, bibliography in
@@ -96,15 +95,19 @@ my $die_on_errors   = 1;
 my $die_on_warnings = 0;
 my $die_on_notes    = 0;
 
-my $journal;
-my $volume;
-my $doi;
-my $issue;
-my $start_page;
-my $end_page;
-my $year;
-my $title;
-my @authors;
+my %user_bib;
+my %bib2cif_map = (
+    'authors' => '_publ_author_name',
+    'title'   => '_publ_section_title',
+    'journal' => '_journal_name_full',
+    'issue'   => '_journal_issue',
+    'volume'  => '_journal_volume',
+    'year'    => '_journal_year',
+    'doi'     => '_journal_paper_doi',
+    'page_first' => '_journal_page_first',
+    'page_last'  => '_journal_page_last',
+);
+
 my $bib_file; # A bibliography file name, possibly marked up by XML-like
             # or LaTeX-like tags.
 
@@ -356,16 +359,16 @@ my %spacegroups = map {
 #*        Print a short usage message (this message) and exit.
 #**
 @ARGV = getOptions(
-    '-a,--authors'      => sub{ $user_biblio = 1;
-                                @authors = split /(?:;|:)\s*/, get_value() },
-    '-j,--journal'      => sub{ $user_biblio = 1; $journal = get_value() },
-    '-v,--volume'       => sub{ $user_biblio = 1; $volume = get_value() },
-    '-i,--issue'        => sub{ $user_biblio = 1; $issue = get_value() },
-    '-p,--page'         => sub{ $user_biblio = 1; $start_page = get_value() },
-    '--start-page'      => sub{ $user_biblio = 1; $start_page = get_value() },
-    '-e,--end-page'     => sub{ $user_biblio = 1; $end_page = get_value() },
-    '-y,--year'         => sub{ $user_biblio = 1; $year = get_value() },
-    '-D,--doi'          => sub{ $user_biblio = 1; $doi = get_value() },
+    '-a,--authors'  => sub{ $user_bib{'authors'} =
+                                [ split /(?:[;:])\s*/, get_value() ] },
+    '-j,--journal'  => sub{ $user_bib{'journal'} = get_value() },
+    '-v,--volume'   => sub{ $user_bib{'volume'} = get_value() },
+    '-i,--issue'    => sub{ $user_bib{'issue'} = get_value() },
+    '-p,--page'     => sub{ $user_bib{'page_first'} = get_value() },
+    '--start-page'  => sub{ $user_bib{'page_first'} = get_value() },
+    '-e,--end-page' => sub{ $user_bib{'page_last'} = get_value() },
+    '-y,--year'     => sub{ $user_bib{'year'} = get_value() },
+    '-D,--doi'      => sub{ $user_bib{'doi'} = get_value() },
     '-B,--bibliography' => \$bib_file,
 
     '-d,--datablock-format' => \$datablock_format,
@@ -532,7 +535,7 @@ my @dictionary_tags = ( @COD::CIF::Tags::DictTags::tag_list,
                         @COD::CIF::Tags::DFT::tag_list,
                         @extra_tags );
 
-my %dictionary_tags = map { $_, $_ } @dictionary_tags;
+my %dictionary_tags = map { $_ => $_ } @dictionary_tags;
 
 # Reading the header file
 eval {
@@ -633,18 +636,18 @@ for my $filename (@ARGV) {
 #------------------------------------------------------------------------------
 
     my %global_bibliography = ();
-    my @global_biblio_keys = (
-        '_journal_name_full',
-        '_journal_volume',
-        '_journal_issue',
-        '_journal_page_first',
-        '_journal_page_last',
-        '_journal_year',
-        '_publ_section_title',
-        '_publ_author_name',
-        '_journal_coeditor_code',
-        '_journal_paper_doi'
-        );
+    my @global_biblio_keys = qw(
+        _journal_name_full
+        _journal_volume
+        _journal_issue
+        _journal_page_first
+        _journal_page_last
+        _journal_year
+        _publ_section_title
+        _publ_author_name
+        _journal_coeditor_code
+        _journal_paper_doi
+    );
 
     my %global_biblio_keys = map {($_,$_)} @global_biblio_keys;
 
@@ -663,7 +666,6 @@ for my $filename (@ARGV) {
 # information. Stupidly enough, this section can be in the very end of
 # the CIF file, so we need to scan all sections to find it.
 #
-
         my $global_section_nr = 0;
 
         for my $dataset (@{$data}) {
@@ -787,7 +789,7 @@ for my $filename (@ARGV) {
                                      } ) };
 
         ## next unless defined $dataset->{kind} && $dataset->{kind} == 'DATA';
-        eval { { # Double eval braces are needed to compensate for the 
+        eval { { # Double eval braces are needed to compensate for the
                  # 'next' statements inside the code
             # Add bibliography from a global section, if any:
             if( %global_bibliography ) {
@@ -905,66 +907,15 @@ for my $filename (@ARGV) {
                     }
                 }
 
-                if ( scalar keys %{$ref_bib} ) {
-
-                    if ( !$title && defined $ref_bib->{'title'} ) {
-                        $datablok->{'_publ_section_title'} =
-                                        [ unicode2cif( $ref_bib->{'title'} ) ];
-                    }
-
-                    if ( !$journal && defined $ref_bib->{'journal'} ) {
-                        $datablok->{'_journal_name_full'} =
-                                        [ unicode2cif( $ref_bib->{'journal'} ) ];
-                    }
-
-                    if ( !$issue && defined $ref_bib->{'issue'} ) {
-                        $datablok->{'_journal_issue'} =
-                                        [ unicode2cif( $ref_bib->{'issue'} ) ];
-                    }
-
-                    if ( !$volume && defined $ref_bib->{'volume'} ) {
-                        $datablok->{'_journal_volume'} =
-                                        [ unicode2cif( $ref_bib->{'volume'} ) ];
-                    }
-
-                    if ( !$year && defined $ref_bib->{'year'} ) {
-                        $datablok->{'_journal_year'} =
-                                        [ unicode2cif( $ref_bib->{'year'} ) ];
-                    }
-
-                    if ( !$doi && defined $ref_bib->{'doi'} ) {
-                        $datablok->{'_journal_paper_doi'} =
-                                        [ unicode2cif( $ref_bib->{'doi'} ) ];
-                    }
-
-                    if ( !$start_page && defined $ref_bib->{'page_first'} ) {
-                        $datablok->{'_journal_page_first'} =
-                                        [ unicode2cif( $ref_bib->{'page_first'} ) ];;
-                    }
-
-                    if ( !$end_page && defined $ref_bib->{'page_last'} ) {
-                        $datablok->{'_journal_page_last'} =
-                                        [ unicode2cif( $ref_bib->{'page_last'} ) ]
-                    }
-
-                    if ( !@authors && defined $ref_bib->{'authors'} ) {
-
-                        my $author_list =
-                            [ map { unicode2cif($_) } @{$ref_bib->{'authors'}} ];
-
-                        my $tag = '_publ_author_name';
-                        $datablok->{$tag} = $author_list;
-                        if( exists $dataset->{inloop}{$tag} ) {
-                            my $loop_nr = $dataset->{inloop}{$tag};
-                            $dataset->{loops}[$loop_nr] = [ $tag ];
+                foreach my $key ( keys %{$ref_bib} ) {
+                    if ( !defined $user_bib{$key} ) {
+                        if ( $key eq 'authors' ) {
+                            set_loop_tag( $dataset, $bib2cif_map{$key}, undef,
+                                          [ map { unicode2cif($_) }
+                                                     @{$ref_bib->{$key}} ] );
                         } else {
-                            if( exists $dataset->{loops} ) {
-                                push @{$dataset->{loops}}, [ $tag ];
-                                $dataset->{inloop}{$tag} = $#{$dataset->{loops}};
-                            } else {
-                                $dataset->{inloop}{$tag} = 0;
-                                $dataset->{loops} = [ [ $tag ] ];
-                            }
+                            set_tag( $dataset, $bib2cif_map{$key},
+                                     unicode2cif( $ref_bib->{$key} ) );
                         }
                     }
                 }
@@ -974,7 +925,7 @@ for my $filename (@ARGV) {
             # precedence over the original CIF bibliography and over the
             # bibliography file data:
 
-            if( $user_biblio ) {
+            if( %user_bib ) {
                 if( !$leave_biblio ) {
                     for my $key ( grep { /_journal_|
                                           _publ_section_title|
@@ -985,60 +936,30 @@ for my $filename (@ARGV) {
                     }
                 }
 
-                if ( @authors ) {
-                    use Encode 'decode_utf8';
-                    ## use encoding 'utf8';
-                    for my $author (@authors) {
-                        # This does not work, alas:
-                        ## map { pack('U*', unpack('C*', $_ )) }
+                foreach my $key ( keys %user_bib ) {
+                    if ( $key eq 'authors' ) {
+                        my $authors = $user_bib{$key};
+                        use Encode 'decode_utf8';
+                        ## use encoding 'utf8';
+                        for my $author (@{$authors}) {
+                            # This does not work, alas:
+                            ## map { pack('U*', unpack('C*', $_ )) }
 
-                        # Insist that the names are well-formed utf8:
-                        $author = decode_utf8($author);
-                        $author = unicode2cif($author);
-                        $author =~ s/^\s*|\s*$//g;
-                        $author =~ s/\n/ /g;
-                        $author =~ s/\s+/ /g;
-                    }
-
-                    $datablok->{_publ_author_name} = [ @authors ];
-                    my $tag = '_publ_author_name';
-                    if( exists $dataset->{inloop}{$tag} ) {
-                        my $loop_nr = $dataset->{inloop}{$tag};
-                        $dataset->{loops}[$loop_nr] = [ $tag ];
-                    } else {
-                        if( exists $dataset->{loops} ) {
-                            push @{$dataset->{loops}}, [ $tag ];
-                            $dataset->{inloop}{$tag} = $#{$dataset->{loops}};
-                        } else {
-                            $dataset->{inloop}{$tag} = 0;
-                            $dataset->{loops} = [ [ $tag ] ];
+                            # Insist that the names are well-formed utf8:
+                            $author = decode_utf8($author);
+                            $author = unicode2cif($author);
+                            $author =~ s/^\s+|\s+$//g;
+                            $author =~ s/\n/ /g;
+                            $author =~ s/\s+/ /g;
                         }
+
+                        set_loop_tag( $dataset, $bib2cif_map{$key},
+                                      undef, $authors )
+                    } else {
+                        set_tag( $dataset, $bib2cif_map{$key},
+                                 unicode2cif( $user_bib{$key} ) );
                     }
-                };
-
-                $datablok->{_publ_section_title} = [ $title ]
-                    if defined $title;
-
-                $datablok->{_journal_name_full} = [ $journal ]
-                    if defined $journal;
-
-                $datablok->{_journal_year} = [ $year ]
-                    if defined $year;
-
-                $datablok->{_journal_volume} = [ $volume ]
-                    if defined $volume;
-
-                $datablok->{_journal_issue} = [ $issue ]
-                    if defined $issue;
-
-                $datablok->{_journal_page_first} = [ $start_page ]
-                    if defined $start_page;
-
-                $datablok->{_journal_page_last} = [ $end_page ]
-                    if defined $end_page;
-
-                $datablok->{_journal_paper_doi} = [ $doi ]
-                    if defined $doi;
+                }
             }
 
             # Restore the full final page number if only trailing digits of
@@ -1080,7 +1001,7 @@ for my $filename (@ARGV) {
             # Check for misspelled tags:
 
             for my $tag (@{$dataset->{tags}}) {
-                unless( exists $dictionary_tags{$tag} ) {
+                if ( !exists $dictionary_tags{$tag} ) {
                     warn "WARNING, tag '$tag' is not recognised" . "\n";
                 }
             }
@@ -1158,7 +1079,7 @@ for my $filename (@ARGV) {
 
             # If no 3D space group information is provided but a SSG
             # (superspace group) operators are provided, extract an
-            # averge space-group (?)
+            # average space-group (?)
             if( $estimate_spacegroup &&
                 !(exists $datablok->{'_space_group_symop_operation_xyz'} or
                   exists $datablok->{'_symmetry_equiv_pos_as_xyz'}) &&
@@ -1235,7 +1156,7 @@ for my $filename (@ARGV) {
                                      $estimated_sg_H_M );
 
                             my $estimated_sg_Hall = $estimated_sg->{hall};
-                            $estimated_sg_Hall =~ s/^\s*//;
+                            $estimated_sg_Hall =~ s/^\s+//;
                             if( defined $original_sg_Hall &&
                                 $original_sg_Hall ne '?' &&
                                 $original_sg_Hall ne $estimated_sg_Hall ) {
@@ -1290,7 +1211,7 @@ for my $filename (@ARGV) {
             if( $parse_formula_sum && defined $datablok->{_chemical_formula_sum} ) {
                 my $formula = $datablok->{_chemical_formula_sum}[0];
                 $formula =~ s/\n/ /g;
-                $formula =~ s/^\s*|\s*$//g;
+                $formula =~ s/^\s+|\s+$//g;
                 my $parser = COD::Formulae::Parser::AdHoc->new;
                 $parser->ParseString( $formula );
                 my $new_formula = $parser->SprintFormula;
@@ -1434,14 +1355,16 @@ for my $filename (@ARGV) {
 # @param $tag_list
 #       Reference to an array of tag names, that should be merged.
 # @param $dst
-#       Destination CIF structure that contains original values.
-#       Merged values are stored in this structure.
+#       Reference to the destination CIF structure that contains the
+#       original values. Merged values are stored in this structure.
 # @param $src
 #       Source CIF structure that contains new values.
 # @param $src_priority
 #       Logical value that determines whether source CIF values
 #       should overwrite already existent destination CIF values.
 # @return $dst
+#       Reference to the destination CIF structure with the merged
+#       values.
 ##
 sub merge_new_tag_values($$$$)
 {
@@ -1453,7 +1376,7 @@ sub merge_new_tag_values($$$$)
         if( defined $src->{values}{$key} &&
           ( !exists $dst->{values}{$key} || $src_priority ) ) {
 
-            exclude_tag( $dst, $key ) if ( exists $dst->{values}{$key} );
+            if ( exists $dst->{values}{$key} ) { exclude_tag( $dst, $key ) };
             $dst->{values}{$key} = $src->{values}{$key};
             push @{$dst->{tags}}, $key;
 
@@ -1564,7 +1487,7 @@ sub ref2bib
 
             my @authors;
             foreach my $author ( split $separator, $author_list ) {
-                $author =~ s/^\s*|\s*$//g;
+                $author =~ s/^\s+|\s+$//g;
                 $author =~ s/\n/ /g;
                 $author =~ s/\s+/ /g;
                 $author =~ unicode2cif($author);
