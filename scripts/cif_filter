@@ -359,8 +359,7 @@ my %spacegroups = map {
 #*        Print a short usage message (this message) and exit.
 #**
 @ARGV = getOptions(
-    '-a,--authors'  => sub{ $user_bib{'authors'} =
-                                [ split /(?:[;:])\s*/, get_value() ] },
+    '-a,--authors'  => sub{ $user_bib{'authors'} = get_value() },
     '-j,--journal'  => sub{ $user_bib{'journal'} = get_value() },
     '-v,--volume'   => sub{ $user_bib{'volume'} = get_value() },
     '-i,--issue'    => sub{ $user_bib{'issue'} = get_value() },
@@ -502,6 +501,18 @@ my $die_on_error_level = {
     WARNING => $die_on_warnings,
     NOTE    => $die_on_notes
 };
+
+# The following snippet of code mimics the previous script behaviour when
+# user defined bibliography keys were defined as separate global variables.
+foreach my $key ( keys %user_bib ) {
+    if ( $user_bib{$key} =~ /^$/ ) {
+        delete $user_bib{$key};
+    }
+}
+
+if ( defined $user_bib{'authors'} ) {
+    $user_bib{'authors'} = [ split /(?:[;:])\s*/, $user_bib{'authors'} ];
+}
 
 # Constructing a list of recognised data names from various sources
 my @extra_tags = ();
