@@ -18,6 +18,7 @@ require Exporter;
 our @ISA = qw( Exporter );
 our @EXPORT_OK = qw(
     vdot
+    vector_len
     vector_sub
     vector_add
     vector_modulo_1
@@ -40,6 +41,18 @@ sub vdot($$)
     }
 
     return $r;
+}
+
+sub vector_len($)
+{
+    my ($v1) = @_;
+
+    my $sqsum = 0;
+    foreach (@$v1) {
+        $sqsum += $_**2;
+    }
+
+    return sqrt($sqsum);
 }
 
 sub vector_sub($$)
@@ -125,11 +138,8 @@ sub distance($$)
     my ($v1, $v2) = @_;
 
     my $diff = vector_sub( $v1, $v2 );
-    my $sqsum = 0;
-    foreach (@$diff) {
-        $sqsum += $_**2;
-    }
-    return sqrt($sqsum);
+
+    return vector_len($diff);
 }
 
 sub matrix_vector_mul($$)
