@@ -886,21 +886,13 @@ for my $filename (@ARGV) {
                     }
                     for my $bibtag (@global_biblio_keys) {
                         if( !exists $datablok->{$bibtag} &&
-                            exists $bibdata->{$bibtag}) {
-                            $datablok->{$bibtag} = $bibdata->{$bibtag};
+                             exists $bibdata->{$bibtag}) {
                             if( $bibtag eq '_publ_author_name' ) {
-                                if( exists $dataset->{inloop}{$bibtag} ) {
-                                    my $loop_nr = $dataset->{inloop}{$bibtag};
-                                    $dataset->{loops}[$loop_nr] = [ $bibtag ];
-                                } else {
-                                    if( exists $dataset->{loops} ) {
-                                        push @{$dataset->{loops}}, [ $bibtag ];
-                                        $dataset->{inloop}{$bibtag} = $#{$dataset->{loops}};
-                                    } else {
-                                        $dataset->{inloop}{$bibtag} = 0;
-                                        $dataset->{loops} = [ [ $bibtag ] ];
-                                    }
-                                }
+                                set_loop_tag( $dataset, $bibtag, undef,
+                                              $bibdata->{$bibtag} );
+                            } else {
+                                set_tag( $dataset, $bibtag,
+                                         $bibdata->{$bibtag}[0] );
                             }
                         }
                     }
@@ -1381,29 +1373,20 @@ sub merge_new_tag_values($$$$)
 {
     my ($tag_list, $dst, $src, $src_priority) = @_;
 
-    my %tag_list = map {($_,1)} @{$tag_list};
+    my %tag_list = map { $_ => 1 } @{$tag_list};
 
     for my $key (@{$tag_list}) {
         if( defined $src->{values}{$key} &&
           ( !exists $dst->{values}{$key} || $src_priority ) ) {
 
-            if ( exists $dst->{values}{$key} ) { exclude_tag( $dst, $key ) };
-            $dst->{values}{$key} = $src->{values}{$key};
-            push @{$dst->{tags}}, $key;
+            if ( exists $dst->{values}{$key} ) {
+                exclude_tag( $dst, $key )
+            };
 
-            if( exists $src->{inloop}{$key} &&
-               !exists $dst->{inloop}{$key} ) {
-                my $loop_nr = $src->{inloop}{$key};
-                my @loop = @{$src->{loops}[$loop_nr]};
-                my $dst_loop_nr =
-                    defined $dst->{loops} ? int @{$dst->{loops}} : 0;
-
-                for my $loop_key (@loop) {
-                    if( exists $tag_list{$loop_key}) {
-                        push @{$dst->{loops}[$dst_loop_nr]}, $loop_key;
-                        $dst->{inloop}{$loop_key} = $dst_loop_nr;
-                    }
-                }
+            if( exists $src->{inloop}{$key} ) {
+                set_loop_tag( $dst, $key, undef, $src->{values}{$key} )
+            } else {
+                set_tag( $dst, $key, $src->{values}{$key}[0] )
             }
         }
     }
