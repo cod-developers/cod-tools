@@ -22,7 +22,7 @@ use COD::CIF::Data::CIF2COD qw( cif2cod );
 use COD::CIF::Unicode2CIF qw( cif2unicode );
 use COD::CIF::Tags::Print qw( print_cif );
 use COD::Precision qw( cmp_cif_numbers );
-use COD::UserMessage qw( print_message parse_message );
+use COD::UserMessage qw( sprint_message print_message parse_message );
 use COD::ErrorHandler qw( process_warnings process_errors );
 
 require Exporter;
@@ -159,7 +159,7 @@ sub filter_and_check
     }
 
     if( @{$filter_stdout} == 0 ) {
-        die "$cif_filename: ERROR, file became empty after "
+        die "$0: $cif_filename: ERROR, file became empty after "
           . 'filtering with cif_filter';
     }
 
@@ -246,8 +246,9 @@ sub filter_and_check
                                    $parsed->{column} );
                 }
             }
-            die "cif_cod_check encountered $warnings warning(s)"
-                if $warnings;
+            if ( $warnings ) {
+                die "$0: cif_cod_check encountered $warnings warning(s)"
+            };
         }
     }
 
@@ -663,7 +664,7 @@ sub filter_and_check
         }
     }
     if( @{$filter_stdout} == 0 ) {
-        die "$cif_filename: ERROR, file became empty after "
+        die "$0: $cif_filename: ERROR, file became empty after "
           . 'filtering with cif_filter';
     }
     if( $hkl && !$is_pdcif ) {
@@ -1045,11 +1046,14 @@ sub grep_journal_name
 sub critical($$$$$)
 {
     my( $file, $datablock, $level, $message, $explanation ) = @_;
-    print_message( $0, $file, $datablock, $level, $message, $explanation );
+    my $report = sprint_message( $0,
+                                 $file,
+                                 $datablock,
+                                 $level,
+                                 $message,
+                                 $explanation );
 
-    $message = "$message -- $explanation" if defined $explanation;
-
-    die $message;
+    die $report;
 }
 
 sub extract_cif_values
@@ -1097,7 +1101,7 @@ sub extract_cif_values
         }
     }
     if ( @{$values_stderr} > 0 ) {
-        die 'cifvalues encountered ' . @{$values_stderr} . ' warning(s)';
+        die "$0: cifvalues encountered " . @{$values_stderr} . ' warning(s)';
     }
 
     my $data = [];
