@@ -87,7 +87,7 @@ sub filter_and_check
     );
 
     if( $deposition_type eq 'prepublication' ) {
-        push( @filter_opt, '--dont-exclude-publication-details' );
+        push @filter_opt, '--dont-exclude-publication-details';
     }
 
     my( $filter_stdout, $filter_stderr );
@@ -99,7 +99,7 @@ sub filter_and_check
             run_command( [ 'cif_filter', @filter_opt, $cif ] );
     }
 
-    foreach( map { $_ . "\n" } @$filter_stderr ) {
+    foreach( map { $_ . "\n" } @{$filter_stderr} ) {
         my $parsed = parse_message( $_ );
         if( defined $parsed ) {
             my $message = $parsed->{message};
@@ -154,19 +154,19 @@ sub filter_and_check
                            $parsed->{line},
                            $parsed->{column} );
         } elsif( /^[^:]+cif_filter: (.*)/ ) { # Ad-hoc parse for some messages
-            print STDERR "$0: $1";
+            print {*STDERR} "$0: $1";
         }
     }
 
-    if( @$filter_stdout == 0 ) {
+    if( @{$filter_stdout} == 0 ) {
         die "$cif_filename: ERROR, file became empty after "
-          . "filtering with cif_filter";
+          . 'filtering with cif_filter';
     }
 
     my( $fix_values_stdout, $fix_values_stderr ) =
         run_command( [ 'cif_fix_values' ], $filter_stdout );
 
-    foreach( map { $_ . "\n" } @$fix_values_stderr ) {
+    foreach( map { $_ . "\n" } @{$fix_values_stderr} ) {
         my $parsed = parse_message( $_ );
         if( defined $parsed ) {
             if( $parsed->{message} !~
@@ -186,7 +186,7 @@ sub filter_and_check
     my( $correct_stdout, $correct_stderr ) =
         run_command( [ 'cif_correct_tags' ], $fix_values_stdout );
 
-    foreach( map { $_ . "\n" } @$correct_stderr ) {
+    foreach( map { $_ . "\n" } @{$correct_stderr} ) {
         my $parsed = parse_message( $_ );
         if( defined $parsed ) {
             print_message( $0,
@@ -199,8 +199,10 @@ sub filter_and_check
                            $parsed->{column} );
         }
     }
-    die 'cif_correct_tags encountered ' . @$correct_stderr . ' ' .
-        'warning(s)' if @$correct_stderr > 0;
+    if ( @{$correct_stderr} > 0 ) {
+        die 'cif_correct_tags encountered ' . @{$correct_stderr}
+          . ' warning(s)' ;
+    }
 
     if( !$options->{bypass_checks} ) {
         my $ccc_opt;
@@ -212,13 +214,13 @@ sub filter_and_check
         }
 
         my( $ccc_stdout, $ccc_stderr ) =
-            run_command( [ 'cif_cod_check', @$ccc_opt ],
+            run_command( [ 'cif_cod_check', @{$ccc_opt} ],
                          $correct_stdout );
 
         if( !defined $ccc_stdout->[0] || $ccc_stdout !~ /OK$/) {
             my $warnings = 0;
             CCCMESSAGE:
-            foreach( map { $_ . "\n" } @$ccc_stderr ) {
+            foreach( map { $_ . "\n" } @{$ccc_stderr} ) {
                 my $parsed = parse_message( $_ );
                 if( defined $parsed ) {
                     for( $parsed->{message} ) {
@@ -249,9 +251,9 @@ sub filter_and_check
         }
     }
 
-    open( my $out, ">", $tmp_file );
-    print $out join( "\n", @$correct_stdout );
-    close( $out );
+    open my $out, '>', $tmp_file;
+    print {$out} join "\n", @{$correct_stdout};
+    close $out;
 
     require COD::CIF::Parser::Yapp;
     my $parser = new COD::CIF::Parser::Yapp;
@@ -262,12 +264,12 @@ sub filter_and_check
     my @cif_datablocks;
     my @hkl_datablocks;
 
-    for my $dataset (@$data) {
+    for my $dataset (@{$data}) {
         if( exists $dataset->{values}{_refln_index_h} &&
             exists $dataset->{values}{_pd_phase_block_id} ) {
-            push( @hkl_datablocks, $dataset );
+            push @hkl_datablocks, $dataset;
         } else {
-            push( @cif_datablocks, $dataset );
+            push @cif_datablocks, $dataset;
         }
     }
 
@@ -276,8 +278,8 @@ sub filter_and_check
     if( @hkl_datablocks > 0 ) {
         $is_pdcif = 1;
         $hkl_filename = $cif_filename;
-        open( $out, ">", $tmp_file );
-        select( $out );
+        open $out, '>', $tmp_file;
+        select $out;
         for my $dataset (@hkl_datablocks) {
             print_cif( $dataset,
                 {
@@ -285,11 +287,11 @@ sub filter_and_check
                     preserve_loop_order => 1
                 } );
         }
-        select( STDOUT );
-        close( $out );
-        open( my $inp, $tmp_file );
+        select STDOUT;
+        close $out;
+        open( my $inp, '<', $tmp_file );
         $hkl = [ map{ s/\n$//; $_ } <$inp> ];
-        close( $inp );
+        close $inp;
     }
 
     # Checking whether names in pre-deposition CIFs and in personal
@@ -301,30 +303,30 @@ sub filter_and_check
     if( $deposition_type eq 'prepublication' ||
         $deposition_type eq 'personal' ) {
           DATASET:
-        for my $dataset (@$data) {
+        for my $dataset (@{$data}) {
             my $values = $dataset->{values};
             my $dataname = 'data_' . $dataset->{name} if defined $dataset->{name};
             if( !defined $values ) {
-                critical( $cif_filename, $dataname, "ERROR",
+                critical( $cif_filename, $dataname, 'ERROR',
                           "no data in datablock '$dataset->{name}'", undef );
             }
             if( exists $values->{_publ_author_name} ) {
                 my $web_author = lc($options->{author_name});
                 $web_author =~ s/\s//g;
                 if( !defined $deposition_authors ) {
-                    $deposition_authors = join( "; ",
-                        @{$values->{_publ_author_name}} );
+                    $deposition_authors =
+                                    join '; ', @{$values->{_publ_author_name}};
                     $first_data_name = $dataset->{name};
                 } else {
-                    my $deposition_authors_now = join( "; ",
-                        @{$values->{_publ_author_name}} );
+                    my $deposition_authors_now =
+                                    join '; ', @{$values->{_publ_author_name}};
                     my $data_name_now = $dataset->{name};
                     if( $deposition_authors ne $deposition_authors_now ) {
                         critical( $cif_filename,
                                   defined $data_name_now
                                           ? 'data_' . $data_name_now
                                           : $data_name_now,
-                                  "WARNING",
+                                  'WARNING',
                                   'author list in the datablock '
                                 . "data_$first_data_name "
                                 . "($deposition_authors) is not the "
@@ -337,7 +339,7 @@ sub filter_and_check
                     }
                 }
                 for my $author (@{$values->{_publ_author_name}}) {
-                    my $cif_author = lc($author);
+                    my $cif_author = lc $author;
                     $cif_author =~ s/\s//g;
                     $cif_author = cif2unicode( $cif_author );
                     next DATASET if $cif_author eq $web_author;
@@ -346,16 +348,16 @@ sub filter_and_check
                     $cif_author =~ s/\pM//g;
                     next DATASET if $cif_author eq $web_author;
                 }
-                critical( $cif_filename, $dataname, "WARNING",
+                critical( $cif_filename, $dataname, 'WARNING',
                           "submitting author '$options->{author_name}' " .
-                          "does not match any author in the " .
+                          'does not match any author in the ' .
                           "$dataname author list (" .
-                          join( ', ', map { "'$_'" }
-                          @{$values->{_publ_author_name}}) . ")",
-                          "will not deposit the structure, " .
-                          "the prepublication structures and personal " .
-                          "communications must be deposited by one of " .
-                          "the authors" );
+                          join ( ', ', map { "'$_'" }
+                                    @{$values->{_publ_author_name}} ) . ')',
+                          'will not deposit the structure, ' .
+                          'the prepublication structures and personal ' .
+                          'communications must be deposited by one of ' .
+                          'the authors' );
             }
         }
     }
@@ -368,24 +370,24 @@ sub filter_and_check
     # "published structures":
 
     if( $deposition_type eq 'personal' ) {
-        for my $dataset (@$data) {
+        for my $dataset (@{$data}) {
             my $values = $dataset->{values};
             my $dataname = 'data_' . $dataset->{name} if defined $dataset->{name};
             if( !defined $values ) {
-                critical( $cif_filename, $dataname, "WARNING",
+                critical( $cif_filename, $dataname, 'WARNING',
                           "no data in datablock '$dataset->{name}'", undef );
             }
             if( (exists $values->{_journal_volume} ||
                  exists $values->{_journal_issue}) &&
                  exists $values->{_journal_year} &&
                  exists $values->{_journal_page_first} ) {
-                critical( $cif_filename, $dataname, "WARNING",
+                critical( $cif_filename, $dataname, 'WARNING',
                           "the $dataname datablock " .
-                          "seems to have a complete bibliography " .
-                          "(journal year, volume/issue and page)",
-                          "it should then rather be deposited as " .
-                          "a published structure, not as a personal " .
-                          "communication" );
+                          'seems to have a complete bibliography ' .
+                          '(journal year, volume/issue and page)',
+                          'it should then rather be deposited as ' .
+                          'a published structure, not as a personal ' .
+                          'communication' );
             }
         }
     }
@@ -396,11 +398,11 @@ sub filter_and_check
 
     if( $deposition_type eq 'published' ) {
         my ($range, $journal, $data_name);
-        for my $dataset (@$data) {
+        for my $dataset (@{$data}) {
             my $values = $dataset->{values};
             my $dataname = 'data_' . $dataset->{name} if defined $dataset->{name};
             if( !defined $values ) {
-                critical( $cif_filename, $dataname, "WARNING",
+                critical( $cif_filename, $dataname, 'WARNING',
                           "no data in datablock '$dataset->{name}'", undef );
             }
             if( exists $values->{_journal_name_full} ) {
@@ -416,13 +418,13 @@ sub filter_and_check
                                                  $deposition_type );
                     my $data_name_now = $dataset->{name};
                     if( $range_now ne $range ) {
-                        critical( $cif_filename, undef, "WARNING",
+                        critical( $cif_filename, undef, 'WARNING',
                                   "journals '$journal' of " .
                                   "data_$data_name and '$journal_now' " .
                                   "of data_$data_name_now " .
-                                  "indicate that the datablocks belong " .
-                                  "to different COD number ranges",
-                                  "please submit them as separate CIFs" );
+                                  'indicate that the datablocks belong ' .
+                                  'to different COD number ranges',
+                                  'please submit them as separate CIFs' );
                     }
                 }
             }
@@ -433,46 +435,46 @@ sub filter_and_check
     # '_cod_hold_until_date' in case they are not adequate, warning about
     # presence of '_cod_database_fobs_code' when Fobs file is not supplied:
 
-    for my $dataset (@$data) {
+    for my $dataset (@{$data}) {
         my $values = $dataset->{values};
         my $dataname = 'data_' . $dataset->{name} if defined $dataset->{name};
 
         if( !$options->{replace} &&
             exists $values->{_cod_database_code} &&
             defined $values->{_cod_database_code}[0] ) {
-            print_message( $0, $cif_filename, $dataname, "NOTE",
-                           "tag '_cod_database_code' value '"
-                         . $values->{_cod_database_code}[0] . "' "
-                         . "will be overwritten upon deposition", undef );
+            print_message( $0, $cif_filename, $dataname, 'NOTE',
+                           'tag \'_cod_database_code\' value \''
+                         . $values->{_cod_database_code}[0] . '\' '
+                         . 'will be overwritten upon deposition', undef );
         }
         if( $deposition_type ne 'prepublication' &&
             exists $values->{_cod_hold_until_date} &&
             defined $values->{_cod_hold_until_date}[0] ) {
-            print_message( $0, $cif_filename, $dataname, "NOTE",
-                           "tag '_cod_hold_until_date' value '" .
+            print_message( $0, $cif_filename, $dataname, 'NOTE',
+                           'tag \'_cod_hold_until_date\' value \'' .
                            $values->{_cod_hold_until_date}[0] .
                            "' will be removed from '$cif_filename' " .
-                           "upon deposition", 'only prepublication ' .
+                           'upon deposition', 'only prepublication ' .
                            'CIF files can contain this tag' );
         }
         if( exists $values->{_cod_database_fobs_code} ) {
             if( !defined $hkl ) {
-                critical( $cif_filename, $dataname, "WARNING",
-                          "CIF file contains tag " .
-                          "'_cod_database_fobs_code', but Fobs file " .
-                          "is not supplied", 'cannot continue' );
+                critical( $cif_filename, $dataname, 'WARNING',
+                          'CIF file contains tag ' .
+                          '\'_cod_database_fobs_code\', but Fobs file ' .
+                          'is not supplied', 'cannot continue' );
             }
             if( !$options->{replace} &&
                 defined $values->{_cod_database_fobs_code}[0] ) {
                     print_message( $0,
                                    $cif_filename,
                                    $dataname,
-                                   "NOTE",
-                                   "tag '_cod_database_fobs_code' " .
-                                   "value '" .
+                                   'NOTE',
+                                   'tag \'_cod_database_fobs_code\' ' .
+                                   'value \'' .
                                    $values->{_cod_database_fobs_code}[0] .
-                                   "' will be overwritten upon " .
-                                   "deposition", undef );
+                                   '\' will be overwritten upon ' .
+                                   'deposition', undef );
             }
         }
     }
@@ -481,9 +483,9 @@ sub filter_and_check
     my $hkl_now;
     if( defined $hkl ) {
         if( ref( $hkl ) eq 'ARRAY' ) {
-            $hkl_now = join( "\n", @$hkl );
+            $hkl_now = join "\n", @{$hkl};
         } else {
-            open( my $hkl_file_handle, $hkl );
+            open( my $hkl_file_handle, '<', $hkl );
             $hkl_now = join( "\n",
                              map {s/(\n|\r|\r\n)$//;$_} <$hkl_file_handle> );
             close( $hkl_file_handle );
@@ -494,17 +496,17 @@ sub filter_and_check
     if( $options->{replace} ) {
 
         # determining which cif file to replace, if any:
-        if( @$data != 1 ) {
-            critical( $cif_filename, undef, "WARNING",
-                      "file supplied for replacement " .
-                      "should have only one datablock", undef );
+        if( @{$data} != 1 ) {
+            critical( $cif_filename, undef, 'WARNING',
+                      'file supplied for replacement ' .
+                      'should have only one datablock', undef );
         }
         if( !exists $data->[0]{values}{'_cod_database_code'}[0]) {
             critical( $cif_filename,
                       defined $data->[0]{name}
                               ? 'data_' . $data->[0]{name}
                               : $data->[0]{name},
-                      "WARNING", 'CIF file supplied for replacement '
+                      'WARNING', 'CIF file supplied for replacement '
                     . 'should have \'_cod_database_code\' value '
                     . 'determining which CIF file to replace', undef );
         }
@@ -519,7 +521,7 @@ sub filter_and_check
         use COD::CIF::Data::CODNumbers qw(cif_fill_data fetch_duplicates);
         my %structures = ();
         my $index = 0;
-        foreach my $dataset ( @$data ) {
+        foreach my $dataset ( @{$data} ) {
             my $dataname = 'data_' . $dataset->{name} if defined $dataset->{name};
             local $SIG{__WARN__} = sub { process_warnings( {
                                            'message'  => @_,
@@ -542,21 +544,21 @@ sub filter_and_check
                                            $db_conf,
                                            $cif_cod_numbers_opt );
         my %duplicate_cod_entries;
-        foreach my $dataset (@$duplicates) {
+        foreach my $dataset (@{$duplicates}) {
             next if scalar( keys %{$dataset->{duplicates}} ) == 0;
             foreach( keys %{$dataset->{duplicates}} ) {
-                print_message( $0, $cif_filename, undef, "DUPLICATE",
+                print_message( $0, $cif_filename, undef, 'DUPLICATE',
                                "$dataset->{formula} is found in COD entry $_",
                                undef );
                 $duplicate_cod_entries{$_} = 1;
             }
         }
         if( keys %duplicate_cod_entries > 0 ) {
-            critical( $cif_filename, undef, "DUPLICATE",
-                      "file has (at least some) structures " .
-                      "that have been deposited to COD previously in " .
-                      "entries " .
-                      join( ", ", sort keys %duplicate_cod_entries ), undef );
+            critical( $cif_filename, undef, 'DUPLICATE',
+                      'file has (at least some) structures ' .
+                      'that have been deposited to COD previously in ' .
+                      'entries ' .
+                      join( ', ', sort keys %duplicate_cod_entries ), undef );
         }
     }
 
@@ -587,26 +589,26 @@ sub filter_and_check
             $journal = 'Personal communications to COD';
         } elsif( $deposition_type eq 'prepublication' &&
                  $options->{journal} ) {
-            my $new_journal = grep_journal_name( \@journal_regexp, 
+            my $new_journal = grep_journal_name( \@journal_regexp,
                                                  $options->{journal} );
             if( $new_journal ) {
                 $journal = $new_journal;
-                print_message( $0, $cif_filename, undef, "NOTE",
+                print_message( $0, $cif_filename, undef, 'NOTE',
                                "journal name was recognised as '$journal'",
                                undef );
             } else {
                 $journal = $options->{journal};
-                print_message( $0, $cif_filename, undef, "NOTE",
+                print_message( $0, $cif_filename, undef, 'NOTE',
                                "journal name '$journal' was not " .
-                               "recognised, leaving as is", undef );
+                               'recognised, leaving as is', undef );
             }
         } elsif( $deposition_type eq 'published' ) {
             if( exists $data->[0]{values}{_journal_name_full} ) {
                 $journal = $data->[0]{values}{_journal_name_full}[0];
             } else {
-                print_message( $0, $cif_filename, undef, "NOTE",
-                               "journal name is not defined in the " .
-                               "first datablock of the published CIF " .
+                print_message( $0, $cif_filename, undef, 'NOTE',
+                               'journal name is not defined in the ' .
+                               'first datablock of the published CIF ' .
                                "'$cif_filename'", undef );
             }
         }
@@ -624,33 +626,33 @@ sub filter_and_check
                           $db_conf->{port},
                           $db_conf->{user},
                           $db_conf->{password} );
-    die "connection to database failed" if !$dbh;
+    die 'connection to database failed' if !$dbh;
 
     my $database_hold_until;
     if( $options->{replace} ) {
 
         # Asking the database whether old file exists
 
-        my $sth = $dbh->prepare( "SELECT COUNT(*) " .
-                                 "FROM data WHERE file = ?" );
+        my $sth = $dbh->prepare( 'SELECT COUNT(*) ' .
+                                 'FROM data WHERE file = ?' );
         $sth->execute( $number_to_replace );
 
         if( $sth->fetchrow_arrayref()->[0] == 0 ) {
-            critical( $cif_filename, undef, "ERROR",
+            critical( $cif_filename, undef, 'ERROR',
                       "entry for structure $number_to_replace " .
-                      "does not exist in the COD data table",
-                      "cannot replace abscent structures" );
+                      'does not exist in the COD data table',
+                      'cannot replace abscent structures' );
         }
 
-        $sth = $dbh->prepare( "SELECT onhold FROM data WHERE file = ?" );
+        $sth = $dbh->prepare( 'SELECT onhold FROM data WHERE file = ?' );
         $sth->execute( $number_to_replace );
         $database_hold_until = $sth->fetchrow_arrayref()->[0];
 
         if( $options->{release} ) {
             if( !defined $database_hold_until ) {
-                critical( $cif_filename, undef, "ERROR",
-                          "cannot release structure that has been " .
-                          "deposited not as prepublication material", undef );
+                critical( $cif_filename, undef, 'ERROR',
+                          'cannot release structure that has been ' .
+                          'deposited not as prepublication material', undef );
             }
         }
     }
@@ -663,12 +665,12 @@ sub filter_and_check
     if( $deposition_type eq 'prepublication' ) {
         @filter_opt = ( '--journal', (defined $journal)
                                         ? "To be published in $journal"
-                                        : "To be published",
+                                        : 'To be published',
                         '--leave-title',
                         '--authors', $deposition_authors );
     }
     if( $deposition_type eq 'personal' ) {
-        @filter_opt = ( '--journal', "Personal communication to COD",
+        @filter_opt = ( '--journal', 'Personal communication to COD',
                         '--year', $year,
                         '--authors', $deposition_authors,
                         '--leave-title',
@@ -678,7 +680,7 @@ sub filter_and_check
     my $datablock_nr = 0;
     my $data_source_nr = 0;
 
-    for my $datablock (@$data) {
+    for my $datablock (@{$data}) {
         my $values = $datablock->{values};
         next unless defined $values;
         $datablock_nr++;
@@ -687,13 +689,13 @@ sub filter_and_check
             $data_source_nr++;
         }
     }
-    
+
     if( $data_source_nr > 0 && $data_source_nr != $datablock_nr ) {
-        critical( $cif_filename, undef, "ERROR",
+        critical( $cif_filename, undef, 'ERROR',
                   "only some data blocks in '$cif_filename' " .
-                  "have _cod_data_source_file tags", 'cannot ' .
-                  "determine the exact source of data; such CIFs " . 
-                  "are not suitable for COD" );
+                  'have _cod_data_source_file tags', 'cannot ' .
+                  'determine the exact source of data; such CIFs ' .
+                  'are not suitable for COD' );
     }
 
     if( $data_source_nr == 0 ) {
@@ -706,7 +708,7 @@ sub filter_and_check
                            '--parse-formula-sum',
                        @filter_opt ], $correct_stdout );
 
-    foreach( map { $_ . "\n" } @$filter_stderr ) {
+    foreach( map { $_ . "\n" } @{$filter_stderr} ) {
         my $parsed = parse_message( $_ );
         if( defined $parsed ) {
             next if $parsed->{message} =~ /tag .+ is not recognised/;
@@ -721,7 +723,7 @@ sub filter_and_check
                            $parsed->{column} );
         }
     }
-    if( @$filter_stdout == 0 ) {
+    if( @{$filter_stdout} == 0 ) {
         die "$cif_filename: ERROR, file became empty after "
           . 'filtering with cif_filter';
     }
@@ -739,17 +741,17 @@ sub filter_and_check
         # and one or more of them should have _pd_block_id tag.
 
         my %hkl_parameters;
-        if( @$hkl_parameters == 1 &&
+        if( @{$hkl_parameters} == 1 &&
             !exists $hkl_parameters->[0]{_pd_block_id} ) {
             # We have single-crystal experiment HKL data
             %hkl_parameters = %{$hkl_parameters->[0]};
         } else {
-            critical( $hkl_filename, undef, "ERROR",
-                      "supplied HKL file has more than one " .
-                      "datablock and does not describe data from " .
-                      "powder diffraction experiment", 'only ' .
-                      "powder diffraction HKL files can have more " .
-                      "than one datablock" );
+            critical( $hkl_filename, undef, 'ERROR',
+                      'supplied HKL file has more than one ' .
+                      'datablock and does not describe data from ' .
+                      'powder diffraction experiment', 'only ' .
+                      'powder diffraction HKL files can have more ' .
+                      'than one datablock' );
         }
 
         my $cif_parameters = extract_cif_values(
@@ -774,9 +776,9 @@ sub filter_and_check
             !exists $hkl_parameters{'_[local]_cod_data_source_block'} ){
             $hkl_now =~ s/\n+$//s;
             $hkl_now .= "\n" .
-                        "_[local]_cod_data_source_file '" .
+                        '_[local]_cod_data_source_file \'' .
                         $hkl_filename . "'\n" .
-                        "_[local]_cod_data_source_block '" .
+                        '_[local]_cod_data_source_block \'' .
                         $hkl_parameters{name} . "'\n";
         }
     }
@@ -785,7 +787,7 @@ sub filter_and_check
 
     my( $cif2cod_stdout, $cif2cod_stderr ) = capture {
         my @extracted;
-        foreach my $dataset ( @$data ) {
+        foreach my $dataset ( @{$data} ) {
             my $dataname = 'data_' . $dataset->{name};
             local $SIG{__WARN__} = sub { process_warnings( {
                                            'message'  => @_,
@@ -806,7 +808,7 @@ sub filter_and_check
     };
 
     C2CMESSAGE:
-    foreach( split( "\n", $cif2cod_stderr ) ) {
+    foreach( split /\n/, $cif2cod_stderr ) {
         if( /[^: ]+: [^:]+: [A-Z]+, tag '([^']+)' is absent/ ) {
             my $tag = $1;
             if( $deposition_type eq 'published' ) {
@@ -821,10 +823,10 @@ sub filter_and_check
                 }
             }
         }
-        print STDERR "$_\n";
+        print {*STDERR} $_ . "\n";
     }
 
-    my $cif_now = join( "\n", @$filter_stdout );
+    my $cif_now = join "\n", @{$filter_stdout};
     if( $is_pdcif && !$options->{split_pdcif} ) {
         $cif_now = $cif_now . "\n" . $hkl_now;
         $hkl_now = undef;
@@ -862,7 +864,7 @@ sub run_command($@)
     my ($stdin, $stdout, $stderr);
     $stderr = gensym();
 
-    my $command_pid = open3( $stdin, $stdout, $stderr, @$command );
+    my $command_pid = open3( $stdin, $stdout, $stderr, @{$command} );
 
     # Make STDIN of the child process non-blocking so that we do not
     # block on long inputs:
@@ -871,11 +873,11 @@ sub run_command($@)
     $stderr->blocking( 0 );
 
     if( defined $input ) {
-        if( ref $input eq "" ) {
+        if( ref $input eq '' ) {
             $input = [ $input ];
-        } elsif( ref $input ne "ARRAY" ) {
-            die( "run_command() input is not a " .
-                 "scalar or an array reference" );
+        } elsif( ref $input ne 'ARRAY' ) {
+            die( 'run_command() input is not a ' .
+                 'scalar or an array reference' );
         }
     } else {
         $input = [];
@@ -889,8 +891,8 @@ sub run_command($@)
 
     my ( $output, $errors );
 
-    my $input_text = join( "\n", @$input );
-    if( $input_text ne "" ) {
+    my $input_text = join( "\n", @{$input} );
+    if( $input_text ne '' ) {
         $input_text .= "\n";
     }
     my $input_length = length( $input_text );
@@ -906,16 +908,16 @@ sub run_command($@)
                                        undef, $timeout );
 
         if( ! @list ) {
-            die( "execution of external script \'"
-               . $$command[0] . "\' was timed out" );
+            die( 'execution of external script \''
+               . $command->[0] . '\' was timed out' );
         }
 
         if( @{ $list[1] } > 0 ) {
             my $written =
                 syswrite( $stdin, $input_text, $input_rest, $stdin_pos );
             if( !defined $written ) {
-                die( "syswrite() failed for external script " .
-                     "'$$command[0]': $!" );
+                die( 'syswrite() failed for external script ' .
+                     "'$command->[0]': $!" );
             }
             $stdin_pos += $written;
             $input_rest -= $written;
@@ -951,8 +953,8 @@ sub run_command($@)
 
     waitpid( $command_pid, 0 );
 
-    my @output = defined $output ? split( "\n", $output ) : ();
-    my @errors = defined $errors ? split( "\n", $errors ) : ();
+    my @output = defined $output ? split /\n/, $output : ();
+    my @errors = defined $errors ? split /\n/, $errors : ();
 
     return( \@output, \@errors, $? );
 }
@@ -964,13 +966,13 @@ sub db_connect
     my $dsn = "dbi:$db_platform:" .
               "hostname=$db_host;".
               "dbname=$db_name".
-              ($db_port ? ";$db_port" : "");
+              ($db_port ? ";$db_port" : '');
     my $dbh = DBI->connect( $dsn, $db_user, $db_pass );
     if( !$dbh ) {
-        die( "could not connect to the database - " . lcfirst( $DBI::errstr ));
+        die( 'could not connect to the database - ' . lcfirst( $DBI::errstr ));
     }
     if( $db_platform ne 'SQLite' ) {
-        $dbh->do( "SET CHARACTER SET utf8" );
+        $dbh->do( 'SET CHARACTER SET utf8' );
         $dbh->do( 'set @@character_set_client = utf8' );
         $dbh->do( 'set @@character_set_connection = utf8' );
         $dbh->do( 'set @@character_set_server = utf8' );
@@ -985,96 +987,96 @@ sub select_COD_number_range($$)
     my ($journal, $deposition_type ) = @_;
     my $range;
 
-    if( $deposition_type eq "prepublication" ) {
-        $range = "30";
-    } elsif( $deposition_type eq "personal" ) {
-        $range = "35";
+    if( $deposition_type eq 'prepublication' ) {
+        $range = '30';
+    } elsif( $deposition_type eq 'personal' ) {
+        $range = '35';
     } else {
         for ( $journal ) {
             if( /Acta.*Cryst.*C/ ) {
-                $range = "20";
+                $range = '20';
                 last;
             }
             if( /Acta.*Cryst.*B/ ) {
-                $range = "21";
+                $range = '21';
                 last;
             }
             if( /Acta.*Cryst.*E/ ) {
-                $range = "22";
+                $range = '22';
                 last;
             }
             if( /J.*Appl.*Cryst/i ) {
-                $range = "230";
+                $range = '230';
                 last;
             }
             if( /Acta.*Cryst/i ) {
-                $range = "231";
+                $range = '231';
                 last;
             }
             if( /Chem.*Mat/i ) {
-                $range = "400";
+                $range = '400';
                 last;
             }
             if( /J.*Org.*Chem/i ) {
-                $range = "402";
+                $range = '402';
                 last;
             }
             if( /Organometallics/i ) {
-                $range = "406";
+                $range = '406';
                 last;
             }
             if( /Inorg.*Chem.*/i ) {
-                $range = "430";
+                $range = '430';
                 last;
             }
             if( /J.*Am.*Chem.*Soc|JACS/i ) {
-                $range = "41";
+                $range = '41';
                 last;
             }
             if( /ACS.*/i ) {
-                $range = "45";
+                $range = '45';
                 last;
             }
             if( /Cryst.*Growth.*Des.*/i ) {
-                $range = "45";
+                $range = '45';
                 last;
             }
             if( /Dalt.*Trans/i ) {
-                $range = "700";
+                $range = '700';
                 last;
             }
             if( /New.*J.*Chem/i ) {
-                $range = "705";
+                $range = '705';
                 last;
             }
             if( /Chem.*Comm/i ) {
-                $range = "710";
+                $range = '710';
                 last;
             }
             if( /Org.*Biomol.*Chem/i ) {
-                $range = "715";
+                $range = '715';
                 last;
             }
             if( /RSC|Cryst.*Eng.*Comm|Green.*Chem|J.*Mater.*Chem|Perkin.*Trans|Phys.*Chem.*Chem.* Phys.*/ix ) {
-                $range = "72";
+                $range = '72';
                 last;
             }
             if( /Chem.*Lett/i ) {
-                $range = "80";
+                $range = '80';
                 last;
             }
             if( /Zeitschr.*Krist/i ) {
-                $range = "81";
+                $range = '81';
                 last;
             }
-            if( $deposition_type eq "published" ) {
-                $range = "1";
+            if( $deposition_type eq 'published' ) {
+                $range = '1';
                 # print_warning( "WARNING, journal name '$journal' " .
-                #                "was not recognised, " .
+                #                'was not recognised, ' .
                 #                "defaulting to range '$range' " .
-                #                "(other journals)" );
+                #                '(other journals)' );
             } else {
-                die( "could not assign COD number range " .
+                die( 'could not assign COD number range ' .
                      "for journal '$journal' and deposition type " .
                      "'$deposition_type'" );
             }
@@ -1093,7 +1095,7 @@ sub select_COD_number_range($$)
 sub grep_journal_name
 {
     my ($journal_regexp, $journal) = @_;
-    foreach (@$journal_regexp) {
+    foreach (@{$journal_regexp}) {
         if ($journal =~ /${ $_ }[0]/i) {
             return ${ $_ }[1];
         }
@@ -1122,24 +1124,24 @@ sub extract_cif_values
     if( ref( $file ) eq 'ARRAY' ) {
         $file_now = $file;
     } else {
-        $file_now = [ split( '\n', $file ) ];
+        $file_now = [ split /\n/, $file ];
     }
 
     # Using temporary file as input for 'cifvalues': printing input lines
     # to STDIN of 'cifvalues' causes broken pipe exception when input
     # size exceeds 65536 bytes. The reason is not investigated yet
 
-    open( my $inp, ">", $tmp_file );
-    print $inp join( "\n", @$file_now ) . "\n";
+    open( my $inp, '>', $tmp_file );
+    print {$inp} join( "\n", @{$file_now} ) . "\n";
     close( $inp );
 
     my( $values_stdout, $values_stderr ) =
         run_command( [ 'cifvalues',
-                           '--tag', join( ',', @$tags ),
+                           '--tag', join( ',', @{$tags} ),
                            '--separator', $separator,
                            '--vseparator', $vseparator,
                            $tmp_file ] );
-    foreach( map { $_ . "\n" } @$values_stderr ) {
+    foreach( map { $_ . "\n" } @{$values_stderr} ) {
         my $parsed = parse_message( $_ );
         if( defined $parsed ) {
             next if $parsed->{message} =~ /compiler could not recover from errors/;
@@ -1152,18 +1154,20 @@ sub extract_cif_values
                $parsed->{line},
                $parsed->{column} );
         } else {
-            print STDERR $_;
+            print {*STDERR} $_;
         }
     }
-    die 'cifvalues encountered ' . @$values_stderr . ' ' .
-        'warning(s)' if @$values_stderr > 0;
+    if ( @{$values_stderr} > 0 ) {
+        die 'cifvalues encountered ' . @{$values_stderr} . ' warning(s)';
+    }
+
     my $data = [];
     my %seen_datanames;
-    foreach( @$values_stdout ) {
+    foreach( @{$values_stdout} ) {
         my @line = split( quotemeta( $separator ), $_ );
         my $dataname = shift @line;
         if( exists $seen_datanames{$dataname} ) {
-            critical( $filename, undef, "ERROR",
+            critical( $filename, undef, 'ERROR',
                       'file contains more than one datablock '
                     . "named '$dataname'", 'please use unique '
                     . 'datablock names' );
@@ -1174,7 +1178,7 @@ sub extract_cif_values
             $values->{$tags->[$i]} =
                 [ split( quotemeta( $vseparator ), $line[$i] ) ];
         }
-        push( @$data, $values );
+        push @{$data}, $values;
     }
 
     return $data;
@@ -1185,7 +1189,7 @@ sub find_cif_datablock_for_hkl
     my( $cif_parameters, $hkl_parameters, $identity_tags,
         $cif_filename, $hkl_filename ) = @_;
 
-    my %hkl_parameters = %$hkl_parameters;
+    my %hkl_parameters = %{$hkl_parameters};
 
     # Determining CIF datablock related to supplied HKL file
 
@@ -1195,7 +1199,7 @@ sub find_cif_datablock_for_hkl
     }
 
     my $cif_for_hkl;
-    for my $i (0..@$cif_parameters-1 ) {
+    for my $i (0..@{$cif_parameters}-1 ) {
         if( (exists $cif_parameters->[$i]{'_[local]_cod_data_source_block'} &&
              $cif_parameters->[$i]{'_[local]_cod_data_source_block'}[0] eq $hkl_dataname) ||
             (!exists $cif_parameters->[$i]{'_[local]_cod_data_source_block'} &&
@@ -1204,38 +1208,38 @@ sub find_cif_datablock_for_hkl
                 $cif_for_hkl = $i;
                 last;
             } else {
-                critical( $cif_filename, undef, "ERROR",
-                          "CIF file contains more than one datablock " .
+                critical( $cif_filename, undef, 'ERROR',
+                          'CIF file contains more than one datablock ' .
                           "named $hkl_dataname?", undef );
             }
         }
     }
     if( !defined $cif_for_hkl ) {
-        critical( $cif_filename, undef, "ERROR",
-                  "could not relate supplied HKL file to any " .
-                  "datablock from CIF file", 'CIF datablock ' .
+        critical( $cif_filename, undef, 'ERROR',
+                  'could not relate supplied HKL file to any ' .
+                  'datablock from CIF file', 'CIF datablock ' .
                   "with name '$hkl_dataname' is not found" );
     }
     my %cif_parameters = %{ $cif_parameters->[$cif_for_hkl] };
 
-    foreach my $tag ( @$identity_tags ) {
+    foreach my $tag ( @{$identity_tags} ) {
         next if $tag =~ /^_\[local\]_cod_data_source_(file|block)$/;
         if( exists $cif_parameters{$tag} && exists $hkl_parameters{$tag} ) {
             if( $tag =~ /_cell_/ ) {
                 if( cmp_cif_numbers(
                     $cif_parameters{$tag}->[0],
                     $hkl_parameters{$tag}->[0] ) ) {
-                    critical( $cif_filename, undef, "ERROR",
-                              "can not confirm relation " .
-                              "between datablocks named '" . 
+                    critical( $cif_filename, undef, 'ERROR',
+                              'can not confirm relation ' .
+                              'between datablocks named \'' .
                               $hkl_dataname .
-                              "' from supplied CIF and Fobs " .
-                              "files", "values of tag '$tag' " .
-                              "differ: '" .
+                              '\' from supplied CIF and Fobs ' .
+                              'files', "values of tag '$tag' " .
+                              'differ: \'' .
                               $cif_parameters{$tag}->[0] .
-                              "' (CIF) and '" .
+                              '\' (CIF) and \'' .
                               $hkl_parameters{$tag}->[0] .
-                              "' (Fobs)" );
+                              '\' (Fobs)' );
                 }
             } elsif( $tag eq '_publ_author_name' ) {
                 my $cif_authors = lc( join( ';',
@@ -1245,33 +1249,33 @@ sub find_cif_datablock_for_hkl
                     @{$hkl_parameters{$tag}} ) );
                 $hkl_authors =~ s/\s//g;
                 if( $cif_authors ne $hkl_authors ) {
-                    critical( $cif_filename, undef, "ERROR",
-                              "can not confirm relation " .
-                              "between datablocks named '" . 
+                    critical( $cif_filename, undef, 'ERROR',
+                              'can not confirm relation ' .
+                              'between datablocks named \'' .
                               $hkl_dataname .
-                              "' from supplied CIF and Fobs " .
-                              "files", "publication author " .
-                              "lists differ: '" .
+                              '\' from supplied CIF and Fobs ' .
+                              'files', 'publication author ' .
+                              'lists differ: \'' .
                               join( ', ', map { "'$_'" }
                               @{$cif_parameters{$tag}} ) .
-                              "' (CIF) and '" . join( ', ', map { "'$_'" }
+                              '\' (CIF) and \'' . join( ', ', map { "'$_'" }
                                 @{$hkl_parameters{$tag}} ) .
-                              "' (Fobs)" );
+                              '\' (Fobs)' );
                 }
             } else {
                 if( $cif_parameters{$tag}->[0] ne
                     $hkl_parameters{$tag}->[0] ) {
-                    critical( $cif_filename, undef, "ERROR",
-                              "can not confirm relation " .
-                              "between datablocks named '" .
+                    critical( $cif_filename, undef, 'ERROR',
+                              'can not confirm relation ' .
+                              'between datablocks named \'' .
                               $hkl_dataname .
-                              "' from supplied CIF and Fobs " .
-                              "files", "values of tag '$tag' " .
-                              "differ: '" .
+                              '\' from supplied CIF and Fobs ' .
+                              'files', "values of tag '$tag' " .
+                              'differ: \'' .
                               $cif_parameters{$tag}->[0] .
-                              "' (CIF) and '" .
+                              '\' (CIF) and \'' .
                               $hkl_parameters{$tag}->[0] .
-                              "' (Fobs)" );
+                              '\' (Fobs)' );
                 }
             }
         }
@@ -1313,20 +1317,20 @@ sub check_hold_period
         if( defined $hold_period ) {
             $hold_period_now = $hold_period;
             if( $hold_period > $max_hold_period ) {
-                critical( $filename, undef, "WARNING",
+                critical( $filename, undef, 'WARNING',
                          "hold period $hold_period_now months is too " .
-                         "large", "only holds up to " .
+                         'large', 'only holds up to ' .
                          $max_hold_period .
-                         " months are accepted" );
+                         ' months are accepted' );
             }
         } else {
             if( !$replace ) {
                 $hold_period_now = $default_hold_period;
-                print_message( $0, $filename, undef, "NOTE",
-                               "hold period not specified, " .
-                               "(or specified incorrectly), " .
+                print_message( $0, $filename, undef, 'NOTE',
+                               'hold period not specified, ' .
+                               '(or specified incorrectly), ' .
                                "defaulting to $hold_period_now " .
-                               "months", undef );
+                               'months', undef );
             }
         }
     }
@@ -1336,26 +1340,26 @@ sub check_hold_period
 sub comm_array
 {
     my( $arr1, $arr2 ) = @_;
-    my @arr1 = @$arr1;
-    my @arr2 = @$arr2;
+    my @arr1 = @{$arr1};
+    my @arr2 = @{$arr2};
     my @comm;
     while( scalar( @arr1 ) + scalar( @arr2 ) > 0 ) {
         if( @arr1 == 0 ) {
-            push( @comm, [ undef, undef, shift @arr2 ] );
+            push @comm, [ undef, undef, shift @arr2 ];
             next;
         }
         if( @arr2 == 0 ) {
-            push( @comm, [ shift @arr1, undef, undef ] );
+            push @comm, [ shift @arr1, undef, undef ];
             next;
         }
         if( $arr1[0] ne $arr2[0] ) {
             if( $arr1[0] lt $arr2[0] ) {
-                push( @comm, [ shift @arr1, undef, undef ] );
+                push @comm, [ shift @arr1, undef, undef ];
             } else {
-                push( @comm, [ undef, undef, shift @arr2 ] );
+                push @comm, [ undef, undef, shift @arr2 ];
             }
         } else {
-            push( @comm, [ undef, $arr1[0], undef ] );
+            push @comm, [ undef, $arr1[0], undef ];
             shift @arr1;
             shift @arr2;
         }
