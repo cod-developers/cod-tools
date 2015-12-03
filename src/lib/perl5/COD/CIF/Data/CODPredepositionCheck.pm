@@ -23,7 +23,7 @@ use COD::CIF::Unicode2CIF qw( cif2unicode );
 use COD::CIF::Tags::Print qw( print_cif );
 use COD::Precision qw( cmp_cif_numbers );
 use COD::UserMessage qw( print_message parse_message );
-use COD::ErrorHandler qw( process_warnings );
+use COD::ErrorHandler qw( process_warnings process_errors );
 
 require Exporter;
 our @ISA = qw( Exporter );
@@ -296,79 +296,18 @@ sub filter_and_check
 
     # Checking whether names in pre-deposition CIFs and in personal
     # communication CIFs match the depositor name:
-
     my $deposition_authors;
-    my $first_data_name;
-
     if( $deposition_type eq 'prepublication' ||
         $deposition_type eq 'personal' ) {
-          DATASET:
-        for my $dataset (@{$data}) {
-            my $values = $dataset->{values};
-            my $dataname = 'data_' . $dataset->{name} if defined $dataset->{name};
-            if( !defined $values ) {
-                critical( $cif_filename, $dataname, 'ERROR',
-                          "no data in datablock '$dataset->{name}'", undef );
-            }
-            if( exists $values->{_publ_author_name} ) {
-                my $web_author = lc($options->{author_name});
-                $web_author =~ s/\s//g;
-                if( !defined $deposition_authors ) {
-                    $deposition_authors =
-                                    join '; ', @{$values->{_publ_author_name}};
-                    $first_data_name = $dataset->{name};
-                } else {
-                    my $deposition_authors_now =
-                                    join '; ', @{$values->{_publ_author_name}};
-                    my $data_name_now = $dataset->{name};
-                    if( $deposition_authors ne $deposition_authors_now ) {
-                        critical( $cif_filename,
-                                  defined $data_name_now
-                                          ? 'data_' . $data_name_now
-                                          : $data_name_now,
-                                  'WARNING',
-                                  'author list in the datablock '
-                                . "data_$first_data_name "
-                                . "($deposition_authors) is not the "
-                                . 'same as in the datablock '
-                                . "data_$data_name_now "
-                                . "($deposition_authors_now)",
-                                  'please make sure that all data are '
-                                . 'authored by the same people when '
-                                . 'depositing multiple data blocks' );
-                    }
-                }
-                for my $author (@{$values->{_publ_author_name}}) {
-                    my $cif_author = lc $author;
-                    $cif_author =~ s/\s//g;
-                    $cif_author = cif2unicode( $cif_author );
-                    next DATASET if $cif_author eq $web_author;
-                    # Stripping UTF8 combining characters:
-                    $cif_author = NFD( $cif_author );
-                    $cif_author =~ s/\pM//g;
-                    next DATASET if $cif_author eq $web_author;
-                }
-                critical( $cif_filename, $dataname, 'WARNING',
-                          "submitting author '$options->{author_name}' " .
-                          'does not match any author in the ' .
-                          "$dataname author list (" .
-                          join ( ', ', map { "'$_'" }
-                                    @{$values->{_publ_author_name}} ) . ')',
-                          'will not deposit the structure, ' .
-                          'the prepublication structures and personal ' .
-                          'communications must be deposited by one of ' .
-                          'the authors' );
-            }
-        }
+        $deposition_authors = get_deposition_authors( $data,
+                                                      $options->{'author_name'},
+                                                      $cif_filename,
+                                                      $tmp_file );
     }
-
-    $deposition_authors = $options->{author_name} unless
-        defined $deposition_authors;
 
     # Checking whether the pre-deposition/pers. comm. CIFs have no
     # complete bibliography; if they do they should be deposited as
     # "published structures":
-
     if( $deposition_type eq 'personal' ) {
         for my $dataset (@{$data}) {
             my $values = $dataset->{values};
@@ -1335,6 +1274,114 @@ sub check_hold_period
         }
     }
     return $hold_period_now;
+}
+
+##
+# Determines the list of authors to be used in further steps of the
+# deposition. Additionally, data consistency checks, such as whether
+# the name of the depositor matches any of the names in the CIF,
+# are carried out.
+#
+# @param $data
+#       Reference to the parsed CIF file structure.
+# @param $web_author
+#       A string containing the name of the web depositor.
+# @param $filename
+#       Name of the parsed CIF file. Used for error reporting functionality.
+# @param $tmp_file
+#       Name of the temporary file that should be removed upon the script
+#       dying.
+# @return
+#       A string containing the list of deposition authors, each of the
+#       authors separated by a semicolon (';').
+##
+sub get_deposition_authors
+{
+    my ($data, $web_author, $filename, $tmp_file) = @_;
+
+    my $deposition_authors;
+    my $first_data_name;
+    my $web_author_cleaned;
+    if ( defined $web_author ) {
+        $web_author_cleaned = lc $web_author;
+        $web_author_cleaned =~ s/\s//g;
+    } else {
+        $web_author_cleaned = '';
+    }
+
+    for my $dataset (@{$data}) {
+        my $values = $dataset->{values};
+        my $dataname = 'data_' . $dataset->{name} if defined $dataset->{name};
+
+        eval {
+            if( !defined $values ) {
+                die 'ERROR, no data in the datablock' . "\n";
+            }
+            if( exists $values->{_publ_author_name} ) {
+                if( !defined $deposition_authors ) {
+                    $deposition_authors =
+                                  join '; ', @{$values->{_publ_author_name}};
+                    $first_data_name = $dataset->{name};
+                } else {
+                    my $deposition_authors_now =
+                                  join '; ', @{$values->{_publ_author_name}};
+                    my $data_name_now = $dataset->{name};
+                    if( $deposition_authors ne $deposition_authors_now ) {
+                        die 'WARNING, author list in the datablock '
+                          . "data_$first_data_name ($deposition_authors) "
+                          . 'is not the same as in the datablock '
+                          . "data_$data_name_now ($deposition_authors_now) -- "
+                          . 'please make sure that all data are authored by '
+                          . 'the same people when depositing multiple data '
+                          . 'blocks' . "\n";
+                    }
+                }
+                # check if at least one author name in the
+                # CIF file matches the name of the depositor
+                my $web_author_matches = 0;
+                for my $author (@{$values->{_publ_author_name}}) {
+                    my $cif_author = lc $author;
+                    $cif_author =~ s/\s//g;
+                    $cif_author = cif2unicode( $cif_author );
+                    if ( $cif_author eq $web_author_cleaned ) {
+                        $web_author_matches = 1;
+                        last;
+                    }
+                    # Stripping UTF8 combining characters:
+                    $cif_author = NFD( $cif_author );
+                    $cif_author =~ s/\pM//g;
+                    if ( $cif_author eq $web_author_cleaned ) {
+                        $web_author_matches = 1;
+                        last;
+                    }
+                }
+                if ( !$web_author_matches ) {
+                    die "WARNING, submitting author '$web_author' does not "
+                      . 'match any author in the datablock author list ('
+                      . join ( ', ', map { "'$_'" }
+                                @{$values->{_publ_author_name}} ) . ') -- '
+                      . 'will not deposit the structure, the prepublication '
+                      . 'structures and personal communications must be '
+                      . 'deposited by one of the authors' . "\n";
+                }
+            }
+        };
+        if ($@) {
+            if ( -e $tmp_file ) { unlink $tmp_file };
+            process_errors( {
+              'message'       => $@,
+              'program'       => $0,
+              'filename'      => $filename,
+              'add_pos'       => $dataname
+            }, 1 );
+        }
+    }
+
+    if ( !defined $deposition_authors ) {
+        $deposition_authors = $web_author;
+    }
+
+    return $deposition_authors;
 }
 
 sub comm_array
