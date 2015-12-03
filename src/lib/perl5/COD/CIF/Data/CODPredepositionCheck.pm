@@ -23,7 +23,7 @@ use COD::CIF::Unicode2CIF qw( cif2unicode );
 use COD::CIF::Tags::Print qw( print_cif );
 use COD::Precision qw( cmp_cif_numbers );
 use COD::UserMessage qw( sprint_message print_message parse_message );
-use COD::ErrorHandler qw( process_warnings process_errors );
+use COD::ErrorHandler qw( process_warnings );
 
 require Exporter;
 our @ISA = qw( Exporter );
@@ -302,8 +302,7 @@ sub filter_and_check
         $deposition_type eq 'personal' ) {
         $deposition_authors = get_deposition_authors( $data,
                                                       $options->{'author_name'},
-                                                      $cif_filename,
-                                                      $tmp_file );
+                                                      $cif_filename );
     }
 
     # Checking whether the pre-deposition/pers. comm. CIFs have no
@@ -1292,16 +1291,13 @@ sub check_hold_period
 #       A string containing the name of the web depositor.
 # @param $filename
 #       Name of the parsed CIF file. Used for error reporting functionality.
-# @param $tmp_file
-#       Name of the temporary file that should be removed upon the script
-#       dying.
 # @return
 #       A string containing the list of deposition authors, each of the
 #       authors separated by a semicolon (';').
 ##
 sub get_deposition_authors
 {
-    my ($data, $web_author, $filename, $tmp_file) = @_;
+    my ($data, $web_author, $filename) = @_;
 
     my $deposition_authors;
     my $first_data_name;
@@ -1371,13 +1367,7 @@ sub get_deposition_authors
             }
         };
         if ($@) {
-            if ( -e $tmp_file ) { unlink $tmp_file };
-            process_errors( {
-              'message'       => $@,
-              'program'       => $0,
-              'filename'      => $filename,
-              'add_pos'       => $dataname
-            }, 1 );
+            critical( $filename, $dataname, undef, $@, undef );
         }
     }
 
