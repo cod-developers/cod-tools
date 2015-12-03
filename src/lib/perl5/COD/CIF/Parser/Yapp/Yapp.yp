@@ -800,25 +800,25 @@ my $UQSTRING_INLINE     =       qr/^(?:
     for ($parser->YYData->{INPUT})
     {
         #matching floats:
-        if(s/^($FLOAT (?:\([0-9]+\))?)(\s|$)//six)
+        if( s/^($FLOAT (?:\([0-9]+\))?)(\s|$)//six )
         {
             advance_token($parser, length($1 . $2));
             return('FLOAT', $1);
         }
         #matching integers:
-        if(s/^($INTEGER (?:\([0-9]+\))?)(\s|$)//sx)
+        if( s/^($INTEGER (?:\([0-9]+\))?)(\s|$)//sx )
         {
             advance_token($parser, length($1 . $2));
             return('INT', $1);
         }
         #matching double quoted strings
-        if(s/^("${ANY_PRINT_CHAR}*?")(\s|$)//s)
+        if( s/^("${ANY_PRINT_CHAR}*?")(\s|$)//s )
         {
             advance_token($parser, length($1 . $2));
             return('DQSTRING', $1);
         }
         #matching single quoted strings
-        if(s/^('${ANY_PRINT_CHAR}*?')(\s|$)//s)
+        if( s/^('${ANY_PRINT_CHAR}*?')(\s|$)//s )
         {
             advance_token($parser, length($1 . $2));
             return('SQSTRING', $1);
