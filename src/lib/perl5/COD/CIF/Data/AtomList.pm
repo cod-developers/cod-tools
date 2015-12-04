@@ -186,6 +186,14 @@ sub extract_atom
         $atom_info{$to_copy_atom_site{$tag}} = $values->{$tag}[$number];
     }
 
+    # Take _atom_site_symmetry_multiplicity (if not '.' or '?')
+    if( exists $values->{_atom_site_symmetry_multiplicity} &&
+        $values->{_atom_site_symmetry_multiplicity}[$number] ne '?' &&
+        $values->{_atom_site_symmetry_multiplicity}[$number] ne '.' ) {
+        $atom_info{_atom_site_symmetry_multiplicity} =
+            $values->{_atom_site_symmetry_multiplicity}[$number];
+    }
+
     if( $options->{remove_precision} ) {
         for my $key (qw( atom_site_occupancy atom_site_U_iso_or_equiv )) {
             next if !exists $atom_info{$key};
@@ -369,14 +377,6 @@ sub atom_array_from_cif($$)
         # an atom has to be skipped, so this is silently done in order to
         # stay compatible with the code.
         next if !defined $atom_info;
-
-        # What is this part used for?
-        if( exists $values->{_atom_site_symmetry_multiplicity} &&
-            $values->{_atom_site_symmetry_multiplicity}[$i] ne '?' &&
-            $values->{_atom_site_symmetry_multiplicity}[$i] ne '.' ) {
-            $atom_info->{_atom_site_symmetry_multiplicity} =
-                $values->{_atom_site_symmetry_multiplicity}[$i];
-        }
 
         push( @atom_list, $atom_info );
     }
