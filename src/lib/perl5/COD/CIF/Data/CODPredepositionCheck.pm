@@ -595,7 +595,7 @@ sub filter_and_check
             critical( $cif_filename, undef, 'ERROR',
                       "entry for structure $number_to_replace " .
                       'does not exist in the COD data table',
-                      'cannot replace abscent structures' );
+                      'cannot replace absent structures' );
         }
 
         $sth = $dbh->prepare( 'SELECT onhold FROM data WHERE file = ?' );
