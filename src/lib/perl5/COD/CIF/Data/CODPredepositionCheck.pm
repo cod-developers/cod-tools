@@ -62,8 +62,11 @@ sub filter_and_check
     # -- release
     # -- hold_period
     # -- journal
-    # -- use_c_parser (not implemented)
-    # -- use_perl_parser (default)
+    # -- use_parser
+    #       String that denotes which CIF parser module should be used by the
+    #.      processing scripts. Accepted values:
+    #       -- 'perl' for the COD::CIF::Parser::Yapp module;
+    #       -- 'c'    for the COD::CIF::Parser::Bison module (default).
     # -- author_name
     # -- split pdCIF
 
@@ -71,6 +74,15 @@ sub filter_and_check
                                                  $cif_filename,
                                                  $options->{hold_period},
                                                  $options->{replace} );
+
+    if ( !defined $options->{'use_parser'} ) { $options->{'use_parser'} = 'c' };
+
+    my $parser_option;
+    if ( $options->{'use_parser'} eq 'c' ) {
+        $parser_option = '--use-c-parser';
+    } elsif ( $options->{'use_parser'} eq 'perl' ) {
+        $parser_option = '--use-perl-parser';
+    }
 
     my @filter_opt = qw(
         --fix-syntax-errors
@@ -85,6 +97,8 @@ sub filter_and_check
         --exclude-empty-tags
         --preserve-loop-order
     );
+
+    push @filter_opt, $parser_option;
 
     if( $deposition_type eq 'prepublication' ) {
         push @filter_opt, '--dont-exclude-publication-details';
@@ -164,7 +178,7 @@ sub filter_and_check
     }
 
     my( $fix_values_stdout, $fix_values_stderr ) =
-        run_command( [ 'cif_fix_values' ], $filter_stdout );
+        run_command( [ 'cif_fix_values', ($parser_option) ], $filter_stdout );
 
     foreach( map { $_ . "\n" } @{$fix_values_stderr} ) {
         my $parsed = parse_message( $_ );
@@ -184,7 +198,7 @@ sub filter_and_check
     }
 
     my( $correct_stdout, $correct_stderr ) =
-        run_command( [ 'cif_correct_tags' ], $fix_values_stdout );
+        run_command( [ 'cif_correct_tags', ($parser_option) ], $fix_values_stdout );
 
     foreach( map { $_ . "\n" } @{$correct_stderr} ) {
         my $parsed = parse_message( $_ );
@@ -208,9 +222,11 @@ sub filter_and_check
         my $ccc_opt;
         if( $deposition_type eq 'published' ) {
             $ccc_opt = [ '--do-not-check-authors',
-                         '--do-not-check-limits' ];
+                         '--do-not-check-limits',
+                         $parser_option ];
         } else {
-            $ccc_opt = [ '--do-not-check-temperature-factors' ];
+            $ccc_opt = [ '--do-not-check-temperature-factors',
+                         $parser_option ];
         }
 
         my( $ccc_stdout, $ccc_stderr ) =
@@ -256,9 +272,8 @@ sub filter_and_check
     print {$out} join "\n", @{$correct_stdout};
     close $out;
 
-    require COD::CIF::Parser::Yapp;
-    my $parser = new COD::CIF::Parser::Yapp;
-    my $data = $parser->Run( $tmp_file );
+    use COD::CIF::Parser qw( parse_cif );
+    my ($data) = parse_cif( $tmp_file, { 'parser' => $options->{'use_parser'} } );
 
     # Splitting powder diffraction CIF datablocks into CIF and HKL:
 
@@ -615,6 +630,7 @@ sub filter_and_check
                         '--leave-title',
                         '--dont-exclude-publication-details' );
     }
+    push @filter_opt, $parser_option;
 
     my $datablock_nr = 0;
     my $data_source_nr = 0;
