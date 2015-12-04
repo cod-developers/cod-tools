@@ -14,6 +14,7 @@ package COD::CIF::Data::SymmetryGenerator;
 
 use strict;
 use warnings;
+use COD::CIF::Data::AtomList qw( copy_atom );
 use COD::Spacegroups::Symop::Algebra qw( symop_is_unity symop_vector_mul );
 use COD::Spacegroups::Symop::Parse qw( modulo_1 );
 use COD::Spacegroups::Names;
@@ -22,8 +23,8 @@ use COD::Algebra::Vector qw( distance );
 require Exporter;
 our @ISA = qw( Exporter );
 our @EXPORT_OK = qw(
+    apply_shifts
     atoms_coincide
-    copy_atom
     symop_generate_atoms
     test_bond
     test_bump
@@ -37,11 +38,11 @@ my $special_position_cutoff = 0.01; # Angstroems
 # than $special_position_cutoff are considered to be the same atom on
 # a special position.
 
+sub apply_shifts($);
 sub atoms_coincide($$$);
 sub symop_generate_atoms($$$);
 sub test_bond($$$$$);
 sub test_bump($$$$$$$);
-sub copy_atom($);
 sub copy_array($);
 
 #===============================================================#
@@ -167,6 +168,83 @@ sub symop_generate_atoms($$$)
 }
 
 #===============================================================#
+# Shifts a given atom according shifting params. If shifting params are
+# (-1, 0, 1) then 27 shifts are made.
+
+# The shift_atom subroutine accepts a reference to a hash
+# $atom_info = {site_label=>"C1",
+#               name=>"C1_2",
+#               chemical_type=>"C",
+#               coordinates_fract=>[1.0, 1.0, 1.0],
+#               unity_matrix_applied=>1}, returns an array of references of
+# above-mentioned hashes
+
+sub shift_atom($)
+{
+    my($atom_info) = @_;
+
+    my @shifted_atoms;
+    my @shifting_params = (0, -1, 1);
+
+    for(my $i = 0; $i < @shifting_params; $i++)
+    {
+        for(my $j = 0; $j < @shifting_params; $j++)
+        {
+            for(my $k = 0; $k < @shifting_params; $k++)
+            {
+                my $new_atom_info = copy_atom($atom_info);
+                $new_atom_info->{translation} = [ $shifting_params[$i],
+                                                  $shifting_params[$j],
+                                                  $shifting_params[$k] ];
+                my @new_atom_xyz;
+                if($shifting_params[$i] != 0 || $shifting_params[$j] != 0 ||
+                   $shifting_params[$k] != 0 ||
+                   $atom_info->{unity_matrix_applied} != 1) {
+                    $new_atom_xyz[0] = $atom_info->{coordinates_fract}[0] +
+                                                           $shifting_params[$i];
+                    $new_atom_xyz[1] = $atom_info->{coordinates_fract}[1] +
+                                                           $shifting_params[$j];
+                    $new_atom_xyz[2] = $atom_info->{coordinates_fract}[2] +
+                                                           $shifting_params[$k];
+                    my $shift_label =
+                        ($shifting_params[$i]+5).
+                        ($shifting_params[$j]+5).
+                        ($shifting_params[$k]+5);
+                    $new_atom_info->{coordinates_fract} = \@new_atom_xyz;
+                    $new_atom_info->{coordinates_ortho} =
+                        symop_vector_mul( $atom_info->{f2o}, \@new_atom_xyz );
+                    $new_atom_info->{name} =
+                        $atom_info->{site_label} . "_" .
+                        $atom_info->{symop_id} . "_" .
+                        $shift_label;
+                    $new_atom_info->{translation_id} = $shift_label;
+                }
+                push(@shifted_atoms, $new_atom_info);
+            }
+        }
+    }
+
+    return @shifted_atoms;
+}
+
+#===============================================================#
+# Generate symmetry equivalents of an atom, exclude duplicates
+# on special positions
+
+sub apply_shifts($)
+{
+    my ($atoms) = @_;
+
+    my @shifted = ();
+
+    for my $atom (@{$atoms}) {
+        push( @shifted, shift_atom( $atom ));
+    }
+
+    return @shifted;
+}
+
+#===============================================================#
 # Made a decision if a chemical bond exists.
 #
 # Accepts a pair of chemical types, distance between atoms and a reference
@@ -237,53 +315,6 @@ sub test_bump($$$$$$$)
     }
 
     return 0;
-}
-
-#===============================================================#
-# Copies atom and returns the same instance of it (different object, same props)
-
-# Accepts a hash $atom_info = {
-#                       label=>"C1_2",
-#                       label_basename=>"C1",
-#                       chemical_type=>"C",
-#                       coordinates_fract=>[1.0, 1.0, 1.0],
-#                       coordinates_ortho=>[5.0, -1.3, 1.7],
-#                       unity_matrix_applied=>1,
-#                       symop_id=>1
-#                       assembly=>"A", # "."
-#                       group=>"1", # "."
-#                       }
-
-# Returns a hash $new_atom_info = {
-#                       label=>"C1_2",
-#                       label_basename=>"C1",
-#                       chemical_type=>"C",
-#                       coordinates_fract=>[1.0, 1.0, 1.0],
-#                       coordinates_ortho=>[5.0, -1.3, 1.7],
-#                       unity_matrix_applied=>1,
-#                       symop_id=>1,
-#                       assembly=>"A", # "."
-#                       group=>"1", # "."
-#                       }
-
-sub copy_atom($)
-{
-    my($old_atom) = @_;
-
-    my %new_atom;
-
-    for my $key (keys %$old_atom ) {
-        if( !ref $old_atom->{$key} ) {
-            $new_atom{$key} = $old_atom->{$key};
-        } elsif( ref $old_atom->{$key} eq "ARRAY" ) {
-            $new_atom{$key} = copy_array($old_atom->{$key});
-        } else {
-            die "ERROR: assertion failed -- 'copy_atom()' does not know how "
-              . "to copy the supplied object\n";
-        }
-    }
-
-    return \%new_atom;
 }
 
 sub copy_array($)
