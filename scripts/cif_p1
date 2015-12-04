@@ -28,9 +28,11 @@ use COD::Spacegroups::Symop::Parse qw( symop_from_string
 use COD::Algebra::Vector qw( distance );
 use COD::CIF::Data qw( get_cell get_symmetry_operators );
 use COD::CIF::Data::AtomList qw( atom_array_from_cif
+                                 copy_atom
                                  copy_struct_deep
                                  dump_atoms_as_cif );
-use COD::CIF::Data::SymmetryGenerator qw( atoms_coincide
+use COD::CIF::Data::SymmetryGenerator qw( apply_shifts
+                                          atoms_coincide
                                           test_bond
                                           test_bump );
 use COD::CIF::Tags::CanonicalNames qw( canonicalize_all_names );
@@ -316,8 +318,6 @@ if( 0 ) {
 
 sub symops_apply_to_atom_modulo1($$);
 sub symops_apply_to_atoms_modulo1($$);
-sub apply_shifts($);
-sub shift_atom($);
 sub get_molecules($$$);
 sub find_molecules($$$$$$);
 sub find_molecule($$$$$$$$$);
@@ -992,21 +992,6 @@ sub symops_apply_to_atoms_modulo1($$)
     return \@sym_atoms;
 }
 
-#===============================================================#
-# Copies atom and returns the same instance of it (different object, same props)
-
-sub copy_atom
-{
-    my($old_atom) = @_;
-
-    if( ref $old_atom ne "HASH" ) {
-        use Carp;
-        croak;
-    }
-
-    return copy_struct_deep($old_atom);
-}
-
 #==============================================================================#
 # This is the main function where other functions such as find_molecules are
 # called.
@@ -1437,81 +1422,6 @@ sub find_molecule($$$$$$$$$)
     } if $debug;
 
     return ( \@neighbors, $nbumps );
-}
-
-#===============================================================#
-# Generate symmetry equivalents of an atom, exclude duplicates
-# on special positions
-
-sub apply_shifts($)
-{
-    my ($atoms) = @_;
-
-    my @shifted = ();
-
-    for my $atom (@{$atoms}) {
-        push( @shifted, shift_atom( $atom ));
-    }
-
-    return @shifted;
-}
-
-#===============================================================#
-# Shifts a given atom according shifting params. If shifting params are
-# (-1, 0, 1) then 27 shifts are made.
-
-# The shift_atom subroutine accepts a reference to a hash
-# $atom_info = {site_label=>"C1",
-#               name=>"C1_2",
-#               chemical_type=>"C",
-#               coordinates_fract=>[1.0, 1.0, 1.0],
-#               unity_matrix_applied=>1}, returns an array of references of
-# above-mentioned hashes
-#
-sub shift_atom($)
-{
-    my($atom_info) = @_;
-
-    my @shifted_atoms;
-    my @shifting_params = (0, -1, 1);
-
-    for(my $i = 0; $i < @shifting_params; $i++)
-    {
-        for(my $j = 0; $j < @shifting_params; $j++) {
-            for(my $k = 0; $k < @shifting_params; $k++) {
-                my $new_atom_info = copy_atom($atom_info);
-                $new_atom_info->{translation} = [ $shifting_params[$i],
-                                                  $shifting_params[$j],
-                                                  $shifting_params[$k] ];
-                my @new_atom_xyz;
-                if($shifting_params[$i] != 0 || $shifting_params[$j] != 0 ||
-                   $shifting_params[$k] != 0 ||
-                   $atom_info->{"unity_matrix_applied"} != 1) {
-                    $new_atom_xyz[0] = $atom_info->{"coordinates_fract"}[0] +
-                                                           $shifting_params[$i];
-                    $new_atom_xyz[1] = $atom_info->{"coordinates_fract"}[1] +
-                                                           $shifting_params[$j];
-                    $new_atom_xyz[2] = $atom_info->{"coordinates_fract"}[2] +
-                                                           $shifting_params[$k];
-                    my $shift_label =
-                        ($shifting_params[$i]+5).
-                        ($shifting_params[$j]+5).
-                        ($shifting_params[$k]+5);
-                    $new_atom_info->{"coordinates_fract"} = \@new_atom_xyz;
-                    $new_atom_info->{coordinates_ortho} =
-                        symop_vector_mul( $atom_info->{f2o}, \@new_atom_xyz );
-                    $new_atom_info->{"name"} =
-                        $atom_info->{"site_label"} . "_" .
-                        $atom_info->{"symop_id"} . "_" .
-                        $shift_label;
-                    $new_atom_info->{"translation_id"} = $shift_label;
-                }
-                push(@shifted_atoms, $new_atom_info);
-            }
-        }
-    }
-
-    return @shifted_atoms;
 }
 
 #===============================================================#
