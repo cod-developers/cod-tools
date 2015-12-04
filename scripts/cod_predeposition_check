@@ -34,6 +34,7 @@ my @hkl;
 
 my $deposition_type = 'published';
 my $options;
+$options->{'use_parser'} = 'c';
 
 my $print_timestamps = 0;
 
@@ -141,6 +142,12 @@ my $tmp_file = "tmp-cod_predeposition_check-$$.tmp";
 #*     --tmp-dir, --temp-dir
 #*        Use the specified temporary directory (default './').
 #*
+#*     --use-perl-parser
+#*        Use Perl parser to parse CIF files.
+#*
+#*     --use-c-parser
+#*        Use C parser to parse CIF files (default).
+#*
 #*     --help, --usage
 #*        Print a short usage message (this message) and exit.
 #**
@@ -186,8 +193,10 @@ my $tmp_file = "tmp-cod_predeposition_check-$$.tmp";
 
     '--tmp-dir,--temp-dir' => \$tmp_dir,
 
-    '--options'      => sub { options; exit },
-    '--help,--usage' => sub { usage; exit }
+    '--use-perl-parser' => sub { $options->{use_parser} = 'perl' },
+    '--use-c-parser'    => sub { $options->{use_parser} = 'c' },
+    '--options'         => sub { options; exit },
+    '--help,--usage'    => sub { usage; exit }
 );
 
 push @cif, @ARGV;
