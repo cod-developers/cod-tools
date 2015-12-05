@@ -170,59 +170,56 @@ sub symop_generate_atoms($$$)
 #===============================================================#
 # Shifts a given atom according shifting params. If shifting params are
 # (-1, 0, 1) then 27 shifts are made.
-
-# The shift_atom subroutine accepts a reference to a hash
-# $atom_info = {site_label=>"C1",
-#               name=>"C1_2",
-#               chemical_type=>"C",
-#               coordinates_fract=>[1.0, 1.0, 1.0],
-#               unity_matrix_applied=>1}, returns an array of references of
-# above-mentioned hashes
-
+#
+# Accepts:
+#    $atom      A reference to an atom information hash. An example of
+#               the atom information hash:
+#               {
+#                    site_label => 'C1',
+#                    name       => 'C1_2',
+#                    chemical_type  => 'C',
+#                    coordinates_fract => [1.0, 1.0, 1.0],
+#                    unity_matrix_applied => 1
+#               }
+#
+# Returns:
+#   @atoms      An array of references of the atom information hashes that
+#               were constructd from the original atom information hash.
 sub shift_atom($)
 {
-    my($atom_info) = @_;
+    my ( $atom ) = @_;
 
     my @shifted_atoms;
-    my @shifting_params = (0, -1, 1);
+    my @shift = ( 0, -1, 1 );
 
-    for(my $i = 0; $i < @shifting_params; $i++)
-    {
-        for(my $j = 0; $j < @shifting_params; $j++)
-        {
-            for(my $k = 0; $k < @shifting_params; $k++)
-            {
-                my $new_atom_info = copy_atom($atom_info);
-                $new_atom_info->{translation} = [ $shifting_params[$i],
-                                                  $shifting_params[$j],
-                                                  $shifting_params[$k] ];
-                my @new_atom_xyz;
-                if($shifting_params[$i] != 0 || $shifting_params[$j] != 0 ||
-                   $shifting_params[$k] != 0 ||
-                   $atom_info->{unity_matrix_applied} != 1) {
-                    $new_atom_xyz[0] = $atom_info->{coordinates_fract}[0] +
-                                                           $shifting_params[$i];
-                    $new_atom_xyz[1] = $atom_info->{coordinates_fract}[1] +
-                                                           $shifting_params[$j];
-                    $new_atom_xyz[2] = $atom_info->{coordinates_fract}[2] +
-                                                           $shifting_params[$k];
-                    my $shift_label =
-                        ($shifting_params[$i]+5).
-                        ($shifting_params[$j]+5).
-                        ($shifting_params[$k]+5);
-                    $new_atom_info->{coordinates_fract} = \@new_atom_xyz;
-                    $new_atom_info->{coordinates_ortho} =
-                        symop_vector_mul( $atom_info->{f2o}, \@new_atom_xyz );
-                    $new_atom_info->{name} =
-                        $atom_info->{site_label} . "_" .
-                        $atom_info->{symop_id} . "_" .
+    for ( my $i = 0; $i < @shift; $i++ ) {
+    for ( my $j = 0; $j < @shift; $j++ ) {
+    for ( my $k = 0; $k < @shift; $k++ ) {
+        my $new_atom = copy_atom($atom);
+        $new_atom->{'translation'} = [ $shift[$i], $shift[$j], $shift[$k] ];
+        my @new_atom_xyz;
+        if( $shift[$i] != 0 || $shift[$j] != 0 || $shift[$k] != 0 ||
+            $atom->{'unity_matrix_applied'} != 1) {
+
+            $new_atom_xyz[0] = $atom->{'coordinates_fract'}[0] + $shift[$i];
+            $new_atom_xyz[1] = $atom->{'coordinates_fract'}[1] + $shift[$j];
+            $new_atom_xyz[2] = $atom->{'coordinates_fract'}[2] + $shift[$k];
+
+            my $shift_label = ( $shift[$i] + 5 )
+                            . ( $shift[$j] + 5 )
+                            . ( $shift[$k] + 5 );
+
+            $new_atom->{'coordinates_fract'} = \@new_atom_xyz;
+            $new_atom->{'coordinates_ortho'} =
+                        symop_vector_mul( $atom->{'f2o'}, \@new_atom_xyz );
+            $new_atom->{'name'} =
+                        $atom->{'site_label'} . "_" .
+                        $atom->{'symop_id'} . "_" .
                         $shift_label;
-                    $new_atom_info->{translation_id} = $shift_label;
-                }
-                push(@shifted_atoms, $new_atom_info);
-            }
+            $new_atom->{'translation_id'} = $shift_label;
         }
-    }
+        push @shifted_atoms, $new_atom;
+    } } }
 
     return @shifted_atoms;
 }
