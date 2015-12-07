@@ -3,10 +3,10 @@
 eval 'exec perl -x $0 ${1+"$@"}'
     if 0;
 #------------------------------------------------------------------------------
-#$Author: saulius $
-#$Date: 2007-12-14 09:50:59 +0000 (Fri, 14 Dec 2007) $ 
-#$Revision: 250 $
-#$URL: svn+ssh://pitonas.ibt.lt/home/xray/svn-repositories/cif-tools/trunk/CIFParser/shtests/text_field_001.sh $
+#$Author$
+#$Date$ 
+#$Revision$
+#$URL$
 #------------------------------------------------------------------------------
 #*
 #  Perl test driver.
