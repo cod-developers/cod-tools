@@ -1,0 +1,173 @@
+#! /bin/sh
+#!perl -w # --*- Perl -*--
+eval 'exec perl -x $0 ${1+"$@"}'
+    if 0;
+#------------------------------------------------------------------------------
+#$Author$
+#$Date$
+#$Revision$
+#$URL$
+#------------------------------------------------------------------------------
+#*
+#  Transform non-crystal CIF file (missing cell parameters and symmetry
+#  information, Cartesian coordinates are given instead of fractional)
+#  into a crystal description.
+#**
+
+use strict;
+use warnings;
+use File::Basename qw( basename );
+use COD::CIF::Parser qw( parse_cif );
+use COD::CIF::Tags::CanonicalNames qw( canonicalize_all_names );
+use COD::CIF::Tags::Manage qw( exclude_tag set_loop_tag set_tag );
+use COD::CIF::Tags::Print qw( print_cif );
+use COD::ErrorHandler qw( process_errors process_warnings
+                          process_parser_messages report_message );
+use COD::SOptions qw( getOptions get_value );
+use COD::SUsage qw( usage options );
+use List::Util qw( reduce );
+
+my @margin = ( 5, 5, 5 );
+my $use_parser = 'c';
+
+my $die_on_error_level = {
+    ERROR   => 0,
+    WARNING => 0,
+    NOTE    => 0,
+};
+
+#* USAGE:
+#*     $0 --options input1.cif input*.cif
+#*
+#* OPTIONS:
+#*    --margin-x, --margin-y, --margin-z
+#*        Set margins in x, y and z directions (default 5 angstroms)
+#*
+#*    --use-perl-parser
+#*        Use Perl parser for CIF parsing.
+#*
+#*    --use-c-parser
+#*        Use Perl & C parser for CIF parsing (default).
+#*
+#*    --help, --usage
+#*        Print a short usage message (this message) and exit.
+#**
+
+@ARGV = getOptions(
+    '--margin-x' => \$margin[0],
+    '--margin-y' => \$margin[1],
+    '--margin-z' => \$margin[2],
+
+    '--use-perl-parser' => sub{ $use_parser = 'perl' },
+    '--use-c-parser'    => sub{ $use_parser = 'c' },
+
+    '--options'      => sub { options; exit },
+    '--help,--usage' => sub { usage; exit }
+);
+
+@ARGV = ( '-' ) unless @ARGV;
+
+for my $filename (@ARGV) {
+    my $options = { parser     => $use_parser,
+                    no_print   => 1 };
+
+    my( $data, $err_count, $messages ) = parse_cif( $filename, $options );
+    process_parser_messages( $messages, $die_on_error_level );
+
+    if( !@{$data} || !defined $data->[0] || !defined $data->[0]{name} ) {
+        report_message( {
+           'program'   => $0,
+           'filename'  => $filename,
+           'err_level' => 'WARNING',
+           'message'   => 'file seems to be empty'
+        }, 0 );
+        next;
+    }
+
+    canonicalize_all_names( $data );
+
+    for my $dataset (@$data) {
+        my $values = $dataset->{values};
+
+        my @bounding_box;
+
+        if(  exists $values->{'_atom_site_Cartn_x'} &&
+             exists $values->{'_atom_site_Cartn_y'} &&
+             exists $values->{'_atom_site_Cartn_z'} &&
+            !exists $values->{'_atom_site_fract_x'} &&
+            !exists $values->{'_atom_site_fract_y'} &&
+            !exists $values->{'_atom_site_fract_z'} ) {
+
+            my @bounding_box = get_bounding_box( $values );
+
+            my @cell = ( $bounding_box[1] - $bounding_box[0] + $margin[0],
+                         $bounding_box[3] - $bounding_box[2] + $margin[1],
+                         $bounding_box[5] - $bounding_box[4] + $margin[2],
+                         90, 90, 90 );
+
+            set_tag( $dataset, '_cell_length_a',    $cell[0] );
+            set_tag( $dataset, '_cell_length_b',    $cell[1] );
+            set_tag( $dataset, '_cell_length_c',    $cell[2] );
+            set_tag( $dataset, '_cell_angle_alpha', $cell[3] );
+            set_tag( $dataset, '_cell_angle_beta',  $cell[4] );
+            set_tag( $dataset, '_cell_angle_gamma', $cell[5] );
+
+            my @Cartn_x_now = map { $_ - $bounding_box[0] + $margin[0] / 2 }
+                                  @{$values->{'_atom_site_Cartn_x'}};
+            my @Cartn_y_now = map { $_ - $bounding_box[2] + $margin[1] / 2 }
+                                  @{$values->{'_atom_site_Cartn_y'}};
+            my @Cartn_z_now = map { $_ - $bounding_box[4] + $margin[2] / 2 }
+                                  @{$values->{'_atom_site_Cartn_z'}};
+
+            my @fract_x = map { $_ / $cell[0] } @Cartn_x_now;
+            my @fract_y = map { $_ / $cell[1] } @Cartn_y_now;
+            my @fract_z = map { $_ / $cell[2] } @Cartn_z_now;
+
+            set_loop_tag( $dataset,
+                          '_atom_site_fract_x',
+                          '_atom_site_label',
+                          \@fract_x );
+
+            set_loop_tag( $dataset,
+                          '_atom_site_fract_y',
+                          '_atom_site_label',
+                          \@fract_y );
+
+            set_loop_tag( $dataset,
+                          '_atom_site_fract_z',
+                          '_atom_site_label',
+                          \@fract_z );
+
+            exclude_tag( $dataset, '_atom_site_Cartn_x' );
+            exclude_tag( $dataset, '_atom_site_Cartn_y' );
+            exclude_tag( $dataset, '_atom_site_Cartn_z' );
+        }
+
+        print_cif( $dataset,
+                   {
+                        preserve_loop_order => 1,
+                        keep_tag_order => 1
+                   } );
+    }
+}
+
+# Returns x_min, x_max, y_min, y_max, z_min, z_max
+
+sub get_bounding_box
+{
+    my( $values ) = @_;
+
+    return
+        (reduce { $b ne '.' && $b ne '?' && $b < $a ? $b : $a }
+             @{$values->{'_atom_site_Cartn_x'}}),
+        (reduce { $b ne '.' && $b ne '?' && $b > $a ? $b : $a }
+             @{$values->{'_atom_site_Cartn_x'}}),
+        (reduce { $b ne '.' && $b ne '?' && $b < $a ? $b : $a }
+             @{$values->{'_atom_site_Cartn_y'}}),
+        (reduce { $b ne '.' && $b ne '?' && $b > $a ? $b : $a }
+             @{$values->{'_atom_site_Cartn_y'}}),
+        (reduce { $b ne '.' && $b ne '?' && $b < $a ? $b : $a }
+             @{$values->{'_atom_site_Cartn_z'}}),
+        (reduce { $b ne '.' && $b ne '?' && $b > $a ? $b : $a }
+             @{$values->{'_atom_site_Cartn_z'}});
+}
