@@ -827,13 +827,13 @@ my $UQSTRING_INLINE     =       qr/^(?:
         if( ( $parser->{USER}{OPTIONS}{fix_errors} ||
               $parser->{USER}{OPTIONS}
                       {fix_missing_closing_double_quote} ) &&
-                    s/^("${ANY_PRINT_CHAR}*?)(\s|$)//s)
+                    s/^("${ANY_PRINT_CHAR}*)(\s|$)//s)
         {
             my $value = $1;
             my $space = $2;
 
-            $parser->YYData->{ERRMSG} =
-                        "double-quoted string is missing a closing quote -- fixed";
+            $parser->YYData->{ERRMSG} = 'double-quoted string is missing a '
+                                      . 'closing quote -- fixed';
             $parser->_Warning();
 
             advance_token($parser, length($value . $space));
@@ -842,13 +842,13 @@ my $UQSTRING_INLINE     =       qr/^(?:
         #matching single quoted strings without a closing quote
         if ( ( $parser->{USER}{OPTIONS}{fix_errors} ||
                $parser->{USER}{OPTIONS}{fix_missing_closing_single_quote} ) &&
-                    s/^('${ANY_PRINT_CHAR}*?)(\s|$)//s )
+                    s/^('${ANY_PRINT_CHAR}*)(\s|$)//s )
         {
             my $value = $1;
             my $space = $2;
 
-            $parser->YYData->{ERRMSG} =
-                        "single-quoted string is missing a closing quote -- fixed";
+            $parser->YYData->{ERRMSG} = 'single-quoted string is missing a '
+                                      . 'closing quote -- fixed';
             $parser->_Warning();
 
             advance_token($parser, length($value . $space));
