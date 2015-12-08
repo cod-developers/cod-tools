@@ -130,8 +130,13 @@ include .diff.depend
 ALL_INPUTS = ${TEST_CASES}
 
 .diff.depend: ${ALL_INPUTS}
-	@perl -le \
-		'for(@ARGV){ print "${TEST_OUTP_DIR}/",$$1,"_",$$2,".diff: ","tests/bin/",$$1 if m|/(.*?)_(\d{2,4})\.\w{1,3}$$| }' \
+	@perl -l \
+		-e 'for (@ARGV) {' \
+		-e '    if ( m|/(.*?)_(\d{2,4})\.\w{1,3}$$| ) {' \
+		-e '        print "${TEST_OUTP_DIR}/" . $$1 . "_" . $$2 . ".diff: "' \
+		-e '            . "tests/bin/" . $$1 ' \
+		-e '    }' \
+		-e '}' \
 	$^ \
 	| sort | uniq \
 	> $@
