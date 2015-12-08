@@ -17,6 +17,7 @@ eval 'exec perl -x $0 ${1+"$@"}'
 use strict;
 use warnings;
 use File::Basename qw( basename );
+use COD::CIF::Data qw( get_symmetry_operators );
 use COD::CIF::Parser qw( parse_cif );
 use COD::CIF::Tags::CanonicalNames qw( canonicalize_all_names );
 use COD::CIF::Tags::Manage qw( exclude_tag set_loop_tag set_tag );
@@ -141,6 +142,14 @@ for my $filename (@ARGV) {
             exclude_tag( $dataset, '_atom_site_Cartn_x' );
             exclude_tag( $dataset, '_atom_site_Cartn_y' );
             exclude_tag( $dataset, '_atom_site_Cartn_z' );
+        }
+
+        eval {
+            get_symmetry_operators( $dataset );
+        };
+        if( $@ ) {
+            # structure probably does not contain symmetry information
+            set_tag( $dataset, '_space_group_name_Hall', 'P 1' );
         }
 
         print_cif( $dataset,
