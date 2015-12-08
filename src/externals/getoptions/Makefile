@@ -170,14 +170,20 @@ check test tests: ${TEST_DIFFS}
 
 out output outputs: ${TEST_OUTPS}
 
-outputs/%.diff: tests/%.sh outputs/%.out
+${TEST_OUTP_DIR}/%.diff: ${TEST_CASE_DIR}/%.sh ${TEST_OUTP_DIR}/%.out
 	-@printf "%-30s " "$*:" ; \
 	./$< 2>&1 | diff outputs/$*.out - > $@; \
 	if [ $$? = 0 ]; then echo "OK"; else echo "FAILED:"; cat $@; fi
 
-outputs/%.out: tests/%.sh
+${TEST_OUTP_DIR}/%.out: ${TEST_CASE_DIR}/%.sh
 	@test -f $@ || ./$< 2>&1 | tee $@
 	@test -f $@ && touch $@
+
+listdiff:
+	@- if [ -d ${TEST_OUTP_DIR} ]; then \
+	   find ${TEST_OUTP_DIR} -name '*.diff' -size +0 \
+		| xargs --no-run-if-empty ls -l; fi \
+		| sort -u -k9
 
 #------------------------------------------------------------------------------
 
