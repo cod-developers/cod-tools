@@ -192,22 +192,20 @@ sub shift_atom($)
     my @shifted_atoms;
     my @shift = ( 0, -1, 1 );
 
-    for ( my $i = 0; $i < @shift; $i++ ) {
-    for ( my $j = 0; $j < @shift; $j++ ) {
-    for ( my $k = 0; $k < @shift; $k++ ) {
+    foreach my $x ( @shift ) {
+    foreach my $y ( @shift ) {
+    foreach my $z ( @shift ) {
         my $new_atom = copy_atom($atom);
-        $new_atom->{'translation'} = [ $shift[$i], $shift[$j], $shift[$k] ];
+        $new_atom->{'translation'} = [ $x, $y, $z ];
         my @new_atom_xyz;
-        if( $shift[$i] != 0 || $shift[$j] != 0 || $shift[$k] != 0 ||
+        if( $x != 0 || $y != 0 || $z != 0 ||
             $atom->{'unity_matrix_applied'} != 1) {
 
-            $new_atom_xyz[0] = $atom->{'coordinates_fract'}[0] + $shift[$i];
-            $new_atom_xyz[1] = $atom->{'coordinates_fract'}[1] + $shift[$j];
-            $new_atom_xyz[2] = $atom->{'coordinates_fract'}[2] + $shift[$k];
+            $new_atom_xyz[0] = $atom->{'coordinates_fract'}[0] + $x;
+            $new_atom_xyz[1] = $atom->{'coordinates_fract'}[1] + $y;
+            $new_atom_xyz[2] = $atom->{'coordinates_fract'}[2] + $z;
 
-            my $shift_label = ( $shift[$i] + 5 )
-                            . ( $shift[$j] + 5 )
-                            . ( $shift[$k] + 5 );
+            my $shift_label = ( $x + 5 ) . ( $y + 5 ) . ( $z + 5 );
 
             $new_atom->{'coordinates_fract'} = \@new_atom_xyz;
             $new_atom->{'coordinates_ortho'} =
