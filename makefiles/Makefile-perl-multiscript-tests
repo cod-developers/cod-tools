@@ -299,12 +299,11 @@ tests alltests check: test shtests
 
 DIFF_DIRS = $(dir ${YAPP_SOURCES} ${SWIG_MODULES})
 listdiff: # test
-	@-( test -d ${OUTPUT_DIR} && \
-	    ls -l ${OUTPUT_DIR}/*.diff | awk '{if( $$5 > 0 ) print}' ) || \
-	    true
-	@-( test -d ${SHELL_OUTDIR} && \
-	    ls -l ${SHELL_OUTDIR}/*.diff | awk '{if( $$5 > 0 ) print}' ) || \
-	    true
+	@-for DIFF_DIR in ${OUTPUT_DIR} ${SHELL_OUTDIR}; do \
+		if [ -d $$DIFF_DIR ]; then \
+			find $$DIFF_DIR -name '*.diff' -size +0 \
+			| xargs --no-run-if-empty ls -l; fi \
+	done | sort -u
 	@-for DIR in ${DIFF_DIRS}; do \
 		${MAKE} -C $$DIR $@; \
 	done
