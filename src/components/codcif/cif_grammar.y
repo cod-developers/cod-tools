@@ -233,7 +233,7 @@ data_block_head
                 if( isset_fix_errors( cif_cc ) ||
                     isset_fix_string_quotes( cif_cc ) ) {
                     yynote( "the dataname apparently had spaces "
-                            "in it - replaced spaces by underscores", px );
+                            "in it -- replaced spaces with underscores", px );
                 }
             } else {
                 cif_start_datablock( cif_cc->cif, $1, px );
