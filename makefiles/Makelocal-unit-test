@@ -107,7 +107,7 @@ ${SHELL_OUTDIR}/%.out: ${SHELL_TSTDIR}/%.sh ${TEST_MODULE} ${TEST_DEPEND}
 
 ${SHELL_OUTDIR}/%.diff: ${SHELL_TSTDIR}/%.sh ${TEST_MODULE}
 	-@printf "%-30s " "$*:" ; \
-	$< ${TEST_MODULE} 2>&1 | perl -pe 's|tests/shtests/|shtests/|g' \
+	$< ${TEST_MODULE} 2>&1 \
 	| diff ${SHELL_OUTDIR}/$*.out - > $@ ; \
 	if [ $$? = 0 ]; then echo "OK"; else echo "FAILED:"; cat $@; fi
 
