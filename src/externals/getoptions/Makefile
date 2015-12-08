@@ -187,6 +187,7 @@ install: ${LIBS}
 #------------------------------------------------------------------------------
 
 clean:
+	rm -f ${TEST_DIFFS}
 	rm -f *~
 	rm -f .diff.depend
 	rm -f ${LIB_OBJ}
@@ -195,4 +196,3 @@ clean:
 distclean cleanAll: clean
 	rm -f ${TARGETS}
 	rm -f ${DEPEND}
-	rm -f ${TEST_DIFFS}
