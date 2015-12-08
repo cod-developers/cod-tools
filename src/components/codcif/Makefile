@@ -264,9 +264,9 @@ SHELL_DIFFS   = ${addprefix ${SHELL_OUTDIR}/, ${SHELL_BASES:%.sh=%.diff}}
 
 #------------------------------------------------------------------------------
 
-.PHONY: outputs test
+.PHONY: out outputs test
 
-outputs: ${RES_FILES} ${TST_OUTPUTS}
+out outputs: ${RES_FILES} ${TST_OUTPUTS}
 
 test: ${DIFF_FILES} ${TST_DIFFS}
 
