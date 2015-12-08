@@ -344,15 +344,11 @@ tests alltests: test shtests
 .PHONY: listdiff
 
 listdiff: # test
-	@-( test -d ${OUTPUT_DIR} && \
-	    ls -l ${OUTPUT_DIR}/*.diff | awk '{if( $$5 > 0 ) print}' ) || \
-	    true
-	@-( test -d ${TST_OUT_DIR} && \
-	    ls -l ${TST_OUT_DIR}/*.diff | awk '{if( $$5 > 0 ) print}' ) || \
-	    true
-	@-( test -d ${SHELL_OUTDIR} && \
-	    ls -l ${SHELL_OUTDIR}/*.diff | awk '{if( $$5 > 0 ) print}' ) || \
-	    true
+	-@for DIFF_DIR in ${OUTPUT_DIR} ${TST_OUT_DIR} ${SHELL_OUTDIR}; do \
+		if [ -d $$DIFF_DIR ]; then \
+			find $$DIFF_DIR -name '*.diff' -size +0 \
+			| xargs --no-run-if-empty ls -l; fi \
+	done | sort -u
 
 #------------------------------------------------------------------------------
 
