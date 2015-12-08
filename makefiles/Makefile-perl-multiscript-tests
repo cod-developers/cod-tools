@@ -297,16 +297,14 @@ tests alltests check: test shtests
 
 .PHONY: listdiff blame
 
-DIFF_DIRS = $(dir ${YAPP_SOURCES} ${SWIG_MODULES})
 listdiff: # test
 	@-for DIFF_DIR in ${OUTPUT_DIR} ${SHELL_OUTDIR}; do \
 		if [ -d $$DIFF_DIR ]; then \
 			find $$DIFF_DIR -name '*.diff' -size +0 \
 			| xargs --no-run-if-empty ls -l; fi \
 	done | sort -u -k9
-	@-for DIR in ${DIFF_DIRS}; do \
-		${MAKE} -C $$DIR $@; \
-	done
+	@-find './src' -name '*.diff' -size +0 \
+	  | xargs --no-run-if-empty ls -l | sort -k9 | uniq
 
 blame:
 	@-( test -d ${OUTPUT_DIR} && \
