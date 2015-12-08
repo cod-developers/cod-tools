@@ -348,7 +348,7 @@ listdiff: # test
 		if [ -d $$DIFF_DIR ]; then \
 			find $$DIFF_DIR -name '*.diff' -size +0 \
 			| xargs --no-run-if-empty ls -l; fi \
-	done | sort -u
+	done | sort -k9 | uniq
 
 #------------------------------------------------------------------------------
 
