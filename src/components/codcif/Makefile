@@ -319,7 +319,7 @@ ${TST_OUT_DIR}/%.diff: ${TST_EXE_DIR}/%
 	./$< 2>&1 | diff ${TST_OUT_DIR}/$*.out - > $@ ; \
 	if [ $$? = 0 ]; then echo "OK"; else echo "FAILED:"; cat $@; fi
 
-.PHONY: shoutpus shout shtests shtest
+.PHONY: shoutputs shout shtests shtest
 
 ${SHELL_DIFFS}: ${EXE_FILES}
 
