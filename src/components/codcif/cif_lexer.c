@@ -691,8 +691,8 @@ static char *clean_string( char *src, int is_textfield, cexception_t *ex )
                             non_ascii_explained = 1;
                         } else {
                             print_message( "WARNING", "non-ascii symbols "
-                                           "encountered in the text field, "
-                                           "replaced by XML entities", ":",
+                                           "encountered in the text field -- "
+                                           "replaced with XML entities", ":",
                                            cif_flex_current_line_number(),
                                            -1, ex );
                             print_current_text_field( start, ex );
