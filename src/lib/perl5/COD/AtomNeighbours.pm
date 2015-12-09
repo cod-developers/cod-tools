@@ -20,8 +20,9 @@ use COD::CIF::Data::AtomList qw( atoms_are_alternative );
 require Exporter;
 our @ISA = qw( Exporter );
 our @EXPORT_OK = qw(
-    make_neighbour_list
+    from_chemistry_mol
     get_max_covalent_radius
+    make_neighbour_list
 );
 
 #==============================================================================#
@@ -255,6 +256,65 @@ sub make_neighbour_list_slow($$$$$)
     }
 
     return wantarray ? %neighbour_list : \%neighbour_list;
+}
+
+#==============================================================================
+# Generates neighbour list from Chemistry::Mol object.
+sub from_chemistry_mol
+{
+    my( $mol ) = @_;
+
+    my %neighbour_list = (
+        atoms => [],
+        neighbours => [],
+    );
+
+    my %atom_ids;
+
+    my $n = 0;
+    for my $atom ($mol->atoms()) {
+        my %atom_info;
+
+        $atom_info{"name"}                  = $atom->symbol() . ($n+1);
+        $atom_info{"site_label"}            = $atom->symbol() . ($n+1);
+        $atom_info{"cell_label"}            = $atom->symbol() . ($n+1);
+        $atom_info{"index"}                 = $n;
+        $atom_info{"symop"}                 =
+          [
+            [ 1, 0, 0, 0 ],
+            [ 0, 1, 0, 0 ],
+            [ 0, 0, 1, 0 ],
+            [ 0, 0, 0, 1 ]
+          ];
+        $atom_info{"symop_id"}              = 1;
+        $atom_info{"unity_matrix_applied"}  = 1;
+        $atom_info{"translation_id"}        = "555";
+        $atom_info{"translation"}           = [ 0, 0, 0 ];
+
+        $atom_info{"chemical_type"}         = $atom->symbol();
+        $atom_info{"assembly"}              = ".";
+        $atom_info{"group"}                 = ".";
+        $atom_info{"atom_site_occupancy"}   = 1;
+
+        $atom_info{"is_planar"}             = 0;
+        if( defined $atom->attr('smiles/aromatic') ) {
+            $atom_info{"is_planar"} = $atom->attr('smiles/aromatic');
+        }
+        
+        $atom_info{"attached_hydrogens"}    = $atom->implicit_hydrogens();
+
+        $atom_ids{$atom} = $n;
+        push( $neighbour_list{atoms}, \%atom_info );
+
+        $n ++;
+    }
+
+    for my $atom ($mol->atoms()) {
+        push( @{$neighbour_list{neighbours}},
+              [ map { $atom_ids{$_} } $atom->neighbors() ] );
+    }
+
+    return \%neighbour_list;
 }
 
 1;
