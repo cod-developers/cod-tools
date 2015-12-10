@@ -20,9 +20,9 @@ use COD::CIF::Data::AtomList qw( atoms_are_alternative );
 require Exporter;
 our @ISA = qw( Exporter );
 our @EXPORT_OK = qw(
-    from_chemistry_mol
     get_max_covalent_radius
     make_neighbour_list
+    neighbour_list_from_chemistry_mol
 );
 
 #==============================================================================#
@@ -260,7 +260,7 @@ sub make_neighbour_list_slow($$$$$)
 
 #==============================================================================
 # Generates neighbour list from Chemistry::Mol object.
-sub from_chemistry_mol
+sub neighbour_list_from_chemistry_mol
 {
     my( $mol ) = @_;
 
