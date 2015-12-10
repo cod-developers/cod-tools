@@ -1028,18 +1028,18 @@ sub get_molecules($$$)
 
     my %seen_molecules;
 
-    my @symmetric_atoms = apply_shifts( $atom_list );
+    my $symmetric_atoms = apply_shifts( $atom_list );
 
     my @initial_atoms = @$atom_list;
 
-    my $bricks = build_bricks( \@symmetric_atoms,
-                                           $max_covalent_radius * 2 +
-                                           $covalent_sensitivity );
+    my $bricks = build_bricks( $symmetric_atoms,
+                               $max_covalent_radius * 2 +
+                               $covalent_sensitivity );
 
     # Finds molecules
     my @generated_molecules = find_molecules( $covalent_sensitivity,
                                               $atom_properties,
-                                              \@symmetric_atoms,
+                                              $symmetric_atoms,
                                               \@initial_atoms,
                                               $bricks,
                                               \%seen_molecules );
