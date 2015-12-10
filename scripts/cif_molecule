@@ -946,14 +946,14 @@ sub get_molecules
 
     my $unit_cell_atoms = symgen_all_atoms( $atom_list, \@sym_operators );
 
-    my @symmetric_atoms = apply_shifts( $unit_cell_atoms );
+    my $symmetric_atoms = apply_shifts( $unit_cell_atoms );
 
     my @initial_atoms;
     if( $expand_to_p1 ) {
         @initial_atoms = @$unit_cell_atoms;
     } else {
         my %atom_list_names = map { $_->{name} => 1 } @$atom_list;
-        foreach my $symmetric_atom ( @symmetric_atoms ) {
+        foreach my $symmetric_atom ( @$symmetric_atoms ) {
             push( @initial_atoms, $symmetric_atom )
                 if exists $atom_list_names{$symmetric_atom->{name}};
         }
@@ -964,14 +964,14 @@ sub get_molecules
                            [ get_cell( $values ) ] );
     } else {
 
-        my $bricks = build_bricks( \@symmetric_atoms,
-                                               $max_covalent_radius * 2 +
-                                               $covalent_sensitivity );
+        my $bricks = build_bricks( $symmetric_atoms,
+                                   $max_covalent_radius * 2 +
+                                   $covalent_sensitivity );
 
         # Finds molecules
         my @current_ordered_molecules = find_molecules( $covalent_sensitivity,
                                                         $atom_properties,
-                                                        \@symmetric_atoms,
+                                                        $symmetric_atoms,
                                                         \@initial_atoms,
                                                         $bricks,
                                                         \%seen_molecules );

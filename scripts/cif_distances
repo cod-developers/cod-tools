@@ -251,12 +251,11 @@ foreach my $filename ( @ARGV ) {
             . 'atoms -- dataset will be skipped' . "\n";
       }
 
-      my @shifted_atoms = apply_shifts( $sym_atoms );
-# map { shift_atom($_) } @{$sym_atoms};
+      my $shifted_atoms = apply_shifts( $sym_atoms );
 
       my $group_size = $symop_count * 27; # 27 is the number of octants
 
-      my $grouped_atoms = group_atoms( \@shifted_atoms, $group_size );
+      my $grouped_atoms = group_atoms( $shifted_atoms, $group_size );
       my $headers = get_atom_headers( $grouped_atoms );
       my ( $distances, $atoms_used ) = get_distances( $grouped_atoms );
 

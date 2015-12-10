@@ -223,8 +223,16 @@ sub shift_atom($)
 }
 
 #===============================================================#
-# Generate symmetry equivalents of an atom, exclude duplicates
-# on special positions
+# Generates atoms of surrounding cells by shifting atoms in 27 possible
+# ways in 3D space. Atom name is updated to include the shift.
+#
+# @param $atoms
+#       Reference to an array of atoms data structures as described in
+#       'shift_atom'.
+#
+# @returns $shifted
+#       Reference to an array of shifted atoms.
+##
 
 sub apply_shifts($)
 {
@@ -236,7 +244,7 @@ sub apply_shifts($)
         push( @shifted, shift_atom( $atom ));
     }
 
-    return @shifted;
+    return \@shifted;
 }
 
 #===============================================================#
