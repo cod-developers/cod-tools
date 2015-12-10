@@ -303,7 +303,7 @@ sub neighbour_list_from_chemistry_mol
         }
 
         $atom_ids{$atom} = $n;
-        push( $neighbour_list{atoms}, \%atom_info );
+        push( @{$neighbour_list{atoms}}, \%atom_info );
 
         $n ++;
     }
