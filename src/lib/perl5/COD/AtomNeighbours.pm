@@ -295,13 +295,12 @@ sub from_chemistry_mol
         $atom_info{"assembly"}              = ".";
         $atom_info{"group"}                 = ".";
         $atom_info{"atom_site_occupancy"}   = 1;
-
-        $atom_info{"is_planar"}             = 0;
-        if( defined $atom->attr('smiles/aromatic') ) {
-            $atom_info{"is_planar"} = $atom->attr('smiles/aromatic');
-        }
-        
         $atom_info{"attached_hydrogens"}    = $atom->implicit_hydrogens();
+
+        if( defined $atom->attr('smiles/aromatic') &&
+            $atom->attr('smiles/aromatic') == 1 ) {
+            $atom_info{"planarity"} = 0;
+        }
 
         $atom_ids{$atom} = $n;
         push( $neighbour_list{atoms}, \%atom_info );
