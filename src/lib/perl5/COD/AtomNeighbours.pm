@@ -259,7 +259,8 @@ sub make_neighbour_list_slow($$$$$)
 }
 
 #==============================================================================
-# Generates neighbour list from Chemistry::Mol object.
+# Generates neighbour list from Chemistry::Mol object. Tested with the
+# version 0.37 of the aforementioned module.
 sub neighbour_list_from_chemistry_mol
 {
     my( $mol ) = @_;
