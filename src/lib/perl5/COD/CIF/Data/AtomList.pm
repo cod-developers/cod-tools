@@ -57,10 +57,6 @@ our @EXPORT_OK = qw(
 #                           type could not be resolved. If this option is
 #                           disabled, a die signal is issued upon encountering
 #                           such atoms. The option if off by default.
-#       do_not_resolve_chemical_type
-#                           Do not try to resolve the atom chemical type.
-#                           All returned atoms have an undefined value as
-#                           their chemical type.
 #       assume_full_occupancy
 #                           Set atom occupancy to '1' for all atoms that do
 #                           not have an explicitely declared occupancy.
@@ -158,32 +154,26 @@ sub extract_atom
     }
 
     my $atom_type;
-    if ( $options->{'do_not_resolve_chemical_type'} ) {
-        # Storing the array index so the chemical type
-        # could be resolved in later stages of processing
-        $atom_info{'cif_loop_index'} = $number;
-    } else {
-        my $atom_properties = $options->{atom_properties};
-        if( exists $values->{_atom_site_type_symbol} &&
-            defined $values->{_atom_site_type_symbol}[$number] &&
-            $values->{_atom_site_type_symbol}[$number] ne '?' ) {
-            $atom_type = $values->{_atom_site_type_symbol}[$number];
-            $atom_info{atom_site_type_symbol} = $atom_type;
-        } elsif ( exists $values->{_atom_site_label} &&
+    my $atom_properties = $options->{atom_properties};
+    if( exists $values->{_atom_site_type_symbol} &&
+        defined $values->{_atom_site_type_symbol}[$number] &&
+        $values->{_atom_site_type_symbol}[$number] ne '?' ) {
+        $atom_type = $values->{_atom_site_type_symbol}[$number];
+        $atom_info{atom_site_type_symbol} = $atom_type;
+    } elsif ( exists $values->{_atom_site_label} &&
               defined $values->{_atom_site_label}[$number] ) {
-              $atom_type = $values->{_atom_site_label}[$number];
-        };
+        $atom_type = $values->{_atom_site_label}[$number];
+    };
 
-        if ( defined $atom_type &&
-             $atom_type =~ m/^([A-Za-z]{1,2})/ ) {
-            $atom_type = ucfirst( lc( $1 ) );
-        };
+    if ( defined $atom_type &&
+         $atom_type =~ m/^([A-Za-z]{1,2})/ ) {
+        $atom_type = ucfirst( lc( $1 ) );
+    };
 
-        if ( !( exists $atom_properties->{$atom_type} ||
-                $options->{allow_unknown_chemical_types} ) ) {
-            die "ERROR, could not determine chemical type for atom "
-              . "'$values->{_atom_site_label}[$number]'\n";
-        }
+    if ( !( exists $atom_properties->{$atom_type} ||
+            $options->{allow_unknown_chemical_types} ) ) {
+        die 'ERROR, could not determine chemical type for atom '
+          . "'$values->{_atom_site_label}[$number]'\n";
     }
 
     $atom_info{chemical_type} = $atom_type;
