@@ -222,7 +222,7 @@ foreach my $filename ( @ARGV ) {
       my $atoms;
       eval {
         $atoms = atom_array_from_cif( $dataset,
-                        { 'do_not_resolve_chemical_type' => 1,
+                        { 'allow_unknown_chemical_types' => 1,
                           'uniquify_atom_names'          => $uniquify_atoms,
                           'uniquify_atoms'               => $uniquify_atoms,
                           'atom_properties' => \%COD::AtomProperties::atoms } );
@@ -292,7 +292,7 @@ sub resolve_chemical_type
     my @new_atoms;
 
     foreach my $atom (@$atoms) {
-        my $i = $atom->{'cif_loop_index'};
+        my $i = $atom->{'index'};
 
         $atom->{'chemical_type'} = exists $values->{'_atom_site_type_symbol'} ?
                                 $values->{'_atom_site_type_symbol'}[$i] : undef;
