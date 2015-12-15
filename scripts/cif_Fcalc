@@ -175,6 +175,7 @@ for my $filename (@ARGV) {
 
     for my $datablock (@{$data}) {
         my $dataname = 'data_' . $datablock->{name} if defined $datablock->{name};
+        my $values = $datablock->{'values'};
 
         local $SIG{__WARN__} =  sub { process_warnings( {
                                        'message'       => @_,
@@ -187,14 +188,14 @@ for my $filename (@ARGV) {
         eval {
         ## my $radiation_wavelengths = remove_su(
         ##     $datablock->{values}{_diffrn_radiation_wavelength} );
-        my $cell_parameters = get_unit_cell_parameters( $datablock );
+        my $cell_parameters = get_unit_cell_parameters( $values );
         my $f2o = symop_ortho_from_fract(
             @{$cell_parameters->{crystal_cell_degrees}} );
-        my $atoms = atoms_from_cif( $datablock, $f2o );
+        my $atoms = atoms_from_cif( $values, $f2o );
 
         my %atom_index; # contains a index in $atoms using 'label' key.
         foreach (@{$atoms}) {
-            $atom_index{$_->{label}} = $_->{my_index};
+            $atom_index{$_->{'site_label'}} = $_->{'index'};
         }
 
         #---------------------------------------------------------
@@ -206,7 +207,7 @@ for my $filename (@ARGV) {
         if( !$iso_temperature_factor ) {
             foreach my $atom (@{$atoms}) {
                 if( !defined $atom->{aniso_value_Uij}[0] &&
-                    $atom->{label} !~ /[H|D]\d++/ ) {
+                    $atom->{'site_label'} !~ /[H|D]\d++/ ) {
                     warn 'WARNING, the CIF file does not contain the full '
                        . 'data of the standard anisotropic atomic displacement '
                        . 'components' . "\n";
@@ -238,7 +239,7 @@ for my $filename (@ARGV) {
                 !defined $atom->{Crommer_Mann_coefficients}[0] ) {
                 # external source
                 my $CromerManncoeff =
-                    $COD::CromerMann::atoms{ $atom->{chemical_type}};
+                    $COD::CromerMann::atoms{ $atom->{chemical_type} };
                 #-----------------------------------------------------
                 # print out of Cromer Mann coef. from external sources;
                 if( !defined $atom->{Crommer_Mann_coefficients}[0] ) {
@@ -547,8 +548,8 @@ sub remove_su
 # \@atoms = (
 #           # [0]
 #           {
-#               label => "O10",
-#               chemical_type => "O",
+#               label => 'O10',
+#               chemical_type => 'O',
 #               coordinates_fract" => [0.1, 0.2, 0.3],
 #               coordinates_ortho => [10, 20.5, 25.2],
 #               occupancy => 0.5,
@@ -569,43 +570,43 @@ sub remove_su
 #  );
 sub atoms_from_cif
 {
-    my( $datablock, $f2o ) = @_;
+    my( $values, $f2o ) = @_;
+
     my @atoms;
-    my $datablock_values = $datablock->{values};
     my @xyz_arrays =
-        ( remove_su( $datablock_values->{'_atom_site_fract_x'} ),
-          remove_su( $datablock_values->{'_atom_site_fract_y'} ),
-          remove_su( $datablock_values->{'_atom_site_fract_z'} ) );
+        ( remove_su( $values->{'_atom_site_fract_x'} ),
+          remove_su( $values->{'_atom_site_fract_y'} ),
+          remove_su( $values->{'_atom_site_fract_z'} ) );
     my $occupancy =
-        remove_su( $datablock_values->{'_atom_site_occupancy'} );
+        remove_su( $values->{'_atom_site_occupancy'} );
 
-    my $Cromer_Mann_coefficients = get_Cromer_Mann_coefficients( $datablock );
-    my $themal_coefficients = get_thermal( $datablock );
-    my $sym_atoms_and_their_count = cell_filling_sym( $datablock, $f2o);
-    my $atoms_neighbors = get_neighbors( $datablock );
+    my $Cromer_Mann_coefficients = get_Cromer_Mann_coefficients( $values );
+    my $themal_coefficients = get_thermal( $values );
+    my $sym_atoms_and_their_count = cell_filling_sym( $values, $f2o );
+    my $atoms_neighbors = get_neighbors( $values );
 
-    for my $i (0..$#{$datablock_values->{_atom_site_label}}) {
+    for my $i (0..$#{$values->{'_atom_site_label'}}) {
         my $fract_xyz = [ $xyz_arrays[0]->[$i],
                           $xyz_arrays[1]->[$i],
                           $xyz_arrays[2]->[$i] ];
         my $ortho_xyz = symop_vector_mul( $f2o, $fract_xyz );
         my $atom_chemical_type =
-            $datablock_values->{_atom_site_type_symbol}[$i];
-        if( !defined $datablock_values->{_atom_site_type_symbol}[$i] ) {
+            $values->{'_atom_site_type_symbol'}[$i];
+        if( !defined $values->{'_atom_site_type_symbol'}[$i] ) {
             $atom_chemical_type =
                 ucfirst(
                     lc( substr(
-                            $datablock_values->{_atom_site_label}[$i], 0, 2
+                            $values->{'_atom_site_label'}[$i], 0, 2
                         )));
             $atom_chemical_type =~ s/\d//;
         }
         my %atom_info = (
-            label => $datablock_values->{_atom_site_label}[$i],
-            chemical_type => $atom_chemical_type,
-            coordinates_fract => $fract_xyz,
-            coordinates_ortho => $ortho_xyz,
-            occupancy => $occupancy->[$i],
-            my_index => $i
+            'site_label' => $values->{'_atom_site_label'}[$i],
+            'chemical_type' => $atom_chemical_type,
+            'coordinates_fract' => $fract_xyz,
+            'coordinates_ortho' => $ortho_xyz,
+            'occupancy' => $occupancy->[$i],
+            'index' => $i
             );
         %atom_info = (%atom_info, %{$Cromer_Mann_coefficients->[$i]});
         %atom_info = (%atom_info, %{$themal_coefficients->[$i]});
@@ -637,48 +638,45 @@ sub atoms_from_cif
 #  );
 sub get_Cromer_Mann_coefficients
 {
-    my( $datablock ) = @_;
-    my $datablock_values = $datablock->{values};
+    my( $values ) = @_;
+
     my @atoms_aniso_coefficients;
 
-    my $labels = $datablock_values->{_atom_site_label};
+    my $labels = $values->{'_atom_site_label'};
     my $chemical_type_of_Cromer_Mann_loop = [];
     # filling data by empty hashes if label _atom_type_symbol
     # is not defined;
-    if( !defined $datablock_values->{_atom_type_symbol}[0] ) {
+    if( !defined $values->{'_atom_type_symbol'}[0] ) {
         for(0..$#{$labels}) {
             push( @atoms_aniso_coefficients, {} );
         }
     }
     # correction of chemical element to standart record;
-    foreach (@{$datablock_values->{_atom_type_symbol}}) {
+    foreach (@{$values->{_atom_type_symbol}}) {
         my $double_sym = ucfirst( lc( substr( $_,0,2 )));
         $double_sym =~ s/\s//g;
         push( @{$chemical_type_of_Cromer_Mann_loop}, $double_sym );
     }
     my $Cromer_Mann_coefficients =
-        [ $datablock_values->{_atom_type_scat_cromer_mann_a1},
-          $datablock_values->{_atom_type_scat_cromer_mann_a2},
-          $datablock_values->{_atom_type_scat_cromer_mann_a3},
-          $datablock_values->{_atom_type_scat_cromer_mann_a4},
-          $datablock_values->{_atom_type_scat_cromer_mann_b1},
-          $datablock_values->{_atom_type_scat_cromer_mann_b2},
-          $datablock_values->{_atom_type_scat_cromer_mann_b3},
-          $datablock_values->{_atom_type_scat_cromer_mann_b4},
-          $datablock_values->{_atom_type_scat_cromer_mann_c} ];
+        [ $values->{'_atom_type_scat_cromer_mann_a1'},
+          $values->{'_atom_type_scat_cromer_mann_a2'},
+          $values->{'_atom_type_scat_cromer_mann_a3'},
+          $values->{'_atom_type_scat_cromer_mann_a4'},
+          $values->{'_atom_type_scat_cromer_mann_b1'},
+          $values->{'_atom_type_scat_cromer_mann_b2'},
+          $values->{'_atom_type_scat_cromer_mann_b3'},
+          $values->{'_atom_type_scat_cromer_mann_b4'},
+          $values->{'_atom_type_scat_cromer_mann_c'} ];
     my $atom_scat_dispersion_real =
-        $datablock_values->{_atom_type_scat_dispersion_real};
+          $values->{'_atom_type_scat_dispersion_real'};
     my $atom_scat_dispersion_imag =
-        $datablock_values->{_atom_type_scat_dispersion_imag};
+          $values->{'_atom_type_scat_dispersion_imag'};
     for my $i (0..$#{$labels}) {
         # general loop
-        my $atom_chemical_type =
-            $datablock_values->{_atom_site_type_symbol}[$i];
+        my $atom_chemical_type = $values->{'_atom_site_type_symbol'}[$i];
         if( !defined $atom_chemical_type ) {
-            $atom_chemical_type =
-                ucfirst( lc( substr($labels->[$i],0,2)));
+            $atom_chemical_type = ucfirst( lc( substr($labels->[$i],0,2)));
             $atom_chemical_type =~ s/\d//;
-
         }
 
         for my $y (0..$#{$chemical_type_of_Cromer_Mann_loop}) {
@@ -689,7 +687,7 @@ sub get_Cromer_Mann_coefficients
             if( $atom_chemical_type eq
                  $chemical_type_of_Cromer_Mann_loop->[$y] ) {
                 my %thermal = (
-                    Crommer_Mann_coefficients => [
+                    'Crommer_Mann_coefficients' => [
                         $Cromer_Mann_coefficients->[0][$y],
                         $Cromer_Mann_coefficients->[1][$y],
                         $Cromer_Mann_coefficients->[2][$y],
@@ -699,8 +697,8 @@ sub get_Cromer_Mann_coefficients
                         $Cromer_Mann_coefficients->[6][$y],
                         $Cromer_Mann_coefficients->[7][$y],
                         $Cromer_Mann_coefficients->[8][$y] ],
-                    scat_dispesion_real => $atom_scat_dispersion_real->[$y],
-                    scat_dispesion_imag => $atom_scat_dispersion_imag->[$y]
+                    'scat_dispesion_real' => $atom_scat_dispersion_real->[$y],
+                    'scat_dispesion_imag' => $atom_scat_dispersion_imag->[$y]
                     );
                 push @atoms_aniso_coefficients, \%thermal;
             } # end of if;
@@ -734,26 +732,26 @@ sub get_Cromer_Mann_coefficients
 #  );
 sub get_thermal
 {
-    my( $datablock ) = @_;
-    my $datablock_values = $datablock->{values};
+    my( $values ) = @_;
+
     my @atoms_thermal_coefficients;
 
     my $thermal_parameter_B =
-        remove_su( $datablock_values->{_atom_site_b_iso_or_equiv} );
+        remove_su( $values->{'_atom_site_b_iso_or_equiv'} );
     my $squared_displacement_U =
-        remove_su( $datablock_values->{_atom_site_u_iso_or_equiv} );
+        remove_su( $values->{'_atom_site_u_iso_or_equiv'} );
     my @anisotrophic_U_ij_values =
-        ( remove_su( $datablock_values->{_atom_site_aniso_u_11} ),
-          remove_su( $datablock_values->{_atom_site_aniso_u_22} ),
-          remove_su( $datablock_values->{_atom_site_aniso_u_33} ),
-          remove_su( $datablock_values->{_atom_site_aniso_u_23} ),
-          remove_su( $datablock_values->{_atom_site_aniso_u_13} ),
-          remove_su( $datablock_values->{_atom_site_aniso_u_12} ) );
+        ( remove_su( $values->{'_atom_site_aniso_u_11'} ),
+          remove_su( $values->{'_atom_site_aniso_u_22'} ),
+          remove_su( $values->{'_atom_site_aniso_u_33'} ),
+          remove_su( $values->{'_atom_site_aniso_u_23'} ),
+          remove_su( $values->{'_atom_site_aniso_u_13'} ),
+          remove_su( $values->{'_atom_site_aniso_u_12'} ) );
     # _atom_site_aniso_label needs for extracting of anisotrophic values; 
     my %temporary_aniso_data;
-    for my $i (0..$#{$datablock_values->{_atom_site_aniso_label}}) {
+    for my $i (0..$#{$values->{_atom_site_aniso_label}}) {
         my $atom_aniso_label =
-            $datablock_values->{_atom_site_aniso_label}[$i];
+            $values->{'_atom_site_aniso_label'}[$i];
         $temporary_aniso_data{$atom_aniso_label} =
             [ $anisotrophic_U_ij_values[0]->[$i],
               $anisotrophic_U_ij_values[1]->[$i],
@@ -763,16 +761,16 @@ sub get_thermal
               $anisotrophic_U_ij_values[5]->[$i] ];
     }
 
-    for my $i (0..$#{$datablock_values->{_atom_site_label}}) {
-        my $atom_label = $datablock_values->{_atom_site_label}[$i];
+    for my $i (0..$#{$values->{_atom_site_label}}) {
+        my $atom_label = $values->{'_atom_site_label'}[$i];
         my %thermal_info = (
-            B_factor => ($thermal_parameter_B->[$i] ||
+            'B_factor' => ($thermal_parameter_B->[$i] ||
                          $squared_displacement_U->[$i] !~ /\d\.\d++/ ?
                          $thermal_parameter_B->[$i] :
                          8 * ($PI**2) * $squared_displacement_U->[$i]
             ),
-            U_value_of_B_factor => $squared_displacement_U->[$i],
-            aniso_value_Uij => $temporary_aniso_data{$atom_label}
+            'U_value_of_B_factor' => $squared_displacement_U->[$i],
+            'aniso_value_Uij'     => $temporary_aniso_data{$atom_label}
             );
         push( @atoms_thermal_coefficients, \%thermal_info );
     }
@@ -796,11 +794,10 @@ sub get_thermal
 #      }
 sub get_unit_cell_parameters
 {
-    my( $datablock ) = @_;
-    my $datablock_values = $datablock->{'values'};
+    my( $values ) = @_;
 
-    my @crystal_lattice = get_cell( $datablock->{'values'} );
-    my $cell_volume = ${remove_su( $datablock_values->{_cell_volume} )}[0];
+    my @crystal_lattice = get_cell( $values );
+    my $cell_volume = ${remove_su( $values->{_cell_volume} )}[0];
     my( $a, $b, $c, $alpha, $beta, $gamma ) = @crystal_lattice;
     my @crystal_cell_radians =
         ( $a, $b, $c, deg2rad( $alpha, $beta, $gamma ));
@@ -1004,14 +1001,14 @@ sub temperature_factor_aniso
 #        .. )
 sub cell_filling_sym
 {
-    my( $datablock, $f2o ) = @_;
-    my $values =  $datablock->{values};
+    my( $values, $f2o ) = @_;
+
     my @xyz_arrays =
         ( remove_su( $values->{'_atom_site_fract_x'} ),
           remove_su( $values->{'_atom_site_fract_y'} ),
           remove_su( $values->{'_atom_site_fract_z'} ) );
 
-    my $sym_data = get_symmetry_operators( $datablock );
+    my $sym_data = get_symmetry_operators( { 'values' => $values } );
 
     my @sym_operators = map { symop_from_string($_) } @{$sym_data};
 
@@ -1034,18 +1031,18 @@ sub cell_filling_sym
 
             my $new_xyz_ortho = symop_vector_mul( $f2o, $new_xyz_fract );
             ## print "@{$new_xyz_ortho}\n";
-            if( !exists $sym_atom_coordinates{symmetrical_xyz_fract} ) {
-                $sym_atom_coordinates{symmetrical_xyz_fract} =
+            if( !exists $sym_atom_coordinates{'symmetrical_xyz_fract'} ) {
+                $sym_atom_coordinates{'symmetrical_xyz_fract'} =
                     [$new_xyz_fract];
             } else {
                 push @{$sym_atom_coordinates{symmetrical_xyz_fract}},
                      $new_xyz_fract;
             }
-            if( !exists $sym_atom_coordinates{symmetrical_xyz_ortho} ) {
-                $sym_atom_coordinates{symmetrical_xyz_ortho} =
+            if( !exists $sym_atom_coordinates{'symmetrical_xyz_ortho'} ) {
+                $sym_atom_coordinates{'symmetrical_xyz_ortho'} =
                     [$new_xyz_ortho];
             } else {
-                push @{$sym_atom_coordinates{symmetrical_xyz_ortho}},
+                push @{$sym_atom_coordinates{'symmetrical_xyz_ortho'}},
                      $new_xyz_ortho;
             }
         }
@@ -1055,7 +1052,7 @@ sub cell_filling_sym
     # searching of symmetric atom twins;
     my @temporary_sym_all;
     foreach my $ref (@sym_atom_info) {
-        my $sym_atoms_ortho = $ref->{symmetrical_xyz_ortho};
+        my $sym_atoms_ortho = $ref->{'symmetrical_xyz_ortho'};
         ## print "$sym_atoms_ortho\n";
         my $sym_atoms_whitout_twins = [];
         my $length_of_ref = $#{$sym_atoms_ortho};
@@ -1096,7 +1093,7 @@ sub cell_filling_sym
             $atoms_number_of_cell++;
         }
     }
-    $sym_atom_info[0]{count_of_cell_atoms} = $atoms_number_of_cell;
+    $sym_atom_info[0]{'count_of_cell_atoms'} = $atoms_number_of_cell;
 
     return \@sym_atom_info;
 }
@@ -1147,7 +1144,7 @@ sub tests_outputs
     if( $dump_Cromer_Mann_parameters ) {
         print "$file_name\n";
         foreach my $atom (@{$atoms}) {
-            print "$atom->{label} "."$atom->{chemical_type} ",
+            print $atom->{'site_label'} . " " . $atom->{'chemical_type'} . " ",
             $atom->{Crommer_Mann_coefficients}[0] ?
                 "@{$atom->{Crommer_Mann_coefficients}}\n" : "Empty\n";
         }
@@ -1171,7 +1168,8 @@ sub tests_outputs
     if( $dump_atoms_and_neighbors ) {
         foreach (@{$atoms}) {
             local $, = ' ';
-            print $_->{label},': ' , @{$_->{neighbors}} ? @{$_->{neighbors}}
+            print $_->{'site_label'},': ' , @{$_->{neighbors}}
+                                                        ? @{$_->{neighbors}}
                                                         : 'NULL', "\n";
         }
         exit;
@@ -1325,8 +1323,7 @@ sub sort_Friedel
 #
 sub get_neighbors
 {
-    my( $datablock ) = @_;
-    my $values = $datablock->{'values'};
+    my( $values ) = @_;
 
     my $bond_atoms_1 = $values->{_geom_bond_atom_site_label_1};
     my $bond_atoms_2 = $values->{_geom_bond_atom_site_label_2};
