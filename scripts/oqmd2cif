@@ -184,8 +184,8 @@ for my $structure_id (@structure_ids) {
     my $formula_atoms =
         $formula_parser->ParseString( $structure_data->{composition_id} );
 
+    my $coord_atom_count = scalar(keys %{$atoms});
     if( $formula_atoms ) {
-        my $coord_atom_count = scalar(keys %{$atoms});
         my $formula_atom_count = 0;
         for (values %{$formula_atoms}) { $formula_atom_count += $_ }
         print "_cell_formula_units_Z           ",
@@ -219,6 +219,9 @@ for my $structure_id (@structure_ids) {
         printf " ".$atom_fformat, $atom->{y};
         printf " ".$atom_fformat, $atom->{z};
         print "\n";
+    }
+    if( !$coord_atom_count ) {
+        print "? ? ? ?\n";
     }
 
 }
