@@ -1325,41 +1325,27 @@ sub get_neighbors
 {
     my( $values ) = @_;
 
-    my $bond_atoms_1 = $values->{_geom_bond_atom_site_label_1};
-    my $bond_atoms_2 = $values->{_geom_bond_atom_site_label_2};
-    ## print "@{$bond_atoms_1} \n";
+    my $bond_atoms_1 = $values->{'_geom_bond_atom_site_label_1'};
+    my $bond_atoms_2 = $values->{'_geom_bond_atom_site_label_2'};
 
     my @neighbors;
-    my $labels = $values->{_atom_site_label};
-    for my $k (0..$#{$labels}) {
-        my $label = $labels->[$k];
+    foreach my $label ( @{ $values->{'_atom_site_label'} } ) {
 
         my %atom_info;
+        $atom_info{'neighbors'} = [];
         for my $i (0..$#{$bond_atoms_1}) {
 
             my $atom1_label = $bond_atoms_1->[$i];
             my $atom2_label = $bond_atoms_2->[$i];
 
             if( $label eq $atom1_label ) {
-                if( !exists $atom_info{neighbors} ) {
-                    $atom_info{neighbors} = [$atom2_label];
-                } else {
-                    push @{$atom_info{neighbors}}, $atom2_label;
-                }
+                push @{$atom_info{'neighbors'}}, $atom2_label;
             } elsif( $label eq $atom2_label ) {
-                if( !exists $atom_info{neighbors} ) {
-                    $atom_info{neighbors} = [$atom1_label];
-                } else {
-                    push @{$atom_info{neighbors}}, $atom1_label;
-                }
-            } else {
-                if( !exists $atom_info{neighbors} ) {
-                    $atom_info{neighbors} = [];
-                }
+                push @{$atom_info{'neighbors'}}, $atom1_label;
             }
-        } # end of for $i;
+        }
         push @neighbors, \%atom_info;
-    } # end of for $k
+    }
 
     return \@neighbors;
 }
