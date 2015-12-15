@@ -1,4 +1,4 @@
-#------------------------------------------------------------------------------
+ #------------------------------------------------------------------------------
 #$Author$
 #$Date$ 
 #$Revision$
@@ -194,15 +194,6 @@ sub extract_atom
         _atom_site_calc_flag             => 'calc_flag',
     );
 
-    my %to_copy_cod_molecule = (
-        _cod_molecule_atom_orig_label    => 'original_label',
-        _cod_molecule_atom_assembly      => 'assembly',
-        _cod_molecule_atom_group         => 'group',
-        _cod_molecule_atom_mult          => 'multiplicity',
-        _cod_molecule_atom_mult_ratio    => 'multiplicity_ratio',
-        _cod_molecule_atom_symop_id      => 'symop_id',
-    );
-
     for my $tag (keys %to_copy_atom_site) {
         next if !exists $values->{$tag};
         $atom_info{$to_copy_atom_site{$tag}} = $values->{$tag}[$number];
@@ -241,61 +232,6 @@ sub extract_atom
         }
     }
 
-    # Some of _cod_molecule_* tags override tags from _atom_site_* loop,
-    # thus former have to be copied AFTER the former.
-
-    if( $options->{use_cod_molecule_tags} ) {
-
-        for my $tag (keys %to_copy_cod_molecule) {
-            next if !exists $values->{$tag};
-            $atom_info{$to_copy_cod_molecule{$tag}} = $values->{$tag}[$number];
-        }
-
-        my @transform_matrices;
-        if( defined $values->{_cod_molecule_atom_symop_xyz} ) {
-            @transform_matrices = ( $values->{_cod_molecule_atom_symop_xyz}[$number] );
-        }
-
-        if( defined $values->{_cod_molecule_transform_label} &&
-            defined $values->{_cod_molecule_transform_symop} ) {
-            for my $i (0..$#{$values->{_cod_molecule_transform_label}}) {
-                if( $values->{_cod_molecule_transform_label}[$i] ne
-                    $atom_label ) {
-                    next
-                }
-                my $symop = $values->{_cod_molecule_transform_symop}[$i];
-                if( @transform_matrices ) {
-                    my $orig_symop = symop_from_string( $transform_matrices[0] );
-                    my $symop_mat = symop_from_string( $symop );
-                    my $product = symop_mul( $orig_symop, $symop_mat );
-                    $symop = string_from_symop( $product );
-                }
-                push( @transform_matrices, $symop );
-            }
-        }
-
-        if( @transform_matrices ) {
-            $atom_info{transform_matrix} = [
-                map { symop_from_string( $_ ) }
-                    @transform_matrices
-            ];
-            $atom_info{transform_matrix_inv} = [
-                map { symop_invert( $_ ) }
-                    @{$atom_info{transform_matrix}}
-            ];
-        }
-
-        if( defined $values->{'_cod_molecule_atom_transl_x'} &&
-            defined $values->{'_cod_molecule_atom_transl_y'} &&
-            defined $values->{'_cod_molecule_atom_transl_z'} ) {
-            $atom_info{'translation'} = [
-                $values->{'_cod_molecule_atom_transl_x'}[$number],
-                $values->{'_cod_molecule_atom_transl_y'}[$number],
-                $values->{'_cod_molecule_atom_transl_z'}[$number],
-            ];
-        }
-    }
-
     if( !exists $atom_info{atom_site_occupancy} &&
         $options->{assume_full_occupancy} ) {
         $atom_info{atom_site_occupancy} = 1;
@@ -310,8 +246,7 @@ sub extract_atom
 #
 # Accepts:
 #   values
-#           Reference to the 'values' field of the CIF structure
-#           that contains the atom information.
+#           Reference to the 'values' field of the parsed CIF structure.
 #   number
 #           Atom number (index) in the 'values' structure.
 #   criteria
@@ -412,10 +347,10 @@ sub atom_array_from_cif($$)
 
     my $atom_site_tag;
 
-    if( exists $values->{"_atom_site_label"} ) {
-        $atom_site_tag = "_atom_site_label";
-    } elsif( exists $values->{"_atom_site_type_symbol"} ) {
-        $atom_site_tag = "_atom_site_type_symbol";
+    if( exists $values->{'_atom_site_label'} ) {
+        $atom_site_tag = '_atom_site_label';
+    } elsif( exists $values->{'_atom_site_type_symbol'} ) {
+        $atom_site_tag = '_atom_site_type_symbol';
         warn 'WARNING, \'_atom_site_label\' tag was not found -- a serial '
            . 'number will be appended to the \'_atom_site_type_symbol\' '
            . 'tag values to make atom labels' . "\n";
@@ -439,7 +374,7 @@ sub atom_array_from_cif($$)
         next if ( is_atom_excludable( $values, $i, $exclusion_criteria ) );
 
         my $label;
-        if ( $atom_site_tag eq "_atom_site_type_symbol" ) {
+        if ( $atom_site_tag eq '_atom_site_type_symbol' ) {
             $label = $values->{$atom_site_tag}[$i] . $i;
         } else {
             $label = $values->{$atom_site_tag}[$i];
@@ -452,7 +387,7 @@ sub atom_array_from_cif($$)
         if ($@) {
             $@ =~ s/^[A-Z]+,\s*//;
             chomp($@);
-            if ($options->{continue_on_errors}) {
+            if ($options->{'continue_on_errors'}) {
                 warn "WARNING, $@ -- atom will be excluded\n";
             } else {
                 die "ERROR, $@\n";
@@ -463,12 +398,17 @@ sub atom_array_from_cif($$)
         # stay compatible with the code.
         next if !defined $atom_info;
 
+        # Some of _cod_molecule_* tags override tags from _atom_site_* loop,
+        # thus former have to be copied AFTER the latter.
+        if( $options->{'use_cod_molecule_tags'} ) {
+            set_cod_molecule_atom_fields($atom_info, $values);
+        }
+
         push( @atom_list, $atom_info );
     }
 
-    if( $options->{uniquify_atom_names} ) {
-        return uniquify_atom_names( \@atom_list,
-                                    $options->{uniquify_atoms} );
+    if( $options->{'uniquify_atom_names'} ) {
+        return uniquify_atom_names( \@atom_list, $options->{'uniquify_atoms'} );
     } else {
         return \@atom_list;
     }
@@ -556,6 +496,84 @@ sub uniquify_atom_names($$)
     }
 
     return \@checked_initial_atoms;
+}
+
+# ============================================================================ #
+# Modifies the atom hash structure to include information generated by
+# the 'cif_molecule' script and stored in the '_cod_molecule_*' tags.
+#
+# Accepts:
+#   $atom_info
+#                   Reference to the hash containing the atom information.
+#   $values
+#                   Reference to the 'values' field of the parsed CIF structure.
+#
+# Returns:
+#   This subroutine acts as a function and does not return any values.
+##
+sub set_cod_molecule_atom_fields
+{
+    my ($atom_info, $values) = @_;
+
+    my $index = $atom_info->{'index'};
+
+    my %to_copy_cod_molecule = (
+        '_cod_molecule_atom_orig_label' => 'original_label',
+        '_cod_molecule_atom_assembly'   => 'assembly',
+        '_cod_molecule_atom_group'      => 'group',
+        '_cod_molecule_atom_mult'       => 'multiplicity',
+        '_cod_molecule_atom_mult_ratio' => 'multiplicity_ratio',
+        '_cod_molecule_atom_symop_id'   => 'symop_id',
+    );
+
+    for my $tag (keys %to_copy_cod_molecule) {
+        next if !exists $values->{$tag};
+        $atom_info->{$to_copy_cod_molecule{$tag}} = $values->{$tag}[$index];
+    }
+
+    my @transform_matrices;
+    if( defined $values->{'_cod_molecule_atom_symop_xyz'} ) {
+        @transform_matrices = ( $values->{'_cod_molecule_atom_symop_xyz'}[$index] );
+    }
+
+    if( defined $values->{'_cod_molecule_transform_label'} &&
+        defined $values->{'_cod_molecule_transform_symop'} ) {
+        for my $i (0..$#{$values->{'_cod_molecule_transform_label'}}) {
+            if( $values->{'_cod_molecule_transform_label'}[$i] ne
+                $atom_info->{'site_label'} ) {
+                    next
+            }
+            my $symop = $values->{'_cod_molecule_transform_symop'}[$i];
+            if( @transform_matrices ) {
+                my $orig_symop = symop_from_string( $transform_matrices[0] );
+                my $symop_mat = symop_from_string( $symop );
+                my $product = symop_mul( $orig_symop, $symop_mat );
+                $symop = string_from_symop( $product );
+            }
+            push @transform_matrices, $symop;
+        }
+    }
+
+    if( @transform_matrices ) {
+        $atom_info->{'transform_matrix'} = [
+            map { symop_from_string( $_ ) } @transform_matrices
+        ];
+        $atom_info->{'transform_matrix_inv'} = [
+            map { symop_invert( $_ ) } @{$atom_info->{transform_matrix}}
+        ];
+    }
+
+    if( defined $values->{'_cod_molecule_atom_transl_x'} &&
+        defined $values->{'_cod_molecule_atom_transl_y'} &&
+        defined $values->{'_cod_molecule_atom_transl_z'} ) {
+        $atom_info->{'translation'} = [
+            $values->{'_cod_molecule_atom_transl_x'}[$index],
+            $values->{'_cod_molecule_atom_transl_y'}[$index],
+            $values->{'_cod_molecule_atom_transl_z'}[$index],
+         ];
+     }
+
+    return;
 }
 
 #===============================================================#
