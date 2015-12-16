@@ -1015,36 +1015,21 @@ sub cell_filling_sym
     my @sym_atom_info;
     foreach my $i (0..$#{$values->{_atom_site_label}}) {
         my %sym_atom_coordinates;
+
         my $fract_xyz = [ $xyz_arrays[0]->[$i],
                           $xyz_arrays[1]->[$i],
                           $xyz_arrays[2]->[$i] ];
         my $ortho_xyz = symop_vector_mul( $f2o, $fract_xyz );
 
-        for(my $i = 0; $i < @sym_operators; $i++) {
-            my $symop = $sym_operators[$i];
-            ## print "$symop\n";
-
-            my $new_xyz_fract =
-                symop_apply( [@{$fract_xyz}, 1], $symop);
+        foreach my $symop ( @sym_operators ) {
+            my $new_xyz_fract = symop_apply( [@{$fract_xyz}, 1], $symop);
             $new_xyz_fract = [ @{$new_xyz_fract}[0..2] ];
-            ## print "@{$new_xyz_fract}\n";
-
             my $new_xyz_ortho = symop_vector_mul( $f2o, $new_xyz_fract );
-            ## print "@{$new_xyz_ortho}\n";
-            if( !exists $sym_atom_coordinates{'symmetrical_xyz_fract'} ) {
-                $sym_atom_coordinates{'symmetrical_xyz_fract'} =
-                    [$new_xyz_fract];
-            } else {
-                push @{$sym_atom_coordinates{symmetrical_xyz_fract}},
-                     $new_xyz_fract;
-            }
-            if( !exists $sym_atom_coordinates{'symmetrical_xyz_ortho'} ) {
-                $sym_atom_coordinates{'symmetrical_xyz_ortho'} =
-                    [$new_xyz_ortho];
-            } else {
-                push @{$sym_atom_coordinates{'symmetrical_xyz_ortho'}},
-                     $new_xyz_ortho;
-            }
+
+            push @{$sym_atom_coordinates{'symmetrical_xyz_fract'}},
+                                                        $new_xyz_fract;
+            push @{$sym_atom_coordinates{'symmetrical_xyz_ortho'}},
+                                                        $new_xyz_ortho;
         }
         push @sym_atom_info, \%sym_atom_coordinates;
     }
@@ -1089,9 +1074,7 @@ sub cell_filling_sym
     # only for first element adding the atoms full count of crystal cell;
     my $atoms_number_of_cell = 0;
     foreach my $ref (@sym_atom_info) {
-        foreach (@{$ref->{symmetrical_xyz_ortho}}) {
-            $atoms_number_of_cell++;
-        }
+        $atoms_number_of_cell += scalar @{$ref->{symmetrical_xyz_ortho}};
     }
     $sym_atom_info[0]{'count_of_cell_atoms'} = $atoms_number_of_cell;
 
