@@ -16,6 +16,7 @@ package COD::Cell::Conventional::deWG91;
 
 use strict;
 use warnings;
+use COD::Algebra::Vector qw( vector_angle vector_len );
 use COD::Spacegroups::Symop::Algebra qw( symop_apply );
 
 require Exporter;
@@ -483,45 +484,21 @@ sub conventional_cell
         symop_apply( $CoB, $basis_vectors->[2] )
     ];
     my @new_cell = (
-        vlen(  $new_basis->[0]),
-        vlen(  $new_basis->[1]),
-        vlen(  $new_basis->[2]),
-        vangle($new_basis->[1], $new_basis->[2]),
-        vangle($new_basis->[0], $new_basis->[2]),
-        vangle($new_basis->[0], $new_basis->[1])
+        vector_len(  $new_basis->[0] ),
+        vector_len(  $new_basis->[1]),
+        vector_len(  $new_basis->[2]),
+        vector_angle($new_basis->[1], $new_basis->[2]),
+        vector_angle($new_basis->[0], $new_basis->[2]),
+        vector_angle($new_basis->[0], $new_basis->[1])
     );
 
     return ( @new_cell, $CoB, $crystal_system );
-}
-
-sub vlen
-{
-    return sqrt( vlen2( $_[0] ));
-}
-
-sub vangle
-{
-    use Math::Trig;
-    my ($v1, $v2) = @_;
-    my $cosine = vdot( $v1, $v2 ) / ( vlen($v1) * vlen($v2) );
-    return 180*Math::Trig::acos($cosine)/$Pi;
-}
-
-sub vdot
-{
-    my ($v1, $v2) = @_;
-    return $v1->[0]*$v2->[0] + $v1->[1]*$v2->[1] + $v1->[2]*$v2->[2];
 }
 
 sub vsum
 {
     my ($v1, $v2) = @_;
     return [ $v1->[0] + $v2->[0], $v1->[1] + $v2->[1],  $v1->[2] + $v2->[2] ];
-}
-
-sub vlen2
-{
-    return vdot( $_[0], $_[0] );
 }
 
 1;

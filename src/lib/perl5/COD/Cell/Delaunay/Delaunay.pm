@@ -25,6 +25,7 @@ package COD::Cell::Delaunay::Delaunay;
 
 use strict;
 use warnings;
+use COD::Algebra::Vector qw( vdot vector_angle vector_len );
 use COD::Fractional qw( symop_ortho_from_fract );
 use COD::Spacegroups::Symop::Algebra qw( symop_mul symop_apply );
 
@@ -33,8 +34,6 @@ our @ISA = qw( Exporter );
 our @EXPORT_OK = qw(
     reduce
 );
-
-my $Pi = 4 * atan2(1,1);
 
 our $debug = 1;
 our $epsilon = 1E-5;
@@ -54,28 +53,15 @@ sub reduce
     my $reduced_vectors = Delaunay_reduction( $basis_vectors );
 
     my @reduced_cell = (
-        vlen(  $reduced_vectors->[0]),
-        vlen(  $reduced_vectors->[1]),
-        vlen(  $reduced_vectors->[2]),
-        vangle($reduced_vectors->[1], $reduced_vectors->[2]),
-        vangle($reduced_vectors->[0], $reduced_vectors->[2]),
-        vangle($reduced_vectors->[0], $reduced_vectors->[1])
+        vector_len(  $reduced_vectors->[0]),
+        vector_len(  $reduced_vectors->[1]),
+        vector_len(  $reduced_vectors->[2]),
+        vector_angle($reduced_vectors->[1], $reduced_vectors->[2]),
+        vector_angle($reduced_vectors->[0], $reduced_vectors->[2]),
+        vector_angle($reduced_vectors->[0], $reduced_vectors->[1])
     );
 
     return ( @reduced_cell, $reduced_vectors );
-}
-
-sub vlen
-{
-    return sqrt( vlen2( $_[0] ));
-}
-
-sub vangle
-{
-    use Math::Trig;
-    my ($v1, $v2) = @_;
-    my $cosine = vdot( $v1, $v2 ) / ( vlen($v1) * vlen($v2) );
-    return 180*Math::Trig::acos($cosine)/$Pi;
 }
 
 # Delaunau reduction is described in the International Tables for
@@ -130,21 +116,10 @@ sub Delaunay_reduction_step
     return 0;
 }
 
-sub vdot
-{
-    my ($v1, $v2) = @_;
-    return $v1->[0]*$v2->[0] + $v1->[1]*$v2->[1] + $v1->[2]*$v2->[2];
-}
-
 sub vsum
 {
     my ($v1, $v2) = @_;
     return [ $v1->[0] + $v2->[0], $v1->[1] + $v2->[1],  $v1->[2] + $v2->[2] ];
-}
-
-sub vlen2
-{
-    return vdot( $_[0], $_[0] );
 }
 
 sub Delaunay_minimal_vectors
@@ -160,7 +135,7 @@ sub Delaunay_minimal_vectors
 
     my @lengths = 
         sort { $a->[0] <=> $b->[0] }
-        map { [ vlen($_), $_ ] } @candidates;
+        map { [ vector_len($_), $_ ] } @candidates;
 
     return [ $lengths[0][1], $lengths[1][1], $lengths[2][1] ];
 }
