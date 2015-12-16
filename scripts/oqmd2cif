@@ -15,14 +15,11 @@ eval 'exec perl -x $0 ${1+"$@"}'
 
 use strict;
 use warnings;
-use POSIX qw( acos );
 use DBI;
-use COD::Algebra::Vector qw( vdot vector_len );
+use COD::Algebra::Vector qw( vdot vector_angle vector_len );
 use COD::Formulae::Parser::AdHoc;
 use COD::SOptions qw( getOptions get_value );
 use COD::SUsage qw( usage options );
-
-my $Pi = 4 * atan2(1,1);
 
 my %database = (
     host  => "localhost",
@@ -347,18 +344,8 @@ sub compute_cell_parameters
         vector_len( $v1 ),
         vector_len( $v2 ),
         vector_len( $v3 ),
-        vangle( $v2, $v3 ),
-        vangle( $v1, $v3 ),
-        vangle( $v1, $v2 ),
+        vector_angle( $v2, $v3 ),
+        vector_angle( $v1, $v3 ),
+        vector_angle( $v1, $v2 ),
     );
-}
-
-sub vangle
-{
-    my ( $v1, $v2 ) = @_;
-
-    my $angle_radians =
-        acos( vdot( $v1, $v2 ) / (vector_len($v1) * vector_len($v2)));
-
-    return $angle_radians * 180 / $Pi;
 }
