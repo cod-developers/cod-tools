@@ -70,9 +70,6 @@ our @EXPORT_OK = qw(
 #       symop_list
 #                           A reference to a symop list value that should be
 #                           set to the 'symop_list' property.
-#       copy_dummy_coordinates
-#                           Set dummy coordinates ('.', '.', '.') as the
-#                           value of 'coordinates_ortho' property.
 #       concat_refinement_flags
 #                           Store the values of refinement_flags,
 #                           refinement_flags_posn, refinement_flags_adp and
@@ -84,10 +81,10 @@ our @EXPORT_OK = qw(
 #                           cod_molecule script.
 #
 # Returns a hash $atom:{
-#                       label=>"C1",
-#                       site_label=>"C1";
-#                       chemical_type=>"C",
-#                       atom_site_type_symbol = "C",
+#                       label=>'C1',
+#                       site_label=>'C1';
+#                       chemical_type=>'C',
+#                       atom_site_type_symbol = 'C',
 #                       coordinates_fract=>[1.0, 1.0, 1.0],
 #                       unity_matrix_applied=>1,
 #                       transform_matrices=>[ [
@@ -143,11 +140,14 @@ sub extract_atom
     }
 
     $atom_info{f2o} = $f2o;
-    if( $atom_xyz[0] eq '.' &&
-        $atom_xyz[1] eq '.' &&
-        $atom_xyz[2] eq '.' &&
-        $options->{copy_dummy_coordinates} ) {
+    if( $atom_xyz[0] eq '.' ||
+        $atom_xyz[1] eq '.' ||
+        $atom_xyz[2] eq '.' ) {
         $atom_info{coordinates_ortho} = [ '.', '.', '.' ];
+    } elsif( $atom_xyz[0] eq '?' ||
+             $atom_xyz[1] eq '?' ||
+             $atom_xyz[2] eq '?' ) {
+        $atom_info{coordinates_ortho} = [ '?', '?', '?' ];
     } else {
         $atom_info{coordinates_ortho} =
             symop_vector_mul( $f2o, \@atom_xyz );
@@ -262,6 +262,9 @@ sub extract_atom
 #       has_unknown_coordinates
 #               Check at least one component of the fractional coordinates
 #               is unknown ('?').
+#       has_dummy_coordinates
+#               Check at least one component of the fractional coordinates
+#               is unknown ('.').
 #
 # Returns:
 #   0 if the values at the given index did not satisfy any of the criteria,
@@ -295,6 +298,16 @@ sub is_atom_excludable
                       _atom_site_fract_y
                       _atom_site_fract_z ) ) {
             if( $values->{$_}[$number] eq '?' ) {
+                return 1;
+            }
+        }
+    }
+
+    if( $criteria->{'has_dummy_coordinates'} ) {
+        foreach ( qw( _atom_site_fract_x
+                      _atom_site_fract_y
+                      _atom_site_fract_z ) ) {
+            if( $values->{$_}[$number] eq '.' ) {
                 return 1;
             }
         }
@@ -364,6 +377,7 @@ sub atom_array_from_cif($$)
     my $exclusion_criteria = {
         'has_dummy_flag'          => $options->{'exclude_dummy_atoms'},
         'has_unknown_coordinates' => $options->{'exclude_unknown_coordinates'},
+        'has_dummy_coordinates'   => $options->{'exclude_dummy_coordinates'},
         'has_zero_occupancies'    => $options->{'exclude_zero_occupancies'}
     };
 

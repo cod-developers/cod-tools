@@ -63,8 +63,7 @@ sub cif_cell_contents( $$@ )
 
 #   extract atoms
     my $atoms = atom_array_from_cif( $dataset,
-                                     { copy_dummy_coordinates => 1,
-                                       allow_unknown_chemical_types => 1,
+                                     { allow_unknown_chemical_types => 1,
                                        atom_properties =>
                                             \%COD::AtomProperties::atoms } );
 
