@@ -1,0 +1,345 @@
+#! /bin/sh
+#!perl -w # --*- Perl -*--
+eval 'exec perl -x $0 ${1+"$@"}'
+    if 0;
+#------------------------------------------------------------------------------
+#$Author$
+#$Date$
+#$Revision$
+#$URL$
+#------------------------------------------------------------------------------
+#*
+#  Find the symmetry of the atoms in the unit cell of a CIF crystal
+#  structure using spglib.
+#**
+
+use strict;
+use warnings;
+use File::Basename qw( basename );
+use COD::Algebra::Vector qw( matrix_vector_mul
+                             vector_add
+                             vector_angle
+                             vector_len
+                             vector_modulo_1
+                             vector_sub );
+use COD::AtomProperties;
+use COD::CIF::Data qw( get_cell );
+use COD::CIF::Data::AtomList qw( atom_array_from_cif );
+use COD::CIF::Parser qw( parse_cif );
+use COD::CIF::Tags::Manage qw( exclude_tag set_loop_tag set_tag );
+use COD::CIF::Tags::CanonicalNames qw( canonicalize_all_names );
+use COD::CIF::Tags::Print qw( print_cif );
+use COD::ErrorHandler qw( process_errors process_warnings
+                          process_parser_messages report_message );
+use COD::Fractional qw( ortho_from_fract );
+use COD::Serialise qw( serialiseRef );
+use COD::Spacegroups::Lookup::COD qw( @table @extra_settings );
+use COD::Spacegroups::Symop::Algebra qw( flush_zeros_in_symop
+                                         symop_det
+                                         symop_mul );
+use COD::Spacegroups::Symop::Parse qw( string_from_symop );
+use COD::SOptions qw( getOptions get_value );
+use COD::SPGLib qw( get_sym_dataset );
+use COD::SUsage qw( usage options );
+use COD::UserMessage qw( error );
+
+my $use_parser = 'c';
+my $symprec = 1e-5;
+my $dump_symmetry_dataset = 0;
+my $invert_CoB = 1;
+
+my $die_on_error_level = {
+    ERROR   => 0,
+    WARNING => 0,
+    NOTE    => 0,
+};
+
+my %tags_to_move = (
+    '_symmetry_space_group_name_H-M'  => '_cod_original_sg_symbol_H-M',
+    '_symmetry_space_group_name_Hall' => '_cod_original_sg_symbol_Hall',
+    '_space_group_IT_number'          => '_cod_original_sg_number',
+);
+
+#* USAGE:
+#*     $0 --options input1.cif input*.cif
+#*
+#* OPTIONS:
+#*    --precision  1e-5, --symmetry-precision
+#*        Tolerance of distance between atomic positions and between
+#*        lengths of lattice vectors to be tolerated in the symmetry
+#*        finding (default 1e-5).
+#*
+#*    --invert-CoB
+#*        Invert change-of-basis matrix after getting it from spglib.
+#*        This option has to be used to obtain correct cell constants
+#*        and atomic positions with spglib >= 1.8.1 (default).
+#*
+#*    --dont-invert-CoB, --no-invert-CoB
+#*        Use spglib-provided change-of-basis matrix. This option has to
+#*        be used to obtain correct cell constants and atomic positions
+#*        with spglib 1.8 or earlier.
+#*
+#*    --dump-symmetry-dataset
+#*        Suppress regular output and dump symmetry data structure, as
+#*        returned from spglib.
+#*
+#*    --dont-dump-symmetry-dataset,
+#*    --no-dump-symmetry-dataset
+#*        Produce regular output.
+#*
+#*    --use-perl-parser
+#*        Use Perl parser for CIF parsing.
+#*
+#*    --use-c-parser
+#*        Use Perl & C parser for CIF parsing (default).
+#*
+#*    --help, --usage
+#*        Print a short usage message (this message) and exit.
+#**
+
+@ARGV = getOptions(
+    '--precision,--symmetry-precision' => \$symprec,
+
+    '--invert-CoB'      => sub { $invert_CoB = 1 },
+    '--dont-invert-CoB' => sub { $invert_CoB = 0 },
+    '--no-invert-CoB'   => sub { $invert_CoB = 0 },
+
+    '--dump-symmetry-dataset'      => sub { $dump_symmetry_dataset = 1 },
+    '--dont-dump-symmetry-dataset' => sub { $dump_symmetry_dataset = 0 },
+    '--no-dump-symmetry-dataset'   => sub { $dump_symmetry_dataset = 0 },
+
+    '--use-perl-parser' => sub { $use_parser = 'perl' },
+    '--use-c-parser'    => sub { $use_parser = 'c' },
+
+    '--options'      => sub { options; exit },
+    '--help,--usage' => sub { usage; exit }
+);
+
+@ARGV = ( '-' ) unless @ARGV;
+
+for my $filename (@ARGV) {
+    my $options = { parser   => $use_parser,
+                    no_print => 1 };
+
+    my( $data, $err_count, $messages ) = parse_cif( $filename, $options );
+    process_parser_messages( $messages, $die_on_error_level );
+
+    if( !@{$data} || !defined $data->[0] || !defined $data->[0]{name} ) {
+        report_message( {
+           'program'   => $0,
+           'filename'  => $filename,
+           'err_level' => 'WARNING',
+           'message'   => 'file seems to be empty'
+        }, 0 );
+        next;
+    }
+
+    canonicalize_all_names( $data );
+
+    for my $dataset (@$data) {
+        my $values = $dataset->{values};
+
+        eval {
+            my @cell = get_cell( $values );
+            my @lattice = ( [ ortho_from_fract( \@cell, 1, 0, 0 ) ],
+                            [ ortho_from_fract( \@cell, 0, 1, 0 ) ],
+                            [ ortho_from_fract( \@cell, 0, 0, 1 ) ] );
+
+            my $atoms = atom_array_from_cif( $dataset, {} );
+
+            my @positions = map { $_->{coordinates_fract} } @$atoms;
+            my @types = map { $COD::AtomProperties::atoms{$_->{chemical_type}}->{atomic_number} }
+                            @$atoms;
+
+            my $sym = get_sym_dataset( \@lattice,
+                                       \@positions,
+                                       \@types,
+                                       $symprec );
+
+            if( !$dump_symmetry_dataset ) {
+
+                my $CoB = $sym->{transform_matrix};
+
+                if( $invert_CoB ) {
+                    $CoB = mat3_inv( $CoB );
+                }
+
+                my $lattice_now = symop_mul( \@lattice, $CoB );
+
+                my $a = [ $lattice_now->[0][0],
+                          $lattice_now->[1][0],
+                          $lattice_now->[2][0] ];
+
+                my $b = [ $lattice_now->[0][1],
+                          $lattice_now->[1][1],
+                          $lattice_now->[2][1] ];
+
+                my $c = [ $lattice_now->[0][2],
+                          $lattice_now->[1][2],
+                          $lattice_now->[2][2] ];
+
+                set_tag( $dataset, '_cell_length_a', vector_len( $a ) );
+                set_tag( $dataset, '_cell_length_b', vector_len( $b ) );
+                set_tag( $dataset, '_cell_length_c', vector_len( $c ) );
+                set_tag( $dataset, '_cell_angle_alpha',
+                         vector_angle( $b, $c ) );
+                set_tag( $dataset, '_cell_angle_beta',
+                         vector_angle( $a, $c ) );
+                set_tag( $dataset, '_cell_angle_gamma',
+                         vector_angle( $a, $b ) );
+
+                for my $tag (keys %tags_to_move) {
+                    next if !exists $values->{$tag};
+                    next if exists $values->{$tags_to_move{$tag}};
+                    set_tag( $dataset, $tags_to_move{$tag},
+                             $values->{$tag}[0] );
+                }
+
+                my $spacegroup_info =
+                    lookup_spacegroup( 'hermann_mauguin',
+                                       $sym->{international_symbol} );
+
+                if( !$spacegroup_info ) {
+                    die 'ERROR, spacegroup symbol ' .
+                        "'$sym->{international_symbol}' is not recognised\n";
+                }
+
+                set_tag( $dataset, '_symmetry_space_group_name_H-M',
+                         $spacegroup_info->{hermann_mauguin} );
+                set_tag( $dataset, '_symmetry_space_group_name_Hall',
+                         $sym->{hall} );
+                set_tag( $dataset, '_space_group_IT_number',
+                         $sym->{number} );
+
+                if( exists $values->{_symmetry_equiv_pos_site_id} ) {
+                    exclude_tag( $dataset, '_symmetry_equiv_pos_site_id' );
+                }
+
+                ## It's not clear why symmetry operators, returned by
+                ## spglib, are often shifted by translations or very
+                ## numerous (as in the case of COD:4105680, rev. 91935),
+                ## so symmetry operators are taken from spacegroup
+                ## information hash.
+                ##
+                ## set_loop_tag( $dataset, '_symmetry_equiv_pos_as_xyz', undef,
+                ##               [ map { string_from_symop( $_ ) }
+                ##                 map { flush_zeros_in_symop( $_ ) }
+                ##                     @{$sym->{symops}} ] );
+
+                set_loop_tag( $dataset, '_symmetry_equiv_pos_as_xyz', undef,
+                              $spacegroup_info->{symops} );
+
+
+                my $atom_site_tag;
+                for my $tag (qw( _atom_site_label
+                                 _atom_site_type_symbol )) {
+                    next if !exists $values->{$tag};
+                    $atom_site_tag = $tag;
+                    last;
+                }
+                if( !$atom_site_tag ) {
+                    die 'ERROR, neither \'_atom_site_label\' nor ' .
+                        '\'_atom_site_type_symbol\' tag present' . "\n";
+                }
+
+                my %atom_site_loop_tags;
+                my $atom_site_loop_id = $dataset->{inloop}{$atom_site_tag};
+
+                for my $tag (@{$dataset->{loops}[$atom_site_loop_id]}) {
+                    $atom_site_loop_tags{$tag} = $values->{$tag};
+                }
+
+                my %atom_site_loop_tags_now;
+                my %seen_atoms;
+
+                for( my $i = 0; $i < @{$values->{$atom_site_tag}}; $i++ ) {
+                    next if exists $seen_atoms{$sym->{equivalent_atoms}[$i]};
+                    for my $tag (keys %atom_site_loop_tags) {
+                        if( !exists $atom_site_loop_tags_now{$tag} ) {
+                            $atom_site_loop_tags_now{$tag} = []
+                        }
+                        push( @{$atom_site_loop_tags_now{$tag}},
+                              $atom_site_loop_tags{$tag}->[$i] );
+                    }
+                    $seen_atoms{$sym->{equivalent_atoms}[$i]} = 1;
+                }
+
+                for my $tag (keys %atom_site_loop_tags_now) {
+                    set_loop_tag( $dataset, $tag, $atom_site_tag,
+                                  $atom_site_loop_tags_now{$tag} );
+                }
+
+                my $shift;
+                if( $invert_CoB ) {
+                    $CoB = $sym->{transform_matrix};
+                    $shift = $sym->{origin_shift};
+                } else {
+                    $CoB = mat3_inv( $CoB );
+                    $shift = vector_sub( [0, 0, 0], $sym->{origin_shift} );
+                }
+
+                for( my $i = 0; $i < @{$values->{$atom_site_tag}}; $i++ ) {
+                    my $coordinates = [ map { s/\(\d+\)$//; $_ }
+                        (
+                            $values->{'_atom_site_fract_x'}[$i],
+                            $values->{'_atom_site_fract_y'}[$i],
+                            $values->{'_atom_site_fract_z'}[$i],
+                        )
+                    ];
+                    my $coordinates_now =
+                        vector_modulo_1( vector_add( matrix_vector_mul( $CoB,
+                                                                        $coordinates ),
+                                                     $shift ) );
+                        
+                    ( $values->{'_atom_site_fract_x'}[$i],
+                      $values->{'_atom_site_fract_y'}[$i],
+                      $values->{'_atom_site_fract_z'}[$i] ) =
+                        @$coordinates_now;
+                }
+
+                print_cif( $dataset );
+            } else {
+                print "name: $dataset->{name}\n";
+                serialiseRef( $sym );
+            }
+        };
+        if( $@ ) {
+            $@ =~ s/^ERROR, //;
+            error( $0, $filename, "data_$dataset->{name}", $@, undef );
+        }
+    }
+}
+
+sub lookup_spacegroup
+{
+    my ($option, $param) = @_;
+
+    $param =~ s/ //g;
+    $param =~ s/_//g;
+
+    foreach my $hash (@table, @extra_settings) {
+        my $value = $hash->{$option};
+        $value =~ s/ //g;
+        $value =~ s/_//g;
+
+        if( $value eq $param ) {
+            return $hash;
+        }
+    }
+    return;
+}
+
+sub mat3_inv
+{
+    my( $m ) = @_;
+    my $c = 1 / symop_det($m);
+    return [[ $c * ( $m->[1][1] * $m->[2][2] - $m->[1][2] * $m->[2][1] ),
+             -$c * ( $m->[0][1] * $m->[2][2] - $m->[0][2] * $m->[2][1] ),
+              $c * ( $m->[0][1] * $m->[1][2] - $m->[0][2] * $m->[1][1] )],
+            [-$c * ( $m->[1][0] * $m->[2][2] - $m->[1][2] * $m->[2][0] ),
+              $c * ( $m->[0][0] * $m->[2][2] - $m->[0][2] * $m->[2][0] ),
+             -$c * ( $m->[0][0] * $m->[1][2] - $m->[0][2] * $m->[1][0] )],
+            [ $c * ( $m->[1][0] * $m->[2][1] - $m->[1][1] * $m->[2][0] ),
+             -$c * ( $m->[0][0] * $m->[2][1] - $m->[0][1] * $m->[2][0] ),
+              $c * ( $m->[0][0] * $m->[1][1] - $m->[0][1] * $m->[1][0] )]];
+}
