@@ -29,6 +29,7 @@ eval 'exec perl -x $0 ${1+"$@"}'
 use strict;
 use warnings;
 use COD::CIF::Parser qw( parse_cif );
+use COD::CIF::Data::AtomList qw( atom_array_from_cif );
 use COD::CIF::Data qw( get_cell );
 use COD::Algebra::Vector qw( distance );
 use COD::Spacegroups::Symop::Parse qw( symop_from_string modulo_1 );
@@ -355,25 +356,25 @@ for my $filename (@ARGV) {
                         }
 
                         $F_cos_comp_w_Tf_and_cor +=
-                            $atom->{occupancy} *
+                            $atom->{atom_site_occupancy} *
                             $atom_structure_factor * cos( $atom_hkl_phase );
                         $F_sin_comp_w_Tf_and_cor +=
-                            $atom->{occupancy} *
+                            $atom->{atom_site_occupancy} *
                             $atom_structure_factor * sin( $atom_hkl_phase );
                         # structure factor components without corrections;
                         $F_cos_comp_w_cor +=
-                            $atom->{occupancy} * $atom_structure_factor *
+                            $atom->{atom_site_occupancy} * $atom_structure_factor *
                             $temperature_factor * cos( $atom_hkl_phase );
                         $F_sin_comp_w_cor +=
-                            $atom->{occupancy} * $atom_structure_factor *
+                            $atom->{atom_site_occupancy} * $atom_structure_factor *
                             $temperature_factor * sin( $atom_hkl_phase );
                         if( $scat_dispersion_key ) {
                             $F_cos_comp +=
-                                $atom->{occupancy} *
+                                $atom->{atom_site_occupancy} *
                                 $atom_structure_factor_corrected *
                                 $temperature_factor * cos( $atom_hkl_phase );
                              $F_sin_comp +=
-                                $atom->{occupancy} *
+                                $atom->{atom_site_occupancy} *
                                 $atom_structure_factor_corrected *
                                 $temperature_factor * sin( $atom_hkl_phase );
                         } else {
@@ -541,18 +542,22 @@ sub remove_su
 # Function of extracting atom information from the CIF file.
 #
 # Parameters:
-#    values - a reference to array of hashes where a data from the CIF
-#    file is stored
+#   $values
+#               A reference to an array of hashes where the data from the CIF
+#               file is stored.
+#   $f2o
+#               A refence to the orthogonalization matrix for the calculation
+#               of orthogonal coordinates.
 #
 # Returns:
-# \@atoms = (
+# $atoms = [
 #           # [0]
 #           {
-#               label => 'O10',
+#               site_label => 'O10',
 #               chemical_type => 'O',
 #               coordinates_fract" => [0.1, 0.2, 0.3],
 #               coordinates_ortho => [10, 20.5, 25.2],
-#               occupancy => 0.5,
+#               atom_site_occupancy => 0.5,
 #               B_factor => 0.78,
 #               U_value_of_B_factor => 0.03,
 #               aniso_value_Uij => [0.01, 0.002, 0.003,..,0.006] # 6 values,
@@ -567,54 +572,27 @@ sub remove_su
 #           {
 #             ...
 #           },
-#  );
+#  ];
 sub atoms_from_cif
 {
     my( $values, $f2o ) = @_;
-
-    my @atoms;
-    my @xyz_arrays =
-        ( remove_su( $values->{'_atom_site_fract_x'} ),
-          remove_su( $values->{'_atom_site_fract_y'} ),
-          remove_su( $values->{'_atom_site_fract_z'} ) );
-    my $occupancy =
-        remove_su( $values->{'_atom_site_occupancy'} );
 
     my $Cromer_Mann_coefficients = get_Cromer_Mann_coefficients( $values );
     my $themal_coefficients = get_thermal( $values );
     my $sym_atoms_and_their_count = cell_filling_sym( $values, $f2o );
     my $atoms_neighbors = get_neighbors( $values );
 
-    for my $i (0..$#{$values->{'_atom_site_label'}}) {
-        my $fract_xyz = [ $xyz_arrays[0]->[$i],
-                          $xyz_arrays[1]->[$i],
-                          $xyz_arrays[2]->[$i] ];
-        my $ortho_xyz = symop_vector_mul( $f2o, $fract_xyz );
-        my $atom_chemical_type =
-            $values->{'_atom_site_type_symbol'}[$i];
-        if( !defined $values->{'_atom_site_type_symbol'}[$i] ) {
-            $atom_chemical_type =
-                ucfirst(
-                    lc( substr(
-                            $values->{'_atom_site_label'}[$i], 0, 2
-                        )));
-            $atom_chemical_type =~ s/\d//;
-        }
-        my %atom_info = (
-            'site_label' => $values->{'_atom_site_label'}[$i],
-            'chemical_type' => $atom_chemical_type,
-            'coordinates_fract' => $fract_xyz,
-            'coordinates_ortho' => $ortho_xyz,
-            'occupancy' => $occupancy->[$i],
-            'index' => $i
-            );
-        %atom_info = (%atom_info, %{$Cromer_Mann_coefficients->[$i]});
-        %atom_info = (%atom_info, %{$themal_coefficients->[$i]});
-        %atom_info = (%atom_info, %{$sym_atoms_and_their_count->[$i]});
-        %atom_info = (%atom_info, %{$atoms_neighbors->[$i]});
-        push @atoms, \%atom_info;
+    my $atoms = atom_array_from_cif( { 'values' => $values }, {} );
+
+    foreach my $atom ( @{$atoms} ) {
+        my $index = $atom->{'index'};
+        %{$atom} = (%{$atom}, %{$Cromer_Mann_coefficients->[$index]} );
+        %{$atom} = (%{$atom}, %{$themal_coefficients->[$index]});
+        %{$atom} = (%{$atom}, %{$sym_atoms_and_their_count->[$index]});
+        %{$atom} = (%{$atom}, %{$atoms_neighbors->[$index]});
     }
-    return \@atoms;
+
+    return $atoms;
 }
 
 #--------------------------------------------------------------------#
@@ -651,7 +629,7 @@ sub get_Cromer_Mann_coefficients
             push( @atoms_aniso_coefficients, {} );
         }
     }
-    # correction of chemical element to standart record;
+    # correction of chemical element to standard record;
     foreach (@{$values->{_atom_type_symbol}}) {
         my $double_sym = ucfirst( lc( substr( $_,0,2 )));
         $double_sym =~ s/\s//g;
