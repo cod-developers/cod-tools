@@ -523,7 +523,7 @@ sub uniquify_atom_names($$)
 #                   Reference to the 'values' field of the parsed CIF structure.
 #
 # Returns:
-#   This subroutine acts as a function and does not return any values.
+#   This subroutine acts as a procedure and does not return any values.
 ##
 sub set_cod_molecule_atom_fields
 {
