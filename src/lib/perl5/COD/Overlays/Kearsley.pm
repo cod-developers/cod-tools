@@ -19,14 +19,14 @@
 # Usage:
 #   # Find operator matrix to best fit set1 onto set2
 #   (symop_2_from_1, rmsd) = overlay_atoms( set1[][], set2[][] );
-#   set2approx[] = symop_apply( symop_2_from_1, set1[][] );
+#   set2approx[] = symop_vector_mul( symop_2_from_1, set1[][] );
 #**
 
 package COD::Overlays::Kearsley;
 
 use strict;
 use warnings;
-use COD::Spacegroups::Symop::Algebra qw( symop_apply );
+use COD::Spacegroups::Symop::Algebra qw( symop_vector_mul );
 use COD::Algebra::JacobiEigen qw( jacobi_eigenvv );
 
 require Exporter;
@@ -111,10 +111,10 @@ sub overlay_points($$$)
 
     my ($R, $rmsd) = get_rotation_matrix($cent_set1, $cent_set2);
 
-    my $t = symop_apply( $R,
-                         [ -$center1->[0],
-                           -$center1->[1],
-                           -$center1->[2] ] );
+    my $t = symop_vector_mul( $R,
+                              [ -$center1->[0],
+                                -$center1->[1],
+                                -$center1->[2] ] );
 
     my $symop = [ 
                   [ @{$R->[0]}[0..2], $t->[0] + $center2->[0] ],

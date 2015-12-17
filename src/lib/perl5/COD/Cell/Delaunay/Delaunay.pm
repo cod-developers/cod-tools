@@ -27,7 +27,7 @@ use strict;
 use warnings;
 use COD::Algebra::Vector qw( vdot vector_angle vector_len );
 use COD::Fractional qw( symop_ortho_from_fract );
-use COD::Spacegroups::Symop::Algebra qw( symop_mul symop_apply );
+use COD::Spacegroups::Symop::Algebra qw( symop_mul symop_vector_mul );
 
 require Exporter;
 our @ISA = qw( Exporter );
@@ -45,9 +45,9 @@ sub reduce
     my $f2o = symop_ortho_from_fract( @cell );
 
     my $basis_vectors = [
-        symop_apply( $f2o, [1,0,0] ),
-        symop_apply( $f2o, [0,1,0] ),
-        symop_apply( $f2o, [0,0,1] )
+        symop_vector_mul( $f2o, [1,0,0] ),
+        symop_vector_mul( $f2o, [0,1,0] ),
+        symop_vector_mul( $f2o, [0,0,1] )
     ];
 
     my $reduced_vectors = Delaunay_reduction( $basis_vectors );
