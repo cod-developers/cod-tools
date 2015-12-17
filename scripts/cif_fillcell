@@ -226,14 +226,12 @@ sub shift_atoms
     my @shifted_atom_xyz;
     my @shift = (0, -1, 1);
 
-    my $counter = 0;
-    for ( my $i = 0; $i < @shift; $i++ ) {
-    for ( my $j = 0; $j < @shift; $j++ ) {
-    for ( my $k = 0; $k < @shift; $k++ ) {
-        $shifted_atom_xyz[$counter][0] = ${$atom_xyz}[0] + $shift[$i];
-        $shifted_atom_xyz[$counter][1] = ${$atom_xyz}[1] + $shift[$j];
-        $shifted_atom_xyz[$counter][2] = ${$atom_xyz}[2] + $shift[$k];
-        $counter++;
+    foreach my $x ( @shift ) {
+    foreach my $y ( @shift ) {
+    foreach my $z ( @shift ) {
+        push @shifted_atom_xyz, [ ${$atom_xyz}[0] + $x,
+                                  ${$atom_xyz}[1] + $y,
+                                  ${$atom_xyz}[2] + $z ];
     } } }
 
     return \@shifted_atom_xyz;
