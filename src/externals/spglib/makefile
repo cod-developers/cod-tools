@@ -5,6 +5,7 @@ all: ${MAIN_MAKE}
 
 ${MAIN_MAKE}:
 	./configure
+	touch aclocal.m4 Makefile.in
 
 %:
 	@${MAKE} --file ${MAIN_MAKE} $@
