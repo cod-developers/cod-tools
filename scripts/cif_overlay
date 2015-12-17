@@ -17,8 +17,10 @@ use warnings;
 use COD::CIF::Parser qw( parse_cif );
 use COD::AtomProperties;
 use COD::CIF::Data::AtomList qw( atom_array_from_cif );
-use COD::Spacegroups::Symop::Algebra qw( symop_apply symop_mul
-                                         symop_invert symop_det );
+use COD::Spacegroups::Symop::Algebra qw( symop_vector_mul
+                                         symop_mul
+                                         symop_invert
+                                         symop_det );
 use COD::Overlays::Kabsch qw( overlay_atoms );
 use COD::SOptions qw( getOptions );
 use COD::SUsage qw( usage options );
@@ -213,10 +215,10 @@ sub symop_apply_to_atoms
         my %new_atom = %$atom;
 
         $new_atom{coordinates_fract} =
-            symop_apply( $symop, $atom->{coordinates_fract} );
+            symop_vector_mul( $symop, $atom->{coordinates_fract} );
 
         $new_atom{coordinates_ortho} =
-            symop_apply( $atom->{f2o}, $new_atom{coordinates_fract} );
+            symop_vector_mul( $atom->{f2o}, $new_atom{coordinates_fract} );
 
         push( @applied, \%new_atom );
     }

@@ -17,7 +17,7 @@ package COD::Cell::Conventional::deWG91;
 use strict;
 use warnings;
 use COD::Algebra::Vector qw( vector_angle vector_len );
-use COD::Spacegroups::Symop::Algebra qw( symop_apply );
+use COD::Spacegroups::Symop::Algebra qw( symop_vector_mul );
 
 require Exporter;
 our @ISA = qw( Exporter );
@@ -474,19 +474,19 @@ sub conventional_cell
 
     my $f2o = symop_ortho_from_fract( @cell );
     my $basis_vectors = [
-        symop_apply( $f2o, [1,0,0] ),
-        symop_apply( $f2o, [0,1,0] ),
-        symop_apply( $f2o, [0,0,1] )
+        symop_vector_mul( $f2o, [1,0,0] ),
+        symop_vector_mul( $f2o, [0,1,0] ),
+        symop_vector_mul( $f2o, [0,0,1] )
     ];
     my $new_basis = [
-        symop_apply( $CoB, $basis_vectors->[0] ),
-        symop_apply( $CoB, $basis_vectors->[1] ),
-        symop_apply( $CoB, $basis_vectors->[2] )
+        symop_vector_mul( $CoB, $basis_vectors->[0] ),
+        symop_vector_mul( $CoB, $basis_vectors->[1] ),
+        symop_vector_mul( $CoB, $basis_vectors->[2] )
     ];
     my @new_cell = (
         vector_len(  $new_basis->[0] ),
-        vector_len(  $new_basis->[1]),
-        vector_len(  $new_basis->[2]),
+        vector_len(  $new_basis->[1] ),
+        vector_len(  $new_basis->[2] ),
         vector_angle($new_basis->[1], $new_basis->[2]),
         vector_angle($new_basis->[0], $new_basis->[2]),
         vector_angle($new_basis->[0], $new_basis->[1])
