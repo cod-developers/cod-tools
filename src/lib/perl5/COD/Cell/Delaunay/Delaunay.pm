@@ -25,7 +25,7 @@ package COD::Cell::Delaunay::Delaunay;
 
 use strict;
 use warnings;
-use COD::Algebra::Vector qw( vdot vector_angle vector_len );
+use COD::Algebra::Vector qw( vdot vector_angle vector_add vector_len );
 use COD::Fractional qw( symop_ortho_from_fract );
 use COD::Spacegroups::Symop::Algebra qw( symop_mul symop_vector_mul );
 
@@ -118,21 +118,15 @@ sub Delaunay_reduction_step
     return 0;
 }
 
-sub vsum
-{
-    my ($v1, $v2) = @_;
-    return [ $v1->[0] + $v2->[0], $v1->[1] + $v2->[1],  $v1->[2] + $v2->[2] ];
-}
-
 sub Delaunay_minimal_vectors
 {
     my ($ebasis, $epsilon) = @_;
 
     my @candidates = (
         @$ebasis,
-        vsum( $ebasis->[0], $ebasis->[1] ),
-        vsum( $ebasis->[1], $ebasis->[2] ),
-        vsum( $ebasis->[2], $ebasis->[0] )
+        vector_add( $ebasis->[0], $ebasis->[1] ),
+        vector_add( $ebasis->[1], $ebasis->[2] ),
+        vector_add( $ebasis->[2], $ebasis->[0] )
     );
 
     my @lengths = 

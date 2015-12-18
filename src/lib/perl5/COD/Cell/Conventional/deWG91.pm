@@ -496,10 +496,4 @@ sub conventional_cell
     return ( @new_cell, $CoB, $crystal_system );
 }
 
-sub vsum
-{
-    my ($v1, $v2) = @_;
-    return [ $v1->[0] + $v2->[0], $v1->[1] + $v2->[1],  $v1->[2] + $v2->[2] ];
-}
-
 1;
