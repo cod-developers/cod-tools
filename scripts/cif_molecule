@@ -1369,7 +1369,7 @@ sub symop_apply_modulo1
 
     my @new_atom_xyz =
         map { modulo_1($_) }
-    symop_vector_mul( $symop, $atom_xyz );
+            @{ symop_vector_mul( $symop, $atom_xyz ) };
 
     $new_atom_info->{coordinates_fract} = \@new_atom_xyz;
 
@@ -1411,10 +1411,9 @@ sub symop_apply_NO_modulo_1
 
     my $atom_xyz = $atom_info->{"coordinates_fract"};
 
-    my @new_atom_xyz =
-        symop_vector_mul( $symop, $atom_xyz );
+    my $new_atom_xyz = symop_vector_mul( $symop, $atom_xyz );
 
-    $new_atom_info->{"coordinates_fract"} = \@new_atom_xyz;
+    $new_atom_info->{"coordinates_fract"} = $new_atom_xyz;
 
     return symop_register_applied_symop( $new_atom_info, $symop );
 }
