@@ -784,14 +784,14 @@ sub translate_atom
     my $new_atom = copy_atom( $atom );
     my @new_atom_xyz;
 
-    push( @new_atom_xyz, $atom->{"coordinates_fract"}[0] +
+    push( @new_atom_xyz, $atom->{'coordinates_fract'}[0] +
           ${$translation}[0] );
-    push( @new_atom_xyz, $atom->{"coordinates_fract"}[1] +
+    push( @new_atom_xyz, $atom->{'coordinates_fract'}[1] +
           ${$translation}[1] );
-    push( @new_atom_xyz, $atom->{"coordinates_fract"}[2] +
+    push( @new_atom_xyz, $atom->{'coordinates_fract'}[2] +
           ${$translation}[2] );
 
-    $new_atom->{"coordinates_fract"} = \@new_atom_xyz;
+    $new_atom->{'coordinates_fract'} = \@new_atom_xyz;
     $new_atom->{coordinates_ortho} =
         symop_vector_mul( $atom->{f2o}, \@new_atom_xyz );
 
@@ -886,7 +886,7 @@ sub symop_apply_modulo1
 
     my @new_atom_xyz =
         map { modulo_1($_) }
-        symop_vector_mul( $symop, $atom_xyz );
+            @{ symop_vector_mul( $symop, $atom_xyz ) };
 
     $new_atom->{coordinates_fract} = \@new_atom_xyz;
     $new_atom->{coordinates_ortho} =

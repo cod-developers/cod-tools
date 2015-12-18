@@ -315,7 +315,7 @@ sub symop_vector_mul($$)
         $new_coordinates[2] += $symop->[2][3];
     }
 
-    return wantarray ? @new_coordinates : \@new_coordinates;
+    return \@new_coordinates;
 }
 
 1;
