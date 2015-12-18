@@ -25,7 +25,8 @@ our @EXPORT_OK = qw(
     conventional_cell
 );
 
-my $Pi = 4 * atan2(1,1);
+my $PI = 4 * atan2(1,1);
+my $EPSILON = 1E-2;
 
 $COD::Cell::Conventional::deWG91::debug = 1;
 
@@ -46,10 +47,10 @@ sub conventional_cell
 {
     my @cell = @_;
 
-    my $eps = @cell > 6 ? pop(@cell) : 1E-2;
+    my $eps = @cell > 6 ? pop(@cell) : $EPSILON;
 
     my ($a, $b, $c, $alpha, $beta, $gamma ) =
-        (@cell[0..2], map { $Pi * $_ / 180 }  @cell[3..5]);
+        (@cell[0..2], map { $PI * $_ / 180 }  @cell[3..5]);
 
     my ($ca, $cb, $cg) = map {cos} ($alpha, $beta, $gamma);
 

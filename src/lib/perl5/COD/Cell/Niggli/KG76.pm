@@ -38,7 +38,8 @@ our @EXPORT_OK = qw(
     reduce
 );
 
-my $Pi = 4 * atan2(1,1);
+my $PI = 4 * atan2(1,1);
+my $EPSILON = 1E-2;
 
 $COD::Cell::Niggli::KG76::debug = 1;
 
@@ -46,10 +47,10 @@ sub reduce
 {
     my @cell = @_;
 
-    my $eps = @cell > 6 ? pop(@cell) : 1E-2;
+    my $eps = @cell > 6 ? pop(@cell) : $EPSILON;
 
     my ($a, $b, $c, $alpha, $beta, $gamma ) =
-        (@cell[0..2], map { $Pi * $_ / 180 }  @cell[3..5]);
+        (@cell[0..2], map { $PI * $_ / 180 }  @cell[3..5]);
 
     my ($ca, $cb, $cg) = map {cos} ($alpha, $beta, $gamma);
 
@@ -201,17 +202,17 @@ sub reduce
         join("], [", map {join(",", @$_)} @$CoB)
             if $COD::Cell::Niggli::KG76::debug;
         print "CELL", sqrt($A), sqrt($B), sqrt($C),
-        180*acos($ksi/(2*sqrt($B)*sqrt($C)))/$Pi,
-        180*acos($eta/(2*sqrt($A)*sqrt($C)))/$Pi,
-        180*acos($dzeta/(2*sqrt($A)*sqrt($B)))/$Pi;
+        180*acos($ksi/(2*sqrt($B)*sqrt($C)))/$PI,
+        180*acos($eta/(2*sqrt($A)*sqrt($C)))/$PI,
+        180*acos($dzeta/(2*sqrt($A)*sqrt($B)))/$PI;
         print "COB", @{$CoB->[0]};
         print "COB", @{$CoB->[1]};
         print "COB", @{$CoB->[2]};
     }
     return (sqrt($A), sqrt($B), sqrt($C),
-            180*acos($ksi/(2*sqrt($B)*sqrt($C)))/$Pi,
-            180*acos($eta/(2*sqrt($A)*sqrt($C)))/$Pi,
-            180*acos($dzeta/(2*sqrt($A)*sqrt($B)))/$Pi,
+            180*acos($ksi/(2*sqrt($B)*sqrt($C)))/$PI,
+            180*acos($eta/(2*sqrt($A)*sqrt($C)))/$PI,
+            180*acos($dzeta/(2*sqrt($A)*sqrt($B)))/$PI,
             $CoB);
 }
 

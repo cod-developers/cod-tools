@@ -36,11 +36,13 @@ our @EXPORT_OK = qw(
 );
 
 our $debug = 1;
-our $epsilon = 1E-5;
+my $EPSILON = 1E-5;
 
 sub reduce
 {
     my @cell = @_;
+
+    my $eps = @cell > 6 ? pop(@cell) : $EPSILON;
 
     my $f2o = symop_ortho_from_fract( @cell );
 
@@ -50,7 +52,7 @@ sub reduce
         scalar symop_vector_mul( $f2o, [0,0,1] )
     ];
 
-    my $reduced_vectors = Delaunay_reduction( $basis_vectors );
+    my $reduced_vectors = Delaunay_reduction( $basis_vectors, $eps );
 
     my @reduced_cell = (
         vector_len(  $reduced_vectors->[0]),
@@ -73,7 +75,7 @@ sub reduce
 sub Delaunay_reduction
 {
     my ($basis, $epsilon) = @_;
-    $epsilon = $COD::Cell::Delaunay::Delaunay::epsilon unless defined $epsilon;
+    $epsilon = $COD::Cell::Delaunay::Delaunay::EPSILON unless defined $epsilon;
     my @extended_basis =
         ( @$basis,
           [ -$basis->[0][0]-$basis->[1][0]-$basis->[2][0],
