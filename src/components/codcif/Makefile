@@ -344,11 +344,8 @@ tests alltests: test shtests
 .PHONY: listdiff
 
 listdiff: # test
-	-@for DIFF_DIR in ${OUTPUT_DIR} ${TST_OUT_DIR} ${SHELL_OUTDIR}; do \
-		if [ -d $$DIFF_DIR ]; then \
-			find $$DIFF_DIR -name '*.diff' -size +0 \
-			| xargs --no-run-if-empty ls -l; fi \
-	done | sort -k9 | uniq
+	@find ${OUTPUT_DIR} ${TST_OUT_DIR} ${SHELL_OUTDIR} -name '*.diff' -size +0 \
+	| sort -u | xargs --no-run-if-empty ls -l
 
 #------------------------------------------------------------------------------
 

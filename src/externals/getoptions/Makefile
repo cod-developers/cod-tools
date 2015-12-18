@@ -180,10 +180,8 @@ ${TEST_OUTP_DIR}/%.out: ${TEST_CASE_DIR}/%.sh
 	@test -f $@ && touch $@
 
 listdiff:
-	@- if [ -d ${TEST_OUTP_DIR} ]; then \
-	   find ${TEST_OUTP_DIR} -name '*.diff' -size +0 \
-		| xargs --no-run-if-empty ls -l; fi \
-		| sort -k9 | uniq
+	@find ${TEST_OUTP_DIR} -name '*.diff' -size +0 \
+	| sort -u | xargs --no-run-if-empty ls -l
 
 #------------------------------------------------------------------------------
 
