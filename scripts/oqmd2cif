@@ -210,7 +210,8 @@ for my $structure_id (@structure_ids) {
     print "_atom_site_fract_x\n";
     print "_atom_site_fract_y\n";
     print "_atom_site_fract_z\n";
-    for my $atom (values %{$atoms}) {
+    for my $atom_id (sort keys %{$atoms}) {
+        my $atom = $atoms->{$atom_id};
         print $atom->{element_id};
         printf " ".$atom_fformat, $atom->{x};
         printf " ".$atom_fformat, $atom->{y};
@@ -328,8 +329,7 @@ sub query_OQMD_atoms
          JOIN `$database->{tables}{wyckoffsites}`
              ON `$database->{tables}{sites}`.wyckoff_id = 
                 `$database->{tables}{wyckoffsites}`.id
-         WHERE `$database->{tables}{atoms}`.structure_id = ?
-         ORDER BY atom_id;"
+         WHERE `$database->{tables}{atoms}`.structure_id = ?;"
         );
 
     $sth->execute( $id );
