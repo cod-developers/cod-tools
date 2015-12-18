@@ -474,14 +474,14 @@ sub conventional_cell
 
     my $f2o = symop_ortho_from_fract( @cell );
     my $basis_vectors = [
-        symop_vector_mul( $f2o, [1,0,0] ),
-        symop_vector_mul( $f2o, [0,1,0] ),
-        symop_vector_mul( $f2o, [0,0,1] )
+        scalar symop_vector_mul( $f2o, [1,0,0] ),
+        scalar symop_vector_mul( $f2o, [0,1,0] ),
+        scalar symop_vector_mul( $f2o, [0,0,1] )
     ];
     my $new_basis = [
-        symop_vector_mul( $CoB, $basis_vectors->[0] ),
-        symop_vector_mul( $CoB, $basis_vectors->[1] ),
-        symop_vector_mul( $CoB, $basis_vectors->[2] )
+        scalar symop_vector_mul( $CoB, $basis_vectors->[0] ),
+        scalar symop_vector_mul( $CoB, $basis_vectors->[1] ),
+        scalar symop_vector_mul( $CoB, $basis_vectors->[2] )
     ];
     my @new_cell = (
         vector_len(  $new_basis->[0] ),
