@@ -298,13 +298,8 @@ tests alltests check: test shtests
 .PHONY: listdiff blame
 
 listdiff: # test
-	@-for DIFF_DIR in ${OUTPUT_DIR} ${SHELL_OUTDIR}; do \
-		if [ -d $$DIFF_DIR ]; then \
-			find $$DIFF_DIR -name '*.diff' -size +0 \
-			| xargs --no-run-if-empty ls -l; fi \
-	done | sort -u -k9
-	@-find './src' -name '*.diff' -size +0 \
-	  | xargs --no-run-if-empty ls -l | sort -k9 | uniq
+	@find ./src ./tests -name \*.diff -size +0 \
+	| sort -u | xargs --no-run-if-empty ls -l
 
 blame:
 	@-( test -d ${OUTPUT_DIR} && \
