@@ -117,12 +117,8 @@ ${SHELL_OUTDIR}/%.diff: ${SHELL_TSTDIR}/%.sh ${TEST_MODULE}
 .PHONY: listdiff
 
 listdiff: ${DIFF_FILES} ${SHELL_DIFFS}
-	@-( test -d ${OUTP_DIR} && \
-	    ls -l ${OUTP_DIR}/*.diff | awk '{if( $$5 > 0 ) print}' ) || \
-	    true
-	@-( test -d ${SHELL_OUTDIR} && \
-	    ls -l ${SHELL_OUTDIR}/*.diff | awk '{if( $$5 > 0 ) print}' ) || \
-	    true
+	@find ${OUTP_DIR} ${SHELL_OUTDIR} -name \*.diff -size +0 \
+	| sort -u | xargs --no-run-if-empty ls -l
 
 #------------------------------------------------------------------------------
 # Remove old tests results:

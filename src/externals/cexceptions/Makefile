@@ -146,9 +146,8 @@ outputs/%.diff: bin/% outputs/%.out
 .PHONY: listdiff
 
 listdiff:
-	@-( test -d outputs && \
-	    ls -l outputs/*.diff | awk '{if( $$5 > 0 ) print}' ) || \
-	    true
+	@find outputs -name '*.diff' -size +0 \
+	| sort -u | xargs --no-run-if-empty ls -l
 
 #------------------------------------------------------------------------------
 
