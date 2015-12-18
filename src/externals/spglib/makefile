@@ -4,7 +4,7 @@ all: ${MAIN_MAKE}
 	@${MAKE} --file ${MAIN_MAKE} $@
 
 ${MAIN_MAKE}:
-	./configure
+	CFLAGS=-fPIC ./configure
 	touch aclocal.m4 Makefile.in
 
 %:
