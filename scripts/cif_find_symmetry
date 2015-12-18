@@ -251,8 +251,18 @@ sub find_symmetry_spglib
         set_tag( $dataset, '_space_group_IT_number',
                  $sym->{number} );
 
-        if( exists $values->{_symmetry_equiv_pos_site_id} ) {
-            exclude_tag( $dataset, '_symmetry_equiv_pos_site_id' );
+        for my $tag (qw( _space_group_symop_operation_xyz
+                         _symmetry_equiv_pos_as_xyz )) {
+            next if !exists $values->{$tag};
+            if( exists $dataset->{inloop}{$tag} ) {
+                my $loop_id = $dataset->{inloop}{$tag};
+                my @tags_to_remove = @{$dataset->{loops}[$loop_id]};
+                for my $loop_tag (@tags_to_remove) {
+                    exclude_tag( $dataset, $loop_tag );
+                }
+            } else {
+                exclude_tag( $dataset, $tag );
+            }
         }
 
         ## It's not clear why symmetry operators, returned by
@@ -266,9 +276,11 @@ sub find_symmetry_spglib
         ##                 map { flush_zeros_in_symop( $_ ) }
         ##                     @{$sym->{symops}} ] );
 
-        set_loop_tag( $dataset, '_symmetry_equiv_pos_as_xyz', undef,
+        set_loop_tag( $dataset, '_space_group_symop_id', undef,
+                      [ 1..@{$spacegroup_info->{symops}} ] );
+        set_loop_tag( $dataset, '_space_group_symop_operation_xyz',
+                      '_space_group_symop_id',
                       $spacegroup_info->{symops} );
-
 
         my $atom_site_tag;
         for my $tag (qw( _atom_site_label
