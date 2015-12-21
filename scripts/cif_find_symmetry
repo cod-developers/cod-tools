@@ -32,8 +32,7 @@ use COD::CIF::Parser qw( parse_cif );
 use COD::CIF::Tags::Manage qw( exclude_tag set_loop_tag set_tag );
 use COD::CIF::Tags::CanonicalNames qw( canonicalize_all_names );
 use COD::CIF::Tags::Print qw( print_cif );
-use COD::ErrorHandler qw( process_errors process_warnings
-                          process_parser_messages report_message );
+use COD::ErrorHandler qw( process_parser_messages report_message );
 use COD::Fractional qw( ortho_from_fract );
 use COD::Serialise qw( serialiseRef );
 use COD::Spacegroups::Lookup::COD qw( @table @extra_settings );
@@ -221,12 +220,9 @@ sub find_symmetry_spglib
         set_tag( $dataset, '_cell_length_a', vector_len( $a ) );
         set_tag( $dataset, '_cell_length_b', vector_len( $b ) );
         set_tag( $dataset, '_cell_length_c', vector_len( $c ) );
-        set_tag( $dataset, '_cell_angle_alpha',
-                 vector_angle( $b, $c ) );
-        set_tag( $dataset, '_cell_angle_beta',
-                 vector_angle( $a, $c ) );
-        set_tag( $dataset, '_cell_angle_gamma',
-                 vector_angle( $a, $b ) );
+        set_tag( $dataset, '_cell_angle_alpha', vector_angle( $b, $c ) );
+        set_tag( $dataset, '_cell_angle_beta',  vector_angle( $a, $c ) );
+        set_tag( $dataset, '_cell_angle_gamma', vector_angle( $a, $b ) );
 
         for my $tag (sort keys %tags_to_move) {
             next if !exists $values->{$tag};
