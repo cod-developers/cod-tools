@@ -16,7 +16,7 @@ package COD::Cell::Conventional::deWG91;
 
 use strict;
 use warnings;
-use COD::Algebra::Vector qw( vector_angle vector_len );
+use COD::Cell qw( vectors2cell );
 use COD::Spacegroups::Symop::Algebra qw( symop_vector_mul );
 
 require Exporter;
@@ -484,14 +484,7 @@ sub conventional_cell
         symop_vector_mul( $CoB, $basis_vectors->[1] ),
         symop_vector_mul( $CoB, $basis_vectors->[2] )
     ];
-    my @new_cell = (
-        vector_len(  $new_basis->[0] ),
-        vector_len(  $new_basis->[1] ),
-        vector_len(  $new_basis->[2] ),
-        vector_angle($new_basis->[1], $new_basis->[2]),
-        vector_angle($new_basis->[0], $new_basis->[2]),
-        vector_angle($new_basis->[0], $new_basis->[1])
-    );
+    my @new_cell = vectors2cell( @$new_basis );
 
     return ( @new_cell, $CoB, $crystal_system );
 }

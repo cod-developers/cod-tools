@@ -25,7 +25,8 @@ package COD::Cell::Delaunay::Delaunay;
 
 use strict;
 use warnings;
-use COD::Algebra::Vector qw( vdot vector_angle vector_add vector_len );
+use COD::Algebra::Vector qw( vdot vector_add vector_len );
+use COD::Cell qw( vectors2cell );
 use COD::Fractional qw( symop_ortho_from_fract );
 use COD::Spacegroups::Symop::Algebra qw( symop_mul symop_vector_mul );
 
@@ -54,14 +55,7 @@ sub reduce
 
     my $reduced_vectors = Delaunay_reduction( $basis_vectors, $eps );
 
-    my @reduced_cell = (
-        vector_len(  $reduced_vectors->[0]),
-        vector_len(  $reduced_vectors->[1]),
-        vector_len(  $reduced_vectors->[2]),
-        vector_angle($reduced_vectors->[1], $reduced_vectors->[2]),
-        vector_angle($reduced_vectors->[0], $reduced_vectors->[2]),
-        vector_angle($reduced_vectors->[0], $reduced_vectors->[1])
-    );
+    my @reduced_cell = vectors2cell( @$reduced_vectors );
 
     return ( @reduced_cell, $reduced_vectors );
 }

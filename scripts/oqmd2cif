@@ -16,7 +16,7 @@ eval 'exec perl -x $0 ${1+"$@"}'
 use strict;
 use warnings;
 use DBI;
-use COD::Algebra::Vector qw( vdot vector_angle vector_len );
+use COD::Cell qw( vectors2cell );
 use COD::Formulae::Parser::AdHoc;
 use COD::SOptions qw( getOptions get_value );
 use COD::SUsage qw( usage options );
@@ -151,7 +151,7 @@ for my $structure_id (@structure_ids) {
         [ $structure_data->{z1}, $structure_data->{z2}, $structure_data->{z3} ],
         );
 
-    my @cell = compute_cell_parameters( @cell_vectors );
+    my @cell = vectors2cell( @cell_vectors );
 
     printf "%-32s ".$cell_fformat."\n", "_cell_length_a", $cell[0];
     printf "%-32s ".$cell_fformat."\n", "_cell_length_b", $cell[1];
@@ -335,18 +335,4 @@ sub query_OQMD_atoms
     $sth->execute( $id );
 
     return $sth->fetchall_hashref( "atom_id" );
-}
-
-sub compute_cell_parameters
-{
-    my ( $v1, $v2, $v3 ) = @_;
-
-    return (
-        vector_len( $v1 ),
-        vector_len( $v2 ),
-        vector_len( $v3 ),
-        vector_angle( $v2, $v3 ),
-        vector_angle( $v1, $v3 ),
-        vector_angle( $v1, $v2 ),
-    );
 }

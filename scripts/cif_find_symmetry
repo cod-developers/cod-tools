@@ -21,11 +21,10 @@ use warnings;
 use File::Basename qw( basename );
 use COD::Algebra::Vector qw( matrix_vector_mul
                              vector_add
-                             vector_angle
-                             vector_len
                              vector_modulo_1
                              vector_sub );
 use COD::AtomProperties;
+use COD::Cell qw( vectors2cell );
 use COD::CIF::Data qw( get_cell );
 use COD::CIF::Data::AtomList qw( atom_array_from_cif );
 use COD::CIF::Parser qw( parse_cif );
@@ -217,12 +216,14 @@ sub find_symmetry_spglib
                   $lattice_now->[1][2],
                   $lattice_now->[2][2] ];
 
-        set_tag( $dataset, '_cell_length_a', vector_len( $a ) );
-        set_tag( $dataset, '_cell_length_b', vector_len( $b ) );
-        set_tag( $dataset, '_cell_length_c', vector_len( $c ) );
-        set_tag( $dataset, '_cell_angle_alpha', vector_angle( $b, $c ) );
-        set_tag( $dataset, '_cell_angle_beta',  vector_angle( $a, $c ) );
-        set_tag( $dataset, '_cell_angle_gamma', vector_angle( $a, $b ) );
+        my @cell_now = vectors2cell( $a, $b, $c );
+
+        set_tag( $dataset, '_cell_length_a', $cell_now[0] );
+        set_tag( $dataset, '_cell_length_b', $cell_now[1] );
+        set_tag( $dataset, '_cell_length_c', $cell_now[2] );
+        set_tag( $dataset, '_cell_angle_alpha', $cell_now[3] );
+        set_tag( $dataset, '_cell_angle_beta',  $cell_now[4] );
+        set_tag( $dataset, '_cell_angle_gamma', $cell_now[5] );
 
         for my $tag (sort keys %tags_to_move) {
             next if !exists $values->{$tag};

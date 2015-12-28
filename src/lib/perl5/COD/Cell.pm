@@ -12,11 +12,13 @@ package COD::Cell;
 
 use strict;
 use warnings;
+use COD::Algebra::Vector qw( vector_angle vector_len );
 
 require Exporter;
 our @ISA = qw( Exporter );
 our @EXPORT_OK = qw(
     cell_volume
+    vectors2cell
 );
 
 sub cell_volume
@@ -67,6 +69,20 @@ sub cell_volume
     } else {
         return $V;
     }
+}
+
+sub vectors2cell
+{
+    my( @v ) = @_;
+    my @cell = (
+        vector_len(  $v[0]),
+        vector_len(  $v[1]),
+        vector_len(  $v[2]),
+        vector_angle($v[1], $v[2]),
+        vector_angle($v[0], $v[2]),
+        vector_angle($v[0], $v[1])
+    );
+    return wantarray ? @cell : \@cell;
 }
 
 1;
