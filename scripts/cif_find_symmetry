@@ -50,6 +50,9 @@ my $symprec = 1e-5;
 my $dump_symmetry_dataset = 0;
 my $invert_CoB = 1;
 
+# Format for floating point numbers:
+my $fformat = "%.12g";
+
 my $die_on_error_level = {
     ERROR   => 0,
     WARNING => 0,
@@ -60,6 +63,15 @@ my %tags_to_move = (
     '_symmetry_space_group_name_H-M'  => '_cod_original_sg_symbol_H-M',
     '_symmetry_space_group_name_Hall' => '_cod_original_sg_symbol_Hall',
     '_space_group_IT_number'          => '_cod_original_sg_number',
+);
+
+my @cell_tags = qw(
+    _cell_length_a
+    _cell_length_b
+    _cell_length_c
+    _cell_angle_alpha
+    _cell_angle_beta
+    _cell_angle_gamma
 );
 
 #* USAGE:
@@ -85,6 +97,9 @@ my %tags_to_move = (
 #*        (spglib) Use spglib-provided change-of-basis matrix. This option
 #*        has to be used to obtain correct cell constants and atomic
 #*        positions with spglib 1.8 or earlier.
+#*
+#*     -F, --float-format "%.12g"
+#*        Specify format to print out floating point numbers.
 #*
 #*    --dump-symmetry-dataset
 #*        Suppress regular output and dump symmetry data structure, as
@@ -112,6 +127,8 @@ my %tags_to_move = (
     '--invert-CoB'      => sub { $invert_CoB = 1 },
     '--dont-invert-CoB' => sub { $invert_CoB = 0 },
     '--no-invert-CoB'   => sub { $invert_CoB = 0 },
+
+    "-F,--float-format" => \$fformat,
 
     '--dump-symmetry-dataset'      => sub { $dump_symmetry_dataset = 1 },
     '--dont-dump-symmetry-dataset' => sub { $dump_symmetry_dataset = 0 },
@@ -218,12 +235,10 @@ sub find_symmetry_spglib
 
         my @cell_now = vectors2cell( $a, $b, $c );
 
-        set_tag( $dataset, '_cell_length_a', $cell_now[0] );
-        set_tag( $dataset, '_cell_length_b', $cell_now[1] );
-        set_tag( $dataset, '_cell_length_c', $cell_now[2] );
-        set_tag( $dataset, '_cell_angle_alpha', $cell_now[3] );
-        set_tag( $dataset, '_cell_angle_beta',  $cell_now[4] );
-        set_tag( $dataset, '_cell_angle_gamma', $cell_now[5] );
+        for( my $i = 0; $i < @cell_tags; $i++ ) {
+            set_tag( $dataset, $cell_tags[$i],
+                     sprintf( $fformat, $cell_now[$i] ) );
+        }
 
         for my $tag (sort keys %tags_to_move) {
             next if !exists $values->{$tag};
@@ -343,7 +358,8 @@ sub find_symmetry_spglib
             ( $values->{'_atom_site_fract_x'}[$i],
               $values->{'_atom_site_fract_y'}[$i],
               $values->{'_atom_site_fract_z'}[$i] ) =
-                @$coordinates_now;
+                map { sprintf( $fformat, $_ ) }
+                    @$coordinates_now;
         }
     } else {
         print "name: $dataset->{name}\n";
