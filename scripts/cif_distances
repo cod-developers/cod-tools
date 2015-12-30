@@ -294,21 +294,20 @@ sub resolve_chemical_type
     foreach my $atom (@$atoms) {
         my $i = $atom->{'index'};
 
-        $atom->{'chemical_type'} = exists $values->{'_atom_site_type_symbol'} ?
-                                $values->{'_atom_site_type_symbol'}[$i] : undef;
+        $atom->{'chemical_type'} = exists $values->{'_atom_site_type_symbol'}
+                                    ? $values->{'_atom_site_type_symbol'}[$i]
+                                    : undef;
 
         # Get the chemical type of the atom.
         # Chemical type is determined from _atom_site_type_symbol or
         # _atom_site_label if the previous tag is not present.
-        if( !defined $atom->{'chemical_type'} || $atom->{'chemical_type'} eq '?' ) {
+        if( !defined $atom->{'chemical_type'} ||
+            $atom->{'chemical_type'} eq '?' ) {
             $atom->{'chemical_type'} = $atom->{'site_label'};
-            if( $atom->{'chemical_type'} =~ m/^([A-Za-z]{1,2})/ ) {
-                $atom->{'chemical_type'} = ucfirst( lc( $1 ));
-            };
-        } else {
-            if( $atom->{'chemical_type'} =~ m/^([A-Za-z]{1,2})/ ) {
-                $atom->{'chemical_type'} = ucfirst( lc( $1 ));
-            }
+        }
+
+        if( $atom->{'chemical_type'} =~ m/^([A-Za-z]{1,2})/ ) {
+            $atom->{'chemical_type'} = ucfirst( lc( $1 ));
         }
 
         # If the two letter chemical type abbreviation is not recognised
@@ -316,17 +315,17 @@ sub resolve_chemical_type
         # If the type is still not recognised, the type is marked as 
         # unrecognised 'UN'.
         if ( !exists $COD::AtomProperties::atoms{$atom->{'chemical_type'}} ) {
-            chop $atom->{chemical_type};
+            chop $atom->{'chemical_type'};
             if ( !exists $COD::AtomProperties::atoms{$atom->{'chemical_type'}} ) {
                 if ( $include_unknown_types ) {
                     warn 'WARNING, unable to determine chemical type of atom '
-                       . 'with _atom_site_label ' . "'$atom->{'site_label'}'" . ' -- '
-                       . 'atom chemical type will be set to \'UN\'' . "\n";
+                       . 'with _atom_site_label ' . "'$atom->{'site_label'}'"
+                       . ' -- atom chemical type will be set to \'UN\'' . "\n";
                     $atom->{'chemical_type'} = 'UN'
                 } else {
                     warn 'WARNING, unable to determine chemical type of atom '
-                       . 'with _atom_site_label ' . "'$atom->{'site_label'}'" . ' -- '
-                       . 'atom will be removed' . "\n";
+                       . 'with _atom_site_label ' . "'$atom->{'site_label'}'"
+                       . ' -- atom will be removed' . "\n";
                     next;
                 }
             }
