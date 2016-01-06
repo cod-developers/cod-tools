@@ -40,7 +40,14 @@ my $die_on_error_level = {
     NOTE    => $die_on_notes
 };
 
+my $build_supercell = 1;
+
 #* OPTIONS:
+#*   --supercell
+#*                      Build the 3x3x3 supercell by shifting atoms of the
+#                       unit cell in all 3D directions.
+#*   --unit-cell, --no-supercell
+#*                      Only build the unit cell (default).
 #*   --use-c-parser
 #*                      Use the faster C parser for CIFs (default).
 #*   --use-perl-parser
@@ -49,8 +56,12 @@ my $die_on_error_level = {
 #*                      Print a short usage message (this message) and exit.
 #**
 @ARGV = getOptions(
-    '--use-perl-parser' => sub{ $use_parser = 'perl' },
-    '--use-c-parser'    => sub{ $use_parser = 'c' },
+    '--supercell'    => sub { $build_supercell = 1 },
+    '--no-supercell' => sub { $build_supercell = 0 },
+    '--unit-cell'    => sub { $build_supercell = 0 },
+
+    '--use-perl-parser' => sub { $use_parser = 'perl' },
+    '--use-c-parser'    => sub { $use_parser = 'c' },
     '--options'         => sub { options; exit },
     '--help,--usage'    => sub { usage; exit }
 );
@@ -150,7 +161,13 @@ foreach my $filename (@ARGV) {
                     }
                     push @atom_xyz, 1;
 
-                    my $new_atom_xyz = shift_atoms(symop_apply(\@atom_xyz, $symop));
+                    my $new_atom_xyz = symop_apply(\@atom_xyz, $symop);
+                    if ($build_supercell) {
+                        $new_atom_xyz = shift_atoms($new_atom_xyz);
+                    } else {
+                        $new_atom_xyz = [$new_atom_xyz];
+                    }
+
                     for(my $m = 0; $m < @{$new_atom_xyz}; $m++)
                     {
                     for(my $k = 0; $k < @{$loop}; $k++)
