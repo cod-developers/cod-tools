@@ -1,1 +1,1 @@
-Test --report-deprecated option.
+Tests --report-deprecated option.

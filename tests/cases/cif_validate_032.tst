@@ -1,1 +1,1 @@
-Test --clear-dictionaries and --add-dictionary options.
+Tests --clear-dictionaries and --add-dictionary options.

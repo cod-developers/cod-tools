@@ -1,1 +1,1 @@
-Test the detection of missing mandatory tags in looped lists.
+Tests the detection of missing mandatory tags in looped lists.
