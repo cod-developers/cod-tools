@@ -142,8 +142,6 @@ foreach my $filename (@ARGV) {
                 if( '_atom_site_adp_type' ne $_ ) { print $_ . "\n" }
             }
 
-            my @sym_atoms;
-
             for(my $i = 0; $i < @sym_operators; $i++)
             {
                 my $symop = $sym_operators[$i];
@@ -168,36 +166,38 @@ foreach my $filename (@ARGV) {
 
                     for(my $m = 0; $m < @{$new_atom_xyz}; $m++)
                     {
-                    for(my $k = 0; $k < @{$atom_loop_tags}; $k++)
+                    my @tag_values;
+                    foreach my $tag ( @{$atom_loop_tags} )
                     {
-                        my $sym_atom_data = $values->{${$atom_loop_tags}[$k]};
+                        my $sym_atom_data = $values->{$tag};
 
-                        if('_atom_site_adp_type' eq ${$atom_loop_tags}[$k]) {
+                        if('_atom_site_adp_type' eq $tag) {
                             next;
                         }
 
-                        if(${$atom_loop_tags}[$k] eq '_atom_site_label')
+                        if($tag eq '_atom_site_label')
                         {
-                            $sym_atoms[$i][$j][$k] = ${$sym_atom_data}[$j].'_'.$i.'_'.$m;
+                            push @tag_values, ${$sym_atom_data}[$j].'_'.$i.'_'.$m;
                         }
-                        elsif(${$atom_loop_tags}[$k] eq '_atom_site_fract_x')
+                        elsif($tag eq '_atom_site_fract_x')
                         {
-                            $sym_atoms[$i][$j][$k] = ${$new_atom_xyz}[$m][0];
+                            push @tag_values, ${$new_atom_xyz}[$m][0];
                         }
-                        elsif(${$atom_loop_tags}[$k] eq '_atom_site_fract_y')
+                        elsif($tag eq '_atom_site_fract_y')
                         {
-                            $sym_atoms[$i][$j][$k] = ${$new_atom_xyz}[$m][1];
+                            push @tag_values, ${$new_atom_xyz}[$m][1];
                         }
-                        elsif(${$atom_loop_tags}[$k] eq '_atom_site_fract_z')
+                        elsif($tag eq '_atom_site_fract_z')
                         {
-                            $sym_atoms[$i][$j][$k] = ${$new_atom_xyz}[$m][2];
+                            push @tag_values, ${$new_atom_xyz}[$m][2];
                         }
                         else
                         {
-                            $sym_atoms[$i][$j][$k] = ${$sym_atom_data}[$j];
+                            push @tag_values, ${$sym_atom_data}[$j];
                         }
-                        print $sym_atoms[$i][$j][$k] . '   ';
                     }
+                    print join ' 'x3, @tag_values;
+                    print "   ";
                     print "\n";
                     }
                 }
