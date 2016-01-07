@@ -103,12 +103,11 @@ foreach my $filename (@ARGV) {
                   . 'nor \'_atom_site_label\' are present in the file' . "\n";
             }
 
+            my $loop_id = $dataset->{'inloop'}{$loop_tag};
+            my $atom_loop_tags = $dataset->{'loops'}[$loop_id];
+
             # extracts symmetry operators
             my $sym_data = get_symmetry_operators($dataset);
-
-            my $inloop = $dataset->{'inloop'};
-            my $loop_id = $inloop->{$loop_tag};
-            my $loop = $dataset->{'loops'}[$loop_id];
 
             my @sym_operators = map{symop_from_string($_)} @{$sym_data};
 
@@ -116,34 +115,31 @@ foreach my $filename (@ARGV) {
             print $dataname . '_' . fileparse($0) . "\n";
             print '_space_group_name_H-M_alt   \'P 1\'' . "\n";
 
-            foreach my $angle (qw(_cell_angle_alpha
-                                  _cell_angle_beta
-                                  _cell_angle_gamma))
+            # print unit cell lengths and angles
+            foreach ( qw( _cell_angle_alpha
+                          _cell_angle_beta
+                          _cell_angle_gamma ) )
             {
-                if( defined $values->{$angle}[0] ) {
-                    print $angle . '   ' . $values->{$angle}[0] . "\n";
+                if( defined $values->{$_}[0] ) {
+                    print $_ . '   ' . $values->{$_}[0] . "\n";
                 }
             }
 
-            foreach my $length (qw(_cell_length_a
-                                   _cell_length_b
-                                   _cell_length_c))
+            foreach ( qw( _cell_length_a _cell_length_b _cell_length_c ) )
             {
-                print $length . '   ' . $values->{$length}[0] . "\n";
+                print $_ . '   ' . $values->{$_}[0] . "\n";
             }
 
+            # print symmetry operator information
             print 'loop_' . "\n";
             print '_space_group_symop_id' . "\n";
             print '_space_group_symop_operation_xyz' . "\n";
             print '1 \'x, y, z\'' . "\n";
 
+            # print atom loop tags
             print "loop_\n";
-            foreach my $loop_value (@{$loop})
-            {
-                if('_atom_site_adp_type' ne $loop_value)
-                {
-                    print $loop_value . "\n";
-                }
+            foreach (@{$atom_loop_tags}) {
+                if( '_atom_site_adp_type' ne $_ ) { print $_ . "\n" }
             }
 
             my @sym_atoms;
@@ -155,12 +151,11 @@ foreach my $filename (@ARGV) {
                 for(my $j = 0; $j < @{$values->{$loop_tag}}; $j++)
                 {
                     my @atom_xyz;
-                    foreach my $atom_fract ( qw( _atom_site_fract_x
-                                                 _atom_site_fract_y
-                                                 _atom_site_fract_z ) )
+                    foreach ( qw( _atom_site_fract_x
+                                  _atom_site_fract_y
+                                  _atom_site_fract_z ) )
                     {
-                        my $sym_atom_data = $values->{$atom_fract};
-                        push @atom_xyz, ${$sym_atom_data}[$j];
+                        push @atom_xyz, $values->{$_}[$j];
                     }
                     push @atom_xyz, 1;
 
@@ -173,34 +168,35 @@ foreach my $filename (@ARGV) {
 
                     for(my $m = 0; $m < @{$new_atom_xyz}; $m++)
                     {
-                    for(my $k = 0; $k < @{$loop}; $k++)
+                    for(my $k = 0; $k < @{$atom_loop_tags}; $k++)
                     {
-                        my $sym_atom_data = $values->{${$loop}[$k]};
+                        my $sym_atom_data = $values->{${$atom_loop_tags}[$k]};
 
-                        if('_atom_site_adp_type' ne ${$loop}[$k])
-                        {
-                            if(${$loop}[$k] eq '_atom_site_label')
-                            {
-                                $sym_atoms[$i][$j][$k] = ${$sym_atom_data}[$j].'_'.$i.'_'.$m;
-                            }
-                            elsif(${$loop}[$k] eq '_atom_site_fract_x')
-                            {
-                                $sym_atoms[$i][$j][$k] = ${$new_atom_xyz}[$m][0];
-                            }
-                            elsif(${$loop}[$k] eq '_atom_site_fract_y')
-                            {
-                                $sym_atoms[$i][$j][$k] = ${$new_atom_xyz}[$m][1];
-                            }
-                            elsif(${$loop}[$k] eq '_atom_site_fract_z')
-                            {
-                                $sym_atoms[$i][$j][$k] = ${$new_atom_xyz}[$m][2];
-                            }
-                            else
-                            {
-                                $sym_atoms[$i][$j][$k] = ${$sym_atom_data}[$j];
-                            }
-                            print $sym_atoms[$i][$j][$k] . '   ';
+                        if('_atom_site_adp_type' eq ${$atom_loop_tags}[$k]) {
+                            next;
                         }
+
+                        if(${$atom_loop_tags}[$k] eq '_atom_site_label')
+                        {
+                            $sym_atoms[$i][$j][$k] = ${$sym_atom_data}[$j].'_'.$i.'_'.$m;
+                        }
+                        elsif(${$atom_loop_tags}[$k] eq '_atom_site_fract_x')
+                        {
+                            $sym_atoms[$i][$j][$k] = ${$new_atom_xyz}[$m][0];
+                        }
+                        elsif(${$atom_loop_tags}[$k] eq '_atom_site_fract_y')
+                        {
+                            $sym_atoms[$i][$j][$k] = ${$new_atom_xyz}[$m][1];
+                        }
+                        elsif(${$atom_loop_tags}[$k] eq '_atom_site_fract_z')
+                        {
+                            $sym_atoms[$i][$j][$k] = ${$new_atom_xyz}[$m][2];
+                        }
+                        else
+                        {
+                            $sym_atoms[$i][$j][$k] = ${$sym_atom_data}[$j];
+                        }
+                        print $sym_atoms[$i][$j][$k] . '   ';
                     }
                     print "\n";
                     }
