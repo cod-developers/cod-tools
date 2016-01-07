@@ -111,37 +111,7 @@ foreach my $filename (@ARGV) {
 
             my @sym_operators = map{symop_from_string($_)} @{$sym_data};
 
-            # prints additional cif file information
-            print $dataname . '_' . fileparse($0) . "\n";
-            print '_space_group_name_H-M_alt   \'P 1\'' . "\n";
-
-            # print unit cell lengths and angles
-            foreach ( qw( _cell_angle_alpha
-                          _cell_angle_beta
-                          _cell_angle_gamma ) )
-            {
-                if( defined $values->{$_}[0] ) {
-                    print $_ . '   ' . $values->{$_}[0] . "\n";
-                }
-            }
-
-            foreach ( qw( _cell_length_a _cell_length_b _cell_length_c ) )
-            {
-                print $_ . '   ' . $values->{$_}[0] . "\n";
-            }
-
-            # print symmetry operator information
-            print 'loop_' . "\n";
-            print '_space_group_symop_id' . "\n";
-            print '_space_group_symop_operation_xyz' . "\n";
-            print '1 \'x, y, z\'' . "\n";
-
-            # print atom loop tags
-            print "loop_\n";
-            foreach (@{$atom_loop_tags}) {
-                if( '_atom_site_adp_type' ne $_ ) { print $_ . "\n" }
-            }
-
+            my @atom_loop_values;
             for(my $i = 0; $i < @sym_operators; $i++)
             {
                 my $symop = $sym_operators[$i];
@@ -169,7 +139,7 @@ foreach my $filename (@ARGV) {
                     my @tag_values;
                     foreach my $tag ( @{$atom_loop_tags} )
                     {
-                        my $sym_atom_data = $values->{$tag};
+                        my $old_atom_data = $values->{$tag};
 
                         if('_atom_site_adp_type' eq $tag) {
                             next;
@@ -177,7 +147,7 @@ foreach my $filename (@ARGV) {
 
                         if($tag eq '_atom_site_label')
                         {
-                            push @tag_values, ${$sym_atom_data}[$j].'_'.$i.'_'.$m;
+                            push @tag_values, ${$old_atom_data}[$j].'_'.$i.'_'.$m;
                         }
                         elsif($tag eq '_atom_site_fract_x')
                         {
@@ -193,14 +163,15 @@ foreach my $filename (@ARGV) {
                         }
                         else
                         {
-                            push @tag_values, ${$sym_atom_data}[$j];
+                            push @tag_values, ${$old_atom_data}[$j];
                         }
                     }
-                    print join ' ', @tag_values;
-                    print "\n";
+                    push @atom_loop_values, \@tag_values;
                     }
                 }
             }
+
+            print_cif( $dataset, $atom_loop_tags, \@atom_loop_values );
         };
         if ( $@ ) {
             process_errors( {
@@ -250,4 +221,53 @@ sub shift_atoms
     } } }
 
     return \@shifted_atom_xyz;
+}
+
+#==============================================================#
+sub print_cif
+{
+    my ( $dataset, $atom_loop_tags, $atom_loop_values ) = @_;
+
+    my $dataname = $dataset->{'name'};
+    my $values = $dataset->{'values'};
+
+    print 'data_' .  $dataname . '_' . fileparse($0) . "\n";
+
+    print '_space_group_name_H-M_alt   \'P 1\'' . "\n";
+
+    # print unit cell lengths and angles
+    foreach ( qw( _cell_angle_alpha
+                  _cell_angle_beta
+                  _cell_angle_gamma ) )
+    {
+        if( defined $values->{$_}[0] ) {
+            print $_ . '   ' . $values->{$_}[0] . "\n";
+        }
+    }
+
+    foreach ( qw( _cell_length_a
+                  _cell_length_b
+                  _cell_length_c ) )
+    {
+        print $_ . '   ' . $values->{$_}[0] . "\n";
+    }
+
+    # print symmetry operator information
+    print 'loop_' . "\n";
+    print '_space_group_symop_id' . "\n";
+    print '_space_group_symop_operation_xyz' . "\n";
+    print '1 \'x, y, z\'' . "\n";
+
+    # print atom loop tags
+    print "loop_\n";
+    foreach ( @{$atom_loop_tags} ) {
+        if( '_atom_site_adp_type' ne $_ ) { print $_ . "\n" }
+    }
+
+    foreach ( @{$atom_loop_values} ) {
+        print join ' ', @{$_};
+        print "\n";
+    }
+
+    return;
 }
