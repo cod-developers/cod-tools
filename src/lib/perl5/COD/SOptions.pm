@@ -57,9 +57,9 @@ sub getOptions
         }
 
         if( @matches > 1 ) {
-            local ($", $\) = (', ', "\n");
-            die "$0:: ERROR, option prefix '$args[0]' is not unique -- " .
-                "possible options are @matches.\n";
+            my $matches = join ', ', map { "'$_'" } @matches;
+            die "$0:: ERROR, option prefix '$args[0]' is not unique -- "
+              . "possible options are $matches" . ".\n";
         } elsif( @matches == 1 ) {
             my $var = $options{$matches[0]};
             for( ref( $var )) {
@@ -80,7 +80,6 @@ sub get_value
 {
     my $option = shift @args;
     if( @args == 0 ) {
-        local $\ = "\n";
         die "$0:: ERROR, missing argument to option '$option'.\n";
     }
     return $args[0] =~ /^@/ ?
