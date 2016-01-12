@@ -39,7 +39,7 @@ sub getOptions
     while( @args ) {
 
         if( $args[0] =~ /^@/ ) {
-            splice( @args, 0, 1, interpolateFile( $args[0] ) );
+            splice( @args, 0, 1, interpolate_file( $args[0] ) );
         }
         if( $args[0] !~ /^-/ ) { push( @files, shift( @args )); next; }
         if( $args[0] eq '-'  ) { push( @files, shift( @args )); next; }
@@ -83,7 +83,7 @@ sub get_value
         die "$0:: ERROR, missing argument to option '$option'.\n";
     }
     return $args[0] =~ /^@/ ?
-        scalar( interpolateFile( substr( $args[0], 0 ))) :
+        scalar( interpolate_file( substr( $args[0], 0 ))) :
         $args[0];
 }
 
@@ -137,7 +137,7 @@ sub get_floats
 
 #-----------------------------------------------------------------------------
 
-sub interpolateFile
+sub interpolate_file
 {
     my ($file_name, $option) = @_;
     my $noat_file_name = substr( $file_name, 1 );
