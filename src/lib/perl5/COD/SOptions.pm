@@ -30,20 +30,20 @@ sub getOptions
 {
     my %options = @_;
     my @files = ();
-    @args = map { /^-[-\w]+=/o ? split( '=', $_, 2) : $_ } @ARGV;
+    @args = map { /^-[-\w]+=/o ? split( /=/, $_, 2) : $_ } @ARGV;
 
-    %options = map { my @synonims = split( ',', $_ );
+    %options = map { my @synonims = split( /,/, $_ );
                      my $value = $options{$_};
                      map {($_,$value)} @synonims } keys %options;
 
     while( @args ) {
 
         if( $args[0] =~ /^@/ ) {
-            splice( @args, 0, 1, &interpolateFile( $args[0] ) );
+            splice( @args, 0, 1, interpolateFile( $args[0] ) );
         }
         if( $args[0] !~ /^-/ ) { push( @files, shift( @args )); next; }
-        if( $args[0] eq "-"  ) { push( @files, shift( @args )); next; }
-        if( $args[0] eq "--" ) { shift @args; return ( @files, @args ); }
+        if( $args[0] eq '-'  ) { push( @files, shift( @args )); next; }
+        if( $args[0] eq '--' ) { shift @args; return ( @files, @args ); }
 
         my @matches = ();
         if( exists $options{$args[0]} ) {
@@ -63,10 +63,10 @@ sub getOptions
         } elsif( @matches == 1 ) {
             my $var = $options{$matches[0]};
             for( ref( $var )) {
-                if( /ARRAY/ )  { push( @$var, &get_value); last }
-                if( /HASH/ )   { $$var{$matches[0]} = &get_value; last }
-                if( /SCALAR/ ) { $$var = &get_value; last }
-                if( /CODE/ )   { &$var; last }
+                if( /ARRAY/ )  { push( @{$var}, get_value()); last }
+                if( /HASH/ )   { $var->{$matches[0]} = get_value(); last }
+                if( /SCALAR/ ) { ${$var} = get_value(); last }
+                if( /CODE/ )   { &{$var}; last }
             }
             shift @args;
         } else {
@@ -83,7 +83,7 @@ sub get_value
         die "$0:: ERROR, missing argument to option '$option'.\n";
     }
     return $args[0] =~ /^@/ ?
-        scalar( &interpolateFile( substr( $args[0], 0 ))) :
+        scalar( interpolateFile( substr( $args[0], 0 ))) :
         $args[0];
 }
 
@@ -95,7 +95,7 @@ my $float = '[-+]? (\d+(\.\d*)? | (\.\d+)) ([eE][-+]?\d+)?';
 sub get_int
 {
     my $option = $args[0];
-    my $value = &get_value;
+    my $value = get_value();
     if ( $value !~ /^ \s* $integer \s* $/x ) {
         die "$0:: ERROR, option '$option' requires one integer argument.\n";
     }
@@ -105,7 +105,7 @@ sub get_int
 sub get_float
 {
     my $option = $args[0];
-    my $value = &get_value;
+    my $value = get_value();
     if ( $value !~ /^ \s* $float \s* $/x ) {
         die "$0:: ERROR, option '$option' requires one floating-point "
           . "argument.\n";
@@ -116,7 +116,7 @@ sub get_float
 sub get_ints
 {
     my $option = $args[0];
-    my $value = &get_value;
+    my $value = get_value();
     if ( $value !~ /^ \s* ($integer\s*)+ \s* $/x ) {
         die "$0:: option '$option' requires one or several integer "
           . "arguments.\n";
@@ -127,7 +127,7 @@ sub get_ints
 sub get_floats
 {
     my $option = $args[0];
-    my $value = &get_value;
+    my $value = get_value();
     if ($value !~ /^ \s* ($float\s*)+ \s* $/x) {
         die "$0, option '$option' requires one or several floating-point "
           . "arguments.\n";
@@ -182,13 +182,13 @@ sub interpolateFile
                 @file_line
             } else { $_ }
         }
-        grep !/^\s*#|^\s*$/, <VALUE>;
+        grep { !/^\s*#|^\s*$/ } <VALUE>;
         close(VALUE) or
             die "$0: $file_name: ERROR, while closing file after reading -- "
                . lcfirst($!) . ".\n";
         @return;
     } else {
-        my $return = join("", grep !/^\s*#/, <VALUE>);
+        my $return = join('', grep { !/^\s*#/ } <VALUE>);
         close(VALUE) or
             die "$0: $file_name: ERROR, while closing file after reading -- "
                . lcfirst($!) . ".\n";
