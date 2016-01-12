@@ -129,7 +129,7 @@ sub get_floats
     my $option = $args[0];
     my $value = get_value();
     if ($value !~ /^ \s* (?:$float\s*)+ \s* $/x) {
-        die "$0: ERROR, option '$option' requires one or several "
+        die "$0:: ERROR, option '$option' requires one or several "
           . "floating-point arguments.\n";
     }
     return $value;
