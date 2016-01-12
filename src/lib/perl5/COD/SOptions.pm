@@ -14,7 +14,7 @@ use strict;
 use warnings;
 
 require Exporter;
-our @ISA = qw( Exporter) ;
+our @ISA = qw( Exporter );
 our @EXPORT_OK = qw(
     getOptions
     get_value
@@ -38,7 +38,7 @@ sub getOptions
 
     while( @args ) {
 
-        if( $args[0] =~ /^@/ ) { 
+        if( $args[0] =~ /^@/ ) {
             splice( @args, 0, 1, &interpolateFile( $args[0] ) );
         }
         if( $args[0] !~ /^-/ ) { push( @files, shift( @args )); next; }
@@ -156,7 +156,7 @@ sub interpolateFile
               . "'$option'.\n";
         }
     };
-    if( wantarray ) { 
+    if( wantarray ) {
         my @return = map {
             chomp($_);
             s/\s*$//;
@@ -178,10 +178,10 @@ sub interpolateFile
                 # correctly:
                 # '--option "1 2 3"' will be interpreted as --option with
                 # an argument '1 2 3'
-                $file_line[1] =~ s/^\s*['"]?|["']?\s*$//g 
+                $file_line[1] =~ s/^\s*['"]?|["']?\s*$//g
                     if $file_line[1];
                 @file_line
-            } else { $_ } 
+            } else { $_ }
         }
         grep !/^\s*#|^\s*$/, <VALUE>;
         close(VALUE) or
