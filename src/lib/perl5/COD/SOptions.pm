@@ -186,14 +186,14 @@ sub interpolate_file
         close(VALUE) or
             die "$0: $file_name: ERROR, while closing file after reading -- "
                . lcfirst($!) . ".\n";
-        @return;
+        return @return;
     } else {
         my $return = join('', grep { !/^\s*#/ } <VALUE>);
         close(VALUE) or
             die "$0: $file_name: ERROR, while closing file after reading -- "
                . lcfirst($!) . ".\n";
         chomp $return;
-        $return;
+        return $return;
     }
 }
 
