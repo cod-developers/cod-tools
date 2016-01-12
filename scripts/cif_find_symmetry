@@ -37,7 +37,8 @@ use COD::Serialise qw( serialiseRef );
 use COD::Spacegroups::Lookup::COD qw( @table @extra_settings );
 use COD::Spacegroups::Symop::Algebra qw( flush_zeros_in_symop
                                          symop_det
-                                         symop_mul );
+                                         symop_mul
+                                         symop_transpose );
 use COD::Spacegroups::Symop::Parse qw( string_from_symop );
 use COD::SOptions qw( getOptions get_value );
 use COD::SPGLib qw( get_sym_dataset );
@@ -196,9 +197,11 @@ sub find_symmetry_spglib
     my $values = $dataset->{values};
 
     my @cell = get_cell( $values );
-    my @lattice = ( [ ortho_from_fract( \@cell, 1, 0, 0 ) ],
-                    [ ortho_from_fract( \@cell, 0, 1, 0 ) ],
-                    [ ortho_from_fract( \@cell, 0, 0, 1 ) ] );
+    my $lattice = symop_transpose( [
+        [ ortho_from_fract( \@cell, 1, 0, 0 ) ],
+        [ ortho_from_fract( \@cell, 0, 1, 0 ) ],
+        [ ortho_from_fract( \@cell, 0, 0, 1 ) ]
+    ] );
 
     my $atoms = atom_array_from_cif( $dataset, {} );
 
@@ -206,7 +209,7 @@ sub find_symmetry_spglib
     my @types = map { $COD::AtomProperties::atoms{$_->{chemical_type}}->{atomic_number} }
                     @$atoms;
 
-    my $sym = get_sym_dataset( \@lattice,
+    my $sym = get_sym_dataset( $lattice,
                                \@positions,
                                \@types,
                                $symprec );
@@ -219,7 +222,7 @@ sub find_symmetry_spglib
             $CoB = mat3_inv( $CoB );
         }
 
-        my $lattice_now = symop_mul( \@lattice, $CoB );
+        my $lattice_now = symop_mul( $lattice, $CoB );
 
         my $a = [ $lattice_now->[0][0],
                   $lattice_now->[1][0],
