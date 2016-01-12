@@ -148,17 +148,27 @@ sub interpolate_file
     } elsif( !-f $file_name ) {
         $file_name = $noat_file_name;
     }
-    open( VALUE, $file_name ) or do {
+
+    open( my $file, '<', $file_name ) or do {
         die "$0: $file_name: ERROR, could not open file -- " . lcfirst($!)
           . ( $option
                ? ". The filename was given as an argument for option '$option'"
                : '' ) . ".\n";
     };
+
+    my @lines = <$file>;
+
+    close($file) or
+        die "$0: $file_name: ERROR, while closing file after reading -- "
+          . lcfirst($!) . ".\n";
+
+
     if( wantarray ) {
         my @return = map {
             chomp($_);
             s/\s*$//;
             if( /^\s*-/ ) {
+
                 my @file_line =
                     # split option/value pairs with '=':
                     # '--option=value' becomes '--option value':
@@ -181,16 +191,11 @@ sub interpolate_file
                 @file_line
             } else { $_ }
         }
-        grep { !/^\s*#|^\s*$/ } <VALUE>;
-        close(VALUE) or
-            die "$0: $file_name: ERROR, while closing file after reading -- "
-               . lcfirst($!) . ".\n";
+        grep { !/^\s*#|^\s*$/ } @lines;
+
         return @return;
     } else {
-        my $return = join('', grep { !/^\s*#/ } <VALUE>);
-        close(VALUE) or
-            die "$0: $file_name: ERROR, while closing file after reading -- "
-               . lcfirst($!) . ".\n";
+        my $return = join('', grep { !/^\s*#/ } @lines);
         chomp $return;
         return $return;
     }
