@@ -156,19 +156,12 @@ sub interpolate_file
                : '' ) . ".\n";
     };
 
-    my @lines = <$file>;
-
-    close($file) or
-        die "$0: $file_name: ERROR, while closing file after reading -- "
-          . lcfirst($!) . ".\n";
-
-
+    my $return;
     if( wantarray ) {
-        my @return = map {
+        foreach ( grep { !/^\s*#|^\s*$/ } <$file> ) {
             chomp($_);
             s/\s*$//;
             if( /^\s*-/ ) {
-
                 my @file_line =
                     # split option/value pairs with '=':
                     # '--option=value' becomes '--option value':
@@ -176,7 +169,7 @@ sub interpolate_file
                         split(/=/,$_, 2) : split(' ',$_, 2);
 
                 # remove trailing spaces from the option name, if any:
-                $file_line[0] =~ s/\s+$//g if $file_line[0];
+                if ( $file_line[0] ) { $file_line[0] =~ s/\s+$//g };
 
                 # remove quotes around the option values, to emulate
                 # shell behaviour:
@@ -186,19 +179,26 @@ sub interpolate_file
                 # correctly:
                 # '--option "1 2 3"' will be interpreted as --option with
                 # an argument '1 2 3'
-                $file_line[1] =~ s/^\s*['"]?|["']?\s*$//g
-                    if $file_line[1];
-                @file_line
-            } else { $_ }
-        }
-        grep { !/^\s*#|^\s*$/ } @lines;
+                if ( $file_line[1] ) {
+                    $file_line[1] =~ s/^\s*['"]?|["']?\s*$//g
+                };
 
-        return @return;
+                push @{$return}, @file_line
+            } else {
+                push @{$return}, $_
+            }
+        }
     } else {
-        my $return = join('', grep { !/^\s*#/ } @lines);
+        $return = join('', grep { !/^\s*#/ } <$file>);
         chomp $return;
         return $return;
     }
+
+    close($file) or
+        die "$0: $file_name: ERROR, while closing file after reading -- "
+          . lcfirst($!) . ".\n";
+
+    return wantarray ? @{$return} : $return;
 }
 
 1;
