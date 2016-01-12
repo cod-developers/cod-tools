@@ -41,15 +41,15 @@ sub getOptions
         if( $args[0] =~ /^@/ ) {
             splice( @args, 0, 1, interpolate_file( $args[0] ) );
         }
-        if( $args[0] !~ /^-/ ) { push( @files, shift( @args )); next; }
-        if( $args[0] eq '-'  ) { push( @files, shift( @args )); next; }
+        if( $args[0] !~ /^-/ ) { push( @files, shift( @args ) ); next; }
+        if( $args[0] eq '-'  ) { push( @files, shift( @args ) ); next; }
         if( $args[0] eq '--' ) { shift @args; return ( @files, @args ); }
 
         my @matches = ();
         if( exists $options{$args[0]} ) {
             @matches = ( $args[0] );
         } elsif( $args[0] !~ /^-[^-]/ ) {
-            foreach ( keys( %options )) {
+            foreach ( keys( %options ) ) {
                 if( /^\Q$args[0]\E/ ) {
                     push( @matches, $_ );
                 }
@@ -62,8 +62,8 @@ sub getOptions
               . "possible options are $matches" . ".\n";
         } elsif( @matches == 1 ) {
             my $var = $options{$matches[0]};
-            for( ref( $var )) {
-                if( /ARRAY/ )  { push( @{$var}, get_value()); last }
+            for( ref( $var ) ) {
+                if( /ARRAY/ )  { push( @{$var}, get_value() ); last }
                 if( /HASH/ )   { $var->{$matches[0]} = get_value(); last }
                 if( /SCALAR/ ) { ${$var} = get_value(); last }
                 if( /CODE/ )   { &{$var}; last }
@@ -83,7 +83,7 @@ sub get_value
         die "$0:: ERROR, missing argument to option '$option'.\n";
     }
     return $args[0] =~ /^@/ ?
-        scalar( interpolate_file( substr( $args[0], 0), $option )) :
+        scalar( interpolate_file( substr( $args[0], 0 ), $option ) ) :
         $args[0];
 }
 
@@ -183,9 +183,9 @@ sub interpolate_file
                     $file_line[1] =~ s/^\s*['"]?|["']?\s*$//g
                 };
 
-                push @{$return}, @file_line
+                push @{$return}, @file_line;
             } else {
-                push @{$return}, $_
+                push @{$return}, $_;
             }
         }
     } else {
