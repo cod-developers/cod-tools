@@ -191,7 +191,6 @@ sub interpolate_file
     } else {
         $return = join('', grep { !/^\s*#/ } <$file>);
         chomp $return;
-        return $return;
     }
 
     close($file) or
