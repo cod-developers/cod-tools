@@ -83,7 +83,7 @@ sub get_value
         die "$0:: ERROR, missing argument to option '$option'.\n";
     }
     return $args[0] =~ /^@/ ?
-        scalar( interpolate_file( substr( $args[0], 0 ))) :
+        scalar( interpolate_file( substr( $args[0], 0), $option )) :
         $args[0];
 }
 
@@ -149,11 +149,10 @@ sub interpolate_file
         $file_name = $noat_file_name;
     }
     open( VALUE, $file_name ) or do {
-        if ( $option ) {
-            die "$0: $file_name: ERROR, could not open file -- " . lcfirst($!)
-              . '. The filename was given as an argument for option '
-              . "'$option'.\n";
-        }
+        die "$0: $file_name: ERROR, could not open file -- " . lcfirst($!)
+          . ( $option
+               ? ". The filename was given as an argument for option '$option'"
+               : '' ) . ".\n";
     };
     if( wantarray ) {
         my @return = map {
