@@ -30,9 +30,9 @@ sub getOptions
 {
     my %options = @_;
     my @files = ();
-    @args = map { /^-[-\w]+=/o ? split( "=", $_, 2) : $_ } @ARGV;
+    @args = map { /^-[-\w]+=/o ? split( '=', $_, 2) : $_ } @ARGV;
 
-    %options = map { my @synonims = split( ",", $_ );
+    %options = map { my @synonims = split( ',', $_ );
                      my $value = $options{$_};
                      map {($_,$value)} @synonims } keys %options;
 
@@ -57,10 +57,9 @@ sub getOptions
         }
 
         if( @matches > 1 ) {
-            local ($", $\) = (", ", "\n");
-            print STDERR "$0: Option prefix '$args[0]' is not uniq:";
-            print STDERR "possible options are @matches";
-            die;
+            local ($", $\) = (', ', "\n");
+            die "$0:: ERROR, option prefix '$args[0]' is not unique -- " .
+                "possible options are @matches.\n";
         } elsif( @matches == 1 ) {
             my $var = $options{$matches[0]};
             for( ref( $var )) {
@@ -71,9 +70,9 @@ sub getOptions
             }
             shift @args;
         } else {
-            die( "$0: unknown option $args[0]\n" );
+            die "$0:: ERROR, unknown option '$args[0]'.\n";
         }
-    } # while 
+    } # while
     return @files;
 }
 
@@ -82,8 +81,7 @@ sub get_value
     my $option = shift @args;
     if( @args == 0 ) {
         local $\ = "\n";
-        print( STDERR "missing argument to option $option for $0");
-        die;
+        die "$0:: ERROR, missing argument to option '$option'.\n";
     }
     return $args[0] =~ /^@/ ?
         scalar( &interpolateFile( substr( $args[0], 0 ))) :
@@ -99,8 +97,9 @@ sub get_int
 {
     my $option = $args[0];
     my $value = &get_value;
-    die( "Option $option requires one integer argument\n" )
-        if $value !~ /^ \s* $integer \s* $/x;
+    if ( $value !~ /^ \s* $integer \s* $/x ) {
+        die "$0:: ERROR, option '$option' requires one integer argument.\n";
+    }
     return $value;
 }
 
@@ -108,8 +107,10 @@ sub get_float
 {
     my $option = $args[0];
     my $value = &get_value;
-    die( "Option $option requires one floating-point argument\n" )
-        if $value !~ /^ \s* $float \s* $/x;
+    if ( $value !~ /^ \s* $float \s* $/x ) {
+        die "$0:: ERROR, option '$option' requires one floating-point "
+          . "argument.\n";
+    }
     return $value;
 }
 
@@ -117,8 +118,10 @@ sub get_ints
 {
     my $option = $args[0];
     my $value = &get_value;
-    die( "Option $option requires one or several integer arguments\n" )
-        if $value !~ /^ \s* ($integer\s*)+ \s* $/x;
+    if ( $value !~ /^ \s* ($integer\s*)+ \s* $/x ) {
+        die "$0:: option '$option' requires one or several integer "
+          . "arguments.\n";
+    }
     return $value;
 }
 
@@ -126,8 +129,10 @@ sub get_floats
 {
     my $option = $args[0];
     my $value = &get_value;
-    die( "Option $option requires one or several floating-point argument\n" )
-        if $value !~ /^ \s* ($float\s*)+ \s* $/x;
+    if ($value !~ /^ \s* ($float\s*)+ \s* $/x) {
+        die "$0, option '$option' requires one or several floating-point "
+          . "arguments.\n";
+    }
     return $value;
 }
 
@@ -139,17 +144,17 @@ sub interpolateFile
     my $noat_file_name = substr( $file_name, 1 );
 
     if( -f $noat_file_name && -f $file_name ) {
-        warn( "$0: WARNING: ".
-              "both '$noat_file_name' and '$file_name' exist:\n" );
-        warn( "$0: taking options from '$file_name'" );
+        warn "$0:: WARNING, both '$noat_file_name' and '$file_name' files "
+           . "exist -- taking options from file '$file_name'.\n";
     } elsif( !-f $file_name ) {
         $file_name = $noat_file_name;
     }
     open( VALUE, $file_name ) or do {
-        print STDERR "Could not open file '$file_name': $!\n";
-        print STDERR "(the file was an argument for option $option of $0)\n" 
-            if $option;
-        die;
+        if ( $option ) {
+            die "$0: $file_name: ERROR, could not open file -- " . lcfirst($!)
+              . '. The filename was given as an argument for option '
+              . "'$option'.\n";
+        }
     };
     if( wantarray ) { 
         my @return = map {
@@ -179,11 +184,15 @@ sub interpolateFile
             } else { $_ } 
         }
         grep !/^\s*#|^\s*$/, <VALUE>;
-        close(VALUE) or die("Error reading $file_name: $!");
+        close(VALUE) or
+            die "$0: $file_name: ERROR, while closing file after reading -- "
+               . lcfirst($!) . ".\n";
         @return;
     } else {
         my $return = join("", grep !/^\s*#/, <VALUE>);
-        close(VALUE) or die("Error reading $file_name: $!");
+        close(VALUE) or
+            die "$0: $file_name: ERROR, while closing file after reading -- "
+               . lcfirst($!) . ".\n";
         chomp $return;
         $return;
     }
