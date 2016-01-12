@@ -172,6 +172,28 @@ SV* get_sym_dataset( SV* lattice_ref, SV* atom_positions_ref, SV* types_ref,
         av_push( symops, newRV_noinc((SV*) symop ) );
     }
 
+    AV *std_lattice = newAV();
+    for( i = 0; i < 3; i++ ) {
+        AV *matrix_line = newAV();
+        for( j = 0; j < 3; j++ ) {
+            av_push( matrix_line,
+                     newSVnv( dataset->std_lattice[i][j] ) );
+        }
+        av_push( std_lattice, newRV_noinc((SV*) matrix_line ) );
+    }
+
+    AV *std_positions = newAV();
+    AV *std_types = newAV();
+    for( k = 0; k < dataset->n_std_atoms; k++ ) {
+        AV *matrix_line = newAV();
+        for( i = 0; i < 3; i++ ) {
+            av_push( matrix_line,
+                     newSVnv( dataset->std_positions[k][i] ) );
+        }
+        av_push( std_positions, newRV_noinc((SV*) matrix_line ) );
+        av_push( std_types, newSViv( dataset->std_types[k] ) );
+    }
+
     HV *dataset_hv = newHV();
     hv_put( dataset_hv, "number",
             newSViv( dataset->spacegroup_number ) );
@@ -186,6 +208,11 @@ SV* get_sym_dataset( SV* lattice_ref, SV* atom_positions_ref, SV* types_ref,
     hv_put( dataset_hv, "equivalent_atoms",
             newRV_noinc((SV*) equivalents) );
     hv_put( dataset_hv, "symops", newRV_noinc((SV*) symops) );
+    hv_put( dataset_hv, "std_lattice",
+            newRV_noinc((SV*) std_lattice) );
+    hv_put( dataset_hv, "std_types", newRV_noinc((SV*) std_types) );
+    hv_put( dataset_hv, "std_positions",
+            newRV_noinc((SV*) std_positions) );
 
     spg_free_dataset( dataset );
 
