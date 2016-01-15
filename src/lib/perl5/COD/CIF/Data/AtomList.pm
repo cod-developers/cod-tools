@@ -25,7 +25,9 @@ use COD::AtomProperties;
 require Exporter;
 our @ISA = qw( Exporter );
 our @EXPORT_OK = qw(
+    assemblies
     atom_array_from_cif
+    atom_groups
     atom_is_disordered
     atoms_are_alternative
     copy_atom
@@ -510,6 +512,194 @@ sub uniquify_atom_names($$)
     }
 
     return \@checked_initial_atoms;
+}
+
+#============================================================================= #
+# It's a function where atom groups are made according disorder information. If
+# there is only one disorder assembly then all possible atom groups will be
+# generated. If there is more then one disorder assembly, decision will be made
+# according the following example:
+# an assembly disorder A has three disorder groups and B - two. Then the
+# following groups will be made: (1,1) (2,2) (3,2).
+
+# Accepts
+#   initial_atoms - an array of references to
+#   $atom_info = {
+#               site_label=>"C1",
+#               name=>"C1_2",
+#               chemical_type=>"C",
+#               coordinates_fract=>[1.0, 1.0, 1.0],
+#               unity_matrix_applied=>1,
+#               assembly=>"A", # "."
+#               group=>"1", # "."
+#              }
+# Returns
+#   groups - an array of references to arrays of references to
+#   $atom_info = {
+#               site_label=>"C1",
+#               name=>"C1_2",
+#               chemical_type=>"C",
+#               coordinates_fract=>[1.0, 1.0, 1.0],
+#               unity_matrix_applied=>1,
+#               assembly=>"A", # "."
+#               group=>"1", # "."
+#              }
+# These arrays of references are generated atom groups.
+
+sub atom_groups
+{
+    my ($initial_atoms) = @_;
+
+    my $assemblies = assemblies($initial_atoms);
+
+    if( 0 ) {
+        for my $assembly (keys %$assemblies) {
+            print ">>> Assembly: $assembly\n";
+            foreach my $group (@{$assemblies->{$assembly}}) {
+                print ">>> group: $group ";
+            }
+            print "\n";
+        }
+    }
+
+    if((keys %$assemblies) == 0)
+    {
+        my @one_assembly;
+        push(@one_assembly, $initial_atoms);
+        return \@one_assembly;
+    }
+
+    my @keys = sort { ($a eq ".") ? -1 : ($b eq ".") ? 1 : $a cmp $b }
+               keys %$assemblies;
+    my @atom_groups;
+
+    if(@keys == 1)
+    {
+        my $assembly = $keys[0];
+        my $groups = $assemblies->{$assembly};
+
+        foreach my $group (@$groups)
+        {
+            my @tmp_group;
+            foreach my $atom (@$initial_atoms)
+            {
+                if($atom->{group} eq $group && $atom->{assembly} eq $assembly)
+                {
+                    push(@tmp_group, $atom);
+                }
+            }
+            push(@atom_groups, \@tmp_group);
+        }
+    }
+    else
+    {
+        my $iteration_number = 0;
+
+        foreach my $assembly (@keys)
+        {
+            my $groups = $assemblies->{$assembly};
+            if($iteration_number < @$groups)
+            {
+                $iteration_number = @$groups;
+            }
+        }
+
+        for(my $i = 0; $i < $iteration_number; $i++)
+        {
+            my @group;
+            foreach my $assembly (@keys)
+            {
+                my $groups = $assemblies->{$assembly};
+                my $atom_group;
+                if($i < @$groups)
+                {
+                    $atom_group = $$groups[$i];
+                }
+                else
+                {
+                    $atom_group = $$groups[-1];
+                }
+
+                foreach my $atom (@$initial_atoms)
+                {
+                    if($atom->{group} eq $atom_group &&
+                                    $atom->{assembly} eq $assembly)
+                    {
+                        push(@group, $atom);
+                    }
+                }
+            }
+            push(@atom_groups, \@group);
+        }
+    }
+
+    # Appends those atoms which do not belong to any group or assembly
+
+    my @independent_atoms;
+    foreach my $atom (@$initial_atoms)
+    {
+        if($atom->{group} eq ".")
+        {
+            push(@independent_atoms, $atom);
+        }
+    }
+
+    foreach my $group (@atom_groups)
+    {
+        push(@$group, @independent_atoms);
+    }
+
+    return \@atom_groups;
+}
+
+# ============================================================================ #
+# Returns a hash of all possible assemblies and groups:
+# %assemblies = ( A => [1,2,3],
+#                 . => [1,2]);
+
+sub assemblies
+{
+    my ($init_atoms) = @_;
+
+    my %assemblies;
+
+    foreach my $atom (@$init_atoms)
+    {
+        if(not exists $assemblies{$atom->{assembly}})
+        {
+            my @groups;
+            $assemblies{$atom->{assembly}} = \@groups;
+        }
+    }
+
+    my @keys = sort { ($a eq ".") ? -1 : ($b eq ".") ? 1 : $a cmp $b }
+               keys %assemblies;
+
+    for my $assembly (@keys)
+    {
+        my %unique_groups;
+
+        foreach my $atom (@$init_atoms)
+        {
+            if((not exists $unique_groups{$atom->{group}}) &&
+               ($assembly eq $atom->{assembly}) &&
+               ($atom->{group} ne "."))
+            {
+                $unique_groups{$atom->{group}} = $atom->{group};
+                push(@{$assemblies{$assembly}}, $atom->{group});
+            }
+        }
+    }
+
+    for my $assembly (@keys)
+    {
+        if(@{$assemblies{$assembly}} == 0)
+        {
+            delete $assemblies{$assembly};
+        }
+    }
+
+   return \%assemblies;
 }
 
 # ============================================================================ #
