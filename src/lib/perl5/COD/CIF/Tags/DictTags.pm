@@ -7,7 +7,7 @@
 #* 
 #  A list of CIF dictionary tags.
 #
-#  Contains at least all tags from Core CIF dictionary Version 2.4.4
+#  Contains at least all tags from Core CIF dictionary Version 2.4.5
 #**
 
 package COD::CIF::Tags::DictTags;
@@ -32,6 +32,7 @@ _publ_author_footnote
 _publ_author.footnote
 _publ_author_id_iucr
 _publ_author.id_iucr
+_publ_author_id_orcid
 _publ_author_name
 _publ_author.name
 _publ_body_[]
@@ -54,6 +55,7 @@ _publ.contact_author_email
 _publ_contact_author_fax
 _publ.contact_author_fax
 _publ_contact_author_id_iucr
+_publ_contact_author_id_orcid
 _publ_contact_author_name
 _publ.contact_author_name
 _publ_contact_author_phone
@@ -841,6 +843,7 @@ _audit_author.address
 _audit_author_name
 _audit_author.name
 _audit_block_code
+_audit_block_doi
 _audit_conform_[]
 _audit_conform_dict_location
 _audit_conform.dict_location
@@ -1300,6 +1303,7 @@ _citation.database_id_CSD
 _citation_database_id_Medline
 _citation.database_id_Medline
 _citation.details
+_citation_doi
 _citation_editor_[]
 _citation_editor_citation_id
 _citation_editor.citation_id
@@ -1329,6 +1333,7 @@ _citation_page_first
 _citation.page_first
 _citation_page_last
 _citation.page_last
+_citation_publisher
 _citation_special_details
 _citation_title
 _citation.title
@@ -1379,6 +1384,7 @@ _database_code_amcsd
 _database.code_amcsd
 _database_CSD_history
 _database.CSD_history
+_database_dataset_doi
 _database.entry_id
 _database_journal_ASTM
 _database.journal_ASTM
@@ -1679,8 +1685,8 @@ _diffrn_reflns_av_sigmaI/netI
 _diffrn_reflns.av_sigmaI_over_netI
 _diffrn_reflns_av_unetI/netI
 _diffrn_reflns.av_unetI/netI
-_diffrn_reflns_laue_measured_fraction_full
-_diffrn_reflns_laue_measured_fraction_max
+_diffrn_reflns_Laue_measured_fraction_full
+_diffrn_reflns_Laue_measured_fraction_max
 _diffrn_refln_scale_group_code
 _diffrn_refln.scale_group_code
 _diffrn_refln_scan_mode
@@ -3171,8 +3177,8 @@ _reflns_d_resolution_low_pm
 _reflns.entry_id
 _reflns_Friedel_coverage
 _reflns.Friedel_coverage
-_reflns_friedel_fraction_full
-_reflns_friedel_fraction_max
+_reflns_Friedel_fraction_full
+_reflns_Friedel_fraction_max
 _refln_sint/lambda
 _refln_sint/lambda_nm
 _refln_sint/lambda_pm
