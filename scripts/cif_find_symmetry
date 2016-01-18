@@ -50,6 +50,16 @@ my $symprec = 1e-5;
 my $dump_symmetry_dataset = 0;
 my $invert_CoB = 1;
 
+if( $COD::SPGLib::spglib_version =~ /^0\./ ||
+    $COD::SPGLib::spglib_version =~ /^1\.[1234567]\./ ||
+    $COD::SPGLib::spglib_version eq '1.8' ) {
+    # Prior to spglib version 1.8.1, spglib-provided change-of-basis
+    # matrix was used to obtain cell constants and atomic positions.
+    # Starting with 1.8.1 the change-of-basis matrix has to be inverted
+    # before obtaining cell constants and atomic positions.
+    $invert_CoB = 0;
+}
+
 # Format for floating point numbers:
 my $fformat = "%.12g";
 
@@ -88,16 +98,6 @@ my @cell_tags = qw(
 #*        Use spglib for symmetry search. Currently, spglib is the only
 #*        implemented method.
 #*
-#*    --invert-CoB
-#*        (spglib) Invert change-of-basis matrix after getting it from
-#*        spglib. This option has to be used to obtain correct cell
-#*        constants and atomic positions with spglib >= 1.8.1 (default).
-#*
-#*    --dont-invert-CoB, --no-invert-CoB
-#*        (spglib) Use spglib-provided change-of-basis matrix. This option
-#*        has to be used to obtain correct cell constants and atomic
-#*        positions with spglib 1.8 or earlier.
-#*
 #*     -F, --float-format "%.12g"
 #*        Specify format to print out floating point numbers.
 #*
@@ -123,10 +123,6 @@ my @cell_tags = qw(
     '--precision,--symmetry-precision' => \$symprec,
 
     '--use-spglib' => sub { $findsym_method = 'spglib' },
-
-    '--invert-CoB'      => sub { $invert_CoB = 1 },
-    '--dont-invert-CoB' => sub { $invert_CoB = 0 },
-    '--no-invert-CoB'   => sub { $invert_CoB = 0 },
 
     "-F,--float-format" => \$fformat,
 
