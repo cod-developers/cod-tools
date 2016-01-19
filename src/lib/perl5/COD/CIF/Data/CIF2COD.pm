@@ -1,6 +1,6 @@
 #------------------------------------------------------------------------------
 #$Author$
-#$Date$ 
+#$Date$
 #$Revision$
 #$URL$
 #------------------------------------------------------------------------------
@@ -39,7 +39,7 @@ my $print_keywords = 0;
 
 my $cod_number;
 
-# The default sql table data field that was taken from the 
+# The default sql table data field that was taken from the
 # cod-add-data.sh script.
 
 our @default_data_fields = qw (
@@ -179,7 +179,7 @@ my %spacegroups = map {
 
 sub cif2cod
 {
-    my( $dataset, $filename, $options ) = @_;
+    my( $dataset, $options ) = @_;
 
     $options = {} unless defined $options;
     $cod_number = $options->{cod_number}
@@ -234,8 +234,7 @@ sub cif2cod
         } else {
             ${$opt_biblio_tags{$tag}} = get_tag( $values,
                                                  $tag,
-                                                 0,
-                                                 $filename );
+                                                 0 );
         }
     }
 
@@ -258,11 +257,11 @@ sub cif2cod
 
     my $text = join( '\n', map { cif2unicode($_) }
                      ( $authors, $title, $journal, $volume .
-                       ( $issue? ( $volume ? "($issue)" : 
+                       ( $issue? ( $volume ? "($issue)" :
                                    "(issue $issue)") : "" ),
                        "(" . $year . ")",
                        ( $last_page ? $first_page . "-" . $last_page :
-                         $first_page )) 
+                         $first_page ))
                    );
 
     my $diffr_temperature =
@@ -329,7 +328,7 @@ sub cif2cod
     $mineral_name = cif2unicode($mineral_name)
         if defined $mineral_name;
 
-    my $formula = get_tag( $values, "_chemical_formula_sum", 0, $filename );
+    my $formula = get_tag( $values, "_chemical_formula_sum", 0 );
 
     undef $formula if $formula =~ /^\s*\?\s*$/;
 
@@ -384,8 +383,8 @@ sub cif2cod
         get_tag_or_undef( $values, "_exptl_crystal_pressure_history", 0 );
 
     $data{nel} = $nel;
-    $data{sg} = get_spacegroup_info( $values, $filename, $dataset );
-    $data{sgHall} = get_spacegroup_Hall_symbol( $values, $filename, $dataset );
+    $data{sg} = get_spacegroup_info( $values );
+    $data{sgHall} = get_spacegroup_Hall_symbol( $values );
     $data{commonname} = $common_name;
     $data{chemname} = $systematic_name;
     $data{mineral} = $mineral_name;
@@ -396,10 +395,10 @@ sub cif2cod
     $data{Zprime} = compute_Zprime( $data{Z}, $data{sg} );
 
     if( exists $values->{_journal_coeditor_code} ) {
-        $data{acce_code} = uc( get_tag_or_undef( $values, 
+        $data{acce_code} = uc( get_tag_or_undef( $values,
                                "_journal_coeditor_code", 0 ));
     } elsif( exists $values->{"_journal.coeditor_code"} ) {
-        $data{acce_code} = uc( get_tag_or_undef( $values, 
+        $data{acce_code} = uc( get_tag_or_undef( $values,
                                "_journal.coeditor_code", 0 ));
     } elsif( $journal =~ /^Acta Cryst/ &&
              exists $values->{"_[local]_cod_data_source_file"} ||
@@ -550,7 +549,7 @@ sub count_number_of_elements
 
 sub get_num
 {
-    my ($values, $tag, $index, $filename) = @_;
+    my ($values, $tag, $index ) = @_;
 
     return filter_num( &get_tag );
 }
@@ -578,19 +577,19 @@ sub get_tag
 
 sub get_tag_silently
 {
-    push( @_, (undef, 1) );
+    push( @_, 1 );
     &get_and_check_tag;
 }
 
 sub get_tag_or_undef
 {
-    push( @_, (undef, 2) );
+    push( @_, 2 );
     &get_and_check_tag;
 }
 
 sub get_and_check_tag
 {
-    my ( $values, $tag, $index, $filename, $ignore_errors ) = @_;
+    my ( $values, $tag, $index, $ignore_errors ) = @_;
 
     if( ref $values eq "HASH" ) {
         if( exists $values->{$tag} && ref $values->{$tag} eq "ARRAY" ) {
@@ -620,8 +619,8 @@ sub get_and_check_tag
 
 sub get_spacegroup_info
 {
-    my ($values, $filename, $dataset) = @_;
-    
+    my ($values) = @_;
+
     my @spacegroup_tags = map {lc} qw (
         _space_group_name_H-M_alt
         _space_group.name_H-M_full
@@ -657,8 +656,8 @@ sub get_spacegroup_info
 
 sub get_spacegroup_Hall_symbol
 {
-    my ($values, $filename, $dataset) = @_;
-    
+    my ($values) = @_;
+
     my @spacegroup_tags = map {lc} qw (
         _space_group_name_Hall
         _symmetry_space_group_name_Hall
@@ -713,7 +712,7 @@ sub compute_Zprime
     return undef unless defined $spacegroup_H_M;
 
     use COD::Spacegroups::Lookup::COD;
-    my @sg_description = 
+    my @sg_description =
         grep { $spacegroup_H_M eq $_->{universal_h_m} }
              @COD::Spacegroups::Lookup::COD::table;
 

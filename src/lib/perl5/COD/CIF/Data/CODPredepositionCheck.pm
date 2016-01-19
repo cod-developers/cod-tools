@@ -1,6 +1,6 @@
 #------------------------------------------------------------------------------
 #$Author$
-#$Date$ 
+#$Date$
 #$Revision$
 #$URL$
 #------------------------------------------------------------------------------
@@ -756,7 +756,7 @@ sub filter_and_check
 
             my $extracted_dataset;
             eval {
-                $extracted_dataset = cif2cod( $dataset, $cif_filename );
+                $extracted_dataset = cif2cod( $dataset );
             };
             push @extracted, $extracted_dataset if defined $extracted_dataset;
         }
