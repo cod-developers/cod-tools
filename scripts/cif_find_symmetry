@@ -260,19 +260,33 @@ sub find_symmetry_spglib
         }
 
         my $spacegroup = $sym->{international_symbol};
-        if( $sym->{setting} !~ /^ +$/ ) {
-            my $setting = $sym->{setting};
-            $setting =~ s/\s//g;
-            $spacegroup .= ":$setting";
+        my $setting = $sym->{setting};
+        $setting =~ s/\s//g;
+        $setting = ":$setting" if $setting;
+
+        my $spacegroup_info;
+        if( $setting && exists $spacegroups{$spacegroup . $setting} ) {
+            $spacegroup_info =
+                lookup_spacegroup( 'universal_h_m',
+                                    $spacegroups{$spacegroup . $setting} );
         }
 
-        if( !exists $spacegroups{$spacegroup} ) {
-            die 'ERROR, spacegroup symbol ' .
-                "'$spacegroup' is not recognised\n";
+        if( !$spacegroup_info && exists $spacegroups{$spacegroup} ) {
+            $spacegroup_info =
+                lookup_spacegroup( 'universal_h_m',
+                                    $spacegroups{$spacegroup} );
         }
 
-        my $spacegroup_info =
-            lookup_spacegroup( 'universal_h_m', $spacegroups{$spacegroup} );
+
+        if( !$spacegroup_info ) {
+            if( $setting ) {
+                die "ERROR, neither space group symbol '$spacegroup', " .
+                    "nor '$spacegroup$setting' is recognised\n";
+            } else {
+                die 'ERROR, spacegroup symbol ' .
+                    "'$spacegroup' is not recognised\n";
+            }
+        }
 
         set_tag( $dataset, '_symmetry_space_group_name_H-M',
                  $spacegroup_info->{hermann_mauguin} );
