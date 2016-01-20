@@ -34,6 +34,7 @@ use COD::ErrorHandler qw( process_parser_messages report_message );
 use COD::Fractional qw( ortho_from_fract );
 use COD::Serialise qw( serialiseRef );
 use COD::Spacegroups::Lookup::COD qw( @table @extra_settings );
+use COD::Spacegroups::Names qw( @names );
 use COD::Spacegroups::Symop::Algebra qw( flush_zeros_in_symop
                                          symop_det
                                          symop_mul
@@ -136,6 +137,17 @@ my @cell_tags = qw(
     '--options'      => sub { options; exit },
     '--help,--usage' => sub { usage; exit }
 );
+
+my %spacegroups =
+    map {
+        my $key1 = $_->[1];
+        my $key2 = $_->[2];
+        $key1 =~ s/\s//g;
+        $key2 =~ s/\s//g;
+        ($_->[2], $_->[2], $_->[1], $_->[2], $key1, $_->[2], $key2, $_->[2] ) }
+         @names,
+    map { [ $_->{'number'}, $_->{'hermann_mauguin'}, $_->{'universal_h_m'} ] }
+        @table, @extra_settings;
 
 @ARGV = ( '-' ) unless @ARGV;
 
@@ -247,21 +259,27 @@ sub find_symmetry_spglib
                      $values->{$tag}[0] );
         }
 
-        my $spacegroup_info =
-            lookup_spacegroup( 'hermann_mauguin',
-                               $sym->{international_symbol} );
-
-        if( !$spacegroup_info ) {
-            die 'ERROR, spacegroup symbol ' .
-                "'$sym->{international_symbol}' is not recognised\n";
+        my $spacegroup = $sym->{international_symbol};
+        if( $sym->{setting} !~ /^ +$/ ) {
+            my $setting = $sym->{setting};
+            $setting =~ s/\s//g;
+            $spacegroup .= ":$setting";
         }
+
+        if( !exists $spacegroups{$spacegroup} ) {
+            die 'ERROR, spacegroup symbol ' .
+                "'$spacegroup' is not recognised\n";
+        }
+
+        my $spacegroup_info =
+            lookup_spacegroup( 'universal_h_m', $spacegroups{$spacegroup} );
 
         set_tag( $dataset, '_symmetry_space_group_name_H-M',
                  $spacegroup_info->{hermann_mauguin} );
         set_tag( $dataset, '_symmetry_space_group_name_Hall',
-                 $sym->{hall} );
+                 $spacegroup_info->{hall} );
         set_tag( $dataset, '_space_group_IT_number',
-                 $sym->{number} );
+                 $spacegroup_info->{number} );
 
         for my $tag (qw( _space_group_symop_operation_xyz
                          _symmetry_equiv_pos_as_xyz )) {
