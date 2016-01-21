@@ -27,6 +27,7 @@ my %database = (
     name  => "oqmd",
     tables => {
         structures => "structures",
+        calculations => "calculations",
         spacegroups => "spacegroups",
         atoms => "atoms",
         sites => "sites",
@@ -189,6 +190,8 @@ for my $structure_id (@structure_ids) {
             $coord_atom_count/$formula_atom_count, "\n";
     }
 
+    print "_oqmd_database_code   ", $structure_id, "\n";
+
     if( defined $structure_data->{spacegroup_id} ) {
         local $\ = "\n";
         my $spacegroup_data =
@@ -203,6 +206,17 @@ for my $structure_id (@structure_ids) {
             lc($spacegroup_data->{lattice_system});
         print "_oqmd_space_group_IT_number           ",
             lc($spacegroup_data->{number});
+    }
+
+    my $calculation = query_OQMD_calculation( $connected_db,
+                                              $structure_id );
+
+    if( $calculation ) {
+        local $\ = "\n";
+        print "_oqmd_calculation_label      '",
+             $calculation->{label}, "'";
+        my $converged = $calculation->{converged} ? 'yes' : 'no';
+        print "_oqmd_calculation_converged  $converged";
     }
 
     print "loop_\n";
@@ -285,6 +299,22 @@ sub query_OQMD_structure
         "SELECT id, x1, x2, x3, y1, y2, y3, z1, z2, z3,
                 entry_id, composition_id, spacegroup_id
          FROM `$database->{tables}{structures}` WHERE id = ?;"
+        );
+
+    $sth->execute( $id );
+
+    return $sth->fetchrow_hashref();
+}
+
+sub query_OQMD_calculation
+{
+    my ( $database, $id ) = @_;
+
+    my $dbh = $database->{dbh};
+
+    my $sth = $dbh->prepare(
+        "SELECT id, label, input_id, converged
+         FROM `$database->{tables}{calculations}` WHERE output_id = ?;"
         );
 
     $sth->execute( $id );
