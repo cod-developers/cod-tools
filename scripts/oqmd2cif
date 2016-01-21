@@ -28,6 +28,8 @@ my %database = (
     tables => {
         structures => "structures",
         calculations => "calculations",
+        calculations_meta_data => "calculations_meta_data",
+        meta_data => "meta_data",
         spacegroups => "spacegroups",
         atoms => "atoms",
         sites => "sites",
@@ -221,6 +223,18 @@ for my $structure_id (@structure_ids) {
             $calculation->{energy_pa};
         print "_tcod_computation_wallclock_time ",
             $calculation->{runtime};
+
+        my $metadata = query_OQMD_calculation_metadata( $connected_db,
+                                                        $calculation->{id} );
+
+        if( $metadata && exists $metadata->{error} ) {
+            print "_oqmd_error_flag             error";
+            print "_oqmd_error_description";
+            print ";\n  The structure is marked with error flag(s)\n  " .
+                join( ', ', map { "\"$_\"" } @{$metadata->{error}} ) .
+                "\n  in the source database.";
+            print ";";
+        }
     }
 
     print "loop_\n";
@@ -324,6 +338,31 @@ sub query_OQMD_calculation
     $sth->execute( $id );
 
     return $sth->fetchrow_hashref();
+}
+
+sub query_OQMD_calculation_metadata
+{
+    my ( $database, $calculation_id ) = @_;
+
+    my $dbh = $database->{dbh};
+
+    my $sth = $dbh->prepare(
+        "SELECT type, value
+         FROM `$database->{tables}{calculations_meta_data}` AS CMD
+         JOIN `$database->{tables}{meta_data}` AS MD
+            ON CMD.metadata_id = MD.id
+         WHERE CMD.calculation_id = ?;"
+        );
+
+    $sth->execute( $calculation_id );
+
+    my %metadata;
+    while( my $row = $sth->fetchrow_hashref() ) {
+        $metadata{$row->{type}} = [] if !exists $metadata{$row->{type}};
+        push( @{$metadata{$row->{type}}}, $row->{value} );
+    }
+
+    return \%metadata;
 }
 
 sub query_OQMD_spacegroup
