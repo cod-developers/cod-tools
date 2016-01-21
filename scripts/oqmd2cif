@@ -17,6 +17,7 @@ use strict;
 use warnings;
 use DBI;
 use COD::Cell qw( vectors2cell );
+use COD::CIF::Tags::Print qw( print_single_tag_and_value );
 use COD::Formulae::Parser::AdHoc;
 use COD::SOptions qw( getOptions get_value );
 use COD::SUsage qw( usage options );
@@ -163,11 +164,11 @@ for my $structure_id (@structure_ids) {
     printf "%-32s ".$cell_fformat."\n", "_cell_angle_beta",  $cell[4];
     printf "%-32s ".$cell_fformat."\n", "_cell_angle_gamma", $cell[5];
 
-    print "_chemical_formula_sum           '",
-        $structure_data->{composition_id}, "'\n";
+    print_single_tag_and_value( '_chemical_formula_sum',
+                                $structure_data->{composition_id} );
+    print_single_tag_and_value( '_symmetry_space_group_name_H-M', 'P 1' );
+    print_single_tag_and_value( '_symmetry_space_group_name_Hall', ' P 1' );
 
-    print "_symmetry_space_group_name_H-M  'P 1'\n";
-    print "_symmetry_space_group_name_Hall ' P 1'\n";
     print "loop_\n";
     print "_space_group_symop_id\n";
     print "_space_group_symop_operation_xyz\n";
@@ -188,52 +189,49 @@ for my $structure_id (@structure_ids) {
     if( $formula_atoms ) {
         my $formula_atom_count = 0;
         for (values %{$formula_atoms}) { $formula_atom_count += $_ }
-        print "_cell_formula_units_Z           ",
-            $coord_atom_count/$formula_atom_count, "\n";
+        print_single_tag_and_value( '_cell_formula_units_Z',
+                                    $coord_atom_count/$formula_atom_count );
     }
 
-    print "_oqmd_database_code   ", $structure_id, "\n";
+    print_single_tag_and_value( '_oqmd_database_code', $structure_id );
 
     if( defined $structure_data->{spacegroup_id} ) {
-        local $\ = "\n";
         my $spacegroup_data =
             query_OQMD_spacegroup( $connected_db,
                                    $structure_data->{spacegroup_id} );
         serialiseRef( $spacegroup_data ) if $debug;
-        print "_oqmd_space_group_name_H-M   '",
-            $spacegroup_data->{hm}, "'";
-        print "_oqmd_space_group_name_Hall  '",
-            $spacegroup_data->{hall}, "'";
-        print "_oqmd_space_group_crystal_system      ",
-            lc($spacegroup_data->{lattice_system});
-        print "_oqmd_space_group_IT_number           ",
-            lc($spacegroup_data->{number});
+        print_single_tag_and_value( '_oqmd_space_group_name_H-M',
+                                    $spacegroup_data->{hm} );
+        print_single_tag_and_value( '_oqmd_space_group_name_Hall',
+                                    $spacegroup_data->{hall} );
+        print_single_tag_and_value( '_oqmd_space_group_crystal_system',
+                                    lc($spacegroup_data->{lattice_system}) );
+        print_single_tag_and_value( '_oqmd_space_group_IT_number',
+                                    lc($spacegroup_data->{number}) );
     }
 
     my $calculation = query_OQMD_calculation( $connected_db,
                                               $structure_id );
 
     if( $calculation ) {
-        local $\ = "\n";
-        print "_oqmd_calculation_label      '",
-            $calculation->{label}, "'";
-        my $converged = $calculation->{converged} ? 'yes' : 'no';
-        print "_oqmd_calculation_converged  $converged";
-        print "_tcod_total_energy           ",
-            $calculation->{energy_pa};
-        print "_tcod_computation_wallclock_time ",
-            $calculation->{runtime};
+        print_single_tag_and_value( '_oqmd_calculation_label',
+                                    $calculation->{label} );
+        print_single_tag_and_value( '_oqmd_calculation_converged',
+                                    $calculation->{converged} ? 'yes' : 'no' );
+        print_single_tag_and_value( '_tcod_total_energy',
+                                    $calculation->{energy_pa} );
+        print_single_tag_and_value( '_tcod_computation_wallclock_time',
+                                    $calculation->{runtime} );
 
         my $metadata = query_OQMD_calculation_metadata( $connected_db,
                                                         $calculation->{id} );
 
         if( $metadata && exists $metadata->{error} ) {
-            print "_oqmd_error_flag             error";
-            print "_oqmd_error_description";
-            print ";\n  The structure is marked with error flag(s)\n  " .
+            print_single_tag_and_value( '_oqmd_error_flag', 'error' );
+            print_single_tag_and_value( '_oqmd_error_description',
+                "\n  The structure is marked with error flag(s)\n  " .
                 join( ', ', map { "\"$_\"" } @{$metadata->{error}} ) .
-                "\n  in the source database.";
-            print ";";
+                "\n  in the source database." );
         }
     }
 
