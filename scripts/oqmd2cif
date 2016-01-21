@@ -214,9 +214,13 @@ for my $structure_id (@structure_ids) {
     if( $calculation ) {
         local $\ = "\n";
         print "_oqmd_calculation_label      '",
-             $calculation->{label}, "'";
+            $calculation->{label}, "'";
         my $converged = $calculation->{converged} ? 'yes' : 'no';
         print "_oqmd_calculation_converged  $converged";
+        print "_tcod_total_energy           ",
+            $calculation->{energy_pa};
+        print "_tcod_computation_wallclock_time ",
+            $calculation->{runtime};
     }
 
     print "loop_\n";
@@ -313,7 +317,7 @@ sub query_OQMD_calculation
     my $dbh = $database->{dbh};
 
     my $sth = $dbh->prepare(
-        "SELECT id, label, input_id, converged
+        "SELECT id, label, input_id, energy_pa, converged, runtime
          FROM `$database->{tables}{calculations}` WHERE output_id = ?;"
         );
 
