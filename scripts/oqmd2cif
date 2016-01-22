@@ -9,7 +9,7 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #$URL$
 #------------------------------------------------------------------------------
 #*
-#  Retrieve structures from the Open Quantum Mechanics Database and
+#  Retrieve structures from the Open Quantum Materials Database and
 #  write them out in CIF format.
 #**
 
@@ -104,8 +104,8 @@ my $cell_fformat = $atom_fformat;
 #*     -t, --table  data
 #*        Use SQL table "data" to query for structures.
 #*
-#*     -u, --user cod_reader
-#*        Use user name "cod_reader" to access COD database; this reader
+#*     -u, --user reader
+#*        Use user name "reader" to access COD database; this reader
 #*        should be granted SELECT privilege, i.e. should be able to read
 #*        the COD database, without supplying a password.
 #*
@@ -293,6 +293,11 @@ for my $structure_id (@structure_ids) {
                                         $calculation->{band_gap} );
         }
 
+        if( $calculation->{magmom_pa} ) {
+            print_single_tag_and_value( '_dft_cell_magn_moment',
+                                        $calculation->{magmom_pa} );
+        }
+
         my $metadata = query_OQMD_calculation_metadata( $connected_db,
                                                         $calculation->{id} );
 
@@ -310,16 +315,18 @@ for my $structure_id (@structure_ids) {
     print "_atom_site_fract_x\n";
     print "_atom_site_fract_y\n";
     print "_atom_site_fract_z\n";
+    print "_atom_site_occupancy\n";
     for my $atom_id (sort keys %{$atoms}) {
         my $atom = $atoms->{$atom_id};
         print $atom->{element_id};
         printf " ".$atom_fformat, $atom->{x};
         printf " ".$atom_fformat, $atom->{y};
         printf " ".$atom_fformat, $atom->{z};
+        print " ".$atom->{occupancy};
         print "\n";
     }
     if( !$coord_atom_count ) {
-        print "? ? ? ?\n";
+        print "? ? ? ? ?\n";
     }
 
 }
@@ -399,8 +406,8 @@ sub query_OQMD_calculation
     my $dbh = $database->{dbh};
 
     my $sth = $dbh->prepare(
-        "SELECT id, label, input_id, settings, energy_pa, band_gap,
-                converged, runtime
+        "SELECT id, label, input_id, settings, energy_pa, magmom_pa,
+                band_gap, converged, runtime
          FROM `$database->{tables}{calculations}` WHERE output_id = ?;"
         );
 
@@ -460,13 +467,13 @@ sub query_OQMD_atoms
         "SELECT atoms.id as atom_id, element_id,
                 atoms.x as x, atoms.y as y, atoms.z as z,
                 sites.x as sx, sites.y as sy, sites.z as sz,
-                fx, fy, fz, magmom, charge, 
+                fx, fy, fz, magmom, charge, occupancy,
                 symbol, multiplicity, spacegroup_id,
                 wyckoffsites.x as wx,
                 wyckoffsites.x as wy,
                 wyckoffsites.z as wz
          FROM `$database->{tables}{atoms}`
-         JOIN `$database->{tables}{sites}` 
+         JOIN `$database->{tables}{sites}`
              ON site_id = `$database->{tables}{sites}`.id 
          JOIN `$database->{tables}{wyckoffsites}`
              ON `$database->{tables}{sites}`.wyckoff_id = 
