@@ -21,6 +21,7 @@ use COD::CIF::Tags::Print qw( print_single_tag_and_value );
 use COD::Formulae::Parser::AdHoc;
 use COD::SOptions qw( getOptions get_value );
 use COD::SUsage qw( usage options );
+use JSON qw( decode_json );
 
 my %database = (
     host  => "localhost",
@@ -39,6 +40,17 @@ my %database = (
     password => "",
     platform => "mysql",
     dbh => undef,
+);
+
+my %smearing_methods = (
+     0 => { main  => 'Gaussian' },
+    -1 => { main  => 'Fermi-Dirac' },
+    -2 => { other => 'partial occupancies are read in from the ' .
+                     'WAVECAR or INCAR file' },
+    -3 => { other => 'loop over smearing-parameters supplied in the ' .
+                     'INCAR file is performed' },
+    -4 => { other => 'tetrahedron method' },
+    -5 => { other => 'tetrahedron method with Bl\"ochl corrections' }
 );
 
 my $debug = 0;
@@ -225,6 +237,41 @@ for my $structure_id (@structure_ids) {
         print_single_tag_and_value( '_tcod_computation_wallclock_time',
                                     $calculation->{runtime} );
 
+        # Fixing non-conforming JSON
+
+        $calculation->{settings} =~ s/"/\"/g;
+        $calculation->{settings} =~ s/'/"/g;
+
+        $calculation->{settings} =~ s/True/true/g;
+        $calculation->{settings} =~ s/False/false/g;
+
+        my $settings = decode_json( $calculation->{settings} );
+
+        print_single_tag_and_value( '_dft_kinetic_energy_cutoff_wavefunctions',
+                                    $settings->{encut} );
+        print_single_tag_and_value( '_dft_cell_energy_conv',
+                                    $settings->{ediff} );
+        print_single_tag_and_value( '_dft_BZ_integration_smearing_width',
+                                    $settings->{sigma} );
+
+        if( $settings->{ismear} > 0 ) {
+            print_single_tag_and_value(
+                '_dft_BZ_integration_smearing_method',
+                'Methfessel-Paxton' );
+            print_single_tag_and_value(
+                '_dft_BZ_integration_MP_order', $settings->{ismear} );
+        } elsif( exists $smearing_methods{$settings->{ismear}} ) {
+            if( exists $smearing_methods{$settings->{ismear}}->{main} ) {
+                print_single_tag_and_value(
+                    '_dft_BZ_integration_smearing_method',
+                    $smearing_methods{$settings->{ismear}}->{main} );
+            } else {
+                print_single_tag_and_value(
+                    '_dft_BZ_integration_smearing_method_other',
+                    $smearing_methods{$settings->{ismear}}->{other} );
+            }
+        }
+
         my $metadata = query_OQMD_calculation_metadata( $connected_db,
                                                         $calculation->{id} );
 
@@ -331,7 +378,8 @@ sub query_OQMD_calculation
     my $dbh = $database->{dbh};
 
     my $sth = $dbh->prepare(
-        "SELECT id, label, input_id, energy_pa, converged, runtime
+        "SELECT id, label, input_id, settings, energy_pa, converged,
+                runtime
          FROM `$database->{tables}{calculations}` WHERE output_id = ?;"
         );
 
