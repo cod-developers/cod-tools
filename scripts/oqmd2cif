@@ -272,6 +272,11 @@ for my $structure_id (@structure_ids) {
             }
         }
 
+        if( $calculation->{band_gap} ) {
+            print_single_tag_and_value( '_dft_band_gap',
+                                        $calculation->{band_gap} );
+        }
+
         my $metadata = query_OQMD_calculation_metadata( $connected_db,
                                                         $calculation->{id} );
 
@@ -378,8 +383,8 @@ sub query_OQMD_calculation
     my $dbh = $database->{dbh};
 
     my $sth = $dbh->prepare(
-        "SELECT id, label, input_id, settings, energy_pa, converged,
-                runtime
+        "SELECT id, label, input_id, settings, energy_pa, band_gap,
+                converged, runtime
          FROM `$database->{tables}{calculations}` WHERE output_id = ?;"
         );
 
