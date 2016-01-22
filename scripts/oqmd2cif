@@ -230,6 +230,22 @@ for my $structure_id (@structure_ids) {
     if( $calculation ) {
         print_single_tag_and_value( '_oqmd_calculation_label',
                                     $calculation->{label} );
+
+        if( $calculation->{input_id} ) {
+            for my $part ('cell_param', 'coordinate') {
+                print_single_tag_and_value(
+                    "_tcod_initial_${part}_db_name",
+                    'Open Quantum Materials Database' );
+                print_single_tag_and_value(
+                    "_tcod_initial_${part}_db_code",
+                    $calculation->{input_id} );
+                print_single_tag_and_value(
+                    "_tcod_initial_${part}_URI",
+                    'http://oqmd.org/materials/structure/' .
+                    $calculation->{input_id} );
+            }
+        }
+
         print_single_tag_and_value( '_oqmd_calculation_converged',
                                     $calculation->{converged} ? 'yes' : 'no' );
         print_single_tag_and_value( '_tcod_total_energy',
