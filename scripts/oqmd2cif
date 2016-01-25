@@ -23,6 +23,8 @@ use COD::SOptions qw( getOptions get_value );
 use COD::SUsage qw( usage options );
 use JSON qw( decode_json );
 
+my $eV_per_atom_to_J_per_mol = 2660.476544548;
+
 my %database = (
     host  => "localhost",
     user  => "reader",
@@ -31,6 +33,7 @@ my %database = (
         structures => "structures",
         calculations => "calculations",
         calculations_meta_data => "calculations_meta_data",
+        formation_energies => "formation_energies",
         meta_data => "meta_data",
         spacegroups => "spacegroups",
         atoms => "atoms",
@@ -298,6 +301,12 @@ for my $structure_id (@structure_ids) {
                                         $calculation->{magmom_pa} );
         }
 
+        if( $calculation->{delta_e} ) {
+            print_single_tag_and_value( '_dft_lattice_energy',
+                                        $calculation->{delta_e} *
+                                        $eV_per_atom_to_J_per_mol );
+        }
+
         my $metadata = query_OQMD_calculation_metadata( $connected_db,
                                                         $calculation->{id} );
 
@@ -406,9 +415,12 @@ sub query_OQMD_calculation
     my $dbh = $database->{dbh};
 
     my $sth = $dbh->prepare(
-        "SELECT id, label, input_id, settings, energy_pa, magmom_pa,
-                band_gap, converged, runtime
-         FROM `$database->{tables}{calculations}` WHERE output_id = ?;"
+        "SELECT C.id, label, input_id, settings, energy_pa, magmom_pa,
+                band_gap, converged, runtime, delta_e
+         FROM `$database->{tables}{calculations}` AS C
+         LEFT JOIN `$database->{tables}{formation_energies}`
+            ON calculation_id = C.id
+         WHERE output_id = ?;"
         );
 
     $sth->execute( $id );
