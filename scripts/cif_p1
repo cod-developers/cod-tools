@@ -16,6 +16,7 @@ eval 'exec perl -x $0 ${1+"$@"}'
 
 use strict;
 use warnings;
+use Clone qw( clone );
 use COD::CIF::Parser qw( parse_cif );
 use COD::AtomBricks qw( build_bricks get_atom_index get_search_span );
 use COD::AtomNeighbours qw( get_max_covalent_radius );
@@ -30,7 +31,6 @@ use COD::CIF::Data qw( get_cell get_symmetry_operators );
 use COD::CIF::Data::AtomList qw( atom_array_from_cif
                                  atom_groups
                                  copy_atom
-                                 copy_struct_deep
                                  dump_atoms_as_cif );
 use COD::CIF::Data::SymmetryGenerator qw( apply_shifts
                                           atoms_coincide
@@ -1480,7 +1480,7 @@ sub print_molecule
     my %known_tags = ( %data2copy, %renamed_tags );
     my @known_tags = ( @data2copy, @renamed_tags );
 
-    print_cif( copy_struct_deep( $dataset ),
+    print_cif( clone( $dataset ),
                         {
                             dictionary_tags => \%known_tags,
                             dictionary_tag_list => \@known_tags,

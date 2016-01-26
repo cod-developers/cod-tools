@@ -32,7 +32,6 @@ our @EXPORT_OK = qw(
     atom_is_disordered
     atoms_are_alternative
     copy_atom
-    copy_struct_deep
     dump_atoms_as_cif
     uniquify_atom_names
     extract_atom
@@ -840,34 +839,6 @@ sub copy_atom
     }
 
     return $atom_copy;
-}
-
-#===============================================================#
-# Performs deep copying of structure passed via reference
-sub copy_struct_deep
-{
-    my( $struct, $options ) = @_;
-
-    if(      !ref $struct ) {
-        return $struct;
-    } elsif( ref $struct eq "ARRAY" ) {
-        return [ map( copy_struct_deep($_), @$struct ) ];
-    } elsif( ref $struct eq "HASH" ) {
-        $options = {} unless defined $options;
-
-        my %excluded_hash_keys;
-        if( exists $options->{excluded_hash_keys} ) {
-            %excluded_hash_keys = map { $_ => 1 }
-                                      @{ $options->{excluded_hash_keys} };
-        }
-
-        return { map { $_ => copy_struct_deep( $struct->{$_} ) }
-                 map { (exists $excluded_hash_keys{$_}) ? () : $_ }
-                     keys %$struct };
-    } else {
-        die "ERROR, deep copy failed -- 'copy_struct_deep' does not know " .
-            "how to copy object '" . ref( $struct ) . "'\n";
-    }
 }
 
 #===============================================================#
