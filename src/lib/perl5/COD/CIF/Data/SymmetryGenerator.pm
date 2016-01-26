@@ -43,7 +43,6 @@ sub atoms_coincide($$$);
 sub symop_generate_atoms($$$);
 sub test_bond($$$$$);
 sub test_bump($$$$$$$);
-sub copy_array($);
 
 #===============================================================#
 
@@ -318,13 +317,6 @@ sub test_bump($$$$$$$)
     }
 
     return 0;
-}
-
-sub copy_array($)
-{
-    my ($arr) = @_;
-    my @copy_arr = @{$arr};
-    return \@copy_arr;
 }
 
 1;
