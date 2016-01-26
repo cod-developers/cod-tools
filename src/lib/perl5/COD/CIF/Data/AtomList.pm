@@ -13,6 +13,7 @@ package COD::CIF::Data::AtomList;
 
 use strict;
 use warnings;
+use Clone qw( clone );
 use COD::CIF::Data qw( get_cell );
 use COD::Spacegroups::Symop::Algebra qw( symop_invert symop_mul
                                          symop_vector_mul );
@@ -36,6 +37,9 @@ our @EXPORT_OK = qw(
     uniquify_atom_names
     extract_atom
 );
+
+my @shallow_copied_keys = qw( symop_list f2o site_symops symop );
+my %shallow_copied_keys = map { $_ => 1 } @shallow_copied_keys;
 
 #===============================================================#
 # Extracts atom information from the CIF file.
@@ -825,15 +829,14 @@ sub copy_atom
         croak;
     }
 
-    my @shallow_copied_keys = qw( symop_list f2o site_symops symop );
+    my $atom_copy = {};
 
-    my $atom_copy = copy_struct_deep( $old_atom,
-                                      { excluded_hash_keys =>
-                                        \@shallow_copied_keys } );
-
-    for my $key ( @shallow_copied_keys ) {
-        next if !exists $old_atom->{$key};
-        $atom_copy->{$key} = $old_atom->{$key};
+    for my $key ( keys %$old_atom ) {
+        if( exists $shallow_copied_keys{$key} ) {
+            $atom_copy->{$key} = $old_atom->{$key};
+        } else {
+            $atom_copy->{$key} = clone( $old_atom->{$key} );
+        }
     }
 
     return $atom_copy;
