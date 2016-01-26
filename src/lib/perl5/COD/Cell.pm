@@ -5,7 +5,7 @@
 #$URL$
 #-----------------------------------------------------------------------
 #*
-#  Contains subroutine for cell volume calculation.
+#  Contains generic subroutines for cell calculations.
 #**
 
 package COD::Cell;

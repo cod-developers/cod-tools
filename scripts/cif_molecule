@@ -55,6 +55,7 @@ eval 'exec perl -x $0 ${1+"$@"}'
 use strict;
 use File::Basename qw( basename );
 use Clone qw( clone );
+use COD::Algebra qw( gcd );
 use COD::AtomBricks qw( build_bricks get_atom_index get_search_span );
 use COD::CIF::Parser qw( parse_cif );
 use COD::CIF::Data qw( get_cell get_symmetry_operators );
@@ -506,40 +507,6 @@ sub symgen_atom( $$ );
 sub symgen_all_atoms( $$ );
 sub find_molecules( $$$$$$ );
 sub find_molecule( $$$$$$$$$ );
-
-# Find the Greatest Common Divisor (GCD) of two numbers:
-
-sub gcd2
-{
-    my ($x, $y) = @_;
-
-    die if $x <= 0;
-    die if $y <= 0;
-    die if $x != int($x);
-    die if $y != int($y);
-
-    while( $x != $y ) {
-        if( $x > $y ) {
-            $x -= $y;
-        } else {
-            $y -= $x;
-        }
-    }
-
-    return $x;
-}
-
-# Find the Greatest Common Divisor (GCD) of an array of numbers:
-
-sub gcd
-{
-    my $gcd = pop( @_ );
-    for (@_) {
-        $gcd = gcd2( $gcd, $_ );
-    }
-
-    return $gcd;
-}
 
 my $cif_header;
 eval {

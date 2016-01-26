@@ -17,10 +17,11 @@ eval 'exec perl -x $0 ${1+"$@"}'
 use strict;
 use warnings;
 use Clone qw( clone );
-use COD::CIF::Parser qw( parse_cif );
+use COD::Algebra qw( gcd );
 use COD::AtomBricks qw( build_bricks get_atom_index get_search_span );
 use COD::AtomNeighbours qw( get_max_covalent_radius );
 use COD::AtomProperties;
+use COD::CIF::Parser qw( parse_cif );
 use COD::Formulae::Print qw( sprint_formula );
 use COD::Spacegroups::Symop::Algebra qw( symop_is_unity symop_vector_mul );
 use COD::Spacegroups::Symop::Parse qw( symop_from_string
@@ -504,40 +505,6 @@ for my $filename (@ARGV) {
 
 # End of main program:
 exit 0;
-
-# Find the Gretest Common Divisor (GCD) of two numbers:
-
-sub gcd2
-{
-    my ($x, $y) = @_;
-
-    die if $x <= 0;
-    die if $y <= 0;
-    die if $x != int($x);
-    die if $y != int($y);
-
-    while( $x != $y ) {
-        if( $x > $y ) {
-            $x -= $y;
-        } else {
-            $y -= $x;
-        }
-    }
-
-    return $x;
-}
-
-# Find the Gretest Common Divisor (GCD) of an array of numbers:
-
-sub gcd
-{
-    my $gcd = pop( @_ );
-    for (@_) {
-        $gcd = gcd2( $gcd, $_ );
-    }
-
-    return $gcd;
-}
 
 #===============================================================#
 # Generate symmetry equivalents of an atom, evaluate atom's
