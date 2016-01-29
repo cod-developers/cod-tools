@@ -239,5 +239,5 @@ SV * parse_cif( char * fname, char * prog, SV * opt )
     hv_put( ret, "datablocks", newRV_noinc( (SV*) datablocks ) );
     hv_put( ret, "messages", newRV_noinc( (SV*) error_messages ) );
     hv_put( ret, "nerrors", newSViv( nerrors ) );
-    return( newRV_noinc( (SV*) ret ) );
+    return( sv_2mortal( newRV_noinc( (SV*) ret ) ) );
 }
