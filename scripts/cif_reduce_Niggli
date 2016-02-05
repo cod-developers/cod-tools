@@ -23,7 +23,9 @@ use COD::CIF::Tags::Print qw( print_cif );
 use COD::Cell::Niggli::KG76 qw( reduce );
 use COD::Fractional qw( symop_fract_from_ortho
                         symop_ortho_from_fract );
-use COD::Spacegroups::Symop::Algebra qw( symop_det );
+use COD::Spacegroups::Symop::Algebra qw( symop_det symop_mul symop_transpose );
+use COD::Spacegroups::Symop::Parse qw( string_from_symop
+                                       symop_from_string );
 use COD::SOptions qw( getOptions );
 use COD::SUsage qw( usage options );
 use COD::ErrorHandler qw( process_warnings
@@ -38,6 +40,7 @@ my $die_on_error_level = {
 
 my $use_parser = 'c';
 $COD::Cell::Niggli::KG76::debug = 0;
+my $compute_symops = 0;
 
 # Format for floating point numbers:
 my $fformat = "%.12g";
@@ -54,6 +57,11 @@ my $Pi = 4 * atan2(1,1);
 #*     --use-c-parser
 #*        Use Perl & C parser for CIF parsing.
 #*
+#*     --compute-symops
+#*        Apply basis change to symmetry operators. Not all lattices are
+#*        processed correctly, thus this option is experimental only and
+#*        is turned off by default.
+#*
 #*     --debug, --no-debug
 #*        Turn on/off the debug prints of reduction algorithm. Default off.
 #*
@@ -63,6 +71,8 @@ my $Pi = 4 * atan2(1,1);
 @ARGV = getOptions(
     "--debug"    => sub{ $COD::Cell::Niggli::KG76::debug = 1 },
     "--no-debug" => sub{ $COD::Cell::Niggli::KG76::debug = 0 },
+
+    "--compute-symops" => sub { $compute_symops = 1 },
 
     "--use-perl-parser" => sub { $use_parser = "perl" },
     "--use-c-parser"    => sub { $use_parser = "c" },
@@ -121,7 +131,7 @@ for my $filename (@ARGV) {
                     '\'_atom_site_type_symbol\' tag present' . "\n";
             }
 
-            $CoB = mat3_inv( $CoB );
+            my $CoB_inv = mat3_inv( $CoB );
 
             for( my $i = 0; $i < @{$values->{$atom_site_tag}}; $i++ ) {
                 my $coordinates = [ map { s/\(\d+\)$//; $_ }
@@ -133,7 +143,7 @@ for my $filename (@ARGV) {
                 ];
 
                 my $coordinates_now =
-                    vector_modulo_1( matrix_vector_mul( $CoB,
+                    vector_modulo_1( matrix_vector_mul( $CoB_inv,
                                                         $coordinates ) );
                     
                 ( $values->{'_atom_site_fract_x'}[$i],
@@ -141,6 +151,24 @@ for my $filename (@ARGV) {
                   $values->{'_atom_site_fract_z'}[$i] ) =
                     map { sprintf( $fformat, $_ ) }
                         @$coordinates_now;
+            }
+
+            if( $compute_symops &&
+                exists $values->{_symmetry_equiv_pos_as_xyz} ) {
+                $CoB->[0][3] = 0;
+                $CoB->[1][3] = 0;
+                $CoB->[2][3] = 0;
+                push( @$CoB, [ 0, 0, 0, 1 ] );
+
+                my $CoBT = symop_transpose( $CoB );
+
+                for( my $i = 0; $i < @{$values->{_symmetry_equiv_pos_as_xyz}}; $i++ ) {
+                    my $S = symop_from_string( $values->{_symmetry_equiv_pos_as_xyz}[$i] );
+                    $values->{_symmetry_equiv_pos_as_xyz}[$i] =
+                        string_from_symop( symop_mul( symop_mul( $CoBT,
+                                                                 $S ),
+                                                      $CoB ) );
+                }
             }
 
             print_cif( $datablock,
