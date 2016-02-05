@@ -241,6 +241,15 @@ sub cif2cod
     my $last_page = get_tag_silently( $values, "_journal_page_last", 0 );
     my $issue = get_tag_silently( $values, "_journal_issue", 0 );
 
+    my $text = join( '\n', map { clean_whitespaces( cif2unicode($_) ) }
+                     ( $authors, $title, $journal, $volume .
+                       ( $issue? ( $volume ? "($issue)" :
+                                   "(issue $issue)") : "" ),
+                       "(" . $year . ")",
+                       ( $last_page ? $first_page . "-" . $last_page :
+                         $first_page ))
+                   );
+
     my $calculated_formula;
 
     eval {
@@ -254,15 +263,6 @@ sub cif2cod
         chomp($error);
         warn "WARNING, summary formula could not be calculated -- $error\n";
     }
-
-    my $text = join( '\n', map { cif2unicode($_) }
-                     ( $authors, $title, $journal, $volume .
-                       ( $issue? ( $volume ? "($issue)" :
-                                   "(issue $issue)") : "" ),
-                       "(" . $year . ")",
-                       ( $last_page ? $first_page . "-" . $last_page :
-                         $first_page ))
-                   );
 
     my $diffr_temperature =
         get_num_or_undef( $values, "_diffrn_ambient_temperature", 0 );
@@ -507,6 +507,12 @@ sub cif2cod
 
     $data{text} = $text;
 
+    foreach my $key ( keys %data ) {
+        if ( defined $data{$key} ) {
+            $data{$key} = clean_whitespaces( $data{$key} )
+        }
+    }
+
     return \%data;
 }
 
@@ -595,12 +601,12 @@ sub get_and_check_tag
         if( exists $values->{$tag} && ref $values->{$tag} eq "ARRAY" ) {
             if( defined $values->{$tag}[$index] ) {
                 my $val = $values->{$tag}[$index];
-                if( $val =~ /^\\\n/ ) {
-                    $val =~ s/\\\n//g;
-                }
-                $val =~ s/\n/ /g;
-                $val =~ s/\s+/ /g;
-                $val =~ s/^\s*|\s*$//g;
+           #     if( $val =~ /^\\\n/ ) {
+           #         $val =~ s/\\\n//g;
+           #     }
+           #     $val =~ s/\n/ /g;
+           #     $val =~ s/\s+/ /g;
+           #     $val =~ s/^\s*|\s*$//g;
                 return $val;
             } else {
                 unless( $ignore_errors ) {
@@ -615,6 +621,20 @@ sub get_and_check_tag
         }
     }
     return $ignore_errors <= 1 ? "" : undef;
+}
+
+sub clean_whitespaces
+{
+    my ( $value ) = @_;
+
+    if( $value =~ /^\\\n/ ) {
+        $value =~ s/\\\n//g;
+    }
+    $value =~ s/\n/ /g;
+    $value =~ s/\s+/ /g;
+    $value =~ s/^\s*|\s*$//g;
+
+    return $value;
 }
 
 sub get_spacegroup_info
