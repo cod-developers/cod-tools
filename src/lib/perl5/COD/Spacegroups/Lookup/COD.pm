@@ -28639,7 +28639,38 @@ our @EXPORT_OK = qw(
         'x,y,z',
         '-x+1/2,y+1/2,-z',
     ],
+},
+
+{
+    number          => 62,
+    hall            => '-P 2ac 2n (z,x,y+1/4)',
+    schoenflies     => 'D2h^16',
+    hermann_mauguin => 'P n m a',
+    universal_h_m   => 'P n m a (c,a-1/4,b)',
+    crystal_class   => 'orthorhombic',
+    constraints     => '$alpha == 90 && $beta == 90 && $gamma == 90',
+    symops => [
+        'x,y,z',
+        '-x+1/2,y+1/2,-z',
+        '-x,-y,z+1/2',
+        'x+1/2,-y+1/2,-z+1/2',
+        '-x,-y,-z+1/2',
+        'x+1/2,-y+1/2,z+1/2',
+        'x,y,-z',
+        '-x+1/2,y+1/2,z'
+    ],
+    ncsym => [
+        'x,y,z',
+        '-x+1/2,y+1/2,-z',
+        '-x,-y,z+1/2',
+        'x+1/2,-y+1/2,-z+1/2',
+        '-x,-y,-z+1/2',
+        'x+1/2,-y+1/2,z+1/2',
+        'x,y,-z',
+        '-x+1/2,y+1/2,z'
+    ]
 }
+
 );
 
 1;
