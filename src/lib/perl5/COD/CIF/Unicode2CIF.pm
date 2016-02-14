@@ -41,7 +41,7 @@ my %commands = (
     # For this symbol, no suitable Unicode character could be found.
     # '\\ddb' delocalized double bond
 
-    "\x{223C}" => '\\sim ', # TILDE OPERATOR
+    "\x{223C}" => '\\\\sim ',    # TILDE OPERATOR
     "\x{2329}" => '\\\\langle ', # LEFT-POINTING ANGLE BRACKET     (langle)
     "\x{232A}" => '\\\\rangle ', # RIGHT-POINTING ANGLE BRACKET     (rangle)
     "\x{2243}" => '\\\\simeq ',  # ASYMPTOTICALLY EQUAL TO
@@ -80,9 +80,9 @@ my %alt_cmd = (
     # "\x{223C}" => '\\sim ', # TILDE OPERATOR
     #
     # Alternatives:
-    "\x{02DC}" => '\\sim ',   # SMALL TILDE
-    "\x{2053}" => '\\sim ',   # SWUNG DASH
-    "\x{FF5E}" => '\\sim ',   # FULLWIDTH TILDE
+    "\x{02DC}" => '\\\\sim ',   # SMALL TILDE
+    "\x{2053}" => '\\\\sim ',   # SWUNG DASH
+    "\x{FF5E}" => '\\\\sim ',   # FULLWIDTH TILDE
     # character '~' (TILDE) is not used since it denotes subscript in CIF.
 
     # Main: "\x{25A1}" => '\\\\square ', # WHITE SQUARE        (square)
