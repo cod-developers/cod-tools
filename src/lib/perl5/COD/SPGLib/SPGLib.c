@@ -71,7 +71,7 @@ SV* get_spacegroup( SV* cell_constant_ref, SV* atom_position_ref )
             SV **sv_xcoord = av_fetch( atom, 2, 0 );
             double x = SvNV( *sv_xcoord );
             SV **sv_ycoord = av_fetch( atom, 3, 0 );
-            double y = SvNV( *sv_xcoord );
+            double y = SvNV( *sv_ycoord );
             SV **sv_zcoord = av_fetch( atom, 4, 0 );
             double z = SvNV( *sv_zcoord );
             cell->types[i] = atom_type;
