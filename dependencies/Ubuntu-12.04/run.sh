@@ -5,6 +5,7 @@ sudo apt-get install -y \
     gawk \
     libcapture-tiny-perl \
     libcarp-assert-perl \
+    libclone-perl \
     libdbd-mysql-perl \
     libdbd-sqlite3-perl \
     libdbi-perl \
