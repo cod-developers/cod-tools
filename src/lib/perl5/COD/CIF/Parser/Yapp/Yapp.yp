@@ -918,19 +918,36 @@ my $UQSTRING_INLINE     =       qr/^(?:
                         $parser->_Error( { line_content => ";\n$tfield\n;" } );
                     }
                 }
+
+                my $unprefixed = 0;
                 if( !$parser->{USER}{OPTIONS}{do_not_unprefix_text} ) {
                     if( $tfield =~ /^(.+?)\\(\\)?\n/ ) {
                         my $prefix = $1;
-                        $tfield =~ s/^\Q${prefix}\E\\\n//;
+                        $tfield =~ s/^\Q${prefix}\E\\\n/\n/;
                         $tfield =~ s/^\Q${prefix}\E\\\\\n/\\\n/;
                         $tfield =~ s/^\Q${prefix}\E//mg;
+                        $unprefixed = 1;
                     }
                 }
+
+                my $unfolded = 0;
                 if( !$parser->{USER}{OPTIONS}{do_not_unfold_text} ) {
                     if( $tfield =~ /^\\\n/ ) {
                         $tfield =~ s/\\\n//mg;
+                        my $unfolded = 1;
                     }
+                };
+
+                # Unprefixing transforms the first line to either "/\n" or "\n".
+                # These symbols signal whether the processed text should be
+                # unfolded or not (if the unfolding option is also set).
+                # As a result, if the text was unprefixed, but not unfolded
+                # an unnescessary empty line might occur at the begining of
+                # the text field. This empty line should be removed.
+                if ($unprefixed && !$unfolded) {
+                    $tfield =~ s/^\n//;
                 }
+
                 return('TEXT_FIELD', $tfield);
             }
         }
