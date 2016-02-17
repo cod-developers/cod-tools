@@ -400,13 +400,43 @@ string
 textfield
         :	_TEXT_FIELD
         { $$.vstr = $1;
+          int unprefixed = 0;
           if( isset_do_not_unprefix_text( cif_cc ) == 0 ) {
+              size_t str_len = strlen( $$.vstr );
               $$.vstr = cif_unprefix_textfield( $$.vstr );
+              if ( str_len != strlen( $$.vstr ) ) {
+                unprefixed = 1;
+              }
           }
+          int unfolded = 0;
           if( isset_do_not_unfold_text( cif_cc ) == 0 &&
               $$.vstr[0] == '\\' ) {
+              size_t str_len = strlen( $$.vstr );
               $$.vstr = cif_unfold_textfield( $$.vstr );
+              if ( str_len != strlen( $$.vstr ) ) {
+                unfolded = 1;
+              }
           }
+
+        /*
+         * Unprefixing transforms the first line to either "/\n" or "\n".
+         * These symbols signal whether the processed text should be
+         * unfolded or not (if the unfolding option is also set).
+         * As a result, if the text was unprefixed, but not unfolded
+         * an unnescessary empty line might occur at the begining of
+         * the text field. This empty line should be removed.
+         */
+          if ( unprefixed == 1 && unfolded == 0 ) {
+              if ( $$.vstr[0] == '\n' ) {
+                  size_t i = 0;
+                  while($$.vstr[i] != '\0') {
+                      $$.vstr[i] = $$.vstr[i+1];
+                      i++;
+                  }
+                  $$.vstr[i] = '\0';
+              }
+          }
+
           $$.vtype = CIF_TEXT; }
 ;
 
