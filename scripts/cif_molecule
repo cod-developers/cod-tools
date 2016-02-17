@@ -98,6 +98,7 @@ my $Id = '$Id$';
 my $debug;
 my $symdebug;
 my $verbose = 0;
+my $total_nbumps = 0;
 
 my $sort_molecules = 1; # A flag indicating whether molecules should
                         # be sorted in the output (descending by atom
@@ -2336,17 +2337,17 @@ sub find_molecule($$$$$$$$$)
             if( $is_bump &&
                 !atoms_are_alternative( $current_atom, $sym_atom ) ) {
                 if( not exists $checked_pairs->{$sym_label}{$new_label} ) {
-                    my $message =  "atoms \"$current_atom->{name}\" and " .
+                    my $message = "atoms \"$current_atom->{name}\" and " .
                         "\"$sym_atom->{name}\" are too close " .
                         "(distance = " .
                         sprintf( "%6.4f", $dist ) .
                         ") and are considered a bump";
                     if( $ignore_bumps ) {
-                        if( $verbose ) {
+                        if( $verbose || $total_nbumps < 5 ) {
                             warn "WARNING, $message\n";
-                        } else {
-                            $nbumps++;
                         }
+                        $nbumps++;
+                        $total_nbumps++;
                     } else {
                         die "ERROR, $message -- aborting calculations\n";
                     }
