@@ -47,6 +47,7 @@ my $fix_temperature = 1;
 my $fix_enums = 1;
 my $fix_value_of_exptl_crystal_density_meas = 1;
 my $fix_value_of_refine_ls_weighting_scheme = 1;
+my $fix_value_of_atom_sites_solution = 1;
 my $treat_as_set = 1;
 
 my $die_on_errors   = 1;
@@ -68,6 +69,7 @@ sub dont_fix_any
     $treat_as_set = 0;
     $fix_value_of_exptl_crystal_density_meas = 0;
     $fix_value_of_refine_ls_weighting_scheme = 0;
+    $fix_value_of_atom_sites_solution = 0;
 
     return;
 }
@@ -219,6 +221,11 @@ my @default_set_tags = ( '_atom_site_refinement_flags' );
 #*     to store that information. If value is equal to number one, then
 #*     then it is changed to enumeration value 'unit'.
 #*
+#*   --fix-atom-sites-solution
+#*     Corrects the most frequent mistakes in the values of data items
+#*     '_atom_sites_solution_primary', '_atom_sites_solution_secondary'
+#*     and '_atom_sites_solution_hydrogens'.
+#*
 #*   -d, --dictionary cif_core.dic
 #*     Any valid CIF file, with CIF dictionary (according to DDL2).
 #*     You can define any number of CIF dictionaries, in a way like
@@ -290,6 +297,15 @@ my @default_set_tags = ( '_atom_site_refinement_flags' );
     '--no-fix-weighting-scheme,' .
     '--dont-fix-weighting-scheme'
         => sub{ $fix_value_of_refine_ls_weighting_scheme = 0 },
+
+    '--fix-atom-sites-solution'
+        => sub{ $fix_value_of_atom_sites_solution = 1; },
+    '--fix-only-atom-sites-solution'
+        => sub{ dont_fix_any(); $fix_value_of_atom_sites_solution = 1; },
+    '--do-not-fix-atom-sites-solution,' .
+    '--no-fix-atom-sites-solution,' .
+    '--dont-fix-atom-sites-solution'
+        => sub{ $fix_value_of_atom_sites_solution = 0; },
 
     '-d,--dictionary' => sub{ @dictionaries = get_value },
     '-D,--add-dictionaries' => sub{ push @dictionaries, get_value },
@@ -1303,6 +1319,41 @@ sub fix_value_of_refine_ls_weighting_scheme($) {
     return @insert_reports
 }
 
+sub fix_value_of_atom_sites_solution($) {
+    my( $dataset ) = @_;
+    my @insert_reports;
+    my $values = $dataset->{values};
+    foreach my $tag ( qw(   _atom_sites_solution_primary
+                            _atom_sites_solution_secondary
+                            _atom_sites_solution_hydrogens ) ) {
+        next if !exists $values->{$tag};
+        for my $i (0..$#{$values->{$tag}}) {
+            my $value = $values->{$tag}[$i];
+
+            $value =~ s/^\s*geometric( positions|ally( placed)?)?\s*$/geom/i;
+            $value =~ s/^\s*placed geometrically\s*$/geom/i;
+
+            $value =~ s/^diffmap$/difmap/i;
+            $value =~ s/^\s*diff?(erence)?([ \-]fourier)? maps?\s*$/difmap/i;
+
+            $value =~ s/^\s*diff?(map)?(\s+and\s+|\s*[&\/,+]\s*)geom\s*$/mixed/i;
+            $value =~ s/^\s*geom(\s+and\s+|\s*[&\/,+]\s*)diff?(map)?\s*$/mixed/i;
+
+            if( $values->{$tag}[$i] ne $value ) {
+                my $old_value = $values->{$tag}[$i];
+                $values->{$tag}[$i] = $value;
+
+                my $report_msg = "'$tag' value '$old_value' " .
+                                 "was changed to '$value'.";
+                push @insert_reports, $report_msg;
+                warn "NOTE, $report_msg\n";
+            }
+        }
+    }
+
+    return @insert_reports
+}
+
 sub fix_enums($) {
     my( $dataset ) = @_;
     my %reports;
@@ -1528,6 +1579,12 @@ for my $filename (@ARGV) {
                 my @reports_of_refine_ls_weighting_scheme =
                     fix_value_of_refine_ls_weighting_scheme( $dataset );
                 push @insert_reports, @reports_of_refine_ls_weighting_scheme;
+            }
+
+            if( $fix_value_of_atom_sites_solution ) {
+                my @reports_of_atom_sites_solution =
+                    fix_value_of_atom_sites_solution( $dataset );
+                push @insert_reports, @reports_of_atom_sites_solution;
             }
 
             if( $treat_as_set ) {
