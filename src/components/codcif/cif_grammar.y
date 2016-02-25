@@ -403,18 +403,22 @@ textfield
           int unprefixed = 0;
           if( isset_do_not_unprefix_text( cif_cc ) == 0 ) {
               size_t str_len = strlen( $$.vstr );
-              $$.vstr = cif_unprefix_textfield( $$.vstr );
-              if ( str_len != strlen( $$.vstr ) ) {
-                unprefixed = 1;
+              char * unprefixed_text = cif_unprefix_textfield( $$.vstr );
+              free( $$.vstr );
+              $$.vstr = unprefixed_text;
+              if( str_len != strlen( $$.vstr ) ) {
+                  unprefixed = 1;
               }
           }
           int unfolded = 0;
           if( isset_do_not_unfold_text( cif_cc ) == 0 &&
               $$.vstr[0] == '\\' ) {
               size_t str_len = strlen( $$.vstr );
-              $$.vstr = cif_unfold_textfield( $$.vstr );
-              if ( str_len != strlen( $$.vstr ) ) {
-                unfolded = 1;
+              char * unfolded_text = cif_unfold_textfield( $$.vstr );
+              free( $$.vstr );
+              $$.vstr = unfolded_text;
+              if( str_len != strlen( $$.vstr ) ) {
+                  unfolded = 1;
               }
           }
 
@@ -426,8 +430,8 @@ textfield
          * an unnescessary empty line might occur at the begining of
          * the text field. This empty line should be removed.
          */
-          if ( unprefixed == 1 && unfolded == 0 ) {
-              if ( $$.vstr[0] == '\n' ) {
+          if( unprefixed == 1 && unfolded == 0 ) {
+              if( $$.vstr[0] == '\n' ) {
                   size_t i = 0;
                   while($$.vstr[i] != '\0') {
                       $$.vstr[i] = $$.vstr[i+1];
