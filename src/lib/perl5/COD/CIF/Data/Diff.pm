@@ -13,6 +13,7 @@ package COD::CIF::Data::Diff;
 
 use strict;
 use warnings;
+use COD::CIF::Tags::Manage qw( tag_is_empty );
 use COD::CIF::Tags::Print qw( print_tag );
 
 require Exporter;
@@ -96,22 +97,38 @@ sub comm
     PAIR_OF_TAGS:
     while( @tags1 > 0 || @tags2 > 0 ) {
         if( scalar @tags1 == 0 ) {
-            push( @$comm, [ undef, undef, $tags2[0] ] ) unless $no_left;
-            shift @tags2;
+            my $tag = shift @tags2;
+            if( $options->{ignore_empty_values} &&
+                tag_is_empty( $cif2, $tag ) ) {
+                next;
+            }
+            push( @$comm, [ undef, undef, $tag ] ) unless $no_left;
             next;
         }
         if( scalar @tags2 == 0 ) {
-            push( @$comm, [ $tags1[0], undef, undef ] ) unless $no_right;
-            shift @tags1;
+            my $tag = shift @tags1;
+            if( $options->{ignore_empty_values} &&
+                tag_is_empty( $cif1, $tag ) ) {
+                next;
+            }
+            push( @$comm, [ $tag, undef, undef ] ) unless $no_right;
             next;
         }
         if( $tags1[0] ne $tags2[0] ) {
             if( $tags1[0] lt $tags2[0] ) {
-                push( @$comm, [ $tags1[0], undef, undef ] ) unless $no_left;
-                shift @tags1;
+                my $tag = shift @tags1;
+                if( $options->{ignore_empty_values} &&
+                    tag_is_empty( $cif1, $tag ) ) {
+                    next;
+                }
+                push( @$comm, [ $tag, undef, undef ] ) unless $no_left;
             } else {
-                push( @$comm, [ undef, undef, $tags2[0] ] ) unless $no_right;
-                shift @tags2;
+                my $tag = shift @tags2;
+                if( $options->{ignore_empty_values} &&
+                    tag_is_empty( $cif2, $tag ) ) {
+                    next;
+                }
+                push( @$comm, [ undef, undef, $tag ] ) unless $no_right;
             }
             next;
         }

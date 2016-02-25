@@ -43,6 +43,8 @@ my $compare_only_selected = 0;
 my @selected_tags = ();
 my @excluded_tags = ();
 
+my $ignore_empty_values = 0;
+
 my $left    = 1;
 my $right   = 1;
 my $common  = 1;
@@ -82,6 +84,9 @@ my $L_option_param;
 #*
 #* --compare-string _cell_length_a
 #*     Force string comparison for given tag.
+#*
+#* --ignore-empty-values
+#*     Ignore tags with empty values.
 #*
 #* --no-left
 #*     Do not print tags present in the left file only. Similar to
@@ -152,12 +157,19 @@ my $L_option_param;
     "--compare-all-tags" => sub{ $compare_only_selected = 0; },
     "--no-compare,--exclude" =>
         sub{ @excluded_tags = split( /\s|,/, get_value()); },
-    "--compare-datablock-names"         => sub{ $compare_datablock_names = 1 },
-    "--dont-compare-datablock-names"    => sub{ $compare_datablock_names = 0 },
+
+    "--compare-datablock-names"      => sub{ $compare_datablock_names = 1 },
+    "--dont-compare-datablock-names" => sub{ $compare_datablock_names = 0 },
+
     "--compare-numeric" =>
         sub{ $comparators{ get_value() } = \&numeric_compare },
     "--compare-string" =>
         sub{ $comparators{ get_value() } = \&string_compare },
+
+    "--ignore-empty-values"      => sub{ $ignore_empty_values = 1 },
+    "--no-ignore-empty-values"   => sub{ $ignore_empty_values = 0 },
+    "--dont-ignore-empty-values" => sub{ $ignore_empty_values = 0 },
+
     "--folding-width"         => \$folding_width,
     "--fold-long-fields"      => sub{ $fold_long_fields = 1 },
     "--dont-fold-long-fields" => sub{ $fold_long_fields = 0 },
@@ -206,9 +218,11 @@ my $options = {
         'fold'                    => $fold_long_fields,
         'folding_width'           => $folding_width,
         'comparators'             => \%comparators,
+        'ignore_empty_values'     => $ignore_empty_values,
         'suppress_left'           => !$left,
         'suppress_right'          => !$right,
         'suppress_common'         => !$common };
+
 if( $compare_only_selected == 1 ) {
     @selected_tags = map { lc($_) } @selected_tags;
     $options->{compare_only} = \@selected_tags;
