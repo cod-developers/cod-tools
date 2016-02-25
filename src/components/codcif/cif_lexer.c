@@ -717,7 +717,7 @@ static char *clean_string( char *src, int is_textfield, cexception_t *ex )
             } else if( (*src & 255 ) == '\t' ) {
                 *dest = '\0';
                 length += 3;
-                new = realloc( new, length + 1 );
+                new = reallocx( new, length + 1, &inner );
                 strcat( new, "    " );
                 dest = new + strlen( new ) - 1;
             } else if( (*src & 255) == '\r' ) {
