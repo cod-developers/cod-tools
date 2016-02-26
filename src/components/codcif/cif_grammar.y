@@ -843,6 +843,7 @@ void print_current_text_field( char *text, cexception_t *ex )
         char *buf = mallocx( strlen(text) + 5, ex );
         sprintf( buf, ";%s\n;\n", text );
         cifmessage_set_line( current_message, buf, ex );
+        if( buf ) freex( buf );
     }
 }
 
