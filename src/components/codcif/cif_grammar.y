@@ -211,6 +211,7 @@ data_block_head
 	:	_DATA_
         {
             cif_start_datablock( cif_cc->cif, $1, px );
+            freex( $1 );
         }
 	|	_DATA_ cif_value_list
         {
