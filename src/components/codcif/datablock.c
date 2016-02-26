@@ -101,6 +101,8 @@ void delete_datablock( DATABLOCK *datablock )
                     freex( datablock->values[i][j] );
                 freex( datablock->values[i] );
             }
+            if( datablock->types )
+                freex( datablock->types[i] );
         }
         freex( datablock->name );
         freex( datablock->tags );
