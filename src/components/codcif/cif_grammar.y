@@ -240,6 +240,8 @@ data_block_head
                 cif_start_datablock( cif_cc->cif, $1, px );
                 yyerror_previous( "incorrect CIF syntax", px );
             }
+            freex( $1 );
+            freex( $2.vstr );
         }
 ;
 
@@ -301,6 +303,8 @@ cif_value_list
             buf = strcpy( buf, $1.vstr );
             buf = strcat( buf, " \0" );
             buf = strcat( buf, $2.vstr );
+            freex( $1.vstr );
+            freex( $2.vstr );
             $$.vstr  = buf;
             $$.vtype = CIF_UNKNOWN;
         }
