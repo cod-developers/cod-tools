@@ -1726,47 +1726,19 @@ sub print_molecule
                             exclude_misspelled_tags => 1,
                         } );
 
-    my @data2generate = qw( _audit_creation_method
-                            _chemical_formula_sum
-                            _cod_data_source_file
-                            _cod_data_source_block
-                            _cell_formula_units_Z
-    );
-
-    foreach my $data_tag (@data2generate)
-    {
-        if ( $data_tag eq "_audit_creation_method" )
-        {
-            if ( $audit == 1 )
-            {
-                my $id_value = $Id;
-                $id_value =~ s/\s*\$\s*//g;
-                print_single_tag_and_value( $data_tag, $id_value );
-            }
-        }
-        elsif ( $data_tag eq "_chemical_formula_sum" )
-        {
-            print_single_tag_and_value( $data_tag,
-                                        $molecule->{chemical_formula_sum} );
-        }
-        elsif ( $data_tag eq "_cell_formula_units_Z" )
-        {
-            print_single_tag_and_value( $data_tag, $Z );
-        }
-        elsif ( $data_tag =~ /_cod_data_source_file/ )
-        {
-            print_single_tag_and_value( $data_tag, basename( $filename ));
-        }
-        elsif ( $data_tag =~ /_cod_data_source_block/ )
-        {
-            print_single_tag_and_value( $data_tag, $dataset_name );
-        }
-        else
-        {
-            die "ERROR, do not know how to generate tag '$data_tag'\n";
-        }
-
+    if( $audit ) {
+        my $id_value = $Id;
+        $id_value =~ s/\s*\$\s*//g;
+        print_single_tag_and_value( '_audit_creation_method', $id_value );
     }
+
+    print_single_tag_and_value( '_chemical_formula_sum',
+                                $molecule->{chemical_formula_sum} );
+    print_single_tag_and_value( '_cod_data_source_file',
+                                basename( $filename ));
+    print_single_tag_and_value( '_cod_data_source_block',
+                                $dataset_name );
+    print_single_tag_and_value( '_cell_formula_units_Z', $Z );
 
     my $has_disorder = 0;
     my $is_polymer   = 0;
@@ -1847,33 +1819,40 @@ sub print_molecule
     }
 
     print_single_tag_and_value( '_symmetry_space_group_name_H-M', 'P 1' );
-    print "loop_ _symmetry_equiv_pos_as_xyz \'x, y, z\'\n";
-    print "loop_\n";
-    print "_atom_site_label\n";
-    print "_atom_site_type_symbol\n"
+
+    local $, = "\n";
+    local $\ = "\n";
+
+    print "loop_ _symmetry_equiv_pos_as_xyz \'x, y, z\'",
+          'loop_',
+          '_atom_site_label';
+    print '_atom_site_type_symbol'
         if defined $atom_site_type_symbol;
-    print "_atom_site_fract_x\n";
-    print "_atom_site_fract_y\n";
-    print "_atom_site_fract_z\n";
-    print "_atom_site_U_iso_or_equiv\n"
+    print '_atom_site_fract_x';
+    print '_atom_site_fract_y';
+    print '_atom_site_fract_z';
+    print '_atom_site_U_iso_or_equiv'
         if defined $atom_site_U_iso_or_equiv;
-    print "_atom_site_occupancy\n"
+    print '_atom_site_occupancy'
         if defined $atom_site_occupancy;
-    print "_atom_site_refinement_flags\n"
+    print '_atom_site_refinement_flags'
         if $has_refinement_flags;
-    print "_atom_site_refinement_flags_posn\n"
+    print '_atom_site_refinement_flags_posn'
         if $has_posn_refinement_flags;
-    print "_atom_site_refinement_flags_adp\n"
+    print '_atom_site_refinement_flags_adp'
         if $has_adp_refinement_flags;
-    print "_atom_site_refinement_flags_occupancy\n"
+    print '_atom_site_refinement_flags_occupancy'
         if $has_occupancy_refinement_flags;
-    print "_atom_site_disorder_assembly\n"
+    print '_atom_site_disorder_assembly'
         if $use_one_output_datablock && $has_disorder;
-    print "_atom_site_disorder_group\n"
+    print '_atom_site_disorder_group'
         if $use_one_output_datablock && $has_disorder;
-    print "_atom_site_attached_hydrogens\n"
+    print '_atom_site_attached_hydrogens'
         if $has_attached_hydrogens;
-    print "_atom_site_calc_flag\n" if $has_calc_flag;
+    print '_atom_site_calc_flag' if $has_calc_flag;
+
+    local $, = '';
+    local $\ = '';
 
     my $print_format = join( " ", ($format)x3 );
     foreach my $atom ( sort {
@@ -1956,22 +1935,28 @@ sub print_molecule
         print_single_tag_and_value( '_cod_molecule_polymer_dimension',
                                     $polymer_dimension );
     }
-    print "loop_\n";
-    print "_cod_molecule_atom_label\n";
-    print "_cod_molecule_atom_orig_label\n";
-    print "_cod_molecule_atom_symmetry\n";
-    print "_cod_molecule_atom_symop_id\n";
-    print "_cod_molecule_atom_symop_xyz\n";
-    print "_cod_molecule_atom_transl_id\n";
-    print "_cod_molecule_atom_transl_x\n";
-    print "_cod_molecule_atom_transl_y\n";
-    print "_cod_molecule_atom_transl_z\n";
-    print "_cod_molecule_atom_mult\n";
-    print "_cod_molecule_atom_mult_ratio\n";
+
+    local $, = "\n";
+    local $\ = "\n";
+
+    print 'loop_',
+          '_cod_molecule_atom_label',
+          '_cod_molecule_atom_orig_label',
+          '_cod_molecule_atom_symmetry',
+          '_cod_molecule_atom_symop_id',
+          '_cod_molecule_atom_symop_xyz',
+          '_cod_molecule_atom_transl_id',
+          '_cod_molecule_atom_transl_x',
+          '_cod_molecule_atom_transl_y',
+          '_cod_molecule_atom_transl_z',
+          '_cod_molecule_atom_mult',
+          '_cod_molecule_atom_mult_ratio';
     if( $has_disorder ) {
-        print "_cod_molecule_atom_assembly\n";
-        print "_cod_molecule_atom_group\n";
+        print '_cod_molecule_atom_assembly',
+              '_cod_molecule_atom_group';
     }
+
+    local $, = ' ';
 
     foreach my $atom ( sort {
         length($a->{name}) == length($b->{name}) ?
@@ -1979,44 +1964,24 @@ sub print_molecule
             length($a->{name}) <=> length($b->{name})
         } @{$trimmed_atoms} )
     {
-        print_value( $atom->{"name"} );
-        print " ";
-        print_value( $atom->{"site_label"} );
-        print " ";
-        print_value( $atom->{"symop_id"} );
-        print "_";
-        print_value( $atom->{"translation_id"} );
-        print " ";
-        print_value( $atom->{"symop_id"} );
-        print " ";
-        print_value(
+        print map { sprint_value( $_ ) }
+            $atom->{"name"},
+            $atom->{"site_label"},
+            $atom->{"symop_id"} . '_' . $atom->{"translation_id"},
+            $atom->{"symop_id"},
              symop_string_canonical_form(
-                string_from_symop( $atom->{"symop"} ) ) );
-        print " ";
-        print_value( $atom->{"translation_id"} );
-        print " ";
-        print_value( $atom->{"translation"}[0] );
-        print " ";
-        print_value( $atom->{"translation"}[1] );
-        print " ";
-        print_value( $atom->{"translation"}[2] );
-        print " ";
-        print_value( $atom->{"multiplicity"} );
-        print " ";
-        print_value( $atom->{"multiplicity_ratio"} );
-        if( $has_disorder ) {
-            print " ";
-            print_value( $atom->{"assembly"} );
-            print " ";
-            print_value( $atom->{"group"} );
-        }
-        print "\n";
+                string_from_symop( $atom->{"symop"} ) ),
+            $atom->{"translation_id"},
+            @{$atom->{"translation"}},
+            $atom->{"multiplicity"},
+            $atom->{"multiplicity_ratio"},
+            $has_disorder ? ( $atom->{"assembly"}, $atom->{"group"} ) : ();
     }
 
     if( $has_site_symops ) {
-        print "loop_\n";
-        print "_cod_molecule_transform_label\n";
-        print "_cod_molecule_transform_symop\n";
+        print 'loop_';
+        print '_cod_molecule_transform_label';
+        print '_cod_molecule_transform_symop';
 
         foreach my $atom ( sort {
             length($a->{name}) == length($b->{name}) ?
@@ -2025,23 +1990,26 @@ sub print_molecule
             } @{$trimmed_atoms} )
         {
             foreach my $symop ( @{$atom->{"site_symops"}} ) {
-                print_value( $atom->{name} );
-                print " ";
-                print_value(
-                    symop_string_canonical_form(
-                        string_from_symop( $symop ) ) );
-                print "\n";
+                print sprint_value( $atom->{name} ),
+                      sprint_value( symop_string_canonical_form(
+                                    string_from_symop( $symop ) ) );
             }
         }
     }
 
+    local $, = '';
+    local $\ = '';
+
     if( $output_geom_bond ) {
         if( exists $molecule->{bonds} ) {
-            print "loop_\n";
-            print "_geom_bond_atom_site_label_1\n";
-            print "_geom_bond_atom_site_label_2\n";
-            print "_geom_bond_distance\n";
-            print "_geom_bond_valence\n";
+            local $, = "\n";
+            local $\ = "\n";
+
+            print 'loop_',
+                  '_geom_bond_atom_site_label_1',
+                  '_geom_bond_atom_site_label_2',
+                  '_geom_bond_distance',
+                  '_geom_bond_valence';
             for my $bond (@{$molecule->{bonds}}) {
                 printf "%s %s %8.5f %d\n",
                 $bond->{atom1}{name}, $bond->{atom2}{name},
@@ -2584,4 +2552,9 @@ sub mat_rank
                               $_->[2] != 0 ? $_ : () } @m;
 
     return scalar @non_null_rows;
+}
+
+sub sprint_value
+{
+    &COD::CIF::Tags::Print::sprint_value;
 }
