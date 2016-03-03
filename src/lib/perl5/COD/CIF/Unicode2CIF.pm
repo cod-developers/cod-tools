@@ -9,7 +9,8 @@ package COD::CIF::Unicode2CIF;
 
 use strict;
 use warnings;
-use Unicode::Normalize  qw( normalize );
+use HTML::Entities;
+use Unicode::Normalize qw( normalize );
 ## use utf8;
 ## use charnames ':full';
 
@@ -240,8 +241,7 @@ sub cif2unicode
         $text =~ s/(\Q$combining{$pattern}\E)(.)/$2$1/g;
         $text =~ s/\Q$combining{$pattern}\E/$pattern/g;
     }
-    $text =~ s/\&\#x([0-9A-Fa-f]+);/chr(hex($1))/eg;
-    return normalize( 'C', $text );
+    return normalize( 'C', decode_entities( $text ) );
 }
 
 1;
