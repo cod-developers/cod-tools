@@ -11,7 +11,6 @@ sudo apt-get install -y \
     libdbi-perl \
     libdigest-sha-perl \
     libhtml-parser-perl \
-    libhtml-parser-perl \
     libjson-perl \
     liblist-moreutils-perl \
     libparse-yapp-perl \
