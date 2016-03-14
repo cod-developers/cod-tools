@@ -218,7 +218,13 @@ sub cif2unicode
 
     $text = Encode::decode_utf8($text);
 
+    # Firstly converting sequences, that have sub-sequences
+    # corresponding to other special symbols: "\db" (contains "\d")
+    # and "---" (contains "--"):
+
     $text =~ s/\\\\db /\x{003D}/g;
+    $text =~ s/---/\x{2014}/g;
+
     for my $pattern (sort keys %commands) {
         my $value = $commands{$pattern};
             $text =~ s/\Q$value/$pattern/g;
