@@ -116,7 +116,6 @@ my %letters = (
     "\x{03BF}" => '\o', # omicron
     "\x{03C0}" => '\p', # pi
     "\x{03C1}" => '\r', # rho
-    "\x{03C2}" => '\s', # varsigma
     "\x{03C3}" => '\s', # sigma
     "\x{03C4}" => '\t', # tau
     "\x{03C5}" => '\u', # upsilon
