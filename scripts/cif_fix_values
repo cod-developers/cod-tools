@@ -923,70 +923,48 @@ sub fix_temperature($) {
                 next;
             }
 
-            # A temperature range in Celsius is provided
+            # A temperature range in is provided
             if( $temperature_modif =~
                 /^
                     ($number_pos)\s*[\-\/\:]+\s*($number_pos)
-                    (?:[-_\s]*)\(?(?:$temp_C)\)?
+                    (?:[-_\s]*)\(?((?:$temp_C)|(?:$temp_K))?\)?
                     (?:[-_,\s]*)\(?($temp_dec)?\)?$
                     /x )   {
-                my $temp_d = $3;
-                my $number = ($1 + $2)/2;
-                # Converting from degrees Kelvin to degrees Celsius
-                $number += 273.15;
-                my $sig = ($2 - $1 )/2;
-                if( $2 > $1 ) {
+                my $temp_lt = $1;
+                my $temp_gt = $2;
+                my $temp_u  = $3;
+                my $temp_d  = $4;
+
+                my $is_in_Celsius = (defined $temp_u && $temp_u =~ $temp_C);
+                my $number = ($temp_lt + $temp_gt)/2;
+                # Converting from degrees Celsius to degrees Kelvin
+                if ($is_in_Celsius) {
+                  $number += 273.15;
+                }
+                my $sig = ($temp_gt - $temp_lt)/2;
+                if( $temp_gt > $temp_lt ) {
                     my $new_val = pack_precision( $number, $sig );
                     $values->{$tag}[$i] = $new_val;
-                    my $report_msg;;
+                    my $report_msg;
+
                     if( $temp_d ) {
                         my $new_tag = '_chemical_temperature_decomposition';
                         rename_tag( $dataset, $tag, $new_tag );
                         $report_msg =
-                            "'$tag' tag was changed to '$new_tag' " .
-                            'since the value had been given as ' .
-                            "'$temperature'. The value ";
+                            "'$tag' tag was changed to '$new_tag' "
+                          . 'since the value had been given as '
+                          . "'$temperature'. The value ";
                     } else {
                         $report_msg = "'$tag' value '$temperature' ";
                     }
 
-                    $report_msg .=
-                            "was changed to '$new_val' - it was converted "
-                          . 'from degrees Celsius(C) to Kelvins(K), the '
-                          . 'average value was taken and precision was '
-                          . 'estimated.';
-                    push @insert_reports, $report_msg;
-                    warn "NOTE, $report_msg\n";
-                    next;
-                }
-            }
-
-            # A temperature range in Kelvins is provided
-            if( $temperature_modif =~
-                /^ ($number_pos)\s*[\-\/\:]+\s*($number_pos)
-                    (?:[-_\s]*)\(?(?:$temp_K)?\)?
-                    (?:[-_,\s]*)\(?($temp_dec)?\)?$
-                    /x ) {
-                my $temp_d = $3;
-                my $number = ($1 + $2)/2;
-                my $sig = ($2 - $1)/2;
-                if( $2 > $1 ) {
-                    my $new_val = pack_precision( $number, $sig );
-                    $values->{$tag}[$i] = $new_val;
-                    my $report_msg;
-                    if( $temp_d ) {
-                        my $new_tag = '_chemical_temperature_decomposition';
-                        rename_tag( $dataset, $tag, $new_tag );
-                        $report_msg =
-                            "'$tag' tag was changed to '$new_tag' " .
-                            'since the value had been given as ' .
-                            "'$temperature'. The value ";
-                    } else {
-                        $report_msg = "'$tag' value '$temperature' "
+                    $report_msg .= "was changed to '$new_val' - ";
+                    if ( $is_in_Celsius ) {
+                        $report_msg .= 'it was converted from degrees '
+                                     . 'Celsius(C) to Kelvins(K), '
                     }
-                    $report_msg .=
-                            "was changed to '$new_val' - the average value "
-                          . 'was taken and precision was estimated.';
+                    $report_msg .= 'the average value was taken and '
+                                 . 'precision was estimated.';
 
                     push @insert_reports, $report_msg;
                     warn "NOTE, $report_msg\n";
