@@ -72,48 +72,43 @@ while( @ARGV > 0 ) {
     };
 
     my $options = { 'parser' => $use_parser, 'no_print' => 1 };
+    my $files = [ { 'filename' => $cif_file },
+                  { 'filename' => $hkl_file } ];
 
-    my ( $cif_data, $cif_err_count, $cif_messages ) = parse_cif( $cif_file,
-                                                                 $options );
-    process_parser_messages( $cif_messages, $die_on_error_level );
-    next if ( $cif_err_count > 0 );
-    if( !@$cif_data || !defined $cif_data->[0] ||
-        !defined $cif_data->[0]{name} ) {
-        report_message( {
-            'program'   => $0,
-            'filename'  => $cif_file,
-            'err_level' => 'WARNING',
-            'message'   => 'file seems to be empty'
-        }, $die_on_error_level->{'WARNING'} );
-        next;
-    }
-    canonicalize_all_names( $cif_data );
+    for my $file ( @$files ) {
+        my ( $data, $error_count, $messages ) =
+            parse_cif( $file->{filename}, $options );
 
-    my ( $hkl_data, $hkl_err_count, $hkl_messages ) = parse_cif( $hkl_file,
-                                                                 $options );
-    process_parser_messages( $hkl_messages, $die_on_error_level );
-    next if ( $hkl_err_count > 0 );
-    if( !@$hkl_data || !defined $hkl_data->[0] ||
-        !defined $hkl_data->[0]{name} ) {
-        report_message( {
-            'program'   => $0,
-            'filename'  => $hkl_file,
-            'err_level' => 'WARNING',
-            'message'   => 'file seems to be empty'
-        }, $die_on_error_level->{'WARNING'} );
-        next;
+        process_parser_messages( $messages, $die_on_error_level );
+        next PAIR if $error_count > 0;
+
+        if( !@$data || !defined $data->[0] ||
+            !defined $data->[0]{name} ) {
+            report_message( {
+                'program'   => $0,
+                'filename'  => $file->{filename},
+                'err_level' => 'WARNING',
+                'message'   => 'file seems to be empty'
+            }, $die_on_error_level->{'WARNING'} );
+            next PAIR;
+        }
+        canonicalize_all_names( $data );
+        $file->{data} = $data;
     }
-    canonicalize_all_names( $hkl_data );
+
+    my $cif_data = $files->[0]{data};
+    my $hkl_data = $files->[1]{data};
 
     if( @$hkl_data > 1 ) {
         report_message( {
             'program'   => $0,
             'filename'  => $hkl_file,
             'err_level' => 'WARNING',
-            'message'   => 'file seems to be empty'
+            'message'   => 'file contains more than one datablock',
         }, $die_on_error_level->{'WARNING'} );
         next;
     }
+
     my $hkl_dataset = $hkl_data->[0];
     my $hkl_values = $hkl_dataset->{values};
     if( !has_hkl( $hkl_dataset ) &&
@@ -133,6 +128,7 @@ while( @ARGV > 0 ) {
         }, $die_on_error_level->{'WARNING'} );
         next PAIR;
     }
+
     my $hkl_dataname = get_source_block_name( $hkl_dataset );
     my $cif_index;
     my @cif_datanames;
@@ -144,6 +140,7 @@ while( @ARGV > 0 ) {
             last;
         }
     }
+
     if( !defined $cif_index ) {
         report_message( {
             'program'   => $0,
@@ -158,6 +155,7 @@ while( @ARGV > 0 ) {
         }, $die_on_error_level->{'WARNING'} );
         next PAIR;
     }
+
     my $comm = comm( $cif_data->[$cif_index], $hkl_dataset,
         {
             'compare_only' =>
@@ -183,6 +181,7 @@ while( @ARGV > 0 ) {
                     '_publ_author_name' => \&compare_lc_strings,
                 }
         } );
+
     foreach my $line ( @$comm ) {
         if( defined $line->[0] && defined $line->[2] ) {
             my $reason;
@@ -209,6 +208,7 @@ while( @ARGV > 0 ) {
             next PAIR;
         }
     }
+
     report_message( {
         'program'   => $0,
         'filename'  => $cif_file,
