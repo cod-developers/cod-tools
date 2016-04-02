@@ -43,16 +43,6 @@ sub cif_cell_contents( $$@ )
 
     my $values = $dataset->{values};
 
-#   extracts atom site label or atom site type symbol.
-#   The check is left only for error message/output compatibility,
-#   since the actual extraction of site label tag is shifted to
-#   CIFAtomList::atom_array_from_cif().
-    if( !exists $values->{"_atom_site_label"} &&
-        !exists $values->{"_atom_site_type_symbol"} ) {
-        die 'ERROR, neither _atom_site_label nor _atom_site_type_symbol '
-          . 'was found in the input file' . "\n";
-    }
-
 #   extracts cell constants
     my @unit_cell = get_cell( $values );
 
