@@ -474,17 +474,17 @@ sub conventional_cell
     use COD::Fractional qw(symop_ortho_from_fract);
 
     my $f2o = symop_ortho_from_fract( @cell );
-    my $basis_vectors = [
-        symop_vector_mul( $f2o, [1,0,0] ),
-        symop_vector_mul( $f2o, [0,1,0] ),
-        symop_vector_mul( $f2o, [0,0,1] )
-    ];
     my $new_basis = [
-        symop_vector_mul( $CoB, $basis_vectors->[0] ),
-        symop_vector_mul( $CoB, $basis_vectors->[1] ),
-        symop_vector_mul( $CoB, $basis_vectors->[2] )
+        symop_vector_mul( $CoB, [1,0,0] ),
+        symop_vector_mul( $CoB, [0,1,0] ),
+        symop_vector_mul( $CoB, [0,0,1] )
     ];
-    my @new_cell = vectors2cell( @$new_basis );
+    my $new_basis_ortho = [
+        symop_vector_mul( $f2o, $new_basis->[0] ),
+        symop_vector_mul( $f2o, $new_basis->[1] ),
+        symop_vector_mul( $f2o, $new_basis->[2] )
+    ];
+    my @new_cell = vectors2cell( @$new_basis_ortho );
 
     return ( @new_cell, $CoB, $crystal_system );
 }
