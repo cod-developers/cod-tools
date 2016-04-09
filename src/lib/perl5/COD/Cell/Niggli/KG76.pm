@@ -20,7 +20,7 @@
 # Crystallographica. Section A, Foundations of Crystallography, 2004,
 # 60, 1-6, http://dx.doi.org/10.1107/S010876730302186X
 
-# To test, run in trunk/"
+# To test, run in trunk/:
 
 # PERL5LIB=src/lib/perl5/ perl -MCOD::Cell::Niggli::KG76 -e 'COD::Cell::Niggli::KG76::reduce(3,5.196,2,103+55/60,109+28/60,134+53/60)'
 
