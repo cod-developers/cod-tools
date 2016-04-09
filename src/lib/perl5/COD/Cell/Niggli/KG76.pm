@@ -67,7 +67,7 @@ sub reduce
     my $n = 1;
     while(1) {
         if( ++$n > $max_n ) {
-            die 'ERROR, reduce() subroutine could not reduce cell in'
+            die 'ERROR, reduce() subroutine could not reduce cell in '
               . "$max_n steps\n";
         }
         # 1.
