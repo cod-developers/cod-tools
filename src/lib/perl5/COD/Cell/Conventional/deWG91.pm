@@ -17,7 +17,7 @@ package COD::Cell::Conventional::deWG91;
 use strict;
 use warnings;
 use COD::Cell qw( vectors2cell );
-use COD::Spacegroups::Symop::Algebra qw( symop_vector_mul );
+use COD::Spacegroups::Symop::Algebra qw( symop_vector_mul symop_transpose );
 
 require Exporter;
 our @ISA = qw( Exporter );
@@ -480,9 +480,15 @@ sub conventional_cell
         symop_vector_mul( $CoB, [0,0,1] )
     ];
     my $new_basis_ortho = [
-        symop_vector_mul( $f2o, $new_basis->[0] ),
-        symop_vector_mul( $f2o, $new_basis->[1] ),
-        symop_vector_mul( $f2o, $new_basis->[2] )
+        symop_vector_mul( $f2o, [ $new_basis->[0][0],
+                                  $new_basis->[1][0],
+                                  $new_basis->[2][0] ] ),
+        symop_vector_mul( $f2o, [ $new_basis->[0][1],
+                                  $new_basis->[1][1],
+                                  $new_basis->[2][1] ] ),
+        symop_vector_mul( $f2o, [ $new_basis->[0][2],
+                                  $new_basis->[1][2],
+                                  $new_basis->[2][2] ] )
     ];
     my @new_cell = vectors2cell( @$new_basis_ortho );
 
