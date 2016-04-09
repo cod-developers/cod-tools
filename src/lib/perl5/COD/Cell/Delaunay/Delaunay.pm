@@ -60,7 +60,7 @@ sub reduce
     return ( @reduced_cell, $reduced_vectors );
 }
 
-# Delaunau reduction is described in the International Tables for
+# Delaunay reduction is described in the International Tables for
 # Crystallography, Vol. A.
 
 # The step code coded after the spglib-1.6.4 F/LOSS library by Atsushi
