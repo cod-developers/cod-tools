@@ -83,13 +83,57 @@ sub Delaunay_reduction
         $step ++;
     }
 
+    do {
+        print "\n>>> Reduced extended basis:";
+        local $\ = "\n";
+        local $, = " ";
+        for (@extended_basis ) {
+            print map {sprintf "%7.4f", $_ } @$_;
+        }
+    } if 0;
+
     my $reduced_basis = Delaunay_minimal_vectors( \@extended_basis, $epsilon );
+
+    do {
+        print "\n>>> Minimal basis:";
+        local $\ = "\n";
+        local $, = " ";
+        for (@$reduced_basis ) {
+            print map {sprintf "%7.4f", $_ } @$_;
+        }
+        print ">>> Cell volume now: ", vdot($reduced_basis->[0], vcross($reduced_basis->[1],$reduced_basis->[2]));
+    } if 0;
+
     return $reduced_basis;
+}
+
+sub vcross($$)
+{
+    my ($v1, $v2) = @_;
+
+    return [
+        $v1->[1]*$v2->[2] - $v1->[2]*$v2->[1],
+        $v1->[2]*$v2->[0] - $v1->[0]*$v2->[2],
+        $v1->[0]*$v2->[1] - $v1->[1]*$v2->[0],
+        ];
+}
+
+sub vvolume($$$)
+{
+    my ($v1, $v2, $v3) = @_;
+    return vdot( $v1, vcross( $v2, $v3 ));
 }
 
 sub Delaunay_reduction_step
 {
     my ($ebasis, $epsilon) = @_;
+
+    do {
+        print ">>> Cell volume now: ",
+            vdot($ebasis->[0], vcross($ebasis->[1],$ebasis->[2]));
+        print ">>> or             : ",
+            vdot($ebasis->[3], vcross($ebasis->[1],$ebasis->[2]));
+    } if 0;
 
     for( my $i = 0; $i < 4; $i ++ ) {
         for( my $j = $i + 1; $j < 4; $j ++ ) {
@@ -123,11 +167,31 @@ sub Delaunay_minimal_vectors
         vector_add( $ebasis->[2], $ebasis->[0] )
     );
 
+    do {
+        print "\n>>> Candidates:";
+        local $\ = "\n";
+        local $, = " ";
+        for (@candidates ) {
+            print( map( {sprintf "%7.4f", $_ } @$_ ), "length = ", vector_len($_) );
+        }
+    } if 0;
+
     my @lengths = 
         sort { $a->[0] <=> $b->[0] }
         map { [ vector_len($_), $_ ] } @candidates;
 
-    return [ $lengths[0][1], $lengths[1][1], $lengths[2][1] ];
+    # Seatch for a vector that fives a non-flat unit cell with the
+    # first two:
+
+    for( my $k = 2; $k < @lengths; $k ++ ) {
+        my $vol = vvolume( $lengths[0][1], $lengths[1][1], $lengths[$k][1] );
+        ## print ">>> \$vol = $vol\n";
+        if( abs( $vol ) > $epsilon ) {
+            return [ $lengths[0][1], $lengths[1][1], $lengths[$k][1] ];
+        }
+    }
+
+    die "all possible Delaunay reduced cells are flat?!";
 }
 
 1;
