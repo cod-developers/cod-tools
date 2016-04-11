@@ -39,6 +39,23 @@ our @EXPORT_OK = qw(
 our $debug = 1;
 my $EPSILON = 1E-5;
 
+sub vcross($$)
+{
+    my ($v1, $v2) = @_;
+
+    return [
+        $v1->[1]*$v2->[2] - $v1->[2]*$v2->[1],
+        $v1->[2]*$v2->[0] - $v1->[0]*$v2->[2],
+        $v1->[0]*$v2->[1] - $v1->[1]*$v2->[0],
+        ];
+}
+
+sub vvolume($$$)
+{
+    my ($v1, $v2, $v3) = @_;
+    return vdot( $v1, vcross( $v2, $v3 ));
+}
+
 sub reduce
 {
     my @cell = @_;
@@ -58,8 +75,9 @@ sub reduce
         local $\ = "\n";
         local $, = " ";
         for (@$basis_vectors) {
-            print map {sprintf "%7.4f", $_ } @$_;
+            print map {sprintf "%11.8f", $_ } @$_;
         }
+        print ">>> Cell volume now: ", vdot($basis_vectors->[0], vcross($basis_vectors->[1],$basis_vectors->[2]));
     } if 0;
 
     my $reduced_vectors = Delaunay_reduction( $basis_vectors, $eps );
@@ -114,23 +132,6 @@ sub Delaunay_reduction
     } if 0;
 
     return $reduced_basis;
-}
-
-sub vcross($$)
-{
-    my ($v1, $v2) = @_;
-
-    return [
-        $v1->[1]*$v2->[2] - $v1->[2]*$v2->[1],
-        $v1->[2]*$v2->[0] - $v1->[0]*$v2->[2],
-        $v1->[0]*$v2->[1] - $v1->[1]*$v2->[0],
-        ];
-}
-
-sub vvolume($$$)
-{
-    my ($v1, $v2, $v3) = @_;
-    return vdot( $v1, vcross( $v2, $v3 ));
 }
 
 sub Delaunay_reduction_step
@@ -188,6 +189,16 @@ sub Delaunay_minimal_vectors
     my @lengths = 
         sort { $a->[0] <=> $b->[0] }
         map { [ vector_len($_), $_ ] } @candidates;
+
+    do {
+        print "\n>>> Sorted vectors:";
+        local $\ = "\n";
+        local $, = " ";
+        my @vectors = map {$_->[1]} @lengths;
+        for (@vectors ) {
+            print( map( {sprintf "%7.4f", $_ } @$_ ), "length = ", vector_len($_) );
+        }
+    } if 0;
 
     # Seatch for a vector that fives a non-flat unit cell with the
     # first two:
