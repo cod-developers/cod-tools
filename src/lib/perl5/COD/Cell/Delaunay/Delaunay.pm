@@ -53,6 +53,15 @@ sub reduce
         symop_vector_mul( $f2o, [0,0,1] )
     ];
 
+    do {
+        print "\n>>> Original basis:";
+        local $\ = "\n";
+        local $, = " ";
+        for (@$basis_vectors) {
+            print map {sprintf "%7.4f", $_ } @$_;
+        }
+    } if 0;
+
     my $reduced_vectors = Delaunay_reduction( $basis_vectors, $eps );
 
     my @reduced_cell = vectors2cell( @$reduced_vectors );
