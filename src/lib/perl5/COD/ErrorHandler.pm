@@ -113,14 +113,15 @@ sub process_warnings
     my ( $details, $die ) = @_;
 
     my $message = $details->{message};
-    $message =~ s/^([A-Z]+),\s*//;
     # Messages with missing STATUS identifiers probably did not originate in
     # COD modules (for example, system errors) and might start with a
     # uppercase letter
-    if ( !$1 ) {
+    my $error_level = 'WARNING';
+    if ( $message =~ s/^([A-Z]+),\s*// ) {
+        $error_level = $1;
+    } else {
         $message = lcfirst($message);
     };
-    my $error_level = defined $1 ? $1 : 'WARNING';
     my $exit = defined $die->{$error_level} ? $die->{$error_level} : 1;
 
     $details->{message}   = $message;
