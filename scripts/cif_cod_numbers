@@ -20,8 +20,7 @@ use COD::SOptions qw( getOptions );
 use COD::SUsage qw( usage options );
 use COD::ErrorHandler qw( process_warnings
                           process_errors
-                          process_parser_messages
-                          report_message );
+                          process_parser_messages );
 
 my %database = (
         host  => "www.crystallography.net",
@@ -182,13 +181,14 @@ for my $filename (@ARGV) {
     my ( $data, $err_count, $messages ) = parse_cif( $filename, $parser_options );
     process_parser_messages( $messages, $die_on_error_level );
 
+    local $SIG{__WARN__} = sub { process_warnings( {
+                                    'message'       => @_,
+                                    'program'       => $0,
+                                    'filename'      => $filename
+                               }, $die_on_error_level ) };
+
     if( !defined $data->[0] || !defined $data->[0]{name} ) {
-        report_message( {
-            'program'   => $0,
-            'filename'  => $filename,
-            'err_level' => 'WARNING',
-            'message'   => 'file seems to be empty'
-        }, $die_on_error_level->{'WARNING'} );
+        warn "WARNING, file seems to be empty\n";
         next;
     }
 
