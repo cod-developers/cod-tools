@@ -133,9 +133,10 @@ for my $filename (@ARGV) {
                         # fetched
                         use WWW::Curl::Easy;
                         my $curl = WWW::Curl::Easy->new();
-                        #$curl->setopt( CURLOPT_HEADER, 1 );
                         $curl->setopt( CURLOPT_URL, $uri );
-                        $curl->setopt( CURLOPT_WRITEDATA, \$contents );
+                        $contents = '';
+                        open( my $curlhandle, '>', \$contents );
+                        $curl->setopt( CURLOPT_WRITEDATA, $curlhandle );
                         if( $curl->perform ) {
                             warn "WARNING, unable to fetch URI '$uri': "
                                . $curl->errbuf . "\n";
