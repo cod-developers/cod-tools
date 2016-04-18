@@ -38,7 +38,12 @@ SHARED_SWIG_OBJECTS := $(foreach mod, $(PERL_SWIG_MODULES), \
 PYTHON_SWIG_SOURCES := $(wildcard $(addsuffix /*.i, ${PYTHON_SWIG_MODULE_DIRS}))
 PYTHON_SWIG_MODULES := ${PYTHON_SWIG_SOURCES:%.i=%.py}
 
-SWIG_MODULES := ${PERL_SWIG_MODULES} ${PYTHON_SWIG_MODULES}
+SWIG_MODULES := ${PERL_SWIG_MODULES}
+
+# Require Python modules if Python 2.7 is present:
+ifneq ("$(shell which python2.7)", "")
+SWIG_MODULES += ${PYTHON_SWIG_MODULES}
+endif
 
 COMPILED_MODULES := ${YAPP_MODULES} ${SWIG_MODULES}
 
