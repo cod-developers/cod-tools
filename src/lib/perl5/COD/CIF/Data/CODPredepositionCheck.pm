@@ -1276,10 +1276,9 @@ sub check_hold_period
             $hold_period_now = $hold_period;
             if( $hold_period > $max_hold_period ) {
                 critical( $filename, undef, 'WARNING',
-                         "hold period $hold_period_now months is too " .
-                         'large', 'only holds up to ' .
-                         $max_hold_period .
-                         ' months are accepted' );
+                         "the specified hold period of $hold_period_now " .
+                         'months is too long', 'only periods up to ' .
+                         "$max_hold_period months are allowed" );
             }
         } else {
             if( !$replace ) {
