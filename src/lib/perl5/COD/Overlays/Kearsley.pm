@@ -6,16 +6,16 @@
 #-----------------------------------------------------------------------
 #*
 # Constructs the best symmetry operator to superposition two sets of points.
-# Distance between sets of points is measured in rmsd. The algorithm allows 
-# to easily calculate the rmsd value from the eigenvalue without the need to 
-# apply the symmetry operator. In case of a negative eigenvalue, undef is 
+# Distance between sets of points is measured in rmsd. The algorithm allows
+# to easily calculate the rmsd value from the eigenvalue without the need to
+# apply the symmetry operator. In case of a negative eigenvalue, undef is
 # returned instead of rmsd.
 #
 # Used algorithm is decribed in:
-#   Kearsley, S. K. "On the orthogonal transformation used for structural 
+#   Kearsley, S. K. "On the orthogonal transformation used for structural
 #   comparisons", Acta Crystallographica Section A, 1989, 45, 208-210,
 #   doi: 10.1107/S0108767388010128
-# 
+#
 # Usage:
 #   # Find operator matrix to best fit set1 onto set2
 #   (symop_2_from_1, rmsd) = overlay_atoms( set1[][], set2[][] );
@@ -73,15 +73,15 @@ sub overlay_atoms($$)
 
 ##
 # Constructs best operator matrix to superimpose two sets of points.
-# set1 is superimposed onto set2. RMSD value between the two sets is also 
+# set1 is superimposed onto set2. RMSD value between the two sets is also
 # calculated as a step of the algorithm.
 #
 # @param $set1, $set2
 #       Sets of points to be superimposed. $set1 is superimposed on $set2.
 # @param $centers
-#       Optional parameter. Hash reference, containing origin points for 
-#       superimposed sets. If values are not provided, sets are shifted in a 
-#       way for their origins to coincide with their centroids.
+#       Optional parameter. Hash reference, containing origin points for
+#       superimposed sets. If values are not provided, sets are shifted
+#       in a way for their origins to coincide with their centroids.
 #
 # @returns $symop
 #       Rotation (r) and translation (t) matrix following the affine form:
@@ -116,7 +116,7 @@ sub overlay_points($$$)
                                 -$center1->[1],
                                 -$center1->[2] ] );
 
-    my $symop = [ 
+    my $symop = [
                   [ @{$R->[0]}[0..2], $t->[0] + $center2->[0] ],
                   [ @{$R->[1]}[0..2], $t->[1] + $center2->[1] ],
                   [ @{$R->[2]}[0..2], $t->[2] + $center2->[2] ],
@@ -234,7 +234,7 @@ sub construct_rotation_matrix ($)
 }
 
 ##
-# Multiplies two equal sized arrays element-wise and returns the sum of their 
+# Multiplies two equal sized arrays element-wise and returns the sum of their
 # products.
 ##
 sub mult_sum
@@ -250,7 +250,6 @@ sub mult_sum
 ##
 # Returns a column from a matrix represented in a row-major layout.
 ##
-
 sub get_column
 {
     my ( $matrix, $col_count, $col_num ) = @_;
