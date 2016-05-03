@@ -1,4 +1,4 @@
-#------------------------------------------------------------------------------
+#---*- Makefile -*-------------------------------------------------------------
 #$Author$
 #$Revision$
 #$Date$
@@ -106,16 +106,16 @@ DEPEND_FILES = ${LOCAL_DEPENDS} ${OTHER_DEPENDS} ${PRG_DEPEND} ${TST_DEPEND}
 DEL_OBJS     = ${LOCAL_OBJS} ${OTHER_OBJS}
 
 # ${LIB_DIRS} variable contains a list of directories, each of them
-# containin a library that must be linked with programs in the
-# curent directory. The library in the directory 'dir' must be called
+# containing a library that must be linked with programs in the
+# current directory. The library in the directory 'dir' must be called
 # 'dir/libdir.a'. We assume that the 'dir' directory contains a Makefile
 # to build a corresponding library, and simply do 'make -C dir libdir.a'
 # if the library does not exist. If the library exists, we will use
 # whatever it contains, without checking its dependencies. To build the
-# up-to-date libraries in ${LB_DIRS} directoris use 'make libs' command.
+# up-to-date libraries in ${LB_DIRS} directories use 'make libs' command.
 # We omit the check of library dependencies just for speed; if the library
 # is actively changed and must be constantly recompiled, one should use
-# ${OTHER_DIRS} variable to include the the *.c files of that directory
+# ${OTHER_DIRS} variable to include the *.c files of that directory
 # into the compilation list.
 
 
