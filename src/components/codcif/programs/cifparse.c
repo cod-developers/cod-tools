@@ -68,22 +68,22 @@ static char *usage_text[2] = {
 
 "  -s, --suppress-errors          Suppress error messages from the parser\n"
 
-"  -s-,--do-not-suppress-errors   Print parser messages to STDERR (default)"
+"  -s-, --do-not-suppress-errors  Print parser messages to STDERR (default)"
 "\n\n"
 
-"  -M, --do-not-dump-messages     Do not use accumulated CIF messages "
+"  -M, --dump-messages            Do not use accumulated CIF messages "
 "(default)\n"
 
-"  -M-,--do-not-dump-messages     Dump accumulated message texts from the CIF "
+"  -M-, --do-not-dump-messages    Dump accumulated message texts from the CIF "
 "object\n\n"
 
 
-"  -u,  --unfold-lines              Unfold long lines (default)\n"
+"  -u, --unfold-lines              Unfold long lines (default)\n"
 "  -u-, --do-not-unfold-lines       Leave folded lines as they are\n"
 
-"  --version  print program version (SVN Id) and exit\n"
+"  --version  Print program version (SVN Id) and exit\n"
 
-"  --help     print short usage message (this message) and exit\n"
+"  --help     Print short usage message (this message) and exit\n"
 };
 
 static void usage( int argc, char *argv[], int *i, option_t *option,
