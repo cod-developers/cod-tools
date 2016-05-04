@@ -388,7 +388,7 @@ int cif_lexer( FILE *in, cexception_t *ex )
                 strlen( token ) == 5 ) {
                 /* stop field: */
                 yyerrorf( "STOP_ symbol detected in line %i, pos. %i -- "
-                          "it is not acceptable in this version",
+                          "it is not acceptable in CIF v1.1",
                           cif_flex_current_line_number(),
                           cif_flex_current_position() );
             } else {
