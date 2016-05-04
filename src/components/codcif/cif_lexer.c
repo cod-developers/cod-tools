@@ -387,17 +387,13 @@ int cif_lexer( FILE *in, cexception_t *ex )
             } else if( starts_with_keyword( "stop_", token ) &&
                 strlen( token ) == 5 ) {
                 /* stop field: */
-                yyerrorf( "STOP_ symbol detected in line %i, pos. %i -- "
-                          "it is not acceptable in CIF v1.1",
-                          cif_flex_current_line_number(),
-                          cif_flex_current_position() );
+                yyerror( "STOP_ symbol detected -- "
+                         "it is not acceptable in CIF v1.1" );
             } else if( starts_with_keyword( "global_", token ) &&
                 strlen( token ) == 7 ) {
                 /* global field: */
-                yyerrorf( "GLOBAL_ symbol detected in line %i, pos. %i -- "
-                          "it is not acceptable in CIF v1.1",
-                          cif_flex_current_line_number(),
-                          cif_flex_current_position() );
+                yyerror( "GLOBAL_ symbol detected -- "
+                         "it is not acceptable in CIF v1.1" );
             } else {
                 if( token[0] == '[' ) {
                     /* bracket is a reserved symbol, unquoted strings
