@@ -361,7 +361,7 @@ int cif_lexer( FILE *in, cexception_t *ex )
                                          ex );
                 return _DATA_;
             } else if( starts_with_keyword( "save_", token )) {
-                /* save frame header or termonator: */
+                /* save frame header or terminator: */
                 if( strlen( token ) == 5 /* strlen( "save_" ) */ ) {
                     /* This is a save frame terminator: */
                     if( yy_flex_debug ) {
@@ -388,6 +388,13 @@ int cif_lexer( FILE *in, cexception_t *ex )
                 strlen( token ) == 5 ) {
                 /* stop field: */
                 yyerrorf( "STOP_ symbol detected in line %i, pos. %i -- "
+                          "it is not acceptable in CIF v1.1",
+                          cif_flex_current_line_number(),
+                          cif_flex_current_position() );
+            } else if( starts_with_keyword( "global_", token ) &&
+                strlen( token ) == 7 ) {
+                /* global field: */
+                yyerrorf( "GLOBAL_ symbol detected in line %i, pos. %i -- "
                           "it is not acceptable in CIF v1.1",
                           cif_flex_current_line_number(),
                           cif_flex_current_position() );
