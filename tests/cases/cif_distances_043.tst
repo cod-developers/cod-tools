@@ -1,1 +1,1 @@
-Tests the process of escaping special charters.
+Tests the process of escaping special characters.
