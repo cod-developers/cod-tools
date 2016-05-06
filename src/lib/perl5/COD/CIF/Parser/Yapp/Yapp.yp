@@ -983,9 +983,24 @@ my $UQSTRING_INLINE     =       qr/^(?:
             return('STOP_', $1);
         }
         #matching DATA_ field
-        if( s/^(data_${NON_BLANK_CHAR}+)//si )
+        if( s/^(data_(${NON_BLANK_CHAR}*))//si )
         {
             advance_token($parser, length($1));
+            #detecting zero-length data block names
+            if ( length($2) == 0 ) {
+                if ( $parser->{USER}{OPTIONS}{fix_errors} ||
+                     $parser->{USER}{OPTIONS}{fix_datablock_names} ) {
+                    $parser->YYData->{ERRMSG} = 'zero-length data block name '
+                                              . 'detected -- ignored';
+                    $parser->_Warning();
+                } else {
+                    $parser->YYData->{VARS}{print_position} = 1;
+                    $parser->YYData->{ERRMSG} = 'zero-length data block name '
+                                              . 'detected';
+                    $parser->_Error( { line_content =>
+                                       $parser->YYData->{VARS}{current_line} } );
+                }
+            }
             return('DATA_', $1);
         }
         #matching LOOP_ begining
