@@ -352,8 +352,16 @@ int cif_lexer( FILE *in, cexception_t *ex )
             assert( pos < length );
             assert( pos >= 0 );
             token[pos] = '\0';
-            if( starts_with_keyword( "data_", token )) {
+            if( starts_with_keyword( "data_", token ) ) {
                 /* data block header: */
+                if( strlen( token ) == 5 ) {
+                    if( cif_lexer_has_flags(CIF_FLEX_LEXER_FIX_DATABLOCK_NAMES) ) {
+                        yywarning( "zero-length data block name detected "
+                                   "-- ignored", ex );
+                    } else {
+                        yyerror( "zero-length data block name detected" );
+                    }
+                }
                 if( yy_flex_debug ) {
                     printf( ">>> DATA_: '%s'\n", token + 5 );
                 }
