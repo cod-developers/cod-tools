@@ -146,6 +146,7 @@ SV * parse_cif( char * fname, char * prog, SV * opt )
     }
     if( is_option_set( options, "fix_datablock_names" ) ) {
         co = cif_option_set_fix_datablock_names( co );
+        set_lexer_fix_datablock_names();
     }
     if( is_option_set( options, "fix_string_quotes" ) ) {
         co = cif_option_set_fix_string_quotes( co );
