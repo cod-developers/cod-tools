@@ -61,7 +61,7 @@ my $leave_biblio = 0;
 my $leave_title = 0;
 my $global_priority = 0; # if set to 1, bibliography in
                          # 'data_global' has priority over
-                         # bibliography in each other datablock.
+                         # bibliography in each other data block
 my $estimate_spacegroup = 0;
 my $exclude_empty_tags = 0;
 my $exclude_empty_non_loop_tags = 0;
@@ -168,13 +168,13 @@ my %spacegroups = map {
 #*        precedence, even if the '--discard-bibliography' option is enabled.
 #*
 #*    -g, --global-priority
-#*        Assume bibliography found in 'data_global' datablock has
-#*        precedence over bibliographies found in all the other datablocks.
+#*        Assume bibliography found in 'data_global' data block has
+#*        precedence over bibliographies found in all the other data blocks.
 #*    -g-, --no-global-priority
-#*        Assume bibliography found in 'data_global' datablock does not
-#*        have precedence over bibliographies found in all the other datablocks.
+#*        Assume bibliography found in 'data_global' data block does not
+#*        have precedence over bibliographies found in all the other data blocks.
 #*        Only missing bibliographic information will be copied from the
-#*        'data_global' datablock (default).
+#*        'data_global' data block (default).
 #*
 #*    --exclude-publication-details
 #*        Exclude potentially copyrighted and irrelevant tags.
@@ -289,52 +289,52 @@ my %spacegroups = map {
 #*        Do not use any previously provided strings as the name of
 #*        the original file.
 #*    --record-original-filename
-#*        Record the original filename and the original datablock name for
-#*        each datablock as the '_cod_data_source_*' tag values.
+#*        Record the original filename and the original data block name for
+#*        each data block as the '_cod_data_source_*' tag values.
 #*    --dont-record-original-filename
-#*        Do not record the original filename and the original datablock
+#*        Do not record the original filename and the original data block
 #*        name (default).
 #*
 #*    -S, --start-data-block-number 1234567
 #*        Use the provided number as the start number when renaming
-#*        datablocks (default '7000001')  Setting this option enables
+#*        data blocks (default '7000001')  Setting this option enables
 #*        the '-R' option.
 #*    -d, --datablock-format '%07d'
-#*        Use the provided format to determine new datablock names from the
-#*        provided datablock numbers (default '%07d').
+#*        Use the provided format to determine new data block names from the
+#*        provided data block numbers (default '%07d').
 #*    -R, --renumber-data-blocks
-#*        Rename all datablocks. The new names are constructed by taking
+#*        Rename all data blocks. The new names are constructed by taking
 #*        a start number (specified by the '-S' option), applying the
 #*        string format (specified by the '-d' option) and then incrementing
-#*        the start number for each sequential datablock.
+#*        the start number for each sequential data block.
 #*    -R-, --dont-renumber-data-blocks
-#*        Do not rename datablocks (default). Enabling this option sets
+#*        Do not rename data blocks (default). Enabling this option sets
 #*        the '-S' option to default value.
 #*
 #*    --database-code-tag _cod_database_code
 #*        Use the provided tag while adding or updating the database code
-#*        upon renaming the datablocks (default '_cod_database_code').
+#*        upon renaming the data blocks (default '_cod_database_code').
 #*    --update-database-code
 #*        Update the database code tag value upon renaming the
-#*        datablocks (default).
+#*        data blocks (default).
 #*    --dont-update-database-code
 #*        Do not update the database code tag value upon renaming
-#*        the datablocks.
+#*        the data blocks.
 #*
 #*    --use-datablocks-without-coordinates
-#*        Do not remove datablocks without coordinates.
+#*        Do not remove data blocks without coordinates.
 #*    --do-not-use-datablocks-without-coordinates, --use-all-datablocks
 #*    --dont-use-datablocks-without-coordinates,
 #*    --no-use-datablocks-without-coordinates,
 #*    --skip-datablocks-without-coordinates
-#*        Remove datablocks without coordinates (default).
+#*        Remove data blocks without coordinates (default).
 #*
 #*    --use-datablocks-with-structure-factors
-#*        Do not remove datablocks with structure factors (Fobs).
+#*        Do not remove data blocks with structure factors (Fobs).
 #*    --dont-use-datablocks-with-structure-factors,
 #*    --no-use-datablocks-with-structure-factors,
 #*    --skip-datablocks-with-structure-factors
-#*        Filter out datablocks with structure factors (Fobs) (default).
+#*        Filter out data blocks with structure factors (Fobs) (default).
 #*
 #*    --folding-width 78
 #*        Specify the length of the longest unfolded line (default 76).
@@ -707,10 +707,10 @@ for my $filename (@ARGV) {
     };
 
 #
-# Locate publication and overall information datablocks in powder
-# diffraction CIF files. Publication datablock is recognised as having
+# Locate publication and overall information data blocks in powder
+# diffraction CIF files. Publication data block is recognised as having
 # _audit_*, _publ_* or _journal_* tags and having no coordinates or
-# structure factors. Overall information datablock contains both
+# structure factors. Overall information data block contains both
 # _pd_phase_block_id and _pd_block_diffractogram_id loops.
 # See Toby et al., Journal of Applied Crystallography (2003).
 #
@@ -759,13 +759,13 @@ for my $filename (@ARGV) {
 
         if( $pd_publ_datablock_nr > 1 ) {
             warn "WARNING, file had $pd_publ_datablock_nr powder diffraction "
-               . 'publication section datablocks -- datablock information was '
-               . 'merged' . "\n";
+               . 'publication section data blocks -- data block information '
+               . 'was merged' . "\n";
         }
 
         if( $pd_overall_info_datablock_nr > 1 ) {
             warn "WARNING, file had $pd_overall_info_datablock_nr powder "
-               . 'diffraction overall information datablocks -- datablock'
+               . 'diffraction overall information data blocks -- data block '
                . 'information was merged' . "\n"
         }
     };
@@ -777,7 +777,7 @@ for my $filename (@ARGV) {
         }, $die_on_errors );
     };
 
-    # Assume that there are no datablocks with coordinates until a datablock
+    # Assume that there are no data blocks with coordinates until a data block
     # with coordinates is found
 
     my $no_coordinates = 1;
@@ -857,8 +857,8 @@ for my $filename (@ARGV) {
                 if( @{$bib_blocks} > 1 ) {
                     warn "WARNING, the supplied bibliography file '${bib_file}' "
                        . 'has ' . @{$bib_blocks} . ' bibliography entries -- '
-                       . 'bibliography from a datablock that has the same name '
-                       . 'as the coordinate datablock will be used' . "\n";
+                       . 'bibliography from a data block that has the same name '
+                       . 'as the coordinate data block will be used' . "\n";
                     for my $block (@{$bib_blocks}) {
                         if( $block->{name} eq $dataset->{name} ) {
                             $bibdata = $block->{values};
@@ -870,8 +870,9 @@ for my $filename (@ARGV) {
                 }
                 if( !defined $bibdata ) {
                     warn "WARNING, the supplied bibliography file '${bib_file}' "
-                       . 'does not have a matching bibliography datablock -- '
-                       . 'no bibliography will be taken for this datablock' . "\n";
+                       . 'does not have a matching bibliography data block -- '
+                       . 'no bibliography will be taken for this data block'
+                       . "\n";
                 } else {
                     if( !$leave_biblio ) {
                         for my $key ( grep { /_journal_|
@@ -1204,7 +1205,7 @@ for my $filename (@ARGV) {
                         }
                     }
                 } else {
-                    warn 'WARNING, the datablock does not contain symmetry '
+                    warn 'WARNING, the data block does not contain symmetry '
                        . 'operators' . "\n";
                 }
             }
@@ -1342,7 +1343,7 @@ for my $filename (@ARGV) {
            'program'   => $0,
            'filename'  => $filename,
            'err_level' => 'WARNING',
-           'message'   => 'no datablocks that contain coordinates found'
+           'message'   => 'no data blocks that contain coordinates found'
         }, $die_on_warnings );
     }
 }

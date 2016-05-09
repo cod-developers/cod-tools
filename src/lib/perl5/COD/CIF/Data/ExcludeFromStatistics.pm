@@ -54,9 +54,9 @@ sub exclude_from_statistics($$);
 #       In the given example (default), all criteria are turned off.
 # @return $status
 #       Binary value of '0' or '1', the latter meaning that the provided 
-#       datablock did not satisfy the required criteria.
+#       data block did not satisfy the required criteria.
 # @return $warning
-#       A text string containing an explanation for the datablock not
+#       A text string containing an explanation for the data block not
 #       satisfying the criteria that can be used in error messages. An
 #       empty string is returned if the $status is 0.
 ##

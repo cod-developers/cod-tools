@@ -201,7 +201,7 @@ sub cif_has_C_bonds( $$$$ )
 }
 
 # ============================================================================ #
-# Gets atom descriptions, as used in this module, from a CIF datablock.
+# Gets atom descriptions, as used in this module, from a CIF data block.
 #
 # Returns an array of
 #
