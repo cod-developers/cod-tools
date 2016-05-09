@@ -385,7 +385,8 @@ int cif_lexer( FILE *in, cexception_t *ex )
                                              ex );
                     return _SAVE_HEAD;
                 }
-            } else if( starts_with_keyword( "loop_", token )) {
+            } else if( starts_with_keyword( "loop_", token ) &&
+                strlen( token ) == 5) {
                 /* loop header: */
                 if( yy_flex_debug ) {
                     printf( ">>> LOOP_\n" );
