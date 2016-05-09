@@ -20,6 +20,7 @@ use COD::SUsage qw( usage options );
 use COD::ShowStruct qw( showRef );
 
 my $use_parser = 'c';
+my $fix_errors = 0;
 
 #* USAGE:
 #*     $0 --options input1.cif input*.cif
@@ -29,22 +30,33 @@ my $use_parser = 'c';
 #*                     Use development CIF parser written in Perl.
 #* --use-c-parser
 #*                     Use faster C/Yacc CIF parser (default).
-#*
+#* --fix-syntax-errors
+#*                     Try to fix syntax errors in the input CIF
+#*                     files that can be corrected unambiguously.
+#* --dont-fix-syntax-errors, --no-fix-syntax-errors
+#*                     Do not try to fix syntax errors in input
+#*                     CIF files (default).
 #* --help, --usage
 #*                     Print a short usage message (this message) and exit.
 #**
 @ARGV = getOptions(
-    "--use-perl-parser" => sub { $use_parser = "perl" },
-    "--use-c-parser"    => sub { $use_parser = "c" },
-    "--options"         => sub { options; exit },
-    "--help,--usage"    => sub { usage; exit }
+    '--use-perl-parser'         => sub { $use_parser = 'perl' },
+    '--use-c-parser'            => sub { $use_parser = 'c' },
+
+    '--fix-syntax-errors'       => sub { $fix_errors = 1; },
+    '--dont-fix-syntax-errors'  => sub { $fix_errors = 0; },
+    '--no-fix-syntax-errors'    => sub { $fix_errors = 0; },
+
+    '--options'                 => sub { options; exit },
+    '--help,--usage'            => sub { usage; exit }
 );
 
-@ARGV = ("-") unless @ARGV;
+@ARGV = ('-') unless @ARGV;
 
 foreach my $filename ( @ARGV ) {
 
-    my ( $data ) = parse_cif( $filename, { parser => $use_parser } );
+    my ( $data ) = parse_cif( $filename, { 'parser'     => $use_parser,
+                                           'fix_errors' => $fix_errors } );
 
     for my $dataset (@$data) {
         showRef( $dataset );
