@@ -275,7 +275,7 @@ sub filter_and_check
     use COD::CIF::Parser qw( parse_cif );
     my ($data) = parse_cif( $tmp_file, { 'parser' => $options->{'use_parser'} } );
 
-    # Splitting powder diffraction CIF datablocks into CIF and HKL:
+    # Splitting powder diffraction CIF data blocks into CIF and HKL:
 
     my @cif_datablocks;
     my @hkl_datablocks;
@@ -329,14 +329,14 @@ sub filter_and_check
             my $dataname = 'data_' . $dataset->{name} if defined $dataset->{name};
             if( !defined $values ) {
                 critical( $cif_filename, $dataname, 'WARNING',
-                          "no data in datablock '$dataset->{name}'", undef );
+                          "no data in data block '$dataset->{name}'", undef );
             }
             if( (exists $values->{_journal_volume} ||
                  exists $values->{_journal_issue}) &&
                  exists $values->{_journal_year} &&
                  exists $values->{_journal_page_first} ) {
                 critical( $cif_filename, $dataname, 'WARNING',
-                          "the $dataname datablock " .
+                          "the $dataname data block " .
                           'seems to have a complete bibliography ' .
                           '(journal year, volume/issue and page)',
                           'it should then rather be deposited as ' .
@@ -357,7 +357,7 @@ sub filter_and_check
             my $dataname = 'data_' . $dataset->{name} if defined $dataset->{name};
             if( !defined $values ) {
                 critical( $cif_filename, $dataname, 'WARNING',
-                          "no data in datablock '$dataset->{name}'", undef );
+                          "no data in data block '$dataset->{name}'", undef );
             }
             if( exists $values->{_journal_name_full} ) {
                 if( !defined $range ) {
@@ -376,7 +376,7 @@ sub filter_and_check
                                   "journals '$journal' of " .
                                   "data_$data_name and '$journal_now' " .
                                   "of data_$data_name_now " .
-                                  'indicate that the datablocks belong ' .
+                                  'indicate that the data blocks belong ' .
                                   'to different COD number ranges',
                                   'please submit them as separate CIFs' );
                     }
@@ -453,7 +453,7 @@ sub filter_and_check
         if( @{$data} != 1 ) {
             critical( $cif_filename, undef, 'WARNING',
                       'file supplied for replacement ' .
-                      'should have only one datablock', undef );
+                      'should have only one data block', undef );
         }
         if( !exists $data->[0]{values}{'_cod_database_code'}[0]) {
             critical( $cif_filename,
@@ -562,7 +562,7 @@ sub filter_and_check
             } else {
                 print_message( $0, $cif_filename, undef, 'NOTE',
                                'journal name is not defined in the ' .
-                               'first datablock of the published CIF ' .
+                               'first data block of the published CIF ' .
                                "'$cif_filename'", undef );
             }
         }
@@ -691,8 +691,8 @@ sub filter_and_check
         );
         # Determining whether this HKL describes data from single-crystal
         # or powder diffraction experiment. In the first case, HKL should
-        # contain only one datablock and no tags named _pd_block_id.
-        # Powder diffraction HKL file can contain more than one datablock
+        # contain only one data block and no tags named _pd_block_id.
+        # Powder diffraction HKL file can contain more than one data block
         # and one or more of them should have _pd_block_id tag.
 
         my %hkl_parameters;
@@ -703,10 +703,10 @@ sub filter_and_check
         } else {
             critical( $hkl_filename, undef, 'ERROR',
                       'supplied HKL file has more than one ' .
-                      'datablock and does not describe data from ' .
+                      'data block and does not describe data from ' .
                       'powder diffraction experiment', 'only ' .
                       'powder diffraction HKL files can have more ' .
-                      'than one datablock' );
+                      'than one data block' );
         }
 
         my $cif_parameters = extract_cif_values(
@@ -1126,9 +1126,9 @@ sub extract_cif_values
         my $dataname = shift @line;
         if( exists $seen_datanames{$dataname} ) {
             critical( $filename, undef, 'ERROR',
-                      'file contains more than one datablock '
+                      'file contains more than one data block '
                     . "named '$dataname'", 'please use unique '
-                    . 'datablock names' );
+                    . 'data block names' );
         }
         my $values = { name => $dataname };
         for( my $i = 0; $i < @line; $i++ ) {
@@ -1149,7 +1149,7 @@ sub find_cif_datablock_for_hkl
 
     my %hkl_parameters = %{$hkl_parameters};
 
-    # Determining CIF datablock related to supplied HKL file
+    # Determining CIF data block related to supplied HKL file
 
     my $hkl_dataname = $hkl_parameters{name};
     if( exists $hkl_parameters{'_[local]_cod_data_source_block'} ) {
@@ -1167,7 +1167,7 @@ sub find_cif_datablock_for_hkl
                 last;
             } else {
                 critical( $cif_filename, undef, 'ERROR',
-                          'CIF file contains more than one datablock ' .
+                          'CIF file contains more than one data block ' .
                           "named $hkl_dataname?", undef );
             }
         }
@@ -1175,7 +1175,7 @@ sub find_cif_datablock_for_hkl
     if( !defined $cif_for_hkl ) {
         critical( $cif_filename, undef, 'ERROR',
                   'could not relate supplied HKL file to any ' .
-                  'datablock from CIF file', 'CIF datablock ' .
+                  'data block from CIF file', 'CIF data block ' .
                   "with name '$hkl_dataname' is not found" );
     }
     my %cif_parameters = %{ $cif_parameters->[$cif_for_hkl] };
@@ -1189,7 +1189,7 @@ sub find_cif_datablock_for_hkl
                     $hkl_parameters{$tag}->[0] ) ) {
                     critical( $cif_filename, undef, 'ERROR',
                               'can not confirm relation ' .
-                              'between datablocks named \'' .
+                              'between data blocks named \'' .
                               $hkl_dataname .
                               '\' from supplied CIF and Fobs ' .
                               'files', "values of tag '$tag' " .
@@ -1209,7 +1209,7 @@ sub find_cif_datablock_for_hkl
                 if( $cif_authors ne $hkl_authors ) {
                     critical( $cif_filename, undef, 'ERROR',
                               'can not confirm relation ' .
-                              'between datablocks named \'' .
+                              'between data blocks named \'' .
                               $hkl_dataname .
                               '\' from supplied CIF and Fobs ' .
                               'files', 'publication author ' .
@@ -1225,7 +1225,7 @@ sub find_cif_datablock_for_hkl
                     $hkl_parameters{$tag}->[0] ) {
                     critical( $cif_filename, undef, 'ERROR',
                               'can not confirm relation ' .
-                              'between datablocks named \'' .
+                              'between data blocks named \'' .
                               $hkl_dataname .
                               '\' from supplied CIF and Fobs ' .
                               'files', "values of tag '$tag' " .
@@ -1330,7 +1330,7 @@ sub get_deposition_authors
 
         eval {
             if( !defined $values ) {
-                die 'ERROR, no data in the datablock' . "\n";
+                die 'ERROR, no data in the data block' . "\n";
             }
             if( exists $values->{_publ_author_name} ) {
                 if( !defined $deposition_authors ) {
@@ -1342,9 +1342,9 @@ sub get_deposition_authors
                                   join '; ', @{$values->{_publ_author_name}};
                     my $data_name_now = $dataset->{name};
                     if( $deposition_authors ne $deposition_authors_now ) {
-                        die 'WARNING, author list in the datablock '
+                        die 'WARNING, author list in the data block '
                           . "data_$first_data_name ($deposition_authors) "
-                          . 'is not the same as in the datablock '
+                          . 'is not the same as in the data block '
                           . "data_$data_name_now ($deposition_authors_now) -- "
                           . 'please make sure that all data are authored by '
                           . 'the same people when depositing multiple data '
@@ -1372,7 +1372,7 @@ sub get_deposition_authors
                 }
                 if ( !$web_author_matches ) {
                     die "WARNING, submitting author '$web_author' does not "
-                      . 'match any author in the datablock author list ('
+                      . 'match any author in the data block author list ('
                       . join ( ', ', map { "'$_'" }
                                 @{$values->{_publ_author_name}} ) . ') -- '
                       . 'will not deposit the structure, the prepublication '

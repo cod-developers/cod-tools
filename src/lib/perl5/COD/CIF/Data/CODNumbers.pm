@@ -45,9 +45,9 @@ my %default_options = (
     'cod_series_prefix'    => ''
 );
 
-# Returns a list of duplicates for each supplied datablock
+# Returns a list of duplicates for each supplied data block
 # Parameters:
-#   --  hash of datablocks
+#   --  hash of data blocks
 #   --  hash of database parameters, i.e.:
 #       { table => "data" }
 #   --  database handle
@@ -145,7 +145,7 @@ sub fetch_duplicates_from_database
 # Wrapper for fetch_duplicates_from_database(), pre-creating database
 # connection from database credential hash
 # Parameters:
-#   --  hash of datablocks
+#   --  hash of data blocks
 #   --  hash of database parameters, i.e.:
 #       { host  => "www.crystallography.net",
 #         user  => "cod_reader",
