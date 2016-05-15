@@ -1,2 +1,2 @@
-Tests the zero-length datablock names are treated when the
+Tests the way zero-length datablock names are handled when the
 'fix_datablock_names' option is enabled.

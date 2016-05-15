@@ -184,6 +184,22 @@ headerless_data_block
                     yyincrease_error_counter();
             }
         }
+	|	data_item
+        {
+            if( isset_fix_errors( cif_cc ) ||
+                isset_fix_data_header( cif_cc ) ) {
+                    print_message( 
+                              "WARNING", "no data block heading " 
+                              "(i.e. data_somecif) found", "",
+                              cif_flex_previous_line_number(), -1, px );
+            } else {
+                    print_message( 
+                              "ERROR", "no data block heading "
+                              "(i.e. data_somecif) found", "",
+                              cif_flex_previous_line_number(), -1, px );
+                    yyincrease_error_counter();
+            }
+        }
 		data_item_list
 ;
 
