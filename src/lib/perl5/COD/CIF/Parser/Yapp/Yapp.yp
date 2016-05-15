@@ -217,19 +217,34 @@ data_block_list
 headerless_data_block
     :   data_item
         {
-            $_[0]->YYData->{ERRMSG} = "no data block heading (i.e." .
-                " data_somecif) found";
+            $_[0]->YYData->{ERRMSG} = 'no data block heading '
+                                    . '(i.e. data_somecif) found';
             $_[0]->YYData->{VARS}{lines}--;
-            unless( $_[0]->{USER}{OPTIONS}{fix_errors} ||
-                    $_[0]->{USER}{OPTIONS}{fix_data_header} )
+            if ( $_[0]->{USER}{OPTIONS}{fix_errors} ||
+                 $_[0]->{USER}{OPTIONS}{fix_data_header} )
             {
-                $_[0]->_Error();
-            } else {
                 $_[0]->_Warning();
+            } else {
+                $_[0]->_Error();
             }
-                $_[0]->YYData->{VARS}{lines}++;
-                return $_[1];
+            $_[0]->YYData->{VARS}{lines}++;
+            return $_[1];
+        }
+    |   data_item
+        {
+            $_[0]->YYData->{ERRMSG} = 'no data block heading '
+                                    . '(i.e. data_somecif) found';
+            $_[0]->YYData->{VARS}{lines}--;
+            if( $_[0]->{USER}{OPTIONS}{fix_errors} ||
+                $_[0]->{USER}{OPTIONS}{fix_data_header} )
+            {
+                $_[0]->_Warning();
+            } else {
+                $_[0]->_Error();
             }
+            $_[0]->YYData->{VARS}{lines}++;
+            return $_[1];
+        }
         data_item_list
         {
             my $list = $_[3];
