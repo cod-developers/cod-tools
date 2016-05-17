@@ -760,6 +760,32 @@ void cif_yy_reset_error_count( void )
     errcount = 0;
 }
 
+void fprintf_escaped( const char *message,
+                      int escape_parenthesis, int escape_space ) {
+    const char *p = message;
+    while( *p ) {
+        switch( *p ) {
+            case '&':
+                fprintf( stderr, "&amp;" );
+                break;
+            case ':':
+                fprintf( stderr, "&colon;" );
+                break;
+            default:
+                if(        *p == '(' && escape_parenthesis != 0 ) {
+                    fprintf( stderr, "&lpar;" );
+                } else if( *p == ')' && escape_parenthesis != 0 ) {
+                    fprintf( stderr, "&rpar;" );
+                } else if( *p == ' '&& escape_space != 0 ) {
+                    fprintf( stderr, "&nbsp;" );
+                } else {
+                    fprintf( stderr, "%c", *p );
+                }
+        }
+        p++;
+    }
+}
+
 static
 void output_message( const char *errlevel, const char *message,
                      const char *suffix, int line, int position )
@@ -776,7 +802,9 @@ void output_message( const char *errlevel, const char *message,
 
     fflush(NULL);
     if( progname && strlen( progname ) > 0 ) {
-        fprintf( stderr, "%s: %s", progname, filename ? filename : "-" );
+        fprintf_escaped( progname, 0, 1 );
+        fprintf( stderr, ": " );
+        fprintf_escaped( filename ? filename : "-", 1, 1 );
     }
     if( line != -1 ) {
         fprintf( stderr, "(%d", line );
@@ -786,9 +814,12 @@ void output_message( const char *errlevel, const char *message,
         fprintf( stderr, ")" );
     }
     if( datablock ) {
-        fprintf( stderr, " data_%s", datablock );
+        fprintf( stderr, " data_" );
+        fprintf_escaped( datablock, 0, 1 );
     }
-    fprintf( stderr, ": %s, %s%s\n", errlevel, message, suffix );
+    fprintf( stderr, ": %s, ", errlevel );
+    fprintf_escaped( message, 0, 0 );
+    fprintf( stderr, "%s\n", suffix );
     fflush(NULL);
 }
 
