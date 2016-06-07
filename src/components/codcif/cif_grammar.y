@@ -184,6 +184,22 @@ headerless_data_block
                     yyincrease_error_counter();
             }
         }
+	|	data_item
+        {
+            if( isset_fix_errors( cif_cc ) ||
+                isset_fix_data_header( cif_cc ) ) {
+                    print_message( 
+                              "WARNING", "no data block heading " 
+                              "(i.e. data_somecif) found", "",
+                              cif_flex_previous_line_number(), -1, px );
+            } else {
+                    print_message( 
+                              "ERROR", "no data block heading "
+                              "(i.e. data_somecif) found", "",
+                              cif_flex_previous_line_number(), -1, px );
+                    yyincrease_error_counter();
+            }
+        }
 		data_item_list
 ;
 
@@ -211,6 +227,7 @@ data_block_head
 	:	_DATA_
         {
             cif_start_datablock( cif_cc->cif, $1, px );
+            freex( $1 );
         }
 	|	_DATA_ cif_value_list
         {
@@ -232,13 +249,15 @@ data_block_head
                 cif_start_datablock( cif_cc->cif, buf, px );
                 if( isset_fix_errors( cif_cc ) ||
                     isset_fix_string_quotes( cif_cc ) ) {
-                    yynote( "the dataname apparently had spaces "
-                            "in it - replaced spaces by underscores", px );
+                    yywarning( "the dataname apparently had spaces "
+                               "in it -- replaced spaces with underscores", px );
                 }
             } else {
                 cif_start_datablock( cif_cc->cif, $1, px );
                 yyerror_previous( "incorrect CIF syntax", px );
             }
+            freex( $1 );
+            freex( $2.vstr );
         }
 ;
 
@@ -269,7 +288,7 @@ cif_entry
                 assert_datablock_exists( px );
                 if( isset_fix_errors( cif_cc ) ||
                     isset_fix_string_quotes( cif_cc ) ) {
-                    yywarning( "string with spaces without quotes", px );
+                    yywarning( "string with spaces without quotes -- fixed", px );
                     char *buf = mallocx(strlen($2.vstr)+strlen($3.vstr)+2,px);
                     buf = strcpy( buf, $2.vstr );
                     buf = strcat( buf, " \0" );
@@ -300,6 +319,8 @@ cif_value_list
             buf = strcpy( buf, $1.vstr );
             buf = strcat( buf, " \0" );
             buf = strcat( buf, $2.vstr );
+            freex( $1.vstr );
+            freex( $2.vstr );
             $$.vstr  = buf;
             $$.vtype = CIF_UNKNOWN;
         }
@@ -339,8 +360,11 @@ loop_tags
         {
             size_t tag_nr = cif_tag_index( cif_cc->cif, $2 );
             if( tag_nr != -1 ) {
-                yywarning( cxprintf( "tag %s appears more than once", $2 ),
-                           px );
+                print_message(
+                    "ERROR",
+                    cxprintf( "tag %s appears more than once", $2 ), "",
+                    cif_flex_current_line_number(), -1, px );
+                yyincrease_error_counter();
             }
             loop_tag_count++;
             cif_insert_value( cif_cc->cif, $2, NULL, CIF_UNKNOWN, px );
@@ -349,8 +373,11 @@ loop_tags
         {
             size_t tag_nr = cif_tag_index( cif_cc->cif, $1 );
             if( tag_nr != -1 ) {
-                yywarning( cxprintf( "tag %s appears more than once", $1 ),
-                           px );
+                print_message(
+                    "ERROR",
+                    cxprintf( "tag %s appears more than once", $1 ), "",
+                    cif_flex_current_line_number(), -1, px );
+                yyincrease_error_counter();
             }
             loop_tag_count++;
             cif_insert_value( cif_cc->cif, $1, NULL, CIF_UNKNOWN, px );
@@ -400,13 +427,47 @@ string
 textfield
         :	_TEXT_FIELD
         { $$.vstr = $1;
+          int unprefixed = 0;
           if( isset_do_not_unprefix_text( cif_cc ) == 0 ) {
-              $$.vstr = cif_unprefix_textfield( $$.vstr );
+              size_t str_len = strlen( $$.vstr );
+              char * unprefixed_text = cif_unprefix_textfield( $$.vstr );
+              free( $$.vstr );
+              $$.vstr = unprefixed_text;
+              if( str_len != strlen( $$.vstr ) ) {
+                  unprefixed = 1;
+              }
           }
+          int unfolded = 0;
           if( isset_do_not_unfold_text( cif_cc ) == 0 &&
               $$.vstr[0] == '\\' ) {
-              $$.vstr = cif_unfold_textfield( $$.vstr );
+              size_t str_len = strlen( $$.vstr );
+              char * unfolded_text = cif_unfold_textfield( $$.vstr );
+              free( $$.vstr );
+              $$.vstr = unfolded_text;
+              if( str_len != strlen( $$.vstr ) ) {
+                  unfolded = 1;
+              }
           }
+
+        /*
+         * Unprefixing transforms the first line to either "/\n" or "\n".
+         * These symbols signal whether the processed text should be
+         * unfolded or not (if the unfolding option is also set).
+         * As a result, if the text was unprefixed, but not unfolded
+         * an unnescessary empty line might occur at the begining of
+         * the text field. This empty line should be removed.
+         */
+          if( unprefixed == 1 && unfolded == 0 ) {
+              if( $$.vstr[0] == '\n' ) {
+                  size_t i = 0;
+                  while($$.vstr[i] != '\0') {
+                      $$.vstr[i] = $$.vstr[i+1];
+                      i++;
+                  }
+                  $$.vstr[i] = '\0';
+              }
+          }
+
           $$.vtype = CIF_TEXT; }
 ;
 
@@ -699,6 +760,32 @@ void cif_yy_reset_error_count( void )
     errcount = 0;
 }
 
+void fprintf_escaped( const char *message,
+                      int escape_parenthesis, int escape_space ) {
+    const char *p = message;
+    while( *p ) {
+        switch( *p ) {
+            case '&':
+                fprintf( stderr, "&amp;" );
+                break;
+            case ':':
+                fprintf( stderr, "&colon;" );
+                break;
+            default:
+                if(        *p == '(' && escape_parenthesis != 0 ) {
+                    fprintf( stderr, "&lpar;" );
+                } else if( *p == ')' && escape_parenthesis != 0 ) {
+                    fprintf( stderr, "&rpar;" );
+                } else if( *p == ' '&& escape_space != 0 ) {
+                    fprintf( stderr, "&nbsp;" );
+                } else {
+                    fprintf( stderr, "%c", *p );
+                }
+        }
+        p++;
+    }
+}
+
 static
 void output_message( const char *errlevel, const char *message,
                      const char *suffix, int line, int position )
@@ -715,7 +802,9 @@ void output_message( const char *errlevel, const char *message,
 
     fflush(NULL);
     if( progname && strlen( progname ) > 0 ) {
-        fprintf( stderr, "%s: %s", progname, filename ? filename : "-" );
+        fprintf_escaped( progname, 0, 1 );
+        fprintf( stderr, ": " );
+        fprintf_escaped( filename ? filename : "-", 1, 1 );
     }
     if( line != -1 ) {
         fprintf( stderr, "(%d", line );
@@ -725,9 +814,12 @@ void output_message( const char *errlevel, const char *message,
         fprintf( stderr, ")" );
     }
     if( datablock ) {
-        fprintf( stderr, " data_%s", datablock );
+        fprintf( stderr, " data_" );
+        fprintf_escaped( datablock, 0, 1 );
     }
-    fprintf( stderr, ": %s, %s%s\n", errlevel, message, suffix );
+    fprintf( stderr, ": %s, ", errlevel );
+    fprintf_escaped( message, 0, 0 );
+    fprintf( stderr, "%s\n", suffix );
     fflush(NULL);
 }
 
@@ -804,6 +896,7 @@ void print_current_text_field( char *text, cexception_t *ex )
         char *buf = mallocx( strlen(text) + 5, ex );
         sprintf( buf, ";%s\n;\n", text );
         cifmessage_set_line( current_message, buf, ex );
+        if( buf ) freex( buf );
     }
 }
 

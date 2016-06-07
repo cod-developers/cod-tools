@@ -26,6 +26,7 @@ cif_option_t cif_option_set_fix_errors( cif_option_t copt )
     set_lexer_fix_missing_closing_double_quote();
     set_lexer_fix_missing_closing_single_quote();
     set_lexer_allow_uqstring_brackets();
+    set_lexer_fix_datablock_names();
     copt |= FIX_ERRORS;
     return copt;
 }

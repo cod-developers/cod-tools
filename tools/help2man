@@ -1,0 +1,255 @@
+#!/bin/sh
+#!perl -w # --*- Perl -*--
+eval 'exec perl -x $0 ${1+"$@"}'
+    if 0;
+#------------------------------------------------------------------------------
+#$Author: antanas $
+#$Date: 2016-01-16 03:08:50 +0200 (Sat, 16 Jan 2016) $
+#$Revision: 563 $
+#$URL: svn+ssh://saulius-grazulis.lt/home/saulius/svn-repositories/scripts/help2man $
+#------------------------------------------------------------------------------
+#*
+# Generate man page for a script, marked up according to SOptions Perl
+# module.
+#**
+
+use strict;
+use warnings;
+use File::Basename qw( basename );
+use COD::SOptions qw( getOptions );
+use COD::SUsage qw( usage options );
+
+my $bugs_url;
+my $bugs_email;
+
+my $format = 'man';
+
+#* USAGE:
+#*     $0 --options script script*
+#*
+#* OPTIONS:
+#*     --man
+#*          Generate a man page. Default option.
+#*
+#*     --wiki
+#*          Generate a wiki page.
+#*
+#*     --mdwn, --markdown
+#*          Generate output in Markdown format.
+#*
+#*     --bugs-url
+#*          Specify Web URL for bug reporting.
+#*
+#*     --bugs-email
+#*          Specify e-mail address for bug reporting.
+#*
+#*     --help, --usage
+#*          Print a short usage message (this message) and exit.
+#**
+@ARGV = getOptions(
+    "--man"             => sub { $format = 'man' },
+    "--wiki"            => sub { $format = 'wiki' },
+    "--mdwn,--markdown" => sub { $format = 'markdown' },
+
+    "--bugs-url"   => \$bugs_url,
+    "--bugs-email" => \$bugs_email,
+
+    "--options"      => sub { options; exit },
+    "--help,--usage" => sub { usage; exit }
+);
+
+for my $filename (@ARGV) {
+    my $name = basename( $filename );
+    my( $help, $errors );
+    do {
+        local *STDOUT;
+        local *STDERR;
+        local $0 = $name;
+        open( STDOUT, '>', \$help );
+        open( STDERR, '>', \$errors );
+        usage( $filename );
+    };
+    die $errors if $errors;
+
+    my @help = split( "\n", $help );
+
+    my @head;
+    my @usage;
+    my @options;
+
+    my %flags = ( in_head => 1 );
+    while( @help ) {
+        $_ = shift @help;
+
+        if(    /^\s*usage:\s*$/i ) {
+            %flags = ( in_usage => 1 );
+            next;
+        }
+        elsif( /^\s*options:\s*$/i ) {
+            %flags = ( in_options => 1 );
+            next;
+        }
+
+        if(    exists $flags{in_head} ) {
+            s/^\s+//;
+            push( @head, $_ );
+        }
+        elsif( exists $flags{in_usage} ) {
+            s/^\s+//;
+            push( @usage, $_ );
+        }
+        elsif( exists $flags{in_options} ) {
+            if( /^\s*\-\S/ && @options
+                && $options[-1] =~ /^\s*\-\S/ ) {
+                push( @options, "" );
+            }
+            push( @options, $_ );
+        }
+    }
+
+    my $indent_length;
+    foreach( @options ) {
+        next if $_ eq "";
+        /^(\s*)/;
+        if( !defined $indent_length ||
+            $indent_length > length( $1 ) ) {
+            $indent_length = length( $1 );
+        }
+    }
+
+    @options = map { $_ ne ""
+                            ? substr( $_, $indent_length )
+                            : "" } @options;
+
+    my $options;
+    if( $format eq 'man' ) {
+        @head    = map { s/\-/\\-/g; $_ } @head;
+        @usage   = map { s/\-/\\-/g; $_ } @usage;
+        @options = map { s/\-/\\-/g; $_ } @options;
+        $options = join "\n", @options;
+    } elsif( $format eq 'wiki' || $format eq 'markdown' ) {
+        my @options_now;
+        my $last_line;
+        if( $format eq 'wiki' ) {
+            push @options_now, ";";
+        } else {
+            push @options_now, "* `";
+        }
+        foreach( grep { !/^$/ } @options ) {
+            if( !defined $last_line ) {
+                $last_line = $_;
+                next;
+            }
+            if( /^-/ ) {
+                if( $last_line =~ /^-/ ) {
+                    push @options_now, "$last_line ";
+                } else {
+                    push @options_now, "$last_line\n";
+                    if( $format eq 'wiki' ) {
+                        push @options_now, ";";
+                    } else {
+                        push @options_now, "\n* `";
+                    }
+                }
+            } else {
+                s/^\s+//;
+                if( $last_line =~ /^-/ ) {
+                    if( $format eq 'wiki' ) {
+                        push @options_now, "$last_line\n";
+                        push @options_now, ":";
+                    } else {
+                        push @options_now, "$last_line`\n";
+                        push @options_now, "\n  ";
+                    }
+                } else {
+                    push @options_now, "$last_line ";
+                }
+            }
+            $last_line = $_;
+        }
+        push @options_now, $last_line;
+        $options = join "", @options_now;
+    } else {
+        die "$0: unknown format: '$format'"
+    }
+
+    my $head    = join "\n", @head;
+    my $usage   = join "\n", @usage;
+
+    my $head_first_line;
+    if( $head ) {
+        $head_first_line = $head;
+        $head_first_line =~ s/\n+/ /g;
+        $head_first_line =~ s/^\s+//;
+    } else {
+        $head_first_line = "to be described...";
+    }
+
+    $head    = "to be described..." unless $head;
+    $usage   = "$name [options] [input files]" unless $usage;
+    $options = "to be described..." unless $options;
+
+    if( $format eq 'man' ) {
+        print <<END;
+.TH $name
+.SH NAME
+$name \\- $head_first_line
+.SH SYNOPSIS
+$usage
+.SH DESCRIPTION
+$head
+.SH OPTIONS
+$options
+END
+    } elsif( $format eq 'wiki' ) {
+        $head =~ s/^\s*//;
+        $head = lcfirst( $head );
+        print <<END;
+'''$name''' &ndash; $head
+== Synopsis ==
+  $usage
+== Options ==
+$options
+END
+    } elsif( $format eq 'markdown' ) {
+        $head =~ s/^\s*//;
+        $head = lcfirst( $head );
+        print <<END;
+**$name** &ndash; $head
+# Synopsis
+    $usage
+# Options
+$options
+END
+    } else {
+        die "$0: unknown format: '$format'"
+    }
+
+    my @bugs_contacts;
+    if( $format eq 'markdown' ) {
+        push( @bugs_contacts, "Report **$name** bugs using Web: <$bugs_url>" )
+            if defined $bugs_url;
+        push( @bugs_contacts, "Report **$name** bugs using e-mail: <$bugs_email>" )
+            if defined $bugs_email;
+    } else {
+        push( @bugs_contacts, "Report $name bugs using Web: $bugs_url" )
+            if defined $bugs_url;
+        push( @bugs_contacts, "Report $name bugs using e-mail: $bugs_email" )
+            if defined $bugs_email;
+    }
+
+    if( @bugs_contacts > 0 ) {
+        if( $format eq 'man' ) {
+            print ".SH \"REPORTING BUGS\"\n" .
+                  join( "\n.br\n",
+                        map { s/\-/\\-/g; $_ }
+                            @bugs_contacts ) . "\n";
+        } elsif( $format eq 'wiki' ) {
+            print "== Reporting bugs ==\n" . join( "\n\n", @bugs_contacts ) . "\n";
+        } elsif( $format eq 'markdown' ) {
+            print "\n# Reporting bugs\n" . join( "\n\n", @bugs_contacts ) . "\n";
+        } else {
+            die "$0: unknown format: '$format'"
+        }
+    }
+}

@@ -101,6 +101,8 @@ void delete_datablock( DATABLOCK *datablock )
                     freex( datablock->values[i][j] );
                 freex( datablock->values[i] );
             }
+            if( datablock->types )
+                freex( datablock->types[i] );
         }
         freex( datablock->name );
         freex( datablock->tags );
@@ -179,8 +181,8 @@ void dispose_datablock( DATABLOCK * volatile *datablock )
 {
     assert( datablock );
     if( *datablock ) {
-	delete_datablock( *datablock );
-	*datablock = NULL;
+        delete_datablock( *datablock );
+        *datablock = NULL;
     }
 }
 
@@ -462,7 +464,7 @@ void datablock_insert_value( DATABLOCK * datablock, char *tag,
         datablock->types[i] = callocx( sizeof(datablock->types[0][0]), 1, &inner );
         datablock->value_capacities[i] = 1;
         datablock->tags[i] = tag;
-	datablock->in_loop[i] = -1;
+        datablock->in_loop[i] = -1;
 
         if( value ) {
             datablock->value_lengths[i] = 1;
@@ -470,7 +472,7 @@ void datablock_insert_value( DATABLOCK * datablock, char *tag,
             datablock->types[i][0] = vtype;
         } else {
             datablock->value_lengths[i] = 0;
-	}
+        }
     }
     cexception_catch {
         cexception_reraise( inner, ex );
@@ -482,6 +484,7 @@ void datablock_overwrite_value(  DATABLOCK * datablock, ssize_t tag_nr,
                        datablock_value_type_t vtype )
 {
     if( value ) {
+        free( datablock->values[tag_nr][val_nr] );
         datablock->values[tag_nr][val_nr] = value;
         datablock->types[tag_nr][val_nr]  = vtype;
     } else {

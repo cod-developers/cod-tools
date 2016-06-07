@@ -14,6 +14,7 @@ package COD::CIF::Data::SymmetryGenerator;
 
 use strict;
 use warnings;
+use COD::CIF::Data::AtomList qw( copy_atom );
 use COD::Spacegroups::Symop::Algebra qw( symop_is_unity symop_vector_mul );
 use COD::Spacegroups::Symop::Parse qw( modulo_1 );
 use COD::Spacegroups::Names;
@@ -22,8 +23,8 @@ use COD::Algebra::Vector qw( distance );
 require Exporter;
 our @ISA = qw( Exporter );
 our @EXPORT_OK = qw(
+    apply_shifts
     atoms_coincide
-    copy_atom
     symop_generate_atoms
     test_bond
     test_bump
@@ -37,12 +38,11 @@ my $special_position_cutoff = 0.01; # Angstroems
 # than $special_position_cutoff are considered to be the same atom on
 # a special position.
 
+sub apply_shifts($);
 sub atoms_coincide($$$);
 sub symop_generate_atoms($$$);
 sub test_bond($$$$$);
 sub test_bump($$$$$$$);
-sub copy_atom($);
-sub copy_array($);
 
 #===============================================================#
 
@@ -136,9 +136,9 @@ sub symgen_atom($$$)
     ## print ">>> $gp_multiplicity / $multiplicity_ratio\n";
 
     if( $gp_multiplicity % $multiplicity_ratio ) {
-        die( "Multiplicity ratio $multiplicity_ratio does not divide " .
-             "multiplicity of a general position $gp_multiplicity " .
-             "- this should not happen" );
+        die "ERROR, multiplicity ratio '$multiplicity_ratio' does not divide "
+          . "multiplicity of a general position '$gp_multiplicity' -- "
+          . "this should not happen\n";
     }
 
     my $multiplicity = $gp_multiplicity / $multiplicity_ratio;
@@ -164,6 +164,86 @@ sub symop_generate_atoms($$$)
     }
 
     return \@sym_atoms;
+}
+
+#===============================================================#
+# Shifts a given atom according shifting params. If shifting params are
+# (-1, 0, 1) then 27 shifts are made.
+#
+# Accepts:
+#    $atom      A reference to an atom information hash. An example of
+#               the atom information hash:
+#               {
+#                    site_label => 'C1',
+#                    name       => 'C1_2',
+#                    chemical_type  => 'C',
+#                    coordinates_fract => [1.0, 1.0, 1.0],
+#                    unity_matrix_applied => 1
+#               }
+#
+# Returns:
+#   @atoms      An array of references of the atom information hashes that
+#               were constructd from the original atom information hash.
+sub shift_atom($)
+{
+    my ( $atom ) = @_;
+
+    my @shifted_atoms;
+    my @shift = ( 0, -1, 1 );
+
+    foreach my $x ( @shift ) {
+    foreach my $y ( @shift ) {
+    foreach my $z ( @shift ) {
+        my $new_atom = copy_atom($atom);
+        $new_atom->{'translation'} = [ $x, $y, $z ];
+        my @new_atom_xyz;
+        if( $x != 0 || $y != 0 || $z != 0 ||
+            $atom->{'unity_matrix_applied'} != 1) {
+
+            $new_atom_xyz[0] = $atom->{'coordinates_fract'}[0] + $x;
+            $new_atom_xyz[1] = $atom->{'coordinates_fract'}[1] + $y;
+            $new_atom_xyz[2] = $atom->{'coordinates_fract'}[2] + $z;
+
+            my $shift_label = ( $x + 5 ) . ( $y + 5 ) . ( $z + 5 );
+
+            $new_atom->{'coordinates_fract'} = \@new_atom_xyz;
+            $new_atom->{'coordinates_ortho'} =
+                        symop_vector_mul( $atom->{'f2o'}, \@new_atom_xyz );
+            $new_atom->{'name'} =
+                        $atom->{'site_label'} . "_" .
+                        $atom->{'symop_id'} . "_" .
+                        $shift_label;
+            $new_atom->{'translation_id'} = $shift_label;
+        }
+        push @shifted_atoms, $new_atom;
+    } } }
+
+    return @shifted_atoms;
+}
+
+#===============================================================#
+# Generates atoms of surrounding cells by shifting atoms in 27 possible
+# ways in 3D space. Atom name is updated to include the shift.
+#
+# @param $atoms
+#       Reference to an array of atoms data structures as described in
+#       'shift_atom'.
+#
+# @returns $shifted
+#       Reference to an array of shifted atoms.
+##
+
+sub apply_shifts($)
+{
+    my ($atoms) = @_;
+
+    my @shifted = ();
+
+    for my $atom (@{$atoms}) {
+        push( @shifted, shift_atom( $atom ));
+    }
+
+    return \@shifted;
 }
 
 #===============================================================#
@@ -237,60 +317,6 @@ sub test_bump($$$$$$$)
     }
 
     return 0;
-}
-
-#===============================================================#
-# Copies atom and returns the same instance of it (different object, same props)
-
-# Accepts a hash $atom_info = {
-#                       label=>"C1_2",
-#                       label_basename=>"C1",
-#                       chemical_type=>"C",
-#                       coordinates_fract=>[1.0, 1.0, 1.0],
-#                       coordinates_ortho=>[5.0, -1.3, 1.7],
-#                       unity_matrix_applied=>1,
-#                       symop_id=>1
-#                       assembly=>"A", # "."
-#                       group=>"1", # "."
-#                       }
-
-# Returns a hash $new_atom_info = {
-#                       label=>"C1_2",
-#                       label_basename=>"C1",
-#                       chemical_type=>"C",
-#                       coordinates_fract=>[1.0, 1.0, 1.0],
-#                       coordinates_ortho=>[5.0, -1.3, 1.7],
-#                       unity_matrix_applied=>1,
-#                       symop_id=>1,
-#                       assembly=>"A", # "."
-#                       group=>"1", # "."
-#                       }
-
-sub copy_atom($)
-{
-    my($old_atom) = @_;
-
-    my %new_atom;
-
-    for my $key (keys %$old_atom ) {
-        if( !ref $old_atom->{$key} ) {
-            $new_atom{$key} = $old_atom->{$key};
-        } elsif( ref $old_atom->{$key} eq "ARRAY" ) {
-            $new_atom{$key} = copy_array($old_atom->{$key});
-        } else {
-            die( "assertion failed: 'copy_atom' does not know how to " .
-                 "copy the supplied object" );
-        }
-    }
-
-    return \%new_atom;
-}
-
-sub copy_array($)
-{
-    my ($arr) = @_;
-    my @copy_arr = @{$arr};
-    return \@copy_arr;
 }
 
 1;

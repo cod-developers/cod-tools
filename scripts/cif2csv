@@ -14,16 +14,23 @@ eval 'exec perl -x $0 ${1+"$@"}'
 
 use strict;
 use warnings;
-
 use COD::CIF::Parser qw( parse_cif );
 use COD::SOptions qw( getOptions );
 use COD::SUsage qw( usage options );
-use COD::UserMessage qw( error );
+use COD::ErrorHandler qw( process_parser_messages report_message );
+
+sub csv_format($$$);
+
+my $die_on_error_level = {
+    'ERROR'   => 1,
+    'WARNING' => 0,
+    'NOTE'    => 0
+};
 
 my $use_parser = 'c';
 
 #* USAGE:
-#*     $0 input1.cif input1_alt.cif
+#*     $0 --options input1.cif input*.cif
 #*
 #* OPTIONS:
 #* --use-perl-parser
@@ -35,15 +42,13 @@ my $use_parser = 'c';
 #*                     Print a short usage message (this message) and exit.
 #**
 @ARGV = getOptions(
-    "--use-perl-parser" => sub { $use_parser = "perl" },
-    "--use-c-parser"    => sub { $use_parser = "c" },
-    "--options"         => sub { options; exit },
-    "--help,--usage"    => sub { usage; exit }
+    '--use-perl-parser' => sub { $use_parser = 'perl' },
+    '--use-c-parser'    => sub { $use_parser = 'c' },
+    '--options'         => sub { options; exit },
+    '--help,--usage'    => sub { usage; exit }
 );
 
-sub csv_format($$$);
-
-@ARGV = ("-") unless @ARGV;
+@ARGV = ('-') unless @ARGV;
 
 my $fields_separator = ','; # as per section 1.4 of RFC 4180
 my $lines_separator  = "\r\n"; # as per section 4.1.1 of RFC 2046
@@ -51,20 +56,20 @@ my $lines_separator  = "\r\n"; # as per section 4.1.1 of RFC 2046
 for my $filename (@ARGV) {
     my $options = { 'parser' => $use_parser, 'no_print' => 1 };
     my ( $data, $err_count, $messages ) = parse_cif( $filename, $options );
-    if ( $err_count > 0 ) {
-        print STDERR $_ foreach ( @$messages );
-        error( $0, $filename, undef, "$err_count error(s) "
-             . "encountered while parsing the file", undef );
-        exit 1;
-    }
+    process_parser_messages( $messages, $die_on_error_level );
 
-    if(!@{$data} || !defined $data->[0] || !defined $data->[0]{name} ) {
-        print STDERR "File '$filename' seems to be empty\n";
+    if( !@{$data} || !defined $data->[0] || !defined $data->[0]{name} ) {
+        report_message( {
+           'program'   => $0,
+           'filename'  => $filename,
+           'err_level' => 'WARNING',
+           'message'   => 'file seems to be empty'
+        }, $die_on_error_level->{WARNING} );
         next;
     }
 
-    for my $datablock (@$data) {
-        print STDERR $datablock->{name} . "\n";
+    for my $datablock (@{$data}) {
+        print {*STDERR} $datablock->{name} . "\n";
         print 'data_'
             . $fields_separator . $datablock->{name}
             . $lines_separator;
@@ -86,7 +91,7 @@ for my $filename (@ARGV) {
         # and print loop values
         for my $loop (@{$datablock->{loops}}) {
             local $, = $fields_separator;
-            print @$loop;
+            print @{$loop};
             print $lines_separator;
             my $loop_value_length = $#{$datablock->{values}{$loop->[0]}};
             for my $line(0..$loop_value_length) {
@@ -98,7 +103,7 @@ for my $filename (@ARGV) {
                     print csv_format($datablock->{values}{$tagName}[$line],
                                      $datablock->{types}{$tagName}[$line],
                                      $precision);
-                    if($tagName ne $$loop[$#{$loop}]) { # do not print field separator
+                    if($tagName ne $loop->[$#{$loop}]) { # do not print field separator
                         print $fields_separator;        # after last element
                     }
                 }
@@ -108,8 +113,9 @@ for my $filename (@ARGV) {
     }
 }
 
-sub csv_format($$$) {
-    my ($value, $type, $precision) = (shift,shift,shift);
+sub csv_format($$$)
+{
+    my ($value, $type, $precision) = @_;
     if(0 == length $value) {
         return '';
     }
@@ -123,9 +129,10 @@ sub csv_format($$$) {
     return unless defined $formats{$type} && defined $value;
     my $format = $formats{$type};
     if('INT' eq $type || 'FLOAT' eq $type) {
-        $value =~ m/([+-]?[0-9]*(?:\.[0-9]+)?)(?:\(([0-9]+)\))?/;
-        $precision = $2;
-        $value     = $1;
+        if ( $value =~ m/([+-]?\d*(?:[.]\d+)?)(?:[(](\d+)[)])?/ ) {
+            $precision = $2;
+            $value     = $1;
+        }
     }
     if($value =~ m/,/ && $format !~ m/"/) {
         $format = '"' . $format . '"';
@@ -133,7 +140,7 @@ sub csv_format($$$) {
     if($format =~ m/"/) {
         $value =~ s/"/""/g; # as per sections 2.6 & 2.7 of RFC 4180
     }
-    $result = sprintf($format, $value);
+    $result = sprintf $format, $value;
     if(defined $precision) {
         $result .= '(' . $precision . ')';
     }

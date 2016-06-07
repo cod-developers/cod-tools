@@ -16,7 +16,8 @@ package COD::Cell::Conventional::deWG91;
 
 use strict;
 use warnings;
-use COD::Spacegroups::Symop::Algebra qw( symop_apply );
+use COD::Cell qw( vectors2cell );
+use COD::Spacegroups::Symop::Algebra qw( symop_vector_mul symop_transpose );
 
 require Exporter;
 our @ISA = qw( Exporter );
@@ -24,7 +25,8 @@ our @EXPORT_OK = qw(
     conventional_cell
 );
 
-my $Pi = 4 * atan2(1,1);
+my $PI = 4 * atan2(1,1);
+my $EPSILON = 1E-2;
 
 $COD::Cell::Conventional::deWG91::debug = 1;
 
@@ -45,10 +47,10 @@ sub conventional_cell
 {
     my @cell = @_;
 
-    my $eps = @cell > 6 ? pop(@cell) : 1E-2;
+    my $eps = @cell > 6 ? pop(@cell) : $EPSILON;
 
     my ($a, $b, $c, $alpha, $beta, $gamma ) =
-        (@cell[0..2], map { $Pi * $_ / 180 }  @cell[3..5]);
+        (@cell[0..2], map { $PI * $_ / 180 }  @cell[3..5]);
 
     my ($ca, $cb, $cg) = map {cos} ($alpha, $beta, $gamma);
 
@@ -472,56 +474,25 @@ sub conventional_cell
     use COD::Fractional qw(symop_ortho_from_fract);
 
     my $f2o = symop_ortho_from_fract( @cell );
-    my $basis_vectors = [
-        symop_apply( $f2o, [1,0,0] ),
-        symop_apply( $f2o, [0,1,0] ),
-        symop_apply( $f2o, [0,0,1] )
-    ];
     my $new_basis = [
-        symop_apply( $CoB, $basis_vectors->[0] ),
-        symop_apply( $CoB, $basis_vectors->[1] ),
-        symop_apply( $CoB, $basis_vectors->[2] )
+        symop_vector_mul( $CoB, [1,0,0] ),
+        symop_vector_mul( $CoB, [0,1,0] ),
+        symop_vector_mul( $CoB, [0,0,1] )
     ];
-    my @new_cell = (
-        vlen(  $new_basis->[0]),
-        vlen(  $new_basis->[1]),
-        vlen(  $new_basis->[2]),
-        vangle($new_basis->[1], $new_basis->[2]),
-        vangle($new_basis->[0], $new_basis->[2]),
-        vangle($new_basis->[0], $new_basis->[1])
-    );
+    my $new_basis_ortho = [
+        symop_vector_mul( $f2o, [ $new_basis->[0][0],
+                                  $new_basis->[1][0],
+                                  $new_basis->[2][0] ] ),
+        symop_vector_mul( $f2o, [ $new_basis->[0][1],
+                                  $new_basis->[1][1],
+                                  $new_basis->[2][1] ] ),
+        symop_vector_mul( $f2o, [ $new_basis->[0][2],
+                                  $new_basis->[1][2],
+                                  $new_basis->[2][2] ] )
+    ];
+    my @new_cell = vectors2cell( @$new_basis_ortho );
 
     return ( @new_cell, $CoB, $crystal_system );
-}
-
-sub vlen
-{
-    return sqrt( vlen2( $_[0] ));
-}
-
-sub vangle
-{
-    use Math::Trig;
-    my ($v1, $v2) = @_;
-    my $cosine = vdot( $v1, $v2 ) / ( vlen($v1) * vlen($v2) );
-    return 180*Math::Trig::acos($cosine)/$Pi;
-}
-
-sub vdot
-{
-    my ($v1, $v2) = @_;
-    return $v1->[0]*$v2->[0] + $v1->[1]*$v2->[1] + $v1->[2]*$v2->[2];
-}
-
-sub vsum
-{
-    my ($v1, $v2) = @_;
-    return [ $v1->[0] + $v2->[0], $v1->[1] + $v2->[1],  $v1->[2] + $v2->[2] ];
-}
-
-sub vlen2
-{
-    return vdot( $_[0], $_[0] );
 }
 
 1;

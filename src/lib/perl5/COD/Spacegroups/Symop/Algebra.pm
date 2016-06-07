@@ -19,7 +19,7 @@ require Exporter;
 our @ISA = qw( Exporter );
 our @EXPORT_OK = qw(
     symop_mul
-    symop_apply
+    symop_vector_mul
     symop_invert
     symop_modulo_1
     symop_translation
@@ -27,7 +27,6 @@ our @EXPORT_OK = qw(
     symop_set_translation
     symop_transpose
     symop_is_unity
-    symop_vector_mul
     flush_zeros_in_symop
     symop_is_inversion
     symop_matrices_are_equal
@@ -175,27 +174,6 @@ sub symop_invert( $ )
     return \@ret;
 }
 
-sub symop_apply($$)
-{
-    my ( $symop, $vector ) = @_;
-    my @result;
-
-    for( my $i = 0; $i < @$vector; $i ++ ) {
-        $result[$i] = 0;
-        for( my $j = 0; $j < @$vector; $j ++ ) {
-            $result[$i] += $symop->[$i][$j] * $vector->[$j];
-        }
-    }
-
-    if( @$vector == 3 && @$symop == 4 ) {
-        for( my $i = 0; $i < @$vector; $i ++ ) {
-            $result[$i] += $symop->[$i][3];
-        }
-    }
-
-    return \@result;
-}
-
 sub symop_is_inversion
 {
     my ($symop) = @_;
@@ -337,7 +315,7 @@ sub symop_vector_mul($$)
         $new_coordinates[2] += $symop->[2][3];
     }
 
-    return wantarray ? @new_coordinates : \@new_coordinates;
+    return \@new_coordinates;
 }
 
 1;

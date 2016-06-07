@@ -10,7 +10,7 @@
 #
 # operator_2_from_1 = atom_array_overlay( mol1, mol2, ex );
 #
-# mol2approx[] = symop_apply( operator_2_from_1, mol1[] );
+# mol2approx[] = symop_vector_mul( operator_2_from_1, mol1[] );
 #**
 
 package COD::Overlays::Kabsch;
@@ -18,7 +18,7 @@ package COD::Overlays::Kabsch;
 use strict;
 use warnings;
 use COD::Algebra::JacobiEigen qw( jacobi_eigenvv );
-use COD::Spacegroups::Symop::Algebra qw( symop_apply );
+use COD::Spacegroups::Symop::Algebra qw( symop_vector_mul );
 
 require Exporter;
 our @ISA = qw( Exporter );
@@ -94,7 +94,9 @@ sub find_best_fit($$$)
     my( $v, $ev ) = jacobi_eigenvv( @rrt );
 
     for( $i = 0; $i < 3; $i++ ) {
-        die( "eigenvalue of the Kabsch's matrix < 0" ) if( $ev->[$i] < 0.0 );
+        if ( $ev->[$i] < 0.0 ) {
+            die "ERROR, eigenvalue of the Kabsch's matrix < 0\n"
+        };
         $ev->[$i] = sqrt($ev->[$i]);
     }
 
@@ -105,7 +107,9 @@ sub find_best_fit($$$)
             for( $k = 0; $k < 3; $k++ ) {
                 $b[$i][$j] += $r[$i][$k] * $v->[$k][$j];
             }
-            die( "eigenvalue of Kabsch's matrix == 0" ) if( $ev->[$j] <= 0.0 );
+            if ( $ev->[$j] <= 0.0 ) {
+                die "ERROR, eigenvalue of Kabsch's matrix == 0\n";
+            }
             $b[$i][$j] /= $ev->[$j];
         }
     }
@@ -134,10 +138,10 @@ sub overlay_atoms($$)
     my ($rotation, $center1, $center2 ) =
         find_best_fit( $molecule1, $molecule2, $N );
 
-    my $t = symop_apply( $rotation,
-                           [ -$center1->[0],
-                             -$center1->[1],
-                             -$center1->[2] ] );
+    my $t = symop_vector_mul( $rotation,
+                              [ -$center1->[0],
+                                -$center1->[1],
+                                -$center1->[2] ] );
 
     return [
         [ @{$rotation->[0]}[0..2], $t->[0] + $center2->[0] ],

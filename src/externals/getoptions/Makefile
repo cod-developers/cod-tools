@@ -130,8 +130,13 @@ include .diff.depend
 ALL_INPUTS = ${TEST_CASES}
 
 .diff.depend: ${ALL_INPUTS}
-	@perl -le \
-		'for(@ARGV){ print "${TEST_OUTP_DIR}/",$$1,"_",$$2,".diff: ","tests/bin/",$$1 if m|/(.*?)_(\d{2,4})\.\w{1,3}$$| }' \
+	@perl -l \
+		-e 'for (@ARGV) {' \
+		-e '    if ( m|/(.*?)_(\d{2,4})\.\w{1,3}$$| ) {' \
+		-e '        print "${TEST_OUTP_DIR}/" . $$1 . "_" . $$2 . ".diff: "' \
+		-e '            . "tests/bin/" . $$1 ' \
+		-e '    }' \
+		-e '}' \
 	$^ \
 	| sort | uniq \
 	> $@
@@ -165,14 +170,18 @@ check test tests: ${TEST_DIFFS}
 
 out output outputs: ${TEST_OUTPS}
 
-outputs/%.diff: tests/%.sh outputs/%.out
+${TEST_OUTP_DIR}/%.diff: ${TEST_CASE_DIR}/%.sh ${TEST_OUTP_DIR}/%.out
 	-@printf "%-30s " "$*:" ; \
 	./$< 2>&1 | diff outputs/$*.out - > $@; \
 	if [ $$? = 0 ]; then echo "OK"; else echo "FAILED:"; cat $@; fi
 
-outputs/%.out: tests/%.sh
+${TEST_OUTP_DIR}/%.out: ${TEST_CASE_DIR}/%.sh
 	@test -f $@ || ./$< 2>&1 | tee $@
 	@test -f $@ && touch $@
+
+listdiff:
+	@find ${TEST_OUTP_DIR} -name '*.diff' -size +0 \
+	| sort -u | xargs --no-run-if-empty ls -l
 
 #------------------------------------------------------------------------------
 
@@ -187,6 +196,7 @@ install: ${LIBS}
 #------------------------------------------------------------------------------
 
 clean:
+	rm -f ${TEST_DIFFS}
 	rm -f *~
 	rm -f .diff.depend
 	rm -f ${LIB_OBJ}
@@ -195,4 +205,3 @@ clean:
 distclean cleanAll: clean
 	rm -f ${TARGETS}
 	rm -f ${DEPEND}
-	rm -f ${TEST_DIFFS}

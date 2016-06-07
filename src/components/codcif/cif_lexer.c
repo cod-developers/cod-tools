@@ -1,6 +1,6 @@
 /*---------------------------------------------------------------------------*\
 **$Author$
-**$Date$ 
+**$Date$
 **$Revision$
 **$URL$
 \*---------------------------------------------------------------------------*/
@@ -120,7 +120,7 @@ int cif_lexer( FILE *in, cexception_t *ex )
 
     while( ch != EOF ) {
         /* It is important that the predicate that checks for spaces
-           in the fi() statement below is the same as the ispace()
+           in the if() statement below is the same as the ispace()
            predicate in the 'default:' branch of the next switch
            statement; otherwise we can end up in an infinite loop if a
            character is regarded as space by the 'default:' branch but
@@ -352,8 +352,16 @@ int cif_lexer( FILE *in, cexception_t *ex )
             assert( pos < length );
             assert( pos >= 0 );
             token[pos] = '\0';
-            if( starts_with_keyword( "data_", token )) {
+            if( starts_with_keyword( "data_", token ) ) {
                 /* data block header: */
+                if( strlen( token ) == 5 ) {
+                    if( cif_lexer_has_flags(CIF_FLEX_LEXER_FIX_DATABLOCK_NAMES) ) {
+                        yywarning( "zero-length data block name detected "
+                                   "-- ignored", ex );
+                    } else {
+                        yyerror( "zero-length data block name detected" );
+                    }
+                }
                 if( yy_flex_debug ) {
                     printf( ">>> DATA_: '%s'\n", token + 5 );
                 }
@@ -361,7 +369,7 @@ int cif_lexer( FILE *in, cexception_t *ex )
                                          ex );
                 return _DATA_;
             } else if( starts_with_keyword( "save_", token )) {
-                /* save frame header or termonator: */
+                /* save frame header or terminator: */
                 if( strlen( token ) == 5 /* strlen( "save_" ) */ ) {
                     /* This is a save frame terminator: */
                     if( yy_flex_debug ) {
@@ -377,7 +385,8 @@ int cif_lexer( FILE *in, cexception_t *ex )
                                              ex );
                     return _SAVE_HEAD;
                 }
-            } else if( starts_with_keyword( "loop_", token )) {
+            } else if( starts_with_keyword( "loop_", token ) &&
+                strlen( token ) == 5) {
                 /* loop header: */
                 if( yy_flex_debug ) {
                     printf( ">>> LOOP_\n" );
@@ -387,17 +396,29 @@ int cif_lexer( FILE *in, cexception_t *ex )
             } else if( starts_with_keyword( "stop_", token ) &&
                 strlen( token ) == 5 ) {
                 /* stop field: */
-                yyerrorf( "STOP_ symbol detected in line %i, pos. %i -- "
-                          "it is not acceptable in this version",
-                          cif_flex_current_line_number(),
-                          cif_flex_current_position() );
+                yyerror( "STOP_ symbol detected -- "
+                         "it is not acceptable in CIF v1.1" );
+            } else if( starts_with_keyword( "global_", token ) &&
+                strlen( token ) == 7 ) {
+                /* global field: */
+                yyerror( "GLOBAL_ symbol detected -- "
+                         "it is not acceptable in CIF v1.1" );
             } else {
                 if( token[0] == '[' ) {
-                    /* bracket is a reserved symbol, unquoted strings
+                    /* opening bracket is a reserved symbol, unquoted strings
                        may not start with it: */
                     if( !cif_lexer_has_flags
                         (CIF_FLEX_LEXER_ALLOW_UQSTRING_BRACKETS)) {
                         yyerror( "opening square brackets are reserved "
+                                 "and may not start an unquoted string" );
+                    }
+                }
+                if( token[0] == ']' ) {
+                    /* closing bracket is a reserved symbol, unquoted strings
+                       may not start with it: */
+                    if( !cif_lexer_has_flags
+                        (CIF_FLEX_LEXER_ALLOW_UQSTRING_BRACKETS)) {
+                        yyerror( "closing square brackets are reserved "
                                  "and may not start an unquoted string" );
                     }
                 }
@@ -407,7 +428,9 @@ int cif_lexer( FILE *in, cexception_t *ex )
                     yyerror( "dollar symbol ('$') must not start an "
                              "unquoted string" );
                 }
-                if( token[0] != '[' && token[0] != '$' ) {
+                if( token[0] != '[' &&
+                    token[0] != ']' &&
+                    token[0] != '$' ) {
                     if( yy_flex_debug ) {
                         printf( ">>> UQSTRING: '%s'\n", token );
                     }
@@ -691,8 +714,8 @@ static char *clean_string( char *src, int is_textfield, cexception_t *ex )
                             non_ascii_explained = 1;
                         } else {
                             print_message( "WARNING", "non-ascii symbols "
-                                           "encountered in the text field, "
-                                           "replaced by XML entities", ":",
+                                           "encountered in the text field -- "
+                                           "replaced with XML entities", ":",
                                            cif_flex_current_line_number(),
                                            -1, ex );
                             print_current_text_field( start, ex );
@@ -717,7 +740,7 @@ static char *clean_string( char *src, int is_textfield, cexception_t *ex )
             } else if( (*src & 255 ) == '\t' ) {
                 *dest = '\0';
                 length += 3;
-                new = realloc( new, length + 1 );
+                new = reallocx( new, length + 1, &inner );
                 strcat( new, "    " );
                 dest = new + strlen( new ) - 1;
             } else if( (*src & 255) == '\r' ) {

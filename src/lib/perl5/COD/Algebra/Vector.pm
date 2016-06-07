@@ -18,6 +18,8 @@ require Exporter;
 our @ISA = qw( Exporter );
 our @EXPORT_OK = qw(
     vdot
+    vector_angle
+    vector_len
     vector_sub
     vector_add
     vector_modulo_1
@@ -30,6 +32,8 @@ our @EXPORT_OK = qw(
     vector_matrix_mul
 );
 
+my $Pi = 4 * atan2(1, 1);
+
 sub vdot($$)
 {
     my ($v1, $v2) = @_;
@@ -40,6 +44,26 @@ sub vdot($$)
     }
 
     return $r;
+}
+
+sub vector_angle($$)
+{
+    my ($v1, $v2) = @_;
+    use Math::Trig;
+    my $cosine = vdot( $v1, $v2 ) / ( vector_len($v1) * vector_len($v2) );
+    return 180 * Math::Trig::acos( $cosine ) / $Pi;
+}
+
+sub vector_len($)
+{
+    my ($v1) = @_;
+
+    my $sqsum = 0;
+    foreach (@$v1) {
+        $sqsum += $_**2;
+    }
+
+    return sqrt($sqsum);
 }
 
 sub vector_sub($$)
@@ -125,11 +149,8 @@ sub distance($$)
     my ($v1, $v2) = @_;
 
     my $diff = vector_sub( $v1, $v2 );
-    my $sqsum = 0;
-    foreach (@$diff) {
-        $sqsum += $_**2;
-    }
-    return sqrt($sqsum);
+
+    return vector_len($diff);
 }
 
 sub matrix_vector_mul($$)

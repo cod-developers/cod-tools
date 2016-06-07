@@ -5,14 +5,13 @@
 #$URL$
 #------------------------------------------------------------------------
 #* 
-#  A list of DFT CIF dictionary tags. Compiled from version 0.013 of
+#  A list of DFT CIF dictionary tags. Compiled from version 0.018 of
 #  cif_dft.dic:
 #
 #  URL: svn://www.crystallography.net/tcod/cif/dictionaries/cif_dft.dic
-#  Relative URL: ^/cif/dictionaries/cif_dft.dic
 #  Repository Root: svn://www.crystallography.net/tcod
 #  Repository UUID: f3fa9230-7ed6-4b69-bb24-8fd292b8517b
-#  Revision: 501
+#  Revision: 1562
 #**
 
 package COD::CIF::Tags::DFT;
@@ -50,6 +49,7 @@ _dft_atom_type_occupation
 _dft_atom_type_radius
 _dft_atom_type_valence_configuration
 _dft_atom_type_valence_electrons
+_dft_band_gap
 _dft_basisset_[]
 _dft_basisset_citation_id
 _dft_basisset_database_abbrev
@@ -102,6 +102,7 @@ _dft_cell_valence_electrons
 _dft_core_electrons
 _dft_correlation_energy
 _dft_Coulomb_energy
+_dft_dielectric_constant
 _dft_ewald_energy
 _dft_fermi_energy
 _dft_hartree_energy

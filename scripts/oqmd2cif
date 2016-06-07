@@ -9,19 +9,21 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #$URL$
 #------------------------------------------------------------------------------
 #*
-#  Retrieve structures from the Open Quantum Mechanics Database and
+#  Retrieve structures from the Open Quantum Materials Database and
 #  write them out in CIF format.
 #**
 
 use strict;
 use warnings;
-use POSIX qw( acos );
 use DBI;
+use COD::Cell qw( vectors2cell );
+use COD::CIF::Tags::Print qw( print_single_tag_and_value );
 use COD::Formulae::Parser::AdHoc;
 use COD::SOptions qw( getOptions get_value );
 use COD::SUsage qw( usage options );
+use JSON qw( decode_json );
 
-my $Pi = 4 * atan2(1,1);
+my $eV_per_atom_to_J_per_mol = 2660.476544548;
 
 my %database = (
     host  => "localhost",
@@ -29,6 +31,10 @@ my %database = (
     name  => "oqmd",
     tables => {
         structures => "structures",
+        calculations => "calculations",
+        calculations_meta_data => "calculations_meta_data",
+        formation_energies => "formation_energies",
+        meta_data => "meta_data",
         spacegroups => "spacegroups",
         atoms => "atoms",
         sites => "sites",
@@ -37,6 +43,17 @@ my %database = (
     password => "",
     platform => "mysql",
     dbh => undef,
+);
+
+my %smearing_methods = (
+     0 => { main  => 'Gaussian' },
+    -1 => { main  => 'Fermi-Dirac' },
+    -2 => { other => 'partial occupancies are read in from the ' .
+                     'WAVECAR or INCAR file' },
+    -3 => { other => 'loop over smearing-parameters supplied in the ' .
+                     'INCAR file is performed' },
+    -4 => { other => 'tetrahedron method' },
+    -5 => { other => 'tetrahedron method with Bl\"ochl corrections' }
 );
 
 my $debug = 0;
@@ -90,8 +107,8 @@ my $cell_fformat = $atom_fformat;
 #*     -t, --table  data
 #*        Use SQL table "data" to query for structures.
 #*
-#*     -u, --user cod_reader
-#*        Use user name "cod_reader" to access COD database; this reader
+#*     -u, --user reader
+#*        Use user name "reader" to access COD database; this reader
 #*        should be granted SELECT privilege, i.e. should be able to read
 #*        the COD database, without supplying a password.
 #*
@@ -118,7 +135,7 @@ my $cell_fformat = $atom_fformat;
     "-L,--limit"     => \$limit,
     "-L-,--no-limit" => sub { $limit = undef },
 
-    "-F,--float-format" => sub { $atom_fformat = $cell_fformat = &get_value },
+    "-F,--float-format" => sub { $atom_fformat = $cell_fformat = get_value() },
     "-A,--atom-format" => \$atom_fformat,
     "-C,--cell-format" => \$cell_fformat,
 
@@ -137,7 +154,7 @@ if( !@structure_ids ) {
 }
 
 if( $debug ) {
-    use COD::Serialise;
+    use COD::Serialise qw( serialiseRef );
 }
 
 for my $structure_id (@structure_ids) {
@@ -153,7 +170,7 @@ for my $structure_id (@structure_ids) {
         [ $structure_data->{z1}, $structure_data->{z2}, $structure_data->{z3} ],
         );
 
-    my @cell = compute_cell_parameters( @cell_vectors );
+    my @cell = vectors2cell( @cell_vectors );
 
     printf "%-32s ".$cell_fformat."\n", "_cell_length_a", $cell[0];
     printf "%-32s ".$cell_fformat."\n", "_cell_length_b", $cell[1];
@@ -162,11 +179,11 @@ for my $structure_id (@structure_ids) {
     printf "%-32s ".$cell_fformat."\n", "_cell_angle_beta",  $cell[4];
     printf "%-32s ".$cell_fformat."\n", "_cell_angle_gamma", $cell[5];
 
-    print "_chemical_formula_sum           '",
-        $structure_data->{composition_id}, "'\n";
+    print_single_tag_and_value( '_chemical_formula_sum',
+                                $structure_data->{composition_id} );
+    print_single_tag_and_value( '_symmetry_space_group_name_H-M', 'P 1' );
+    print_single_tag_and_value( '_symmetry_space_group_name_Hall', ' P 1' );
 
-    print "_symmetry_space_group_name_H-M  'P 1'\n";
-    print "_symmetry_space_group_name_Hall ' P 1'\n";
     print "loop_\n";
     print "_space_group_symop_id\n";
     print "_space_group_symop_operation_xyz\n";
@@ -179,32 +196,127 @@ for my $structure_id (@structure_ids) {
     serialiseRef( $atoms ) if $debug;
 
     # Calculate Z:
-    my $formula_parser = new COD::Formulae::Parser::AdHoc;
+    my $formula_parser = new COD::Formulae::Parser::AdHoc->new;
     my $formula_atoms =
         $formula_parser->ParseString( $structure_data->{composition_id} );
 
+    my $coord_atom_count = scalar(keys %{$atoms});
     if( $formula_atoms ) {
-        my $coord_atom_count = scalar(keys %{$atoms});
         my $formula_atom_count = 0;
         for (values %{$formula_atoms}) { $formula_atom_count += $_ }
-        print "_cell_formula_units_Z           ",
-            $coord_atom_count/$formula_atom_count, "\n";
+        print_single_tag_and_value( '_cell_formula_units_Z',
+                                    $coord_atom_count/$formula_atom_count );
     }
 
+    print_single_tag_and_value( '_oqmd_database_code', $structure_id );
+    print_single_tag_and_value( '_oqmd_structure_label',
+                                $structure_data->{label} );
+
     if( defined $structure_data->{spacegroup_id} ) {
-        local $\ = "\n";
         my $spacegroup_data =
             query_OQMD_spacegroup( $connected_db,
                                    $structure_data->{spacegroup_id} );
         serialiseRef( $spacegroup_data ) if $debug;
-        print "_oqmd_space_group_name_H-M   '",
-            $spacegroup_data->{hm}, "'";
-        print "_oqmd_space_group_name_Hall  '",
-            $spacegroup_data->{hall}, "'";
-        print "_oqmd_space_group_crystal_system      ",
-            lc($spacegroup_data->{lattice_system});
-        print "_oqmd_space_group_IT_number           ",
-            lc($spacegroup_data->{number});
+        print_single_tag_and_value( '_oqmd_space_group_name_H-M',
+                                    $spacegroup_data->{hm} );
+        print_single_tag_and_value( '_oqmd_space_group_name_Hall',
+                                    $spacegroup_data->{hall} );
+        print_single_tag_and_value( '_oqmd_space_group_crystal_system',
+                                    lc($spacegroup_data->{lattice_system}) );
+        print_single_tag_and_value( '_oqmd_space_group_IT_number',
+                                    lc($spacegroup_data->{number}) );
+    }
+
+    my $calculation = query_OQMD_calculation( $connected_db,
+                                              $structure_id );
+
+    if( $calculation ) {
+        print_single_tag_and_value( '_oqmd_calculation_label',
+                                    $calculation->{label} );
+
+        if( $calculation->{input_id} ) {
+            for my $part ('cell_param', 'coordinate') {
+                print_single_tag_and_value(
+                    "_tcod_initial_${part}_db_name",
+                    'Open Quantum Materials Database' );
+                print_single_tag_and_value(
+                    "_tcod_initial_${part}_db_code",
+                    $calculation->{input_id} );
+                print_single_tag_and_value(
+                    "_tcod_initial_${part}_URI",
+                    'http://oqmd.org/materials/structure/' .
+                    $calculation->{input_id} );
+            }
+        }
+
+        print_single_tag_and_value( '_oqmd_calculation_converged',
+                                    $calculation->{converged} ? 'yes' : 'no' );
+        print_single_tag_and_value( '_tcod_total_energy',
+                                    $calculation->{energy_pa} );
+        print_single_tag_and_value( '_tcod_computation_wallclock_time',
+                                    $calculation->{runtime} );
+
+        # Fixing non-conforming JSON
+
+        $calculation->{settings} =~ s/"/\"/g;
+        $calculation->{settings} =~ s/'/"/g;
+
+        $calculation->{settings} =~ s/True/true/g;
+        $calculation->{settings} =~ s/False/false/g;
+
+        my $settings = decode_json( $calculation->{settings} );
+
+        print_single_tag_and_value( '_dft_kinetic_energy_cutoff_wavefunctions',
+                                    $settings->{encut} );
+        print_single_tag_and_value( '_dft_cell_energy_conv',
+                                    $settings->{ediff} );
+        print_single_tag_and_value( '_dft_BZ_integration_smearing_width',
+                                    $settings->{sigma} );
+
+        if( $settings->{ismear} > 0 ) {
+            print_single_tag_and_value(
+                '_dft_BZ_integration_smearing_method',
+                'Methfessel-Paxton' );
+            print_single_tag_and_value(
+                '_dft_BZ_integration_MP_order', $settings->{ismear} );
+        } elsif( exists $smearing_methods{$settings->{ismear}} ) {
+            if( exists $smearing_methods{$settings->{ismear}}->{main} ) {
+                print_single_tag_and_value(
+                    '_dft_BZ_integration_smearing_method',
+                    $smearing_methods{$settings->{ismear}}->{main} );
+            } else {
+                print_single_tag_and_value(
+                    '_dft_BZ_integration_smearing_method_other',
+                    $smearing_methods{$settings->{ismear}}->{other} );
+            }
+        }
+
+        if( $calculation->{band_gap} ) {
+            print_single_tag_and_value( '_dft_band_gap',
+                                        $calculation->{band_gap} );
+        }
+
+        if( $calculation->{magmom_pa} ) {
+            print_single_tag_and_value( '_dft_cell_magn_moment',
+                                        $calculation->{magmom_pa} );
+        }
+
+        if( $calculation->{delta_e} ) {
+            print_single_tag_and_value( '_dft_lattice_energy',
+                                        $calculation->{delta_e} *
+                                        $eV_per_atom_to_J_per_mol );
+        }
+
+        my $metadata = query_OQMD_calculation_metadata( $connected_db,
+                                                        $calculation->{id} );
+
+        if( $metadata && exists $metadata->{error} ) {
+            print_single_tag_and_value( '_oqmd_error_flag', 'error' );
+            print_single_tag_and_value( '_oqmd_error_description',
+                "\n  The structure is marked with error flag(s)\n  " .
+                join( ', ', map { "\"$_\"" } @{$metadata->{error}} ) .
+                "\n  in the source database." );
+        }
     }
 
     print "loop_\n";
@@ -212,12 +324,18 @@ for my $structure_id (@structure_ids) {
     print "_atom_site_fract_x\n";
     print "_atom_site_fract_y\n";
     print "_atom_site_fract_z\n";
-    for my $atom (values %{$atoms}) {
+    print "_atom_site_occupancy\n";
+    for my $atom_id (sort keys %{$atoms}) {
+        my $atom = $atoms->{$atom_id};
         print $atom->{element_id};
         printf " ".$atom_fformat, $atom->{x};
         printf " ".$atom_fformat, $atom->{y};
         printf " ".$atom_fformat, $atom->{z};
+        print " ".$atom->{occupancy};
         print "\n";
+    }
+    if( !$coord_atom_count ) {
+        print "? ? ? ? ?\n";
     }
 
 }
@@ -251,6 +369,8 @@ sub database_disconnect
     $database->{dbh}->disconnect || die "cannot disconnect -- $DBI::errstr";
 
     $database->{dbh} = undef;
+
+    return;
 }
 
 sub query_OQMD_structure_ids
@@ -279,13 +399,58 @@ sub query_OQMD_structure
 
     my $sth = $dbh->prepare(
         "SELECT id, x1, x2, x3, y1, y2, y3, z1, z2, z3,
-                entry_id, composition_id, spacegroup_id
+                entry_id, label, composition_id, spacegroup_id
          FROM `$database->{tables}{structures}` WHERE id = ?;"
         );
 
     $sth->execute( $id );
 
     return $sth->fetchrow_hashref();
+}
+
+sub query_OQMD_calculation
+{
+    my ( $database, $id ) = @_;
+
+    my $dbh = $database->{dbh};
+
+    my $sth = $dbh->prepare(
+        "SELECT C.id, label, input_id, settings, energy_pa, magmom_pa,
+                band_gap, converged, runtime, delta_e
+         FROM `$database->{tables}{calculations}` AS C
+         LEFT JOIN `$database->{tables}{formation_energies}`
+            ON calculation_id = C.id
+         WHERE output_id = ?;"
+        );
+
+    $sth->execute( $id );
+
+    return $sth->fetchrow_hashref();
+}
+
+sub query_OQMD_calculation_metadata
+{
+    my ( $database, $calculation_id ) = @_;
+
+    my $dbh = $database->{dbh};
+
+    my $sth = $dbh->prepare(
+        "SELECT type, value
+         FROM `$database->{tables}{calculations_meta_data}` AS CMD
+         JOIN `$database->{tables}{meta_data}` AS MD
+            ON CMD.metadata_id = MD.id
+         WHERE CMD.calculation_id = ?;"
+        );
+
+    $sth->execute( $calculation_id );
+
+    my %metadata;
+    while( my $row = $sth->fetchrow_hashref() ) {
+        $metadata{$row->{type}} = [] if !exists $metadata{$row->{type}};
+        push( @{$metadata{$row->{type}}}, $row->{value} );
+    }
+
+    return \%metadata;
 }
 
 sub query_OQMD_spacegroup
@@ -314,13 +479,13 @@ sub query_OQMD_atoms
         "SELECT atoms.id as atom_id, element_id,
                 atoms.x as x, atoms.y as y, atoms.z as z,
                 sites.x as sx, sites.y as sy, sites.z as sz,
-                fx, fy, fz, magmom, charge, 
+                fx, fy, fz, magmom, charge, occupancy,
                 symbol, multiplicity, spacegroup_id,
                 wyckoffsites.x as wx,
                 wyckoffsites.x as wy,
                 wyckoffsites.z as wz
          FROM `$database->{tables}{atoms}`
-         JOIN `$database->{tables}{sites}` 
+         JOIN `$database->{tables}{sites}`
              ON site_id = `$database->{tables}{sites}`.id 
          JOIN `$database->{tables}{wyckoffsites}`
              ON `$database->{tables}{sites}`.wyckoff_id = 
@@ -331,43 +496,4 @@ sub query_OQMD_atoms
     $sth->execute( $id );
 
     return $sth->fetchall_hashref( "atom_id" );
-}
-
-sub compute_cell_parameters
-{
-    my ( $v1, $v2, $v3 ) = @_;
-
-    return (
-        vlength( $v1 ),
-        vlength( $v2 ),
-        vlength( $v3 ),
-        vangle( $v2, $v3 ),
-        vangle( $v1, $v3 ),
-        vangle( $v1, $v2 ),
-    );
-}
-
-sub vlength
-{
-    my $v = $_[0];
-    return sqrt( $v->[0]**2 + $v->[1]**2 + $v->[2]**2 );
-}
-
-sub vdot
-{
-    my ( $v1, $v2 ) = @_;
-    return 
-        $v1->[0] * $v2->[0] +
-        $v1->[1] * $v2->[1] +
-        $v1->[2] * $v2->[2];
-}
-
-sub vangle
-{
-    my ( $v1, $v2 ) = @_;
-
-    my $angle_radians =
-        acos( vdot( $v1, $v2 ) / (vlength($v1) * vlength($v2)));
-
-    return $angle_radians * 180 / $Pi;
 }

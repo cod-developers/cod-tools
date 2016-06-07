@@ -24,7 +24,15 @@ use COD::Cell::Niggli::KG76;
 use COD::Cell::Delaunay::Delaunay;
 use COD::SOptions qw( getOptions get_value );
 use COD::SUsage qw( usage options );
-use COD::UserMessage qw( error );
+use COD::ErrorHandler qw( process_warnings
+                          process_errors
+                          process_parser_messages );
+
+my $die_on_error_level = {
+    ERROR   => 1,
+    WARNING => 0,
+    NOTE    => 0
+};
 
 my $base0 = basename( $0 );
 
@@ -47,7 +55,7 @@ my $Pi = 4 * atan2(1,1);
 #*        Use Perl parser for CIF parsing.
 #*
 #*     --use-c-parser
-#*        Use Perl & C parser for CIF parsing.
+#*        Use Perl & C parser for CIF parsing (default).
 #*
 #*     -F, --float-format "%15.12f"
 #*        Specify format to print out floating point numbers.
@@ -71,7 +79,7 @@ my $Pi = 4 * atan2(1,1);
 
     "-e,--epsilon" => \$epsilon,
 
-    "-F,--float-format" => sub { $cell_fformat = &get_value },
+    "-F,--float-format" => sub { $cell_fformat = get_value() },
     "-C,--cell-format" => \$cell_fformat,
 
     "--use-perl-parser" => sub { $use_parser = "perl" },
@@ -86,95 +94,108 @@ for my $filename (@ARGV) {
 
     my $options = { 'parser' => $use_parser, 'no_print' => 1 };
     my ( $data, $err_count, $messages ) = parse_cif( $filename, $options );
-
-    if ( $err_count > 0 ) {
-        print STDERR $_ foreach ( @$messages );
-        error( $0, $filename, undef, "$err_count error(s) "
-             . "encountered while parsing the file", undef );
-        next;
-    }
-    print STDERR $_ foreach ( @$messages );
+    process_parser_messages( $messages, $die_on_error_level );
+    next if $err_count > 0;
 
     canonicalize_all_names( $data );
 
     for my $datablock (@$data) {
         my $values = $datablock->{values};
-        my @cell = get_cell( $values, $filename, $datablock->{name} );
+        my $dataname = 'data_' . $datablock->{name} if defined $datablock->{name};
 
-        # Niggly reduction:
-        use COD::Cell::Niggli::KG76;
-        $COD::Cell::Niggli::KG76::debug = $debug;
+        local $SIG{__WARN__} = sub { process_warnings( {
+                                       'message'       => @_,
+                                       'program'       => $0,
+                                       'filename'      => $filename,
+                                       'add_pos'       => $dataname
+                                     }, $die_on_error_level ) };
 
-        my @Niggli_cell =
-            COD::Cell::Niggli::KG76::reduce( @cell, $epsilon );
+        eval {
+            my @cell = get_cell( $values );
 
-        my $tag_prefix = "_[local]_Niggli_${base0}";
-        set_tag( $datablock, $tag_prefix."_length_a",
-                 sprintf( $cell_fformat, $Niggli_cell[0] ));
-        set_tag( $datablock, $tag_prefix."_length_b",
-                 sprintf( $cell_fformat, $Niggli_cell[1] ));
-        set_tag( $datablock, $tag_prefix."_length_c",
-                 sprintf( $cell_fformat, $Niggli_cell[2] ));
-        set_tag( $datablock, $tag_prefix."_angle_alpha",
-                 sprintf( $cell_fformat, $Niggli_cell[3] ));
-        set_tag( $datablock, $tag_prefix."_angle_beta",
-                 sprintf( $cell_fformat, $Niggli_cell[4] ));
-        set_tag( $datablock, $tag_prefix."_angle_gamma",
-                 sprintf( $cell_fformat, $Niggli_cell[5] ));
+            # Niggli reduction:
+            use COD::Cell::Niggli::KG76;
+            $COD::Cell::Niggli::KG76::debug = $debug;
 
-        # Delaunay reduction:
-        use COD::Cell::Delaunay::Delaunay qw(reduce);
-        $COD::Cell::Delaunay::Delaunay::debug = $debug;
+            my @Niggli_cell =
+                COD::Cell::Niggli::KG76::reduce( @cell, $epsilon );
 
-        my @Delaunay_cell =
-            COD::Cell::Delaunay::Delaunay::reduce( @cell, $epsilon );
+            my $tag_prefix = "_[local]_Niggli_${base0}";
+            set_tag( $datablock, $tag_prefix."_length_a",
+                     sprintf( $cell_fformat, $Niggli_cell[0] ));
+            set_tag( $datablock, $tag_prefix."_length_b",
+                     sprintf( $cell_fformat, $Niggli_cell[1] ));
+            set_tag( $datablock, $tag_prefix."_length_c",
+                     sprintf( $cell_fformat, $Niggli_cell[2] ));
+            set_tag( $datablock, $tag_prefix."_angle_alpha",
+                     sprintf( $cell_fformat, $Niggli_cell[3] ));
+            set_tag( $datablock, $tag_prefix."_angle_beta",
+                     sprintf( $cell_fformat, $Niggli_cell[4] ));
+            set_tag( $datablock, $tag_prefix."_angle_gamma",
+                     sprintf( $cell_fformat, $Niggli_cell[5] ));
 
-        $tag_prefix = "_[local]_Delaunay_${base0}";
-        set_tag( $datablock, $tag_prefix."_length_a",
-                 sprintf( $cell_fformat, $Delaunay_cell[0] ));
-        set_tag( $datablock, $tag_prefix."_length_b",
-                 sprintf( $cell_fformat, $Delaunay_cell[1] ));
-        set_tag( $datablock, $tag_prefix."_length_c",
-                 sprintf( $cell_fformat, $Delaunay_cell[2] ));
-        set_tag( $datablock, $tag_prefix."_angle_alpha",
-                 sprintf( $cell_fformat, $Delaunay_cell[3] ));
-        set_tag( $datablock, $tag_prefix."_angle_beta",
-                 sprintf( $cell_fformat, $Delaunay_cell[4] ));
-        set_tag( $datablock, $tag_prefix."_angle_gamma",
-                 sprintf( $cell_fformat, $Delaunay_cell[5] ));
+            # Delaunay reduction:
+            use COD::Cell::Delaunay::Delaunay qw(reduce);
+            $COD::Cell::Delaunay::Delaunay::debug = $debug;
 
-        # Estimate conventional cell:
-        use COD::Cell::Conventional::deWG91 qw(conventional_cell);
-        $COD::Cell::Conventional::deWG91::debug = $debug;
+            my @Delaunay_cell =
+                COD::Cell::Delaunay::Delaunay::reduce( @cell, $epsilon );
 
-        my @primitive_cell = @Niggli_cell[0..5];
-        my @conventional_cell = conventional_cell( @primitive_cell, $epsilon );
+            $tag_prefix = "_[local]_Delaunay_${base0}";
+            set_tag( $datablock, $tag_prefix."_length_a",
+                     sprintf( $cell_fformat, $Delaunay_cell[0] ));
+            set_tag( $datablock, $tag_prefix."_length_b",
+                     sprintf( $cell_fformat, $Delaunay_cell[1] ));
+            set_tag( $datablock, $tag_prefix."_length_c",
+                     sprintf( $cell_fformat, $Delaunay_cell[2] ));
+            set_tag( $datablock, $tag_prefix."_angle_alpha",
+                     sprintf( $cell_fformat, $Delaunay_cell[3] ));
+            set_tag( $datablock, $tag_prefix."_angle_beta",
+                     sprintf( $cell_fformat, $Delaunay_cell[4] ));
+            set_tag( $datablock, $tag_prefix."_angle_gamma",
+                     sprintf( $cell_fformat, $Delaunay_cell[5] ));
 
-        $tag_prefix = "_[local]_Niggli_conv_${base0}";
-        set_tag( $datablock, $tag_prefix."_length_a",
-                 sprintf( $cell_fformat, $conventional_cell[0] ));
-        set_tag( $datablock, $tag_prefix."_length_b",
-                 sprintf( $cell_fformat, $conventional_cell[1] ));
-        set_tag( $datablock, $tag_prefix."_length_c",
-                 sprintf( $cell_fformat, $conventional_cell[2] ));
-        set_tag( $datablock, $tag_prefix."_angle_alpha",
-                 sprintf( $cell_fformat, $conventional_cell[3] ));
-        set_tag( $datablock, $tag_prefix."_angle_beta",
-                 sprintf( $cell_fformat, $conventional_cell[4] ));
-        set_tag( $datablock, $tag_prefix."_angle_gamma",
-                 sprintf( $cell_fformat, $conventional_cell[5] ));
+            # Estimate conventional cell:
+            use COD::Cell::Conventional::deWG91 qw(conventional_cell);
+            $COD::Cell::Conventional::deWG91::debug = $debug;
 
-        set_tag( $datablock, $tag_prefix."_crystal_system",
-                 $conventional_cell[7] );
+            my @primitive_cell = @Niggli_cell[0..5];
+            my @conventional_cell = conventional_cell( @primitive_cell, $epsilon );
 
-        # Print out CIF data:
-        $COD::CIF::Tags::Print::max_cif_tag_len = 46;
+            $tag_prefix = "_[local]_Niggli_conv_${base0}";
+            set_tag( $datablock, $tag_prefix."_length_a",
+                     sprintf( $cell_fformat, $conventional_cell[0] ));
+            set_tag( $datablock, $tag_prefix."_length_b",
+                     sprintf( $cell_fformat, $conventional_cell[1] ));
+            set_tag( $datablock, $tag_prefix."_length_c",
+                     sprintf( $cell_fformat, $conventional_cell[2] ));
+            set_tag( $datablock, $tag_prefix."_angle_alpha",
+                     sprintf( $cell_fformat, $conventional_cell[3] ));
+            set_tag( $datablock, $tag_prefix."_angle_beta",
+                     sprintf( $cell_fformat, $conventional_cell[4] ));
+            set_tag( $datablock, $tag_prefix."_angle_gamma",
+                     sprintf( $cell_fformat, $conventional_cell[5] ));
 
-        print_cif( $datablock,
-           {
-                preserve_loop_order => 1,
-                keep_tag_order => 1
-           }
-        );
+            set_tag( $datablock, $tag_prefix."_crystal_system",
+                     $conventional_cell[7] );
+
+            # Print out CIF data:
+            $COD::CIF::Tags::Print::max_cif_tag_len = 46;
+
+            print_cif( $datablock,
+               {
+                    preserve_loop_order => 1,
+                    keep_tag_order => 1
+               }
+            );
+        };
+        if ($@) {
+            process_errors( {
+              'message'       => $@,
+              'program'       => $0,
+              'filename'      => $filename,
+              'add_pos'       => $dataname
+            }, $die_on_error_level->{'ERROR'} );
+        }
     }
 }

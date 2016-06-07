@@ -6,27 +6,27 @@
 #-----------------------------------------------------------------------
 #*
 # Constructs the best symmetry operator to superposition two sets of points.
-# Distance between sets of points is measured in rmsd. The algorithm allows 
-# to easily calculate the rmsd value from the eigenvalue without the need to 
-# apply the symmetry operator. In case of a negative eigenvalue, undef is 
+# Distance between sets of points is measured in rmsd. The algorithm allows
+# to easily calculate the rmsd value from the eigenvalue without the need to
+# apply the symmetry operator. In case of a negative eigenvalue, undef is
 # returned instead of rmsd.
 #
 # Used algorithm is decribed in:
-#   Kearsley, S. K. "On the orthogonal transformation used for structural 
+#   Kearsley, S. K. "On the orthogonal transformation used for structural
 #   comparisons", Acta Crystallographica Section A, 1989, 45, 208-210,
 #   doi: 10.1107/S0108767388010128
-# 
+#
 # Usage:
 #   # Find operator matrix to best fit set1 onto set2
 #   (symop_2_from_1, rmsd) = overlay_atoms( set1[][], set2[][] );
-#   set2approx[] = symop_apply( symop_2_from_1, set1[][] );
+#   set2approx[] = symop_vector_mul( symop_2_from_1, set1[][] );
 #**
 
 package COD::Overlays::Kearsley;
 
 use strict;
 use warnings;
-use COD::Spacegroups::Symop::Algebra qw( symop_apply );
+use COD::Spacegroups::Symop::Algebra qw( symop_vector_mul );
 use COD::Algebra::JacobiEigen qw( jacobi_eigenvv );
 
 require Exporter;
@@ -73,15 +73,15 @@ sub overlay_atoms($$)
 
 ##
 # Constructs best operator matrix to superimpose two sets of points.
-# set1 is superimposed onto set2. RMSD value between the two sets is also 
+# set1 is superimposed onto set2. RMSD value between the two sets is also
 # calculated as a step of the algorithm.
 #
 # @param $set1, $set2
 #       Sets of points to be superimposed. $set1 is superimposed on $set2.
 # @param $centers
-#       Optional parameter. Hash reference, containing origin points for 
-#       superimposed sets. If values are not provided, sets are shifted in a 
-#       way for their origins to coincide with their centroids.
+#       Optional parameter. Hash reference, containing origin points for
+#       superimposed sets. If values are not provided, sets are shifted
+#       in a way for their origins to coincide with their centroids.
 #
 # @returns $symop
 #       Rotation (r) and translation (t) matrix following the affine form:
@@ -99,7 +99,8 @@ sub overlay_points($$$)
     my ( $set1, $set2, $centers ) = @_;
 
     if ( @{$set1} != @{$set2} ) {
-        die "superpositioned sets do not contain the same number of points";
+        die 'ERROR, superpositioned sets do not contain the same '
+          . 'number of points' . "\n";
     };
 
     my $center1 = find_center($set1) if !defined $centers->{center1};
@@ -110,12 +111,12 @@ sub overlay_points($$$)
 
     my ($R, $rmsd) = get_rotation_matrix($cent_set1, $cent_set2);
 
-    my $t = symop_apply( $R,
-                         [ -$center1->[0],
-                           -$center1->[1],
-                           -$center1->[2] ] );
+    my $t = symop_vector_mul( $R,
+                              [ -$center1->[0],
+                                -$center1->[1],
+                                -$center1->[2] ] );
 
-    my $symop = [ 
+    my $symop = [
                   [ @{$R->[0]}[0..2], $t->[0] + $center2->[0] ],
                   [ @{$R->[1]}[0..2], $t->[1] + $center2->[1] ],
                   [ @{$R->[2]}[0..2], $t->[2] + $center2->[2] ],
@@ -132,15 +133,16 @@ sub get_rotation_matrix($$)
     my $N = scalar(@{$set1});
 
     if ( @{$set1} != @{$set2} ) {
-        die "superpositioned sets do not contain the same number of points"
+        die 'ERROR, superpositioned sets do not contain the same number of '
+          . 'points' . "\n";
     };
 
     $set1 = matrix_to_list($set1);
     $set2 = matrix_to_list($set2);
 
     if ( @{$set1} != @{$set2} ) {
-        die "not all points of the superpositioned sets are " .
-            "of the same dimmensions";
+        die 'ERROR, not all points of the superpositioned sets are '
+          . 'of the same dimmensions' . "\n";
     };
 
     my $set_p = [ map { $set2->[$_] + $set1->[$_] } 0..$#$set1 ];
@@ -189,10 +191,10 @@ sub get_rotation_matrix($$)
     }
 
     if ( !defined $min ) {
-        die "no positive eigenvalues were produced";
+        die 'ERROR, no positive eigenvalues were produced' . "\n";
     } elsif ( $found_negative_eigenvalues ) {
-        warn "negative eigenvalues were produced, taking the smallest " .
-             "positive eigenvalue";
+        warn 'WARNING, negative eigenvalues were produced, taking the smallest '
+           . 'positive eigenvalue' . "\n";
     }
 
     my $eigenvector = @$eigenvectors[$min];
@@ -232,7 +234,7 @@ sub construct_rotation_matrix ($)
 }
 
 ##
-# Multiplies two equal sized arrays element-wise and returns the sum of their 
+# Multiplies two equal sized arrays element-wise and returns the sum of their
 # products.
 ##
 sub mult_sum
@@ -248,7 +250,6 @@ sub mult_sum
 ##
 # Returns a column from a matrix represented in a row-major layout.
 ##
-
 sub get_column
 {
     my ( $matrix, $col_count, $col_num ) = @_;

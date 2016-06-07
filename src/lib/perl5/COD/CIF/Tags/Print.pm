@@ -260,7 +260,7 @@ sub sprint_value
         $val = "'" . $val . "'";
     } elsif( $val =~ /^'.*'$/ ) {
         $val = "\"" . $val . "\"";
-    } elsif( $val =~ /\s|^_|^\[|^\$|^".*"$/) {
+    } elsif( $val =~ /\s|^_|^\[|^\]|^\$|^".*"$/) {
         $val = "'" . $val . "'";
     }
     return $val;
@@ -272,8 +272,7 @@ sub fold
     my @lines = ();
     my $line = "";
 
-    my $word;
-    for $word (split( $separator, $string )) {
+    for my $word (split( $separator, $string )) {
         $word =~ s/^\s*|\s*$//g;
         if( !$line ) {
             $line = $word;

@@ -4,12 +4,15 @@ eval 'exec perl -x $0 ${1+"$@"}'
     if 0;
 #------------------------------------------------------------------------------
 #$Author$
-#$Date$ 
+#$Date$
 #$Revision$
 #$URL$
 #------------------------------------------------------------------------------
 #*
-#  Parse a CIF file, prepare a COD database table entry from it.
+#*  Parse a CIF file, prepare a COD database table entry from it.
+#*
+#* USAGE:
+#*    $0 --options input.cif inputs*.cif
 #**
 
 use strict;
@@ -18,105 +21,114 @@ use COD::CIF::Parser qw( parse_cif );
 use COD::CIF::Data::CIF2COD qw( cif2cod );
 use COD::SOptions qw( getOptions );
 use COD::SUsage qw( usage options );
-use COD::UserMessage qw( error );
+use COD::ErrorHandler qw( process_warnings
+                          process_errors
+                          process_parser_messages );
 
-my $print_header = 0;
-    # Indicates whether to print out a header with column names
+my $print_header = 0; # Indicates whether to print out a header with column names
 my $print_keywords = 0;
 
 my $user_columns; # User specified list of columns to be printed
 
 my $use_parser = "c";
+my $die_on_errors   = 1;
+my $die_on_warnings = 0;
+my $die_on_notes    = 0;
 
 my %options;
-
-#* USAGE:
-#*     $0 --options input.cif inputs*.cif
-#*
 #* OPTIONS:
-#*     -C, --cod-number 1000000
-#*         Use the specified number, 1000000 in this example, as
-#*         a COD number for this structure; do not take the number
-#*         from the datablock name.
+#* -C, --cod-number 1000000
+#*                     Use the specified number, 1000000 in this example, as
+#*                     a COD number for this structure; do not take the number
+#*                     from the data block name.
 #*
-#*     -c, --continue-on-errors
-#*         Continue processing and return successful return status
-#*         even if errors are diagnosed.
+#* -c, --always-continue
+#*                     Continue processing and return successful return status
+#*                     even if errors are diagnosed.
+#* -c-, --always-die
+#*                     Stop and return error status if errors are diagnosed.
 #*
-#*     -c-, --dont-continue-on-errors, --no-continue-on-errors,
-#*     --exit-on-errors
-#*         Stop and return error status if errors are diagnosed.
+#* -h, --print-header
+#*                     Print header with data column names at the first line
+#*                     With this option cif2cod uses the new field list for
+#*                     the output file.
 #*
-#*     -h, --print-header
-#*         Print header with data column names at the first line
-#*         With this option cif2cod use the new field list for the
-#*         output file
+#* -h-, --dont-print-header, --no-print-header
+#*                     Do not print column names on the first (header) line
+#*                     (default).
 #*
-#*     -h-, --dont-print-header, --no-print-header
-#*         Do not print column names on the first (header) line (default).
+#* -k, --keywords
+#*                     Print values in separate lines prefixed with keywords.
 #*
-#*     -k, --keywords
-#*         Print values in separate lines prefixed with keywords.
+#* --use-attached-hydrogens
+#*                     Include number of implicit hydrogens, specified using
+#*                     _atom_site_attached_hydrogens tag, into the formula sum.
 #*
-#*     --use-attached-hydrogens
-#*         Include number of implicit hydrogens, specified using
-#*         _atom_site_attached_hydrogens tag, into the formula sum.
+#* --dont-use-attached-hydrogens,
+#* --no-use-attached-hydrogens,
+#* --ignore-attached-hydrogens
+#*                     Ignore number of implicit hydrogens, specified using
+#*                     _atom_site_attached_hydrogens tag, in calculation of the
+#*                     formula sum. Default option.
 #*
-#*     --dont-use-attached-hydrogens,
-#*     --no-use-attached-hydrogens,
-#*     --ignore-attached-hydrogens
-#*         Ignore number of implicit hydrogens, specified using
-#*         _atom_site_attached_hydrogens tag, in calculation of the
-#*         formula sum. Default option.
+#* --reformat-space-group
+#*                     Correct the formatting of Hermann-Mauguin symmetry
+#*                     space group symbol.
 #*
-#*     --reformat-space-group
-#*         Correct the formatting of Hermann-Mauguin symmetry space group
-#*         symbol.
+#* --dont-reformat-space-group,
+#* --leave-space-group
+#*                     Do not correct the formatting of Hermann-Mauguin
+#*                     symmetry space group.
 #*
-#*     --dont-reformat-space-group,
-#*     --leave-space-group
-#*         Do not correct the formatting of Hermann-Mauguin symmetry space
-#*         group.
+#* --use-datablocks-without-coordinates
+#*                     Do not filter out data blocks without coordinates.
 #*
-#*     --use-datablocks-without-coordinates
-#*         Do not filter out datablocks without coordinates.
+#* --do-not-use-datablocks-without-coordinates, --use-all-datablocks
+#* --dont-use-datablocks-without-coordinates
+#* --no-use-datablocks-without-coordinates
+#* --skip-datablocks-without-coordinates
+#*                     Filter out data blocks without coordinates (default).
 #*
-#*     --do-not-use-datablocks-without-coordinates, --use-all-datablocks
-#*     --dont-use-datablocks-without-coordinates
-#*     --no-use-datablocks-without-coordinates
-#*     --skip-datablocks-without-coordinates
-#*         Filter out datablocks without coordinates. Default action.
+#* --require-only-doi
+#*                     Do not require all bibliographic details (authors,
+#*                     journal name, title, year, volume and first page of
+#*                     the publication) to be present if publication DOI is
+#*                     specified.
 #*
-#*     --require-only-doi
-#*         Do not require all bibliographic details (authors, journal
-#*         name, title, year, volume and first page of the publication)
-#*         to be present if publication DOI is specified.
+#* --require-full-bibliography
+#*                     Require author names, journal name, volume, publication
+#*                     title, year and first page to be present (default).
 #*
-#*     --require-full-bibliography
-#*         Require author names, journal name, volume, publication title,
-#*         year and first page to be present. Default behaviour.
+#* --columns file,flags,Robs
+#* --columns "file flags Robs"
+#*                     Print only columns specified in this option.
 #*
-#*     --columns file,flags,Robs
-#*     --columns "file flags Robs"
-#*         Print only columns specified in this option.
+#* --continue-on-errors
+#*                     Do not terminate script if errors are raised.
+#* --dont-continue-on-errors, --no-continue-on-errors,
+#* --exit-on-errors, --do-not-continue-on-errors, --die-on-errors
+#*                     Terminate script immediately if errors are raised (default).
+#* --continue-on-warnings
+#*                     Do not terminate script if warnings are raised (default).
+#* --die-on-warnings
+#*                     Terminate script immediately if warnings are raised.
+#* --continue-on-notes
+#*                     Do not terminate script if notes are raised (default).
+#* --die-on-notes
+#*                     Terminate script immediately if notes are raised.
 #*
-#*      --use-perl-parser
-#*         Use the Perl parser for parsing CIFs.
-#*      --use-c-parser
-#*         Use the faster C parser for CIFs (default).
+#* --use-perl-parser
+#*                     Use the Perl parser for parsing CIFs.
+#* --use-c-parser
+#*                     Use the faster C parser for CIFs (default).
 #*      --use-json-parser
 #*         Use the JSON parser (input is in JSON format)
 #*
-#*     --help, --usage
-#*         Print a short usage message (this message) and exit.
+#* --help, --usage
+#*                     Print a short usage message (this message) and exit.
 #**
 @ARGV = getOptions(
     "-C,--cod-number" => \$options{cod_number},
-
-    "-c,--continue-on-errors"     => sub { $options{continue_on_errors} = 1 },
-    "-c-,--no-continue-on-errors" => sub { $options{continue_on_errors} = 0 },
-    "--dont-continue-on-errors"   => sub { $options{continue_on_errors} = 0 },
-    "--exit-on-errors"            => sub { $options{continue_on_errors} = 0 },
 
     "-h,--print-header"       => sub { $print_header = 1 },
     "-h-,--dont-print-header" => sub { $print_header = 0 },
@@ -157,6 +169,26 @@ my %options;
     "--skip-datablocks-without-coordinates"
         => sub{ $options{use_datablocks_without_coord} = 0 },
 
+    "-c,--always-continue"              => sub { $die_on_errors   = 0;
+                                                 $die_on_warnings = 0;
+                                                 $die_on_notes    = 0 },
+    "-c-,--always-die"                  => sub { $die_on_errors   = 1;
+                                                 $die_on_warnings = 1;
+                                                 $die_on_notes    = 1 },
+
+    "--continue-on-errors"          => sub { $die_on_errors = 0 },
+    "--dont-continue-on-errors"     => sub { $die_on_errors = 1 },
+    "--die-on-errors"               => sub { $die_on_errors = 1 },
+    "--do-not-continue-on-errors"   => sub { $die_on_errors = 1 },
+    "--no-continue-on-errors"       => sub { $die_on_errors = 1 },
+    "--exit-on-errors"              => sub { $die_on_errors = 1 },
+
+    "--continue-on-warnings" => sub { $die_on_warnings = 0 },
+    "--die-on-warnings"      => sub { $die_on_warnings = 1 },
+
+    "--continue-on-notes"    => sub { $die_on_notes = 0 },
+    "--die-on-notes"         => sub { $die_on_notes = 1 },
+
     "--use-perl-parser"       => sub{ $use_parser = "perl" },
     "--use-c-parser"          => sub{ $use_parser = "c" },
     "--use-json-parser"       => sub{ $use_parser = "json" },
@@ -165,15 +197,21 @@ my %options;
     "--help,--usage"  => sub { usage; exit }
 );
 
+my $die_on_error_level = {
+    ERROR   => $die_on_errors,
+    WARNING => $die_on_warnings,
+    NOTE    => $die_on_notes
+};
+
 my @print_columns;
 
 if( defined $user_columns ) {
-    @print_columns = map { split( " ", $_ ) } split( ",", $user_columns );
+    @print_columns = map { split m/[ ]/, $_ } split m/,/, $user_columns;
 } else {
     @print_columns = @COD::CIF::Data::CIF2COD::new_data_fields;
 }
 
-binmode( STDOUT, ":utf8" );
+binmode( STDOUT, ":encoding(UTF-8)" );
 
 if( $print_header ) {
     local $\ = "\n";
@@ -195,21 +233,39 @@ for my $filename (@ARGV) {
     my $parser_options = { 'parser' => $use_parser, 'no_print' => 1 };
 
     my ( $data, $err_count, $messages ) = parse_cif( $filename, $parser_options );
+    process_parser_messages( $messages, $die_on_error_level );
 
-    print STDERR $_ foreach ( @$messages );
-    if ( $err_count > 0 ) {
-        error( $0, $filename, undef, "$err_count error(s) "
-             . "encountered while parsing the file", undef );
-        die unless $options{continue_on_errors};
+    my @extracted;
+    foreach my $dataset (@$data) {
+
+        my $dataname = 'data_' . $dataset->{name};
+
+        local $SIG{__WARN__} = sub { process_warnings( {
+                                       'message'       => @_,
+                                       'program'       => $0,
+                                       'filename'      => $filename,
+                                       'add_pos'       => $dataname
+                                     }, $die_on_error_level ) };
+
+        my $extracted_dataset;
+        eval {
+            $extracted_dataset = cif2cod( $dataset, \%options );
+        };
+        if ($@) {
+            process_errors( {
+              'message'       => $@,
+              'program'       => $0,
+              'filename'      => $filename,
+              'add_pos'       => $dataname
+            }, $die_on_errors )
+        }
+        push @extracted, $extracted_dataset if defined $extracted_dataset;
     }
 
-    my $extracted = cif2cod( $data, $filename, \%options );
-
-    for my $data (@$extracted) {
+    for my $data (@extracted) {
         my %data = %$data;
 
         # Print out the collected data fields:
-        
         my @data_fields = @COD::CIF::Data::CIF2COD::default_data_fields;
         if( $print_header || defined $user_columns ) {
             @data_fields = @print_columns;
@@ -221,7 +277,7 @@ for my $filename (@ARGV) {
             for my $key (@data_fields) {
                 my $value = $data{$key};
                 if( defined $value ) {
-                    # remove trailing dot from numbers:
+                    # Remove trailing dot from numbers:
                     $value =~ s/^\s*(\d+)\.\s*$/$1/;
                     print $key . $separator . $value . "\n";
                 }
@@ -231,7 +287,7 @@ for my $filename (@ARGV) {
             for my $key (@data_fields) {
                 my $value = $data{$key};
                 if( defined $value ) {
-                    # remove trailing dot from numbers:
+                    # Remove trailing dot from numbers:
                     $value =~ s/^\s*(\d+)\.\s*$/$1/;
                     if( $key ne "text" ) {
                         $value =~ s/\\/\\\\/g;

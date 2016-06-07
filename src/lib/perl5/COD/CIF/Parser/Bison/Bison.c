@@ -146,6 +146,7 @@ SV * parse_cif( char * fname, char * prog, SV * opt )
     }
     if( is_option_set( options, "fix_datablock_names" ) ) {
         co = cif_option_set_fix_datablock_names( co );
+        set_lexer_fix_datablock_names();
     }
     if( is_option_set( options, "fix_string_quotes" ) ) {
         co = cif_option_set_fix_string_quotes( co );
@@ -239,5 +240,5 @@ SV * parse_cif( char * fname, char * prog, SV * opt )
     hv_put( ret, "datablocks", newRV_noinc( (SV*) datablocks ) );
     hv_put( ret, "messages", newRV_noinc( (SV*) error_messages ) );
     hv_put( ret, "nerrors", newSViv( nerrors ) );
-    return( newRV_noinc( (SV*) ret ) );
+    return( sv_2mortal( newRV_noinc( (SV*) ret ) ) );
 }

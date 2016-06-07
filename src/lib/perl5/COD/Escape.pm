@@ -87,7 +87,7 @@ sub decode_textfield
         gunzip( \$content, \$decoded ) or die $GunzipError;
         return $decoded;
     } else {
-        die "unknown contents encoding '$encoding'";
+        die "ERROR, unknown contents encoding '$encoding'" . "\n";
     }
 }
 

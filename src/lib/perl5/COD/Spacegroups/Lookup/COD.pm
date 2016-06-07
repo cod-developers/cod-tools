@@ -4,7 +4,7 @@
 #$Revision$
 #$URL$
 #------------------------------------------------------------------------
-#* 
+#*
 #**
 
 package COD::Spacegroups::Lookup::COD;
@@ -19,8 +19,8 @@ our @EXPORT_OK = qw(
 );
 
 # NOTE: some code using this table (cif_cod_check) assumes that
-# rhombohedral spacegroups in hexagonal setting have universal_h_m
-# field maching the pattern /^H|:H$/ (e.g. 'R 3 2 :H' or 'H 3 2'), and
+# rhombohedral space groups in hexagonal setting have universal_h_m
+# field matching the pattern /^H|:H$/ (e.g. 'R 3 2 :H' or 'H 3 2'), and
 # for the rhombohedral setting universal_h_m values do not match this
 # pattern.
 
@@ -12466,7 +12466,7 @@ our @EXPORT_OK = qw(
     hermann_mauguin => 'R 3',
     universal_h_m   => 'R 3 :R',
     crystal_class   => 'rhombohedral',
-    constraints     => '$a == $b && $b == $c &&' .
+    constraints     => '$a == $b && $b == $c && ' .
                        '$alpha == $beta && $beta == $gamma',
     symops => [
         'x,y,z',
@@ -12553,7 +12553,7 @@ our @EXPORT_OK = qw(
     hermann_mauguin => 'R -3',
     universal_h_m   => 'R -3 :R',
     crystal_class   => 'rhombohedral',
-    constraints     => '$a == $b && $b == $c &&' .
+    constraints     => '$a == $b && $b == $c && ' .
                        '$alpha == $beta && $beta == $gamma',
     symops => [
         'x,y,z',
@@ -12781,7 +12781,7 @@ our @EXPORT_OK = qw(
     hermann_mauguin => 'R 3 2',
     universal_h_m   => 'R 3 2 :R',
     crystal_class   => 'rhombohedral',
-    constraints     => '$a == $b && $b == $c &&' .
+    constraints     => '$a == $b && $b == $c && ' .
                        '$alpha == $beta && $beta == $gamma',
     symops => [
         'x,y,z',
@@ -12955,7 +12955,7 @@ our @EXPORT_OK = qw(
     hermann_mauguin => 'R 3 m',
     universal_h_m   => 'R 3 m :R',
     crystal_class   => 'rhombohedral',
-    constraints     => '$a == $b && $b == $c &&' .
+    constraints     => '$a == $b && $b == $c && ' .
                        '$alpha == $beta && $beta == $gamma',
     symops => [
         'x,y,z',
@@ -13021,7 +13021,7 @@ our @EXPORT_OK = qw(
     hermann_mauguin => 'R 3 c',
     universal_h_m   => 'R 3 c :R',
     crystal_class   => 'rhombohedral',
-    constraints     => '$a == $b && $b == $c &&' .
+    constraints     => '$a == $b && $b == $c && ' .
                        '$alpha == $beta && $beta == $gamma',
     symops => [
         'x,y,z',
@@ -13267,7 +13267,7 @@ our @EXPORT_OK = qw(
     hermann_mauguin => 'R -3 m',
     universal_h_m   => 'R -3 m :R',
     crystal_class   => 'rhombohedral',
-    constraints     => '$a == $b && $b == $c &&' .
+    constraints     => '$a == $b && $b == $c && ' .
                        '$alpha == $beta && $beta == $gamma',
     symops => [
         'x,y,z',
@@ -13369,7 +13369,7 @@ our @EXPORT_OK = qw(
     hermann_mauguin => 'R -3 c',
     universal_h_m   => 'R -3 c :R',
     crystal_class   => 'rhombohedral',
-    constraints     => '$a == $b && $b == $c &&' .
+    constraints     => '$a == $b && $b == $c && ' .
                        '$alpha == $beta && $beta == $gamma',
     symops => [
         'x,y,z',
@@ -14446,7 +14446,7 @@ our @EXPORT_OK = qw(
     hermann_mauguin => 'P 2 3',
     universal_h_m   => 'P 2 3',
     crystal_class   => 'cubic',
-    constraints     => '$a == $b && $b == $c &&' .
+    constraints     => '$a == $b && $b == $c && ' .
                        '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
@@ -14485,7 +14485,7 @@ our @EXPORT_OK = qw(
     hermann_mauguin => 'F 2 3',
     universal_h_m   => 'F 2 3',
     crystal_class   => 'cubic',
-    constraints     => '$a == $b && $b == $c &&' .
+    constraints     => '$a == $b && $b == $c && ' .
                        '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
@@ -14560,7 +14560,7 @@ our @EXPORT_OK = qw(
     hermann_mauguin => 'I 2 3',
     universal_h_m   => 'I 2 3',
     crystal_class   => 'cubic',
-    constraints     => '$a == $b && $b == $c &&' .
+    constraints     => '$a == $b && $b == $c && ' .
                        '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
@@ -14611,7 +14611,7 @@ our @EXPORT_OK = qw(
     hermann_mauguin => 'P 21 3',
     universal_h_m   => 'P 21 3',
     crystal_class   => 'cubic',
-    constraints     => '$a == $b && $b == $c &&' .
+    constraints     => '$a == $b && $b == $c && ' .
                        '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
@@ -14650,7 +14650,7 @@ our @EXPORT_OK = qw(
     hermann_mauguin => 'I 21 3',
     universal_h_m   => 'I 21 3',
     crystal_class   => 'cubic',
-    constraints     => '$a == $b && $b == $c &&' .
+    constraints     => '$a == $b && $b == $c && ' .
                        '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
@@ -14701,7 +14701,7 @@ our @EXPORT_OK = qw(
     hermann_mauguin => 'P m -3',
     universal_h_m   => 'P m -3',
     crystal_class   => 'cubic',
-    constraints     => '$a == $b && $b == $c &&' .
+    constraints     => '$a == $b && $b == $c && ' .
                        '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
@@ -14764,7 +14764,7 @@ our @EXPORT_OK = qw(
     hermann_mauguin => 'P n -3',
     universal_h_m   => 'P n -3 :1',
     crystal_class   => 'cubic',
-    constraints     => '$a == $b && $b == $c &&' .
+    constraints     => '$a == $b && $b == $c && ' .
                        '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
@@ -14827,7 +14827,7 @@ our @EXPORT_OK = qw(
     hermann_mauguin => 'P n -3',
     universal_h_m   => 'P n -3 :2',
     crystal_class   => 'cubic',
-    constraints     => '$a == $b && $b == $c &&' .
+    constraints     => '$a == $b && $b == $c && ' .
                        '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
@@ -14890,7 +14890,7 @@ our @EXPORT_OK = qw(
     hermann_mauguin => 'F m -3',
     universal_h_m   => 'F m -3',
     crystal_class   => 'cubic',
-    constraints     => '$a == $b && $b == $c &&' .
+    constraints     => '$a == $b && $b == $c && ' .
                        '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
@@ -15025,7 +15025,7 @@ our @EXPORT_OK = qw(
     hermann_mauguin => 'F d -3',
     universal_h_m   => 'F d -3 :1',
     crystal_class   => 'cubic',
-    constraints     => '$a == $b && $b == $c &&' .
+    constraints     => '$a == $b && $b == $c && ' .
                        '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
@@ -15160,7 +15160,7 @@ our @EXPORT_OK = qw(
     hermann_mauguin => 'F d -3',
     universal_h_m   => 'F d -3 :2',
     crystal_class   => 'cubic',
-    constraints     => '$a == $b && $b == $c &&' .
+    constraints     => '$a == $b && $b == $c && ' .
                        '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
@@ -15295,7 +15295,7 @@ our @EXPORT_OK = qw(
     hermann_mauguin => 'I m -3',
     universal_h_m   => 'I m -3',
     crystal_class   => 'cubic',
-    constraints     => '$a == $b && $b == $c &&' .
+    constraints     => '$a == $b && $b == $c && ' .
                        '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
@@ -15382,7 +15382,7 @@ our @EXPORT_OK = qw(
     hermann_mauguin => 'P a -3',
     universal_h_m   => 'P a -3',
     crystal_class   => 'cubic',
-    constraints     => '$a == $b && $b == $c &&' .
+    constraints     => '$a == $b && $b == $c && ' .
                        '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
@@ -15445,7 +15445,7 @@ our @EXPORT_OK = qw(
     hermann_mauguin => 'I a -3',
     universal_h_m   => 'I a -3',
     crystal_class   => 'cubic',
-    constraints     => '$a == $b && $b == $c &&' .
+    constraints     => '$a == $b && $b == $c && ' .
                        '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
@@ -15532,7 +15532,7 @@ our @EXPORT_OK = qw(
     hermann_mauguin => 'P 4 3 2',
     universal_h_m   => 'P 4 3 2',
     crystal_class   => 'cubic',
-    constraints     => '$a == $b && $b == $c &&' .
+    constraints     => '$a == $b && $b == $c && ' .
                        '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
@@ -15595,7 +15595,7 @@ our @EXPORT_OK = qw(
     hermann_mauguin => 'P 42 3 2',
     universal_h_m   => 'P 42 3 2',
     crystal_class   => 'cubic',
-    constraints     => '$a == $b && $b == $c &&' .
+    constraints     => '$a == $b && $b == $c && ' .
                        '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
@@ -15658,7 +15658,7 @@ our @EXPORT_OK = qw(
     hermann_mauguin => 'F 4 3 2',
     universal_h_m   => 'F 4 3 2',
     crystal_class   => 'cubic',
-    constraints     => '$a == $b && $b == $c &&' .
+    constraints     => '$a == $b && $b == $c && ' .
                        '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
@@ -15793,7 +15793,7 @@ our @EXPORT_OK = qw(
     hermann_mauguin => 'F 41 3 2',
     universal_h_m   => 'F 41 3 2',
     crystal_class   => 'cubic',
-    constraints     => '$a == $b && $b == $c &&' .
+    constraints     => '$a == $b && $b == $c && ' .
                        '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
@@ -15928,7 +15928,7 @@ our @EXPORT_OK = qw(
     hermann_mauguin => 'I 4 3 2',
     universal_h_m   => 'I 4 3 2',
     crystal_class   => 'cubic',
-    constraints     => '$a == $b && $b == $c &&' .
+    constraints     => '$a == $b && $b == $c && ' .
                        '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
@@ -16015,7 +16015,7 @@ our @EXPORT_OK = qw(
     hermann_mauguin => 'P 43 3 2',
     universal_h_m   => 'P 43 3 2',
     crystal_class   => 'cubic',
-    constraints     => '$a == $b && $b == $c &&' .
+    constraints     => '$a == $b && $b == $c && ' .
                        '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
@@ -16078,7 +16078,7 @@ our @EXPORT_OK = qw(
     hermann_mauguin => 'P 41 3 2',
     universal_h_m   => 'P 41 3 2',
     crystal_class   => 'cubic',
-    constraints     => '$a == $b && $b == $c &&' .
+    constraints     => '$a == $b && $b == $c && ' .
                        '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
@@ -16141,7 +16141,7 @@ our @EXPORT_OK = qw(
     hermann_mauguin => 'I 41 3 2',
     universal_h_m   => 'I 41 3 2',
     crystal_class   => 'cubic',
-    constraints     => '$a == $b && $b == $c &&' .
+    constraints     => '$a == $b && $b == $c && ' .
                        '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
@@ -16228,7 +16228,7 @@ our @EXPORT_OK = qw(
     hermann_mauguin => 'P -4 3 m',
     universal_h_m   => 'P -4 3 m',
     crystal_class   => 'cubic',
-    constraints     => '$a == $b && $b == $c &&' .
+    constraints     => '$a == $b && $b == $c && ' .
                        '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
@@ -16291,7 +16291,7 @@ our @EXPORT_OK = qw(
     hermann_mauguin => 'F -4 3 m',
     universal_h_m   => 'F -4 3 m',
     crystal_class   => 'cubic',
-    constraints     => '$a == $b && $b == $c &&' .
+    constraints     => '$a == $b && $b == $c && ' .
                        '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
@@ -16426,7 +16426,7 @@ our @EXPORT_OK = qw(
     hermann_mauguin => 'I -4 3 m',
     universal_h_m   => 'I -4 3 m',
     crystal_class   => 'cubic',
-    constraints     => '$a == $b && $b == $c &&' .
+    constraints     => '$a == $b && $b == $c && ' .
                        '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
@@ -16513,7 +16513,7 @@ our @EXPORT_OK = qw(
     hermann_mauguin => 'P -4 3 n',
     universal_h_m   => 'P -4 3 n',
     crystal_class   => 'cubic',
-    constraints     => '$a == $b && $b == $c &&' .
+    constraints     => '$a == $b && $b == $c && ' .
                        '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
@@ -16576,7 +16576,7 @@ our @EXPORT_OK = qw(
     hermann_mauguin => 'F -4 3 c',
     universal_h_m   => 'F -4 3 c',
     crystal_class   => 'cubic',
-    constraints     => '$a == $b && $b == $c &&' .
+    constraints     => '$a == $b && $b == $c && ' .
                        '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
@@ -16711,7 +16711,7 @@ our @EXPORT_OK = qw(
     hermann_mauguin => 'I -4 3 d',
     universal_h_m   => 'I -4 3 d',
     crystal_class   => 'cubic',
-    constraints     => '$a == $b && $b == $c &&' .
+    constraints     => '$a == $b && $b == $c && ' .
                        '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
@@ -16798,7 +16798,7 @@ our @EXPORT_OK = qw(
     hermann_mauguin => 'P m -3 m',
     universal_h_m   => 'P m -3 m',
     crystal_class   => 'cubic',
-    constraints     => '$a == $b && $b == $c &&' .
+    constraints     => '$a == $b && $b == $c && ' .
                        '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
@@ -16909,7 +16909,7 @@ our @EXPORT_OK = qw(
     hermann_mauguin => 'P n -3 n',
     universal_h_m   => 'P n -3 n :1',
     crystal_class   => 'cubic',
-    constraints     => '$a == $b && $b == $c &&' .
+    constraints     => '$a == $b && $b == $c && ' .
                        '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
@@ -17020,7 +17020,7 @@ our @EXPORT_OK = qw(
     hermann_mauguin => 'P n -3 n',
     universal_h_m   => 'P n -3 n :2',
     crystal_class   => 'cubic',
-    constraints     => '$a == $b && $b == $c &&' .
+    constraints     => '$a == $b && $b == $c && ' .
                        '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
@@ -17131,7 +17131,7 @@ our @EXPORT_OK = qw(
     hermann_mauguin => 'P m -3 n',
     universal_h_m   => 'P m -3 n',
     crystal_class   => 'cubic',
-    constraints     => '$a == $b && $b == $c &&' .
+    constraints     => '$a == $b && $b == $c && ' .
                        '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
@@ -17242,7 +17242,7 @@ our @EXPORT_OK = qw(
     hermann_mauguin => 'P n -3 m',
     universal_h_m   => 'P n -3 m :1',
     crystal_class   => 'cubic',
-    constraints     => '$a == $b && $b == $c &&' .
+    constraints     => '$a == $b && $b == $c && ' .
                        '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
@@ -17353,7 +17353,7 @@ our @EXPORT_OK = qw(
     hermann_mauguin => 'P n -3 m',
     universal_h_m   => 'P n -3 m :2',
     crystal_class   => 'cubic',
-    constraints     => '$a == $b && $b == $c &&' .
+    constraints     => '$a == $b && $b == $c && ' .
                        '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
@@ -17464,7 +17464,7 @@ our @EXPORT_OK = qw(
     hermann_mauguin => 'F m -3 m',
     universal_h_m   => 'F m -3 m',
     crystal_class   => 'cubic',
-    constraints     => '$a == $b && $b == $c &&' .
+    constraints     => '$a == $b && $b == $c && ' .
                        '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
@@ -17719,7 +17719,7 @@ our @EXPORT_OK = qw(
     hermann_mauguin => 'F m -3 c',
     universal_h_m   => 'F m -3 c',
     crystal_class   => 'cubic',
-    constraints     => '$a == $b && $b == $c &&' .
+    constraints     => '$a == $b && $b == $c && ' .
                        '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
@@ -17974,7 +17974,7 @@ our @EXPORT_OK = qw(
     hermann_mauguin => 'F d -3 m',
     universal_h_m   => 'F d -3 m :1',
     crystal_class   => 'cubic',
-    constraints     => '$a == $b && $b == $c &&' .
+    constraints     => '$a == $b && $b == $c && ' .
                        '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
@@ -18229,7 +18229,7 @@ our @EXPORT_OK = qw(
     hermann_mauguin => 'F d -3 m',
     universal_h_m   => 'F d -3 m :2',
     crystal_class   => 'cubic',
-    constraints     => '$a == $b && $b == $c &&' .
+    constraints     => '$a == $b && $b == $c && ' .
                        '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
@@ -18484,7 +18484,7 @@ our @EXPORT_OK = qw(
     hermann_mauguin => 'F d -3 c',
     universal_h_m   => 'F d -3 c :1',
     crystal_class   => 'cubic',
-    constraints     => '$a == $b && $b == $c &&' .
+    constraints     => '$a == $b && $b == $c && ' .
                        '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
@@ -18739,7 +18739,7 @@ our @EXPORT_OK = qw(
     hermann_mauguin => 'F d -3 c',
     universal_h_m   => 'F d -3 c :2',
     crystal_class   => 'cubic',
-    constraints     => '$a == $b && $b == $c &&' .
+    constraints     => '$a == $b && $b == $c && ' .
                        '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
@@ -18994,7 +18994,7 @@ our @EXPORT_OK = qw(
     hermann_mauguin => 'I m -3 m',
     universal_h_m   => 'I m -3 m',
     crystal_class   => 'cubic',
-    constraints     => '$a == $b && $b == $c &&' .
+    constraints     => '$a == $b && $b == $c && ' .
                        '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
@@ -19153,7 +19153,7 @@ our @EXPORT_OK = qw(
     hermann_mauguin => 'I a -3 d',
     universal_h_m   => 'I a -3 d',
     crystal_class   => 'cubic',
-    constraints     => '$a == $b && $b == $c &&' .
+    constraints     => '$a == $b && $b == $c && ' .
                        '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
@@ -19331,7 +19331,7 @@ our @EXPORT_OK = qw(
     hermann_mauguin => 'A -1',
     universal_h_m   => 'A -1',
     crystal_class   => 'triclinic',
-    constraints     => '1',    
+    constraints     => '1',
     symops => [
         'x,y,z',
         '-x,-y,-z',
@@ -19351,7 +19351,7 @@ our @EXPORT_OK = qw(
     hermann_mauguin => 'B -1',
     universal_h_m   => 'B -1',
     crystal_class   => 'triclinic',
-    constraints     => '1',    
+    constraints     => '1',
     symops => [
         'x, y, z',
         'x+1/2, y, z+1/2',
@@ -19392,7 +19392,7 @@ our @EXPORT_OK = qw(
     hermann_mauguin => 'R 1 2/c 1 ("rhombohedral" setting)',
     universal_h_m   => 'R 1 2/c 1',
     crystal_class   => 'rhombohedral',
-    constraints     => '$a == $b && $b == $c &&' .
+    constraints     => '$a == $b && $b == $c && ' .
                        '$alpha == $beta && $beta == $gamma',
     symops => [
         'x, y, z',
@@ -27413,7 +27413,8 @@ our @EXPORT_OK = qw(
     hermann_mauguin => 'F m -3 (a-1/4,b-1/4,c-1/4)',
     universal_h_m   => 'F m -3 (a-1/4,b-1/4,c-1/4)',
     crystal_class   => 'cubic',
-    constraints     => '$a == $b && $b == $c && $alpha == 90 && $beta == 90 && $gamma == 90',
+    constraints     => '$a == $b && $b == $c && ' .
+                       '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-x+1/2,-y+1/2,z',
@@ -27547,7 +27548,8 @@ our @EXPORT_OK = qw(
     hermann_mauguin => 'I m -3 (a-1/4,b-1/4,c-1/4)',
     universal_h_m   => 'I m -3 (a-1/4,b-1/4,c-1/4)',
     crystal_class   => 'cubic',
-    constraints     => '$a == $b && $b == $c && $alpha == 90 && $beta == 90 && $gamma == 90',
+    constraints     => '$a == $b && $b == $c && ' .
+                       '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-x+1/2,-y+1/2,z',
@@ -27633,7 +27635,8 @@ our @EXPORT_OK = qw(
     hermann_mauguin => 'F m -3 c (a+1/4,b+1/4,c+1/4)',
     universal_h_m   => 'F m -3 c (a+1/4,b+1/4,c+1/4)',
     crystal_class   => 'cubic',
-    constraints     => '$a == $b && $b == $c && $alpha == 90 && $beta == 90 && $gamma == 90',
+    constraints     => '$a == $b && $b == $c && ' .
+                       '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-y,x,z',
@@ -27887,7 +27890,8 @@ our @EXPORT_OK = qw(
     hermann_mauguin => 'I m -3 m (a-1/4,b-1/4,c-1/4)',
     universal_h_m   => 'I m -3 m (a-1/4,b-1/4,c-1/4)',
     crystal_class   => 'cubic',
-    constraints     => '$a == $b && $b == $c && $alpha == 90 && $beta == 90 && $gamma == 90',
+    constraints     => '$a == $b && $b == $c && ' .
+                       '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-y+1/2,x,z',
@@ -28045,7 +28049,8 @@ our @EXPORT_OK = qw(
     hermann_mauguin => 'F m -3 m (a-1/4,b-1/4,c-1/4)',
     universal_h_m   => 'F m -3 m (a-1/4,b-1/4,c-1/4)',
     crystal_class   => 'cubic',
-    constraints     => '$a == $b && $b == $c && $alpha == 90 && $beta == 90 && $gamma == 90',
+    constraints     => '$a == $b && $b == $c && ' .
+                       '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
         '-y+1/2,x,z',
@@ -28634,7 +28639,38 @@ our @EXPORT_OK = qw(
         'x,y,z',
         '-x+1/2,y+1/2,-z',
     ],
+},
+
+{
+    number          => 62,
+    hall            => '-P 2ac 2n (z,x,y+1/4)',
+    schoenflies     => 'D2h^16',
+    hermann_mauguin => 'P n m a',
+    universal_h_m   => 'P n m a (c,a-1/4,b)',
+    crystal_class   => 'orthorhombic',
+    constraints     => '$alpha == 90 && $beta == 90 && $gamma == 90',
+    symops => [
+        'x,y,z',
+        '-x+1/2,y+1/2,-z',
+        '-x,-y,z+1/2',
+        'x+1/2,-y+1/2,-z+1/2',
+        '-x,-y,-z+1/2',
+        'x+1/2,-y+1/2,z+1/2',
+        'x,y,-z',
+        '-x+1/2,y+1/2,z'
+    ],
+    ncsym => [
+        'x,y,z',
+        '-x+1/2,y+1/2,-z',
+        '-x,-y,z+1/2',
+        'x+1/2,-y+1/2,-z+1/2',
+        '-x,-y,-z+1/2',
+        'x+1/2,-y+1/2,z+1/2',
+        'x,y,-z',
+        '-x+1/2,y+1/2,z'
+    ]
 }
+
 );
 
 1;

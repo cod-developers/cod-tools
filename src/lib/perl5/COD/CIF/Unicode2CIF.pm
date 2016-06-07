@@ -9,7 +9,8 @@ package COD::CIF::Unicode2CIF;
 
 use strict;
 use warnings;
-use Unicode::Normalize  qw( normalize );
+use HTML::Entities;
+use Unicode::Normalize qw( normalize );
 ## use utf8;
 ## use charnames ':full';
 
@@ -41,7 +42,7 @@ my %commands = (
     # For this symbol, no suitable Unicode character could be found.
     # '\\ddb' delocalized double bond
 
-    "\x{223C}" => '\\sim ', # TILDE OPERATOR
+    "\x{223C}" => '\\\\sim ',    # TILDE OPERATOR
     "\x{2329}" => '\\\\langle ', # LEFT-POINTING ANGLE BRACKET     (langle)
     "\x{232A}" => '\\\\rangle ', # RIGHT-POINTING ANGLE BRACKET     (rangle)
     "\x{2243}" => '\\\\simeq ',  # ASYMPTOTICALLY EQUAL TO
@@ -80,9 +81,9 @@ my %alt_cmd = (
     # "\x{223C}" => '\\sim ', # TILDE OPERATOR
     #
     # Alternatives:
-    "\x{02DC}" => '\\sim ',   # SMALL TILDE
-    "\x{2053}" => '\\sim ',   # SWUNG DASH
-    "\x{FF5E}" => '\\sim ',   # FULLWIDTH TILDE
+    "\x{02DC}" => '\\\\sim ',   # SMALL TILDE
+    "\x{2053}" => '\\\\sim ',   # SWUNG DASH
+    "\x{FF5E}" => '\\\\sim ',   # FULLWIDTH TILDE
     # character '~' (TILDE) is not used since it denotes subscript in CIF.
 
     # Main: "\x{25A1}" => '\\\\square ', # WHITE SQUARE        (square)
@@ -115,7 +116,6 @@ my %letters = (
     "\x{03BF}" => '\o', # omicron
     "\x{03C0}" => '\p', # pi
     "\x{03C1}" => '\r', # rho
-    "\x{03C2}" => '\s', # varsigma
     "\x{03C3}" => '\s', # sigma
     "\x{03C4}" => '\t', # tau
     "\x{03C5}" => '\u', # upsilon
@@ -218,7 +218,13 @@ sub cif2unicode
 
     $text = Encode::decode_utf8($text);
 
+    # Firstly converting sequences, that have sub-sequences
+    # corresponding to other special symbols: "\db" (contains "\d")
+    # and "---" (contains "--"):
+
     $text =~ s/\\\\db /\x{003D}/g;
+    $text =~ s/---/\x{2014}/g;
+
     for my $pattern (sort keys %commands) {
         my $value = $commands{$pattern};
             $text =~ s/\Q$value/$pattern/g;
@@ -240,8 +246,7 @@ sub cif2unicode
         $text =~ s/(\Q$combining{$pattern}\E)(.)/$2$1/g;
         $text =~ s/\Q$combining{$pattern}\E/$pattern/g;
     }
-    $text =~ s/\&\#x([0-9A-Fa-f]+);/chr(hex($1))/eg;
-    return normalize( 'C', $text );
+    return normalize( 'C', decode_entities( $text ) );
 }
 
 1;

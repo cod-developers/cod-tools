@@ -5,29 +5,22 @@
 #$URL$
 #------------------------------------------------------------------------------
 
-CODTOOLS    = cod-tools
-LIBCOD_PERL = libcod-cif-parser-bison-perl
-LIBCODCIF   = libcodcif
-PYCODCIF    = pycodcif
-
 AUTHOR_NAME  = Saulius Gražulis
 AUTHOR_EMAIL = grazulis@ibt.lt
 REVISION  = $(shell svnversion)
 DATE      = $(shell date --rfc-2822)
 DISTRIBUTION = $(shell lsb_release -a 2>/dev/null | grep ^Codename | awk '{print $$2}')
 
-vendorarch = $(shell perl -le 'use Config; print $$Config{vendorarch}')
-vendorlib  = $(shell perl -le 'use Config; print $$Config{vendorlib}')
-
-PREFIX = ${DEBIAN}/${PKGNAME}
+vendorarch = $(shell perl -le 'use Config; my $$p = $$Config{vendorarch}; $$p =~ s/^\/usr//; print $$p')
+vendorlib  = $(shell perl -le 'use Config; my $$p = $$Config{vendorlib}; $$p =~ s/^\/usr//; print $$p')
 
 DEBIAN    = debian
 CHANGELOG = ${DEBIAN}/changelog
 CONTROL   = ${DEBIAN}/control
 COPYRIGHT = ${DEBIAN}/copyright
 
-LIBCODCIF_A_DEST  = ${DEBIAN}/${LIBCODCIF}/usr/lib
-LIBCODCIF_INC_DEST = ${DEBIAN}/${LIBCODCIF}/usr/include
+LIBCODCIF_A_DEST  =  ${PREFIX}/lib
+LIBCODCIF_INC_DEST = ${PREFIX}/include
 
 # Taking the dependencies from {build,run}.sh:
 
@@ -93,45 +86,45 @@ deb: ${CHANGELOG} ${CONTROL} ${COPYRIGHT}
 install: build install-codtools install-libcod-perl install-libcodcif install-pycodcif
 
 install-codtools:
-	test -d ${DEBIAN}/${CODTOOLS}/usr/bin || mkdir -p ${DEBIAN}/${CODTOOLS}/usr/bin
-	install ${CODTOOLS_SCRIPTS} ${DEBIAN}/${CODTOOLS}/usr/bin
+	test -d ${PREFIX}/bin || mkdir -p ${PREFIX}/bin
+	install ${CODTOOLS_SCRIPTS} ${PREFIX}/bin
 	for i in ${CODTOOLS_LIBS:src/lib/%=%}; \
 	do \
-		test -d ${DEBIAN}/${CODTOOLS}/usr/share/$$(dirname $$i) \
-			|| mkdir -p ${DEBIAN}/${CODTOOLS}/usr/share/$$(dirname $$i); \
-		install --mode 644 src/lib/$$i ${DEBIAN}/${CODTOOLS}/usr/share/$$i; \
+		test -d ${PREFIX}/share/$$(dirname $$i) \
+			|| mkdir -p ${PREFIX}/share/$$(dirname $$i); \
+		install --mode 644 src/lib/$$i ${PREFIX}/share/$$i; \
 	done
 
 install-libcod-perl:
 	for i in ${LIBCOD_PERL_LIBS:src/lib/%=%}; \
 	do \
-	test -d ${DEBIAN}/${LIBCOD_PERL}/usr/share/$$(dirname $$i) \
-			|| mkdir -p ${DEBIAN}/${LIBCOD_PERL}/usr/share/$$(dirname $$i); \
-		install --mode 644 src/lib/$$i ${DEBIAN}/${LIBCOD_PERL}/usr/share/$$i; \
+	test -d ${PREFIX}/share/$$(dirname $$i) \
+			|| mkdir -p ${PREFIX}/share/$$(dirname $$i); \
+		install --mode 644 src/lib/$$i ${PREFIX}/share/$$i; \
 	done
-	test -d ${DEBIAN}/${LIBCOD_PERL}/${vendorarch}/auto/COD/CIF/Parser/Bison/ \
-			|| mkdir -p ${DEBIAN}/${LIBCOD_PERL}/${vendorarch}/auto/COD/CIF/Parser/Bison
+	test -d ${PREFIX}/${vendorarch}/auto/COD/CIF/Parser/Bison/ \
+			|| mkdir -p ${PREFIX}/${vendorarch}/auto/COD/CIF/Parser/Bison
 	install --mode 644 src/lib/perl5/auto/COD/CIF/Parser/Bison/Bison.so \
-		${DEBIAN}/${LIBCOD_PERL}/${vendorarch}/auto/COD/CIF/Parser/Bison/Bison.so
+		${PREFIX}/${vendorarch}/auto/COD/CIF/Parser/Bison/Bison.so
 
 install-pycodcif:
-	test -d ${DEBIAN}/${PYCODCIF}/usr/bin || mkdir -p ${DEBIAN}/${PYCODCIF}/usr/bin
-	install scripts/cif_printout_Python ${DEBIAN}/${PYCODCIF}/usr/bin
+	test -d ${PREFIX}/bin || mkdir -p ${PREFIX}/bin
+	install scripts/cif_printout_Python ${PREFIX}/bin
 	for i in ${PYCODCIF_LIBS:src/%=%}; \
 	do \
-	test -d ${DEBIAN}/${PYCODCIF}/usr/$$(dirname $$i) \
-			|| mkdir -p ${DEBIAN}/${PYCODCIF}/usr/$$(dirname $$i); \
-		install --mode 644 src/$$i ${DEBIAN}/${PYCODCIF}/usr/$$i; \
+	test -d ${PREFIX}/$$(dirname $$i) \
+			|| mkdir -p ${PREFIX}/$$(dirname $$i); \
+		install --mode 644 src/$$i ${PREFIX}/$$i; \
 	done
 
 install-libcodcif:
 	test -d ${LIBCODCIF_A_DEST} || mkdir -p ${LIBCODCIF_A_DEST}
 	test -d ${LIBCODCIF_INC_DEST} || mkdir -p ${LIBCODCIF_INC_DEST}
+	test -d ${PREFIX}/bin || mkdir -p ${PREFIX}/bin
 	install --mode 644 ${LIBCODCIF_A} ${CEXCEPTIONS_A} ${GETOPTIONS_A} ${LIBCODCIF_A_DEST}
 	install --mode 644 ${LIBCODCIF_H} ${CEXCEPTIONS_H} ${GETOPTIONS_H} ${LIBCODCIF_INC_DEST}
+	find src/components/codcif -maxdepth 1 -type f -perm +1 \
+		| xargs -i install {} ${PREFIX}/bin
 
 clean-deb:
 	debian/rules clean
-
-testinstall:
-	$(MAKE) tests TEST_INSTALL=1

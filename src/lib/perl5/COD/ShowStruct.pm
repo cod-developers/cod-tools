@@ -46,9 +46,8 @@ sub showHash
    local $, = " ";
    local $\ = "\n";
 
-   my $key;
    my $isFlat = 1;
-   foreach $key ( keys %{$hash} ) {
+   foreach my $key ( keys %{$hash} ) {
       if( ref $hash->{$key} eq "HASH" or ref $hash->{$key} eq "ARRAY" ) {
          $isFlat = 0; last;
       }
@@ -57,7 +56,7 @@ sub showHash
       print STDOUT "{ @{[%$hash]} }";
    } else {
       printf STDOUT "\n" unless $ident eq "";
-      foreach $key ( keys %{$hash} ) {
+      foreach my $key ( keys %{$hash} ) {
          if( ref $hash->{$key} eq "HASH" ) {
             printf STDOUT "%s%-5s -> ", $ident, $key;
             showHash( $hash->{$key}, $ident . "   " );
@@ -79,9 +78,8 @@ sub showArray
    local $, = " ";
    local $\ = "\n";
 
-   my $item;
    my $isFlat = 1;
-   foreach $item ( @{$array} ) {
+   foreach my $item ( @{$array} ) {
       if( defined $item and (ref $item eq "HASH" or ref $item eq "ARRAY" )) {
          $isFlat = 0; last;
       }
@@ -92,7 +90,7 @@ sub showArray
        printf STDOUT "\n" unless $ident eq "";
        print STDOUT $ident, "[";
        my $index = 1;
-       foreach $item ( @{$array} ) {
+       foreach my $item ( @{$array} ) {
            if( !defined $item  ) {
                printf STDOUT "   %s%-3d: ", "undef", $index++;
            } elsif( ref $item eq "HASH" ) {

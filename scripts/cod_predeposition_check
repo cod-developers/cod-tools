@@ -4,7 +4,7 @@ eval 'exec perl -x $0 ${1+"$@"}'
     if 0;
 #------------------------------------------------------------------------------
 #$Author$
-#$Date$ 
+#$Date$
 #$Revision$
 #$URL$
 #------------------------------------------------------------------------------
@@ -21,12 +21,12 @@ use COD::SOptions qw( getOptions get_value );
 use COD::SUsage qw( usage options );
 
 my %database = (
-        host  => "www.crystallography.net",
-        user  => "cod_reader",
-        name  => "cod",
-        table => "data",
-        password => "",
-        platform => "mysql",
+        host  => 'www.crystallography.net',
+        user  => 'cod_reader',
+        name  => 'cod',
+        table => 'data',
+        password => '',
+        platform => 'mysql',
     );
 
 my @cif;
@@ -34,6 +34,7 @@ my @hkl;
 
 my $deposition_type = 'published';
 my $options;
+$options->{'use_parser'} = 'c';
 
 my $print_timestamps = 0;
 
@@ -58,10 +59,10 @@ my $tmp_file = "tmp-cod_predeposition_check-$$.tmp";
 #*        Use use the specified port (default 3306) to query structures.
 #*
 #*     -t, --table  data
-#*        Use SQL table "data" to query for structures.
+#*        Use SQL table 'data' to query for structures.
 #*
 #*     -u, --user cod_reader
-#*        Use user name "cod_reader" to access COD database; this reader
+#*        Use user name 'cod_reader' to access COD database; this reader
 #*        should be granted SELECT privilege, i.e. should be able to read
 #*        the COD database, without supplying a password.
 #*
@@ -85,14 +86,14 @@ my $tmp_file = "tmp-cod_predeposition_check-$$.tmp";
 #*        files correctly.
 #*
 #*     --type, --deposition-type 'prepublication'
-#*        Specify the deposition type under which the structure is to be 
+#*        Specify the deposition type under which the structure is to be
 #*        deposited (default 'published').
 #*
-#*     --author-name "Doe, J."
+#*     --author-name 'Doe, J.'
 #*        Use the specified name as the name of the person depositing the
 #*        files.
 #*
-#*     --journal "The Journal"
+#*     --journal 'The Journal'
 #*        Use the specified journal name as if it was supplied by the
 #*        depositor during the 'prepublication' type deposition.
 #*
@@ -124,10 +125,10 @@ my $tmp_file = "tmp-cod_predeposition_check-$$.tmp";
 #*        Check CIF files for compliance with COD requirements (default).
 #*
 #*     --split-pdcif
-#*        Output powder diffraction datablocks as a HKL file.
+#*        Output powder diffraction data blocks as a HKL file.
 #*
 #*     --dont-split-pdcif, --no-split-pdcif
-#*        Output powder diffraction datablocks as part of the CIF file
+#*        Output powder diffraction data blocks as part of the CIF file
 #*        (default).
 #*
 #*     --print-timestamps
@@ -141,58 +142,66 @@ my $tmp_file = "tmp-cod_predeposition_check-$$.tmp";
 #*     --tmp-dir, --temp-dir
 #*        Use the specified temporary directory (default './').
 #*
+#*     --use-perl-parser
+#*        Use Perl parser to parse CIF files.
+#*
+#*     --use-c-parser
+#*        Use C parser to parse CIF files (default).
+#*
 #*     --help, --usage
 #*        Print a short usage message (this message) and exit.
 #**
 @ARGV = getOptions(
-    "-d,--database"  => \$database{name},
-    "-l,--localhost" => sub { $database{host} = 'localhost' },
-    "-h,--host"      => \$database{host},
-    "-p,--port"      => \$database{port},
-    "-s,--server"    => \$database{host},
-    "-t,--table"     => \$database{table},
-    "-u,--user"      => \$database{user},
-    "--password"     => \$database{password},
-    "--platform"     => \$database{platform},
+    '-d,--database'  => \$database{name},
+    '-l,--localhost' => sub { $database{host} = 'localhost' },
+    '-h,--host'      => \$database{host},
+    '-p,--port'      => \$database{port},
+    '-s,--server'    => \$database{host},
+    '-t,--table'     => \$database{table},
+    '-u,--user'      => \$database{user},
+    '--password'     => \$database{password},
+    '--platform'     => \$database{platform},
 
-    "--cif" => sub { push( @cif, get_value() ) },
-    "--hkl,--fobs" => sub { @hkl[(@cif-1 > 0) ? @cif-1 : 0] = get_value() },
+    '--cif' => sub { push @cif, get_value() },
+    '--hkl,--fobs' => sub { @hkl[(@cif-1 > 0) ? @cif-1 : 0] = get_value() },
 
-    "--type,--deposition-type" => \$deposition_type,
+    '--type,--deposition-type' => \$deposition_type,
 
-    "--bypass-checks" => sub { $options->{bypass_checks} = 1 },
-    "--dont-bypass-checks" => sub { delete( $options->{bypass_checks} ) },
-    "--no-bypass-checks" => sub { delete( $options->{bypass_checks} ) },
+    '--bypass-checks'      => sub { $options->{bypass_checks} = 1 },
+    '--dont-bypass-checks' => sub { delete( $options->{bypass_checks} ) },
+    '--no-bypass-checks'   => sub { delete( $options->{bypass_checks} ) },
 
-    "--replace" => sub { $options->{replace} = 1 },
-    "--dont-replace" => sub { delete( $options->{replace} ) },
-    "--no-replace" => sub { delete( $options->{replace} ) },
+    '--replace'      => sub { $options->{replace} = 1 },
+    '--dont-replace' => sub { delete( $options->{replace} ) },
+    '--no-replace'   => sub { delete( $options->{replace} ) },
 
-    "--release" => sub { $options->{release} = 1 },
-    "--dont-release" => sub { delete( $options->{release} ) },
-    "--no-release" => sub { delete( $options->{release} ) },
+    '--release'      => sub { $options->{release} = 1 },
+    '--dont-release' => sub { delete( $options->{release} ) },
+    '--no-release'   => sub { delete( $options->{release} ) },
 
-    "--hold-period" => \$options->{hold_period},
-    "--journal" => \$options->{journal},
-    "--author-name" => \$options->{author_name},
+    '--hold-period' => \$options->{hold_period},
+    '--journal'     => \$options->{journal},
+    '--author-name' => \$options->{author_name},
 
-    "--split-pdcif" => sub { $options->{split_pdcif} = 1 },
-    "--dont-split-pdcif" => sub { delete( $options->{split_pdcif} ) },
-    "--no-split-pdcif"   => sub { delete( $options->{split_pdcif} ) },
+    '--split-pdcif'      => sub { $options->{split_pdcif} = 1 },
+    '--dont-split-pdcif' => sub { delete( $options->{split_pdcif} ) },
+    '--no-split-pdcif'   => sub { delete( $options->{split_pdcif} ) },
 
-    "--print-timestamps" => sub { $print_timestamps = 1 },
-    "--dont-print-timestamps" => sub { $print_timestamps = 0 },
-    "--no-print-timestamps" => sub { $print_timestamps = 0 },
+    '--print-timestamps'      => sub { $print_timestamps = 1 },
+    '--dont-print-timestamps' => sub { $print_timestamps = 0 },
+    '--no-print-timestamps'   => sub { $print_timestamps = 0 },
 
-    "--tmp-dir,--temp-dir" => \$tmp_dir,
+    '--tmp-dir,--temp-dir' => \$tmp_dir,
 
-    "--options"      => sub { options; exit },
-    "--help,--usage" => sub { usage; exit }
+    '--use-perl-parser' => sub { $options->{use_parser} = 'perl' },
+    '--use-c-parser'    => sub { $options->{use_parser} = 'c' },
+    '--options'         => sub { options; exit },
+    '--help,--usage'    => sub { usage; exit }
 );
 
-push( @cif, @ARGV );
+push @cif, @ARGV;
 
-@cif = ("-") unless @cif;
+@cif = ('-') unless @cif;
 
 if( $tmp_dir ) {
     $tmp_file = $tmp_dir . '/' . $tmp_file;
@@ -202,8 +211,8 @@ if( exists $options->{release} ) {
     $options->{replace} = 1;
 }
 if( $options->{release} && $deposition_type eq 'prepublication' ) {
-    die "$0: structure can be released either as published or " .
-        "personal communication";
+    die "$0:: ERROR, structure can be released either as published or " .
+        'personal communication.' . "\n";
 }
 
 for my $i (0..@cif-1) {
@@ -221,11 +230,11 @@ for my $i (0..@cif-1) {
                               $tmp_file,
                               $options );
     };
-    if( !$@ ) {
-        print map( "CIF $_\n", split( "\n", $cif ) ) if defined $cif;
-        print map( "HKL $_\n", split( "\n", $hkl ) ) if defined $hkl;
+    if( $@ ) {
+        print {*STDERR} $@;
     } else {
-        print STDERR "$0: $@";
+        if ( defined $cif ) { print map { "CIF $_\n" } split m/\n/, $cif };
+        if ( defined $hkl ) { print map { "HKL $_\n" } split m/\n/, $hkl };
     }
     print "FINISH $cif[$i] " . strftime( "%Y-%m-%d %T\n", localtime )
         if $print_timestamps;

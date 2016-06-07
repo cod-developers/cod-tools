@@ -11,7 +11,7 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #*
 # Split CIF files into separate files with one data_ section each.
 #
-# This script parses given CIF files to separate the datablocks, so is
+# This script parses given CIF files to separate the data blocks, so is
 # capable of splitting non-correctly formatted and nested CIF files.
 #**
 
@@ -23,7 +23,15 @@ use COD::CIF::Tags::CanonicalNames qw( canonicalize_all_names );
 use COD::CIF::Tags::Print qw( print_cif );
 use COD::SOptions qw( getOptions get_value );
 use COD::SUsage qw( usage options );
-use COD::UserMessage qw( warning error );
+use COD::ErrorHandler qw( process_warnings
+                          process_errors
+                          process_parser_messages );
+
+my $die_on_error_level = {
+    ERROR   => 1,
+    WARNING => 0,
+    NOTE    => 0
+};
 
 my $verbose = 1;
 my $output_dir = "";
@@ -42,8 +50,8 @@ my $format = "cif";
 #*      Put all split files into the directory out/.
 #*
 #*  -p, --prefixed, --output-prefixed
-#*      Print splitted datablocks to the STDOUT, each line prefixed
-#*      by the datablock name. Do not create any files.
+#*      Print splitted data blocks to the STDOUT, each line prefixed
+#*      by the data block name. Do not create any files.
 #*
 #*  --output-tar
 #*      Produce TAR archive with split files to the STDOUT.
@@ -95,22 +103,32 @@ my $format = "cif";
    "--help,--usage"    => sub { usage; exit }
 );
 
+# Reading the header file
 my $cif_header;
+eval {
+    if( defined $cif_header_file ) {
+        open( my $header, '<', "$cif_header_file" ) or die 'ERROR, '
+          . 'could not open CIF header file for reading -- '
+          . lcfirst($!) . "\n";
 
-if( $cif_header_file ) {
-    open( HDR, "$cif_header_file" ) or
-        die( "$0: could not open header file '$cif_header_file' " .
-             "for input - $!" );
+        $cif_header = "";
+        while( <$header> ) {
+            last unless /^#/;
+            $cif_header .= $_;
+        }
 
-    $cif_header = "";
-    while( <HDR> ) {
-        last unless /^#/;
-        $cif_header .= $_;
+        close( $header ) or die 'ERROR, '
+         . 'error while closing CIF header file after reading -- '
+         . lcfirst($!) . "\n";
     }
-
-    close( HDR ) or
-        die( "$0: error reading header file '$cif_header_file' - $!" );
-}
+};
+if ($@) {
+    process_errors( {
+      'message'  => $@,
+      'program'  => $0,
+      'filename' => $cif_header_file
+    }, $die_on_error_level->{ERROR} );
+};
 
 $output_dir =~ s./+$..;
 
@@ -127,27 +145,27 @@ for my $filename (@ARGV) {
 
     my $options = { 'parser' => $use_parser, 'no_print' => 1 };
     my ( $data, $err_count, $messages ) = parse_cif( $filename, $options );
-
-    if ( $err_count > 0 ) {
-        print STDERR $_ foreach ( @$messages );
-        error( $0, $filename, undef, "$err_count error(s) "
-             . "encountered while parsing the file", undef );
-        next;
-    }
-    print STDERR $_ foreach ( @$messages );
+    process_parser_messages( $messages, $die_on_error_level );
+    next if ( $err_count > 0 );
 
     canonicalize_all_names( $data );
 
     my $data_global;
     for my $dataset (@$data) {
-        my $dataname = $dataset->{name};
+        my $dataname = 'data_' . $dataset->{name} if defined $dataset->{name};
 
-        if( $dataname eq 'global' ) {
+        local $SIG{__WARN__} = sub { process_warnings( {
+                                       'message'  => @_,
+                                       'program'  => $0,
+                                       'filename' => $filename,
+                                       'add_pos'  => $dataname
+                                     }, $die_on_error_level ) };
+
+        if( $dataset->{name} eq 'global' ) {
             if( !$data_global ) {
                 $data_global = $dataset;
             } else {
-                warning( $0, $filename, $dataname,
-                         'second data_global encountered', 'skipping' );
+                warn "WARNING, second data_global encountered -- skipping\n";
             }
             next;
         }
@@ -185,10 +203,11 @@ for my $filename (@ARGV) {
         $cif_contents .= $print_cif_stdout;
 
         if( $output_prefixed ) {
-            map { print $dataset->{name}, "\t", $_, "\n" }
-                    split( "\n", $cif_contents );
+            foreach ( split m/\n/, $cif_contents ) {
+                print $dataset->{name}, "\t", $_, "\n";
+            };
         } else {
-            my $suffix = $dataname;
+            my $suffix = $dataset->{name};
             $suffix =~ s/[^-+._a-zA-Z0-9]/_/g;
 
             my $basename = basename( $filename, ".cif" );
@@ -201,22 +220,33 @@ for my $filename (@ARGV) {
             if( $output_tar ) {
                 $tar->add_data( $output_file, $cif_contents );
             } else {
-                if( $output_dir ne "" ) {
-                    $output_file = $output_dir . "/" . $output_file;
-                }
-                if( !exists $files{$output_file} ) {
-                    $files{$output_file} = $output_file;
+                eval {
+                    if( $output_dir ne "" ) {
+                        $output_file = $output_dir . "/" . $output_file;
+                    }
+                    if( !exists $files{$output_file} ) {
+                        $files{$output_file} = $output_file;
 
-                    print STDERR "$output_file\n" if $verbose;
-                    open( STDOUT, ">$output_file" ) or
-                        die( "Could not open file '${output_file}' for writing: $!" );
-                    print $cif_contents;
-                } else {
-                    open( STDOUT, ">>$output_file" ) or
-                        die( "Could not open file '${output_file}' for appending: $!" );
-                    
-                    print STDERR "$output_file (appending)\n" if $verbose;
-                }
+                        print STDERR "$output_file\n" if $verbose;
+                        open( STDOUT, '>', "$output_file" ) or
+                            die "ERROR, could not open file for writing -- "
+                               . lcfirst($!) . "\n";
+                        print $cif_contents;
+                    } else {
+                        open( STDOUT, '>>', "$output_file" ) or
+                            die "ERROR, could not open file for appending -- "
+                              . lcfirst($!) . "\n";
+
+                        print STDERR "$output_file (appending)\n" if $verbose;
+                    }
+                };
+                if ($@) {
+                    process_errors( {
+                    'message'  => $@,
+                    'program'  => $0,
+                    'filename' => $output_file
+                    }, $die_on_error_level->{ERROR} );
+                };
             }
         }
     }

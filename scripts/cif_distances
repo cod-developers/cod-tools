@@ -19,6 +19,8 @@ use strict;
 use warnings;
 use File::Basename qw( basename );
 use COD::AtomProperties;
+use COD::CIF::Data::AtomList qw( atom_array_from_cif
+                                 atoms_are_alternative );
 use COD::Escape qw( escape );
 use COD::CIF::Parser qw( parse_cif );
 use COD::Spacegroups::Symop::Algebra qw( symop_vector_mul );
@@ -26,14 +28,20 @@ use COD::Spacegroups::Symop::Parse qw( symop_string_canonical_form
                                        symop_from_string );
 use COD::Algebra::Vector qw( distance );
 use COD::CIF::Data qw( get_cell get_symmetry_operators );
-use COD::CIF::Data::AtomList qw( uniquify_atom_names );
-use COD::CIF::Data::SymmetryGenerator qw( copy_atom
-                                          symop_generate_atoms );
+use COD::CIF::Data::SymmetryGenerator qw( symop_generate_atoms apply_shifts );
 use COD::CIF::Data::ExcludeFromStatistics qw( exclude_from_statistics );
 use COD::Fractional qw( symop_ortho_from_fract );
 use COD::SOptions qw( getOptions get_value );
 use COD::SUsage qw( usage options );
-use COD::UserMessage qw( warning error prefix_dataname );
+use COD::ErrorHandler qw( process_warnings
+                          process_errors
+                          process_parser_messages );
+
+my $die_on_error_level = {
+    'ERROR'   => 0,
+    'WARNING' => 0,
+    'NOTE'    => 0
+};
 
 my $use_parser = 'c';
 my $uniquify_atoms = 1;
@@ -42,15 +50,11 @@ my $include_dup_struct     = 0;
 my $include_self_distances = 1;
 my $include_null_distances = 0;
 my $include_unknown_types  = 0;
-my $verbose = 0;
 my $add_filename;
-my $output_format = "pairwise";
-my $format = "%-11.3f";
-my $pairwise_format = "%-6.3f";
-my $line_length = 80;
-
-my $escape_sequence = '\\';
-my %escaped_symbols = ("\"" => '"', "\'" => "'");
+my $output_format = 'pairwise';
+my $pairwise_format = '%-6.3f';
+my $matrix_format = '%-11.3f';
+my $matrix_line_length = 80;
 
 #* OPTIONS:
 #* -M, --distance-matrix
@@ -58,7 +62,7 @@ my %escaped_symbols = ("\"" => '"', "\'" => "'");
 #* -P, --pairwise-distance
 #*                     Set pairwise distance output format (default).
 #* -l, --matrix-line-length "80"
-#*                     Maximum length of an output line in distance 
+#*                     Maximum length of an output line in distance
 #*                     matrix format (default 80).
 #* --format "%8.6f"
 #*                     Use the specified format for distance matrix
@@ -111,10 +115,6 @@ my %escaped_symbols = ("\"" => '"', "\'" => "'");
 #*                    Makes unique the labels of atoms (default).
 #* --no-uniquify-atoms
 #*                    Does not make unique labels for atoms.
-#* -v, --verbose
-#*                    Print additional information for each step of the script.
-#* -s, --silent, --quiet
-#*                    Print no additional information (default).
 #* --use-perl-parser
 #*                    Use Perl parser to parse CIF files.
 #* --use-c-parser
@@ -123,281 +123,218 @@ my %escaped_symbols = ("\"" => '"', "\'" => "'");
 #*                    Print a short usage message (this message) and exit.
 #**
 @ARGV = getOptions(
-    "-M,--distance-matrix"       => sub { $output_format = "matrix" },
-    "-P,--pairwise-distance"     => sub { $output_format = "pairwise"; },
-    "-l,--matrix-line-length"    => \$line_length,
-    "--format"                   =>
-        sub { $format = $pairwise_format = &get_value },
+    '-M,--distance-matrix'       => sub { $output_format = 'matrix' },
+    '-P,--pairwise-distance'     => sub { $output_format = 'pairwise'; },
+    '-l,--matrix-line-length'    => \$matrix_line_length,
+    '--format'         => sub { $matrix_format = $pairwise_format = get_value() },
 
-    "-F,--add-filename"      => sub { $add_filename = 1 },
-    "--no-add-filename"      => sub { $add_filename = 0 },
-    "--do-not-add-filename"  => sub { $add_filename = 0 },
+    '-F,--add-filename'      => sub { $add_filename = 1 },
+    '--no-add-filename'      => sub { $add_filename = 0 },
+    '--do-not-add-filename'  => sub { $add_filename = 0 },
 
-    "--process-disordered-structures"    => sub { $include_disord_struct = 1 },
-    "--include-disordered-structures"    => sub { $include_disord_struct = 1 },
-    "--no-process-disordered-structures" => sub { $include_disord_struct = 0 },
-    "--exclude-disordered-structures"    => sub { $include_disord_struct = 0 },
-    "--skip-disordered-structures"       => sub { $include_disord_struct = 0 },
+    '--process-disordered-structures'    => sub { $include_disord_struct = 1 },
+    '--include-disordered-structures'    => sub { $include_disord_struct = 1 },
+    '--no-process-disordered-structures' => sub { $include_disord_struct = 0 },
+    '--exclude-disordered-structures'    => sub { $include_disord_struct = 0 },
+    '--skip-disordered-structures'       => sub { $include_disord_struct = 0 },
 
-    "--process-duplicate-structures"     => sub { $include_dup_struct = 1 },
-    "--include-duplicate-structures"     => sub { $include_dup_struct = 1 },
-    "--no-process-duplicate-structures"  => sub { $include_dup_struct = 0 },
-    "--exclude-duplicate-structures"     => sub { $include_dup_struct = 0 },
-    "--skip-duplicate-structures"        => sub { $include_dup_struct = 0 },
+    '--process-duplicate-structures'     => sub { $include_dup_struct = 1 },
+    '--include-duplicate-structures'     => sub { $include_dup_struct = 1 },
+    '--no-process-duplicate-structures'  => sub { $include_dup_struct = 0 },
+    '--exclude-duplicate-structures'     => sub { $include_dup_struct = 0 },
+    '--skip-duplicate-structures'        => sub { $include_dup_struct = 0 },
 
-    "--include-null-distances"   => sub { $include_null_distances = 1 },
-    "--no-null-distances"        => sub { $include_null_distances = 0 },
-    "--exclude-null-distances"   => sub { $include_null_distances = 0 },
+    '--include-null-distances'   => sub { $include_null_distances = 1 },
+    '--no-null-distances'        => sub { $include_null_distances = 0 },
+    '--exclude-null-distances'   => sub { $include_null_distances = 0 },
 
-    "--include-self-distances"   => sub { $include_self_distances = 1 },
-    "--no-self-distances"        => sub { $include_self_distances = 0 },
-    "--exclude-self-distances"   => sub { $include_self_distances = 0 },
+    '--include-self-distances'   => sub { $include_self_distances = 1 },
+    '--no-self-distances'        => sub { $include_self_distances = 0 },
+    '--exclude-self-distances'   => sub { $include_self_distances = 0 },
 
-    "-U,--include-unknown-types" => sub { $include_unknown_types = 1 },
-    "--no-unknown-types"         => sub { $include_unknown_types = 0 },
-    "--exclude-unknown-types"    => sub { $include_unknown_types = 0 },
+    '-U,--include-unknown-types' => sub { $include_unknown_types = 1 },
+    '--no-unknown-types'         => sub { $include_unknown_types = 0 },
+    '--exclude-unknown-types'    => sub { $include_unknown_types = 0 },
 
-    "--uniquify-atoms"           => sub { $uniquify_atoms = 1; },
-    "--no-uniquify-atoms"        => sub { $uniquify_atoms = 0; },
+    '--uniquify-atoms'           => sub { $uniquify_atoms = 1; },
+    '--no-uniquify-atoms'        => sub { $uniquify_atoms = 0; },
 
-    "--use-perl-parser"          => sub { $use_parser = "perl" },
-    "--use-c-parser"             => sub { $use_parser = "c" },
+    '--use-perl-parser'          => sub { $use_parser = 'perl' },
+    '--use-c-parser'             => sub { $use_parser = 'c' },
 
-    "-v,--verbose"               => sub { $verbose = 1; },
-    "-s,--silent,--quiet"        => sub { $verbose = 0; },
-    "--options"                  => sub { options; exit },
-    "--help,--usage"             => sub { usage; exit }
+    '--options'                  => sub { options; exit },
+    '--help,--usage'             => sub { usage; exit }
 );
 
-@ARGV = ( "-" ) unless @ARGV;
+@ARGV = ( '-' ) unless @ARGV;
 
 # Print output format header
-if ( $output_format eq "pairwise" ) {
-    print "FORMAT pairwise_distance v1.0 svn://www.crystallography.net/" .
-          "cod-tools/trunk/perl-scripts/docs/" .
-          "cif_distances_pairwise_distance_v1.0\n"
-} elsif ( $output_format eq "matrix" ) {
-    print "FORMAT distance_matrix v1.0 svn://www.crystallography.net/" .
-          "cod-tools/trunk/perl-scripts/docs/" .
-          "cif_distances_distance_matrix_v1.0\n";
+my $format_doc_path = 'svn://www.crystallography.net/'
+                    . 'cod-tools/trunk/perl-scripts/docs';
+if ( $output_format eq 'pairwise' ) {
+    print 'FORMAT pairwise_distance v1.0 '
+        . $format_doc_path . '/cif_distances_pairwise_distance_v1.0' . "\n";
+} elsif ( $output_format eq 'matrix' ) {
+    print 'FORMAT distance_matrix v1.0 '
+        .  $format_doc_path . '/cif_distances_distance_matrix_v1.0' . "\n";
 }
 
 foreach my $filename ( @ARGV ) {
 
     my $options = { 'parser' => $use_parser, 'no_print' => 1 };
     my ( $data, $err_count, $messages ) = parse_cif( $filename, $options );
-
-    if ( $err_count > 0 ) {
-        print STDERR $_ foreach ( @$messages );
-        error( $0, $filename, undef, "$err_count error(s) "
-             . "encountered while parsing the file", undef );
-        next;
-    }
-    print STDERR $_ foreach ( @$messages );
+    process_parser_messages( $messages, $die_on_error_level );
+    next if ( $err_count > 0 );
 
   # Initial check to skip structures not fit for statistics
   # 0 means that this type of stucture is excluded
-  my $criteria = { "duplicates"     => $include_dup_struct,
-                   "disordered"     => $include_disord_struct,
-                   "suboptimal"     => 0,
-                   "retracted"      => 0,
-                   "on-hold"        => 0,
-                   "has_warnings"   => 0,
-                   "has_errors"     => 0
+  my $criteria = { 'duplicates'     => $include_dup_struct,
+                   'disordered'     => $include_disord_struct,
+                   'suboptimal'     => 0,
+                   'retracted'      => 0,
+                   'on-hold'        => 0,
+                   'has_warnings'   => 0,
+                   'has_errors'     => 0
                  };
 
-  foreach my $dataset ( @$data ) {
+  foreach my $dataset ( @{$data} ) {
+
+    my $dataname = 'data_' . $dataset->{'name'} if defined $dataset->{'name'};
+
+    local $SIG{__WARN__} = sub { process_warnings( {
+                                       'message'  => @_,
+                                       'program'  => $0,
+                                       'filename' => $filename,
+                                       'add_pos'  => $dataname
+                                     }, $die_on_error_level ) };
 
     my ($status, $msg) = exclude_from_statistics( $dataset, $criteria );
 
-    my $dataname = prefix_dataname($dataset->{name});
-
     if ( $status ) {
-        warning( $0, $filename, $dataname, $msg, 'dataset will be skipped' );
+        warn "WARNING, $msg -- dataset will be skipped\n";
         next;
     }
-
-    my $ortho_matrix;
 
     eval {
-        my @unit_cell = get_cell( $dataset->{values}, $filename, $dataset->{name} );
-        local $SIG{__WARN__} = sub {}; # not printing division by zero errors
-        $ortho_matrix = symop_ortho_from_fract( @unit_cell );
+      # Extract atoms and order them alphabetically by type and label
+      my $atoms;
+      eval {
+        $atoms = atom_array_from_cif( $dataset,
+                        { 'allow_unknown_chemical_types' => 1,
+                          'exclude_unknown_coordinates'  => 1,
+                          'exclude_dummy_coordinates'    => 1,
+                          'uniquify_atom_names'          => $uniquify_atoms,
+                          'uniquify_atoms'               => $uniquify_atoms,
+                          'atom_properties' => \%COD::AtomProperties::atoms } );
+      };
+      if ( $@ ) {
+        chomp $@;
+        die "$@ -- dataset will be skipped\n";
+      }
+
+      $atoms = resolve_chemical_type( $atoms, $dataset->{values} );
+
+      @$atoms = sort { ( $a->{'chemical_type'} cmp $b->{'chemical_type'} ) ||
+                       ( $a->{'name'} cmp $b->{'name'} ) } @$atoms;
+
+      # Generate atoms by applying symmetry operators. This subroutine first
+      # fits original atoms are into the first octant by applying x,y,z
+      # operator modulus 1.
+      my ( $sym_atoms, $symop_count );
+      eval {
+          ( $sym_atoms, $symop_count ) = symops_apply( $dataset, $atoms );
+      };
+      if ( $@ ) {
+          $@ =~ s/ERROR, //;
+          warn "WARNING, $@";
+          die 'ERROR, unable to generate symmetrically equivalent '
+            . 'atoms -- dataset will be skipped' . "\n";
+      }
+
+      my $shifted_atoms = apply_shifts( $sym_atoms );
+
+      my $group_size = $symop_count * 27; # 27 is the number of octants
+
+      my $grouped_atoms = group_atoms( $shifted_atoms, $group_size );
+      my $headers = get_atom_headers( $grouped_atoms );
+      my ( $distances, $atoms_used ) = get_distances( $grouped_atoms );
+
+      if ( $output_format eq 'pairwise' ) {
+          print_pairwise( $distances, $atoms_used, {
+                            'format'         => $pairwise_format,
+                            'include_null'   => $include_null_distances,
+                            'include_self'   => $include_self_distances,
+                            'print_filename' => $add_filename,
+                            'filename'       => $filename
+                          } );
+      } elsif ( $output_format eq 'matrix' ) {
+          print_distance_matrix( $distances, $headers, {
+                             'format'        => $matrix_format,
+                             'line_length'   => $matrix_line_length
+                          } );
+      }
     };
-
-    if ( $@ ) {
-        error( $0, $filename, $dataname,
-               "essential tags for orthogonal matrix computation not " .
-               "present", "dataset will be skipped" );
-        next;
-    }
-
-    #   Extract atoms and order them alphabetically by type and label.
-    my $atoms = get_atoms( $dataset, $ortho_matrix, $filename, $uniquify_atoms );
-
-    my $printable_properties = [ "name", "chemical_type", 
-                                 "coordinates_ortho", "coordinates_fract",
-                                 "disorder_group", "disorder_assembly" ];
-
-    print_atoms( $atoms, $printable_properties ) if ( $verbose );
-
-    #   Generate atoms by applying symmetry operators. This subroutine 
-    #   original atoms are fitted into the first octant by applying x,y,z
-    #   operator modulus 1.
-
-    my ( $sym_atoms, $symop_count );
-    eval {
-        ( $sym_atoms, $symop_count ) = symops_apply( $dataset, $atoms,
-                                                     $ortho_matrix, $filename );
-    };
-
-    if ( $@ ) {
-        error( $0, $filename, $dataname,
-               "unable to generate symmetrically equivalent atoms",
-               "dataset will be skipped" );
-        next;
-    }
-
-    push @$printable_properties, "sym_operator";
-
-    print_atoms( $sym_atoms, $printable_properties ) if ( $verbose );
-
-    my @shifted_atoms = map { shift_atom( $_, $ortho_matrix ) } @{$sym_atoms};
-
-    push @$printable_properties, "shift_vector";
-
-    print_atoms( \@shifted_atoms, $printable_properties ) if ( $verbose );
-
-    my ( $distances, $headers, $atoms_used ) = get_distances( \@shifted_atoms, 
-                                                              $symop_count );
-
-    if ( $output_format eq "pairwise" ) {
-        print_pairwise( $distances, $atoms_used, $filename, $add_filename );
-    } elsif ( $output_format eq "matrix" ) {
-        print_distance_matrix( $distances, $headers, $format, $line_length );
+    if ($@) {
+        process_errors( {
+          'message'       => $@,
+          'program'       => $0,
+          'filename'      => $filename,
+          'add_pos'       => $dataname
+        }, $die_on_error_level->{'ERROR'} );
     }
   }
 }
 
-##
-# Extracts atom information from given dataset.
-# @param $dataset
-#       Dataset containing cif file information extracted by a cif file parser.
-# @param $ortho_matrix
-#       Reference to a structure containing matrix information used to convert
-#       fractional coordinates to orthogonal.
-# @return $atoms
-#       Reference to a data structure containing atom information.
-##
+sub resolve_chemical_type
+{
+    my ( $atoms, $values ) = @_;
 
-sub get_atoms {
+    my @new_atoms;
 
-    my ( $dataset, $ortho_matrix, $filename, $uniquify_atoms ) = @_;
+    foreach my $atom (@$atoms) {
+        my $i = $atom->{'index'};
 
-    my $values = $dataset->{values};
-    my $dataname = prefix_dataname($dataset->{name});
+        $atom->{'chemical_type'} = exists $values->{'_atom_site_type_symbol'}
+                                    ? $values->{'_atom_site_type_symbol'}[$i]
+                                    : undef;
 
-    #   extracts atom site label or atom site type symbol
-    my $atom_site_tag;
-
-    if( exists $values->{"_atom_site_label"} ) {
-        $atom_site_tag = "_atom_site_label";
-    } elsif( exists $values->{"_atom_site_type_symbol"} ) {
-        $atom_site_tag = "_atom_site_type_symbol";
-    } else {
-        error( $0, $filename, $dataname,
-               "neither '_atom_site_label' nor '_atom_site_type_symbol' " .
-               "present", "dataset will not be processed" );
-        return undef;
-    }
-
-    my @atoms;
-
-    for my $i ( 0 .. $#{$values->{$atom_site_tag}} ) {
-        my $atom = {
-            name => $values->{$atom_site_tag}[$i],
-            chemical_type => exists $values->{_atom_site_type_symbol} ?
-                $values->{_atom_site_type_symbol}[$i] : undef,
-            disorder_group => exists $values->{_atom_site_disorder_group}[$i] ?
-                $values->{_atom_site_disorder_group}[$i] : ".",
-            disorder_assembly => exists $values->{_atom_site_disorder_assembly}[$i] ?
-                $values->{_atom_site_disorder_assembly}[$i] : ".",
-            coordinates_fract => [
-                $values->{_atom_site_fract_x}[$i],
-                $values->{_atom_site_fract_y}[$i],
-                $values->{_atom_site_fract_z}[$i]
-            ],
-        };
-
-        # get atoms chemical type 
-        # Chemical type is determined from _atom_site_type_symbol or 
+        # Get the chemical type of the atom.
+        # Chemical type is determined from _atom_site_type_symbol or
         # _atom_site_label if the previous tag is not present.
-        if( !defined $atom->{chemical_type} || $atom->{chemical_type} eq '?' ) {
-            $atom->{chemical_type} = $atom->{name};
-            if( $atom->{chemical_type} =~ m/^([A-Za-z]{1,2})/ ) {
-                $atom->{chemical_type} = ucfirst( lc( $1 ));
-            };
-        } else {
-            if( $atom->{chemical_type} =~ m/^([A-Za-z]{1,2})/ ) {
-                $atom->{chemical_type} = ucfirst( lc( $1 ));
-            }
+        if( !defined $atom->{'chemical_type'} ||
+            $atom->{'chemical_type'} eq '?' ) {
+            $atom->{'chemical_type'} = $atom->{'site_label'};
+        }
+
+        if( $atom->{'chemical_type'} =~ m/^([A-Za-z]{1,2})/ ) {
+            $atom->{'chemical_type'} = ucfirst( lc( $1 ));
         }
 
         # If the two letter chemical type abbreviation is not recognised
         # it is assumed that only the first letter defines the type.
         # If the type is still not recognised, the type is marked as 
-        # unrecognised "UN".
-        if( ! exists $COD::AtomProperties::atoms{$atom->{chemical_type}}) {
-            chop $atom->{chemical_type};
-            if( ! exists $COD::AtomProperties::atoms{$atom->{chemical_type}}) {
+        # unrecognised 'UN'.
+        if ( !exists $COD::AtomProperties::atoms{$atom->{'chemical_type'}} ) {
+            chop $atom->{'chemical_type'};
+            if ( !exists $COD::AtomProperties::atoms{$atom->{'chemical_type'}} ) {
                 if ( $include_unknown_types ) {
-                    warning( $0, $filename, $dataname,
-                         "unable to determine chemical type of atom with " .
-                         "_atom_site_label '" . $atom->{name} . "'",
-                         "atom chemical type will be set to 'UN'" );
-                    $atom->{chemical_type} = "UN"
+                    warn 'WARNING, unable to determine chemical type of atom '
+                       . 'with _atom_site_label ' . "'$atom->{'site_label'}'"
+                       . ' -- atom chemical type will be set to \'UN\'' . "\n";
+                    $atom->{'chemical_type'} = 'UN'
                 } else {
-                    warning( $0, $filename, $dataname,
-                         "unable to determine chemical type of atom with " . 
-                         "_atom_site_label '" . $atom->{name} . "'",
-                         'atom will be removed' );
+                    warn 'WARNING, unable to determine chemical type of atom '
+                       . 'with _atom_site_label ' . "'$atom->{'site_label'}'"
+                       . ' -- atom will be removed' . "\n";
                     next;
                 }
             }
         };
 
-        @{$atom->{coordinates_fract}} = map { s/\(\d+\)\s*$//; $_ }
-            @{$atom->{coordinates_fract}};
-
-        $atom->{coordinates_ortho} =
-            symop_vector_mul( $ortho_matrix, $atom->{coordinates_fract} );
-
-        if( defined $values->{_atom_site_occupancy} ) {
-            if( $values->{_atom_site_occupancy}[$i] ne '?' &&
-                $values->{_atom_site_occupancy}[$i] ne '.' ) {
-                $atom->{occupancy} = $values->{_atom_site_occupancy}[$i];
-                $atom->{occupancy} =~ s/\(\d+\)\s*$//;
-            } else {
-                $atom->{occupancy} = 1;
-            }
-        }
-
-        if( defined $values->{_atom_site_symmetry_multiplicity} &&
-            $values->{_atom_site_symmetry_multiplicity}[$i] ne '?' ) {
-            $atom->{cif_multiplicity} =
-                $values->{_atom_site_symmetry_multiplicity}[$i];
-        }
-
-        push( @atoms, $atom );
+        push @new_atoms, $atom;
     }
 
-    @atoms = @{ uniquify_atom_names( \@atoms, $uniquify_atoms, 
-                                     $filename, $dataset->{name} ); };
-
-    @atoms = sort { ( $a -> {chemical_type} cmp $b -> {chemical_type} ) ||
-                    ( $a -> {name} cmp $b -> {name} ) } @atoms;
-
-    return \@atoms;
+    return \@new_atoms;
 }
 
 ##
@@ -407,95 +344,107 @@ sub get_atoms {
 #       Reference to an array containing symmetry operators in string format.
 # @param $atoms
 #       Reference to an array of original atoms.
-# @param $ortho_matrix
-#       Reference to a struture containing matrix, that is used to convert 
-#       fractional coordinates to orthogonal in the newly generated atoms.
 #  @return
 #       Reference to an array containing atoms generated by applying symmetry
-#       operators. Each atom hash is given a new field "sym_operator".
+#       operators. Each atom hash is given a new field 'symop_string'.
 ##
+sub symops_apply
+{
+    my ( $dataset, $atoms ) = @_;
 
-sub symops_apply {
-    my ( $dataset, $atoms, $ortho_matrix, $filename ) = @_;
+    # Extract symmetry operators
+    my $symop_strings = get_symmetry_operators( $dataset );
 
-    #   extracts symmetry operators
-    my $sym_data = get_symmetry_operators( $dataset, $filename );
+    # Transform symmetry operators into canonical from
+    @{$symop_strings} = map { symop_string_canonical_form( $_ ) }
+                                                           @{$symop_strings};
 
-    #   transforms symmetry operators into canonical from
-    @{$sym_data} = map { symop_string_canonical_form( $_ ) } @{$sym_data};
+    # Compute symmetry operator matrices
+    my @symop = map { symop_from_string( $_ ) } @{$symop_strings};
 
-    # Computes symmetry operator matrices
-    my @symop = map { symop_from_string( $_ ) } @{$sym_data};
-
-    my $sym_atoms = symop_generate_atoms( \@symop, $atoms, $ortho_matrix );
+    my $sym_atoms = symop_generate_atoms( \@symop, $atoms, $atoms->[0]{'f2o'} );
 
     # Adds applied symmetry operator to the atom property hash
     my $i = 0;
-    foreach ( @{ $sym_atoms } ) {
-        $_ -> { "sym_operator" } = @$sym_data[ $i ];
-        $i = ( $i + 1 ) % @$sym_data;
+    foreach ( @{$sym_atoms} ) {
+        $_->{'symop_string'} = @{$symop_strings}[$i];
+        $i = ( $i + 1 ) % @{$symop_strings};
     }
 
-    return $sym_atoms, scalar( @symop );
+    return $sym_atoms, scalar @symop;
+}
+
+sub group_atoms
+{
+    my ( $all_atoms, $group_size ) = @_;
+
+    # to make the subroutine non-destructive
+    my @proccessed_atoms = @{$all_atoms};
+
+    my @grouped_atoms;
+    while ( my @group_atoms = splice @proccessed_atoms, 0, $group_size ) {
+        push @grouped_atoms, \@group_atoms;
+    }
+
+    return \@grouped_atoms;
+}
+
+sub get_atom_headers
+{
+    my ( $all_atoms ) = @_;
+    my @headers;
+    foreach ( @{$all_atoms} ) {
+        my $atom = $_->[0];
+        push @headers, "$atom->{'site_label'}/$atom->{'chemical_type'}";
+    }
+
+    return \@headers;
 }
 
 ##
 # Calculates the minimum distance between two atoms from the given array.
-# It is expected that atoms, derived from the original atom by applying
-# symmetry operator and shifting operators, are put near each other in the 
-# array, making groups of size $sym_operator_count * 27 (number of 
-# octants). Since all atoms of the cluster are derived from one original 
-# atom, distances between them are not calculated.
-# @param $all_atom
-#       Reference to an array containing all atoms generated after 
+# Since all atoms of the cluster are derived from one atom, distances
+# between them are not calculated.
+#
+# @param $atoms
+#       Reference to an array of atoms groups. Each group is an array that
+#       consists of the original atom and atoms that were generated by
 #       applying symmetry and shift operators.
-# @param $sym_operator_count
-#       Number of symmetry operators that have been applied.
 # @return $distances
 #       An array of shortest interatomic distances.
-# @return $headers
-#       An array of labels for the shortest interatomic distances.
 # @return $atoms_used
-#       An array of atoms for which the distances were generated.
+#       An array of atoms from which the distances were calculated.
 ##
-
-sub get_distances {
-    my ( $all_atoms, $sym_operator_count ) = @_; 
-    my $group_size = $sym_operator_count * 27; # 27 is the number of octants
-    my $number_of_groups = @$all_atoms/$group_size;
-    my @headers;
+sub get_distances
+{
+    my ( $atoms ) = @_;
     my @distances;
     my @atoms_used;
-    
-    # $i holds the index of the first group
-    for ( my $i  = 0; $i < $number_of_groups; $i++ ) {
-        my $atom_1 = $all_atoms -> [ $i * $group_size ]; # acquiring first atom
 
-        push @headers, "$atom_1->{name}/$atom_1->{chemical_type}";
+    # $i holds the index of the first group
+    for ( my $i  = 0; $i < @{$atoms}; $i++ ) {
+        my $atom_1 = $atoms->[$i][0]; # acquiring first atom
+
         my @atom_rows_used;
         push @atom_rows_used, $atom_1;
         my @distance_row;
 
         # $j holds the index of the second group
-        for ( my $j = $i; $j < $number_of_groups; $j++ ) {
-            my $atom_2 = $all_atoms->[ $j * $group_size + 1 ];
-            #
-            my $min_distance;
-            my $min_index = 0;
-            
-            #$start_index = 1 if ($i == $j);
+        for ( my $j = $i; $j < @{$atoms}; $j++ ) {
+            # To avoid comparing the element to itself
+            my $offset = ($i == $j) ? 1 : 0;
+            my $atom_2 = $atoms->[$j][$offset];
 
-            if ( check_disorder( $atom_1, $atom_2 ) ) {
+            my $min_index = $offset;
+            my $min_distance  = distance( $atom_1->{'coordinates_ortho'},
+                                          $atom_2->{'coordinates_ortho'} );
 
-                $min_distance = distance( $atom_1->{coordinates_ortho}, 
-                                          $atom_2->{coordinates_ortho} );
-                $min_distance = 5000;
-
-                # $k holds the element index in the second group 
-                for ( my $k = 0; $k < $group_size; $k++ ) {
-                    $atom_2 = $all_atoms -> [ $j * $group_size + $k ];
-                    my $distance = distance( $atom_1->{coordinates_ortho}, 
-                                             $atom_2->{coordinates_ortho} );
+            if ( !atoms_are_alternative( $atom_1, $atom_2 ) ) {
+                # $k holds the element index in the second group
+                for ( my $k = 0; $k < @{$atoms->[$j]}; $k++ ) {
+                    $atom_2 = $atoms->[$j][$k];
+                    my $distance = distance( $atom_1->{'coordinates_ortho'},
+                                             $atom_2->{'coordinates_ortho'} );
 
                     if ( !( equals( $distance, 0, 3 ) && $i == $j ) ) {
                         if ( $distance < $min_distance ) {
@@ -504,120 +453,17 @@ sub get_distances {
                     }
                 }
             } else {
-                $min_distance = "-";
+                $min_distance = '-';
             }
             push @distance_row, $min_distance;
-            push @atom_rows_used, $all_atoms -> [ $j * $group_size + $min_index ];
+            push @atom_rows_used, $atoms->[$j][$min_index];
         }
 
         push @distances, \@distance_row;
         push @atoms_used, \@atom_rows_used;
     }
 
-return ( \@distances, \@headers, \@atoms_used );
-}
-
-##
-# Checks if the atoms belong to the same disorder group.
-# @param $atom_1
-#       Reference to a hash, containing information of the first atom.
-# @param $atom_2
-#       Reference to a hash, containing information of the second atom.
-# @return
-#       undef is atoms belong to different disorder groups but the same 
-#       disorder assembly. 1 otherwise. 
-##
-
-sub check_disorder {
-    my ( $atom_1, $atom_2 ) = @_;
-    if ( ( $atom_1 -> {disorder_group} ne $atom_2 -> {disorder_group} ) &&
-         ( $atom_1 -> {disorder_group} ne "." ) && 
-         ( $atom_2 -> {disorder_group} ne "." ) &&
-         ( $atom_1 -> {disorder_assembly} eq $atom_2 -> {disorder_assembly} )
-       )  {
-        return undef;
-    }
-
-    return 1;
-}
-
-##
-# Returns an array of atom hashes generated by shifting the original 
-# atom in 26 directions (3-D space).
-# @param $atom_ref
-#       Reference to a hash, containing atom information.
-# @return @shifted_atoms;
-#       Array of atom hashes.
-##
-
-sub shift_atom {
-    my ( $original_atom, $ortho_matrix ) = @_;
-
-    $original_atom->{ "shift_vector" } = "5,5,5";
-    my @shifted_atoms;
-    push @shifted_atoms, $original_atom;
-    my @shifting_param = ( -1, 0, 1 );
-
-    foreach my $x ( @shifting_param ) {
-      foreach my $y ( @shifting_param ) {
-        foreach my $z ( @shifting_param ) {
-           if ( $x != 0 || $y != 0 || $z != 0 ) {
-            my $new_atom = copy_atom($original_atom);
-
-            $new_atom -> { coordinates_fract }[0] += $x;
-            $new_atom -> { coordinates_fract }[1] += $y;
-            $new_atom -> { coordinates_fract }[2] += $z;
-
-            $new_atom -> { coordinates_ortho } =
-                        symop_vector_mul( $ortho_matrix,
-                                          $new_atom -> { coordinates_fract } );
-
-            $new_atom->{ shift_vector } = ( 5 + $x ) . "," .
-                                          ( 5 + $y ) . "," .
-                                          ( 5 + $z );
-            push( @shifted_atoms, $new_atom );
-          }
-        }
-      }
-    }
-    return @shifted_atoms;
-}
-
-##
-# Prints atoms fieldname values from an array.
-# @param $array_ref
-#       Reference to an array from which the atoms are printed.
-##
-
-sub print_atoms {
-    my ( $array_ref, $properties ) = @_;
-    foreach my $atom_ref ( @$array_ref ) {
-        foreach my $property ( @$properties ) {
-            if ( $property eq "name" ) {
-                print "Atom name: $atom_ref->{name} \n";
-            } elsif ( $property eq "chemical_type" ) {
-                print "Chemical type: $atom_ref->{chemical_type} \n";
-            } elsif ( $property eq "occupancy" ) {
-                print "Ocupancy: $atom_ref->{occupancy} \n";
-            } elsif ( $property eq "cif_multiplicity" ) {
-                print "cif_multiplicity: $atom_ref->{cif_multiplicity} \n";
-            } elsif ( $property eq "disorder_group" ) {
-                print "Atom site disorder group: $atom_ref->{disorder_group} \n";
-            } elsif ( $property eq "disorder_assembly" ) {
-                print "Atom site disorder assembly: $atom_ref->{disorder_assembly} \n";
-            } elsif ( $property eq "coordinates_ortho" ) {
-                printf 'Orthogonal coordinates: %8.3f %8.3f %8.3f' . "\n",
-                    @{ $atom_ref -> {coordinates_ortho} };
-            } elsif ( $property eq "coordinates_fract" ) {
-                printf 'Fractional coordinates: %8.3f %8.3f %8.3f' . "\n",
-                    @{ $atom_ref -> {coordinates_fract} };
-            } elsif ( $property eq "shift_vector" ) {
-                print "Shift vector: $atom_ref->{shift_vector} \n";
-            } elsif ( $property eq  "sym_operator" ) {
-                print "Symmetry operator: $atom_ref->{sym_operator} \n";
-            }
-        }
-    }
+return ( \@distances, \@atoms_used );
 }
 
 ##
@@ -628,106 +474,150 @@ sub print_atoms {
 # @param $header_ref;
 #       Reference to an array of strings containing information about 
 #       atoms that were used in the calculation of distances.
-# @param $fraction_precision
-#       Number of fraction digits of the distances that should be printed.
-# @param $line_length
-#       Length of the matrix line in symbols.
+# @param $options
+#       Reference to a hash of pairwise format print options.
+#       The accepted options are:
+#           'format'
+#                   The number format that should be used when printing
+#                   distance values.
+#           'line_length'
+#                   The maximum lenght of the matrix line. Control the way
+#                   the matrix is folded.
 ##
+sub print_distance_matrix
+{
+    my ( $distance_ref, $header_ref, $options ) = @_;
 
-sub print_distance_matrix {
-    my ( $distance_ref, $header_ref, $format, $line_length ) = @_;
-    my @distances = @$distance_ref;
+    my $format      = $options->{'format'};
+    my $line_length = $options->{'line_length'};
+
+    my @distances = @{$distance_ref};
     my $cell_width = 11;
     if ( $format =~ /^%\D*(\d+)\D/ ) {
         $cell_width = $1;
     }
 
-    use POSIX;
-    my $cell_count = floor ( $line_length / $cell_width ) - 1;
+    use POSIX qw( floor ceil );
+    my $cell_count = floor( $line_length/$cell_width ) - 1;
 
     my $print_iteration = 0;
-    while ( $print_iteration < ceil( @distances / $cell_count ) ) {
+    while ( $print_iteration < ceil( @distances/$cell_count ) ) {
         my $start_cell_index = $cell_count * $print_iteration;
         my $finish_cell_index = $cell_count * ( $print_iteration + 1 );
         if ( $finish_cell_index > @distances ) {
             $finish_cell_index = @distances;
         }
 
-        printf( "%-${cell_width}s", "ATOMS" );
+        printf "%-${cell_width}s", 'ATOMS';
         for ( my $k = $start_cell_index; $k < $finish_cell_index; $k++ ) {
-            printf( "%-${cell_width}s", @$header_ref[ $k ] );
+            printf "%-${cell_width}s", @{$header_ref}[$k];
         }
         print "\n";
 
         for ( my $i = 0; $i < @distances; $i++ ) {
-            printf( "%-${cell_width}s", @$header_ref[ $i ] );
+            printf "%-${cell_width}s", @{$header_ref}[$i];
             for ( my $j = $start_cell_index; $j < $finish_cell_index; $j++ ) {
               my $distance;
               if ( $j > $i ) {
-                    $distance = $distances[ $i ][ $j - $i ];
+                    $distance = $distances[$i][$j-$i];
                 } else {
-                    $distance = $distances[ $j ][ $i - $j ];
+                    $distance = $distances[$j][$i-$j];
                 }
 
-                if ( $distance eq "-" ) {
-                    printf( "%-${cell_width}s", $distance );
+                if ( $distance eq '-' ) {
+                    printf "%-${cell_width}s", $distance;
                 } else {
-                    printf( $format, $distance );
+                    printf $format, $distance;
                 }
             };
             print "\n";
         }
         $print_iteration++;
     }
+
+    return;
 }
 
 ##
 # Prints distances between atoms in an alternative format, defined in
-# cod-tools/trunk/perl-scripts/cif-distances/cif-distances_paired_v.1
+# cod-tools/trunk/doc/formats/cif-distances/cif-distances_paired_v.1
+#
 # @param $distances
 #       Reference to an array distances between atoms.
 # @param $atoms_used
-#       Reference to an array of atoms that were used in the calculation
-#       of the distances.
+#       Reference to an array of atoms that were used in the
+#       calculation of the distances.
+# @param $options
+#       Reference to a hash of pairwise format print options.
+#       The accepted options are:
+#           'format'
+#                   The number format that should be used when printing
+#                   distance values.
+#           'include_null'
+#                   Flag value, denoting whether null distances should be
+#                   included.
+#           'include_self'
+#                   Flag value, denoting whether self distance should be
+#                   included.
+#           'print_filename'
+#                   Flag value, denoting whether the name of the processed
+#                   file should be appended to the end of each line.
+#           'filename'
+#                   The filename that should be appended to the end of each
+#                   line when the 'print_filename' flag is enabled.
 ##
+sub print_pairwise
+{
+    my ( $distances, $atoms_used, $options ) = @_;
 
-sub print_pairwise {
-    my ( $distances, $atoms_used, $filename, $print_filename ) = @_;
+    my $format         = $options->{'format'};
+    my $include_self   = $options->{'include_self'};
+    my $include_null   = $options->{'include_null'};
+    my $print_filename = $options->{'print_filename'};
+    my $filename       = $options->{'filename'};
 
-    for ( my $i = 0; $i < @$atoms_used; $i++ ) {
-      my $atom_1 = @$atoms_used[ $i ] -> [ 0 ];
+    # Escaped symbols
+    my $escape_sequence = q(\\);
+    my $escaped_symbols = { q(") => q("),
+                            q(') => q(') };
 
-      for ( my $j = 1; $j < @{ @$atoms_used[ $i ] }; $j++ ) {
-        my $atom_2 = @$atoms_used[ $i ] -> [ $j ];
+    for ( my $i = 0; $i < @{$atoms_used}; $i++ ) {
+        my $atom_1 = @{$atoms_used}[$i]->[0];
 
-        my $distance = @$distances[ $i ] -> [ $j-1 ];
+        for ( my $j = 1; $j < @{@{$atoms_used}[$i]}; $j++ ) {
+            my $atom_2 = @{$atoms_used}[$i]->[$j];
 
-        # check if atoms are self simmetry-related
-        next if ( ( $j - 1 ) == 0  && !$include_self_distances );
-        # check if atoms distances contain null value ("-")
-        next if ( $distance eq "-" && !$include_null_distances );
+            my $distance = @{$distances}[$i]->[$j-1];
 
-        my $output_string = "";
+            # check if atoms are self simmetry-related
+            next if ( ( $j - 1 ) == 0  && !$include_self );
+            # check if atoms distances contain null value ('-')
+            next if ( $distance eq '-' && !$include_null );
 
-        if ( $distance eq "-" ) {
-            $output_string .= sprintf( 'DIST %-6s', "-" )
-        } else { 
-            $output_string .= sprintf( 'DIST ' . $pairwise_format, $distance )
+            my $output_string = '';
+
+            if ( $distance eq '-' ) {
+                $output_string .= sprintf 'DIST %-6s', '-';
+            } else {
+                $output_string .= sprintf 'DIST ' . $format, $distance;
+            }
+
+            $output_string .= sprintf ' %10s %10s %24s %8s ',
+                        $atom_1->{'site_label'} . '/' . $atom_1->{'chemical_type'},
+                        $atom_2->{'site_label'} . '/' . $atom_2->{'chemical_type'},
+                        $atom_2->{'symop_string'},
+                        join ',', split m//, $atom_2->{'translation_id'};
+
+            if ( $print_filename ) {
+                $output_string .= basename( $filename );
+            };
+            print escape( "$output_string\n", {
+                            'sequence'        => $escape_sequence,
+                            'escaped_symbols' => $escaped_symbols } );
         }
-
-        $output_string .= sprintf( ' %10s %10s %24s %8s ', 
-                    $atom_1 -> { name }."/".$atom_1 -> { chemical_type },
-                    $atom_2 -> { name }."/".$atom_2 -> { chemical_type },
-                    $atom_2 -> { sym_operator },
-                    $atom_2 -> { shift_vector },
-                    );
-
-        $output_string .= basename( $filename ) if ( $print_filename );
-        print escape("$output_string\n", { sequence => $escape_sequence,
-                                           escaped_symbols => \%escaped_symbols });
-        
-      }
     }
+
+    return
 }
 
 ##
@@ -743,6 +633,6 @@ sub print_pairwise {
 ##
 sub equals {
     my ($float_1, $float_2, $dp) = @_;
-    return ( sprintf("%.${dp}f", $float_1) eq 
-             sprintf("%.${dp}f", $float_2) ) ? 1 : 0;
+    return ( ( sprintf "%.${dp}f", $float_1 ) eq
+             ( sprintf "%.${dp}f", $float_2 ) ) ? 1 : 0;
 }

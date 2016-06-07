@@ -17,6 +17,7 @@ use warnings;
 use DBD::mysql;
 use COD::SOptions qw( getOptions );
 use COD::SUsage qw( usage options );
+use COD::ErrorHandler qw( report_message );
 
 my $opt_enabled = 1;
 #* USAGE: $0 --options "search text"
@@ -38,8 +39,12 @@ my $opt_enabled = 1;
 );
 
 if ( @ARGV > 1 ) {
-    print STDERR "$0:: WARNING, more than one positional parameters were "
-               . "provided -- only the first one ('$ARGV[0]') will be used.\n";
+    report_message( {
+        'program'   => $0,
+        'err_level' => 'WARNING',
+        'message'   => 'more than one positional parameters was provided -- '
+                     . "only the first one ('$ARGV[0]') will be used"
+    }, 0 );
 }
 
 my $database = "cod";
@@ -60,7 +65,7 @@ my $sth = $dbh->prepare( $query );
 
 $sth->execute();
 
-use COD::Serialise;
+use COD::Serialise qw( serialiseRef );
 
 while (my $row = $sth->fetchrow_hashref()) {
     serialiseRef( $row );

@@ -51,8 +51,8 @@ sub find_right_cosets
         ( canonical_string_from_symop($_), $_ )
     } @$subgroup_symops;
 
-    ## use COD::Serialise; serialiseRef( \%group_symops );
-    ## use COD::Serialise; serialiseRef( \%subgroup_symops );
+    ## use COD::Serialise qw( serialiseRef ); serialiseRef( \%group_symops );
+    ## use COD::Serialise qw( serialiseRef ); serialiseRef( \%subgroup_symops );
 
     my @cosets = ();
 
@@ -80,7 +80,7 @@ sub find_right_cosets
         ## print ">>>\n";
     }
 
-    ## use COD::Serialise; serialiseRef( \@cosets );
+    ## use COD::Serialise qw( serialiseRef ); serialiseRef( \@cosets );
 
     return @cosets;
 }
@@ -99,8 +99,8 @@ sub find_left_cosets
         ( canonical_string_from_symop($_), $_ )
     } @$subgroup_symops;
 
-    ## use COD::Serialise; serialiseRef( \%group_symops );
-    ## use COD::Serialise; serialiseRef( \%subgroup_symops );
+    ## use COD::Serialise qw( serialiseRef ); serialiseRef( \%group_symops );
+    ## use COD::Serialise qw( serialiseRef ); serialiseRef( \%subgroup_symops );
 
     my @cosets = ();
 
@@ -129,7 +129,7 @@ sub find_left_cosets
         ## print ">>>\n";
     }
 
-    ## use COD::Serialise; serialiseRef( \@cosets );
+    ## use COD::Serialise qw( serialiseRef ); serialiseRef( \@cosets );
 
     return @cosets;
 }

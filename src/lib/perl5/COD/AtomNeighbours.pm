@@ -15,12 +15,14 @@ use warnings;
 use Carp qw( croak );
 use COD::AtomBricks qw( build_bricks get_atom_index get_search_span );
 use COD::Algebra::Vector qw( distance );
+use COD::CIF::Data::AtomList qw( atoms_are_alternative );
 
 require Exporter;
 our @ISA = qw( Exporter );
 our @EXPORT_OK = qw(
-    make_neighbour_list
     get_max_covalent_radius
+    make_neighbour_list
+    neighbour_list_from_chemistry_mol
 );
 
 #==============================================================================#
@@ -97,7 +99,7 @@ sub make_neighbour_list($$$$@)
                                   $extra_bond_distance );
 
     do {
-        use COD::Serialise;
+        use COD::Serialise qw( serialiseRef );
         serialiseRef( $bricks );
     } if 0;
 
@@ -106,33 +108,23 @@ sub make_neighbour_list($$$$@)
     for my $i (0..$#{$atom_list}) {
         my @coordinates = @{$atom_list->[$i]{coordinates_ortho}};
 
-        my ($ai, $aj, $ak) =
+        my ($ai_init, $aj_init, $ak_init) =
             get_atom_index( $bricks, @coordinates );
 
         my ( $min_i, $max_i, $min_j, $max_j, $min_k, $max_k );
         ( $min_i, $max_i, $min_j, $max_j, $min_k, $max_k ) =
-            get_search_span( $bricks, $ai, $aj, $ak );
+            get_search_span( $bricks, $ai_init, $aj_init, $ak_init );
 
         my $atom1 = $atom_list->[$i];
 
-        for $ai ($min_i .. $max_i) {
-        for $aj ($min_j .. $max_j) {
-        for $ak ($min_k .. $max_k) {
+        for my $ai ($min_i .. $max_i) {
+        for my $aj ($min_j .. $max_j) {
+        for my $ak ($min_k .. $max_k) {
             ## for my $j (0..$#{$atom_list}) {
             for my $atom2 ( @{$bricks->{atoms}[$ai][$aj][$ak]} ) {
 
                 next if $atom1 == $atom2;
-
-                next if exists $atom1->{assembly} &&
-                        exists $atom2->{assembly} &&
-                        $atom1->{assembly} ne '.' &&
-                        $atom2->{assembly} ne '.' &&
-                        $atom1->{assembly} eq $atom2->{assembly} &&
-                        exists $atom1->{group} &&
-                        exists $atom2->{group} &&
-                        $atom1->{group} ne '.' &&
-                        $atom2->{group} ne '.' &&
-                        $atom1->{group} ne $atom2->{group};
+                next if atoms_are_alternative( $atom1, $atom2 );
 
                 my $atom1_type =  $atom1->{chemical_type};
                 my $atom2_type =  $atom2->{chemical_type};
@@ -264,6 +256,65 @@ sub make_neighbour_list_slow($$$$$)
     }
 
     return wantarray ? %neighbour_list : \%neighbour_list;
+}
+
+#==============================================================================
+# Generates neighbour list from Chemistry::Mol object. Tested with the
+# version 0.37 of the aforementioned module.
+sub neighbour_list_from_chemistry_mol
+{
+    my( $mol ) = @_;
+
+    my %neighbour_list = (
+        atoms => [],
+        neighbours => [],
+    );
+
+    my %atom_ids;
+
+    my $n = 0;
+    for my $atom ($mol->atoms()) {
+        my %atom_info;
+
+        $atom_info{"name"}                  = $atom->symbol() . ($n+1);
+        $atom_info{"site_label"}            = $atom->symbol() . ($n+1);
+        $atom_info{"cell_label"}            = $atom->symbol() . ($n+1);
+        $atom_info{"index"}                 = $n;
+        $atom_info{"symop"}                 =
+          [
+            [ 1, 0, 0, 0 ],
+            [ 0, 1, 0, 0 ],
+            [ 0, 0, 1, 0 ],
+            [ 0, 0, 0, 1 ]
+          ];
+        $atom_info{"symop_id"}              = 1;
+        $atom_info{"unity_matrix_applied"}  = 1;
+        $atom_info{"translation_id"}        = "555";
+        $atom_info{"translation"}           = [ 0, 0, 0 ];
+
+        $atom_info{"chemical_type"}         = $atom->symbol();
+        $atom_info{"assembly"}              = ".";
+        $atom_info{"group"}                 = ".";
+        $atom_info{"atom_site_occupancy"}   = 1;
+        $atom_info{"attached_hydrogens"}    = $atom->implicit_hydrogens();
+
+        if( defined $atom->attr('smiles/aromatic') &&
+            $atom->attr('smiles/aromatic') == 1 ) {
+            $atom_info{"planarity"} = 0;
+        }
+
+        $atom_ids{$atom} = $n;
+        push( @{$neighbour_list{atoms}}, \%atom_info );
+
+        $n ++;
+    }
+
+    for my $atom ($mol->atoms()) {
+        push( @{$neighbour_list{neighbours}},
+              [ map { $atom_ids{$_} } $atom->neighbors() ] );
+    }
+
+    return \%neighbour_list;
 }
 
 1;

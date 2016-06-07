@@ -133,16 +133,16 @@ curl=curl
 #*
 #*  --strict,
 #*  --no-ignore-unpaired-datablocks, --dont-ignore-unpaired-datablocks
-#*      Stop the deposition if any CIF datablock can not be paired to
-#*      any Fobs datablocks (provided that any unpaired datablocks
+#*      Stop the deposition if any CIF data block can not be paired to
+#*      any Fobs data blocks (provided that any unpaired data blocks
 #*      exist). Default option.
 #*
 #*  --silent, --ignore-unpaired-datablocks
-#*      Ignore unpaired CIF and Fobs datablocks.
+#*      Ignore unpaired CIF and Fobs data blocks.
 #*
 #*  --require-only-doi
 #*      Do not require any other bibliographic information to be
-#*      present if CIF datablock contains resolvable DOI.
+#*      present if CIF data block contains resolvable DOI.
 #*
 #*  --require-full-bibliography
 #*      Require all bibliographic information to be present in submitted
@@ -534,6 +534,7 @@ cat ${TMP_DEPOSIT_LIST} | \
         fi
         ${curl} \
             --silent \
+            --show-error \
             ${DEBUG_ARG} \
             ${PROGRESS_ARG} \
             ${REPLACE_ARG} \
@@ -556,6 +557,7 @@ cat ${TMP_DEPOSIT_LIST} | \
             ${HKL_ARG} \
             -F "deposition_type=${DEPOSITION_TYPE}" \
             ${DEPOSIT_URL} \
+            2>&1 \
             | eval ${DEPOSIT_LOGGER}
         if [ ${TIMESTAMPS} = true ]
         then

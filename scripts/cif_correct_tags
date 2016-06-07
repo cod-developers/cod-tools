@@ -9,10 +9,10 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #$URL$
 #------------------------------------------------------------------------------
 #*
-#  Corrects misspelled tags in a CIF file and outputs made changes into the
-#  standard I/O streams. By default, only tags from CIF Core and CIF COD
-#  dictionaries with extra '^_+' prefixes are corrected. Additionally, a
-#  replacement list file can be provided for the correction of misspelled tags.
+#*  Corrects misspelt tags in a CIF file and outputs made changes into the
+#*  standard I/O streams. By default, only tags from CIF Core and CIF COD
+#*  dictionaries with extra '^_+' prefixes are corrected. Additionally, a
+#*  replacement list file can be provided for the correction of misspelt tags.
 #**
 
 use strict;
@@ -26,12 +26,14 @@ use COD::CIF::Tags::Print qw( print_cif fold );
 use COD::CIF2JSON qw( cif2json );
 use COD::SOptions qw( getOptions );
 use COD::SUsage qw( usage options );
-use COD::UserMessage qw( note error prefix_dataname );
+use COD::ErrorHandler qw( process_warnings
+                          process_errors
+                          process_parser_messages );
 
 my $keep_tag_order = 0;
 my $Id = '$Id$';
 my $replacement_list;
-my $use_parser = "c";
+my $use_parser = 'c';
 my $output_format = "cif";
 
 #* USAGE:
@@ -42,10 +44,10 @@ my $output_format = "cif";
 #*                      Keep the original tag order in CIF file (default).
 #*   --sort-tags
 #*                      Reorder tags in CIF file according to COD.
-#*   -r, --replacement-list "replacement-file.lst"
+#*   -r, --replacement-list 'replacement-file.lst'
 #*                      Name of the multi-line replacement list file with 
 #*                      entries of form '_incorrect_tag _correct_tag' to be 
-#*                      used in the correction of misspelled tags.
+#*                      used in the correction of misspelt tags.
 #*   --use-perl-parser
 #*                      Use the Perl-only CIF parser.
 #*   --use-c-parser
@@ -60,19 +62,25 @@ my $output_format = "cif";
 #*                      Print a short usage message (this message) and exit.
 #**
 @ARGV = getOptions(
-    "--keep-tag-order"  => sub { $keep_tag_order = 1; },
-    "--sort-tags"       => sub { $keep_tag_order = 0; },
-    "-r,--replacement-list" => \$replacement_list,
-    "--use-perl-parser" => sub{ $use_parser = "perl" },
-    "--use-c-parser"    => sub{ $use_parser = "c" },
+    '--keep-tag-order'  => sub { $keep_tag_order = 1; },
+    '--sort-tags'       => sub { $keep_tag_order = 0; },
+    '-r,--replacement-list' => \$replacement_list,
+    '--use-perl-parser' => sub{ $use_parser = 'perl' },
+    '--use-c-parser'    => sub{ $use_parser = 'c' },
     "--use-json-parser" => sub{ $use_parser = "json" },
     "--output-cif"      => sub{ $output_format = "cif" },
     "--output-json"     => sub{ $output_format = "json" },
-    "--options"         => sub { options; exit },
-    "--help,--usage"    => sub { usage; exit }
+    '--options'         => sub { options; exit },
+    '--help,--usage'    => sub { usage; exit }
 );
 
-sub insert_report_to_comments 
+my $die_on_error_level = {
+    ERROR   => 1,
+    WARNING => 0,
+    NOTE    => 0
+};
+
+sub insert_report_to_comments
 {
     my ($dataset, $insert_reports) = @_;
     if ( @$insert_reports > 0 ) {
@@ -82,8 +90,8 @@ sub insert_report_to_comments
 
         my $message =
             "The following automatic conversions were performed:\n" .
-            join( "\n", map { "" . $_ }
-                  fold( 70, " +", " ", $reports_value ));
+            join( "\n", map { '' . $_ }
+                  fold( 70, ' +', ' ', $reports_value ));
 
         if( exists $values->{$comments_tag} ) {
             $values->{$comments_tag}[0] .= "\n\n" . $message;
@@ -93,44 +101,49 @@ sub insert_report_to_comments
         my $signature = $Id;
         $signature =~ s/^\$|\$$//g;
         $values->{$comments_tag}[0] .=
-            "\n\n" . "Automatic conversion script" .
+            "\n\n" . 'Automatic conversion script' .
             "\n" . $signature;
     }
-} 
+
+    return;
+}
 
 my %tag_spelling = ();
+eval {
+    if( $replacement_list ) {
+        open my $list, '<', $replacement_list or die 'ERROR, '
+            . 'cannot open replacement list file for input -- '
+            . lcfirst($!) . "\n";
 
-if( $replacement_list ) {
-    open( LIST, $replacement_list ) or
-        die "$0: $replacement_list: can not open file for input - $!";
+        %tag_spelling =
+            map  { split }
+            grep { !/^\#/ }
+            grep { '\.' }
+        <$list>;
 
-    %tag_spelling =
-        map { split }
-        grep !/^\#/,
-        grep '\.',
-    <LIST>;
-
-    close( LIST ) or
-        die "$0: $replacement_list: error closing file - $!";
-}
+        close $list or die 'ERROR, '
+            . 'error while closing replacement list file after reading -- '
+            . lcfirst($!) . "\n";
+    }
+};
+if ($@) {
+    process_errors( {
+      'message'       => $@,
+      'program'       => $0,
+      'filename'      => $replacement_list,
+    }, $die_on_error_level->{'ERROR'} )
+};
 
 my @dictionary_tags = ( @COD::CIF::Tags::DictTags::tag_list,
                         @COD::CIF::Tags::COD::tag_list );
 my %dictionary_tags = map { $_, $_ } @dictionary_tags;
 
-@ARGV = ("-") unless @ARGV;
+@ARGV = ('-') unless @ARGV;
 
 for my $filename (@ARGV) {
     my $options = { 'parser' => $use_parser, 'no_print' => 1 };
     my ( $data, $err_count, $messages ) = parse_cif( $filename, $options );
-
-    if ( $err_count > 0 ) {
-        print STDERR $_ foreach ( @$messages );
-        error( $0, $filename, undef, "$err_count error(s) "
-             . "encountered while parsing the file", undef );
-        exit -1; # Should go on to the next file?
-    }
-    print STDERR $_ foreach ( @$messages );
+    process_parser_messages( $messages, $die_on_error_level );
 
     canonicalize_all_names( $data );
 
@@ -139,7 +152,14 @@ for my $filename (@ARGV) {
         my @insert_reports = ();
         my $tags = $dataset->{tags};
         my $values = $dataset->{values};
-        my $dataname = prefix_dataname($dataset->{name});
+        my $dataname = 'data_' . $dataset->{name} if defined $dataset->{name};
+
+        local $SIG{__WARN__} = sub { process_warnings( {
+                                       'message'       => @_,
+                                       'program'       => $0,
+                                       'filename'      => $filename,
+                                       'add_pos'       => $dataname
+                                     }, $die_on_error_level ) };
 
         for my $tag (@$tags) {
             if( exists $tag_spelling{$tag} ) {
@@ -147,12 +167,12 @@ for my $filename (@ARGV) {
                 my $correct = $tag_spelling{$tag};
                 if( !exists $values->{$correct} ) {
                     rename_tag( $dataset, $tag, $correct );
-                    my $report_msg = 
+                    my $report_msg =
                     "'$old_tag' tag replaced with '$correct' tag " .
-                    "as specified in the replacement file " .
+                    'as specified in the replacement file ' .
                     "'$replacement_list'.";
                     push (@insert_reports, $report_msg);
-                    note( $0, $filename, $dataname, $report_msg, undef );
+                    warn "NOTE, $report_msg" . "\n";
                 }
             }
             if( $tag =~ /^_+(_[^_].*)$/ ) {
@@ -164,7 +184,7 @@ for my $filename (@ARGV) {
                     my $report_msg = "'$old_tag' tag replaced with " .
                                      "'$correct' tag.";
                     push (@insert_reports, $report_msg);
-                    note( $0, $filename, $dataname, $report_msg, undef );
+                    warn "NOTE, $report_msg" . "\n";
                 }
             }
         }

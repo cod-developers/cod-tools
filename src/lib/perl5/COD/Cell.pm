@@ -5,28 +5,43 @@
 #$URL$
 #-----------------------------------------------------------------------
 #*
-#  Contains subroutine for cell volume calculation.
+#  Contains generic subroutines for cell calculations.
 #**
 
 package COD::Cell;
 
 use strict;
 use warnings;
+use COD::Algebra::Vector qw( vector_angle vector_len );
 
 require Exporter;
 our @ISA = qw( Exporter );
 our @EXPORT_OK = qw(
     cell_volume
+    vectors2cell
 );
 
 sub cell_volume
 {
-    my @cell = map { s/\(.*\)//g; $_ } @_;
+    my @cell = @_;
+
+    for (my $i = 0; $i < scalar(@cell); $i++) {
+        if ( !defined $cell[$i] ) {
+            warn 'WARNING, at least one of the lattice parameters has an '
+               . 'undefined value -- cell volume could not be calculated' . "\n";
+            return undef;
+        } elsif ( $cell[$i] =~ /^[.?]$/ ) {
+            warn 'WARNING, at least one of the lattice parameters has a '
+               . "non-numeric value '$1' -- cell volume could not be "
+               . 'calculated' . "\n";
+            return undef;
+        }
+        $cell[$i] =~ s/\(.*\)//g;
+    }
 
     my $Pi = 4 * atan2(1,1);
 
     # Compute unit cell volume:
-
     my ($a, $b, $c) = @cell[0..2];
     my ($alpha, $beta, $gamma) = map {$Pi * $_ / 180} @cell[3..5];
     my ($ca, $cb, $cg) = map {cos} ($alpha, $beta, $gamma);
@@ -54,6 +69,20 @@ sub cell_volume
     } else {
         return $V;
     }
+}
+
+sub vectors2cell
+{
+    my( @v ) = @_;
+    my @cell = (
+        vector_len(  $v[0]),
+        vector_len(  $v[1]),
+        vector_len(  $v[2]),
+        vector_angle($v[1], $v[2]),
+        vector_angle($v[0], $v[2]),
+        vector_angle($v[0], $v[1])
+    );
+    return wantarray ? @cell : \@cell;
 }
 
 1;

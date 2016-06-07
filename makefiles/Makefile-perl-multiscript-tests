@@ -1,4 +1,4 @@
-#------------------------------------------------------------------------------
+#---*- Makefile -*-------------------------------------------------------------
 #$Author$
 #$Revision$
 #$Date$
@@ -20,10 +20,6 @@ export PERL5LIB
 PATH := ${TOP}/scripts:${TOP}/src/components/codcif:${PATH}
 export PATH
 
-ifeq ("${TEST_INSTALL}","")
-BIN_DIR = ./
-endif
-
 YAPP_SOURCES := $(wildcard $(addsuffix /*.yp, ${YAPP_MODULE_DIRS}))
 YAPP_MODULES := ${YAPP_MODULE_DIRS:${PERL_SOURCE_TOP}/%=${LOCAL_PERL_LIB}/%.pm}
 
@@ -42,7 +38,12 @@ SHARED_SWIG_OBJECTS := $(foreach mod, $(PERL_SWIG_MODULES), \
 PYTHON_SWIG_SOURCES := $(wildcard $(addsuffix /*.i, ${PYTHON_SWIG_MODULE_DIRS}))
 PYTHON_SWIG_MODULES := ${PYTHON_SWIG_SOURCES:%.i=%.py}
 
-SWIG_MODULES := ${PERL_SWIG_MODULES} ${PYTHON_SWIG_MODULES}
+SWIG_MODULES := ${PERL_SWIG_MODULES}
+
+# Require Python modules if Python 2.7 is present:
+ifneq ("$(shell which python2.7)", "")
+SWIG_MODULES += ${PYTHON_SWIG_MODULES}
+endif
 
 COMPILED_MODULES := ${YAPP_MODULES} ${SWIG_MODULES}
 
@@ -156,7 +157,7 @@ ALL_INPUTS = $(wildcard ${SCRIPT_TST_DIR}/*.* ${SHELL_TSTDIR}/*.sh)
 	| sponge $@ || true
 
 ${SCRIPT_DIR}/.%.d: ${SCRIPT_DIR}/%
-	-tools/mkperldepend $< > $@ 2>/dev/null || true
+	-tools/mkperldepend $< > $@
 	@touch $@
 
 .script.depend: ${SCRIPT_DEPENDS}
@@ -167,7 +168,7 @@ ${SCRIPT_DIR}/.%.d: ${SCRIPT_DIR}/%
 define filter_perl_messages
 perl -pe 's/Id: [-\w]+ \d+ [-\d]+ [:\dZ]+ \w+/Id: <script_name> <revision_nr> <date> <time> <author>/' \
 | perl -pe 's,at [-\.\/\w\d]+ line \d+\.?,at <script_name> line <line_no>.,' \
-| perl -pe 's/Use of uninitialized value [^\s]+ in/Use of uninitialized value in/g' \
+| perl -pe 's/(U|u)se of uninitialized value [^\s]+ in/$$1se of uninitialized value in/g' \
 | perl -pe 's/(Use of uninitialized value in pattern match \(m\/\/\) at )([a-zA-Z0-9\-\/]+)\/([a-zA-Z0-9\-\.]+) line \d+, <([^>])+> line \d+/$$1$$3 line <line_no>/g' \
 | perl -pe 's/(unknown MySQL server host .*?)(\(\d*\))\.?$$/$$1(<error code>)./' \
 | perl -pe 's/OpenBabel\d+.*/OpenBabel9999999999D/' \
@@ -193,7 +194,7 @@ ${TST_DIFFS} ${SCRIPT_DIFFS}: ${LOCAL_LIB_FILES}
 # Rules to run script-specific tests
 
 ${OUTPUT_DIR}/%.diff: ${SCRIPT_TST_DIR}/%${INP} ${SCRIPT_TST_DIR}/%${OPT} \
-                      ${SCRIPT_FILES} ${COMPILED_MODULES}
+                      ${COMPILED_MODULES}
 	-@printf "%-30s " "$<:" ; \
 	( ${SCRIPT_DIR}/$(shell echo $* | sed -e 's/_[0-9]*$$//') \
 	    $(shell grep -v '^#' ${word 2, $^}) \
@@ -203,7 +204,7 @@ ${OUTPUT_DIR}/%.diff: ${SCRIPT_TST_DIR}/%${INP} ${SCRIPT_TST_DIR}/%${OPT} \
 	| diff ${OUTPUT_DIR}/$*.out - > $@ ; \
 	if [ $$? = 0 ]; then echo "OK"; else echo "FAILED:"; cat $@; fi
 
-${OUTPUT_DIR}/%.diff: ${SCRIPT_TST_DIR}/%${INP} ${SCRIPT_FILES} ${COMPILED_MODULES}
+${OUTPUT_DIR}/%.diff: ${SCRIPT_TST_DIR}/%${INP} ${COMPILED_MODULES}
 	-@printf "%-30s " "$<:" ; \
 	( ${SCRIPT_DIR}/$(shell echo $* | sed -e 's/_[0-9]*$$//') $< \
 	| ${buffer_output} ) 2>&1 \
@@ -211,7 +212,7 @@ ${OUTPUT_DIR}/%.diff: ${SCRIPT_TST_DIR}/%${INP} ${SCRIPT_FILES} ${COMPILED_MODUL
 	| diff ${OUTPUT_DIR}/$*.out - > $@ ; \
 	if [ $$? = 0 ]; then echo "OK"; else echo "FAILED:"; cat $@; fi
 
-${OUTPUT_DIR}/%.diff: ${SCRIPT_TST_DIR}/%${OPT} ${SCRIPT_FILES} ${COMPILED_MODULES}
+${OUTPUT_DIR}/%.diff: ${SCRIPT_TST_DIR}/%${OPT} ${COMPILED_MODULES}
 	-@printf "%-30s " "$<:" ; \
 	( ${SCRIPT_DIR}/$(shell echo $* | sed -e 's/_[0-9]*$$//') \
 	     $(shell grep -v '^#' ${word 1, $^}) \
@@ -295,23 +296,15 @@ ${SHELL_OUTDIR}/%.diff: ${SHELL_TSTDIR}/%.sh ${COMPILED_MODULES}
 	touch $@; \
 	fi
 
-.PHONY: tests alltests
+.PHONY: tests alltests check
 
-tests alltests: test shtests
+tests alltests check: test shtests
 
 .PHONY: listdiff blame
 
-DIFF_DIRS = $(dir ${YAPP_SOURCES} ${SWIG_MODULES})
 listdiff: # test
-	@-( test -d ${OUTPUT_DIR} && \
-	    ls -l ${OUTPUT_DIR}/*.diff | awk '{if( $$5 > 0 ) print}' ) || \
-	    true
-	@-( test -d ${SHELL_OUTDIR} && \
-	    ls -l ${SHELL_OUTDIR}/*.diff | awk '{if( $$5 > 0 ) print}' ) || \
-	    true
-	@-for DIR in ${DIFF_DIRS}; do \
-		${MAKE} -C $$DIR $@; \
-	done
+	@find ./src ./tests -name \*.diff -size +0 \
+	| sort -u | xargs --no-run-if-empty ls -l
 
 blame:
 	@-( test -d ${OUTPUT_DIR} && \

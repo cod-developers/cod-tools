@@ -19,17 +19,35 @@ use strict;
 use warnings;
 use File::Basename qw( fileparse );
 use COD::CIF::Parser qw( parse_cif );
+use COD::CIF::Data qw( get_symmetry_operators );
 use COD::CIF::Tags::CanonicalNames qw( canonicalize_names );
 use COD::Spacegroups::Symop::Parse qw( symop_from_string modulo_1 );
 use COD::Spacegroups::Lookup::COD;
 use COD::SOptions qw( getOptions );
 use COD::SUsage qw( usage options );
-use COD::UserMessage qw( error prefix_dataname );
+use COD::ErrorHandler qw( process_warnings
+                          process_errors
+                          process_parser_messages );
 
 my $Id = '$Id$';
 my $use_parser = 'c';
+my $die_on_errors    = 1;
+my $die_on_warnings  = 0;
+my $die_on_notes     = 0;
+my $die_on_error_level = {
+    ERROR   => $die_on_errors,
+    WARNING => $die_on_warnings,
+    NOTE    => $die_on_notes
+};
+
+my $build_supercell = 0;
 
 #* OPTIONS:
+#*   --supercell
+#*                      Build the 3x3x3 supercell by shifting atoms of the
+#                       unit cell in all 3D directions.
+#*   --unit-cell, --no-supercell
+#*                      Only build the unit cell (default).
 #*   --use-c-parser
 #*                      Use the faster C parser for CIFs (default).
 #*   --use-perl-parser
@@ -38,173 +56,130 @@ my $use_parser = 'c';
 #*                      Print a short usage message (this message) and exit.
 #**
 @ARGV = getOptions(
-    "--use-perl-parser" => sub{ $use_parser = "perl" },
-    "--use-c-parser"    => sub{ $use_parser = "c" },
-    "--options"         => sub { options; exit },
-    "--help,--usage"    => sub { usage; exit }
+    '--supercell'    => sub { $build_supercell = 1 },
+    '--no-supercell' => sub { $build_supercell = 0 },
+    '--unit-cell'    => sub { $build_supercell = 0 },
+
+    '--use-perl-parser' => sub { $use_parser = 'perl' },
+    '--use-c-parser'    => sub { $use_parser = 'c' },
+    '--options'         => sub { options; exit },
+    '--help,--usage'    => sub { usage; exit }
 );
 
-@ARGV = ("-") unless @ARGV;
+@ARGV = ('-') unless @ARGV;
 
 foreach my $filename (@ARGV) {
     my $options = { 'parser' => $use_parser, 'no_print' => 1 };
     my ( $data, $err_count, $messages ) = parse_cif( $filename, $options );
+    process_parser_messages( $messages, $die_on_error_level );
 
-    foreach my $dataset (@$data) {
+    foreach my $dataset (@{$data}) {
         canonicalize_names( $dataset );
 
         my $values   = $dataset->{values};
-        my $dataname = prefix_dataname($dataset->{name});
+        my $dataname = 'data_' . $dataset->{'name'} if defined $dataset->{'name'};
 
-        # extracts atom site label or atom site type symbol
-        my $loop_tag;
+        local $SIG{__WARN__} = sub { process_warnings( {
+                                       'message'  => @_,
+                                       'program'  => $0,
+                                       'filename' => $filename,
+                                       'add_pos'  => $dataname
+                                     }, $die_on_error_level ) };
 
-        if (exists $values->{"_atom_site_label"}) {
-            $loop_tag = "_atom_site_label";
-        }
-        elsif (exists $values->{"_atom_site_type_symbol"})
-        {
-            $loop_tag = "_atom_site_type_symbol";
-        }
-        else
-        {
-            error( $0, $filename, $dataname, "neither '_atom_site_type_symbol'"
-                 . " nor '_atom_site_label' are present in the file", undef );
-            die;
-        }
+        eval {
+            # extracts atom site label or atom site type symbol
+            my $loop_tag;
 
-        # extracts symmetry operators
-        my $sym_data;
-
-        if ( exists $values->{"_symmetry_equiv_pos_as_xyz"} ) {
-            $sym_data = $values->{"_symmetry_equiv_pos_as_xyz"};
-        }
-
-        if ( exists $values->{"_symmetry_space_group_name_Hall"} &&
-             (not defined $sym_data) ) {
-            my $hall = $values->{"_symmetry_space_group_name_Hall"}[0];
-            $sym_data = get_symops("hall", $hall);
-
-            if($sym_data == 0)
-            {
-                error( $0, $filename, $dataname,
-                       "'_symmetry_space_group_name_Hall' tag value '$hall' "
-                     . "was not recognised as a space group name", undef );
-            } 
-        }
-
-        if( exists $values->{"_symmetry_space_group_name_H-M"} &&
-            ((not defined $sym_data) or $sym_data == 0)) {
-            my $h_m = $values->{"_symmetry_space_group_name_H-M"}[0];
-            $sym_data = get_symops("hermann_mauguin", $h_m);
-
-            if($sym_data == 0) {
-                error( $0, $filename, $dataname,
-                       "'_symmetry_space_group_name_H-M' tag value '$h_m' "
-                     . "was not recognised as a space group name", undef );
-                die;
+            if (exists $values->{'_atom_site_label'}) {
+                $loop_tag = '_atom_site_label';
             }
-        }
-
-        if(not defined $sym_data)
-        {
-            error( $0, $filename, $dataname, "neither '_symmetry_equiv_pos_as_xyz' "
-                 . "nor '_symmetry_space_group_name_Hall' "
-                 . "nor '_symmetry_space_group_name_H-M' tags "
-                 . 'could be used to acquire symmetry operators', undef );
-            die;
-        }
-
-        my $inloop = $dataset->{"inloop"};
-        my $loop_id = $inloop->{$loop_tag};
-        my $loop = $dataset->{"loops"}[$loop_id];
-
-        my @sym_operators = map{symop_from_string($_)} @{$sym_data};
-
-        # prints additional cif file information
-        print "data_".$dataset->{"name"} . "_" . fileparse($0) . "\n";
-        print  "_symmetry_space_group_name_H-M   'P 1'\n";
-
-        foreach my $angle (qw(_cell_angle_alpha
-                              _cell_angle_beta
-                              _cell_angle_gamma))
-        {
-            if( defined $values->{$angle}[0] ) {
-                print $angle . "   " . $values->{$angle}[0]."\n";
-            }
-        }
-
-        foreach my $length (qw(_cell_length_a
-                               _cell_length_b
-                               _cell_length_c))
-        {
-            print $length . "   " . $values->{$length}[0]."\n";
-        }
-
-        print "loop_ " . "_symmetry_equiv_pos_as_xyz" . " 'x, y, z'\n";
-        print "loop_\n";
-
-        foreach my $loop_value (@{$loop})
-        {
-            if("_atom_site_adp_type" ne $loop_value)
+            elsif (exists $values->{'_atom_site_type_symbol'})
             {
-                print $loop_value . "\n";
+                $loop_tag = '_atom_site_type_symbol';
             }
-        }
-
-        my @sym_atoms;
-
-        for(my $i = 0; $i < @sym_operators; $i++)
-        {
-            my $symop = $sym_operators[$i];
-
-            for(my $j = 0; $j < @{$values->{$loop_tag}}; $j++)
+            else
             {
-                my @atom_xyz;
-                foreach my $atom_fract (qw(_atom_site_fract_x
-                                           _atom_site_fract_y
-                                           _atom_site_fract_z))
+                die 'ERROR, neither \'_atom_site_type_symbol\' '
+                  . 'nor \'_atom_site_label\' are present in the file' . "\n";
+            }
+
+            my $loop_id = $dataset->{'inloop'}{$loop_tag};
+            my $atom_loop_tags = $dataset->{'loops'}[$loop_id];
+
+            # extracts symmetry operators
+            my $sym_data = get_symmetry_operators($dataset);
+
+            my @sym_operators = map{symop_from_string($_)} @{$sym_data};
+
+            my @atom_loop_values;
+            for(my $i = 0; $i < @sym_operators; $i++)
+            {
+                my $symop = $sym_operators[$i];
+
+                for(my $j = 0; $j < @{$values->{$loop_tag}}; $j++)
                 {
-                    my $sym_atom_data = $values->{$atom_fract};
-                    push(@atom_xyz, ${$sym_atom_data}[$j]);
-                }
-                push(@atom_xyz, 1);
-
-                my $new_atom_xyz = shift_atoms(symop_apply(\@atom_xyz, $symop));
-                for(my $m = 0; $m < @{$new_atom_xyz}; $m++)
-                {
-                    for(my $k = 0; $k < @{$loop}; $k++)
+                    my @atom_xyz;
+                    foreach ( qw( _atom_site_fract_x
+                                  _atom_site_fract_y
+                                  _atom_site_fract_z ) )
                     {
-                        my $sym_atom_data = $values->{${$loop}[$k]};
+                        push @atom_xyz, $values->{$_}[$j];
+                    }
+                    push @atom_xyz, 1;
 
-                        if("_atom_site_adp_type" ne ${$loop}[$k])
+                    my $new_atom_xyz = symop_apply(\@atom_xyz, $symop);
+                    if ($build_supercell) {
+                        $new_atom_xyz = shift_atoms($new_atom_xyz);
+                    } else {
+                        $new_atom_xyz = [$new_atom_xyz];
+                    }
+
+                    for(my $m = 0; $m < @{$new_atom_xyz}; $m++)
+                    {
+                    my @tag_values;
+                    foreach my $tag ( @{$atom_loop_tags} )
+                    {
+                        my $old_atom_data = $values->{$tag};
+
+                        if('_atom_site_adp_type' eq $tag) {
+                            next;
+                        }
+
+                        if($tag eq '_atom_site_label')
                         {
-                            if(${$loop}[$k] eq "_atom_site_label")
-                            {
-                                $sym_atoms[$i][$j][$k] = ${$sym_atom_data}[$j]."_".$i."_".$m;
-                            }
-                            elsif(${$loop}[$k] eq "_atom_site_fract_x")
-                            {
-                                $sym_atoms[$i][$j][$k] = ${$new_atom_xyz}[$m][0];
-                            }
-                            elsif(${$loop}[$k] eq "_atom_site_fract_y")
-                            {
-                                $sym_atoms[$i][$j][$k] = ${$new_atom_xyz}[$m][1];
-                            }
-                            elsif(${$loop}[$k] eq "_atom_site_fract_z")
-                            {
-                                $sym_atoms[$i][$j][$k] = ${$new_atom_xyz}[$m][2];
-                            }
-                            else
-                            {
-                                $sym_atoms[$i][$j][$k] = ${$sym_atom_data}[$j];
-                            }
-                            print $sym_atoms[$i][$j][$k] . "   ";
+                            push @tag_values, ${$old_atom_data}[$j].'_'.$i.'_'.$m;
+                        }
+                        elsif($tag eq '_atom_site_fract_x')
+                        {
+                            push @tag_values, ${$new_atom_xyz}[$m][0];
+                        }
+                        elsif($tag eq '_atom_site_fract_y')
+                        {
+                            push @tag_values, ${$new_atom_xyz}[$m][1];
+                        }
+                        elsif($tag eq '_atom_site_fract_z')
+                        {
+                            push @tag_values, ${$new_atom_xyz}[$m][2];
+                        }
+                        else
+                        {
+                            push @tag_values, ${$old_atom_data}[$j];
                         }
                     }
-                    print "\n";
+                    push @atom_loop_values, \@tag_values;
+                    }
                 }
             }
+
+            print_cif( $dataset, $atom_loop_tags, \@atom_loop_values );
+        };
+        if ( $@ ) {
+            process_errors( {
+              'message'       => $@,
+              'program'       => $0,
+              'filename'      => $filename,
+              'add_pos'       => $dataname
+            }, $die_on_errors )
         }
     }
 }
@@ -235,60 +210,66 @@ sub shift_atoms
     my($atom_xyz) = @_;
 
     my @shifted_atom_xyz;
-    my @shifting_params = (0, -1, 1);
+    my @shift = (0, -1, 1);
 
-    my $counter = 0;
-    for(my $i = 0; $i < @shifting_params; $i++)
-    {
-        for(my $j = 0; $j < @shifting_params; $j++)
-        {
-            for(my $k = 0; $k < @shifting_params; $k++)
-            {
-                $shifted_atom_xyz[$counter][0] = ${$atom_xyz}[0] + $shifting_params[$i];
-                $shifted_atom_xyz[$counter][1] = ${$atom_xyz}[1] + $shifting_params[$j];
-                $shifted_atom_xyz[$counter][2] = ${$atom_xyz}[2] + $shifting_params[$k];
-                $counter++;
-            }
-        }
-    }
+    foreach my $x ( @shift ) {
+    foreach my $y ( @shift ) {
+    foreach my $z ( @shift ) {
+        push @shifted_atom_xyz, [ ${$atom_xyz}[0] + $x,
+                                  ${$atom_xyz}[1] + $y,
+                                  ${$atom_xyz}[2] + $z ];
+    } } }
 
     return \@shifted_atom_xyz;
 }
-#===============================================================#
-# @COD::Spacegroups::Lookup::COD::table =
-# (
-# {
-#     number          => 1,
-#     hall            => ' P 1',
-#     schoenflies     => 'C1^1',
-#     hermann_mauguin => 'P 1',
-#     universal_h_m   => 'P 1',
-#     symops => [
-#         'x,y,z',
-#     ],
-#     ncsym => [
-#         'x,y,z',
-#     ]
-# },
-# );
 
-sub get_symops
+#==============================================================#
+sub print_cif
 {
-    my ($option, $param) = @_;
+    my ( $dataset, $atom_loop_tags, $atom_loop_values ) = @_;
 
-    $param =~ s/ //g;
-    $param =~ s/_//g;
+    my $dataname = $dataset->{'name'};
+    my $values = $dataset->{'values'};
 
-    foreach my $hash (@COD::Spacegroups::Lookup::COD::table)
+    print 'data_' .  $dataname . '_' . fileparse($0) . "\n";
+
+    print '_space_group_IT_number      1' , "\n";
+    print '_space_group_name_Hall      \'P 1\'' . "\n";
+    print '_space_group_name_H-M_alt   \'P 1\'' . "\n";
+
+    # print unit cell lengths and angles
+    foreach ( qw( _cell_angle_alpha
+                  _cell_angle_beta
+                  _cell_angle_gamma ) )
     {
-        my $value = $hash->{$option};
-        $value =~ s/ //g;
-        $value =~ s/_//g;
-
-        if($value eq $param)
-        {
-            return $hash->{symops};
+        if( defined $values->{$_}[0] ) {
+            print $_ . '   ' . $values->{$_}[0] . "\n";
         }
     }
-    return 0;
+
+    foreach ( qw( _cell_length_a
+                  _cell_length_b
+                  _cell_length_c ) )
+    {
+        print $_ . '   ' . $values->{$_}[0] . "\n";
+    }
+
+    # print symmetry operator information
+    print 'loop_' . "\n";
+    print '_space_group_symop_id' . "\n";
+    print '_space_group_symop_operation_xyz' . "\n";
+    print '1 \'x, y, z\'' . "\n";
+
+    # print atom loop tags
+    print "loop_\n";
+    foreach ( @{$atom_loop_tags} ) {
+        if( '_atom_site_adp_type' ne $_ ) { print $_ . "\n" }
+    }
+
+    foreach ( @{$atom_loop_values} ) {
+        print join ' ', @{$_};
+        print "\n";
+    }
+
+    return;
 }

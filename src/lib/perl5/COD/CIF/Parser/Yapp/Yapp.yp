@@ -217,19 +217,34 @@ data_block_list
 headerless_data_block
     :   data_item
         {
-            $_[0]->YYData->{ERRMSG} = "no data block heading (i.e." .
-                " data_somecif) found";
+            $_[0]->YYData->{ERRMSG} = 'no data block heading '
+                                    . '(i.e. data_somecif) found';
             $_[0]->YYData->{VARS}{lines}--;
-            unless( $_[0]->{USER}{OPTIONS}{fix_errors} ||
-                    $_[0]->{USER}{OPTIONS}{fix_data_header} )
+            if ( $_[0]->{USER}{OPTIONS}{fix_errors} ||
+                 $_[0]->{USER}{OPTIONS}{fix_data_header} )
             {
-                $_[0]->_Error();
-            } else {
                 $_[0]->_Warning();
+            } else {
+                $_[0]->_Error();
             }
-                $_[0]->YYData->{VARS}{lines}++;
-                return $_[1];
+            $_[0]->YYData->{VARS}{lines}++;
+            return $_[1];
+        }
+    |   data_item
+        {
+            $_[0]->YYData->{ERRMSG} = 'no data block heading '
+                                    . '(i.e. data_somecif) found';
+            $_[0]->YYData->{VARS}{lines}--;
+            if( $_[0]->{USER}{OPTIONS}{fix_errors} ||
+                $_[0]->{USER}{OPTIONS}{fix_data_header} )
+            {
+                $_[0]->_Warning();
+            } else {
+                $_[0]->_Error();
             }
+            $_[0]->YYData->{VARS}{lines}++;
+            return $_[1];
+        }
         data_item_list
         {
             my $list = $_[3];
@@ -294,8 +309,8 @@ data_block_head
             if( $_[0]->{USER}{OPTIONS}{fix_errors} ||
                 $_[0]->{USER}{OPTIONS}{fix_string_quotes} ) {
                     $_[0]->YYData->{ERRMSG} =
-                                "the dataname apparently had spaces in it - " .
-                                "replaced spaces by underscores";
+                                'the dataname apparently had spaces in it -- ' .
+                                'replaced spaces with underscores';
                     $_[0]->_Warning(
                                 { line =>
                                     $_[0]->YYData->{VARS}{token_prev_line} } );
@@ -396,7 +411,8 @@ cif_entry
         {
             if( $_[0]->{USER}{OPTIONS}{fix_errors} ||
                 $_[0]->{USER}{OPTIONS}{fix_string_quotes} ) {
-                $_[0]->YYData->{ERRMSG} = "string with spaces without quotes";
+                $_[0]->YYData->{ERRMSG} = 'string with spaces '
+                                        . 'without quotes -- fixed';
                 $_[0]->_Warning( { line => $_[0]->YYData->{VARS}{token_prev_line} } );
             }
             my $val = { name => $_[1],
@@ -800,40 +816,40 @@ my $UQSTRING_INLINE     =       qr/^(?:
     for ($parser->YYData->{INPUT})
     {
         #matching floats:
-        if(s/^($FLOAT (?:\([0-9]+\))?)(\s|$)//six)
+        if( s/^($FLOAT (?:\([0-9]+\))?)(\s|$)//six )
         {
             advance_token($parser, length($1 . $2));
             return('FLOAT', $1);
         }
         #matching integers:
-        if(s/^($INTEGER (?:\([0-9]+\))?)(\s|$)//sx)
+        if( s/^($INTEGER (?:\([0-9]+\))?)(\s|$)//sx )
         {
             advance_token($parser, length($1 . $2));
             return('INT', $1);
         }
         #matching double quoted strings
-        if(s/^("${ANY_PRINT_CHAR}*?")(\s|$)//s)
+        if( s/^("${ANY_PRINT_CHAR}*?")(\s|$)//s )
         {
             advance_token($parser, length($1 . $2));
             return('DQSTRING', $1);
         }
         #matching single quoted strings
-        if(s/^('${ANY_PRINT_CHAR}*?')(\s|$)//s)
+        if( s/^('${ANY_PRINT_CHAR}*?')(\s|$)//s )
         {
             advance_token($parser, length($1 . $2));
             return('SQSTRING', $1);
         }
-        #matching single quoted strings without a closing quote
+        #matching double quoted strings without a closing quote
         if( ( $parser->{USER}{OPTIONS}{fix_errors} ||
               $parser->{USER}{OPTIONS}
                       {fix_missing_closing_double_quote} ) &&
-                    s/^("${ANY_PRINT_CHAR}*?)(\s|$)//s)
+                    s/^("${ANY_PRINT_CHAR}*)(\s|$)//s)
         {
             my $value = $1;
             my $space = $2;
 
-            $parser->YYData->{ERRMSG} =
-                        "double-quoted string is missing a closing quote -- fixed";
+            $parser->YYData->{ERRMSG} = 'double-quoted string is missing a '
+                                      . 'closing quote -- fixed';
             $parser->_Warning();
 
             advance_token($parser, length($value . $space));
@@ -842,13 +858,13 @@ my $UQSTRING_INLINE     =       qr/^(?:
         #matching single quoted strings without a closing quote
         if ( ( $parser->{USER}{OPTIONS}{fix_errors} ||
                $parser->{USER}{OPTIONS}{fix_missing_closing_single_quote} ) &&
-                    s/^('${ANY_PRINT_CHAR}*?)(\s|$)//s )
+                    s/^('${ANY_PRINT_CHAR}*)(\s|$)//s )
         {
             my $value = $1;
             my $space = $2;
 
-            $parser->YYData->{ERRMSG} =
-                        "single-quoted string is missing a closing quote -- fixed";
+            $parser->YYData->{ERRMSG} = 'single-quoted string is missing a '
+                                      . 'closing quote -- fixed';
             $parser->_Warning();
 
             advance_token($parser, length($value . $space));
@@ -907,8 +923,8 @@ my $UQSTRING_INLINE     =       qr/^(?:
                         $parser->{USER}{OPTIONS}{fix_non_ascii_symbols} )
                     {
                         $parser->YYData->{ERRMSG} =
-                            "non-ascii symbols encountered in the text field, "
-                          . "replaced by XML entities";
+                            'non-ascii symbols encountered in the text '
+                          . 'field -- replaced with XML entities';
                         $parser->_Warning( { line_content => ";\n$tfield\n;" } );
                         $tfield =~ s/([^\x08-\x7F])/sprintf("&#x%04X;",ord($1))/eg;
                     } else {
@@ -917,19 +933,36 @@ my $UQSTRING_INLINE     =       qr/^(?:
                         $parser->_Error( { line_content => ";\n$tfield\n;" } );
                     }
                 }
+
+                my $unprefixed = 0;
                 if( !$parser->{USER}{OPTIONS}{do_not_unprefix_text} ) {
                     if( $tfield =~ /^(.+?)\\(\\)?\n/ ) {
                         my $prefix = $1;
-                        $tfield =~ s/^\Q${prefix}\E\\\n//;
+                        $tfield =~ s/^\Q${prefix}\E\\\n/\n/;
                         $tfield =~ s/^\Q${prefix}\E\\\\\n/\\\n/;
                         $tfield =~ s/^\Q${prefix}\E//mg;
+                        $unprefixed = 1;
                     }
                 }
+
+                my $unfolded = 0;
                 if( !$parser->{USER}{OPTIONS}{do_not_unfold_text} ) {
                     if( $tfield =~ /^\\\n/ ) {
                         $tfield =~ s/\\\n//mg;
+                        my $unfolded = 1;
                     }
+                };
+
+                # Unprefixing transforms the first line to either "/\n" or "\n".
+                # These symbols signal whether the processed text should be
+                # unfolded or not (if the unfolding option is also set).
+                # As a result, if the text was unprefixed, but not unfolded
+                # an unnescessary empty line might occur at the begining of
+                # the text field. This empty line should be removed.
+                if ($unprefixed && !$unfolded) {
+                    $tfield =~ s/^\n//;
                 }
+
                 return('TEXT_FIELD', $tfield);
             }
         }
@@ -937,11 +970,7 @@ my $UQSTRING_INLINE     =       qr/^(?:
         if( s/^(global_)(\s+|$)//si ) {
             advance_token($parser, length($1 . $2));
             $parser->YYData->{ERRMSG} = "GLOBAL_ symbol detected"
-                . " in line "
-                . $parser->YYData->{VARS}{lines}
-                . ", pos. "
-                . $parser->YYData->{VARS}{token_prev_pos}
-                . " -- it is not acceptable in this version";
+                                      . " -- it is not acceptable in CIF v1.1";
             $parser->_Error( { line_content =>
                                $parser->YYData->{VARS}{current_line} } );
             return('GLOBAL_', $1);
@@ -963,19 +992,30 @@ my $UQSTRING_INLINE     =       qr/^(?:
         {
             advance_token($parser, length($1 . $2));
             $parser->YYData->{ERRMSG} = "STOP_ symbol detected" .
-                " in line " .
-                $parser->YYData->{VARS}{lines} .
-                ", pos. " .
-                $parser->YYData->{VARS}{token_prev_pos} .
-                " -- it is not acceptable in this version";
+                                        " -- it is not acceptable in CIF v1.1";
             $parser->_Error( { line_content =>
                                $parser->YYData->{VARS}{current_line} } );
             return('STOP_', $1);
         }
         #matching DATA_ field
-        if( s/^(data_${NON_BLANK_CHAR}+)//si )
+        if( s/^(data_(${NON_BLANK_CHAR}*))//si )
         {
             advance_token($parser, length($1));
+            #detecting zero-length data block names
+            if ( length($2) == 0 ) {
+                if ( $parser->{USER}{OPTIONS}{fix_errors} ||
+                     $parser->{USER}{OPTIONS}{fix_datablock_names} ) {
+                    $parser->YYData->{ERRMSG} = 'zero-length data block name '
+                                              . 'detected -- ignored';
+                    $parser->_Warning();
+                } else {
+                    $parser->YYData->{VARS}{print_position} = 1;
+                    $parser->YYData->{ERRMSG} = 'zero-length data block name '
+                                              . 'detected';
+                    $parser->_Error( { line_content =>
+                                       $parser->YYData->{VARS}{current_line} } );
+                }
+            }
             return('DATA_', $1);
         }
         #matching LOOP_ begining
@@ -1015,6 +1055,12 @@ my $UQSTRING_INLINE     =       qr/^(?:
             if( $1 eq '[' ) {
                 $parser->YYData->{ERRMSG} =
                     "opening square brackets are reserved and may not " .
+                    "start an unquoted string";
+                $parser->YYData->{VARS}{print_position} = 1;
+            #reporting closing square bracket:
+            } elsif( $1 eq ']' ) {
+                $parser->YYData->{ERRMSG} =
+                    "closing square brackets are reserved and may not " .
                     "start an unquoted string";
                 $parser->YYData->{VARS}{print_position} = 1;
             #reporting dollar symbol:

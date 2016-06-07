@@ -24,7 +24,15 @@ use COD::CIF::Tags::CanonicalNames qw( canonicalize_all_names );
 use COD::Escape qw( decode_textfield );
 use COD::SOptions qw( getOptions );
 use COD::SUsage qw( usage options );
-use COD::UserMessage qw( warning error prefix_dataname );
+use COD::ErrorHandler qw( process_warnings
+                          process_errors
+                          process_parser_messages );
+
+my $die_on_error_level = {
+    ERROR   => 1,
+    WARNING => 0,
+    NOTE    => 0
+};
 
 my $use_parser = 'c';
 my $output_dir = '.';
@@ -49,7 +57,7 @@ my $list = 0;
 #*        Use Perl parser for CIF parsing.
 #*
 #*     --use-c-parser
-#*        Use Perl & C parser for CIF parsing.
+#*        Use Perl & C parser for CIF parsing (default).
 #*
 #*     --help, --usage
 #*        Print short usage message (this message) and exit.
@@ -75,139 +83,156 @@ for my $filename (@ARGV) {
 
     my $options = { 'parser' => $use_parser, 'no_print' => 1 };
     my ( $data, $err_count, $messages ) = parse_cif( $filename, $options );
-
-    if ( $err_count > 0 ) {
-        print STDERR $_ foreach ( @$messages );
-        error( $0, $filename, undef, "$err_count error(s) "
-             . "encountered while parsing the file", undef );
-        next;
-    }
-    print STDERR $_ foreach ( @$messages );
+    process_parser_messages( $messages, $die_on_error_level );
+    next if ( $err_count > 0 );
 
     canonicalize_all_names( $data );
 
     for my $datablock (@$data) {
         my $values   = $datablock->{values};
-        my $dataname = prefix_dataname($datablock->{name});
+        my $dataname = 'data_' . $datablock->{name} if defined $datablock->{name};
 
-        my $encodings = get_content_encodings( $datablock, $filename );
+        local $SIG{__WARN__} = sub { process_warnings( {
+                                       'message'  => @_,
+                                       'program'  => $0,
+                                       'add_pos'  => $dataname,
+                                       'filename' => $filename
+                                   }, $die_on_error_level ) };
 
-        for my $i (0..$#{$values->{_tcod_file_id}}) {
-            my $path     = $values->{_tcod_file_name}[$i];
-            my $dirname  = dirname( $values->{_tcod_file_name}[$i] );
-            my $contents = $values->{_tcod_file_contents}[$i];
-            my $role     = $values->{_tcod_file_role}[$i];
-            my $md5sum   = $values->{_tcod_file_md5sum}[$i];
-            my $sha1sum  = $values->{_tcod_file_sha1sum}[$i];
-            my $uri      = $values->{_tcod_file_URI}[$i];
-            my $encoding;
-            if( exists $values->{_tcod_file_content_encoding} ) {
-                $encoding = $values->{_tcod_file_content_encoding}[$i];
-                $encoding = undef if $encoding eq '.';
-            }
-            if( !exists $created_dirs{$dirname} ) {
-                if( !$dry_run ) {
-                    die "can not create path $output_dir/$dirname -- " .
-                        "already exists" if -e "$output_dir/$dirname";
-                    make_path( "$output_dir/$dirname" );
+        eval { {
+            my $encodings = get_content_encodings( $datablock );
+
+            for my $i (0..$#{$values->{_tcod_file_id}}) {
+                my $path     = $values->{_tcod_file_name}[$i];
+                my $dirname  = dirname( $values->{_tcod_file_name}[$i] );
+                my $contents = $values->{_tcod_file_contents}[$i];
+                my $role     = $values->{_tcod_file_role}[$i];
+                my $md5sum   = $values->{_tcod_file_md5sum}[$i];
+                my $sha1sum  = $values->{_tcod_file_sha1sum}[$i];
+                my $uri      = $values->{_tcod_file_URI}[$i];
+                my $encoding;
+                if( exists $values->{_tcod_file_content_encoding} ) {
+                    $encoding = $values->{_tcod_file_content_encoding}[$i];
+                    $encoding = undef if $encoding eq '.';
                 }
-                print "$output_dir/$dirname\n" if $list;
-                $created_dirs{$dirname} = 1;
-            }
-            next if $path =~ /\/$/; # Skipping folders
-            if( !defined $contents || $contents eq '.'
-                || $contents eq '?' ) {
-                # Contents are not provided
-                if( defined $uri && $uri ne '.' && $uri ne '?' ) {
-                    # If the URI is given instead of contents, it has to be
-                    # fetched
-                    use WWW::Curl::Easy;
-                    my $curl = WWW::Curl::Easy->new();
-                    #$curl->setopt( CURLOPT_HEADER, 1 );
-                    $curl->setopt( CURLOPT_URL, $uri );
-                    $curl->setopt( CURLOPT_WRITEDATA, \$contents );
-                    if( $curl->perform ) {
-                        warning( $0, $filename, $dataname,
-                                 "unable to fetch URI '$uri': " .
-                                 $curl->errbuf, undef );
+                if( !exists $created_dirs{$dirname} ) {
+                    if( !$dry_run ) {
+                        die "ERROR, cannot create path $output_dir/$dirname -- "
+                          . 'path already exists' . "\n" if -e "$output_dir/$dirname";
+                        make_path( "$output_dir/$dirname" );
                     }
-                } else {
-                    warning( $0, $filename, $dataname,
-                             "contents for file '$path' are not " .
-                             "provided", 'skipping' );
-                    next
+                    print "$output_dir/$dirname\n" if $list;
+                    $created_dirs{$dirname} = 1;
                 }
-            }
+                next if $path =~ /\/$/; # Skipping folders
+                if( !defined $contents || $contents eq '.'
+                    || $contents eq '?' ) {
+                    # Contents are not provided
+                    if( defined $uri && $uri ne '.' && $uri ne '?' ) {
+                        # If the URI is given instead of contents, it has to be
+                        # fetched
+                        use WWW::Curl::Easy;
+                        my $curl = WWW::Curl::Easy->new();
+                        $curl->setopt( CURLOPT_URL, $uri );
+                        $contents = '';
+                        open( my $curlhandle, '>', \$contents );
+                        $curl->setopt( CURLOPT_WRITEDATA, $curlhandle );
+                        if( $curl->perform ) {
+                            warn "WARNING, unable to fetch URI '$uri': "
+                               . $curl->errbuf . "\n";
+                        }
+                    } else {
+                        warn "WARNING, contents for file '$path' are not "
+                           . 'provided -- skipping' . "\n";
+                        next
+                    }
+                }
 
-            eval {
-                if( !$encoding || !$encodings ||
-                    !exists $encodings->{$encoding} ) {
-                    if( $encoding && $encodings &&
+                eval {
+                    if( !$encoding || !$encodings ||
                         !exists $encodings->{$encoding} ) {
-                        warning( $0, $filename, $dataname,
-                                 "content encoding stack '$encoding' " .
-                                 "is not described", "trying to guess" );
+                        if( $encoding && $encodings &&
+                            !exists $encodings->{$encoding} ) {
+                            warn "WARNING, content encoding stack '$encoding' "
+                               . "is not described -- trying to guess\n";
+                        }
+                        # Perform a default decoding, try to guess the encoding
+                        # layer type from the encoding ID
+                        $contents = decode_textfield( $contents, $encoding );
+                    } else {
+                        for my $layer (reverse @{$encodings->{$encoding}}) {
+                            $contents = decode_textfield( $contents, $layer );
+                        }
                     }
-                    # Perform a default decoding, try to guess the encoding
-                    # layer type from the encoding ID
-                    $contents = decode_textfield( $contents, $encoding );
-                } else {
-                    for my $layer (reverse @{$encodings->{$encoding}}) {
-                        $contents = decode_textfield( $contents, $layer );
+                };
+                if( $@ ) {
+                    $@ =~ s/^ERROR,\s*//;
+                    warn 'WARNING, could not decode contents for file '
+                        . "'$path' -- $@; will not decode contents\n";
+                    $contents = $values->{_tcod_file_contents}[$i];
+                }
+
+                if( $md5sum ) {
+                    if( md5_hex($contents) ne $md5sum ) {
+                        warn "WARNING, MD5 checksums of the original '$path' "
+                           . 'and decoded files are different' . "\n";
                     }
                 }
-            };
-            if( $@ ) {
-                warning( $0, $filename, $dataname,
-                         "could not decode contents for file '$path'",
-                         "$@; will not decode contents" );
-                $contents = $values->{_tcod_file_contents}[$i];
+                if( $sha1sum ) {
+                    if( sha1_hex($contents) ne $sha1sum ) {
+                        warn "WARNING, SHA1 checksums of the original '$path' "
+                           . 'and decoded files are different' . "\n";
+                    }
+                }
+
+                if( !$dry_run ) {
+                    open my $out, '>', "$output_dir/$path" or die 'ERROR, '
+                        . 'could not open file ' . "'$output_dir/$path'"
+                        . ' for writing -- ' . lcfirst($!) . "\n";
+                    print $out $contents;
+                    close $out or die 'ERROR, '
+                        . 'could not close file ' . "'$output_dir/$path'"
+                        . ' after writing -- ' . lcfirst($!) . "\n";
+                    if( $role && $role eq 'script' ) {
+                        chmod( 0775, "$output_dir/$path" );
+                    }
+                }
+                print "$output_dir/$path\n" if $list;
             }
 
-            if( $md5sum ) {
-                if( md5_hex($contents) ne $md5sum ) {
-                    warning( $0, $filename, $dataname,
-                             "MD5 checksums of the original '$path' and " .
-                             "decoded files are different", undef );
-                }
-            }
-            if( $sha1sum ) {
-                if( sha1_hex($contents) ne $sha1sum ) {
-                    warning( $0, $filename, $dataname,
-                             "SHA1 checksums of the original '$path' and " .
-                             "decoded files are different", undef );
-                }
-            }
-
+            print "$output_dir/main.sh\n" if $list;
             if( !$dry_run ) {
-                open( my $out, '>', "$output_dir/$path" );
-                print $out $contents;
-                close( $out );
-                if( $role && $role eq 'script' ) {
-                    chmod( 0775, "$output_dir/$path" );
-                }
-            }
-            print "$output_dir/$path\n" if $list;
-        }
+                my $main_exec_path = "$output_dir/main.sh";
+                open( my $main_fh, '>', $main_exec_path ) or die 'ERROR, '
+                    . "could not open file '$main_exec_path' -- "
+                    . lcfirst($!) . "\n";
+                print $main_fh "#!/bin/bash\n\n";
 
-        print "$output_dir/main.sh\n" if $list;
-        if( !$dry_run ) {
-            my $main_exec_path = "$output_dir/main.sh";
-            open( my $main_fh, '>', $main_exec_path );
-            print $main_fh "#!/bin/bash\n\n";
-
-            for my $i (0..$#{$values->{_tcod_computation_step}}) {
-                my $env = $values->{_tcod_computation_environment}[$i];
-                my $command = $values->{_tcod_computation_command}[$i];
-                print $main_fh "(\n";
-                if( $env ) {
-                    map {print $main_fh "    $_\n" } split( "\n", $env );
-                    print $main_fh "\n";
+                for my $i (0..$#{$values->{_tcod_computation_step}}) {
+                    my $env = $values->{_tcod_computation_environment}[$i];
+                    my $command = $values->{_tcod_computation_command}[$i];
+                    print $main_fh "(\n";
+                    if( $env ) {
+                        foreach ( split m/\n/, $env ) {
+                            print $main_fh "    $_\n";
+                        };
+                        print $main_fh "\n";
+                    }
+                    print $main_fh "    $command\n)\n";
                 }
-                print $main_fh "    $command\n)\n";
+                close $main_fh or die 'ERROR, '
+                    . "could not close file '$main_exec_path' -- "
+                    . lcfirst($!) . "\n";;
+                chmod( 0775, $main_exec_path );
             }
-            close( $main_fh );
-            chmod( 0775, $main_exec_path );
+        }};
+        if ($@) {
+            process_errors( {
+                'program'       => $0,
+                'message'       => $@,
+                'filename'      => $filename,
+                'add_pos'       => $dataname
+            }, $die_on_error_level->{'ERROR'} );
         }
     }
 }

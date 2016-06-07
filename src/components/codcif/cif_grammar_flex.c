@@ -85,6 +85,11 @@ void set_lexer_allow_uqstring_brackets( void )
     cif_flex_lexer_flags |= CIF_FLEX_LEXER_ALLOW_UQSTRING_BRACKETS;
 }
 
+void set_lexer_fix_datablock_names( void )
+{
+    cif_flex_lexer_flags |= CIF_FLEX_LEXER_FIX_DATABLOCK_NAMES;
+}
+
 int cif_lexer_has_flags( int flags )
 {
     return cif_flex_lexer_flags & flags;

@@ -43,16 +43,17 @@ sub cif_estimate_z($)
             return int( 0.5 + $N * $density * $volume / $molwt );
         } else {
             my $error = "";
+            my $sep = "; ";
             if( !defined $volume ) {
-                $error .= "cell volume undefined\n";
+                $error .= $sep . "cell volume undefined";
             }
             if( !defined $density ) {
-                 $error .= "crystal density undefined\n";
+                 $error .= $sep . "crystal density undefined";
             }
             if( !defined $molwt ) {
-                $error .= "molecular weight undefined\n";
+                $error .= $sep . "molecular weight undefined";
             }
-            die "not enough data in '$dataset->{name}' to estimate Z;\n" . $error;
+            die 'ERROR, not enough data to estimate Z' . "$error" . "\n";
         }
     }
 }
@@ -107,8 +108,7 @@ sub get_volume
         if( defined $values->{_cell_length_a} &&
             defined $values->{_cell_length_b} &&
             defined $values->{_cell_length_c} ) {
-            my @cell = get_cell( $values, undef, undef, { silent => 1 } );
-            @cell[3..5] = map { defined $_ ? $_ : 90 } @cell[3..5];
+            my @cell = get_cell( $values );
             return cell_volume( @cell );
         } else {
             return undef

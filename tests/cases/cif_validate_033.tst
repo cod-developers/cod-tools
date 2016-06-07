@@ -1,1 +1,1 @@
-Test the reporting of values with standard uncertainty where it is not allowed.
+Tests the reporting of values with standard uncertainty where it is not allowed.

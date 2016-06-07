@@ -1,21 +1,22 @@
 #!/bin/sh
 
-sudo apt-get install -y perl
-sudo apt-get install -y sqlite3
-sudo apt-get install -y libdbi-perl
-sudo apt-get install -y libdbd-mysql-perl
-sudo apt-get install -y libdbd-sqlite3-perl
-sudo apt-get install -y libcapture-tiny-perl
-sudo apt-get install -y libcarp-assert-perl
-sudo apt-get install -y libdigest-sha-perl
-sudo apt-get install -y libhtml-parser-perl
-sudo apt-get install -y libparse-yapp-perl
-sudo apt-get install -y openbabel
-sudo apt-get install -y curl
-sudo apt-get install -y libhtml-parser-perl
-sudo apt-get install -y tree
-sudo apt-get install -y gawk
-sudo apt-get install -y libwww-curl-perl
-sudo apt-get install -y libjson-perl
-sudo apt-get install -y python-argparse
-sudo apt-get install -y liblist-moreutils-perl
+sudo apt-get install -y \
+    curl \
+    gawk \
+    libcapture-tiny-perl \
+    libcarp-assert-perl \
+    libclone-perl \
+    libdbd-mysql-perl \
+    libdbd-sqlite3-perl \
+    libdbi-perl \
+    libdigest-sha-perl \
+    libhtml-parser-perl \
+    libjson-perl \
+    liblist-moreutils-perl \
+    libparse-yapp-perl \
+    libwww-curl-perl \
+    openbabel \
+    perl \
+    python-argparse \
+    sqlite3 \
+    tree

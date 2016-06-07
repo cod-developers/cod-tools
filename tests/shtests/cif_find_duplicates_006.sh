@@ -14,7 +14,8 @@ mkdir ${TMP_DIR}
 TMP_OUT="${TMP_DIR}/$(basename ${find_numbers}).out"
 TMP_ERR="${TMP_DIR}/$(basename ${find_numbers}).err"
 
-${find_numbers} ./tests/inputs/cifs-with-errors ./tests/inputs/cod-with-errors \
+${find_numbers} --continue-on-errors \
+    ./tests/inputs/cifs-with-errors ./tests/inputs/cod-with-errors \
     2> ${TMP_ERR} \
     | sort > ${TMP_OUT}
 

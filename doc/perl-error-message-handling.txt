@@ -1,0 +1,375 @@
+CONTENTS:
+  1. INTRO
+  2. COMMAND LINE OPTIONS
+  3. RAISING AND HANDLING ERROR MESSAGES
+  4. PATTERNS
+    4A. CIF PARSER SCOPE
+    4B. SINGLE DATABLOCK SCOPE
+    4C. NON-CIF FILE SCOPE
+    4C. ONE-LINER
+  3. DISCUSSION
+=====================================================================
+1. INTRO
+
+The document describes the most common ways Perl error messages should be
+handled in the COD (Crystallography Open Database) software.
+
+Not all error messages are equally severe and it is sometimes desirable for
+the script to differentiate its behaviour in regards to that -- terminate on
+one type of error messages and continue on other. Currently, 3 severity levels
+are used in the COD software -- NOTE, WARNING and ERROR -- which are described
+in [paper citation/add descriptions to the document].
+
+For the error message format used through-out this document, please refer to 
+the 'error-messages-conventions.txt' document.
+
+2. COMMAND LINE OPTIONS
+
+The default behaviour of most COD scripts is to terminate on ERROR level
+warnings and continue on all other. In case the script requires different
+customization on different runs, the following options should be implemented:
+
+#* -c, --always-continue
+#*                     Continue processing and return successful return status
+#*                     despite error messages of any severity being raised.
+#* -c-, --always-die
+#*                     Stop and return error status if error messages of any
+#*                     severity are raised.
+#*
+#* --continue-on-errors
+#*                     Do not terminate script if errors are raised.
+#* --die-on-errors
+#*                     Terminate script immediately if errors are raised (default).
+#*
+#* --continue-on-warnings
+#*                     Do not terminate script if warnings are raised (default).
+#* --die-on-warnings
+#*                     Terminate script immediately if warnings are raised.
+#*
+#* --continue-on-notes
+#*                     Do not terminate script if notes are raised (default).
+#* --die-on-notes
+#*                     Terminate script immediately if notes are raised.
+
+Example of the implementation of these options can be found in 'cod-tools'
+package scripts like 'cif2cod', 'cif_molecule', etc.
+
+3. RAISING ERROR MESSAGES
+
+Error messages are raised via the in-built Perl subroutines warn() and die().
+The die() subroutine is only used to raise ERROR level messages. All messages
+should be prefixed by their severity level followed by a comma and a white
+space (e.g 'NOTE, '). If no severity level is provided, messages raised via
+die() should be treated as ERRORs and messages raised via warn() should be
+treated as WARNINGs. Messages should terminate with a new line symbol ('\n')
+to prevent the concatenation of additional information to the end of the
+message. Messages can be raised in any part of the program (module, subroutine),
+but should be handled in the top level of the script.
+
+4. HANDLING ERROR MESSAGES
+
+Messages raised by warn() are captured and formatted by locally redefining
+the Perl __WARN__ signal handling subroutine in the top level of the script.
+For example:
+
+{
+    local $SIG{__WARN__} = {
+        my $message = my_formatting_subroutine(@_);
+        $die_on_notes ? die $message : warn $message;
+    };
+
+    warn "NOTE, this warn signal will be handled locally -- "
+       . "script will even die if required\n";
+}
+
+Handling of messages raised by die() requires a different approach that
+is most similar to try-catch mechanisms in other languages (JAVA, for example).
+Since there is no way to prevent the script from terminating by simply
+locally overwriting the $SIG{__DIE__} signal handler, the signal itself must
+be caught with the help of eval{} block statement and stored in the $@ variable.
+It can then be passed to an error handling subroutine. For example:
+
+for (my $i = 0; $i++; $i < 3) {
+    eval {
+        die "ERROR, died at iteration $i -- died at iteration 1 is also true\n";
+    };
+    if ($@) {
+        my $message = my_formatting_subroutine($@);
+        $die_on_errors ? die $message : warn $message;
+    }
+};
+
+One of the main differences between the warn() and die() subroutines is that
+the die signal exits all inner blocks along the way until the signal is caught.
+As a result, the only place where the script can continue after the die()
+subroutine call is outside the eval{} block. This is not true for the warn()
+subroutine -- the script can execute statements that follow right after the
+warn() subroutine call.
+
+4. PATTERNS
+
+Error message handling was recognized as a cross-cutting concern and
+COD::ErrorHandler Perl module was developed to aid this task. The module
+contains subroutines that can be used as die and warn signal handlers, as
+well as a subroutine to handle errors returned by the COD::CIF::Parser.
+Descriptions of common situations that require error message handling and
+examples of how to use the appropriate COD::ErrorHandler subroutines are
+provided below.
+
+4A. CIF PARSER SCOPE
+
+COD::CIF::Parser module provides an interface to an error-fixing CIF parser
+via the parse_cif subroutine. The subroutine returns three parameters --
+the parsed structure, number of ERRORs the parser has encountered and the
+list of error messages that are formatted following the error message grammar
+(using the COD::UserMessage module). The last two parameters can be used for
+error handling.
+
+By default, parse_cif subroutine also outputs the formatted error messages
+directly to STDERR, so these messages cannot be captured via the previously
+described warn/die capturing method. However, if the 'no_print' option is
+passed to the subroutine the printing of error messages is suppressed. Due to
+this the following approach has been developed:
+1) Print all error messages returned by the parser to STDERR;
+2) Count the number of messages for each error level;
+3) Print an additional error message for each error level that had at least
+   one occurrence. The error message should state the error level and the number
+   of messages. If the script is required to terminate on that error level,
+   the message should be printed to STDERR as an ERROR with an additional
+   explanation concatenated to the end of the message; the script should then
+   terminate. Otherwise, the message should be printed to STDERR as a NOTE.
+   It is preferred to print these summarizing message in the order of increasing
+   severity. For example:
+
+   script: parsed_file: NOTE, 3 NOTE(s) encountered while parsing the file.
+   script: parsed_file: NOTE, 2 WARNING(s) encountered while parsing the file.
+   script: parsed_file: ERROR, 1 ERROR(s) encountered while parsing the file -- die on ERROR(s) requested.
+
+The described approach has been implemented in the
+COD::ErrorHandler::process_parser_messages subroutine. The pattern illustrating
+how the subroutine should be used is provided below.
+
+% START Perl
+use strict;
+use warnings;
+use COD::ErrorHandler qw( process_parser_messages );
+
+# Hash containing terminate/continue flags for each error level
+my $die_on_error_level = {
+    ERROR   => 1,
+    WARNING => 0,
+    NOTE    => 0
+};
+
+@ARGV = ("-") unless @ARGV;
+
+for my $filename (@ARGV) {
+
+    # Suppressing the printing of error messages with 'no_print' option
+    my $options = { 'parser' => 'c', 'no_print' => 1 };
+    my ( $data, $err_count, $messages ) = parse_cif( $filename, $options );
+    process_parser_messages( $messages, $die_on_error_level );
+
+    # Processing of datablocks goes here
+}
+% END Perl
+
+4B. SINGLE DATABLOCK SCOPE
+
+One of the most common CIF file processing patterns found in COD scripts is to
+parse the file and then iterate over the returned datablocks one by one. Since
+the name of the currently processed file and datablock are know in the top
+level of the script, they can be passed to the warn/die signal handling
+functions (as described in section 4 of this document). COD::ErrorHandler
+module provides COD::ErrorHandler::process_errors and
+COD::ErrorHandler::process_warning subroutines to handle error messages
+while processing datablocks. The pattern illustrating how these subroutines
+should be used is provided below.
+
+% BEGIN Perl
+use strict;
+use warnings;
+use COD::ErrorHandler qw( process_warnings process_errors );
+
+# Variable holding the values of terminate/continue flags for each error level
+my $die_on_errors   = 1;
+my $die_on_warnings = 0;
+my $die_on_notes    = 0;
+
+@ARGV = ("-") unless @ARGV;
+
+for my $filename (@ARGV) {
+    # For the sake of brevity, errors messages raised by the parser are not
+    # easily replaced by the pattern presented in 4A
+    my $options = { 'parser' => 'c' };
+    my ( $data, $err_count, $messages ) = parse_cif( $filename, $options );
+
+    for my $datablock (@$data) {
+        # Adding a prefix to the dataname. NOTE: the current version of the
+        # CIF parser might return an undefined dataname
+        my $dataname = 'data_' . $datablock->{'name'} if defined $datablock->{'name'};
+
+        # Locally redefining the Perl __WARN__ signal handling subroutine
+        local $SIG{__WARN__} = sub {
+                                process_warnings( {
+                                    process_warnings( {
+                                       'message'       => @_,
+                                       'program'       => $0,
+                                       'filename'      => $filename,
+                                       'add_pos'       => $dataname
+                                     }, {
+                                        'WARNING' => $die_on_warnings,
+                                        'NOTE'    => $die_on_notes
+                                     }
+                               ) };
+
+        # A pattern resembling the try/catch pattern in other languages
+        eval {
+            # Datablock processing logic goes here
+        };
+        if ($@) {
+            process_errors( {
+              'message'       => $@,
+              'program'       => $0,
+              'filename'      => $filename,
+              'add_pos'       => $dataname
+            }, $die_on_errors )
+        }
+    }
+}
+% END Perl
+
+It should be noted, that unlike COD::ErrorHandler::process_parser_messages
+(see section 4A) subroutine that prints all messages and only then terminates
+the script if required, COD::ErrorHandler::process_warnings and
+COD::ErrorHandler::process_errors subroutines terminate the script on the
+first occurrence of the error message level that requires script termination.
+Upon termination these subroutines also output an additional ERROR message most
+similar to that issued by COD::ErrorHandler::process_parser_messages upon
+termination, but with the message count set to '1'. Since the error level
+of the messages themselves is not changed upon termination (NOTEs don't become
+WARNINGs and WARNINGs do not become ERRORs), the aforementioned ERROR message
+provides an invariant that all terminated scripts raised at least 1 ERROR
+level message (for discussion about modifying this invariant by adding a
+new FATAL error level, please see section 5).
+
+4C. NON-CIF FILE SCOPE
+
+Alongside CIF files some scripts also deal with non-CIF files (CIF headers,
+config files, etc.). The approach to handling error messages that arise
+while processing these files is very similar to the one used when dealing with
+CIF file datablocks (see 4B). However, some minor differences do arise, like,
+for example, the lack of the datablock name in the non-CIF files or the need
+to handle open/close operations of the non-CIF files directly (CIF parser
+handles these operations automatically when parsing a CIF file). These
+differences are minuscule enough to allow the reuse of the same subroutines.
+The pattern illustrating how these subroutines should be used is provided below.
+
+% BEGIN Perl
+use strict;
+use warnings;
+use COD::ErrorHandler qw( process_warnings process_errors );
+
+# Variable holding the values of terminate/continue flags for each error level
+my $die_on_errors   = 1;
+my $die_on_warnings = 0;
+my $die_on_notes    = 0;
+
+my $die_on_error_level = {
+    ERROR   => $die_on_errors,
+    WARNING => $die_on_warnings,
+    NOTE    => $die_on_notes
+};
+
+my $file = 'non-cif-file.txt';
+
+eval {
+    local $SIG{__WARN__} = sub { process_warnings( {
+                                    'message'       => @_,
+                                    'program'       => $0,
+                                    'filename'      => $file
+                                 }, $die_on_error_level ) };
+
+    if( defined $file ) {
+        open( my $FILE, '<', $file ) or die "ERROR, "
+          . "could not open file for input -- "
+          . lcfirst($!) . "\n";
+
+        foreach( <$FILE> ) {
+            chomp;
+            if( /^#/ or /^\s*$/ ) {
+                warn "WARNING, skipped a comment line -- '$_'" . "\n";
+            } else {
+                print $_ . "\n";
+            }
+        }
+
+        close( $FILE ) or die "ERROR, "
+           . "error while closing file after reading -- "
+           . lcfirst($!) . "\n";
+    }
+};
+if ($@) {
+    process_errors( {
+        'message'       => $@,
+        'program'       => $0,
+        'filename'      => $file
+    }, $die_on_errors );
+};
+
+% END Perl
+
+4D. DIRECT MESSAGE PRINT
+
+On some occasions using the previously defined error handling patters might
+be impractical or simply impossible (for example, when processing more than
+a single datablock at a time). For these situations COD::ErrorHandler module
+provides the COD::ErrorHandler::report_message subroutine that allows to format
+and print error messages directly to STDERR without raising the __WARN__ or
+__DIE__ signals. An example illustrating how this subroutines should be used
+is provided below.
+
+% BEGIN Perl
+use strict;
+use warnings;
+use COD::ErrorHandler qw( report_message );
+
+# Variable holding the values of terminate/continue flags for each error level
+my $die_on_errors   = 1;
+my $die_on_warnings = 0;
+my $die_on_notes    = 0;
+
+my $filename = 'dummy-file.txt';
+
+report_message( {
+    'program'   => $0,
+    'filename'  => $filename,
+    'err_level' => 'WARNING',
+    'message'   => 'this is a warning'
+    }, $die_on_warnings );
+
+report_message( {
+    'program'   => $0,
+    'filename'  => $filename,
+    'add_pos'   => 'data_fake',
+    'err_level' => 'WARNING',
+    'message'   => 'this is a warning that also reference the dataname'
+    }, $die_on_warnings );
+
+report_message( {
+    'program'   => $0,
+    'err_level' => 'ERROR',
+    'message'   => 'this is ERROR message is not deadly'
+    }, 0 );
+
+report_message( {
+    'program'   => $0,
+    'err_level' => 'ERROR',
+    'message'   => 'and this one is'
+    }, $die_on_errors );
+
+% END Perl
+
+5. DISCUSSION
+    TO-DO: Serializing/deserializing additional information?
+    TO-DO: FATAL error level when dying

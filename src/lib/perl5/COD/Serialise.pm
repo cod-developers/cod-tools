@@ -41,13 +41,12 @@ sub serialiseHash
    my $hash = shift;
    my $indent = ( scalar(@_) != 0 ? shift : "" ) ;
 
-   my $key;
    ## printf STDOUT "\n" unless $indent eq "";
    ## print STDOUT $indent, "{\n";
    print STDOUT "{\n";
    my $old_indent = $indent;
    $indent .= " " x 3;
-   foreach $key ( sort {$a cmp $b} keys %{$hash} ) {
+   foreach my $key ( sort {$a cmp $b} keys %{$hash} ) {
        printf STDOUT "%s%-5s => ", $indent, '"' . $key . '"';
        if( ref $hash->{$key} eq "HASH" ) {
            serialiseHash( $hash->{$key}, $indent );
@@ -72,12 +71,11 @@ sub serialiseArray
    my $array = shift;
    my $indent = ( scalar(@_) != 0 ? shift : "" ) ;
 
-   my $item;
    my $isFlat = 1;
    if( int(@{$array}) > 100 ) {
        $isFlat = 0;
    } else {
-       foreach $item ( @{$array} ) {
+       foreach my $item ( @{$array} ) {
            if( defined $item && (ref $item or length($item) > 20 )) {
                $isFlat = 0; last;
            }
@@ -95,7 +93,7 @@ sub serialiseArray
 
        $indent .= " " x 3;
        my $index = 0;
-       foreach $item ( @{$array} ) {
+       foreach my $item ( @{$array} ) {
            if( ref $item eq "HASH" ) {
                printf STDOUT "%s# %3d:\n%s", $indent, $index++, $indent;
                    serialiseHash( $item, $indent );
