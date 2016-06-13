@@ -12,6 +12,7 @@ package COD::UserMessage;
 
 use strict;
 use warnings;
+use List::Util qw( max );
 
 require Exporter;
 our @ISA = qw( Exporter );
@@ -70,7 +71,7 @@ sub sprint_message($$$$$$@)
            $message .
            (defined $explanation ? " -- " . $explanation : "") .
            (defined $line_contents ? ":\n" . $line_contents . "\n" .
-                (defined $column ? " " . " " x ($column-1) . "^\n" : "")
+                (defined $column ? " " . " " x max( 0, $column-1 ) . "^\n" : "")
                 : ".\n");}
 
 #==============================================================================
