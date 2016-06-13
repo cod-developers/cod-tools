@@ -559,7 +559,8 @@ sub database_connect
                             "dbname=$database->{name};".
                             "user=$database->{user};".
                             "password=$database->{password}" )
-        || die "cannot connect do the database -- $DBI::errstr";
+        || die 'cannot connect to the database' .
+           ( defined $DBI::errstr ? ' -- ' . lcfirst( $DBI::errstr) : '' );
 
     return $dbh;
 }
@@ -568,7 +569,9 @@ sub database_disconnect
 {
     my ( $dbh ) = @_;
 
-    $dbh->disconnect || die "cannot disconnect -- $DBI::errstr";
+    $dbh->disconnect
+    || die 'cannot disconnect from the database' .
+       ( defined $DBI::errstr ? ' -- ' . lcfirst( $DBI::errstr) : '' );
 }
 
 sub query_COD_database
@@ -688,8 +691,9 @@ sub query_COD_database
                         push( @{$COD->{$formula}}, $structure );
                     }
                 } else {
-                    die "ERROR, error fetching formula '${formula}' -- " .
-                        "$DBI::errstr";
+                    die "ERROR, error fetching formula '${formula}'" .
+                         ( defined $DBI::errstr ? ' -- ' .
+                                   lcfirst( $DBI::errstr) : '' );
                 }
             }
         }
