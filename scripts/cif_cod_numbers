@@ -222,7 +222,17 @@ for my $filename (@ARGV) {
         };
     }
 
-    my $duplicates = fetch_duplicates( \%structures, \%database, \%options );
+    my $duplicates;
+    eval {
+        $duplicates = fetch_duplicates( \%structures, \%database, \%options );
+    };
+    if ($@) {
+        process_errors( {
+            'message'  => $@,
+            'program'  => $0,
+            'filename' => $filename,
+            }, $die_on_error_level->{'ERROR'} );
+    };
 
     for my $datablock ( @$duplicates ) {
         if( keys %{ $datablock->{duplicates} } > 0 ) {
