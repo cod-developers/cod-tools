@@ -1743,7 +1743,6 @@ sub print_molecule
     my $has_disorder = 0;
     my $is_polymer   = 0;
     my $has_attached_hydrogens = 0;
-    my $has_site_symops = 0;
     my $has_refinement_flags = 0;
     my $has_posn_refinement_flags = 0;
     my $has_adp_refinement_flags = 0;
@@ -1758,9 +1757,6 @@ sub print_molecule
         }
         if( $atom->{attached_hydrogens} ) {
             $has_attached_hydrogens = 1;
-        }
-        if( $atom->{site_symops} && @{$atom->{site_symops}} > 0 ) {
-            $has_site_symops = 1;
         }
         if( exists $atom->{refinement_flags} &&
             $atom->{refinement_flags} ne '.' ) {
@@ -1976,6 +1972,13 @@ sub print_molecule
             $atom->{"multiplicity"},
             $atom->{"multiplicity_ratio"},
             $has_disorder ? ( $atom->{"assembly"}, $atom->{"group"} ) : ();
+    }
+
+    my $has_site_symops = 0;
+    foreach my $atom ( @{$trimmed_atoms} ) {
+        if( $atom->{site_symops} && @{$atom->{site_symops}} > 0 ) {
+            $has_site_symops = 1;
+        }
     }
 
     if( $has_site_symops ) {
