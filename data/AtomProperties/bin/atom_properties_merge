@@ -1,5 +1,7 @@
-#!/usr/bin/perl
-
+#! /bin/sh
+#!perl -w # --*- Perl -*--
+eval 'exec perl -x $0 ${1+"$@"}'
+    if 0;
 #------------------------------------------------------------------------------
 #$Author$
 #$Date$ 
@@ -16,8 +18,9 @@
 
 use strict;
 use warnings;
-use SOptions;
-use SUsage;
+
+use COD::SOptions qw( getOptions );
+use COD::SUsage qw( usage );
 
 use XML::Simple;
 use YAML qw(Dump Bless Load LoadFile);
@@ -70,7 +73,7 @@ my $output_format = "yaml";
     "-y,--yaml"              => sub{ $output_format = "yaml" },
     "-p,--perl-hash"         => sub{ $output_format = "perl" },
 
-    "--help,--usage"   => sub { SUsage::usage; exit }
+    "--help,--usage"   => sub { usage; exit }
 );
 
 @ARGV = ( "-" ) unless @ARGV;
@@ -159,8 +162,9 @@ push @default_property_order, sort @unrecognized_properties;
 if ( $output_format eq "perl" ) {
     print_perl_hash( \%atoms_merged, \@default_property_order )
 } elsif ( $output_format eq "yaml" ) {
-    my @print_order = sort { $atoms_merged{$a} -> {"atomic_number"} <=> 
-                             $atoms_merged{$b} -> {"atomic_number"} 
+    my @print_order = sort { $atoms_merged{$a} -> {"atomic_number"} <=>
+                             $atoms_merged{$b} -> {"atomic_number"} ||
+                             $a cmp $b # this line is mainly to order D and H
                            } keys %atoms_merged;
     Bless(\%atoms_merged)->keys(\@print_order);
     print Dump \%atoms_merged;
@@ -180,9 +184,10 @@ sub print_perl_hash
           "\n" .
           '%AtomProperties::atoms = (' . "\n";
 
-    my @print_order = sort { $atoms_merged -> {$a} -> {"atomic_number"} <=> 
-                             $atoms_merged -> {$b} -> {"atomic_number"} }
-                                                         keys %{$atoms_merged};
+    my @print_order = sort { $atoms_merged->{$a}->{'atomic_number'} <=>
+                             $atoms_merged->{$b}->{'atomic_number'} ||
+                             $a cmp $b # this line is mainly to order D and H
+                      } keys %{$atoms_merged};
 
     foreach my $atom ( @print_order ) {
 
@@ -194,12 +199,27 @@ sub print_perl_hash
                 if ( ref($entry) eq "ARRAY" ) {
                     $entry = "[" . join(", ", map { $_ = "'$_'" } 
                                                                @{$entry}) . "]";
-                 } elsif( ref($entry) eq "HASH" ) { 
+                 } elsif( ref($entry) eq "HASH" ) {
+
+                    my @key_order = keys %{$entry};
+                    if ( $_ eq 'covalent_radii' ) {
+                        @key_order = ( 'single', 'double', 'triple' )
+                    } elsif ( $_ eq 'spin_state_radii' ) {
+                        @key_order = ( 'l.s.', 'h.s.' )
+                    };
+
+                    my @keys;
+                    foreach my $key ( @key_order ) {
+                        if ( exists $entry->{$key} ) {
+                            push @keys, $key;
+                        }
+                    };
+
                     if ( keys %{$entry} > 0 ) {
                         $entry = "{\n" . join(",\n", 
-                                         map {$_ =  " "x17 ."\"$_\" => \"" . 
-                                              $entry -> {$_} . '"' } 
-                                              keys %{$entry} ) . 
+                                         map {$_ =  " "x17 ."\"$_\" => \"" .
+                                              $entry -> {$_} . '"' }
+                                              @keys ) .
                                          "\n" . " "x13 . "}";
                     } else {
                         $entry = "{}"
@@ -215,7 +235,7 @@ sub print_perl_hash
     print " "x11 . "},\n";
 }
 
-print ");\n\n1;";
+print ");\n\n1;\n";
 
 }
 
