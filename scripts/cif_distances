@@ -368,6 +368,7 @@ sub symops_apply
     my $i = 0;
     foreach ( @{$sym_atoms} ) {
         $_->{'symop_string'} = @{$symop_strings}[$i];
+        $_->{'symop_id'} = $i + 1;
         $i = ( $i + 1 ) % @{$symop_strings};
     }
 
@@ -447,7 +448,8 @@ sub get_distances
                                              $atom_2->{'coordinates_ortho'} );
 
                     if ( !( equals( $distance, 0, 3 ) && $i == $j ) ) {
-                        if ( $distance < $min_distance ) {
+                        if ( $distance < $min_distance &&
+                             !equals( abs( $distance - $min_distance ), 0, 5 ) ) {
                             ( $min_index, $min_distance ) = ( $k, $distance )
                         }
                     }
