@@ -119,15 +119,14 @@ while( @ARGV > 0 ) {
             'program'   => $0,
             'filename'  => $hkl_file,
             'err_level' => 'WARNING',
-            'message'   => 'cannot confirm that the file contains Fobs or '
-                         . 'powder diffraction data -- either any of tags '
-                         . 'from list ('
-                         . join( ", ", map { "'$_'" } @hkl_tags )
-                         . '), or all tags from list ('
-                         . join( ", ", map { "'$_'" }
-                                   @powder_diffraction_intensity_tags )
-                         . '), or all tags from loop '
-                         . '\'_twin_refln_datum_id\' are missing'
+            'message'   => 'cannot confirm that the file contains Fobs ' .
+                           'or powder diffraction data -- not all data ' .
+                           'items from list (' .
+                           join( ', ', map { "'$_'" } @hkl_tags ) .
+                           ') and no data items from list (' .
+                           join( ', ', map { "'$_'" }
+                                 @powder_diffraction_intensity_tags ) .
+                           ') or \'_twin_refln_[]\' category are present'
         }, $die_on_error_level->{'WARNING'} );
         next PAIR;
     }
