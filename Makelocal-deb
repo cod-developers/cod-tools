@@ -81,7 +81,7 @@ build:
 	$(MAKE) -C src/
 
 deb: ${CHANGELOG} ${CONTROL} ${COPYRIGHT}
-	fakeroot debian/rules binary
+	fakeroot ${DEBIAN}/rules binary
 
 install: build install-codtools install-libcod-perl install-libcodcif install-pycodcif
 
@@ -127,4 +127,10 @@ install-libcodcif:
 		| xargs -i install {} ${PREFIX}/bin
 
 clean-deb:
-	debian/rules clean
+	${DEBIAN}/rules clean
+
+cleanAll-deb: clean-deb
+	rm -f ${CHANGELOG}
+	rm -f ${DEBIAN}/*.deb
+
+cleanAll distclean: cleanAll-deb
