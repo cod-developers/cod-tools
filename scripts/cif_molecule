@@ -666,7 +666,8 @@ for my $filename (@ARGV) {
                                     symop_apply_to_atoms( $molecule->{atoms},
                                                           $symop ),
                                 chemical_formula_sum => 
-                                    $molecule->{chemical_formula_sum}
+                                    $molecule->{chemical_formula_sum},
+                                is_polymer => $molecule->{is_polymer}
                             );
                             push( @stoichiometric_molecules,
                                   \%additional_molecule );
@@ -758,6 +759,8 @@ for my $filename (@ARGV) {
                                 \@all_atoms,
                             chemical_formula_sum =>
                                 chemical_formula_sum( \@all_atoms, $Z ),
+                            is_polymer => ((grep { $_->{is_polymer} == 1 }
+                                                   @$unique_molecules) > 0),
                         }];
                     }
                 }
@@ -781,6 +784,7 @@ for my $filename (@ARGV) {
                                       chemical_formula_sum =>
                                           chemical_formula_sum
                                               ( $disorder_representative, $Z ),
+                                      is_polymer => $molecule->{is_polymer},
                                   }
                             );
                         }
@@ -891,7 +895,8 @@ sub get_molecules
     if( @$dummy_atoms > 0 ) {
         foreach ( @$dummy_atoms ) { $_->{multiplicity_ratio} = '?' };
         $dummy_molecule = { atoms => $dummy_atoms,
-                            chemical_formula_sum => "" };
+                            chemical_formula_sum => '',
+                            is_polymer => 0 };
     }
 
     $atom_list = [ grep { !exists $_->{calc_flag} ||
@@ -1741,7 +1746,6 @@ sub print_molecule
     print_single_tag_and_value( '_cell_formula_units_Z', $Z );
 
     my $has_disorder = 0;
-    my $is_polymer   = 0;
     my $has_attached_hydrogens = 0;
     my $has_refinement_flags = 0;
     my $has_posn_refinement_flags = 0;
@@ -1751,9 +1755,6 @@ sub print_molecule
     foreach my $atom ( @{$molecule->{atoms}} ) {
         if( $atom->{group} ne '.' || $atom->{assembly} ne '.' ) {
             $has_disorder = 1;
-        }
-        if( exists $atom->{is_polymer} && $atom->{is_polymer} == 1 ) {
-            $is_polymer = 1;
         }
         if( $atom->{attached_hydrogens} ) {
             $has_attached_hydrogens = 1;
@@ -1782,7 +1783,7 @@ sub print_molecule
     my $trimmed_atoms;
     my $polymer_dimension;
 
-    if( $is_polymer ) {
+    if( $molecule->{is_polymer} ) {
         my $polymer_vectors = {};
         foreach my $atom ( @{$molecule->{atoms}} ) {
             my $site_label = $atom->{site_label};
@@ -1924,7 +1925,7 @@ sub print_molecule
         print "\n";
     }
 
-    if( $is_polymer ) {
+    if( $molecule->{is_polymer} ) {
         print_single_tag_and_value( '_cod_molecule_is_polymer', 'yes' );
     }
     if( $polymer_dimension ) {
@@ -2110,7 +2111,7 @@ sub find_molecules($$$$$$)
             ##         "cell: $initial_atom->{cell_label}\n";
             ## }
 
-            my( $molecule_atoms, $mol_nbumps ) =
+            my( $molecule_atoms, $mol_nbumps, $mol_polymer_atoms ) =
                 find_molecule( $covalent_sensitivity,
                                $atom_properties,
                                $symmetric_atoms,
@@ -2126,7 +2127,8 @@ sub find_molecules($$$$$$)
             if( @molecule_atoms > 0 ) {
                 my %molecule = (
                     atoms => \@molecule_atoms,
-                    chemical_formula_sum => "",
+                    chemical_formula_sum => '',
+                    is_polymer => ($mol_polymer_atoms > 0),
                 );
 
                 push( @unique_molecules, \%molecule );
@@ -2178,7 +2180,7 @@ sub find_molecule($$$$$$$$$)
             print STDERR "<<<< atom labeled '$current_atom->{name}' " .
                 "is already in some molecule, returning\n"
                 if $debug;
-            return ( \@neighbors, 0 );
+            return ( \@neighbors, 0, 0 );
         }
 
         $used_atoms->{$current_atom->{site_label}}
@@ -2188,6 +2190,8 @@ sub find_molecule($$$$$$$$$)
 
     $used_originals->{$current_atom->{cell_label}} =
         $current_atom->{cell_label};
+
+    my $polymer_atoms = 0;
 
     do {
         no warnings;
@@ -2202,7 +2206,7 @@ sub find_molecule($$$$$$$$$)
                 "$current_atom->{translation_id} (${used_uc_atom}-th time)\n"
             if $debug;
 
-            $current_atom->{is_polymer} = 1;
+            $polymer_atoms++;
 
             if( $used_uc_atoms->
                 {$current_atom->{site_label}}
@@ -2220,7 +2224,7 @@ sub find_molecule($$$$$$$$$)
                     "memory consumption)";
                 if( !$die_on_errors ) {
                     warn "WARNING, $message\n";
-                    return ( [], 0 );
+                    return ( [], 0, $polymer_atoms );
                 } else {
                     die "ERROR, $message\n";
                 }
@@ -2229,7 +2233,7 @@ sub find_molecule($$$$$$$$$)
             if( abs($current_atom->{translation}[0]) > $max_polymer_span ||
                 abs($current_atom->{translation}[1]) > $max_polymer_span ||
                 abs($current_atom->{translation}[2]) > $max_polymer_span ) {
-                return ( [], 0 );
+                return ( [], 0, $polymer_atoms );
             }
         }
 
@@ -2355,7 +2359,7 @@ sub find_molecule($$$$$$$$$)
                                     backshifted => $back_shifted_sym_atom } );
                 } if $debug;
 
-                my( $neighbours, $mol_nbumps ) =
+                my( $neighbours, $mol_nbumps, $mol_polymer_atoms ) =
                     find_molecule( $covalent_sensitivity,
                                    $atom_properties,
                                    $symmetric_atoms,
@@ -2368,6 +2372,7 @@ sub find_molecule($$$$$$$$$)
 
                 push(@neighbors, @$neighbours);
                 $nbumps += $mol_nbumps;
+                $polymer_atoms += $mol_polymer_atoms;
             }
         }
     }}}
@@ -2380,7 +2385,7 @@ sub find_molecule($$$$$$$$$)
         serialiseRef( \@neighbors );
     } if $debug;
 
-    return ( \@neighbors, $nbumps );
+    return ( \@neighbors, $nbumps, $polymer_atoms );
 }
 
 #===========================================================================
