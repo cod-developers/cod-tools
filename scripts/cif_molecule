@@ -618,6 +618,42 @@ for my $filename (@ARGV) {
                                                   \%COD::AtomProperties::atoms,
                                                   $uniquify_atoms );
 
+            # Calculate polymer dimension
+            for my $moiety (@$unique_molecules) {
+                next if !$moiety->{is_polymer};
+                my $polymer_vectors = {};
+                for my $atom ( @{$moiety->{atoms}} ) {
+                    my $site_label = $atom->{site_label};
+                    my $symop_id = $atom->{symop_id};
+                    if( !exists $polymer_vectors->{$site_label}{$symop_id} ) {
+                        $polymer_vectors->{$site_label}{$symop_id} = [];
+                    }
+                    push( @{$polymer_vectors->{$site_label}{$symop_id}},
+                          $atom->{translation} );
+                }
+                my $polymer_dimension;
+                for my $site_label (keys %$polymer_vectors) {
+                    for my $symop_id (keys %{$polymer_vectors->{$site_label}} ) {
+                        my @polymer_vectors = @{$polymer_vectors->{$site_label}{$symop_id}};
+                        next if @polymer_vectors < 2;
+                        my $reference_vector = shift @polymer_vectors;
+                        my $polymer_dimension_now =
+                            mat_rank( [ map { [$_->[0] - $reference_vector->[0],
+                                               $_->[1] - $reference_vector->[1],
+                                               $_->[2] - $reference_vector->[2] ] }
+                                            @polymer_vectors ] );
+                        next if !defined $polymer_dimension_now;
+                        if( !defined $polymer_dimension ||
+                            $polymer_dimension < $polymer_dimension_now ) {
+                            $polymer_dimension = $polymer_dimension_now;
+                        }
+                    }
+                }
+                if( $polymer_dimension ) {
+                    $moiety->{polymer_dimension} = $polymer_dimension;
+                }
+            }
+
             if( $preserve_stoichiometry ) {
                 my $molecular_symmetry = COD::Spacegroups::Builder->new;
 
@@ -678,7 +714,8 @@ for my $filename (@ARGV) {
                                                       $symop ),
                             chemical_formula_sum => 
                                 $molecule->{chemical_formula_sum},
-                            is_polymer => $molecule->{is_polymer}
+                            is_polymer => $molecule->{is_polymer},
+                            polymer_dimension => $molecule->{polymer_dimension},
                         );
                         push( @stoichiometric_molecules,
                               \%additional_molecule );
@@ -764,7 +801,28 @@ for my $filename (@ARGV) {
                     }
 
                     $Z = gcd( map { int(@$_) } values %moieties );
+                }
+            }
 
+            # Trim polymers
+            for my $moiety (@$unique_molecules) {
+                next if !$moiety->{is_polymer};
+                $moiety->{atoms} = trim_polymer( $moiety->{atoms},
+                                                 $max_polymer_span );
+            }
+
+            # Merge all molecules to one if requested
+            if( $use_one_output_datablock ) {
+                my @all_atoms = map { @{$_->{atoms}} } @$unique_molecules;
+                if( @all_atoms > 0 ) {
+                    my $max_polymer_dimension;
+                    for my $moiety (@$unique_molecules) {
+                        next if !$moiety->{polymer_dimension};
+                        if( !$max_polymer_dimension ||
+                             $max_polymer_dimension < $moiety->{polymer_dimension} ) {
+                             $max_polymer_dimension = $moiety->{polymer_dimension};
+                        }
+                    }
                     $unique_molecules = [{
                         atoms =>
                             \@all_atoms,
@@ -772,6 +830,7 @@ for my $filename (@ARGV) {
                             chemical_formula_sum( \@all_atoms, $Z ),
                         is_polymer => ((grep { $_->{is_polymer} == 1 }
                                                @$unique_molecules) > 0),
+                        polymer_dimension => $max_polymer_dimension,
                     }];
                 }
             }
@@ -796,6 +855,8 @@ for my $filename (@ARGV) {
                                       chemical_formula_sum
                                           ( $disorder_representative, $Z ),
                                   is_polymer => $molecule->{is_polymer},
+                                  polymer_dimension =>
+                                      $molecule->{polymer_dimension},
                               }
                         );
                     }
@@ -1790,40 +1851,7 @@ sub print_molecule
         }
     }
 
-    my $trimmed_atoms;
-    my $polymer_dimension;
-
-    if( $molecule->{is_polymer} ) {
-        my $polymer_vectors = {};
-        foreach my $atom ( @{$molecule->{atoms}} ) {
-            my $site_label = $atom->{site_label};
-            my $symop_id = $atom->{symop_id};
-            if( !exists $polymer_vectors->{$site_label}{$symop_id} ) {
-                $polymer_vectors->{$site_label}{$symop_id} = [];
-            }
-            push( @{$polymer_vectors->{$site_label}{$symop_id}},
-                  $atom->{translation} );
-        }
-        foreach my $site_label (keys %$polymer_vectors) {
-            foreach my $symop_id (keys %{$polymer_vectors->{$site_label}} ) {
-                my @polymer_vectors = @{$polymer_vectors->{$site_label}{$symop_id}};
-                next if @polymer_vectors < 2;
-                my $reference_vector = shift @polymer_vectors;
-                my $polymer_dimension_now =
-                    mat_rank( [ map { [$_->[0] - $reference_vector->[0],
-                                       $_->[1] - $reference_vector->[1],
-                                       $_->[2] - $reference_vector->[2] ] }
-                                    @polymer_vectors ] );
-                if( !defined $polymer_dimension ||
-                    $polymer_dimension < $polymer_dimension_now ) {
-                    $polymer_dimension = $polymer_dimension_now;
-                }
-            }
-        }
-        $trimmed_atoms = trim_polymer( $molecule->{atoms}, $max_polymer_span );
-    } else {
-        $trimmed_atoms = $molecule->{atoms};
-    }
+    my $trimmed_atoms = $molecule->{atoms};
 
     print_single_tag_and_value( '_symmetry_space_group_name_H-M', 'P 1' );
 
@@ -1938,9 +1966,9 @@ sub print_molecule
     if( $molecule->{is_polymer} ) {
         print_single_tag_and_value( '_cod_molecule_is_polymer', 'yes' );
     }
-    if( $polymer_dimension ) {
+    if( $molecule->{polymer_dimension} ) {
         print_single_tag_and_value( '_cod_molecule_polymer_dimension',
-                                    $polymer_dimension );
+                                    $molecule->{polymer_dimension} );
     }
 
     local $, = "\n";
