@@ -56,8 +56,10 @@ use strict;
 use File::Basename qw( basename );
 use Clone qw( clone );
 use COD::Algebra qw( gcd );
+use COD::Algebra::Vector qw( distance vector_sub );
 use COD::AtomBricks qw( build_bricks get_atom_index get_search_span );
-use COD::CIF::Parser qw( parse_cif );
+use COD::AtomNeighbours qw( get_max_covalent_radius make_neighbour_list );
+use COD::AtomProperties;
 use COD::CIF::Data qw( get_cell get_symmetry_operators );
 use COD::CIF::Data::AtomList qw( atom_array_from_cif
                                  atom_groups
@@ -69,27 +71,25 @@ use COD::CIF::Data::SymmetryGenerator qw( apply_shifts
                                           atoms_coincide
                                           test_bond
                                           test_bump );
-use COD::AtomNeighbours qw( get_max_covalent_radius make_neighbour_list );
-use COD::AtomProperties;
+use COD::CIF::Parser qw( parse_cif );
+use COD::CIF::Tags::CanonicalNames qw( canonicalize_all_names );
+use COD::CIF::Tags::Manage qw( set_tag );
+use COD::CIF::Tags::Print qw( print_cif print_value
+                              print_single_tag_and_value );
+use COD::ErrorHandler qw( process_errors process_warnings
+                          process_parser_messages report_message );
 use COD::Formulae::Print qw( sprint_formula );
 use COD::MorganFingerprints qw( make_morgan_fingerprint );
+use COD::Spacegroups::Builder;
+use COD::Spacegroups::Symop::Algebra qw( symop_mul symop_invert
+                                         symop_is_unity symop_vector_mul
+                                         symop_modulo_1 flush_zeros_in_symop );
 use COD::Spacegroups::Symop::Parse qw( symop_from_string
                                        string_from_symop
                                        symop_string_canonical_form
                                        modulo_1 );
-use COD::Spacegroups::Symop::Algebra qw( symop_mul symop_invert
-                                         symop_is_unity symop_vector_mul
-                                         symop_modulo_1 flush_zeros_in_symop );
-use COD::Spacegroups::Builder;
-use COD::Algebra::Vector qw( distance );
-use COD::CIF::Tags::CanonicalNames qw( canonicalize_all_names );
-use COD::CIF::Tags::Print qw( print_cif print_value
-                              print_single_tag_and_value );
-use COD::CIF::Tags::Manage qw( set_tag );
 use COD::SOptions qw( getOptions );
 use COD::SUsage qw( usage options );
-use COD::ErrorHandler qw( process_errors process_warnings
-                          process_parser_messages report_message );
 
 no warnings 'recursion';
 
@@ -617,42 +617,6 @@ for my $filename (@ARGV) {
                                                   $dataset,
                                                   \%COD::AtomProperties::atoms,
                                                   $uniquify_atoms );
-
-            # Calculate polymer dimension
-            for my $moiety (@$unique_molecules) {
-                next if !$moiety->{is_polymer};
-                my $polymer_vectors = {};
-                for my $atom ( @{$moiety->{atoms}} ) {
-                    my $site_label = $atom->{site_label};
-                    my $symop_id = $atom->{symop_id};
-                    if( !exists $polymer_vectors->{$site_label}{$symop_id} ) {
-                        $polymer_vectors->{$site_label}{$symop_id} = [];
-                    }
-                    push( @{$polymer_vectors->{$site_label}{$symop_id}},
-                          $atom->{translation} );
-                }
-                my $polymer_dimension;
-                for my $site_label (keys %$polymer_vectors) {
-                    for my $symop_id (keys %{$polymer_vectors->{$site_label}} ) {
-                        my @polymer_vectors = @{$polymer_vectors->{$site_label}{$symop_id}};
-                        next if @polymer_vectors < 2;
-                        my $reference_vector = shift @polymer_vectors;
-                        my $polymer_dimension_now =
-                            mat_rank( [ map { [$_->[0] - $reference_vector->[0],
-                                               $_->[1] - $reference_vector->[1],
-                                               $_->[2] - $reference_vector->[2] ] }
-                                            @polymer_vectors ] );
-                        next if !defined $polymer_dimension_now;
-                        if( !defined $polymer_dimension ||
-                            $polymer_dimension < $polymer_dimension_now ) {
-                            $polymer_dimension = $polymer_dimension_now;
-                        }
-                    }
-                }
-                if( $polymer_dimension ) {
-                    $moiety->{polymer_dimension} = $polymer_dimension;
-                }
-            }
 
             if( $preserve_stoichiometry ) {
                 my $molecular_symmetry = COD::Spacegroups::Builder->new;
@@ -2139,41 +2103,72 @@ sub find_molecules($$$$$$)
 
     foreach my $initial_atom (@$initial_atoms)
     {
-        if ((not exists $used_originals{$initial_atom->{cell_label}})) {
-            print STDERR ">>>> starting new molecule\n" if $debug;
+        next if exists $used_originals{$initial_atom->{cell_label}};
+        print STDERR ">>>> starting new molecule\n" if $debug;
 
-            ## if( ! $expand_to_p1 &&
-            ##     $initial_atom->{cell_label} ne $initial_atom->{site_label} ) {
-            ##     print STDERR
-            ##         ">>>> site: $initial_atom->{site_label}, " .
-            ##         "cell: $initial_atom->{cell_label}\n";
-            ## }
+        ## if( ! $expand_to_p1 &&
+        ##     $initial_atom->{cell_label} ne $initial_atom->{site_label} ) {
+        ##     print STDERR
+        ##         ">>>> site: $initial_atom->{site_label}, " .
+        ##         "cell: $initial_atom->{cell_label}\n";
+        ## }
 
-            my( $molecule_atoms, $mol_nbumps, $mol_polymer_atoms ) =
-                find_molecule( $covalent_sensitivity,
-                               $atom_properties,
-                               $symmetric_atoms,
-                               \%used_atoms,
-                               \%used_originals,
-                               \%used_uc_atoms,
-                               \%checked_pairs,
-                               $initial_atom, $bricks );
+        my( $molecule_atoms, $mol_nbumps, $mol_polymer_atoms ) =
+            find_molecule( $covalent_sensitivity,
+                           $atom_properties,
+                           $symmetric_atoms,
+                           \%used_atoms,
+                           \%used_originals,
+                           \%used_uc_atoms,
+                           \%checked_pairs,
+                           $initial_atom, $bricks );
 
-            my @molecule_atoms = @$molecule_atoms;
-            $nbumps += $mol_nbumps;
+        my @molecule_atoms = @$molecule_atoms;
+        $nbumps += $mol_nbumps;
 
-            if( @molecule_atoms > 0 ) {
-                my %molecule = (
-                    atoms => \@molecule_atoms,
-                    chemical_formula_sum => '',
-                    is_polymer => ($mol_polymer_atoms > 0),
-                );
+        if( @molecule_atoms == 0 ) {
+            warn "WARNING, found molecule with no atoms -- strange...\n";
+            next;
+        }
 
-                push( @unique_molecules, \%molecule );
-            } else {
-                warn "WARNING, found molecule with no atoms -- strange...\n";
+        # Calculate polymer dimension
+        my $polymer_dimension;
+        if( $mol_polymer_atoms > 0 ) {
+            my $polymer_vectors = {};
+            for my $atom ( @molecule_atoms ) {
+                my $site_label = $atom->{site_label};
+                my $symop_id = $atom->{symop_id};
+                if( !exists $polymer_vectors->{$site_label}{$symop_id} ) {
+                    $polymer_vectors->{$site_label}{$symop_id} = [];
+                }
+                push( @{$polymer_vectors->{$site_label}{$symop_id}},
+                      $atom->{translation} );
+            }
+            for my $site_label (keys %$polymer_vectors) {
+                for my $symop_id (keys %{$polymer_vectors->{$site_label}} ) {
+                    my @polymer_vectors = @{$polymer_vectors->{$site_label}{$symop_id}};
+                    next if @polymer_vectors < 2;
+                    my $reference_vector = shift @polymer_vectors;
+                    my $polymer_dimension_now =
+                        mat_rank( [ map { vector_sub( $_, $reference_vector ) }
+                                          @polymer_vectors ] );
+                    next if !defined $polymer_dimension_now;
+                    if( !defined $polymer_dimension ||
+                        $polymer_dimension < $polymer_dimension_now ) {
+                        $polymer_dimension = $polymer_dimension_now;
+                    }
+                }
             }
         }
+
+        my %molecule = (
+            atoms => \@molecule_atoms,
+            chemical_formula_sum => '',
+            is_polymer => ($mol_polymer_atoms > 0),
+            polymer_dimension => $polymer_dimension,
+        );
+
+        push( @unique_molecules, \%molecule );
     }
 
     if( !$verbose && $nbumps > 0 ) {
