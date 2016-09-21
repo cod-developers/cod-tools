@@ -1,8 +1,8 @@
 #------------------------------------------------------------------------------
-#$Author: antanas $
-#$Date: 2015-11-20 16:05:15 +0200 (Fri, 20 Nov 2015) $ 
-#$Revision: 4318 $
-#$URL: svn://www.crystallography.net/cod-tools/trunk/src/lib/perl5/COD/CIF/Data.pm $
+#$Author$
+#$Date$ 
+#$Revision$
+#$URL$
 #------------------------------------------------------------------------------
 #*
 #  Common subroutines for RDF generation.
