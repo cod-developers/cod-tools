@@ -26,9 +26,6 @@ use COD::ErrorHandler qw( process_warnings
                           process_errors
                           process_parser_messages );
 
-my $print_header = 0; # Indicates whether to print out a header with column names
-my $print_keywords = 0;
-
 my $user_columns; # User specified list of columns to be printed
 
 my $use_parser = 'c';
@@ -36,7 +33,6 @@ my $die_on_errors   = 1;
 my $die_on_warnings = 0;
 my $die_on_notes    = 0;
 
-my $refering_db_name = 'cod';
 my $output_format = 'xml';
 
 my %cif2cod_options;
@@ -106,6 +102,18 @@ my $rdf_options =
 #* --columns "file flags Robs"
 #*                     Print only columns specified in this option.
 #*
+#* --xml-output
+#*                     Output RDF in XML carrier format. Default option.
+#*
+#* --n3-output
+#*                     Output RDF in N3 (Notation3) carrier format.
+#*
+#* --turtle-output
+#*                     Output RDF in Turtle carrier format.
+#*
+#* --ntriples-output, --n-triples-output
+#*                     Output RDF in N-Triples carrier format.
+#*
 #* --continue-on-errors
 #*                     Do not terminate script if errors are raised.
 #* --dont-continue-on-errors, --no-continue-on-errors,
@@ -153,6 +161,12 @@ my $rdf_options =
             sub { $cif2cod_options{reformat_spacegroup} = 0; },
 
     "--columns" => \$user_columns,
+
+    "--xml-output"       => sub { $output_format = 'xml' },
+    "--n3-output"        => sub { $output_format = 'n3' },
+    "--turtle-output"    => sub { $output_format = 'turtle' },
+    "--ntriples-output"  => sub { $output_format = 'ntriples' },
+    "--n-triples-output" => sub { $output_format = 'ntriples' },
 
     "--use-datablocks-without-coordinates"
         => sub{ $cif2cod_options{use_datablocks_without_coord} = 1 },
@@ -212,8 +226,6 @@ if( defined $user_columns ) {
 binmode( STDOUT, ":encoding(UTF-8)" );
 
 @ARGV = ( '-' ) unless @ARGV;
-
-my $first = 1;
 
 my @extracted;
 for my $filename (@ARGV) {
