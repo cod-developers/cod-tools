@@ -126,6 +126,26 @@ my $rdf_options =
 #* --ntriples-output, --n-triples-output
 #*                     Output RDF in N-Triples carrier format.
 #*
+#* --replace-utf-codepoints-from
+#*                     Replace Unicode code points starting at specified
+#*                     point with carrier format-specific entites.
+#*
+#* --no-replace-utf-codepoints, --dont-replace-utf-code-points
+#*                     Leave Unicode code points unescaped. Default option.
+#*
+#* --html-utf-escapes
+#*                     Escape unicode code points using HTML hexademical
+#*                     format corresponding to '&#x%04X;' formatted string.
+#*                     Default option.
+#*
+#* --internal-utf-escapes
+#*                     Escape unicode code points using internal format 
+#*                     corresponding to '\\u%04X' formatted string.
+#*
+#* --utf-escape-format
+#*                     Escape unicode code points using format
+#*                     corresponding to the provided formatted string.
+#*
 #* --continue-on-errors
 #*                     Do not terminate script if errors are raised.
 #* --dont-continue-on-errors, --no-continue-on-errors,
@@ -186,6 +206,19 @@ my $rdf_options =
     "--turtle-output"    => sub { $output_format = 'turtle' },
     "--ntriples-output"  => sub { $output_format = 'ntriples' },
     "--n-triples-output" => sub { $output_format = 'ntriples' },
+
+    "--replace-utf-codepoints-from" =>
+        \$rdf_options->{replace_utf_code_points_from},
+    "--no-replace-utf-codepoints" =>
+        sub { $rdf_options->{replace_utf_code_points_from} = undef },
+    "--dont-replace-utf-code-points" =>
+        sub { $rdf_options->{replace_utf_code_points_from} = undef },
+
+    "--html-utf-escapes" =>
+        sub { $rdf_options->{utf_code_point_format} = '&#x%04X;' },
+    "--internal-utf-escapes" =>
+        sub { $rdf_options->{utf_code_point_format} = "\\u%04X" },
+    "--utf-escape-format"    => \$rdf_options->{utf_code_point_format},
 
     "--use-datablocks-without-coordinates"
         => sub{ $cif2cod_options{use_datablocks_without_coord} = 1 },
