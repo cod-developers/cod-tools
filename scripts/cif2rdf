@@ -102,6 +102,18 @@ my $rdf_options =
 #* --columns "file flags Robs"
 #*                     Print only columns specified in this option.
 #*
+#*
+#* --split-author-names
+#*                     Split author names in internal database representation at
+#*                     semicolons (';') to produce RDF-parsable list of author names.
+#*                     Each author in such list is marked with "author" property
+#*                     instead of "authors", which is used for non-splitted value.
+#*                     Default option.
+#*
+#* --no-split-author-names, --dont-split-author-names
+#*                     Make no assumptions about internal database representation of
+#*                     author list.
+#*
 #* --xml-output
 #*                     Output RDF in XML carrier format. Default option.
 #*
@@ -161,6 +173,13 @@ my $rdf_options =
             sub { $cif2cod_options{reformat_spacegroup} = 0; },
 
     "--columns" => \$user_columns,
+
+    "--split-author-names" =>
+        sub { $rdf_options->{split_author_names} = 1 },
+    "--no-split-author-names" =>
+        sub { $rdf_options->{split_author_names} = 0 },
+    "--dont-split-author-names" =>
+        sub { $rdf_options->{split_author_names} = 0 },
 
     "--xml-output"       => sub { $output_format = 'xml' },
     "--n3-output"        => sub { $output_format = 'n3' },
