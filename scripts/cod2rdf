@@ -289,6 +289,7 @@ if ( !$any_data_seen ) {
         }, $die_on_error_level->{'ERROR'} );
 }
 
+# Removing unneeded fields
 for my $entry (values %$data) {
     delete $entry->{text};
     delete $entry->{flags};
@@ -314,7 +315,7 @@ my %databases = map{ lc($_->{name}) => { url_prefix => $_->{url_prefix},
                                          url_postfix => $_->{url_postfix} } }
                      @$databases;
 
-my $ids = join( ", ", @ARGV );
+my $ids = join( ', ', @ARGV );
 my %vocabularies = ( $rdf_options->{vocabulary_name} =>
                      $rdf_options->{vocabulary_url_prefix} );
 
@@ -382,7 +383,7 @@ sub db_connect
         }, $die_on_error_level->{'ERROR'} );
     }
     if( $db_platform ne 'SQLite' ) {
-        $dbh->do( "SET CHARACTER SET utf8" );
+        $dbh->do( 'SET CHARACTER SET utf8' );
         $dbh->do( 'set @@character_set_client = utf8' );
         $dbh->do( 'set @@character_set_connection = utf8' );
         $dbh->do( 'set @@character_set_server = utf8' );
