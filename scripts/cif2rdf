@@ -34,6 +34,7 @@ my $die_on_warnings = 0;
 my $die_on_notes    = 0;
 
 my $output_format = 'xml';
+my $ignore_input = 0;
 
 my %cif2cod_options;
 my $rdf_options =
@@ -146,6 +147,12 @@ my $rdf_options =
 #*                     Escape unicode code points using format
 #*                     corresponding to the provided formatted string.
 #*
+#* --only-header
+#*                     Print header for corresponding format and exit.
+#*
+#* --only-footer
+#*                     Print footer for corresponding format and exit.
+#*
 #* --continue-on-errors
 #*                     Do not terminate script if errors are raised.
 #* --dont-continue-on-errors, --no-continue-on-errors,
@@ -220,6 +227,13 @@ my $rdf_options =
         sub { $rdf_options->{utf_code_point_format} = "\\u%04X" },
     "--utf-escape-format"    => \$rdf_options->{utf_code_point_format},
 
+    "--only-header" => sub { $rdf_options->{print_header} = 1;
+                             $rdf_options->{print_footer} = 0;
+                             $ignore_input = 1 },
+    "--only-footer" => sub { $rdf_options->{print_header} = 0;
+                             $rdf_options->{print_footer} = 1;
+                             $ignore_input = 1 },
+
     "--use-datablocks-without-coordinates"
         => sub{ $cif2cod_options{use_datablocks_without_coord} = 1 },
     "--use-all-datablocks"
@@ -280,7 +294,12 @@ if( defined $user_columns ) {
 
 binmode( STDOUT, ":encoding(UTF-8)" );
 
-@ARGV = ( '-' ) unless @ARGV;
+if( $ignore_input ) {
+    # Prints only header or footer, files are ignored
+    @ARGV = ();
+} else {
+    @ARGV = ( '-' ) unless @ARGV;
+}
 
 my @extracted;
 for my $filename (@ARGV) {
