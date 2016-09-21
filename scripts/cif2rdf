@@ -313,7 +313,17 @@ for my $filename (@ARGV) {
 
         next if !defined $extracted_dataset;
 
+        # Forming URLs
+        if( $extracted_dataset->{file} =~ /^[1-9][0-9]+$/ ) {
+            $extracted_dataset->{url} = $rdf_options->{url_prefix} .
+                                        $extracted_dataset->{file} .
+                                        $rdf_options->{url_postfix};
+        } else {
+            $extracted_dataset->{url} = "file://$filename";
+        }
+
         # Removing unneeded fields
+        delete $extracted_dataset->{file};
         delete $extracted_dataset->{text};
         delete $extracted_dataset->{flags};
         if( exists $extracted_dataset->{formula} &&

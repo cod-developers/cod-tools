@@ -289,8 +289,12 @@ if ( !$any_data_seen ) {
         }, $die_on_error_level->{'ERROR'} );
 }
 
-# Removing unneeded fields
+# Forming URLs, removing unneeded fields
 for my $entry (values %$data) {
+    $entry->{url} = $rdf_options->{url_prefix} .
+                    $entry->{file} .
+                    $rdf_options->{url_postfix};
+    delete $entry->{file};
     delete $entry->{text};
     delete $entry->{flags};
     if( exists $entry->{formula} &&
