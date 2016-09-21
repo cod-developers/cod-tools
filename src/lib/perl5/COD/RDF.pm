@@ -36,6 +36,7 @@ sub rdf_xml
         if !exists $options->{utf_code_point_format};
     $options->{split_author_names} = 1
         if !exists $options->{split_author_names};
+    $options->{decode} = 1 if !exists $options->{decode};
 
     my $rdf = '';
 
@@ -68,7 +69,8 @@ sub rdf_xml
         for my $field (sort keys %$struct) {
             next if $field eq 'file' || $field eq 'links';
             next if !$struct->{$field};
-            $struct->{$field} = decode( 'UTF-8', $struct->{$field} );
+            $struct->{$field} = decode( 'UTF-8', $struct->{$field} )
+                if $options->{decode};
             $struct->{$field} = encode_entities( $struct->{$field},
                                                  "\"'<>\&" );
             if( $field ne 'authors' || !$options->{split_author_names} ) {
@@ -117,6 +119,7 @@ sub rdf_n3
         if !exists $options->{utf_code_point_format};
     $options->{split_author_names} = 1
         if !exists $options->{split_author_names};
+    $options->{decode} = 1 if !exists $options->{decode};
 
     my $rdf = '';
 
@@ -149,7 +152,8 @@ sub rdf_n3
             next if !$struct->{$field};
 
             $rdf .= ";\n" if !$first_line;
-            $struct->{$field} = decode( 'UTF-8', $struct->{$field} );
+            $struct->{$field} = decode( 'UTF-8', $struct->{$field} )
+                if $options->{decode};
             # Escaping special symbols with "\"
             $struct->{$field} =~ s/((['"\\]))/\\$1/g;
             $struct->{$field} =~ s/\n/\\n/g;
@@ -202,6 +206,7 @@ sub rdf_ntriples
         if !exists $options->{utf_code_point_format};
     $options->{split_author_names} = 1
         if !exists $options->{split_author_names};
+    $options->{decode} = 1 if !exists $options->{decode};
 
     my $rdf = '';
 
@@ -225,7 +230,8 @@ sub rdf_ntriples
             next if $field eq 'file' || $field eq 'links';
             next if !$struct->{$field};
 
-            $struct->{$field} = decode( 'UTF-8', $struct->{$field} );
+            $struct->{$field} = decode( 'UTF-8', $struct->{$field} )
+                if $options->{decode};
             # Escaping special symbols with "\"
             $struct->{$field} =~ s/((["\\]))/\\$1/g;
             $struct->{$field} =~ s/\n/\\n/g;
