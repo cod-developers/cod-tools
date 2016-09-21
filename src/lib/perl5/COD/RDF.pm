@@ -18,6 +18,7 @@ use HTML::Entities qw( encode_entities );
 require Exporter;
 our @ISA = qw( Exporter );
 our @EXPORT_OK = qw(
+    rdf_n3
     rdf_xml
 );
 
@@ -56,9 +57,9 @@ sub rdf_xml
                 my $db = $prop->{db};
                 $rdf .= "    <$prop->{vocabulary}:$prop->{relation}\n" .
                         "     rdf:resource=\"" .
-                        $options->{databases}{$db}->{url_prefix} .
+                        $options->{databases}{$db}{url_prefix} .
                         $prop->{ext_id} .
-                        $options->{databases}{$db}->{url_postfix} .
+                        $options->{databases}{$db}{url_postfix} .
                         "\" />\n";
             }
         }
@@ -99,12 +100,106 @@ sub rdf_xml
     return $rdf;
 }
 
+# Implemmented as described in http://www.w3.org/TeamSubmission/n3/#grammar
+# A similar parser and validator can be found at 
+# http://www.rdfabout.com/demo/validator/validate.xpd
 sub rdf_n3
 {
+    my( $data, $options ) = @_;
+    $options = {} unless $options;
+
+    $options->{print_header} = 1  if !exists $options->{print_header};
+    $options->{print_footer} = 1  if !exists $options->{print_footer};
+    $options->{vocabularies} = {} if !exists $options->{vocabularies};
+    $options->{databases}    = {} if !exists $options->{databases};
+    $options->{utf_code_point_format} = '&#x%04X;'
+        if !exists $options->{utf_code_point_format};
+    $options->{split_author_names} = 1
+        if !exists $options->{split_author_names};
+
+    my $rdf = '';
+
+    if( $options->{print_header} ) {
+        $rdf .= "\@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>.\n" .
+                join( "\n", map { "\@prefix $_: <$options->{vocabularies}{$_}>." }
+                                sort keys %{$options->{vocabularies}} ) . "\n";
+        $rdf .= "\n" if keys %{$options->{vocabularies}} > 0;
+    }
+
+    for my $struct (@$data) {
+        $rdf .= "<$options->{url_prefix}$struct->{file}" .
+                "$options->{url_postfix}>\n";
+
+        if( exists $struct->{links} ) {
+            for my $prop (sort { $a->{db} cmp $b->{db} ||
+                                 $a->{ext_id} cmp $b->{ext_id} }
+                               @{$struct->{links}}) {
+                my $db = $prop->{db};
+                $rdf .= "  $prop->{vocabulary}:$prop->{relation} <" .
+                        $options->{databases}{$db}{url_prefix} .
+                        $prop->{ext_id} .
+                        $options->{databases}{$db}{url_postfix} . ">;\n";
+            }
+        }
+        
+        my $first_line = 1;
+        for my $field (sort keys %$struct) {
+            next if $field eq 'file' || $field eq 'links';
+            next if !$struct->{$field};
+
+            $rdf .= ";\n" if !$first_line;
+            $struct->{$field} = decode( 'UTF-8', $struct->{$field} );
+            # Escaping special symbols with "\"
+            $struct->{$field} =~ s/((['"\\]))/\\$1/g;
+            $struct->{$field} =~ s/\n/\\n/g;
+            $struct->{$field} =~ s/\r/\\r/g;
+            $struct->{$field} =~ s/\t/\\t/g;
+            if( $field ne 'authors' || !$options->{split_author_names} ) {
+                # Adding '"' or '"""'quotes on a literal
+                $struct->{$field} = quote_literals( $struct->{$field} );
+                if( defined $options->{replace_utf_code_points_from} ) {
+                    $struct->{$field} =
+                        replace_utf_codepoints( $struct->{$field},
+                                                $options->{replace_utf_code_points_from},
+                                                $options->{utf_code_point_format} );
+                }
+                $rdf .= "  $options->{vocabulary_name}:$field " .
+                        $struct->{$field};
+            } else {
+                $rdf .= "  $options->{vocabulary_name}:author ";
+                my $length = length( "  $options->{vocabulary_name}:author " );
+                my $authors = (join( ",\n", 
+                                map { defined $options->{replace_utf_code_points_from}
+                                          ? replace_utf_codepoints(
+                                              ( ' ' x $length ) . quote_literals($_),
+                                              $options->{replace_utf_code_points_from},
+                                              $options->{utf_code_point_format} )
+                                          : ( ' ' x $length ) . quote_literals($_)
+                                } split /\s*;\s*/, $struct->{$field} ) );
+                $authors =~ s/\s*//;
+                $rdf .= $authors;
+            }
+            $first_line = 0;
+        }
+        $rdf .= ".\n";
+    }
+
+    return $rdf;
 }
 
 sub rdf_ntriples
 {
+}
+
+sub quote_literals
+{
+    my ( $string ) = @_;
+    if ( $string =~ m/(\n|'|")/ ) {
+        $string = '"""' . $string . '"""';
+    } else {
+        $string = '"' . $string . '"';
+   }
+   return $string;
 }
 
 sub replace_utf_codepoints
