@@ -19,6 +19,7 @@ require Exporter;
 our @ISA = qw( Exporter );
 our @EXPORT_OK = qw(
     rdf_n3
+    rdf_ntriples
     rdf_xml
 );
 
@@ -187,8 +188,76 @@ sub rdf_n3
     return $rdf;
 }
 
+# Implemmented as described in http://www.w3.org/TR/n-triples/#canonical-ntriples
+# A similar parser and validator can be found at 
+# http://www.rdfabout.com/demo/validator/validate.xpd
 sub rdf_ntriples
 {
+    my( $data, $options ) = @_;
+    $options = {} unless $options;
+
+    $options->{vocabularies} = {} if !exists $options->{vocabularies};
+    $options->{databases}    = {} if !exists $options->{databases};
+    $options->{utf_code_point_format} = '&#x%04X;'
+        if !exists $options->{utf_code_point_format};
+    $options->{split_author_names} = 1
+        if !exists $options->{split_author_names};
+
+    my $rdf = '';
+
+    for my $struct (@$data) {
+        my $subject = "<$options->{url_prefix}$struct->{file}" .
+                      "$options->{url_postfix}>";
+
+        if( exists $struct->{links} ) {
+            for my $prop (sort { $a->{db} cmp $b->{db} ||
+                                 $a->{ext_id} cmp $b->{ext_id} }
+                               @{$struct->{links}}) {
+                my $db = $prop->{db};
+                $rdf .= $subject . 
+                      " <$options->{vocabulary_url_prefix}$prop->{relation}>" . 
+                      " <$options->{databases}{$db}{url_prefix}$prop->{ext_id}" .
+                      $options->{databases}{$db}{url_postfix} . ">.\n";
+            }
+        }
+
+        for my $field (sort keys %$struct) {
+            next if $field eq 'file' || $field eq 'links';
+            next if !$struct->{$field};
+
+            $struct->{$field} = decode( 'UTF-8', $struct->{$field} );
+            # Escaping special symbols with "\"
+            $struct->{$field} =~ s/((["\\]))/\\$1/g;
+            $struct->{$field} =~ s/\n/\\n/g;
+            $struct->{$field} =~ s/\r/\\r/g;
+            $struct->{$field} =~ s/\t/\\t/g;
+            if( $field ne 'authors' || !$options->{split_author_names} ) {
+                # Adding '"' quotes on a literal
+                $struct->{$field} = '"' . $struct->{$field} . '"';
+                if( defined $options->{replace_utf_code_points_from} ) {
+                    $struct->{$field} =
+                        replace_utf_codepoints( $struct->{$field},
+                                                $options->{replace_utf_code_points_from},
+                                                $options->{utf_code_point_format} );
+                }
+                $rdf .= "$subject <$options->{vocabulary_url_prefix}$field> " .
+                        $struct->{$field} . ".\n";
+            } else {
+                foreach my $object ( split( /\s*;\s*/, $struct->{$field} ) ) {
+                    if( defined $options->{replace_utf_code_points_from} ) {
+                        $object = replace_utf_codepoints ( $object,
+                                                $options->{replace_utf_code_points_from},
+                                                $options->{utf_code_point_format} );
+                    }
+
+                    $rdf .= "$subject <$options->{vocabulary_url_prefix}author> " .
+                            '"' . $object . '"' . ".\n";
+                }
+            }
+        }
+    }
+
+    return $rdf;
 }
 
 sub quote_literals
