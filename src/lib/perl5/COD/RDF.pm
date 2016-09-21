@@ -49,8 +49,7 @@ sub rdf_xml
     }
 
     for my $struct (@$data) {
-        $rdf .= "  <rdf:Description rdf:about=\"$options->{url_prefix}" .
-                $struct->{file} . "$options->{url_postfix}\">\n";
+        $rdf .= "  <rdf:Description rdf:about=\"$struct->{url}\">\n";
 
         if( exists $struct->{links} ) {
             for my $prop (sort { $a->{db} cmp $b->{db} ||
@@ -67,7 +66,7 @@ sub rdf_xml
         }
 
         for my $field (sort keys %$struct) {
-            next if $field eq 'file' || $field eq 'links';
+            next if $field eq 'file' || $field eq 'links' || $field eq 'url';
             next if !$struct->{$field};
             $struct->{$field} = decode( 'UTF-8', $struct->{$field} )
                 if $options->{decode};
@@ -131,8 +130,7 @@ sub rdf_n3
     }
 
     for my $struct (@$data) {
-        $rdf .= "<$options->{url_prefix}$struct->{file}" .
-                "$options->{url_postfix}>\n";
+        $rdf .= "<$struct->{url}>\n";
 
         if( exists $struct->{links} ) {
             for my $prop (sort { $a->{db} cmp $b->{db} ||
@@ -148,7 +146,7 @@ sub rdf_n3
         
         my $first_line = 1;
         for my $field (sort keys %$struct) {
-            next if $field eq 'file' || $field eq 'links';
+            next if $field eq 'file' || $field eq 'links' || $field eq 'url';
             next if !$struct->{$field};
 
             $rdf .= ";\n" if !$first_line;
@@ -211,8 +209,7 @@ sub rdf_ntriples
     my $rdf = '';
 
     for my $struct (@$data) {
-        my $subject = "<$options->{url_prefix}$struct->{file}" .
-                      "$options->{url_postfix}>";
+        my $subject = "<$struct->{url}>";
 
         if( exists $struct->{links} ) {
             for my $prop (sort { $a->{db} cmp $b->{db} ||
@@ -227,7 +224,7 @@ sub rdf_ntriples
         }
 
         for my $field (sort keys %$struct) {
-            next if $field eq 'file' || $field eq 'links';
+            next if $field eq 'file' || $field eq 'links' || $field eq 'url';
             next if !$struct->{$field};
 
             $struct->{$field} = decode( 'UTF-8', $struct->{$field} )
