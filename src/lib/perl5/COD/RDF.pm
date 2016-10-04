@@ -70,9 +70,9 @@ sub rdf_xml
             next if !$struct->{$field};
             $struct->{$field} = decode( 'UTF-8', $struct->{$field} )
                 if $options->{decode};
-            $struct->{$field} = encode_entities( $struct->{$field},
-                                                 "\"'<>\&" );
             if( $field ne 'authors' || !$options->{split_author_names} ) {
+                $struct->{$field} = encode_entities( $struct->{$field},
+                                                     "\"'<>\&" );
                 if( defined $options->{replace_utf_code_points_from} ) {
                     $struct->{$field} =
                         replace_utf_codepoints( $struct->{$field},
@@ -91,7 +91,9 @@ sub rdf_xml
                                                $options->{utf_code_point_format} )
                                      : $_ ) .
                                  "</$options->{vocabulary_name}:author>"
-                            } split /\s*;\s*/, $struct->{$field} ) . "\n";
+                            }
+                            map { encode_entities( $_, "\"'<>\&" ) }
+                            split /\s*;\s*/, $struct->{$field} ) . "\n";
             }
         }
         $rdf .= "  </rdf:Description>\n";
