@@ -96,11 +96,11 @@ foreach ( @ARGV ) {
         next;
     }
 
-    if ( $verbose && keys %atoms_merged != keys $atoms_new ) {
+    if ( $verbose && keys %atoms_merged != keys %{$atoms_new} ) {
         print STDERR "Warning: Hashes are of different sizes. \n";
     }
 
-    foreach my $type ( keys $atoms_new ) {
+    foreach my $type ( keys %{$atoms_new} ) {
         if ( !exists $atoms_merged{$type} ) {
             $atoms_merged{$type} = $atoms_new->{$type};
             next;
@@ -108,7 +108,7 @@ foreach ( @ARGV ) {
 
         my $atom1 = $atoms_new->{$type};
         my $atom2 = $atoms_merged{$type};
-        foreach( keys $atom1 ) {
+        foreach( keys %{$atom1} ) {
             if ( !exists $atom2->{$_} ) {
                 $atoms_merged{$type}{$_} = $atom1->{$_}
             } elsif ( $override_values ) {
