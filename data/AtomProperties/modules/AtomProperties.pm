@@ -9,8 +9,8 @@
 #Descrp: Primary source of charges and common charges.
 #Source: http://en.wikipedia.org/wiki/List_of_oxidation_states_of_the_elements 
 #Descrp: Primary source of atom valence information.
-#Source: http://en.wikipedia.org/wiki/List_of_oxidation_states_of_the_elements.
-package AtomProperties;
+#Source: http://en.wikipedia.org/wiki/List_of_oxidation_states_of_the_elements
+package COD::AtomProperties;
 
 use strict;
 
