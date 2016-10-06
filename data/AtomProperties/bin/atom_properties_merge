@@ -9,11 +9,8 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #$URL$
 #------------------------------------------------------------------------------
 #*
-# Merges several yaml format files containing atom infromation into a single 
-# yaml format file. Different output formats are available.
-#*
-#* Usage:
-#*     $0 file1.yaml [file2.yaml] [file3.yaml]
+#  Merges several yaml format files containing atom information into a
+#  single structure. Different output formats are available.
 #**
 
 use strict;
@@ -34,30 +31,31 @@ my $fill_missing = 1;
 my $override_values = 0;
 my $output_format = 'yaml';
 
-@ARGV = getOptions(
-
-#** Options:
+#* USAGE:
+#*     $0 file1.yaml [file2.yaml] [file3.yaml]
+#* OPTIONS:
+#*
+#* -f,--fill-missing
+#*                     Add empty values for missing atom properties. A list 
+#*                     of properties is constructed by taking distinct 
+#*                     properties from all of the atom entries (default).
+#* --no-fill-missing
+#*                     Do no add empty values for missing atom properties.
+#* -o,--override-values
+#*                     Override property values with the newest ones.
+#* --no-overide-values, --keep-original-values
+#*                     Keep the oldest property values (default).
+#* -v,--verbose
+#*                     Output warning messages.
+#* -s,--silent
+#*                     Do not output warning messages (default).
+#* -y,--yaml
+#*                     Output merged files in yaml format (default).
+#* -p,--perl-hash
+#*                     Output merged files as a perl hash.
+#* --help,--usage      Print a short usage message (this message) and exit.
 #**
-#** -f,--fill-missing
-#**                     Add empty values for missing atom properties. A list 
-#**                     of properties is constructed by taking distinct 
-#**                     properties from all of the atom entries (default).
-#** --no-fill-missing
-#**                     Do no add empty values for missing atom properties.
-#** -o,--override-values
-#**                     Override property values with the newest ones.
-#** --no-overide-values, --keep-original-values
-#**                     Keep the oldest property values (default).
-#** -v,--verbose
-#**                     Output warning messages.
-#** -s,--silent
-#**                     Do not output warning messages (default).
-#** -y,--yaml
-#**                     Output merged files in yaml format (default).
-#** -p,--perl-hash
-#**                     Output merged files as a perl hash.
-#** --help,--usage      Print a short usage message (this message) and exit.
-
+@ARGV = getOptions(
     '-f,--fill-missing'      => sub { $fill_missing = 1 },
     '--no-fill-missing'      => sub { $fill_missing = 0 },
 
