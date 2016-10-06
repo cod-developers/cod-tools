@@ -1,11 +1,12 @@
 include Makeconf
 
-NAMESPACE ?= "COD::AtomProperties"
-
 .INTERMEDIATE: ${PARTS}
 
-PERL_MODULE = modules/AtomProperties.pm
-YAML_MODULE = modules/AtomProperties.yaml
+MODULE_NAME      ?= AtomProperties
+YAML_MODULE       = modules/${MODULE_NAME}.yaml
+PERL_MODULE      ?= modules/${MODULE_NAME}.pm
+NAMESPACE_PREFIX ?= COD::
+NAMESPACE        ?= ${NAMESPACE_PREFIX}${MODULE_NAME}
 
 all: ${PERL_MODULE} ${YAML_MODULE}
 
