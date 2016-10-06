@@ -15,10 +15,10 @@ package COD::AtomProperties;
 use strict;
 
 require Exporter;
-@AtomProperties::ISA = qw(Exporter);
-@AtomProperties::EXPORT = qw( ok );
+@COD::AtomProperties::ISA = qw(Exporter);
+@COD::AtomProperties::EXPORT = qw( ok );
 
-%AtomProperties::atoms = (
+%COD::AtomProperties::atoms = (
      "D" => {
              "atomic_number" => "1",
              "name" => "Deuterium",

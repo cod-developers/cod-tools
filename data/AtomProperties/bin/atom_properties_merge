@@ -16,11 +16,11 @@ eval 'exec perl -x $0 ${1+"$@"}'
 use strict;
 use warnings;
 
-use COD::SOptions qw( getOptions );
+use COD::SOptions qw( getOptions get_value );
 use COD::SUsage qw( usage );
 
 use XML::Simple;
-use YAML qw(Dump Bless Load LoadFile);
+use YAML qw( Dump Bless Load LoadFile );
 
 my @default_property_order = qw( atomic_number name family period group block
                                  atomic_weight atomic_mass covalent_radius
@@ -30,44 +30,57 @@ my $verbose = 0;
 my $fill_missing = 1;
 my $override_values = 0;
 my $output_format = 'yaml';
+my $namespace = 'COD::AtomProperties';
 
 #* USAGE:
 #*     $0 file1.yaml [file2.yaml] [file3.yaml]
 #* OPTIONS:
 #*
-#* -f,--fill-missing
+#* -f, --fill-missing
 #*                     Add empty values for missing atom properties. A list 
 #*                     of properties is constructed by taking distinct 
 #*                     properties from all of the atom entries (default).
 #* --no-fill-missing
 #*                     Do no add empty values for missing atom properties.
-#* -o,--override-values
+#*
+#* -o, --override-values
 #*                     Override property values with the newest ones.
 #* --no-overide-values, --keep-original-values
 #*                     Keep the oldest property values (default).
-#* -v,--verbose
+#*
+#* -v, --verbose
 #*                     Output warning messages.
-#* -s,--silent
+#* -s, --silent
 #*                     Do not output warning messages (default).
-#* -y,--yaml
+#*
+#* -y, --yaml
 #*                     Output merged files in yaml format (default).
-#* -p,--perl-hash
-#*                     Output merged files as a perl hash.
-#* --help,--usage      Print a short usage message (this message) and exit.
+#* -p, --perl-hash
+#*                     Output merged files as a perl module containing
+#*                     a perl hash.
+#*
+#* -n, --namespace
+#*                     Namespace to be used when outputing a perl module
+#*                     (default 'COD::AtomProperties').
+#*
+#* --help, --usage
+#*                     Print a short usage message (this message) and exit.
 #**
 @ARGV = getOptions(
     '-f,--fill-missing'      => sub { $fill_missing = 1 },
     '--no-fill-missing'      => sub { $fill_missing = 0 },
 
-    '-o,--override-values'   => sub{ $override_values = 1 },
-    '--no-overide-values'    => sub{ $override_values = 0 },
-    '--keep-original-values' => sub{ $override_values = 0 },
+    '-o,--override-values'   => sub { $override_values = 1 },
+    '--no-overide-values'    => sub { $override_values = 0 },
+    '--keep-original-values' => sub { $override_values = 0 },
 
-    '-v,--verbose'           => sub{ $verbose = 1 },
-    '-s,--silent'            => sub{ $verbose = 0 },
+    '-v,--verbose'           => sub { $verbose = 1 },
+    '-s,--silent'            => sub { $verbose = 0 },
 
-    '-y,--yaml'              => sub{ $output_format = 'yaml' },
-    '-p,--perl-hash'         => sub{ $output_format = 'perl' },
+    '-y,--yaml'              => sub { $output_format = 'yaml' },
+    '-p,--perl-hash'         => sub { $output_format = 'perl' },
+
+    '-n,--namespace'         => sub { $namespace =  get_value() },
 
     '--help,--usage'   => sub { usage; exit }
 );
@@ -156,7 +169,7 @@ foreach ( keys %all_fields ) {
 push @default_property_order, sort @unrecognized_properties;
 
 if ( $output_format eq 'perl' ) {
-    print_perl_hash( \%atoms_merged, \@default_property_order )
+    print_perl_hash( \%atoms_merged, \@default_property_order, $namespace )
 } elsif ( $output_format eq 'yaml' ) {
     my @print_order = sort { $atoms_merged{$a} -> {'atomic_number'} <=>
                              $atoms_merged{$b} -> {'atomic_number'} ||
@@ -168,17 +181,17 @@ if ( $output_format eq 'perl' ) {
 
 sub print_perl_hash
 {
-    my ( $atoms_merged, $property_order ) = @_;
+    my ( $atoms_merged, $property_order, $namespace ) = @_;
 
-    print "package COD::AtomProperties;\n" .
+    print "package $namespace;\n" .
           "\n" .
           "use strict;\n" .
           "\n" .
           "require Exporter;\n" .
-          '@AtomProperties::ISA = qw(Exporter);' . "\n" .
-          '@AtomProperties::EXPORT = qw( ok );' . "\n" .
+          '@' . $namespace . '::ISA = qw(Exporter);' . "\n" .
+          '@' . $namespace . '::EXPORT = qw( ok );' . "\n" .
           "\n" .
-          '%AtomProperties::atoms = (' . "\n";
+          '%' . $namespace . '::atoms = (' . "\n";
 
     my @print_order = sort { $atoms_merged->{$a}->{'atomic_number'} <=>
                              $atoms_merged->{$b}->{'atomic_number'} ||
