@@ -1,4 +1,4 @@
-include .makeconfig
+include Makeconf
 
 NAMESPACE ?= "COD::AtomProperties"
 
