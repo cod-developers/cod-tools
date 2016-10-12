@@ -139,8 +139,9 @@ stray_cif_value_list
                                    cif_flex_current_line_number(), -1, px );
                     yyincrease_error_counter();
             }
+            freex( $1.vstr );
         }
-        | cif_value
+        | cif_value cif_value_list
         {
             if( isset_fix_errors( cif_cc ) ||
                 isset_fix_data_header( cif_cc ) ) {
@@ -153,8 +154,9 @@ stray_cif_value_list
                                    cif_flex_current_line_number(), -1, px );
                     yyincrease_error_counter();
             }
+            freex( $1.vstr );
+            freex( $2.vstr );
         }
-        cif_value_list
 ;
 
 //  cif_value_list
