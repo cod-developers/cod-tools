@@ -284,6 +284,8 @@ cif_entry
         {
             assert_datablock_exists( px );
             add_tag_value( $1, $2.vstr, $2.vtype, px );
+            freex( $1 );
+            freex( $2.vstr );
         }
         | _TAG cif_value cif_value_list
             {
@@ -303,12 +305,13 @@ cif_entry
                         tag_type = CIF_TEXT;
                     }
                     add_tag_value( $1, buf, tag_type, px );
+                    freex( buf );
                 } else {
                     yyerror_previous( "incorrect CIF syntax", px );
-                    freex( $1 );
-                    freex( $2.vstr );
-                    freex( $3.vstr );
                 }
+                freex( $1 );
+                freex( $2.vstr );
+                freex( $3.vstr );
             }
 ;
 
@@ -374,6 +377,7 @@ loop_tags
             }
             loop_tag_count++;
             cif_insert_value( cif_cc->cif, $2, NULL, CIF_UNKNOWN, px );
+            freex( $2 );
         }
 	|	_TAG
         {
@@ -387,6 +391,7 @@ loop_tags
             }
             loop_tag_count++;
             cif_insert_value( cif_cc->cif, $1, NULL, CIF_UNKNOWN, px );
+            freex( $1 );
         }
 ;
 
@@ -734,7 +739,7 @@ void add_tag_value( char * tag, char * value, cif_value_type_t type,
                                              (cif_last_datablock(cif_cc->cif),
                                               tag_nr, 0)), ex );
                         cif_overwrite_value( cif_cc->cif, tag_nr, 0,
-                                             value, type );
+                                             value, type, ex );
                     } else {
                         yyerror_previous
                             ( cxprintf( "tag %s appears more than once", tag ),
