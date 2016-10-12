@@ -403,6 +403,7 @@ save_block
 	: _SAVE_HEAD
         {
             cif_start_save_frame( cif_cc->cif, /* name = */ $1, px );
+            freex( $1 );
         }
         save_item_list
         _SAVE_FOOT
