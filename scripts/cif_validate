@@ -47,6 +47,7 @@ sub check_against_range_numb($$$);
 sub check_against_range_char($$);
 sub get_list_reference_tags($$);
 sub get_replacement_tags($$);
+sub check_list_link_parent($$$);
 
 #* USAGE:
 #*     $0 --dictionaries 'cif_core.dic,cif_cod.dic' --options input1.cif input*.cif
@@ -337,6 +338,12 @@ CIFFILEANAL: for my $filename ( @ARGV ) {
                     }
                 }
 
+                # check link to parent
+                if( exists $dict_tag_values->{_list_link_parent} ) {
+                    check_list_link_parent( $block, $tag_analysed,
+                                            $dict_tag_values->{_list_link_parent} );
+                }
+
                 # check types of values
                 my $range = {};
                 my %range_for_print;
@@ -465,7 +472,7 @@ CIFFILEANAL: for my $filename ( @ARGV ) {
                     if ( $value =~ /([(]\d+[)])$/ && !$su_permitted ) {
                         warn "NOTE, tag '$tag_analysed' value \"$value\" "
                            . 'is not permitted to contain standard '
-                           . 'uncertainty "' . $1 . '"' . ' -- '
+                           . 'uncertainty "' . $1 . '" -- '
                            . 'standard uncertainty will be ignored in '
                            . 'further validation' . "\n";
                         $sigma = undef;
@@ -476,8 +483,7 @@ CIFFILEANAL: for my $filename ( @ARGV ) {
                     #
                     if( %{$range} ) {
                         my $value_wo_su = $value;
-                        if( $dict_tag_values->{_type}[0]
-                            eq 'numb' ) {
+                        if( $dict_tag_values->{_type}[0] eq 'numb' ) {
                             $value_wo_su =~ s/\s*\(.*$//;
                         }
                         if( check_against_range(
@@ -734,4 +740,27 @@ sub get_list_reference_tags($$)
     }
 
     return \@list_reference_tags;
+}
+
+##
+# Checks the existence of parent (foreign) keys.
+##
+sub check_list_link_parent($$$)
+{
+    my( $block, $tag, $parents ) = @_;
+
+    return if @$parents > 1; # not handled yet, unsure how to do that
+
+    my $parent = $parents->[0];
+    return if !exists $block->{values}{$parent};
+
+    my %parent_values = map { $_ => 1 } @{$block->{values}{$parent}};
+
+    my @unmatched = grep { !exists $parent_values{$_} }
+                         @{$block->{values}{$tag}};
+
+    for my $value (@unmatched) {
+        warn "NOTE, value \"$value\" of tag \"$parent\" is required " .
+             "as the tag is a parent of \"$tag\"\n";
+    }
 }
