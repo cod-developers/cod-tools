@@ -305,6 +305,9 @@ cif_entry
                     add_tag_value( $1, buf, tag_type, px );
                 } else {
                     yyerror_previous( "incorrect CIF syntax", px );
+                    freex( $1 );
+                    freex( $2.vstr );
+                    freex( $3.vstr );
                 }
             }
 ;
