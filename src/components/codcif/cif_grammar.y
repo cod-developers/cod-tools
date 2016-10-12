@@ -96,7 +96,7 @@ int loop_start = 0;
 %token <s> _SAVE_HEAD
 %token _SAVE_FOOT
 %token <s> _TAG
-%token _LOOP_
+%token <s> _LOOP_
 %token <s> _DQSTRING
 %token <s> _SQSTRING
 %token <s> _UQSTRING
@@ -336,6 +336,7 @@ loop
            loop_value_count = 0;
            loop_start = cif_flex_current_line_number();
            cif_start_loop( cif_cc->cif, px );
+           freex( $1 );
        } 
        loop_tags loop_values
        {
