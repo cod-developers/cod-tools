@@ -55,8 +55,8 @@ int main( int argc, char *argv[], char *env[] )
       if( strstr(debug.value.s, "yylval") != NULL ) cif_flex_debug_yylval();
       if( strstr(debug.value.s, "text") != NULL ) cif_flex_debug_yytext();
       if( strstr(debug.value.s, "code") != NULL ) {
-	  cif_flex_debug_lines();
-	  cif_debug_on();
+          cif_flex_debug_lines();
+          cif_debug_on();
       }
   }
 
@@ -91,6 +91,7 @@ int main( int argc, char *argv[], char *env[] )
   }
 
   delete_cif( cif );
+  freex( files );
 
   return retval;
 }
