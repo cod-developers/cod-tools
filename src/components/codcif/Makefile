@@ -388,6 +388,19 @@ ${SIZE_FILE}: ${TARGET} ${BENCH_INPUTS}
 
 #------------------------------------------------------------------------------
 
+INCLUDE_DIR ?= ${PREFIX}/include
+LIB_DIR     ?= ${PREFIX}/lib
+
+.PHONY: install
+
+install: ${LOCAL_LIB}
+	mkdir -p ${INCLUDE_DIR}
+	mkdir -p ${LIB_DIR}
+	cp *.h ${INCLUDE_DIR}
+	cp ${LOCAL_LIB} ${LIB_DIR}
+
+#------------------------------------------------------------------------------
+
 clean:
 	rm -f *~
 	rm -f ${DEL_OBJS} ${FLEXOBJ} ${YYOBJ}
