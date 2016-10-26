@@ -55,6 +55,15 @@ ${CEXCEPTIONS_DIR}/obj/%.o: ${CEXCEPTIONS_DIR}/%.c
 ${GETOPTIONS_DIR}/obj/%.o: ${GETOPTIONS_DIR}/%.c
 	${MAKE} -C ${GETOPTIONS_DIR} obj/$*.o
 
+.PHONY: install
+
+CCIFPARSER_DIR=${PREFIX}/lib/python2.7/dist-packages/cod/ccifparser
+
+install: ${SWIG_MODULE} ${SWIG_SO_FILE}
+	mkdir -p ${CCIFPARSER_DIR}
+	install ${SWIG_MODULE} ${SWIG_SO_FILE} __init__.py ${CCIFPARSER_DIR}
+	touch ${CCIFPARSER_DIR}/../__init__.py
+
 .PHONY: clean cleanAll distclean try
 
 clean:
