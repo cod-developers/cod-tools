@@ -154,7 +154,7 @@ ALL_INPUTS = $(wildcard ${SCRIPT_TST_DIR}/*.* ${SHELL_TSTDIR}/*.sh)
 	| sort -t ':' -d --key 2 \
 	| join -t ':' -1 2 -2 1 - $< \
 	| perl -lne 'my @a = split(":", $$_ ); push( @a, shift @a); print shift @a,": ",join(" ", @a)' \
-	| sponge $@ || true
+	> $@.$$$$; mv -f $@.$$$$ $@ || true
 
 ${SCRIPT_DIR}/.%.d: ${SCRIPT_DIR}/%
 	-tools/mkperldepend $< > $@
