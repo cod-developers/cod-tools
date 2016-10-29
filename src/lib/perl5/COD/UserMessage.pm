@@ -32,7 +32,7 @@ my %program_escape   = ( '&' => '&amp;', ':' => '&colon;', ' ' => '&nbsp;' );
 my %filename_escape  = ( '&' => '&amp;', ':' => '&colon;', ' ' => '&nbsp;',
                          '(' => '&lpar;', ')' => '&rpar;' );
 my %datablock_escape = ( '&' => '&amp;', ':' => '&colon;', ' ' => '&nbsp;' );
-my %message_escape   = ( '&' => '&amp;', ':' => '&colon;' );
+my %message_escape   = ( '&' => '&amp;', ':' => '&colon;', "\n" => '&#10;' );
 
 #==============================================================================
 # Print a message, reporting a program name, file name, data block
