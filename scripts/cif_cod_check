@@ -18,11 +18,17 @@ use strict;
 use warnings;
 use Digest::MD5 qw( md5_hex );
 use Digest::SHA qw( sha1_hex );
-use COD::CIF::Parser qw( parse_cif );
+use COD::AuthorNames qw( parse_author_name );
 use COD::CIF::Data qw( get_cell get_content_encodings );
 use COD::CIF::Data::EstimateZ qw( cif_estimate_z );
+use COD::CIF::Parser qw( parse_cif );
 use COD::CIF::Tags::CanonicalNames qw( canonicalize_all_names );
 use COD::CIF::Tags::Manage qw( tag_is_empty );
+use COD::CIF::Unicode2CIF qw( cif2unicode );
+use COD::ErrorHandler qw( process_warnings
+                          process_errors
+                          process_parser_messages
+                          report_message );
 use COD::Escape qw( decode_textfield );
 use COD::Precision qw( eqsig );
 use COD::Spacegroups::Symop::Parse qw( symop_string_canonical_form
@@ -30,10 +36,6 @@ use COD::Spacegroups::Symop::Parse qw( symop_string_canonical_form
 use COD::SOptions qw( getOptions get_value );
 use COD::SUsage qw( usage options );
 use COD::UserMessage qw( sprint_message );
-use COD::ErrorHandler qw( process_warnings
-                          process_errors
-                          process_parser_messages
-                          report_message );
 
 my $name_syntax_explained = 0;
 my $check_bibliography = 1;
@@ -645,104 +647,33 @@ sub check_bibliography
 
 sub check_authors
 {
-    use COD::CIF::Unicode2CIF qw( cif2unicode );
-
     my ($dataset) = @_;
 
     if( !defined $dataset->{values} ) {
         return 0;
     }
 
-    my $warnings = 0;
     my $values = $dataset->{values};
-
-    my $First = qr/[[:upper:]] ('[[:alpha:]])? [[:lower:]]*
-                   ( \s*-\s* [[:upper:]]? ['[:lower:]]* )?/x;
-                # Armel, Miguel, O'Reily, Ding-Quan, Chun-hsien
-
-    my $Initial = qr/[[:upper:]] [[:lower:]]? \.
-                   ( \s*-\s* [[:upper:]] [[:lower:]]?\. )?/x;
-                # A., M., O., D.-Q.
-
-    my $Last = qr/([[:upper:]][[:lower:]]{1,2})? # optional Mc, Da, La prefix
-                   [[:upper:]] ('[[:alpha:]])? ['[:lower:]]*
-                  (?: \s*-\s* [[:upper:]] ['[:lower:]]+ )?
-                  (?: \s+ i \s+ [[:upper:]] [[:lower:]]+ )? # poss. 'i Surname'
-                  |
-                  [[:upper:]][[:lower:]]+
-                  -[[:lower:]][[:lower:]]-
-                  [[:upper:]][[:lower:]]+
-                  /x;
-                # Neuman, D'Lamber, le Bail, Le Bail (?), Mairata i Payeras
-
-    my $von = qr/[a-zA-Z][a-z]+(\s+[a-zA-Z][a-z]+)?/;
-                # von, van, de, De, de la
-
-    my $Jr  = qr/[A-Za-z]+\.?/;
-                # Jr, Jr., I, II, III, IV
-
-    my $FirstNames = qr/${First}(\s+${First})*/;
-    my $Initials = qr/(${Initial}\s*|${First}\s+)*(${First}|${Initial})/;
-    my $LastNames = qr/${Last}(\s+${Last})*/;
-    my $vonLast = qr/(${von}\s+)?${Last}/;
-    my $vonLastNames = qr/(${von}\s+)?${Last}(\s+${Last})*/;
 
     if( !defined $values->{_publ_author_name} ) {
         warn 'WARNING, _publ_author_name is undefined' . "\n";
+        return 1;
+    }
+
+    my $warnings = 0;
+    for my $author (@{$values->{_publ_author_name}}) {
+        my $parsed_name =
+            parse_author_name( cif2unicode( $author ), 1 );
+        next if !exists $parsed_name->{unparsed};
         $warnings++;
-    } else {
-        for my $author (@{$values->{_publ_author_name}}) {
-            my $UCS_author = cif2unicode( $author );
-            if( $UCS_author =~ /^([^[:alpha:]])/ ||
-                $UCS_author =~ /([^-\.,[:alpha:]'()\s])/ ) {
-                my $symbol_escaped = $1;
-                my $author_escaped = $author;
-                my $UCS_author_escaped = $UCS_author;
-                $symbol_escaped =~ s/\n/\\n/g;
-                $author_escaped =~ s/\n/\\n/g;
-                $UCS_author_escaped =~ s/\n/\\n/g;
-                warn "WARNING, name '$author_escaped'"
-                   . ( $author eq $UCS_author
-                                ? ''
-                                : " ('$UCS_author_escaped')" )
-                   . " contains symbol '$symbol_escaped' "
-                   . 'that is not permitted in names' . "\n";
-                if( ! $name_syntax_explained ) {
-                    warn 'NOTE, names should be written as \'First von Last\', '
-                       . '\'von Last, First\', or \'von Last, Jr, First\' '
-                       . '(mind the case!)' . "\n";
-                    $name_syntax_explained = 1;
-                }
-                $warnings++;
-            } elsif( $UCS_author !~
-                /^\s*${FirstNames}\s+${vonLast}\s*$/ &&
-                $UCS_author !~
-                /^\s*${Initials}\s*${vonLast}\s*$/ &&
-                $UCS_author !~
-                /^\s*${vonLastNames}\s*,\s*${FirstNames}\s*$/ &&
-                $UCS_author !~
-                /^\s*${vonLastNames}\s*,\s*${Initials}\s*$/ &&
-                $UCS_author !~
-                /^\s*${vonLastNames}\s*,\s*${Jr}\s*,\s*${FirstNames}\s*$/ &&
-                $UCS_author !~
-                /^\s*${vonLastNames}\s*,\s*${Jr}\s*,\s*${Initials}\s*$/ &&
-                $UCS_author !~
-                /^\s*${First}-ur-${Last}\s*$/
-                ) {
-                warn "NOTE, name '$author'"
-                    . ( $author eq $UCS_author ? ''
-                                               : " ('$UCS_author')" )
-                    . ' seems unusual' . "\n";
-                if( ! $name_syntax_explained ) {
-                    warn 'NOTE, names should be written as \'First von Last\', '
-                       . '\'von Last, First\', or \'von Last, Jr, First\' '
-                       . '(mind the case!)' . "\n";
-                    $name_syntax_explained = 1;
-                }
-                $warnings++;
-            }
+        if( ! $name_syntax_explained ) {
+            warn 'NOTE, names should be written as \'First von Last\', '
+               . '\'von Last, First\', or \'von Last, Jr, First\' '
+               . '(mind the case!)' . "\n";
+            $name_syntax_explained = 1;
         }
     }
+
     return $warnings;
 }
 
