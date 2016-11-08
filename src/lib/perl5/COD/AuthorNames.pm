@@ -1,0 +1,259 @@
+#------------------------------------------------------------------------------
+#$Author$
+#$Date$ 
+#$Revision$
+#$URL$
+#------------------------------------------------------------------------------
+#*
+#  Subroutines for parsing and regularisation of author names.
+#**
+
+package COD::AuthorNames;
+
+use strict;
+use warnings;
+
+require Exporter;
+our @ISA = qw( Exporter );
+our @EXPORT_OK = qw(
+    canonicalize_author_name
+    parse_author_name
+);
+
+# Parse an author name according to COD (aka BibTeX) conventions,
+# convert CIF markup to Unicode, and return a data structure wuth the
+# author name components.
+
+# Returns:
+# 
+# {
+#     initials => [ "A.", "B." ], # Initials of the 'first' names
+#     first => [ "AFirst", "BFirst" ],
+#     last  => [ "ALast", "BLast" ],
+#     von   => [ "van", "de" ],
+#     jr    => [ "Jr" ],
+# }
+#
+# or:
+#
+# {
+#     unparsed => "unparsed name"
+# }
+
+sub parse_author_name
+{
+    my ($unparsed_name, $name_syntax_explained) = @_;
+
+    $name_syntax_explained = 0 unless defined $name_syntax_explained;
+
+    my %parsed_name = ( 'last'  => undef,
+                        'first' => undef,
+                        'von'   => undef,
+                        'jr'    => undef,
+                      );
+
+    my $First = qr/[[:upper:]] (?:'[[:alpha:]])? [[:lower:]]*
+                   (?: \s*-\s* [[:alpha:]] ['[:lower:]]* )?/x;
+                # Armel, Miguel, O'Reily, Ding-Quan, Chun-hsien
+
+    my $Initial = qr/[[:upper:]] [[:lower:]]? \.
+                     (?: \s*-\s* [[:upper:]] [[:lower:]]? \. )?/x;
+                # A., M., O., D.-Q.
+
+    my $Last = qr/(?:
+                   [[:upper:]][[:lower:]]{1,2}
+                  )? # optional Mc, Da, La prefix
+                   [[:upper:]] (?: '[[:alpha:]])? ['[:lower:]]*
+                  (?: \s*-\s* [[:upper:]] ['[:lower:]]+ )?
+                  (?: \s+ i \s+ [[:upper:]] [[:lower:]]+ )? # poss. 'i Surname'
+                  |
+                  [[:upper:]][[:lower:]]+
+                  -[[:lower:]][[:lower:]]-
+                  [[:upper:]][[:lower:]]+
+                  /x;
+                # Neuman, D'Lamber, le Bail, Le Bail (?), Mairata i Payeras
+
+    my $von = qr/[a-z][a-z]+(?:\s+[a-z][a-z]+)?/;
+                # von, van, de, De, de la
+
+    my $Jr  = qr/[A-Za-z]+\.?/;
+                # Jr, Jr., I, II, III, IV
+
+    my $FirstNames = qr/${First}(?:\s+${First})*/;
+    my $Initials = qr/(?:${Initial}|${First})(?:\s+(?:${Initial}|${First}))*
+                     |(?:${Initial})(?:\s*${Initial})*(?:\s*${First}(?=[,\s]))?
+                     /x;
+    my $LastNames = qr/${Last}(?:\s+${Last})*/;
+
+    my $UCS_author = $unparsed_name;
+    if( $UCS_author =~ /^([^[:alpha:]])/ ||
+        $UCS_author =~ /([^-\.,[:alpha:]'()\s])/ ) {
+        my $symbol_escaped = $1;
+        my $author_escaped = $unparsed_name;
+        my $UCS_author_escaped = $UCS_author;
+        $symbol_escaped =~ s/\n/\\n/g;
+        $author_escaped =~ s/\n/\\n/g;
+        $UCS_author_escaped =~ s/\n/\\n/g;
+            warn "WARNING, name '$author_escaped'"
+                . ( $unparsed_name eq $UCS_author
+                ? ''
+                : " ('$UCS_author_escaped')" )
+                . " contains symbol '$symbol_escaped' "
+                . 'that is not permitted in names' . "\n";
+        if( ! $name_syntax_explained ) {
+            warn "NOTE, names should be written as \'First von Last\', "
+               . '\'von Last, First\', or \'von Last, Jr, First\' '
+               . '(mind the case!)' . "\n";
+               $name_syntax_explained = 1;
+        }
+        $parsed_name{'unparsed'} = $UCS_author;
+    } else {
+        if( $UCS_author =~ /^\s*(${FirstNames})\s+(${von})\s+(${Last})\s*$/ ) {
+            $parsed_name{'first'} = $1;
+            $parsed_name{'von'}   = $2;
+            $parsed_name{'last'}  = $3;
+            ## print ">>> 1: name = '$UCS_author', FIRST = '$1', VON = '$2', LAST = '$3'\n";
+        } elsif( $UCS_author =~ /^\s*(${FirstNames})\s+(${Last})\s*$/ ) {
+            $parsed_name{'first'} = $1;
+            $parsed_name{'last'}  = $2;
+            ## print ">>> 2: name = '$UCS_author', FIRST = '$1', LAST = '$2'\n";
+        } elsif ( $UCS_author =~ /^\s*(${Initials})\s*(${von})\s+(${Last})\s*$/ ) {
+            $parsed_name{'initials'} = $1;
+            $parsed_name{'von'}      = $2;
+            $parsed_name{'last'}     = $3;
+            ## print ">>> 3: name = '$UCS_author', INITIALS = '$1', VON = '$2', LAST = '$3'\n";
+        } elsif ( $UCS_author =~ /^\s*(${Initials})\s*(${Last})\s*$/ ) {
+            $parsed_name{'initials'} = $1;
+            $parsed_name{'last'}     = $2;
+            ## print ">>> 4: name = '$UCS_author', FIRST = '$1', LAST = '$2'\n";
+        } elsif ( $UCS_author =~ /^\s*(${von})\s+(${LastNames})\s*,\s*(${FirstNames})\s*$/ ) {
+            $parsed_name{'von'}   = $1;
+            $parsed_name{'last'}  = $2;
+            $parsed_name{'first'} = $3;
+            ## print ">>> 5: name = '$UCS_author', VON = '$1', FIRST = '$3', LAST = '$2'\n";
+        } elsif ( $UCS_author =~ /^\s*(${LastNames})\s*,\s*(${FirstNames})\s*$/ ) {
+            $parsed_name{'last'}  = $1;
+            $parsed_name{'first'} = $2;
+            ## print ">>> 6: name = '$UCS_author', FIRST = '$2', LAST = '$1'\n";
+        } elsif ( $UCS_author =~ /^\s*(${von})\s+(${LastNames})\s*,\s*(${Initials})\s*$/ ) {
+            $parsed_name{'von'}      = $1;
+            $parsed_name{'last'}     = $2;
+            $parsed_name{'initials'} = $3;
+            ## print ">>> 7: name = '$UCS_author', VON = '$1', FIRST = '$3', LAST = '$2'\n";
+        } elsif ( $UCS_author =~ /^\s*(${LastNames})\s*,\s*(${Initials})\s*$/ ) {
+            $parsed_name{'last'}     = $1;
+            $parsed_name{'initials'} = $2;
+            ## print ">>> 8: name = '$UCS_author', FIRST = '$2', LAST = '$1'\n";
+        } elsif ( $UCS_author =~ /^\s*(${von})\s+(${LastNames})\s*,\s*(${Jr})\s*,\s*(${FirstNames})\s*$/ ) {
+            $parsed_name{'von'}   = $1;
+            $parsed_name{'last'}  = $2;
+            $parsed_name{'jr'}    = $3,
+            $parsed_name{'first'} = $4;
+            ## print ">>> 9: name = '$UCS_author', FIRST = '$4', VON = '$1', LAST = '$2', JR = '$3'\n";
+        } elsif ( $UCS_author =~ /^\s*(${LastNames})\s*,\s*(${Jr})\s*,\s*(${FirstNames})\s*$/ ) {
+            $parsed_name{'first'} = $3;
+            $parsed_name{'jr'}    = $2,
+            $parsed_name{'last'}  = $1;
+            ## print ">>> 10: name = '$UCS_author', FIRST = '$3', LAST = '$1', JR = '$2'\n";
+        } elsif ( $UCS_author =~ /^\s*(${von})\s+(${LastNames})\s*,\s*(${Jr})\s*,\s*(${Initials})\s*$/ ) {
+            $parsed_name{'von'}      = $1;
+            $parsed_name{'last'}     = $2;
+            $parsed_name{'jr'}       = $3,
+            $parsed_name{'initials'} = $4;
+            ## print ">>> 11: name = '$UCS_author', INITIALS = '$4', VON = '$1', LAST = '$2', JR = '$3'\n";
+        } elsif ( $UCS_author =~ /^\s*(${LastNames})\s*,\s*(${Jr})\s*,\s*(${Initials})\s*$/ ) {
+            $parsed_name{'last'}     = $1;
+            $parsed_name{'jr'}       = $2,
+            $parsed_name{'initials'} = $3;
+            ## print ">>> 12: name = '$UCS_author', INITIALS = '$3', LAST = '$1', JR = '$2'\n";
+        } elsif ( $UCS_author =~ /^\s*(${First}-ur-${Last})\s*$/ ) {
+            $parsed_name{'last'}  = $1;
+            $parsed_name{'first'} = '';
+            ## print STDERR ">>> 13: name = '$UCS_author', LAST = '$1'\n";
+        } elsif ( $UCS_author =~ /^\s*(${LastNames})\s*,\s*(${FirstNames})\s+(${Initials})\s*$/ ) {
+            $parsed_name{'last'}  = $1;
+            $parsed_name{'first'} = $2;
+            $parsed_name{'initials'} = $3;
+        } else {
+            warn "NOTE, name '$unparsed_name'"
+                . ( $unparsed_name eq $UCS_author ? ''
+                    : " ('$UCS_author')" )
+                    . ' seems unusual' . "\n";
+            if( ! $name_syntax_explained ) {
+                warn "NOTE, names should be written as \'First von Last\', "
+                    . '\'von Last, First\', or \'von Last, Jr, First\' '
+                    . '(mind the case!)' . "\n";
+                $name_syntax_explained = 1;
+            }
+            $parsed_name{'unparsed'} = $UCS_author;
+        }
+    }
+
+    if( !exists $parsed_name{'unparsed'} ) {
+        if( defined $parsed_name{'last'} ) {
+            $parsed_name{'last'} = [ split( ' ', $parsed_name{'last'} ) ];
+        }
+        if( defined $parsed_name{'von'} ) {
+            $parsed_name{'von'} = [ split( ' ', $parsed_name{'von'} ) ];
+        }
+        if( defined $parsed_name{'first'} ) {
+            $parsed_name{'first'} =
+                [ split( ' ', $parsed_name{'first'} ) ];
+        }
+        if( defined $parsed_name{'jr'} ) {
+            $parsed_name{'jr'} = [ split( ' ', $parsed_name{'jr'} ) ];
+        }
+        if( defined $parsed_name{'initials'} ) {
+            $parsed_name{'initials'} = 
+                [
+                 # S.G. 2016-10-04:
+                 # Use simultaneously a look-ahead and look-behind
+                 # regular expression to split initials immediately
+                 # after a period ('.') that is NOT followed by a
+                 # hyphen ('-'):
+                 map { split( /(?<=\.(?!-))/, $_ ) }
+                 split( ' ', $parsed_name{'initials'} )
+                ];
+            if( defined $parsed_name{'first'} ) {
+                $parsed_name{'first'} = [ @{$parsed_name{'first'}},
+                                          @{$parsed_name{'initials'}} ];
+            } else {
+                $parsed_name{'first'} = $parsed_name{'initials'};
+            }
+        }
+    }
+
+    return \%parsed_name;
+}
+
+sub canonicalize_author_name
+{
+    my ($unparsed_name, $name_syntax_explained) = @_;
+
+    $name_syntax_explained = 0 unless defined $name_syntax_explained;
+
+    my $parsed_name = parse_author_name( $unparsed_name,
+                                         $name_syntax_explained );
+
+    return undef if exists $parsed_name->{unparsed};
+
+    my @name_parts;
+
+    if( defined $parsed_name->{'last'} ) {
+        my @von;
+        if( defined $parsed_name->{'von'} ) {
+            @von = @{$parsed_name->{'von'}};
+        }
+        push @name_parts, join( ' ', @von, @{$parsed_name->{'last'}} );
+    }
+    if( defined $parsed_name->{'jr'} ) {
+        push @name_parts, join( ' ', @{$parsed_name->{'jr'}} );
+    }
+    if( defined $parsed_name->{'first'} ) {
+        push @name_parts, join( ' ', @{$parsed_name->{'first'}} );
+    }
+
+    return join( ', ', @name_parts );
+}
+
+1;
