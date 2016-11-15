@@ -65,7 +65,7 @@ def parse(filename,options):
     for message in messages:
         datablock = message['addpos']
         if datablock is not None:
-            datablock = "data_{}".format(datablock)
+            datablock = "data_{0}".format(datablock)
         explanation = message['explanation']
         if explanation is not None:
             explanation = explanation[0].lower() + explanation[1:]
@@ -175,30 +175,30 @@ def sprint_message(program, filename, datablock, errlevel, message,
     explanation = escape_meta(explanation, message_escape)
 
     if line_contents is not None:
-        line_contents = '\n'.join([ " {}".format(x) for x in line_contents.split('\n') ])
+        line_contents = '\n'.join([ " {0}".format(x) for x in line_contents.split('\n') ])
 
-    msg = "{}: ".format(program)
+    msg = "{0}: ".format(program)
     if filename is not None:
-        msg = "{}{}".format(msg, filename)
+        msg = "{0}{1}".format(msg, filename)
         if line is not None:
-            msg = "{}({}".format(msg, line)
+            msg = "{0}({1}".format(msg, line)
             if column is not None:
-                msg = "{},{}".format(msg, column)
-            msg = "{})".format(msg)
+                msg = "{0},{1}".format(msg, column)
+            msg = "{0})".format(msg)
         if datablock is not None:
-            msg = "{} {}".format(msg, datablock)
-        msg = "{}: ".format(msg)
+            msg = "{0} {1}".format(msg, datablock)
+        msg = "{0}: ".format(msg)
     if errlevel is not None:
-        msg = "{}{}, ".format(msg, errlevel)
-    msg = "{}{}".format(msg, message)
+        msg = "{0}{1}, ".format(msg, errlevel)
+    msg = "{0}{1}".format(msg, message)
     if explanation is not None:
-        msg = "{} -- {}".format(msg, explanation)
+        msg = "{0} -- {1}".format(msg, explanation)
     if line_contents is not None:
-        msg = "{}:\n{}\n".format(msg, line_contents)
+        msg = "{0}:\n{1}\n".format(msg, line_contents)
         if column is not None:
-            msg = "{} {}^\n".format(msg, " "*(column-1))
+            msg = "{0} {1}^\n".format(msg, " "*(column-1))
     else:
-        msg = "{}.\n".format(msg)
+        msg = "{0}.\n".format(msg)
 
     return msg
 
@@ -216,12 +216,12 @@ def escape_meta(text, escaped_symbols):
     if text is None:
         return None
 
-    symbols = "|".join(["\\{}".format(x) for x in escaped_symbols.keys()])
+    symbols = "|".join(["\\{0}".format(x) for x in escaped_symbols.keys()])
 
     def escape_internal(matchobj):
         return escaped_symbols(matchobj.group(0))
 
-    return re.sub("({})".format(symbols), escape_internal, text)
+    return re.sub("({0})".format(symbols), escape_internal, text)
 
 %}
 
