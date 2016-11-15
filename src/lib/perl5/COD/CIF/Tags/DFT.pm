@@ -5,13 +5,13 @@
 #$URL$
 #------------------------------------------------------------------------
 #* 
-#  A list of DFT CIF dictionary tags. Compiled from version 0.018 of
+#  A list of DFT CIF dictionary tags. Compiled from version 0.020 of
 #  cif_dft.dic:
 #
 #  URL: svn://www.crystallography.net/tcod/cif/dictionaries/cif_dft.dic
 #  Repository Root: svn://www.crystallography.net/tcod
 #  Repository UUID: f3fa9230-7ed6-4b69-bb24-8fd292b8517b
-#  Revision: 1562
+#  Revision: 1657
 #**
 
 package COD::CIF::Tags::DFT;
@@ -112,6 +112,8 @@ _dft_kinetic_energy_cutoff_EEX
 _dft_kinetic_energy_cutoff_wavefunctions
 _dft_lattice_energy
 _dft_nuclear_repulsion_energy
+_dft_pseudopotential_[]
+_dft_pseudopotential_atom_type
 _dft_pseudopotential_citation_id
 _dft_pseudopotential_type
 _dft_pseudopotential_type_other_name
@@ -136,10 +138,13 @@ _dft_stiffness_tensor_46
 _dft_stiffness_tensor_55
 _dft_stiffness_tensor_56
 _dft_stiffness_tensor_66
-_dft_XC_correlation_functional
-_dft_XC_exchange_functional
+_dft_XC_correlation_functional_name
+_dft_XC_correlation_functional_weight
+_dft_XC_exchange_functional_name
+_dft_XC_exchange_functional_weight
 _dft_XC_functional
 _dft_XC_functional_citation_id
+_dft_XC_functional_id
 _dft_XC_functional_type
 _dft_XC_functional_type_other_name
 );

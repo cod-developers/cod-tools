@@ -5,14 +5,13 @@
 #$URL$
 #------------------------------------------------------------------------
 #* 
-#  A list of TCOD CIF dictionary tags. Compiled from version 0.008 of
+#  A list of TCOD CIF dictionary tags. Compiled from version 0.009 of
 #  cif_tcod.dic:
 #
 #  URL: svn://www.crystallography.net/tcod/cif/dictionaries/cif_tcod.dic
-#  Relative URL: ^/cif/dictionaries/cif_tcod.dic
 #  Repository Root: svn://www.crystallography.net/tcod
 #  Repository UUID: f3fa9230-7ed6-4b69-bb24-8fd292b8517b
-#  Revision: 293
+#  Revision: 1657
 #**
 
 package COD::CIF::Tags::TCOD;
@@ -56,6 +55,7 @@ _tcod_atom_sites_sim_cell_tran_vector_1
 _tcod_atom_sites_sim_cell_tran_vector_2
 _tcod_atom_sites_sim_cell_tran_vector_3
 _tcod_citation_linkage
+_tcod_computation_[]
 _tcod_computation_command
 _tcod_computation_CPU_time
 _tcod_computation_database_name
