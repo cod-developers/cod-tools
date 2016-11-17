@@ -159,7 +159,7 @@ lib/%.a: ${LIB_OBJ}
 	${AR} cr $@ $^
 
 lib/%.so.${SO_VERSION}: ${LIB_OBJ}
-	${LD} -shared -soname $*.so.${SO_MAJOR} -o $@ $^
+	${CC} -shared -Xlinker -soname=$*.so.${SO_MAJOR} -o $@ $^
 
 .%.d: %.c
 	${CC} ${CFLAGS} -M -MG  $< > $@
