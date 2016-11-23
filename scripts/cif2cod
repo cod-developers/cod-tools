@@ -27,6 +27,7 @@ use COD::ErrorHandler qw( process_warnings
 
 my $print_header = 0; # Indicates whether to print out a header with column names
 my $print_keywords = 0;
+my $include_keywords_with_undefined_values = 0;
 
 my $user_columns; # User specified list of columns to be printed
 
@@ -59,6 +60,14 @@ my %options;
 #*
 #* -k, --keywords
 #*                     Print values in separate lines prefixed with keywords.
+#*
+#* --include-keywords-with-undefined-values
+#*                     Print the keyword line with an empty value if the value
+#*                     is undefined.
+#*
+#* --exclude-keywords-with-undefined-values
+#*                     Do not print the keyword line at all if the value is
+#*                     undefined (default).
 #*
 #* --use-attached-hydrogens
 #*                     Include number of implicit hydrogens, specified using
@@ -133,6 +142,11 @@ my %options;
     "--no-print-header"       => sub { $print_header = 0 },
 
     "-k,--keywords"   => sub { $print_keywords = 1 },
+
+    "--include-keywords-with-undefined-values"
+        => sub { $include_keywords_with_undefined_values = 1 },
+    "--exclude-keywords-with-undefined-values"
+        => sub { $include_keywords_with_undefined_values = 1 },
 
     "--use-attached-hydrogens" => sub { $options{use_attached_hydrogens} = 1 },
     "--dont-use-attached-hydrogens" => sub { $options{use_attached_hydrogens} = 0 },
@@ -277,6 +291,9 @@ for my $filename (@ARGV) {
                     # Remove trailing dot from numbers:
                     $value =~ s/^\s*(\d+)\.\s*$/$1/;
                     print $key . $separator . $value . "\n";
+                } elsif ( $include_keywords_with_undefined_values &&
+                          $key ne '' ) {
+                        print $key . $separator . "\n";
                 }
             }
         } else {
