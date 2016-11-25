@@ -102,7 +102,7 @@ static int is_integer( char *s );
 static int is_real( char *s );
 
 static void pushchar( char **buf, size_t *length, size_t pos, int ch );
-static void ungetlinec( char ch, FILE *in );
+static void ungetlinec( int ch, FILE *in );
 static int getlinec( FILE *in, cexception_t *ex );
 
 static char *clean_string( char *src, int is_textfield, cexception_t *ex );
@@ -113,7 +113,7 @@ static char *check_and_clean( char *token, int is_textfield,
 int cif_lexer( FILE *in, cexception_t *ex )
 {
     int ch = '\0';
-    static char prevchar = '\0';
+    static int prevchar = '\0';
     static char *token = NULL;
     static size_t length = 0;
     int pos;
@@ -158,7 +158,7 @@ int cif_lexer( FILE *in, cexception_t *ex )
             }
             if( ch == '\r' ) {
                 /* check and process the DOS newlines: */
-                char before = ch;
+                int before = ch;
                 ch = getlinec( in, ex );
                 if( ch != '\n' ) {
                     ungetlinec( ch, in );
@@ -177,7 +177,7 @@ int cif_lexer( FILE *in, cexception_t *ex )
             advance_mark();
             pos = 0;
             pushchar( &token, &length, pos++, ch );
-            pushchar( &token, &length, pos++, 
+            pushchar( &token, &length, pos++,
                       tolower(ch = getlinec( in, ex )) );
             /* !!! FIXME: check whether a quote or a semicolon
                    immediatly after the tag is a part of the tag or a
@@ -196,7 +196,7 @@ int cif_lexer( FILE *in, cexception_t *ex )
             }
             if( report_long_items ) {
                 if( strlen( yylval.s ) > cif_mandated_tag_length ) {
-                    yynote( cxprintf( "data name '%s' exceeds %d characters", 
+                    yynote( cxprintf( "data name '%s' exceeds %d characters",
                                       yylval.s, cif_mandated_tag_length ),
                             ex );
                 }
@@ -243,7 +243,7 @@ int cif_lexer( FILE *in, cexception_t *ex )
         case '"': case '\'':
             {
                 /* quoted strings: */
-                unsigned char quote = ch;
+                int quote = ch;
                 advance_mark();
                 pos = 0;
                 while( (ch = getlinec( in, ex )) != EOF ) {
@@ -253,7 +253,7 @@ int cif_lexer( FILE *in, cexception_t *ex )
                         pushchar( &token, &length, pos++, ch );
                     } else {
                         /* check if the quote terminates the string: */
-                        char before = ch;
+                        int before = ch;
                         ch = getlinec( in, ex );
                         if( ch == EOF || isspace(ch) ) {
                             /* The quoted string is properly terminated: */
@@ -318,7 +318,7 @@ int cif_lexer( FILE *in, cexception_t *ex )
                         ( prevchar == '\n' || prevchar == '\r' )) {
                         /* end of the text field detected: */
                         prevchar = ch;
-                        char after = getlinec( in, ex );
+                        int after = getlinec( in, ex );
                         ungetlinec( after, in );
                         if( !isspace( after ) && after != EOF ) {
                             yyerror( "incorrect CIF syntax" );
@@ -615,7 +615,7 @@ static void pushchar( char **buf, size_t *length, size_t pos, int ch )
     str[pos] = ch;
 }
 
-void ungetlinec( char ch, FILE *in )
+void ungetlinec( int ch, FILE *in )
 {
     ungot_ch = 1;
     /* CHECKME: see if the lines are switched correctly when '\n' is
