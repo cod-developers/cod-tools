@@ -723,7 +723,7 @@ void add_tag_value( char * tag, char * value, cif_value_type_t type,
                     (cif_cc) == 1 ) {
                     if( is_tag_value_unknown( value ) ) {
                         yywarning( cxprintf( "tag %s appears more than once, "
-                                             "the second occurence '%s' is "
+                                             "the second occurrence '%s' is "
                                              "ignored", tag, value ), ex );
                     } else if( is_tag_value_unknown
                                (datablock_value
