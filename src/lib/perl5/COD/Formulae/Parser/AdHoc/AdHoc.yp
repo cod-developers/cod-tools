@@ -10,6 +10,7 @@
 %{
 use warnings;
 use FileHandle;
+use COD::UserMessage qw( print_message );
 
 $COD::Formulae::Parser::AdHoc::version = '1.0';
 
@@ -190,10 +191,10 @@ sub _Error
                 delete $_[0]->YYData->{ERRMSG};
                 return;
         };
-        print STDERR "incorrect formula syntax:\n"; 
-        print STDERR $_[0]->YYData->{LINE}, "\n";
-        print STDERR " " x $_[0]->YYData->{VARS}{token_prev_pos};
-        print STDERR "^\n";
+        print_message( $0, undef, undef, 'ERROR',
+                       'incorrect formula syntax', undef, 0,
+                       $_[0]->YYData->{VARS}{token_prev_pos}+1,
+                       $_[0]->YYData->{LINE} );
 }
 
 sub PrintFormula
