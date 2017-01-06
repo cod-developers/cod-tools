@@ -17,6 +17,7 @@ use strict;
 use warnings;
 use File::Basename qw( basename );
 use Scalar::Util qw( looks_like_number );
+use List::MoreUtils qw( uniq );
 use COD::CIF::Parser qw( parse_cif) ;
 use COD::CIF::Tags::CanonicalNames qw( canonicalize_all_names );
 use COD::SOptions qw( getOptions get_value );
@@ -711,7 +712,7 @@ sub check_against_range_char($$)
 }
 
 ##
-# Returns an array of tags that are required to be present in the loop 
+# Returns an array of tags that are required to be present in the loop
 # containing the analyzed tag.
 # @param $dict
 #       Reference to a dictionary object as returned by 'get_dict' subroutine.
@@ -756,7 +757,7 @@ sub check_list_link_parent($$$)
 
     my %parent_values = map { $_ => 1 } @{$block->{values}{$parent}};
 
-    my @unmatched = grep { !exists $parent_values{$_} }
+    my @unmatched = uniq sort grep { !exists $parent_values{$_} }
                          @{$block->{values}{$tag}};
 
     for my $value (@unmatched) {
