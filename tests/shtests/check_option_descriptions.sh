@@ -4,7 +4,13 @@
 # script and its help in order to locate non-described and non-existing
 # command line options.
 
-for i in $(find scripts -maxdepth 1 -name \*~ -prune -o -type f -a -executable -print | sort)
+#BEGIN DEPEND------------------------------------------------------------------
+
+INPUT_SCRIPTS=$(find scripts -maxdepth 1 -name \*~ -prune -o -type f -a -executable -print | sort | xargs echo)
+
+#END DEPEND--------------------------------------------------------------------
+
+for i in ${INPUT_SCRIPTS}
 do
     SCRIPT_TYPE=''
     if grep -qlF '#!perl -w # --*- Perl -*--' $i; then
