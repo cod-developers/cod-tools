@@ -1,7 +1,11 @@
 #!/bin/sh
 
+#BEGIN DEPEND------------------------------------------------------------------
+
+INPUT_SCRIPT=scripts/cif_find_duplicates
+
+#END DEPEND--------------------------------------------------------------------
+
 set -ue
 
-find_numbers=./scripts/cif_find_duplicates
-
-${find_numbers} ./tests/inputs/cod1 ./tests/inputs/cod2 | sort
+${INPUT_SCRIPT} ./tests/inputs/cod1 ./tests/inputs/cod2 | sort
