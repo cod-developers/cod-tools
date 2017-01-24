@@ -37,12 +37,13 @@ my %skip_tag = (
 );
 
 my %default_options = (
-    'max_cell_length_diff' => 0.5, # Angstroems
-    'max_cell_angle_diff'  => 1.2, # degrees
-    'check_bibliography'   => 1,
-    'check_sample_history' => 0,
-    'ignore_sigma'         => 0,
-    'cod_series_prefix'    => ''
+    'max_cell_length_diff'  => 0.5, # Angstroems
+    'max_cell_angle_diff'   => 1.2, # degrees
+    'check_bibliography'    => 1,
+    'check_sample_history'  => 0,
+    'check_compound_source' => 0,
+    'ignore_sigma'          => 0,
+    'cod_series_prefix'     => ''
 );
 
 # Returns a list of duplicates for each supplied data block
@@ -290,14 +291,14 @@ sub cif_fill_data
     }
 
     for my $key ( qw( _cod_enantiomer_of
-                      _cod_related_optimal_struct )) {
+                       _cod_related_optimal_struct )) {
         if( exists $values->{$key} ) {
             $structure{enantiomer} = $values->{$key}[0];
         }
     }
 
     for my $key ( qw( _cod_related_optimal_struct
-                      _[local]_cod_related_optimal_struct )) {
+                       _[local]_cod_related_optimal_struct )) {
         if( exists $values->{$key} ) {
             $structure{related_optimal} = $values->{$key}[0];
         }
@@ -317,10 +318,15 @@ sub cif_fill_data
     }
 
     for my $key ( qw( _cod_suboptimal_structure
-                      _[local]_cod_suboptimal_structure )) {
+                       _[local]_cod_suboptimal_structure )) {
         if( exists $values->{$key} ) {
             $structure{suboptimal} = $values->{$key}[0];
         }
+    }
+    
+    if( exists $values->{_chemical_compound_source} ) {
+        $structure{source}{_chemical_compound_source} =
+            $values->{_chemical_compound_source}[0];
     }
 
     return \%structure;
@@ -427,6 +433,9 @@ sub conditions_are_the_same
     my @parameters = qw( temperature pressure );
     if( $options{check_sample_history} ) {
         push( @parameters, "history" );
+    }
+    if( $options{check_compound_source} ) {
+        push( @parameters, "source" );
     }
 
     for my $parameter ( @parameters ) {
@@ -602,6 +611,10 @@ sub query_COD_database
     if( $options{check_sample_history} ) {
         $column_list .= "," . join( ",", @history_columns );
     }
+    
+    if( $options{check_compound_source} ) {
+        $column_list .= ',compoundsource';
+    }
 
     my $sth = $dbh->prepare(
         "SELECT $column_list FROM `$database->{table}` ".
@@ -666,6 +679,9 @@ sub query_COD_database
 
                         $structure->{history}{_exptl_crystal_pressure_history} =
                             $row->{pressurehist} if defined $row->{pressurehist};
+                            
+                        $structure->{source}{_chemical_compound_source} =
+                            $row->{compoundsource} if defined $row->{compoundsource};
 
                         $structure->{bibliography}{_journal_name_full} =
                             $row->{journal} if defined $row->{journal};
