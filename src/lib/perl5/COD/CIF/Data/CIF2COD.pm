@@ -121,6 +121,7 @@ our @new_data_fields = qw (
     sigdiffrpressure
     thermalhist
     pressurehist
+    compoundsource
     nel
     sg
     sgHall
@@ -381,6 +382,8 @@ sub cif2cod
         get_tag_or_undef( $values, "_exptl_crystal_thermal_history", 0 );
     $data{pressurehist} =
         get_tag_or_undef( $values, "_exptl_crystal_pressure_history", 0 );
+    $data{compoundsource} =
+        get_tag_or_undef( $values, "_chemical_compound_source", 0 );
 
     $data{nel} = $nel;
     $data{sg} = get_spacegroup_info( $values );
