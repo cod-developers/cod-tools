@@ -3,7 +3,7 @@
 set -ue
 
 #BEGIN DEPEND------------------------------------------------------------------
-INPUT_SCRIPT=./scripts/cif_tcod_tree
+INPUT_SCRIPT=scripts/cif_tcod_tree
 #END DEPEND--------------------------------------------------------------------
 
 cif_tcod_tree=${INPUT_SCRIPT}

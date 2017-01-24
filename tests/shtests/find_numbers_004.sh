@@ -3,10 +3,9 @@
 set -ue
 
 #BEGIN DEPEND------------------------------------------------------------------
-INPUT_SCRIPT=./scripts/find_numbers
-INPUT_CIFS='./tests/inputs/formula2 ./tests/inputs/formula1'
+INPUT_SCRIPT=scripts/find_numbers
 #END DEPEND--------------------------------------------------------------------
 
 find_numbers=${INPUT_SCRIPT}
 
-${find_numbers} ${INPUT_CIFS} | sort
+${find_numbers} ./tests/inputs/formula2 ./tests/inputs/formula1 | sort
