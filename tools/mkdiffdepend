@@ -38,9 +38,19 @@ foreach my $filename ( @ARGV ) {
             @prereq = ( @prereq, $script_depend{$prereq} );
         }
     } elsif ( $filename =~ /\.sh$/ ) {
+        my @dependencies =
+            split( "\n", `tools/mkshdepend $filename | head -n -3` );
         my $prereq;
-		( $target, $prereq ) =
-            split( /\s*:\s*/, `tools/mkshdepend $filename | head -n -3` );
+        foreach( @dependencies ) {
+            my( $target_now, $prereq_now ) = split( /\s*:\s*/, $_ );
+            next if !$target_now || !$prereq_now;
+            $target = $target_now if !$target;
+            if( $prereq ) {
+                $prereq .= " $prereq_now";
+            } else {
+                $prereq = $prereq_now;
+            }
+        }
         next if !$target || !$prereq;
         $target =~ s/\.sh.log$/.diff/;
         $target =~ s/shtests/shoutputs/;
