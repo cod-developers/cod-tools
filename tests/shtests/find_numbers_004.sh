@@ -2,6 +2,11 @@
 
 set -ue
 
-find_numbers=./scripts/find_numbers
+#BEGIN DEPEND------------------------------------------------------------------
+INPUT_SCRIPT=./scripts/find_numbers
+INPUT_CIFS='./tests/inputs/formula2 ./tests/inputs/formula1'
+#END DEPEND--------------------------------------------------------------------
 
-${find_numbers} ./tests/inputs/formula2 ./tests/inputs/formula1 | sort
+find_numbers=${INPUT_SCRIPT}
+
+${find_numbers} ${INPUT_CIFS} | sort

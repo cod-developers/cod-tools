@@ -1,7 +1,11 @@
 #! /bin/sh
-#!perl -w # --*- Perl -*--
-eval 'exec perl -x $0 ${1+"$@"}'
-    if 0;
+
+#BEGIN DEPEND------------------------------------------------------------------
+INPUT_MODULES='src/lib/perl5/COD/Spacegroups/Symop/Algebra.pm \
+               src/lib/perl5/COD/Spacegroups/Symop/Parse.pm'
+#END DEPEND--------------------------------------------------------------------
+
+perl <<'END_SCRIPT'
 #------------------------------------------------------------------------------
 #$Author$
 #$Date$ 
@@ -77,3 +81,5 @@ print_symop_application_result(
 
     [ 1, 2, 3, 1 ]
 );
+
+END_SCRIPT

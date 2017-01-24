@@ -2,7 +2,11 @@
 
 set -ue
 
-cif_tcod_tree=./scripts/cif_tcod_tree
+#BEGIN DEPEND------------------------------------------------------------------
+INPUT_SCRIPT=./scripts/cif_tcod_tree
+#END DEPEND--------------------------------------------------------------------
+
+cif_tcod_tree=${INPUT_SCRIPT}
 cwd=$(pwd)
 
 BASENAME="`basename $0 .sh`"
