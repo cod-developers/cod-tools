@@ -3,8 +3,8 @@
 set -ue
 
 #BEGIN DEPEND------------------------------------------------------------------
-INPUT_SCRIPT=./scripts/cif_tcod_tree
-INPUT_CIF=./tests/inputs/aiida_exported_gzipped.cif
+INPUT_SCRIPT=scripts/cif_tcod_tree
+INPUT_CIF=tests/inputs/aiida_exported_gzipped.cif
 #END DEPEND--------------------------------------------------------------------
 
 cif_tcod_tree=${INPUT_SCRIPT}

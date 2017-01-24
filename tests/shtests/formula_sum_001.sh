@@ -5,7 +5,7 @@
 set -ue
 
 #BEGIN DEPEND------------------------------------------------------------------
-INPUT_SCRIPT=./scripts/formula_sum
+INPUT_SCRIPT=scripts/formula_sum
 #END DEPEND--------------------------------------------------------------------
 
 formula_sum=${INPUT_SCRIPT}

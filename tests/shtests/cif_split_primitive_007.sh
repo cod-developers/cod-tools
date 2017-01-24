@@ -3,8 +3,8 @@
 set -ue
 
 #BEGIN DEPEND------------------------------------------------------------------
-INPUT_SCRIPT=./scripts/cif_split_primitive
-INPUT_CIF=./tests/inputs/converted.cif
+INPUT_SCRIPT=scripts/cif_split_primitive
+INPUT_CIF=tests/inputs/converted.cif
 #END DEPEND--------------------------------------------------------------------
 
 cif_split=${INPUT_SCRIPT}
