@@ -80,7 +80,8 @@ my $fold_title = 0;
 my $folding_width = 76;
 my $exclude_publ_details = 1;
 my $use_parser = 'c';
-my $output_format = "cif";
+my $input_format = 'cif';
+my $output_format = 'cif';
 my $parse_formula_sum = 0;
 my $fix_errors = 0;
 my $use_datablocks_without_coord = 0;
@@ -357,8 +358,23 @@ my %spacegroups = map {
 #*    --use-c-parser
 #*        Use Perl & C parser for CIF parsing (default).
 #*
-#*    --use-json-parser
-#*          Use the JSON parser (input is in JSON format).
+#*    --cif-input
+#*        Use CIF format for input (default).
+#*
+#*    --json-input
+#*        Use JSON format for input.
+#*
+#*    --cif-output
+#*        Use CIF format for output (default).
+#*
+#*    --json-output  
+#*        Use JSON format for output.
+#*  
+#*    --cif
+#*        Use CIF format for both input and output (default).
+#*
+#*    --json
+#*        Use JSON format for both input and output.
 #*
 #*    --help, --usage
 #*        Print a short usage message (this message) and exit.
@@ -487,7 +503,6 @@ my %spacegroups = map {
 
     '--use-perl-parser'       => sub{ $use_parser = 'perl' },
     '--use-c-parser'          => sub{ $use_parser = 'c' },
-    "--use-json-parser"       => sub{ $use_parser = "json" },
 
     '--leave-bibliography'   => sub{ $leave_biblio = 1 },
     '--discard-bibliography' => sub{ $leave_biblio = 0 },
@@ -497,12 +512,18 @@ my %spacegroups = map {
     '--no-exclude-publication-details'   => sub{ $exclude_publ_details = 0 },
 
     '--leave-title'          => sub{ $leave_title = 1 },
+    
+    '--cif-input'   => sub { $input_format = 'cif' },
+    '--json-input'  => sub { $input_format = 'json' },
 
-    "--output-cif"  => sub { $output_format = "cif" },
-    "--output-json" => sub { $output_format = "json" },
+    '--cif-output'  => sub { $output_format = 'cif' },
+    '--json-output' => sub { $output_format = 'json' },
+    
+    '--cif'  => sub { $input_format = $output_format = 'cif' },
+    '--json' => sub { $input_format = $output_format = 'json' },
 
-    "--options"      => sub { options; exit },
-    "--help,--usage" => sub { usage; exit }
+    '--options'      => sub { options; exit },
+    '--help,--usage' => sub { usage; exit }
 );
 
 my $die_on_error_level = {
@@ -510,6 +531,10 @@ my $die_on_error_level = {
     WARNING => $die_on_warnings,
     NOTE    => $die_on_notes
 };
+
+if( $input_format eq 'json' ) {
+    $use_parser = 'json';
+}
 
 # The following snippet of code mimics the previous script behaviour when
 # user defined bibliography keys were defined as separate global variables.
