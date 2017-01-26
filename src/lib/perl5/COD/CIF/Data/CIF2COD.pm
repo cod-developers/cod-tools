@@ -394,7 +394,7 @@ sub cif2cod
     $data{formula} = $formula ? "- " . $formula . " -" : "?";
     $data{calcformula} = $calculated_formula ?
           "- " . $calculated_formula . " -" : undef;
-    $data{Z} = get_tag_or_undef( $values, "_cell_formula_units_z", 0 );
+    $data{Z} = get_tag_or_undef( $values, "_cell_formula_units_Z", 0 );
     $data{Zprime} = compute_Zprime( $data{Z}, $data{sg} );
 
     if( exists $values->{_journal_coeditor_code} ) {
@@ -473,7 +473,7 @@ sub cif2cod
         $data_key = "gofobs" if $data_key eq "gofref";
         if( !defined $data{$data_key} ) {
             $data{$data_key} =
-                get_num_or_undef( $values, lc($r_factor_tag), 0 );
+                get_num_or_undef( $values, $r_factor_tag, 0 );
         }
     }
 
@@ -644,7 +644,7 @@ sub get_spacegroup_info
 {
     my ($values) = @_;
 
-    my @spacegroup_tags = map {lc} qw (
+    my @spacegroup_tags = qw (
         _space_group_name_H-M_alt
         _space_group.name_H-M_full
         _symmetry_space_group_name_H-M
@@ -658,7 +658,7 @@ sub get_spacegroup_info
     for my $sg_tag (@spacegroup_tags) {
         if( exists $values->{$sg_tag} ) {
             $spacegroup = $values->{$sg_tag}[0];
-            if( $sg_tag =~ /_h-m/ && $reformat_spacegroup ) {
+            if( $sg_tag =~ /_H-M/ && $reformat_spacegroup ) {
                 my $orig_sg = $spacegroup;
                 $orig_sg =~ s/[\(\)~_\s]//g;
                 ## print ">>> $orig_sg\n";
@@ -681,7 +681,7 @@ sub get_spacegroup_Hall_symbol
 {
     my ($values) = @_;
 
-    my @spacegroup_tags = map {lc} qw (
+    my @spacegroup_tags = qw (
         _space_group_name_Hall
         _symmetry_space_group_name_Hall
     );
@@ -710,7 +710,7 @@ sub get_experimental_method
         return $values->{_cod_struct_determination_method}[0];
     }
 
-    my @powder_tags = map {lc} grep /^_pd_/,
+    my @powder_tags = grep /^_pd_/,
                       @COD::CIF::Tags::DictTags::tag_list;
 
     for my $tag (@powder_tags) {
