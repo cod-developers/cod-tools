@@ -179,30 +179,45 @@ ${TST_DIFFS} ${SCRIPT_DIFFS}: ${LOCAL_LIB_FILES}
 ${OUTPUT_DIR}/%.diff: ${SCRIPT_TST_DIR}/%${INP} ${SCRIPT_TST_DIR}/%${OPT} \
                       ${COMPILED_MODULES}
 	-@printf "%-30s " "$<:" ; \
+	if [ ! -f ${SCRIPT_TST_DIR}/$*.chk ] || ${SCRIPT_TST_DIR}/$*.chk; \
+	then \
 	( ${SCRIPT_DIR}/$(shell echo $* | sed -e 's/_[0-9]*$$//') \
 	    $(shell grep -v '^#' ${word 2, $^}) \
 	    $< \
 	| ${buffer_output} ) 2>&1 \
 	| ${filter_perl_messages} \
 	| diff ${OUTPUT_DIR}/$*.out - > $@ ; \
-	if [ $$? = 0 ]; then echo "OK"; else echo "FAILED:"; cat $@; fi
+	if [ $$? = 0 ]; then echo "OK"; else echo "FAILED:"; cat $@; fi \
+	else \
+	touch $@; \
+	fi
 
 ${OUTPUT_DIR}/%.diff: ${SCRIPT_TST_DIR}/%${INP} ${COMPILED_MODULES}
 	-@printf "%-30s " "$<:" ; \
+	if [ ! -f ${SCRIPT_TST_DIR}/$*.chk ] || ${SCRIPT_TST_DIR}/$*.chk; \
+	then \
 	( ${SCRIPT_DIR}/$(shell echo $* | sed -e 's/_[0-9]*$$//') $< \
 	| ${buffer_output} ) 2>&1 \
 	| ${filter_perl_messages} \
 	| diff ${OUTPUT_DIR}/$*.out - > $@ ; \
-	if [ $$? = 0 ]; then echo "OK"; else echo "FAILED:"; cat $@; fi
+	if [ $$? = 0 ]; then echo "OK"; else echo "FAILED:"; cat $@; fi \
+	else \
+	touch $@; \
+	fi
 
 ${OUTPUT_DIR}/%.diff: ${SCRIPT_TST_DIR}/%${OPT} ${COMPILED_MODULES}
 	-@printf "%-30s " "$<:" ; \
+	if [ ! -f ${SCRIPT_TST_DIR}/$*.chk ] || ${SCRIPT_TST_DIR}/$*.chk; \
+	then \
 	( ${SCRIPT_DIR}/$(shell echo $* | sed -e 's/_[0-9]*$$//') \
 	     $(shell grep -v '^#' ${word 1, $^}) \
 	| ${buffer_output} ) 2>&1 \
 	| ${filter_perl_messages} \
 	| diff ${OUTPUT_DIR}/$*.out - > $@ ; \
-	if [ $$? = 0 ]; then echo "OK"; else echo "FAILED:"; cat $@; fi
+	if [ $$? = 0 ]; then echo "OK"; else echo "FAILED:"; cat $@; fi \
+	else \
+	touch $@; \
+	fi
 
 ${OUTPUT_DIR}/%.out: ${SCRIPT_TST_DIR}/%${INP} ${SCRIPT_TST_DIR}/%${OPT} ${COMPILED_MODULES}
 	-@test -f $@ || echo "$@:"
