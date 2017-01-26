@@ -1,15 +1,18 @@
-include .makeconfig
+include Makeconf
 
 .INTERMEDIATE: ${PARTS}
 
-PERL_MODULE = modules/AtomProperties.pm
-YAML_MODULE = modules/AtomProperties.yaml
+MODULE_NAME      ?= AtomProperties
+YAML_MODULE       = modules/${MODULE_NAME}.yaml
+PERL_MODULE      ?= modules/${MODULE_NAME}.pm
+NAMESPACE_PREFIX ?= COD::
+NAMESPACE        ?= ${NAMESPACE_PREFIX}${MODULE_NAME}
 
 all: ${PERL_MODULE} ${YAML_MODULE}
 
 ${PERL_MODULE}: ${PARTS} ${PATCHES}
 	grep -h -P "#(Source|Descrp)" $^ > $@
-	bin/atom_properties_merge --no-fill-missing $^ -p -o >> $@
+	bin/atom_properties_merge --no-fill-missing $^ -p -n ${NAMESPACE} -o >> $@
 
 ${YAML_MODULE}: ${PARTS} ${PATCHES}
 	grep -h -P "#(Source|Descrp)" $^ > $@

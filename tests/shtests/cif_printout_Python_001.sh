@@ -1,3 +1,10 @@
 #!/bin/sh
 
-cif_printout_Python tests/inputs/1000000.cif
+#BEGIN DEPEND------------------------------------------------------------------
+
+INPUT_SCRIPT=scripts/cif_printout_Python
+INPUT_CIF=tests/inputs/1000000.cif
+
+#END DEPEND--------------------------------------------------------------------
+
+${INPUT_SCRIPT} ${INPUT_CIF}

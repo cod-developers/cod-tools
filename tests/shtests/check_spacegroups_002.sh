@@ -1,7 +1,15 @@
 #! /bin/sh
-#!perl -w # --*- Perl -*--
-eval 'exec perl -x $0 ${1+"$@"}'
-    if 0;
+
+#BEGIN DEPEND------------------------------------------------------------------
+
+INPUT_MODULES='src/lib/perl5/COD/Spacegroups/Builder.pm \
+               src/lib/perl5/COD/Spacegroups/Lookup.pm \
+               src/lib/perl5/COD/Spacegroups/Lookup/COD.pm \
+               src/lib/perl5/COD/Spacegroups/Symop/Parse.pm'
+
+#END DEPEND--------------------------------------------------------------------
+
+perl <<'END_SCRIPT'
 #------------------------------------------------------------------------------
 #$Author$
 #$Date$ 
@@ -16,8 +24,8 @@ use strict;
 use warnings;
 
 use COD::Spacegroups::Builder;
-use COD::Spacegroups::Lookup::COD;
 use COD::Spacegroups::Lookup qw( make_symop_hash make_symop_key );
+use COD::Spacegroups::Lookup::COD;
 use COD::Spacegroups::Symop::Parse qw( string_from_symop
                                        symop_string_canonical_form );
 
@@ -45,3 +53,4 @@ for my $sg_data (@COD::Spacegroups::Lookup::COD::extra_settings) {
     }
 
 }
+END_SCRIPT

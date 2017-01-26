@@ -463,12 +463,12 @@ void datablock_insert_value( DATABLOCK * datablock, char *tag,
         datablock->values[i] = callocx( sizeof(datablock->values[0][0]), 1, &inner );
         datablock->types[i] = callocx( sizeof(datablock->types[0][0]), 1, &inner );
         datablock->value_capacities[i] = 1;
-        datablock->tags[i] = tag;
+        datablock->tags[i] = strdupx( tag, &inner );
         datablock->in_loop[i] = -1;
 
         if( value ) {
             datablock->value_lengths[i] = 1;
-            datablock->values[i][0] = value;
+            datablock->values[i][0] = strdupx( value, &inner );
             datablock->types[i][0] = vtype;
         } else {
             datablock->value_lengths[i] = 0;
@@ -479,16 +479,24 @@ void datablock_insert_value( DATABLOCK * datablock, char *tag,
     }
 }
 
-void datablock_overwrite_value(  DATABLOCK * datablock, ssize_t tag_nr,
+void datablock_overwrite_value( DATABLOCK * datablock, ssize_t tag_nr,
                        ssize_t val_nr, char *value,
-                       datablock_value_type_t vtype )
+                       datablock_value_type_t vtype,
+                       cexception_t *ex )
 {
-    if( value ) {
-        free( datablock->values[tag_nr][val_nr] );
-        datablock->values[tag_nr][val_nr] = value;
-        datablock->types[tag_nr][val_nr]  = vtype;
-    } else {
-        datablock->values[tag_nr][val_nr] = "\0";
+    cexception_t inner;
+
+    cexception_guard( inner ) {
+        if( value ) {
+            freex( datablock->values[tag_nr][val_nr] );
+            datablock->values[tag_nr][val_nr] = strdupx( value, &inner );
+            datablock->types[tag_nr][val_nr]  = vtype;
+        } else {
+            datablock->values[tag_nr][val_nr] = "\0";
+        }
+    }
+    cexception_catch {
+        cexception_reraise( inner, ex );
     }
 }
 

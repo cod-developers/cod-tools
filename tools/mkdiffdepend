@@ -1,0 +1,69 @@
+#!/usr/bin/perl
+
+use strict;
+use warnings;
+use COD::SOptions qw( getOptions );
+
+my $script_depend_file;
+my $output_dir;
+
+@ARGV = getOptions(
+    '--script-depend' => \$script_depend_file,
+    '-o,--output-directory' => \$output_dir,
+);
+
+my %script_depend;
+if( $script_depend_file ) {
+    open( my $inp, $script_depend_file );
+    while( <$inp> ) {
+        s/\n$//;
+        my( $script, $depend ) = split( /\s*:\s*/, $_ );
+        $script_depend{$script} = $depend;
+    }
+    close $inp;
+}
+
+$output_dir = '.' unless $output_dir;
+$output_dir =~ s/\\$//;
+
+foreach my $filename ( @ARGV ) {
+    my $target;
+    my @prereq;
+    if( $filename =~ m|/(.*?)_(\d{2,4})\.\w{3}$| ) {
+        $target = "${output_dir}/${1}_${2}.diff";
+        my $prereq = $1;
+        $prereq =~ s/cases/scripts/;
+        @prereq = ( $prereq );
+        if( exists $script_depend{$prereq} ) {
+            @prereq = ( @prereq, $script_depend{$prereq} );
+        }
+    } elsif ( $filename =~ /\.sh$/ ) {
+        my @dependencies =
+            split( "\n", `tools/mkshdepend $filename | head -n -3` );
+        my $prereq;
+        foreach( @dependencies ) {
+            my( $target_now, $prereq_now ) = split( /\s*:\s*/, $_ );
+            next if !$target_now || !$prereq_now;
+            $target = $target_now if !$target;
+            if( $prereq ) {
+                $prereq .= " $prereq_now";
+            } else {
+                $prereq = $prereq_now;
+            }
+        }
+        next if !$target || !$prereq;
+        $target =~ s/\.sh.log$/.diff/;
+        $target =~ s/shtests/shoutputs/;
+        @prereq = split /\s+/, $prereq;
+        my @prereq_now = @prereq;
+        foreach( @prereq ) {
+            next if !exists $script_depend{$_};
+            @prereq_now = ( @prereq_now, $script_depend{$_} );
+        }
+        @prereq = @prereq_now;
+    }
+    next if !@prereq;
+    my $line = "$target: " . join( ' ', @prereq );
+    $line =~ s|tests/outputs/cases/|tests/outputs/|;
+    print $line, "\n";
+}

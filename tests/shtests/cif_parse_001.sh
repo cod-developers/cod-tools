@@ -1,12 +1,18 @@
 #! /bin/sh
-#!perl -w # --*- Perl -*--
-eval 'exec perl -x $0 ${1+"$@"}'
-    if 0;
 
+#BEGIN DEPEND------------------------------------------------------------------
+
+INPUT_MODULE=src/lib/perl5/COD/CIF/Parser/Bison.pm
+INPUT_CIF=tests/inputs/missing-closing-double-quote.cif
+
+#END DEPEND--------------------------------------------------------------------
+
+perl <<"END_SCRIPT"
 use strict;
 use warnings;
 use COD::CIF::Parser::Bison;
 
 my $parser = new COD::CIF::Parser::Bison;
-$parser->Run("tests/inputs/missing-closing-double-quote.cif",
-             { fix_errors => 0 });
+$parser->Run( "tests/inputs/missing-closing-double-quote.cif",
+              { fix_errors => 0 } );
+END_SCRIPT

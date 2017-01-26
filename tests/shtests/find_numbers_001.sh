@@ -2,6 +2,10 @@
 
 set -ue
 
-find_numbers=./scripts/find_numbers
+#BEGIN DEPEND------------------------------------------------------------------
+INPUT_SCRIPT=scripts/find_numbers
+#END DEPEND--------------------------------------------------------------------
+
+find_numbers=${INPUT_SCRIPT}
 
 ${find_numbers} ./tests/inputs/cod1 ./tests/inputs/cod2 | sort

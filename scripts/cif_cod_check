@@ -18,11 +18,17 @@ use strict;
 use warnings;
 use Digest::MD5 qw( md5_hex );
 use Digest::SHA qw( sha1_hex );
-use COD::CIF::Parser qw( parse_cif );
+use COD::AuthorNames qw( parse_author_name );
 use COD::CIF::Data qw( get_cell get_content_encodings );
 use COD::CIF::Data::EstimateZ qw( cif_estimate_z );
+use COD::CIF::Parser qw( parse_cif );
 use COD::CIF::Tags::CanonicalNames qw( canonicalize_all_names );
 use COD::CIF::Tags::Manage qw( tag_is_empty );
+use COD::CIF::Unicode2CIF qw( cif2unicode );
+use COD::ErrorHandler qw( process_warnings
+                          process_errors
+                          process_parser_messages
+                          report_message );
 use COD::Escape qw( decode_textfield );
 use COD::Precision qw( eqsig );
 use COD::Spacegroups::Symop::Parse qw( symop_string_canonical_form
@@ -30,10 +36,6 @@ use COD::Spacegroups::Symop::Parse qw( symop_string_canonical_form
 use COD::SOptions qw( getOptions get_value );
 use COD::SUsage qw( usage options );
 use COD::UserMessage qw( sprint_message );
-use COD::ErrorHandler qw( process_warnings
-                          process_errors
-                          process_parser_messages
-                          report_message );
 
 my $name_syntax_explained = 0;
 my $check_bibliography = 1;
@@ -49,6 +51,7 @@ my $check_temperature_factors = 1;
 my $check_simultaneous_presence = 1;
 my $check_embedded_file_integrity = 1;
 my $check_z = 0;
+my $check_disorder = 0;
 
 my $die_on_errors   = 1;
 my $die_on_warnings = 0;
@@ -67,6 +70,7 @@ sub dont_check_any
     $check_simultaneous_presence = 0;
     $check_embedded_file_integrity = 0;
     $check_z = 0;
+    $check_disorder = 0;
 
     return;
 }
@@ -84,6 +88,7 @@ sub check_all
     $check_simultaneous_presence = 1;
     $check_embedded_file_integrity = 1;
     $check_z = 1;
+    $check_disorder = 1;
 
     return;
 }
@@ -247,6 +252,8 @@ my $use_parser = 'c';
 #*
 #*    --check-z
 #*
+#*    --check-disorder
+#*
 #*    --check-all
 #*
 #*    --check-none, --dont-check-any
@@ -389,6 +396,12 @@ my $use_parser = 'c';
     '--no-check-z'     => sub { $check_z = 0; },
     '--dont-check-z'   => sub { $check_z = 0; },
     '--do-not-check-z' => sub { $check_z = 0; },
+
+    '--check-disorder'        => sub { $check_disorder = 1; },
+    '--check-only-disorder'   => sub { dont_check_any(); $check_disorder = 1; },
+    '--no-check-disorder'     => sub { $check_disorder = 0; },
+    '--dont-check-disorder'   => sub { $check_disorder = 0; },
+    '--do-not-check-disorder' => sub { $check_disorder = 0; },
 
     '--check-all'        => \&check_all,
     '--check-none'       => \&dont_check_any,
@@ -541,6 +554,8 @@ for my $filename (@ARGV) {
             if $check_embedded_file_integrity;
         $warnings += check_z( $dataset )
             if $check_z;
+        $warnings += check_disorder( $dataset )
+            if $check_disorder;
     }
 
     eval {
@@ -635,104 +650,33 @@ sub check_bibliography
 
 sub check_authors
 {
-    use COD::CIF::Unicode2CIF qw( cif2unicode );
-
     my ($dataset) = @_;
 
     if( !defined $dataset->{values} ) {
         return 0;
     }
 
-    my $warnings = 0;
     my $values = $dataset->{values};
-
-    my $First = qr/[[:upper:]] ('[[:alpha:]])? [[:lower:]]*
-                   ( \s*-\s* [[:upper:]]? ['[:lower:]]* )?/x;
-                # Armel, Miguel, O'Reily, Ding-Quan, Chun-hsien
-
-    my $Initial = qr/[[:upper:]] [[:lower:]]? \.
-                   ( \s*-\s* [[:upper:]] [[:lower:]]?\. )?/x;
-                # A., M., O., D.-Q.
-
-    my $Last = qr/([[:upper:]][[:lower:]]{1,2})? # optional Mc, Da, La prefix
-                   [[:upper:]] ('[[:alpha:]])? ['[:lower:]]*
-                  (?: \s*-\s* [[:upper:]] ['[:lower:]]+ )?
-                  (?: \s+ i \s+ [[:upper:]] [[:lower:]]+ )? # poss. 'i Surname'
-                  |
-                  [[:upper:]][[:lower:]]+
-                  -[[:lower:]][[:lower:]]-
-                  [[:upper:]][[:lower:]]+
-                  /x;
-                # Neuman, D'Lamber, le Bail, Le Bail (?), Mairata i Payeras
-
-    my $von = qr/[a-zA-Z][a-z]+(\s+[a-zA-Z][a-z]+)?/;
-                # von, van, de, De, de la
-
-    my $Jr  = qr/[A-Za-z]+\.?/;
-                # Jr, Jr., I, II, III, IV
-
-    my $FirstNames = qr/${First}(\s+${First})*/;
-    my $Initials = qr/(${Initial}\s*|${First}\s+)*(${First}|${Initial})/;
-    my $LastNames = qr/${Last}(\s+${Last})*/;
-    my $vonLast = qr/(${von}\s+)?${Last}/;
-    my $vonLastNames = qr/(${von}\s+)?${Last}(\s+${Last})*/;
 
     if( !defined $values->{_publ_author_name} ) {
         warn 'WARNING, _publ_author_name is undefined' . "\n";
+        return 1;
+    }
+
+    my $warnings = 0;
+    for my $author (@{$values->{_publ_author_name}}) {
+        my $parsed_name =
+            parse_author_name( cif2unicode( $author ), 1 );
+        next if !exists $parsed_name->{unparsed};
         $warnings++;
-    } else {
-        for my $author (@{$values->{_publ_author_name}}) {
-            my $UCS_author = cif2unicode( $author );
-            if( $UCS_author =~ /^([^[:alpha:]])/ ||
-                $UCS_author =~ /([^-\.,[:alpha:]'()\s])/ ) {
-                my $symbol_escaped = $1;
-                my $author_escaped = $author;
-                my $UCS_author_escaped = $UCS_author;
-                $symbol_escaped =~ s/\n/\\n/g;
-                $author_escaped =~ s/\n/\\n/g;
-                $UCS_author_escaped =~ s/\n/\\n/g;
-                warn "WARNING, name '$author_escaped'"
-                   . ( $author eq $UCS_author
-                                ? ''
-                                : " ('$UCS_author_escaped')" )
-                   . " contains symbol '$symbol_escaped' "
-                   . 'that is not permitted in names' . "\n";
-                if( ! $name_syntax_explained ) {
-                    warn 'NOTE, names should be written as \'First von Last\', '
-                       . '\'von Last, First\', or \'von Last, Jr, First\' '
-                       . '(mind the case!)' . "\n";
-                    $name_syntax_explained = 1;
-                }
-                $warnings++;
-            } elsif( $UCS_author !~
-                /^\s*${FirstNames}\s+${vonLast}\s*$/ &&
-                $UCS_author !~
-                /^\s*${Initials}\s*${vonLast}\s*$/ &&
-                $UCS_author !~
-                /^\s*${vonLastNames}\s*,\s*${FirstNames}\s*$/ &&
-                $UCS_author !~
-                /^\s*${vonLastNames}\s*,\s*${Initials}\s*$/ &&
-                $UCS_author !~
-                /^\s*${vonLastNames}\s*,\s*${Jr}\s*,\s*${FirstNames}\s*$/ &&
-                $UCS_author !~
-                /^\s*${vonLastNames}\s*,\s*${Jr}\s*,\s*${Initials}\s*$/ &&
-                $UCS_author !~
-                /^\s*${First}-ur-${Last}\s*$/
-                ) {
-                warn "NOTE, name '$author'"
-                    . ( $author eq $UCS_author ? ''
-                                               : " ('$UCS_author')" )
-                    . ' seems unusual' . "\n";
-                if( ! $name_syntax_explained ) {
-                    warn 'NOTE, names should be written as \'First von Last\', '
-                       . '\'von Last, First\', or \'von Last, Jr, First\' '
-                       . '(mind the case!)' . "\n";
-                    $name_syntax_explained = 1;
-                }
-                $warnings++;
-            }
+        if( ! $name_syntax_explained ) {
+            warn 'NOTE, names should be written as \'First von Last\', '
+               . '\'von Last, First\', or \'von Last, Jr, First\' '
+               . '(mind the case!)' . "\n";
+            $name_syntax_explained = 1;
         }
     }
+
     return $warnings;
 }
 
@@ -975,7 +919,7 @@ sub check_pdcif_relations
     if( $overall_info_datablock_count > 1 ) {
         warn "NOTE, $overall_info_datablock_count data blocks having both "
            . '_pd_phase_block_id and _pd_block_diffractogram_id were found -- '
-           . 'taking the first occurence as the overall information '
+           . 'taking the first occurrence as the overall information '
            . 'data block' . "\n";
         $notes++;
     }
@@ -1728,4 +1672,42 @@ sub check_z
     }
 
     return $warnings;
+}
+
+sub check_disorder
+{
+    my( $dataset ) = @_;
+    return 0 if !exists $dataset->{values}{_atom_site_disorder_group};
+
+    my $assemblies = {};
+    for my $i (0..$#{$dataset->{values}{_atom_site_disorder_group}}) {
+        my $assembly = '.';
+        if( exists $dataset->{values}{_atom_site_disorder_assembly} ) {
+            $assembly = $dataset->{values}{_atom_site_disorder_assembly}[$i];
+        }
+        my $group = $dataset->{values}{_atom_site_disorder_group}[$i];
+        $assemblies->{$assembly} = {}
+            unless exists $assemblies->{$assembly};
+        $assemblies->{$assembly}{$group} = 0
+            unless exists $assemblies->{$assembly}{$group};
+        $assemblies->{$assembly}{$group}++;
+    }
+
+    delete $assemblies->{'.'}{'.'};
+
+    if( exists $dataset->{values}{_atom_site_disorder_assembly} ) {
+        for my $assembly (sort keys %$assemblies) {
+            my @counts = map { $assemblies->{$assembly}{$_} }
+                             sort keys %{$assemblies->{$assembly}};
+            my %counts = map { $_ => 1 } @counts;
+            if( scalar( keys %counts ) > 1 ) {
+                warn 'NOTE, atom count in groups of disorder assembly ' .
+                     "'$assembly' are different: " .
+                     join( ', ', map { "$assemblies->{$assembly}{$_} ('$_')" }
+                                     sort keys %{$assemblies->{$assembly}} );
+            }
+        }
+    }
+
+    return 0;
 }

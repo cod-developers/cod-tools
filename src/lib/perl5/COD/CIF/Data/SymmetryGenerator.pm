@@ -183,7 +183,7 @@ sub symop_generate_atoms($$$)
 #
 # Returns:
 #   @atoms      An array of references of the atom information hashes that
-#               were constructd from the original atom information hash.
+#               were constructed from the original atom information hash.
 sub shift_atom($)
 {
     my ( $atom ) = @_;

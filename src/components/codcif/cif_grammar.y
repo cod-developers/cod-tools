@@ -96,7 +96,7 @@ int loop_start = 0;
 %token <s> _SAVE_HEAD
 %token _SAVE_FOOT
 %token <s> _TAG
-%token _LOOP_
+%token <s> _LOOP_
 %token <s> _DQSTRING
 %token <s> _SQSTRING
 %token <s> _UQSTRING
@@ -115,9 +115,6 @@ int loop_start = 0;
 
 cif_file
        :	// empty
-    {
-        cif_start_datablock( cif_cc->cif, NULL, px );
-    }
 	|	data_block_list
 	|	headerless_data_block
 	|	headerless_data_block data_block_list
@@ -139,8 +136,9 @@ stray_cif_value_list
                                    cif_flex_current_line_number(), -1, px );
                     yyincrease_error_counter();
             }
+            freex( $1.vstr );
         }
-        | cif_value
+        | cif_value cif_value_list
         {
             if( isset_fix_errors( cif_cc ) ||
                 isset_fix_data_header( cif_cc ) ) {
@@ -153,8 +151,9 @@ stray_cif_value_list
                                    cif_flex_current_line_number(), -1, px );
                     yyincrease_error_counter();
             }
+            freex( $1.vstr );
+            freex( $2.vstr );
         }
-        cif_value_list
 ;
 
 //  cif_value_list
@@ -282,6 +281,8 @@ cif_entry
         {
             assert_datablock_exists( px );
             add_tag_value( $1, $2.vstr, $2.vtype, px );
+            freex( $1 );
+            freex( $2.vstr );
         }
         | _TAG cif_value cif_value_list
             {
@@ -301,9 +302,13 @@ cif_entry
                         tag_type = CIF_TEXT;
                     }
                     add_tag_value( $1, buf, tag_type, px );
+                    freex( buf );
                 } else {
                     yyerror_previous( "incorrect CIF syntax", px );
                 }
+                freex( $1 );
+                freex( $2.vstr );
+                freex( $3.vstr );
             }
 ;
 
@@ -334,6 +339,7 @@ loop
            loop_value_count = 0;
            loop_start = cif_flex_current_line_number();
            cif_start_loop( cif_cc->cif, px );
+           freex( $1 );
        } 
        loop_tags loop_values
        {
@@ -368,6 +374,7 @@ loop_tags
             }
             loop_tag_count++;
             cif_insert_value( cif_cc->cif, $2, NULL, CIF_UNKNOWN, px );
+            freex( $2 );
         }
 	|	_TAG
         {
@@ -381,6 +388,7 @@ loop_tags
             }
             loop_tag_count++;
             cif_insert_value( cif_cc->cif, $1, NULL, CIF_UNKNOWN, px );
+            freex( $1 );
         }
 ;
 
@@ -401,6 +409,7 @@ save_block
 	: _SAVE_HEAD
         {
             cif_start_save_frame( cif_cc->cif, /* name = */ $1, px );
+            freex( $1 );
         }
         save_item_list
         _SAVE_FOOT
@@ -714,7 +723,7 @@ void add_tag_value( char * tag, char * value, cif_value_type_t type,
                     (cif_cc) == 1 ) {
                     if( is_tag_value_unknown( value ) ) {
                         yywarning( cxprintf( "tag %s appears more than once, "
-                                             "the second occurence '%s' is "
+                                             "the second occurrence '%s' is "
                                              "ignored", tag, value ), ex );
                     } else if( is_tag_value_unknown
                                (datablock_value
@@ -727,7 +736,7 @@ void add_tag_value( char * tag, char * value, cif_value_type_t type,
                                              (cif_last_datablock(cif_cc->cif),
                                               tag_nr, 0)), ex );
                         cif_overwrite_value( cif_cc->cif, tag_nr, 0,
-                                             value, type );
+                                             value, type, ex );
                     } else {
                         yyerror_previous
                             ( cxprintf( "tag %s appears more than once", tag ),

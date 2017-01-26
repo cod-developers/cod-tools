@@ -3,9 +3,15 @@
 # Test definition of the newly introduced nonstandard 'B 1 21/m 1'
 # spacegroup setting:
 
+#BEGIN DEPEND------------------------------------------------------------------
+
+INPUT_SCRIPT=scripts/symop_build_spacegroup
+
+#END DEPEND--------------------------------------------------------------------
+
 set -ue
 
-./scripts/symop_build_spacegroup <<EOF
+${INPUT_SCRIPT} <<EOF
 x,y,z
 -x,y+1/2,-z
 -x,-y,-z

@@ -71,7 +71,8 @@ void cif_insert_value( CIF * cif, char *tag,
                        char *value, datablock_value_type_t vtype,
                        cexception_t *ex );
 void cif_overwrite_value( CIF * cif, ssize_t tag_nr, ssize_t val_nr,
-                          char *value, datablock_value_type_t vtype );
+                          char *value, datablock_value_type_t vtype,
+                          cexception_t *ex );
 
 void cif_start_loop( CIF *cif, cexception_t *ex );
 void cif_finish_loop( CIF *cif, cexception_t *ex );

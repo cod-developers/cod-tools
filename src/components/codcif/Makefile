@@ -105,28 +105,6 @@ OTHER_DEPENDS = ${OTHER_CFILES:%.c=.%.d}
 DEPEND_FILES = ${LOCAL_DEPENDS} ${OTHER_DEPENDS} ${PRG_DEPEND} ${TST_DEPEND}
 DEL_OBJS     = ${LOCAL_OBJS} ${OTHER_OBJS}
 
-# ${LIB_DIRS} variable contains a list of directories, each of them
-# containing a library that must be linked with programs in the
-# current directory. The library in the directory 'dir' must be called
-# 'dir/libdir.a'. We assume that the 'dir' directory contains a Makefile
-# to build a corresponding library, and simply do 'make -C dir libdir.a'
-# if the library does not exist. If the library exists, we will use
-# whatever it contains, without checking its dependencies. To build the
-# up-to-date libraries in ${LB_DIRS} directories use 'make libs' command.
-# We omit the check of library dependencies just for speed; if the library
-# is actively changed and must be constantly recompiled, one should use
-# ${OTHER_DIRS} variable to include the *.c files of that directory
-# into the compilation list.
-
-
-LIB_NAMES := ${notdir ${LIB_DIRS}}
-LIB_FILES := ${addprefix /lib/lib, ${addsuffix .a, ${LIB_NAMES} }}
-LIB_FILES := ${join ${LIB_DIRS}, ${LIB_FILES} }
-
-%.a:
-	${MAKE} -C $(dir $(patsubst %/,%,$(dir $@))) \
-		$(notdir $(patsubst %/,%,$(dir $@)))/$(notdir $@)
-
 #------------------------------------------------------------------------------
 #
 # Executables:
@@ -182,6 +160,29 @@ ${LIB_DIRS}: FORCE
 	${MAKE} -C $@
 
 FORCE:;
+
+#------------------------------------------------------------------------------
+
+# ${LIB_DIRS} variable contains a list of directories, each of them
+# containing a library that must be linked with programs in the
+# current directory. The library in the directory 'dir' must be called
+# 'dir/libdir.a'. We assume that the 'dir' directory contains a Makefile
+# to build a corresponding library, and simply do 'make -C dir libdir.a'
+# if the library does not exist. If the library exists, we will use
+# whatever it contains, without checking its dependencies. To build the
+# up-to-date libraries in ${LB_DIRS} directories use 'make libs' command.
+# We omit the check of library dependencies just for speed; if the library
+# is actively changed and must be constantly recompiled, one should use
+# ${OTHER_DIRS} variable to include the *.c files of that directory
+# into the compilation list.
+
+LIB_NAMES := ${notdir ${LIB_DIRS}}
+LIB_FILES := ${addprefix /lib/lib, ${addsuffix .a, ${LIB_NAMES} }}
+LIB_FILES := ${join ${LIB_DIRS}, ${LIB_FILES} }
+
+%.a:
+	${MAKE} -C $(dir $(patsubst %/,%,$(dir $@))) \
+		$(notdir $(patsubst %/,%,$(dir $@)))/$(notdir $@)
 
 #------------------------------------------------------------------------------
 #
@@ -385,6 +386,19 @@ ${SIZE_FILE}: ${TARGET} ${BENCH_INPUTS}
 	    printf "%-20s " `basename $$i` ; \
 	    printf "%4d\n" `./$< ${SIZE_OPTIONS} $$i 2> /dev/null | wc -l` ; \
 	done | tee -a $@
+
+#------------------------------------------------------------------------------
+
+INCLUDE_DIR ?= ${PREFIX}/include
+LIB_DIR     ?= ${PREFIX}/lib
+
+.PHONY: install
+
+install: ${LOCAL_LIB}
+	mkdir -p ${INCLUDE_DIR}
+	mkdir -p ${LIB_DIR}
+	cp *.h ${INCLUDE_DIR}
+	cp ${LOCAL_LIB} ${LIB_DIR}
 
 #------------------------------------------------------------------------------
 

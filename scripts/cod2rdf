@@ -15,8 +15,7 @@ eval 'exec perl -x $0 ${1+"$@"}'
 use strict;
 use warnings;
 use DBI;
-use Encode qw( decode );
-use HTML::Entities qw( encode_entities );
+use COD::RDF qw( rdf_n3 rdf_ntriples rdf_xml );
 use COD::SOptions qw( getOptions );
 use COD::SUsage qw( usage options );
 use COD::ErrorHandler qw( report_message );
@@ -27,16 +26,8 @@ my $die_on_error_level = {
     NOTE    => 0
 };
 
-my $vocabulary_name = "cod";
-my $vocabulary_url_prefix = "http://www.crystallography.net/cod/doc/rdf/";
-my $url_prefix  = "http://www.crystallography.net/cod/";
-my $url_postfix = ".html";
-my $refering_db_name = "cod";
-
-my $split_author_names = 1;
-my $output_format = "xml";
-my $utf_code_point_format = "&#x%04X;"; # default is HTML escapes
-my $replace_utf_code_points_from;
+my $refering_db_name = 'cod';
+my $output_format = 'xml';
 
 my $from;
 my $to;
@@ -51,6 +42,17 @@ my %database = (
     platform => "mysql",
     definition_table => "databases",
 );
+
+my $rdf_options =
+{
+    url_prefix      => 'http://www.crystallography.net/cod/',
+    url_postfix     => '.html',
+    vocabulary_name       => 'cod',
+    vocabulary_url_prefix => 'http://www.crystallography.net/cod/doc/rdf/',
+    replace_utf_code_points_from => undef,
+    utf_code_point_format        => '&#x%04X;', # default is HTML escapes
+    split_author_names           => 1,
+};
 
 #* USAGE:
 #*     $0 --options 1000000 "[1-9][0-9]\{6\}"
@@ -175,10 +177,10 @@ my %database = (
     "--password"     => \$database{password},
     "--platform"     => \$database{platform},
 
-    "--vocabulary-namespace" => \$vocabulary_name,
-    "--vocabulary-url-prefix" => \$vocabulary_url_prefix,
-    "--prefix,--db-url-prefix"   => \$url_prefix,
-    "--postfix,--db-url-postfix" => \$url_postfix,
+    "--vocabulary-namespace" => \$rdf_options->{vocabulary_name},
+    "--vocabulary-url-prefix" => \$rdf_options->{vocabulary_url_prefix},
+    "--prefix,--db-url-prefix"   => \$rdf_options->{url_prefix},
+    "--postfix,--db-url-postfix" => \$rdf_options->{url_postfix},
     "--def-table,--definition-table" => \$database{definition_table},
     "--db-name,--database-name" => \$refering_db_name,
 
@@ -189,25 +191,31 @@ my %database = (
                        $to = $2; },
     "--revision" => \$revision,
 
-    "--split-author-names" => sub { $split_author_names = 1 },
-    "--no-split-author-names" => sub { $split_author_names = 0 },
-    "--dont-split-author-names" => sub { $split_author_names = 0 },
+    "--split-author-names" =>
+        sub { $rdf_options->{split_author_names} = 1 },
+    "--no-split-author-names" =>
+        sub { $rdf_options->{split_author_names} = 0 },
+    "--dont-split-author-names" =>
+        sub { $rdf_options->{split_author_names} = 0 },
 
-    "--xml-output"      => sub { $output_format = "xml" },
-    "--n3-output"       => sub { $output_format = "n3" },
-    "--turtle-output"   => sub { $output_format = "turtle" },
-    "--ntriples-output" => sub { $output_format = "ntriples" },
-    "--n-triples-output" => sub { $output_format = "ntriples" },
+    "--xml-output"       => sub { $output_format = 'xml' },
+    "--n3-output"        => sub { $output_format = 'n3' },
+    "--turtle-output"    => sub { $output_format = 'turtle' },
+    "--ntriples-output"  => sub { $output_format = 'ntriples' },
+    "--n-triples-output" => sub { $output_format = 'ntriples' },
 
-    "--replace-utf-codepoints-from" => \$replace_utf_code_points_from,
+    "--replace-utf-codepoints-from" =>
+        \$rdf_options->{replace_utf_code_points_from},
     "--no-replace-utf-codepoints" =>
-        sub { $replace_utf_code_points_from = undef },
+        sub { $rdf_options->{replace_utf_code_points_from} = undef },
     "--dont-replace-utf-code-points" =>
-        sub { $replace_utf_code_points_from = undef },
+        sub { $rdf_options->{replace_utf_code_points_from} = undef },
 
-    "--html-utf-escapes" => sub { $utf_code_point_format = "&#x%04X;" },
-    "--internal-utf-escapes" => sub { $utf_code_point_format = "\\u%04X" },
-    "--utf-escape-format"    => \$utf_code_point_format,
+    "--html-utf-escapes" =>
+        sub { $rdf_options->{utf_code_point_format} = '&#x%04X;' },
+    "--internal-utf-escapes" =>
+        sub { $rdf_options->{utf_code_point_format} = "\\u%04X" },
+    "--utf-escape-format"    => \$rdf_options->{utf_code_point_format},
 
     "--options"      => sub { options; exit },
     "--help,--usage" => sub { usage; exit }
@@ -281,7 +289,12 @@ if ( !$any_data_seen ) {
         }, $die_on_error_level->{'ERROR'} );
 }
 
+# Forming URLs, removing unneeded fields
 for my $entry (values %$data) {
+    $entry->{url} = $rdf_options->{url_prefix} .
+                    $entry->{file} .
+                    $rdf_options->{url_postfix};
+    delete $entry->{file};
     delete $entry->{text};
     delete $entry->{flags};
     if( exists $entry->{formula} &&
@@ -306,11 +319,12 @@ my %databases = map{ lc($_->{name}) => { url_prefix => $_->{url_prefix},
                                          url_postfix => $_->{url_postfix} } }
                      @$databases;
 
-my $ids = join( ", ", @ARGV );
-my %vocabularies = ( $vocabulary_name => $vocabulary_url_prefix );
+my $ids = join( ', ', @ARGV );
+my %vocabularies = ( $rdf_options->{vocabulary_name} =>
+                     $rdf_options->{vocabulary_url_prefix} );
 
 for my $database (keys %databases) {
-    my $table = $database . "_x_" . $refering_db_name;
+    my $table = "${database}_x_${refering_db_name}";
     my $db_data = $dbh->selectall_arrayref( <<"SQLEND"
         SELECT ${refering_db_name}_id AS db_id,
                ext_id,
@@ -340,207 +354,18 @@ SQLEND
     }
 }
 
-if ($output_format eq "xml") {
-    print "<?xml version=\"1.0\"?>\n";
-    print "<rdf:RDF xmlns:rdf=\"http://www.w3.org/1999/02/22-rdf-syntax-ns#\"";
-    print "\n" if keys %vocabularies > 0;
-    print join( "\n", map { " " x 9 . "xmlns:$_=\"$vocabularies{$_}\"" }
-                           sort keys %vocabularies ) . ">\n";
+$rdf_options->{databases}    = \%databases;
+$rdf_options->{vocabularies} = \%vocabularies;
 
-    foreach my $codid (sort keys %$data) {
-        my $struct = $data->{$codid};
-        print "  <rdf:Description rdf:about=\"${url_prefix}" .
-            $struct->{file} . "${url_postfix}\">\n";
-
-        if( exists $struct->{links} ) {
-            for my $prop (sort { $a->{db} cmp $b->{db} ||
-                                 $a->{ext_id} cmp $b->{ext_id} }
-                               @{$struct->{links}}) {
-                my $db = $prop->{db};
-                print "    <" . $prop->{vocabulary} . ":" .
-                    $prop->{relation} . "\n";
-                print "     rdf:resource=\"" .
-                    $databases{$db}->{url_prefix} . $prop->{ext_id} .
-                    $databases{$db}->{url_postfix} . "\" />\n";
-            }
-        }
-
-        for my $field (sort keys %$struct) {
-            next if $field eq 'file' || $field eq 'links';
-            next if !$struct->{$field};
-            $struct->{$field} = decode( 'UTF-8', $struct->{$field} );
-            $struct->{$field} = encode_entities( $struct->{$field},
-                                                 "\"'<>\&" );
-            if( $field ne 'authors' || !$split_author_names ) {
-                if( defined $replace_utf_code_points_from ) {
-                    $struct->{$field} =
-                        replace_utf_codepoints( $struct->{$field},
-                                                $replace_utf_code_points_from,
-                                                $utf_code_point_format );
-                }
-                print "    <${vocabulary_name}:$field>";
-                print $struct->{$field};
-                print "</${vocabulary_name}:$field>\n";
-            } else {
-                print join( "\n",
-                            map { "    <${vocabulary_name}:author>" .
-                                 ( defined $replace_utf_code_points_from
-                                     ? replace_utf_codepoints( $_,
-                                               $replace_utf_code_points_from,
-                                               $utf_code_point_format )
-                                     : $_ ) .
-                                 "</${vocabulary_name}:author>"
-                            } split /\s*;\s*/, $struct->{$field} );
-                print "\n";
-            }
-        }
-        print "  </rdf:Description>\n";
-    }
-    print "</rdf:RDF>\n";
-} elsif ($output_format eq "n3" or $output_format eq "turtle") {
-# Implemmented as described in http://www.w3.org/TeamSubmission/n3/#grammar
-# A similar parser and validator can be found at 
-# http://www.rdfabout.com/demo/validator/validate.xpd
-    print "\@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>.\n";
-    print join( "\n", map { "\@prefix $_: <$vocabularies{$_}>." }
-                           sort keys %vocabularies ) . "\n";
-    print "\n" if keys %vocabularies > 0;
-
-    foreach my $codid (sort keys %$data) {
-        my $struct = $data->{$codid};
-        print "<${url_prefix}" . $struct->{file} . "${url_postfix}>\n";
-
-        if( exists $struct->{links} ) {
-            for my $prop (sort { $a->{db} cmp $b->{db} ||
-                                 $a->{ext_id} cmp $b->{ext_id} }
-                               @{$struct->{links}}) {
-                my $db = $prop->{db};
-                print "  " . $prop->{vocabulary} . ":" . $prop->{relation} . 
-                      " <" .
-                    $databases{$db}->{url_prefix} . $prop->{ext_id} .
-                    $databases{$db}->{url_postfix} . ">;\n";
-            }
-        }
-        
-        my $first_line = 1;
-        for my $field (sort keys %$struct) {
-            next if $field eq 'file' || $field eq 'links';
-            next if !$struct->{$field};
-
-            print ";\n" if !$first_line;
-            $struct->{$field} = decode( 'UTF-8', $struct->{$field} );
-            # Escaping special symbols with "\"
-            $struct->{$field} =~ s/((['"\\]))/\\$1/g;
-            $struct->{$field} =~ s/\n/\\n/g;
-            $struct->{$field} =~ s/\r/\\r/g;
-            $struct->{$field} =~ s/\t/\\t/g;
-            if( $field ne 'authors' || !$split_author_names ) {
-                # Adding '"' or '"""'quotes on a literal
-                $struct->{$field} = quote_literals( $struct->{$field} );
-                if( defined $replace_utf_code_points_from ) {
-                    $struct->{$field} =
-                        replace_utf_codepoints ( $struct->{$field},
-                                                $replace_utf_code_points_from,
-                                                $utf_code_point_format );
-                }
-                print "  ${vocabulary_name}:$field ";
-                print $struct->{$field};
-            } else {
-                print "  ${vocabulary_name}:author ";
-                my $length = length("  ${vocabulary_name}:author ");
-                my $authors = (join( ",\n", 
-                                map { defined $replace_utf_code_points_from
-                                          ? replace_utf_codepoints (
-                                              (' 'x$length ) . quote_literals($_),
-                                              $replace_utf_code_points_from,
-                                              $utf_code_point_format )
-                                          : (" "x$length ). quote_literals($_)
-                                } split /\s*;\s*/, $struct->{$field} ) );
-                $authors =~ s/\s*//;
-                print $authors;
-            }
-            $first_line = 0;
-        }
-        print ".\n";
-    }
-} elsif ($output_format eq "ntriples") {
-# Implemmented as described in http://www.w3.org/TR/n-triples/#canonical-ntriples
-# A similar parser and validator can be found at 
-# http://www.rdfabout.com/demo/validator/validate.xpd
-    foreach my $codid (sort keys %$data) {
-        my $struct = $data->{$codid};
-
-        my $subject = "<${url_prefix}" . $struct->{file} . "${url_postfix}>";
-
-        if( exists $struct->{links} ) {
-            for my $prop (sort { $a->{db} cmp $b->{db} ||
-                                 $a->{ext_id} cmp $b->{ext_id} }
-                               @{$struct->{links}}) {
-                my $db = $prop->{db};
-                print "$subject " . 
-                      "<${vocabulary_url_prefix}$prop->{relation}>" . 
-                      " <" . $databases{$db}->{url_prefix} . $prop->{ext_id} .
-                             $databases{$db}->{url_postfix} . ">.\n";
-            }
-        }
-
-        for my $field (sort keys %$struct) {
-            next if $field eq 'file' || $field eq 'links';
-            next if !$struct->{$field};
-
-            $struct->{$field} = decode( 'UTF-8', $struct->{$field} );
-            # Escaping special symbols with "\"
-            $struct->{$field} =~ s/((["\\]))/\\$1/g;
-            $struct->{$field} =~ s/\n/\\n/g;
-            $struct->{$field} =~ s/\r/\\r/g;
-            $struct->{$field} =~ s/\t/\\t/g;
-            if( $field ne 'authors' || !$split_author_names ) {
-                # Adding '"' quotes on a literal
-                $struct->{$field} = '"' . $struct->{$field} . '"';
-                if( defined $replace_utf_code_points_from ) {
-                    $struct->{$field} =
-                        replace_utf_codepoints( $struct->{$field},
-                                                $replace_utf_code_points_from,
-                                                $utf_code_point_format );
-                }
-                print "$subject " .
-                      "<${vocabulary_url_prefix}$field> " . 
-                       $struct->{$field} . ".\n";
-            } else {
-                foreach my $object ( split( /\s*;\s*/, $struct->{$field} ) ) {
-                    if( defined $replace_utf_code_points_from ) {
-                        $object = replace_utf_codepoints ( $object,
-                                                $replace_utf_code_points_from,
-                                                $utf_code_point_format );
-                    }
-
-                    print "$subject " .
-                          "<${vocabulary_url_prefix}author> " .
-                          '"' . $object . '"' . ".\n";
-                }
-            }
-        }
-    }
-}
-
-sub quote_literals
-{
-    my ( $string ) = @_;
-    if ( $string =~ m/(\n|'|")/ ) {
-        $string = '"""' . $string . '"""';
-    } else {
-        $string = '"' . $string . '"';
-   }
-   return $string;
-}
-
-sub replace_utf_codepoints
-{
-    my ( $string, $from, $format ) = @_;
-    my $hex = sprintf( "%x", $from );
-    $string =~
-        s/([\x{$hex}-\x{7FFFFFFF}])/sprintf($format, ord($1))/eg;
-    return $string;
+if( $output_format eq 'xml' ) {
+    print rdf_xml( [ map { $data->{$_} } sort keys %$data ],
+                   $rdf_options );
+} elsif( $output_format eq 'n3' or $output_format eq 'turtle' ) {
+    print rdf_n3( [ map { $data->{$_} } sort keys %$data ],
+                  $rdf_options );
+} elsif( $output_format eq 'ntriples' ) {
+    print rdf_ntriples( [ map { $data->{$_} } sort keys %$data ],
+                        $rdf_options );
 }
 
 # Function used to connect to database
@@ -562,7 +387,7 @@ sub db_connect
         }, $die_on_error_level->{'ERROR'} );
     }
     if( $db_platform ne 'SQLite' ) {
-        $dbh->do( "SET CHARACTER SET utf8" );
+        $dbh->do( 'SET CHARACTER SET utf8' );
         $dbh->do( 'set @@character_set_client = utf8' );
         $dbh->do( 'set @@character_set_connection = utf8' );
         $dbh->do( 'set @@character_set_server = utf8' );

@@ -2,7 +2,11 @@
 
 set -ue
 
-cif_tcod_tree=./scripts/cif_tcod_tree
+#BEGIN DEPEND------------------------------------------------------------------
+INPUT_SCRIPT=scripts/cif_tcod_tree
+#END DEPEND--------------------------------------------------------------------
+
+cif_tcod_tree=${INPUT_SCRIPT}
 cwd=$(pwd)
 
 BASENAME="`basename $0 .sh`"
@@ -16,7 +20,7 @@ data_tcod_cif
 loop_
   _tcod_computation_step
   _tcod_computation_command
-0
+1
 'cat test.cif'
 loop_
   _tcod_file_id
@@ -25,7 +29,7 @@ loop_
   _tcod_file_name
 0
 file://${cwd}/tests/inputs/tcod-crafted.cif 
-ca8955e79b28e812cbd496476f8f6a73
+1eedf6b0f26288adfc8d440de7468d32
 test.cif
 END
 

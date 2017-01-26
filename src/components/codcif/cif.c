@@ -204,11 +204,12 @@ void cif_insert_value( CIF * cif, char *tag,
 }
 
 void cif_overwrite_value( CIF * cif, ssize_t tag_nr, ssize_t val_nr,
-                          char *value, datablock_value_type_t vtype )
+                          char *value, datablock_value_type_t vtype,
+                          cexception_t *ex )
 {
     assert( cif );
     datablock_overwrite_value( cif->current_datablock, tag_nr, val_nr,
-        value, vtype );
+        value, vtype, ex );
 }
 
 void cif_start_loop( CIF *cif, cexception_t *ex )

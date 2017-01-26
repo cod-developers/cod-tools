@@ -1,5 +1,7 @@
-#!/usr/bin/perl
-
+#! /bin/sh
+#!perl -w # --*- Perl -*--
+eval 'exec perl -x $0 ${1+"$@"}'
+    if 0;
 #------------------------------------------------------------------------------
 #$Author$
 #$Date$ 
@@ -7,73 +9,83 @@
 #$URL$
 #------------------------------------------------------------------------------
 #*
-# Merges several yaml format files containing atom infromation into a single 
-# yaml format file. Different output formats are available.
-#*
-#* Usage:
-#*     $0 file1.yaml [file2.yaml] [file3.yaml]
+#  Merges several yaml format files containing atom information into a
+#  single structure. Different output formats are available.
 #**
 
 use strict;
 use warnings;
-use SOptions;
-use SUsage;
+
+use COD::SOptions qw( getOptions get_value );
+use COD::SUsage qw( usage );
 
 use XML::Simple;
-use YAML qw(Dump Bless Load LoadFile);
+use YAML qw( Dump Bless Load LoadFile );
 
-
-my @default_property_order = ( "atomic_number", "name", "family", "period", 
-                               "group", "block", "atomic_weight", 
-                               "atomic_mass", "covalent_radius", "vdw_radius", 
-                               "charge", "common_charge", "valence" );
+my @default_property_order = qw( atomic_number name family period group block
+                                 atomic_weight atomic_mass covalent_radius
+                                 vdw_radius charge common_charge valence );
 
 my $verbose = 0;
 my $fill_missing = 1;
 my $override_values = 0;
-my $output_format = "yaml";
+my $output_format = 'yaml';
+my $namespace = 'COD::AtomProperties';
 
-@ARGV = getOptions(
-
-#** Options:
+#* USAGE:
+#*     $0 file1.yaml [file2.yaml] [file3.yaml]
+#* OPTIONS:
+#*
+#* -f, --fill-missing
+#*                     Add empty values for missing atom properties. A list 
+#*                     of properties is constructed by taking distinct 
+#*                     properties from all of the atom entries (default).
+#* --no-fill-missing
+#*                     Do no add empty values for missing atom properties.
+#*
+#* -o, --override-values
+#*                     Override property values with the newest ones.
+#* --no-overide-values, --keep-original-values
+#*                     Keep the oldest property values (default).
+#*
+#* -v, --verbose
+#*                     Output warning messages.
+#* -s, --silent
+#*                     Do not output warning messages (default).
+#*
+#* -y, --yaml
+#*                     Output merged files in yaml format (default).
+#* -p, --perl-hash
+#*                     Output merged files as a perl module containing
+#*                     a perl hash.
+#*
+#* -n, --namespace
+#*                     Namespace to be used when outputing a perl module
+#*                     (default 'COD::AtomProperties').
+#*
+#* --help, --usage
+#*                     Print a short usage message (this message) and exit.
 #**
-#** -f,--fill-missing
-#**                     Add empty values for missing atom properties. A list 
-#**                     of properties is constructed by taking distinct 
-#**                     properties from all of the atom entries (default).
-#** --no-fill-missing
-#**                     Do no add empty values for missing atom properties.
-#** -o,--override-values
-#**                     Override property values with the newest ones.
-#** --no-overide-values, --keep-original-values
-#**                     Keep the oldest property values (default).
-#** -v,--verbose
-#**                     Output warning messages.
-#** -s,--silent
-#**                     Do not output warning messages (default).
-#** -y,--yaml
-#**                     Output merged files in yaml format (default).
-#** -p,--perl-hash
-#**                     Output merged files as a perl hash.
-#** --help,--usage      Print a short usage message (this message) and exit.
+@ARGV = getOptions(
+    '-f,--fill-missing'      => sub { $fill_missing = 1 },
+    '--no-fill-missing'      => sub { $fill_missing = 0 },
 
-    "-f,--fill-missing"      => sub { $fill_missing = 1 },
-    "--no-fill-missing"      => sub { $fill_missing = 0 },
+    '-o,--override-values'   => sub { $override_values = 1 },
+    '--no-overide-values'    => sub { $override_values = 0 },
+    '--keep-original-values' => sub { $override_values = 0 },
 
-    "-o,--override-values"   => sub{ $override_values = 1 },
-    "--no-overide-values"    => sub{ $override_values = 0 },
-    "--keep-original-values" => sub{ $override_values = 0 },
+    '-v,--verbose'           => sub { $verbose = 1 },
+    '-s,--silent'            => sub { $verbose = 0 },
 
-    "-v,--verbose"           => sub{ $verbose = 1 },
-    "-s,--silent"            => sub{ $verbose = 0},
+    '-y,--yaml'              => sub { $output_format = 'yaml' },
+    '-p,--perl-hash'         => sub { $output_format = 'perl' },
 
-    "-y,--yaml"              => sub{ $output_format = "yaml" },
-    "-p,--perl-hash"         => sub{ $output_format = "perl" },
+    '-n,--namespace'         => sub { $namespace =  get_value() },
 
-    "--help,--usage"   => sub { SUsage::usage; exit }
+    '--help,--usage'   => sub { usage; exit }
 );
 
-@ARGV = ( "-" ) unless @ARGV;
+@ARGV = ( '-' ) unless @ARGV;
 
 my %atoms_merged;
 
@@ -81,7 +93,7 @@ foreach ( @ARGV ) {
 
     my $atoms_new;
 
-    if ( $_ eq "-" ) {
+    if ( $_ eq '-' ) {
         my $text = do { local $/; <STDIN> };
         $atoms_new = Load($text);
     } else {
@@ -93,11 +105,11 @@ foreach ( @ARGV ) {
         next;
     }
 
-    if ( $verbose && keys %atoms_merged != keys $atoms_new ) {
-        print STDERR "Warning: Hashes are of different sizes. \n";
+    if ( $verbose && keys %atoms_merged != keys %{$atoms_new} ) {
+        print {*STDERR} "Warning: Hashes are of different sizes. \n";
     }
 
-    foreach my $type ( keys $atoms_new ) {
+    foreach my $type ( keys %{$atoms_new} ) {
         if ( !exists $atoms_merged{$type} ) {
             $atoms_merged{$type} = $atoms_new->{$type};
             next;
@@ -105,13 +117,13 @@ foreach ( @ARGV ) {
 
         my $atom1 = $atoms_new->{$type};
         my $atom2 = $atoms_merged{$type};
-        foreach( keys $atom1 ) {
+        foreach( keys %{$atom1} ) {
             if ( !exists $atom2->{$_} ) {
                 $atoms_merged{$type}{$_} = $atom1->{$_}
             } elsif ( $override_values ) {
 
                 if ( $verbose && !identical($atom1->{$_}, $atom2->{$_}) ) {
-                    print STDERR "types are not identical\n";
+                    print {*STDERR} "types are not identical\n";
                 }
 
                 $atoms_merged{$type}{$_} = $atom1->{$_}
@@ -124,7 +136,7 @@ foreach ( @ARGV ) {
 my %all_fields;
 foreach my $type ( values %atoms_merged ) {
     foreach ( keys %{$type} ) {
-        $all_fields{$_} = ref( $type->{$_} ); 
+        $all_fields{$_} = ref( $type->{$_} );
     }
 }
 
@@ -133,12 +145,12 @@ if ( $fill_missing ) {
     foreach my $element ( keys %atoms_merged ) {
         foreach ( keys %all_fields ) {
             if ( ! exists $atoms_merged{$element} -> {$_} ) {
-                if ( $all_fields{$_} eq "ARRAY" ) {
+                if ( $all_fields{$_} eq 'ARRAY' ) {
                     $atoms_merged{$element} -> {$_} = [];
-                } elsif ( $all_fields{$_} eq "HASH" ) {
+                } elsif ( $all_fields{$_} eq 'HASH' ) {
                     $atoms_merged{$element} -> {$_} = {};
                 } else {
-                    $atoms_merged{$element} -> {$_} = "";
+                    $atoms_merged{$element} -> {$_} = '';
                 }
             }
         }
@@ -156,11 +168,12 @@ foreach ( keys %all_fields ) {
 
 push @default_property_order, sort @unrecognized_properties;
 
-if ( $output_format eq "perl" ) {
-    print_perl_hash( \%atoms_merged, \@default_property_order )
-} elsif ( $output_format eq "yaml" ) {
-    my @print_order = sort { $atoms_merged{$a} -> {"atomic_number"} <=> 
-                             $atoms_merged{$b} -> {"atomic_number"} 
+if ( $output_format eq 'perl' ) {
+    print_perl_hash( \%atoms_merged, \@default_property_order, $namespace )
+} elsif ( $output_format eq 'yaml' ) {
+    my @print_order = sort { $atoms_merged{$a} -> {'atomic_number'} <=>
+                             $atoms_merged{$b} -> {'atomic_number'} ||
+                             $a cmp $b # this line is mainly to order D and H
                            } keys %atoms_merged;
     Bless(\%atoms_merged)->keys(\@print_order);
     print Dump \%atoms_merged;
@@ -168,63 +181,78 @@ if ( $output_format eq "perl" ) {
 
 sub print_perl_hash
 {
-    my ( $atoms_merged, $property_order ) = @_;
+    my ( $atoms_merged, $property_order, $namespace ) = @_;
 
-    print "package AtomProperties;\n" .
+    print "package $namespace;\n" .
           "\n" .
           "use strict;\n" .
           "\n" .
           "require Exporter;\n" .
-          '@AtomProperties::ISA = qw(Exporter);' . "\n" .
-          '@AtomProperties::EXPORT = qw( ok );' . "\n" .
+          '@' . $namespace . '::ISA = qw(Exporter);' . "\n" .
+          '@' . $namespace . '::EXPORT = qw( ok );' . "\n" .
           "\n" .
-          '%AtomProperties::atoms = (' . "\n";
+          '%' . $namespace . '::atoms = (' . "\n";
 
-    my @print_order = sort { $atoms_merged -> {$a} -> {"atomic_number"} <=> 
-                             $atoms_merged -> {$b} -> {"atomic_number"} }
-                                                         keys %{$atoms_merged};
+    my @print_order = sort { $atoms_merged->{$a}->{'atomic_number'} <=>
+                             $atoms_merged->{$b}->{'atomic_number'} ||
+                             $a cmp $b # this line is mainly to order D and H
+                      } keys %{$atoms_merged};
 
     foreach my $atom ( @print_order ) {
 
-        print " "x5 . "\"$atom\" => {\n";
+        print ' 'x5 . "\"$atom\" => {\n";
 
         foreach ( @{$property_order} ) {
             if ( exists $atoms_merged -> {$atom} -> {$_} ) {
                 my $entry = $atoms_merged -> {$atom} -> {$_};
-                if ( ref($entry) eq "ARRAY" ) {
-                    $entry = "[" . join(", ", map { $_ = "'$_'" } 
-                                                               @{$entry}) . "]";
-                 } elsif( ref($entry) eq "HASH" ) { 
+                if ( ref($entry) eq 'ARRAY' ) {
+                    $entry = '[' . join(', ', map { qq('$_') } @{$entry}) . ']';
+                 } elsif( ref($entry) eq 'HASH' ) {
+
+                    my @key_order = keys %{$entry};
+                    if ( $_ eq 'covalent_radii' ) {
+                        @key_order = qw( single double triple );
+                    } elsif ( $_ eq 'spin_state_radii' ) {
+                        @key_order = ( 'l.s.', 'h.s.' )
+                    };
+
+                    my @keys;
+                    foreach my $key ( @key_order ) {
+                        if ( exists $entry->{$key} ) {
+                            push @keys, $key;
+                        }
+                    };
+
                     if ( keys %{$entry} > 0 ) {
-                        $entry = "{\n" . join(",\n", 
-                                         map {$_ =  " "x17 ."\"$_\" => \"" . 
-                                              $entry -> {$_} . '"' } 
-                                              keys %{$entry} ) . 
-                                         "\n" . " "x13 . "}";
+                        $entry = "{\n" .
+                            join(",\n",
+                                map { ' 'x17 ."\"$_\" => \"" .
+                                      $entry -> {$_} . '"' } @keys ) .
+                            "\n" . ' 'x13 . '}';
                     } else {
-                        $entry = "{}"
+                        $entry = '{}'
                     }
                  } else {
                     $entry = "\"$entry\"";
                  }
 
-                 print " "x13 . "\"$_\" => " . $entry  . ",\n"; 
+                 print ' 'x13 . "\"$_\" => " . $entry  . ",\n";
             }
         }
+        print ' 'x11 . "},\n";
+    }
 
-    print " "x11 . "},\n";
-}
+    print ");\n\n1;\n";
 
-print ");\n\n1;";
-
+    return;
 }
 
 sub same_array_elements
 {
     my ($array1, $array2) = @_;
     my %counts = ();
-    $counts{$_} += 1 foreach (@$array1);
-    $counts{$_} -= 1 foreach (@$array2);
+    $counts{$_} += 1 foreach (@{$array1});
+    $counts{$_} -= 1 foreach (@{$array2});
     return !(grep { $_ != 0 } values %counts);
 }
 
@@ -234,9 +262,9 @@ sub identical
 
     my $identical;
 
-    if ( ref($value1) ne ref($value2) ) {
+    if ( ref $value1 ne ref $value2 ) {
         $identical = 0;
-    } elsif ( ref($value1) eq "ARRAY" ) {
+    } elsif ( ref $value1 eq 'ARRAY' ) {
         $identical = same_array_elements($value1, $value2);
     } else {
         $identical = ( $value1 eq $value2 );

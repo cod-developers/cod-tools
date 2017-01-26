@@ -5,6 +5,10 @@ set -ue
 unset LANG
 unset `printenv | grep LC_ | awk -F= '{print $1}'`
 
-find_numbers=./scripts/find_numbers
+#BEGIN DEPEND------------------------------------------------------------------
+INPUT_SCRIPT=scripts/find_numbers
+#END DEPEND--------------------------------------------------------------------
+
+find_numbers=${INPUT_SCRIPT}
 
 ${find_numbers} ./tests/inputs/formula1 ./tests/inputs/formula2 | sort

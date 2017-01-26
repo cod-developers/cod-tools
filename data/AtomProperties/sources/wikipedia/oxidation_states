@@ -1,24 +1,25 @@
-#!/usr/bin/perl
-
+#! /bin/sh
+#!perl -w # --*- Perl -*--
+eval 'exec perl -x $0 ${1+"$@"}'
+    if 0;
 #------------------------------------------------------------------------------
 #$Author$
-#$Date$ 
+#$Date$
 #$Rev$
 #$URL$
 #------------------------------------------------------------------------------
 #*
-# Extracts atom charge and common charge information and outputs it in YAML 
+# Extracts atom charge and common charge information and outputs it in YAML
 # format.
 #*
-#* Usage:
+#* USAGE:
 #*     $0 oxidation_states.html
 #**
 
 use strict;
 use warnings;
-use SUsage;
 
-use YAML qw(Dump Bless);
+use YAML qw( Dump Bless );
 
 my $inert_noble_gas = 0;
 
@@ -75,7 +76,7 @@ while ( $text =~ m|<tr(.*?)>(.*?)</tr>|sg ) {
 print '#$Date$' . "\n";
 print "#Original file: $ARGV[0] \n" if exists $ARGV[0];
 print "#Descrp: Primary source of charges and common charges.\n";
-print "#Source: http://en.wikipedia.org/wiki/List_of_oxidation_states_of_the_elements \n";
+print "#Source: http://en.wikipedia.org/wiki/List_of_oxidation_states_of_the_elements\n";
 
 my @order = sort { $atoms{$a} -> {"atomic_number"} <=> 
                    $atoms{$b} -> {"atomic_number"} 

@@ -4,6 +4,10 @@
 
 set -ue
 
-formula_sum=./scripts/formula_sum
+#BEGIN DEPEND------------------------------------------------------------------
+INPUT_SCRIPT=scripts/formula_sum
+#END DEPEND--------------------------------------------------------------------
+
+formula_sum=${INPUT_SCRIPT}
 
 echo "C2H5OH" | ${formula_sum}

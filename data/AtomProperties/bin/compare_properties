@@ -1,8 +1,10 @@
-#!/usr/bin/perl
-
+#! /bin/sh
+#!perl -w # --*- Perl -*--
+eval 'exec perl -x $0 ${1+"$@"}'
+    if 0;
 #------------------------------------------------------------------------------
 #$Author$
-#$Date$ 
+#$Date$
 #$Rev$
 #$URL$
 #------------------------------------------------------------------------------
@@ -16,10 +18,10 @@
 
 use strict;
 use warnings;
-use SOptions;
-use SUsage;
+use COD::SOptions qw( getOptions );
+use COD::SUsage qw( usage );
 
-use YAML qw(Dump Bless Load LoadFile);
+use YAML qw( Dump Bless Load LoadFile );
 
 my $prop = "atomic_number";
 my $cutoff = 0.01;
@@ -36,10 +38,12 @@ my $cutoff = 0.01;
 
     "-p,--property"  => \$prop,
     "-c,--cutoff"    => \$cutoff,
-    "--help,--usage" => sub { SUsage::usage; exit }
+    "--help,--usage" => sub { usage; exit }
 );
 
-if ( @ARGV != 2 ) { print STDERR "$0 must be given two files to compare.\n"; die };
+if ( @ARGV != 2 ) {
+    die "$0:: ERROR, the script must be given two files to compare.\n";
+};
 
 my @atoms;
 

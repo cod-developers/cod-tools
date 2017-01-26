@@ -25,6 +25,7 @@ our @EXPORT_OK = qw(
     has_coordinates
     has_hkl
     has_powder_diffraction_intensities
+    has_twin_hkl
     has_Fobs
     has_errors
     has_warnings
@@ -54,6 +55,7 @@ sub is_retracted($);
 sub has_coordinates($);
 sub has_hkl($);
 sub has_powder_diffraction_intensities($);
+sub has_twin_hkl($);
 sub has_Fobs($);
 sub has_warnings($);
 sub has_errors($);
@@ -213,6 +215,13 @@ sub has_powder_diffraction_intensities($)
     }
 
     return 0;
+}
+
+sub has_twin_hkl($)
+{
+    my ( $dataset ) = @_;
+
+    return !tag_is_empty( $dataset, '_twin_refln_datum_id' );
 }
 
 sub has_Fobs($)

@@ -1,13 +1,15 @@
-#!/usr/bin/perl
-
+#! /bin/sh
+#!perl -w # --*- Perl -*--
+eval 'exec perl -x $0 ${1+"$@"}'
+    if 0;
 #------------------------------------------------------------------------------
 #$Author$
-#$Date$ 
+#$Date$
 #$Rev$
 #$URL$
 #------------------------------------------------------------------------------
 #*
-# Extracts atom information from Blue Obelisk xml file  and outputs it in 
+# Extracts atom information from Blue Obelisk xml file  and outputs it in
 # YAML format.
 #*
 #* Usage:
@@ -16,12 +18,12 @@
 
 use strict;
 use warnings;
-use SOptions;
-use SUsage;
-use UserMessage;
+use COD::SOptions qw( getOptions get_value );
+use COD::SUsage qw( usage );
+use COD::UserMessage qw( warning );
 
 use XML::Simple;
-use YAML qw(Dump Bless);
+use YAML qw( Dump Bless );
 
 my @excluded_elements = ("Xx");
 
@@ -41,7 +43,7 @@ my @excluded_elements = ("Xx");
                                         $element;
                                      } split (",", get_value ) 
                                },
-    "--help,--usage"        => sub { SUsage::usage; exit }
+    "--help,--usage"        => sub { usage; exit }
 );
 
 my $xml = new XML::Simple;

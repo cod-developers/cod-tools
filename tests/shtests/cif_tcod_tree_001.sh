@@ -2,9 +2,14 @@
 
 set -ue
 
-cif_tcod_tree=./scripts/cif_tcod_tree
+#BEGIN DEPEND------------------------------------------------------------------
+INPUT_SCRIPT=scripts/cif_tcod_tree
+INPUT_CIF=tests/inputs/aiida_exported.cif
+#END DEPEND--------------------------------------------------------------------
 
-CIF=./tests/inputs/aiida_exported.cif
+cif_tcod_tree=${INPUT_SCRIPT}
+
+CIF=${INPUT_CIF}
 
 BASENAME="`basename $0 .sh`"
 

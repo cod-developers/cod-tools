@@ -2,9 +2,14 @@
 
 set -ue
 
-cif_split=./scripts/cif_split_primitive
+#BEGIN DEPEND------------------------------------------------------------------
+INPUT_SCRIPT=scripts/cif_split_primitive
+INPUT_CIF=tests/inputs/Burford_2000_p152_crude.cif
+#END DEPEND--------------------------------------------------------------------
 
-CIF=./tests/inputs/Burford_2000_p152_crude.cif
+cif_split=${INPUT_SCRIPT}
+
+CIF=${INPUT_CIF}
 
 BASENAME="`basename $0 .sh`"
 

@@ -136,25 +136,8 @@ SCRIPT_DEPENDS = ${ALL_SCRIPTS:${SCRIPT_DIR}/%=${SCRIPT_DIR}/.%.d}
 ALL_INPUTS = $(wildcard ${SCRIPT_TST_DIR}/*.* ${SHELL_TSTDIR}/*.sh)
 
 .diff.depend: .script.depend ${ALL_INPUTS}
-	@perl -l \
-		-e 'for (@ARGV) {'\
-		-e '    if ( m|/(.*?)_(\d{2,4})\.\w{3}$$| ) {' \
-		-e '        print "${OUTPUT_DIR}/",$$1,"_",$$2,".diff: ",$$1 ' \
-		-e '    } elsif (m|.*/(.*?)_(\d{2,4})\.sh$$|) {' \
-		-e '        print "${SHELL_OUTDIR}/$$1_$$2.diff: ${SCRIPT_DIR}/$$1" ' \
-		-e '    } else {  };' \
-		-e '}' \
-	${filter-out .script.depend,$^} \
-	| sed 's,: cases/,: scripts/,' \
-	| sed 's,tests/outputs/cases/,tests/outputs/,' \
-	| sort | uniq \
-	> $@
-	@test -s $< && sed 's/: /:/' $@ \
-	| sort | uniq \
-	| sort -t ':' -d --key 2 \
-	| join -t ':' -1 2 -2 1 - $< \
-	| perl -lne 'my @a = split(":", $$_ ); push( @a, shift @a); print shift @a,": ",join(" ", @a)' \
-	| sponge $@ || true
+	@tools/mkdiffdepend --script-depend $< --output ${OUTPUT_DIR} \
+		${filter-out $<, $^} > $@
 
 ${SCRIPT_DIR}/.%.d: ${SCRIPT_DIR}/%
 	-tools/mkperldepend $< > $@
@@ -335,6 +318,7 @@ cleanAll distclean: clean
 	rm -f ${COMPILED_MODULES}
 	rm -f ${SHARED_SWIG_OBJECTS}
 	rm -f ${SCRIPT_DEPENDS}
+	rm -f .diff.depend .script.depend
 	for DIR in ${MAKE_DIRS}; do \
 		${MAKE} -C $$DIR $@; \
 	done

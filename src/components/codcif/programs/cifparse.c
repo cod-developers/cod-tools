@@ -344,6 +344,7 @@ int main( int argc, char *argv[], char *env[] )
   }
 
   delete_cif( cif );
+  freex( files );
 
   return retval;
 }

@@ -17,6 +17,7 @@ use strict;
 use warnings;
 use File::Basename qw( basename );
 use Scalar::Util qw( looks_like_number );
+use List::MoreUtils qw( uniq );
 use COD::CIF::Parser qw( parse_cif) ;
 use COD::CIF::Tags::CanonicalNames qw( canonicalize_all_names );
 use COD::SOptions qw( getOptions get_value );
@@ -47,6 +48,7 @@ sub check_against_range_numb($$$);
 sub check_against_range_char($$);
 sub get_list_reference_tags($$);
 sub get_replacement_tags($$);
+sub check_list_link_parent($$$);
 
 #* USAGE:
 #*     $0 --dictionaries 'cif_core.dic,cif_cod.dic' --options input1.cif input*.cif
@@ -245,23 +247,22 @@ CIFFILEANAL: for my $filename ( @ARGV ) {
         # start iteration through CIF values
         #
         for my $tag_analysed ( @{$block->{tags}} ) {
-            if(!defined $block->{types}{$tag_analysed}) {
-                if ( $debug ) {
-                    debug_note( $0, $filename, $dataname,
-                                "tag '$tag_analysed' has no associated type ",
-                                'an error in CIF parser had probably occured' );
-                }
+            if(!defined $block->{types}{$tag_analysed} && $debug) {
+                debug_note( $0, $filename, $dataname,
+                            "tag '$tag_analysed' has no associated type ",
+                            'an error in CIF parser had probably occured' );
             }
             my $lc_tag_analysed = lc $tag_analysed;
             my $defined = 0;
             if( ! $report_local_tags && $lc_tag_analysed =~ m/^_\[local\]/ ) {
-                ++$defined;
+                $defined++;
             }
             #
             # start iteration through dictionaries
             #
             for my $dict_f ( sort keys %dict_tags ) {
                 my $dict_d = $dict_tags{$dict_f};
+
                 # check if tags are defined in the dictionary
                 if( exists $dict_d->{$lc_tag_analysed} ) {
                     $defined = 1;
@@ -292,7 +293,7 @@ CIFFILEANAL: for my $filename ( @ARGV ) {
                 if ( exists $block->{inloop}{$tag_analysed} ) {
                     my $ref_tags = get_list_reference_tags($dict_d, $lc_tag_analysed);
                     for ( my $i = 0; $i < @{$block->{loops}}; $i++ ) {
-                      if( grep { $_ eq $tag_analysed } @{$block->{loops}[$i]} ) {
+                      next if !grep { $_ eq $tag_analysed } @{$block->{loops}[$i]};
                         foreach my $loop_ref_tag (@{$ref_tags}) {
                             # TO-DO: the reference property is also transitional 
                             # to the 'alternate' tags and this must be tested
@@ -316,7 +317,6 @@ CIFFILEANAL: for my $filename ( @ARGV ) {
                                          $loop_ref_tag;
                             }
                         }
-                      }
                     }
                 } elsif( $debug ) {
                     debug_note( $0, $filename, $dataname, "tag $tag_analysed "
@@ -325,10 +325,8 @@ CIFFILEANAL: for my $filename ( @ARGV ) {
                 }
 
                 # check list mandatory
-                if( exists $dict_d->{$lc_tag_analysed}
-                    && exists $dict_d->{$lc_tag_analysed}{values}{_list}
-                    && $dict_d->{$lc_tag_analysed}{values}{_list}[0] eq 'yes' )
-                {
+                if( exists $dict_tag_values->{_list} &&
+                    $dict_tag_values->{_list}[0] eq 'yes' ) {
                     if( exists $block->{inloop}{$tag_analysed} ) {
                         if ( $debug ) {
                             debug_note( $0, $filename, $dataname,
@@ -340,13 +338,19 @@ CIFFILEANAL: for my $filename ( @ARGV ) {
                            . "according to $dict_f but is not in a loop" . "\n";
                     }
                 }
+
+                # check link to parent
+                if( exists $dict_tag_values->{_list_link_parent} ) {
+                    check_list_link_parent( $block, $tag_analysed,
+                                            $dict_tag_values->{_list_link_parent} );
+                }
+
                 # check types of values
                 my $range = {};
                 my %range_for_print;
-                if( exists $dict_d->{$lc_tag_analysed} &&
-                    exists $dict_d->{$lc_tag_analysed}{values}{_enumeration_range} ) {
+                if( exists $dict_tag_values->{_enumeration_range} ) {
                     ( $range->{'min'}, $range->{'max'} ) = split(/:/,
-                        $dict_d->{$lc_tag_analysed}{values}{_enumeration_range}[0],
+                        $dict_tag_values->{_enumeration_range}[0],
                         2);
                     %range_for_print = %{$range};
                     if( length($range->{min}) == 0 ) {
@@ -368,23 +372,19 @@ CIFFILEANAL: for my $filename ( @ARGV ) {
                     #
                     # if check values in enumeration list
                     #
-                    if( exists $dict_d->{$lc_tag_analysed} &&
-                        exists $dict_d->{$lc_tag_analysed}{values}{_enumeration} ) {
-                        my $list_enum_values_for_tag = join(', ',
-                            @{$dict_d->{$lc_tag_analysed}{values}{_enumeration}}
-                        );
+                    if( $dict_tag_values->{_enumeration} ) {
                         my $value_found_in_list = 0;
                         my $emulate_set = 0;
                         if( grep { lc($_) eq $lc_tag_analysed } @{$set_of_enum} ) {
                             $emulate_set = 1;
-                            my $set_of_enum_values = join '|',
-                               @{$dict_d->{$lc_tag_analysed}{values}{_enumeration}};
+                            my $set_of_enum_values =
+                                join '|', @{$dict_tag_values->{_enumeration}};
                             $set_of_enum_values =~ s/\./\\./;
                             my $regexp_set_of_enum_values =
-                                                 qr/^($set_of_enum_values)+$/s;
+                                qr/^($set_of_enum_values)+$/s;
                             if( $case_sensitive ) {
                                 if( $value =~ m/$regexp_set_of_enum_values/s ) {
-                                        $value_found_in_list = 1;
+                                    $value_found_in_list = 1;
                                 }
                             } else {
                                 if( $value =~ m/$regexp_set_of_enum_values/is ) {
@@ -394,18 +394,20 @@ CIFFILEANAL: for my $filename ( @ARGV ) {
                         } else {
                             if( $case_sensitive ) {
                                 if( grep { $_ eq $value }
-                                    @{$dict_d->{$lc_tag_analysed}{values}{_enumeration}} ) {
+                                    @{$dict_tag_values->{_enumeration}} ) {
                                     $value_found_in_list = 1;
                                 }
                             } else {
                                 my $lc_value = lc $value;
                                 if( grep { lc($_) eq $lc_value }
-                                    @{$dict_d->{$lc_tag_analysed}{values}{_enumeration}} ) {
+                                    @{$dict_tag_values->{_enumeration}} ) {
                                     $value_found_in_list = 1;
                                 }
                            }
                        }
 
+                       my $list_enum_values_for_tag =
+                         join ', ', @{$dict_tag_values->{_enumeration}};
                        if( $value_found_in_list == 0 ) {
                             warn "NOTE, tag '$tag_analysed' value \"$value\" "
                                . 'must be one of the enumeration values '
@@ -429,17 +431,14 @@ CIFFILEANAL: for my $filename ( @ARGV ) {
                     # Check if values match the declared types:
                     #
 
-                    if( exists $dict_d->{$lc_tag_analysed} && (
-                            defined $dict_d->{$lc_tag_analysed}{values}{_type} &&
-                            $dict_d->{$lc_tag_analysed}{values}{_type}[0] eq 'numb' ||
-                            defined $dict_d->{$lc_tag_analysed}{values}{'_item_type.code'} &&
-                            ($dict_d->{$lc_tag_analysed}{values}{'_item_type.code'}[0] eq 'float' ||
-                             $dict_d->{$lc_tag_analysed}{values}{'_item_type.code'}[0] eq 'int')
-                        )) {
-
-                        if(defined $block->{types}{$tag_analysed}) {
-                            if('FLOAT' ne $block->{types}{$tag_analysed}[$tag_index]
-                                && 'INT' ne $block->{types}{$tag_analysed}[$tag_index]) {
+                    if( defined $dict_tag_values->{_type} &&
+                        $dict_tag_values->{_type}[0] eq 'numb' ||
+                        defined $dict_tag_values->{'_item_type.code'} &&
+                        ($dict_tag_values->{'_item_type.code'}[0] eq 'float' ||
+                             $dict_tag_values->{'_item_type.code'}[0] eq 'int') &&
+                        defined $block->{types}{$tag_analysed} ) {
+                            if( 'FLOAT' ne $block->{types}{$tag_analysed}[$tag_index] &&
+                                'INT' ne $block->{types}{$tag_analysed}[$tag_index]) {
                                 warn "NOTE, tag '$tag_analysed' value \""
                                    . $block->{values}{$tag_analysed}[$tag_index]
                                    . '" is of type \''
@@ -453,7 +452,6 @@ CIFFILEANAL: for my $filename ( @ARGV ) {
                                             '\' as expected, as it should be either ' .
                                             '\'FLOAT\' or \'INT\'', undef );
                             }
-                        }
                     }
 
                     # check if standard uncertainty is permitted
@@ -462,14 +460,12 @@ CIFFILEANAL: for my $filename ( @ARGV ) {
                     # type checking is used to avoid false positive alert
                     my $su_permitted = 0;
                     if ( defined $dict_tag_values->{_type} ) {
-                        if ( $dict_tag_values->{_type}[0] ne 'numb' ) {
+                        if( $dict_tag_values->{_type}[0] ne 'numb' ) {
                             $su_permitted = 1
-                        } elsif (defined $dict_tag_values->{_type_conditions} ) {
-                            foreach (@{$dict_tag_values->{_type_conditions}}) {
-                                if ( $_ eq 'esd' || $_ eq 'su' ) {
-                                    $su_permitted = 1 ;
-                                }
-                            }
+                        } elsif( defined $dict_tag_values->{_type_conditions} &&
+                                 grep { $_ eq 'esd' || $_ eq 'su' }
+                                      @{$dict_tag_values->{_type_conditions}} ) {
+                            $su_permitted = 1 ;
                         }
                     }
 
@@ -477,7 +473,7 @@ CIFFILEANAL: for my $filename ( @ARGV ) {
                     if ( $value =~ /([(]\d+[)])$/ && !$su_permitted ) {
                         warn "NOTE, tag '$tag_analysed' value \"$value\" "
                            . 'is not permitted to contain standard '
-                           . 'uncertainty "' . $1 . '"' . ' -- '
+                           . 'uncertainty "' . $1 . '" -- '
                            . 'standard uncertainty will be ignored in '
                            . 'further validation' . "\n";
                         $sigma = undef;
@@ -488,14 +484,11 @@ CIFFILEANAL: for my $filename ( @ARGV ) {
                     #
                     if( %{$range} ) {
                         my $value_wo_su = $value;
-                        if( exists $dict_d->{$lc_tag_analysed} &&
-                            $dict_d->{$lc_tag_analysed}{values}{_type}[0]
-                            eq 'numb' ) {
+                        if( $dict_tag_values->{_type}[0] eq 'numb' ) {
                             $value_wo_su =~ s/\s*\(.*$//;
                         }
-                        if( exists $dict_d->{$lc_tag_analysed} &&
-                            check_against_range(
-                                $dict_d->{$lc_tag_analysed}{values}{_type}[0],
+                        if( check_against_range(
+                                $dict_tag_values->{_type}[0],
                                 $range, $value_wo_su, $sigma) <= 0 ) {
                                 warn "NOTE, tag '$tag_analysed' value " .
                                      "\"$value\" should be in range (" .
@@ -590,7 +583,6 @@ sub get_dict($)
         $datan++;
     }
 
-
     return $tags;
 }
 
@@ -614,7 +606,7 @@ sub get_replacement_tags($$)
     # check if tags are deprecated (replaced with other tags)
     if( defined $tag_values->{_related_item} ) {
         for( my $i = 0; $i < @{$tag_values->{_related_item}}; $i++ ) {
-            if( $tag_values->{_related_function}[$i] eq 'replace') {
+            if( $tag_values->{_related_function}[$i] eq 'replace' ) {
                 push @replace_with, $tag_values->{_related_item}[$i];
             }
         }
@@ -720,7 +712,7 @@ sub check_against_range_char($$)
 }
 
 ##
-# Returns an array of tags that are required to be present in the loop 
+# Returns an array of tags that are required to be present in the loop
 # containing the analyzed tag.
 # @param $dict
 #       Reference to a dictionary object as returned by 'get_dict' subroutine.
@@ -749,4 +741,27 @@ sub get_list_reference_tags($$)
     }
 
     return \@list_reference_tags;
+}
+
+##
+# Checks the existence of parent (foreign) keys.
+##
+sub check_list_link_parent($$$)
+{
+    my( $block, $tag, $parents ) = @_;
+
+    return if @$parents > 1; # not handled yet, unsure how to do that
+
+    my $parent = $parents->[0];
+    return if !exists $block->{values}{$parent};
+
+    my %parent_values = map { $_ => 1 } @{$block->{values}{$parent}};
+
+    my @unmatched = uniq sort grep { !exists $parent_values{$_} }
+                         @{$block->{values}{$tag}};
+
+    for my $value (@unmatched) {
+        warn "NOTE, value \"$value\" of tag \"$parent\" is required " .
+             "as the tag is a parent of \"$tag\"\n";
+    }
 }
