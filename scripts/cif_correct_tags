@@ -34,7 +34,8 @@ my $keep_tag_order = 0;
 my $Id = '$Id$';
 my $replacement_list;
 my $use_parser = 'c';
-my $output_format = "cif";
+my $input_format = 'cif';
+my $output_format = 'cif';
 
 #* USAGE:
 #*     $0 --options input.cif input*.cif
@@ -52,12 +53,20 @@ my $output_format = "cif";
 #*                      Use the Perl-only CIF parser.
 #*   --use-c-parser
 #*                      Use the speed-optimised C/Perl parser. Default.
-#*   --use-json-parser
-#*                      Use the JSON parser (input is in JSON format)
-#*   --output-cif
-#*                      Output CIF. Default option.
-#*   --output-json
-#*                      Output internal data structure in JSON.
+#*
+#*   --cif-input
+#*                      Use CIF format for input (default).
+#*   --json-input
+#*                      Use JSON format for input.
+#*   --cif-output
+#*                      Use CIF format for output (default).
+#*   --json-output  
+#*                      Use JSON format for output.
+#*   --cif
+#*                      Use CIF format for both input and output (default).
+#*   --json
+#*                      Use JSON format for both input and output.
+#*
 #*   --help, --usage
 #*                      Print a short usage message (this message) and exit.
 #**
@@ -67,9 +76,16 @@ my $output_format = "cif";
     '-r,--replacement-list' => \$replacement_list,
     '--use-perl-parser' => sub{ $use_parser = 'perl' },
     '--use-c-parser'    => sub{ $use_parser = 'c' },
-    "--use-json-parser" => sub{ $use_parser = "json" },
-    "--output-cif"      => sub{ $output_format = "cif" },
-    "--output-json"     => sub{ $output_format = "json" },
+    
+    '--cif-input'   => sub { $input_format = 'cif' },
+    '--json-input'  => sub { $input_format = 'json' },
+
+    '--cif-output'  => sub { $output_format = 'cif' },
+    '--json-output' => sub { $output_format = 'json' },
+    
+    '--cif'  => sub { $input_format = $output_format = 'cif' },
+    '--json' => sub { $input_format = $output_format = 'json' },
+    
     '--options'         => sub { options; exit },
     '--help,--usage'    => sub { usage; exit }
 );
@@ -79,6 +95,10 @@ my $die_on_error_level = {
     WARNING => 0,
     NOTE    => 0
 };
+
+if( $input_format eq 'json' ) {
+    $use_parser = 'json';
+}
 
 sub insert_report_to_comments
 {

@@ -40,7 +40,8 @@ my $output_tar = 0;
 my $cif_header_file;
 
 my $use_parser = "c";
-my $format = "cif";
+my $input_format  = 'cif';
+my $output_format = 'cif';
 
 #*  USAGE:
 #*      $0 --options input1.cif input*.cif
@@ -65,17 +66,23 @@ my $format = "cif";
 #*  -q, --quiet
 #*      Do not print file names to STDERR.
 #*
-#* --format-cif
-#*      Output stand-alone CIF files (default option).
-#* --format-json
-#*      Output internal representation of parsed CIF file in JSON.
-#*
 #*  --use-perl-parser
 #*      Use Perl parser for CIF parsing.
 #*  --use-c-parser
 #*      Use Perl & C parser for CIF parsing.
-#*  --use-json-parser
-#*      Use the JSON parser (input is in JSON format).
+#*
+#*  --cif-input
+#*      Use CIF format for input (default).
+#*  --json-input
+#*      Use JSON format for input.
+#*  --cif-output
+#*      Use CIF format for output (default).
+#*  --json-output  
+#*      Use JSON format for output.
+#*  --cif
+#*      Use CIF format for both input and output (default).
+#*  --json
+#*      Use JSON format for both input and output.
 #*
 #*  --help, --usage
 #*      Print short usage message (this message) and exit
@@ -89,19 +96,29 @@ my $format = "cif";
    "--output-tar"    => sub { $output_tar = 1;
                               $output_prefixed = 0 },
 
-   "--format-cif"  => sub { $format = "cif" },
-   "--format-json" => sub { $format = "json" },
-
    "-h,--add-cif-header" => \$cif_header_file,
    "-v,--verbose"    => sub { $verbose = 1 },
    "-q,--quiet"      => sub { $verbose = 0 },
 
    "--use-perl-parser" => sub { $use_parser = "perl" },
    "--use-c-parser"    => sub { $use_parser = "c" },
-   "--use-json-parser" => sub { $use_parser = "json" },
+
+    '--cif-input'   => sub { $input_format = 'cif' },
+    '--json-input'  => sub { $input_format = 'json' },
+
+    '--cif-output'  => sub { $output_format = 'cif' },
+    '--json-output' => sub { $output_format = 'json' },
+    
+    '--cif'  => sub { $input_format = $output_format = 'cif' },
+    '--json' => sub { $input_format = $output_format = 'json' },
+
    "--options"         => sub { options; exit },
    "--help,--usage"    => sub { usage; exit }
 );
+
+if( $input_format eq 'json' ) {
+    $use_parser = 'json';
+}
 
 # Reading the header file
 my $cif_header;
@@ -171,7 +188,7 @@ for my $filename (@ARGV) {
         }
 
         my $print_cif_stdout;
-        if( $format eq "cif" ) {
+        if( $output_format eq "cif" ) {
             local *STDOUT;
             open( STDOUT, '>', \$print_cif_stdout );
             if( $data_global ) {
@@ -197,7 +214,7 @@ for my $filename (@ARGV) {
         }
 
         my $cif_contents = "";
-        if( $format eq "cif" ) {
+        if( $output_format eq "cif" ) {
             $cif_contents .= $cif_header if $cif_header;
         }
         $cif_contents .= $print_cif_stdout;
@@ -213,9 +230,9 @@ for my $filename (@ARGV) {
             my $basename = basename( $filename, ".cif" );
             my $output_file;
             if( $basename ne "-" ) {
-                $output_file = "${basename}_${suffix}.${format}";
+                $output_file = "${basename}_${suffix}.${output_format}";
             } else {
-                $output_file = "${suffix}.${format}";
+                $output_file = "${suffix}.${output_format}";
             }
             if( $output_tar ) {
                 $tar->add_data( $output_file, $cif_contents );
