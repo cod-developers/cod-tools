@@ -16,6 +16,7 @@ use strict;
 use warnings;
 use COD::CIF::Parser qw( parse_cif );
 use COD::CIF::Data::CODNumbers qw( cif_fill_data fetch_duplicates );
+use COD::CIF::Tags::CanonicalNames qw( canonicalize_all_names );
 use COD::SOptions qw( getOptions );
 use COD::SUsage qw( usage options );
 use COD::ErrorHandler qw( process_warnings
@@ -196,6 +197,8 @@ for my $filename (@ARGV) {
     my $parser_options = { 'parser' => $use_parser, 'no_print' => 1 };
     my ( $data, $err_count, $messages ) = parse_cif( $filename, $parser_options );
     process_parser_messages( $messages, $die_on_error_level );
+    
+    canonicalize_all_names( $data );
 
     local $SIG{__WARN__} = sub { process_warnings( {
                                     'message'       => @_,

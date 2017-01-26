@@ -20,6 +20,7 @@ use Unicode::Normalize qw( NFD );
 use Capture::Tiny ':all';
 use COD::CIF::Data::CIF2COD qw( cif2cod );
 use COD::CIF::Unicode2CIF qw( cif2unicode );
+use COD::CIF::Tags::CanonicalNames qw( canonicalize_all_names );
 use COD::CIF::Tags::Print qw( print_cif );
 use COD::Precision qw( cmp_cif_numbers );
 use COD::UserMessage qw( sprint_message print_message parse_message );
@@ -274,6 +275,8 @@ sub filter_and_check
 
     use COD::CIF::Parser qw( parse_cif );
     my ($data) = parse_cif( $tmp_file, { 'parser' => $options->{'use_parser'} } );
+
+    canonicalize_all_names( $data );
 
     # Splitting powder diffraction CIF data blocks into CIF and HKL:
 
