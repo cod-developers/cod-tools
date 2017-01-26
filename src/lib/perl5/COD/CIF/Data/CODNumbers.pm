@@ -249,29 +249,28 @@ sub cif_fill_data
             $structure{sigcell}{$key} = $val;
         }
     }
-    for my $key ( map {lc}
-                  qw( _cell_measurement_temperature
-                      _cell_measurement_temperature_C
-                      _diffrn_ambient_temperature
-                      _diffrn_ambient_temperature_C
-                      _diffrn_ambient_temperature_gt
-                      _diffrn_ambient_temperature_lt
-                      _pd_prep_temperature
-                      _cell_measurement_pressure
-                      _cell_measurement_pressure_gPa
-                      _cell_wave_vectors_pressure_max
-                      _cell_wave_vectors_pressure_min
-                      _diffrn_ambient_pressure
-                      _diffrn.ambient_pressure
-                      _diffrn.ambient_pressure_esd
-                      _diffrn_ambient_pressure_gPa
-                      _diffrn_ambient_pressure_gt
-                      _diffrn.ambient_pressure_gt
-                      _diffrn_ambient_pressure_lt
-                      _diffrn.ambient_pressure_lt
-                      _exptl_crystal_pressure_history
-                      _exptl_crystal_thermal_history
-                      _pd_prep_pressure )) {
+    for my $key ( qw( _cell_measurement_temperature
+                       _cell_measurement_temperature_C
+                       _diffrn_ambient_temperature
+                       _diffrn_ambient_temperature_C
+                       _diffrn_ambient_temperature_gt
+                       _diffrn_ambient_temperature_lt
+                       _pd_prep_temperature
+                       _cell_measurement_pressure
+                       _cell_measurement_pressure_gPa
+                       _cell_wave_vectors_pressure_max
+                       _cell_wave_vectors_pressure_min
+                       _diffrn_ambient_pressure
+                       _diffrn.ambient_pressure
+                       _diffrn.ambient_pressure_esd
+                       _diffrn_ambient_pressure_gPa
+                       _diffrn_ambient_pressure_gt
+                       _diffrn.ambient_pressure_gt
+                       _diffrn_ambient_pressure_lt
+                       _diffrn.ambient_pressure_lt
+                       _exptl_crystal_pressure_history
+                       _exptl_crystal_thermal_history
+                       _pd_prep_pressure )) {
        if( exists $values->{$key} ) {
            my $val = $values->{$key}[0];
            if( defined $val ) {
