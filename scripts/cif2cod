@@ -32,6 +32,7 @@ my $include_keywords_with_undefined_values = 0;
 my $user_columns; # User specified list of columns to be printed
 
 my $use_parser = "c";
+my $input_format = 'cif';
 my $die_on_errors   = 1;
 my $die_on_warnings = 0;
 my $die_on_notes    = 0;
@@ -130,8 +131,11 @@ my %options;
 #*                     Use the Perl parser for parsing CIFs.
 #* --use-c-parser
 #*                     Use the faster C parser for CIFs (default).
-#*      --use-json-parser
-#*         Use the JSON parser (input is in JSON format)
+#*
+#* --cif-input
+#*                     Use CIF format for input (default).
+#* --json-input
+#*                     Use JSON format for input.
 #*
 #* --help, --usage
 #*                     Print a short usage message (this message) and exit.
@@ -205,7 +209,9 @@ my %options;
 
     "--use-perl-parser"       => sub{ $use_parser = "perl" },
     "--use-c-parser"          => sub{ $use_parser = "c" },
-    "--use-json-parser"       => sub{ $use_parser = "json" },
+
+    "--cif-input"  => sub { $input_format = 'cif' },
+    "--json-input" => sub { $input_format = 'json' },
 
     "--options"       => sub { options; exit },
     "--help,--usage"  => sub { usage; exit }
@@ -216,6 +222,10 @@ my $die_on_error_level = {
     WARNING => $die_on_warnings,
     NOTE    => $die_on_notes
 };
+
+if( $input_format eq 'json' ) {
+    $use_parser = 'json';
+}
 
 my @print_columns;
 
