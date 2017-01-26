@@ -125,6 +125,8 @@ install-libcodcif:
 	install --mode 644 ${LIBCODCIF_H} ${CEXCEPTIONS_H} ${GETOPTIONS_H} ${LIBCODCIF_INC_DEST}
 	find src/components/codcif -maxdepth 1 -type f -perm +1 \
 		| xargs -i install {} ${PREFIX}/bin
+		
+.PHONY: clean-deb cleanAll-deb
 
 clean-deb: ${CHANGELOG}
 	${DEBIAN}/rules clean
@@ -132,5 +134,9 @@ clean-deb: ${CHANGELOG}
 cleanAll-deb: clean-deb
 	rm -f ${CHANGELOG}
 	rm -f ${DEBIAN}/*.deb
+	
+# Cleaning only if 'dh' commands are available on the machine:
 
-cleanAll distclean: cleanAll-deb
+CLEANALL_DEB = $(shell type dh >/dev/null 2>&1 && echo cleanAll-deb)
+
+cleanAll distclean: ${CLEANALL_DEB}
