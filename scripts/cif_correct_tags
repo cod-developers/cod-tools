@@ -17,6 +17,7 @@ eval 'exec perl -x $0 ${1+"$@"}'
 
 use strict;
 use warnings;
+use COD::CIF::JSON qw( cif2json );
 use COD::CIF::Parser qw( parse_cif );
 use COD::CIF::Tags::CanonicalNames qw( canonicalize_all_names );
 use COD::CIF::Tags::DictTags;
@@ -33,6 +34,8 @@ my $keep_tag_order = 0;
 my $Id = '$Id$';
 my $replacement_list;
 my $use_parser = 'c';
+my $input_format = 'cif';
+my $output_format = 'cif';
 
 #* USAGE:
 #*     $0 --options input.cif input*.cif
@@ -50,6 +53,20 @@ my $use_parser = 'c';
 #*                      Use the Perl-only CIF parser.
 #*   --use-c-parser
 #*                      Use the speed-optimised C/Perl parser. Default.
+#*
+#*   --cif-input
+#*                      Use CIF format for input (default).
+#*   --json-input
+#*                      Use JSON format for input.
+#*   --cif-output
+#*                      Use CIF format for output (default).
+#*   --json-output  
+#*                      Use JSON format for output.
+#*   --cif
+#*                      Use CIF format for both input and output (default).
+#*   --json
+#*                      Use JSON format for both input and output.
+#*
 #*   --help, --usage
 #*                      Print a short usage message (this message) and exit.
 #**
@@ -59,7 +76,16 @@ my $use_parser = 'c';
     '-r,--replacement-list' => \$replacement_list,
     '--use-perl-parser' => sub{ $use_parser = 'perl' },
     '--use-c-parser'    => sub{ $use_parser = 'c' },
+    
+    '--cif-input'   => sub { $input_format = 'cif' },
+    '--json-input'  => sub { $input_format = 'json' },
 
+    '--cif-output'  => sub { $output_format = 'cif' },
+    '--json-output' => sub { $output_format = 'json' },
+    
+    '--cif'  => sub { $input_format = $output_format = 'cif' },
+    '--json' => sub { $input_format = $output_format = 'json' },
+    
     '--options'         => sub { options; exit },
     '--help,--usage'    => sub { usage; exit }
 );
@@ -69,6 +95,10 @@ my $die_on_error_level = {
     WARNING => 0,
     NOTE    => 0
 };
+
+if( $input_format eq 'json' ) {
+    $use_parser = 'json';
+}
 
 sub insert_report_to_comments
 {
@@ -179,13 +209,26 @@ for my $filename (@ARGV) {
             }
         }
         insert_report_to_comments ($dataset,\@insert_reports);
-        print_cif( $dataset, {
-            exclude_misspelled_tags => 0,
-            preserve_loop_order => 1,
-            fold_long_fields => 0,
-            dictionary_tags => \%dictionary_tags,
-            dictionary_tag_list => \@dictionary_tags,
-            keep_tag_order => $keep_tag_order,
-        } );
+    }
+    
+    if( $output_format ne 'cif' && $output_format ne 'json' ) {
+        error( $0, undef, undef,
+               "unknown output format: $output_format", undef );
+        die;
+    }
+
+    for my $dataset (@$data) {
+        if( $output_format eq 'cif' ) {
+            print_cif( $dataset, {
+                exclude_misspelled_tags => 0,
+                preserve_loop_order => 1,
+                fold_long_fields => 0,
+                dictionary_tags => \%dictionary_tags,
+                dictionary_tag_list => \@dictionary_tags,
+                keep_tag_order => $keep_tag_order,
+            } );
+        } elsif( $output_format eq 'json' ) {
+            print cif2json( $dataset );
+        }
     }
 }

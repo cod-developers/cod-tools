@@ -33,6 +33,7 @@ my %database = (
     );
 
 my $use_parser = 'c';
+my $input_format = 'cif';
 
 my $die_on_error_level = {
     ERROR   => 1,
@@ -139,6 +140,11 @@ my %options;
 #*     --use-c-parser
 #*        Use the speed-optimised C/Perl parser
 #*
+#*     --cif-input
+#*        Use CIF format for input (default).
+#*     --json-input
+#*        Use JSON format for input.
+#*
 #*     --help, --usage
 #*        Print a short usage message (this message) and exit.
 #**
@@ -186,10 +192,17 @@ my %options;
 
     "--use-perl-parser"       => sub{ $use_parser = "perl" },
     "--use-c-parser"          => sub{ $use_parser = "c" },
+    
+    '--cif-input'  => sub { $input_format = 'cif' },
+    '--json-input' => sub { $input_format = 'json' },
 
     "--options"      => sub { options; exit },
     "--help,--usage" => sub { usage; exit }
 );
+
+if( $input_format eq 'json' ) {
+    $use_parser = 'json';
+}
 
 @ARGV = ("-") unless @ARGV;
 

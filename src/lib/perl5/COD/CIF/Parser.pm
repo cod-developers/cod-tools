@@ -15,6 +15,7 @@ use strict;
 use warnings;
 use COD::CIF::Parser::Yapp;
 use COD::UserMessage qw( sprint_message warning error );
+use COD::CIF::JSON;
 
 require Exporter;
 our @ISA = qw( Exporter );
@@ -64,6 +65,8 @@ sub parse_cif
         $parser = new COD::CIF::Parser::Bison;
     } elsif ( $options->{parser} eq 'perl' ) {
         $parser = new COD::CIF::Parser::Yapp;
+    } elsif ( $options->{parser} eq 'json' ) {
+        $parser = new COD::CIF::JSON;
     } else {
         error( $0, $filename, undef, "parser type '" . $options->{parser}
              . "' is not recognised", "please select either 'c' or 'perl' "
