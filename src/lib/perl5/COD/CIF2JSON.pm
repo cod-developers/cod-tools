@@ -34,19 +34,26 @@ sub cif2json($)
 sub json2cif($)
 {
     my( $json ) = @_;
-    my $decoded = decode_json( $json );
-    if( !exists $decoded->{version} ) {
-        die 'ERROR, unknown serialization format version -- will not '
-          . 'deserialize' . "\n";
+    my $js = new JSON;
+    $js->incr_parse( $json );
+    my $decoded;
+    my @decoded;
+    while( $decoded = $js->incr_parse ) {
+        if( !exists $decoded->{version} ) {
+            die 'ERROR, unknown serialization format version -- ' .
+                 'will not deserialize' . "\n";
+        }
+        my( $our_major )   = split( '\.', $format_version );
+        my( $their_major ) = split( '\.', $decoded->{version} );
+        if( $our_major != $their_major ) {
+            die 'ERROR, major versions of used serialization ' .
+                'format and the deserializer are different ' .
+                "(current: $our_major, used: $their_major) -- " .
+                'will not deserialize' . "\n";
+        }
+        push( @decoded, $decoded->{data} );
     }
-    my( $our_major )   = split( '\.', $format_version );
-    my( $their_major ) = split( '\.', $decoded->{version} );
-    if( $our_major != $their_major ) {
-        die 'ERROR, major versions of used serialization format and the '
-          . 'deserializer are different (current: ' . $our_major . ', '
-          . 'used: ' . $their_major . ') -- will not deserialize' . "\n";
-    }
-    return $decoded->{data};
+    return \@decoded;
 }
 
 # Functions for compatibility with object-oriented usage

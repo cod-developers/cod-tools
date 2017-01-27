@@ -126,15 +126,13 @@ foreach( @ARGV ) {
         ($data, $err_count, $messages) = parse_cif( $_, \%options );
         process_parser_messages( $messages, $die_on_error_level );
     }
-
-    if( $output_format eq 'json' ) {
-        print cif2json( $data );
-    } elsif( $output_format eq 'struct' ) {
-        foreach my $datablock ( @$data ) {
+    
+    foreach my $datablock ( @$data ) {
+        if( $output_format eq 'json' ) {
+            print cif2json( $datablock );
+        } elsif( $output_format eq 'struct' ) {
             showRef( $datablock );
-        }
-    } else {
-        foreach my $datablock ( @$data ) {
+        } else {
             print  $datablock->{name} . "\n";
             print "Values:\n";
             foreach my $tag ( sort { lc( $a ) cmp lc( $b ) } @{$datablock->{tags}} ) {

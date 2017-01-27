@@ -210,9 +210,15 @@ for my $filename (@ARGV) {
         }
         insert_report_to_comments ($dataset,\@insert_reports);
     }
+    
+    if( $output_format ne 'cif' && $output_format ne 'json' ) {
+        error( $0, undef, undef,
+               "unknown output format: $output_format", undef );
+        die;
+    }
 
-    if( $output_format eq "cif" ) {
-        for my $dataset (@$data) {
+    for my $dataset (@$data) {
+        if( $output_format eq 'cif' ) {
             print_cif( $dataset, {
                 exclude_misspelled_tags => 0,
                 preserve_loop_order => 1,
@@ -221,11 +227,8 @@ for my $filename (@ARGV) {
                 dictionary_tag_list => \@dictionary_tags,
                 keep_tag_order => $keep_tag_order,
             } );
+        } elsif( $output_format eq 'json' ) {
+            print cif2json( $dataset );
         }
-    } elsif( $output_format eq "json" ) {
-        print cif2json( $data );
-    } else {
-        error( $0, undef, undef, "unknown output format: $output_format", undef );
-        die;
     }
 }
