@@ -9,7 +9,7 @@
 #  parsers, to/from JSON format.
 #**
 
-package COD::CIF2JSON;
+package COD::CIF::JSON;
 
 use strict;
 use warnings;
