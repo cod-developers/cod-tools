@@ -21,6 +21,7 @@ eval 'exec perl -x $0 ${1+"$@"}'
 use strict;
 use warnings;
 use File::Basename qw( basename );
+use COD::CIF::JSON qw( cif2json );
 use COD::CIF::Parser qw( parse_cif );
 use COD::Cell qw( cell_volume );
 use COD::CIF::Data qw( get_cell );
@@ -79,6 +80,8 @@ my $fold_title = 0;
 my $folding_width = 76;
 my $exclude_publ_details = 1;
 my $use_parser = 'c';
+my $input_format = 'cif';
+my $output_format = 'cif';
 my $parse_formula_sum = 0;
 my $fix_errors = 0;
 my $use_datablocks_without_coord = 0;
@@ -351,9 +354,21 @@ my %spacegroups = map {
 #*
 #*    --use-perl-parser
 #*        Use Perl parser for CIF parsing.
-#*
 #*    --use-c-parser
 #*        Use Perl & C parser for CIF parsing (default).
+#*
+#*    --cif-input
+#*        Use CIF format for input (default).
+#*    --json-input
+#*        Use JSON format for input.
+#*    --cif-output
+#*        Use CIF format for output (default).
+#*    --json-output  
+#*        Use JSON format for output.
+#*    --cif
+#*        Use CIF format for both input and output (default).
+#*    --json
+#*        Use JSON format for both input and output.
 #*
 #*    --help, --usage
 #*        Print a short usage message (this message) and exit.
@@ -491,6 +506,15 @@ my %spacegroups = map {
     '--no-exclude-publication-details'   => sub{ $exclude_publ_details = 0 },
 
     '--leave-title'          => sub{ $leave_title = 1 },
+    
+    '--cif-input'   => sub { $input_format = 'cif' },
+    '--json-input'  => sub { $input_format = 'json' },
+
+    '--cif-output'  => sub { $output_format = 'cif' },
+    '--json-output' => sub { $output_format = 'json' },
+    
+    '--cif'  => sub { $input_format = $output_format = 'cif' },
+    '--json' => sub { $input_format = $output_format = 'json' },
 
     '--options'      => sub { options; exit },
     '--help,--usage' => sub { usage; exit }
@@ -501,6 +525,10 @@ my $die_on_error_level = {
     WARNING => $die_on_warnings,
     NOTE    => $die_on_notes
 };
+
+if( $input_format eq 'json' ) {
+    $use_parser = 'json';
+}
 
 # The following snippet of code mimics the previous script behaviour when
 # user defined bibliography keys were defined as separate global variables.
@@ -1318,15 +1346,27 @@ for my $filename (@ARGV) {
 
             # Print out requested tags:
 
-            print_cif( $dataset, {
-                exclude_misspelled_tags => $exclude_misspelled_tags,
-                preserve_loop_order => $preserve_loop_order,
-                fold_long_fields => $fold_long_fields,
-                folding_width => $folding_width,
-                dictionary_tags => \%dictionary_tags,
-                dictionary_tag_list => \@dictionary_tags,
-                keep_tag_order => $preserve_tag_order,
-                       } );
+            if( $output_format eq "cif" ) {
+                print_cif( $dataset, {
+                    exclude_misspelled_tags => $exclude_misspelled_tags,
+                    preserve_loop_order => $preserve_loop_order,
+                    fold_long_fields => $fold_long_fields,
+                    folding_width => $folding_width,
+                    dictionary_tags => \%dictionary_tags,
+                    dictionary_tag_list => \@dictionary_tags,
+                    keep_tag_order => $preserve_tag_order,
+                           } );
+            } else {
+                use COD::CIF::Tags::Manage qw( clean_cif );
+                clean_cif( $dataset, {
+                    exclude_misspelled_tags => $exclude_misspelled_tags,
+                    preserve_loop_order => $preserve_loop_order,
+                    dictionary_tags => \%dictionary_tags,
+                    dictionary_tag_list => \@dictionary_tags,
+                    keep_tag_order => $preserve_tag_order,
+                           } );
+                print cif2json( $dataset );
+            }
         } };
         if ($@) {
             process_errors( {

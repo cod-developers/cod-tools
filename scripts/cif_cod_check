@@ -180,6 +180,7 @@ sub merge_limits_tables($$) {
 
 my $max_year_temperature_factors_optional = 1969;
 my $use_parser = 'c';
+my $input_format = 'cif';
 
 #* USAGE:
 #*    $0 --options input1.cif input*.cif
@@ -206,6 +207,10 @@ my $use_parser = 'c';
 #*                     Use Perl parser for CIF parsing.
 #*  --use-c-parser
 #*                     Use Perl & C parser for CIF parsing (default).
+#*  --cif-input
+#*                     Use CIF format for input (default).
+#*  --json-input
+#*                     Use JSON format for input.
 #*
 #* For every --check-xyz option, there are the following corresponding
 #* related options:
@@ -432,6 +437,9 @@ my $use_parser = 'c';
 
     '--use-perl-parser' => sub{ $use_parser = 'perl' },
     '--use-c-parser'    => sub{ $use_parser = 'c' },
+    
+    '--cif-input'   => sub { $input_format = 'cif' },
+    '--json-input'  => sub { $input_format = 'json' },
 
     '--options'      => sub { options; exit },
     '--help,--usage' => sub { usage; exit }
@@ -442,6 +450,10 @@ my $die_on_error_level = {
     WARNING => $die_on_warnings,
     NOTE    => $die_on_notes
 };
+
+if( $input_format eq 'json' ) {
+    $use_parser = 'json';
+}
 
 # The subroutine that prints out the table of limits
 sub print_limits {
