@@ -17,7 +17,7 @@
 %}
 
 %pythoncode %{
-def parse(filename,options):
+def parse(filename,*args):
     import re
 
     prog = '-'
@@ -27,8 +27,10 @@ def parse(filename,options):
     except IndexError:
         pass
 
-    if not options:
-        options = {}
+    options = {}
+    if len(args) > 0:
+        options = args[0]
+
     parse_results = parse_cif(filename,prog,options)
     data = parse_results['datablocks']
     messages = parse_results['messages']
