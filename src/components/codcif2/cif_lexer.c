@@ -397,12 +397,12 @@ int cif_lexer( FILE *in, cexception_t *ex )
                 strlen( token ) == 5 ) {
                 /* stop field: */
                 yyerror( "STOP_ symbol detected -- "
-                         "it is not acceptable in CIF v1.1" );
+                         "it is not acceptable in CIF v2.0" );
             } else if( starts_with_keyword( "global_", token ) &&
                 strlen( token ) == 7 ) {
                 /* global field: */
                 yyerror( "GLOBAL_ symbol detected -- "
-                         "it is not acceptable in CIF v1.1" );
+                         "it is not acceptable in CIF v2.0" );
             } else {
                 if( token[0] == '[' ) {
                     /* opening bracket is a reserved symbol, unquoted strings
