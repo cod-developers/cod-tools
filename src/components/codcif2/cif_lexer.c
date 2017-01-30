@@ -283,20 +283,11 @@ int cif_lexer( FILE *in, cexception_t *ex )
                 }
                 quote_count = 0;
                 while( (ch = getlinec( in, ex )) != EOF ) {
-                    if( ch == '\n' || ch == '\r' ) {
-                        if( type == _DQSTRING || type == _SQSTRING ) {
+                    if( type == _DQSTRING || type == _SQSTRING ) {
+                        if( ch == '\n' || ch == '\r' ) {
                             break;
-                        } else {
-                            pushchar( &token, &length, pos++, ch );  
-                            quote_count = 0;
                         }
-                    }
-                    if( ch != quote ) {
-                        pushchar( &token, &length, pos++, ch );
-                        quote_count = 0;
-                    } else {
-                        quote_count++;
-                        if( type == _DQSTRING || type == _SQSTRING ) {
+                        if( ch == quote ) {
                             /* properly terminated quote-delimited string: */
                             pushchar( &token, &length, pos, '\0' );
                             yylval.s = check_and_clean
@@ -306,10 +297,11 @@ int cif_lexer( FILE *in, cexception_t *ex )
                                         quote, token );
                             }
                             return type;
-                        } else if( quote_count < 3 ) {
-                            /* quote inside triple-quoted string: */
-                            pushchar( &token, &length, pos++, ch );
-                        } else {
+                        }                        
+                    } else {
+                        if( ch == quote ) {
+                            quote_count++;
+                        } else if( quote_count >= 3 ) {
                             /* terminated triple-quoted string: */
                             pushchar( &token, &length, pos-2, '\0' );
                             yylval.s = check_and_clean
@@ -319,8 +311,11 @@ int cif_lexer( FILE *in, cexception_t *ex )
                                         quote, token );
                             }
                             return type;
-                        }
+                        } else {
+                            quote_count = 0;
+                        }                        
                     }
+                    pushchar( &token, &length, pos++, ch );
                 }
                 /* Unterminated quoted string: */
                 prevchar = token[pos-1];
