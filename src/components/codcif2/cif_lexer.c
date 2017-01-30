@@ -106,7 +106,6 @@ static void ungetlinec( int ch, FILE *in );
 static int getlinec( FILE *in, cexception_t *ex );
 
 static char *clean_string( char *src, int is_textfield, cexception_t *ex );
-static int string_has_high_bytes( unsigned char *s );
 static char *check_and_clean( char *token, int is_textfield,
                               cexception_t *ex );
 
@@ -783,32 +782,9 @@ static char *clean_string( char *src, int is_textfield, cexception_t *ex )
     return new;
 }
 
-static int string_has_high_bytes( unsigned char *s )
-{
-    if( !s ) return 0;
-
-    while( *s ) {
-        if( *s++ > 127 )
-            return 1;
-    }
-    return 0;
-}
-
 static char *check_and_clean( char *token, int is_textfield, cexception_t *ex )
 {
     char *s;
-
-    if( string_has_high_bytes
-        ( (unsigned char*)token )) {
-        if( cif_lexer_has_flags
-            (CIF_FLEX_LEXER_FIX_NON_ASCII_SYMBOLS) ) {
-            s = clean_string( token, is_textfield, ex );
-        } else {
-            yyerror( "incorrect CIF syntax" );
-            s = strdupx( token, ex );
-        }
-    } else {
-        s = strdupx( token, ex );
-    }
+    s = strdupx( token, ex );
     return s;
 }
