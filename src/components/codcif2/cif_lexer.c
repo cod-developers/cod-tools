@@ -252,28 +252,16 @@ int cif_lexer( FILE *in, cexception_t *ex )
                     if( ch != quote ) {
                         pushchar( &token, &length, pos++, ch );
                     } else {
-                        /* check if the quote terminates the string: */
-                        int before = ch;
-                        ch = getlinec( in, ex );
-                        if( ch == EOF || isspace(ch) ) {
-                            /* The quoted string is properly terminated: */
-                            ungetlinec( ch, in );
-                            prevchar = token[pos-1];
-                            pushchar( &token, &length, pos, '\0' );
-                            yylval.s = check_and_clean
-                                ( token, /* is_textfield = */ 0, ex );
-                            if( yy_flex_debug ) {
-                                printf( ">>> *QSTRING (%c): '%s'\n",
-                                        quote, token );
-                            }
-                            return quote == '"' ? _DQSTRING : _SQSTRING;
-                        } else {
-                            /* The quote does not terminate the
-                               string, it is a part of the value: */
-                            ungetlinec( ch, in );
-                            prevchar = before;
-                            pushchar( &token, &length, pos++, before );
+                        /* The quoted string is properly terminated: */
+                        prevchar = token[pos-1];
+                        pushchar( &token, &length, pos, '\0' );
+                        yylval.s = check_and_clean
+                            ( token, /* is_textfield = */ 0, ex );
+                        if( yy_flex_debug ) {
+                            printf( ">>> *QSTRING (%c): '%s'\n",
+                                    quote, token );
                         }
+                        return quote == '"' ? _DQSTRING : _SQSTRING;
                     }
                 }
                 /* Unterminated quoted string: */
