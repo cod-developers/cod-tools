@@ -347,6 +347,8 @@ int cif_lexer( FILE *in, cexception_t *ex )
                 return quote == '"' ? _DQSTRING : _SQSTRING;
             }
             break;
+        case '[': case ']':
+            return ch;
         case ';':
             if( prevchar == '\n' || prevchar == '\0' ) {
                 /* multi-line text field: */
@@ -445,33 +447,13 @@ int cif_lexer( FILE *in, cexception_t *ex )
                 yyerror( "GLOBAL_ symbol detected -- "
                          "it is not acceptable in CIF v2.0" );
             } else {
-                if( token[0] == '[' ) {
-                    /* opening bracket is a reserved symbol, unquoted strings
-                       may not start with it: */
-                    if( !cif_lexer_has_flags
-                        (CIF_FLEX_LEXER_ALLOW_UQSTRING_BRACKETS)) {
-                        yyerror( "opening square brackets are reserved "
-                                 "and may not start an unquoted string" );
-                    }
-                }
-                if( token[0] == ']' ) {
-                    /* closing bracket is a reserved symbol, unquoted strings
-                       may not start with it: */
-                    if( !cif_lexer_has_flags
-                        (CIF_FLEX_LEXER_ALLOW_UQSTRING_BRACKETS)) {
-                        yyerror( "closing square brackets are reserved "
-                                 "and may not start an unquoted string" );
-                    }
-                }
                 if( token[0] == '$' ) {
                     /* dollar is a reserved symbol, unquoted strings
                        may not start with it: */
                     yyerror( "dollar symbol ('$') must not start an "
                              "unquoted string" );
                 }
-                if( token[0] != '[' &&
-                    token[0] != ']' &&
-                    token[0] != '$' ) {
+                if( token[0] != '$' ) {
                     if( yy_flex_debug ) {
                         printf( ">>> UQSTRING: '%s'\n", token );
                     }

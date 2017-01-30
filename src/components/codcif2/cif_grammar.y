@@ -114,6 +114,7 @@ int loop_start = 0;
 %type <typed_value> textfield
 %type <typed_value> quoted_string
 %type <typed_value> triple_quoted_string
+%type <typed_value> list
 
 %%
 
@@ -422,10 +423,12 @@ save_block
         }
 ;
 
-cif_value
+cif_value /* to be renamed to wspace_data_value, as per CIF2.0 */
 	:	string
 	|	number
 	|	textfield
+    |   list
+    |   table
 ;
 
 string
@@ -443,7 +446,7 @@ string
 
 nospace_value
     :   any_quoted_string
-/*  |   list */
+    |   list
     |   table
 ;
 
@@ -518,6 +521,11 @@ number
         { $$.vstr = $1; $$.vtype = CIF_FLOAT; }
 	|	_INTEGER_CONST
         { $$.vstr = $1; $$.vtype = CIF_INT; }
+;
+
+list
+    :   '[' cif_value_list ']'
+        { $$.vstr = $2.vstr; $$.vtype = CIF_LIST; }
 ;
 
 table
