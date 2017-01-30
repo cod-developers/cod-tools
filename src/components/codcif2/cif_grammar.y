@@ -100,6 +100,8 @@ int loop_start = 0;
 %token <s> _DQSTRING
 %token <s> _SQSTRING
 %token <s> _UQSTRING
+%token <s> _DQ3STRING
+%token <s> _SQ3STRING
 %token <s> _TEXT_FIELD
 %token <s> _INTEGER_CONST
 %token <s> _REAL_CONST
@@ -431,6 +433,10 @@ string
         { $$.vstr = $1; $$.vtype = CIF_DQSTRING; }
 	|	_UQSTRING
         { $$.vstr = $1; $$.vtype = CIF_UQSTRING; }
+    |   _SQ3STRING
+        { $$.vstr = $1; $$.vtype = CIF_SQSTRING; }
+	|	_DQ3STRING
+        { $$.vstr = $1; $$.vtype = CIF_DQSTRING; }
 ;
 
 textfield

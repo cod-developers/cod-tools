@@ -246,22 +246,80 @@ int cif_lexer( FILE *in, cexception_t *ex )
                 int quote = ch;
                 advance_mark();
                 pos = 0;
+                int quote_count = 1;
+                while( (ch = getlinec( in, ex )) == quote ) {
+                    quote_count++;                    
+                }
+                ungetlinec( ch, in );
+                int type = quote == '"' ? _DQSTRING : _SQSTRING;
+                if(        quote_count == 1 ) {
+                    /* start of quote-delimited string */
+                } else if( quote_count == 2 ) {
+                    /* empty quote-delimited string */
+                    yylval.s = check_and_clean
+                                ( token, /* is_textfield = */ 0, ex );
+                    return type;
+                } else if( quote_count == 3 ) {
+                    /* start of triple quote-delimited string */
+                    type = quote == '"' ? _DQ3STRING : _SQ3STRING;
+                } else if( quote_count >= 4 && quote_count <= 5 ) {
+                    /* quote inside triple quote-delimited string */
+                    int i;
+                    for( i = 0; i < quote_count - 3; i++ ) {
+                        ungetlinec( quote, in );
+                    }
+                    type = quote == '"' ? _DQ3STRING : _SQ3STRING;
+                } else {
+                    /* empty triple quote-delimited string with
+                     * something quoted attached to its end */
+                    int i;
+                    for( i = 0; i < quote_count - 3; i++ ) {
+                        ungetlinec( quote, in );
+                    }
+                    yylval.s = check_and_clean
+                                ( token, /* is_textfield = */ 0, ex );
+                    type = quote == '"' ? _DQ3STRING : _SQ3STRING;
+                    return type;
+                }
+                quote_count = 0;
                 while( (ch = getlinec( in, ex )) != EOF ) {
-                    if( ch == '\n' || ch == '\r' )
-                        break;
+                    if( ch == '\n' || ch == '\r' ) {
+                        if( type == _DQSTRING || type == _SQSTRING ) {
+                            break;
+                        } else {
+                            pushchar( &token, &length, pos++, ch );  
+                            quote_count = 0;
+                        }
+                    }
                     if( ch != quote ) {
                         pushchar( &token, &length, pos++, ch );
+                        quote_count = 0;
                     } else {
-                        /* The quoted string is properly terminated: */
-                        prevchar = token[pos-1];
-                        pushchar( &token, &length, pos, '\0' );
-                        yylval.s = check_and_clean
-                            ( token, /* is_textfield = */ 0, ex );
-                        if( yy_flex_debug ) {
-                            printf( ">>> *QSTRING (%c): '%s'\n",
-                                    quote, token );
+                        quote_count++;
+                        if( type == _DQSTRING || type == _SQSTRING ) {
+                            /* properly terminated quote-delimited string: */
+                            pushchar( &token, &length, pos, '\0' );
+                            yylval.s = check_and_clean
+                                ( token, /* is_textfield = */ 0, ex );
+                            if( yy_flex_debug ) {
+                                printf( ">>> *QSTRING (%c): '%s'\n",
+                                        quote, token );
+                            }
+                            return type;
+                        } else if( quote_count < 3 ) {
+                            /* quote inside triple-quoted string: */
+                            pushchar( &token, &length, pos++, ch );
+                        } else {
+                            /* terminated triple-quoted string: */
+                            pushchar( &token, &length, pos-2, '\0' );
+                            yylval.s = check_and_clean
+                                ( token, /* is_textfield = */ 0, ex );
+                            if( yy_flex_debug ) {
+                                printf( ">>> *Q3STRING (%c): '%s'\n",
+                                        quote, token );
+                            }
+                            return type;
                         }
-                        return quote == '"' ? _DQSTRING : _SQSTRING;
                     }
                 }
                 /* Unterminated quoted string: */
