@@ -116,6 +116,14 @@ int cif_lexer( FILE *in, cexception_t *ex )
     static char *token = NULL;
     static size_t length = 0;
     int pos;
+    
+    if( currLine == 1 ) {
+        ch = getlinec( in, ex );
+        if( ch == 254 ) { /* U+FEFF detected */
+            ch = getlinec( in, ex );
+            ch = getlinec( in, ex );
+        }
+    }
 
     while( ch != EOF ) {
         /* It is important that the predicate that checks for spaces
