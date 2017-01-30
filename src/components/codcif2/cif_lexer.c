@@ -40,6 +40,7 @@ static int lastTokenPos = 0;
 static int thisTokenPos = 0;
 
 static int ungot_ch = 0;
+static int beginning_of_file = 1;
 
 static int cif_mandated_line_length = 80;
 static int cif_mandated_tag_length = 74;
@@ -117,12 +118,28 @@ int cif_lexer( FILE *in, cexception_t *ex )
     static size_t length = 0;
     int pos;
     
-    if( currLine == 1 ) {
+    if( beginning_of_file ) {
         ch = getlinec( in, ex );
         if( ch == 254 ) { /* U+FEFF detected */
             ch = getlinec( in, ex );
             ch = getlinec( in, ex );
         }
+        if( ch == '#' ) {
+            advance_mark();
+            pos = 0;
+            while( ch != EOF && ch != '\r' && ch != '\n' ) {
+                pushchar( &token, &length, pos++, ch = getlinec( in, ex ));
+            }
+            if( !starts_with_keyword( "\\#cif_2.0", token ) ) {
+                yynote( "first line does not start with magic code (#\\#CIF_2.0)", ex );
+            }
+            freex( token );
+            token = NULL;
+            length = 0;
+        } else {
+            yynote( "first line does not start with magic code (#\\#CIF_2.0)", ex );
+        }
+        beginning_of_file = 0;
     }
 
     while( ch != EOF ) {
