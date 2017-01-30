@@ -25,6 +25,7 @@ typedef enum {
     CIF_DQSTRING,
     CIF_TEXT,
     CIF_LIST,
+    CIF_TABLE,
     last_CIF_VALUE
 } cif_value_type_t;
 

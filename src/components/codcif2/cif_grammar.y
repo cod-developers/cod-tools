@@ -115,6 +115,8 @@ int loop_start = 0;
 %type <typed_value> quoted_string
 %type <typed_value> triple_quoted_string
 %type <typed_value> list
+%type <typed_value> table
+%type <typed_value> table_entry_list
 
 %%
 
@@ -442,6 +444,8 @@ string
         { $$.vstr = $1; $$.vtype = CIF_SQSTRING; }
 	|	_DQ3STRING
         { $$.vstr = $1; $$.vtype = CIF_DQSTRING; }
+    |   ':'
+        { $$.vstr = strdupx( ":", px ); $$.vtype = CIF_UQSTRING; }
 ;
 
 nospace_value
@@ -529,7 +533,8 @@ list
 ;
 
 table
-    : '{' table_entry_list '}'
+    :   '{' table_entry_list '}'
+        { $$.vstr = $2.vstr; $$.vtype = CIF_TABLE; }
 ;
 
 table_entry_list
