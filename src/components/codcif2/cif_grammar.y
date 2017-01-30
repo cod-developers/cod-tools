@@ -112,6 +112,8 @@ int loop_start = 0;
 %type <typed_value> number
 %type <typed_value> string
 %type <typed_value> textfield
+%type <typed_value> quoted_string
+%type <typed_value> triple_quoted_string
 
 %%
 
@@ -439,6 +441,31 @@ string
         { $$.vstr = $1; $$.vtype = CIF_DQSTRING; }
 ;
 
+nospace_value
+    :   any_quoted_string
+/*  |   list */
+    |   table
+;
+
+any_quoted_string
+    :   quoted_string
+    |   triple_quoted_string
+;
+
+quoted_string
+    :   _SQSTRING
+        { $$.vstr = $1; $$.vtype = CIF_SQSTRING; }
+	|	_DQSTRING
+        { $$.vstr = $1; $$.vtype = CIF_DQSTRING; }
+;
+
+triple_quoted_string
+    :   _SQ3STRING
+        { $$.vstr = $1; $$.vtype = CIF_SQSTRING; }
+	|	_DQ3STRING
+        { $$.vstr = $1; $$.vtype = CIF_DQSTRING; }
+;
+
 textfield
         :	_TEXT_FIELD
         { $$.vstr = $1;
@@ -491,6 +518,19 @@ number
         { $$.vstr = $1; $$.vtype = CIF_FLOAT; }
 	|	_INTEGER_CONST
         { $$.vstr = $1; $$.vtype = CIF_INT; }
+;
+
+table
+    : '{' table_entry_list '}'
+;
+
+table_entry_list
+	:	table_entry_list table_entry
+	|	table_entry
+;
+
+table_entry
+	:	any_quoted_string ':' nospace_value
 ;
 
 %%
