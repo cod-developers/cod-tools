@@ -1,4 +1,4 @@
-%module ccifparser
+%module pycodcif
 %{
     #include <Python.h>
     #include <cif_grammar_y.h>

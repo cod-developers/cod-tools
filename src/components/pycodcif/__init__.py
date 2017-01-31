@@ -1,1 +1,1 @@
-from .ccifparser import parse
+from .pycodcif import parse
