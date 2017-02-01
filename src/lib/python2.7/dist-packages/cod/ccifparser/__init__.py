@@ -1,1 +1,0 @@
-from .ccifparser import parse
