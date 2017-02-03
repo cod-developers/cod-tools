@@ -773,16 +773,16 @@ void add_tag_value( char * tag, char * value, typed_value tv,
                                              value, tv.vtype, ex );
                     } else {
                         yyerror_token( cxprintf( "tag %s appears more than once", tag ),
-                                       tv.vline, tv.vpos+1, tv.vcont, ex );
+                                       tv.vline, -1, NULL, ex );
                     }
                 } else {
                     yyerror_token( cxprintf( "tag %s appears more than once", tag ),
-                                   tv.vline, tv.vpos+1, tv.vcont, ex );
+                                   tv.vline, -1, NULL, ex );
                 }
             }
         } else {
             yyerror_token( cxprintf( "tag %s appears more than once", tag ),
-                           tv.vline, tv.vpos+1, tv.vcont, ex );
+                           tv.vline, -1, NULL, ex );
         }
     }
 }
@@ -982,8 +982,11 @@ int yyerror( const char *message )
 
 int yyerror_token( const char *message, int line, int pos, char *cont, cexception_t *ex )
 {
-    print_message( "ERROR", message, ":", line, pos, ex );
-    print_trace( cont, pos, ex );
+    print_message( "ERROR", message, ( cont == NULL ? "" : ":"),
+                   line, pos, ex );
+    if( cont != NULL ) {
+        print_trace( cont, pos, ex );
+    }
     errcount++;
     return 0;
 }
