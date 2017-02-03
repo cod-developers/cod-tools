@@ -294,7 +294,7 @@ cif_entry
                 if( isset_fix_errors( cif_cc ) ||
                     isset_fix_string_quotes( cif_cc ) ) {
                     yywarning_token( "string with spaces without quotes -- fixed",
-                                     $3.vline, $3.vpos+1, px );
+                                     $2.vline, -1, px );
                     char *buf = mallocx(strlen($2.vstr)+strlen($3.vstr)+2,px);
                     buf = strcpy( buf, $2.vstr );
                     buf = strcat( buf, " \0" );
@@ -335,8 +335,8 @@ cif_value_list
             freex( $2.vstr );
             $$.vstr  = buf;
             $$.vtype = CIF_UNKNOWN;
-            $$.vline = $2.vline;
-            $$.vpos  = $2.vpos;
+            $$.vline = $1.vline;
+            $$.vpos  = $1.vpos;
         }
 ;
 
