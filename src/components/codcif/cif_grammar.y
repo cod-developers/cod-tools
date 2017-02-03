@@ -68,6 +68,7 @@ void assert_datablock_exists( cexception_t *ex );
 void add_tag_value( char * tag, char * value, cif_value_type_t type,
     cexception_t *ex );
 int yyerror_previous( const char *message, cexception_t *ex );
+int yywarning_token( const char *message, int token, cexception_t *ex );
 
 int isset_do_not_unprefix_text( CIF_COMPILER *co );
 int isset_do_not_unfold_text( CIF_COMPILER *co );
@@ -90,6 +91,7 @@ int loop_start = 0;
         char *vstr;
         cif_value_type_t vtype;
         int vline;
+        int vpos;
     } typed_value;
 }
 
@@ -290,7 +292,7 @@ cif_entry
                 assert_datablock_exists( px );
                 if( isset_fix_errors( cif_cc ) ||
                     isset_fix_string_quotes( cif_cc ) ) {
-                    yywarning( "string with spaces without quotes -- fixed", px );
+                    yywarning_token( "string with spaces without quotes -- fixed", $2.vline, px );
                     char *buf = mallocx(strlen($2.vstr)+strlen($3.vstr)+2,px);
                     buf = strcpy( buf, $2.vstr );
                     buf = strcat( buf, " \0" );
@@ -989,6 +991,14 @@ int yynote( const char *message, cexception_t *ex )
 int yywarning( const char *message, cexception_t *ex )
 {
     print_message( "WARNING", message, "", cif_flex_previous_line_number(), -1,
+                   ex );
+    warncount++;
+    return 0;
+}
+
+int yywarning_token( const char *message, int line, cexception_t *ex )
+{
+    print_message( "WARNING", message, "", line, -1,
                    ex );
     warncount++;
     return 0;
