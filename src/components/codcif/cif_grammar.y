@@ -962,12 +962,6 @@ void print_current_trace( cexception_t *ex )
                  cif_flex_current_position()+1, ex );
 }
 
-void print_previous_trace( cexception_t *ex )
-{
-    print_trace( (char*)cif_flex_previous_line(),
-                 cif_flex_previous_position()+1, ex );
-}
-
 int yyerror( const char *message )
 {
     if( strcmp( message, "syntax error" ) == 0 ) {
