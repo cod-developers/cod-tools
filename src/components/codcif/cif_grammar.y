@@ -252,8 +252,9 @@ data_block_head
                 cif_start_datablock( cif_cc->cif, buf, px );
                 if( isset_fix_errors( cif_cc ) ||
                     isset_fix_string_quotes( cif_cc ) ) {
-                    yywarning( "the dataname apparently had spaces "
-                               "in it -- replaced spaces with underscores", px );
+                    yywarning_token( "the dataname apparently had spaces "
+                                     "in it -- replaced spaces with underscores",
+                                     $2.vline, -1, px );
                 }
             } else {
                 cif_start_datablock( cif_cc->cif, $1, px );
