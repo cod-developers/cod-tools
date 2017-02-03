@@ -346,7 +346,6 @@ int cif_lexer( FILE *in, cexception_t *ex )
                     pushchar( &token, &length, pos++, ch );
                 }
                 /* Unterminated text field: */
-                /* yyerror( "unterminated text field" ); */
                 yyerror_token(
                      cxprintf( "end of file encountered while in "
                                "text field starting in line %d, "
