@@ -747,27 +747,29 @@ void add_tag_value( char * tag, char * value, typed_value tv,
                 (isset_fix_errors(cif_cc) == 1 ||
                  isset_fix_duplicate_tags_with_same_values
                  (cif_cc) == 1)) {
-                yywarning( cxprintf( "tag %s appears more than once "
-                                     "with the same value '%s'", tag, value ),
-                           ex );
+                yywarning_token( cxprintf( "tag %s appears more than once "
+                                           "with the same value '%s'", tag, value ),
+                                 tv.vline, tv.vpos+1, ex );
             } else {
                 if( isset_fix_errors(cif_cc) == 1 ||
                     isset_fix_duplicate_tags_with_empty_values
                     (cif_cc) == 1 ) {
                     if( is_tag_value_unknown( value ) ) {
-                        yywarning( cxprintf( "tag %s appears more than once, "
-                                             "the second occurrence '%s' is "
-                                             "ignored", tag, value ), ex );
+                        yywarning_token( cxprintf( "tag %s appears more than once, "
+                                                   "the second occurrence '%s' is "
+                                                   "ignored", tag, value ),
+                                         tv.vline, tv.vpos+1, ex );
                     } else if( is_tag_value_unknown
                                (datablock_value
                                 (cif_last_datablock(cif_cc->cif),
                                  tag_nr, 0))) {
-                        yywarning( cxprintf( "tag %s appears more than once, "
-                                             "the previous value '%s' is "
-                                             "overwritten", tag,
-                                             datablock_value
-                                             (cif_last_datablock(cif_cc->cif),
-                                              tag_nr, 0)), ex );
+                        yywarning_token( cxprintf( "tag %s appears more than once, "
+                                                   "the previous value '%s' is "
+                                                   "overwritten", tag,
+                                                   datablock_value
+                                                   (cif_last_datablock(cif_cc->cif),
+                                                   tag_nr, 0)),
+                                         tv.vline, tv.vpos+1, ex );
                         cif_overwrite_value( cif_cc->cif, tag_nr, 0,
                                              value, tv.vtype, ex );
                     } else {
