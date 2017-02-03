@@ -748,7 +748,7 @@ void add_tag_value( char * tag, char * value, typed_value tv,
                  (cif_cc) == 1)) {
                 yywarning_token( cxprintf( "tag %s appears more than once "
                                            "with the same value '%s'", tag, value ),
-                                 tv.vline, tv.vpos+1, ex );
+                                 tv.vline, -1, ex );
             } else {
                 if( isset_fix_errors(cif_cc) == 1 ||
                     isset_fix_duplicate_tags_with_empty_values
