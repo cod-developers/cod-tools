@@ -154,7 +154,7 @@ sub Newton_Raphson
     my $i;
     for ($i = 0; $i < $maxIteration; $i++) {
         my $x_old = $x;
-        # Breaking qcp and it's derivative into parts to minimize calculations
+        # Breaking qcp and its derivative into parts to minimize calculations
         my $x2 = $x**2;
         my $b = ($x2 + $c->[2])*$x;
         my $a = $b + $c->[1];
