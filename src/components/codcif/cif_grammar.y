@@ -89,6 +89,7 @@ int loop_start = 0;
     struct {
         char *vstr;
         cif_value_type_t vtype;
+        int vline;
     } typed_value;
 }
 
@@ -129,11 +130,11 @@ stray_cif_value_list
                 isset_fix_data_header( cif_cc ) ) {
                     print_message( "WARNING", "stray CIF values at the "
                                    "beginning of the input file", "",
-                                   cif_flex_current_line_number(), -1, px );
+                                   $1.vline, -1, px );
             } else {
                     print_message( "ERROR", "stray CIF values at the "
                                    "beginning of the input file", "",
-                                   cif_flex_current_line_number(), -1, px );
+                                   $1.vline, -1, px );
                     yyincrease_error_counter();
             }
             freex( $1.vstr );
@@ -144,11 +145,11 @@ stray_cif_value_list
                 isset_fix_data_header( cif_cc ) ) {
                     print_message( "WARNING", "stray CIF values at the "
                                    "beginning of the input file", "",
-                                   cif_flex_current_line_number(), -1, px );
+                                   $1.vline, -1, px );
             } else {
                     print_message( "ERROR", "stray CIF values at the "
                                    "beginning of the input file", "",
-                                   cif_flex_current_line_number(), -1, px );
+                                   $1.vline, -1, px );
                     yyincrease_error_counter();
             }
             freex( $1.vstr );
@@ -317,6 +318,7 @@ cif_value_list
         {
             $$.vstr  = $1.vstr;
             $$.vtype = $1.vtype;
+            $$.vline = $1.vline;
         }
         |       cif_value_list cif_value
         {
@@ -328,6 +330,7 @@ cif_value_list
             freex( $2.vstr );
             $$.vstr  = buf;
             $$.vtype = CIF_UNKNOWN;
+            $$.vline = $2.vline;
         }
 ;
 
@@ -426,11 +429,14 @@ cif_value
 
 string
 	:	_SQSTRING
-        { $$.vstr = $1; $$.vtype = CIF_SQSTRING; }
+        { $$.vstr = $1; $$.vtype = CIF_SQSTRING;
+          $$.vline = cif_flex_current_line_number(); }
 	|	_DQSTRING
-        { $$.vstr = $1; $$.vtype = CIF_DQSTRING; }
+        { $$.vstr = $1; $$.vtype = CIF_DQSTRING;
+          $$.vline = cif_flex_current_line_number(); }
 	|	_UQSTRING
-        { $$.vstr = $1; $$.vtype = CIF_UQSTRING; }
+        { $$.vstr = $1; $$.vtype = CIF_UQSTRING;
+          $$.vline = cif_flex_current_line_number(); }
 ;
 
 textfield
@@ -477,14 +483,17 @@ textfield
               }
           }
 
-          $$.vtype = CIF_TEXT; }
+          $$.vtype = CIF_TEXT;
+          $$.vline = cif_flex_current_line_number(); }
 ;
 
 number
 	:	_REAL_CONST
-        { $$.vstr = $1; $$.vtype = CIF_FLOAT; }
+        { $$.vstr = $1; $$.vtype = CIF_FLOAT;
+          $$.vline = cif_flex_current_line_number(); }
 	|	_INTEGER_CONST
-        { $$.vstr = $1; $$.vtype = CIF_INT; }
+        { $$.vstr = $1; $$.vtype = CIF_INT;
+          $$.vline = cif_flex_current_line_number(); }
 ;
 
 %%
