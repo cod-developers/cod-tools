@@ -204,17 +204,7 @@ headerless_data_block
 
 data_block
 	:	data_block_head data_item_list
-        {
-            if( $1 == NULL ) {
-                yywarning( "data block header has no data block name", px );
-            }
-        }
-        |       data_block_head //  empty data item list
-        {
-            if( $1 == NULL ) {
-                yywarning( "data block header has no data block name", px );
-            }
-        }
+    |   data_block_head //  empty data item list
 ;
 
 data_item_list
