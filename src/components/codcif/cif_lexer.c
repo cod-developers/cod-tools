@@ -139,7 +139,7 @@ int cif_lexer( FILE *in, cexception_t *ex )
             thisTokenPos = current_pos > 0 ? current_pos - 1 : 0;
             if( cif_lexer_has_flags
                 (CIF_FLEX_LEXER_FIX_CTRL_Z) ) {
-                yynote( "DOS EOF symbol ^Z was encountered and ignored", ex );
+                yywarning( "DOS EOF symbol ^Z was encountered and ignored", ex );
             } else {
                 yyerror( "DOS EOF symbol ^Z was encountered, "
                          "it is not permitted in CIFs" );
