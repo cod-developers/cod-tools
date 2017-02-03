@@ -295,7 +295,7 @@ int cif_lexer( FILE *in, cexception_t *ex )
                             yyerror_token( "incorrect CIF syntax",
                                            cif_flex_current_line_number()-1,
                                            cif_flex_current_position()+1,
-                                           (char*)cif_flex_current_line(),
+                                           (char*)cif_flex_previous_line(),
                                            ex );
                         }
                         break;
@@ -309,7 +309,7 @@ int cif_lexer( FILE *in, cexception_t *ex )
                             yyerror_token( "incorrect CIF syntax",
                                            cif_flex_current_line_number()-1,
                                            cif_flex_current_position()+1,
-                                           (char*)cif_flex_current_line(),
+                                           (char*)cif_flex_previous_line(),
                                            ex );
                         }
                         break;
