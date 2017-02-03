@@ -68,7 +68,8 @@ void assert_datablock_exists( cexception_t *ex );
 void add_tag_value( char * tag, char * value, cif_value_type_t type,
     cexception_t *ex );
 int yyerror_previous( const char *message, cexception_t *ex );
-int yywarning_token( const char *message, int token, cexception_t *ex );
+int yyerror_token( const char *message, int line, int pos, cexception_t *ex );
+int yywarning_token( const char *message, int line, int pos, cexception_t *ex );
 
 int isset_do_not_unprefix_text( CIF_COMPILER *co );
 int isset_do_not_unfold_text( CIF_COMPILER *co );
@@ -292,7 +293,8 @@ cif_entry
                 assert_datablock_exists( px );
                 if( isset_fix_errors( cif_cc ) ||
                     isset_fix_string_quotes( cif_cc ) ) {
-                    yywarning_token( "string with spaces without quotes -- fixed", $2.vline, px );
+                    yywarning_token( "string with spaces without quotes -- fixed",
+                                     $3.vline, $3.vpos+1, px );
                     char *buf = mallocx(strlen($2.vstr)+strlen($3.vstr)+2,px);
                     buf = strcpy( buf, $2.vstr );
                     buf = strcat( buf, " \0" );
@@ -307,7 +309,7 @@ cif_entry
                     add_tag_value( $1, buf, tag_type, px );
                     freex( buf );
                 } else {
-                    yyerror_previous( "incorrect CIF syntax", px );
+                    yyerror_token( "incorrect CIF syntax", $3.vline, $3.vpos+1, px );
                 }
                 freex( $1 );
                 freex( $2.vstr );
@@ -321,6 +323,7 @@ cif_value_list
             $$.vstr  = $1.vstr;
             $$.vtype = $1.vtype;
             $$.vline = $1.vline;
+            $$.vpos  = $1.vpos;
         }
         |       cif_value_list cif_value
         {
@@ -333,6 +336,7 @@ cif_value_list
             $$.vstr  = buf;
             $$.vtype = CIF_UNKNOWN;
             $$.vline = $2.vline;
+            $$.vpos  = $2.vpos;
         }
 ;
 
@@ -432,13 +436,16 @@ cif_value
 string
 	:	_SQSTRING
         { $$.vstr = $1; $$.vtype = CIF_SQSTRING;
-          $$.vline = cif_flex_current_line_number(); }
+          $$.vline = cif_flex_current_line_number();
+          $$.vpos  = cif_flex_current_position(); }
 	|	_DQSTRING
         { $$.vstr = $1; $$.vtype = CIF_DQSTRING;
-          $$.vline = cif_flex_current_line_number(); }
+          $$.vline = cif_flex_current_line_number();
+          $$.vpos  = cif_flex_current_position(); }
 	|	_UQSTRING
         { $$.vstr = $1; $$.vtype = CIF_UQSTRING;
-          $$.vline = cif_flex_current_line_number(); }
+          $$.vline = cif_flex_current_line_number();
+          $$.vpos  = cif_flex_current_position(); }
 ;
 
 textfield
@@ -486,16 +493,19 @@ textfield
           }
 
           $$.vtype = CIF_TEXT;
-          $$.vline = cif_flex_current_line_number(); }
+          $$.vline = cif_flex_current_line_number();
+          $$.vpos  = cif_flex_current_position(); }
 ;
 
 number
 	:	_REAL_CONST
         { $$.vstr = $1; $$.vtype = CIF_FLOAT;
-          $$.vline = cif_flex_current_line_number(); }
+          $$.vline = cif_flex_current_line_number();
+          $$.vpos  = cif_flex_current_position(); }
 	|	_INTEGER_CONST
         { $$.vstr = $1; $$.vtype = CIF_INT;
-          $$.vline = cif_flex_current_line_number(); }
+          $$.vline = cif_flex_current_line_number();
+          $$.vpos  = cif_flex_current_position(); }
 ;
 
 %%
@@ -975,6 +985,14 @@ int yyerror_previous( const char *message, cexception_t *ex )
     return 0;
 }
 
+int yyerror_token( const char *message, int line, int pos, cexception_t *ex )
+{
+    print_message( "ERROR", message, ":", line, pos, ex );
+    print_previous_trace( ex );
+    errcount++;
+    return 0;
+}
+
 void yyincrease_error_counter( void )
 {
     errcount++;
@@ -996,9 +1014,9 @@ int yywarning( const char *message, cexception_t *ex )
     return 0;
 }
 
-int yywarning_token( const char *message, int line, cexception_t *ex )
+int yywarning_token( const char *message, int line, int pos, cexception_t *ex )
 {
-    print_message( "WARNING", message, "", line, -1,
+    print_message( "WARNING", message, "", line, pos,
                    ex );
     warncount++;
     return 0;
