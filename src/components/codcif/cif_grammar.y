@@ -67,7 +67,6 @@ static cexception_t *px; /* parser exception */
 void assert_datablock_exists( cexception_t *ex );
 void add_tag_value( char * tag, char * value, typed_value tv,
      cexception_t *ex );
-int yyerror_previous( const char *message, cexception_t *ex );
 int yyerror_token( const char *message, int line, int pos, char *cont, cexception_t *ex );
 int yywarning_token( const char *message, int line, int pos, cexception_t *ex );
 
@@ -977,15 +976,6 @@ int yyerror( const char *message )
     print_message( "ERROR", message, ":", cif_flex_current_line_number(),
                    cif_flex_current_position()+1, px );
     print_current_trace( px );
-    errcount++;
-    return 0;
-}
-
-int yyerror_previous( const char *message, cexception_t *ex )
-{
-    print_message( "ERROR", message, ":", cif_flex_previous_line_number(),
-                   cif_flex_previous_position()+1, ex );
-    print_previous_trace( ex );
     errcount++;
     return 0;
 }
