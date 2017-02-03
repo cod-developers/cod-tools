@@ -91,6 +91,8 @@ typedef struct typed_value {
     int vpos;
 } typed_value;
 
+void free_typed_value( typed_value t );
+
 %}
 
 %union {
@@ -142,7 +144,7 @@ stray_cif_value_list
                                    $1.vline, -1, px );
                     yyincrease_error_counter();
             }
-            freex( $1.vstr );
+            free_typed_value( $1 );
         }
         | cif_value cif_value_list
         {
@@ -157,8 +159,8 @@ stray_cif_value_list
                                    $1.vline, -1, px );
                     yyincrease_error_counter();
             }
-            freex( $1.vstr );
-            freex( $2.vstr );
+            free_typed_value( $1 );
+            free_typed_value( $2 );
         }
 ;
 
@@ -264,7 +266,7 @@ data_block_head
                                $2.vline, $2.vpos+1, px );
             }
             freex( $1 );
-            freex( $2.vstr );
+            free_typed_value( $2 );
         }
 ;
 
@@ -290,7 +292,7 @@ cif_entry
             assert_datablock_exists( px );
             add_tag_value( $1, $2.vstr, $2.vtype, px );
             freex( $1 );
-            freex( $2.vstr );
+            free_typed_value( $2 );
         }
         | _TAG cif_value cif_value_list
             {
@@ -316,8 +318,8 @@ cif_entry
                     yyerror_token( "incorrect CIF syntax", $3.vline, $3.vpos+1, px );
                 }
                 freex( $1 );
-                freex( $2.vstr );
-                freex( $3.vstr );
+                free_typed_value( $2 );
+                free_typed_value( $3 );
             }
 ;
 
@@ -335,8 +337,8 @@ cif_value_list
             buf = strcpy( buf, $1.vstr );
             buf = strcat( buf, " \0" );
             buf = strcat( buf, $2.vstr );
-            freex( $1.vstr );
-            freex( $2.vstr );
+            free_typed_value( $1 );
+            free_typed_value( $2 );
             $$.vstr  = buf;
             $$.vtype = CIF_UNKNOWN;
             $$.vline = $1.vline;
@@ -1018,6 +1020,10 @@ int yywarning_token( const char *message, int line, int pos, cexception_t *ex )
                    ex );
     warncount++;
     return 0;
+}
+
+void free_typed_value( typed_value t ) {
+    freex( t.vstr );
 }
 
 int yywrap()
