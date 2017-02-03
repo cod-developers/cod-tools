@@ -321,6 +321,7 @@ int cif_lexer( FILE *in, cexception_t *ex )
             if( prevchar == '\n' || prevchar == '\0' ) {
                 /* multi-line text field: */
                 advance_mark();
+                ssize_t textfield_start = cif_flex_current_line_number();
                 pos = 0;
                 while( ch != EOF ) {
                     prevchar = ch;
@@ -345,7 +346,14 @@ int cif_lexer( FILE *in, cexception_t *ex )
                     pushchar( &token, &length, pos++, ch );
                 }
                 /* Unterminated text field: */
-                yyerrorf( "unterminated text field" );
+                /* yyerror( "unterminated text field" ); */
+                yyerror_token(
+                     cxprintf( "end of file encountered while in "
+                               "text field starting in line %d, "
+                               "possible runaway closing semicolon (';')",
+                               textfield_start ),
+                               cif_flex_current_line_number()-1, -1,
+                               NULL, ex );
             }
             /* else this is an ordinary unquoted string -- drop
                through to the 'default:' case (no break here,
