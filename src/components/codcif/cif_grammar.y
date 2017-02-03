@@ -65,8 +65,8 @@ static CIF_COMPILER * volatile cif_cc; /* CIF current compiler */
 static cexception_t *px; /* parser exception */
 
 void assert_datablock_exists( cexception_t *ex );
-void add_tag_value( char * tag, char * value, cif_value_type_t type,
-    cexception_t *ex );
+void add_tag_value( char * tag, char * value, typed_value tv,
+     cexception_t *ex );
 int yyerror_previous( const char *message, cexception_t *ex );
 int yyerror_token( const char *message, int line, int pos, char *cont, cexception_t *ex );
 int yywarning_token( const char *message, int line, int pos, cexception_t *ex );
@@ -283,7 +283,7 @@ cif_entry
 	:	_TAG cif_value
         {
             assert_datablock_exists( px );
-            add_tag_value( $1, $2.vstr, $2.vtype, px );
+            add_tag_value( $1, $2.vstr, $2, px );
             freex( $1 );
             free_typed_value( $2 );
         }
@@ -305,10 +305,19 @@ cif_entry
                         index( buf, '\"' ) != NULL ) {
                         tag_type = CIF_TEXT;
                     }
-                    add_tag_value( $1, buf, tag_type, px );
-                    freex( buf );
+                    typed_value tv;
+                    tv.vstr = buf;
+                    tv.vtype = tag_type;
+                    tv.vline = $3.vline;
+                    tv.vpos  = $3.vpos;
+                    tv.vcont = $3.vcont;
+                    add_tag_value( $1, buf, tv, px );
+                    free_typed_value( tv );
+                    $3.vcont = NULL; /* preventing from free()ing
+                                        repeatedly */
                 } else {
-                    yyerror_token( "incorrect CIF syntax", $3.vline, $3.vpos+1, $3.vcont, px );
+                    yyerror_token( "incorrect CIF syntax", $3.vline,
+                                   $3.vpos+1, $3.vcont, px );
                 }
                 freex( $1 );
                 free_typed_value( $2 );
@@ -722,11 +731,11 @@ void assert_datablock_exists( cexception_t *ex )
     }
 }
 
-void add_tag_value( char * tag, char * value, cif_value_type_t type,
+void add_tag_value( char * tag, char * value, typed_value tv,
                     cexception_t *ex )
 {
     if( cif_tag_index( cif_cc->cif, tag ) == -1 ) {
-        cif_insert_value( cif_cc->cif, tag, value, type, ex );
+        cif_insert_value( cif_cc->cif, tag, value, tv.vtype, ex );
     } else {
         ssize_t tag_nr = cif_tag_index( cif_cc->cif, tag );
         ssize_t * value_lengths = 
@@ -760,21 +769,19 @@ void add_tag_value( char * tag, char * value, cif_value_type_t type,
                                              (cif_last_datablock(cif_cc->cif),
                                               tag_nr, 0)), ex );
                         cif_overwrite_value( cif_cc->cif, tag_nr, 0,
-                                             value, type, ex );
+                                             value, tv.vtype, ex );
                     } else {
-                        yyerror_previous
-                            ( cxprintf( "tag %s appears more than once", tag ),
-                              ex );
+                        yyerror_token( cxprintf( "tag %s appears more than once", tag ),
+                                       tv.vline, tv.vpos+1, tv.vcont, ex );
                     }
                 } else {
-                    yyerror_previous
-                        ( cxprintf( "tag %s appears more than once", tag ),
-                          ex );
+                    yyerror_token( cxprintf( "tag %s appears more than once", tag ),
+                                   tv.vline, tv.vpos+1, tv.vcont, ex );
                 }
             }
         } else {
-            yyerror_previous( cxprintf( "tag %s appears more than once", tag ),
-                              ex );
+            yyerror_token( cxprintf( "tag %s appears more than once", tag ),
+                           tv.vline, tv.vpos+1, tv.vcont, ex );
         }
     }
 }
