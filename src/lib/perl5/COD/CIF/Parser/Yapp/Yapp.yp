@@ -761,9 +761,14 @@ sub _Lexer
         ( $parser->{USER}{OPTIONS}{fix_errors} ||
           $parser->{USER}{OPTIONS}{fix_non_ascii_symbols} ))
         {
+        # Token has to be advanced and de-advanced in order to get the
+        # correct position in message, printed out by _Warning()
+        # procedure:
+        advance_token($parser, 1);
         $parser->YYData->{ERRMSG} = "non-ascii symbols encountered in the text";
         $parser->_Warning( { line_content => $parser->YYData->{INPUT} } );
         $parser->YYData->{INPUT} =~ s/([^\x10-\x7F])/sprintf("&#x%04X;",ord($1))/eg;
+        advance_token($parser, -1);
     }
 
 #scalars storing regular expressions, common to several matches
