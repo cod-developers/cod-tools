@@ -110,6 +110,9 @@ static int string_has_high_bytes( unsigned char *s );
 static char *check_and_clean( char *token, int is_textfield,
                               cexception_t *ex );
 
+int yyerror_token( const char *message, int line, int pos, char *cont,
+                   cexception_t *ex );
+
 int cif_lexer( FILE *in, cexception_t *ex )
 {
     int ch = '\0';
@@ -289,7 +292,11 @@ int cif_lexer( FILE *in, cexception_t *ex )
                             yywarning( "double-quoted string is missing "
                                        "a closing quote -- fixed", ex );
                         } else {
-                            yyerror( "incorrect CIF syntax" );
+                            yyerror_token( "incorrect CIF syntax",
+                                           cif_flex_current_line_number()-1,
+                                           cif_flex_current_position()+1,
+                                           (char*)cif_flex_current_line(),
+                                           ex );
                         }
                         break;
                     case '\'':
@@ -299,7 +306,11 @@ int cif_lexer( FILE *in, cexception_t *ex )
                             yywarning( "single-quoted string is missing "
                                        "a closing quote -- fixed", ex );
                         } else {
-                            yyerror( "incorrect CIF syntax" );
+                            yyerror_token( "incorrect CIF syntax",
+                                           cif_flex_current_line_number()-1,
+                                           cif_flex_current_position()+1,
+                                           (char*)cif_flex_current_line(),
+                                           ex );
                         }
                         break;
                 }
