@@ -956,12 +956,6 @@ void print_trace( char *line, int position, cexception_t *ex )
     }
 }
 
-void print_current_trace( cexception_t *ex )
-{
-    print_trace( (char*)cif_flex_current_line(),
-                 cif_flex_current_position()+1, ex );
-}
-
 int yyerror( const char *message )
 {
     if( strcmp( message, "syntax error" ) == 0 ) {
@@ -969,7 +963,8 @@ int yyerror( const char *message )
     }
     print_message( "ERROR", message, ":", cif_flex_current_line_number(),
                    cif_flex_current_position()+1, px );
-    print_current_trace( px );
+    print_trace( (char*)cif_flex_current_line(),
+                 cif_flex_current_position()+1, px );
     errcount++;
     return 0;
 }

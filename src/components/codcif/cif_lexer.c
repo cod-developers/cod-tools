@@ -721,7 +721,8 @@ static char *clean_string( char *src, int is_textfield, cexception_t *ex )
                                            cif_flex_current_line_number(),
                                            cif_flex_current_position()+1,
                                            ex );
-                            print_current_trace( ex );
+                            print_trace( (char*)cif_flex_current_line(),
+                                         cif_flex_current_position()+1, ex );
                             non_ascii_explained = 1;
                         } else {
                             print_message( "WARNING", "non-ascii symbols "
