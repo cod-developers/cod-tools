@@ -757,7 +757,7 @@ void add_tag_value( char * tag, char * value, typed_value tv,
                         yywarning_token( cxprintf( "tag %s appears more than once, "
                                                    "the second occurrence '%s' is "
                                                    "ignored", tag, value ),
-                                         tv.vline, tv.vpos+1, ex );
+                                         tv.vline, -1, ex );
                     } else if( is_tag_value_unknown
                                (datablock_value
                                 (cif_last_datablock(cif_cc->cif),
@@ -768,7 +768,7 @@ void add_tag_value( char * tag, char * value, typed_value tv,
                                                    datablock_value
                                                    (cif_last_datablock(cif_cc->cif),
                                                    tag_nr, 0)),
-                                         tv.vline, tv.vpos+1, ex );
+                                         tv.vline, -1, ex );
                         cif_overwrite_value( cif_cc->cif, tag_nr, 0,
                                              value, tv.vtype, ex );
                     } else {
