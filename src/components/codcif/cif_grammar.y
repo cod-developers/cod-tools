@@ -257,7 +257,8 @@ data_block_head
                 }
             } else {
                 cif_start_datablock( cif_cc->cif, $1, px );
-                yyerror_previous( "incorrect CIF syntax", px );
+                yyerror_token( "incorrect CIF syntax",
+                               $2.vline, $2.vpos+1, px );
             }
             freex( $1 );
             freex( $2.vstr );
