@@ -377,11 +377,8 @@ loop_tags
         {
             size_t tag_nr = cif_tag_index( cif_cc->cif, $2 );
             if( tag_nr != -1 ) {
-                print_message(
-                    "ERROR",
-                    cxprintf( "tag %s appears more than once", $2 ), "",
-                    cif_flex_current_line_number(), -1, px );
-                yyincrease_error_counter();
+                yyerror_token( cxprintf( "tag %s appears more than once", $2 ),
+                               cif_flex_current_line_number(), -1, px );
             }
             loop_tag_count++;
             cif_insert_value( cif_cc->cif, $2, NULL, CIF_UNKNOWN, px );
@@ -391,11 +388,8 @@ loop_tags
         {
             size_t tag_nr = cif_tag_index( cif_cc->cif, $1 );
             if( tag_nr != -1 ) {
-                print_message(
-                    "ERROR",
-                    cxprintf( "tag %s appears more than once", $1 ), "",
-                    cif_flex_current_line_number(), -1, px );
-                yyincrease_error_counter();
+                yyerror_token( cxprintf( "tag %s appears more than once", $1 ),
+                               cif_flex_current_line_number(), -1, px );
             }
             loop_tag_count++;
             cif_insert_value( cif_cc->cif, $1, NULL, CIF_UNKNOWN, px );
