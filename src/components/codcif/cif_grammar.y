@@ -84,16 +84,18 @@ int loop_tag_count = 0;
 int loop_value_count = 0;
 int loop_start = 0;
 
+typedef struct typed_value {
+    char *vstr;
+    cif_value_type_t vtype;
+    int vline;
+    int vpos;
+} typed_value;
+
 %}
 
 %union {
     char *s;
-    struct {
-        char *vstr;
-        cif_value_type_t vtype;
-        int vline;
-        int vpos;
-    } typed_value;
+    typed_value typed_value;
 }
 
 %token <s> _DATA_
