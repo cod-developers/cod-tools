@@ -156,9 +156,7 @@ cif_file
 
     |   stray_cif_value_list
         {
-            $_[0]->{USER}->{CIFfile} = [
-                            { name => "", values => {}, tags => [] }
-                        ];
+            $_[0]->{USER}->{CIFfile} = [];
         }
 
     |   stray_cif_value_list data_block_list
@@ -761,9 +759,14 @@ sub _Lexer
         ( $parser->{USER}{OPTIONS}{fix_errors} ||
           $parser->{USER}{OPTIONS}{fix_non_ascii_symbols} ))
         {
+        # Token has to be advanced and de-advanced in order to get the
+        # correct position in message, printed out by _Warning()
+        # procedure:
+        advance_token($parser, 1);
         $parser->YYData->{ERRMSG} = "non-ascii symbols encountered in the text";
         $parser->_Warning( { line_content => $parser->YYData->{INPUT} } );
         $parser->YYData->{INPUT} =~ s/([^\x10-\x7F])/sprintf("&#x%04X;",ord($1))/eg;
+        advance_token($parser, -1);
     }
 
 #scalars storing regular expressions, common to several matches
@@ -924,12 +927,12 @@ my $UQSTRING_INLINE     =       qr/^(?:
                         $parser->YYData->{ERRMSG} =
                             'non-ascii symbols encountered in the text '
                           . 'field -- replaced with XML entities';
-                        $parser->_Warning( { line_content => ";\n$tfield\n;" } );
+                        $parser->_Warning( { line_content => ";$tfield\n;" } );
                         $tfield =~ s/([^\x08-\x7F])/sprintf("&#x%04X;",ord($1))/eg;
                     } else {
                         $parser->YYData->{ERRMSG} =
                             "non-ascii symbols encountered in the text field";
-                        $parser->_Error( { line_content => ";\n$tfield\n;" } );
+                        $parser->_Error( { line_content => ";$tfield\n;" } );
                     }
                 }
 
