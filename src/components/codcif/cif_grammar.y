@@ -65,9 +65,10 @@ static CIF_COMPILER * volatile cif_cc; /* CIF current compiler */
 static cexception_t *px; /* parser exception */
 
 void assert_datablock_exists( cexception_t *ex );
-void add_tag_value( char * tag, char * value, cif_value_type_t type,
-    cexception_t *ex );
-int yyerror_previous( const char *message, cexception_t *ex );
+void add_tag_value( char * tag, char * value, typed_value tv,
+     cexception_t *ex );
+int yyerror_token( const char *message, int line, int pos, char *cont, cexception_t *ex );
+int yywarning_token( const char *message, int line, int pos, cexception_t *ex );
 
 int isset_do_not_unprefix_text( CIF_COMPILER *co );
 int isset_do_not_unfold_text( CIF_COMPILER *co );
@@ -82,14 +83,13 @@ int loop_tag_count = 0;
 int loop_value_count = 0;
 int loop_start = 0;
 
+void free_typed_value( typed_value t );
+
 %}
 
 %union {
     char *s;
-    struct {
-        char *vstr;
-        cif_value_type_t vtype;
-    } typed_value;
+    typed_value typed_value;
 }
 
 %token <s> _DATA_
@@ -129,14 +129,14 @@ stray_cif_value_list
                 isset_fix_data_header( cif_cc ) ) {
                     print_message( "WARNING", "stray CIF values at the "
                                    "beginning of the input file", "",
-                                   cif_flex_current_line_number(), -1, px );
+                                   $1.vline, -1, px );
             } else {
                     print_message( "ERROR", "stray CIF values at the "
                                    "beginning of the input file", "",
-                                   cif_flex_current_line_number(), -1, px );
+                                   $1.vline, -1, px );
                     yyincrease_error_counter();
             }
-            freex( $1.vstr );
+            free_typed_value( $1 );
         }
         | cif_value cif_value_list
         {
@@ -144,15 +144,15 @@ stray_cif_value_list
                 isset_fix_data_header( cif_cc ) ) {
                     print_message( "WARNING", "stray CIF values at the "
                                    "beginning of the input file", "",
-                                   cif_flex_current_line_number(), -1, px );
+                                   $1.vline, -1, px );
             } else {
                     print_message( "ERROR", "stray CIF values at the "
                                    "beginning of the input file", "",
-                                   cif_flex_current_line_number(), -1, px );
+                                   $1.vline, -1, px );
                     yyincrease_error_counter();
             }
-            freex( $1.vstr );
-            freex( $2.vstr );
+            free_typed_value( $1 );
+            free_typed_value( $2 );
         }
 ;
 
@@ -204,17 +204,7 @@ headerless_data_block
 
 data_block
 	:	data_block_head data_item_list
-        {
-            if( $1 == NULL ) {
-                yywarning( "data block header has no data block name", px );
-            }
-        }
-        |       data_block_head //  empty data item list
-        {
-            if( $1 == NULL ) {
-                yywarning( "data block header has no data block name", px );
-            }
-        }
+    |   data_block_head //  empty data item list
 ;
 
 data_item_list
@@ -248,15 +238,17 @@ data_block_head
                 cif_start_datablock( cif_cc->cif, buf, px );
                 if( isset_fix_errors( cif_cc ) ||
                     isset_fix_string_quotes( cif_cc ) ) {
-                    yywarning( "the dataname apparently had spaces "
-                               "in it -- replaced spaces with underscores", px );
+                    yywarning_token( "the dataname apparently had spaces "
+                                     "in it -- replaced spaces with underscores",
+                                     $2.vline, -1, px );
                 }
             } else {
                 cif_start_datablock( cif_cc->cif, $1, px );
-                yyerror_previous( "incorrect CIF syntax", px );
+                yyerror_token( "incorrect CIF syntax",
+                               $2.vline, $2.vpos+1, $2.vcont, px );
             }
             freex( $1 );
-            freex( $2.vstr );
+            free_typed_value( $2 );
         }
 ;
 
@@ -280,16 +272,17 @@ cif_entry
 	:	_TAG cif_value
         {
             assert_datablock_exists( px );
-            add_tag_value( $1, $2.vstr, $2.vtype, px );
+            add_tag_value( $1, $2.vstr, $2, px );
             freex( $1 );
-            freex( $2.vstr );
+            free_typed_value( $2 );
         }
         | _TAG cif_value cif_value_list
             {
                 assert_datablock_exists( px );
                 if( isset_fix_errors( cif_cc ) ||
                     isset_fix_string_quotes( cif_cc ) ) {
-                    yywarning( "string with spaces without quotes -- fixed", px );
+                    yywarning_token( "string with spaces without quotes -- fixed",
+                                     $2.vline, -1, px );
                     char *buf = mallocx(strlen($2.vstr)+strlen($3.vstr)+2,px);
                     buf = strcpy( buf, $2.vstr );
                     buf = strcat( buf, " \0" );
@@ -301,14 +294,23 @@ cif_entry
                         index( buf, '\"' ) != NULL ) {
                         tag_type = CIF_TEXT;
                     }
-                    add_tag_value( $1, buf, tag_type, px );
-                    freex( buf );
+                    typed_value tv;
+                    tv.vstr = buf;
+                    tv.vtype = tag_type;
+                    tv.vline = $3.vline;
+                    tv.vpos  = $3.vpos;
+                    tv.vcont = $3.vcont;
+                    add_tag_value( $1, buf, tv, px );
+                    free_typed_value( tv );
+                    $3.vcont = NULL; /* preventing from free()ing
+                                        repeatedly */
                 } else {
-                    yyerror_previous( "incorrect CIF syntax", px );
+                    yyerror_token( "incorrect CIF syntax", $3.vline,
+                                   $3.vpos+1, $3.vcont, px );
                 }
                 freex( $1 );
-                freex( $2.vstr );
-                freex( $3.vstr );
+                free_typed_value( $2 );
+                free_typed_value( $3 );
             }
 ;
 
@@ -317,6 +319,9 @@ cif_value_list
         {
             $$.vstr  = $1.vstr;
             $$.vtype = $1.vtype;
+            $$.vline = $1.vline;
+            $$.vpos  = $1.vpos;
+            $$.vcont = $1.vcont;
         }
         |       cif_value_list cif_value
         {
@@ -324,10 +329,13 @@ cif_value_list
             buf = strcpy( buf, $1.vstr );
             buf = strcat( buf, " \0" );
             buf = strcat( buf, $2.vstr );
-            freex( $1.vstr );
-            freex( $2.vstr );
             $$.vstr  = buf;
             $$.vtype = CIF_UNKNOWN;
+            $$.vline = $1.vline;
+            $$.vpos  = $1.vpos;
+            $$.vcont = strdupx( $1.vcont, px );
+            free_typed_value( $1 );
+            free_typed_value( $2 );
         }
 ;
 
@@ -366,11 +374,8 @@ loop_tags
         {
             size_t tag_nr = cif_tag_index( cif_cc->cif, $2 );
             if( tag_nr != -1 ) {
-                print_message(
-                    "ERROR",
-                    cxprintf( "tag %s appears more than once", $2 ), "",
-                    cif_flex_current_line_number(), -1, px );
-                yyincrease_error_counter();
+                yyerror_token( cxprintf( "tag %s appears more than once", $2 ),
+                               cif_flex_current_line_number(), -1, NULL, px );
             }
             loop_tag_count++;
             cif_insert_value( cif_cc->cif, $2, NULL, CIF_UNKNOWN, px );
@@ -380,11 +385,8 @@ loop_tags
         {
             size_t tag_nr = cif_tag_index( cif_cc->cif, $1 );
             if( tag_nr != -1 ) {
-                print_message(
-                    "ERROR",
-                    cxprintf( "tag %s appears more than once", $1 ), "",
-                    cif_flex_current_line_number(), -1, px );
-                yyincrease_error_counter();
+                yyerror_token( cxprintf( "tag %s appears more than once", $1 ),
+                               cif_flex_current_line_number(), -1, NULL, px );
             }
             loop_tag_count++;
             cif_insert_value( cif_cc->cif, $1, NULL, CIF_UNKNOWN, px );
@@ -397,11 +399,13 @@ loop_values
         {
             loop_value_count++;
             cif_push_loop_value( cif_cc->cif, $2.vstr, $2.vtype, px );
+            freex( $2.vcont );
         }
 	|	cif_value
         {
             loop_value_count++;
             cif_push_loop_value( cif_cc->cif, $1.vstr, $1.vtype, px );
+            freex( $1.vcont );
         }
 ;
 
@@ -426,11 +430,20 @@ cif_value
 
 string
 	:	_SQSTRING
-        { $$.vstr = $1; $$.vtype = CIF_SQSTRING; }
+        { $$.vstr = $1; $$.vtype = CIF_SQSTRING;
+          $$.vline = cif_flex_current_line_number();
+          $$.vpos  = cif_flex_current_position();
+          $$.vcont = strdupx( cif_flex_current_line(), px ); }
 	|	_DQSTRING
-        { $$.vstr = $1; $$.vtype = CIF_DQSTRING; }
+        { $$.vstr = $1; $$.vtype = CIF_DQSTRING;
+          $$.vline = cif_flex_current_line_number();
+          $$.vpos  = cif_flex_current_position();
+          $$.vcont = strdupx( cif_flex_current_line(), px ); }
 	|	_UQSTRING
-        { $$.vstr = $1; $$.vtype = CIF_UQSTRING; }
+        { $$.vstr = $1; $$.vtype = CIF_UQSTRING;
+          $$.vline = cif_flex_current_line_number();
+          $$.vpos  = cif_flex_current_position();
+          $$.vcont = strdupx( cif_flex_current_line(), px ); }
 ;
 
 textfield
@@ -477,14 +490,23 @@ textfield
               }
           }
 
-          $$.vtype = CIF_TEXT; }
+          $$.vtype = CIF_TEXT;
+          $$.vline = cif_flex_current_line_number();
+          $$.vpos  = cif_flex_current_position();
+          $$.vcont = strdupx( cif_flex_current_line(), px ); }
 ;
 
 number
 	:	_REAL_CONST
-        { $$.vstr = $1; $$.vtype = CIF_FLOAT; }
+        { $$.vstr = $1; $$.vtype = CIF_FLOAT;
+          $$.vline = cif_flex_current_line_number();
+          $$.vpos  = cif_flex_current_position();
+          $$.vcont = strdupx( cif_flex_current_line(), px ); }
 	|	_INTEGER_CONST
-        { $$.vstr = $1; $$.vtype = CIF_INT; }
+        { $$.vstr = $1; $$.vtype = CIF_INT;
+          $$.vline = cif_flex_current_line_number();
+          $$.vpos  = cif_flex_current_position();
+          $$.vcont = strdupx( cif_flex_current_line(), px ); }
 ;
 
 %%
@@ -698,11 +720,11 @@ void assert_datablock_exists( cexception_t *ex )
     }
 }
 
-void add_tag_value( char * tag, char * value, cif_value_type_t type,
+void add_tag_value( char * tag, char * value, typed_value tv,
                     cexception_t *ex )
 {
     if( cif_tag_index( cif_cc->cif, tag ) == -1 ) {
-        cif_insert_value( cif_cc->cif, tag, value, type, ex );
+        cif_insert_value( cif_cc->cif, tag, value, tv.vtype, ex );
     } else {
         ssize_t tag_nr = cif_tag_index( cif_cc->cif, tag );
         ssize_t * value_lengths = 
@@ -714,43 +736,43 @@ void add_tag_value( char * tag, char * value, cif_value_type_t type,
                 (isset_fix_errors(cif_cc) == 1 ||
                  isset_fix_duplicate_tags_with_same_values
                  (cif_cc) == 1)) {
-                yywarning( cxprintf( "tag %s appears more than once "
-                                     "with the same value '%s'", tag, value ),
-                           ex );
+                yywarning_token( cxprintf( "tag %s appears more than once "
+                                           "with the same value '%s'", tag, value ),
+                                 tv.vline, -1, ex );
             } else {
                 if( isset_fix_errors(cif_cc) == 1 ||
                     isset_fix_duplicate_tags_with_empty_values
                     (cif_cc) == 1 ) {
                     if( is_tag_value_unknown( value ) ) {
-                        yywarning( cxprintf( "tag %s appears more than once, "
-                                             "the second occurrence '%s' is "
-                                             "ignored", tag, value ), ex );
+                        yywarning_token( cxprintf( "tag %s appears more than once, "
+                                                   "the second occurrence '%s' is "
+                                                   "ignored", tag, value ),
+                                         tv.vline, -1, ex );
                     } else if( is_tag_value_unknown
                                (datablock_value
                                 (cif_last_datablock(cif_cc->cif),
                                  tag_nr, 0))) {
-                        yywarning( cxprintf( "tag %s appears more than once, "
-                                             "the previous value '%s' is "
-                                             "overwritten", tag,
-                                             datablock_value
-                                             (cif_last_datablock(cif_cc->cif),
-                                              tag_nr, 0)), ex );
+                        yywarning_token( cxprintf( "tag %s appears more than once, "
+                                                   "the previous value '%s' is "
+                                                   "overwritten", tag,
+                                                   datablock_value
+                                                   (cif_last_datablock(cif_cc->cif),
+                                                   tag_nr, 0)),
+                                         tv.vline, -1, ex );
                         cif_overwrite_value( cif_cc->cif, tag_nr, 0,
-                                             value, type, ex );
+                                             value, tv.vtype, ex );
                     } else {
-                        yyerror_previous
-                            ( cxprintf( "tag %s appears more than once", tag ),
-                              ex );
+                        yyerror_token( cxprintf( "tag %s appears more than once", tag ),
+                                       tv.vline, -1, NULL, ex );
                     }
                 } else {
-                    yyerror_previous
-                        ( cxprintf( "tag %s appears more than once", tag ),
-                          ex );
+                    yyerror_token( cxprintf( "tag %s appears more than once", tag ),
+                                   tv.vline, -1, NULL, ex );
                 }
             }
         } else {
-            yyerror_previous( cxprintf( "tag %s appears more than once", tag ),
-                              ex );
+            yyerror_token( cxprintf( "tag %s appears more than once", tag ),
+                           tv.vline, -1, NULL, ex );
         }
     }
 }
@@ -909,37 +931,18 @@ void print_current_text_field( char *text, cexception_t *ex )
     }
 }
 
-void print_current_trace( cexception_t *ex )
+void print_trace( char *line, int position, cexception_t *ex )
 {
     if( !(cif_cc->options & CO_SUPPRESS_MESSAGES) ) {
         fflush(NULL);
         fprintf( stderr, " %s\n %*s\n",
-                 cif_flex_current_line(),
-                 cif_flex_current_position()+1, "^" );
+                 line, position, "^" );
         fflush(NULL);
     }
     if( cif_cc->cif ) {
         CIFMESSAGE *current_message = cif_messages( cif_cc->cif );
         assert( current_message );
-        cifmessage_set_line( current_message, 
-                             (char*)cif_flex_current_line(), ex );
-    }
-}
-
-void print_previous_trace( cexception_t *ex )
-{
-    if( !(cif_cc->options & CO_SUPPRESS_MESSAGES) ) {
-        fflush(NULL);
-        fprintf( stderr, " %s\n %*s\n",
-                 cif_flex_previous_line(),
-                 cif_flex_previous_position()+1, "^" );
-        fflush(NULL);
-    }
-    if( cif_cc->cif ) {
-        CIFMESSAGE *current_message = cif_messages( cif_cc->cif );
-        assert( current_message );
-        cifmessage_set_line( current_message,
-                             (char*)cif_flex_previous_line(), ex );
+        cifmessage_set_line( current_message, line, ex );
     }
 }
 
@@ -950,16 +953,19 @@ int yyerror( const char *message )
     }
     print_message( "ERROR", message, ":", cif_flex_current_line_number(),
                    cif_flex_current_position()+1, px );
-    print_current_trace( px );
+    print_trace( (char*)cif_flex_current_line(),
+                 cif_flex_current_position()+1, px );
     errcount++;
     return 0;
 }
 
-int yyerror_previous( const char *message, cexception_t *ex )
+int yyerror_token( const char *message, int line, int pos, char *cont, cexception_t *ex )
 {
-    print_message( "ERROR", message, ":", cif_flex_previous_line_number(),
-                   cif_flex_previous_position()+1, ex );
-    print_previous_trace( ex );
+    print_message( "ERROR", message, ( cont == NULL ? "" : ":"),
+                   line, pos, ex );
+    if( cont != NULL ) {
+        print_trace( cont, pos, ex );
+    }
     errcount++;
     return 0;
 }
@@ -983,6 +989,21 @@ int yywarning( const char *message, cexception_t *ex )
                    ex );
     warncount++;
     return 0;
+}
+
+int yywarning_token( const char *message, int line, int pos, cexception_t *ex )
+{
+    print_message( "WARNING", message, "", line, pos,
+                   ex );
+    warncount++;
+    return 0;
+}
+
+void free_typed_value( typed_value t ) {
+    freex( t.vstr );
+    if( t.vcont != NULL ) {
+        freex( t.vcont );
+    }
 }
 
 int yywrap()
