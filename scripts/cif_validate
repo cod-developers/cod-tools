@@ -22,7 +22,7 @@ use COD::CIF::Parser qw( parse_cif) ;
 use COD::CIF::Tags::CanonicalNames qw( canonicalize_all_names );
 use COD::SOptions qw( getOptions get_value );
 use COD::SUsage qw( usage options );
-use COD::UserMessage qw( debug_note );
+use COD::UserMessage qw( note debug_note );
 use COD::ErrorHandler qw( process_warnings
                           process_parser_messages
                           report_message );
@@ -246,6 +246,7 @@ CIFFILEANAL: for my $filename ( @ARGV ) {
         #
         # start iteration through CIF values
         #
+        my @tag_value_notes;
         for my $tag_analysed ( @{$block->{tags}} ) {
             if(!defined $block->{types}{$tag_analysed} && $debug) {
                 debug_note( $0, $filename, $dataname,
@@ -363,14 +364,14 @@ CIFFILEANAL: for my $filename ( @ARGV ) {
                     }
                 }
 
-                CIFVALUE: for my $tag_index ( 0..$#{$block->{values}{$tag_analysed}} ) {
+                for my $tag_index ( 0..$#{$block->{values}{$tag_analysed}} ) {
                     my $tag_value = $block->{values}{$tag_analysed}[$tag_index];
 
-                    next CIFVALUE if $tag_value eq '.' or $tag_value eq '?';
+                    next if $tag_value eq '.' or $tag_value eq '?';
                     my $value = $tag_value;
 
                     #
-                    # if check values in enumeration list
+                    # check values in enumeration list
                     #
                     if( $dict_tag_values->{_enumeration} ) {
                         my $value_found_in_list = 0;
@@ -409,9 +410,10 @@ CIFFILEANAL: for my $filename ( @ARGV ) {
                        my $list_enum_values_for_tag =
                          join ', ', @{$dict_tag_values->{_enumeration}};
                        if( $value_found_in_list == 0 ) {
-                            warn "NOTE, tag '$tag_analysed' value \"$value\" "
+                            push @tag_value_notes,
+                                 "tag '$tag_analysed' value \"$value\" "
                                . 'must be one of the enumeration values '
-                               . "[$list_enum_values_for_tag]\n";
+                               . "[$list_enum_values_for_tag]";
                        } else {
                             my $message = "tag '$tag_analysed' value \"$value\" "
                                         . 'is one of the enumeration '
@@ -439,12 +441,13 @@ CIFFILEANAL: for my $filename ( @ARGV ) {
                         defined $block->{types}{$tag_analysed} ) {
                             if( 'FLOAT' ne $block->{types}{$tag_analysed}[$tag_index] &&
                                 'INT' ne $block->{types}{$tag_analysed}[$tag_index]) {
-                                warn "NOTE, tag '$tag_analysed' value \""
+                                push @tag_value_notes,
+                                    "tag '$tag_analysed' value \""
                                    . $block->{values}{$tag_analysed}[$tag_index]
                                    . '" is of type \''
                                    . $block->{types}{$tag_analysed}[$tag_index]
                                    . '\' while it should be numeric, i.e. '
-                                   . '\'FLOAT\' or \'INT\'' . "\n";
+                                   . '\'FLOAT\' or \'INT\'';
                             } elsif( $debug ) {
                                 debug_note( $0, $filename, $dataname,
                                             "tag '$tag_analysed' is of type '" .
@@ -471,11 +474,12 @@ CIFFILEANAL: for my $filename ( @ARGV ) {
 
                     my $sigma = $block->{precisions}{$tag_analysed}[$tag_index];
                     if ( $value =~ /([(]\d+[)])$/ && !$su_permitted ) {
-                        warn "NOTE, tag '$tag_analysed' value \"$value\" "
+                        push @tag_value_notes,
+                             "tag '$tag_analysed' value \"$value\" "
                            . 'is not permitted to contain standard '
                            . 'uncertainty "' . $1 . '" -- '
                            . 'standard uncertainty will be ignored in '
-                           . 'further validation' . "\n";
+                           . 'further validation';
                         $sigma = undef;
                     }
 
@@ -490,16 +494,17 @@ CIFFILEANAL: for my $filename ( @ARGV ) {
                         if( check_against_range(
                                 $dict_tag_values->{_type}[0],
                                 $range, $value_wo_su, $sigma) <= 0 ) {
-                                warn "NOTE, tag '$tag_analysed' value " .
-                                     "\"$value\" should be in range (" .
+                                push @tag_value_notes,
+                                     "tag '$tag_analysed' value " .
+                                     "\"$value\" should be in range [" .
                                      $range_for_print{min} .
-                                     ', ' . $range_for_print{max} . ")\n";
+                                     ', ' . $range_for_print{max} . ']';
                         } elsif( $debug ) {
                             debug_note( $0, $filename, $dataname,
                                         "tag '$tag_analysed' value " .
-                                        "\"$value\" is in range (" .
+                                        "\"$value\" is in range [" .
                                         $range_for_print{min} . ', ' .
-                                        $range_for_print{max} . ')', undef );
+                                        $range_for_print{max} . ']', undef );
                         }
                     } elsif( $debug ) {
                         debug_note( $0, $filename, $dataname,
@@ -511,8 +516,21 @@ CIFFILEANAL: for my $filename ( @ARGV ) {
             }
 
             if( !$defined ) {
-                warn "NOTE, tag '$tag_analysed' was not found in dictionaries\n";
+                push @tag_value_notes,
+                      "tag '$tag_analysed' was not found in dictionaries";
             }
+        }
+
+        my %tag_value_note_count;
+        foreach (@tag_value_notes) {
+            $tag_value_note_count{$_}++
+        }
+
+        my $print_note_count = 1;
+        foreach my $note (sort keys %tag_value_note_count) {
+            warn "NOTE, $note" .
+                 ( $print_note_count && $tag_value_note_count{$note} > 1 ?
+                   " ($tag_value_note_count{$note} times)\n" : "\n" );
         }
     }
 }
@@ -761,6 +779,7 @@ sub check_list_link_parent($$$)
                          @{$block->{values}{$tag}};
 
     for my $value (@unmatched) {
+        next if ( $value eq '.' || $value eq '?' );
         warn "NOTE, value \"$value\" of tag \"$parent\" is required " .
              "as the tag is a parent of \"$tag\"\n";
     }
