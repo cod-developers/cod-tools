@@ -399,11 +399,13 @@ loop_values
         {
             loop_value_count++;
             cif_push_loop_value( cif_cc->cif, $2.vstr, $2.vtype, px );
+            freex( $2.vcont );
         }
 	|	cif_value
         {
             loop_value_count++;
             cif_push_loop_value( cif_cc->cif, $1.vstr, $1.vtype, px );
+            freex( $1.vcont );
         }
 ;
 
