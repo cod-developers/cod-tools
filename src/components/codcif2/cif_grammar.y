@@ -106,7 +106,7 @@ int loop_start = 0;
 %token <s> _INTEGER_CONST
 %token <s> _REAL_CONST
 
-%type <s> data_block_head
+%type <s> data_heading
 %type <typed_value> cif_value_list
 %type <typed_value> cif_value;
 %type <typed_value> number
@@ -210,13 +210,13 @@ headerless_data_block
 ;
 
 data_block
-	:	data_block_head data_item_list
+	:	data_heading data_item_list
         {
             if( $1 == NULL ) {
                 yywarning( "data block header has no data block name", px );
             }
         }
-        |       data_block_head //  empty data item list
+    |   data_heading //  empty data item list
         {
             if( $1 == NULL ) {
                 yywarning( "data block header has no data block name", px );
@@ -229,7 +229,7 @@ data_item_list
 	|	data_item
 ;
 
-data_block_head
+data_heading
 	:	_DATA_
         {
             cif_start_datablock( cif_cc->cif, $1, px );
@@ -268,17 +268,22 @@ data_block_head
 ;
 
 data_item
-	:	save_item
-	|	save_block
+	:	data
+	|	save_frame
 // 	|	error
 ;
 
-save_item_list
-	:	save_item_list save_item
-	|	save_item
+block_content
+    :   data
+    |   save_frame
 ;
 
-save_item
+frame_content
+	:	frame_content data
+	|	data
+;
+
+data
 	:	cif_entry
 	|	loop
 ;
@@ -412,17 +417,19 @@ loop_values
         }
 ;
 
-save_block
-	: _SAVE_HEAD
+save_frame
+	:   _SAVE_HEAD
         {
             cif_start_save_frame( cif_cc->cif, /* name = */ $1, px );
             freex( $1 );
         }
-        save_item_list
+        frame_content
         _SAVE_FOOT
         {
             cif_finish_save_frame( cif_cc->cif );
         }
+    |   _SAVE_HEAD
+        _SAVE_FOOT /* empty save frame */
 ;
 
 cif_value /* to be renamed to wspace_data_value, as per CIF2.0 */
