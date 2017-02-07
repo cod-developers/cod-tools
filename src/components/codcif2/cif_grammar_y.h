@@ -23,8 +23,7 @@ void print_message( const char *errlevel, const char *message,
                     const char *suffix, int line,
                     int position, cexception_t *ex );
 void print_current_text_field( char *text, cexception_t *ex );
-void print_current_trace( cexception_t *ex );
-void print_previous_trace( cexception_t *ex );
+void print_trace( char *line, int position, cexception_t *ex );
 void yyincrease_error_counter( void );
 
 int is_tag_value_unknown( char * tv );
@@ -34,5 +33,13 @@ void cif_yy_reset_error_count( void );
 
 void cif_yy_debug_on( void );
 void cif_yy_debug_off( void );
+
+typedef struct typed_value {
+    char *vstr;
+    cif_value_type_t vtype;
+    int vline;
+    int vpos;
+    char *vcont;
+} typed_value;
 
 #endif
