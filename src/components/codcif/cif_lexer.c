@@ -110,6 +110,9 @@ static int string_has_high_bytes( unsigned char *s );
 static char *check_and_clean( char *token, int is_textfield,
                               cexception_t *ex );
 
+int yyerror_token( const char *message, int line, int pos, char *cont,
+                   cexception_t *ex );
+
 int cif_lexer( FILE *in, cexception_t *ex )
 {
     int ch = '\0';
@@ -136,7 +139,7 @@ int cif_lexer( FILE *in, cexception_t *ex )
             thisTokenPos = current_pos > 0 ? current_pos - 1 : 0;
             if( cif_lexer_has_flags
                 (CIF_FLEX_LEXER_FIX_CTRL_Z) ) {
-                yynote( "DOS EOF symbol ^Z was encountered and ignored", ex );
+                yywarning( "DOS EOF symbol ^Z was encountered and ignored", ex );
             } else {
                 yyerror( "DOS EOF symbol ^Z was encountered, "
                          "it is not permitted in CIFs" );
@@ -289,7 +292,11 @@ int cif_lexer( FILE *in, cexception_t *ex )
                             yywarning( "double-quoted string is missing "
                                        "a closing quote -- fixed", ex );
                         } else {
-                            yyerror( "incorrect CIF syntax" );
+                            yyerror_token( "incorrect CIF syntax",
+                                           cif_flex_current_line_number()-1,
+                                           cif_flex_current_position()+1,
+                                           (char*)cif_flex_previous_line(),
+                                           ex );
                         }
                         break;
                     case '\'':
@@ -299,7 +306,11 @@ int cif_lexer( FILE *in, cexception_t *ex )
                             yywarning( "single-quoted string is missing "
                                        "a closing quote -- fixed", ex );
                         } else {
-                            yyerror( "incorrect CIF syntax" );
+                            yyerror_token( "incorrect CIF syntax",
+                                           cif_flex_current_line_number()-1,
+                                           cif_flex_current_position()+1,
+                                           (char*)cif_flex_previous_line(),
+                                           ex );
                         }
                         break;
                 }
@@ -310,6 +321,7 @@ int cif_lexer( FILE *in, cexception_t *ex )
             if( prevchar == '\n' || prevchar == '\0' ) {
                 /* multi-line text field: */
                 advance_mark();
+                ssize_t textfield_start = cif_flex_current_line_number();
                 pos = 0;
                 while( ch != EOF ) {
                     prevchar = ch;
@@ -334,7 +346,13 @@ int cif_lexer( FILE *in, cexception_t *ex )
                     pushchar( &token, &length, pos++, ch );
                 }
                 /* Unterminated text field: */
-                yyerrorf( "unterminated text field" );
+                yyerror_token(
+                     cxprintf( "end of file encountered while in "
+                               "text field starting in line %d, "
+                               "possible runaway closing semicolon (';')",
+                               textfield_start ),
+                               cif_flex_current_line_number()-1, -1,
+                               NULL, ex );
             }
             /* else this is an ordinary unquoted string -- drop
                through to the 'default:' case (no break here,
@@ -710,7 +728,8 @@ static char *clean_string( char *src, int is_textfield, cexception_t *ex )
                                            cif_flex_current_line_number(),
                                            cif_flex_current_position()+1,
                                            ex );
-                            print_current_trace( ex );
+                            print_trace( (char*)cif_flex_current_line(),
+                                         cif_flex_current_position()+1, ex );
                             non_ascii_explained = 1;
                         } else {
                             print_message( "WARNING", "non-ascii symbols "
