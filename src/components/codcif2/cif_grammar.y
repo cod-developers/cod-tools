@@ -107,8 +107,8 @@ int loop_start = 0;
 %token <s> _REAL_CONST
 
 %type <s> data_heading
-%type <typed_value> cif_value_list
-%type <typed_value> cif_value;
+%type <typed_value> data_value_list
+%type <typed_value> data_value;
 %type <typed_value> number
 %type <typed_value> string
 %type <typed_value> textfield
@@ -121,16 +121,16 @@ int loop_start = 0;
 %%
 
 cif_file
-       :	// empty
-	|	data_block_list
-	|	headerless_data_block
-	|	headerless_data_block data_block_list
-	|	stray_cif_value_list
-	|	stray_cif_value_list data_block_list
+    :	// empty
+    |	data_block_list
+    |	headerless_data_block
+    |	headerless_data_block data_block_list
+    |	stray_data_value_list
+    |	stray_data_value_list data_block_list
 ;
 
-stray_cif_value_list
-        : cif_value
+stray_data_value_list
+        : data_value
         {
             if( isset_fix_errors( cif_cc ) ||
                 isset_fix_data_header( cif_cc ) ) {
@@ -145,7 +145,7 @@ stray_cif_value_list
             }
             freex( $1.vstr );
         }
-        | cif_value cif_value_list
+        | data_value data_value_list
         {
             if( isset_fix_errors( cif_cc ) ||
                 isset_fix_data_header( cif_cc ) ) {
@@ -163,9 +163,9 @@ stray_cif_value_list
         }
 ;
 
-//  cif_value_list
-//      : cif_value
-//      | cif_value_list cif_value
+//  data_value_list
+//      : data_value
+//      | data_value_list data_value
 //  ;
 
 data_block_list
@@ -174,7 +174,7 @@ data_block_list
 ;
 
 headerless_data_block
-	:	data_item
+	:	block_content
         {
             if( isset_fix_errors( cif_cc ) ||
                 isset_fix_data_header( cif_cc ) ) {
@@ -190,7 +190,7 @@ headerless_data_block
                     yyincrease_error_counter();
             }
         }
-	|	data_item
+	|	block_content
         {
             if( isset_fix_errors( cif_cc ) ||
                 isset_fix_data_header( cif_cc ) ) {
@@ -206,11 +206,11 @@ headerless_data_block
                     yyincrease_error_counter();
             }
         }
-		data_item_list
+		block_content_list
 ;
 
 data_block
-	:	data_heading data_item_list
+	:	data_heading block_content_list
         {
             if( $1 == NULL ) {
                 yywarning( "data block header has no data block name", px );
@@ -224,9 +224,9 @@ data_block
         }
 ;
 
-data_item_list
-	:	data_item_list data_item
-	|	data_item
+block_content_list
+	:	block_content_list block_content
+	|	block_content
 ;
 
 data_heading
@@ -235,7 +235,7 @@ data_heading
             cif_start_datablock( cif_cc->cif, $1, px );
             freex( $1 );
         }
-	|	_DATA_ cif_value_list
+	|	_DATA_ data_value_list
         {
             if( isset_fix_errors( cif_cc ) ||
                 isset_fix_string_quotes( cif_cc ) ||
@@ -267,19 +267,14 @@ data_heading
         }
 ;
 
-data_item
+block_content
 	:	data
 	|	save_frame
 // 	|	error
 ;
 
-block_content
-    :   data
-    |   save_frame
-;
-
-frame_content
-	:	frame_content data
+data_list
+	:	data_list data
 	|	data
 ;
 
@@ -289,14 +284,14 @@ data
 ;
 
 cif_entry
-	:	_TAG cif_value
+	:	_TAG data_value
         {
             assert_datablock_exists( px );
             add_tag_value( $1, $2.vstr, $2.vtype, px );
             freex( $1 );
             freex( $2.vstr );
         }
-        | _TAG cif_value cif_value_list
+        | _TAG data_value data_value_list
             {
                 assert_datablock_exists( px );
                 if( isset_fix_errors( cif_cc ) ||
@@ -324,13 +319,13 @@ cif_entry
             }
 ;
 
-cif_value_list
-        :       cif_value
+data_value_list
+        :       data_value
         {
             $$.vstr  = $1.vstr;
             $$.vtype = $1.vtype;
         }
-        |       cif_value_list cif_value
+        |       data_value_list data_value
         {
             char *buf = mallocx( strlen($1.vstr) + strlen($2.vstr) + 2, px );
             buf = strcpy( buf, $1.vstr );
@@ -405,12 +400,12 @@ loop_tags
 ;
 
 loop_values
-	:	loop_values cif_value
+	:	loop_values data_value
         {
             loop_value_count++;
             cif_push_loop_value( cif_cc->cif, $2.vstr, $2.vtype, px );
         }
-	|	cif_value
+	|	data_value
         {
             loop_value_count++;
             cif_push_loop_value( cif_cc->cif, $1.vstr, $1.vtype, px );
@@ -423,7 +418,7 @@ save_frame
             cif_start_save_frame( cif_cc->cif, /* name = */ $1, px );
             freex( $1 );
         }
-        frame_content
+        data_list
         _SAVE_FOOT
         {
             cif_finish_save_frame( cif_cc->cif );
@@ -432,7 +427,7 @@ save_frame
         _SAVE_FOOT /* empty save frame */
 ;
 
-cif_value /* to be renamed to wspace_data_value, as per CIF2.0 */
+data_value
 	:	string
 	|	number
 	|	textfield
@@ -441,24 +436,11 @@ cif_value /* to be renamed to wspace_data_value, as per CIF2.0 */
 ;
 
 string
-	:	_SQSTRING
-        { $$.vstr = $1; $$.vtype = CIF_SQSTRING; }
-	|	_DQSTRING
-        { $$.vstr = $1; $$.vtype = CIF_DQSTRING; }
+    :   any_quoted_string
 	|	_UQSTRING
         { $$.vstr = $1; $$.vtype = CIF_UQSTRING; }
-    |   _SQ3STRING
-        { $$.vstr = $1; $$.vtype = CIF_SQSTRING; }
-	|	_DQ3STRING
-        { $$.vstr = $1; $$.vtype = CIF_DQSTRING; }
     |   ':'
         { $$.vstr = strdupx( ":", px ); $$.vtype = CIF_UQSTRING; }
-;
-
-nospace_value
-    :   any_quoted_string
-    |   list
-    |   table
 ;
 
 any_quoted_string
@@ -535,7 +517,7 @@ number
 ;
 
 list
-    :   '[' cif_value_list ']'
+    :   '[' data_value_list ']'
         { $$.vstr = $2.vstr; $$.vtype = CIF_LIST; }
 ;
 
@@ -550,7 +532,7 @@ table_entry_list
 ;
 
 table_entry
-	:	any_quoted_string ':' nospace_value
+	:	any_quoted_string ':' data_value
 ;
 
 %%
