@@ -42,6 +42,9 @@ static int thisTokenPos = 0;
 static int ungot_ch = 0;
 static int beginning_of_file = 1;
 
+/* was the last returned symbol a quoted string? */
+static int qstring_seen = 0;
+
 static int cif_mandated_line_length = 80;
 static int cif_mandated_tag_length = 74;
 static int report_long_items = 0;
@@ -156,6 +159,9 @@ int cif_lexer( FILE *in, cexception_t *ex )
             /* skip spaces: */
             prevchar = ch;
             ch = getlinec( in, ex );
+            if( isspace( prevchar ) ) {
+                qstring_seen = 0;
+            }
             continue;
         }
         switch( ch ) {
@@ -228,6 +234,7 @@ int cif_lexer( FILE *in, cexception_t *ex )
                             ex );
                 }
             }
+            qstring_seen = 0;
             return _TAG;
             break;
 
@@ -248,11 +255,13 @@ int cif_lexer( FILE *in, cexception_t *ex )
                 if( yy_flex_debug ) {
                     printf( ">>> INTEGER: '%s'\n", token );
                 }
+                qstring_seen = 0;
                 return _INTEGER_CONST;
             } else if( is_real( token )) {
                 if( yy_flex_debug ) {
                     printf( ">>> REAL: '%s'\n", token );
                 }
+                qstring_seen = 0;
                 return _REAL_CONST;
             } else {
                 if( yy_flex_debug ) {
@@ -264,6 +273,7 @@ int cif_lexer( FILE *in, cexception_t *ex )
                        [.0-9] */
                     printf( ">>> UQSTRING (not a number): '%s'\n", token );
                 }
+                qstring_seen = 0;
                 return _UQSTRING;
             }
             break;
@@ -285,6 +295,7 @@ int cif_lexer( FILE *in, cexception_t *ex )
                     /* empty quote-delimited string */
                     yylval.s = check_and_clean
                                 ( token, /* is_textfield = */ 0, ex );
+                    qstring_seen = 1;
                     return type;
                 } else if( quote_count == 3 ) {
                     /* start of triple quote-delimited string */
@@ -306,6 +317,7 @@ int cif_lexer( FILE *in, cexception_t *ex )
                     yylval.s = check_and_clean
                                 ( token, /* is_textfield = */ 0, ex );
                     type = quote == '"' ? _DQ3STRING : _SQ3STRING;
+                    qstring_seen = 1;
                     return type;
                 }
                 quote_count = 0;
@@ -323,6 +335,7 @@ int cif_lexer( FILE *in, cexception_t *ex )
                                 printf( ">>> *QSTRING (%c): '%s'\n",
                                         quote, token );
                             }
+                            qstring_seen = 1;
                             return type;
                         }                        
                     } else {
@@ -337,6 +350,7 @@ int cif_lexer( FILE *in, cexception_t *ex )
                                 printf( ">>> *Q3STRING (%c): '%s'\n",
                                         quote, token );
                             }
+                            qstring_seen = 1;
                             return type;
                         } else {
                             quote_count = 0;
@@ -379,11 +393,24 @@ int cif_lexer( FILE *in, cexception_t *ex )
                         }
                         break;
                 }
+                qstring_seen = 1;
                 return quote == '"' ? _DQSTRING : _SQSTRING;
             }
             break;
         case '[': case ']': case '{': case '}':
+            qstring_seen = 0;
             return ch;
+        case ':':
+            if( qstring_seen == 1 ) {
+                if( yy_flex_debug ) {
+                    printf( ">>> TABLE SEPARATOR: ':'\n" );
+                }
+                qstring_seen = 0;
+                return ':';
+            }
+            /* else this is an ordinary unquoted string -- drop
+               through to the 'default:' case (no break here,
+               deliberately!): */
         case ';':
             if( prevchar == '\n' || prevchar == '\0' ) {
                 /* multi-line text field: */
@@ -408,6 +435,7 @@ int cif_lexer( FILE *in, cexception_t *ex )
                         }
                         yylval.s = clean_string( token, /* is_textfield = */ 1,
                                                  ex );
+                        qstring_seen = 0;
                         return _TEXT_FIELD;
                     }
                     pushchar( &token, &length, pos++, ch );
@@ -452,6 +480,7 @@ int cif_lexer( FILE *in, cexception_t *ex )
                 }
                 yylval.s = clean_string( token + 5, /* is_textfield = */ 0,
                                          ex );
+                qstring_seen = 0;
                 return _DATA_;
             } else if( starts_with_keyword( "save_", token )) {
                 /* save frame header or terminator: */
@@ -461,6 +490,7 @@ int cif_lexer( FILE *in, cexception_t *ex )
                         printf( ">>> SAVE_\n" );
                     }
                     yylval.s = NULL;
+                    qstring_seen = 0;
                     return _SAVE_FOOT;
                 } else {
                     if( yy_flex_debug ) {
@@ -468,6 +498,7 @@ int cif_lexer( FILE *in, cexception_t *ex )
                     }
                     yylval.s = clean_string( token + 5, /* is_textfield = */ 0,
                                              ex );
+                    qstring_seen = 0;
                     return _SAVE_HEAD;
                 }
             } else if( starts_with_keyword( "loop_", token ) &&
@@ -477,6 +508,7 @@ int cif_lexer( FILE *in, cexception_t *ex )
                     printf( ">>> LOOP_\n" );
                 }
                 yylval.s = clean_string( token, /* is_textfield = */ 0, ex );
+                qstring_seen = 0;
                 return _LOOP_;
             } else if( starts_with_keyword( "stop_", token ) &&
                 strlen( token ) == 5 ) {
@@ -488,10 +520,10 @@ int cif_lexer( FILE *in, cexception_t *ex )
                 /* global field: */
                 yyerror( "GLOBAL_ symbol detected -- "
                          "it is not acceptable in CIF v2.0" );
-            } else if( token[0] == ':' && strlen( token ) == 1 ) {
-                /* either space-separated string or table entry
-                 * separator, thus has to be returned as is: */
-                 return ':';
+            // } else if( token[0] == ':' && strlen( token ) == 1 ) {
+                // /* either space-separated string or table entry
+                 // * separator, thus has to be returned as is: */
+                 // return ':';
             } else {
                 if( token[0] == '$' ) {
                     /* dollar is a reserved symbol, unquoted strings
@@ -505,6 +537,7 @@ int cif_lexer( FILE *in, cexception_t *ex )
                     }
                     yylval.s = check_and_clean( token, /* is_textfield = */ 0,
                                                 ex );
+                    qstring_seen = 0;
                     return _UQSTRING;
                 } else {
                     if( yy_flex_debug ) {
@@ -512,12 +545,14 @@ int cif_lexer( FILE *in, cexception_t *ex )
                     }
                     yylval.s = check_and_clean( token, /* is_textfield = */ 0,
                                                 ex );
+                    qstring_seen = 0;
                     return _SQSTRING;
                 }
             }
         }
     }
 
+    qstring_seen = 0;
     return 0;
 }
 
