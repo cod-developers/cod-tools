@@ -105,6 +105,7 @@ void free_typed_value( typed_value t );
 %token <s> _TEXT_FIELD
 %token <s> _INTEGER_CONST
 %token <s> _REAL_CONST
+%token _TABLE_ENTRY_SEP
 
 %type <s> data_heading
 %type <typed_value> data_value_list
@@ -446,11 +447,6 @@ string
           $$.vline = cif_flex_current_line_number();
           $$.vpos  = cif_flex_current_position();
           $$.vcont = strdupx( cif_flex_current_line(), px ); }
-    |   ':'
-        { $$.vstr = strdupx( ":", px ); $$.vtype = CIF_UQSTRING;
-          $$.vline = cif_flex_current_line_number();
-          $$.vpos  = cif_flex_current_position();
-          $$.vcont = strdupx( cif_flex_current_line(), px ); }
 ;
 
 any_quoted_string
@@ -563,7 +559,7 @@ table_entry_list
 ;
 
 table_entry
-	:	any_quoted_string ':' data_value
+	:	any_quoted_string _TABLE_ENTRY_SEP data_value
 ;
 
 %%

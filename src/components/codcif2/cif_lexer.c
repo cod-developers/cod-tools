@@ -402,11 +402,12 @@ int cif_lexer( FILE *in, cexception_t *ex )
             return ch;
         case ':':
             if( qstring_seen == 1 ) {
+                /* table entry separator */
                 if( yy_flex_debug ) {
-                    printf( ">>> TABLE SEPARATOR: ':'\n" );
+                    printf( ">>> TABLE ENTRY SEPARATOR: ':'\n" );
                 }
                 qstring_seen = 0;
-                return ':';
+                return _TABLE_ENTRY_SEP;
             }
             /* else this is an ordinary unquoted string -- drop
                through to the 'default:' case (no break here,
@@ -520,10 +521,6 @@ int cif_lexer( FILE *in, cexception_t *ex )
                 /* global field: */
                 yyerror( "GLOBAL_ symbol detected -- "
                          "it is not acceptable in CIF v2.0" );
-            // } else if( token[0] == ':' && strlen( token ) == 1 ) {
-                // /* either space-separated string or table entry
-                 // * separator, thus has to be returned as is: */
-                 // return ':';
             } else {
                 if( token[0] == '$' ) {
                     /* dollar is a reserved symbol, unquoted strings
