@@ -110,8 +110,8 @@ my $continue_on_errors = 0;
 my $covalent_sensitivity = 0.35;
 my $audit = 1;
 my $uniquify_atoms = 1;
-my $exclude_zero_occupancies = 1; # Do not use atoms with zero
-                                  # occupancies
+my $exclude_zero_occupancies = 1; # Do not use atoms with zero occupancies
+my $exclude_dummy_atoms = 1;      # Do not use atoms with the 'dum' calc flag
 
 my $force_unit_occupancies = 0; # Forcibly set occupancies to 1.0.
 
@@ -280,6 +280,15 @@ my $die_on_notes    = 0;
 #* --dont-exclude-zero-occupancies, --no-exclude-zero-occupancies
 #*                  Use atoms with 0 occupancies in calculations.
 #*
+#* --exclude-dummy-atoms
+#*                  Do not use dummy atoms (marked by the 'dum' calc flag)
+#*                  in calculations (default).
+#*
+#* --dont-exclude-dummy-atoms, --no-exclude-dummy-atoms
+#*                  Use dummy atoms (marked by the 'dum' calc flag)
+#*                  in calculations. It should be noted that dummy atoms
+#*                  with non-numeric coordinates will still be excluded.
+#*
 #* --dont-continue-on-errors, --no-continue-on-errors
 #*                  Stop immediately when an error is encountered.
 #*
@@ -414,6 +423,10 @@ my $die_on_notes    = 0;
     "--exclude-zero-occupancies"    => sub { $exclude_zero_occupancies = 1; },
     "--no-exclude-zero-occupancies" => sub { $exclude_zero_occupancies = 0; },
     "--dont-exclude-zero-occupancies" => sub { $exclude_zero_occupancies = 0; },
+
+    "--exclude-dummy-atoms"    => sub { $exclude_dummy_atoms = 1; },
+    "--no-exclude-dummy-atoms" => sub { $exclude_dummy_atoms = 0; },
+    "--dont-exclude-dummy-atoms" => sub { $exclude_dummy_atoms = 0; },
 
     "--preserve-stoichiometry" => sub { $preserve_stoichiometry = 1 },
     "--dont-preserve-stoichiometry, --no-preserve-stoichiometry" =>
@@ -912,7 +925,7 @@ sub get_molecules
     my $cif_atom_list_options = {
         uniquify_atom_names => 1,
         uniquify_atoms => $uniquify_atoms,
-        exclude_zero_occupancies => $exclude_zero_occupancies,
+        exclude_dummy_atoms => $exclude_dummy_atoms,
         exclude_dummy_coordinates => 1,
         exclude_unknown_coordinates => 1,
         symop_list => $symop_list,
@@ -923,34 +936,42 @@ sub get_molecules
 
     # Extract atoms fract coordinates
     my $atom_list = atom_array_from_cif( $dataset, $cif_atom_list_options );
-
     return [] unless defined $atom_list;
 
-    my $dummy_atoms = [ grep { exists $_->{calc_flag} &&
-                               $_->{calc_flag} eq 'dum' } @$atom_list ];
-    my $dummy_molecule;
-    if( @$dummy_atoms > 0 ) {
-        foreach ( @$dummy_atoms ) {
-            $_->{multiplicity} = '?';
-            $_->{multiplicity_ratio} = '?'
-        };
-        $dummy_molecule = { atoms => $dummy_atoms,
-                            chemical_formula_sum => '',
-                            is_polymer => 0 };
-    }
+    # atoms with zero occupancies are not initially filtered in the
+    # 'atom_array_from_cif' subroutine due to some dummy atoms
+    # potentially containing zero or equivalent ('.', '?') occupancies
+    if ( $exclude_zero_occupancies ) {
+        my @filtered_atom_list;
+        for my $atom ( @$atom_list ) {
+            my $has_zero_occupancy = 0;
+            if ( exists $atom->{'atom_site_occupancy'} ) {
+                if ( $atom->{'atom_site_occupancy'} eq '?' ||
+                     $atom->{'atom_site_occupancy'} eq '.' ) {
+                    $has_zero_occupancy = 1;
+                } else {
+                    my $occupancy = $atom->{'atom_site_occupancy'};
+                    $occupancy =~ s/[(]\d+[)]$//; # remove precision
+                    if ( $occupancy == 0.0 ) {
+                        $has_zero_occupancy = 1;
+                    }
+                }
+            }
 
-    $atom_list = [ grep { !exists $_->{calc_flag} ||
-                          $_->{calc_flag} ne 'dum' } @$atom_list ];
+            next if ( $has_zero_occupancy &&
+                      ( !exists $atom->{'calc_flag'} ||
+                        $atom->{'calc_flag'} ne 'dum' ) );
+
+            push @filtered_atom_list, $atom;
+        }
+        $atom_list = \@filtered_atom_list;
+    }
 
     if( @$atom_list == 0 ) {
         warn "WARNING, no atoms suitable for processing were found -- "
            . "maybe all occupancies were unknown, zero, or "
            . "all atom types were unrecognised\n";
-        if( defined $dummy_molecule ) {
-            return [ $dummy_molecule ];
-        } else {
             return [];
-        }
     }
 
     my $max_covalent_radius = get_max_covalent_radius( $atom_properties );
@@ -991,10 +1012,6 @@ sub get_molecules
                                                         \%seen_molecules );
 
         push( @unique_molecules, @current_ordered_molecules );
-    }
-
-    if( defined $dummy_molecule ) {
-        push( @unique_molecules, $dummy_molecule );
     }
 
     # Calculates chemical formula sum
@@ -1147,6 +1164,7 @@ sub chemical_formula_sum
     foreach my $atom (@{$atoms})
     {
         my $chemical_type = $atom->{chemical_type};
+        next if $chemical_type eq '.';
         if(defined $chemical_types{$chemical_type})
         {
             $chemical_types{$chemical_type} = ++$chemical_types{$chemical_type};
@@ -1875,14 +1893,11 @@ sub print_molecule
                 print "? ";
             }
         }
-        if( !exists $atom->{calc_flag} || $atom->{calc_flag} ne 'dum' ) {
-            printf $print_format,
-                   $atom->{"coordinates_fract"}[0],
-                   $atom->{"coordinates_fract"}[1],
-                   $atom->{"coordinates_fract"}[2];
-        } else {
-            print ". . .";
-        }
+        printf $print_format,
+                  $atom->{"coordinates_fract"}[0],
+                  $atom->{"coordinates_fract"}[1],
+                  $atom->{"coordinates_fract"}[2];
+
         if( defined $atom_site_U_iso_or_equiv ) {
             print " ";
             print_value( $atom->{atom_site_U_iso_or_equiv} );
