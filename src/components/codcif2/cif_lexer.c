@@ -343,6 +343,7 @@ int cif_lexer( FILE *in, cexception_t *ex )
                             quote_count++;
                         } else if( quote_count >= 3 ) {
                             /* terminated triple-quoted string: */
+                            ungetlinec( ch, in );
                             pushchar( &token, &length, pos-2, '\0' );
                             yylval.s = check_and_clean
                                 ( token, /* is_textfield = */ 0, ex );
