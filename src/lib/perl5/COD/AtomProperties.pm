@@ -25,6 +25,18 @@ our @EXPORT_OK = qw( ok );
 #          );
 
 %COD::AtomProperties::atoms = (
+     "." => {
+             "name" => "Dummy",
+             "period" => "0",
+             "group" => "0",
+             "block" => "0",
+             "atomic_number" => "0",
+             "atomic_weight" => "0",
+             # covalent and Van der Waals radii copied from carbon
+             "covalent_radius" => 0.68,
+             "vdw_radius" => 1.70,
+             "valency" => [0],
+     },
      "H" => {
              "name" => "Hydrogen",
              "period" => "1",
