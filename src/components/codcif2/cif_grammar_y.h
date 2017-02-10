@@ -34,12 +34,14 @@ void cif_yy_reset_error_count( void );
 void cif_yy_debug_on( void );
 void cif_yy_debug_off( void );
 
+typedef struct typed_value typed_value;
 typedef struct typed_value {
     char *vstr;
     cif_value_type_t vtype;
     int vline;
     int vpos;
     char *vcont;
+    typed_value *vnext;
 } typed_value;
 
 #endif

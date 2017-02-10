@@ -83,6 +83,7 @@ int loop_tag_count = 0;
 int loop_value_count = 0;
 int loop_start = 0;
 
+typed_value new_typed_value( void );
 void free_typed_value( typed_value *t );
 
 %}
@@ -302,7 +303,7 @@ cif_entry
                         index( buf, '\"' ) != NULL ) {
                         tag_type = CIF_TEXT;
                     }
-                    typed_value tv;
+                    typed_value tv = new_typed_value();
                     tv.vstr = buf;
                     tv.vtype = tag_type;
                     tv.vline = $3.vline;
@@ -330,8 +331,8 @@ data_value_list
             buf = strcpy( buf, $1.vstr );
             buf = strcat( buf, " \0" );
             buf = strcat( buf, $2.vstr );
+            $$ = new_typed_value();
             $$.vstr  = buf;
-            $$.vtype = CIF_UNKNOWN;
             $$.vline = $1.vline;
             $$.vpos  = $1.vpos;
             $$.vcont = strdupx( $1.vcont, px );
@@ -436,9 +437,8 @@ data_value
 string
     :   any_quoted_string
 	|	_UQSTRING
-        { $$.vstr = $1; $$.vtype = CIF_UQSTRING;
-          $$.vline = cif_flex_current_line_number();
-          $$.vpos  = cif_flex_current_position();
+        { $$ = new_typed_value(); $$.vstr = $1;
+          $$.vtype = CIF_UQSTRING;
           $$.vcont = strdupx( cif_flex_current_line(), px ); }
 ;
 
@@ -449,33 +449,30 @@ any_quoted_string
 
 quoted_string
     :   _SQSTRING
-        { $$.vstr = $1; $$.vtype = CIF_SQSTRING;
-          $$.vline = cif_flex_current_line_number();
-          $$.vpos  = cif_flex_current_position();
+        { $$ = new_typed_value(); $$.vstr = $1;
+          $$.vtype = CIF_SQSTRING;
           $$.vcont = strdupx( cif_flex_current_line(), px ); }
 	|	_DQSTRING
-        { $$.vstr = $1; $$.vtype = CIF_DQSTRING;
-          $$.vline = cif_flex_current_line_number();
-          $$.vpos  = cif_flex_current_position();
+        { $$ = new_typed_value(); $$.vstr = $1;
+          $$.vtype = CIF_DQSTRING;
           $$.vcont = strdupx( cif_flex_current_line(), px ); }
 ;
 
 triple_quoted_string
     :   _SQ3STRING
-        { $$.vstr = $1; $$.vtype = CIF_SQSTRING;
-          $$.vline = cif_flex_current_line_number();
-          $$.vpos  = cif_flex_current_position();
+        { $$ = new_typed_value(); $$.vstr = $1;
+          $$.vtype = CIF_SQSTRING;
           $$.vcont = strdupx( cif_flex_current_line(), px ); }
 	|	_DQ3STRING
-        { $$.vstr = $1; $$.vtype = CIF_DQSTRING;
-          $$.vline = cif_flex_current_line_number();
-          $$.vpos  = cif_flex_current_position();
+        { $$ = new_typed_value(); $$.vstr = $1;
+          $$.vtype = CIF_DQSTRING;
           $$.vcont = strdupx( cif_flex_current_line(), px ); }
 ;
 
 textfield
         :	_TEXT_FIELD
-        { $$.vstr = $1;
+        { $$ = new_typed_value();
+          $$.vstr = $1;
           int unprefixed = 0;
           if( isset_do_not_unprefix_text( cif_cc ) == 0 ) {
               size_t str_len = strlen( $$.vstr );
@@ -518,21 +515,17 @@ textfield
           }
 
           $$.vtype = CIF_TEXT;
-          $$.vline = cif_flex_current_line_number();
-          $$.vpos  = cif_flex_current_position();
           $$.vcont = strdupx( cif_flex_current_line(), px ); }
 ;
 
 number
 	:	_REAL_CONST
-        { $$.vstr = $1; $$.vtype = CIF_FLOAT;
-          $$.vline = cif_flex_current_line_number();
-          $$.vpos  = cif_flex_current_position();
+        { $$ = new_typed_value(); $$.vstr = $1;
+          $$.vtype = CIF_FLOAT;
           $$.vcont = strdupx( cif_flex_current_line(), px ); }
 	|	_INTEGER_CONST
-        { $$.vstr = $1; $$.vtype = CIF_INT;
-          $$.vline = cif_flex_current_line_number();
-          $$.vpos  = cif_flex_current_position();
+        { $$ = new_typed_value(); $$.vstr = $1;
+          $$.vtype = CIF_INT;
           $$.vcont = strdupx( cif_flex_current_line(), px ); }
 ;
 
@@ -1043,6 +1036,17 @@ int yywarning_token( const char *message, int line, int pos, cexception_t *ex )
                    ex );
     warncount++;
     return 0;
+}
+
+typed_value new_typed_value( void ) {
+    typed_value tv;
+    tv.vstr = NULL;
+    tv.vtype = CIF_UNKNOWN;
+    tv.vline = cif_flex_current_line_number();
+    tv.vpos = cif_flex_current_position();
+    tv.vcont = NULL;
+    tv.vnext = NULL;
+    return tv;
 }
 
 void free_typed_value( typed_value *t ) {
