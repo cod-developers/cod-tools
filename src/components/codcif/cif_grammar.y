@@ -316,13 +316,6 @@ cif_entry
 
 cif_value_list
         :       cif_value
-        {
-            $$.vstr  = $1.vstr;
-            $$.vtype = $1.vtype;
-            $$.vline = $1.vline;
-            $$.vpos  = $1.vpos;
-            $$.vcont = $1.vcont;
-        }
         |       cif_value_list cif_value
         {
             char *buf = mallocx( strlen($1.vstr) + strlen($2.vstr) + 2, px );
