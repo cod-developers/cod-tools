@@ -83,7 +83,7 @@ int loop_tag_count = 0;
 int loop_value_count = 0;
 int loop_start = 0;
 
-void free_typed_value( typed_value t );
+void free_typed_value( typed_value *t );
 
 %}
 
@@ -144,7 +144,7 @@ stray_data_value_list
                                    $1.vline, -1, px );
                     yyincrease_error_counter();
             }
-            free_typed_value( $1 );
+            free_typed_value( &$1 );
         }
         | data_value data_value_list
         {
@@ -159,8 +159,8 @@ stray_data_value_list
                                    $1.vline, -1, px );
                     yyincrease_error_counter();
             }
-            free_typed_value( $1 );
-            free_typed_value( $2 );
+            free_typed_value( &$1 );
+            free_typed_value( &$2 );
         }
 ;
 
@@ -256,7 +256,7 @@ data_heading
                                $2.vline, $2.vpos+1, $2.vcont, px );
             }
             freex( $1 );
-            free_typed_value( $2 );
+            free_typed_value( &$2 );
         }
 ;
 
@@ -282,7 +282,7 @@ cif_entry
             assert_datablock_exists( px );
             add_tag_value( $1, $2.vstr, $2, px );
             freex( $1 );
-            free_typed_value( $2 );
+            free_typed_value( &$2 );
         }
         | _TAG data_value data_value_list
             {
@@ -309,7 +309,7 @@ cif_entry
                     tv.vpos  = $3.vpos;
                     tv.vcont = $3.vcont;
                     add_tag_value( $1, buf, tv, px );
-                    free_typed_value( tv );
+                    free_typed_value( &tv );
                     $3.vcont = NULL; /* preventing from free()ing
                                         repeatedly */
                 } else {
@@ -317,20 +317,13 @@ cif_entry
                                    $3.vpos+1, $3.vcont, px );
                 }
                 freex( $1 );
-                free_typed_value( $2 );
-                free_typed_value( $3 );
+                free_typed_value( &$2 );
+                free_typed_value( &$3 );
             }
 ;
 
 data_value_list
         :       data_value
-        {
-            $$.vstr  = $1.vstr;
-            $$.vtype = $1.vtype;
-            $$.vline = $1.vline;
-            $$.vpos  = $1.vpos;
-            $$.vcont = $1.vcont;
-        }
         |       data_value_list data_value
         {
             char *buf = mallocx( strlen($1.vstr) + strlen($2.vstr) + 2, px );
@@ -342,8 +335,8 @@ data_value_list
             $$.vline = $1.vline;
             $$.vpos  = $1.vpos;
             $$.vcont = strdupx( $1.vcont, px );
-            free_typed_value( $1 );
-            free_typed_value( $2 );
+            free_typed_value( &$1 );
+            free_typed_value( &$2 );
         }
 ;
 
@@ -1052,10 +1045,10 @@ int yywarning_token( const char *message, int line, int pos, cexception_t *ex )
     return 0;
 }
 
-void free_typed_value( typed_value t ) {
-    freex( t.vstr );
-    if( t.vcont != NULL ) {
-        freex( t.vcont );
+void free_typed_value( typed_value *t ) {
+    freex( t->vstr );
+    if( t->vcont != NULL ) {
+        freex( t->vcont );
     }
 }
 
