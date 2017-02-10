@@ -327,6 +327,14 @@ data_value_list
         :       data_value
         |       data_value_list data_value
         {
+            typed_value *end = &$1;
+            while( end->vnext != NULL ) {
+                end = end->vnext;
+            }
+            end->vnext = &$2;
+            /* This code block has to be moved to the detection of
+             * stray values etc., since lists should accept this
+             * construction.
             char *buf = mallocx( strlen($1.vstr) + strlen($2.vstr) + 2, px );
             buf = strcpy( buf, $1.vstr );
             buf = strcat( buf, " \0" );
@@ -338,6 +346,7 @@ data_value_list
             $$.vcont = strdupx( $1.vcont, px );
             free_typed_value( &$1 );
             free_typed_value( &$2 );
+            */
         }
 ;
 
@@ -531,7 +540,7 @@ number
 
 list
     :   '[' data_value_list ']'
-        { $$.vstr = $2.vstr; $$.vtype = CIF_LIST; }
+        { $$.vstr = $2.vstr; $$.vtype = CIF_LIST; $$.vinner = &$2; }
 ;
 
 table
@@ -1046,6 +1055,7 @@ typed_value new_typed_value( void ) {
     tv.vpos = cif_flex_current_position();
     tv.vcont = NULL;
     tv.vnext = NULL;
+    tv.vinner = NULL;
     return tv;
 }
 

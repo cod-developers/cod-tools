@@ -42,6 +42,7 @@ typedef struct typed_value {
     int vpos;
     char *vcont;
     typed_value *vnext;
+    typed_value *vinner;
 } typed_value;
 
 #endif
