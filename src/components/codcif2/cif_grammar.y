@@ -65,7 +65,7 @@ static CIF_COMPILER * volatile cif_cc; /* CIF current compiler */
 static cexception_t *px; /* parser exception */
 
 void assert_datablock_exists( cexception_t *ex );
-void add_tag_value( char * tag, char * value, typed_value tv,
+void add_tag_value( char *tag, char *value, typed_value *tv,
      cexception_t *ex );
 int yyerror_token( const char *message, int line, int pos, char *cont, cexception_t *ex );
 int yywarning_token( const char *message, int line, int pos, cexception_t *ex );
@@ -83,14 +83,14 @@ int loop_tag_count = 0;
 int loop_value_count = 0;
 int loop_start = 0;
 
-typed_value new_typed_value( void );
+typed_value *new_typed_value( void );
 void free_typed_value( typed_value *t );
 
 %}
 
 %union {
     char *s;
-    typed_value typed_value;
+    typed_value *typed_value;
 }
 
 %token <s> _DATA_
@@ -110,7 +110,7 @@ void free_typed_value( typed_value *t );
 
 %type <s> data_heading
 %type <typed_value> data_value_list
-%type <typed_value> data_value;
+%type <typed_value> data_value
 %type <typed_value> number
 %type <typed_value> string
 %type <typed_value> textfield
@@ -138,14 +138,14 @@ stray_data_value_list
                 isset_fix_data_header( cif_cc ) ) {
                     print_message( "WARNING", "stray CIF values at the "
                                    "beginning of the input file", "",
-                                   $1.vline, -1, px );
+                                   $1->vline, -1, px );
             } else {
                     print_message( "ERROR", "stray CIF values at the "
                                    "beginning of the input file", "",
-                                   $1.vline, -1, px );
+                                   $1->vline, -1, px );
                     yyincrease_error_counter();
             }
-            free_typed_value( &$1 );
+            free_typed_value( $1 );
         }
         | data_value data_value_list
         {
@@ -153,15 +153,15 @@ stray_data_value_list
                 isset_fix_data_header( cif_cc ) ) {
                     print_message( "WARNING", "stray CIF values at the "
                                    "beginning of the input file", "",
-                                   $1.vline, -1, px );
+                                   $1->vline, -1, px );
             } else {
                     print_message( "ERROR", "stray CIF values at the "
                                    "beginning of the input file", "",
-                                   $1.vline, -1, px );
+                                   $1->vline, -1, px );
                     yyincrease_error_counter();
             }
-            free_typed_value( &$1 );
-            free_typed_value( &$2 );
+            free_typed_value( $1 );
+            free_typed_value( $2 );
         }
 ;
 
@@ -232,32 +232,32 @@ data_heading
             if( isset_fix_errors( cif_cc ) ||
                 isset_fix_string_quotes( cif_cc ) ||
                 isset_fix_datablock_names( cif_cc ) ) {
-                char buf[strlen($1)+strlen($2.vstr)+2];
+                char buf[strlen($1)+strlen($2->vstr)+2];
                 strcpy( buf, $1 );
                 buf[strlen($1)] = '_';
                 int i;
-                for( i = 0; i < strlen($2.vstr); i++ ) {
-                    if( $2.vstr[i] != ' ' ) {
-                        buf[strlen($1)+1+i] = $2.vstr[i];
+                for( i = 0; i < strlen($2->vstr); i++ ) {
+                    if( $2->vstr[i] != ' ' ) {
+                        buf[strlen($1)+1+i] = $2->vstr[i];
                     } else {
                         buf[strlen($1)+1+i] = '_';
                     } 
                 }
-                buf[strlen($1)+strlen($2.vstr)+1] = '\0';
+                buf[strlen($1)+strlen($2->vstr)+1] = '\0';
                 cif_start_datablock( cif_cc->cif, buf, px );
                 if( isset_fix_errors( cif_cc ) ||
                     isset_fix_string_quotes( cif_cc ) ) {
                     yywarning_token( "the dataname apparently had spaces "
                                      "in it -- replaced spaces with underscores",
-                                     $2.vline, -1, px );
+                                     $2->vline, -1, px );
                 }
             } else {
                 cif_start_datablock( cif_cc->cif, $1, px );
                 yyerror_token( "incorrect CIF syntax",
-                               $2.vline, $2.vpos+1, $2.vcont, px );
+                               $2->vline, $2->vpos+1, $2->vcont, px );
             }
             freex( $1 );
-            free_typed_value( &$2 );
+            free_typed_value( $2 );
         }
 ;
 
@@ -281,9 +281,9 @@ cif_entry
 	:	_TAG data_value
         {
             assert_datablock_exists( px );
-            add_tag_value( $1, $2.vstr, $2, px );
+            add_tag_value( $1, $2->vstr, $2, px );
             freex( $1 );
-            free_typed_value( &$2 );
+            free_typed_value( $2 );
         }
         | _TAG data_value data_value_list
             {
@@ -291,11 +291,11 @@ cif_entry
                 if( isset_fix_errors( cif_cc ) ||
                     isset_fix_string_quotes( cif_cc ) ) {
                     yywarning_token( "string with spaces without quotes -- fixed",
-                                     $2.vline, -1, px );
-                    char *buf = mallocx(strlen($2.vstr)+strlen($3.vstr)+2,px);
-                    buf = strcpy( buf, $2.vstr );
+                                     $2->vline, -1, px );
+                    char *buf = mallocx(strlen($2->vstr)+strlen($3->vstr)+2,px);
+                    buf = strcpy( buf, $2->vstr );
                     buf = strcat( buf, " \0" );
-                    buf = strcat( buf, $3.vstr );
+                    buf = strcat( buf, $3->vstr );
                     cif_value_type_t tag_type = CIF_SQSTRING;
                     if( index( buf, '\n' ) != NULL ||
                         index( buf, '\r' ) != NULL ||
@@ -303,23 +303,23 @@ cif_entry
                         index( buf, '\"' ) != NULL ) {
                         tag_type = CIF_TEXT;
                     }
-                    typed_value tv = new_typed_value();
-                    tv.vstr = buf;
-                    tv.vtype = tag_type;
-                    tv.vline = $3.vline;
-                    tv.vpos  = $3.vpos;
-                    tv.vcont = $3.vcont;
+                    typed_value *tv = new_typed_value();
+                    tv->vstr = buf;
+                    tv->vtype = tag_type;
+                    tv->vline = $3->vline;
+                    tv->vpos  = $3->vpos;
+                    tv->vcont = $3->vcont;
                     add_tag_value( $1, buf, tv, px );
-                    free_typed_value( &tv );
-                    $3.vcont = NULL; /* preventing from free()ing
+                    free_typed_value( tv );
+                    $3->vcont = NULL; /* preventing from free()ing
                                         repeatedly */
                 } else {
-                    yyerror_token( "incorrect CIF syntax", $3.vline,
-                                   $3.vpos+1, $3.vcont, px );
+                    yyerror_token( "incorrect CIF syntax", $3->vline,
+                                   $3->vpos+1, $3->vcont, px );
                 }
                 freex( $1 );
-                free_typed_value( &$2 );
-                free_typed_value( &$3 );
+                free_typed_value( $2 );
+                free_typed_value( $3 );
             }
 ;
 
@@ -327,26 +327,17 @@ data_value_list
         :       data_value
         |       data_value_list data_value
         {
-            typed_value *end = &$1;
-            while( end->vnext != NULL ) {
-                end = end->vnext;
-            }
-            end->vnext = &$2;
-            /* This code block has to be moved to the detection of
-             * stray values etc., since lists should accept this
-             * construction.
-            char *buf = mallocx( strlen($1.vstr) + strlen($2.vstr) + 2, px );
-            buf = strcpy( buf, $1.vstr );
-            buf = strcat( buf, " \0" );
-            buf = strcat( buf, $2.vstr );
             $$ = new_typed_value();
-            $$.vstr  = buf;
-            $$.vline = $1.vline;
-            $$.vpos  = $1.vpos;
-            $$.vcont = strdupx( $1.vcont, px );
-            free_typed_value( &$1 );
-            free_typed_value( &$2 );
-            */
+            char *buf = mallocx( strlen($1->vstr) + strlen($2->vstr) + 2, px );
+            buf = strcpy( buf, $1->vstr );
+            buf = strcat( buf, " \0" );
+            buf = strcat( buf, $2->vstr );
+            $$->vstr  = buf;
+            $$->vline = $1->vline;
+            $$->vpos  = $1->vpos;
+            $$->vcont = strdupx( $1->vcont, px );
+            free_typed_value( $1 );
+            free_typed_value( $2 );
         }
 ;
 
@@ -409,14 +400,14 @@ loop_values
 	:	loop_values data_value
         {
             loop_value_count++;
-            cif_push_loop_value( cif_cc->cif, $2.vstr, $2.vtype, px );
-            freex( $2.vcont );
+            cif_push_loop_value( cif_cc->cif, $2->vstr, $2->vtype, px );
+            freex( $2->vcont );
         }
 	|	data_value
         {
             loop_value_count++;
-            cif_push_loop_value( cif_cc->cif, $1.vstr, $1.vtype, px );
-            freex( $1.vcont );
+            cif_push_loop_value( cif_cc->cif, $1->vstr, $1->vtype, px );
+            freex( $1->vcont );
         }
 ;
 
@@ -446,9 +437,9 @@ data_value
 string
     :   any_quoted_string
 	|	_UQSTRING
-        { $$ = new_typed_value(); $$.vstr = $1;
-          $$.vtype = CIF_UQSTRING;
-          $$.vcont = strdupx( cif_flex_current_line(), px ); }
+        { $$ = new_typed_value(); $$->vstr = $1;
+          $$->vtype = CIF_UQSTRING;
+          $$->vcont = strdupx( cif_flex_current_line(), px ); }
 ;
 
 any_quoted_string
@@ -458,48 +449,49 @@ any_quoted_string
 
 quoted_string
     :   _SQSTRING
-        { $$ = new_typed_value(); $$.vstr = $1;
-          $$.vtype = CIF_SQSTRING;
-          $$.vcont = strdupx( cif_flex_current_line(), px ); }
+        { $$ = new_typed_value(); $$->vstr = $1;
+          $$->vtype = CIF_SQSTRING;
+          $$->vcont = strdupx( cif_flex_current_line(), px ); }
 	|	_DQSTRING
-        { $$ = new_typed_value(); $$.vstr = $1;
-          $$.vtype = CIF_DQSTRING;
-          $$.vcont = strdupx( cif_flex_current_line(), px ); }
+        { $$ = new_typed_value(); $$->vstr = $1;
+          $$->vtype = CIF_DQSTRING;
+          $$->vcont = strdupx( cif_flex_current_line(), px ); }
 ;
 
 triple_quoted_string
     :   _SQ3STRING
-        { $$ = new_typed_value(); $$.vstr = $1;
-          $$.vtype = CIF_SQSTRING;
-          $$.vcont = strdupx( cif_flex_current_line(), px ); }
+        { $$ = new_typed_value(); $$->vstr = $1;
+          $$->vtype = CIF_SQSTRING;
+          $$->vcont = strdupx( cif_flex_current_line(), px ); }
 	|	_DQ3STRING
-        { $$ = new_typed_value(); $$.vstr = $1;
-          $$.vtype = CIF_DQSTRING;
-          $$.vcont = strdupx( cif_flex_current_line(), px ); }
+        { $$ = new_typed_value(); $$->vstr = $1;
+          $$->vtype = CIF_DQSTRING;
+          $$->vcont = strdupx( cif_flex_current_line(), px ); }
 ;
 
 textfield
         :	_TEXT_FIELD
-        { $$ = new_typed_value();
-          $$.vstr = $1;
+        {
+          $$ = new_typed_value();
+          $$->vstr = $1;
           int unprefixed = 0;
           if( isset_do_not_unprefix_text( cif_cc ) == 0 ) {
-              size_t str_len = strlen( $$.vstr );
-              char * unprefixed_text = cif_unprefix_textfield( $$.vstr );
-              free( $$.vstr );
-              $$.vstr = unprefixed_text;
-              if( str_len != strlen( $$.vstr ) ) {
+              ssize_t str_len = strlen( $$->vstr );
+              char *unprefixed_text = cif_unprefix_textfield( $$->vstr );
+              free( $$->vstr );
+              $$->vstr = unprefixed_text;
+              if( str_len != strlen( $$->vstr ) ) {
                   unprefixed = 1;
               }
           }
           int unfolded = 0;
           if( isset_do_not_unfold_text( cif_cc ) == 0 &&
-              $$.vstr[0] == '\\' ) {
-              size_t str_len = strlen( $$.vstr );
-              char * unfolded_text = cif_unfold_textfield( $$.vstr );
-              free( $$.vstr );
-              $$.vstr = unfolded_text;
-              if( str_len != strlen( $$.vstr ) ) {
+              $$->vstr[0] == '\\' ) {
+              size_t str_len = strlen( $$->vstr );
+              char * unfolded_text = cif_unfold_textfield( $$->vstr );
+              free( $$->vstr );
+              $$->vstr = unfolded_text;
+              if( str_len != strlen( $$->vstr ) ) {
                   unfolded = 1;
               }
           }
@@ -513,39 +505,45 @@ textfield
          * the text field. This empty line should be removed.
          */
           if( unprefixed == 1 && unfolded == 0 ) {
-              if( $$.vstr[0] == '\n' ) {
+              if( $$->vstr[0] == '\n' ) {
                   size_t i = 0;
-                  while($$.vstr[i] != '\0') {
-                      $$.vstr[i] = $$.vstr[i+1];
+                  while($$->vstr[i] != '\0') {
+                      $$->vstr[i] = $$->vstr[i+1];
                       i++;
                   }
-                  $$.vstr[i] = '\0';
+                  $$->vstr[i] = '\0';
               }
           }
 
-          $$.vtype = CIF_TEXT;
-          $$.vcont = strdupx( cif_flex_current_line(), px ); }
+          $$->vtype = CIF_TEXT;
+          $$->vcont = strdupx( cif_flex_current_line(), px );
+          }
 ;
 
 number
 	:	_REAL_CONST
-        { $$ = new_typed_value(); $$.vstr = $1;
-          $$.vtype = CIF_FLOAT;
-          $$.vcont = strdupx( cif_flex_current_line(), px ); }
+        { $$ = new_typed_value(); $$->vstr = $1;
+          $$->vtype = CIF_FLOAT;
+          $$->vcont = strdupx( cif_flex_current_line(), px ); }
 	|	_INTEGER_CONST
-        { $$ = new_typed_value(); $$.vstr = $1;
-          $$.vtype = CIF_INT;
-          $$.vcont = strdupx( cif_flex_current_line(), px ); }
+        { $$ = new_typed_value(); $$->vstr = $1;
+          $$->vtype = CIF_INT;
+          $$->vcont = strdupx( cif_flex_current_line(), px ); }
 ;
 
 list
     :   '[' data_value_list ']'
-        { $$.vstr = $2.vstr; $$.vtype = CIF_LIST; $$.vinner = &$2; }
+    {
+        $$ = new_typed_value();
+        $$->vstr = $2->vstr;
+        $$->vtype = CIF_LIST;
+        $$->vinner = $2;
+     }
 ;
 
 table
     :   '{' table_entry_list '}'
-        { $$.vstr = $2.vstr; $$.vtype = CIF_TABLE; }
+        { $$->vstr = $2->vstr; $$->vtype = CIF_TABLE; }
 ;
 
 table_entry_list
@@ -768,11 +766,11 @@ void assert_datablock_exists( cexception_t *ex )
     }
 }
 
-void add_tag_value( char * tag, char * value, typed_value tv,
+void add_tag_value( char *tag, char *value, typed_value *tv,
                     cexception_t *ex )
 {
     if( cif_tag_index( cif_cc->cif, tag ) == -1 ) {
-        cif_insert_value( cif_cc->cif, tag, value, tv.vtype, ex );
+        cif_insert_value( cif_cc->cif, tag, value, tv->vtype, ex );
     } else {
         ssize_t tag_nr = cif_tag_index( cif_cc->cif, tag );
         ssize_t * value_lengths = 
@@ -786,7 +784,7 @@ void add_tag_value( char * tag, char * value, typed_value tv,
                  (cif_cc) == 1)) {
                 yywarning_token( cxprintf( "tag %s appears more than once "
                                            "with the same value '%s'", tag, value ),
-                                 tv.vline, -1, ex );
+                                 tv->vline, -1, ex );
             } else {
                 if( isset_fix_errors(cif_cc) == 1 ||
                     isset_fix_duplicate_tags_with_empty_values
@@ -795,7 +793,7 @@ void add_tag_value( char * tag, char * value, typed_value tv,
                         yywarning_token( cxprintf( "tag %s appears more than once, "
                                                    "the second occurrence '%s' is "
                                                    "ignored", tag, value ),
-                                         tv.vline, -1, ex );
+                                         tv->vline, -1, ex );
                     } else if( is_tag_value_unknown
                                (datablock_value
                                 (cif_last_datablock(cif_cc->cif),
@@ -806,21 +804,21 @@ void add_tag_value( char * tag, char * value, typed_value tv,
                                                    datablock_value
                                                    (cif_last_datablock(cif_cc->cif),
                                                    tag_nr, 0)),
-                                         tv.vline, -1, ex );
+                                         tv->vline, -1, ex );
                         cif_overwrite_value( cif_cc->cif, tag_nr, 0,
-                                             value, tv.vtype, ex );
+                                             value, tv->vtype, ex );
                     } else {
                         yyerror_token( cxprintf( "tag %s appears more than once", tag ),
-                                       tv.vline, -1, NULL, ex );
+                                       tv->vline, -1, NULL, ex );
                     }
                 } else {
                     yyerror_token( cxprintf( "tag %s appears more than once", tag ),
-                                   tv.vline, -1, NULL, ex );
+                                   tv->vline, -1, NULL, ex );
                 }
             }
         } else {
             yyerror_token( cxprintf( "tag %s appears more than once", tag ),
-                           tv.vline, -1, NULL, ex );
+                           tv->vline, -1, NULL, ex );
         }
     }
 }
@@ -1047,15 +1045,15 @@ int yywarning_token( const char *message, int line, int pos, cexception_t *ex )
     return 0;
 }
 
-typed_value new_typed_value( void ) {
-    typed_value tv;
-    tv.vstr = NULL;
-    tv.vtype = CIF_UNKNOWN;
-    tv.vline = cif_flex_current_line_number();
-    tv.vpos = cif_flex_current_position();
-    tv.vcont = NULL;
-    tv.vnext = NULL;
-    tv.vinner = NULL;
+typed_value *new_typed_value( void ) {
+    typed_value *tv = malloc( sizeof( typed_value ) );
+    tv->vstr = NULL;
+    tv->vtype = CIF_UNKNOWN;
+    tv->vline = cif_flex_current_line_number();
+    tv->vpos = cif_flex_current_position();
+    tv->vcont = NULL;
+    tv->vnext = NULL;
+    tv->vinner = NULL;
     return tv;
 }
 
