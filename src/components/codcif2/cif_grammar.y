@@ -86,6 +86,9 @@ int loop_start = 0;
 typed_value *new_typed_value( void );
 void free_typed_value( typed_value *t );
 
+char *concat_data_value_list( typed_value *tv, char separator,
+                              cexception_t *ex );
+
 %}
 
 %union {
@@ -229,21 +232,39 @@ data_heading
         }
 	|	_DATA_ data_value_list
         {
-            if( isset_fix_errors( cif_cc ) ||
-                isset_fix_string_quotes( cif_cc ) ||
-                isset_fix_datablock_names( cif_cc ) ) {
-                char buf[strlen($1)+strlen($2->vstr)+2];
+            /* only simple data items can be concatenated,
+             * thus we have to make sure that data value
+             * list does not contain lists or tables: */
+            int contains_list_or_table = 0;
+            typed_value *end = $2;
+            while( end->vnext != NULL ) {
+                if( end->vtype == CIF_LIST ||
+                    end->vtype == CIF_TABLE ) {
+                    contains_list_or_table = 1;
+                    break;
+                }
+                end = end->vnext;
+            }
+
+            printf( "contains: %d\n", contains_list_or_table );
+            if( (isset_fix_errors( cif_cc ) ||
+                 isset_fix_string_quotes( cif_cc ) ||
+                 isset_fix_datablock_names( cif_cc )) &&
+                !contains_list_or_table ) {
+
+                char *data_list = concat_data_value_list( $2, '_', px );
+                char buf[strlen($1)+strlen(data_list)+2];
                 strcpy( buf, $1 );
                 buf[strlen($1)] = '_';
                 int i;
-                for( i = 0; i < strlen($2->vstr); i++ ) {
+                for( i = 0; i < strlen(data_list); i++ ) {
                     if( $2->vstr[i] != ' ' ) {
-                        buf[strlen($1)+1+i] = $2->vstr[i];
+                        buf[strlen($1)+1+i] = data_list[i];
                     } else {
                         buf[strlen($1)+1+i] = '_';
                     } 
                 }
-                buf[strlen($1)+strlen($2->vstr)+1] = '\0';
+                buf[strlen($1)+strlen(data_list)+1] = '\0';
                 cif_start_datablock( cif_cc->cif, buf, px );
                 if( isset_fix_errors( cif_cc ) ||
                     isset_fix_string_quotes( cif_cc ) ) {
@@ -288,14 +309,28 @@ cif_entry
         | _TAG data_value data_value_list
             {
                 assert_datablock_exists( px );
-                if( isset_fix_errors( cif_cc ) ||
-                    isset_fix_string_quotes( cif_cc ) ) {
+                $2->vnext = $3;
+
+                /* only simple data items can be concatenated,
+                 * thus we have to make sure that data value
+                 * list does not contain lists or tables: */
+                int contains_list_or_table = 0;
+                typed_value *end = $2;
+                while( end->vnext != NULL ) {
+                    if( end->vtype == CIF_LIST ||
+                        end->vtype == CIF_TABLE ) {
+                        contains_list_or_table = 1;
+                        break;
+                    }
+                    end = end->vnext;
+                }
+
+                if( (isset_fix_errors( cif_cc ) ||
+                     isset_fix_string_quotes( cif_cc )) &&
+                    !contains_list_or_table ) {
                     yywarning_token( "string with spaces without quotes -- fixed",
                                      $2->vline, -1, px );
-                    char *buf = mallocx(strlen($2->vstr)+strlen($3->vstr)+2,px);
-                    buf = strcpy( buf, $2->vstr );
-                    buf = strcat( buf, " \0" );
-                    buf = strcat( buf, $3->vstr );
+                    char *buf = concat_data_value_list( $2, ' ', px );
                     cif_value_type_t tag_type = CIF_SQSTRING;
                     if( index( buf, '\n' ) != NULL ||
                         index( buf, '\r' ) != NULL ||
@@ -327,17 +362,11 @@ data_value_list
         :       data_value
         |       data_value_list data_value
         {
-            $$ = new_typed_value();
-            char *buf = mallocx( strlen($1->vstr) + strlen($2->vstr) + 2, px );
-            buf = strcpy( buf, $1->vstr );
-            buf = strcat( buf, " \0" );
-            buf = strcat( buf, $2->vstr );
-            $$->vstr  = buf;
-            $$->vline = $1->vline;
-            $$->vpos  = $1->vpos;
-            $$->vcont = strdupx( $1->vcont, px );
-            free_typed_value( $1 );
-            free_typed_value( $2 );
+            typed_value *end = $1;
+            while( end->vnext != NULL ) {
+                end = end->vnext;
+            }
+            end->vnext = $2;
         }
 ;
 
@@ -517,7 +546,7 @@ textfield
 
           $$->vtype = CIF_TEXT;
           $$->vcont = strdupx( cif_flex_current_line(), px );
-          }
+        }
 ;
 
 number
@@ -535,15 +564,17 @@ list
     :   '[' data_value_list ']'
     {
         $$ = new_typed_value();
-        $$->vstr = $2->vstr;
         $$->vtype = CIF_LIST;
         $$->vinner = $2;
-     }
+    }
 ;
 
 table
     :   '{' table_entry_list '}'
-        { $$->vstr = $2->vstr; $$->vtype = CIF_TABLE; }
+    {
+        $$ = new_typed_value();
+        $$->vtype = CIF_TABLE;
+    }
 ;
 
 table_entry_list
@@ -1062,6 +1093,43 @@ void free_typed_value( typed_value *t ) {
     if( t->vcont != NULL ) {
         freex( t->vcont );
     }
+}
+
+char *concat_data_value_list( typed_value *tv, char separator,
+                              cexception_t *ex ) {
+    /* the list has to be already checked for the existence of
+     * lists of tables, since concatenating their vstrs is not
+     * of much sense */
+
+    ssize_t length = 0;
+    ssize_t count = 0;
+    typed_value *end = tv;
+    while( end != NULL ) {
+        length += strlen( end->vstr );
+        count++;
+
+        // printf( "adding %s\n", end->vstr );
+        end = end->vnext;
+    }
+
+    char *buf = mallocx( length + count - 1, ex );
+    buf[0] = '\0';
+    ssize_t pos = 0;
+    end = tv;
+    while( end != NULL ) {
+        // printf( "concatting %s\n", end->vstr );
+        buf = strcat( buf, end->vstr );
+        pos = pos + strlen( end->vstr );
+        if( end->vnext != NULL ) {
+            buf[pos] = separator;
+            buf[pos+1] = '\0';
+            pos += 1;
+        }
+        // printf( " buf now: [%s]\n", buf );
+        end = end->vnext;
+    }
+
+    return buf;
 }
 
 int yywrap()
