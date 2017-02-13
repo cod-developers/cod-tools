@@ -118,6 +118,7 @@ char *concat_data_value_list( typed_value *tv, char separator,
 %type <typed_value> string
 %type <typed_value> textfield
 %type <typed_value> quoted_string
+%type <typed_value> any_quoted_string
 %type <typed_value> triple_quoted_string
 %type <typed_value> list
 %type <typed_value> table
