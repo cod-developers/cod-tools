@@ -314,20 +314,21 @@ cif_entry
                 /* only simple data items can be concatenated,
                  * thus we have to make sure that data value
                  * list does not contain lists or tables: */
-                int contains_list_or_table = 0;
                 typed_value *end = $2;
                 while( end != NULL ) {
                     if( end->vtype == CIF_LIST ||
                         end->vtype == CIF_TABLE ) {
-                        contains_list_or_table = 1;
                         break;
                     }
                     end = end->vnext;
                 }
 
-                if( (isset_fix_errors( cif_cc ) ||
-                     isset_fix_string_quotes( cif_cc )) &&
-                    !contains_list_or_table ) {
+                if( end != NULL &&
+                    (end->vtype == CIF_LIST || end->vtype == CIF_TABLE) ) {
+                    yyerror_token( "incorrect CIF syntax", end->vline,
+                                   end->vpos+1, end->vcont, px );
+                } else if( isset_fix_errors( cif_cc ) ||
+                            isset_fix_string_quotes( cif_cc ) ) {
                     yywarning_token( "string with spaces without quotes -- fixed",
                                      $2->vline, -1, px );
                     char *buf = concat_data_value_list( $2, ' ', px );
@@ -568,6 +569,9 @@ list
         $$ = new_typed_value();
         $$->vtype = CIF_LIST;
         $$->vinner = $2;
+        $$->vline = $2->vline;
+        $$->vpos = $2->vpos;
+        $$->vcont = strdupx( $2->vcont, px );
     }
 ;
 
@@ -576,6 +580,10 @@ table
     {
         $$ = new_typed_value();
         $$->vtype = CIF_TABLE;
+        $$->vinner = $2;
+        $$->vline = $2->vline;
+        $$->vpos = $2->vpos;
+        $$->vcont = strdupx( $2->vcont, px );
     }
 ;
 
