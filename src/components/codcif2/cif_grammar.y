@@ -238,7 +238,7 @@ data_heading
              * list does not contain lists or tables: */
             int contains_list_or_table = 0;
             typed_value *end = $2;
-            while( end->vnext != NULL ) {
+            while( end != NULL ) {
                 if( end->vtype == CIF_LIST ||
                     end->vtype == CIF_TABLE ) {
                     contains_list_or_table = 1;
@@ -247,7 +247,6 @@ data_heading
                 end = end->vnext;
             }
 
-            printf( "contains: %d\n", contains_list_or_table );
             if( (isset_fix_errors( cif_cc ) ||
                  isset_fix_string_quotes( cif_cc ) ||
                  isset_fix_datablock_names( cif_cc )) &&
@@ -317,7 +316,7 @@ cif_entry
                  * list does not contain lists or tables: */
                 int contains_list_or_table = 0;
                 typed_value *end = $2;
-                while( end->vnext != NULL ) {
+                while( end != NULL ) {
                     if( end->vtype == CIF_LIST ||
                         end->vtype == CIF_TABLE ) {
                         contains_list_or_table = 1;
