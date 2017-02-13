@@ -431,13 +431,15 @@ loop_values
         {
             loop_value_count++;
             cif_push_loop_value( cif_cc->cif, $2->vstr, $2->vtype, px );
-            freex( $2->vcont );
+            $2->vstr = NULL; /* protecting vstr from free'ing */
+            free_typed_value( $2 );
         }
 	|	data_value
         {
             loop_value_count++;
             cif_push_loop_value( cif_cc->cif, $1->vstr, $1->vtype, px );
-            freex( $1->vcont );
+            $1->vstr = NULL; /* protecting vstr from free'ing */
+            free_typed_value( $1 );
         }
 ;
 
@@ -1094,6 +1096,7 @@ void free_typed_value( typed_value *t ) {
     if( t->vcont != NULL ) {
         freex( t->vcont );
     }
+    freex( t );
 }
 
 char *concat_data_value_list( typed_value *tv, char separator,
