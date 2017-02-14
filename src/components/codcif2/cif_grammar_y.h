@@ -43,6 +43,10 @@ typedef struct typed_value {
     char *vcont;
     typed_value *vnext;
     typed_value *vinner;
+    ssize_t vlength;
+    ssize_t vcapacity;
+    char **vkeys;
+    typed_value **vvalues;
 } typed_value;
 
 #endif

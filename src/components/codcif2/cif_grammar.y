@@ -22,6 +22,7 @@
 #include <yy.h>
 #include <cif_lexer.h>
 #include <assert.h>
+#include <hash.h>
 
 typedef struct CIF_COMPILER {
     char *filename;
@@ -578,22 +579,27 @@ list
 table
     :   '{' table_entry_list '}'
     {
-        $$ = new_typed_value();
-        $$->vtype = CIF_TABLE;
-        $$->vinner = $2;
-        $$->vline = $2->vline;
-        $$->vpos = $2->vpos;
-        $$->vcont = strdupx( $2->vcont, px );
+        $$ = $2;
     }
 ;
 
 table_entry_list
-	:	table_entry_list table_entry
-	|	table_entry
-;
-
-table_entry
-	:	any_quoted_string _TABLE_ENTRY_SEP data_value
+	:	table_entry_list
+        any_quoted_string _TABLE_ENTRY_SEP data_value
+    {
+        hash_add( $1, $2->vstr, $4, px );
+        free_typed_value( $2 );
+    }
+	|	any_quoted_string _TABLE_ENTRY_SEP data_value
+    {
+        $$ = new_typed_value();
+        $$->vtype = CIF_TABLE;
+        $$->vline = $1->vline;
+        $$->vpos = $1->vpos;
+        $$->vcont = strdupx( $1->vcont, px );
+        hash_add( $$, $1->vstr, $3, px );
+        free_typed_value( $1 );
+    }
 ;
 
 %%
