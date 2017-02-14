@@ -22,7 +22,7 @@
 #include <yy.h>
 #include <cif_lexer.h>
 #include <assert.h>
-#include <hash.h>
+#include <table.h>
 
 typedef struct CIF_COMPILER {
     char *filename;
@@ -587,12 +587,12 @@ table_entry_list
 	:	table_entry_list
         any_quoted_string _TABLE_ENTRY_SEP data_value
     {
-        if( hash_get( $1, $2->vstr ) != NULL ) {
+        if( table_get( $1, $2->vstr ) != NULL ) {
             yyerror_token( cxprintf( "key '%s' appears more than once "
                                      "in the same table", $2->vstr ),
                            $2->vline, -1, NULL, px );
         }
-        hash_add( $1, $2->vstr, $4, px );
+        table_add( $1, $2->vstr, $4, px );
         free_typed_value( $2 );
     }
 	|	any_quoted_string _TABLE_ENTRY_SEP data_value
@@ -604,7 +604,7 @@ table_entry_list
         $$->vcont = strdupx( $1->vcont, px );
         /* check for the existence of key does not have to be
          * performed, since the table is empty */
-        hash_add( $$, $1->vstr, $3, px );
+        table_add( $$, $1->vstr, $3, px );
         free_typed_value( $1 );
     }
 ;

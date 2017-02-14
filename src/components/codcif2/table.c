@@ -13,7 +13,7 @@
 
 #define DELTA_CAPACITY (100)
 
-void hash_add( typed_value *root, char *key, typed_value *value,
+void table_add( typed_value *root, char *key, typed_value *value,
                cexception_t *ex )
 {
     cexception_t inner;
@@ -44,7 +44,7 @@ void hash_add( typed_value *root, char *key, typed_value *value,
     }    
 }
 
-typed_value *hash_get( typed_value *root, char *key )
+typed_value *table_get( typed_value *root, char *key )
 {
     ssize_t i;
     for( i = 0; i < root->vlength; i++ ) {
