@@ -252,11 +252,21 @@ sub cif2cod
                          $first_page ))
                    );
 
-    my $calculated_formula;
+    my $calc_formula;
+    eval {
+        $calc_formula =
+                cif_cell_contents( $dataset, undef, $use_attached_hydrogens );
+    };
+    if( $@ ) {
+        # ERRORS that originated within the function are downgraded to warnings
+        my $error = $@;
+        $error =~ s/[A-Z]+, //;
+        chomp($error);
+        warn "WARNING, summary formula could not be calculated -- $error\n";
+    }
+
     my $cell_formula;
     eval {
-        $calculated_formula =
-                cif_cell_contents( $dataset, undef, $use_attached_hydrogens );
         $cell_formula =
                 cif_cell_contents( $dataset, 1, $use_attached_hydrogens );
     };
@@ -265,7 +275,7 @@ sub cif2cod
         my $error = $@;
         $error =~ s/[A-Z]+, //;
         chomp($error);
-        warn "WARNING, summary formula could not be calculated -- $error\n";
+        warn "WARNING, unit cell summary formula could not be calculated -- $error\n";
     }
 
     my $diffr_temperature =
@@ -395,8 +405,8 @@ sub cif2cod
     $data{chemname} = $systematic_name;
     $data{mineral} = $mineral_name;
     $data{formula} = $formula ? "- " . $formula . " -" : "?";
-    $data{calcformula} = $calculated_formula ?
-          "- " . $calculated_formula . " -" : undef;
+    $data{calcformula} = $calc_formula ?
+          "- " . $calc_formula . " -" : undef;
     $data{cellformula} = $cell_formula ?
           "- " . $cell_formula . " -" : undef;
     $data{Z} = get_tag_or_undef( $values, "_cell_formula_units_Z", 0 );

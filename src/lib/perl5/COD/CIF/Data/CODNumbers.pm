@@ -94,13 +94,16 @@ sub fetch_duplicates_from_database
     for my $id (sort { $structures{$a}->{index} <=>
                        $structures{$b}->{index} } keys %structures) {
         my $formula = $structures{$id}{chemical_formula_sum};
-        my $cell_contents = $structures{$id}{cell_contents};
+        my $calc_formula = $structures{$id}{calc_formula};
+        my $cell_formula = $structures{$id}{cell_formula};
 
         my $final_formula;
         if( defined $formula ) {
             $final_formula = $formula;
-        } elsif( defined $cell_contents ) {
-            $final_formula = $cell_contents;
+        } elsif( defined $calc_formula ) {
+            $final_formula = $calc_formula;
+        } elsif( defined $cell_formula ) {
+            $final_formula = $cell_formula;
         } else {
             $final_formula = '?';
         }
@@ -119,10 +122,23 @@ sub fetch_duplicates_from_database
                 }
             }
         }
-        if( defined $cell_contents && defined $COD{$cell_contents} &&
-            ( !defined $formula || $formula ne $cell_contents )) {
-            ## print ">>> formula: '$formula', contents: '$cell_contents'\n";
-            for my $COD_entry (@{$COD{$cell_contents}}) {
+        if( defined $calc_formula && defined $COD{$calc_formula} &&
+            ( !defined $formula || $formula ne $calc_formula )) {
+            ## print ">>> formula: '$formula', contents: '$calc_formula'\n";
+            for my $COD_entry (@{$COD{$calc_formula}}) {
+                if( entries_are_the_same( $structures{$id},
+                                          $COD_entry,
+                                          \%options )) {
+                    my $COD_key = $COD_entry->{filename};
+                    if( !exists $structures_found{$COD_key} ) {
+                        $structures_found{$COD_key} = $COD_entry;
+                    }
+                }
+            }
+        }
+        if( defined $cell_formula && defined $COD{$cell_formula} &&
+            ( !defined $calc_formula || $calc_formula ne $cell_formula ) ) {
+            for my $COD_entry (@{$COD{$cell_formula}}) {
                 if( entries_are_the_same( $structures{$id},
                                           $COD_entry,
                                           \%options )) {
@@ -217,9 +233,9 @@ sub cif_fill_data
             $structure{chemical_formula_sum} = $formula;
     }
 
-    my $calculated_formula;
+    my $calc_formula;
     eval {
-        $calculated_formula = cif_cell_contents( $dataset, undef );
+        $calc_formula = cif_cell_contents( $dataset, undef );
     };
     if ($@) {
         # ERRORs that originated within the function are downgraded to warnings
@@ -228,9 +244,23 @@ sub cif_fill_data
         chomp($error);
         warn "WARNING, summary formula could not be calculated -- $error\n";
     };
+    $structure{calc_formula} = $calc_formula
+        if defined $calc_formula;
 
-    $structure{cell_contents} = $calculated_formula
-        if defined $calculated_formula;
+
+    my $cell_formula;
+    eval {
+        $cell_formula = cif_cell_contents( $dataset, 1 );
+    };
+    if ($@) {
+        # ERRORs that originated within the function are downgraded to warnings
+        my $error = $@;
+        $error =~ s/[A-Z]+, //;
+        chomp($error);
+        warn "WARNING, summary formula could not be calculated -- $error\n";
+    };
+    $structure{cell_formula} = $cell_formula
+        if defined $cell_formula;
 
     for my $key ( qw( _cell_length_a _cell_length_b _cell_length_c
                       _cell_angle_alpha _cell_angle_beta _cell_angle_gamma )) {
@@ -617,7 +647,7 @@ sub query_COD_database
 
     my $sth = $dbh->prepare(
         "SELECT $column_list FROM `$database->{table}` ".
-        "WHERE (formula = ? OR calcformula = ?)" .
+        "WHERE (formula = ? OR calcformula = ? OR cellformula = ?)" .
         ($cod_series_prefix ? "AND `file` LIKE '$cod_series_prefix%'" : "")
         );
 
@@ -626,11 +656,14 @@ sub query_COD_database
         ## use COD::Serialise qw( serialiseRef );
         ## serialiseRef( $data->{$id} );
         for my $formula (( $data->{$id}{chemical_formula_sum},
-                           $data->{$id}{cell_contents} )) {
+                           $data->{$id}{calc_formula},
+                           $data->{$id}{cell_formula} )) {
             if( defined $formula ) {
                 ## print ">>> formula = $formula\n";
                 my $query_formula = "- " . $formula . " -";
-                my $rv = $sth->execute( $query_formula, $query_formula );
+                my $rv = $sth->execute( $query_formula,
+                                        $query_formula,
+                                        $query_formula );
                 if( defined $rv ) {
                     ## print "\n>>> rv = $rv\n";
                     ## local $" = ", ";
