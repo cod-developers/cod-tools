@@ -259,10 +259,10 @@ for my $filename (@COD_cif_files) {
 
         push( @{$COD{$formula}}, $structures{$id} );
 
-        if( exists $structures{$id}{cell_contents} &&
-            $structures{$id}{cell_contents} ne $formula ) {
-            my $cell_contents = $structures{$id}{cell_contents};
-            push( @{$COD{$cell_contents}}, $structures{$id} );
+        if( exists $structures{$id}{calc_formula} &&
+            $structures{$id}{calc_formula} ne $formula ) {
+            my $calc_formula = $structures{$id}{calc_formula};
+            push( @{$COD{$calc_formula}}, $structures{$id} );
         }
     }
 
@@ -329,9 +329,9 @@ for my $filename (@cif_files) {
 
     for my $id (keys %structures) {
         my $formula = $structures{$id}{chemical_formula_sum};
-        my $cell_contents = $structures{$id}{cell_contents};
+        my $calc_formula = $structures{$id}{calc_formula};
 
-        $formula = '?' unless defined $formula || defined $cell_contents;
+        $formula = '?' unless defined $formula || defined $calc_formula;
 
         my $final_formula = $formula;
         $final_formula =~ s/\s/_/g;
@@ -348,10 +348,10 @@ for my $filename (@cif_files) {
                 }
             }
         }
-        if( defined $cell_contents && defined $COD{$cell_contents} &&
-            $formula ne $cell_contents ) {
-            ## print ">>> formula: '$formula', contents: '$cell_contents'\n";
-            for my $COD_entry (@{$COD{$cell_contents}}) {
+        if( defined $calc_formula && defined $COD{$calc_formula} &&
+            $formula ne $calc_formula ) {
+            ## print ">>> formula: '$formula', contents: '$calc_formula'\n";
+            for my $COD_entry (@{$COD{$calc_formula}}) {
                 if( entries_are_the_same( $structures{$id},
                                           $COD_entry,
                                           \%options )) {
