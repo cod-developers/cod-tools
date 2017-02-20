@@ -257,7 +257,7 @@ sub cif_fill_data
         my $error = $@;
         $error =~ s/[A-Z]+, //;
         chomp($error);
-        warn "WARNING, summary formula could not be calculated -- $error\n";
+        warn "WARNING, unit cell summary formula could not be calculated -- $error\n";
     };
     $structure{cell_formula} = $cell_formula
         if defined $cell_formula;
