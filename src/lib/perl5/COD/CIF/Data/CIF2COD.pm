@@ -131,6 +131,7 @@ our @new_data_fields = qw (
     mineral
     formula
     calcformula
+    cellformula
 
     acce_code
     authors
@@ -252,10 +253,12 @@ sub cif2cod
                    );
 
     my $calculated_formula;
-
+    my $cell_formula;
     eval {
         $calculated_formula =
                 cif_cell_contents( $dataset, undef, $use_attached_hydrogens );
+        $cell_formula =
+                cif_cell_contents( $dataset, 1, $use_attached_hydrogens );
     };
     if( $@ ) {
         # ERRORS that originated within the function are downgraded to warnings
@@ -394,6 +397,8 @@ sub cif2cod
     $data{formula} = $formula ? "- " . $formula . " -" : "?";
     $data{calcformula} = $calculated_formula ?
           "- " . $calculated_formula . " -" : undef;
+    $data{cellformula} = $cell_formula ?
+          "- " . $cell_formula . " -" : undef;
     $data{Z} = get_tag_or_undef( $values, "_cell_formula_units_Z", 0 );
     $data{Zprime} = compute_Zprime( $data{Z}, $data{sg} );
 
