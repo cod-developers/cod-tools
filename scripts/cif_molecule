@@ -596,19 +596,7 @@ for my $filename (@ARGV) {
             # Raises warnings upon unrecognised symmetry information.
             # Raises die if unable to find symmetry information.
             $sym_data = get_symmetry_operators( $dataset );
-        }; # eval block end
-        if ( $@ ) {
-            process_errors( {
-              'message'       => $@,
-              'program'       => $0,
-              'filename'      => $filename,
-              'add_pos'       => $dataname
-            }, $die_on_errors )
-        }
 
-        next if !defined $sym_data || $sym_data == 0;
-
-        eval {
             my $unity_operator_found = 0;
             for my $symop (@$sym_data) {
                 if( symop_is_unity( symop_from_string( $symop ) ) ) {
@@ -621,16 +609,36 @@ for my $filename (@ARGV) {
                    . "found in the symmetry operator list -- results may "
                    . "be incorrect\n";
             }
+        };
+        if ( $@ ) {
+            process_errors( {
+              'message'       => $@,
+              'program'       => $0,
+              'filename'      => $filename,
+              'add_pos'       => $dataname
+            }, $die_on_errors )
+        }
+        next if !defined $sym_data || $sym_data == 0;
 
-            my $molecule_id = 0;
-            my $dataset_name = $dataset->{name};
+        my $unique_molecules;
+        eval {
+            $unique_molecules = get_molecules( $covalent_sensitivity,
+                                               $sym_data,
+                                               $dataset,
+                                               \%COD::AtomProperties::atoms,
+                                               $uniquify_atoms );
+        };
+        if ( $@ ) {
+            process_errors( {
+              'message'       => $@,
+              'program'       => $0,
+              'filename'      => $filename,
+              'add_pos'       => $dataname
+            }, $die_on_errors )
+        }
+        next if !defined $unique_molecules || $unique_molecules == 0;
 
-            my $unique_molecules = get_molecules( $covalent_sensitivity,
-                                                  $sym_data,
-                                                  $dataset,
-                                                  \%COD::AtomProperties::atoms,
-                                                  $uniquify_atoms );
-
+        eval {
             if( $preserve_stoichiometry ) {
                 my $molecular_symmetry = COD::Spacegroups::Builder->new;
 
@@ -846,6 +854,8 @@ for my $filename (@ARGV) {
                 @$unique_molecules;
             }
 
+            my $molecule_id = 0;
+            my $dataset_name = $dataset->{name};
             foreach my $molecule (@$unique_molecules) {
                 my $id;
                 unless( ($use_one_output_datablock &&
