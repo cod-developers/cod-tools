@@ -67,7 +67,7 @@ sub get_cell
         } elsif( $options->{silent} ) {
             push(@cell_lengths_and_angles, undef);
         } else {
-            die "ERROR, cell length tag '$cif_tag' not present" . "\n";
+            die "ERROR, cell length data item '$cif_tag' not present" . "\n";
         }
     }
 
@@ -82,7 +82,7 @@ sub get_cell
         } elsif( $options->{silent} ) {
             push(@cell_lengths_and_angles, undef);
         } else {
-            warn( "WARNING, cell angle tag '$cif_tag' not present -- "
+            warn( "WARNING, cell angle data item '$cif_tag' not present -- "
                 . "taking default value 90 degrees\n" );
             push( @cell_lengths_and_angles, 90 );
         }
@@ -116,7 +116,7 @@ sub get_symmetry_operators($)
                 $sym_data = lookup_symops("hall", $hall);
 
                 if( !$sym_data ) {
-                    warn "WARNING, '$tag' tag value '$hall' was not "
+                    warn "WARNING, the '$tag' data item value '$hall' was not "
                        . "recognised as a space group name\n";
                 } else {
                     last
@@ -139,7 +139,7 @@ sub get_symmetry_operators($)
                 $sym_data = lookup_symops("hermann_mauguin", $h_m);
 
                 if( !$sym_data ) {
-                    warn "WARNING, '$tag' tag value '$h_m' was not "
+                    warn "WARNING, the '$tag' data item value '$h_m' was not "
                        . "recognised as a space group name\n";
                 } else {
                     last
@@ -164,8 +164,8 @@ sub get_symmetry_operators($)
                 $sym_data = lookup_symops("hermann_mauguin", $h_m);
 
                 if( !$sym_data ) {
-                    warn "WARNING, '$tag' tag value '$ssg_name' yielded H-M " .
-                         "symbol '$h_m' which is not in our tables\n";
+                    warn "WARNING, the '$tag' data item value '$ssg_name' " .
+                         "yielded H-M symbol '$h_m' which is not in our tables\n";
                 } else {
                     last
                 }
@@ -174,7 +174,7 @@ sub get_symmetry_operators($)
     }
 
     if( not defined $sym_data ) {
-        die 'ERROR, neither symmetry operator tag values, '
+        die 'ERROR, neither symmetry operator data item values, '
           . 'nor Hall space group name, '
           . 'nor Hermann-Mauguin space group name '
           . "could be processed to acquire symmetry operators\n";
