@@ -44,9 +44,8 @@ sub diff
             $line->[0] eq $line->[2] &&
             @{$cif1->{values}{$line->[0]}} !=
             @{$cif2->{values}{$line->[0]}} ) {
-            print "number of values for "
-                . "tag " . $line->[0]
-                . " is different\n";
+            print "the number of '$line->[0]' data item values differs "
+                 . "between datablocks\n";
             next;
         }
         if( defined $line->[0] ) {
