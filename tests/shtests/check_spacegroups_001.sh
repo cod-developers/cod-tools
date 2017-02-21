@@ -17,7 +17,7 @@ perl <<'END_SCRIPT'
 #$URL$
 #------------------------------------------------------------------------------
 #*
-#  Check whether COD::Spacegroups::Builder.pm correctly builds all spacegroups.
+#  Check whether COD::Spacegroups::Builder.pm correctly builds all space groups.
 #**
 
 use strict;
@@ -29,7 +29,7 @@ use COD::Spacegroups::Lookup::COD;
 use COD::Spacegroups::Symop::Parse qw( string_from_symop
                                        symop_string_canonical_form );
 
-# Identify the spacegroup from the symmetry operators:
+# Identify the space group from the symmetry operators:
 my %symop_lookup_table = make_symop_hash( [
                             \@COD::Spacegroups::Lookup::COD::table,
                             \@COD::Spacegroups::Lookup::COD::extra_settings
@@ -49,7 +49,7 @@ for my $sg_data (@COD::Spacegroups::Lookup::COD::table) {
         my $estimated_sg = $symop_lookup_table{$key};
         print $estimated_sg->{universal_h_m}, "\n";
     } else {
-        print "$0: spacegroup '$sg_data->{universal_h_m}' could not be identified\n"
+        print "$0: space group '$sg_data->{universal_h_m}' could not be identified\n"
     }
 
 }
