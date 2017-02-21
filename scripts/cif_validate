@@ -65,22 +65,23 @@ sub check_list_link_parent($$$);
 #* --clear-dictionaries
 #*                     Remove all CIF dictionaries from the list.
 #* --treat-as-set _atom_site_refinement_flags
-#*                     Treat values of given tags as a set. For example,
+#*                     Treat values of given data items as a set. For example,
 #*                     more than one enumeration value could be defined
-#*                     for a single element. Any number of tags can be
-#*                     provided in the following way:
+#*                     for a single element. Any number of data item tags can
+#*                     be provided in the following way:
 #*                     $0 --treat-as-set _tag_1 --treat-as-set _tag_2
-#*                     Default is the '_atom_site_refinement_flags' tag.
+#*                     Default is the '_atom_site_refinement_flags' data item.
 #* --no-treat-as-set, dont-treat-as-set
-#*                     Do not treat values of any tags as sets.
+#*                     Do not treat values of any data items as sets.
 #*                     (see --treat-as-set).
 #*  --report-local-tags
-#*                     Validate tags prefixed with '_[local]'. This prefix
-#*                     was used in COD to denote locally used tags prior to
-#*                     the creation of cif_cod.dic. The default is to ignore
-#*                     these tags.
+#*                     Validate data items having tags prefixed with
+#                      the '_[local]' prefix. The prefix was used in the COD
+#                      to denote locally used data items prior to the creation
+#                      of cif_cod.dic. The default is to ignore these data items.
 #* --no-report-local-tags, --ignore-local-tags
-#*                     Ignore tags prefixed with '_[local]'. Default.
+#*                     Ignore data items having tags prefixed with '_[local]'.
+#*                     prefix. Default.
 #* --ignore-case
 #*                     Ignore letter case while validating enumeration values.
 #*                     For example, even though '_atom_site_adp_type' is
@@ -90,12 +91,12 @@ sub check_list_link_parent($$$);
 #*                     Respect letter case while validating enumeration 
 #*                     values. Default.
 #* --report-deprecated
-#*                     Report tags that are marked as deprecated in the 
-#*                     dictionaries. Tag deprecation usually means that it 
-#*                     has been replaced with an another tag(s).
+#*                     Report data items that are marked as deprecated in the
+#*                     dictionaries. Data item deprecation usually means that
+#*                     it has been replaced with an another data item(s).
 #* --ignore-deprecated
-#*                     Do not report tags that are marked as deprecated in the 
-#*                     dictionaries. Default.
+#*                     Do not report data items that are marked as deprecated
+#                      in the dictionaries. Default.
 #* --use-perl-parser
 #*                     Use Perl parser to parse CIF files.
 #* --use-c-parser
@@ -190,7 +191,7 @@ if( @dict_files ) {
                 'program'       => $0,
                 'filename'      => $dict,
                 'err_level'     => 'WARNING',
-                'message'       => 'no tag definitions found'
+                'message'       => 'no data item definitions found'
             }, $die_on_warnings );
         }
         $tag_count += scalar( keys( %{$dict_tags{$dict}} ) );
@@ -200,7 +201,7 @@ if( @dict_files ) {
         report_message( {
             'program'   => $0,
             'err_level' => 'ERROR',
-            'message'   => 'no tag definitions were found in the '
+            'message'   => 'no data item definitions were found in the '
                          . 'provided dictionary files '
                          . '(\'' . join( '\', \'', @dict_files ) . '\')'
         }, $die_on_errors );
@@ -240,7 +241,7 @@ CIFFILEANAL: for my $filename ( @ARGV ) {
         if( $debug ) {
             debug_note( $0, $filename, $dataname, 'analysis start', undef );
         }
-        # 2-D array ( [loop_number][list_of_tags] ) to store names of looped 
+        # 2-D array ( [loop_number][list_of_tags] ) to store names of looped
         # list reference tags that have been reported as missing
         my @reported_block_references;
         #
@@ -264,7 +265,7 @@ CIFFILEANAL: for my $filename ( @ARGV ) {
             for my $dict_f ( sort keys %dict_tags ) {
                 my $dict_d = $dict_tags{$dict_f};
 
-                # check if tags are defined in the dictionary
+                # check if data items are defined in the dictionary
                 if( exists $dict_d->{$lc_tag_analysed} ) {
                     $defined = 1;
                     if ( $debug ) {
@@ -279,16 +280,16 @@ CIFFILEANAL: for my $filename ( @ARGV ) {
                     next;
                 }
 
-                # check if tags are deprecated (replaced with other tags)
+                # check if data items are deprecated (replaced with other data items)
                 my $repl_tags = get_replacement_tags($dict_d, $lc_tag_analysed);
                 if( $report_deprecated && @{$repl_tags} != 0 ) {
-                    warn "NOTE, tag '$tag_analysed' has been replaced by "
-                        . 'tag(-s) [' . join(', ', @{$repl_tags}) . '] '
+                    warn "NOTE, data items '$tag_analysed' has been replaced by "
+                        . 'data item(-s) [' . join(', ', @{$repl_tags}) . '] '
                         . "according to $dict_f" . "\n";
                 }
 
-                # check if looped lists contain reference tags required by 
-                # other tags in the looped list (together acting as a unique key)
+                # check if looped lists contain reference data items required by
+                # other data items in the looped list (together acting as a unique key)
                 my $dict_tag_values = $dict_d->{$lc_tag_analysed}{values};
 
                 if ( exists $block->{inloop}{$tag_analysed} ) {
@@ -296,21 +297,21 @@ CIFFILEANAL: for my $filename ( @ARGV ) {
                     for ( my $i = 0; $i < @{$block->{loops}}; $i++ ) {
                       next if !grep { $_ eq $tag_analysed } @{$block->{loops}[$i]};
                         foreach my $loop_ref_tag (@{$ref_tags}) {
-                            # TO-DO: the reference property is also transitional 
-                            # to the 'alternate' tags and this must be tested
+                            # TO-DO: the reference property is also transitional
+                            # to the 'alternate' data items and this must be tested
                             if( grep { lc($_) eq $loop_ref_tag } @{$block->{loops}[$i]} ) {
                                 if ( $debug ) {
                                     debug_note ( $0, $filename, $dataname,
-                                       "tag '$loop_ref_tag' is mandatory "
-                                     . 'in loop when tag(s) ['
+                                       "data item '$loop_ref_tag' is mandatory "
+                                     . 'in loop when data item(s) ['
                                      . join(', ', @{$dict_tag_values->{_name}})
                                      . '] are defined according to '
                                      . "$dict_f and was found", undef );
                                 }
                             } elsif (!grep { $_ eq $loop_ref_tag }
                                                  @{$reported_block_references[$i]}) {
-                                    warn "NOTE, tag '$loop_ref_tag' is "
-                                       . 'mandatory in loop when tag(s) ['
+                                    warn "NOTE, data item '$loop_ref_tag' is "
+                                       . 'mandatory in loop when data item(s) ['
                                        . join(', ', @{$dict_tag_values->{_name}})
                                        . "] are defined according to $dict_f "
                                        . 'but was not found' . "\n";
@@ -320,9 +321,10 @@ CIFFILEANAL: for my $filename ( @ARGV ) {
                         }
                     }
                 } elsif( $debug ) {
-                    debug_note( $0, $filename, $dataname, "tag $tag_analysed "
-                              . 'is not in loop', 'test for missing looped '
-                              . 'list reference tags will be skipped' );
+                    debug_note( $0, $filename, $dataname,
+                                "data item $tag_analysed "
+                              . 'is not in a loop', 'test for missing looped '
+                              . 'list reference data item will be skipped' );
                 }
 
                 # check list mandatory
@@ -331,11 +333,11 @@ CIFFILEANAL: for my $filename ( @ARGV ) {
                     if( exists $block->{inloop}{$tag_analysed} ) {
                         if ( $debug ) {
                             debug_note( $0, $filename, $dataname,
-                                "tag '$tag_analysed' must be in a loop " .
+                                "data item '$tag_analysed' must be in a loop " .
                                 "according to $dict_f and is in a loop", undef );
                         }
                     } else {
-                        warn "NOTE, tag '$tag_analysed' must be in a loop "
+                        warn "NOTE, data item '$tag_analysed' must be in a loop "
                            . "according to $dict_f but is not in a loop" . "\n";
                     }
                 }
@@ -411,12 +413,12 @@ CIFFILEANAL: for my $filename ( @ARGV ) {
                          join ', ', @{$dict_tag_values->{_enumeration}};
                        if( $value_found_in_list == 0 ) {
                             push @tag_value_notes,
-                                 "tag '$tag_analysed' value \"$value\" "
+                                 "data item '$tag_analysed' value \"$value\" "
                                . 'must be one of the enumeration values '
                                . "[$list_enum_values_for_tag]";
                        } else {
-                            my $message = "tag '$tag_analysed' value \"$value\" "
-                                        . 'is one of the enumeration '
+                            my $message = "data item '$tag_analysed' value "
+                                        . "\"$value\" is one of the enumeration "
                                         . "values [$list_enum_values_for_tag]";
 
                             $message .= ' (case ignored)' if( !$case_sensitive );
@@ -442,7 +444,7 @@ CIFFILEANAL: for my $filename ( @ARGV ) {
                             if( 'FLOAT' ne $block->{types}{$tag_analysed}[$tag_index] &&
                                 'INT' ne $block->{types}{$tag_analysed}[$tag_index]) {
                                 push @tag_value_notes,
-                                    "tag '$tag_analysed' value \""
+                                    "data item '$tag_analysed' value \""
                                    . $block->{values}{$tag_analysed}[$tag_index]
                                    . '" is of type \''
                                    . $block->{types}{$tag_analysed}[$tag_index]
@@ -450,7 +452,7 @@ CIFFILEANAL: for my $filename ( @ARGV ) {
                                    . '\'FLOAT\' or \'INT\'';
                             } elsif( $debug ) {
                                 debug_note( $0, $filename, $dataname,
-                                            "tag '$tag_analysed' is of type '" .
+                                            "data item '$tag_analysed' is of type '" .
                                             $block->{types}{$tag_analysed}[$tag_index] .
                                             '\' as expected, as it should be either ' .
                                             '\'FLOAT\' or \'INT\'', undef );
@@ -475,7 +477,7 @@ CIFFILEANAL: for my $filename ( @ARGV ) {
                     my $sigma = $block->{precisions}{$tag_analysed}[$tag_index];
                     if ( $value =~ /([(]\d+[)])$/ && !$su_permitted ) {
                         push @tag_value_notes,
-                             "tag '$tag_analysed' value \"$value\" "
+                             "data item '$tag_analysed' value \"$value\" "
                            . 'is not permitted to contain standard '
                            . 'uncertainty "' . $1 . '" -- '
                            . 'standard uncertainty will be ignored in '
@@ -495,29 +497,29 @@ CIFFILEANAL: for my $filename ( @ARGV ) {
                                 $dict_tag_values->{_type}[0],
                                 $range, $value_wo_su, $sigma) <= 0 ) {
                                 push @tag_value_notes,
-                                     "tag '$tag_analysed' value " .
+                                     "data item '$tag_analysed' value " .
                                      "\"$value\" should be in range [" .
                                      $range_for_print{min} .
                                      ', ' . $range_for_print{max} . ']';
                         } elsif( $debug ) {
                             debug_note( $0, $filename, $dataname,
-                                        "tag '$tag_analysed' value " .
+                                        "data item '$tag_analysed' value " .
                                         "\"$value\" is in range [" .
                                         $range_for_print{min} . ', ' .
                                         $range_for_print{max} . ']', undef );
                         }
                     } elsif( $debug ) {
                         debug_note( $0, $filename, $dataname,
-                                    'there are no range restrictions ' .
-                                    "for tag \"$tag_analysed\"",
-                                    'skipping range test' );
+                                    'there are no value range restrictions ' .
+                                    "for data item \"$tag_analysed\"",
+                                    'skipping the range test' );
                     }
                 }
             }
 
             if( !$defined ) {
                 push @tag_value_notes,
-                      "tag '$tag_analysed' was not found in dictionaries";
+                      "data item '$tag_analysed' was not found in dictionaries";
             }
         }
 
@@ -567,7 +569,7 @@ sub severity_name($)
 }
 
 ##
-# Extracts tags from dictionary (parsed using COD::CIF::Parser).
+# Extracts data items from dictionary (parsed using COD::CIF::Parser).
 # @param $dict_f
 #       Reference to COD::CIF::Parser output CIF object.
 # @return
@@ -605,14 +607,14 @@ sub get_dict($)
 }
 
 ##
-# Returns tag names that have superseded the tag.
+# Returns an array of tags of data items that have superseded the data item.
 # @param $dict
 #       Reference to a dictionary object as returned by 'get_dict' subroutine.
 # @param $tag
-#       Name of the tag.
+#       Name of the data item.
 # @return
-#       Array of tag names that have superseded the tag. If the tag has not
-#       been deprecated, an empty array is returned.
+#       Array of tags of data items that have superseded the data item. If the
+#       data item has not been deprecated, an empty array is returned.
 ##
 sub get_replacement_tags($$)
 {
@@ -621,7 +623,7 @@ sub get_replacement_tags($$)
     my $tag_values = $dict->{lc $tag}{values};
 
     my @replace_with;
-    # check if tags are deprecated (replaced with other tags)
+    # check if data items are deprecated (replaced with other data items)
     if( defined $tag_values->{_related_item} ) {
         for( my $i = 0; $i < @{$tag_values->{_related_item}}; $i++ ) {
             if( $tag_values->{_related_function}[$i] eq 'replace' ) {
@@ -730,15 +732,15 @@ sub check_against_range_char($$)
 }
 
 ##
-# Returns an array of tags that are required to be present in the loop
-# containing the analyzed tag.
+# Returns an array of tags of the data items that are required to be present
+# in the loop containing the analyzed data item.
 # @param $dict
 #       Reference to a dictionary object as returned by 'get_dict' subroutine.
 # @param $tag
-#       Name of the tag to analyze.
+#       Name of the data item to analyze.
 # @return $list_reference_tags
-#       A reference to an array of tags that are required to be present in the 
-#       loop containing the analyzed tag.
+#       A reference to an array of tags of data items that are required to
+#       be present in the loop containing the analyzed data items.
 ##
 sub get_list_reference_tags($$)
 {
@@ -780,7 +782,7 @@ sub check_list_link_parent($$$)
 
     for my $value (@unmatched) {
         next if ( $value eq '.' || $value eq '?' );
-        warn "NOTE, value \"$value\" of tag \"$parent\" is required " .
-             "as the tag is a parent of \"$tag\"\n";
+        warn "NOTE, value \"$value\" of data item \"$parent\" is required " .
+             "as the data item is a parent of the \"$tag\" data item\n";
     }
 }
