@@ -360,7 +360,7 @@ sub atom_array_from_cif($$)
         push( @$f2o, [0,0,0,1] );
     }
 
-    # Determine which atom site label tag is present and which can be
+    # Determine which atom site label data item is present and which can be
     # used for identifying atoms:
 
     my $atom_site_tag;
@@ -369,12 +369,12 @@ sub atom_array_from_cif($$)
         $atom_site_tag = '_atom_site_label';
     } elsif( exists $values->{'_atom_site_type_symbol'} ) {
         $atom_site_tag = '_atom_site_type_symbol';
-        warn 'WARNING, \'_atom_site_label\' tag was not found -- a serial '
-           . 'number will be appended to the \'_atom_site_type_symbol\' '
-           . 'tag values to make atom labels' . "\n";
+        warn 'WARNING, \'_atom_site_label\' data item was not found -- a '
+           . 'serial number will be appended to the \'_atom_site_type_symbol\' '
+           . 'data item values to make atom labels' . "\n";
     } else {
         die 'ERROR, neither \'_atom_site_label\' nor '
-          . '\'_atom_site_type_symbol\' tag present' . "\n";
+          . '\'_atom_site_type_symbol\' data item present' . "\n";
     }
 
     my $atom_labels = $values->{$atom_site_tag};
