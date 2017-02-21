@@ -767,7 +767,7 @@ sub filter_and_check
 
     C2CMESSAGE:
     foreach( split /\n/, $cif2cod_stderr ) {
-        if( /[^: ]+: [^:]+: [A-Z]+, tag '([^']+)' is absent/ ) {
+        if( /[^: ]+: [^:]+: [A-Z]+, data item '([^']+)' is absent/ ) {
             my $tag = $1;
             if( $deposition_type eq 'published' ) {
                 next C2CMESSAGE if $tag eq '_journal_volume';

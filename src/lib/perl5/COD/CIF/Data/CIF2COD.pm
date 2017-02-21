@@ -628,13 +628,13 @@ sub get_and_check_tag
                 return $val;
             } else {
                 unless( $ignore_errors ) {
-                    warn "WARNING, tag '$tag' does not have value "
+                    warn "WARNING, data item '$tag' does not have value "
                        . "number $index\n";
                 }
             }
         } else {
             unless( $ignore_errors ) {
-                warn "WARNING, tag '$tag' is absent\n";
+                warn "WARNING, data item '$tag' is absent\n";
             }
         }
     }
