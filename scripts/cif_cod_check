@@ -1386,7 +1386,7 @@ sub parser_reporter
     return 0;
 }
 
-# To check that the specified XYZ tag value is within expected limits.
+# To check that the specified XYZ dat item value is within expected limits.
 
 sub check_limits {
     my ($dataset) = @_;
@@ -1407,20 +1407,20 @@ sub check_limits {
         my $value = $values->{$tag}[0];
         next if $value =~ /^(\.|\?)$/;
         if( $value !~ /^([+-]?(?:\d+(?:\.\d*)?|\.\d+))\(?(\d*)\)?$/ ) {
-            warn "ERROR, tag '$tag' value '$value' is not numeric" . "\n";
+            warn "ERROR, data item '$tag' value '$value' is not numeric" . "\n";
             $errors++;
             next;
         } else {
             my $number = $1;
             my $precision = $2;
             if( ($tag =~ /_w?R_factor_/) && ( $precision ) ) {
-                warn "WARNING, '$tag' value is '$value', but it should "
-                   . 'be numeric and without precision (esd value)' . "\n";
+                warn "WARNING, data item '$tag' value is '$value', but it "
+                   . 'should  be numeric and without precision (esd value)' . "\n";
                 $warnings++;
                 next;
             }
             if( $number < 0 ) {
-                warn "WARNING, '$tag' value '$value' should "
+                warn "WARNING, data item '$tag' value '$value' should "
                    . 'be in range [0.0;+inf]' . "\n";
                 $warnings++;
                 next;
@@ -1429,7 +1429,7 @@ sub check_limits {
                 foreach my $i( 0..$#{ $limits_table->{$tag} } ) {
                     my $limit = @{ $limits_table->{$tag}->[$i]}[0];
                     if( $number > $limit ) {
-                        warn "$report_names[$i], tag '$tag' value "
+                        warn "$report_names[$i], data item '$tag' value "
                            . "'$value' is > $limit" . "\n";
                         $errors++   if $i == 0; # $i is @report_names index
                         $warnings++ if $i == 1;
@@ -1442,7 +1442,7 @@ sub check_limits {
                     my $begin = @{ $limits_table->{$tag}->[$i]}[0];
                     my $end = @{ $limits_table->{$tag}->[$i]}[1];
                     if( ($number < $begin) || ($number > $end) ) {
-                        warn "$report_names[$i], tag '$tag' value '$value' "
+                        warn "$report_names[$i], data item '$tag' value '$value' "
                            . "lies outside the range $begin <> $end" . "\n";
                             $errors++   if $i == 0; # $i is @report_names index
                             $warnings++ if $i == 1;
@@ -1582,9 +1582,10 @@ sub check_all_tags_present
         my @tags_absent = sort {$a cmp $b} keys %tags_absent;
         my $tag = $tags_present[0];
 
-        warn "WARNING, tag '$tag' is present, but tag"
-            . ( int(@tags_absent) > 1 ? 's' : '' ) . ' '
-            . join( ', ', @tags_absent ) . ' are absent' . "\n";
+        warn "WARNING, data item '$tag' is present, but data item"
+            . ( int(@tags_absent) > 1 ? 's' : '' ) . ' ['
+            . join( ', ', map { "'$_'" } @tags_absent ) . '] '
+            . ( int(@tags_absent) > 1 ? 'are' : 'is' ) . ' absent' . "\n";
         return 1;
     } else {
         return 0;
