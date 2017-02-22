@@ -211,7 +211,7 @@ my @default_set_tags = ( '_atom_site_refinement_flags' );
 #*   --fix-density-meas
 #*     Corrects value of data item '_exptl_crystal_density_meas'.
 #*     Values which are perceived as 'not measured' are changed to '?'.
-#*     The correct units are deleted. The new tag is created 
+#*     The correct units are deleted. The new data item is created
 #*     if there are information about temperature.
 #*
 #*   --fix-weighting-scheme
@@ -1150,9 +1150,9 @@ sub fix_value_of_exptl_crystal_density_meas($) {
                     set_tag( $dataset, $new_tag, $temp_value );
 
                     $report_msg .=
-                        " New tag '$new_tag' was created. The value of " .
-                        "new tag set to - '$temp_value'" .
-                            ( defined $temp_Celsius ? ', it was converted ' .
+                        " A new data item '$new_tag' was created with the " .
+                        "value set to '$temp_value'" .
+                            ( defined $temp_Celsius ? ' - it was converted ' .
                              'from degrees Celsius(C) to Kelvins(K)' : '' ) .
                         '.';
                 }
@@ -1249,9 +1249,8 @@ sub fix_value_of_refine_ls_weighting_scheme($) {
 
                 set_tag( $dataset, $new_tag, $new_value );
 
-                $report_msg .= " New tag '$new_tag' was created. " .
-                    'The value of the new tag was set to ' .
-                    "'$new_value'.";
+                $report_msg .= " A new data item '$new_tag' was created with " .
+                    'the value set to ' . "'$new_value'.";
 
                 push @insert_reports, $report_msg;
                 warn "NOTE, $report_msg\n";
