@@ -16,7 +16,7 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #      undefined temperature values;
 #    - Fixing misspelled values by using the provided replacement value file;
 #    - Fixing enumeration values in CIF file against CIF dictionaries;
-#    - Correcting values of '_exptl_crystal_density_meas' tag.
+#    - Correcting values of '_exptl_crystal_density_meas' data item.
 #
 #  All described corrections are enabled by default, but can be disabled by 
 #  prefixing the corresponding options by '--do-not', '--dont' or '--no'
@@ -513,8 +513,8 @@ if( @dictionaries ) {
                         report_message( {
                            'program'   => $0,
                            'err_level' => 'WARNING',
-                           'message'   => "tag '$_' is already defined by "
-                                        . "dictionary '$dict'" },
+                           'message'   => "data item '$_' is already defined by "
+                                        . "the dictionary '$dict'" },
                            $die_on_warnings );
                     }
                 }
@@ -576,8 +576,8 @@ sub fix_misspelled_values($$) {
                     . "was applied on value '$old_value'\n";
             } elsif( $count == 1 ) {
                  my $message_key =
-                     "NOTE, '$tag' tag value '$old_value' " .
-                     "was replaced with '$tag_value' value " .
+                     "NOTE, '$tag' value '$old_value' " .
+                     "was replaced with the value '$tag_value' " .
                      'as specified in the replacement file ' .
                      "'$replacement_file'";
                  if(! exists $reports{$message_key} ) {
@@ -1121,7 +1121,7 @@ sub fix_value_of_exptl_crystal_density_meas($) {
                     $values->{$tag}[$i] =
                     pack_precision( $meas_number, $meas_sigma );
 
-                $report_msg = "Tag '$tag' value '$value' was modified " .
+                $report_msg = "'$tag' value '$value' was changed " .
                               "to '$new_meas_value'.";
 
                 if( defined $units ){
