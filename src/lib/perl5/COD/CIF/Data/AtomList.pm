@@ -518,13 +518,28 @@ sub uniquify_atom_names($$)
 }
 
 #============================================================================= #
-# It's a function where atom groups are made according disorder information. If
-# there is only one disorder assembly then all possible atom groups will be
-# generated. If there is more then one disorder assembly, decision will be made
-# according the following example:
-# an assembly disorder A has three disorder groups and B - two. Then the
-# following groups will be made: (1,1) (2,2) (3,2).
-
+# It's a function where atom groups are made according disorder information.
+# If there is only one disorder assembly then all possible atom groups will be
+# generated. If there is more than one disorder assembly a subset of all
+# available combinations will be generated giving preference to disorder
+# groups with higher occupancy and atom count. Higher atom occupancy takes
+# precedence over higher atom count. Occupancy of the disorder group is
+# considered to be equal to the highest occupancy of any atom in that group.
+# The subset generation algorithm can be illustrated with the following example:
+#
+# There are two disorder assemblies 'A' (3 groups) and 'B' (2 groups) with
+# differing occupancies and sizes:
+# A = [ { 'name' => 1, 'occupancy' => 0.2, 'size' => 5 },
+#       { 'name' => 2, 'occupancy' => 0.6, 'size' => 3 },
+#       { 'name' => 3, 'occupancy' => 0.2, 'size' => 6 } ];
+# B = [ { 'name' => 1, 'occupancy' => 0.6, 'size' => 2 },
+#     [ { 'name' => 2. 'occupancy' => 0.4, 'size' => 3 } ];
+#
+# Then the following combinations will be returned in the following order:
+# (2,1) # Best from A, best from B
+# (3,1) # Second best largest occupancy group from A, best from B
+# (1,2) # Worst from A, worst from B
+#
 # Accepts
 #   initial_atoms - an array of references to
 #   $atom_info = {
@@ -570,6 +585,47 @@ sub atom_groups
         my @one_assembly;
         push(@one_assembly, $initial_atoms);
         return \@one_assembly;
+    }
+
+    for my $assembly (keys %$assemblies) {
+        my %max_group_occupancy;
+        my %group_size;
+        my @groups = @{$assemblies->{$assembly}};
+        for my $group ( @groups ) {
+
+            my $all_occupancies_match = 1;
+            foreach my $atom (@$initial_atoms) {
+                if ( $atom->{'group'} eq $group &&
+                    $atom->{'assembly'} eq $assembly ) {
+                    $group_size{$group}++;
+                    my $occupancy = ( $atom->{'atom_site_occupancy'} eq '.' ||
+                                      $atom->{'atom_site_occupancy'} eq '?' )
+                                      ? 0 : $atom->{'atom_site_occupancy'};
+                    $occupancy =~ s/[(]\d+[)]$//; # remove precision
+                    if ( !defined $max_group_occupancy{$group} ) {
+                        $max_group_occupancy{$group} = $occupancy;
+                    } elsif ( $max_group_occupancy{$group} < $occupancy ) {
+                        $max_group_occupancy{$group} = $occupancy;
+                        $all_occupancies_match = 0;
+                    }
+                }
+            }
+            if ( !$all_occupancies_match ) {
+                warn 'WARNING, not all atoms in disorder assembly ' .
+                     "'$assembly' group '$group' have the same occupancy\n";
+            }
+        }
+
+        my @sorted_indexes = sort {
+            $max_group_occupancy{$groups[$a]} <=>
+            $max_group_occupancy{$groups[$b]} ||
+            $group_size{$groups[$a]} <=> $group_size{$groups[$b]} ||
+            $b <=> $a
+        } 0..$#groups;
+
+        @groups = @groups[@sorted_indexes];
+
+        $assemblies->{$assembly} = \@groups;
     }
 
     my @keys = sort { ($a eq ".") ? -1 : ($b eq ".") ? 1 : $a cmp $b }
@@ -635,6 +691,7 @@ sub atom_groups
             push(@atom_groups, \@group);
         }
     }
+    @atom_groups = reverse @atom_groups;
 
     # Appends those atoms which do not belong to any group or assembly
 
