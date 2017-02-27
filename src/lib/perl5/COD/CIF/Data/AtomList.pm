@@ -587,7 +587,7 @@ sub atom_groups
         return \@one_assembly;
     }
 
-    for my $assembly (keys %$assemblies) {
+    for my $assembly (sort keys %$assemblies) {
         my %max_group_occupancy;
         my %group_size;
         my @groups = @{$assemblies->{$assembly}};
