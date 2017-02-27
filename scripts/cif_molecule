@@ -185,15 +185,23 @@ my $die_on_notes    = 0;
 
 #* OPTIONS:
 #* -1, --one-datablock-output
-#*                  Output all molecules and all alternative conformations to
-#*                  a single output data block.
+#*                  Output all moieties to a single output data block.
+#*
+#*                  However, if the --split-disorder-groups option is
+#*                  enabled all generated alternative conformations will
+#*                  be put into separate data blocks starting with the
+#*                  most likely one (disorder group occupancy wise) and
+#*                  ending with the least likely one. In order to retrieve
+#*                  only the most likely one, the --largest-molecule-only
+#*                  option should be used in combination with the
+#*                  --one-datablock-output option.
 #*
 #* -1-, --multiple-datablocks-output
 #*                  Separate each molecule and each example of an alternative
-#*                  conformation into a separate data block.
+#*                  conformation into a separate data block (default).
 #*
 #* -c, --covalent-sensitivity
-#*                  Set a new covalent sensitivity value (default 0.35)
+#*                  Set a new covalent sensitivity value (default 0.35).
 #*
 #* -g, --geom-bond-output
 #*                  Output _geom_bond_... data items (bond lengths,
@@ -215,8 +223,8 @@ my $die_on_notes    = 0;
 #*                  detected (default).
 #*
 #* -s, --sort-molecules
-#*                  Sort molecules descending bey their atom types before
-#*                  outputting them into the output CIF.
+#*                  Sort molecules descending by their atom types before
+#*                  outputting them into the output CIF (default).
 #*
 #* --dont-sort-molecules, --no-sort-molecules
 #*                  Do not sort molecules, print them out in the order they
@@ -316,7 +324,7 @@ my $die_on_notes    = 0;
 #*
 #* --dump-atoms
 #*                  Dump atoms (including symmetry-equivalent) in CIF
-#*                  format, for inspection with some graphics program.
+#*                  format for inspection with some graphics program.
 #*
 #* --dont-dump-atoms, --no-dump-atoms
 #*                  Do not dump atoms (default).
@@ -342,11 +350,23 @@ my $die_on_notes    = 0;
 #*                  Put all disorder groups into one data block.
 #*
 #* --largest, --largest-molecule-only
-#*                  Output only the largest (having the greatest
-#*                  number of atoms) molecule.
+#*                  Output only the largest molecule. The largest molecule
+#*                  is selected based on two critera in the given order:
+#*                  atom count and overall occupancy of the molecule.
+#*                  When the combination of the --one-datablock-output and
+#*                  --split-disorder-groups options is in effect the
+#*                  molecule with the most likely disorder conformation
+#*                  (occupancy wise) is returned.
+#*
+#*                  NOTE: if there is more than one disorder assembly
+#*                  and the --split-disorder-groups option is in effect,
+#*                  the conformation with the highest atom count might not
+#*                  be generated at all. In this case, a molecule that best
+#*                  fits the previously defined criteria out of the generated
+#*                  conformation subset will be returned.
 #*
 #* --all, --all-molecules
-#*                  Output all molecules.
+#*                  Output all molecules (default).
 #*
 #* --use-perl-parser
 #* --use-c-parser
@@ -500,7 +520,7 @@ my $die_on_notes    = 0;
 
 # The '--remove-duplicate-molecules' is no longer necessary since the
 # new algorithm (after changing order of molecule generation and
-# disroder group representative generation) never produces duplicate
+# disorder group representative generation) never produces duplicate
 # molecules:
 
     "--remove-duplicate-molecules"      => sub { },
@@ -849,9 +869,36 @@ for my $filename (@ARGV) {
                 $unique_molecules = \@split_molecules;
             }
 
-            if( $sort_molecules || $largest_molecule_only ) {
-                @$unique_molecules = sort {@{$b->{atoms}} <=> @{$a->{atoms}}}
-                @$unique_molecules;
+            # There is no need to sort the molecules if the single data block
+            # output is required since:
+            # a) there is only one molecule (no disorder);
+            # b) there is several disorder configurations, but the
+            #    best one (occupancy wise) is already at the beginning
+            #    of the array
+            if( !$use_one_output_datablock &&
+                ( $sort_molecules || $largest_molecule_only ) ) {
+                my @molecule_sum_occupancy;
+                for (my $i = 0; $i < @{$unique_molecules}; $i++ ) {
+                    $molecule_sum_occupancy[$i] = 0;
+                    my $atoms = $unique_molecules->[$i]{'atoms'};
+                    next if ( !defined $atoms->[0]{'atom_site_occupancy'} );
+                    for my $atom (@{$atoms}) {
+                        my $occupancy = (
+                                      $atom->{'atom_site_occupancy'} eq '.' ||
+                                      $atom->{'atom_site_occupancy'} eq '?' )
+                                      ? 0 : $atom->{'atom_site_occupancy'};
+                        $occupancy =~ s/[(]\d+[)]$//; # remove precision
+                        $molecule_sum_occupancy[$i] += $occupancy;
+                    }
+                };
+
+                my @sorted_indexes = sort {
+                    @{$unique_molecules->[$b]{atoms}} <=>
+                    @{$unique_molecules->[$a]{atoms} ||
+                    $molecule_sum_occupancy[$b] <=>
+                    $molecule_sum_occupancy[$a] }
+                } 0..$#$unique_molecules;
+                @{$unique_molecules} = @{$unique_molecules}[@sorted_indexes];
             }
 
             my $molecule_id = 0;
