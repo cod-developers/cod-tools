@@ -295,7 +295,12 @@ my $die_on_notes    = 0;
 #*
 #* --dont-exclude-dummy-atoms, --no-exclude-dummy-atoms
 #*                  Use dummy atoms (marked by the 'dum' calc flag)
-#*                  in calculations. It should be noted that dummy atoms
+#*                  in calculations. Dummy atoms can be used to mark
+#*                  interesting positions within the unit cell
+#*                  (e.g. geometric centers of coordinated atom rings),
+#*                  but they are not considered as part of the molecule.
+#*                  As a result, the occupancies of all output dummy atoms
+#*                  are set to '.'. It should also be noted that dummy atoms
 #*                  with non-numeric coordinates will still be excluded.
 #*
 #* --dont-continue-on-errors, --no-continue-on-errors
@@ -311,7 +316,12 @@ my $die_on_notes    = 0;
 #*                  break stoichiometry of salts and complexes (default).
 #*
 #* --force-unit-occupancies
-#*                  Set occupancies of all output atoms to 1.0.
+#*                  Set occupancies of all output atoms to 1.0. Unit
+#*                  occupancies are only set when outputting the atoms
+#*                  and do not affect the flow of the algorithm
+#*                  (disorder group processing, molecule sorting, etc.).
+#*                  Dummy atoms are excluded from the effects of this option
+#*                  and are always output with the '.' occupancy.
 #*
 #*                  Some programs, notably Jumbo converter's cif2cml,
 #*                  assume unresolved disorder and do not recognize
@@ -1962,7 +1972,10 @@ sub print_molecule
         }
         if( defined $atom_site_occupancy ) {
             print " ";
-            if( $force_unit_occupancies ) {
+            if ( exists $atom->{'calc_flag'} &&
+                 $atom->{'calc_flag'} eq 'dum' ) {
+                print '.';
+            } elsif( $force_unit_occupancies ) {
                 print "1.0";
             } else {
                 print_value( $atom->{atom_site_occupancy} );
