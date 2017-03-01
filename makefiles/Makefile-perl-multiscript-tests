@@ -82,6 +82,10 @@ ${LOCAL_PERL_LIB}/%.pm: ${PERL_SOURCE_TOP}/%/source.c \
 		$(notdir $(patsubst %/,%,${dir $@}))/${notdir $@}
 	${MAKE} -C $(dir $(patsubst %/,%,${dir $@})) tests
 
+# Rule to make executable program files required for testing
+${C_PROGRAM_EXE_FILES}:
+	${MAKE} -C $(dir $@)
+
 #------------------------------------------------------------------------------
 
 MAKELOCAL_FILES = ${filter-out %~, ${wildcard Makelocal*}}
@@ -172,7 +176,7 @@ test: ${TST_DIFFS} ${SCRIPT_DIFFS}
 
 # Rule to ensure that libraries, required for tested scripts, are compiled
 
-${TST_DIFFS} ${SCRIPT_DIFFS}: ${LOCAL_LIB_FILES}
+${TST_DIFFS} ${SCRIPT_DIFFS}: ${LOCAL_LIB_FILES} ${C_PROGRAM_EXE_FILES}
 
 # Rules to run script-specific tests
 

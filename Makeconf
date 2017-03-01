@@ -29,6 +29,12 @@ LOCAL_LIB_FILES  = ${TOP}/src/externals/cexceptions/lib/libcexceptions.a \
                    ${TOP}/src/externals/getoptions/lib/libgetoptions.a \
                    ${C_PARSER_LIB_DIR}/lib/libcodcif.a
 
+# C programs used in testing: cifparse, cifvalues, cif_list_tags
+C_PROGRAM_SOURCE_DIR    = ${C_PARSER_LIB_DIR}/programs
+C_PROGRAM_SOURCE_FILES  = ${wildcard ${C_PROGRAM_SOURCE_DIR}/*.c}
+C_PROGRAM_EXE_FILES     = ${patsubst %.c, ${C_PARSER_LIB_DIR}/%, \
+                            ${notdir ${C_PROGRAM_SOURCE_FILES}}}
+
 CODTOOLS_SCRIPTS = $(shell find scripts/ -maxdepth 1 -name \*~ -prune -o \
                                                      -name cif_printout_Python -prune -o \
                                                      -type f -a -executable -print)
