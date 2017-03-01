@@ -5,6 +5,9 @@
 * $URL$
 \*-------------------------------------------------------------------------*/
 
+#ifndef __VALUE_H
+#define __VALUE_H
+
 typedef struct VALUE VALUE;
 
 typedef enum {
@@ -13,3 +16,5 @@ typedef enum {
     VALUE_LIST,
     VALUE_TABLE,
 } value_type_t;
+
+#endif

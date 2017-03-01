@@ -10,6 +10,7 @@
 #include <allocx.h>
 #include <cexceptions.h>
 #include <stringx.h>
+#include <table.h>
 #include <value.h>
 
 #define DELTA_CAPACITY (100)
@@ -20,7 +21,7 @@ struct TABLE {
     size_t capacity;
 
     char **keys;
-    VALUE *values;
+    VALUE **values;
 };
 
 void table_add( typed_value *root, char *key, typed_value *value,
@@ -60,6 +61,17 @@ typed_value *table_get( typed_value *root, char *key )
     for( i = 0; i < root->vlength; i++ ) {
         if( strcmp( root->vkeys[i], key ) == 0 ) {
             return root->vvalues[i];
+        }
+    }
+    return NULL;
+}
+
+VALUE *table_get_t( TABLE *table, char *key )
+{
+    size_t i;
+    for( i = 0; i < table->length; i++ ) {
+        if( strcmp( table->keys[i], key ) == 0 ) {
+            return table->values[i];
         }
     }
     return NULL;
