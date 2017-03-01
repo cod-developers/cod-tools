@@ -24,49 +24,43 @@ struct TABLE {
     VALUE **values;
 };
 
-void table_add( typed_value *root, char *key, typed_value *value,
-               cexception_t *ex )
+TABLE *new_table( cexception_t *ex )
+{
+    TABLE *table = callocx( 1, sizeof(TABLE*), ex );
+    return table;
+}
+
+void table_add( TABLE *table, char *key, VALUE *value, cexception_t *ex )
 {
     cexception_t inner;
     ssize_t i;
     
     cexception_guard( inner ) {
-        i = root->vlength;
-        if( root->vlength + 1 > root->vcapacity ) {
-            root->vkeys = reallocx( root->vkeys,
+        i = table->length;
+        if( table->length + 1 > table->capacity ) {
+            table->keys = reallocx( table->keys,
                                     sizeof( char* ) *
-                                    (root->vcapacity + DELTA_CAPACITY),
+                                    (table->capacity + DELTA_CAPACITY),
                                     &inner );
-            root->vkeys[i] = NULL;
-            root->vvalues = reallocx( root->vvalues,
-                                      sizeof( typed_value* ) *
-                                      (root->vcapacity + DELTA_CAPACITY),
+            table->keys[i] = NULL;
+            table->values = reallocx( table->values,
+                                      sizeof( VALUE* ) *
+                                      (table->capacity + DELTA_CAPACITY),
                                       &inner );
-            root->vvalues[i] = NULL;
-            root->vcapacity += DELTA_CAPACITY;
+            table->values[i] = NULL;
+            table->capacity += DELTA_CAPACITY;
         }
-        root->vlength++;
+        table->length++;
 
-        root->vkeys[i] = strdupx( key, &inner );
-        root->vvalues[i] = value;
+        table->keys[i] = strdupx( key, &inner );
+        table->values[i] = value;
     }
     cexception_catch {
         cexception_reraise( inner, ex );
     }    
 }
 
-typed_value *table_get( typed_value *root, char *key )
-{
-    ssize_t i;
-    for( i = 0; i < root->vlength; i++ ) {
-        if( strcmp( root->vkeys[i], key ) == 0 ) {
-            return root->vvalues[i];
-        }
-    }
-    return NULL;
-}
-
-VALUE *table_get_t( TABLE *table, char *key )
+VALUE *table_get( TABLE *table, char *key )
 {
     size_t i;
     for( i = 0; i < table->length; i++ ) {
