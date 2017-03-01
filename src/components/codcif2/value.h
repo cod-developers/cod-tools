@@ -5,6 +5,8 @@
 * $URL$
 \*-------------------------------------------------------------------------*/
 
+typedef struct VALUE VALUE;
+
 typedef enum {
     VALUE_UNKNOWN = 0,
     VALUE_SCALAR,

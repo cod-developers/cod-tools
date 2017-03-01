@@ -12,7 +12,7 @@ struct VALUE {
         char *str;
         struct VALUE *s;
         // struct LIST *l;
-        // struct TABLE *t;
+        struct TABLE *t;
     } v;
     value_type_t type;
 };

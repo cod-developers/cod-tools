@@ -10,8 +10,18 @@
 #include <allocx.h>
 #include <cexceptions.h>
 #include <stringx.h>
+#include <value.h>
 
 #define DELTA_CAPACITY (100)
+
+struct TABLE {
+
+    size_t length;
+    size_t capacity;
+
+    char **keys;
+    VALUE *values;
+};
 
 void table_add( typed_value *root, char *key, typed_value *value,
                cexception_t *ex )
