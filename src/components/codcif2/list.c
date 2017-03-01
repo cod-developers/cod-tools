@@ -6,7 +6,6 @@
 \*-------------------------------------------------------------------------*/
 
 #include <string.h>
-#include <cif_grammar_y.h>
 #include <allocx.h>
 #include <cexceptions.h>
 #include <stringx.h>
@@ -22,6 +21,12 @@ struct LIST {
 
     VALUE **values;
 };
+
+LIST *new_list( cexception_t *ex )
+{
+    LIST *list = callocx( 1, sizeof(LIST*), ex );
+    return list;
+}
 
 void list_add( LIST *list, VALUE *value, cexception_t *ex )
 {
