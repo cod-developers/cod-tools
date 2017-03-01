@@ -40,3 +40,15 @@ VALUE *new_value_from_table( TABLE *table, cexception_t *ex ) {
     value->type = VALUE_TABLE;
     return value;
 }
+
+value_type_t value_get_type( VALUE *value ) {
+    return value->type;
+}
+
+LIST *value_get_list( VALUE *value ) {
+    return value->v.l;
+}
+
+TABLE *value_get_table( VALUE *value ) {
+    return value->v.t;
+}
