@@ -16,7 +16,7 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #      undefined temperature values;
 #    - Fixing misspelled values by using the provided replacement value file;
 #    - Fixing enumeration values in CIF file against CIF dictionaries;
-#    - Correcting values of '_exptl_crystal_density_meas' tag.
+#    - Correcting values of '_exptl_crystal_density_meas' data item.
 #
 #  All described corrections are enabled by default, but can be disabled by 
 #  prefixing the corresponding options by '--do-not', '--dont' or '--no'
@@ -211,7 +211,7 @@ my @default_set_tags = ( '_atom_site_refinement_flags' );
 #*   --fix-density-meas
 #*     Corrects value of data item '_exptl_crystal_density_meas'.
 #*     Values which are perceived as 'not measured' are changed to '?'.
-#*     The correct units are deleted. The new tag is created 
+#*     The correct units are deleted. The new data item is created
 #*     if there are information about temperature.
 #*
 #*   --fix-weighting-scheme
@@ -513,8 +513,8 @@ if( @dictionaries ) {
                         report_message( {
                            'program'   => $0,
                            'err_level' => 'WARNING',
-                           'message'   => "tag '$_' is already defined by "
-                                        . "dictionary '$dict'" },
+                           'message'   => "data item '$_' is already defined by "
+                                        . "the dictionary '$dict'" },
                            $die_on_warnings );
                     }
                 }
@@ -576,8 +576,8 @@ sub fix_misspelled_values($$) {
                     . "was applied on value '$old_value'\n";
             } elsif( $count == 1 ) {
                  my $message_key =
-                     "NOTE, '$tag' tag value '$old_value' " .
-                     "was replaced with '$tag_value' value " .
+                     "NOTE, '$tag' value '$old_value' " .
+                     "was replaced with the value '$tag_value' " .
                      'as specified in the replacement file ' .
                      "'$replacement_file'";
                  if(! exists $reports{$message_key} ) {
@@ -741,7 +741,7 @@ sub fix_temperature($) {
                         my $report_msg =
                             "'$tag' tag was changed to " .
                             "'$new_tag' since the value was " .
-                            'specified \'more than\' (\'>\') a ' .
+                            'specified as \'more than\' (\'>\') a ' .
                             'certain temperature. The value ' .
                             "'$temperature' was changed to " .
                             "'$new_val' - it was converted from " .
@@ -761,7 +761,7 @@ sub fix_temperature($) {
                         my $report_msg =
                             "'$tag' tag was changed to " .
                             "'$new_tag' since the value was " .
-                            'specified \'less than\' (\'<\') a ' .
+                            'specified as \'less than\' (\'<\') a ' .
                             'certain temperature. The value ' .
                             "'$temperature' was changed to " .
                             "'$new_val' - it was converted from " .
@@ -800,7 +800,7 @@ sub fix_temperature($) {
                         my $report_msg =
                             "'$tag' tag was changed to " .
                             "'$new_tag' since the value was " .
-                            'specified \'more than\' (\'>\') a ' .
+                            'specified as \'more than\' (\'>\') a ' .
                             'certain temperature. The value ' .
                             "'$temperature' was changed to " .
                             "'$new_val' - it should be numeric " .
@@ -820,7 +820,7 @@ sub fix_temperature($) {
                         my $report_msg =
                             "'$tag' tag was changed to " .
                             "'$new_tag' since the value was " .
-                            'specified \'less than\' (\'<\') a ' .
+                            'specified as \'less than\' (\'<\') a ' .
                             'certain temperature. The value ' .
                             "'$temperature' was changed to " .
                             "'$new_val' - it should be numeric " .
@@ -1121,7 +1121,7 @@ sub fix_value_of_exptl_crystal_density_meas($) {
                     $values->{$tag}[$i] =
                     pack_precision( $meas_number, $meas_sigma );
 
-                $report_msg = "Tag '$tag' value '$value' was modified " .
+                $report_msg = "'$tag' value '$value' was changed " .
                               "to '$new_meas_value'.";
 
                 if( defined $units ){
@@ -1150,9 +1150,9 @@ sub fix_value_of_exptl_crystal_density_meas($) {
                     set_tag( $dataset, $new_tag, $temp_value );
 
                     $report_msg .=
-                        " New tag '$new_tag' was created. The value of " .
-                        "new tag set to - '$temp_value'" .
-                            ( defined $temp_Celsius ? ', it was converted ' .
+                        " A new data item '$new_tag' was created with the " .
+                        "value set to '$temp_value'" .
+                            ( defined $temp_Celsius ? ' - it was converted ' .
                              'from degrees Celsius(C) to Kelvins(K)' : '' ) .
                         '.';
                 }
@@ -1249,9 +1249,8 @@ sub fix_value_of_refine_ls_weighting_scheme($) {
 
                 set_tag( $dataset, $new_tag, $new_value );
 
-                $report_msg .= " New tag '$new_tag' was created. " .
-                    'The value of the new tag was set to ' .
-                    "'$new_value'.";
+                $report_msg .= " A new data item '$new_tag' was created with " .
+                    'the value set to ' . "'$new_value'.";
 
                 push @insert_reports, $report_msg;
                 warn "NOTE, $report_msg\n";

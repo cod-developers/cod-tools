@@ -42,9 +42,9 @@ my $check_bibliography = 1;
 my $require_only_doi = 0;
 my $check_authors = 1;
 my $check_chemical_formula_sum = 1;
-my $check_spacegroup_info = 1;
+my $check_space_group_info = 1;
 my $check_symmetry_operators = 1;
-my $check_spacegroup_constraints = 1;
+my $check_space_group_constraints = 1;
 my $check_limits = 1;
 my $use_precisions = 1;
 my $check_temperature_factors = 1;
@@ -62,9 +62,9 @@ sub dont_check_any
     $check_bibliography = 0;
     $check_authors = 0;
     $check_chemical_formula_sum = 0;
-    $check_spacegroup_info = 0;
+    $check_space_group_info = 0;
     $check_symmetry_operators = 0;
-    $check_spacegroup_constraints = 0;
+    $check_space_group_constraints = 0;
     $check_limits = 0;
     $check_temperature_factors = 0;
     $check_simultaneous_presence = 0;
@@ -80,9 +80,9 @@ sub check_all
     $check_bibliography = 1;
     $check_authors = 1;
     $check_chemical_formula_sum = 1;
-    $check_spacegroup_info = 1;
+    $check_space_group_info = 1;
     $check_symmetry_operators = 1;
-    $check_spacegroup_constraints = 1;
+    $check_space_group_constraints = 1;
     $check_limits = 1;
     $check_temperature_factors = 1;
     $check_simultaneous_presence = 1;
@@ -299,13 +299,13 @@ my $input_format = 'cif';
         => sub{ $check_chemical_formula_sum = 0 },
 
     '--check-spacegroup-info'
-        => sub{ $check_spacegroup_info = 1 },
+        => sub{ $check_space_group_info = 1 },
     '--check-only-spacegroup-info'
-        => sub{ dont_check_any(); $check_spacegroup_info = 1 },
+        => sub{ dont_check_any(); $check_space_group_info = 1 },
     '--dont-check-spacegroup-info,' .
     '--no-check-spacegroup-info,' .
     '--do-not-check-spacegroup-info'
-        => sub{ $check_spacegroup_info = 0 },
+        => sub{ $check_space_group_info = 0 },
 
     '--check-symmetry-operators,' .
     '--check-operators'
@@ -323,29 +323,29 @@ my $input_format = 'cif';
 
     '--check-constraints-on-unit-cell,' .
     '--check-unit-cell'
-        => sub{ $check_spacegroup_constraints = 1 },
+        => sub{ $check_space_group_constraints = 1 },
     '--check-only-constraints-on-unit-cell,' .
     '--check-only-unit-cell'
-        => sub{ dont_check_any(); $check_spacegroup_constraints = 1 },
+        => sub{ dont_check_any(); $check_space_group_constraints = 1 },
     '--dont-check-constraints-on-unit-cell,' .
     '--do-not-check-constraints-on-unit-cell,' .
     '--no-check-constraints-on-unit-cell,' .
     '--dont-check-unit-cell,' .
     '--do-not-check-unit-cell,' .
     '--no-check-unit-cell'
-        => sub{ $check_spacegroup_constraints = 0 },
+        => sub{ $check_space_group_constraints = 0 },
 
     '--check-symmetry' => sub{
-        $check_spacegroup_info = 1;
+        $check_space_group_info = 1;
         $check_symmetry_operators = 1;
-        $check_spacegroup_constraints = 1;
+        $check_space_group_constraints = 1;
     },
 
     '--check-only-symmetry' => sub{
         dont_check_any();
-        $check_spacegroup_info = 1;
+        $check_space_group_info = 1;
         $check_symmetry_operators = 1;
-        $check_spacegroup_constraints = 1;
+        $check_space_group_constraints = 1;
     },
 
     '--check-simultaneous-presence' =>
@@ -485,7 +485,7 @@ if( $reportFile =~ m/^\s*-\s*$/ || !-w dirname($reportFile) ) {
 binmode( reportFileFH, ':encoding(UTF-8)' );
 binmode( STDERR, ':encoding(UTF-8)' );
 
-my %spacegroups = map {
+my %space_groups = map {
     my $key1 = $_->[1];
     my $key2 = $_->[2];
     $key1 =~ s/\s//g;
@@ -543,12 +543,12 @@ for my $filename (@ARGV) {
             if $check_authors;
         $warnings += check_chemical_formula_sum( $dataset )
             if $check_chemical_formula_sum;
-        $warnings += check_spacegroup_info( $dataset )
-            if $check_spacegroup_info;
+        $warnings += check_space_group_info( $dataset )
+            if $check_space_group_info;
         $warnings += check_symmetry_operators( $dataset )
             if $check_symmetry_operators;
-        $warnings += check_spacegroup_constraints( $dataset )
-            if $check_spacegroup_constraints;
+        $warnings += check_space_group_constraints( $dataset )
+            if $check_space_group_constraints;
         if ( $check_limits ) {
             ($f_notes, $f_warnings, $f_errors) = check_limits( $dataset );
             $notes    += $f_notes;
@@ -713,7 +713,7 @@ sub check_chemical_formula_sum
     }
 }
 
-sub check_spacegroup_info
+sub check_space_group_info
 {
     my ($dataset) = @_;
 
@@ -724,7 +724,7 @@ sub check_spacegroup_info
     my $symops = $dataset->{values}{_symmetry_equiv_pos_as_xyz};
     my $values = $dataset->{values};
 
-    my @spacegroup_tags = qw (
+    my @space_group_tags = qw (
         _symmetry_space_group_name_H-M
         _symmetry_space_group_name_Hall
         _symmetry_Int_Tables_number
@@ -737,36 +737,36 @@ sub check_spacegroup_info
     );
 
     my $warnings = 0;
-    my $spacegroup_found;
-    my $spacegroup;
+    my $space_group_found;
+    my $space_group;
 
-    for my $sg_tag (@spacegroup_tags) {
+    for my $sg_tag (@space_group_tags) {
         if( exists $values->{$sg_tag} ) {
-            $spacegroup = $values->{$sg_tag}[0];
-            my $no_spaces = $spacegroup;
+            $space_group = $values->{$sg_tag}[0];
+            my $no_spaces = $space_group;
             $no_spaces =~ s/\s//g;
             $no_spaces =~ s/[\(\)~]//g;
             if( $sg_tag =~ /H-M/ ) {
-                if( defined $spacegroup &&
-                    !exists $spacegroups{$spacegroup} &&
-                    !exists $spacegroups{$no_spaces} ) {
-                    warn "WARNING, unrecognised spacegroup '$spacegroup'" . "\n";
+                if( defined $space_group &&
+                    !exists $space_groups{$space_group} &&
+                    !exists $space_groups{$no_spaces} ) {
+                    warn "WARNING, unrecognised space group '$space_group'" . "\n";
                     $warnings++;
                 } else {
-                    $spacegroup_found =
-                        (exists $spacegroups{$spacegroup} )
-                              ? $spacegroups{$spacegroup}
-                              : $spacegroups{$no_spaces};
+                    $space_group_found =
+                        (exists $space_groups{$space_group} )
+                              ? $space_groups{$space_group}
+                              : $space_groups{$no_spaces};
                 }
             }
             last
         }
     }
-    if( !defined $spacegroup ) {
+    if( !defined $space_group ) {
         if( !defined $symops ) {
             warn 'WARNING, no symmetry information found' . "\n";
         } else {
-            warn 'WARNING, no spacegroup symbol found' . "\n";
+            warn 'WARNING, no space group symbol found' . "\n";
         }
         $warnings++;
     }
@@ -797,13 +797,13 @@ sub check_spacegroup_info
         }
     }
 
-    if( defined $symops && defined $spacegroup_found ) {
-        my $spacegroup_info = lookup_spacegroup( 'hermann_mauguin',
-                                                 $spacegroup_found );
-        if( defined $spacegroup_info ) {
+    if( defined $symops && defined $space_group_found ) {
+        my $space_group_info = lookup_space_group( 'hermann_mauguin',
+                                                   $space_group_found );
+        if( defined $space_group_info ) {
             my %sg_symops_cannonical =
                 map { symop_string_canonical_form( $_ ) => $_ }
-                @{ $spacegroup_info->{symops} };
+                @{ $space_group_info->{symops} };
 
             my @missing_symops;
             for my $s (sort keys %sg_symops_cannonical) {
@@ -817,7 +817,7 @@ sub check_spacegroup_info
                      . join( ', ', map { "'$_'" } @missing_symops )
                      . ' ' . ($single ? 'is' : 'are')
                      . ' missing, although required by '
-                     . "the spacegroup '$spacegroup_found'" . "\n";
+                     . "the space group '$space_group_found'" . "\n";
                 $warnings++;
             }
 
@@ -833,7 +833,7 @@ sub check_spacegroup_info
                     . join( ', ', map { "'$_'" } @excess_symops )
                     . ' ' . ($single ? 'is' : 'are')
                     . ' found, although not required by '
-                    . "the spacegroup '$spacegroup_found'" . "\n";
+                    . "the space group '$space_group_found'" . "\n";
                 $warnings++;
             }
         }
@@ -1125,10 +1125,10 @@ sub check_pdcif_relations
 # },
 # );
 
-# Returns a reference to the spacegroup descriptor
+# Returns a reference to the space group descriptor
 # (a @COD::Spacegroups::Lookup::COD::table element).
 
-sub lookup_spacegroup
+sub lookup_space_group
 {
     my ($option, $param) = @_;
 
@@ -1148,7 +1148,7 @@ sub lookup_spacegroup
     return;
 }
 
-sub get_spacegroup_descriptions
+sub get_space_group_descriptions
 {
     my ($dataset) = @_;
 
@@ -1160,7 +1160,7 @@ sub get_spacegroup_descriptions
     if( exists $values->{'_space_group_name_Hall'} &&
         not defined $sym_data ) {
         my $hall = $values->{'_space_group_name_Hall'}[0];
-        $sym_data = lookup_spacegroup('hall', $hall);
+        $sym_data = lookup_space_group('hall', $hall);
 
         if( !defined $sym_data ) {
             warn "WARNING, incorrect _space_group_name_Hall '$hall'" . "\n";
@@ -1169,7 +1169,7 @@ sub get_spacegroup_descriptions
     } elsif( exists $values->{'_symmetry_space_group_name_Hall'} &&
         not defined $sym_data ) {
         my $hall = $values->{'_symmetry_space_group_name_Hall'}[0];
-        $sym_data = lookup_spacegroup('hall', $hall);
+        $sym_data = lookup_space_group('hall', $hall);
 
         if( !defined $sym_data ) {
             warn "WARNING, incorrect _symmetry_space_group_name_Hall '$hall'" ."\n";
@@ -1180,8 +1180,8 @@ sub get_spacegroup_descriptions
     if(exists $values->{'_space_group_name_H-M_alt'} &&
        not defined $sym_data) {
         my $h_m = $values->{'_space_group_name_H-M_alt'}[0];
-        $sym_data = lookup_spacegroup('hermann_mauguin', $h_m);
-        $sym_data = lookup_spacegroup('universal_h_m', $h_m)
+        $sym_data = lookup_space_group('hermann_mauguin', $h_m);
+        $sym_data = lookup_space_group('universal_h_m', $h_m)
             unless defined $sym_data;
 
         if( !defined $sym_data ) {
@@ -1191,8 +1191,8 @@ sub get_spacegroup_descriptions
     } elsif(exists $values->{'_symmetry_space_group_name_H-M'} &&
             not defined $sym_data) {
         my $h_m = $values->{'_symmetry_space_group_name_H-M'}[0];
-        $sym_data = lookup_spacegroup('hermann_mauguin', $h_m);
-        $sym_data = lookup_spacegroup('universal_h_m', $h_m)
+        $sym_data = lookup_space_group('hermann_mauguin', $h_m);
+        $sym_data = lookup_space_group('universal_h_m', $h_m)
             unless defined $sym_data;
 
         if( !defined $sym_data ) {
@@ -1203,19 +1203,19 @@ sub get_spacegroup_descriptions
 
     if(not defined $sym_data) {
         if( $warnings == 0 ) {
-            my @spacegroup_tags = qw (
+            my @space_group_tags = qw (
                 _space_group_symop_ssg_id
                 _space_group_symop_ssg_operation_algebraic
                 _space_group_ssg_name
                 _space_group_ssg_name_IT
                 _space_group_ssg_name_WJJ
             );
-            for my $sg_tag (@spacegroup_tags) {
+            for my $sg_tag (@space_group_tags) {
                 if( exists $dataset->{values}{$sg_tag} ) {
                     return (undef, 0);
                 }
             }
-            warn 'WARNING, no spacegroup symbol to check cell constraints' . "\n";
+            warn 'WARNING, no space group symbol to check cell constraints' . "\n";
             $warnings = 1;
         }
     }
@@ -1293,7 +1293,7 @@ sub regularize_cell($$$$)
     return @regcell;
 }
 
-sub check_spacegroup_constraints
+sub check_space_group_constraints
 {
     my ( $dataset ) = @_;
 
@@ -1301,22 +1301,22 @@ sub check_spacegroup_constraints
         return 0;
     }
 
-    my ( $spacegroup_descr, $warnings ) =
-        get_spacegroup_descriptions( $dataset );
+    my ( $space_group_descr, $warnings ) =
+        get_space_group_descriptions( $dataset );
 
-    if( !defined $spacegroup_descr ) {
+    if( !defined $space_group_descr ) {
         return $warnings;
     }
 
-    if( !exists $spacegroup_descr->{constraints} ) {
-        warn 'WARNING, could not find constraints for spacegroup '.
-             "'$spacegroup_descr->{universal_h_m}'" . "\n";
+    if( !exists $space_group_descr->{constraints} ) {
+        warn 'WARNING, could not find constraints for space group '.
+             "'$space_group_descr->{universal_h_m}'" . "\n";
         return $warnings + 1;
     }
 
-    my $constraints = $spacegroup_descr->{'constraints'};
-    my $cryst_class = $spacegroup_descr->{'crystal_class'};
-    my $h_m_symbol = $spacegroup_descr->{'universal_h_m'};
+    my $constraints = $space_group_descr->{'constraints'};
+    my $cryst_class = $space_group_descr->{'crystal_class'};
+    my $h_m_symbol = $space_group_descr->{'universal_h_m'};
     my @cell = get_cell( $dataset->{values} );
     my @cellsig = get_unit_cell_sigmas( $dataset );
 
@@ -1386,7 +1386,7 @@ sub parser_reporter
     return 0;
 }
 
-# To check that the specified XYZ tag value is within expected limits.
+# To check that the specified XYZ dat item value is within expected limits.
 
 sub check_limits {
     my ($dataset) = @_;
@@ -1407,20 +1407,20 @@ sub check_limits {
         my $value = $values->{$tag}[0];
         next if $value =~ /^(\.|\?)$/;
         if( $value !~ /^([+-]?(?:\d+(?:\.\d*)?|\.\d+))\(?(\d*)\)?$/ ) {
-            warn "ERROR, tag '$tag' value '$value' is not numeric" . "\n";
+            warn "ERROR, data item '$tag' value '$value' is not numeric" . "\n";
             $errors++;
             next;
         } else {
             my $number = $1;
             my $precision = $2;
             if( ($tag =~ /_w?R_factor_/) && ( $precision ) ) {
-                warn "WARNING, '$tag' value is '$value', but it should "
-                   . 'be numeric and without precision (esd value)' . "\n";
+                warn "WARNING, data item '$tag' value is '$value', but it "
+                   . 'should  be numeric and without precision (esd value)' . "\n";
                 $warnings++;
                 next;
             }
             if( $number < 0 ) {
-                warn "WARNING, '$tag' value '$value' should "
+                warn "WARNING, data item '$tag' value '$value' should "
                    . 'be in range [0.0;+inf]' . "\n";
                 $warnings++;
                 next;
@@ -1429,7 +1429,7 @@ sub check_limits {
                 foreach my $i( 0..$#{ $limits_table->{$tag} } ) {
                     my $limit = @{ $limits_table->{$tag}->[$i]}[0];
                     if( $number > $limit ) {
-                        warn "$report_names[$i], tag '$tag' value "
+                        warn "$report_names[$i], data item '$tag' value "
                            . "'$value' is > $limit" . "\n";
                         $errors++   if $i == 0; # $i is @report_names index
                         $warnings++ if $i == 1;
@@ -1442,7 +1442,7 @@ sub check_limits {
                     my $begin = @{ $limits_table->{$tag}->[$i]}[0];
                     my $end = @{ $limits_table->{$tag}->[$i]}[1];
                     if( ($number < $begin) || ($number > $end) ) {
-                        warn "$report_names[$i], tag '$tag' value '$value' "
+                        warn "$report_names[$i], data item '$tag' value '$value' "
                            . "lies outside the range $begin <> $end" . "\n";
                             $errors++   if $i == 0; # $i is @report_names index
                             $warnings++ if $i == 1;
@@ -1582,9 +1582,10 @@ sub check_all_tags_present
         my @tags_absent = sort {$a cmp $b} keys %tags_absent;
         my $tag = $tags_present[0];
 
-        warn "WARNING, tag '$tag' is present, but tag"
-            . ( int(@tags_absent) > 1 ? 's' : '' ) . ' '
-            . join( ', ', @tags_absent ) . ' are absent' . "\n";
+        warn "WARNING, data item '$tag' is present, but data item"
+            . ( int(@tags_absent) > 1 ? 's' : '' ) . ' ['
+            . join( ', ', map { "'$_'" } @tags_absent ) . '] '
+            . ( int(@tags_absent) > 1 ? 'are' : 'is' ) . ' absent' . "\n";
         return 1;
     } else {
         return 0;

@@ -10,10 +10,10 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #------------------------------------------------------------------------------
 #*
 # Merge data values in identical data blocks of multiple CIFs. Unique
-# tags are combined into a single data block of the output CIF; tags
-# with equivalent values are silently merged into one. When a value
-# differs for the same tag and the same data block in two files, a
-# warning (error) is issued.
+# data items are combined into a single data block of the output CIF;
+# data items with equivalent values are silently merged into one. When
+# a value differs for the same data item and the same data block in two
+# files, a warning (error) is issued.
 #**
 
 use strict;
@@ -51,11 +51,11 @@ my $die_on_error_level = {
 #*        Do not override all data items in the recipient CIF (default).
 #*
 #*    --override-tags  _tag1,_tag2
-#*        Replace values for tags listed as an argument (_tag1 and _tag2 in
-#*        this example) instead of keeping old values.
+#*        Replace the values of the provided data items (_tag1 and _tag2 in
+#*        this example) with the new ones instead of keeping the old values.
 #*
 #*    --merge-tags  _tag1,_tag2
-#*        Merge values for tags listed as an argument (_tag1 and _tag2 in
+#*        Merge the values of the provided data items (_tag1 and _tag2 in
 #*        this example).
 #*
 #*   --use-perl-parser
@@ -151,10 +151,11 @@ for my $filename (@ARGV) {
                                 if( int( @{$old_datablock->
                                             {values}{$loop_tag}} ) !=
                                     int( @{$new_datablock->{values}{$tag}} )) {
-                                    die "ERROR, loop tag '$loop_tag' has "
-                                      . "different number of values than the "
-                                      . "tag '$tag' in '${filename}', but "
-                                      . "'$tag' must end up in the same loop\n";
+                                    die "ERROR, looped data item '$loop_tag' has "
+                                      . "a different number of values than the "
+                                      . "'$tag' data item in file '${filename}' "
+                                      . "even though the data items must end up "
+                                      , "in the same loop\n";
                                 }
                                 last;
                             }
@@ -202,8 +203,16 @@ for my $filename (@ARGV) {
                         }
                     } elsif( !values_are_equal( $old_datablock->{values}{$tag},
                                            $new_datablock->{values}{$tag} )) {
-                        warn "WARNING, values for tag '$tag' in "
-                           . "'$datablock->{name}' differ\n";
+                        if ( scalar @{$new_datablock->{values}{$tag}} == 1 ) {
+                            warn "WARNING, data item '$tag' value " .
+                                 "'$new_datablock->{values}{$tag}[0]' differs " .
+                                 "from the value '$old_datablock->{values}{$tag}[0]' " .
+                                 "encountered in previously processed files\n";
+                        } else {
+                            warn 'WARNING, values of the looped data item ' .
+                                 "'$tag' differ from the values encountered " .
+                                 "in previously processed files\n";
+                        }
                     }
                 }
             }

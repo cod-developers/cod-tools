@@ -1,7 +1,7 @@
 #!/bin/sh
 
 # Test definition of the newly introduced nonstandard 'B 1 21/m 1'
-# spacegroup setting:
+# space group setting:
 
 #BEGIN DEPEND------------------------------------------------------------------
 

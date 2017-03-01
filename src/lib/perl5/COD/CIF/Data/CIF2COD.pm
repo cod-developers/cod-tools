@@ -30,7 +30,7 @@ our @EXPORT_OK = qw(
 
 my $bond_safety_margin = 0.2; # Angstroems; a bond safety marging for a CIF classifier.
 
-my $reformat_spacegroup = 0;
+my $reformat_space_group = 0;
 my $use_datablocks_without_coord = 0;
 my $require_only_doi = 0;
 my $print_header = 0; # Indicates whether to print out a header with
@@ -131,6 +131,7 @@ our @new_data_fields = qw (
     mineral
     formula
     calcformula
+    cellformula
 
     acce_code
     authors
@@ -170,7 +171,7 @@ our @new_data_fields = qw (
     onhold
 );
 
-my %spacegroups = map {
+my %space_groups = map {
     my $key1 = $_->[1];
     my $key2 = $_->[2];
     $key1 =~ s/\s//g;
@@ -191,8 +192,8 @@ sub cif2cod
         if exists $options->{print_header};
     $print_keywords = $options->{print_keywords}
         if exists $options->{print_keywords};
-    $reformat_spacegroup = $options->{reformat_spacegroup}
-        if exists $options->{reformat_spacegroup};
+    $reformat_space_group = $options->{reformat_space_group}
+        if exists $options->{reformat_space_group};
     $use_datablocks_without_coord =
         $options->{use_datablocks_without_coord}
         if exists $options->{use_datablocks_without_coord};
@@ -251,10 +252,9 @@ sub cif2cod
                          $first_page ))
                    );
 
-    my $calculated_formula;
-
+    my $calc_formula;
     eval {
-        $calculated_formula =
+        $calc_formula =
                 cif_cell_contents( $dataset, undef, $use_attached_hydrogens );
     };
     if( $@ ) {
@@ -263,6 +263,19 @@ sub cif2cod
         $error =~ s/[A-Z]+, //;
         chomp($error);
         warn "WARNING, summary formula could not be calculated -- $error\n";
+    }
+
+    my $cell_formula;
+    eval {
+        $cell_formula =
+                cif_cell_contents( $dataset, 1, $use_attached_hydrogens );
+    };
+    if( $@ ) {
+        # ERRORS that originated within the function are downgraded to warnings
+        my $error = $@;
+        $error =~ s/[A-Z]+, //;
+        chomp($error);
+        warn "WARNING, unit cell summary formula could not be calculated -- $error\n";
     }
 
     my $diffr_temperature =
@@ -386,14 +399,16 @@ sub cif2cod
         get_tag_or_undef( $values, "_chemical_compound_source", 0 );
 
     $data{nel} = $nel;
-    $data{sg} = get_spacegroup_info( $values );
-    $data{sgHall} = get_spacegroup_Hall_symbol( $values );
+    $data{sg} = get_space_group_info( $values );
+    $data{sgHall} = get_space_group_Hall_symbol( $values );
     $data{commonname} = $common_name;
     $data{chemname} = $systematic_name;
     $data{mineral} = $mineral_name;
     $data{formula} = $formula ? "- " . $formula . " -" : "?";
-    $data{calcformula} = $calculated_formula ?
-          "- " . $calculated_formula . " -" : undef;
+    $data{calcformula} = $calc_formula ?
+          "- " . $calc_formula . " -" : undef;
+    $data{cellformula} = $cell_formula ?
+          "- " . $cell_formula . " -" : undef;
     $data{Z} = get_tag_or_undef( $values, "_cell_formula_units_Z", 0 );
     $data{Zprime} = compute_Zprime( $data{Z}, $data{sg} );
 
@@ -613,13 +628,13 @@ sub get_and_check_tag
                 return $val;
             } else {
                 unless( $ignore_errors ) {
-                    warn "WARNING, tag '$tag' does not have value "
+                    warn "WARNING, data item '$tag' does not have value "
                        . "number $index\n";
                 }
             }
         } else {
             unless( $ignore_errors ) {
-                warn "WARNING, tag '$tag' is absent\n";
+                warn "WARNING, data item '$tag' is absent\n";
             }
         }
     }
@@ -640,11 +655,11 @@ sub clean_whitespaces
     return $value;
 }
 
-sub get_spacegroup_info
+sub get_space_group_info
 {
     my ($values) = @_;
 
-    my @spacegroup_tags = qw (
+    my @space_group_tags = qw (
         _space_group_name_H-M_alt
         _space_group.name_H-M_full
         _symmetry_space_group_name_H-M
@@ -653,53 +668,53 @@ sub get_spacegroup_info
         _space_group_ssg_name_WJJ
     );
 
-    my $spacegroup;
+    my $space_group;
 
-    for my $sg_tag (@spacegroup_tags) {
+    for my $sg_tag (@space_group_tags) {
         if( exists $values->{$sg_tag} ) {
-            $spacegroup = $values->{$sg_tag}[0];
-            if( $sg_tag =~ /_H-M/ && $reformat_spacegroup ) {
-                my $orig_sg = $spacegroup;
+            $space_group = $values->{$sg_tag}[0];
+            if( $sg_tag =~ /_H-M/ && $reformat_space_group ) {
+                my $orig_sg = $space_group;
                 $orig_sg =~ s/[\(\)~_\s]//g;
                 ## print ">>> $orig_sg\n";
-                if( exists $spacegroups{$orig_sg} ) {
-                    $spacegroup = $spacegroups{$orig_sg};
+                if( exists $space_groups{$orig_sg} ) {
+                    $space_group = $space_groups{$orig_sg};
                 }
             }
             last
         }
     }
-    if( !defined $spacegroup ) {
-        warn "WARNING, no spacegroup information found\n";
+    if( !defined $space_group ) {
+        warn "WARNING, no space group information found\n";
     } else {
-        $spacegroup =~ s/^\s*|\s*$//g;
+        $space_group =~ s/^\s*|\s*$//g;
     }
-    return $spacegroup;
+    return $space_group;
 }
 
-sub get_spacegroup_Hall_symbol
+sub get_space_group_Hall_symbol
 {
     my ($values) = @_;
 
-    my @spacegroup_tags = qw (
+    my @space_group_tags = qw (
         _space_group_name_Hall
         _symmetry_space_group_name_Hall
     );
 
-    my $spacegroup;
+    my $space_group;
 
-    for my $sg_tag (@spacegroup_tags) {
+    for my $sg_tag (@space_group_tags) {
         if( exists $values->{$sg_tag} ) {
-            $spacegroup = $values->{$sg_tag}[0];
+            $space_group = $values->{$sg_tag}[0];
             last
         }
     }
-    if( !defined $spacegroup ) {
-        warn "WARNING, no Hall spacegroup symbol found\n";
+    if( !defined $space_group ) {
+        warn "WARNING, no Hall space group symbol found\n";
     } else {
-        $spacegroup =~ s/^\s*|\s*$//g;
+        $space_group =~ s/^\s*|\s*$//g;
     }
-    return $spacegroup;
+    return $space_group;
 }
 
 sub get_experimental_method
@@ -730,13 +745,13 @@ sub get_experimental_method
 
 sub compute_Zprime
 {
-    my ( $Z, $spacegroup_H_M ) = @_;
+    my ( $Z, $space_group_H_M ) = @_;
 
-    return undef unless defined $spacegroup_H_M;
+    return undef unless defined $space_group_H_M;
 
     use COD::Spacegroups::Lookup::COD;
     my @sg_description =
-        grep { $spacegroup_H_M eq $_->{universal_h_m} }
+        grep { $space_group_H_M eq $_->{universal_h_m} }
              @COD::Spacegroups::Lookup::COD::table;
 
     if( int(@sg_description) == 1 && defined $Z ) {

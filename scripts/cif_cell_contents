@@ -170,6 +170,15 @@ for my $filename (@ARGV) {
 
         my $formula;
         eval {
+            if ( defined $Z_value &&
+                 exists $values->{'_cell_formula_units_Z'} ) {
+                my $file_Z = $values->{_cell_formula_units_Z}[0];
+                    if( $Z_value != $file_Z ) {
+                    warn "WARNING, overriding _cell_formula_units_Z ($file_Z) " .
+                         "with command-line value $Z_value" . "\n";
+                }
+            }
+
             $formula = cif_cell_contents ( $dataset, $Z_value,
                                            $use_attached_hydrogens,
                                            $assume_full_occupancies );
