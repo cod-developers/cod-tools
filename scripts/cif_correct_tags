@@ -22,7 +22,7 @@ use COD::CIF::Parser qw( parse_cif );
 use COD::CIF::Tags::CanonicalNames qw( canonicalize_all_names );
 use COD::CIF::Tags::DictTags;
 use COD::CIF::Tags::COD;
-use COD::CIF::Tags::Manage qw( rename_tag );
+use COD::CIF::Tags::Manage qw( rename_tag exclude_tag );
 use COD::CIF::Tags::Print qw( print_cif fold );
 use COD::SOptions qw( getOptions );
 use COD::SUsage qw( usage options );
@@ -185,14 +185,36 @@ for my $filename (@ARGV) {
             if( exists $tag_spelling{$tag} ) {
                 my $old_tag = $tag;
                 my $correct = $tag_spelling{$tag};
+                my $report_msg;
                 if( !exists $values->{$correct} ) {
-                    rename_tag( $dataset, $tag, $correct );
-                    my $report_msg =
+                    rename_tag( $dataset, $old_tag, $correct );
+                    $report_msg =
                     "data name '$old_tag' replaced with '$correct' " .
                     'as specified in the replacement file ' .
                     "'$replacement_list'.";
                     push (@insert_reports, $report_msg);
                     warn "NOTE, $report_msg" . "\n";
+                } else {
+                    if ( $values->{$old_tag}[0] eq $values->{$correct}[0] ) {
+                        exclude_tag( $dataset, $old_tag );
+                        $report_msg = "'$old_tag' data item was removed -- " .
+                            "it should have been renamed to '$correct' as " .
+                            'specified in the replacement file ' .
+                            "'$replacement_list', but the replacement " .
+                            "data item was already present in the data block " .
+                            "and had the same value as the '$old_tag' data item.";
+                        push (@insert_reports, $report_msg);
+                        warn "NOTE, $report_msg" . "\n";
+                    } else {
+                        $report_msg = "'$old_tag' data item was left intact -- " .
+                            "it should have been renamed to '$correct' as " .
+                            'specified in the replacement file ' .
+                            "'$replacement_list', but the replacement " .
+                            "data item was already present in the data block " .
+                            "and had a different value than the '$old_tag' " .
+                            'data item.';
+                        warn "NOTE, $report_msg" . "\n";
+                    }
                 }
             }
             if( $tag =~ /^_+(_[^_].*)$/ ) {
