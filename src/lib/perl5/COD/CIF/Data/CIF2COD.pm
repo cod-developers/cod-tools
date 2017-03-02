@@ -207,8 +207,11 @@ sub cif2cod
     my $sigmas = $dataset->{precisions};
     my $dataname = $dataset->{name};
 
-    return undef unless exists $values->{_atom_site_fract_x} ||
-                 $use_datablocks_without_coord;
+    if ( !exists $values->{_atom_site_fract_x} &&
+         !$use_datablocks_without_coord ) {
+        warn "data block does not contain fractional coordinates\n";
+        return undef;
+    };
 
     my @authors = ();
     if( exists $values->{_publ_author_name} ) {
