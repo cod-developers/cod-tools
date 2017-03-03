@@ -172,6 +172,7 @@ for my $filename (@ARGV) {
         my @insert_reports = ();
         my $tags = $dataset->{tags};
         my $values = $dataset->{values};
+        my $loops = $dataset->{inloop};
         my $dataname = 'data_' . $dataset->{name} if defined $dataset->{name};
 
         local $SIG{__WARN__} = sub { process_warnings( {
@@ -195,7 +196,20 @@ for my $filename (@ARGV) {
                     push (@insert_reports, $report_msg);
                     warn "NOTE, $report_msg" . "\n";
                 } else {
-                    if ( $values->{$old_tag}[0] eq $values->{$correct}[0] ) {
+                    if ( exists $loops->{$old_tag} ||
+                         exists $loops->{$correct} ) {
+                        # comparing looped values is out of
+                        #  the scope of this script
+                        $report_msg = "'$old_tag' data item was left intact -- " .
+                            "it should have been renamed to '$correct' as " .
+                            'specified in the replacement file ' .
+                            "'$replacement_list', but the replacement " .
+                            'data item was already present in the data block. ' .
+                            "Value comparison was skipped since the '" .
+                             (exists $loops->{$old_tag} ? $old_tag : $correct ) .
+                             "' data item was found within a loop structure.";
+                        warn "NOTE, $report_msg" . "\n";
+                    } elsif ( $values->{$old_tag}[0] eq $values->{$correct}[0] ) {
                         exclude_tag( $dataset, $old_tag );
                         $report_msg = "'$old_tag' data item was removed -- " .
                             "it should have been renamed to '$correct' as " .
