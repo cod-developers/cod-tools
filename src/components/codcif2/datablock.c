@@ -210,7 +210,7 @@ ssize_t *datablock_value_lengths( DATABLOCK *datablock )
     return datablock->value_lengths;
 }
 
-VALUE **datablock_values( DATABLOCK *datablock )
+VALUE ***datablock_values( DATABLOCK *datablock )
 {
     return datablock->values;
 }

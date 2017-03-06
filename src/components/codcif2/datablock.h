@@ -61,7 +61,7 @@ void datablock_set_next( DATABLOCK *datablock, DATABLOCK *next );
 size_t datablock_length( DATABLOCK *datablock );
 char **datablock_tags( DATABLOCK *datablock );
 ssize_t *datablock_value_lengths( DATABLOCK *datablock );
-VALUE **datablock_values( DATABLOCK *datablock );
+VALUE ***datablock_values( DATABLOCK *datablock );
 VALUE *datablock_value( DATABLOCK *datablock, int tag_nr, int val_nr );
 ssize_t datablock_tag_index( DATABLOCK *datablock, char *tag );
 void datablock_overwrite_value( DATABLOCK * datablock, ssize_t tag_nr,
