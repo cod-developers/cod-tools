@@ -26,7 +26,8 @@ struct TABLE {
 
 TABLE *new_table( cexception_t *ex )
 {
-    TABLE *table = callocx( 1, sizeof(TABLE*), ex );
+    TABLE *table = callocx( 1, sizeof(TABLE), ex );
+    table->values = NULL;
     return table;
 }
 
@@ -38,14 +39,14 @@ void table_dump( TABLE *table )
         printf( " '%s':", table->keys[i] );
         value_dump( table->values[i] );
     }
-    printf( "}" );
+    printf( " }" );
 }
 
 void table_add( TABLE *table, char *key, VALUE *value, cexception_t *ex )
 {
     cexception_t inner;
     ssize_t i;
-    
+
     cexception_guard( inner ) {
         i = table->length;
         if( table->length + 1 > table->capacity ) {

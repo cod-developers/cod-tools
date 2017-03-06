@@ -604,6 +604,7 @@ table_entry_list
                    value_get_scalar( $1->v ),
                    $3->v, px );
         free_typed_value( $1 );
+        free_typed_value( $3 );
     }
 ;
 

@@ -24,7 +24,7 @@ struct LIST {
 
 LIST *new_list( cexception_t *ex )
 {
-    LIST *list = callocx( 1, sizeof(LIST*), ex );
+    LIST *list = callocx( 1, sizeof(LIST), ex );
     return list;
 }
 
