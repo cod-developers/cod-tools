@@ -41,6 +41,19 @@ void delete_value( VALUE *value ) {
     freex( value );
 }
 
+void value_dump( VALUE *value ) {
+    switch( value->type ) {
+        case CIF_LIST:
+            list_dump( value_get_list( value ) );
+            break;
+        case CIF_TABLE:
+            table_dump( value_get_table( value ) );
+            break;
+        default:
+            printf( " %s", value_get_scalar( value ) );
+    }
+}
+
 cif_value_type_t value_get_type( VALUE *value ) {
     return value->type;
 }

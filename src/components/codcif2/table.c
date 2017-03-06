@@ -30,6 +30,17 @@ TABLE *new_table( cexception_t *ex )
     return table;
 }
 
+void table_dump( TABLE *table )
+{
+    printf( " {" );
+    size_t i;
+    for( i = 0; i < table->length; i++ ) {
+        printf( " '%s':", table->keys[i] );
+        value_dump( table->values[i] );
+    }
+    printf( "}" );
+}
+
 void table_add( TABLE *table, char *key, VALUE *value, cexception_t *ex )
 {
     cexception_t inner;

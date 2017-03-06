@@ -10,10 +10,12 @@
 
 typedef struct LIST LIST;
 
+#include <stdio.h>
 #include <cexceptions.h>
 #include <value.h>
 
 LIST *new_list( cexception_t *ex );
+void list_dump( LIST *list );
 
 void list_push( LIST *list, VALUE *value, cexception_t *ex );
 void list_unshift( LIST *list, VALUE *value, cexception_t *ex );

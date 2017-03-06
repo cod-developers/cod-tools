@@ -28,11 +28,21 @@ LIST *new_list( cexception_t *ex )
     return list;
 }
 
+void list_dump( LIST *list )
+{
+    printf( " [" );
+    size_t i;
+    for( i = 0; i < list->length; i++ ) {
+        value_dump( list->values[i] );
+    }
+    printf( " ]" );
+}
+
 void list_push( LIST *list, VALUE *value, cexception_t *ex )
 {
     cexception_t inner;
     size_t i;
-    
+
     cexception_guard( inner ) {
         i = list->length;
         if( list->length + 1 > list->capacity ) {

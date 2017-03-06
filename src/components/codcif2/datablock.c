@@ -279,6 +279,9 @@ void datablock_print_value( DATABLOCK * volatile datablock, int tag_nr, int valu
     i = tag_nr;
     j = value_idx;
 
+    value_dump( datablock->values[i][j] );
+
+    /*
     switch( datablock->types[i][j] ) {
     case DBLK_INT:
     case DBLK_FLOAT:
@@ -300,6 +303,7 @@ void datablock_print_value( DATABLOCK * volatile datablock, int tag_nr, int valu
 	printf( " '%s'\n", datablock->values[i][j] );
 	break;
     }
+    */
 }
 
 void datablock_print_tag_values( DATABLOCK * volatile datablock,
