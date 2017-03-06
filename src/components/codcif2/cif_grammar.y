@@ -364,6 +364,11 @@ cif_entry
 
 data_value_list
         :       data_value
+        {
+            LIST *list = new_list( px );
+            list_push( list, $1->v, px );
+            $$->v = new_value_from_list( list, px );
+        }
         |       data_value_list data_value
         {
             list_push( value_get_list( $1->v ), $2->v, px );
