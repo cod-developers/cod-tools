@@ -508,7 +508,6 @@ textfield
               ssize_t str_len = strlen( value_get_scalar( $$->v ) );
               char *unprefixed_text =
                     cif_unprefix_textfield( value_get_scalar( $$->v ) );
-              // FIXME free( $$->vstr );
               $$->v = new_value_from_scalar( unprefixed_text, CIF_TEXT, px );
               if( str_len != strlen( unprefixed_text ) ) {
                   unprefixed = 1;
@@ -520,7 +519,6 @@ textfield
               size_t str_len = strlen( value_get_scalar( $$->v ) );
               char *unfolded_text =
                     cif_unfold_textfield( value_get_scalar( $$->v ) );
-              // FIXME free( $$->vstr );
               $$->v = new_value_from_scalar( unfolded_text, CIF_TEXT, px );
               if( str_len != strlen( unfolded_text ) ) {
                   unfolded = 1;
@@ -1108,7 +1106,6 @@ int yywarning_token( const char *message, int line, int pos, cexception_t *ex )
 
 typed_value *new_typed_value( void ) {
     typed_value *tv = malloc( sizeof( typed_value ) );
-    tv->vstr = NULL;
     tv->vtype = CIF_UNKNOWN;
     tv->vline = cif_flex_current_line_number();
     tv->vpos = cif_flex_current_position();
@@ -1119,7 +1116,6 @@ typed_value *new_typed_value( void ) {
 }
 
 void free_typed_value( typed_value *t ) {
-    freex( t->vstr );
     if( t->vcont != NULL ) {
         freex( t->vcont );
     }

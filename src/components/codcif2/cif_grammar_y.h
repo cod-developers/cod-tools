@@ -37,7 +37,6 @@ void cif_yy_debug_off( void );
 
 typedef struct typed_value typed_value;
 typedef struct typed_value {
-    char *vstr;
     cif_value_type_t vtype;
     int vline;
     int vpos;
