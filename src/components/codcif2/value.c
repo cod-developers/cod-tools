@@ -11,10 +11,10 @@
 #include <list.h>
 #include <table.h>
 
-VALUE *new_value_from_scalar( char *s, cexception_t *ex ) {
+VALUE *new_value_from_scalar( char *s, cif_value_type_t type, cexception_t *ex ) {
     VALUE *value = callocx( 1, sizeof(VALUE), ex );
     value->v.str = s;
-    value->type = CIF_UNKNOWN; // for now
+    value->type = type;
     return value;
 }
 
@@ -48,6 +48,21 @@ void value_dump( VALUE *value ) {
             break;
         case CIF_TABLE:
             table_dump( value_get_table( value ) );
+            break;
+        case CIF_SQSTRING:
+            printf( " '%s'", value_get_scalar( value ) );
+            break;
+        case CIF_DQSTRING:
+            printf( " \"%s\"", value_get_scalar( value ) );
+            break;
+        case CIF_SQ3STRING:
+            printf( " '''%s'''", value_get_scalar( value ) );
+            break;
+        case CIF_DQ3STRING:
+            printf( " \"\"\"%s\"\"\"", value_get_scalar( value ) );
+            break;
+        case CIF_TEXT:
+            printf( "\n;%s\n;\n", value_get_scalar( value ) );
             break;
         default:
             printf( " %s", value_get_scalar( value ) );

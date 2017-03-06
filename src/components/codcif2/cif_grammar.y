@@ -233,18 +233,20 @@ data_heading
         }
 	|	_DATA_ data_value_list
         {
+            LIST *list = value_get_list( $2->v );
+
             /* only simple data items can be concatenated,
              * thus we have to make sure that data value
              * list does not contain lists or tables: */
             int contains_list_or_table = 0;
-            typed_value *end = $2;
-            while( end != NULL ) {
-                if( end->vtype == CIF_LIST ||
-                    end->vtype == CIF_TABLE ) {
+            size_t i;
+            for( i = 0; i < list_length( list ); i++ ) {
+                VALUE *value = list_get( list, i );
+                if( value->type == CIF_LIST ||
+                    value->type == CIF_TABLE ) {
                     contains_list_or_table = 1;
                     break;
                 }
-                end = end->vnext;
             }
 
             if( (isset_fix_errors( cif_cc ) ||
@@ -474,8 +476,7 @@ string
     :   any_quoted_string
 	|	_UQSTRING
         { $$ = new_typed_value();
-          $$->v = new_value_from_scalar( $1, px );
-          $$->vtype = CIF_UQSTRING;
+          $$->v = new_value_from_scalar( $1, CIF_UQSTRING, px );
           $$->vcont = strdupx( cif_flex_current_line(), px ); }
 ;
 
@@ -487,26 +488,22 @@ any_quoted_string
 quoted_string
     :   _SQSTRING
         { $$ = new_typed_value();
-          $$->v = new_value_from_scalar( $1, px );
-          $$->vtype = CIF_SQSTRING;
+          $$->v = new_value_from_scalar( $1, CIF_SQSTRING, px );
           $$->vcont = strdupx( cif_flex_current_line(), px ); }
 	|	_DQSTRING
         { $$ = new_typed_value();
-          $$->v = new_value_from_scalar( $1, px );
-          $$->vtype = CIF_DQSTRING;
+          $$->v = new_value_from_scalar( $1, CIF_DQSTRING, px );
           $$->vcont = strdupx( cif_flex_current_line(), px ); }
 ;
 
 triple_quoted_string
     :   _SQ3STRING
         { $$ = new_typed_value();
-          $$->v = new_value_from_scalar( $1, px );
-          $$->vtype = CIF_SQSTRING;
+          $$->v = new_value_from_scalar( $1, CIF_SQ3STRING, px );
           $$->vcont = strdupx( cif_flex_current_line(), px ); }
 	|	_DQ3STRING
         { $$ = new_typed_value();
-          $$->v = new_value_from_scalar( $1, px );
-          $$->vtype = CIF_DQSTRING;
+          $$->v = new_value_from_scalar( $1, CIF_DQ3STRING, px );
           $$->vcont = strdupx( cif_flex_current_line(), px ); }
 ;
 
@@ -514,14 +511,14 @@ textfield
         :	_TEXT_FIELD
         {
           $$ = new_typed_value();
-          $$->v = new_value_from_scalar( $1, px );
+          $$->v = new_value_from_scalar( $1, CIF_TEXT, px );
           int unprefixed = 0;
           if( isset_do_not_unprefix_text( cif_cc ) == 0 ) {
               ssize_t str_len = strlen( value_get_scalar( $$->v ) );
               char *unprefixed_text =
                     cif_unprefix_textfield( value_get_scalar( $$->v ) );
               // FIXME free( $$->vstr );
-              $$->v = new_value_from_scalar( unprefixed_text, px );
+              $$->v = new_value_from_scalar( unprefixed_text, CIF_TEXT, px );
               if( str_len != strlen( unprefixed_text ) ) {
                   unprefixed = 1;
               }
@@ -533,7 +530,7 @@ textfield
               char *unfolded_text =
                     cif_unfold_textfield( value_get_scalar( $$->v ) );
               // FIXME free( $$->vstr );
-              $$->v = new_value_from_scalar( unfolded_text, px );
+              $$->v = new_value_from_scalar( unfolded_text, CIF_TEXT, px );
               if( str_len != strlen( unfolded_text ) ) {
                   unfolded = 1;
               }
@@ -559,7 +556,6 @@ textfield
               }
           }
 
-          $$->vtype = CIF_TEXT;
           $$->vcont = strdupx( cif_flex_current_line(), px );
         }
 ;
@@ -567,13 +563,11 @@ textfield
 number
 	:	_REAL_CONST
         { $$ = new_typed_value();
-          $$->v = new_value_from_scalar( $1, px );
-          $$->vtype = CIF_FLOAT;
+          $$->v = new_value_from_scalar( $1, CIF_FLOAT, px );
           $$->vcont = strdupx( cif_flex_current_line(), px ); }
 	|	_INTEGER_CONST
         { $$ = new_typed_value();
-          $$->v = new_value_from_scalar( $1, px );
-          $$->vtype = CIF_INT;
+          $$->v = new_value_from_scalar( $1, CIF_INT, px );
           $$->vcont = strdupx( cif_flex_current_line(), px ); }
 ;
 
@@ -612,7 +606,6 @@ table_entry_list
     {
         $$ = new_typed_value();
         $$->v = new_value_from_table( new_table( px ), px );
-        $$->vtype = CIF_TABLE;
         $$->vline = $1->vline;
         $$->vpos = $1->vpos;
         $$->vcont = strdupx( $1->vcont, px );
