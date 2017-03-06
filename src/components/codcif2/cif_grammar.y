@@ -66,8 +66,7 @@ static CIF_COMPILER * volatile cif_cc; /* CIF current compiler */
 static cexception_t *px; /* parser exception */
 
 void assert_datablock_exists( cexception_t *ex );
-void add_tag_value( char *tag, char *value, typed_value *tv,
-     cexception_t *ex );
+void add_tag_value( char *tag, typed_value *tv, cexception_t *ex );
 int yyerror_token( const char *message, int line, int pos, char *cont, cexception_t *ex );
 int yywarning_token( const char *message, int line, int pos, cexception_t *ex );
 
@@ -303,8 +302,9 @@ cif_entry
 	:	_TAG data_value
         {
             assert_datablock_exists( px );
-            add_tag_value( $1, $2->vstr, $2, px );
+            add_tag_value( $1, $2, px );
             freex( $1 );
+            $2->v = NULL; // protecting v from free()ing
             free_typed_value( $2 );
         }
         | _TAG data_value data_value_list
@@ -346,7 +346,7 @@ cif_entry
                     tv->vline = $3->vline;
                     tv->vpos  = $3->vpos;
                     tv->vcont = $3->vcont;
-                    add_tag_value( $1, buf, tv, px );
+                    add_tag_value( $1, tv, px );
                     free_typed_value( tv );
                     $3->vcont = NULL; /* preventing from free()ing
                                         repeatedly */
@@ -364,11 +364,7 @@ data_value_list
         :       data_value
         |       data_value_list data_value
         {
-            typed_value *end = $1;
-            while( end->vnext != NULL ) {
-                end = end->vnext;
-            }
-            end->vnext = $2;
+            list_add( value_get_list( $1->v ), $2->v, px );
         }
 ;
 
@@ -411,7 +407,7 @@ loop_tags
                                cif_flex_current_line_number(), -1, NULL, px );
             }
             loop_tag_count++;
-            cif_insert_value( cif_cc->cif, $2, NULL, CIF_UNKNOWN, px );
+            cif_insert_value( cif_cc->cif, $2, NULL, px );
             freex( $2 );
         }
 	|	_TAG
@@ -422,7 +418,7 @@ loop_tags
                                cif_flex_current_line_number(), -1, NULL, px );
             }
             loop_tag_count++;
-            cif_insert_value( cif_cc->cif, $1, NULL, CIF_UNKNOWN, px );
+            cif_insert_value( cif_cc->cif, $1, NULL, px );
             freex( $1 );
         }
 ;
@@ -431,15 +427,15 @@ loop_values
 	:	loop_values data_value
         {
             loop_value_count++;
-            cif_push_loop_value( cif_cc->cif, $2->vstr, $2->vtype, px );
-            $2->vstr = NULL; /* protecting vstr from free'ing */
+            cif_push_loop_value( cif_cc->cif, $2->v, px );
+            $2->v = NULL; /* protecting v from free'ing */
             free_typed_value( $2 );
         }
 	|	data_value
         {
             loop_value_count++;
-            cif_push_loop_value( cif_cc->cif, $1->vstr, $1->vtype, px );
-            $1->vstr = NULL; /* protecting vstr from free'ing */
+            cif_push_loop_value( cif_cc->cif, $1->v, px );
+            $1->v = NULL; /* protecting v from free'ing */
             free_typed_value( $1 );
         }
 ;
@@ -470,7 +466,8 @@ data_value
 string
     :   any_quoted_string
 	|	_UQSTRING
-        { $$ = new_typed_value(); $$->vstr = $1;
+        { $$ = new_typed_value();
+          $$->v = new_value_from_scalar( $1, px );
           $$->vtype = CIF_UQSTRING;
           $$->vcont = strdupx( cif_flex_current_line(), px ); }
 ;
@@ -482,22 +479,26 @@ any_quoted_string
 
 quoted_string
     :   _SQSTRING
-        { $$ = new_typed_value(); $$->vstr = $1;
+        { $$ = new_typed_value();
+          $$->v = new_value_from_scalar( $1, px );
           $$->vtype = CIF_SQSTRING;
           $$->vcont = strdupx( cif_flex_current_line(), px ); }
 	|	_DQSTRING
-        { $$ = new_typed_value(); $$->vstr = $1;
+        { $$ = new_typed_value();
+          $$->v = new_value_from_scalar( $1, px );
           $$->vtype = CIF_DQSTRING;
           $$->vcont = strdupx( cif_flex_current_line(), px ); }
 ;
 
 triple_quoted_string
     :   _SQ3STRING
-        { $$ = new_typed_value(); $$->vstr = $1;
+        { $$ = new_typed_value();
+          $$->v = new_value_from_scalar( $1, px );
           $$->vtype = CIF_SQSTRING;
           $$->vcont = strdupx( cif_flex_current_line(), px ); }
 	|	_DQ3STRING
-        { $$ = new_typed_value(); $$->vstr = $1;
+        { $$ = new_typed_value();
+          $$->v = new_value_from_scalar( $1, px );
           $$->vtype = CIF_DQSTRING;
           $$->vcont = strdupx( cif_flex_current_line(), px ); }
 ;
@@ -506,25 +507,27 @@ textfield
         :	_TEXT_FIELD
         {
           $$ = new_typed_value();
-          $$->vstr = $1;
+          $$->v = new_value_from_scalar( $1, px );
           int unprefixed = 0;
           if( isset_do_not_unprefix_text( cif_cc ) == 0 ) {
-              ssize_t str_len = strlen( $$->vstr );
-              char *unprefixed_text = cif_unprefix_textfield( $$->vstr );
-              free( $$->vstr );
-              $$->vstr = unprefixed_text;
-              if( str_len != strlen( $$->vstr ) ) {
+              ssize_t str_len = strlen( value_get_scalar( $$->v ) );
+              char *unprefixed_text =
+                    cif_unprefix_textfield( value_get_scalar( $$->v ) );
+              // FIXME free( $$->vstr );
+              $$->v = new_value_from_scalar( unprefixed_text, px );
+              if( str_len != strlen( unprefixed_text ) ) {
                   unprefixed = 1;
               }
           }
           int unfolded = 0;
           if( isset_do_not_unfold_text( cif_cc ) == 0 &&
               $$->vstr[0] == '\\' ) {
-              size_t str_len = strlen( $$->vstr );
-              char * unfolded_text = cif_unfold_textfield( $$->vstr );
-              free( $$->vstr );
-              $$->vstr = unfolded_text;
-              if( str_len != strlen( $$->vstr ) ) {
+              size_t str_len = strlen( value_get_scalar( $$->v ) );
+              char *unfolded_text =
+                    cif_unfold_textfield( value_get_scalar( $$->v ) );
+              // FIXME free( $$->vstr );
+              $$->v = new_value_from_scalar( unfolded_text, px );
+              if( str_len != strlen( unfolded_text ) ) {
                   unfolded = 1;
               }
           }
@@ -538,13 +541,14 @@ textfield
          * the text field. This empty line should be removed.
          */
           if( unprefixed == 1 && unfolded == 0 ) {
-              if( $$->vstr[0] == '\n' ) {
+              char *str = value_get_scalar( $$->v );
+              if( str[0] == '\n' ) {
                   size_t i = 0;
-                  while($$->vstr[i] != '\0') {
-                      $$->vstr[i] = $$->vstr[i+1];
+                  while( str[i] != '\0' ) {
+                      str[i] = str[i+1];
                       i++;
                   }
-                  $$->vstr[i] = '\0';
+                  str[i] = '\0';
               }
           }
 
@@ -555,11 +559,13 @@ textfield
 
 number
 	:	_REAL_CONST
-        { $$ = new_typed_value(); $$->vstr = $1;
+        { $$ = new_typed_value();
+          $$->v = new_value_from_scalar( $1, px );
           $$->vtype = CIF_FLOAT;
           $$->vcont = strdupx( cif_flex_current_line(), px ); }
 	|	_INTEGER_CONST
-        { $$ = new_typed_value(); $$->vstr = $1;
+        { $$ = new_typed_value();
+          $$->v = new_value_from_scalar( $1, px );
           $$->vtype = CIF_INT;
           $$->vcont = strdupx( cif_flex_current_line(), px ); }
 ;
@@ -567,12 +573,7 @@ number
 list
     :   '[' data_value_list ']'
     {
-        $$ = new_typed_value();
-        $$->vtype = CIF_LIST;
-        $$->vinner = $2;
-        $$->vline = $2->vline;
-        $$->vpos = $2->vpos;
-        $$->vcont = strdupx( $2->vcont, px );
+        $$ = $2;
     }
 ;
 
@@ -587,24 +588,32 @@ table_entry_list
 	:	table_entry_list
         any_quoted_string _TABLE_ENTRY_SEP data_value
     {
-        if( table_get( $1, $2->vstr ) != NULL ) {
+        if( table_get( value_get_table( $1->v ),
+                       value_get_scalar( $2->v ) ) != NULL ) {
             yyerror_token( cxprintf( "key '%s' appears more than once "
-                                     "in the same table", $2->vstr ),
+                                     "in the same table",
+                                      value_get_scalar( $2->v ) ),
                            $2->vline, -1, NULL, px );
         }
-        table_add( $1, $2->vstr, $4, px );
+        table_add( value_get_table( $1->v ),
+                   value_get_scalar( $2->v ), $4->v, px );
+        $4->v = NULL; // protecting from free()ing
         free_typed_value( $2 );
+        free_typed_value( $4 );
     }
 	|	any_quoted_string _TABLE_ENTRY_SEP data_value
     {
         $$ = new_typed_value();
+        $$->v = new_value_from_table( new_table( px ), px );
         $$->vtype = CIF_TABLE;
         $$->vline = $1->vline;
         $$->vpos = $1->vpos;
         $$->vcont = strdupx( $1->vcont, px );
         /* check for the existence of key does not have to be
          * performed, since the table is empty */
-        table_add( $$, $1->vstr, $3, px );
+        table_add( value_get_table( $$->v ),
+                   value_get_scalar( $1->v ),
+                   $3->v, px );
         free_typed_value( $1 );
     }
 ;
@@ -820,12 +829,13 @@ void assert_datablock_exists( cexception_t *ex )
     }
 }
 
-void add_tag_value( char *tag, char *value, typed_value *tv,
-                    cexception_t *ex )
+void add_tag_value( char *tag, typed_value *tv, cexception_t *ex )
 {
+    VALUE *value = tv->v;
     if( cif_tag_index( cif_cc->cif, tag ) == -1 ) {
-        cif_insert_value( cif_cc->cif, tag, value, tv->vtype, ex );
+        cif_insert_value( cif_cc->cif, tag, value, ex );
     } else {
+        /*
         ssize_t tag_nr = cif_tag_index( cif_cc->cif, tag );
         ssize_t * value_lengths = 
             datablock_value_lengths(cif_last_datablock(cif_cc->cif));
@@ -874,6 +884,7 @@ void add_tag_value( char *tag, char *value, typed_value *tv,
             yyerror_token( cxprintf( "tag %s appears more than once", tag ),
                            tv->vline, -1, NULL, ex );
         }
+        */
     }
 }
 
