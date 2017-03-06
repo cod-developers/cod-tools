@@ -17,17 +17,6 @@
 typedef struct DATABLOCK DATABLOCK;
 
 typedef enum {
-    DBLK_UNKNOWN = 0,
-    DBLK_INT,
-    DBLK_FLOAT,
-    DBLK_UQSTRING,
-    DBLK_SQSTRING,
-    DBLK_DQSTRING,
-    DBLK_TEXT,
-    last_DBLK_VALUE
-} datablock_value_type_t;
-
-typedef enum {
   DBLK_OK = 0,
   DBLK_UNRECOVERABLE_ERROR,
   DBLK_COMPILATION_ERROR,
