@@ -133,6 +133,9 @@ our @new_data_fields = qw (
     calcformula
     cellformula
 
+    Z
+    Zprime
+
     acce_code
     authors
     title
