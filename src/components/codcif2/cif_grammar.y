@@ -366,7 +366,7 @@ data_value_list
         :       data_value
         |       data_value_list data_value
         {
-            list_add( value_get_list( $1->v ), $2->v, px );
+            list_push( value_get_list( $1->v ), $2->v, px );
         }
 ;
 

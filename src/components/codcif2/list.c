@@ -28,7 +28,7 @@ LIST *new_list( cexception_t *ex )
     return list;
 }
 
-void list_add( LIST *list, VALUE *value, cexception_t *ex )
+void list_push( LIST *list, VALUE *value, cexception_t *ex )
 {
     cexception_t inner;
     size_t i;
@@ -54,7 +54,7 @@ void list_add( LIST *list, VALUE *value, cexception_t *ex )
 
 void list_unshift( LIST *list, VALUE *value, cexception_t *ex )
 {
-    list_add( list, NULL, ex ); // for now, we simply extend the list
+    list_push( list, NULL, ex ); // for now, we simply extend the list
 
     size_t i;
     for( i = list->length-1; i > 0; i-- ) {

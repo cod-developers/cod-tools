@@ -15,7 +15,7 @@ typedef struct LIST LIST;
 
 LIST *new_list( cexception_t *ex );
 
-void list_add( LIST *list, VALUE *value, cexception_t *ex );
+void list_push( LIST *list, VALUE *value, cexception_t *ex );
 void list_unshift( LIST *list, VALUE *value, cexception_t *ex );
 
 size_t list_length( LIST *list );
