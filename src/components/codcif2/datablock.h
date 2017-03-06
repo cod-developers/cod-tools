@@ -67,7 +67,7 @@ ssize_t datablock_tag_index( DATABLOCK *datablock, char *tag );
 void datablock_overwrite_value( DATABLOCK * datablock, ssize_t tag_nr,
     ssize_t val_nr, VALUE *value, cexception_t *ex );
 int *datablock_in_loop( DATABLOCK *datablock );
-datablock_value_type_t **datablock_types( DATABLOCK *datablock );
+// datablock_value_type_t **datablock_types( DATABLOCK *datablock );
 int datablock_loop_count( DATABLOCK *datablock );
 DATABLOCK * datablock_save_frame_list( DATABLOCK *datablock );
 
