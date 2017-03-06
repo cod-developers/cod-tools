@@ -39,5 +39,5 @@ val.yaml:
 clean:
 	rm -rf ${PARTS}
 
-cleanAll:
+distclean cleanAll:
 	rm -rf ${PARTS} ${PERL_MODULE} ${YAML_MODULE}
