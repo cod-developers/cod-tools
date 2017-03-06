@@ -310,24 +310,26 @@ cif_entry
         | _TAG data_value data_value_list
             {
                 assert_datablock_exists( px );
-                $2->vnext = $3;
+                LIST *list = value_get_list( $3->v );
+                list_unshift( list, $2->v, px );
 
                 /* only simple data items can be concatenated,
                  * thus we have to make sure that data value
                  * list does not contain lists or tables: */
-                typed_value *end = $2;
-                while( end != NULL ) {
-                    if( end->vtype == CIF_LIST ||
-                        end->vtype == CIF_TABLE ) {
+                int contains_list_or_table = 0;
+                size_t i;
+                for( i = 0; i < list_length( list ); i++ ) {
+                    VALUE *value = list_get( list, i );
+                    if( value->type == CIF_LIST ||
+                        value->type == CIF_TABLE ) {
+                        contains_list_or_table = 1;
                         break;
                     }
-                    end = end->vnext;
                 }
 
-                if( end != NULL &&
-                    (end->vtype == CIF_LIST || end->vtype == CIF_TABLE) ) {
-                    yyerror_token( "incorrect CIF syntax", end->vline,
-                                   end->vpos+1, end->vcont, px );
+                if( contains_list_or_table ) {
+                    yyerror_token( "incorrect CIF syntax", $2->vline,
+                                   $2->vpos+1, $2->vcont, px );
                 } else if( isset_fix_errors( cif_cc ) ||
                             isset_fix_string_quotes( cif_cc ) ) {
                     yywarning_token( "string with spaces without quotes -- fixed",

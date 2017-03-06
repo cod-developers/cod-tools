@@ -52,7 +52,28 @@ void list_add( LIST *list, VALUE *value, cexception_t *ex )
     }    
 }
 
+void list_unshift( LIST *list, VALUE *value, cexception_t *ex )
+{
+    list_add( list, NULL, ex ); // for now, we simply extend the list
+
+    size_t i;
+    for( i = list->length-1; i > 0; i-- ) {
+        list->values[i] = list->values[i-1];
+    }
+    list->values[0] = value;
+}
+
+size_t list_length( LIST *list )
+{
+    return list->length;
+}
+
 VALUE *list_get( LIST *list, int index )
 {
     return list->values[index];
+}
+
+VALUE **list_get_values( LIST *list )
+{
+    return list->values;
 }
