@@ -41,12 +41,6 @@ typedef struct typed_value {
     int vline;
     int vpos;
     char *vcont;
-    typed_value *vnext;
-    typed_value *vinner;
-    ssize_t vlength;
-    ssize_t vcapacity;
-    char **vkeys;
-    typed_value **vvalues;
     VALUE *v;
 } typed_value;
 

@@ -1110,8 +1110,6 @@ typed_value *new_typed_value( void ) {
     tv->vline = cif_flex_current_line_number();
     tv->vpos = cif_flex_current_position();
     tv->vcont = NULL;
-    tv->vnext = NULL;
-    tv->vinner = NULL;
     return tv;
 }
 
