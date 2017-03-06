@@ -86,9 +86,6 @@ int loop_start = 0;
 typed_value *new_typed_value( void );
 void free_typed_value( typed_value *t );
 
-char *concat_data_value_list( typed_value *tv, char separator,
-                              cexception_t *ex );
-
 %}
 
 %union {
@@ -254,7 +251,7 @@ data_heading
                  isset_fix_datablock_names( cif_cc )) &&
                 !contains_list_or_table ) {
 
-                char *data_list = concat_data_value_list( $2, '_', px );
+                char *data_list = list_concat( list, '_', px );
                 char buf[strlen($1)+strlen(data_list)+2];
                 strcpy( buf, $1 );
                 buf[strlen($1)] = '_';
@@ -336,7 +333,7 @@ cif_entry
                             isset_fix_string_quotes( cif_cc ) ) {
                     yywarning_token( "string with spaces without quotes -- fixed",
                                      $2->vline, -1, px );
-                    char *buf = concat_data_value_list( $2, ' ', px );
+                    char *buf = list_concat( list, ' ', px );
                     cif_value_type_t tag_type = CIF_SQSTRING;
                     if( index( buf, '\n' ) != NULL ||
                         index( buf, '\r' ) != NULL ||
@@ -345,15 +342,15 @@ cif_entry
                         tag_type = CIF_TEXT;
                     }
                     typed_value *tv = new_typed_value();
-                    tv->vstr = buf;
                     tv->vtype = tag_type;
                     tv->vline = $3->vline;
                     tv->vpos  = $3->vpos;
                     tv->vcont = $3->vcont;
+                    tv->v = new_value_from_scalar( buf, tag_type, px );
                     add_tag_value( $1, tv, px );
                     free_typed_value( tv );
-                    $3->vcont = NULL; /* preventing from free()ing
-                                        repeatedly */
+                    $3->vcont = NULL; // preventing from free()ing
+                    $3->v = NULL;     // repeatedly
                 } else {
                     yyerror_token( "incorrect CIF syntax", $3->vline,
                                    $3->vpos+1, $3->vcont, px );
@@ -1128,43 +1125,6 @@ void free_typed_value( typed_value *t ) {
         freex( t->vcont );
     }
     freex( t );
-}
-
-char *concat_data_value_list( typed_value *tv, char separator,
-                              cexception_t *ex ) {
-    /* the list has to be already checked for the existence of
-     * lists of tables, since concatenating their vstrs is not
-     * of much sense */
-
-    ssize_t length = 0;
-    ssize_t count = 0;
-    typed_value *end = tv;
-    while( end != NULL ) {
-        length += strlen( end->vstr );
-        count++;
-
-        // printf( "adding %s\n", end->vstr );
-        end = end->vnext;
-    }
-
-    char *buf = mallocx( length + count - 1, ex );
-    buf[0] = '\0';
-    ssize_t pos = 0;
-    end = tv;
-    while( end != NULL ) {
-        // printf( "concatting %s\n", end->vstr );
-        buf = strcat( buf, end->vstr );
-        pos = pos + strlen( end->vstr );
-        if( end->vnext != NULL ) {
-            buf[pos] = separator;
-            buf[pos+1] = '\0';
-            pos += 1;
-        }
-        // printf( " buf now: [%s]\n", buf );
-        end = end->vnext;
-    }
-
-    return buf;
 }
 
 int yywrap()

@@ -87,3 +87,31 @@ VALUE **list_get_values( LIST *list )
 {
     return list->values;
 }
+
+char *list_concat( LIST *list, char separator, cexception_t *ex )
+{
+    /* the list has to be already checked for the existence of
+     * lists of tables, since concatenating their values is not
+     * of much sense */
+
+    ssize_t length = 0;
+    size_t i;
+    for( i = 0; i < list_length( list ); i++ ) {
+        length += strlen( value_get_scalar( list_get( list, i ) ) );
+    }
+
+    char *buf = mallocx( length + list_length( list ) - 1, ex );
+    buf[0] = '\0';
+    ssize_t pos = 0;
+    for( i = 0; i < list_length( list ); i++ ) {
+        buf = strcat( buf, value_get_scalar( list_get( list, i ) ) );
+        pos = pos + strlen( value_get_scalar( list_get( list, i ) ) );
+        if( i != list_length( list ) - 1 ) {
+            buf[pos] = separator;
+            buf[pos+1] = '\0';
+            pos += 1;
+        }
+    }
+
+    return buf;
+}
