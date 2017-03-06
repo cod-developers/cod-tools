@@ -255,14 +255,8 @@ data_heading
                 char buf[strlen($1)+strlen(data_list)+2];
                 strcpy( buf, $1 );
                 buf[strlen($1)] = '_';
-                int i;
-                for( i = 0; i < strlen(data_list); i++ ) {
-                    if( $2->vstr[i] != ' ' ) {
-                        buf[strlen($1)+1+i] = data_list[i];
-                    } else {
-                        buf[strlen($1)+1+i] = '_';
-                    } 
-                }
+                buf[strlen($1)+1] = '\0';
+                strcat( buf, data_list );
                 buf[strlen($1)+strlen(data_list)+1] = '\0';
                 cif_start_datablock( cif_cc->cif, buf, px );
                 if( isset_fix_errors( cif_cc ) ||
