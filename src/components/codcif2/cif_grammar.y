@@ -522,7 +522,7 @@ textfield
           }
           int unfolded = 0;
           if( isset_do_not_unfold_text( cif_cc ) == 0 &&
-              $$->vstr[0] == '\\' ) {
+              value_get_scalar( $$->v )[0] == '\\' ) {
               size_t str_len = strlen( value_get_scalar( $$->v ) );
               char *unfolded_text =
                     cif_unfold_textfield( value_get_scalar( $$->v ) );
