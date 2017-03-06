@@ -273,37 +273,8 @@ void datablock_print_tag( DATABLOCK * volatile datablock, int tag_nr )
 
 void datablock_print_value( DATABLOCK * volatile datablock, int tag_nr, int value_idx )
 {
-    ssize_t i, j;
-
     assert( datablock );
-    i = tag_nr;
-    j = value_idx;
-
-    value_dump( datablock->values[i][j] );
-
-    /*
-    switch( datablock->types[i][j] ) {
-    case DBLK_INT:
-    case DBLK_FLOAT:
-    case DBLK_UQSTRING:
-	printf( " %s", datablock->values[i][j] );
-	break;
-    case DBLK_SQSTRING:
-	printf( " '%s'", datablock->values[i][j] );
-	break;
-    case DBLK_DQSTRING:
-	printf( " \"%s\"", datablock->values[i][j] );
-	break;
-    case DBLK_TEXT:
-	printf( "\n;%s\n;\n", datablock->values[i][j] );
-	break;
-    default:
-	fprintf( stderr, "unknown DATABLOCK value type %d from DATABLOCK parser!\n",
-		 datablock->types[i][j] );
-	printf( " '%s'\n", datablock->values[i][j] );
-	break;
-    }
-    */
+    value_dump( datablock->values[tag_nr][value_idx] );
 }
 
 void datablock_print_tag_values( DATABLOCK * volatile datablock,
@@ -321,10 +292,11 @@ void datablock_print_tag_values( DATABLOCK * volatile datablock,
                 int first = 1;
                 for( j = 0; j < datablock->value_lengths[i]; j++ ) {
                     if( first == 1 ) {
-                        printf( "%s", datablock->values[i][j] );
+                        printf( "%s", value_get_scalar( datablock->values[i][j] ) );
                         first = 0;
                     } else {
-                        printf( "%s%s", vseparator, datablock->values[i][j] );
+                        printf( "%s%s", vseparator,
+                                value_get_scalar( datablock->values[i][j] ) );
                     }
                 }
                 break;
