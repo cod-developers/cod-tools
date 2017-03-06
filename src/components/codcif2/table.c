@@ -36,7 +36,36 @@ void table_dump( TABLE *table )
     printf( " {" );
     size_t i;
     for( i = 0; i < table->length; i++ ) {
-        printf( " '%s':", table->keys[i] );
+        int max_sq_in_row = 0;
+        int max_dq_in_row = 0;
+        size_t j = 0;
+        while( table->keys[i][j] != '\0' ) {
+            if(        table->keys[i][j] == '\'' ) {
+                if( max_sq_in_row == 0 || j == 0 ||
+                    table->keys[i][j-1] == '\'' ) {
+                    max_sq_in_row++;
+                }
+            } else if( table->keys[i][j] == '"' ) {
+                if( max_dq_in_row == 0 || j == 0 ||
+                    table->keys[i][j-1] == '"' ) {
+                    max_dq_in_row++;
+                }
+            }
+            j++;
+        }
+        if( max_sq_in_row == 0 ) {
+            // string without single quotes
+            printf( " '%s':", table->keys[i] );
+        } else if( max_dq_in_row == 0 ) {
+            // string without double quotes
+            printf( " \"%s\":", table->keys[i] );
+        } else if( max_sq_in_row < 3 ) {
+            // string with 1 or 2 single quotes and some double quotes
+            printf( " '''%s''':", table->keys[i] );
+        } else {
+            // string with three single quotes and 1 or 2 double quotes
+            printf( " \"\"\"%s\"\"\":", table->keys[i] );
+        }
         value_dump( table->values[i] );
     }
     printf( " }" );
