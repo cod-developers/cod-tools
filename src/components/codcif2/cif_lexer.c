@@ -528,28 +528,23 @@ int cif_lexer( FILE *in, cexception_t *ex )
                 yyerror( "GLOBAL_ symbol detected -- "
                          "it is not acceptable in CIF v2.0" );
             } else {
+                yylval.s = check_and_clean( token, /* is_textfield = */ 0,
+                                            ex );
+                qstring_seen = 0;
                 if( token[0] == '$' ) {
                     /* dollar is a reserved symbol, unquoted strings
                        may not start with it: */
                     yyerror( "dollar symbol ('$') must not start an "
                              "unquoted string" );
-                }
-                if( token[0] != '$' ) {
+                    if( yy_flex_debug ) {
+                        printf( ">>> SQSTRING (corrected dollar): '%s'\n", token );
+                    }
+                    return _SQSTRING;
+                } else {
                     if( yy_flex_debug ) {
                         printf( ">>> UQSTRING: '%s'\n", token );
                     }
-                    yylval.s = check_and_clean( token, /* is_textfield = */ 0,
-                                                ex );
-                    qstring_seen = 0;
                     return _UQSTRING;
-                } else {
-                    if( yy_flex_debug ) {
-                        printf( ">>> SQSTRING (corrected bracket): '%s'\n", token );
-                    }
-                    yylval.s = check_and_clean( token, /* is_textfield = */ 0,
-                                                ex );
-                    qstring_seen = 0;
-                    return _SQSTRING;
                 }
             }
         }
