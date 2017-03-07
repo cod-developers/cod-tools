@@ -420,8 +420,8 @@ void datablock_insert_value( DATABLOCK * datablock, char *tag,
             /* datablock->types = reallocx( datablock->types,
                                    sizeof(datablock->types[0]) *
                                    (datablock->capacity + DELTA_CAPACITY),
-                                   &inner ); */
-            datablock->types[i] = NULL;
+                                   &inner );
+               datablock->types[i] = NULL; */
             datablock->value_lengths = reallocx( datablock->value_lengths,
                                            sizeof(datablock->value_lengths[0]) *
                                            (datablock->capacity + DELTA_CAPACITY),
