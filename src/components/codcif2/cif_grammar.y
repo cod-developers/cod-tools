@@ -568,7 +568,7 @@ list
     |   '[' ']'
     {
         $$ = new_typed_value();
-        $$->v = new_value_from_table( new_table( px ), px );
+        $$->v = new_value_from_list( new_list( px ), px );
         $$->vcont = strdupx( cif_flex_current_line(), px );
     }
 ;
@@ -577,6 +577,12 @@ table
     :   '{' table_entry_list '}'
     {
         $$ = $2;
+    }
+    |   '{' '}'
+    {
+        $$ = new_typed_value();
+        $$->v = new_value_from_table( new_table( px ), px );
+        $$->vcont = strdupx( cif_flex_current_line(), px );
     }
 ;
 
