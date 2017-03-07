@@ -90,8 +90,8 @@ void dispose_cif( CIF * volatile *cif )
 {
     assert( cif );
     if( *cif ) {
-	delete_cif( *cif );
-	*cif = NULL;
+        delete_cif( *cif );
+        *cif = NULL;
     }
 }
 
@@ -284,7 +284,7 @@ void cif_print_tag_values( CIF *cif, char ** tagnames, int tagcount,
                 /* lengths of both strings are added: */
                 strlen( prefix ) +
                 (dblock_name ? strlen( dblock_name ) : 0) +
-                /* too separators will be used, allocate place for them: */
+                /* two separators will be used, allocate place for them: */
                 2 * strlen( separator ) 
                 /* one byte must be added for the terminating '\0' character: */
                 + 1;
