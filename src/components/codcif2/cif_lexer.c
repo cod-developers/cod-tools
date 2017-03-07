@@ -462,7 +462,8 @@ int cif_lexer( FILE *in, cexception_t *ex )
             pos = 0;
             advance_mark();
             pushchar( &token, &length, pos++, ch );
-            while( !isspace( ch ) && ch != EOF ) {
+            while( !isspace( ch ) && ch != EOF &&
+                    ch != '[' && ch != ']' && ch != '{' && ch != '}' ) {
                 pushchar( &token, &length, pos++, ch = getlinec( in, ex ));
             }
             ungetlinec( ch, in );
