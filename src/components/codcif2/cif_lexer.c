@@ -293,21 +293,19 @@ int cif_lexer( FILE *in, cexception_t *ex )
                 if(        quote_count == 1 ) {
                     /* start of quote-delimited string */
                 } else if( quote_count == 2 ) {
+                    /* empty quote-delimited string */
                     ch = getlinec( in, ex );
-                    if( isspace( ch ) || ch == EOF ) {
-                        /* empty quote-delimited string */
-                        yylval.s = check_and_clean
-                                ( token, /* is_textfield = */ 0, ex );
-                    } else {
+                    if( !isspace( ch ) && ch != EOF && ch != ':' ) {
                         /* syntax error, no fix as of now */
                         yyerror( "incorrect CIF syntax" );
-                        yylval.s = strdupx( "", ex );
                     }
+                    ungetlinec( ch, in );
+                    token[0] = '\0';
+                    yylval.s = strdupx( token, ex );
                     if( yy_flex_debug ) {
                         printf( ">>> *QSTRING (%c): ''\n",
                                 quote );
                     }
-                    ungetlinec( ch, in );
                     qstring_seen = 1;
                     return type;
                 } else if( quote_count == 3 ) {
@@ -327,8 +325,15 @@ int cif_lexer( FILE *in, cexception_t *ex )
                     for( i = 0; i < quote_count - 6; i++ ) {
                         ungetlinec( quote, in );
                     }
-                    yylval.s = check_and_clean
-                                ( token, /* is_textfield = */ 0, ex );
+                    ch = getlinec( in, ex );
+                    if( !isspace( ch ) && ch != EOF && ch != ':' ) {
+                        /* quoted string must be followed by a space
+                           or ':' in case of table keys */
+                        yyerror( "incorrect CIF syntax" );
+                    }
+                    ungetlinec( ch, in );
+                    token[0] = '\0';
+                    yylval.s = strdupx( token, ex );
                     type = quote == '"' ? _DQ3STRING : _SQ3STRING;
                     if( yy_flex_debug ) {
                         printf( ">>> *Q3STRING (%c): ''\n",
