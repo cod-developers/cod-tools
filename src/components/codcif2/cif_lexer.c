@@ -293,16 +293,24 @@ int cif_lexer( FILE *in, cexception_t *ex )
                 if(        quote_count == 1 ) {
                     /* start of quote-delimited string */
                 } else if( quote_count == 2 ) {
-                    /* empty quote-delimited string */
-                    yylval.s = check_and_clean
+                    ch = getlinec( in, ex );
+                    if( isspace( ch ) || ch == EOF ) {
+                        /* empty quote-delimited string */
+                        yylval.s = check_and_clean
                                 ( token, /* is_textfield = */ 0, ex );
+                    } else {
+                        /* syntax error, no fix as of now */
+                        yyerror( "incorrect CIF syntax" );
+                        yylval.s = strdupx( "", ex );
+                    }
+                    ungetlinec( ch, in );
                     qstring_seen = 1;
                     return type;
                 } else if( quote_count == 3 ) {
                     /* start of triple quote-delimited string */
                     type = quote == '"' ? _DQ3STRING : _SQ3STRING;
                 } else if( quote_count >= 4 && quote_count <= 5 ) {
-                    /* quote inside triple quote-delimited string */
+                    /* quote(s) inside triple quote-delimited string */
                     int i;
                     for( i = 0; i < quote_count - 3; i++ ) {
                         ungetlinec( quote, in );
