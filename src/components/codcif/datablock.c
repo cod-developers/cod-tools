@@ -444,7 +444,7 @@ void datablock_insert_value( DATABLOCK * datablock, char *tag,
                                    sizeof(datablock->types[0]) *
                                    (datablock->capacity + DELTA_CAPACITY),
                                    &inner );
-            datablock->values[i] = NULL;
+            datablock->types[i] = NULL;
             datablock->value_lengths = reallocx( datablock->value_lengths,
                                            sizeof(datablock->value_lengths[0]) *
                                            (datablock->capacity + DELTA_CAPACITY),
@@ -492,7 +492,7 @@ void datablock_overwrite_value( DATABLOCK * datablock, ssize_t tag_nr,
             datablock->values[tag_nr][val_nr] = strdupx( value, &inner );
             datablock->types[tag_nr][val_nr]  = vtype;
         } else {
-            datablock->values[tag_nr][val_nr] = "\0";
+            datablock->values[tag_nr][val_nr] = '\0';
         }
     }
     cexception_catch {
