@@ -90,8 +90,8 @@ void dispose_cif( CIF * volatile *cif )
 {
     assert( cif );
     if( *cif ) {
-	delete_cif( *cif );
-	*cif = NULL;
+        delete_cif( *cif );
+        *cif = NULL;
     }
 }
 
