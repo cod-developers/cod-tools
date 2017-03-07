@@ -1,9 +1,10 @@
 package AtomPropertiesCOD;
 
 use strict;
+use warnings;
 
 require Exporter;
-@AtomPropertiesCOD::ISA = qw(Exporter);
+@AtomPropertiesCOD::ISA = qw( Exporter );
 @AtomPropertiesCOD::EXPORT = qw( ok );
 
 # The hash %atoms has been created using data from the folowing sources:
@@ -24,6 +25,18 @@ require Exporter;
 #          );
 
 %AtomPropertiesCOD::atoms = (
+     "." => {
+             "name" => "Dummy",
+             "period" => "0",
+             "group" => "0",
+             "block" => "0",
+             "atomic_number" => "0",
+             "atomic_weight" => "0",
+             # covalent and Van der Waals radii copied from carbon
+             "covalent_radius" => 0.68,
+             "vdw_radius" => 1.70,
+             "valency" => [0],
+     },
      "H" => {
              "name" => "Hydrogen",
              "period" => "1",

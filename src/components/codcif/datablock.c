@@ -55,8 +55,8 @@ struct DATABLOCK {
     char **tags;
     char ***values;
     int *in_loop;              /* in_loop[i] is number of a loop to
-				  which the i-th tag belongs; -1 if
-				  not in a loop */
+                                  which the i-th tag belongs; -1 if
+                                  not in a loop */
     ssize_t *value_lengths;    /* Lengths of the values[i] arrays. */
     ssize_t *value_capacities; /* Capacities of the values[i] arrays. */
     datablock_value_type_t **types;  /* Type for each value in 'values'. */
@@ -71,7 +71,7 @@ struct DATABLOCK {
 
     int loop_count;  /* Number of loops in the array 'loop_first' and 'loop_last'. */
     int *loop_first; /* loop_first[i] is the first tag index in the
-			array 'tags' of the i-th loop. */
+                        array 'tags' of the i-th loop. */
     int *loop_last;  /* loop_last[i] is the last tag index of the i-th loop. */
 
     struct DATABLOCK *save_frames; /* All save frames in this
@@ -114,7 +114,7 @@ void delete_datablock( DATABLOCK *datablock )
         freex( datablock->loop_first );
         freex( datablock->loop_last );
         delete_datablock_list( datablock->save_frames );
-	freex( datablock );
+        freex( datablock );
     }
 }
 
@@ -280,25 +280,25 @@ void datablock_print_value( DATABLOCK * volatile datablock, int tag_nr, int valu
     j = value_idx;
 
     switch( datablock->types[i][j] ) {
-    case DBLK_INT:
-    case DBLK_FLOAT:
-    case DBLK_UQSTRING:
-	printf( " %s", datablock->values[i][j] );
-	break;
-    case DBLK_SQSTRING:
-	printf( " '%s'", datablock->values[i][j] );
-	break;
-    case DBLK_DQSTRING:
-	printf( " \"%s\"", datablock->values[i][j] );
-	break;
-    case DBLK_TEXT:
-	printf( "\n;%s\n;\n", datablock->values[i][j] );
-	break;
-    default:
-	fprintf( stderr, "unknown DATABLOCK value type %d from DATABLOCK parser!\n",
-		 datablock->types[i][j] );
-	printf( " '%s'\n", datablock->values[i][j] );
-	break;
+        case DBLK_INT:
+        case DBLK_FLOAT:
+        case DBLK_UQSTRING:
+            printf( " %s", datablock->values[i][j] );
+            break;
+        case DBLK_SQSTRING:
+            printf( " '%s'", datablock->values[i][j] );
+            break;
+        case DBLK_DQSTRING:
+            printf( " \"%s\"", datablock->values[i][j] );
+            break;
+        case DBLK_TEXT:
+            printf( "\n;%s\n;\n", datablock->values[i][j] );
+            break;
+        default:
+            fprintf( stderr, "unknown DATABLOCK value type %d from DATABLOCK parser!\n",
+                     datablock->types[i][j] );
+            printf( " '%s'\n", datablock->values[i][j] );
+            break;
     }
 }
 
@@ -341,9 +341,9 @@ void datablock_dump( DATABLOCK * volatile datablock )
     ssize_t i;
 
     for( i = 0; i < datablock->length; i++ ) {
-	datablock_print_tag( datablock, i );
-	datablock_print_value( datablock, i, 0 );
-	printf( "\n" );
+        datablock_print_tag( datablock, i );
+        datablock_print_value( datablock, i, 0 );
+        printf( "\n" );
     }
 }
 
@@ -354,23 +354,23 @@ static int print_loop( DATABLOCK *datablock, ssize_t i )
     loop = datablock->in_loop[i];
     printf( "loop_\n" );
     for( j = datablock->loop_first[loop]; j <= datablock->loop_last[loop]; j++ ) {
-	printf( "    %s\n", datablock->tags[j] );
+        printf( "    %s\n", datablock->tags[j] );
     }
 
     for( max = 0, j = datablock->loop_first[loop]; j <= datablock->loop_last[loop]; j++ ) {
-	if( max < datablock->value_lengths[j] )
-	    max = datablock->value_lengths[j];
+        if( max < datablock->value_lengths[j] )
+            max = datablock->value_lengths[j];
     }
 
     for( k = 0; k < max; k++ ) {
-	for( j = datablock->loop_first[loop]; j <= datablock->loop_last[loop]; j++ ) {
-	    if( k < datablock->value_lengths[j] ) {
-		datablock_print_value( datablock, j, k );
-	    } else {
-		printf( ". " );
-	    }
-	}
-	printf( "\n" );
+        for( j = datablock->loop_first[loop]; j <= datablock->loop_last[loop]; j++ ) {
+            if( k < datablock->value_lengths[j] ) {
+                datablock_print_value( datablock, j, k );
+            } else {
+                printf( ". " );
+            }
+        }
+        printf( "\n" );
     }
     return datablock->loop_last[loop];
 }
@@ -384,13 +384,13 @@ void datablock_print_frame( DATABLOCK * volatile datablock, char *keyword )
     printf( "%s%s\n",  keyword, datablock->name );
 
     for( i = 0; i < datablock->length; i++ ) {
-	if( datablock->in_loop[i] < 0 ) { /* tag is not in a loop */
-	    datablock_print_tag( datablock, i );
-	    datablock_print_value( datablock, i, 0 );
-	    printf( "\n" );
-	} else {
-	    i = print_loop( datablock, i );
-	}
+        if( datablock->in_loop[i] < 0 ) { /* tag is not in a loop */
+            datablock_print_tag( datablock, i );
+            datablock_print_value( datablock, i, 0 );
+            printf( "\n" );
+        } else {
+            i = print_loop( datablock, i );
+        }
     }
 
     DATABLOCK *frame;
@@ -432,9 +432,9 @@ void datablock_insert_value( DATABLOCK * datablock, char *tag,
                                   &inner );
             datablock->tags[i] = NULL;
             datablock->in_loop = reallocx( datablock->in_loop,
-				     sizeof(datablock->in_loop[0]) *
-				     (datablock->capacity + DELTA_CAPACITY),
-				     &inner );
+                                           sizeof(datablock->in_loop[0]) *
+                                           (datablock->capacity + DELTA_CAPACITY),
+                                           &inner );
             datablock->values = reallocx( datablock->values,
                                     sizeof(datablock->values[0]) *
                                     (datablock->capacity + DELTA_CAPACITY),
@@ -444,17 +444,17 @@ void datablock_insert_value( DATABLOCK * datablock, char *tag,
                                    sizeof(datablock->types[0]) *
                                    (datablock->capacity + DELTA_CAPACITY),
                                    &inner );
-            datablock->values[i] = NULL;
+            datablock->types[i] = NULL;
             datablock->value_lengths = reallocx( datablock->value_lengths,
                                            sizeof(datablock->value_lengths[0]) *
                                            (datablock->capacity + DELTA_CAPACITY),
                                            &inner );
-	    datablock->value_lengths[i] = 0;
+            datablock->value_lengths[i] = 0;
             datablock->value_capacities = reallocx( datablock->value_capacities,
                                               sizeof(datablock->value_capacities[0]) *
                                               (datablock->capacity + DELTA_CAPACITY),
                                               &inner );
-	    datablock->value_capacities[i] = 0;
+            datablock->value_capacities[i] = 0;
 
             datablock->capacity += DELTA_CAPACITY;
         }
@@ -492,7 +492,7 @@ void datablock_overwrite_value( DATABLOCK * datablock, ssize_t tag_nr,
             datablock->values[tag_nr][val_nr] = strdupx( value, &inner );
             datablock->types[tag_nr][val_nr]  = vtype;
         } else {
-            datablock->values[tag_nr][val_nr] = "\0";
+            datablock->values[tag_nr][val_nr] = '\0';
         }
     }
     cexception_catch {
@@ -515,17 +515,17 @@ void datablock_finish_loop( DATABLOCK *datablock, cexception_t *ex )
     i = datablock->loop_count;
     datablock->loop_count ++;
     datablock->loop_first = reallocx( datablock->loop_first,
-				sizeof(datablock->loop_first[0]) *
-				datablock->loop_count, ex );
+                                      sizeof(datablock->loop_first[0]) *
+                                      datablock->loop_count, ex );
     datablock->loop_last = reallocx( datablock->loop_last,
-			       sizeof(datablock->loop_last[0]) *
-			       datablock->loop_count, ex );
+                                     sizeof(datablock->loop_last[0]) *
+                                     datablock->loop_count, ex );
 
     datablock->loop_first[i] = datablock->loop_start;
     datablock->loop_last[i] = datablock->length - 1;
 
     for( j = datablock->loop_start; j < datablock->length; j++ ) {
-	datablock->in_loop[j] = i;
+        datablock->in_loop[j] = i;
     }
 
     datablock->loop_current = datablock->loop_start = -1;

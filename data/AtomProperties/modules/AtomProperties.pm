@@ -19,6 +19,22 @@ require Exporter;
 @COD::AtomProperties::EXPORT = qw( ok );
 
 %COD::AtomProperties::atoms = (
+     "." => {
+             "atomic_number" => "0",
+             "name" => "Dummy",
+             "family" => "Dummy",
+             "period" => "0",
+             "group" => "0",
+             "block" => "0",
+             "atomic_weight" => "0",
+             "atomic_mass" => "0",
+             "covalent_radius" => "0.75",
+             "vdw_radius" => "1.77",
+             "valence" => ['0'],
+             "covalent_radii" => {
+                 "single" => "0.75"
+             },
+           },
      "D" => {
              "atomic_number" => "1",
              "name" => "Deuterium",
