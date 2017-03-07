@@ -295,8 +295,10 @@ int cif_lexer( FILE *in, cexception_t *ex )
                 } else if( quote_count == 2 ) {
                     /* empty quote-delimited string */
                     ch = getlinec( in, ex );
-                    if( !isspace( ch ) && ch != EOF && ch != ':' ) {
-                        /* syntax error, no fix as of now */
+                    if( !isspace( ch ) && ch != EOF && ch != ':' &&
+                        ch != '[' && ch != ']' && ch != '{' && ch != '}' ) {
+                        /* quoted string must be followed by a space
+                         * or ':' in case of table keys */
                         yyerror( "incorrect CIF syntax" );
                     }
                     ungetlinec( ch, in );
@@ -326,7 +328,8 @@ int cif_lexer( FILE *in, cexception_t *ex )
                         ungetlinec( quote, in );
                     }
                     ch = getlinec( in, ex );
-                    if( !isspace( ch ) && ch != EOF && ch != ':' ) {
+                    if( !isspace( ch ) && ch != EOF && ch != ':' &&
+                        ch != '[' && ch != ']' && ch != '{' && ch != '}' ) {
                         /* quoted string must be followed by a space
                            or ':' in case of table keys */
                         yyerror( "incorrect CIF syntax" );
@@ -350,6 +353,14 @@ int cif_lexer( FILE *in, cexception_t *ex )
                         }
                         if( ch == quote ) {
                             /* properly terminated quote-delimited string: */
+                            ch = getlinec( in, ex );
+                            if( !isspace( ch ) && ch != EOF && ch != ':' &&
+                                ch != '[' && ch != ']' && ch != '{' && ch != '}' ) {
+                                /* quoted string must be followed by a space
+                                 * or ':' in case of table keys */
+                                yyerror( "incorrect CIF syntax" );
+                            }
+                            ungetlinec( ch, in );
                             pushchar( &token, &length, pos, '\0' );
                             yylval.s = check_and_clean
                                 ( token, /* is_textfield = */ 0, ex );
@@ -366,6 +377,12 @@ int cif_lexer( FILE *in, cexception_t *ex )
                         } else if( quote_count >= 3 ) {
                             /* terminated triple-quoted string: */
                             ungetlinec( ch, in );
+                            if( !isspace( ch ) && ch != EOF && ch != ':' &&
+                                ch != '[' && ch != ']' && ch != '{' && ch != '}' ) {
+                                /* quoted string must be followed by a space
+                                 * or ':' in case of table keys */
+                                yyerror( "incorrect CIF syntax" );
+                            }
                             pushchar( &token, &length, pos-3, '\0' );
                             yylval.s = check_and_clean
                                 ( token, /* is_textfield = */ 0, ex );
