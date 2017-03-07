@@ -565,6 +565,12 @@ list
     {
         $$ = $2;
     }
+    |   '[' ']'
+    {
+        $$ = new_typed_value();
+        $$->v = new_value_from_table( new_table( px ), px );
+        $$->vcont = strdupx( cif_flex_current_line(), px );
+    }
 ;
 
 table
