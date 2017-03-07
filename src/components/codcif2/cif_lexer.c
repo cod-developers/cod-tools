@@ -303,6 +303,10 @@ int cif_lexer( FILE *in, cexception_t *ex )
                         yyerror( "incorrect CIF syntax" );
                         yylval.s = strdupx( "", ex );
                     }
+                    if( yy_flex_debug ) {
+                        printf( ">>> *QSTRING (%c): ''\n",
+                                quote );
+                    }
                     ungetlinec( ch, in );
                     qstring_seen = 1;
                     return type;
@@ -320,12 +324,16 @@ int cif_lexer( FILE *in, cexception_t *ex )
                     /* empty triple quote-delimited string with
                      * something quoted attached to its end */
                     int i;
-                    for( i = 0; i < quote_count - 3; i++ ) {
+                    for( i = 0; i < quote_count - 6; i++ ) {
                         ungetlinec( quote, in );
                     }
                     yylval.s = check_and_clean
                                 ( token, /* is_textfield = */ 0, ex );
                     type = quote == '"' ? _DQ3STRING : _SQ3STRING;
+                    if( yy_flex_debug ) {
+                        printf( ">>> *Q3STRING (%c): ''\n",
+                                quote );
+                    }
                     qstring_seen = 1;
                     return type;
                 }
