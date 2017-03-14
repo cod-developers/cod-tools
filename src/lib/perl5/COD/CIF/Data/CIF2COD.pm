@@ -19,11 +19,13 @@ use COD::CIF::Data::CODFlags qw( is_disordered has_coordinates has_Fobs );
 use COD::CIF::Unicode2CIF qw( cif2unicode );
 use COD::CIF::Tags::DictTags;
 use COD::Spacegroups::Names;
+use Scalar::Util qw( looks_like_number );
 
 require Exporter;
 our @ISA = qw( Exporter );
 our @EXPORT_OK = qw(
     cif2cod
+    validate_SQL_types
     @default_data_fields
     @new_data_fields
 );
@@ -765,6 +767,43 @@ sub compute_Zprime
         return $Z / $AU_count;
     } else {
         return undef;
+    }
+}
+
+sub validate_SQL_types
+{
+    my( $data, $types ) = @_;
+
+    for my $key (sort keys %$data) {
+        next if !defined $data->{$key};
+        next if $data->{$key} eq 'NULL';
+        next if !exists $types->{$key};
+
+        if( $types->{$key} =~ /^(float|double|(small|medium)int)/i &&
+            !looks_like_number( $data->{$key} ) ) {
+            warn "value of '$key' ('$data->{$key}') does not seem " .
+                 "to be numeric";
+            $data->{$key} = undef;
+            next;
+        }
+
+        if( $types->{$key} =~ /unsigned/i &&
+            $data->{$key} < 0 ) {
+            warn "value of '$key' ('$data->{$key}') is negative, " .
+                 "while it must be unsigned";
+            $data->{$key} = undef;
+            next;
+        }
+
+        if( $types->{$key} =~ /^(var)?char\((\d+)\)/i ) {
+            my $max_length = $2;
+            my $val_length = length( $data->{$key} );
+            if( $val_length > $max_length ) {
+                warn "value of '$key' ('$data->{$key}') is longer " .
+                     "than allowed ($val_length > $max_length) " .
+                     "and may be corrupted upon casting";
+            }
+        }
     }
 }
 
