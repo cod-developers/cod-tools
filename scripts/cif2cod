@@ -18,19 +18,21 @@ eval 'exec perl -x $0 ${1+"$@"}'
 use strict;
 use warnings;
 use COD::CIF::Parser qw( parse_cif );
-use COD::CIF::Data::CIF2COD qw( cif2cod );
+use COD::CIF::Data::CIF2COD qw( cif2cod validate_SQL_types );
 use COD::CIF::Tags::CanonicalNames qw( canonicalize_all_names );
-use COD::SOptions qw( getOptions );
+use COD::SOptions qw( getOptions get_value );
 use COD::SUsage qw( usage options );
 use COD::ErrorHandler qw( process_warnings
                           process_errors
                           process_parser_messages );
+use XML::Simple;
 
 my $print_header = 0; # Indicates whether to print out a header with column names
 my $print_keywords = 0;
 my $include_keywords_with_undefined_values = 0;
 
 my $user_columns; # User specified list of columns to be printed
+my $schema; # XML schema of data table for validation
 
 my $use_parser = "c";
 my $input_format = 'cif';
@@ -114,6 +116,17 @@ my %options;
 #* --columns "file flags Robs"
 #*                     Print only columns specified in this option.
 #*
+#* --validate-by-schema doc/CODDictionary.xml
+#*                     Validate the output by supplied XML schema, where the
+#*                     SQL data types are given in the following manner:
+#*
+#*                     <CODDictionary>
+#*                       <CODParameter name="file">
+#*                         <SQLDataType>mediumint(7) unsigned</SQLDataType>
+#*                         ...
+#*                       </CODParameter>
+#*                     </CODDictionary>
+#*
 #* --continue-on-errors
 #*                     Do not terminate script if errors are raised.
 #* --dont-continue-on-errors, --no-continue-on-errors,
@@ -187,6 +200,12 @@ my %options;
         => sub{ $options{use_datablocks_without_coord} = 0 },
     "--skip-datablocks-without-coordinates"
         => sub{ $options{use_datablocks_without_coord} = 0 },
+
+    "--validate-by-schema" => sub {
+        my $schema_xml = XMLin( get_value() );
+        $schema = { map { $_ => $schema_xml->{CODParameter}{$_}{SQLDataType} }
+                       keys %{$schema_xml->{CODParameter}} };
+    },
 
     "-c,--always-continue"              => sub { $die_on_errors   = 0;
                                                  $die_on_warnings = 0;
@@ -277,6 +296,9 @@ for my $filename (@ARGV) {
         my $extracted_dataset;
         eval {
             $extracted_dataset = cif2cod( $dataset, \%options );
+            if( $schema ) {
+                validate_SQL_types( $extracted_dataset, $schema );
+            }
         };
         if ($@) {
             process_errors( {
