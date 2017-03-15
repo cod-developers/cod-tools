@@ -1415,13 +1415,13 @@ sub check_limits {
             my $precision = $2;
             if( ($tag =~ /_w?R_factor_/) && ( $precision ) ) {
                 warn "WARNING, data item '$tag' value is '$value', but it "
-                   . 'should  be numeric and without precision (esd value)' . "\n";
+                   . 'should be numeric and without precision (s.u. value)' . "\n";
                 $warnings++;
                 next;
             }
             if( $number < 0 ) {
                 warn "WARNING, data item '$tag' value '$value' should "
-                   . 'be in range [0.0;+inf]' . "\n";
+                   . 'be in range [0.0, +inf)' . "\n";
                 $warnings++;
                 next;
             }
@@ -1431,7 +1431,8 @@ sub check_limits {
                     if( $number > $limit ) {
                         warn "$report_names[$i], data item '$tag' value "
                            . "'$value' is > $limit" . "\n";
-                        $errors++   if $i == 0; # $i is @report_names index
+                        # $i is @report_names index
+                        $errors++   if $i == 0;
                         $warnings++ if $i == 1;
                         $notes++    if $i == 2;
                         last;
@@ -1443,11 +1444,12 @@ sub check_limits {
                     my $end = @{ $limits_table->{$tag}->[$i]}[1];
                     if( ($number < $begin) || ($number > $end) ) {
                         warn "$report_names[$i], data item '$tag' value '$value' "
-                           . "lies outside the range $begin <> $end" . "\n";
-                            $errors++   if $i == 0; # $i is @report_names index
-                            $warnings++ if $i == 1;
-                            $notes++    if $i == 2;
-                            last;
+                           . "lies outside the range [$begin, $end]" . "\n";
+                        # $i is @report_names index
+                        $errors++   if $i == 0;
+                        $warnings++ if $i == 1;
+                        $notes++    if $i == 2;
+                        last;
                     }
                 }
             }
