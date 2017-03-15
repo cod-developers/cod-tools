@@ -314,7 +314,6 @@ cif_entry
                         tag_type = CIF_TEXT;
                     }
                     typed_value *tv = new_typed_value();
-                    tv->vtype = tag_type;
                     tv->vline = $3->vline;
                     tv->vpos  = $3->vpos;
                     tv->vcont = $3->vcont;
@@ -1098,7 +1097,6 @@ int yywarning_token( const char *message, int line, int pos, cexception_t *ex )
 
 typed_value *new_typed_value( void ) {
     typed_value *tv = malloc( sizeof( typed_value ) );
-    tv->vtype = CIF_UNKNOWN;
     tv->vline = cif_flex_current_line_number();
     tv->vpos = cif_flex_current_position();
     tv->vcont = NULL;
