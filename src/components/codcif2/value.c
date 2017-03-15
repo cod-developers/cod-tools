@@ -6,6 +6,7 @@
 \*-------------------------------------------------------------------------*/
 
 #include <cexceptions.h>
+#include <assert.h>
 #include <allocx.h>
 #include <value.h>
 #include <list.h>
@@ -21,6 +22,8 @@ struct VALUE {
 };
 
 void delete_value( VALUE *value ) {
+    assert( value );
+
     if( value->type == CIF_LIST ) {
         delete_list( value_get_list( value ) );
     } else if( value->type == CIF_TABLE ) {
@@ -31,21 +34,25 @@ void delete_value( VALUE *value ) {
     freex( value );
 }
 
-VALUE *new_value_from_scalar( char *s, cif_value_type_t type, cexception_t *ex ) {
+VALUE *new_value_from_scalar( char *s, cif_value_type_t type,
+                              cexception_t *ex )
+{
     VALUE *value = callocx( 1, sizeof(VALUE), ex );
     value->v.str = s;
     value->type = type;
     return value;
 }
 
-VALUE *new_value_from_list( LIST *list, cexception_t *ex ) {
+VALUE *new_value_from_list( LIST *list, cexception_t *ex )
+{
     VALUE *value = callocx( 1, sizeof(VALUE), ex );
     value->v.l = list;
     value->type = CIF_LIST;
     return value;
 }
 
-VALUE *new_value_from_table( TABLE *table, cexception_t *ex ) {
+VALUE *new_value_from_table( TABLE *table, cexception_t *ex )
+{
     VALUE *value = callocx( 1, sizeof(VALUE), ex );
     value->v.t = table;
     value->type = CIF_TABLE;
@@ -53,6 +60,7 @@ VALUE *new_value_from_table( TABLE *table, cexception_t *ex ) {
 }
 
 void value_dump( VALUE *value ) {
+    assert( value );
     switch( value->type ) {
         case CIF_LIST:
             list_dump( value_get_list( value ) );

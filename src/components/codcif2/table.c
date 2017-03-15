@@ -6,6 +6,7 @@
 \*-------------------------------------------------------------------------*/
 
 #include <string.h>
+#include <assert.h>
 #include <cif_grammar_y.h>
 #include <allocx.h>
 #include <cexceptions.h>
@@ -26,6 +27,8 @@ struct TABLE {
 
 void delete_table( TABLE *table )
 {
+    assert( table );
+
     size_t i;
     for( i = 0; i < table->length; i++ ) {
         freex( table->keys[i] );
@@ -45,6 +48,7 @@ TABLE *new_table( cexception_t *ex )
 
 void table_dump( TABLE *table )
 {
+    assert( table );
     printf( " {" );
     size_t i;
     for( i = 0; i < table->length; i++ ) {
@@ -85,6 +89,8 @@ void table_dump( TABLE *table )
 
 void table_add( TABLE *table, char *key, VALUE *value, cexception_t *ex )
 {
+    assert( table );
+
     cexception_t inner;
     ssize_t i;
 
@@ -115,6 +121,7 @@ void table_add( TABLE *table, char *key, VALUE *value, cexception_t *ex )
 
 VALUE *table_get( TABLE *table, char *key )
 {
+    assert( table );
     size_t i;
     for( i = 0; i < table->length; i++ ) {
         if( strcmp( table->keys[i], key ) == 0 ) {

@@ -6,6 +6,7 @@
 \*-------------------------------------------------------------------------*/
 
 #include <string.h>
+#include <assert.h>
 #include <allocx.h>
 #include <cexceptions.h>
 #include <stringx.h>
@@ -24,6 +25,8 @@ struct LIST {
 
 void delete_list( LIST *list )
 {
+    assert( list );
+
     size_t i;
     for( i = 0; i < list->length; i++ ) {
         delete_value( list->values[i] );
@@ -40,6 +43,8 @@ LIST *new_list( cexception_t *ex )
 
 void list_dump( LIST *list )
 {
+    assert( list );
+
     printf( " [" );
     size_t i;
     for( i = 0; i < list->length; i++ ) {
@@ -50,6 +55,8 @@ void list_dump( LIST *list )
 
 void list_push( LIST *list, VALUE *value, cexception_t *ex )
 {
+    assert( list );
+
     cexception_t inner;
     size_t i;
 
@@ -74,6 +81,7 @@ void list_push( LIST *list, VALUE *value, cexception_t *ex )
 
 void list_unshift( LIST *list, VALUE *value, cexception_t *ex )
 {
+    assert( list );
     list_push( list, NULL, ex ); // for now, we simply extend the list
 
     size_t i;
@@ -98,7 +106,9 @@ VALUE **list_get_values( LIST *list )
     return list->values;
 }
 
-int list_contains_list_or_table( LIST *list ) {
+int list_contains_list_or_table( LIST *list )
+{
+    assert( list );
     size_t i;
     for( i = 0; i < list_length( list ); i++ ) {
         VALUE *value = list_get( list, i );
@@ -113,6 +123,7 @@ int list_contains_list_or_table( LIST *list ) {
 
 char *list_concat( LIST *list, char separator, cexception_t *ex )
 {
+    assert( list );
     /* the list has to be already checked for the existence of
      * lists of tables, since concatenating their values is not
      * of much sense */
