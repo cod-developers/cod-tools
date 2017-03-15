@@ -11,6 +11,15 @@
 #include <list.h>
 #include <table.h>
 
+struct VALUE {
+    union {
+        char *str;
+        struct LIST *l;
+        struct TABLE *t;
+    } v;
+    cif_value_type_t type;
+};
+
 VALUE *new_value_from_scalar( char *s, cif_value_type_t type, cexception_t *ex ) {
     VALUE *value = callocx( 1, sizeof(VALUE), ex );
     value->v.str = s;

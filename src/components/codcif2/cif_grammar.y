@@ -239,8 +239,8 @@ data_heading
             size_t i;
             for( i = 0; i < list_length( list ); i++ ) {
                 VALUE *value = list_get( list, i );
-                if( value->type == CIF_LIST ||
-                    value->type == CIF_TABLE ) {
+                if( value_get_type( value ) == CIF_LIST ||
+                    value_get_type( value ) == CIF_TABLE ) {
                     contains_list_or_table = 1;
                     break;
                 }
@@ -313,8 +313,8 @@ cif_entry
                 size_t i;
                 for( i = 0; i < list_length( list ); i++ ) {
                     VALUE *value = list_get( list, i );
-                    if( value->type == CIF_LIST ||
-                        value->type == CIF_TABLE ) {
+                    if( value_get_type( value ) == CIF_LIST ||
+                        value_get_type( value ) == CIF_TABLE ) {
                         contains_list_or_table = 1;
                         break;
                     }
@@ -836,7 +836,8 @@ void add_tag_value( char *tag, typed_value *tv, cexception_t *ex )
     VALUE *value = tv->v;
     if( cif_tag_index( cif_cc->cif, tag ) == -1 ) {
         cif_insert_value( cif_cc->cif, tag, value, ex );
-    } else if( value->type != CIF_LIST && value->type != CIF_TABLE ) {
+    } else if( value_get_type( value ) != CIF_LIST &&
+               value_get_type( value ) != CIF_TABLE ) {
         ssize_t tag_nr = cif_tag_index( cif_cc->cif, tag );
         ssize_t * value_lengths = 
             datablock_value_lengths(cif_last_datablock(cif_cc->cif));

@@ -23,15 +23,6 @@ typedef enum {
     last_CIF_VALUE
 } cif_value_type_t;
 
-struct VALUE {
-    union {
-        char *str;
-        struct LIST *l;
-        struct TABLE *t;
-    } v;
-    cif_value_type_t type;
-};
-
 typedef struct VALUE VALUE;
 
 #include <cexceptions.h>
