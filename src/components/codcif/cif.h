@@ -10,7 +10,6 @@
 
 #include <stdlib.h>
 #include <stdarg.h>
-#include <datablock.h>
 #include <cifmessage.h>
 #include <cexceptions.h>
 
@@ -26,6 +25,8 @@ typedef enum {
     CIF_TEXT,
     last_CIF_VALUE
 } cif_value_type_t;
+
+#include <datablock.h>
 
 typedef enum {
   CIF_OK = 0,
@@ -68,16 +69,16 @@ void cif_list_tags( CIF * volatile cif );
 ssize_t cif_tag_index( CIF * cif, char *tag );
 
 void cif_insert_value( CIF * cif, char *tag,
-                       char *value, datablock_value_type_t vtype,
+                       char *value, cif_value_type_t vtype,
                        cexception_t *ex );
 void cif_overwrite_value( CIF * cif, ssize_t tag_nr, ssize_t val_nr,
-                          char *value, datablock_value_type_t vtype,
+                          char *value, cif_value_type_t vtype,
                           cexception_t *ex );
 
 void cif_start_loop( CIF *cif, cexception_t *ex );
 void cif_finish_loop( CIF *cif, cexception_t *ex );
 
-void cif_push_loop_value( CIF * cif, char *value, datablock_value_type_t vtype,
+void cif_push_loop_value( CIF * cif, char *value, cif_value_type_t vtype,
                           cexception_t *ex );
 
 void cif_set_nerrors( CIF *cif, int nerrors );

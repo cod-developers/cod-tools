@@ -59,7 +59,7 @@ struct DATABLOCK {
                                   not in a loop */
     ssize_t *value_lengths;    /* Lengths of the values[i] arrays. */
     ssize_t *value_capacities; /* Capacities of the values[i] arrays. */
-    datablock_value_type_t **types;  /* Type for each value in 'values'. */
+    cif_value_type_t **types;   /* Type for each value in 'values'. */
 
     ssize_t loop_value_count; /* Number of values in the currently constructed loop. */
     ssize_t loop_start; /* Index of the entry into the 'tags',
@@ -241,7 +241,7 @@ int *datablock_in_loop( DATABLOCK *datablock )
     return datablock->in_loop;
 }
 
-datablock_value_type_t **datablock_types( DATABLOCK *datablock )
+cif_value_type_t **datablock_types( DATABLOCK *datablock )
 {
     return datablock->types;
 }
@@ -280,18 +280,18 @@ void datablock_print_value( DATABLOCK * volatile datablock, int tag_nr, int valu
     j = value_idx;
 
     switch( datablock->types[i][j] ) {
-        case DBLK_INT:
-        case DBLK_FLOAT:
-        case DBLK_UQSTRING:
+        case CIF_INT:
+        case CIF_FLOAT:
+        case CIF_UQSTRING:
             printf( " %s", datablock->values[i][j] );
             break;
-        case DBLK_SQSTRING:
+        case CIF_SQSTRING:
             printf( " '%s'", datablock->values[i][j] );
             break;
-        case DBLK_DQSTRING:
+        case CIF_DQSTRING:
             printf( " \"%s\"", datablock->values[i][j] );
             break;
-        case DBLK_TEXT:
+        case CIF_TEXT:
             printf( "\n;%s\n;\n", datablock->values[i][j] );
             break;
         default:
@@ -417,7 +417,7 @@ void datablock_list_tags( DATABLOCK * volatile datablock )
 }
 
 void datablock_insert_value( DATABLOCK * datablock, char *tag,
-                       char *value, datablock_value_type_t vtype,
+                       char *value, cif_value_type_t vtype,
                        cexception_t *ex )
 {
     cexception_t inner;
@@ -481,7 +481,7 @@ void datablock_insert_value( DATABLOCK * datablock, char *tag,
 
 void datablock_overwrite_value( DATABLOCK * datablock, ssize_t tag_nr,
                        ssize_t val_nr, char *value,
-                       datablock_value_type_t vtype,
+                       cif_value_type_t vtype,
                        cexception_t *ex )
 {
     cexception_t inner;
@@ -531,7 +531,7 @@ void datablock_finish_loop( DATABLOCK *datablock, cexception_t *ex )
     datablock->loop_current = datablock->loop_start = -1;
 }
 
-void datablock_push_loop_value( DATABLOCK * datablock, char *value, datablock_value_type_t vtype,
+void datablock_push_loop_value( DATABLOCK * datablock, char *value, cif_value_type_t vtype,
                           cexception_t *ex )
 {
     cexception_t inner;
