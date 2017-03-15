@@ -22,12 +22,6 @@ struct LIST {
     VALUE **values;
 };
 
-LIST *new_list( cexception_t *ex )
-{
-    LIST *list = callocx( 1, sizeof(LIST), ex );
-    return list;
-}
-
 void delete_list( LIST *list )
 {
     size_t i;
@@ -36,6 +30,12 @@ void delete_list( LIST *list )
     }
     freex( list->values );
     freex( list );
+}
+
+LIST *new_list( cexception_t *ex )
+{
+    LIST *list = callocx( 1, sizeof(LIST), ex );
+    return list;
 }
 
 void list_dump( LIST *list )

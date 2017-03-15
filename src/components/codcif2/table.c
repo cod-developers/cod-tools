@@ -24,13 +24,6 @@ struct TABLE {
     VALUE **values;
 };
 
-TABLE *new_table( cexception_t *ex )
-{
-    TABLE *table = callocx( 1, sizeof(TABLE), ex );
-    table->values = NULL;
-    return table;
-}
-
 void delete_table( TABLE *table )
 {
     size_t i;
@@ -41,6 +34,13 @@ void delete_table( TABLE *table )
     freex( table->keys );
     freex( table->values );
     freex( table );
+}
+
+TABLE *new_table( cexception_t *ex )
+{
+    TABLE *table = callocx( 1, sizeof(TABLE), ex );
+    table->values = NULL;
+    return table;
 }
 
 void table_dump( TABLE *table )

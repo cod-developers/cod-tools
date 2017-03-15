@@ -20,6 +20,17 @@ struct VALUE {
     cif_value_type_t type;
 };
 
+void delete_value( VALUE *value ) {
+    if( value->type == CIF_LIST ) {
+        delete_list( value_get_list( value ) );
+    } else if( value->type == CIF_TABLE ) {
+        delete_table( value_get_table( value ) );
+    } else {
+        freex( value->v.str );
+    }
+    freex( value );
+}
+
 VALUE *new_value_from_scalar( char *s, cif_value_type_t type, cexception_t *ex ) {
     VALUE *value = callocx( 1, sizeof(VALUE), ex );
     value->v.str = s;
@@ -39,17 +50,6 @@ VALUE *new_value_from_table( TABLE *table, cexception_t *ex ) {
     value->v.t = table;
     value->type = CIF_TABLE;
     return value;
-}
-
-void delete_value( VALUE *value ) {
-    if( value->type == CIF_LIST ) {
-        delete_list( value_get_list( value ) );
-    } else if( value->type == CIF_TABLE ) {
-        delete_table( value_get_table( value ) );
-    } else {
-        freex( value->v.str );
-    }
-    freex( value );
 }
 
 void value_dump( VALUE *value ) {
