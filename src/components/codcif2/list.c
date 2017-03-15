@@ -88,6 +88,19 @@ VALUE **list_get_values( LIST *list )
     return list->values;
 }
 
+int list_contains_list_or_table( LIST *list ) {
+    size_t i;
+    for( i = 0; i < list_length( list ); i++ ) {
+        VALUE *value = list_get( list, i );
+        if( value_get_type( value ) == CIF_LIST ||
+            value_get_type( value ) == CIF_TABLE ) {
+            return 1;
+            break;
+        }
+    }
+    return 0;
+}
+
 char *list_concat( LIST *list, char separator, cexception_t *ex )
 {
     /* the list has to be already checked for the existence of

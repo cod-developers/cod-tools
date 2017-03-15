@@ -235,21 +235,10 @@ data_heading
             /* only simple data items can be concatenated,
              * thus we have to make sure that data value
              * list does not contain lists or tables: */
-            int contains_list_or_table = 0;
-            size_t i;
-            for( i = 0; i < list_length( list ); i++ ) {
-                VALUE *value = list_get( list, i );
-                if( value_get_type( value ) == CIF_LIST ||
-                    value_get_type( value ) == CIF_TABLE ) {
-                    contains_list_or_table = 1;
-                    break;
-                }
-            }
-
             if( (isset_fix_errors( cif_cc ) ||
                  isset_fix_string_quotes( cif_cc ) ||
                  isset_fix_datablock_names( cif_cc )) &&
-                !contains_list_or_table ) {
+                !list_contains_list_or_table( list )) {
 
                 char *data_list = list_concat( list, '_', px );
                 char buf[strlen($1)+strlen(data_list)+2];
@@ -309,18 +298,7 @@ cif_entry
                 /* only simple data items can be concatenated,
                  * thus we have to make sure that data value
                  * list does not contain lists or tables: */
-                int contains_list_or_table = 0;
-                size_t i;
-                for( i = 0; i < list_length( list ); i++ ) {
-                    VALUE *value = list_get( list, i );
-                    if( value_get_type( value ) == CIF_LIST ||
-                        value_get_type( value ) == CIF_TABLE ) {
-                        contains_list_or_table = 1;
-                        break;
-                    }
-                }
-
-                if( contains_list_or_table ) {
+                if( list_contains_list_or_table( list ) ) {
                     yyerror_token( "incorrect CIF syntax", $2->vline,
                                    $2->vpos+1, $2->vcont, px );
                 } else if( isset_fix_errors( cif_cc ) ||

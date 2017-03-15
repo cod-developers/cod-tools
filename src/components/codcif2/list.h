@@ -25,6 +25,7 @@ size_t list_length( LIST *list );
 VALUE *list_get( LIST *list, int index );
 VALUE **list_get_values( LIST *list );
 
+int list_contains_list_or_table( LIST *list );
 char *list_concat( LIST *list, char separator, cexception_t *ex );
 
 #endif
