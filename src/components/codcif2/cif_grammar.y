@@ -842,8 +842,8 @@ void add_tag_value( char *tag, typed_value *tv, cexception_t *ex )
             datablock_value_lengths(cif_last_datablock(cif_cc->cif));
         if( value_lengths[tag_nr] == 1) {
             if( strcmp
-                (datablock_value
-                 (cif_last_datablock(cif_cc->cif), tag_nr, 0),
+                (value_get_scalar(datablock_value
+                 (cif_last_datablock(cif_cc->cif), tag_nr, 0)),
                   value_get_scalar(value)) == 0 &&
                 (isset_fix_errors(cif_cc) == 1 ||
                  isset_fix_duplicate_tags_with_same_values
