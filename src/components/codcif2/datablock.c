@@ -59,7 +59,7 @@ struct DATABLOCK {
                                   not in a loop */
     ssize_t *value_lengths;    /* Lengths of the values[i] arrays. */
     ssize_t *value_capacities; /* Capacities of the values[i] arrays. */
-    // datablock_value_type_t **types;  /* Type for each value in 'values'. */
+    // cif_value_type_t **types;   /* Type for each value in 'values'. */
 
     ssize_t loop_value_count; /* Number of values in the currently constructed loop. */
     ssize_t loop_start; /* Index of the entry into the 'tags',
@@ -242,9 +242,22 @@ int *datablock_in_loop( DATABLOCK *datablock )
 }
 
 /*
-datablock_value_type_t **datablock_types( DATABLOCK *datablock )
+cif_value_type_t **datablock_types( DATABLOCK *datablock )
 {
     return datablock->types;
+}
+*/
+
+/*
+cif_value_type_t datablock_value_type( DATABLOCK *datablock, int tag_nr, int val_nr )
+{
+    if( tag_nr >= datablock->length ) {
+        return CIF_NON_EXISTANT;
+    }
+    if( val_nr >= datablock->value_lengths[tag_nr] ) {
+        return CIF_NON_EXISTANT;
+    }
+    return datablock->types[tag_nr][val_nr];
 }
 */
 

@@ -14,6 +14,7 @@ typedef struct VALUE VALUE;
 
 typedef enum {
     CIF_UNKNOWN = 0,
+    CIF_NON_EXISTANT,
     CIF_INT,
     CIF_FLOAT,
     CIF_UQSTRING,
