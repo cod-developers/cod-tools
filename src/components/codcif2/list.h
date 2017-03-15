@@ -16,6 +16,7 @@ typedef struct LIST LIST;
 #include <value.h>
 
 LIST *new_list( cexception_t *ex );
+void delete_list( LIST *list );
 void list_dump( LIST *list );
 
 void list_push( LIST *list, VALUE *value, cexception_t *ex );

@@ -31,6 +31,18 @@ TABLE *new_table( cexception_t *ex )
     return table;
 }
 
+void delete_table( TABLE *table )
+{
+    size_t i;
+    for( i = 0; i < table->length; i++ ) {
+        freex( table->keys[i] );
+        delete_value( table->values[i] );
+    }
+    freex( table->keys );
+    freex( table->values );
+    freex( table );
+}
+
 void table_dump( TABLE *table )
 {
     printf( " {" );

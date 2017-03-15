@@ -43,7 +43,9 @@ VALUE *new_value_from_table( TABLE *table, cexception_t *ex ) {
 
 void delete_value( VALUE *value ) {
     if( value->type == CIF_LIST ) {
+        delete_list( value_get_list( value ) );
     } else if( value->type == CIF_TABLE ) {
+        delete_table( value_get_table( value ) );
     } else {
         freex( value->v.str );
     }

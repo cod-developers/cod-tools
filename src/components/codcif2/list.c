@@ -28,6 +28,16 @@ LIST *new_list( cexception_t *ex )
     return list;
 }
 
+void delete_list( LIST *list )
+{
+    size_t i;
+    for( i = 0; i < list->length; i++ ) {
+        delete_value( list->values[i] );
+    }
+    freex( list->values );
+    freex( list );
+}
+
 void list_dump( LIST *list )
 {
     printf( " [" );

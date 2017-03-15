@@ -294,6 +294,7 @@ cif_entry
                 assert_datablock_exists( px );
                 LIST *list = value_get_list( $3->v );
                 list_unshift( list, $2->v, px );
+                $2->v = NULL; // detaching consumed value
 
                 /* only simple data items can be concatenated,
                  * thus we have to make sure that data value
