@@ -8,6 +8,10 @@
 #ifndef __VALUE_H
 #define __VALUE_H
 
+#include <cexceptions.h>
+
+typedef struct VALUE VALUE;
+
 typedef enum {
     CIF_UNKNOWN = 0,
     CIF_INT,
@@ -23,9 +27,6 @@ typedef enum {
     last_CIF_VALUE
 } cif_value_type_t;
 
-typedef struct VALUE VALUE;
-
-#include <cexceptions.h>
 #include <list.h>
 #include <table.h>
 

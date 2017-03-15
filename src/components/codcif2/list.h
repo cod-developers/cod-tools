@@ -8,10 +8,11 @@
 #ifndef __LIST_H
 #define __LIST_H
 
-typedef struct LIST LIST;
-
 #include <stdio.h>
 #include <cexceptions.h>
+
+typedef struct LIST LIST;
+
 #include <value.h>
 
 LIST *new_list( cexception_t *ex );

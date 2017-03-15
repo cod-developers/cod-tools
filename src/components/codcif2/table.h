@@ -8,10 +8,11 @@
 #ifndef __TABLE_H
 #define __TABLE_H
 
-typedef struct TABLE TABLE;
-
 #include <stdio.h>
 #include <cexceptions.h>
+
+typedef struct TABLE TABLE;
+
 #include <value.h>
 
 TABLE *new_table( cexception_t *ex );
