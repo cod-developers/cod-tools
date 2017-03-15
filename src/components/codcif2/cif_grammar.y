@@ -319,6 +319,7 @@ cif_entry
                     tv->vcont = $3->vcont;
                     tv->v = new_value_from_scalar( buf, tag_type, px );
                     add_tag_value( $1, tv, px );
+                    tv->v = NULL;     // preventing v from free()'ing
                     free_typed_value( tv );
                     $3->vcont = NULL; // preventing from free()ing
                     $3->v = NULL;     // repeatedly
@@ -337,11 +338,13 @@ data_value_list
         {
             LIST *list = new_list( px );
             list_push( list, $1->v, px );
-            $$->v = new_value_from_list( list, px );
+            $1->v = new_value_from_list( list, px );
         }
         |       data_value_list data_value
         {
             list_push( value_get_list( $1->v ), $2->v, px );
+            $2->v = NULL; /* protecting v from free'ing */
+            free_typed_value( $2 );
         }
 ;
 
@@ -592,6 +595,7 @@ table_entry_list
         table_add( value_get_table( $$->v ),
                    value_get_scalar( $1->v ),
                    $3->v, px );
+        $3->v = NULL; // protecting from free()ing
         free_typed_value( $1 );
         free_typed_value( $3 );
     }
@@ -1106,6 +1110,9 @@ typed_value *new_typed_value( void ) {
 void free_typed_value( typed_value *t ) {
     if( t->vcont != NULL ) {
         freex( t->vcont );
+    }
+    if( t->v != NULL ) {
+        delete_value( t->v );
     }
     freex( t );
 }
