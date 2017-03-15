@@ -13,7 +13,7 @@
 #include <ctype.h>
 #include <cif_grammar_flex.h>
 #include <cif_grammar_y.h>
-#include <cif_grammar.tab.h>
+#include <cif2_grammar.tab.h>
 #include <common.h>
 #include <yy.h>
 #include <cxprintf.h>
