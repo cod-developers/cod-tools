@@ -11,6 +11,7 @@
 #include <cif.h>
 #include <cif_options.h>
 #include <cexceptions.h>
+#include <value.h>
 
 CIF *new_cif_from_cif_file( char *filename, cif_option_t co,
                             cexception_t *ex );
@@ -34,12 +35,12 @@ void cif_yy_reset_error_count( void );
 void cif_yy_debug_on( void );
 void cif_yy_debug_off( void );
 
+typedef struct typed_value typed_value;
 typedef struct typed_value {
-    char *vstr;
-    cif_value_type_t vtype;
     int vline;
     int vpos;
     char *vcont;
+    VALUE *v;
 } typed_value;
 
 #endif

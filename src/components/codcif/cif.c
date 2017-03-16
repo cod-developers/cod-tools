@@ -188,14 +188,13 @@ ssize_t cif_tag_index( CIF * cif, char *tag ) {
     return datablock_tag_index( cif->current_datablock, tag );
 }
 
-void cif_insert_value( CIF * cif, char *tag,
-                       char *value, cif_value_type_t vtype,
+void cif_insert_value( CIF * cif, char *tag, VALUE *value,
                        cexception_t *ex )
 {
     assert( cif );
 
     if( cif->datablock_list ) {
-        datablock_insert_value( cif->current_datablock, tag, value, vtype, ex );
+        datablock_insert_value( cif->current_datablock, tag, value, ex );
     } else {
         cexception_raise( ex, CIF_NO_DATABLOCK_ERROR,
                           "attempt to insert a CIF value before a "
@@ -204,12 +203,11 @@ void cif_insert_value( CIF * cif, char *tag,
 }
 
 void cif_overwrite_value( CIF * cif, ssize_t tag_nr, ssize_t val_nr,
-                          char *value, cif_value_type_t vtype,
-                          cexception_t *ex )
+                          VALUE *value, cexception_t *ex )
 {
     assert( cif );
     datablock_overwrite_value( cif->current_datablock, tag_nr, val_nr,
-        value, vtype, ex );
+        value, ex );
 }
 
 void cif_start_loop( CIF *cif, cexception_t *ex )
@@ -238,11 +236,10 @@ void cif_finish_loop( CIF *cif, cexception_t *ex )
     }
 }
 
-void cif_push_loop_value( CIF * cif, char *value, cif_value_type_t vtype,
-                          cexception_t *ex )
+void cif_push_loop_value( CIF * cif, VALUE *value, cexception_t *ex )
 {
     if( cif->datablock_list ) {
-        datablock_push_loop_value( cif->current_datablock, value, vtype, ex );
+        datablock_push_loop_value( cif->current_datablock, value, ex );
     } else {
         cexception_raise( ex, CIF_NO_DATABLOCK_ERROR,
                           "attempt to push a CIF loop value before a "
