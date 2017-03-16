@@ -224,18 +224,18 @@ data_block_head
             if( isset_fix_errors( cif_cc ) ||
                 isset_fix_string_quotes( cif_cc ) ||
                 isset_fix_datablock_names( cif_cc ) ) {
-                char buf[strlen($1)+strlen($2->vstr)+2];
+                char buf[strlen($1)+strlen(value_get_scalar($2->v))+2];
                 strcpy( buf, $1 );
                 buf[strlen($1)] = '_';
                 int i;
-                for( i = 0; i < strlen($2->vstr); i++ ) {
-                    if( $2->vstr[i] != ' ' ) {
-                        buf[strlen($1)+1+i] = $2->vstr[i];
+                for( i = 0; i < strlen(value_get_scalar($2->v)); i++ ) {
+                    if( value_get_scalar($2->v)[i] != ' ' ) {
+                        buf[strlen($1)+1+i] = value_get_scalar($2->v)[i];
                     } else {
                         buf[strlen($1)+1+i] = '_';
                     } 
                 }
-                buf[strlen($1)+strlen($2->vstr)+1] = '\0';
+                buf[strlen($1)+strlen(value_get_scalar($2->v))+1] = '\0';
                 cif_start_datablock( cif_cc->cif, buf, px );
                 if( isset_fix_errors( cif_cc ) ||
                     isset_fix_string_quotes( cif_cc ) ) {
@@ -273,8 +273,9 @@ cif_entry
 	:	_TAG cif_value
         {
             assert_datablock_exists( px );
-            add_tag_value( $1, $2->vstr, $2, px );
+            add_tag_value( $1, $2, px );
             freex( $1 );
+            $2->v = NULL; // protecting v from free()ing
             free_typed_value( $2 );
         }
         | _TAG cif_value cif_value_list
@@ -284,10 +285,11 @@ cif_entry
                     isset_fix_string_quotes( cif_cc ) ) {
                     yywarning_token( "string with spaces without quotes -- fixed",
                                      $2->vline, -1, px );
-                    char *buf = mallocx(strlen($2->vstr)+strlen($3->vstr)+2,px);
-                    buf = strcpy( buf, $2->vstr );
+                    char *buf = mallocx(strlen(value_get_scalar($2->v))+
+                                        strlen(value_get_scalar($3->v))+2,px);
+                    buf = strcpy( buf, value_get_scalar($2->v) );
                     buf = strcat( buf, " \0" );
-                    buf = strcat( buf, $3->vstr );
+                    buf = strcat( buf, value_get_scalar($3->v) );
                     cif_value_type_t tag_type = CIF_SQSTRING;
                     if( index( buf, '\n' ) != NULL ||
                         index( buf, '\r' ) != NULL ||
@@ -320,11 +322,12 @@ cif_value_list
         |       cif_value_list cif_value
         {
             $$ = new_typed_value();
-            char *buf = mallocx( strlen($1->vstr) + strlen($2->vstr) + 2, px );
-            buf = strcpy( buf, $1->vstr );
+            char *buf = mallocx( strlen(value_get_scalar($1->v)) +
+                                 strlen(value_get_scalar($2->v)) + 2, px );
+            buf = strcpy( buf, value_get_scalar($1->v) );
             buf = strcat( buf, " \0" );
-            buf = strcat( buf, $2->vstr );
-            $$->vstr  = buf;
+            buf = strcat( buf, value_get_scalar($2->v) );
+            $$->v = new_value_from_scalar( buf, px );
             $$->vline = $1->vline;
             $$->vpos  = $1->vpos;
             $$->vcont = strdupx( $1->vcont, px );
@@ -372,7 +375,7 @@ loop_tags
                                cif_flex_current_line_number(), -1, NULL, px );
             }
             loop_tag_count++;
-            cif_insert_value( cif_cc->cif, $2, NULL, CIF_UNKNOWN, px );
+            cif_insert_value( cif_cc->cif, $2, NULL, px );
             freex( $2 );
         }
 	|	_TAG
@@ -383,7 +386,7 @@ loop_tags
                                cif_flex_current_line_number(), -1, NULL, px );
             }
             loop_tag_count++;
-            cif_insert_value( cif_cc->cif, $1, NULL, CIF_UNKNOWN, px );
+            cif_insert_value( cif_cc->cif, $1, NULL, px );
             freex( $1 );
         }
 ;
@@ -392,15 +395,15 @@ loop_values
 	:	loop_values cif_value
         {
             loop_value_count++;
-            cif_push_loop_value( cif_cc->cif, $2->vstr, $2->vtype, px );
-            $2->vstr = NULL; /* protecting vstr from free'ing */
+            cif_push_loop_value( cif_cc->cif, $2->v, px );
+            $2->v = NULL; /* protecting v from free'ing */
             free_typed_value( $2 );
         }
 	|	cif_value
         {
             loop_value_count++;
-            cif_push_loop_value( cif_cc->cif, $1->vstr, $1->vtype, px );
-            $1->vstr = NULL; /* protecting vstr from free'ing */
+            cif_push_loop_value( cif_cc->cif, $1->v, px );
+            $1->v = NULL; /* protecting v from free'ing */
             free_typed_value( $1 );
         }
 ;
@@ -426,16 +429,16 @@ cif_value
 
 string
 	:	_SQSTRING
-        { $$ = new_typed_value(); $$->vstr = $1;
-          $$->vtype = CIF_SQSTRING;
+        { $$ = new_typed_value();
+          $$->v = new_value_from_scalar( $1, CIF_SQSTRING, px );
           $$->vcont = strdupx( cif_flex_current_line(), px ); }
 	|	_DQSTRING
-        { $$ = new_typed_value(); $$->vstr = $1;
-          $$->vtype = CIF_DQSTRING;
+        { $$ = new_typed_value();
+          $$->v = new_value_from_scalar( $1, CIF_DQSTRING, px );
           $$->vcont = strdupx( cif_flex_current_line(), px ); }
 	|	_UQSTRING
-        { $$ = new_typed_value(); $$->vstr = $1;
-          $$->vtype = CIF_UQSTRING;
+        { $$ = new_typed_value();
+          $$->v = new_value_from_scalar( $1, CIF_UQSTRING, px );
           $$->vcont = strdupx( cif_flex_current_line(), px ); }
 ;
 
@@ -443,25 +446,25 @@ textfield
         :	_TEXT_FIELD
         {
           $$ = new_typed_value();
-          $$->vstr = $1;
+          $$->v = new_value_from_scalar( $1, CIF_TEXT, px );
           int unprefixed = 0;
           if( isset_do_not_unprefix_text( cif_cc ) == 0 ) {
-              ssize_t str_len = strlen( $$->vstr );
-              char *unprefixed_text = cif_unprefix_textfield( $$->vstr );
-              free( $$->vstr );
-              $$->vstr = unprefixed_text;
-              if( str_len != strlen( $$->vstr ) ) {
+              ssize_t str_len = strlen( value_get_scalar( $$->v ) );
+              char *unprefixed_text =
+                    cif_unprefix_textfield( value_get_scalar( $$->v ) );
+              $$->v = new_value_from_scalar( unprefixed_text, CIF_TEXT, px );
+              if( str_len != strlen( unprefixed_text ) ) {
                   unprefixed = 1;
               }
           }
           int unfolded = 0;
           if( isset_do_not_unfold_text( cif_cc ) == 0 &&
-              $$->vstr[0] == '\\' ) {
-              size_t str_len = strlen( $$->vstr );
-              char * unfolded_text = cif_unfold_textfield( $$->vstr );
-              free( $$->vstr );
-              $$->vstr = unfolded_text;
-              if( str_len != strlen( $$->vstr ) ) {
+              value_get_scalar( $$->v )[0] == '\\' ) {
+              size_t str_len = strlen( value_get_scalar( $$->v ) );
+              char *unfolded_text =
+                    cif_unfold_textfield( value_get_scalar( $$->v ) );
+              $$->v = new_value_from_scalar( unfolded_text, CIF_TEXT, px );
+              if( str_len != strlen( unfolded_text ) ) {
                   unfolded = 1;
               }
           }
@@ -475,29 +478,29 @@ textfield
          * the text field. This empty line should be removed.
          */
           if( unprefixed == 1 && unfolded == 0 ) {
-              if( $$->vstr[0] == '\n' ) {
+              char *str = value_get_scalar( $$->v );
+              if( str[0] == '\n' ) {
                   size_t i = 0;
-                  while($$->vstr[i] != '\0') {
-                      $$->vstr[i] = $$->vstr[i+1];
+                  while( str[i] != '\0' ) {
+                      str[i] = str[i+1];
                       i++;
                   }
-                  $$->vstr[i] = '\0';
+                  str[i] = '\0';
               }
           }
 
-          $$->vtype = CIF_TEXT;
           $$->vcont = strdupx( cif_flex_current_line(), px );
           }
 ;
 
 number
 	:	_REAL_CONST
-        { $$ = new_typed_value(); $$->vstr = $1;
-          $$->vtype = CIF_FLOAT;
+        { $$ = new_typed_value();
+          $$->v = new_value_from_scalar( $1, CIF_FLOAT, px );
           $$->vcont = strdupx( cif_flex_current_line(), px ); }
 	|	_INTEGER_CONST
-        { $$ = new_typed_value(); $$->vstr = $1;
-          $$->vtype = CIF_INT;
+        { $$ = new_typed_value();
+          $$->v = new_value_from_scalar( $1, CIF_INT, px );
           $$->vcont = strdupx( cif_flex_current_line(), px ); }
 ;
 
