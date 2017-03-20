@@ -34,6 +34,7 @@ int isset_fix_duplicate_tags_with_empty_values( CIF_COMPILER *co );
 int isset_fix_data_header( CIF_COMPILER *co );
 int isset_fix_datablock_names( CIF_COMPILER *co );
 int isset_fix_string_quotes( CIF_COMPILER *co );
+int isset_suppress_messages( CIF_COMPILER *co );
 
 typedef struct typed_value typed_value;
 

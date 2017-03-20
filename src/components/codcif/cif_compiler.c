@@ -102,6 +102,12 @@ int isset_fix_string_quotes( CIF_COMPILER *ccc )
     assert( ccc ); return ( ( ccc->options & copt ) != 0 );
 }
 
+int isset_suppress_messages( CIF_COMPILER *ccc )
+{
+    cif_option_t copt = CO_SUPPRESS_MESSAGES;
+    assert( ccc ); return ( ( ccc->options & copt ) != 0 );
+}
+
 typedef struct typed_value {
     int vline;
     int vpos;

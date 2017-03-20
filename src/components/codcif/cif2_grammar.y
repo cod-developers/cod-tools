@@ -613,7 +613,7 @@ CIF *new_cif_from_cif_file( char *filename, cif_option_t co, cexception_t *ex )
     }
     cexception_catch {
         yyrestart();
-        if( !(cif_cc->options & CO_SUPPRESS_MESSAGES)) {
+        if( !isset_suppress_messages( cif_cc ) ) {
             delete_cif_compiler( cif_cc );
             cif_cc = NULL;
             cexception_reraise( inner, ex );
@@ -819,7 +819,7 @@ void print_message( const char *errlevel, const char *message,
                                            code line. S.G. */
                     int line, int position, cexception_t *ex )
 {
-    if( !(cif_cc->options & CO_SUPPRESS_MESSAGES) ) {
+    if( !isset_suppress_messages( cif_cc ) ) {
         output_message( errlevel, message, suffix, line, position );
     }
     if( cif_cc->cif ) {
@@ -858,7 +858,7 @@ static ssize_t countchars( char c, char *s )
 
 void print_current_text_field( char *text, cexception_t *ex )
 {
-    if( !(cif_cc->options & CO_SUPPRESS_MESSAGES) ) {
+    if( !isset_suppress_messages( cif_cc ) ) {
         ssize_t length = strlen( text ) + countchars( '\n', text ) + 1;
         char *prefixed = length > 0 ? mallocx( length, ex ) : NULL;
         char *p = prefixed, *t = text;
@@ -892,7 +892,7 @@ void print_current_text_field( char *text, cexception_t *ex )
 
 void print_trace( char *line, int position, cexception_t *ex )
 {
-    if( !(cif_cc->options & CO_SUPPRESS_MESSAGES) ) {
+    if( !isset_suppress_messages( cif_cc ) ) {
         fflush(NULL);
         fprintf( stderr, " %s\n %*s\n",
                  line, position, "^" );
