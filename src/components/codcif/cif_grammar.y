@@ -28,7 +28,6 @@ static CIF_COMPILER * volatile cif_cc; /* CIF current compiler */
 
 static cexception_t *px; /* parser exception */
 
-void assert_datablock_exists( cexception_t *ex );
 void add_tag_value( char *tag, char *value, typed_value *tv,
      cexception_t *ex );
 int yyerror_token( const char *message, int line, int pos, char *cont, cexception_t *ex );
@@ -227,7 +226,7 @@ save_item
 cif_entry
 	:	_TAG cif_value
         {
-            assert_datablock_exists( px );
+            assert_datablock_exists( cif_cc, px );
             add_tag_value( $1, $2, px );
             freex( $1 );
             $2->v = NULL; // protecting v from free()ing
@@ -235,7 +234,7 @@ cif_entry
         }
         | _TAG cif_value cif_value_list
             {
-                assert_datablock_exists( px );
+                assert_datablock_exists( cif_cc, px );
                 if( isset_fix_errors( cif_cc ) ||
                     isset_fix_string_quotes( cif_cc ) ) {
                     yywarning_token( "string with spaces without quotes -- fixed",
@@ -294,7 +293,7 @@ cif_value_list
 loop
        :	_LOOP_ 
        {
-           assert_datablock_exists( px );
+           assert_datablock_exists( cif_cc, px );
            loop_tag_count = 0;
            loop_value_count = 0;
            loop_start = cif_flex_current_line_number();
@@ -662,13 +661,6 @@ int is_tag_value_unknown( char * tv )
         iter++;
     }
     return question_mark;
-}
-
-void assert_datablock_exists( cexception_t *ex )
-{
-    if( cif_last_datablock( cif_cc->cif ) == NULL ) {
-        cif_start_datablock( cif_cc->cif, "", px );
-    }
 }
 
 void add_tag_value( char *tag, char *value, typed_value *tv,

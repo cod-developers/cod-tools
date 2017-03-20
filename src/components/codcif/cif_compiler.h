@@ -17,11 +17,13 @@
 
 typedef struct CIF_COMPILER CIF_COMPILER;
 
-static CIF_COMPILER *new_cif_compiler( char *filename,
+CIF_COMPILER *new_cif_compiler( char *filename,
                                        cif_option_t co,
                                        cexception_t *ex );
 
-static void delete_cif_compiler( CIF_COMPILER *c );
+void delete_cif_compiler( CIF_COMPILER *c );
+
+void assert_datablock_exists( CIF_COMPILER *ccc, cexception_t *ex );
 
 int isset_do_not_unprefix_text( CIF_COMPILER *co );
 int isset_do_not_unfold_text( CIF_COMPILER *co );

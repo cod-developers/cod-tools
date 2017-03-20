@@ -13,7 +13,7 @@ typedef struct CIF_COMPILER {
     cif_option_t options;
 } CIF_COMPILER;
 
-static void delete_cif_compiler( CIF_COMPILER *c )
+void delete_cif_compiler( CIF_COMPILER *c )
 {
     if( c ) {
         if( c->filename ) free( c->filename );
@@ -22,7 +22,7 @@ static void delete_cif_compiler( CIF_COMPILER *c )
     }
 }
 
-static CIF_COMPILER *new_cif_compiler( char *filename,
+CIF_COMPILER *new_cif_compiler( char *filename,
                                        cif_option_t co,
                                        cexception_t *ex )
 {
@@ -41,6 +41,13 @@ static CIF_COMPILER *new_cif_compiler( char *filename,
         cexception_reraise( inner, ex );
     }
     return cc;
+}
+
+void assert_datablock_exists( CIF_COMPILER *ccc, cexception_t *ex )
+{
+    if( cif_last_datablock( ccc->cif ) == NULL ) {
+        cif_start_datablock( ccc->cif, "", ex );
+    }
 }
 
 int isset_do_not_unprefix_text( CIF_COMPILER *ccc )
