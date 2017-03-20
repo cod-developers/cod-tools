@@ -181,7 +181,7 @@ block_content_list
 data_heading
 	:	_DATA_
         {
-            cif_start_datablock( cif_cc->cif, $1, px );
+            cif_start_datablock( cif_compiler_cif( cif_cc ), $1, px );
             freex( $1 );
         }
 	|	_DATA_ data_value_list
@@ -203,7 +203,7 @@ data_heading
                 buf[strlen($1)+1] = '\0';
                 strcat( buf, data_list );
                 buf[strlen($1)+strlen(data_list)+1] = '\0';
-                cif_start_datablock( cif_cc->cif, buf, px );
+                cif_start_datablock( cif_compiler_cif( cif_cc ), buf, px );
                 if( isset_fix_errors( cif_cc ) ||
                     isset_fix_string_quotes( cif_cc ) ) {
                     yywarning_token( "the dataname apparently had spaces "
@@ -211,7 +211,7 @@ data_heading
                                      typed_value_line( $2 ), -1, px );
                 }
             } else {
-                cif_start_datablock( cif_cc->cif, $1, px );
+                cif_start_datablock( cif_compiler_cif( cif_cc ), $1, px );
                 yyerror_token( "incorrect CIF syntax",
                                typed_value_line( $2 ),
                                typed_value_pos( $2 ) + 1,
@@ -317,7 +317,7 @@ loop
            loop_tag_count = 0;
            loop_value_count = 0;
            loop_start = cif_flex_current_line_number();
-           cif_start_loop( cif_cc->cif, px );
+           cif_start_loop( cif_compiler_cif( cif_cc ), px );
            freex( $1 );
        } 
        loop_tags loop_values
@@ -327,8 +327,8 @@ loop
                                   "loop starting at line %d",
                                   loop_start ) );
 #if 0
-               if( cif_cc->cif ) {
-                   cif_set_yyretval( cif_cc->cif, -1 );
+               if( cif_compiler_cif( cif_cc ) ) {
+                   cif_set_yyretval( cif_compiler_cif( cif_cc ), -1 );
                }
                cexception_raise( px, CIF_UNRECOVERABLE_ERROR,
                    cxprintf( "wrong number of elements in the "
@@ -336,31 +336,31 @@ loop
                               loop_start ) );
 #endif
            }
-           cif_finish_loop( cif_cc->cif, px );
+           cif_finish_loop( cif_compiler_cif( cif_cc ), px );
        } 
        ;
 
 loop_tags
 	:	loop_tags _TAG
         {
-            size_t tag_nr = cif_tag_index( cif_cc->cif, $2 );
+            size_t tag_nr = cif_tag_index( cif_compiler_cif( cif_cc ), $2 );
             if( tag_nr != -1 ) {
                 yyerror_token( cxprintf( "tag %s appears more than once", $2 ),
                                cif_flex_current_line_number(), -1, NULL, px );
             }
             loop_tag_count++;
-            cif_insert_value( cif_cc->cif, $2, NULL, px );
+            cif_insert_value( cif_compiler_cif( cif_cc ), $2, NULL, px );
             freex( $2 );
         }
 	|	_TAG
         {
-            size_t tag_nr = cif_tag_index( cif_cc->cif, $1 );
+            size_t tag_nr = cif_tag_index( cif_compiler_cif( cif_cc ), $1 );
             if( tag_nr != -1 ) {
                 yyerror_token( cxprintf( "tag %s appears more than once", $1 ),
                                cif_flex_current_line_number(), -1, NULL, px );
             }
             loop_tag_count++;
-            cif_insert_value( cif_cc->cif, $1, NULL, px );
+            cif_insert_value( cif_compiler_cif( cif_cc ), $1, NULL, px );
             freex( $1 );
         }
 ;
@@ -369,14 +369,14 @@ loop_values
 	:	loop_values data_value
         {
             loop_value_count++;
-            cif_push_loop_value( cif_cc->cif, $2->v, px );
+            cif_push_loop_value( cif_compiler_cif( cif_cc ), $2->v, px );
             $2->v = NULL; /* protecting v from free'ing */
             delete_typed_value( $2 );
         }
 	|	data_value
         {
             loop_value_count++;
-            cif_push_loop_value( cif_cc->cif, $1->v, px );
+            cif_push_loop_value( cif_compiler_cif( cif_cc ), $1->v, px );
             $1->v = NULL; /* protecting v from free'ing */
             delete_typed_value( $1 );
         }
@@ -385,13 +385,13 @@ loop_values
 save_frame
 	:   _SAVE_HEAD
         {
-            cif_start_save_frame( cif_cc->cif, /* name = */ $1, px );
+            cif_start_save_frame( cif_compiler_cif( cif_cc ), /* name = */ $1, px );
             freex( $1 );
         }
         data_list
         _SAVE_FOOT
         {
-            cif_finish_save_frame( cif_cc->cif );
+            cif_finish_save_frame( cif_compiler_cif( cif_cc ) );
         }
     |   _SAVE_HEAD
         _SAVE_FOOT /* empty save frame */
@@ -576,9 +576,9 @@ static void cif_compile_file( char *filename, cexception_t *ex )
         px = &inner; /* catch all parser-generated exceptions */
         if( (yyretval = yyparse()) != 0 ) {
             int errcount = cif_yy_error_number();
-            if( cif_cc->cif ) {
-                cif_set_yyretval( cif_cc->cif, yyretval );
-                cif_set_nerrors( cif_cc->cif, errcount );
+            if( cif_compiler_cif( cif_cc ) ) {
+                cif_set_yyretval( cif_compiler_cif( cif_cc ), yyretval );
+                cif_set_nerrors( cif_compiler_cif( cif_cc ), errcount );
             }
             cexception_raise( &inner, CIF_UNRECOVERABLE_ERROR,
                 cxprintf( "compiler could not recover "
@@ -620,11 +620,12 @@ CIF *new_cif_from_cif_file( char *filename, cif_option_t co, cexception_t *ex )
         } else {
             cexception_t inner2;
             cexception_try( inner2 ) {
-                if( cif_yyretval( cif_cc->cif ) == 0 ) {
-                    cif_set_yyretval( cif_cc->cif, -1 );
+                if( cif_yyretval( cif_compiler_cif( cif_cc ) ) == 0 ) {
+                    cif_set_yyretval( cif_compiler_cif( cif_cc ), -1 );
                 }
-                cif_set_nerrors( cif_cc->cif, cif_nerrors( cif_cc->cif ) + 1 );
-                cif_set_message( cif_cc->cif,
+                cif_set_nerrors( cif_compiler_cif( cif_cc ),
+                                 cif_nerrors( cif_compiler_cif( cif_cc ) ) + 1 );
+                cif_set_message( cif_compiler_cif( cif_cc ),
                                  filename, "ERROR",
                                  cexception_message( &inner ),
                                  cexception_syserror( &inner ),
@@ -638,8 +639,8 @@ CIF *new_cif_from_cif_file( char *filename, cif_option_t co, cexception_t *ex )
         }
     }
 
-    cif = cif_cc->cif;
-    cif_cc->cif = NULL;
+    cif = cif_compiler_cif( cif_cc );
+    cif_compiler_cif( cif_cc ) = NULL;
     delete_cif_compiler( cif_cc );
     cif_cc = NULL;
 
@@ -674,17 +675,17 @@ void cif_printf( cexception_t *ex, char *format, ... )
 void add_tag_value( char *tag, typed_value *tv, cexception_t *ex )
 {
     VALUE *value = tv->v;
-    if( cif_tag_index( cif_cc->cif, tag ) == -1 ) {
-        cif_insert_value( cif_cc->cif, tag, value, ex );
+    if( cif_tag_index( cif_compiler_cif( cif_cc ), tag ) == -1 ) {
+        cif_insert_value( cif_compiler_cif( cif_cc ), tag, value, ex );
     } else if( value_get_type( value ) != CIF_LIST &&
                value_get_type( value ) != CIF_TABLE ) {
-        ssize_t tag_nr = cif_tag_index( cif_cc->cif, tag );
+        ssize_t tag_nr = cif_tag_index( cif_compiler_cif( cif_cc ), tag );
         ssize_t * value_lengths = 
-            datablock_value_lengths(cif_last_datablock(cif_cc->cif));
+            datablock_value_lengths(cif_last_datablock(cif_compiler_cif( cif_cc )));
         if( value_lengths[tag_nr] == 1) {
             if( strcmp
                 (value_get_scalar(datablock_value
-                 (cif_last_datablock(cif_cc->cif), tag_nr, 0)),
+                 (cif_last_datablock(cif_compiler_cif( cif_cc )), tag_nr, 0)),
                   value_get_scalar(value)) == 0 &&
                 (isset_fix_errors(cif_cc) == 1 ||
                  isset_fix_duplicate_tags_with_same_values
@@ -706,16 +707,16 @@ void add_tag_value( char *tag, typed_value *tv, cexception_t *ex )
                     } else if( is_tag_value_unknown
                                (value_get_scalar
                                 (datablock_value
-                                 (cif_last_datablock(cif_cc->cif),
+                                 (cif_last_datablock(cif_compiler_cif( cif_cc )),
                                   tag_nr, 0)))) {
                         yywarning_token( cxprintf( "tag %s appears more than once, "
                                                    "the previous value '%s' is "
                                                    "overwritten", tag,
                                                    datablock_value
-                                                   (cif_last_datablock(cif_cc->cif),
+                                                   (cif_last_datablock(cif_compiler_cif( cif_cc )),
                                                    tag_nr, 0)),
                                          tv->vline, -1, ex );
-                        cif_overwrite_value( cif_cc->cif, tag_nr, 0,
+                        cif_overwrite_value( cif_compiler_cif( cif_cc ), tag_nr, 0,
                                              value, ex );
                     } else {
                         yyerror_token( cxprintf( "tag %s appears more than once", tag ),
@@ -785,9 +786,10 @@ void output_message( const char *errlevel, const char *message,
     char *filename = cif_cc->filename;
 
     char *datablock = NULL;
-    if( cif_cc->cif && cif_last_datablock( cif_cc->cif ) && 
-        strlen( datablock_name( cif_last_datablock( cif_cc->cif ) ) ) > 0 ) {
-        datablock = datablock_name( cif_last_datablock( cif_cc->cif ) );
+    if( cif_compiler_cif( cif_cc ) &&
+        cif_last_datablock( cif_compiler_cif( cif_cc ) ) && 
+        strlen( datablock_name( cif_last_datablock( cif_compiler_cif( cif_cc ) ) ) ) > 0 ) {
+        datablock = datablock_name( cif_last_datablock( cif_compiler_cif( cif_cc ) ) );
     }
 
     fflush(NULL);
@@ -822,16 +824,16 @@ void print_message( const char *errlevel, const char *message,
     if( !isset_suppress_messages( cif_cc ) ) {
         output_message( errlevel, message, suffix, line, position );
     }
-    if( cif_cc->cif ) {
+    if( cif_compiler_cif( cif_cc ) ) {
         char *datablock = NULL;
-        if( cif_cc->cif && cif_last_datablock( cif_cc->cif ) && 
-            strlen( datablock_name( cif_last_datablock( cif_cc->cif ))) > 0 ) {
-            datablock = datablock_name( cif_last_datablock( cif_cc->cif ) );
+        if( cif_compiler_cif( cif_cc ) && cif_last_datablock( cif_compiler_cif( cif_cc ) ) && 
+            strlen( datablock_name( cif_last_datablock( cif_compiler_cif( cif_cc ) ))) > 0 ) {
+            datablock = datablock_name( cif_last_datablock( cif_compiler_cif( cif_cc ) ) );
         }
         cif_insert_message
-            ( cif_cc->cif,
+            ( cif_compiler_cif( cif_cc ),
               new_cifmessage_from_data
-              ( /* next = */ cif_messages( cif_cc->cif ),
+              ( /* next = */ cif_messages( cif_compiler_cif( cif_cc ) ),
                 /* progname = */ NULL,
                 /* filename = */ cif_cc->filename ? cif_cc->filename : "-",
                 line, position,
@@ -879,8 +881,8 @@ void print_current_text_field( char *text, cexception_t *ex )
         fflush(NULL);
         if( prefixed ) freex( prefixed );
     }
-    if( cif_cc->cif ) {
-        CIFMESSAGE *current_message = cif_messages( cif_cc->cif );
+    if( cif_compiler_cif( cif_cc ) ) {
+        CIFMESSAGE *current_message = cif_messages( cif_compiler_cif( cif_cc ) );
         assert( current_message );
 
         char *buf = mallocx( strlen(text) + 5, ex );
@@ -898,8 +900,8 @@ void print_trace( char *line, int position, cexception_t *ex )
                  line, position, "^" );
         fflush(NULL);
     }
-    if( cif_cc->cif ) {
-        CIFMESSAGE *current_message = cif_messages( cif_cc->cif );
+    if( cif_compiler_cif( cif_cc ) ) {
+        CIFMESSAGE *current_message = cif_messages( cif_compiler_cif( cif_cc ) );
         assert( current_message );
         cifmessage_set_line( current_message, line, ex );
     }

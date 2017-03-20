@@ -24,6 +24,8 @@ CIF_COMPILER *new_cif_compiler( char *filename,
 
 void delete_cif_compiler( CIF_COMPILER *c );
 
+CIF *cif_compiler_cif( CIF_COMPILER *ccc );
+
 void assert_datablock_exists( CIF_COMPILER *ccc, cexception_t *ex );
 
 int isset_do_not_unprefix_text( CIF_COMPILER *co );

@@ -47,6 +47,11 @@ CIF_COMPILER *new_cif_compiler( char *filename,
     return cc;
 }
 
+CIF *cif_compiler_cif( CIF_COMPILER *ccc )
+{
+    return ccc->cif;
+}
+
 void assert_datablock_exists( CIF_COMPILER *ccc, cexception_t *ex )
 {
     if( cif_last_datablock( ccc->cif ) == NULL ) {
