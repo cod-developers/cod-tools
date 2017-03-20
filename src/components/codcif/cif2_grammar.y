@@ -274,15 +274,15 @@ cif_entry
                         index( buf, '\"' ) != NULL ) {
                         tag_type = CIF_TEXT;
                     }
-                    typed_value *tv = new_typed_value( $3->vline,
-                                                       $3->vpos,
-                                                       $3->vcont,
-                                                       new_value_from_scalar( buf, tag_type, px ) );
+                    typed_value *tv = new_typed_value( typed_value_line( $3 ),
+                                                        typed_value_pos( $3 ),
+                                                        typed_value_content( $3 ),
+                                                        new_value_from_scalar( buf, tag_type, px ) );
                     add_tag_value( $1, tv, px );
-                    tv->v = NULL;     // preventing v from free()'ing
+                    typed_value_detach_value( tv ); // preventing v from free()'ing
                     delete_typed_value( tv );
-                    $3->vcont = NULL; // preventing from free()ing
-                    $3->v = NULL;     // repeatedly
+                    typed_value_detach_content( $3 ); // preventing from free()ing
+                    typed_value_detach_value( $3 );   // repeatedly
                 } else {
                     yyerror_token( "incorrect CIF syntax",
                                    typed_value_line( $3 ),
@@ -299,13 +299,14 @@ data_value_list
         :       data_value
         {
             LIST *list = new_list( px );
-            list_push( list, $1->v, px );
-            $1->v = new_value_from_list( list, px );
+            list_push( list, typed_value_value( $1 ), px );
+            typed_value_set_value( $1, new_value_from_list( list, px ) );
         }
         |       data_value_list data_value
         {
-            list_push( value_get_list( $1->v ), $2->v, px );
-            $2->v = NULL; /* protecting v from free'ing */
+            list_push( value_get_list( typed_value_value( $1 ) ),
+                       typed_value_value( $2 ), px );
+            typed_value_detach_value( $2 ); /* protecting v from free'ing */
             delete_typed_value( $2 );
         }
 ;
@@ -369,15 +370,17 @@ loop_values
 	:	loop_values data_value
         {
             loop_value_count++;
-            cif_push_loop_value( cif_compiler_cif( cif_cc ), $2->v, px );
-            $2->v = NULL; /* protecting v from free'ing */
+            cif_push_loop_value( cif_compiler_cif( cif_cc ),
+                                 typed_value_value( $2 ), px );
+            typed_value_value( $2 ); /* protecting v from free'ing */
             delete_typed_value( $2 );
         }
 	|	data_value
         {
             loop_value_count++;
-            cif_push_loop_value( cif_compiler_cif( cif_cc ), $1->v, px );
-            $1->v = NULL; /* protecting v from free'ing */
+            cif_push_loop_value( cif_compiler_cif( cif_cc ),
+                                 typed_value_value( $1 ), px );
+            typed_value_value( $1 ); /* protecting v from free'ing */
             delete_typed_value( $1 );
         }
 ;
@@ -532,29 +535,31 @@ table_entry_list
 	:	table_entry_list
         any_quoted_string _TABLE_ENTRY_SEP data_value
     {
-        if( table_get( value_get_table( $1->v ),
-                       value_get_scalar( $2->v ) ) != NULL ) {
+        if( table_get( value_get_table( typed_value_value( $1 ) ),
+                       value_get_scalar( typed_value_value( $2 ) ) ) != NULL ) {
             yyerror_token( cxprintf( "key '%s' appears more than once "
                                      "in the same table",
-                                      value_get_scalar( $2->v ) ),
-                           $2->vline, -1, NULL, px );
+                                      value_get_scalar( typed_value_value( $2 ) ) ),
+                           typed_value_line( $2 ), -1, NULL, px );
         }
-        table_add( value_get_table( $1->v ),
-                   value_get_scalar( $2->v ), $4->v, px );
-        $4->v = NULL; // protecting from free()ing
+        table_add( value_get_table( typed_value_value( $1 ) ),
+                   value_get_scalar( typed_value_value( $2 ) ),
+                   typed_value_value( $4 ), px );
+        typed_value_detach_value( $4 ); // protecting from free()ing
         delete_typed_value( $2 );
         delete_typed_value( $4 );
     }
 	|	any_quoted_string _TABLE_ENTRY_SEP data_value
     {
-        $$ = new_typed_value( $1->vline, $1->vpos, strdupx( $1->vcont, px ),
+        $$ = new_typed_value( typed_value_line( $1 ), typed_value_pos( $1 ),
+                              strdupx( typed_value_content( $1 ), px ),
                               new_value_from_table( new_table( px ), px ) );
         /* check for the existence of key does not have to be
          * performed, since the table is empty */
-        table_add( value_get_table( $$->v ),
-                   value_get_scalar( $1->v ),
-                   $3->v, px );
-        $3->v = NULL; // protecting from free()ing
+        table_add( value_get_table( typed_value_value( $$ ) ),
+                   value_get_scalar( typed_value_value( $1 ) ),
+                   typed_value_value( $3 ), px );
+        typed_value_detach_value( $3 ); // protecting from free()ing
         delete_typed_value( $1 );
         delete_typed_value( $3 );
     }
@@ -674,7 +679,7 @@ void cif_printf( cexception_t *ex, char *format, ... )
 
 void add_tag_value( char *tag, typed_value *tv, cexception_t *ex )
 {
-    VALUE *value = tv->v;
+    VALUE *value = typed_value_value( tv );
     if( cif_tag_index( cif_compiler_cif( cif_cc ), tag ) == -1 ) {
         cif_insert_value( cif_compiler_cif( cif_cc ), tag, value, ex );
     } else if( value_get_type( value ) != CIF_LIST &&
@@ -693,7 +698,7 @@ void add_tag_value( char *tag, typed_value *tv, cexception_t *ex )
                 yywarning_token( cxprintf( "tag %s appears more than once "
                                            "with the same value '%s'", tag,
                                             value_get_scalar(value) ),
-                                 tv->vline, -1, ex );
+                                 typed_value_line( tv ), -1, ex );
             } else {
                 if( isset_fix_errors(cif_cc) == 1 ||
                     isset_fix_duplicate_tags_with_empty_values
@@ -703,7 +708,7 @@ void add_tag_value( char *tag, typed_value *tv, cexception_t *ex )
                                                    "the second occurrence '%s' is "
                                                    "ignored", tag,
                                                    value_get_scalar(value) ),
-                                         tv->vline, -1, ex );
+                                         typed_value_line( tv ), -1, ex );
                     } else if( is_tag_value_unknown
                                (value_get_scalar
                                 (datablock_value
@@ -715,25 +720,25 @@ void add_tag_value( char *tag, typed_value *tv, cexception_t *ex )
                                                    datablock_value
                                                    (cif_last_datablock(cif_compiler_cif( cif_cc )),
                                                    tag_nr, 0)),
-                                         tv->vline, -1, ex );
+                                         typed_value_line( tv ), -1, ex );
                         cif_overwrite_value( cif_compiler_cif( cif_cc ), tag_nr, 0,
                                              value, ex );
                     } else {
                         yyerror_token( cxprintf( "tag %s appears more than once", tag ),
-                                       tv->vline, -1, NULL, ex );
+                                       typed_value_line( tv ), -1, NULL, ex );
                     }
                 } else {
                     yyerror_token( cxprintf( "tag %s appears more than once", tag ),
-                                   tv->vline, -1, NULL, ex );
+                                   typed_value_line( tv ), -1, NULL, ex );
                 }
             }
         } else {
             yyerror_token( cxprintf( "tag %s appears more than once", tag ),
-                           tv->vline, -1, NULL, ex );
+                           typed_value_line( tv ), -1, NULL, ex );
         }
     } else {
         yyerror_token( cxprintf( "tag %s appears more than once", tag ),
-                       tv->vline, -1, NULL, ex );
+                       typed_value_line( tv ), -1, NULL, ex );
     }
 }
 

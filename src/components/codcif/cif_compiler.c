@@ -178,3 +178,13 @@ void typed_value_detach_value( typed_value *t )
 {
     t->v = NULL;
 }
+
+void typed_value_detach_content( typed_value *t )
+{
+    t->vcont = NULL;
+}
+
+void typed_value_set_value( typed_value *t, VALUE *v )
+{
+    t->v = v;
+}

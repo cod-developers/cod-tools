@@ -47,10 +47,14 @@ typed_value *new_typed_value( int vline, int vpos, char *vcont, VALUE *v );
 
 void delete_typed_value( typed_value *t );
 
+void typed_value_detach_value( typed_value *t );
+void typed_value_detach_content( typed_value *t );
+
 int typed_value_line( typed_value *t );
 int typed_value_pos( typed_value *t );
 char *typed_value_content( typed_value *t );
 VALUE *typed_value_value( typed_value *t );
-void typed_value_detach_value( typed_value *t );
+
+void typed_value_set_value( typed_value *t, VALUE *v );
 
 #endif
