@@ -14,6 +14,7 @@
 #include <cexceptions.h>
 #include <cif_options.h>
 #include <cif.h>
+#include <value.h>
 
 typedef struct CIF_COMPILER CIF_COMPILER;
 
@@ -39,5 +40,11 @@ typedef struct typed_value typed_value;
 typed_value *new_typed_value( void );
 
 void free_typed_value( typed_value *t );
+
+int typed_value_line( typed_value *t );
+int typed_value_pos( typed_value *t );
+char *typed_value_content( typed_value *t );
+VALUE *typed_value_value( typed_value *t );
+void typed_value_detach_value( typed_value *t );
 
 #endif

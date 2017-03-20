@@ -98,11 +98,11 @@ stray_data_value_list
                 isset_fix_data_header( cif_cc ) ) {
                     print_message( "WARNING", "stray CIF values at the "
                                    "beginning of the input file", "",
-                                   $1->vline, -1, px );
+                                   typed_value_line( $1 ), -1, px );
             } else {
                     print_message( "ERROR", "stray CIF values at the "
                                    "beginning of the input file", "",
-                                   $1->vline, -1, px );
+                                   typed_value_line( $1 ), -1, px );
                     yyincrease_error_counter();
             }
             free_typed_value( $1 );
@@ -113,11 +113,11 @@ stray_data_value_list
                 isset_fix_data_header( cif_cc ) ) {
                     print_message( "WARNING", "stray CIF values at the "
                                    "beginning of the input file", "",
-                                   $1->vline, -1, px );
+                                   typed_value_line( $1 ), -1, px );
             } else {
                     print_message( "ERROR", "stray CIF values at the "
                                    "beginning of the input file", "",
-                                   $1->vline, -1, px );
+                                   typed_value_line( $1 ), -1, px );
                     yyincrease_error_counter();
             }
             free_typed_value( $1 );
@@ -189,7 +189,7 @@ data_heading
         }
 	|	_DATA_ data_value_list
         {
-            LIST *list = value_get_list( $2->v );
+            LIST *list = value_get_list( typed_value_value( $2 ) );
 
             /* only simple data items can be concatenated,
              * thus we have to make sure that data value
@@ -211,12 +211,14 @@ data_heading
                     isset_fix_string_quotes( cif_cc ) ) {
                     yywarning_token( "the dataname apparently had spaces "
                                      "in it -- replaced spaces with underscores",
-                                     $2->vline, -1, px );
+                                     typed_value_line( $2 ), -1, px );
                 }
             } else {
                 cif_start_datablock( cif_cc->cif, $1, px );
                 yyerror_token( "incorrect CIF syntax",
-                               $2->vline, $2->vpos+1, $2->vcont, px );
+                               typed_value_line( $2 ),
+                               typed_value_pos( $2 ) + 1,
+                               typed_value_content( $2 ), px );
             }
             freex( $1 );
             free_typed_value( $2 );
@@ -245,26 +247,28 @@ cif_entry
             assert_datablock_exists( cif_cc, px );
             add_tag_value( $1, $2, px );
             freex( $1 );
-            $2->v = NULL; // protecting v from free()ing
+            typed_value_detach_value( $2 ); // protecting v from free()ing
             free_typed_value( $2 );
         }
         | _TAG data_value data_value_list
             {
                 assert_datablock_exists( cif_cc, px );
-                LIST *list = value_get_list( $3->v );
-                list_unshift( list, $2->v, px );
-                $2->v = NULL; // detaching consumed value
+                LIST *list = value_get_list( typed_value_value( $3 ) );
+                list_unshift( list, typed_value_value( $2 ), px );
+                typed_value_detach_value( $2 );
 
                 /* only simple data items can be concatenated,
                  * thus we have to make sure that data value
                  * list does not contain lists or tables: */
                 if( list_contains_list_or_table( list ) ) {
-                    yyerror_token( "incorrect CIF syntax", $2->vline,
-                                   $2->vpos+1, $2->vcont, px );
+                    yyerror_token( "incorrect CIF syntax",
+                                   typed_value_line( $2 ),
+                                   typed_value_pos( $2 ) + 1,
+                                   typed_value_content( $2 ), px );
                 } else if( isset_fix_errors( cif_cc ) ||
                             isset_fix_string_quotes( cif_cc ) ) {
                     yywarning_token( "string with spaces without quotes -- fixed",
-                                     $2->vline, -1, px );
+                                     typed_value_line( $2 ), -1, px );
                     char *buf = list_concat( list, ' ', px );
                     cif_value_type_t tag_type = CIF_SQSTRING;
                     if( index( buf, '\n' ) != NULL ||
@@ -284,8 +288,10 @@ cif_entry
                     $3->vcont = NULL; // preventing from free()ing
                     $3->v = NULL;     // repeatedly
                 } else {
-                    yyerror_token( "incorrect CIF syntax", $3->vline,
-                                   $3->vpos+1, $3->vcont, px );
+                    yyerror_token( "incorrect CIF syntax",
+                                   typed_value_line( $3 ),
+                                   typed_value_pos( $3 ) + 1,
+                                   typed_value_content( $3 ), px );
                 }
                 freex( $1 );
                 free_typed_value( $2 );

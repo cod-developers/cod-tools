@@ -10,7 +10,6 @@
 
 /* uses: */
 #include <cif_lexer.h>
-#include <value.h>
 
 typedef struct CIF_COMPILER {
     char *filename;
@@ -118,7 +117,8 @@ typed_value *new_typed_value( void ) {
     return tv;
 }
 
-void free_typed_value( typed_value *t ) {
+void free_typed_value( typed_value *t )
+{
     if( t->vcont != NULL ) {
         freex( t->vcont );
     }
@@ -126,4 +126,29 @@ void free_typed_value( typed_value *t ) {
         delete_value( t->v );
     }
     freex( t );
+}
+
+int typed_value_line( typed_value *t )
+{
+    return t->vline;
+}
+
+int typed_value_pos( typed_value *t )
+{
+    return t->vpos;
+}
+
+char *typed_value_content( typed_value *t )
+{
+    return t->vcont;
+}
+
+VALUE *typed_value_value( typed_value *t )
+{
+    return t->v;
+}
+
+void typed_value_detach_value( typed_value *t )
+{
+    t->v = NULL;
 }
