@@ -176,7 +176,8 @@ int cif_lexer( FILE *in, cexception_t *ex )
             thisTokenPos = current_pos > 0 ? current_pos - 1 : 0;
             if( cif_lexer_has_flags
                 (CIF_FLEX_LEXER_FIX_CTRL_Z) ) {
-                yywarning( "DOS EOF symbol ^Z was encountered and ignored", ex );
+                yywarning_token( "DOS EOF symbol ^Z was encountered and ignored",
+                                 cif_flex_previous_line_number(), -1, ex );
             } else {
                 yyerror( "DOS EOF symbol ^Z was encountered, "
                          "it is not permitted in CIFs" );
@@ -415,8 +416,9 @@ int cif_lexer( FILE *in, cexception_t *ex )
                         if( cif_lexer_has_flags
                             (CIF_FLEX_LEXER_FIX_MISSING_CLOSING_DOUBLE_QUOTE)
                             ) {
-                            yywarning( "double-quoted string is missing "
-                                       "a closing quote -- fixed", ex );
+                            yywarning_token( "double-quoted string is missing "
+                                             "a closing quote -- fixed",
+                                             cif_flex_previous_line_number(), -1, ex );
                         } else {
                             yyerror_token( "incorrect CIF syntax",
                                            cif_flex_current_line_number()-1,
@@ -429,8 +431,9 @@ int cif_lexer( FILE *in, cexception_t *ex )
                         if( cif_lexer_has_flags
                             (CIF_FLEX_LEXER_FIX_MISSING_CLOSING_SINGLE_QUOTE)
                             ) {
-                            yywarning( "single-quoted string is missing "
-                                       "a closing quote -- fixed", ex );
+                            yywarning_token( "single-quoted string is missing "
+                                             "a closing quote -- fixed",
+                                             cif_flex_previous_line_number(), -1, ex );
                         } else {
                             yyerror_token( "incorrect CIF syntax",
                                            cif_flex_current_line_number()-1,
@@ -521,8 +524,9 @@ int cif_lexer( FILE *in, cexception_t *ex )
                 /* data block header: */
                 if( strlen( token ) == 5 ) {
                     if( cif_lexer_has_flags(CIF_FLEX_LEXER_FIX_DATABLOCK_NAMES) ) {
-                        yywarning( "zero-length data block name detected "
-                                   "-- ignored", ex );
+                        yywarning_token( "zero-length data block name detected "
+                                         "-- ignored",
+                                         cif_flex_previous_line_number(), -1, ex );
                     } else {
                         yyerror( "zero-length data block name detected" );
                     }

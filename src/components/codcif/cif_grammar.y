@@ -30,7 +30,6 @@ static CIF_COMPILER * volatile cif_cc; /* CIF current compiler */
 static cexception_t *px; /* parser exception */
 
 int yyerror_token( const char *message, int line, int pos, char *cont, cexception_t *ex );
-int yywarning_token( const char *message, int line, int pos, cexception_t *ex );
 
 int loop_tag_count = 0;
 int loop_value_count = 0;
@@ -604,14 +603,6 @@ int yynote( const char *message, cexception_t *ex )
     print_message( cif_cc, "NOTE", message, "", cif_flex_previous_line_number(), -1,
                    ex );
     notecount++;
-    return 0;
-}
-
-int yywarning( const char *message, cexception_t *ex )
-{
-    print_message( cif_cc, "WARNING", message, "", cif_flex_previous_line_number(), -1,
-                   ex );
-    warncount++;
     return 0;
 }
 
