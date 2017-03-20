@@ -24,6 +24,7 @@
 #include <cif_compiler.h>
 #include <assert.h>
 #include <table.h>
+#include <common.h>
 
 static CIF_COMPILER * volatile cif_cc; /* CIF current compiler */
 
@@ -669,99 +670,6 @@ void cif_printf( cexception_t *ex, char *format, ... )
 	cexception_reraise( inner, ex );
     }
     va_end( ap );
-}
-
-char * cif_unprefix_textfield( char * tf )
-{
-    int length = strlen(tf);
-    char * unprefixed = malloc( (length + 1) * sizeof( char ) );
-    char * src = tf;
-    char * dest = unprefixed;
-    int prefix_length = 0;
-    int is_prefix = 0;
-    while(  src[0] != '\n' && src[0] != '\0' ) {
-        if( src[0] != '\\' ) {
-            prefix_length++;
-            dest[0] = src[0];
-            src++;
-            dest++;
-        } else {
-            if( prefix_length > 0 &&
-                ( src[1] == '\n' ||
-                    ( src[1] == '\\' && src[2] == '\n' ) ) ) {
-                is_prefix = 1;
-                dest = unprefixed;
-            } else {
-                dest[0] = src[0];
-                dest++;
-            }
-            src++;
-            break;
-        }
-    }
-    int unprefix_line =  is_prefix;
-    int line_offset   = -1;
-    while(  src[0] != '\0' ) {
-        if( src[0] == '\n' ) {
-            line_offset = -1;
-            unprefix_line = is_prefix;
-        }
-        if( line_offset >= 0 && line_offset < prefix_length
-            && unprefix_line == 1 ) {
-            if( src[0] == tf[line_offset] ) {
-                line_offset++;
-                src++;
-            } else {
-                src-=line_offset;
-                unprefix_line =  0;
-                line_offset   = -1;
-            }
-        } else {
-            dest[0] = src[0];
-            src++;
-            dest++;
-            line_offset++;
-        }
-    }
-    dest[0] = '\0';
-    return unprefixed;
-}
-
-char * cif_unfold_textfield( char * tf )
-{
-    int length = strlen(tf);
-    char * unfolded = malloc( (length + 1) * sizeof( char ) );
-    char * src = tf;
-    char * dest = unfolded;
-    while(  src[0] != '\0' ) {
-        if( src[0] == '\\' && src[1] == '\n' ) {
-            src+=2;
-        } else {
-            dest[0] = src[0];
-            src++;
-            dest++;
-        }
-    }
-    dest[0] = '\0';
-    return unfolded;
-}
-
-int is_tag_value_unknown( char * tv )
-{
-    int question_mark = 0;
-    char * iter = tv;
-    while(  iter[0] != '\0' ) {
-        if( iter[0] ==  '?' ) {
-            question_mark = 1;
-        } else if( iter[0] != ' '  &&
-                   iter[0] != '\t' &&
-                   iter[0] != '\r' &&
-                   iter[0] != '\n' ) {
-            return 0;
-        }
-        iter++;
-    }
-    return question_mark;
 }
 
 void add_tag_value( char *tag, typed_value *tv, cexception_t *ex )
