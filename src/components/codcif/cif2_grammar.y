@@ -30,7 +30,6 @@ static CIF_COMPILER * volatile cif_cc; /* CIF current compiler */
 
 static cexception_t *px; /* parser exception */
 
-void add_tag_value( char *tag, typed_value *tv, cexception_t *ex );
 int yyerror_token( const char *message, int line, int pos, char *cont, cexception_t *ex );
 int yywarning_token( const char *message, int line, int pos, cexception_t *ex );
 
@@ -242,7 +241,7 @@ cif_entry
 	:	_TAG data_value
         {
             assert_datablock_exists( cif_cc, px );
-            add_tag_value( $1, $2, px );
+            add_tag_value( cif_cc, $1, $2, px );
             freex( $1 );
             typed_value_detach_value( $2 ); // protecting v from free()ing
             delete_typed_value( $2 );
@@ -278,7 +277,7 @@ cif_entry
                                                         typed_value_pos( $3 ),
                                                         typed_value_content( $3 ),
                                                         new_value_from_scalar( buf, tag_type, px ) );
-                    add_tag_value( $1, tv, px );
+                    add_tag_value( cif_cc, $1, tv, px );
                     typed_value_detach_value( tv ); // preventing v from free()'ing
                     delete_typed_value( tv );
                     typed_value_detach_content( $3 ); // preventing from free()ing
@@ -656,71 +655,6 @@ CIF *new_cif_from_cif_file( char *filename, cif_option_t co, cexception_t *ex )
 
     cif_revert_message_list( cif );
     return cif;
-}
-
-void add_tag_value( char *tag, typed_value *tv, cexception_t *ex )
-{
-    VALUE *value = typed_value_value( tv );
-    if( cif_tag_index( cif_compiler_cif( cif_cc ), tag ) == -1 ) {
-        cif_insert_value( cif_compiler_cif( cif_cc ), tag, value, ex );
-    } else if( value_get_type( value ) != CIF_LIST &&
-               value_get_type( value ) != CIF_TABLE ) {
-        ssize_t tag_nr = cif_tag_index( cif_compiler_cif( cif_cc ), tag );
-        ssize_t * value_lengths = 
-            datablock_value_lengths(cif_last_datablock(cif_compiler_cif( cif_cc )));
-        if( value_lengths[tag_nr] == 1) {
-            if( strcmp
-                (value_get_scalar(datablock_value
-                 (cif_last_datablock(cif_compiler_cif( cif_cc )), tag_nr, 0)),
-                  value_get_scalar(value)) == 0 &&
-                (isset_fix_errors(cif_cc) == 1 ||
-                 isset_fix_duplicate_tags_with_same_values
-                 (cif_cc) == 1)) {
-                yywarning_token( cxprintf( "tag %s appears more than once "
-                                           "with the same value '%s'", tag,
-                                            value_get_scalar(value) ),
-                                 typed_value_line( tv ), -1, ex );
-            } else {
-                if( isset_fix_errors(cif_cc) == 1 ||
-                    isset_fix_duplicate_tags_with_empty_values
-                    (cif_cc) == 1 ) {
-                    if( is_tag_value_unknown( value_get_scalar(value) ) ) {
-                        yywarning_token( cxprintf( "tag %s appears more than once, "
-                                                   "the second occurrence '%s' is "
-                                                   "ignored", tag,
-                                                   value_get_scalar(value) ),
-                                         typed_value_line( tv ), -1, ex );
-                    } else if( is_tag_value_unknown
-                               (value_get_scalar
-                                (datablock_value
-                                 (cif_last_datablock(cif_compiler_cif( cif_cc )),
-                                  tag_nr, 0)))) {
-                        yywarning_token( cxprintf( "tag %s appears more than once, "
-                                                   "the previous value '%s' is "
-                                                   "overwritten", tag,
-                                                   datablock_value
-                                                   (cif_last_datablock(cif_compiler_cif( cif_cc )),
-                                                   tag_nr, 0)),
-                                         typed_value_line( tv ), -1, ex );
-                        cif_overwrite_value( cif_compiler_cif( cif_cc ), tag_nr, 0,
-                                             value, ex );
-                    } else {
-                        yyerror_token( cxprintf( "tag %s appears more than once", tag ),
-                                       typed_value_line( tv ), -1, NULL, ex );
-                    }
-                } else {
-                    yyerror_token( cxprintf( "tag %s appears more than once", tag ),
-                                   typed_value_line( tv ), -1, NULL, ex );
-                }
-            }
-        } else {
-            yyerror_token( cxprintf( "tag %s appears more than once", tag ),
-                           typed_value_line( tv ), -1, NULL, ex );
-        }
-    } else {
-        yyerror_token( cxprintf( "tag %s appears more than once", tag ),
-                       typed_value_line( tv ), -1, NULL, ex );
-    }
 }
 
 static int errcount = 0;
