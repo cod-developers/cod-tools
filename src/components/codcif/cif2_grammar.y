@@ -274,11 +274,10 @@ cif_entry
                         index( buf, '\"' ) != NULL ) {
                         tag_type = CIF_TEXT;
                     }
-                    typed_value *tv = new_typed_value();
-                    tv->vline = $3->vline;
-                    tv->vpos  = $3->vpos;
-                    tv->vcont = $3->vcont;
-                    tv->v = new_value_from_scalar( buf, tag_type, px );
+                    typed_value *tv = new_typed_value( $3->vline,
+                                                       $3->vpos,
+                                                       $3->vcont,
+                                                       new_value_from_scalar( buf, tag_type, px ) );
                     add_tag_value( $1, tv, px );
                     tv->v = NULL;     // preventing v from free()'ing
                     delete_typed_value( tv );
@@ -409,9 +408,9 @@ data_value
 string
     :   any_quoted_string
 	|	_UQSTRING
-        { $$ = new_typed_value();
-          $$->v = new_value_from_scalar( $1, CIF_UQSTRING, px );
-          $$->vcont = strdupx( cif_flex_current_line(), px ); }
+        { $$ = new_typed_value( -1, -1, strdupx( cif_flex_current_line(), px ),
+                                new_value_from_scalar( $1, CIF_UQSTRING, px ) );
+        }
 ;
 
 any_quoted_string
@@ -421,48 +420,48 @@ any_quoted_string
 
 quoted_string
     :   _SQSTRING
-        { $$ = new_typed_value();
-          $$->v = new_value_from_scalar( $1, CIF_SQSTRING, px );
-          $$->vcont = strdupx( cif_flex_current_line(), px ); }
+        { $$ = new_typed_value( -1, -1, strdupx( cif_flex_current_line(), px ),
+                                new_value_from_scalar( $1, CIF_SQSTRING, px ) );
+        }
 	|	_DQSTRING
-        { $$ = new_typed_value();
-          $$->v = new_value_from_scalar( $1, CIF_DQSTRING, px );
-          $$->vcont = strdupx( cif_flex_current_line(), px ); }
+        { $$ = new_typed_value( -1, -1, strdupx( cif_flex_current_line(), px ),
+                                new_value_from_scalar( $1, CIF_DQSTRING, px ) );
+        }
 ;
 
 triple_quoted_string
     :   _SQ3STRING
-        { $$ = new_typed_value();
-          $$->v = new_value_from_scalar( $1, CIF_SQ3STRING, px );
-          $$->vcont = strdupx( cif_flex_current_line(), px ); }
+        { $$ = new_typed_value( -1, -1, strdupx( cif_flex_current_line(), px ),
+                                new_value_from_scalar( $1, CIF_SQ3STRING, px ) );
+        }
 	|	_DQ3STRING
-        { $$ = new_typed_value();
-          $$->v = new_value_from_scalar( $1, CIF_DQ3STRING, px );
-          $$->vcont = strdupx( cif_flex_current_line(), px ); }
+        { $$ = new_typed_value( -1, -1, strdupx( cif_flex_current_line(), px ),
+                                new_value_from_scalar( $1, CIF_DQ3STRING, px ) );
+        }
 ;
 
 textfield
         :	_TEXT_FIELD
         {
-          $$ = new_typed_value();
-          $$->v = new_value_from_scalar( $1, CIF_TEXT, px );
+          char *text = $1;
+
           int unprefixed = 0;
           if( isset_do_not_unprefix_text( cif_cc ) == 0 ) {
-              ssize_t str_len = strlen( value_get_scalar( $$->v ) );
+              ssize_t str_len = strlen( text );
               char *unprefixed_text =
-                    cif_unprefix_textfield( value_get_scalar( $$->v ) );
-              $$->v = new_value_from_scalar( unprefixed_text, CIF_TEXT, px );
+                    cif_unprefix_textfield( text );
+              text = unprefixed_text;
               if( str_len != strlen( unprefixed_text ) ) {
                   unprefixed = 1;
               }
           }
           int unfolded = 0;
           if( isset_do_not_unfold_text( cif_cc ) == 0 &&
-              value_get_scalar( $$->v )[0] == '\\' ) {
-              size_t str_len = strlen( value_get_scalar( $$->v ) );
+              text[0] == '\\' ) {
+              size_t str_len = strlen( text );
               char *unfolded_text =
-                    cif_unfold_textfield( value_get_scalar( $$->v ) );
-              $$->v = new_value_from_scalar( unfolded_text, CIF_TEXT, px );
+                    cif_unfold_textfield( text );
+              text = unfolded_text;
               if( str_len != strlen( unfolded_text ) ) {
                   unfolded = 1;
               }
@@ -477,7 +476,7 @@ textfield
          * the text field. This empty line should be removed.
          */
           if( unprefixed == 1 && unfolded == 0 ) {
-              char *str = value_get_scalar( $$->v );
+              char *str = text;
               if( str[0] == '\n' ) {
                   size_t i = 0;
                   while( str[i] != '\0' ) {
@@ -488,19 +487,21 @@ textfield
               }
           }
 
-          $$->vcont = strdupx( cif_flex_current_line(), px );
+          $$ = new_typed_value( -1, -1,
+                                strdupx( cif_flex_current_line(), px ),
+                                new_value_from_scalar( text, CIF_TEXT, px ) );
         }
 ;
 
 number
 	:	_REAL_CONST
-        { $$ = new_typed_value();
-          $$->v = new_value_from_scalar( $1, CIF_FLOAT, px );
-          $$->vcont = strdupx( cif_flex_current_line(), px ); }
+        { $$ = new_typed_value( -1, -1, strdupx( cif_flex_current_line(), px ),
+                                new_value_from_scalar( $1, CIF_FLOAT, px ) );
+        }
 	|	_INTEGER_CONST
-        { $$ = new_typed_value();
-          $$->v = new_value_from_scalar( $1, CIF_INT, px );
-          $$->vcont = strdupx( cif_flex_current_line(), px ); }
+        { $$ = new_typed_value( -1, -1, strdupx( cif_flex_current_line(), px ),
+                                new_value_from_scalar( $1, CIF_INT, px ) );
+        }
 ;
 
 list
@@ -510,9 +511,8 @@ list
     }
     |   '[' ']'
     {
-        $$ = new_typed_value();
-        $$->v = new_value_from_list( new_list( px ), px );
-        $$->vcont = strdupx( cif_flex_current_line(), px );
+        $$ = new_typed_value( -1, -1, strdupx( cif_flex_current_line(), px ),
+                              new_value_from_list( new_list( px ), px ) );
     }
 ;
 
@@ -523,9 +523,8 @@ table
     }
     |   '{' '}'
     {
-        $$ = new_typed_value();
-        $$->v = new_value_from_table( new_table( px ), px );
-        $$->vcont = strdupx( cif_flex_current_line(), px );
+        $$ = new_typed_value( -1, -1, strdupx( cif_flex_current_line(), px ),
+                              new_value_from_table( new_table( px ), px ) );
     }
 ;
 
@@ -548,11 +547,8 @@ table_entry_list
     }
 	|	any_quoted_string _TABLE_ENTRY_SEP data_value
     {
-        $$ = new_typed_value();
-        $$->v = new_value_from_table( new_table( px ), px );
-        $$->vline = $1->vline;
-        $$->vpos = $1->vpos;
-        $$->vcont = strdupx( $1->vcont, px );
+        $$ = new_typed_value( $1->vline, $1->vpos, strdupx( $1->vcont, px ),
+                              new_value_from_table( new_table( px ), px ) );
         /* check for the existence of key does not have to be
          * performed, since the table is empty */
         table_add( value_get_table( $$->v ),

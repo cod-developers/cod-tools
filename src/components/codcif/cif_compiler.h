@@ -37,7 +37,7 @@ int isset_fix_string_quotes( CIF_COMPILER *co );
 
 typedef struct typed_value typed_value;
 
-typed_value *new_typed_value( void );
+typed_value *new_typed_value( int vline, int vpos, char *vcont, VALUE *v );
 
 void delete_typed_value( typed_value *t );
 
