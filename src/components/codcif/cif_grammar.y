@@ -258,6 +258,7 @@ cif_entry
                                                        typed_value_content( $3 ),
                                                        new_value_from_scalar( buf, tag_type, px ) );
                     add_tag_value( cif_cc, $1, tv, px );
+                    typed_value_detach_value( tv );
                     delete_typed_value( tv );
                     typed_value_detach_content( $3 ); /* preventing from free()ing
                                                          repeatedly */
@@ -509,6 +510,7 @@ CIF *new_cif_from_cif_file( char *filename, cif_option_t co, cexception_t *ex )
     cif_cc = new_cif_compiler( filename, co, ex );
     cif_yy_reset_error_count();
     cif_flex_reset_counters();
+    cif_lexer_set_compiler( cif_cc );
 
     cexception_guard( inner ) {
         cif_compile_file( filename, &inner );

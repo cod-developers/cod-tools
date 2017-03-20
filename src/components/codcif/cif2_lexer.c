@@ -23,6 +23,8 @@
 
 FILE *yyin;
 
+CIF_COMPILER *cif_cc;
+
 static char *current_line;
 size_t currentl_line_length;
 size_t current_pos;
@@ -82,6 +84,11 @@ void cif_flex_reset_counters( void )
     current_pos = nextPos = 0;
 }
 /* end of old Flex scanner functions */
+
+void cif_lexer_set_compiler( CIF_COMPILER *ccc )
+{
+    cif_cc = ccc;
+}
 
 static void advance_mark( void )
 {
@@ -821,8 +828,6 @@ const char *cif_flex_previous_line( void ) { return lastTokenLine; }
 
 static char *clean_string( char *src, int is_textfield, cexception_t *ex )
 {
-    extern CIF_COMPILER *cif_cc;
-
     int DELTA = 8;
     ssize_t length = strlen( src );
     char *volatile new = mallocx( length + 1, ex );

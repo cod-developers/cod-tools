@@ -610,7 +610,9 @@ CIF *new_cif_from_cif_file( char *filename, cif_option_t co, cexception_t *ex )
 
     assert( !cif_cc );
     cif_cc = new_cif_compiler( filename, co, ex );
+    cif_yy_reset_error_count();
     cif_flex_reset_counters();
+    cif_lexer_set_compiler( cif_cc );
 
     cexception_guard( inner ) {
         cif_compile_file( filename, &inner );

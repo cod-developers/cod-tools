@@ -11,11 +11,14 @@
 #include <stdio.h>
 #include <stdlib.h> /* for ssize_t */
 #include <cexceptions.h>
+#include <cif_compiler.h>
 
 int yylex( void );
 void yyrestart( void );
 
 int cif_lexer( FILE *in, cexception_t *ex );
+
+void cif_lexer_set_compiler( CIF_COMPILER *ccc );
 
 void cif_flex_reset_counters( void );
 
