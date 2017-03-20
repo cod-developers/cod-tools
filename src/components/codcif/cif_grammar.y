@@ -21,44 +21,8 @@
 #include <cif_grammar_flex.h>
 #include <yy.h>
 #include <cif_lexer.h>
+#include <cif_compiler.h>
 #include <assert.h>
-
-typedef struct CIF_COMPILER {
-    char *filename;
-    CIF *cif;
-    cif_option_t options;
-} CIF_COMPILER;
-
-static void delete_cif_compiler( CIF_COMPILER *c )
-{
-    if( c ) {
-        if( c->filename ) free( c->filename );
-        if( c->cif ) delete_cif( c->cif );
-        free( c );
-    }
-}
-
-static CIF_COMPILER *new_cif_compiler( char *filename,
-                                       cif_option_t co,
-                                       cexception_t *ex )
-{
-    cexception_t inner;
-    CIF_COMPILER *cc = callocx( 1, sizeof(CIF_COMPILER), ex );
-
-    cexception_guard( inner ) {
-        cc->options  = co;
-        if( filename ) {
-            cc->filename = strdupx( filename, &inner );
-        }
-        cc->cif = new_cif( &inner );
-    }
-    cexception_catch {
-        delete_cif_compiler( cc );
-        cexception_reraise( inner, ex );
-    }
-    cif_yy_reset_error_count();
-    return cc;
-}
 
 static CIF_COMPILER * volatile cif_cc; /* CIF current compiler */
 
@@ -69,15 +33,6 @@ void add_tag_value( char *tag, char *value, typed_value *tv,
      cexception_t *ex );
 int yyerror_token( const char *message, int line, int pos, char *cont, cexception_t *ex );
 int yywarning_token( const char *message, int line, int pos, cexception_t *ex );
-
-int isset_do_not_unprefix_text( CIF_COMPILER *co );
-int isset_do_not_unfold_text( CIF_COMPILER *co );
-int isset_fix_errors( CIF_COMPILER *co );
-int isset_fix_duplicate_tags_with_same_values( CIF_COMPILER *co );
-int isset_fix_duplicate_tags_with_empty_values( CIF_COMPILER *co );
-int isset_fix_data_header( CIF_COMPILER *co );
-int isset_fix_datablock_names( CIF_COMPILER *co );
-int isset_fix_string_quotes( CIF_COMPILER *co );
 
 int loop_tag_count = 0;
 int loop_value_count = 0;
@@ -550,6 +505,7 @@ CIF *new_cif_from_cif_file( char *filename, cif_option_t co, cexception_t *ex )
 
     assert( !cif_cc );
     cif_cc = new_cif_compiler( filename, co, ex );
+    cif_yy_reset_error_count();
     cif_flex_reset_counters();
 
     cexception_guard( inner ) {
@@ -1038,52 +994,4 @@ void cif_yy_debug_off( void )
 #ifdef YYDEBUG
     yydebug = 0;
 #endif
-}
-
-int isset_do_not_unprefix_text( CIF_COMPILER *ccc )
-{
-    cif_option_t copt = DO_NOT_UNPREFIX_TEXT;
-    assert( ccc ); return ( ( ccc->options & copt ) != 0 );
-}
-
-int isset_do_not_unfold_text( CIF_COMPILER *ccc )
-{
-    cif_option_t copt = DO_NOT_UNFOLD_TEXT;
-    assert( ccc ); return ( ( ccc->options & copt ) != 0 );
-}
-
-int isset_fix_errors( CIF_COMPILER *ccc )
-{
-    cif_option_t copt = FIX_ERRORS;
-    assert( ccc ); return ( ( ccc->options & copt ) != 0 );
-}
-
-int isset_fix_duplicate_tags_with_same_values( CIF_COMPILER *ccc )
-{
-    cif_option_t copt = FIX_DUPLICATE_TAGS_WITH_SAME_VALUES;
-    assert( ccc ); return ( ( ccc->options & copt ) != 0 );
-}
-
-int isset_fix_duplicate_tags_with_empty_values( CIF_COMPILER *ccc )
-{
-    cif_option_t copt = FIX_DUPLICATE_TAGS_WITH_EMPTY_VALUES;
-    assert( ccc ); return ( ( ccc->options & copt ) != 0 );
-}
-
-int isset_fix_data_header( CIF_COMPILER *ccc )
-{
-    cif_option_t copt = FIX_DATA_HEADER;
-    assert( ccc ); return ( ( ccc->options & copt ) != 0 );
-}
-
-int isset_fix_datablock_names( CIF_COMPILER *ccc )
-{
-    cif_option_t copt = FIX_DATABLOCK_NAMES;
-    assert( ccc ); return ( ( ccc->options & copt ) != 0 );
-}
-
-int isset_fix_string_quotes( CIF_COMPILER *ccc )
-{
-    cif_option_t copt = FIX_STRING_QUOTES;
-    assert( ccc ); return ( ( ccc->options & copt ) != 0 );
 }
