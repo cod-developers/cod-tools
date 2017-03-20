@@ -34,4 +34,10 @@ int isset_fix_data_header( CIF_COMPILER *co );
 int isset_fix_datablock_names( CIF_COMPILER *co );
 int isset_fix_string_quotes( CIF_COMPILER *co );
 
+typedef struct typed_value typed_value;
+
+typed_value *new_typed_value( void );
+
+void free_typed_value( typed_value *t );
+
 #endif

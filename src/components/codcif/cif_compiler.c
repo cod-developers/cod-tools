@@ -5,7 +5,12 @@
 * $URL$
 \*-------------------------------------------------------------------------*/
 
+/* exports: */
 #include <cif_compiler.h>
+
+/* uses: */
+#include <cif_lexer.h>
+#include <value.h>
 
 typedef struct CIF_COMPILER {
     char *filename;
@@ -96,4 +101,29 @@ int isset_fix_string_quotes( CIF_COMPILER *ccc )
 {
     cif_option_t copt = FIX_STRING_QUOTES;
     assert( ccc ); return ( ( ccc->options & copt ) != 0 );
+}
+
+typedef struct typed_value {
+    int vline;
+    int vpos;
+    char *vcont;
+    VALUE *v;
+} typed_value;
+
+typed_value *new_typed_value( void ) {
+    typed_value *tv = malloc( sizeof( typed_value ) );
+    tv->vline = cif_flex_current_line_number();
+    tv->vpos = cif_flex_current_position();
+    tv->vcont = NULL;
+    return tv;
+}
+
+void free_typed_value( typed_value *t ) {
+    if( t->vcont != NULL ) {
+        freex( t->vcont );
+    }
+    if( t->v != NULL ) {
+        delete_value( t->v );
+    }
+    freex( t );
 }

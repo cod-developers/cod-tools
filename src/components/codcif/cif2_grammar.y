@@ -21,51 +21,14 @@
 #include <cif_grammar_flex.h>
 #include <yy.h>
 #include <cif_lexer.h>
+#include <cif_compiler.h>
 #include <assert.h>
 #include <table.h>
-
-typedef struct CIF_COMPILER {
-    char *filename;
-    CIF *cif;
-    cif_option_t options;
-} CIF_COMPILER;
-
-static void delete_cif_compiler( CIF_COMPILER *c )
-{
-    if( c ) {
-        if( c->filename ) free( c->filename );
-        if( c->cif ) delete_cif( c->cif );
-        free( c );
-    }
-}
-
-static CIF_COMPILER *new_cif_compiler( char *filename,
-                                       cif_option_t co,
-                                       cexception_t *ex )
-{
-    cexception_t inner;
-    CIF_COMPILER *cc = callocx( 1, sizeof(CIF_COMPILER), ex );
-
-    cexception_guard( inner ) {
-        cc->options  = co;
-        if( filename ) {
-            cc->filename = strdupx( filename, &inner );
-        }
-        cc->cif = new_cif( &inner );
-    }
-    cexception_catch {
-        delete_cif_compiler( cc );
-        cexception_reraise( inner, ex );
-    }
-    cif_yy_reset_error_count();
-    return cc;
-}
 
 static CIF_COMPILER * volatile cif_cc; /* CIF current compiler */
 
 static cexception_t *px; /* parser exception */
 
-void assert_datablock_exists( cexception_t *ex );
 void add_tag_value( char *tag, typed_value *tv, cexception_t *ex );
 int yyerror_token( const char *message, int line, int pos, char *cont, cexception_t *ex );
 int yywarning_token( const char *message, int line, int pos, cexception_t *ex );
@@ -87,6 +50,10 @@ typed_value *new_typed_value( void );
 void free_typed_value( typed_value *t );
 
 %}
+
+%code requires {
+    #include <cif_compiler.h>
+}
 
 %union {
     char *s;
@@ -283,7 +250,7 @@ data
 cif_entry
 	:	_TAG data_value
         {
-            assert_datablock_exists( px );
+            assert_datablock_exists( cif_cc, px );
             add_tag_value( $1, $2, px );
             freex( $1 );
             $2->v = NULL; // protecting v from free()ing
@@ -291,7 +258,7 @@ cif_entry
         }
         | _TAG data_value data_value_list
             {
-                assert_datablock_exists( px );
+                assert_datablock_exists( cif_cc, px );
                 LIST *list = value_get_list( $3->v );
                 list_unshift( list, $2->v, px );
                 $2->v = NULL; // detaching consumed value
@@ -352,7 +319,7 @@ data_value_list
 loop
        :	_LOOP_ 
        {
-           assert_datablock_exists( px );
+           assert_datablock_exists( cif_cc, px );
            loop_tag_count = 0;
            loop_value_count = 0;
            loop_start = cif_flex_current_line_number();
@@ -806,13 +773,6 @@ int is_tag_value_unknown( char * tv )
     return question_mark;
 }
 
-void assert_datablock_exists( cexception_t *ex )
-{
-    if( cif_last_datablock( cif_cc->cif ) == NULL ) {
-        cif_start_datablock( cif_cc->cif, "", px );
-    }
-}
-
 void add_tag_value( char *tag, typed_value *tv, cexception_t *ex )
 {
     VALUE *value = tv->v;
@@ -1100,24 +1060,6 @@ int yywarning_token( const char *message, int line, int pos, cexception_t *ex )
     return 0;
 }
 
-typed_value *new_typed_value( void ) {
-    typed_value *tv = malloc( sizeof( typed_value ) );
-    tv->vline = cif_flex_current_line_number();
-    tv->vpos = cif_flex_current_position();
-    tv->vcont = NULL;
-    return tv;
-}
-
-void free_typed_value( typed_value *t ) {
-    if( t->vcont != NULL ) {
-        freex( t->vcont );
-    }
-    if( t->v != NULL ) {
-        delete_value( t->v );
-    }
-    freex( t );
-}
-
 int yywrap()
 {
 #if 0
@@ -1144,52 +1086,4 @@ void cif_yy_debug_off( void )
 #ifdef YYDEBUG
     yydebug = 0;
 #endif
-}
-
-int isset_do_not_unprefix_text( CIF_COMPILER *ccc )
-{
-    cif_option_t copt = DO_NOT_UNPREFIX_TEXT;
-    assert( ccc ); return ( ( ccc->options & copt ) != 0 );
-}
-
-int isset_do_not_unfold_text( CIF_COMPILER *ccc )
-{
-    cif_option_t copt = DO_NOT_UNFOLD_TEXT;
-    assert( ccc ); return ( ( ccc->options & copt ) != 0 );
-}
-
-int isset_fix_errors( CIF_COMPILER *ccc )
-{
-    cif_option_t copt = FIX_ERRORS;
-    assert( ccc ); return ( ( ccc->options & copt ) != 0 );
-}
-
-int isset_fix_duplicate_tags_with_same_values( CIF_COMPILER *ccc )
-{
-    cif_option_t copt = FIX_DUPLICATE_TAGS_WITH_SAME_VALUES;
-    assert( ccc ); return ( ( ccc->options & copt ) != 0 );
-}
-
-int isset_fix_duplicate_tags_with_empty_values( CIF_COMPILER *ccc )
-{
-    cif_option_t copt = FIX_DUPLICATE_TAGS_WITH_EMPTY_VALUES;
-    assert( ccc ); return ( ( ccc->options & copt ) != 0 );
-}
-
-int isset_fix_data_header( CIF_COMPILER *ccc )
-{
-    cif_option_t copt = FIX_DATA_HEADER;
-    assert( ccc ); return ( ( ccc->options & copt ) != 0 );
-}
-
-int isset_fix_datablock_names( CIF_COMPILER *ccc )
-{
-    cif_option_t copt = FIX_DATABLOCK_NAMES;
-    assert( ccc ); return ( ( ccc->options & copt ) != 0 );
-}
-
-int isset_fix_string_quotes( CIF_COMPILER *ccc )
-{
-    cif_option_t copt = FIX_STRING_QUOTES;
-    assert( ccc ); return ( ( ccc->options & copt ) != 0 );
 }

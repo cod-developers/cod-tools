@@ -37,10 +37,11 @@ int loop_tag_count = 0;
 int loop_value_count = 0;
 int loop_start = 0;
 
-typed_value *new_typed_value( void );
-void free_typed_value( typed_value *t );
-
 %}
+
+%code requires {
+    #include <cif_compiler.h>
+}
 
 %union {
     char *s;
@@ -940,24 +941,6 @@ int yywarning_token( const char *message, int line, int pos, cexception_t *ex )
                    ex );
     warncount++;
     return 0;
-}
-
-typed_value *new_typed_value( void ) {
-    typed_value *tv = malloc( sizeof( typed_value ) );
-    tv->vstr = NULL;
-    tv->vtype = CIF_UNKNOWN;
-    tv->vline = cif_flex_current_line_number();
-    tv->vpos = cif_flex_current_position();
-    tv->vcont = NULL;
-    return tv;
-}
-
-void free_typed_value( typed_value *t ) {
-    freex( t->vstr );
-    if( t->vcont != NULL ) {
-        freex( t->vcont );
-    }
-    freex( t );
 }
 
 int yywrap()
