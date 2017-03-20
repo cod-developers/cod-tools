@@ -640,7 +640,7 @@ CIF *new_cif_from_cif_file( char *filename, cif_option_t co, cexception_t *ex )
     }
 
     cif = cif_compiler_cif( cif_cc );
-    cif_compiler_cif( cif_cc ) = NULL;
+    cif_compiler_detach_cif( cif_cc );
     delete_cif_compiler( cif_cc );
     cif_cc = NULL;
 
@@ -783,8 +783,6 @@ void output_message( const char *errlevel, const char *message,
 {
     extern char *progname;
 
-    char *filename = cif_cc->filename;
-
     char *datablock = NULL;
     if( cif_compiler_cif( cif_cc ) &&
         cif_last_datablock( cif_compiler_cif( cif_cc ) ) && 
@@ -796,7 +794,8 @@ void output_message( const char *errlevel, const char *message,
     if( progname && strlen( progname ) > 0 ) {
         fprintf_escaped( progname, 0, 1 );
         fprintf( stderr, ": " );
-        fprintf_escaped( filename ? filename : "-", 1, 1 );
+        fprintf_escaped( cif_compiler_filename( cif_cc ) ?
+                         cif_compiler_filename( cif_cc ) : "-", 1, 1 );
     }
     if( line != -1 ) {
         fprintf( stderr, "(%d", line );
@@ -835,7 +834,8 @@ void print_message( const char *errlevel, const char *message,
               new_cifmessage_from_data
               ( /* next = */ cif_messages( cif_compiler_cif( cif_cc ) ),
                 /* progname = */ NULL,
-                /* filename = */ cif_cc->filename ? cif_cc->filename : "-",
+                /* filename = */ cif_compiler_filename( cif_cc ) ?
+                                 cif_compiler_filename( cif_cc ) : "-",
                 line, position,
                 /* addPos = */ datablock,
                 /* status = */ (char*)errlevel,

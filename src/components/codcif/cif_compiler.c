@@ -47,9 +47,19 @@ CIF_COMPILER *new_cif_compiler( char *filename,
     return cc;
 }
 
+char *cif_compiler_filename( CIF_COMPILER *ccc )
+{
+    return ccc->filename;
+}
+
 CIF *cif_compiler_cif( CIF_COMPILER *ccc )
 {
     return ccc->cif;
+}
+
+void cif_compiler_detach_cif( CIF_COMPILER *ccc )
+{
+    ccc->cif = NULL;
 }
 
 void assert_datablock_exists( CIF_COMPILER *ccc, cexception_t *ex )
