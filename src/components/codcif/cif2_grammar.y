@@ -33,15 +33,6 @@ void add_tag_value( char *tag, typed_value *tv, cexception_t *ex );
 int yyerror_token( const char *message, int line, int pos, char *cont, cexception_t *ex );
 int yywarning_token( const char *message, int line, int pos, cexception_t *ex );
 
-int isset_do_not_unprefix_text( CIF_COMPILER *co );
-int isset_do_not_unfold_text( CIF_COMPILER *co );
-int isset_fix_errors( CIF_COMPILER *co );
-int isset_fix_duplicate_tags_with_same_values( CIF_COMPILER *co );
-int isset_fix_duplicate_tags_with_empty_values( CIF_COMPILER *co );
-int isset_fix_data_header( CIF_COMPILER *co );
-int isset_fix_datablock_names( CIF_COMPILER *co );
-int isset_fix_string_quotes( CIF_COMPILER *co );
-
 int loop_tag_count = 0;
 int loop_value_count = 0;
 int loop_start = 0;
