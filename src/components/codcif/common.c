@@ -87,6 +87,17 @@ char *process_escapes( char *str )
    return str;
 }
 
+ssize_t countchars( char c, char *s )
+{
+    ssize_t sum = 0;
+
+    if( !s || !*s ) return 0;
+    while( *s ) {
+        if( *s++ == c ) sum ++;
+    }
+    return sum;
+}
+
 char *cif_unprefix_textfield( char *tf )
 {
     int length = strlen(tf);
@@ -178,4 +189,30 @@ int is_tag_value_unknown( char *tv )
         iter++;
     }
     return question_mark;
+}
+
+void fprintf_escaped( const char *message,
+                      int escape_parenthesis, int escape_space ) {
+    const char *p = message;
+    while( *p ) {
+        switch( *p ) {
+            case '&':
+                fprintf( stderr, "&amp;" );
+                break;
+            case ':':
+                fprintf( stderr, "&colon;" );
+                break;
+            default:
+                if(        *p == '(' && escape_parenthesis != 0 ) {
+                    fprintf( stderr, "&lpar;" );
+                } else if( *p == ')' && escape_parenthesis != 0 ) {
+                    fprintf( stderr, "&rpar;" );
+                } else if( *p == ' '&& escape_space != 0 ) {
+                    fprintf( stderr, "&nbsp;" );
+                } else {
+                    fprintf( stderr, "%c", *p );
+                }
+        }
+        p++;
+    }
 }

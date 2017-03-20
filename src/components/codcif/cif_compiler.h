@@ -41,6 +41,14 @@ int isset_fix_datablock_names( CIF_COMPILER *co );
 int isset_fix_string_quotes( CIF_COMPILER *co );
 int isset_suppress_messages( CIF_COMPILER *co );
 
+void print_message( CIF_COMPILER *cif_cc, const char *errlevel, const char *message,
+                    const char *suffix, /* ":" or "", depending on the
+                                           subsequent citation or not of the
+                                           code line. S.G. */
+                    int line, int position, cexception_t *ex );
+void print_current_text_field( CIF_COMPILER *cif_cc, char *text, cexception_t *ex );
+void print_trace( CIF_COMPILER *cif_cc, char *line, int position, cexception_t *ex );
+
 typedef struct typed_value typed_value;
 
 typed_value *new_typed_value( int vline, int vpos, char *vcont, VALUE *v );

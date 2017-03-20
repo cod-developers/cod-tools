@@ -9,6 +9,8 @@
 #include <cif_compiler.h>
 
 /* uses: */
+#include <string.h>
+#include <common.h>
 #include <cif_lexer.h>
 
 typedef struct CIF_COMPILER {
@@ -121,6 +123,127 @@ int isset_suppress_messages( CIF_COMPILER *ccc )
 {
     cif_option_t copt = CO_SUPPRESS_MESSAGES;
     assert( ccc ); return ( ( ccc->options & copt ) != 0 );
+}
+
+static
+void output_message( CIF_COMPILER *cif_cc, const char *errlevel,
+                     const char *message, const char *suffix,
+                     int line, int position )
+{
+    extern char *progname;
+
+    char *datablock = NULL;
+    if( cif_compiler_cif( cif_cc ) &&
+        cif_last_datablock( cif_compiler_cif( cif_cc ) ) && 
+        strlen( datablock_name( cif_last_datablock( cif_compiler_cif( cif_cc ) ) ) ) > 0 ) {
+        datablock = datablock_name( cif_last_datablock( cif_compiler_cif( cif_cc ) ) );
+    }
+
+    fflush(NULL);
+    if( progname && strlen( progname ) > 0 ) {
+        fprintf_escaped( progname, 0, 1 );
+        fprintf( stderr, ": " );
+        fprintf_escaped( cif_compiler_filename( cif_cc ) ?
+                         cif_compiler_filename( cif_cc ) : "-", 1, 1 );
+    }
+    if( line != -1 ) {
+        fprintf( stderr, "(%d", line );
+        if( position != -1 ) {
+            fprintf( stderr, ",%d", position );
+        }
+        fprintf( stderr, ")" );
+    }
+    if( datablock ) {
+        fprintf( stderr, " data_" );
+        fprintf_escaped( datablock, 0, 1 );
+    }
+    fprintf( stderr, ": %s, ", errlevel );
+    fprintf_escaped( message, 0, 0 );
+    fprintf( stderr, "%s\n", suffix );
+    fflush(NULL);
+}
+
+void print_message( CIF_COMPILER *cif_cc, const char *errlevel,
+                    const char *message,
+                    const char *suffix, /* ":" or "", depending on the
+                                           subsequent citation or not of the
+                                           code line. S.G. */
+                    int line, int position, cexception_t *ex )
+{
+    if( !isset_suppress_messages( cif_cc ) ) {
+        output_message( cif_cc, errlevel, message, suffix, line, position );
+    }
+    if( cif_compiler_cif( cif_cc ) ) {
+        char *datablock = NULL;
+        if( cif_compiler_cif( cif_cc ) && cif_last_datablock( cif_compiler_cif( cif_cc ) ) && 
+            strlen( datablock_name( cif_last_datablock( cif_compiler_cif( cif_cc ) ))) > 0 ) {
+            datablock = datablock_name( cif_last_datablock( cif_compiler_cif( cif_cc ) ) );
+        }
+        cif_insert_message
+            ( cif_compiler_cif( cif_cc ),
+              new_cifmessage_from_data
+              ( /* next = */ cif_messages( cif_compiler_cif( cif_cc ) ),
+                /* progname = */ NULL,
+                /* filename = */ cif_compiler_filename( cif_cc ) ?
+                                 cif_compiler_filename( cif_cc ) : "-",
+                line, position,
+                /* addPos = */ datablock,
+                /* status = */ (char*)errlevel,
+                /* message = */ (char*)message,
+                /* explanation = */ NULL,
+                /* separator = */ NULL,
+                ex )
+            );
+    }
+}
+
+void print_current_text_field( CIF_COMPILER *cif_cc, char *text, cexception_t *ex )
+{
+    if( !isset_suppress_messages( cif_cc ) ) {
+        ssize_t length = strlen( text ) + countchars( '\n', text ) + 1;
+        char *prefixed = length > 0 ? mallocx( length, ex ) : NULL;
+        char *p = prefixed, *t = text;
+        if( p ) {
+            while( t && *t ) {
+                if( *t == '\n' ) {
+                    *p++ = '\n';
+                    *p = ' ';
+                } else {
+                    *p = *t;
+                }
+                t++; p++;
+            }
+            *p = '\0';
+        }
+        fflush(NULL);
+        fprintf( stderr, " ;%s\n ;\n\n", prefixed );
+        fflush(NULL);
+        if( prefixed ) freex( prefixed );
+    }
+    if( cif_compiler_cif( cif_cc ) ) {
+        CIFMESSAGE *current_message = cif_messages( cif_compiler_cif( cif_cc ) );
+        assert( current_message );
+
+        char *buf = mallocx( strlen(text) + 5, ex );
+        sprintf( buf, ";%s\n;\n", text );
+        cifmessage_set_line( current_message, buf, ex );
+        if( buf ) freex( buf );
+    }
+}
+
+void print_trace( CIF_COMPILER *cif_cc, char *line, int position, cexception_t *ex )
+{
+    if( !isset_suppress_messages( cif_cc ) ) {
+        fflush(NULL);
+        fprintf( stderr, " %s\n %*s\n",
+                 line, position, "^" );
+        fflush(NULL);
+    }
+    if( cif_compiler_cif( cif_cc ) ) {
+        CIFMESSAGE *current_message = cif_messages( cif_compiler_cif( cif_cc ) );
+        assert( current_message );
+        cifmessage_set_line( current_message, line, ex );
+    }
 }
 
 typedef struct typed_value {

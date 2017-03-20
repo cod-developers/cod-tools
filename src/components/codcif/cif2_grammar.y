@@ -93,11 +93,11 @@ stray_data_value_list
         {
             if( isset_fix_errors( cif_cc ) ||
                 isset_fix_data_header( cif_cc ) ) {
-                    print_message( "WARNING", "stray CIF values at the "
+                    print_message( cif_cc, "WARNING", "stray CIF values at the "
                                    "beginning of the input file", "",
                                    typed_value_line( $1 ), -1, px );
             } else {
-                    print_message( "ERROR", "stray CIF values at the "
+                    print_message( cif_cc, "ERROR", "stray CIF values at the "
                                    "beginning of the input file", "",
                                    typed_value_line( $1 ), -1, px );
                     yyincrease_error_counter();
@@ -108,11 +108,11 @@ stray_data_value_list
         {
             if( isset_fix_errors( cif_cc ) ||
                 isset_fix_data_header( cif_cc ) ) {
-                    print_message( "WARNING", "stray CIF values at the "
+                    print_message( cif_cc, "WARNING", "stray CIF values at the "
                                    "beginning of the input file", "",
                                    typed_value_line( $1 ), -1, px );
             } else {
-                    print_message( "ERROR", "stray CIF values at the "
+                    print_message( cif_cc, "ERROR", "stray CIF values at the "
                                    "beginning of the input file", "",
                                    typed_value_line( $1 ), -1, px );
                     yyincrease_error_counter();
@@ -137,12 +137,12 @@ headerless_data_block
         {
             if( isset_fix_errors( cif_cc ) ||
                 isset_fix_data_header( cif_cc ) ) {
-                    print_message( 
+                    print_message( cif_cc,
                               "WARNING", "no data block heading " 
                               "(i.e. data_somecif) found", "",
                               cif_flex_previous_line_number(), -1, px );
             } else {
-                    print_message( 
+                    print_message( cif_cc,
                               "ERROR", "no data block heading "
                               "(i.e. data_somecif) found", "",
                               cif_flex_previous_line_number(), -1, px );
@@ -153,12 +153,12 @@ headerless_data_block
         {
             if( isset_fix_errors( cif_cc ) ||
                 isset_fix_data_header( cif_cc ) ) {
-                    print_message( 
+                    print_message( cif_cc,
                               "WARNING", "no data block heading " 
                               "(i.e. data_somecif) found", "",
                               cif_flex_previous_line_number(), -1, px );
             } else {
-                    print_message( 
+                    print_message( cif_cc,
                               "ERROR", "no data block heading "
                               "(i.e. data_somecif) found", "",
                               cif_flex_previous_line_number(), -1, px );
@@ -658,25 +658,6 @@ CIF *new_cif_from_cif_file( char *filename, cif_option_t co, cexception_t *ex )
     return cif;
 }
 
-void cif_printf( cexception_t *ex, char *format, ... )
-{
-    cexception_t inner;
-    va_list ap;
-
-    va_start( ap, format );
-    assert( format );
-    assert( cif_cc );
-
-    cexception_guard( inner ) {
-        vprintf( format, ap );
-    }
-    cexception_catch {
-	va_end( ap );
-	cexception_reraise( inner, ex );
-    }
-    va_end( ap );
-}
-
 void add_tag_value( char *tag, typed_value *tv, cexception_t *ex )
 {
     VALUE *value = typed_value_value( tv );
@@ -756,170 +737,14 @@ void cif_yy_reset_error_count( void )
     errcount = 0;
 }
 
-void fprintf_escaped( const char *message,
-                      int escape_parenthesis, int escape_space ) {
-    const char *p = message;
-    while( *p ) {
-        switch( *p ) {
-            case '&':
-                fprintf( stderr, "&amp;" );
-                break;
-            case ':':
-                fprintf( stderr, "&colon;" );
-                break;
-            default:
-                if(        *p == '(' && escape_parenthesis != 0 ) {
-                    fprintf( stderr, "&lpar;" );
-                } else if( *p == ')' && escape_parenthesis != 0 ) {
-                    fprintf( stderr, "&rpar;" );
-                } else if( *p == ' '&& escape_space != 0 ) {
-                    fprintf( stderr, "&nbsp;" );
-                } else {
-                    fprintf( stderr, "%c", *p );
-                }
-        }
-        p++;
-    }
-}
-
-static
-void output_message( const char *errlevel, const char *message,
-                     const char *suffix, int line, int position )
-{
-    extern char *progname;
-
-    char *datablock = NULL;
-    if( cif_compiler_cif( cif_cc ) &&
-        cif_last_datablock( cif_compiler_cif( cif_cc ) ) && 
-        strlen( datablock_name( cif_last_datablock( cif_compiler_cif( cif_cc ) ) ) ) > 0 ) {
-        datablock = datablock_name( cif_last_datablock( cif_compiler_cif( cif_cc ) ) );
-    }
-
-    fflush(NULL);
-    if( progname && strlen( progname ) > 0 ) {
-        fprintf_escaped( progname, 0, 1 );
-        fprintf( stderr, ": " );
-        fprintf_escaped( cif_compiler_filename( cif_cc ) ?
-                         cif_compiler_filename( cif_cc ) : "-", 1, 1 );
-    }
-    if( line != -1 ) {
-        fprintf( stderr, "(%d", line );
-        if( position != -1 ) {
-            fprintf( stderr, ",%d", position );
-        }
-        fprintf( stderr, ")" );
-    }
-    if( datablock ) {
-        fprintf( stderr, " data_" );
-        fprintf_escaped( datablock, 0, 1 );
-    }
-    fprintf( stderr, ": %s, ", errlevel );
-    fprintf_escaped( message, 0, 0 );
-    fprintf( stderr, "%s\n", suffix );
-    fflush(NULL);
-}
-
-void print_message( const char *errlevel, const char *message,
-                    const char *suffix, /* ":" or "", dependenig on the
-                                           subsequent citation or not of the
-                                           code line. S.G. */
-                    int line, int position, cexception_t *ex )
-{
-    if( !isset_suppress_messages( cif_cc ) ) {
-        output_message( errlevel, message, suffix, line, position );
-    }
-    if( cif_compiler_cif( cif_cc ) ) {
-        char *datablock = NULL;
-        if( cif_compiler_cif( cif_cc ) && cif_last_datablock( cif_compiler_cif( cif_cc ) ) && 
-            strlen( datablock_name( cif_last_datablock( cif_compiler_cif( cif_cc ) ))) > 0 ) {
-            datablock = datablock_name( cif_last_datablock( cif_compiler_cif( cif_cc ) ) );
-        }
-        cif_insert_message
-            ( cif_compiler_cif( cif_cc ),
-              new_cifmessage_from_data
-              ( /* next = */ cif_messages( cif_compiler_cif( cif_cc ) ),
-                /* progname = */ NULL,
-                /* filename = */ cif_compiler_filename( cif_cc ) ?
-                                 cif_compiler_filename( cif_cc ) : "-",
-                line, position,
-                /* addPos = */ datablock,
-                /* status = */ (char*)errlevel,
-                /* message = */ (char*)message,
-                /* explanation = */ NULL,
-                /* separator = */ NULL,
-                ex )
-            );
-    }
-}
-
-static ssize_t countchars( char c, char *s )
-{
-    ssize_t sum = 0;
-
-    if( !s || !*s ) return 0;
-    while( *s ) {
-        if( *s++ == c ) sum ++;
-    }
-    return sum;
-}
-
-void print_current_text_field( char *text, cexception_t *ex )
-{
-    if( !isset_suppress_messages( cif_cc ) ) {
-        ssize_t length = strlen( text ) + countchars( '\n', text ) + 1;
-        char *prefixed = length > 0 ? mallocx( length, ex ) : NULL;
-        char *p = prefixed, *t = text;
-        if( p ) {
-            while( t && *t ) {
-                if( *t == '\n' ) {
-                    *p++ = '\n';
-                    *p = ' ';
-                } else {
-                    *p = *t;
-                }
-                t++; p++;
-            }
-            *p = '\0';
-        }
-        fflush(NULL);
-        fprintf( stderr, " ;%s\n ;\n\n", prefixed );
-        fflush(NULL);
-        if( prefixed ) freex( prefixed );
-    }
-    if( cif_compiler_cif( cif_cc ) ) {
-        CIFMESSAGE *current_message = cif_messages( cif_compiler_cif( cif_cc ) );
-        assert( current_message );
-
-        char *buf = mallocx( strlen(text) + 5, ex );
-        sprintf( buf, ";%s\n;\n", text );
-        cifmessage_set_line( current_message, buf, ex );
-        if( buf ) freex( buf );
-    }
-}
-
-void print_trace( char *line, int position, cexception_t *ex )
-{
-    if( !isset_suppress_messages( cif_cc ) ) {
-        fflush(NULL);
-        fprintf( stderr, " %s\n %*s\n",
-                 line, position, "^" );
-        fflush(NULL);
-    }
-    if( cif_compiler_cif( cif_cc ) ) {
-        CIFMESSAGE *current_message = cif_messages( cif_compiler_cif( cif_cc ) );
-        assert( current_message );
-        cifmessage_set_line( current_message, line, ex );
-    }
-}
-
 int yyerror( const char *message )
 {
     if( strcmp( message, "syntax error" ) == 0 ) {
         message = "incorrect CIF syntax";
     }
-    print_message( "ERROR", message, ":", cif_flex_current_line_number(),
+    print_message( cif_cc, "ERROR", message, ":", cif_flex_current_line_number(),
                    cif_flex_current_position()+1, px );
-    print_trace( (char*)cif_flex_current_line(),
+    print_trace( cif_cc, (char*)cif_flex_current_line(),
                  cif_flex_current_position()+1, px );
     errcount++;
     return 0;
@@ -927,10 +752,10 @@ int yyerror( const char *message )
 
 int yyerror_token( const char *message, int line, int pos, char *cont, cexception_t *ex )
 {
-    print_message( "ERROR", message, ( cont == NULL ? "" : ":"),
+    print_message( cif_cc, "ERROR", message, ( cont == NULL ? "" : ":"),
                    line, pos, ex );
     if( cont != NULL ) {
-        print_trace( cont, pos, ex );
+        print_trace( cif_cc, cont, pos, ex );
     }
     errcount++;
     return 0;
@@ -943,7 +768,7 @@ void yyincrease_error_counter( void )
 
 int yynote( const char *message, cexception_t *ex )
 {
-    print_message( "NOTE", message, "", cif_flex_previous_line_number(), -1,
+    print_message( cif_cc, "NOTE", message, "", cif_flex_previous_line_number(), -1,
                    ex );
     notecount++;
     return 0;
@@ -951,7 +776,7 @@ int yynote( const char *message, cexception_t *ex )
 
 int yywarning( const char *message, cexception_t *ex )
 {
-    print_message( "WARNING", message, "", cif_flex_previous_line_number(), -1,
+    print_message( cif_cc, "WARNING", message, "", cif_flex_previous_line_number(), -1,
                    ex );
     warncount++;
     return 0;
@@ -959,8 +784,7 @@ int yywarning( const char *message, cexception_t *ex )
 
 int yywarning_token( const char *message, int line, int pos, cexception_t *ex )
 {
-    print_message( "WARNING", message, "", line, pos,
-                   ex );
+    print_message( cif_cc, "WARNING", message, "", line, pos, ex );
     warncount++;
     return 0;
 }

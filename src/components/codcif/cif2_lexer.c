@@ -821,6 +821,8 @@ const char *cif_flex_previous_line( void ) { return lastTokenLine; }
 
 static char *clean_string( char *src, int is_textfield, cexception_t *ex )
 {
+    extern CIF_COMPILER *cif_cc;
+
     int DELTA = 8;
     ssize_t length = strlen( src );
     char *volatile new = mallocx( length + 1, ex );
@@ -845,21 +847,21 @@ static char *clean_string( char *src, int is_textfield, cexception_t *ex )
                     dest = new + strlen( new ) - 1;
                     if( non_ascii_explained == 0 ) {
                         if( is_textfield == 0 ) {
-                            print_message( "WARNING", "non-ascii symbols "
+                            print_message( cif_cc, "WARNING", "non-ascii symbols "
                                            "encountered in the text", ":",
                                            cif_flex_current_line_number(),
                                            cif_flex_current_position()+1,
                                            ex );
-                            print_trace( (char*)cif_flex_current_line(),
+                            print_trace( cif_cc, (char*)cif_flex_current_line(),
                                          cif_flex_current_position()+1, ex );
                             non_ascii_explained = 1;
                         } else {
-                            print_message( "WARNING", "non-ascii symbols "
+                            print_message( cif_cc, "WARNING", "non-ascii symbols "
                                            "encountered in the text field -- "
                                            "replaced with XML entities", ":",
                                            cif_flex_current_line_number(),
                                            -1, ex );
-                            print_current_text_field( start, ex );
+                            print_current_text_field( cif_cc, start, ex );
                             non_ascii_explained = 1;
                         }
                     }
@@ -867,12 +869,12 @@ static char *clean_string( char *src, int is_textfield, cexception_t *ex )
                     if( is_textfield == 0 ) {
                         yyerror( "incorrect CIF syntax" );
                     } else if( non_ascii_explained == 0 ) {
-                        print_message( "ERROR", "non-ascii symbols "
+                        print_message( cif_cc, "ERROR", "non-ascii symbols "
                                        "encountered "
                                        "in the text field", ":",
                                        cif_flex_current_line_number(),
                                        -1, ex );
-                        print_current_text_field( start, ex );
+                        print_current_text_field( cif_cc, start, ex );
                         yyincrease_error_counter();
                         non_ascii_explained = 1;
                     }
