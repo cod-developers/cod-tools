@@ -38,9 +38,6 @@ int loop_tag_count = 0;
 int loop_value_count = 0;
 int loop_start = 0;
 
-typed_value *new_typed_value( void );
-void free_typed_value( typed_value *t );
-
 %}
 
 %code requires {
@@ -105,7 +102,7 @@ stray_data_value_list
                                    typed_value_line( $1 ), -1, px );
                     yyincrease_error_counter();
             }
-            free_typed_value( $1 );
+            delete_typed_value( $1 );
         }
         | data_value data_value_list
         {
@@ -120,8 +117,8 @@ stray_data_value_list
                                    typed_value_line( $1 ), -1, px );
                     yyincrease_error_counter();
             }
-            free_typed_value( $1 );
-            free_typed_value( $2 );
+            delete_typed_value( $1 );
+            delete_typed_value( $2 );
         }
 ;
 
@@ -221,7 +218,7 @@ data_heading
                                typed_value_content( $2 ), px );
             }
             freex( $1 );
-            free_typed_value( $2 );
+            delete_typed_value( $2 );
         }
 ;
 
@@ -248,7 +245,7 @@ cif_entry
             add_tag_value( $1, $2, px );
             freex( $1 );
             typed_value_detach_value( $2 ); // protecting v from free()ing
-            free_typed_value( $2 );
+            delete_typed_value( $2 );
         }
         | _TAG data_value data_value_list
             {
@@ -284,7 +281,7 @@ cif_entry
                     tv->v = new_value_from_scalar( buf, tag_type, px );
                     add_tag_value( $1, tv, px );
                     tv->v = NULL;     // preventing v from free()'ing
-                    free_typed_value( tv );
+                    delete_typed_value( tv );
                     $3->vcont = NULL; // preventing from free()ing
                     $3->v = NULL;     // repeatedly
                 } else {
@@ -294,8 +291,8 @@ cif_entry
                                    typed_value_content( $3 ), px );
                 }
                 freex( $1 );
-                free_typed_value( $2 );
-                free_typed_value( $3 );
+                delete_typed_value( $2 );
+                delete_typed_value( $3 );
             }
 ;
 
@@ -310,7 +307,7 @@ data_value_list
         {
             list_push( value_get_list( $1->v ), $2->v, px );
             $2->v = NULL; /* protecting v from free'ing */
-            free_typed_value( $2 );
+            delete_typed_value( $2 );
         }
 ;
 
@@ -375,14 +372,14 @@ loop_values
             loop_value_count++;
             cif_push_loop_value( cif_cc->cif, $2->v, px );
             $2->v = NULL; /* protecting v from free'ing */
-            free_typed_value( $2 );
+            delete_typed_value( $2 );
         }
 	|	data_value
         {
             loop_value_count++;
             cif_push_loop_value( cif_cc->cif, $1->v, px );
             $1->v = NULL; /* protecting v from free'ing */
-            free_typed_value( $1 );
+            delete_typed_value( $1 );
         }
 ;
 
@@ -546,8 +543,8 @@ table_entry_list
         table_add( value_get_table( $1->v ),
                    value_get_scalar( $2->v ), $4->v, px );
         $4->v = NULL; // protecting from free()ing
-        free_typed_value( $2 );
-        free_typed_value( $4 );
+        delete_typed_value( $2 );
+        delete_typed_value( $4 );
     }
 	|	any_quoted_string _TABLE_ENTRY_SEP data_value
     {
@@ -562,8 +559,8 @@ table_entry_list
                    value_get_scalar( $1->v ),
                    $3->v, px );
         $3->v = NULL; // protecting from free()ing
-        free_typed_value( $1 );
-        free_typed_value( $3 );
+        delete_typed_value( $1 );
+        delete_typed_value( $3 );
     }
 ;
 

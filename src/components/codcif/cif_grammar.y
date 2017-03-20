@@ -93,7 +93,7 @@ stray_cif_value_list
                                    $1->vline, -1, px );
                     yyincrease_error_counter();
             }
-            free_typed_value( $1 );
+            delete_typed_value( $1 );
         }
         | cif_value cif_value_list
         {
@@ -108,8 +108,8 @@ stray_cif_value_list
                                    $1->vline, -1, px );
                     yyincrease_error_counter();
             }
-            free_typed_value( $1 );
-            free_typed_value( $2 );
+            delete_typed_value( $1 );
+            delete_typed_value( $2 );
         }
 ;
 
@@ -205,7 +205,7 @@ data_block_head
                                $2->vline, $2->vpos+1, $2->vcont, px );
             }
             freex( $1 );
-            free_typed_value( $2 );
+            delete_typed_value( $2 );
         }
 ;
 
@@ -232,7 +232,7 @@ cif_entry
             add_tag_value( $1, $2, px );
             freex( $1 );
             $2->v = NULL; // protecting v from free()ing
-            free_typed_value( $2 );
+            delete_typed_value( $2 );
         }
         | _TAG cif_value cif_value_list
             {
@@ -260,7 +260,7 @@ cif_entry
                     tv->vpos  = $3->vpos;
                     tv->vcont = $3->vcont;
                     add_tag_value( $1, buf, tv, px );
-                    free_typed_value( tv );
+                    delete_typed_value( tv );
                     $3->vcont = NULL; /* preventing from free()ing
                                         repeatedly */
                 } else {
@@ -268,8 +268,8 @@ cif_entry
                                    $3->vpos+1, $3->vcont, px );
                 }
                 freex( $1 );
-                free_typed_value( $2 );
-                free_typed_value( $3 );
+                delete_typed_value( $2 );
+                delete_typed_value( $3 );
             }
 ;
 
@@ -287,8 +287,8 @@ cif_value_list
             $$->vline = $1->vline;
             $$->vpos  = $1->vpos;
             $$->vcont = strdupx( $1->vcont, px );
-            free_typed_value( $1 );
-            free_typed_value( $2 );
+            delete_typed_value( $1 );
+            delete_typed_value( $2 );
         }
 ;
 
@@ -353,14 +353,14 @@ loop_values
             loop_value_count++;
             cif_push_loop_value( cif_cc->cif, $2->v, px );
             $2->v = NULL; /* protecting v from free'ing */
-            free_typed_value( $2 );
+            delete_typed_value( $2 );
         }
 	|	cif_value
         {
             loop_value_count++;
             cif_push_loop_value( cif_cc->cif, $1->v, px );
             $1->v = NULL; /* protecting v from free'ing */
-            free_typed_value( $1 );
+            delete_typed_value( $1 );
         }
 ;
 

@@ -109,15 +109,7 @@ typedef struct typed_value {
     VALUE *v;
 } typed_value;
 
-typed_value *new_typed_value( void ) {
-    typed_value *tv = malloc( sizeof( typed_value ) );
-    tv->vline = cif_flex_current_line_number();
-    tv->vpos = cif_flex_current_position();
-    tv->vcont = NULL;
-    return tv;
-}
-
-void free_typed_value( typed_value *t )
+void delete_typed_value( typed_value *t )
 {
     if( t->vcont != NULL ) {
         freex( t->vcont );
@@ -126,6 +118,14 @@ void free_typed_value( typed_value *t )
         delete_value( t->v );
     }
     freex( t );
+}
+
+typed_value *new_typed_value( void ) {
+    typed_value *tv = malloc( sizeof( typed_value ) );
+    tv->vline = cif_flex_current_line_number();
+    tv->vpos = cif_flex_current_position();
+    tv->vcont = NULL;
+    return tv;
 }
 
 int typed_value_line( typed_value *t )

@@ -39,7 +39,7 @@ typedef struct typed_value typed_value;
 
 typed_value *new_typed_value( void );
 
-void free_typed_value( typed_value *t );
+void delete_typed_value( typed_value *t );
 
 int typed_value_line( typed_value *t );
 int typed_value_pos( typed_value *t );
