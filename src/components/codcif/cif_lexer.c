@@ -92,7 +92,9 @@ static void advance_mark( void )
     thisTokenPos = current_pos - 1;
 }
 
-int yylex( void )
+static int cif_lexer( FILE *in, cexception_t *ex );
+
+int ciflex( void )
 {
     if( !yyin )
         yyin = stdin;
@@ -117,7 +119,7 @@ static int string_has_high_bytes( unsigned char *s );
 static char *check_and_clean( char *token, int is_textfield,
                               cexception_t *ex );
 
-int cif_lexer( FILE *in, cexception_t *ex )
+static int cif_lexer( FILE *in, cexception_t *ex )
 {
     int ch = '\0';
     static int prevchar = '\0';
@@ -146,7 +148,7 @@ int cif_lexer( FILE *in, cexception_t *ex )
                 yywarning_token( cif_cc, "DOS EOF symbol ^Z was encountered and ignored",
                                  cif_flex_previous_line_number(), -1, ex );
             } else {
-                yyerror( "DOS EOF symbol ^Z was encountered, "
+                ciferror( "DOS EOF symbol ^Z was encountered, "
                          "it is not permitted in CIFs" );
             }
             prevchar = ch;
@@ -198,14 +200,14 @@ int cif_lexer( FILE *in, cexception_t *ex )
             pos --;
             prevchar = token[pos-1];
             pushchar( &token, &length, pos, '\0' );
-            yylval.s = clean_string( token, /* is_textfield = */ 0, ex );
+            ciflval.s = clean_string( token, /* is_textfield = */ 0, ex );
             if( yy_flex_debug ) {
                 printf( ">>> TAG: '%s'\n", token );
             }
             if( report_long_items ) {
-                if( strlen( yylval.s ) > cif_mandated_tag_length ) {
+                if( strlen( ciflval.s ) > cif_mandated_tag_length ) {
                     yynote( cif_cc, cxprintf( "data name '%s' exceeds %d characters",
-                                      yylval.s, cif_mandated_tag_length ),
+                                      ciflval.s, cif_mandated_tag_length ),
                             ex );
                 }
             }
@@ -224,7 +226,7 @@ int cif_lexer( FILE *in, cexception_t *ex )
             pos --;
             prevchar = token[pos-1];
             pushchar( &token, &length, pos, '\0' );
-            yylval.s = clean_string( token, /* is_textfield = */ 0, ex );
+            ciflval.s = clean_string( token, /* is_textfield = */ 0, ex );
             if( is_integer( token )) {
                 if( yy_flex_debug ) {
                     printf( ">>> INTEGER: '%s'\n", token );
@@ -268,7 +270,7 @@ int cif_lexer( FILE *in, cexception_t *ex )
                             ungetlinec( ch, in );
                             prevchar = token[pos-1];
                             pushchar( &token, &length, pos, '\0' );
-                            yylval.s = check_and_clean
+                            ciflval.s = check_and_clean
                                 ( token, /* is_textfield = */ 0, ex );
                             if( yy_flex_debug ) {
                                 printf( ">>> *QSTRING (%c): '%s'\n",
@@ -287,7 +289,7 @@ int cif_lexer( FILE *in, cexception_t *ex )
                 /* Unterminated quoted string: */
                 prevchar = token[pos-1];
                 pushchar( &token, &length, pos, '\0' );
-                yylval.s = check_and_clean( token, /* is_textfield = */ 0,
+                ciflval.s = check_and_clean( token, /* is_textfield = */ 0,
                                             ex );
                 switch( quote ) {
                     case '"':
@@ -340,13 +342,13 @@ int cif_lexer( FILE *in, cexception_t *ex )
                         int after = getlinec( in, ex );
                         ungetlinec( after, in );
                         if( !isspace( after ) && after != EOF ) {
-                            yyerror( "incorrect CIF syntax" );
+                            ciferror( "incorrect CIF syntax" );
                         }
                         token[pos-1] = '\0'; /* delete the last '\n' char */
                         if( yy_flex_debug ) {
                             printf( ">>> TEXT FIELD: '%s'\n", token );
                         }
-                        yylval.s = clean_string( token, /* is_textfield = */ 1,
+                        ciflval.s = clean_string( token, /* is_textfield = */ 1,
                                                  ex );
                         return _TEXT_FIELD;
                     }
@@ -385,13 +387,13 @@ int cif_lexer( FILE *in, cexception_t *ex )
                                          "-- ignored",
                                          cif_flex_previous_line_number(), -1, ex );
                     } else {
-                        yyerror( "zero-length data block name detected" );
+                        ciferror( "zero-length data block name detected" );
                     }
                 }
                 if( yy_flex_debug ) {
                     printf( ">>> DATA_: '%s'\n", token + 5 );
                 }
-                yylval.s = clean_string( token + 5, /* is_textfield = */ 0,
+                ciflval.s = clean_string( token + 5, /* is_textfield = */ 0,
                                          ex );
                 return _DATA_;
             } else if( starts_with_keyword( "save_", token )) {
@@ -401,13 +403,13 @@ int cif_lexer( FILE *in, cexception_t *ex )
                     if( yy_flex_debug ) {
                         printf( ">>> SAVE_\n" );
                     }
-                    yylval.s = NULL;
+                    ciflval.s = NULL;
                     return _SAVE_FOOT;
                 } else {
                     if( yy_flex_debug ) {
                         printf( ">>> SAVE_: '%s'\n", token + 5 );
                     }
-                    yylval.s = clean_string( token + 5, /* is_textfield = */ 0,
+                    ciflval.s = clean_string( token + 5, /* is_textfield = */ 0,
                                              ex );
                     return _SAVE_HEAD;
                 }
@@ -417,17 +419,17 @@ int cif_lexer( FILE *in, cexception_t *ex )
                 if( yy_flex_debug ) {
                     printf( ">>> LOOP_\n" );
                 }
-                yylval.s = clean_string( token, /* is_textfield = */ 0, ex );
+                ciflval.s = clean_string( token, /* is_textfield = */ 0, ex );
                 return _LOOP_;
             } else if( starts_with_keyword( "stop_", token ) &&
                 strlen( token ) == 5 ) {
                 /* stop field: */
-                yyerror( "STOP_ symbol detected -- "
+                ciferror( "STOP_ symbol detected -- "
                          "it is not acceptable in CIF v1.1" );
             } else if( starts_with_keyword( "global_", token ) &&
                 strlen( token ) == 7 ) {
                 /* global field: */
-                yyerror( "GLOBAL_ symbol detected -- "
+                ciferror( "GLOBAL_ symbol detected -- "
                          "it is not acceptable in CIF v1.1" );
             } else {
                 if( token[0] == '[' ) {
@@ -435,7 +437,7 @@ int cif_lexer( FILE *in, cexception_t *ex )
                        may not start with it: */
                     if( !cif_lexer_has_flags
                         (CIF_FLEX_LEXER_ALLOW_UQSTRING_BRACKETS)) {
-                        yyerror( "opening square brackets are reserved "
+                        ciferror( "opening square brackets are reserved "
                                  "and may not start an unquoted string" );
                     }
                 }
@@ -444,14 +446,14 @@ int cif_lexer( FILE *in, cexception_t *ex )
                        may not start with it: */
                     if( !cif_lexer_has_flags
                         (CIF_FLEX_LEXER_ALLOW_UQSTRING_BRACKETS)) {
-                        yyerror( "closing square brackets are reserved "
+                        ciferror( "closing square brackets are reserved "
                                  "and may not start an unquoted string" );
                     }
                 }
                 if( token[0] == '$' ) {
                     /* dollar is a reserved symbol, unquoted strings
                        may not start with it: */
-                    yyerror( "dollar symbol ('$') must not start an "
+                    ciferror( "dollar symbol ('$') must not start an "
                              "unquoted string" );
                 }
                 if( token[0] != '[' &&
@@ -460,14 +462,14 @@ int cif_lexer( FILE *in, cexception_t *ex )
                     if( yy_flex_debug ) {
                         printf( ">>> UQSTRING: '%s'\n", token );
                     }
-                    yylval.s = check_and_clean( token, /* is_textfield = */ 0,
+                    ciflval.s = check_and_clean( token, /* is_textfield = */ 0,
                                                 ex );
                     return _UQSTRING;
                 } else {
                     if( yy_flex_debug ) {
                         printf( ">>> SQSTRING (corrected bracket): '%s'\n", token );
                     }
-                    yylval.s = check_and_clean( token, /* is_textfield = */ 0,
+                    ciflval.s = check_and_clean( token, /* is_textfield = */ 0,
                                                 ex );
                     return _SQSTRING;
                 }
@@ -751,7 +753,7 @@ static char *clean_string( char *src, int is_textfield, cexception_t *ex )
                     }
                 } else {
                     if( is_textfield == 0 ) {
-                        yyerror( "incorrect CIF syntax" );
+                        ciferror( "incorrect CIF syntax" );
                     } else if( non_ascii_explained == 0 ) {
                         print_message( cif_cc, "ERROR", "non-ascii symbols "
                                        "encountered "
@@ -802,7 +804,7 @@ static char *check_and_clean( char *token, int is_textfield, cexception_t *ex )
             (CIF_FLEX_LEXER_FIX_NON_ASCII_SYMBOLS) ) {
             s = clean_string( token, is_textfield, ex );
         } else {
-            yyerror( "incorrect CIF syntax" );
+            ciferror( "incorrect CIF syntax" );
             s = strdupx( token, ex );
         }
     } else {
