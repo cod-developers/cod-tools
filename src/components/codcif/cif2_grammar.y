@@ -132,12 +132,12 @@ headerless_data_block
                     print_message( cif_cc,
                               "WARNING", "no data block heading " 
                               "(i.e. data_somecif) found", "",
-                              cif_flex_previous_line_number(), -1, px );
+                              cif2_flex_previous_line_number(), -1, px );
             } else {
                     print_message( cif_cc,
                               "ERROR", "no data block heading "
                               "(i.e. data_somecif) found", "",
-                              cif_flex_previous_line_number(), -1, px );
+                              cif2_flex_previous_line_number(), -1, px );
                     cif_compiler_increase_nerrors( cif_cc );
             }
         }
@@ -148,12 +148,12 @@ headerless_data_block
                     print_message( cif_cc,
                               "WARNING", "no data block heading " 
                               "(i.e. data_somecif) found", "",
-                              cif_flex_previous_line_number(), -1, px );
+                              cif2_flex_previous_line_number(), -1, px );
             } else {
                     print_message( cif_cc,
                               "ERROR", "no data block heading "
                               "(i.e. data_somecif) found", "",
-                              cif_flex_previous_line_number(), -1, px );
+                              cif2_flex_previous_line_number(), -1, px );
                     cif_compiler_increase_nerrors( cif_cc );
             }
         }
@@ -307,7 +307,7 @@ loop
        :	_LOOP_ 
        {
            assert_datablock_exists( cif_cc, px );
-           cif_compiler_start_loop( cif_cc, cif_flex_current_line_number() );
+           cif_compiler_start_loop( cif_cc, cif2_flex_current_line_number() );
            cif_start_loop( cif_compiler_cif( cif_cc ), px );
            freex( $1 );
        } 
@@ -338,7 +338,7 @@ loop_tags
             size_t tag_nr = cif_tag_index( cif_compiler_cif( cif_cc ), $2 );
             if( tag_nr != -1 ) {
                 yyerror_token( cif_cc, cxprintf( "tag %s appears more than once", $2 ),
-                               cif_flex_current_line_number(), -1, NULL, px );
+                               cif2_flex_current_line_number(), -1, NULL, px );
             }
             cif_compiler_increase_loop_tags( cif_cc );
             cif_insert_value( cif_compiler_cif( cif_cc ), $2, NULL, px );
@@ -349,7 +349,7 @@ loop_tags
             size_t tag_nr = cif_tag_index( cif_compiler_cif( cif_cc ), $1 );
             if( tag_nr != -1 ) {
                 yyerror_token( cif_cc, cxprintf( "tag %s appears more than once", $1 ),
-                               cif_flex_current_line_number(), -1, NULL, px );
+                               cif2_flex_current_line_number(), -1, NULL, px );
             }
             cif_compiler_increase_loop_tags( cif_cc );
             cif_insert_value( cif_compiler_cif( cif_cc ), $1, NULL, px );
@@ -402,7 +402,7 @@ data_value
 string
     :   any_quoted_string
 	|	_UQSTRING
-        { $$ = new_typed_value( -1, -1, strdupx( cif_flex_current_line(), px ),
+        { $$ = new_typed_value( -1, -1, strdupx( cif2_flex_current_line(), px ),
                                 new_value_from_scalar( $1, CIF_UQSTRING, px ) );
         }
 ;
@@ -414,22 +414,22 @@ any_quoted_string
 
 quoted_string
     :   _SQSTRING
-        { $$ = new_typed_value( -1, -1, strdupx( cif_flex_current_line(), px ),
+        { $$ = new_typed_value( -1, -1, strdupx( cif2_flex_current_line(), px ),
                                 new_value_from_scalar( $1, CIF_SQSTRING, px ) );
         }
 	|	_DQSTRING
-        { $$ = new_typed_value( -1, -1, strdupx( cif_flex_current_line(), px ),
+        { $$ = new_typed_value( -1, -1, strdupx( cif2_flex_current_line(), px ),
                                 new_value_from_scalar( $1, CIF_DQSTRING, px ) );
         }
 ;
 
 triple_quoted_string
     :   _SQ3STRING
-        { $$ = new_typed_value( -1, -1, strdupx( cif_flex_current_line(), px ),
+        { $$ = new_typed_value( -1, -1, strdupx( cif2_flex_current_line(), px ),
                                 new_value_from_scalar( $1, CIF_SQ3STRING, px ) );
         }
 	|	_DQ3STRING
-        { $$ = new_typed_value( -1, -1, strdupx( cif_flex_current_line(), px ),
+        { $$ = new_typed_value( -1, -1, strdupx( cif2_flex_current_line(), px ),
                                 new_value_from_scalar( $1, CIF_DQ3STRING, px ) );
         }
 ;
@@ -482,18 +482,18 @@ textfield
           }
 
           $$ = new_typed_value( -1, -1,
-                                strdupx( cif_flex_current_line(), px ),
+                                strdupx( cif2_flex_current_line(), px ),
                                 new_value_from_scalar( text, CIF_TEXT, px ) );
         }
 ;
 
 number
 	:	_REAL_CONST
-        { $$ = new_typed_value( -1, -1, strdupx( cif_flex_current_line(), px ),
+        { $$ = new_typed_value( -1, -1, strdupx( cif2_flex_current_line(), px ),
                                 new_value_from_scalar( $1, CIF_FLOAT, px ) );
         }
 	|	_INTEGER_CONST
-        { $$ = new_typed_value( -1, -1, strdupx( cif_flex_current_line(), px ),
+        { $$ = new_typed_value( -1, -1, strdupx( cif2_flex_current_line(), px ),
                                 new_value_from_scalar( $1, CIF_INT, px ) );
         }
 ;
@@ -505,7 +505,7 @@ list
     }
     |   '[' ']'
     {
-        $$ = new_typed_value( -1, -1, strdupx( cif_flex_current_line(), px ),
+        $$ = new_typed_value( -1, -1, strdupx( cif2_flex_current_line(), px ),
                               new_value_from_list( new_list( px ), px ) );
     }
 ;
@@ -517,7 +517,7 @@ table
     }
     |   '{' '}'
     {
-        $$ = new_typed_value( -1, -1, strdupx( cif_flex_current_line(), px ),
+        $$ = new_typed_value( -1, -1, strdupx( cif2_flex_current_line(), px ),
                               new_value_from_table( new_table( px ), px ) );
     }
 ;
@@ -602,8 +602,8 @@ CIF *new_cif_from_cif_file( char *filename, cif_option_t co, cexception_t *ex )
 
     assert( !cif_cc );
     cif_cc = new_cif_compiler( filename, co, ex );
-    cif_flex_reset_counters();
-    cif_lexer_set_compiler( cif_cc );
+    cif2_flex_reset_counters();
+    cif2_lexer_set_compiler( cif_cc );
 
     cexception_guard( inner ) {
         cif_compile_file( filename, &inner );
@@ -655,10 +655,11 @@ int yyerror( const char *message )
     if( strcmp( message, "syntax error" ) == 0 ) {
         message = "incorrect CIF syntax";
     }
-    print_message( cif_cc, "ERROR", message, ":", cif_flex_current_line_number(),
-                   cif_flex_current_position()+1, px );
-    print_trace( cif_cc, (char*)cif_flex_current_line(),
-                 cif_flex_current_position()+1, px );
+    print_message( cif_cc, "ERROR", message, ":",
+                   cif2_flex_current_line_number(),
+                   cif2_flex_current_position()+1, px );
+    print_trace( cif_cc, (char*)cif2_flex_current_line(),
+                 cif2_flex_current_position()+1, px );
     cif_compiler_increase_nerrors( cif_cc );
     return 0;
 }
