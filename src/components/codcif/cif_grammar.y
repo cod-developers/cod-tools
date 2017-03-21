@@ -468,7 +468,7 @@ static void cif_compile_file( char *filename, cexception_t *ex )
             yyin = stdin;
         }
         px = &inner; /* catch all parser-generated exceptions */
-        if( (yyretval = yyparse()) != 0 ) {
+        if( (yyretval = cifparse()) != 0 ) {
             if( cif_compiler_cif( cif_cc ) ) {
                 int errcount = cif_compiler_nerrors( cif_cc );
                 cif_set_yyretval( cif_compiler_cif( cif_cc ), yyretval );
@@ -533,12 +533,12 @@ CIF *new_cif_from_cif_file( char *filename, cif_option_t co, cexception_t *ex )
         }
     }
 
+    cif = cif_compiler_cif( cif_cc );
     nerrors = cif_compiler_nerrors( cif_cc );
     if( cif && nerrors > 0 ) {
         cif_set_nerrors( cif, nerrors );
     }
 
-    cif = cif_compiler_cif( cif_cc );
     cif_compiler_detach_cif( cif_cc );
     delete_cif_compiler( cif_cc );
     cif_cc = NULL;
