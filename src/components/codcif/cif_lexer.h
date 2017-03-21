@@ -13,7 +13,7 @@
 #include <cexceptions.h>
 #include <cif_compiler.h>
 
-int yylex( void );
+int ciflex( void );
 void yyrestart( void );
 
 void cif_lexer_set_compiler( CIF_COMPILER *ccc );
