@@ -440,7 +440,7 @@ textfield
               }
           }
 
-          $$ = typed_value_from_value( new_value_from_scalar( $1, CIF_TEXT, px ), px );
+          $$ = typed_value_from_value( new_value_from_scalar( text, CIF_TEXT, px ), px );
         }
 ;
 
