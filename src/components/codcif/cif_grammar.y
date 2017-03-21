@@ -515,7 +515,8 @@ CIF *new_cif_from_cif1_file( FILE *in, char *filename, cif_option_t co, cexcepti
                 if( cif_yyretval( cif_compiler_cif( cif_cc ) ) == 0 ) {
                     cif_set_yyretval( cif_compiler_cif( cif_cc ), -1 );
                 }
-                cif_set_nerrors( cif_compiler_cif( cif_cc ), cif_nerrors( cif_compiler_cif( cif_cc ) ) + 1 );
+                cif_set_nerrors( cif_compiler_cif( cif_cc ),
+                                 cif_nerrors( cif_compiler_cif( cif_cc ) ) + 1 );
                 cif_set_message( cif_compiler_cif( cif_cc ),
                                  filename, "ERROR",
                                  cexception_message( &inner ),
@@ -549,7 +550,8 @@ int ciferror( const char *message )
     if( strcmp( message, "syntax error" ) == 0 ) {
         message = "incorrect CIF syntax";
     }
-    print_message( cif_cc, "ERROR", message, ":", cif_flex_current_line_number(),
+    print_message( cif_cc, "ERROR", message, ":",
+                   cif_flex_current_line_number(),
                    cif_flex_current_position()+1, px );
     print_trace( cif_cc, (char*)cif_flex_current_line(),
                  cif_flex_current_position()+1, px );
