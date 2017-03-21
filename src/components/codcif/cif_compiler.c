@@ -471,7 +471,7 @@ void add_tag_value( CIF_COMPILER *cif_cc, char *tag, typed_value *tv, cexception
 CIF *new_cif_from_cif_file( char *filename, cif_option_t co, cexception_t *ex )
 {
     cexception_t inner;
-    FILE *in;
+    FILE *in = NULL;
 
     cexception_guard( inner ) {
         if( filename ) {
