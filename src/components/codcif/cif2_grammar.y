@@ -663,6 +663,7 @@ int yyerror( const char *message )
     return 0;
 }
 
+/*
 int yywrap()
 {
 #if 0
@@ -676,6 +677,7 @@ int yywrap()
     return 1;
 #endif
 }
+*/
 
 void cif_yy_debug_on( void )
 {

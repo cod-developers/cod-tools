@@ -51,33 +51,33 @@ static int cif_mandated_line_length = 80;
 static int cif_mandated_tag_length = 74;
 static int report_long_items = 0;
 
-int cif_lexer_set_report_long_items( int flag )
+int cif2_lexer_set_report_long_items( int flag )
 {
     int old_value = report_long_items;
     report_long_items = flag;
     return old_value;
 }
 
-int cif_lexer_report_long_items( void )
+int cif2_lexer_report_long_items( void )
 {
     return report_long_items;
 }
 
-int cif_lexer_set_line_length_limit( int max_length )
+int cif2_lexer_set_line_length_limit( int max_length )
 {
     int old_value = cif_mandated_line_length;
     cif_mandated_line_length = max_length;
     return old_value;
 }
 
-int cif_lexer_set_tag_length_limit( int max_length )
+int cif2_lexer_set_tag_length_limit( int max_length )
 {
     int old_value = cif_mandated_tag_length;
     cif_mandated_tag_length = max_length;
     return old_value;
 }
 
-void cif_flex_reset_counters( void )
+void cif2_flex_reset_counters( void )
 {
     lineCnt = 1;
     currLine = prevLine = 1;
@@ -85,7 +85,7 @@ void cif_flex_reset_counters( void )
 }
 /* end of old Flex scanner functions */
 
-void cif_lexer_set_compiler( CIF_COMPILER *ccc )
+void cif2_lexer_set_compiler( CIF_COMPILER *ccc )
 {
     cif_cc = ccc;
 }
@@ -176,7 +176,7 @@ static int cif_lexer( FILE *in, cexception_t *ex )
             if( cif_lexer_has_flags
                 (CIF_FLEX_LEXER_FIX_CTRL_Z) ) {
                 yywarning_token( cif_cc, "DOS EOF symbol ^Z was encountered and ignored",
-                                 cif_flex_previous_line_number(), -1, ex );
+                                 cif2_flex_previous_line_number(), -1, ex );
             } else {
                 cif2error( "DOS EOF symbol ^Z was encountered, "
                            "it is not permitted in CIFs" );
@@ -417,12 +417,12 @@ static int cif_lexer( FILE *in, cexception_t *ex )
                             ) {
                             yywarning_token( cif_cc, "double-quoted string is missing "
                                              "a closing quote -- fixed",
-                                             cif_flex_previous_line_number(), -1, ex );
+                                             cif2_flex_previous_line_number(), -1, ex );
                         } else {
                             yyerror_token( cif_cc, "incorrect CIF syntax",
-                                           cif_flex_current_line_number()-1,
-                                           cif_flex_current_position()+1,
-                                           (char*)cif_flex_previous_line(),
+                                           cif2_flex_current_line_number()-1,
+                                           cif2_flex_current_position()+1,
+                                           (char*)cif2_flex_previous_line(),
                                            ex );
                         }
                         break;
@@ -432,12 +432,12 @@ static int cif_lexer( FILE *in, cexception_t *ex )
                             ) {
                             yywarning_token( cif_cc, "single-quoted string is missing "
                                              "a closing quote -- fixed",
-                                             cif_flex_previous_line_number(), -1, ex );
+                                             cif2_flex_previous_line_number(), -1, ex );
                         } else {
                             yyerror_token( cif_cc, "incorrect CIF syntax",
-                                           cif_flex_current_line_number()-1,
-                                           cif_flex_current_position()+1,
-                                           (char*)cif_flex_previous_line(),
+                                           cif2_flex_current_line_number()-1,
+                                           cif2_flex_current_position()+1,
+                                           (char*)cif2_flex_previous_line(),
                                            ex );
                         }
                         break;
@@ -468,7 +468,7 @@ static int cif_lexer( FILE *in, cexception_t *ex )
             if( prevchar == '\n' || prevchar == '\0' ) {
                 /* multi-line text field: */
                 advance_mark();
-                ssize_t textfield_start = cif_flex_current_line_number();
+                ssize_t textfield_start = cif2_flex_current_line_number();
                 pos = 0;
                 while( ch != EOF ) {
                     prevchar = ch;
@@ -499,7 +499,7 @@ static int cif_lexer( FILE *in, cexception_t *ex )
                                "text field starting in line %d, "
                                "possible runaway closing semicolon (';')",
                                textfield_start ),
-                               cif_flex_current_line_number()-1, -1,
+                               cif2_flex_current_line_number()-1, -1,
                                NULL, ex );
             }
             /* else this is an ordinary unquoted string -- drop
@@ -525,7 +525,7 @@ static int cif_lexer( FILE *in, cexception_t *ex )
                     if( cif_lexer_has_flags(CIF_FLEX_LEXER_FIX_DATABLOCK_NAMES) ) {
                         yywarning_token( cif_cc, "zero-length data block name detected "
                                          "-- ignored",
-                                         cif_flex_previous_line_number(), -1, ex );
+                                         cif2_flex_previous_line_number(), -1, ex );
                     } else {
                         cif2error( "zero-length data block name detected" );
                     }
@@ -820,14 +820,14 @@ static int getlinec( FILE *in, cexception_t *ex )
     return ch;
 }
 
-int cif_flex_current_line_number( void ) { return currLine; }
-int cif_flex_previous_line_number( void ) { return prevLine; }
-void cif_flex_set_current_line_number( ssize_t line ) { lineCnt = line; }
-int cif_flex_current_position( void ) { return thisTokenPos; }
-int cif_flex_previous_position( void ) { return lastTokenPos; }
-void cif_flex_set_current_position( ssize_t pos ) { current_pos = pos - 1; }
-const char *cif_flex_current_line( void ) { return thisTokenLine; }
-const char *cif_flex_previous_line( void ) { return lastTokenLine; }
+int cif2_flex_current_line_number( void ) { return currLine; }
+int cif2_flex_previous_line_number( void ) { return prevLine; }
+void cif2_flex_set_current_line_number( ssize_t line ) { lineCnt = line; }
+int cif2_flex_current_position( void ) { return thisTokenPos; }
+int cif2_flex_previous_position( void ) { return lastTokenPos; }
+void cif2_flex_set_current_position( ssize_t pos ) { current_pos = pos - 1; }
+const char *cif2_flex_current_line( void ) { return thisTokenLine; }
+const char *cif2_flex_previous_line( void ) { return lastTokenLine; }
 
 static char *clean_string( char *src, int is_textfield, cexception_t *ex )
 {
@@ -857,17 +857,17 @@ static char *clean_string( char *src, int is_textfield, cexception_t *ex )
                         if( is_textfield == 0 ) {
                             print_message( cif_cc, "WARNING", "non-ascii symbols "
                                            "encountered in the text", ":",
-                                           cif_flex_current_line_number(),
-                                           cif_flex_current_position()+1,
+                                           cif2_flex_current_line_number(),
+                                           cif2_flex_current_position()+1,
                                            ex );
-                            print_trace( cif_cc, (char*)cif_flex_current_line(),
-                                         cif_flex_current_position()+1, ex );
+                            print_trace( cif_cc, (char*)cif2_flex_current_line(),
+                                         cif2_flex_current_position()+1, ex );
                             non_ascii_explained = 1;
                         } else {
                             print_message( cif_cc, "WARNING", "non-ascii symbols "
                                            "encountered in the text field -- "
                                            "replaced with XML entities", ":",
-                                           cif_flex_current_line_number(),
+                                           cif2_flex_current_line_number(),
                                            -1, ex );
                             print_current_text_field( cif_cc, start, ex );
                             non_ascii_explained = 1;
@@ -880,7 +880,7 @@ static char *clean_string( char *src, int is_textfield, cexception_t *ex )
                         print_message( cif_cc, "ERROR", "non-ascii symbols "
                                        "encountered "
                                        "in the text field", ":",
-                                       cif_flex_current_line_number(),
+                                       cif2_flex_current_line_number(),
                                        -1, ex );
                         print_current_text_field( cif_cc, start, ex );
                         cif_compiler_increase_nerrors( cif_cc );
