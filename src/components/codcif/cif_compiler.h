@@ -85,4 +85,6 @@ void typed_value_set_value( typed_value *t, VALUE *v );
 void add_tag_value( CIF_COMPILER *cif_cc, char *tag,
                     typed_value *tv, cexception_t *ex );
 
+CIF *new_cif_from_cif_file( char *filename, cif_option_t co, cexception_t *ex );
+
 #endif

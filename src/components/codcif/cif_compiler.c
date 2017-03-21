@@ -11,8 +11,11 @@
 /* uses: */
 #include <string.h>
 #include <cxprintf.h>
+#include <stdiox.h>
 #include <common.h>
 #include <cif_lexer.h>
+#include <cif_grammar_y.h>
+#include <cif2_grammar_y.h>
 
 typedef struct CIF_COMPILER {
     char *filename;
@@ -465,4 +468,88 @@ void add_tag_value( CIF_COMPILER *cif_cc, char *tag, typed_value *tv, cexception
         yyerror_token( cif_cc, cxprintf( "tag %s appears more than once", tag ),
                        typed_value_line( tv ), -1, NULL, ex );
     }
+}
+
+CIF *new_cif_from_cif_file( char *filename, cif_option_t co, cexception_t *ex )
+{
+    cexception_t inner;
+    FILE *in;
+
+    cexception_guard( inner ) {
+        if( filename ) {
+            in = fopenx( filename, "r", ex );
+        } else {
+            in = stdin;
+        }
+    }
+    cexception_catch {
+        if( in ) {
+            fclosex( in, ex );
+            in = NULL;
+        }
+        cexception_reraise( inner, ex );
+    }
+
+    // Determining the version of CIF
+    int is_cif2 = 1;
+
+    int ch = getc( in );
+    CIF *cif;
+    if( ch != '#' ) { // CIF2 must start with a magic code
+        ungetc( ch, in );
+        is_cif2 = 0;
+    } else {
+        char header[10];
+        int i;
+        for( i = 0; i < 9; i++ ) {
+            ch = getc( in );
+            if( ch == EOF || ch == '\r' || ch == '\n' ) {
+                is_cif2 = 0;
+                break;
+            }
+            header[i] = ch;
+        }
+
+        if( is_cif2 ) {
+            header[9] = '\0';
+            if( strcmp( header, "\\#CIF_2.0" ) ) {
+                is_cif2 = 0;
+            } else {
+                /* The magic code may be followed by tabs and spaces,
+                 * but anything else is not allowed */
+                while( ch != EOF && ch != '\r' && ch != '\n' ) {
+                    ch = getc( in );
+                    if( ch != ' ' && ch != '\t' && ch != EOF &&
+                        ch != '\r' && ch != '\n' ) {
+                        is_cif2 = 0;
+                    }
+                }
+                
+            }
+        }
+
+        /* Eat up the rest of the comment line */
+        while( ch != EOF && ch != '\t' && ch != '\n' ) {
+            ch = getc( in );
+        }
+        
+        /* If last read character is CR, it must be checked whether it
+         * is CR or CR + NL type end-of-line. In any case the
+         * end-of-line symbol must be discarded */
+        if( ch == '\r' ) {
+            ch = getc( in );
+            if( ch != '\n' ) {
+                ungetc( ch, in );
+            }
+        }
+    }
+
+    if( !is_cif2 ) {
+        cif = new_cif_from_cif1_file( in, filename, co, ex );
+    } else {
+        cif = new_cif_from_cif2_file( in, filename, co, ex );
+    }
+
+    fclosex( in, ex );
+    return cif;
 }

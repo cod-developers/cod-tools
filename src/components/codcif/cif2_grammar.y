@@ -558,17 +558,13 @@ table_entry_list
 
 %%
 
-static void cif_compile_file( char *filename, cexception_t *ex )
+static void cif_compile_file( FILE *in, char *filename, cexception_t *ex )
 {
     cexception_t inner;
     int yyretval = 0;
 
     cexception_guard( inner ) {
-        if( filename ) {
-            yyin = fopenx( filename, "r", ex );
-        } else {
-            yyin = stdin;
-        }
+        yyin = in;
         px = &inner; /* catch all parser-generated exceptions */
         if( (yyretval = cif2parse()) != 0 ) {
             if( cif_compiler_cif( cif_cc ) ) {
@@ -585,15 +581,13 @@ static void cif_compile_file( char *filename, cexception_t *ex )
     }
     cexception_catch {
         if( yyin ) {
-            fclosex( yyin, ex );
             yyin = NULL;
         }
         cexception_reraise( inner, ex );
     }
-    fclosex( yyin, ex );
 }
 
-CIF *new_cif_from_cif2_file( char *filename, cif_option_t co, cexception_t *ex )
+CIF *new_cif_from_cif2_file( FILE *in, char *filename, cif_option_t co, cexception_t *ex )
 {
     volatile int nerrors;
     cexception_t inner;
@@ -606,7 +600,7 @@ CIF *new_cif_from_cif2_file( char *filename, cif_option_t co, cexception_t *ex )
     cif2_lexer_set_compiler( cif_cc );
 
     cexception_guard( inner ) {
-        cif_compile_file( filename, &inner );
+        cif_compile_file( in, filename, &inner );
     }
     cexception_catch {
         cif2restart();

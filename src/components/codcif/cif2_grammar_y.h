@@ -12,7 +12,7 @@
 #include <cif_options.h>
 #include <cexceptions.h>
 
-CIF *new_cif_from_cif2_file( char *filename, cif_option_t co,
+CIF *new_cif_from_cif2_file( FILE *in, char *filename, cif_option_t co,
                              cexception_t *ex );
 
 void cif2_yy_debug_on( void );
