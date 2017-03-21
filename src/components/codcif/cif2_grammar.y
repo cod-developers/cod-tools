@@ -316,7 +316,7 @@ loop
        {
            if( cif_compiler_loop_value_count( cif_cc ) %
                cif_compiler_loop_tag_count( cif_cc ) != 0 ) {
-               yyerror( cxprintf( "wrong number of elements in the "
+               cif2error( cxprintf( "wrong number of elements in the "
                                   "loop starting at line %d",
                                    cif_compiler_loop_start_line( cif_cc ) ) );
 #if 0
