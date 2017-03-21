@@ -179,7 +179,7 @@ data_heading
         }
 	|	_DATA_ data_value_list
         {
-            LIST *list = value_get_list( typed_value_value( $2 ) );
+            LIST *list = value_list( typed_value_value( $2 ) );
 
             /* only simple data items can be concatenated,
              * thus we have to make sure that data value
@@ -243,7 +243,7 @@ cif_entry
         | _TAG data_value data_value_list
             {
                 assert_datablock_exists( cif_cc, px );
-                LIST *list = value_get_list( typed_value_value( $3 ) );
+                LIST *list = value_list( typed_value_value( $3 ) );
                 list_unshift( list, typed_value_value( $2 ), px );
                 typed_value_detach_value( $2 );
 
@@ -297,7 +297,7 @@ data_value_list
         }
         |       data_value_list data_value
         {
-            list_push( value_get_list( typed_value_value( $1 ) ),
+            list_push( value_list( typed_value_value( $1 ) ),
                        typed_value_value( $2 ), px );
             typed_value_detach_value( $2 ); /* protecting v from free'ing */
             delete_typed_value( $2 );
@@ -525,15 +525,15 @@ table_entry_list
 	:	table_entry_list
         any_quoted_string _TABLE_ENTRY_SEP data_value
     {
-        if( table_get( value_get_table( typed_value_value( $1 ) ),
-                       value_get_scalar( typed_value_value( $2 ) ) ) != NULL ) {
+        if( table_get( value_table( typed_value_value( $1 ) ),
+                       value_scalar( typed_value_value( $2 ) ) ) != NULL ) {
             yyerror_token( cif_cc, cxprintf( "key '%s' appears more than once "
                                      "in the same table",
-                                      value_get_scalar( typed_value_value( $2 ) ) ),
+                                      value_scalar( typed_value_value( $2 ) ) ),
                            typed_value_line( $2 ), -1, NULL, px );
         }
-        table_add( value_get_table( typed_value_value( $1 ) ),
-                   value_get_scalar( typed_value_value( $2 ) ),
+        table_add( value_table( typed_value_value( $1 ) ),
+                   value_scalar( typed_value_value( $2 ) ),
                    typed_value_value( $4 ), px );
         typed_value_detach_value( $4 ); // protecting from free()ing
         delete_typed_value( $2 );
@@ -546,8 +546,8 @@ table_entry_list
                               new_value_from_table( new_table( px ), px ) );
         /* check for the existence of key does not have to be
          * performed, since the table is empty */
-        table_add( value_get_table( typed_value_value( $$ ) ),
-                   value_get_scalar( typed_value_value( $1 ) ),
+        table_add( value_table( typed_value_value( $$ ) ),
+                   value_scalar( typed_value_value( $1 ) ),
                    typed_value_value( $3 ), px );
         typed_value_detach_value( $3 ); // protecting from free()ing
         delete_typed_value( $1 );

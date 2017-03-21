@@ -248,7 +248,7 @@ cif_value_type_t datablock_value_type( DATABLOCK *datablock, int tag_nr, int val
 {
     VALUE *v = datablock_value( datablock, tag_nr, val_nr );
     if( v ) {
-        return value_get_type( v );
+        return value_type( v );
     } else {
         return CIF_NON_EXISTANT;
     }
@@ -300,11 +300,11 @@ void datablock_print_tag_values( DATABLOCK * volatile datablock,
                 int first = 1;
                 for( j = 0; j < datablock->value_lengths[i]; j++ ) {
                     if( first == 1 ) {
-                        printf( "%s", value_get_scalar( datablock->values[i][j] ) );
+                        printf( "%s", value_scalar( datablock->values[i][j] ) );
                         first = 0;
                     } else {
                         printf( "%s%s", vseparator,
-                                value_get_scalar( datablock->values[i][j] ) );
+                                value_scalar( datablock->values[i][j] ) );
                     }
                 }
                 break;

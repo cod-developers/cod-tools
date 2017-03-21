@@ -407,35 +407,35 @@ void add_tag_value( CIF_COMPILER *cif_cc, char *tag, typed_value *tv, cexception
     VALUE *value = typed_value_value( tv );
     if( cif_tag_index( cif_compiler_cif( cif_cc ), tag ) == -1 ) {
         cif_insert_value( cif_compiler_cif( cif_cc ), tag, value, ex );
-    } else if( value_get_type( value ) != CIF_LIST &&
-               value_get_type( value ) != CIF_TABLE ) {
+    } else if( value_type( value ) != CIF_LIST &&
+               value_type( value ) != CIF_TABLE ) {
         ssize_t tag_nr = cif_tag_index( cif_compiler_cif( cif_cc ), tag );
         ssize_t * value_lengths = 
             datablock_value_lengths(cif_last_datablock(cif_compiler_cif( cif_cc )));
         if( value_lengths[tag_nr] == 1) {
             if( strcmp
-                (value_get_scalar(datablock_value
+                (value_scalar(datablock_value
                  (cif_last_datablock(cif_compiler_cif( cif_cc )), tag_nr, 0)),
-                  value_get_scalar(value)) == 0 &&
+                  value_scalar(value)) == 0 &&
                 (isset_fix_errors(cif_cc) == 1 ||
                  isset_fix_duplicate_tags_with_same_values
                  (cif_cc) == 1)) {
                 yywarning_token( cif_cc, cxprintf( "tag %s appears more than once "
                                            "with the same value '%s'", tag,
-                                            value_get_scalar(value) ),
+                                            value_scalar(value) ),
                                  typed_value_line( tv ), -1, ex );
             } else {
                 if( isset_fix_errors(cif_cc) == 1 ||
                     isset_fix_duplicate_tags_with_empty_values
                     (cif_cc) == 1 ) {
-                    if( is_tag_value_unknown( value_get_scalar(value) ) ) {
+                    if( is_tag_value_unknown( value_scalar(value) ) ) {
                         yywarning_token( cif_cc, cxprintf( "tag %s appears more than once, "
                                                    "the second occurrence '%s' is "
                                                    "ignored", tag,
-                                                   value_get_scalar(value) ),
+                                                   value_scalar(value) ),
                                          typed_value_line( tv ), -1, ex );
                     } else if( is_tag_value_unknown
-                               (value_get_scalar
+                               (value_scalar
                                 (datablock_value
                                  (cif_last_datablock(cif_compiler_cif( cif_cc )),
                                   tag_nr, 0)))) {

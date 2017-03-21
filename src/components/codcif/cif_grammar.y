@@ -172,18 +172,18 @@ data_block_head
             if( isset_fix_errors( cif_cc ) ||
                 isset_fix_string_quotes( cif_cc ) ||
                 isset_fix_datablock_names( cif_cc ) ) {
-                char buf[strlen($1)+strlen(value_get_scalar(typed_value_value( $2 )))+2];
+                char buf[strlen($1)+strlen(value_scalar(typed_value_value( $2 )))+2];
                 strcpy( buf, $1 );
                 buf[strlen($1)] = '_';
                 int i;
-                for( i = 0; i < strlen(value_get_scalar(typed_value_value( $2 ))); i++ ) {
-                    if( value_get_scalar(typed_value_value( $2 ))[i] != ' ' ) {
-                        buf[strlen($1)+1+i] = value_get_scalar(typed_value_value( $2 ))[i];
+                for( i = 0; i < strlen(value_scalar(typed_value_value( $2 ))); i++ ) {
+                    if( value_scalar(typed_value_value( $2 ))[i] != ' ' ) {
+                        buf[strlen($1)+1+i] = value_scalar(typed_value_value( $2 ))[i];
                     } else {
                         buf[strlen($1)+1+i] = '_';
                     } 
                 }
-                buf[strlen($1)+strlen(value_get_scalar(typed_value_value( $2 )))+1] = '\0';
+                buf[strlen($1)+strlen(value_scalar(typed_value_value( $2 )))+1] = '\0';
                 cif_start_datablock( cif_compiler_cif( cif_cc ), buf, px );
                 if( isset_fix_errors( cif_cc ) ||
                     isset_fix_string_quotes( cif_cc ) ) {
@@ -235,11 +235,11 @@ cif_entry
                     isset_fix_string_quotes( cif_cc ) ) {
                     yywarning_token( cif_cc, "string with spaces without quotes -- fixed",
                                      typed_value_line( $2 ), -1, px );
-                    char *buf = mallocx(strlen(value_get_scalar(typed_value_value( $2 )))+
-                                        strlen(value_get_scalar(typed_value_value( $3 )))+2,px);
-                    buf = strcpy( buf, value_get_scalar(typed_value_value( $2 )) );
+                    char *buf = mallocx(strlen(value_scalar(typed_value_value( $2 )))+
+                                        strlen(value_scalar(typed_value_value( $3 )))+2,px);
+                    buf = strcpy( buf, value_scalar(typed_value_value( $2 )) );
                     buf = strcat( buf, " \0" );
-                    buf = strcat( buf, value_get_scalar(typed_value_value( $3 )) );
+                    buf = strcat( buf, value_scalar(typed_value_value( $3 )) );
                     cif_value_type_t tag_type = CIF_SQSTRING;
                     if( index( buf, '\n' ) != NULL ||
                         index( buf, '\r' ) != NULL ||
@@ -272,11 +272,11 @@ cif_value_list
         :       cif_value
         |       cif_value_list cif_value
         {
-            char *buf = mallocx( strlen(value_get_scalar(typed_value_value( $1 ))) +
-                                 strlen(value_get_scalar(typed_value_value( $2 ))) + 2, px );
-            buf = strcpy( buf, value_get_scalar( typed_value_value( $1 ) ) );
+            char *buf = mallocx( strlen(value_scalar(typed_value_value( $1 ))) +
+                                 strlen(value_scalar(typed_value_value( $2 ))) + 2, px );
+            buf = strcpy( buf, value_scalar( typed_value_value( $1 ) ) );
             buf = strcat( buf, " \0" );
-            buf = strcat( buf, value_get_scalar( typed_value_value( $2 ) ) );
+            buf = strcat( buf, value_scalar( typed_value_value( $2 ) ) );
             $$ = new_typed_value( typed_value_line( $1 ),
                                   typed_value_pos( $1 ),
                                   strdupx( typed_value_content($1), px ),

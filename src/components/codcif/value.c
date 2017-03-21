@@ -25,9 +25,9 @@ void delete_value( VALUE *value ) {
     assert( value );
 
     if( value->type == CIF_LIST ) {
-        delete_list( value_get_list( value ) );
+        delete_list( value_list( value ) );
     } else if( value->type == CIF_TABLE ) {
-        delete_table( value_get_table( value ) );
+        delete_table( value_table( value ) );
     } else {
         freex( value->v.str );
     }
@@ -63,43 +63,43 @@ void value_dump( VALUE *value ) {
     assert( value );
     switch( value->type ) {
         case CIF_LIST:
-            list_dump( value_get_list( value ) );
+            list_dump( value_list( value ) );
             break;
         case CIF_TABLE:
-            table_dump( value_get_table( value ) );
+            table_dump( value_table( value ) );
             break;
         case CIF_SQSTRING:
-            printf( " '%s'", value_get_scalar( value ) );
+            printf( " '%s'", value_scalar( value ) );
             break;
         case CIF_DQSTRING:
-            printf( " \"%s\"", value_get_scalar( value ) );
+            printf( " \"%s\"", value_scalar( value ) );
             break;
         case CIF_SQ3STRING:
-            printf( " '''%s'''", value_get_scalar( value ) );
+            printf( " '''%s'''", value_scalar( value ) );
             break;
         case CIF_DQ3STRING:
-            printf( " \"\"\"%s\"\"\"", value_get_scalar( value ) );
+            printf( " \"\"\"%s\"\"\"", value_scalar( value ) );
             break;
         case CIF_TEXT:
-            printf( "\n;%s\n;\n", value_get_scalar( value ) );
+            printf( "\n;%s\n;\n", value_scalar( value ) );
             break;
         default:
-            printf( " %s", value_get_scalar( value ) );
+            printf( " %s", value_scalar( value ) );
     }
 }
 
-cif_value_type_t value_get_type( VALUE *value ) {
+cif_value_type_t value_type( VALUE *value ) {
     return value->type;
 }
 
-char *value_get_scalar( VALUE *value ) {
+char *value_scalar( VALUE *value ) {
     return value->v.str;
 }
 
-LIST *value_get_list( VALUE *value ) {
+LIST *value_list( VALUE *value ) {
     return value->v.l;
 }
 
-TABLE *value_get_table( VALUE *value ) {
+TABLE *value_table( VALUE *value ) {
     return value->v.t;
 }

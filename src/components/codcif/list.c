@@ -112,8 +112,8 @@ int list_contains_list_or_table( LIST *list )
     size_t i;
     for( i = 0; i < list_length( list ); i++ ) {
         VALUE *value = list_get( list, i );
-        if( value_get_type( value ) == CIF_LIST ||
-            value_get_type( value ) == CIF_TABLE ) {
+        if( value_type( value ) == CIF_LIST ||
+            value_type( value ) == CIF_TABLE ) {
             return 1;
             break;
         }
@@ -131,15 +131,15 @@ char *list_concat( LIST *list, char separator, cexception_t *ex )
     ssize_t length = 0;
     size_t i;
     for( i = 0; i < list_length( list ); i++ ) {
-        length += strlen( value_get_scalar( list_get( list, i ) ) );
+        length += strlen( value_scalar( list_get( list, i ) ) );
     }
 
     char *buf = mallocx( length + list_length( list ) - 1, ex );
     buf[0] = '\0';
     ssize_t pos = 0;
     for( i = 0; i < list_length( list ); i++ ) {
-        buf = strcat( buf, value_get_scalar( list_get( list, i ) ) );
-        pos = pos + strlen( value_get_scalar( list_get( list, i ) ) );
+        buf = strcat( buf, value_scalar( list_get( list, i ) ) );
+        pos = pos + strlen( value_scalar( list_get( list, i ) ) );
         if( i != list_length( list ) - 1 ) {
             buf[pos] = separator;
             buf[pos+1] = '\0';
