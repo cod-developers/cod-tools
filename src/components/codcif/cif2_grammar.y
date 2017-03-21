@@ -650,7 +650,7 @@ CIF *new_cif_from_cif2_file( char *filename, cif_option_t co, cexception_t *ex )
     return cif;
 }
 
-int yyerror( const char *message )
+int cif2error( const char *message )
 {
     if( strcmp( message, "syntax error" ) == 0 ) {
         message = "incorrect CIF syntax";
@@ -683,13 +683,13 @@ int yywrap()
 void cif2_yy_debug_on( void )
 {
 #ifdef YYDEBUG
-    yydebug = 1;
+    cif2debug = 1;
 #endif
 }
 
 void cif2_yy_debug_off( void )
 {
 #ifdef YYDEBUG
-    yydebug = 0;
+    cif2debug = 0;
 #endif
 }
