@@ -488,11 +488,14 @@ CIF *new_cif_from_cif_file( char *filename, cif_option_t co, cexception_t *ex )
         cexception_reraise( inner, ex );
     }
 
-    // Determining the version of CIF
-    int is_cif2 = 1;
-
     int ch = getc( in );
-    CIF *cif;
+    if( ch == 254 ) { /* U+FEFF detected */
+        ch = getc( in );
+        ch = getc( in );
+    }
+
+    // Determining the version of CIF
+    int is_cif2 = 1;    
     if( ch != '#' ) { // CIF2 must start with a magic code
         ungetc( ch, in );
         is_cif2 = 0;
@@ -545,6 +548,7 @@ CIF *new_cif_from_cif_file( char *filename, cif_option_t co, cexception_t *ex )
         co = cif_option_count_lines_from_2( co );
     }
 
+    CIF *cif;
     if( !is_cif2 ) {
         cif = new_cif_from_cif1_file( in, filename, co, ex );
     } else {
