@@ -484,7 +484,26 @@ CIF *new_cif_from_cif_file( char *filename, cif_option_t co, cexception_t *ex )
             fclosex( in, ex );
             in = NULL;
         }
-        cexception_reraise( inner, ex );
+        if( co & CO_SUPPRESS_MESSAGES ) {
+            cexception_t inner2;
+            cexception_try( inner2 ) {
+                CIF *cif = new_cif( &inner2 );
+                cif_set_yyretval( cif, -1 );
+                cif_set_nerrors( cif, 1 );
+                cif_set_message( cif, filename, "ERROR",
+                                 cexception_message( &inner ),
+                                 cexception_syserror( &inner ),
+                                 &inner2 );
+                return cif;
+            }
+            cexception_catch {
+                cexception_raise
+                    ( ex, CIF_OUT_OF_MEMORY_ERROR,
+                      "not enough memory to record CIF error message" );
+            }
+        } else {
+            cexception_reraise( inner, ex );
+        }
     }
 
     int ch = getc( in );
