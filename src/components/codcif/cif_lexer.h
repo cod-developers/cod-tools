@@ -14,7 +14,7 @@
 #include <cif_compiler.h>
 
 int ciflex( void );
-void yyrestart( void );
+void cifrestart( void );
 
 void cif_lexer_set_compiler( CIF_COMPILER *ccc );
 

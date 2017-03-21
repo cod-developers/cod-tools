@@ -105,7 +105,7 @@ int cif2lex( void )
     return cif_lexer( yyin, NULL );
 }
 
-void yyrestart( void )
+void cif2restart( void )
 {
     /* FIXME: Nothing so far, to be expanded... */
 }

@@ -598,7 +598,7 @@ CIF *new_cif_from_cif_file( char *filename, cif_option_t co, cexception_t *ex )
     volatile int nerrors;
     cexception_t inner;
     CIF * volatile cif = NULL;
-    extern void yyrestart();
+    extern void cif2restart();
 
     assert( !cif_cc );
     cif_cc = new_cif_compiler( filename, co, ex );
@@ -609,7 +609,7 @@ CIF *new_cif_from_cif_file( char *filename, cif_option_t co, cexception_t *ex )
         cif_compile_file( filename, &inner );
     }
     cexception_catch {
-        yyrestart();
+        cif2restart();
         if( !isset_suppress_messages( cif_cc ) ) {
             delete_cif_compiler( cif_cc );
             cif_cc = NULL;
@@ -680,14 +680,14 @@ int yywrap()
 }
 */
 
-void cif_yy_debug_on( void )
+void cif2_yy_debug_on( void )
 {
 #ifdef YYDEBUG
     yydebug = 1;
 #endif
 }
 
-void cif_yy_debug_off( void )
+void cif2_yy_debug_off( void )
 {
 #ifdef YYDEBUG
     yydebug = 0;

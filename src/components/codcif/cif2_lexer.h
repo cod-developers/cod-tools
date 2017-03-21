@@ -14,7 +14,7 @@
 #include <cif_compiler.h>
 
 int cif2lex( void );
-void yyrestart( void );
+void cif2restart( void );
 
 void cif2_lexer_set_compiler( CIF_COMPILER *ccc );
 

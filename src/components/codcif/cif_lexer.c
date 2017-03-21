@@ -101,7 +101,7 @@ int ciflex( void )
     return cif_lexer( yyin, NULL );
 }
 
-void yyrestart( void )
+void cifrestart( void )
 {
     /* FIXME: Nothing so far, to be expanded... */
 }
