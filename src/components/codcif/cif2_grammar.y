@@ -20,7 +20,7 @@
 #include <stdiox.h>
 #include <cif_grammar_flex.h>
 #include <yy.h>
-#include <cif_lexer.h>
+#include <cif2_lexer.h>
 #include <cif_compiler.h>
 #include <assert.h>
 #include <table.h>

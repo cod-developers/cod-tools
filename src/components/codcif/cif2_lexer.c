@@ -6,7 +6,7 @@
 \*---------------------------------------------------------------------------*/
 
 /* exports: */
-#include <cif_lexer.h>
+#include <cif2_lexer.h>
 
 /* uses: */
 #include <string.h>
