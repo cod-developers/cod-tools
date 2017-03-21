@@ -14,6 +14,7 @@
 #include <stdiox.h>
 #include <common.h>
 #include <cif_lexer.h>
+#include <cif_options.h>
 #include <cif_grammar_y.h>
 #include <cif2_grammar_y.h>
 
@@ -539,6 +540,9 @@ CIF *new_cif_from_cif_file( char *filename, cif_option_t co, cexception_t *ex )
                 ungetc( ch, in );
             }
         }
+
+        /* As the first line is eaten, numeration must start from 2 */
+        co = cif_option_count_lines_from_2( co );
     }
 
     if( !is_cif2 ) {

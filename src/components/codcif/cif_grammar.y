@@ -492,6 +492,10 @@ CIF *new_cif_from_cif1_file( FILE *in, char *filename, cif_option_t co, cexcepti
     cif_flex_reset_counters();
     cif_lexer_set_compiler( cif_cc );
 
+    if( co & CO_COUNT_LINES_FROM_2 ) {
+        cif_flex_set_current_line_number( 2 );
+    }
+
     cexception_guard( inner ) {
         cif_compile_file( in, filename, &inner );
     }
