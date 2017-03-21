@@ -11,7 +11,6 @@
 extern FILE *yyin;
 
 extern int yyparse( void );
-extern int yyerror( const char *message );
 
 /* For testing of lexical analysers: */
 extern int yylex( void );
