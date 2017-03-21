@@ -138,6 +138,86 @@ int is_integer( char *s )
     return 1;
 }
 
+int is_real( char *s )
+{
+    int has_decimal = 0, has_digits = 0;
+
+    if( !s || !*s ) return 0;
+
+    if( !isdigit(*s) && *s != '+' && *s != '-' && *s != '.' ) {
+        return 0;
+    }
+
+    if( *s == '+' || *s == '-' ) s++;
+
+    /* decimal point may follow the sign, as in +.0123 */
+    if( *s == '.' ) {
+        s ++;
+        has_decimal = 1;
+    }
+
+    if( !isdigit(*s) ) return 0;
+
+    while( isdigit(*s) ) {
+        s++;
+        has_digits = 1;
+    }
+
+    if( *s == '.' ) {
+        if( has_decimal ) {
+            return 0;
+        } else {
+            has_decimal = 1;
+            s ++;
+        }
+    }
+
+    while( isdigit(*s) ) {
+        s++;
+        has_digits = 1;
+    }
+
+    if( !has_digits ) return 0;
+
+    /* By now, of we have seen digits and the string has ended, we
+       accept reg real number. We could insist here that we have a
+       decimal point so that integers are not counte das reals, but
+       since integer will be checked before reals we can happily
+       accept integers as reals as well (which is mathematically more
+       correct ;): */
+    if( *s == '\0' ) return 1;
+
+    if( *s != '(' &&
+        *s != 'E' && *s != 'e' &&
+        *s != 'D' && *s != 'd' /* Fortranish :) */
+        ) {
+        return 0;
+    }
+
+    if( *s == 'E' || *s == 'e' ||
+        *s == 'D' || *s == 'd' ) {
+        s ++;
+        if( *s == '+' || *s == '-' ) s++;
+        if( !isdigit(*s) ) {
+            return 0;
+        }
+        while( isdigit(*s) ) s++;
+    }
+
+    if( *s == '\0' ) return 1;
+    if( *s != '(' )
+        return 0;
+    else
+        s++;
+    if( !isdigit(*s) ) return 0;
+    while( isdigit(*s) ) s++;
+    if( *s != ')' ) return 0;
+    s++;
+    if( *s != '\0' ) return 0;
+
+    return 1;
+}
+
 char *cif_unprefix_textfield( char *tf )
 {
     int length = strlen(tf);
