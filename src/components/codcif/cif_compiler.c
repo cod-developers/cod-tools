@@ -10,6 +10,7 @@
 
 /* uses: */
 #include <string.h>
+#include <cxprintf.h>
 #include <common.h>
 #include <cif_lexer.h>
 
@@ -306,6 +307,35 @@ void print_trace( CIF_COMPILER *cif_cc, char *line, int position, cexception_t *
     }
 }
 
+int yyerror_token( CIF_COMPILER *cif_cc, const char *message,
+                   int line, int pos, char *cont, cexception_t *ex )
+{
+    print_message( cif_cc, "ERROR", message, ( cont == NULL ? "" : ":"),
+                   line, pos, ex );
+    if( cont != NULL ) {
+        print_trace( cif_cc, cont, pos, ex );
+    }
+    cif_compiler_increase_nerrors( cif_cc );
+    return 0;
+}
+
+int yywarning_token( CIF_COMPILER *cif_cc, const char *message,
+                     int line, int pos, cexception_t *ex )
+{
+    print_message( cif_cc, "WARNING", message, "", line, pos,
+                   ex );
+    cif_compiler_increase_nwarnings( cif_cc );
+    return 0;
+}
+
+int yynote( CIF_COMPILER *cif_cc, const char *message, cexception_t *ex )
+{
+    print_message( cif_cc, "NOTE", message, "", cif_flex_previous_line_number(), -1,
+                   ex );
+    cif_compiler_increase_nnotes( cif_cc );
+    return 0;
+}
+
 typedef struct typed_value {
     int vline;
     int vpos;
@@ -390,7 +420,7 @@ void add_tag_value( CIF_COMPILER *cif_cc, char *tag, typed_value *tv, cexception
                 (isset_fix_errors(cif_cc) == 1 ||
                  isset_fix_duplicate_tags_with_same_values
                  (cif_cc) == 1)) {
-                yywarning_token( cxprintf( "tag %s appears more than once "
+                yywarning_token( cif_cc, cxprintf( "tag %s appears more than once "
                                            "with the same value '%s'", tag,
                                             value_get_scalar(value) ),
                                  typed_value_line( tv ), -1, ex );
@@ -399,7 +429,7 @@ void add_tag_value( CIF_COMPILER *cif_cc, char *tag, typed_value *tv, cexception
                     isset_fix_duplicate_tags_with_empty_values
                     (cif_cc) == 1 ) {
                     if( is_tag_value_unknown( value_get_scalar(value) ) ) {
-                        yywarning_token( cxprintf( "tag %s appears more than once, "
+                        yywarning_token( cif_cc, cxprintf( "tag %s appears more than once, "
                                                    "the second occurrence '%s' is "
                                                    "ignored", tag,
                                                    value_get_scalar(value) ),
@@ -409,7 +439,7 @@ void add_tag_value( CIF_COMPILER *cif_cc, char *tag, typed_value *tv, cexception
                                 (datablock_value
                                  (cif_last_datablock(cif_compiler_cif( cif_cc )),
                                   tag_nr, 0)))) {
-                        yywarning_token( cxprintf( "tag %s appears more than once, "
+                        yywarning_token( cif_cc, cxprintf( "tag %s appears more than once, "
                                                    "the previous value '%s' is "
                                                    "overwritten", tag,
                                                    datablock_value
@@ -419,20 +449,20 @@ void add_tag_value( CIF_COMPILER *cif_cc, char *tag, typed_value *tv, cexception
                         cif_overwrite_value( cif_compiler_cif( cif_cc ), tag_nr, 0,
                                              value, ex );
                     } else {
-                        yyerror_token( cxprintf( "tag %s appears more than once", tag ),
+                        yyerror_token( cif_cc, cxprintf( "tag %s appears more than once", tag ),
                                        typed_value_line( tv ), -1, NULL, ex );
                     }
                 } else {
-                    yyerror_token( cxprintf( "tag %s appears more than once", tag ),
+                    yyerror_token( cif_cc, cxprintf( "tag %s appears more than once", tag ),
                                    typed_value_line( tv ), -1, NULL, ex );
                 }
             }
         } else {
-            yyerror_token( cxprintf( "tag %s appears more than once", tag ),
+            yyerror_token( cif_cc, cxprintf( "tag %s appears more than once", tag ),
                            typed_value_line( tv ), -1, NULL, ex );
         }
     } else {
-        yyerror_token( cxprintf( "tag %s appears more than once", tag ),
+        yyerror_token( cif_cc, cxprintf( "tag %s appears more than once", tag ),
                        typed_value_line( tv ), -1, NULL, ex );
     }
 }

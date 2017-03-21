@@ -12,8 +12,6 @@ extern FILE *yyin;
 
 extern int yyparse( void );
 extern int yyerror( const char *message );
-extern int yywarning_token( const char *message, int line, int pos, cexception_t *ex );
-extern int yynote( const char *message, cexception_t *ex );
 
 /* For testing of lexical analysers: */
 extern int yylex( void );

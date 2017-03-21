@@ -60,6 +60,12 @@ void print_message( CIF_COMPILER *cif_cc, const char *errlevel, const char *mess
 void print_current_text_field( CIF_COMPILER *cif_cc, char *text, cexception_t *ex );
 void print_trace( CIF_COMPILER *cif_cc, char *line, int position, cexception_t *ex );
 
+int yyerror_token( CIF_COMPILER *cif_cc, const char *message,
+                   int line, int pos, char *cont, cexception_t *ex );
+int yywarning_token( CIF_COMPILER *cif_cc, const char *message,
+                     int line, int pos, cexception_t *ex );
+int yynote( CIF_COMPILER *cif_cc, const char *message, cexception_t *ex );
+
 typedef struct typed_value typed_value;
 
 typed_value *new_typed_value( int vline, int vpos, char *vcont, VALUE *v );

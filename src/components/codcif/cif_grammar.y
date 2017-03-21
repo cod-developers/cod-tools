@@ -29,8 +29,6 @@ static CIF_COMPILER * volatile cif_cc; /* CIF current compiler */
 
 static cexception_t *px; /* parser exception */
 
-int yyerror_token( const char *message, int line, int pos, char *cont, cexception_t *ex );
-
 %}
 
 %code requires {
@@ -188,13 +186,13 @@ data_block_head
                 cif_start_datablock( cif_compiler_cif( cif_cc ), buf, px );
                 if( isset_fix_errors( cif_cc ) ||
                     isset_fix_string_quotes( cif_cc ) ) {
-                    yywarning_token( "the dataname apparently had spaces "
+                    yywarning_token( cif_cc, "the dataname apparently had spaces "
                                      "in it -- replaced spaces with underscores",
                                      typed_value_line( $2 ), -1, px );
                 }
             } else {
                 cif_start_datablock( cif_compiler_cif( cif_cc ), $1, px );
-                yyerror_token( "incorrect CIF syntax",
+                yyerror_token( cif_cc, "incorrect CIF syntax",
                                typed_value_line( $2 ),
                                typed_value_pos( $2 )+1,
                                typed_value_content( $2 ), px );
@@ -234,7 +232,7 @@ cif_entry
                 assert_datablock_exists( cif_cc, px );
                 if( isset_fix_errors( cif_cc ) ||
                     isset_fix_string_quotes( cif_cc ) ) {
-                    yywarning_token( "string with spaces without quotes -- fixed",
+                    yywarning_token( cif_cc, "string with spaces without quotes -- fixed",
                                      typed_value_line( $2 ), -1, px );
                     char *buf = mallocx(strlen(value_get_scalar(typed_value_value( $2 )))+
                                         strlen(value_get_scalar(typed_value_value( $3 )))+2,px);
@@ -258,7 +256,7 @@ cif_entry
                     typed_value_detach_content( $3 ); /* preventing from free()ing
                                                          repeatedly */
                 } else {
-                    yyerror_token( "incorrect CIF syntax",
+                    yyerror_token( cif_cc, "incorrect CIF syntax",
                                    typed_value_line( $3 ),
                                    typed_value_pos( $3 ) + 1,
                                    typed_value_content( $3 ), px );
@@ -321,7 +319,7 @@ loop_tags
         {
             size_t tag_nr = cif_tag_index( cif_compiler_cif( cif_cc ), $2 );
             if( tag_nr != -1 ) {
-                yyerror_token( cxprintf( "tag %s appears more than once", $2 ),
+                yyerror_token( cif_cc, cxprintf( "tag %s appears more than once", $2 ),
                                cif_flex_current_line_number(), -1, NULL, px );
             }
             cif_compiler_increase_loop_tags( cif_cc );
@@ -332,7 +330,7 @@ loop_tags
         {
             size_t tag_nr = cif_tag_index( cif_compiler_cif( cif_cc ), $1 );
             if( tag_nr != -1 ) {
-                yyerror_token( cxprintf( "tag %s appears more than once", $1 ),
+                yyerror_token( cif_cc, cxprintf( "tag %s appears more than once", $1 ),
                                cif_flex_current_line_number(), -1, NULL, px );
             }
             cif_compiler_increase_loop_tags( cif_cc );
@@ -559,33 +557,6 @@ int yyerror( const char *message )
     print_trace( cif_cc, (char*)cif_flex_current_line(),
                  cif_flex_current_position()+1, px );
     cif_compiler_increase_nerrors( cif_cc );
-    return 0;
-}
-
-int yyerror_token( const char *message, int line, int pos, char *cont, cexception_t *ex )
-{
-    print_message( cif_cc, "ERROR", message, ( cont == NULL ? "" : ":"),
-                   line, pos, ex );
-    if( cont != NULL ) {
-        print_trace( cif_cc, cont, pos, ex );
-    }
-    cif_compiler_increase_nerrors( cif_cc );
-    return 0;
-}
-
-int yynote( const char *message, cexception_t *ex )
-{
-    print_message( cif_cc, "NOTE", message, "", cif_flex_previous_line_number(), -1,
-                   ex );
-    cif_compiler_increase_nnotes( cif_cc );
-    return 0;
-}
-
-int yywarning_token( const char *message, int line, int pos, cexception_t *ex )
-{
-    print_message( cif_cc, "WARNING", message, "", line, pos,
-                   ex );
-    cif_compiler_increase_nwarnings( cif_cc );
     return 0;
 }
 

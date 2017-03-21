@@ -117,9 +117,6 @@ static int string_has_high_bytes( unsigned char *s );
 static char *check_and_clean( char *token, int is_textfield,
                               cexception_t *ex );
 
-int yyerror_token( const char *message, int line, int pos, char *cont,
-                   cexception_t *ex );
-
 int cif_lexer( FILE *in, cexception_t *ex )
 {
     int ch = '\0';
@@ -146,7 +143,7 @@ int cif_lexer( FILE *in, cexception_t *ex )
             thisTokenPos = current_pos > 0 ? current_pos - 1 : 0;
             if( cif_lexer_has_flags
                 (CIF_FLEX_LEXER_FIX_CTRL_Z) ) {
-                yywarning_token( "DOS EOF symbol ^Z was encountered and ignored",
+                yywarning_token( cif_cc, "DOS EOF symbol ^Z was encountered and ignored",
                                  cif_flex_previous_line_number(), -1, ex );
             } else {
                 yyerror( "DOS EOF symbol ^Z was encountered, "
@@ -207,7 +204,7 @@ int cif_lexer( FILE *in, cexception_t *ex )
             }
             if( report_long_items ) {
                 if( strlen( yylval.s ) > cif_mandated_tag_length ) {
-                    yynote( cxprintf( "data name '%s' exceeds %d characters",
+                    yynote( cif_cc, cxprintf( "data name '%s' exceeds %d characters",
                                       yylval.s, cif_mandated_tag_length ),
                             ex );
                 }
@@ -297,11 +294,11 @@ int cif_lexer( FILE *in, cexception_t *ex )
                         if( cif_lexer_has_flags
                             (CIF_FLEX_LEXER_FIX_MISSING_CLOSING_DOUBLE_QUOTE)
                             ) {
-                            yywarning_token( "double-quoted string is missing "
+                            yywarning_token( cif_cc, "double-quoted string is missing "
                                              "a closing quote -- fixed",
                                              cif_flex_previous_line_number(), -1, ex );
                         } else {
-                            yyerror_token( "incorrect CIF syntax",
+                            yyerror_token( cif_cc, "incorrect CIF syntax",
                                            cif_flex_current_line_number()-1,
                                            cif_flex_current_position()+1,
                                            (char*)cif_flex_previous_line(),
@@ -312,11 +309,11 @@ int cif_lexer( FILE *in, cexception_t *ex )
                         if( cif_lexer_has_flags
                             (CIF_FLEX_LEXER_FIX_MISSING_CLOSING_SINGLE_QUOTE)
                             ) {
-                            yywarning_token( "single-quoted string is missing "
+                            yywarning_token( cif_cc, "single-quoted string is missing "
                                              "a closing quote -- fixed",
                                              cif_flex_previous_line_number(), -1, ex );
                         } else {
-                            yyerror_token( "incorrect CIF syntax",
+                            yyerror_token( cif_cc, "incorrect CIF syntax",
                                            cif_flex_current_line_number()-1,
                                            cif_flex_current_position()+1,
                                            (char*)cif_flex_previous_line(),
@@ -356,7 +353,7 @@ int cif_lexer( FILE *in, cexception_t *ex )
                     pushchar( &token, &length, pos++, ch );
                 }
                 /* Unterminated text field: */
-                yyerror_token(
+                yyerror_token( cif_cc,
                      cxprintf( "end of file encountered while in "
                                "text field starting in line %d, "
                                "possible runaway closing semicolon (';')",
@@ -384,7 +381,7 @@ int cif_lexer( FILE *in, cexception_t *ex )
                 /* data block header: */
                 if( strlen( token ) == 5 ) {
                     if( cif_lexer_has_flags(CIF_FLEX_LEXER_FIX_DATABLOCK_NAMES) ) {
-                        yywarning_token( "zero-length data block name detected "
+                        yywarning_token( cif_cc, "zero-length data block name detected "
                                          "-- ignored",
                                          cif_flex_previous_line_number(), -1, ex );
                     } else {
@@ -672,7 +669,7 @@ static int getlinec( FILE *in, cexception_t *ex )
                     lastTokenLine = strdupx( current_line, ex );
                     if( report_long_items ) {
                         if( strlen( current_line ) > cif_mandated_line_length ) {
-                            yynote( cxprintf( "line exceeds %d characters", 
+                            yynote( cif_cc, cxprintf( "line exceeds %d characters", 
                                               cif_mandated_line_length ), ex );
                         }
                     }
