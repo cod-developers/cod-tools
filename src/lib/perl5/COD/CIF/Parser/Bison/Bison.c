@@ -45,7 +45,6 @@ SV * convert_datablock( DATABLOCK * datablock )
     char ***values = datablock_values( datablock );
     int *inloop   = datablock_in_loop( datablock );
     int  loop_count = datablock_loop_count( datablock );
-    datablock_value_type_t **types = datablock_types( datablock );
 
     AV * taglist    = newAV();
     HV * valuehash  = newHV();
@@ -69,18 +68,18 @@ SV * convert_datablock( DATABLOCK * datablock )
         SV * type;
         for( j = 0; j < value_lengths[i]; j++ ) {
             av_push( tagvalues, newSVpv( values[i][j], 0 ) );
-            switch ( types[i][j] ) {
-                case DBLK_INT :
+            switch ( datablock_value_type( datablock, i, j ) ) {
+                case CIF_INT :
                     type = newSVpv( "INT", 3 ); break;
-                case DBLK_FLOAT :
+                case CIF_FLOAT :
                     type = newSVpv( "FLOAT", 5 ); break;
-                case DBLK_SQSTRING :
+                case CIF_SQSTRING :
                     type = newSVpv( "SQSTRING", 8 ); break;
-                case DBLK_DQSTRING :
+                case CIF_DQSTRING :
                     type = newSVpv( "DQSTRING", 8 ); break;
-                case DBLK_UQSTRING :
+                case CIF_UQSTRING :
                     type = newSVpv( "UQSTRING", 8 ); break;
-                case DBLK_TEXT :
+                case CIF_TEXT :
                     type = newSVpv( "TEXTFIELD", 9 ); break;
                 default :
                     type = newSVpv( "UNKNOWN", 7 );
