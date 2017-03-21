@@ -357,12 +357,9 @@ void delete_typed_value( typed_value *t )
     freex( t );
 }
 
-typed_value *new_typed_value( int vline, int vpos, char *vcont, VALUE *v ) {
+typed_value *new_typed_value( int vline, int vpos, char *vcont, VALUE *v )
+{
     typed_value *tv = malloc( sizeof( typed_value ) );
-    if( vline == -1 )
-        vline = cif_flex_current_line_number();
-    if( vpos == -1 )
-        vpos = cif_flex_current_position();
     tv->vline = vline;
     tv->vpos = vpos;
     tv->vcont = vcont;

@@ -30,6 +30,7 @@ static CIF_COMPILER * volatile cif_cc; /* CIF current compiler */
 
 static cexception_t *px; /* parser exception */
 
+static typed_value *typed_value_from_value( VALUE *v, cexception_t *ex );
 %}
 
 %code requires {
@@ -402,8 +403,8 @@ data_value
 string
     :   any_quoted_string
 	|	_UQSTRING
-        { $$ = new_typed_value( -1, -1, strdupx( cif2_flex_current_line(), px ),
-                                new_value_from_scalar( $1, CIF_UQSTRING, px ) );
+        {
+            $$ = typed_value_from_value( new_value_from_scalar( $1, CIF_UQSTRING, px ), px );
         }
 ;
 
@@ -414,23 +415,23 @@ any_quoted_string
 
 quoted_string
     :   _SQSTRING
-        { $$ = new_typed_value( -1, -1, strdupx( cif2_flex_current_line(), px ),
-                                new_value_from_scalar( $1, CIF_SQSTRING, px ) );
+        {
+            $$ = typed_value_from_value( new_value_from_scalar( $1, CIF_SQSTRING, px ), px );
         }
 	|	_DQSTRING
-        { $$ = new_typed_value( -1, -1, strdupx( cif2_flex_current_line(), px ),
-                                new_value_from_scalar( $1, CIF_DQSTRING, px ) );
+        {
+            $$ = typed_value_from_value( new_value_from_scalar( $1, CIF_DQSTRING, px ), px );
         }
 ;
 
 triple_quoted_string
     :   _SQ3STRING
-        { $$ = new_typed_value( -1, -1, strdupx( cif2_flex_current_line(), px ),
-                                new_value_from_scalar( $1, CIF_SQ3STRING, px ) );
+        {
+            $$ = typed_value_from_value( new_value_from_scalar( $1, CIF_SQ3STRING, px ), px );
         }
 	|	_DQ3STRING
-        { $$ = new_typed_value( -1, -1, strdupx( cif2_flex_current_line(), px ),
-                                new_value_from_scalar( $1, CIF_DQ3STRING, px ) );
+        {
+            $$ = typed_value_from_value( new_value_from_scalar( $1, CIF_DQ3STRING, px ), px );
         }
 ;
 
@@ -481,20 +482,18 @@ textfield
               }
           }
 
-          $$ = new_typed_value( -1, -1,
-                                strdupx( cif2_flex_current_line(), px ),
-                                new_value_from_scalar( text, CIF_TEXT, px ) );
+          $$ = typed_value_from_value( new_value_from_scalar( text, CIF_TEXT, px ), px );
         }
 ;
 
 number
 	:	_REAL_CONST
-        { $$ = new_typed_value( -1, -1, strdupx( cif2_flex_current_line(), px ),
-                                new_value_from_scalar( $1, CIF_FLOAT, px ) );
+        {
+            $$ = typed_value_from_value( new_value_from_scalar( $1, CIF_FLOAT, px ), px );
         }
 	|	_INTEGER_CONST
-        { $$ = new_typed_value( -1, -1, strdupx( cif2_flex_current_line(), px ),
-                                new_value_from_scalar( $1, CIF_INT, px ) );
+        {
+            $$ = typed_value_from_value( new_value_from_scalar( $1, CIF_INT, px ), px );
         }
 ;
 
@@ -505,8 +504,7 @@ list
     }
     |   '[' ']'
     {
-        $$ = new_typed_value( -1, -1, strdupx( cif2_flex_current_line(), px ),
-                              new_value_from_list( new_list( px ), px ) );
+        $$ = typed_value_from_value( new_value_from_list( new_list( px ), px ), px );
     }
 ;
 
@@ -517,8 +515,7 @@ table
     }
     |   '{' '}'
     {
-        $$ = new_typed_value( -1, -1, strdupx( cif2_flex_current_line(), px ),
-                              new_value_from_table( new_table( px ), px ) );
+        $$ = typed_value_from_value( new_value_from_table( new_table( px ), px ), px );
     }
 ;
 
@@ -656,6 +653,14 @@ int cif2error( const char *message )
                  cif2_flex_current_position()+1, px );
     cif_compiler_increase_nerrors( cif_cc );
     return 0;
+}
+
+static typed_value *typed_value_from_value( VALUE *v, cexception_t *ex )
+{
+    return new_typed_value( cif2_flex_current_line_number(),
+                             cif2_flex_current_position(),
+                             strdupx( cif2_flex_current_line(), px ),
+                             v );
 }
 
 /*

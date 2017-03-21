@@ -29,6 +29,7 @@ static CIF_COMPILER * volatile cif_cc; /* CIF current compiler */
 
 static cexception_t *px; /* parser exception */
 
+static typed_value *typed_value_from_value( VALUE *v, cexception_t *ex );
 %}
 
 %code requires {
@@ -377,16 +378,16 @@ cif_value
 
 string
 	:	_SQSTRING
-        { $$ = new_typed_value( -1, -1, strdupx( cif_flex_current_line(), px ),
-                                new_value_from_scalar( $1, CIF_SQSTRING, px ) );
+        {
+            $$ = typed_value_from_value( new_value_from_scalar( $1, CIF_SQSTRING, px ), px );
         }
 	|	_DQSTRING
-        { $$ = new_typed_value( -1, -1, strdupx( cif_flex_current_line(), px ),
-                                new_value_from_scalar( $1, CIF_DQSTRING, px ) );
+        {
+            $$ = typed_value_from_value( new_value_from_scalar( $1, CIF_DQSTRING, px ), px );
         }
 	|	_UQSTRING
-        { $$ = new_typed_value( -1, -1, strdupx( cif_flex_current_line(), px ),
-                                new_value_from_scalar( $1, CIF_UQSTRING, px ) );
+        {
+            $$ = typed_value_from_value( new_value_from_scalar( $1, CIF_UQSTRING, px ), px );
         }
 ;
 
@@ -437,21 +438,15 @@ textfield
               }
           }
 
-          $$ = new_typed_value( -1, -1,
-                                strdupx( cif_flex_current_line(), px ),
-                                new_value_from_scalar( text, CIF_TEXT, px ) );
+          $$ = typed_value_from_value( new_value_from_scalar( $1, CIF_TEXT, px ), px );
         }
 ;
 
 number
 	:	_REAL_CONST
-        { $$ = new_typed_value( -1, -1, strdupx( cif_flex_current_line(), px ),
-                                new_value_from_scalar( $1, CIF_FLOAT, px ) );
-        }
+        { $$ = typed_value_from_value( new_value_from_scalar( $1, CIF_FLOAT, px ), px ); }
 	|	_INTEGER_CONST
-        { $$ = new_typed_value( -1, -1, strdupx( cif_flex_current_line(), px ),
-                                new_value_from_scalar( $1, CIF_INT, px ) );
-        }
+        { $$ = typed_value_from_value( new_value_from_scalar( $1, CIF_INT, px ), px ); }
 ;
 
 %%
@@ -552,6 +547,13 @@ int ciferror( const char *message )
                  cif_flex_current_position()+1, px );
     cif_compiler_increase_nerrors( cif_cc );
     return 0;
+}
+
+static typed_value *typed_value_from_value( VALUE *v, cexception_t *ex )
+{
+    return new_typed_value( cif_flex_current_line_number(),
+                             cif_flex_current_position(),
+                             strdupx( cif_flex_current_line(), px ), v );
 }
 
 /*
