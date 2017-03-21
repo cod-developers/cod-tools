@@ -496,7 +496,7 @@ CIF *new_cif_from_cif_file( char *filename, cif_option_t co, cexception_t *ex )
     volatile int nerrors;
     cexception_t inner;
     CIF * volatile cif = NULL;
-    extern void yyrestart();
+    extern void cifrestart();
 
     assert( !cif_cc );
     cif_cc = new_cif_compiler( filename, co, ex );
@@ -507,7 +507,7 @@ CIF *new_cif_from_cif_file( char *filename, cif_option_t co, cexception_t *ex )
         cif_compile_file( filename, &inner );
     }
     cexception_catch {
-        yyrestart();
+        cifrestart();
         if( !isset_suppress_messages( cif_cc ) ) {
             delete_cif_compiler( cif_cc );
             cif_cc = NULL;
