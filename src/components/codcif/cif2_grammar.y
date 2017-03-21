@@ -364,7 +364,7 @@ loop_values
             cif_compiler_increase_loop_values( cif_cc );
             cif_push_loop_value( cif_compiler_cif( cif_cc ),
                                  typed_value_value( $2 ), px );
-            typed_value_value( $2 ); /* protecting v from free'ing */
+            typed_value_detach_value( $2 ); /* protecting v from free'ing */
             delete_typed_value( $2 );
         }
 	|	data_value
@@ -372,7 +372,7 @@ loop_values
             cif_compiler_increase_loop_values( cif_cc );
             cif_push_loop_value( cif_compiler_cif( cif_cc ),
                                  typed_value_value( $1 ), px );
-            typed_value_value( $1 ); /* protecting v from free'ing */
+            typed_value_detach_value( $1 ); /* protecting v from free'ing */
             delete_typed_value( $1 );
         }
 ;
