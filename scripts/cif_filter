@@ -196,6 +196,24 @@ my %spacegroups = map {
 #*        Do not estimate space group symbols from the symmetry operators
 #*        in the input (default).
 #*
+#*    --keep-unrecognised-spacegroups
+#*        This option is a modifier for the '--estimate-spacegroup' option.
+#*        Leave tags with unrecognised space group information as they are.
+#*    --dont-keep-unrecognised-spacegroups,
+#*    --no-keep-unrecognised-spacegroups
+#*        This option is a modifier for the '--estimate-spacegroup' option.
+#*        Replace the values of tags with unrecognised space group
+#*        information with unknown values (represented as '?') and store
+#*        the unrecognised space group information in '_cod_original_sg_*'
+#*        tags (default).
+#*
+#*    --reformat-space-group, --reformat-spacegroup
+#*        Correct the formatting of Hermann-Mauguin symmetry space group
+#*        symbol.
+#*    --dont-reformat-space-group, --leave-space-group
+#*    --dont-reformat-spacegroup, --leave-spacegroup
+#*        Leave the Hermann-Mauguin symmetry space group symbol as is (default).
+#*
 #*    --exclude-empty-tags
 #*        Remove tags that contain only empty values. A value is
 #*        considered empty if it equal to a single question mark ('?')
@@ -260,22 +278,6 @@ my %spacegroups = map {
 #*        Print loops in the same order they appeared in the original file.
 #*    --use-internal-loop-order
 #*        Disregard original loop order while printing the tags (default).
-#*
-#*    --keep-unrecognised-spacegroups
-#*        Leave tags with unrecognised space group information as they are.
-#*    --dont-keep-unrecognised-spacegroups,
-#*    --no-keep-unrecognised-spacegroups
-#*        Replace the values of tags with unrecognised space group
-#*        information with unknown values (represented as '?') and store
-#*        the unrecognised space group information in '_cod_original_sg_*'
-#*        tags.
-#*
-#*    --reformat-space-group, --reformat-spacegroup
-#*        Correct the formatting of Hermann-Mauguin symmetry space group
-#*        symbol.
-#*    --dont-reformat-space-group, --leave-space-group
-#*    --dont-reformat-spacegroup, --leave-spacegroup
-#*        Leave the Hermann-Mauguin symmetry space group symbol as is (default).
 #*
 #*    --calculate-cell-volume
 #*        Calculate the unit cell volume from the cell constants. If the
@@ -1230,6 +1232,8 @@ for my $filename (@ARGV) {
                                 }
                                 set_tag( $dataset, '_space_group_IT_number', '?' );
                             }
+                            warn 'WARNING, the space group could not be ' .
+                                 'estimated from the symmetry operators' . "\n";
                         }
                     }
                 } else {
