@@ -13,7 +13,6 @@
 #include <cxprintf.h>
 #include <stdiox.h>
 #include <common.h>
-#include <cif_lexer.h>
 #include <cif_options.h>
 #include <cif_grammar_y.h>
 #include <cif2_grammar_y.h>
@@ -332,10 +331,10 @@ int yywarning_token( CIF_COMPILER *cif_cc, const char *message,
     return 0;
 }
 
-int yynote( CIF_COMPILER *cif_cc, const char *message, cexception_t *ex )
+int yynote_token( CIF_COMPILER *cif_cc, const char *message,
+                  int line, int pos, cexception_t *ex )
 {
-    print_message( cif_cc, "NOTE", message, "", cif_flex_previous_line_number(), -1,
-                   ex );
+    print_message( cif_cc, "NOTE", message, "", line, pos, ex );
     cif_compiler_increase_nnotes( cif_cc );
     return 0;
 }

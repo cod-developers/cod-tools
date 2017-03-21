@@ -206,9 +206,9 @@ static int cif_lexer( FILE *in, cexception_t *ex )
             }
             if( report_long_items ) {
                 if( strlen( ciflval.s ) > cif_mandated_tag_length ) {
-                    yynote( cif_cc, cxprintf( "data name '%s' exceeds %d characters",
+                    yynote_token( cif_cc, cxprintf( "data name '%s' exceeds %d characters",
                                       ciflval.s, cif_mandated_tag_length ),
-                            ex );
+                                  cif_flex_previous_line_number(), -1, ex );
                 }
             }
             return _TAG;
@@ -671,8 +671,9 @@ static int getlinec( FILE *in, cexception_t *ex )
                     lastTokenLine = strdupx( current_line, ex );
                     if( report_long_items ) {
                         if( strlen( current_line ) > cif_mandated_line_length ) {
-                            yynote( cif_cc, cxprintf( "line exceeds %d characters", 
-                                              cif_mandated_line_length ), ex );
+                            yynote_token( cif_cc, cxprintf( "line exceeds %d characters", 
+                                              cif_mandated_line_length ),
+                                  cif_flex_previous_line_number(), -1, ex );
                         }
                     }
                 } else {

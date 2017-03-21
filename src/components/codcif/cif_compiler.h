@@ -64,7 +64,8 @@ int yyerror_token( CIF_COMPILER *cif_cc, const char *message,
                    int line, int pos, char *cont, cexception_t *ex );
 int yywarning_token( CIF_COMPILER *cif_cc, const char *message,
                      int line, int pos, cexception_t *ex );
-int yynote( CIF_COMPILER *cif_cc, const char *message, cexception_t *ex );
+int yynote_token( CIF_COMPILER *cif_cc, const char *message,
+                  int line, int pos, cexception_t *ex );
 
 typedef struct typed_value typed_value;
 
