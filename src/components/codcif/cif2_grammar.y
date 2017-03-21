@@ -445,6 +445,7 @@ textfield
               ssize_t str_len = strlen( text );
               char *unprefixed_text =
                     cif_unprefix_textfield( text );
+              freex( text );
               text = unprefixed_text;
               if( str_len != strlen( unprefixed_text ) ) {
                   unprefixed = 1;
@@ -456,6 +457,7 @@ textfield
               size_t str_len = strlen( text );
               char *unfolded_text =
                     cif_unfold_textfield( text );
+              freex( text );
               text = unfolded_text;
               if( str_len != strlen( unfolded_text ) ) {
                   unfolded = 1;
