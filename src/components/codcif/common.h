@@ -17,6 +17,8 @@ char *process_escapes( char *str );
 char translate_escape( char **s );
 ssize_t countchars( char c, char *s );
 
+int is_integer( char *s );
+
 char *cif_unprefix_textfield( char *tf );
 char *cif_unfold_textfield( char *tf );
 int is_tag_value_unknown( char *tv );

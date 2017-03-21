@@ -107,7 +107,6 @@ void cifrestart( void )
 }
 
 static int starts_with_keyword( char *keyword, char *string );
-static int is_integer( char *s );
 static int is_real( char *s );
 
 static void pushchar( char **buf, size_t *length, size_t pos, int ch );
@@ -494,46 +493,6 @@ static int starts_with_keyword( char *keyword, char *string )
             return 0;
         }
     }
-    return 1;
-}
-
-static int is_integer( char *s )
-{
-    int has_opening_brace = 0;
-
-    if( !s ) return 0;
-
-    if( !isdigit(*s) && *s != '+' && *s != '-' ) {
-        return 0;
-    }
-
-    if( *s == '+' || *s == '-' ) s++;
-
-    if( !isdigit(*s) ) return 0;
-
-    while( *s && *s != '(' ) {
-        if( !isdigit(*s++) ) {
-            return 0;
-        }
-    }
-
-    if( *s && *s != '(' ) return 0;
-    if( *s && *s == '(' ) {
-        s++;
-        has_opening_brace = 1;
-    }
-
-    while( *s && *s != ')' ) {
-        if( !isdigit(*s++) ) {
-            return 0;
-        }        
-    }
-
-    if( *s != ')' && has_opening_brace ) return 0;
-    if( *s == ')' ) s++;
-
-    if( *s != '\0' ) return 0;
-
     return 1;
 }
 

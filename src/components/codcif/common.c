@@ -9,10 +9,10 @@
 #include <common.h>
 
 /* uses: */
+#include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
 
 /* FIXME: use exceptions or return NULL pointers and check in
    strclone() and its clones: */
@@ -96,6 +96,46 @@ ssize_t countchars( char c, char *s )
         if( *s++ == c ) sum ++;
     }
     return sum;
+}
+
+int is_integer( char *s )
+{
+    int has_opening_brace = 0;
+
+    if( !s ) return 0;
+
+    if( !isdigit(*s) && *s != '+' && *s != '-' ) {
+        return 0;
+    }
+
+    if( *s == '+' || *s == '-' ) s++;
+
+    if( !isdigit(*s) ) return 0;
+
+    while( *s && *s != '(' ) {
+        if( !isdigit(*s++) ) {
+            return 0;
+        }
+    }
+
+    if( *s && *s != '(' ) return 0;
+    if( *s && *s == '(' ) {
+        s++;
+        has_opening_brace = 1;
+    }
+
+    while( *s && *s != ')' ) {
+        if( !isdigit(*s++) ) {
+            return 0;
+        }        
+    }
+
+    if( *s != ')' && has_opening_brace ) return 0;
+    if( *s == ')' ) s++;
+
+    if( *s != '\0' ) return 0;
+
+    return 1;
 }
 
 char *cif_unprefix_textfield( char *tf )
