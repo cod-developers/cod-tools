@@ -1,6 +1,7 @@
 #include <EXTERN.h>
 #include <perl.h>
 #include <XSUB.h>
+#include <cif_compiler.h>
 #include <cif_grammar_y.h>
 #include <cif_grammar_flex.h>
 #include <cif_options.h>
