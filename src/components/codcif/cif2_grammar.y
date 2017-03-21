@@ -32,10 +32,6 @@ static cexception_t *px; /* parser exception */
 
 int yyerror_token( const char *message, int line, int pos, char *cont, cexception_t *ex );
 
-int loop_tag_count = 0;
-int loop_value_count = 0;
-int loop_start = 0;
-
 %}
 
 %code requires {
@@ -313,18 +309,17 @@ loop
        :	_LOOP_ 
        {
            assert_datablock_exists( cif_cc, px );
-           loop_tag_count = 0;
-           loop_value_count = 0;
-           loop_start = cif_flex_current_line_number();
+           cif_compiler_start_loop( cif_cc, cif_flex_current_line_number() );
            cif_start_loop( cif_compiler_cif( cif_cc ), px );
            freex( $1 );
        } 
        loop_tags loop_values
        {
-           if( loop_value_count % loop_tag_count != 0 ) {
+           if( cif_compiler_loop_value_count( cif_cc ) %
+               cif_compiler_loop_tag_count( cif_cc ) != 0 ) {
                yyerror( cxprintf( "wrong number of elements in the "
                                   "loop starting at line %d",
-                                  loop_start ) );
+                                   cif_compiler_loop_start_line( cif_cc ) ) );
 #if 0
                if( cif_compiler_cif( cif_cc ) ) {
                    cif_set_yyretval( cif_compiler_cif( cif_cc ), -1 );
@@ -332,7 +327,7 @@ loop
                cexception_raise( px, CIF_UNRECOVERABLE_ERROR,
                    cxprintf( "wrong number of elements in the "
                              "loop starting at line %d",
-                              loop_start ) );
+                              cif_compiler_loop_start_line( cif_cc ) ) );
 #endif
            }
            cif_finish_loop( cif_compiler_cif( cif_cc ), px );
@@ -347,7 +342,7 @@ loop_tags
                 yyerror_token( cxprintf( "tag %s appears more than once", $2 ),
                                cif_flex_current_line_number(), -1, NULL, px );
             }
-            loop_tag_count++;
+            cif_compiler_increase_loop_tags( cif_cc );
             cif_insert_value( cif_compiler_cif( cif_cc ), $2, NULL, px );
             freex( $2 );
         }
@@ -358,7 +353,7 @@ loop_tags
                 yyerror_token( cxprintf( "tag %s appears more than once", $1 ),
                                cif_flex_current_line_number(), -1, NULL, px );
             }
-            loop_tag_count++;
+            cif_compiler_increase_loop_tags( cif_cc );
             cif_insert_value( cif_compiler_cif( cif_cc ), $1, NULL, px );
             freex( $1 );
         }
@@ -367,7 +362,7 @@ loop_tags
 loop_values
 	:	loop_values data_value
         {
-            loop_value_count++;
+            cif_compiler_increase_loop_values( cif_cc );
             cif_push_loop_value( cif_compiler_cif( cif_cc ),
                                  typed_value_value( $2 ), px );
             typed_value_value( $2 ); /* protecting v from free'ing */
@@ -375,7 +370,7 @@ loop_values
         }
 	|	data_value
         {
-            loop_value_count++;
+            cif_compiler_increase_loop_values( cif_cc );
             cif_push_loop_value( cif_compiler_cif( cif_cc ),
                                  typed_value_value( $1 ), px );
             typed_value_value( $1 ); /* protecting v from free'ing */

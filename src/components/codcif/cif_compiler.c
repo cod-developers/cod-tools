@@ -21,6 +21,10 @@ typedef struct CIF_COMPILER {
     int errcount;
     int warncount;
     int notecount;
+    
+    int loop_tag_count;
+    int loop_value_count;
+    int loop_start;
 } CIF_COMPILER;
 
 void delete_cif_compiler( CIF_COMPILER *c )
@@ -68,6 +72,21 @@ int cif_compiler_nerrors( CIF_COMPILER *ccc )
     return ccc->errcount;
 }
 
+int cif_compiler_loop_tag_count( CIF_COMPILER *ccc )
+{
+    return ccc->loop_tag_count;
+}
+
+int cif_compiler_loop_value_count( CIF_COMPILER *ccc )
+{
+    return ccc->loop_value_count;
+}
+
+int cif_compiler_loop_start_line( CIF_COMPILER *ccc )
+{
+    return ccc->loop_start;
+}
+
 void cif_compiler_detach_cif( CIF_COMPILER *ccc )
 {
     ccc->cif = NULL;
@@ -86,6 +105,23 @@ void cif_compiler_increase_nwarnings( CIF_COMPILER *ccc )
 void cif_compiler_increase_nnotes( CIF_COMPILER *ccc )
 {
     ccc->notecount++;
+}
+
+void cif_compiler_increase_loop_tags( CIF_COMPILER *ccc )
+{
+    ccc->loop_tag_count++;
+}
+
+void cif_compiler_increase_loop_values( CIF_COMPILER *ccc )
+{
+    ccc->loop_value_count++;
+}
+
+void cif_compiler_start_loop( CIF_COMPILER *ccc, int line )
+{
+    ccc->loop_tag_count = 0;
+    ccc->loop_value_count = 0;
+    ccc->loop_start = line;
 }
 
 void assert_datablock_exists( CIF_COMPILER *ccc, cexception_t *ex )
