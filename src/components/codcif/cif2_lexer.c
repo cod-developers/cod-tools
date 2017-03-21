@@ -109,8 +109,6 @@ void cif2restart( void )
     /* FIXME: Nothing so far, to be expanded... */
 }
 
-static int starts_with_keyword( char *keyword, char *string );
-
 static void pushchar( char **buf, size_t *length, size_t pos, int ch );
 static void ungetlinec( int ch, FILE *in );
 static int getlinec( FILE *in, cexception_t *ex );
@@ -573,23 +571,6 @@ static int cif_lexer( FILE *in, cexception_t *ex )
 
     qstring_seen = 0;
     return 0;
-}
-
-static int starts_with_keyword( char *keyword, char *string )
-{
-    size_t length1 = strlen( keyword );
-    size_t length2 = strlen( string );
-    size_t length = length1 < length2 ? length1 : length2;
-
-    if( length < length1 )
-        return 0;
-
-    while( length-- > 0 ) {
-        if( *keyword++ != tolower(*string++) ) {
-            return 0;
-        }
-    }
-    return 1;
 }
 
 static void pushchar( char **buf, size_t *length, size_t pos, int ch )

@@ -17,6 +17,7 @@ char *process_escapes( char *str );
 char translate_escape( char **s );
 ssize_t countchars( char c, char *s );
 
+int starts_with_keyword( char *keyword, char *string );
 int is_integer( char *s );
 int is_real( char *s );
 
