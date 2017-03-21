@@ -98,7 +98,7 @@ stray_data_value_list
                     print_message( cif_cc, "ERROR", "stray CIF values at the "
                                    "beginning of the input file", "",
                                    typed_value_line( $1 ), -1, px );
-                    yyincrease_error_counter();
+                    cif_compiler_increase_nerrors( cif_cc );
             }
             delete_typed_value( $1 );
         }
@@ -113,7 +113,7 @@ stray_data_value_list
                     print_message( cif_cc, "ERROR", "stray CIF values at the "
                                    "beginning of the input file", "",
                                    typed_value_line( $1 ), -1, px );
-                    yyincrease_error_counter();
+                    cif_compiler_increase_nerrors( cif_cc );
             }
             delete_typed_value( $1 );
             delete_typed_value( $2 );
@@ -144,7 +144,7 @@ headerless_data_block
                               "ERROR", "no data block heading "
                               "(i.e. data_somecif) found", "",
                               cif_flex_previous_line_number(), -1, px );
-                    yyincrease_error_counter();
+                    cif_compiler_increase_nerrors( cif_cc );
             }
         }
 	|	block_content
@@ -160,7 +160,7 @@ headerless_data_block
                               "ERROR", "no data block heading "
                               "(i.e. data_somecif) found", "",
                               cif_flex_previous_line_number(), -1, px );
-                    yyincrease_error_counter();
+                    cif_compiler_increase_nerrors( cif_cc );
             }
         }
 		block_content_list
@@ -578,16 +578,16 @@ static void cif_compile_file( char *filename, cexception_t *ex )
         }
         px = &inner; /* catch all parser-generated exceptions */
         if( (yyretval = yyparse()) != 0 ) {
-            int errcount = cif_yy_error_number();
             if( cif_compiler_cif( cif_cc ) ) {
+                int errcount = cif_compiler_nerrors( cif_cc );
                 cif_set_yyretval( cif_compiler_cif( cif_cc ), yyretval );
                 cif_set_nerrors( cif_compiler_cif( cif_cc ), errcount );
+                cexception_raise( &inner, CIF_UNRECOVERABLE_ERROR,
+                    cxprintf( "compiler could not recover "
+                        "from errors, quitting now -- "
+                        "%d error(s) detected",
+                        errcount ));
             }
-            cexception_raise( &inner, CIF_UNRECOVERABLE_ERROR,
-                cxprintf( "compiler could not recover "
-                    "from errors, quitting now -- "
-                    "%d error(s) detected",
-                    errcount ));
         }
     }
     cexception_catch {
@@ -609,7 +609,6 @@ CIF *new_cif_from_cif_file( char *filename, cif_option_t co, cexception_t *ex )
 
     assert( !cif_cc );
     cif_cc = new_cif_compiler( filename, co, ex );
-    cif_yy_reset_error_count();
     cif_flex_reset_counters();
     cif_lexer_set_compiler( cif_cc );
 
@@ -644,32 +643,18 @@ CIF *new_cif_from_cif_file( char *filename, cif_option_t co, cexception_t *ex )
         }
     }
 
+    nerrors = cif_compiler_nerrors( cif_cc );
+    if( cif && nerrors > 0 ) {
+        cif_set_nerrors( cif, nerrors );
+    }
+
     cif = cif_compiler_cif( cif_cc );
     cif_compiler_detach_cif( cif_cc );
     delete_cif_compiler( cif_cc );
     cif_cc = NULL;
 
-    nerrors = cif_yy_error_number();
-    if( cif && nerrors > 0 ) {
-        cif_set_nerrors( cif, nerrors );
-    }
-
     cif_revert_message_list( cif );
     return cif;
-}
-
-static int errcount = 0;
-static int warncount = 0;
-static int notecount = 0;
-
-int cif_yy_error_number( void )
-{
-    return errcount;
-}
-
-void cif_yy_reset_error_count( void )
-{
-    errcount = 0;
 }
 
 int yyerror( const char *message )
@@ -681,7 +666,7 @@ int yyerror( const char *message )
                    cif_flex_current_position()+1, px );
     print_trace( cif_cc, (char*)cif_flex_current_line(),
                  cif_flex_current_position()+1, px );
-    errcount++;
+    cif_compiler_increase_nerrors( cif_cc );
     return 0;
 }
 
@@ -692,27 +677,22 @@ int yyerror_token( const char *message, int line, int pos, char *cont, cexceptio
     if( cont != NULL ) {
         print_trace( cif_cc, cont, pos, ex );
     }
-    errcount++;
+    cif_compiler_increase_nerrors( cif_cc );
     return 0;
-}
-
-void yyincrease_error_counter( void )
-{
-    errcount++;
 }
 
 int yynote( const char *message, cexception_t *ex )
 {
     print_message( cif_cc, "NOTE", message, "", cif_flex_previous_line_number(), -1,
                    ex );
-    notecount++;
+    cif_compiler_increase_nnotes( cif_cc );
     return 0;
 }
 
 int yywarning_token( const char *message, int line, int pos, cexception_t *ex )
 {
     print_message( cif_cc, "WARNING", message, "", line, pos, ex );
-    warncount++;
+    cif_compiler_increase_nwarnings( cif_cc );
     return 0;
 }
 

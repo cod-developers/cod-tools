@@ -17,6 +17,10 @@ typedef struct CIF_COMPILER {
     char *filename;
     CIF *cif;
     cif_option_t options;
+
+    int errcount;
+    int warncount;
+    int notecount;
 } CIF_COMPILER;
 
 void delete_cif_compiler( CIF_COMPILER *c )
@@ -59,9 +63,29 @@ CIF *cif_compiler_cif( CIF_COMPILER *ccc )
     return ccc->cif;
 }
 
+int cif_compiler_nerrors( CIF_COMPILER *ccc )
+{
+    return ccc->errcount;
+}
+
 void cif_compiler_detach_cif( CIF_COMPILER *ccc )
 {
     ccc->cif = NULL;
+}
+
+void cif_compiler_increase_nerrors( CIF_COMPILER *ccc )
+{
+    ccc->errcount++;
+}
+
+void cif_compiler_increase_nwarnings( CIF_COMPILER *ccc )
+{
+    ccc->warncount++;
+}
+
+void cif_compiler_increase_nnotes( CIF_COMPILER *ccc )
+{
+    ccc->notecount++;
 }
 
 void assert_datablock_exists( CIF_COMPILER *ccc, cexception_t *ex )

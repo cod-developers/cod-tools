@@ -26,8 +26,12 @@ void delete_cif_compiler( CIF_COMPILER *c );
 
 char *cif_compiler_filename( CIF_COMPILER *ccc );
 CIF *cif_compiler_cif( CIF_COMPILER *ccc );
+int cif_compiler_nerrors( CIF_COMPILER *ccc );
 
 void cif_compiler_detach_cif( CIF_COMPILER *ccc );
+void cif_compiler_increase_nerrors( CIF_COMPILER *ccc );
+void cif_compiler_increase_nwarnings( CIF_COMPILER *ccc );
+void cif_compiler_increase_nnotes( CIF_COMPILER *ccc );
 
 void assert_datablock_exists( CIF_COMPILER *ccc, cexception_t *ex );
 

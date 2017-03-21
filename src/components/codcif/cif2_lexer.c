@@ -884,7 +884,7 @@ static char *clean_string( char *src, int is_textfield, cexception_t *ex )
                                        cif_flex_current_line_number(),
                                        -1, ex );
                         print_current_text_field( cif_cc, start, ex );
-                        yyincrease_error_counter();
+                        cif_compiler_increase_nerrors( cif_cc );
                         non_ascii_explained = 1;
                     }
                     dest--; /* Omit non-ascii symbols */
