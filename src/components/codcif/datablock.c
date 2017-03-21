@@ -59,7 +59,6 @@ struct DATABLOCK {
                                   not in a loop */
     ssize_t *value_lengths;    /* Lengths of the values[i] arrays. */
     ssize_t *value_capacities; /* Capacities of the values[i] arrays. */
-    // cif_value_type_t **types;   /* Type for each value in 'values'. */
 
     ssize_t loop_value_count; /* Number of values in the currently constructed loop. */
     ssize_t loop_start; /* Index of the entry into the 'tags',
@@ -101,8 +100,6 @@ void delete_datablock( DATABLOCK *datablock )
                     delete_value( datablock_value( datablock, i, j ) );
                 freex( datablock->values[i] );
             }
-            /* if( datablock->types )
-                  freex( datablock->types[i] ); */
         }
         freex( datablock->name );
         freex( datablock->tags );
@@ -110,7 +107,6 @@ void delete_datablock( DATABLOCK *datablock )
         freex( datablock->values );
         freex( datablock->value_lengths );
         freex( datablock->value_capacities );
-        // freex( datablock->types );
         freex( datablock->loop_first );
         freex( datablock->loop_last );
         delete_datablock_list( datablock->save_frames );
@@ -248,18 +244,15 @@ cif_value_type_t **datablock_types( DATABLOCK *datablock )
 }
 */
 
-/*
 cif_value_type_t datablock_value_type( DATABLOCK *datablock, int tag_nr, int val_nr )
 {
-    if( tag_nr >= datablock->length ) {
+    VALUE *v = datablock_value( datablock, tag_nr, val_nr );
+    if( v ) {
+        return value_get_type( v );
+    } else {
         return CIF_NON_EXISTANT;
     }
-    if( val_nr >= datablock->value_lengths[tag_nr] ) {
-        return CIF_NON_EXISTANT;
-    }
-    return datablock->types[tag_nr][val_nr];
 }
-*/
 
 int datablock_loop_count( DATABLOCK *datablock )
 {
