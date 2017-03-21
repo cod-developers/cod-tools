@@ -7,7 +7,7 @@
 
 %{
 /* exports: */
-#include <cif_grammar_y.h>
+#include <cif2_grammar_y.h>
 
 /* uses: */
 #include <stdio.h>
@@ -593,7 +593,7 @@ static void cif_compile_file( char *filename, cexception_t *ex )
     fclosex( yyin, ex );
 }
 
-CIF *new_cif_from_cif_file( char *filename, cif_option_t co, cexception_t *ex )
+CIF *new_cif_from_cif2_file( char *filename, cif_option_t co, cexception_t *ex )
 {
     volatile int nerrors;
     cexception_t inner;
