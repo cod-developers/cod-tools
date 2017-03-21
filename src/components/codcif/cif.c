@@ -137,7 +137,8 @@ void cif_start_save_frame( CIF * volatile cif, const char *name,
     assert( cif->current_datablock );
 
     if( cif->current_datablock != cif->last_datablock ) {
-        yyerror( "save frames may not be nested" );
+        cexception_raise( ex, CIF_NESTED_FRAMES_ERROR, 
+                          "save frames may not be nested" );
     }
 
     save_frame = datablock_start_save_frame( cif->current_datablock, name, ex );
