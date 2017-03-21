@@ -42,7 +42,6 @@ static int lastTokenPos = 0;
 static int thisTokenPos = 0;
 
 static int ungot_ch = 0;
-static int beginning_of_file = 1;
 
 /* was the last returned symbol a quoted string? */
 static int qstring_seen = 0;
@@ -129,30 +128,6 @@ static int cif_lexer( FILE *in, cexception_t *ex )
     static char *token = NULL;
     static size_t length = 0;
     int pos;
-    
-    if( beginning_of_file ) {
-        ch = getlinec( in, ex );
-        if( ch == 254 ) { /* U+FEFF detected */
-            ch = getlinec( in, ex );
-            ch = getlinec( in, ex );
-        }
-        if( ch == '#' ) {
-            advance_mark();
-            pos = 0;
-            while( ch != EOF && ch != '\r' && ch != '\n' ) {
-                pushchar( &token, &length, pos++, ch = getlinec( in, ex ));
-            }
-            if( !starts_with_keyword( "\\#cif_2.0", token ) ) {
-                yynote( cif_cc, "first line does not start with magic code (#\\#CIF_2.0)", ex );
-            }
-            freex( token );
-            token = NULL;
-            length = 0;
-        } else {
-            yynote( cif_cc, "first line does not start with magic code (#\\#CIF_2.0)", ex );
-        }
-        beginning_of_file = 0;
-    }
 
     while( ch != EOF ) {
         /* It is important that the predicate that checks for spaces
