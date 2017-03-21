@@ -475,7 +475,7 @@ CIF *new_cif_from_cif_file( char *filename, cif_option_t co, cexception_t *ex )
 
     cexception_guard( inner ) {
         if( filename ) {
-            in = fopenx( filename, "r", ex );
+            in = fopenx( filename, "r", &inner );
         } else {
             in = stdin;
         }
