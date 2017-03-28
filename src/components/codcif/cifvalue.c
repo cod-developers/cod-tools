@@ -8,11 +8,11 @@
 #include <cexceptions.h>
 #include <assert.h>
 #include <allocx.h>
-#include <value.h>
+#include <cifvalue.h>
 #include <ciflist.h>
 #include <ciftable.h>
 
-struct VALUE {
+struct CIFVALUE {
     union {
         char *str;
         struct CIFLIST *l;
@@ -21,7 +21,7 @@ struct VALUE {
     cif_value_type_t type;
 };
 
-void delete_value( VALUE *value ) {
+void delete_value( CIFVALUE *value ) {
     assert( value );
 
     if( value->type == CIF_LIST ) {
@@ -34,32 +34,32 @@ void delete_value( VALUE *value ) {
     freex( value );
 }
 
-VALUE *new_value_from_scalar( char *s, cif_value_type_t type,
+CIFVALUE *new_value_from_scalar( char *s, cif_value_type_t type,
                               cexception_t *ex )
 {
-    VALUE *value = callocx( 1, sizeof(VALUE), ex );
+    CIFVALUE *value = callocx( 1, sizeof(CIFVALUE), ex );
     value->v.str = s;
     value->type = type;
     return value;
 }
 
-VALUE *new_value_from_list( CIFLIST *list, cexception_t *ex )
+CIFVALUE *new_value_from_list( CIFLIST *list, cexception_t *ex )
 {
-    VALUE *value = callocx( 1, sizeof(VALUE), ex );
+    CIFVALUE *value = callocx( 1, sizeof(CIFVALUE), ex );
     value->v.l = list;
     value->type = CIF_LIST;
     return value;
 }
 
-VALUE *new_value_from_table( CIFTABLE *table, cexception_t *ex )
+CIFVALUE *new_value_from_table( CIFTABLE *table, cexception_t *ex )
 {
-    VALUE *value = callocx( 1, sizeof(VALUE), ex );
+    CIFVALUE *value = callocx( 1, sizeof(CIFVALUE), ex );
     value->v.t = table;
     value->type = CIF_TABLE;
     return value;
 }
 
-void value_dump( VALUE *value ) {
+void value_dump( CIFVALUE *value ) {
     assert( value );
     switch( value->type ) {
         case CIF_LIST:
@@ -88,18 +88,18 @@ void value_dump( VALUE *value ) {
     }
 }
 
-cif_value_type_t value_type( VALUE *value ) {
+cif_value_type_t value_type( CIFVALUE *value ) {
     return value->type;
 }
 
-char *value_scalar( VALUE *value ) {
+char *value_scalar( CIFVALUE *value ) {
     return value->v.str;
 }
 
-CIFLIST *value_list( VALUE *value ) {
+CIFLIST *value_list( CIFVALUE *value ) {
     return value->v.l;
 }
 
-CIFTABLE *value_table( VALUE *value ) {
+CIFTABLE *value_table( CIFVALUE *value ) {
     return value->v.t;
 }

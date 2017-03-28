@@ -11,7 +11,7 @@
 #include <cexceptions.h>
 #include <stringx.h>
 #include <ciflist.h>
-#include <value.h>
+#include <cifvalue.h>
 
 #define DELTA_CAPACITY (100)
 
@@ -20,7 +20,7 @@ struct CIFLIST {
     size_t length;
     size_t capacity;
 
-    VALUE **values;
+    CIFVALUE **values;
 };
 
 void delete_list( CIFLIST *list )
@@ -53,7 +53,7 @@ void list_dump( CIFLIST *list )
     printf( " ]" );
 }
 
-void list_push( CIFLIST *list, VALUE *value, cexception_t *ex )
+void list_push( CIFLIST *list, CIFVALUE *value, cexception_t *ex )
 {
     assert( list );
 
@@ -64,7 +64,7 @@ void list_push( CIFLIST *list, VALUE *value, cexception_t *ex )
         i = list->length;
         if( list->length + 1 > list->capacity ) {
             list->values = reallocx( list->values,
-                                     sizeof(VALUE*) *
+                                     sizeof(CIFVALUE*) *
                                      (list->capacity + DELTA_CAPACITY),
                                       &inner );
             list->values[i] = NULL;
@@ -79,7 +79,7 @@ void list_push( CIFLIST *list, VALUE *value, cexception_t *ex )
     }    
 }
 
-void list_unshift( CIFLIST *list, VALUE *value, cexception_t *ex )
+void list_unshift( CIFLIST *list, CIFVALUE *value, cexception_t *ex )
 {
     assert( list );
     list_push( list, NULL, ex ); // for now, we simply extend the list
@@ -96,12 +96,12 @@ size_t list_length( CIFLIST *list )
     return list->length;
 }
 
-VALUE *list_get( CIFLIST *list, int index )
+CIFVALUE *list_get( CIFLIST *list, int index )
 {
     return list->values[index];
 }
 
-VALUE **list_get_values( CIFLIST *list )
+CIFVALUE **list_get_values( CIFLIST *list )
 {
     return list->values;
 }
@@ -111,7 +111,7 @@ int list_contains_list_or_table( CIFLIST *list )
     assert( list );
     size_t i;
     for( i = 0; i < list_length( list ); i++ ) {
-        VALUE *value = list_get( list, i );
+        CIFVALUE *value = list_get( list, i );
         if( value_type( value ) == CIF_LIST ||
             value_type( value ) == CIF_TABLE ) {
             return 1;

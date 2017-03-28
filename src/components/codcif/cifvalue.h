@@ -10,7 +10,7 @@
 
 #include <cexceptions.h>
 
-typedef struct VALUE VALUE;
+typedef struct CIFVALUE CIFVALUE;
 
 typedef enum {
     CIF_UNKNOWN = 0,
@@ -31,16 +31,16 @@ typedef enum {
 #include <ciflist.h>
 #include <ciftable.h>
 
-VALUE *new_value_from_scalar( char *s, cif_value_type_t type, cexception_t *ex );
-VALUE *new_value_from_list( CIFLIST *list, cexception_t *ex );
-VALUE *new_value_from_table( CIFTABLE *table, cexception_t *ex );
+CIFVALUE *new_value_from_scalar( char *s, cif_value_type_t type, cexception_t *ex );
+CIFVALUE *new_value_from_list( CIFLIST *list, cexception_t *ex );
+CIFVALUE *new_value_from_table( CIFTABLE *table, cexception_t *ex );
 
-void delete_value( VALUE *value );
-void value_dump( VALUE *value );
+void delete_value( CIFVALUE *value );
+void value_dump( CIFVALUE *value );
 
-cif_value_type_t value_type( VALUE *value );
-char *value_scalar( VALUE *value );
-CIFLIST *value_list( VALUE *value );
-CIFTABLE *value_table( VALUE *value );
+cif_value_type_t value_type( CIFVALUE *value );
+char *value_scalar( CIFVALUE *value );
+CIFLIST *value_list( CIFVALUE *value );
+CIFTABLE *value_table( CIFVALUE *value );
 
 #endif

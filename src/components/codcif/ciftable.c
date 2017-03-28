@@ -12,7 +12,7 @@
 #include <cexceptions.h>
 #include <stringx.h>
 #include <ciftable.h>
-#include <value.h>
+#include <cifvalue.h>
 
 #define DELTA_CAPACITY (100)
 
@@ -22,7 +22,7 @@ struct CIFTABLE {
     size_t capacity;
 
     char **keys;
-    VALUE **values;
+    CIFVALUE **values;
 };
 
 void delete_table( CIFTABLE *table )
@@ -87,7 +87,7 @@ void table_dump( CIFTABLE *table )
     printf( " }" );
 }
 
-void table_add( CIFTABLE *table, char *key, VALUE *value, cexception_t *ex )
+void table_add( CIFTABLE *table, char *key, CIFVALUE *value, cexception_t *ex )
 {
     assert( table );
 
@@ -103,7 +103,7 @@ void table_add( CIFTABLE *table, char *key, VALUE *value, cexception_t *ex )
                                     &inner );
             table->keys[i] = NULL;
             table->values = reallocx( table->values,
-                                      sizeof( VALUE* ) *
+                                      sizeof( CIFVALUE* ) *
                                       (table->capacity + DELTA_CAPACITY),
                                       &inner );
             table->values[i] = NULL;
@@ -119,7 +119,7 @@ void table_add( CIFTABLE *table, char *key, VALUE *value, cexception_t *ex )
     }    
 }
 
-VALUE *table_get( CIFTABLE *table, char *key )
+CIFVALUE *table_get( CIFTABLE *table, char *key )
 {
     assert( table );
     size_t i;

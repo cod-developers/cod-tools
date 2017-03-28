@@ -14,7 +14,7 @@
 #include <cexceptions.h>
 #include <cif_options.h>
 #include <cif.h>
-#include <value.h>
+#include <cifvalue.h>
 
 typedef struct CIF_COMPILER CIF_COMPILER;
 
@@ -69,7 +69,7 @@ int yynote_token( CIF_COMPILER *cif_cc, const char *message,
 
 typedef struct typed_value typed_value;
 
-typed_value *new_typed_value( int vline, int vpos, char *vcont, VALUE *v );
+typed_value *new_typed_value( int vline, int vpos, char *vcont, CIFVALUE *v );
 
 void delete_typed_value( typed_value *t );
 
@@ -79,9 +79,9 @@ void typed_value_detach_content( typed_value *t );
 int typed_value_line( typed_value *t );
 int typed_value_pos( typed_value *t );
 char *typed_value_content( typed_value *t );
-VALUE *typed_value_value( typed_value *t );
+CIFVALUE *typed_value_value( typed_value *t );
 
-void typed_value_set_value( typed_value *t, VALUE *v );
+void typed_value_set_value( typed_value *t, CIFVALUE *v );
 
 void add_tag_value( CIF_COMPILER *cif_cc, char *tag,
                     typed_value *tv, cexception_t *ex );

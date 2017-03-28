@@ -13,14 +13,14 @@
 
 typedef struct CIFTABLE CIFTABLE;
 
-#include <value.h>
+#include <cifvalue.h>
 
 CIFTABLE *new_table( cexception_t *ex );
 void delete_table( CIFTABLE *table );
 void table_dump( CIFTABLE *table );
 
-void table_add( CIFTABLE *table, char *key, VALUE *value,
+void table_add( CIFTABLE *table, char *key, CIFVALUE *value,
                 cexception_t *ex );
-VALUE *table_get( CIFTABLE *table, char *key );
+CIFVALUE *table_get( CIFTABLE *table, char *key );
 
 #endif

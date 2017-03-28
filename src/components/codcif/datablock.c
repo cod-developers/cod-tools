@@ -53,7 +53,7 @@ struct DATABLOCK {
     size_t length;
     size_t capacity;
     char **tags;
-    VALUE ***values;
+    CIFVALUE ***values;
     int *in_loop;              /* in_loop[i] is number of a loop to
                                   which the i-th tag belongs; -1 if
                                   not in a loop */
@@ -206,12 +206,12 @@ ssize_t *datablock_value_lengths( DATABLOCK *datablock )
     return datablock->value_lengths;
 }
 
-VALUE ***datablock_values( DATABLOCK *datablock )
+CIFVALUE ***datablock_values( DATABLOCK *datablock )
 {
     return datablock->values;
 }
 
-VALUE *datablock_value( DATABLOCK *datablock, int tag_nr, int val_nr )
+CIFVALUE *datablock_value( DATABLOCK *datablock, int tag_nr, int val_nr )
 {
     if( tag_nr >= datablock->length ) {
         return NULL;
@@ -246,7 +246,7 @@ cif_value_type_t **datablock_types( DATABLOCK *datablock )
 
 cif_value_type_t datablock_value_type( DATABLOCK *datablock, int tag_nr, int val_nr )
 {
-    VALUE *v = datablock_value( datablock, tag_nr, val_nr );
+    CIFVALUE *v = datablock_value( datablock, tag_nr, val_nr );
     if( v ) {
         return value_type( v );
     } else {
@@ -401,7 +401,7 @@ void datablock_list_tags( DATABLOCK * volatile datablock )
 }
 
 void datablock_insert_value( DATABLOCK * datablock, char *tag,
-                             VALUE *value, cexception_t *ex )
+                             CIFVALUE *value, cexception_t *ex )
 {
     cexception_t inner;
     ssize_t i;
@@ -462,7 +462,7 @@ void datablock_insert_value( DATABLOCK * datablock, char *tag,
 }
 
 void datablock_overwrite_value( DATABLOCK * datablock, ssize_t tag_nr,
-                                ssize_t val_nr, VALUE *value,
+                                ssize_t val_nr, CIFVALUE *value,
                                 cexception_t *ex )
 {
     cexception_t inner;
@@ -511,7 +511,7 @@ void datablock_finish_loop( DATABLOCK *datablock, cexception_t *ex )
     datablock->loop_current = datablock->loop_start = -1;
 }
 
-void datablock_push_loop_value( DATABLOCK * datablock, VALUE *value,
+void datablock_push_loop_value( DATABLOCK * datablock, CIFVALUE *value,
                                 cexception_t *ex )
 {
     cexception_t inner;

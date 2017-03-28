@@ -189,7 +189,7 @@ ssize_t cif_tag_index( CIF * cif, char *tag ) {
     return datablock_tag_index( cif->current_datablock, tag );
 }
 
-void cif_insert_value( CIF * cif, char *tag, VALUE *value,
+void cif_insert_value( CIF * cif, char *tag, CIFVALUE *value,
                        cexception_t *ex )
 {
     assert( cif );
@@ -204,7 +204,7 @@ void cif_insert_value( CIF * cif, char *tag, VALUE *value,
 }
 
 void cif_overwrite_value( CIF * cif, ssize_t tag_nr, ssize_t val_nr,
-                          VALUE *value, cexception_t *ex )
+                          CIFVALUE *value, cexception_t *ex )
 {
     assert( cif );
     datablock_overwrite_value( cif->current_datablock, tag_nr, val_nr,
@@ -237,7 +237,7 @@ void cif_finish_loop( CIF *cif, cexception_t *ex )
     }
 }
 
-void cif_push_loop_value( CIF * cif, VALUE *value, cexception_t *ex )
+void cif_push_loop_value( CIF * cif, CIFVALUE *value, cexception_t *ex )
 {
     if( cif->datablock_list ) {
         datablock_push_loop_value( cif->current_datablock, value, ex );

@@ -30,7 +30,7 @@ static CIF_COMPILER * volatile cif_cc; /* CIF current compiler */
 
 static cexception_t *px; /* parser exception */
 
-static typed_value *typed_value_from_value( VALUE *v, cexception_t *ex );
+static typed_value *typed_value_from_value( CIFVALUE *v, cexception_t *ex );
 %}
 
 %code requires {
@@ -661,7 +661,7 @@ int cif2error( const char *message )
     return 0;
 }
 
-static typed_value *typed_value_from_value( VALUE *v, cexception_t *ex )
+static typed_value *typed_value_from_value( CIFVALUE *v, cexception_t *ex )
 {
     return new_typed_value( cif2_flex_current_line_number(),
                              cif2_flex_current_position(),

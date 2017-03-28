@@ -343,7 +343,7 @@ typedef struct typed_value {
     int vline;
     int vpos;
     char *vcont;
-    VALUE *v;
+    CIFVALUE *v;
 } typed_value;
 
 void delete_typed_value( typed_value *t )
@@ -357,7 +357,7 @@ void delete_typed_value( typed_value *t )
     freex( t );
 }
 
-typed_value *new_typed_value( int vline, int vpos, char *vcont, VALUE *v )
+typed_value *new_typed_value( int vline, int vpos, char *vcont, CIFVALUE *v )
 {
     typed_value *tv = malloc( sizeof( typed_value ) );
     tv->vline = vline;
@@ -382,7 +382,7 @@ char *typed_value_content( typed_value *t )
     return t->vcont;
 }
 
-VALUE *typed_value_value( typed_value *t )
+CIFVALUE *typed_value_value( typed_value *t )
 {
     return t->v;
 }
@@ -397,14 +397,14 @@ void typed_value_detach_content( typed_value *t )
     t->vcont = NULL;
 }
 
-void typed_value_set_value( typed_value *t, VALUE *v )
+void typed_value_set_value( typed_value *t, CIFVALUE *v )
 {
     t->v = v;
 }
 
 void add_tag_value( CIF_COMPILER *cif_cc, char *tag, typed_value *tv, cexception_t *ex )
 {
-    VALUE *value = typed_value_value( tv );
+    CIFVALUE *value = typed_value_value( tv );
     if( cif_tag_index( cif_compiler_cif( cif_cc ), tag ) == -1 ) {
         cif_insert_value( cif_compiler_cif( cif_cc ), tag, value, ex );
     } else if( value_type( value ) != CIF_LIST &&
