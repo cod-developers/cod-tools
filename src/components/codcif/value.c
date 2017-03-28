@@ -9,13 +9,13 @@
 #include <assert.h>
 #include <allocx.h>
 #include <value.h>
-#include <list.h>
+#include <ciflist.h>
 #include <table.h>
 
 struct VALUE {
     union {
         char *str;
-        struct LIST *l;
+        struct CIFLIST *l;
         struct TABLE *t;
     } v;
     cif_value_type_t type;
@@ -43,7 +43,7 @@ VALUE *new_value_from_scalar( char *s, cif_value_type_t type,
     return value;
 }
 
-VALUE *new_value_from_list( LIST *list, cexception_t *ex )
+VALUE *new_value_from_list( CIFLIST *list, cexception_t *ex )
 {
     VALUE *value = callocx( 1, sizeof(VALUE), ex );
     value->v.l = list;
@@ -96,7 +96,7 @@ char *value_scalar( VALUE *value ) {
     return value->v.str;
 }
 
-LIST *value_list( VALUE *value ) {
+CIFLIST *value_list( VALUE *value ) {
     return value->v.l;
 }
 

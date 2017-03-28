@@ -10,12 +10,12 @@
 #include <allocx.h>
 #include <cexceptions.h>
 #include <stringx.h>
-#include <list.h>
+#include <ciflist.h>
 #include <value.h>
 
 #define DELTA_CAPACITY (100)
 
-struct LIST {
+struct CIFLIST {
 
     size_t length;
     size_t capacity;
@@ -23,7 +23,7 @@ struct LIST {
     VALUE **values;
 };
 
-void delete_list( LIST *list )
+void delete_list( CIFLIST *list )
 {
     assert( list );
 
@@ -35,13 +35,13 @@ void delete_list( LIST *list )
     freex( list );
 }
 
-LIST *new_list( cexception_t *ex )
+CIFLIST *new_list( cexception_t *ex )
 {
-    LIST *list = callocx( 1, sizeof(LIST), ex );
+    CIFLIST *list = callocx( 1, sizeof(CIFLIST), ex );
     return list;
 }
 
-void list_dump( LIST *list )
+void list_dump( CIFLIST *list )
 {
     assert( list );
 
@@ -53,7 +53,7 @@ void list_dump( LIST *list )
     printf( " ]" );
 }
 
-void list_push( LIST *list, VALUE *value, cexception_t *ex )
+void list_push( CIFLIST *list, VALUE *value, cexception_t *ex )
 {
     assert( list );
 
@@ -79,7 +79,7 @@ void list_push( LIST *list, VALUE *value, cexception_t *ex )
     }    
 }
 
-void list_unshift( LIST *list, VALUE *value, cexception_t *ex )
+void list_unshift( CIFLIST *list, VALUE *value, cexception_t *ex )
 {
     assert( list );
     list_push( list, NULL, ex ); // for now, we simply extend the list
@@ -91,22 +91,22 @@ void list_unshift( LIST *list, VALUE *value, cexception_t *ex )
     list->values[0] = value;
 }
 
-size_t list_length( LIST *list )
+size_t list_length( CIFLIST *list )
 {
     return list->length;
 }
 
-VALUE *list_get( LIST *list, int index )
+VALUE *list_get( CIFLIST *list, int index )
 {
     return list->values[index];
 }
 
-VALUE **list_get_values( LIST *list )
+VALUE **list_get_values( CIFLIST *list )
 {
     return list->values;
 }
 
-int list_contains_list_or_table( LIST *list )
+int list_contains_list_or_table( CIFLIST *list )
 {
     assert( list );
     size_t i;
@@ -121,7 +121,7 @@ int list_contains_list_or_table( LIST *list )
     return 0;
 }
 
-char *list_concat( LIST *list, char separator, cexception_t *ex )
+char *list_concat( CIFLIST *list, char separator, cexception_t *ex )
 {
     assert( list );
     /* the list has to be already checked for the existence of

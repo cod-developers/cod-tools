@@ -28,11 +28,11 @@ typedef enum {
     last_CIF_VALUE
 } cif_value_type_t;
 
-#include <list.h>
+#include <ciflist.h>
 #include <table.h>
 
 VALUE *new_value_from_scalar( char *s, cif_value_type_t type, cexception_t *ex );
-VALUE *new_value_from_list( LIST *list, cexception_t *ex );
+VALUE *new_value_from_list( CIFLIST *list, cexception_t *ex );
 VALUE *new_value_from_table( TABLE *table, cexception_t *ex );
 
 void delete_value( VALUE *value );
@@ -40,7 +40,7 @@ void value_dump( VALUE *value );
 
 cif_value_type_t value_type( VALUE *value );
 char *value_scalar( VALUE *value );
-LIST *value_list( VALUE *value );
+CIFLIST *value_list( VALUE *value );
 TABLE *value_table( VALUE *value );
 
 #endif

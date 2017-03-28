@@ -12,7 +12,7 @@
 #include <stdarg.h>
 #include <cexceptions.h>
 #include <value.h>
-#include <list.h>
+#include <ciflist.h>
 
 typedef struct DATABLOCK DATABLOCK;
 

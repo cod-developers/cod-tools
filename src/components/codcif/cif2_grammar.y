@@ -179,7 +179,7 @@ data_heading
         }
 	|	_DATA_ data_value_list
         {
-            LIST *list = value_list( typed_value_value( $2 ) );
+            CIFLIST *list = value_list( typed_value_value( $2 ) );
 
             /* only simple data items can be concatenated,
              * thus we have to make sure that data value
@@ -243,7 +243,7 @@ cif_entry
         | _TAG data_value data_value_list
             {
                 assert_datablock_exists( cif_cc, px );
-                LIST *list = value_list( typed_value_value( $3 ) );
+                CIFLIST *list = value_list( typed_value_value( $3 ) );
                 list_unshift( list, typed_value_value( $2 ), px );
                 typed_value_detach_value( $2 );
 
@@ -291,7 +291,7 @@ cif_entry
 data_value_list
         :       data_value
         {
-            LIST *list = new_list( px );
+            CIFLIST *list = new_list( px );
             list_push( list, typed_value_value( $1 ), px );
             typed_value_set_value( $1, new_value_from_list( list, px ) );
         }
