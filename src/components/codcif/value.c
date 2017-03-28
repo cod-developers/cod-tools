@@ -10,13 +10,13 @@
 #include <allocx.h>
 #include <value.h>
 #include <ciflist.h>
-#include <table.h>
+#include <ciftable.h>
 
 struct VALUE {
     union {
         char *str;
         struct CIFLIST *l;
-        struct TABLE *t;
+        struct CIFTABLE *t;
     } v;
     cif_value_type_t type;
 };
@@ -51,7 +51,7 @@ VALUE *new_value_from_list( CIFLIST *list, cexception_t *ex )
     return value;
 }
 
-VALUE *new_value_from_table( TABLE *table, cexception_t *ex )
+VALUE *new_value_from_table( CIFTABLE *table, cexception_t *ex )
 {
     VALUE *value = callocx( 1, sizeof(VALUE), ex );
     value->v.t = table;
@@ -100,6 +100,6 @@ CIFLIST *value_list( VALUE *value ) {
     return value->v.l;
 }
 
-TABLE *value_table( VALUE *value ) {
+CIFTABLE *value_table( VALUE *value ) {
     return value->v.t;
 }

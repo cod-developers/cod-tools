@@ -5,22 +5,22 @@
 * $URL$
 \*-------------------------------------------------------------------------*/
 
-#ifndef __TABLE_H
-#define __TABLE_H
+#ifndef __CIFTABLE_H
+#define __CIFTABLE_H
 
 #include <stdio.h>
 #include <cexceptions.h>
 
-typedef struct TABLE TABLE;
+typedef struct CIFTABLE CIFTABLE;
 
 #include <value.h>
 
-TABLE *new_table( cexception_t *ex );
-void delete_table( TABLE *table );
-void table_dump( TABLE *table );
+CIFTABLE *new_table( cexception_t *ex );
+void delete_table( CIFTABLE *table );
+void table_dump( CIFTABLE *table );
 
-void table_add( TABLE *table, char *key, VALUE *value,
+void table_add( CIFTABLE *table, char *key, VALUE *value,
                 cexception_t *ex );
-VALUE *table_get( TABLE *table, char *key );
+VALUE *table_get( CIFTABLE *table, char *key );
 
 #endif

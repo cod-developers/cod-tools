@@ -11,12 +11,12 @@
 #include <allocx.h>
 #include <cexceptions.h>
 #include <stringx.h>
-#include <table.h>
+#include <ciftable.h>
 #include <value.h>
 
 #define DELTA_CAPACITY (100)
 
-struct TABLE {
+struct CIFTABLE {
 
     size_t length;
     size_t capacity;
@@ -25,7 +25,7 @@ struct TABLE {
     VALUE **values;
 };
 
-void delete_table( TABLE *table )
+void delete_table( CIFTABLE *table )
 {
     assert( table );
 
@@ -39,14 +39,14 @@ void delete_table( TABLE *table )
     freex( table );
 }
 
-TABLE *new_table( cexception_t *ex )
+CIFTABLE *new_table( cexception_t *ex )
 {
-    TABLE *table = callocx( 1, sizeof(TABLE), ex );
+    CIFTABLE *table = callocx( 1, sizeof(CIFTABLE), ex );
     table->values = NULL;
     return table;
 }
 
-void table_dump( TABLE *table )
+void table_dump( CIFTABLE *table )
 {
     assert( table );
     printf( " {" );
@@ -87,7 +87,7 @@ void table_dump( TABLE *table )
     printf( " }" );
 }
 
-void table_add( TABLE *table, char *key, VALUE *value, cexception_t *ex )
+void table_add( CIFTABLE *table, char *key, VALUE *value, cexception_t *ex )
 {
     assert( table );
 
@@ -119,7 +119,7 @@ void table_add( TABLE *table, char *key, VALUE *value, cexception_t *ex )
     }    
 }
 
-VALUE *table_get( TABLE *table, char *key )
+VALUE *table_get( CIFTABLE *table, char *key )
 {
     assert( table );
     size_t i;

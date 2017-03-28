@@ -23,7 +23,7 @@
 #include <cif2_lexer.h>
 #include <cif_compiler.h>
 #include <assert.h>
-#include <table.h>
+#include <ciftable.h>
 #include <common.h>
 
 static CIF_COMPILER * volatile cif_cc; /* CIF current compiler */
