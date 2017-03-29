@@ -24,7 +24,8 @@ use COD::SOptions qw( getOptions get_value );
 use COD::SUsage qw( usage options );
 use COD::ErrorHandler qw( process_warnings
                           process_errors
-                          process_parser_messages );
+                          process_parser_messages
+                          report_message );
 use XML::Simple;
 
 my $print_header = 0; # Indicates whether to print out a header with column names
@@ -202,10 +203,7 @@ my %options;
         => sub{ $options{use_datablocks_without_coord} = 0 },
 
     "--validate-by-schema" => sub {
-        my $schema_xml = XMLin( get_value() );
-        $schema = { map { $_ => $schema_xml->{CODParameter}{$_}{SQLDataType} }
-                       keys %{$schema_xml->{CODParameter}} };
-    },
+        $schema = get_field_datatypes( get_value() ) },
 
     "-c,--always-continue"              => sub { $die_on_errors   = 0;
                                                  $die_on_warnings = 0;
@@ -355,4 +353,35 @@ for my $filename (@ARGV) {
             print "\n";
         }
     }
+}
+
+sub get_field_datatypes
+{
+    my( $xml_filename ) = @_;
+    my $xml = XMLin( $xml_filename );
+    my $msg_template = {
+        program => $0,
+        filename => $xml_filename,
+        err_level => 'WARNING',
+    };
+    if( !exists $xml->{'xsi:schemaLocation'} ||
+        $xml->{'xsi:schemaLocation'} !~ m|^http://(www.)?crystallography.net/xml/schema/codsql/codsql_v\d+\.\d+\.xsd\s| ) {
+        $msg_template->{message} =
+            'XML document is not derived from codsql.xsd';
+        report_message( $msg_template );
+        return;
+    }
+    my $fields;
+    if( exists $xml->{Table}{data} ) {
+        $fields = $xml->{Table}{data}{Field};
+    } elsif( $xml->{Table}{name} eq 'data' ) {
+        $fields = $xml->{Table}{Field};
+    } else {
+        $msg_template->{message} =
+            'database description does not contain \'data\' table';
+        report_message( $msg_template );
+        return;
+    }
+    return { map { $_ => $fields->{$_}{SQLDataType} }
+                  keys %$fields };
 }
