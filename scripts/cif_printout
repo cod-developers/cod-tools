@@ -23,7 +23,7 @@ use COD::ShowStruct qw( showRef );
 use COD::ErrorHandler qw( process_errors
                           process_parser_messages
                           report_message );
-
+use Data::Dumper;
 
 my $die_on_error_level = {
     ERROR   => 0,
@@ -133,38 +133,9 @@ foreach( @ARGV ) {
         } elsif( $output_format eq 'struct' ) {
             showRef( $datablock );
         } else {
-            print  $datablock->{name} . "\n";
-            print "Values:\n";
-            foreach my $tag ( sort { lc( $a ) cmp lc( $b ) } @{$datablock->{tags}} ) {
-                print "    " . $tag . " ("
-                    . scalar( @{$datablock->{values}{$tag}} ) . ") ";
-                print join( " ", map{ "[$_]" } @{$datablock->{values}{$tag}} )
-                    . "\n";
-            }
-            if( exists $datablock->{precisions} ) {
-                print "Precisions:\n";
-                foreach my $tag ( sort keys %{$datablock->{precisions}} ) {
-                    print "    " . $tag . " ("
-                        . scalar( @{$datablock->{precisions}{$tag}} ) . ") ";
-                    print join( " ", map{ ( defined $_ ) ? $_ : "undef" }
-                        @{$datablock->{precisions}{$tag}} ) . "\n";
-                }
-            }
-            if( exists $datablock->{types} ) {
-                print "Types:\n";
-                foreach my $tag ( sort keys %{$datablock->{types}} ) {
-                    print "    " . $tag . " ";
-                    print join( " ", @{$datablock->{types}{$tag}} ) . "\n";
-                }
-            }
-            print "Inloops:\n";
-            foreach my $tag ( sort keys %{$datablock->{inloop}} ) {
-                print "    " . $tag . " " . $datablock->{inloop}{$tag} . "\n";
-            }
-            print "Loops:\n";
-            foreach my $loop ( @{$datablock->{loops}} ) {
-                print join( " ", @$loop ) . "\n";
-            }
+            local $Data::Dumper::Varname = 'datablock';
+            local $Data::Dumper::Sortkeys = 1;
+            print Dumper( $datablock );
         }
     }
 
