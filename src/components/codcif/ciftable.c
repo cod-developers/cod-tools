@@ -87,6 +87,12 @@ void table_dump( CIFTABLE *table )
     printf( " }" );
 }
 
+char **table_keys( CIFTABLE *table )
+{
+    assert( table );
+    return table->keys;
+}
+
 void table_add( CIFTABLE *table, char *key, CIFVALUE *value, cexception_t *ex )
 {
     assert( table );
