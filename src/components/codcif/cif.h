@@ -58,15 +58,15 @@ void cif_print( CIF * volatile cif );
 void cif_list_tags( CIF * volatile cif );
 ssize_t cif_tag_index( CIF * cif, char *tag );
 
-void cif_insert_value( CIF * cif, char *tag, CIFVALUE *value,
-                       cexception_t *ex );
-void cif_overwrite_value( CIF * cif, ssize_t tag_nr, ssize_t val_nr,
-                          CIFVALUE *value, cexception_t *ex );
+void cif_insert_cifvalue( CIF * cif, char *tag, CIFVALUE *value,
+                          cexception_t *ex );
+void cif_overwrite_cifvalue( CIF * cif, ssize_t tag_nr, ssize_t val_nr,
+                             CIFVALUE *value, cexception_t *ex );
 
 void cif_start_loop( CIF *cif, cexception_t *ex );
 void cif_finish_loop( CIF *cif, cexception_t *ex );
 
-void cif_push_loop_value( CIF * cif, CIFVALUE *value, cexception_t *ex );
+void cif_push_loop_cifvalue( CIF * cif, CIFVALUE *value, cexception_t *ex );
 
 void cif_set_nerrors( CIF *cif, int nerrors );
 int cif_nerrors( CIF *cif );

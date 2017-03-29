@@ -406,7 +406,7 @@ void add_tag_value( CIF_COMPILER *cif_cc, char *tag, typed_value *tv, cexception
 {
     CIFVALUE *value = typed_value_value( tv );
     if( cif_tag_index( cif_compiler_cif( cif_cc ), tag ) == -1 ) {
-        cif_insert_value( cif_compiler_cif( cif_cc ), tag, value, ex );
+        cif_insert_cifvalue( cif_compiler_cif( cif_cc ), tag, value, ex );
     } else if( value_type( value ) != CIF_LIST &&
                value_type( value ) != CIF_TABLE ) {
         ssize_t tag_nr = cif_tag_index( cif_compiler_cif( cif_cc ), tag );
@@ -446,8 +446,8 @@ void add_tag_value( CIF_COMPILER *cif_cc, char *tag, typed_value *tv, cexception
                                                    (cif_last_datablock(cif_compiler_cif( cif_cc )),
                                                    tag_nr, 0)),
                                          typed_value_line( tv ), -1, ex );
-                        cif_overwrite_value( cif_compiler_cif( cif_cc ), tag_nr, 0,
-                                             value, ex );
+                        cif_overwrite_cifvalue( cif_compiler_cif( cif_cc ), tag_nr, 0,
+                                                value, ex );
                     } else {
                         yyerror_token( cif_cc, cxprintf( "tag %s appears more than once", tag ),
                                        typed_value_line( tv ), -1, NULL, ex );

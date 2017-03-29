@@ -342,7 +342,7 @@ loop_tags
                                cif2_flex_current_line_number(), -1, NULL, px );
             }
             cif_compiler_increase_loop_tags( cif_cc );
-            cif_insert_value( cif_compiler_cif( cif_cc ), $2, NULL, px );
+            cif_insert_cifvalue( cif_compiler_cif( cif_cc ), $2, NULL, px );
             freex( $2 );
         }
 	|	_TAG
@@ -353,7 +353,7 @@ loop_tags
                                cif2_flex_current_line_number(), -1, NULL, px );
             }
             cif_compiler_increase_loop_tags( cif_cc );
-            cif_insert_value( cif_compiler_cif( cif_cc ), $1, NULL, px );
+            cif_insert_cifvalue( cif_compiler_cif( cif_cc ), $1, NULL, px );
             freex( $1 );
         }
 ;
@@ -362,16 +362,16 @@ loop_values
 	:	loop_values data_value
         {
             cif_compiler_increase_loop_values( cif_cc );
-            cif_push_loop_value( cif_compiler_cif( cif_cc ),
-                                 typed_value_value( $2 ), px );
+            cif_push_loop_cifvalue( cif_compiler_cif( cif_cc ),
+                                    typed_value_value( $2 ), px );
             typed_value_detach_value( $2 ); /* protecting v from free'ing */
             delete_typed_value( $2 );
         }
 	|	data_value
         {
             cif_compiler_increase_loop_values( cif_cc );
-            cif_push_loop_value( cif_compiler_cif( cif_cc ),
-                                 typed_value_value( $1 ), px );
+            cif_push_loop_cifvalue( cif_compiler_cif( cif_cc ),
+                                    typed_value_value( $1 ), px );
             typed_value_detach_value( $1 ); /* protecting v from free'ing */
             delete_typed_value( $1 );
         }
