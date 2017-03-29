@@ -3,18 +3,6 @@
     #include <EXTERN.h>
     #include <perl.h>
     #include <XSUB.h>
-    #include <cif_grammar_y.h>
-    #include <cif_grammar_flex.h>
-    #include <allocx.h>
-    #include <cxprintf.h>
-    #include <getoptions.h>
-    #include <cexceptions.h>
-    #include <stdiox.h>
-    #include <stringx.h>
-    #include <yy.h>
-    #include <cif.h>
-    #include <datablock.h>
-    #include <cifmessage.h>
 
     SV * parse_cif( char * fname, char * prog, SV * options );
 %}
@@ -157,17 +145,5 @@ sub extract_precision
 #include <EXTERN.h>
 #include <perl.h>
 #include <XSUB.h>
-#include <cif_grammar_y.h>
-#include <cif_grammar_flex.h>
-#include <allocx.h>
-#include <cxprintf.h>
-#include <getoptions.h>
-#include <cexceptions.h>
-#include <stdiox.h>
-#include <stringx.h>
-#include <yy.h>
-#include <cif.h>
-#include <datablock.h>
-#include <cifmessage.h>
 
 SV * parse_cif( char * fname, char * prog, SV * options );
