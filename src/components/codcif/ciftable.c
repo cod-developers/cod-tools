@@ -87,6 +87,12 @@ void table_dump( CIFTABLE *table )
     printf( " }" );
 }
 
+size_t table_length( CIFTABLE *table )
+{
+    assert( table );
+    return table->length;
+}
+
 char **table_keys( CIFTABLE *table )
 {
     assert( table );
