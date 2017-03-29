@@ -2,6 +2,8 @@
 #include <perl.h>
 #include <XSUB.h>
 #include <cif_compiler.h>
+#include <cif_grammar_y.h>
+#include <cif2_grammar_y.h>
 #include <cif_grammar_flex.h>
 #include <cif_options.h>
 #include <allocx.h>
@@ -181,6 +183,7 @@ SV * parse_cif( char * fname, char * prog, SV * opt )
 {
     cexception_t inner;
     cif_yy_debug_off();
+    cif2_yy_debug_off();
     cif_flex_debug_off();
     cif_debug_off();
     CIF * volatile cif = NULL;
