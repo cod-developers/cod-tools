@@ -120,7 +120,7 @@ sub extract_precision
         my %precisions;
         foreach (keys %$values) {
             $precisions{$_} =
-                extract_precision( $values->{$i}, $types->{$i} );
+                extract_precision( $values->{$_}, $types->{$_} );
         }
         return \%precisions;
     } elsif( $types eq 'FLOAT' ) {
