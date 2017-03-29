@@ -50,10 +50,10 @@ void datablock_set_next( DATABLOCK *datablock, DATABLOCK *next );
 size_t datablock_length( DATABLOCK *datablock );
 char **datablock_tags( DATABLOCK *datablock );
 ssize_t *datablock_value_lengths( DATABLOCK *datablock );
-CIFVALUE ***datablock_values( DATABLOCK *datablock );
-CIFVALUE *datablock_value( DATABLOCK *datablock, int tag_nr, int val_nr );
+CIFVALUE ***datablock_cifvalues( DATABLOCK *datablock );
+CIFVALUE *datablock_cifvalue( DATABLOCK *datablock, int tag_nr, int val_nr );
 ssize_t datablock_tag_index( DATABLOCK *datablock, char *tag );
-void datablock_overwrite_value( DATABLOCK * datablock, ssize_t tag_nr,
+void datablock_overwrite_cifvalue( DATABLOCK * datablock, ssize_t tag_nr,
     ssize_t val_nr, CIFVALUE *value, cexception_t *ex );
 int *datablock_in_loop( DATABLOCK *datablock );
 // cif_value_type_t **datablock_types( DATABLOCK *datablock );
@@ -69,14 +69,14 @@ void datablock_print_tag_values( DATABLOCK * volatile datablock,
     char ** tagnames, int tagcount, char * volatile prefix, char * separator,
     char * vseparator );
 
-void datablock_insert_value( DATABLOCK * datablock, char *tag,
-                             CIFVALUE *value, cexception_t *ex );
+void datablock_insert_cifvalue( DATABLOCK * datablock, char *tag,
+                                CIFVALUE *value, cexception_t *ex );
 
 void datablock_start_loop( DATABLOCK *datablock );
 void datablock_finish_loop( DATABLOCK *datablock, cexception_t *ex );
 
-void datablock_push_loop_value( DATABLOCK * datablock, CIFVALUE *value,
-                                cexception_t *ex );
+void datablock_push_loop_cifvalue( DATABLOCK * datablock, CIFVALUE *value,
+                                   cexception_t *ex );
 char * datablock_name( DATABLOCK * datablock );
 
 #define foreach_datablock( NODE, LIST ) \

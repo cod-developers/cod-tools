@@ -97,7 +97,7 @@ void delete_datablock( DATABLOCK *datablock )
                 freex( datablock->tags[i] );
             if( datablock->values ) {
                 for( j = 0; j < datablock->value_lengths[i]; j++ )
-                    delete_value( datablock_value( datablock, i, j ) );
+                    delete_value( datablock_cifvalue( datablock, i, j ) );
                 freex( datablock->values[i] );
             }
         }
@@ -206,12 +206,12 @@ ssize_t *datablock_value_lengths( DATABLOCK *datablock )
     return datablock->value_lengths;
 }
 
-CIFVALUE ***datablock_values( DATABLOCK *datablock )
+CIFVALUE ***datablock_cifvalues( DATABLOCK *datablock )
 {
     return datablock->values;
 }
 
-CIFVALUE *datablock_value( DATABLOCK *datablock, int tag_nr, int val_nr )
+CIFVALUE *datablock_cifvalue( DATABLOCK *datablock, int tag_nr, int val_nr )
 {
     if( tag_nr >= datablock->length ) {
         return NULL;
@@ -246,7 +246,7 @@ cif_value_type_t **datablock_types( DATABLOCK *datablock )
 
 cif_value_type_t datablock_value_type( DATABLOCK *datablock, int tag_nr, int val_nr )
 {
-    CIFVALUE *v = datablock_value( datablock, tag_nr, val_nr );
+    CIFVALUE *v = datablock_cifvalue( datablock, tag_nr, val_nr );
     if( v ) {
         return value_type( v );
     } else {
@@ -400,8 +400,8 @@ void datablock_list_tags( DATABLOCK * volatile datablock )
     }
 }
 
-void datablock_insert_value( DATABLOCK * datablock, char *tag,
-                             CIFVALUE *value, cexception_t *ex )
+void datablock_insert_cifvalue( DATABLOCK * datablock, char *tag,
+                                CIFVALUE *value, cexception_t *ex )
 {
     cexception_t inner;
     ssize_t i;
@@ -461,15 +461,15 @@ void datablock_insert_value( DATABLOCK * datablock, char *tag,
     }
 }
 
-void datablock_overwrite_value( DATABLOCK * datablock, ssize_t tag_nr,
-                                ssize_t val_nr, CIFVALUE *value,
-                                cexception_t *ex )
+void datablock_overwrite_cifvalue( DATABLOCK * datablock, ssize_t tag_nr,
+                                   ssize_t val_nr, CIFVALUE *value,
+                                   cexception_t *ex )
 {
     cexception_t inner;
 
     cexception_guard( inner ) {
         if( value ) {
-            delete_value( datablock_value( datablock, tag_nr, val_nr ) );
+            delete_value( datablock_cifvalue( datablock, tag_nr, val_nr ) );
             datablock->values[tag_nr][val_nr] = value;
         } else {
             datablock->values[tag_nr][val_nr] = NULL;
@@ -511,8 +511,8 @@ void datablock_finish_loop( DATABLOCK *datablock, cexception_t *ex )
     datablock->loop_current = datablock->loop_start = -1;
 }
 
-void datablock_push_loop_value( DATABLOCK * datablock, CIFVALUE *value,
-                                cexception_t *ex )
+void datablock_push_loop_cifvalue( DATABLOCK * datablock, CIFVALUE *value,
+                                   cexception_t *ex )
 {
     cexception_t inner;
     ssize_t i, j, capacity;

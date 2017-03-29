@@ -414,7 +414,7 @@ void add_tag_value( CIF_COMPILER *cif_cc, char *tag, typed_value *tv, cexception
             datablock_value_lengths(cif_last_datablock(cif_compiler_cif( cif_cc )));
         if( value_lengths[tag_nr] == 1) {
             if( strcmp
-                (value_scalar(datablock_value
+                (value_scalar(datablock_cifvalue
                  (cif_last_datablock(cif_compiler_cif( cif_cc )), tag_nr, 0)),
                   value_scalar(value)) == 0 &&
                 (isset_fix_errors(cif_cc) == 1 ||
@@ -436,13 +436,13 @@ void add_tag_value( CIF_COMPILER *cif_cc, char *tag, typed_value *tv, cexception
                                          typed_value_line( tv ), -1, ex );
                     } else if( is_tag_value_unknown
                                (value_scalar
-                                (datablock_value
+                                (datablock_cifvalue
                                  (cif_last_datablock(cif_compiler_cif( cif_cc )),
                                   tag_nr, 0)))) {
                         yywarning_token( cif_cc, cxprintf( "tag %s appears more than once, "
                                                    "the previous value '%s' is "
                                                    "overwritten", tag,
-                                                   datablock_value
+                                                   datablock_cifvalue
                                                    (cif_last_datablock(cif_compiler_cif( cif_cc )),
                                                    tag_nr, 0)),
                                          typed_value_line( tv ), -1, ex );
