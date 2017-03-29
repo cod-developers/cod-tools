@@ -61,7 +61,8 @@ sub get_cell
                         _cell_length_c
                         ))
     {
-        if( exists $values->{$cif_tag} ) {
+        if( exists $values->{$cif_tag} &&
+            defined $values->{$cif_tag}[0] ) {
             push(@cell_lengths_and_angles, $values->{$cif_tag}[0]);
             $cell_lengths_and_angles[-1] =~ s/\(\d+\)$//;
         } elsif( $options->{silent} ) {
@@ -76,7 +77,8 @@ sub get_cell
                         _cell_angle_gamma
                         ))
     {
-        if( exists $values->{$cif_tag} ) {
+        if( exists $values->{$cif_tag} &&
+            defined $values->{$cif_tag}[0] ) {
             push( @cell_lengths_and_angles, $values->{$cif_tag}[0] );
             $cell_lengths_and_angles[-1] =~ s/\(\d+\)$//;
         } elsif( $options->{silent} ) {
