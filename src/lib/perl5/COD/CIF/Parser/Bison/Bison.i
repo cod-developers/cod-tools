@@ -35,29 +35,9 @@ sub parse
     foreach my $datablock ( @$data ) {
         $datablock->{precisions} = {};
         foreach my $tag   ( keys %{$datablock->{types}} ) {
-            my @prec;
-            my $has_numeric_values = 0;
-            for( my $i = 0; $i < @{$datablock->{types}{$tag}}; $i++ ) {
-                next unless $datablock->{types}{$tag}[$i] eq "INT" ||
-                            $datablock->{types}{$tag}[$i] eq "FLOAT";
-                $has_numeric_values = 1;
-                if(         $datablock->{types}{$tag}[$i] eq "FLOAT" &&
-                            $datablock->{values}{$tag}[$i] =~
-                            m/^(.*)( \( ([0-9]+) \) )$/six ) {
-                            $prec[$i] = unpack_precision( $1, $3 );
-                } elsif(    $datablock->{types}{$tag}[$i] eq "INT" &&
-                            $datablock->{values}{$tag}[$i] =~
-                            m/^(.*)( \( ([0-9]+) \) )$/sx ) {
-                            $prec[$i] = $3;
-                }
-            }
-            if( @prec > 0 || ( exists $datablock->{inloop}{$tag} &&
-                $has_numeric_values ) ) {
-                if( @prec < @{$datablock->{types}{$tag}} ) {
-                    $prec[ @{$datablock->{types}{$tag}} - 1 ] = undef;
-                }
-                $datablock->{precisions}{$tag} = \@prec;
-            }
+            $datablock->{precisions}{$tag} =
+                extract_precision( $datablock->{values}{$tag},
+                                   $datablock->{types}{$tag} );
         }
     }
 
@@ -136,6 +116,40 @@ sub YYData
 {
     my( $self ) = @_;
     return $self->{YYData};
+}
+
+sub extract_precision
+{
+    my( $values, $types ) = @_;
+    if( ref( $types ) eq 'ARRAY' ) {
+        my @precisions;
+        for( my $i = 0; $i < @$values; $i++ ) {
+            push @precisions,
+                extract_precision( $values->[$i], $types->[$i] );
+        }
+        return \@precisions;
+    } elsif( ref( $types ) eq 'HASH' ) {
+        my %precisions;
+        foreach (keys %$values) {
+            $precisions{$_} =
+                extract_precision( $values->{$i}, $types->{$i} );
+        }
+        return \%precisions;
+    } elsif( $types eq 'FLOAT' ) {
+        if( $values =~ /^(.*)( \( ([0-9]+) \) )$/sx ) {
+            return unpack_precision( $1, $3 );
+        } else {
+            return undef;
+        }
+    } elsif( $types eq 'INT' ) {
+        if( $values =~ /^(.*)( \( ([0-9]+) \) )$/sx ) {
+            return $3;
+        } else {
+            return undef;
+        }
+    } else {
+        return undef;
+    }
 }
 
 %}
