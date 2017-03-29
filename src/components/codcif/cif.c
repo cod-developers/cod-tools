@@ -164,6 +164,10 @@ void cif_dump( CIF * volatile cif )
     DATABLOCK *datablock;
 
     if( cif ) {
+        if( cif->major_version > 1 ) {
+            printf( "#\\#CIF_%d.%d\n",
+                    cif->major_version, cif->minor_version );
+        }
         foreach_datablock( datablock, cif->datablock_list ) {
             datablock_dump( datablock );
         }
@@ -175,6 +179,10 @@ void cif_print( CIF * volatile cif )
     DATABLOCK *datablock;
 
     if( cif ) {
+        if( cif->major_version > 1 ) {
+            printf( "#\\#CIF_%d.%d\n",
+                    cif->major_version, cif->minor_version );
+        }
         foreach_datablock( datablock, cif->datablock_list ) {
             datablock_print( datablock );
         }
