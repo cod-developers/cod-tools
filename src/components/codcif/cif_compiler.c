@@ -442,9 +442,9 @@ void add_tag_value( CIF_COMPILER *cif_cc, char *tag, typed_value *tv, cexception
                         yywarning_token( cif_cc, cxprintf( "tag %s appears more than once, "
                                                    "the previous value '%s' is "
                                                    "overwritten", tag,
-                                                   datablock_cifvalue
+                                                   value_scalar(datablock_cifvalue
                                                    (cif_last_datablock(cif_compiler_cif( cif_cc )),
-                                                   tag_nr, 0)),
+                                                   tag_nr, 0))),
                                          typed_value_line( tv ), -1, ex );
                         cif_overwrite_cifvalue( cif_compiler_cif( cif_cc ), tag_nr, 0,
                                                 value, ex );
