@@ -617,6 +617,7 @@ CIF *new_cif_from_cif2_file( FILE *in, char *filename, cif_option_t co, cexcepti
                 if( cif_yyretval( cif_compiler_cif( cif_cc ) ) == 0 ) {
                     cif_set_yyretval( cif_compiler_cif( cif_cc ), -1 );
                 }
+                cif_set_version( cif_compiler_cif( cif_cc ), 2, 0 );
                 cif_set_nerrors( cif_compiler_cif( cif_cc ),
                                  cif_nerrors( cif_compiler_cif( cif_cc ) ) + 1 );
                 cif_set_message( cif_compiler_cif( cif_cc ),
@@ -634,6 +635,7 @@ CIF *new_cif_from_cif2_file( FILE *in, char *filename, cif_option_t co, cexcepti
     }
 
     cif = cif_compiler_cif( cif_cc );
+    cif_set_version( cif, 2, 0 );
     nerrors = cif_compiler_nerrors( cif_cc );
     if( cif && nerrors > 0 ) {
         cif_set_nerrors( cif, nerrors );
