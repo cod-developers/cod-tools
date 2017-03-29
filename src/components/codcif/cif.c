@@ -48,6 +48,8 @@ void cif_debug_off( void )
 struct CIF {
     int nerrors;
     int yyretval;
+    int major_version;
+    int minor_version;
     DATABLOCK *datablock_list;
     DATABLOCK *last_datablock; /* points to the end of the
                                   datablock_list; SHOULD not be freed
@@ -75,6 +77,11 @@ void delete_cif( CIF *cif )
 CIF *new_cif( cexception_t *ex )
 {
     CIF *cif = callocx( 1, sizeof(CIF), ex );
+
+    /* By default, CIF is set to be conforming to CIF v1.1 syntax */
+    cif->major_version = 1;
+    cif->minor_version = 1;
+
     return cif;
 }
 
@@ -326,6 +333,25 @@ int cif_yyretval( CIF *cif )
 {
     assert( cif );
     return cif->yyretval;
+}
+
+void cif_set_version( CIF *cif, int major, int minor )
+{
+    assert( cif );
+    cif->major_version = major;
+    cif->minor_version = minor;
+}
+
+int cif_major_version( CIF *cif )
+{
+    assert( cif );
+    return cif->major_version;
+}
+
+int cif_minor_version( CIF *cif )
+{
+    assert( cif );
+    return cif->minor_version;
 }
 
 void cif_set_message( CIF *cif,

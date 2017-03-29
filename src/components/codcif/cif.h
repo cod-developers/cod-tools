@@ -83,6 +83,10 @@ void cif_revert_message_list( CIF *cif );
 void cif_set_yyretval( CIF *cif, int yyretval );
 int cif_yyretval( CIF *cif );
 
+void cif_set_version( CIF *cif, int major, int minor );
+int cif_major_version( CIF *cif );
+int cif_minor_version( CIF *cif );
+
 void cif_set_message( CIF *cif,
                       const char *filename,
                       const char *errlevel,
