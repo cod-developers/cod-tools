@@ -20,6 +20,9 @@
 %}
 
 %perlcode %{
+use strict;
+use warnings;
+
 use COD::Precision qw( unpack_precision );
 use COD::UserMessage qw( sprint_message );
 
@@ -60,9 +63,6 @@ sub parse
             }
         }
     }
-
-    use strict;
-    use warnings;
 
     my @errors;
     my @warnings;
