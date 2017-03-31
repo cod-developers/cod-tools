@@ -207,7 +207,6 @@ sub cif2cod
             ? $options->{use_attached_hydrogens} : 0;
 
     my %data = ();
-    my $nel;
     my $values = $dataset->{values};
     my $sigmas = $dataset->{precisions};
     my $dataname = $dataset->{name};
@@ -352,13 +351,14 @@ sub cif2cod
 
     my $formula = get_tag( $values, "_chemical_formula_sum", 0 );
 
-    undef $formula if $formula =~ /^\s*\?\s*$/;
+    undef $formula if $formula =~ /^\s*\?*\s*$/;
 
+    # Setting the default number of unique elements to 0
+    my $nel = 0;
     if( defined $formula ) {
         check_chem_formula( $formula );
+        $nel = count_number_of_elements( $formula );
     }
-
-    $nel = count_number_of_elements( $formula );
 
     if( defined $cod_number ) {
         $data{file} = $cod_number;
