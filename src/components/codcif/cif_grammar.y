@@ -674,10 +674,34 @@ char * cif_unfold_textfield( char * tf )
     char * unfolded = malloc( (length + 1) * sizeof( char ) );
     char * src = tf;
     char * dest = unfolded;
+    char * backslash = NULL;
     while(  src[0] != '\0' ) {
-        if( src[0] == '\\' && src[1] == '\n' ) {
-            src+=2;
+        if( src[0] == '\\' ) {
+            /* memorize the position of the last backslash in the
+             * field */
+            if( backslash ) {
+                dest[0] = '\\';
+                dest++;
+            }
+            backslash = src;
+            src++;
+        } else if( backslash && ( src[0] == ' ' || src[0] == '\t' ) ) {
+            /* if a backslash is seen, trailing space has to be
+             * skipped */
+            src++;
+        } else if( backslash && src[0] == '\n' ) {
+            /* if no non-space symbols are found after the backslash,
+             * line ending is ignored */
+            backslash = NULL;
+            src++;
         } else {
+            if( backslash ) {
+                /* if a non-space symbol is found after the backslash,
+                 * the backslash is forgotten and old position is
+                 * restored */
+                src = backslash;
+                backslash = NULL;
+            }
             dest[0] = src[0];
             src++;
             dest++;
