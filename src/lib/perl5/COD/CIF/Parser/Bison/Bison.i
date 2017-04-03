@@ -26,9 +26,13 @@ sub parse
     foreach my $datablock ( @$data ) {
         $datablock->{precisions} = {};
         foreach my $tag   ( keys %{$datablock->{types}} ) {
-            $datablock->{precisions}{$tag} =
+            my $precisions =
                 extract_precision( $datablock->{values}{$tag},
-                                   $datablock->{types}{$tag} );
+                                   $datablock->{types}{$tag},
+                                   exists $datablock->{inloop}{$tag} );
+            if( defined $precisions ) {
+                $datablock->{precisions}{$tag} = $precisions;
+            }
         }
     }
 
@@ -108,14 +112,20 @@ sub YYData
 
 sub extract_precision
 {
-    my( $values, $types ) = @_;
+    my( $values, $types, $is_in_loop ) = @_;
     if( ref( $types ) eq 'ARRAY' ) {
         my @precisions;
         for( my $i = 0; $i < @$values; $i++ ) {
             push @precisions,
                 extract_precision( $values->[$i], $types->[$i] );
         }
-        return \@precisions;
+        if( grep( defined $_, @precisions ) ||
+            grep( ref $_, @$types ) ||
+            ( $is_in_loop && grep { $_ eq 'INT' || $_ eq 'FLOAT' } @$types ) ) {
+            return \@precisions;
+        } else {
+            return undef;
+        }
     } elsif( ref( $types ) eq 'HASH' ) {
         my %precisions;
         foreach (keys %$values) {
