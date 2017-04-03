@@ -285,11 +285,13 @@ sub cif2cod
         warn "WARNING, unit cell summary formula could not be calculated -- $error\n";
     }
 
+    my $empty_value_regex = qr/^[\s?]*$/s;
+
     my $diffr_temperature =
         get_num_or_undef( $values, "_diffrn_ambient_temperature", 0 );
 
     undef $diffr_temperature if defined $diffr_temperature &&
-          $diffr_temperature =~ /^\s*\?\s*$/;
+          $diffr_temperature =~ $empty_value_regex;
 
     my $diffr_temperature_sigma =
         get_num_or_undef( $sigmas, "_diffrn_ambient_temperature", 0 );
@@ -298,7 +300,7 @@ sub cif2cod
         get_num_or_undef( $values, "_cell_measurement_temperature", 0 );
 
     undef $cell_temperature if defined $cell_temperature &&
-          $cell_temperature =~ /^\s*\?\s*$/;
+          $cell_temperature =~ $empty_value_regex;
 
     my $cell_temperature_sigma =
         get_num_or_undef( $sigmas, "_cell_measurement_temperature", 0 );
@@ -307,7 +309,7 @@ sub cif2cod
         get_num_or_undef( $values, "_diffrn_ambient_pressure", 0 );
 
     undef $diffr_pressure if defined $diffr_pressure &&
-          $diffr_pressure =~ /^\s*\?\s*$/;
+          $diffr_pressure =~ $empty_value_regex;
 
     my $diffr_pressure_sigma =
         get_num_or_undef( $sigmas, "_diffrn_ambient_pressure", 0 );
@@ -316,17 +318,16 @@ sub cif2cod
         get_num_or_undef( $values, "_cell_measurement_pressure", 0 );
 
     undef $cell_pressure if defined $cell_pressure &&
-          $cell_pressure =~ /^\s*\?\s*$/;
+          $cell_pressure =~ $empty_value_regex;
 
     my $cell_pressure_sigma =
         get_num_or_undef( $sigmas, "_cell_measurement_pressure", 0 );
 
-
     my $systematic_name =
         get_tag_or_undef( $values, "_chemical_name_systematic", 0 );
 
-    undef $systematic_name
-        if defined $systematic_name && $systematic_name =~ /^\s*\?\s*$/sm;
+    undef $systematic_name if defined $systematic_name &&
+          $systematic_name =~ $empty_value_regex;
 
     $systematic_name = cif2unicode($systematic_name)
         if defined $systematic_name;
@@ -334,8 +335,8 @@ sub cif2cod
     my $common_name =
         get_tag_or_undef( $values, "_chemical_name_common", 0 );
 
-    undef $common_name
-        if defined $common_name && $common_name =~ /^\s*\?\s*$/sm;
+    undef $common_name if defined $common_name &&
+          $common_name =~ $empty_value_regex;
 
     $common_name = cif2unicode($common_name)
         if defined $common_name;
@@ -343,15 +344,16 @@ sub cif2cod
     my $mineral_name =
         get_tag_or_undef( $values, "_chemical_name_mineral", 0 );
 
-    undef $mineral_name
-        if defined $mineral_name && $mineral_name =~ /^\s*\?\s*$/sm;
+    undef $mineral_name if defined $mineral_name &&
+          $mineral_name =~ $empty_value_regex;
 
     $mineral_name = cif2unicode($mineral_name)
         if defined $mineral_name;
 
     my $formula = get_tag( $values, "_chemical_formula_sum", 0 );
 
-    undef $formula if $formula =~ /^\s*\?*\s*$/;
+    undef $formula if defined $formula &&
+          $formula =~ $empty_value_regex;
 
     # Setting the default number of unique elements to 0
     my $nel = 0;
