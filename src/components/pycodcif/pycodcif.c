@@ -256,8 +256,18 @@ PyObject * parse_cif( char * fname, char * prog, PyObject * opt )
 
     if( cif ) {
         DATABLOCK *datablock;
+        int major_version = cif_major_version( cif );
+        int minor_version = cif_minor_version( cif );
         foreach_datablock( datablock, cif_datablock_list( cif ) ) {
-            PyList_Append( datablocks, convert_datablock( datablock ) );
+            PyObject * converted_datablock = convert_datablock( datablock );
+            PyObject * versionhash  = PyDict_New();
+            PyDict_SetItemString( versionhash, "major",
+                                  PyInt_FromLong( major_version ) );
+            PyDict_SetItemString( versionhash, "minor",
+                                  PyInt_FromLong( minor_version ) );
+            PyDict_SetItemString( converted_datablock, "cifversion",
+                                  versionhash );
+            PyList_Append( datablocks, converted_datablock );
         }
 
         CIFMESSAGE *cifmessage;

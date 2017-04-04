@@ -257,8 +257,16 @@ SV * parse_cif( char * fname, char * prog, SV * opt )
 
     if( cif ) {
         DATABLOCK *datablock;
+        int major_version = cif_major_version( cif );
+        int minor_version = cif_minor_version( cif );
         foreach_datablock( datablock, cif_datablock_list( cif ) ) {
-            av_push( datablocks, newRV_noinc( convert_datablock( datablock ) ) );
+            SV * converted_datablock = convert_datablock( datablock );
+            HV * versionhash  = newHV();
+            hv_put( versionhash, "major", newSViv( major_version ) );
+            hv_put( versionhash, "minor", newSViv( minor_version ) );
+            hv_put( (HV*) converted_datablock, "cifversion",
+                    newRV_noinc( (SV*) versionhash ) );
+            av_push( datablocks, newRV_noinc( converted_datablock ) );
         }
 
         CIFMESSAGE *cifmessage;
