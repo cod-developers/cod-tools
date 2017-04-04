@@ -23,11 +23,11 @@
 
 FILE *yyin;
 
-CIF_COMPILER *cif_cc;
+static CIF_COMPILER *cif_cc;
 
 static char *current_line;
 static size_t currentl_line_length;
-size_t current_pos;
+static size_t current_pos;
 
 /* Inherited from the Flex scanner: */
 static char * thisTokenLine = NULL;
