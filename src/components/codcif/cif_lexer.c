@@ -26,7 +26,7 @@ FILE *yyin;
 CIF_COMPILER *cif_cc;
 
 static char *current_line;
-size_t currentl_line_length;
+static size_t currentl_line_length;
 size_t current_pos;
 
 /* Inherited from the Flex scanner: */
