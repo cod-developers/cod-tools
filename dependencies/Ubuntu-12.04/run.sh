@@ -15,6 +15,7 @@ sudo apt-get install -y \
     liblist-moreutils-perl \
     libparse-yapp-perl \
     libwww-curl-perl \
+    libxml-simple-perl \
     openbabel \
     perl \
     python-argparse \
