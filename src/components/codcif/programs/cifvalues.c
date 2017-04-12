@@ -12,6 +12,7 @@
 #include <string.h>
 #include <ctype.h> /* for 'tolower()' */
 #include <getoptions.h>
+#include <cif_compiler.h>
 #include <cif_grammar_y.h>
 #include <cif_grammar_flex.h>
 #include <allocx.h>

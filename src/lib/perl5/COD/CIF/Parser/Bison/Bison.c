@@ -1,7 +1,9 @@
 #include <EXTERN.h>
 #include <perl.h>
 #include <XSUB.h>
+#include <cif_compiler.h>
 #include <cif_grammar_y.h>
+#include <cif2_grammar_y.h>
 #include <cif_grammar_flex.h>
 #include <cif_options.h>
 #include <allocx.h>
@@ -14,6 +16,9 @@
 #include <cif.h>
 #include <datablock.h>
 #include <cifmessage.h>
+#include <cifvalue.h>
+#include <ciflist.h>
+#include <ciftable.h>
 
 char *progname = "cifparser";
 
@@ -33,6 +38,82 @@ void hv_put( HV * hash, char * key, SV * scalar ) {
     hv_store( hash, key, strlen(key), scalar, 0 );
 }
 
+SV *extract_value( CIFVALUE * cifvalue ) {
+    size_t i;
+    SV *extracted;
+    switch( value_type( cifvalue ) ) {
+        case CIF_LIST: {
+            CIFLIST *ciflist = value_list( cifvalue );
+            AV *values = newAV();
+            for( i = 0; i < list_length( ciflist ); i++ ) {
+                av_push( values, extract_value( list_get( ciflist, i ) ) );
+            }
+            extracted = newRV_noinc( (SV*) values );
+            break;
+        }
+        case CIF_TABLE: {
+            CIFTABLE *ciftable = value_table( cifvalue );
+            char **keys = table_keys( ciftable );
+            HV *values = newHV();
+            for( i = 0; i < table_length( ciftable ); i++ ) {
+                hv_put( values, keys[i],
+                        extract_value( table_get( ciftable, keys[i] ) ) );
+            }
+            extracted = newRV_noinc( (SV*) values );
+            break;
+        }
+        default:
+            extracted = newSVpv( value_scalar( cifvalue ), 0 );
+    }
+    return extracted;
+}
+
+SV *extract_type( CIFVALUE * cifvalue ) {
+    size_t i;
+    SV *extracted;
+    switch( value_type( cifvalue ) ) {
+        case CIF_LIST: {
+            CIFLIST *ciflist = value_list( cifvalue );
+            AV * type_list = newAV();
+            for( i = 0; i < list_length( ciflist ); i++ ) {
+                av_push( type_list, extract_type( list_get( ciflist, i ) ) );
+            }
+            extracted = newRV_noinc( (SV*) type_list );
+            break;
+        }
+        case CIF_TABLE: {
+            CIFTABLE *ciftable = value_table( cifvalue );
+            char **keys = table_keys( ciftable );
+            HV *type_hash = newHV();
+            for( i = 0; i < table_length( ciftable ); i++ ) {
+                hv_put( type_hash, keys[i],
+                        extract_type( table_get( ciftable, keys[i] ) ) );
+            }
+            extracted = newRV_noinc( (SV*) type_hash );
+            break;
+        }
+        case CIF_INT :
+            extracted = newSVpv( "INT", 3 ); break;
+        case CIF_FLOAT :
+            extracted = newSVpv( "FLOAT", 5 ); break;
+        case CIF_SQSTRING :
+            extracted = newSVpv( "SQSTRING", 8 ); break;
+        case CIF_DQSTRING :
+            extracted = newSVpv( "DQSTRING", 8 ); break;
+        case CIF_UQSTRING :
+            extracted = newSVpv( "UQSTRING", 8 ); break;
+        case CIF_TEXT :
+            extracted = newSVpv( "TEXTFIELD", 9 ); break;
+        case CIF_SQ3STRING :
+            extracted = newSVpv( "SQ3STRING", 9 ); break;
+        case CIF_DQ3STRING :
+            extracted = newSVpv( "DQ3STRING", 9 ); break;
+        default :
+            extracted = newSVpv( "UNKNOWN", 7 );
+    }
+    return extracted;
+}
+
 SV * convert_datablock( DATABLOCK * datablock )
 {
     HV * current_datablock = newHV();
@@ -42,10 +123,8 @@ SV * convert_datablock( DATABLOCK * datablock )
     size_t length = datablock_length( datablock );
     char **tags   = datablock_tags( datablock );
     ssize_t * value_lengths = datablock_value_lengths( datablock );
-    char ***values = datablock_values( datablock );
     int *inloop   = datablock_in_loop( datablock );
     int  loop_count = datablock_loop_count( datablock );
-    datablock_value_type_t **types = datablock_types( datablock );
 
     AV * taglist    = newAV();
     HV * valuehash  = newHV();
@@ -66,26 +145,11 @@ SV * convert_datablock( DATABLOCK * datablock )
 
         AV * tagvalues  = newAV();
         AV * typevalues = newAV();
-        SV * type;
         for( j = 0; j < value_lengths[i]; j++ ) {
-            av_push( tagvalues, newSVpv( values[i][j], 0 ) );
-            switch ( types[i][j] ) {
-                case DBLK_INT :
-                    type = newSVpv( "INT", 3 ); break;
-                case DBLK_FLOAT :
-                    type = newSVpv( "FLOAT", 5 ); break;
-                case DBLK_SQSTRING :
-                    type = newSVpv( "SQSTRING", 8 ); break;
-                case DBLK_DQSTRING :
-                    type = newSVpv( "DQSTRING", 8 ); break;
-                case DBLK_UQSTRING :
-                    type = newSVpv( "UQSTRING", 8 ); break;
-                case DBLK_TEXT :
-                    type = newSVpv( "TEXTFIELD", 9 ); break;
-                default :
-                    type = newSVpv( "UNKNOWN", 7 );
-            }
-            av_push( typevalues, type );
+            av_push( tagvalues,
+                extract_value( datablock_cifvalue( datablock, i, j ) ) );
+            av_push( typevalues,
+                extract_type( datablock_cifvalue( datablock, i, j ) ) );
         }
         hv_put( valuehash, tags[i], newRV_noinc( (SV*) tagvalues ) );
         hv_put( typehash,  tags[i], newRV_noinc( (SV*) typevalues ) );
@@ -120,6 +184,7 @@ SV * parse_cif( char * fname, char * prog, SV * opt )
 {
     cexception_t inner;
     cif_yy_debug_off();
+    cif2_yy_debug_off();
     cif_flex_debug_off();
     cif_debug_off();
     CIF * volatile cif = NULL;
@@ -193,8 +258,16 @@ SV * parse_cif( char * fname, char * prog, SV * opt )
 
     if( cif ) {
         DATABLOCK *datablock;
+        int major_version = cif_major_version( cif );
+        int minor_version = cif_minor_version( cif );
         foreach_datablock( datablock, cif_datablock_list( cif ) ) {
-            av_push( datablocks, newRV_noinc( convert_datablock( datablock ) ) );
+            SV * converted_datablock = convert_datablock( datablock );
+            HV * versionhash  = newHV();
+            hv_put( versionhash, "major", newSViv( major_version ) );
+            hv_put( versionhash, "minor", newSViv( minor_version ) );
+            hv_put( (HV*) converted_datablock, "cifversion",
+                    newRV_noinc( (SV*) versionhash ) );
+            av_push( datablocks, newRV_noinc( converted_datablock ) );
         }
 
         CIFMESSAGE *cifmessage;

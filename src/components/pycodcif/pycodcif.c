@@ -1,5 +1,7 @@
 #include <Python.h>
+#include <cif_compiler.h>
 #include <cif_grammar_y.h>
+#include <cif2_grammar_y.h>
 #include <cif_grammar_flex.h>
 #include <cif_options.h>
 #include <allocx.h>
@@ -13,6 +15,9 @@
 #include <cif.h>
 #include <datablock.h>
 #include <cifmessage.h>
+#include <cifvalue.h>
+#include <ciflist.h>
+#include <ciftable.h>
 
 char *progname = "cifparser";
 
@@ -34,7 +39,83 @@ void PyDict_PutString( PyObject * dict, char * key, char * value ) {
     }
 }
 
-PyObject * convert_datablock( DATABLOCK * datablock )
+PyObject *extract_value( CIFVALUE * cifvalue ) {
+    size_t i;
+    PyObject *extracted;
+    switch( value_type( cifvalue ) ) {
+        case CIF_LIST: {
+            CIFLIST *ciflist = value_list( cifvalue );
+            PyObject *values = PyList_New(0);
+            for( i = 0; i < list_length( ciflist ); i++ ) {
+                PyList_Append( values, extract_value( list_get( ciflist, i ) ) );
+            }
+            extracted = values;
+            break;
+        }
+        case CIF_TABLE: {
+            CIFTABLE *ciftable = value_table( cifvalue );
+            char **keys = table_keys( ciftable );
+            PyObject *values = PyDict_New();
+            for( i = 0; i < table_length( ciftable ); i++ ) {
+                PyDict_SetItemString( values, keys[i],
+                        extract_value( table_get( ciftable, keys[i] ) ) );
+            }
+            extracted = values;
+            break;
+        }
+        default:
+            extracted = PyString_FromString( value_scalar( cifvalue ) );
+    }
+    return extracted;
+}
+
+PyObject *extract_type( CIFVALUE * cifvalue ) {
+    size_t i;
+    PyObject *extracted;
+    switch( value_type( cifvalue ) ) {
+        case CIF_LIST: {
+            CIFLIST *ciflist = value_list( cifvalue );
+            PyObject *type_list = PyList_New(0);
+            for( i = 0; i < list_length( ciflist ); i++ ) {
+                PyList_Append( type_list, extract_type( list_get( ciflist, i ) ) );
+            }
+            extracted = type_list;
+            break;
+        }
+        case CIF_TABLE: {
+            CIFTABLE *ciftable = value_table( cifvalue );
+            char **keys = table_keys( ciftable );
+            PyObject *type_hash = PyDict_New();
+            for( i = 0; i < table_length( ciftable ); i++ ) {
+                PyDict_SetItemString( type_hash, keys[i],
+                        extract_type( table_get( ciftable, keys[i] ) ) );
+            }
+            extracted = type_hash;
+            break;
+        }
+        case CIF_INT :
+            extracted = PyString_FromString( "INT" ); break;
+        case CIF_FLOAT :
+            extracted = PyString_FromString( "FLOAT" ); break;
+        case CIF_SQSTRING :
+            extracted = PyString_FromString( "SQSTRING" ); break;
+        case CIF_DQSTRING :
+            extracted = PyString_FromString( "DQSTRING" ); break;
+        case CIF_UQSTRING :
+            extracted = PyString_FromString( "UQSTRING" ); break;
+        case CIF_TEXT :
+            extracted = PyString_FromString( "TEXTFIELD" ); break;
+        case CIF_SQ3STRING :
+            extracted = PyString_FromString( "SQ3STRING" ); break;
+        case CIF_DQ3STRING :
+            extracted = PyString_FromString( "DQ3STRING" ); break;
+        default :
+            extracted = PyString_FromString( "UNKNOWN" );
+    }
+    return extracted;
+}
+
+PyObject *convert_datablock( DATABLOCK * datablock )
 {
     PyObject * current_datablock = PyDict_New();
     PyDict_PutString( current_datablock, "name",
@@ -43,10 +124,8 @@ PyObject * convert_datablock( DATABLOCK * datablock )
     size_t length = datablock_length( datablock );
     char **tags   = datablock_tags( datablock );
     ssize_t * value_lengths = datablock_value_lengths( datablock );
-    char ***values = datablock_values( datablock );
     int *inloop   = datablock_in_loop( datablock );
     int  loop_count = datablock_loop_count( datablock );
-    datablock_value_type_t **types = datablock_types( datablock );
 
     PyObject * taglist    = PyList_New(0);
     PyObject * valuehash  = PyDict_New();
@@ -67,26 +146,11 @@ PyObject * convert_datablock( DATABLOCK * datablock )
 
         PyObject * tagvalues  = PyList_New(0);
         PyObject * typevalues = PyList_New(0);
-        PyObject * type;
         for( j = 0; j < value_lengths[i]; j++ ) {
-            PyList_Append( tagvalues, PyString_FromString( values[i][j] ) );
-            switch ( types[i][j] ) {
-                case DBLK_INT :
-                    type = PyString_FromString( "INT" ); break;
-                case DBLK_FLOAT :
-                    type = PyString_FromString( "FLOAT" ); break;
-                case DBLK_SQSTRING :
-                    type = PyString_FromString( "SQSTRING" ); break;
-                case DBLK_DQSTRING :
-                    type = PyString_FromString( "DQSTRING" ); break;
-                case DBLK_UQSTRING :
-                    type = PyString_FromString( "UQSTRING" ); break;
-                case DBLK_TEXT :
-                    type = PyString_FromString( "TEXTFIELD" ); break;
-                default :
-                    type = PyString_FromString( "UNKNOWN" );
-            }
-            PyList_Append( typevalues, type );
+            PyList_Append( tagvalues,
+                extract_value( datablock_cifvalue( datablock, i, j ) ) );
+            PyList_Append( typevalues,
+                extract_type( datablock_cifvalue( datablock, i, j ) ) );
         }
         PyDict_SetItemString( valuehash, tags[i], tagvalues );
         PyDict_SetItemString( typehash, tags[i], typevalues );
@@ -193,8 +257,18 @@ PyObject * parse_cif( char * fname, char * prog, PyObject * opt )
 
     if( cif ) {
         DATABLOCK *datablock;
+        int major_version = cif_major_version( cif );
+        int minor_version = cif_minor_version( cif );
         foreach_datablock( datablock, cif_datablock_list( cif ) ) {
-            PyList_Append( datablocks, convert_datablock( datablock ) );
+            PyObject * converted_datablock = convert_datablock( datablock );
+            PyObject * versionhash  = PyDict_New();
+            PyDict_SetItemString( versionhash, "major",
+                                  PyInt_FromLong( major_version ) );
+            PyDict_SetItemString( versionhash, "minor",
+                                  PyInt_FromLong( minor_version ) );
+            PyDict_SetItemString( converted_datablock, "cifversion",
+                                  versionhash );
+            PyList_Append( datablocks, converted_datablock );
         }
 
         CIFMESSAGE *cifmessage;

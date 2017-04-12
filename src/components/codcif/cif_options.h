@@ -19,6 +19,7 @@ typedef enum cif_option_t {
     FIX_STRING_QUOTES    = 128,
     CO_SUPPRESS_MESSAGES = 256,
     CO_DO_NOT_REPORT_LONG_LINES = 512,
+    CO_COUNT_LINES_FROM_2 = 1024,
 } cif_option_t;
 
 cif_option_t cif_option_default();
@@ -34,5 +35,6 @@ cif_option_t cif_option_set_fix_data_header( cif_option_t copt );
 cif_option_t cif_option_set_fix_datablock_names( cif_option_t copt );
 cif_option_t cif_option_set_fix_string_quotes( cif_option_t copt );
 cif_option_t cif_option_suppress_messages( cif_option_t copt );
+cif_option_t cif_option_count_lines_from_2( cif_option_t copt );
 
 #endif

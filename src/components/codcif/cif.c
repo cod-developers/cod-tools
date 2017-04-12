@@ -48,6 +48,8 @@ void cif_debug_off( void )
 struct CIF {
     int nerrors;
     int yyretval;
+    int major_version;
+    int minor_version;
     DATABLOCK *datablock_list;
     DATABLOCK *last_datablock; /* points to the end of the
                                   datablock_list; SHOULD not be freed
@@ -75,6 +77,11 @@ void delete_cif( CIF *cif )
 CIF *new_cif( cexception_t *ex )
 {
     CIF *cif = callocx( 1, sizeof(CIF), ex );
+
+    /* By default, CIF is set to be conforming to CIF v1.1 syntax */
+    cif->major_version = 1;
+    cif->minor_version = 1;
+
     return cif;
 }
 
@@ -137,7 +144,8 @@ void cif_start_save_frame( CIF * volatile cif, const char *name,
     assert( cif->current_datablock );
 
     if( cif->current_datablock != cif->last_datablock ) {
-        yyerror( "save frames may not be nested" );
+        cexception_raise( ex, CIF_NESTED_FRAMES_ERROR, 
+                          "save frames may not be nested" );
     }
 
     save_frame = datablock_start_save_frame( cif->current_datablock, name, ex );
@@ -156,6 +164,10 @@ void cif_dump( CIF * volatile cif )
     DATABLOCK *datablock;
 
     if( cif ) {
+        if( cif->major_version > 1 ) {
+            printf( "#\\#CIF_%d.%d\n",
+                    cif->major_version, cif->minor_version );
+        }
         foreach_datablock( datablock, cif->datablock_list ) {
             datablock_dump( datablock );
         }
@@ -167,6 +179,10 @@ void cif_print( CIF * volatile cif )
     DATABLOCK *datablock;
 
     if( cif ) {
+        if( cif->major_version > 1 ) {
+            printf( "#\\#CIF_%d.%d\n",
+                    cif->major_version, cif->minor_version );
+        }
         foreach_datablock( datablock, cif->datablock_list ) {
             datablock_print( datablock );
         }
@@ -188,14 +204,13 @@ ssize_t cif_tag_index( CIF * cif, char *tag ) {
     return datablock_tag_index( cif->current_datablock, tag );
 }
 
-void cif_insert_value( CIF * cif, char *tag,
-                       char *value, datablock_value_type_t vtype,
-                       cexception_t *ex )
+void cif_insert_cifvalue( CIF * cif, char *tag, CIFVALUE *value,
+                          cexception_t *ex )
 {
     assert( cif );
 
     if( cif->datablock_list ) {
-        datablock_insert_value( cif->current_datablock, tag, value, vtype, ex );
+        datablock_insert_cifvalue( cif->current_datablock, tag, value, ex );
     } else {
         cexception_raise( ex, CIF_NO_DATABLOCK_ERROR,
                           "attempt to insert a CIF value before a "
@@ -203,13 +218,12 @@ void cif_insert_value( CIF * cif, char *tag,
     }
 }
 
-void cif_overwrite_value( CIF * cif, ssize_t tag_nr, ssize_t val_nr,
-                          char *value, datablock_value_type_t vtype,
-                          cexception_t *ex )
+void cif_overwrite_cifvalue( CIF * cif, ssize_t tag_nr, ssize_t val_nr,
+                             CIFVALUE *value, cexception_t *ex )
 {
     assert( cif );
-    datablock_overwrite_value( cif->current_datablock, tag_nr, val_nr,
-        value, vtype, ex );
+    datablock_overwrite_cifvalue( cif->current_datablock, tag_nr, val_nr,
+        value, ex );
 }
 
 void cif_start_loop( CIF *cif, cexception_t *ex )
@@ -238,11 +252,10 @@ void cif_finish_loop( CIF *cif, cexception_t *ex )
     }
 }
 
-void cif_push_loop_value( CIF * cif, char *value, datablock_value_type_t vtype,
-                          cexception_t *ex )
+void cif_push_loop_cifvalue( CIF * cif, CIFVALUE *value, cexception_t *ex )
 {
     if( cif->datablock_list ) {
-        datablock_push_loop_value( cif->current_datablock, value, vtype, ex );
+        datablock_push_loop_cifvalue( cif->current_datablock, value, ex );
     } else {
         cexception_raise( ex, CIF_NO_DATABLOCK_ERROR,
                           "attempt to push a CIF loop value before a "
@@ -328,6 +341,25 @@ int cif_yyretval( CIF *cif )
 {
     assert( cif );
     return cif->yyretval;
+}
+
+void cif_set_version( CIF *cif, int major, int minor )
+{
+    assert( cif );
+    cif->major_version = major;
+    cif->minor_version = minor;
+}
+
+int cif_major_version( CIF *cif )
+{
+    assert( cif );
+    return cif->major_version;
+}
+
+int cif_minor_version( CIF *cif )
+{
+    assert( cif );
+    return cif->minor_version;
 }
 
 void cif_set_message( CIF *cif,

@@ -53,13 +53,12 @@ struct DATABLOCK {
     size_t length;
     size_t capacity;
     char **tags;
-    char ***values;
+    CIFVALUE ***values;
     int *in_loop;              /* in_loop[i] is number of a loop to
                                   which the i-th tag belongs; -1 if
                                   not in a loop */
     ssize_t *value_lengths;    /* Lengths of the values[i] arrays. */
     ssize_t *value_capacities; /* Capacities of the values[i] arrays. */
-    datablock_value_type_t **types;  /* Type for each value in 'values'. */
 
     ssize_t loop_value_count; /* Number of values in the currently constructed loop. */
     ssize_t loop_start; /* Index of the entry into the 'tags',
@@ -96,13 +95,11 @@ void delete_datablock( DATABLOCK *datablock )
         for( i = 0; i < datablock->length; i++ ) {
             if( datablock->tags ) 
                 freex( datablock->tags[i] );
-            if( datablock->values && datablock->values[i] ) {
+            if( datablock->values ) {
                 for( j = 0; j < datablock->value_lengths[i]; j++ )
-                    freex( datablock->values[i][j] );
+                    delete_value( datablock_cifvalue( datablock, i, j ) );
                 freex( datablock->values[i] );
             }
-            if( datablock->types )
-                freex( datablock->types[i] );
         }
         freex( datablock->name );
         freex( datablock->tags );
@@ -110,7 +107,6 @@ void delete_datablock( DATABLOCK *datablock )
         freex( datablock->values );
         freex( datablock->value_lengths );
         freex( datablock->value_capacities );
-        freex( datablock->types );
         freex( datablock->loop_first );
         freex( datablock->loop_last );
         delete_datablock_list( datablock->save_frames );
@@ -210,12 +206,7 @@ ssize_t *datablock_value_lengths( DATABLOCK *datablock )
     return datablock->value_lengths;
 }
 
-char ***datablock_values( DATABLOCK *datablock )
-{
-    return datablock->values;
-}
-
-char *datablock_value( DATABLOCK *datablock, int tag_nr, int val_nr )
+CIFVALUE *datablock_cifvalue( DATABLOCK *datablock, int tag_nr, int val_nr )
 {
     if( tag_nr >= datablock->length ) {
         return NULL;
@@ -241,9 +232,21 @@ int *datablock_in_loop( DATABLOCK *datablock )
     return datablock->in_loop;
 }
 
-datablock_value_type_t **datablock_types( DATABLOCK *datablock )
+/*
+cif_value_type_t **datablock_types( DATABLOCK *datablock )
 {
     return datablock->types;
+}
+*/
+
+cif_value_type_t datablock_value_type( DATABLOCK *datablock, int tag_nr, int val_nr )
+{
+    CIFVALUE *v = datablock_cifvalue( datablock, tag_nr, val_nr );
+    if( v ) {
+        return value_type( v );
+    } else {
+        return CIF_NON_EXISTANT;
+    }
 }
 
 int datablock_loop_count( DATABLOCK *datablock )
@@ -273,33 +276,8 @@ void datablock_print_tag( DATABLOCK * volatile datablock, int tag_nr )
 
 void datablock_print_value( DATABLOCK * volatile datablock, int tag_nr, int value_idx )
 {
-    ssize_t i, j;
-
     assert( datablock );
-    i = tag_nr;
-    j = value_idx;
-
-    switch( datablock->types[i][j] ) {
-        case DBLK_INT:
-        case DBLK_FLOAT:
-        case DBLK_UQSTRING:
-            printf( " %s", datablock->values[i][j] );
-            break;
-        case DBLK_SQSTRING:
-            printf( " '%s'", datablock->values[i][j] );
-            break;
-        case DBLK_DQSTRING:
-            printf( " \"%s\"", datablock->values[i][j] );
-            break;
-        case DBLK_TEXT:
-            printf( "\n;%s\n;\n", datablock->values[i][j] );
-            break;
-        default:
-            fprintf( stderr, "unknown DATABLOCK value type %d from DATABLOCK parser!\n",
-                     datablock->types[i][j] );
-            printf( " '%s'\n", datablock->values[i][j] );
-            break;
-    }
+    value_dump( datablock->values[tag_nr][value_idx] );
 }
 
 void datablock_print_tag_values( DATABLOCK * volatile datablock,
@@ -317,10 +295,11 @@ void datablock_print_tag_values( DATABLOCK * volatile datablock,
                 int first = 1;
                 for( j = 0; j < datablock->value_lengths[i]; j++ ) {
                     if( first == 1 ) {
-                        printf( "%s", datablock->values[i][j] );
+                        printf( "%s", value_scalar( datablock->values[i][j] ) );
                         first = 0;
                     } else {
-                        printf( "%s%s", vseparator, datablock->values[i][j] );
+                        printf( "%s%s", vseparator,
+                                value_scalar( datablock->values[i][j] ) );
                     }
                 }
                 break;
@@ -416,9 +395,8 @@ void datablock_list_tags( DATABLOCK * volatile datablock )
     }
 }
 
-void datablock_insert_value( DATABLOCK * datablock, char *tag,
-                       char *value, datablock_value_type_t vtype,
-                       cexception_t *ex )
+void datablock_insert_cifvalue( DATABLOCK * datablock, char *tag,
+                                CIFVALUE *value, cexception_t *ex )
 {
     cexception_t inner;
     ssize_t i;
@@ -440,11 +418,11 @@ void datablock_insert_value( DATABLOCK * datablock, char *tag,
                                     (datablock->capacity + DELTA_CAPACITY),
                                     &inner );
             datablock->values[i] = NULL;
-            datablock->types = reallocx( datablock->types,
+            /* datablock->types = reallocx( datablock->types,
                                    sizeof(datablock->types[0]) *
                                    (datablock->capacity + DELTA_CAPACITY),
                                    &inner );
-            datablock->types[i] = NULL;
+               datablock->types[i] = NULL; */
             datablock->value_lengths = reallocx( datablock->value_lengths,
                                            sizeof(datablock->value_lengths[0]) *
                                            (datablock->capacity + DELTA_CAPACITY),
@@ -461,15 +439,14 @@ void datablock_insert_value( DATABLOCK * datablock, char *tag,
         datablock->length++;
 
         datablock->values[i] = callocx( sizeof(datablock->values[0][0]), 1, &inner );
-        datablock->types[i] = callocx( sizeof(datablock->types[0][0]), 1, &inner );
+        // datablock->types[i] = callocx( sizeof(datablock->types[0][0]), 1, &inner );
         datablock->value_capacities[i] = 1;
         datablock->tags[i] = strdupx( tag, &inner );
         datablock->in_loop[i] = -1;
 
         if( value ) {
             datablock->value_lengths[i] = 1;
-            datablock->values[i][0] = strdupx( value, &inner );
-            datablock->types[i][0] = vtype;
+            datablock->values[i][0] = value;
         } else {
             datablock->value_lengths[i] = 0;
         }
@@ -479,20 +456,18 @@ void datablock_insert_value( DATABLOCK * datablock, char *tag,
     }
 }
 
-void datablock_overwrite_value( DATABLOCK * datablock, ssize_t tag_nr,
-                       ssize_t val_nr, char *value,
-                       datablock_value_type_t vtype,
-                       cexception_t *ex )
+void datablock_overwrite_cifvalue( DATABLOCK * datablock, ssize_t tag_nr,
+                                   ssize_t val_nr, CIFVALUE *value,
+                                   cexception_t *ex )
 {
     cexception_t inner;
 
     cexception_guard( inner ) {
         if( value ) {
-            freex( datablock->values[tag_nr][val_nr] );
-            datablock->values[tag_nr][val_nr] = strdupx( value, &inner );
-            datablock->types[tag_nr][val_nr]  = vtype;
+            delete_value( datablock_cifvalue( datablock, tag_nr, val_nr ) );
+            datablock->values[tag_nr][val_nr] = value;
         } else {
-            datablock->values[tag_nr][val_nr] = '\0';
+            datablock->values[tag_nr][val_nr] = NULL;
         }
     }
     cexception_catch {
@@ -531,8 +506,8 @@ void datablock_finish_loop( DATABLOCK *datablock, cexception_t *ex )
     datablock->loop_current = datablock->loop_start = -1;
 }
 
-void datablock_push_loop_value( DATABLOCK * datablock, char *value, datablock_value_type_t vtype,
-                          cexception_t *ex )
+void datablock_push_loop_cifvalue( DATABLOCK * datablock, CIFVALUE *value,
+                                   cexception_t *ex )
 {
     cexception_t inner;
     ssize_t i, j, capacity;
@@ -549,14 +524,13 @@ void datablock_push_loop_value( DATABLOCK * datablock, char *value, datablock_va
             datablock->values[i] = reallocx( datablock->values[i],
                                        sizeof(datablock->values[0][0]) * capacity,
                                        &inner );
-            datablock->types[i] = reallocx( datablock->types[i],
+            /* datablock->types[i] = reallocx( datablock->types[i],
                                       sizeof(datablock->types[0][0]) * capacity,
-                                      &inner );
+                                      &inner ); */
             datablock->value_capacities[i] = capacity;
         }
         datablock->value_lengths[i] = j + 1;
         datablock->values[i][j] = value;
-        datablock->types[i][j] = vtype;
         datablock->loop_current++;
         if( datablock->loop_current >= datablock->length ) {
             datablock->loop_current = datablock->loop_start;

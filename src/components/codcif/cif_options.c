@@ -77,3 +77,8 @@ cif_option_t cif_option_suppress_messages( cif_option_t copt )
 {
     return copt | CO_SUPPRESS_MESSAGES;
 }
+
+cif_option_t cif_option_count_lines_from_2( cif_option_t copt )
+{
+    return copt | CO_COUNT_LINES_FROM_2;
+}
