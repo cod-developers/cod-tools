@@ -11,11 +11,12 @@
 #include <stdio.h>
 #include <stdlib.h> /* for ssize_t */
 #include <cexceptions.h>
+#include <cif_compiler.h>
 
-int yylex( void );
-void yyrestart( void );
+int ciflex( void );
+void cifrestart( void );
 
-int cif_lexer( FILE *in, cexception_t *ex );
+void cif_lexer_set_compiler( CIF_COMPILER *ccc );
 
 void cif_flex_reset_counters( void );
 
@@ -33,5 +34,7 @@ int cif_lexer_set_report_long_items( int flag );
 int cif_lexer_report_long_items( void );
 int cif_lexer_set_line_length_limit( int max_length );
 int cif_lexer_set_tag_length_limit( int max_length );
+
+extern int ciferror( const char *message );
 
 #endif

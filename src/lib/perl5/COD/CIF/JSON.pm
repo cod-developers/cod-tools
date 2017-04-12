@@ -22,7 +22,7 @@ our @EXPORT_OK = qw(
     json2cif
 );
 
-my $format_version = 1.0;
+my $format_version = 1.1;
 
 sub cif2json($)
 {

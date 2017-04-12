@@ -12,6 +12,7 @@
 #include <string.h>
 #include <getoptions.h>
 #include <cifmessage.h>
+#include <cif_compiler.h>
 #include <cif_grammar_y.h>
 #include <cif_grammar_flex.h>
 #include <cif_lexer.h>

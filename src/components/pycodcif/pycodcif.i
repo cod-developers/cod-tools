@@ -1,17 +1,6 @@
 %module pycodcif
 %{
     #include <Python.h>
-    #include <cif_grammar_y.h>
-    #include <cif_grammar_flex.h>
-    #include <allocx.h>
-    #include <cxprintf.h>
-    #include <getoptions.h>
-    #include <cexceptions.h>
-    #include <stdiox.h>
-    #include <stringx.h>
-    #include <yy.h>
-    #include <cif.h>
-    #include <datablock.h>
 
     PyObject * parse_cif( char * fname, char * prog, PyObject * options );
 %}
@@ -39,27 +28,11 @@ def parse(filename,*args):
     for datablock in data:
         datablock['precisions'] = {}
         for tag in datablock['types'].keys():
-            prec = []
-            has_numeric_values = False
-            for i,type in enumerate(datablock['types'][tag]):
-                this_prec = None
-                if type in ('INT','FLOAT'):
-                    has_numeric_values = True
-                    match = re.search('^(.*)(\(([0-9]+)\))$',
-                                      datablock['values'][tag][i])
-                    if match:
-                        if type == 'FLOAT':
-                            this_prec = unpack_precision(match.group(1),
-                                                         match.group(3))
-                        elif type == 'INT':
-                            this_prec = match.group(3)
-
-                prec.append(this_prec)
-            if any([x is not None for x in prec]) or \
-                (tag in datablock['inloop'].keys() and has_numeric_values):
-                if len(prec) < len(datablock['types'][tag]):
-                    prec[len(datablock['types'][tag])-1] = None
-                datablock['precisions'][tag] = prec
+            precisions = extract_precision(datablock['values'][tag],
+                                           datablock['types'][tag],
+                                           tag in datablock['inloop'].keys())
+            if precisions is not None:
+                datablock['precisions'][tag] = precisions
 
     errors = []
     warnings = []
@@ -128,6 +101,38 @@ def unpack_precision(value,precision):
         precision = float(precision) / (10**len(mantissa))
     precision = float(precision) * (10**exponent)
     return precision
+
+def extract_precision(values,types,is_in_loop=False):
+    import re
+    if isinstance(types,list):
+        precisions = []
+        for i in range(0,len(values)):
+            precisions.append(extract_precision(values[i],types[i]))
+        if any([x is not None for x in precisions]) or \
+            any([isinstance(x,list) or isinstance(x,dict) for x in types]) or \
+            (is_in_loop == True and any([x in ('INT','FLOAT') for x in types])):
+            return precisions
+        else:
+            return None
+    elif isinstance(types,dict):
+        precisions = {}
+        for i in values.keys():
+            precisions[i] = extract_precision(values[i],types[i])
+        return precisions
+    elif types == 'FLOAT':
+        match = re.search('^(.*)(\(([0-9]+)\))$',values)
+        if match is not None and match.group(1):
+            return unpack_precision(match.group(1),match.group(3))
+        else:
+            return None
+    elif types == 'INT':
+        match = re.search('^(.*)(\(([0-9]+)\))$',values)
+        if match is not None and match.group(1):
+            return match.group(3)
+        else:
+            return None
+    else:
+        return None
 
 program_escape = {
     '&': '&amp;',
@@ -228,16 +233,5 @@ def escape_meta(text, escaped_symbols):
 %}
 
 #include <Python.h>
-#include <cif_grammar_y.h>
-#include <cif_grammar_flex.h>
-#include <allocx.h>
-#include <cxprintf.h>
-#include <getoptions.h>
-#include <cexceptions.h>
-#include <stdiox.h>
-#include <stringx.h>
-#include <yy.h>
-#include <cif.h>
-#include <datablock.h>
 
 PyObject * parse_cif( char * fname, char * prog, PyObject * options );

@@ -223,7 +223,7 @@ ${TST_EXE_DIR}/%: ${TST_PRG_DIR}/%.c ${LINK_OBJ_FILES} \
 	mv lex.yy.c $*.lex.c
 
 %.tab.c %.tab.h: %.y 
-	${YACC} -v -d $<
+	${YACC} -v -d -p ${*:%_grammar=%} $<
 	test -f y.tab.c  && mv y.tab.c $*.tab.c   ; true
 	test -f y.tab.h  && mv y.tab.h $*.tab.h   ; true
 	test -f y.output && mv y.output $*.output ; true
