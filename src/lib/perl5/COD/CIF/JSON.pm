@@ -36,24 +36,33 @@ sub json2cif($)
     my( $json ) = @_;
     my $js = new JSON;
     $js->incr_parse( $json );
-    my $decoded;
     my @decoded;
-    while( $decoded = $js->incr_parse ) {
-        if( !exists $decoded->{version} ) {
+    while( my $decoded = $js->incr_parse ) {
+        if( ref $decoded eq 'ARRAY' ) { # cannonical JSON
+            push @decoded, @$decoded;
+        } elsif( ref $decoded eq 'HASH' ) { # JSON stream
+            push @decoded, $decoded;
+        } else {
+            die 'ERROR, top level JSON element must be list or ' .
+                'dictionary, but something else was detected -- ' .
+                'will not deserialize' . "\n";
+        }
+    }
+    foreach (@decoded) {
+        if( !exists $_->{version} ) {
             die 'ERROR, unknown serialization format version -- ' .
                  'will not deserialize' . "\n";
         }
         my( $our_major )   = split( '\.', $format_version );
-        my( $their_major ) = split( '\.', $decoded->{version} );
+        my( $their_major ) = split( '\.', $_->{version} );
         if( $our_major != $their_major ) {
             die 'ERROR, major versions of used serialization ' .
                 'format and the deserializer are different ' .
                 "(current: $our_major, used: $their_major) -- " .
                 'will not deserialize' . "\n";
         }
-        push( @decoded, $decoded->{data} );
     }
-    return \@decoded;
+    return [ map { $_->{data} } @decoded ];
 }
 
 # Functions for compatibility with object-oriented usage
