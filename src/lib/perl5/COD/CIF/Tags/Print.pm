@@ -277,10 +277,13 @@ sub sprint_value
                     ($key =~ /"""/ && $key =~ /'$/) ) {
                     die "ERROR, can not store value '$key' " .
                         'in a quoted string' . "\n";
-                } elsif( $key =~ /'''/ ) {
+                } elsif( $key =~ /'/ && $key =~ /"/ && $key =~ /'$/ ) {
                     $key = '"""' . $key . '"""';
-                } elsif( $key =~ /"""|\n/ ||
-                    ($key =~ /'/ && $key =~ /"/) ) {
+                } elsif( $key =~ /'/ && $key =~ /"/ && $key =~ /"$/ ) {
+                    $key = "'''" . $key . "'''";
+                } elsif( $key =~ /\n/ && $key =~ /'$/ ) {
+                    $key = '"""' . $key . '"""';
+                } elsif( $key =~ /\n/ ) {
                     $key = "'''" . $key . "'''";
                 } elsif( $key =~ /'/ ) {
                     $key = '"' . $key . '"';
