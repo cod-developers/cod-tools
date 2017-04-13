@@ -271,7 +271,23 @@ sub sprint_value
         } elsif( ref $val eq 'HASH' ) {
             my @values;
             foreach (sort keys %$val) {
-                push @values, "'$_': " .
+                my $key = $_;
+                if( ($key =~ /'''/ && $key =~ /"""/) ||
+                    ($key =~ /'''/ && $key =~ /"$/) ||
+                    ($key =~ /"""/ && $key =~ /'$/) ) {
+                    die "ERROR, can not store value '$key' " .
+                        'in a quoted string' . "\n";
+                } elsif( $key =~ /'''/ ) {
+                    $key = '"""' . $key . '"""';
+                } elsif( $key =~ /"""|\n/ ||
+                    ($key =~ /'/ && $key =~ /"/) ) {
+                    $key = "'''" . $key . "'''";
+                } elsif( $key =~ /'/ ) {
+                    $key = '"' . $key . '"';
+                } else {
+                    $key = "'" . $key . "'";
+                }
+                push @values, "$key: " .
                               sprint_value( $val->{$_},
                                             $fold_long_fields,
                                             $folding_width,
