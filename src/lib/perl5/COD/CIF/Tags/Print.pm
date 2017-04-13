@@ -267,18 +267,34 @@ sub sprint_value
         $val =~ s/^\s+//g;
     }
 
-    if( $val =~ /\n/ || $val =~ /^$/ ||
-        ($val =~ /'\s/ && $val =~ /"\s/) ) {
-        $val = "\n;" . $val . "\n;";
-    } elsif( $val =~ /'\s/ || $val =~ /^'/ ) {
-        $val = "\"" . $val . "\"";
-    } elsif( $val =~ /"\s|^\#/ || $val =~ /^"/ ||
-        $val =~ /^(data|loop|global|save)_/i ) {
-        $val = "'" . $val . "'";
-    } elsif( $val =~ /^'.*'$/ ) {
-        $val = "\"" . $val . "\"";
-    } elsif( $val =~ /\s|^_|^\[|^\]|^\$|^".*"$/) {
-        $val = "'" . $val . "'";
+    if( !$cif_version || int $cif_version == 1 ) {
+        if( $val =~ /\n/ || $val =~ /^$/ ||
+            ($val =~ /'\s/ && $val =~ /"\s/) ) {
+            $val = "\n;" . $val . "\n;";
+        } elsif( $val =~ /'\s/ || $val =~ /^'/ ) {
+            $val = "\"" . $val . "\"";
+        } elsif( $val =~ /"\s|^\#/ || $val =~ /^"/ ||
+            $val =~ /^(data|loop|global|save)_/i ) {
+            $val = "'" . $val . "'";
+        } elsif( $val =~ /^'.*'$/ ) {
+            $val = "\"" . $val . "\"";
+        } elsif( $val =~ /\s|^_|^\[|^\]|^\$|^".*"$/) {
+            $val = "'" . $val . "'";
+        }
+    } else {
+        if( $val =~ /\n/ || $val =~ /"""/ || $val =~ /'''/ ) {
+            $val = "\n;" . $val . "\n;";
+        } elsif( $val =~ /'/ && $val =~ /"/ && $val =~ /[^']$/ ) {
+            $val = "'''" . $val . "'''";
+        } elsif( $val =~ /'/ && $val =~ /"/ && $val =~ /[^"]$/ ) {
+            $val = "\"\"\"" . $val . "\"\"\"";
+        } elsif( $val =~ /'/ ) {
+            $val = "\"" . $val . "\"";
+        } elsif( $val =~ /"/ || $val =~ /^[#\$_]/ || $val eq '' ||
+            $val =~ /[\s\[\]\{\}]/ ||
+            $val =~ /^(data|loop|global|save|stop)_/i ) {
+            $val = "'" . $val . "'";
+        }
     }
     return $val;
 }
