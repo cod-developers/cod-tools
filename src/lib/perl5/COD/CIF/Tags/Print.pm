@@ -52,6 +52,12 @@ sub print_cif
 
     clean_cif( $dataset, $flags );
 
+    if( exists $dataset->{cifversion} &&
+        $dataset->{cifversion}{major} > 1 ) {
+        printf "#\\#CIF_%d.%d\n", $dataset->{cifversion}{major},
+                                  $dataset->{cifversion}{minor};
+    }
+
     if( defined $dataset->{name} ) {
         print "data_", $dataset->{name}, "\n";
     }
