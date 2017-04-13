@@ -255,6 +255,29 @@ sub sprint_value
 {
     my ( $val, $fold_long_fields, $folding_width, $cif_version ) = @_;
 
+    if( $cif_version && int $cif_version > 1 ) {
+        if( ref $val eq 'ARRAY' ) {
+            my @values;
+            foreach (@$val) {
+                push @values, sprint_value( $_, $fold_long_fields,
+                                            $folding_width,
+                                            $cif_version );
+            }
+            return "[ @values ]";
+        } elsif( ref $val eq 'HASH' ) {
+            my @values;
+            foreach (sort keys %$val) {
+                push @values, "'$_': " .
+                              sprint_value( $val->{$_},
+                                            $fold_long_fields,
+                                            $folding_width,
+                                            $cif_version );
+            }
+            local $" = "\n";
+            return "\n{\n@values\n}";
+        }
+    }
+
     $fold_long_fields = 0
         unless defined $fold_long_fields;
 
