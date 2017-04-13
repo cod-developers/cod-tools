@@ -23,6 +23,7 @@ use COD::SUsage qw( usage options );
 
 my $use_parser = 'c';
 my %options;
+my $strict = 0;
 @ARGV = getOptions(
 
 #** USAGE:
@@ -36,6 +37,17 @@ my %options;
 #** --dont-fix-errors, --no-fix-errors
 #**    Do not try to fix syntax errors in input CIF files (default).
 #**
+#** --strict
+#**    Strictly adhere to JSON syntax, i.e., make a top level list
+#**    container for CIF datablocks and put comma (",") separators
+#**    between consecutive CIF datablocks.
+#**
+#** --no-strict, --relaxed, --stream, --concatenate
+#**    Print stream of JSON objects, where an object stands for a
+#**    CIF datablock. Such output does not include comma (",")
+#**    separators between top level objects, thus streaming parsers
+#**    have to be used (default mode).
+#**
 #** --use-c-parser
 #**    Use Perl & C parser for CIF parsing (default).
 #**
@@ -46,6 +58,9 @@ my %options;
 
     "--use-perl-parser" => sub{ $use_parser = 'perl' },
     "--use-c-parser"    => sub{ $use_parser = 'c' },
+
+    "--strict" => sub{ $strict = 1 },
+    "--no-strict,--relaxed,--stream,--concatenate" => sub{ $strict = 0 },
 
     "--fix-errors"      => sub{ $options{fix_errors} = 1 },
     "--no-fix-errors"   => sub{ $options{fix_errors} = 0 },
@@ -72,6 +87,9 @@ my %options;
 
 @ARGV = ( "-" ) unless @ARGV;
 
+print '[' if $strict;
+my $first = 1;
+
 for my $filename (@ARGV) {
 
     my $options = { 'parser' => $use_parser, 'no_print' => 1 };
@@ -88,6 +106,10 @@ for my $filename (@ARGV) {
     canonicalize_all_names( $data );
 
     foreach( @$data ) {
+        print ',' if $strict && !$first;
+        $first = 0;
         print cif2json( $_ );
     }
 }
+
+print ']' if $strict;
