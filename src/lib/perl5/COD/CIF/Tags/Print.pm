@@ -263,7 +263,11 @@ sub sprint_value
                                             $folding_width,
                                             $cif_version );
             }
-            return "[ @values ]";
+            if( @values ) {
+                return "[ @values ]";
+            } else {
+                return '[ ]';
+            }
         } elsif( ref $val eq 'HASH' ) {
             my @values;
             foreach (sort keys %$val) {
@@ -273,8 +277,12 @@ sub sprint_value
                                             $folding_width,
                                             $cif_version );
             }
-            local $" = "\n";
-            return "\n{\n@values\n}";
+            if( @values ) {
+                local $" = "\n";
+                return "\n{\n@values\n}";
+            } else {
+                return '{}';
+            }
         }
     }
 
