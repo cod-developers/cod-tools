@@ -332,7 +332,9 @@ sub sprint_value
             $val = "'" . $val . "'";
         }
     } else {
-        if( $val =~ /\n/ || $val =~ /"""/ || $val =~ /'''/ ) {
+        if( $val =~ /\n;/ ) {
+            $val = "\n;" . prefix( $val ) . "\n;";
+        } elsif( $val =~ /\n/ || $val =~ /"""/ || $val =~ /'''/ ) {
             $val = "\n;" . $val . "\n;";
         } elsif( $val =~ /'/ && $val =~ /"/ && $val =~ /[^']$/ ) {
             $val = "'''" . $val . "'''";
@@ -371,6 +373,15 @@ sub fold
     }
     push( @lines, $line );
     return @lines;
+}
+
+sub prefix
+{
+    my ( $value ) = @_;
+    my $prefix = ' ' x 4;
+    my @lines = map { $prefix . $_ } split( "\n", $value );
+    unshift @lines, $prefix . '\\';
+    return join "\n", @lines;
 }
 
 sub round { $_[0] > 0 ? int($_[0] + 0.5) : int($_[0] - 0.5) }
