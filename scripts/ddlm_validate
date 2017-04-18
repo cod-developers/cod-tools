@@ -1,0 +1,193 @@
+#! /bin/sh
+#!perl -w # --*- Perl -*--
+eval 'exec perl -x $0 ${1+"$@"}'
+    if 0;
+#------------------------------------------------------------------------------
+#$Author$
+#$Date$
+#$Revision$
+#$URL$
+#------------------------------------------------------------------------------
+#*
+#  Check dictionaries written in DDLm against the specified instance of
+#  the DDLm dictionary.
+#**
+
+use strict;
+use warnings;
+
+use COD::CIF::Parser qw( parse_cif );
+use COD::SOptions qw( getOptions get_value );
+use COD::SUsage qw( usage options );
+use COD::ErrorHandler qw( process_warnings
+                          process_parser_messages
+                          report_message );
+
+my $use_parser = 'c';
+my $ddlm_dictionary;
+
+my $die_on_errors   = 1;
+my $die_on_warnings = 0;
+my $die_on_notes    = 0;
+
+@ARGV = getOptions(
+    '-d,--DDLm-dictionary' => sub { $ddlm_dictionary = get_value() },
+    '--options'         => sub{ options; exit },
+    '--help,--usage'    => sub{ usage; exit; },
+
+
+    '--continue-on-errors'          => sub { $die_on_errors = 0 },
+    '--die-on-errors'               => sub { $die_on_errors = 1 },
+
+    '--continue-on-warnings' => sub { $die_on_warnings = 0 },
+    '--die-on-warnings'      => sub { $die_on_warnings = 1 },
+
+    '--continue-on-notes'    => sub { $die_on_notes = 0 },
+    '--die-on-notes'         => sub { $die_on_notes = 1 },
+);
+
+my $die_on_error_level = {
+    ERROR   => $die_on_errors,
+    WARNING => $die_on_warnings,
+    NOTE    => $die_on_notes
+};
+
+my $options = { 'parser' => $use_parser, 'no_print' => 1 };
+my ( $data, $err_count, $messages ) = parse_cif( $ddlm_dictionary, $options );
+process_parser_messages( $messages, $die_on_error_level );
+my $validation_dict = build_dictionary($data->[0]);
+
+@ARGV = ('-') unless @ARGV;
+# start-iterate-through-CIF-files
+for my $filename ( @ARGV ) {
+    my $options = { 'parser' => $use_parser, 'no_print' => 1 };
+    my ( $data, $err_count, $messages ) = parse_cif( $filename, $options );
+    process_parser_messages( $messages, $die_on_error_level );
+
+    # there should only be one
+    for my $datablock ( @{$data} ) {
+      my $dataname = 'data_' . $datablock->{'name'} if defined $datablock->{'name'};
+      local $SIG{__WARN__} = sub { process_warnings( {
+                                     'message'       => @_,
+                                     'program'       => $0,
+                                     'filename'      => $filename,
+                                     'add_pos'       => $dataname
+                                   }, $die_on_error_level ) };
+
+
+      my $dict = build_dictionary($datablock);
+
+      my %dict_restrictions;
+      my $valid_application = $validation_dict->{'Datablock'}
+                              {'values'}{'_dictionary_valid.application'};
+      my $valid_attributes  = $validation_dict->{'Datablock'}
+                              {'values'}{'_dictionary_valid.attributes'};
+      for (my $i = 0; $i < @{$valid_application}; $i++) {
+          $dict_restrictions
+            {$valid_application->[$i][0]}
+            {$valid_application->[$i][1]} = $valid_attributes->[$i]
+      };
+      # expand valid attribute categories into individual data item names
+      foreach my $scope (keys %dict_restrictions) {
+        foreach my $option ( keys %{$dict_restrictions{$scope}} ) {
+            $dict_restrictions{$scope}{$option} =
+                expand_categories($dict_restrictions{$scope}{$option},
+                                  $validation_dict);
+        }
+      }
+
+      for my $scope ( 'Dictionary', 'Category', 'Item' ) {
+        for my $instance ( keys %{$dict->{$scope}} ) {
+          my %mandatory   = map { $_ => 0 } @{$dict_restrictions{$scope}{'Mandatory'}};
+          my %recommended = map { $_ => 0 } @{$dict_restrictions{$scope}{'Recommended'}};
+          my %prohibited  = map { $_ => 0 } @{$dict_restrictions{$scope}{'Prohibited'}};
+          for my $tag ( @{$dict->{$scope}{$instance}{'tags'}} ) {
+              if ( exists $prohibited{$tag} ) {
+                warn "data item '$tag' is prohibited in the '$scope' scope of " .
+                     "the $instance frame\n";
+              }
+              $mandatory{$tag}   = 1 if ( exists $mandatory{$tag} );
+              $recommended{$tag} = 1 if ( exists $recommended{$tag} );
+          }
+          foreach my $tag (keys %mandatory) {
+            if ( $mandatory{$tag} == 0 ) {
+                warn "data item '$tag' is mandatory in the '$scope' scope of " .
+                     "the $instance frame\n"
+            }
+          }
+          foreach my $tag (keys %recommended) {
+            if ( $recommended{$tag} == 0 ) {
+                warn "data item '$tag' is recommended in the '$scope' scope of " .
+                     "the $instance frame\n"
+            }
+          }
+        }
+      }
+    }
+}
+
+sub build_dictionary
+{
+    my ($data) = @_;
+
+    my %categories;
+    my %items;
+    for my $saveblock ( @{$data->{'save_blocks'}} ) {
+        my $values = $saveblock->{values};
+
+        if ( exists $values->{'_definition.scope'} ) {
+            if ( $values->{'_definition.scope'}[0] eq 'Dictionary' ) {
+                next; #
+            } elsif ( $values->{'_definition.scope'}[0] eq 'Category' ) {
+                $categories{ $values->{'_definition.id'}[0] } = $saveblock;
+            } elsif ( $values->{'_definition.scope'}[0] eq 'Item' ) {
+                $items{ $values->{'_definition.id'}[0] } = $saveblock;
+            } else {
+                # this error should be reported by the enumeration check
+            }
+        } else {
+            # ITEM is currently stated as the default value
+            $items{ $values->{'_definition.id'}[0] } = $saveblock;
+        }
+    };
+
+    my $dictionary = {
+        'Dictionary' => { $data->{'name'} => $data },
+        'Category'   => \%categories,
+        'Item'       => \%items,
+        'Datablock'  => $data
+    };
+
+    return $dictionary;
+}
+
+sub expand_categories
+{
+    my ($categories, $dict) = @_;
+
+    my @expanded_categories;
+    foreach my $category (@$categories) {
+        if ( exists $dict->{'Item'}{$category} ) {
+            push @expanded_categories, $category;
+        } elsif ( exists $dict->{'Category'}{$category} ) {
+            for my $id (keys %{$dict->{'Item'}}) {
+                if ( exists $dict->{'Item'}{$id}{'values'}{'_name.category_id'} &&
+                     lc $dict->{'Item'}{$id}{'values'}{'_name.category_id'}[0] eq lc $category ) {
+                    push @expanded_categories, $id;
+                }
+            }
+            for my $id (keys %{$dict->{'Category'}}) {
+                if ( exists $dict->{'Category'}{$id}{'values'}{'_name.category_id'}[0] &&
+                     lc $dict->{'Category'}{$id}{'values'}{'_name.category_id'}[0] eq lc $category ) {
+                    push @expanded_categories, @{expand_categories([ $id ], $dict)};
+                }
+            }
+        } else {
+          #  print keys %{$dict->{'Item'}};
+            print "$category\n";
+            die "No such data item or category was found in dictionary";
+        }
+    }
+
+    return \@expanded_categories;
+}
