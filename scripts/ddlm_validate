@@ -22,6 +22,7 @@ use COD::SUsage qw( usage options );
 use COD::ErrorHandler qw( process_warnings
                           process_parser_messages
                           report_message );
+use File::Basename;
 
 my $use_parser = 'c';
 my $ddlm_dictionary;
@@ -34,7 +35,6 @@ my $die_on_notes    = 0;
     '-d,--DDLm-dictionary' => sub { $ddlm_dictionary = get_value() },
     '--options'         => sub{ options; exit },
     '--help,--usage'    => sub{ usage; exit; },
-
 
     '--continue-on-errors'          => sub { $die_on_errors = 0 },
     '--die-on-errors'               => sub { $die_on_errors = 1 },
@@ -54,8 +54,27 @@ my $die_on_error_level = {
 
 my $options = { 'parser' => $use_parser, 'no_print' => 1 };
 my ( $data, $err_count, $messages ) = parse_cif( $ddlm_dictionary, $options );
+# TODO: warn if there are more than 1 datablock in a file
 process_parser_messages( $messages, $die_on_error_level );
-my $validation_dict = build_dictionary($data->[0]);
+
+my $dict_block = $data->[0];
+
+my($filename, $dirs, $suffix) = fileparse($ddlm_dictionary);
+
+my $imported_data = get_imported_files(
+    {
+        'container_file' => $dict_block,
+        # TODO: the path should also be cosntructed from the command line
+        # arguments as well as a command line variable
+        'file_path'      => [ "./", $dirs ],
+        'imported_files' => {},
+        'parser_options' => $options
+    }
+);
+
+$dict_block = merge_imported_files( $dict_block, $imported_data );
+
+my $validation_dict = build_dictionary($dict_block);
 
 @ARGV = ('-') unless @ARGV;
 # start-iterate-through-CIF-files
@@ -64,7 +83,7 @@ for my $filename ( @ARGV ) {
     my ( $data, $err_count, $messages ) = parse_cif( $filename, $options );
     process_parser_messages( $messages, $die_on_error_level );
 
-    # there should only be one
+    # TODO: complain if there if more than one data block
     for my $datablock ( @{$data} ) {
       my $dataname = 'data_' . $datablock->{'name'} if defined $datablock->{'name'};
       local $SIG{__WARN__} = sub { process_warnings( {
@@ -74,6 +93,18 @@ for my $filename ( @ARGV ) {
                                      'add_pos'       => $dataname
                                    }, $die_on_error_level ) };
 
+        my $imported_data = get_imported_files(
+            {
+            'container_file' => $datablock,
+            # TODO: the path should also be cosntructed from the command line
+            # arguments as well as a command line variable
+            'file_path'      => [ "./", $dirs ],
+            'imported_files' => {},
+            'parser_options' => $options
+            }
+        );
+
+      $datablock = merge_imported_files( $datablock, $imported_data );
 
       my $dict = build_dictionary($datablock);
 
@@ -117,8 +148,8 @@ for my $filename ( @ARGV ) {
           }
           foreach my $tag (keys %recommended) {
             if ( $recommended{$tag} == 0 ) {
-                warn "data item '$tag' is recommended in the '$scope' scope of " .
-                     "the $instance frame\n"
+        #        warn "data item '$tag' is recommended in the '$scope' scope of " .
+        #             "the $instance frame\n"
             }
           }
         }
@@ -159,6 +190,112 @@ sub build_dictionary
     };
 
     return $dictionary;
+}
+
+#
+# dictionary = {
+#   'file_path'       => [ 'dir1', 'dir2', 'dir3' ]
+#   'container_file' =>
+#   'imported_files'  =>
+#   'parser_options'  =>
+# }
+#
+# TODO: consider a more conservative dictionary import system
+#
+sub get_imported_files
+{
+    my ($params) = @_;
+    my $file_path = $params->{'file_path'};
+    my $container_file = $params->{'container_file'};
+    my %imported_files = %{$params->{'imported_files'}};
+    my $parser_options = $params->{'parser_options'};
+
+    for my $saveblock ( @{$container_file->{'save_blocks'}} ) {
+      if ( exists $saveblock->{'values'}{'_import.get'} &&
+           exists $saveblock->{'values'}{'_import.get'}[0] ) {
+        foreach my $import ( @{$saveblock->{'values'}{'_import.get'}[0]} ) {
+          my $filename = $import->{'file'};
+          if ( !exists $imported_files{$filename} ) {
+            foreach my $path ( @{$file_path} ) {
+              # TODO: the path ends up with a double slash
+              if ( -f "$path/$filename" ) {
+                my ( $import_data, $err_count, $messages ) =
+                  parse_cif( "$path/$filename", $parser_options );
+                # TODO: check how the error messages interact with the
+                # subroutine context
+                process_parser_messages( $messages, $die_on_error_level );
+                $imported_files{$filename} = $import_data->[0];
+                my $single_import = get_imported_files( {
+                    'file_path'      => $file_path,
+                    'container_file' => $import_data->[0],
+                    'imported_files' => \%imported_files,
+                    'parser_options' => $parser_options
+                } );
+                %imported_files = %{$single_import};
+                last;
+              }
+            }
+          }
+        }
+      }
+    }
+
+    return \%imported_files;
+}
+
+# TODO: check for cyclic relationships
+sub merge_imported_files
+{
+    my ($dict, $imported_files) = @_;
+
+    for my $saveblock ( @{$dict->{'save_blocks'}} ) {
+      if ( exists $saveblock->{'values'}{'_import.get'} &&
+           exists $saveblock->{'values'}{'_import.get'}[0] ) {
+        foreach my $import ( @{$saveblock->{'values'}{'_import.get'}[0]} ) {
+          my $filename = $import->{'file'};
+          if ( exists $imported_files->{$filename} ) {
+            my $imported_file = $imported_files->{$filename};
+            $imported_file = merge_imported_files($imported_file, $imported_files);
+
+
+            my $target_saveblock = $import->{'save'};
+            foreach my $imported_saveblock ( @{$imported_file->{'save_blocks'}} ) {
+              # TODO: check for case-sensitivity
+              if ( $imported_saveblock->{'name'} eq $target_saveblock ) {
+                $saveblock = merge_save_blocks($saveblock, $imported_saveblock);
+              }
+            }
+          }
+        }
+      }
+    }
+
+    return $dict;
+}
+
+# TODO: rewrite as non-destructive?
+sub merge_save_blocks
+{
+    my ($main_save_block, $auxilary_save_block) = @_;
+
+    foreach my $key ( keys %{$auxilary_save_block->{'types'}} ) {
+        $main_save_block->{'types'}{$key} = $auxilary_save_block->{'types'}{$key};
+    }
+
+    foreach my $key ( keys %{$auxilary_save_block->{'values'}} ) {
+        $main_save_block->{'values'}{$key} = $auxilary_save_block->{'values'}{$key};
+    }
+
+    foreach my $key ( keys %{$auxilary_save_block->{'inloop'}} ) {
+        $main_save_block->{'inloop'}{$key} =
+            $auxilary_save_block->{'inloop'}{$key} +
+            scalar @{$main_save_block->{'loops'}};
+    }
+
+    push @{$main_save_block->{'loops'}}, @{$auxilary_save_block->{'loops'}};
+    push @{$main_save_block->{'tags'}}, @{$auxilary_save_block->{'tags'}};
+
+    return $main_save_block;
 }
 
 sub expand_categories
