@@ -17,7 +17,7 @@
 #include <cif_grammar_y.h>
 #include <cif2_grammar_y.h>
 
-typedef struct CIF_COMPILER {
+struct CIF_COMPILER {
     char *filename;
     CIF *cif;
     cif_option_t options;
@@ -29,7 +29,7 @@ typedef struct CIF_COMPILER {
     int loop_tag_count;
     int loop_value_count;
     int loop_start;
-} CIF_COMPILER;
+};
 
 void delete_cif_compiler( CIF_COMPILER *c )
 {
@@ -339,12 +339,12 @@ int yynote_token( CIF_COMPILER *cif_cc, const char *message,
     return 0;
 }
 
-typedef struct typed_value {
+struct typed_value {
     int vline;
     int vpos;
     char *vcont;
     CIFVALUE *v;
-} typed_value;
+};
 
 void delete_typed_value( typed_value *t )
 {
