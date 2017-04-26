@@ -254,11 +254,15 @@ sub find_symmetry_spglib
                                       (@table, @extra_settings);
 
         if( !$spacegroup_info ) {
-            ( $spacegroup_info ) = grep { $_->{hall} =~ s/ //gr eq
-                                          $sym->{hall} =~ s/ //gr }
+            my $sgHall = $sym->{hall};
+            $sgHall =~ s/ //g;
+            ( $spacegroup_info ) = grep { my $key = $_->{hall};
+                                          $key =~ s/ //g;
+                                          $key eq $sgHall }
                                         (@table, @extra_settings);
         }
-        my $setting = $sym->{setting} =~ s/\s//gr;
+        my $setting = $sym->{setting};
+        $setting =~ s/\s//g;
         if( !$spacegroup_info && $sym->{setting} ) {
             ( $spacegroup_info ) = grep { $_->{hall} eq
                                           $sym->{hall} . $setting }
