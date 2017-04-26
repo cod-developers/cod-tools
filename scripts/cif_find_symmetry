@@ -27,8 +27,8 @@ use COD::Cell qw( vectors2cell );
 use COD::CIF::Data qw( get_cell );
 use COD::CIF::Data::AtomList qw( atom_array_from_cif );
 use COD::CIF::Parser qw( parse_cif );
-use COD::CIF::Tags::Manage qw( exclude_tag rename_tag set_loop_tag set_tag );
 use COD::CIF::Tags::CanonicalNames qw( canonicalize_all_names );
+use COD::CIF::Tags::Manage qw( exclude_tag rename_tag set_loop_tag set_tag );
 use COD::CIF::Tags::Print qw( print_cif );
 use COD::ErrorHandler qw( process_parser_messages report_message );
 use COD::Fractional qw( ortho_from_fract );
@@ -141,17 +141,6 @@ my @cell_tags = qw(
     '--help,--usage' => sub { usage; exit }
 );
 
-my %spacegroups =
-    map {
-        my $key1 = $_->[1];
-        my $key2 = $_->[2];
-        $key1 =~ s/\s//g;
-        $key2 =~ s/\s//g;
-        ($_->[2], $_->[2], $_->[1], $_->[2], $key1, $_->[2], $key2, $_->[2] ) }
-         @names,
-    map { [ $_->{'number'}, $_->{'hermann_mauguin'}, $_->{'universal_h_m'} ] }
-        @table, @extra_settings;
-
 @ARGV = ( '-' ) unless @ARGV;
 
 for my $filename (@ARGV) {
@@ -261,34 +250,28 @@ sub find_symmetry_spglib
             rename_tag( $dataset, $tag, $tags_to_move{$tag} );
         }
 
-        my $spacegroup = $sym->{international_symbol};
-        $spacegroup =~ s/[ _]//g;
+        my( $spacegroup_info ) = grep { $_->{hall} eq $sym->{hall} }
+                                      (@table, @extra_settings);
 
-        my $setting = $sym->{setting};
-        $setting =~ s/\s//g;
-        $setting = ":$setting" if $setting;
-
-        my $spacegroup_info;
-        if( $setting && exists $spacegroups{$spacegroup . $setting} ) {
-            $spacegroup_info =
-                lookup_spacegroup( 'universal_h_m',
-                                    $spacegroups{$spacegroup . $setting} );
+        if( !$spacegroup_info ) {
+            ( $spacegroup_info ) = grep { $_->{hall} =~ s/ //gr eq
+                                          $sym->{hall} =~ s/ //gr }
+                                        (@table, @extra_settings);
         }
-
-        if( !$spacegroup_info && exists $spacegroups{$spacegroup} ) {
-            $spacegroup_info =
-                lookup_spacegroup( 'universal_h_m',
-                                    $spacegroups{$spacegroup} );
+        my $setting = $sym->{setting} =~ s/\s//gr;
+        if( !$spacegroup_info && $sym->{setting} ) {
+            ( $spacegroup_info ) = grep { $_->{hall} eq
+                                          $sym->{hall} . $setting }
+                                        (@table, @extra_settings);
         }
-
 
         if( !$spacegroup_info ) {
             if( $setting ) {
-                die "ERROR, neither space group symbol '$spacegroup', " .
-                    "nor '$spacegroup$setting' is recognised\n";
+                die "ERROR, neither space group symbol '$sym->{hall}', " .
+                    "nor '$sym->{hall} $sym->{setting}' is recognised\n";
             } else {
                 die 'ERROR, spacegroup symbol ' .
-                    "'$spacegroup' is not recognised\n";
+                    "'$sym->{hall}' is not recognised\n";
             }
         }
 
@@ -401,25 +384,6 @@ sub find_symmetry_spglib
         print "name: $dataset->{name}\n";
         serialiseRef( $sym );
     }
-}
-
-sub lookup_spacegroup
-{
-    my ($option, $param) = @_;
-
-    $param =~ s/ //g;
-    $param =~ s/_//g;
-
-    foreach my $hash (@table, @extra_settings) {
-        my $value = $hash->{$option};
-        $value =~ s/ //g;
-        $value =~ s/_//g;
-
-        if( $value eq $param ) {
-            return $hash;
-        }
-    }
-    return;
 }
 
 sub mat3_inv
