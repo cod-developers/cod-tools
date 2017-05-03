@@ -268,23 +268,16 @@ sub find_symmetry_spglib
                                           $sym->{hall} . $setting }
                                         (@table, @extra_settings);
         }
-
-        if( !$spacegroup_info ) {
-            if( $setting ) {
-                die "ERROR, neither space group symbol '$sym->{hall}', " .
-                    "nor '$sym->{hall} $sym->{setting}' is recognised\n";
-            } else {
-                die 'ERROR, spacegroup symbol ' .
-                    "'$sym->{hall}' is not recognised\n";
-            }
+        if( $spacegroup_info ) {
+            $sym->{hall} = $spacegroup_info->{hall};
+            $sym->{international_symbol} =
+                $spacegroup_info->{hermann_mauguin};
         }
 
-        set_tag( $dataset, '_space_group_IT_number',
-                 $spacegroup_info->{number} );
+        set_tag( $dataset, '_space_group_IT_number', $sym->{number} );
         set_tag( $dataset, '_space_group_name_H-M_alt',
-                 $spacegroup_info->{hermann_mauguin} );
-        set_tag( $dataset, '_space_group_name_Hall',
-                 $spacegroup_info->{hall} );
+                 $sym->{international_symbol} );
+        set_tag( $dataset, '_space_group_name_Hall', $sym->{hall} );
 
         for my $tag (qw( _space_group_symop_operation_xyz
                          _symmetry_equiv_pos_as_xyz )) {
@@ -300,22 +293,13 @@ sub find_symmetry_spglib
             }
         }
 
-        ## It's not clear why symmetry operators, returned by
-        ## spglib, are often shifted by translations or very
-        ## numerous (as in the case of COD:4105680, rev. 91935),
-        ## so symmetry operators are taken from spacegroup
-        ## information hash.
-        ##
-        ## set_loop_tag( $dataset, '_symmetry_equiv_pos_as_xyz', undef,
-        ##               [ map { string_from_symop( $_ ) }
-        ##                 map { flush_zeros_in_symop( $_ ) }
-        ##                     @{$sym->{symops}} ] );
-
         set_loop_tag( $dataset, '_space_group_symop_id', undef,
-                      [ 1..@{$spacegroup_info->{symops}} ] );
+                      [ 1..@{$sym->{symops}} ] );
         set_loop_tag( $dataset, '_space_group_symop_operation_xyz',
                       '_space_group_symop_id',
-                      $spacegroup_info->{symops} );
+                      [ map { string_from_symop( $_ ) }
+                        map { flush_zeros_in_symop( $_ ) }
+                            @{$sym->{symops}} ] );
 
         my $atom_site_tag;
         for my $tag (qw( _atom_site_label
