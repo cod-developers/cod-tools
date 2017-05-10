@@ -48,6 +48,10 @@ PRG_SOURCE = ${notdir ${PRG_FILES}}
 PRG_DIRS   = ${dir ${PRG_FILES}}
 PRG_DEPEND = ${join ${PRG_DIRS}, ${PRG_SOURCE:%.c=.%.d}}
 
+# The header file that holds version number of the package:
+
+VERSION_H = version.h
+
 #
 # The first program (alphabetically) in the ./programs directory is a
 # main executable (target). It will be run for every file in ./inputs
@@ -211,7 +215,7 @@ include ${DEPEND_FILES}
 ${OBJDIR}/%.o: %.c
 	${CC} ${CFLAGS} -c $< -o $@
 
-%: ${PROGDIR}/%.c ${LINK_OBJ_FILES} ${LOCAL_LIB} ${LIB_FILES}
+%: ${PROGDIR}/%.c ${LINK_OBJ_FILES} ${LOCAL_LIB} ${LIB_FILES} ${VERSION_H}
 	${CC} ${CFLAGS} ${LDFLAGS} -o $@ $^ ${LIBFLAGS}
 
 ${TST_EXE_DIR}/%: ${TST_PRG_DIR}/%.c ${LINK_OBJ_FILES} \

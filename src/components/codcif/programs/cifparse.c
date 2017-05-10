@@ -19,6 +19,7 @@
 #include <allocx.h>
 #include <cxprintf.h>
 #include <ctype.h>
+#include <version.h>
 
 static char *source_URL = "$URL$";
 
@@ -102,7 +103,7 @@ static void usage( int argc, char *argv[], int *i, option_t *option,
 static void version( int argc, char *argv[], int *i, option_t *option,
                      cexception_t * ex )
 {
-    printf( "%s svnversion %s\n", argv[0], SVN_VERSION );
+    printf( "%s version %s svn revision %s\n", argv[0], VERSION, SVN_VERSION );
     printf( "%s\n", source_URL );
     exit( 0 );
 }
