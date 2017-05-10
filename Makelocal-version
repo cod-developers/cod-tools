@@ -1,0 +1,34 @@
+#--*- Makefile -*--
+
+.PHONY: release major minor patch
+
+VFILE = .version
+
+VERSION := $(shell grep -v "^\#" ${VFILE})
+
+generated/version.h: version.hin ${VFILE}
+	sed 's/@VERSION@/${VERSION}/' $< > $@
+
+src/lib/perl5/COD/ToolsVersion.pm: src/lib/perl5/COD/ToolsVersion.pmin ${VFILE}
+	sed 's/@VERSION@/${VERSION}/' $< > $@
+
+release:
+	svn ci
+	svn cp ^/trunk ^/branches/release/v${VERSION} \
+	   -m "Preparing version ${VERSION} for release in the release branch."
+	${MAKE} minor
+
+major:
+	awk -F. '/^#/{print} !/^#/{print $$1+1 "." $$2 ($$3 ? ".":"") $$3}' \
+		${VFILE} > ${VFILE}.$$$$; \
+	mv -f ${VFILE}.$$$$ ${VFILE}
+
+minor:
+	awk -F. '/^#/{print} !/^#/{print $$1 "." $$2+1 ($$3 ? ".":"") $$3}' \
+		${VFILE} > ${VFILE}.$$$$; \
+	mv -f ${VFILE}.$$$$ ${VFILE}
+
+patch:
+	awk -F. '/^#/{print} !/^#/{print $$1 "." $$2 "." $$3+1}' \
+		${VFILE} > ${VFILE}.$$$$; \
+	mv -f ${VFILE}.$$$$ ${VFILE}
