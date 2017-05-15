@@ -16,9 +16,15 @@ use Module::ScanDeps;
 local $\ = "\n";
 
 foreach my $file (@ARGV) {
-    print "$file: ",
-           join( " ", sort map {"src/lib/perl5/$_"}
-                      grep {/^COD/}
-                      keys %{ scan_deps( files => [ $file ],
-                                         recurse => 1 ) } );
+    my $stderr;
+    close( STDERR );
+    open( STDERR, '>', \$stderr );
+    my @deps = grep {/^COD/} keys %{ scan_deps( files => [ $file ],
+                                                recurse => 1,
+                                                warn_missing => 1 ) };
+    close( STDERR );
+    while( $stderr =~ /Could not find source file '([^']+)'/g ) {
+        push @deps, $1;
+    }
+    print "$file: ", join( ' ', sort map {"src/lib/perl5/$_"} @deps );
 }
