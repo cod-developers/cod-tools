@@ -21,6 +21,7 @@ use COD::CIF::Unicode2CIF qw( cif2unicode );
 use COD::SOptions qw( getOptions );
 use COD::SUsage qw( usage );
 use COD::ErrorHandler qw( process_errors );
+use COD::ToolsVersion;
 
 my $die_on_error_level = {
     ERROR   => 1,
@@ -36,7 +37,10 @@ my $die_on_error_level = {
 #* --help, --usage     Print a short usage message (this message) and exit.
 #**
 @ARGV = getOptions(
-    "--help,--usage"    => sub { usage; exit }
+    "--help,--usage" => sub { usage; exit },
+    '--version'      => sub { print 'cod-tools version ',
+                              $COD::ToolsVersion::Version, "\n";
+                              exit }
 );
 
 my $filename = @ARGV > 0 ? shift(@ARGV) : "-";

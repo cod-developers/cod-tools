@@ -17,6 +17,7 @@ use warnings;
 use COD::SOptions qw( getOptions );
 use COD::SUsage qw( usage );
 use COD::Spacegroups::Symop::SSGParse qw( symop_string_canonical_form );
+use COD::ToolsVersion;
 
 #* USAGE: $0 < input.symop
 #* USAGE: $0 input.symop
@@ -26,7 +27,10 @@ use COD::Spacegroups::Symop::SSGParse qw( symop_string_canonical_form );
 #* --help, --usage    Print short usage message (this message) and exit.
 #**
 @ARGV = getOptions(
-   "--help,--usage"  => sub { usage; exit }
+    "--help,--usage" => sub { usage; exit },
+    '--version'      => sub { print 'cod-tools version ',
+                              $COD::ToolsVersion::Version, "\n";
+                              exit }
 );
 
 while(<>) {

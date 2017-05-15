@@ -18,6 +18,7 @@ use DBD::mysql;
 use COD::SOptions qw( getOptions );
 use COD::SUsage qw( usage options );
 use COD::ErrorHandler qw( report_message );
+use COD::ToolsVersion;
 
 my $opt_enabled = 1;
 #* USAGE: $0 --options "search text"
@@ -35,7 +36,10 @@ my $opt_enabled = 1;
 @ARGV = getOptions(
     "--"             => sub { if ($opt_enabled) { $opt_enabled = 0 } },
     "--options"      => sub { if ($opt_enabled) { options; exit } },
-    "--help,--usage" => sub { if ($opt_enabled) { usage; exit } }
+    "--help,--usage" => sub { if ($opt_enabled) { usage; exit } },
+    '--version'      => sub { if ($opt_enabled) { print 'cod-tools version ',
+                              $COD::ToolsVersion::Version, "\n";
+                              exit } }
 );
 
 if ( @ARGV > 1 ) {

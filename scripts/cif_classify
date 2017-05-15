@@ -24,6 +24,7 @@ use COD::ErrorHandler qw( process_warnings
                           process_errors
                           process_parser_messages
                           report_message );
+use COD::ToolsVersion;
 
 my $die_on_error_level = {
     ERROR   => 0,
@@ -47,7 +48,10 @@ my $use_parser = "c";
     "--use-c-parser"     => sub{ $use_parser = "c" },
 
     "--options"          => sub { options; exit },
-    "--help,--usage"     => sub { usage; exit }
+    "--help,--usage"     => sub { usage; exit },
+    '--version'          => sub { print 'cod-tools version ',
+                                  $COD::ToolsVersion::Version, "\n";
+                                  exit }
 );
 
 @ARGV = ( "-" ) unless @ARGV;

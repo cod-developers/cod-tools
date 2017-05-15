@@ -24,6 +24,7 @@ use File::Basename qw( basename );
 use COD::SOptions qw( getOptions );
 use COD::SUsage qw( usage options );
 use COD::ErrorHandler qw( report_message );
+use COD::ToolsVersion;
 
 my $die_on_error_level = {
     ERROR   => 1,
@@ -53,7 +54,10 @@ my $output_dir = '';
    "-v,--verbose"    => sub { $verbose = 1 },
    "-q,--quiet"      => sub { $verbose = 0 },
    "--options"       => sub { options; exit },
-   "--help,--usage"  => sub { usage; exit }
+   "--help,--usage"  => sub { usage; exit },
+    '--version'         => sub { print 'cod-tools version ',
+                                 $COD::ToolsVersion::Version, "\n";
+                                 exit }
 );
 
 $output_dir =~ s./+$..;
