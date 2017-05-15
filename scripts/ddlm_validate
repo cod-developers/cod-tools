@@ -126,11 +126,12 @@ for my $filename ( @ARGV ) {
              @{validate_scope_restrictions($dict, $validation_dict)};
       }
 
-  #    validate_type_container($dict, $validation_dict);
+      push @validation_messages, @{validate_type_contents($dict, $validation_dict)};
+      push @validation_messages, @{validate_enumerators($dict, $validation_dict)};
+      push @validation_messages, @{validate_type_container($dict, $validation_dict)};
       # check for the existence of items related by the _name.linked_item_id
-   #   validate_linked_items($dict, $validation_dict);
-  #    validate_enumerators($dict, $validation_dict);
-  #    validate_type_contents($dict, $validation_dict);
+      # validate_linked_items($dict, $validation_dict);
+
       # _name.linked_item_id check existence of the given data item
 
       # check the matching of _name.linked_item_id linked values (except)
@@ -171,61 +172,70 @@ sub validate_linked_items
     return;
 }
 
-
-#
-# This field should probably be parsed by a proper grammar
-#
-sub parse_multiple_container
-{
-    my ($container) = @_;
-
-    if ( $container =~ /^List(.*)$/ ) {
-        #print $container . "\n";
-    }
-
-    return;
-}
-
+##
+# Checks the content type against the DDLm dictionary file.
+# @param $data
+#       The data structure of the validated dictionary (as returned by the
+#       'build_search_struct' data structure).
+# @param $dict
+#       The data structure of the validation dictionary (as returned by the
+#       'build_search_struct' data structure).
+# @return
+#       Array reference to a list of validation messages.
+##
 sub validate_type_contents
 {
-    my ($dict, $validation_dict) = @_;
+    my ($data, $dict) = @_;
+
+    my @validation_messages;
+
     for my $scope ( 'Dictionary', 'Category', 'Item' ) {
-    for my $instance ( keys %{$dict->{$scope}} ) {
-    for my $tag ( @{$dict->{$scope}{$instance}{'tags'}} ) {
-        if ( exists $validation_dict->{'Item'}{$tag} ) {
-            my $validation_item = $validation_dict->{'Item'}{$tag};
-            if ( exists $validation_item->{'values'}{'_type.contents'} ) {
-                my $type_contents = $validation_item->{'values'}{'_type.contents'}[0];
-                foreach my $value ( @{$dict->{$scope}{$instance}{'values'}{$tag}} ) {
-                    # TODO: implement type content checking for data items
-                    # within containers
-                    my $message_prefix = "data item '$tag' value '$value' " .
-                        "violates content type contraints";
+    for my $instance ( keys %{$data->{$scope}} ) {
+    for my $tag ( @{$data->{$scope}{$instance}{'tags'}} ) {
+      if ( exists $dict->{'Item'}{$tag} ) {
+        my $validation_item = $dict->{'Item'}{$tag};
+        if ( exists $validation_item->{'values'}{'_type.contents'} ) {
+          my $type_contents = $validation_item->{'values'}{'_type.contents'}[0];
+            foreach my $value ( @{$data->{$scope}{$instance}{'values'}{$tag}} ) {
+            # TODO: implement type content checking for data items
+            # within containers
 
-                    if ( ref $value eq '' ) {
-                         my $results = check_data_type( $value, $type_contents );
-                         print map { $message_prefix . ' - ' . $_ . ".\n" } @$results;
-                    } elsif ( ref $value eq 'ARRAY' ) {
-                        foreach( @$value ) {
-                            $message_prefix = "data item '$tag' value '$_' " .
-                                "violates content type contraints";
-                            my $results = check_data_type( $_, $type_contents );
-                            print map { $message_prefix . ' - ' . $_ . ".\n" } @$results;
-                        };
-                    } else {
-                        print "I am a complex value: '" , ref $value, "'\n";
-                        next;
-                    }
-                }
+            if ( ref $value eq '' ) {
+              my $message_prefix = "data item '$tag' value '$value' " .
+                           'violates content type contraints';
+              my $results = check_data_type( $value, $type_contents );
+              push @validation_messages,
+                map { $message_prefix . ' - ' . $_ }
+                  @{ check_data_type( $value, $type_contents ) };
+            } elsif ( ref $value eq 'ARRAY' ) {
+              foreach( @$value ) {
+                my $message_prefix = "data item '$tag' value '$_' " .
+                             'violates content type contraints';
+                push @validation_messages,
+                  map { $message_prefix . ' - ' . $_ }
+                    @{ check_data_type( $_, $type_contents ) };
+              }
+            } else {
+                warn "Handling of more complex values is not yet implemented: " , ref $value, "'\n";
+                next;
             }
+          }
         }
-    }
-    }
-    }
+      }
+    }}}
 
-    return;
+    return \@validation_messages;
 }
 
+##
+# Checks the value against the DDLm data type constraints.
+# @param $value
+#       The data value that is being validated.
+# @param $type
+#       The declared data type of the value.
+# @return
+#       Array reference to a list of validation messages.
+##
 sub check_data_type
 {
 
@@ -263,9 +273,9 @@ my $cif2_character = $cif2_ws_character . $cif2_nws_character;
 
     my ($value, $type) = @_;
 
-    $type = lc $type;
     my @validation_messages;
 
+    $type = lc $type;
     if ( $type eq 'text' ) {
         # case-sens strings or lines of STAR characters
         if ( $value =~ m/([^$cif2_character])/ ) {
@@ -378,104 +388,129 @@ my $cif2_character = $cif2_ws_character . $cif2_nws_character;
     return \@validation_messages;
 }
 
+##
+# Checks the container types against the DDLm dictionary file.
+# @param $data
+#       The data structure of the validated dictionary (as returned by the
+#       'build_search_struct' data structure).
+# @param $dict
+#       The data structure of the validation dictionary (as returned by the
+#       'build_search_struct' data structure).
+# @return
+#       Array reference to a list of validation messages.
+##
 sub validate_type_container
 {
-    my ($dict, $validation_dict) = @_;
-    for my $scope ( 'Dictionary', 'Category', 'Item' ) {
-    for my $instance ( keys %{$dict->{$scope}} ) {
-    for my $tag ( @{$dict->{$scope}{$instance}{'tags'}} ) {
-        if ( exists $validation_dict->{'Item'}{$tag} ) {
-            my $validation_item = $validation_dict->{'Item'}{$tag};
-            if ( exists $validation_item->{'values'}{'_type.container'} ) {
-                my $type_container = $validation_item->{'values'}{'_type.container'}[0];
-                my $value = $dict->{$scope}{$instance}{'values'}{$tag}[0];
-                if ( lc $type_container eq lc 'Single' ) {
-                    if ( ref $value ne '' ) {
-                        warn "data item '$tag' value must not have a top level " .
-                             "container\n";
-                    }
-                } elsif ( lc $type_container eq lc 'Multiple' ) {
-                    # TODO: implement Multiple type check
-                } elsif ( lc $type_container eq lc 'Array' ) {
-                    # TODO: implement Array type check
-                } elsif ( lc $type_container eq lc 'Matrix') {
-                    # TODO: implement Matrix type check
-                } elsif ( lc $type_container eq lc 'List' ) {
-                    if ( ref $value ne 'ARRAY' ) {
-                        warn "data item '$tag' value must have a top level " .
-                             "list container ([v1 v2 ...])\n";
-                    };
-                } elsif ( lc $type_container eq lc 'Table' ) {
-                    if ( ref $value ne 'HASH' ) {
-                        warn "data item '$tag' value must have a top level " .
-                             "table container ([v1 v2 ...])\n";
-                    };
-                }
-            }
-        }
-    }
-    }
-    }
+    my ($data, $dict) = @_;
 
-    return;
-}
-
-sub validate_enumerators
-{
-    my ($dict, $validation_dict) = @_;
+    my @validation_messages;
 
     for my $scope ( 'Dictionary', 'Category', 'Item' ) {
-      for my $instance ( keys %{$dict->{$scope}} ) {
-        for my $tag ( @{$dict->{$scope}{$instance}{'tags'}} ) {
-          if ( exists $validation_dict->{'Item'}{$tag} ) {
-            my $validation_item = $validation_dict->{'Item'}{$tag};
-            if ( exists $validation_item->{'values'}{'_enumeration_set.state'} ) {
-                my @enumeration_values = @{
-                                $validation_item->{'values'}
-                                {'_enumeration_set.state'} };
-                my $type_container = $default_ddlm_values{'_type.container'};
-                if ( exists $validation_item->{'values'}{'_type.container'}) {
-                    $type_container = $validation_item->{'values'}{'_type.container'}[0];
-                }
-
-                my $value = $dict->{$scope}{$instance}{'values'}{$tag}[0];
-                if ( lc $type_container eq lc 'Single' ) {
-                    if (! grep { lc $value eq lc $_ } @enumeration_values ) {
-                    #  print "$instance: $tag: $value is not permitted\n";
-                    warn "data item '$tag' value \"$value\" "
-                         . 'must be one of the enumeration values '
-                         . '[' . ( join ', ', @enumeration_values ) . ']' . "\n";
-                    }
-                # Mainly targeted at '_type.contents'
-                } elsif ( lc $type_container eq lc 'Multiple' ) {
-                    if (! grep { lc $value eq lc $_ } @enumeration_values ) {
-                 #     print "$instance: $tag: $value is not permitted\n";
-                  #  warn "data item '$tag' value \"$value\" "
-                  #     . 'must be one of the enumeration values '
-                  #     . '[' . ( join ', ', @enumeration_values ) . ']. '
-                  #     . 'This message might be a false positive since '
-                  #     . 'handling of enumeration values with the ' 
-                  #     . "'Multiple' type container is not yet implemented\n";
-                        parse_multiple_container($value);
-                    }
-                # TODO: consider all of these combinations?
-                # even if they don't really occur?
-                } elsif ( lc $type_container eq lc 'Array' ) {
-
-                } elsif ( lc $type_container eq lc 'Matrix') {
-
-                } elsif ( lc $type_container eq lc 'List' ) {
-
-                } elsif ( lc $type_container eq lc 'Table' ) {
-
-                }
-            }
+    for my $instance ( keys %{$data->{$scope}} ) {
+    for my $tag ( @{$data->{$scope}{$instance}{'tags'}} ) {
+      if ( exists $dict->{'Item'}{$tag} ) {
+        my $validation_item = $dict->{'Item'}{$tag};
+          if ( exists $validation_item->{'values'}{'_type.container'} ) {
+            my $type_container = lc $validation_item->{'values'}{'_type.container'}[0];
+            my $value = $data->{$scope}{$instance}{'values'}{$tag}[0];
+            if ( $type_container eq 'single' ) {
+              if ( ref $value ne '' ) {
+                   push @validation_messages,
+                        "data item '$tag' value must not have " .
+                        'a top level container';
+              }
+          } elsif ( $type_container eq 'multiple' ) {
+          # TODO: implement Multiple type check
+          } elsif ( $type_container eq 'array' ) {
+          # TODO: implement Array type check
+          } elsif ( $type_container eq 'matrix') {
+          # TODO: implement Matrix type check
+          } elsif ( $type_container eq 'list' ) {
+            if ( ref $value ne 'ARRAY' ) {
+              push @validation_messages,
+                   "data item '$tag' value must have a top level " .
+                   'list container ([v1 v2 ...])';
+            };
+          } elsif ( lc $type_container eq lc 'table' ) {
+            if ( ref $value ne 'HASH' ) {
+               push @validation_messages,
+                    "data item '$tag' value must have a top level " .
+                    'table container ({k1:v1 k2:v2 ...})';
+            };
           }
         }
       }
-    }
+    }}}
 
-    return;
+    return \@validation_messages;
+}
+
+##
+# Checks enumerator values against the DDLm dictionary file.
+# @param $data
+#       The data structure of the validated dictionary (as returned by the
+#       'build_search_struct' data structure).
+# @param $dict
+#       The data structure of the validation dictionary (as returned by the
+#       'build_search_struct' data structure).
+# @return
+#       Array reference to a list of validation messages.
+##
+sub validate_enumerators
+{
+    my ($data, $dict) = @_;
+
+    my @validation_messages;
+
+    for my $scope ( 'Dictionary', 'Category', 'Item' ) {
+    for my $instance ( keys %{$data->{$scope}} ) {
+    for my $tag ( @{$data->{$scope}{$instance}{'tags'}} ) {
+      if ( exists $dict->{'Item'}{$tag} ) {
+        my $validation_item = $dict->{'Item'}{$tag};
+        if ( exists $validation_item->{'values'}{'_enumeration_set.state'} ) {
+          my @enumeration_values = @{
+                                $validation_item->{'values'}
+                                {'_enumeration_set.state'} };
+          my $type_container = lc $default_ddlm_values{'_type.container'};
+          if ( exists $validation_item->{'values'}{'_type.container'}) {
+            $type_container = $validation_item->{'values'}{'_type.container'}[0];
+          }
+
+          my $value = $data->{$scope}{$instance}{'values'}{$tag}[0];
+          if ( lc $type_container eq lc 'Single' ) {
+          if (! grep { lc $value eq lc $_ } @enumeration_values ) {
+          #  print "$instance: $tag: $value is not permitted\n";
+            warn "data item '$tag' value \"$value\" "
+               . 'must be one of the enumeration values '
+               . '[' . ( join ', ', @enumeration_values ) . ']' . "\n";
+          }
+        # Mainly targeted at '_type.contents'
+        } elsif ( lc $type_container eq lc 'Multiple' ) {
+          if (! grep { lc $value eq lc $_ } @enumeration_values ) {
+          #     print "$instance: $tag: $value is not permitted\n";
+          #  warn "data item '$tag' value \"$value\" "
+          #     . 'must be one of the enumeration values '
+          #     . '[' . ( join ', ', @enumeration_values ) . ']. '
+          #     . 'This message might be a false positive since '
+          #     . 'handling of enumeration values with the ' 
+          #     . "'Multiple' type container is not yet implemented\n";
+          }
+          # TODO: consider all of these combinations?
+          # even if they don't really occur?
+          } elsif ( lc $type_container eq lc 'Array' ) {
+
+          } elsif ( lc $type_container eq lc 'Matrix') {
+
+          } elsif ( lc $type_container eq lc 'List' ) {
+
+          } elsif ( lc $type_container eq lc 'Table' ) {
+
+          }
+        }
+      }
+    }}}
+
+    return \@validation_messages;
 }
 
 ##
