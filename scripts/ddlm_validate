@@ -59,6 +59,8 @@ my %default_ddlm_values = (
     '_type.container' => 'Single'
 );
 
+# TODO: consider the fact that files can have alternative names ('.' vs. '_')
+
 my $options = { 'parser' => $use_parser, 'no_print' => 1 };
 my ( $data, $err_count, $messages ) = parse_cif( $ddlm_dictionary, $options );
 # TODO: warn if there are more than 1 datablock in a file
@@ -81,7 +83,7 @@ my $imported_data = get_imported_files(
 
 $dict_block = merge_imported_files( $dict_block, $imported_data );
 
-my $validation_dict = build_dictionary($dict_block);
+my $validation_dict = build_search_struct($dict_block);
 
 @ARGV = ('-') unless @ARGV;
 # start-iterate-through-CIF-files
@@ -113,19 +115,60 @@ for my $filename ( @ARGV ) {
 
       $datablock = merge_imported_files( $datablock, $imported_data );
 
-      my $dict = build_dictionary($datablock);
+      my $dict = build_search_struct($datablock);
+      my @validation_messages;
 
       # TODO: the validation structure should be constructed only once
       # instead of passing it repeatedly for each file
       if ( exists $validation_dict->{'Datablock'}
                   {'values'}{'_dictionary_valid.application'} ) {
-        validate_scope_restrictions($dict, $validation_dict);
-        validate_type_container($dict, $validation_dict);
+        push @validation_messages,
+             @{validate_scope_restrictions($dict, $validation_dict)};
       }
 
-      validate_enumerators($dict, $validation_dict);
-      validate_type_contents($dict, $validation_dict);
+  #    validate_type_container($dict, $validation_dict);
+      # check for the existence of items related by the _name.linked_item_id
+   #   validate_linked_items($dict, $validation_dict);
+  #    validate_enumerators($dict, $validation_dict);
+  #    validate_type_contents($dict, $validation_dict);
+      # _name.linked_item_id check existence of the given data item
+
+      # check the matching of _name.linked_item_id linked values (except)
+
+      # check looped/unlooped
+
+      # check against a range
+
+      # check for the existence of the key data item
+
+      # eligibility of su values
+      # map { "$filename: $dataname: $_.\n" } 
+      foreach ( @validation_messages ) {
+        warn $_ . "\n";
+      }
     }
+}
+
+
+sub validate_linked_items
+{
+    my ($data, $dict) = @_;
+
+    for my $scope ( 'Dictionary', 'Category', 'Item' ) {
+    for my $instance ( keys %{$data->{$scope}} ) {
+    for my $tag ( @{$data->{$scope}{$instance}{'tags'}} ) {
+        if ( exists $dict->{'Item'}{$tag} ) {
+            my $dict_item = $dict->{'Item'}{$tag};
+            if ( exists $dict_item->{'values'}{'_name.linked_item_id'} ) {
+                my $linked_item = $dict_item->{'values'}{'_name.linked_item_id'}[0];
+                # TODO: implement the check
+            }
+        }
+    }
+    }
+    }
+
+    return;
 }
 
 
@@ -435,17 +478,29 @@ sub validate_enumerators
     return;
 }
 
-# TODO: maybe this subroutine should return an array of error messages?
-# instead of printing directly to STDERR?
+##
+# Checks scope restrictions for data items in a DDLm dictionary file.
+# @param $data
+#       The data structure of the validated dictionary (as returned by the
+#       'build_search_struct' data structure).
+# @param $dict
+#       The data structure of the validation dictionary (as returned by the
+#       'build_search_struct' data structure). Most likely this dictionary
+#       will be the DDLm dictionary.
+# @return
+#       Array reference to a list of validation messages.
+##
 sub validate_scope_restrictions
 {
-    my ($dict, $validation_dict) = @_;
+    my ($data, $dict) = @_;
 
-      my %dict_restrictions;
-      my $valid_application = $validation_dict->{'Datablock'}
+      my $valid_application = $dict->{'Datablock'}
                               {'values'}{'_dictionary_valid.application'};
-      my $valid_attributes  = $validation_dict->{'Datablock'}
+      my $valid_attributes  = $dict->{'Datablock'}
                               {'values'}{'_dictionary_valid.attributes'};
+      # The DDLm dictionary stores scope restriction data in the form:
+      # [SCOPE RESTRICTION], i.e. [DICTIONARY MANDATORY]
+      my %dict_restrictions;
       for (my $i = 0; $i < @{$valid_application}; $i++) {
           $dict_restrictions
             {$valid_application->[$i][0]}
@@ -455,43 +510,75 @@ sub validate_scope_restrictions
       foreach my $scope (keys %dict_restrictions) {
         foreach my $option ( keys %{$dict_restrictions{$scope}} ) {
             $dict_restrictions{$scope}{$option} =
-                expand_categories($dict_restrictions{$scope}{$option},
-                                  $validation_dict);
+                expand_categories( $dict_restrictions{$scope}{$option}, $dict );
         }
       }
 
+      my @validation_messages;
       for my $scope ( 'Dictionary', 'Category', 'Item' ) {
-        for my $instance ( keys %{$dict->{$scope}} ) {
+        for my $instance ( keys %{$data->{$scope}} ) {
           my %mandatory   = map { $_ => 0 } @{$dict_restrictions{$scope}{'Mandatory'}};
           my %recommended = map { $_ => 0 } @{$dict_restrictions{$scope}{'Recommended'}};
           my %prohibited  = map { $_ => 0 } @{$dict_restrictions{$scope}{'Prohibited'}};
-          for my $tag ( @{$dict->{$scope}{$instance}{'tags'}} ) {
+          for my $tag ( @{$data->{$scope}{$instance}{'tags'}} ) {
               if ( exists $prohibited{$tag} ) {
-                warn "data item '$tag' is prohibited in the '$scope' scope of " .
-                     "the $instance frame\n";
+                push @validation_messages,
+                     "data item '$tag' is prohibited in the '$scope' scope of " .
+                     "the $instance frame";
               }
               $mandatory{$tag}   = 1 if ( exists $mandatory{$tag} );
               $recommended{$tag} = 1 if ( exists $recommended{$tag} );
           }
           foreach my $tag (keys %mandatory) {
             if ( $mandatory{$tag} == 0 ) {
-                warn "data item '$tag' is mandatory in the '$scope' scope of " .
-                     "the $instance frame\n"
+                push @validation_messages,
+                    "data item '$tag' is mandatory in the '$scope' scope of " .
+                    "the $instance frame"
             }
           }
+
           foreach my $tag (keys %recommended) {
             if ( $recommended{$tag} == 0 ) {
-        #        warn "data item '$tag' is recommended in the '$scope' scope of " .
-        #             "the $instance frame\n"
+                # The _category_key.name and _category.key_id are recommended
+                # for the CATEGORY scope, however, they make no sense if
+                # the CATEGORY is unlooped
+                # TODO: figure out what is the IUCr policy towards this
+                if ( ( $tag eq '_category_key.name' || $tag eq '_category.key_id' ) &&
+                      $scope eq 'Category' &&
+                      ( !exists $data->{$scope}{$instance}{'values'}{'_definition.class'}[0] ||
+                      lc $data->{$scope}{$instance}{'values'}{'_definition.class'}[0] ne 'loop' ) ) {
+                    next;
+                }
+
+                push @validation_messages,
+                    "data item '$tag' is recommended in the '$scope' scope of " .
+                    "the $instance frame"
             }
           }
         }
       }
 
-    return;
+    return \@validation_messages;
 }
 
-sub build_dictionary
+##
+# Builds a data structure that is more convenient to traverse in regards to
+# the Dictionary, Category and Item contexts classification.
+# @param $data
+#       CIF datablock as returned by the COD::CIF::Parser.
+# @return $struct
+#       Hash reference with the following keys:
+#       $struct = {
+#        'Dictionary' -- a hash of all data blocks that belong to the
+#                        Dictionary scope.
+#        'Category'   -- a hash of all save blocks that belong to the
+#                        Category scope;
+#        'Item'       -- a hash of all save blocks that belong to the
+#                        Item scope;
+#        'Datablock'  -- a reference to the input $data structure
+#    };
+##
+sub build_search_struct
 {
     my ($data) = @_;
 
@@ -516,14 +603,14 @@ sub build_dictionary
         }
     };
 
-    my $dictionary = {
+    my $struct = {
         'Dictionary' => { $data->{'name'} => $data },
         'Category'   => \%categories,
         'Item'       => \%items,
         'Datablock'  => $data
     };
 
-    return $dictionary;
+    return $struct;
 }
 
 #
