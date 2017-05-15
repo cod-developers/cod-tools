@@ -25,6 +25,7 @@ use File::Copy qw( move );
 use COD::SOptions qw( getOptions );
 use COD::SUsage qw( usage options );
 use COD::UserMessage qw( note warning error sprint_message );
+use COD::ToolsVersion;
 
 my $version = '1.0';
 my $cache_duration = 432000; # 60 * 60 * 24 * 5 = 432000 -> for 5 days
@@ -70,7 +71,10 @@ my $dict_file_uri = 'ftp://ftp.iucr.org/pub/cif_core.dic';
     '--verbose'      => sub { $verbose = 1 },
     '--no-quiet'     => sub { $verbose = 1 },
     '--options'      => sub { options; exit },
-    '--help,--usage' => sub { usage; exit }
+    '--help,--usage' => sub { usage; exit },
+    '--version'      => sub { print 'cod-tools version ',
+                              $COD::ToolsVersion::Version, "\n";
+                              exit }
 );
 
 fetch_dictionary($dict_file_uri, $cache_duration, $from_mail, $force_overwrite);

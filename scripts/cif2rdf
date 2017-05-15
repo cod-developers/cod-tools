@@ -26,6 +26,7 @@ use COD::RDF qw( rdf_n3 rdf_ntriples rdf_xml );
 use COD::ErrorHandler qw( process_warnings
                           process_errors
                           process_parser_messages );
+use COD::ToolsVersion;
 
 my $user_columns; # User specified list of columns to be printed
 
@@ -301,7 +302,10 @@ my $rdf_options =
     "--use-c-parser"          => sub{ $use_parser = 'c' },
 
     "--options"       => sub { options; exit },
-    "--help,--usage"  => sub { usage; exit }
+    "--help,--usage"  => sub { usage; exit },
+    '--version'      => sub { print 'cod-tools version ',
+                              $COD::ToolsVersion::Version, "\n";
+                              exit }
 );
 
 $rdf_options->{vocabularies} = { $rdf_options->{vocabulary_name} =>

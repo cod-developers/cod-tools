@@ -21,6 +21,7 @@ use COD::Spacegroups::Symop::Parse qw( string_from_symop );
 use COD::Spacegroups::Builder;
 use COD::SOptions qw( getOptions );
 use COD::SUsage qw( usage );
+use COD::ToolsVersion;
 
 #* USAGE: $0 < input.symop
 #* USAGE: $0 input.symop
@@ -30,7 +31,10 @@ use COD::SUsage qw( usage );
 #* --help, --usage    Print short usage message (this message) and exit.
 #**
 @ARGV = getOptions(
-   "--help,--usage"  => sub { usage; exit }
+    "--help,--usage" => sub { usage; exit },
+    '--version'      => sub { print 'cod-tools version ',
+                              $COD::ToolsVersion::Version, "\n";
+                              exit }
 );
 
 my $spacegroup = COD::Spacegroups::Builder->new;

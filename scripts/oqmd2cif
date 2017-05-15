@@ -21,6 +21,7 @@ use COD::CIF::Tags::Print qw( print_single_tag_and_value );
 use COD::Formulae::Parser::AdHoc;
 use COD::SOptions qw( getOptions get_value );
 use COD::SUsage qw( usage options );
+use COD::ToolsVersion;
 use JSON qw( decode_json );
 
 my $eV_per_atom_to_J_per_mol = 2660.476544548;
@@ -142,7 +143,10 @@ my $cell_fformat = $atom_fformat;
     "--debug"        => sub { $debug = 1 },
     "--no-debug"     => sub { $debug = 0 },
     "--options"      => sub { options; exit },
-    "--help,--usage" => sub { usage; exit }
+    "--help,--usage" => sub { usage; exit },
+    '--version'      => sub { print 'cod-tools version ',
+                              $COD::ToolsVersion::Version, "\n";
+                              exit }
 );
 
 my $connected_db = database_connect( \%database );

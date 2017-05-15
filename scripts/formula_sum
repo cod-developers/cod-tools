@@ -17,6 +17,7 @@ use strict;
 use warnings;
 use COD::SOptions qw( getOptions );
 use COD::SUsage qw( usage );
+use COD::ToolsVersion;
 
 #* USAGE: $0 sum.lst
 #* USAGE: $0 sum1.lst sum*.lst
@@ -26,7 +27,10 @@ use COD::SUsage qw( usage );
 #*                  Print a short usage message (this message) and exit.
 #**
 @ARGV = getOptions(
-    "--help,--usage"             => sub { usage; exit }
+    "--help,--usage"    => sub { usage; exit },
+    '--version'         => sub { print 'cod-tools version ',
+                                 $COD::ToolsVersion::Version, "\n";
+                                 exit }
 );
 
 @ARGV = ("-") unless @ARGV;
