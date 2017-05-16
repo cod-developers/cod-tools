@@ -676,10 +676,10 @@ static char *clean_string( char *src, int is_textfield, cexception_t *ex )
     cexception_t inner;
     cexception_guard( inner ) {
         while( *src != '\0' ) {
-            if( (*src & 255 ) < 32 &&
+            if( ((*src & 255 ) < 32 &&
                 (*src & 255 ) != '\n' &&
                 (*src & 255 ) != '\t' &&
-                (*src & 255 ) != '\r' ) {
+                (*src & 255 ) != '\r' ) || ( *src & 255 ) == 127 ) {
                 if( cif_lexer_has_flags
                 (CIF_FLEX_LEXER_FIX_NON_ASCII_SYMBOLS)) {
                     /* Do magic with non-ascii symbols */
