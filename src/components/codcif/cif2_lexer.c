@@ -740,9 +740,34 @@ static char *clean_string( char *src, int is_textfield, cexception_t *ex )
     return new;
 }
 
+static int string_has_control_chars( unsigned char *s )
+{
+    if( !s ) return 0;
+
+    while( *s ) {
+        if( (*s < 32 && *s != '\n' && *s != '\t' && *s != '\r' ) ||
+            *s == 127 )
+            return 1;
+        s++;
+    }
+    return 0;
+}
+
 static char *check_and_clean( char *token, int is_textfield, cexception_t *ex )
 {
     char *s;
-    s = strdupx( token, ex );
+
+    if( string_has_control_chars
+        ( (unsigned char*)token )) {
+        if( cif_lexer_has_flags
+            (CIF_FLEX_LEXER_FIX_NON_ASCII_SYMBOLS) ) {
+            s = clean_string( token, is_textfield, ex );
+        } else {
+            cif2error( "incorrect CIF syntax" );
+            s = strdupx( token, ex );
+        }
+    } else {
+        s = strdupx( token, ex );
+    }
     return s;
 }
