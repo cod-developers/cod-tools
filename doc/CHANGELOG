@@ -37,6 +37,25 @@ cod-tools (1.1)
     - cif_fix_values: adding functionality to fix the most common
       mistakes in the values of
       _atom_sites_solution_{primary,secondary,hydrogens}.
+    - cif2cod: validating extracted data
+
+        ------------------------------------------------------------------------
+        r5138 | andrius | 2017-03-27 16:21:33 +0300 (Mon, 27 Mar 2017) | 4 lines
+
+        trunk/
+        Implementing usage of database-description.xml in cif2cod instead of
+        doc/CODDictionary.xml, which has been superseded by the former.
+
+        ------------------------------------------------------------------------
+        r5054 | andrius | 2017-03-14 12:20:16 +0200 (Tue, 14 Mar 2017) | 7 lines
+
+        trunk/
+        Implementing the validation of data, extracted via
+        COD::CIF::Data::CIF2COD::cif2cod(). The validation is done by checking
+        the returned values against type restrictions of SQL. The pairing of data
+        columns and types has to be supplied via an XML file,
+        doc/CODDictionary.xml for the most uses. Adding a syntetic test case.
+
   * Changed:
     - COD::CID::Data::CIF2COD treats CIF value '?' amid white space as
       undefined.
@@ -48,6 +67,7 @@ cod-tools (1.1)
       - cif_hkl_check
       - cif_merge
       - cif_validate
+      - cif2cod
     - Messages in Perl modules:
       - COD::Cell::Niggli::KG76
       - COD::CIF::Data
@@ -58,7 +78,26 @@ cod-tools (1.1)
       - COD::CIF::Data::Diff
       - COD::SOptions
       - COD::Spacegroups::Lookup::COD
+    - Renamed tools/duplicate_spacegroups -> tools/duplicate_space_groups
     - COD XML:
+
+        ------------------------------------------------------------------------
+        r4959 | antanas | 2017-02-20 19:13:49 +0200 (Mon, 20 Feb 2017) | 3 lines
+
+        trunk/doc/ (antanas@echidna.ibt.lt)
+        Enhancement: adding the description for the 'Zprime' column.
+
+        ------------------------------------------------------------------------
+        r4958 | antanas | 2017-02-20 18:52:33 +0200 (Mon, 20 Feb 2017) | 3 lines
+
+        trunk/ (antanas@echidna.ibt.lt)
+        Enhancement: adding the description of the 'Z' column.
+
+        ------------------------------------------------------------------------
+        r4957 | antanas | 2017-02-20 18:20:30 +0200 (Mon, 20 Feb 2017) | 3 lines
+
+        trunk/doc/ (antanas@echidna.ibt.lt)
+        Enhancement: adding description of the 'cellformula' column.
 
         ------------------------------------------------------------------------
         r5075 | antanas | 2017-03-16 17:23:26 +0200 (Thu, 16 Mar 2017) | 4 lines
@@ -91,6 +130,99 @@ cod-tools (1.1)
 
         trunk/
         Fixing typos in CODDictionary.xml.
+
+    - Ceasing to convert horizontal tabulations ('\t') into spaces in
+      both Bison and Yapp CIF parsers, since such treatment of '\t'
+      may corrupt data. Furthermore, such conversion caused lots of
+      memory reallocations in Bison CIF parser.
+    - cif_correct_tags:
+
+        ------------------------------------------------------------------------
+        r5041 | antanas | 2017-03-07 15:03:15 +0200 (Tue, 07 Mar 2017) | 5 lines
+
+        trunk/data/ (antanas@echidna.ibt.lt)
+        Enhancement: updating the data item replacement list by adding
+        misspelt variants of the '_publ_author_name' and
+        '_publ_author_address' data item names.
+
+        ------------------------------------------------------------------------
+        r5006 | antanas | 2017-03-05 20:02:44 +0200 (Sun, 05 Mar 2017) | 4 lines
+
+        trunk/data/ (antanas@echidna.ibt.lt)
+        Enhancement: updating the data item replacement list by adding
+        misspelt variants of the '_geom_*' data item names.
+
+        ------------------------------------------------------------------------
+        r5005 | antanas | 2017-03-03 13:38:54 +0200 (Fri, 03 Mar 2017) | 5 lines
+
+        trunk/ (antanas@echidna.ibt.lt)
+        Bug fix: modifying the 'cif_correct_tags' script to skip
+        value comparison if at least one of the data items is within
+        a loop structure.
+
+        ------------------------------------------------------------------------
+        r5004 | antanas | 2017-03-02 18:56:06 +0200 (Thu, 02 Mar 2017) | 3 lines
+
+        trunk/data/ (antanas@echidna.ibt.lt)
+        Bug fix: correcting several replacement rules.
+
+        ------------------------------------------------------------------------
+        r5003 | antanas | 2017-03-02 18:52:58 +0200 (Thu, 02 Mar 2017) | 5 lines
+
+        trunk/data/ (antanas@echidna.ibt.lt)
+        Enhancement: updating the data item replacement list by adding
+        misspelt variants of the '_publ_contact_author' loop data item
+        names.
+
+        ------------------------------------------------------------------------
+        r5002 | antanas | 2017-03-02 17:38:49 +0200 (Thu, 02 Mar 2017) | 5 lines
+
+        trunk/data/ (antanas@echidna.ibt.lt)
+        Refactoring: commenting out "_exptl_crystal_f_000'" replacement
+        rule for now since the dataq name seems to be pointing to a
+        different data item than the "_exptl_crystal_f_000".
+
+        ------------------------------------------------------------------------
+        r5001 | antanas | 2017-03-02 17:22:40 +0200 (Thu, 02 Mar 2017) | 4 lines
+
+        trunk/data/ (antanas@echidna.ibt.lt)
+        Enhancement: updating the data item replacement list by adding
+        misspelt variants of the '_exptl_crystal_F_000' data item name.
+
+        ------------------------------------------------------------------------
+        r5000 | antanas | 2017-03-02 16:18:45 +0200 (Thu, 02 Mar 2017) | 4 lines
+
+        trunk/ (antanas@echidna.ibt.lt)
+        Refactoring: moving the 'replacement_tags.lst' file to the
+        'replacement-values' folder.
+
+        ------------------------------------------------------------------------
+        r4999 | antanas | 2017-03-02 16:15:22 +0200 (Thu, 02 Mar 2017) | 5 lines
+
+        trunk/ (antanas@echidna.ibt.lt)
+        Enhancement: copying the replacement data item list to the data folder
+        so it could be modified without affecting the test output. Adding a few
+        more replacement rules.
+
+        ------------------------------------------------------------------------
+        r4998 | antanas | 2017-03-02 15:24:31 +0200 (Thu, 02 Mar 2017) | 11 lines
+
+        cod-tools/ (antanas@echidna.ibt.lt)
+        Enhancement: modifying the way 'cif_correct_tags' script behaves when
+        the replacement tag is already in the file. Originally, the replacement
+        would silently not be carried at all in cases like these. However, from
+        now on the script woll carry out one of the two actions based on the 
+        values of the misspelt and the replacement data items:
+        1) if the values match, the misspelt data item will be removed and
+        reported;
+        2) if the values do not match, the misspelt data item will be reported,
+        but not modified in any way.
+
+        ------------------------------------------------------------------------
+        r4597 | andrius | 2016-02-29 14:22:30 +0200 (Mon, 29 Feb 2016) | 3 lines
+
+        trunk/
+        Adding a pair of frequently misspellt CIF tags to replacement_tags.lst.
 
   * Deprecated:
     - usage of doc/CODDictionary.xml (database-description.xml of
@@ -190,13 +322,6 @@ instead of custom printing code. This change will allow printing nested
 structures.
 
 ------------------------------------------------------------------------
-r5138 | andrius | 2017-03-27 16:21:33 +0300 (Mon, 27 Mar 2017) | 4 lines
-
-trunk/
-Implementing usage of database-description.xml in cif2cod instead of
-doc/CODDictionary.xml, which has been superseded by the former.
-
-------------------------------------------------------------------------
 r5132 | antanas | 2017-03-21 15:57:28 +0200 (Tue, 21 Mar 2017) | 4 lines
 
 cod-tools/ (antanas@echidna.ibt.lt)
@@ -208,33 +333,6 @@ r5117 | antanas | 2017-03-21 13:18:16 +0200 (Tue, 21 Mar 2017) | 3 lines
 
 trunk/doc/ (antanas@echidna.ibt.lt)
 Refactoring: removing or updating old TO-DO files.
-
-------------------------------------------------------------------------
-r5054 | andrius | 2017-03-14 12:20:16 +0200 (Tue, 14 Mar 2017) | 7 lines
-
-trunk/
-Implementing the validation of data, extracted via
-COD::CIF::Data::CIF2COD::cif2cod(). The validation is done by checking
-the returned values against type restrictions of SQL. The pairing of data
-columns and types has to be supplied via an XML file,
-doc/CODDictionary.xml for the most uses. Adding a syntetic test case.
-
-------------------------------------------------------------------------
-r5052 | andrius | 2017-03-13 17:31:55 +0200 (Mon, 13 Mar 2017) | 6 lines
-
-trunk/
-Ceasing to convert horizontal tabulations ('\t') into spaces in both
-Bison and Yapp CIF parsers, since such treatment of '\t' may corrupt data.
-Furthermore, such conversion caused lots of memory reallocations in Bison
-CIF parser.
-
-------------------------------------------------------------------------
-r5041 | antanas | 2017-03-07 15:03:15 +0200 (Tue, 07 Mar 2017) | 5 lines
-
-trunk/data/ (antanas@echidna.ibt.lt)
-Enhancement: updating the data item replacement list by adding
-misspelt variants of the '_publ_author_name' and
-'_publ_author_address' data item names.
 
 ------------------------------------------------------------------------
 r5023 | antanas | 2017-03-06 15:15:34 +0200 (Mon, 06 Mar 2017) | 4 lines
@@ -258,79 +356,6 @@ Enhancement: adding 'Z' and 'Zprime' to the list of default new
 fields in the COD::CIF::Data::CIF2COD module.
 
 ------------------------------------------------------------------------
-r5006 | antanas | 2017-03-05 20:02:44 +0200 (Sun, 05 Mar 2017) | 4 lines
-
-trunk/data/ (antanas@echidna.ibt.lt)
-Enhancement: updating the data item replacement list by adding
-misspelt variants of the '_geom_*' data item names.
-
-------------------------------------------------------------------------
-r5005 | antanas | 2017-03-03 13:38:54 +0200 (Fri, 03 Mar 2017) | 5 lines
-
-trunk/ (antanas@echidna.ibt.lt)
-Bug fix: modifying the 'cif_correct_tags' script to skip
-value comparison if at least one of the data items is within
-a loop structure.
-
-------------------------------------------------------------------------
-r5004 | antanas | 2017-03-02 18:56:06 +0200 (Thu, 02 Mar 2017) | 3 lines
-
-trunk/data/ (antanas@echidna.ibt.lt)
-Bug fix: correcting several replacement rules.
-
-------------------------------------------------------------------------
-r5003 | antanas | 2017-03-02 18:52:58 +0200 (Thu, 02 Mar 2017) | 5 lines
-
-trunk/data/ (antanas@echidna.ibt.lt)
-Enhancement: updating the data item replacement list by adding
-misspelt variants of the '_publ_contact_author' loop data item
-names.
-
-------------------------------------------------------------------------
-r5002 | antanas | 2017-03-02 17:38:49 +0200 (Thu, 02 Mar 2017) | 5 lines
-
-trunk/data/ (antanas@echidna.ibt.lt)
-Refactoring: commenting out "_exptl_crystal_f_000'" replacement
-rule for now since the dataq name seems to be pointing to a
-different data item than the "_exptl_crystal_f_000".
-
-------------------------------------------------------------------------
-r5001 | antanas | 2017-03-02 17:22:40 +0200 (Thu, 02 Mar 2017) | 4 lines
-
-trunk/data/ (antanas@echidna.ibt.lt)
-Enhancement: updating the data item replacement list by adding
-misspelt variants of the '_exptl_crystal_F_000' data item name.
-
-------------------------------------------------------------------------
-r5000 | antanas | 2017-03-02 16:18:45 +0200 (Thu, 02 Mar 2017) | 4 lines
-
-trunk/ (antanas@echidna.ibt.lt)
-Refactoring: moving the 'replacement_tags.lst' file to the
-'replacement-values' folder.
-
-------------------------------------------------------------------------
-r4999 | antanas | 2017-03-02 16:15:22 +0200 (Thu, 02 Mar 2017) | 5 lines
-
-trunk/ (antanas@echidna.ibt.lt)
-Enhancement: copying the replacement data item list to the data folder
-so it could be modified without affecting the test output. Adding a few
-more replacement rules.
-
-------------------------------------------------------------------------
-r4998 | antanas | 2017-03-02 15:24:31 +0200 (Thu, 02 Mar 2017) | 11 lines
-
-cod-tools/ (antanas@echidna.ibt.lt)
-Enhancement: modifying the way 'cif_correct_tags' script behaves when
-the replacement tag is already in the file. Originally, the replacement
-would silently not be carried at all in cases like these. However, from
-now on the script woll carry out one of the two actions based on the 
-values of the misspelt and the replacement data items:
-1) if the values match, the misspelt data item will be removed and
-reported;
-2) if the values do not match, the misspelt data item will be reported,
-but not modified in any way.
-
-------------------------------------------------------------------------
 r4997 | antanas | 2017-03-02 10:09:39 +0200 (Thu, 02 Mar 2017) | 6 lines
 
 cod-tools/ (antanas@echidna.ibt.lt)
@@ -338,12 +363,6 @@ Enhancement: adding a warning message to the 'cif2cod'
 subroutine of the COD::CIF:Data::CIF2COD module that
 informs the user that the data block does not contain
 fractional coordinates.
-
-------------------------------------------------------------------------
-r4995 | antanas | 2017-03-01 16:31:38 +0200 (Wed, 01 Mar 2017) | 3 lines
-
-trunk/src/externals/ (antanas@echidna.ibt.lt)
-Bug fix: correcting a typo in the make rule ('@$' -> '$@').
 
 ------------------------------------------------------------------------
 r4990 | antanas | 2017-03-01 15:08:37 +0200 (Wed, 01 Mar 2017) | 4 lines
@@ -395,31 +414,6 @@ cod-tools/ (antanas@echidna.ibt.lt)
 Enhancement: changing the way disorder group combinations are generated.
 From now on the combination with highest occupancy will be considered as
 the best one. 
-
-------------------------------------------------------------------------
-r4960 | antanas | 2017-02-21 10:31:14 +0200 (Tue, 21 Feb 2017) | 4 lines
-
-cod-tools/ (antanas@echidna.ibt.lt)
-Refactoring: correcting multiple instances of misspelling
-'space group' as 'spacegroup'.
-
-------------------------------------------------------------------------
-r4959 | antanas | 2017-02-20 19:13:49 +0200 (Mon, 20 Feb 2017) | 3 lines
-
-trunk/doc/ (antanas@echidna.ibt.lt)
-Enhancement: adding the description for the 'Zprime' column.
-
-------------------------------------------------------------------------
-r4958 | antanas | 2017-02-20 18:52:33 +0200 (Mon, 20 Feb 2017) | 3 lines
-
-trunk/ (antanas@echidna.ibt.lt)
-Enhancement: adding the description of the 'Z' column.
-
-------------------------------------------------------------------------
-r4957 | antanas | 2017-02-20 18:20:30 +0200 (Mon, 20 Feb 2017) | 3 lines
-
-trunk/doc/ (antanas@echidna.ibt.lt)
-Enhancement: adding description of the 'cellformula' column.
 
 ------------------------------------------------------------------------
 r4954 | antanas | 2017-02-20 16:12:46 +0200 (Mon, 20 Feb 2017) | 5 lines
@@ -1316,12 +1310,6 @@ test cases.
 Removing duplicated dependency from dependencies/Ubuntu-12.04/run.sh.
 
 ------------------------------------------------------------------------
-r4597 | andrius | 2016-02-29 14:22:30 +0200 (Mon, 29 Feb 2016) | 3 lines
-
-trunk/
-Adding a pair of frequently misspellt CIF tags to replacement_tags.lst.
-
-------------------------------------------------------------------------
 r4591 | andrius | 2016-02-25 15:45:53 +0200 (Thu, 25 Feb 2016) | 4 lines
 
 trunk/
@@ -2018,14 +2006,6 @@ cod-tools/ (antanas@echidna.ibt.lt)
 Refactoring: replacing indirect method calls (new Object) with direct 
 methods calls (Object->new) since it if the prefered way in Perl (and 
 might help avoid some bugs on some occasions).
-
-------------------------------------------------------------------------
-r4359 | antanas | 2015-11-25 15:45:04 +0200 (Wed, 25 Nov 2015) | 5 lines
-
-trunk/scripts/ (antanas@echidna.ibt.lt)
-Refactoring: adding a package scoped $VERSION variable and simplifying 
-the implementation of the '--version' command line option in the 
-'cif_validate' script.
 
 ------------------------------------------------------------------------
 r4354 | antanas | 2015-11-25 09:40:38 +0200 (Wed, 25 Nov 2015) | 4 lines
