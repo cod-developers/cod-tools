@@ -34,6 +34,10 @@ cod-tools (1.1)
   * Added:
     - cif_find_symmetry and spglib interface (using spglib-1.6.4)
     - dependency list for LinuxMint-18.1.
+    - cif_bounding_box: a script to transform obabel-generated
+      non-crystal CIF files (no symmetry information, cell parameters,
+      Cartesian coordinates given instead of fractional) to cubic unit
+      cells, separated by margins of vacuum.
     - cif_fix_values: adding functionality to fix the most common
       mistakes in the values of
       _atom_sites_solution_{primary,secondary,hydrogens}.
@@ -56,6 +60,7 @@ cod-tools (1.1)
         columns and types has to be supplied via an XML file,
         doc/CODDictionary.xml for the most uses. Adding a syntetic test case.
 
+    - JSON schema for validation of output from cif2json and like.
   * Changed:
     - COD::CID::Data::CIF2COD treats CIF value '?' amid white space as
       undefined.
@@ -80,24 +85,7 @@ cod-tools (1.1)
       - COD::Spacegroups::Lookup::COD
     - Renamed tools/duplicate_spacegroups -> tools/duplicate_space_groups
     - COD XML:
-
-        ------------------------------------------------------------------------
-        r4959 | antanas | 2017-02-20 19:13:49 +0200 (Mon, 20 Feb 2017) | 3 lines
-
-        trunk/doc/ (antanas@echidna.ibt.lt)
-        Enhancement: adding the description for the 'Zprime' column.
-
-        ------------------------------------------------------------------------
-        r4958 | antanas | 2017-02-20 18:52:33 +0200 (Mon, 20 Feb 2017) | 3 lines
-
-        trunk/ (antanas@echidna.ibt.lt)
-        Enhancement: adding the description of the 'Z' column.
-
-        ------------------------------------------------------------------------
-        r4957 | antanas | 2017-02-20 18:20:30 +0200 (Mon, 20 Feb 2017) | 3 lines
-
-        trunk/doc/ (antanas@echidna.ibt.lt)
-        Enhancement: adding description of the 'cellformula' column.
+      - adding descriptions of 'Z', 'Zprime', 'cellformula', 'compoundsource'.
 
         ------------------------------------------------------------------------
         r5075 | antanas | 2017-03-16 17:23:26 +0200 (Thu, 16 Mar 2017) | 4 lines
@@ -118,12 +106,6 @@ cod-tools (1.1)
 
         trunk/doc/ (antanas@echidna.ibt.lt)
         Refactoring: correcting several minor typos in the 'CODDictionary.xml'.
-
-        ------------------------------------------------------------------------
-        r4909 | andrius | 2017-02-07 12:43:15 +0200 (Tue, 07 Feb 2017) | 3 lines
-
-        trunk/
-        Adding a description of "compoundsource" to 'doc/CODDictionary.xml'.
 
         ------------------------------------------------------------------------
         r4908 | andrius | 2017-02-07 12:36:53 +0200 (Tue, 07 Feb 2017) | 3 lines
@@ -224,6 +206,8 @@ cod-tools (1.1)
         trunk/
         Adding a pair of frequently misspellt CIF tags to replacement_tags.lst.
 
+    - cif_cod_numbers: also considering the unit cell formula and
+      compound source when searching for duplicate entries.
   * Deprecated:
     - usage of doc/CODDictionary.xml (database-description.xml of
       appropriate database should be used instead, such as
@@ -419,9 +403,7 @@ the best one.
 r4954 | antanas | 2017-02-20 16:12:46 +0200 (Mon, 20 Feb 2017) | 5 lines
 
 trunk/ (antanas@echidna.ibt.lt)
-Enhancement: changing the 'cif_cod_numbers' script to also
-consider the unit cell formula when searching for duplicate
-entries in the COD.
+Enhancement: 
 
 ------------------------------------------------------------------------
 r4953 | antanas | 2017-02-20 10:44:23 +0200 (Mon, 20 Feb 2017) | 4 lines
@@ -438,12 +420,6 @@ Refactoring: moving the warning message about the user-provided
 Z value mismatching the one given in the input file from the
 COD::CIF::Data::CellContents module to the cif_cell_contents
 script.
-
-------------------------------------------------------------------------
-r4950 | andrius | 2017-02-14 16:14:40 +0200 (Tue, 14 Feb 2017) | 3 lines
-
-trunk/
-Adding a JSON schema for validation of output from cif2json and like.
 
 ------------------------------------------------------------------------
 r4926 | antanas | 2017-02-08 17:43:27 +0200 (Wed, 08 Feb 2017) | 6 lines
@@ -487,14 +463,6 @@ cod-tools/ (antanas@kurmis)
 Bug fix: correcting the handling of special CIF values
 ('?', '.') in the 'cif_validate' script. These values
 no longer raise warnings about missing parent data items.
-
-------------------------------------------------------------------------
-r4860 | antanas | 2017-02-03 16:16:14 +0200 (Fri, 03 Feb 2017) | 5 lines
-
-cod-tools/ (antanas@kurmis)
-Refactoring: changing the use of parentheses into the use of brackets
-when reporting an enumeration range in the validation messages since the
-extrema values are included within the enumeration range.
 
 ------------------------------------------------------------------------
 r4854 | andrius | 2017-02-01 10:19:26 +0200 (Wed, 01 Feb 2017) | 6 lines
@@ -543,12 +511,6 @@ r4799 | andrius | 2017-01-25 17:22:27 +0200 (Wed, 25 Jan 2017) | 4 lines
 trunk/
 Moving target 'all' to the top of src/components/codcif/Makefile, making
 it the topmost target, as is done commonly.
-
-------------------------------------------------------------------------
-r4798 | andrius | 2017-01-24 18:36:08 +0200 (Tue, 24 Jan 2017) | 3 lines
-
-trunk/
-Implementing comparison of compound sources in cif_cod_numbers.
 
 ------------------------------------------------------------------------
 r4796 | andrius | 2017-01-24 17:05:50 +0200 (Tue, 24 Jan 2017) | 4 lines
@@ -1049,14 +1011,6 @@ trying to use a negative number in this context causes
 a warning message to appear.
 
 ------------------------------------------------------------------------
-r4663 | antanas | 2016-06-13 10:30:59 +0300 (Mon, 13 Jun 2016) | 5 lines
-
-trunk/ (antanas@antanas-tuxedo.europe.actelion.com)
-Refactoring: fixing a typo in an error message in the
-COD::CIF::Data::CODNumbers module and updating the way
-errors are handled in the cif_cod_numbers script.
-
-------------------------------------------------------------------------
 r4658 | andrius | 2016-05-26 14:14:56 +0300 (Thu, 26 May 2016) | 5 lines
 
 trunk/
@@ -1212,13 +1166,6 @@ r4627 | andrius | 2016-04-18 14:36:39 +0300 (Mon, 18 Apr 2016) | 4 lines
 trunk/
 Using more portable way to fetch contents of remote file to Perl scalar
 using WWW::Curl::Easy in cif_tcod_tree.
-
-------------------------------------------------------------------------
-r4625 | antanas | 2016-04-14 16:46:01 +0300 (Thu, 14 Apr 2016) | 4 lines
-
-cod-tools/ (antanas@echidna.ibt.lt)
-Bug fix: updating the way Perl warnings are handled in the 
-'cif_cod_numbers' script.
 
 ------------------------------------------------------------------------
 r4623 | antanas | 2016-04-13 17:23:24 +0300 (Wed, 13 Apr 2016) | 4 lines
@@ -1900,15 +1847,6 @@ r4406 | antanas | 2015-12-08 08:46:09 +0200 (Tue, 08 Dec 2015) | 4 lines
 cod-tools/ (antanas@echidna.ibt.lt)
 Enhancement: adding the ' -- fixed' suffix to the CIF parser warning 
 message informing about unquoted strings with spaces.
-
-------------------------------------------------------------------------
-r4405 | andrius | 2015-12-07 18:26:16 +0200 (Mon, 07 Dec 2015) | 6 lines
-
-trunk/
-Adding a script cif_bounding_box, used to transform obabel-generated
-non-crystal CIF files (no symmetry information, cell parameters, Cartesian
-coordinates given instead of fractional) to cubic unit cells, separated by
-margins of vacuum.
 
 ------------------------------------------------------------------------
 r4403 | antanas | 2015-12-07 17:07:43 +0200 (Mon, 07 Dec 2015) | 8 lines
