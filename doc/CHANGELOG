@@ -34,10 +34,12 @@ cod-tools (1.1)
   * Added:
     - cif_find_symmetry and spglib interface (using spglib-1.6.4)
     - dependency list for LinuxMint-18.1.
-    - cif_bounding_box: a script to transform obabel-generated
+    - cif_bounding_box: a new script to transform obabel-generated
       non-crystal CIF files (no symmetry information, cell parameters,
       Cartesian coordinates given instead of fractional) to cubic unit
       cells, separated by margins of vacuum.
+    - cif2rdf: a new script to generate RDF descriptions directly from
+      CIF files.
     - cif_fix_values: adding functionality to fix the most common
       mistakes in the values of
       _atom_sites_solution_{primary,secondary,hydrogens}.
@@ -168,14 +170,33 @@ cod-tools (1.1)
 
     - cod_predeposition_check: implementing parser selection via
       command line options.
+    - COD::RDF: a new module for RDF generation with most of the code
+      taken from cod2rdf.
+    - COD::AuthorNames: a new module for author name parsing to a new
+      Perl module with the code from:
+      URL: svn+ssh://www.crystallography.net/home/coder/svn-repositories/codcif2xml/trunk/programs/rdfxml2xml
+      Repository Root: svn+ssh://www.crystallography.net/home/coder/svn-repositories/codcif2xml
+      Repository UUID: e9639961-1eee-46c2-8ca7-0101a2976781
+      Revision: 73
+    - COD::Algebra: a new module with common GCD functions
+    - COD::AtomNeighbours: adding subroutine
+      neighbour_list_from_chemistry_mol() for the construction of
+      atom neighbours data structure from the output of
+      Chemistry::Mol Perl module.
   * Changed:
     - COD::CID::Data::CIF2COD treats CIF value '?' amid white space as
       undefined.
-    - CIF parsers: adding the ' -- fixed' suffix to parser warning
-      messages informing about unquoted strings with spaces.
+    - CIF parsers:
+      - adding the ' -- fixed' suffix to parser warning messages
+        informing about unquoted strings with spaces.
+      - rephrasing error messages in the CIF parsers: replacing one
+        occurence of comma (',') and one occurence of a dash ('-')
+        with two dashes ('--') and changing the phrase 'replaced by'
+        to 'replaced with'.
     - Messages in scripts:
       - cif_cod_check
       - cif_correct_tags
+      - cif_diff
       - cif_filter
       - cif_fix_values
       - cif_hkl_check
@@ -317,6 +338,8 @@ cod-tools (1.1)
 
     - cif_cod_numbers: also considering the unit cell formula and
       compound source when searching for duplicate entries.
+    - cif_tcod_tree: using more portable way to fetch contents of
+      remote file to Perl scalar using WWW::Curl::Easy.
     - pycodcif:
 
         ------------------------------------------------------------------------
@@ -386,10 +409,15 @@ cod-tools (1.1)
         appropriate UTF8 code points in Unicode2CIF::cif2unicode(). Adding two
         test cases.
 
-    - COD::CIF::Tags::DictTags: updating tag list according to
-      cif_core.dic v2.4.5.
-    - COD::CIF::Tags::DFT.pm: updating tag list according to
+    - COD::CIF::Tags::DFT: updating tag list according to
       cif_dft.dic v0.020
+    - COD::CIF::Tags::DictTags: updating tag list according to
+      cif_core.dic v2.4.5
+    - COD::CIF::Tags::TCOD: updating tag list according to
+      cif_tcod.dic v0.009
+    - Replacing COD::CIF::Data::SymmetryGenerator(),
+      COD::CIF::Data::AtomList::copy_struct_deep() and analoguous
+      functions with Perl built-in Clone::clone().
   * Deprecated:
     - usage of doc/CODDictionary.xml (database-description.xml of
       appropriate database should be used instead, such as
@@ -471,17 +499,30 @@ cod-tools (1.1)
     - Error messages in codcif (occurence -> occurrence)
     - Error messages in the following scripts:
       - cif_molecule
-      - cod_prdeposition_check
+      - cod_predeposition_check
     - Error messages in the following Perl modules:
       - COD::CIF::Data::CODPredepositionCheck
       - COD::SOptions
     - Help texts of the following scripts:
       - cif_cell_contents
       - cif_cod_check
+      - cif_cod_deposit
+      - cif_cod_numbers
+      - cif_diff
       - cif_eval_numbers
+      - cif_filter
+      - cif_hkl_COD_number
+      - cif_hkl_check
+      - cif_merge
       - cif_molecule
+      - cif_p1
+      - cif_select
+      - cif_split
       - cif2cod
       - cifparse
+      - cod_predeposition_check
+    - cif_select: adding a missing import of
+      COD::CIF::Tags::Manage::rename_tag()
 
 ------------------------------------------------------------------------
 r5170 | antanas | 2017-03-31 18:02:30 +0300 (Fri, 31 Mar 2017) | 8 lines
@@ -789,24 +830,6 @@ linking of cexceptions and getoptions by changing the linker from ld to
 cc.
 
 ------------------------------------------------------------------------
-r4770 | andrius | 2016-11-15 12:46:39 +0200 (Tue, 15 Nov 2016) | 3 lines
-
-trunk/
-Updating tag lists COD::CIF::Tags::{DFT,TCOD}.
-
-------------------------------------------------------------------------
-r4769 | andrius | 2016-11-08 09:28:36 +0200 (Tue, 08 Nov 2016) | 9 lines
-
-trunk/
-Putting routines for author name parsing to a new Perl module,
-COD::AuthorNames. The updated code for parsing is taken from:
-
-URL: svn+ssh://www.crystallography.net/home/coder/svn-repositories/codcif2xml/trunk/programs/rdfxml2xml
-Repository Root: svn+ssh://www.crystallography.net/home/coder/svn-repositories/codcif2xml
-Repository UUID: e9639961-1eee-46c2-8ca7-0101a2976781
-Revision: 73
-
-------------------------------------------------------------------------
 r4768 | andrius | 2016-11-03 12:59:28 +0200 (Thu, 03 Nov 2016) | 6 lines
 
 trunk/
@@ -966,38 +989,6 @@ Adding a check in cif_cod_check to locate (issuing NOTEs) disorder groups
 of the same assembly having different numbers of atoms (off by default).
 
 ------------------------------------------------------------------------
-r4706 | andrius | 2016-09-21 15:36:11 +0300 (Wed, 21 Sep 2016) | 3 lines
-
-trunk/
-Forming URLs of COD entries for RDFs inside the highest-level programs.
-
-------------------------------------------------------------------------
-r4702 | andrius | 2016-09-21 14:45:15 +0300 (Wed, 21 Sep 2016) | 4 lines
-
-trunk/
-Adding a new script, cif2rdf, to generate RDF descriptions directly from
-CIF files using COD::CIF::Data::CIF2COD module.
-
-------------------------------------------------------------------------
-r4698 | andrius | 2016-09-21 13:16:46 +0300 (Wed, 21 Sep 2016) | 3 lines
-
-trunk/
-Moving rdf_ntriples() from cod2rdf to COD::RDF.
-
-------------------------------------------------------------------------
-r4697 | andrius | 2016-09-21 13:07:01 +0300 (Wed, 21 Sep 2016) | 3 lines
-
-trunk/
-Moving RDF generation in N3 ("turtle") format to COD::RDF module.
-
-------------------------------------------------------------------------
-r4695 | andrius | 2016-09-21 12:53:51 +0300 (Wed, 21 Sep 2016) | 4 lines
-
-trunk/
-Moving subroutines for RDF generation from cod2rdf to separate new module,
-COD::RDF.
-
-------------------------------------------------------------------------
 r4694 | andrius | 2016-09-15 10:32:03 +0300 (Thu, 15 Sep 2016) | 4 lines
 
 trunk/dependencies/
@@ -1019,33 +1010,6 @@ r4687 | andrius | 2016-07-12 13:53:46 +0300 (Tue, 12 Jul 2016) | 4 lines
 trunk/
 Simple polymers are now detected even with --max-polymer-span set to 0 in
 cif_molecule.
-
-------------------------------------------------------------------------
-r4686 | andrius | 2016-07-07 15:25:27 +0300 (Thu, 07 Jul 2016) | 4 lines
-
-trunk/
-Cleaning up leftover files after Debian package generation for
-'make distclean' target.
-
-------------------------------------------------------------------------
-r4685 | andrius | 2016-07-07 14:45:39 +0300 (Thu, 07 Jul 2016) | 4 lines
-
-trunk/
-Fixing recipes 'make cleanAll' and 'make distclean' targets to remove the
-rest of leftover files, except for 'debian' subdir.
-
-------------------------------------------------------------------------
-r4683 | andrius | 2016-07-07 13:44:39 +0300 (Thu, 07 Jul 2016) | 4 lines
-
-trunk/
-Fixing recipes 'make cleanAll' and 'make distclean' targets to remove some
-leftover files.
-
-------------------------------------------------------------------------
-r4681 | andrius | 2016-07-04 14:18:09 +0300 (Mon, 04 Jul 2016) | 3 lines
-
-trunk/
-Appending 'clean-man' to 'distclean' target of the main Makefile.
 
 ------------------------------------------------------------------------
 r4676 | andrius | 2016-06-28 11:36:41 +0300 (Tue, 28 Jun 2016) | 4 lines
@@ -1075,14 +1039,6 @@ r4673 | antanas | 2016-06-26 02:52:14 +0300 (Sun, 26 Jun 2016) | 4 lines
 cod-tools/ (antanas@kurmis)
 Refactoring: removing extra space from the 'cif_distances' script 
 pairwise format output.
-
-------------------------------------------------------------------------
-r4672 | antanas | 2016-06-26 02:49:40 +0300 (Sun, 26 Jun 2016) | 5 lines
-
-trunk/src/lib/perl5/COD/CIF/Data/ (antanas@kurmis)
-Refactoring: correcting a mistake in a subroutine
-description in the COD::CIF::Data::SymmetryGenerator
-module.
 
 ------------------------------------------------------------------------
 r4671 | antanas | 2016-06-20 00:17:04 +0300 (Mon, 20 Jun 2016) | 5 lines
@@ -1173,13 +1129,6 @@ string is not allowed as a data item value, but the 'loop_*' strings are
 perfectly fine. 
 
 ------------------------------------------------------------------------
-r4652 | antanas | 2016-05-09 12:10:18 +0300 (Mon, 09 May 2016) | 4 lines
-
-cod-tools/ (antanas@echidna.ibt.lt)
-Refactoring: replacing 'dataname' with 'data name' in the comments and
-printed strings of multiple scripts.
-
-------------------------------------------------------------------------
 r4651 | antanas | 2016-05-09 09:43:42 +0300 (Mon, 09 May 2016) | 4 lines
 
 cod-tools/ (antanas@echidna.ibt.lt)
@@ -1257,13 +1206,6 @@ the 'STOP_' and 'GLOBAL_' symbols ('it is not acceptable in this
 version' -> 'it is not acceptable in CIF v1.1').
 
 ------------------------------------------------------------------------
-r4627 | andrius | 2016-04-18 14:36:39 +0300 (Mon, 18 Apr 2016) | 4 lines
-
-trunk/
-Using more portable way to fetch contents of remote file to Perl scalar
-using WWW::Curl::Easy in cif_tcod_tree.
-
-------------------------------------------------------------------------
 r4623 | antanas | 2016-04-13 17:23:24 +0300 (Wed, 13 Apr 2016) | 4 lines
 
 trunk/src/lib/perl5/COD/ (antanas@echidna.ibt.lt)
@@ -1311,12 +1253,6 @@ cod-tools/ (antanas@echidna.ibt.lt)
 Bug fix: correcting the 'eval {} if( $@ )' error handling block in the
 'cif2xyz' and 'cif_fix_values' scripts. Previously, the '@_' variable
 was erroneously used in the 'if' sentence.
-
-------------------------------------------------------------------------
-r4590 | andrius | 2016-02-25 14:27:30 +0200 (Thu, 25 Feb 2016) | 3 lines
-
-trunk/
-Replacing call to 'realloc' with 'reallocx' in clean_string().
 
 ------------------------------------------------------------------------
 r4587 | andrius | 2016-02-25 09:27:20 +0200 (Thu, 25 Feb 2016) | 3 lines
@@ -1376,38 +1312,6 @@ entities have been converted into utf characters. This allows to
 preserve at least a single whitespace after the symbol encoded by the 
 cif markup entity, since some of these entities have a trailing 
 whitespace as a part of their name ("\\times ", for example). 
-
-------------------------------------------------------------------------
-r4566 | andrius | 2016-01-29 13:24:49 +0200 (Fri, 29 Jan 2016) | 4 lines
-
-trunk/
-Bugfix: adding a missing import of COD::CIF::Tags::Manage::rename_tag() to
-cif_select.
-
-------------------------------------------------------------------------
-r4563 | andrius | 2016-01-26 14:21:46 +0200 (Tue, 26 Jan 2016) | 3 lines
-
-trunk/
-Removing unused subroutine COD::CIF::Data::SymmetryGenerator::copy_array().
-
-------------------------------------------------------------------------
-r4561 | andrius | 2016-01-26 13:14:35 +0200 (Tue, 26 Jan 2016) | 3 lines
-
-trunk/
-Moving GCD functions to a new module COD::Algebra.
-
-------------------------------------------------------------------------
-r4560 | andrius | 2016-01-26 13:05:37 +0200 (Tue, 26 Jan 2016) | 4 lines
-
-trunk/
-Substituting COD::CIF::Data::AtomList::copy_struct_deep() subroutine with
-drop-in replacement of Clone::clone().
-
-------------------------------------------------------------------------
-r4559 | andrius | 2016-01-26 12:54:22 +0200 (Tue, 26 Jan 2016) | 3 lines
-
-trunk/
-Rewriting copy_atom() subroutine via Clone::clone().
 
 ------------------------------------------------------------------------
 r4541 | antanas | 2016-01-19 14:17:09 +0200 (Tue, 19 Jan 2016) | 4 lines
@@ -1574,12 +1478,6 @@ trunk/ (saulius@koala.ibt.lt)
 Fixing exception processing in 'scripts/cif_reduce_cell'.
 
 ------------------------------------------------------------------------
-r4476 | saulius | 2015-12-18 10:02:47 +0200 (Fri, 18 Dec 2015) | 3 lines
-
-trunk/ (saulius@koala.ibt.lt)
-Simplifying the 'make listdiff' command.
-
-------------------------------------------------------------------------
 r4472 | antanas | 2015-12-17 20:05:52 +0200 (Thu, 17 Dec 2015) | 4 lines
 
 trunk/dependencies/Ubuntu-12.04/ (antanas@kurmis)
@@ -1667,36 +1565,11 @@ extracting it to a seperate subroutine 'is_atom_excludable' in
 COD::CIF::Data::AtomList.
 
 ------------------------------------------------------------------------
-r4429 | andrius | 2015-12-10 15:21:02 +0200 (Thu, 10 Dec 2015) | 4 lines
-
-trunk/
-Renaming subroutine from_chemistry_mol() to more informative
-neighbour_list_from_chemistry_mol().
-
-------------------------------------------------------------------------
-r4428 | andrius | 2015-12-10 12:08:21 +0200 (Thu, 10 Dec 2015) | 7 lines
-
-trunk/
-Fixing a bug in setting planarity value in
-COD::AtomNeighbours::from_chemistry_mol(): instead of setting boolean
-value for 'is_planar' key, a value for 'planarity' is set to 0, thus
-whatever the flat planarity threshold is used, such atom is treated as
-planar.
-
-------------------------------------------------------------------------
 r4427 | antanas | 2015-12-10 11:03:52 +0200 (Thu, 10 Dec 2015) | 4 lines
 
 cod-tools/ (antanas@echidna.ibt.lt)
 Refactoring: modifying COD::CIF::Data::SymmetryGenerator::apply_shifts 
 to return a reference to an array instead of an array.
-
-------------------------------------------------------------------------
-r4426 | andrius | 2015-12-09 16:07:32 +0200 (Wed, 09 Dec 2015) | 5 lines
-
-trunk/
-Adding a subroutine COD::AtomNeighbours::from_chemistry_mol() to construct
-neighbour list from data structure, generated by Chemistry::Mol Perl
-module.
 
 ------------------------------------------------------------------------
 r4425 | antanas | 2015-12-08 15:01:06 +0200 (Tue, 08 Dec 2015) | 5 lines
@@ -1705,59 +1578,6 @@ cod-tools/ (antanas@echidna.ibt.lt)
 Refactoring: replacing the 'shift_atom' subroutine call with the 
 COD::CIF::Data::SymmetryGenerator::apply_shifts subroutine call in the 
 'cif_distances' script.
-
-------------------------------------------------------------------------
-r4419 | antanas | 2015-12-08 13:32:05 +0200 (Tue, 08 Dec 2015) | 7 lines
-
-cod-tools/ (antanas@echidna.ibt.lt)
-Bug fix: replacing recursive make calls in the 'listdiff' target with a 
-single 'find' call from the './src' directory. This removed the 
-duplicate entries from the list of failed test and allowed to avoid 
-explicitly listing all directories that need to be traversed with the 
-recursive make calls. 
-
-------------------------------------------------------------------------
-r4418 | antanas | 2015-12-08 12:55:48 +0200 (Tue, 08 Dec 2015) | 4 lines
-
-trunk/src/externals/ (antanas@echidna.ibt.lt)
-Enhancement: adding 'listdiff' target and replacing hardcoded path with 
-previously defined make variables.
-
-------------------------------------------------------------------------
-r4416 | antanas | 2015-12-08 12:33:07 +0200 (Tue, 08 Dec 2015) | 4 lines
-
-trunk/src/externals/ (antanas@echidna.ibt.lt)
-Bug fix: moving the functionality of removing '*.diff' fiel from the 
-'cleanAll' to the 'clean' target.
-
-------------------------------------------------------------------------
-r4415 | antanas | 2015-12-08 12:08:48 +0200 (Tue, 08 Dec 2015) | 5 lines
-
-cod-tools/ (antanas@echidna.ibt.lt)
-Refactoring: rephrasing error messages in the CIF parsers. Replacing one 
-occurence of comma (',') and one occurence of a dash ('-') with two 
-dashes ('--') and changing the phrase 'replaced by' to 'replaced with'.
-
-------------------------------------------------------------------------
-r4410 | antanas | 2015-12-08 10:10:27 +0200 (Tue, 08 Dec 2015) | 4 lines
-
-trunk/src/lib/perl5/COD/CIF/Parser/ (antanas@echidna.ibt.lt)
-Bug fix: modifying the output of the test file since it contained full 
-test file names instead of the shorter ones.
-
-------------------------------------------------------------------------
-r4409 | antanas | 2015-12-08 09:48:54 +0200 (Tue, 08 Dec 2015) | 4 lines
-
-trunk/src/components/ (antanas@echidna.ibt.lt)
-Bug fix: modifying 'listdiff' rule in the makefile so it no longer 
-displays names of the failed tests twice.
-
-------------------------------------------------------------------------
-r4407 | antanas | 2015-12-08 08:54:25 +0200 (Tue, 08 Dec 2015) | 4 lines
-
-trunk/src/components/ (antanas@echidna.ibt.lt)
-Enhancement: adding the 'out' target as a synonym for the 'outputs' 
-target.
 
 ------------------------------------------------------------------------
 r4403 | antanas | 2015-12-07 17:07:43 +0200 (Mon, 07 Dec 2015) | 8 lines
