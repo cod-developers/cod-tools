@@ -166,9 +166,13 @@ cod-tools (1.1)
         Making 'oqmd2cif' produce syntactically correct CIF files for structures
         with no atoms.
 
+    - cod_predeposition_check: implementing parser selection via
+      command line options.
   * Changed:
     - COD::CID::Data::CIF2COD treats CIF value '?' amid white space as
       undefined.
+    - CIF parsers: adding the ' -- fixed' suffix to parser warning
+      messages informing about unquoted strings with spaces.
     - Messages in scripts:
       - cif_cod_check
       - cif_correct_tags
@@ -313,6 +317,79 @@ cod-tools (1.1)
 
     - cif_cod_numbers: also considering the unit cell formula and
       compound source when searching for duplicate entries.
+    - pycodcif:
+
+        ------------------------------------------------------------------------
+        r4854 | andrius | 2017-02-01 10:19:26 +0200 (Wed, 01 Feb 2017) | 6 lines
+
+        trunk/
+        Merging in branches/andrius-python-refactoring/.
+
+        Merge command:
+        svn merge ^/branches/andrius-python-refactoring
+
+
+        ------------------------------------------------------------------------
+        r4823 | andrius | 2017-01-27 12:00:27 +0200 (Fri, 27 Jan 2017) | 3 lines
+
+        src/lib/python2.7/dist-packages/cod/ccifparser/
+        Making parser options optional for Python CIF parser.
+
+        ------------------------------------------------------------------------
+        r4772 | andrius | 2016-11-15 16:36:51 +0200 (Tue, 15 Nov 2016) | 4 lines
+
+        src/lib/python2.7/dist-packages/cod/ccifparser/
+        Attempting to use python2.6 if python2.7 does not exist, in build of
+        C-Python CIF parser.
+
+        ------------------------------------------------------------------------
+        r4771 | andrius | 2016-11-15 16:30:31 +0200 (Tue, 15 Nov 2016) | 4 lines
+
+        src/lib/python2.7/dist-packages/cod/ccifparser/
+        Using more common Python syntax in order to make Python code more
+        backwards-compatible, in particluar with python2.6.
+
+        ------------------------------------------------------------------------
+        r4763 | andrius | 2016-10-26 18:23:15 +0300 (Wed, 26 Oct 2016) | 4 lines
+
+        trunk/
+        Simplifying the Makefile of CIF parser bindings for Python. Instead of
+        linking with the objects, the linking is now performed with library files.
+
+        ------------------------------------------------------------------------
+        r4761 | andrius | 2016-10-26 17:07:42 +0300 (Wed, 26 Oct 2016) | 3 lines
+
+        trunk/
+        Addin 'make install' target for Python CIF parser.
+        ------------------------------------------------------------------------
+        r4754 | andrius | 2016-10-25 16:06:04 +0300 (Tue, 25 Oct 2016) | 4 lines
+
+        trunk/
+        Bugfix: package names of Python and C CIF parser were swapped in
+        debian/rules.
+
+        ------------------------------------------------------------------------
+        r4649 | antanas | 2016-05-06 18:51:27 +0300 (Fri, 06 May 2016) | 5 lines
+
+        trunk/src/lib/python2.7/dist-packages/cod/ccifparser/ (antanas@echidna.ibt.lt)
+        Bug fix: adding a code line in the 'ccifparser.c' that passes the
+        'fix_datablock_name' option directly to the lexer. Now the C-Python
+        parsers behaves in the same way as the C-Perl parser.
+
+    - COD::CIF::Unicode2CIF:
+
+        ------------------------------------------------------------------------
+        r4599 | andrius | 2016-03-03 10:20:53 +0200 (Thu, 03 Mar 2016) | 6 lines
+
+        trunk/
+        Implementing conversion of named and decimal-numbered HTML entities into
+        appropriate UTF8 code points in Unicode2CIF::cif2unicode(). Adding two
+        test cases.
+
+    - COD::CIF::Tags::DictTags: updating tag list according to
+      cif_core.dic v2.4.5.
+    - COD::CIF::Tags::DFT.pm: updating tag list according to
+      cif_dft.dic v0.020
   * Deprecated:
     - usage of doc/CODDictionary.xml (database-description.xml of
       appropriate database should be used instead, such as
@@ -362,6 +439,36 @@ cod-tools (1.1)
         field that has a "/\n" as its second line no longer causes the text 
         field to also be unfolded.
 
+    - COD::CIF::Unicode2CIF:
+
+        ------------------------------------------------------------------------
+        r4604 | andrius | 2016-03-14 16:16:57 +0200 (Mon, 14 Mar 2016) | 4 lines
+
+        trunk/
+        Bugfix: fixing an issue of converting CIF triple dash ('---') into UTF8
+        em dash (&#x2014;) instead of a combination of figure dash and en dash.
+
+        ------------------------------------------------------------------------
+        r4603 | andrius | 2016-03-14 15:32:05 +0200 (Mon, 14 Mar 2016) | 7 lines
+
+        trunk/
+        Bugfix: converting CIF markup symbol "\s" correctly as lowercase sigma
+        (GREEK SMALL LETTER SIGMA) instead of final lowercase sigma (GREEK SMALL
+        LETTER FINAL SIGMA). On the other way round, UTF8 code point for final
+        lowercase sigma is now converted into corresponding XML entity instead of
+        CIF markup symbol "\s".
+
+        ------------------------------------------------------------------------
+        r4575 | antanas | 2016-02-14 03:43:23 +0200 (Sun, 14 Feb 2016) | 5 lines
+
+        cod-tools/ (antanas@kurmis)
+        Bug fix: modifying the COD::CIF::Unicode2CIF module to convert tilde 
+        symbol '~' into the '\\sim ' sequence as specified by the CIF 
+        specification instead of the '\sim ' sequence that was previously used. 
+
+    - codcif: fixing incorrect line numbers in error messages.
+    - Memory leaks in codcif and COD::CIF::Parser::Bison.
+    - Error messages in codcif (occurence -> occurrence)
     - Error messages in the following scripts:
       - cif_molecule
       - cod_prdeposition_check
@@ -505,12 +612,6 @@ From now on the combination with highest occupancy will be considered as
 the best one. 
 
 ------------------------------------------------------------------------
-r4954 | antanas | 2017-02-20 16:12:46 +0200 (Mon, 20 Feb 2017) | 5 lines
-
-trunk/ (antanas@echidna.ibt.lt)
-Enhancement: 
-
-------------------------------------------------------------------------
 r4953 | antanas | 2017-02-20 10:44:23 +0200 (Mon, 20 Feb 2017) | 4 lines
 
 trunk/ (antanas@echidna.ibt.lt)
@@ -550,33 +651,12 @@ Fixing a bug in cif_molecule concerning printing out atoms of dummy
 molecules. Adding a test case.
 
 ------------------------------------------------------------------------
-r4904 | andrius | 2017-02-06 10:03:23 +0200 (Mon, 06 Feb 2017) | 9 lines
-
-trunk/
-Merging in branch 'andrius-parser-line-numbers':
-
-svn merge ^/branches/andrius-parser-line-numbers
-
-Tree conflicts, caused by test case cif_validate_038, were resolved via:
-
-svn resolve --accept working ...
-
-------------------------------------------------------------------------
 r4901 | antanas | 2017-02-05 21:47:54 +0200 (Sun, 05 Feb 2017) | 5 lines
 
 cod-tools/ (antanas@kurmis)
 Bug fix: correcting the handling of special CIF values
 ('?', '.') in the 'cif_validate' script. These values
 no longer raise warnings about missing parent data items.
-
-------------------------------------------------------------------------
-r4854 | andrius | 2017-02-01 10:19:26 +0200 (Wed, 01 Feb 2017) | 6 lines
-
-trunk/
-Merging in branches/andrius-python-refactoring/.
-
-Merge command:
-svn merge ^/branches/andrius-python-refactoring
 
 ------------------------------------------------------------------------
 r4827 | andrius | 2017-01-27 16:18:46 +0200 (Fri, 27 Jan 2017) | 6 lines
@@ -586,12 +666,6 @@ Merging branch 'andrius-cif2json' into trunk/. Most of the conflicts were
 solved as 'theirs-full', since the trunk was previously merged into the
 branch. However, src/lib/perl5/COD/CIF2JSON.pm, which was renamed in the
 branch, was not merged somewhy, thus it had to be moved manually.
-
-------------------------------------------------------------------------
-r4823 | andrius | 2017-01-27 12:00:27 +0200 (Fri, 27 Jan 2017) | 3 lines
-
-src/lib/python2.7/dist-packages/cod/ccifparser/
-Making parser options optional for Python CIF parser.
 
 ------------------------------------------------------------------------
 r4816 | andrius | 2017-01-26 16:14:38 +0200 (Thu, 26 Jan 2017) | 6 lines
@@ -643,19 +717,6 @@ r4786 | andrius | 2016-12-19 17:11:20 +0200 (Mon, 19 Dec 2016) | 4 lines
 trunk/
 Using COD::UserMessage::print_message() to print syntax error messages in
 COD::Formulae::Parser::AdHoc.
-
-------------------------------------------------------------------------
-r4785 | andrius | 2016-12-12 14:19:20 +0200 (Mon, 12 Dec 2016) | 10 lines
-
-trunk/ --This line, and those below, will be ignored--
-Fixing a typo in CIF parser's source: 'occurence' -> 'occurrence'.
-M    trunk/tests/outputs/cif_filter_176.out
-M    trunk/tests/outputs/cif_filter_116.out
-M    trunk/tests/outputs/cif_filter_117.out
-M    trunk/tests/outputs/cif_filter_118.out
-M    trunk/scripts/cif_cod_check
-M    trunk/src/components/codcif/cif_grammar.y
-M    trunk/src/lib/perl5/COD/CIF/Parser/Yapp/Yapp.yp
 
 ------------------------------------------------------------------------
 r4783 | andrius | 2016-12-06 15:25:28 +0200 (Tue, 06 Dec 2016) | 7 lines
@@ -728,20 +789,6 @@ linking of cexceptions and getoptions by changing the linker from ld to
 cc.
 
 ------------------------------------------------------------------------
-r4772 | andrius | 2016-11-15 16:36:51 +0200 (Tue, 15 Nov 2016) | 4 lines
-
-src/lib/python2.7/dist-packages/cod/ccifparser/
-Attempting to use python2.6 if python2.7 does not exist, in build of
-C-Python CIF parser.
-
-------------------------------------------------------------------------
-r4771 | andrius | 2016-11-15 16:30:31 +0200 (Tue, 15 Nov 2016) | 4 lines
-
-src/lib/python2.7/dist-packages/cod/ccifparser/
-Using more common Python syntax in order to make Python code more
-backwards-compatible, in particluar with python2.6.
-
-------------------------------------------------------------------------
 r4770 | andrius | 2016-11-15 12:46:39 +0200 (Tue, 15 Nov 2016) | 3 lines
 
 trunk/
@@ -778,19 +825,6 @@ comply with the EBNF grammar of error messages as published in
 Merkys et al. 2016.
 
 ------------------------------------------------------------------------
-r4763 | andrius | 2016-10-26 18:23:15 +0300 (Wed, 26 Oct 2016) | 4 lines
-
-trunk/
-Simplifying the Makefile of CIF parser bindings for Python. Instead of
-linking with the objects, the linking is now performed with library files.
-
-------------------------------------------------------------------------
-r4761 | andrius | 2016-10-26 17:07:42 +0300 (Wed, 26 Oct 2016) | 3 lines
-
-trunk/
-Addin 'make install' target for Python CIF parser.
-
-------------------------------------------------------------------------
 r4760 | andrius | 2016-10-26 14:56:08 +0300 (Wed, 26 Oct 2016) | 3 lines
 
 trunk/
@@ -820,12 +854,6 @@ Adding more cpd-tools compile- and run-time dependencies for CentOS-6.8.
 r4755 | saulius | 2016-10-26 07:52:50 +0300 (Wed, 26 Oct 2016) | 1 line
 
 Adding CentOS-6.8 scripts to install build-time dependencies.
-------------------------------------------------------------------------
-r4754 | andrius | 2016-10-25 16:06:04 +0300 (Tue, 25 Oct 2016) | 4 lines
-
-trunk/
-Bugfix: package names of Python and C CIF parser were swapped in
-debian/rules.
 
 ------------------------------------------------------------------------
 r4751 | andrius | 2016-10-25 10:52:43 +0300 (Tue, 25 Oct 2016) | 3 lines
@@ -1167,14 +1195,6 @@ way the C CIF parser behaves when dealing with zero-length
 datablock names.
 
 ------------------------------------------------------------------------
-r4649 | antanas | 2016-05-06 18:51:27 +0300 (Fri, 06 May 2016) | 5 lines
-
-trunk/src/lib/python2.7/dist-packages/cod/ccifparser/ (antanas@echidna.ibt.lt)
-Bug fix: adding a code line in the 'ccifparser.c' that passes the
-'fix_datablock_name' option directly to the lexer. Now the C-Python
-parsers behaves in the same way as the C-Perl parser.
-
-------------------------------------------------------------------------
 r4648 | antanas | 2016-05-06 12:51:43 +0300 (Fri, 06 May 2016) | 4 lines
 
 cod-tools/ (antanas@echidna.ibt.lt)
@@ -1237,21 +1257,6 @@ the 'STOP_' and 'GLOBAL_' symbols ('it is not acceptable in this
 version' -> 'it is not acceptable in CIF v1.1').
 
 ------------------------------------------------------------------------
-r4635 | antanas | 2016-05-04 13:33:26 +0300 (Wed, 04 May 2016) | 5 lines
-
-trunk/ (antanas@echidna.ibt.lt)
-Refactoring: removing the 'Makefile-pbyacc-test' since it is not used
-anymore. A copy of this makefile was moved to the 'makefiles' repository
-(svn://saulius-grazulis.lt/makefiles). 
-
-------------------------------------------------------------------------
-r4628 | andrius | 2016-04-18 14:54:36 +0300 (Mon, 18 Apr 2016) | 4 lines
-
-trunk/
-Skipping compilation of CIF parser bindings for Python if 'python2.7' is
-not found in $PATH.
-
-------------------------------------------------------------------------
 r4627 | andrius | 2016-04-18 14:36:39 +0300 (Mon, 18 Apr 2016) | 4 lines
 
 trunk/
@@ -1279,20 +1284,12 @@ BUG FIX: correcting the Delaunay reduction algorith so that it does not
 return flattened unit cells.
 
 ------------------------------------------------------------------------
-r4617 | saulius | 2016-04-09 08:00:08 +0300 (Sat, 09 Apr 2016) | 1 line
-
-Fixing typo in Niggli/KG76.pm.
-------------------------------------------------------------------------
 r4616 | saulius | 2016-04-09 07:58:38 +0300 (Sat, 09 Apr 2016) | 4 lines
 
 trunk/src/lib/perl5/COD/Cell/ (saulius@kolibris)
 Correcting instructions to run the Delaunay/Delaunay.pm module check 
 from the command line.
 
-------------------------------------------------------------------------
-r4615 | saulius | 2016-04-09 07:54:46 +0300 (Sat, 09 Apr 2016) | 1 line
-
-Fixing typo in Delaunay.pm.
 ------------------------------------------------------------------------
 r4614 | saulius | 2016-04-09 07:43:05 +0300 (Sat, 09 Apr 2016) | 4 lines
 
@@ -1314,45 +1311,6 @@ cod-tools/ (antanas@echidna.ibt.lt)
 Bug fix: correcting the 'eval {} if( $@ )' error handling block in the
 'cif2xyz' and 'cif_fix_values' scripts. Previously, the '@_' variable
 was erroneously used in the 'if' sentence.
-
-------------------------------------------------------------------------
-r4604 | andrius | 2016-03-14 16:16:57 +0200 (Mon, 14 Mar 2016) | 4 lines
-
-trunk/
-Bugfix: fixing an issue of converting CIF triple dash ('---') into UTF8
-em dash (&#x2014;) instead of a combination of figure dash and en dash.
-
-------------------------------------------------------------------------
-r4603 | andrius | 2016-03-14 15:32:05 +0200 (Mon, 14 Mar 2016) | 7 lines
-
-trunk/
-Bugfix: converting CIF markup symbol "\s" correctly as lowercase sigma
-(GREEK SMALL LETTER SIGMA) instead of final lowercase sigma (GREEK SMALL
-LETTER FINAL SIGMA). On the other way round, UTF8 code point for final
-lowercase sigma is now converted into corresponding XML entity instead of
-CIF markup symbol "\s".
-
-------------------------------------------------------------------------
-r4602 | andrius | 2016-03-14 10:57:47 +0200 (Mon, 14 Mar 2016) | 3 lines
-
-trunk/
-Updating tag list from cif_dft.dic.
-
-------------------------------------------------------------------------
-r4599 | andrius | 2016-03-03 10:20:53 +0200 (Thu, 03 Mar 2016) | 6 lines
-
-trunk/
-Implementing conversion of named and decimal-numbered HTML entities into
-appropriate UTF8 code points in Unicode2CIF::cif2unicode(). Adding two
-test cases.
-Removing duplicated dependency from dependencies/Ubuntu-12.04/run.sh.
-
-------------------------------------------------------------------------
-r4591 | andrius | 2016-02-25 15:45:53 +0200 (Thu, 25 Feb 2016) | 4 lines
-
-trunk/
-Fixing yet another C memory leak, caused by unfreed memory, pointed to by
-overwritten pointer.
 
 ------------------------------------------------------------------------
 r4590 | andrius | 2016-02-25 14:27:30 +0200 (Thu, 25 Feb 2016) | 3 lines
@@ -1383,14 +1341,6 @@ r4576 | andrius | 2016-02-15 11:08:36 +0200 (Mon, 15 Feb 2016) | 3 lines
 
 trunk/
 Adding 'libclone-perl' to the list of dependencies.
-
-------------------------------------------------------------------------
-r4575 | antanas | 2016-02-14 03:43:23 +0200 (Sun, 14 Feb 2016) | 5 lines
-
-cod-tools/ (antanas@kurmis)
-Bug fix: modifying the COD::CIF::Unicode2CIF module to convert tilde 
-symbol '~' into the '\\sim ' sequence as specified by the CIF 
-specification instead of the '\sim ' sequence that was previously used. 
 
 ------------------------------------------------------------------------
 r4574 | antanas | 2016-02-08 12:46:04 +0200 (Mon, 08 Feb 2016) | 4 lines
@@ -1426,13 +1376,6 @@ entities have been converted into utf characters. This allows to
 preserve at least a single whitespace after the symbol encoded by the 
 cif markup entity, since some of these entities have a trailing 
 whitespace as a part of their name ("\\times ", for example). 
-
-------------------------------------------------------------------------
-r4567 | andrius | 2016-01-29 15:11:03 +0200 (Fri, 29 Jan 2016) | 4 lines
-
-trunk/
-Fixing a memory leak in Bison.c: non-mortal scalar was returned from
-parse_cif().
 
 ------------------------------------------------------------------------
 r4566 | andrius | 2016-01-29 13:24:49 +0200 (Fri, 29 Jan 2016) | 4 lines
@@ -1489,20 +1432,6 @@ trunk/ (antanas@kurmis)
 Refactoring: applying small formating changes so the 'help2man' script 
 would be identical to the version present in the upstream 'scripts' 
 repository.
-
-------------------------------------------------------------------------
-r4537 | andrius | 2016-01-18 14:14:50 +0200 (Mon, 18 Jan 2016) | 5 lines
-
-trunk/
-Issuing 'apt-get install' only once for each of 'build.sh' and 'run.sh'
-dependency installers thus saving time, which is otherwise wasted on
-building the dependency trees.
-
-------------------------------------------------------------------------
-r4534 | andrius | 2016-01-18 13:08:52 +0200 (Mon, 18 Jan 2016) | 3 lines
-
-trunk/
-Updating list of cif_core.dic tags to version 2.4.5.
 
 ------------------------------------------------------------------------
 r4533 | andrius | 2016-01-15 10:33:56 +0200 (Fri, 15 Jan 2016) | 4 lines
@@ -1810,13 +1739,6 @@ occurence of comma (',') and one occurence of a dash ('-') with two
 dashes ('--') and changing the phrase 'replaced by' to 'replaced with'.
 
 ------------------------------------------------------------------------
-r4413 | andrius | 2015-12-08 11:17:00 +0200 (Tue, 08 Dec 2015) | 4 lines
-
-trunk/
-Adding 'P 1' as symmetry space group if all symmetry information is
-missing.
-
-------------------------------------------------------------------------
 r4410 | antanas | 2015-12-08 10:10:27 +0200 (Tue, 08 Dec 2015) | 4 lines
 
 trunk/src/lib/perl5/COD/CIF/Parser/ (antanas@echidna.ibt.lt)
@@ -1831,25 +1753,11 @@ Bug fix: modifying 'listdiff' rule in the makefile so it no longer
 displays names of the failed tests twice.
 
 ------------------------------------------------------------------------
-r4408 | antanas | 2015-12-08 08:56:14 +0200 (Tue, 08 Dec 2015) | 4 lines
-
-trunk/src/components/ (antanas@echidna.ibt.lt)
-Bug fix: fixing a typo in the .PHONY target list ('shoutpus' -> 
-'shoutputs) in the Makefile.
-
-------------------------------------------------------------------------
 r4407 | antanas | 2015-12-08 08:54:25 +0200 (Tue, 08 Dec 2015) | 4 lines
 
 trunk/src/components/ (antanas@echidna.ibt.lt)
 Enhancement: adding the 'out' target as a synonym for the 'outputs' 
 target.
-
-------------------------------------------------------------------------
-r4406 | antanas | 2015-12-08 08:46:09 +0200 (Tue, 08 Dec 2015) | 4 lines
-
-cod-tools/ (antanas@echidna.ibt.lt)
-Enhancement: adding the ' -- fixed' suffix to the CIF parser warning 
-message informing about unquoted strings with spaces.
 
 ------------------------------------------------------------------------
 r4403 | antanas | 2015-12-07 17:07:43 +0200 (Mon, 07 Dec 2015) | 8 lines
@@ -1876,14 +1784,6 @@ r4400 | andrius | 2015-12-04 11:02:17 +0200 (Fri, 04 Dec 2015) | 4 lines
 trunk/
 Moving extraction of '_atom_site_symmetry_multiplicity' value to
 AtomList::extract_atom() from AtomList::atom_array_from_cif().
-
-------------------------------------------------------------------------
-r4397 | antanas | 2015-12-04 03:31:55 +0200 (Fri, 04 Dec 2015) | 5 lines
-
-cod-tools/ (antanas@kurmis)
-Enhancement: implementing '--use-perl-parser' and '--use-c-parser' 
-options that allow to chooose between the two CIF parsers for the 
-'cod_predeposition_check' script.
 
 ------------------------------------------------------------------------
 r4393 | antanas | 2015-12-03 09:17:34 +0200 (Thu, 03 Dec 2015) | 5 lines
