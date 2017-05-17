@@ -1,0 +1,32 @@
+#!/bin/sh
+#!perl -w # --*- Perl -*--
+eval 'exec perl -x $0 ${1+"$@"}'
+    if 0;
+#------------------------------------------------------------------------------
+#$Author$
+#$Date$
+#$Revision$
+#$URL$
+#------------------------------------------------------------------------------
+#*
+# Check symop string in COD::Spacegroups::Lookup::COD for their canonicality.
+#**
+
+use strict;
+use warnings;
+use COD::Spacegroups::Lookup::COD;
+use COD::Spacegroups::Symop::Parse qw( symop_string_canonical_form );
+
+
+for my $sg ( @COD::Spacegroups::Lookup::COD::table,
+             @COD::Spacegroups::Lookup::COD::extra_settings ) {
+    my @symops = @{$sg->{symops}};
+    foreach my $symop ( @symops ) {
+        if ($symop ne symop_string_canonical_form($symop) ) {
+            print STDERR "$0:: WARNING, space group '", $sg->{'hall'}, "' ",
+                  'contains a symmetry operator that is not canonicalised -- ',
+                  "the '$symop' symop should be canonicalised to '",
+                  symop_string_canonical_form($symop), "'.\n";
+        }
+    }
+}
