@@ -25,13 +25,25 @@ sub parse
 
     foreach my $datablock ( @$data ) {
         $datablock->{precisions} = {};
-        foreach my $tag   ( keys %{$datablock->{types}} ) {
+        foreach my $tag ( keys %{$datablock->{types}} ) {
             my $precisions =
                 extract_precision( $datablock->{values}{$tag},
                                    $datablock->{types}{$tag},
                                    exists $datablock->{inloop}{$tag} );
             if( defined $precisions ) {
                 $datablock->{precisions}{$tag} = $precisions;
+            }
+        }
+        foreach my $saveblock ( @{$datablock->{'save_blocks'}} ) {
+            $saveblock->{'precisions'} = {};
+            foreach my $tag ( keys %{$saveblock->{types}} ) {
+                my $precisions =
+                    extract_precision( $saveblock->{values}{$tag},
+                                       $saveblock->{types}{$tag},
+                                       exists $saveblock->{inloop}{$tag} );
+                if( defined $precisions ) {
+                    $saveblock->{precisions}{$tag} = $precisions;
+                }
             }
         }
     }

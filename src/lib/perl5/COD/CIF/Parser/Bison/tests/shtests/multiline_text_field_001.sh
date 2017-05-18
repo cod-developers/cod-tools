@@ -3,10 +3,10 @@
 eval 'exec perl -x $0 ${1+"$@"}'
     if 0;
 #------------------------------------------------------------------------------
-#$Author: antanas $
-#$Date: 2015-07-20 21:27:55 +0300 (Mon, 20 Jul 2015) $ 
-#$Revision: 3563 $
-#$URL: svn://www.crystallography.net/cod-tools/trunk/src/lib/perl5/COD/CIF/Parser/Yapp/tests/shtests/text_field_001.sh $
+#$Author$
+#$Date$ 
+#$Revision$
+#$URL$
 #------------------------------------------------------------------------------
 #*
 #  Perl test driver.
