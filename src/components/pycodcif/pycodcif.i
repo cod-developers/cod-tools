@@ -33,6 +33,14 @@ def parse(filename,*args):
                                            tag in datablock['inloop'].keys())
             if precisions is not None:
                 datablock['precisions'][tag] = precisions
+        for saveblock in datablock['save_blocks']:
+            saveblock['precisions'] = {}
+            for tag in saveblock['types'].keys():
+                precisions = extract_precision(saveblock['values'][tag],
+                                               saveblock['types'][tag],
+                                               tag in saveblock['inloop'].keys())
+                if precisions is not None:
+                    saveblock['precisions'][tag] = precisions
 
     errors = []
     warnings = []
@@ -71,7 +79,7 @@ def parse(filename,*args):
         for error in errors:
             sys.stdout.write(error)
         if errors:
-            sys.exit(1) # Different way to exit         
+            sys.exit(1) # Different way to exit
 
     return data, nerrors, [warnings + errors]
 
