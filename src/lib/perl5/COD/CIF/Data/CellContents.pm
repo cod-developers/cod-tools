@@ -76,7 +76,28 @@ sub cif_cell_contents( $$@ )
     } else {
         if( exists $values->{_cell_formula_units_Z} ) {
             $Z = $values->{_cell_formula_units_Z}[0];
-        } else {
+        }
+
+        my $warning;
+        if ( !defined $Z ) {
+            $warning = 'the _cell_formula_units_Z data item is missing';
+        } elsif ( $Z eq '?' ) {
+            $warning = 'the _cell_formula_units_Z data item value ' .
+                       'is marked as unknown (\'?\')';
+        } elsif ( $Z eq '.' ) {
+            $warning = 'the _cell_formula_units_Z data item value is ' .
+                       'marked as not applicable (\'.\')';
+        } elsif ( $Z !~ /^[0-9]+$/ || ( $Z =~ /^[0-9]+$/ && $Z < 1 ) ) {
+            $warning = "the _cell_formula_units_Z data item value '$Z' " .
+                       'is not a natural number';
+        }
+
+        if ( defined $warning ) {
+            warn "WARNING, $warning -- the Z value will be estimated" . "\n";
+            $Z = undef;
+        }
+
+        if ( !defined $Z ) {
             eval {
                 $Z = cif_estimate_z( $dataset );
             };
@@ -89,8 +110,7 @@ sub cif_cell_contents( $$@ )
                 $Z = 1;
                 warn "WARNING, $msg -- assuming Z = $Z" . "\n";
             } else {
-                warn 'WARNING, _cell_formula_units_Z is missing -- '
-                   . "assuming Z = $Z" . "\n";
+                warn "WARNING, taking the estimated Z value Z = $Z" . "\n";
             }
         }
     }
