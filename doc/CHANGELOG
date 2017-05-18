@@ -193,6 +193,18 @@ cod-tools (1.1)
       options.
     - cif_filter: reporting cases when the symmetry space group can
       not be determined from symmetry operators.
+    - COD::Algebra::Vector: adding subroutine vector_len().
+    - cif_diff: adding '--ignore-empty-values' command line option.
+    - cif_fillcell: adding '_space_group_IT_number' and 
+      '_space_group_name_Hall' data items to the output.
+    - cif_fillcell: adding '--unit-cell', '--no-supercell',
+      '--supercell' command line options.
+    - cif_validate: checking the existance of parent links, as defined
+      via '_list_link_parent' of ddl_core.dic.
+    - cif_cod_check: adding a check to locate disorder groups of the
+      same assembly having different numbers of atoms (off by
+      default).
+    - COD::Cell: adding vectors2cell().
   * Changed:
     - COD::CID::Data::CIF2COD treats CIF value '?' amid white space as
       undefined.
@@ -435,6 +447,27 @@ cod-tools (1.1)
       datablock) from subroutine interfaces.
     - cif_fillcell: replacing deprecated CIF tags with their new
       counterparts.
+    - COD::CIF::Data::SymmetryGenerator: apply_shifts() returns
+      array reference instead of the array.
+    - cif_distances: removing extra space from the output.
+    - cif_molecule: printing only first five messages about detected
+      bumps.
+    - codcif and COD::CIF::Parser: removing duplicated line and
+      position numbers from parser error messages.
+    - Canonicalizing CIF data item names in a bunch of scipts that
+      have not used this feature before. Homogenuous treatment of CIF
+      data item names in the whole system is neccessary both to
+      leverage the reusability of code and to avoid bugs.
+    - cif_fillcell: building unit cell by default (instead of the
+      3x3x3 supercell).
+    - COD::SOptions: renaming interpolateFile() to interpolate_file().
+    - Moving atom_groups() and assemblies() from cif_molecule and
+      cif_p1 to COD::CIF::Data::AtomList.
+    - cexceptions and getoptions: changing the linker from 'ld' to
+      'cc'.
+    - cif_distances: selecting the first shortest distance: this
+      should solve the floating-point problem that occurs on different
+      machines.
   * Deprecated:
     - usage of doc/CODDictionary.xml (database-description.xml of
       appropriate database should be used instead, such as
@@ -513,6 +546,9 @@ cod-tools (1.1)
 
     - codcif: fixing incorrect line numbers in error messages.
     - Memory leaks in codcif and COD::CIF::Parser::Bison.
+    - codcif: performing all character operations via int data type
+      (instead of char) in cif_lexer.c, as conversions between char
+      and int used to cause loss of EOF characters.
     - cif_split_primitive: preserving CIF comments in the output of
       the script.
     - Error messages in codcif (occurence -> occurrence)
@@ -547,6 +583,8 @@ cod-tools (1.1)
       messages with numeric character reference '&#10;' in order to
       comply with the EBNF grammar of error messages as published in
       Merkys et al. 2016.
+    - COD::Formulae::Parser::AdHoc: using COD::UserMessage for
+      message formation.
     - cif_molecule: preventing printing of a syntactically incorrect
       CIFs (ones that contain loops without values).
     - cif_Fcalc: fixing a typo in the atom property name
@@ -555,6 +593,32 @@ cod-tools (1.1)
       molecules.
     - COD::CIF::Data::CIF2COD: returning SQL NULL instead of string
       "NULL" for unknown cell volumes.
+    - codcif: duplicated tags, whose second occurence is in a loop,
+      were reported as warnings instead of errors.
+    - cif_cod_deposit: adding '--show-error' command line option for
+      'curl' in order to make its error messages visible.
+    - codcif: escaping special symbols ('&', ':', spaces and
+      parentheses in some lexems) in C parser messages.
+    - codcif: detecting reserved CIF lexem 'global_'.
+    - codcif and COD::CIF::Parser::Yapp: detecting empty CIF data
+      block names.
+    - codcif and COD::CIF::Parser::Yapp: detecting unquoted CIF
+      strings starting with closing square brackets.
+    - codcif and COD::CIF::Parser::Yapp: returning an empty list of
+      data blocks upon parsing empty CIF files. According to the CIF
+      specification, empty CIF is an empty list of datablocks.
+    - codcif: reporting replaced spaces in data block names as
+      WARNINGs instead of NOTEs.
+    - COD::CIF::Data::AtomList: sorting hash keys in atom_groups() in
+      order to prevent from non-deterministic output.
+
+------------------------------------------------------------------------
+r4976 | antanas | 2017-02-27 09:56:23 +0200 (Mon, 27 Feb 2017) | 5 lines
+
+cod-tools/ (antanas@kurmis)
+Bug fix: sorting the assemblies so the output results
+would not be affected by the perl hashing algorithm
+in COD::CIF::Data::AtomList.
 
 ------------------------------------------------------------------------
 r5170 | antanas | 2017-03-31 18:02:30 +0300 (Fri, 31 Mar 2017) | 8 lines
@@ -634,14 +698,6 @@ most likely (disorder group occupancy wise) molecule, which might
 not necessarily contain the greatest number of atoms.
 
 ------------------------------------------------------------------------
-r4976 | antanas | 2017-02-27 09:56:23 +0200 (Mon, 27 Feb 2017) | 5 lines
-
-cod-tools/ (antanas@kurmis)
-Bug fix: sorting the assemblies so the output results
-would not be affected by the perl hashing algorithm
-in COD::CIF::Data::AtomList.
-
-------------------------------------------------------------------------
 r4974 | antanas | 2017-02-24 18:38:55 +0200 (Fri, 24 Feb 2017) | 5 lines
 
 cod-tools/ (antanas@echidna.ibt.lt)
@@ -682,14 +738,6 @@ Enhancement: updating the 'cif_molecule' script to ignore
 atoms with dummy ('.') or unknown ('?') coordinates.
 
 ------------------------------------------------------------------------
-r4901 | antanas | 2017-02-05 21:47:54 +0200 (Sun, 05 Feb 2017) | 5 lines
-
-cod-tools/ (antanas@kurmis)
-Bug fix: correcting the handling of special CIF values
-('?', '.') in the 'cif_validate' script. These values
-no longer raise warnings about missing parent data items.
-
-------------------------------------------------------------------------
 r4827 | andrius | 2017-01-27 16:18:46 +0200 (Fri, 27 Jan 2017) | 6 lines
 
 trunk/
@@ -699,37 +747,11 @@ branch. However, src/lib/perl5/COD/CIF2JSON.pm, which was renamed in the
 branch, was not merged somewhy, thus it had to be moved manually.
 
 ------------------------------------------------------------------------
-r4816 | andrius | 2017-01-26 16:14:38 +0200 (Thu, 26 Jan 2017) | 6 lines
-
-trunk/
-Canonicalizing CIF data item names in a bunch of scipts that have not used
-this feature before. Homogenuous treatment of CIF data item names in the
-whole system is neccessary both to leverage the reusability of code and to
-avoid bugs.
-
-------------------------------------------------------------------------
 r4796 | andrius | 2017-01-24 17:05:50 +0200 (Tue, 24 Jan 2017) | 4 lines
 
 trunk/
 Adding column 'compoundsource' (corresponding to CIF's 
 '_chemical_compound_source') to the output of cif2cod.
-
-------------------------------------------------------------------------
-r4786 | andrius | 2016-12-19 17:11:20 +0200 (Mon, 19 Dec 2016) | 4 lines
-
-trunk/
-Using COD::UserMessage::print_message() to print syntax error messages in
-COD::Formulae::Parser::AdHoc.
-
-------------------------------------------------------------------------
-r4783 | andrius | 2016-12-06 15:25:28 +0200 (Tue, 06 Dec 2016) | 7 lines
-
-trunk/
-Returning an empty list of datablocks upon parsing empty CIF files in both
-C and Perl parsers. According to the CIF specification, empty CIF is an
-empty list of datablocks. Moreover, this is done in order to skip
-processing of initial empty datablock in 'for (@$data) { ... }'
-constructions.
 
 ------------------------------------------------------------------------
 r4782 | andrius | 2016-11-28 14:49:23 +0200 (Mon, 28 Nov 2016) | 5 lines
@@ -740,29 +762,12 @@ bindings of C CIF parser in order to ease external linking, for example,
 against libcodcif.
 
 ------------------------------------------------------------------------
-r4781 | andrius | 2016-11-25 15:07:15 +0200 (Fri, 25 Nov 2016) | 6 lines
-
-trunk/
-Bugfix: performing all character operations via int data type (instead of
-char) in cif_lexer.c, as conversions between char and int used to cause
-loss of EOF characters (see https://latedev.wordpress.com/2012/12/04/all-about-eof/
-for reference).
-
-------------------------------------------------------------------------
 r4778 | andrius | 2016-11-25 10:35:09 +0200 (Fri, 25 Nov 2016) | 5 lines
 
 trunk/
 Linking COD::CIF::Parser::Bison against archives of static libraries (.a)
 instead of objects (.o) of codcif, cexceptions and getoptions.
 Removing rules to build dependencies from Makelocal-SWIG-module.
-
-------------------------------------------------------------------------
-r4775 | andrius | 2016-11-17 10:45:18 +0200 (Thu, 17 Nov 2016) | 5 lines
-
-trunk/
-Fixing "undefined reference to `__stack_chk_fail_local'" bug in the
-linking of cexceptions and getoptions by changing the linker from ld to
-cc.
 
 ------------------------------------------------------------------------
 r4759 | andrius | 2016-10-26 14:02:46 +0300 (Wed, 26 Oct 2016) | 5 lines
@@ -788,13 +793,6 @@ r4751 | andrius | 2016-10-25 10:52:43 +0300 (Tue, 25 Oct 2016) | 3 lines
 
 trunk/
 Adding dependencies for CentOS-6.8.
-
-------------------------------------------------------------------------
-r4742 | andrius | 2016-10-12 10:17:34 +0300 (Wed, 12 Oct 2016) | 4 lines
-
-trunk/
-Checking the existance of parent links in scripts/cif_validate, as defined
-in _list_link_parent of ddl_core.dic.
 
 ------------------------------------------------------------------------
 r4732 | antanas | 2016-10-06 11:51:16 +0300 (Thu, 06 Oct 2016) | 4 lines
@@ -839,13 +837,6 @@ correcting a few layout mistakes in the comments
 providing the bibliography.
 
 ------------------------------------------------------------------------
-r4713 | andrius | 2016-09-30 13:37:18 +0300 (Fri, 30 Sep 2016) | 4 lines
-
-trunk/
-Adding a check in cif_cod_check to locate (issuing NOTEs) disorder groups
-of the same assembly having different numbers of atoms (off by default).
-
-------------------------------------------------------------------------
 r4694 | andrius | 2016-09-15 10:32:03 +0300 (Thu, 15 Sep 2016) | 4 lines
 
 trunk/dependencies/
@@ -876,21 +867,6 @@ Enhancement: adding the functionality to register if the applied
 symmetry operator was the unity one in the 'cif_distances' sript.
 
 ------------------------------------------------------------------------
-r4674 | antanas | 2016-06-27 00:53:55 +0300 (Mon, 27 Jun 2016) | 5 lines
-
-cod-tools/ (antanas@kurmis)
-Bug fix: updating 'cif_distances' to select the first shortest distance.
-This should solve the floating-point problem that occurs on different 
-machines.
-
-------------------------------------------------------------------------
-r4673 | antanas | 2016-06-26 02:52:14 +0300 (Sun, 26 Jun 2016) | 4 lines
-
-cod-tools/ (antanas@kurmis)
-Refactoring: removing extra space from the 'cif_distances' script 
-pairwise format output.
-
-------------------------------------------------------------------------
 r4671 | antanas | 2016-06-20 00:17:04 +0300 (Mon, 20 Jun 2016) | 5 lines
 
 trunk/data/ (antanas@kurmis)
@@ -912,12 +888,6 @@ Enhancement: adding a list of dependencies needed to run the
 AtomProperties pipeline in LinuxMint-17.2.
 
 ------------------------------------------------------------------------
-r4666 | andrius | 2016-06-15 17:17:19 +0300 (Wed, 15 Jun 2016) | 3 lines
-
-trunk/
-Replacing relative paths in install.sh with filename-derived ones.
-
-------------------------------------------------------------------------
 r4664 | antanas | 2016-06-13 12:03:03 +0300 (Mon, 13 Jun 2016) | 7 lines
 
 cod-tools/ (antanas@antanas-tuxedo.europe.actelion.com)
@@ -926,29 +896,6 @@ if the number of character repetitions is not negative
 (for example, ' ' x $number). In newer Perl versions
 trying to use a negative number in this context causes
 a warning message to appear.
-
-------------------------------------------------------------------------
-r4658 | andrius | 2016-05-26 14:14:56 +0300 (Thu, 26 May 2016) | 5 lines
-
-trunk/
-Adding --show-error command line option for curl in cif_cod_deposit in
-order to make curl error messages (such as ones about non-existing upload
-files) visible.
-
-------------------------------------------------------------------------
-r4656 | andrius | 2016-05-17 19:55:25 +0300 (Tue, 17 May 2016) | 5 lines
-
-trunk/
-Escaping special symbols ('&', ':', spaces and parentheses in some lexems)
-in C parser messages, that are printed directly from the parser. This fix
-should affect only C programs, such as cifparse.
-
-------------------------------------------------------------------------
-r4655 | andrius | 2016-05-16 17:44:45 +0300 (Mon, 16 May 2016) | 4 lines
-
-trunk/
-Bugfix: duplicated tags, whose second occurence is in a loop, were
-reported as warnings instead of errors.
 
 ------------------------------------------------------------------------
 r4654 | antanas | 2016-05-15 18:51:51 +0300 (Sun, 15 May 2016) | 8 lines
@@ -971,66 +918,11 @@ string is not allowed as a data item value, but the 'loop_*' strings are
 perfectly fine. 
 
 ------------------------------------------------------------------------
-r4650 | antanas | 2016-05-06 18:55:15 +0300 (Fri, 06 May 2016) | 5 lines
-
-cod-tools/ (antanas@echidna.ibt.lt)
-Enhancement: modifying the Perl CIF parser to behave in the same
-way the C CIF parser behaves when dealing with zero-length
-datablock names.
-
-------------------------------------------------------------------------
-r4648 | antanas | 2016-05-06 12:51:43 +0300 (Fri, 06 May 2016) | 4 lines
-
-cod-tools/ (antanas@echidna.ibt.lt)
-Bug fix: modifying teh Perl CIF parser to correctly diagnose unquoted 
-strings starting with the ']' symbol as errors.
-
-------------------------------------------------------------------------
-r4647 | andrius | 2016-05-06 11:48:58 +0300 (Fri, 06 May 2016) | 5 lines
-
-trunk/
-Detecting empty datablock name as error in C CIF parser, since empty names
-are not allowed by CIF v1.1 grammar. Error can be overridden via
-'fix_datablock_names' parser option.
-
-------------------------------------------------------------------------
 r4646 | antanas | 2016-05-06 11:43:35 +0300 (Fri, 06 May 2016) | 4 lines
 
 cod-tools/ (antanas@echidna.ibt.lt)
 Bug fix: updating the COD::CIF::Tags::Print subroutine to quote string
 starting with the ']' symbol.
-
-------------------------------------------------------------------------
-r4643 | antanas | 2016-05-06 11:23:28 +0300 (Fri, 06 May 2016) | 4 lines
-
-trunk/src/components/ (antanas@echidna.ibt.lt)
-Bug fix: modifying 'cif_lexer' to correctly diagnose unquoted strings
-starting with the ']' symbol as errors.
-
-------------------------------------------------------------------------
-r4641 | antanas | 2016-05-05 13:02:09 +0300 (Thu, 05 May 2016) | 6 lines
-
-cod-tools/ (antanas@echidna.ibt.lt)
-Refactoring: changing the error level from 'NOTE' to 'WARNING' for
-messages that inform about spaces being replaced with underscores in the
-datablock names in the C CIF parser. Perl CIF parser already consider
-these messages WARNINGs.
-
-------------------------------------------------------------------------
-r4638 | antanas | 2016-05-04 18:25:14 +0300 (Wed, 04 May 2016) | 6 lines
-
-cod-tools/ (antanas@echidna.ibt.lt)
-Refactoring: removing line and position numbers from the CIF parser
-error message main body since they are already included in the
-parentheses. The modified error messages dealt with reserved words
-'STOP_' and 'GLOBAL_'.
-
-------------------------------------------------------------------------
-r4637 | antanas | 2016-05-04 17:48:22 +0300 (Wed, 04 May 2016) | 4 lines
-
-cod-tools/ (antanas@echidna.ibt.lt)
-Enhancement: modifying the 'cif_lexer.c' file to recognise 'global_' as
-a reserved word.
 
 ------------------------------------------------------------------------
 r4636 | antanas | 2016-05-04 16:57:05 +0300 (Wed, 04 May 2016) | 5 lines
@@ -1090,24 +982,6 @@ Bug fix: correcting the 'eval {} if( $@ )' error handling block in the
 was erroneously used in the 'if' sentence.
 
 ------------------------------------------------------------------------
-r4587 | andrius | 2016-02-25 09:27:20 +0200 (Thu, 25 Feb 2016) | 3 lines
-
-trunk/
-Adding command line option to cif_diff to ignore tags with empty values.
-
-------------------------------------------------------------------------
-r4581 | andrius | 2016-02-17 12:38:32 +0200 (Wed, 17 Feb 2016) | 3 lines
-
-trunk/
-Printing first five messages about detected bumps in cif_molecule.
-
-------------------------------------------------------------------------
-r4576 | andrius | 2016-02-15 11:08:36 +0200 (Mon, 15 Feb 2016) | 3 lines
-
-trunk/
-Adding 'libclone-perl' to the list of dependencies.
-
-------------------------------------------------------------------------
 r4573 | andrius | 2016-02-05 16:39:55 +0200 (Fri, 05 Feb 2016) | 5 lines
 
 trunk/
@@ -1153,21 +1027,6 @@ would be identical to the version present in the upstream 'scripts'
 repository.
 
 ------------------------------------------------------------------------
-r4533 | andrius | 2016-01-15 10:33:56 +0200 (Fri, 15 Jan 2016) | 4 lines
-
-trunk/
-Moving functions atom_groups() and assemblies() from cif_molecule and
-cif_p1 to COD::CIF::Data::AtomList.
-
-------------------------------------------------------------------------
-r4524 | antanas | 2016-01-12 15:41:59 +0200 (Tue, 12 Jan 2016) | 5 lines
-
-trunk/src/lib/perl5/ (antanas@echidna.ibt.lt)
-Refactoring: modifying the 'interpolate_file' subroutine to process the 
-file line by line instead of slurping and to contain a single return 
-statement in the 'COD::SOptions' module.
-
-------------------------------------------------------------------------
 r4521 | antanas | 2016-01-12 14:16:46 +0200 (Tue, 12 Jan 2016) | 8 lines
 
 trunk/src/lib/perl5/ (antanas@echidna.ibt.lt)
@@ -1177,43 +1036,6 @@ argument is not provided. Also, modifying the 'get_value'
 subroutine to pass the option name to the 'interpolate_file' 
 subroutine so it can be displayed in the error message in the 
 'COD::SOptions' module.   
-
-------------------------------------------------------------------------
-r4518 | antanas | 2016-01-12 13:26:17 +0200 (Tue, 12 Jan 2016) | 4 lines
-
-trunk/src/lib/perl5/ (antanas@echidna.ibt.lt)
-Refactoring: renaming subroutine 'interpolateFile' to 'interpolate_file' 
-in the 'COD::SOptions' module.
-
-------------------------------------------------------------------------
-r4512 | antanas | 2016-01-07 14:39:42 +0200 (Thu, 07 Jan 2016) | 5 lines
-
-cod-tools/ (antanas@echidna.ibt.lt)
-Enhancement: adding '_space_group_IT_number' and 
-'_space_group_name_Hall' tags to the output CIF in the 'cif_fillcell' 
-script.
-
-------------------------------------------------------------------------
-r4506 | antanas | 2016-01-06 16:54:59 +0200 (Wed, 06 Jan 2016) | 4 lines
-
-cod-tools/ (antanas@echidna.ibt.lt)
-Refactoring: modifying the 'cif_fillcell' script to build unit cell by 
-default (instead of the 3x3x3 supercell). 
-
-------------------------------------------------------------------------
-r4503 | antanas | 2016-01-06 15:49:13 +0200 (Wed, 06 Jan 2016) | 5 lines
-
-cod-tools/ (antanas@echidna.ibt.lt)
-Enhancement: adding '--unit-cell', '--no-supercell', '--supercell' 
-options for the 'cif_fillcell' script. These options allow to choose 
-whether the unit cell or the supercell (3x3x3) should be generated. 
-
-------------------------------------------------------------------------
-r4498 | andrius | 2015-12-28 14:25:17 +0200 (Mon, 28 Dec 2015) | 4 lines
-
-trunk/
-Moving code for calculation of cell parameters from cell vectors to
-COD::Cell::vectors2cell().
 
 ------------------------------------------------------------------------
 r4487 | antanas | 2015-12-18 13:40:27 +0200 (Fri, 18 Dec 2015) | 6 lines
@@ -1279,14 +1101,6 @@ COD::Spacegroups::Symop::symop_vector_mul subroutine calls and removing
 the former subroutine.
 
 ------------------------------------------------------------------------
-r4465 | antanas | 2015-12-17 13:03:03 +0200 (Thu, 17 Dec 2015) | 5 lines
-
-cod-tools/ (antanas@echidna.ibt.lt)
-Refactoring: modifying the 'cif_Fcalc' script to use the 
-COD::CIF::Data::AtomList::atom_array_from_cif module to extract the atom 
-information.
-
-------------------------------------------------------------------------
 r4461 | antanas | 2015-12-17 11:41:35 +0200 (Thu, 17 Dec 2015) | 4 lines
 
 cod-tools/ (antanas@echidna.ibt.lt)
@@ -1343,13 +1157,6 @@ extracting it to a seperate subroutine 'is_atom_excludable' in
 COD::CIF::Data::AtomList.
 
 ------------------------------------------------------------------------
-r4427 | antanas | 2015-12-10 11:03:52 +0200 (Thu, 10 Dec 2015) | 4 lines
-
-cod-tools/ (antanas@echidna.ibt.lt)
-Refactoring: modifying COD::CIF::Data::SymmetryGenerator::apply_shifts 
-to return a reference to an array instead of an array.
-
-------------------------------------------------------------------------
 r4425 | antanas | 2015-12-08 15:01:06 +0200 (Tue, 08 Dec 2015) | 5 lines
 
 cod-tools/ (antanas@echidna.ibt.lt)
@@ -1390,15 +1197,6 @@ cod-tools/ (antanas@kurmis)
 Refactoring: replacing COD::ErrorHandler::process_errors subroutine call 
 with the 'critical' subroutine call in the 
 COD::CIF::Data::CODPredepositionCheck module.
-
-------------------------------------------------------------------------
-r4388 | antanas | 2015-12-02 10:07:34 +0200 (Wed, 02 Dec 2015) | 6 lines
-
-cod-tools/ (antanas@kurmis)
-Enhancement: adding the COD::Algebra::Vector::vector_len subroutine that 
-calculates the length of a vector. Modifying the 
-COD::Algebra::Vector::distance subroutine to use the previously 
-mentioned subroutine.
 
 ------------------------------------------------------------------------
 r4387 | antanas | 2015-12-02 10:03:11 +0200 (Wed, 02 Dec 2015) | 6 lines
