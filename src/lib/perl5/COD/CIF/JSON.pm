@@ -24,10 +24,14 @@ our @EXPORT_OK = qw(
 
 my $format_version = 1.1;
 
-sub cif2json($)
+sub cif2json
 {
-    my( $data ) = @_;
-    return encode_json( { data => $data,
+    my( $data, $options ) = @_;
+    my $enable = $options->{'canonical'};
+    my $js = new JSON;
+    $js->canonical([$enable]);
+
+    return $js->encode( { data => $data,
                           version => sprintf '%2.1f', $format_version } );
 }
 
