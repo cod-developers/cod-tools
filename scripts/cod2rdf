@@ -301,15 +301,12 @@ for my $entry (values %$data) {
     delete $entry->{file};
     delete $entry->{text};
     delete $entry->{flags};
-    if( exists $entry->{formula} &&
-        defined $entry->{formula} ) {
-        $entry->{formula} =~ s/^-\s*//;
-        $entry->{formula} =~ s/\s*-$//;
-    }
-    if( exists $entry->{calcformula} &&
-        defined $entry->{calcformula} ) {
-        $entry->{calcformula} =~ s/^-\s*//;
-        $entry->{calcformula} =~ s/\s*-$//;
+
+    for my $field (qw( formula calcformula cellformula )) {
+        next if !exists  $entry->{$field};
+        next if !defined $entry->{$field};
+        $entry->{$field} =~ s/^-\s*//;
+        $entry->{$field} =~ s/\s*-$//;
     }
 }
 
