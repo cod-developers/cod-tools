@@ -224,8 +224,25 @@ cod-tools (1.1)
     - COD::Algebra::Vector: adding vector_angle().
     - COD::CID::Data::CIF2COD: detecting CIF data blocks without
       fractional coordinates.
-    - Build dependencies for CentOS 6.8.
+    - Build dependencies for CentOS 6.8 and Debian 8.2.
     - AtomProperties pipeline: adding dependencies.
+    - cif_reduce_Niggli: adding command line option '--compute-symops'
+      to compute symmetry operators as well as estimate space groups
+      for reduced cells. Experimental, thus off by default.
+    - cif2json: a new script to convert CIF to its JSON representation.
+    - json2cif: a new script to convert JSON to CIF data structure.
+    - Implementing input/output CIF in JSON carrier format in:
+      - cif2cod
+      - cif_cod_check
+      - cif_cod_numbers
+      - cif_correct_tags
+      - cif_filter
+      - cif_printout
+      - cif_split
+    - COD::CIF::JSON: adding Yapp-like object-oriented interface.
+    - COD::CIF::Data::SymmetryGenerator: adding apply_shifts() and
+      shift_atom().
+    - Test dependency list for Ubuntu 12.04.
   * Changed:
     - COD::CID::Data::CIF2COD treats CIF value '?' amid white space as
       undefined.
@@ -495,6 +512,32 @@ cod-tools (1.1)
       COD::CIF::Data::SymmetryGenerator.
     - COD::Spacegroups::Symop::Algebra: symop_vector_mul() returns
       array reference (Perl wantarray construction was used before).
+    - cif_distances: excluding atoms with unknown coordinates.
+    - COD::CIF::Data::AtomList: ordering atoms by their summary
+      occupancies in atom_groups().
+    - Renaming COD::CIF2JSON to COD::CIF::JSON.
+    - COD::CIF::JSON: switching to stream-oriented JSON parsing.
+    - Moving the warning message about the user-provided Z value
+      mismatching the one given in the input file from the
+      COD::CIF::Data::CellContents module to the cif_cell_contents
+      script.
+    - Unifying interfaces of:
+      - COD::Cell::Conventional::deWG91::reduce()
+      - COD::Cell::Delaunay::Delaunay::reduce()
+      - COD::Cell::Niggli::KG76::reduce()
+    - COD::CIF::Data::CIF2COD: adding 'Z' and 'Zprime' to the list of
+      default new fields.
+    - cif_printout: changing default print mode to Data::Dumper in
+      order to allow printing of nested data structures.
+    - COD::CIF::Data::CODPredepositionCheck: replacing
+      COD::ErrorHandler::process_errors() calls with calls to local
+      critical().
+    - Moving extraction of '_atom_site_symmetry_multiplicity' value to
+      COD::CIF::Data::AtomList::extract_atom() from
+      COD::CIF::Data::AtomList::atom_array_from_cif().
+    - COD::CIF::Parser::Bison: linking compiled module against
+      archives of static libraries (.a) instead of objects (.o) of
+      codcif, cexceptions and getoptions.
   * Deprecated:
     - usage of doc/CODDictionary.xml (database-description.xml of
       appropriate database should be used instead, such as
@@ -503,6 +546,8 @@ cod-tools (1.1)
     - doc/TAGS.XML
     - COD::Spacegroups::Symop::Algebra: symop_apply(). Using
       symop_vector_mul() instead.
+    - COD::CIF::Data::SymmetryGenerator: copy_atom(). Using
+      copy_atom() from COD::CIF::Data::AtomList instead.
   * Fixed:
     - adding libxml-simple-perl as a run dependency for Ubuntu-12.04
       and Debian-8.6.
@@ -655,25 +700,28 @@ cod-tools (1.1)
       algorithm.
     - COD::CIF::Data: checking whether tag's value/precision is defined
       in get_cell().
-
-------------------------------------------------------------------------
-r5170 | antanas | 2017-03-31 18:02:30 +0300 (Fri, 31 Mar 2017) | 8 lines
-
-cod-tools/ (antanas@echidna.ibt.lt)
-Bug fix: modifying COD::CIF::Data::CIF2COD module to
-only determine the number of distinct elements in the
-crystal if the chemical formula sum is defined. In
-addition to that, chemical formula sum values that
-consist only of white spaces are now treated as
-undefined values.
-
-------------------------------------------------------------------------
-r5154 | andrius | 2017-03-29 13:09:05 +0300 (Wed, 29 Mar 2017) | 5 lines
-
-trunk/
-Reimplementing the default print mode in cif_printout via Data::Dumper
-instead of custom printing code. This change will allow printing nested
-structures.
+    - codcif: detecting and fixing headerless CIF files composed of a
+      single CIF data item only.
+    - COD::CIF::Parser::Yapp: everything from the quote symbol to the
+      end of the line will be considered a part of the misquoted
+      string.
+    - cif_filter: removing fold() subroutine call in the bibliography 
+      reference hash processing block. The subroutine was called in
+      the wrong place and disregarded the command line options
+      '--folding-width', '--fold-title' and '--dont-fold-title'.
+    - Replacing indirect Perl method calls (new Object) with direct 
+      methods calls (Object->new) since it is the prefered way.
+    - COD::UserMessage: avoiding negative positions in error messages.
+    - COD::CIF::Data::CIF2COD: cif2cod() determines number of distinct
+      elements for structures with defined and non-empty chemical
+      formulae.
+    - cif_molecule: simple olymers are now detected even with
+      '--max-polymer-span 0'.
+    - cif_molecule: trimming polymers after polymer dimension
+      measurement and before formulae calculation. Multiple moieties
+      are then merged into one if one datablock output is requested.
+      Thus, correct formulae are achieved and non-polymer atoms are
+      not trimmed.
 
 ------------------------------------------------------------------------
 r5023 | antanas | 2017-03-06 15:15:34 +0200 (Mon, 06 Mar 2017) | 4 lines
@@ -681,19 +729,6 @@ r5023 | antanas | 2017-03-06 15:15:34 +0200 (Mon, 06 Mar 2017) | 4 lines
 trunk/data/ (antanas@echidna.ibt.lt)
 Enhancement: adding the integration of the 'Dummy' atom patch to the
 AtomProperties module assembling process.
-
-------------------------------------------------------------------------
-r5020 | antanas | 2017-03-06 14:43:35 +0200 (Mon, 06 Mar 2017) | 4 lines
-
-cod-tools/ (antanas@echidna.ibt.lt)
-Enhancement: adding 'Z' and 'Zprime' to the list of default new
-fields in the COD::CIF::Data::CIF2COD module.
-
-------------------------------------------------------------------------
-r4982 | saulius | 2017-03-01 09:26:57 +0200 (Wed, 01 Mar 2017) | 3 lines
-
-trunk/dependencies/ (saulius@koala)
-Adding a script to install packages necessary for testing.
 
 ------------------------------------------------------------------------
 r4979 | antanas | 2017-02-28 19:18:06 +0200 (Tue, 28 Feb 2017) | 6 lines
@@ -718,23 +753,6 @@ most likely (disorder group occupancy wise) molecule, which might
 not necessarily contain the greatest number of atoms.
 
 ------------------------------------------------------------------------
-r4974 | antanas | 2017-02-24 18:38:55 +0200 (Fri, 24 Feb 2017) | 5 lines
-
-cod-tools/ (antanas@echidna.ibt.lt)
-Enhancement: changing the way disorder group combinations are generated.
-From now on the combination with highest occupancy will be considered as
-the best one. 
-
-------------------------------------------------------------------------
-r4952 | antanas | 2017-02-20 10:36:09 +0200 (Mon, 20 Feb 2017) | 6 lines
-
-trunk/ (antanas@echidna.ibt.lt)
-Refactoring: moving the warning message about the user-provided
-Z value mismatching the one given in the input file from the
-COD::CIF::Data::CellContents module to the cif_cell_contents
-script.
-
-------------------------------------------------------------------------
 r4926 | antanas | 2017-02-08 17:43:27 +0200 (Wed, 08 Feb 2017) | 6 lines
 
 cod-tools/ (antanas@echidna.ibt.lt)
@@ -749,23 +767,6 @@ r4912 | antanas | 2017-02-07 17:29:50 +0200 (Tue, 07 Feb 2017) | 4 lines
 cod-tools/ (antanas@echidna.ibt.lt)
 Enhancement: updating the 'cif_molecule' script to ignore
 atoms with dummy ('.') or unknown ('?') coordinates.
-
-------------------------------------------------------------------------
-r4827 | andrius | 2017-01-27 16:18:46 +0200 (Fri, 27 Jan 2017) | 6 lines
-
-trunk/
-Merging branch 'andrius-cif2json' into trunk/. Most of the conflicts were
-solved as 'theirs-full', since the trunk was previously merged into the
-branch. However, src/lib/perl5/COD/CIF2JSON.pm, which was renamed in the
-branch, was not merged somewhy, thus it had to be moved manually.
-
-------------------------------------------------------------------------
-r4778 | andrius | 2016-11-25 10:35:09 +0200 (Fri, 25 Nov 2016) | 5 lines
-
-trunk/
-Linking COD::CIF::Parser::Bison against archives of static libraries (.a)
-instead of objects (.o) of codcif, cexceptions and getoptions.
-Removing rules to build dependencies from Makelocal-SWIG-module.
 
 ------------------------------------------------------------------------
 r4732 | antanas | 2016-10-06 11:51:16 +0300 (Thu, 06 Oct 2016) | 4 lines
@@ -788,13 +789,6 @@ trunk/data/ (antanas@antanas-tuxedo.europe.actelion.com)
 Enhancement: adding the latest version of bodr file.
 
 ------------------------------------------------------------------------
-r4718 | antanas | 2016-10-05 17:21:30 +0300 (Wed, 05 Oct 2016) | 4 lines
-
-trunk/data/AtomProperties/ (antanas@antanas-tuxedo.europe.actelion.com)
-Refactoring: dereferencing hash explicitly since keys on references are
-experimental perl v5.22.1.
-
-------------------------------------------------------------------------
 r4716 | antanas | 2016-10-05 15:25:45 +0300 (Wed, 05 Oct 2016) | 6 lines
 
 trunk/data/ (antanas@echidna.ibt.lt)
@@ -804,63 +798,12 @@ correcting a few layout mistakes in the comments
 providing the bibliography.
 
 ------------------------------------------------------------------------
-r4694 | andrius | 2016-09-15 10:32:03 +0300 (Thu, 15 Sep 2016) | 4 lines
-
-trunk/dependencies/
-Confirming that the same package list for Ubuntu-12.04 works also for
-Debian-8.2.
-
-------------------------------------------------------------------------
-r4690 | andrius | 2016-07-25 15:20:16 +0300 (Mon, 25 Jul 2016) | 6 lines
-
-trunk/
-Bugfix: trimming polymers after polymer dimension measurement and before
-formulae calculation. Multiple moieties are then merged into one if one
-datablock output is requested. Thus, correct formulae are achieved and
-non-polymer atoms are not trimmed.
-
-------------------------------------------------------------------------
-r4687 | andrius | 2016-07-12 13:53:46 +0300 (Tue, 12 Jul 2016) | 4 lines
-
-trunk/
-Simple polymers are now detected even with --max-polymer-span set to 0 in
-cif_molecule.
-
-------------------------------------------------------------------------
-r4675 | antanas | 2016-06-27 01:44:43 +0300 (Mon, 27 Jun 2016) | 4 lines
-
-cod-tools/ (antanas@kurmis)
-Enhancement: adding the functionality to register if the applied 
-symmetry operator was the unity one in the 'cif_distances' sript.
-
-------------------------------------------------------------------------
 r4671 | antanas | 2016-06-20 00:17:04 +0300 (Mon, 20 Jun 2016) | 5 lines
 
 trunk/data/ (antanas@kurmis)
 Bug fix: updating AtomProperties script to work with the new
 cod-tools layout and adding explicit hash field ordering in
 the 'atom_properties_merge' script.
-
-------------------------------------------------------------------------
-r4664 | antanas | 2016-06-13 12:03:03 +0300 (Mon, 13 Jun 2016) | 7 lines
-
-cod-tools/ (antanas@antanas-tuxedo.europe.actelion.com)
-Refactoring: updating the COD::UserMessage module to check
-if the number of character repetitions is not negative
-(for example, ' ' x $number). In newer Perl versions
-trying to use a negative number in this context causes
-a warning message to appear.
-
-------------------------------------------------------------------------
-r4654 | antanas | 2016-05-15 18:51:51 +0300 (Sun, 15 May 2016) | 8 lines
-
-cod-tools/ (antanas@kurmis)
-Bug fix: modifying the way CIF parser handle hearderless CIF files
-(files that do not contain the 'data_*' header). The grammar rule for
-the headerless data block was changed from 'data_item data_item_list'
-to 'data_item | data_item data_item_list'. This modification allows to
-succesfully parse and fix headerless data items that only contain a
-single data item.  
 
 ------------------------------------------------------------------------
 r4622 | saulius | 2016-04-11 21:23:29 +0300 (Mon, 11 Apr 2016) | 3 lines
@@ -876,13 +819,6 @@ BUG FIX: correcting the Delaunay reduction algorith so that it does not
 return flattened unit cells.
 
 ------------------------------------------------------------------------
-r4616 | saulius | 2016-04-09 07:58:38 +0300 (Sat, 09 Apr 2016) | 4 lines
-
-trunk/src/lib/perl5/COD/Cell/ (saulius@kolibris)
-Correcting instructions to run the Delaunay/Delaunay.pm module check 
-from the command line.
-
-------------------------------------------------------------------------
 r4614 | saulius | 2016-04-09 07:43:05 +0300 (Sat, 09 Apr 2016) | 4 lines
 
 trunk/ (saulius@kolibris)
@@ -895,23 +831,6 @@ r4612 | saulius | 2016-04-08 20:02:25 +0300 (Fri, 08 Apr 2016) | 4 lines
 trunk/ (saulius@kolibris)
 BUG FIX: correcting cell computation after reduction to conventional 
 cell in the COD/Cell/Conventional/deWG91.pm module.
-
-------------------------------------------------------------------------
-r4573 | andrius | 2016-02-05 16:39:55 +0200 (Fri, 05 Feb 2016) | 5 lines
-
-trunk/
-Reestimating spacegroup from recomputed symmetry operators if command line
-option '--compute-symops' is turned on. Not all spacegroup tags are
-overwritten yet.
-
-------------------------------------------------------------------------
-r4572 | andrius | 2016-02-05 14:49:07 +0200 (Fri, 05 Feb 2016) | 6 lines
-
-trunk/
-Implementing conversion of symmetry operators in cif_reduce_Niggli
-according to publication by Grosse-Kunstleve, Sauter and Adams (2004). Not
-all lattices are processed correctly, thus this functionality is only
-experimental.
 
 ------------------------------------------------------------------------
 r4569 | antanas | 2016-02-05 11:08:36 +0200 (Fri, 05 Feb 2016) | 8 lines
@@ -936,51 +855,11 @@ subroutine so it can be displayed in the error message in the
 'COD::SOptions' module.
 
 ------------------------------------------------------------------------
-r4483 | antanas | 2015-12-18 11:43:49 +0200 (Fri, 18 Dec 2015) | 4 lines
-
-cod-tools/ (antanas@echidna.ibt.lt)
-Bug fix: modifying cell reduction subroutines to use identical 
-interfaces.
-
-------------------------------------------------------------------------
-r4482 | antanas | 2015-12-18 11:33:31 +0200 (Fri, 18 Dec 2015) | 6 lines
-
-cod-tools/ (antanas@echidna.ibt.lt)
-Bug fix: explicitly requesting scalar context for 
-COD::Spacegroups::Symop::Algebra::symop_vector_mul() subroutine calls in 
-COD::Cell::Conventional::deWG91.p::reduce() and 
-COD::Cell::Delaunay::Delaunay::reduce() subroutines.
-
-------------------------------------------------------------------------
-r4481 | antanas | 2015-12-18 10:52:26 +0200 (Fri, 18 Dec 2015) | 4 lines
-
-cod-tools/ (antanas@echidna.ibt.lt)
-Enhancement: updating 'makelist' command to use the 'find' program in 
-multiple makefiles.  
-
-------------------------------------------------------------------------
-r4461 | antanas | 2015-12-17 11:41:35 +0200 (Thu, 17 Dec 2015) | 4 lines
-
-cod-tools/ (antanas@echidna.ibt.lt)
-Enhancement: modifying the 'cif_distances' script to exclude atoms with 
-unknown coordinates ('.' or '?').
-
-------------------------------------------------------------------------
 r4460 | antanas | 2015-12-17 11:36:36 +0200 (Thu, 17 Dec 2015) | 4 lines
 
 cod-tools/ (antanas@echidna.ibt.lt)
 Enhancing: modifying COD::CIF::Data::AtomList::atom_array_from_cif to 
 exclude atoms with atleast one dot ('.') coordinate on request.
-
-------------------------------------------------------------------------
-r4453 | antanas | 2015-12-16 01:08:51 +0200 (Wed, 16 Dec 2015) | 7 lines
-
-cod-tools/ (antanas@kurmis)
-Refactoring: renaming some of the atom fields in preparation to use the 
-COD:CIF::Data::AtomList module in the 'cif_Fcalc' script. Also, 
-modifying subroutines to accept the reference to the 'values' field of 
-a parsed datablock instead of the reference to the whole datablock 
-structure itself. 
 
 ------------------------------------------------------------------------
 r4452 | antanas | 2015-12-15 20:55:43 +0200 (Tue, 15 Dec 2015) | 5 lines
@@ -1008,40 +887,6 @@ extracting it to a seperate subroutine 'is_atom_excludable' in
 COD::CIF::Data::AtomList.
 
 ------------------------------------------------------------------------
-r4403 | antanas | 2015-12-07 17:07:43 +0200 (Mon, 07 Dec 2015) | 8 lines
-
-cod-tools/ (antanas@echidna.ibt.lt)
-Bug fix: changing the way COD::CIF::Parser::Yapp fixes quoted strings 
-with a missing closing quote. Previously, the logic used for fixing 
-these misquoted strings placed the closing quote after the first word 
-and was unable to correctly fix string values with spaces in them. 
-From now on, everything from the quote symbol to the end of the line
-will be considered a part of the misquoted string. 
-
-------------------------------------------------------------------------
-r4401 | andrius | 2015-12-04 14:56:33 +0200 (Fri, 04 Dec 2015) | 5 lines
-
-trunk/
-Moving subroutine shift_atom() from cif_molecule and cif_p1 to
-COD::CIF::Data::SymmetryGenerator. Removing redundant copies of
-copy_atom(), leaving a single one in COD::CIF::Data::AtomList.
-
-------------------------------------------------------------------------
-r4400 | andrius | 2015-12-04 11:02:17 +0200 (Fri, 04 Dec 2015) | 4 lines
-
-trunk/
-Moving extraction of '_atom_site_symmetry_multiplicity' value to
-AtomList::extract_atom() from AtomList::atom_array_from_cif().
-
-------------------------------------------------------------------------
-r4393 | antanas | 2015-12-03 09:17:34 +0200 (Thu, 03 Dec 2015) | 5 lines
-
-cod-tools/ (antanas@kurmis)
-Refactoring: replacing COD::ErrorHandler::process_errors subroutine call 
-with the 'critical' subroutine call in the 
-COD::CIF::Data::CODPredepositionCheck module.
-
-------------------------------------------------------------------------
 r4386 | antanas | 2015-12-02 08:59:03 +0200 (Wed, 02 Dec 2015) | 10 lines
 
 trunk/ (antanas@kurmis)
@@ -1053,23 +898,6 @@ replacing these variables with a single hash modified the behaviour when
 dealing with empty string values. This bug fix reverts script behaviour
 to the previously established one (ignoring the option if the provided
 value is an empty string).
-
-------------------------------------------------------------------------
-r4384 | antanas | 2015-11-27 14:13:37 +0200 (Fri, 27 Nov 2015) | 6 lines
-
-cod-tools/ (antanas@echidna.ibt.lt)
-Bug fix: removing 'fold' subroutine call in the bibliography 
-reference hash processing block in the 'cif_filter' script. The 
-subroutine was called in the wrong place and disregarded the command 
-line options (--folding-width, --fold-title, --dont-fold-title).
-
-------------------------------------------------------------------------
-r4366 | antanas | 2015-11-25 17:39:53 +0200 (Wed, 25 Nov 2015) | 5 lines
-
-cod-tools/ (antanas@echidna.ibt.lt)
-Refactoring: replacing indirect method calls (new Object) with direct 
-methods calls (Object->new) since it if the prefered way in Perl (and 
-might help avoid some bugs on some occasions).
 
 ------------------------------------------------------------------------
 
