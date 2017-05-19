@@ -383,15 +383,12 @@ for my $filename (@ARGV) {
         delete $extracted_dataset->{file};
         delete $extracted_dataset->{text};
         delete $extracted_dataset->{flags};
-        if( exists $extracted_dataset->{formula} &&
-            defined $extracted_dataset->{formula} ) {
-            $extracted_dataset->{formula} =~ s/^-\s*//;
-            $extracted_dataset->{formula} =~ s/\s*-$//;
-        }
-        if( exists $extracted_dataset->{calcformula} &&
-            defined $extracted_dataset->{calcformula} ) {
-            $extracted_dataset->{calcformula} =~ s/^-\s*//;
-            $extracted_dataset->{calcformula} =~ s/\s*-$//;
+
+        for my $field (qw( formula calcformula cellformula )) {
+            next if !exists  $extracted_dataset->{$field};
+            next if !defined $extracted_dataset->{$field};
+            $extracted_dataset->{$field} =~ s/^-\s*//;
+            $extracted_dataset->{$field} =~ s/\s*-$//;
         }
 
         push @extracted, $extracted_dataset;
