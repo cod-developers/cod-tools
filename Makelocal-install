@@ -17,6 +17,7 @@ CODTOOLS_LIBS = $(shell find src/lib/perl5 -name .svn -prune -o \
                                            -name Bison -prune -o \
                                            -name Bison.pm -prune -o \
                                            -name Yapp -prune -o \
+                                           -name Yapp.pm -prune -o \
                                            -name Precision.pm -prune -o \
                                            -name UserMessage.pm -prune -o \
                                            -name \*.pm -print)
@@ -41,7 +42,8 @@ GETOPTIONS_H = ${wildcard src/externals/getoptions/*.h}
 build:
 	$(MAKE) -C src/
 
-install: build install-codtools install-libcod-perl install-libcodcif install-pycodcif
+install: build install-codtools install-libcod-cif-parser-yapp-perl \
+	install-libcod-perl install-libcodcif install-pycodcif
 
 install-codtools:
 	test -d ${PREFIX}/bin || mkdir -p ${PREFIX}/bin
@@ -52,6 +54,11 @@ install-codtools:
 			|| mkdir -p ${PREFIX}/share/$$(dirname $$i); \
 		install --mode 644 src/lib/$$i ${PREFIX}/share/$$i; \
 	done
+
+install-libcod-cif-parser-yapp-perl:
+	mkdir -p ${PREFIX}/share/perl5/COD/CIF/Parser
+	install --mode 644 src/lib/perl5/COD/CIF/Parser/Yapp.pm \
+		${PREFIX}/share/perl5/COD/CIF/Parser/
 
 install-libcod-perl:
 	for i in ${LIBCOD_PERL_LIBS:src/lib/%=%}; \
