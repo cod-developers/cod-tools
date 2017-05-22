@@ -41,8 +41,9 @@ GETOPTIONS_H = ${wildcard src/externals/getoptions/*.h}
 build:
 	$(MAKE) -C src/
 
-install: build install-cod-tools install-libcod-cif-parser-yapp-perl \
-	install-libcod-perl install-libcodcif install-pycodcif
+install: build install-cod-tools install-libcod-cif-parser-bison-perl \
+	install-libcod-cif-parser-yapp-perl install-libcod-perl \
+	install-libcodcif install-pycodcif
 
 install-cod-tools install-codtools:
 	test -d ${PREFIX}/bin || mkdir -p ${PREFIX}/bin
@@ -54,8 +55,16 @@ install-cod-tools install-codtools:
 		install --mode 644 src/lib/$$i ${PREFIX}/share/$$i; \
 	done
 
+install-libcod-cif-parser-bison-perl:
+	mkdir --parents ${PREFIX}/${vendorlib}/COD/CIF/Parser
+	mkdir --parents ${PREFIX}/${vendorarch}/auto/COD/CIF/Parser/Bison
+	install --mode 640 src/lib/perl5/COD/CIF/Parser/Bison.pm \
+	    ${PREFIX}/${vendorlib}/COD/CIF/Parser
+	install src/lib/perl5/auto/COD/CIF/Parser/Bison/Bison.so \
+	    ${PREFIX}/${vendorarch}/auto/COD/CIF/Parser/Bison/
+
 install-libcod-cif-parser-yapp-perl:
-	mkdir -p ${PREFIX}/share/perl5/COD/CIF/Parser
+	mkdir --parents ${PREFIX}/share/perl5/COD/CIF/Parser
 	install --mode 644 src/lib/perl5/COD/CIF/Parser/Yapp.pm \
 		${PREFIX}/share/perl5/COD/CIF/Parser/
 
