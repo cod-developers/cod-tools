@@ -25,9 +25,9 @@ LIBCOD_PERL_LIBS = src/lib/perl5/COD/CIF/Parser/Bison.pm \
                    src/lib/perl5/COD/Precision.pm \
                    src/lib/perl5/COD/UserMessage.pm
 
-PYCODCIF_LIBS = $(shell find src/lib/python2.7 -name .svn -prune -o \
-                                               -name \*.py -print -o \
-                                               -name \*.so -print)
+PYCODCIF_LIBS = $(shell find src/components/pycodcif -name .svn -prune -o \
+													 -name \*.py -print -o \
+													 -name \*.so -print)
 
 LIBCODCIF_A = src/components/codcif/lib/libcodcif.a
 LIBCODCIF_H = ${wildcard src/components/codcif/*.h}
@@ -72,14 +72,12 @@ install-libcod-perl:
 		${PREFIX}/${vendorarch}/auto/COD/CIF/Parser/Bison/Bison.so
 
 install-pycodcif:
-	test -d ${PREFIX}/bin || mkdir -p ${PREFIX}/bin
+	mkdir --parents ${PREFIX}/bin
+	mkdir --parents ${PREFIX}/lib/python2.7/dist-packages
+	mkdir --parents ${PREFIX}/lib/pyshared/python2.7
 	install scripts/cif_printout_Python ${PREFIX}/bin
-	for i in ${PYCODCIF_LIBS:src/%=%}; \
-	do \
-	test -d ${PREFIX}/$$(dirname $$i) \
-			|| mkdir -p ${PREFIX}/$$(dirname $$i); \
-		install --mode 644 src/$$i ${PREFIX}/$$i; \
-	done
+	install --mode 644 src/components/pycodcif/pycodcif.py ${PREFIX}/lib/python2.7/dist-packages/
+	install src/components/pycodcif/_pycodcif.so ${PREFIX}/lib/pyshared/python2.7/
 
 install-libcodcif:
 	test -d ${LIBCODCIF_A_DEST} || mkdir -p ${LIBCODCIF_A_DEST}
