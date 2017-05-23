@@ -24,7 +24,7 @@ sub parse
     my $messages = $parse_result->{messages};
     my $nerrors = $parse_result->{nerrors};
 
-    foreach my $datablock ( @$data ) {
+    foreach my $datablock ( @{$data} ) {
         $datablock->{precisions} = {};
         foreach my $tag ( keys %{$datablock->{types}} ) {
             my $precisions =
@@ -53,7 +53,7 @@ sub parse
 
     my @errors;
     my @warnings;
-    foreach my $message ( @$messages ) {
+    foreach my $message ( @{$messages} ) {
         my $datablock = $message->{addpos};
         if( defined $datablock ) {
             $datablock = "data_$datablock";
@@ -70,7 +70,7 @@ sub parse
                                   $message->{columnno},
                                   $message->{line} );
 
-        if( $message->{status} eq "ERROR" ) {
+        if( $message->{status} eq 'ERROR' ) {
             push @errors, $msg;
         } else {
             push @warnings, $msg;
@@ -83,7 +83,6 @@ sub parse
         print STDERR $_ foreach( @errors );
         if (defined $last_error) {
             die $last_error;
-            push @errors, $last_error;
         }
     }
 
@@ -112,7 +111,7 @@ sub Run
     $self->{YYData} = { ERRCOUNT => $nerrors,
                         ERROR_MESSAGES => $error_messages };
 
-    if( ref $options eq "HASH" ) {
+    if( ref $options eq 'HASH' ) {
         $self->{USER}{OPTIONS} = $options;
     }
 
@@ -130,20 +129,20 @@ sub extract_precision
     my( $values, $types, $is_in_loop ) = @_;
     if( ref( $types ) eq 'ARRAY' ) {
         my @precisions;
-        for( my $i = 0; $i < @$values; $i++ ) {
+        for( my $i = 0; $i < @{$values}; $i++ ) {
             push @precisions,
                 extract_precision( $values->[$i], $types->[$i] );
         }
         if( grep( defined $_, @precisions ) ||
-            grep( ref $_, @$types ) ||
-            ( $is_in_loop && grep { $_ eq 'INT' || $_ eq 'FLOAT' } @$types ) ) {
+            grep( ref $_, @{$types} ) ||
+            ( $is_in_loop && grep { $_ eq 'INT' || $_ eq 'FLOAT' } @{$types} ) ) {
             return \@precisions;
         } else {
             return undef;
         }
     } elsif( ref( $types ) eq 'HASH' ) {
         my %precisions;
-        foreach (keys %$values) {
+        foreach (keys %{$values}) {
             $precisions{$_} =
                 extract_precision( $values->{$_}, $types->{$_} );
         }
