@@ -19,6 +19,7 @@ CODTOOLS_LIBS = $(shell find src/lib/perl5 -name .svn -prune -o \
                                            -name Yapp.pm -prune -o \
                                            -name Precision.pm -prune -o \
                                            -name UserMessage.pm -prune -o \
+                                           -name cif_find_symmetry -prune -o \
                                            -name \*.pm -print)
 
 LIBCOD_PERL_LIBS = src/lib/perl5/COD/Precision.pm \
@@ -42,7 +43,7 @@ build:
 
 install: build install-cod-tools install-libcod-cif-parser-bison-perl \
 	install-libcod-cif-parser-yapp-perl install-libcod-perl \
-	install-libcodcif install-pycodcif
+	install-libcodcif install-pycodcif install-spglib
 
 install-cod-tools install-codtools:
 	test -d ${PREFIX}/bin || mkdir -p ${PREFIX}/bin
@@ -58,7 +59,7 @@ install-libcod-cif-parser-bison-perl:
 	mkdir --parents ${PREFIX}/${vendorarch}/COD/CIF/Parser
 	mkdir --parents ${PREFIX}/${vendorarch}/auto/COD/CIF/Parser/Bison
 	install --mode 644 src/lib/perl5/COD/CIF/Parser/Bison.pm \
-	    ${PREFIX}/${vendorarch}/COD/CIF/Parser
+	    ${PREFIX}/${vendorarch}/COD/CIF/Parser/
 	install src/lib/perl5/auto/COD/CIF/Parser/Bison/Bison.so \
 	    ${PREFIX}/${vendorarch}/auto/COD/CIF/Parser/Bison/
 
@@ -75,14 +76,6 @@ install-libcod-perl:
 		install --mode 644 src/lib/$$i ${PREFIX}/share/$$i; \
 	done
 
-install-pycodcif:
-	mkdir --parents ${PREFIX}/bin
-	mkdir --parents ${PREFIX}/lib/python2.7/dist-packages
-	mkdir --parents ${PREFIX}/lib/pyshared/python2.7
-	install scripts/cif_printout_Python ${PREFIX}/bin
-	install --mode 644 src/components/pycodcif/pycodcif.py ${PREFIX}/lib/python2.7/dist-packages/
-	install src/components/pycodcif/_pycodcif.so ${PREFIX}/lib/pyshared/python2.7/
-
 install-libcodcif:
 	test -d ${LIBCODCIF_A_DEST} || mkdir -p ${LIBCODCIF_A_DEST}
 	test -d ${LIBCODCIF_INC_DEST} || mkdir -p ${LIBCODCIF_INC_DEST}
@@ -91,3 +84,23 @@ install-libcodcif:
 	install --mode 644 ${LIBCODCIF_H} ${CEXCEPTIONS_H} ${GETOPTIONS_H} ${LIBCODCIF_INC_DEST}
 	find src/components/codcif -maxdepth 1 -type f -perm +1 \
 		| xargs -i install {} ${PREFIX}/bin
+
+install-pycodcif:
+	mkdir --parents ${PREFIX}/bin
+	mkdir --parents ${PREFIX}/lib/python2.7/dist-packages
+	mkdir --parents ${PREFIX}/lib/pyshared/python2.7
+	install scripts/cif_printout_Python ${PREFIX}/bin
+	install --mode 644 src/components/pycodcif/pycodcif.py \
+		${PREFIX}/lib/python2.7/dist-packages/
+	install src/components/pycodcif/_pycodcif.so \
+		${PREFIX}/lib/pyshared/python2.7/
+
+install-spglib:
+	mkdir --parents ${PREFIX}/${vendorarch}/COD
+	mkdir --parents ${PREFIX}/${vendorarch}/auto/COD/SPGLib
+	mkdir --parents ${PREFIX}/bin
+	install --mode 644 src/lib/perl5/COD/SPGLib.pm \
+		${PREFIX}/${vendorarch}/COD
+	install src/lib/perl5/auto/COD/SPGLib/SPGLib.so \
+		${PREFIX}/${vendorarch}/auto/COD/SPGLib/
+	install scripts/cif_find_symmetry ${PREFIX}/bin
