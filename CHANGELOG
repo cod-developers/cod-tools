@@ -1,26 +1,27 @@
 cod-tools (unreleased)
 
   * Added:
-    - version information is printed by most of the scripts using
-      --version command line option.
     - reading/writing of CIF v2.0 format.
     - cif2json: adding the '--canonical' option that forces the output
       json to be sorted in a predetermined way.
     - COD::CIF:JSON: adding the second parameter to the cif2json()
       subroutine that is intended to store the options for the json
-      encoding operation. Currently only the 'canonical' option is supported.
-    - check_symop_canonicality script.
+      encoding operation. Currently only the 'canonical' option is
+      supported.
+    - check_symop_canonicality: a new tool script.
+    - version information is printed by most of the scripts using
+      --version command line option.
   * Changed:
-    - using symmetry operators as provided by spglib in
-      cif_find_symmetry instead of operators from lookup hashes as ones
-      from spglib seem to better describe space groups with
+    - cif_find_symmetry: using symmetry operators as provided by
+      spglib instead of operators from lookup hashes as ones from
+      spglib seem to better describe space groups with
       nonconventional settings.
-    - using Hall symbol (more precise) for the detection of symmetry
-      space group in the output of spglib in cif_find_symmetry.
-    - JSON, written/read by cif2json and json2cif, accordingly, is now
-      concatenable (relaxed) by default. Strictly conforming JSON can
-      now be produced via --strict command line option in cif2json.
-      json2cif is able to read both strict and relaxed JSON.
+    - cif_find_symmetry: using Hall symbol (more precise) for the
+      detection of symmetry space group in the output of spglib.
+    - cif2json and json2cif: JSON, written/read by these scripts is
+      now concatenable (relaxed) by default. Strictly conforming JSON
+      can now be produced via --strict command line option in
+      cif2json. json2cif is able to read both strict and relaxed JSON.
     - interface of C CIF parser:
       - datablock_value() -> datablock_cifvalue() in datablock.h
       - datablock_overwrite_value() -> datablock_overwrite_cifvalue()
@@ -30,12 +31,12 @@ cod-tools (unreleased)
         datablock.h
       - datablock_push_loop_value() -> datablock_push_loop_cifvalue()
         in datablock.h
-      - COD::Spacegroups::Lookup::COD: changing symop strings to their
-        canonical forms.
-      - COD::CIF::Data::CellContents: implementing a more thorough check
-        of the Z value.
+    - COD::Spacegroups::Lookup::COD: changing symop strings to their
+      canonical forms.
+    - COD::CIF::Data::CellContents: implementing a more thorough check
+      of the Z value.
   * Removed:
-    - datablock_values() from datablock.h.
+    - datablock.h: datablock_values()
     - debian/ directory.
     - duplicate_space_groups: empty import of the
       COD::Spacegroups::Symop::Parse module.
@@ -289,13 +290,13 @@ cod-tools (1.1)
     - COD::CIF::Parser::Bison: linking compiled module against
       archives of static libraries (.a) instead of objects (.o) of
       codcif, cexceptions and getoptions.
-  -COD::AtomProperties assembler:
-    - Migrating to using the 'elements.xml' file from the '0a50119' commit
-      of the BODR (https://github.com/egonw/bodr) repository.
-    - Refactoring: changing the module name from 'AtomProperties' to
-      'COD::AtomProperties'.
-    - Correcting a few layout mistakes in the comments providing the data
-      sources.
+    - COD::AtomProperties assembler:
+      - Migrating to using the 'elements.xml' file from the '0a50119'
+        commit of the BODR (https://github.com/egonw/bodr) repository.
+      - Refactoring: changing the module name from 'AtomProperties' to
+        'COD::AtomProperties'.
+      - Correcting a few layout mistakes in the comments providing the
+        data sources.
   * Deprecated:
     - usage of doc/CODDictionary.xml (database-description.xml of
       appropriate database should be used instead, such as
