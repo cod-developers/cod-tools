@@ -12,6 +12,7 @@
 #**
 
 import argparse
+import pprint
 import sys
 from pycodcif import parse
 
@@ -81,30 +82,6 @@ if 'version' in options.keys():
 
 for filename in files:
     data, errcount, _ = parse(filename, options)
-
-    for datablock in data:
-        print datablock['name']
-        print "Values:"
-        for tag in sorted(datablock['tags']):
-            print "    {} ({}) {}".format(tag,
-                                          len(datablock['values'][tag]),
-                                          " ".join(["[{}]".format(x) for x in datablock['values'][tag]]))
-        if 'precisions' in datablock.keys():
-            print "Precisions:"
-            for tag in sorted(datablock['precisions'].keys()):
-                print "    {} ({}) {}".format(tag,
-                                              len(datablock['precisions'][tag]),
-                                              " ".join([str(x) if x is not None else 'undef' for x in datablock['precisions'][tag]]))
-        if 'types' in datablock.keys():
-            print "Types:"
-            for tag in sorted(datablock['types'].keys()):
-                print "    {} {}".format(tag,
-                                         " ".join([x for x in datablock['types'][tag]]))
-        print "Inloops:"
-        for tag in sorted(datablock['inloop'].keys()):
-            print "    {} {}".format(tag,datablock['inloop'][tag])
-        print "Loops:"
-        for loop in datablock['loops']:
-            print " ".join(loop)
-
+    pprint.PrettyPrinter().pprint(data)
+    print len(data[0]['tags'][0])
     sys.stderr.write("{} error(s) detected\n".format(errcount))

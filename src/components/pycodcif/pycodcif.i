@@ -40,6 +40,8 @@ def parse(filename,*args):
                 if precisions is not None:
                     saveblock['precisions'][tag] = precisions
 
+    data = [ decode_utf8_frame( _ ) for _ in data ]
+
     errors = []
     warnings = []
 
@@ -147,6 +149,66 @@ def extract_precision(values,types):
             return None, 1
     else:
         return None, 0
+
+def decode_utf8_frame(frame):
+    for _ in [ 'name', 'tags', 'loops' ]:
+        if _ in frame.keys():
+            frame[_] = decode_utf8_values(frame[_])
+
+    for _ in [ 'precisions', 'inloop', 'values', 'types' ]:
+        if _ in frame.keys():
+            frame[_] = decode_utf8_hash_keys(frame[_])
+
+    if 'values' in frame.keys() and 'types' in frame.keys():
+        frame['values'] = decode_utf8_typed_values(frame['values'],
+                                                   frame['types'])
+
+    if 'save_blocks' in frame.keys():
+        frame['save_blocks'] = [ decode_utf8_frame(_) for _ in
+                                        frame['save_blocks'] ]
+
+    return frame
+
+def decode_utf8_hash_keys(values):
+    if isinstance(values,list):
+        for i in range(0,len(values)):
+            values[i] = decode_utf8_hash_keys(values[i])
+    elif isinstance(values,dict):
+        for key in values.keys():
+           values[key] = decode_utf8_hash_keys(values[key]);
+           new_key = decode_utf8_values(key);
+           if new_key != key:
+               values[new_key] = values[key]
+               del values[key]
+
+    return values
+
+def decode_utf8_values(values):
+    if isinstance(values,list):
+        for i in range(0,len(values)):
+            values[i] = decode_utf8_values(values[i])
+    elif isinstance(values,dict):
+        for key in values.keys():
+            values[key] = decode_utf8_hash_keys(values[key]);
+    else:
+        try:
+            values = values.decode('utf-8')
+        except UnicodeDecodeError:
+            pass
+
+    return values
+
+def decode_utf8_typed_values(values,types):
+    if isinstance(values,list):
+        for i in range(0,len(values)):
+            values[i] = decode_utf8_typed_values(values[i], types[i])
+    elif isinstance(values,dict):
+        for key in values.keys():
+            values[key] = decode_utf8_typed_values(values[key], types[key])
+    elif types not in [ 'INT', 'FLOAT' ]:
+        values = decode_utf8_values(values)
+
+    return values
 
 program_escape = {
     '&': '&amp;',
