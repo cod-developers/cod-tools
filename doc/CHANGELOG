@@ -7,7 +7,7 @@ cod-tools (unreleased)
   * Changed:
     - using symmetry operators as provided by spglib in
       cif_find_symmetry instead of operators from lookup hashes as ones
-      from spglib seem to better describe spacegroups with
+      from spglib seem to better describe space groups with
       nonconventional settings.
     - using Hall symbol (more precise) for the detection of symmetry
       space group in the output of spglib in cif_find_symmetry.
@@ -86,7 +86,7 @@ cod-tools (1.1)
       '_space_group_name_Hall' data items to the output.
     - cif_fillcell: adding '--unit-cell', '--no-supercell',
       '--supercell' command line options.
-    - cif_validate: checking the existance of parent links, as defined
+    - cif_validate: checking the existence of parent links, as defined
       via '_list_link_parent' of ddl_core.dic.
     - cif_cod_check: adding a check to locate disorder groups of the
       same assembly having different numbers of atoms (off by
@@ -117,6 +117,15 @@ cod-tools (1.1)
       shift_atom().
     - Test dependency list for Ubuntu 12.04.
     - COD::Cell::Delaunay::Delaunay: more debug prints.
+    - COD::AtomProperties: Adding the 'Dummy' atom.
+    - COD::AtomProperties assembler:
+      - Adding the 'Dummy' atom rule to the assembling process.
+      - Adding a way to specify the name of the assembled Perl module.
+      - Adding a way to specify the namespace of the assembled Perl module.
+    - cif_molecule: Adding the '--exclude-dummy-atoms' option.
+    - COD::CIF::Data::AtomList: adding the 'exclude_dummy_coordinates'
+      option to the atom_array_from_cif() subroutine that excludes
+      atoms with at least one dot ('.') coordinate.
   * Changed:
     - COD::CID::Data::CIF2COD treats CIF value '?' amid white space as
       undefined.
@@ -124,7 +133,7 @@ cod-tools (1.1)
       - adding the ' -- fixed' suffix to parser warning messages
         informing about unquoted strings with spaces.
       - rephrasing error messages in the CIF parsers: replacing one
-        occurence of comma (',') and one occurence of a dash ('-')
+        occurrence of comma (',') and one occurrence of a dash ('-')
         with two dashes ('--') and changing the phrase 'replaced by'
         to 'replaced with'.
     - Messages in scripts:
@@ -170,32 +179,11 @@ cod-tools (1.1)
         - _publ_author_address
         - _publ_contact_author
       - Correcting several replacement rules.
-      - Removing "_exptl_crystal_f_000'" replacement rule.
       - Copying tests/inputs/replacement_tags.lst to
         data/replacement-values/.
-
-        ------------------------------------------------------------------------
-        r5005 | antanas | 2017-03-03 13:38:54 +0200 (Fri, 03 Mar 2017) | 5 lines
-
-        trunk/ (antanas@echidna.ibt.lt)
-        Bug fix: modifying the 'cif_correct_tags' script to skip
-        value comparison if at least one of the data items is within
-        a loop structure.
-
-        ------------------------------------------------------------------------
-        r4998 | antanas | 2017-03-02 15:24:31 +0200 (Thu, 02 Mar 2017) | 11 lines
-
-        cod-tools/ (antanas@echidna.ibt.lt)
-        Enhancement: modifying the way 'cif_correct_tags' script behaves when
-        the replacement tag is already in the file. Originally, the replacement
-        would silently not be carried at all in cases like these. However, from
-        now on the script woll carry out one of the two actions based on the 
-        values of the misspelt and the replacement data items:
-        1) if the values match, the misspelt data item will be removed and
-        reported;
-        2) if the values do not match, the misspelt data item will be reported,
-        but not modified in any way.
-
+      - Adding an error message regarding misspelt looped tags.
+      - Adding several error messages regarding the situation when the correctly
+        spelt data item and the misspelt one are found in the same file.
     - cif_cod_numbers: also considering the unit cell formula and
       compound source when searching for duplicate entries.
     - cif_tcod_tree: using more portable way to fetch contents of
@@ -205,7 +193,7 @@ cod-tools (1.1)
       - Making parser options optional.
       - Using python2.6 if python2.7 does not exist, using more
         common Python syntax in order to make Python code more
-        backwards-compatible, in particluar with python2.6.
+        backwards-compatible, in particular with python2.6.
     - COD::CIF::Unicode2CIF: converting named and decimal-numbered
       XML entities into appropriate UTF-8 code points.
     - COD::CIF::Tags::DFT: updating tag list according to
@@ -215,25 +203,26 @@ cod-tools (1.1)
     - COD::CIF::Tags::TCOD: updating tag list according to
       cif_tcod.dic v0.009
     - Replacing COD::CIF::Data::SymmetryGenerator(),
-      COD::CIF::Data::AtomList::copy_struct_deep() and analoguous
+      COD::CIF::Data::AtomList::copy_struct_deep() and analogous
       functions with Perl built-in Clone::clone().
     - Eliminating "sponge" from
-      makefiles/Makefile-perl-multiscript-tests to enable builts on
+      makefiles/Makefile-perl-multiscript-tests to enable builds on
       CentOS-6.8.
     - COD::CIF::Data::CIF2COD: removing unused arguments (filename,
-      datablock) from subroutine interfaces.
+      data block) from subroutine interfaces.
     - cif_fillcell: replacing deprecated CIF tags with their new
       counterparts.
     - COD::CIF::Data::SymmetryGenerator: apply_shifts() returns
       array reference instead of the array.
     - cif_distances: removing extra space from the output.
-    - cif_molecule: printing only first five messages about detected
-      bumps.
+    - cif_molecule:
+      - printing only first five messages about detected bumps.
+      - ignoring atoms with dummy ('.') or unknown ('?') coordinates.
     - codcif and COD::CIF::Parser: removing duplicated line and
       position numbers from parser error messages.
-    - Canonicalizing CIF data item names in a bunch of scipts that
-      have not used this feature before. Homogenuous treatment of CIF
-      data item names in the whole system is neccessary both to
+    - Canonicalizing CIF data item names in a bunch of scripts that
+      have not used this feature before. Homogeneous treatment of CIF
+      data item names in the whole system is necessary both to
       leverage the reusability of code and to avoid bugs.
     - cif_fillcell: building unit cell by default (instead of the
       3x3x3 supercell).
@@ -252,8 +241,15 @@ cod-tools (1.1)
     - COD::Spacegroups::Symop::Algebra: symop_vector_mul() returns
       array reference (Perl wantarray construction was used before).
     - cif_distances: excluding atoms with unknown coordinates.
-    - COD::CIF::Data::AtomList: ordering atoms by their summary
-      occupancies in atom_groups().
+    - COD::CIF::Data::AtomList:
+      - ordering atoms by their summary occupancies in atom_groups().
+      - moving the logic that allows to skip an atom before
+        extracting it into a separate subroutine 'is_atom_excludable'.
+      - removing the 'do_not_resolve_chemical_type' option from the 
+        extract_atom() subroutine since the same functionality can also
+        be achieved with the 'allow_unknown_chemical_types' option.
+      - moving logic that sets atom values generated by 'cif_molecule'
+        to a separate subroutine 'set_cod_molecule_atom_fields'.
     - Renaming COD::CIF2JSON to COD::CIF::JSON.
     - COD::CIF::JSON: switching to stream-oriented JSON parsing.
     - Moving the warning message about the user-provided Z value
@@ -277,6 +273,13 @@ cod-tools (1.1)
     - COD::CIF::Parser::Bison: linking compiled module against
       archives of static libraries (.a) instead of objects (.o) of
       codcif, cexceptions and getoptions.
+  -COD::AtomProperties assembler:
+    - Migrating to using the 'elements.xml' file from the '0a50119' commit
+      of the BODR (https://github.com/egonw/bodr) repository.
+    - Refactoring: changing the module name from 'AtomProperties' to
+      'COD::AtomProperties'.
+    - Correcting a few layout mistakes in the comments providing the data
+      sources.
   * Deprecated:
     - usage of doc/CODDictionary.xml (database-description.xml of
       appropriate database should be used instead, such as
@@ -295,26 +298,13 @@ cod-tools (1.1)
         of unfolded CIF text field.
       - codcif and COD::CIF::Parser::Yapp: removing trailing
         whitespace from the lines of to-be-unfolded CIF text fields.
-        
-        ------------------------------------------------------------------------
-        r4583 | antanas | 2016-02-17 16:44:15 +0200 (Wed, 17 Feb 2016) | 7 lines
-
-        trunk/ (antanas@echidna.ibt.lt)
-        Bug fix: updating the way unfolding/unprefixing protocols are 
-        implemented in the COD::CIF::Parser::Bison (by modifying the 
-        cif_grammar.y file itself). Unprefixing a multiline text 
-        field and without unfolding it no longer leaves an empty line at the 
-        beginning of the text field.
-
-        ------------------------------------------------------------------------
-        r4582 | antanas | 2016-02-17 14:45:45 +0200 (Wed, 17 Feb 2016) | 6 lines
-
-        trunk/src/lib/perl5/COD/CIF/Parser/ (antanas@echidna.ibt.lt)
-        Bug fix: updating the way unfolding/unprefixing protocols are 
-        implemented in the COD::CIF::Parser::Yapp. Unprefixing a multiline text 
-        field that has a "/\n" as its second line no longer causes the text 
+    - CIF line unprefixing protocol:
+      - COD::CIF::Parser::Bison: removing the empty line from the
+        beginning of the text field when the line is unprefixed but
+        not unfolded.
+      - COD::CIF::Parser::Yapp: unprefixing a multiline text field
+        that has a "/\n" as its second line no longer causes the text
         field to also be unfolded.
-
     - COD::CIF::Unicode2CIF:
       - converting CIF triple dash ('---') into UTF-8 em dash
         (&#x2014;) instead of a combination of figure dash and en
@@ -367,15 +357,11 @@ cod-tools (1.1)
       Merkys et al. 2016.
     - COD::Formulae::Parser::AdHoc: using COD::UserMessage for
       message formation.
-    - cif_molecule: preventing printing of a syntactically incorrect
-      CIFs (ones that contain loops without values).
     - cif_Fcalc: fixing a typo in the atom property name
       ('scat_dispesion_real' -> 'scat_dispersion_real').
-    - cif_molecule: setting multiplicities to '?' for atoms of dummy
-      molecules.
     - COD::CIF::Data::CIF2COD: returning SQL NULL instead of string
       "NULL" for unknown cell volumes.
-    - codcif: duplicated tags, whose second occurence is in a loop,
+    - codcif: duplicated tags, whose second occurrence is in a loop,
       were reported as warnings instead of errors.
     - cif_cod_deposit: adding '--show-error' command line option for
       'curl' in order to make its error messages visible.
@@ -388,11 +374,14 @@ cod-tools (1.1)
       strings starting with closing square brackets.
     - codcif and COD::CIF::Parser::Yapp: returning an empty list of
       data blocks upon parsing empty CIF files. According to the CIF
-      specification, empty CIF is an empty list of datablocks.
+      specification, empty CIF is an empty list of data blocks.
     - codcif: reporting replaced spaces in data block names as
       WARNINGs instead of NOTEs.
-    - COD::CIF::Data::AtomList: sorting hash keys in atom_groups() in
-      order to prevent from non-deterministic output.
+    - COD::CIF::Data::AtomList:
+      - sorting hash keys in atom_groups() in order to prevent from
+        non-deterministic output.
+      - sorting the disorder assemblies so the output results would
+        not be affected by the Perl hashing algorithm.
     - codcif: allowing unquoted CIF strings that begin with 'loop_'
       prefix albeit not equal to 'loop_' string.
     - COD::CIF::Tags::Print: quoting unquoted CIF strings starting
@@ -403,9 +392,6 @@ cod-tools (1.1)
       - cif2xyz
     - COD::ErrorHandler: ensuring that the code block is only
       executed upon successful matching.
-    - COD::CIF::Data::AtomList: sorting the disorder assemblies so the
-      output results would not be affected by the Perl hashing
-      algorithm.
     - COD::CIF::Data: checking whether tag's value/precision is defined
       in get_cell().
     - codcif: detecting and fixing headerless CIF files composed of a
@@ -413,184 +399,48 @@ cod-tools (1.1)
     - COD::CIF::Parser::Yapp: everything from the quote symbol to the
       end of the line will be considered a part of the misquoted
       string.
-    - cif_filter: removing fold() subroutine call in the bibliography 
-      reference hash processing block. The subroutine was called in
-      the wrong place and disregarded the command line options
-      '--folding-width', '--fold-title' and '--dont-fold-title'.
+    - cif_filter:
+      - removing fold() subroutine call in the bibliography reference
+        hash processing block. The subroutine was called in the wrong
+        place and disregarded the command line options '--folding-width',
+        '--fold-title' and '--dont-fold-title'.
+      - user provided command line options dealing with bibliographical
+        information are now ignored if the provided value is an empty
+        string.
     - Replacing indirect Perl method calls (new Object) with direct 
-      methods calls (Object->new) since it is the prefered way.
+      methods calls (Object->new) since it is the preferred way.
     - COD::UserMessage: avoiding negative positions in error messages.
-    - COD::CIF::Data::CIF2COD: cif2cod() determines number of distinct
-      elements for structures with defined and non-empty chemical
-      formulae.
-    - cif_molecule: simple olymers are now detected even with
-      '--max-polymer-span 0'.
-    - cif_molecule: trimming polymers after polymer dimension
-      measurement and before formulae calculation. Multiple moieties
-      are then merged into one if one datablock output is requested.
-      Thus, correct formulae are achieved and non-polymer atoms are
-      not trimmed.
+    - COD::CIF::Data::CIF2COD: cif2cod():
+      - determines number of distinct elements for structures with defined
+        and non-empty chemical formulae.
+      - The cif markup entity conversion is now carried out before
+        collapsing several white spaces into a single white space.
+        This allows to preserve at least a single whitespace after
+        the symbol encoded by the cif markup entity.
+    - cif_molecule:
+      - Simple polymers are now detected even with '--max-polymer-span 0'.
+      - Trimming polymers after polymer dimension measurement and before
+        formulae calculation. Multiple moieties are then merged into one
+        if one data block output is requested. Thus, correct formulae are
+        achieved and non-polymer atoms are not trimmed.
+      - Enforcing '.' occupancies for all output dummy atoms even if the
+        '--force-unit-occupancies' option is in effect.
+      - Setting multiplicities to '?' for atoms of dummy molecules.
+      - Preventing printing of a syntactically incorrect CIFs (ones
+        that contain loops without values).
     - pycodcif: passing the 'fix_datablock_name' option directly to
       the lexer.
     - oqmd2cif: producing syntactically correct CIF files for
       structures without any atoms.
     - COD::Cell::Delaunay::Delaunay: correcting the Delaunay
-      reduction algorith so that it does not return flattened unit
+      reduction algorithm so that it does not return flattened unit
       cells.
     - COD::Cell::Conventional::deWG91: transposing the new basis
       matrix to get the correct cell vectors, correcting cell
       computation after the reduction.
-
-------------------------------------------------------------------------
-r5023 | antanas | 2017-03-06 15:15:34 +0200 (Mon, 06 Mar 2017) | 4 lines
-
-trunk/data/ (antanas@echidna.ibt.lt)
-Enhancement: adding the integration of the 'Dummy' atom patch to the
-AtomProperties module assembling process.
-
-------------------------------------------------------------------------
-r4979 | antanas | 2017-02-28 19:18:06 +0200 (Tue, 28 Feb 2017) | 6 lines
-
-cod-tools/ (antanas@echidna.ibt.lt)
-Bug fix: excluding dummy atoms from receiving the unit occupancy
-whenever the --force-unit-occupancies option is in effect.
-Refactoring: enforcing '.' occupancies for all dummy atoms that
-are being output.
-
-------------------------------------------------------------------------
-r4977 | antanas | 2017-02-27 15:16:54 +0200 (Mon, 27 Feb 2017) | 10 lines
-
-cod-tools/ (antanas@echidna.ibt.lt)
-Enhancement: updating the way --one-datablock-output and
---largest-molecule-only options interact. On its own (or
-in combination with options other than the --one-datablock-output)
-the --largest-molecule only option modifies the output to only
-contain the molecule with the greatest number of atoms. However,
-in combination with the --one-datablock-output it returns the
-most likely (disorder group occupancy wise) molecule, which might
-not necessarily contain the greatest number of atoms.
-
-------------------------------------------------------------------------
-r4926 | antanas | 2017-02-08 17:43:27 +0200 (Wed, 08 Feb 2017) | 6 lines
-
-cod-tools/ (antanas@echidna.ibt.lt)
-Enhancement: updating the way dummy atoms are handled
-in the 'cif_molecule' script. Additionally, a special
-atom type '.' was added to the COD::AtomProperties to
-represent dummy atoms.
-
-------------------------------------------------------------------------
-r4912 | antanas | 2017-02-07 17:29:50 +0200 (Tue, 07 Feb 2017) | 4 lines
-
-cod-tools/ (antanas@echidna.ibt.lt)
-Enhancement: updating the 'cif_molecule' script to ignore
-atoms with dummy ('.') or unknown ('?') coordinates.
-
-------------------------------------------------------------------------
-r4732 | antanas | 2016-10-06 11:51:16 +0300 (Thu, 06 Oct 2016) | 4 lines
-
-trunk/data/ (antanas@antanas-tuxedo.europe.actelion.com)
-Enhancement: adding a way to specify the name of the
-generated module file.
-
-------------------------------------------------------------------------
-r4730 | antanas | 2016-10-06 11:26:38 +0300 (Thu, 06 Oct 2016) | 4 lines
-
-trunk/data/ (antanas@antanas-tuxedo.europe.actelion.com)
-Enhancement: adding a way to specify the namespace of the produced
-perl module.
-
-------------------------------------------------------------------------
-r4719 | antanas | 2016-10-05 17:23:37 +0300 (Wed, 05 Oct 2016) | 3 lines
-
-trunk/data/ (antanas@antanas-tuxedo.europe.actelion.com)
-Enhancement: adding the latest version of bodr file.
-
-------------------------------------------------------------------------
-r4716 | antanas | 2016-10-05 15:25:45 +0300 (Wed, 05 Oct 2016) | 6 lines
-
-trunk/data/ (antanas@echidna.ibt.lt)
-Refactoring: changing the module name from
-'AtomProperties' to 'COD::AtomProperties" and
-correcting a few layout mistakes in the comments
-providing the bibliography.
-
-------------------------------------------------------------------------
-r4671 | antanas | 2016-06-20 00:17:04 +0300 (Mon, 20 Jun 2016) | 5 lines
-
-trunk/data/ (antanas@kurmis)
-Bug fix: updating AtomProperties script to work with the new
-cod-tools layout and adding explicit hash field ordering in
-the 'atom_properties_merge' script.
-
-------------------------------------------------------------------------
-r4569 | antanas | 2016-02-05 11:08:36 +0200 (Fri, 05 Feb 2016) | 8 lines
-
-cod-tools/ (antanas@echidna.ibt.lt)
-Bug fix: modifying the COD::CIF::Data::CIF2COD::cif2cod to replace 
-multiple whitespaces with a single whitespace only after the cif markup 
-entities have been converted into utf characters. This allows to 
-preserve at least a single whitespace after the symbol encoded by the 
-cif markup entity, since some of these entities have a trailing 
-whitespace as a part of their name ("\\times ", for example). 
-
-------------------------------------------------------------------------
-r4521 | antanas | 2016-01-12 14:16:46 +0200 (Tue, 12 Jan 2016) | 8 lines
-
-trunk/src/lib/perl5/ (antanas@echidna.ibt.lt)
-Bug fix: modifying 'interpolate_file' subroutine to print the error 
-message about not being able to open the file even if the 'option' 
-argument is not provided. Also, modifying the 'get_value' 
-subroutine to pass the option name to the 'interpolate_file' 
-subroutine so it can be displayed in the error message in the 
-'COD::SOptions' module.
-
-------------------------------------------------------------------------
-r4460 | antanas | 2015-12-17 11:36:36 +0200 (Thu, 17 Dec 2015) | 4 lines
-
-cod-tools/ (antanas@echidna.ibt.lt)
-Enhancing: modifying COD::CIF::Data::AtomList::atom_array_from_cif to 
-exclude atoms with atleast one dot ('.') coordinate on request.
-
-------------------------------------------------------------------------
-r4452 | antanas | 2015-12-15 20:55:43 +0200 (Tue, 15 Dec 2015) | 5 lines
-
-cod-tools/ (antanas@echidna.ibt.lt)
-Refactoring: moving logic that sets atom values generated by 
-'cif_molecule' to a separate subroutine 'set_cod_molecule_atom_fields' 
-in COD::CIF::Data::AtomList.
-
-------------------------------------------------------------------------
-r4446 | antanas | 2015-12-14 16:23:54 +0200 (Mon, 14 Dec 2015) | 6 lines
-
-cod-tools/ (antanas@echidna.ibt.lt)
-Refactoring: removing the 'do_not_resolve_chemical_type' option from the 
-COD::CIF::Data::AtomList::extract atom since the functionality needed in 
-the 'cif_distances' script can also be achieved with the 
-'allow_unknown_chemical_types' option.
-
-------------------------------------------------------------------------
-r4445 | antanas | 2015-12-14 16:05:05 +0200 (Mon, 14 Dec 2015) | 5 lines
-
-cod-tools/ (antanas@echidna.ibt.lt)
-Refactoring: moving the logic that allows to skip an atom before 
-extracting it to a seperate subroutine 'is_atom_excludable' in 
-COD::CIF::Data::AtomList.
-
-------------------------------------------------------------------------
-r4386 | antanas | 2015-12-02 08:59:03 +0200 (Wed, 02 Dec 2015) | 10 lines
-
-trunk/ (antanas@kurmis)
-Bug fix: updating the way user defined bibliography (provided using the 
-command line options) is processed when empty strings are provided as 
-option values in the 'cif_filter' script. Before the r4385 revision, 
-user provided options were stored in separate global variables and 
-replacing these variables with a single hash modified the behaviour when 
-dealing with empty string values. This bug fix reverts script behaviour
-to the previously established one (ignoring the option if the provided
-value is an empty string).
-
-------------------------------------------------------------------------
+    - COD::SOptions: modifying 'interpolate_file' subroutine to print
+      the error message about not being able to open the file even if
+      the 'option' argument is not provided.
 
 cod-tools (1.0)
 
