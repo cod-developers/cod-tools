@@ -12,6 +12,10 @@ version.h: version.hin ${VFILE}
 src/lib/perl5/COD/ToolsVersion.pm: src/lib/perl5/COD/ToolsVersion.pmin ${VFILE}
 	sed 's/@VERSION@/${VERSION}/' $< > $@
 
+scripts/cod-tools-version: scripts/cod-tools-version.in
+	sed 's/@VERSION@/${VERSION}/' $< > $@
+	chmod 755 $@
+
 release:
 	svn ci
 	svn cp ^/trunk ^/branches/release/v${VERSION} \
@@ -39,4 +43,5 @@ patch:
 cleanAll distclean: clean-version
 
 clean-version:
-	rm -f version.h src/lib/perl5/COD/ToolsVersion.pm
+	rm -f version.h
+	rm -f src/lib/perl5/COD/ToolsVersion.pm scripts/cod-tools-version
