@@ -23,13 +23,13 @@ release:
 	${MAKE} minor
 
 major:
-	awk -F. '/^#/{print} !/^#/{print $$1+1 "." $$2 ($$3 ? ".":"") $$3}' \
+	awk -F. '/^#/{print} !/^#/{print $$1+1 ".0" ($$3 ? ".0" : "")}' \
 		${VFILE} > ${VFILE}.$$$$; \
 	cat ${VFILE}.$$$$ > ${VFILE}; \
 	rm -f ${VFILE}.$$$$
 
 minor:
-	awk -F. '/^#/{print} !/^#/{print $$1 "." $$2+1 ($$3 ? ".":"") $$3}' \
+	awk -F. '/^#/{print} !/^#/{print $$1 "." $$2+1 ($$3 ? ".0" : "")}' \
 		${VFILE} > ${VFILE}.$$$$; \
 	cat ${VFILE}.$$$$ > ${VFILE}; \
 	rm -f ${VFILE}.$$$$
