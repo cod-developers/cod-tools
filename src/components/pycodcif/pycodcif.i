@@ -28,17 +28,15 @@ def parse(filename,*args):
     for datablock in data:
         datablock['precisions'] = {}
         for tag in datablock['types'].keys():
-            precisions = extract_precision(datablock['values'][tag],
-                                           datablock['types'][tag],
-                                           tag in datablock['inloop'].keys())
+            precisions, _ = extract_precision(datablock['values'][tag],
+                                              datablock['types'][tag])
             if precisions is not None:
                 datablock['precisions'][tag] = precisions
         for saveblock in datablock['save_blocks']:
             saveblock['precisions'] = {}
             for tag in saveblock['types'].keys():
-                precisions = extract_precision(saveblock['values'][tag],
-                                               saveblock['types'][tag],
-                                               tag in saveblock['inloop'].keys())
+                precisions, _ = extract_precision(saveblock['values'][tag],
+                                                  saveblock['types'][tag])
                 if precisions is not None:
                     saveblock['precisions'][tag] = precisions
 
@@ -110,37 +108,45 @@ def unpack_precision(value,precision):
     precision = float(precision) * (10**exponent)
     return precision
 
-def extract_precision(values,types,is_in_loop=False):
+def extract_precision(values,types):
     import re
     if isinstance(types,list):
         precisions = []
+        important = []
         for i in range(0,len(values)):
-            precisions.append(extract_precision(values[i],types[i]))
-        if any([x is not None for x in precisions]) or \
-            any([isinstance(x,list) or isinstance(x,dict) for x in types]) or \
-            (is_in_loop == True and any([x in ('INT','FLOAT') for x in types])):
-            return precisions
+            precision, is_important = \
+                extract_precision(values[i],types[i])
+            precisions.append(precision)
+            important.append(is_important)
+        if any([x == 1 for x in important]):
+            return precisions, 1
         else:
-            return None
+            return None, 0
     elif isinstance(types,dict):
         precisions = {}
         for i in values.keys():
-            precisions[i] = extract_precision(values[i],types[i])
-        return precisions
+            precision, is_important = \
+                extract_precision(values[i],types[i])
+            if is_important:
+                precisions[i] = precision
+        if precisions.keys():
+            return precisions, 1
+        else:
+            return None, 0
     elif types == 'FLOAT':
         match = re.search('^(.*)(\(([0-9]+)\))$',values)
         if match is not None and match.group(1):
-            return unpack_precision(match.group(1),match.group(3))
+            return unpack_precision(match.group(1),match.group(3)), 1
         else:
-            return None
+            return None, 1
     elif types == 'INT':
         match = re.search('^(.*)(\(([0-9]+)\))$',values)
         if match is not None and match.group(1):
-            return match.group(3)
+            return match.group(3), 1
         else:
-            return None
+            return None, 1
     else:
-        return None
+        return None, 0
 
 program_escape = {
     '&': '&amp;',
