@@ -38,8 +38,8 @@ use COD::ToolsVersion;
 
 my $Id = '$Id$';
 
-my $same_site_distance_sensivity = 0.000001;
-my $same_site_occupancy_sensivity = 0.01;
+my $same_site_distance_sensitivity = 0.000001;
+my $same_site_occupancy_sensitivity = 0.01;
 my $brick_size = 1;
 my $cif_header_file;
 my $use_parser = "c";
@@ -49,11 +49,11 @@ my $ignore_occupancies = 0;
 my $messages_to_depositor_comments = 1;
 
 #* OPTIONS:
-#*   -d, --distance-sensivity  0.000001
+#*   -d, --distance-sensitivity  0.000001
 #*                     Specify maximum distance between two atoms that should
 #*                     be perceived as belonging to the same atom site.
 #*
-#*   --occupancy-sensivity  0.01
+#*   --occupancy-sensitivity  0.01
 #*                     Set maximum deviation for the sum of occupancies of
 #*                     the atoms from the same atom site from 1.
 #*
@@ -108,8 +108,8 @@ my $messages_to_depositor_comments = 1;
 #*                     Output version information and exit.
 #**
 @ARGV = getOptions(
-    "-d,--distance-sensivity" => \$same_site_distance_sensivity,
-    "--occupancy-sensivity" => \$same_site_occupancy_sensivity,
+    "-d,--distance-sensitivity" => \$same_site_distance_sensitivity,
+    "--occupancy-sensitivity" => \$same_site_occupancy_sensitivity,
 
     "-h,--add-cif-header" => \$cif_header_file,
 
@@ -206,10 +206,10 @@ for my $filename (@ARGV) {
         eval {
             mark_disorder( $dataset,
                            \%COD::AtomProperties::atoms,
-                           { same_site_distance_sensivity =>
-                                $same_site_distance_sensivity,
-                             same_site_occupancy_sensivity =>
-                                $same_site_occupancy_sensivity,
+                           { same_site_distance_sensitivity =>
+                                $same_site_distance_sensitivity,
+                             same_site_occupancy_sensitivity =>
+                                $same_site_occupancy_sensitivity,
                              brick_size => $brick_size,
                              exclude_zero_occupancies =>
                                 $exclude_zero_occupancies,
@@ -251,8 +251,8 @@ sub get_alternatives
 
     $options = {} unless $options;
     my $default_options = {
-        same_site_distance_sensivity => 0.000001,
-        same_site_occupancy_sensivity => 0.01,
+        same_site_distance_sensitivity => 0.000001,
+        same_site_occupancy_sensitivity => 0.01,
         exclude_zero_occupancies => 1,
         ignore_occupancies => 0,
     };
@@ -301,7 +301,7 @@ sub get_alternatives
 
                 my $dist = distance( $atom_in_unit_cell_coords_ortho,
                                      $atom_coords_ortho );
-                next if $dist > $options->{same_site_distance_sensivity};
+                next if $dist > $options->{same_site_distance_sensitivity};
 
                 # Skipping initially marked disordered atoms:
                 if( exists $current_atom->{assembly} &&
@@ -364,7 +364,7 @@ sub get_alternatives
                       map { $atom_list->[$_]{atom_site_occupancy} }
                       @$assembly );
         if( abs( $occupancy_sum - 1 ) >
-            $options->{same_site_occupancy_sensivity} &&
+            $options->{same_site_occupancy_sensitivity} &&
             !$options->{ignore_occupancies} ) {
             my @names = sort map { $atom_list->[$_]{name} } @$assembly;
             warn "WARNING, atoms " . join( ", ", map { "'$_'" } @names )
@@ -396,8 +396,8 @@ sub mark_disorder
 
     $options = {} unless $options;
     my $default_options = {
-        same_site_distance_sensivity => 0.000001,
-        same_site_occupancy_sensivity => 0.01,
+        same_site_distance_sensitivity => 0.000001,
+        same_site_occupancy_sensitivity => 0.01,
         brick_size => 1,
         exclude_zero_occupancies => 1,
         report_marked_disorders => 1,
@@ -440,10 +440,10 @@ sub mark_disorder
         get_alternatives( $atom_list,
                           $bricks,
                           $f2o,
-                          { same_site_distance_sensivity =>
-                                $options->{same_site_distance_sensivity},
-                            same_site_occupancy_sensivity =>
-                                $options->{same_site_occupancy_sensivity},
+                          { same_site_distance_sensitivity =>
+                                $options->{same_site_distance_sensitivity},
+                            same_site_occupancy_sensitivity =>
+                                $options->{same_site_occupancy_sensitivity},
                             exclude_zero_occupancies =>
                                 $options->{exclude_zero_occupancies},
                             ignore_occupancies =>
