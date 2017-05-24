@@ -9,7 +9,10 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #$URL$
 #------------------------------------------------------------------------------
 #*
-#  Performs reductions of the unit cell using different algorithms.
+#* Performs reductions of the unit cell using different algorithms.
+#*
+#* USAGE:
+#*    $0 --options input1.cif input*.cif
 #**
 
 use strict;
@@ -48,31 +51,31 @@ my $cell_fformat = "%.12g";
 
 my $Pi = 4 * atan2(1,1);
 
-#* USAGE:
-#*     $0 --options input1.cif input*.cif
-#*
 #* OPTIONS:
-#*     --use-perl-parser
-#*        Use Perl parser for CIF parsing.
+#*   --use-perl-parser
+#*                     Use Perl parser for CIF parsing.
+#*   --use-c-parser
+#*                     Use Perl & C parser for CIF parsing (default).
 #*
-#*     --use-c-parser
-#*        Use Perl & C parser for CIF parsing (default).
+#*   -F, --float-format "%15.12f"
+#*                     Specify format to print out floating point numbers.
 #*
-#*     -F, --float-format "%15.12f"
-#*        Specify format to print out floating point numbers.
+#*   -C, --cell-format "%15.12f"
+#*                     Specify format to print out floating point numbers for
+#*                     atomic coordinates.
 #*
-#*     -C, --cell-format "%15.12f"
-#*        Specify format to print out floating point numbers for atomic
-#*        coordinates.
+#*   -e, --epsilon 1E-6
+#*                     Tolerance to compare cell parameter equality in cell
+#*                     reductions.
 #*
-#*     -e, --epsilon 1E-6
-#*        Tollerance to compare cell parameter equality in cell reductions.
+#*   --debug, --no-debug
+#*                     Turn on/off the debug prints of reduction algorithm.
+#*                     Default off.
 #*
-#*     --debug, --no-debug
-#*        Turn on/off the debug prints of reduction algorithm. Default off.
-#*
-#*     --help, --usage
-#*        Print short usage message (this message) and exit.
+#*   --help, --usage
+#*                     Output a short usage message (this message) and exit.
+#*   --version
+#*                     Output version information and exit.
 #**
 @ARGV = getOptions(
     "--debug"    => sub{ $debug = 1 },

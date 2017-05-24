@@ -9,9 +9,12 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #$URL$
 #------------------------------------------------------------------------------
 #*
-#  Parse a CIF file, check if certain data values match COD
-#  requirements and IUCr data validation criteria (Version: 2000.06.09,
-#  ftp://ftp.iucr.ac.uk/pub/dvntests or ftp://ftp.iucr.org/pub/dvntests)
+#* Parse a CIF file, check if certain data values match COD
+#* requirements and IUCr data validation criteria (Version: 2000.06.09,
+#* ftp://ftp.iucr.ac.uk/pub/dvntests or ftp://ftp.iucr.org/pub/dvntests)
+#*
+#* USAGE:
+#*    $0 --options input1.cif input*.cif
 #**
 
 use strict;
@@ -183,88 +186,88 @@ my $max_year_temperature_factors_optional = 1969;
 my $use_parser = 'c';
 my $input_format = 'cif';
 
-#* USAGE:
-#*    $0 --options input1.cif input*.cif
-#*
 #* OPTIONS:
-#*  -c, --always-continue
+#*   -c, --always-continue
 #*                     Continue processing and return successful return status
 #*                     even if errors are diagnosed.
-#*  -c-, --always-die
+#*   -c-, --always-die
 #*                     Stop and return error status if errors are diagnosed.
-#*  --continue-on-errors
+#*   --continue-on-errors
 #*                     Do not terminate script if errors are raised (default).
-#*  --die-on-errors
+#*   --die-on-errors
 #*                     Terminate script immediately if errors are raised.
-#*  --continue-on-warnings
+#*   --continue-on-warnings
 #*                     Do not terminate script if warnings are raised (default).
-#*  --die-on-warnings
+#*   --die-on-warnings
 #*                     Terminate script immediately if warnings are raised.
-#*  --continue-on-notes
+#*   --continue-on-notes
 #*                     Do not terminate script if notes are raised (default).
-#*  --die-on-notes
+#*   --die-on-notes
 #*                     Terminate script immediately if notes are raised.
-#*  --use-perl-parser
+#*   --use-perl-parser
 #*                     Use Perl parser for CIF parsing.
-#*  --use-c-parser
+#*   --use-c-parser
 #*                     Use Perl & C parser for CIF parsing (default).
-#*  --cif-input
+#*   --cif-input
 #*                     Use CIF format for input (default).
-#*  --json-input
+#*   --json-input
 #*                     Use JSON format for input.
 #*
 #* For every --check-xyz option, there are the following corresponding
 #* related options:
-#*    --check-only-xyz
-#*        Switch off any other checks and check ONLY xyz (the last option on the
-#*        command line wins)
+#*   --check-only-xyz
+#*                     Switch off any other checks and check ONLY xyz
+#*                     (the last option on the command line wins).
 #*
-#*    --dont-check-xyz, --do-not-check-xyz, --no-check-xyz
-#*        Switch off checks of xyz condition
+#*   --dont-check-xyz, --do-not-check-xyz, --no-check-xyz
+#*                     Switch off checks of xyz condition.
 #*
 #* The check options are:
 #*
-#*    --check-authors
+#*   --check-authors
 #*
-#*    --check-bibliography
+#*   --check-bibliography
 #*
-#*    --check-chemical-formula-sum
+#*   --check-chemical-formula-sum
 #*
-#*    --check-spacegroup-info
+#*   --check-spacegroup-info
 #*
-#*    --check-operators, --check-symmetry-operators
+#*   --check-operators, --check-symmetry-operators
 #*
-#*    --check-unit-cell
+#*   --check-unit-cell
 #*
-#*    --check-symmetry
+#*   --check-symmetry
 #*
-#*    --check-simultaneous-presence
+#*   --check-simultaneous-presence
 #*
-#*    --check-limits
+#*   --check-limits
 #*
-#*    --print-limits
+#*   --print-limits
 #*
-#*    --add-limits  limits.lst
+#*   --add-limits  limits.lst
 #*
-#*    --limits-file limits.lst
+#*   --limits-file limits.lst
 #*
-#*    --reset-limits
+#*   --reset-limits
 #*
-#*    --check-temperature-factors
+#*   --check-temperature-factors
 #*
-#*    --max-year-temperature-factors-optional 1969
+#*   --max-year-temperature-factors-optional 1969
 #*
-#*    --check-embedded-file-integrity
+#*   --check-embedded-file-integrity
 #*
-#*    --check-z
+#*   --check-z
 #*
-#*    --check-disorder
+#*   --check-disorder
 #*
-#*    --check-all
+#*   --check-all
 #*
-#*    --check-none, --dont-check-any
+#*   --check-none, --dont-check-any
 #*
-#*    --help, --usage        Print a short usage message (this message) and exit.
+#*   --help, --usage
+#*                     Output a short usage message (this message) and exit.
+#*   --version
+#*                     Output version information and exit.
 #**
 @ARGV = getOptions(
     '--check-bibliography'

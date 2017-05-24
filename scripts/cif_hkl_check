@@ -9,9 +9,12 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #$URL$
 #------------------------------------------------------------------------------
 #*
-#  Check the correspondence between CIF and diffraction data files, taking
-#  data block names, cell parameters, author lists and symmetry group names
-#  into account.
+#* Check the correspondence between CIF and diffraction data files, taking
+#* data block names, cell parameters, author lists and symmetry group names
+#* into account.
+#*
+#* USAGE:
+#*    $0 --options input.cif input.hkl input2.cif input2.hkl input*.{cif,hkl}
 #**
 
 use strict;
@@ -38,18 +41,16 @@ my $die_on_error_level = {
     NOTE    => 0
 };
 
-#* USAGE:
-#*     $0 --options input.cif input.hkl input2.cif input2.hkl input*.{cif,hkl}
-#*
 #* OPTIONS:
-#*     --use-perl-parser
-#*        Use Perl parser for CIF parsing.
+#*   --use-perl-parser
+#*                     Use Perl parser for CIF parsing.
+#*   --use-c-parser
+#*                     Use Perl & C parser for CIF parsing (default).
 #*
-#*     --use-c-parser
-#*        Use Perl & C parser for CIF parsing.
-#*
-#*     --help, --usage
-#*        Print short usage message (this message) and exit.
+#*   --help, --usage
+#*                     Output a short usage message (this message) and exit.
+#*   --version
+#*                     Output version information and exit.
 #**
 @ARGV = getOptions(
     "--use-perl-parser" => sub { $use_parser = "perl" },

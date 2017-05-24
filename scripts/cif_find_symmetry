@@ -9,10 +9,13 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #$URL$
 #------------------------------------------------------------------------------
 #*
-#  Find the symmetry of the atoms in the unit cell of a CIF crystal
-#  structure. In order to obtain correct results most of the time, all
-#  atoms of the unit cell should be present in the input. This can be
-#  achieved by using cif_p1 or similar programs.
+#* Find the symmetry of the atoms in the unit cell of a CIF crystal
+#* structure. In order to obtain correct results most of the time, all
+#* atoms of the unit cell should be present in the input. This can be
+#* achieved by using cif_p1 or similar programs.
+#*
+#* USAGE:
+#*    $0 --options input1.cif input*.cif
 #**
 
 use strict;
@@ -89,39 +92,37 @@ my @cell_tags = qw(
     _cell_angle_gamma
 );
 
-#* USAGE:
-#*     $0 --options input1.cif input*.cif
-#*
 #* OPTIONS:
-#*    --precision  1e-5,
-#*    --symmetry-precision  1e-5
-#*        Tolerance of distance between atomic positions and between
-#*        lengths of lattice vectors to be tolerated in the symmetry
-#*        finding (default 1e-5).
+#*   --precision  1e-5,
+#*   --symmetry-precision  1e-5
+#*                     Tolerance of distance between atomic positions and between
+#*                     lengths of lattice vectors to be tolerated in the symmetry
+#*                     finding (default 1e-5).
 #*
-#*    --use-spglib
-#*        Use spglib for symmetry search. Currently, spglib is the only
-#*        implemented method.
+#*   --use-spglib
+#*                     Use spglib for symmetry search. Currently, spglib is
+#*                     the only implemented method.
 #*
-#*     -F, --float-format "%.12g"
-#*        Specify format to print out floating point numbers.
+#*   -F, --float-format "%.12g"
+#*                     Specify format to print out floating point numbers.
 #*
-#*    --dump-symmetry-dataset
-#*        Suppress regular output and dump symmetry data structure, as
-#*        returned from spglib.
+#*   --dump-symmetry-dataset
+#*                     Suppress regular output and dump symmetry data structure,
+#*                     as returned from spglib.
 #*
-#*    --dont-dump-symmetry-dataset,
-#*    --no-dump-symmetry-dataset
-#*        Produce regular output.
+#*   --dont-dump-symmetry-dataset,
+#*   --no-dump-symmetry-dataset
+#*                     Produce regular output.
 #*
-#*    --use-perl-parser
-#*        Use Perl parser for CIF parsing.
+#*   --use-perl-parser
+#*                     Use Perl parser for CIF parsing.
+#*   --use-c-parser
+#*                     Use Perl & C parser for CIF parsing (default).
 #*
-#*    --use-c-parser
-#*        Use Perl & C parser for CIF parsing (default).
-#*
-#*    --help, --usage
-#*        Print a short usage message (this message) and exit.
+#*   --help, --usage
+#*                     Output a short usage message (this message) and exit.
+#*   --version
+#*                     Output version information and exit.
 #**
 
 @ARGV = getOptions(

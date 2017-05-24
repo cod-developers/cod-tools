@@ -9,8 +9,11 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #$URL$
 #------------------------------------------------------------------------------
 #*
-#  Filter and check pairs of CIF and Fobs files for suitability for
-#  deposition to COD database.
+#* Filter and check pairs of CIF and Fobs files for suitability for
+#* deposition to COD database.
+#*
+#* USAGE:
+#*    $0 --options input.cif input*.cif
 #**
 
 use strict;
@@ -42,115 +45,115 @@ my $print_timestamps = 0;
 my $tmp_dir;
 my $tmp_file = "tmp-cod_predeposition_check-$$.tmp";
 
-#* USAGE:
-#*     $0 --options input.cif input*.cif
-#*
 #* OPTIONS:
-#*     -d, --database  cod
-#*        Use database "cod" to query for structures.
+#*   -d, --database  cod
+#*                     Use database "cod" to query for structures.
 #*
-#*     -h, --host   www.crystallography.net
-#*     -s, --server www.crystallography.net
-#*        Query COD database on the host 'www.crystallography.net'.
+#*   -h, --host   www.crystallography.net
+#*   -s, --server www.crystallography.net
+#*                     Query COD database on the host 'www.crystallography.net'.
 #*
-#*     -l, --localhost
-#*        Use database server on the localhost to query the COD database.
+#*   -l, --localhost
+#*                     Use database server on the localhost to query the COD
+#*                     database.
 #*
-#*     -p, --port 3306
-#*        Use use the specified port (default 3306) to query structures.
+#*   -p, --port 3306
+#*                     Use use the specified port (default 3306) to query
+#*                     structures.
 #*
-#*     -t, --table  data
-#*        Use SQL table 'data' to query for structures.
+#*   -t, --table  data
+#*                     Use SQL table 'data' to query for structures.
 #*
-#*     -u, --user cod_reader
-#*        Use user name 'cod_reader' to access COD database; this reader
-#*        should be granted SELECT privilege, i.e. should be able to read
-#*        the COD database, without supplying a password.
+#*   -u, --user cod_reader
+#*                     Use user name 'cod_reader' to access COD database;
+#*                     this reader should be granted SELECT privilege, i.e.
+#*                     should be able to read the COD database, without
+#*                     supplying a password.
 #*
-#*     --password
-#*        Use the specified password (default empty) to connect.
+#*   --password
+#*                     Use the specified password (default empty) to connect.
 #*
-#*     --platform 'SQLite'
-#*        Use the SQL database platform 'SQLite' to query structures
-#*        (default 'mysql').
+#*   --platform 'SQLite'
+#*                     Use the SQL database platform 'SQLite' to query
+#*                     structures (default 'mysql').
 #*
-#*     --cif input1.cif
-#*        Specify a CIF file to be deposited. Multiple CIF files can be
-#*        provided in a way like this:
-#*        $0 --cif input1.cif --cif input2.cif
+#*   --cif input1.cif
+#*                     Specify a CIF file to be deposited. Multiple CIF files
+#*                     can be provided in a way like this:
+#*                     $0 --cif input1.cif --cif input2.cif
 #*
-#*     --hkl, --fobs input1.hkl
-#*        Specify a Fobs file to be deposited. Multiple Fobs files can be
-#*        provided in way like this:
-#*        $0 --hkl input1.hkl --hkl input2.hkl
-#*        The order of the files is important in order to pair CIF and Fobs
-#*        files correctly.
+#*   --hkl, --fobs input1.hkl
+#*                     Specify a Fobs file to be deposited. Multiple Fobs files
+#*                     can be provided in way like this:
+#*                     $0 --hkl input1.hkl --hkl input2.hkl
+#*                     The order of the files is important in order to pair CIF
+#*                     and Fobs files correctly.
 #*
-#*     --type, --deposition-type 'prepublication'
-#*        Specify the deposition type under which the structure is to be
-#*        deposited (default 'published').
+#*   --type, --deposition-type 'prepublication'
+#*                     Specify the deposition type under which the structure
+#*                     is to be deposited (default 'published').
 #*
-#*     --author-name 'Doe, J.'
-#*        Use the specified name as the name of the person depositing the
-#*        files.
+#*   --author-name 'Doe, J.'
+#*                     Use the specified name as the name of the person
+#*                     depositing the files.
 #*
-#*     --journal 'The Journal'
-#*        Use the specified journal name as if it was supplied by the
-#*        depositor during the 'prepublication' type deposition.
+#*   --journal 'The Journal'
+#*                     Use the specified journal name as if it was supplied
+#*                     by the depositor during the 'prepublication' type
+#*                     deposition.
 #*
-#*     --hold-period 3
-#*        Use the specified hold period as if it was supplied by the
-#*        depositor.
+#*   --hold-period 3
+#*                     Use the specified hold period as if it was supplied by
+#*                     the depositor.
 #*
-#*     --replace
-#*        Treat given files as replacements for previously deposited data.
+#*   --replace
+#*                     Treat given files as replacements for previously
+#*                     deposited data.
+#*   --no-replace, --dont-replace
+#*                     Do not treat given files as replacements for previously
+#*                     deposited data (default).
 #*
-#*     --no-replace, --dont-replace
-#*        Do not treat given files as replacements for previously deposited
-#*        data (default).
+#*   --release
+#*                     Treat given files as if they were previously deposited
+#*                     as prepublication material and should now be released
+#*                     into the public domain.
+#*   --no-release, --dont-release
+#*                     Do not treat given files as if they were previously
+#*                     deposited as prepublication material and should now
+#*                     be released into the public domain (default).
 #*
-#*     --release
-#*        Treat given files as if they were previously deposited as
-#*        prepublication material and should now be released into
-#*        the public domain.
+#*   --bypass-checks
+#*                     Do not check CIF files for compliance with COD
+#*                     requirements.
+#*   --dont-bypass-checks, --no-bypass-checks
+#*                     Check CIF files for compliance with COD requirements
+#*                     (default).
 #*
-#*     --no-release, --dont-release
-#*        Do not treat given files as if they were previously deposited
-#*        as prepublication material and should now be released into
-#*        the public domain (default).
+#*   --split-pdcif
+#*                     Output powder diffraction data blocks as a HKL file.
+#*   --dont-split-pdcif, --no-split-pdcif
+#*                     Output powder diffraction data blocks as part of the
+#*                     CIF file (default).
 #*
-#*     --bypass-checks
-#*        Do not check CIF files for compliance with COD requirements.
+#*   --print-timestamps
+#*                     Print timestamps to STDOUT at the start and end of
+#*                     each CIF file deposition.
+#*   --no-print-timestamps, --dont-print-timestamps
+#*                     Do not print timestamps to STDOUT at the start and end
+#*                     of each CIF file deposition (default)
 #*
-#*     --dont-bypass-checks, --no-bypass-checks
-#*        Check CIF files for compliance with COD requirements (default).
+#*   --tmp-dir, --temp-dir
+#*                     Use the specified temporary directory (default './').
 #*
-#*     --split-pdcif
-#*        Output powder diffraction data blocks as a HKL file.
+#*   --use-perl-parser
+#*                     Use Perl parser to parse CIF files.
+#*   --use-c-parser
+#*                     Use C parser to parse CIF files (default).
 #*
-#*     --dont-split-pdcif, --no-split-pdcif
-#*        Output powder diffraction data blocks as part of the CIF file
-#*        (default).
-#*
-#*     --print-timestamps
-#*        Print timestamps to STDOUT at the start and end of each CIF
-#*        file deposition.
-#*
-#*     --no-print-timestamps, --dont-print-timestamps
-#*        Do not print timestamps to STDOUT at the start and end of
-#*        each CIF file deposition.
-#*
-#*     --tmp-dir, --temp-dir
-#*        Use the specified temporary directory (default './').
-#*
-#*     --use-perl-parser
-#*        Use Perl parser to parse CIF files.
-#*
-#*     --use-c-parser
-#*        Use C parser to parse CIF files (default).
-#*
-#*     --help, --usage
-#*        Print a short usage message (this message) and exit.
+#*   --help, --usage
+#*                     Output a short usage message (this message) and exit.
+#*   --version
+#*                     Output version information and exit.
 #**
 @ARGV = getOptions(
     '-d,--database'  => \$database{name},
