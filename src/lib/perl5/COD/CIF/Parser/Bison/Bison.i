@@ -27,10 +27,9 @@ sub parse
     foreach my $datablock ( @{$data} ) {
         $datablock->{precisions} = {};
         foreach my $tag ( keys %{$datablock->{types}} ) {
-            my $precisions =
+            my( $precisions ) =
                 extract_precision( $datablock->{values}{$tag},
-                                   $datablock->{types}{$tag},
-                                   exists $datablock->{inloop}{$tag} );
+                                   $datablock->{types}{$tag} );
             if( defined $precisions ) {
                 $datablock->{precisions}{$tag} = $precisions;
             }
@@ -38,10 +37,9 @@ sub parse
         foreach my $saveblock ( @{$datablock->{'save_blocks'}} ) {
             $saveblock->{'precisions'} = {};
             foreach my $tag ( keys %{$saveblock->{types}} ) {
-                my $precisions =
+                my( $precisions ) =
                     extract_precision( $saveblock->{values}{$tag},
-                                       $saveblock->{types}{$tag},
-                                       exists $saveblock->{inloop}{$tag} );
+                                       $saveblock->{types}{$tag} );
                 if( defined $precisions ) {
                     $saveblock->{precisions}{$tag} = $precisions;
                 }
@@ -126,41 +124,48 @@ sub YYData
 
 sub extract_precision
 {
-    my( $values, $types, $is_in_loop ) = @_;
+    my( $values, $types ) = @_;
     if( ref( $types ) eq 'ARRAY' ) {
         my @precisions;
+        my @important;
         for( my $i = 0; $i < @{$values}; $i++ ) {
-            push @precisions,
+            my( $precision, $is_important ) =
                 extract_precision( $values->[$i], $types->[$i] );
+            push @precisions, $precision;
+            push @important, $is_important;
         }
-        if( grep( defined $_, @precisions ) ||
-            grep( ref $_, @{$types} ) ||
-            ( $is_in_loop && grep { $_ eq 'INT' || $_ eq 'FLOAT' } @{$types} ) ) {
-            return \@precisions;
+        if( grep { $_ == 1 } @important ) {
+            return ( \@precisions, 1 );
         } else {
-            return undef;
+            return ( undef, 0 );
         }
     } elsif( ref( $types ) eq 'HASH' ) {
         my %precisions;
         foreach (keys %{$values}) {
-            $precisions{$_} =
+            my( $precision, $is_important ) =
                 extract_precision( $values->{$_}, $types->{$_} );
+            next if !$is_important;
+            $precisions{$_} = $precision;
         }
-        return \%precisions;
+        if( %precisions ) {
+            return ( \%precisions, 1 );
+        } else {
+            return ( undef, 0 );
+        }
     } elsif( $types eq 'FLOAT' ) {
         if( $values =~ /^(.*)( \( ([0-9]+) \) )$/sx ) {
-            return unpack_precision( $1, $3 );
+            return ( unpack_precision( $1, $3 ), 1 );
         } else {
-            return undef;
+            return ( undef, 1 );
         }
     } elsif( $types eq 'INT' ) {
         if( $values =~ /^(.*)( \( ([0-9]+) \) )$/sx ) {
-            return $3;
+            return ( $3, 1 );
         } else {
-            return undef;
+            return ( undef, 1 );
         }
     } else {
-        return undef;
+        return ( undef, 0 );
     }
 }
 
