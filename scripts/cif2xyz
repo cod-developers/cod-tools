@@ -9,7 +9,10 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #$URL$
 #------------------------------------------------------------------------------
 #*
-#  Read CIF files and print atom coordinates in XYZ format.
+#* Read CIF files and print atom coordinates in XYZ format.
+#*
+#* USAGE:
+#*    $0 --options input.cif
 #**
 
 use strict;
@@ -36,23 +39,21 @@ my $die_on_error_level = {
 my $print_radii = 0;
 my $use_parser = "c"; # Used CIF parser
 
-#* USAGE:
-#*     $0 --options input.cif
-#*
 #* OPTIONS:
-#*     --print-radii
-#*         Append covalent radii to the atom coordinates.
+#*   --print-radii
+#*                     Append covalent radii to the atom coordinates.
+#*   --no-print-radii, --dont-print-radii, --xyz-only
+#*                     Print only Cartesian XYZ coordinates for input atoms
+#*                     (default).
 #*
-#*     --no-print-radii, --dont-print-radii, --xyz-only
-#*         Print only Cartesian XYZ coordinates for input atoms
-#*         (default behaviour)
+#*   --use-perl-parser
+#*   --use-c-parser
+#*                     Specify parser to parse CIF files. C parser is default.
 #*
-#*     --use-perl-parser
-#*     --use-c-parser
-#*         Specify parser to parse CIF files. C parser is default.
-#*
-#*     --help, --usage
-#*         Print a short usage message (this message) and exit.
+#*   --help, --usage
+#*                     Output a short usage message (this message) and exit.
+#*   --version
+#*                     Output version information and exit.
 #**
 @ARGV = getOptions(
     "--print-radii" => sub{ $print_radii = 1 },

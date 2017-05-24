@@ -9,7 +9,7 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #$URL$
 #------------------------------------------------------------------------------
 #*
-#*  Parse a CIF file, prepare a COD database table entry from it.
+#* Parse a CIF file, prepare a COD database table entry from it.
 #*
 #* USAGE:
 #*    $0 --options input.cif inputs*.cif
@@ -44,81 +44,81 @@ my $die_on_notes    = 0;
 
 my %options;
 #* OPTIONS:
-#* -C, --cod-number 1000000
+#*   -C, --cod-number 1000000
 #*                     Use the specified number, 1000000 in this example, as
 #*                     a COD number for this structure; do not take the number
 #*                     from the data block name.
 #*
-#* -c, --always-continue
+#*   -c, --always-continue
 #*                     Continue processing and return successful return status
 #*                     even if errors are diagnosed.
-#* -c-, --always-die
+#*   -c-, --always-die
 #*                     Stop and return error status if errors are diagnosed.
 #*
-#* -h, --print-header
+#*   -h, --print-header
 #*                     Print header with data column names at the first line
 #*                     With this option cif2cod uses the new field list for
 #*                     the output file.
 #*
-#* -h-, --dont-print-header, --no-print-header
+#*   -h-, --dont-print-header, --no-print-header
 #*                     Do not print column names on the first (header) line
 #*                     (default).
 #*
-#* -k, --keywords
+#*   -k, --keywords
 #*                     Print values in separate lines prefixed with keywords.
 #*
-#* --include-keywords-with-undefined-values
+#*   --include-keywords-with-undefined-values
 #*                     Print the keyword line with an empty value if the value
 #*                     is undefined.
 #*
-#* --exclude-keywords-with-undefined-values
+#*   --exclude-keywords-with-undefined-values
 #*                     Do not print the keyword line at all if the value is
 #*                     undefined (default).
 #*
-#* --use-attached-hydrogens
+#*   --use-attached-hydrogens
 #*                     Include number of implicit hydrogens, specified using
 #*                     _atom_site_attached_hydrogens tag, into the formula sum.
 #*
-#* --dont-use-attached-hydrogens,
-#* --no-use-attached-hydrogens,
-#* --ignore-attached-hydrogens
+#*   --dont-use-attached-hydrogens,
+#*   --no-use-attached-hydrogens,
+#*   --ignore-attached-hydrogens
 #*                     Ignore number of implicit hydrogens, specified using
 #*                     _atom_site_attached_hydrogens tag, in calculation of the
 #*                     formula sum. Default option.
 #*
-#* --reformat-space-group
+#*   --reformat-space-group
 #*                     Correct the formatting of Hermann-Mauguin symmetry
 #*                     space group symbol.
 #*
-#* --dont-reformat-space-group,
-#* --leave-space-group
+#*   --dont-reformat-space-group,
+#*   --leave-space-group
 #*                     Do not correct the formatting of Hermann-Mauguin
 #*                     symmetry space group.
 #*
-#* --use-datablocks-without-coordinates
+#*   --use-datablocks-without-coordinates
 #*                     Do not filter out data blocks without coordinates.
 #*
-#* --do-not-use-datablocks-without-coordinates, --use-all-datablocks
-#* --dont-use-datablocks-without-coordinates
-#* --no-use-datablocks-without-coordinates
-#* --skip-datablocks-without-coordinates
+#*   --do-not-use-datablocks-without-coordinates, --use-all-datablocks
+#*   --dont-use-datablocks-without-coordinates
+#*   --no-use-datablocks-without-coordinates
+#*   --skip-datablocks-without-coordinates
 #*                     Filter out data blocks without coordinates (default).
 #*
-#* --require-only-doi
+#*   --require-only-doi
 #*                     Do not require all bibliographic details (authors,
 #*                     journal name, title, year, volume and first page of
 #*                     the publication) to be present if publication DOI is
 #*                     specified.
 #*
-#* --require-full-bibliography
+#*   --require-full-bibliography
 #*                     Require author names, journal name, volume, publication
 #*                     title, year and first page to be present (default).
 #*
-#* --columns file,flags,Robs
-#* --columns "file flags Robs"
+#*   --columns file,flags,Robs
+#*   --columns "file flags Robs"
 #*                     Print only columns specified in this option.
 #*
-#* --validate-by-schema doc/CODDictionary.xml
+#*   --validate-by-schema doc/CODDictionary.xml
 #*                     Validate the output by supplied XML schema, where the
 #*                     SQL data types are given in the following manner:
 #*
@@ -129,32 +129,34 @@ my %options;
 #*                       </CODParameter>
 #*                     </CODDictionary>
 #*
-#* --continue-on-errors
+#*   --continue-on-errors
 #*                     Do not terminate script if errors are raised.
-#* --dont-continue-on-errors, --no-continue-on-errors,
-#* --exit-on-errors, --do-not-continue-on-errors, --die-on-errors
+#*   --dont-continue-on-errors, --no-continue-on-errors,
+#*   --exit-on-errors, --do-not-continue-on-errors, --die-on-errors
 #*                     Terminate script immediately if errors are raised (default).
-#* --continue-on-warnings
+#*   --continue-on-warnings
 #*                     Do not terminate script if warnings are raised (default).
-#* --die-on-warnings
+#*   --die-on-warnings
 #*                     Terminate script immediately if warnings are raised.
-#* --continue-on-notes
+#*   --continue-on-notes
 #*                     Do not terminate script if notes are raised (default).
-#* --die-on-notes
+#*   --die-on-notes
 #*                     Terminate script immediately if notes are raised.
 #*
-#* --use-perl-parser
+#*   --use-perl-parser
 #*                     Use the Perl parser for parsing CIFs.
-#* --use-c-parser
+#*   --use-c-parser
 #*                     Use the faster C parser for CIFs (default).
 #*
-#* --cif-input
+#*   --cif-input
 #*                     Use CIF format for input (default).
-#* --json-input
+#*   --json-input
 #*                     Use JSON format for input.
 #*
-#* --help, --usage
-#*                     Print a short usage message (this message) and exit.
+#*   --help, --usage
+#*                     Output a short usage message (this message) and exit.
+#*   --version
+#*                     Output version information and exit.
 #**
 @ARGV = getOptions(
     "-C,--cod-number" => \$options{cod_number},

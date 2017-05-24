@@ -10,7 +10,10 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #$Id$
 #------------------------------------------------------------------------------
 #*
-#  Parse JSON CIF and print out CIF.
+#* Parse JSON CIF and print out CIF.
+#*
+#* USAGE:
+#*    $0 [options] input.cif [input2.cif ...]
 #**
 
 use strict;
@@ -35,39 +38,42 @@ my $folding_width = 76;
 
 my %options;
 @ARGV = getOptions(
-
-#** USAGE:
-#**     $0 [options] input.cif [input2.cif ...]
-#** 
-#** OPTIONS:
-#*    --exclude-misspelled-tags
-#*        Remove tags that were not present in the recognised tag list.
-#*    --dont-exclude-misspelled-tags,
-#*    --no-exclude-misspelled-tags
-#*        Disable the '--exclude-misspelled-tags' option.
+#* OPTIONS:
+#*   --exclude-misspelled-tags
+#*                     Remove tags that were not present in the recognised tag
+#*                     list.
+#*   --dont-exclude-misspelled-tags,
+#*   --no-exclude-misspelled-tags
+#*                     Disable the '--exclude-misspelled-tags' option.
 #*
-#*    --retain-tag-order
-#*        Print tags in the same order they appeared in the original file.
-#*    --dont-retain-tag-order
-#*        Disregard original tag order while printing the tags (default).
+#*   --retain-tag-order
+#*                     Print tags in the same order they appeared in the
+#*                     original file.
+#*   --dont-retain-tag-order
+#*                     Disregard original tag order while printing the tags
+#*                     (default).
 #*
-#*    --preserve-loop-order
-#*        Print loops in the same order they appeared in the original file.
-#*    --use-internal-loop-order
-#*        Disregard original loop order while printing the tags (default).
+#*   --preserve-loop-order
+#*                     Print loops in the same order they appeared in the
+#*                     original file.
+#*   --use-internal-loop-order
+#*                     Disregard original loop order while printing the tags
+#*                     (default).
 #*
-#*    --folding-width 76
-#*        Specify the length of the longest unfolded line (default 76).
+#*   --folding-width 76
+#*                     Specify the length of the longest unfolded line
+#*                     (default 76).
 #*
-#*    --fold-long-fields
-#*        Fold fields, longer than folding width.
-#*    --dont-fold-long-fields
-#*        Do not fold fields (default).
+#*   --fold-long-fields
+#*                     Fold fields, longer than folding width.
+#*   --dont-fold-long-fields
+#*                     Do not fold fields (default).
 #*
-#*    --help, --usage
-#*        Print a short usage message (this message) and exit.
+#*   --help, --usage
+#*                     Output a short usage message (this message) and exit.
+#*   --version
+#*                     Output version information and exit.
 #**
-
     '--exclude-misspelled-tags'      => sub { $exclude_misspelled_tags = 1; },
     '--dont-exclude-misspelled-tags' => sub { $exclude_misspelled_tags = 0; },
     '--no-exclude-misspelled-tags'   => sub { $exclude_misspelled_tags = 0; },
