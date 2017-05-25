@@ -114,6 +114,7 @@ static void ungetlinec( int ch, FILE *in );
 static int getlinec( FILE *in, cexception_t *ex );
 
 static char *clean_string( char *src, int is_textfield, cexception_t *ex );
+static void check_utf8( unsigned char *s );
 static char *check_and_clean( char *token, int is_textfield,
                               cexception_t *ex );
 
@@ -201,6 +202,7 @@ static int cif_lexer( FILE *in, cexception_t *ex )
             pos --;
             prevchar = token[pos-1];
             pushchar( &token, &length, pos, '\0' );
+            check_utf8( (unsigned char *)token );
             cif2lval.s = clean_string( token, /* is_textfield = */ 0, ex );
             if( yy_flex_debug ) {
                 printf( ">>> TAG: '%s'\n", token );
@@ -457,6 +459,7 @@ static int cif_lexer( FILE *in, cexception_t *ex )
                         if( yy_flex_debug ) {
                             printf( ">>> TEXT FIELD: '%s'\n", token );
                         }
+                        check_utf8( (unsigned char*)token );
                         cif2lval.s = clean_string( token, /* is_textfield = */ 1,
                                                  ex );
                         qstring_seen = 0;
@@ -504,6 +507,7 @@ static int cif_lexer( FILE *in, cexception_t *ex )
                 if( yy_flex_debug ) {
                     printf( ">>> DATA_: '%s'\n", token + 5 );
                 }
+                check_utf8( (unsigned char*)token );
                 cif2lval.s = clean_string( token + 5, /* is_textfield = */ 0,
                                          ex );
                 qstring_seen = 0;
@@ -522,6 +526,7 @@ static int cif_lexer( FILE *in, cexception_t *ex )
                     if( yy_flex_debug ) {
                         printf( ">>> SAVE_: '%s'\n", token + 5 );
                     }
+                    check_utf8( (unsigned char*)token );
                     cif2lval.s = clean_string( token + 5, /* is_textfield = */ 0,
                                              ex );
                     qstring_seen = 0;
@@ -533,6 +538,7 @@ static int cif_lexer( FILE *in, cexception_t *ex )
                 if( yy_flex_debug ) {
                     printf( ">>> LOOP_\n" );
                 }
+                check_utf8( (unsigned char*)token );
                 cif2lval.s = clean_string( token, /* is_textfield = */ 0, ex );
                 qstring_seen = 0;
                 return _LOOP_;
@@ -753,9 +759,42 @@ static int string_has_control_chars( unsigned char *s )
     return 0;
 }
 
+static void check_utf8( unsigned char *s )
+{
+    if( !s ) return;
+    int continuation_bytes = 0;
+
+    while( *s ) {
+        if( continuation_bytes && *s >= 0x80 && *s < 0xC0 ) {
+            continuation_bytes--;
+        } else if( continuation_bytes ) {
+            cif2error( "incorrect UTF-8" );
+            continuation_bytes = 0;
+        } else if( *s >= 0x80 && *s < 0xC0 ) {
+            cif2error( "stray UTF-8 continuation byte" );
+        } else if( (*s & 0xF8) == 0xF0 ) {
+            continuation_bytes = 3;
+        } else if( (*s & 0xF0) == 0xE0 ) {
+            continuation_bytes = 2;
+        } else if( (*s & 0xE0) == 0xC0 ) {
+            continuation_bytes = 1;
+        } else if( *s >= 0xF8 ) {
+            cif2error( "more than 4 byte UTF-8 codepoints "
+                       "are not allowed" );
+        }
+        s++;
+    }
+
+    if( continuation_bytes ) {
+        cif2error( "prematurely terminated UTF-8 codepoint" );
+    }
+}
+
 static char *check_and_clean( char *token, int is_textfield, cexception_t *ex )
 {
     char *s;
+
+    check_utf8( (unsigned char*)token );
 
     if( string_has_control_chars
         ( (unsigned char*)token )) {
