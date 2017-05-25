@@ -9,8 +9,11 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #$URL$
 #------------------------------------------------------------------------------
 #*
-#  Check dictionaries written in DDLm against the specified instance of
-#  the DDLm dictionary.
+#* Check dictionaries written in DDLm against the specified instance of
+#* the DDLm dictionary.
+#*
+#* USAGE:
+#*    $0 --dictionaries 'cif_core.dic,cif_cod.dic' --options input1.cif input*.cif
 #**
 
 use strict;
@@ -23,18 +26,49 @@ use COD::ErrorHandler qw( process_warnings
                           process_parser_messages
                           report_message );
 use File::Basename;
+use COD::ToolsVersion;
 
 my $use_parser = 'c';
-my $ddlm_dictionary;
+my @dict_files;
 
 my $die_on_errors   = 1;
 my $die_on_warnings = 0;
 my $die_on_notes    = 0;
 
+#* OPTIONS:
+#*   -d, --dictionaries 'cif_core.dic,cif_cod.dic'
+#*                     A list of CIF dictionary files (according to DDLm)
+#*                     to be used in CIF file validation. List elements
+#*                     are separated either by ',' or by ' '. To include
+#*                     dictionaries with filenames containing these symbols,
+#*                     the --add-dictionary option is used.
+#*   -D, --add-dictionary 'cif new dictionary.dic'
+#*                     Add additional CIF dictionary to the list.
+#*   --clear-dictionaries
+#*                     Remove all CIF dictionaries from the list.
+#*
+#*   --continue-on-errors
+#*                     Do not terminate script if errors are raised (default).
+#*   --die-on-errors
+#*                     Terminate script immediately if errors are raised.
+#*   --continue-on-warnings
+#*                     Do not terminate script if warnings are raised (default).
+#*   --die-on-warnings
+#*                     Terminate script immediately if warnings are raised.
+#*   --continue-on-notes
+#*                     Do not terminate script if notes are raised (default).
+#*   --die-on-notes
+#*                     Terminate script immediately if notes are raised.
+#*
+#*   --help, --usage
+#*                     Output a short usage message (this message) and exit.
+#*   --version
+#*                     Output version information and exit.
+#**
 @ARGV = getOptions(
-    '-d,--DDLm-dictionary' => sub { $ddlm_dictionary = get_value() },
-    '--options'         => sub{ options; exit },
-    '--help,--usage'    => sub{ usage; exit; },
+    '-d,--dictionaries'    => sub{ @dict_files = split m/,|\s+/, get_value() },
+    '-D,--add-dictionary'  => sub{ push @dict_files, get_value() },
+    '--clear-dictionaries' => sub{ @dict_files = () },
 
     '--continue-on-errors'          => sub { $die_on_errors = 0 },
     '--die-on-errors'               => sub { $die_on_errors = 1 },
@@ -44,6 +78,12 @@ my $die_on_notes    = 0;
 
     '--continue-on-notes'    => sub { $die_on_notes = 0 },
     '--die-on-notes'         => sub { $die_on_notes = 1 },
+
+    '--options'         => sub{ options; exit },
+    '--help,--usage'    => sub{ usage; exit; },
+    '--version'      => sub { print 'cod-tools version ',
+                                 $COD::ToolsVersion::Version, "\n";
+                                 exit }
 );
 
 my $die_on_error_level = {
@@ -61,9 +101,12 @@ my %default_ddlm_values = (
 
 # TODO: consider the fact that files can have alternative names ('.' vs. '_')
 
+# TODO: implement iteration over the validation dictionaries
+my $ddlm_dictionary = $dict_files[0];
+
 my $options = { 'parser' => $use_parser, 'no_print' => 1 };
 my ( $data, $err_count, $messages ) = parse_cif( $ddlm_dictionary, $options );
-# TODO: warn if there are more than 1 datablock in a file
+# TODO: warn if there are more than 1 data block in a file
 process_parser_messages( $messages, $die_on_error_level );
 
 my $dict_block = $data->[0];
