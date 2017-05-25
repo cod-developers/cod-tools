@@ -38,7 +38,12 @@ sub cif2json
 sub json2cif($)
 {
     my( $json ) = @_;
-    my $js = new JSON;
+    my $js;
+    if( $JSON::VERSION =~ /^2\.15(\..+)?$/ ) {
+        $js = JSON->new->allow_nonref;
+    } else {
+        $js = JSON->new;
+    }
     $js->incr_parse( $json );
     my @decoded;
     while( my $decoded = $js->incr_parse ) {
