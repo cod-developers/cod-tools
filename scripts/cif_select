@@ -9,7 +9,10 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #$URL$
 #------------------------------------------------------------------------------
 #*
-#  Read CIFs and print out selected tags with their values.
+#* Read CIFs and print out selected tags with their values.
+#*
+#* USAGE:
+#*    $0 --options input1.cif input*.cif
 #**
 
 use strict;
@@ -23,6 +26,7 @@ use COD::SUsage qw( usage options );
 use COD::ErrorHandler qw( process_errors
                           process_parser_messages
                           report_message );
+use COD::ToolsVersion;
 
 my $use_parser = 'c';
 
@@ -38,56 +42,53 @@ my $canonicalize_tag_names = 0;
 my $output_tabular = 0;
 my $invert = 0;
 
-#* USAGE:
-#*     $0 --options input1.cif input*.cif
-#*
 #* OPTIONS:
-#*     -t, --tags _tag1,_tag2,_tag3
-#*     --tags "_tag1 _tag2 _tag3"
-#*         Print out values of tags _tag1, _tag2, and _tag3;
-#*         the specified tag list becomes a new list of printed tags.
+#*   -t, --tags _tag1,_tag2,_tag3
+#*   --tags "_tag1 _tag2 _tag3"
+#*                     Print out values of tags _tag1, _tag2, and _tag3;
+#*                     the specified tag list becomes a new list of printed tags.
 #*
-#*     -a, --add-tag _tag4
-#*         Add tag _tag4 to the list of printed tags.
+#*   -a, --add-tag _tag4
+#*                     Add tag _tag4 to the list of printed tags.
 #*
-#*     -f, --file-with-tags tag.lst
-#*         Read tags to be extracted from the file 'tag.lst'. Comments
-#*         (lines starting with '#') in 'tag.lst' are ignored.
+#*   -f, --file-with-tags tag.lst
+#*                     Read tags to be extracted from the file 'tag.lst'.
+#*                     Comments (lines starting with '#') in 'tag.lst' are
+#*                     ignored.
 #*
-#*     -c, --clear-tags
-#*         Clear the list of printed tags accumulated so far.
+#*   -c, --clear-tags
+#*                     Clear the list of printed tags accumulated so far.
 #*
-#*     --invert
-#*         Invert the sense of selection. Exclude values of the tags from
-#*         the supplied list.
+#*   --invert
+#*                     Invert the sense of selection. Exclude values of
+#*                     the tags from the supplied list.
 #*
-#*     --treat-dots-as-underscores
-#*         Convert all dots in tag names into underscores (default).
+#*   --treat-dots-as-underscores
+#*                     Convert all dots in tag names into underscores (default).
 #*
-#*     --dont-treat-dots-as-underscores, --no-treat-dots-as-underscores
-#*         Leave original tags as they are.
+#*   --dont-treat-dots-as-underscores, --no-treat-dots-as-underscores
+#*                     Leave original tags as they are.
 #*
-#*     --tabular, --output-tabular
-#*         Output selected tags and their values in tabular format:
-#*         <data block name> <tag name> <value> <value> ... <value>
+#*   --tabular, --output-tabular
+#*                     Output selected tags and their values in tabular format:
+#*                     <data block name> <tag name> <value> <value> ... <value>
+#*   --cif, --output-cif
+#*                     Output selected tags and their values in CIF format (default).
 #*
-#*     --cif, --output-cif
-#*         Output selected tags and their values in CIF format (default).
+#*   --canonicalize-tag-names
+#*                     Output tags in the canonical form.
+#*   --dont-canonicalize-tag-names, --no-canonicalize-tag-names
+#*                     Output tags as they are given in original file(s) (default).
 #*
-#*     --canonicalize-tag-names
-#*         Output tags in the canonical form.
+#*   --use-perl-parser
+#*                     Use Perl parser for CIF parsing.
+#*   --use-c-parser
+#*                     Use Perl & C parser for CIF parsing.
 #*
-#*     --dont-canonicalize-tag-names, --no-canonicalize-tag-names
-#*         Output tags as they are given in original file(s) (default).
-#*
-#*     --use-perl-parser
-#*         Use Perl parser for CIF parsing.
-#*
-#*     --use-c-parser
-#*         Use Perl & C parser for CIF parsing.
-#*
-#*     --help, --usage
-#*         Print a short usage message (this message) and exit.
+#*  --help, --usage
+#*                     Output a short usage message (this message) and exit.
+#*   --version
+#*                     Output version information and exit.
 #**
 @ARGV = getOptions(
     "-t,--tags" => sub { @selected_tags = split( /\s|,/, get_value()) },
@@ -137,7 +138,10 @@ my $invert = 0;
     "--use-perl-parser" => sub { $use_parser = "perl" },
     "--use-c-parser"    => sub { $use_parser = "c" },
     "--options"         => sub { options; exit },
-    "--help,--usage"    => sub { usage; exit }
+    "--help,--usage"    => sub { usage; exit },
+    '--version'         => sub { print 'cod-tools version ',
+                                 $COD::ToolsVersion::Version, "\n";
+                                 exit }
 );
 
 sub sunique(@);

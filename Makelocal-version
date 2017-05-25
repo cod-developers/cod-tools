@@ -1,0 +1,50 @@
+#--*- Makefile -*--
+
+.PHONY: release major minor patch
+
+VFILE = .version
+
+VERSION := $(shell grep -v "^\#" ${VFILE})
+
+version.h: version.hin ${VFILE}
+	sed 's/@VERSION@/${VERSION}/' $< > $@
+
+src/lib/perl5/COD/ToolsVersion.pm: src/lib/perl5/COD/ToolsVersion.pmin ${VFILE}
+	sed 's/@VERSION@/${VERSION}/' $< > $@
+
+scripts/cod-tools-version: scripts/cod-tools-version.in
+	sed 's/@VERSION@/${VERSION}/' $< > $@
+	chmod 755 $@
+
+release:
+	svn ci
+	perl -lpi -e 's/\(unreleased\)/(${VERSION})/ if $$. == 1' CHANGELOG
+	svn ci -m "CHANGELOG: switching from 'unreleased' to '${VERSION}'"
+	svn cp ^/trunk ^/branches/release/v${VERSION} \
+	   -m "Preparing version ${VERSION} for release in the release branch."
+	${MAKE} minor
+
+major:
+	awk -F. '/^#/{print} !/^#/{print $$1+1 ".0" ($$3 ? ".0" : "")}' \
+		${VFILE} > ${VFILE}.$$$$; \
+	cat ${VFILE}.$$$$ > ${VFILE}; \
+	rm -f ${VFILE}.$$$$
+
+minor:
+	awk -F. '/^#/{print} !/^#/{print $$1 "." $$2+1 ($$3 ? ".0" : "")}' \
+		${VFILE} > ${VFILE}.$$$$; \
+	cat ${VFILE}.$$$$ > ${VFILE}; \
+	rm -f ${VFILE}.$$$$
+
+patch:
+	awk -F. '/^#/{print} !/^#/{print $$1 "." $$2 "." $$3+1}' \
+		${VFILE} > ${VFILE}.$$$$; \
+	cat ${VFILE}.$$$$ > ${VFILE}; \
+	rm -f ${VFILE}.$$$$
+
+cleanAll distclean: clean-version
+
+clean-version:
+	rm -f version.h
+	rm -f src/lib/perl5/COD/ToolsVersion.pm scripts/cod-tools-version
+	rm -f scripts/.cod-tools-version.d

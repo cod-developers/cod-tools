@@ -9,10 +9,13 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #$URL$
 #------------------------------------------------------------------------
 #*
-# Split CIF files into separate files with one data_ section each.
-#
-# This script parses given CIF files to separate the data blocks, so is
-# capable of splitting non-correctly formatted and nested CIF files.
+#* Split CIF files into separate files with one data_ section each.
+#*
+#* This script parses given CIF files to separate the data blocks, so is
+#* capable of splitting non-correctly formatted and nested CIF files.
+#*
+#* USAGE:
+#*    $0 --options input1.cif input*.cif
 #**
 
 use strict;
@@ -26,6 +29,7 @@ use COD::SUsage qw( usage options );
 use COD::ErrorHandler qw( process_warnings
                           process_errors
                           process_parser_messages );
+use COD::ToolsVersion;
 
 my $die_on_error_level = {
     ERROR   => 1,
@@ -43,49 +47,48 @@ my $use_parser = "c";
 my $input_format  = 'cif';
 my $output_format = 'cif';
 
-#*  USAGE:
-#*      $0 --options input1.cif input*.cif
+#* OPTIONS:
+#*   -o, --output-dir out/
+#*                     Put all split files into the directory out/.
 #*
-#*  OPTIONS:
-#*  -o, --output-dir out/
-#*      Put all split files into the directory out/.
+#*   -p, --prefixed, --output-prefixed
+#*                     Print split data blocks to the STDOUT, each line
+#*                     prefixed by the data block name. Do not create any files.
 #*
-#*  -p, --prefixed, --output-prefixed
-#*      Print splitted data blocks to the STDOUT, each line prefixed
-#*      by the data block name. Do not create any files.
+#*   --output-tar
+#*                     Produce TAR archive with split files to the STDOUT.
 #*
-#*  --output-tar
-#*      Produce TAR archive with split files to the STDOUT.
+#*   -h, --add-cif-header header_file.cif
+#*                     Prepend each of the output files with the comments
+#*                     from the beginning of the specified file.
 #*
-#*  -h, --add-cif-header header_file.cif
-#*      Prepend each of the output files with the comments from the
-#*      beginning of the specified file.
+#*   -v, --verbose
+#*                     Print names of the generated files to STDERR.
+#*   -q, --quiet
+#*                     Do not print file names to STDERR.
 #*
-#*  -v, --verbose
-#*      Print names of the generated files to STDERR.
-#*  -q, --quiet
-#*      Do not print file names to STDERR.
+#*   --use-perl-parser
+#*                     Use Perl parser for CIF parsing.
+#*   --use-c-parser
+#*                     Use Perl & C parser for CIF parsing.
 #*
-#*  --use-perl-parser
-#*      Use Perl parser for CIF parsing.
-#*  --use-c-parser
-#*      Use Perl & C parser for CIF parsing.
+#*   --cif-input
+#*                     Use CIF format for input (default).
+#*   --json-input
+#*                     Use JSON format for input.
+#*   --cif-output
+#*                     Use CIF format for output (default).
+#*   --json-output
+#*                     Use JSON format for output.
+#*   --cif
+#*                     Use CIF format for both input and output (default).
+#*   --json
+#*                     Use JSON format for both input and output.
 #*
-#*  --cif-input
-#*      Use CIF format for input (default).
-#*  --json-input
-#*      Use JSON format for input.
-#*  --cif-output
-#*      Use CIF format for output (default).
-#*  --json-output  
-#*      Use JSON format for output.
-#*  --cif
-#*      Use CIF format for both input and output (default).
-#*  --json
-#*      Use JSON format for both input and output.
-#*
-#*  --help, --usage
-#*      Print short usage message (this message) and exit
+#*   --help, --usage
+#*                     Output a short usage message (this message) and exit.
+#*   --version
+#*                     Output version information and exit.
 #**
 @ARGV = getOptions(
    "-o,--output-dir" => sub { $output_dir = get_value(),
@@ -113,7 +116,10 @@ my $output_format = 'cif';
     '--json' => sub { $input_format = $output_format = 'json' },
 
    "--options"         => sub { options; exit },
-   "--help,--usage"    => sub { usage; exit }
+   "--help,--usage"    => sub { usage; exit },
+    '--version'         => sub { print 'cod-tools version ',
+                                 $COD::ToolsVersion::Version, "\n";
+                                 exit }
 );
 
 if( $input_format eq 'json' ) {

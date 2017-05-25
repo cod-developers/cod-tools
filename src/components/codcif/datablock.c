@@ -74,12 +74,12 @@ struct DATABLOCK {
     int *loop_last;  /* loop_last[i] is the last tag index of the i-th loop. */
 
     struct DATABLOCK *save_frames; /* All save frames in this
-                                      datablock; should not be
-                                      bested */
+                                      data block; should not be
+                                      nested */
 
     struct DATABLOCK *last_save_frame; /* Last save frame in the
                                           save_frames list; SHOULD NOT
-                                          be freed when the SATABLOCK
+                                          be freed when the DATABLOCK
                                           structure is deleted. */
 
     struct DATABLOCK *next; /* Data blocks can be linked in a linked-list. */

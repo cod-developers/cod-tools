@@ -9,7 +9,10 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #$URL$
 #------------------------------------------------------------------------------
 #*
-#  Apply symmetry operator(s) to all atoms in a CIF.
+#* Apply symmetry operator(s) to all atoms in a CIF.
+#*
+#* USAGE:
+#*    $0 --options input1.cif input*.cif
 #**
 
 use strict;
@@ -21,7 +24,7 @@ use COD::CIF::Tags::Print qw( print_cif );
 use COD::SOptions qw( getOptions get_value );
 use COD::SUsage qw( usage options );
 use COD::ErrorHandler qw( process_parser_messages report_message );
-
+use COD::ToolsVersion;
 
 my $die_on_error_level = {
     ERROR   => 1,
@@ -33,23 +36,23 @@ my $use_parser = "c";
 
 my @symops = ();
 
-#* USAGE:
-#*     $0 --options input1.cif input*.cif
-#*
 #* OPTIONS:
-#*    -s, --symop, --symmetry-operator -x,-y,z
-#*        Apply the specified symmetry operator.
+#*   -s, --symop, --symmetry-operator -x,-y,z
+#*                     Apply the specified symmetry operator.
 #*
-#*    -a, --add-symop, --add-symmetry-operator -x,-y,z
-#*        Add the specified symmetry operator to the applied operato list.
+#*   -a, --add-symop, --add-symmetry-operator -x,-y,z
+#*                     Add the specified symmetry operator to the applied
+#*                     operator list.
 #*
-#*    --use-perl-parser
-#*        Use development CIF parser written in Perl.
-#*    --use-c-parser
-#*        Use faster C/Yacc CIF parser (default).
+#*   --use-perl-parser
+#*                     Use development CIF parser written in Perl.
+#*   --use-c-parser
+#*                     Use faster C/Yacc CIF parser (default).
 #*
-#*    --help, --usage
-#*        Print a short usage message (this message) and exit.
+#*   --help, --usage
+#*                     Output a short usage message (this message) and exit.
+#*   --version
+#*                     Output version information and exit.
 #**
 @ARGV = getOptions(
     "-s,--symop,--symmetry-operator" => sub { @symops = (get_value()) },
@@ -57,7 +60,10 @@ my @symops = ();
     "--use-perl-parser"  => sub { $use_parser = "perl" },
     "--use-c-parser"     => sub { $use_parser = "c" },
    "--options"           => sub { options; exit },
-    "--help,--usage"     => sub { usage; exit }
+    "--help,--usage"     => sub { usage; exit },
+    '--version'          => sub { print 'cod-tools version ',
+                                  $COD::ToolsVersion::Version, "\n";
+                                  exit }
 );
 
 @ARGV = ( "-" ) unless @ARGV;

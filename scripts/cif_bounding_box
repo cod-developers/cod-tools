@@ -9,9 +9,12 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #$URL$
 #------------------------------------------------------------------------------
 #*
-#  Transform non-crystal CIF file (missing cell parameters and symmetry
-#  information, Cartesian coordinates are given instead of fractional)
-#  into a crystal description.
+#* Transform non-crystal CIF file (missing cell parameters and symmetry
+#* information, Cartesian coordinates are given instead of fractional)
+#* into a crystal description.
+#*
+#* USAGE:
+#*    $0 --options input1.cif input*.cif
 #**
 
 use strict;
@@ -26,6 +29,7 @@ use COD::ErrorHandler qw( process_errors process_warnings
                           process_parser_messages report_message );
 use COD::SOptions qw( getOptions get_value );
 use COD::SUsage qw( usage options );
+use COD::ToolsVersion;
 use List::Util qw( reduce );
 
 my @margin = ( 5, 5, 5 );
@@ -37,21 +41,19 @@ my $die_on_error_level = {
     NOTE    => 0,
 };
 
-#* USAGE:
-#*     $0 --options input1.cif input*.cif
-#*
 #* OPTIONS:
-#*    --margin-x, --margin-y, --margin-z
-#*        Set margins in x, y and z directions (default 5 angstroms)
+#*   --margin-x, --margin-y, --margin-z
+#*                     Set margins in x, y and z directions (default 5 angstroms)
 #*
-#*    --use-perl-parser
-#*        Use Perl parser for CIF parsing.
+#*   --use-perl-parser
+#*                     Use Perl parser for CIF parsing.
+#*   --use-c-parser
+#*                     Use Perl & C parser for CIF parsing (default).
 #*
-#*    --use-c-parser
-#*        Use Perl & C parser for CIF parsing (default).
-#*
-#*    --help, --usage
-#*        Print a short usage message (this message) and exit.
+#*   --help, --usage
+#*                     Output a short usage message (this message) and exit.
+#*   --version
+#*                     Output version information and exit.
 #**
 
 @ARGV = getOptions(
@@ -63,7 +65,10 @@ my $die_on_error_level = {
     '--use-c-parser'    => sub{ $use_parser = 'c' },
 
     '--options'      => sub { options; exit },
-    '--help,--usage' => sub { usage; exit }
+    '--help,--usage' => sub { usage; exit },
+    '--version'         => sub { print 'cod-tools version ',
+                                 $COD::ToolsVersion::Version, "\n";
+                                 exit }
 );
 
 @ARGV = ( '-' ) unless @ARGV;

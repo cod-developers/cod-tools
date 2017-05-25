@@ -9,14 +9,17 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #$URL$
 #------------------------------------------------------------------------------
 #*
-#  Parse a CIF dictionary file and generate a list of tags
-#  with additional information about their loop constraints.
-#  The first column signals whether the tag must be declared
-#  in a looped list ( '0' -- no, '1' -- 'yes', 2 -- 'both'),
-#  the second column signals whether the tag must be present
-#  in the loop structure containing other items of the
-#  designated _category, ( '0' -- no, '1' -- yes) and
-#  the third column is the tag name itself.
+#* Parse a CIF dictionary file and generate a list of tags
+#* with additional information about their loop constraints.
+#* The first column signals whether the tag must be declared
+#* in a looped list ( '0' -- no, '1' -- 'yes', 2 -- 'both'),
+#* the second column signals whether the tag must be present
+#* in the loop structure containing other items of the
+#* designated _category, ( '0' -- no, '1' -- yes) and
+#* the third column is the tag name itself.
+#*
+#* USAGE:
+#*    $0 --options input1.dic input*.dic
 #**
 
 use strict;
@@ -24,26 +27,29 @@ use warnings;
 use COD::CIF::Parser qw( parse_cif );
 use COD::SOptions qw( getOptions );
 use COD::SUsage qw( usage options );
+use COD::ToolsVersion;
 
 my $use_parser = 'c';
 
-#* USAGE:
-#*     $0 --options input1.dic input*.dic
-#*
 #* OPTIONS:
-#* --use-perl-parser
+#*   --use-perl-parser
 #*                     Use development CIF parser written in Perl.
-#* --use-c-parser
+#*   --use-c-parser
 #*                     Use faster C/Yacc CIF parser (default).
 #*
-#* --help, --usage
-#*                     Print a short usage message (this message) and exit.
+#*   --help, --usage
+#*                     Output a short usage message (this message) and exit.
+#*   --version
+#*                     Output version information and exit.
 #**
 @ARGV = getOptions(
     "--use-perl-parser" => sub { $use_parser = "perl" },
     "--use-c-parser"    => sub { $use_parser = "c" },
     "--options"         => sub { options; exit },
-    "--help,--usage"    => sub { usage; exit }
+    "--help,--usage"    => sub { usage; exit },
+    '--version'         => sub { print 'cod-tools version ',
+                                 $COD::ToolsVersion::Version, "\n";
+                                 exit }
 );
 
 @ARGV = ("-") unless @ARGV;

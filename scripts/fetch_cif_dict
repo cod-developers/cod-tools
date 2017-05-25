@@ -10,8 +10,8 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #$Id$
 #------------------------------------------------------------------------------
 #*
-#*  Fetches cif_core.dic from the IUCr FTP site if non-expired local copy
-#*  does not exist.
+#* Fetches cif_core.dic from the IUCr FTP site if non-expired local copy
+#* does not exist.
 #*
 #* USAGE:
 #*    $0 --options
@@ -25,6 +25,7 @@ use File::Copy qw( move );
 use COD::SOptions qw( getOptions );
 use COD::SUsage qw( usage options );
 use COD::UserMessage qw( note warning error sprint_message );
+use COD::ToolsVersion;
 
 my $version = '1.0';
 my $cache_duration = 432000; # 60 * 60 * 24 * 5 = 432000 -> for 5 days
@@ -34,29 +35,31 @@ my $verbose = 0;
 my $dict_file_uri = 'ftp://ftp.iucr.org/pub/cif_core.dic';
 
 #* OPTIONS:
-#* --cache-duration 432000
-#*                    Time in seconds, for which the file will remain
-#*                    untouched unless forced to do otherwise 
-#*                    (see --force-overwrite) (default 432000).
-#* --mail-address fetcher@mail.com
-#*                    The e-mail address that will be used passed to the FTP
-#*                    server as an identifier of the client using the service.
-#*                    It is not mandatory and there is no default, but we
-#*                    insist you to declare it.
-#* --force-overwrite
-#*                    Disregard local file modification time and cache duration
-#*                    values while fetching the requested file.
-#* --no-force-overwrite
-#*                    Respect local file modification time and cache duration
-#*                    values while fetching the requested file (default).
-#* --silent, --quiet
-#*                    Suppress additional messages about the progress of the
-#*                    script. Only fatal errors will be printed.
-#* --verbose, --no-quiet
-#*                    Print additional messages about the progress of the
-#*                    script.
-#* --help, --usage
-#*                    Print a short usage message (this message) and exit.
+#*   --cache-duration 432000
+#*                     Time in seconds, for which the file will remain
+#*                     untouched unless forced to do otherwise 
+#*                     (see --force-overwrite) (default 432000).
+#*   --mail-address fetcher@mail.com
+#*                     The e-mail address that will be used passed to the FTP
+#*                     server as an identifier of the client using the service.
+#*                     It is not mandatory and there is no default, but we
+#*                     insist you to declare it.
+#*   --force-overwrite
+#*                     Disregard local file modification time and cache duration
+#*                     values while fetching the requested file.
+#*   --no-force-overwrite
+#*                     Respect local file modification time and cache duration
+#*                     values while fetching the requested file (default).
+#*   --silent, --quiet
+#*                     Suppress additional messages about the progress of the
+#*                     script. Only fatal errors will be printed.
+#*   --verbose, --no-quiet
+#*                     Print additional messages about the progress of the
+#*                     script.
+#*   --help, --usage
+#*                     Output a short usage message (this message) and exit.
+#*   --version
+#*                     Output version information and exit.
 #**
 @ARGV = getOptions(
     '--cache-duration'   => \$cache_duration,
@@ -70,7 +73,10 @@ my $dict_file_uri = 'ftp://ftp.iucr.org/pub/cif_core.dic';
     '--verbose'      => sub { $verbose = 1 },
     '--no-quiet'     => sub { $verbose = 1 },
     '--options'      => sub { options; exit },
-    '--help,--usage' => sub { usage; exit }
+    '--help,--usage' => sub { usage; exit },
+    '--version'      => sub { print 'cod-tools version ',
+                              $COD::ToolsVersion::Version, "\n";
+                              exit }
 );
 
 fetch_dictionary($dict_file_uri, $cache_duration, $from_mail, $force_overwrite);

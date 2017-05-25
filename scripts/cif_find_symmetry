@@ -9,10 +9,13 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #$URL$
 #------------------------------------------------------------------------------
 #*
-#  Find the symmetry of the atoms in the unit cell of a CIF crystal
-#  structure. In order to obtain correct results most of the time, all
-#  atoms of the unit cell should be present in the input. This can be
-#  achieved by using cif_p1 or similar programs.
+#* Find the symmetry of the atoms in the unit cell of a CIF crystal
+#* structure. In order to obtain correct results most of the time, all
+#* atoms of the unit cell should be present in the input. This can be
+#* achieved by using cif_p1 or similar programs.
+#*
+#* USAGE:
+#*    $0 --options input1.cif input*.cif
 #**
 
 use strict;
@@ -27,8 +30,8 @@ use COD::Cell qw( vectors2cell );
 use COD::CIF::Data qw( get_cell );
 use COD::CIF::Data::AtomList qw( atom_array_from_cif );
 use COD::CIF::Parser qw( parse_cif );
-use COD::CIF::Tags::Manage qw( exclude_tag rename_tag set_loop_tag set_tag );
 use COD::CIF::Tags::CanonicalNames qw( canonicalize_all_names );
+use COD::CIF::Tags::Manage qw( exclude_tag rename_tag set_loop_tag set_tag );
 use COD::CIF::Tags::Print qw( print_cif );
 use COD::ErrorHandler qw( process_parser_messages report_message );
 use COD::Fractional qw( ortho_from_fract );
@@ -43,6 +46,7 @@ use COD::Spacegroups::Symop::Parse qw( string_from_symop );
 use COD::SOptions qw( getOptions get_value );
 use COD::SPGLib qw( get_sym_dataset );
 use COD::SUsage qw( usage options );
+use COD::ToolsVersion;
 use COD::UserMessage qw( error );
 
 my $use_parser = 'c';
@@ -88,39 +92,37 @@ my @cell_tags = qw(
     _cell_angle_gamma
 );
 
-#* USAGE:
-#*     $0 --options input1.cif input*.cif
-#*
 #* OPTIONS:
-#*    --precision  1e-5,
-#*    --symmetry-precision  1e-5
-#*        Tolerance of distance between atomic positions and between
-#*        lengths of lattice vectors to be tolerated in the symmetry
-#*        finding (default 1e-5).
+#*   --precision  1e-5,
+#*   --symmetry-precision  1e-5
+#*                     Tolerance of distance between atomic positions and between
+#*                     lengths of lattice vectors to be tolerated in the symmetry
+#*                     finding (default 1e-5).
 #*
-#*    --use-spglib
-#*        Use spglib for symmetry search. Currently, spglib is the only
-#*        implemented method.
+#*   --use-spglib
+#*                     Use spglib for symmetry search. Currently, spglib is
+#*                     the only implemented method.
 #*
-#*     -F, --float-format "%.12g"
-#*        Specify format to print out floating point numbers.
+#*   -F, --float-format "%.12g"
+#*                     Specify format to print out floating point numbers.
 #*
-#*    --dump-symmetry-dataset
-#*        Suppress regular output and dump symmetry data structure, as
-#*        returned from spglib.
+#*   --dump-symmetry-dataset
+#*                     Suppress regular output and dump symmetry data structure,
+#*                     as returned from spglib.
 #*
-#*    --dont-dump-symmetry-dataset,
-#*    --no-dump-symmetry-dataset
-#*        Produce regular output.
+#*   --dont-dump-symmetry-dataset,
+#*   --no-dump-symmetry-dataset
+#*                     Produce regular output.
 #*
-#*    --use-perl-parser
-#*        Use Perl parser for CIF parsing.
+#*   --use-perl-parser
+#*                     Use Perl parser for CIF parsing.
+#*   --use-c-parser
+#*                     Use Perl & C parser for CIF parsing (default).
 #*
-#*    --use-c-parser
-#*        Use Perl & C parser for CIF parsing (default).
-#*
-#*    --help, --usage
-#*        Print a short usage message (this message) and exit.
+#*   --help, --usage
+#*                     Output a short usage message (this message) and exit.
+#*   --version
+#*                     Output version information and exit.
 #**
 
 @ARGV = getOptions(
@@ -138,19 +140,11 @@ my @cell_tags = qw(
     '--use-c-parser'    => sub { $use_parser = 'c' },
 
     '--options'      => sub { options; exit },
-    '--help,--usage' => sub { usage; exit }
+    '--help,--usage' => sub { usage; exit },
+    '--version'      => sub { print 'cod-tools version ',
+                              $COD::ToolsVersion::Version, "\n";
+                              exit }
 );
-
-my %spacegroups =
-    map {
-        my $key1 = $_->[1];
-        my $key2 = $_->[2];
-        $key1 =~ s/\s//g;
-        $key2 =~ s/\s//g;
-        ($_->[2], $_->[2], $_->[1], $_->[2], $key1, $_->[2], $key2, $_->[2] ) }
-         @names,
-    map { [ $_->{'number'}, $_->{'hermann_mauguin'}, $_->{'universal_h_m'} ] }
-        @table, @extra_settings;
 
 @ARGV = ( '-' ) unless @ARGV;
 
@@ -261,43 +255,34 @@ sub find_symmetry_spglib
             rename_tag( $dataset, $tag, $tags_to_move{$tag} );
         }
 
-        my $spacegroup = $sym->{international_symbol};
-        $spacegroup =~ s/[ _]//g;
-
-        my $setting = $sym->{setting};
-        $setting =~ s/\s//g;
-        $setting = ":$setting" if $setting;
-
-        my $spacegroup_info;
-        if( $setting && exists $spacegroups{$spacegroup . $setting} ) {
-            $spacegroup_info =
-                lookup_spacegroup( 'universal_h_m',
-                                    $spacegroups{$spacegroup . $setting} );
-        }
-
-        if( !$spacegroup_info && exists $spacegroups{$spacegroup} ) {
-            $spacegroup_info =
-                lookup_spacegroup( 'universal_h_m',
-                                    $spacegroups{$spacegroup} );
-        }
-
+        my( $spacegroup_info ) = grep { $_->{hall} eq $sym->{hall} }
+                                      (@table, @extra_settings);
 
         if( !$spacegroup_info ) {
-            if( $setting ) {
-                die "ERROR, neither space group symbol '$spacegroup', " .
-                    "nor '$spacegroup$setting' is recognised\n";
-            } else {
-                die 'ERROR, spacegroup symbol ' .
-                    "'$spacegroup' is not recognised\n";
-            }
+            my $sgHall = $sym->{hall};
+            $sgHall =~ s/ //g;
+            ( $spacegroup_info ) = grep { my $key = $_->{hall};
+                                          $key =~ s/ //g;
+                                          $key eq $sgHall }
+                                        (@table, @extra_settings);
+        }
+        my $setting = $sym->{setting};
+        $setting =~ s/\s//g;
+        if( !$spacegroup_info && $sym->{setting} ) {
+            ( $spacegroup_info ) = grep { $_->{hall} eq
+                                          $sym->{hall} . $setting }
+                                        (@table, @extra_settings);
+        }
+        if( $spacegroup_info ) {
+            $sym->{hall} = $spacegroup_info->{hall};
+            $sym->{international_symbol} =
+                $spacegroup_info->{hermann_mauguin};
         }
 
-        set_tag( $dataset, '_space_group_IT_number',
-                 $spacegroup_info->{number} );
+        set_tag( $dataset, '_space_group_IT_number', $sym->{number} );
         set_tag( $dataset, '_space_group_name_H-M_alt',
-                 $spacegroup_info->{hermann_mauguin} );
-        set_tag( $dataset, '_space_group_name_Hall',
-                 $spacegroup_info->{hall} );
+                 $sym->{international_symbol} );
+        set_tag( $dataset, '_space_group_name_Hall', $sym->{hall} );
 
         for my $tag (qw( _space_group_symop_operation_xyz
                          _symmetry_equiv_pos_as_xyz )) {
@@ -313,22 +298,13 @@ sub find_symmetry_spglib
             }
         }
 
-        ## It's not clear why symmetry operators, returned by
-        ## spglib, are often shifted by translations or very
-        ## numerous (as in the case of COD:4105680, rev. 91935),
-        ## so symmetry operators are taken from spacegroup
-        ## information hash.
-        ##
-        ## set_loop_tag( $dataset, '_symmetry_equiv_pos_as_xyz', undef,
-        ##               [ map { string_from_symop( $_ ) }
-        ##                 map { flush_zeros_in_symop( $_ ) }
-        ##                     @{$sym->{symops}} ] );
-
         set_loop_tag( $dataset, '_space_group_symop_id', undef,
-                      [ 1..@{$spacegroup_info->{symops}} ] );
+                      [ 1..@{$sym->{symops}} ] );
         set_loop_tag( $dataset, '_space_group_symop_operation_xyz',
                       '_space_group_symop_id',
-                      $spacegroup_info->{symops} );
+                      [ map { string_from_symop( $_ ) }
+                        map { flush_zeros_in_symop( $_ ) }
+                            @{$sym->{symops}} ] );
 
         my $atom_site_tag;
         for my $tag (qw( _atom_site_label
@@ -401,25 +377,6 @@ sub find_symmetry_spglib
         print "name: $dataset->{name}\n";
         serialiseRef( $sym );
     }
-}
-
-sub lookup_spacegroup
-{
-    my ($option, $param) = @_;
-
-    $param =~ s/ //g;
-    $param =~ s/_//g;
-
-    foreach my $hash (@table, @extra_settings) {
-        my $value = $hash->{$option};
-        $value =~ s/ //g;
-        $value =~ s/_//g;
-
-        if( $value eq $param ) {
-            return $hash;
-        }
-    }
-    return;
 }
 
 sub mat3_inv

@@ -9,24 +9,30 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #$URL$
 #------------------------------------------------------------------------------
 #*
-#  Canonicalise superspace group symmetry operator strings.
+#* Canonicalise superspace group symmetry operator strings.
+#*
+#* USAGE: $0 < input.symop
+#* USAGE: $0 input.symop
+#* USAGE: $0 input1.symop input*.symop
 #**
-
 use strict;
 use warnings;
 use COD::SOptions qw( getOptions );
 use COD::SUsage qw( usage );
 use COD::Spacegroups::Symop::SSGParse qw( symop_string_canonical_form );
+use COD::ToolsVersion;
 
-#* USAGE: $0 < input.symop
-#* USAGE: $0 input.symop
-#* USAGE: $0 input1.symop input*.symop
-#*
 #* OPTIONS:
-#* --help, --usage    Print short usage message (this message) and exit.
+#*   --help, --usage
+#*                     Output a short usage message (this message) and exit.
+#*   --version
+#*                     Output version information and exit.
 #**
 @ARGV = getOptions(
-   "--help,--usage"  => sub { usage; exit }
+    "--help,--usage" => sub { usage; exit },
+    '--version'      => sub { print 'cod-tools version ',
+                              $COD::ToolsVersion::Version, "\n";
+                              exit }
 );
 
 while(<>) {

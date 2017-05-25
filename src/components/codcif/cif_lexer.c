@@ -579,7 +579,7 @@ static char *clean_string( char *src, int is_textfield, cexception_t *ex )
     cexception_t inner;
     cexception_guard( inner ) {
         while( *src != '\0' ) {
-            if( ( (*src & 255 ) < 16 || (*src & 255 ) > 127 )
+            if( ( (*src & 255 ) < 16 || (*src & 255 ) >= 127 )
                 && (*src & 255 ) != '\n'
                 && (*src & 255 ) != '\t'
                 && (*src & 255 ) != '\r' ) {
@@ -648,7 +648,7 @@ static int string_has_high_bytes( unsigned char *s )
     if( !s ) return 0;
 
     while( *s ) {
-        if( *s++ > 127 )
+        if( *s++ >= 127 )
             return 1;
     }
     return 0;

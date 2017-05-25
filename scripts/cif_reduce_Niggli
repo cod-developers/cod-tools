@@ -9,7 +9,10 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #$URL$
 #------------------------------------------------------------------------------
 #*
-#  Performs Niggli cell reduction of CIF files.
+#* Performs Niggli cell reduction of CIF files.
+#*
+#* USAGE:
+#*    $0 --options input1.cif input*.cif
 #**
 
 use strict;
@@ -37,6 +40,7 @@ use COD::CIF::Tags::Manage qw( set_tag );
 use COD::ErrorHandler qw( process_warnings
                           process_errors
                           process_parser_messages );
+use COD::ToolsVersion;
 
 my $die_on_error_level = {
     ERROR   => 1,
@@ -55,26 +59,25 @@ my $Pi = 4 * atan2(1,1);
 
 my %symop_lookup_table = make_symop_hash( [ \@table, \@extra_settings ] );
 
-#* USAGE:
-#*     $0 --options input1.cif input*.cif
-#*
 #* OPTIONS:
-#*     --use-perl-parser
-#*        Use Perl parser for CIF parsing.
+#*   --use-perl-parser
+#*                     Use Perl parser for CIF parsing.
+#*   --use-c-parser
+#*                     Use Perl & C parser for CIF parsing.
 #*
-#*     --use-c-parser
-#*        Use Perl & C parser for CIF parsing.
+#*   --compute-symops
+#*                     Apply basis change to symmetry operators. Not all
+#*                     lattices are processed correctly, thus this option
+#*                     is experimental only and is turned off by default.
 #*
-#*     --compute-symops
-#*        Apply basis change to symmetry operators. Not all lattices are
-#*        processed correctly, thus this option is experimental only and
-#*        is turned off by default.
+#*   --debug, --no-debug
+#*                     Turn on/off the debug prints of reduction algorithm.
+#*                     Default off.
 #*
-#*     --debug, --no-debug
-#*        Turn on/off the debug prints of reduction algorithm. Default off.
-#*
-#*     --help, --usage
-#*        Print short usage message (this message) and exit.
+#*   --help, --usage
+#*                     Output a short usage message (this message) and exit.
+#*   --version
+#*                     Output version information and exit.
 #**
 @ARGV = getOptions(
     "--debug"    => sub{ $COD::Cell::Niggli::KG76::debug = 1 },
@@ -85,7 +88,10 @@ my %symop_lookup_table = make_symop_hash( [ \@table, \@extra_settings ] );
     "--use-perl-parser" => sub { $use_parser = "perl" },
     "--use-c-parser"    => sub { $use_parser = "c" },
     "--options"         => sub { options; exit },
-    "--help,--usage"    => sub { usage; exit }
+    "--help,--usage"    => sub { usage; exit },
+    '--version'         => sub { print 'cod-tools version ',
+                                 $COD::ToolsVersion::Version, "\n";
+                                 exit }
 );
 
 @ARGV = ( "-" ) unless @ARGV;

@@ -28,11 +28,19 @@ def parse(filename,*args):
     for datablock in data:
         datablock['precisions'] = {}
         for tag in datablock['types'].keys():
-            precisions = extract_precision(datablock['values'][tag],
-                                           datablock['types'][tag],
-                                           tag in datablock['inloop'].keys())
+            precisions, _ = extract_precision(datablock['values'][tag],
+                                              datablock['types'][tag])
             if precisions is not None:
                 datablock['precisions'][tag] = precisions
+        for saveblock in datablock['save_blocks']:
+            saveblock['precisions'] = {}
+            for tag in saveblock['types'].keys():
+                precisions, _ = extract_precision(saveblock['values'][tag],
+                                                  saveblock['types'][tag])
+                if precisions is not None:
+                    saveblock['precisions'][tag] = precisions
+
+    data = [ decode_utf8_frame( _ ) for _ in data ]
 
     errors = []
     warnings = []
@@ -71,7 +79,7 @@ def parse(filename,*args):
         for error in errors:
             sys.stdout.write(error)
         if errors:
-            sys.exit(1) # Different way to exit         
+            sys.exit(1) # Different way to exit
 
     return data, nerrors, [warnings + errors]
 
@@ -102,37 +110,105 @@ def unpack_precision(value,precision):
     precision = float(precision) * (10**exponent)
     return precision
 
-def extract_precision(values,types,is_in_loop=False):
+def extract_precision(values,types):
     import re
     if isinstance(types,list):
         precisions = []
+        important = []
         for i in range(0,len(values)):
-            precisions.append(extract_precision(values[i],types[i]))
-        if any([x is not None for x in precisions]) or \
-            any([isinstance(x,list) or isinstance(x,dict) for x in types]) or \
-            (is_in_loop == True and any([x in ('INT','FLOAT') for x in types])):
-            return precisions
+            precision, is_important = \
+                extract_precision(values[i],types[i])
+            precisions.append(precision)
+            important.append(is_important)
+        if any([x == 1 for x in important]):
+            return precisions, 1
         else:
-            return None
+            return None, 0
     elif isinstance(types,dict):
         precisions = {}
         for i in values.keys():
-            precisions[i] = extract_precision(values[i],types[i])
-        return precisions
+            precision, is_important = \
+                extract_precision(values[i],types[i])
+            if is_important:
+                precisions[i] = precision
+        if precisions.keys():
+            return precisions, 1
+        else:
+            return None, 0
     elif types == 'FLOAT':
         match = re.search('^(.*)(\(([0-9]+)\))$',values)
         if match is not None and match.group(1):
-            return unpack_precision(match.group(1),match.group(3))
+            return unpack_precision(match.group(1),match.group(3)), 1
         else:
-            return None
+            return None, 1
     elif types == 'INT':
         match = re.search('^(.*)(\(([0-9]+)\))$',values)
         if match is not None and match.group(1):
-            return match.group(3)
+            return match.group(3), 1
         else:
-            return None
+            return None, 1
     else:
-        return None
+        return None, 0
+
+def decode_utf8_frame(frame):
+    for _ in [ 'name', 'tags', 'loops' ]:
+        if _ in frame.keys():
+            frame[_] = decode_utf8_values(frame[_])
+
+    for _ in [ 'precisions', 'inloop', 'values', 'types' ]:
+        if _ in frame.keys():
+            frame[_] = decode_utf8_hash_keys(frame[_])
+
+    if 'values' in frame.keys() and 'types' in frame.keys():
+        frame['values'] = decode_utf8_typed_values(frame['values'],
+                                                   frame['types'])
+
+    if 'save_blocks' in frame.keys():
+        frame['save_blocks'] = [ decode_utf8_frame(_) for _ in
+                                        frame['save_blocks'] ]
+
+    return frame
+
+def decode_utf8_hash_keys(values):
+    if isinstance(values,list):
+        for i in range(0,len(values)):
+            values[i] = decode_utf8_hash_keys(values[i])
+    elif isinstance(values,dict):
+        for key in values.keys():
+           values[key] = decode_utf8_hash_keys(values[key]);
+           new_key = decode_utf8_values(key);
+           if new_key != key:
+               values[new_key] = values[key]
+               del values[key]
+
+    return values
+
+def decode_utf8_values(values):
+    if isinstance(values,list):
+        for i in range(0,len(values)):
+            values[i] = decode_utf8_values(values[i])
+    elif isinstance(values,dict):
+        for key in values.keys():
+            values[key] = decode_utf8_hash_keys(values[key]);
+    else:
+        try:
+            values = values.decode('utf-8')
+        except UnicodeDecodeError:
+            pass
+
+    return values
+
+def decode_utf8_typed_values(values,types):
+    if isinstance(values,list):
+        for i in range(0,len(values)):
+            values[i] = decode_utf8_typed_values(values[i], types[i])
+    elif isinstance(values,dict):
+        for key in values.keys():
+            values[key] = decode_utf8_typed_values(values[key], types[key])
+    elif types not in [ 'INT', 'FLOAT' ]:
+        values = decode_utf8_values(values)
+
+    return values
 
 program_escape = {
     '&': '&amp;',

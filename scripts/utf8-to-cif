@@ -9,7 +9,10 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #$URL$
 #------------------------------------------------------------------------------
 #*
-#  Convert Unicode characters into CIF escape sequences.
+#* Convert Unicode characters into CIF escape sequences.
+#*
+#* USAGE:
+#*    $0 input1.cif input*.cif
 #**
 
 use strict;
@@ -17,16 +20,19 @@ use warnings;
 use COD::CIF::Unicode2CIF qw( unicode2cif );
 use COD::SOptions qw( getOptions );
 use COD::SUsage qw( usage );
+use COD::ToolsVersion;
 
-#* USAGE:
-#*     $0 input1.cif input*.cif
-#*
 #* OPTIONS:
-#* --help, --usage
-#*     Print a short usage message (this message) and exit.
+#*   --help, --usage
+#*                     Output a short usage message (this message) and exit.
+#*   --version
+#*                     Output version information and exit.
 #**
 @ARGV = getOptions(
-    "--help,--usage"    => sub { usage; exit }
+    "--help,--usage" => sub { usage; exit },
+    '--version'      => sub { print 'cod-tools version ',
+                              $COD::ToolsVersion::Version, "\n";
+                              exit }
 );
 
 use open ":encoding(UTF-8)";

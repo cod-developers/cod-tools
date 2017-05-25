@@ -9,8 +9,11 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #$URL$
 #------------------------------------------------------------------------------
 #*
-#  Retrieve structures from the Open Quantum Materials Database and
-#  write them out in CIF format.
+#* Retrieve structures from the Open Quantum Materials Database and
+#* write them out in CIF format.
+#*
+#* USAGE:
+#*    $0 --options structure1_id structure*_id
 #**
 
 use strict;
@@ -21,6 +24,7 @@ use COD::CIF::Tags::Print qw( print_single_tag_and_value );
 use COD::Formulae::Parser::AdHoc;
 use COD::SOptions qw( getOptions get_value );
 use COD::SUsage qw( usage options );
+use COD::ToolsVersion;
 use JSON qw( decode_json );
 
 my $eV_per_atom_to_J_per_mol = 2660.476544548;
@@ -65,61 +69,63 @@ my $cell_fformat = $atom_fformat;
 # and for atomic coordinates) -- large enough for IEEE double
 # precision floating point number.
 
-#* USAGE:
-#*     $0 --options structure1_id structure*_id
-#*
 #* OPTIONS:
-#*     -L, --limit 10, --limit 1000,10
-#*        Add the limit clause to the structure query statement
-#*        (default: all structures are output from the database)
+#*   -L, --limit 10, --limit 1000,10
+#*                     Add the limit clause to the structure query statement
+#*                     (default: all structures are output from the database).
 #*
-#*     -L-, --no-limit
-#*        Remove any previously set query limits.
+#*   -L-, --no-limit
+#*                     Remove any previously set query limits.
 #*
-#*     -F, --float-format "%15.12f"
-#*        Specify format to print out floating point numbers.
+#*   -F, --float-format "%15.12f"
+#*                     Specify format to print out floating point numbers.
 #*
-#*     -A, --atom-format "%15.12f"
-#*        Specify format to print out floating point numbers for unit cell
-#*        parameters.
+#*   -A, --atom-format "%15.12f"
+#*                     Specify format to print out floating point numbers
+#*                     for unit cell parameters.
 #*
-#*     -C, --cell-format "%15.12f"
-#*        Specify format to print out floating point numbers for atomic
-#*        coordinates.
+#*   -C, --cell-format "%15.12f"
+#*                     Specify format to print out floating point numbers
+#*                     for atomic coordinates.
 #*
-#*     --platform 'SQLite'
-#*        Use the SQL database platform 'SQLite' to query structures
-#*        (default 'mysql').
+#*   --platform 'SQLite'
+#*                     Use the SQL database platform 'SQLite' to query
+#*                     structures (default 'mysql').
 #*
-#*     -d, --database  cod
-#*        Use database "cod" to query for structures.
+#*   -d, --database  cod
+#*                     Use database "cod" to query for structures.
 #*
-#*     -h, --host   www.crystallography.net
-#*     -s, --server www.crystallography.net
-#*        Query COD database on the host 'www.crystallography.net'.
+#*   -h, --host   www.crystallography.net
+#*   -s, --server www.crystallography.net
+#*                     Query COD database on the host 'www.crystallography.net'.
 #*
-#*     -l, --localhost
-#*        Use database server on the localhost to query the COD database.
+#*   -l, --localhost
+#*                     Use database server on the localhost to query the COD
+#*                     database.
 #*
-#*     -p, --port 3306
-#*        Use use the specified port (default 3306) to query structures.
+#*   -p, --port 3306
+#*                     Use use the specified port (default 3306) to query
+#*                     structures.
 #*
-#*     -t, --table  data
-#*        Use SQL table "data" to query for structures.
+#*   -t, --table  data
+#*                     Use SQL table "data" to query for structures.
 #*
-#*     -u, --user reader
-#*        Use user name "reader" to access COD database; this reader
-#*        should be granted SELECT privilege, i.e. should be able to read
-#*        the COD database, without supplying a password.
+#*   -u, --user reader
+#*                     Use user name "reader" to access COD database; this
+#*                     reader should be granted SELECT privilege, i.e. should
+#*                     be able to read the COD database, without supplying a
+#*                     password.
 #*
-#*     --debug, --no-debug
-#*        Switch on or off debug printouts.
+#*   --debug, --no-debug
+#*                     Switch on or off debug printouts.
 #*
-#*     --password
-#*        Use the specified password (default empty) to connect.
+#*   --password
+#*                     Use the specified password (default empty) to connect.
 #*
-#*     --help, --usage
-#*        Print a short usage message (this message) and exit.
+#*   --help, --usage
+#*                     Output a short usage message (this message) and exit.
+#*   --version
+#*                     Output version information and exit.
 #**
 @ARGV = getOptions(
     "-d,--database"  => \$database{name},
@@ -142,7 +148,10 @@ my $cell_fformat = $atom_fformat;
     "--debug"        => sub { $debug = 1 },
     "--no-debug"     => sub { $debug = 0 },
     "--options"      => sub { options; exit },
-    "--help,--usage" => sub { usage; exit }
+    "--help,--usage" => sub { usage; exit },
+    '--version'      => sub { print 'cod-tools version ',
+                              $COD::ToolsVersion::Version, "\n";
+                              exit }
 );
 
 my $connected_db = database_connect( \%database );

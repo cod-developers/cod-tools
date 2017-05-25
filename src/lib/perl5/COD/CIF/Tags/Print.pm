@@ -50,12 +50,17 @@ sub print_cif
             if defined $flags->{dictionary_tags};
     }
 
+    my $cif_version = '1.1';
+    if( exists $dataset->{cifversion} ) {
+        $cif_version =
+            sprintf '%d.%d', $dataset->{cifversion}{major},
+                             $dataset->{cifversion}{minor};
+    }
+
     clean_cif( $dataset, $flags );
 
-    if( exists $dataset->{cifversion} &&
-        $dataset->{cifversion}{major} > 1 ) {
-        printf "#\\#CIF_%d.%d\n", $dataset->{cifversion}{major},
-                                  $dataset->{cifversion}{minor};
+    if( int $cif_version > 1 ) {
+        print '#\#CIF_', $cif_version, "\n";
     }
 
     if( defined $dataset->{name} ) {
@@ -82,8 +87,8 @@ sub print_cif
                     $non_loop_tags_encountered = 0;
                 }
             }
-            print_tag( $tag, $datablok,
-                       $fold_long_fields, $folding_width );
+            print_tag( $tag, $datablok, $fold_long_fields,
+                       $folding_width, $cif_version );
         } else {
             if( $non_loop_tags_encountered ) {
                 print "#END $tag_msg\n";
@@ -105,7 +110,8 @@ sub print_cif
             }
             unless( exists $printed_loops{$tag_loop_nr} ) {
                 print_loop( $tag, $tag_loop_nr, $dataset,
-                            $fold_long_fields, $folding_width );
+                            $fold_long_fields, $folding_width,
+                            $cif_version );
                 $printed_loops{$tag_loop_nr} = 1;
             }
         }
@@ -125,7 +131,8 @@ sub print_cif
 
 sub print_single_tag_and_value($$@)
 {
-    my ( $tag, $val, $fold_long_fields, $folding_width ) = @_;
+    my ( $tag, $val, $fold_long_fields, $folding_width,
+         $cif_version ) = @_;
 
     $fold_long_fields = 0
         unless defined $fold_long_fields;
@@ -133,7 +140,8 @@ sub print_single_tag_and_value($$@)
     $folding_width = $default_folding_width
         unless defined $folding_width;
 
-    my $value = sprint_value( $val, $fold_long_fields, $folding_width );
+    my $value = sprint_value( $val, $fold_long_fields,
+                              $folding_width, $cif_version );
     my $key_len = length($tag) > $max_cif_tag_len ?
                                      length($tag) : $max_cif_tag_len;
     my $val_len = length($value);
@@ -155,7 +163,7 @@ sub print_single_tag_and_value($$@)
 
 sub print_tag
 {
-    my ($key, $tags, $fold_long_fields, $folding_width ) = @_;
+    my ($key, $tags, $fold_long_fields, $folding_width, $cif_version ) = @_;
 
     if( exists $tags->{$key} ) {
         my $val = $tags->{$key};
@@ -163,19 +171,21 @@ sub print_tag
             print "loop_\n";
             print "$key\n";
             for my $value (@$val) {
-                print_value( $value, $fold_long_fields, $folding_width );
+                print_value( $value, $fold_long_fields,
+                             $folding_width, $cif_version );
                 print "\n";
             }
         } else {
             print_single_tag_and_value( $key, $val->[0], $fold_long_fields,
-                                        $folding_width   )
+                                        $folding_width, $cif_version )
         }
     }
 }
 
 sub print_loop
 {
-    my ($tag, $loop_nr, $tags, $fold_long_fields, $folding_width ) = @_;
+    my ($tag, $loop_nr, $tags, $fold_long_fields,
+        $folding_width, $cif_version ) = @_;
 
     my @loop_tags = @{$tags->{loops}[$loop_nr]};
 
@@ -194,7 +204,8 @@ sub print_loop
         my $line = $line_prefix;
         for my $loop_tag (@loop_tags) {
             my $val = sprint_value( $tags->{values}{$loop_tag}[$i],
-                                    $fold_long_fields, $folding_width );
+                                    $fold_long_fields,
+                                    $folding_width, $cif_version );
             if( $val =~ /^\n;/ ) {
                 $lines .= $folding_separator . $line if $line ne $line_prefix;
                 if( $lines eq "" ) {
@@ -242,7 +253,57 @@ sub maxlen
 
 sub sprint_value
 {
-    my ( $val, $fold_long_fields, $folding_width ) = @_;
+    my ( $val, $fold_long_fields, $folding_width, $cif_version ) = @_;
+
+    if( $cif_version && int $cif_version > 1 ) {
+        if( ref $val eq 'ARRAY' ) {
+            my @values;
+            foreach (@$val) {
+                push @values, sprint_value( $_, $fold_long_fields,
+                                            $folding_width,
+                                            $cif_version );
+            }
+            if( @values ) {
+                return "[ @values ]";
+            } else {
+                return '[ ]';
+            }
+        } elsif( ref $val eq 'HASH' ) {
+            my @values;
+            foreach (sort keys %$val) {
+                my $key = $_;
+                if( ($key =~ /'''/ && $key =~ /"""/) ||
+                    ($key =~ /'''/ && $key =~ /"$/) ||
+                    ($key =~ /"""/ && $key =~ /'$/) ) {
+                    die "ERROR, can not store value '$key' " .
+                        'in a quoted string' . "\n";
+                } elsif( $key =~ /'/ && $key =~ /"/ && $key =~ /'$/ ) {
+                    $key = '"""' . $key . '"""';
+                } elsif( $key =~ /'/ && $key =~ /"/ && $key =~ /"$/ ) {
+                    $key = "'''" . $key . "'''";
+                } elsif( $key =~ /\n/ && $key =~ /'$/ ) {
+                    $key = '"""' . $key . '"""';
+                } elsif( $key =~ /\n/ ) {
+                    $key = "'''" . $key . "'''";
+                } elsif( $key =~ /'/ ) {
+                    $key = '"' . $key . '"';
+                } else {
+                    $key = "'" . $key . "'";
+                }
+                push @values, "$key: " .
+                              sprint_value( $val->{$_},
+                                            $fold_long_fields,
+                                            $folding_width,
+                                            $cif_version );
+            }
+            if( @values ) {
+                local $" = "\n";
+                return "\n{\n@values\n}";
+            } else {
+                return '{}';
+            }
+        }
+    }
 
     $fold_long_fields = 0
         unless defined $fold_long_fields;
@@ -256,18 +317,36 @@ sub sprint_value
         $val =~ s/^\s+//g;
     }
 
-    if( $val =~ /\n/ || $val =~ /^$/ ||
-        ($val =~ /'\s/ && $val =~ /"\s/) ) {
-        $val = "\n;" . $val . "\n;";
-    } elsif( $val =~ /'\s/ || $val =~ /^'/ ) {
-        $val = "\"" . $val . "\"";
-    } elsif( $val =~ /"\s|^\#/ || $val =~ /^"/ ||
-        $val =~ /^(data|loop|global|save)_/i ) {
-        $val = "'" . $val . "'";
-    } elsif( $val =~ /^'.*'$/ ) {
-        $val = "\"" . $val . "\"";
-    } elsif( $val =~ /\s|^_|^\[|^\]|^\$|^".*"$/) {
-        $val = "'" . $val . "'";
+    if( !$cif_version || int $cif_version == 1 ) {
+        if( $val =~ /\n/ || $val =~ /^$/ ||
+            ($val =~ /'\s/ && $val =~ /"\s/) ) {
+            $val = "\n;" . $val . "\n;";
+        } elsif( $val =~ /'\s/ || $val =~ /^'/ ) {
+            $val = "\"" . $val . "\"";
+        } elsif( $val =~ /"\s|^\#/ || $val =~ /^"/ ||
+            $val =~ /^(data|loop|global|save)_/i ) {
+            $val = "'" . $val . "'";
+        } elsif( $val =~ /^'.*'$/ ) {
+            $val = "\"" . $val . "\"";
+        } elsif( $val =~ /\s|^_|^\[|^\]|^\$|^".*"$/) {
+            $val = "'" . $val . "'";
+        }
+    } else {
+        if( $val =~ /\n;/ ) {
+            $val = "\n;" . prefix( $val ) . "\n;";
+        } elsif( $val =~ /\n/ || $val =~ /"""/ || $val =~ /'''/ ) {
+            $val = "\n;" . $val . "\n;";
+        } elsif( $val =~ /'/ && $val =~ /"/ && $val =~ /[^']$/ ) {
+            $val = "'''" . $val . "'''";
+        } elsif( $val =~ /'/ && $val =~ /"/ && $val =~ /[^"]$/ ) {
+            $val = "\"\"\"" . $val . "\"\"\"";
+        } elsif( $val =~ /'/ ) {
+            $val = "\"" . $val . "\"";
+        } elsif( $val =~ /"/ || $val =~ /^[#\$_]/ || $val eq '' ||
+            $val =~ /[\s\[\]\{\}]/ ||
+            $val =~ /^(data|loop|global|save|stop)_/i ) {
+            $val = "'" . $val . "'";
+        }
     }
     return $val;
 }
@@ -294,6 +373,15 @@ sub fold
     }
     push( @lines, $line );
     return @lines;
+}
+
+sub prefix
+{
+    my ( $value ) = @_;
+    my $prefix = ' ' x 4;
+    my @lines = map { $prefix . $_ } split( "\n", $value );
+    unshift @lines, $prefix . '\\';
+    return join "\n", @lines;
 }
 
 sub round { $_[0] > 0 ? int($_[0] + 0.5) : int($_[0] - 0.5) }

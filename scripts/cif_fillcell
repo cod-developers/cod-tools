@@ -9,7 +9,7 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #$URL$
 #------------------------------------------------------------------------------
 #*
-#*  Generates symmetric atoms from a CIF file.
+#* Generates symmetric atoms from a CIF file.
 #*
 #* USAGE:
 #*    $0 --options input.cif inputs*.cif
@@ -28,6 +28,7 @@ use COD::SUsage qw( usage options );
 use COD::ErrorHandler qw( process_warnings
                           process_errors
                           process_parser_messages );
+use COD::ToolsVersion;
 
 my $Id = '$Id$';
 my $use_parser = 'c';
@@ -44,16 +45,18 @@ my $build_supercell = 0;
 
 #* OPTIONS:
 #*   --supercell
-#*                      Build the 3x3x3 supercell by shifting atoms of the
-#                       unit cell in all 3D directions.
+#*                     Build the 3x3x3 supercell by shifting atoms of the
+#*                     unit cell in all 3D directions.
 #*   --unit-cell, --no-supercell
-#*                      Only build the unit cell (default).
+#*                     Only build the unit cell (default).
 #*   --use-c-parser
-#*                      Use the faster C parser for CIFs (default).
+#*                     Use the faster C parser for CIFs (default).
 #*   --use-perl-parser
-#*                      Use the Perl parser for parsing CIFs.
+#*                     Use the Perl parser for parsing CIFs.
 #*   --help, --usage
-#*                      Print a short usage message (this message) and exit.
+#*                     Output a short usage message (this message) and exit.
+#*   --version
+#*                     Output version information and exit.
 #**
 @ARGV = getOptions(
     '--supercell'    => sub { $build_supercell = 1 },
@@ -63,7 +66,10 @@ my $build_supercell = 0;
     '--use-perl-parser' => sub { $use_parser = 'perl' },
     '--use-c-parser'    => sub { $use_parser = 'c' },
     '--options'         => sub { options; exit },
-    '--help,--usage'    => sub { usage; exit }
+    '--help,--usage'    => sub { usage; exit },
+    '--version'         => sub { print 'cod-tools version ',
+                                 $COD::ToolsVersion::Version, "\n";
+                                 exit }
 );
 
 @ARGV = ('-') unless @ARGV;

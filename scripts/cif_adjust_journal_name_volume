@@ -9,8 +9,11 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #$URL$
 #------------------------------------------------------------------------------
 #*
-#  If journal volume starts with a letter, add this letter to the
-#  journal name, and leave journal volume purely numeric.
+#* If journal volume starts with a letter, add this letter to the
+#* journal name, and leave journal volume purely numeric.
+#*
+#* USAGE:
+#*    $0 --options input1.cif input*.cif
 #**
 
 use strict;
@@ -23,6 +26,7 @@ use COD::CIF::Tags::Print qw( print_cif );
 use COD::SOptions qw( getOptions );
 use COD::SUsage qw( usage options );
 use COD::ErrorHandler qw( process_parser_messages );
+use COD::ToolsVersion;
 
 my $die_on_error_level = {
     ERROR   => 1,
@@ -33,22 +37,21 @@ my $die_on_error_level = {
 my $use_parser = 'c';
 my $keep_tag_order = 0;
 
-#* USAGE:
-#*     $0 --options input1.cif input*.cif
-#*
 #* OPTIONS:
 #*   --keep-tag-order
-#*                      Keep the original tag order in CIF file (default).
+#*                     Keep the original tag order in CIF file (default).
 #*   --sort-tags
-#*                      Reorder tags in CIF file according to COD.
+#*                     Reorder tags in CIF file according to COD.
 #*
 #*   --use-perl-parser
-#*                      Use Perl parser to parse CIF files.
+#*                     Use Perl parser to parse CIF files.
 #*   --use-c-parser
-#*                      Use C parser to parse CIF files (default).
+#*                     Use C parser to parse CIF files (default).
 #*
 #*   --help, --usage
-#*                      Print a short usage message (this message) and exit.
+#*                     Output a short usage message (this message) and exit.
+#*   --version
+#*                     Output version information and exit.
 #**
 @ARGV = getOptions(
     "--keep-tag-order"  => sub { $keep_tag_order = 1; },
@@ -56,7 +59,10 @@ my $keep_tag_order = 0;
     "--use-perl-parser" => sub { $use_parser = "perl" },
     "--use-c-parser"    => sub { $use_parser = "c" },
     "--options"         => sub { options; exit },
-    "--help,--usage"    => sub { usage; exit }
+    "--help,--usage"    => sub { usage; exit },
+    '--version'         => sub { print 'cod-tools version ',
+                                 $COD::ToolsVersion::Version, "\n";
+                                 exit }
 );
 
 my @dictionary_tags = ( @COD::CIF::Tags::DictTags::tag_list,

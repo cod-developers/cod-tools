@@ -9,8 +9,11 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #$URL$
 #------------------------------------------------------------------------------
 #*
-#  Parse CIF file(s) and CIF dictionary(ies).
-#  Check CIF file against CIF dictionaries.
+#* Parse CIF file(s) and CIF dictionary(ies).
+#* Check CIF file against CIF dictionaries.
+#*
+#* USAGE:
+#*    $0 --dictionaries 'cif_core.dic,cif_cod.dic' --options input1.cif input*.cif
 #**
 
 use strict;
@@ -26,8 +29,7 @@ use COD::UserMessage qw( note debug_note );
 use COD::ErrorHandler qw( process_warnings
                           process_parser_messages
                           report_message );
-
-our $VERSION = 0.1;
+use COD::ToolsVersion;
 
 my @dict_files;
 my $use_parser = 'c';
@@ -50,81 +52,78 @@ sub get_list_reference_tags($$);
 sub get_replacement_tags($$);
 sub check_list_link_parent($$$);
 
-#* USAGE:
-#*     $0 --dictionaries 'cif_core.dic,cif_cod.dic' --options input1.cif input*.cif
-#*
 #* OPTIONS:
-#* -d, --dictionaries 'cif_core.dic,cif_cod.dic'
+#*   -d, --dictionaries 'cif_core.dic,cif_cod.dic'
 #*                     A list of CIF dictionary files (according to DDL2)
 #*                     to be used in CIF file validation. List elements
 #*                     are separated either by ',' or by ' '. To include
 #*                     dictionaries with filenames containing these symbols,
 #*                     the --add-dictionary option is used.
-#* -D, --add-dictionary 'cif new dictionary.dic'
+#*   -D, --add-dictionary 'cif new dictionary.dic'
 #*                     Add additional CIF dictionary to the list.
-#* --clear-dictionaries
+#*   --clear-dictionaries
 #*                     Remove all CIF dictionaries from the list.
-#* --treat-as-set _atom_site_refinement_flags
+#*   --treat-as-set _atom_site_refinement_flags
 #*                     Treat values of given data items as a set. For example,
 #*                     more than one enumeration value could be defined
 #*                     for a single element. Any number of data item tags can
 #*                     be provided in the following way:
 #*                     $0 --treat-as-set _tag_1 --treat-as-set _tag_2
 #*                     Default is the '_atom_site_refinement_flags' data item.
-#* --no-treat-as-set, dont-treat-as-set
+#*   --no-treat-as-set, dont-treat-as-set
 #*                     Do not treat values of any data items as sets.
 #*                     (see --treat-as-set).
-#*  --report-local-tags
+#*   --report-local-tags
 #*                     Validate data items having tags prefixed with
-#                      the '_[local]' prefix. The prefix was used in the COD
-#                      to denote locally used data items prior to the creation
-#                      of cif_cod.dic. The default is to ignore these data items.
-#* --no-report-local-tags, --ignore-local-tags
+#*                     the '_[local]' prefix. The prefix was used in the COD
+#*                     to denote locally used data items prior to the creation
+#*                     of cif_cod.dic. The default is to ignore these data items.
+#*   --no-report-local-tags, --ignore-local-tags
 #*                     Ignore data items having tags prefixed with '_[local]'.
 #*                     prefix. Default.
-#* --ignore-case
+#*   --ignore-case
 #*                     Ignore letter case while validating enumeration values.
 #*                     For example, even though '_atom_site_adp_type' is
 #*                     restricted to values ('Uani', 'Uiso', 'Uovl', ...),
 #*                     value 'UANI' would still be treated as valid.
-#* --respect-case, --case-sensitive, --dont-ignore-case
+#*   --respect-case, --case-sensitive, --dont-ignore-case
 #*                     Respect letter case while validating enumeration 
 #*                     values. Default.
-#* --report-deprecated
+#*   --report-deprecated
 #*                     Report data items that are marked as deprecated in the
 #*                     dictionaries. Data item deprecation usually means that
 #*                     it has been replaced with an another data item(s).
-#* --ignore-deprecated
+#*   --ignore-deprecated
 #*                     Do not report data items that are marked as deprecated
-#                      in the dictionaries. Default.
-#* --use-perl-parser
+#*                     in the dictionaries (default).
+#*   --use-perl-parser
 #*                     Use Perl parser to parse CIF files.
-#* --use-c-parser
+#*   --use-c-parser
 #*                     Use C parser to parse CIF files (default)
 #*
-#* -c, --always-continue
+#*   -c, --always-continue
 #*                     Continue processing and return successful return status
 #*                     even if errors are diagnosed.
-#* -c-, --always-die
+#*   -c-, --always-die
 #*                     Stop and return error status if errors are diagnosed.
-#* --continue-on-errors
+#*   --continue-on-errors
 #*                     Do not terminate script if errors are raised (default).
-#* --die-on-errors
+#*   --die-on-errors
 #*                     Terminate script immediately if errors are raised.
-#* --continue-on-warnings
-#*                    Do not terminate script if warnings are raised (default).
-#* --die-on-warnings
-#*                    Terminate script immediately if warnings are raised.
-#* --continue-on-notes
-#*                    Do not terminate script if notes are raised (default).
-#* --die-on-notes
-#*                    Terminate script immediately if notes are raised.
-#* --debug
+#*   --continue-on-warnings
+#*                     Do not terminate script if warnings are raised (default).
+#*   --die-on-warnings
+#*                     Terminate script immediately if warnings are raised.
+#*   --continue-on-notes
+#*                     Do not terminate script if notes are raised (default).
+#*   --die-on-notes
+#*                     Terminate script immediately if notes are raised.
+#*   --debug
 #*                     Output extra information for debugging purposes.
-#* -v, --version
-#*                     Print version message and exits.
-#* --help, --usage
-#*                     Print short usage message (this message) and exit.
+#*   --help, --usage
+#*                     Output a short usage message (this message) and exit.
+#*   -v, --version
+#*                     Output version information and exit.
 #**
 @ARGV = getOptions(
     '-d,--dictionaries'    => sub{ @dict_files = split m/,|\s+/, get_value() },
@@ -164,10 +163,12 @@ sub check_list_link_parent($$$);
     '--continue-on-notes'    => sub { $die_on_notes = 0 },
     '--die-on-notes'         => sub { $die_on_notes = 1 },
 
-    '-v,--version'      => sub{ print basename($0) . " v$VERSION\n"; exit; },
     '--options'         => sub{ options; exit },
     '--help,--usage'    => sub{ usage; exit; },
-    '--debug'           => sub{ $debug = 1 }
+    '--debug'           => sub{ $debug = 1 },
+    '-v,--version'      => sub { print 'cod-tools version ',
+                                 $COD::ToolsVersion::Version, "\n";
+                                 exit }
 );
 
 my $die_on_error_level = {

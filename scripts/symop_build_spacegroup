@@ -9,8 +9,12 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #$URL$
 #------------------------------------------------------------------------------
 #*
-#  Determine a space group from a list of symmetry operators
-#  (generators), using the Ralf's (Ralf Grosse-Kunstleve) algorithm.
+#* Determine a space group from a list of symmetry operators
+#* (generators), using the Ralf's (Ralf Grosse-Kunstleve) algorithm.
+#*
+#* USAGE: $0 < input.symop
+#* USAGE: $0 input.symop
+#* USAGE: $0 input.symop additional*.symop
 #**
 
 use strict;
@@ -21,16 +25,19 @@ use COD::Spacegroups::Symop::Parse qw( string_from_symop );
 use COD::Spacegroups::Builder;
 use COD::SOptions qw( getOptions );
 use COD::SUsage qw( usage );
+use COD::ToolsVersion;
 
-#* USAGE: $0 < input.symop
-#* USAGE: $0 input.symop
-#* USAGE: $0 input.symop additional*.symop
-#*
 #* OPTIONS:
-#* --help, --usage    Print short usage message (this message) and exit.
+#*   --help, --usage
+#*                     Output a short usage message (this message) and exit.
+#*   --version
+#*                     Output version information and exit.
 #**
 @ARGV = getOptions(
-   "--help,--usage"  => sub { usage; exit }
+    "--help,--usage" => sub { usage; exit },
+    '--version'      => sub { print 'cod-tools version ',
+                              $COD::ToolsVersion::Version, "\n";
+                              exit }
 );
 
 my $spacegroup = COD::Spacegroups::Builder->new;

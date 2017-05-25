@@ -9,7 +9,10 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #$URL$
 #------------------------------------------------------------------------------
 #*
-#  Find COD numbers for the .cif files in given directories of file lists.
+#* Find COD numbers for the .cif files in given directories of file lists.
+#*
+#* USAGE:
+#*    $0 --options my-cif-dir1/ my-cif-dir2/files*.cif COD-cif-dir/
 #**
 
 use strict;
@@ -26,6 +29,7 @@ use COD::ErrorHandler qw( process_warnings
                           process_errors
                           process_parser_messages
                           report_message );
+use COD::ToolsVersion;
 
 my $die_on_errors   = 1;
 my $die_on_warnings = 0;
@@ -35,87 +39,86 @@ my $use_parser = 'c';
 
 # default options
 my %options = (
-    'max_cell_length_diff' => 0.5, # Angstroems
+    'max_cell_length_diff' => 0.5, # angstroms
     'max_cell_angle_diff'  => 1.2, # degrees
     'check_bibliography'   => 1,
     'check_sample_history' => 0,
     'ignore_sigma'         => 0
 );
 
-#* USAGE:
-#*     cif_find_duplicates --options my-cif-dir1/ my-cif-dir2/files*.cif COD-cif-dir/
-#*
 #* OPTIONS:
-#* -c, --always-continue
+#*   -c, --always-continue
 #*                     Continue processing and return successful return status
 #*                     even if errors are diagnosed.
-#* -c-, --always-die
+#*   -c-, --always-die
 #*                     Stop and return error status if errors are diagnosed.
 #*
-#* --max-cell-length-difference 0.5
+#*   --max-cell-length-difference 0.5
 #*                     Maximum difference of unit cell lengths allowed for
-#*                     entries regarded as the same, in Angstroems 
+#*                     entries regarded as the same, in angstroms
 #*                     (default 0.5).
 #*
-#* --max-cell-angle-difference 1.2
+#*   --max-cell-angle-difference 1.2
 #*                     Maximum difference of unit cell angles allowed for
-#*                     entries regarded as the same, in Angstroems
+#*                     entries regarded as the same, in angstroms
 #*                     (default 1.2).
 #*
-#* --check-bibliography
+#*   --check-bibliography
 #*                     Only CIFs that have different bibliography data are
 #*                     declared different if all other parameters match.
 #*                     CIFs with missing bibliographies are assumed to have
 #*                     matching bibliographies (default).
 #*
-#* --dont-check-bibliography, --no-check-bibliography
+#*   --dont-check-bibliography, --no-check-bibliography
 #*                     Ignore bibliographic data of all CIFs; thus even files
-#*                     with different bibliographies will be regared the same
+#*                     with different bibliographies will be regarded the same
 #*                     if their cells, chemical formulae and measurement
 #*                     conditions match.
 #*
-#* --ignore-sigma, --dont-use-sigma, --no-use-sigma
+#*   --ignore-sigma, --dont-use-sigma, --no-use-sigma
 #*                     Ignore standard uncertainties (sigmas) when comparing
 #*                     unit cell constants.
-#* --dont-ignore-sigma, --no-ignore-sigma, --use-sigma
+#*   --dont-ignore-sigma, --no-ignore-sigma, --use-sigma
 #*                     Use standard deviations (sigmas) when comparing unit
 #*                     cell constants (default).
 #*
-#* --check-sample-history
+#*   --check-sample-history
 #*                     Only CIFs that have different sample history data
 #*                     (as recorded in the _exptl_crystal_thermal_history
 #*                     and _exptl_crystal_pressure_history tags) are declared
 #*                     different if all other parameters match.
 #*
-#* --dont-check-sample-history,
-#* --no-check-sample-history,
-#* --disregard-sample-history
+#*   --dont-check-sample-history,
+#*   --no-check-sample-history,
+#*   --disregard-sample-history
 #*                     Ignore sample history of all CIFs; thus even files
-#*                     with different sample histories will be regared the
+#*                     with different sample histories will be regarded the
 #*                     same if their cells, chemical formulae and measurement
 #*                     conditions match (default).
 #*
-#* --continue-on-errors
+#*   --continue-on-errors
 #*                     Do not terminate script if errors are raised.
-#* --die-on-errors, --dont-continue-on-errors,
-#* --do-not-continue-on-errors, --no-continue-on-errors
+#*   --die-on-errors, --dont-continue-on-errors,
+#*   --do-not-continue-on-errors, --no-continue-on-errors
 #*                     Terminate script immediately if errors are raised (default).
-#* --continue-on-warnings
+#*   --continue-on-warnings
 #*                     Do not terminate script if warnings are raised (default).
-#* --die-on-warnings
+#*   --die-on-warnings
 #*                     Terminate script immediately if warnings are raised.
-#* --continue-on-notes
+#*   --continue-on-notes
 #*                     Do not terminate script if notes are raised (default).
-#* --die-on-notes
+#*   --die-on-notes
 #*                     Terminate script immediately if notes are raised.
 #*
-#* --use-perl-parser
+#*   --use-perl-parser
 #*                     Use Perl parser to parse CIF files.
-#* --use-c-parser
+#*   --use-c-parser
 #*                     Use C parser to parse CIF files (default).
 #*
-#* --help, --usage
-#*                     Print a short usage message (this message) and exit.
+#*   --help, --usage
+#*                     Output a short usage message (this message) and exit.
+#*   --version
+#*                     Output version information and exit.
 #**
 @ARGV = getOptions(
     "--max-cell-length-difference" => \$options{max_cell_length_diff},
@@ -160,7 +163,10 @@ my %options = (
     "--use-perl-parser" => sub { $use_parser = "perl" },
     "--use-c-parser"    => sub { $use_parser = "c" },
     "--options"      => sub { options; exit },
-    "--help,--usage" => sub { usage; exit }
+    "--help,--usage" => sub { usage; exit },
+    '--version'      => sub { print 'cod-tools version ',
+                              $COD::ToolsVersion::Version, "\n";
+                              exit }
 );
 
 my $die_on_error_level = {

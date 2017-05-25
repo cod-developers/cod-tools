@@ -6,7 +6,6 @@
 #include <cif_options.h>
 #include <allocx.h>
 #include <cxprintf.h>
-#include <getoptions.h>
 #include <cexceptions.h>
 #include <stdiox.h>
 #include <stringx.h>

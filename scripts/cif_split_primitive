@@ -9,13 +9,16 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #$URL$
 #------------------------------------------------------------------------
 #*
-# Split CIF files into separate files with one data_ section each.
-#
-# This is a very naive and primitive version of the splitter, which
-# expects each data_... section to start on a new line. It may fail on
-# some CIF files that do not follow such convention. For splitting of
-# any correctly formatted CIF files, one must do full CIF parsing
-# using CIF grammar and tokenisation of the file.
+#* Split CIF files into separate files with one data_ section each.
+#*
+#* This is a very naive and primitive version of the splitter, which
+#* expects each data_... section to start on a new line. It may fail on
+#* some CIF files that do not follow such convention. For splitting of
+#* any correctly formatted CIF files, one must do full CIF parsing
+#* using CIF grammar and tokenisation of the file.
+#*
+#* USAGE:
+#*    $0 --options input1.cif input*.cif
 #**
 
 use strict;
@@ -24,6 +27,7 @@ use File::Basename qw( basename );
 use COD::SOptions qw( getOptions );
 use COD::SUsage qw( usage options );
 use COD::ErrorHandler qw( report_message );
+use COD::ToolsVersion;
 
 my $die_on_error_level = {
     ERROR   => 1,
@@ -34,26 +38,28 @@ my $die_on_error_level = {
 my $verbose = 1;
 my $output_dir = '';
 
-#* USAGE:
-#*     $0 --options input1.cif input*.cif
-#*
 #* OPTIONS:
-#* -o, --output-dir out/
-#*                    Put all split files into the directory out/
-#*                    (default './').
-#* -v, --verbose
-#*                    Print names of the generated files to STDERR.
-#* -q, --quiet
-#*                    Do not print file names to STDERR.
-#* --help, --usage
-#*                    Print short usage message (this message) and exit.
+#*   -o, --output-dir out/
+#*                     Put all split files into the directory out/
+#*                     (default './').
+#*   -v, --verbose
+#*                     Print names of the generated files to STDERR.
+#*   -q, --quiet
+#*                     Do not print file names to STDERR.
+#*   --help, --usage
+#*                     Output a short usage message (this message) and exit.
+#*   --version
+#*                     Output version information and exit.
 #**
 @ARGV = getOptions(
    "-o,--output-dir" => \$output_dir,
    "-v,--verbose"    => sub { $verbose = 1 },
    "-q,--quiet"      => sub { $verbose = 0 },
    "--options"       => sub { options; exit },
-   "--help,--usage"  => sub { usage; exit }
+   "--help,--usage"  => sub { usage; exit },
+    '--version'         => sub { print 'cod-tools version ',
+                                 $COD::ToolsVersion::Version, "\n";
+                                 exit }
 );
 
 $output_dir =~ s./+$..;
