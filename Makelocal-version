@@ -18,6 +18,8 @@ scripts/cod-tools-version: scripts/cod-tools-version.in
 
 release:
 	svn ci
+	perl -lpi -e 's/\(unreleased\)/(${VERSION})/ if $$. == 1' CHANGELOG
+	svn ci -m "CHANGELOG: switching from 'unreleased' to '${VERSION}'"
 	svn cp ^/trunk ^/branches/release/v${VERSION} \
 	   -m "Preparing version ${VERSION} for release in the release branch."
 	${MAKE} minor
