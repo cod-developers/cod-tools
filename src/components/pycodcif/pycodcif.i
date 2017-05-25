@@ -191,10 +191,7 @@ def decode_utf8_values(values):
         for key in values.keys():
             values[key] = decode_utf8_hash_keys(values[key]);
     else:
-        try:
-            values = values.decode('utf-8')
-        except UnicodeDecodeError:
-            pass
+        values = values.decode('utf-8','replace')
 
     return values
 
