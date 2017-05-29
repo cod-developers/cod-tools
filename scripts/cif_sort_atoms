@@ -18,6 +18,8 @@ eval 'exec perl -x $0 ${1+"$@"}'
 use strict;
 use warnings;
 use File::Basename qw( basename );
+use COD::AtomProperties;
+use COD::CIF::Data::AtomList qw( extract_atom );
 use COD::CIF::Parser qw( parse_cif );
 use COD::CIF::Tags::CanonicalNames qw( canonicalize_all_names );
 use COD::CIF::Tags::Print qw( print_cif );
@@ -28,7 +30,7 @@ use COD::SUsage qw( usage options );
 use COD::ToolsVersion;
 
 my $order = \&get_lexicographic_order;
-my $reverse = 0;
+my $reverse = 1;
 
 my $use_parser = 'c';
 
@@ -62,7 +64,7 @@ my $die_on_error_level = {
     '-l,--lexicographic' => sub { $order = \&get_lexicographic_order },
     '-Z,--atomic-number' => sub { $order = \&get_atomic_order },
 
-    '-r,--reverse' => sub { $reverse = 1 },
+    '-r,--reverse' => sub { $reverse = -1 },
 
     '--use-perl-parser' => sub{ $use_parser = 'perl' },
     '--use-c-parser'    => sub{ $use_parser = 'c' },
@@ -98,9 +100,7 @@ for my $filename (@ARGV) {
     for my $dataset (@$data) {
         my $values = $dataset->{values};
 
-        my @order = $order->( $values );
-        @order = reverse @order if $reverse;
-
+        my @order = $order->( $values, $reverse );
         my $atom_loop = $dataset->{inloop}{_atom_site_label};
         for my $tag (@{$dataset->{loops}[$atom_loop]}) {
             for my $key (qw( precisions types values )) {
@@ -119,13 +119,30 @@ for my $filename (@ARGV) {
 
 sub get_lexicographic_order
 {
-    my( $dataset ) = @_;
-    return sort { $dataset->{_atom_site_label}[$a] cmp
-                  $dataset->{_atom_site_label}[$b] }
+    my( $dataset, $reverse ) = @_;
+    $reverse = 1 unless defined $reverse;
+
+    return sort { $reverse *
+                  ($dataset->{_atom_site_label}[$a] cmp
+                   $dataset->{_atom_site_label}[$b]) }
                 0..$#{$dataset->{_atom_site_label}};
 }
 
 sub get_atomic_order
 {
-    die 'not implemented yet';
+    my( $dataset, $reverse ) = @_;
+    $reverse = 1 unless defined $reverse;
+
+    my $unity = [ [ 1, 0, 0, 0 ],
+                  [ 0, 1, 0, 0 ],
+                  [ 0, 0, 1, 0 ],
+                  [ 0, 0, 0, 1 ] ]; # fake f2o matrix
+    my @types = map { $_->{chemical_type} }
+                map { extract_atom( $dataset->{_atom_site_label}[$_],
+                                    $dataset, $_, $unity ) }
+                    0..$#{$dataset->{_atom_site_label}};
+    return sort { $reverse *
+                  ($COD::AtomProperties::atoms{$types[$a]}{atomic_number} <=>
+                   $COD::AtomProperties::atoms{$types[$b]}{atomic_number}) }
+                0..$#{$dataset->{_atom_site_label}};
 }
