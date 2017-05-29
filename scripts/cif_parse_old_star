@@ -18,6 +18,7 @@ use STAR::Parser;
 use COD::ShowStruct qw( showHash );
 use COD::SOptions qw( getOptions );
 use COD::SUsage qw( usage );
+use COD::ToolsVersion;
 
 #* USAGE:
 #*     $0 input1.cif input*.cif
@@ -27,7 +28,10 @@ use COD::SUsage qw( usage );
 #*     Print a short usage message (this message) and exit.
 #**
 @ARGV = getOptions(
-    "--help,--usage"    => sub { usage; exit }
+    "--help,--usage"    => sub { usage; exit },
+    '--version'         => sub { print 'cod-tools version ',
+                                 $COD::ToolsVersion::Version, "\n";
+                                 exit }
 );
 
 @ARGV = ("-") unless @ARGV;

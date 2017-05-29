@@ -19,6 +19,7 @@ use POSIX qw( strftime );
 use COD::CIF::Data::CODPredepositionCheck qw( filter_and_check );
 use COD::SOptions qw( getOptions get_value );
 use COD::SUsage qw( usage options );
+use COD::ToolsVersion;
 
 my %database = (
         host  => 'www.crystallography.net',
@@ -196,7 +197,10 @@ my $tmp_file = "tmp-cod_predeposition_check-$$.tmp";
     '--use-perl-parser' => sub { $options->{use_parser} = 'perl' },
     '--use-c-parser'    => sub { $options->{use_parser} = 'c' },
     '--options'         => sub { options; exit },
-    '--help,--usage'    => sub { usage; exit }
+    '--help,--usage'    => sub { usage; exit },
+    '--version'         => sub { print 'cod-tools version ',
+                                 $COD::ToolsVersion::Version, "\n";
+                                 exit }
 );
 
 push @cif, @ARGV;

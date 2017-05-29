@@ -26,8 +26,7 @@ use COD::UserMessage qw( note debug_note );
 use COD::ErrorHandler qw( process_warnings
                           process_parser_messages
                           report_message );
-
-our $VERSION = 0.1;
+use COD::ToolsVersion;
 
 my @dict_files;
 my $use_parser = 'c';
@@ -164,10 +163,12 @@ sub check_list_link_parent($$$);
     '--continue-on-notes'    => sub { $die_on_notes = 0 },
     '--die-on-notes'         => sub { $die_on_notes = 1 },
 
-    '-v,--version'      => sub{ print basename($0) . " v$VERSION\n"; exit; },
     '--options'         => sub{ options; exit },
     '--help,--usage'    => sub{ usage; exit; },
-    '--debug'           => sub{ $debug = 1 }
+    '--debug'           => sub{ $debug = 1 },
+    '-v,--version'      => sub { print 'cod-tools version ',
+                                 $COD::ToolsVersion::Version, "\n";
+                                 exit }
 );
 
 my $die_on_error_level = {

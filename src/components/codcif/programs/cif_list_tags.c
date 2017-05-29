@@ -1,3 +1,11 @@
+/*---------------------------------------------------------------------------*\
+**$Author$
+**$Date$ 
+**$Revision$
+**$URL$
+\*---------------------------------------------------------------------------*/
+
+/* uses: */
 
 #include <stdio.h>
 #include <unistd.h>
@@ -7,6 +15,17 @@
 #include <cif_grammar_flex.h>
 #include <allocx.h>
 #include <cxprintf.h>
+#include <version.h>
+
+static char *source_URL = "$URL$";
+
+static void version( int argc, char *argv[], int *i, option_t *option,
+                     cexception_t * ex )
+{
+    printf( "%s version %s svn revision %s\n", argv[0], VERSION, SVN_VERSION );
+    printf( "%s\n", source_URL );
+    exit( 0 );
+}
 
 static option_value_t verbose;
 static option_value_t debug;
@@ -18,6 +37,7 @@ static option_t options[] = {
   { "-q", "--quiet",        OT_BOOLEAN_FALSE, &verbose },
   { "-q-","--no-quiet",     OT_BOOLEAN_TRUE,  &verbose },
   { NULL, "--vebose",       OT_BOOLEAN_TRUE,  &verbose },
+  { NULL, "--version",      OT_FUNCTION, NULL, &version },
   { NULL }
 };
 

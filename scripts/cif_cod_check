@@ -35,6 +35,7 @@ use COD::Spacegroups::Symop::Parse qw( symop_string_canonical_form
                                        is_symop_parsable );
 use COD::SOptions qw( getOptions get_value );
 use COD::SUsage qw( usage options );
+use COD::ToolsVersion;
 use COD::UserMessage qw( sprint_message );
 
 my $name_syntax_explained = 0;
@@ -442,7 +443,10 @@ my $input_format = 'cif';
     '--json-input'  => sub { $input_format = 'json' },
 
     '--options'      => sub { options; exit },
-    '--help,--usage' => sub { usage; exit }
+    '--help,--usage' => sub { usage; exit },
+    '--version'      => sub { print 'cod-tools version ',
+                              $COD::ToolsVersion::Version, "\n";
+                              exit }
 );
 
 my $die_on_error_level = {

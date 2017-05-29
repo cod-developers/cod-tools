@@ -53,6 +53,7 @@ use COD::SOptions qw( getOptions get_value );
 use COD::SUsage qw( usage options );
 use COD::ErrorHandler qw( process_errors process_warnings
                           process_parser_messages report_message );
+use COD::ToolsVersion;
 
 my %symop_lookup_table;
 
@@ -519,7 +520,10 @@ my %spacegroups = map {
     '--json' => sub { $input_format = $output_format = 'json' },
 
     '--options'      => sub { options; exit },
-    '--help,--usage' => sub { usage; exit }
+    '--help,--usage' => sub { usage; exit },
+    '--version'      => sub { print 'cod-tools version ',
+                              $COD::ToolsVersion::Version, "\n";
+                              exit }
 );
 
 my $die_on_error_level = {
