@@ -18,6 +18,12 @@ eval 'exec perl -x $0 ${1+"$@"}'
 
 use strict;
 use warnings;
+binmode STDOUT, ':encoding(UTF-8)';
+binmode STDERR, ':encoding(UTF-8)';
+
+use List::MoreUtils qw( any );
+use File::Basename;
+use URI;
 
 use COD::CIF::Parser qw( parse_cif );
 use COD::SOptions qw( getOptions get_value );
@@ -25,7 +31,6 @@ use COD::SUsage qw( usage options );
 use COD::ErrorHandler qw( process_warnings
                           process_parser_messages
                           report_message );
-use File::Basename;
 use COD::ToolsVersion;
 
 my $use_parser = 'c';
@@ -244,21 +249,21 @@ sub validate_type_contents
             if ( ref $value eq '' ) {
               my $message_prefix = "data item '$tag' value '$value' " .
                            'violates content type contraints';
-              my $results = check_data_type( $value, $type_contents );
               push @validation_messages,
-                map { $message_prefix . ' - ' . $_ }
+                map { $message_prefix . ' -- ' . $_ }
                   @{ check_data_type( $value, $type_contents ) };
             } elsif ( ref $value eq 'ARRAY' ) {
-              foreach( @$value ) {
+              foreach( @{$value} ) {
                 my $message_prefix = "data item '$tag' value '$_' " .
                              'violates content type contraints';
                 push @validation_messages,
-                  map { $message_prefix . ' - ' . $_ }
+                  map { $message_prefix . ' -- ' . $_ }
                     @{ check_data_type( $_, $type_contents ) };
               }
             } else {
                 # TODO: implement hash value validation
-                warn "Handling of more complex values is not yet implemented: " , ref $value, "'\n";
+                warn 'Handling of more complex values is not yet implemented: ',
+                     ref $value, "'\n";
                 next;
             }
           }
@@ -340,7 +345,7 @@ my $cif2_character = $cif2_ws_character . $cif2_nws_character;
         # case-insens contig. STAR string with leading underscore
         if ( $value !~ m/^_/ ) {
             push @validation_messages,
-                "the value must start with an underscore ('_') symbol";
+                'the value must start with an underscore (\'_\') symbol';
         }
         if ( $value =~ m/([^$cif2_nws_character])/ ) {
             push @validation_messages,
@@ -348,8 +353,26 @@ my $cif2_character = $cif2_ws_character . $cif2_nws_character;
         }
     } elsif ( $type eq 'file' ) {
         # TODO: implement File name check
+        push @validation_messages,
+                 "validation of the 'file' type data items is not yet " .
+                 'implemented';
     } elsif ( $type eq 'uri' ) {
-        # TODO: implement Uri check
+        # TODO: implement proper URI parsing as per RFC 3986
+        use URI::Split qw(uri_split);
+        my ($scheme, $auth, $path, $query, $frag) = uri_split($value);
+        if (defined $scheme) {
+            if ( $scheme =~ /^[^A-Za-z]/ ) {
+                push @validation_messages, "the URI scheme component '$scheme' " .
+                    'must start with a ASCII letter ([A-Za-z])';
+            }
+            if ( $scheme =~ /([^A-Za-z0-9.+-])/ ) {
+                push @validation_messages, "the '$1' symbol is not allowed " .
+                    "in the URI scheme component '$scheme'";
+            };
+        } else {
+            push @validation_messages,
+                 'an URI string must start with a scheme component';
+        }
     } elsif ( $type eq 'date' ) {
         # ISO standard date format <yyyy>-<mm>-<dd>
         if ( $value !~ m/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/ ) {
@@ -357,17 +380,25 @@ my $cif2_character = $cif2_ws_character . $cif2_nws_character;
                  'the value should conform to the ISO standard date format ' .
                  '<yyyy>-<mm>-<dd>';
         }
+        # TODO: a more thorough check should be carried out for the dates --
+        #       the month and day values ranges should be checked
     } elsif ( $type eq 'version' ) {
         # version digit string of the form <major>.<version>.<update>
-        if ( $value !~ m/^[0-9]+(\.[0-9]+)?(\.[0-9]+)?$/ ) {
+        if ( $value !~ m/^[0-9]+(?:\.[0-9]+)?(?:\.[0-9]+)?$/ ) {
             push @validation_messages,
                  'the value should be a version digit string of the form ' .
                  '<major>.<version>.<update>';
         }
     } elsif ( $type eq 'dimension' ) {
         # integer limits of an Array/Matrix/List in square brackets
+        push @validation_messages,
+                 'validation of the \'dimension\' type data items is not yet ' .
+                 'implemented';
     } elsif ( $type eq 'range' ) {
         # inclusive range of numerical values min:max
+        push @validation_messages,
+                 "validation of the 'range' type data items is not yet " .
+                 'implemented';
     } elsif ( $type eq 'count' ) {
         # unsigned integer number
         if ( $value !~ m/^[0-9]*$/ ) {
@@ -376,53 +407,80 @@ my $cif2_character = $cif2_ws_character . $cif2_nws_character;
         }
     } elsif ( $type eq 'index' ) {
         # unsigned non-zero integer number
-        if ( $value !~ m/^[0-9]*[1-9]$/ ) {
+        $value =~ s/\([0-9]*\)$//;
+        if ( $value =~ m/[^0-9]/ || !( $value =~ m/^[0-9]*$/ && $value > 0 ) ) {
             push @validation_messages,
                  'the value should be an unsigned non-zero integer number';
         }
     } elsif ( $type eq 'integer' ) {
         # positive or negative integer number
+        $value =~ s/\([0-9]*\)$//;
         if ( $value !~ m/^[-+]?[0-9]*$/ ) {
             push @validation_messages,
                  'the value should be an integer number';
         }
     } elsif ( $type eq 'real' ) {
         # floating-point real number
+        $value =~ s/\([0-9]*\)$//;
         if ( $value !~ m/^$signed_float$/ ) {
             push @validation_messages,
                  'the value should be a floating-point real number';
         }
     } elsif ( $type eq 'imag' ) {
         # floating-point imaginary number
-        if ( $value !~ m/^${signed_float}i$/ ) {
-            push @validation_messages,
-                 'the value should be a floating-point imaginary number';
-        }
+        #if ( $value !~ m/^${signed_float}i$/ ) {
+        #    push @validation_messages,
+        #         'the value should be a floating-point imaginary number';
+        #}
+        push @validation_messages,
+                 'validation of the \'imag\' type data items is not yet ' .
+                 'implemented';
     } elsif ( $type eq 'complex' ) {
         # complex number <R>+j<I>
+        #push @validation_messages,
+        #         'validation of the \'complex\' type data items is not yet ' .
+        #         'implemented';
+        push @validation_messages,
+                 'validation of the \'complex\' type data items is not yet ' .
+                 'implemented';
     } elsif ( $type eq 'binary' ) {
         # binary number \b<N>
-        if ( $value !~ m/^[01]+$/ ) {
-            push @validation_messages,
-                 'the value should be a floating-point real number';
-        }
+        #if ( $value !~ m/^[01]+$/ ) {
+        #    push @validation_messages,
+        #        'the value should be a floating-point real number';
+        #}
+        push @validation_messages,
+                 'validation of the \'binary\' type data items is not yet ' .
+                 'implemented';
     } elsif ( $type eq 'hexadecimal' ) {
         # hexadecimal number \x<N>
-        if ( $value !~ m/^[0-9A-Fa-f]+$/ ) {
-            push @validation_messages,
-                 'the value should be an hexadecimal number';
-        }
+        #if ( $value !~ m/^[0-9A-Fa-f]+$/ ) {
+        #    push @validation_messages,
+        #         'the value should be an hexadecimal number';
+        #}
+        push @validation_messages,
+                 'validation of the \'hexadecimal\' type data items is not yet ' .
+                 'implemented';
     } elsif ( $type eq 'octal' ) {
         # octal number \o<N>
-        if ( $value !~ m/^[0-7]+$/ ) {
-            push @validation_messages,
-                 'the value should be an octal number';
-        }
+        #if ( $value !~ m/^[0-7]+$/ ) {
+        #    push @validation_messages,
+        #         'the value should be an octal number';
+        #}
+        push @validation_messages,
+                 'validation of the \'octal\' type data items is not yet ' .
+                 'implemented';
     } elsif ( $type eq 'implied' ) {
         # implied by the context of the attribute
+        push @validation_messages,
+                 'validation of the \'implied\' type data items is not yet ' .
+                 'implemented';
     } elsif ( $type eq 'byreference' ) {
         # The contents have the same form as those of the attribute referenced by
         #        _type.contents_referenced_id.
+        push @validation_messages,
+                 'validation of the \'byreference\' type data items is not yet ' .
+                 'implemented';
     } else {
         warn "content type '$type' is not recognised\n";
     }
@@ -520,7 +578,7 @@ sub validate_enumerators
 
           my $value = $data->{$scope}{$instance}{'values'}{$tag}[0];
           if ( lc $type_container eq lc 'Single' ) {
-          if (! grep { lc $value eq lc $_ } @enumeration_values ) {
+          if (! any { lc $value eq lc $_ } @enumeration_values ) {
           #  print "$instance: $tag: $value is not permitted\n";
             warn "data item '$tag' value \"$value\" "
                . 'must be one of the enumeration values '
@@ -528,7 +586,7 @@ sub validate_enumerators
           }
         # Mainly targeted at '_type.contents'
         } elsif ( lc $type_container eq lc 'Multiple' ) {
-          if (! grep { lc $value eq lc $_ } @enumeration_values ) {
+          if (! any { lc $value eq lc $_ } @enumeration_values ) {
           #     print "$instance: $tag: $value is not permitted\n";
           #  warn "data item '$tag' value \"$value\" "
           #     . 'must be one of the enumeration values '
