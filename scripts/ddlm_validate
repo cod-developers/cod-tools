@@ -396,9 +396,22 @@ my $cif2_character = $cif2_ws_character . $cif2_nws_character;
                  'implemented';
     } elsif ( $type eq 'range' ) {
         # inclusive range of numerical values min:max
-        push @validation_messages,
-                 "validation of the 'range' type data items is not yet " .
-                 'implemented';
+        # TODO: are letters allowed in ranges?
+        $value =~ m/^(${signed_float})?:(${signed_float})?$/;
+        if ( !defined $1 && !defined $2 ) {
+            push @validation_messages,
+                 'the value should be a range of numerical values of ' .
+                 'the form \'min:max\'';
+        } elsif ( defined $1 && defined $2 ) {
+            if ( $1 > $2 ) {
+                push @validation_messages,
+                    "the lower range value '$1' is greater than the upper " .
+                    "range value '$2'";
+            }
+        }
+       # push @validation_messages,
+       #          "validation of the 'range' type data items is not yet " .
+       #         'implemented';
     } elsif ( $type eq 'count' ) {
         # unsigned integer number
         if ( $value !~ m/^[0-9]*$/ ) {

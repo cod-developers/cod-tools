@@ -1,1 +1,1 @@
-Check the way data itme of the 'count' content type are validated.
+Check the way data item of the 'count' content type are validated.

@@ -1,1 +1,1 @@
-Check the way data itme of the 'real' content type are validated.
+Check the way data item of the 'real' content type are validated.
