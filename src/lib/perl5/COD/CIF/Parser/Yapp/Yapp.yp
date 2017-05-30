@@ -726,6 +726,16 @@ sub _Lexer
                                         $parser->YYData->{VARS}{lines},
                                         $parser->{USER}{CURRENT_DATABLOCK} );
             }
+
+            if( $parser->YYData->{VARS}{lines} == 1 &&
+                defined $parser->YYData->{INPUT} &&
+                $parser->YYData->{INPUT} =~ /^#\\#CIF_2.0[ \t]*(\r\n?|\n)$/ ) {
+                $parser->YYData->{ERRMSG} =
+                    'file is recognised as CIF v2.0 which is currently ' .
+                    'not supported by COD::CIF::Parser::Yapp -- treating ' .
+                    'as CIF v1.1 instead';
+                $parser->_Warning();
+            }
         } until ( !defined $parser->YYData->{INPUT} ||
         $parser->YYData->{INPUT} !~ m/^(\s*(#.*)?)$/s );
         if( defined $parser->YYData->{INPUT} )
