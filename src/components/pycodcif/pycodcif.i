@@ -99,7 +99,12 @@ def unpack_precision(value,precision):
     
     int_part = 0
     if match.group(1):
-        int_part = int(match.group(1))
+        if match.group(1) == '+':
+            int_part = 1
+        elif match.group(1) == '-':
+            int_part = -1
+        else:
+            int_part = int(match.group(1))
     dec_dot = match.group(2)
     mantissa = match.group(3)
     exponent = 0
