@@ -9,18 +9,21 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #$URL$
 #------------------------------------------------------------------------------
 #*
-#  Corrects various CIF file values and outputs the made changes into the 
-#  standard I/O streams. The script is capable of making these corrections:
-#    - Converting temperature from Celsius degrees to Kelvins degrees,
-#      removing temperature units of measurement, processing other
-#      undefined temperature values;
-#    - Fixing misspelled values by using the provided replacement value file;
-#    - Fixing enumeration values in CIF file against CIF dictionaries;
-#    - Correcting values of '_exptl_crystal_density_meas' data item.
-#
-#  All described corrections are enabled by default, but can be disabled by 
-#  prefixing the corresponding options by '--do-not', '--dont' or '--no'
-#  (for example, '--no-fix-temperature').
+#* Corrects various CIF file values and outputs the made changes into the 
+#* standard I/O streams. The script is capable of making these corrections:
+#*   - Converting temperature from Celsius degrees to Kelvins degrees,
+#*     removing temperature units of measurement, processing other
+#*     undefined temperature values;
+#*   - Fixing misspelled values by using the provided replacement value file;
+#*   - Fixing enumeration values in CIF file against CIF dictionaries;
+#*   - Correcting values of '_exptl_crystal_density_meas' data item.
+#*
+#* All described corrections are enabled by default, but can be disabled by 
+#* prefixing the corresponding options by '--do-not', '--dont' or '--no'
+#* (for example, '--no-fix-temperature').
+#*
+#* USAGE:
+#*    $0 --options input1.cif input*.cif
 #**
 
 use strict;
@@ -183,72 +186,74 @@ my $default_enums = \%default_enums;
 
 my @default_set_tags = ( '_atom_site_refinement_flags' );
 
-#* USAGE:
-#*     $0 --options input1.cif input*.cif
-#*
 #* OPTIONS:
 #*   --fix-temperature
-#*     Corrects temperature values which have units specified
-#*     or converts between Celsius degrees and Kelvins.
-#*     Changes 'room/ambiante temperature' to the appropriate numeric value.
-#*     Fixes other undefined values ('none', 'not given') to '?' symbol.
+#*                     Corrects temperature values which have units specified
+#*                     or converts between Celsius degrees and Kelvins.
+#*                     Changes 'room/ambiante temperature' to the appropriate
+#*                     numeric value. Changes other undefined values
+#*                     ('none', 'not given') to '?' symbol.
 #*
 #*   --fix-misspelled replacement_value.lst
-#*     Corrects misspelled values in the CIF file. Provide a file
-#*     for the check.
+#*                     Corrects misspelled values in the CIF file. Provide a file
+#*                     for the check.
 #*
 #*   --fix-enums
-#*     Corrects enumeration values in the CIF against CIF dictionaries.
-#*     Provide dictionaries using option --dictionary (or -d), 
-#*     otherwise script uses the built-in table from CIF Core
-#*     dictionary.
+#*                     Corrects enumeration values in the CIF against CIF
+#*                     dictionaries. Provide dictionaries using option
+#*                     --dictionary (or -d),  otherwise script uses the
+#*                     built-in table from CIF Core dictionary.
 #*
 #*   --treat-as-set
-#*     Treats certain enumeration values as set data type in the CIF
-#*     against CIF dictionaries (default). Provide dictionaries using
-#*     --dictionary (or -d) option, otherwise script uses the built-in
-#*     table from CIF Core dictionary.
+#*                     Treats certain enumeration values as set data type in
+#*                     the CIF against CIF dictionaries (default). Provide
+#*                     dictionaries using --dictionary (or -d) option, otherwise
+#*                     script uses the built-in table from CIF Core dictionary.
 #*
 #*   --fix-density-meas
-#*     Corrects value of data item '_exptl_crystal_density_meas'.
-#*     Values which are perceived as 'not measured' are changed to '?'.
-#*     The correct units are deleted. The new data item is created
-#*     if there are information about temperature.
+#*                     Corrects value of data item '_exptl_crystal_density_meas'.
+#*                     Values which are perceived as 'not measured' are changed
+#*                     to '?'. The correct units are deleted. The new data item
+#*                     is created if there are information about temperature.
 #*
 #*   --fix-weighting-scheme
-#*     Changes the value of the data item '_refine_ls_weighting_scheme'
-#*     to the value 'calc' if it contains details which seems to have
-#*     a formula, and creates new data item '_refine_ls_weighting_details'
-#*     to store that information. If value is equal to number one, then
-#*     then it is changed to enumeration value 'unit'.
+#*                     Changes the value of the data item '_refine_ls_weighting_scheme'
+#*                     to the value 'calc' if it contains details which seems to
+#*                     have a formula, and creates new data item
+#*                     '_refine_ls_weighting_details' to store that information.
+#*                     If value is equal to number one, then it is changed to
+#*                     the enumeration value 'unit'.
 #*
 #*   --fix-atom-sites-solution
-#*     Corrects the most frequent mistakes in the values of data items
-#*     '_atom_sites_solution_primary', '_atom_sites_solution_secondary'
-#*     and '_atom_sites_solution_hydrogens'.
+#*                     Corrects the most frequent mistakes in the values of
+#*                     data items '_atom_sites_solution_primary',
+#*                     '_atom_sites_solution_secondary' and
+#*                     '_atom_sites_solution_hydrogens'.
 #*
 #*   -d, --dictionary cif_core.dic
-#*     Any valid CIF file, with CIF dictionary (according to DDL2).
-#*     You can define any number of CIF dictionaries, in a way like
-#*     this:
-#*     $0 --dictionary cif_core.dic --dictionary cod_core.dic
+#*                     Any valid CIF file, with CIF dictionary (according to DDL2).
+#*                     You can define any number of CIF dictionaries, in a way like
+#*                     this:
+#*                     $0 --dictionary cif_core.dic --dictionary cod_core.dic
 #*
 #*   -D, --add-dictionaries cif_core.dic
-#*     You can add CIF dictionary, in a way like
-#*     this:
-#*     $0 --add-dictionaries cif_core.dic
+#*                     You can add CIF dictionary, in a way like
+#*                     this:
+#*                     $0 --add-dictionaries cif_core.dic
 #*
 #*   --clear-dictionaries
-#*     You can clear all dictionaries used for checking
-#*     CIF file, in a way like this:
-#*     $0 --clear-dictionaries
+#*                     You can clear all dictionaries used for checking
+#*                     CIF file, in a way like this:
+#*                     $0 --clear-dictionaries
 #*
 #*   --use-perl-parser
 #*   --use-c-parser
-#*     Specify parser to parse CIF files. C parser is default.
+#*                     Specify parser to parse CIF files. C parser is default.
 #*
 #*   --help, --usage
-#*     Print a short usage message (this message) and exit.
+#*                     Output a short usage message (this message) and exit.
+#*   --version
+#*                     Output version information and exit.
 #**
 @ARGV = getOptions(
     '--fix-misspelled'

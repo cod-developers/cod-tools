@@ -9,9 +9,12 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #$URL$
 #------------------------------------------------------------------------------
 #*
-#  Read a CIF file and convert those number values that are written as
-#  simple fractions (e.g. "1/4"), or otherwise as expressions, into a
-#  single floating point number. Uses Perl's 'eval'.
+#* Read a CIF file and convert those number values that are written as
+#* simple fractions (e.g. "1/4"), or otherwise as expressions, into a
+#* single floating point number. Uses Perl's 'eval'.
+#*
+#* USAGE:
+#*    $0 --options input1.cif input*.cif
 #**
 
 use strict;
@@ -29,34 +32,32 @@ my $debug = 0;
 my $tags_to_fix;
 my $dictionary_file;
 
-
-#* USAGE:
-#*     $0 --options input1.cif input*.cif
-#*
 #* OPTIONS:
-#*     -d, --dictionary cif_core.dic
-#*                      Use the specified dictionary for determining which
-#*                      values are numeric.
-#*     -t, --tags-to-fix _tag_1,_tag_2,_tag_3
-#*                      Specify an explicit list of tags that should be
-#*                      evaluated as numeric, without relying on a
-#*                      dictionary.
-#*     --fix-syntax-errors
-#*                      Try to fix those syntax errors in input CIFs that can
-#*                      be corrected unambiguously.
-#*     --no-fix-syntax-errors,
-#*     --dont-fix-syntax-errors
-#*                      Do not try to fix syntax errors in input CIFs (default).
-#*     --use-perl-parser
-#*                      Use development CIF parser written in Perl.
-#*     --use-c-parser
-#*                      Use faster C/Yacc CIF parser (default).
-#*     --debug
-#*                      Enable debug messages.
-#*     --no-debug
-#*                      Disable debug messages (default).
-#*     --help, --usage
-#*                      Print a short usage message (this message) and exit.
+#*   -d, --dictionary cif_core.dic
+#*                     Use the specified dictionary for determining which
+#*                     values are numeric.
+#*   -t, --tags-to-fix _tag_1,_tag_2,_tag_3
+#*                     Specify an explicit list of tags that should be
+#*                     evaluated as numeric, without relying on a
+#*                     dictionary.
+#*   --fix-syntax-errors
+#*                     Try to fix those syntax errors in input CIFs that can
+#*                     be corrected unambiguously.
+#*   --no-fix-syntax-errors,
+#*   --dont-fix-syntax-errors
+#*                     Do not try to fix syntax errors in input CIFs (default).
+#*   --use-perl-parser
+#*                     Use development CIF parser written in Perl.
+#*   --use-c-parser
+#*                     Use faster C/Yacc CIF parser (default).
+#*   --debug
+#*                     Enable debug messages.
+#*   --no-debug
+#*                     Disable debug messages (default).
+#*   --help, --usage
+#*                     Output a short usage message (this message) and exit.
+#*   --version
+#*                     Output version information and exit.
 #**
 @ARGV = getOptions(
     "-d,--dictionary" => \$dictionary_file,
