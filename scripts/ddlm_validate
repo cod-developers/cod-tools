@@ -173,38 +173,53 @@ for my $filename ( @ARGV ) {
 
       $datablock = merge_imported_files( $datablock, $imported_data );
       my $struct = build_search_struct($datablock);
+      my @tags = keys %{get_data_names($datablock)};
+     # my @tags = @{$datablock->{'tags'}};
+     # foreach (@{$datablock->{'saveblocks'}}) {
+     #   push @tags, @{$_->{'tags'}}
+     # }
 
       my @validation_messages;
       # TODO: the validation structure should be constructed only once
       # instead of passing it repeatedly for each file
 
-    for my $name ( keys %dicts ) {
-      my $dict = $dicts{$name};
-      if ( exists $dict->{'Datablock'}
-                  {'values'}{'_dictionary_valid.application'} ) {
-        push @validation_messages,
-             @{validate_scope_restrictions($struct, $dict)};
+      for my $name ( keys %dicts ) {
+        my $dict = $dicts{$name};
+        if ( exists $dict->{'Datablock'}
+                      {'values'}{'_dictionary_valid.application'} ) {
+            push @validation_messages,
+                 @{validate_scope_restrictions($struct, $dict)};
+        }
+
+        push @validation_messages, @{validate_type_contents($struct, $dict)};
+        push @validation_messages, @{validate_enumerators($struct, $dict)};
+        push @validation_messages, @{validate_type_container($struct, $dict)};
+        # check for the existence of items related by the _name.linked_item_id
+        # validate_linked_items($dict, $dict);
+
+        # _name.linked_item_id check existence of the given data item
+
+        # check the matching of _name.linked_item_id linked values (except)
+
+        # check looped/unlooped
+
+        # check against a range
+
+        # check for the existence of the key data item
+
+        # eligibility of su values
+        # map { "$filename: $dataname: $_.\n" }
+        @tags = grep { !exists $dict->{'Tags'}{$_} } @tags;
       }
 
-      push @validation_messages, @{validate_type_contents($struct, $dict)};
-      push @validation_messages, @{validate_enumerators($struct, $dict)};
-      push @validation_messages, @{validate_type_container($struct, $dict)};
-      # check for the existence of items related by the _name.linked_item_id
-      # validate_linked_items($dict, $dict);
-
-      # _name.linked_item_id check existence of the given data item
-
-      # check the matching of _name.linked_item_id linked values (except)
-
-      # check looped/unlooped
-
-      # check against a range
-
-      # check for the existence of the key data item
-
-      # eligibility of su values
-      # map { "$filename: $dataname: $_.\n" }
-    }
+      push @validation_messages,
+           map {
+              "data item '$_' was not found in dictionaries";
+            } @tags;
+    #  for ( @tags ) {
+    #  print "########\n";
+    #  print @tags;
+    #  print "\n########\n";
 
       foreach ( @validation_messages ) {
         warn $_ . "\n";
@@ -724,6 +739,25 @@ sub validate_scope_restrictions
     return \@validation_messages;
 }
 
+sub get_data_names
+{
+    my ($datablock) = @_;
+
+    my %data_names;
+
+    for ( @{$datablock->{'tags'}} ) {
+        $data_names{$_} = 1;
+    };
+
+    for my $saveblock ( @{$datablock->{'save_blocks'}} ) {
+        for ( @{$saveblock->{'tags'}} ) {
+            $data_names{$_} = 1;
+        };
+    };
+
+    return \%data_names;
+}
+
 ##
 # Builds a data structure that is more convenient to traverse in regards to
 # the Dictionary, Category and Item contexts classification.
@@ -747,6 +781,7 @@ sub build_search_struct
 
     my %categories;
     my %items;
+    my %tags;
     for my $saveblock ( @{$data->{'save_blocks'}} ) {
         my $values = $saveblock->{values};
 
@@ -764,12 +799,14 @@ sub build_search_struct
             # ITEM is currently stated as the default value
             $items{ $values->{'_definition.id'}[0] } = $saveblock;
         }
+        $tags{ $values->{'_definition.id'}[0] } = 1;
     };
 
     my $struct = {
         'Dictionary' => { $data->{'name'} => $data },
         'Category'   => \%categories,
         'Item'       => \%items,
+        'Tags'       => \%tags,
         'Datablock'  => $data
     };
 
@@ -905,7 +942,7 @@ sub expand_categories
             }
         } else {
           #  print keys %{$dict->{'Item'}};
-            print "$category\n";
+          #  print "$category\n";
             die 'No such data item or category was found in dictionary';
         }
     }
