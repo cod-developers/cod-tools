@@ -67,6 +67,7 @@ sub parse
                                   $message->{lineno},
                                   $message->{columnno},
                                   $message->{line} );
+        $msg = decode( 'utf8', $msg );
 
         if( $message->{status} eq 'ERROR' ) {
             push @errors, $msg;
