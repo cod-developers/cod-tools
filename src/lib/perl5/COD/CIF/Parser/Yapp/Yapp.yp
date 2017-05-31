@@ -479,7 +479,7 @@ loop
 
             foreach my $tag (@{$tags}) {
                 if ( !defined $has_precisions{$tag} ) {
-                    $val->{precisions}{$tag} = undef;
+                    delete $val->{precisions}{$tag};
                 }
             }
 
@@ -1180,6 +1180,10 @@ sub Run
     }
     unshift @{$self->YYData->{ERROR_MESSAGES}}, 
             @{$self->YYData->{WARNING_MESSAGES}};
+
+    for my $datablock (@{$self->{USER}->{CIFfile}}) {
+        $datablock->{cifversion} = { minor => 1, major => 1 };
+    }
 
     return $self->{USER}->{CIFfile};
 }
