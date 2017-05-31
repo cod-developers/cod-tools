@@ -6,6 +6,9 @@
 %}
 
 %pythoncode %{
+import warnings
+warnings.filterwarnings('ignore', category=UnicodeWarning)
+
 def parse(filename,*args):
     import re
 
@@ -99,7 +102,12 @@ def unpack_precision(value,precision):
     
     int_part = 0
     if match.group(1):
-        int_part = int(match.group(1))
+        if match.group(1) == '+':
+            int_part = 1
+        elif match.group(1) == '-':
+            int_part = -1
+        else:
+            int_part = int(match.group(1))
     dec_dot = match.group(2)
     mantissa = match.group(3)
     exponent = 0
@@ -175,11 +183,11 @@ def decode_utf8_hash_keys(values):
             values[i] = decode_utf8_hash_keys(values[i])
     elif isinstance(values,dict):
         for key in values.keys():
-           values[key] = decode_utf8_hash_keys(values[key]);
-           new_key = decode_utf8_values(key);
-           if new_key != key:
-               values[new_key] = values[key]
-               del values[key]
+            values[key] = decode_utf8_hash_keys(values[key])
+            new_key = decode_utf8_values(key)
+            if new_key != key:
+                values[new_key] = values[key]
+                del values[key]
 
     return values
 
@@ -189,12 +197,9 @@ def decode_utf8_values(values):
             values[i] = decode_utf8_values(values[i])
     elif isinstance(values,dict):
         for key in values.keys():
-            values[key] = decode_utf8_hash_keys(values[key]);
+            values[key] = decode_utf8_hash_keys(values[key])
     else:
-        try:
-            values = values.decode('utf-8')
-        except UnicodeDecodeError:
-            pass
+        values = values.decode('utf-8','replace')
 
     return values
 

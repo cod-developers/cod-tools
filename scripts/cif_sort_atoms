@@ -1,0 +1,151 @@
+#! /bin/sh
+#!perl -w # --*- Perl -*--
+eval 'exec perl -x $0 ${1+"$@"}'
+    if 0;
+#------------------------------------------------------------------------------
+#$Author$
+#$Date$
+#$Revision$
+#$URL$
+#------------------------------------------------------------------------------
+#*
+#* Sort atoms in a CIF file in given order.
+#*
+#* USAGE:
+#*    $0 --options input1.cif input*.cif
+#**
+
+use strict;
+use warnings;
+use File::Basename qw( basename );
+use COD::AtomProperties;
+use COD::CIF::Data::AtomList qw( extract_atom );
+use COD::CIF::Parser qw( parse_cif );
+use COD::CIF::Tags::CanonicalNames qw( canonicalize_all_names );
+use COD::CIF::Tags::Print qw( print_cif );
+use COD::ErrorHandler qw( process_errors process_warnings
+                          process_parser_messages report_message );
+use COD::SOptions qw( getOptions get_value );
+use COD::SUsage qw( usage options );
+use COD::ToolsVersion;
+
+my $order = \&get_lexicographic_order;
+my $direction = 1;
+
+my $use_parser = 'c';
+
+my $die_on_error_level = {
+    ERROR   => 0,
+    WARNING => 0,
+    NOTE    => 0,
+};
+
+#* OPTIONS:
+#*   -l, --lexicographic
+#*                     Sort by lexicographic order (default).
+#*   -Z, --atomic-number
+#*                     Sort by atomic number.
+#*
+#*   -r, --reverse
+#*                     Reverse the ordering.
+#*
+#*   --use-perl-parser
+#*                     Use Perl parser for CIF parsing.
+#*   --use-c-parser
+#*                     Use Perl & C parser for CIF parsing (default).
+#*
+#*   --help, --usage
+#*                     Output a short usage message (this message) and exit.
+#*   --version
+#*                     Output version information and exit.
+#**
+
+@ARGV = getOptions(
+    '-l,--lexicographic' => sub { $order = \&get_lexicographic_order },
+    '-Z,--atomic-number' => sub { $order = \&get_atomic_order },
+
+    '-r,--reverse' => sub { $direction = -1 },
+
+    '--use-perl-parser' => sub{ $use_parser = 'perl' },
+    '--use-c-parser'    => sub{ $use_parser = 'c' },
+
+    '--options'      => sub { options; exit },
+    '--help,--usage' => sub { usage; exit },
+    '--version'         => sub { print 'cod-tools version ',
+                                 $COD::ToolsVersion::Version, "\n";
+                                 exit }
+);
+
+@ARGV = ( '-' ) unless @ARGV;
+
+binmode STDOUT, ':encoding(UTF-8)';
+binmode STDERR, ':encoding(UTF-8)';
+
+for my $filename (@ARGV) {
+    my $options = { parser     => $use_parser,
+                    no_print   => 1 };
+
+    my( $data, $err_count, $messages ) = parse_cif( $filename, $options );
+    process_parser_messages( $messages, $die_on_error_level );
+
+    if( !@{$data} || !defined $data->[0] || !defined $data->[0]{name} ) {
+        report_message( {
+           'program'   => $0,
+           'filename'  => $filename,
+           'err_level' => 'WARNING',
+           'message'   => 'file seems to be empty'
+        }, 0 );
+        next;
+    }
+
+    canonicalize_all_names( $data );
+
+    for my $dataset (@$data) {
+        my $values = $dataset->{values};
+
+        my @order = $order->( $values, $direction );
+        my $atom_loop = $dataset->{inloop}{_atom_site_label};
+        for my $tag (@{$dataset->{loops}[$atom_loop]}) {
+            for my $key (qw( precisions types values )) {
+                $dataset->{$key}{$tag} =
+                    [ @{$dataset->{$key}{$tag}}[@order] ];
+            }
+        }
+
+        print_cif( $dataset,
+                   {
+                        preserve_loop_order => 1,
+                        keep_tag_order => 1
+                   } );
+    }
+}
+
+sub get_lexicographic_order
+{
+    my( $dataset, $direction ) = @_;
+    $direction = 1 unless defined $direction;
+
+    return sort { $direction *
+                  ($dataset->{_atom_site_label}[$a] cmp
+                   $dataset->{_atom_site_label}[$b]) }
+                0..$#{$dataset->{_atom_site_label}};
+}
+
+sub get_atomic_order
+{
+    my( $dataset, $direction ) = @_;
+    $direction = 1 unless defined $direction;
+
+    my $unity = [ [ 1, 0, 0, 0 ],
+                  [ 0, 1, 0, 0 ],
+                  [ 0, 0, 1, 0 ],
+                  [ 0, 0, 0, 1 ] ]; # fake f2o matrix
+    my @types = map { $_->{chemical_type} }
+                map { extract_atom( $dataset->{_atom_site_label}[$_],
+                                    $dataset, $_, $unity ) }
+                    0..$#{$dataset->{_atom_site_label}};
+    return sort { $direction *
+                  ($COD::AtomProperties::atoms{$types[$a]}{atomic_number} <=>
+                   $COD::AtomProperties::atoms{$types[$b]}{atomic_number}) }
+                0..$#{$dataset->{_atom_site_label}};
+}

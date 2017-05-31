@@ -1,7 +1,12 @@
 cod-tools (unreleased)
 
   * Added:
-    - reading/writing of CIF v2.0 format.
+    - cif_sort_atoms: a script to order atoms by given method.
+
+cod-tools (2.0)
+
+  * Added:
+    - codcif: reading/writing of CIF v2.0 format.
     - cif2json: adding the '--canonical' option that forces the output
       json to be sorted in a predetermined way.
     - COD::CIF:JSON: adding the second parameter to the cif2json()
@@ -9,8 +14,6 @@ cod-tools (unreleased)
       encoding operation. Currently only the 'canonical' option is
       supported.
     - check_symop_canonicality: a new tool script.
-    - version information is printed by most of the scripts using
-      --version command line option.
   * Changed:
     - cif_find_symmetry: using symmetry operators as provided by
       spglib instead of operators from lookup hashes as ones from
@@ -31,6 +34,10 @@ cod-tools (unreleased)
         datablock.h
       - datablock_push_loop_value() -> datablock_push_loop_cifvalue()
         in datablock.h
+    - COD::CIF::Parser::Yapp: detecting and reporting CIF v2.0 format.
+    - COD::CIF::Parser::Yapp: adding 'cifversion' subhash.
+    - COD::CIF::Parser::Yapp: removing precisions of non-numeric
+      looped tags.
     - COD::Spacegroups::Lookup::COD: changing symop strings to their
       canonical forms.
     - COD::CIF::Data::CellContents: implementing a more thorough check
@@ -42,23 +49,23 @@ cod-tools (unreleased)
     - cif_mark_disorder: renaming options --distance-sensivity and
       --occupancy-sensivity to --distance-sensitivity and
       --occupancy-sensitivity respectively.
-    - Help messages: unifying the layout of the help messages (accessible
-      via the --help command line option) and correcting a few typos in
-      the help messages.
+    - Help messages: unifying the layout of the help messages
+      (accessible via the --help command line option) and correcting a
+      few typos in the help messages.
   * Removed:
     - datablock.h: datablock_values()
-    - debian/ directory.
     - duplicate_space_groups: empty import of the
       COD::Spacegroups::Symop::Parse module.
   * Fixed:
     - adding perl-XML-Simple as a run dependency for CentOS 6.8.
     - detecting and removing DEL control character (ASCII decimal
       value 127) from CIF v1.1 strings.
-    - installing of pycodcif.
     - pycodcif:
       - Adding the 'precisions' field to each of the save frames.
     - COD::CIF::Parser::Bison:
       - Adding the 'precisions' field to each of the save frames.
+    - codcif: detecting ASCII symbols with decimal values 16-31 in
+      CIF 1.1 files as errors.
 
 cod-tools (1.1)
 
@@ -148,11 +155,14 @@ cod-tools (1.1)
     - COD::AtomProperties assembler:
       - Adding the 'Dummy' atom rule to the assembling process.
       - Adding a way to specify the name of the assembled Perl module.
-      - Adding a way to specify the namespace of the assembled Perl module.
+      - Adding a way to specify the namespace of the assembled Perl
+        module.
     - cif_molecule: Adding the '--exclude-dummy-atoms' option.
     - COD::CIF::Data::AtomList: adding the 'exclude_dummy_coordinates'
       option to the atom_array_from_cif() subroutine that excludes
       atoms with at least one dot ('.') coordinate.
+    - version information is printed by most of the scripts using
+      --version command line option.
   * Changed:
     - COD::CID::Data::CIF2COD treats CIF value '?' amid white space as
       undefined.
@@ -197,7 +207,8 @@ cod-tools (1.1)
       memory reallocations in Bison CIF parser.
     - cif_correct_tags:
       - Adding misspelt variants of the following tags to the
-        replacement list (data/replacement-values/replacement_tags.lst):
+        replacement list
+        (data/replacement-values/replacement_tags.lst):
         - _atom_site_site_symmetry_multiplicity
         - _atom_site_symmetry_multiplicity
         - _exptl_crystal_F_000
@@ -209,8 +220,9 @@ cod-tools (1.1)
       - Copying tests/inputs/replacement_tags.lst to
         data/replacement-values/.
       - Adding an error message regarding misspelt looped tags.
-      - Adding several error messages regarding the situation when the correctly
-        spelt data item and the misspelt one are found in the same file.
+      - Adding several error messages regarding the situation when the
+        correctly spelt data item and the misspelt one are found in
+        the same file.
     - cif_cod_numbers: also considering the unit cell formula and
       compound source when searching for duplicate entries.
     - cif_tcod_tree: using more portable way to fetch contents of
@@ -273,8 +285,9 @@ cod-tools (1.1)
       - moving the logic that allows to skip an atom before
         extracting it into a separate subroutine 'is_atom_excludable'.
       - removing the 'do_not_resolve_chemical_type' option from the 
-        extract_atom() subroutine since the same functionality can also
-        be achieved with the 'allow_unknown_chemical_types' option.
+        extract_atom() subroutine since the same functionality can
+        also be achieved with the 'allow_unknown_chemical_types'
+        option.
       - moving logic that sets atom values generated by 'cif_molecule'
         to a separate subroutine 'set_cod_molecule_atom_fields'.
     - Renaming COD::CIF2JSON to COD::CIF::JSON.
@@ -317,6 +330,7 @@ cod-tools (1.1)
       symop_vector_mul() instead.
     - COD::CIF::Data::SymmetryGenerator: copy_atom(). Using
       copy_atom() from COD::CIF::Data::AtomList instead.
+    - debian/ directory.
   * Fixed:
     - adding libxml-simple-perl as a run dependency for Ubuntu-12.04
       and Debian-8.6.
@@ -419,8 +433,8 @@ cod-tools (1.1)
       - cif2xyz
     - COD::ErrorHandler: ensuring that the code block is only
       executed upon successful matching.
-    - COD::CIF::Data: checking whether tag's value/precision is defined
-      in get_cell().
+    - COD::CIF::Data: checking whether tag's value/precision is
+      defined in get_cell().
     - codcif: detecting and fixing headerless CIF files composed of a
       single CIF data item only.
     - COD::CIF::Parser::Yapp: everything from the quote symbol to the
@@ -429,34 +443,38 @@ cod-tools (1.1)
     - cif_filter:
       - removing fold() subroutine call in the bibliography reference
         hash processing block. The subroutine was called in the wrong
-        place and disregarded the command line options '--folding-width',
-        '--fold-title' and '--dont-fold-title'.
-      - user provided command line options dealing with bibliographical
-        information are now ignored if the provided value is an empty
-        string.
+        place and disregarded the command line options
+        '--folding-width', '--fold-title' and '--dont-fold-title'.
+      - user provided command line options dealing with
+        bibliographical information are now ignored if the provided
+        value is an empty string.
     - Replacing indirect Perl method calls (new Object) with direct 
       methods calls (Object->new) since it is the preferred way.
     - COD::UserMessage: avoiding negative positions in error messages.
     - COD::CIF::Data::CIF2COD: cif2cod():
-      - determines number of distinct elements for structures with defined
-        and non-empty chemical formulae.
+      - determines number of distinct elements for structures with
+        defined and non-empty chemical formulae.
       - The cif markup entity conversion is now carried out before
         collapsing several white spaces into a single white space.
         This allows to preserve at least a single whitespace after
         the symbol encoded by the cif markup entity.
     - cif_molecule:
-      - Simple polymers are now detected even with '--max-polymer-span 0'.
-      - Trimming polymers after polymer dimension measurement and before
-        formulae calculation. Multiple moieties are then merged into one
-        if one data block output is requested. Thus, correct formulae are
-        achieved and non-polymer atoms are not trimmed.
-      - Enforcing '.' occupancies for all output dummy atoms even if the
-        '--force-unit-occupancies' option is in effect.
+      - Simple polymers are now detected even with
+        '--max-polymer-span 0'.
+      - Trimming polymers after polymer dimension measurement and
+        before formulae calculation. Multiple moieties are then merged
+        into one if one data block output is requested. Thus, correct
+        formulae are achieved and non-polymer atoms are not trimmed.
+      - Enforcing '.' occupancies for all output dummy atoms even if
+        the '--force-unit-occupancies' option is in effect.
       - Setting multiplicities to '?' for atoms of dummy molecules.
       - Preventing printing of a syntactically incorrect CIFs (ones
         that contain loops without values).
     - pycodcif: passing the 'fix_datablock_name' option directly to
       the lexer.
+    - pycodcif: unpacking of floats with precisions with a sign
+      ('+' or '-') and implicit integer parts (-.01 and +.01).
+    - installing of pycodcif.
     - oqmd2cif: producing syntactically correct CIF files for
       structures without any atoms.
     - COD::Cell::Delaunay::Delaunay: correcting the Delaunay
