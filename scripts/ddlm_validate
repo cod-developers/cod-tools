@@ -107,38 +107,48 @@ my %default_ddlm_values = (
 # TODO: consider the fact that files can have alternative names ('.' vs. '_')
 
 # TODO: implement iteration over the validation dictionaries
-my $ddlm_dictionary = $dict_files[0];
 
-my $options = { 'parser' => $use_parser, 'no_print' => 1 };
-my ( $data, $err_count, $messages ) = parse_cif( $ddlm_dictionary, $options );
-# TODO: warn if there are more than 1 data block in a file
-process_parser_messages( $messages, $die_on_error_level );
-
-my $dict_block = $data->[0];
-
-my($filename, $dirs, $suffix) = fileparse($ddlm_dictionary);
-
-my $imported_data = get_imported_files(
-    {
-        'container_file' => $dict_block,
-        # TODO: the path should also be constructed from the command line
-        # arguments as well as a command line variable
-        'file_path'      => [ './', $dirs ],
-        'imported_files' => {},
-        'parser_options' => $options
+my %dicts;
+if( @dict_files ) {
+    my $options = { 'parser' => $use_parser, 'no_print' => 1 };
+    foreach my $dict ( @dict_files ) {
+        my ( $data, $err_count, $messages ) = parse_cif( $dict, $options );
+        process_parser_messages( $messages, $die_on_error_level );
+        # TODO: warn if there are more than 1 data block in a file?
+        my $dict_block = $data->[0];
+        my($filename, $dirs, $suffix) = fileparse($dict);
+        my $imported_data = get_imported_files(
+            {
+                'container_file' => $dict_block,
+                # TODO: the path should also be constructed from the command line
+                # arguments as well as a command line variable
+                'file_path'      => [ './', $dirs ],
+                'imported_files' => {},
+                'parser_options' => $options
+            }
+        );
+        $dict_block = merge_imported_files( $dict_block, $imported_data );
+        $dicts{$dict} =  build_search_struct( $dict_block );
     }
-);
-
-$dict_block = merge_imported_files( $dict_block, $imported_data );
-
-my $dict = build_search_struct($dict_block);
+} else {
+    report_message( {
+        'program'   => $0,
+        'err_level' => 'ERROR',
+        'message'   => 'at least one dictionary file should be provided by '
+                     . 'using the \'--dictionaries\' option. Automatic '
+                     . 'dictionary download is not implemeted yet'
+    }, $die_on_errors );
+    my $dict_iucr_uri = 'ftp://ftp.iucr.org/pub/cif_core.dic';
+};
 
 @ARGV = ('-') unless @ARGV;
 # start-iterate-through-CIF-files
+
 for my $filename ( @ARGV ) {
     my $options = { 'parser' => $use_parser, 'no_print' => 1 };
     my ( $data, $err_count, $messages ) = parse_cif( $filename, $options );
     process_parser_messages( $messages, $die_on_error_level );
+    my (undef, $dirs, undef) = fileparse($filename);
 
     # TODO: complain if there if more than one data block
     for my $datablock ( @{$data} ) {
@@ -167,6 +177,9 @@ for my $filename ( @ARGV ) {
       my @validation_messages;
       # TODO: the validation structure should be constructed only once
       # instead of passing it repeatedly for each file
+
+    for my $name ( keys %dicts ) {
+      my $dict = $dicts{$name};
       if ( exists $dict->{'Datablock'}
                   {'values'}{'_dictionary_valid.application'} ) {
         push @validation_messages,
@@ -190,7 +203,9 @@ for my $filename ( @ARGV ) {
       # check for the existence of the key data item
 
       # eligibility of su values
-      # map { "$filename: $dataname: $_.\n" } 
+      # map { "$filename: $dataname: $_.\n" }
+    }
+
       foreach ( @validation_messages ) {
         warn $_ . "\n";
       }
