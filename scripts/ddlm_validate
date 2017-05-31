@@ -221,7 +221,7 @@ for my $filename ( @ARGV ) {
 
         # eligibility of su values
         # map { "$filename: $dataname: $_.\n" }
-        @tags = grep { !exists $dict->{'Tags'}{$_} } @tags;
+        @tags = grep { !exists $dict->{'Tags'}{lc $_} } @tags;
       }
 
       if ( !$report_local_tags ) {
@@ -806,16 +806,39 @@ sub build_search_struct
                 next; #
             } elsif ( $values->{'_definition.scope'}[0] eq 'Category' ) {
                 $categories{ $values->{'_definition.id'}[0] } = $saveblock;
+                if (exists $values->{'_alias.definition_id'}) {
+                    for ( @{$values->{'_alias.definition_id'}} ) {
+                        $values->{'original_tags'}{lc $_} = $_;
+                        $categories{ lc $_ } = $saveblock;
+                    }
+                }
             } elsif ( $values->{'_definition.scope'}[0] eq 'Item' ) {
                 $items{ $values->{'_definition.id'}[0] } = $saveblock;
+                if (exists $values->{'_alias.definition_id'}) {
+                    for ( @{$values->{'_alias.definition_id'}} ) {
+                        $values->{'original_tags'}{lc $_} = $_;
+                        $items{ lc $_ } = $saveblock;
+                    }
+                }
             } else {
                 # this error should be reported by the enumeration check
             }
         } else {
             # ITEM is currently stated as the default value
             $items{ $values->{'_definition.id'}[0] } = $saveblock;
+            if (exists $values->{'_alias.definition_id'}) {
+                for ( @{$values->{'_alias.definition_id'}} ) {
+                    $values->{'original_tags'}{lc $_} = $_;
+                    $items{ lc $_ } = $saveblock;
+                }
+            }
         }
         $tags{ $values->{'_definition.id'}[0] } = 1;
+        if (exists $values->{'_alias.definition_id'}) {
+            for ( @{$values->{'_alias.definition_id'}} ) {
+                $tags{ lc $_ } = 1;
+            }
+        }
     };
 
     my $struct = {
@@ -893,8 +916,6 @@ sub merge_imported_files
           if ( exists $imported_files->{$filename} ) {
             my $imported_file = $imported_files->{$filename};
             $imported_file = merge_imported_files($imported_file, $imported_files);
-
-
             my $target_saveblock = $import->{'save'};
             foreach my $imported_saveblock ( @{$imported_file->{'save_blocks'}} ) {
               # TODO: check for case-sensitivity
