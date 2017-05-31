@@ -287,8 +287,17 @@ sub validate_type_contents
       if ( exists $dict->{'Item'}{$tag} ) {
         my $validation_item = $dict->{'Item'}{$tag};
         if ( exists $validation_item->{'values'}{'_type.contents'} ) {
-          my $type_contents = $validation_item->{'values'}{'_type.contents'}[0];
-            foreach my $value ( @{$data->{$scope}{$instance}{'values'}{$tag}} ) {
+          my $type_contents = lc $validation_item->{'values'}{'_type.contents'}[0];
+          # The 'implied' data type points to the data type given in the
+          # data item definition save frame
+          if ( $type_contents eq 'implied' ) {
+              # TODO: maybe the 'implied' values should be replaced with proper
+              # data types before calling this subroutine?
+              if ( exists $data->{$scope}{$instance}{'values'}{'_type.contents'}[0] ) {
+                $type_contents = $data->{$scope}{$instance}{'values'}{'_type.contents'}[0];
+              }
+          }
+          foreach my $value ( @{$data->{$scope}{$instance}{'values'}{$tag}} ) {
             # TODO: implement type content checking for data items
             # within containers
 
