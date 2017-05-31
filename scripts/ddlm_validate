@@ -34,6 +34,7 @@ use COD::ErrorHandler qw( process_warnings
 use COD::ToolsVersion;
 
 my $use_parser = 'c';
+my $report_local_tags = 0;
 my @dict_files;
 
 my $die_on_errors   = 1;
@@ -51,6 +52,13 @@ my $die_on_notes    = 0;
 #*                     Add additional CIF dictionary to the list.
 #*   --clear-dictionaries
 #*                     Remove all CIF dictionaries from the list.
+#*
+#*   --report-local-tags
+#*                     Validate data items having tags prefixed with
+#*                     the '_[local]' prefix.
+#*   --no-report-local-tags, --ignore-local-tags
+#*                     Ignore data items having tags prefixed with '_[local]'
+#*                     prefix (default).
 #*
 #*   --continue-on-errors
 #*                     Do not terminate script if errors are raised (default).
@@ -74,6 +82,10 @@ my $die_on_notes    = 0;
     '-d,--dictionaries'    => sub{ @dict_files = split m/,|\s+/, get_value() },
     '-D,--add-dictionary'  => sub{ push @dict_files, get_value() },
     '--clear-dictionaries' => sub{ @dict_files = () },
+
+    '--report-local-tags'               => sub{ $report_local_tags = 1 },
+    '--no-report-local-tags'            => sub{ $report_local_tags = 0 },
+    '--ignore-local-tags'               => sub{ $report_local_tags = 0 },
 
     '--continue-on-errors'          => sub { $die_on_errors = 0 },
     '--die-on-errors'               => sub { $die_on_errors = 1 },
@@ -210,6 +222,10 @@ for my $filename ( @ARGV ) {
         # eligibility of su values
         # map { "$filename: $dataname: $_.\n" }
         @tags = grep { !exists $dict->{'Tags'}{$_} } @tags;
+      }
+
+      if ( !$report_local_tags ) {
+        @tags = grep { $_ !~ m/^_\[local\]/ } @tags;
       }
 
       push @validation_messages,
