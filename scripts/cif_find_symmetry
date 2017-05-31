@@ -42,7 +42,7 @@ use COD::Spacegroups::Symop::Algebra qw( flush_zeros_in_symop
                                          symop_det
                                          symop_mul
                                          symop_transpose );
-use COD::Spacegroups::Symop::Parse qw( string_from_symop );
+use COD::Spacegroups::Symop::Parse qw( string_from_symop_reduced );
 use COD::SOptions qw( getOptions get_value );
 use COD::SPGLib qw( get_sym_dataset );
 use COD::SUsage qw( usage options );
@@ -305,7 +305,7 @@ sub find_symmetry_spglib
                       [ 1..@{$sym->{symops}} ] );
         set_loop_tag( $dataset, '_space_group_symop_operation_xyz',
                       '_space_group_symop_id',
-                      [ map { string_from_symop( $_ ) }
+                      [ map { string_from_symop_reduced( $_ ) }
                         map { flush_zeros_in_symop( $_ ) }
                             @{$sym->{symops}} ] );
 
