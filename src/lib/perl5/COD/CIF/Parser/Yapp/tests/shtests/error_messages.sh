@@ -19,6 +19,9 @@ use warnings;
 use File::Basename;
 use COD::CIF::Parser::Yapp;
 
+binmode( STDOUT, ":encoding(UTF-8)" );
+binmode( STDERR, ":encoding(UTF-8)" );
+
 my $script_dir  = File::Basename::dirname( $0 );
 my $script_name = File::Basename::basename( $0 );
 
