@@ -641,38 +641,44 @@ sub validate_enumerators
                                 {'_enumeration_set.state'} };
           my $type_container = lc $default_ddlm_values{'_type.container'};
           if ( exists $validation_item->{'values'}{'_type.container'}) {
-            $type_container = $validation_item->{'values'}{'_type.container'}[0];
+            $type_container = lc $validation_item->{'values'}{'_type.container'}[0];
           }
 
-          my $value = $data->{$scope}{$instance}{'values'}{$tag}[0];
-          if ( lc $type_container eq lc 'Single' ) {
-          if (! any { lc $value eq lc $_ } @enumeration_values ) {
-          #  print "$instance: $tag: $value is not permitted\n";
-            warn "data item '$tag' value \"$value\" "
-               . 'must be one of the enumeration values '
-               . '[' . ( join ', ', @enumeration_values ) . ']' . "\n";
-          }
-        # Mainly targeted at '_type.contents'
-        } elsif ( lc $type_container eq lc 'Multiple' ) {
-          if (! any { lc $value eq lc $_ } @enumeration_values ) {
-          #     print "$instance: $tag: $value is not permitted\n";
-          #  warn "data item '$tag' value \"$value\" "
-          #     . 'must be one of the enumeration values '
-          #     . '[' . ( join ', ', @enumeration_values ) . ']. '
-          #     . 'This message might be a false positive since '
-          #     . 'handling of enumeration values with the ' 
-          #     . "'Multiple' type container is not yet implemented\n";
-          }
-          # TODO: consider all of these combinations?
-          # even if they don't really occur?
-          } elsif ( lc $type_container eq lc 'Array' ) {
+          for my $value ( @{$data->{$scope}{$instance}{'values'}{$tag}} ) {
+            if ( $type_container eq lc 'single' ) {
+              # skip special CIF2 values
+              if ( $value ne '?' && $value ne '.' ) {
+                # FIXME: fc should probably be used instead of uc, but it is
+                # not supported by older Perl versions
+                if (! any { uc $value eq uc $_ } @enumeration_values ) {
+                    warn "data item '$tag' value \"$value\" "
+                    . 'must be one of the enumeration values '
+                    . '[' . ( join ', ', @enumeration_values ) . ']' . "\n";
+                }
+              }
+            # !!! Mainly targeted at '_type.contents'.
+            # !!! Might be deprecated soon.
+            } elsif ( $type_container eq 'multiple' ) {
+              if (! any { uc $value  eq uc $_ } @enumeration_values ) {
+            #     print "$instance: $tag: $value is not permitted\n";
+            #  warn "data item '$tag' value \"$value\" "
+            #     . 'must be one of the enumeration values '
+            #     . '[' . ( join ', ', @enumeration_values ) . ']. '
+            #     . 'This message might be a false positive since '
+            #     . 'handling of enumeration values with the ' 
+            #     . "'Multiple' type container is not yet implemented\n";
+            }
+            # TODO: consider all of these combinations?
+            # even if they don't really occur?
+            } elsif ( lc $type_container eq 'array' ) {
 
-          } elsif ( lc $type_container eq lc 'Matrix') {
+            } elsif ( lc $type_container eq 'matrix') {
 
-          } elsif ( lc $type_container eq lc 'List' ) {
+            } elsif ( lc $type_container eq 'list' ) {
 
-          } elsif ( lc $type_container eq lc 'Table' ) {
+            } elsif ( lc $type_container eq 'table' ) {
 
+            }
           }
         }
       }
