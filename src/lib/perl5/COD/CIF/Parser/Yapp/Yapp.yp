@@ -14,8 +14,9 @@
 # copy directly to PERL module:
 %{
 use warnings;
-use COD::ShowStruct qw( showRef );
+use Encode qw(decode);
 use FileHandle;
+use COD::ShowStruct qw( showRef );
 use COD::Precision qw( unpack_precision );
 use COD::UserMessage qw( sprint_message );
 
@@ -666,7 +667,8 @@ sub _Error
                                   "ERROR", $errmsg, undef,
                                   $line, $pos, $line_content );
 
-    push( @{$_[0]->YYData->{ERROR_MESSAGES}}, $message );
+    push @{$_[0]->YYData->{ERROR_MESSAGES}},
+         decode( 'utf8', $message );
 }
 
 sub _Warning
@@ -697,7 +699,8 @@ sub _Warning
         }
 
         delete $_[0]->YYData->{ERRMSG};
-        push  ( @{$_[0]->YYData->{WARNING_MESSAGES}}, $message );
+        push @{$_[0]->YYData->{WARNING_MESSAGES}},
+             decode( 'utf8', $message );
     }
 }
 

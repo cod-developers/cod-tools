@@ -231,6 +231,7 @@ static int cif_lexer( FILE *in, cexception_t *ex )
             pos --;
             prevchar = token[pos-1];
             pushchar( &token, &length, pos, '\0' );
+            check_utf8( (unsigned char*)token );
             cif2lval.s = clean_string( token, /* is_textfield = */ 0, ex );
             if( is_integer( token )) {
                 if( yy_flex_debug ) {
