@@ -23,6 +23,7 @@ binmode STDERR, ':encoding(UTF-8)';
 
 use List::MoreUtils qw( any );
 use File::Basename;
+use Scalar::Util qw( looks_like_number );
 use URI;
 
 use COD::CIF::Parser qw( parse_cif );
@@ -205,7 +206,11 @@ for my $filename ( @ARGV ) {
 
         push @validation_messages, @{validate_type_contents($struct, $dict)};
         push @validation_messages, @{validate_enumerators($struct, $dict)};
+        push @validation_messages, @{validate_range($struct, $dict)};
         push @validation_messages, @{validate_type_container($struct, $dict)};
+
+# check against a range
+
         # check for the existence of items related by the _name.linked_item_id
         # validate_linked_items($dict, $dict);
 
@@ -214,8 +219,6 @@ for my $filename ( @ARGV ) {
         # check the matching of _name.linked_item_id linked values (except)
 
         # check looped/unlooped
-
-        # check against a range
 
         # check for the existence of the key data item
 
@@ -681,6 +684,96 @@ sub validate_enumerators
     }}}
 
     return \@validation_messages;
+}
+
+sub validate_range
+{
+    my ($data, $dict) = @_;
+
+    # TODO: maybe it should be a global variable?
+    my $signed_float =
+        '(?:[-+]?' .
+        '(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)' .
+        '(?:[eE][-+]?[0-9]+)?)';
+
+    my @validation_messages;
+
+    for my $scope ( 'Dictionary', 'Category', 'Item' ) {
+    for my $instance ( keys %{$data->{$scope}} ) {
+    for my $tag ( @{$data->{$scope}{$instance}{'tags'}} ) {
+      if ( exists $dict->{'Item'}{$tag} ) {
+        my $validation_item = $dict->{'Item'}{$tag};
+        if ( exists $validation_item->{'values'}{'_enumeration.range'} ) {
+          for my $value ( @{$data->{$scope}{$instance}{'values'}{$tag}} ) {
+            $validation_item->{'values'}{'_enumeration.range'}[0] =~
+                /^($signed_float)?:($signed_float)?$/;
+            my $min = $1;
+            my $max = $2;
+            my $old_value = $value;
+            $value =~ s/\($signed_float\)$//;
+            if ( !is_in_range_numeric( $value, {'min' => $min, 'max' => $max}) ) {
+                push @validation_messages,
+                    "data item '$tag' value '$old_value' should be in range " .
+                     ( defined $min ? "[$min" : '(-inf' ) . ',' .
+                     ( defined $max ? "$max]" : '+inf)' );
+            }
+          }
+        }
+      }
+    }}}
+
+    return \@validation_messages;
+}
+
+
+## TODO: the subroutine is copied from the cif_validate script
+## NOTE: the subroutine has been renamed from check_against_range_numb to
+# is_in_range_numeric
+# Checks numeric value against an inclusive numeric range.
+# @param $value
+#       Value to be checked.
+# @param $param
+#       Parameter hash with the following keys:
+#         {
+#           'min' - => 0,
+#                The minimum range value.
+#           'max'   => 10,
+#                The maximum range value.
+#           'sigma  => 0.1
+#               Standard deviation to be used when comparing numeric values
+#               (3 sigma rule). If sigma is not provided, values are compared
+#               disregarding the standard deviation.
+#         }
+# @return
+#        0 if the value is out of the provided range or is not a number
+#          at all;
+#        1 if the value is in the provided range.
+##
+sub is_in_range_numeric
+{
+    my ( $value, $param ) = @_;
+
+    my $min   = $param->{'min'};
+    my $max   = $param->{'max'};
+    my $sigma = $param->{'sigma'};
+
+    if( ! looks_like_number($value) ) {
+        return 0;
+    }
+
+    if( defined $sigma ) {
+        $min = $min - 3 * $sigma if defined $min;
+        $max = $max + 3 * $sigma if defined $max;
+    };
+
+    if(
+        ( !defined $max || $value <= $max )
+        &&
+        ( !defined $min || $value >= $min )
+    ) {
+        return 1;
+    }
+    return 0;
 }
 
 ##
