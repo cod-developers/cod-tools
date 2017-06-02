@@ -774,8 +774,8 @@ static void check_utf8( unsigned char *s )
                 if( (ch > 0x007E && ch < 0x00A0) ||
                     (ch > 0xD7FF && ch < 0xE000) ||
                     (ch > 0xFDCF && ch < 0xFDF0) ||
-                    ((ch && 0xFFFF) == 0xFFFE) ||
-                    ((ch && 0xFFFF) == 0xFFFF) ) {
+                    ((ch & 0xFFFF) == 0xFFFE) ||
+                    ((ch & 0xFFFF) == 0xFFFF) ) {
                     cif2error( cxprintf( "Unicode codepoint U+%04X is not "
                                          "allowed in CIF v2.0", ch ) );
                 }
