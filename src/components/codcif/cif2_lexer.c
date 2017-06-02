@@ -764,21 +764,37 @@ static void check_utf8( unsigned char *s )
 {
     if( !s ) return;
     int continuation_bytes = 0;
+    unsigned long ch = 0;
 
     while( *s ) {
         if( continuation_bytes && *s >= 0x80 && *s < 0xC0 ) {
             continuation_bytes--;
+            ch = (ch << 6) | (*s & 0x3F );
+            if( continuation_bytes == 0 ) {
+                if( (ch > 0x007E && ch < 0x00A0) ||
+                    (ch > 0xD7FF && ch < 0xE000) ||
+                    (ch > 0xFDCF && ch < 0xFDF0) ||
+                    ((ch & 0xFFFF) == 0xFFFE) ||
+                    ((ch & 0xFFFF) == 0xFFFF) ) {
+                    cif2error( cxprintf( "Unicode codepoint U+%04X is not "
+                                         "allowed in CIF v2.0", ch ) );
+                }
+            }
         } else if( continuation_bytes ) {
             cif2error( "incorrect UTF-8" );
             continuation_bytes = 0;
+            ch = 0;
         } else if( *s >= 0x80 && *s < 0xC0 ) {
             cif2error( "stray UTF-8 continuation byte" );
         } else if( (*s & 0xF8) == 0xF0 ) {
             continuation_bytes = 3;
+            ch = *s & 7;
         } else if( (*s & 0xF0) == 0xE0 ) {
             continuation_bytes = 2;
+            ch = *s & 15;
         } else if( (*s & 0xE0) == 0xC0 ) {
             continuation_bytes = 1;
+            ch = *s & 31;
         } else if( *s >= 0xF8 ) {
             cif2error( "more than 4 byte UTF-8 codepoints "
                        "are not allowed" );
