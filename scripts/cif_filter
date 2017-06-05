@@ -1354,6 +1354,14 @@ for my $filename (@ARGV) {
 
             # Print out the CIF header if requested:
             if( defined $cif_comment_header ) {
+                # Ensure that for CIF v2.0 the magic code comes
+                # before the CIF comment header:
+                if( exists $dataset->{cifversion} &&
+                           $dataset->{cifversion}{major} == 2 ) {
+                    printf( "#\\#CIF_%d.%d\n",
+                            $dataset->{cifversion}{major},
+                            $dataset->{cifversion}{minor} );
+                }
                 print $cif_comment_header;
             }
 

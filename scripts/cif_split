@@ -222,11 +222,14 @@ for my $filename (@ARGV) {
             $print_cif_stdout = cif2json( \@to_json );
         }
 
-        my $cif_contents = "";
-        if( $output_format eq "cif" ) {
-            $cif_contents .= $cif_header if $cif_header;
+        my $cif_contents = $print_cif_stdout;
+        if( $output_format eq 'cif' && $cif_header ) {
+            if( $cif_contents =~ s/^(#\\#CIF_2.0[ \t]*\n)// ) {
+                $cif_contents = $1 . $cif_header . $cif_contents;
+            } else {
+                $cif_contents = $cif_header . $cif_contents;
+            }
         }
-        $cif_contents .= $print_cif_stdout;
 
         if( $output_prefixed ) {
             foreach ( split m/\n/, $cif_contents ) {

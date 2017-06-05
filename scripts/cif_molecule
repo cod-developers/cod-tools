@@ -612,6 +612,12 @@ for my $filename (@ARGV) {
     canonicalize_all_names( $data );
 
     if( $cif_header ) {
+        # Ensure that for CIF v2.0 the magic code comes
+        # before the CIF comment header:
+        if( grep { exists $_->{cifversion} &&
+                          $_->{cifversion}{major} == 2 } @$data ) {
+            print "#\\#CIF_2.0\n";
+        }
         print $cif_header;
     }
 
