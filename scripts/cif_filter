@@ -94,6 +94,8 @@ my $update_database_code = 1; # Specifies whether to update
                               # _cod_database_code tag value upon
                               # renumbering.
 my $database_code_tag = '_cod_database_code'; # Tag for database code.
+my $original_filename_tag = '_cod_data_source_file';
+my $original_datablock_tag = '_cod_data_source_block';
 
 my $extra_tag_file;
 my $original_filename;
@@ -335,6 +337,12 @@ my %spacegroups = map {
 #*                     Do not rename data blocks (default). Enabling this option
 #*                     sets the '-S' option to default value.
 #*
+#*   --original-filename-tag _cod_data_source_file
+#*   --original-data-block-tag _cod_data_source_file
+#*                     Use the provided tags to record original filename/data
+#*                     block name (default '_cod_data_source_file' and
+#*                     '_cod_data_source_block').
+#*
 #*   --database-code-tag _cod_database_code
 #*                     Use the provided tag while adding or updating the
 #*                     database code upon renaming the data blocks
@@ -482,6 +490,9 @@ my %spacegroups = map {
 
     '--record-original-filename'      => sub { $record_original_filename = 1; },
     '--dont-record-original-filename' => sub { $record_original_filename = 0; },
+
+    '--original-filename-tag'   => \$original_filename_tag,
+    '--original-data-block-tag' => \$original_datablock_tag,
 
     '--update-database-code'          => sub { $update_database_code = 1; },
     '--dont-update-database-code'     => sub { $update_database_code = 0; },
@@ -1088,8 +1099,8 @@ for my $filename (@ARGV) {
                 } else {
                     $basename = '?';
                 }
-                set_tag( $dataset, '_cod_data_source_file', $basename );
-                set_tag( $dataset, '_cod_data_source_block', $dataset->{name} );
+                set_tag( $dataset, $original_filename_tag, $basename );
+                set_tag( $dataset, $original_datablock_tag, $dataset->{name} );
             }
 
             # Clean up the resulting CIF data structure:
