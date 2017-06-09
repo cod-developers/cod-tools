@@ -189,14 +189,15 @@ if( @dict_files ) {
         my ( $data, $err_count, $messages ) = parse_cif( $dict, $options );
         process_parser_messages( $messages, $die_on_error_level );
 
+        local $SIG{__WARN__} = sub { process_warnings( {
+                                       'message'       => @_,
+                                       'program'       => $0,
+                                       'filename'      => $dict,
+                                     }, $die_on_error_level ) };
+
         $dict_tags{$dict} = get_dict( $data );
         if ( scalar( keys( %{$dict_tags{$dict}} ) ) == 0 ) {
-            report_message( {
-                'program'       => $0,
-                'filename'      => $dict,
-                'err_level'     => 'WARNING',
-                'message'       => 'no data item definitions found'
-            }, $die_on_warnings );
+            warn "no data item definitions found\n";
         }
         $tag_count += scalar( keys( %{$dict_tags{$dict}} ) );
     }
@@ -589,6 +590,11 @@ sub get_dict($)
     my $tags = {};
     my $datan = 0;
     while( $datan < @{$dict_f} ) {
+        if( exists $dict_f->[$datan]{values}{'_dictionary.ddl_conformance'} &&
+            $dict_f->[$datan]{values}{'_dictionary.ddl_conformance'}[0] =~ /^3\./ ) {
+            warn "dictionary is DDLm-compliant and can not be handled " .
+                 "in this version\n";
+        }
         if( exists $dict_f->[$datan]{save_blocks} ) {
             for my $saveblk ( @{$dict_f->[$datan]{save_blocks}} ) {
                 ## print ">>>> processing save block '$saveblk->{name}'\n";
