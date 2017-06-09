@@ -302,14 +302,14 @@ sub validate_type_contents
 
             if ( ref $value eq '' ) {
               my $message_prefix = "data item '$tag' value '$value' " .
-                           'violates content type contraints';
+                           'violates content type constraints';
               push @validation_messages,
                 map { $message_prefix . ' -- ' . $_ }
                   @{ check_data_type( $value, $type_contents ) };
             } elsif ( ref $value eq 'ARRAY' ) {
               foreach( @{$value} ) {
                 my $message_prefix = "data item '$tag' value '$_' " .
-                             'violates content type contraints';
+                             'violates content type constraints';
                 push @validation_messages,
                   map { $message_prefix . ' -- ' . $_ }
                     @{ check_data_type( $_, $type_contents ) };
@@ -438,7 +438,7 @@ my $cif2_character = $cif2_ws_character . $cif2_nws_character;
         #       the month and day values ranges should be checked
     } elsif ( $type eq 'version' ) {
         # version digit string of the form <major>.<version>.<update>
-        if ( $value !~ m/^[0-9]+(?:\.[0-9]+)?(?:\.[0-9]+)?$/ ) {
+        if ( $value !~ m/^[0-9]+(?:\.[0-9]+){0,2}$/ ) {
             push @validation_messages,
                  'the value should be a version digit string of the form ' .
                  '<major>.<version>.<update>';
@@ -470,21 +470,21 @@ my $cif2_character = $cif2_ws_character . $cif2_nws_character;
         # unsigned integer number
         if ( $value !~ m/^[0-9]*$/ ) {
             push @validation_messages,
-                 'the value should be an unsigned integer number';
+                 'the value should be an unsigned integer';
         }
     } elsif ( $type eq 'index' ) {
-        # unsigned non-zero integer number
+        # unsigned non-zero integer
         $value =~ s/\([0-9]*\)$//;
         if ( $value =~ m/[^0-9]/ || !( $value =~ m/^[0-9]*$/ && $value > 0 ) ) {
             push @validation_messages,
-                 'the value should be an unsigned non-zero integer number';
+                 'the value should be an unsigned non-zero integer';
         }
     } elsif ( $type eq 'integer' ) {
-        # positive or negative integer number
+        # positive or negative integer
         $value =~ s/\([0-9]*\)$//;
         if ( $value !~ m/^[-+]?[0-9]*$/ ) {
             push @validation_messages,
-                 'the value should be an integer number';
+                 'the value should be an integer';
         }
     } elsif ( $type eq 'real' ) {
         # floating-point real number
