@@ -141,7 +141,8 @@ if( @dict_files ) {
             }
         );
         $dict_block = merge_imported_files( $dict_block, $imported_data );
-        $dicts{$dict} =  build_search_struct( $dict_block );
+        $dicts{$dict} =  build_search_struct( $dict_block,
+                                              { 'duplicate_aliases' => 1 } );
     }
 } else {
     report_message( {
@@ -208,8 +209,7 @@ for my $filename ( @ARGV ) {
         push @validation_messages, @{validate_enumerators($struct, $dict)};
         push @validation_messages, @{validate_range($struct, $dict)};
         push @validation_messages, @{validate_type_container($struct, $dict)};
-
-# check against a range
+        push @validation_messages, @{validate_loops($struct, $dict)};
 
         # check for the existence of items related by the _name.linked_item_id
         # validate_linked_items($dict, $dict);
@@ -217,8 +217,6 @@ for my $filename ( @ARGV ) {
         # _name.linked_item_id check existence of the given data item
 
         # check the matching of _name.linked_item_id linked values (except)
-
-        # check looped/unlooped
 
         # check for the existence of the key data item
 
@@ -701,6 +699,35 @@ sub validate_enumerators
     return \@validation_messages;
 }
 
+sub validate_loops
+{
+    my ($data, $dict) = @_;
+
+    my @validation_messages;
+
+    for my $scope ( 'Dictionary', 'Category', 'Item' ) {
+    for my $instance ( keys %{$data->{$scope}} ) {
+    for my $tag ( @{$data->{$scope}{$instance}{'tags'}} ) {
+      if ( exists $dict->{'Item'}{$tag} ) {
+        my $category_id = $dict->{'Item'}{$tag}{'values'}{'_name.category_id'}[0];
+        my $category = $dict->{'Category'}{uc $category_id};
+        my $category_is_looped =
+            (lc $category->{'values'}{'_definition.class'}[0] eq 'loop');
+        my $tag_is_looped = defined $data->{$scope}{$instance}{'inloop'}{$tag};
+
+        if ( $category_is_looped && !$tag_is_looped ) {
+            push @validation_messages,
+                "data item '$tag' must appear in a looped list";
+        } elsif ( !$category_is_looped && $tag_is_looped ) {
+            push @validation_messages,
+                "data item '$tag' must not appear in a looped list";
+        }
+      }
+    }}}
+
+    return \@validation_messages;
+}
+
 sub validate_range
 {
     my ($data, $dict) = @_;
@@ -898,6 +925,14 @@ sub get_data_names
 # the Dictionary, Category and Item contexts classification.
 # @param $data
 #       CIF datablock as returned by the COD::CIF::Parser.
+# @param $options
+#       Hash reference to with the following keys:
+#       $options = {
+#        'duplicate_aliases' => 0,
+#        # Create a separate Item hash entry for each definition alias id.
+#        # The entries are created as shallow copies of the original definition
+#        # entry. By default, the copies are not made.
+#       }
 # @return $struct
 #       Hash reference with the following keys:
 #       $struct = {
@@ -908,11 +943,11 @@ sub get_data_names
 #        'Item'       -- a hash of all save blocks that belong to the
 #                        Item scope;
 #        'Datablock'  -- a reference to the input $data structure
-#    };
+#       };
 ##
 sub build_search_struct
 {
-    my ($data) = @_;
+    my ($data, $options) = @_;
 
     my %categories;
     my %items;
@@ -945,7 +980,8 @@ sub build_search_struct
         } else {
             # ITEM is currently stated as the default value
             $items{ $values->{'_definition.id'}[0] } = $saveblock;
-            if (exists $values->{'_alias.definition_id'}) {
+            if ($options->{'duplicate_aliases'} &&
+                exists $values->{'_alias.definition_id'}) {
                 for ( @{$values->{'_alias.definition_id'}} ) {
                     $values->{'original_tags'}{lc $_} = $_;
                     $items{ lc $_ } = $saveblock;
@@ -953,7 +989,8 @@ sub build_search_struct
             }
         }
         $tags{ $values->{'_definition.id'}[0] } = 1;
-        if (exists $values->{'_alias.definition_id'}) {
+        if ($options->{'duplicate_aliases'} &&
+            exists $values->{'_alias.definition_id'}) {
             for ( @{$values->{'_alias.definition_id'}} ) {
                 $tags{ lc $_ } = 1;
             }
