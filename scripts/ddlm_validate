@@ -296,9 +296,16 @@ sub validate_type_contents
                 $type_contents = $data->{$scope}{$instance}{'values'}{'_type.contents'}[0];
               }
           }
-          foreach my $value ( @{$data->{$scope}{$instance}{'values'}{$tag}} ) {
+          for (my $i = 0; $i < @{$data->{$scope}{$instance}{'values'}{$tag}}; $i++) {
+            my $value = $data->{$scope}{$instance}{'values'}{$tag}[$i];
             # TODO: implement type content checking for data items
             # within containers
+
+            # Skip if the value is a special CIF symbol ('.', '?')
+            if ( is_unknown_value($data->{$scope}{$instance}, $tag, $i) ||
+                 is_inapplicable_value($data->{$scope}{$instance}, $tag, $i) ) {
+                next;
+            };
 
             if ( ref $value eq '' ) {
               my $message_prefix = "data item '$tag' value '$value' " .
@@ -405,10 +412,10 @@ my $cif2_character = $cif2_ws_character . $cif2_nws_character;
             push @validation_messages,
                  "the '$1' symbol does not belong to the permitted symbol set";
         }
-    } elsif ( $type eq 'file' ) {
+    } elsif ( $type eq 'filename' ) {
         # TODO: implement File name check
         push @validation_messages,
-                 "validation of the 'file' type data items is not yet " .
+                 "validation of the 'filename' type data items is not yet " .
                  'implemented';
     } elsif ( $type eq 'uri' ) {
         # TODO: implement proper URI parsing as per RFC 3986
@@ -649,10 +656,12 @@ sub validate_enumerators
             $type_container = lc $validation_item->{'values'}{'_type.container'}[0];
           }
 
-          for my $value ( @{$data->{$scope}{$instance}{'values'}{$tag}} ) {
+          for (my $i = 0; $i < @{$data->{$scope}{$instance}{'values'}{$tag}}; $i++ ) {
+            my $value = $data->{$scope}{$instance}{'values'}{$tag}[$i];
             if ( $type_container eq lc 'single' ) {
               # skip special CIF2 values
-              if ( $value ne '?' && $value ne '.' ) {
+              if ( !is_unknown_value($data->{$scope}{$instance}, $tag, $i) &&
+                   !is_inapplicable_value($data->{$scope}{$instance}, $tag, $i) ) {
                 # FIXME: fc should probably be used instead of uc, but it is
                 # not supported by older Perl versions
                 if (! any { uc $value eq uc $_ } @enumeration_values ) {
@@ -1095,4 +1104,24 @@ sub expand_categories
     }
 
     return \@expanded_categories;
+}
+
+sub is_unknown_value
+{
+    my ( $frame, $data_name, $index ) = @_;
+
+    my $value = $frame->{'values'}{$data_name}[$index];
+    my $type = $frame->{'types'}{$data_name}[$index];
+
+    return $value eq '?' && $type eq 'UQSTRING';
+}
+
+sub is_inapplicable_value
+{
+    my ( $frame, $data_name, $index ) = @_;
+
+    my $value = $frame->{'values'}{$data_name}[$index];
+    my $type = $frame->{'types'}{$data_name}[$index];
+
+    return $value eq '.' && $type eq 'UQSTRING';
 }
