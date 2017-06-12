@@ -36,6 +36,7 @@ use COD::ToolsVersion;
 
 my $use_parser = 'c';
 my $report_local_tags = 0;
+my $report_deprecated = 0;
 my @dict_files;
 
 my $die_on_errors   = 1;
@@ -53,6 +54,14 @@ my $die_on_notes    = 0;
 #*                     Add additional CIF dictionary to the list.
 #*   --clear-dictionaries
 #*                     Remove all CIF dictionaries from the list.
+#*
+#*   --report-deprecated
+#*                     Report data items that are marked as deprecated in the
+#*                     dictionaries. Data item deprecation usually means that
+#*                     it has been replaced with an another data item.
+#*   --ignore-deprecated
+#*                     Do not report data items that are marked as deprecated
+#*                     in the dictionaries (default).
 #*
 #*   --report-local-tags
 #*                     Validate data items having tags prefixed with
@@ -83,6 +92,9 @@ my $die_on_notes    = 0;
     '-d,--dictionaries'    => sub{ @dict_files = split m/,|\s+/, get_value() },
     '-D,--add-dictionary'  => sub{ push @dict_files, get_value() },
     '--clear-dictionaries' => sub{ @dict_files = () },
+
+    '--report-deprecated'               => sub{ $report_deprecated = 1 },
+    '--ignore-deprecated'               => sub{ $report_deprecated = 0 },
 
     '--report-local-tags'               => sub{ $report_local_tags = 1 },
     '--no-report-local-tags'            => sub{ $report_local_tags = 0 },
@@ -210,7 +222,9 @@ for my $filename ( @ARGV ) {
         push @validation_messages, @{validate_range($struct, $dict)};
         push @validation_messages, @{validate_type_container($struct, $dict)};
         push @validation_messages, @{validate_loops($struct, $dict)};
-
+        if ( $report_deprecated ) {
+            push @validation_messages, @{report_deprecated($struct, $dict)};
+        }
         # check for the existence of items related by the _name.linked_item_id
         # validate_linked_items($dict, $dict);
 
@@ -721,6 +735,30 @@ sub validate_loops
         } elsif ( !$category_is_looped && $tag_is_looped ) {
             push @validation_messages,
                 "data item '$tag' must not appear in a looped list";
+        }
+      }
+    }}}
+
+    return \@validation_messages;
+}
+
+sub report_deprecated
+{
+    my ($data, $dict) = @_;
+
+    my @validation_messages;
+
+    for my $scope ( 'Dictionary', 'Category', 'Item' ) {
+    for my $instance ( keys %{$data->{$scope}} ) {
+    for my $tag ( @{$data->{$scope}{$instance}{'tags'}} ) {
+      if ( exists $dict->{'Item'}{$tag} ) {
+        if ( exists $dict->{'Item'}{$tag}{'values'}{'_definition.replaced_by'} ) {
+          my $alternatives = $dict->{'Item'}{$tag}{'values'}{'_definition.replaced_by'};
+          push @validation_messages,
+            "the '$tag' data item has been deprecated and should not be used -- " .
+            'it was replaced by the \'' .
+             $dict->{'Item'}{$tag}{'values'}{'_definition.replaced_by'}[0] .
+            '\' data item';
         }
       }
     }}}
