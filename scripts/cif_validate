@@ -45,9 +45,9 @@ my $die_on_notes    = 0;
 
 sub severity_name($);
 sub get_dict($);
-sub check_against_range($$$$);
-sub check_against_range_numb($$$);
-sub check_against_range_char($$);
+sub is_in_range($$);
+sub is_in_range_numeric($$);
+sub is_in_range_char($$);
 sub get_list_reference_tags($$);
 sub get_replacement_tags($$);
 sub check_list_link_parent($$$);
@@ -501,9 +501,12 @@ CIFFILEANAL: for my $filename ( @ARGV ) {
                         if( $dict_tag_values->{_type}[0] eq 'numb' ) {
                             $value_wo_su =~ s/\s*\(.*$//;
                         }
-                        if( check_against_range(
-                                $dict_tag_values->{_type}[0],
-                                $range, $value_wo_su, $sigma) <= 0 ) {
+                        if( is_in_range( $value_wo_su,
+                                { 'type'  => $dict_tag_values->{'_type'}[0],
+                                  'min'   => $range->{'min'},
+                                  'max'   => $range->{'max'},
+                                  'sigma' => $sigma
+                                } ) <= 0 ) {
                                 push @tag_value_notes,
                                      "data item '$tag_analysed' value " .
                                      "\"$value\" should be in range [" .
@@ -650,66 +653,80 @@ sub get_replacement_tags($$)
 
 ##
 # Check value against range (defined in dictionary).
-# @param $type
-#       String, representing the type of value ('numb' or 'char').
-# @param $range
-#       Reference to range hash as $$range{min} and $$range{max}.
 # @param $value
-#       Value that must be checked.
-# @param $sigma
-#       Standard deviation to be used when comparing numbers.
+#       Value to be checked.
+# @param $param
+#       Parameter hash with the following keys:
+#         {
+#           'type'  => 'numb',
+#                String, representing the type of value ('numb' or 'char').
+#           'min'   => 0,
+#                The minimum range value.
+#           'max'   => 10,
+#                The maximum range value.
+#           'sigma  => 0.1
+#               Standard deviation to be used when comparing numeric values
+#               (3 sigma rule). If sigma is not provided, values are compared
+#               disregarding the standard deviation.
+#         }
 # @return
 #       -1 if no ranges were provided for the value;
 #        0 if the value is out of the provided range;
 #        1 if the value is in the provided range.
 ##
-sub check_against_range($$$$)
+sub is_in_range($$)
 {
-    my ($type, $range, $value, $sigma) = @_;
+    my ( $value, $param ) = @_;
 
-    if( !exists $range->{min} &&
-        !exists $range->{max} ) {
+    if( !exists $param->{'min'} &&
+        !exists $param->{'max'} ) {
         return -1;
     }
-    if( $type eq 'numb' ) {
-        return check_against_range_numb( $range, $value, $sigma );
+
+    if( $param->{'type'} eq 'numb' ) {
+        return is_in_range_numeric( $value, $param );
     } else {
-        return check_against_range_char( $range, $value );
+        return is_in_range_char( $value, $param );
     }
 }
 
 ##
-# Checks number value against range (defined in dictionary).
-# @param $range
-#       Reference to range hash as $$range{min} and $$range{max}.
+# Checks numeric value against an inclusive numeric range.
 # @param $value
-#       Value, that must be checked.
-# @param $sigma
-#       Standard deviation to be used when comparing numeric values
-#       (3 sigma rule). If sigma is set to 'undef', values are compared
-#       disregarding standard deviation.
+#       Value to be checked.
+# @param $param
+#       Parameter hash with the following keys:
+#         {
+#           'min' - => 0,
+#                The minimum range value.
+#           'max'   => 10,
+#                The maximum range value.
+#           'sigma  => 0.1
+#               Standard deviation to be used when comparing numeric values
+#               (3 sigma rule). If sigma is not provided, values are compared
+#               disregarding the standard deviation.
+#         }
 # @return
 #        0 if the value is out of the provided range or is not a number
 #          at all;
 #        1 if the value is in the provided range.
 ##
-sub check_against_range_numb($$$)
+sub is_in_range_numeric($$)
 {
-    my ( $range, $value, $sigma ) = @_;
+    my ( $value, $param ) = @_;
+
+    my $min   = $param->{'min'};
+    my $max   = $param->{'max'};
+    my $sigma = $param->{'sigma'};
 
     if( ! looks_like_number($value) ) {
         return 0;
     }
 
-    my ($min,$max);
-
     if( defined $sigma ) {
-        $min = $range->{min} - 3 * $sigma if exists $range->{min};
-        $max = $range->{max} + 3 * $sigma if exists $range->{max};
-    } else {
-        $min = $range->{min} if exists $range->{min};
-        $max = $range->{max} if exists $range->{max};
-    }
+        $min = $min - 3 * $sigma if defined $min;
+        $max = $max + 3 * $sigma if defined $max;
+    };
 
     if(
         ( !defined $max || $value <= $max )
@@ -722,23 +739,29 @@ sub check_against_range_numb($$$)
 }
 
 ##
-# Check character value against range (defined in dictionary).
-# @param $range
-#       Reference to range hash as $$range{min} and $$range{max}.
+# Checks character value against an inclusive character range.
 # @param $value
-#       Value, that must be checked.
+#       Value to be checked.
+# @param $param
+#       Parameter hash with the following keys:
+#         {
+#           'min' - => a,
+#                The minimum range value.
+#           'max'   => c,
+#                The maximum range value.
+#         }
 # @return
-#       0 if the value is out of the provided range;
-#       1 if the value is in the provided range.
+#        0 if the value is out of the provided range;
+#        1 if the value is in the provided range.
 ##
-sub check_against_range_char($$)
+sub is_in_range_char($$)
 {
-    my ( $range, $value ) = @_;
+    my ( $value, $param ) = @_;
 
     if(
-        ( !exists $range->{max} || $value le $range->{max} )
+        ( !exists $param->{max} || $value le $param->{max} )
         &&
-        ( !exists $range->{min} || $value ge $range->{min} )
+        ( !exists $param->{min} || $value ge $param->{min} )
     ) {
         return 1;
     }
