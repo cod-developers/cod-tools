@@ -302,47 +302,75 @@ sub validate_type_contents
           # The 'implied' data type points to the data type given in the
           # data item definition save frame
           if ( $type_contents eq 'implied' ) {
-              # TODO: maybe the 'implied' values should be replaced with proper
-              # data types before calling this subroutine?
               if ( exists $data->{$scope}{$instance}{'values'}{'_type.contents'}[0] ) {
                 $type_contents = $data->{$scope}{$instance}{'values'}{'_type.contents'}[0];
               }
           }
-          for (my $i = 0; $i < @{$data->{$scope}{$instance}{'values'}{$tag}}; $i++) {
-            my $value = $data->{$scope}{$instance}{'values'}{$tag}[$i];
-            # TODO: implement type content checking for data items
-            # within containers
 
-            # Skip if the value is a special CIF symbol ('.', '?')
-            if ( is_unknown_value($data->{$scope}{$instance}, $tag, $i) ||
-                 is_inapplicable_value($data->{$scope}{$instance}, $tag, $i) ) {
-                next;
-            };
-
-            if ( ref $value eq '' ) {
-              my $message_prefix = "data item '$tag' value '$value' " .
-                           'violates content type constraints';
-              push @validation_messages,
-                map { $message_prefix . ' -- ' . $_ }
-                  @{ check_data_type( $value, $type_contents ) };
-            } elsif ( ref $value eq 'ARRAY' ) {
-              foreach( @{$value} ) {
-                my $message_prefix = "data item '$tag' value '$_' " .
-                             'violates content type constraints';
-                push @validation_messages,
-                  map { $message_prefix . ' -- ' . $_ }
-                    @{ check_data_type( $_, $type_contents ) };
-              }
+          if ( $type_contents eq 'byreference') {
+            if ( exists $validation_item->{'values'}
+                                 {'_type.contents_referenced_id'}[0] ) {
+                $type_contents = $dict->{'Item'}{
+                                    $validation_item->{'values'}
+                                      {'_type.contents_referenced_id'}[0]}
+                                        {'values'}{'_type.contents'}[0];
             } else {
-                # TODO: implement hash value validation
-                warn 'Handling of more complex values is not yet implemented: ',
-                     ref $value, "'\n";
+                push @validation_messages,
+                    "the '$tag' data item has the 'byReference' content type, " .
+                    "but the '_type.contents_referenced_id' data item is missing " .
+                    'in the definition save frame';
                 next;
             }
+          }
+
+          for (my $i = 0; $i < @{$data->{$scope}{$instance}{'values'}{$tag}}; $i++) {
+            my $value = $data->{$scope}{$instance}{'values'}{$tag}[$i];
+            push @validation_messages,
+                map { "data item '$tag' " . $_ }
+                    @{ check_data_types( $value, $type_contents,
+                       $data->{$scope}{$instance}{'types'}{$tag}[$i] ) };
           }
         }
       }
     }}}
+
+    return \@validation_messages;
+}
+
+sub check_data_types
+{
+    my ($value, $type_in_dict, $type_in_parser) = @_;
+
+    my @validation_messages;
+
+    if ( ref $value eq '' ) {
+        # skip special CIF values '?', '.'
+        if ( ( $value eq '?' || $value eq '.' ) &&
+             $type_in_parser eq 'UQSTRING' ) {
+            return \@validation_messages;
+        };
+
+        my $message_prefix = "value '$value' violates content type constraints";
+        push @validation_messages,
+            map { $message_prefix . ' -- ' . $_ }
+                @{ check_data_type( $value, $type_in_dict ) };
+    } elsif ( ref $value eq 'ARRAY' ) {
+        for (my $i = 0; $i < @{$value}; $i++ ) {
+            push @validation_messages,
+                 @{ check_data_types( $value->[$i], $type_in_dict,
+                                      $type_in_parser->[$i] ) };
+        }
+    } elsif ( ref $value eq 'HASH' ) {
+        for my $key ( keys %{$value} ) {
+            push @validation_messages,
+                 @{ check_data_types( $value->{$key}, $type_in_dict,
+                                      $type_in_parser->{$key} ) };
+        }
+    } else {
+       # TODO: implement hash value validation
+       warn 'Handling of more complex values is not yet implemented: ',
+            ref $value, "'\n";
+    }
 
     return \@validation_messages;
 }
