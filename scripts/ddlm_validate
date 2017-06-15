@@ -21,7 +21,7 @@ use warnings;
 binmode STDOUT, ':encoding(UTF-8)';
 binmode STDERR, ':encoding(UTF-8)';
 
-use List::MoreUtils qw( any );
+use List::MoreUtils qw( any uniq );
 use File::Basename;
 use Scalar::Util qw( looks_like_number );
 use URI;
@@ -221,8 +221,7 @@ for my $filename ( @ARGV ) {
         if ( $report_deprecated ) {
             push @validation_messages, @{report_deprecated($struct, $dict)};
         }
-        # check for the existence of items related by the _name.linked_item_id
-        # validate_linked_items($dict, $dict);
+        push @validation_messages, @{validate_linked_items($struct, $dict)};
 
         # _name.linked_item_id check existence of the given data item
 
@@ -250,25 +249,70 @@ for my $filename ( @ARGV ) {
     }
 }
 
+##
+# Checks the relationship constraints between linked data items. Missing
+# linked data items as well as values unique to the foreign key are
+# reported.
+# @param $data
+#       The data structure of the validated dictionary (as returned by the
+#       'build_search_struct' data structure).
+# @param $dict
+#       The data structure of the validation dictionary (as returned by the
+#       'build_search_struct' data structure).
+# @return
+#       Array reference to a list of validation messages.
+##
 sub validate_linked_items
 {
     my ($data, $dict) = @_;
 
+    my @validation_messages;
+
     for my $scope ( 'Dictionary', 'Category', 'Item' ) {
     for my $instance ( keys %{$data->{$scope}} ) {
     for my $tag ( @{$data->{$scope}{$instance}{'tags'}} ) {
-        if ( exists $dict->{'Item'}{$tag} ) {
-            my $dict_item = $dict->{'Item'}{$tag};
-            if ( exists $dict_item->{'values'}{'_name.linked_item_id'} ) {
-                my $linked_item = $dict_item->{'values'}{'_name.linked_item_id'}[0];
-                # TODO: implement the check
+      if ( exists $dict->{'Item'}{$tag} ) {
+        my $dict_item = $dict->{'Item'}{$tag};
+        if ( exists $dict_item->{'values'}{'_name.linked_item_id'} ) {
+          my @linked_item_names = ( $dict_item->{'values'}{'_name.linked_item_id'}[0] );
+          # Retrieve the aliases of the linked data item
+          if ( exists $dict->{'Item'}{$linked_item_names[0]} &&
+               exists $dict->{'Item'}{$linked_item_names[0]}{'values'} &&
+               exists $dict->{'Item'}{$linked_item_names[0]}{'values'}
+                                             {'_alias.definition_id'} ) {
+            push @linked_item_names,
+                 @{$dict->{'Item'}{$linked_item_names[0]}{'values'}
+                                               {'_alias.definition_id'}};
+          }
+
+          my $linked_item_found = 0;
+          for my $linked_item_name (@linked_item_names) {
+            if ( exists $data->{$scope}{$instance}{'values'}{$linked_item_name} ) {
+              my %candidate_key_values = map { $_ => 1 }
+                    @{$data->{$scope}{$instance}{'values'}{$linked_item_name}};
+              my @unmatched = uniq sort grep { !exists $candidate_key_values{$_} }
+                    @{$data->{$scope}{$instance}{'values'}{$tag} };
+              push @validation_messages,
+                    map { "the '$tag' data item contains value '$_' that was " .
+                          'not found among the values of the linked ' .
+                          "'$linked_item_name' data item" } @unmatched;
+              $linked_item_found = 1;
+              last;
             }
+          }
+
+          if (!$linked_item_found) {
+            push @validation_messages,
+                    "the '$linked_item_names[0]' data item is required by the " .
+                    "'$tag' data item, but was not found";
+          }
         }
+      }
     }
     }
     }
 
-    return;
+    return \@validation_messages;
 }
 
 ##

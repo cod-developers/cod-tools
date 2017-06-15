@@ -1,0 +1,121 @@
+#\#CIF_2.0
+##############################################################################
+#                                                                            #
+#               LINKED ITEM DICTIONARY FOR TESTING PURPOSES                  #
+#                                                                            #
+##############################################################################
+data_LINKED_DIC
+
+    _dictionary.title            LINKED_DIC
+    _dictionary.class            Reference
+    _dictionary.version          0.0.1
+    _dictionary.date             2017-07-15
+    _dictionary.uri              http://www.linked.org/linked.dic
+    _dictionary.ddl_conformance  3.11.10
+    _dictionary.namespace        LinkedDic
+    _description.text
+;
+    This dictionary contains definitions of data items with the
+    _name.linked_item_id property for validator testing purposes.
+;
+    loop_
+    _dictionary_audit.version
+    _dictionary_audit.date
+    _dictionary_audit.revision
+    0.0.1 2017-07-15 'Creating the dictionary'
+
+save_LINKED_PARENT
+    _definition.id               LINKED_PARENT
+    _definition.scope            Category
+    _definition.class            Head
+    _definition.update           2017-07-15
+    _description.text
+;
+     This category is parent of all other categories in the LINKED_DIC
+     dictionary.
+;
+    _name.category_id            LINKED_DIC
+    _name.object_id              LINKED_PARENT
+save_
+
+save_MAIN_CATEGORY
+    _definition.id               MAIN_CATEGORY
+    _definition.scope            Category
+    _definition.class            Loop
+    _definition.update           2017-07-15
+    _description.text
+;
+    The category contains data items that the LINKED_CATEGORY category
+    data items are linked to.
+;
+    _name.category_id            LINKED_PARENT
+    _name.object_id              MAIN_CATEGORY
+    _category.key_id             '_main_category.index_item'
+    loop_
+    _category_key.name
+                                 '_main_category.index_item'
+save_
+
+save__main_category.index_item
+    _definition.id               '_main_category.index_item'
+    loop_
+    _alias.definition_id
+    '_main_category_alternative.index_item'
+    _definition.scope            Item
+    _definition.class            Attribute
+    _definition.update           2017-07-15
+    _description.text
+;
+     Index of the MAIN_CATEGORY category.
+;
+    _description.common
+;
+     Index of the MAIN_CATEGORY category.
+;
+    _name.category_id            main_category
+    _name.object_id              index_item
+    _type.purpose                Key
+    _type.source                 Assigned
+    _type.container              Single
+    _type.contents               Index
+save_
+
+save_LINKED_CATEGORY
+    _definition.id               LINKED_CATEGORY
+    _definition.scope            Category
+    _definition.class            Loop
+    _definition.update           2017-07-15
+    _description.text
+;
+    This category contains data items that are linked to the data items in
+    the MAIN_CATEGORY category.
+;
+    _name.category_id            LINKED_PARENT
+    _name.object_id              LINKED_CATEGORY
+    _category.key_id             '_linked_category.index_item'
+    loop_
+    _category_key.name
+                                 '_linked_category.index_item'
+save_
+
+save__linked_category.index_item
+    _definition.id               '_linked_category.index_item'
+    _definition.scope            Item
+    _definition.class            Attribute
+    _definition.update           2017-07-15
+    _description.text
+;
+     Index of the LINKED_CATEGORY category.
+;
+    _description.common
+;
+     Index of the LINKED_CATEGORY category.
+;
+    _name.category_id            linked_category
+    _name.object_id              index_item
+    _name.linked_item_id         '_main_category.index_item'
+    _type.purpose                Key
+    _type.source                 Assigned
+    _type.container              Single
+    _type.contents               Index
+save_
