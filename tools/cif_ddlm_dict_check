@@ -83,8 +83,37 @@ for my $filename ( @ARGV ) {
     process_parser_messages( $messages, $die_on_error_level );
 
     for my $saveblock ( @{$data->[0]{'save_blocks'}} ) {
+        # check for non-existant categories
+        if ( defined $saveblock->{'values'}{'_name.category_id'} ) {
+            my $category_name = uc $saveblock->{'values'}{'_name.category_id'}[0];
+            if ( defined $saveblock->{'values'}{'_definition.class'} &&
+                 uc $saveblock->{'values'}{'_definition.class'}[0] eq 'HEAD' ) {
+                if ( $category_name ne uc $data->[0]{'values'}{'_dictionary.title'}[0] ) {
+                    warn "$0: $filename save_$saveblock->{'name'}: WARNING, " .
+                     "the value of the '_name.category_id' data item in the " .
+                     "HEAD save frame must match the value of the " .
+                     "'_dictionary.title' data item.\n";
+                }
+            } else {
+                my $category_found = 0;
+                foreach ( @{$data->[0]{'save_blocks'}} ) {
+                   if ( uc $_->{'name'} eq $category_name &&
+                        uc $_->{'values'}{'_definition.scope'}[0] eq 'CATEGORY' ) {
+                        $category_found = 1;
+                        last;
+                   }
+                }
+
+                if (!$category_found) {
+                    warn "$0: $filename save_$saveblock->{'name'}: WARNING, " .
+                         "the '$category_name' category could not be located.\n";
+                }
+            }
+        }
+
         if ( !exists $saveblock->{'values'}{'_definition.scope'} ||
             lc $saveblock->{'values'}{'_definition.scope'}[0] eq 'item' ) {
+            # check for alias that match the idea
             if ( defined $saveblock->{'values'}{'_definition.id'} ) {
                 my $definition_id = uc $saveblock->{'values'}{'_definition.id'}[0];
                 for my $alias ( @{$saveblock->{'values'}{'_alias.definition_id'}} ) {
