@@ -1,0 +1,139 @@
+#! /bin/sh
+#!perl -w # --*- Perl -*--
+eval 'exec perl -x $0 ${1+"$@"}'
+    if 0;
+#------------------------------------------------------------------------------
+#$Author$
+#$Date$
+#$Revision$
+#$URL$
+#------------------------------------------------------------------------------
+#*
+#* Compare dictionaries written in DDL1 and DDLm to each other and output
+#* warning messages about mismatching data.
+#*
+#* USAGE:
+#*    $0 --ddl1 cif_core_ddl1.dic --ddlm cif_core_ddlm.dic --options
+#**
+
+use strict;
+use warnings;
+binmode STDOUT, ':encoding(UTF-8)';
+binmode STDERR, ':encoding(UTF-8)';
+
+use File::Basename;
+
+use COD::CIF::Parser qw( parse_cif );
+use COD::SOptions qw( getOptions get_value );
+use COD::SUsage qw( usage options );
+use COD::ErrorHandler qw( process_warnings
+                          process_parser_messages
+                          report_message );
+use COD::ToolsVersion;
+
+my $use_parser = 'c';
+
+my $die_on_errors   = 1;
+my $die_on_warnings = 0;
+my $die_on_notes    = 0;
+
+my $ddl1_file;
+my $ddlm_file;
+
+#* OPTIONS:
+#*   -1, --ddl1
+#*                     The name of the DDL1 conforming dictionary that should
+#                      be used in the comparison.
+#*   -m, --ddlm
+#*                     The name of the DDLm conforming dictionary that should
+#                      be used in the comparison.
+#*   --continue-on-errors
+#*                     Do not terminate script if errors are raised (default).
+#*   --die-on-errors
+#*                     Terminate script immediately if errors are raised.
+#*   --continue-on-warnings
+#*                     Do not terminate script if warnings are raised (default).
+#*   --die-on-warnings
+#*                     Terminate script immediately if warnings are raised.
+#*   --continue-on-notes
+#*                     Do not terminate script if notes are raised (default).
+#*   --die-on-notes
+#*                     Terminate script immediately if notes are raised.
+#*
+#*   --help, --usage
+#*                     Output a short usage message (this message) and exit.
+#*   --version
+#*                     Output version information and exit.
+#**
+@ARGV = getOptions(
+    '-1,--ddl1'    => sub { $ddl1_file = get_value() },
+    '-m,--ddlm'    => sub { $ddlm_file = get_value() },
+
+    '--continue-on-errors'          => sub { $die_on_errors = 0 },
+    '--die-on-errors'               => sub { $die_on_errors = 1 },
+
+    '--continue-on-warnings' => sub { $die_on_warnings = 0 },
+    '--die-on-warnings'      => sub { $die_on_warnings = 1 },
+
+    '--continue-on-notes'    => sub { $die_on_notes = 0 },
+    '--die-on-notes'         => sub { $die_on_notes = 1 },
+
+    '--options'         => sub{ options; exit },
+    '--help,--usage'    => sub{ usage; exit; },
+    '--version'      => sub { print 'cod-tools version ',
+                                 $COD::ToolsVersion::Version, "\n";
+                                 exit }
+);
+
+my $die_on_error_level = {
+    ERROR   => $die_on_errors,
+    WARNING => $die_on_warnings,
+    NOTE    => $die_on_notes
+};
+
+my $options = { 'parser' => $use_parser, 'no_print' => 1 };
+my ( $ddl1_data, $ddlm_data, $err_count, $messages );
+( $ddl1_data, $err_count, $messages ) = parse_cif( $ddl1_file, $options );
+process_parser_messages( $messages, $die_on_error_level );
+# TODO: the DDLm dictionary should import all of its dependencies.
+( $ddlm_data, $err_count, $messages ) = parse_cif( $ddlm_file, $options );
+process_parser_messages( $messages, $die_on_error_level );
+
+my ( $ddl1_name, $ddlm_name, $suffix );
+($ddl1_name, undef, $suffix) = fileparse($ddl1_file);
+$ddl1_name .= $suffix;
+($ddlm_name, undef, $suffix) = fileparse($ddlm_file);
+$ddlm_name .= $suffix;
+
+# Print out data names that are present in the DDL1 version of the dictionary,
+# but are missing in the 
+my @ddl1_tags;
+for my $datablock ( @{$ddl1_data} ) {
+    if ( exists $datablock->{'values'}{'_type'} &&
+         $datablock->{'values'}{'_type'}[0] ne 'null' ) {
+        push @ddl1_tags, @{$datablock->{'values'}{'_name'}};
+    }
+}
+
+my @ddlm_tags;
+for my $saveblock ( @{$ddlm_data->[0]{'save_blocks'}} ) {
+    if ( !exists $saveblock->{'values'}{'_definition.scope'} ||
+         lc $saveblock->{'values'}{'_definition.scope'}[0] eq 'item' ) {
+        if ( defined $saveblock->{'values'}{'_definition.id'} ) {
+            push @ddlm_tags, @{$saveblock->{'values'}{'_definition.id'}};
+        }
+        if ( defined $saveblock->{'values'}{'_alias.definition_id'} ) {
+            push @ddlm_tags, @{$saveblock->{'values'}{'_alias.definition_id'}};
+        }
+    }
+}
+
+my %ddlm_tags = map { lc $_ => 1 } @ddlm_tags;
+
+foreach ( @ddl1_tags ) {
+    if ( !exists $ddlm_tags{lc $_} ) {
+        warn "$0:: WARNING, data name '$_' is defined in the '$ddl1_name' " .
+             "dictionary, but seems to be missing in the '$ddlm_name' " .
+             "dictionary.\n";
+    }
+}
