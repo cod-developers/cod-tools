@@ -8,10 +8,10 @@ data_DDL_DIC
 
     _dictionary.title            DDL_DIC
     _dictionary.class            Reference
-    _dictionary.version          3.11.11
-    _dictionary.date             2017-06-10
+    _dictionary.version          3.12.0
+    _dictionary.date             2017-07-14
     _dictionary.uri              www.iucr.org/cif/dic/ddl.dic
-    _dictionary.ddl_conformance  3.11.11
+    _dictionary.ddl_conformance  3.12.0
     _dictionary.namespace        DdlDic
     _description.text
 ;
@@ -292,7 +292,7 @@ save_definition.id
     _type.purpose                Identify
     _type.source                 Assigned
     _type.container              Single
-    _type.contents               Tag
+    _type.contents               Code
 
 save_
 
@@ -310,7 +310,7 @@ save_definition.replaced_by
     _name.object_id              replaced_by
     _type.container              Single
     _type.purpose                Encode
-    _type.contents               Name
+    _type.contents               Tag
     _type.source                 Assigned
 
 save_
@@ -854,7 +854,7 @@ save_dictionary_valid.attributes
     _type.purpose                Audit
     _type.source                 Assigned
     _type.container              List
-    _type.contents               Name
+    _type.contents               Code
     _type.dimension              '[]'
 
 save_
@@ -1799,14 +1799,29 @@ save_type.contents
     _definition.update           2013-04-24
     _description.text
 ;
-     Syntax of the value elements within the container type.
-     This may be a single enumerated code, or, in the case of a list,
-     a comma-delimited sequence of codes, or, if there are alternate
-     types, a boolean-linked (or range) sequence of codes.
-     The typing of elements is determined by the replication
-     of the minimum set of states declared. Where the definition is of
-     a 'Table' container this attribute describes
-     the construction of the value elements within those (Table) values.
+
+     Syntax of the value elements within the container type.  This may
+     be a single enumerated code, or, in the case of a list, a
+     comma-delimited sequence of codes, or, if there are alternate
+     types, a boolean-linked (or range) sequence of codes.  The typing
+     of elements is determined by the replication of the minimum set
+     of states declared. Where the definition is of a 'Table'
+     container this attribute describes the construction of the value
+     elements within those (Table) values.  The CIF2 characterset
+     referenced below consists of the following Unicode code points:
+
+     [U+0009], [U+000A], [U+000D], [U+0020-U+007E], [U+00A0-U+D7FF],
+     [U+E000-U+FDCF], [U+FDF0-U+FFFD], [U+10000-U+1FFFD],
+     [U+20000-U+2FFFD], [U+30000-U+3FFFD], [U+40000-U+4FFFD],
+     [U+50000-U+5FFFD], [U+60000-U+6FFFD], [U+70000-U+7FFFD],
+     [U+80000-U+8FFFD], [U+90000-U+9FFFD], [U+A0000-U+AFFFD],
+     [U+B0000-U+BFFFD], [U+C0000-U+CFFFD], [U+D0000-U+DFFFD],
+     [U+E0000-U+EFFFD], [U+F0000-U+FFFFD], [U+100000-U+10FFFD]
+
+     Two "case insensitive" strings are considered identical when
+     they match under the Unicode canonical caseless matching algorithm.
+
+     In all cases, "whitespace" refers to ASCII whitespace only.
 ;
     _name.category_id            type
     _name.object_id              contents
@@ -1817,12 +1832,15 @@ save_type.contents
     loop_
     _enumeration_set.state
     _enumeration_set.detail
-              Text          'case-sens strings or lines of STAR characters'
-              Code          'case-insens contig. string of STAR characters'
-              Name          'case-insens contig. string of alpha-num chars or underscore'
-              Tag           'case-insens contig. STAR string with leading underscore'
-              Filename      'case-sens string identifying an external file'
-              Uri           'case-sens string as uniform resource identifier of a file'
+              Text          'case-sensitive sequence of CIF2 characters'
+              Code        '''case-insensitive sequence of CIF2 characters
+                             containing no ASCII whitespace.'''
+              Name        '''case-insensitive sequence of ASCII alpha-numeric 
+                             characters or underscore'''
+              Tag         '''case-insensitive CIF2 character sequence with leading 
+                             underscore and no ASCII whitespace'''
+              Filename      'case-sensitive string identifying an external file'
+              Uri           'A Uniform Resource Identifier per RFC 3986'
               Date          'ISO standard date format <yyyy>-<mm>-<dd>'
               Version       'version digit string of the form <major>.<version>.<update>'
               Dimension     'integer limits of an Array/Matrix/List in square brackets'
@@ -1838,9 +1856,8 @@ save_type.contents
               Octal         'octal number \o<N>'
               Symop         'a string composed of an integer followed by an underscore and 3 or more digits'
               Implied       'implied by the context of the attribute'
-              ByReference
-                            """The contents have the same form as those of the attribute referenced by
-                            _type.contents_referenced_id."""
+              ByReference  '''The contents have the same form as those of the attribute referenced by
+                             _type.contents_referenced_id.'''
     _enumeration.default         Text
     loop_
     _description_example.case
@@ -1908,6 +1925,8 @@ save_type.indices
      quoted strings.
 
      Meaningful only when the defined item has _type.container 'Table'.
+
+     See the definition for _type.contents for the characterset definition.
 ;
     _name.category_id           type
     _name.object_id             indices
@@ -1917,11 +1936,12 @@ save_type.indices
      loop_
     _enumeration_set.state
     _enumeration_set.detail
-     Text         'a case-sensitive string/lines of text'
+     Text         'A case-sensitive sequence of CIF2 characters'
      Filename     'name of an external file'
-     Code         'code used for indexing data or referencing data resources'
+     Code        '''case-insensitive sequence of CIF2 characters
+                   containing no ASCII whitespace.'''
      Date         'ISO date format yyyy-mm-dd'
-     Uri          'an uniform resource identifier string, per RFC 3986'
+     Uri          'a Uniform Resource Identifier string, per RFC 3986'
      Version      'version digit string of the form <major>.<version>.<update>'
      ByReference
 ;
@@ -1929,11 +1949,6 @@ save_type.indices
      _type.indices_referenced_id
 ;
     _enumeration.default        Text
-     loop_
-    _description_example.case
-    _description_example.detail
-     'Code' 'indices belong to an enumerated set of pre-defined codes'
-     'Uri'  'indices have the form of URIs'
      save_
 
 save_type.indices_referenced_id
@@ -2579,4 +2594,9 @@ Removed 'Measured' as a state for type.source
          3.11.11   2017-06-10
 ;
   Added '_definition.replaced_by' to flag deprecated definitions
+;
+         3.12.0    2017-07-13
+;
+  Clarified charactersets and syntax. Fixed incorrect use of Name in
+  '_definition.replaced_by'.
 ;
