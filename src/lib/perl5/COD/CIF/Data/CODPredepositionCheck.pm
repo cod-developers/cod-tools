@@ -162,7 +162,7 @@ sub filter_and_check
             }
             print_message( $0,
                            $cif_filename,
-                           $parsed->{datablock},
+                           $parsed->{add_pos},
                            $parsed->{err_level},
                            $parsed->{message},
                            $parsed->{explanation},
@@ -188,7 +188,7 @@ sub filter_and_check
                        /value '[^']*' must be one of the enumeration values/ ) {
                 print_message( $0,
                                $cif_filename,
-                               $parsed->{datablock},
+                               $parsed->{add_pos},
                                'NOTE',
                                $parsed->{message},
                                $parsed->{explanation},
@@ -206,7 +206,7 @@ sub filter_and_check
         if( defined $parsed ) {
             print_message( $0,
                            $cif_filename,
-                           $parsed->{datablock},
+                           $parsed->{add_pos},
                            'NOTE',
                            $parsed->{message},
                            $parsed->{explanation},
@@ -255,7 +255,7 @@ sub filter_and_check
                     }
                     print_message( $0,
                                    $cif_filename,
-                                   $parsed->{datablock},
+                                   $parsed->{add_pos},
                                    $parsed->{err_level},
                                    $parsed->{message},
                                    $parsed->{explanation},
@@ -673,7 +673,7 @@ sub filter_and_check
             $parsed->{err_level} = 'NOTE' if !defined $parsed->{err_level};
             print_message( $0,
                            $cif_filename,
-                           $parsed->{datablock},
+                           $parsed->{add_pos},
                            $parsed->{err_level},
                            $parsed->{message},
                            $parsed->{explanation},
@@ -1108,7 +1108,7 @@ sub extract_cif_values
             next if $parsed->{message} =~ /compiler could not recover from errors/;
             print_message( $0,
                $filename,
-               $parsed->{datablock},
+               $parsed->{add_pos},
                ($parsed->{err_level} ? $parsed->{err_level} : 'WARNING'),
                $parsed->{message},
                $parsed->{explanation},
