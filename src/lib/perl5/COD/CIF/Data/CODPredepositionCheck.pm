@@ -134,8 +134,8 @@ sub filter_and_check
                     /(single|double)-quoted string is missing a closing quote -- fixed/ ||
                     /no data block heading .* found/ ) {
                     $parsed->{err_level} = 'NOTE';
-                    $parsed->{line} = undef;
-                    $parsed->{column} = undef;
+                    $parsed->{line_no} = undef;
+                    $parsed->{column_no} = undef;
                     last;
                 }
                 if( /stray CIF values at the beginning of the input file/ ) {
@@ -144,8 +144,8 @@ sub filter_and_check
                 }
                 if( /end of file encountered while in text field starting in line/ ) {
                     $parsed->{err_level} = 'ERROR';
-                    $parsed->{line} = undef;
-                    $parsed->{column} = undef;
+                    $parsed->{line_no} = undef;
+                    $parsed->{column_no} = undef;
                     last;
                 }
                 if( /STOP_ symbol detected in line/ ||
@@ -166,8 +166,8 @@ sub filter_and_check
                            $parsed->{err_level},
                            $parsed->{message},
                            $parsed->{explanation},
-                           $parsed->{line},
-                           $parsed->{column} );
+                           $parsed->{line_no},
+                           $parsed->{column_no} );
         } elsif( /^[^:]+cif_filter: (.*)/ ) { # Ad-hoc parse for some messages
             print {*STDERR} "$0: $1";
         }
@@ -192,8 +192,8 @@ sub filter_and_check
                                'NOTE',
                                $parsed->{message},
                                $parsed->{explanation},
-                               $parsed->{line},
-                               $parsed->{column} );
+                               $parsed->{line_no},
+                               $parsed->{column_no} );
             }
         }
     }
@@ -210,8 +210,8 @@ sub filter_and_check
                            'NOTE',
                            $parsed->{message},
                            $parsed->{explanation},
-                           $parsed->{line},
-                           $parsed->{column} );
+                           $parsed->{line_no},
+                           $parsed->{column_no} );
         }
     }
     if ( @{$correct_stderr} > 0 ) {
@@ -259,8 +259,8 @@ sub filter_and_check
                                    $parsed->{err_level},
                                    $parsed->{message},
                                    $parsed->{explanation},
-                                   $parsed->{line},
-                                   $parsed->{column} );
+                                   $parsed->{line_no},
+                                   $parsed->{column_no} );
                 }
             }
             if ( $warnings ) {
@@ -677,8 +677,8 @@ sub filter_and_check
                            $parsed->{err_level},
                            $parsed->{message},
                            $parsed->{explanation},
-                           $parsed->{line},
-                           $parsed->{column} );
+                           $parsed->{line_no},
+                           $parsed->{column_no} );
         }
     }
     if( @{$filter_stdout} == 0 ) {
@@ -1112,8 +1112,8 @@ sub extract_cif_values
                ($parsed->{err_level} ? $parsed->{err_level} : 'WARNING'),
                $parsed->{message},
                $parsed->{explanation},
-               $parsed->{line},
-               $parsed->{column} );
+               $parsed->{line_no},
+               $parsed->{column_no} );
         } else {
             print {*STDERR} $_;
         }

@@ -117,10 +117,10 @@ sub parse_message($)
         return {
             program      => unescape_meta($1, \%program_escape ),
             filename     => unescape_meta($2, \%filename_escape),
-            line         => $3,
-            column       => $4,
+            line_no      => $3,
+            column_no    => $4,
             datablock    => unescape_meta($5, \%datablock_escape),
-            err_level     => $6,
+            err_level    => $6,
             message      => unescape_meta($7, \%message_escape),
             line_content => unprefix_multiline($8)
         };
