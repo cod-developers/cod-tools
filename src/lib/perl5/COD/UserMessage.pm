@@ -44,7 +44,7 @@ my %message_escape   = ( '&' => '&amp;', ':' => '&colon;', "\n" => '&#10;' );
 
 sub sprint_message($$$$$$@)
 {
-    my ( $program, $filename, $datablock, $errlevel, $message,
+    my ( $program, $filename, $datablock, $err_level, $message,
          $explanation, $line, $column, $line_contents ) = @_;
 
     $message =~ s/\.?\n?$//;
@@ -67,7 +67,7 @@ sub sprint_message($$$$$$@)
                 : "") .
                 (defined $datablock ? " $datablock" : "")
            : "") . ": " .
-           (defined $errlevel ? $errlevel . ", " : "") .
+           (defined $err_level ? $err_level . ", " : "") .
            $message .
            (defined $explanation ? " -- " . $explanation : "") .
            (defined $line_contents ? ":\n" . $line_contents . "\n" .
@@ -79,9 +79,9 @@ sub sprint_message($$$$$$@)
 
 sub print_message($$$$$$@)
 {
-    my ( $program, $filename, $datablock, $errlevel, $message,
+    my ( $program, $filename, $datablock, $err_level, $message,
          $explanation, $line, $column, $line_contents ) = @_;
-    print STDERR sprint_message( $program, $filename, $datablock, $errlevel,
+    print STDERR sprint_message( $program, $filename, $datablock, $err_level,
                                  $message, $explanation, $line, $column,
                                  $line_contents );
 }
@@ -120,7 +120,7 @@ sub parse_message($)
             line         => $3,
             column       => $4,
             datablock    => unescape_meta($5, \%datablock_escape),
-            errlevel     => $6,
+            err_level     => $6,
             message      => unescape_meta($7, \%message_escape),
             line_content => unprefix_multiline($8)
         };

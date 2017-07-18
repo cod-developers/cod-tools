@@ -124,7 +124,7 @@ sub filter_and_check
             next if $message =~ /file seems to be empty/;
             for( $message ) {
                 if( /tag .+ is not recognised/ ) {
-                    $parsed->{errlevel} = 'NOTE';
+                    $parsed->{err_level} = 'NOTE';
                     last;
                 }
                 if( /the dataname apparently had spaces in it - replaced/ ||
@@ -133,17 +133,17 @@ sub filter_and_check
                     /string with spaces without quotes/ ||
                     /(single|double)-quoted string is missing a closing quote -- fixed/ ||
                     /no data block heading .* found/ ) {
-                    $parsed->{errlevel} = 'NOTE';
+                    $parsed->{err_level} = 'NOTE';
                     $parsed->{line} = undef;
                     $parsed->{column} = undef;
                     last;
                 }
                 if( /stray CIF values at the beginning of the input file/ ) {
-                    $parsed->{errlevel} = 'WARNING';
+                    $parsed->{err_level} = 'WARNING';
                     last;
                 }
                 if( /end of file encountered while in text field starting in line/ ) {
-                    $parsed->{errlevel} = 'ERROR';
+                    $parsed->{err_level} = 'ERROR';
                     $parsed->{line} = undef;
                     $parsed->{column} = undef;
                     last;
@@ -153,17 +153,17 @@ sub filter_and_check
                     /syntax error/ ||
                     /wrong number of elements in the loop block/ ||
                     /tag .* appears more than once$/ ) {
-                    $parsed->{errlevel} = 'ERROR';
+                    $parsed->{err_level} = 'ERROR';
                     last;
                 }
-                if( !defined $parsed->{errlevel} ) {
-                    $parsed->{errlevel} = 'NOTE';
+                if( !defined $parsed->{err_level} ) {
+                    $parsed->{err_level} = 'NOTE';
                 }
             }
             print_message( $0,
                            $cif_filename,
                            $parsed->{datablock},
-                           $parsed->{errlevel},
+                           $parsed->{err_level},
                            $parsed->{message},
                            $parsed->{explanation},
                            $parsed->{line},
@@ -247,16 +247,16 @@ sub filter_and_check
                               /neither _journal_page_first nor _journal_article_reference is defined/ ) ) {
                             next CCCMESSAGE;
                         }
-                        if( !defined $parsed->{errlevel} ) {
-                            $parsed->{errlevel} = 'WARNING';
+                        if( !defined $parsed->{err_level} ) {
+                            $parsed->{err_level} = 'WARNING';
                         }
 
-                        $warnings++ if $parsed->{errlevel} ne 'NOTE';
+                        $warnings++ if $parsed->{err_level} ne 'NOTE';
                     }
                     print_message( $0,
                                    $cif_filename,
                                    $parsed->{datablock},
-                                   $parsed->{errlevel},
+                                   $parsed->{err_level},
                                    $parsed->{message},
                                    $parsed->{explanation},
                                    $parsed->{line},
@@ -670,11 +670,11 @@ sub filter_and_check
         my $parsed = parse_message( $_ );
         if( defined $parsed ) {
             next if $parsed->{message} =~ /tag .+ is not recognised/;
-            $parsed->{errlevel} = 'NOTE' if !defined $parsed->{errlevel};
+            $parsed->{err_level} = 'NOTE' if !defined $parsed->{err_level};
             print_message( $0,
                            $cif_filename,
                            $parsed->{datablock},
-                           $parsed->{errlevel},
+                           $parsed->{err_level},
                            $parsed->{message},
                            $parsed->{explanation},
                            $parsed->{line},
@@ -1109,7 +1109,7 @@ sub extract_cif_values
             print_message( $0,
                $filename,
                $parsed->{datablock},
-               ($parsed->{errlevel} ? $parsed->{errlevel} : 'WARNING'),
+               ($parsed->{err_level} ? $parsed->{err_level} : 'WARNING'),
                $parsed->{message},
                $parsed->{explanation},
                $parsed->{line},
