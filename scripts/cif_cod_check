@@ -1371,7 +1371,10 @@ sub check_symmetry_operators
     return 0 if !defined $symops;
 
     foreach (@{$symops}) {
-        return 1 if ( !is_symop_parsable($_) );
+        if ( !is_symop_parsable($_) ) {
+            warn "WARNING, symmetry operator '$_' could not be parsed\n";
+            return 1;
+        }
     }
 
     return 0;

@@ -1194,8 +1194,16 @@ for my $filename (@ARGV) {
                 }
 
                 if( @symops ) {
+                    # TODO: an almost identical check is implemented in the
+                    # cif_cod_check module. In the future it might be worth
+                    # refactoring this functionality into a separate module
                     my $symops_parsable = 1;
-                    $symops_parsable *= is_symop_parsable( $_ ) for @symops;
+                    foreach (@symops) {
+                        if ( !is_symop_parsable($_) ) {
+                            warn "WARNING, symmetry operator '$_' could not be parsed\n";
+                            $symops_parsable = 0;
+                        }
+                    }
 
                     if( $symops_parsable ) {
                         my $key = make_symop_key( \@symops );
