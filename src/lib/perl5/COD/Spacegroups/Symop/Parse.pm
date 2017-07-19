@@ -210,17 +210,12 @@ sub is_symop_parsable
         "(?:-|\\+)?$symop_term(?:-|\\+)$symop_term|" .
         "(?:-|\\+)?$symop_term(?:-|\\+)$symop_term(?:-|\\+)$symop_term)";
 
-    if( !defined $symop ) {
-        warn "WARNING, no symmetry operators\n";
+    my $no_spaces = $symop;
+    $no_spaces =~ s/\s//g;
+    if( $no_spaces !~ /^($symop_component,){2}($symop_component)$/i ) {
         $status = 0;
-    } else {
-        my $no_spaces = $symop;
-        $no_spaces =~ s/\s//g;
-        if( $no_spaces !~ /^($symop_component,){2}($symop_component)$/i ) {
-            warn "WARNING, symmetry operator '$symop' could not be parsed\n";
-            $status = 0;
-        }
     }
+
     return $status;
 }
 
