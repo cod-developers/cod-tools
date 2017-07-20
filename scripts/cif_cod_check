@@ -546,8 +546,12 @@ for my $filename (@ARGV) {
         $warnings += check_data( $dataset );
         $warnings += check_bibliography( $dataset )
             if $check_bibliography;
-        $warnings += check_authors( $dataset )
-            if $check_authors;
+        if ( $check_authors ) {
+            ($f_notes, $f_warnings, $f_errors) = check_authors( $dataset );
+            $notes    += $f_notes;
+            $warnings += $f_warnings;
+            $errors   += $f_errors;
+        };
         $warnings += check_chemical_formula_sum( $dataset )
             if $check_chemical_formula_sum;
         $warnings += check_space_group_info( $dataset )
@@ -669,31 +673,52 @@ sub check_authors
     my ($dataset) = @_;
 
     if( !defined $dataset->{values} ) {
-        return 0;
+        return (0, 0, 0);
     }
 
     my $values = $dataset->{values};
 
     if( !defined $values->{_publ_author_name} ) {
         warn 'WARNING, _publ_author_name is undefined' . "\n";
-        return 1;
+        return (0, 1, 0);
     }
 
+    my $notes = 0;
     my $warnings = 0;
+    my $errors   = 0;
     for my $author (@{$values->{_publ_author_name}}) {
-        my $parsed_name =
-            parse_author_name( cif2unicode( $author ), 1 );
+        my $parsed_name;
+        my @messages;
+        eval {
+            local $SIG{__WARN__} = sub {
+                for my $warning (@_) {
+                    if ( $warning =~ /^NOTE/ ) {
+                        $notes++;
+                    } elsif ( $warning =~ /^WARNING/ ) {
+                        $warnings++;
+                    } elsif ( $warning =~ /^ERROR/ ) {
+                        $errors++;
+                    } else {
+                        # unprefixed warnings are treated as WARNINGs
+                        $warnings++;
+                    }
+                    push @messages, $warning;
+                }
+            };
+            $parsed_name = parse_author_name( cif2unicode( $author ), 1 );
+        };
+        warn $_ foreach @messages;
         next if !exists $parsed_name->{unparsed};
-        $warnings++;
         if( ! $name_syntax_explained ) {
             warn 'NOTE, names should be written as \'First von Last\', '
                . '\'von Last, First\', or \'von Last, Jr, First\' '
                . '(mind the case!)' . "\n";
             $name_syntax_explained = 1;
+            $notes++
         }
     }
 
-    return $warnings;
+    return ($notes, $warnings, $errors);
 }
 
 sub check_chemical_formula_sum
