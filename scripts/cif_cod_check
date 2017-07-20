@@ -554,8 +554,12 @@ for my $filename (@ARGV) {
         };
         $warnings += check_chemical_formula_sum( $dataset )
             if $check_chemical_formula_sum;
-        $warnings += check_space_group_info( $dataset )
-            if $check_space_group_info;
+        if ( $check_space_group_info ) {
+            ($f_notes, $f_warnings, $f_errors) = check_space_group_info( $dataset );
+            $notes    += $f_notes;
+            $warnings += $f_warnings;
+            $errors   += $f_errors;
+        };
         $warnings += check_symmetry_operators( $dataset )
             if $check_symmetry_operators;
         $warnings += check_space_group_constraints( $dataset )
@@ -574,7 +578,7 @@ for my $filename (@ARGV) {
             if $check_embedded_file_integrity;
         $warnings += check_z( $dataset )
             if $check_z;
-        $warnings += check_disorder( $dataset )
+        $notes += check_disorder( $dataset )
             if $check_disorder;
     }
 
@@ -750,7 +754,7 @@ sub check_space_group_info
     my ($dataset) = @_;
 
     if( !defined $dataset->{values} ) {
-        return 0;
+        return (0, 0, 0);
     }
 
     my $symops = $dataset->{values}{_symmetry_equiv_pos_as_xyz};
@@ -768,7 +772,9 @@ sub check_space_group_info
         _space_group_ssg_name_WJJ
     );
 
+    my $notes = 0;
     my $warnings = 0;
+    my $errors = 0;
     my $space_group_found;
     my $space_group;
 
@@ -824,7 +830,7 @@ sub check_space_group_info
                      . join( ', ', map { "'$_'" }
                              @{ $duplicate_symops{$cannonical_symop} } )
                      . ') in symmetry operator list' . "\n";
-                $warnings++;
+                $notes++;
             }
         }
     }
@@ -850,7 +856,7 @@ sub check_space_group_info
                      . ' ' . ($single ? 'is' : 'are')
                      . ' missing, although required by '
                      . "the space group '$space_group_found'" . "\n";
-                $warnings++;
+                $notes++;
             }
 
             my @excess_symops;
@@ -866,12 +872,12 @@ sub check_space_group_info
                     . ' ' . ($single ? 'is' : 'are')
                     . ' found, although not required by '
                     . "the space group '$space_group_found'" . "\n";
-                $warnings++;
+                $notes++;
             }
         }
     }
 
-    return $warnings;
+    return ($notes, $warnings, $errors);
 }
 
 sub check_temperature_factors
@@ -1725,6 +1731,7 @@ sub check_disorder
 {
     my( $dataset ) = @_;
     return 0 if !exists $dataset->{values}{_atom_site_disorder_group};
+    my $notes = 0;
 
     my $assemblies = {};
     for my $i (0..$#{$dataset->{values}{_atom_site_disorder_group}}) {
@@ -1752,9 +1759,10 @@ sub check_disorder
                      "'$assembly' are different: " .
                      join( ', ', map { "$assemblies->{$assembly}{$_} ('$_')" }
                                      sort keys %{$assemblies->{$assembly}} ) . "\n";
+                $notes++;
             }
         }
     }
 
-    return 0;
+    return $notes;
 }
