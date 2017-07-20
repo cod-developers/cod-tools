@@ -1359,7 +1359,14 @@ sub check_symmetry_operators
 
     return \@messages if !defined $dataset->{values};
 
-    my $symops = $dataset->{values}{_symmetry_equiv_pos_as_xyz};
+    my $symops;
+    if ( defined $dataset->{values}{'_space_group_symop_operation_xyz'} ) {
+        $symops = $dataset->{values}{'_space_group_symop_operation_xyz'}
+    } elsif ( defined $dataset->{values}{'_symmetry_equiv_pos_as_xyz'} ) {
+        $symops = $dataset->{values}{'_symmetry_equiv_pos_as_xyz'}
+    } else {
+      #  push @messages, 'WARNING, the space group operation list was not provided';
+    }
 
     return \@messages if !defined $symops;
 
