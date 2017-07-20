@@ -174,8 +174,8 @@ sub filter_and_check
     }
 
     if( @{$filter_stdout} == 0 ) {
-        die "$0: $cif_filename: ERROR, file became empty after "
-          . 'filtering with cif_filter';
+        die "$0: $cif_filename: ERROR, file became empty after " .
+            "filtering with cif_filter\n";
     }
 
     my( $fix_values_stdout, $fix_values_stderr ) =
@@ -216,7 +216,7 @@ sub filter_and_check
     }
     if ( @{$correct_stderr} > 0 ) {
         die 'cif_correct_tags encountered ' . @{$correct_stderr}
-          . ' warning(s)' ;
+          . ' warning(s)' . "\n" ;
     }
 
     if( !$options->{bypass_checks} ) {
@@ -264,7 +264,7 @@ sub filter_and_check
                 }
             }
             if ( $warnings ) {
-                die "$0: cif_cod_check encountered $warnings warning(s)"
+                die "$0: cif_cod_check encountered $warnings warning(s)\n"
             };
         }
     }
@@ -583,7 +583,7 @@ sub filter_and_check
                           $db_conf->{port},
                           $db_conf->{user},
                           $db_conf->{password} );
-    die 'connection to database failed' if !$dbh;
+    die "connection to database failed\n" if !$dbh;
 
     my $database_hold_until;
     if( $options->{replace} ) {
@@ -683,7 +683,7 @@ sub filter_and_check
     }
     if( @{$filter_stdout} == 0 ) {
         die "$0: $cif_filename: ERROR, file became empty after "
-          . 'filtering with cif_filter';
+          . "filtering with cif_filter\n";
     }
     if( $hkl && !$is_pdcif ) {
         my $hkl_parameters = extract_cif_values(
@@ -834,8 +834,8 @@ sub run_command($@)
         if( ref $input eq '' ) {
             $input = [ $input ];
         } elsif( ref $input ne 'ARRAY' ) {
-            die( 'run_command() input is not a ' .
-                 'scalar or an array reference' );
+            die 'run_command() input is not a ' .
+                "scalar or an array reference\n";
         }
     } else {
         $input = [];
@@ -866,16 +866,16 @@ sub run_command($@)
                                        undef, $timeout );
 
         if( ! @list ) {
-            die( 'execution of external script \''
-               . $command->[0] . '\' was timed out' );
+            die 'execution of external script ' .
+                "'$command->[0]' was timed out" . "\n";
         }
 
         if( @{ $list[1] } > 0 ) {
             my $written =
                 syswrite( $stdin, $input_text, $input_rest, $stdin_pos );
             if( !defined $written ) {
-                die( 'syswrite() failed for external script ' .
-                     "'$command->[0]': $!" );
+                die 'syswrite() failed for external script ' .
+                    "'$command->[0]': $!" . "\n";
             }
             $stdin_pos += $written;
             $input_rest -= $written;
@@ -927,7 +927,7 @@ sub db_connect
               ($db_port ? ";$db_port" : '');
     my $dbh = DBI->connect( $dsn, $db_user, $db_pass );
     if( !$dbh ) {
-        die( 'could not connect to the database - ' . lcfirst( $DBI::errstr ));
+        die 'could not connect to the database - ' . lcfirst( $DBI::errstr ) . "\n";
     }
     if( $db_platform ne 'SQLite' ) {
         $dbh->do( 'SET CHARACTER SET utf8' );
@@ -1034,9 +1034,9 @@ sub select_COD_number_range($$)
                 #                "defaulting to range '$range' " .
                 #                '(other journals)' );
             } else {
-                die( 'could not assign COD number range ' .
+                die 'could not assign COD number range ' .
                      "for journal '$journal' and deposition type " .
-                     "'$deposition_type'" );
+                     "'$deposition_type'\n";
             }
         }
     }
@@ -1119,7 +1119,7 @@ sub extract_cif_values
         }
     }
     if ( @{$values_stderr} > 0 ) {
-        die "$0: cifvalues encountered " . @{$values_stderr} . ' warning(s)';
+        die "$0: cifvalues encountered " . @{$values_stderr} . " warning(s)\n";
     }
 
     my $data = [];
@@ -1258,7 +1258,7 @@ sub can_bypass_checks
             use Digest::SHA qw/ sha1_hex /;
             $client_password = Digest::SHA::sha1_hex( $client_password );
         } else {
-            die "unknown hashing algorithm '$algorithm'";
+            die "unknown hashing algorithm '$algorithm'\n";
         }
     }
     if( defined $client_password && $client_password eq $host_password ) {
