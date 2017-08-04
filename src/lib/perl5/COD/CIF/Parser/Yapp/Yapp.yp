@@ -712,7 +712,12 @@ sub _Lexer
     if( defined $parser->YYData->{INPUT} &&
         $parser->YYData->{INPUT} =~ s/^(\s*#.*)$//s )
     {
-        advance_token($parser, length($1), 1);
+        my $comment = $1;
+        if( $comment =~ /[\x{0}-\x{8}\x{b}-\x{c}\x{e}-\x{1f}\x{7f}-\x{ff}]/g ) {
+            $parser->YYData->{ERRMSG} = 'unallowed symbol in CIF comment';
+            $parser->_Warning();
+        }
+        advance_token($parser, length($comment), 1);
     }
 
     if( !defined $parser->YYData->{INPUT} ||
