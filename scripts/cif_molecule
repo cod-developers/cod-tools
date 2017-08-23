@@ -1508,15 +1508,26 @@ sub symops_apply_modulo1
         serialiseRef( $sym_operators );
     } if 0;
 
-    for my $symop ( @{$sym_operators} ) {
-        my $new_atom = symop_apply_modulo1( $atom, $symop );
-        if( !symop_is_unity( $symop ) &&
-            atoms_coincide( $atom, $new_atom, $atom->{f2o} )) {
-            push( @symops_mapping_to_self, $symop );
-            $multiplicity_ratio ++;
-        } else {
-            push( @sym_atoms, $new_atom );
+    if( !exists $atom->{group} || $atom->{group} !~ /^-/ ) {
+        for my $symop ( @{$sym_operators} ) {
+            my $new_atom = symop_apply_modulo1( $atom, $symop );
+            if( !symop_is_unity( $symop ) &&
+                atoms_coincide( $atom, $new_atom, $atom->{f2o} )) {
+                push( @symops_mapping_to_self, $symop );
+                $multiplicity_ratio ++;
+            } else {
+                push( @sym_atoms, $new_atom );
+            }
         }
+    } else {
+        # Symmetry operators are not applied for atoms that are
+        # disordered around special position.
+        my $new_atom = symop_apply_modulo1( $atom,
+                        [ [ 1, 0, 0, 0 ],
+                          [ 0, 1, 0, 0 ],
+                          [ 0, 0, 1, 0 ],
+                          [ 0, 0, 0, 1 ] ] );
+        push( @sym_atoms, $new_atom );
     }
 
     ## print ">>> $gp_multiplicity / $multiplicity_ratio\n";
