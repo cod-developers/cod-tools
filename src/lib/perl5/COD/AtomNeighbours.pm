@@ -303,7 +303,8 @@ sub neighbour_list_from_chemistry_mol
         # plane.
         if( defined $atom->attr('smiles/aromatic') &&
             $atom->attr('smiles/aromatic') == 1 &&
-            scalar $atom->neighbors() >= 3 ) {
+            (scalar $atom->neighbors() +
+             $atom_info{"attached_hydrogens"}) >= 3 ) {
             $atom_info{"planarity"} = 0;
         }
 
