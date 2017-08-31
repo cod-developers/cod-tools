@@ -241,6 +241,9 @@ for my $i (0..@cif-1) {
                               $options );
     };
     if( $@ ) {
+        if ( $@ =~ /[^.]\n$/ ) {
+            $@ =~ s/\n$/.\n/
+        };
         print {*STDERR} $@;
     } else {
         if ( defined $cif ) { print map { "CIF $_\n" } split m/\n/, $cif };

@@ -23,6 +23,7 @@ use strict;
 use warnings;
 use COD::CIF::Parser qw( parse_cif );
 use COD::CIF::Tags::CanonicalNames qw( canonicalize_all_names );
+use COD::CIF::Tags::Manage qw( set_loop_tag set_tag );
 use COD::CIF::Tags::Print qw( print_cif );
 use COD::SOptions qw( getOptions );
 use COD::SUsage qw( usage options );
@@ -204,11 +205,12 @@ for my $filename (@ARGV) {
                         }
                     } elsif( defined $override_tags{lc($tag)} ||
                              $override_all ) {
-                        for( my $i = 0;
-                             $i <= $#{$old_datablock->{values}{$tag}};
-                             $i ++ ) {
-                            $old_datablock->{values}{$tag}[$i] =
-                                $new_datablock->{values}{$tag}[$i];
+                        if( defined $old_datablock->{inloop}{$tag} ) {
+                            set_loop_tag( $old_datablock, $tag, undef,
+                                          $new_datablock->{values}{$tag} );
+                        } else {
+                            set_tag( $old_datablock, $tag,
+                                     $new_datablock->{values}{$tag}[0] )
                         }
                     } elsif( !values_are_equal( $old_datablock->{values}{$tag},
                                            $new_datablock->{values}{$tag} )) {

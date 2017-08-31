@@ -41,6 +41,7 @@ my $verbose = 1;
 my $output_dir = "";
 my $output_prefixed = 0;
 my $output_tar = 0;
+my $split_global = 1;
 my $cif_header_file;
 
 my $use_parser = "c";
@@ -61,6 +62,15 @@ my $output_format = 'cif';
 #*   -h, --add-cif-header header_file.cif
 #*                     Prepend each of the output files with the comments
 #*                     from the beginning of the specified file.
+#*
+#*   --split-global-data-block
+#*                     Put the 'data_global' data block (if any) to each
+#*                     split file. Default option.
+#*   --do-not-split-global-data-block,
+#*   --dont-split-global-data-block,
+#*   --no-split-global-data-block
+#*                     Do not treat 'data_global' data block (if any) as
+#*                     special.
 #*
 #*   -v, --verbose
 #*                     Print names of the generated files to STDERR.
@@ -102,6 +112,11 @@ my $output_format = 'cif';
    "-h,--add-cif-header" => \$cif_header_file,
    "-v,--verbose"    => sub { $verbose = 1 },
    "-q,--quiet"      => sub { $verbose = 0 },
+
+    '--split-global-data-block'        => sub { $split_global = 1 },
+    '--do-not-split-global-data-block' => sub { $split_global = 0 },
+    '--dont-split-global-data-block'   => sub { $split_global = 0 },
+    '--no-split-global-data-block'     => sub { $split_global = 0 },
 
    "--use-perl-parser" => sub { $use_parser = "perl" },
    "--use-c-parser"    => sub { $use_parser = "c" },
@@ -187,7 +202,7 @@ for my $filename (@ARGV) {
                                        'add_pos'  => $dataname
                                      }, $die_on_error_level ) };
 
-        if( $dataset->{name} eq 'global' ) {
+        if( $split_global && $dataset->{name} eq 'global' ) {
             if( !$data_global ) {
                 $data_global = $dataset;
             } else {

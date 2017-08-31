@@ -6,6 +6,11 @@ cod-tools (unreleased)
       --original-data-block-tag.
     - cif_validate: displaying a warning upon validation against DDLm
       conformant dictionaries.
+    - cif_cod_check:
+      - raising a warning about the space group symmetry operation
+        list not being provided in the input file when the
+        --check-symmetry-operators option is enabled.
+    - cif_split: command line option --do-not-split-global-data-block.
   * Changed:
     - cif_find_symmetry: outputting symmetry operators in a canonical
       form.
@@ -17,9 +22,50 @@ cod-tools (unreleased)
         subroutine 'check_against_range' was renamed to 'is_in_range',
         'check_against_range_numb' to 'is_in_range_numeric' and
         'check_against_range_char' to 'is_in_range_char'.
+    - cif_find_duplicates:
+      - removed the unused import of the COD::CIF::Data::CellContents.
+    - COD::Spacegroups::Symop::Parse:
+      - removed the warning messages from the is_symop_parsable()
+        subroutine.
   * Fixed:
     - cif_filter: adding name of database code data item to the list
       of data block tags.
+    - cif_merge: truncating loop tags after having them overwritten
+      with less values.
+    - cif_cod_check:
+      - correcting some warning messages to no longer contain the
+        script name and line number where they were raised.
+      - correcting the way the overall number of error messages is
+        reported.
+      - updated the 'check_symmetry_operators' subroutine to also
+        check the values of the _space_group_symop_operation_xyz data
+        item.
+    - cod_predeposition_check:
+      - adding a full stop to the end of error messages raised by
+        die().
+    - CIF::COD::Data::CODPredepositionCheck:
+      - adding newlines to the end of error messages raised by die()
+        to remove the automatically added script name and line number
+        of the context they were raised in.
+    - replacing deprecated usage of 'find ... -perm +1' by equivalent
+      construction 'find ... -executable' in the installation routine.
+    - COD::ErrorHandler: changed all instances of the 'errlevel' hash
+      key to 'err_level' in order to homogenize the hash structure
+      across different modules.
+    - COD::UserMessage:
+        - changed the keys of parsed error messages hash in order to
+          homogenize the hash structure across different Perl modules.
+          The 'errlevel' key was changed to 'err_level', 'line' to
+          'line_no', 'column' to 'column_no' and 'datablock' to
+          'add_pos'.
+    - codcif and COD::CIF::Parser::Bison: detecting unallowed symbols
+      in CIF 1.1 comments.
+    - COD::AtomNeighbours: making neighbour_list_from_chemistry_mol()
+      treat only aromatic atoms with three or more covalent neighbours
+      as planar.
+    - cif_molecule: symmetry operators other than identity are not
+      applied to symmetry-independent disordered sites, identified by
+      negative values of '_atom_site_disorder_group'.
 
 cod-tools (2.0)
 

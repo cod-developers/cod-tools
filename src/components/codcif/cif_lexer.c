@@ -156,10 +156,16 @@ static int cif_lexer( FILE *in, cexception_t *ex )
                 putchar( ch );
             }
             /* skip comments: */
+            pos = current_pos;
             while( ch != EOF && ch != '\n' && ch != '\r' ) {
                 ch = getlinec( in, ex );
+                pos ++;
                 if( yy_flex_debug ) {
                     putchar( ch );
+                }
+                if( (ch < 32 && ch != 9 && ch != 10 && ch != 13) || ch >= 127 ) {
+                    yywarning_token( cif_cc, "unallowed symbol in CIF comment",
+                                     cif_flex_current_line_number(), pos, ex );
                 }
             }
             if( ch == '\r' ) {
