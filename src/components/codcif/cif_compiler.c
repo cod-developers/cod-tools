@@ -507,7 +507,8 @@ CIF *new_cif_from_cif_file( char *filename, cif_option_t co, cexception_t *ex )
     }
 
     int ch = getc( in );
-    if( ch == 254 ) { /* U+FEFF detected */
+    if( ch == 239 ) { /* U+FEFF detected */
+        ch = getc( in );
         ch = getc( in );
         ch = getc( in );
     }
