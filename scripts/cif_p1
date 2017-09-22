@@ -32,12 +32,11 @@ use COD::Algebra::Vector qw( distance );
 use COD::CIF::Data qw( get_cell get_symmetry_operators );
 use COD::CIF::Data::AtomList qw( atom_array_from_cif
                                  atom_groups
-                                 copy_atom
                                  dump_atoms_as_cif );
 use COD::CIF::Data::SymmetryGenerator qw( apply_shifts
                                           atoms_coincide
                                           chemical_formula_sum
-                                          symop_register_applied_symop
+                                          symop_apply_modulo1
                                           test_bond
                                           test_bump
                                           translate_atom
@@ -541,7 +540,7 @@ sub symops_apply_modulo1
     my $n = 1;
 
     for my $symop ( @{$sym_operators} ) {
-        my $new_atom = symop_apply_modulo1( $atom, $symop, $n++ );
+        my $new_atom = symop_apply_modulo1( $atom, $symop, $n++, 1 );
         if( !symop_is_unity( $symop ) &&
             atoms_coincide( $atom, $new_atom, $atom->{f2o} )) {
             push( @symops_mapping_to_self, $symop );
@@ -568,39 +567,6 @@ sub symops_apply_modulo1
     }
 
     return ( \@sym_atoms, $multiplicity, $multiplicity_ratio );
-}
-
-#===============================================================#
-# Applies symmetry operator to a given atom.
-
-# The symop_apply_modulo1 subroutine accepts a reference to a hash
-# $atom_info -- as above, and a refernce to an array - symmetry
-# operator:
-
-# my $symop = [
-#     [ r11 r12 r13 t1 ]
-#     [ r21 r22 r23 t2 ]
-#     [ r31 r32 r33 t3 ]
-#     [   0   0   0  1 ]
-# ],
-
-# Returns an above-mentioned hash.
-
-sub symop_apply_modulo1
-{
-    my($atom, $symop, $symop_id) = @_;
-
-    my $new_atom = copy_atom( $atom );
-
-    my $atom_xyz = $atom->{coordinates_fract};
-
-    my @new_atom_xyz =
-        map { modulo_1($_) }
-            @{ symop_vector_mul( $symop, $atom_xyz ) };
-
-    $new_atom->{coordinates_fract} = \@new_atom_xyz;
-
-    return symop_register_applied_symop( $new_atom, $symop, $symop_id, 1 );
 }
 
 #===============================================================#
