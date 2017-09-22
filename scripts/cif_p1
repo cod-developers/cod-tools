@@ -38,7 +38,8 @@ use COD::CIF::Data::AtomList qw( atom_array_from_cif
 use COD::CIF::Data::SymmetryGenerator qw( apply_shifts
                                           atoms_coincide
                                           test_bond
-                                          test_bump );
+                                          test_bump
+                                          trim_polymer );
 use COD::CIF::Tags::CanonicalNames qw( canonicalize_all_names );
 use COD::CIF::Tags::Manage qw( set_tag );
 use COD::CIF::Tags::Print qw( print_cif print_single_tag_and_value print_value );
@@ -1771,25 +1772,4 @@ sub rename_tags($$$)
         }
     }
     return wantarray ? %renamed_tags : \%renamed_tags;
-}
-
-#===============================================================#
-# Trim a polymer -- remove atoms outside of the specified polymer
-# span:
-
-sub trim_polymer
-{
-    my ($atoms, $max_polymer_span) = @_;
-
-    my @trimmed_atoms;
-
-    for my $atom (@$atoms) {
-        if( abs($atom->{translation}[0]) <= $max_polymer_span &&
-            abs($atom->{translation}[1]) <= $max_polymer_span &&
-            abs($atom->{translation}[2]) <= $max_polymer_span ) {
-            push( @trimmed_atoms, $atom );
-        }
-    }
-
-    return \@trimmed_atoms;
 }
