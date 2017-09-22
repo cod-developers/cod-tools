@@ -14,12 +14,18 @@ package COD::CIF::Data::SymmetryGenerator;
 
 use strict;
 use warnings;
+use COD::Algebra::Vector qw( distance );
 use COD::CIF::Data::AtomList qw( copy_atom );
 use COD::Formulae::Print qw( sprint_formula );
-use COD::Spacegroups::Symop::Algebra qw( symop_is_unity symop_vector_mul );
-use COD::Spacegroups::Symop::Parse qw( modulo_1 );
+use COD::Spacegroups::Symop::Algebra qw( flush_zeros_in_symop
+                                         symop_is_unity
+                                         symop_modulo_1
+                                         symop_mul
+                                         symop_vector_mul );
+use COD::Spacegroups::Symop::Parse qw( modulo_1
+                                       string_from_symop
+                                       symop_string_canonical_form );
 use COD::Spacegroups::Names;
-use COD::Algebra::Vector qw( distance );
 
 require Exporter;
 our @ISA = qw( Exporter );
@@ -28,6 +34,7 @@ our @EXPORT_OK = qw(
     atoms_coincide
     chemical_formula_sum
     symop_generate_atoms
+    symop_register_applied_symop
     test_bond
     test_bump
     translate_atom
@@ -47,6 +54,7 @@ sub apply_shifts($);
 sub atoms_coincide($$$);
 sub chemical_formula_sum($@);
 sub symop_generate_atoms($$$);
+sub symop_register_applied_symop($$@);
 sub test_bond($$$$$);
 sub test_bump($$$$$$$);
 sub translate_atom($$);
@@ -173,6 +181,73 @@ sub symop_generate_atoms($$$)
     }
 
     return \@sym_atoms;
+}
+
+#===============================================================#
+
+sub symop_register_applied_symop($$@)
+{
+    my( $new_atom_info, $symop, $symop_id, $expand_to_p1 ) = @_;
+
+    if( defined $symop_id ) {
+        $new_atom_info->{symop} = $symop;
+        $new_atom_info->{symop_id} = $symop_id;
+        $new_atom_info->{unity_matrix_applied} =
+            symop_is_unity($symop);
+    } else {
+        my $symop_now = symop_mul( $new_atom_info->{symop}, $symop );
+        my $symop_string =
+            symop_string_canonical_form(
+                string_from_symop(
+                    flush_zeros_in_symop(
+                        symop_modulo_1( $symop_now ) ) ) );
+
+        $new_atom_info->{symop} = $symop_now;
+        $new_atom_info->{symop_id} =
+            $new_atom_info->{symop_list}
+                            {symop_ids}
+                            {$symop_string} + 1;
+        $new_atom_info->{unity_matrix_applied} =
+            symop_is_unity( $symop_now );
+        delete $new_atom_info->{site_symop};
+    }
+
+    my $atom_xyz = $new_atom_info->{coordinates_fract};
+
+    $new_atom_info->{coordinates_ortho} =
+        symop_vector_mul( $new_atom_info->{f2o}, $atom_xyz );
+
+    my @translation = (
+        int($atom_xyz->[0] - modulo_1($atom_xyz->[0])),
+        int($atom_xyz->[1] - modulo_1($atom_xyz->[1])),
+        int($atom_xyz->[2] - modulo_1($atom_xyz->[2])),
+    );
+    $new_atom_info->{translation} =
+        \@translation;
+    $new_atom_info->{translation_id} =
+        (5+$translation[0]) . (5+$translation[1]) . (5+$translation[2]);
+
+    if( $new_atom_info->{unity_matrix_applied} &&
+        $new_atom_info->{translation_id} eq "555" ) {
+        $new_atom_info->{name} = $new_atom_info->{site_label};
+    } else {
+        $new_atom_info->{name} =
+            $new_atom_info->{site_label} . "_" .
+            $new_atom_info->{symop_id} . "_" .
+            $new_atom_info->{translation_id};
+    }
+
+    $new_atom_info->{cell_label} = $new_atom_info->{site_label};
+    if( $expand_to_p1 && !$new_atom_info->{unity_matrix_applied} ) {
+        $new_atom_info->{cell_label} .= '_' . $new_atom_info->{symop_id};
+    }
+
+    do {
+        use COD::Serialise qw( serialiseRef );
+        serialiseRef( { atom => $new_atom_info, symop => $symop } );
+    } if 0;
+
+    return $new_atom_info;
 }
 
 #===============================================================#
