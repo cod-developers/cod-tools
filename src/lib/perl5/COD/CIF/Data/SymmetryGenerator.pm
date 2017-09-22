@@ -292,7 +292,6 @@ sub symop_register_applied_symop($$@)
                             {$symop_string} + 1;
         $new_atom_info->{unity_matrix_applied} =
             symop_is_unity( $symop_now );
-        delete $new_atom_info->{site_symop};
     }
 
     my $atom_xyz = $new_atom_info->{coordinates_fract};

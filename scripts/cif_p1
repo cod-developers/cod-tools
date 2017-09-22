@@ -20,10 +20,19 @@ use strict;
 use warnings;
 use Clone qw( clone );
 use COD::Algebra qw( gcd );
-use COD::Algebra::Vector qw( distance );
 use COD::AtomBricks qw( build_bricks get_atom_index get_search_span );
 use COD::AtomNeighbours qw( get_max_covalent_radius );
 use COD::AtomProperties;
+use COD::CIF::Parser qw( parse_cif );
+use COD::Spacegroups::Symop::Algebra qw( symop_is_unity
+                                         symop_invert
+                                         symop_mul
+                                         symop_vector_mul );
+use COD::Spacegroups::Symop::Parse qw( modulo_1
+                                       string_from_symop
+                                       symop_from_string
+                                       symop_string_canonical_form );
+use COD::Algebra::Vector qw( distance );
 use COD::CIF::Data qw( get_cell get_symmetry_operators );
 use COD::CIF::Data::AtomList qw( atom_array_from_cif
                                  atom_groups
@@ -37,15 +46,11 @@ use COD::CIF::Data::SymmetryGenerator qw( apply_shifts
                                           translate_atom
                                           translation
                                           trim_polymer );
-use COD::CIF::Parser qw( parse_cif );
 use COD::CIF::Tags::CanonicalNames qw( canonicalize_all_names );
 use COD::CIF::Tags::Manage qw( rename_tags );
-use COD::CIF::Tags::Print qw( print_cif print_single_tag_and_value print_value );
-use COD::Spacegroups::Symop::Algebra qw( symop_is_unity symop_vector_mul );
-use COD::Spacegroups::Symop::Parse qw( modulo_1
-                                       string_from_symop
-                                       symop_string_canonical_form
-                                       symop_from_string );
+use COD::CIF::Tags::Print qw( print_cif
+                              print_single_tag_and_value
+                              print_value );
 use COD::SOptions qw( getOptions );
 use COD::SUsage qw( usage options );
 use COD::ErrorHandler qw( process_warnings process_errors
@@ -389,11 +394,25 @@ for my $filename (@ARGV) {
                                      } ) };
 
         eval {
-            # Build an atom array from the CIF data structure:
-            my $atoms = atom_array_from_cif( $datablock, $cif_atom_list_options );
-
             my $symop_strings = get_symmetry_operators( $datablock );
             my @symops = map { symop_from_string($_) } @{$symop_strings};
+
+            # Parse symmetry operators:
+            my @sym_operators = map { symop_from_string($_) } @{$symop_strings};
+
+            # Create a list of symmetry operators:
+            my $symop_list = { symops => [ map { symop_from_string($_) } @$symop_strings ],
+                               symop_ids => {} };
+            for (my $i = 0; $i < @{$symop_strings}; $i++)
+            {
+                $symop_list->{symop_ids}
+                             {symop_string_canonical_form($symop_strings->[$i])} = $i;
+            }
+
+            $cif_atom_list_options->{symop_list} = $symop_list;
+
+            # Build an atom array from the CIF data structure:
+            my $atoms = atom_array_from_cif( $datablock, $cif_atom_list_options );
 
             my $unit_cell_atoms =
                 symops_apply_to_atoms_modulo1( \@symops, $atoms );
@@ -538,17 +557,28 @@ sub symops_apply_modulo1
         serialiseRef( $sym_operators );
     } if 0;
 
-    my $n = 1;
-
-    for my $symop ( @{$sym_operators} ) {
-        my $new_atom = symop_apply_modulo1( $atom, $symop, $n++, 1 );
-        if( !symop_is_unity( $symop ) &&
-            atoms_coincide( $atom, $new_atom, $atom->{f2o} )) {
-            push( @symops_mapping_to_self, $symop );
-            $multiplicity_ratio ++;
-        } else {
-            push( @sym_atoms, $new_atom );
+    if( !exists $atom->{group} || $atom->{group} !~ /^-/ ) {
+        my $n = 1;
+        for my $symop ( @{$sym_operators} ) {
+            my $new_atom = symop_apply_modulo1( $atom, $symop, undef, 1 );
+            if( !symop_is_unity( $symop ) &&
+                atoms_coincide( $atom, $new_atom, $atom->{f2o} )) {
+                push( @symops_mapping_to_self, $symop );
+                $multiplicity_ratio ++;
+            } else {
+                push( @sym_atoms, $new_atom );
+            }
         }
+    } else {
+        # Symmetry operators are not applied for atoms that are
+        # disordered around special position.
+        my $new_atom = symop_apply_modulo1( $atom,
+                        [ [ 1, 0, 0, 0 ],
+                          [ 0, 1, 0, 0 ],
+                          [ 0, 0, 1, 0 ],
+                          [ 0, 0, 0, 1 ] ],
+                        undef, 1 );
+        push( @sym_atoms, $new_atom );
     }
 
     ## print ">>> $gp_multiplicity / $multiplicity_ratio\n";
@@ -561,10 +591,22 @@ sub symops_apply_modulo1
 
     my $multiplicity = $gp_multiplicity / $multiplicity_ratio;
 
+    # Update the original atom structure:
+    $atom->{multiplicity} = $multiplicity;
+    $atom->{multiplicity_ratio} = $multiplicity_ratio;
+
+    # Update all symmetry-generated atoms (including ones that were
+    # generated using the unity matrix):
     for my $atom (@sym_atoms) {
         $atom->{multiplicity} = $multiplicity;
         $atom->{multiplicity_ratio} = $multiplicity_ratio;
-        $atom->{site_symops} = \@symops_mapping_to_self;
+
+        my $atom_symop = $atom->{symop};
+        my $inv_atom_symop = symop_invert( $atom_symop );
+        $atom->{site_symops} = [
+            map { symop_mul( $atom_symop, symop_mul( $_, $inv_atom_symop )) }
+            @symops_mapping_to_self
+        ];
     }
 
     return ( \@sym_atoms, $multiplicity, $multiplicity_ratio );
