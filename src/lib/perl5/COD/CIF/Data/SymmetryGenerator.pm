@@ -33,6 +33,8 @@ our @EXPORT_OK = qw(
     apply_shifts
     atoms_coincide
     chemical_formula_sum
+    symop_apply_modulo1
+    symop_apply_NO_modulo_1
     symop_generate_atoms
     symop_register_applied_symop
     test_bond
@@ -53,6 +55,8 @@ my $special_position_cutoff = 0.01; # Angstroems
 sub apply_shifts($);
 sub atoms_coincide($$$);
 sub chemical_formula_sum($@);
+sub symop_apply_modulo1($$@);
+sub symop_apply_NO_modulo_1($$@);
 sub symop_generate_atoms($$$);
 sub symop_register_applied_symop($$@);
 sub test_bond($$$$$);
@@ -181,6 +185,85 @@ sub symop_generate_atoms($$$)
     }
 
     return \@sym_atoms;
+}
+
+#===============================================================#
+# Applies symmetry operator to a given atom.
+
+# The symop_apply_modulo1 subroutine accepts a reference to a hash
+# $atom_info = {name=>"C1_2",
+#               site_label=>"C1"
+#               chemical_type=>"C",
+#               coordinates_fract=>[1.0, 1.0, 1.0],
+#               unity_matrix_applied=>1} and
+# a reference to an array - symmetry operator
+# my $symop = [
+#     [ r11 r12 r13 t1 ]
+#     [ r21 r22 r23 t1 ]
+#     [ r31 r32 r33 t1 ]
+#     [   0   0   0  1 ]
+# ],
+# Returns an above-mentioned hash.
+#
+sub symop_apply_modulo1($$@)
+{
+    my( $atom_info, $symop, $symop_id, $expand_to_p1 ) = @_;
+
+    my $new_atom_info = copy_atom( $atom_info );
+
+    my $atom_xyz = $atom_info->{coordinates_fract};
+
+    my @new_atom_xyz =
+        map { modulo_1($_) }
+            @{ symop_vector_mul( $symop, $atom_xyz ) };
+
+    $new_atom_info->{coordinates_fract} = \@new_atom_xyz;
+
+    return symop_register_applied_symop( $new_atom_info, $symop,
+                                         $symop_id, $expand_to_p1 );
+}
+
+#===============================================================#
+# Applies symmetry operator to a given atom, without applying a
+# modulo_1 shift.
+#
+
+# The symop_apply_NO_modulo_1 subroutine accepts a reference to a hash:
+
+# $atom_info = {site_label=>"C1",
+#               name=>"C1_2",
+#               chemical_type=>"C",
+#               coordinates_fract=>[1.0, 1.0, 1.0],
+#               unity_matrix_applied=>1} 
+
+# and a reference to an array - symmetry operator
+
+# my $symop = [
+#     [ r11 r12 r13 t1 ]
+#     [ r21 r22 r23 t1 ]
+#     [ r31 r32 r33 t1 ]
+#     [   0   0   0  1 ]
+# ],
+
+# Returns an above-mentioned hash.
+
+# The difference from the symop_apply_modulo1() subroutine is that it does not
+# apply the mod1 shift.
+
+sub symop_apply_NO_modulo_1($$@)
+{
+    my( $atom_info, $symop, $symop_id, $expand_to_p1 ) = @_;
+
+    my $new_atom_info = copy_atom( $atom_info );
+
+    my $atom_xyz = $atom_info->{coordinates_fract};
+
+    my $new_atom_xyz = symop_vector_mul( $symop, $atom_xyz );
+
+    $new_atom_info->{coordinates_fract} = $new_atom_xyz;
+
+    return symop_register_applied_symop( $new_atom_info, $symop,
+                                         $symop_id, $expand_to_p1 );
 }
 
 #===============================================================#
