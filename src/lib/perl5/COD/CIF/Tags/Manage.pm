@@ -30,7 +30,10 @@ our @EXPORT_OK = qw(
     set_tag
     set_loop_tag
     rename_tag
+    rename_tags
 );
+
+sub rename_tags($$$);
 
 sub exclude_tag
 {
@@ -306,6 +309,34 @@ sub rename_tag
             $cif->{precisions}{$old_tag};
         delete $cif->{precisions}{$old_tag};
     }
+}
+
+#===============================================================#
+# Renames CIF data tags so that they are not confused with the
+# original ones.
+
+# Accepts a dataset hash produced by COD::CIF::Parser, a list of tags to be
+# renamed, and a prefix to be appended
+
+# Returns a hash with renamed data tags
+
+sub rename_tags($$$)
+{
+    my ( $dataset, $tags2rename, $prefix ) = @_;
+
+    my $values = $dataset->{values};
+    my %renamed_tags = ();
+
+    for my $tag (@$tags2rename) {
+        if( exists $values->{$tag} &&
+            !defined $dataset->{inloop}{$tag} ) {
+            my $new_tag = $prefix . $tag;
+            my $value = $values->{$tag}[0];
+            set_tag( $dataset, $new_tag, $value );
+            $renamed_tags{$new_tag} = $tag;
+        }
+    }
+    return wantarray ? %renamed_tags : \%renamed_tags;
 }
 
 sub set_tag

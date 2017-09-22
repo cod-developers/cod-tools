@@ -39,10 +39,11 @@ use COD::CIF::Data::SymmetryGenerator qw( apply_shifts
                                           chemical_formula_sum
                                           test_bond
                                           test_bump
+                                          translate_atom
                                           translation
                                           trim_polymer );
 use COD::CIF::Tags::CanonicalNames qw( canonicalize_all_names );
-use COD::CIF::Tags::Manage qw( set_tag );
+use COD::CIF::Tags::Manage qw( rename_tags );
 use COD::CIF::Tags::Print qw( print_cif print_single_tag_and_value print_value );
 use COD::SOptions qw( getOptions );
 use COD::SUsage qw( usage options );
@@ -566,58 +567,6 @@ sub symops_apply_modulo1
     }
 
     return ( \@sym_atoms, $multiplicity, $multiplicity_ratio );
-}
-
-#==============================================================#
-# Translates an atom according a given translation.
-#
-# Accepts an atom description and a translation.
-#
-# Returns a translated atom.
-
-sub translate_atom
-{
-    my($atom, $translation) = @_;
-
-    my $new_atom = copy_atom( $atom );
-    my @new_atom_xyz;
-
-    push( @new_atom_xyz, $atom->{'coordinates_fract'}[0] +
-          ${$translation}[0] );
-    push( @new_atom_xyz, $atom->{'coordinates_fract'}[1] +
-          ${$translation}[1] );
-    push( @new_atom_xyz, $atom->{'coordinates_fract'}[2] +
-          ${$translation}[2] );
-
-    $new_atom->{'coordinates_fract'} = \@new_atom_xyz;
-    $new_atom->{coordinates_ortho} =
-        symop_vector_mul( $atom->{f2o}, \@new_atom_xyz );
-
-    $new_atom->{translation} = [
-        $new_atom_xyz[0] - modulo_1($new_atom_xyz[0]),
-        $new_atom_xyz[1] - modulo_1($new_atom_xyz[1]),
-        $new_atom_xyz[2] - modulo_1($new_atom_xyz[2]),
-    ];
-
-    $new_atom->{translation_id} =
-        ($new_atom->{translation}[0]+5).
-        ($new_atom->{translation}[1]+5).
-        ($new_atom->{translation}[2]+5);
-
-    if( defined $new_atom->{unity_matrix_applied} &&
-                $new_atom->{unity_matrix_applied} &&
-                $new_atom->{translation}[0] == 0 &&
-                $new_atom->{translation}[1] == 0 &&
-                $new_atom->{translation}[2] == 0 ) {
-        $new_atom->{name} = $new_atom->{site_label};
-    } else {
-        $new_atom->{name} =
-            $new_atom->{site_label} . "_" .
-            $new_atom->{symop_id} . "_" .
-            $new_atom->{translation_id};
-    }
-
-    return $new_atom;
 }
 
 #===============================================================#
@@ -1688,32 +1637,4 @@ sub print_molecule
     ## }
 
     return;
-}
-
-#===============================================================#
-# Renames CIF data tags so that they are not confused with the
-# original ones.
-
-# Accepts a dataset hash produced by COD::CIF::Parser, a list of tags to be
-# renamed, and a prefix to be appended
-
-# Returns a hash with renamed data tags
-
-sub rename_tags($$$)
-{
-    my ($dataset, $tags2rename, $prefix ) = @_;
-
-    my $values = $dataset->{values};
-    my %renamed_tags = ();
-
-    for my $tag (@$tags2rename) {
-        if( exists $values->{$tag} &&
-            !defined $dataset->{inloop}{$tag} ) {
-            my $new_tag = $prefix . $tag;
-            my $value = $values->{$tag}[0];
-            set_tag( $dataset, $new_tag, $value );
-            $renamed_tags{$new_tag} = $tag;
-        }
-    }
-    return wantarray ? %renamed_tags : \%renamed_tags;
 }
