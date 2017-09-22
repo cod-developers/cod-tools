@@ -20,15 +20,10 @@ use strict;
 use warnings;
 use Clone qw( clone );
 use COD::Algebra qw( gcd );
+use COD::Algebra::Vector qw( distance );
 use COD::AtomBricks qw( build_bricks get_atom_index get_search_span );
 use COD::AtomNeighbours qw( get_max_covalent_radius );
 use COD::AtomProperties;
-use COD::CIF::Parser qw( parse_cif );
-use COD::Spacegroups::Symop::Algebra qw( symop_is_unity symop_vector_mul );
-use COD::Spacegroups::Symop::Parse qw( symop_from_string
-                                       string_from_symop
-                                       modulo_1 );
-use COD::Algebra::Vector qw( distance );
 use COD::CIF::Data qw( get_cell get_symmetry_operators );
 use COD::CIF::Data::AtomList qw( atom_array_from_cif
                                  atom_groups
@@ -42,9 +37,15 @@ use COD::CIF::Data::SymmetryGenerator qw( apply_shifts
                                           translate_atom
                                           translation
                                           trim_polymer );
+use COD::CIF::Parser qw( parse_cif );
 use COD::CIF::Tags::CanonicalNames qw( canonicalize_all_names );
 use COD::CIF::Tags::Manage qw( rename_tags );
 use COD::CIF::Tags::Print qw( print_cif print_single_tag_and_value print_value );
+use COD::Spacegroups::Symop::Algebra qw( symop_is_unity symop_vector_mul );
+use COD::Spacegroups::Symop::Parse qw( modulo_1
+                                       string_from_symop
+                                       symop_string_canonical_form
+                                       symop_from_string );
 use COD::SOptions qw( getOptions );
 use COD::SUsage qw( usage options );
 use COD::ErrorHandler qw( process_warnings process_errors
@@ -1530,7 +1531,8 @@ sub print_molecule
             foreach my $symop ( @{$atom->{"site_symops"}} ) {
                 print_value( $atom->{name} );
                 print " ";
-                print_value( string_from_symop( $symop ) );
+                print_value( symop_string_canonical_form(
+                                string_from_symop( $symop ) ) );
                 print "\n";
             }
         }
