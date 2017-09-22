@@ -15,6 +15,7 @@ package COD::CIF::Data::SymmetryGenerator;
 use strict;
 use warnings;
 use COD::CIF::Data::AtomList qw( copy_atom );
+use COD::Formulae::Print qw( sprint_formula );
 use COD::Spacegroups::Symop::Algebra qw( symop_is_unity symop_vector_mul );
 use COD::Spacegroups::Symop::Parse qw( modulo_1 );
 use COD::Spacegroups::Names;
@@ -25,9 +26,11 @@ our @ISA = qw( Exporter );
 our @EXPORT_OK = qw(
     apply_shifts
     atoms_coincide
+    chemical_formula_sum
     symop_generate_atoms
     test_bond
     test_bump
+    translation
     trim_polymer
 );
 
@@ -41,9 +44,11 @@ my $special_position_cutoff = 0.01; # Angstroems
 
 sub apply_shifts($);
 sub atoms_coincide($$$);
+sub chemical_formula_sum($@);
 sub symop_generate_atoms($$$);
 sub test_bond($$$$$);
 sub test_bump($$$$$$$);
+sub translation($$);
 sub trim_polymer($$);
 
 #===============================================================#
@@ -248,6 +253,25 @@ sub apply_shifts($)
     return \@shifted;
 }
 
+#==============================================================#
+# Finds translation center of mass and center of mass modulo 1 information.
+
+# Accepts two arrays of coordinates_fract.
+
+# Returns an array of differences between coordinates_fract.
+
+sub translation($$)
+{
+    my ($coords, $coords_modulo_1) = @_;
+
+    my @translation;
+    for( my $i = 0; $i < @{$coords}; $i++ ) {
+        push @translation, ${$coords}[$i] - ${$coords_modulo_1}[$i];
+    }
+
+    return \@translation;
+}
+
 #===============================================================#
 # Made a decision if a chemical bond exists.
 #
@@ -319,6 +343,43 @@ sub test_bump($$$$$$$)
     }
 
     return 0;
+}
+
+#===============================================================#
+# Finds a molecule chemical formula sum.
+
+# Accepts an array of atoms:
+# $atom =      {name=>"C1_2",
+#               chemical_type=>"C",
+#               coordinates_fract=>[1.0, 1.0, 1.0],
+#               unity_matrix_applied=>1}
+
+# Returns a string with chemical formula sum.
+
+sub chemical_formula_sum($@)
+{
+    my ($atoms, $Z) = @_;
+
+    $Z = 1 unless defined $Z;
+
+    my %chemical_types;
+
+    foreach my $atom (@{$atoms}) {
+        my $chemical_type = $atom->{chemical_type};
+        next if $chemical_type eq '.';
+        $chemical_types{$chemical_type} = 0
+            if !defined $chemical_types{$chemical_type};
+        $chemical_types{$chemical_type}++
+    }
+
+    for my $chemical_type (keys %chemical_types) {
+        $chemical_types{$chemical_type} /= $Z;
+    }
+
+    my $formula_sum = sprint_formula( \%chemical_types );
+    $formula_sum =~ s/\s$//;
+
+    return $formula_sum;
 }
 
 #===============================================================#
