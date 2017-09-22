@@ -210,7 +210,7 @@ sub symop_generate_atoms($$$)
 #
 sub symop_apply_modulo1($$@)
 {
-    my( $atom_info, $symop, $symop_id, $expand_to_p1 ) = @_;
+    my( $atom_info, $symop, $expand_to_p1 ) = @_;
 
     my $new_atom_info = copy_atom( $atom_info );
 
@@ -222,8 +222,9 @@ sub symop_apply_modulo1($$@)
 
     $new_atom_info->{coordinates_fract} = \@new_atom_xyz;
 
-    return symop_register_applied_symop( $new_atom_info, $symop,
-                                         $symop_id, $expand_to_p1 );
+    return symop_register_applied_symop( $new_atom_info,
+                                         $symop,
+                                         $expand_to_p1 );
 }
 
 #===============================================================#
@@ -255,7 +256,7 @@ sub symop_apply_modulo1($$@)
 
 sub symop_apply_NO_modulo_1($$@)
 {
-    my( $atom_info, $symop, $symop_id, $expand_to_p1 ) = @_;
+    my( $atom_info, $symop, $expand_to_p1 ) = @_;
 
     my $new_atom_info = copy_atom( $atom_info );
 
@@ -265,37 +266,31 @@ sub symop_apply_NO_modulo_1($$@)
 
     $new_atom_info->{coordinates_fract} = $new_atom_xyz;
 
-    return symop_register_applied_symop( $new_atom_info, $symop,
-                                         $symop_id, $expand_to_p1 );
+    return symop_register_applied_symop( $new_atom_info,
+                                         $symop,
+                                         $expand_to_p1 );
 }
 
 #===============================================================#
 
 sub symop_register_applied_symop($$@)
 {
-    my( $new_atom_info, $symop, $symop_id, $expand_to_p1 ) = @_;
+    my( $new_atom_info, $symop, $expand_to_p1 ) = @_;
 
-    if( defined $symop_id ) {
-        $new_atom_info->{symop} = $symop;
-        $new_atom_info->{symop_id} = $symop_id;
-        $new_atom_info->{unity_matrix_applied} =
-            symop_is_unity($symop);
-    } else {
-        my $symop_now = symop_mul( $new_atom_info->{symop}, $symop );
-        my $symop_string =
-            symop_string_canonical_form(
-                string_from_symop(
-                    flush_zeros_in_symop(
-                        symop_modulo_1( $symop_now ) ) ) );
+    my $symop_now = symop_mul( $new_atom_info->{symop}, $symop );
+    my $symop_string =
+        symop_string_canonical_form(
+            string_from_symop(
+                flush_zeros_in_symop(
+                    symop_modulo_1( $symop_now ) ) ) );
 
-        $new_atom_info->{symop} = $symop_now;
-        $new_atom_info->{symop_id} =
-            $new_atom_info->{symop_list}
-                            {symop_ids}
-                            {$symop_string} + 1;
-        $new_atom_info->{unity_matrix_applied} =
-            symop_is_unity( $symop_now );
-    }
+    $new_atom_info->{symop} = $symop_now;
+    $new_atom_info->{symop_id} =
+        $new_atom_info->{symop_list}
+                        {symop_ids}
+                        {$symop_string} + 1;
+    $new_atom_info->{unity_matrix_applied} =
+        symop_is_unity( $symop_now );
 
     my $atom_xyz = $new_atom_info->{coordinates_fract};
 
@@ -358,7 +353,7 @@ sub symops_apply_modulo1($$@)
     if( !exists $atom->{group} || $atom->{group} !~ /^-/ ) {
         for my $symop ( @{$sym_operators} ) {
             my $new_atom = symop_apply_modulo1( $atom, $symop,
-                                                undef, $expand_to_p1 );
+                                                $expand_to_p1 );
             if( !symop_is_unity( $symop ) &&
                 atoms_coincide( $atom, $new_atom, $atom->{f2o} )) {
                 push( @symops_mapping_to_self, $symop );
@@ -375,7 +370,7 @@ sub symops_apply_modulo1($$@)
                           [ 0, 1, 0, 0 ],
                           [ 0, 0, 1, 0 ],
                           [ 0, 0, 0, 1 ] ],
-                        undef, $expand_to_p1 );
+                        $expand_to_p1 );
         push( @sym_atoms, $new_atom );
     }
 
