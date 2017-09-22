@@ -780,6 +780,7 @@ sub validate_loops
     my @validation_messages;
 
     for my $scope ( 'Dictionary', 'Category', 'Item' ) {
+    my %looped_categories;
     for my $instance ( keys %{$data->{$scope}} ) {
     for my $tag ( @{$data->{$scope}{$instance}{'tags'}} ) {
       if ( exists $dict->{'Item'}{$tag} ) {
@@ -789,15 +790,33 @@ sub validate_loops
             (lc $category->{'values'}{'_definition.class'}[0] eq 'loop');
         my $tag_is_looped = defined $data->{$scope}{$instance}{'inloop'}{$tag};
 
-        if ( $category_is_looped && !$tag_is_looped ) {
-            push @validation_messages,
-                "data item '$tag' must appear in a looped list";
+        if ( $category_is_looped ) {
+            $looped_categories{$category_id}{$tag} = {
+                'loop_id'   =>
+                    ( defined $data->{$scope}{$instance}{'inloop'}{$tag} ?
+                      $data->{$scope}{$instance}{'inloop'}{$tag} : -1 ),
+                'loop_size' => scalar @{$data->{$scope}{$instance}{'values'}{$tag}}
+            };
         } elsif ( !$category_is_looped && $tag_is_looped ) {
             push @validation_messages,
-                "data item '$tag' must not appear in a looped list";
+                "data item '$tag' must not appear in a loop";
         }
       }
-    }}}
+    }
+
+      foreach my $c (keys %looped_categories ) {
+        my %loops;
+        foreach my $d ( keys %{$looped_categories{$c}} ) {
+            $loops{$looped_categories{$c}{$d}{'loop_id'}}++;
+        }
+        if ( keys %loops > 1 ) {
+            push @validation_messages,
+                'data items ' . '[' .
+                ( join ', ', map { "'$_'" } keys %{$looped_categories{$c}} ) .
+                ']' . ' must all appear in the same loop';
+        }
+      }
+    }}
 
     return \@validation_messages;
 }
