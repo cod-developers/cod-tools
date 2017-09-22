@@ -598,8 +598,6 @@ sub symop_apply_modulo1
             @{ symop_vector_mul( $symop, $atom_xyz ) };
 
     $new_atom->{coordinates_fract} = \@new_atom_xyz;
-    $new_atom->{coordinates_ortho} =
-        symop_vector_mul( $atom->{f2o}, \@new_atom_xyz );
 
     return symop_register_applied_symop( $new_atom, $symop, $symop_id );
 }
@@ -613,6 +611,10 @@ sub symop_register_applied_symop
     $new_atom_info->{unity_matrix_applied} = symop_is_unity($symop);
 
     my $atom_xyz = $new_atom_info->{coordinates_fract};
+
+    $new_atom_info->{coordinates_ortho} =
+        symop_vector_mul( $new_atom_info->{f2o}, $atom_xyz );
+
     my @translation = (
         int($atom_xyz->[0] - modulo_1($atom_xyz->[0])),
         int($atom_xyz->[1] - modulo_1($atom_xyz->[1])),
