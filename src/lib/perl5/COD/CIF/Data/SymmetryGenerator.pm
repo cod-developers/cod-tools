@@ -28,6 +28,7 @@ our @EXPORT_OK = qw(
     symop_generate_atoms
     test_bond
     test_bump
+    trim_polymer
 );
 
 my $special_position_cutoff = 0.01; # Angstroems
@@ -43,6 +44,7 @@ sub atoms_coincide($$$);
 sub symop_generate_atoms($$$);
 sub test_bond($$$$$);
 sub test_bump($$$$$$$);
+sub trim_polymer($$);
 
 #===============================================================#
 
@@ -317,6 +319,27 @@ sub test_bump($$$$$$$)
     }
 
     return 0;
+}
+
+#===============================================================#
+# Trim a polymer -- remove atoms outside of the specified polymer
+# span:
+
+sub trim_polymer($$)
+{
+    my ($atoms, $max_polymer_span) = @_;
+
+    my @trimmed_atoms;
+
+    for my $atom (@$atoms) {
+        if( abs($atom->{translation}[0]) <= $max_polymer_span &&
+            abs($atom->{translation}[1]) <= $max_polymer_span &&
+            abs($atom->{translation}[2]) <= $max_polymer_span ) {
+            push( @trimmed_atoms, $atom );
+        }
+    }
+
+    return \@trimmed_atoms;
 }
 
 1;
