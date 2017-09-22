@@ -788,6 +788,7 @@ sub set_cod_molecule_atom_fields
         '_cod_molecule_atom_mult'       => 'multiplicity',
         '_cod_molecule_atom_mult_ratio' => 'multiplicity_ratio',
         '_cod_molecule_atom_symop_id'   => 'symop_id',
+        '_cod_molecule_atom_transl_id'  => 'translation_id',
     );
 
     for my $tag (keys %to_copy_cod_molecule) {

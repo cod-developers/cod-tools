@@ -56,7 +56,7 @@ sub parse_cif
     ($options, $unrecognised) = check_options($options, $default_options);
     foreach ( @$unrecognised ) {
         warning($0, $filename, undef, "option '$_' is "
-              . "not supported  by the CIF parser", undef);
+              . "not supported by the CIF parser", undef);
     }
 
     my $parser;
