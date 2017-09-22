@@ -30,6 +30,7 @@ our @EXPORT_OK = qw(
     symop_generate_atoms
     test_bond
     test_bump
+    translate_atom
     translation
     trim_polymer
 );
@@ -48,6 +49,7 @@ sub chemical_formula_sum($@);
 sub symop_generate_atoms($$$);
 sub test_bond($$$$$);
 sub test_bump($$$$$$$);
+sub translate_atom($$);
 sub translation($$);
 sub trim_polymer($$);
 
@@ -251,6 +253,58 @@ sub apply_shifts($)
     }
 
     return \@shifted;
+}
+
+#==============================================================#
+# Translates an atom according a given translation.
+#
+# Accepts an atom description and a translation.
+#
+# Returns a translated atom.
+
+sub translate_atom($$)
+{
+    my($atom, $translation) = @_;
+
+    my $new_atom = copy_atom( $atom );
+    my @new_atom_xyz;
+
+    push( @new_atom_xyz, $atom->{'coordinates_fract'}[0] +
+          ${$translation}[0] );
+    push( @new_atom_xyz, $atom->{'coordinates_fract'}[1] +
+          ${$translation}[1] );
+    push( @new_atom_xyz, $atom->{'coordinates_fract'}[2] +
+          ${$translation}[2] );
+
+    $new_atom->{'coordinates_fract'} = \@new_atom_xyz;
+    $new_atom->{coordinates_ortho} =
+        symop_vector_mul( $atom->{f2o}, \@new_atom_xyz );
+
+    $new_atom->{translation} = [
+        $new_atom_xyz[0] - modulo_1($new_atom_xyz[0]),
+        $new_atom_xyz[1] - modulo_1($new_atom_xyz[1]),
+        $new_atom_xyz[2] - modulo_1($new_atom_xyz[2]),
+    ];
+
+    $new_atom->{translation_id} =
+        ($new_atom->{translation}[0]+5).
+        ($new_atom->{translation}[1]+5).
+        ($new_atom->{translation}[2]+5);
+
+    if( defined $new_atom->{unity_matrix_applied} &&
+                $new_atom->{unity_matrix_applied} &&
+                $new_atom->{translation}[0] == 0 &&
+                $new_atom->{translation}[1] == 0 &&
+                $new_atom->{translation}[2] == 0 ) {
+        $new_atom->{name} = $new_atom->{site_label};
+    } else {
+        $new_atom->{name} =
+            $new_atom->{site_label} . "_" .
+            $new_atom->{symop_id} . "_" .
+            $new_atom->{translation_id};
+    }
+
+    return $new_atom;
 }
 
 #==============================================================#
