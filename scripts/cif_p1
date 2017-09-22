@@ -24,7 +24,6 @@ use COD::AtomBricks qw( build_bricks get_atom_index get_search_span );
 use COD::AtomNeighbours qw( get_max_covalent_radius );
 use COD::AtomProperties;
 use COD::CIF::Parser qw( parse_cif );
-use COD::Formulae::Print qw( sprint_formula );
 use COD::Spacegroups::Symop::Algebra qw( symop_is_unity symop_vector_mul );
 use COD::Spacegroups::Symop::Parse qw( symop_from_string
                                        string_from_symop
@@ -37,8 +36,10 @@ use COD::CIF::Data::AtomList qw( atom_array_from_cif
                                  dump_atoms_as_cif );
 use COD::CIF::Data::SymmetryGenerator qw( apply_shifts
                                           atoms_coincide
+                                          chemical_formula_sum
                                           test_bond
                                           test_bump
+                                          translation
                                           trim_polymer );
 use COD::CIF::Tags::CanonicalNames qw( canonicalize_all_names );
 use COD::CIF::Tags::Manage qw( set_tag );
@@ -568,25 +569,6 @@ sub symops_apply_modulo1
 }
 
 #==============================================================#
-# Finds translation center of mass and center of mass modulo 1 information.
-
-# Accepts two arrays of coordinates_fract.
-
-# Returns an array of differences between coordinates_fract.
-
-sub translation
-{
-    my ($coords, $coords_modulo_1) = @_;
-
-    my @translation;
-    for(my $i = 0; $i < @{$coords}; $i++) {
-        push(@translation, ${$coords}[$i] - ${$coords_modulo_1}[$i]);
-    }
-
-    return \@translation;
-}
-
-#==============================================================#
 # Translates an atom according a given translation.
 #
 # Accepts an atom description and a translation.
@@ -636,44 +618,6 @@ sub translate_atom
     }
 
     return $new_atom;
-}
-
-#===============================================================#
-# Finds a molecule chemical formula sum.
-
-# Accepts an array of atoms:
-# $atom =      {name=>"C1_2",
-#               chemical_type=>"C",
-#               coordinates_fract=>[1.0, 1.0, 1.0],
-#               unity_matrix_applied=>1}
-
-# Returns a string with chemical formula sum.
-
-sub chemical_formula_sum
-{
-    my ($atoms, $Z) = @_;
-
-    $Z = 1 unless defined $Z;
-
-    my %chemical_types;
-
-    foreach my $atom (@{$atoms}) {
-        my $chemical_type = $atom->{chemical_type};
-        if(defined $chemical_types{$chemical_type}) {
-            $chemical_types{$chemical_type} = ++$chemical_types{$chemical_type};
-        } else {
-            $chemical_types{$chemical_type} = 1;
-        }
-    }
-
-    for my $chemical_type (keys %chemical_types) {
-        $chemical_types{$chemical_type} /= $Z;
-    }
-
-    my $formula_sum = sprint_formula( \%chemical_types );
-    $formula_sum =~ s/\s$//;
-
-    return $formula_sum;
 }
 
 #===============================================================#
