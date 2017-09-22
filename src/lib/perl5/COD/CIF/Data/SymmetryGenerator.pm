@@ -18,6 +18,7 @@ use COD::Algebra::Vector qw( distance );
 use COD::CIF::Data::AtomList qw( copy_atom );
 use COD::Formulae::Print qw( sprint_formula );
 use COD::Spacegroups::Symop::Algebra qw( flush_zeros_in_symop
+                                         symop_invert
                                          symop_is_unity
                                          symop_modulo_1
                                          symop_mul
@@ -37,6 +38,7 @@ our @EXPORT_OK = qw(
     symop_apply_NO_modulo_1
     symop_generate_atoms
     symop_register_applied_symop
+    symops_apply_modulo1
     test_bond
     test_bump
     translate_atom
@@ -59,6 +61,7 @@ sub symop_apply_modulo1($$@);
 sub symop_apply_NO_modulo_1($$@);
 sub symop_generate_atoms($$$);
 sub symop_register_applied_symop($$@);
+sub symops_apply_modulo1($$@);
 sub test_bond($$$$$);
 sub test_bump($$$$$$$);
 sub translate_atom($$);
@@ -330,6 +333,81 @@ sub symop_register_applied_symop($$@)
     } if 0;
 
     return $new_atom_info;
+}
+
+#===============================================================#
+# Generate symmetry equivalents of an atom, evaluate atom's
+# multiplicity and multiplicity ratio. Exclude atoms mapping to the
+# original one.
+
+sub symops_apply_modulo1($$@)
+{
+    my ( $atom, $sym_operators, $expand_to_p1 ) = @_;
+
+    my @sym_atoms;
+    my @symops_mapping_to_self;
+    my $gp_multiplicity = int(@$sym_operators);
+
+    my $multiplicity_ratio = 1;
+
+    do {
+        use COD::Serialise qw( serialiseRef );
+        serialiseRef( $sym_operators );
+    } if 0;
+
+    if( !exists $atom->{group} || $atom->{group} !~ /^-/ ) {
+        for my $symop ( @{$sym_operators} ) {
+            my $new_atom = symop_apply_modulo1( $atom, $symop,
+                                                undef, $expand_to_p1 );
+            if( !symop_is_unity( $symop ) &&
+                atoms_coincide( $atom, $new_atom, $atom->{f2o} )) {
+                push( @symops_mapping_to_self, $symop );
+                $multiplicity_ratio ++;
+            } else {
+                push( @sym_atoms, $new_atom );
+            }
+        }
+    } else {
+        # Symmetry operators are not applied for atoms that are
+        # disordered around special position.
+        my $new_atom = symop_apply_modulo1( $atom,
+                        [ [ 1, 0, 0, 0 ],
+                          [ 0, 1, 0, 0 ],
+                          [ 0, 0, 1, 0 ],
+                          [ 0, 0, 0, 1 ] ],
+                        undef, $expand_to_p1 );
+        push( @sym_atoms, $new_atom );
+    }
+
+    ## print ">>> $gp_multiplicity / $multiplicity_ratio\n";
+
+    if( $gp_multiplicity % $multiplicity_ratio ) {
+        die "ERROR, multiplicity ratio $multiplicity_ratio does not divide "
+          . "multiplicity of a general position $gp_multiplicity -- "
+          . "this can not be\n";
+    }
+
+    my $multiplicity = $gp_multiplicity / $multiplicity_ratio;
+
+    # Update the original atom structure:
+    $atom->{multiplicity} = $multiplicity;
+    $atom->{multiplicity_ratio} = $multiplicity_ratio;
+
+    # Update all symmetry-generated atoms (including ones that were
+    # generated using the unity matrix):
+    for my $atom (@sym_atoms) {
+        $atom->{multiplicity} = $multiplicity;
+        $atom->{multiplicity_ratio} = $multiplicity_ratio;
+
+        my $atom_symop = $atom->{symop};
+        my $inv_atom_symop = symop_invert( $atom_symop );
+        $atom->{site_symops} = [
+            map { symop_mul( $atom_symop, symop_mul( $_, $inv_atom_symop )) }
+            @symops_mapping_to_self
+        ];
+    }
+
+    return ( \@sym_atoms, $multiplicity, $multiplicity_ratio );
 }
 
 #===============================================================#
