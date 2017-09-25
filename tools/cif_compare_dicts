@@ -108,14 +108,21 @@ $ddlm_name .= $suffix;
 # Print out data names that are present in the DDL1 version of the dictionary,
 # but are missing in the 
 my @ddl1_tags;
+my %ddl1_enumerators;
 for my $datablock ( @{$ddl1_data} ) {
     if ( exists $datablock->{'values'}{'_type'} &&
          $datablock->{'values'}{'_type'}[0] ne 'null' ) {
         push @ddl1_tags, @{$datablock->{'values'}{'_name'}};
     }
+    # Enumerators
+    if ( exists $datablock->{'values'}{'_enumeration'} ) {
+        $ddl1_enumerators{$datablock->{'values'}{'_name'}[0]} = 
+            $datablock->{'values'}{'_enumeration'};
+    }
 }
 
 my @ddlm_tags;
+my %ddlm_enumerators;
 for my $saveblock ( @{$ddlm_data->[0]{'save_blocks'}} ) {
     if ( !exists $saveblock->{'values'}{'_definition.scope'} ||
          lc $saveblock->{'values'}{'_definition.scope'}[0] eq 'item' ) {
@@ -124,6 +131,19 @@ for my $saveblock ( @{$ddlm_data->[0]{'save_blocks'}} ) {
         }
         if ( defined $saveblock->{'values'}{'_alias.definition_id'} ) {
             push @ddlm_tags, @{$saveblock->{'values'}{'_alias.definition_id'}};
+        }
+
+        # Enumerators
+        if ( defined $saveblock->{'values'}{'_enumeration_set.state'} ) {
+            $ddlm_enumerators{$saveblock->{'values'}{'_definition.id'}[0]} =
+                $saveblock->{'values'}{'_enumeration_set.state'};
+
+            if ( defined $saveblock->{'values'}{'_alias.definition_id'} ) {
+                foreach ( @{$saveblock->{'values'}{'_alias.definition_id'}} ) {
+                    $ddlm_enumerators{$_} =
+                        $saveblock->{'values'}{'_enumeration_set.state'};
+                }
+            }
         }
     }
 }
@@ -136,4 +156,43 @@ foreach ( @ddl1_tags ) {
              "dictionary, but seems to be missing in the '$ddlm_name' " .
              "dictionary.\n";
     }
+}
+
+# Checking enumerators
+foreach ( keys %ddl1_enumerators ) {
+    if ( exists $ddlm_enumerators{$_} ) {
+
+        my $ddl1_only = find_unique_values( $ddl1_enumerators{$_},
+                                            $ddlm_enumerators{$_}, 0 );
+
+        my $ddlm_only = find_unique_values( $ddlm_enumerators{$_},
+                                            $ddl1_enumerators{$_}, 0 );
+
+        if ( @{$ddl1_only} ) {
+            warn "$0:: WARNING, enumerator values [" .
+            ( join ",", map {"'$_'"} @{$ddl1_only} ) . "] of data item '$_' " .
+            "are defined in the '$ddl1_name' DDL1 dictionary, but not in the " .
+            "'$ddlm_name' DDLm dictionary\n";
+        };
+
+        if ( @{$ddlm_only} ) {
+            warn "$0:: WARNING, enumerator values [" .
+            ( join ",", map {"'$_'"} @{$ddlm_only} ) . "] of data item '$_' " .
+            "are defined in the '$ddlm_name' DDLm dictionary, but not in the " .
+            "'$ddl1_name' DDLm dictionary\n";
+        }
+    }
+}
+
+sub find_unique_values
+{
+    my ($array_1, $array_2, $case_sensitive) = @_;
+
+    my %seen;
+    foreach ( @{$array_1} ) {
+        $seen{($case_sensitive ? $_ : lc $_ )} = $_;
+    }
+    delete @seen {($case_sensitive ? @{$array_2} : map {lc $_} @{$array_2} )};
+    my @unique = values %seen;
+    return \@unique;
 }
