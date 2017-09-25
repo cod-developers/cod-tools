@@ -143,7 +143,7 @@ sub symop_generate_atoms($$$)
 #
 sub symop_apply_modulo1($$@)
 {
-    my( $atom_info, $symop, $expand_to_p1 ) = @_;
+    my( $atom_info, $symop, $append_symop_to_label ) = @_;
 
     my $new_atom_info = copy_atom( $atom_info );
 
@@ -160,7 +160,7 @@ sub symop_apply_modulo1($$@)
 
     return symop_register_applied_symop( $new_atom_info,
                                          $symop,
-                                         $expand_to_p1 );
+                                         $append_symop_to_label );
 }
 
 #===============================================================#
@@ -192,7 +192,7 @@ sub symop_apply_modulo1($$@)
 
 sub symop_apply_NO_modulo_1($$@)
 {
-    my( $atom_info, $symop, $expand_to_p1 ) = @_;
+    my( $atom_info, $symop, $append_symop_to_label ) = @_;
 
     my $new_atom_info = copy_atom( $atom_info );
 
@@ -207,14 +207,14 @@ sub symop_apply_NO_modulo_1($$@)
 
     return symop_register_applied_symop( $new_atom_info,
                                          $symop,
-                                         $expand_to_p1 );
+                                         $append_symop_to_label );
 }
 
 #===============================================================#
 
 sub symop_register_applied_symop($$@)
 {
-    my( $new_atom_info, $symop, $expand_to_p1 ) = @_;
+    my( $new_atom_info, $symop, $append_symop_to_label ) = @_;
 
     my $symop_now = symop_mul( $new_atom_info->{symop}, $symop );
     my $symop_string =
@@ -260,7 +260,7 @@ sub symop_register_applied_symop($$@)
     }
 
     $new_atom_info->{cell_label} = $new_atom_info->{site_label};
-    if( $expand_to_p1 && !$new_atom_info->{unity_matrix_applied} ) {
+    if( $append_symop_to_label && !$new_atom_info->{unity_matrix_applied} ) {
         $new_atom_info->{cell_label} .= '_' . $new_atom_info->{symop_id};
     }
 
@@ -279,7 +279,7 @@ sub symop_register_applied_symop($$@)
 
 sub symops_apply_modulo1($$@)
 {
-    my ( $atom, $sym_operators, $expand_to_p1,
+    my ( $atom, $sym_operators, $append_symop_to_label,
          $append_atoms_mapping_to_self ) = @_;
 
     my @sym_atoms;
@@ -296,7 +296,7 @@ sub symops_apply_modulo1($$@)
     if( !exists $atom->{group} || $atom->{group} !~ /^-/ ) {
         for my $symop ( @{$sym_operators} ) {
             my $new_atom = symop_apply_modulo1( $atom, $symop,
-                                                $expand_to_p1 );
+                                                $append_symop_to_label );
             if( !symop_is_unity( $symop ) &&
                 atoms_coincide( $atom, $new_atom, $atom->{f2o} )) {
                 push( @symops_mapping_to_self, $symop );
@@ -316,7 +316,7 @@ sub symops_apply_modulo1($$@)
                           [ 0, 1, 0, 0 ],
                           [ 0, 0, 1, 0 ],
                           [ 0, 0, 0, 1 ] ],
-                        $expand_to_p1 );
+                        $append_symop_to_label );
         push( @sym_atoms, $new_atom );
     }
 
