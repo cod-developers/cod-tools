@@ -16,7 +16,8 @@ use strict;
 use warnings;
 use COD::AtomProperties;
 use COD::Fractional qw( symop_ortho_from_fract ) ;
-use COD::Spacegroups::Symop::Parse qw( symop_from_string );
+use COD::Spacegroups::Symop::Parse qw( symop_from_string
+                                       symop_string_canonical_form );
 use COD::Formulae::Print qw( sprint_formula );
 use COD::CIF::Data qw( get_cell get_symmetry_operators );
 use COD::CIF::Data::AtomList qw( atom_array_from_cif );
@@ -51,11 +52,20 @@ sub cif_cell_contents( $$@ )
 #   extracts symmetry operators
     my $sym_data = get_symmetry_operators( $dataset );
 
+    # Create a list of symmetry operators:
+    my $symop_list = { symops => [ map { symop_from_string($_) } @$sym_data ],
+                       symop_ids => {} };
+    for (my $i = 0; $i < @{$sym_data}; $i++) {
+        $symop_list->{symop_ids}
+                     {symop_string_canonical_form($sym_data->[$i])} = $i;
+    }
+
 #   extract atoms
     my $atoms = atom_array_from_cif( $dataset,
                                      { allow_unknown_chemical_types => 1,
                                        atom_properties =>
-                                            \%COD::AtomProperties::atoms } );
+                                            \%COD::AtomProperties::atoms,
+                                       symop_list => $symop_list } );
 
 #   compute symmetry operator matrices
     my @sym_operators = map { symop_from_string($_) } @{$sym_data};

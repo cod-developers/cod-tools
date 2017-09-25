@@ -225,6 +225,17 @@ foreach my $filename ( @ARGV ) {
     }
 
     eval {
+      # Extract symmetry operators
+      my $symop_strings = get_symmetry_operators( $dataset );
+
+      # Create a list of symmetry operators:
+      my $symop_list = { symops => [ map { symop_from_string($_) } @$symop_strings ],
+                         symop_ids => {} };
+      for (my $i = 0; $i < @{$symop_strings}; $i++) {
+          $symop_list->{symop_ids}
+                       {symop_string_canonical_form($symop_strings->[$i])} = $i;
+      }
+
       # Extract atoms and order them alphabetically by type and label
       my $atoms;
       eval {
@@ -234,6 +245,7 @@ foreach my $filename ( @ARGV ) {
                           'exclude_dummy_coordinates'    => 1,
                           'uniquify_atom_names'          => $uniquify_atoms,
                           'uniquify_atoms'               => $uniquify_atoms,
+                          'symop_list'                   => $symop_list,
                           'atom_properties' => \%COD::AtomProperties::atoms } );
       };
       if ( $@ ) {

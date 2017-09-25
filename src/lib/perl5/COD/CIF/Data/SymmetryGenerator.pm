@@ -70,34 +70,6 @@ sub trim_polymer($$);
 
 #===============================================================#
 
-sub symop_apply_to_atom_mod1($$$$)
-{
-    my ( $symop, $atom, $n, $f2o ) = @_;
-
-    my $new_atom = copy_atom( $atom );
-
-    if( $n != 0 ) {
-        $new_atom->{atom_name} .= "_" . $n;
-    }
-
-    if( $atom->{coordinates_fract}[0] ne "." and
-        $atom->{coordinates_fract}[1] ne "." and
-        $atom->{coordinates_fract}[2] ne "." ) {
-        my $new_coord = symop_vector_mul( $symop,
-                                          $atom->{coordinates_fract} );
-        $new_atom->{coordinates_fract} =
-            [ map { modulo_1($_) } @{$new_coord} ];
-        $new_atom->{coordinates_ortho} =
-            symop_vector_mul( $f2o, $new_atom->{coordinates_fract} );
-    }
-
-    ## serialiseRef( $new_atom );
-
-    return $new_atom;
-}
-
-#===============================================================#
-
 sub atoms_coincide($$$)
 {
     my ( $old_atom, $new_atom, $f2o ) = @_;
@@ -149,7 +121,7 @@ sub symgen_atom($$$)
     my $n = 1;
 
     for my $symop ( @{$sym_operators} ) {
-        my $new_atom = symop_apply_to_atom_mod1( $symop, $atom, 0, $f2o );
+        my $new_atom = symop_apply_modulo1( $atom, $symop );
         if( !symop_is_unity( $symop ) &&
             atoms_coincide( $atom, $new_atom, $f2o )) {
             $multiplicity_ratio ++;
