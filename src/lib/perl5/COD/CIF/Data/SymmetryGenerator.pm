@@ -34,8 +34,7 @@ our @EXPORT_OK = qw(
     apply_shifts
     atoms_coincide
     chemical_formula_sum
-    symop_apply_modulo1
-    symop_apply_NO_modulo_1
+    symop_apply
     symop_generate_atoms
     symop_register_applied_symop
     symops_apply_modulo1
@@ -57,8 +56,7 @@ my $special_position_cutoff = 0.01; # Angstroems
 sub apply_shifts($);
 sub atoms_coincide($$$);
 sub chemical_formula_sum($@);
-sub symop_apply_modulo1($$@);
-sub symop_apply_NO_modulo_1($$@);
+sub symop_apply($$@);
 sub symop_generate_atoms($$$);
 sub symop_register_applied_symop($$@);
 sub symops_apply_modulo1($$@);
@@ -126,7 +124,7 @@ sub symop_generate_atoms($$$)
 #===============================================================#
 # Applies symmetry operator to a given atom.
 
-# The symop_apply_modulo1 subroutine accepts a reference to a hash
+# The symop_apply subroutine accepts a reference to a hash
 # $atom_info = {name=>"C1_2",
 #               site_label=>"C1"
 #               chemical_type=>"C",
@@ -141,58 +139,11 @@ sub symop_generate_atoms($$$)
 # ],
 # Returns an above-mentioned hash.
 #
-sub symop_apply_modulo1($$@)
+sub symop_apply($$@)
 {
-    my( $atom_info, $symop, $append_symop_to_label ) = @_;
+    my( $atom_info, $symop, $options ) = @_;
 
-    my $new_atom_info = copy_atom( $atom_info );
-
-    my $atom_xyz = $atom_info->{coordinates_fract};
-    if( $atom_xyz->[0] ne '.' &&
-        $atom_xyz->[1] ne '.' &&
-        $atom_xyz->[2] ne '.' ) {
-        my @new_atom_xyz =
-            map { modulo_1($_) }
-                @{ symop_vector_mul( $symop, $atom_xyz ) };
-
-        $new_atom_info->{coordinates_fract} = \@new_atom_xyz;
-    }
-
-    return symop_register_applied_symop( $new_atom_info,
-                                         $symop,
-                                         $append_symop_to_label );
-}
-
-#===============================================================#
-# Applies symmetry operator to a given atom, without applying a
-# modulo_1 shift.
-#
-
-# The symop_apply_NO_modulo_1 subroutine accepts a reference to a hash:
-
-# $atom_info = {site_label=>"C1",
-#               name=>"C1_2",
-#               chemical_type=>"C",
-#               coordinates_fract=>[1.0, 1.0, 1.0],
-#               unity_matrix_applied=>1} 
-
-# and a reference to an array - symmetry operator
-
-# my $symop = [
-#     [ r11 r12 r13 t1 ]
-#     [ r21 r22 r23 t1 ]
-#     [ r31 r32 r33 t1 ]
-#     [   0   0   0  1 ]
-# ],
-
-# Returns an above-mentioned hash.
-
-# The difference from the symop_apply_modulo1() subroutine is that it does not
-# apply the mod1 shift.
-
-sub symop_apply_NO_modulo_1($$@)
-{
-    my( $atom_info, $symop, $append_symop_to_label ) = @_;
+    $options = {} unless $options;
 
     my $new_atom_info = copy_atom( $atom_info );
 
@@ -202,12 +153,17 @@ sub symop_apply_NO_modulo_1($$@)
         $atom_xyz->[2] ne '.' ) {
         my $new_atom_xyz = symop_vector_mul( $symop, $atom_xyz );
 
+        if( $options->{modulo_1} ) {
+            @$new_atom_xyz =
+                map { modulo_1($_) } @$new_atom_xyz;
+        }
+
         $new_atom_info->{coordinates_fract} = $new_atom_xyz;
     }
 
     return symop_register_applied_symop( $new_atom_info,
                                          $symop,
-                                         $append_symop_to_label );
+                                         $options->{append_symop_to_label} );
 }
 
 #===============================================================#
@@ -295,8 +251,10 @@ sub symops_apply_modulo1($$@)
 
     if( !exists $atom->{group} || $atom->{group} !~ /^-/ ) {
         for my $symop ( @{$sym_operators} ) {
-            my $new_atom = symop_apply_modulo1( $atom, $symop,
-                                                $append_symop_to_label );
+            my $new_atom = symop_apply( $atom, $symop,
+                                        { modulo_1 => 1,
+                                          append_symop_to_label =>
+                                          $append_symop_to_label } );
             if( !symop_is_unity( $symop ) &&
                 atoms_coincide( $atom, $new_atom, $atom->{f2o} )) {
                 push( @symops_mapping_to_self, $symop );
@@ -311,12 +269,13 @@ sub symops_apply_modulo1($$@)
     } else {
         # Symmetry operators are not applied for atoms that are
         # disordered around special position.
-        my $new_atom = symop_apply_modulo1( $atom,
+        my $new_atom = symop_apply( $atom,
                         [ [ 1, 0, 0, 0 ],
                           [ 0, 1, 0, 0 ],
                           [ 0, 0, 1, 0 ],
                           [ 0, 0, 0, 1 ] ],
-                        $append_symop_to_label );
+                        { modulo_1 => 1,
+                          append_symop_to_label => $append_symop_to_label } );
         push( @sym_atoms, $new_atom );
     }
 
