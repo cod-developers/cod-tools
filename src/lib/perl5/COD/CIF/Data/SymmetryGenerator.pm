@@ -187,12 +187,15 @@ sub symop_apply_modulo1($$@)
     my $new_atom_info = copy_atom( $atom_info );
 
     my $atom_xyz = $atom_info->{coordinates_fract};
+    if( $atom_xyz->[0] ne '.' &&
+        $atom_xyz->[1] ne '.' &&
+        $atom_xyz->[2] ne '.' ) {
+        my @new_atom_xyz =
+            map { modulo_1($_) }
+                @{ symop_vector_mul( $symop, $atom_xyz ) };
 
-    my @new_atom_xyz =
-        map { modulo_1($_) }
-            @{ symop_vector_mul( $symop, $atom_xyz ) };
-
-    $new_atom_info->{coordinates_fract} = \@new_atom_xyz;
+        $new_atom_info->{coordinates_fract} = \@new_atom_xyz;
+    }
 
     return symop_register_applied_symop( $new_atom_info,
                                          $symop,
@@ -233,10 +236,13 @@ sub symop_apply_NO_modulo_1($$@)
     my $new_atom_info = copy_atom( $atom_info );
 
     my $atom_xyz = $atom_info->{coordinates_fract};
+    if( $atom_xyz->[0] ne '.' &&
+        $atom_xyz->[1] ne '.' &&
+        $atom_xyz->[2] ne '.' ) {
+        my $new_atom_xyz = symop_vector_mul( $symop, $atom_xyz );
 
-    my $new_atom_xyz = symop_vector_mul( $symop, $atom_xyz );
-
-    $new_atom_info->{coordinates_fract} = $new_atom_xyz;
+        $new_atom_info->{coordinates_fract} = $new_atom_xyz;
+    }
 
     return symop_register_applied_symop( $new_atom_info,
                                          $symop,
@@ -265,19 +271,22 @@ sub symop_register_applied_symop($$@)
         symop_is_unity( $symop_now );
 
     my $atom_xyz = $new_atom_info->{coordinates_fract};
+    if( $atom_xyz->[0] ne '.' &&
+        $atom_xyz->[1] ne '.' &&
+        $atom_xyz->[2] ne '.' ) {
+        $new_atom_info->{coordinates_ortho} =
+            symop_vector_mul( $new_atom_info->{f2o}, $atom_xyz );
 
-    $new_atom_info->{coordinates_ortho} =
-        symop_vector_mul( $new_atom_info->{f2o}, $atom_xyz );
-
-    my @translation = (
-        int($atom_xyz->[0] - modulo_1($atom_xyz->[0])),
-        int($atom_xyz->[1] - modulo_1($atom_xyz->[1])),
-        int($atom_xyz->[2] - modulo_1($atom_xyz->[2])),
-    );
-    $new_atom_info->{translation} =
-        \@translation;
-    $new_atom_info->{translation_id} =
-        (5+$translation[0]) . (5+$translation[1]) . (5+$translation[2]);
+        my @translation = (
+            int($atom_xyz->[0] - modulo_1($atom_xyz->[0])),
+            int($atom_xyz->[1] - modulo_1($atom_xyz->[1])),
+            int($atom_xyz->[2] - modulo_1($atom_xyz->[2])),
+        );
+        $new_atom_info->{translation} =
+            \@translation;
+        $new_atom_info->{translation_id} =
+            (5+$translation[0]) . (5+$translation[1]) . (5+$translation[2]);
+    }
 
     if( $new_atom_info->{unity_matrix_applied} &&
         $new_atom_info->{translation_id} eq "555" ) {
