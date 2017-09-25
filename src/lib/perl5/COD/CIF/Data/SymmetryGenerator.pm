@@ -109,46 +109,6 @@ sub atoms_coincide($$$)
 
 #===============================================================#
 
-sub symgen_atom($$$)
-{
-    my ( $sym_operators, $atom, $f2o ) = @_;
-
-    my @sym_atoms;
-
-    my $gp_multiplicity = int(@$sym_operators);
-    my $multiplicity_ratio = 1;
-
-    my $n = 1;
-
-    for my $symop ( @{$sym_operators} ) {
-        my $new_atom = symop_apply_modulo1( $atom, $symop );
-        if( !symop_is_unity( $symop ) &&
-            atoms_coincide( $atom, $new_atom, $f2o )) {
-            $multiplicity_ratio ++;
-        }
-        push( @sym_atoms, $new_atom );
-    }
-
-    ## print ">>> $gp_multiplicity / $multiplicity_ratio\n";
-
-    if( $gp_multiplicity % $multiplicity_ratio ) {
-        die "ERROR, multiplicity ratio '$multiplicity_ratio' does not divide "
-          . "multiplicity of a general position '$gp_multiplicity' -- "
-          . "this should not happen\n";
-    }
-
-    my $multiplicity = $gp_multiplicity / $multiplicity_ratio;
-
-    for my $atom (@sym_atoms) {
-        $atom->{multiplicity} = $multiplicity;
-        $atom->{multiplicity_ratio} = $multiplicity_ratio;
-    }
-
-    return @sym_atoms;
-}
-
-#===============================================================#
-
 sub symop_generate_atoms($$$)
 {
     my ( $sym_operators, $atoms, $f2o ) = @_;
@@ -156,7 +116,8 @@ sub symop_generate_atoms($$$)
     my @sym_atoms;
 
     for my $atom ( @{$atoms} ) {
-        push( @sym_atoms, symgen_atom( $sym_operators, $atom, $f2o ));
+        my( $sym_atoms ) = symops_apply_modulo1( $atom, $sym_operators, 0, 1 );
+        push( @sym_atoms, @$sym_atoms );
     }
 
     return \@sym_atoms;
@@ -318,7 +279,8 @@ sub symop_register_applied_symop($$@)
 
 sub symops_apply_modulo1($$@)
 {
-    my ( $atom, $sym_operators, $expand_to_p1 ) = @_;
+    my ( $atom, $sym_operators, $expand_to_p1,
+         $append_atoms_mapping_to_self ) = @_;
 
     my @sym_atoms;
     my @symops_mapping_to_self;
@@ -338,6 +300,9 @@ sub symops_apply_modulo1($$@)
             if( !symop_is_unity( $symop ) &&
                 atoms_coincide( $atom, $new_atom, $atom->{f2o} )) {
                 push( @symops_mapping_to_self, $symop );
+                if( $append_atoms_mapping_to_self ) {
+                    push( @sym_atoms, $new_atom );
+                }
                 $multiplicity_ratio ++;
             } else {
                 push( @sym_atoms, $new_atom );
