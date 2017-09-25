@@ -14,6 +14,7 @@ package COD::CIF::Data::Classifier;
 use strict;
 use warnings;
 use COD::CIF::Data qw( get_cell get_symmetry_operators );
+use COD::CIF::Data::AtomList qw( atom_array_from_cif );
 use COD::CIF::Data::SymmetryGenerator qw( symop_generate_atoms );
 use COD::Fractional qw( symop_ortho_from_fract );
 use COD::Spacegroups::Symop::Algebra qw( symop_vector_mul );
@@ -67,7 +68,9 @@ sub cif_has_C_bonds( $$$$ )
         $atom_properties->{"C"}{covalent_radius} * 2 +
         $bond_safety_margin;
 
-    my $atoms = get_atoms( $datablock, "_atom_site_label" );
+    # my $atoms = get_atoms( $datablock, "_atom_site_label" );
+
+    my $atoms = atom_array_from_cif( $datablock, {} );
 
     ## print $datablock->{name}, " ", int(@$atoms), "\n";
 
@@ -103,7 +106,7 @@ sub cif_has_C_bonds( $$$$ )
 
     for my $i (0..$#$atoms) {
         my $atom1 = $atoms->[$i];
-        next unless $atom1->{atom_type} eq "C";
+        next unless $atom1->{chemical_type} eq "C";
 
         # First, let's try bonds with untranslated symmetry equivalent
         # atoms, since they are the most probable -- asymmetric units
@@ -112,8 +115,8 @@ sub cif_has_C_bonds( $$$$ )
         for my $j ($i+1..$#$sym_atoms) {
             my $atom2 = $sym_atoms->[$j];
             next unless
-                $atom2->{atom_type} eq "H" || 
-                $atom2->{atom_type} eq "C";
+                $atom2->{chemical_type} eq "H" || 
+                $atom2->{chemical_type} eq "C";
             next if
                 $atom1->{assembly} eq $atom2->{assembly} &&
                 $atom1->{group} ne $atom2->{group} &&
@@ -132,7 +135,7 @@ sub cif_has_C_bonds( $$$$ )
             ## print ">>> $interatomic_distance, $distance\n"
             ##     if abs($interatomic_distance - $distance) > 1E-6;
 
-            if( $atom2->{atom_type} eq "H" &&
+            if( $atom2->{chemical_type} eq "H" &&
                 $interatomic_distance < $C_H_covalent_distance ) {
                 ## print ">>> found C-H bond $interatomic_distance " .
                 ##     "$atom1->{atom_name}-$atom2->{atom_name}\n";
@@ -142,7 +145,7 @@ sub cif_has_C_bonds( $$$$ )
                 $flags{$has_C_H_bond_flag} = 1;
                 return keys %flags if int(keys %flags) >= 2;
             }
-            if( $atom2->{atom_type} eq "C" &&
+            if( $atom2->{chemical_type} eq "C" &&
                 $interatomic_distance < $C_C_covalent_distance ) {
                 ## print ">>> found C-C bond $interatomic_distance \n";
                 ## use COD::Serialise qw( serialiseRef );
@@ -157,8 +160,8 @@ sub cif_has_C_bonds( $$$$ )
         for my $j (0..$#$sym_atoms) {
             my $atom2 = $sym_atoms->[$j];
             next unless
-                $atom2->{atom_type} eq "H" || 
-                $atom2->{atom_type} eq "C";
+                $atom2->{chemical_type} eq "H" || 
+                $atom2->{chemical_type} eq "C";
             next if
                 $atom1->{assembly} eq $atom2->{assembly} &&
                 $atom1->{group} ne $atom2->{group} &&
@@ -177,7 +180,7 @@ sub cif_has_C_bonds( $$$$ )
 
                 next if $distance < $too_close_distance;
 
-                if( $atom2->{atom_type} eq "H" &&
+                if( $atom2->{chemical_type} eq "H" &&
                     $distance < $C_H_covalent_distance ) {
                     ## use COD::Serialise qw( serialiseRef );
                     ## serialiseRef( [ $atom1, $atom2, $interatomic_distance,
@@ -185,7 +188,7 @@ sub cif_has_C_bonds( $$$$ )
                     $flags{$has_C_H_bond_flag} = 1;
                     return keys %flags if int(keys %flags) >= 2;
                 }
-                if( $atom2->{atom_type} eq "C" &&
+                if( $atom2->{chemical_type} eq "C" &&
                     $distance < $C_C_covalent_distance ) {
                     ## use COD::Serialise qw( serialiseRef );
                     ## serialiseRef( [ $atom1, $atom2, $interatomic_distance,
@@ -198,113 +201,6 @@ sub cif_has_C_bonds( $$$$ )
     }
 
     return keys %flags;
-}
-
-# ============================================================================ #
-# Gets atom descriptions, as used in this module, from a CIF data block.
-#
-# Returns an array of
-#
-#   $atom_info = {
-#                   atom_name => "C1_2",
-#                   atom_type => "C",
-#                   assembly  => "A", # "."
-#                   group     => "1", # "."
-#                   occupancy => 1.0,
-#                   cif_multiplicity  => 96,
-#                   coordinates_fract => [1.0, 1.0, 1.0],
-#                   coordinates_ortho => [1.0, 1.0, 1.0],
-#              }
-#
-
-sub get_atoms($$)
-{
-    my ( $dataset, $loop_tag ) = @_;
-
-    my $values = $dataset->{values};
-
-    my @unit_cell = get_cell( $values );
-
-    if( !@unit_cell || !defined $unit_cell[0] || @unit_cell < 6 ) {
-        return;
-    }
-
-    my $ortho_matrix = symop_ortho_from_fract( @unit_cell );
-
-    my @atoms;
-
-    for my $i ( 0 .. $#{$values->{$loop_tag}} ) {
-
-        my @fractional_coordinates_modulo_1 = 
-            map { s/\(\d+\)\s*$//; modulo_1($_) }
-            ( $values->{_atom_site_fract_x}[$i],
-              $values->{_atom_site_fract_y}[$i],
-              $values->{_atom_site_fract_z}[$i] );
-
-        my $atom = {
-            atom_name => $values->{$loop_tag}[$i],
-            atom_type => exists $values->{_atom_site_type_symbol} ?
-                $values->{_atom_site_type_symbol}[$i] : undef,
-            coordinates_fract => \@fractional_coordinates_modulo_1,
-        };
-
-        if( !defined $atom->{atom_type} || $atom->{atom_type} eq '?' ) {
-            if( length($atom->{atom_name}) < 2 ) {
-                $atom->{atom_type} = $atom->{atom_name};
-            } else {
-                my $tentative_type = substr( $atom->{atom_name}, 0, 2 );
-                my $lc_type = ucfirst( lc( $tentative_type ));
-
-                use COD::AtomProperties;
-                if( exists $COD::AtomProperties::atoms{$lc_type} ) {
-                    $atom->{atom_type} = $lc_type;
-                } else {
-                    $atom->{atom_type} = substr( $lc_type, 0, 1 );
-                }
-
-            }
-        }
-
-        if( $atom->{atom_type} =~ m/^([A-Za-z]{1,2})/ ) {
-            $atom->{atom_type} = ucfirst( lc( $1 ));
-        }
-
-        $atom->{coordinates_ortho} =
-            symop_vector_mul( $ortho_matrix, $atom->{coordinates_fract} );
-
-        if( defined $values->{_atom_site_occupancy} ) {
-            if( $values->{_atom_site_occupancy}[$i] ne '?' &&
-                $values->{_atom_site_occupancy}[$i] ne '.' ) {
-                $atom->{occupancy} = $values->{_atom_site_occupancy}[$i];
-                $atom->{occupancy} =~ s/\(\d+\)\s*$//;
-            } else {
-                $atom->{occupancy} = 1;
-            }
-        }
-
-        if( defined $values->{_atom_site_symmetry_multiplicity} &&
-            $values->{_atom_site_symmetry_multiplicity}[$i] ne '?' ) {
-            $atom->{cif_multiplicity} =
-                $values->{_atom_site_symmetry_multiplicity}[$i];
-        }
-
-        if( exists $values->{"_atom_site_disorder_assembly"}[$i]) {
-            $atom->{"assembly"} =
-                $values->{"_atom_site_disorder_assembly"}[$i];
-        } else {
-            $atom->{"assembly"} = ".";
-        }
-
-        if( exists $values->{"_atom_site_disorder_group"}[$i] ) {
-            $atom->{"group"} = $values->{"_atom_site_disorder_group"}[$i];
-        } else {
-            $atom->{"group"} = ".";
-        }
-
-        push( @atoms, $atom );
-    }
-
-    return \@atoms;
 }
 
 my $Pi = 4 * atan2(1,1);
