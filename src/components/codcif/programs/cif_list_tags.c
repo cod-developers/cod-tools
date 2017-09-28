@@ -20,6 +20,38 @@
 
 static char *source_URL = "$URL$";
 
+static char *usage_text[2] = {
+
+"Parse CIF file(s) and output a list of CIF data items.\n",
+
+"Options:\n"
+
+"  -c, --compile-only\n"
+"      Only compile the CIF (check syntax). Prints out file name and\n"
+"      'OK' or 'FAILED' to STDOUT, along with error messages to STDERR\n\n"
+
+"  -q, --quiet                 Be quiet, only output error messages and data\n"
+
+"  -q-, --no-quiet, --verbose  Produce verbose output of the parsing "
+"process\n\n"
+
+"  --version  Print program version (SVN Id) and exit\n"
+
+"  --help     Print short usage message (this message) and exit\n"
+};
+
+static void usage( int argc, char *argv[], int *i, option_t *option,
+		   cexception_t * ex )
+{
+    puts( usage_text[0] );
+    puts( "Usage:" );
+    printf( "   %s --options < input.cif\n", argv[0] );
+    printf( "   %s --options input.cif\n", argv[0] );
+    printf( "   %s --options input1.cif input2.cif inputs*.cif\n\n", argv[0] );
+    puts( usage_text[1] );
+    exit( 0 );
+};
+
 static void version( int argc, char *argv[], int *i, option_t *option,
                      cexception_t * ex )
 {
@@ -38,6 +70,7 @@ static option_t options[] = {
   { "-q", "--quiet",        OT_BOOLEAN_FALSE, &verbose },
   { "-q-","--no-quiet",     OT_BOOLEAN_TRUE,  &verbose },
   { NULL, "--vebose",       OT_BOOLEAN_TRUE,  &verbose },
+  { NULL, "--help",         OT_FUNCTION, NULL, &usage },
   { NULL, "--version",      OT_FUNCTION, NULL, &version },
   { NULL }
 };
