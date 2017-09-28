@@ -18,7 +18,9 @@ use COD::CIF::Data::AtomList qw( atom_array_from_cif );
 use COD::CIF::Data::SymmetryGenerator qw( symop_generate_atoms );
 use COD::Fractional qw( symop_ortho_from_fract );
 use COD::Spacegroups::Symop::Algebra qw( symop_vector_mul );
-use COD::Spacegroups::Symop::Parse qw( symop_from_string modulo_1 );
+use COD::Spacegroups::Symop::Parse qw( symop_from_string
+                                       modulo_1
+                                       symop_string_canonical_form );
 use COD::Algebra::Vector qw( distance
                              matrix_vector_mul
                              vdot
@@ -70,16 +72,25 @@ sub cif_has_C_bonds( $$$$ )
 
     # my $atoms = get_atoms( $datablock, "_atom_site_label" );
 
-    my $atoms = atom_array_from_cif( $datablock, {} );
+    my $symops = get_symmetry_operators( $datablock );
+
+    my @symop_matrices = map { symop_from_string($_) } @{$symops};
+
+    # Create a list of symmetry operators:
+    my $symop_list = { symops => [ map { symop_from_string($_) } @$symops ],
+                       symop_ids => {} };
+    for (my $i = 0; $i < @{$symops}; $i++) {
+        $symop_list->{symop_ids}
+                     {symop_string_canonical_form($symops->[$i])} = $i;
+    }
+
+    my $atoms = atom_array_from_cif( $datablock,
+                                     { symop_list => $symop_list } );
 
     ## print $datablock->{name}, " ", int(@$atoms), "\n";
 
     ## use COD::Serialise qw( serialiseRef );
     ## serialiseRef( $atoms );
-
-    my $symops = get_symmetry_operators( $datablock );
-
-    my @symop_matrices = map { symop_from_string($_) } @{$symops};
 
     ## use COD::Serialise qw( serialiseRef );
     ## serialiseRef( $symops );
