@@ -70,8 +70,6 @@ sub cif_has_C_bonds( $$$$ )
         $atom_properties->{"C"}{covalent_radius} * 2 +
         $bond_safety_margin;
 
-    # my $atoms = get_atoms( $datablock, "_atom_site_label" );
-
     my $symops = get_symmetry_operators( $datablock );
 
     my @symop_matrices = map { symop_from_string($_) } @{$symops};
