@@ -57,7 +57,7 @@ sub apply_shifts($);
 sub atoms_coincide($$$);
 sub chemical_formula_sum($@);
 sub symop_apply($$@);
-sub symop_generate_atoms($$$);
+sub symop_generate_atoms($$$@);
 sub symop_register_applied_symop($$@);
 sub symops_apply_modulo1($$@);
 sub test_bond($$$$$);
@@ -107,14 +107,17 @@ sub atoms_coincide($$$)
 
 #===============================================================#
 
-sub symop_generate_atoms($$$)
+sub symop_generate_atoms($$$@)
 {
-    my ( $sym_operators, $atoms, $f2o ) = @_;
+    my ( $sym_operators, $atoms, $f2o, $options ) = @_;
+
+    $options = {} unless $options;
 
     my @sym_atoms;
 
     for my $atom ( @{$atoms} ) {
-        my( $sym_atoms ) = symops_apply_modulo1( $atom, $sym_operators, 0, 1 );
+        my( $sym_atoms ) = symops_apply_modulo1( $atom, $sym_operators,
+                                                 $options );
         push( @sym_atoms, @$sym_atoms );
     }
 
@@ -235,8 +238,13 @@ sub symop_register_applied_symop($$@)
 
 sub symops_apply_modulo1($$@)
 {
-    my ( $atom, $sym_operators, $append_symop_to_label,
-         $append_atoms_mapping_to_self ) = @_;
+    my ( $atom, $sym_operators, $options ) = @_;
+
+    $options = {} unless $options;
+
+    # Setting default option values
+    $options->{append_atoms_mapping_to_self} = 1
+        unless exists $options->{append_atoms_mapping_to_self};
 
     my @sym_atoms;
     my @symops_mapping_to_self;
@@ -249,16 +257,17 @@ sub symops_apply_modulo1($$@)
         serialiseRef( $sym_operators );
     } if 0;
 
-    if( !exists $atom->{group} || $atom->{group} !~ /^-/ ) {
+    if( $options->{disregard_symmetry_independent_sites} ||
+        !exists $atom->{group} || $atom->{group} !~ /^-/ ) {
         for my $symop ( @{$sym_operators} ) {
             my $new_atom = symop_apply( $atom, $symop,
                                         { modulo_1 => 1,
                                           append_symop_to_label =>
-                                          $append_symop_to_label } );
+                                          $options->{append_symop_to_label} } );
             if( !symop_is_unity( $symop ) &&
                 atoms_coincide( $atom, $new_atom, $atom->{f2o} )) {
                 push( @symops_mapping_to_self, $symop );
-                if( $append_atoms_mapping_to_self ) {
+                if( $options->{append_atoms_mapping_to_self} ) {
                     push( @sym_atoms, $new_atom );
                 }
                 $multiplicity_ratio ++;
@@ -275,7 +284,8 @@ sub symops_apply_modulo1($$@)
                           [ 0, 0, 1, 0 ],
                           [ 0, 0, 0, 1 ] ],
                         { modulo_1 => 1,
-                          append_symop_to_label => $append_symop_to_label } );
+                          append_symop_to_label =>
+                          $options->{append_symop_to_label} } );
         push( @sym_atoms, $new_atom );
     }
 
