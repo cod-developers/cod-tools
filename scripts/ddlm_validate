@@ -285,13 +285,23 @@ sub validate_linked_items
                                                {'_alias.definition_id'}};
           }
 
+          # filtering out special CIF values ('?' and '.')
+          my @data_item_values;
+          for (my $i = 0; $i < @{$data->{$scope}{$instance}{'values'}{$tag}}; $i++ ) {
+            if ( !is_unknown_value($data->{$scope}{$instance}, $tag, $i) &&
+                 !is_inapplicable_value($data->{$scope}{$instance}, $tag, $i) ) {
+                push @data_item_values,
+                     $data->{$scope}{$instance}{'values'}{$tag}[$i];
+            }
+          };
+
           my $linked_item_found = 0;
           for my $linked_item_name (@linked_item_names) {
             if ( exists $data->{$scope}{$instance}{'values'}{$linked_item_name} ) {
               my %candidate_key_values = map { $_ => 1 }
                     @{$data->{$scope}{$instance}{'values'}{$linked_item_name}};
               my @unmatched = uniq sort grep { !exists $candidate_key_values{$_} }
-                    @{$data->{$scope}{$instance}{'values'}{$tag} };
+                    @data_item_values;
               push @validation_messages,
                     map { "the '$tag' data item contains value '$_' that was " .
                           'not found among the values of the linked ' .
