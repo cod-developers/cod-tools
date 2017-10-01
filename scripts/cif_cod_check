@@ -729,7 +729,6 @@ sub check_space_group_info
         return \@messages;
     }
 
-    my $symops = $dataset->{values}{_symmetry_equiv_pos_as_xyz};
     my $values = $dataset->{values};
 
     my @space_group_tags = qw (
@@ -769,6 +768,14 @@ sub check_space_group_info
             last
         }
     }
+
+    my $symops;
+    if ( defined $values->{'_space_group_symop_operation_xyz'} ) {
+        $symops = $values->{'_space_group_symop_operation_xyz'}
+    } elsif ( defined $values->{'_symmetry_equiv_pos_as_xyz'} ) {
+        $symops = $values->{'_symmetry_equiv_pos_as_xyz'}
+    };
+
     if( !defined $space_group ) {
         if( !defined $symops ) {
             push @messages, 'WARNING, no symmetry information found';
