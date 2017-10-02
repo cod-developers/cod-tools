@@ -47,7 +47,7 @@ my $require_only_doi = 0;
 my $check_authors = 1;
 my $check_chemical_formula_sum = 1;
 my $check_space_group_info = 1;
-my $check_symmetry_operators = 1;
+my $check_symmetry_operations = 1;
 my $check_space_group_constraints = 1;
 my $check_limits = 1;
 my $use_precisions = 1;
@@ -67,7 +67,7 @@ sub dont_check_any
     $check_authors = 0;
     $check_chemical_formula_sum = 0;
     $check_space_group_info = 0;
-    $check_symmetry_operators = 0;
+    $check_symmetry_operations = 0;
     $check_space_group_constraints = 0;
     $check_limits = 0;
     $check_temperature_factors = 0;
@@ -85,7 +85,7 @@ sub check_all
     $check_authors = 1;
     $check_chemical_formula_sum = 1;
     $check_space_group_info = 1;
-    $check_symmetry_operators = 1;
+    $check_symmetry_operations = 1;
     $check_space_group_constraints = 1;
     $check_limits = 1;
     $check_temperature_factors = 1;
@@ -313,17 +313,17 @@ my $input_format = 'cif';
 
     '--check-symmetry-operators,' .
     '--check-operators'
-        => sub{ $check_symmetry_operators = 1 },
+        => sub{ $check_symmetry_operations = 1 },
     '--check-only-symmetry-operators,' .
     '--check-only-operators'
-        => sub{ dont_check_any(); $check_symmetry_operators = 1 },
+        => sub{ dont_check_any(); $check_symmetry_operations = 1 },
     '--dont-check-symmetry-operators,' .
     '--no-check-symmetry-operators,' .
     '--do-not-check-symmetry-operators,' .
     '--dont-check-operators,' .
     '--no-check-operators,' .
     '--do-not-check-operators'
-        => sub{ $check_symmetry_operators = 0 },
+        => sub{ $check_symmetry_operations = 0 },
 
     '--check-constraints-on-unit-cell,' .
     '--check-unit-cell'
@@ -341,14 +341,14 @@ my $input_format = 'cif';
 
     '--check-symmetry' => sub{
         $check_space_group_info = 1;
-        $check_symmetry_operators = 1;
+        $check_symmetry_operations = 1;
         $check_space_group_constraints = 1;
     },
 
     '--check-only-symmetry' => sub{
         dont_check_any();
         $check_space_group_info = 1;
-        $check_symmetry_operators = 1;
+        $check_symmetry_operations = 1;
         $check_space_group_constraints = 1;
     },
 
@@ -550,8 +550,8 @@ for my $filename (@ARGV) {
             if $check_chemical_formula_sum;
         push @messages, @{check_space_group_info( $dataset )}
             if $check_space_group_info;
-        push @messages, @{check_symmetry_operators( $dataset )}
-            if $check_symmetry_operators;
+        push @messages, @{check_symmetry_operations( $dataset )}
+            if $check_symmetry_operations;
         push @messages, @{check_space_group_constraints( $dataset )}
             if $check_space_group_constraints;
         push @messages, @{check_limits( $dataset )}
@@ -923,12 +923,12 @@ sub check_symop_uniqueness
     for my $cannonical_symop (sort keys %duplicate_symops) {
         if( @{ $duplicate_symops{$cannonical_symop} } > 1 ) {
             push @messages,
-                 "NOTE, symmetry operator '$cannonical_symop' is repeated "
+                 "NOTE, symmetry operation '$cannonical_symop' is repeated "
                 . scalar( @{ $duplicate_symops{$cannonical_symop} } )
                 . ' times (as '
                 . join( ', ', map { "'$_'" }
                     @{ $duplicate_symops{$cannonical_symop} } )
-                . ') in symmetry operator list';
+                . ') in symmetry operation list';
             }
     }
 
@@ -969,7 +969,7 @@ sub check_symop_list
                                 sort keys %expected_symops;
         if( @missing_symops > 0 ) {
             my $single = (@missing_symops == 1);
-            push @messages, 'NOTE, symmetry operator'
+            push @messages, 'NOTE, symmetry operation'
                 . (!$single ? 's ' : ' ')
                 . join( ', ', map { "'$_'" } @missing_symops )
                 . ' ' . ($single ? 'is' : 'are')
@@ -981,7 +981,7 @@ sub check_symop_list
                                 sort keys %declared_symops;
         if( @excess_symops > 0 ) {
             my $single = (@excess_symops == 1);
-            push @messages, 'NOTE, symmetry operator'
+            push @messages, 'NOTE, symmetry operation'
                  . (!$single ? 's ' : ' ')
                  . join( ', ', map { "'$_'" } @excess_symops )
                  . ' ' . ($single ? 'is' : 'are')
@@ -1249,7 +1249,7 @@ sub check_pdcif_relations
 }
 
 #===============================================================#
-# Gets symmetry operators if they are not directly represented in the CIF file.
+# Gets symmetry operations if they are not directly represented in the CIF file.
 
 # Accepts
 #     option - an option, for example, 'hall'
@@ -1497,7 +1497,7 @@ sub check_space_group_constraints
     return \@messages;
 }
 
-sub check_symmetry_operators
+sub check_symmetry_operations
 {
     my ($dataset) = @_;
     my @messages;
@@ -1517,7 +1517,7 @@ sub check_symmetry_operators
 
     foreach (@{$symops}) {
         if ( !is_symop_parsable($_) ) {
-            push @messages, "WARNING, symmetry operator '$_' could not be parsed";
+            push @messages, "WARNING, symmetry operation '$_' could not be parsed";
             return \@messages;
         }
     }
