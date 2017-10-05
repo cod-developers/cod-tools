@@ -34,8 +34,7 @@ our @EXPORT_OK = qw(
     apply_shifts
     atoms_coincide
     chemical_formula_sum
-    symop_apply_modulo1
-    symop_apply_NO_modulo_1
+    symop_apply
     symop_generate_atoms
     symop_register_applied_symop
     symops_apply_modulo1
@@ -57,9 +56,8 @@ my $special_position_cutoff = 0.01; # Angstroems
 sub apply_shifts($);
 sub atoms_coincide($$$);
 sub chemical_formula_sum($@);
-sub symop_apply_modulo1($$@);
-sub symop_apply_NO_modulo_1($$@);
-sub symop_generate_atoms($$$);
+sub symop_apply($$@);
+sub symop_generate_atoms($$$@);
 sub symop_register_applied_symop($$@);
 sub symops_apply_modulo1($$@);
 sub test_bond($$$$$);
@@ -67,34 +65,6 @@ sub test_bump($$$$$$$);
 sub translate_atom($$);
 sub translation($$);
 sub trim_polymer($$);
-
-#===============================================================#
-
-sub symop_apply_to_atom_mod1($$$$)
-{
-    my ( $symop, $atom, $n, $f2o ) = @_;
-
-    my $new_atom = copy_atom( $atom );
-
-    if( $n != 0 ) {
-        $new_atom->{atom_name} .= "_" . $n;
-    }
-
-    if( $atom->{coordinates_fract}[0] ne "." and
-        $atom->{coordinates_fract}[1] ne "." and
-        $atom->{coordinates_fract}[2] ne "." ) {
-        my $new_coord = symop_vector_mul( $symop,
-                                          $atom->{coordinates_fract} );
-        $new_atom->{coordinates_fract} =
-            [ map { modulo_1($_) } @{$new_coord} ];
-        $new_atom->{coordinates_ortho} =
-            symop_vector_mul( $f2o, $new_atom->{coordinates_fract} );
-    }
-
-    ## serialiseRef( $new_atom );
-
-    return $new_atom;
-}
 
 #===============================================================#
 
@@ -137,54 +107,18 @@ sub atoms_coincide($$$)
 
 #===============================================================#
 
-sub symgen_atom($$$)
+sub symop_generate_atoms($$$@)
 {
-    my ( $sym_operators, $atom, $f2o ) = @_;
+    my ( $sym_operators, $atoms, $f2o, $options ) = @_;
 
-    my @sym_atoms;
-
-    my $gp_multiplicity = int(@$sym_operators);
-    my $multiplicity_ratio = 1;
-
-    my $n = 1;
-
-    for my $symop ( @{$sym_operators} ) {
-        my $new_atom = symop_apply_to_atom_mod1( $symop, $atom, 0, $f2o );
-        if( !symop_is_unity( $symop ) &&
-            atoms_coincide( $atom, $new_atom, $f2o )) {
-            $multiplicity_ratio ++;
-        }
-        push( @sym_atoms, $new_atom );
-    }
-
-    ## print ">>> $gp_multiplicity / $multiplicity_ratio\n";
-
-    if( $gp_multiplicity % $multiplicity_ratio ) {
-        die "ERROR, multiplicity ratio '$multiplicity_ratio' does not divide "
-          . "multiplicity of a general position '$gp_multiplicity' -- "
-          . "this should not happen\n";
-    }
-
-    my $multiplicity = $gp_multiplicity / $multiplicity_ratio;
-
-    for my $atom (@sym_atoms) {
-        $atom->{multiplicity} = $multiplicity;
-        $atom->{multiplicity_ratio} = $multiplicity_ratio;
-    }
-
-    return @sym_atoms;
-}
-
-#===============================================================#
-
-sub symop_generate_atoms($$$)
-{
-    my ( $sym_operators, $atoms, $f2o ) = @_;
+    $options = {} unless $options;
 
     my @sym_atoms;
 
     for my $atom ( @{$atoms} ) {
-        push( @sym_atoms, symgen_atom( $sym_operators, $atom, $f2o ));
+        my( $sym_atoms ) = symops_apply_modulo1( $atom, $sym_operators,
+                                                 $options );
+        push( @sym_atoms, @$sym_atoms );
     }
 
     return \@sym_atoms;
@@ -193,7 +127,7 @@ sub symop_generate_atoms($$$)
 #===============================================================#
 # Applies symmetry operator to a given atom.
 
-# The symop_apply_modulo1 subroutine accepts a reference to a hash
+# The symop_apply subroutine accepts a reference to a hash
 # $atom_info = {name=>"C1_2",
 #               site_label=>"C1"
 #               chemical_type=>"C",
@@ -208,109 +142,71 @@ sub symop_generate_atoms($$$)
 # ],
 # Returns an above-mentioned hash.
 #
-sub symop_apply_modulo1($$@)
+sub symop_apply($$@)
 {
-    my( $atom_info, $symop, $symop_id, $expand_to_p1 ) = @_;
+    my( $atom_info, $symop, $options ) = @_;
+
+    $options = {} unless $options;
 
     my $new_atom_info = copy_atom( $atom_info );
 
     my $atom_xyz = $atom_info->{coordinates_fract};
+    if( $atom_xyz->[0] ne '.' &&
+        $atom_xyz->[1] ne '.' &&
+        $atom_xyz->[2] ne '.' ) {
+        my $new_atom_xyz = symop_vector_mul( $symop, $atom_xyz );
 
-    my @new_atom_xyz =
-        map { modulo_1($_) }
-            @{ symop_vector_mul( $symop, $atom_xyz ) };
+        if( $options->{modulo_1} ) {
+            @$new_atom_xyz =
+                map { modulo_1($_) } @$new_atom_xyz;
+        }
 
-    $new_atom_info->{coordinates_fract} = \@new_atom_xyz;
+        $new_atom_info->{coordinates_fract} = $new_atom_xyz;
+    }
 
-    return symop_register_applied_symop( $new_atom_info, $symop,
-                                         $symop_id, $expand_to_p1 );
-}
-
-#===============================================================#
-# Applies symmetry operator to a given atom, without applying a
-# modulo_1 shift.
-#
-
-# The symop_apply_NO_modulo_1 subroutine accepts a reference to a hash:
-
-# $atom_info = {site_label=>"C1",
-#               name=>"C1_2",
-#               chemical_type=>"C",
-#               coordinates_fract=>[1.0, 1.0, 1.0],
-#               unity_matrix_applied=>1} 
-
-# and a reference to an array - symmetry operator
-
-# my $symop = [
-#     [ r11 r12 r13 t1 ]
-#     [ r21 r22 r23 t1 ]
-#     [ r31 r32 r33 t1 ]
-#     [   0   0   0  1 ]
-# ],
-
-# Returns an above-mentioned hash.
-
-# The difference from the symop_apply_modulo1() subroutine is that it does not
-# apply the mod1 shift.
-
-sub symop_apply_NO_modulo_1($$@)
-{
-    my( $atom_info, $symop, $symop_id, $expand_to_p1 ) = @_;
-
-    my $new_atom_info = copy_atom( $atom_info );
-
-    my $atom_xyz = $atom_info->{coordinates_fract};
-
-    my $new_atom_xyz = symop_vector_mul( $symop, $atom_xyz );
-
-    $new_atom_info->{coordinates_fract} = $new_atom_xyz;
-
-    return symop_register_applied_symop( $new_atom_info, $symop,
-                                         $symop_id, $expand_to_p1 );
+    return symop_register_applied_symop( $new_atom_info,
+                                         $symop,
+                                         $options->{append_symop_to_label} );
 }
 
 #===============================================================#
 
 sub symop_register_applied_symop($$@)
 {
-    my( $new_atom_info, $symop, $symop_id, $expand_to_p1 ) = @_;
+    my( $new_atom_info, $symop, $append_symop_to_label ) = @_;
 
-    if( defined $symop_id ) {
-        $new_atom_info->{symop} = $symop;
-        $new_atom_info->{symop_id} = $symop_id;
-        $new_atom_info->{unity_matrix_applied} =
-            symop_is_unity($symop);
-    } else {
-        my $symop_now = symop_mul( $new_atom_info->{symop}, $symop );
-        my $symop_string =
-            symop_string_canonical_form(
-                string_from_symop(
-                    flush_zeros_in_symop(
-                        symop_modulo_1( $symop_now ) ) ) );
+    my $symop_now = symop_mul( $new_atom_info->{symop}, $symop );
+    my $symop_string =
+        symop_string_canonical_form(
+            string_from_symop(
+                flush_zeros_in_symop(
+                    symop_modulo_1( $symop_now ) ) ) );
 
-        $new_atom_info->{symop} = $symop_now;
-        $new_atom_info->{symop_id} =
-            $new_atom_info->{symop_list}
-                            {symop_ids}
-                            {$symop_string} + 1;
-        $new_atom_info->{unity_matrix_applied} =
-            symop_is_unity( $symop_now );
-    }
+    $new_atom_info->{symop} = $symop_now;
+    $new_atom_info->{symop_id} =
+        $new_atom_info->{symop_list}
+                        {symop_ids}
+                        {$symop_string} + 1;
+    $new_atom_info->{unity_matrix_applied} =
+        symop_is_unity( $symop_now );
 
     my $atom_xyz = $new_atom_info->{coordinates_fract};
+    if( $atom_xyz->[0] ne '.' &&
+        $atom_xyz->[1] ne '.' &&
+        $atom_xyz->[2] ne '.' ) {
+        $new_atom_info->{coordinates_ortho} =
+            symop_vector_mul( $new_atom_info->{f2o}, $atom_xyz );
 
-    $new_atom_info->{coordinates_ortho} =
-        symop_vector_mul( $new_atom_info->{f2o}, $atom_xyz );
-
-    my @translation = (
-        int($atom_xyz->[0] - modulo_1($atom_xyz->[0])),
-        int($atom_xyz->[1] - modulo_1($atom_xyz->[1])),
-        int($atom_xyz->[2] - modulo_1($atom_xyz->[2])),
-    );
-    $new_atom_info->{translation} =
-        \@translation;
-    $new_atom_info->{translation_id} =
-        (5+$translation[0]) . (5+$translation[1]) . (5+$translation[2]);
+        my @translation = (
+            int($atom_xyz->[0] - modulo_1($atom_xyz->[0])),
+            int($atom_xyz->[1] - modulo_1($atom_xyz->[1])),
+            int($atom_xyz->[2] - modulo_1($atom_xyz->[2])),
+        );
+        $new_atom_info->{translation} =
+            \@translation;
+        $new_atom_info->{translation_id} =
+            (5+$translation[0]) . (5+$translation[1]) . (5+$translation[2]);
+    }
 
     if( $new_atom_info->{unity_matrix_applied} &&
         $new_atom_info->{translation_id} eq "555" ) {
@@ -323,7 +219,7 @@ sub symop_register_applied_symop($$@)
     }
 
     $new_atom_info->{cell_label} = $new_atom_info->{site_label};
-    if( $expand_to_p1 && !$new_atom_info->{unity_matrix_applied} ) {
+    if( $append_symop_to_label && !$new_atom_info->{unity_matrix_applied} ) {
         $new_atom_info->{cell_label} .= '_' . $new_atom_info->{symop_id};
     }
 
@@ -342,7 +238,13 @@ sub symop_register_applied_symop($$@)
 
 sub symops_apply_modulo1($$@)
 {
-    my ( $atom, $sym_operators, $expand_to_p1 ) = @_;
+    my ( $atom, $sym_operators, $options ) = @_;
+
+    $options = {} unless $options;
+
+    # Setting default option values
+    $options->{append_atoms_mapping_to_self} = 1
+        unless exists $options->{append_atoms_mapping_to_self};
 
     my @sym_atoms;
     my @symops_mapping_to_self;
@@ -355,13 +257,19 @@ sub symops_apply_modulo1($$@)
         serialiseRef( $sym_operators );
     } if 0;
 
-    if( !exists $atom->{group} || $atom->{group} !~ /^-/ ) {
+    if( $options->{disregard_symmetry_independent_sites} ||
+        !exists $atom->{group} || $atom->{group} !~ /^-/ ) {
         for my $symop ( @{$sym_operators} ) {
-            my $new_atom = symop_apply_modulo1( $atom, $symop,
-                                                undef, $expand_to_p1 );
+            my $new_atom = symop_apply( $atom, $symop,
+                                        { modulo_1 => 1,
+                                          append_symop_to_label =>
+                                          $options->{append_symop_to_label} } );
             if( !symop_is_unity( $symop ) &&
                 atoms_coincide( $atom, $new_atom, $atom->{f2o} )) {
                 push( @symops_mapping_to_self, $symop );
+                if( $options->{append_atoms_mapping_to_self} ) {
+                    push( @sym_atoms, $new_atom );
+                }
                 $multiplicity_ratio ++;
             } else {
                 push( @sym_atoms, $new_atom );
@@ -370,12 +278,14 @@ sub symops_apply_modulo1($$@)
     } else {
         # Symmetry operators are not applied for atoms that are
         # disordered around special position.
-        my $new_atom = symop_apply_modulo1( $atom,
+        my $new_atom = symop_apply( $atom,
                         [ [ 1, 0, 0, 0 ],
                           [ 0, 1, 0, 0 ],
                           [ 0, 0, 1, 0 ],
                           [ 0, 0, 0, 1 ] ],
-                        undef, $expand_to_p1 );
+                        { modulo_1 => 1,
+                          append_symop_to_label =>
+                          $options->{append_symop_to_label} } );
         push( @sym_atoms, $new_atom );
     }
 

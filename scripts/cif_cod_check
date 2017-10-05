@@ -4,7 +4,7 @@ eval 'exec perl -x $0 ${1+"$@"}'
     if 0;
 #------------------------------------------------------------------------------
 #$Author$
-#$Date$ 
+#$Date$
 #$Revision$
 #$URL$
 #------------------------------------------------------------------------------
@@ -47,7 +47,7 @@ my $require_only_doi = 0;
 my $check_authors = 1;
 my $check_chemical_formula_sum = 1;
 my $check_space_group_info = 1;
-my $check_symmetry_operators = 1;
+my $check_symmetry_operations = 1;
 my $check_space_group_constraints = 1;
 my $check_limits = 1;
 my $use_precisions = 1;
@@ -67,7 +67,7 @@ sub dont_check_any
     $check_authors = 0;
     $check_chemical_formula_sum = 0;
     $check_space_group_info = 0;
-    $check_symmetry_operators = 0;
+    $check_symmetry_operations = 0;
     $check_space_group_constraints = 0;
     $check_limits = 0;
     $check_temperature_factors = 0;
@@ -85,7 +85,7 @@ sub check_all
     $check_authors = 1;
     $check_chemical_formula_sum = 1;
     $check_space_group_info = 1;
-    $check_symmetry_operators = 1;
+    $check_symmetry_operations = 1;
     $check_space_group_constraints = 1;
     $check_limits = 1;
     $check_temperature_factors = 1;
@@ -102,11 +102,11 @@ my $reportFile = '-';
 
 #===================================================================#
 #
-# The structure of the default table of the limits 
+# The structure of the default table of the limits
 # that uses '--check-limits' option is:
 #
 # { _tag_name -> [ [$begin,$end] , [$begin,$end] , [$begin,$end] ] }
-# 
+#
 # The array [$begin,$end] is the range of the limits.
 #
 #===================================================================#
@@ -313,17 +313,17 @@ my $input_format = 'cif';
 
     '--check-symmetry-operators,' .
     '--check-operators'
-        => sub{ $check_symmetry_operators = 1 },
+        => sub{ $check_symmetry_operations = 1 },
     '--check-only-symmetry-operators,' .
     '--check-only-operators'
-        => sub{ dont_check_any(); $check_symmetry_operators = 1 },
+        => sub{ dont_check_any(); $check_symmetry_operations = 1 },
     '--dont-check-symmetry-operators,' .
     '--no-check-symmetry-operators,' .
     '--do-not-check-symmetry-operators,' .
     '--dont-check-operators,' .
     '--no-check-operators,' .
     '--do-not-check-operators'
-        => sub{ $check_symmetry_operators = 0 },
+        => sub{ $check_symmetry_operations = 0 },
 
     '--check-constraints-on-unit-cell,' .
     '--check-unit-cell'
@@ -341,14 +341,14 @@ my $input_format = 'cif';
 
     '--check-symmetry' => sub{
         $check_space_group_info = 1;
-        $check_symmetry_operators = 1;
+        $check_symmetry_operations = 1;
         $check_space_group_constraints = 1;
     },
 
     '--check-only-symmetry' => sub{
         dont_check_any();
         $check_space_group_info = 1;
-        $check_symmetry_operators = 1;
+        $check_symmetry_operations = 1;
         $check_space_group_constraints = 1;
     },
 
@@ -441,7 +441,7 @@ my $input_format = 'cif';
 
     '--use-perl-parser' => sub{ $use_parser = 'perl' },
     '--use-c-parser'    => sub{ $use_parser = 'c' },
-    
+
     '--cif-input'   => sub { $input_format = 'cif' },
     '--json-input'  => sub { $input_format = 'json' },
 
@@ -550,8 +550,8 @@ for my $filename (@ARGV) {
             if $check_chemical_formula_sum;
         push @messages, @{check_space_group_info( $dataset )}
             if $check_space_group_info;
-        push @messages, @{check_symmetry_operators( $dataset )}
-            if $check_symmetry_operators;
+        push @messages, @{check_symmetry_operations( $dataset )}
+            if $check_symmetry_operations;
         push @messages, @{check_space_group_constraints( $dataset )}
             if $check_space_group_constraints;
         push @messages, @{check_limits( $dataset )}
@@ -729,117 +729,264 @@ sub check_space_group_info
         return \@messages;
     }
 
-    my $symops = $dataset->{values}{_symmetry_equiv_pos_as_xyz};
     my $values = $dataset->{values};
 
-    my @space_group_tags = qw (
-        _symmetry_space_group_name_H-M
-        _symmetry_space_group_name_Hall
-        _symmetry_Int_Tables_number
-        _space_group_name_H-M_alt
-        _space_group.name_H-M_full
-        _space_group_name_Hall
-        _space_group_ssg_name
-        _space_group_ssg_name_IT
-        _space_group_ssg_name_WJJ
-    );
+    my $sg_info = get_sg_info($values);
 
-    my $space_group_found;
-    my $space_group;
+    my $declared_sg_name;
+    my $resolved_sg_name;
+    for my $sg_name_type ( qw( hermann_mauguin ) ) {
+        if( defined $sg_info->{$sg_name_type} && !defined $resolved_sg_name ) {
+            $declared_sg_name = $sg_info->{$sg_name_type};
+            my $cleaned_sg_name = $declared_sg_name;
+            $cleaned_sg_name =~ s/\s//g;
+            $cleaned_sg_name =~ s/[()~]//g;
 
-    for my $sg_tag (@space_group_tags) {
-        if( exists $values->{$sg_tag} ) {
-            $space_group = $values->{$sg_tag}[0];
-            my $no_spaces = $space_group;
-            $no_spaces =~ s/\s//g;
-            $no_spaces =~ s/[\(\)~]//g;
-            if( $sg_tag =~ /H-M/ ) {
-                if( defined $space_group &&
-                    !exists $space_groups{$space_group} &&
-                    !exists $space_groups{$no_spaces} ) {
-                    push @messages, 'WARNING, unrecognised space group ' .
-                                    "'$space_group'";
-                } else {
-                    $space_group_found =
-                        (exists $space_groups{$space_group} )
-                              ? $space_groups{$space_group}
-                              : $space_groups{$no_spaces};
-                }
+            if( exists $space_groups{$declared_sg_name} ) {
+                $resolved_sg_name = $space_groups{$declared_sg_name};
+            } elsif( exists $space_groups{$cleaned_sg_name} ) {
+                $resolved_sg_name = $space_groups{$cleaned_sg_name};
+            } else {
+                push @messages, 'WARNING, unrecognised space group ' .
+                                "'$declared_sg_name'";
             }
-            last
         }
     }
-    if( !defined $space_group ) {
-        if( !defined $symops ) {
-            push @messages, 'WARNING, no symmetry information found';
-        } else {
+
+    if( !defined $sg_info->{'hall'} &&
+        !defined $sg_info->{'hermann_mauguin'} &&
+        !defined $sg_info->{'number'} &&
+        !defined $sg_info->{'ssg_name'} &&
+        !defined $sg_info->{'ssg_name_IT'} &&
+        !defined $sg_info->{'ssg_name_WJJ'} ) {
+        if( defined $sg_info->{'symops'} ||
+            defined $sg_info->{'ssg_symops'} ) {
             push @messages, 'WARNING, no space group symbol found';
+        } else {
+            push @messages, 'WARNING, no symmetry information found';
         }
     }
 
-    my %symops_cannonical;
+    my $symops = $sg_info->{'symops'};
     if( defined $symops ) {
-        my %duplicate_symops;
-        for my $symop (@{$symops}) {
-            my $cannonical_symop =
-                symop_string_canonical_form( $symop );
-            if( !exists $duplicate_symops{$cannonical_symop} ) {
-                $duplicate_symops{$cannonical_symop} = [];
-            }
-            push( @{$duplicate_symops{$cannonical_symop}}, $symop );
+        push @messages, @{check_symop_uniqueness($symops)};
+        if ( defined $resolved_sg_name ) {
+            push @messages,
+                 @{ check_symop_list( $symops, 'hermann_mauguin',
+                                      $resolved_sg_name ) };
         }
-        for my $cannonical_symop (sort keys %duplicate_symops) {
-            $symops_cannonical{$cannonical_symop} =
-                $duplicate_symops{$cannonical_symop}[0];
-            if( @{ $duplicate_symops{$cannonical_symop} } > 1 ) {
-                push @messages, "NOTE, symmetry operator '$cannonical_symop' "
-                     . 'is repeated '
-                     . scalar( @{ $duplicate_symops{$cannonical_symop} } )
-                     . ' times (as '
-                     . join( ', ', map { "'$_'" }
-                             @{ $duplicate_symops{$cannonical_symop} } )
-                     . ') in symmetry operator list';
+    }
+
+    return \@messages;
+}
+
+##
+# Constructs a structure containing symmetry information using only the data
+# present in the data block.
+# @param $values
+#       The 'values' hash extracted from the CIF structure returned by the
+#       CIF::COD::Parser.
+# @return $sg_info
+#       A structure containing the symmetry information present in the data
+#       block. Example of the returned data structure:
+#
+#       $sg_info = {
+#           'hermann_mauguin' => 'P -1',
+#           'hall'            => '-P 1',
+#           'number'          => 2,
+#           'symop_ids'       =>
+#                       [
+#                         1
+#                         2
+#                       ],
+#           'symops' =>
+#                       [
+#                          'x, y, z',
+#                          '-x, -y, -z'
+#                       ];
+#       }
+#
+# The following fields can be potentially defined in the structure:
+#
+#       'hall'
+#                           Space group symbol in Hall notation.
+#       'hermann_mauguin'
+#                           Space group symbol in Hermann-Mauguin notation.
+#       'number'
+#                           Space group number defined in the International
+#                           Tables for Crystallography, Vol. A.
+#       'symop_ids'
+#                           Array of symmetry operation identifiers.
+#       'symops'
+#                           Array of parsable strings giving the symmetry
+#                           operations of the space group in algebraic form.
+#       'ssg_name'
+#                           Superspace-group symbol conforming to an
+#                           alternative definition from that given in
+#                           the 'ssg_name_IT' and 'ssg_name_WJJ' fields.
+#       'ssg_name_IT'
+#                           Superspace group symbol as given in International
+#                           Tables for Crystallography, Vol. C.
+#       'ssg_name_WJJ'
+#                           Superspace-group symbol as given by de Wolff,
+#                           Janssen & Janner (1981).
+#       'ssg_symop_ids'
+#                           Array of superspace group symmetry operation
+#                           identifiers.
+#       'ssg_symops'
+#                           Array of parsable strings giving the symmetry
+#                           operations of the superspace group in algebraic
+#                           form.
+##
+sub get_sg_info
+{
+    my ($values) = @_;
+
+    my $sg_data_names = {
+        'hall' => [
+                    '_space_group_name_Hall',
+                    '_symmetry_space_group_name_Hall'
+                  ],
+        'hermann_mauguin' => [
+                    '_space_group_name_H-M_alt',
+                    '_symmetry_space_group_name_H-M',
+                    '_space_group.name_H-M_full'
+                  ],
+        'number' => [
+                    '_space_group_IT_number',
+                    '_symmetry_Int_Tables_number'
+                  ],
+        'symop_ids' => [
+                    '_space_group_symop_id',
+                    '_symmetry_equiv_pos_site_id'
+                  ],
+        'symops' => [
+                    '_space_group_symop_operation_xyz',
+                    '_symmetry_equiv_pos_as_xyz'
+                  ],
+        'ssg_name' => [
+                    '_space_group_ssg_name'
+                  ],
+        'ssg_name_IT' => [
+                    '_space_group_ssg_name_IT'
+                  ],
+        'ssg_name_WJJ' => [
+                    '_space_group_ssg_name_WJJ'
+                  ],
+        'ssg_symop_ids' => [
+                    '_space_group_symop_ssg_id'
+                  ],
+        'ssg_symops' => [
+                    '_space_group_symop_ssg_operation_algebraic'
+                  ]
+    };
+
+    my %looped_sg_info_types = map { $_ => $_ }
+        qw( symop_ids symops ssg_symop_ids ssg_symops );
+
+    my %sg_info;
+    for my $info_type ( keys %{$sg_data_names} ) {
+        foreach ( @{$sg_data_names->{$info_type}} ) {
+            if ( exists $values->{$_} ) {
+                $sg_info{$info_type} = $values->{$_};
+                if ( !exists $looped_sg_info_types{$info_type} ) {
+                    $sg_info{$info_type} = $sg_info{$info_type}[0];
+                }
+                last;
             }
         }
     }
 
-    if( defined $symops && defined $space_group_found ) {
-        my $space_group_info = lookup_space_group( 'hermann_mauguin',
-                                                   $space_group_found );
-        if( defined $space_group_info ) {
-            my %sg_symops_cannonical =
-                map { symop_string_canonical_form( $_ ) => $_ }
-                @{ $space_group_info->{symops} };
+    return \%sg_info;
+}
 
-            my @missing_symops;
-            for my $s (sort keys %sg_symops_cannonical) {
-                next if exists $symops_cannonical{$s};
-                push( @missing_symops, $s );
-            }
-            if( @missing_symops > 0 ) {
-                my $single = (@missing_symops == 1);
-                push @messages, 'NOTE, symmetry operator'
-                     . (!$single ? 's ' : ' ')
-                     . join( ', ', map { "'$_'" } @missing_symops )
-                     . ' ' . ($single ? 'is' : 'are')
-                     . ' missing, although required by '
-                     . "the space group '$space_group_found'";
-            }
+##
+# Checks the provided symmetry operation list for repetitions of the same
+# symmetry operations in different form.
+# @param $symops
+#       Reference to an array of symmetry operations.
+# @return $messages
+#       Reference to an array of audit messages.
+##
+sub check_symop_uniqueness
+{
+    my ( $symops ) = @_;
 
-            my @excess_symops;
-            for my $s (sort keys %symops_cannonical) {
-                next if exists $sg_symops_cannonical{$s};
-                push( @excess_symops, $symops_cannonical{$s} );
+    my @messages;
+
+    my %duplicate_symops;
+    for my $symop (@{$symops}) {
+        my $cannonical_symop =
+            symop_string_canonical_form( $symop );
+        push @{$duplicate_symops{$cannonical_symop}}, $symop;
+    }
+    for my $cannonical_symop (sort keys %duplicate_symops) {
+        if( @{ $duplicate_symops{$cannonical_symop} } > 1 ) {
+            push @messages,
+                 "NOTE, symmetry operation '$cannonical_symop' is repeated "
+                . scalar( @{ $duplicate_symops{$cannonical_symop} } )
+                . ' times (as '
+                . join( ', ', map { "'$_'" }
+                    @{ $duplicate_symops{$cannonical_symop} } )
+                . ') in symmetry operation list';
             }
-            if( @excess_symops > 0 ) {
-                my $single = (@excess_symops == 1);
-                push @messages, 'NOTE, symmetry operator'
-                    . (!$single ? 's ' : ' ')
-                    . join( ', ', map { "'$_'" } @excess_symops )
-                    . ' ' . ($single ? 'is' : 'are')
-                    . ' found, although not required by '
-                    . "the space group '$space_group_found'";
-            }
+    }
+
+    return \@messages;
+}
+
+##
+# Checks if the provided symmetry operation list matches the one extrapolated
+# from the provided space group information.
+# @param $symops
+#       Reference to an array of symmetry operations.
+# @param $sg_info_type
+#       Type of space group identifier that should be used to look up
+#       the expeceted symmetry operation list. See the description of the
+#       'lookup_space_group' subroutine for the list of supported space
+#       group identifiers.
+# @param $sg_info_value
+#       The value of the space group identifier given in the $sg_info_type
+#       parameter.
+# @return $messages
+#       Reference to an array of audit messages.
+##
+sub check_symop_list
+{
+    my ($symops, $sg_info_type, $sg_info_value) = @_;
+
+    my @messages;
+
+    my $space_group_info = lookup_space_group( $sg_info_type, $sg_info_value );
+    if( defined $space_group_info ) {
+        my %declared_symops =
+            map { symop_string_canonical_form( $_ ) => $_ } @{$symops};
+        my %expected_symops =
+            map { symop_string_canonical_form( $_ ) => $_ }
+                @{$space_group_info->{'symops'}};
+
+        my @missing_symops = grep { !exists $declared_symops{$_} }
+                                sort keys %expected_symops;
+        if( @missing_symops > 0 ) {
+            my $single = (@missing_symops == 1);
+            push @messages, 'NOTE, symmetry operation'
+                . (!$single ? 's ' : ' ')
+                . join( ', ', map { "'$_'" } @missing_symops )
+                . ' ' . ($single ? 'is' : 'are')
+                . ' missing, although required by '
+                . "the space group '$sg_info_value'";
+        }
+
+        my @excess_symops = grep { !exists $expected_symops{$_} }
+                                sort keys %declared_symops;
+        if( @excess_symops > 0 ) {
+            my $single = (@excess_symops == 1);
+            push @messages, 'NOTE, symmetry operation'
+                 . (!$single ? 's ' : ' ')
+                 . join( ', ', map { "'$_'" } @excess_symops )
+                 . ' ' . ($single ? 'is' : 'are')
+                 . ' found, although not required by '
+                 . "the space group '$sg_info_value'";
         }
     }
 
@@ -1088,7 +1235,7 @@ sub check_pdcif_relations
                 }
             }
             if( !$found ) {
-                # If phase data block does not contain a backlink to the 
+                # If phase data block does not contain a backlink to the
                 # diffractogram, we are not sure if it is omitted or added:
                 push @messages,
                      'ERROR, value \'' . $diffractogram_data->{_pd_block_id}[0]
@@ -1102,7 +1249,7 @@ sub check_pdcif_relations
 }
 
 #===============================================================#
-# Gets symmetry operators if they are not directly represented in the CIF file.
+# Gets symmetry operations if they are not directly represented in the CIF file.
 
 # Accepts
 #     option - an option, for example, 'hall'
@@ -1159,16 +1306,14 @@ sub get_space_group_descriptions
 
     my $sym_data;
 
-    if( exists $values->{'_space_group_name_Hall'} &&
-        not defined $sym_data ) {
+    if( exists $values->{'_space_group_name_Hall'} ) {
         my $hall = $values->{'_space_group_name_Hall'}[0];
         $sym_data = lookup_space_group('hall', $hall);
 
         if( !defined $sym_data ) {
             push @messages, "WARNING, incorrect _space_group_name_Hall '$hall'";
         }
-    } elsif( exists $values->{'_symmetry_space_group_name_Hall'} &&
-        not defined $sym_data ) {
+    } elsif( exists $values->{'_symmetry_space_group_name_Hall'} ) {
         my $hall = $values->{'_symmetry_space_group_name_Hall'}[0];
         $sym_data = lookup_space_group('hall', $hall);
 
@@ -1352,7 +1497,7 @@ sub check_space_group_constraints
     return \@messages;
 }
 
-sub check_symmetry_operators
+sub check_symmetry_operations
 {
     my ($dataset) = @_;
     my @messages;
@@ -1372,7 +1517,7 @@ sub check_symmetry_operators
 
     foreach (@{$symops}) {
         if ( !is_symop_parsable($_) ) {
-            push @messages, "WARNING, symmetry operator '$_' could not be parsed";
+            push @messages, "WARNING, symmetry operation '$_' could not be parsed";
             return \@messages;
         }
     }
@@ -1710,7 +1855,7 @@ sub check_disorder
     delete $assemblies->{'.'}{'.'};
 
     if( exists $dataset->{values}{_atom_site_disorder_assembly} ) {
-        for my $assembly (sort keys %$assemblies) {
+        for my $assembly (sort keys %{$assemblies}) {
             my @counts = map { $assemblies->{$assembly}{$_} }
                              sort keys %{$assemblies->{$assembly}};
             my %counts = map { $_ => 1 } @counts;

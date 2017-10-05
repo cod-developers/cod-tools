@@ -43,9 +43,14 @@ my $output_dir = '.';
 my $dry_run = 0;
 my $list = 0;
 
+my $extract_outputs = 1;
+
 #* OPTIONS:
 #*   -o, --output-dir out/
 #*                     Base path of the created tree.
+#*
+#*   --no-outputs
+#*                     Do not extract files of role 'output'.
 #*
 #*   --dry-run
 #*                     Do not create any folders and files, just extract
@@ -67,6 +72,8 @@ my $list = 0;
 #**
 @ARGV = getOptions(
     "-o,--output-dir" => \$output_dir,
+
+    "--no-outputs" => sub{ $extract_outputs = 0 },
 
     "--dry-run" => sub{ $dry_run = 1 },
 
@@ -193,6 +200,10 @@ for my $filename (@ARGV) {
                            . 'and decoded files are different' . "\n";
                     }
                 }
+
+				if( !$extract_outputs && $role && $role eq 'output' ) {
+					next;
+				}
 
                 if( !$dry_run ) {
                     open my $out, '>', "$output_dir/$path" or die 'ERROR, '

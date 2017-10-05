@@ -70,8 +70,7 @@ use COD::CIF::Data::AtomList qw( atom_array_from_cif
 use COD::CIF::Data::SymmetryGenerator qw( apply_shifts
                                           atoms_coincide
                                           chemical_formula_sum
-                                          symop_apply_modulo1
-                                          symop_apply_NO_modulo_1
+                                          symop_apply
                                           symops_apply_modulo1
                                           test_bond
                                           test_bump
@@ -129,11 +128,6 @@ my $bump_distance_factor = 0.75;
 
 my $ignore_bumps = 0; # detect and warn about close atom "bumps"
                       # but do not stop processing.
-
-# A distance between two atoms when they are considered to be
-# instances of the same atom on a special position:
-
-my $special_position_cutoff = 0.01;
 
 # A span, in +/- unit cells, in which polymeric molecules (repeating
 # units) will be constructed:
@@ -1196,7 +1190,8 @@ sub symop_apply_to_atoms
     my @sym_atoms = ();
     for my $atom (@$atom_list) {
         push( @sym_atoms,
-            symop_apply_NO_modulo_1( $atom, $symop, undef, $expand_to_p1 ) );
+            symop_apply( $atom, $symop,
+                         { append_symop_to_label => $expand_to_p1 } ) );
     }
 
     return \@sym_atoms;
@@ -1211,7 +1206,8 @@ sub symgen_atom($$)
     my ( $atom, $sym_operators ) = @_;
 
     my( $sym_atoms ) = symops_apply_modulo1( $atom, $sym_operators,
-                                             $expand_to_p1 );
+                                             { append_symop_to_label =>
+                                               $expand_to_p1 } );
 
     if( $sym_atoms && 
         ( @{$sym_atoms} == 0 ||
