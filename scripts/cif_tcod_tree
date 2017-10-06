@@ -43,9 +43,14 @@ my $output_dir = '.';
 my $dry_run = 0;
 my $list = 0;
 
+my $extract_outputs = 1;
+
 #* OPTIONS:
 #*   -o, --output-dir out/
 #*                     Base path of the created tree.
+#*
+#*   --no-outputs
+#*                     Do not extract files of role 'output'.
 #*
 #*   --dry-run
 #*                     Do not create any folders and files, just extract
@@ -67,6 +72,8 @@ my $list = 0;
 #**
 @ARGV = getOptions(
     "-o,--output-dir" => \$output_dir,
+
+    "--no-outputs" => sub{ $extract_outputs = 0 },
 
     "--dry-run" => sub{ $dry_run = 1 },
 
@@ -194,6 +201,10 @@ for my $filename (@ARGV) {
                     }
                 }
 
+				if( !$extract_outputs && $role && $role eq 'output' ) {
+					next;
+				}
+
                 if( !$dry_run ) {
                     open my $out, '>', "$output_dir/$path" or die 'ERROR, '
                         . 'could not open file ' . "'$output_dir/$path'"
@@ -209,29 +220,37 @@ for my $filename (@ARGV) {
                 print "$output_dir/$path\n" if $list;
             }
 
-            print "$output_dir/main.sh\n" if $list;
+            local $\ = "\n";
+            print "$output_dir/main.sh" if $list;
             if( !$dry_run ) {
                 my $main_exec_path = "$output_dir/main.sh";
                 open( my $main_fh, '>', $main_exec_path ) or die 'ERROR, '
                     . "could not open file '$main_exec_path' -- "
-                    . lcfirst($!) . "\n";
-                print $main_fh "#!/bin/bash\n\n";
+                    . lcfirst($!);
+                print $main_fh "#!/bin/bash\n";
+
+                if( exists $values->{_audit_creation_method} &&
+                    $values->{_audit_creation_method}[0] =~ /^aiida/i &&
+                    exists $created_dirs{aiida} ) {
+                    print $main_fh 'verdi import aiida';
+                }
 
                 for my $i (0..$#{$values->{_tcod_computation_step}}) {
                     my $env = $values->{_tcod_computation_environment}[$i];
                     my $command = $values->{_tcod_computation_command}[$i];
-                    print $main_fh "(\n";
+                    print $main_fh '(';
                     if( $env ) {
                         foreach ( split m/\n/, $env ) {
-                            print $main_fh "    $_\n";
+                            print $main_fh '    ' . $_;
                         };
-                        print $main_fh "\n";
+                        print $main_fh '';
                     }
-                    print $main_fh "    $command\n)\n";
+                    print $main_fh '    ' . $command;
+                    print $main_fh ')';
                 }
                 close $main_fh or die 'ERROR, '
                     . "could not close file '$main_exec_path' -- "
-                    . lcfirst($!) . "\n";;
+                    . lcfirst($!);
                 chmod( 0775, $main_exec_path );
             }
         }};

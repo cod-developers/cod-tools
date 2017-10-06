@@ -14,20 +14,35 @@ package COD::CIF::Data::SymmetryGenerator;
 
 use strict;
 use warnings;
-use COD::CIF::Data::AtomList qw( copy_atom );
-use COD::Spacegroups::Symop::Algebra qw( symop_is_unity symop_vector_mul );
-use COD::Spacegroups::Symop::Parse qw( modulo_1 );
-use COD::Spacegroups::Names;
 use COD::Algebra::Vector qw( distance );
+use COD::CIF::Data::AtomList qw( copy_atom );
+use COD::Formulae::Print qw( sprint_formula );
+use COD::Spacegroups::Symop::Algebra qw( flush_zeros_in_symop
+                                         symop_invert
+                                         symop_is_unity
+                                         symop_modulo_1
+                                         symop_mul
+                                         symop_vector_mul );
+use COD::Spacegroups::Symop::Parse qw( modulo_1
+                                       string_from_symop
+                                       symop_string_canonical_form );
+use COD::Spacegroups::Names;
 
 require Exporter;
 our @ISA = qw( Exporter );
 our @EXPORT_OK = qw(
     apply_shifts
     atoms_coincide
+    chemical_formula_sum
+    symop_apply
     symop_generate_atoms
+    symop_register_applied_symop
+    symops_apply_modulo1
     test_bond
     test_bump
+    translate_atom
+    translation
+    trim_polymer
 );
 
 my $special_position_cutoff = 0.01; # Angstroems
@@ -40,37 +55,16 @@ my $special_position_cutoff = 0.01; # Angstroems
 
 sub apply_shifts($);
 sub atoms_coincide($$$);
-sub symop_generate_atoms($$$);
+sub chemical_formula_sum($@);
+sub symop_apply($$@);
+sub symop_generate_atoms($$$@);
+sub symop_register_applied_symop($$@);
+sub symops_apply_modulo1($$@);
 sub test_bond($$$$$);
 sub test_bump($$$$$$$);
-
-#===============================================================#
-
-sub symop_apply_to_atom_mod1($$$$)
-{
-    my ( $symop, $atom, $n, $f2o ) = @_;
-
-    my $new_atom = copy_atom( $atom );
-
-    if( $n != 0 ) {
-        $new_atom->{atom_name} .= "_" . $n;
-    }
-
-    if( $atom->{coordinates_fract}[0] ne "." and
-        $atom->{coordinates_fract}[1] ne "." and
-        $atom->{coordinates_fract}[2] ne "." ) {
-        my $new_coord = symop_vector_mul( $symop,
-                                          $atom->{coordinates_fract} );
-        $new_atom->{coordinates_fract} =
-            [ map { modulo_1($_) } @{$new_coord} ];
-        $new_atom->{coordinates_ortho} =
-            symop_vector_mul( $f2o, $new_atom->{coordinates_fract} );
-    }
-
-    ## serialiseRef( $new_atom );
-
-    return $new_atom;
-}
+sub translate_atom($$);
+sub translation($$);
+sub trim_polymer($$);
 
 #===============================================================#
 
@@ -113,57 +107,217 @@ sub atoms_coincide($$$)
 
 #===============================================================#
 
-sub symgen_atom($$$)
+sub symop_generate_atoms($$$@)
 {
-    my ( $sym_operators, $atom, $f2o ) = @_;
+    my ( $sym_operators, $atoms, $f2o, $options ) = @_;
+
+    $options = {} unless $options;
 
     my @sym_atoms;
 
+    for my $atom ( @{$atoms} ) {
+        my( $sym_atoms ) = symops_apply_modulo1( $atom, $sym_operators,
+                                                 $options );
+        push( @sym_atoms, @$sym_atoms );
+    }
+
+    return \@sym_atoms;
+}
+
+#===============================================================#
+# Applies symmetry operator to a given atom.
+
+# The symop_apply subroutine accepts a reference to a hash
+# $atom_info = {name=>"C1_2",
+#               site_label=>"C1"
+#               chemical_type=>"C",
+#               coordinates_fract=>[1.0, 1.0, 1.0],
+#               unity_matrix_applied=>1} and
+# a reference to an array - symmetry operator
+# my $symop = [
+#     [ r11 r12 r13 t1 ]
+#     [ r21 r22 r23 t1 ]
+#     [ r31 r32 r33 t1 ]
+#     [   0   0   0  1 ]
+# ],
+# Returns an above-mentioned hash.
+#
+sub symop_apply($$@)
+{
+    my( $atom_info, $symop, $options ) = @_;
+
+    $options = {} unless $options;
+
+    my $new_atom_info = copy_atom( $atom_info );
+
+    my $atom_xyz = $atom_info->{coordinates_fract};
+    if( $atom_xyz->[0] ne '.' &&
+        $atom_xyz->[1] ne '.' &&
+        $atom_xyz->[2] ne '.' ) {
+        my $new_atom_xyz = symop_vector_mul( $symop, $atom_xyz );
+
+        if( $options->{modulo_1} ) {
+            @$new_atom_xyz =
+                map { modulo_1($_) } @$new_atom_xyz;
+        }
+
+        $new_atom_info->{coordinates_fract} = $new_atom_xyz;
+    }
+
+    return symop_register_applied_symop( $new_atom_info,
+                                         $symop,
+                                         $options->{append_symop_to_label} );
+}
+
+#===============================================================#
+
+sub symop_register_applied_symop($$@)
+{
+    my( $new_atom_info, $symop, $append_symop_to_label ) = @_;
+
+    my $symop_now = symop_mul( $new_atom_info->{symop}, $symop );
+    my $symop_string =
+        symop_string_canonical_form(
+            string_from_symop(
+                flush_zeros_in_symop(
+                    symop_modulo_1( $symop_now ) ) ) );
+
+    $new_atom_info->{symop} = $symop_now;
+    $new_atom_info->{symop_id} =
+        $new_atom_info->{symop_list}
+                        {symop_ids}
+                        {$symop_string} + 1;
+    $new_atom_info->{unity_matrix_applied} =
+        symop_is_unity( $symop_now );
+
+    my $atom_xyz = $new_atom_info->{coordinates_fract};
+    if( $atom_xyz->[0] ne '.' &&
+        $atom_xyz->[1] ne '.' &&
+        $atom_xyz->[2] ne '.' ) {
+        $new_atom_info->{coordinates_ortho} =
+            symop_vector_mul( $new_atom_info->{f2o}, $atom_xyz );
+
+        my @translation = (
+            int($atom_xyz->[0] - modulo_1($atom_xyz->[0])),
+            int($atom_xyz->[1] - modulo_1($atom_xyz->[1])),
+            int($atom_xyz->[2] - modulo_1($atom_xyz->[2])),
+        );
+        $new_atom_info->{translation} =
+            \@translation;
+        $new_atom_info->{translation_id} =
+            (5+$translation[0]) . (5+$translation[1]) . (5+$translation[2]);
+    }
+
+    if( $new_atom_info->{unity_matrix_applied} &&
+        $new_atom_info->{translation_id} eq "555" ) {
+        $new_atom_info->{name} = $new_atom_info->{site_label};
+    } else {
+        $new_atom_info->{name} =
+            $new_atom_info->{site_label} . "_" .
+            $new_atom_info->{symop_id} . "_" .
+            $new_atom_info->{translation_id};
+    }
+
+    $new_atom_info->{cell_label} = $new_atom_info->{site_label};
+    if( $append_symop_to_label && !$new_atom_info->{unity_matrix_applied} ) {
+        $new_atom_info->{cell_label} .= '_' . $new_atom_info->{symop_id};
+    }
+
+    do {
+        use COD::Serialise qw( serialiseRef );
+        serialiseRef( { atom => $new_atom_info, symop => $symop } );
+    } if 0;
+
+    return $new_atom_info;
+}
+
+#===============================================================#
+# Generate symmetry equivalents of an atom, evaluate atom's
+# multiplicity and multiplicity ratio. Exclude atoms mapping to the
+# original one.
+
+sub symops_apply_modulo1($$@)
+{
+    my ( $atom, $sym_operators, $options ) = @_;
+
+    $options = {} unless $options;
+
+    # Setting default option values
+    $options->{append_atoms_mapping_to_self} = 1
+        unless exists $options->{append_atoms_mapping_to_self};
+
+    my @sym_atoms;
+    my @symops_mapping_to_self;
     my $gp_multiplicity = int(@$sym_operators);
+
     my $multiplicity_ratio = 1;
 
-    my $n = 1;
+    do {
+        use COD::Serialise qw( serialiseRef );
+        serialiseRef( $sym_operators );
+    } if 0;
 
-    for my $symop ( @{$sym_operators} ) {
-        my $new_atom = symop_apply_to_atom_mod1( $symop, $atom, 0, $f2o );
-        if( !symop_is_unity( $symop ) &&
-            atoms_coincide( $atom, $new_atom, $f2o )) {
-            $multiplicity_ratio ++;
+    if( $options->{disregard_symmetry_independent_sites} ||
+        !exists $atom->{group} || $atom->{group} !~ /^-/ ) {
+        for my $symop ( @{$sym_operators} ) {
+            my $new_atom = symop_apply( $atom, $symop,
+                                        { modulo_1 => 1,
+                                          append_symop_to_label =>
+                                          $options->{append_symop_to_label} } );
+            if( !symop_is_unity( $symop ) &&
+                atoms_coincide( $atom, $new_atom, $atom->{f2o} )) {
+                push( @symops_mapping_to_self, $symop );
+                if( $options->{append_atoms_mapping_to_self} ) {
+                    push( @sym_atoms, $new_atom );
+                }
+                $multiplicity_ratio ++;
+            } else {
+                push( @sym_atoms, $new_atom );
+            }
         }
+    } else {
+        # Symmetry operators are not applied for atoms that are
+        # disordered around special position.
+        my $new_atom = symop_apply( $atom,
+                        [ [ 1, 0, 0, 0 ],
+                          [ 0, 1, 0, 0 ],
+                          [ 0, 0, 1, 0 ],
+                          [ 0, 0, 0, 1 ] ],
+                        { modulo_1 => 1,
+                          append_symop_to_label =>
+                          $options->{append_symop_to_label} } );
         push( @sym_atoms, $new_atom );
     }
 
     ## print ">>> $gp_multiplicity / $multiplicity_ratio\n";
 
     if( $gp_multiplicity % $multiplicity_ratio ) {
-        die "ERROR, multiplicity ratio '$multiplicity_ratio' does not divide "
-          . "multiplicity of a general position '$gp_multiplicity' -- "
-          . "this should not happen\n";
+        die "ERROR, multiplicity ratio $multiplicity_ratio does not divide "
+          . "multiplicity of a general position $gp_multiplicity -- "
+          . "this can not be\n";
     }
 
     my $multiplicity = $gp_multiplicity / $multiplicity_ratio;
 
+    # Update the original atom structure:
+    $atom->{multiplicity} = $multiplicity;
+    $atom->{multiplicity_ratio} = $multiplicity_ratio;
+
+    # Update all symmetry-generated atoms (including ones that were
+    # generated using the unity matrix):
     for my $atom (@sym_atoms) {
         $atom->{multiplicity} = $multiplicity;
         $atom->{multiplicity_ratio} = $multiplicity_ratio;
+
+        my $atom_symop = $atom->{symop};
+        my $inv_atom_symop = symop_invert( $atom_symop );
+        $atom->{site_symops} = [
+            map { symop_mul( $atom_symop, symop_mul( $_, $inv_atom_symop )) }
+            @symops_mapping_to_self
+        ];
     }
 
-    return @sym_atoms;
-}
-
-#===============================================================#
-
-sub symop_generate_atoms($$$)
-{
-    my ( $sym_operators, $atoms, $f2o ) = @_;
-
-    my @sym_atoms;
-
-    for my $atom ( @{$atoms} ) {
-        push( @sym_atoms, symgen_atom( $sym_operators, $atom, $f2o ));
-    }
-
-    return \@sym_atoms;
+    return ( \@sym_atoms, $multiplicity, $multiplicity_ratio );
 }
 
 #===============================================================#
@@ -246,6 +400,77 @@ sub apply_shifts($)
     return \@shifted;
 }
 
+#==============================================================#
+# Translates an atom according a given translation.
+#
+# Accepts an atom description and a translation.
+#
+# Returns a translated atom.
+
+sub translate_atom($$)
+{
+    my($atom, $translation) = @_;
+
+    my $new_atom = copy_atom( $atom );
+    my @new_atom_xyz;
+
+    push( @new_atom_xyz, $atom->{'coordinates_fract'}[0] +
+          ${$translation}[0] );
+    push( @new_atom_xyz, $atom->{'coordinates_fract'}[1] +
+          ${$translation}[1] );
+    push( @new_atom_xyz, $atom->{'coordinates_fract'}[2] +
+          ${$translation}[2] );
+
+    $new_atom->{'coordinates_fract'} = \@new_atom_xyz;
+    $new_atom->{coordinates_ortho} =
+        symop_vector_mul( $atom->{f2o}, \@new_atom_xyz );
+
+    $new_atom->{translation} = [
+        $new_atom_xyz[0] - modulo_1($new_atom_xyz[0]),
+        $new_atom_xyz[1] - modulo_1($new_atom_xyz[1]),
+        $new_atom_xyz[2] - modulo_1($new_atom_xyz[2]),
+    ];
+
+    $new_atom->{translation_id} =
+        ($new_atom->{translation}[0]+5).
+        ($new_atom->{translation}[1]+5).
+        ($new_atom->{translation}[2]+5);
+
+    if( defined $new_atom->{unity_matrix_applied} &&
+                $new_atom->{unity_matrix_applied} &&
+                $new_atom->{translation}[0] == 0 &&
+                $new_atom->{translation}[1] == 0 &&
+                $new_atom->{translation}[2] == 0 ) {
+        $new_atom->{name} = $new_atom->{site_label};
+    } else {
+        $new_atom->{name} =
+            $new_atom->{site_label} . "_" .
+            $new_atom->{symop_id} . "_" .
+            $new_atom->{translation_id};
+    }
+
+    return $new_atom;
+}
+
+#==============================================================#
+# Finds translation center of mass and center of mass modulo 1 information.
+
+# Accepts two arrays of coordinates_fract.
+
+# Returns an array of differences between coordinates_fract.
+
+sub translation($$)
+{
+    my ($coords, $coords_modulo_1) = @_;
+
+    my @translation;
+    for( my $i = 0; $i < @{$coords}; $i++ ) {
+        push @translation, ${$coords}[$i] - ${$coords_modulo_1}[$i];
+    }
+
+    return \@translation;
+}
+
 #===============================================================#
 # Made a decision if a chemical bond exists.
 #
@@ -317,6 +542,64 @@ sub test_bump($$$$$$$)
     }
 
     return 0;
+}
+
+#===============================================================#
+# Finds a molecule chemical formula sum.
+
+# Accepts an array of atoms:
+# $atom =      {name=>"C1_2",
+#               chemical_type=>"C",
+#               coordinates_fract=>[1.0, 1.0, 1.0],
+#               unity_matrix_applied=>1}
+
+# Returns a string with chemical formula sum.
+
+sub chemical_formula_sum($@)
+{
+    my ($atoms, $Z) = @_;
+
+    $Z = 1 unless defined $Z;
+
+    my %chemical_types;
+
+    foreach my $atom (@{$atoms}) {
+        my $chemical_type = $atom->{chemical_type};
+        next if $chemical_type eq '.';
+        $chemical_types{$chemical_type} = 0
+            if !defined $chemical_types{$chemical_type};
+        $chemical_types{$chemical_type}++
+    }
+
+    for my $chemical_type (keys %chemical_types) {
+        $chemical_types{$chemical_type} /= $Z;
+    }
+
+    my $formula_sum = sprint_formula( \%chemical_types );
+    $formula_sum =~ s/\s$//;
+
+    return $formula_sum;
+}
+
+#===============================================================#
+# Trim a polymer -- remove atoms outside of the specified polymer
+# span:
+
+sub trim_polymer($$)
+{
+    my ($atoms, $max_polymer_span) = @_;
+
+    my @trimmed_atoms;
+
+    for my $atom (@$atoms) {
+        if( abs($atom->{translation}[0]) <= $max_polymer_span &&
+            abs($atom->{translation}[1]) <= $max_polymer_span &&
+            abs($atom->{translation}[2]) <= $max_polymer_span ) {
+            push( @trimmed_atoms, $atom );
+        }
+    }
+
+    return \@trimmed_atoms;
 }
 
 1;

@@ -69,21 +69,26 @@ use COD::CIF::Data::AtomList qw( atom_array_from_cif
                                  dump_atoms_as_cif );
 use COD::CIF::Data::SymmetryGenerator qw( apply_shifts
                                           atoms_coincide
+                                          chemical_formula_sum
+                                          symop_apply
+                                          symops_apply_modulo1
                                           test_bond
-                                          test_bump );
+                                          test_bump
+                                          translate_atom
+                                          translation
+                                          trim_polymer );
 use COD::CIF::Parser qw( parse_cif );
 use COD::CIF::Tags::CanonicalNames qw( canonicalize_all_names );
-use COD::CIF::Tags::Manage qw( set_tag );
+use COD::CIF::Tags::Manage qw( rename_tags );
 use COD::CIF::Tags::Print qw( print_cif print_value
                               print_single_tag_and_value );
 use COD::ErrorHandler qw( process_errors process_warnings
                           process_parser_messages report_message );
-use COD::Formulae::Print qw( sprint_formula );
 use COD::MorganFingerprints qw( make_morgan_fingerprint );
 use COD::Spacegroups::Builder;
 use COD::Spacegroups::Symop::Algebra qw( symop_mul symop_invert
                                          symop_is_unity symop_vector_mul
-                                         symop_modulo_1 flush_zeros_in_symop );
+                                         symop_modulo_1 );
 use COD::Spacegroups::Symop::Parse qw( symop_from_string
                                        string_from_symop
                                        symop_string_canonical_form
@@ -123,11 +128,6 @@ my $bump_distance_factor = 0.75;
 
 my $ignore_bumps = 0; # detect and warn about close atom "bumps"
                       # but do not stop processing.
-
-# A distance between two atoms when they are considered to be
-# instances of the same atom on a special position:
-
-my $special_position_cutoff = 0.01;
 
 # A span, in +/- unit cells, in which polymeric molecules (repeating
 # units) will be constructed:
@@ -1153,264 +1153,6 @@ sub get_symops
     return;
 }
 
-#==============================================================#
-# Finds translation center of mass and center of mass modulo 1 information.
-
-# Accepts two arrays of coordinates_fract.
-
-# Returns an array of differences between coordinates_fract.
-
-sub translation
-{
-    my ($coords, $coords_modulo_1) = @_;
-
-    my @translation;
-    for(my $i = 0; $i < @{$coords}; $i++)
-    {
-        push(@translation, ${$coords}[$i] - ${$coords_modulo_1}[$i]);
-    }
-
-    return \@translation;
-}
-
-#==============================================================#
-# Translates an atom according a given translation.
-#
-# Accepts an atom description and a translation.
-#
-# Returns a translated atom.
-
-sub translate_atom
-{
-    my($atom, $translation) = @_;
-
-    my $new_atom = copy_atom( $atom );
-    my @new_atom_xyz;
-
-    push( @new_atom_xyz, $atom->{"coordinates_fract"}[0] +
-          ${$translation}[0] );
-    push( @new_atom_xyz, $atom->{"coordinates_fract"}[1] +
-          ${$translation}[1] );
-    push( @new_atom_xyz, $atom->{"coordinates_fract"}[2] +
-          ${$translation}[2] );
-
-    $new_atom->{"coordinates_fract"} = \@new_atom_xyz;
-    $new_atom->{coordinates_ortho} =
-        symop_vector_mul( $atom->{f2o}, \@new_atom_xyz );
-
-    $new_atom->{translation} = [
-        $new_atom_xyz[0] - modulo_1($new_atom_xyz[0]),
-        $new_atom_xyz[1] - modulo_1($new_atom_xyz[1]),
-        $new_atom_xyz[2] - modulo_1($new_atom_xyz[2]),
-    ];
-
-    $new_atom->{translation_id} =
-        ($new_atom->{translation}[0]+5).
-        ($new_atom->{translation}[1]+5).
-        ($new_atom->{translation}[2]+5);
-
-    if( defined $new_atom->{unity_matrix_applied} &&
-        $new_atom->{unity_matrix_applied} &&
-        $new_atom->{translation}[0] == 0 &&
-        $new_atom->{translation}[1] == 0 &&
-        $new_atom->{translation}[2] == 0 ) {
-        $new_atom->{name} = $new_atom->{site_label};
-    } else {
-        $new_atom->{name} =
-            $new_atom->{site_label} . "_" .
-            $new_atom->{symop_id} . "_" .
-            $new_atom->{translation_id};
-    }
-
-    return $new_atom;
-}
-
-#===============================================================#
-# Finds a molecule chemical formula sum.
-
-# Accepts an array of atoms:
-# $atom =      {name=>"C1_2",
-#               chemical_type=>"C",
-#               coordinates_fract=>[1.0, 1.0, 1.0],
-#               unity_matrix_applied=>1}
-
-# Returns a string with chemical formula sum.
-
-sub chemical_formula_sum
-{
-    my ($atoms, $Z) = @_;
-
-    $Z = 1 unless defined $Z;
-
-    my %chemical_types;
-
-    foreach my $atom (@{$atoms})
-    {
-        my $chemical_type = $atom->{chemical_type};
-        next if $chemical_type eq '.';
-        if(defined $chemical_types{$chemical_type})
-        {
-            $chemical_types{$chemical_type} = ++$chemical_types{$chemical_type};
-        }
-        else
-        {
-            $chemical_types{$chemical_type} = 1;
-        }
-    }
-
-    for my $chemical_type (keys %chemical_types) {
-        $chemical_types{$chemical_type} /= $Z;
-    }
-
-    my $formula_sum = sprint_formula( \%chemical_types );
-    $formula_sum =~ s/\s$//;
-
-    return $formula_sum;
-}
-
-#===============================================================#
-# Applies symmetry operator to a given atom.
-
-# The symop_apply_modulo1 subroutine accepts a reference to a hash
-# $atom_info = {name=>"C1_2",
-#               site_label=>"C1"
-#               chemical_type=>"C",
-#               coordinates_fract=>[1.0, 1.0, 1.0],
-#               unity_matrix_applied=>1} and
-# a reference to an array - symmetry operator
-# my $symop = [
-#     [ r11 r12 r13 t1 ]
-#     [ r21 r22 r23 t1 ]
-#     [ r31 r32 r33 t1 ]
-#     [   0   0   0  1 ]
-# ],
-# Returns an above-mentioned hash.
-#
-sub symop_apply_modulo1
-{
-    my($atom_info, $symop) = @_;
-
-    my $new_atom_info = copy_atom($atom_info);
-
-    my $atom_xyz = $atom_info->{"coordinates_fract"};
-
-    my @new_atom_xyz =
-        map { modulo_1($_) }
-            @{ symop_vector_mul( $symop, $atom_xyz ) };
-
-    $new_atom_info->{coordinates_fract} = \@new_atom_xyz;
-
-    return symop_register_applied_symop( $new_atom_info, $symop );
-}
-
-#===============================================================#
-# Applies symmetry operator to a given atom, without applying a
-# modulo_1 shift.
-#
-
-# The symop_apply_NO_modulo_1 subroutine accepts a reference to a hash:
-
-# $atom_info = {site_label=>"C1",
-#               name=>"C1_2",
-#               chemical_type=>"C",
-#               coordinates_fract=>[1.0, 1.0, 1.0],
-#               unity_matrix_applied=>1} 
-
-# and a reference to an array - symmetry operator
-
-# my $symop = [
-#     [ r11 r12 r13 t1 ]
-#     [ r21 r22 r23 t1 ]
-#     [ r31 r32 r33 t1 ]
-#     [   0   0   0  1 ]
-# ],
-
-# Returns an above-mentioned hash.
-
-# The difference from the symop_apply_modulo1() subroutine is that it does not
-# apply the mod1 shift.
-
-sub symop_apply_NO_modulo_1
-{
-    my($atom_info, $symop) = @_;
-
-    my $new_atom_info = copy_atom($atom_info);
-
-    my $atom_xyz = $atom_info->{"coordinates_fract"};
-
-    my $new_atom_xyz = symop_vector_mul( $symop, $atom_xyz );
-
-    $new_atom_info->{"coordinates_fract"} = $new_atom_xyz;
-
-    return symop_register_applied_symop( $new_atom_info, $symop );
-}
-
-sub symop_register_applied_symop
-{
-    my($new_atom_info, $symop) = @_;
-
-    my $symop_now = symop_mul( $new_atom_info->{symop}, $symop );
-    my $symop_string =
-        symop_string_canonical_form(
-            string_from_symop(
-                flush_zeros_in_symop(
-                    symop_modulo_1( $symop_now ) ) ) );
-
-    $new_atom_info->{"symop"} = $symop_now;
-    $new_atom_info->{"symop_id"} =
-        $new_atom_info->{symop_list}
-                        {symop_ids}
-                        {$symop_string} + 1;
-    $new_atom_info->{"unity_matrix_applied"} =
-        symop_is_unity( $symop_now );
-
-    delete $new_atom_info->{site_symop};
-
-    my $atom_xyz = $new_atom_info->{"coordinates_fract"};
-
-    $new_atom_info->{"coordinates_ortho"} =
-        symop_vector_mul( $new_atom_info->{f2o}, $atom_xyz );
-
-    my @translation = (
-        int($atom_xyz->[0] - modulo_1($atom_xyz->[0])),
-        int($atom_xyz->[1] - modulo_1($atom_xyz->[1])),
-        int($atom_xyz->[2] - modulo_1($atom_xyz->[2])),
-    );
-    $new_atom_info->{"translation"} =
-        \@translation;
-    $new_atom_info->{"translation_id"} =
-        (5+$translation[0]) . (5+$translation[1]) . (5+$translation[2]);
-
-    if( $new_atom_info->{"unity_matrix_applied"} ) {
-        ## die unless $new_atom_info->{"translation_id"} eq "555";
-        $new_atom_info->{"name"} = $new_atom_info->{"site_label"};
-    } else {
-        $new_atom_info->{"name"} =
-            $new_atom_info->{"site_label"} . "_" .
-            $new_atom_info->{"symop_id"} . "_" .
-            $new_atom_info->{"translation_id"};
-    }
-
-    if( $expand_to_p1 ) {
-        if( $new_atom_info->{"unity_matrix_applied"} ) {
-            $new_atom_info->{"cell_label"} = $new_atom_info->{"site_label"};
-        } else {
-            $new_atom_info->{"cell_label"} =
-                $new_atom_info->{"site_label"} . "_" .
-                $new_atom_info->{"symop_id"};
-        }
-    } else {
-        $new_atom_info->{"cell_label"} = $new_atom_info->{"site_label"};
-    }
-
-    do {
-        use COD::Serialise qw( serialiseRef );
-        serialiseRef( { atom => $new_atom_info, symop => $symop } );
-    } if 0;
-
-    return $new_atom_info;
-}
-
 #===============================================================#
 # Applies symmetry operator to all atoms in a givel list.
 #
@@ -1447,7 +1189,9 @@ sub symop_apply_to_atoms
 
     my @sym_atoms = ();
     for my $atom (@$atom_list) {
-        push( @sym_atoms, symop_apply_NO_modulo_1( $atom, $symop ));
+        push( @sym_atoms,
+            symop_apply( $atom, $symop,
+                         { append_symop_to_label => $expand_to_p1 } ) );
     }
 
     return \@sym_atoms;
@@ -1461,7 +1205,9 @@ sub symgen_atom($$)
 {
     my ( $atom, $sym_operators ) = @_;
 
-    my $sym_atoms = symops_apply_modulo1( $atom, $sym_operators );
+    my( $sym_atoms ) = symops_apply_modulo1( $atom, $sym_operators,
+                                             { append_symop_to_label =>
+                                               $expand_to_p1 } );
 
     if( $sym_atoms && 
         ( @{$sym_atoms} == 0 ||
@@ -1486,68 +1232,6 @@ sub symgen_atom($$)
         }
         return @unique_atoms;
     }
-}
-
-#===============================================================#
-# Generate symmetry equivalents of an atom, evaluate atom's
-# multiplicity and multiplicity ratio. Exclude atoms mapping to the
-# original one.
-
-sub symops_apply_modulo1
-{
-    my ( $atom, $sym_operators ) = @_;
-
-    my @sym_atoms;
-    my @symops_mapping_to_self;
-    my $gp_multiplicity = int(@$sym_operators);
-
-    my $multiplicity_ratio = 1;
-
-    do {
-        use COD::Serialise qw( serialiseRef );
-        serialiseRef( $sym_operators );
-    } if 0;
-
-    for my $symop ( @{$sym_operators} ) {
-        my $new_atom = symop_apply_modulo1( $atom, $symop );
-        if( !symop_is_unity( $symop ) &&
-            atoms_coincide( $atom, $new_atom, $atom->{f2o} )) {
-            push( @symops_mapping_to_self, $symop );
-            $multiplicity_ratio ++;
-        } else {
-            push( @sym_atoms, $new_atom );
-        }
-    }
-
-    ## print ">>> $gp_multiplicity / $multiplicity_ratio\n";
-
-    if( $gp_multiplicity % $multiplicity_ratio ) {
-        die "ERROR, multiplicity ratio $multiplicity_ratio does not divide "
-          . "multiplicity of a general position $gp_multiplicity -- "
-          . "this can not be\n";
-    }
-
-    my $multiplicity = $gp_multiplicity / $multiplicity_ratio;
-
-    # Update the original atom structure:
-    $atom->{multiplicity} = $multiplicity;
-    $atom->{multiplicity_ratio} = $multiplicity_ratio;
-
-    # Update all symmetry-generated atoms (including ones that were
-    # generated using the unity matrix):
-    for my $atom (@sym_atoms) {
-        $atom->{multiplicity} = $multiplicity;
-        $atom->{multiplicity_ratio} = $multiplicity_ratio;
-
-        my $atom_symop = $atom->{symop};
-        my $inv_atom_symop = symop_invert( $atom_symop );
-        $atom->{site_symops} = [
-            map { symop_mul( $atom_symop, symop_mul( $_, $inv_atom_symop )) }
-            @symops_mapping_to_self
-        ];
-    }
-
-    return \@sym_atoms;
 }
 
 #===============================================================#
@@ -1597,56 +1281,6 @@ sub symgen_all_atoms($$)
 
     return \@sym_atoms;
 }
-
-#===============================================================#
-# Renames CIF data tags so that they are not confused with the
-# original ones.
-
-# Accepts a dataset hash produced by COD::CIF::Parser, a list of tags to be
-# renamed, and a prefix to be appended
-
-# Returns a hash with renamed data tags
-
-sub rename_tags($$$)
-{
-    my ($dataset, $tags2rename, $prefix ) = @_;
-
-    my $values = $dataset->{values};
-    my %renamed_tags = ();
-
-    for my $tag (@$tags2rename) {
-        if( exists $values->{$tag} &&
-            !defined $dataset->{inloop}{$tag} ) {
-            my $new_tag = $prefix . $tag;
-            my $value = $values->{$tag}[0];
-            set_tag( $dataset, $new_tag, $value );
-            $renamed_tags{$new_tag} = $tag;
-        }
-    }
-    return wantarray ? %renamed_tags : \%renamed_tags;
-}
-
-#===============================================================#
-# Trim a polymer -- remove atoms outside of the specified polymer
-# span:
-
-sub trim_polymer
-{
-    my ($atoms, $max_polymer_span) = @_;
-
-    my @trimmed_atoms;
-
-    for my $atom (@$atoms) {
-        if( abs($atom->{translation}[0]) <= $max_polymer_span &&
-            abs($atom->{translation}[1]) <= $max_polymer_span &&
-            abs($atom->{translation}[2]) <= $max_polymer_span ) {
-            push( @trimmed_atoms, $atom );
-        }
-    }
-
-    return \@trimmed_atoms;
-}
-
 
 #===============================================================#
 # Prints molecule to the CIF file.
