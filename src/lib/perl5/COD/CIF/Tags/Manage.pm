@@ -46,14 +46,16 @@ sub exclude_tag
     delete $cif->{precisions}{$tag};
     delete $cif->{types}{$tag};
     @{$cif->{tags}} =
-        grep $_ ne $tag, @{$cif->{tags}};
+        grep { $_ ne $tag } @{$cif->{tags}};
 
     if( defined $cif->{inloop}{$tag} ) {
         my $loop_nr = $cif->{inloop}{$tag};
         delete $cif->{inloop}{$tag};
         @{$cif->{loops}[$loop_nr]} =
-            grep $_ ne $tag, @{$cif->{loops}[$loop_nr]};
+            grep { $_ ne $tag } @{$cif->{loops}[$loop_nr]};
     }
+
+    return;
 }
 
 sub tag_is_empty
@@ -63,7 +65,7 @@ sub tag_is_empty
 
     if( exists $cif->{values}{$tag} ) {
         for my $val (@{$cif->{values}{$tag}}) {
-            if( defined $val && $val ne "?" && $val ne "." ) {
+            if( defined $val && $val ne '?' && $val ne '.' ) {
                 $is_empty = 0;
                 last;
             }
@@ -74,33 +76,37 @@ sub tag_is_empty
 
 sub exclude_empty_tags
 {
-    my $cif = $_[0];
+    my ($cif) = @_;
     my @empty_tags = ();
 
     for my $tag (@{$cif->{tags}}) {
         if( tag_is_empty( $cif, $tag )) {
-            push( @empty_tags, $tag );
+            push @empty_tags, $tag;
         }
     }
     for my $empty_tag (@empty_tags) {
         exclude_tag( $cif, $empty_tag );
     }
+
+    return;
 }
 
 sub exclude_empty_non_loop_tags
 {
-    my $cif = $_[0];
+    my ($cif) = @_;
     my @empty_tags = ();
 
     for my $tag (@{$cif->{tags}}) {
         if( tag_is_empty( $cif, $tag ) &&
             !exists $cif->{inloop}{$tag} ) {
-            push( @empty_tags, $tag );
+            push @empty_tags, $tag;
         }
     }
     for my $empty_tag (@empty_tags) {
         exclude_tag( $cif, $empty_tag );
     }
+
+    return;
 }
 
 sub tag_is_unknown
@@ -110,7 +116,7 @@ sub tag_is_unknown
 
     if( exists $cif->{values}{$tag} ) {
         for my $val (@{$cif->{values}{$tag}}) {
-            if( defined $val && $val ne "?" ) {
+            if( defined $val && $val ne '?' ) {
                 $is_empty = 0;
                 last;
             }
@@ -121,33 +127,37 @@ sub tag_is_unknown
 
 sub exclude_unknown_tags
 {
-    my $cif = $_[0];
+    my ($cif) = @_;
     my @empty_tags = ();
 
     for my $tag (@{$cif->{tags}}) {
         if( tag_is_unknown( $cif, $tag )) {
-            push( @empty_tags, $tag );
+            push @empty_tags, $tag;
         }
     }
     for my $empty_tag (@empty_tags) {
         exclude_tag( $cif, $empty_tag );
     }
+
+    return;
 }
 
 sub exclude_unknown_non_loop_tags
 {
-    my $cif = $_[0];
+    my ($cif) = @_;
     my @empty_tags = ();
 
     for my $tag (@{$cif->{tags}}) {
         if( tag_is_unknown( $cif, $tag ) &&
             !exists $cif->{inloop}{$tag} ) {
-            push( @empty_tags, $tag );
+            push @empty_tags, $tag;
         }
     }
     for my $empty_tag (@empty_tags) {
         exclude_tag( $cif, $empty_tag );
     }
+
+    return;
 }
 
 sub exclude_misspelled_tags
@@ -157,7 +167,7 @@ sub exclude_misspelled_tags
     my @misspelled_tags;
     for my $tag (@{$cif->{tags}}) {
         if( !exists $dictionary_tags->{$tag} ) {
-            push( @misspelled_tags, $tag );
+            push @misspelled_tags, $tag;
         }
     }
     my %misspelled_tags = map { $_ => 1 } @misspelled_tags;
@@ -180,6 +190,8 @@ sub exclude_misspelled_tags
             }
         }
     }
+
+    return;
 }
 
 sub order_tags
@@ -190,12 +202,12 @@ sub order_tags
 
     # Correct non-loop tags + _publ_author_name
 
-    for my $tag (@$tags_to_print) {
+    for my $tag (@{$tags_to_print}) {
         if(  exists $cif->{values}{$tag} &&
              exists $dictionary_tags->{$tag} &&
            (!exists $cif->{inloop}{$tag} ||
             $tag eq '_publ_author_name') ) {
-            push( @new_tag_list, $tag );
+            push @new_tag_list, $tag;
         }
     }
 
@@ -204,17 +216,17 @@ sub order_tags
     for my $tag (@{$cif->{tags}}) {
         if( !exists $dictionary_tags->{$tag} &&
             !exists $cif->{inloop}{$tag} ) {
-            push( @new_tag_list, $tag );
+            push @new_tag_list, $tag;
         }
     }
 
     # Correct loop tags
 
-    for my $tag (@$loop_tags_to_print) {
+    for my $tag (@{$loop_tags_to_print}) {
         if( exists $cif->{values}{$tag} &&
             exists $cif->{inloop}{$tag} &&
             $tag ne '_publ_author_name' ) {
-            push( @new_tag_list, $tag );
+            push @new_tag_list, $tag;
         }
     }
 
@@ -223,11 +235,13 @@ sub order_tags
     for my $tag (@{$cif->{tags}}) {
         if( !exists $dictionary_tags->{$tag} &&
              exists $cif->{inloop}{$tag} ) {
-            push( @new_tag_list, $tag );
+            push @new_tag_list, $tag;
         }
     }
 
     $cif->{tags} = \@new_tag_list;
+
+    return;
 }
 
 sub clean_cif
@@ -240,7 +254,7 @@ sub clean_cif
     my ( $exclude_misspelled_tags, $preserve_loop_order ) = ( 0 ) x 2;
     my $keep_tag_order = 0;
 
-    if( $flags && ref $flags eq "HASH" ) {
+    if( $flags && ref $flags eq 'HASH' ) {
         $exclude_misspelled_tags = $flags->{exclude_misspelled_tags};
         $preserve_loop_order = $flags->{preserve_loop_order};
         %dictionary_tags = %{$flags->{dictionary_tags}}
@@ -275,6 +289,8 @@ sub clean_cif
                 $preserve_loop_order
                     ? $cif->{tags} : \@dictionary_tags,
                 \%dictionary_tags );
+
+    return;
 }
 
 sub rename_tag
@@ -312,6 +328,8 @@ sub rename_tag
             $cif->{precisions}{$old_tag};
         delete $cif->{precisions}{$old_tag};
     }
+
+    return;
 }
 
 #===============================================================#
@@ -330,7 +348,7 @@ sub rename_tags($$$)
     my $values = $dataset->{values};
     my %renamed_tags = ();
 
-    for my $tag (@$tags2rename) {
+    for my $tag (@{$tags2rename}) {
         if( exists $values->{$tag} &&
             !defined $dataset->{inloop}{$tag} ) {
             my $new_tag = $prefix . $tag;
@@ -346,26 +364,30 @@ sub set_tag
 {
     my ( $cif, $tag, $value ) = @_;
     if( !exists $cif->{values}{$tag} ) {
-        push( @{$cif->{tags}}, $tag );
+        push @{$cif->{tags}}, $tag;
     }
     $cif->{values}{$tag}[0] = $value;
+
+    return;
 }
 
 sub set_loop_tag
 {
     my( $cif, $tag, $in_loop, $values ) = @_;
     if( !exists $cif->{values}{$tag} ) {
-        push( @{$cif->{tags}}, $tag );
+        push @{$cif->{tags}}, $tag;
         if( !defined $in_loop || $tag eq $in_loop ) {
-            push( @{$cif->{loops}}, [ $tag ] );
+            push @{$cif->{loops}}, [ $tag ];
             $cif->{inloop}{$tag} = @{$cif->{loops}} - 1;
         } else {
             my $nloop = $cif->{inloop}{$in_loop};
-            push( @{$cif->{loops}[$nloop]}, $tag );
+            push @{$cif->{loops}[$nloop]}, $tag;
             $cif->{inloop}{$tag} = $nloop;
         }
     }
     $cif->{values}{$tag} = $values;
+
+    return;
 }
 
 ##
