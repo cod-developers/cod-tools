@@ -22,7 +22,9 @@ use warnings;
 use Digest::MD5 qw( md5_hex );
 use Digest::SHA qw( sha1_hex );
 use COD::AuthorNames qw( parse_author_name );
-use COD::CIF::Data qw( get_cell get_sg_data get_content_encodings );
+use COD::CIF::Data qw( get_cell
+                       get_sg_data
+                       get_content_encodings );
 use COD::CIF::Data::EstimateZ qw( cif_estimate_z );
 use COD::CIF::Parser qw( parse_cif );
 use COD::CIF::Tags::CanonicalNames qw( canonicalize_all_names );
@@ -720,6 +722,14 @@ sub check_chemical_formula_sum
     return \@messages;
 }
 
+##
+# Checks for any inconsistencies in the provided space group information.
+#
+# @param $dataset
+#       Reference to a data block as returned by the COD::CIF::Parser.
+# @return
+#       Reference to an array of audit messages.
+##
 sub check_space_group_info
 {
     my ($dataset) = @_;
@@ -1298,6 +1308,15 @@ sub regularize_cell($$$$)
     return @regcell;
 }
 
+##
+# Checks if the cell constants satisfy constraints imposed by the declared
+# space group.
+#
+# @param $dataset
+#       Reference to a data block as returned by the COD::CIF::Parser.
+# @return
+#       Reference to an array of audit messages.
+##
 sub check_space_group_constraints
 {
     my ( $dataset ) = @_;
@@ -1360,6 +1379,14 @@ sub check_space_group_constraints
     return \@messages;
 }
 
+##
+# Checks if the provided symmetry operations are syntactically correct.
+#
+# @param $dataset
+#       Reference to a data block as returned by the COD::CIF::Parser.
+# @return
+#       Reference to an array of audit messages.
+##
 sub check_symmetry_operations
 {
     my ($dataset) = @_;
