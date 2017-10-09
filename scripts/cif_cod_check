@@ -779,9 +779,12 @@ sub check_space_group_info
     if( defined $symops ) {
         push @messages, @{check_symop_uniqueness($symops)};
         if ( defined $resolved_sg_name ) {
-            push @messages,
-                 @{ check_symop_list( $symops, 'hermann_mauguin',
-                                      $resolved_sg_name ) };
+            my $sg_info = lookup_space_group( 'hermann_mauguin',
+                                               $resolved_sg_name );
+            if ( defined $sg_info ) {
+                push @messages,
+                     @{ check_symop_list( $symops, $sg_info ) };
+            }
         }
     }
 
@@ -828,54 +831,48 @@ sub check_symop_uniqueness
 # from the provided space group information.
 # @param $symops
 #       Reference to an array of symmetry operations.
-# @param $sg_info_type
-#       Type of space group identifier that should be used to look up
-#       the expeceted symmetry operation list. See the description of the
-#       'lookup_space_group' subroutine for the list of supported space
-#       group identifiers.
-# @param $sg_info_value
-#       The value of the space group identifier given in the $sg_info_type
-#       parameter.
+# @param $sg_info
+#       Reference to a hash containing the information of a single space
+#       group as returned by the get_sg_descriptions() subroutine.
 # @return $messages
 #       Reference to an array of audit messages.
 ##
 sub check_symop_list
 {
-    my ($symops, $sg_info_type, $sg_info_value) = @_;
+    my ( $symops, $sg_info ) = @_;
 
     my @messages;
 
-    my $space_group_info = lookup_space_group( $sg_info_type, $sg_info_value );
-    if( defined $space_group_info ) {
-        my %declared_symops =
-            map { symop_string_canonical_form( $_ ) => $_ } @{$symops};
-        my %expected_symops =
-            map { symop_string_canonical_form( $_ ) => $_ }
-                @{$space_group_info->{'symops'}};
+    my $sg_name = $sg_info->{'hermann_mauguin'};
 
-        my @missing_symops = grep { !exists $declared_symops{$_} }
-                                sort keys %expected_symops;
-        if( @missing_symops > 0 ) {
-            my $single = (@missing_symops == 1);
-            push @messages, 'NOTE, symmetry operation'
+    my %declared_symops =
+            map { symop_string_canonical_form( $_ ) => $_ } @{$symops};
+    my %expected_symops =
+            map { symop_string_canonical_form( $_ ) => $_ }
+                @{$sg_info->{'symops'}};
+
+    my @missing_symops = grep { !exists $declared_symops{$_} }
+                            sort keys %expected_symops;
+    if( @missing_symops > 0 ) {
+        my $single = (@missing_symops == 1);
+        push @messages, 'NOTE, symmetry operation'
                 . (!$single ? 's ' : ' ')
                 . join( ', ', map { "'$_'" } @missing_symops )
                 . ' ' . ($single ? 'is' : 'are')
                 . ' missing, although required by '
-                . "the space group '$sg_info_value'";
-        }
+                . "the space group '$sg_name'";
+    }
 
-        my @excess_symops = grep { !exists $expected_symops{$_} }
-                                sort keys %declared_symops;
-        if( @excess_symops > 0 ) {
-            my $single = (@excess_symops == 1);
-            push @messages, 'NOTE, symmetry operation'
+    my @excess_symops = grep { !exists $expected_symops{$_} }
+                            sort keys %declared_symops;
+    if( @excess_symops > 0 ) {
+        my $single = (@excess_symops == 1);
+        push @messages, 'NOTE, symmetry operation'
                  . (!$single ? 's ' : ' ')
                  . join( ', ', map { "'$_'" } @excess_symops )
                  . ' ' . ($single ? 'is' : 'are')
                  . ' found, although not required by '
-                 . "the space group '$sg_info_value'";
-        }
+                 . "the space group '$sg_name'";
     }
 
     return \@messages;
@@ -1185,7 +1182,7 @@ sub lookup_space_group
     return;
 }
 
-sub get_space_group_descriptions
+sub get_sg_descriptions
 {
     my ($dataset) = @_;
     my @messages;
@@ -1327,7 +1324,7 @@ sub check_space_group_constraints
     }
 
     my ( $space_group_descr, $sg_messages ) =
-        get_space_group_descriptions( $dataset );
+        get_sg_descriptions( $dataset );
     push @messages, @{$sg_messages};
 
     if( !defined $space_group_descr ) {
