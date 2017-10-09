@@ -21,6 +21,9 @@ our @EXPORT_OK = qw(
     exclude_tag
     tag_is_empty
     tag_is_unknown
+    has_unknown_value
+    has_inapplicable_value
+    has_special_value
     exclude_empty_tags
     exclude_empty_non_loop_tags
     exclude_misspelled_tags
@@ -363,6 +366,73 @@ sub set_loop_tag
         }
     }
     $cif->{values}{$tag} = $values;
+}
+
+##
+# Evaluates if the data item is marked as containing an unknown value
+# according to CIF notation.
+#
+# @param $frame
+#       Data frame that contains the data item as returned by the CIF::COD::Parser.
+# @param $data_name
+#       Name of the data item.
+# @param $index
+#       The index of the data item value to be evaluated as unknown.
+# @return
+#       Boolean value denoting if the data item contains an unknown value.
+##
+sub has_unknown_value
+{
+    my ( $frame, $data_name, $index ) = @_;
+
+    my $value = $frame->{'values'}{$data_name}[$index];
+    my $type = $frame->{'types'}{$data_name}[$index];
+
+    return $value eq '?' && $type eq 'UQSTRING';
+}
+
+##
+# Evaluates if the data item is marked as containing an inapplicable value
+# according to CIF notation.
+#
+# @param $frame
+#       Data frame that contains the data item as returned by the CIF::COD::Parser.
+# @param $data_name
+#       Name of the data item.
+# @param $index
+#       The index of the data item value to be evaluated as inapplicable.
+# @return
+#       Boolean value denoting if the data item contains an inapplicable value.
+##
+sub has_inapplicable_value
+{
+    my ( $frame, $data_name, $index ) = @_;
+
+    my $value = $frame->{'values'}{$data_name}[$index];
+    my $type = $frame->{'types'}{$data_name}[$index];
+
+    return $value eq '.' && $type eq 'UQSTRING';
+}
+
+##
+# Evaluates if the data item is marked as containing a special (unknown or
+# inapplicable) value according to CIF notation.
+#
+# @param $frame
+#       Data frame that contains the data item as returned by the CIF::COD::Parser.
+# @param $data_name
+#       Name of the data item.
+# @param $index
+#       The index of the data item value to be evaluated as special.
+# @return
+#       Boolean value denoting if the data item contains a special value.
+##
+sub has_special_value
+{
+    my ( $frame, $data_name, $index ) = @_;
+
+    return has_unknown_value( $frame, $data_name, $index ) ||
+           has_inapplicable_value( $frame, $data_name, $index );
 }
 
 1;
