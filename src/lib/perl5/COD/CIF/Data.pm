@@ -234,30 +234,31 @@ sub get_symmetry_operators($)
     my $sg = get_sg_data($dataset);
 
     my $values = $dataset->{values};
-    my $sym_data;
+    my $symops;
 
     if( exists $sg->{'symops'} ) {
-        $sym_data = $sg->{'symops'}
+        $symops = $sg->{'symops'}
     }
 
+    my $sym_data = $symops;
     if( !defined $sym_data && defined $sg->{'hall'} ) {
-        $sym_data = lookup_symops('hall', $sg->{'hall'});
-        if( !$sym_data ) {
+        $sym_data = lookup_space_group('hall', $sg->{'hall'});
+        if( !defined $sym_data ) {
             warn "WARNING, the '$sg->{'tags'}{'hall'}' data item value " .
                  "'$sg->{'hall'}' was not recognised as a space group name\n";
         }
     }
 
     if( !defined $sym_data && defined $sg->{'hermann_mauguin'} ) {
-        $sym_data = lookup_symops('hermann_mauguin', $sg->{'hermann_mauguin'});
-        if( !$sym_data ) {
+        $sym_data = lookup_space_group('hermann_mauguin', $sg->{'hermann_mauguin'});
+        if( !defined $sym_data ) {
             warn "WARNING, the '$sg->{'tags'}{'hermann_mauguin'}' data item " .
                  "value '$sg->{'hermann_mauguin'}' was not recognised as a " .
                  "space group name\n";
         }
     }
 
-    if( not defined $sym_data ) {
+    if( !defined $sym_data ) {
         for my $tag (qw( _space_group_ssg_name
                          _space_group_ssg_name_IT
                          _space_group_ssg_name_WJJ
@@ -270,9 +271,9 @@ sub get_symmetry_operators($)
                 $h_m =~ s/\(.*//g;
                 $h_m =~ s/[\s_]+//g;
 
-                $sym_data = lookup_symops("hermann_mauguin", $h_m);
+                $sym_data = lookup_space_group("hermann_mauguin", $h_m);
 
-                if( !$sym_data ) {
+                if( !defined $sym_data ) {
                     warn "WARNING, the '$tag' data item value '$ssg_name' " .
                          "yielded H-M symbol '$h_m' which is not in our tables\n";
                 } else {
@@ -282,14 +283,18 @@ sub get_symmetry_operators($)
         }
     }
 
-    if( not defined $sym_data ) {
+    if ( !defined $symops && defined $sym_data ) {
+        $symops = $sym_data->{'symops'}
+    }
+
+    if( !defined $sym_data ) {
         die 'ERROR, neither symmetry operator data item values, '
           . 'nor Hall space group name, '
           . 'nor Hermann-Mauguin space group name '
           . "could be processed to acquire symmetry operators\n";
     }
 
-    return $sym_data;
+    return $symops;
 }
 
 sub get_content_encodings($)
@@ -363,7 +368,7 @@ sub get_content_encodings($)
 # },
 # );
 
-sub lookup_symops
+sub lookup_space_group
 {
     my ($option, $param) = @_;
 
@@ -384,10 +389,10 @@ sub lookup_symops
 
         if( $value eq $param || $value eq $sg_full )
         {
-            return $hash->{symops};
+            return $hash;
         }
     }
-    return undef;
+    return;
 }
 
 1;
