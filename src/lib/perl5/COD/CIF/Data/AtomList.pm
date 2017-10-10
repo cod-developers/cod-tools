@@ -467,6 +467,25 @@ sub datablock_from_atom_array
     set_loop_tag( $datablock, '_atom_site_fract_z', '_atom_site_label',
                   [ map { $_->{coordinates_fract}[2] } @$atoms ] );
 
+    set_loop_tag( $datablock,
+                  '_atom_site_disorder_assembly',
+                  '_atom_site_label',
+                  [ map { $_->{assembly} } @$atoms ] ) if $has_disorder;
+    set_loop_tag( $datablock,
+                  '_atom_site_disorder_group',
+                  '_atom_site_label',
+                  [ map { $_->{group} } @$atoms ] ) if $has_disorder;
+    set_loop_tag( $datablock,
+                  '_atom_site_attached_hydrogens',
+                  '_atom_site_label',
+                  [ map { $_->{attached_hydrogens} } @$atoms ] )
+        if $has_key{attached_hydrogens};
+    set_loop_tag( $datablock,
+                  '_atom_site_calc_flag',
+                  '_atom_site_label',
+                  [ map { $_->{calc_flag} } @$atoms ] )
+        if $has_key{calc_flag};
+
     # Set _cod_molecule_* data items
     set_loop_tag( $datablock,
                   '_cod_molecule_atom_label',
