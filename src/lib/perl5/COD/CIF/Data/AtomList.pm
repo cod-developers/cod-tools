@@ -14,14 +14,15 @@ package COD::CIF::Data::AtomList;
 use strict;
 use warnings;
 use Clone qw( clone );
+use COD::Algebra::Vector qw( modulo_1 );
+use COD::AtomProperties;
 use COD::CIF::Data qw( get_cell );
+use COD::CIF::Tags::Manage qw( new_datablock set_loop_tag );
 use COD::Spacegroups::Symop::Algebra qw( symop_invert symop_mul
                                          symop_vector_mul );
 use COD::Spacegroups::Symop::Parse qw( string_from_symop
                                        symop_from_string );
-use COD::Algebra::Vector qw( modulo_1 );
 use COD::Fractional qw( symop_ortho_from_fract );
-use COD::AtomProperties;
 
 require Exporter;
 our @ISA = qw( Exporter );
@@ -32,6 +33,7 @@ our @EXPORT_OK = qw(
     atom_is_disordered
     atoms_are_alternative
     copy_atom
+    datablock_from_atom_array
     dump_atoms_as_cif
     uniquify_atom_names
     extract_atom
@@ -431,6 +433,38 @@ sub atom_array_from_cif($$)
     } else {
         return \@atom_list;
     }
+}
+
+sub datablock_from_atom_array
+{
+    my( $atoms ) = @_;
+
+    my $has_disorder = grep { $_->{group} ne '.' ||
+                              $_->{assembly} ne '.' } @$atoms;
+    my $has_attached_hydrogens = grep { $_->{attached_hydrogens} } @$atoms;
+
+    my %has_key;
+    for my $key ( qw( calc_flag
+                      refinement_flags
+                      refinement_flags_adp
+                      refinement_flags_occupancy
+                      refinement_flags_position ) ) {
+        $has_key{$key} =
+            grep { exists $_->{$key} && $_->{$key} ne '.' } @$atoms;
+    }
+
+    my $datablock = new_datablock( 'atom_array' );
+
+    set_loop_tag( $datablock, '_atom_site_label', '_atom_site_label',
+                  [ map { $_->{name} } @$atoms ] );
+    set_loop_tag( $datablock, '_atom_site_fract_x', '_atom_site_label',
+                  [ map { $_->{coordinates_fract}[0] } @$atoms ] );
+    set_loop_tag( $datablock, '_atom_site_fract_y', '_atom_site_label',
+                  [ map { $_->{coordinates_fract}[1] } @$atoms ] );
+    set_loop_tag( $datablock, '_atom_site_fract_z', '_atom_site_label',
+                  [ map { $_->{coordinates_fract}[2] } @$atoms ] );
+
+    return $datablock;
 }
 
 # ============================================================================ #
