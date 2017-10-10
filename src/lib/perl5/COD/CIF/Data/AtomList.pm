@@ -21,7 +21,8 @@ use COD::CIF::Tags::Manage qw( new_datablock set_loop_tag );
 use COD::Spacegroups::Symop::Algebra qw( symop_invert symop_mul
                                          symop_vector_mul );
 use COD::Spacegroups::Symop::Parse qw( string_from_symop
-                                       symop_from_string );
+                                       symop_from_string
+                                       symop_string_canonical_form );
 use COD::Fractional qw( symop_ortho_from_fract );
 
 require Exporter;
@@ -435,6 +436,8 @@ sub atom_array_from_cif($$)
     }
 }
 
+#===============================================================#
+# Constructs a CIF data block from atom array data structure.
 sub datablock_from_atom_array
 {
     my( $atoms ) = @_;
@@ -463,6 +466,84 @@ sub datablock_from_atom_array
                   [ map { $_->{coordinates_fract}[1] } @$atoms ] );
     set_loop_tag( $datablock, '_atom_site_fract_z', '_atom_site_label',
                   [ map { $_->{coordinates_fract}[2] } @$atoms ] );
+
+    # Set _cod_molecule_* data items
+    set_loop_tag( $datablock,
+                  '_cod_molecule_atom_label',
+                  '_cod_molecule_atom_label',
+                  [ map { $_->{name} } @$atoms ] );
+    set_loop_tag( $datablock,
+                  '_cod_molecule_atom_orig_label',
+                  '_cod_molecule_atom_label',
+                  [ map { $_->{site_label} } @$atoms ] );
+    set_loop_tag( $datablock,
+                  '_cod_molecule_atom_symmetry',
+                  '_cod_molecule_atom_label',
+                  [ map { $_->{symop_id} . '_' .
+                          $_->{translation_id} } @$atoms ] );
+    set_loop_tag( $datablock,
+                  '_cod_molecule_atom_symop_id',
+                  '_cod_molecule_atom_label',
+                  [ map { $_->{symop_id} } @$atoms ] );
+    set_loop_tag( $datablock,
+                  '_cod_molecule_atom_symmetry',
+                  '_cod_molecule_atom_label',
+                  [ map { symop_string_canonical_form(
+                            string_from_symop( $_->{symop} ) ) }
+                        @$atoms ] );
+    set_loop_tag( $datablock,
+                  '_cod_molecule_atom_transl_id',
+                  '_cod_molecule_atom_label',
+                  [ map { $_->{translation_id} } @$atoms ] );
+    set_loop_tag( $datablock,
+                  '_cod_molecule_atom_transl_x',
+                  '_cod_molecule_atom_label',
+                  [ map { $_->{translation}[0] } @$atoms ] );
+    set_loop_tag( $datablock,
+                  '_cod_molecule_atom_transl_y',
+                  '_cod_molecule_atom_label',
+                  [ map { $_->{translation}[1] } @$atoms ] );
+    set_loop_tag( $datablock,
+                  '_cod_molecule_atom_transl_z',
+                  '_cod_molecule_atom_label',
+                  [ map { $_->{translation}[2] } @$atoms ] );
+    set_loop_tag( $datablock,
+                  '_cod_molecule_atom_mult',
+                  '_cod_molecule_atom_label',
+                  [ map { $_->{multiplicity} } @$atoms ] );
+    set_loop_tag( $datablock,
+                  '_cod_molecule_atom_mult_ratio',
+                  '_cod_molecule_atom_label',
+                  [ map { $_->{multiplicity_ratio} } @$atoms ] );
+    set_loop_tag( $datablock,
+                  '_cod_molecule_atom_assembly',
+                  '_cod_molecule_atom_label',
+                  [ map { $_->{assembly} } @$atoms ] ) if $has_disorder;
+    set_loop_tag( $datablock,
+                  '_cod_molecule_atom_group',
+                  '_cod_molecule_atom_label',
+                  [ map { $_->{group} } @$atoms ] ) if $has_disorder;
+
+    # Site symops
+    if( grep { $_->{site_symops} && @{$_->{site_symops}} > 0 } @$atoms ) {
+        my @transform_labels;
+        my @transform_symops;
+        foreach my $atom ( @$atoms ) {
+            foreach my $symop ( @{$atom->{site_symops}} ) {
+                push @transform_labels, $atom->{name};
+                push @transform_symops, symop_string_canonical_form(
+                                            string_from_symop( $symop ) );
+            }
+        }
+        set_loop_tag( $datablock,
+                      '_cod_molecule_transform_label',
+                      '_cod_molecule_transform_label',
+                      \@transform_labels );
+        set_loop_tag( $datablock,
+                      '_cod_molecule_transform_symop',
+                      '_cod_molecule_transform_label',
+                      \@transform_symops );
+    }
 
     return $datablock;
 }
