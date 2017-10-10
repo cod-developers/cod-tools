@@ -18,12 +18,15 @@ eval 'exec perl -x $0 ${1+"$@"}'
 use strict;
 use warnings;
 use File::Basename qw( fileparse );
+use COD::AtomProperties;
 use COD::CIF::Parser qw( parse_cif );
 use COD::CIF::Data qw( get_symmetry_operators );
+use COD::CIF::Data::AtomList qw( atom_array_from_cif datablock_from_atom_array );
+use COD::CIF::Data::SymmetryGenerator qw( symop_generate_atoms );
 use COD::CIF::Tags::CanonicalNames qw( canonicalize_names );
 use COD::CIF::Tags::Manage qw( new_datablock set_tag set_loop_tag );
 use COD::CIF::Tags::Print qw( print_cif );
-use COD::Spacegroups::Symop::Parse qw( symop_from_string modulo_1 );
+use COD::Spacegroups::Symop::Parse qw( symop_from_string modulo_1 symop_string_canonical_form );
 use COD::Spacegroups::Lookup::COD;
 use COD::SOptions qw( getOptions );
 use COD::SUsage qw( usage options );
@@ -44,8 +47,11 @@ my $die_on_error_level = {
 };
 
 my $build_supercell = 0;
+my $merge_special_positions = 0;
 
 #* OPTIONS:
+#*   --merge-special-positions
+#*                     Merge atoms that are located in special positions.
 #*   --supercell
 #*                     Build the 3x3x3 supercell by shifting atoms of the
 #*                     unit cell in all 3D directions.
@@ -61,6 +67,8 @@ my $build_supercell = 0;
 #*                     Output version information and exit.
 #**
 @ARGV = getOptions(
+    '--merge-special-positions' => sub { $merge_special_positions = 1 },
+
     '--supercell'    => sub { $build_supercell = 1 },
     '--no-supercell' => sub { $build_supercell = 0 },
     '--unit-cell'    => sub { $build_supercell = 0 },
@@ -104,9 +112,52 @@ foreach my $filename (@ARGV) {
             my @sym_operators = map { symop_from_string($_) }
                                     @{$sym_data};
 
-            my $new_datablock = fillcell( $dataset,
-                                          \@sym_operators,
-                                          $build_supercell );
+            my $new_datablock = p1_datablock( $dataset );
+            if( $merge_special_positions ) {
+                # Create a list of symmetry operators:
+                my $symop_list = { symops => \@sym_operators,
+                                   symop_ids => {} };
+                for (my $i = 0; $i < @{$sym_data}; $i++) {
+                    $symop_list->{symop_ids}
+                                 {symop_string_canonical_form($sym_data->[$i])} = $i;
+                }
+                my $cif_atom_list_options = {
+                    allow_unknown_chemical_types => 1,
+                    modulo_1 => 1,
+                    uniquify_atom_names => 1,
+                    atom_properties => \%COD::AtomProperties::atoms,
+                    symop_list => $symop_list
+                };
+
+                # Build an atom array from the CIF data structure:
+                my $atoms = atom_array_from_cif( $dataset, $cif_atom_list_options );
+
+                my $unit_cell_atoms =
+                    symop_generate_atoms( \@sym_operators,
+                                          $atoms,
+                                          undef,
+                                          { append_atoms_mapping_to_self => 0 } );
+                $new_datablock = datablock_from_atom_array( $unit_cell_atoms );
+            } else {
+                my $tag_values = fillcell( $dataset,
+                                           \@sym_operators,
+                                           $build_supercell );
+                my $loop_tag = exists $tag_values->{_atom_site_label}
+                                        ? '_atom_site_label'
+                                        : '_atom_site_type_symbol';
+
+                # print atom loop tags
+                set_loop_tag( $new_datablock,
+                              $loop_tag,
+                              $loop_tag,
+                              $tag_values->{$loop_tag} );
+                foreach (@{$dataset->{tags}}) {
+                    next if $_ eq $loop_tag || !exists $tag_values->{$_};
+                    set_loop_tag( $new_datablock, $_,
+                                  $loop_tag, $tag_values->{$_} );
+                }
+            }
+
             print_cif( $new_datablock,
                        {
                             preserve_loop_order => 1,
@@ -192,10 +243,11 @@ sub fillcell
         }
     }
 
-    return result_datablock( $dataset, \%tag_values );
+    return \%tag_values;
 }
 
 #===============================================================#
+
 sub symop_apply
 {
     my($atom_xyz, $symop) = @_;
@@ -216,6 +268,7 @@ sub symop_apply
 }
 
 #===============================================================#
+
 sub shift_atoms
 {
     my($atom_xyz) = @_;
@@ -235,9 +288,10 @@ sub shift_atoms
 }
 
 #==============================================================#
-sub result_datablock
+
+sub p1_datablock
 {
-    my ( $dataset, $tag_values ) = @_;
+    my( $dataset ) = @_;
 
     my $new_datablock = new_datablock( $dataset->{name} . '_' .
                                        fileparse($0) );
@@ -274,20 +328,6 @@ sub result_datablock
                   '_space_group_symop_operation_xyz',
                   '_space_group_symop_id',
                   [ 'x, y, z' ] );
-
-    my $loop_tag = exists $tag_values->{_atom_site_label}
-                            ? '_atom_site_label'
-                            : '_atom_site_type_symbol';
-
-    # print atom loop tags
-    set_loop_tag( $new_datablock,
-                  $loop_tag,
-                  $loop_tag,
-                  $tag_values->{$loop_tag} );
-    foreach (@{$dataset->{tags}}) {
-        next if $_ eq $loop_tag || !exists $tag_values->{$_};
-        set_loop_tag( $new_datablock, $_, $loop_tag, $tag_values->{$_} );
-    }
 
     return $new_datablock;
 }
