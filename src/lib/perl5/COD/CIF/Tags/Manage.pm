@@ -366,14 +366,14 @@ sub rename_tags($$$)
     my %renamed_tags = ();
 
     for my $tag (@{$tags2rename}) {
-        if( exists $values->{$tag} &&
-            !defined $dataset->{inloop}{$tag} ) {
-            my $new_tag = $prefix . $tag;
-            my $value = $values->{$tag}[0];
-            set_tag( $dataset, $new_tag, $value );
-            $renamed_tags{$new_tag} = $tag;
-        }
+        next if !exists $values->{$tag};
+        next if exists $dataset->{inloop}{$tag};
+
+        my $new_tag = $prefix . $tag;
+        rename_tag( $dataset, $tag, $new_tag );
+        $renamed_tags{$new_tag} = $tag;
     }
+
     return wantarray ? %renamed_tags : \%renamed_tags;
 }
 
