@@ -447,7 +447,10 @@ sub datablock_from_atom_array
     my $has_attached_hydrogens = grep { $_->{attached_hydrogens} } @$atoms;
 
     my %has_key;
-    for my $key ( qw( calc_flag
+    for my $key ( qw( atom_site_occupancy
+                      atom_site_type_symbol
+                      atom_site_U_iso_or_equiv
+                      calc_flag
                       refinement_flags
                       refinement_flags_adp
                       refinement_flags_occupancy
@@ -460,12 +463,50 @@ sub datablock_from_atom_array
 
     set_loop_tag( $datablock, '_atom_site_label', '_atom_site_label',
                   [ map { $_->{name} } @$atoms ] );
+    set_loop_tag( $datablock,
+                  '_atom_site_type_symbol',
+                  '_atom_site_label',
+                  [ map { $_->{atom_site_type_symbol} } @$atoms ] )
+        if $has_key{atom_site_type_symbol};
     set_loop_tag( $datablock, '_atom_site_fract_x', '_atom_site_label',
                   [ map { $_->{coordinates_fract}[0] } @$atoms ] );
     set_loop_tag( $datablock, '_atom_site_fract_y', '_atom_site_label',
                   [ map { $_->{coordinates_fract}[1] } @$atoms ] );
     set_loop_tag( $datablock, '_atom_site_fract_z', '_atom_site_label',
                   [ map { $_->{coordinates_fract}[2] } @$atoms ] );
+    set_loop_tag( $datablock,
+                  '_atom_site_U_iso_or_equiv',
+                  '_atom_site_label',
+                  [ map { $_->{atom_site_U_iso_or_equiv} } @$atoms ] )
+        if $has_key{atom_site_U_iso_or_equiv};
+    set_loop_tag( $datablock,
+                  '_atom_site_occupancy',
+                  '_atom_site_label',
+                  [ map { exists $_->{calc_flag} && $_->{calc_flag} eq 'dum'
+                            ? '.' : $_->{atom_site_occupancy} } @$atoms ] )
+        if $has_key{atom_site_occupancy};
+
+    # Refinement flags
+    set_loop_tag( $datablock,
+                  '_atom_site_refinement_flags',
+                  '_atom_site_label',
+                  [ map { $_->{refinement_flags} } @$atoms ] )
+        if $has_key{refinement_flags};
+    set_loop_tag( $datablock,
+                  '_atom_site_refinement_flags_posn',
+                  '_atom_site_label',
+                  [ map { $_->{refinement_flags_position} } @$atoms ] )
+        if $has_key{refinement_flags_position};
+    set_loop_tag( $datablock,
+                  '_atom_site_refinement_flags_adp',
+                  '_atom_site_label',
+                  [ map { $_->{refinement_flags_adp} } @$atoms ] )
+        if $has_key{refinement_flags_adp};
+    set_loop_tag( $datablock,
+                  '_atom_site_refinement_flags_occupancy',
+                  '_atom_site_label',
+                  [ map { $_->{refinement_flags_occupancy} } @$atoms ] )
+        if $has_key{refinement_flags_occupancy};
 
     set_loop_tag( $datablock,
                   '_atom_site_disorder_assembly',
@@ -479,7 +520,7 @@ sub datablock_from_atom_array
                   '_atom_site_attached_hydrogens',
                   '_atom_site_label',
                   [ map { $_->{attached_hydrogens} } @$atoms ] )
-        if $has_key{attached_hydrogens};
+        if $has_attached_hydrogens;
     set_loop_tag( $datablock,
                   '_atom_site_calc_flag',
                   '_atom_site_label',
@@ -505,7 +546,7 @@ sub datablock_from_atom_array
                   '_cod_molecule_atom_label',
                   [ map { $_->{symop_id} } @$atoms ] );
     set_loop_tag( $datablock,
-                  '_cod_molecule_atom_symmetry',
+                  '_cod_molecule_atom_symop_xyz',
                   '_cod_molecule_atom_label',
                   [ map { symop_string_canonical_form(
                             string_from_symop( $_->{symop} ) ) }
