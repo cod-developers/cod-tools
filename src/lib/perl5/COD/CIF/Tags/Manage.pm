@@ -29,11 +29,12 @@ our @EXPORT_OK = qw(
     exclude_misspelled_tags
     exclude_unknown_tags
     exclude_unknown_non_loop_tags
+    new_datablock
     order_tags
-    set_tag
-    set_loop_tag
     rename_tag
     rename_tags
+    set_tag
+    set_loop_tag
 );
 
 sub rename_tags($$$);
@@ -192,6 +193,22 @@ sub exclude_misspelled_tags
     }
 
     return;
+}
+
+sub new_datablock
+{
+    my( $dataname ) = @_;
+
+    return {
+        name   => $dataname,
+        tags   => [],
+        values => {},
+        types  => {},
+        precisions => {},
+        loops  => [],
+        inloop => {},
+        cifversion => { major => 1, minor => 1 }
+    };
 }
 
 sub order_tags
