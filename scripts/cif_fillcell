@@ -21,6 +21,8 @@ use File::Basename qw( fileparse );
 use COD::CIF::Parser qw( parse_cif );
 use COD::CIF::Data qw( get_symmetry_operators );
 use COD::CIF::Tags::CanonicalNames qw( canonicalize_names );
+use COD::CIF::Tags::Manage qw( new_datablock set_tag set_loop_tag );
+use COD::CIF::Tags::Print qw( print_cif );
 use COD::Spacegroups::Symop::Parse qw( symop_from_string modulo_1 );
 use COD::Spacegroups::Lookup::COD;
 use COD::SOptions qw( getOptions );
@@ -120,7 +122,7 @@ foreach my $filename (@ARGV) {
 
             my @sym_operators = map{symop_from_string($_)} @{$sym_data};
 
-            my @atom_loop_values;
+            my %tag_values;
             for(my $i = 0; $i < @sym_operators; $i++)
             {
                 my $symop = $sym_operators[$i];
@@ -145,7 +147,7 @@ foreach my $filename (@ARGV) {
 
                     for(my $m = 0; $m < @{$new_atom_xyz}; $m++)
                     {
-                    my @tag_values;
+
                     foreach my $tag ( @{$atom_loop_tags} )
                     {
                         my $old_atom_data = $values->{$tag};
@@ -156,31 +158,36 @@ foreach my $filename (@ARGV) {
 
                         if($tag eq '_atom_site_label')
                         {
-                            push @tag_values, ${$old_atom_data}[$j].'_'.$i.'_'.$m;
+                            push @{$tag_values{$tag}}, ${$old_atom_data}[$j].'_'.$i.'_'.$m;
                         }
                         elsif($tag eq '_atom_site_fract_x')
                         {
-                            push @tag_values, ${$new_atom_xyz}[$m][0];
+                            push @{$tag_values{$tag}}, ${$new_atom_xyz}[$m][0];
                         }
                         elsif($tag eq '_atom_site_fract_y')
                         {
-                            push @tag_values, ${$new_atom_xyz}[$m][1];
+                            push @{$tag_values{$tag}}, ${$new_atom_xyz}[$m][1];
                         }
                         elsif($tag eq '_atom_site_fract_z')
                         {
-                            push @tag_values, ${$new_atom_xyz}[$m][2];
+                            push @{$tag_values{$tag}}, ${$new_atom_xyz}[$m][2];
                         }
                         else
                         {
-                            push @tag_values, ${$old_atom_data}[$j];
+                            push @{$tag_values{$tag}}, ${$old_atom_data}[$j];
                         }
                     }
-                    push @atom_loop_values, \@tag_values;
                     }
                 }
             }
 
-            print_cif( $dataset, $atom_loop_tags, \@atom_loop_values );
+            my $new_datablock = result_datablock( $dataset, \%tag_values );
+            print_cif( $new_datablock,
+                       {
+                            preserve_loop_order => 1,
+                            keep_tag_order => 1
+                       }
+                     );
         };
         if ( $@ ) {
             process_errors( {
@@ -233,18 +240,18 @@ sub shift_atoms
 }
 
 #==============================================================#
-sub print_cif
+sub result_datablock
 {
-    my ( $dataset, $atom_loop_tags, $atom_loop_values ) = @_;
+    my ( $dataset, $tag_values ) = @_;
 
-    my $dataname = $dataset->{'name'};
-    my $values = $dataset->{'values'};
+    my $new_datablock = new_datablock( $dataset->{name} . '_' .
+                                       fileparse($0) );
 
-    print 'data_' .  $dataname . '_' . fileparse($0) . "\n";
+    set_tag( $new_datablock, '_space_group_IT_number',     1 );
+    set_tag( $new_datablock, '_space_group_name_Hall',    'P 1' );
+    set_tag( $new_datablock, '_space_group_name_H-M_alt', 'P 1' );
 
-    print '_space_group_IT_number      1' , "\n";
-    print '_space_group_name_Hall      \'P 1\'' . "\n";
-    print '_space_group_name_H-M_alt   \'P 1\'' . "\n";
+    my $values = $dataset->{values};
 
     # print unit cell lengths and angles
     foreach ( qw( _cell_angle_alpha
@@ -252,7 +259,7 @@ sub print_cif
                   _cell_angle_gamma ) )
     {
         if( defined $values->{$_}[0] ) {
-            print $_ . '   ' . $values->{$_}[0] . "\n";
+            set_tag( $new_datablock, $_, $values->{$_}[0] );
         }
     }
 
@@ -260,25 +267,29 @@ sub print_cif
                   _cell_length_b
                   _cell_length_c ) )
     {
-        print $_ . '   ' . $values->{$_}[0] . "\n";
+        set_tag( $new_datablock, $_, $values->{$_}[0] );
     }
 
     # print symmetry operator information
-    print 'loop_' . "\n";
-    print '_space_group_symop_id' . "\n";
-    print '_space_group_symop_operation_xyz' . "\n";
-    print '1 \'x, y, z\'' . "\n";
+    set_loop_tag( $new_datablock,
+                  '_space_group_symop_id',
+                  '_space_group_symop_id',
+                  [ 1 ] );
+    set_loop_tag( $new_datablock,
+                  '_space_group_symop_operation_xyz',
+                  '_space_group_symop_id',
+                  [ 'x, y, z' ] );
 
     # print atom loop tags
-    print "loop_\n";
-    foreach ( @{$atom_loop_tags} ) {
-        if( '_atom_site_adp_type' ne $_ ) { print $_ . "\n" }
+    set_loop_tag( $new_datablock,
+                  '_atom_site_label',
+                  '_atom_site_label',
+                  $tag_values->{_atom_site_label} );
+    foreach (@{$dataset->{tags}}) {
+        next if $_ eq '_atom_site_label' || !exists $tag_values->{$_};
+        set_loop_tag( $new_datablock, $_, '_atom_site_label',
+                      $tag_values->{$_} );
     }
 
-    foreach ( @{$atom_loop_values} ) {
-        print join ' ', @{$_};
-        print "\n";
-    }
-
-    return;
+    return $new_datablock;
 }
