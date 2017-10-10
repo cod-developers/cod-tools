@@ -21,12 +21,17 @@ use File::Basename qw( fileparse );
 use COD::AtomProperties;
 use COD::CIF::Parser qw( parse_cif );
 use COD::CIF::Data qw( get_symmetry_operators );
-use COD::CIF::Data::AtomList qw( atom_array_from_cif datablock_from_atom_array );
-use COD::CIF::Data::SymmetryGenerator qw( symop_generate_atoms );
+use COD::CIF::Data::AtomList qw( atom_array_from_cif
+                                 datablock_from_atom_array );
+use COD::CIF::Data::SymmetryGenerator qw( apply_shifts
+                                          symop_generate_atoms );
 use COD::CIF::Tags::CanonicalNames qw( canonicalize_names );
 use COD::CIF::Tags::Manage qw( new_datablock set_tag set_loop_tag );
+use COD::CIF::Tags::Merge qw( merge_datablocks );
 use COD::CIF::Tags::Print qw( print_cif );
-use COD::Spacegroups::Symop::Parse qw( symop_from_string modulo_1 symop_string_canonical_form );
+use COD::Spacegroups::Symop::Parse qw( modulo_1
+                                       symop_from_string
+                                       symop_string_canonical_form );
 use COD::Spacegroups::Lookup::COD;
 use COD::SOptions qw( getOptions );
 use COD::SUsage qw( usage options );
@@ -130,14 +135,23 @@ foreach my $filename (@ARGV) {
                 };
 
                 # Build an atom array from the CIF data structure:
-                my $atoms = atom_array_from_cif( $dataset, $cif_atom_list_options );
+                my $initial_atoms =
+                    atom_array_from_cif( $dataset, $cif_atom_list_options );
 
-                my $unit_cell_atoms =
+                my $atoms =
                     symop_generate_atoms( \@sym_operators,
-                                          $atoms,
+                                          $initial_atoms,
                                           undef,
                                           { append_atoms_mapping_to_self => 0 } );
-                $new_datablock = datablock_from_atom_array( $unit_cell_atoms );
+
+                if( $build_supercell ) {
+                    $atoms = apply_shifts( $atoms );
+                }
+
+                my $atom_list_datablock =
+                    datablock_from_atom_array( $atoms );
+
+                merge_datablocks( $atom_list_datablock, $new_datablock );
             } else {
                 my $tag_values = fillcell( $dataset,
                                            \@sym_operators,
