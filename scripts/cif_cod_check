@@ -741,11 +741,10 @@ sub check_space_group_info
 
     my $sg_info = get_sg_data($dataset);
 
-    my $declared_sg_name;
     my $resolved_sg_name;
     for my $sg_name_type ( qw( hermann_mauguin ) ) {
         if( defined $sg_info->{$sg_name_type} && !defined $resolved_sg_name ) {
-            $declared_sg_name = $sg_info->{$sg_name_type};
+            my $declared_sg_name = $sg_info->{$sg_name_type};
             my $cleaned_sg_name = $declared_sg_name;
             $cleaned_sg_name =~ s/\s//g;
             $cleaned_sg_name =~ s/[()~]//g;
@@ -755,8 +754,10 @@ sub check_space_group_info
             } elsif( exists $space_groups{$cleaned_sg_name} ) {
                 $resolved_sg_name = $space_groups{$cleaned_sg_name};
             } else {
-                push @messages, 'WARNING, unrecognised space group ' .
-                                "'$declared_sg_name'";
+                push @messages,
+                     "WARNING, the '$sg_info->{'tags'}{$sg_name_type}' data " .
+                     "item value '$declared_sg_name' was not recognised as a " .
+                     'space group name';
             }
         }
     }
