@@ -1,0 +1,173 @@
+#! /bin/sh
+#!perl -w # --*- Perl -*--
+eval 'exec perl -x $0 ${1+"$@"}'
+    if 0;
+#------------------------------------------------------------------------------
+#$Author: andrius $
+#$Date: 2017-09-28 16:46:20 +0300 (Thu, 28 Sep 2017) $
+#$Rev: 5554 $
+#$URL: svn://www.crystallography.net/cod-tools/trunk/scripts/cif_distances $
+#------------------------------------------------------------------------------
+#*
+#* Embeds provided relationships between databases into a CIF file using
+#* the COD notation described in the 'cod_cif.dic' dictionary.
+#*
+#* USAGE:
+#*    $0 --options input1.cif
+#**
+
+use strict;
+use warnings;
+use COD::CIF::Parser qw( parse_cif );
+use COD::CIF::Tags::Print qw( print_cif );
+use COD::CIF::Tags::Manage qw( set_loop_tag );
+use COD::CIF::Tags::CanonicalNames qw( canonicalize_all_names );
+use COD::SOptions qw( getOptions get_value );
+use COD::SUsage qw( usage options );
+use COD::ErrorHandler qw( process_warnings
+                          process_errors
+                          process_parser_messages );
+use COD::ToolsVersion;
+
+my $use_parser = 'c';
+my $die_on_error_level = {
+    'ERROR'   => 1,
+    'WARNING' => 0,
+    'NOTE'    => 0
+};
+
+my %related;
+
+#* OPTIONS:
+#*   --use-perl-parser
+#*                     Use Perl parser to parse CIF files.
+#*   --use-c-parser
+#*                     Use C parser to parse CIF files (default).
+#*   --help, --usage
+#*                     Output a short usage message (this message) and exit.
+#*   --version
+#*                     Output version information and exit.
+#**
+@ARGV = getOptions(
+    '--related-entry-database'    => sub { $related{'database'} = get_value() },
+    '--related-entry-code'        => sub { $related{'code'} = get_value() },
+    '--related-entry-description' => sub { $related{'description'} = get_value() },
+    '--related-entry-uri'         => sub { $related{'uri'} = get_value() },
+
+    '--use-perl-parser'          => sub { $use_parser = 'perl' },
+    '--use-c-parser'             => sub { $use_parser = 'c' },
+
+    '--options'                  => sub { options; exit },
+    '--help,--usage'             => sub { usage; exit },
+    '--version'                  => sub { print 'cod-tools version ',
+                                          $COD::ToolsVersion::Version, "\n";
+                                          exit }
+);
+
+@ARGV = ( '-' ) unless @ARGV;
+
+my %cif_tags = (
+    'database'    => '_cod_related_entry_database',
+    'code'        => '_cod_related_entry_code',
+    'description' => '_cod_related_entry_description',
+    'uri'         => '_cod_related_entry_uri'
+);
+
+binmode STDOUT, ':encoding(UTF-8)';
+binmode STDERR, ':encoding(UTF-8)';
+
+for my $filename (@ARGV) {
+    my $options = { 'parser' => $use_parser, 'no_print' => 1 };
+    my ( $data, $err_count, $messages ) = parse_cif( $filename, $options );
+    process_parser_messages( $messages, $die_on_error_level );
+
+    for my $dataset (@{$data}) {
+        my $dataname = 'data_' . $dataset->{'name'};
+
+        canonicalize_all_names( $data );
+
+        local $SIG{__WARN__} = sub { process_warnings( {
+                                       'message'  => @_,
+                                       'program'  => $0,
+                                       'filename' => $filename,
+                                       'add_pos'  => $dataname
+                                     }, $die_on_error_level ) };
+
+        eval {
+            my $values = $dataset->{'values'};
+
+            my @found_related_tags;
+            for my $tag ( qw( _cod_related_entry_id
+                              _cod_related_entry_database
+                              _cod_related_entry_code
+                              _cod_related_entry_description
+                              _cod_related_entry_uri
+                               ) ) {
+                if ( defined $dataset->{'values'}{$tag} ) {
+                    push @found_related_tags, $tag;
+                }
+            }
+
+            # Place existing data names in a loop if they are not yet looped
+       #     if ( @found_related_tags &&
+       #         !defined $dataset->{'inloop'}{$found_related_tags[0]} ) {
+       #         set_loop_tag( $dataset,
+       #                       $found_related_tags[0],
+       #                      $found_related_tags[0],
+       #                      $dataset->{'values'}{$found_related_tags[0]}
+       #                     );
+       #         for (my $i = 1; $i < @found_related_tags; $i++) {
+       #             set_loop_tag( $dataset,
+       #                           $found_related_tags[$i],
+       #                           $found_related_tags[$i],
+       #                           $dataset->{'values'}{$found_related_tags[$i]}
+       #                         )
+       #         }
+       #     }
+
+            my @entry_ids;
+            if ( defined $dataset->{'values'}{'_cod_related_entry_id'} ) {
+                push @entry_ids, @{$dataset->{'values'}{'_cod_related_entry_id'}},
+                     ( @{$dataset->{'values'}{'_cod_related_entry_id'}}[-1] + 1 );
+            } else {
+                push @entry_ids, 1;
+            }
+            set_loop_tag(
+                $dataset,
+                '_cod_related_entry_id',
+                '_cod_related_entry_id',
+                \@entry_ids
+            );
+
+            for ( keys %related ) {
+                my @appended_values;
+                if ( defined $dataset->{'values'}{$cif_tags{$_}} ) {
+                    push @appended_values, @{$dataset->{'values'}{$cif_tags{$_}}};
+                };
+                push @appended_values, $related{$_};
+
+                set_loop_tag(
+                    $dataset,
+                    $cif_tags{$_},
+                    '_cod_related_entry_id',
+                    \@appended_values
+                );
+            }
+
+            print_cif( $dataset,
+                       {
+                            'preserve_loop_order' => 1,
+                            'keep_tag_order' => 1
+                       }
+                     );
+        };
+        if ( $@ ) {
+            process_errors( {
+              'message'       => $@,
+              'program'       => $0,
+              'filename'      => $filename,
+              'add_pos'       => $dataname
+            }, $die_on_error_level->{'ERROR'} )
+        }
+    }
+}
