@@ -388,21 +388,61 @@ sub set_tag
     return;
 }
 
+##
+# Sets a looped data value in a data block structure.
+#
+# @param $cif
+#       The data block structure as returned by the CIF::COD::Parser.
+# @param $tag
+#       The name of the data item that should be placed in a loop.
+# @param $in_loop
+#       The name of the data item that identifies the loop the '$tag'
+#       data item should be placed in. If the value matches the '$tag'
+#       value and the data item currently does not reside in a loop
+#       structure a new loop is created. Undefined value is treated
+#       the same way.
+# @param
+#       Data values that should be placed in the loop.
+##
 sub set_loop_tag
 {
     my( $cif, $tag, $in_loop, $values ) = @_;
-    if( !exists $cif->{values}{$tag} ) {
-        push @{$cif->{tags}}, $tag;
-        if( !defined $in_loop || $tag eq $in_loop ) {
-            push @{$cif->{loops}}, [ $tag ];
-            $cif->{inloop}{$tag} = @{$cif->{loops}} - 1;
+
+    my $loop_no;
+    if ( !defined $in_loop || $in_loop eq $tag ) {
+        if ( defined $cif->{'inloop'}{$tag} ) {
+            $loop_no = $cif->{'inloop'}{$tag};
         } else {
-            my $nloop = $cif->{inloop}{$in_loop};
-            push @{$cif->{loops}[$nloop]}, $tag;
-            $cif->{inloop}{$tag} = $nloop;
+            $loop_no = defined $cif->{'loops'} ? scalar @{$cif->{'loops'}} : 0;
+            push @{$cif->{'loops'}}, [];
         }
+    } else {
+        if ( !defined $cif->{'inloop'}{$in_loop} ) {
+            warn "the '$tag' data item could not be added to a loop " .
+                 "structure containing the '$in_loop' data item -- the " .
+                 "'$in_loop' data item was not found in a loop structure\n";
+            return;
+        }
+        $loop_no = $cif->{'inloop'}{$in_loop};
     }
-    $cif->{values}{$tag} = $values;
+
+ # This check needs further discussion
+ #  foreach ( @{$cif->{'loops'}[$loop_no]} ) {
+ #       next if $_ eq $tag;
+ #       if ( scalar @{$values} ne scalar @{$cif->{'values'}{$_}} ) {
+ #           warn "the '$tag' data item could not be added to a loop " .
+ #               "structure containing the '$_' data item -- data items " .
+ #                "have a differing number of values\n";
+ #           return;
+ #       }
+ #   }
+
+    if ( !defined $cif->{'inloop'}{$tag} ) {
+        push @{$cif->{'tags'}}, $tag;
+        $cif->{'inloop'}{$tag} = $loop_no;
+        push @{$cif->{'loops'}[$loop_no]}, $tag;
+    }
+    $cif->{'values'}{$tag} = $values;
 
     return;
 }
