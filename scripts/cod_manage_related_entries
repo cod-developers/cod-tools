@@ -37,6 +37,7 @@ my $die_on_error_level = {
 };
 
 my %related;
+my @ordered_keys = qw( database code description uri );
 
 #* OPTIONS:
 #*   --use-perl-parser
@@ -139,7 +140,8 @@ for my $filename (@ARGV) {
                 \@entry_ids
             );
 
-            for ( keys %related ) {
+            for ( @ordered_keys ) {
+                next if !defined $related{$_};
                 my @appended_values;
                 if ( defined $dataset->{'values'}{$cif_tags{$_}} ) {
                     push @appended_values, @{$dataset->{'values'}{$cif_tags{$_}}};
