@@ -119,6 +119,13 @@ sub get_cell
 #                          'x, y, z',
 #                          '-x, -y, -z'
 #                       ];
+#           'tags' => {
+#               'hermann_mauguin' => '_space_group_name_H-M_alt'
+#               'hall'      => '_space_group_name_Hall'
+#               'number'    => '_space_group_IT_number'
+#               'symop_ids' => '_space_group_symop_id'
+#               'symops'    => '_space_group_symop_operation_xyz'
+#           }
 #       }
 #
 # The following fields can be potentially defined in the structure:
@@ -152,6 +159,9 @@ sub get_cell
 #                           Array of parsable strings giving the symmetry
 #                           operations of the superspace group in algebraic
 #                           form.
+#       'tags'
+#                           A hash that records the names of the data items
+#                           from which the space group data values were taken.
 ##
 sub get_sg_data
 {

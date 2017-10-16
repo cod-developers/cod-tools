@@ -46,32 +46,56 @@ my %default_options = (
     'cod_series_prefix'     => ''
 );
 
-# Returns a list of duplicates for each supplied data block
-# Parameters:
-#   --  hash of data blocks
-#   --  hash of database parameters, i.e.:
-#       { table => "data" }
-#   --  database handle
-#   --  options
-# Return:
-#   --  {
-#         formula => 'C',
-#         duplicates =>
-#         {
-#           "1100003" => 
-#            {
-#              "bibliography" => { ... },
-#              "cell" => { ... },
-#              "filename" => "1100003",
-#              "id"  => "1100003",
-#              "pressure" => { ... },
-#              "sigcell" => { ... },
-#              "temperature" => { ... },
-#            },
-#            ...
-#         }
-#       }
-
+##
+# Queries the database and returns a list of duplicates for each of the
+# provided crystal structure descriptions.
+#
+# @param $structures
+#       Reference to a hash of crystal structure descriptions as returned by
+#       the 'cif_fill_data()' subroutine.
+# @param $database
+#       Reference to a hash of database parameters as described in the
+#       'database_connect()' subroutine description. Currently, this
+#       subroutine only uses the 'table' hash entry.
+# @param $dbh
+#       Database handle that will be used to carry out the queries as
+#       returned by 'the database_connect()' subroutine.
+# @param $user_options
+#       Reference to a hash containing the options that are to the
+#       'query_COD_database()' and 'entries_are_the_same()' subroutines.
+# @return $duplicates
+#       Reference to an array containing the following hash structure
+#       for each of the crystal structure descriptions:
+#       {
+#         # The hash key of the crystal structure description in the
+#         # $structures hash
+#           'datablock'  => 'water'
+#         # The chemical formula that is shared by the provided crystal
+#         # structure description and its duplicate entries in the database
+#           'formula'    => 'H2 O',
+#         # A hash of crystal structure entries located in the database.
+#         # Each duplicate entry is identified by its database ID (i.e. COD ID)
+#         # and described by a data structure as returned by the
+#         # 'query_COD_database()' subroutine:
+#           'duplicates' =>
+#               {
+#                 '1100003' =>
+#                  {
+#                    'id'           => '1100003',
+#                    'filename'     => '1100003',
+#                    'bibliography' => { ... },
+#                    'cell'         => { ... },
+#                    'sigcell'      => { ... },
+#                    'pressure'     => { ... },
+#                    'temperature'  => { ... },
+#                    'history'      => { ... },
+#                    'source'       => { ... },
+#                    ...
+#                  },
+#                  ...
+#               }
+#           }
+##
 sub fetch_duplicates_from_database
 {
     my( $structures, $database, $dbh, $user_options ) = @_;
@@ -352,7 +376,7 @@ sub cif_fill_data
             $structure{suboptimal} = $values->{$key}[0];
         }
     }
-    
+
     if( exists $values->{_chemical_compound_source} ) {
         $structure{source}{_chemical_compound_source} =
             $values->{_chemical_compound_source}[0];
@@ -365,7 +389,7 @@ sub cif_fill_data
 
 sub get_cell($)
 {
-    my $datablok = $_[0];
+    my ($datablok) = @_;
 
     return (
         $datablok->{_cell_length_a},
@@ -518,7 +542,7 @@ sub bibliographies_are_the_same($$)
     if( exists $biblio1->{_journal_paper_doi} &&
         exists $biblio2->{_journal_paper_doi} ) {
         return
-            lc($biblio1->{_journal_paper_doi}) eq 
+            lc($biblio1->{_journal_paper_doi}) eq
             lc($biblio2->{_journal_paper_doi});
     }
 
@@ -579,7 +603,7 @@ sub entries_are_the_same
         }
         if( defined $entry1->{related_optimal} &&
             $entry1->{related_optimal} eq $entry2->{id} &&
-            defined $entry1->{suboptimal} && 
+            defined $entry1->{suboptimal} &&
             $entry1->{suboptimal} eq "yes" ) {
             $are_the_same = 0;
         }
@@ -588,10 +612,34 @@ sub entries_are_the_same
     return $are_the_same;
 }
 
+##
+# Connects to a database using the provided parameters. This subroutine
+# acts as a wrapper for the 'DBI->connect' subroutine.
+#
+# @param $database
+#       Reference to a hash containing the database connection parameters, i.e.:
+#       {
+#         # the platform of the database like 'mysql', 'SQLite', etc.
+#           'platform'  => 'mysql',
+#         # address of the host machine
+#           'host'      => 'www.crystallography.net',
+#         # name of the database
+#           'name'      => 'cod',
+#         # name of the database table
+#           'table'     => 'data',
+#         # user name that should be used in the authentication process
+#           'user'      => 'cod_reader',
+#         # password that should be used in the authentication process
+#           'password'  => ''
+#       }
+# @return
+#       A database connection object as returned by the 'DBI->connect()'
+#       subroutine.
+##
 sub database_connect
 {
     my ( $database ) = @_;
-    
+
     my $dbh = DBI->connect( "dbi:$database->{platform}:" .
                             "hostname=$database->{host};".
                             "dbname=$database->{name};".
@@ -640,7 +688,7 @@ sub query_COD_database
     if( $options{check_sample_history} ) {
         $column_list .= "," . join( ",", @history_columns );
     }
-    
+
     if( $options{check_compound_source} ) {
         $column_list .= ',compoundsource';
     }
@@ -711,7 +759,7 @@ sub query_COD_database
 
                         $structure->{history}{_exptl_crystal_pressure_history} =
                             $row->{pressurehist} if defined $row->{pressurehist};
-                            
+
                         $structure->{source}{_chemical_compound_source} =
                             $row->{compoundsource} if defined $row->{compoundsource};
 

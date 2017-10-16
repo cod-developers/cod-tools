@@ -172,6 +172,21 @@ foreach my $filename (@ARGV) {
                 }
             }
 
+            my @squeeze_tags = grep { /^_platon_squeeze_void_/ }
+                                    @{$dataset->{tags}};
+            my %squeeze_loops =
+                map { $dataset->{inloop}{$_} => 1 } @squeeze_tags;
+            # All tags should belong in the same loop
+            if( scalar keys %squeeze_loops == 1 ) {
+                my $first_tag = $squeeze_tags[0];
+                foreach (@squeeze_tags) {
+                    set_loop_tag( $new_datablock,
+                                  $_,
+                                  $first_tag,
+                                  $dataset->{values}{$_} );
+                }
+            }
+
             print_cif( $new_datablock,
                        {
                             preserve_loop_order => 1,
