@@ -187,14 +187,40 @@ sub print_loop
     my ($tag, $loop_nr, $tags, $fold_long_fields,
         $folding_width, $cif_version ) = @_;
 
+    my $values = $tags->{'values'};
     my @loop_tags = @{$tags->{loops}[$loop_nr]};
+
+    # Safeguard against a malformed looped structure
+    my $max_column_index = 0;
+    for ( my $i = 0; $i < @loop_tags; $i++ ) {
+        if ( @{$values->{$loop_tags[$max_column_index]}} <
+             @{$values->{$loop_tags[$i]}} ) {
+            $max_column_index = $i;
+        }
+    };
+    my $max_column_length = @{$values->{$loop_tags[$max_column_index]}};
+
+    # Check if all looped data item contain the same amount of values
+    for my $loop_tag (@loop_tags) {
+        my $diff = $max_column_length - @{$values->{$loop_tag}};
+        if ( $diff > 0 ) {
+            warn "WARNING, data item '$loop_tag' contains less values than " .
+                 "data item '$loop_tags[$max_column_index]' even though they " .
+                 "reside in the same loop -- $diff question mark symbols " .
+                 "('?') will be appended to the loop column '$loop_tag' " .
+                 'instead of the missing values' . "\n";
+            for (0..$diff) {
+                push @{$values->{$loop_tag}}, '?';
+            }
+        }
+    }
 
     print "loop_\n";
     for (@loop_tags) {
         print $_, "\n";
     }
 
-    my $val_array = $tags->{values}{$tag};
+    my $val_array = $values->{$loop_tags[$max_column_index]};
     my $last_val = $#{$val_array};
 
     my $line_prefix = "";
@@ -203,7 +229,7 @@ sub print_loop
         my $lines = "";
         my $line = $line_prefix;
         for my $loop_tag (@loop_tags) {
-            my $val = sprint_value( $tags->{values}{$loop_tag}[$i],
+            my $val = sprint_value( $values->{$loop_tag}[$i],
                                     $fold_long_fields,
                                     $folding_width, $cif_version );
             if( $val =~ /^\n;/ ) {
