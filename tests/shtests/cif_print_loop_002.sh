@@ -38,6 +38,6 @@ my $data_block =
    }
 };
 
-COD::CIF::Tags::Print::print_loop( '_a', 0, $data_block );
+COD::CIF::Tags::Print::print_loop( $data_block, 0 );
 
 END_SCRIPT
