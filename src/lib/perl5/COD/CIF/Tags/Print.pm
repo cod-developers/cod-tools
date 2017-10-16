@@ -109,9 +109,12 @@ sub print_cif
                 }
             }
             unless( exists $printed_loops{$tag_loop_nr} ) {
-                print_loop( $tag, $tag_loop_nr, $dataset,
-                            $fold_long_fields, $folding_width,
-                            $cif_version );
+                print_loop( $dataset, $tag_loop_nr,
+                            {
+                               'fold_long_fields' => $fold_long_fields,
+                               'folding_width'    => $folding_width,
+                               'cif_version'      => $cif_version,
+                            } );
                 $printed_loops{$tag_loop_nr} = 1;
             }
         }
@@ -182,13 +185,23 @@ sub print_tag
     }
 }
 
+##
+# Prints a CIF loop structure.
+#
+# @param $data_block
+#       Reference to a data block as returned by the COD::CIF::Parser.
+# @param $loop_nr
+#       Index of the loop to be printed.
+# @param $options
+#       Reference to a hash containing the options that will be passed
+#       to the sprint_value() subroutine.
+##
 sub print_loop
 {
-    my ($tag, $loop_nr, $tags, $fold_long_fields,
-        $folding_width, $cif_version ) = @_;
+    my ( $data_block, $loop_nr, $options ) = @_;
 
-    my $values = $tags->{'values'};
-    my @loop_tags = @{$tags->{loops}[$loop_nr]};
+    my $values = $data_block->{'values'};
+    my @loop_tags = @{$data_block->{loops}[$loop_nr]};
 
     # Safeguard against a malformed looped structure
     my $max_column_index = 0;
@@ -230,8 +243,9 @@ sub print_loop
         my $line = $line_prefix;
         for my $loop_tag (@loop_tags) {
             my $val = sprint_value( $values->{$loop_tag}[$i],
-                                    $fold_long_fields,
-                                    $folding_width, $cif_version );
+                                    $options->{'fold_long_fields'},
+                                    $options->{'folding_width'},
+                                    $options->{'cif_version'} );
             if( $val =~ /^\n;/ ) {
                 $lines .= $folding_separator . $line if $line ne $line_prefix;
                 if( $lines eq "" ) {
@@ -259,6 +273,8 @@ sub print_loop
         print $lines;
         print "\n";
     }
+
+    return;
 }
 
 sub print_value

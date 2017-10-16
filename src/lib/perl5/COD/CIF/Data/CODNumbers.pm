@@ -61,8 +61,8 @@ my %default_options = (
 #       Database handle that will be used to carry out the queries as
 #       returned by 'the database_connect()' subroutine.
 # @param $user_options
-#       Reference to a hash containing the options that are to the
-#       'query_COD_database()' and 'entries_are_the_same()' subroutines.
+#       Reference to a hash containing the options that will be passed to
+#       the 'query_COD_database()' and 'entries_are_the_same()' subroutines.
 # @return $duplicates
 #       Reference to an array containing the following hash structure
 #       for each of the crystal structure descriptions:
