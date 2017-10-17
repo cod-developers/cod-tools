@@ -18,6 +18,7 @@ eval 'exec perl -x $0 ${1+"$@"}'
 
 use strict;
 use warnings;
+use List::Util qw( max );
 use COD::CIF::Parser qw( parse_cif );
 use COD::CIF::Tags::Print qw( print_cif );
 use COD::CIF::Tags::Manage qw( set_loop_tag );
@@ -78,6 +79,7 @@ binmode STDOUT, ':encoding(UTF-8)';
 binmode STDERR, ':encoding(UTF-8)';
 
 for my $filename (@ARGV) {
+
     my $options = { 'parser' => $use_parser, 'no_print' => 1 };
     my ( $data, $err_count, $messages ) = parse_cif( $filename, $options );
     process_parser_messages( $messages, $die_on_error_level );
@@ -95,21 +97,21 @@ for my $filename (@ARGV) {
                                      }, $die_on_error_level ) };
 
         eval {
-            my $values = $dataset->{'values'};
-
-            my @found_related_tags;
-            for my $tag ( qw( _cod_related_entry_id
-                              _cod_related_entry_database
-                              _cod_related_entry_code
-                              _cod_related_entry_description
-                              _cod_related_entry_uri
-                               ) ) {
-                if ( defined $dataset->{'values'}{$tag} ) {
-                    push @found_related_tags, $tag;
-                }
-            }
-
-            # Place existing data names in a loop if they are not yet looped
+       #      my $values = $dataset->{'values'};
+       #
+       #     my @found_related_tags;
+       #     for my $tag ( qw( _cod_related_entry_id
+       #                       _cod_related_entry_database
+       #                       _cod_related_entry_code
+       #                       _cod_related_entry_description
+       #                       _cod_related_entry_uri
+       #                        ) ) {
+       #         if ( defined $dataset->{'values'}{$tag} ) {
+       #             push @found_related_tags, $tag;
+       #         }
+       #     }
+       #
+       #     # Place existing data names in a loop if they are not yet looped
        #     if ( @found_related_tags &&
        #         !defined $dataset->{'inloop'}{$found_related_tags[0]} ) {
        #         set_loop_tag( $dataset,
@@ -126,34 +128,65 @@ for my $filename (@ARGV) {
        #         }
        #     }
 
-            my @entry_ids;
-            if ( defined $dataset->{'values'}{'_cod_related_entry_id'} ) {
-                push @entry_ids, @{$dataset->{'values'}{'_cod_related_entry_id'}},
-                     ( @{$dataset->{'values'}{'_cod_related_entry_id'}}[-1] + 1 );
-            } else {
-                push @entry_ids, 1;
-            }
-            set_loop_tag(
-                $dataset,
-                '_cod_related_entry_id',
-                '_cod_related_entry_id',
-                \@entry_ids
-            );
-
+            my $related_defined = 0;
             for ( @ordered_keys ) {
-                next if !defined $related{$_};
-                my @appended_values;
-                if ( defined $dataset->{'values'}{$cif_tags{$_}} ) {
-                    push @appended_values, @{$dataset->{'values'}{$cif_tags{$_}}};
-                };
-                push @appended_values, $related{$_};
+                $related_defined = defined $related{$_} || $related_defined;
+            }
 
+            if ($related_defined) {
+                # Create a new loop or add new ids for the existing entries
+                my $initial_loop_size = 0;
+                my @entry_ids;
+                if ( defined $dataset->{'values'}{'_cod_related_entry_id'} ) {
+                    $initial_loop_size =
+                           @{$dataset->{'values'}{'_cod_related_entry_id'}};
+                    push @entry_ids,
+                           @{$dataset->{'values'}{'_cod_related_entry_id'}},
+                    ( max( @{$dataset->{'values'}{'_cod_related_entry_id'}} ) + 1 );
+                } else {
+                    push @entry_ids, 1;
+                }
                 set_loop_tag(
                     $dataset,
-                    $cif_tags{$_},
                     '_cod_related_entry_id',
-                    \@appended_values
+                    '_cod_related_entry_id',
+                    \@entry_ids
                 );
+
+                for ( @ordered_keys ) {
+                    my @new_data_values;
+                    if ( defined $related{$_} ) {
+                        if ( defined $dataset->{'values'}{$cif_tags{$_}} ) {
+                            push @new_data_values,
+                                 @{$dataset->{'values'}{$cif_tags{$_}}};
+                        } else {
+                            @new_data_values = ('?') x $initial_loop_size;
+                        }
+                        push @new_data_values, $related{$_};
+                        set_loop_tag(
+                            $dataset,
+                            $cif_tags{$_},
+                            '_cod_related_entry_id',
+                            \@new_data_values
+                        );
+                    } else {
+                        if ( defined $dataset->{'values'}{$cif_tags{$_}} ) {
+                            @new_data_values = (
+                                @{$dataset->{'values'}{$cif_tags{$_}}},
+                                ('?') x 1
+                            );
+                            set_loop_tag(
+                                $dataset,
+                                $cif_tags{$_},
+                                '_cod_related_entry_id',
+                                \@new_data_values
+                            );
+                        }
+                    }
+                }
+            } else {
+                warn 'WARNING, no related entry information was provided -- ' .
+                     'the data block will not be modified' . "\n";
             }
 
             print_cif( $dataset,
