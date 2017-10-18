@@ -6,7 +6,7 @@
 #------------------------------------------------------------------------
 #* 
 #  CIF tag management functions that work on the internal
-#  representation of a CIF file returned by the CIFParser module.
+#  representation of a CIF file returned by the COD::CIF::Parser module.
 #**
 
 package COD::CIF::Tags::Manage;
@@ -425,7 +425,6 @@ sub set_loop_tag
         }
         $loop_no = $cif->{'inloop'}{$in_loop};
     }
-
  # This check needs further discussion
  #  foreach ( @{$cif->{'loops'}[$loop_no]} ) {
  #       next if $_ eq $tag;
@@ -436,12 +435,28 @@ sub set_loop_tag
  #           return;
  #       }
  #   }
+    use List::MoreUtils qw( first_index );
 
-    if ( !defined $cif->{'inloop'}{$tag} ) {
-        push @{$cif->{'tags'}}, $tag;
-        $cif->{'inloop'}{$tag} = $loop_no;
-        push @{$cif->{'loops'}[$loop_no]}, $tag;
+    my $inloop_position = @{$cif->{'loops'}[$loop_no]};
+    my $tag_position    = @{$cif->{'tags'}};
+    # array length decreases upon the deletion of an already existing data name
+    if ( defined $cif->{'values'}{$tag} ) {
+        $tag_position--;
     }
+    if ( defined $cif->{'inloop'}{$tag} &&
+         $cif->{'inloop'}{$tag} eq $loop_no ) {
+        $inloop_position =
+            List::MoreUtils::first_index{ $_ eq $tag }
+                @{$cif->{'loops'}[$loop_no]};
+        $tag_position = List::MoreUtils::first_index{ $_ eq $tag }
+                @{$cif->{'tags'}};
+    }
+    exclude_tag($cif, $tag);
+
+    # Add the data item at a new position
+    splice @{$cif->{'tags'}}, $tag_position, 0, $tag;
+    splice @{$cif->{'loops'}[$loop_no]}, $inloop_position, 0, $tag;
+    $cif->{'inloop'}{$tag} = $loop_no;
     $cif->{'values'}{$tag} = $values;
 
     return;
