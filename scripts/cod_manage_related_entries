@@ -37,9 +37,16 @@ my $die_on_error_level = {
     'NOTE'    => 0
 };
 
-my %related;
+my $key_data_name = '_cod_related_entry_id';
+my %cif_tags = (
+    'database'    => '_cod_related_entry_database',
+    'code'        => '_cod_related_entry_code',
+    'description' => '_cod_related_entry_description',
+    'uri'         => '_cod_related_entry_uri'
+);
 my @ordered_keys = qw( database code description uri );
 
+my %related;
 #* OPTIONS:
 #*   --use-perl-parser
 #*                     Use Perl parser to parse CIF files.
@@ -68,13 +75,6 @@ my @ordered_keys = qw( database code description uri );
 
 @ARGV = ( '-' ) unless @ARGV;
 
-my %cif_tags = (
-    'database'    => '_cod_related_entry_database',
-    'code'        => '_cod_related_entry_code',
-    'description' => '_cod_related_entry_description',
-    'uri'         => '_cod_related_entry_uri'
-);
-
 binmode STDOUT, ':encoding(UTF-8)';
 binmode STDERR, ':encoding(UTF-8)';
 
@@ -97,96 +97,78 @@ for my $filename (@ARGV) {
                                      }, $die_on_error_level ) };
 
         eval {
-       #      my $values = $dataset->{'values'};
-       #
-       #     my @found_related_tags;
-       #     for my $tag ( qw( _cod_related_entry_id
-       #                       _cod_related_entry_database
-       #                       _cod_related_entry_code
-       #                       _cod_related_entry_description
-       #                       _cod_related_entry_uri
-       #                        ) ) {
-       #         if ( defined $dataset->{'values'}{$tag} ) {
-       #             push @found_related_tags, $tag;
-       #         }
-       #     }
-       #
-       #     # Place existing data names in a loop if they are not yet looped
-       #     if ( @found_related_tags &&
-       #         !defined $dataset->{'inloop'}{$found_related_tags[0]} ) {
-       #         set_loop_tag( $dataset,
-       #                       $found_related_tags[0],
-       #                      $found_related_tags[0],
-       #                      $dataset->{'values'}{$found_related_tags[0]}
-       #                     );
-       #         for (my $i = 1; $i < @found_related_tags; $i++) {
-       #             set_loop_tag( $dataset,
-       #                           $found_related_tags[$i],
-       #                           $found_related_tags[$i],
-       #                           $dataset->{'values'}{$found_related_tags[$i]}
-       #                         )
-       #         }
-       #     }
+            foreach( keys %related ) {
+                $related{$_} = [$related{$_}];
+            }
 
-            my $related_defined = 0;
+            my $related_defined;
+            my $related_size = 0;
             for ( @ordered_keys ) {
-                $related_defined = defined $related{$_} || $related_defined;
+                if ( defined $related{$_} ) {
+                  $related_size = @{$related{$_}};
+                  $related_defined = 1;
+                }
             }
 
             if ($related_defined) {
-                # Create a new loop or add new ids for the existing entries
-                my $initial_loop_size = 0;
-                my @entry_ids;
-                if ( defined $dataset->{'values'}{'_cod_related_entry_id'} ) {
-                    $initial_loop_size =
-                           @{$dataset->{'values'}{'_cod_related_entry_id'}};
-                    push @entry_ids,
-                           @{$dataset->{'values'}{'_cod_related_entry_id'}},
-                    ( max( @{$dataset->{'values'}{'_cod_related_entry_id'}} ) + 1 );
-                } else {
-                    push @entry_ids, 1;
-                }
+                my $initial_loop_size = get_initial_entry_count(
+                    $dataset,
+                    [ $key_data_name, sort values %cif_tags ]
+                );
+
+                my @entry_ids = @{
+                    generate_loop_key( $dataset, {
+                        'key_data_name'        => $key_data_name,
+                        'initial_entry_count'  => $initial_loop_size,
+                        'addition_entry_count' => $related_size,
+                    } )
+                };
+
+                # Use the loop of other item in the same category
+                # if the key data item is currently not looped
+                my $loop_tag = $key_data_name;
+             #   if ( !exists $dataset->{'inloop'}{$key_data_name} ) {
+             #       for ( values %cif_tags ) {
+             #           if ( exists $dataset->{'inloop'}{$_} ) {
+             #               $loop_tag = $_;
+             #               last;
+             #           }
+             #       }
+             #   }
+
                 set_loop_tag(
                     $dataset,
-                    '_cod_related_entry_id',
-                    '_cod_related_entry_id',
+                    $key_data_name,
+                    $loop_tag,
                     \@entry_ids
                 );
 
                 for ( @ordered_keys ) {
-                    my @new_data_values;
-                    if ( defined $related{$_} ) {
-                        if ( defined $dataset->{'values'}{$cif_tags{$_}} ) {
-                            push @new_data_values,
-                                 @{$dataset->{'values'}{$cif_tags{$_}}};
-                        } else {
-                            @new_data_values = ('?') x $initial_loop_size;
+                    next if ( !defined $related{$_} &&
+                              !defined $dataset->{'values'}{$cif_tags{$_}} );
+
+                    my @new_data_values = @{ generate_loop_values(
+                        $dataset, {
+                        'data_name'         => $cif_tags{$_},
+                        'initial_loop_size' => $initial_loop_size,
+                        'additional_values' => $related{$_},
                         }
-                        push @new_data_values, $related{$_};
-                        set_loop_tag(
-                            $dataset,
-                            $cif_tags{$_},
-                            '_cod_related_entry_id',
-                            \@new_data_values
-                        );
-                    } else {
-                        if ( defined $dataset->{'values'}{$cif_tags{$_}} ) {
-                            @new_data_values = (
-                                @{$dataset->{'values'}{$cif_tags{$_}}},
-                                ('?') x 1
-                            );
-                            set_loop_tag(
-                                $dataset,
-                                $cif_tags{$_},
-                                '_cod_related_entry_id',
-                                \@new_data_values
-                            );
-                        }
-                    }
+                    ) };
+
+                    set_loop_tag(
+                        $dataset,
+                        $cif_tags{$_},
+                        $key_data_name,
+                        \@new_data_values
+                    );
                 }
             } else {
                 warn 'WARNING, no related entry information was provided -- ' .
                      'the data block will not be modified' . "\n";
+            }
+
+            if ( exists $dataset->{'inloop'}{$key_data_name} ) {
+
             }
 
             print_cif( $dataset,
@@ -205,4 +187,62 @@ for my $filename (@ARGV) {
             }, $die_on_error_level->{'ERROR'} )
         }
     }
+}
+
+sub generate_loop_key
+{
+    my ( $dataset, $options ) = @_;
+
+    my $key_data_name        = $options->{'key_data_name'};
+    my $existing_entry_count = $options->{'initial_entry_count'};
+    my $addition_entry_count = $options->{'addition_entry_count'};
+
+    my @loop_key;
+    if ( defined $dataset->{'values'}{$key_data_name} ) {
+        push @loop_key, @{$dataset->{'values'}{$key_data_name}};
+        my $max_value = max( @{$dataset->{'values'}{$key_data_name}} );
+        push @loop_key, map { $max_value + $_ } 1..$addition_entry_count;
+    } else {
+        push @loop_key, (1..$existing_entry_count + $addition_entry_count);
+    }
+
+    return \@loop_key;
+}
+
+sub generate_loop_values
+{
+    my ( $dataset, $param ) = @_;
+
+    my $data_name         = $param->{'data_name'};
+    my $initial_loop_size = $param->{'initial_loop_size'};
+    my $additional_values = $param->{'additional_values'};
+
+    if ( !defined $dataset->{'values'}{$data_name} &&
+         !$additional_values ) {
+        return [];
+    }
+
+    my @new_data_values;
+    if ( defined $additional_values ) {
+        if ( defined $dataset->{'values'}{$data_name} ) {
+            push @new_data_values, @{$dataset->{'values'}{$data_name}};
+        } else {
+            @new_data_values = ('?') x $initial_loop_size;
+        }
+        push @new_data_values, @{$additional_values};
+    } else {
+        @new_data_values = ( @{$dataset->{'values'}{$data_name}}, ('?') x 1 )
+    }
+
+    return \@new_data_values;
+}
+
+sub get_initial_entry_count
+{
+    my ( $dataset, $data_names ) = @_;
+
+    return max ( map {
+            ( exists $dataset->{'values'}{$_} ) ?
+                scalar(@{$dataset->{'values'}{$_}}) : 0 }
+                  @{$data_names} );
 }
