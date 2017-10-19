@@ -480,7 +480,8 @@ sub has_unknown_value
     my ( $frame, $data_name, $index ) = @_;
 
     my $value = $frame->{'values'}{$data_name}[$index];
-    my $type = $frame->{'types'}{$data_name}[$index];
+    my $type = defined $frame->{'types'}{$data_name}[$index] ?
+               $frame->{'types'}{$data_name}[$index] : 'UQSTRING' ;
 
     return $value eq '?' && $type eq 'UQSTRING';
 }
@@ -503,7 +504,8 @@ sub has_inapplicable_value
     my ( $frame, $data_name, $index ) = @_;
 
     my $value = $frame->{'values'}{$data_name}[$index];
-    my $type = $frame->{'types'}{$data_name}[$index];
+    my $type = defined $frame->{'types'}{$data_name}[$index] ?
+               $frame->{'types'}{$data_name}[$index] : 'UQSTRING' ;
 
     return $value eq '.' && $type eq 'UQSTRING';
 }
