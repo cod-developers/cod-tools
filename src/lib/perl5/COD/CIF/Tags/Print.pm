@@ -222,9 +222,7 @@ sub print_loop
                  "reside in the same loop -- $diff question mark symbols " .
                  "('?') will be appended to the loop column '$loop_tag' " .
                  'instead of the missing values' . "\n";
-            for (0..$diff) {
-                push @{$values->{$loop_tag}}, '?';
-            }
+            push @{$values->{$loop_tag}}, ( '?' ) x $diff;
         }
     }
 
