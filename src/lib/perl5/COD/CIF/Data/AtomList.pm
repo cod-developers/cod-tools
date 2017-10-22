@@ -773,10 +773,16 @@ sub atom_groups
                 if ( $atom->{'group'} eq $group &&
                     $atom->{'assembly'} eq $assembly ) {
                     $group_size{$group}++;
-                    my $occupancy = ( $atom->{'atom_site_occupancy'} eq '.' ||
-                                      $atom->{'atom_site_occupancy'} eq '?' )
-                                      ? 0 : $atom->{'atom_site_occupancy'};
-                    $occupancy =~ s/[(]\d+[)]$//; # remove precision
+
+                    my $occupancy = $atom->{'atom_site_occupancy'};
+                    if ( !defined $occupancy || $occupancy eq '?' ) {
+                        $occupancy = 1;
+                    } elsif ( $occupancy eq '.' ) {
+                        $occupancy = 0;
+                    } else {
+                        $occupancy =~ s/[(]\d+[)]$//; # remove precision
+                    }
+
                     if ( !defined $max_group_occupancy{$group} ) {
                         $max_group_occupancy{$group} = $occupancy;
                     } elsif ( $max_group_occupancy{$group} < $occupancy ) {
