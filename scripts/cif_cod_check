@@ -21,7 +21,8 @@ use strict;
 use warnings;
 use Digest::MD5 qw( md5_hex );
 use Digest::SHA qw( sha1_hex );
-use COD::AuthorNames qw( parse_author_name );
+use COD::AuthorNames qw( parse_author_name
+                         get_name_syntax_description );
 use COD::CIF::Data qw( get_cell
                        get_sg_data
                        get_content_encodings );
@@ -546,8 +547,19 @@ for my $filename (@ARGV) {
         push @messages, @{check_data( $dataset )};
         push @messages, @{check_bibliography( $dataset )}
             if $check_bibliography;
-        push @messages, @{check_authors( $dataset )}
-            if $check_authors;
+        if ( $check_authors ) {
+            if( !defined $dataset->{'values'}{'_publ_author_name'} ) {
+                push @messages, 'WARNING, _publ_author_name is undefined';
+            } else {
+                my $author_name_messages = check_authors($dataset);
+                if ( !$name_syntax_explained && @{$author_name_messages} ) {
+                    splice @{$author_name_messages}, 1, 0,
+                           'NOTE, ' . get_name_syntax_description();
+                    $name_syntax_explained = 1;
+                }
+                push @messages, @{$author_name_messages};
+            }
+        }
         push @messages, @{check_chemical_formula_sum( $dataset )}
             if $check_chemical_formula_sum;
         push @messages, @{check_space_group_info( $dataset )}
@@ -666,18 +678,13 @@ sub check_authors
     my ($dataset) = @_;
     my @messages;
 
-    if( !defined $dataset->{values} ) {
+    if( !defined $dataset->{'values'} ) {
         return \@messages;
     }
 
-    my $values = $dataset->{values};
+    my $values = $dataset->{'values'};
 
-    if( !defined $values->{_publ_author_name} ) {
-        push @messages, 'WARNING, _publ_author_name is undefined';
-        return \@messages;
-    }
-
-    for my $author (@{$values->{_publ_author_name}}) {
+    for my $author (@{$values->{'_publ_author_name'}}) {
         my $parsed_name;
         eval {
             local $SIG{__WARN__} = sub {
@@ -686,13 +693,6 @@ sub check_authors
                 push @messages, $warning;
             };
             $parsed_name = parse_author_name( cif2unicode( $author ), 1 );
-        };
-        next if !exists $parsed_name->{unparsed};
-        if( ! $name_syntax_explained ) {
-            push @messages, 'NOTE, names should be written as \'First von Last\', '
-                           . '\'von Last, First\', or \'von Last, Jr, First\' '
-                           . '(mind the case!)';
-            $name_syntax_explained = 1;
         }
     }
 
