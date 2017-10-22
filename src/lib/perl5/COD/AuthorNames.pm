@@ -17,6 +17,7 @@ require Exporter;
 our @ISA = qw( Exporter );
 our @EXPORT_OK = qw(
     canonicalize_author_name
+    get_name_syntax_description
     parse_author_name
 );
 
@@ -101,10 +102,8 @@ sub parse_author_name
                 . " contains symbol '$symbol_escaped' "
                 . 'that is not permitted in names' . "\n";
         if( ! $name_syntax_explained ) {
-            warn "NOTE, names should be written as \'First von Last\', "
-               . '\'von Last, First\', or \'von Last, Jr, First\' '
-               . '(mind the case!)' . "\n";
-               $name_syntax_explained = 1;
+            warn 'NOTE,' . get_name_syntax_description() . "\n";
+            $name_syntax_explained = 1;
         }
         $parsed_name{'unparsed'} = $UCS_author;
     } else {
@@ -180,9 +179,7 @@ sub parse_author_name
                     : " ('$UCS_author')" )
                     . ' seems unusual' . "\n";
             if( ! $name_syntax_explained ) {
-                warn "NOTE, names should be written as \'First von Last\', "
-                    . '\'von Last, First\', or \'von Last, Jr, First\' '
-                    . '(mind the case!)' . "\n";
+                warn 'NOTE, ' . get_name_syntax_description() . "\n";
                 $name_syntax_explained = 1;
             }
             $parsed_name{'unparsed'} = $UCS_author;
@@ -254,6 +251,13 @@ sub canonicalize_author_name
     }
 
     return join( ', ', @name_parts );
+}
+
+sub get_name_syntax_description
+{
+    return "names should be written as \'First von Last\', "
+         . '\'von Last, First\', or \'von Last, Jr, First\' '
+         . '(mind the case!)'
 }
 
 1;
