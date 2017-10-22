@@ -544,42 +544,50 @@ for my $filename (@ARGV) {
                                      } ) };
 
         my @messages;
-        push @messages, @{check_data( $dataset )};
-        push @messages, @{check_bibliography( $dataset )}
-            if $check_bibliography;
-        if ( $check_authors ) {
-            if( !defined $dataset->{'values'}{'_publ_author_name'} ) {
-                push @messages, 'WARNING, _publ_author_name is undefined';
-            } else {
+        if ( !defined $dataset->{'values'} ) {
+            push @messages,
+                'WARNING, no data blocks found -- program will now exit'
+        } else {
+            if ( $check_bibliography ) {
+                push @messages,
+                     @{check_bibliography( $dataset, {
+                        'require_only_doi' => $require_only_doi
+                     } ) }
+            }
+
+            if ( $check_authors ) {
                 my $author_name_messages = check_authors($dataset);
-                if ( !$name_syntax_explained && @{$author_name_messages} ) {
-                    splice @{$author_name_messages}, 1, 0,
-                           'NOTE, ' . get_name_syntax_description();
-                    $name_syntax_explained = 1;
+                if ( !$name_syntax_explained &&
+                     @{$author_name_messages} &&
+                     $author_name_messages->[0] !~ 'undefined' ) {
+                        splice @{$author_name_messages}, 1, 0,
+                               'NOTE, ' . get_name_syntax_description();
+                        $name_syntax_explained = 1;
                 }
                 push @messages, @{$author_name_messages};
             }
+
+            push @messages, @{check_chemical_formula_sum( $dataset )}
+                if $check_chemical_formula_sum;
+            push @messages, @{check_space_group_info( $dataset )}
+                if $check_space_group_info;
+            push @messages, @{check_symmetry_operations( $dataset )}
+                if $check_symmetry_operations;
+            push @messages, @{check_space_group_constraints( $dataset )}
+                if $check_space_group_constraints;
+            push @messages, @{check_limits( $dataset )}
+                if $check_limits;
+            push @messages, @{check_temperature_factors( $dataset )}
+                if $check_temperature_factors;
+            push @messages, @{check_simultaneous_presence( $dataset )}
+                if $check_simultaneous_presence;
+            push @messages, @{check_embedded_file_integrity( $dataset )}
+                if $check_embedded_file_integrity;
+            push @messages, @{check_z( $dataset )}
+                if $check_z;
+            push @messages, @{check_disorder( $dataset )}
+                if $check_disorder;
         }
-        push @messages, @{check_chemical_formula_sum( $dataset )}
-            if $check_chemical_formula_sum;
-        push @messages, @{check_space_group_info( $dataset )}
-            if $check_space_group_info;
-        push @messages, @{check_symmetry_operations( $dataset )}
-            if $check_symmetry_operations;
-        push @messages, @{check_space_group_constraints( $dataset )}
-            if $check_space_group_constraints;
-        push @messages, @{check_limits( $dataset )}
-            if $check_limits;
-        push @messages, @{check_temperature_factors( $dataset )}
-            if $check_temperature_factors;
-        push @messages, @{check_simultaneous_presence( $dataset )}
-            if $check_simultaneous_presence;
-        push @messages, @{check_embedded_file_integrity( $dataset )}
-            if $check_embedded_file_integrity;
-        push @messages, @{check_z( $dataset )}
-            if $check_z;
-        push @messages, @{check_disorder( $dataset )}
-            if $check_disorder;
 
         foreach (@messages) { warn $_ . "\n"; };
         $notes    += scalar(grep {/^NOTE,/}    @messages);
@@ -628,26 +636,13 @@ for my $filename (@ARGV) {
     };
 }
 
-sub check_data
-{
-    my ($dataset) = @_;
-    my @messages;
-
-    if (!defined $dataset->{values}) {
-        push @messages, 'WARNING, no data blocks found -- program will now exit';
-    }
-
-    return \@messages;
-}
-
 sub check_bibliography
 {
-    my ($dataset) = @_;
-    my @messages;
+    my ($dataset, $options) = @_;
 
-    if( !defined $dataset->{values} ) {
-        return \@messages;
-    }
+    my $require_only_doi = defined $options->{'require_only_doi'} ?
+                                   $options->{'require_only_doi'} : 0;
+    my @messages;
 
     my $values = $dataset->{values};
     if( $require_only_doi &&
@@ -678,11 +673,12 @@ sub check_authors
     my ($dataset) = @_;
     my @messages;
 
-    if( !defined $dataset->{'values'} ) {
+    my $values = $dataset->{'values'};
+
+    if( !defined $values->{'_publ_author_name'} ) {
+        push @messages, 'WARNING, _publ_author_name is undefined';
         return \@messages;
     }
-
-    my $values = $dataset->{'values'};
 
     for my $author (@{$values->{'_publ_author_name'}}) {
         my $parsed_name;
@@ -703,10 +699,6 @@ sub check_chemical_formula_sum
 {
     my ($dataset) = @_;
     my @messages;
-
-    if( !defined $dataset->{values} ) {
-        return \@messages;
-    }
 
     my $formula = $dataset->{values}{_chemical_formula_sum}[0];
 
@@ -734,10 +726,6 @@ sub check_space_group_info
 {
     my ($dataset) = @_;
     my @messages;
-
-    if( !defined $dataset->{values} ) {
-        return \@messages;
-    }
 
     my $sg_info = get_sg_data($dataset);
 
@@ -883,10 +871,6 @@ sub check_temperature_factors
 {
     my($dataset) = @_;
     my @messages;
-
-    if( !defined $dataset->{values} ) {
-        return \@messages;
-    }
 
     my $values = $dataset->{values};
 
@@ -1321,10 +1305,6 @@ sub check_space_group_constraints
     my ( $dataset ) = @_;
     my @messages;
 
-    if( !defined $dataset->{values} ) {
-        return \@messages;
-    }
-
     my ( $space_group_descr, $sg_messages ) =
         get_sg_descriptions( $dataset );
     push @messages, @{$sg_messages};
@@ -1391,8 +1371,6 @@ sub check_symmetry_operations
     my ($dataset) = @_;
     my @messages;
 
-    return \@messages if !defined $dataset->{values};
-
     my $sg_data = get_sg_data($dataset);
 
     my $symops;
@@ -1436,9 +1414,6 @@ sub check_limits {
     my ($dataset) = @_;
     my @messages;
 
-    if(! defined $dataset->{values} ) {
-        return \@messages;
-    }
     my @report_names = qw( ERROR WARNING NOTE );
     my $numeric = '([+-]?(\d+(\.\d*)?|\.\d+))';
     my $values = $dataset->{values};
