@@ -629,6 +629,16 @@ for my $filename (@ARGV) {
     my $notes    = 0;
     my $warnings = 0;
     my $errors   = 0;
+
+    if ( !@{$data} ) {
+        $warnings++;
+        warn sprint_message(
+            $0, $filename, undef, 'WARNING',
+            'the file contains no data blocks',
+            undef
+        );
+    }
+
     for my $dataset (@{$data}) {
 
         my $dataname = 'data_' . $dataset->{name} if defined $dataset->{name};
@@ -647,56 +657,52 @@ for my $filename (@ARGV) {
                                      } ) };
 
         my @messages;
-        if ( !defined $dataset->{'values'} ) {
+
+        if ( $check_bibliography ) {
             push @messages,
-                'WARNING, no data blocks found -- program will now exit'
-        } else {
-            if ( $check_bibliography ) {
-                push @messages,
-                     @{check_bibliography( $dataset, {
-                        'require_only_doi' => $require_only_doi
-                     } ) }
-            }
-
-            if ( $check_authors ) {
-                my $author_name_messages = check_author_names($dataset);
-                if ( !$name_syntax_explained &&
-                     @{$author_name_messages} &&
-                     $author_name_messages->[0] !~ 'undefined' ) {
-                        splice @{$author_name_messages}, 1, 0,
-                               'NOTE, ' . get_name_syntax_description();
-                        $name_syntax_explained = 1;
-                }
-                push @messages, @{$author_name_messages};
-            }
-
-            push @messages, @{check_chemical_formula_sum( $dataset )}
-                if $check_chemical_formula_sum;
-            push @messages, @{check_space_group_info( $dataset )}
-                if $check_space_group_info;
-            push @messages, @{check_symmetry_operations( $dataset )}
-                if $check_symmetry_operations;
-            push @messages, @{check_space_group_constraints( $dataset )}
-                if $check_space_group_constraints;
-            push @messages, @{check_limits( $dataset, $limits_table )}
-                if $check_limits;
-            push @messages, @{check_temperature_factors(
-                                $dataset, {
-                                  'mandatory_year_cutoff' =>
-                                     $max_year_temperature_factors_optional
-                                } )}
-                if $check_temperature_factors;
-            push @messages, @{check_simultaneous_presence(
-                                $dataset,
-                                \@simultaneous_data_items )}
-                if $check_simultaneous_presence;
-            push @messages, @{check_embedded_file_integrity( $dataset )}
-                if $check_embedded_file_integrity;
-            push @messages, @{check_z( $dataset )}
-                if $check_z;
-            push @messages, @{check_disorder( $dataset )}
-                if $check_disorder;
+                 @{check_bibliography( $dataset, {
+                    'require_only_doi' => $require_only_doi
+                 } ) }
         }
+
+        if ( $check_authors ) {
+            my $author_name_messages = check_author_names($dataset);
+            if ( !$name_syntax_explained &&
+                 @{$author_name_messages} &&
+                 $author_name_messages->[0] !~ 'undefined' ) {
+                    splice @{$author_name_messages}, 1, 0,
+                           'NOTE, ' . get_name_syntax_description();
+                    $name_syntax_explained = 1;
+            }
+            push @messages, @{$author_name_messages};
+        }
+
+        push @messages, @{check_chemical_formula_sum( $dataset )}
+            if $check_chemical_formula_sum;
+        push @messages, @{check_space_group_info( $dataset )}
+            if $check_space_group_info;
+        push @messages, @{check_symmetry_operations( $dataset )}
+            if $check_symmetry_operations;
+        push @messages, @{check_space_group_constraints( $dataset )}
+            if $check_space_group_constraints;
+        push @messages, @{check_limits( $dataset, $limits_table )}
+            if $check_limits;
+        push @messages, @{check_temperature_factors(
+                            $dataset, {
+                              'mandatory_year_cutoff' =>
+                                 $max_year_temperature_factors_optional
+                            } )}
+            if $check_temperature_factors;
+        push @messages, @{check_simultaneous_presence(
+                            $dataset,
+                            \@simultaneous_data_items )}
+            if $check_simultaneous_presence;
+        push @messages, @{check_embedded_file_integrity( $dataset )}
+            if $check_embedded_file_integrity;
+        push @messages, @{check_z( $dataset )}
+            if $check_z;
+        push @messages, @{check_disorder( $dataset )}
+            if $check_disorder;
 
         foreach (@messages) { warn $_ . "\n"; };
         $notes    += scalar(grep {/^NOTE,/}    @messages);

@@ -102,7 +102,8 @@ sub check_bibliography
     }
     if( !defined $values->{'_journal_year'} &&
         !defined $values->{'_journal_volume'} ) {
-        push @messages, 'WARNING, neither _journal_year nor _journal_volume is defined';
+        push @messages,
+             'WARNING, neither _journal_year nor _journal_volume is defined';
     }
     if( !defined $values->{'_journal_page_first'} &&
         !defined $values->{'_journal_article_reference'} ) {
@@ -619,7 +620,6 @@ sub check_limits
     }
     return (\@messages);
 }
-
 
 ##
 # Checks if the given data items exist in the data block.
