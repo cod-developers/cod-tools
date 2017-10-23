@@ -47,21 +47,30 @@ use COD::SUsage qw( usage options );
 use COD::ToolsVersion;
 use COD::UserMessage qw( sprint_message );
 
-my $name_syntax_explained = 0;
-my $check_bibliography = 1;
-my $require_only_doi = 0;
-my $check_authors = 1;
-my $check_chemical_formula_sum = 1;
-my $check_space_group_info = 1;
-my $check_symmetry_operations = 1;
-my $check_space_group_constraints = 1;
-my $check_limits = 1;
-my $use_precisions = 1;
-my $check_temperature_factors = 1;
-my $check_simultaneous_presence = 1;
-my $check_embedded_file_integrity = 1;
-my $check_z = 0;
-my $check_disorder = 0;
+my %check = (
+    'author_names'          => 1,
+    'bibliography'          => 1,
+    'chemical_formula_sum'  => 1,
+    'disorder'              => 0,
+    'embd_file_integrity'   => 1,
+    'limits'                => 1,
+    'sg_constraints'        => 1,
+    'sg_info'               => 1,
+    'symops'                => 1,
+    'simultaneous_presence' => 1,
+    'temperature_factors'   => 1,
+    'z_value'               => 0,
+);
+
+sub check_all {
+    $check{$_} = 1 for keys %check;
+    return;
+}
+
+sub check_none {
+    $check{$_} = 0 for keys %check;
+    return;
+}
 
 my @simultaneous_data_items = (
     [ qw( _atom_site_fract_x _atom_site_fract_y _atom_site_fract_z ) ],
@@ -158,45 +167,6 @@ my $die_on_errors   = 1;
 my $die_on_warnings = 0;
 my $die_on_notes    = 0;
 
-sub dont_check_any
-{
-    $check_bibliography = 0;
-    $check_authors = 0;
-    $check_chemical_formula_sum = 0;
-    $check_space_group_info = 0;
-    $check_symmetry_operations = 0;
-    $check_space_group_constraints = 0;
-    $check_limits = 0;
-    $check_temperature_factors = 0;
-    $check_simultaneous_presence = 0;
-    $check_embedded_file_integrity = 0;
-    $check_z = 0;
-    $check_disorder = 0;
-
-    return;
-}
-
-sub check_all
-{
-    $check_bibliography = 1;
-    $check_authors = 1;
-    $check_chemical_formula_sum = 1;
-    $check_space_group_info = 1;
-    $check_symmetry_operations = 1;
-    $check_space_group_constraints = 1;
-    $check_limits = 1;
-    $check_temperature_factors = 1;
-    $check_simultaneous_presence = 1;
-    $check_embedded_file_integrity = 1;
-    $check_z = 1;
-    $check_disorder = 1;
-
-    return;
-}
-
-my $useReporter = 0;
-my $reportFile = '-';
-
 #===================================================================#
 #
 # The structure of the default table of the limits
@@ -282,6 +252,10 @@ sub merge_limits_tables($$) {
 my $max_year_temperature_factors_optional = 1969;
 my $use_parser = 'c';
 my $input_format = 'cif';
+my $require_only_doi = 0;
+my $use_precisions = 1;
+my $useReporter = 0;
+my $reportFile = '-';
 
 #* OPTIONS:
 #*   -c, --always-continue
@@ -379,13 +353,13 @@ my $input_format = 'cif';
 #**
 @ARGV = getOptions(
     '--check-bibliography'
-        => sub{ $check_bibliography = 1 },
+        => sub{ $check{'bibliography'} = 1 },
     '--check-only-bibliography'
-        => sub{ dont_check_any(); $check_bibliography = 1 },
+        => sub{ check_none(); $check{'bibliography'} = 1 },
     '--dont-check-bibliography,' .
     '--no-check-bibliography,' .
     '--do-not-check-bibliography'
-        => sub{ $check_bibliography = 0 },
+        => sub{ $check{'bibliography'} = 0 },
 
     '--require-only-doi'
         => sub{ $require_only_doi = 1 },
@@ -393,85 +367,85 @@ my $input_format = 'cif';
         => sub{ $require_only_doi = 0 },
 
     '--check-authors'
-        => sub{ $check_authors = 1 },
+        => sub{ $check{'author_names'} = 1 },
     '--check-only-authors'
-        => sub{ dont_check_any(); $check_authors = 1 },
+        => sub{ check_none(); $check{'author_names'} = 1 },
     '--dont-check-authors,' .
     '--no-check-authors,' .
     '--do-not-check-authors'
-        => sub{ $check_authors = 0 },
+        => sub{ $check{'author_names'} = 0 },
 
     '--check-chemical-formula-sum'
-        => sub{ $check_chemical_formula_sum = 1 },
+        => sub{ $check{'chemical_formula_sum'} = 1 },
     '--check-only-chemical-formula-sum'
-        => sub{ dont_check_any(); $check_chemical_formula_sum = 1 },
+        => sub{ check_none(); $check{'chemical_formula_sum'} = 1 },
     '--dont-check-chemical-formula-sum,' .
     '--no-check-chemical-formula-sum,' .
     '--do-not-check-chemical-formula-sum'
-        => sub{ $check_chemical_formula_sum = 0 },
+        => sub{ $check{'chemical_formula_sum'} = 0 },
 
     '--check-spacegroup-info'
-        => sub{ $check_space_group_info = 1 },
+        => sub{ $check{'sg_info'} = 1 },
     '--check-only-spacegroup-info'
-        => sub{ dont_check_any(); $check_space_group_info = 1 },
+        => sub{ check_none(); $check{'sg_info'} = 1 },
     '--dont-check-spacegroup-info,' .
     '--no-check-spacegroup-info,' .
     '--do-not-check-spacegroup-info'
-        => sub{ $check_space_group_info = 0 },
+        => sub{ $check{'sg_info'} = 0 },
 
     '--check-symmetry-operators,' .
     '--check-operators'
-        => sub{ $check_symmetry_operations = 1 },
+        => sub{ $check{'symops'} = 1 },
     '--check-only-symmetry-operators,' .
     '--check-only-operators'
-        => sub{ dont_check_any(); $check_symmetry_operations = 1 },
+        => sub{ check_none(); $check{'symops'} = 1 },
     '--dont-check-symmetry-operators,' .
     '--no-check-symmetry-operators,' .
     '--do-not-check-symmetry-operators,' .
     '--dont-check-operators,' .
     '--no-check-operators,' .
     '--do-not-check-operators'
-        => sub{ $check_symmetry_operations = 0 },
+        => sub{ $check{'symops'} = 0 },
 
     '--check-constraints-on-unit-cell,' .
     '--check-unit-cell'
-        => sub{ $check_space_group_constraints = 1 },
+        => sub{ $check{'sg_constraints'} = 1 },
     '--check-only-constraints-on-unit-cell,' .
     '--check-only-unit-cell'
-        => sub{ dont_check_any(); $check_space_group_constraints = 1 },
+        => sub{ check_none(); $check{'sg_constraints'} = 1 },
     '--dont-check-constraints-on-unit-cell,' .
     '--do-not-check-constraints-on-unit-cell,' .
     '--no-check-constraints-on-unit-cell,' .
     '--dont-check-unit-cell,' .
     '--do-not-check-unit-cell,' .
     '--no-check-unit-cell'
-        => sub{ $check_space_group_constraints = 0 },
+        => sub{ $check{'sg_constraints'} = 0 },
 
     '--check-symmetry' => sub{
-        $check_space_group_info = 1;
-        $check_symmetry_operations = 1;
-        $check_space_group_constraints = 1;
+        $check{'sg_info'} = 1;
+        $check{'symops'} = 1;
+        $check{'sg_constraints'} = 1;
     },
 
     '--check-only-symmetry' => sub{
-        dont_check_any();
-        $check_space_group_info = 1;
-        $check_symmetry_operations = 1;
-        $check_space_group_constraints = 1;
+        check_none();
+        $check{'sg_info'} = 1;
+        $check{'symops'} = 1;
+        $check{'sg_constraints'} = 1;
     },
 
     '--check-simultaneous-presence' =>
-        sub{ $check_simultaneous_presence = 1 },
+        sub{ $check{'simultaneous_presence'} = 1 },
     '--check-only-simultaneous-presence' =>
-        sub{ dont_check_any(); $check_simultaneous_presence = 1 },
+        sub{ check_none(); $check{'simultaneous_presence'} = 1 },
     '--dont-check-simultaneous-presence' =>
-        sub{ $check_simultaneous_presence = 0 },
+        sub{ $check{'simultaneous_presence'} = 0 },
 
-    '--check-limits'        => sub{ $check_limits = 1 },
-    '--check-only-limits'   => sub{ dont_check_any(); $check_limits = 1 },
-    '--dont-check-limits'   => sub{ $check_limits = 0 },
-    '--no-check-limits'     => sub{ $check_limits = 0 },
-    '--do-not-check-limits' => sub{ $check_limits = 0 },
+    '--check-limits'        => sub{ $check{'limits'} = 1 },
+    '--check-only-limits'   => sub{ check_none(); $check{'limits'} = 1 },
+    '--dont-check-limits'   => sub{ $check{'limits'} = 0 },
+    '--no-check-limits'     => sub{ $check{'limits'} = 0 },
+    '--do-not-check-limits' => sub{ $check{'limits'} = 0 },
 
     '--limits-file' => sub{ $limits_table = get_limits_table( get_value() ) },
 
@@ -485,44 +459,44 @@ my $input_format = 'cif';
     '--print-limits' => sub{ print_limits() },
 
     '--check-temperature-factors' =>
-        sub { $check_temperature_factors = 1; },
+        sub { $check{'temperature_factors'} = 1; },
     '--dont-check-temperature-factors' =>
-        sub { $check_temperature_factors = 0; },
+        sub { $check{'temperature_factors'} = 0; },
     '--no-check-temperature-factors' =>
-        sub { $check_temperature_factors = 0; },
+        sub { $check{'temperature_factors'} = 0; },
     '--do-not-check-temperature-factors' =>
-        sub { $check_temperature_factors = 0; },
+        sub { $check{'temperature_factors'} = 0; },
     '--max-year-temperature-factors-optional' =>
         \$max_year_temperature_factors_optional,
 
     '--check-embedded-file-integrity' =>
-        sub { $check_embedded_file_integrity = 1; },
+        sub { $check{'embd_file_integrity'} = 1; },
     '--dont-check-embedded-file-integrity' =>
-        sub { $check_embedded_file_integrity = 0; },
+        sub { $check{'embd_file_integrity'} = 0; },
     '--do-not-check-embedded-file-integrity' =>
-        sub { $check_embedded_file_integrity = 0; },
+        sub { $check{'embd_file_integrity'} = 0; },
     '--no-check-embedded-file-integrity' =>
-        sub { $check_embedded_file_integrity = 0; },
+        sub { $check{'embd_file_integrity'} = 0; },
     '--check-only-embedded-file-integrity' =>
-        sub { dont_check_any(); $check_embedded_file_integrity = 1; },
+        sub { check_none(); $check{'embd_file_integrity'} = 1; },
 
-    '--check-z'        => sub { $check_z = 1; },
-    '--check-only-z'   => sub { dont_check_any(); $check_z = 1; },
-    '--no-check-z'     => sub { $check_z = 0; },
-    '--dont-check-z'   => sub { $check_z = 0; },
-    '--do-not-check-z' => sub { $check_z = 0; },
+    '--check-z'        => sub { $check{'z_value'} = 1; },
+    '--check-only-z'   => sub { check_none(); $check{'z_value'} = 1; },
+    '--no-check-z'     => sub { $check{'z_value'} = 0; },
+    '--dont-check-z'   => sub { $check{'z_value'} = 0; },
+    '--do-not-check-z' => sub { $check{'z_value'} = 0; },
 
-    '--check-disorder'        => sub { $check_disorder = 1; },
-    '--check-only-disorder'   => sub { dont_check_any(); $check_disorder = 1; },
-    '--no-check-disorder'     => sub { $check_disorder = 0; },
-    '--dont-check-disorder'   => sub { $check_disorder = 0; },
-    '--do-not-check-disorder' => sub { $check_disorder = 0; },
+    '--check-disorder'        => sub { $check{'disorder'} = 1; },
+    '--check-only-disorder'   => sub { check_none(); $check{'disorder'} = 1; },
+    '--no-check-disorder'     => sub { $check{'disorder'} = 0; },
+    '--dont-check-disorder'   => sub { $check{'disorder'} = 0; },
+    '--do-not-check-disorder' => sub { $check{'disorder'} = 0; },
 
-    '--check-all'        => \&check_all,
-    '--check-none'       => \&dont_check_any,
-    '--dont-check-any'   => \&dont_check_any,
-    '--do-not-check-any' => \&dont_check_any,
-    '--no-check-any'     => \&dont_check_any,
+    '--check-all'        => sub { check_all() },
+    '--check-none'       => sub { check_none() },
+    '--dont-check-any'   => sub { check_none() },
+    '--do-not-check-any' => sub { check_none() },
+    '--no-check-any'     => sub { check_none() },
 
     '--use-precisions'        => sub { $use_precisions = 1 },
     '--dont-use-precisions'   => sub { $use_precisions = 0 },
@@ -613,6 +587,7 @@ my %space_groups = map {
 
 $| = 1; # Flush buffers immediately, to avoid mixing lines of STDOUT
         # and STDERR.
+my $name_syntax_explained = 0;
 
 @ARGV = ('-') unless @ARGV;
 
@@ -660,14 +635,14 @@ for my $filename (@ARGV) {
 
         my @messages;
 
-        if ( $check_bibliography ) {
+        if ( $check{'bibliography'} ) {
             push @messages,
                  @{check_bibliography( $dataset, {
                     'require_only_doi' => $require_only_doi
                  } ) }
         }
 
-        if ( $check_authors ) {
+        if ( $check{'author_names'} ) {
             my $author_name_messages = check_author_names($dataset);
             if ( !$name_syntax_explained &&
                  @{$author_name_messages} &&
@@ -680,31 +655,31 @@ for my $filename (@ARGV) {
         }
 
         push @messages, @{check_chemical_formula_sum( $dataset )}
-            if $check_chemical_formula_sum;
+            if $check{'chemical_formula_sum'};
         push @messages, @{check_space_group_info( $dataset )}
-            if $check_space_group_info;
+            if $check{'sg_info'};
         push @messages, @{check_symmetry_operations( $dataset )}
-            if $check_symmetry_operations;
+            if $check{'symops'};
         push @messages, @{check_space_group_constraints( $dataset )}
-            if $check_space_group_constraints;
+            if $check{'sg_constraints'};
         push @messages, @{check_limits( $dataset, $limits_table )}
-            if $check_limits;
+            if $check{'limits'};
         push @messages, @{check_temperature_factors(
                             $dataset, {
                               'mandatory_year_cutoff' =>
                                  $max_year_temperature_factors_optional
                             } )}
-            if $check_temperature_factors;
+            if $check{'temperature_factors'};
         push @messages, @{check_simultaneous_presence(
                             $dataset,
                             \@simultaneous_data_items )}
-            if $check_simultaneous_presence;
+            if $check{'simultaneous_presence'};
         push @messages, @{check_embedded_file_integrity( $dataset )}
-            if $check_embedded_file_integrity;
+            if $check{'embd_file_integrity'};
         push @messages, @{check_z( $dataset )}
-            if $check_z;
+            if $check{'z_value'};
         push @messages, @{check_disorder( $dataset )}
-            if $check_disorder;
+            if $check{'disorder'};
 
         foreach (@messages) { warn $_ . "\n"; };
         $notes    += scalar(grep {/^NOTE,/}    @messages);
