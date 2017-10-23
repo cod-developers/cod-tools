@@ -64,6 +64,22 @@ sub check_author_names
     return \@messages;
 }
 
+##
+# Checks if the given data block contains sufficient bibliographical
+# information.
+#
+# @param $dataset
+#       Reference to a data block as returned by the COD::CIF::Parser.
+# @param $options
+#       Reference to a hash of options. The following options are recognised:
+#       {
+#       # Treat the presence of doi as sufficient bibliographical information
+#       # and return immediately if this piece of information is found
+#           'require_only_doi' => 0
+#       }
+# @return
+#       Reference to an array of audit messages.
+##
 sub check_bibliography
 {
     my ($dataset, $options) = @_;
