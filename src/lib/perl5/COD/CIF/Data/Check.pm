@@ -31,6 +31,7 @@ check_chemical_formula_sum
 check_disorder
 check_embedded_file_integrity
 check_limits
+check_mandatory_presence
 check_pdcif_relations
 check_simultaneous_presence
 check_temperature_factors
@@ -601,6 +602,32 @@ sub check_limits
         }
     }
     return (\@messages);
+}
+
+
+##
+# Checks if the given data items exist in the data block.
+#
+# @param $dataset
+#       Reference to a data block as returned by the COD::CIF::Parser.
+# @param $data_names
+#       Reference to an array of data names that should be searched for
+#       in the data block.
+# @return
+#       Reference to an array of audit messages.
+##
+sub check_mandatory_presence
+{
+    my ( $dataset, $data_names ) = @_;
+    my @messages;
+
+    for ( @{$data_names} ) {
+        if ( !defined $dataset->{'values'}{$_} ) {
+            push @messages, "ERROR, mandatory data item '$_' was not found"
+        }
+    }
+
+    return \@messages;
 }
 
 1;
