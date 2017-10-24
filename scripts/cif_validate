@@ -234,14 +234,16 @@ CIFFILEANAL: for my $filename ( @ARGV ) {
     next CIFFILEANAL if ( !defined $data || $data == 1 );
 
     for my $block ( @{$data} ) {
-        my $dataname = 'data_' . $block->{name} if defined $block->{name};
+        my $dataname = 'data_' . $block->{'name'};
 
-        local $SIG{__WARN__} = sub { process_warnings( {
-                                       'message'       => @_,
-                                       'program'       => $0,
-                                       'filename'      => $filename,
-                                       'add_pos'       => $dataname
-                                     }, $die_on_error_level ) };
+        local $SIG{__WARN__} = sub {
+            process_warnings( {
+                'message'  => @_,
+                'program'  => $0,
+                'filename' => $filename,
+                'add_pos'  => $dataname
+            }, $die_on_error_level )
+        };
 
         if( $debug ) {
             debug_note( $0, $filename, $dataname, 'analysis start', undef );

@@ -258,7 +258,7 @@ my $options = { parser => $use_parser, no_print   => 1 };
 my ($data, $err_count, $messages) = parse_cif($filename, $options);
 process_parser_messages( $messages, $die_on_error_level );
 
-if( !@$data || !defined $data->[0] || !defined $data->[0]{name} ) {
+if( !@{$data} ) {
     report_message( {
        'program'   => $0,
        'filename'  => $filename,
@@ -272,18 +272,20 @@ if( !@$data || !defined $data->[0] || !defined $data->[0]{name} ) {
 for my $dataset (@$data) {
 
     my $datablok = $dataset->{values};
-    my $dataname = 'data_' . $dataset->{name} if defined $dataset->{name};
+    my $dataname = 'data_' . $dataset->{'name'};
 
-    local $SIG{__WARN__} = sub { process_warnings( {
-                                   'message'  => @_,
-                                   'program'  => $0,
-                                   'add_pos'  => $dataname,
-                                   'filename' => $filename
-                                }, $die_on_error_level ) };
+    local $SIG{__WARN__} = sub {
+        process_warnings( {
+            'message'  => @_,
+            'program'  => $0,
+            'add_pos'  => $dataname,
+            'filename' => $filename
+        }, $die_on_error_level )
+    };
 
     canonicalize_names( $dataset );
 
-    next if !defined $datablok or !defined $datablok->{_refln_index_h};
+    next if !defined $datablok->{'_refln_index_h'};
 
     ## print "\n" if $n > 0;
 
@@ -363,7 +365,6 @@ for my $dataset (@$data) {
                 #showRef( $dataset );
             }
         }
-
 
         # Print out the CIF header if requested:
         if( defined $cif_comment_header ) {
