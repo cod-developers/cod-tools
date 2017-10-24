@@ -620,20 +620,22 @@ for my $filename (@ARGV) {
 
     for my $dataset (@{$data}) {
 
-        my $dataname = 'data_' . $dataset->{name} if defined $dataset->{name};
+        my $dataname = 
 
         # Disabling exiting upon warnings, since error messages of all levels
         # must be reported.
-        local $SIG{__WARN__} = sub { process_warnings( {
-                                       'message'       => @_,
-                                       'program'       => $0,
-                                       'filename'      => $filename,
-                                       'add_pos'       => $dataname
-                                     }, {
-                                       'ERROR'   => 0,
-                                       'WARNING' => 0,
-                                       'NOTE'    => 0,
-                                     } ) };
+        local $SIG{__WARN__} = sub {
+            process_warnings( {
+                'message'  => @_,
+                'program'  => $0,
+                'filename' => $filename,
+                'add_pos'  => 'data_' . $dataset->{'name'}
+             }, {
+                'ERROR'    => 0,
+                'WARNING'  => 0,
+                'NOTE'     => 0,
+            } )
+        };
 
         my @messages;
 
