@@ -38,6 +38,15 @@ check_temperature_factors
 check_z
 );
 
+##
+# Checks if the publication authors names provided in the data block
+# comply with the name syntax requirement.
+#
+# @param $dataset
+#       Reference to a data block as returned by the COD::CIF::Parser.
+# @return
+#       Reference to an array of audit messages.
+##
 sub check_author_names
 {
     my ($dataset) = @_;
