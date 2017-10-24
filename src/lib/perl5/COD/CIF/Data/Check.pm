@@ -122,12 +122,25 @@ sub check_bibliography
     return \@messages;
 }
 
+##
+# Checks if the summary chemical formula provided in the data block
+# complies with the chemical formula syntax requirements. This subroutine
+# checks against a simple syntax that does not take into account things
+# such as chemical element types, chemical element order, etc. For a
+# more robust formula parsing use the COD::Formulae::Parser::AdHoc::AdHoc
+# or the COD::Formulae::Parser::IUCr::IUCr modules.
+#
+# @param $dataset
+#       Reference to a data block as returned by the COD::CIF::Parser.
+# @return
+#       Reference to an array of audit messages.
+##
 sub check_chemical_formula_sum
 {
     my ($dataset) = @_;
     my @messages;
 
-    my $formula = $dataset->{values}{_chemical_formula_sum}[0];
+    my $formula = $dataset->{'values'}{'_chemical_formula_sum'}[0];
 
     my $formula_component = '[a-zA-Z]{1,2}[0-9.]*';
 
@@ -275,7 +288,7 @@ sub check_disorder
     return \@messages;
 }
 
-# Check whether specified tags are all simultaneously persent. This
+# Check whether specified tags are all simultaneously present. This
 # check in COD is important for _atom_site_fractional_{x,y,z},
 # _atom_site_Cartesian_{x,y,z} and _atom_site_aniso_U_?? data items.
 
@@ -571,7 +584,7 @@ sub check_temperature_factors
     return \@messages;
 }
 
-# To check that the specified XYZ dat item value is within expected limits.
+# To check that the specified XYZ data item value is within expected limits.
 
 sub check_limits
 {
