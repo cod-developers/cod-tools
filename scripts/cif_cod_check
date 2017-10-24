@@ -168,17 +168,16 @@ my $die_on_errors   = 1;
 my $die_on_warnings = 0;
 my $die_on_notes    = 0;
 
-#===================================================================#
-#
-# The structure of the default table of the limits
-# that uses '--check-limits' option is:
-#
-# { _tag_name -> [ [$begin,$end] , [$begin,$end] , [$begin,$end] ] }
-#
-# The array [$begin,$end] is the range of the limits.
-#
-#===================================================================#
+my @forbidden_su = qw(
+_refine_ls_R_factor_gt
+_refine_ls_R_factor_obs
+_refine_ls_wR_factor_ref
+_refine_ls_wR_factor_obs
+);
 
+# Default limits table. A verbose dsecription of this data structure is
+# provided in the description of the COD::CIF::Data::Check::check_limits()
+# subroutine
 my %default_limits_table = (
     '_refine_ls_R_factor_gt' =>   [ [0.2], [0.15], [0.10] ],
     '_refine_ls_R_factor_obs' =>  [ [0.2], [0.15], [0.10] ],
@@ -188,13 +187,6 @@ my %default_limits_table = (
     '_refine_ls_goodness_of_fit_obs' => [ [0.4,6], [0.6,4], [0.8,2] ],
     '_refine_ls_shift/su_max' =>  [ [0.20], [0.10], [0.05] ],
     '_refine_ls_shift/esd_max' => [ [0.20], [0.10], [0.05] ],
-);
-
-my @forbidden_su = qw(
-_refine_ls_R_factor_gt
-_refine_ls_R_factor_obs
-_refine_ls_wR_factor_ref
-_refine_ls_wR_factor_obs
 );
 
 my %limits_table = %default_limits_table;

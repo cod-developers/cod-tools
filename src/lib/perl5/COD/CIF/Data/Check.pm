@@ -586,35 +586,75 @@ sub check_temperature_factors
     return \@messages;
 }
 
-# To check that the specified XYZ data item value is within expected limits.
-
+##
+# Checks if the data item values provided in the data block lie within the
+# expected limits. All checked non-numeric or *negative* values are reported
+# as erroneous.
+#
+# @param $dataset
+#       Reference to a data block as returned by the COD::CIF::Parser.
+# @param $limits_table
+#       Reference to a data structure containing the expected limits.
+#       Example of the data structure:
+#       {
+#         # Range limits are specified using arrays [ $lower, $upper ]
+#         '_data_name_1' => [
+#           # Severity of the audit message is based on the array index
+#           [ 0, 1 ], # Values outside range [0; 1] will raise an ERROR
+#           [ 2, 5 ], # Values outside range [2; 5] will raise a WARNING
+#           [ 6, 9 ]  # Values outside range [6; 9] will raise a NOTE
+#         ],
+#         # Upper limit can be omitted
+#         '_data_name_2' => [
+#           [ 3 ], # Values greater than 3 will raise an ERROR
+#           [ 2 ], # Values greater than 2 will raise a WARNING
+#           # Not all error levels need to be defined
+#         ],
+#         ...
+#       }
+#
+# @return
+#       Reference to an array of audit messages.
+##
 sub check_limits
 {
     my ($dataset, $limits_table) = @_;
     my @messages;
 
     my @report_names = qw( ERROR WARNING NOTE );
-    my $numeric = '([+-]?(\d+(\.\d*)?|\.\d+))';
-    my $values = $dataset->{values};
+    my $values = $dataset->{'values'};
 
     foreach my $tag( sort keys %{$limits_table} ) {
         next if !exists $values->{$tag};
 
         my $value = $values->{$tag}[0];
+        # FIXME: special values are not properly checked
         next if $value =~ /^[.?]$/;
         if( $value !~ /^$CIF_NUMERIC_REGEX$/ ) {
             push @messages, "ERROR, data item '$tag' value '$value' is not numeric";
             next;
         } else {
+            # TODO: this subroutine need to be thoroughly tested.
+            # FIXME: Currently, mixed-limit arrays are not handled correctly,
+            # i.e.:
+            # {
+            #  _data_name_1 => [
+            #       [ 5 ], [ 4, 2 ], [ 1 ]
+            #   ],
+            #  _data_name_2 => [
+            #       [ 1, 3 ], [ 2 ], [ 5, 8 ]
+            #  ]
+            # }
             my $number = $1;
+            # FIXME: No way to check negative values?
             if( $number < 0 ) {
                 push @messages, "WARNING, data item '$tag' value '$value' should "
                    . 'be in range [0.0, +inf)';
                 next;
             }
-            if(! defined $limits_table->{$tag}[0][1] ) {
-                foreach my $i( 0..$#{ $limits_table->{$tag} } ) {
-                    my $limit = @{ $limits_table->{$tag}->[$i]}[0];
+            if( !defined $limits_table->{$tag}[0][1] ) {
+                foreach my $i ( 0..$#{ $limits_table->{$tag} } ) {
+                    my $limit = $limits_table->{$tag}[$i][0];
                     if( $number > $limit ) {
                         push @messages, "$report_names[$i], data item '$tag' "
                                       . "value '$value' is > $limit";
@@ -623,8 +663,8 @@ sub check_limits
                 }
             } else {
                 foreach my $i( 0..$#{ $limits_table->{$tag} } ) {
-                    my $begin = @{ $limits_table->{$tag}->[$i]}[0];
-                    my $end = @{ $limits_table->{$tag}->[$i]}[1];
+                    my $begin = $limits_table->{$tag}[$i][0];
+                    my $end   = $limits_table->{$tag}[$i][1];
                     if( ($number < $begin) || ($number > $end) ) {
                         push @messages, "$report_names[$i], data item '$tag' "
                                       . "value '$value' lies outside the range "
