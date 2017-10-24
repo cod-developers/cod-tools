@@ -27,6 +27,7 @@ use COD::CIF::Data::Check qw( check_author_names
                               check_limits
                               check_pdcif_relations
                               check_simultaneous_presence
+                              check_su_eligibility
                               check_temperature_factors
                               check_z );
 use COD::AuthorNames qw( get_name_syntax_description );
@@ -187,6 +188,13 @@ my %default_limits_table = (
     '_refine_ls_goodness_of_fit_obs' => [ [0.4,6], [0.6,4], [0.8,2] ],
     '_refine_ls_shift/su_max' =>  [ [0.20], [0.10], [0.05] ],
     '_refine_ls_shift/esd_max' => [ [0.20], [0.10], [0.05] ],
+);
+
+my @forbidden_su = qw(
+_refine_ls_R_factor_gt
+_refine_ls_R_factor_obs
+_refine_ls_wR_factor_ref
+_refine_ls_wR_factor_obs
 );
 
 my %limits_table = %default_limits_table;
@@ -671,8 +679,12 @@ for my $filename (@ARGV) {
             if $check{'symops'};
         push @messages, @{check_space_group_constraints( $dataset )}
             if $check{'sg_constraints'};
-        push @messages, @{check_limits( $dataset, $limits_table )}
-            if $check{'limits'};
+        if ( $check{'limits'} ) {
+            # FIXME: the SU checking functionality should be fully
+            # delegated to the CIF validator
+            push @messages, @{check_su_eligibility( $dataset, \@forbidden_su )};
+            push @messages, @{check_limits( $dataset, $limits_table )}
+        }
         push @messages, @{check_temperature_factors(
                             $dataset, {
                               'mandatory_year_cutoff' =>
