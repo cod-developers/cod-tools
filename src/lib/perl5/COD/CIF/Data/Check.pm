@@ -21,7 +21,6 @@ use COD::CIF::Data::EstimateZ qw( cif_estimate_z );
 use COD::CIF::Unicode2CIF qw( cif2unicode );
 use COD::CIF::Tags::Manage qw( tag_is_empty );
 
-
 require Exporter;
 our @ISA = qw( Exporter );
 our @EXPORT_OK = qw(
@@ -34,9 +33,12 @@ check_limits
 check_mandatory_presence
 check_pdcif_relations
 check_simultaneous_presence
+check_su_eligibility
 check_temperature_factors
 check_z
 );
+
+my $CIF_NUMERIC_REGEX = '([+-]?(?:\d+(?:\.\d*)?|\.\d+))\(?(\d*)\)?';
 
 ##
 # Checks if the publication authors names provided in the data block
@@ -599,19 +601,12 @@ sub check_limits
         next if !exists $values->{$tag};
 
         my $value = $values->{$tag}[0];
-        next if $value =~ /^(\.|\?)$/;
-        if( $value !~ /^([+-]?(?:\d+(?:\.\d*)?|\.\d+))\(?(\d*)\)?$/ ) {
+        next if $value =~ /^[.?]$/;
+        if( $value !~ /^$CIF_NUMERIC_REGEX$/ ) {
             push @messages, "ERROR, data item '$tag' value '$value' is not numeric";
             next;
         } else {
             my $number = $1;
-            my $precision = $2;
-            # TODO: this part should be refactored into separate check
-            if( ($tag =~ /_w?R_factor_/) && ( $precision ) ) {
-                push @messages, "WARNING, data item '$tag' value is '$value', "
-                   . 'but it should be numeric and without precision (s.u. value)';
-                next;
-            }
             if( $number < 0 ) {
                 push @messages, "WARNING, data item '$tag' value '$value' should "
                    . 'be in range [0.0, +inf)';
@@ -641,6 +636,38 @@ sub check_limits
         }
     }
     return (\@messages);
+}
+
+##
+# Checks if the data block contains data item values that contain standard
+# uncertainty values as part of their numerical expression even though they
+# are not eligible to do so.
+#
+# @param $dataset
+#       Reference to a data block as returned by the COD::CIF::Parser.
+# @param $data_names
+#       Reference to an array of data names that should not contain standard
+#       uncertainty values as part of their numerical expression.
+# @return
+#       Reference to an array of audit messages.
+##
+sub check_su_eligibility
+{
+    my ( $dataset, $data_names ) = @_;
+    my @messages;
+
+    for ( @{$data_names} ) {
+        if ( defined $dataset->{'values'}{$_} &&
+             $dataset->{'values'}{$_}[0] =~ /^$CIF_NUMERIC_REGEX$/ ) {
+            if ($2) {
+                push @messages,"WARNING, data item '$_' value is " .
+                     "'$dataset->{'values'}{$_}[0]', but it should " .
+                     'be numeric and without precision (s.u. value)';
+            }
+        }
+    }
+
+    return \@messages;
 }
 
 ##
