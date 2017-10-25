@@ -16,6 +16,7 @@ sudo apt-get install -y \
     libparse-yapp-perl \
     libwww-curl-perl \
     libxml-simple-perl \
+    libdatetime-format-rfc3339-perl \
     openbabel \
     perl \
     python-argparse \
