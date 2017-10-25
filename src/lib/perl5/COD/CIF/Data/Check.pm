@@ -776,7 +776,7 @@ sub check_timestamp
                 };
                 if ($@) {
                     push @messages, "ERROR, data item '$name' value " .
-                         "'$_' could not be succesfully parsed as a timestamp" .
+                         "'$_' could not be succesfully parsed as a timestamp " .
                          'value';
                 } else {
                     if ( DateTime->compare($datetime, DateTime->now() ) > 0 ) {
