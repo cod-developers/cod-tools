@@ -203,17 +203,18 @@ sub get_limits_table($) {
         open my $list, '<', $flimits or die 'ERROR, '
            . 'could not open limits file for input -- ' . lcfirst($!) . "\n";
 
-        foreach( <$list> ) {
+        my $number_regex = '\d*[.]?\d+';
+        while ( <$list> ) {
             if( /^#/ ) { next; }
             my @constraints;
-            my @data = split( /\s+/, $_, 4 );
-            my $tag = shift( @data );
+            my @data = split /\s+/, $_, 4;
+            my $tag = shift @data;
             foreach( @data ) {
-                $_ =~ s/\s+//g;
-                if( $_ =~ /(\d*\.?\d+)-(\d*\.?\d+)/ ) {
-                    push( @constraints, [$1,$2] );
+                s/\s+//g;
+                if( /($number_regex)-($number_regex)/ ) {
+                    push @constraints, [$1,$2];
                 } else {
-                    push( @constraints, [$_] );
+                    push @constraints, [$_];
                 }
             }
             $ltable{$tag} = \@constraints;
@@ -254,8 +255,8 @@ my $use_parser = 'c';
 my $input_format = 'cif';
 my $require_only_doi = 0;
 my $use_precisions = 1;
-my $useReporter = 0;
-my $reportFile = '-';
+my $use_reporter = 0;
+my $report_file = '-';
 
 #* OPTIONS:
 #*   -c, --always-continue
@@ -510,7 +511,7 @@ my $reportFile = '-';
     '--do-not-use-precisions' => sub { $use_precisions = 0 },
     '--ignore-precisions'     => sub { $use_precisions = 0 },
 
-    '--use-reporter' => sub{ $useReporter = 1; $reportFile = get_value() },
+    '--use-reporter' => sub{ $use_reporter = 1; $report_file = get_value() },
 
     '-c,--always-continue'              => sub { $die_on_errors   = 0;
                                                  $die_on_warnings = 0;
@@ -560,26 +561,27 @@ sub print_limits {
     foreach my $tag ( sort keys %{$limits_table} ) {
         printf '%-32s', $tag;
         for my $i( 0..$#{ $limits_table->{$tag} } ) {
-            print "\t" , join( '-', @{ $limits_table->{$tag}[$i]} );
+            print "\t" , join '-', @{ $limits_table->{$tag}[$i]};
         }
         print "\n";
     }
     exit 0;
 }
 
-if( $reportFile =~ m/^\s*-\s*$/ || !-w dirname($reportFile) ) {
-    open reportFileFH, '>&', \*STDOUT or
+my $report_file_fh;
+if( $report_file =~ m/^\s*-\s*$/ || !-w dirname($report_file) ) {
+    open $report_file_fh, '>&', \*STDOUT or
          report_message( {
             'program'   => $0,
             'err_level' => 'ERROR',
-            'message'   => 'cannot dup STDOUT -- ' . lcfirst($!)
+            'message'   => 'cannot dup STDOUT -- ' . ( lcfirst $! )
          }, $die_on_errors );
 
 } else {
-    open reportFileFH, '>', $reportFile;
+    open $report_file_fh, '>', $report_file;
 }
-binmode( reportFileFH, ':encoding(UTF-8)' );
-binmode( STDERR, ':encoding(UTF-8)' );
+binmode $report_file_fh, ':encoding(UTF-8)';
+binmode STDERR, ':encoding(UTF-8)';
 
 my %space_groups = map {
     my $key1 = $_->[1];
@@ -592,8 +594,9 @@ my %space_groups = map {
       @COD::Spacegroups::Lookup::COD::table,
       @COD::Spacegroups::Lookup::COD::extra_settings;
 
-$| = 1; # Flush buffers immediately, to avoid mixing lines of STDOUT
-        # and STDERR.
+# Flush buffers immediately, to avoid mixing lines of STDOUT and STDERR.
+local $| = 1;
+
 my $name_syntax_explained = 0;
 
 @ARGV = ('-') unless @ARGV;
@@ -601,7 +604,7 @@ my $name_syntax_explained = 0;
 for my $filename (@ARGV) {
 
     my $options = { 'parser' => $use_parser, 'no_print' => 1 };
-    if ( $use_parser eq 'perl' && $useReporter ) {
+    if ( $use_parser eq 'perl' && $use_reporter ) {
         $options->{reporter} = \&parser_reporter;
     };
 
@@ -624,9 +627,6 @@ for my $filename (@ARGV) {
     }
 
     for my $dataset (@{$data}) {
-
-        my $dataname = 
-
         # Disabling exiting upon warnings, since error messages of all levels
         # must be reported.
         local $SIG{__WARN__} = sub {
@@ -972,7 +972,7 @@ sub get_sg_descriptions
             push @messages,
                  "WARNING, the '$sg_data->{'tags'}{'hermann_mauguin'}' data item " .
                  "value '$sg_data->{'hermann_mauguin'}' was not recognised as a " .
-                 "space group name";
+                 'space group name';
         }
     }
 
@@ -1178,8 +1178,8 @@ sub parser_reporter
     my $report = "$0: $file($line)" . $data . ': ';
     $report .= "number of the currently processed line -- $line.\n";
 
-    print reportFileFH $report;
-    flush reportFileFH;
+    print {$report_file_fh} $report;
+    flush $report_file_fh;
 
     return 0;
 }
