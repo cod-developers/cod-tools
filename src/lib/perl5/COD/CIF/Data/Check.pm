@@ -35,6 +35,7 @@ check_pdcif_relations
 check_simultaneous_presence
 check_su_eligibility
 check_temperature_factors
+check_timestamp
 check_z
 );
 
@@ -679,7 +680,7 @@ sub check_limits
 }
 
 ##
-# Checks if the data block contains data item values that contain standard
+# Checks if the data block contains data item values that have standard
 # uncertainty values as part of their numerical expression even though they
 # are not eligible to do so.
 #
@@ -729,6 +730,61 @@ sub check_mandatory_presence
     for ( @{$data_names} ) {
         if ( !defined $dataset->{'values'}{$_} ) {
             push @messages, "ERROR, mandatory data item '$_' was not found"
+        }
+    }
+
+    return \@messages;
+}
+
+##
+# Checks if the timestamp values provided in the data block can be parsed
+# as a date value (YYYY-MM-DD) or a datetime value (as defined in RFC3339).
+# Any date that specifies a moment in the future as compared to the
+# current machine time is also reported.
+#
+# @param $dataset
+#       Reference to a data block as returned by the COD::CIF::Parser.
+# @param $data_names
+#       Reference to an array of data names that should be checked.
+# @return
+#       Reference to an array of audit messages.
+##
+sub check_timestamp
+{
+    my ( $dataset, $data_names ) = @_;
+
+    my @messages;
+
+    use DateTime::Format::RFC3339;
+    my $parser = DateTime::Format::RFC3339->new();
+
+    for my $name ( @{$data_names} ) {
+        if ( exists $dataset->{'values'}{$name} ) {
+            foreach ( @{$dataset->{'values'}{$name}} ) {
+                my $datetime;
+                eval {
+                    # Parse date only time
+                    if ( /^(\d{4})-(\d{2})-(\d{2})$/ ) {
+                        $datetime = DateTime->new(
+                            'year'  => $1,
+                            'month' => $2,
+                            'day'   => $3,
+                        );
+                    } else {
+                        $datetime = $parser->parse_datetime($_);
+                    }
+                };
+                if ($@) {
+                    push @messages, "ERROR, data item '$name' value " .
+                         "'$_' could not be succesfully parsed as a date";
+                } else {
+                    if ( DateTime->compare($datetime, DateTime->now() ) > 0 ) {
+                        push @messages, "ERROR, data item '$name' value " .
+                             "'$_' seems to be specify a moment of time in " .
+                             'the future';
+                    }
+                }
+            };
         }
     }
 
