@@ -109,23 +109,35 @@ $ddlm_name .= $suffix;
 # but are missing in the 
 my @ddl1_tags;
 my %ddl1_enumerators;
+my %ddl1_enumeration_defaults;
 for my $datablock ( @{$ddl1_data} ) {
-    if ( exists $datablock->{'values'}{'_type'} &&
+
+    foreach my $name ( @{$datablock->{'values'}{'_name'}} ) {
+        # Data names
+        if ( exists $datablock->{'values'}{'_type'} &&
          $datablock->{'values'}{'_type'}[0] ne 'null' ) {
-        push @ddl1_tags, @{$datablock->{'values'}{'_name'}};
-    }
-    # Enumerators
-    if ( exists $datablock->{'values'}{'_enumeration'} ) {
-        $ddl1_enumerators{$datablock->{'values'}{'_name'}[0]} = 
-            $datablock->{'values'}{'_enumeration'};
+        push @ddl1_tags, $name;
+        }
+        # Enumerators
+        if ( exists $datablock->{'values'}{'_enumeration'} ) {
+            $ddl1_enumerators{$name} =
+                $datablock->{'values'}{'_enumeration'};
+        }
+        # Enumeration defaults
+        if ( exists $datablock->{'values'}{'_enumeration_default'} ) {
+            $ddl1_enumeration_defaults{$name} =
+                $datablock->{'values'}{'_enumeration_default'}[0];
+        }
     }
 }
 
 my @ddlm_tags;
 my %ddlm_enumerators;
+my %ddlm_enumeration_defaults;
 for my $saveblock ( @{$ddlm_data->[0]{'save_blocks'}} ) {
     if ( !exists $saveblock->{'values'}{'_definition.scope'} ||
          lc $saveblock->{'values'}{'_definition.scope'}[0] eq 'item' ) {
+        # Data names
         if ( defined $saveblock->{'values'}{'_definition.id'} ) {
             push @ddlm_tags, @{$saveblock->{'values'}{'_definition.id'}};
         }
@@ -142,6 +154,19 @@ for my $saveblock ( @{$ddlm_data->[0]{'save_blocks'}} ) {
                 foreach ( @{$saveblock->{'values'}{'_alias.definition_id'}} ) {
                     $ddlm_enumerators{$_} =
                         $saveblock->{'values'}{'_enumeration_set.state'};
+                }
+            }
+        }
+
+        # Enumeration defaults
+        if ( defined $saveblock->{'values'}{'_enumeration.default'} ) {
+            $ddlm_enumeration_defaults{$saveblock->{'values'}{'_definition.id'}[0]} =
+                $saveblock->{'values'}{'_enumeration.default'}[0];
+
+            if ( defined $saveblock->{'values'}{'_alias.definition_id'} ) {
+                foreach ( @{$saveblock->{'values'}{'_alias.definition_id'}} ) {
+                    $ddlm_enumeration_defaults{$_} =
+                        $saveblock->{'values'}{'_enumeration.default'}[0];
                 }
             }
         }
@@ -181,6 +206,30 @@ foreach ( keys %ddl1_enumerators ) {
             "are defined in the '$ddlm_name' DDLm dictionary, but not in the " .
             "'$ddl1_name' DDLm dictionary\n";
         }
+    }
+}
+
+# Checking default enumerator values
+foreach ( sort keys %ddl1_enumeration_defaults ) {
+    if ( exists $ddlm_enumeration_defaults{$_} ) {
+        if ( $ddl1_enumeration_defaults{$_} ne $ddlm_enumeration_defaults{$_} ) {
+            warn "$0:: WARNING, enumeration defaults of data item '$_' " .
+                 "differ in '$ddl1_name' DDL1 and '$ddlm_name' DDLm dictionaries " .
+                 "($ddl1_enumeration_defaults{$_} vs. $ddlm_enumeration_defaults{$_})\n";
+        }
+    } else {
+        warn "$0:: WARNING, enumeration default '$ddl1_enumeration_defaults{$_}' " .
+             "is defined for data item '$_' in the '$ddl1_name' DDL1 " .
+             "dictionary, but not in the '$ddlm_name' DDLm dictionary.\n";
+    }
+}
+
+foreach ( sort keys %ddlm_enumeration_defaults ) {
+    next if ( /[.]/ );
+    if ( !exists $ddl1_enumeration_defaults{$_} ) {
+        warn "$0:: WARNING, enumeration default '$ddlm_enumeration_defaults{$_}' " .
+             "is defined for data item '$_' in the '$ddlm_name' DDLm " .
+             "dictionary, but not in the '$ddl1_name' DDL1 dictionary.\n";
     }
 }
 
