@@ -215,6 +215,17 @@ sub print_loop
         }
     }
 
+    # Detect empty loops and attempt to fix them
+    if( $max_column_length == 0 ) {
+        local $" = "', '";
+        warn "WARNING, loop of data items '@loop_tags' does not contain any " .
+             "values -- a question mark symbol ('?') will be added as values " .
+             'for each data item' . "\n";
+        for my $loop_tag (@loop_tags) {
+            push @{$values->{$loop_tag}}, '?';
+        }
+    }
+
     print "loop_\n";
     for (@loop_tags) {
         print $_, "\n";
