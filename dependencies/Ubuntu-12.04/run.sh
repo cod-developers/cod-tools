@@ -6,6 +6,7 @@ sudo apt-get install -y \
     libcapture-tiny-perl \
     libcarp-assert-perl \
     libclone-perl \
+    libdatetime-format-rfc3339-perl \
     libdbd-mysql-perl \
     libdbd-sqlite3-perl \
     libdbi-perl \
@@ -16,7 +17,6 @@ sudo apt-get install -y \
     libparse-yapp-perl \
     libwww-curl-perl \
     libxml-simple-perl \
-    libdatetime-format-rfc3339-perl \
     openbabel \
     perl \
     python-argparse \
