@@ -110,6 +110,7 @@ $ddlm_name .= $suffix;
 my @ddl1_tags;
 my %ddl1_enumerators;
 my %ddl1_enumeration_defaults;
+my %ddl1_enumeration_ranges;
 for my $datablock ( @{$ddl1_data} ) {
 
     foreach my $name ( @{$datablock->{'values'}{'_name'}} ) {
@@ -128,12 +129,18 @@ for my $datablock ( @{$ddl1_data} ) {
             $ddl1_enumeration_defaults{$name} =
                 $datablock->{'values'}{'_enumeration_default'}[0];
         }
+        # Enumeration ranges
+        if ( exists $datablock->{'values'}{'_enumeration_range'} ) {
+            $ddl1_enumeration_ranges{$name} =
+                $datablock->{'values'}{'_enumeration_range'}[0];
+        }
     }
 }
 
 my @ddlm_tags;
 my %ddlm_enumerators;
 my %ddlm_enumeration_defaults;
+my %ddlm_enumeration_ranges;
 for my $saveblock ( @{$ddlm_data->[0]{'save_blocks'}} ) {
     if ( !exists $saveblock->{'values'}{'_definition.scope'} ||
          lc $saveblock->{'values'}{'_definition.scope'}[0] eq 'item' ) {
@@ -167,6 +174,19 @@ for my $saveblock ( @{$ddlm_data->[0]{'save_blocks'}} ) {
                 foreach ( @{$saveblock->{'values'}{'_alias.definition_id'}} ) {
                     $ddlm_enumeration_defaults{$_} =
                         $saveblock->{'values'}{'_enumeration.default'}[0];
+                }
+            }
+        }
+
+        # Enumeration defaults
+        if ( defined $saveblock->{'values'}{'_enumeration.range'} ) {
+            $ddlm_enumeration_ranges{$saveblock->{'values'}{'_definition.id'}[0]} =
+                $saveblock->{'values'}{'_enumeration.range'}[0];
+
+            if ( defined $saveblock->{'values'}{'_alias.definition_id'} ) {
+                foreach ( @{$saveblock->{'values'}{'_alias.definition_id'}} ) {
+                    $ddlm_enumeration_ranges{$_} =
+                        $saveblock->{'values'}{'_enumeration.range'}[0];
                 }
             }
         }
@@ -224,7 +244,7 @@ foreach ( keys %ddlm_enumerators ) {
     }
 }
 
-# Checking default enumerator values
+# Checking default enumeration values
 foreach ( sort keys %ddl1_enumeration_defaults ) {
     if ( exists $ddlm_enumeration_defaults{$_} ) {
         if ( $ddl1_enumeration_defaults{$_} ne $ddlm_enumeration_defaults{$_} ) {
@@ -248,6 +268,36 @@ foreach ( sort keys %ddlm_enumeration_defaults ) {
     }
 }
 
+# Checking enumeration ranges values
+foreach ( sort keys %ddl1_enumeration_ranges ) {
+    if ( exists $ddlm_enumeration_ranges{$_} ) {
+        $ddl1_enumeration_ranges{$_} =~ /^([^:]*)?:([^:]*)?$/;
+        my @ddl1_range = ($1, $2);
+        $ddlm_enumeration_ranges{$_} =~ /^([^:]*)?:([^:]*)?$/;
+        my @ddlm_range = ($1, $2);
+
+        if ( !are_limits_equal( @ddl1_range[0], @ddlm_range[0] ) ||
+             !are_limits_equal( @ddl1_range[1], @ddlm_range[1] ) ) {
+            warn "$0:: WARNING, enumeration range of data item '$_' " .
+                 "differ in '$ddl1_name' DDL1 and '$ddlm_name' DDLm dictionaries " .
+                 "($ddl1_enumeration_ranges{$_} vs. $ddlm_enumeration_ranges{$_})\n";
+        }
+    } else {
+        warn "$0:: WARNING, enumeration range '$ddl1_enumeration_ranges{$_}' " .
+             "is defined for data item '$_' in the '$ddl1_name' DDL1 " .
+             "dictionary, but not in the '$ddlm_name' DDLm dictionary.\n";
+    }
+}
+
+foreach ( sort keys %ddlm_enumeration_ranges ) {
+    next if ( /[.]/ );
+    if ( !exists $ddl1_enumeration_ranges{$_} ) {
+        warn "$0:: WARNING, enumeration range '$ddlm_enumeration_ranges{$_}' " .
+             "is defined for data item '$_' in the '$ddlm_name' DDLm " .
+             "dictionary, but not in the '$ddl1_name' DDL1 dictionary.\n";
+    }
+}
+
 sub find_unique_values
 {
     my ($array_1, $array_2, $case_sensitive) = @_;
@@ -259,4 +309,21 @@ sub find_unique_values
     delete @seen {($case_sensitive ? @{$array_2} : map {lc $_} @{$array_2} )};
     my @unique = values %seen;
     return \@unique;
+}
+
+sub are_limits_equal
+{
+    my ($limit_1, $limit_2) = @_;
+
+    my $sigma = 0.000001;
+
+    if ( $limit_1 eq '' && $limit_2 eq '' ) {
+        return 1;
+    } elsif ( $limit_1 eq '' || $limit_2 eq '' ) {
+        return 0;
+    } elsif ( abs($limit_1 - $limit_2) > $sigma ) {
+        return 0;
+    }
+    
+    return 1;
 }
