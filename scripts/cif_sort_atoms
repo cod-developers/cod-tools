@@ -34,10 +34,13 @@ my $direction = 1;
 
 my $use_parser = 'c';
 
+my $die_on_errors   = 0;
+my $die_on_warnings = 0;
+my $die_on_notes    = 0;
 my $die_on_error_level = {
-    ERROR   => 0,
-    WARNING => 0,
-    NOTE    => 0,
+    ERROR   => $die_on_errors,
+    WARNING => $die_on_warnings,
+    NOTE    => $die_on_notes
 };
 
 #* OPTIONS:
@@ -102,21 +105,41 @@ for my $filename (@ARGV) {
 
     for my $dataset (@$data) {
         my $values = $dataset->{values};
+        my $dataname = 'data_' . $dataset->{name};
 
-        my @order = $order->( $values, $direction );
-        my $atom_loop = $dataset->{inloop}{_atom_site_label};
-        for my $tag (@{$dataset->{loops}[$atom_loop]}) {
-            for my $key (qw( precisions types values )) {
-                $dataset->{$key}{$tag} =
-                    [ @{$dataset->{$key}{$tag}}[@order] ];
+        local $SIG{__WARN__} = sub {
+            process_warnings( {
+                'message'  => @_,
+                'program'  => $0,
+                'filename' => $filename,
+                'add_pos'  => $dataname
+            }, $die_on_error_level )
+        };
+
+        eval {
+            my @order = $order->( $values, $direction );
+            my $atom_loop = $dataset->{inloop}{_atom_site_label};
+            for my $tag (@{$dataset->{loops}[$atom_loop]}) {
+                for my $key (qw( precisions types values )) {
+                    $dataset->{$key}{$tag} =
+                        [ @{$dataset->{$key}{$tag}}[@order] ];
+                }
             }
-        }
 
-        print_cif( $dataset,
-                   {
-                        preserve_loop_order => 1,
-                        keep_tag_order => 1
-                   } );
+            print_cif( $dataset,
+                       {
+                            preserve_loop_order => 1,
+                            keep_tag_order => 1
+                       } );
+        };
+        if ( $@ ) {
+            process_errors( {
+              'message'       => $@,
+              'program'       => $0,
+              'filename'      => $filename,
+              'add_pos'       => $dataname
+            }, $die_on_errors )
+        }
     }
 }
 
