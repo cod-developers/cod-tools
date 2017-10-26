@@ -206,6 +206,21 @@ foreach ( keys %ddl1_enumerators ) {
             "are defined in the '$ddlm_name' DDLm dictionary, but not in the " .
             "'$ddl1_name' DDLm dictionary\n";
         }
+    } else {
+        warn "$0:: WARNING, enumerator values [" .
+             ( join ",", map {"'$_'"} @{$ddl1_enumerators{$_}} ) . '] ' .
+             "of data item '$_' are defined in the '$ddl1_name' DDL1 dictionary," .
+             "but not in the '$ddl1_name' DDLm dictionary\n";
+    }
+}
+
+foreach ( keys %ddlm_enumerators ) {
+    next if ( /[.]/ );
+    if ( !exists $ddl1_enumerators{$_} ) {
+        warn "$0:: WARNING, enumerator values [" .
+             ( join ",", map {"'$_'"} @{$ddlm_enumerators{$_}} ) . '] ' .
+             "of data item '$_' are defined in the '$ddlm_name' DDLm " .
+             "dictionary, but not in the '$ddlm_name' DDLm dictionary\n";
     }
 }
 
