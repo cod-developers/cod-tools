@@ -119,10 +119,12 @@ for my $filename (@ARGV) {
         eval {
             my @order = $order->( $values, $direction );
             my $atom_loop = $dataset->{inloop}{_atom_site_label};
-            for my $tag (@{$dataset->{loops}[$atom_loop]}) {
-                for my $key (qw( precisions types values )) {
-                    $dataset->{$key}{$tag} =
-                        [ @{$dataset->{$key}{$tag}}[@order] ];
+            if( defined $atom_loop ) {
+                for my $tag (@{$dataset->{loops}[$atom_loop]}) {
+                    for my $key (qw( precisions types values )) {
+                        $dataset->{$key}{$tag} =
+                            [ @{$dataset->{$key}{$tag}}[@order] ];
+                    }
                 }
             }
 
