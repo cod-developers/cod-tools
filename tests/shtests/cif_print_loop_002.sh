@@ -43,6 +43,6 @@ my $data_block =
 };
 
 COD::CIF::Tags::Print::print_loop( '_a', 0, $data_block );
-COD::CIF::Tags::Print::print_loop( $data_block, 1 );
+COD::CIF::Tags::Print::print_loop( '_d', 1, $data_block );
 
 END_SCRIPT
