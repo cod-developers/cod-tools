@@ -304,11 +304,12 @@ foreach ( sort keys %ddl1_enumeration_ranges ) {
     }
 }
 
-foreach ( sort keys %ddlm_enumeration_ranges ) {
-    next if ( /[.]/ );
-    if ( !exists $ddl1_enumeration_ranges{$_} ) {
-        warn "$0:: WARNING, enumeration range '$ddlm_enumeration_ranges{$_}' " .
-             "is defined for data item '$_' in the '$ddlm_name' DDLm " .
+foreach my $name ( sort keys %ddlm_enumeration_ranges ) {
+    next if $name =~ ( /[.]/ );
+    if ( !exists $ddl1_enumeration_ranges{$name} &&
+         grep { $name eq $_ } @ddl1_tags ) {
+        warn "$0:: WARNING, enumeration range '$ddlm_enumeration_ranges{$name}' " .
+             "is defined for data item '$name' in the '$ddlm_name' DDLm " .
              "dictionary, but not in the '$ddl1_name' DDL1 dictionary.\n";
     }
 }
