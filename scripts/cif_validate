@@ -22,6 +22,7 @@ use File::Basename qw( basename );
 use List::MoreUtils qw( uniq );
 use COD::CIF::Parser qw( parse_cif ) ;
 use COD::CIF::DDL::Ranges qw( parse_range
+                              range_to_string
                               is_in_range );
 use COD::CIF::Tags::CanonicalNames qw( canonicalize_all_names );
 use COD::SOptions qw( getOptions get_value );
@@ -358,15 +359,12 @@ CIFFILEANAL: for my $filename ( @ARGV ) {
 
                 # check types of values
                 my $range;
-                my %range_for_print;
+                my $range_type;
                 if( defined $dict_tag_values->{'_enumeration_range'} ) {
                     $range = parse_range(
                         $dict_tag_values->{'_enumeration_range'}[0]
                     );
-                    $range_for_print{'min'} = defined $range->[0] ?
-                                                      $range->[0] : '<any>';
-                    $range_for_print{'max'} = defined $range->[1] ?
-                                                      $range->[1] : '<any>';
+                    $range_type = $dict_tag_values->{'_type'}[0];
                 }
 
                 for my $tag_index ( 0..$#{$block->{values}{$tag_analysed}} ) {
@@ -497,21 +495,25 @@ CIFFILEANAL: for my $filename ( @ARGV ) {
                             $value_wo_su =~ s/\s*\(.*$//;
                         }
                         if( is_in_range( $value_wo_su,
-                                { 'type'  => $dict_tag_values->{'_type'}[0],
+                                { 'type'  => $range_type,
                                   'range' => $range,
                                   'sigma' => $sigma,
                                 } ) <= 0 ) {
                                 push @tag_value_notes,
                                      "data item '$tag_analysed' value " .
-                                     "\"$value\" should be in range [" .
-                                     $range_for_print{min} .
-                                     ', ' . $range_for_print{max} . ']';
+                                     "\"$value\" should be in range " .
+                                     range_to_string(
+                                        $range, {
+                                            'type' => $range_type
+                                        }
+                                     );
                         } elsif( $debug ) {
                             debug_note( $0, $filename, $dataname,
                                         "data item '$tag_analysed' value " .
-                                        "\"$value\" is in range [" .
-                                        $range_for_print{min} . ', ' .
-                                        $range_for_print{max} . ']', undef );
+                                        "\"$value\" is in range " .
+                                        range_to_string( $range, {
+                                            'type' => $range_type
+                                        } ), undef );
                         }
                     } elsif( $debug ) {
                         debug_note( $0, $filename, $dataname,
