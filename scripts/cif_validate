@@ -21,7 +21,8 @@ use warnings;
 use File::Basename qw( basename );
 use List::MoreUtils qw( uniq );
 use COD::CIF::Parser qw( parse_cif ) ;
-use COD::CIF::DDL::Ranges qw( is_in_range );
+use COD::CIF::DDL::Ranges qw( parse_range
+                              is_in_range );
 use COD::CIF::Tags::CanonicalNames qw( canonicalize_all_names );
 use COD::SOptions qw( getOptions get_value );
 use COD::SUsage qw( usage options );
@@ -356,21 +357,16 @@ CIFFILEANAL: for my $filename ( @ARGV ) {
                 }
 
                 # check types of values
-                my $range = {};
+                my $range;
                 my %range_for_print;
-                if( exists $dict_tag_values->{_enumeration_range} ) {
-                    ( $range->{'min'}, $range->{'max'} ) = split(/:/,
-                        $dict_tag_values->{_enumeration_range}[0],
-                        2);
-                    %range_for_print = %{$range};
-                    if( length($range->{min}) == 0 ) {
-                        delete $range->{min};
-                        $range_for_print{min} = '<any>';
-                    }
-                    if( length($range->{max}) == 0 ) {
-                        delete $range->{max};
-                        $range_for_print{max} = '<any>';
-                    }
+                if( defined $dict_tag_values->{'_enumeration_range'} ) {
+                    $range = parse_range(
+                        $dict_tag_values->{'_enumeration_range'}[0]
+                    );
+                    $range_for_print{'min'} = defined $range->[0] ?
+                                                      $range->[0] : '<any>';
+                    $range_for_print{'max'} = defined $range->[1] ?
+                                                      $range->[1] : '<any>';
                 }
 
                 for my $tag_index ( 0..$#{$block->{values}{$tag_analysed}} ) {
@@ -495,16 +491,15 @@ CIFFILEANAL: for my $filename ( @ARGV ) {
                     #
                     # Check values against enumeration_range
                     #
-                    if( %{$range} ) {
+                    if( $range ) {
                         my $value_wo_su = $value;
                         if( $dict_tag_values->{_type}[0] eq 'numb' ) {
                             $value_wo_su =~ s/\s*\(.*$//;
                         }
                         if( is_in_range( $value_wo_su,
                                 { 'type'  => $dict_tag_values->{'_type'}[0],
-                                  'min'   => $range->{'min'},
-                                  'max'   => $range->{'max'},
-                                  'sigma' => $sigma
+                                  'range' => $range,
+                                  'sigma' => $sigma,
                                 } ) <= 0 ) {
                                 push @tag_value_notes,
                                      "data item '$tag_analysed' value " .
