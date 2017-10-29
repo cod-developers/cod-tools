@@ -27,6 +27,9 @@ use Scalar::Util qw( looks_like_number );
 use URI;
 
 use COD::CIF::Parser qw( parse_cif );
+use COD::CIF::DDL::Ranges qw( parse_range
+                              range_to_string
+                              is_in_range );
 use COD::CIF::DDL::DDLm qw( get_imported_files
                             merge_imported_files );
 use COD::SOptions qw( getOptions get_value );
@@ -526,7 +529,7 @@ my $cif2_character = $cif2_ws_character . $cif2_nws_character;
                  '<yyyy>-<mm>-<dd>';
         }
         # TODO: a more thorough check should be carried out for the dates --
-        #       the month and day values ranges should be checked
+        #       the month and day value ranges should be checked
     } elsif ( $type eq 'version' ) {
         # version digit string of the form <major>.<version>.<update>
         if ( $value !~ m/^[0-9]+(?:\.[0-9]+){0,2}$/ ) {
@@ -542,21 +545,21 @@ my $cif2_character = $cif2_ws_character . $cif2_nws_character;
     } elsif ( $type eq 'range' ) {
         # inclusive range of numerical values min:max
         # TODO: are letters allowed in ranges?
-        $value =~ m/^(${signed_float})?:(${signed_float})?$/;
-        if ( !defined $1 && !defined $2 ) {
+        my $range = parse_range($value);
+        my $lower = $range->[0];
+        my $upper = $range->[1];
+        if ( ( !defined $lower || $lower !~ /^$signed_float$/ ) &&
+             ( !defined $upper || $upper !~ /^$signed_float$/ ) ) {
             push @validation_messages,
                  'the value should be a range of numerical values of ' .
                  'the form \'min:max\'';
-        } elsif ( defined $1 && defined $2 ) {
-            if ( $1 > $2 ) {
+        } elsif ( defined $lower && defined $upper ) {
+            if ( $lower > $upper ) {
                 push @validation_messages,
-                    "the lower range value '$1' is greater than the upper " .
-                    "range value '$2'";
+                    "the lower range value '$lower' is greater than the upper " .
+                    "range value '$upper'";
             }
         }
-       # push @validation_messages,
-       #          "validation of the 'range' type data items is not yet " .
-       #         'implemented';
     } elsif ( $type eq 'count' ) {
         # unsigned integer number
         if ( $value !~ m/^[0-9]*$/ ) {
@@ -862,12 +865,6 @@ sub validate_range
 {
     my ($data, $dict) = @_;
 
-    # TODO: maybe it should be a global variable?
-    my $signed_float =
-        '(?:[-+]?' .
-        '(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)' .
-        '(?:[eE][-+]?[0-9]+)?)';
-
     my @validation_messages;
 
     for my $scope ( 'Dictionary', 'Category', 'Item' ) {
@@ -880,18 +877,14 @@ sub validate_range
             next if ( is_unknown_value($data->{$scope}{$instance}, $tag, $i) ||
                       is_inapplicable_value($data->{$scope}{$instance}, $tag, $i) );
             my $value = $data->{$scope}{$instance}{'values'}{$tag}[$i];
-            if ( $dict_item->{'values'}{'_enumeration.range'}[0] =~
-                 /^($signed_float)?:($signed_float)?$/ ) {
-              my $min = $1;
-              my $max = $2;
-              my $old_value = $value;
-              $value =~ s/\($signed_float\)$//;
-              if ( !is_in_range_numeric( $value, {'min' => $min, 'max' => $max}) ) {
-                  push @validation_messages,
-                      "data item '$tag' value '$old_value' should be in range " .
-                       ( defined $min ? "[$min" : '(-inf' ) . ',' .
-                       ( defined $max ? "$max]" : '+inf)' );
-              }
+
+            my $range = parse_range( $dict_item->{'values'}{'_enumeration.range'}[0] );
+            my $old_value = $value;
+            $value =~ s/\(\d+\)$//;
+            if ( !is_in_range( $value, { 'range' => $range, 'type' => 'numb' } ) ) {
+                push @validation_messages,
+                     "data item '$tag' value '$old_value' should be in range " .
+                      range_to_string($range, { 'type' => 'numb' }) ;
             }
           }
         }
@@ -899,58 +892,6 @@ sub validate_range
     }}}
 
     return \@validation_messages;
-}
-
-
-# TODO: the subroutine was copied from the cif_validate script and should
-# be refactored to a common validation module in the future
-##
-# is_in_range_numeric
-# Checks numeric value against an inclusive numeric range.
-# @param $value
-#       Value to be checked.
-# @param $param
-#       Parameter hash with the following keys:
-#         {
-#           'min' - => 0,
-#                The minimum range value.
-#           'max'   => 10,
-#                The maximum range value.
-#           'sigma  => 0.1
-#               Standard deviation to be used when comparing numeric values
-#               (3 sigma rule). If sigma is not provided, values are compared
-#               disregarding the standard deviation.
-#         }
-# @return
-#        0 if the value is out of the provided range or is not a number
-#          at all;
-#        1 if the value is in the provided range.
-##
-sub is_in_range_numeric
-{
-    my ( $value, $param ) = @_;
-
-    my $min   = $param->{'min'};
-    my $max   = $param->{'max'};
-    my $sigma = $param->{'sigma'};
-
-    if( ! looks_like_number($value) ) {
-        return 0;
-    }
-
-    if( defined $sigma ) {
-        $min = $min - 3 * $sigma if defined $min;
-        $max = $max + 3 * $sigma if defined $max;
-    };
-
-    if(
-        ( !defined $max || $value <= $max )
-        &&
-        ( !defined $min || $value >= $min )
-    ) {
-        return 1;
-    }
-    return 0;
 }
 
 ##
