@@ -20,6 +20,8 @@ use warnings;
 binmode STDOUT, ':encoding(UTF-8)';
 binmode STDERR, ':encoding(UTF-8)';
 
+use File::Basename;
+
 use COD::CIF::Parser qw( parse_cif );
 use COD::SOptions qw( getOptions get_value );
 use COD::SUsage qw( usage options );
@@ -82,13 +84,28 @@ for my $filename ( @ARGV ) {
     my ( $data, $err_count, $messages ) = parse_cif( $filename, $options );
     process_parser_messages( $messages, $die_on_error_level );
 
-    for my $saveblock ( @{$data->[0]{'save_blocks'}} ) {
+    $data = $data->[0];
+    my($filename, $dirs, $suffix) = fileparse($filename);
+    my $imported_data = get_imported_files(
+    {
+        'container_file' => $data,
+        # TODO: the path should also be constructed from the command line
+        # arguments as well as a command line variable
+        'file_path'      => [ './', $dirs ],
+        'imported_files' => {},
+        'parser_options' => $options
+    }
+    );
+    $data = merge_imported_files( $data, $imported_data );
+
+    for my $saveblock ( @{$data->{'save_blocks'}} ) {
         # check for non-existant categories
         if ( defined $saveblock->{'values'}{'_name.category_id'} ) {
             my $category_name = uc $saveblock->{'values'}{'_name.category_id'}[0];
             if ( defined $saveblock->{'values'}{'_definition.class'} &&
                  uc $saveblock->{'values'}{'_definition.class'}[0] eq 'HEAD' ) {
-                if ( $category_name ne uc $data->[0]{'values'}{'_dictionary.title'}[0] ) {
+                if ( $category_name ne uc $data->{'values'}{'_dictionary.title'}[0] ) {
+                    print "$data->{'values'}{'_dictionary.title'}[0]\n";
                     warn "$0: $filename save_$saveblock->{'name'}: WARNING, " .
                      "the value of the '_name.category_id' data item in the " .
                      "HEAD save frame must match the value of the " .
@@ -96,7 +113,7 @@ for my $filename ( @ARGV ) {
                 }
             } else {
                 my $category_found = 0;
-                foreach ( @{$data->[0]{'save_blocks'}} ) {
+                foreach ( @{$data->{'save_blocks'}} ) {
                    if ( uc $_->{'name'} eq $category_name &&
                         uc $_->{'values'}{'_definition.scope'}[0] eq 'CATEGORY' ) {
                         $category_found = 1;
@@ -125,6 +142,218 @@ for my $filename ( @ARGV ) {
                     }
                 }
             }
+
+            if ( defined $saveblock->{'values'}{'_enumeration.range'} ) {
+                my $type  = lc $saveblock->{'values'}{'_type.contents'}[0];
+                my $range = $saveblock->{'values'}{'_enumeration.range'}[0];
+
+                my $item_range = parse_range($range);
+
+                my $type_range = get_enum_range_from_type($type);
+
+                if ( !is_in_range($item_range->[0], $type_range) ||
+                     !is_in_range($item_range->[1], $type_range) ) {
+                    warn "$0: $filename save_$saveblock->{'name'}: WARNING, " .
+                         'the declared enumeration range ' .
+                         range_to_string($item_range) . ' violates the range ' .
+                         "imposed by the '$type' data type " .
+                         range_to_string($type_range) . "\n"
+                }
+
+                if ( defined $item_range->[0] && defined $type_range->[0] &&
+                     equals($item_range->[0], $type_range->[0], 5) ) {
+                    warn "$0: $filename save_$saveblock->{'name'}: WARNING, " .
+                         "the lower enumeration range limit '$item_range->[0]' " .
+                         'is needlesly specified since the same lower limit ' .
+                         "is imposed by the '$type' data type\n";
+                }
+
+                if ( defined $item_range->[1] && defined $type_range->[1] &&
+                     equals($item_range->[1], $type_range->[1], 5) ) {
+                    warn "$0: $filename save_$saveblock->{'name'}: WARNING, " .
+                         "the upper enumeration range limit '$item_range->[1]' " .
+                         'is needlesly specified since the same upper limit ' .
+                         "is imposed by the '$type' data type\n";
+                }
+            }
         }
     }
+}
+
+sub get_enum_range_from_type
+{
+    my ($type) = @_;
+
+    $type = lc $type;
+    my @range = (undef, undef);
+
+    if ( $type eq 'count' ) {
+        @range = (0, undef);
+    } elsif ( $type eq 'index' ) {
+        @range = (1, undef);
+    }
+
+    return \@range;
+}
+
+sub is_in_range
+{
+    my ($value, $range) = @_;
+
+    if ( !defined $value ) {
+        return 1
+    };
+
+    if ( defined $range->[0] && $value < $range->[0] ||
+         defined $range->[1] && $value > $range->[1] ) {
+        return 0;
+    }
+
+    return 1;
+}
+
+sub range_to_string
+{
+    my ($range) = @_;
+
+    my $string;
+    $string  = (defined $range->[0] ? "[$range->[0]" : '(-inf');
+    $string .= ';';
+    $string .= (defined $range->[1] ? "$range->[1]]" : '+inf)');
+
+    return $string;
+}
+
+sub parse_range
+{
+    my ($range_string) = @_;
+
+    $range_string =~ m/^([^:]+):([^:]+)$/;
+    my @range = ($1, $2);
+
+    return \@range;
+}
+
+##
+# Compares two floating point numbers using given decimal point precision.
+# @param $float_1
+#       First floating point number.
+# @param $float_2
+#       Second floating point number.
+# @param $float_2
+#       Decimal point digit precision.
+# @return
+#       1 if numbers are equal, 0 otherwise.
+##
+sub equals
+{
+    my ($float_1, $float_2, $dp) = @_;
+    return ( ( sprintf "%.${dp}f", $float_1 ) eq
+             ( sprintf "%.${dp}f", $float_2 ) ) ? 1 : 0;
+}
+
+# These subruotines were copied form the ddlm_validate script
+
+#
+# dictionary = {
+#   'file_path'       => [ 'dir1', 'dir2', 'dir3' ]
+#   'container_file' =>
+#   'imported_files'  =>
+#   'parser_options'  =>
+# }
+#
+# TODO: consider a more conservative dictionary import system
+#
+sub get_imported_files
+{
+    my ($params) = @_;
+    my $file_path = $params->{'file_path'};
+    my $container_file = $params->{'container_file'};
+    my %imported_files = %{$params->{'imported_files'}};
+    my $parser_options = $params->{'parser_options'};
+
+    for my $saveblock ( @{$container_file->{'save_blocks'}} ) {
+      if ( exists $saveblock->{'values'}{'_import.get'} &&
+           exists $saveblock->{'values'}{'_import.get'}[0] ) {
+        foreach my $import ( @{$saveblock->{'values'}{'_import.get'}[0]} ) {
+          my $filename = $import->{'file'};
+          if ( !exists $imported_files{$filename} ) {
+            foreach my $path ( @{$file_path} ) {
+              # TODO: the path ends up with a double slash
+              if ( -f "$path/$filename" ) {
+                my ( $import_data, $err_count, $messages ) =
+                  parse_cif( "$path/$filename", $parser_options );
+                # TODO: check how the error messages interact with the
+                # subroutine context
+                process_parser_messages( $messages, $die_on_error_level );
+                $imported_files{$filename} = $import_data->[0];
+                my $single_import = get_imported_files( {
+                    'file_path'      => $file_path,
+                    'container_file' => $import_data->[0],
+                    'imported_files' => \%imported_files,
+                    'parser_options' => $parser_options
+                } );
+                %imported_files = %{$single_import};
+                last;
+              }
+            }
+          }
+        }
+      }
+    }
+
+    return \%imported_files;
+}
+
+# TODO: check for cyclic relationships
+sub merge_imported_files
+{
+    my ($dict, $imported_files) = @_;
+
+    for my $saveblock ( @{$dict->{'save_blocks'}} ) {
+      if ( exists $saveblock->{'values'}{'_import.get'} &&
+           exists $saveblock->{'values'}{'_import.get'}[0] ) {
+        foreach my $import ( @{$saveblock->{'values'}{'_import.get'}[0]} ) {
+          my $filename = $import->{'file'};
+          if ( exists $imported_files->{$filename} ) {
+            my $imported_file = $imported_files->{$filename};
+            $imported_file = merge_imported_files($imported_file, $imported_files);
+            my $target_saveblock = $import->{'save'};
+            foreach my $imported_saveblock ( @{$imported_file->{'save_blocks'}} ) {
+              # TODO: check for case-sensitivity
+              if ( $imported_saveblock->{'name'} eq $target_saveblock ) {
+                $saveblock = merge_save_blocks($saveblock, $imported_saveblock);
+              }
+            }
+          }
+        }
+      }
+    }
+
+    return $dict;
+}
+
+# TODO: rewrite as non-destructive?
+sub merge_save_blocks
+{
+    my ($main_save_block, $auxilary_save_block) = @_;
+
+    foreach my $key ( keys %{$auxilary_save_block->{'types'}} ) {
+        $main_save_block->{'types'}{$key} = $auxilary_save_block->{'types'}{$key};
+    }
+
+    foreach my $key ( keys %{$auxilary_save_block->{'values'}} ) {
+        $main_save_block->{'values'}{$key} = $auxilary_save_block->{'values'}{$key};
+    }
+
+    foreach my $key ( keys %{$auxilary_save_block->{'inloop'}} ) {
+        $main_save_block->{'inloop'}{$key} =
+            $auxilary_save_block->{'inloop'}{$key} +
+            scalar @{$main_save_block->{'loops'}};
+    }
+
+    push @{$main_save_block->{'loops'}}, @{$auxilary_save_block->{'loops'}};
+    push @{$main_save_block->{'tags'}}, @{$auxilary_save_block->{'tags'}};
+
+    return $main_save_block;
 }
