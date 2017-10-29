@@ -197,10 +197,10 @@ sub get_category_imports
 }
 
 ##
-# Selects blocks that balong to 
+# Selects blocks that belong to the given category.
 #
 # @param $id
-#       Indentifier name of the category. The identifier is usually stored as
+#       Identifier name of the category. The identifier is usually stored as
 #       the value of the '_definition.id' data item.
 # @param $data
 #       Reference to a data frame as returned by the COD::CIF::Parser.
@@ -266,3 +266,5 @@ sub merge_save_blocks
 
     return $main_save_block;
 }
+
+1;
