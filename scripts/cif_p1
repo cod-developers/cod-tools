@@ -375,18 +375,20 @@ for my $filename (@ARGV) {
 
     for my $datablock (@$data) {
 
-        my $dataname = 'data_' . $datablock->{name} if defined $datablock->{name};
+        my $dataname = 'data_' . $datablock->{name};
         my $dataset_dataname = $datablock->{name};
 
-        local $SIG{__WARN__} = sub { process_warnings( {
-                                       'message'  => @_,
-                                       'program'  => $0,
-                                       'filename' => $filename,
-                                       'add_pos'  => $dataname
-                                     }, {
-                                       'WARNING' => $die_on_warnings,
-                                       'NOTE'    => $die_on_notes
-                                     } ) };
+        local $SIG{__WARN__} = sub {
+            process_warnings( {
+                'message'  => @_,
+                'program'  => $0,
+                'filename' => $filename,
+                'add_pos'  => $dataname
+            }, {
+                'WARNING' => $die_on_warnings,
+                'NOTE'    => $die_on_notes
+            } )
+        };
 
         eval {
             my $symop_strings = get_symmetry_operators( $datablock );

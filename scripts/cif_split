@@ -193,14 +193,15 @@ for my $filename (@ARGV) {
 
     my $data_global;
     for my $dataset (@$data) {
-        my $dataname = 'data_' . $dataset->{name} if defined $dataset->{name};
 
-        local $SIG{__WARN__} = sub { process_warnings( {
-                                       'message'  => @_,
-                                       'program'  => $0,
-                                       'filename' => $filename,
-                                       'add_pos'  => $dataname
-                                     }, $die_on_error_level ) };
+        local $SIG{__WARN__} = sub {
+            process_warnings( {
+                'message'  => @_,
+                'program'  => $0,
+                'filename' => $filename,
+                'add_pos'  => 'data_' . $dataset->{'name'}
+            }, $die_on_error_level )
+        };
 
         if( $split_global && $dataset->{name} eq 'global' ) {
             if( !$data_global ) {

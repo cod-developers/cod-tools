@@ -1,15 +1,67 @@
 cod-tools (unreleased)
 
   * Added:
+    - COD::Spacegroups::Lookup:COD:
+      - adding the '-P 2yb (x,y+1/4,z)' space group description.
+    - COD::CIF::Data:
+      - adding the get_sg_data subroutine.
+    - COD::CIF::Data::AtomList: adding datablock_from_atom_array() to
+      ease the conversion of atom list data structure to CIF.
+    - COD::CIF::Tags::Manage:
+      - adding the has_unknown_value(), has_inapplicable_value() and
+        has_special_value() subroutines.
+    - COD::CIF::Tags::Merge: a new module with CIF data block merging
+      code.
+    - COD::CIF::Tags::COD:
+      - Adding all the data names that were defined in the cif_cod.dic
+        version 0.035.
+    - cif_fillcell: --merge-special-positions command line option.
+    - COD::AuthorNames:
+      - adding the get_name_syntax_description() subroutine.
+    - COD::CIF::Data::Check module.
+    - COD::CIF::DDL::Ranges module.
+  * Changed:
+    - Changing the error messages regarding unrecognised space groups
+      to match those raised by the COD::CIF::Data::get_symmetry_operators()
+      subroutine.
+    - COD::CIF::Tags::Manage:
+      - Changing the way set_loop_tag() bahaves when incorrect parameters are
+        passed.
+    - COD::CIF::Tags::Print:
+      - Simplified the interface of the print_loop() subroutine.
+    - Removed a conditional dealing with an undefined data block name from
+      multiple scripts.
+    - cif_validate:
+      - Change the way numeric enumeration ranges are displayed in audit
+        messages.
+  * Fixed:
+    - Using CIF value type to detect special CIF values '?' and '.'
+      in:
+      - cif_tcod_tree
+    - COD::CIF::Tags::Manage:
+      - Deleting old data item values upon the call of set_loop_tag()
+        subroutine in order to avoid conflicting data.
+    - COD::CIF::Data::AtomList:
+      - Modifying the atom_groups() subroutine to treat undefined and
+        unknown ('?') occupancy values as being equal to '1'.
+    - cif_cod_check:
+      - Adding missing descriptions of the '--check-bibliography',
+        '--require-only-doi', '--require-full-bibliography',
+        '--check-all' and '--check-none' options.
+      - Restructuring the code so that error messages about empty files
+        are properly issued.
+
+cod-tools (2.1)
+
+  * Added:
     - cif_sort_atoms: a script to order atoms by given method.
     - cif_filter: command line options --original-filename-tag and
       --original-data-block-tag.
     - cif_validate: displaying a warning upon validation against DDLm
       conformant dictionaries.
-    - cif_cod_check:
-      - raising a warning about the space group symmetry operation
-        list not being provided in the input file when the
-        --check-symmetry-operators option is enabled.
+    - cif_cod_check: raising a warning about the space group symmetry
+      operation list not being provided in the input file when the
+      --check-symmetry-operators option is enabled.
     - cif_split: command line option --do-not-split-global-data-block.
     - COD::CIF::Data::SymmetryGenerator: adding functions:
      - chemical_formula_sum
@@ -20,6 +72,7 @@ cod-tools (unreleased)
      - translation
      - trim_polymer
     - COD::CIF::Tags::Manage: adding function rename_tags().
+    - cif_tcod_tree: command line option --no-outputs.
   * Changed:
     - cif_find_symmetry: outputting symmetry operators in a canonical
       form.
@@ -31,15 +84,21 @@ cod-tools (unreleased)
         subroutine 'check_against_range' was renamed to 'is_in_range',
         'check_against_range_numb' to 'is_in_range_numeric' and
         'check_against_range_char' to 'is_in_range_char'.
-    - cif_find_duplicates:
-      - removed the unused import of the COD::CIF::Data::CellContents.
-    - COD::Spacegroups::Symop::Parse:
-      - removed the warning messages from the is_symop_parsable()
-        subroutine.
-    - cif_cod_check:
-      - updated the warning messages dealing with symmetry operations.
+    - cif_find_duplicates: removed the unused import of the
+      COD::CIF::Data::CellContents.
+    - COD::Spacegroups::Symop::Parse: removed the warning messages
+      from the is_symop_parsable() subroutine.
+    - cif_cod_check: updated the warning messages dealing with
+      symmetry operations.
+    - Homogenising symmetry generation code in cif_molecule, cif_p1
+      and COD::CIF::Data::Classifier::get_atoms(), reusing code from
+      COD::CIF::Data::SymmetryGenerator and COD::CIF::Data::AtomList
+      as much as possible.
+    - cif_tcod_tree: adding AiiDA commands to load AiiDA database
+      dump.
   * Fixed:
-    - Removing the 'svn:keywords' svn property from test input CIF files.
+    - Removing the 'svn:keywords' svn property from test input CIF
+      files.
     - cif_filter: adding name of database code data item to the list
       of data block tags.
     - cif_merge: truncating loop tags after having them overwritten
@@ -49,27 +108,26 @@ cod-tools (unreleased)
         script name and line number where they were raised.
       - correcting the way the overall number of error messages is
         reported.
-      - updated the 'check_symmetry_operators' and 'check_space_group_info'
-        subroutine to also consider the values of the
-        _space_group_symop_operation_xyz data item.
+      - updated the check_symmetry_operators() and
+        'check_space_group_info() subroutines to also consider the
+        values of the _space_group_symop_operation_xyz data item.
     - cod_predeposition_check:
       - adding a full stop to the end of error messages raised by
         die().
-    - COD::CIF::Data::CODPredepositionCheck:
-      - adding newlines to the end of error messages raised by die()
-        to remove the automatically added script name and line number
-        of the context they were raised in.
+    - COD::CIF::Data::CODPredepositionCheck: adding newlines to the
+      end of error messages raised by die() to remove the
+      automatically added script name and line number of the context
+      they were raised in.
     - replacing deprecated usage of 'find ... -perm +1' by equivalent
       construction 'find ... -executable' in the installation routine.
     - COD::ErrorHandler: changed all instances of the 'errlevel' hash
       key to 'err_level' in order to homogenize the hash structure
       across different modules.
-    - COD::UserMessage:
-        - changed the keys of parsed error messages hash in order to
-          homogenize the hash structure across different Perl modules.
-          The 'errlevel' key was changed to 'err_level', 'line' to
-          'line_no', 'column' to 'column_no' and 'datablock' to
-          'add_pos'.
+    - COD::UserMessage: changed the keys of parsed error messages hash
+      in order to homogenize the hash structure across different Perl
+      modules. The 'errlevel' key was changed to 'err_level', 'line'
+      to 'line_no', 'column' to 'column_no' and 'datablock' to
+      'add_pos'.
     - codcif and COD::CIF::Parser::Bison: detecting unallowed symbols
       in CIF 1.1 comments.
     - COD::AtomNeighbours: making neighbour_list_from_chemistry_mol()
@@ -85,8 +143,17 @@ cod-tools (unreleased)
       order mark.
     - COD::CIF::Data::AtomList: value of _cod_molecule_atom_transl_id
       was not read by set_cod_molecule_atom_fields().
+    - COD::CIF::Tags::Manage: properly removing renamed data items by
+      rename_tags().
     - Generating manpages for C scripts from src/components/codcif/.
     - cif_list_tags: implementing --help command line option.
+    - Removing temporary directories of failed Shell test cases.
+    - COD::CIF::Tags::Print:
+      - Modifying the way malformed loops are handled by the print_loop()
+        subroutine. From now on a warning message will be output and
+        unknown ('?') values will be printed instead of the missing ones.
+      - Preventing outputting of empty loops: printing a line of question
+        marks, issuing a warning.
 
 cod-tools (2.0)
 

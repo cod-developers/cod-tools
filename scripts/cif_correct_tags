@@ -182,14 +182,15 @@ for my $filename (@ARGV) {
         my $tags = $dataset->{tags};
         my $values = $dataset->{values};
         my $loops = $dataset->{inloop};
-        my $dataname = 'data_' . $dataset->{name} if defined $dataset->{name};
 
-        local $SIG{__WARN__} = sub { process_warnings( {
-                                       'message'       => @_,
-                                       'program'       => $0,
-                                       'filename'      => $filename,
-                                       'add_pos'       => $dataname
-                                     }, $die_on_error_level ) };
+        local $SIG{__WARN__} = sub {
+            process_warnings( {
+                'message'       => @_,
+                'program'       => $0,
+                'filename'      => $filename,
+                'add_pos'       => 'data_' . $dataset->{'name'}
+            }, $die_on_error_level )
+        };
 
         for my $tag (@$tags) {
             if( exists $tag_spelling{$tag} ) {

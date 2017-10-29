@@ -106,6 +106,22 @@ sub atoms_coincide($$$)
 }
 
 #===============================================================#
+# Applies each symmetry operator (modulo 1) for all atoms.
+#
+# Accepts
+#       sym_operators
+#                       Reference to an array of symmetry operation
+#                       matrices.
+#       atoms
+#                       Reference to an array of atoms, as extracted
+#                       via COD::CIF::Data::AtomList.
+#       f2o
+#                       Reference to an array with fractional-to-ortho
+#                       matrix. As currently such matrix is taken from
+#                       atom description, parameter 'f2o' is not used
+#                       and will be removed in next major version.
+#       options
+#                       Reference to a hash of options.
 
 sub symop_generate_atoms($$$@)
 {

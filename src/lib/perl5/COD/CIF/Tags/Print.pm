@@ -109,9 +109,12 @@ sub print_cif
                 }
             }
             unless( exists $printed_loops{$tag_loop_nr} ) {
-                print_loop( $tag, $tag_loop_nr, $dataset,
-                            $fold_long_fields, $folding_width,
-                            $cif_version );
+                print_loop( $dataset, $tag_loop_nr,
+                            {
+                               'fold_long_fields' => $fold_long_fields,
+                               'folding_width'    => $folding_width,
+                               'cif_version'      => $cif_version,
+                            } );
                 $printed_loops{$tag_loop_nr} = 1;
             }
         }
@@ -182,19 +185,64 @@ sub print_tag
     }
 }
 
+##
+# Prints a CIF loop structure.
+#
+# @param $data_block
+#       Reference to a data block as returned by the COD::CIF::Parser.
+# @param $loop_nr
+#       Index of the loop to be printed.
+# @param $options
+#       Reference to a hash containing the options that will be passed
+#       to the sprint_value() subroutine.
+##
 sub print_loop
 {
-    my ($tag, $loop_nr, $tags, $fold_long_fields,
-        $folding_width, $cif_version ) = @_;
+    my ( $data_block, $loop_nr, $options ) = @_;
 
-    my @loop_tags = @{$tags->{loops}[$loop_nr]};
+    my $values = $data_block->{'values'};
+    my @loop_tags = @{$data_block->{loops}[$loop_nr]};
+
+    # Safeguard against a malformed looped structure
+    my $max_column_index = 0;
+    for ( my $i = 0; $i < @loop_tags; $i++ ) {
+        if ( @{$values->{$loop_tags[$max_column_index]}} <
+             @{$values->{$loop_tags[$i]}} ) {
+            $max_column_index = $i;
+        }
+    };
+    my $max_column_length = @{$values->{$loop_tags[$max_column_index]}};
+
+    # Check if all looped data item contain the same amount of values
+    for my $loop_tag (@loop_tags) {
+        my $diff = $max_column_length - @{$values->{$loop_tag}};
+        if ( $diff > 0 ) {
+            warn "WARNING, data item '$loop_tag' contains less values than " .
+                 "data item '$loop_tags[$max_column_index]' even though they " .
+                 "reside in the same loop -- $diff question mark symbols " .
+                 "('?') will be appended to the loop column '$loop_tag' " .
+                 'instead of the missing values' . "\n";
+            push @{$values->{$loop_tag}}, ( '?' ) x $diff;
+        }
+    }
+
+    # Detect empty loops and attempt to fix them
+    if( $max_column_length == 0 ) {
+        local $" = "', '";
+        warn "WARNING, loop of data items '@loop_tags' does not contain any " .
+             "values -- a question mark symbol ('?') will be added as values " .
+             'for each data item' . "\n";
+        for my $loop_tag (@loop_tags) {
+            push @{$values->{$loop_tag}}, '?';
+        }
+    }
 
     print "loop_\n";
     for (@loop_tags) {
         print $_, "\n";
     }
 
-    my $val_array = $tags->{values}{$tag};
+    my $val_array = $values->{$loop_tags[$max_column_index]};
     my $last_val = $#{$val_array};
 
     my $line_prefix = "";
@@ -203,9 +251,10 @@ sub print_loop
         my $lines = "";
         my $line = $line_prefix;
         for my $loop_tag (@loop_tags) {
-            my $val = sprint_value( $tags->{values}{$loop_tag}[$i],
-                                    $fold_long_fields,
-                                    $folding_width, $cif_version );
+            my $val = sprint_value( $values->{$loop_tag}[$i],
+                                    $options->{'fold_long_fields'},
+                                    $options->{'folding_width'},
+                                    $options->{'cif_version'} );
             if( $val =~ /^\n;/ ) {
                 $lines .= $folding_separator . $line if $line ne $line_prefix;
                 if( $lines eq "" ) {
@@ -233,6 +282,8 @@ sub print_loop
         print $lines;
         print "\n";
     }
+
+    return;
 }
 
 sub print_value

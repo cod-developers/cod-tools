@@ -14,14 +14,16 @@ package COD::CIF::Data::AtomList;
 use strict;
 use warnings;
 use Clone qw( clone );
+use COD::Algebra::Vector qw( modulo_1 );
+use COD::AtomProperties;
 use COD::CIF::Data qw( get_cell );
+use COD::CIF::Tags::Manage qw( new_datablock set_loop_tag );
 use COD::Spacegroups::Symop::Algebra qw( symop_invert symop_mul
                                          symop_vector_mul );
 use COD::Spacegroups::Symop::Parse qw( string_from_symop
-                                       symop_from_string );
-use COD::Algebra::Vector qw( modulo_1 );
+                                       symop_from_string
+                                       symop_string_canonical_form );
 use COD::Fractional qw( symop_ortho_from_fract );
-use COD::AtomProperties;
 
 require Exporter;
 our @ISA = qw( Exporter );
@@ -32,6 +34,7 @@ our @EXPORT_OK = qw(
     atom_is_disordered
     atoms_are_alternative
     copy_atom
+    datablock_from_atom_array
     dump_atoms_as_cif
     uniquify_atom_names
     extract_atom
@@ -433,6 +436,178 @@ sub atom_array_from_cif($$)
     }
 }
 
+#===============================================================#
+# Constructs a CIF data block from atom array data structure.
+sub datablock_from_atom_array
+{
+    my( $atoms ) = @_;
+
+    my $has_disorder = grep { $_->{group} ne '.' ||
+                              $_->{assembly} ne '.' } @$atoms;
+    my $has_attached_hydrogens = grep { $_->{attached_hydrogens} } @$atoms;
+
+    my %has_key;
+    for my $key ( qw( atom_site_occupancy
+                      atom_site_type_symbol
+                      atom_site_U_iso_or_equiv
+                      calc_flag
+                      refinement_flags
+                      refinement_flags_adp
+                      refinement_flags_occupancy
+                      refinement_flags_position ) ) {
+        $has_key{$key} =
+            grep { exists $_->{$key} && $_->{$key} ne '.' } @$atoms;
+    }
+
+    my $datablock = new_datablock( 'atom_array' );
+
+    set_loop_tag( $datablock, '_atom_site_label', '_atom_site_label',
+                  [ map { $_->{name} } @$atoms ] );
+    set_loop_tag( $datablock,
+                  '_atom_site_type_symbol',
+                  '_atom_site_label',
+                  [ map { $_->{atom_site_type_symbol} } @$atoms ] )
+        if $has_key{atom_site_type_symbol};
+    set_loop_tag( $datablock, '_atom_site_fract_x', '_atom_site_label',
+                  [ map { $_->{coordinates_fract}[0] } @$atoms ] );
+    set_loop_tag( $datablock, '_atom_site_fract_y', '_atom_site_label',
+                  [ map { $_->{coordinates_fract}[1] } @$atoms ] );
+    set_loop_tag( $datablock, '_atom_site_fract_z', '_atom_site_label',
+                  [ map { $_->{coordinates_fract}[2] } @$atoms ] );
+    set_loop_tag( $datablock,
+                  '_atom_site_U_iso_or_equiv',
+                  '_atom_site_label',
+                  [ map { $_->{atom_site_U_iso_or_equiv} } @$atoms ] )
+        if $has_key{atom_site_U_iso_or_equiv};
+    set_loop_tag( $datablock,
+                  '_atom_site_occupancy',
+                  '_atom_site_label',
+                  [ map { exists $_->{calc_flag} && $_->{calc_flag} eq 'dum'
+                            ? '.' : $_->{atom_site_occupancy} } @$atoms ] )
+        if $has_key{atom_site_occupancy};
+
+    # Refinement flags
+    set_loop_tag( $datablock,
+                  '_atom_site_refinement_flags',
+                  '_atom_site_label',
+                  [ map { $_->{refinement_flags} } @$atoms ] )
+        if $has_key{refinement_flags};
+    set_loop_tag( $datablock,
+                  '_atom_site_refinement_flags_posn',
+                  '_atom_site_label',
+                  [ map { $_->{refinement_flags_position} } @$atoms ] )
+        if $has_key{refinement_flags_position};
+    set_loop_tag( $datablock,
+                  '_atom_site_refinement_flags_adp',
+                  '_atom_site_label',
+                  [ map { $_->{refinement_flags_adp} } @$atoms ] )
+        if $has_key{refinement_flags_adp};
+    set_loop_tag( $datablock,
+                  '_atom_site_refinement_flags_occupancy',
+                  '_atom_site_label',
+                  [ map { $_->{refinement_flags_occupancy} } @$atoms ] )
+        if $has_key{refinement_flags_occupancy};
+
+    set_loop_tag( $datablock,
+                  '_atom_site_disorder_assembly',
+                  '_atom_site_label',
+                  [ map { $_->{assembly} } @$atoms ] ) if $has_disorder;
+    set_loop_tag( $datablock,
+                  '_atom_site_disorder_group',
+                  '_atom_site_label',
+                  [ map { $_->{group} } @$atoms ] ) if $has_disorder;
+    set_loop_tag( $datablock,
+                  '_atom_site_attached_hydrogens',
+                  '_atom_site_label',
+                  [ map { $_->{attached_hydrogens} } @$atoms ] )
+        if $has_attached_hydrogens;
+    set_loop_tag( $datablock,
+                  '_atom_site_calc_flag',
+                  '_atom_site_label',
+                  [ map { $_->{calc_flag} } @$atoms ] )
+        if $has_key{calc_flag};
+
+    # Set _cod_molecule_* data items
+    set_loop_tag( $datablock,
+                  '_cod_molecule_atom_label',
+                  '_cod_molecule_atom_label',
+                  [ map { $_->{name} } @$atoms ] );
+    set_loop_tag( $datablock,
+                  '_cod_molecule_atom_orig_label',
+                  '_cod_molecule_atom_label',
+                  [ map { $_->{site_label} } @$atoms ] );
+    set_loop_tag( $datablock,
+                  '_cod_molecule_atom_symmetry',
+                  '_cod_molecule_atom_label',
+                  [ map { $_->{symop_id} . '_' .
+                          $_->{translation_id} } @$atoms ] );
+    set_loop_tag( $datablock,
+                  '_cod_molecule_atom_symop_id',
+                  '_cod_molecule_atom_label',
+                  [ map { $_->{symop_id} } @$atoms ] );
+    set_loop_tag( $datablock,
+                  '_cod_molecule_atom_symop_xyz',
+                  '_cod_molecule_atom_label',
+                  [ map { symop_string_canonical_form(
+                            string_from_symop( $_->{symop} ) ) }
+                        @$atoms ] );
+    set_loop_tag( $datablock,
+                  '_cod_molecule_atom_transl_id',
+                  '_cod_molecule_atom_label',
+                  [ map { $_->{translation_id} } @$atoms ] );
+    set_loop_tag( $datablock,
+                  '_cod_molecule_atom_transl_x',
+                  '_cod_molecule_atom_label',
+                  [ map { $_->{translation}[0] } @$atoms ] );
+    set_loop_tag( $datablock,
+                  '_cod_molecule_atom_transl_y',
+                  '_cod_molecule_atom_label',
+                  [ map { $_->{translation}[1] } @$atoms ] );
+    set_loop_tag( $datablock,
+                  '_cod_molecule_atom_transl_z',
+                  '_cod_molecule_atom_label',
+                  [ map { $_->{translation}[2] } @$atoms ] );
+    set_loop_tag( $datablock,
+                  '_cod_molecule_atom_mult',
+                  '_cod_molecule_atom_label',
+                  [ map { $_->{multiplicity} } @$atoms ] );
+    set_loop_tag( $datablock,
+                  '_cod_molecule_atom_mult_ratio',
+                  '_cod_molecule_atom_label',
+                  [ map { $_->{multiplicity_ratio} } @$atoms ] );
+    set_loop_tag( $datablock,
+                  '_cod_molecule_atom_assembly',
+                  '_cod_molecule_atom_label',
+                  [ map { $_->{assembly} } @$atoms ] ) if $has_disorder;
+    set_loop_tag( $datablock,
+                  '_cod_molecule_atom_group',
+                  '_cod_molecule_atom_label',
+                  [ map { $_->{group} } @$atoms ] ) if $has_disorder;
+
+    # Site symops
+    if( grep { $_->{site_symops} && @{$_->{site_symops}} > 0 } @$atoms ) {
+        my @transform_labels;
+        my @transform_symops;
+        foreach my $atom ( @$atoms ) {
+            foreach my $symop ( @{$atom->{site_symops}} ) {
+                push @transform_labels, $atom->{name};
+                push @transform_symops, symop_string_canonical_form(
+                                            string_from_symop( $symop ) );
+            }
+        }
+        set_loop_tag( $datablock,
+                      '_cod_molecule_transform_label',
+                      '_cod_molecule_transform_label',
+                      \@transform_labels );
+        set_loop_tag( $datablock,
+                      '_cod_molecule_transform_symop',
+                      '_cod_molecule_transform_label',
+                      \@transform_symops );
+    }
+
+    return $datablock;
+}
+
 # ============================================================================ #
 # Renames atoms which have identical names by adding a unique suffix to the
 # original atom name.
@@ -598,10 +773,16 @@ sub atom_groups
                 if ( $atom->{'group'} eq $group &&
                     $atom->{'assembly'} eq $assembly ) {
                     $group_size{$group}++;
-                    my $occupancy = ( $atom->{'atom_site_occupancy'} eq '.' ||
-                                      $atom->{'atom_site_occupancy'} eq '?' )
-                                      ? 0 : $atom->{'atom_site_occupancy'};
-                    $occupancy =~ s/[(]\d+[)]$//; # remove precision
+
+                    my $occupancy = $atom->{'atom_site_occupancy'};
+                    if ( !defined $occupancy || $occupancy eq '?' ) {
+                        $occupancy = 1;
+                    } elsif ( $occupancy eq '.' ) {
+                        $occupancy = 0;
+                    } else {
+                        $occupancy =~ s/[(]\d+[)]$//; # remove precision
+                    }
+
                     if ( !defined $max_group_occupancy{$group} ) {
                         $max_group_occupancy{$group} = $occupancy;
                     } elsif ( $max_group_occupancy{$group} < $occupancy ) {
