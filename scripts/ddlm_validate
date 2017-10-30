@@ -32,6 +32,7 @@ use COD::CIF::DDL::Ranges qw( parse_range
                               is_in_range );
 use COD::CIF::DDL::DDLm qw( get_imported_files
                             merge_imported_files );
+use COD::CIF::Tags::Manage qw( has_special_value );
 use COD::SOptions qw( getOptions get_value );
 use COD::SUsage qw( usage options );
 use COD::ErrorHandler qw( process_warnings
@@ -293,8 +294,7 @@ sub validate_linked_items
           # filtering out special CIF values ('?' and '.')
           my @data_item_values;
           for (my $i = 0; $i < @{$data->{$scope}{$instance}{'values'}{$tag}}; $i++ ) {
-            if ( !is_unknown_value($data->{$scope}{$instance}, $tag, $i) &&
-                 !is_inapplicable_value($data->{$scope}{$instance}, $tag, $i) ) {
+            if ( !has_special_value($data->{$scope}{$instance}, $tag, $i) ) {
                 push @data_item_values,
                      $data->{$scope}{$instance}{'values'}{$tag}[$i];
             }
@@ -748,8 +748,7 @@ sub validate_enumerators
             my $value = $data->{$scope}{$instance}{'values'}{$tag}[$i];
             if ( $type_container eq 'single' ) {
               # skip special CIF2 values
-              if ( !is_unknown_value($data->{$scope}{$instance}, $tag, $i) &&
-                   !is_inapplicable_value($data->{$scope}{$instance}, $tag, $i) ) {
+              if ( !has_special_value($data->{$scope}{$instance}, $tag, $i) ) {
                 # FIXME: fc should probably be used instead of uc, but it is
                 # not supported by older Perl versions
                 if (! any { uc $value eq uc $_ } @enumeration_values ) {
@@ -874,8 +873,7 @@ sub validate_range
         my $dict_item = $dict->{'Item'}{$tag};
         if ( exists $dict_item->{'values'}{'_enumeration.range'} ) {
           for (my $i = 0; $i < @{$data->{$scope}{$instance}{'values'}{$tag}}; $i++) {
-            next if ( is_unknown_value($data->{$scope}{$instance}, $tag, $i) ||
-                      is_inapplicable_value($data->{$scope}{$instance}, $tag, $i) );
+            next if ( has_special_value($data->{$scope}{$instance}, $tag, $i) );
             my $value = $data->{$scope}{$instance}{'values'}{$tag}[$i];
 
             my $range = parse_range( $dict_item->{'values'}{'_enumeration.range'}[0] );
@@ -1113,24 +1111,4 @@ sub expand_categories
     }
 
     return \@expanded_categories;
-}
-
-sub is_unknown_value
-{
-    my ( $frame, $data_name, $index ) = @_;
-
-    my $value = $frame->{'values'}{$data_name}[$index];
-    my $type = $frame->{'types'}{$data_name}[$index];
-
-    return $value eq '?' && $type eq 'UQSTRING';
-}
-
-sub is_inapplicable_value
-{
-    my ( $frame, $data_name, $index ) = @_;
-
-    my $value = $frame->{'values'}{$data_name}[$index];
-    my $type = $frame->{'types'}{$data_name}[$index];
-
-    return $value eq '.' && $type eq 'UQSTRING';
 }
