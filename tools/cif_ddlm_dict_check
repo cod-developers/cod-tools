@@ -25,6 +25,9 @@ use File::Basename;
 use COD::CIF::Parser qw( parse_cif );
 use COD::CIF::DDL::DDLm qw( get_imported_files
                             merge_imported_files );
+use COD::CIF::DDL::Ranges qw( parse_range
+                              range_to_string
+                              is_in_range );
 use COD::SOptions qw( getOptions get_value );
 use COD::SUsage qw( usage options );
 use COD::ErrorHandler qw( process_warnings
@@ -151,13 +154,14 @@ for my $filename ( @ARGV ) {
                 my $item_range = parse_range($range);
                 my $type_range = get_enum_range_from_type($type);
 
-                if ( !is_in_range($item_range->[0], $type_range) ||
-                     !is_in_range($item_range->[1], $type_range) ) {
+                if ( !is_subrange( $type_range, $item_range,
+                                   { 'type' => 'numb' } ) ) {
                     warn "$0: $filename save_$saveblock->{'name'}: WARNING, " .
                          'the declared enumeration range ' .
-                         range_to_string($item_range) . ' violates the range ' .
-                         "imposed by the '$type' data type " .
-                         range_to_string($type_range) . "\n"
+                         range_to_string( $item_range, { 'type' => 'numb' } ) .
+                         " violates the range imposed by the '$type' data type " .
+                         range_to_string( $type_range, { 'type' => 'numb' } ) .
+                         "\n";
                 }
 
                 if ( defined $item_range->[0] && defined $type_range->[0] &&
@@ -196,42 +200,23 @@ sub get_enum_range_from_type
     return \@range;
 }
 
-sub is_in_range
+sub is_subrange
 {
-    my ($value, $range) = @_;
+    my ($range, $subrange, $options) = @_;
 
-    if ( !defined $value ) {
-        return 1
-    };
+    my $is_in_lower_range = !defined $subrange->[0] ||
+        is_in_range( $subrange->[0], {
+                        'range' => $range,
+                        'type'  => $options->{'type'}
+                    } );
 
-    if ( defined $range->[0] && $value < $range->[0] ||
-         defined $range->[1] && $value > $range->[1] ) {
-        return 0;
-    }
+    my $is_in_upper_range = !defined $subrange->[1] ||
+        is_in_range( $subrange->[1], {
+                        'range' => $range,
+                        'type'  => $options->{'type'}
+                    } );
 
-    return 1;
-}
-
-sub range_to_string
-{
-    my ($range) = @_;
-
-    my $string;
-    $string  = (defined $range->[0] ? "[$range->[0]" : '(-inf');
-    $string .= ';';
-    $string .= (defined $range->[1] ? "$range->[1]]" : '+inf)');
-
-    return $string;
-}
-
-sub parse_range
-{
-    my ($range_string) = @_;
-
-    $range_string =~ m/^([^:]+)?:([^:]+)?$/;
-    my @range = ($1, $2);
-
-    return \@range;
+    return $is_in_lower_range && $is_in_upper_range;
 }
 
 ##
