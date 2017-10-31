@@ -220,11 +220,11 @@ sub cif2cod
     my @authors = ();
     if( exists $values->{_publ_author_name} ) {
         for my $i (0..$#{$values->{_publ_author_name}}) {
-            push( @authors, get_tag( $values, "_publ_author_name", $i ));
+            push @authors, get_tag( $values, '_publ_author_name', $i );
         }
     }
 
-    my $authors = join( "; ", @authors );
+    my $authors = join '; ', @authors;
 
     my( $title, $journal, $year, $volume, $first_page );
     my %opt_biblio_tags = ( '_publ_section_title' => \$title,
@@ -247,17 +247,16 @@ sub cif2cod
         }
     }
 
-    my $last_page = get_tag_silently( $values, "_journal_page_last", 0 );
-    my $issue = get_tag_silently( $values, "_journal_issue", 0 );
+    my $last_page = get_tag_silently( $values, '_journal_page_last', 0 );
+    my $issue = get_tag_silently( $values, '_journal_issue', 0 );
 
-    my $text = join( '\n', map { clean_whitespaces( cif2unicode($_) ) }
+    my $text = join '\n', map { clean_whitespaces( cif2unicode($_) ) }
                      ( $authors, $title, $journal, $volume .
                        ( $issue? ( $volume ? "($issue)" :
-                                   "(issue $issue)") : "" ),
-                       "(" . $year . ")",
-                       ( $last_page ? $first_page . "-" . $last_page :
-                         $first_page ))
-                   );
+                                   "(issue $issue)") : '' ),
+                       '(' . $year . ')',
+                       ( $last_page ? $first_page . '-' . $last_page :
+                         $first_page ) );
 
     my $calc_formula;
     eval {
@@ -268,7 +267,7 @@ sub cif2cod
         # ERRORS that originated within the function are downgraded to warnings
         my $error = $@;
         $error =~ s/[A-Z]+, //;
-        chomp($error);
+        chomp $error;
         warn "WARNING, summary formula could not be calculated -- $error\n";
     }
 
@@ -281,50 +280,50 @@ sub cif2cod
         # ERRORS that originated within the function are downgraded to warnings
         my $error = $@;
         $error =~ s/[A-Z]+, //;
-        chomp($error);
+        chomp $error;
         warn "WARNING, unit cell summary formula could not be calculated -- $error\n";
     }
 
     my $empty_value_regex = qr/^[\s?]*$/s;
 
     my $diffr_temperature =
-        get_num_or_undef( $values, "_diffrn_ambient_temperature", 0 );
+        get_num_or_undef( $values, '_diffrn_ambient_temperature', 0 );
 
     undef $diffr_temperature if defined $diffr_temperature &&
           $diffr_temperature =~ $empty_value_regex;
 
     my $diffr_temperature_sigma =
-        get_num_or_undef( $sigmas, "_diffrn_ambient_temperature", 0 );
+        get_num_or_undef( $sigmas, '_diffrn_ambient_temperature', 0 );
 
     my $cell_temperature =
-        get_num_or_undef( $values, "_cell_measurement_temperature", 0 );
+        get_num_or_undef( $values, '_cell_measurement_temperature', 0 );
 
     undef $cell_temperature if defined $cell_temperature &&
           $cell_temperature =~ $empty_value_regex;
 
     my $cell_temperature_sigma =
-        get_num_or_undef( $sigmas, "_cell_measurement_temperature", 0 );
+        get_num_or_undef( $sigmas, '_cell_measurement_temperature', 0 );
 
     my $diffr_pressure =
-        get_num_or_undef( $values, "_diffrn_ambient_pressure", 0 );
+        get_num_or_undef( $values, '_diffrn_ambient_pressure', 0 );
 
     undef $diffr_pressure if defined $diffr_pressure &&
           $diffr_pressure =~ $empty_value_regex;
 
     my $diffr_pressure_sigma =
-        get_num_or_undef( $sigmas, "_diffrn_ambient_pressure", 0 );
+        get_num_or_undef( $sigmas, '_diffrn_ambient_pressure', 0 );
 
     my $cell_pressure =
-        get_num_or_undef( $values, "_cell_measurement_pressure", 0 );
+        get_num_or_undef( $values, '_cell_measurement_pressure', 0 );
 
     undef $cell_pressure if defined $cell_pressure &&
           $cell_pressure =~ $empty_value_regex;
 
     my $cell_pressure_sigma =
-        get_num_or_undef( $sigmas, "_cell_measurement_pressure", 0 );
+        get_num_or_undef( $sigmas, '_cell_measurement_pressure', 0 );
 
     my $systematic_name =
-        get_tag_or_undef( $values, "_chemical_name_systematic", 0 );
+        get_tag_or_undef( $values, '_chemical_name_systematic', 0 );
 
     undef $systematic_name if defined $systematic_name &&
           $systematic_name =~ $empty_value_regex;
@@ -333,7 +332,7 @@ sub cif2cod
         if defined $systematic_name;
 
     my $common_name =
-        get_tag_or_undef( $values, "_chemical_name_common", 0 );
+        get_tag_or_undef( $values, '_chemical_name_common', 0 );
 
     undef $common_name if defined $common_name &&
           $common_name =~ $empty_value_regex;
@@ -342,7 +341,7 @@ sub cif2cod
         if defined $common_name;
 
     my $mineral_name =
-        get_tag_or_undef( $values, "_chemical_name_mineral", 0 );
+        get_tag_or_undef( $values, '_chemical_name_mineral', 0 );
 
     undef $mineral_name if defined $mineral_name &&
           $mineral_name =~ $empty_value_regex;
@@ -350,7 +349,7 @@ sub cif2cod
     $mineral_name = cif2unicode($mineral_name)
         if defined $mineral_name;
 
-    my $formula = get_tag( $values, "_chemical_formula_sum", 0 );
+    my $formula = get_tag( $values, '_chemical_formula_sum', 0 );
 
     undef $formula if defined $formula &&
           $formula =~ $empty_value_regex;
@@ -367,31 +366,31 @@ sub cif2cod
     } else {
         $data{file} = $dataname;
     }
-    $data{a} = get_num_or_undef( $values, "_cell_length_a", 0 );
-    $data{siga} = get_num_or_undef( $sigmas, "_cell_length_a", 0 );
-    $data{b} = get_num_or_undef( $values, "_cell_length_b", 0 );
-    $data{sigb} = get_num_or_undef( $sigmas, "_cell_length_b", 0 );
-    $data{c} = get_num_or_undef( $values, "_cell_length_c", 0 );
-    $data{sigc} = get_num_or_undef( $sigmas, "_cell_length_c", 0 );
-    $data{alpha} = get_num_or_undef( $values, "_cell_angle_alpha", 0 );
-    $data{sigalpha} = get_num_or_undef( $sigmas, "_cell_angle_alpha", 0 );
-    $data{beta} = get_num_or_undef( $values, "_cell_angle_beta", 0 );
-    $data{sigbeta} = get_num_or_undef( $sigmas, "_cell_angle_beta", 0 );
-    $data{gamma} = get_num_or_undef( $values, "_cell_angle_gamma", 0 );
-    $data{siggamma} = get_num_or_undef( $sigmas, "_cell_angle_gamma", 0 );
+    $data{a} = get_num_or_undef( $values, '_cell_length_a', 0 );
+    $data{siga} = get_num_or_undef( $sigmas, '_cell_length_a', 0 );
+    $data{b} = get_num_or_undef( $values, '_cell_length_b', 0 );
+    $data{sigb} = get_num_or_undef( $sigmas, '_cell_length_b', 0 );
+    $data{c} = get_num_or_undef( $values, '_cell_length_c', 0 );
+    $data{sigc} = get_num_or_undef( $sigmas, '_cell_length_c', 0 );
+    $data{alpha} = get_num_or_undef( $values, '_cell_angle_alpha', 0 );
+    $data{sigalpha} = get_num_or_undef( $sigmas, '_cell_angle_alpha', 0 );
+    $data{beta} = get_num_or_undef( $values, '_cell_angle_beta', 0 );
+    $data{sigbeta} = get_num_or_undef( $sigmas, '_cell_angle_beta', 0 );
+    $data{gamma} = get_num_or_undef( $values, '_cell_angle_gamma', 0 );
+    $data{siggamma} = get_num_or_undef( $sigmas, '_cell_angle_gamma', 0 );
 
-    my $cell_volume = get_num_or_undef( $values, "_cell_volume", 0 );
+    my $cell_volume = get_num_or_undef( $values, '_cell_volume', 0 );
 
     if( !defined $cell_volume ) {
         my @cell = get_cell( $values, { silent => 1 } );
         $cell_volume = scalar cell_volume( @cell );
         if ( defined $cell_volume ) {
-            $cell_volume = sprintf( "%7.2f", $cell_volume);
+            $cell_volume = sprintf '%7.2f', $cell_volume;
         }
     }
 
     $data{vol} = $cell_volume;
-    $data{sigvol} = get_num_or_undef( $sigmas, "_cell_volume", 0 );
+    $data{sigvol} = get_num_or_undef( $sigmas, '_cell_volume', 0 );
 
     $data{celltemp} = $cell_temperature;
     $data{sigcelltemp} = $cell_temperature_sigma;
@@ -403,11 +402,11 @@ sub cif2cod
     $data{sigdiffrpressure} = $diffr_pressure_sigma;
 
     $data{thermalhist} =
-        get_tag_or_undef( $values, "_exptl_crystal_thermal_history", 0 );
+        get_tag_or_undef( $values, '_exptl_crystal_thermal_history', 0 );
     $data{pressurehist} =
-        get_tag_or_undef( $values, "_exptl_crystal_pressure_history", 0 );
+        get_tag_or_undef( $values, '_exptl_crystal_pressure_history', 0 );
     $data{compoundsource} =
-        get_tag_or_undef( $values, "_chemical_compound_source", 0 );
+        get_tag_or_undef( $values, '_chemical_compound_source', 0 );
 
     $data{nel} = $nel;
     $data{sg} = get_space_group_info( $values );
@@ -415,29 +414,29 @@ sub cif2cod
     $data{commonname} = $common_name;
     $data{chemname} = $systematic_name;
     $data{mineral} = $mineral_name;
-    $data{formula} = $formula ? "- " . $formula . " -" : "?";
+    $data{formula} = $formula ? '- ' . $formula . ' -' : '?';
     $data{calcformula} = $calc_formula ?
-          "- " . $calc_formula . " -" : undef;
+          '- ' . $calc_formula . ' -' : undef;
     $data{cellformula} = $cell_formula ?
-          "- " . $cell_formula . " -" : undef;
-    $data{Z} = get_tag_or_undef( $values, "_cell_formula_units_Z", 0 );
+          '- ' . $cell_formula . ' -' : undef;
+    $data{Z} = get_tag_or_undef( $values, '_cell_formula_units_Z', 0 );
     $data{Zprime} = compute_Zprime( $data{Z}, $data{sg} );
 
     if( exists $values->{_journal_coeditor_code} ) {
         $data{acce_code} = uc( get_tag_or_undef( $values,
-                               "_journal_coeditor_code", 0 ));
-    } elsif( exists $values->{"_journal.coeditor_code"} ) {
+                               '_journal_coeditor_code', 0 ));
+    } elsif( exists $values->{'_journal.coeditor_code'} ) {
         $data{acce_code} = uc( get_tag_or_undef( $values,
-                               "_journal.coeditor_code", 0 ));
+                               '_journal.coeditor_code', 0 ));
     } elsif( $journal =~ /^Acta Cryst/ && (
-             exists $values->{"_[local]_cod_data_source_file"} ||
-             exists $values->{"_cod_data_source_file"} ) ) {
-        my $acce_code = exists $values->{"_cod_data_source_file"} ?
-           $values->{"_cod_data_source_file"}[0] :
-           $values->{"_[local]_cod_data_source_file"}[0];
+             exists $values->{'_[local]_cod_data_source_file'} ||
+             exists $values->{'_cod_data_source_file'} ) ) {
+        my $acce_code = exists $values->{'_cod_data_source_file'} ?
+           $values->{'_cod_data_source_file'}[0] :
+           $values->{'_[local]_cod_data_source_file'}[0];
         $acce_code =~ s/\..*$//g;
         if( $acce_code =~ /^[a-zA-Z]{1,2}[0-9]{4,5}$/ ) {
-            $data{acce_code} = uc( $acce_code );
+            $data{acce_code} = uc $acce_code;
         } else {
             $data{acce_code} = undef;
         }
@@ -447,28 +446,28 @@ sub cif2cod
 
     $data{authors} = cif2unicode( $authors );
     $data{title} = cif2unicode( $title );
-    $data{journal} = get_tag_or_undef( $values, "_journal_name_full", 0 );
+    $data{journal} = get_tag_or_undef( $values, '_journal_name_full', 0 );
     if( defined $data{journal} ) {
         $data{journal} = cif2unicode( $data{journal} );
     }
-    $data{year} = get_tag_or_undef( $values, "_journal_year", 0 );
-    $data{volume} = get_tag_or_undef( $values, "_journal_volume", 0 );
-    $data{issue} = get_tag_or_undef( $values, "_journal_issue", 0 );
-    $data{firstpage} = get_tag_or_undef( $values, "_journal_page_first", 0 );
-    $data{lastpage} = get_tag_or_undef( $values, "_journal_page_last", 0 );
-    $data{doi} = get_tag_or_undef( $values, "_journal_paper_doi", 0 );
-    $data{onhold} = get_tag_or_undef( $values, "_cod_hold_until_date", 0 );
+    $data{year} = get_tag_or_undef( $values, '_journal_year', 0 );
+    $data{volume} = get_tag_or_undef( $values, '_journal_volume', 0 );
+    $data{issue} = get_tag_or_undef( $values, '_journal_issue', 0 );
+    $data{firstpage} = get_tag_or_undef( $values, '_journal_page_first', 0 );
+    $data{lastpage} = get_tag_or_undef( $values, '_journal_page_last', 0 );
+    $data{doi} = get_tag_or_undef( $values, '_journal_paper_doi', 0 );
+    $data{onhold} = get_tag_or_undef( $values, '_cod_hold_until_date', 0 );
 
     $data{method} = get_experimental_method( $values );
 
-    $data{radiation} = get_tag_or_undef( $values, "_diffrn_radiation_probe", 0 );
-    $data{wavelength} = get_num_or_undef( $values, "_diffrn_radiation_wavelength", 0 );
-    $data{radType} = get_tag_or_undef( $values, "_diffrn_radiation_type", 0 );
+    $data{radiation} = get_tag_or_undef( $values, '_diffrn_radiation_probe', 0 );
+    $data{wavelength} = get_num_or_undef( $values, '_diffrn_radiation_wavelength', 0 );
+    $data{radType} = get_tag_or_undef( $values, '_diffrn_radiation_type', 0 );
     if( defined $data{radType} ) {
         $data{radType} = cif2unicode( $data{radType} );
         $data{radType} =~ s/\s//g;
     }
-    $data{radSymbol} = get_tag_or_undef( $values, "_diffrn_radiation_xray_symbol", 0 );
+    $data{radSymbol} = get_tag_or_undef( $values, '_diffrn_radiation_xray_symbol', 0 );
     if( defined $data{radSymbol} ) {
         $data{radSymbol} = cif2unicode( $data{radSymbol} );
         $data{radSymbol} =~ s/\s//g;
@@ -494,9 +493,9 @@ sub cif2cod
         $data_key =~ s/_factor//;
         $data_key =~ s/goodness_of_fit/gof/;
         $data_key =~ s/_//g;
-        $data_key = "Robs" if $data_key eq "Rgt";
-        $data_key = "wRobs" if $data_key eq "wRgt";
-        $data_key = "gofobs" if $data_key eq "gofref";
+        $data_key = 'Robs' if $data_key eq 'Rgt';
+        $data_key = 'wRobs' if $data_key eq 'wRgt';
+        $data_key = 'gofobs' if $data_key eq 'gofref';
         if( !defined $data{$data_key} ) {
             $data{$data_key} =
                 get_num_or_undef( $values, $r_factor_tag, 0 );
@@ -504,35 +503,35 @@ sub cif2cod
     }
 
     $data{duplicateof} =
-        get_tag_or_undef( $values, "_cod_duplicate_entry", 0 );
+        get_tag_or_undef( $values, '_cod_duplicate_entry', 0 );
 
     if( !defined $data{duplicateof} ) {
         $data{duplicateof} =
-            get_tag_or_undef( $values, "_[local]_cod_duplicate_entry", 0 );
+            get_tag_or_undef( $values, '_[local]_cod_duplicate_entry', 0 );
     }
 
     $data{optimal} = get_tag_or_undef( $values,
-                                "_cod_related_optimal_struct", 0 );
+                                '_cod_related_optimal_struct', 0 );
     if( !defined $data{optimal} ) {
         $data{optimal} =
             get_tag_or_undef( $values,
-                              "_[local]_cod_related_optimal_struct", 0 );
+                              '_[local]_cod_related_optimal_struct', 0 );
     }
 
-    $data{status} = get_tag_or_undef( $values, "_cod_error_flag", 0 );
+    $data{status} = get_tag_or_undef( $values, '_cod_error_flag', 0 );
     if( !defined $data{status} ) {
         $data{status} =
-            get_tag_or_undef( $values, "_[local]_cod_error_flag", 0 );
+            get_tag_or_undef( $values, '_[local]_cod_error_flag', 0 );
     }
 
     # Compose COD flags:
     my @flags;
 
-    push( @flags, 'has coordinates' ) if has_coordinates( $dataset );
-    push( @flags, 'has disorder' ) if is_disordered( $dataset );
-    push( @flags, 'has Fobs' ) if has_Fobs( $dataset );
+    push @flags, 'has coordinates' if has_coordinates( $dataset );
+    push @flags, 'has disorder'    if is_disordered( $dataset );
+    push @flags, 'has Fobs'        if has_Fobs( $dataset );
 
-    $data{flags} = join( ",", @flags );
+    $data{flags} = join ',', @flags;
 
     $data{text} = $text;
 
@@ -555,12 +554,12 @@ sub check_chem_formula
 {
     my ( $formula ) = @_;
 
-    my $formula_component = "[a-zA-Z]{1,2}[0-9.]*";
+    my $formula_component = '[a-zA-Z]{1,2}[0-9.]*';
 
-    if( $formula !~ /^\s*($formula_component\s+)*($formula_component)\s*$/ ) {
+    if( $formula !~ /^\s*(?:$formula_component\s+)*(?:$formula_component)\s*$/ ) {
         warn "WARNING, chemical formula '$formula' could not be parsed -- "
-           . "a chemical formula should consist of space-seprated chemical "
-           . "element names with optional numeric quantities "
+           . 'a chemical formula should consist of space-seprated chemical '
+           . 'element names with optional numeric quantities '
            . "(e.g. 'C2 H6 O')\n";
     }
 
@@ -577,11 +576,11 @@ sub count_number_of_elements
 {
     my $formula = $_[0];
     my @elements = map {s/[^A-Za-z]//g; /^[A-Za-z]+$/ ? $_ : () }
-                   split( " ", $formula );
+                   split ' ', $formula;
 
     my @unique = unique( sort {$a cmp $b} @elements );
 
-    return int(@unique);
+    return int @unique;
 }
 
 sub get_num
@@ -604,19 +603,19 @@ sub get_num_or_undef
 
 sub get_tag
 {
-    push( @_, 0 );
+    push @_, 0;
     &get_and_check_tag;
 }
 
 sub get_tag_silently
 {
-    push( @_, 1 );
+    push @_, 1;
     &get_and_check_tag;
 }
 
 sub get_tag_or_undef
 {
-    push( @_, 2 );
+    push @_, 2;
     &get_and_check_tag;
 }
 
@@ -624,8 +623,8 @@ sub get_and_check_tag
 {
     my ( $values, $tag, $index, $ignore_errors ) = @_;
 
-    if( ref $values eq "HASH" ) {
-        if( exists $values->{$tag} && ref $values->{$tag} eq "ARRAY" ) {
+    if( ref $values eq 'HASH' ) {
+        if( exists $values->{$tag} && ref $values->{$tag} eq 'ARRAY' ) {
             if( defined $values->{$tag}[$index] ) {
                 my $val = $values->{$tag}[$index];
            #     if( $val =~ /^\\\n/ ) {
@@ -647,7 +646,7 @@ sub get_and_check_tag
             }
         }
     }
-    return $ignore_errors <= 1 ? "" : undef;
+    return $ignore_errors <= 1 ? '' : undef;
 }
 
 sub clean_whitespaces
@@ -739,13 +738,13 @@ sub get_experimental_method
 
     for my $tag (@powder_tags) {
         if( exists $values->{$tag} ) {
-            return "powder diffraction";
+            return 'powder diffraction';
         }
     }
 
     for my $tag (qw(_exptl_crystals_number _exptl.crystals_number)) {
         if( exists $values->{$tag} ) {
-            return "single crystal";
+            return 'single crystal';
         }
     }
 
@@ -764,7 +763,7 @@ sub compute_Zprime
              @COD::Spacegroups::Lookup::COD::table;
 
     if( int(@sg_description) == 1 && defined $Z ) {
-        my $AU_count = int(@{$sg_description[0]{symops}});
+        my $AU_count = int @{$sg_description[0]{symops}};
         return $Z / $AU_count;
     }
 
@@ -783,7 +782,7 @@ sub validate_SQL_types
         if( $types->{$key} =~ /^(float|double|(small|medium)int)/i &&
             !looks_like_number( $data->{$key} ) ) {
             warn "value of '$key' ('$data->{$key}') does not seem " .
-                 "to be numeric";
+                 'to be numeric';
             $data->{$key} = undef;
             next;
         }
@@ -791,7 +790,7 @@ sub validate_SQL_types
         if( $types->{$key} =~ /unsigned/i &&
             $data->{$key} < 0 ) {
             warn "value of '$key' ('$data->{$key}') is negative, " .
-                 "while it must be unsigned";
+                 'while it must be unsigned';
             $data->{$key} = undef;
             next;
         }
@@ -802,7 +801,7 @@ sub validate_SQL_types
             if( $val_length > $max_length ) {
                 warn "value of '$key' ('$data->{$key}') is longer " .
                      "than allowed ($val_length > $max_length) " .
-                     "and may be corrupted upon casting";
+                     'and may be corrupted upon casting';
             }
         }
     }
