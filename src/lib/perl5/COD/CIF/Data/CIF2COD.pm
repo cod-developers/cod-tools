@@ -30,20 +30,8 @@ our @EXPORT_OK = qw(
     @new_data_fields
 );
 
-my $bond_safety_margin = 0.2; # Angstroems; a bond safety marging for a CIF classifier.
-
-my $reformat_space_group = 0;
-my $use_datablocks_without_coord = 0;
-my $require_only_doi = 0;
-my $print_header = 0; # Indicates whether to print out a header with
-                      # column names.
-my $print_keywords = 0;
-
-my $cod_number;
-
 # The default sql table data field that was taken from the
 # cod-add-data.sh script.
-
 our @default_data_fields = qw (
     file
     a
@@ -189,22 +177,17 @@ sub cif2cod
     my( $dataset, $options ) = @_;
 
     $options = {} unless defined $options;
-    $cod_number = $options->{cod_number}
-        if exists $options->{cod_number};
-    $require_only_doi = $options->{require_only_doi}
-        if exists $options->{require_only_doi};
-    $print_header = $options->{print_header}
-        if exists $options->{print_header};
-    $print_keywords = $options->{print_keywords}
-        if exists $options->{print_keywords};
-    $reformat_space_group = $options->{reformat_space_group}
-        if exists $options->{reformat_space_group};
-    $use_datablocks_without_coord =
-        $options->{use_datablocks_without_coord}
-        if exists $options->{use_datablocks_without_coord};
+
+    my $require_only_doi =
+        exists $options->{'require_only_doi'} ?
+               $options->{'require_only_doi'} : 0;
+    my $use_datablocks_without_coord =
+        exists $options->{'use_datablocks_without_coord'} ?
+               $options->{'use_datablocks_without_coord'} : 0;
     my $use_attached_hydrogens =
-        (exists $options->{use_attached_hydrogens})
-            ? $options->{use_attached_hydrogens} : 0;
+        exists $options->{'use_attached_hydrogens'} ?
+               $options->{'use_attached_hydrogens'} : 0;
+    my $cod_number = $options->{'cod_number'};
 
     my %data = ();
     my $values = $dataset->{values};
@@ -409,7 +392,8 @@ sub cif2cod
         get_tag_or_undef( $values, '_chemical_compound_source', 0 );
 
     $data{nel} = $nel;
-    $data{sg} = get_space_group_info( $values );
+    $data{sg} = get_space_group_info( $values,
+        { 'reformat_space_group' => $options->{'reformat_space_group'} } );
     $data{sgHall} = get_space_group_Hall_symbol( $values );
     $data{commonname} = $common_name;
     $data{chemname} = $systematic_name;
@@ -434,7 +418,7 @@ sub cif2cod
         my $acce_code = exists $values->{'_cod_data_source_file'} ?
            $values->{'_cod_data_source_file'}[0] :
            $values->{'_[local]_cod_data_source_file'}[0];
-        $acce_code =~ s/\..*$//g;
+        $acce_code =~ s/[.].*$//g;
         if( $acce_code =~ /^[a-zA-Z]{1,2}[0-9]{4,5}$/ ) {
             $data{acce_code} = uc $acce_code;
         } else {
@@ -546,7 +530,7 @@ sub cif2cod
 
 sub filter_num
 {
-    my @nums = map { s/\(.*\)$//; $_ } @_;
+    my @nums = map { s/[(].*[)]$//; $_ } @_;
     wantarray ? @nums : $nums[0];
 }
 
@@ -634,16 +618,12 @@ sub get_and_check_tag
            #     $val =~ s/\s+/ /g;
            #     $val =~ s/^\s*|\s*$//g;
                 return $val;
-            } else {
-                unless( $ignore_errors ) {
-                    warn "WARNING, data item '$tag' does not have value "
-                       . "number $index\n";
-                }
+            } elsif( !$ignore_errors ) {
+                warn "WARNING, data item '$tag' does not have value "
+                    . "number $index\n";
             }
-        } else {
-            unless( $ignore_errors ) {
-                warn "WARNING, data item '$tag' is absent\n";
-            }
+        } elsif( !$ignore_errors ) {
+            warn "WARNING, data item '$tag' is absent\n";
         }
     }
     return $ignore_errors <= 1 ? '' : undef;
@@ -665,7 +645,11 @@ sub clean_whitespaces
 
 sub get_space_group_info
 {
-    my ($values) = @_;
+    my ($values, $options) = @_;
+
+    my $reformat_sg =
+        exists $options->{'reformat_space_group'} ?
+               $options->{'reformat_space_group'} : 0;
 
     my @space_group_tags = qw (
         _space_group_name_H-M_alt
@@ -681,9 +665,9 @@ sub get_space_group_info
     for my $sg_tag (@space_group_tags) {
         if( exists $values->{$sg_tag} ) {
             $space_group = $values->{$sg_tag}[0];
-            if( $sg_tag =~ /_H-M/ && $reformat_space_group ) {
+            if( $sg_tag =~ /_H-M/ && $reformat_sg ) {
                 my $orig_sg = $space_group;
-                $orig_sg =~ s/[\(\)~_\s]//g;
+                $orig_sg =~ s/[()~_\s]//g;
                 ## print ">>> $orig_sg\n";
                 if( exists $space_groups{$orig_sg} ) {
                     $space_group = $space_groups{$orig_sg};
@@ -795,7 +779,7 @@ sub validate_SQL_types
             next;
         }
 
-        if( $types->{$key} =~ /^(var)?char\((\d+)\)/i ) {
+        if( $types->{$key} =~ /^(var)?char[(](\d+)[)]/i ) {
             my $max_length = $2;
             my $val_length = length( $data->{$key} );
             if( $val_length > $max_length ) {
