@@ -164,6 +164,53 @@ our @new_data_fields = qw (
     onhold
 );
 
+# A hash of text fields that do no require specific processing
+# and can be taken directly from the associated data items
+my %text_value_fields2tags = (
+   'thermalhist'    => '_exptl_crystal_thermal_history',
+   'pressurehist'   => '_exptl_crystal_pressure_history',
+   'compoundsource' => '_chemical_compound_source',
+   'commonname'     => '_chemical_name_common',
+   'chemname'       => '_chemical_name_systematic',
+   'mineral'        => '_chemical_name_mineral',
+   'radiation'      => '_diffrn_radiation_probe',
+   'wavelength'     => '_diffrn_radiation_wavelength',
+   'radType'        => '_diffrn_radiation_type',
+   'radSymbol'      => '_diffrn_radiation_xray_symbol',
+);
+
+# A hash of numeric fields that do no require specific processing
+# and can be taken directly from the associated data items
+my %num_value_fields2tags = (
+    'a'             => '_cell_length_a',
+    'b'             => '_cell_length_b',
+    'c'             => '_cell_length_c',
+    'alpha'         => '_cell_angle_alpha',
+    'beta'          => '_cell_angle_beta',
+    'gamma'         => '_cell_angle_gamma',
+    'celltemp'      => '_cell_measurement_temperature',
+    'diffrtemp'     => '_diffrn_ambient_temperature',
+    'cellpressure'  => '_cell_measurement_pressure',
+    'diffrpressure' => '_diffrn_ambient_pressure',
+    'wavelength'    => '_diffrn_radiation_wavelength',
+);
+
+# A hash of s.u. fields that do no require specific processing
+# and can be taken directly from the associated data items
+my %su_fields2tags = (
+    'siga'             => '_cell_length_a',
+    'sigb'             => '_cell_length_b',
+    'sigc'             => '_cell_length_c',
+    'sigalpha'         => '_cell_angle_alpha',
+    'sigbeta'          => '_cell_angle_beta',
+    'siggamma'         => '_cell_angle_gamma',
+    'sigcelltemp'      => '_cell_measurement_temperature',
+    'sigdiffrtemp'     => '_diffrn_ambient_temperature',
+    'sigcellpressure'  => '_cell_measurement_pressure',
+    'sigdiffrpressure' => '_diffrn_ambient_pressure',
+    # TODO: sigwavelength is not defined?
+);
+
 my %space_groups = map {
     my $key1 = $_->[1];
     my $key2 = $_->[2];
@@ -241,6 +288,29 @@ sub cif2cod
                        ( $last_page ? $first_page . '-' . $last_page :
                          $first_page ) );
 
+    $data{'acce_code'} =
+        get_coeditor_code( $values, { 'journal' => $journal } );
+    $data{'authors'} = cif2unicode( $authors );
+    $data{'title'}   = cif2unicode( $title );
+    $data{'journal'} = get_tag_or_undef( $values, '_journal_name_full', 0 );
+    if( defined $data{'journal'} ) {
+        $data{'journal'} = cif2unicode( $data{'journal'} );
+    }
+    $data{'year'} =
+        get_tag_or_undef( $values, '_journal_year', 0 );
+    $data{'volume'} =
+        get_tag_or_undef( $values, '_journal_volume', 0 );
+    $data{'issue'} =
+        get_tag_or_undef( $values, '_journal_issue', 0 );
+    $data{'firstpage'} =
+        get_tag_or_undef( $values, '_journal_page_first', 0 );
+    $data{'lastpage'} =
+        get_tag_or_undef( $values, '_journal_page_last', 0 );
+    $data{'doi'} =
+        get_tag_or_undef( $values, '_journal_paper_doi', 0 );
+    $data{'onhold'} =
+        get_tag_or_undef( $values, '_cod_hold_until_date', 0 );
+
     my $calc_formula;
     eval {
         $calc_formula =
@@ -282,19 +352,6 @@ sub cif2cod
 
     $data{'file'} = defined $cod_number ? $cod_number : $dataname;
 
-    $data{'a'} = get_num_or_undef( $values, '_cell_length_a', 0 );
-    $data{'siga'} = get_num_or_undef( $sigmas, '_cell_length_a', 0 );
-    $data{'b'} = get_num_or_undef( $values, '_cell_length_b', 0 );
-    $data{'sigb'} = get_num_or_undef( $sigmas, '_cell_length_b', 0 );
-    $data{'c'} = get_num_or_undef( $values, '_cell_length_c', 0 );
-    $data{'sigc'} = get_num_or_undef( $sigmas, '_cell_length_c', 0 );
-    $data{'alpha'} = get_num_or_undef( $values, '_cell_angle_alpha', 0 );
-    $data{'sigalpha'} = get_num_or_undef( $sigmas, '_cell_angle_alpha', 0 );
-    $data{'beta'} = get_num_or_undef( $values, '_cell_angle_beta', 0 );
-    $data{'sigbeta'} = get_num_or_undef( $sigmas, '_cell_angle_beta', 0 );
-    $data{'gamma'} = get_num_or_undef( $values, '_cell_angle_gamma', 0 );
-    $data{'siggamma'} = get_num_or_undef( $sigmas, '_cell_angle_gamma', 0 );
-
     my $cell_volume = get_num_or_undef( $values, '_cell_volume', 0 );
 
     if( !defined $cell_volume ) {
@@ -305,88 +362,26 @@ sub cif2cod
         }
     }
 
-    $data{'vol'} = $cell_volume;
-    $data{'sigvol'} = get_num_or_undef( $sigmas, '_cell_volume', 0 );
-
-    $data{'celltemp'} =
-        get_num_or_undef( $values, '_cell_measurement_temperature', 0 );
-    $data{'sigcelltemp'} =
-        get_num_or_undef( $sigmas, '_cell_measurement_temperature', 0 );
-    $data{'diffrtemp'} =
-        get_num_or_undef( $values, '_diffrn_ambient_temperature', 0 );
-    $data{'sigdiffrtemp'} =
-        get_num_or_undef( $sigmas, '_diffrn_ambient_temperature', 0 );
-    $data{'cellpressure'} =
-        get_num_or_undef( $values, '_cell_measurement_pressure', 0 );
-    $data{'sigcellpressure'} =
-        get_num_or_undef( $sigmas, '_cell_measurement_pressure', 0 );
-    $data{'diffrpressure'} =
-        get_num_or_undef( $values, '_diffrn_ambient_pressure', 0 );
-    $data{'sigdiffrpressure'} =
-        get_num_or_undef( $sigmas, '_diffrn_ambient_pressure', 0 );
-
-    $data{'thermalhist'} =
-        get_tag_or_undef( $values, '_exptl_crystal_thermal_history', 0 );
-    $data{'pressurehist'} =
-        get_tag_or_undef( $values, '_exptl_crystal_pressure_history', 0 );
-    $data{'compoundsource'} =
-        get_tag_or_undef( $values, '_chemical_compound_source', 0 );
-
-    $data{nel} = $nel;
-    $data{sg} = get_space_group_info( $values,
-        { 'reformat_space_group' => $options->{'reformat_space_group'} } );
-    $data{'sgHall'} =
-        get_space_group_Hall_symbol( $values );
-    $data{'commonname'} =
-        get_tag_or_undef( $values, '_chemical_name_common', 0 );
-    $data{'chemname'} =
-        get_tag_or_undef( $values, '_chemical_name_systematic', 0 );
-    $data{'mineral'} =
-        get_tag_or_undef( $values, '_chemical_name_mineral', 0 );
     $data{'formula'} = $formula ? '- ' . $formula . ' -' : '?';
     $data{'calcformula'} = $calc_formula ?
           '- ' . $calc_formula . ' -' : undef;
     $data{'cellformula'} = $cell_formula ?
           '- ' . $cell_formula . ' -' : undef;
+    $data{'nel'} = $nel;
+
+    $data{'vol'} = $cell_volume;
+    $data{'sigvol'} = get_num_or_undef( $sigmas, '_cell_volume', 0 );
+
+    $data{'sg'} = get_space_group_info( $values,
+        { 'reformat_space_group' => $options->{'reformat_space_group'} } );
+    $data{'sgHall'} =
+        get_space_group_Hall_symbol( $values );
     $data{'Z'} =
         get_tag_or_undef( $values, '_cell_formula_units_Z', 0 );
     $data{'Zprime'} =
-        compute_Zprime( $data{Z}, $data{sg} );
-
-    $data{'acce_code'} =
-        get_coeditor_code( $values, { 'journal' => $journal } );
-
-    $data{'authors'} = cif2unicode( $authors );
-    $data{'title'}   = cif2unicode( $title );
-    $data{'journal'} = get_tag_or_undef( $values, '_journal_name_full', 0 );
-    if( defined $data{'journal'} ) {
-        $data{'journal'} = cif2unicode( $data{'journal'} );
-    }
-    $data{'year'} =
-        get_tag_or_undef( $values, '_journal_year', 0 );
-    $data{'volume'} =
-        get_tag_or_undef( $values, '_journal_volume', 0 );
-    $data{'issue'} =
-        get_tag_or_undef( $values, '_journal_issue', 0 );
-    $data{'firstpage'} =
-        get_tag_or_undef( $values, '_journal_page_first', 0 );
-    $data{'lastpage'} =
-        get_tag_or_undef( $values, '_journal_page_last', 0 );
-    $data{'doi'} =
-        get_tag_or_undef( $values, '_journal_paper_doi', 0 );
-    $data{'onhold'} =
-        get_tag_or_undef( $values, '_cod_hold_until_date', 0 );
+        compute_Zprime( $data{'Z'}, $data{'sg'} );
 
     $data{'method'} = get_experimental_method( $values );
-
-    $data{'radiation'}  =
-        get_tag_or_undef( $values, '_diffrn_radiation_probe', 0 );
-    $data{'wavelength'} =
-        get_num_or_undef( $values, '_diffrn_radiation_wavelength', 0 );
-    $data{'radType'}    =
-        get_tag_or_undef( $values, '_diffrn_radiation_type', 0 );
-    $data{'radSymbol'}  =
-        get_tag_or_undef( $values, '_diffrn_radiation_xray_symbol', 0 );
 
     for my $r_factor_tag (qw(
         _refine_ls_R_factor_all
@@ -449,6 +444,21 @@ sub cif2cod
     $data{flags} = join ',', @flags;
 
     $data{text} = $text;
+
+    # Get text values directly from CIF data items
+    for ( sort keys %text_value_fields2tags ) {
+        $data{$_} = get_tag_or_undef( $values, $text_value_fields2tags{$_}, 0 );
+    };
+
+    # Get numeric values directly from CIF data items
+    for ( sort keys %num_value_fields2tags ) {
+        $data{$_} = get_num_or_undef( $values, $num_value_fields2tags{$_}, 0 );
+    };
+
+    # Get su values directly from CIF data items
+    for ( sort keys %su_fields2tags ) {
+        $data{$_} = get_num_or_undef( $sigmas, $su_fields2tags{$_}, 0 );
+    };
 
     # Set undef if the current value is an empty string
     for ( qw( celltemp      sigcelltemp
