@@ -429,9 +429,9 @@ sub cif2cod
     } elsif( exists $values->{"_journal.coeditor_code"} ) {
         $data{acce_code} = uc( get_tag_or_undef( $values,
                                "_journal.coeditor_code", 0 ));
-    } elsif( $journal =~ /^Acta Cryst/ &&
+    } elsif( $journal =~ /^Acta Cryst/ && (
              exists $values->{"_[local]_cod_data_source_file"} ||
-             exists $values->{"_cod_data_source_file"} ) {
+             exists $values->{"_cod_data_source_file"} ) ) {
         my $acce_code = exists $values->{"_cod_data_source_file"} ?
            $values->{"_cod_data_source_file"}[0] :
            $values->{"_[local]_cod_data_source_file"}[0];
