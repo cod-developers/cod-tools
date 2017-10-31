@@ -214,7 +214,7 @@ sub cif2cod
     if ( !exists $values->{_atom_site_fract_x} &&
          !$use_datablocks_without_coord ) {
         warn "data block does not contain fractional coordinates\n";
-        return undef;
+        return;
     };
 
     my @authors = ();
@@ -563,6 +563,8 @@ sub check_chem_formula
            . "element names with optional numeric quantities "
            . "(e.g. 'C2 H6 O')\n";
     }
+
+    return;
 }
 
 sub unique
@@ -593,15 +595,11 @@ sub get_num_or_undef
 {
     my $value = &get_tag_or_undef;
 
-    if( defined $value ) {
-        if( $value ne '?' && $value ne '.' ) {
-            return filter_num( $value );
-        } else {
-            return undef;
-        }
-    } else {
-        return undef;
+    if( defined $value && $value ne '?' && $value ne '.') {
+        return filter_num( $value );
     }
+
+    return;
 }
 
 sub get_tag
@@ -736,8 +734,8 @@ sub get_experimental_method
         return $values->{_cod_struct_determination_method}[0];
     }
 
-    my @powder_tags = grep /^_pd_/,
-                      @COD::CIF::Tags::DictTags::tag_list;
+    my @powder_tags = grep { /^_pd_/ }
+                        @COD::CIF::Tags::DictTags::tag_list;
 
     for my $tag (@powder_tags) {
         if( exists $values->{$tag} ) {
@@ -751,26 +749,26 @@ sub get_experimental_method
         }
     }
 
-    return undef;
+    return;
 }
 
 sub compute_Zprime
 {
     my ( $Z, $space_group_H_M ) = @_;
 
-    return undef unless defined $space_group_H_M;
+    return unless defined $space_group_H_M;
 
     use COD::Spacegroups::Lookup::COD;
     my @sg_description =
-        grep { $space_group_H_M eq $_->{universal_h_m} }
+        grep { $space_group_H_M eq $_->{'universal_h_m'} }
              @COD::Spacegroups::Lookup::COD::table;
 
     if( int(@sg_description) == 1 && defined $Z ) {
         my $AU_count = int(@{$sg_description[0]{symops}});
         return $Z / $AU_count;
-    } else {
-        return undef;
     }
+
+    return;
 }
 
 sub validate_SQL_types
@@ -808,6 +806,8 @@ sub validate_SQL_types
             }
         }
     }
+
+    return;
 }
 
 1;
