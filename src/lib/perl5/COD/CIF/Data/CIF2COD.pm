@@ -247,65 +247,22 @@ sub cif2cod
         return;
     };
 
+    my $biblio = get_bibliography( $values,
+                { 'require_only_doi' => $require_only_doi } );
     my @authors = ();
     if( exists $values->{_publ_author_name} ) {
         for my $i (0..$#{$values->{_publ_author_name}}) {
             push @authors, get_tag( $values, '_publ_author_name', $i );
         }
     }
-
-    my $authors = join '; ', @authors;
-
-    my( $title, $journal, $year, $volume, $first_page );
-    my %opt_biblio_tags = ( '_publ_section_title' => \$title,
-                            '_journal_name_full'  => \$journal,
-                            '_journal_year'       => \$year,
-                            '_journal_volume'     => \$volume,
-                            '_journal_page_first' => \$first_page );
-    for my $tag (sort keys %opt_biblio_tags) {
-        if( ($require_only_doi &&
-             exists $values->{_journal_paper_doi}) ||
-            ($tag eq '_journal_page_first' &&
-             exists $values->{_journal_article_reference}) ) {
-            ${$opt_biblio_tags{$tag}} = get_tag_silently( $values,
-                                                          $tag,
-                                                          0 );
-        } else {
-            ${$opt_biblio_tags{$tag}} = get_tag( $values,
-                                                 $tag,
-                                                 0 );
-        }
+    $biblio->{'authors'} = join '; ', @authors;
+    for (keys %{$biblio}) {
+        $data{$_} = $biblio->{$_};
     }
-
-    my $last_page = get_tag_silently( $values, '_journal_page_last', 0 );
-    my $issue = get_tag_silently( $values, '_journal_issue', 0 );
-
-    my $text = join '\n', map { clean_whitespaces( cif2unicode($_) ) }
-                     ( $authors, $title, $journal, $volume .
-                       ( $issue? ( $volume ? "($issue)" :
-                                   "(issue $issue)") : '' ),
-                       '(' . $year . ')',
-                       ( $last_page ? $first_page . '-' . $last_page :
-                         $first_page ) );
+    $data{'text'} = concat_text_field($biblio);
 
     $data{'acce_code'} =
-        get_coeditor_code( $values, { 'journal' => $journal } );
-    $data{'authors'} = cif2unicode( $authors );
-    $data{'title'}   = cif2unicode( $title );
-    $data{'journal'} = get_tag_or_undef( $values, '_journal_name_full', 0 );
-    if( defined $data{'journal'} ) {
-        $data{'journal'} = cif2unicode( $data{'journal'} );
-    }
-    $data{'year'} =
-        get_tag_or_undef( $values, '_journal_year', 0 );
-    $data{'volume'} =
-        get_tag_or_undef( $values, '_journal_volume', 0 );
-    $data{'issue'} =
-        get_tag_or_undef( $values, '_journal_issue', 0 );
-    $data{'firstpage'} =
-        get_tag_or_undef( $values, '_journal_page_first', 0 );
-    $data{'lastpage'} =
-        get_tag_or_undef( $values, '_journal_page_last', 0 );
+        get_coeditor_code( $values, { 'journal' => $biblio->{'journal'} } );
     $data{'doi'} =
         get_tag_or_undef( $values, '_journal_paper_doi', 0 );
     $data{'onhold'} =
@@ -443,8 +400,6 @@ sub cif2cod
 
     $data{flags} = join ',', @flags;
 
-    $data{text} = $text;
-
     # Get text values directly from CIF data items
     for ( sort keys %text_value_fields2tags ) {
         $data{$_} = get_tag_or_undef( $values, $text_value_fields2tags{$_}, 0 );
@@ -465,7 +420,8 @@ sub cif2cod
               diffrtemp     sigdiffrtemp
               cellpressure  sigcellpressure
               diffrpressure sigdiffrpressure
-              chemname commonname mineral ) ) {
+              chemname commonname mineral
+              journal year volume issue firstpage lastpage ) ) {
         if ( exists $data{$_} && defined $data{$_} ) {
             if ( $data{$_} =~ $empty_value_regex ) {
                 $data{$_} = undef;
@@ -474,7 +430,9 @@ sub cif2cod
     };
 
     # Convert CIF notation to Unicode
-    for ( qw( chemname commonname mineral radType radSymbol ) ) {
+    for ( qw( chemname commonname mineral
+              radType radSymbol
+              journal authors title ) ) {
         if ( exists $data{$_} && defined $data{$_} ) {
             $data{$_} = cif2unicode($data{$_});
         }
@@ -522,6 +480,75 @@ sub unique
 {
     my $prev;
     return map {(!defined $prev || $prev ne $_) ? $prev=$_ : ()} @_;
+}
+
+sub get_bibliography
+{
+    my ($data, $options) = @_;
+
+    my $require_only_doi = $options->{'require_only_doi'};
+
+    my %bib_fields2tag = (
+        'title'   => '_publ_section_title',
+        'journal' => '_journal_name_full',
+        'year'    => '_journal_year',
+        'volume'  => '_journal_volume',
+    );
+
+    my $ignore_missing = $require_only_doi &&
+                         exists $data->{'_journal_paper_doi'};
+    my %bib;
+    for (sort keys %bib_fields2tag) {
+        $bib{$_} = get_and_check_tag( $data, $bib_fields2tag{$_},
+                                      0, $ignore_missing )
+    };
+
+    # missing journal pages should not be reported
+    # if a journal article reference is provided
+    $ignore_missing  = $ignore_missing ||
+                       exists $data->{'_journal_article_reference'};
+
+    $bib{'firstpage'} = get_and_check_tag( $data, '_journal_page_first',
+                                           0, $ignore_missing );
+
+    $bib{'issue'}    = get_and_check_tag( $data, '_journal_issue',
+                                          0, 1 );
+    $bib{'lastpage'} = get_and_check_tag( $data, '_journal_page_last',
+                                          0, 1 );
+
+    return \%bib;
+}
+
+sub concat_text_field
+{
+    my ($biblio) = @_;
+
+    my $authors    = defined $biblio->{'authors'} ?
+                             $biblio->{'authors'} : '';
+    my $title      = defined $biblio->{'title'} ?
+                             $biblio->{'title'} : '';
+    my $journal    = defined $biblio->{'journal'} ?
+                             $biblio->{'journal'} : '';
+    my $year       = defined $biblio->{'year'} ?
+                             $biblio->{'year'} : '';
+    my $volume     = defined $biblio->{'volume'} ?
+                             $biblio->{'volume'} : '';
+    my $issue      = defined $biblio->{'issue'} ?
+                             $biblio->{'issue'} : '';
+    my $first_page = defined $biblio->{'firstpage'} ?
+                             $biblio->{'firstpage'} : '';
+    my $last_page  = defined $biblio->{'lastpage'} ?
+                             $biblio->{'lastpage'} : '';
+
+    my $text = join '\n', map { clean_whitespaces( cif2unicode($_) ) }
+                     ( $authors, $title, $journal, $volume .
+                       ( $issue ? ( $volume ? "($issue)" :
+                                   "(issue $issue)") : '' ),
+                       '(' . $year . ')',
+                       ( $last_page ? $first_page . '-' . $last_page :
+                         $first_page ) );
+
+    return $text;
 }
 
 sub count_number_of_elements
