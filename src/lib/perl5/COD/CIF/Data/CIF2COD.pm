@@ -457,7 +457,7 @@ sub cif2cod
 
 sub filter_num
 {
-    my @nums = map { s/[(].*[)]$//; $_ } @_;
+    my @nums = map { my $s = $_; $s =~ s/[(].*[)]$//; $s } @_;
     wantarray ? @nums : $nums[0];
 }
 
@@ -549,8 +549,11 @@ sub concat_text_field
 sub count_number_of_elements
 {
     my $formula = $_[0];
-    my @elements = map {s/[^A-Za-z]//g; /^[A-Za-z]+$/ ? $_ : () }
-                   split ' ', $formula;
+    my @elements = map {
+        my $s = $_;
+        $s =~ s/[^A-Za-z]//g;
+        ( $s =~ /^[A-Za-z]+$/ ) ? $s : ()
+    } split ' ', $formula;
 
     my @unique = uniq @elements;
 
