@@ -233,17 +233,17 @@ my %num_value_fields2tags = (
 # A hash of s.u. fields that do no require specific processing
 # and can be taken directly from the associated data items
 my %su_fields2tags = (
-    'siga'             => '_cell_length_a',
-    'sigb'             => '_cell_length_b',
-    'sigc'             => '_cell_length_c',
-    'sigalpha'         => '_cell_angle_alpha',
-    'sigbeta'          => '_cell_angle_beta',
-    'siggamma'         => '_cell_angle_gamma',
-    'sigvol'           => '_cell_volume',
-    'sigcelltemp'      => '_cell_measurement_temperature',
-    'sigdiffrtemp'     => '_diffrn_ambient_temperature',
-    'sigcellpressure'  => '_cell_measurement_pressure',
-    'sigdiffrpressure' => '_diffrn_ambient_pressure',
+    'siga'             => [ qw( _cell_length_a ) ],
+    'sigb'             => [ qw( _cell_length_b ) ],
+    'sigc'             => [ qw( _cell_length_c ) ],
+    'sigalpha'         => [ qw( _cell_angle_alpha ) ],
+    'sigbeta'          => [ qw( _cell_angle_beta ) ],
+    'siggamma'         => [ qw( _cell_angle_gamma ) ],
+    'sigvol'           => [ qw( _cell_volume ) ],
+    'sigcelltemp'      => [ qw( _cell_measurement_temperature ) ],
+    'sigdiffrtemp'     => [ qw( _diffrn_ambient_temperature ) ],
+    'sigcellpressure'  => [ qw( _cell_measurement_pressure ) ],
+    'sigdiffrpressure' => [ qw( _diffrn_ambient_pressure ) ],
     # TODO: sigwavelength is not defined?
 );
 
@@ -306,25 +306,22 @@ sub cif2cod
 
     # Get text values directly from CIF data items
     for my $field ( sort keys %text_value_fields2tags ) {
-        for my $tag ( @{$text_value_fields2tags{$field}} ) {
-            if (!defined $data{$field}) {
-                $data{$field} = get_tag_or_undef( $values, $tag, 0 );
-            }
-        }
+        $data{$field} = get_data_value( $values, $text_value_fields2tags{$field} );
     };
 
     # Get numeric values directly from CIF data items
     for my $field ( sort keys %num_value_fields2tags ) {
-        for my $tag ( @{$num_value_fields2tags{$field}} ) {
-            if (!defined $data{$field}) {
-                $data{$field} = get_num_or_undef( $values, $tag, 0 );
-            }
-        }
-    };
+        $data{$field} = get_data_value( $values, $num_value_fields2tags{$field} );
+    }
 
     # Get su values directly from CIF data items
-    for ( sort keys %su_fields2tags ) {
-        $data{$_} = get_num_or_undef( $sigmas, $su_fields2tags{$_}, 0 );
+    for my $field ( sort keys %su_fields2tags ) {
+        $data{$field} = get_data_value( $sigmas, $su_fields2tags{$field} );
+    };
+
+    # process numeric values
+    for my $field ( keys %num_value_fields2tags, %su_fields2tags ) {
+        $data{$field} = filter_num($data{$field});
     };
 
     # Set undef if the current value is an empty string
@@ -430,7 +427,11 @@ sub filter_num
 {
     my ($value) = @_;
 
-    $value =~ s/[(].*[)]$//;
+    if ( defined $value && $value ne '?' && $value ne '.' ) {
+        $value =~ s/[(].*[)]$//;
+    } else {
+        $value = undef;
+    }
 
     return $value;
 }
@@ -551,18 +552,6 @@ sub count_number_of_elements
     return int @unique;
 }
 
-sub get_num_or_undef
-{
-    my ($values, $tag, $index) = @_;
-    my $value = get_tag_or_undef($values, $tag, $index);
-
-    if( defined $value && $value ne '?' && $value ne '.') {
-        return filter_num( $value );
-    }
-
-    return;
-}
-
 sub get_tag_or_undef
 {
     my ($values, $tag, $index) = @_;
@@ -573,6 +562,20 @@ sub get_tag_or_undef
     }
 
     return;
+}
+
+sub get_data_value
+{
+    my ($values, $data_names) = @_;
+
+    my $value;
+    for my $data_name ( @{$data_names} ) {
+        if (!defined $value) {
+            $value = get_tag_or_undef( $values, $data_name, 0 );
+        }
+    }
+
+    return $value;
 }
 
 sub clean_whitespaces
@@ -747,7 +750,6 @@ sub validate_SQL_types
 
     for my $key (sort keys %{$data}) {
         next if !defined $data->{$key};
-        next if $data->{$key} eq 'NULL';
         next if !exists $types->{$key};
 
         if( $types->{$key} =~ /^(float|double|(small|medium)int)/i &&
