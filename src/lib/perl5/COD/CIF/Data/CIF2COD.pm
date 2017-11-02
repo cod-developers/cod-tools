@@ -337,7 +337,7 @@ sub cif2cod
     $data{'Z'} =
         get_tag_or_undef( $values, '_cell_formula_units_Z', 0 );
     $data{'Zprime'} =
-        compute_Zprime( $data{'Z'}, $data{'sg'} );
+        compute_z_prime( $data{'Z'}, $data{'sg'} );
 
     $data{'method'} = get_experimental_method( $values );
 
@@ -458,7 +458,7 @@ sub cif2cod
 sub filter_num
 {
     my @nums = map { my $s = $_; $s =~ s/[(].*[)]$//; $s } @_;
-    wantarray ? @nums : $nums[0];
+    return wantarray ? @nums : $nums[0];
 }
 
 sub check_chem_formula
@@ -518,22 +518,20 @@ sub concat_text_field
 {
     my ($biblio) = @_;
 
-    my $authors    = defined $biblio->{'authors'} ?
-                             $biblio->{'authors'} : '';
-    my $title      = defined $biblio->{'title'} ?
-                             $biblio->{'title'} : '';
-    my $journal    = defined $biblio->{'journal'} ?
-                             $biblio->{'journal'} : '';
-    my $year       = defined $biblio->{'year'} ?
-                             $biblio->{'year'} : '';
-    my $volume     = defined $biblio->{'volume'} ?
-                             $biblio->{'volume'} : '';
-    my $issue      = defined $biblio->{'issue'} ?
-                             $biblio->{'issue'} : '';
-    my $first_page = defined $biblio->{'firstpage'} ?
-                             $biblio->{'firstpage'} : '';
-    my $last_page  = defined $biblio->{'lastpage'} ?
-                             $biblio->{'lastpage'} : '';
+    for ( qw( authors title journal year volume issue firstpage lastpage ) ) {
+        if (!defined $biblio->{$_}) {
+            $biblio->{$_} = q{};
+        }
+    }
+
+    my $authors    = $biblio->{'authors'};
+    my $title      = $biblio->{'title'};
+    my $journal    = $biblio->{'journal'};
+    my $year       = $biblio->{'year'};
+    my $volume     = $biblio->{'volume'};
+    my $issue      = $biblio->{'issue'};
+    my $first_page = $biblio->{'firstpage'};
+    my $last_page  = $biblio->{'lastpage'};
 
     my $text = join '\n', map { clean_whitespaces( cif2unicode($_) ) }
                      ( $authors, $title, $journal, $volume .
@@ -548,13 +546,14 @@ sub concat_text_field
 
 sub count_number_of_elements
 {
-    my $formula = $_[0];
-    my @elements = map {
-        my $s = $_;
-        $s =~ s/[^A-Za-z]//g;
-        ( $s =~ /^[A-Za-z]+$/ ) ? $s : ()
-    } split ' ', $formula;
-
+    my ( $formula ) = @_;
+    my @elements;
+    for my $el ( split ' ', $formula ) {
+        $el =~ s/[^A-Za-z]//g;
+        if ( $el =~ /^[A-Za-z]+$/ ) {
+            push @elements, $el;
+        }
+    }
     my @unique = uniq @elements;
 
     return int @unique;
@@ -562,14 +561,15 @@ sub count_number_of_elements
 
 sub get_num
 {
-    my ($values, $tag, $index ) = @_;
+    my ($values, $tag, $index) = @_;
 
-    return filter_num( &get_tag );
+    return filter_num( get_tag($values, $tag, $index) );
 }
 
 sub get_num_or_undef
 {
-    my $value = &get_tag_or_undef;
+    my ($values, $tag, $index) = @_;
+    my $value = get_tag_or_undef($values, $tag, $index);
 
     if( defined $value && $value ne '?' && $value ne '.') {
         return filter_num( $value );
@@ -580,20 +580,20 @@ sub get_num_or_undef
 
 sub get_tag
 {
-    push @_, 0;
-    &get_and_check_tag;
+    my ($values, $tag, $index) = @_;
+    return get_and_check_tag( $values, $tag, $index, 0 );
 }
 
 sub get_tag_silently
 {
-    push @_, 1;
-    &get_and_check_tag;
+    my ($values, $tag, $index) = @_;
+    return get_and_check_tag( $values, $tag, $index, 1 );
 }
 
 sub get_tag_or_undef
 {
-    push @_, 2;
-    &get_and_check_tag;
+    my ($values, $tag, $index) = @_;
+    return get_and_check_tag( $values, $tag, $index, 2 );
 }
 
 sub get_and_check_tag
@@ -769,20 +769,20 @@ sub get_coeditor_code
     return $acce_code;
 }
 
-sub compute_Zprime
+sub compute_z_prime
 {
-    my ( $Z, $space_group_H_M ) = @_;
+    my ( $Z, $space_group_h_m ) = @_;
 
-    return unless defined $space_group_H_M;
+    return unless defined $space_group_h_m;
 
     use COD::Spacegroups::Lookup::COD;
     my @sg_description =
-        grep { $space_group_H_M eq $_->{'universal_h_m'} }
+        grep { $space_group_h_m eq $_->{'universal_h_m'} }
              @COD::Spacegroups::Lookup::COD::table;
 
     if( int(@sg_description) == 1 && defined $Z ) {
-        my $AU_count = int @{$sg_description[0]{symops}};
-        return $Z / $AU_count;
+        my $au_count = int @{$sg_description[0]{symops}};
+        return $Z / $au_count;
     }
 
     return;
@@ -792,7 +792,7 @@ sub validate_SQL_types
 {
     my( $data, $types ) = @_;
 
-    for my $key (sort keys %$data) {
+    for my $key (sort keys %{$data}) {
         next if !defined $data->{$key};
         next if $data->{$key} eq 'NULL';
         next if !exists $types->{$key};
