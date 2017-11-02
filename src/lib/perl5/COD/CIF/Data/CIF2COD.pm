@@ -567,12 +567,6 @@ sub get_tag
     return get_and_check_tag( $values, $tag, $index, 0 );
 }
 
-sub get_tag_silently
-{
-    my ($values, $tag, $index) = @_;
-    return get_and_check_tag( $values, $tag, $index, 1 );
-}
-
 sub get_tag_or_undef
 {
     my ($values, $tag, $index) = @_;
@@ -583,18 +577,14 @@ sub get_and_check_tag
 {
     my ( $values, $tag, $index, $ignore_errors ) = @_;
 
-    if( ref $values eq 'HASH' ) {
-        if( exists $values->{$tag} && ref $values->{$tag} eq 'ARRAY' ) {
-            if( defined $values->{$tag}[$index] ) {
-                return $values->{$tag}[$index];
-            } elsif( !$ignore_errors ) {
-                warn "WARNING, data item '$tag' does not have value "
-                    . "number $index\n";
-            }
-        } elsif( !$ignore_errors ) {
-            warn "WARNING, data item '$tag' is absent\n";
+    if( exists $values->{$tag} ) {
+        if( defined $values->{$tag}[$index] ) {
+            return $values->{$tag}[$index];
         }
+    } elsif( !$ignore_errors ) {
+            warn "WARNING, data item '$tag' is absent\n";
     }
+
     return $ignore_errors <= 1 ? '' : undef;
 }
 
