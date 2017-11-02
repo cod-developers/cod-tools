@@ -457,8 +457,11 @@ sub cif2cod
 
 sub filter_num
 {
-    my @nums = map { my $s = $_; $s =~ s/[(].*[)]$//; $s } @_;
-    return wantarray ? @nums : $nums[0];
+    my ($value) = @_;
+
+    $value =~ s/[(].*[)]$//;
+
+    return $value;
 }
 
 sub check_chem_formula
@@ -557,13 +560,6 @@ sub count_number_of_elements
     my @unique = uniq @elements;
 
     return int @unique;
-}
-
-sub get_num
-{
-    my ($values, $tag, $index) = @_;
-
-    return filter_num( get_tag($values, $tag, $index) );
 }
 
 sub get_num_or_undef
