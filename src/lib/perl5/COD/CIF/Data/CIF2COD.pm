@@ -20,6 +20,7 @@ use COD::CIF::Unicode2CIF qw( cif2unicode );
 use COD::CIF::Tags::DictTags;
 use COD::Spacegroups::Names;
 use Scalar::Util qw( looks_like_number );
+use List::MoreUtils qw( uniq );
 
 require Exporter;
 our @ISA = qw( Exporter );
@@ -476,12 +477,6 @@ sub check_chem_formula
     return;
 }
 
-sub unique
-{
-    my $prev;
-    return map {(!defined $prev || $prev ne $_) ? $prev=$_ : ()} @_;
-}
-
 sub get_bibliography
 {
     my ($data, $options) = @_;
@@ -557,7 +552,7 @@ sub count_number_of_elements
     my @elements = map {s/[^A-Za-z]//g; /^[A-Za-z]+$/ ? $_ : () }
                    split ' ', $formula;
 
-    my @unique = unique( sort {$a cmp $b} @elements );
+    my @unique = uniq @elements;
 
     return int @unique;
 }
