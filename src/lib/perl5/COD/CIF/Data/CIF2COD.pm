@@ -175,16 +175,28 @@ my %text_value_fields2tags = (
    'commonname'     => [ qw( _chemical_name_common ) ],
    'chemname'       => [ qw( _chemical_name_systematic ) ],
    'mineral'        => [ qw( _chemical_name_mineral ) ],
+    # TODO: shouldn't it be treated as numeric?
+   'Z'              => [ qw( _cell_formula_units_Z ) ],
+   'formula'        => [ qw( _chemical_formula_sum ) ],
    'radiation'      => [ qw( _diffrn_radiation_probe ) ],
    'radType'        => [ qw( _diffrn_radiation_type ) ],
    'radSymbol'      => [ qw( _diffrn_radiation_xray_symbol ) ],
-
    'duplicateof'    => [ qw( _cod_duplicate_entry
                              _[local]_cod_duplicate_entry ) ],
    'optimal'        => [ qw( _cod_related_optimal_struct
                              _[local]_cod_related_optimal_struct ) ],
    'status'         => [ qw( _cod_error_flag
                              _[local]_cod_error_flag ) ],
+   'onhold'         => [ qw( _cod_hold_until_date ) ],
+
+   'title'          => [ qw( _publ_section_title ) ],
+   'journal'        => [ qw( _journal_name_full ) ],
+   'year'           => [ qw( _journal_year ) ],
+   'volume'         => [ qw( _journal_volume ) ],
+   'issue'          => [ qw( _journal_issue ) ],
+   'firstpage'      => [ qw( _journal_page_first ) ],
+   'lastpage'       => [ qw( _journal_page_last ) ],
+   'doi'            => [ qw( _journal_paper_doi ) ],
 );
 
 # A hash of numeric fields that do no require specific processing
@@ -196,6 +208,7 @@ my %num_value_fields2tags = (
     'alpha'         => [ qw( _cell_angle_alpha ) ],
     'beta'          => [ qw( _cell_angle_beta ) ],
     'gamma'         => [ qw( _cell_angle_gamma ) ],
+    'vol'           => [ qw( _cell_volume ) ],
     'celltemp'      => [ qw( _cell_measurement_temperature ) ],
     'diffrtemp'     => [ qw( _diffrn_ambient_temperature ) ],
     'cellpressure'  => [ qw( _cell_measurement_pressure ) ],
@@ -226,6 +239,7 @@ my %su_fields2tags = (
     'sigalpha'         => '_cell_angle_alpha',
     'sigbeta'          => '_cell_angle_beta',
     'siggamma'         => '_cell_angle_gamma',
+    'sigvol'           => '_cell_volume',
     'sigcelltemp'      => '_cell_measurement_temperature',
     'sigdiffrtemp'     => '_diffrn_ambient_temperature',
     'sigcellpressure'  => '_cell_measurement_pressure',
@@ -259,119 +273,36 @@ sub cif2cod
     my $cod_number = $options->{'cod_number'};
 
     my %data = ();
-    my $values = $dataset->{values};
-    my $sigmas = $dataset->{precisions};
-    my $dataname = $dataset->{name};
+    my $values = $dataset->{'values'};
+    my $sigmas = $dataset->{'precisions'};
 
-    if ( !exists $values->{_atom_site_fract_x} &&
+    if ( !exists $values->{'_atom_site_fract_x'} &&
          !$use_datablocks_without_coord ) {
         warn "data block does not contain fractional coordinates\n";
         return;
     };
 
-    my $biblio = get_bibliography( $values,
-                { 'require_only_doi' => $require_only_doi } );
-    my @authors = ();
-    if( exists $values->{_publ_author_name} ) {
-        for my $i (0..$#{$values->{_publ_author_name}}) {
-            push @authors, get_tag( $values, '_publ_author_name', $i );
+    # Produce a list of data items that should be reported as mandatory/missing
+    my @mandatory_tags = qw( formula );
+    # TODO: the actual value of the doi is not examined. It could potentially
+    # be a CIF special value, i.e. '?' or '.'
+    if ( !$require_only_doi || !exists $values->{'_journal_paper_doi'} ) {
+        push @mandatory_tags, qw( title journal year volume );
+        # TODO: same issue as above
+        # missing journal pages should not be reported
+        # if a journal article reference is provided
+        if ( !exists $values->{'_journal_article_reference'} ) {
+            push @mandatory_tags, qw( firstpage );
         }
     }
-    $biblio->{'authors'} = join '; ', @authors;
-    for (keys %{$biblio}) {
-        $data{$_} = $biblio->{$_};
-    }
-    $data{'text'} = concat_text_field($biblio);
+    # Report mandatory data items
+    report_mandatory_data_items( $values, \@mandatory_tags );
 
-    $data{'acce_code'} =
-        get_coeditor_code( $values, { 'journal' => $biblio->{'journal'} } );
-    $data{'doi'} =
-        get_tag_or_undef( $values, '_journal_paper_doi', 0 );
-    $data{'onhold'} =
-        get_tag_or_undef( $values, '_cod_hold_until_date', 0 );
-
-    my $calc_formula;
-    eval {
-        $calc_formula =
-                cif_cell_contents( $dataset, undef, $use_attached_hydrogens );
-    };
-    if( $@ ) {
-        # ERRORS that originated within the function are downgraded to warnings
-        my $error = $@;
-        $error =~ s/[A-Z]+, //;
-        chomp $error;
-        warn "WARNING, summary formula could not be calculated -- $error\n";
-    }
-
-    my $cell_formula;
-    eval {
-        $cell_formula =
-                cif_cell_contents( $dataset, 1, $use_attached_hydrogens );
-    };
-    if( $@ ) {
-        # ERRORS that originated within the function are downgraded to warnings
-        my $error = $@;
-        $error =~ s/[A-Z]+, //;
-        chomp $error;
-        warn "WARNING, unit cell summary formula could not be calculated -- $error\n";
-    }
-
-    my $formula = get_tag( $values, '_chemical_formula_sum', 0 );
-    my $empty_value_regex = qr/^[\s?]*$/s;
-
-    undef $formula if defined $formula &&
-          $formula =~ $empty_value_regex;
-
-    # Setting the default number of unique elements to 0
-    my $nel = 0;
-    if( defined $formula ) {
-        for ( @{ check_formula_sum_syntax( $formula ) } ) {
-            warn $_;
-        };
-        $nel = count_number_of_elements( $formula );
-    }
-
-    $data{'file'} = defined $cod_number ? $cod_number : $dataname;
-
-    my $cell_volume = get_num_or_undef( $values, '_cell_volume', 0 );
-
-    if( !defined $cell_volume ) {
-        my @cell = get_cell( $values, { silent => 1 } );
-        $cell_volume = scalar cell_volume( @cell );
-        if ( defined $cell_volume ) {
-            $cell_volume = sprintf '%7.2f', $cell_volume;
-        }
-    }
-
-    $data{'formula'} = $formula ? '- ' . $formula . ' -' : '?';
-    $data{'calcformula'} = $calc_formula ?
-          '- ' . $calc_formula . ' -' : undef;
-    $data{'cellformula'} = $cell_formula ?
-          '- ' . $cell_formula . ' -' : undef;
-    $data{'nel'} = $nel;
-
-    $data{'vol'} = $cell_volume;
-    $data{'sigvol'} = get_num_or_undef( $sigmas, '_cell_volume', 0 );
-
-    $data{'sg'} = get_space_group_info( $values,
+    $data{'sg'} =
+        get_space_group_h_m_symbol( $values,
         { 'reformat_space_group' => $options->{'reformat_space_group'} } );
     $data{'sgHall'} =
         get_space_group_Hall_symbol( $values );
-    $data{'Z'} =
-        get_tag_or_undef( $values, '_cell_formula_units_Z', 0 );
-    $data{'Zprime'} =
-        compute_z_prime( $data{'Z'}, $data{'sg'} );
-
-    $data{'method'} = get_experimental_method( $values );
-
-    # Compose COD flags:
-    my @flags;
-
-    push @flags, 'has coordinates' if has_coordinates( $dataset );
-    push @flags, 'has disorder'    if is_disordered( $dataset );
-    push @flags, 'has Fobs'        if has_Fobs( $dataset );
-
-    $data{flags} = join ',', @flags;
 
     # Get text values directly from CIF data items
     for my $field ( sort keys %text_value_fields2tags ) {
@@ -397,13 +328,14 @@ sub cif2cod
     };
 
     # Set undef if the current value is an empty string
+    my $empty_value_regex = qr/^[\s?]*$/s;
     for ( qw( celltemp      sigcelltemp
               diffrtemp     sigdiffrtemp
               cellpressure  sigcellpressure
               diffrpressure sigdiffrpressure
-              chemname commonname mineral
+              formula chemname commonname mineral
               journal year volume issue firstpage lastpage ) ) {
-        if ( exists $data{$_} && defined $data{$_} ) {
+        if ( defined $data{$_} ) {
             if ( $data{$_} =~ $empty_value_regex ) {
                 $data{$_} = undef;
             }
@@ -413,15 +345,15 @@ sub cif2cod
     # Convert CIF notation to Unicode
     for ( qw( chemname commonname mineral
               radType radSymbol
-              journal authors title ) ) {
-        if ( exists $data{$_} && defined $data{$_} ) {
+              journal title ) ) {
+        if ( defined $data{$_} ) {
             $data{$_} = cif2unicode($data{$_});
         }
     };
 
     # Remove all white spaces
     for ( qw( radType radSymbol ) ) {
-        if ( exists $data{$_} && defined $data{$_} ) {
+        if ( defined $data{$_} ) {
             $data{$_} =~ s/\s+//g;
         }
     };
@@ -432,7 +364,66 @@ sub cif2cod
         }
     }
 
+    # Fields that require a more complex logic
+    $data{'file'}   = defined $cod_number ? $cod_number : $dataset->{'name'};
+    $data{'flags'}  = get_cod_flags( $dataset );
+    $data{'method'} = get_experimental_method( $values );
+    $data{'Zprime'} = compute_z_prime( $data{'Z'}, $data{'sg'} );
+
+    $data{'authors'} = get_authors( $values );
+    $data{'text'}    = concat_text_field(\%data);
+    # TODO: the following two lines are only retained to conform to the previous output
+    $data{'title'}   = defined $data{'title'} ? $data{'title'} : '';
+    $data{'authors'}   = defined $data{'authors'} ? $data{'authors'} : '';
+    $data{'acce_code'} =
+        get_coeditor_code( $values, { 'journal' => $data{'journal'} } );
+
+    if (!defined $data{'vol'}) {
+        $data{'vol'} = calculate_cell_volume($values);
+        # TODO: should the calculated s.u. also be recorded?
+    }
+
+    if ( defined $data{'formula'} ) {
+        for ( @{ check_formula_sum_syntax( $data{'formula'} ) } ) {
+            warn $_ . "\n";
+        };
+        $data{'formula'} = '- ' . $data{'formula'} . ' -';
+        $data{'nel'} = count_number_of_elements( $data{'formula'} );
+    } else {
+        $data{'formula'} = '?';
+        $data{'nel'}     = 0;
+    }
+
+    $data{'calcformula'} =
+        calculate_formula_sum($dataset, {
+            'use_attached_hydrogens' => $use_attached_hydrogens
+        }
+    );
+
+    $data{'cellformula'} =
+        calculate_formula_sum($dataset, {
+            'use_attached_hydrogens' => $use_attached_hydrogens,
+            'Z' => 1,
+            'formula_type' => 'unit cell'
+        }
+    );
+
     return \%data;
+}
+
+sub report_mandatory_data_items
+{
+    my ( $values, $mandatory_tags ) = @_;
+
+    for my $field ( @{$mandatory_tags} ) {
+        for my $tag ( @{$text_value_fields2tags{$field}} ) {
+            if ( !defined $values->{$tag} ) {
+                warn "WARNING, data item '$tag' is absent.\n";
+            }
+        }
+    };
+
+    return;
 }
 
 sub filter_num
@@ -444,63 +435,97 @@ sub filter_num
     return $value;
 }
 
-sub get_bibliography
+sub calculate_formula_sum
 {
-    my ($data, $options) = @_;
+    my ($dataset, $options) = @_;
 
-    my $require_only_doi = $options->{'require_only_doi'};
+    my $Z = $options->{'Z'};
+    my $formula_type = $options->{'formula_type'};
+    my $use_attached_hydrogens = $options->{'use_attached_hydrogens'};
 
-    my %bib_fields2tag = (
-        'title'   => '_publ_section_title',
-        'journal' => '_journal_name_full',
-        'year'    => '_journal_year',
-        'volume'  => '_journal_volume',
-    );
-
-    my $ignore_missing = $require_only_doi &&
-                         exists $data->{'_journal_paper_doi'};
-    my %bib;
-    for (sort keys %bib_fields2tag) {
-        $bib{$_} = get_and_check_tag( $data, $bib_fields2tag{$_},
-                                      0, $ignore_missing )
+    my $formula;
+    eval {
+        $formula = cif_cell_contents( $dataset, $Z, $use_attached_hydrogens );
     };
+    if( $@ ) {
+        # ERRORS that originated within the function are downgraded to warnings
+        my $error = $@;
+        $error =~ s/[A-Z]+, //;
+        chomp $error;
+        warn 'WARNING, ' . (defined $formula_type ? "$formula_type " : '' ) .
+             "summary formula could not be calculated -- $error\n";
+    }
 
-    # missing journal pages should not be reported
-    # if a journal article reference is provided
-    $ignore_missing  = $ignore_missing ||
-                       exists $data->{'_journal_article_reference'};
+    if ( defined $formula ) {
+        $formula = '- ' . $formula . ' -';
+    }
 
-    $bib{'firstpage'} = get_and_check_tag( $data, '_journal_page_first',
-                                           0, $ignore_missing );
+    return $formula;
+}
 
-    $bib{'issue'}    = get_and_check_tag( $data, '_journal_issue',
-                                          0, 1 );
-    $bib{'lastpage'} = get_and_check_tag( $data, '_journal_page_last',
-                                          0, 1 );
+sub calculate_cell_volume
+{
+    my ($values) = @_;
 
-    return \%bib;
+    my @cell = get_cell( $values, { silent => 1 } );
+    my $cell_volume = scalar cell_volume( @cell );
+    if ( defined $cell_volume ) {
+        $cell_volume = sprintf '%7.2f', $cell_volume;
+        $cell_volume =~ s/\s+//g;
+    }
+
+    return $cell_volume;
+}
+
+sub get_cod_flags
+{
+    my ( $dataset ) = @_;
+
+    # Compose COD flags:
+    my @flags;
+
+    push @flags, 'has coordinates' if has_coordinates( $dataset );
+    push @flags, 'has disorder'    if is_disordered( $dataset );
+    push @flags, 'has Fobs'        if has_Fobs( $dataset );
+
+    return join ',', @flags;
+}
+
+sub get_authors
+{
+    my ($values) = @_;
+    my $authors;
+    if( exists $values->{'_publ_author_name'} ) {
+        $authors = join '; ', map { cif2unicode($_) }
+                        @{$values->{'_publ_author_name'}};
+    }
+
+    return $authors;
 }
 
 sub concat_text_field
 {
     my ($biblio) = @_;
 
-    for ( qw( authors title journal year volume issue firstpage lastpage ) ) {
-        if (!defined $biblio->{$_}) {
-            $biblio->{$_} = q{};
-        }
-    }
 
-    my $authors    = $biblio->{'authors'};
-    my $title      = $biblio->{'title'};
-    my $journal    = $biblio->{'journal'};
-    my $year       = $biblio->{'year'};
-    my $volume     = $biblio->{'volume'};
-    my $issue      = $biblio->{'issue'};
-    my $first_page = $biblio->{'firstpage'};
-    my $last_page  = $biblio->{'lastpage'};
+    my $authors    = defined $biblio->{'authors'}   ?
+                             $biblio->{'authors'}   : '';
+    my $title      = defined $biblio->{'title'}     ?
+                             $biblio->{'title'}     : '';
+    my $journal    = defined $biblio->{'journal'}   ?
+                             $biblio->{'journal'}   : '';
+    my $year       = defined $biblio->{'year'}      ?
+                             $biblio->{'year'}      : '';
+    my $volume     = defined $biblio->{'volume'}    ?
+                             $biblio->{'volume'}    : '';
+    my $issue      = defined $biblio->{'issue'}     ?
+                             $biblio->{'issue'}     : '';
+    my $first_page = defined $biblio->{'firstpage'} ?
+                             $biblio->{'firstpage'} : '';
+    my $last_page  = defined $biblio->{'lastpage'}  ?
+                             $biblio->{'lastpage'}  : '';
 
-    my $text = join '\n', map { clean_whitespaces( cif2unicode($_) ) }
+    my $text = join '\n', map { clean_whitespaces( $_ ) }
                      ( $authors, $title, $journal, $volume .
                        ( $issue ? ( $volume ? "($issue)" :
                                    "(issue $issue)") : '' ),
@@ -538,31 +563,16 @@ sub get_num_or_undef
     return;
 }
 
-sub get_tag
-{
-    my ($values, $tag, $index) = @_;
-    return get_and_check_tag( $values, $tag, $index, 0 );
-}
-
 sub get_tag_or_undef
 {
     my ($values, $tag, $index) = @_;
-    return get_and_check_tag( $values, $tag, $index, 2 );
-}
-
-sub get_and_check_tag
-{
-    my ( $values, $tag, $index, $ignore_errors ) = @_;
-
     if( exists $values->{$tag} ) {
         if( defined $values->{$tag}[$index] ) {
             return $values->{$tag}[$index];
         }
-    } elsif( !$ignore_errors ) {
-            warn "WARNING, data item '$tag' is absent\n";
     }
 
-    return $ignore_errors <= 1 ? '' : undef;
+    return;
 }
 
 sub clean_whitespaces
@@ -579,7 +589,7 @@ sub clean_whitespaces
     return $value;
 }
 
-sub get_space_group_info
+sub get_space_group_h_m_symbol
 {
     my ($values, $options) = @_;
 
@@ -649,8 +659,8 @@ sub get_experimental_method
 {
     my ($values) = @_;
 
-    if( exists $values->{_cod_struct_determination_method} ) {
-        return $values->{_cod_struct_determination_method}[0];
+    if( exists $values->{'_cod_struct_determination_method'} ) {
+        return $values->{'_cod_struct_determination_method'}[0];
     }
 
     my @powder_tags = grep { /^_pd_/ }
@@ -662,7 +672,7 @@ sub get_experimental_method
         }
     }
 
-    for my $tag (qw(_exptl_crystals_number _exptl.crystals_number)) {
+    for my $tag ( qw( _exptl_crystals_number _exptl.crystals_number ) ) {
         if( exists $values->{$tag} ) {
             return 'single crystal';
         }
