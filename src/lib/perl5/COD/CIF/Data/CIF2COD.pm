@@ -169,32 +169,52 @@ our @new_data_fields = qw (
 # A hash of text fields that do no require specific processing
 # and can be taken directly from the associated data items
 my %text_value_fields2tags = (
-   'thermalhist'    => '_exptl_crystal_thermal_history',
-   'pressurehist'   => '_exptl_crystal_pressure_history',
-   'compoundsource' => '_chemical_compound_source',
-   'commonname'     => '_chemical_name_common',
-   'chemname'       => '_chemical_name_systematic',
-   'mineral'        => '_chemical_name_mineral',
-   'radiation'      => '_diffrn_radiation_probe',
-   'wavelength'     => '_diffrn_radiation_wavelength',
-   'radType'        => '_diffrn_radiation_type',
-   'radSymbol'      => '_diffrn_radiation_xray_symbol',
+   'thermalhist'    => [ qw( _exptl_crystal_thermal_history ) ],
+   'pressurehist'   => [ qw( _exptl_crystal_pressure_history ) ],
+   'compoundsource' => [ qw( _chemical_compound_source ) ],
+   'commonname'     => [ qw( _chemical_name_common ) ],
+   'chemname'       => [ qw( _chemical_name_systematic ) ],
+   'mineral'        => [ qw( _chemical_name_mineral ) ],
+   'radiation'      => [ qw( _diffrn_radiation_probe ) ],
+   'radType'        => [ qw( _diffrn_radiation_type ) ],
+   'radSymbol'      => [ qw( _diffrn_radiation_xray_symbol ) ],
+
+   'duplicateof'    => [ qw( _cod_duplicate_entry
+                             _[local]_cod_duplicate_entry ) ],
+   'optimal'        => [ qw( _cod_related_optimal_struct
+                             _[local]_cod_related_optimal_struct ) ],
+   'status'         => [ qw( _cod_error_flag
+                             _[local]_cod_error_flag ) ],
 );
 
 # A hash of numeric fields that do no require specific processing
 # and can be taken directly from the associated data items
 my %num_value_fields2tags = (
-    'a'             => '_cell_length_a',
-    'b'             => '_cell_length_b',
-    'c'             => '_cell_length_c',
-    'alpha'         => '_cell_angle_alpha',
-    'beta'          => '_cell_angle_beta',
-    'gamma'         => '_cell_angle_gamma',
-    'celltemp'      => '_cell_measurement_temperature',
-    'diffrtemp'     => '_diffrn_ambient_temperature',
-    'cellpressure'  => '_cell_measurement_pressure',
-    'diffrpressure' => '_diffrn_ambient_pressure',
-    'wavelength'    => '_diffrn_radiation_wavelength',
+    'a'             => [ qw( _cell_length_a ) ],
+    'b'             => [ qw( _cell_length_b ) ],
+    'c'             => [ qw( _cell_length_c ) ],
+    'alpha'         => [ qw( _cell_angle_alpha ) ],
+    'beta'          => [ qw( _cell_angle_beta ) ],
+    'gamma'         => [ qw( _cell_angle_gamma ) ],
+    'celltemp'      => [ qw( _cell_measurement_temperature ) ],
+    'diffrtemp'     => [ qw( _diffrn_ambient_temperature ) ],
+    'cellpressure'  => [ qw( _cell_measurement_pressure ) ],
+    'diffrpressure' => [ qw( _diffrn_ambient_pressure ) ],
+    'wavelength'    => [ qw( _diffrn_radiation_wavelength ) ],
+    'Rall'          => [ qw( _refine_ls_R_factor_all ) ],
+    'Robs'          => [ qw( _refine_ls_R_factor_gt
+                             _refine_ls_R_factor_obs ) ],
+    'Rref'          => [ qw( _refine_ls_R_factor_ref ) ],
+    'wRall'         => [ qw( _refine_ls_wR_factor_all ) ],
+    'wRobs'         => [ qw( _refine_ls_wR_factor_gt
+                             _refine_ls_wR_factor_obs ) ],
+    'wRref'         => [ qw( _refine_ls_wR_factor_ref ) ],
+    'RFsqd'         => [ qw( _refine_ls_R_Fsqd_factor ) ],
+    'RI'            => [ qw( _refine_ls_R_I_factor ) ],
+    'gofall'        => [ qw( _refine_ls_goodness_of_fit_all ) ],
+    'gofobs'        => [ qw( _refine_ls_goodness_of_fit_ref
+                             _refine_ls_goodness_of_fit_obs ) ],
+    'gofgt'         => [ qw( _refine_ls_goodness_of_fit_gt )],
 );
 
 # A hash of s.u. fields that do no require specific processing
@@ -344,57 +364,6 @@ sub cif2cod
 
     $data{'method'} = get_experimental_method( $values );
 
-    for my $r_factor_tag (qw(
-        _refine_ls_R_factor_all
-        _refine_ls_R_factor_gt
-        _refine_ls_R_factor_obs
-        _refine_ls_R_factor_ref
-        _refine_ls_R_Fsqd_factor
-        _refine_ls_R_I_factor
-        _refine_ls_wR_factor_all
-        _refine_ls_wR_factor_gt
-        _refine_ls_wR_factor_obs
-        _refine_ls_wR_factor_ref
-        _refine_ls_goodness_of_fit_all
-        _refine_ls_goodness_of_fit_ref
-        _refine_ls_goodness_of_fit_gt
-        _refine_ls_goodness_of_fit_obs )) {
-        my $data_key = $r_factor_tag;
-        $data_key =~ s/^_refine_ls_//;
-        $data_key =~ s/_factor//;
-        $data_key =~ s/goodness_of_fit/gof/;
-        $data_key =~ s/_//g;
-        $data_key = 'Robs' if $data_key eq 'Rgt';
-        $data_key = 'wRobs' if $data_key eq 'wRgt';
-        $data_key = 'gofobs' if $data_key eq 'gofref';
-        if( !defined $data{$data_key} ) {
-            $data{$data_key} =
-                get_num_or_undef( $values, $r_factor_tag, 0 );
-        }
-    }
-
-    $data{duplicateof} =
-        get_tag_or_undef( $values, '_cod_duplicate_entry', 0 );
-
-    if( !defined $data{duplicateof} ) {
-        $data{duplicateof} =
-            get_tag_or_undef( $values, '_[local]_cod_duplicate_entry', 0 );
-    }
-
-    $data{optimal} = get_tag_or_undef( $values,
-                                '_cod_related_optimal_struct', 0 );
-    if( !defined $data{optimal} ) {
-        $data{optimal} =
-            get_tag_or_undef( $values,
-                              '_[local]_cod_related_optimal_struct', 0 );
-    }
-
-    $data{status} = get_tag_or_undef( $values, '_cod_error_flag', 0 );
-    if( !defined $data{status} ) {
-        $data{status} =
-            get_tag_or_undef( $values, '_[local]_cod_error_flag', 0 );
-    }
-
     # Compose COD flags:
     my @flags;
 
@@ -405,13 +374,21 @@ sub cif2cod
     $data{flags} = join ',', @flags;
 
     # Get text values directly from CIF data items
-    for ( sort keys %text_value_fields2tags ) {
-        $data{$_} = get_tag_or_undef( $values, $text_value_fields2tags{$_}, 0 );
+    for my $field ( sort keys %text_value_fields2tags ) {
+        for my $tag ( @{$text_value_fields2tags{$field}} ) {
+            if (!defined $data{$field}) {
+                $data{$field} = get_tag_or_undef( $values, $tag, 0 );
+            }
+        }
     };
 
     # Get numeric values directly from CIF data items
-    for ( sort keys %num_value_fields2tags ) {
-        $data{$_} = get_num_or_undef( $values, $num_value_fields2tags{$_}, 0 );
+    for my $field ( sort keys %num_value_fields2tags ) {
+        for my $tag ( @{$num_value_fields2tags{$field}} ) {
+            if (!defined $data{$field}) {
+                $data{$field} = get_num_or_undef( $values, $tag, 0 );
+            }
+        }
     };
 
     # Get su values directly from CIF data items
