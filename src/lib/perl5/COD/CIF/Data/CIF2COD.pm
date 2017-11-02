@@ -16,6 +16,7 @@ use COD::Cell qw( cell_volume );
 use COD::CIF::Data qw( get_cell );
 use COD::CIF::Data::CellContents qw( cif_cell_contents );
 use COD::CIF::Data::CODFlags qw( is_disordered has_coordinates has_Fobs );
+use COD::CIF::Data::Check qw( check_formula_sum_syntax );
 use COD::CIF::Unicode2CIF qw( cif2unicode );
 use COD::CIF::Tags::DictTags;
 use COD::Spacegroups::Names;
@@ -304,7 +305,9 @@ sub cif2cod
     # Setting the default number of unique elements to 0
     my $nel = 0;
     if( defined $formula ) {
-        check_chem_formula( $formula );
+        for ( @{ check_formula_sum_syntax( $formula ) } ) {
+            warn $_;
+        };
         $nel = count_number_of_elements( $formula );
     }
 
@@ -464,22 +467,6 @@ sub filter_num
     return $value;
 }
 
-sub check_chem_formula
-{
-    my ( $formula ) = @_;
-
-    my $formula_component = '[a-zA-Z]{1,2}[0-9.]*';
-
-    if( $formula !~ /^\s*(?:$formula_component\s+)*(?:$formula_component)\s*$/ ) {
-        warn "WARNING, chemical formula '$formula' could not be parsed -- "
-           . 'a chemical formula should consist of space-seprated chemical '
-           . 'element names with optional numeric quantities '
-           . "(e.g. 'C2 H6 O')\n";
-    }
-
-    return;
-}
-
 sub get_bibliography
 {
     my ($data, $options) = @_;
@@ -599,14 +586,7 @@ sub get_and_check_tag
     if( ref $values eq 'HASH' ) {
         if( exists $values->{$tag} && ref $values->{$tag} eq 'ARRAY' ) {
             if( defined $values->{$tag}[$index] ) {
-                my $val = $values->{$tag}[$index];
-           #     if( $val =~ /^\\\n/ ) {
-           #         $val =~ s/\\\n//g;
-           #     }
-           #     $val =~ s/\n/ /g;
-           #     $val =~ s/\s+/ /g;
-           #     $val =~ s/^\s*|\s*$//g;
-                return $val;
+                return $values->{$tag}[$index];
             } elsif( !$ignore_errors ) {
                 warn "WARNING, data item '$tag' does not have value "
                     . "number $index\n";

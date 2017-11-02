@@ -29,6 +29,7 @@ check_bibliography
 check_chemical_formula_sum
 check_disorder
 check_embedded_file_integrity
+check_formula_sum_syntax
 check_limits
 check_mandatory_presence
 check_pdcif_relations
@@ -145,13 +146,28 @@ sub check_chemical_formula_sum
 
     my $formula = $dataset->{'values'}{'_chemical_formula_sum'}[0];
 
-    my $formula_component = '[a-zA-Z]{1,2}[0-9.]*';
-
     if( !defined $formula ) {
         push @messages, 'WARNING, no _chemical_formula_sum';
-    } elsif( $formula !~
-             /^\s*(?:$formula_component\s+)*(?:$formula_component)\s*$/ ) {
-        push @messages, "WARNING, chemical formula '$formula' could not be parsed";
+    } else {
+        push @messages, @{check_formula_sum_syntax($formula)};
+    }
+
+    return \@messages;
+}
+
+sub check_formula_sum_syntax
+{
+    my ($formula) = @_;
+    my @messages;
+
+    my $formula_comp = '[a-zA-Z]{1,2}[0-9.]*';
+
+    if ( $formula !~ /^\s*(?:$formula_comp\s+)*(?:$formula_comp)\s*$/ ) {
+        push @messages,
+             "WARNING, chemical formula '$formula' could not be parsed -- "
+           . 'a chemical formula should consist of a space-seprated '
+           . 'chemical element symbols with optional numeric quantities '
+           . "(e.g. 'C2 H6 O')";
     }
 
     return \@messages;
