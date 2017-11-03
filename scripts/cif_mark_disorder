@@ -9,12 +9,14 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #$URL$
 #------------------------------------------------------------------------------
 #*
-#  Marks disorder in CIF files judging by distance and occupancy.
+#* Marks disorder in CIF files judging by distance and occupancy.
+#*
+#* USAGE:
+#*    $0 --options input1.cif input*.cif
 #**
 
 use strict;
 use warnings;
-use List::Util qw( sum );
 use COD::CIF::Parser qw( parse_cif );
 use COD::AtomBricks qw( build_bricks get_atom_index get_search_span );
 use COD::AtomProperties;
@@ -31,11 +33,13 @@ use COD::SUsage qw( usage options );
 use COD::ErrorHandler qw( process_warnings
                           process_errors
                           process_parser_messages );
+use COD::ToolsVersion;
+use List::Util qw( sum );
 
 my $Id = '$Id$';
 
-my $same_site_distance_sensivity = 0.000001;
-my $same_site_occupancy_sensivity = 0.01;
+my $same_site_distance_sensitivity = 0.000001;
+my $same_site_occupancy_sensitivity = 0.01;
 my $brick_size = 1;
 my $cif_header_file;
 my $use_parser = "c";
@@ -44,70 +48,68 @@ my $report_marked_disorders = 1;
 my $ignore_occupancies = 0;
 my $messages_to_depositor_comments = 1;
 
-#* USAGE:
-#*     $0 --options input1.cif input*.cif
-#*
 #* OPTIONS:
-#*     -d, --distance-sensivity  0.000001
-#*        Specify maximum distance between two atoms that should be
-#*        perceived as belonging to the same atom site.
+#*   -d, --distance-sensitivity  0.000001
+#*                     Specify maximum distance between two atoms that should
+#*                     be perceived as belonging to the same atom site.
 #*
-#*     --occupancy-sensivity  0.01
-#*        Set maximum deviation for the sum of occupancies of the atoms
-#*        from the same atom site from 1.
+#*   --occupancy-sensitivity  0.01
+#*                     Set maximum deviation for the sum of occupancies of
+#*                     the atoms from the same atom site from 1.
 #*
-#*     -h, --add-cif-header
-#*        Comments from the beginning of this file wil be prepended
-#*        to the output.
+#*   -h, --add-cif-header
+#*                     Comments from the beginning of this file will be
+#*                     prepended to the output.
 #*
-#*     --exclude-zero-occupancies
-#*        Do not use atoms with 0 occupancies in calculations (default).
+#*   --exclude-zero-occupancies
+#*                     Do not use atoms with 0 occupancies in calculations (default).
+#*   --no-exclude-zero-occupancies
+#*   --dont-exclude-zero-occupancies
+#*                     Use atoms with zero (0) occupancies in the calculations.
 #*
-#*     --no-exclude-zero-occupancies
-#*     --dont-exclude-zero-occupancies
-#*        Use atoms with zero (0) occupancies in the calculations.
+#*   --ignore-occupancies
+#*                     Do not require occupancies of the atoms in the same
+#*                     atom site to sum up to 1.
+#*   --no-ignore-occupancies
+#*   --dont-ignore-occupancies
+#*                     Require the occupancies of the atoms in the same atom site
+#*                     to sum up to 1 to be recognised as disorder (default).
 #*
-#*     --ignore-occupancies
-#*        Do not require occupancies of the atoms in the same atom site
-#*        to sum up to 1.
+#*   --report-marked-disorders
+#*                     Print each of the marked disorder assemblies to
+#*                     the standard error, listing atom labels (default).
 #*
-#*     --no-ignore-occupancies
-#*     --dont-ignore-occupancies
-#*        Require the occupancies of the atoms in the same atom site to
-#*        sum up to 1 to be recognised as disorder. Default option.
+#*   --no-report-marked-disorders
+#*   --dont-report-marked-disorders
+#*                     Do not print marked disorder assemblies to the
+#*                     standard error.
 #*
-#*     --report-marked-disorders
-#*        Print each of the marked disorder assemblies to the standard
-#*        error, listing atom labels. Default option.
+#*   --add-depositor-comments
+#*                     Append reports about newly marked disorder assemblies
+#*                     together with the signature of this script to the
+#*                     '_cod_depositor_comments' value (default).
 #*
-#*     --no-report-marked-disorders
-#*     --dont-report-marked-disorders
-#*        Do not print marked disorder assemblies to the standard error.
+#*   --no-add-depositor-comments
+#*   --dont-add-depositor-comments
+#*                     Do not append anything to the value of
+#*                     '_cod_depositor_comments'.
 #*
-#*     --add-depositor-comments
-#*        Append reports about newly marked disorder assemblies together
-#*        with the signature of this script to the
-#*        '_cod_depositor_comments' value. Default option.
+#*   --brick-size  1
+#*                     Brick size parameter for 'AtomBricks' algorithm.
 #*
-#*     --no-add-depositor-comments
-#*     --dont-add-depositor-comments
-#*        Do not append anything to the value of '_cod_depositor_comments'.
+#*   --use-perl-parser
+#*                     Use Perl parser for CIF parsing.
+#*   --use-c-parser
+#*                     Use Perl & C parser for CIF parsing (default).
 #*
-#*     --brick-size  1
-#*        Brick size parameter for 'AtomBricks' algorithm.
-#*
-#*     --use-perl-parser
-#*        Use Perl parser for CIF parsing.
-#*
-#*     --use-c-parser
-#*        Use Perl & C parser for CIF parsing (default).
-#*
-#*     --help, --usage
-#*        Print short usage message (this message) and exit.
+#*   --help, --usage
+#*                     Output a short usage message (this message) and exit.
+#*   --version
+#*                     Output version information and exit.
 #**
 @ARGV = getOptions(
-    "-d,--distance-sensivity" => \$same_site_distance_sensivity,
-    "--occupancy-sensivity" => \$same_site_occupancy_sensivity,
+    "-d,--distance-sensitivity" => \$same_site_distance_sensitivity,
+    "--occupancy-sensitivity" => \$same_site_occupancy_sensitivity,
 
     "-h,--add-cif-header" => \$cif_header_file,
 
@@ -137,7 +139,10 @@ my $messages_to_depositor_comments = 1;
     "--use-perl-parser" => sub { $use_parser = "perl" },
     "--use-c-parser"    => sub { $use_parser = "c" },
     "--options"         => sub { options; exit },
-    "--help,--usage"    => sub { usage; exit }
+    "--help,--usage"    => sub { usage; exit },
+    '--version'         => sub { print 'cod-tools version ',
+                                 $COD::ToolsVersion::Version, "\n";
+                                 exit }
 );
 
 my $die_on_errors    = 1;
@@ -177,6 +182,9 @@ if ($@) {
 
 @ARGV = ("-") unless @ARGV;
 
+binmode STDOUT, ':encoding(UTF-8)';
+binmode STDERR, ':encoding(UTF-8)';
+
 for my $filename (@ARGV) {
     my $options = { 'parser' => $use_parser, 'no_print' => 1 };
     my ( $data, $err_count, $messages ) = parse_cif( $filename, $options );
@@ -186,25 +194,36 @@ for my $filename (@ARGV) {
 
     canonicalize_all_names( $data );
 
-    print $cif_header if $cif_header;
+    if( $cif_header ) {
+        # Ensure that for CIF v2.0 the magic code comes
+        # before the CIF comment header:
+        if( grep { exists $_->{cifversion} &&
+                          $_->{cifversion}{major} == 2 } @$data ) {
+            print "#\\#CIF_2.0\n";
+        }
+        print $cif_header;
+    }
+
     for my $dataset (@$data) {
 
-        my $dataname = 'data_' . $dataset->{name} if defined $dataset->{name};
+        my $dataname = 'data_' . $dataset->{'name'};
 
-        local $SIG{__WARN__} = sub { process_warnings( {
-                                       'message'  => @_,
-                                       'program'  => $0,
-                                       'filename' => $filename,
-                                       'add_pos'  => $dataname
-                                     }, $die_on_error_level ) };
+        local $SIG{__WARN__} = sub {
+            process_warnings( {
+                'message'  => @_,
+                'program'  => $0,
+                'filename' => $filename,
+                'add_pos'  => $dataname
+            }, $die_on_error_level )
+        };
 
         eval {
             mark_disorder( $dataset,
                            \%COD::AtomProperties::atoms,
-                           { same_site_distance_sensivity =>
-                                $same_site_distance_sensivity,
-                             same_site_occupancy_sensivity =>
-                                $same_site_occupancy_sensivity,
+                           { same_site_distance_sensitivity =>
+                                $same_site_distance_sensitivity,
+                             same_site_occupancy_sensitivity =>
+                                $same_site_occupancy_sensitivity,
                              brick_size => $brick_size,
                              exclude_zero_occupancies =>
                                 $exclude_zero_occupancies,
@@ -246,8 +265,8 @@ sub get_alternatives
 
     $options = {} unless $options;
     my $default_options = {
-        same_site_distance_sensivity => 0.000001,
-        same_site_occupancy_sensivity => 0.01,
+        same_site_distance_sensitivity => 0.000001,
+        same_site_occupancy_sensitivity => 0.01,
         exclude_zero_occupancies => 1,
         ignore_occupancies => 0,
     };
@@ -296,7 +315,7 @@ sub get_alternatives
 
                 my $dist = distance( $atom_in_unit_cell_coords_ortho,
                                      $atom_coords_ortho );
-                next if $dist > $options->{same_site_distance_sensivity};
+                next if $dist > $options->{same_site_distance_sensitivity};
 
                 # Skipping initially marked disordered atoms:
                 if( exists $current_atom->{assembly} &&
@@ -359,7 +378,7 @@ sub get_alternatives
                       map { $atom_list->[$_]{atom_site_occupancy} }
                       @$assembly );
         if( abs( $occupancy_sum - 1 ) >
-            $options->{same_site_occupancy_sensivity} &&
+            $options->{same_site_occupancy_sensitivity} &&
             !$options->{ignore_occupancies} ) {
             my @names = sort map { $atom_list->[$_]{name} } @$assembly;
             warn "WARNING, atoms " . join( ", ", map { "'$_'" } @names )
@@ -391,8 +410,8 @@ sub mark_disorder
 
     $options = {} unless $options;
     my $default_options = {
-        same_site_distance_sensivity => 0.000001,
-        same_site_occupancy_sensivity => 0.01,
+        same_site_distance_sensitivity => 0.000001,
+        same_site_occupancy_sensitivity => 0.01,
         brick_size => 1,
         exclude_zero_occupancies => 1,
         report_marked_disorders => 1,
@@ -435,10 +454,10 @@ sub mark_disorder
         get_alternatives( $atom_list,
                           $bricks,
                           $f2o,
-                          { same_site_distance_sensivity =>
-                                $options->{same_site_distance_sensivity},
-                            same_site_occupancy_sensivity =>
-                                $options->{same_site_occupancy_sensivity},
+                          { same_site_distance_sensitivity =>
+                                $options->{same_site_distance_sensitivity},
+                            same_site_occupancy_sensitivity =>
+                                $options->{same_site_occupancy_sensitivity},
                             exclude_zero_occupancies =>
                                 $options->{exclude_zero_occupancies},
                             ignore_occupancies =>

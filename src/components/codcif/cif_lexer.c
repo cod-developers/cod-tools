@@ -156,10 +156,16 @@ static int cif_lexer( FILE *in, cexception_t *ex )
                 putchar( ch );
             }
             /* skip comments: */
+            pos = current_pos;
             while( ch != EOF && ch != '\n' && ch != '\r' ) {
                 ch = getlinec( in, ex );
+                pos ++;
                 if( yy_flex_debug ) {
                     putchar( ch );
+                }
+                if( (ch < 32 && ch != 9 && ch != 10 && ch != 13) || ch >= 127 ) {
+                    yywarning_token( cif_cc, "unallowed symbol in CIF comment",
+                                     cif_flex_current_line_number(), pos, ex );
                 }
             }
             if( ch == '\r' ) {
@@ -491,7 +497,7 @@ static void pushchar( char **buf, size_t *length, size_t pos, int ch )
         }
         *length *= 2;
         if( yy_flex_debug ) {
-            printf( ">>> reallocating lex token buffer to %d\n", *length );
+            printf( ">>> reallocating lex token buffer to %lu\n", *length );
         }
         *buf = reallocx( *buf, *length, NULL );
     }
@@ -579,7 +585,7 @@ static char *clean_string( char *src, int is_textfield, cexception_t *ex )
     cexception_t inner;
     cexception_guard( inner ) {
         while( *src != '\0' ) {
-            if( ( (*src & 255 ) < 16 || (*src & 255 ) > 127 )
+            if( ( (*src & 255 ) < 32 || (*src & 255 ) >= 127 )
                 && (*src & 255 ) != '\n'
                 && (*src & 255 ) != '\t'
                 && (*src & 255 ) != '\r' ) {
@@ -648,7 +654,7 @@ static int string_has_high_bytes( unsigned char *s )
     if( !s ) return 0;
 
     while( *s ) {
-        if( *s++ > 127 )
+        if( *s++ >= 127 )
             return 1;
     }
     return 0;

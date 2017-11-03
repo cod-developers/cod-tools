@@ -9,8 +9,11 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #$URL$
 #------------------------------------------------------------------------------
 #*
-#  Convert MPOD structures from MPOD dictionary V2 to MPOD dict. V1 based
-#  data names.
+#* Convert MPOD structures from MPOD dictionary V2 to MPOD dict. V1 based
+#* data names.
+#*
+#* USAGE:
+#*    $0 --options input1.cif input*.cif
 #**
 
 use strict;
@@ -21,6 +24,7 @@ use COD::CIF::Tags::Print qw( print_cif );
 use COD::SOptions qw( getOptions );
 use COD::SUsage qw( usage options );
 use COD::ErrorHandler qw( process_parser_messages report_message );
+use COD::ToolsVersion;
 
 my $die_on_error_level = {
     ERROR   => 1,
@@ -30,20 +34,25 @@ my $die_on_error_level = {
 
 my $use_parser = "c";
 
-#* USAGE:
-#*     $0 --options input1.cif input*.cif
-#*
 #* OPTIONS:
-#*    --use-perl-parser  Use development CIF parser written in Perl.
-#*    --use-c-parser     Use faster C/Yacc CIF parser (default).
+#*   --use-perl-parser
+#*                     Use development CIF parser written in Perl.
+#*   --use-c-parser
+#*                     Use faster C/Yacc CIF parser (default).
 #*
-#*    --help, --usage    Print a short usage message (this message) and exit.
+#*   --help, --usage
+#*                     Output a short usage message (this message) and exit.
+#*   --version
+#*                     Output version information and exit.
 #**
 @ARGV = getOptions(
     "--use-perl-parser"  => sub { $use_parser = "perl" },
     "--use-c-parser"     => sub { $use_parser = "c" },
     "--options"          => sub { options; exit },
-    "--help,--usage"     => sub { usage; exit }
+    "--help,--usage"     => sub { usage; exit },
+    '--version'          => sub { print 'cod-tools version ',
+                                  $COD::ToolsVersion::Version, "\n";
+                                  exit }
 );
 
 my @scalar_property_tags = qw(
@@ -127,6 +136,9 @@ my @data_tags = qw(
 );
 
 @ARGV = ( "-" ) unless @ARGV;
+
+binmode STDOUT, ':encoding(UTF-8)';
+binmode STDERR, ':encoding(UTF-8)';
 
 for my $filename (@ARGV) {
 

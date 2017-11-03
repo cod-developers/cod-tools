@@ -9,24 +9,30 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #$URL$
 #------------------------------------------------------------------------------
 #*
-#  Parse and print the chemical formula sum as described in the CIF
-#  _chemical_formula_sum data item.
+#* Parse and print the chemical formula sum as described in the CIF
+#* _chemical_formula_sum data item.
+#*
+#* USAGE: $0 sum.lst
+#* USAGE: $0 sum1.lst sum*.lst
 #**
 
 use strict;
 use warnings;
 use COD::SOptions qw( getOptions );
 use COD::SUsage qw( usage );
+use COD::ToolsVersion;
 
-#* USAGE: $0 sum.lst
-#* USAGE: $0 sum1.lst sum*.lst
-#*
 #* OPTIONS:
-#* --help, --usage
-#*                  Print a short usage message (this message) and exit.
+#*   --help, --usage
+#*                     Output a short usage message (this message) and exit.
+#*   --version
+#*                     Output version information and exit.
 #**
 @ARGV = getOptions(
-    "--help,--usage"             => sub { usage; exit }
+    "--help,--usage"    => sub { usage; exit },
+    '--version'         => sub { print 'cod-tools version ',
+                                 $COD::ToolsVersion::Version, "\n";
+                                 exit }
 );
 
 @ARGV = ("-") unless @ARGV;

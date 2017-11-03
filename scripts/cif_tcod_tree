@@ -9,7 +9,10 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #$URL$
 #------------------------------------------------------------------------------
 #*
-#  Prepares a calculation tree from descriptions in TCOD CIF file.
+#* Prepares a calculation tree from descriptions in TCOD CIF file.
+#*
+#* USAGE:
+#*    $0 --options input1.cif input2.cif
 #**
 
 use strict;
@@ -21,12 +24,15 @@ use File::Path qw( make_path );
 use COD::CIF::Parser qw( parse_cif );
 use COD::CIF::Data qw( get_content_encodings );
 use COD::CIF::Tags::CanonicalNames qw( canonicalize_all_names );
+use COD::CIF::Tags::Manage qw( has_inapplicable_value
+                               has_special_value );
 use COD::Escape qw( decode_textfield );
 use COD::SOptions qw( getOptions );
 use COD::SUsage qw( usage options );
 use COD::ErrorHandler qw( process_warnings
                           process_errors
                           process_parser_messages );
+use COD::ToolsVersion;
 
 my $die_on_error_level = {
     ERROR   => 1,
@@ -39,31 +45,37 @@ my $output_dir = '.';
 my $dry_run = 0;
 my $list = 0;
 
-#* USAGE:
-#*     $0 --options input1.cif input2.cif
-#*
+my $extract_outputs = 1;
+
 #* OPTIONS:
-#*     -o, --output-dir out/
-#*        Base path of the created tree.
+#*   -o, --output-dir out/
+#*                     Base path of the created tree.
 #*
-#*     --dry-run
-#*        Do not create any folders and files, just extract the files and
-#*        compare their checksums.
+#*   --no-outputs
+#*                     Do not extract files of role 'output'.
 #*
-#*     -l, --list
-#*        Print the list of created folders and files.
+#*   --dry-run
+#*                     Do not create any folders and files, just extract
+#*                     the files and compare their checksums.
 #*
-#*     --use-perl-parser
-#*        Use Perl parser for CIF parsing.
+#*   -l, --list
+#*                     Print the list of created folders and files.
 #*
-#*     --use-c-parser
-#*        Use Perl & C parser for CIF parsing (default).
+#*   --use-perl-parser
+#*                     Use Perl parser for CIF parsing.
 #*
-#*     --help, --usage
-#*        Print short usage message (this message) and exit.
+#*   --use-c-parser
+#*                     Use Perl & C parser for CIF parsing (default).
+#*
+#*   --help, --usage
+#*                     Output a short usage message (this message) and exit.
+#*   --version
+#*                     Output version information and exit.
 #**
 @ARGV = getOptions(
     "-o,--output-dir" => \$output_dir,
+
+    "--no-outputs" => sub{ $extract_outputs = 0 },
 
     "--dry-run" => sub{ $dry_run = 1 },
 
@@ -72,10 +84,16 @@ my $list = 0;
     "--use-perl-parser" => sub { $use_parser = "perl" },
     "--use-c-parser"    => sub { $use_parser = "c" },
     "--options"         => sub { options; exit },
-    "--help,--usage"    => sub { usage; exit }
+    "--help,--usage"    => sub { usage; exit },
+    '--version'         => sub { print 'cod-tools version ',
+                                 $COD::ToolsVersion::Version, "\n";
+                                 exit }
 );
 
 @ARGV = ( "-" ) unless @ARGV;
+
+binmode STDOUT, ':encoding(UTF-8)';
+binmode STDERR, ':encoding(UTF-8)';
 
 my %created_dirs = ('.' => 1);
 
@@ -90,14 +108,16 @@ for my $filename (@ARGV) {
 
     for my $datablock (@$data) {
         my $values   = $datablock->{values};
-        my $dataname = 'data_' . $datablock->{name} if defined $datablock->{name};
+        my $dataname = 'data_' . $datablock->{'name'};
 
-        local $SIG{__WARN__} = sub { process_warnings( {
-                                       'message'  => @_,
-                                       'program'  => $0,
-                                       'add_pos'  => $dataname,
-                                       'filename' => $filename
-                                   }, $die_on_error_level ) };
+        local $SIG{__WARN__} = sub {
+            process_warnings( {
+                'message'  => @_,
+                'program'  => $0,
+                'add_pos'  => $dataname,
+                'filename' => $filename
+            }, $die_on_error_level )
+        };
 
         eval { {
             my $encodings = get_content_encodings( $datablock );
@@ -111,9 +131,11 @@ for my $filename (@ARGV) {
                 my $sha1sum  = $values->{_tcod_file_sha1sum}[$i];
                 my $uri      = $values->{_tcod_file_URI}[$i];
                 my $encoding;
-                if( exists $values->{_tcod_file_content_encoding} ) {
+                if( exists $values->{_tcod_file_content_encoding} &&
+                    !has_inapplicable_value( $datablock,
+                                             '_tcod_file_content_encoding',
+                                             $i ) ) {
                     $encoding = $values->{_tcod_file_content_encoding}[$i];
-                    $encoding = undef if $encoding eq '.';
                 }
                 if( !exists $created_dirs{$dirname} ) {
                     if( !$dry_run ) {
@@ -125,10 +147,11 @@ for my $filename (@ARGV) {
                     $created_dirs{$dirname} = 1;
                 }
                 next if $path =~ /\/$/; # Skipping folders
-                if( !defined $contents || $contents eq '.'
-                    || $contents eq '?' ) {
+                if( !defined $contents ||
+                    has_special_value( $datablock, '_tcod_file_contents', $i ) ) {
                     # Contents are not provided
-                    if( defined $uri && $uri ne '.' && $uri ne '?' ) {
+                    if( defined $uri &&
+                        !has_special_value( $datablock, '_tcod_file_URI', $i ) ) {
                         # If the URI is given instead of contents, it has to be
                         # fetched
                         use WWW::Curl::Easy;
@@ -185,6 +208,10 @@ for my $filename (@ARGV) {
                     }
                 }
 
+				if( !$extract_outputs && $role && $role eq 'output' ) {
+					next;
+				}
+
                 if( !$dry_run ) {
                     open my $out, '>', "$output_dir/$path" or die 'ERROR, '
                         . 'could not open file ' . "'$output_dir/$path'"
@@ -200,29 +227,37 @@ for my $filename (@ARGV) {
                 print "$output_dir/$path\n" if $list;
             }
 
-            print "$output_dir/main.sh\n" if $list;
+            local $\ = "\n";
+            print "$output_dir/main.sh" if $list;
             if( !$dry_run ) {
                 my $main_exec_path = "$output_dir/main.sh";
                 open( my $main_fh, '>', $main_exec_path ) or die 'ERROR, '
                     . "could not open file '$main_exec_path' -- "
-                    . lcfirst($!) . "\n";
-                print $main_fh "#!/bin/bash\n\n";
+                    . lcfirst($!);
+                print $main_fh "#!/bin/bash\n";
+
+                if( exists $values->{_audit_creation_method} &&
+                    $values->{_audit_creation_method}[0] =~ /^aiida/i &&
+                    exists $created_dirs{aiida} ) {
+                    print $main_fh 'verdi import aiida';
+                }
 
                 for my $i (0..$#{$values->{_tcod_computation_step}}) {
                     my $env = $values->{_tcod_computation_environment}[$i];
                     my $command = $values->{_tcod_computation_command}[$i];
-                    print $main_fh "(\n";
+                    print $main_fh '(';
                     if( $env ) {
                         foreach ( split m/\n/, $env ) {
-                            print $main_fh "    $_\n";
+                            print $main_fh '    ' . $_;
                         };
-                        print $main_fh "\n";
+                        print $main_fh '';
                     }
-                    print $main_fh "    $command\n)\n";
+                    print $main_fh '    ' . $command;
+                    print $main_fh ')';
                 }
                 close $main_fh or die 'ERROR, '
                     . "could not close file '$main_exec_path' -- "
-                    . lcfirst($!) . "\n";;
+                    . lcfirst($!);
                 chmod( 0775, $main_exec_path );
             }
         }};

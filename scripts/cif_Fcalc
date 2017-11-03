@@ -9,7 +9,10 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #$URL$
 #------------------------------------------------------------------------------
 #*
-#  Compute the structure factors from CIF files.
+#* Compute the structure factors from CIF files.
+#*
+#* USAGE:
+#*    $0 --options input1.cif input*.cif
 #**
 
 # The implementation in this programm follows the principles published
@@ -43,6 +46,7 @@ use COD::ErrorHandler qw( process_warnings
                           process_errors
                           process_parser_messages
                           report_message );
+use COD::ToolsVersion;
 
 my $use_parser = 'c';
 
@@ -57,7 +61,7 @@ my $dump_Cromer_Mann_parameters = 0;
 my $dump_cell_parameters = 0;
 my $dump_cell_xyz_coordinates = 0;
 my $iso_temperature_factor = 0;
-my $max_resolution = 1.5; # Angstrom
+my $max_resolution = 1.5; # angstrom
 my $dump_atoms_and_neighbors = 0;
 my @hkl_default = (10, -10, 10, -10, 10, -10); # hmax, hmin, k..., l...
 # constants;
@@ -69,55 +73,54 @@ my $external_CR_table = 0;
 my $hkl_file;
 my $PI = 4*atan2( 1, 1 );
 
-#* USAGE:
-#*     $0 --options input1.cif input*.cif
-#*
 #* OPTIONS:
-#*    --max-Fhkl-number
-#*                          Selection of sorted (numerically and Friedel's low)
-#*                          Fhkl number
-#*    --external_CR_table
-#*                          Use Cromer Mann coefficients from external
-#*                          source: table 6.1.1.4.
-#*    --max-resolution
-#*                          Selection of resolution.
-#*    --isotropic-Tf
-#*                          Use isotropic temperature factor for structure
-#*                          factor calculations.
-#*    --Miller-indexes "5 6 7 -1 2 -6"
-#*                          Provide limits on the Miller indices
-#*                          (hmax, hmin, kmax, kmin, lmax, lmin).
-#*                          Default values are (10, -10, 10, -10, 10, -10).
-#*    --get-hkl-data
-#*                          Providing of a path to COD file which contains
-#*                          hkl data.
-#*    --dump-xyz-coordinates
-#*                          Print an XYZ file 
-#*    --dump-Cromer-Mann
-#*                          Print a Cromer-Mann coefficients from CIF file.
-#*    --dump-cell-parameters
-#*                          Print a short usage message with cell parameters.
-#*    --dump-sorted-F
-#*                          Sort Fhkl numerically descending.
-#*    --dump-atoms-and-neighbors
-#*                          Print a labels of atoms and their neighbors from
-#*                          a CIF file.
-#*    --dump-test-Fhkl
-#*                          Print a following list:
+#*   --max-Fhkl-number
+#*                     Selection of sorted (numerically and Friedel's low)
+#*                     Fhkl number.
+#*   --external_CR_table
+#*                     Use Cromer Mann coefficients from external
+#*                     source: table 6.1.1.4.
+#*   --max-resolution
+#*                     Selection of resolution.
+#*   --isotropic-Tf
+#*                     Use isotropic temperature factor for structure
+#*                     factor calculations.
+#*   --Miller-indexes "5 6 7 -1 2 -6"
+#*                     Provide limits on the Miller indices
+#*                     (hmax, hmin, kmax, kmin, lmax, lmin).
+#*                     Default values are (10, -10, 10, -10, 10, -10).
+#*   --get-hkl-data
+#*                     Providing of a path to COD file which contains
+#*                     hkl data.
+#*   --dump-xyz-coordinates
+#*                     Print an XYZ file 
+#*   --dump-Cromer-Mann
+#*                     Print a Cromer-Mann coefficients from CIF file.
+#*   --dump-cell-parameters
+#*                     Print a short usage message with cell parameters.
+#*   --dump-sorted-F
+#*                     Sort Fhkl numerically descending.
+#*   --dump-atoms-and-neighbors
+#*                     Print a labels of atoms and their neighbors from
+#*                     a CIF file.
+#*   --dump-test-Fhkl
+#*                     Print a following list:
 #*                            h k l
 #*                            F(phase)^2
 #*                            F(phase, T.factor)^2
 #*                            F(phase, T.factor,anomalous-dispersion)^2
-#*    --dump-cell-xyz-coordinates
-#*                          Print a XYZ file which contains all atoms of cell.
+#*   --dump-cell-xyz-coordinates
+#*                     Print a XYZ file which contains all atoms of cell.
 #*
-#*    --use-perl-parser
-#*                          Use development CIF parser written in Perl.
-#*    --use-c-parser
-#*                          Use faster C/Yacc CIF parser (default).
+#*   --use-perl-parser
+#*                     Use development CIF parser written in Perl.
+#*   --use-c-parser
+#*                     Use faster C/Yacc CIF parser (default).
 #*
-#*    --help, --usage
-#*                          Print a short usage message (this message) and exit.
+#*   --help, --usage
+#*                     Output a short usage message (this message) and exit.
+#*   --version
+#*                     Output version information and exit.
 #**
 @ARGV = getOptions(
     '--dump-xyz-coordinates'       => sub { $dump_xyz_coordinates = 1 },
@@ -136,8 +139,14 @@ my $PI = 4*atan2( 1, 1 );
     '--use-perl-parser'            => sub{ $use_parser = 'perl' },
     '--use-c-parser'               => sub{ $use_parser = 'c' },
     '--options'                    => sub { options; exit },
-    '--help,--usage'               => sub { usage; exit }
+    '--help,--usage'               => sub { usage; exit },
+    '--version'                    => sub { print 'cod-tools version ',
+                                            $COD::ToolsVersion::Version, "\n";
+                                            exit }
 );
+
+binmode STDOUT, ':encoding(UTF-8)';
+binmode STDERR, ':encoding(UTF-8)';
 
 # tests for options
 # --provide-Miller-indexes
@@ -175,15 +184,17 @@ for my $filename (@ARGV) {
     }
 
     for my $datablock (@{$data}) {
-        my $dataname = 'data_' . $datablock->{name} if defined $datablock->{name};
+        my $dataname = 'data_' . $datablock->{'name'};
         my $values = $datablock->{'values'};
 
-        local $SIG{__WARN__} =  sub { process_warnings( {
-                                       'message'       => @_,
-                                       'program'       => $0,
-                                       'filename'      => $filename,
-                                       'add_pos'       => $dataname
-                                      }, $die_on_error_level ) };
+        local $SIG{__WARN__} =  sub {
+            process_warnings( {
+                'message'       => @_,
+                'program'       => $0,
+                'filename'      => $filename,
+                'add_pos'       => $dataname
+            }, $die_on_error_level )
+        };
 
         my @hkl_and_F;
         eval {

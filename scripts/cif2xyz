@@ -9,7 +9,10 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #$URL$
 #------------------------------------------------------------------------------
 #*
-#  Read CIF files and print atom coordinates in XYZ format.
+#* Read CIF files and print atom coordinates in XYZ format.
+#*
+#* USAGE:
+#*    $0 --options input.cif
 #**
 
 use strict;
@@ -25,6 +28,7 @@ use COD::ErrorHandler qw( process_warnings
                           process_errors
                           process_parser_messages
                           report_message );
+use COD::ToolsVersion;
 
 my $die_on_error_level = {
     ERROR   => 1,
@@ -35,23 +39,21 @@ my $die_on_error_level = {
 my $print_radii = 0;
 my $use_parser = "c"; # Used CIF parser
 
-#* USAGE:
-#*     $0 --options input.cif
-#*
 #* OPTIONS:
-#*     --print-radii
-#*         Append covalent radii to the atom coordinates.
+#*   --print-radii
+#*                     Append covalent radii to the atom coordinates.
+#*   --no-print-radii, --dont-print-radii, --xyz-only
+#*                     Print only Cartesian XYZ coordinates for input atoms
+#*                     (default).
 #*
-#*     --no-print-radii, --dont-print-radii, --xyz-only
-#*         Print only Cartesian XYZ coordinates for input atoms
-#*         (default behaviour)
+#*   --use-perl-parser
+#*   --use-c-parser
+#*                     Specify parser to parse CIF files. C parser is default.
 #*
-#*     --use-perl-parser
-#*     --use-c-parser
-#*         Specify parser to parse CIF files. C parser is default.
-#*
-#*     --help, --usage
-#*         Print a short usage message (this message) and exit.
+#*   --help, --usage
+#*                     Output a short usage message (this message) and exit.
+#*   --version
+#*                     Output version information and exit.
 #**
 @ARGV = getOptions(
     "--print-radii" => sub{ $print_radii = 1 },
@@ -62,10 +64,16 @@ my $use_parser = "c"; # Used CIF parser
     "--use-c-parser"    => sub{ $use_parser = "c" },
 
     "--options"      => sub { options; exit },
-    "--help,--usage" => sub { usage; exit }
+    "--help,--usage" => sub { usage; exit },
+    '--version'      => sub { print 'cod-tools version ',
+                              $COD::ToolsVersion::Version, "\n";
+                              exit }
 );
 
 @ARGV = ("-") unless @ARGV;
+
+binmode STDOUT, ':encoding(UTF-8)';
+binmode STDERR, ':encoding(UTF-8)';
 
 for my $filename (@ARGV) {
 
@@ -84,14 +92,16 @@ for my $filename (@ARGV) {
     }
 
     for my $dataset (@$data) {
-        my $dataname = 'data_' . $dataset->{name} if defined $dataset->{name};
+        my $dataname = 'data_' . $dataset->{'name'};
 
-        local $SIG{__WARN__} = sub { process_warnings( {
-                                       'message'       => @_,
-                                       'program'       => $0,
-                                       'filename'      => $filename,
-                                       'add_pos'       => $dataname
-                                     }, $die_on_error_level ) };
+        local $SIG{__WARN__} = sub {
+            process_warnings( {
+                'message'       => @_,
+                'program'       => $0,
+                'filename'      => $filename,
+                'add_pos'       => $dataname
+            }, $die_on_error_level )
+        };
 
         eval {
             my $values = $dataset->{values};

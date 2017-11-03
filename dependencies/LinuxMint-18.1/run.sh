@@ -6,6 +6,7 @@ sudo apt-get install -y \
     libcapture-tiny-perl \
     libcarp-assert-perl \
     libclone-perl \
+    libdatetime-format-rfc3339-perl \
     libdbd-mysql-perl \
     libdbd-sqlite3-perl \
     libdbi-perl \

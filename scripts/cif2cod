@@ -9,7 +9,7 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #$URL$
 #------------------------------------------------------------------------------
 #*
-#*  Parse a CIF file, prepare a COD database table entry from it.
+#* Parse a CIF file, prepare a COD database table entry from it.
 #*
 #* USAGE:
 #*    $0 --options input.cif inputs*.cif
@@ -26,6 +26,7 @@ use COD::ErrorHandler qw( process_warnings
                           process_errors
                           process_parser_messages
                           report_message );
+use COD::ToolsVersion;
 use XML::Simple;
 
 my $print_header = 0; # Indicates whether to print out a header with column names
@@ -35,7 +36,7 @@ my $include_keywords_with_undefined_values = 0;
 my $user_columns; # User specified list of columns to be printed
 my $schema; # XML schema of data table for validation
 
-my $use_parser = "c";
+my $use_parser = 'c';
 my $input_format = 'cif';
 my $die_on_errors   = 1;
 my $die_on_warnings = 0;
@@ -43,81 +44,81 @@ my $die_on_notes    = 0;
 
 my %options;
 #* OPTIONS:
-#* -C, --cod-number 1000000
+#*   -C, --cod-number 1000000
 #*                     Use the specified number, 1000000 in this example, as
 #*                     a COD number for this structure; do not take the number
 #*                     from the data block name.
 #*
-#* -c, --always-continue
+#*   -c, --always-continue
 #*                     Continue processing and return successful return status
 #*                     even if errors are diagnosed.
-#* -c-, --always-die
+#*   -c-, --always-die
 #*                     Stop and return error status if errors are diagnosed.
 #*
-#* -h, --print-header
+#*   -h, --print-header
 #*                     Print header with data column names at the first line
 #*                     With this option cif2cod uses the new field list for
 #*                     the output file.
 #*
-#* -h-, --dont-print-header, --no-print-header
+#*   -h-, --dont-print-header, --no-print-header
 #*                     Do not print column names on the first (header) line
 #*                     (default).
 #*
-#* -k, --keywords
+#*   -k, --keywords
 #*                     Print values in separate lines prefixed with keywords.
 #*
-#* --include-keywords-with-undefined-values
+#*   --include-keywords-with-undefined-values
 #*                     Print the keyword line with an empty value if the value
 #*                     is undefined.
 #*
-#* --exclude-keywords-with-undefined-values
+#*   --exclude-keywords-with-undefined-values
 #*                     Do not print the keyword line at all if the value is
 #*                     undefined (default).
 #*
-#* --use-attached-hydrogens
+#*   --use-attached-hydrogens
 #*                     Include number of implicit hydrogens, specified using
 #*                     _atom_site_attached_hydrogens tag, into the formula sum.
 #*
-#* --dont-use-attached-hydrogens,
-#* --no-use-attached-hydrogens,
-#* --ignore-attached-hydrogens
+#*   --dont-use-attached-hydrogens,
+#*   --no-use-attached-hydrogens,
+#*   --ignore-attached-hydrogens
 #*                     Ignore number of implicit hydrogens, specified using
 #*                     _atom_site_attached_hydrogens tag, in calculation of the
 #*                     formula sum. Default option.
 #*
-#* --reformat-space-group
+#*   --reformat-space-group
 #*                     Correct the formatting of Hermann-Mauguin symmetry
 #*                     space group symbol.
 #*
-#* --dont-reformat-space-group,
-#* --leave-space-group
+#*   --dont-reformat-space-group,
+#*   --leave-space-group
 #*                     Do not correct the formatting of Hermann-Mauguin
 #*                     symmetry space group.
 #*
-#* --use-datablocks-without-coordinates
+#*   --use-datablocks-without-coordinates
 #*                     Do not filter out data blocks without coordinates.
 #*
-#* --do-not-use-datablocks-without-coordinates, --use-all-datablocks
-#* --dont-use-datablocks-without-coordinates
-#* --no-use-datablocks-without-coordinates
-#* --skip-datablocks-without-coordinates
+#*   --do-not-use-datablocks-without-coordinates, --use-all-datablocks
+#*   --dont-use-datablocks-without-coordinates
+#*   --no-use-datablocks-without-coordinates
+#*   --skip-datablocks-without-coordinates
 #*                     Filter out data blocks without coordinates (default).
 #*
-#* --require-only-doi
+#*   --require-only-doi
 #*                     Do not require all bibliographic details (authors,
 #*                     journal name, title, year, volume and first page of
 #*                     the publication) to be present if publication DOI is
 #*                     specified.
 #*
-#* --require-full-bibliography
+#*   --require-full-bibliography
 #*                     Require author names, journal name, volume, publication
 #*                     title, year and first page to be present (default).
 #*
-#* --columns file,flags,Robs
-#* --columns "file flags Robs"
+#*   --columns file,flags,Robs
+#*   --columns "file flags Robs"
 #*                     Print only columns specified in this option.
 #*
-#* --validate-by-schema doc/CODDictionary.xml
+#*   --validate-by-schema doc/CODDictionary.xml
 #*                     Validate the output by supplied XML schema, where the
 #*                     SQL data types are given in the following manner:
 #*
@@ -128,111 +129,116 @@ my %options;
 #*                       </CODParameter>
 #*                     </CODDictionary>
 #*
-#* --continue-on-errors
+#*   --continue-on-errors
 #*                     Do not terminate script if errors are raised.
-#* --dont-continue-on-errors, --no-continue-on-errors,
-#* --exit-on-errors, --do-not-continue-on-errors, --die-on-errors
+#*   --dont-continue-on-errors, --no-continue-on-errors,
+#*   --exit-on-errors, --do-not-continue-on-errors, --die-on-errors
 #*                     Terminate script immediately if errors are raised (default).
-#* --continue-on-warnings
+#*   --continue-on-warnings
 #*                     Do not terminate script if warnings are raised (default).
-#* --die-on-warnings
+#*   --die-on-warnings
 #*                     Terminate script immediately if warnings are raised.
-#* --continue-on-notes
+#*   --continue-on-notes
 #*                     Do not terminate script if notes are raised (default).
-#* --die-on-notes
+#*   --die-on-notes
 #*                     Terminate script immediately if notes are raised.
 #*
-#* --use-perl-parser
+#*   --use-perl-parser
 #*                     Use the Perl parser for parsing CIFs.
-#* --use-c-parser
+#*   --use-c-parser
 #*                     Use the faster C parser for CIFs (default).
 #*
-#* --cif-input
+#*   --cif-input
 #*                     Use CIF format for input (default).
-#* --json-input
+#*   --json-input
 #*                     Use JSON format for input.
 #*
-#* --help, --usage
-#*                     Print a short usage message (this message) and exit.
+#*   --help, --usage
+#*                     Output a short usage message (this message) and exit.
+#*   --version
+#*                     Output version information and exit.
 #**
 @ARGV = getOptions(
-    "-C,--cod-number" => \$options{cod_number},
+    '-C,--cod-number' => \$options{cod_number},
 
-    "-h,--print-header"       => sub { $print_header = 1 },
-    "-h-,--dont-print-header" => sub { $print_header = 0 },
-    "--no-print-header"       => sub { $print_header = 0 },
+    '-h,--print-header'       => sub { $print_header = 1 },
+    '-h-,--dont-print-header' => sub { $print_header = 0 },
+    '--no-print-header'       => sub { $print_header = 0 },
 
-    "-k,--keywords"   => sub { $print_keywords = 1 },
+    '-k,--keywords'   => sub { $print_keywords = 1 },
 
-    "--include-keywords-with-undefined-values"
+    '--include-keywords-with-undefined-values'
         => sub { $include_keywords_with_undefined_values = 1 },
-    "--exclude-keywords-with-undefined-values"
+    '--exclude-keywords-with-undefined-values'
         => sub { $include_keywords_with_undefined_values = 1 },
 
-    "--use-attached-hydrogens" => sub { $options{use_attached_hydrogens} = 1 },
-    "--dont-use-attached-hydrogens" => sub { $options{use_attached_hydrogens} = 0 },
-    "--no-use-attached-hydrogens" => sub { $options{use_attached_hydrogens} = 0 },
-    "--ignore-attached-hydrogens" => sub { $options{use_attached_hydrogens} = 0 },
+    '--use-attached-hydrogens' => sub { $options{use_attached_hydrogens} = 1 },
+    '--dont-use-attached-hydrogens' => sub { $options{use_attached_hydrogens} = 0 },
+    '--no-use-attached-hydrogens' => sub { $options{use_attached_hydrogens} = 0 },
+    '--ignore-attached-hydrogens' => sub { $options{use_attached_hydrogens} = 0 },
 
-    "--require-only-doi"
+    '--require-only-doi'
         => sub{ $options{require_only_doi} = 1 },
-    "--require-full-bibliography"
+    '--require-full-bibliography'
         => sub{ $options{require_only_doi} = 0 },
 
-    "--reformat-space-group" =>
+    '--reformat-space-group' =>
             sub { $options{reformat_space_group} = 1; },
-    "--dont-reformat-space-group" =>
+    '--dont-reformat-space-group' =>
             sub { $options{reformat_space_group} = 0; },
-    "--leave-space-group" =>
+    '--leave-space-group' =>
             sub { $options{reformat_space_group} = 0; },
 
-    "--columns" => \$user_columns,
+    '--columns' => \$user_columns,
 
-    "--use-datablocks-without-coordinates"
+    '--use-datablocks-without-coordinates'
         => sub{ $options{use_datablocks_without_coord} = 1 },
-    "--use-all-datablocks"
+    '--use-all-datablocks'
         => sub{ $options{use_datablocks_without_coord} = 1 },
 
-    "--do-not-use-datablocks-without-coordinates"
+    '--do-not-use-datablocks-without-coordinates'
         => sub{ $options{use_datablocks_without_coord} = 0 },
-    "--dont-use-datablocks-without-coordinates"
+    '--dont-use-datablocks-without-coordinates'
         => sub{ $options{use_datablocks_without_coord} = 0 },
-    "--no-use-datablocks-without-coordinates"
+    '--no-use-datablocks-without-coordinates'
         => sub{ $options{use_datablocks_without_coord} = 0 },
-    "--skip-datablocks-without-coordinates"
+    '--skip-datablocks-without-coordinates'
         => sub{ $options{use_datablocks_without_coord} = 0 },
 
-    "--validate-by-schema" => sub {
+    '--validate-by-schema' => sub {
         $schema = get_field_datatypes( get_value() ) },
 
-    "-c,--always-continue"              => sub { $die_on_errors   = 0;
+    '-c,--always-continue'              => sub { $die_on_errors   = 0;
                                                  $die_on_warnings = 0;
                                                  $die_on_notes    = 0 },
-    "-c-,--always-die"                  => sub { $die_on_errors   = 1;
+    '-c-,--always-die'                  => sub { $die_on_errors   = 1;
                                                  $die_on_warnings = 1;
                                                  $die_on_notes    = 1 },
 
-    "--continue-on-errors"          => sub { $die_on_errors = 0 },
-    "--dont-continue-on-errors"     => sub { $die_on_errors = 1 },
-    "--die-on-errors"               => sub { $die_on_errors = 1 },
-    "--do-not-continue-on-errors"   => sub { $die_on_errors = 1 },
-    "--no-continue-on-errors"       => sub { $die_on_errors = 1 },
-    "--exit-on-errors"              => sub { $die_on_errors = 1 },
+    '--continue-on-errors'          => sub { $die_on_errors = 0 },
+    '--dont-continue-on-errors'     => sub { $die_on_errors = 1 },
+    '--die-on-errors'               => sub { $die_on_errors = 1 },
+    '--do-not-continue-on-errors'   => sub { $die_on_errors = 1 },
+    '--no-continue-on-errors'       => sub { $die_on_errors = 1 },
+    '--exit-on-errors'              => sub { $die_on_errors = 1 },
 
-    "--continue-on-warnings" => sub { $die_on_warnings = 0 },
-    "--die-on-warnings"      => sub { $die_on_warnings = 1 },
+    '--continue-on-warnings' => sub { $die_on_warnings = 0 },
+    '--die-on-warnings'      => sub { $die_on_warnings = 1 },
 
-    "--continue-on-notes"    => sub { $die_on_notes = 0 },
-    "--die-on-notes"         => sub { $die_on_notes = 1 },
+    '--continue-on-notes'    => sub { $die_on_notes = 0 },
+    '--die-on-notes'         => sub { $die_on_notes = 1 },
 
-    "--use-perl-parser"       => sub{ $use_parser = "perl" },
-    "--use-c-parser"          => sub{ $use_parser = "c" },
+    '--use-perl-parser'       => sub{ $use_parser = 'perl' },
+    '--use-c-parser'          => sub{ $use_parser = 'c' },
 
-    "--cif-input"  => sub { $input_format = 'cif' },
-    "--json-input" => sub { $input_format = 'json' },
+    '--cif-input'  => sub { $input_format = 'cif' },
+    '--json-input' => sub { $input_format = 'json' },
 
-    "--options"       => sub { options; exit },
-    "--help,--usage"  => sub { usage; exit }
+    '--options'       => sub { options; exit },
+    '--help,--usage'  => sub { usage; exit },
+    '--version'      => sub { print 'cod-tools version ',
+                              $COD::ToolsVersion::Version, "\n";
+                              exit }
 );
 
 my $die_on_error_level = {
@@ -248,25 +254,26 @@ if( $input_format eq 'json' ) {
 my @print_columns;
 
 if( defined $user_columns ) {
-    @print_columns = map { split m/[ ]/, $_ } split m/,/, $user_columns;
+    @print_columns = map { split ' ', $_ } split m/,/, $user_columns;
 } else {
     @print_columns = @COD::CIF::Data::CIF2COD::new_data_fields;
 }
 
-binmode( STDOUT, ":encoding(UTF-8)" );
+binmode( STDOUT, ':encoding(UTF-8)' );
+binmode( STDERR, ':encoding(UTF-8)' );
 
 if( $print_header ) {
     local $\ = "\n";
     if( $print_keywords ) {
-        local $, = " ";
+        local $, = ' ';
         print @print_columns;
     } else {
-        local $, = ";";
+        local $, = ';';
         print @print_columns;
     }
 }
 
-@ARGV = ( "-" ) unless @ARGV;
+@ARGV = ( '-' ) unless @ARGV;
 
 my $first = 1;
 
@@ -280,7 +287,7 @@ for my $filename (@ARGV) {
     canonicalize_all_names( $data );
 
     my @extracted;
-    foreach my $dataset (@$data) {
+    foreach my $dataset (@{$data}) {
 
         my $dataname = 'data_' . $dataset->{name};
 
@@ -310,7 +317,7 @@ for my $filename (@ARGV) {
     }
 
     for my $data (@extracted) {
-        my %data = %$data;
+        my %data = %{$data};
 
         # Print out the collected data fields:
         my @data_fields = @COD::CIF::Data::CIF2COD::default_data_fields;
@@ -320,12 +327,12 @@ for my $filename (@ARGV) {
         if( $print_keywords ) {
             print "\n" unless $first;
             $first = 0;
-            my $separator = " ";
+            my $separator = ' ';
             for my $key (@data_fields) {
                 my $value = $data{$key};
                 if( defined $value ) {
                     # Remove trailing dot from numbers:
-                    $value =~ s/^\s*(\d+)\.\s*$/$1/;
+                    $value =~ s/^\s*(\d+)[.]\s*$/$1/;
                     print $key . $separator . $value . "\n";
                 } elsif ( $include_keywords_with_undefined_values &&
                           $key ne '' ) {
@@ -333,22 +340,22 @@ for my $filename (@ARGV) {
                 }
             }
         } else {
-            my $separator = "";
+            my $separator = '';
             for my $key (@data_fields) {
                 my $value = $data{$key};
                 if( defined $value ) {
                     # Remove trailing dot from numbers:
-                    $value =~ s/^\s*(\d+)\.\s*$/$1/;
-                    if( $key ne "text" ) {
+                    $value =~ s/^\s*(\d+)[.]\s*$/$1/;
+                    if( $key ne 'text' ) {
                         $value =~ s/\\/\\\\/g;
                         $value =~ s/"/\\"/g;
                     }
-                    $value = "\"" . $value . "\"";
+                    $value = '"' . $value . '"';
                 } else {
-                    $value = "NULL";
+                    $value = 'NULL';
                 }
                 print $separator, $value;
-                $separator = ";";
+                $separator = ';';
             }
             print "\n";
         }
@@ -365,7 +372,7 @@ sub get_field_datatypes
         err_level => 'WARNING',
     };
     if( !exists $xml->{'xsi:schemaLocation'} ||
-        $xml->{'xsi:schemaLocation'} !~ m|^http://(www.)?crystallography.net/xml/schema/codsql/codsql_v\d+\.\d+\.xsd\s| ) {
+        $xml->{'xsi:schemaLocation'} !~ m|^http://(?:www.)?crystallography.net/xml/schema/codsql/codsql_v\d+[.]\d+[.]xsd\s| ) {
         $msg_template->{message} =
             'XML document is not derived from codsql.xsd';
         report_message( $msg_template );
@@ -383,5 +390,5 @@ sub get_field_datatypes
         return;
     }
     return { map { $_ => $fields->{$_}{SQLDataType} }
-                  keys %$fields };
+                  keys %{$fields} };
 }

@@ -22,6 +22,3 @@ extern char *yytext;
 #endif
 
 #endif
-
-void yyerrorf( const char *message, ... );
-void yyverrorf( const char *message, va_list ap );

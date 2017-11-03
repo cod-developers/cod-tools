@@ -9,7 +9,7 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #$URL$
 #------------------------------------------------------------------------------
 #*
-#*  Calculates minimal distance between atoms read from a CIF file.
+#* Calculates minimal distance between atoms read from a CIF file.
 #*
 #* USAGE:
 #*    $0 --options input1.cif input*.cif
@@ -36,6 +36,7 @@ use COD::SUsage qw( usage options );
 use COD::ErrorHandler qw( process_warnings
                           process_errors
                           process_parser_messages );
+use COD::ToolsVersion;
 
 my $die_on_error_level = {
     'ERROR'   => 0,
@@ -57,70 +58,72 @@ my $matrix_format = '%-11.3f';
 my $matrix_line_length = 80;
 
 #* OPTIONS:
-#* -M, --distance-matrix
+#*   -M, --distance-matrix
 #*                     Set distance matrix output format.
-#* -P, --pairwise-distance
+#*   -P, --pairwise-distance
 #*                     Set pairwise distance output format (default).
-#* -l, --matrix-line-length "80"
+#*   -l, --matrix-line-length "80"
 #*                     Maximum length of an output line in distance
 #*                     matrix format (default 80).
-#* --format "%8.6f"
+#*   --format "%8.6f"
 #*                     Use the specified format for distance matrix
 #*                     and pairwise printout format (default "%-11.3f"
 #*                     for matrix, "%-6.3f" for pairwise).
-#* -F, --add-filename
+#*   -F, --add-filename
 #*                     Add a filename field at the end of pairwise
 #*                     distance format lines.
-#* --no-add-filename, --do-not-add-filename
+#*   --no-add-filename, --do-not-add-filename
 #*                     Do not add a filename field at the end of
 #*                     pairwise distance format lines (default).
-#* --process-disordered-structures,
-#* --include-disordered-structures
+#*   --process-disordered-structures,
+#*   --include-disordered-structures
 #*                     Force processing of disordered structures (default).
-#* --no-process-disordered-structures,
-#* --exclude-disordered-structures,
-#* --skip-disordered-structures
+#*   --no-process-disordered-structures,
+#*   --exclude-disordered-structures,
+#*   --skip-disordered-structures
 #*                     Skip disordered structures.
-#* --process-duplicate-structures,
-#* --include-duplicate-structures,
+#*   --process-duplicate-structures,
+#*   --include-duplicate-structures,
 #*                     Force processing of structures, that are flagged
 #*                     as duplicates with '_cod_duplicate_entry' or
 #*                     '_[local]_cod_duplicate_entry' tags.
-#* --no-process-duplicate-structures,
-#* --exclude-duplicate-structures,
-#* --skip-duplicate-structures
+#*   --no-process-duplicate-structures,
+#*   --exclude-duplicate-structures,
+#*   --skip-duplicate-structures
 #*                     Skip duplicate structures (default).
-#* --include-null-distances
+#*   --include-null-distances
 #*                     Include entries of null distance relationship between
 #*                     atoms from different disorder groups of the same
 #*                     disorder assembly in pairwise distances output format.
-#* --no-null-distances, --exclude-null-distances
+#*   --no-null-distances, --exclude-null-distances
 #*                     Exclude entries of null distance relationship between
 #*                     atoms from different disorder groups of the same
 #*                     disorder assembly in pairwise distances output format
 #*                     (default).
-#* --include-self-distances
+#*   --include-self-distances
 #*                     Include entries of distances between symmetry-related
 #*                     instances of the same atom (default).
-#* --no-self-distances, --exclude-self-distances
+#*   --no-self-distances, --exclude-self-distances
 #*                     Exclude entries of distances between symmetry-related
 #*                     instances of the same atom.
-#* -U, --include-unknown-types
+#*   -U, --include-unknown-types
 #*                     Include entries containing atoms of undetermined
 #*                     chemical type. Atom type will be marked as 'UN'.
-#* --no-unknown-types, --exclude-unknown-types
+#*   --no-unknown-types, --exclude-unknown-types
 #*                     Exclude entries containing atoms of undetermined
 #*                     chemical type (default).
-#* --uniquify-atoms
-#*                    Makes unique the labels of atoms (default).
-#* --no-uniquify-atoms
-#*                    Does not make unique labels for atoms.
-#* --use-perl-parser
-#*                    Use Perl parser to parse CIF files.
-#* --use-c-parser
-#*                    Use C parser to parse CIF files (default).
-#* --help, --usage
-#*                    Print a short usage message (this message) and exit.
+#*   --uniquify-atoms
+#*                     Makes unique the labels of atoms (default).
+#*   --no-uniquify-atoms
+#*                     Does not make unique labels for atoms.
+#*   --use-perl-parser
+#*                     Use Perl parser to parse CIF files.
+#*   --use-c-parser
+#*                     Use C parser to parse CIF files (default).
+#*   --help, --usage
+#*                     Output a short usage message (this message) and exit.
+#*   --version
+#*                     Output version information and exit.
 #**
 @ARGV = getOptions(
     '-M,--distance-matrix'       => sub { $output_format = 'matrix' },
@@ -163,10 +166,16 @@ my $matrix_line_length = 80;
     '--use-c-parser'             => sub { $use_parser = 'c' },
 
     '--options'                  => sub { options; exit },
-    '--help,--usage'             => sub { usage; exit }
+    '--help,--usage'             => sub { usage; exit },
+    '--version'                  => sub { print 'cod-tools version ',
+                                          $COD::ToolsVersion::Version, "\n";
+                                          exit }
 );
 
 @ARGV = ( '-' ) unless @ARGV;
+
+binmode STDOUT, ':encoding(UTF-8)';
+binmode STDERR, ':encoding(UTF-8)';
 
 # Print output format header
 my $format_doc_path = 'svn://www.crystallography.net/'
@@ -199,14 +208,16 @@ foreach my $filename ( @ARGV ) {
 
   foreach my $dataset ( @{$data} ) {
 
-    my $dataname = 'data_' . $dataset->{'name'} if defined $dataset->{'name'};
+    my $dataname = 'data_' . $dataset->{'name'};
 
-    local $SIG{__WARN__} = sub { process_warnings( {
-                                       'message'  => @_,
-                                       'program'  => $0,
-                                       'filename' => $filename,
-                                       'add_pos'  => $dataname
-                                     }, $die_on_error_level ) };
+    local $SIG{__WARN__} = sub {
+        process_warnings( {
+            'message'  => @_,
+            'program'  => $0,
+            'filename' => $filename,
+            'add_pos'  => $dataname
+        }, $die_on_error_level )
+    };
 
     my ($status, $msg) = exclude_from_statistics( $dataset, $criteria );
 
@@ -216,6 +227,17 @@ foreach my $filename ( @ARGV ) {
     }
 
     eval {
+      # Extract symmetry operators
+      my $symop_strings = get_symmetry_operators( $dataset );
+
+      # Create a list of symmetry operators:
+      my $symop_list = { symops => [ map { symop_from_string($_) } @$symop_strings ],
+                         symop_ids => {} };
+      for (my $i = 0; $i < @{$symop_strings}; $i++) {
+          $symop_list->{symop_ids}
+                       {symop_string_canonical_form($symop_strings->[$i])} = $i;
+      }
+
       # Extract atoms and order them alphabetically by type and label
       my $atoms;
       eval {
@@ -225,6 +247,7 @@ foreach my $filename ( @ARGV ) {
                           'exclude_dummy_coordinates'    => 1,
                           'uniquify_atom_names'          => $uniquify_atoms,
                           'uniquify_atoms'               => $uniquify_atoms,
+                          'symop_list'                   => $symop_list,
                           'atom_properties' => \%COD::AtomProperties::atoms } );
       };
       if ( $@ ) {
@@ -242,7 +265,7 @@ foreach my $filename ( @ARGV ) {
       # operator modulus 1.
       my ( $sym_atoms, $symop_count );
       eval {
-          ( $sym_atoms, $symop_count ) = symops_apply( $dataset, $atoms );
+          ( $sym_atoms, $symop_count ) = symops_apply( $atoms, $symop_strings );
       };
       if ( $@ ) {
           $@ =~ s/ERROR, //;
@@ -340,37 +363,34 @@ sub resolve_chemical_type
 ##
 # Generates symmetrical atoms from the given original atoms and symmetry
 # operators.
-# @param $sym_data
-#       Reference to an array containing symmetry operators in string format.
 # @param $atoms
 #       Reference to an array of original atoms.
+# @param $symop_strings
+#       Reference to an array of symmetry operator strings.
 #  @return
 #       Reference to an array containing atoms generated by applying symmetry
 #       operators. Each atom hash is given a new field 'symop_string'.
 ##
 sub symops_apply
 {
-    my ( $dataset, $atoms ) = @_;
-
-    # Extract symmetry operators
-    my $symop_strings = get_symmetry_operators( $dataset );
+    my ( $atoms, $symop_strings ) = @_;
 
     # Transform symmetry operators into canonical from
-    @{$symop_strings} = map { symop_string_canonical_form( $_ ) }
-                                                           @{$symop_strings};
+    my @symop_strings = map { symop_string_canonical_form( $_ ) }
+                            @{$symop_strings};
 
     # Compute symmetry operator matrices
-    my @symop = map { symop_from_string( $_ ) } @{$symop_strings};
+    my @symop = map { symop_from_string( $_ ) } @symop_strings;
 
     my $sym_atoms = symop_generate_atoms( \@symop, $atoms, $atoms->[0]{'f2o'} );
 
     # Adds applied symmetry operator to the atom property hash
     my $i = 0;
     foreach ( @{$sym_atoms} ) {
-        $_->{'symop_string'} = @{$symop_strings}[$i];
+        $_->{'symop_string'} = $symop_strings[$i];
         $_->{'symop_id'} = $i + 1;
         $_->{'unity_matrix_applied'} = symop_is_unity( $symop[$i] );
-        $i = ( $i + 1 ) % @{$symop_strings};
+        $i = ( $i + 1 ) % @symop_strings;
     }
 
     return $sym_atoms, scalar @symop;

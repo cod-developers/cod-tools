@@ -114,6 +114,7 @@ static void ungetlinec( int ch, FILE *in );
 static int getlinec( FILE *in, cexception_t *ex );
 
 static char *clean_string( char *src, int is_textfield, cexception_t *ex );
+static void check_utf8( unsigned char *s );
 static char *check_and_clean( char *token, int is_textfield,
                               cexception_t *ex );
 
@@ -201,6 +202,7 @@ static int cif_lexer( FILE *in, cexception_t *ex )
             pos --;
             prevchar = token[pos-1];
             pushchar( &token, &length, pos, '\0' );
+            check_utf8( (unsigned char *)token );
             cif2lval.s = clean_string( token, /* is_textfield = */ 0, ex );
             if( yy_flex_debug ) {
                 printf( ">>> TAG: '%s'\n", token );
@@ -229,6 +231,7 @@ static int cif_lexer( FILE *in, cexception_t *ex )
             pos --;
             prevchar = token[pos-1];
             pushchar( &token, &length, pos, '\0' );
+            check_utf8( (unsigned char*)token );
             cif2lval.s = clean_string( token, /* is_textfield = */ 0, ex );
             if( is_integer( token )) {
                 if( yy_flex_debug ) {
@@ -457,6 +460,7 @@ static int cif_lexer( FILE *in, cexception_t *ex )
                         if( yy_flex_debug ) {
                             printf( ">>> TEXT FIELD: '%s'\n", token );
                         }
+                        check_utf8( (unsigned char*)token );
                         cif2lval.s = clean_string( token, /* is_textfield = */ 1,
                                                  ex );
                         qstring_seen = 0;
@@ -504,6 +508,7 @@ static int cif_lexer( FILE *in, cexception_t *ex )
                 if( yy_flex_debug ) {
                     printf( ">>> DATA_: '%s'\n", token + 5 );
                 }
+                check_utf8( (unsigned char*)token );
                 cif2lval.s = clean_string( token + 5, /* is_textfield = */ 0,
                                          ex );
                 qstring_seen = 0;
@@ -522,6 +527,7 @@ static int cif_lexer( FILE *in, cexception_t *ex )
                     if( yy_flex_debug ) {
                         printf( ">>> SAVE_: '%s'\n", token + 5 );
                     }
+                    check_utf8( (unsigned char*)token );
                     cif2lval.s = clean_string( token + 5, /* is_textfield = */ 0,
                                              ex );
                     qstring_seen = 0;
@@ -533,6 +539,7 @@ static int cif_lexer( FILE *in, cexception_t *ex )
                 if( yy_flex_debug ) {
                     printf( ">>> LOOP_\n" );
                 }
+                check_utf8( (unsigned char*)token );
                 cif2lval.s = clean_string( token, /* is_textfield = */ 0, ex );
                 qstring_seen = 0;
                 return _LOOP_;
@@ -588,7 +595,7 @@ static void pushchar( char **buf, size_t *length, size_t pos, int ch )
         }
         *length *= 2;
         if( yy_flex_debug ) {
-            printf( ">>> reallocating lex token buffer to %d\n", *length );
+            printf( ">>> reallocating lex token buffer to %lu\n", *length );
         }
         *buf = reallocx( *buf, *length, NULL );
     }
@@ -676,10 +683,10 @@ static char *clean_string( char *src, int is_textfield, cexception_t *ex )
     cexception_t inner;
     cexception_guard( inner ) {
         while( *src != '\0' ) {
-            if( (*src & 255 ) < 32 &&
+            if( ((*src & 255 ) < 32 &&
                 (*src & 255 ) != '\n' &&
                 (*src & 255 ) != '\t' &&
-                (*src & 255 ) != '\r' ) {
+                (*src & 255 ) != '\r' ) || ( *src & 255 ) == 127 ) {
                 if( cif_lexer_has_flags
                 (CIF_FLEX_LEXER_FIX_NON_ASCII_SYMBOLS)) {
                     /* Do magic with non-ascii symbols */
@@ -740,9 +747,83 @@ static char *clean_string( char *src, int is_textfield, cexception_t *ex )
     return new;
 }
 
+static int string_has_control_chars( unsigned char *s )
+{
+    if( !s ) return 0;
+
+    while( *s ) {
+        if( (*s < 32 && *s != '\n' && *s != '\t' && *s != '\r' ) ||
+            *s == 127 )
+            return 1;
+        s++;
+    }
+    return 0;
+}
+
+static void check_utf8( unsigned char *s )
+{
+    if( !s ) return;
+    int continuation_bytes = 0;
+    unsigned long ch = 0;
+
+    while( *s ) {
+        if( continuation_bytes && *s >= 0x80 && *s < 0xC0 ) {
+            continuation_bytes--;
+            ch = (ch << 6) | (*s & 0x3F );
+            if( continuation_bytes == 0 ) {
+                if( (ch > 0x007E && ch < 0x00A0) ||
+                    (ch > 0xD7FF && ch < 0xE000) ||
+                    (ch > 0xFDCF && ch < 0xFDF0) ||
+                    ((ch & 0xFFFF) == 0xFFFE) ||
+                    ((ch & 0xFFFF) == 0xFFFF) ) {
+                    cif2error( cxprintf( "Unicode codepoint U+%04X is not "
+                                         "allowed in CIF v2.0", ch ) );
+                }
+            }
+        } else if( continuation_bytes ) {
+            cif2error( "incorrect UTF-8" );
+            continuation_bytes = 0;
+            ch = 0;
+        } else if( *s >= 0x80 && *s < 0xC0 ) {
+            cif2error( "stray UTF-8 continuation byte" );
+        } else if( (*s & 0xF8) == 0xF0 ) {
+            continuation_bytes = 3;
+            ch = *s & 7;
+        } else if( (*s & 0xF0) == 0xE0 ) {
+            continuation_bytes = 2;
+            ch = *s & 15;
+        } else if( (*s & 0xE0) == 0xC0 ) {
+            continuation_bytes = 1;
+            ch = *s & 31;
+        } else if( *s >= 0xF8 ) {
+            cif2error( "more than 4 byte UTF-8 codepoints "
+                       "are not allowed" );
+        }
+        s++;
+    }
+
+    if( continuation_bytes ) {
+        cif2error( "prematurely terminated UTF-8 codepoint" );
+    }
+}
+
 static char *check_and_clean( char *token, int is_textfield, cexception_t *ex )
 {
     char *s;
-    s = strdupx( token, ex );
+
+    check_utf8( (unsigned char*)token );
+
+    if( string_has_control_chars
+        ( (unsigned char*)token )) {
+        if( cif_lexer_has_flags
+            (CIF_FLEX_LEXER_FIX_NON_ASCII_SYMBOLS) ) {
+            s = clean_string( token, is_textfield, ex );
+        } else {
+            cif2error( "incorrect CIF syntax" );
+            s = strdupx( token, ex );
+        }
+    } else {
+        s = strdupx( token, ex );
+    }
     return s;
 }

@@ -9,7 +9,10 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #$URL$
 #------------------------------------------------------------------------------
 #*
-#  CIF to CSV converter.
+#* CIF to CSV converter.
+#*
+#* USAGE:
+#*    $0 --options input1.cif input*.cif
 #**
 
 use strict;
@@ -18,6 +21,7 @@ use COD::CIF::Parser qw( parse_cif );
 use COD::SOptions qw( getOptions );
 use COD::SUsage qw( usage options );
 use COD::ErrorHandler qw( process_parser_messages report_message );
+use COD::ToolsVersion;
 
 sub csv_format($$$);
 
@@ -29,26 +33,31 @@ my $die_on_error_level = {
 
 my $use_parser = 'c';
 
-#* USAGE:
-#*     $0 --options input1.cif input*.cif
-#*
 #* OPTIONS:
-#* --use-perl-parser
+#*   --use-perl-parser
 #*                     Use Perl parser to parse CIF files.
-#* --use-c-parser
+#*   --use-c-parser
 #*                     Use C parser to parse CIF files (default).
 #*
-#* --help, --usage
-#*                     Print a short usage message (this message) and exit.
+#*   --help, --usage
+#*                     Output a short usage message (this message) and exit.
+#*   --version
+#*                     Output version information and exit.
 #**
 @ARGV = getOptions(
     '--use-perl-parser' => sub { $use_parser = 'perl' },
     '--use-c-parser'    => sub { $use_parser = 'c' },
     '--options'         => sub { options; exit },
-    '--help,--usage'    => sub { usage; exit }
+    '--help,--usage'    => sub { usage; exit },
+    '--version'         => sub { print 'cod-tools version ',
+                                 $COD::ToolsVersion::Version, "\n";
+                                 exit }
 );
 
 @ARGV = ('-') unless @ARGV;
+
+binmode STDOUT, ':encoding(UTF-8)';
+binmode STDERR, ':encoding(UTF-8)';
 
 my $fields_separator = ','; # as per section 1.4 of RFC 4180
 my $lines_separator  = "\r\n"; # as per section 4.1.1 of RFC 2046

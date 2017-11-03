@@ -124,7 +124,7 @@ sub filter_and_check
             next if $message =~ /file seems to be empty/;
             for( $message ) {
                 if( /tag .+ is not recognised/ ) {
-                    $parsed->{errlevel} = 'NOTE';
+                    $parsed->{err_level} = 'NOTE';
                     last;
                 }
                 if( /the dataname apparently had spaces in it - replaced/ ||
@@ -133,19 +133,19 @@ sub filter_and_check
                     /string with spaces without quotes/ ||
                     /(single|double)-quoted string is missing a closing quote -- fixed/ ||
                     /no data block heading .* found/ ) {
-                    $parsed->{errlevel} = 'NOTE';
-                    $parsed->{line} = undef;
-                    $parsed->{column} = undef;
+                    $parsed->{err_level} = 'NOTE';
+                    $parsed->{line_no} = undef;
+                    $parsed->{column_no} = undef;
                     last;
                 }
                 if( /stray CIF values at the beginning of the input file/ ) {
-                    $parsed->{errlevel} = 'WARNING';
+                    $parsed->{err_level} = 'WARNING';
                     last;
                 }
                 if( /end of file encountered while in text field starting in line/ ) {
-                    $parsed->{errlevel} = 'ERROR';
-                    $parsed->{line} = undef;
-                    $parsed->{column} = undef;
+                    $parsed->{err_level} = 'ERROR';
+                    $parsed->{line_no} = undef;
+                    $parsed->{column_no} = undef;
                     last;
                 }
                 if( /STOP_ symbol detected in line/ ||
@@ -153,29 +153,29 @@ sub filter_and_check
                     /syntax error/ ||
                     /wrong number of elements in the loop block/ ||
                     /tag .* appears more than once$/ ) {
-                    $parsed->{errlevel} = 'ERROR';
+                    $parsed->{err_level} = 'ERROR';
                     last;
                 }
-                if( !defined $parsed->{errlevel} ) {
-                    $parsed->{errlevel} = 'NOTE';
+                if( !defined $parsed->{err_level} ) {
+                    $parsed->{err_level} = 'NOTE';
                 }
             }
             print_message( $0,
                            $cif_filename,
-                           $parsed->{datablock},
-                           $parsed->{errlevel},
+                           $parsed->{add_pos},
+                           $parsed->{err_level},
                            $parsed->{message},
                            $parsed->{explanation},
-                           $parsed->{line},
-                           $parsed->{column} );
+                           $parsed->{line_no},
+                           $parsed->{column_no} );
         } elsif( /^[^:]+cif_filter: (.*)/ ) { # Ad-hoc parse for some messages
             print {*STDERR} "$0: $1";
         }
     }
 
     if( @{$filter_stdout} == 0 ) {
-        die "$0: $cif_filename: ERROR, file became empty after "
-          . 'filtering with cif_filter';
+        die "$0: $cif_filename: ERROR, file became empty after " .
+            "filtering with cif_filter\n";
     }
 
     my( $fix_values_stdout, $fix_values_stderr ) =
@@ -188,12 +188,12 @@ sub filter_and_check
                        /value '[^']*' must be one of the enumeration values/ ) {
                 print_message( $0,
                                $cif_filename,
-                               $parsed->{datablock},
+                               $parsed->{add_pos},
                                'NOTE',
                                $parsed->{message},
                                $parsed->{explanation},
-                               $parsed->{line},
-                               $parsed->{column} );
+                               $parsed->{line_no},
+                               $parsed->{column_no} );
             }
         }
     }
@@ -206,17 +206,17 @@ sub filter_and_check
         if( defined $parsed ) {
             print_message( $0,
                            $cif_filename,
-                           $parsed->{datablock},
+                           $parsed->{add_pos},
                            'NOTE',
                            $parsed->{message},
                            $parsed->{explanation},
-                           $parsed->{line},
-                           $parsed->{column} );
+                           $parsed->{line_no},
+                           $parsed->{column_no} );
         }
     }
     if ( @{$correct_stderr} > 0 ) {
         die 'cif_correct_tags encountered ' . @{$correct_stderr}
-          . ' warning(s)' ;
+          . ' warning(s)' . "\n" ;
     }
 
     if( !$options->{bypass_checks} ) {
@@ -247,24 +247,24 @@ sub filter_and_check
                               /neither _journal_page_first nor _journal_article_reference is defined/ ) ) {
                             next CCCMESSAGE;
                         }
-                        if( !defined $parsed->{errlevel} ) {
-                            $parsed->{errlevel} = 'WARNING';
+                        if( !defined $parsed->{err_level} ) {
+                            $parsed->{err_level} = 'WARNING';
                         }
 
-                        $warnings++ if $parsed->{errlevel} ne 'NOTE';
+                        $warnings++ if $parsed->{err_level} ne 'NOTE';
                     }
                     print_message( $0,
                                    $cif_filename,
-                                   $parsed->{datablock},
-                                   $parsed->{errlevel},
+                                   $parsed->{add_pos},
+                                   $parsed->{err_level},
                                    $parsed->{message},
                                    $parsed->{explanation},
-                                   $parsed->{line},
-                                   $parsed->{column} );
+                                   $parsed->{line_no},
+                                   $parsed->{column_no} );
                 }
             }
             if ( $warnings ) {
-                die "$0: cif_cod_check encountered $warnings warning(s)"
+                die "$0: cif_cod_check encountered $warnings warning(s)\n"
             };
         }
     }
@@ -583,7 +583,7 @@ sub filter_and_check
                           $db_conf->{port},
                           $db_conf->{user},
                           $db_conf->{password} );
-    die 'connection to database failed' if !$dbh;
+    die "connection to database failed\n" if !$dbh;
 
     my $database_hold_until;
     if( $options->{replace} ) {
@@ -670,20 +670,20 @@ sub filter_and_check
         my $parsed = parse_message( $_ );
         if( defined $parsed ) {
             next if $parsed->{message} =~ /tag .+ is not recognised/;
-            $parsed->{errlevel} = 'NOTE' if !defined $parsed->{errlevel};
+            $parsed->{err_level} = 'NOTE' if !defined $parsed->{err_level};
             print_message( $0,
                            $cif_filename,
-                           $parsed->{datablock},
-                           $parsed->{errlevel},
+                           $parsed->{add_pos},
+                           $parsed->{err_level},
                            $parsed->{message},
                            $parsed->{explanation},
-                           $parsed->{line},
-                           $parsed->{column} );
+                           $parsed->{line_no},
+                           $parsed->{column_no} );
         }
     }
     if( @{$filter_stdout} == 0 ) {
         die "$0: $cif_filename: ERROR, file became empty after "
-          . 'filtering with cif_filter';
+          . "filtering with cif_filter\n";
     }
     if( $hkl && !$is_pdcif ) {
         my $hkl_parameters = extract_cif_values(
@@ -834,8 +834,8 @@ sub run_command($@)
         if( ref $input eq '' ) {
             $input = [ $input ];
         } elsif( ref $input ne 'ARRAY' ) {
-            die( 'run_command() input is not a ' .
-                 'scalar or an array reference' );
+            die 'run_command() input is not a ' .
+                "scalar or an array reference\n";
         }
     } else {
         $input = [];
@@ -866,16 +866,16 @@ sub run_command($@)
                                        undef, $timeout );
 
         if( ! @list ) {
-            die( 'execution of external script \''
-               . $command->[0] . '\' was timed out' );
+            die 'execution of external script ' .
+                "'$command->[0]' was timed out" . "\n";
         }
 
         if( @{ $list[1] } > 0 ) {
             my $written =
                 syswrite( $stdin, $input_text, $input_rest, $stdin_pos );
             if( !defined $written ) {
-                die( 'syswrite() failed for external script ' .
-                     "'$command->[0]': $!" );
+                die 'syswrite() failed for external script ' .
+                    "'$command->[0]': $!" . "\n";
             }
             $stdin_pos += $written;
             $input_rest -= $written;
@@ -927,7 +927,7 @@ sub db_connect
               ($db_port ? ";$db_port" : '');
     my $dbh = DBI->connect( $dsn, $db_user, $db_pass );
     if( !$dbh ) {
-        die( 'could not connect to the database - ' . lcfirst( $DBI::errstr ));
+        die 'could not connect to the database - ' . lcfirst( $DBI::errstr ) . "\n";
     }
     if( $db_platform ne 'SQLite' ) {
         $dbh->do( 'SET CHARACTER SET utf8' );
@@ -1034,9 +1034,9 @@ sub select_COD_number_range($$)
                 #                "defaulting to range '$range' " .
                 #                '(other journals)' );
             } else {
-                die( 'could not assign COD number range ' .
+                die 'could not assign COD number range ' .
                      "for journal '$journal' and deposition type " .
-                     "'$deposition_type'" );
+                     "'$deposition_type'\n";
             }
         }
     }
@@ -1108,18 +1108,18 @@ sub extract_cif_values
             next if $parsed->{message} =~ /compiler could not recover from errors/;
             print_message( $0,
                $filename,
-               $parsed->{datablock},
-               ($parsed->{errlevel} ? $parsed->{errlevel} : 'WARNING'),
+               $parsed->{add_pos},
+               ($parsed->{err_level} ? $parsed->{err_level} : 'WARNING'),
                $parsed->{message},
                $parsed->{explanation},
-               $parsed->{line},
-               $parsed->{column} );
+               $parsed->{line_no},
+               $parsed->{column_no} );
         } else {
             print {*STDERR} $_;
         }
     }
     if ( @{$values_stderr} > 0 ) {
-        die "$0: cifvalues encountered " . @{$values_stderr} . ' warning(s)';
+        die "$0: cifvalues encountered " . @{$values_stderr} . " warning(s)\n";
     }
 
     my $data = [];
@@ -1258,7 +1258,7 @@ sub can_bypass_checks
             use Digest::SHA qw/ sha1_hex /;
             $client_password = Digest::SHA::sha1_hex( $client_password );
         } else {
-            die "unknown hashing algorithm '$algorithm'";
+            die "unknown hashing algorithm '$algorithm'\n";
         }
     }
     if( defined $client_password && $client_password eq $host_password ) {

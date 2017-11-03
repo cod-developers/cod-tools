@@ -15,11 +15,13 @@ use strict;
 use warnings;
 use COD::Spacegroups::Lookup::COD;
 use COD::Spacegroups::Names;
+use COD::CIF::Tags::Manage qw( has_special_value );
 
 require Exporter;
 our @ISA = qw( Exporter );
 our @EXPORT_OK = qw(
     get_cell
+    get_sg_data
     get_content_encodings
     get_symmetry_operators
 );
@@ -93,64 +95,180 @@ sub get_cell
     return @cell_lengths_and_angles;
 }
 
+##
+# Constructs a structure containing symmetry information using only the data
+# present in the data block.
+# @param $values
+#       The 'values' hash extracted from the CIF structure as returned by the
+#       CIF::COD::Parser.
+# @return $sg_data
+#       A structure containing the symmetry information present in the data
+#       block. Example of the returned data structure:
+#
+#       $sg_data = {
+#           'hermann_mauguin' => 'P -1',
+#           'hall'            => '-P 1',
+#           'number'          => 2,
+#           'symop_ids'       =>
+#                       [
+#                         1
+#                         2
+#                       ],
+#           'symops' =>
+#                       [
+#                          'x, y, z',
+#                          '-x, -y, -z'
+#                       ];
+#           'tags' => {
+#               'hermann_mauguin' => '_space_group_name_H-M_alt'
+#               'hall'      => '_space_group_name_Hall'
+#               'number'    => '_space_group_IT_number'
+#               'symop_ids' => '_space_group_symop_id'
+#               'symops'    => '_space_group_symop_operation_xyz'
+#           }
+#       }
+#
+# The following fields can be potentially defined in the structure:
+#
+#       'hall'
+#                           Space group symbol in Hall notation.
+#       'hermann_mauguin'
+#                           Space group symbol in Hermann-Mauguin notation.
+#       'number'
+#                           Space group number defined in the International
+#                           Tables for Crystallography, Vol. A.
+#       'symop_ids'
+#                           Array of symmetry operation identifiers.
+#       'symops'
+#                           Array of parsable strings giving the symmetry
+#                           operations of the space group in algebraic form.
+#       'ssg_name'
+#                           Superspace-group symbol conforming to an
+#                           alternative definition from that given in
+#                           the 'ssg_name_IT' and 'ssg_name_WJJ' fields.
+#       'ssg_name_IT'
+#                           Superspace group symbol as given in International
+#                           Tables for Crystallography, Vol. C.
+#       'ssg_name_WJJ'
+#                           Superspace-group symbol as given by de Wolff,
+#                           Janssen & Janner (1981).
+#       'ssg_symop_ids'
+#                           Array of superspace group symmetry operation
+#                           identifiers.
+#       'ssg_symops'
+#                           Array of parsable strings giving the symmetry
+#                           operations of the superspace group in algebraic
+#                           form.
+#       'tags'
+#                           A hash that records the names of the data items
+#                           from which the space group data values were taken.
+##
+sub get_sg_data
+{
+    my ($data_block) = @_;
+
+    my $sg_data_names = {
+        'hall' => [
+                    '_space_group_name_Hall',
+                    '_space_group_name_hall',
+                    '_symmetry_space_group_name_Hall',
+                    '_symmetry_space_group_name_hall',
+                  ],
+        'hermann_mauguin' => [
+                    '_space_group_name_H-M_alt',
+                    '_space_group_name_h-m_alt',
+                    '_symmetry_space_group_name_H-M',
+                    '_symmetry_space_group_name_h-m',
+                    '_space_group.name_H-M_full',
+                    '_space_group.name_h-m_full'
+                  ],
+        'number' => [
+                    '_space_group_IT_number',
+                    '_space_group_it_number',
+                    '_symmetry_Int_Tables_number',
+                    '_symmetry_int_tables_number'
+                  ],
+        'symop_ids' => [
+                    '_space_group_symop_id',
+                    '_symmetry_equiv_pos_site_id'
+                  ],
+        'symops' => [
+                    '_space_group_symop_operation_xyz',
+                    '_symmetry_equiv_pos_as_xyz'
+                  ],
+        'ssg_name' => [
+                    '_space_group_ssg_name'
+                  ],
+        'ssg_name_IT' => [
+                    '_space_group_ssg_name_IT',
+                    '_space_group_ssg_name_it'
+                  ],
+        'ssg_name_WJJ' => [
+                    '_space_group_ssg_name_WJJ',
+                    '_space_group_ssg_name_wjj'
+                  ],
+        'ssg_symop_ids' => [
+                    '_space_group_symop_ssg_id'
+                  ],
+        'ssg_symops' => [
+                    '_space_group_symop_ssg_operation_algebraic'
+                  ]
+    };
+
+    my %looped_sg_data_types = map { $_ => $_ }
+        qw( symop_ids symops ssg_symop_ids ssg_symops );
+
+    my $values = $data_block->{'values'};
+    my %sg_data;
+    for my $info_type ( keys %{$sg_data_names} ) {
+        foreach ( @{$sg_data_names->{$info_type}} ) {
+            if ( exists $values->{$_} &&
+                 !has_special_value($data_block, $_, 0) ) {
+                $sg_data{$info_type} = $values->{$_};
+                $sg_data{'tags'}{$info_type} = $_;
+                if ( !exists $looped_sg_data_types{$info_type} ) {
+                    $sg_data{$info_type} = $sg_data{$info_type}[0];
+                }
+                last;
+            }
+        }
+    }
+
+    return \%sg_data;
+}
+
 sub get_symmetry_operators($)
 {
     my ( $dataset ) = @_;
 
+    my $sg = get_sg_data($dataset);
+
     my $values = $dataset->{values};
-    my $sym_data;
+    my $symops;
 
-    if( exists $values->{"_space_group_symop_operation_xyz"} ) {
-        $sym_data = $values->{"_space_group_symop_operation_xyz"};
-    } elsif( exists $values->{"_symmetry_equiv_pos_as_xyz"} ) {
-        $sym_data = $values->{"_symmetry_equiv_pos_as_xyz"};
+    if( exists $sg->{'symops'} ) {
+        $symops = $sg->{'symops'}
     }
 
-    if( !defined $sym_data ) {
-        for my $tag (qw( _space_group_name_Hall
-                         _space_group_name_hall
-                         _symmetry_space_group_name_Hall
-                         _symmetry_space_group_name_hall
-                     )) {
-            if( exists $values->{$tag} ) {
-                my $hall = $values->{$tag}[0];
-                next if $hall eq '?';
-                $sym_data = lookup_symops("hall", $hall);
+    my $sym_data = $symops;
+    if( !defined $sym_data && defined $sg->{'hall'} ) {
+        $sym_data = lookup_space_group('hall', $sg->{'hall'});
+        if( !defined $sym_data ) {
+            warn "WARNING, the '$sg->{'tags'}{'hall'}' data item value " .
+                 "'$sg->{'hall'}' was not recognised as a space group name\n";
+        }
+    }
 
-                if( !$sym_data ) {
-                    warn "WARNING, the '$tag' data item value '$hall' was not "
-                       . "recognised as a space group name\n";
-                } else {
-                    last
-                }
-            }
+    if( !defined $sym_data && defined $sg->{'hermann_mauguin'} ) {
+        $sym_data = lookup_space_group('hermann_mauguin', $sg->{'hermann_mauguin'});
+        if( !defined $sym_data ) {
+            warn "WARNING, the '$sg->{'tags'}{'hermann_mauguin'}' data item " .
+                 "value '$sg->{'hermann_mauguin'}' was not recognised as a " .
+                 "space group name\n";
         }
     }
 
     if( !defined $sym_data ) {
-        for my $tag (qw( _space_group_name_H-M_alt
-                         _space_group_name_h-m_alt
-                         _space_group.name_H-M_full
-                         _space_group.name_h-m_full
-                         _symmetry_space_group_name_H-M
-                         _symmetry_space_group_name_h-m
-                    )) {
-            if( exists $values->{$tag} ) {
-                my $h_m = $values->{$tag}[0];
-                next if $h_m eq '?';
-                $sym_data = lookup_symops("hermann_mauguin", $h_m);
-
-                if( !$sym_data ) {
-                    warn "WARNING, the '$tag' data item value '$h_m' was not "
-                       . "recognised as a space group name\n";
-                } else {
-                    last
-                }
-            }
-        }
-    }
-
-    if( not defined $sym_data ) {
         for my $tag (qw( _space_group_ssg_name
                          _space_group_ssg_name_IT
                          _space_group_ssg_name_WJJ
@@ -163,9 +281,9 @@ sub get_symmetry_operators($)
                 $h_m =~ s/\(.*//g;
                 $h_m =~ s/[\s_]+//g;
 
-                $sym_data = lookup_symops("hermann_mauguin", $h_m);
+                $sym_data = lookup_space_group("hermann_mauguin", $h_m);
 
-                if( !$sym_data ) {
+                if( !defined $sym_data ) {
                     warn "WARNING, the '$tag' data item value '$ssg_name' " .
                          "yielded H-M symbol '$h_m' which is not in our tables\n";
                 } else {
@@ -175,14 +293,18 @@ sub get_symmetry_operators($)
         }
     }
 
-    if( not defined $sym_data ) {
+    if ( !defined $symops && defined $sym_data ) {
+        $symops = $sym_data->{'symops'}
+    }
+
+    if( !defined $sym_data ) {
         die 'ERROR, neither symmetry operator data item values, '
           . 'nor Hall space group name, '
           . 'nor Hermann-Mauguin space group name '
           . "could be processed to acquire symmetry operators\n";
     }
 
-    return $sym_data;
+    return $symops;
 }
 
 sub get_content_encodings($)
@@ -256,7 +378,7 @@ sub get_content_encodings($)
 # },
 # );
 
-sub lookup_symops
+sub lookup_space_group
 {
     my ($option, $param) = @_;
 
@@ -277,10 +399,10 @@ sub lookup_symops
 
         if( $value eq $param || $value eq $sg_full )
         {
-            return $hash->{symops};
+            return $hash;
         }
     }
-    return undef;
+    return;
 }
 
 1;

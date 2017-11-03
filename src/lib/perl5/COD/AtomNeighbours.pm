@@ -298,8 +298,13 @@ sub neighbour_list_from_chemistry_mol
         $atom_info{"atom_site_occupancy"}   = 1;
         $atom_info{"attached_hydrogens"}    = $atom->implicit_hydrogens();
 
+        # Aromatic atoms are considered planar only if they have three
+        # or more neighbours, as any three points lie on the same
+        # plane.
         if( defined $atom->attr('smiles/aromatic') &&
-            $atom->attr('smiles/aromatic') == 1 ) {
+            $atom->attr('smiles/aromatic') == 1 &&
+            (scalar $atom->neighbors() +
+             $atom_info{"attached_hydrogens"}) >= 3 ) {
             $atom_info{"planarity"} = 0;
         }
 

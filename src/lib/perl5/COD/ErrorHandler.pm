@@ -33,8 +33,8 @@ sub process_parser_messages
     foreach ( @$messages ) {
         warn $_;
         my $parsed_message = parse_message($_);
-        if ( defined $parsed_message->{errlevel} ) {
-            $err_level_counter{$parsed_message->{errlevel}}++;
+        if ( defined $parsed_message->{err_level} ) {
+            $err_level_counter{$parsed_message->{err_level}}++;
         };
         if ( defined $parsed_message->{filename} && !defined $filename ) {
             $filename = $parsed_message->{filename};

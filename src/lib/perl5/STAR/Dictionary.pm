@@ -8,7 +8,7 @@ use STAR::DataBlock;
 
 $VERSION = '0.56';
 
-# $Id$   RCS Identification
+# $Id: Dictionary.pm 850 2009-06-21 10:49:41Z saulius $   RCS Identification
 
 
 ####################

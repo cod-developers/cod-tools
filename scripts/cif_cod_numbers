@@ -9,7 +9,10 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #$URL$
 #------------------------------------------------------------------------------
 #*
-#  Find COD numbers for the CIF files in given directories of file lists.
+#* Find COD numbers for the CIF files in given directories of file lists.
+#*
+#* USAGE:
+#*    $0 --options input1.cif input*.cif
 #**
 
 use strict;
@@ -22,6 +25,7 @@ use COD::SUsage qw( usage options );
 use COD::ErrorHandler qw( process_warnings
                           process_errors
                           process_parser_messages );
+use COD::ToolsVersion;
 
 my %database = (
         host  => "www.crystallography.net",
@@ -45,108 +49,116 @@ my $print_datablock_name = 0;
 
 my %options;
 
-#* USAGE:
-#*     $0 --options input1.cif input*.cif
-#*
 #* OPTIONS:
-#*     --platform 'SQLite'
-#*        Use the SQL database platform 'SQLite' to query structures
-#*        (default 'mysql').
+#*   --platform 'SQLite'
+#*                     Use the SQL database platform 'SQLite' to query structures
+#*                     (default 'mysql').
 #*
-#*     -d, --database  cod
-#*        Use database "cod" to query for structures.
+#*   -d, --database  cod
+#*                     Use database "cod" to query for structures.
 #*
-#*     -h, --host   www.crystallography.net
-#*     -s, --server www.crystallography.net
-#*        Query COD database on the host 'www.crystallography.net'.
+#*   -h, --host   www.crystallography.net
+#*   -s, --server www.crystallography.net
+#*                     Query COD database on the host 'www.crystallography.net'.
 #*
-#*     -l, --localhost
-#*        Use database server on the localhost to query the COD database.
+#*   -l, --localhost
+#*                     Use database server on the localhost to query the
+#*                     COD database.
 #*
-#*     -p, --port 3306
-#*        Use use the specified port (default 3306) to query structures.
+#*   -p, --port 3306
+#*                     Use use the specified port (default 3306) to query
+#*                     structures.
 #*
-#*     -t, --table  data
-#*        Use SQL table "data" to query for structures.
+#*   -t, --table  data
+#*                     Use SQL table "data" to query for structures.
 #*
-#*     -u, --user cod_reader
-#*        Use user name "cod_reader" to access COD database; this reader
-#*        should be granted SELECT privilege, i.e. should be able to read
-#*        the COD database, without supplying a password.
+#*   -u, --user cod_reader
+#*                     Use user name "cod_reader" to access COD database;
+#*                     this reader should be granted SELECT privilege, i.e.
+#*                     should be able to read the COD database without
+#*                     supplying a password.
 #*
-#*     --password
-#*        Use the specified password (default empty) to connect.
+#*   --password
+#*                     Use the specified password (default empty) to connect.
 #*
-#*     -P, --print-datablock-name
-#*        Print data block name as the fifth column.
+#*   -P, --print-datablock-name
+#*                     Print data block name as the fifth column.
 #*
-#*     -P-, --dont-print-datablock-name, --no-print-datablock-name
-#*        Do not print data block names (default).
+#*   -P-, --dont-print-datablock-name, --no-print-datablock-name
+#*                     Do not print data block names (default).
 #*
-#*     -S, --series 9
-#*        Check only COD entries starting with 9 (so called 9* series).
-#*        Default: check all COD database. Set series to "" (empty string)
-#*        to restore the default behaviour.
+#*   -S, --series 9
+#*                     Check only COD entries starting with 9 (so called 9* series).
+#*                     Default: check the whole COD database. Set series to
+#*                     "" (empty string) to restore the default behaviour.
 #*
-#*     --max-cell-length-difference 0.5
-#*        Maximum difference of unit cell lengths allowed for 
-#*        entries regarded as the same, in Angstroems.
+#*   --max-cell-length-difference 0.5
+#*                     Maximum difference of unit cell lengths allowed
+#*                     for entries regarded as the same, in angstroms.
 #*
-#*     --max-cell-angle-difference 1.2
-#*        Maximum difference of unit cell angles allowed for
-#*        entries regarded as the same, in Angstroems.
+#*   --max-cell-angle-difference 1.2
+#*                     Maximum difference of unit cell angles allowed for
+#*                     entries regarded as the same, in angstroms.
 #*
-#*     --check-bibliography
-#*        Only CIFs that have different bibliography data are declared different
-#*        if all other parameters match (default). CIFs with missing bibliographies
-#*        are assumed to have matching bibliographies.
+#*   --check-bibliography
+#*                     Only CIFs that have different bibliography data are
+#*                     declared different if all other parameters match
+#*                     (default). CIFs with missing bibliographies are
+#*                     assumed to have matching bibliographies.
 #*
-#*     --dont-check-bibliography, --no-check-bibliography
-#*        Ignore bibliographic data of all CIFs; thus even files with different
-#*        bibliographies will be regarded the same if their cells, chemical
-#*        formulae and measurement conditions match.
+#*   --dont-check-bibliography, --no-check-bibliography
+#*                     Ignore bibliographic data of all CIFs; thus even files
+#*                     with different bibliographies will be regarded the same
+#*                     if their cells, chemical formulae and measurement
+#*                     conditions match.
 #*
-#*     --ignore-sigma, --dont-use-sigma, --no-use-sigma
-#*        Ignore standard deviations (sigmas) when comparing unit cell constants
+#*   --ignore-sigma, --dont-use-sigma, --no-use-sigma
+#*                     Ignore standard deviations (sigmas) when comparing unit
+#*                     cell constants
 #*
-#*     --dont-ignore-sigma, --no-ignore-sigma, --use-sigma
-#*        Use standard deviations (sigmas) when comparing unit cell constants
+#*   --dont-ignore-sigma, --no-ignore-sigma, --use-sigma
+#*                     Use standard deviations (sigmas) when comparing unit
+#*                     cell constants
 #*
-#*     --check-sample-history
-#*        Only CIFs that have different sample history data (as recorded
-#*        in the _exptl_crystal_thermal_history and _exptl_crystal_pressure_history
-#*        tags) are declared different if all other parameters match.
+#*   --check-sample-history
+#*                     Only CIFs that have different sample history data
+#*                     (as recorded in the _exptl_crystal_thermal_history
+#*                     and _exptl_crystal_pressure_history tags) are declared
+#*                     different if all other parameters match.
 #*
-#*     --dont-check-sample-history, --no-check-sample-history,
-#*     --disregard-sample-history
-#*        Ignore sample history of all CIFs; thus even files with different
-#*        sample histories will be regarded the same if their cells,
-#*        chemical formulae and measurement conditions match.
-#*        (default)
+#*   --dont-check-sample-history, --no-check-sample-history,
+#*   --disregard-sample-history
+#*                     Ignore sample history of all CIFs; thus even files
+#*                     with different sample histories will be regarded the
+#*                     same if their cells, chemical formulae and measurement
+#*                     conditions match (default).
 #*
-#*     --check-compound-source
-#*        Only CIFs that have different compound source (as recorded in the
-#*        _chemical_compound_source) are declared different if all other parameters
-#*        match.
+#*   --check-compound-source
+#*                     Only CIFs that have different compound source
+#*                     (as recorded in the _chemical_compound_source)
+#*                     are declared different if all other parameters
+#*                     match.
 #*
-#*     --dont-check-compound-source, --no-check-compound-source,
-#*     --disregard-compound-source
-#*        Ignore compound source of all CIFs; thus even files with different
-#*        compound sources will be regarded the same if other
-#*        conditions match. (default)
+#*   --dont-check-compound-source, --no-check-compound-source,
+#*   --disregard-compound-source
+#*                     Ignore compound source of all CIFs; thus even files
+#*                     with different compound sources will be regarded the
+#*                     same if other conditions match (default).
 #*
-#*     --use-perl-parser
-#*        Use the Perl-only CIF parser
-#*     --use-c-parser
-#*        Use the speed-optimised C/Perl parser
+#*   --use-perl-parser
+#*                     Use the Perl-only CIF parser.
+#*   --use-c-parser
+#*                     Use the speed-optimised C/Perl parser (default).
 #*
-#*     --cif-input
-#*        Use CIF format for input (default).
-#*     --json-input
-#*        Use JSON format for input.
+#*   --cif-input
+#*                     Use CIF format for input (default).
+#*   --json-input
+#*                     Use JSON format for input.
 #*
-#*     --help, --usage
-#*        Print a short usage message (this message) and exit.
+#*   --help, --usage
+#*                     Output a short usage message (this message) and exit.
+#*   --version
+#*                     Output version information and exit.
 #**
 @ARGV = getOptions(
     "-d,--database"  => \$database{name},
@@ -197,7 +209,10 @@ my %options;
     '--json-input' => sub { $input_format = 'json' },
 
     "--options"      => sub { options; exit },
-    "--help,--usage" => sub { usage; exit }
+    "--help,--usage" => sub { usage; exit },
+    '--version'      => sub { print 'cod-tools version ',
+                              $COD::ToolsVersion::Version, "\n";
+                              exit }
 );
 
 if( $input_format eq 'json' ) {
@@ -205,6 +220,9 @@ if( $input_format eq 'json' ) {
 }
 
 @ARGV = ("-") unless @ARGV;
+
+binmode STDOUT, ':encoding(UTF-8)';
+binmode STDERR, ':encoding(UTF-8)';
 
 for my $filename (@ARGV) {
     my $parser_options = { 'parser' => $use_parser, 'no_print' => 1 };

@@ -6,7 +6,7 @@
 #------------------------------------------------------------------------
 #* 
 #  CIF tag management functions that work on the internal
-#  representation of a CIF file returned by the CIFParser module.
+#  representation of a CIF file returned by the COD::CIF::Parser module.
 #**
 
 package COD::CIF::Tags::Manage;
@@ -21,16 +21,23 @@ our @EXPORT_OK = qw(
     exclude_tag
     tag_is_empty
     tag_is_unknown
+    has_unknown_value
+    has_inapplicable_value
+    has_special_value
     exclude_empty_tags
     exclude_empty_non_loop_tags
     exclude_misspelled_tags
     exclude_unknown_tags
     exclude_unknown_non_loop_tags
+    new_datablock
     order_tags
+    rename_tag
+    rename_tags
     set_tag
     set_loop_tag
-    rename_tag
 );
+
+sub rename_tags($$$);
 
 sub exclude_tag
 {
@@ -40,14 +47,16 @@ sub exclude_tag
     delete $cif->{precisions}{$tag};
     delete $cif->{types}{$tag};
     @{$cif->{tags}} =
-        grep $_ ne $tag, @{$cif->{tags}};
+        grep { $_ ne $tag } @{$cif->{tags}};
 
     if( defined $cif->{inloop}{$tag} ) {
         my $loop_nr = $cif->{inloop}{$tag};
         delete $cif->{inloop}{$tag};
         @{$cif->{loops}[$loop_nr]} =
-            grep $_ ne $tag, @{$cif->{loops}[$loop_nr]};
+            grep { $_ ne $tag } @{$cif->{loops}[$loop_nr]};
     }
+
+    return;
 }
 
 sub tag_is_empty
@@ -57,7 +66,7 @@ sub tag_is_empty
 
     if( exists $cif->{values}{$tag} ) {
         for my $val (@{$cif->{values}{$tag}}) {
-            if( defined $val && $val ne "?" && $val ne "." ) {
+            if( defined $val && $val ne '?' && $val ne '.' ) {
                 $is_empty = 0;
                 last;
             }
@@ -68,33 +77,37 @@ sub tag_is_empty
 
 sub exclude_empty_tags
 {
-    my $cif = $_[0];
+    my ($cif) = @_;
     my @empty_tags = ();
 
     for my $tag (@{$cif->{tags}}) {
         if( tag_is_empty( $cif, $tag )) {
-            push( @empty_tags, $tag );
+            push @empty_tags, $tag;
         }
     }
     for my $empty_tag (@empty_tags) {
         exclude_tag( $cif, $empty_tag );
     }
+
+    return;
 }
 
 sub exclude_empty_non_loop_tags
 {
-    my $cif = $_[0];
+    my ($cif) = @_;
     my @empty_tags = ();
 
     for my $tag (@{$cif->{tags}}) {
         if( tag_is_empty( $cif, $tag ) &&
             !exists $cif->{inloop}{$tag} ) {
-            push( @empty_tags, $tag );
+            push @empty_tags, $tag;
         }
     }
     for my $empty_tag (@empty_tags) {
         exclude_tag( $cif, $empty_tag );
     }
+
+    return;
 }
 
 sub tag_is_unknown
@@ -104,7 +117,7 @@ sub tag_is_unknown
 
     if( exists $cif->{values}{$tag} ) {
         for my $val (@{$cif->{values}{$tag}}) {
-            if( defined $val && $val ne "?" ) {
+            if( defined $val && $val ne '?' ) {
                 $is_empty = 0;
                 last;
             }
@@ -115,33 +128,37 @@ sub tag_is_unknown
 
 sub exclude_unknown_tags
 {
-    my $cif = $_[0];
+    my ($cif) = @_;
     my @empty_tags = ();
 
     for my $tag (@{$cif->{tags}}) {
         if( tag_is_unknown( $cif, $tag )) {
-            push( @empty_tags, $tag );
+            push @empty_tags, $tag;
         }
     }
     for my $empty_tag (@empty_tags) {
         exclude_tag( $cif, $empty_tag );
     }
+
+    return;
 }
 
 sub exclude_unknown_non_loop_tags
 {
-    my $cif = $_[0];
+    my ($cif) = @_;
     my @empty_tags = ();
 
     for my $tag (@{$cif->{tags}}) {
         if( tag_is_unknown( $cif, $tag ) &&
             !exists $cif->{inloop}{$tag} ) {
-            push( @empty_tags, $tag );
+            push @empty_tags, $tag;
         }
     }
     for my $empty_tag (@empty_tags) {
         exclude_tag( $cif, $empty_tag );
     }
+
+    return;
 }
 
 sub exclude_misspelled_tags
@@ -151,7 +168,7 @@ sub exclude_misspelled_tags
     my @misspelled_tags;
     for my $tag (@{$cif->{tags}}) {
         if( !exists $dictionary_tags->{$tag} ) {
-            push( @misspelled_tags, $tag );
+            push @misspelled_tags, $tag;
         }
     }
     my %misspelled_tags = map { $_ => 1 } @misspelled_tags;
@@ -174,6 +191,24 @@ sub exclude_misspelled_tags
             }
         }
     }
+
+    return;
+}
+
+sub new_datablock
+{
+    my( $dataname ) = @_;
+
+    return {
+        name   => $dataname,
+        tags   => [],
+        values => {},
+        types  => {},
+        precisions => {},
+        loops  => [],
+        inloop => {},
+        cifversion => { major => 1, minor => 1 }
+    };
 }
 
 sub order_tags
@@ -184,12 +219,12 @@ sub order_tags
 
     # Correct non-loop tags + _publ_author_name
 
-    for my $tag (@$tags_to_print) {
+    for my $tag (@{$tags_to_print}) {
         if(  exists $cif->{values}{$tag} &&
              exists $dictionary_tags->{$tag} &&
            (!exists $cif->{inloop}{$tag} ||
             $tag eq '_publ_author_name') ) {
-            push( @new_tag_list, $tag );
+            push @new_tag_list, $tag;
         }
     }
 
@@ -198,17 +233,17 @@ sub order_tags
     for my $tag (@{$cif->{tags}}) {
         if( !exists $dictionary_tags->{$tag} &&
             !exists $cif->{inloop}{$tag} ) {
-            push( @new_tag_list, $tag );
+            push @new_tag_list, $tag;
         }
     }
 
     # Correct loop tags
 
-    for my $tag (@$loop_tags_to_print) {
+    for my $tag (@{$loop_tags_to_print}) {
         if( exists $cif->{values}{$tag} &&
             exists $cif->{inloop}{$tag} &&
             $tag ne '_publ_author_name' ) {
-            push( @new_tag_list, $tag );
+            push @new_tag_list, $tag;
         }
     }
 
@@ -217,11 +252,13 @@ sub order_tags
     for my $tag (@{$cif->{tags}}) {
         if( !exists $dictionary_tags->{$tag} &&
              exists $cif->{inloop}{$tag} ) {
-            push( @new_tag_list, $tag );
+            push @new_tag_list, $tag;
         }
     }
 
     $cif->{tags} = \@new_tag_list;
+
+    return;
 }
 
 sub clean_cif
@@ -234,7 +271,7 @@ sub clean_cif
     my ( $exclude_misspelled_tags, $preserve_loop_order ) = ( 0 ) x 2;
     my $keep_tag_order = 0;
 
-    if( $flags && ref $flags eq "HASH" ) {
+    if( $flags && ref $flags eq 'HASH' ) {
         $exclude_misspelled_tags = $flags->{exclude_misspelled_tags};
         $preserve_loop_order = $flags->{preserve_loop_order};
         %dictionary_tags = %{$flags->{dictionary_tags}}
@@ -269,6 +306,8 @@ sub clean_cif
                 $preserve_loop_order
                     ? $cif->{tags} : \@dictionary_tags,
                 \%dictionary_tags );
+
+    return;
 }
 
 sub rename_tag
@@ -306,32 +345,190 @@ sub rename_tag
             $cif->{precisions}{$old_tag};
         delete $cif->{precisions}{$old_tag};
     }
+
+    return;
+}
+
+#===============================================================#
+# Renames CIF data tags so that they are not confused with the
+# original ones.
+
+# Accepts a dataset hash produced by COD::CIF::Parser, a list of tags to be
+# renamed, and a prefix to be appended
+
+# Returns a hash with renamed data tags
+
+sub rename_tags($$$)
+{
+    my ( $dataset, $tags2rename, $prefix ) = @_;
+
+    my $values = $dataset->{values};
+    my %renamed_tags = ();
+
+    for my $tag (@{$tags2rename}) {
+        next if !exists $values->{$tag};
+        next if exists $dataset->{inloop}{$tag};
+
+        my $new_tag = $prefix . $tag;
+        rename_tag( $dataset, $tag, $new_tag );
+        $renamed_tags{$new_tag} = $tag;
+    }
+
+    return wantarray ? %renamed_tags : \%renamed_tags;
 }
 
 sub set_tag
 {
     my ( $cif, $tag, $value ) = @_;
     if( !exists $cif->{values}{$tag} ) {
-        push( @{$cif->{tags}}, $tag );
+        push @{$cif->{tags}}, $tag;
     }
     $cif->{values}{$tag}[0] = $value;
+
+    return;
 }
 
+##
+# Sets a looped data value in a data block structure.
+#
+# @param $cif
+#       The data block structure as returned by the CIF::COD::Parser.
+# @param $tag
+#       The name of the data item that should be placed in a loop.
+# @param $in_loop
+#       The name of the data item that identifies the loop the '$tag'
+#       data item should be placed in. If the value matches the '$tag'
+#       value and the data item currently does not reside in a loop
+#       structure a new loop is created. Undefined value is treated
+#       the same way.
+# @param
+#       Data values that should be placed in the loop.
+##
 sub set_loop_tag
 {
     my( $cif, $tag, $in_loop, $values ) = @_;
-    if( !exists $cif->{values}{$tag} ) {
-        push( @{$cif->{tags}}, $tag );
-        if( !defined $in_loop || $tag eq $in_loop ) {
-            push( @{$cif->{loops}}, [ $tag ] );
-            $cif->{inloop}{$tag} = @{$cif->{loops}} - 1;
+
+    my $loop_no;
+    if ( !defined $in_loop || $in_loop eq $tag ) {
+        if ( defined $cif->{'inloop'}{$tag} ) {
+            $loop_no = $cif->{'inloop'}{$tag};
         } else {
-            my $nloop = $cif->{inloop}{$in_loop};
-            push( @{$cif->{loops}[$nloop]}, $tag );
-            $cif->{inloop}{$tag} = $nloop;
+            $loop_no = defined $cif->{'loops'} ? scalar @{$cif->{'loops'}} : 0;
+            push @{$cif->{'loops'}}, [];
         }
+    } else {
+        if ( !defined $cif->{'inloop'}{$in_loop} ) {
+            warn "the '$tag' data item could not be added to a loop " .
+                 "structure containing the '$in_loop' data item -- the " .
+                 "'$in_loop' data item was not found in a loop structure\n";
+            return;
+        }
+        $loop_no = $cif->{'inloop'}{$in_loop};
     }
-    $cif->{values}{$tag} = $values;
+ # This check needs further discussion
+ #  foreach ( @{$cif->{'loops'}[$loop_no]} ) {
+ #       next if $_ eq $tag;
+ #       if ( scalar @{$values} ne scalar @{$cif->{'values'}{$_}} ) {
+ #           warn "the '$tag' data item could not be added to a loop " .
+ #               "structure containing the '$_' data item -- data items " .
+ #                "have a differing number of values\n";
+ #           return;
+ #       }
+ #   }
+    use List::MoreUtils qw( first_index );
+
+    my $inloop_position = @{$cif->{'loops'}[$loop_no]};
+    my $tag_position    = @{$cif->{'tags'}};
+    # array length decreases upon the deletion of an already existing data name
+    if ( defined $cif->{'values'}{$tag} ) {
+        $tag_position--;
+    }
+    if ( defined $cif->{'inloop'}{$tag} &&
+         $cif->{'inloop'}{$tag} eq $loop_no ) {
+        $inloop_position =
+            List::MoreUtils::first_index{ $_ eq $tag }
+                @{$cif->{'loops'}[$loop_no]};
+        $tag_position = List::MoreUtils::first_index{ $_ eq $tag }
+                @{$cif->{'tags'}};
+    }
+    exclude_tag($cif, $tag);
+
+    # Add the data item at a new position
+    splice @{$cif->{'tags'}}, $tag_position, 0, $tag;
+    splice @{$cif->{'loops'}[$loop_no]}, $inloop_position, 0, $tag;
+    $cif->{'inloop'}{$tag} = $loop_no;
+    $cif->{'values'}{$tag} = $values;
+
+    return;
+}
+
+##
+# Evaluates if the data item is marked as containing an unknown value
+# according to CIF notation.
+#
+# @param $frame
+#       Data frame that contains the data item as returned by the CIF::COD::Parser.
+# @param $data_name
+#       Name of the data item.
+# @param $index
+#       The index of the data item value to be evaluated as unknown.
+# @return
+#       Boolean value denoting if the data item contains an unknown value.
+##
+sub has_unknown_value
+{
+    my ( $frame, $data_name, $index ) = @_;
+
+    my $value = $frame->{'values'}{$data_name}[$index];
+    my $type = defined $frame->{'types'}{$data_name}[$index] ?
+               $frame->{'types'}{$data_name}[$index] : 'UQSTRING' ;
+
+    return $value eq '?' && $type eq 'UQSTRING';
+}
+
+##
+# Evaluates if the data item is marked as containing an inapplicable value
+# according to CIF notation.
+#
+# @param $frame
+#       Data frame that contains the data item as returned by the CIF::COD::Parser.
+# @param $data_name
+#       Name of the data item.
+# @param $index
+#       The index of the data item value to be evaluated as inapplicable.
+# @return
+#       Boolean value denoting if the data item contains an inapplicable value.
+##
+sub has_inapplicable_value
+{
+    my ( $frame, $data_name, $index ) = @_;
+
+    my $value = $frame->{'values'}{$data_name}[$index];
+    my $type = defined $frame->{'types'}{$data_name}[$index] ?
+               $frame->{'types'}{$data_name}[$index] : 'UQSTRING' ;
+
+    return $value eq '.' && $type eq 'UQSTRING';
+}
+
+##
+# Evaluates if the data item is marked as containing a special (unknown or
+# inapplicable) value according to CIF notation.
+#
+# @param $frame
+#       Data frame that contains the data item as returned by the CIF::COD::Parser.
+# @param $data_name
+#       Name of the data item.
+# @param $index
+#       The index of the data item value to be evaluated as special.
+# @return
+#       Boolean value denoting if the data item contains a special value.
+##
+sub has_special_value
+{
+    my ( $frame, $data_name, $index ) = @_;
+
+    return has_unknown_value( $frame, $data_name, $index ) ||
+           has_inapplicable_value( $frame, $data_name, $index );
 }
 
 1;

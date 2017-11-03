@@ -9,8 +9,11 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #$URL$
 #------------------------------------------------------------------------------
 #*
-#  Parse a CIF file and print out the essential information in the COD
-#  CIF format
+#* Parse a CIF file and print out the essential information in the COD
+#* CIF format
+#*
+#* USAGE:
+#*    $0 --options input1.cif input*.cif
 #**
 
 use strict;
@@ -29,6 +32,7 @@ use COD::ErrorHandler qw( process_warnings
                           process_errors
                           process_parser_messages
                           report_message );
+use COD::ToolsVersion;
 
 my $die_on_error_level = {
     ERROR   => 1,
@@ -59,82 +63,88 @@ my $data_block_format = "%07d";
 my $data_block_nr; # If defined, specifies that data blocks should be
                    # numbered in a COD-like fasion.
 
-#* USAGE:
-#*     $0 --options input1.cif input*.cif
-#*
 #* OPTIONS:
-#* -h, --add-cif-header header_file.cif
-#*     Prepend each of the output files with the comments from the
-#*     beginning of the specified file.
+#*   -h, --add-cif-header header_file.cif
+#*                     Prepend each of the output files with the comments
+#*                     from the beginning of the specified file.
 #*
-#* --exclude-empty-tags
-#*     Remove tags that contain only empty values. A value is
-#*     considered empty if it equal to a single question mark ('?')
-#*     or a single period ('.').
-#* --dont-exclude-empty-tags, --no-exclude-empty-tags
-#*     Disable the '--exclude-empty-tags' option (default).
+#*   --exclude-empty-tags
+#*                     Remove tags that contain only empty values. A value is
+#*                     considered empty if it equal to a single question mark ('?')
+#*                     or a single period ('.').
+#*   --dont-exclude-empty-tags, --no-exclude-empty-tags
+#*                     Disable the '--exclude-empty-tags' option (default).
 #*
-#* -x, --extra-tag-list tag-list.lst
-#*     Add additional tags to the list of recognised CIF tags. These
-#*     extra tags are presented in a separate file, one tag per line.
-#* --exclude-misspelled-tags
-#*     Remove tags that were not present in the recognised tag list.
-#* --dont-exclude-misspelled-tags,
-#* --no-exclude-misspelled-tags
-#*     Disable the '--exclude-misspelled-tags' option.
+#*   -x, --extra-tag-list tag-list.lst
+#*                     Add additional tags to the list of recognised CIF tags.
+#*                     These extra tags are presented in a separate file, one
+#*                     tag per line.
+#*   --exclude-misspelled-tags
+#*                     Remove tags that were not present in the recognised
+#*                     tag list.
+#*   --dont-exclude-misspelled-tags,
+#*   --no-exclude-misspelled-tags
+#*                     Disable the '--exclude-misspelled-tags' option.
 #*
-#* --preserve-loop-order
-#*     Print loops in the same order they appeared in the original file.
-#* --use-internal-loop-order
-#*     Disregard original loop order while printing the tags (default).
+#*   --preserve-loop-order
+#*                     Print loops in the same order they appeared in the
+#*                     original file.
+#*   --use-internal-loop-order
+#*                     Disregard original loop order while printing the tags
+#*                     (default).
 #*
-#* --original-filename data_source.cif
-#*     Use the provided string as the name of the original file.
-#*     (see --record-original-filename).
-#* --clear-original-filename
-#*     Do not use any previously provided strings as the name of
-#*     the original file.
-#* --record-original-filename
-#*     Record the original filename and the original data block name for
-#*     each data block as the '_cod_data_source_*' tag values.
-#* --dont-record-original-filename
-#*     Do not record the original filename and the original data block
-#*     name (default).
+#*   --original-filename data_source.cif
+#*                     Use the provided string as the name of the original file.
+#*                     (see --record-original-filename).
+#*   --clear-original-filename
+#*                     Do not use any previously provided strings as the name
+#*                     of the original file.
+#*   --record-original-filename
+#*                     Record the original filename and the original data
+#*                     block name for each data block as the '_cod_data_source_*'
+#*                     tag values.
+#*   --dont-record-original-filename
+#*                     Do not record the original filename and the original
+#*                     data block name (default).
 #*
-#* -S, --start-data-block-number 1234567
-#*     Use the provided number as the start number when renaming
-#*     data blocks (default '7000001')  Setting this option enables
-#*     the '-R' option.
-#* -d, --data-block-format '%07d'
-#*     Use the provided format to determine new data block names from the
-#*     provided data block numbers (default '%07d').
-#* -R, --renumber-data-blocks
-#*     Rename all data blocks. The new names are constructed by taking
-#*     a start number (specified by the '-S' option), applying the
-#*     string format (specified by the '-d' option) and then incrementing
-#*     the start number for each sequential data block.
-#* -R-, --dont-renumber-data-blocks
-#*     Do not rename data blocks (default). Enabling this option sets
-#*     the '-S' option to default value.
+#*   -S, --start-data-block-number 1234567
+#*                     Use the provided number as the start number when
+#*                     renaming data blocks (default '7000001')  Setting
+#*                     this option enables the '-R' option.
+#*   -d, --data-block-format '%07d'
+#*                     Use the provided format to determine new data block
+#*                     names from the provided data block numbers (default '%07d').
+#*   -R, --renumber-data-blocks
+#*                     Rename all data blocks. The new names are constructed
+#*                     by taking a start number (specified by the '-S' option),
+#*                     applying the string format (specified by the '-d' option)
+#*                     and then incrementing the start number for each
+#*                     sequential data block.
+#*   -R-, --dont-renumber-data-blocks
+#*                     Do not rename data blocks (default). Enabling this
+#*                     option sets the '-S' option to default value.
 #*
-#* --folding-width 76
-#*     Specify the length of the longest unfolded line.
+#*   --folding-width 76
+#*                     Specify the length of the longest unfolded line.
 #*
-#* --fold-title
-#* --dont-fold-title
-#*     Folds the title, if longer than folding width. Default: off.
+#*   --fold-title
+#*   --dont-fold-title
+#*                     Folds the title, if longer than folding width.
+#*                     Default: off.
 #*
-#* --fold-long-fields
-#* --dont-fold-long-fields
-#*     Fold fields, longer than folding width. Default: off.
+#*   --fold-long-fields
+#*   --dont-fold-long-fields
+#*                     Fold fields, longer than folding width. Default: off.
 #*
-#* --use-perl-parser
-#*     Use Perl parser to parse CIF files.
-#* --use-c-parser
-#*     Use C parser to parse CIF files (default).
+#*   --use-perl-parser
+#*                     Use Perl parser to parse CIF files.
+#*   --use-c-parser
+#*                     Use C parser to parse CIF files (default).
 #*
-#* --help, --usage
-#*     Print a short usage message (this message) and exit.
+#*   --help, --usage
+#*                     Output a short usage message (this message) and exit.
+#*   --version
+#*                     Output version information and exit.
 #**
 @ARGV = getOptions(
     "-h,--add-cif-header" => \$cif_header_file,
@@ -173,7 +183,10 @@ my $data_block_nr; # If defined, specifies that data blocks should be
     "--use-perl-parser" => sub { $use_parser = "perl" },
     "--use-c-parser"    => sub { $use_parser = "c" },
     "--options"         => sub { options; exit },
-    "--help,--usage"    => sub { usage; exit }
+    "--help,--usage"    => sub { usage; exit },
+    '--version'         => sub { print 'cod-tools version ',
+                                 $COD::ToolsVersion::Version, "\n";
+                                 exit }
 );
 
 my @extra_tags = ();
@@ -236,13 +249,16 @@ if ($@) {
     }, $die_on_error_level->{'ERROR'} );
 };
 
+binmode( STDOUT, ":encoding(UTF-8)" );
+binmode( STDERR, ":encoding(UTF-8)" );
+
 my $filename = shift(@ARGV);
 
 my $options = { parser => $use_parser, no_print   => 1 };
 my ($data, $err_count, $messages) = parse_cif($filename, $options);
 process_parser_messages( $messages, $die_on_error_level );
 
-if( !@$data || !defined $data->[0] || !defined $data->[0]{name} ) {
+if( !@{$data} ) {
     report_message( {
        'program'   => $0,
        'filename'  => $filename,
@@ -253,23 +269,23 @@ if( !@$data || !defined $data->[0] || !defined $data->[0]{name} ) {
 
 #------------------------------------------------------------------------------
 
-binmode( STDOUT, ":encoding(UTF-8)" );
-
 for my $dataset (@$data) {
 
     my $datablok = $dataset->{values};
-    my $dataname = 'data_' . $dataset->{name} if defined $dataset->{name};
+    my $dataname = 'data_' . $dataset->{'name'};
 
-    local $SIG{__WARN__} = sub { process_warnings( {
-                                   'message'  => @_,
-                                   'program'  => $0,
-                                   'add_pos'  => $dataname,
-                                   'filename' => $filename
-                                }, $die_on_error_level ) };
+    local $SIG{__WARN__} = sub {
+        process_warnings( {
+            'message'  => @_,
+            'program'  => $0,
+            'add_pos'  => $dataname,
+            'filename' => $filename
+        }, $die_on_error_level )
+    };
 
     canonicalize_names( $dataset );
 
-    next if !defined $datablok or !defined $datablok->{_refln_index_h};
+    next if !defined $datablok->{'_refln_index_h'};
 
     ## print "\n" if $n > 0;
 
@@ -350,9 +366,16 @@ for my $dataset (@$data) {
             }
         }
 
-
         # Print out the CIF header if requested:
         if( defined $cif_comment_header ) {
+            # Ensure that for CIF v2.0 the magic code comes
+            # before the CIF comment header:
+            if( exists $dataset->{cifversion} &&
+                       $dataset->{cifversion}{major} == 2 ) {
+                printf( "#\\#CIF_%d.%d\n",
+                        $dataset->{cifversion}{major},
+                        $dataset->{cifversion}{minor} );
+            }
             print $cif_comment_header;
         }
 

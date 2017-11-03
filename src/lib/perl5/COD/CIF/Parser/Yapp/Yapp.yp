@@ -14,8 +14,9 @@
 # copy directly to PERL module:
 %{
 use warnings;
-use COD::ShowStruct qw( showRef );
+use Encode qw(decode);
 use FileHandle;
+use COD::ShowStruct qw( showRef );
 use COD::Precision qw( unpack_precision );
 use COD::UserMessage qw( sprint_message );
 
@@ -374,7 +375,7 @@ cif_entry
     :   TAG cif_value
         {
             my $val;
-            if(defined $_[2]->{precision})
+            if(exists $_[2]->{precision})
             {
                 $val = { name => $_[1],
                          kind => 'TAG',
@@ -479,7 +480,7 @@ loop
 
             foreach my $tag (@{$tags}) {
                 if ( !defined $has_precisions{$tag} ) {
-                    $val->{precisions}{$tag} = undef;
+                    delete $val->{precisions}{$tag};
                 }
             }
 
@@ -666,7 +667,8 @@ sub _Error
                                   "ERROR", $errmsg, undef,
                                   $line, $pos, $line_content );
 
-    push( @{$_[0]->YYData->{ERROR_MESSAGES}}, $message );
+    push @{$_[0]->YYData->{ERROR_MESSAGES}},
+         decode( 'utf8', $message );
 }
 
 sub _Warning
@@ -697,7 +699,8 @@ sub _Warning
         }
 
         delete $_[0]->YYData->{ERRMSG};
-        push  ( @{$_[0]->YYData->{WARNING_MESSAGES}}, $message );
+        push @{$_[0]->YYData->{WARNING_MESSAGES}},
+             decode( 'utf8', $message );
     }
 }
 
@@ -709,7 +712,12 @@ sub _Lexer
     if( defined $parser->YYData->{INPUT} &&
         $parser->YYData->{INPUT} =~ s/^(\s*#.*)$//s )
     {
-        advance_token($parser, length($1), 1);
+        my $comment = $1;
+        if( $comment =~ /[\x{0}-\x{8}\x{b}-\x{c}\x{e}-\x{1f}\x{7f}-\x{ff}]/g ) {
+            $parser->YYData->{ERRMSG} = 'unallowed symbol in CIF comment';
+            $parser->_Warning();
+        }
+        advance_token($parser, length($comment), 1);
     }
 
     if( !defined $parser->YYData->{INPUT} ||
@@ -725,6 +733,16 @@ sub _Lexer
                 &{$parser->{reporter}}( $parser->{USER}{FILENAME},
                                         $parser->YYData->{VARS}{lines},
                                         $parser->{USER}{CURRENT_DATABLOCK} );
+            }
+
+            if( $parser->YYData->{VARS}{lines} == 1 &&
+                defined $parser->YYData->{INPUT} &&
+                $parser->YYData->{INPUT} =~ /^#\\#CIF_2.0[ \t]*(\r\n?|\n)$/ ) {
+                $parser->YYData->{ERRMSG} =
+                    'file is recognised as CIF v2.0 which is currently ' .
+                    'not supported by COD::CIF::Parser::Yapp -- treating ' .
+                    'as CIF v1.1 instead';
+                $parser->_Warning();
             }
         } until ( !defined $parser->YYData->{INPUT} ||
         $parser->YYData->{INPUT} !~ m/^(\s*(#.*)?)$/s );
@@ -1170,6 +1188,10 @@ sub Run
     }
     unshift @{$self->YYData->{ERROR_MESSAGES}}, 
             @{$self->YYData->{WARNING_MESSAGES}};
+
+    for my $datablock (@{$self->{USER}->{CIFfile}}) {
+        $datablock->{cifversion} = { minor => 1, major => 1 };
+    }
 
     return $self->{USER}->{CIFfile};
 }

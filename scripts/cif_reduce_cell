@@ -9,7 +9,10 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #$URL$
 #------------------------------------------------------------------------------
 #*
-#  Performs reductions of the unit cell using different algorithms.
+#* Performs reductions of the unit cell using different algorithms.
+#*
+#* USAGE:
+#*    $0 --options input1.cif input*.cif
 #**
 
 use strict;
@@ -27,6 +30,7 @@ use COD::SUsage qw( usage options );
 use COD::ErrorHandler qw( process_warnings
                           process_errors
                           process_parser_messages );
+use COD::ToolsVersion;
 
 my $die_on_error_level = {
     ERROR   => 1,
@@ -47,31 +51,31 @@ my $cell_fformat = "%.12g";
 
 my $Pi = 4 * atan2(1,1);
 
-#* USAGE:
-#*     $0 --options input1.cif input*.cif
-#*
 #* OPTIONS:
-#*     --use-perl-parser
-#*        Use Perl parser for CIF parsing.
+#*   --use-perl-parser
+#*                     Use Perl parser for CIF parsing.
+#*   --use-c-parser
+#*                     Use Perl & C parser for CIF parsing (default).
 #*
-#*     --use-c-parser
-#*        Use Perl & C parser for CIF parsing (default).
+#*   -F, --float-format "%15.12f"
+#*                     Specify format to print out floating point numbers.
 #*
-#*     -F, --float-format "%15.12f"
-#*        Specify format to print out floating point numbers.
+#*   -C, --cell-format "%15.12f"
+#*                     Specify format to print out floating point numbers for
+#*                     atomic coordinates.
 #*
-#*     -C, --cell-format "%15.12f"
-#*        Specify format to print out floating point numbers for atomic
-#*        coordinates.
+#*   -e, --epsilon 1E-6
+#*                     Tolerance to compare cell parameter equality in cell
+#*                     reductions.
 #*
-#*     -e, --epsilon 1E-6
-#*        Tollerance to compare cell parameter equality in cell reductions.
+#*   --debug, --no-debug
+#*                     Turn on/off the debug prints of reduction algorithm.
+#*                     Default off.
 #*
-#*     --debug, --no-debug
-#*        Turn on/off the debug prints of reduction algorithm. Default off.
-#*
-#*     --help, --usage
-#*        Print short usage message (this message) and exit.
+#*   --help, --usage
+#*                     Output a short usage message (this message) and exit.
+#*   --version
+#*                     Output version information and exit.
 #**
 @ARGV = getOptions(
     "--debug"    => sub{ $debug = 1 },
@@ -85,10 +89,16 @@ my $Pi = 4 * atan2(1,1);
     "--use-perl-parser" => sub { $use_parser = "perl" },
     "--use-c-parser"    => sub { $use_parser = "c" },
     "--options"         => sub { options; exit },
-    "--help,--usage"    => sub { usage; exit }
+    "--help,--usage"    => sub { usage; exit },
+    '--version'         => sub { print 'cod-tools version ',
+                                 $COD::ToolsVersion::Version, "\n";
+                                 exit }
 );
 
 @ARGV = ( "-" ) unless @ARGV;
+
+binmode STDOUT, ':encoding(UTF-8)';
+binmode STDERR, ':encoding(UTF-8)';
 
 for my $filename (@ARGV) {
 
@@ -101,14 +111,16 @@ for my $filename (@ARGV) {
 
     for my $datablock (@$data) {
         my $values = $datablock->{values};
-        my $dataname = 'data_' . $datablock->{name} if defined $datablock->{name};
+        my $dataname = 'data_' . $datablock->{'name'};
 
-        local $SIG{__WARN__} = sub { process_warnings( {
-                                       'message'       => @_,
-                                       'program'       => $0,
-                                       'filename'      => $filename,
-                                       'add_pos'       => $dataname
-                                     }, $die_on_error_level ) };
+        local $SIG{__WARN__} = sub {
+            process_warnings( {
+                'message'  => @_,
+                'program'  => $0,
+                'filename' => $filename,
+                'add_pos'  => $dataname
+            }, $die_on_error_level )
+        };
 
         eval {
             my @cell = get_cell( $values );

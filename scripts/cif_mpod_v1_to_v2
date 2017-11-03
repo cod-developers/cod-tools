@@ -9,8 +9,11 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #$URL$
 #------------------------------------------------------------------------------
 #*
-#  Convert MPOD structures from MPOD dictionary V1 to MPOD dict. V2 based
-#  data names.
+#* Convert MPOD structures from MPOD dictionary V1 to MPOD dict. V2 based
+#* data names.
+#*
+#* USAGE:
+#*    $0 --options input1.cif input*.cif
 #**
 
 use strict;
@@ -23,6 +26,7 @@ use COD::SUsage qw( usage options );
 use COD::ErrorHandler qw( process_warnings
                           process_parser_messages
                           report_message );
+use COD::ToolsVersion;
 
 my $die_on_error_level = {
     ERROR   => 1,
@@ -32,20 +36,25 @@ my $die_on_error_level = {
 
 my $use_parser = "c";
 
-#* USAGE:
-#*     $0 --options input1.cif input*.cif
-#*
 #* OPTIONS:
-#*    --use-perl-parser  Use development CIF parser written in Perl.
-#*    --use-c-parser     Use faster C/Yacc CIF parser (default).
+#*   --use-perl-parser
+#*                     Use development CIF parser written in Perl.
+#*   --use-c-parser
+#*                     Use faster C/Yacc CIF parser (default).
 #*
-#*    --help, --usage    Print a short usage message (this message) and exit.
+#*   --help, --usage
+#*                     Output a short usage message (this message) and exit.
+#*   --version
+#*                     Output version information and exit.
 #**
 @ARGV = getOptions(
     "--use-perl-parser"  => sub { $use_parser = "perl" },
     "--use-c-parser"     => sub { $use_parser = "c" },
     "--options"          => sub { options; exit },
-    "--help,--usage"     => sub { usage; exit }
+    "--help,--usage"     => sub { usage; exit },
+    '--version'          => sub { print 'cod-tools version ',
+                                  $COD::ToolsVersion::Version, "\n";
+                                  exit }
 );
 
 my @scalar_property_tags = qw(
@@ -129,13 +138,16 @@ my @data_tags = qw(
 
 @ARGV = ( "-" ) unless @ARGV;
 
+binmode STDOUT, ':encoding(UTF-8)';
+binmode STDERR, ':encoding(UTF-8)';
+
 for my $filename (@ARGV) {
 
     my $options = { 'parser' => $use_parser, 'no_print' => 1 };
     my ( $data, $err_count, $messages ) = parse_cif( $filename, $options );
     process_parser_messages( $messages, $die_on_error_level );
 
-    if( !@$data || !defined $data->[0] || !defined $data->[0]{name} ) {
+    if( !@{$data} ) {
         report_message( {
             'program'   => $0,
             'filename'  => $filename,
@@ -148,14 +160,15 @@ for my $filename (@ARGV) {
     for my $datablock (@$data) {
         my $values = $datablock->{values};
         my $tags = $datablock->{tags};
-        my $dataname = 'data_' . $datablock->{name} if defined $datablock->{name};
 
-        local $SIG{__WARN__} = sub { process_warnings( {
-                                       'message'       => @_,
-                                       'program'       => $0,
-                                       'filename'      => $filename,
-                                       'add_pos'       => $dataname
-                                     }, $die_on_error_level ) };
+        local $SIG{__WARN__} = sub {
+            process_warnings( {
+                'message'  => @_,
+                'program'  => $0,
+                'filename' => $filename,
+                'add_pos'  => 'data_' . $datablock->{'name'}
+            }, $die_on_error_level )
+        };
 
         my @conditions = ();
         for my $condition (@condition_tags) {

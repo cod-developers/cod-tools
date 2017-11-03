@@ -6,13 +6,13 @@
 #$URL$
 #------------------------------------------------------------------------------
 #*
-# A script to convert CIFs with multiple molecules (similar to those
-# obtained from 'cif_molecule') to an SDF file with a molecule
-# description. Intended to be suitable for upload to PubChem.
-#
-# USAGE: $0 --options < file1.cif
-# USAGE: $0 --options file1.cif
-# USAGE: $0 --options file1.cif file2*.cif
+#* A script to convert CIFs with multiple molecules (similar to those
+#* obtained from 'cif_molecule') to an SDF file with a molecule
+#* description. Intended to be suitable for upload to PubChem.
+#*
+#* USAGE: $0 --options < file1.cif
+#* USAGE: $0 --options file1.cif
+#* USAGE: $0 --options file1.cif file2*.cif
 #**
 
 TMP_DIR="${TMPDIR}"
@@ -32,14 +32,16 @@ setvar BASENAME = "`basename $0`"
 setvar COD_CIF = ""
 
 #* OPTIONS:
-#*  -C, --cod-cif 1000000.cif
-#*      Provide the original COD CIF to extract structure metadata.
+#*   -C, --cod-cif 1000000.cif
+#*                     Provide the original COD CIF to extract structure metadata.
 #*
-#*  --tmp-dir /tmp
-#*      Use the specified trmporary directory (default is /tmp).
+#*   --tmp-dir /tmp
+#*                     Use the specified temporary directory (default is /tmp).
 #*
-#*  --help, --usage
-#*      Print a short help message (this message) and exit.
+#*   --help, --usage
+#*                     Output a short help message (this message) and exit.
+#*   --version
+#*                     Output version information and exit.
 #**
 while [ $# -gt 0 ]
 do
@@ -69,6 +71,10 @@ do
                   gsub("\\$0","'$0'"); \
                   print $0
               }' $0
+          exit
+          ;;
+      --version)
+          $(dirname $0)/cod-tools-version
           exit
           ;;
       -*) echo "`basename $0`:: ERROR, unknown option '$1'." >&2 ; exit 1 ;;

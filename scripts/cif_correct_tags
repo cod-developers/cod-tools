@@ -9,10 +9,13 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #$URL$
 #------------------------------------------------------------------------------
 #*
-#*  Corrects misspelt tags in a CIF file and outputs made changes into the
-#*  standard I/O streams. By default, only tags from CIF Core and CIF COD
-#*  dictionaries with extra '^_+' prefixes are corrected. Additionally, a
-#*  replacement list file can be provided for the correction of misspelt tags.
+#* Corrects misspelt tags in a CIF file and outputs made changes into the
+#* standard I/O streams. By default, only tags from CIF Core and CIF COD
+#* dictionaries with extra '^_+' prefixes are corrected. Additionally, a
+#* replacement list file can be provided for the correction of misspelt tags.
+#*
+#* USAGE:
+#*    $0 --options input.cif input*.cif
 #**
 
 use strict;
@@ -29,6 +32,7 @@ use COD::SUsage qw( usage options );
 use COD::ErrorHandler qw( process_warnings
                           process_errors
                           process_parser_messages );
+use COD::ToolsVersion;
 
 my $keep_tag_order = 0;
 my $Id = '$Id$';
@@ -37,38 +41,37 @@ my $use_parser = 'c';
 my $input_format = 'cif';
 my $output_format = 'cif';
 
-#* USAGE:
-#*     $0 --options input.cif input*.cif
-#*
 #* OPTIONS:
 #*   --keep-tag-order
-#*                      Keep the original tag order in CIF file (default).
+#*                     Keep the original tag order in CIF file (default).
 #*   --sort-tags
-#*                      Reorder tags in CIF file according to COD.
+#*                     Reorder tags in CIF file according to COD.
 #*   -r, --replacement-list 'replacement-file.lst'
-#*                      Name of the multi-line replacement list file with 
-#*                      entries of form '_incorrect_tag _correct_tag' to be 
-#*                      used in the correction of misspelt tags.
+#*                     Name of the multi-line replacement list file with 
+#*                     entries of form '_incorrect_tag _correct_tag' to be 
+#*                     used in the correction of misspelt tags.
 #*   --use-perl-parser
-#*                      Use the Perl-only CIF parser.
+#*                     Use the Perl-only CIF parser.
 #*   --use-c-parser
-#*                      Use the speed-optimised C/Perl parser. Default.
+#*                     Use the speed-optimised C/Perl parser. Default.
 #*
 #*   --cif-input
-#*                      Use CIF format for input (default).
+#*                     Use CIF format for input (default).
 #*   --json-input
-#*                      Use JSON format for input.
+#*                     Use JSON format for input.
 #*   --cif-output
-#*                      Use CIF format for output (default).
+#*                     Use CIF format for output (default).
 #*   --json-output  
-#*                      Use JSON format for output.
+#*                     Use JSON format for output.
 #*   --cif
-#*                      Use CIF format for both input and output (default).
+#*                     Use CIF format for both input and output (default).
 #*   --json
-#*                      Use JSON format for both input and output.
+#*                     Use JSON format for both input and output.
 #*
 #*   --help, --usage
-#*                      Print a short usage message (this message) and exit.
+#*                     Output a short usage message (this message) and exit.
+#*   --version
+#*                     Output version information and exit.
 #**
 @ARGV = getOptions(
     '--keep-tag-order'  => sub { $keep_tag_order = 1; },
@@ -87,7 +90,10 @@ my $output_format = 'cif';
     '--json' => sub { $input_format = $output_format = 'json' },
     
     '--options'         => sub { options; exit },
-    '--help,--usage'    => sub { usage; exit }
+    '--help,--usage'    => sub { usage; exit },
+    '--version'         => sub { print 'cod-tools version ',
+                                 $COD::ToolsVersion::Version, "\n";
+                                 exit }
 );
 
 my $die_on_error_level = {
@@ -99,6 +105,9 @@ my $die_on_error_level = {
 if( $input_format eq 'json' ) {
     $use_parser = 'json';
 }
+
+binmode STDOUT, ':encoding(UTF-8)';
+binmode STDERR, ':encoding(UTF-8)';
 
 sub insert_report_to_comments
 {
@@ -173,14 +182,15 @@ for my $filename (@ARGV) {
         my $tags = $dataset->{tags};
         my $values = $dataset->{values};
         my $loops = $dataset->{inloop};
-        my $dataname = 'data_' . $dataset->{name} if defined $dataset->{name};
 
-        local $SIG{__WARN__} = sub { process_warnings( {
-                                       'message'       => @_,
-                                       'program'       => $0,
-                                       'filename'      => $filename,
-                                       'add_pos'       => $dataname
-                                     }, $die_on_error_level ) };
+        local $SIG{__WARN__} = sub {
+            process_warnings( {
+                'message'       => @_,
+                'program'       => $0,
+                'filename'      => $filename,
+                'add_pos'       => 'data_' . $dataset->{'name'}
+            }, $die_on_error_level )
+        };
 
         for my $tag (@$tags) {
             if( exists $tag_spelling{$tag} ) {
@@ -246,25 +256,29 @@ for my $filename (@ARGV) {
         }
         insert_report_to_comments ($dataset,\@insert_reports);
     }
-    
-    if( $output_format ne 'cif' && $output_format ne 'json' ) {
-        error( $0, undef, undef,
-               "unknown output format: $output_format", undef );
-        die;
-    }
 
-    for my $dataset (@$data) {
-        if( $output_format eq 'cif' ) {
-            print_cif( $dataset, {
-                exclude_misspelled_tags => 0,
-                preserve_loop_order => 1,
-                fold_long_fields => 0,
-                dictionary_tags => \%dictionary_tags,
-                dictionary_tag_list => \@dictionary_tags,
-                keep_tag_order => $keep_tag_order,
-            } );
-        } elsif( $output_format eq 'json' ) {
-            print cif2json( $dataset );
+    eval {
+        for my $dataset (@$data) {
+            if( $output_format eq 'cif' ) {
+                print_cif( $dataset, {
+                    exclude_misspelled_tags => 0,
+                    preserve_loop_order => 1,
+                    fold_long_fields => 0,
+                    dictionary_tags => \%dictionary_tags,
+                    dictionary_tag_list => \@dictionary_tags,
+                    keep_tag_order => $keep_tag_order,
+                } );
+            } elsif( $output_format eq 'json' ) {
+                print cif2json( $dataset );
+            } else {
+                die "ERROR, unknown output format '$output_format'\n";
+            }
         }
-    }
+    };
+    if ($@) {
+        process_errors( {
+          'message'       => $@,
+          'program'       => $0,
+        }, $die_on_error_level->{'ERROR'} )
+    };
 }

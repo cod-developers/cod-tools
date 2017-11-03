@@ -9,9 +9,11 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #$URL$
 #------------------------------------------------------------------------------
 #*
-#  Expland atoms in CIF to the P1 spacegroup, preserving molecules
-#  (i.e. outputing atoms that are bonded at bond distances from each
-#  other).
+#* Expand atoms in CIF to the P1 space group, preserving molecules
+#* (i.e. outputting atoms that are bonded at bond distances from each other).
+#*
+#* USAGE:
+#*    $0 --options input1.cif input*.cif
 #**
 
 use strict;
@@ -22,28 +24,38 @@ use COD::AtomBricks qw( build_bricks get_atom_index get_search_span );
 use COD::AtomNeighbours qw( get_max_covalent_radius );
 use COD::AtomProperties;
 use COD::CIF::Parser qw( parse_cif );
-use COD::Formulae::Print qw( sprint_formula );
-use COD::Spacegroups::Symop::Algebra qw( symop_is_unity symop_vector_mul );
-use COD::Spacegroups::Symop::Parse qw( symop_from_string
+use COD::Spacegroups::Symop::Algebra qw( symop_is_unity
+                                         symop_invert
+                                         symop_mul
+                                         symop_vector_mul );
+use COD::Spacegroups::Symop::Parse qw( modulo_1
                                        string_from_symop
-                                       modulo_1 );
+                                       symop_from_string
+                                       symop_string_canonical_form );
 use COD::Algebra::Vector qw( distance );
 use COD::CIF::Data qw( get_cell get_symmetry_operators );
 use COD::CIF::Data::AtomList qw( atom_array_from_cif
                                  atom_groups
-                                 copy_atom
                                  dump_atoms_as_cif );
 use COD::CIF::Data::SymmetryGenerator qw( apply_shifts
                                           atoms_coincide
+                                          chemical_formula_sum
+                                          symops_apply_modulo1
                                           test_bond
-                                          test_bump );
+                                          test_bump
+                                          translate_atom
+                                          translation
+                                          trim_polymer );
 use COD::CIF::Tags::CanonicalNames qw( canonicalize_all_names );
-use COD::CIF::Tags::Manage qw( set_tag );
-use COD::CIF::Tags::Print qw( print_cif print_single_tag_and_value print_value );
+use COD::CIF::Tags::Manage qw( rename_tags );
+use COD::CIF::Tags::Print qw( print_cif
+                              print_single_tag_and_value
+                              print_value );
 use COD::SOptions qw( getOptions );
 use COD::SUsage qw( usage options );
 use COD::ErrorHandler qw( process_warnings process_errors
                           process_parser_messages report_message );
+use COD::ToolsVersion;
 
 no warnings 'recursion';
 
@@ -88,11 +100,6 @@ my $bump_distance_factor = 0.75;
 my $ignore_bumps = 1; # detect and warn about close atom "bumps"
                       # but do not stop processing.
 
-# A distance between two atoms when they are considered to be
-# instances of the same atom on a special position:
-
-my $special_position_cutoff = 0.01;
-
 # A span, in +/- unit cells, in which polymeric molecules (repeating
 # units) will be constructed:
 
@@ -108,118 +115,118 @@ my $die_on_errors   = 1;
 my $die_on_warnings = 0;
 my $die_on_notes    = 0;
 
-#* USAGE:
-#*     $0 --options input1.cif input*.cif
-#*
 #* OPTIONS:
-#*     --always-continue
-#*        Continue processing and return successful return status
-#*        even if errors are diagnosed.
-#*     -c-, --always-die
-#*        Stop and return error status if errors are diagnosed.
+#*   --always-continue
+#*                     Continue processing and return successful return status
+#*                     even if errors are diagnosed.
+#*   -c-, --always-die
+#*                     Stop and return error status if errors are diagnosed.
 #*
-#*     -1, --one-datablock-output
-#*        Output all molecules and all alternative conformations to
-#*        a single output data block.
+#*   -1, --one-datablock-output
+#*                     Output all molecules and all alternative conformations
+#*                     to a single output data block.
 #*
-#*     -1-, --multiple-datablocks-output
-#*        Separate each molecule and each example of an alternative
-#*        conformation into a separate data block.
+#*   -1-, --multiple-datablocks-output
+#*                     Separate each molecule and each example of an alternative
+#*                     conformation into a separate data block.
 #*
-#*     -c, --covalent-sensitivity
-#*        Set a new covalent sensitivity value (default 0.35).
+#*   -c, --covalent-sensitivity
+#*                     Set a new covalent sensitivity value (default 0.35).
 #*
-#*    --simplify-formula
-#*        Simplify chemical formula and output not the whole
-#*        P1 cell but only a minimal stoichiometric set of
-#*        molecules. Should have the same result as
-#*        'cif_molecule --preserve-stoichiometry'.
+#*   --simplify-formula
+#*                     Simplify chemical formula and output not the whole
+#*                     P1 cell but only a minimal stoichiometric set of
+#*                     molecules. Should have the same result as
+#*                     'cif_molecule --preserve-stoichiometry'.
 #*
-#*    --dont-simplify-formula, --no-simplify-formula
-#*        Do not simplify formula, output the whole P1 cell (default).
+#*   --dont-simplify-formula, --no-simplify-formula
+#*                     Do not simplify formula, output the whole P1 cell (default).
 #*
-#*    --exclude-zero-occupancies
-#*        Do not use atoms woth 0 occupancies in calculations
-#*        (defalut).
+#*   --exclude-zero-occupancies
+#*                     Do not use atoms with 0 occupancies in calculations
+#*                     (default).
 #*
-#*    --dump-atoms
-#*        Dump atoms (including symmetry-equivalent) in CIF
-#*        format, for inspecion with some graphics program.
+#*   --dump-atoms
+#*                     Dump atoms (including symmetry-equivalent) in CIF
+#*                     format, for inspection with some graphics program.
 #*
-#*    --dont-dump-atoms, --no-dump-atoms
-#*        Do not dump atoms (default).
+#*   --dont-dump-atoms, --no-dump-atoms
+#*                     Do not dump atoms (default).
 #*
-#*    -i, --ignore-bumps
-#*        Detect and warn about close atom "bumps" but do not
-#*        stop processing.
+#*   -i, --ignore-bumps
+#*                     Detect and warn about close atom "bumps" but do not
+#*                     stop processing.
 #*
-#*    --dont-ignore-bumps, --no-ignore-bumps
-#*        Stop processing immediately if bumps are detected (default).
+#*   --dont-ignore-bumps, --no-ignore-bumps
+#*                     Stop processing immediately if bumps are detected (default).
 #*
-#*    --bump-distance-factor 0.75
-#*        A fraction of covalent bond radii sum used to determine when
-#*        atoms are too close and are considered a bump.
+#*   --bump-distance-factor 0.75
+#*                     A fraction of covalent bond radii sum used to determine
+#*                     when atoms are too close and are considered a bump.
 #*
-#*    --max-polymer-span 4
-#*        A span, in +/- unit cells, in which polymeric molecules (repeating
-#*        units) will be constructed.
+#*   --max-polymer-span 4
+#*                     A span, in +/- unit cells, in which polymeric molecules
+#*                     (repeating units) will be constructed.
 #*
-#*    --max-polymer-atoms 100
-#*        A maximum alowed count of polymer example atoms: more than this
-#*        amount of symmetry (translational) equivalen atoms, for each AU
-#*        atom, will not be written to the output file:
+#*   --max-polymer-atoms 100
+#*                     A maximum allowed count of polymer example atoms: more
+#*                     than this amount of symmetry (translational) equivalent
+#*                     atoms, for each AU atom, will not be written to the output
+#*                     file:
 #*
-#*        Using --max-polymer-span=0 --max-polymer-atoms=1 essentially
-#*        switches off the polymer detection.
+#*                     Using --max-polymer-span=0 --max-polymer-atoms=1
+#*                     essentially switches off the polymer detection.
 #*
-#*    --split-disorder-groups, --dont-merge-disorder-groups
-#*        Put examples of disorder group conformations into separate data
-#*        blocks (default).
+#*   --split-disorder-groups, --dont-merge-disorder-groups
+#*                     Put examples of disorder group conformations into
+#*                     separate data blocks (default).
 #*
-#*    --merge-disorder-groups, --dont-split-disorder-groups
-#*        Put all disorder groups into one data block.
+#*   --merge-disorder-groups, --dont-split-disorder-groups
+#*                     Put all disorder groups into one data block.
 #*
-#*    --use-perl-parser
-#*        Use development CIF parser written in Perl.
-#*    --use-c-parser
-#*        Use faster C/Yacc CIF parser (default).
+#*   --use-perl-parser
+#*                     Use development CIF parser written in Perl.
+#*   --use-c-parser
+#*                     Use faster C/Yacc CIF parser (default).
 #*
-#*    --debug
-#*        Print some human-readable debug output.
-#*    --no-debug
-#*        Suppress any debug output (default).
+#*   --debug
+#*                     Print some human-readable debug output.
+#*   --no-debug
+#*                     Suppress any debug output (default).
 #*
-#*    --format "%8.6f"
-#*        Use the specified format for output coordinate printout.
+#*   --format "%8.6f"
+#*                     Use the specified format for output coordinate printout.
 #*
-#*    --audit
-#*        Print audit information to the generated CIF file (default).
-#*    --no-audit
-#*        Do not print audit information to the generated CIF file.
+#*   --audit
+#*                     Print audit information to the generated CIF file (default).
+#*   --no-audit
+#*                     Do not print audit information to the generated CIF file.
 #*
-#*    --continue-on-errors
-#*        Do not terminate script if errors such as unrecognized
-#*        atoms are encountered; the output may be incorrect and
-#*        missing some atoms if this option is used!
-#*    --die-on-errors, --dont-continue-on-errors,
-#*    --no-continue-on-errors
-#*        Terminate script immediately if errors are raised (default).
-#*    --continue-on-warnings
-#*        Do not terminate script if warnings are raised (default).
-#*    --die-on-warnings
-#*        Terminate script immediately if warnings are raised.
-#*    --continue-on-notes
-#*        Do not terminate script if notes are raised (default).
-#*    --die-on-notes
-#*        Terminate script immediately if notes are raised.
+#*   --continue-on-errors
+#*                     Do not terminate script if errors such as unrecognised
+#*                     atoms are encountered; the output may be incorrect and
+#*                     missing some atoms if this option is used!
+#*   --die-on-errors, --dont-continue-on-errors,
+#*   --no-continue-on-errors
+#*                     Terminate script immediately if errors are raised (default).
+#*   --continue-on-warnings
+#*                     Do not terminate script if warnings are raised (default).
+#*   --die-on-warnings
+#*                     Terminate script immediately if warnings are raised.
+#*   --continue-on-notes
+#*                     Do not terminate script if notes are raised (default).
+#*   --die-on-notes
+#*                     Terminate script immediately if notes are raised.
 #*
-#*    --verbose
-#*        Print warning messages in long format.
-#*    --no-verbose
-#*        Print warning messages in concise format (default).
+#*   --verbose
+#*                     Print warning messages in long format.
+#*   --no-verbose
+#*                     Print warning messages in concise format (default).
 #*
-#*    --help, --usage
-#*        Print a short usage message (this message) and exit.
+#*   --help, --usage
+#*                     Output a short usage message (this message) and exit.
+#*   --version
+#*                     Output version information and exit.
 #**
 @ARGV = getOptions(
     "-1,--one-datablock-output" => sub { $use_one_output_datablock = 1; },
@@ -289,7 +296,10 @@ my $die_on_notes    = 0;
     "--verbose"          => sub { $verbose = 1; },
     "--no-verbose"       => sub { $verbose = 0; },
     "--options"          => sub { options; exit },
-    "--help,--usage"     => sub { usage; exit }
+    "--help,--usage"     => sub { usage; exit },
+    '--version'          => sub { print 'cod-tools version ',
+                                  $COD::ToolsVersion::Version, "\n";
+                                  exit }
 );
 
 # The "atom" hash structure used by this script:
@@ -333,6 +343,9 @@ my $die_on_error_level = {
 
 @ARGV = ( "-" ) unless @ARGV;
 
+binmode STDOUT, ':encoding(UTF-8)';
+binmode STDERR, ':encoding(UTF-8)';
+
 my $cif_atom_list_options = {
     allow_unknown_chemical_types => 1,
     continue_on_errors => $continue_on_errors,
@@ -362,25 +375,41 @@ for my $filename (@ARGV) {
 
     for my $datablock (@$data) {
 
-        my $dataname = 'data_' . $datablock->{name} if defined $datablock->{name};
+        my $dataname = 'data_' . $datablock->{name};
         my $dataset_dataname = $datablock->{name};
 
-        local $SIG{__WARN__} = sub { process_warnings( {
-                                       'message'  => @_,
-                                       'program'  => $0,
-                                       'filename' => $filename,
-                                       'add_pos'  => $dataname
-                                     }, {
-                                       'WARNING' => $die_on_warnings,
-                                       'NOTE'    => $die_on_notes
-                                     } ) };
+        local $SIG{__WARN__} = sub {
+            process_warnings( {
+                'message'  => @_,
+                'program'  => $0,
+                'filename' => $filename,
+                'add_pos'  => $dataname
+            }, {
+                'WARNING' => $die_on_warnings,
+                'NOTE'    => $die_on_notes
+            } )
+        };
 
         eval {
-            # Build an atom array from the CIF data structure:
-            my $atoms = atom_array_from_cif( $datablock, $cif_atom_list_options );
-
             my $symop_strings = get_symmetry_operators( $datablock );
             my @symops = map { symop_from_string($_) } @{$symop_strings};
+
+            # Parse symmetry operators:
+            my @sym_operators = map { symop_from_string($_) } @{$symop_strings};
+
+            # Create a list of symmetry operators:
+            my $symop_list = { symops => [ map { symop_from_string($_) } @$symop_strings ],
+                               symop_ids => {} };
+            for (my $i = 0; $i < @{$symop_strings}; $i++)
+            {
+                $symop_list->{symop_ids}
+                             {symop_string_canonical_form($symop_strings->[$i])} = $i;
+            }
+
+            $cif_atom_list_options->{symop_list} = $symop_list;
+
+            # Build an atom array from the CIF data structure:
+            my $atoms = atom_array_from_cif( $datablock, $cif_atom_list_options );
 
             my $unit_cell_atoms =
                 symops_apply_to_atoms_modulo1( \@symops, $atoms );
@@ -507,246 +536,6 @@ for my $filename (@ARGV) {
 exit 0;
 
 #===============================================================#
-# Generate symmetry equivalents of an atom, evaluate atom's
-# multiplicity and multiplicity ratio
-
-sub symops_apply_modulo1
-{
-    my ( $atom, $sym_operators ) = @_;
-
-    my @sym_atoms;
-    my @symops_mapping_to_self;
-    my $gp_multiplicity = int(@$sym_operators);
-
-    my $multiplicity_ratio = 1;
-
-    do {
-        use COD::Serialise qw( serialiseRef );
-        serialiseRef( $sym_operators );
-    } if 0;
-
-    my $n = 1;
-
-    for my $symop ( @{$sym_operators} ) {
-        my $new_atom = symop_apply_modulo1( $atom, $symop, $n++ );
-        if( !symop_is_unity( $symop ) &&
-            atoms_coincide( $atom, $new_atom, $atom->{f2o} )) {
-            push( @symops_mapping_to_self, $symop );
-            $multiplicity_ratio ++;
-        } else {
-            push( @sym_atoms, $new_atom );
-        }
-    }
-
-    ## print ">>> $gp_multiplicity / $multiplicity_ratio\n";
-
-    if( $gp_multiplicity % $multiplicity_ratio ) {
-        die( "Multiplicity ratio $multiplicity_ratio does not divide " .
-             "multiplicity of a general position $gp_multiplicity" .
-             "-- this can not be." );
-    }
-
-    my $multiplicity = $gp_multiplicity / $multiplicity_ratio;
-
-    for my $atom (@sym_atoms) {
-        $atom->{multiplicity} = $multiplicity;
-        $atom->{multiplicity_ratio} = $multiplicity_ratio;
-        $atom->{site_symops} = \@symops_mapping_to_self;
-    }
-
-    return ( \@sym_atoms, $multiplicity, $multiplicity_ratio );
-}
-
-#==============================================================#
-# Finds translation center of mass and center of mass modulo 1 information.
-
-# Accepts two arrays of coordinates_fract.
-
-# Returns an array of differences between coordinates_fract.
-
-sub translation
-{
-    my ($coords, $coords_modulo_1) = @_;
-
-    my @translation;
-    for(my $i = 0; $i < @{$coords}; $i++) {
-        push(@translation, ${$coords}[$i] - ${$coords_modulo_1}[$i]);
-    }
-
-    return \@translation;
-}
-
-#==============================================================#
-# Translates an atom according a given translation.
-#
-# Accepts an atom description and a translation.
-#
-# Returns a translated atom.
-
-sub translate_atom
-{
-    my($atom, $translation) = @_;
-
-    my $new_atom = copy_atom( $atom );
-    my @new_atom_xyz;
-
-    push( @new_atom_xyz, $atom->{'coordinates_fract'}[0] +
-          ${$translation}[0] );
-    push( @new_atom_xyz, $atom->{'coordinates_fract'}[1] +
-          ${$translation}[1] );
-    push( @new_atom_xyz, $atom->{'coordinates_fract'}[2] +
-          ${$translation}[2] );
-
-    $new_atom->{'coordinates_fract'} = \@new_atom_xyz;
-    $new_atom->{coordinates_ortho} =
-        symop_vector_mul( $atom->{f2o}, \@new_atom_xyz );
-
-    $new_atom->{translation} = [
-        $new_atom_xyz[0] - modulo_1($new_atom_xyz[0]),
-        $new_atom_xyz[1] - modulo_1($new_atom_xyz[1]),
-        $new_atom_xyz[2] - modulo_1($new_atom_xyz[2]),
-    ];
-
-    $new_atom->{translation_id} =
-        ($new_atom->{translation}[0]+5).
-        ($new_atom->{translation}[1]+5).
-        ($new_atom->{translation}[2]+5);
-
-    if( defined $new_atom->{unity_matrix_applied} &&
-                $new_atom->{unity_matrix_applied} &&
-                $new_atom->{translation}[0] == 0 &&
-                $new_atom->{translation}[1] == 0 &&
-                $new_atom->{translation}[2] == 0 ) {
-        $new_atom->{name} = $new_atom->{site_label};
-    } else {
-        $new_atom->{name} =
-            $new_atom->{site_label} . "_" .
-            $new_atom->{symop_id} . "_" .
-            $new_atom->{translation_id};
-    }
-
-    return $new_atom;
-}
-
-#===============================================================#
-# Finds a molecule chemical formula sum.
-
-# Accepts an array of atoms:
-# $atom =      {name=>"C1_2",
-#               chemical_type=>"C",
-#               coordinates_fract=>[1.0, 1.0, 1.0],
-#               unity_matrix_applied=>1}
-
-# Returns a string with chemical formula sum.
-
-sub chemical_formula_sum
-{
-    my ($atoms, $Z) = @_;
-
-    $Z = 1 unless defined $Z;
-
-    my %chemical_types;
-
-    foreach my $atom (@{$atoms}) {
-        my $chemical_type = $atom->{chemical_type};
-        if(defined $chemical_types{$chemical_type}) {
-            $chemical_types{$chemical_type} = ++$chemical_types{$chemical_type};
-        } else {
-            $chemical_types{$chemical_type} = 1;
-        }
-    }
-
-    for my $chemical_type (keys %chemical_types) {
-        $chemical_types{$chemical_type} /= $Z;
-    }
-
-    my $formula_sum = sprint_formula( \%chemical_types );
-    $formula_sum =~ s/\s$//;
-
-    return $formula_sum;
-}
-
-#===============================================================#
-# Applies symmetry operator to a given atom.
-
-# The symop_apply_modulo1 subroutine accepts a reference to a hash
-# $atom_info -- as above, and a refernce to an array - symmetry
-# operator:
-
-# my $symop = [
-#     [ r11 r12 r13 t1 ]
-#     [ r21 r22 r23 t2 ]
-#     [ r31 r32 r33 t3 ]
-#     [   0   0   0  1 ]
-# ],
-
-# Returns an above-mentioned hash.
-
-sub symop_apply_modulo1
-{
-    my($atom, $symop, $symop_id) = @_;
-
-    my $new_atom = copy_atom( $atom );
-
-    my $atom_xyz = $atom->{coordinates_fract};
-
-    my @new_atom_xyz =
-        map { modulo_1($_) }
-            @{ symop_vector_mul( $symop, $atom_xyz ) };
-
-    $new_atom->{coordinates_fract} = \@new_atom_xyz;
-    $new_atom->{coordinates_ortho} =
-        symop_vector_mul( $atom->{f2o}, \@new_atom_xyz );
-
-    return symop_register_applied_symop( $new_atom, $symop, $symop_id );
-}
-
-sub symop_register_applied_symop
-{
-    my($new_atom_info, $symop, $symop_id) = @_;
-
-    $new_atom_info->{symop} = $symop;
-    $new_atom_info->{symop_id} = $symop_id;
-    $new_atom_info->{unity_matrix_applied} = symop_is_unity($symop);
-
-    my $atom_xyz = $new_atom_info->{coordinates_fract};
-    my @translation = (
-        int($atom_xyz->[0] - modulo_1($atom_xyz->[0])),
-        int($atom_xyz->[1] - modulo_1($atom_xyz->[1])),
-        int($atom_xyz->[2] - modulo_1($atom_xyz->[2])),
-    );
-    $new_atom_info->{translation} =
-        \@translation;
-    $new_atom_info->{translation_id} =
-        (5+$translation[0]) . (5+$translation[1]) . (5+$translation[2]);
-
-    if( $new_atom_info->{unity_matrix_applied} &&
-        $new_atom_info->{translation_id} eq "555" ) {
-        $new_atom_info->{name} = $new_atom_info->{site_label};
-    } else {
-        $new_atom_info->{name} =
-            $new_atom_info->{site_label} . "_" .
-            $new_atom_info->{symop_id} . "_" .
-            $new_atom_info->{translation_id};
-    }
-
-    if( $new_atom_info->{"unity_matrix_applied"} ) {
-        $new_atom_info->{"cell_label"} = $new_atom_info->{"site_label"};
-    } else {
-        $new_atom_info->{"cell_label"} =
-            $new_atom_info->{"site_label"} . "_" .
-            $new_atom_info->{"symop_id"};
-    }
-
-    do {
-        use COD::Serialise qw( serialiseRef );
-        serialiseRef( { atom => $new_atom_info, symop => $symop } );
-    } if 0;
-
-    return $new_atom_info;
-}
-
-#===============================================================#
 # Generate symmetry equivalents of an atom, exclude duplicates
 # on special positions
 
@@ -755,7 +544,8 @@ sub symops_apply_to_atom_modulo1($$)
     my ( $atom, $sym_operators ) = @_;
 
     my( $sym_atoms, $multiplicity, $multiplicity_ratio ) =
-        symops_apply_modulo1( $atom, $sym_operators, $atom->{f2o} );
+        symops_apply_modulo1( $atom, $sym_operators,
+                              { append_symop_to_label => 1 } );
 
     if( $multiplicity_ratio == 1 ) {
         return @$sym_atoms;
@@ -1707,7 +1497,8 @@ sub print_molecule
             foreach my $symop ( @{$atom->{"site_symops"}} ) {
                 print_value( $atom->{name} );
                 print " ";
-                print_value( string_from_symop( $symop ) );
+                print_value( symop_string_canonical_form(
+                                string_from_symop( $symop ) ) );
                 print "\n";
             }
         }
@@ -1734,53 +1525,4 @@ sub print_molecule
     ## }
 
     return;
-}
-
-#===============================================================#
-# Renames CIF data tags so that they are not confused with the
-# original ones.
-
-# Accepts a dataset hash produced by COD::CIF::Parser, a list of tags to be
-# renamed, and a prefix to be appended
-
-# Returns a hash with renamed data tags
-
-sub rename_tags($$$)
-{
-    my ($dataset, $tags2rename, $prefix ) = @_;
-
-    my $values = $dataset->{values};
-    my %renamed_tags = ();
-
-    for my $tag (@$tags2rename) {
-        if( exists $values->{$tag} &&
-            !defined $dataset->{inloop}{$tag} ) {
-            my $new_tag = $prefix . $tag;
-            my $value = $values->{$tag}[0];
-            set_tag( $dataset, $new_tag, $value );
-            $renamed_tags{$new_tag} = $tag;
-        }
-    }
-    return wantarray ? %renamed_tags : \%renamed_tags;
-}
-
-#===============================================================#
-# Trim a polymer -- remove atoms outside of the specified polymer
-# span:
-
-sub trim_polymer
-{
-    my ($atoms, $max_polymer_span) = @_;
-
-    my @trimmed_atoms;
-
-    for my $atom (@$atoms) {
-        if( abs($atom->{translation}[0]) <= $max_polymer_span &&
-            abs($atom->{translation}[1]) <= $max_polymer_span &&
-            abs($atom->{translation}[2]) <= $max_polymer_span ) {
-            push( @trimmed_atoms, $atom );
-        }
-    }
-
-    return \@trimmed_atoms;
 }

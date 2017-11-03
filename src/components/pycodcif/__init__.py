@@ -1,1 +1,1 @@
-from .pycodcif import parse
+from .pycodcif import parse, CifParserException

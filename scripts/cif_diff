@@ -10,7 +10,10 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #$Id$
 #------------------------------------------------------------------------------
 #*
-#  Parse two CIF files and compare their content
+#* Parse two CIF files and compare their content
+#*
+#* USAGE:
+#*    $0 --options input1.cif input2.cif
 #**
 
 use strict;
@@ -22,6 +25,7 @@ use COD::SUsage qw( usage options );
 use COD::ErrorHandler qw( process_errors
                           process_parser_messages
                           report_message );
+use COD::ToolsVersion;
 
 my $use_parser = 'c';
 
@@ -51,76 +55,77 @@ my $common  = 1;
 
 my $L_option_param;
 
-#* USAGE:
-#*     $0 --options input1.cif input2.cif
-#*
 #* OPTIONS:
-#* -t, --tags
-#*     Whitespace- or comma-separated list of tags to compare. When
-#*     present, only tags enumerated with this option are compared.
+#*   -t, --tags
+#*                     Whitespace- or comma-separated list of tags to compare.
+#*                     When present, only tags enumerated with this option are
+#*                     compared.
 #*
-#* -a, --add-tag
-#*     Add a tag to the list of compared tags.
+#*   -a, --add-tag
+#*                     Add a tag to the list of compared tags.
 #*
-#* -c, --clear-tags
-#*     Clear the list of compared tags.
+#*   -c, --clear-tags
+#*                     Clear the list of compared tags.
 #*
-#* -f, --file-with-tags
-#*     Specify a file with tags to be compared.
+#*   -f, --file-with-tags
+#*                     Specify a file with tags to be compared.
 #*
-#* --compare-all-tags
-#*     Compare all tags present in the compared files. Default action.
+#*   --compare-all-tags
+#*                     Compare all tags present in the compared files (default).
 #*
-#* --no-compare, --exclude
-#*     Whitespace- or comma-separated list of tags not to compare. When
-#*     present, enumerated tags will be excluded from the comparison.
+#*   --no-compare, --exclude
+#*                     Whitespace- or comma-separated list of tags not to compare.
+#*                     When present, enumerated tags will be excluded from the
+#*                     comparison.
 #*
-#* --compare-datablock-names
-#* --dont-compare-datablock-names
-#*     Also compare the names of CIF data blocks. Default: on.
+#*   --compare-datablock-names
+#*   --dont-compare-datablock-names
+#*                     Also compare the names of CIF data blocks. Default: on.
 #*
-#* --compare-numeric _cell_length_a
-#*     Force numeric comparison for given tag.
+#*   --compare-numeric _cell_length_a
+#*                     Force numeric comparison for given tag.
 #*
-#* --compare-string _cell_length_a
-#*     Force string comparison for given tag.
+#*   --compare-string _cell_length_a
+#*                     Force string comparison for given tag.
 #*
-#* --ignore-empty-values
-#*     Ignore tags with empty values.
+#*   --ignore-empty-values
+#*                     Ignore tags with empty values.
 #*
-#* --no-ignore-empty-values
-#* --dont-ignore-empty-values
-#*     Take tags with empty values into comparison. Default.
+#*   --no-ignore-empty-values
+#*   --dont-ignore-empty-values
+#*                     Take tags with empty values into comparison (default).
 #*
-#* --no-left
-#*     Do not print tags present in the left file only. Similar to
-#*     'comm -1'.
+#*   --no-left
+#*                     Do not print tags present in the left file only.
+#*                     Similar to 'comm -1'.
 #*
-#* --no-right
-#*     Do not print tags present in the right file only. Similar to
-#*     'comm -2'.
+#*   --no-right
+#*                     Do not print tags present in the right file only.
+#*                     Similar to 'comm -2'.
 #*
-#* --no-common
-#*     Do not print tags with the same values in both files.
+#*   --no-common
+#*                     Do not print tags with the same values in both files.
 #*
-#* --folding-width 72
-#*     Specify the length of the longest unfolded line.
+#*   --folding-width 72
+#*                     Specify the length of the longest unfolded line.
 #*
-#* --fold-long-fields
-#* --dont-fold-long-fields
-#*     Fold fields, longer than folding width. Default: on.
+#*   --fold-long-fields
+#*   --dont-fold-long-fields
+#*                     Fold fields, longer than folding width. Default: on.
 #*
-#* -L, -u
-#*     Ignored options. Used to make this script usable as --diff-cmd for
-#*     'svn diff'.
+#*   -L, -u
+#*                     Ignored options. Used to make this script usable
+#*                     as --diff-cmd for 'svn diff'.
 #*
-#* --use-perl-parser
-#*     Use Perl parser to parse CIF files.
-#* --use-c-parser
-#*     Use C parser to parse CIF files (default).
+#*   --use-perl-parser
+#*                     Use Perl parser to parse CIF files.
+#*   --use-c-parser
+#*                     Use C parser to parse CIF files (default).
 #*
-#* --help, --usage
-#*     Print a short usage message (this message) and exit.
+#*   --help, --usage
+#*                     Output a short usage message (this message) and exit.
+#*   --version
+#*                     Output version information and exit.
 #**
 @ARGV = getOptions(
     "-L" => \$L_option_param, # Ignore the '-L' option and its argument
@@ -183,10 +188,17 @@ my $L_option_param;
     "--use-perl-parser" => sub { $use_parser = "perl" },
     "--use-c-parser"    => sub { $use_parser = "c" },
     "--options"         => sub { options; exit },
-    "--help,--usage"    => sub { usage; exit }
+    "--help,--usage"    => sub { usage; exit },
+    '--version'         => sub { print 'cod-tools version ',
+                                 $COD::ToolsVersion::Version, "\n";
+                                 exit }
 );
 
 push( @ARGV, "-" ) unless @ARGV > 1;
+
+binmode STDOUT, ':encoding(UTF-8)';
+binmode STDERR, ':encoding(UTF-8)';
+
 if( @ARGV != 2 ) {
     report_message( {
         'program'   => $0,

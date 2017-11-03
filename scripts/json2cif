@@ -10,7 +10,10 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #$Id$
 #------------------------------------------------------------------------------
 #*
-#  Parse JSON CIF and print out CIF.
+#* Parse JSON CIF and print out CIF.
+#*
+#* USAGE:
+#*    $0 [options] input.cif [input2.cif ...]
 #**
 
 use strict;
@@ -25,6 +28,7 @@ use COD::CIF::Tags::Print qw( print_cif );
 use COD::UserMessage qw( error );
 use COD::SOptions qw( getOptions );
 use COD::SUsage qw( usage options );
+use COD::ToolsVersion;
 
 my $exclude_misspelled_tags = 0;
 my $preserve_loop_order = 0;
@@ -34,39 +38,42 @@ my $folding_width = 76;
 
 my %options;
 @ARGV = getOptions(
-
-#** USAGE:
-#**     $0 [options] input.cif [input2.cif ...]
-#** 
-#** OPTIONS:
-#*    --exclude-misspelled-tags
-#*        Remove tags that were not present in the recognised tag list.
-#*    --dont-exclude-misspelled-tags,
-#*    --no-exclude-misspelled-tags
-#*        Disable the '--exclude-misspelled-tags' option.
+#* OPTIONS:
+#*   --exclude-misspelled-tags
+#*                     Remove tags that were not present in the recognised tag
+#*                     list.
+#*   --dont-exclude-misspelled-tags,
+#*   --no-exclude-misspelled-tags
+#*                     Disable the '--exclude-misspelled-tags' option.
 #*
-#*    --retain-tag-order
-#*        Print tags in the same order they appeared in the original file.
-#*    --dont-retain-tag-order
-#*        Disregard original tag order while printing the tags (default).
+#*   --retain-tag-order
+#*                     Print tags in the same order they appeared in the
+#*                     original file.
+#*   --dont-retain-tag-order
+#*                     Disregard original tag order while printing the tags
+#*                     (default).
 #*
-#*    --preserve-loop-order
-#*        Print loops in the same order they appeared in the original file.
-#*    --use-internal-loop-order
-#*        Disregard original loop order while printing the tags (default).
+#*   --preserve-loop-order
+#*                     Print loops in the same order they appeared in the
+#*                     original file.
+#*   --use-internal-loop-order
+#*                     Disregard original loop order while printing the tags
+#*                     (default).
 #*
-#*    --folding-width 76
-#*        Specify the length of the longest unfolded line (default 76).
+#*   --folding-width 76
+#*                     Specify the length of the longest unfolded line
+#*                     (default 76).
 #*
-#*    --fold-long-fields
-#*        Fold fields, longer than folding width.
-#*    --dont-fold-long-fields
-#*        Do not fold fields (default).
+#*   --fold-long-fields
+#*                     Fold fields, longer than folding width.
+#*   --dont-fold-long-fields
+#*                     Do not fold fields (default).
 #*
-#*    --help, --usage
-#*        Print a short usage message (this message) and exit.
+#*   --help, --usage
+#*                     Output a short usage message (this message) and exit.
+#*   --version
+#*                     Output version information and exit.
 #**
-
     '--exclude-misspelled-tags'      => sub { $exclude_misspelled_tags = 1; },
     '--dont-exclude-misspelled-tags' => sub { $exclude_misspelled_tags = 0; },
     '--no-exclude-misspelled-tags'   => sub { $exclude_misspelled_tags = 0; },
@@ -82,6 +89,9 @@ my %options;
     '--dont-fold-long-fields' => sub{ $fold_long_fields = 0 },
 
     '--help,--usage' => sub { usage; exit },
+    '--version'      => sub { print 'cod-tools version ',
+                              $COD::ToolsVersion::Version, "\n";
+                              exit }
 );
 
 my @dictionary_tags = ( @COD::CIF::Tags::DictTags::tag_list,
@@ -93,6 +103,9 @@ my @dictionary_tags = ( @COD::CIF::Tags::DictTags::tag_list,
 my %dictionary_tags = map { $_ => $_ } @dictionary_tags;
 
 @ARGV = ( '-' ) unless @ARGV;
+
+binmode STDOUT, ':encoding(UTF-8)';
+binmode STDERR, ':encoding(UTF-8)';
 
 for my $filename (@ARGV) {
 

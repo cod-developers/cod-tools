@@ -50,10 +50,13 @@ _cod_duplicate_entry
 _cod_superseeded_by
 _cod_data_source_file
 _cod_data_source_block
-_cod_published_source
+_cod_data_source_URI
+_cod_data_source_URL
+_cod_data_source_URN
 _cod_data_source_MD5_sum
 _cod_data_source_SHA1_sum
 _cod_data_source_SHA256_sum
+_cod_published_source
 _cod_est_spacegroup_name_H-M
 _cod_depositor_comments
 _cod_error_flag
@@ -67,6 +70,7 @@ _cod_original_sg_number
 _cod_original_sg_symbol_Hall
 _cod_original_sg_symbol_H-M
 _cod_original_formula_moiety
+_cod_original_formula_iupac
 _cod_original_formula_sum
 _cod_original_formula_units_Z
 _cod_original_formula_weight
@@ -76,14 +80,18 @@ _cod_suboptimal_structure
 _cod_related_optimal_struct
 _cod_related_suboptimal_struct
 _cod_related_entry
+_cod_related_entry_id
+_cod_related_entry_code
 _cod_related_entry_database
 _cod_related_entry_description
+_cod_related_entry_uri
 _cod_chemical_formula_sum_orig
 _cod_chemical_formula_moiety_orig
 _cod_citation_special_details
 _cod_text
 _cod_database_code
 _cod_database_fobs_code
+_cod_database_coordinates_code
 _cod_hold_until_date
 );
 

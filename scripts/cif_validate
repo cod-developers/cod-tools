@@ -9,16 +9,21 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #$URL$
 #------------------------------------------------------------------------------
 #*
-#  Parse CIF file(s) and CIF dictionary(ies).
-#  Check CIF file against CIF dictionaries.
+#* Parse CIF file(s) and CIF dictionary(ies).
+#* Check CIF file against CIF dictionaries.
+#*
+#* USAGE:
+#*    $0 --dictionaries 'cif_core.dic,cif_cod.dic' --options input1.cif input*.cif
 #**
 
 use strict;
 use warnings;
 use File::Basename qw( basename );
-use Scalar::Util qw( looks_like_number );
 use List::MoreUtils qw( uniq );
-use COD::CIF::Parser qw( parse_cif) ;
+use COD::CIF::Parser qw( parse_cif ) ;
+use COD::CIF::DDL::Ranges qw( parse_range
+                              range_to_string
+                              is_in_range );
 use COD::CIF::Tags::CanonicalNames qw( canonicalize_all_names );
 use COD::SOptions qw( getOptions get_value );
 use COD::SUsage qw( usage options );
@@ -26,8 +31,7 @@ use COD::UserMessage qw( note debug_note );
 use COD::ErrorHandler qw( process_warnings
                           process_parser_messages
                           report_message );
-
-our $VERSION = 0.1;
+use COD::ToolsVersion;
 
 my @dict_files;
 my $use_parser = 'c';
@@ -43,88 +47,82 @@ my $die_on_notes    = 0;
 
 sub severity_name($);
 sub get_dict($);
-sub check_against_range($$$$);
-sub check_against_range_numb($$$);
-sub check_against_range_char($$);
 sub get_list_reference_tags($$);
 sub get_replacement_tags($$);
 sub check_list_link_parent($$$);
 
-#* USAGE:
-#*     $0 --dictionaries 'cif_core.dic,cif_cod.dic' --options input1.cif input*.cif
-#*
 #* OPTIONS:
-#* -d, --dictionaries 'cif_core.dic,cif_cod.dic'
+#*   -d, --dictionaries 'cif_core.dic,cif_cod.dic'
 #*                     A list of CIF dictionary files (according to DDL2)
 #*                     to be used in CIF file validation. List elements
 #*                     are separated either by ',' or by ' '. To include
 #*                     dictionaries with filenames containing these symbols,
 #*                     the --add-dictionary option is used.
-#* -D, --add-dictionary 'cif new dictionary.dic'
+#*   -D, --add-dictionary 'cif new dictionary.dic'
 #*                     Add additional CIF dictionary to the list.
-#* --clear-dictionaries
+#*   --clear-dictionaries
 #*                     Remove all CIF dictionaries from the list.
-#* --treat-as-set _atom_site_refinement_flags
+#*   --treat-as-set _atom_site_refinement_flags
 #*                     Treat values of given data items as a set. For example,
 #*                     more than one enumeration value could be defined
 #*                     for a single element. Any number of data item tags can
 #*                     be provided in the following way:
 #*                     $0 --treat-as-set _tag_1 --treat-as-set _tag_2
 #*                     Default is the '_atom_site_refinement_flags' data item.
-#* --no-treat-as-set, dont-treat-as-set
+#*   --no-treat-as-set, dont-treat-as-set
 #*                     Do not treat values of any data items as sets.
 #*                     (see --treat-as-set).
-#*  --report-local-tags
+#*   --report-local-tags
 #*                     Validate data items having tags prefixed with
-#                      the '_[local]' prefix. The prefix was used in the COD
-#                      to denote locally used data items prior to the creation
-#                      of cif_cod.dic. The default is to ignore these data items.
-#* --no-report-local-tags, --ignore-local-tags
-#*                     Ignore data items having tags prefixed with '_[local]'.
+#*                     the '_[local]' prefix. The prefix was used in the COD
+#*                     to denote locally used data items prior to the creation
+#*                     of cif_cod.dic. The default is to ignore these data items.
+#*   --no-report-local-tags, --ignore-local-tags
+#*                     Ignore data items having tags prefixed with '_[local]'
 #*                     prefix. Default.
-#* --ignore-case
+#*   --ignore-case
 #*                     Ignore letter case while validating enumeration values.
 #*                     For example, even though '_atom_site_adp_type' is
 #*                     restricted to values ('Uani', 'Uiso', 'Uovl', ...),
 #*                     value 'UANI' would still be treated as valid.
-#* --respect-case, --case-sensitive, --dont-ignore-case
-#*                     Respect letter case while validating enumeration 
+#*   --respect-case, --case-sensitive, --dont-ignore-case
+#*                     Respect letter case while validating enumeration
 #*                     values. Default.
-#* --report-deprecated
+#*   --report-deprecated
 #*                     Report data items that are marked as deprecated in the
 #*                     dictionaries. Data item deprecation usually means that
 #*                     it has been replaced with an another data item(s).
-#* --ignore-deprecated
+#*   --ignore-deprecated
 #*                     Do not report data items that are marked as deprecated
-#                      in the dictionaries. Default.
-#* --use-perl-parser
+#*                     in the dictionaries (default).
+#*   --use-perl-parser
 #*                     Use Perl parser to parse CIF files.
-#* --use-c-parser
+#*   --use-c-parser
 #*                     Use C parser to parse CIF files (default)
 #*
-#* -c, --always-continue
+#*   -c, --always-continue
 #*                     Continue processing and return successful return status
 #*                     even if errors are diagnosed.
-#* -c-, --always-die
+#*   -c-, --always-die
 #*                     Stop and return error status if errors are diagnosed.
-#* --continue-on-errors
+#*   --continue-on-errors
 #*                     Do not terminate script if errors are raised (default).
-#* --die-on-errors
+#*   --die-on-errors
 #*                     Terminate script immediately if errors are raised.
-#* --continue-on-warnings
-#*                    Do not terminate script if warnings are raised (default).
-#* --die-on-warnings
-#*                    Terminate script immediately if warnings are raised.
-#* --continue-on-notes
-#*                    Do not terminate script if notes are raised (default).
-#* --die-on-notes
-#*                    Terminate script immediately if notes are raised.
-#* --debug
+#*   --continue-on-warnings
+#*                     Do not terminate script if warnings are raised (default).
+#*   --die-on-warnings
+#*                     Terminate script immediately if warnings are raised.
+#*   --continue-on-notes
+#*                     Do not terminate script if notes are raised (default).
+#*   --die-on-notes
+#*                     Terminate script immediately if notes are raised.
+#*   --debug
 #*                     Output extra information for debugging purposes.
-#* -v, --version
-#*                     Print version message and exits.
-#* --help, --usage
-#*                     Print short usage message (this message) and exit.
+#*   --help, --usage
+#*                     Output a short usage message (this message) and exit.
+#*   -v, --version
+#*                     Output version information and exit.
 #**
 @ARGV = getOptions(
     '-d,--dictionaries'    => sub{ @dict_files = split m/,|\s+/, get_value() },
@@ -164,10 +162,12 @@ sub check_list_link_parent($$$);
     '--continue-on-notes'    => sub { $die_on_notes = 0 },
     '--die-on-notes'         => sub { $die_on_notes = 1 },
 
-    '-v,--version'      => sub{ print basename($0) . " v$VERSION\n"; exit; },
     '--options'         => sub{ options; exit },
     '--help,--usage'    => sub{ usage; exit; },
-    '--debug'           => sub{ $debug = 1 }
+    '--debug'           => sub{ $debug = 1 },
+    '-v,--version'      => sub { print 'cod-tools version ',
+                                 $COD::ToolsVersion::Version, "\n";
+                                 exit }
 );
 
 my $die_on_error_level = {
@@ -175,6 +175,9 @@ my $die_on_error_level = {
     WARNING => $die_on_warnings,
     NOTE    => $die_on_notes
 };
+
+binmode STDOUT, ':encoding(UTF-8)';
+binmode STDERR, ':encoding(UTF-8)';
 
 my %dict_tags;
 
@@ -185,14 +188,15 @@ if( @dict_files ) {
         my ( $data, $err_count, $messages ) = parse_cif( $dict, $options );
         process_parser_messages( $messages, $die_on_error_level );
 
+        local $SIG{__WARN__} = sub { process_warnings( {
+                                       'message'       => @_,
+                                       'program'       => $0,
+                                       'filename'      => $dict,
+                                     }, $die_on_error_level ) };
+
         $dict_tags{$dict} = get_dict( $data );
         if ( scalar( keys( %{$dict_tags{$dict}} ) ) == 0 ) {
-            report_message( {
-                'program'       => $0,
-                'filename'      => $dict,
-                'err_level'     => 'WARNING',
-                'message'       => 'no data item definitions found'
-            }, $die_on_warnings );
+            warn "no data item definitions found\n";
         }
         $tag_count += scalar( keys( %{$dict_tags{$dict}} ) );
     }
@@ -229,14 +233,16 @@ CIFFILEANAL: for my $filename ( @ARGV ) {
     next CIFFILEANAL if ( !defined $data || $data == 1 );
 
     for my $block ( @{$data} ) {
-        my $dataname = 'data_' . $block->{name} if defined $block->{name};
+        my $dataname = 'data_' . $block->{'name'};
 
-        local $SIG{__WARN__} = sub { process_warnings( {
-                                       'message'       => @_,
-                                       'program'       => $0,
-                                       'filename'      => $filename,
-                                       'add_pos'       => $dataname
-                                     }, $die_on_error_level ) };
+        local $SIG{__WARN__} = sub {
+            process_warnings( {
+                'message'  => @_,
+                'program'  => $0,
+                'filename' => $filename,
+                'add_pos'  => $dataname
+            }, $die_on_error_level )
+        };
 
         if( $debug ) {
             debug_note( $0, $filename, $dataname, 'analysis start', undef );
@@ -284,7 +290,7 @@ CIFFILEANAL: for my $filename ( @ARGV ) {
                 my $repl_tags = get_replacement_tags($dict_d, $lc_tag_analysed);
                 if( $report_deprecated && @{$repl_tags} != 0 ) {
                     warn "NOTE, data items '$tag_analysed' has been replaced by "
-                        . 'data item(-s) [' . join(', ', 
+                        . 'data item(-s) [' . join(', ',
                                              map {"'$_'"} @{$repl_tags}) . '] '
                         . "according to '$dict_f'" . "\n";
                 }
@@ -352,21 +358,13 @@ CIFFILEANAL: for my $filename ( @ARGV ) {
                 }
 
                 # check types of values
-                my $range = {};
-                my %range_for_print;
-                if( exists $dict_tag_values->{_enumeration_range} ) {
-                    ( $range->{'min'}, $range->{'max'} ) = split(/:/,
-                        $dict_tag_values->{_enumeration_range}[0],
-                        2);
-                    %range_for_print = %{$range};
-                    if( length($range->{min}) == 0 ) {
-                        delete $range->{min};
-                        $range_for_print{min} = '<any>';
-                    }
-                    if( length($range->{max}) == 0 ) {
-                        delete $range->{max};
-                        $range_for_print{max} = '<any>';
-                    }
+                my $range;
+                my $range_type;
+                if( defined $dict_tag_values->{'_enumeration_range'} ) {
+                    $range = parse_range(
+                        $dict_tag_values->{'_enumeration_range'}[0]
+                    );
+                    $range_type = $dict_tag_values->{'_type'}[0];
                 }
 
                 for my $tag_index ( 0..$#{$block->{values}{$tag_analysed}} ) {
@@ -491,25 +489,31 @@ CIFFILEANAL: for my $filename ( @ARGV ) {
                     #
                     # Check values against enumeration_range
                     #
-                    if( %{$range} ) {
+                    if( $range ) {
                         my $value_wo_su = $value;
                         if( $dict_tag_values->{_type}[0] eq 'numb' ) {
                             $value_wo_su =~ s/\s*\(.*$//;
                         }
-                        if( check_against_range(
-                                $dict_tag_values->{_type}[0],
-                                $range, $value_wo_su, $sigma) <= 0 ) {
+                        if( is_in_range( $value_wo_su,
+                                { 'type'  => $range_type,
+                                  'range' => $range,
+                                  'sigma' => $sigma,
+                                } ) <= 0 ) {
                                 push @tag_value_notes,
                                      "data item '$tag_analysed' value " .
-                                     "\"$value\" should be in range [" .
-                                     $range_for_print{min} .
-                                     ', ' . $range_for_print{max} . ']';
+                                     "\"$value\" should be in range " .
+                                     range_to_string(
+                                        $range, {
+                                            'type' => $range_type
+                                        }
+                                     );
                         } elsif( $debug ) {
                             debug_note( $0, $filename, $dataname,
                                         "data item '$tag_analysed' value " .
-                                        "\"$value\" is in range [" .
-                                        $range_for_print{min} . ', ' .
-                                        $range_for_print{max} . ']', undef );
+                                        "\"$value\" is in range " .
+                                        range_to_string( $range, {
+                                            'type' => $range_type
+                                        } ), undef );
                         }
                     } elsif( $debug ) {
                         debug_note( $0, $filename, $dataname,
@@ -522,7 +526,8 @@ CIFFILEANAL: for my $filename ( @ARGV ) {
 
             if( !$defined ) {
                 push @tag_value_notes,
-                      "data item '$tag_analysed' was not found in dictionaries";
+                      "data item '$tag_analysed' was not found in the " .
+                      'provided dictionaries';
             }
         }
 
@@ -584,6 +589,11 @@ sub get_dict($)
     my $tags = {};
     my $datan = 0;
     while( $datan < @{$dict_f} ) {
+        if( exists $dict_f->[$datan]{values}{'_dictionary.ddl_conformance'} &&
+            $dict_f->[$datan]{values}{'_dictionary.ddl_conformance'}[0] =~ /^3\./ ) {
+            warn "dictionary is DDLm-compliant and can not be handled " .
+                 "in this version\n";
+        }
         if( exists $dict_f->[$datan]{save_blocks} ) {
             for my $saveblk ( @{$dict_f->[$datan]{save_blocks}} ) {
                 ## print ">>>> processing save block '$saveblk->{name}'\n";
@@ -635,103 +645,6 @@ sub get_replacement_tags($$)
         }
     }
     return \@replace_with;
-}
-
-##
-# Check value against range (defined in dictionary).
-# @param $type
-#       String, representing the type of value ('numb' or 'char').
-# @param $range
-#       Reference to range hash as $$range{min} and $$range{max}.
-# @param $value
-#       Value that must be checked.
-# @param $sigma
-#       Standard deviation to be used when comparing numbers.
-# @return
-#       -1 if no ranges were provided for the value;
-#        0 if the value is out of the provided range;
-#        1 if the value is in the provided range.
-##
-sub check_against_range($$$$)
-{
-    my ($type, $range, $value, $sigma) = @_;
-
-    if( !exists $range->{min} &&
-        !exists $range->{max} ) {
-        return -1;
-    }
-    if( $type eq 'numb' ) {
-        return check_against_range_numb( $range, $value, $sigma );
-    } else {
-        return check_against_range_char( $range, $value );
-    }
-}
-
-##
-# Checks number value against range (defined in dictionary).
-# @param $range
-#       Reference to range hash as $$range{min} and $$range{max}.
-# @param $value
-#       Value, that must be checked.
-# @param $sigma
-#       Standard deviation to be used when comparing numeric values
-#       (3 sigma rule). If sigma is set to 'undef', values are compared 
-#       disregarding standard deviation.
-# @return
-#        0 if the value is out of the provided range or is not a number
-#          at all;
-#        1 if the value is in the provided range.
-##
-sub check_against_range_numb($$$)
-{
-    my ( $range, $value, $sigma ) = @_;
-
-    if( ! looks_like_number($value) ) {
-        return 0;
-    }
-
-    my ($min,$max);
-
-    if( defined $sigma ) {
-        $min = $range->{min} - 3 * $sigma if exists $range->{min};
-        $max = $range->{max} + 3 * $sigma if exists $range->{max};
-    } else {
-        $min = $range->{min} if exists $range->{min};
-        $max = $range->{max} if exists $range->{max};
-    }
-
-    if(
-        ( !defined $max || $value <= $max )
-        &&
-        ( !defined $min || $value >= $min )
-    ) {
-        return 1;
-    }
-    return 0;
-}
-
-##
-# Check character value against range (defined in dictionary).
-# @param $range
-#       Reference to range hash as $$range{min} and $$range{max}.
-# @param $value
-#       Value, that must be checked.
-# @return
-#       0 if the value is out of the provided range;
-#       1 if the value is in the provided range.
-##
-sub check_against_range_char($$)
-{
-    my ( $range, $value ) = @_;
-
-    if(
-        ( !exists $range->{max} || $value le $range->{max} )
-        &&
-        ( !exists $range->{min} || $value ge $range->{min} )
-    ) {
-        return 1;
-    }
-    return 0;
 }
 
 ##

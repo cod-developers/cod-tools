@@ -19,10 +19,13 @@ use File::Basename qw( basename );
 use COD::SOptions qw( getOptions );
 use COD::SUsage qw( usage options );
 
+my $name;
 my $bugs_url;
 my $bugs_email;
 
 my $format = 'man';
+
+my $read_stdin = 0;
 
 #* USAGE:
 #*     $0 --options script script*
@@ -36,6 +39,12 @@ my $format = 'man';
 #*
 #*     --mdwn, --markdown
 #*          Generate output in Markdown format.
+#*
+#*     --name
+#*          Name of the program.
+#*
+#*     --stdin, --read-stdin
+#*          Read help file from STDIN.
 #*
 #*     --bugs-url
 #*          Specify Web URL for bug reporting.
@@ -51,6 +60,9 @@ my $format = 'man';
     "--wiki"            => sub { $format = 'wiki' },
     "--mdwn,--markdown" => sub { $format = 'markdown' },
 
+    "--name" => \$name,
+    "--stdin,--read-stdin" => sub { $read_stdin = 1 },
+
     "--bugs-url"   => \$bugs_url,
     "--bugs-email" => \$bugs_email,
 
@@ -58,18 +70,24 @@ my $format = 'man';
     "--help,--usage" => sub { usage; exit }
 );
 
+@ARGV = ( '-' ) unless @ARGV;
+
 for my $filename (@ARGV) {
-    my $name = basename( $filename );
+    $name = basename( $filename ) unless defined $name;
     my( $help, $errors );
-    do {
-        local *STDOUT;
-        local *STDERR;
-        local $0 = $name;
-        open( STDOUT, '>', \$help );
-        open( STDERR, '>', \$errors );
-        usage( $filename );
-    };
-    die $errors if $errors;
+    if( $read_stdin ) {
+        $help = join '', <>;
+    } else {
+        do {
+            local *STDOUT;
+            local *STDERR;
+            local $0 = $name;
+            open( STDOUT, '>', \$help );
+            open( STDERR, '>', \$errors );
+            usage( $filename );
+        };
+        die $errors if $errors;
+    }
 
     my @help = split( "\n", $help );
 
@@ -174,7 +192,7 @@ for my $filename (@ARGV) {
     }
 
     my $head    = join "\n", @head;
-    my $usage   = join "\n", @usage;
+    my $usage   = join "\n\n", @usage;
 
     my $head_first_line;
     if( $head ) {
