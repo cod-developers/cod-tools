@@ -21,6 +21,7 @@ struct CIF_COMPILER {
     char *filename;
     CIF *cif;
     cif_option_t options;
+    FILE *file;
 
     int errcount;
     int warncount;
@@ -71,6 +72,11 @@ CIF *cif_compiler_cif( CIF_COMPILER *ccc )
     return ccc->cif;
 }
 
+FILE *cif_compiler_file( CIF_COMPILER *ccc )
+{
+    return ccc->file;
+}
+
 int cif_compiler_nerrors( CIF_COMPILER *ccc )
 {
     return ccc->errcount;
@@ -89,6 +95,11 @@ int cif_compiler_loop_value_count( CIF_COMPILER *ccc )
 int cif_compiler_loop_start_line( CIF_COMPILER *ccc )
 {
     return ccc->loop_start;
+}
+
+void cif_compiler_set_file( CIF_COMPILER *ccc, FILE *file )
+{
+    ccc->file = file;
 }
 
 void cif_compiler_detach_cif( CIF_COMPILER *ccc )
