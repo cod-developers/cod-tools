@@ -16,6 +16,10 @@ cod-tools (unreleased)
       - Adding all the data names that were defined in the cif_cod.dic
         version 0.035.
     - cif_fillcell: --merge-special-positions command line option.
+    - COD::AuthorNames:
+      - adding the get_name_syntax_description() subroutine.
+    - COD::CIF::Data::Check module.
+    - COD::CIF::DDL::Ranges module.
   * Changed:
     - Changing the error messages regarding unrecognised space groups
       to match those raised by the COD::CIF::Data::get_symmetry_operators()
@@ -25,17 +29,30 @@ cod-tools (unreleased)
         passed.
     - COD::CIF::Tags::Print:
       - Simplified the interface of the print_loop() subroutine.
+    - Removed a conditional dealing with an undefined data block name from
+      multiple scripts.
+    - cif_validate:
+      - Change the way numeric enumeration ranges are displayed in audit
+        messages.
+    - pycodcif: throwing CifParserException instead of exiting.
   * Fixed:
     - Using CIF value type to detect special CIF values '?' and '.'
       in:
       - cif_tcod_tree
-    - COD::CIF::Tags::Print:
-      - Modifying the way malformed loops are handled by the print_loop()
-        subroutine. From now on a warning message will be output and
-        unknown ('?') values will be printed instead of the missing ones.
     - COD::CIF::Tags::Manage:
       - Deleting old data item values upon the call of set_loop_tag()
         subroutine in order to avoid conflicting data.
+    - COD::CIF::Data::AtomList:
+      - Modifying the atom_groups() subroutine to treat undefined and
+        unknown ('?') occupancy values as being equal to '1'.
+    - cif_cod_check:
+      - Adding missing descriptions of the '--check-bibliography',
+        '--require-only-doi', '--require-full-bibliography',
+        '--check-all' and '--check-none' options.
+      - Restructuring the code so that error messages about empty files
+        are properly issued.
+    - COD::CIF::Data::CIF2COD:
+      - Adding missing parentheses in the 'cif2cod()' subroutine.
 
 cod-tools (2.1)
 
@@ -134,6 +151,12 @@ cod-tools (2.1)
     - Generating manpages for C scripts from src/components/codcif/.
     - cif_list_tags: implementing --help command line option.
     - Removing temporary directories of failed Shell test cases.
+    - COD::CIF::Tags::Print:
+      - Modifying the way malformed loops are handled by the print_loop()
+        subroutine. From now on a warning message will be output and
+        unknown ('?') values will be printed instead of the missing ones.
+      - Preventing outputting of empty loops: printing a line of question
+        marks, issuing a warning.
 
 cod-tools (2.0)
 

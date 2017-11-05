@@ -5,7 +5,7 @@
 #$URL$
 #------------------------------------------------------------------------------
 #*
-#  Subroutines for parsing and regularisation of author names.
+#* Subroutines for parsing and regularisation of author names.
 #**
 
 package COD::AuthorNames;
@@ -17,21 +17,40 @@ require Exporter;
 our @ISA = qw( Exporter );
 our @EXPORT_OK = qw(
     canonicalize_author_name
+    get_name_syntax_description
     parse_author_name
 );
 
-# Parse an author name according to COD (aka BibTeX) conventions,
-# convert CIF markup to Unicode, and return a data structure wuth the
-# author name components.
+# TODO: The subroutine should be refactored to always return the same data
+# structure. For this to happen the following changes should be implemented:
+# 1) The structure should always return the original name in addition to
+#    other fields;
+# 2) Parser warning messages should be returned as a separate field in the
+#    structure instead of raising them as Perl warnings.
+# 3) $name_syntax_explained should be removed since raising this message should
+#    not be the responsibility of the parser.
 
-# Returns:
-# 
-# {
-#     initials => [ "A.", "B." ], # Initials of the 'first' names
-#     first => [ "AFirst", "BFirst" ],
-#     last  => [ "ALast", "BLast" ],
-#     von   => [ "van", "de" ],
-#     jr    => [ "Jr" ],
+##
+# Parse an author name according to COD (aka BibTeX) conventions and return
+# a data structure with the author name components. In case the name could
+# not be parsed successfully the data structure with an additional field
+# that contains the unparsed name is returned.
+#
+# @params $unparsed_name
+#       The name that should be parsed.
+# @params $name_syntax_explained
+#       Boolean value denoting if a warning containing the name syntax
+#       description should be raised in case of unsuccessful parsing
+#       (default '0').
+# @return
+#       The following data structure containing the parsed name:
+#       {
+#          # Initials of the 'first' names
+#         'initials' => [ 'A.', 'B.' ],
+#         'first'    => [ 'AFirst', 'BFirst' ],
+#         'last'     => [ "ALast", 'BLast' ],
+#         'von'      => [ 'van', 'de' ],
+#         'jr'       => [ 'Jr' ],
 # }
 #
 # or:
@@ -39,7 +58,7 @@ our @EXPORT_OK = qw(
 # {
 #     unparsed => "unparsed name"
 # }
-
+##
 sub parse_author_name
 {
     my ($unparsed_name, $name_syntax_explained) = @_;
@@ -101,10 +120,8 @@ sub parse_author_name
                 . " contains symbol '$symbol_escaped' "
                 . 'that is not permitted in names' . "\n";
         if( ! $name_syntax_explained ) {
-            warn "NOTE, names should be written as \'First von Last\', "
-               . '\'von Last, First\', or \'von Last, Jr, First\' '
-               . '(mind the case!)' . "\n";
-               $name_syntax_explained = 1;
+            warn 'NOTE,' . get_name_syntax_description() . "\n";
+            $name_syntax_explained = 1;
         }
         $parsed_name{'unparsed'} = $UCS_author;
     } else {
@@ -180,9 +197,7 @@ sub parse_author_name
                     : " ('$UCS_author')" )
                     . ' seems unusual' . "\n";
             if( ! $name_syntax_explained ) {
-                warn "NOTE, names should be written as \'First von Last\', "
-                    . '\'von Last, First\', or \'von Last, Jr, First\' '
-                    . '(mind the case!)' . "\n";
+                warn 'NOTE, ' . get_name_syntax_description() . "\n";
                 $name_syntax_explained = 1;
             }
             $parsed_name{'unparsed'} = $UCS_author;
@@ -254,6 +269,19 @@ sub canonicalize_author_name
     }
 
     return join( ', ', @name_parts );
+}
+
+##
+# Returns a human-readable description of the author name syntax.
+#
+# @return
+#       A human-readable description of the author name syntax.
+##
+sub get_name_syntax_description
+{
+    return "names should be written as \'First von Last\', "
+         . '\'von Last, First\', or \'von Last, Jr, First\' '
+         . '(mind the case!)'
 }
 
 1;

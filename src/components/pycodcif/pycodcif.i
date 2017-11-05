@@ -82,7 +82,7 @@ def parse(filename,*args):
         for error in errors:
             sys.stdout.write(error)
         if errors:
-            sys.exit(1) # Different way to exit
+            raise CifParserException(errors.pop())
 
     return data, nerrors, [warnings + errors]
 
@@ -310,6 +310,9 @@ def escape_meta(text, escaped_symbols):
         return escaped_symbols(matchobj.group(0))
 
     return re.sub("({0})".format(symbols), escape_internal, text)
+
+class CifParserException(Exception):
+    pass
 
 %}
 

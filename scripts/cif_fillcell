@@ -101,14 +101,16 @@ foreach my $filename (@ARGV) {
         canonicalize_names( $dataset );
 
         my $values   = $dataset->{values};
-        my $dataname = 'data_' . $dataset->{'name'} if defined $dataset->{'name'};
+        my $dataname = 'data_' . $dataset->{'name'};
 
-        local $SIG{__WARN__} = sub { process_warnings( {
-                                       'message'  => @_,
-                                       'program'  => $0,
-                                       'filename' => $filename,
-                                       'add_pos'  => $dataname
-                                     }, $die_on_error_level ) };
+        local $SIG{__WARN__} = sub {
+            process_warnings( {
+                'message'  => @_,
+                'program'  => $0,
+                'filename' => $filename,
+                'add_pos'  => $dataname
+            }, $die_on_error_level )
+        };
 
         eval {
             # extracts symmetry operators
@@ -128,10 +130,13 @@ foreach my $filename (@ARGV) {
                 }
                 my $cif_atom_list_options = {
                     allow_unknown_chemical_types => 1,
-                    modulo_1 => 1,
-                    uniquify_atom_names => 1,
                     atom_properties => \%COD::AtomProperties::atoms,
-                    symop_list => $symop_list
+                    exclude_dummy_atoms => 1,
+                    exclude_dummy_coordinates => 1,
+                    exclude_unknown_coordinates => 1,
+                    modulo_1 => 1,
+                    symop_list => $symop_list,
+                    uniquify_atom_names => 1,
                 };
 
                 # Build an atom array from the CIF data structure:

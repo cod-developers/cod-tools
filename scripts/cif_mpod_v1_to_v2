@@ -147,7 +147,7 @@ for my $filename (@ARGV) {
     my ( $data, $err_count, $messages ) = parse_cif( $filename, $options );
     process_parser_messages( $messages, $die_on_error_level );
 
-    if( !@$data || !defined $data->[0] || !defined $data->[0]{name} ) {
+    if( !@{$data} ) {
         report_message( {
             'program'   => $0,
             'filename'  => $filename,
@@ -160,14 +160,15 @@ for my $filename (@ARGV) {
     for my $datablock (@$data) {
         my $values = $datablock->{values};
         my $tags = $datablock->{tags};
-        my $dataname = 'data_' . $datablock->{name} if defined $datablock->{name};
 
-        local $SIG{__WARN__} = sub { process_warnings( {
-                                       'message'       => @_,
-                                       'program'       => $0,
-                                       'filename'      => $filename,
-                                       'add_pos'       => $dataname
-                                     }, $die_on_error_level ) };
+        local $SIG{__WARN__} = sub {
+            process_warnings( {
+                'message'  => @_,
+                'program'  => $0,
+                'filename' => $filename,
+                'add_pos'  => 'data_' . $datablock->{'name'}
+            }, $die_on_error_level )
+        };
 
         my @conditions = ();
         for my $condition (@condition_tags) {
