@@ -785,7 +785,7 @@ sub check_timestamp
                 } else {
                     if ( DateTime->compare($datetime, DateTime->now() ) > 0 ) {
                         push @messages, "ERROR, data item '$name' value " .
-                             "'$_' seems to be specify a moment of time in " .
+                             "'$_' seems to specify a moment of time in " .
                              'the future';
                     }
                 }
