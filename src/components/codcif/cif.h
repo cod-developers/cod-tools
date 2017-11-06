@@ -8,7 +8,7 @@
 #ifndef __CIF_H
 #define __CIF_H
 
-#include <stdlib.h>
+#include <unistd.h>
 #include <stdarg.h>
 #include <datablock.h>
 #include <cifmessage.h>
