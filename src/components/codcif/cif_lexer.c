@@ -497,7 +497,7 @@ static void pushchar( char **buf, size_t *length, size_t pos, int ch )
         }
         *length *= 2;
         if( yy_flex_debug ) {
-            printf( ">>> reallocating lex token buffer to %d\n", *length );
+            printf( ">>> reallocating lex token buffer to %lu\n", *length );
         }
         *buf = reallocx( *buf, *length, NULL );
     }

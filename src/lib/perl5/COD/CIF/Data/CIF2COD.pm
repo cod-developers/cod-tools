@@ -16,10 +16,12 @@ use COD::Cell qw( cell_volume );
 use COD::CIF::Data qw( get_cell );
 use COD::CIF::Data::CellContents qw( cif_cell_contents );
 use COD::CIF::Data::CODFlags qw( is_disordered has_coordinates has_Fobs );
+use COD::CIF::Data::Check qw( check_formula_sum_syntax );
 use COD::CIF::Unicode2CIF qw( cif2unicode );
 use COD::CIF::Tags::DictTags;
 use COD::Spacegroups::Names;
 use Scalar::Util qw( looks_like_number );
+use List::MoreUtils qw( uniq );
 
 require Exporter;
 our @ISA = qw( Exporter );
@@ -30,20 +32,8 @@ our @EXPORT_OK = qw(
     @new_data_fields
 );
 
-my $bond_safety_margin = 0.2; # Angstroems; a bond safety marging for a CIF classifier.
-
-my $reformat_space_group = 0;
-my $use_datablocks_without_coord = 0;
-my $require_only_doi = 0;
-my $print_header = 0; # Indicates whether to print out a header with
-                      # column names.
-my $print_keywords = 0;
-
-my $cod_number;
-
 # The default sql table data field that was taken from the
 # cod-add-data.sh script.
-
 our @default_data_fields = qw (
     file
     a
@@ -176,6 +166,87 @@ our @new_data_fields = qw (
     onhold
 );
 
+# A hash of text fields that do no require specific processing
+# and can be taken directly from the associated data items
+my %text_value_fields2tags = (
+   'thermalhist'    => [ qw( _exptl_crystal_thermal_history ) ],
+   'pressurehist'   => [ qw( _exptl_crystal_pressure_history ) ],
+   'compoundsource' => [ qw( _chemical_compound_source ) ],
+   'commonname'     => [ qw( _chemical_name_common ) ],
+   'chemname'       => [ qw( _chemical_name_systematic ) ],
+   'mineral'        => [ qw( _chemical_name_mineral ) ],
+    # TODO: shouldn't it be treated as numeric?
+   'Z'              => [ qw( _cell_formula_units_Z ) ],
+   'formula'        => [ qw( _chemical_formula_sum ) ],
+   'radiation'      => [ qw( _diffrn_radiation_probe ) ],
+   'radType'        => [ qw( _diffrn_radiation_type ) ],
+   'radSymbol'      => [ qw( _diffrn_radiation_xray_symbol ) ],
+   'duplicateof'    => [ qw( _cod_duplicate_entry
+                             _[local]_cod_duplicate_entry ) ],
+   'optimal'        => [ qw( _cod_related_optimal_struct
+                             _[local]_cod_related_optimal_struct ) ],
+   'status'         => [ qw( _cod_error_flag
+                             _[local]_cod_error_flag ) ],
+   'onhold'         => [ qw( _cod_hold_until_date ) ],
+
+   'title'          => [ qw( _publ_section_title ) ],
+   'journal'        => [ qw( _journal_name_full ) ],
+   'year'           => [ qw( _journal_year ) ],
+   'volume'         => [ qw( _journal_volume ) ],
+   'issue'          => [ qw( _journal_issue ) ],
+   'firstpage'      => [ qw( _journal_page_first ) ],
+   'lastpage'       => [ qw( _journal_page_last ) ],
+   'doi'            => [ qw( _journal_paper_doi ) ],
+);
+
+# A hash of numeric fields that do no require specific processing
+# and can be taken directly from the associated data items
+my %num_value_fields2tags = (
+    'a'             => [ qw( _cell_length_a ) ],
+    'b'             => [ qw( _cell_length_b ) ],
+    'c'             => [ qw( _cell_length_c ) ],
+    'alpha'         => [ qw( _cell_angle_alpha ) ],
+    'beta'          => [ qw( _cell_angle_beta ) ],
+    'gamma'         => [ qw( _cell_angle_gamma ) ],
+    'vol'           => [ qw( _cell_volume ) ],
+    'celltemp'      => [ qw( _cell_measurement_temperature ) ],
+    'diffrtemp'     => [ qw( _diffrn_ambient_temperature ) ],
+    'cellpressure'  => [ qw( _cell_measurement_pressure ) ],
+    'diffrpressure' => [ qw( _diffrn_ambient_pressure ) ],
+    'wavelength'    => [ qw( _diffrn_radiation_wavelength ) ],
+    'Rall'          => [ qw( _refine_ls_R_factor_all ) ],
+    'Robs'          => [ qw( _refine_ls_R_factor_gt
+                             _refine_ls_R_factor_obs ) ],
+    'Rref'          => [ qw( _refine_ls_R_factor_ref ) ],
+    'wRall'         => [ qw( _refine_ls_wR_factor_all ) ],
+    'wRobs'         => [ qw( _refine_ls_wR_factor_gt
+                             _refine_ls_wR_factor_obs ) ],
+    'wRref'         => [ qw( _refine_ls_wR_factor_ref ) ],
+    'RFsqd'         => [ qw( _refine_ls_R_Fsqd_factor ) ],
+    'RI'            => [ qw( _refine_ls_R_I_factor ) ],
+    'gofall'        => [ qw( _refine_ls_goodness_of_fit_all ) ],
+    'gofobs'        => [ qw( _refine_ls_goodness_of_fit_ref
+                             _refine_ls_goodness_of_fit_obs ) ],
+    'gofgt'         => [ qw( _refine_ls_goodness_of_fit_gt )],
+);
+
+# A hash of s.u. fields that do no require specific processing
+# and can be taken directly from the associated data items
+my %su_fields2tags = (
+    'siga'             => [ qw( _cell_length_a ) ],
+    'sigb'             => [ qw( _cell_length_b ) ],
+    'sigc'             => [ qw( _cell_length_c ) ],
+    'sigalpha'         => [ qw( _cell_angle_alpha ) ],
+    'sigbeta'          => [ qw( _cell_angle_beta ) ],
+    'siggamma'         => [ qw( _cell_angle_gamma ) ],
+    'sigvol'           => [ qw( _cell_volume ) ],
+    'sigcelltemp'      => [ qw( _cell_measurement_temperature ) ],
+    'sigdiffrtemp'     => [ qw( _diffrn_ambient_temperature ) ],
+    'sigcellpressure'  => [ qw( _cell_measurement_pressure ) ],
+    'sigdiffrpressure' => [ qw( _diffrn_ambient_pressure ) ],
+    # TODO: sigwavelength is not defined?
+);
+
 my %space_groups = map {
     my $key1 = $_->[1];
     my $key2 = $_->[2];
@@ -189,352 +260,100 @@ sub cif2cod
     my( $dataset, $options ) = @_;
 
     $options = {} unless defined $options;
-    $cod_number = $options->{cod_number}
-        if exists $options->{cod_number};
-    $require_only_doi = $options->{require_only_doi}
-        if exists $options->{require_only_doi};
-    $print_header = $options->{print_header}
-        if exists $options->{print_header};
-    $print_keywords = $options->{print_keywords}
-        if exists $options->{print_keywords};
-    $reformat_space_group = $options->{reformat_space_group}
-        if exists $options->{reformat_space_group};
-    $use_datablocks_without_coord =
-        $options->{use_datablocks_without_coord}
-        if exists $options->{use_datablocks_without_coord};
+
+    my $require_only_doi =
+        exists $options->{'require_only_doi'} ?
+               $options->{'require_only_doi'} : 0;
+    my $use_datablocks_without_coord =
+        exists $options->{'use_datablocks_without_coord'} ?
+               $options->{'use_datablocks_without_coord'} : 0;
     my $use_attached_hydrogens =
-        (exists $options->{use_attached_hydrogens})
-            ? $options->{use_attached_hydrogens} : 0;
+        exists $options->{'use_attached_hydrogens'} ?
+               $options->{'use_attached_hydrogens'} : 0;
+    my $cod_number = $options->{'cod_number'};
 
     my %data = ();
-    my $values = $dataset->{values};
-    my $sigmas = $dataset->{precisions};
-    my $dataname = $dataset->{name};
+    my $values = $dataset->{'values'};
+    my $sigmas = $dataset->{'precisions'};
 
-    if ( !exists $values->{_atom_site_fract_x} &&
+    if ( !exists $values->{'_atom_site_fract_x'} &&
          !$use_datablocks_without_coord ) {
         warn "data block does not contain fractional coordinates\n";
-        return undef;
+        return;
     };
 
-    my @authors = ();
-    if( exists $values->{_publ_author_name} ) {
-        for my $i (0..$#{$values->{_publ_author_name}}) {
-            push( @authors, get_tag( $values, "_publ_author_name", $i ));
+    # Produce a list of data items that should be reported as mandatory/missing
+    my @mandatory_tags = qw( formula );
+    # TODO: the actual value of the doi is not examined. It could potentially
+    # be a CIF special value, i.e. '?' or '.'
+    if ( !$require_only_doi || !exists $values->{'_journal_paper_doi'} ) {
+        push @mandatory_tags, qw( title journal year volume );
+        # TODO: same issue as above
+        # missing journal pages should not be reported
+        # if a journal article reference is provided
+        if ( !exists $values->{'_journal_article_reference'} ) {
+            push @mandatory_tags, qw( firstpage );
         }
     }
+    # Report mandatory data items
+    report_mandatory_data_items( $values, \@mandatory_tags );
 
-    my $authors = join( "; ", @authors );
+    $data{'sg'} =
+        get_space_group_h_m_symbol( $values,
+        { 'reformat_space_group' => $options->{'reformat_space_group'} } );
+    $data{'sgHall'} =
+        get_space_group_Hall_symbol( $values );
 
-    my( $title, $journal, $year, $volume, $first_page );
-    my %opt_biblio_tags = ( '_publ_section_title' => \$title,
-                            '_journal_name_full'  => \$journal,
-                            '_journal_year'       => \$year,
-                            '_journal_volume'     => \$volume,
-                            '_journal_page_first' => \$first_page );
-    for my $tag (sort keys %opt_biblio_tags) {
-        if( ($require_only_doi &&
-             exists $values->{_journal_paper_doi}) ||
-            ($tag eq '_journal_page_first' &&
-             exists $values->{_journal_article_reference}) ) {
-            ${$opt_biblio_tags{$tag}} = get_tag_silently( $values,
-                                                          $tag,
-                                                          0 );
-        } else {
-            ${$opt_biblio_tags{$tag}} = get_tag( $values,
-                                                 $tag,
-                                                 0 );
-        }
-    }
-
-    my $last_page = get_tag_silently( $values, "_journal_page_last", 0 );
-    my $issue = get_tag_silently( $values, "_journal_issue", 0 );
-
-    my $text = join( '\n', map { clean_whitespaces( cif2unicode($_) ) }
-                     ( $authors, $title, $journal, $volume .
-                       ( $issue? ( $volume ? "($issue)" :
-                                   "(issue $issue)") : "" ),
-                       "(" . $year . ")",
-                       ( $last_page ? $first_page . "-" . $last_page :
-                         $first_page ))
-                   );
-
-    my $calc_formula;
-    eval {
-        $calc_formula =
-                cif_cell_contents( $dataset, undef, $use_attached_hydrogens );
+    # Get text values directly from CIF data items
+    for my $field ( sort keys %text_value_fields2tags ) {
+        $data{$field} = get_data_value( $values, $text_value_fields2tags{$field} );
     };
-    if( $@ ) {
-        # ERRORS that originated within the function are downgraded to warnings
-        my $error = $@;
-        $error =~ s/[A-Z]+, //;
-        chomp($error);
-        warn "WARNING, summary formula could not be calculated -- $error\n";
+
+    # Get numeric values directly from CIF data items
+    for my $field ( sort keys %num_value_fields2tags ) {
+        $data{$field} = get_data_value( $values, $num_value_fields2tags{$field} );
     }
 
-    my $cell_formula;
-    eval {
-        $cell_formula =
-                cif_cell_contents( $dataset, 1, $use_attached_hydrogens );
+    # Get su values directly from CIF data items
+    for my $field ( sort keys %su_fields2tags ) {
+        $data{$field} = get_data_value( $sigmas, $su_fields2tags{$field} );
     };
-    if( $@ ) {
-        # ERRORS that originated within the function are downgraded to warnings
-        my $error = $@;
-        $error =~ s/[A-Z]+, //;
-        chomp($error);
-        warn "WARNING, unit cell summary formula could not be calculated -- $error\n";
-    }
 
+    # process numeric values
+    for my $field ( keys %num_value_fields2tags, %su_fields2tags ) {
+        $data{$field} = filter_num($data{$field});
+    };
+
+    # Set undef if the current value is an empty string
     my $empty_value_regex = qr/^[\s?]*$/s;
-
-    my $diffr_temperature =
-        get_num_or_undef( $values, "_diffrn_ambient_temperature", 0 );
-
-    undef $diffr_temperature if defined $diffr_temperature &&
-          $diffr_temperature =~ $empty_value_regex;
-
-    my $diffr_temperature_sigma =
-        get_num_or_undef( $sigmas, "_diffrn_ambient_temperature", 0 );
-
-    my $cell_temperature =
-        get_num_or_undef( $values, "_cell_measurement_temperature", 0 );
-
-    undef $cell_temperature if defined $cell_temperature &&
-          $cell_temperature =~ $empty_value_regex;
-
-    my $cell_temperature_sigma =
-        get_num_or_undef( $sigmas, "_cell_measurement_temperature", 0 );
-
-    my $diffr_pressure =
-        get_num_or_undef( $values, "_diffrn_ambient_pressure", 0 );
-
-    undef $diffr_pressure if defined $diffr_pressure &&
-          $diffr_pressure =~ $empty_value_regex;
-
-    my $diffr_pressure_sigma =
-        get_num_or_undef( $sigmas, "_diffrn_ambient_pressure", 0 );
-
-    my $cell_pressure =
-        get_num_or_undef( $values, "_cell_measurement_pressure", 0 );
-
-    undef $cell_pressure if defined $cell_pressure &&
-          $cell_pressure =~ $empty_value_regex;
-
-    my $cell_pressure_sigma =
-        get_num_or_undef( $sigmas, "_cell_measurement_pressure", 0 );
-
-    my $systematic_name =
-        get_tag_or_undef( $values, "_chemical_name_systematic", 0 );
-
-    undef $systematic_name if defined $systematic_name &&
-          $systematic_name =~ $empty_value_regex;
-
-    $systematic_name = cif2unicode($systematic_name)
-        if defined $systematic_name;
-
-    my $common_name =
-        get_tag_or_undef( $values, "_chemical_name_common", 0 );
-
-    undef $common_name if defined $common_name &&
-          $common_name =~ $empty_value_regex;
-
-    $common_name = cif2unicode($common_name)
-        if defined $common_name;
-
-    my $mineral_name =
-        get_tag_or_undef( $values, "_chemical_name_mineral", 0 );
-
-    undef $mineral_name if defined $mineral_name &&
-          $mineral_name =~ $empty_value_regex;
-
-    $mineral_name = cif2unicode($mineral_name)
-        if defined $mineral_name;
-
-    my $formula = get_tag( $values, "_chemical_formula_sum", 0 );
-
-    undef $formula if defined $formula &&
-          $formula =~ $empty_value_regex;
-
-    # Setting the default number of unique elements to 0
-    my $nel = 0;
-    if( defined $formula ) {
-        check_chem_formula( $formula );
-        $nel = count_number_of_elements( $formula );
-    }
-
-    if( defined $cod_number ) {
-        $data{file} = $cod_number;
-    } else {
-        $data{file} = $dataname;
-    }
-    $data{a} = get_num_or_undef( $values, "_cell_length_a", 0 );
-    $data{siga} = get_num_or_undef( $sigmas, "_cell_length_a", 0 );
-    $data{b} = get_num_or_undef( $values, "_cell_length_b", 0 );
-    $data{sigb} = get_num_or_undef( $sigmas, "_cell_length_b", 0 );
-    $data{c} = get_num_or_undef( $values, "_cell_length_c", 0 );
-    $data{sigc} = get_num_or_undef( $sigmas, "_cell_length_c", 0 );
-    $data{alpha} = get_num_or_undef( $values, "_cell_angle_alpha", 0 );
-    $data{sigalpha} = get_num_or_undef( $sigmas, "_cell_angle_alpha", 0 );
-    $data{beta} = get_num_or_undef( $values, "_cell_angle_beta", 0 );
-    $data{sigbeta} = get_num_or_undef( $sigmas, "_cell_angle_beta", 0 );
-    $data{gamma} = get_num_or_undef( $values, "_cell_angle_gamma", 0 );
-    $data{siggamma} = get_num_or_undef( $sigmas, "_cell_angle_gamma", 0 );
-
-    my $cell_volume = get_num_or_undef( $values, "_cell_volume", 0 );
-
-    if( !defined $cell_volume ) {
-        my @cell = get_cell( $values, { silent => 1 } );
-        $cell_volume = scalar cell_volume( @cell );
-        if ( defined $cell_volume ) {
-            $cell_volume = sprintf( "%7.2f", $cell_volume);
+    for ( qw( celltemp      sigcelltemp
+              diffrtemp     sigdiffrtemp
+              cellpressure  sigcellpressure
+              diffrpressure sigdiffrpressure
+              formula chemname commonname mineral
+              journal year volume issue firstpage lastpage ) ) {
+        if ( defined $data{$_} ) {
+            if ( $data{$_} =~ $empty_value_regex ) {
+                $data{$_} = undef;
+            }
         }
-    }
+    };
 
-    $data{vol} = $cell_volume;
-    $data{sigvol} = get_num_or_undef( $sigmas, "_cell_volume", 0 );
-
-    $data{celltemp} = $cell_temperature;
-    $data{sigcelltemp} = $cell_temperature_sigma;
-    $data{diffrtemp} = $diffr_temperature;
-    $data{sigdiffrtemp} = $diffr_temperature_sigma;
-    $data{cellpressure} = $cell_pressure;
-    $data{sigcellpressure} = $cell_pressure_sigma;
-    $data{diffrpressure} = $diffr_pressure;
-    $data{sigdiffrpressure} = $diffr_pressure_sigma;
-
-    $data{thermalhist} =
-        get_tag_or_undef( $values, "_exptl_crystal_thermal_history", 0 );
-    $data{pressurehist} =
-        get_tag_or_undef( $values, "_exptl_crystal_pressure_history", 0 );
-    $data{compoundsource} =
-        get_tag_or_undef( $values, "_chemical_compound_source", 0 );
-
-    $data{nel} = $nel;
-    $data{sg} = get_space_group_info( $values );
-    $data{sgHall} = get_space_group_Hall_symbol( $values );
-    $data{commonname} = $common_name;
-    $data{chemname} = $systematic_name;
-    $data{mineral} = $mineral_name;
-    $data{formula} = $formula ? "- " . $formula . " -" : "?";
-    $data{calcformula} = $calc_formula ?
-          "- " . $calc_formula . " -" : undef;
-    $data{cellformula} = $cell_formula ?
-          "- " . $cell_formula . " -" : undef;
-    $data{Z} = get_tag_or_undef( $values, "_cell_formula_units_Z", 0 );
-    $data{Zprime} = compute_Zprime( $data{Z}, $data{sg} );
-
-    if( exists $values->{_journal_coeditor_code} ) {
-        $data{acce_code} = uc( get_tag_or_undef( $values,
-                               "_journal_coeditor_code", 0 ));
-    } elsif( exists $values->{"_journal.coeditor_code"} ) {
-        $data{acce_code} = uc( get_tag_or_undef( $values,
-                               "_journal.coeditor_code", 0 ));
-    } elsif( $journal =~ /^Acta Cryst/ &&
-             exists $values->{"_[local]_cod_data_source_file"} ||
-             exists $values->{"_cod_data_source_file"} ) {
-        my $acce_code = exists $values->{"_cod_data_source_file"} ?
-           $values->{"_cod_data_source_file"}[0] :
-           $values->{"_[local]_cod_data_source_file"}[0];
-        $acce_code =~ s/\..*$//g;
-        if( $acce_code =~ /^[a-zA-Z]{1,2}[0-9]{4,5}$/ ) {
-            $data{acce_code} = uc( $acce_code );
-        } else {
-            $data{acce_code} = undef;
+    # Convert CIF notation to Unicode
+    for ( qw( chemname commonname mineral
+              radType radSymbol
+              journal title ) ) {
+        if ( defined $data{$_} ) {
+            $data{$_} = cif2unicode($data{$_});
         }
-    } else {
-        $data{acce_code} = undef;
-    }
+    };
 
-    $data{authors} = cif2unicode( $authors );
-    $data{title} = cif2unicode( $title );
-    $data{journal} = get_tag_or_undef( $values, "_journal_name_full", 0 );
-    if( defined $data{journal} ) {
-        $data{journal} = cif2unicode( $data{journal} );
-    }
-    $data{year} = get_tag_or_undef( $values, "_journal_year", 0 );
-    $data{volume} = get_tag_or_undef( $values, "_journal_volume", 0 );
-    $data{issue} = get_tag_or_undef( $values, "_journal_issue", 0 );
-    $data{firstpage} = get_tag_or_undef( $values, "_journal_page_first", 0 );
-    $data{lastpage} = get_tag_or_undef( $values, "_journal_page_last", 0 );
-    $data{doi} = get_tag_or_undef( $values, "_journal_paper_doi", 0 );
-    $data{onhold} = get_tag_or_undef( $values, "_cod_hold_until_date", 0 );
-
-    $data{method} = get_experimental_method( $values );
-
-    $data{radiation} = get_tag_or_undef( $values, "_diffrn_radiation_probe", 0 );
-    $data{wavelength} = get_num_or_undef( $values, "_diffrn_radiation_wavelength", 0 );
-    $data{radType} = get_tag_or_undef( $values, "_diffrn_radiation_type", 0 );
-    if( defined $data{radType} ) {
-        $data{radType} = cif2unicode( $data{radType} );
-        $data{radType} =~ s/\s//g;
-    }
-    $data{radSymbol} = get_tag_or_undef( $values, "_diffrn_radiation_xray_symbol", 0 );
-    if( defined $data{radSymbol} ) {
-        $data{radSymbol} = cif2unicode( $data{radSymbol} );
-        $data{radSymbol} =~ s/\s//g;
-    }
-
-    for my $r_factor_tag (qw(
-        _refine_ls_R_factor_all
-        _refine_ls_R_factor_gt
-        _refine_ls_R_factor_obs
-        _refine_ls_R_factor_ref
-        _refine_ls_R_Fsqd_factor
-        _refine_ls_R_I_factor
-        _refine_ls_wR_factor_all
-        _refine_ls_wR_factor_gt
-        _refine_ls_wR_factor_obs
-        _refine_ls_wR_factor_ref
-        _refine_ls_goodness_of_fit_all
-        _refine_ls_goodness_of_fit_ref
-        _refine_ls_goodness_of_fit_gt
-        _refine_ls_goodness_of_fit_obs )) {
-        my $data_key = $r_factor_tag;
-        $data_key =~ s/^_refine_ls_//;
-        $data_key =~ s/_factor//;
-        $data_key =~ s/goodness_of_fit/gof/;
-        $data_key =~ s/_//g;
-        $data_key = "Robs" if $data_key eq "Rgt";
-        $data_key = "wRobs" if $data_key eq "wRgt";
-        $data_key = "gofobs" if $data_key eq "gofref";
-        if( !defined $data{$data_key} ) {
-            $data{$data_key} =
-                get_num_or_undef( $values, $r_factor_tag, 0 );
+    # Remove all white spaces
+    for ( qw( radType radSymbol ) ) {
+        if ( defined $data{$_} ) {
+            $data{$_} =~ s/\s+//g;
         }
-    }
-
-    $data{duplicateof} =
-        get_tag_or_undef( $values, "_cod_duplicate_entry", 0 );
-
-    if( !defined $data{duplicateof} ) {
-        $data{duplicateof} =
-            get_tag_or_undef( $values, "_[local]_cod_duplicate_entry", 0 );
-    }
-
-    $data{optimal} = get_tag_or_undef( $values,
-                                "_cod_related_optimal_struct", 0 );
-    if( !defined $data{optimal} ) {
-        $data{optimal} =
-            get_tag_or_undef( $values,
-                              "_[local]_cod_related_optimal_struct", 0 );
-    }
-
-    $data{status} = get_tag_or_undef( $values, "_cod_error_flag", 0 );
-    if( !defined $data{status} ) {
-        $data{status} =
-            get_tag_or_undef( $values, "_[local]_cod_error_flag", 0 );
-    }
-
-    # Compose COD flags:
-    my @flags;
-
-    push( @flags, 'has coordinates' ) if has_coordinates( $dataset );
-    push( @flags, 'has disorder' ) if is_disordered( $dataset );
-    push( @flags, 'has Fobs' ) if has_Fobs( $dataset );
-
-    $data{flags} = join( ",", @flags );
-
-    $data{text} = $text;
+    };
 
     foreach my $key ( keys %data ) {
         if ( defined $data{$key} ) {
@@ -542,114 +361,221 @@ sub cif2cod
         }
     }
 
+    # Fields that require a more complex logic
+    $data{'file'}   = defined $cod_number ? $cod_number : $dataset->{'name'};
+    $data{'flags'}  = get_cod_flags( $dataset );
+    $data{'method'} = get_experimental_method( $values );
+    $data{'Zprime'} = compute_z_prime( $data{'Z'}, $data{'sg'} );
+
+    $data{'authors'} = get_authors( $values );
+    $data{'text'}    = concat_text_field(\%data);
+    # TODO: the following two lines are only retained to conform to the previous output
+    $data{'title'}   = defined $data{'title'} ? $data{'title'} : '';
+    $data{'authors'}   = defined $data{'authors'} ? $data{'authors'} : '';
+    $data{'acce_code'} =
+        get_coeditor_code( $values, { 'journal' => $data{'journal'} } );
+
+    if (!defined $data{'vol'}) {
+        $data{'vol'} = calculate_cell_volume($values);
+        # TODO: should the calculated s.u. also be recorded?
+    }
+
+    if ( defined $data{'formula'} ) {
+        for ( @{ check_formula_sum_syntax( $data{'formula'} ) } ) {
+            warn $_ . "\n";
+        };
+        $data{'formula'} = '- ' . $data{'formula'} . ' -';
+        $data{'nel'} = count_number_of_elements( $data{'formula'} );
+    } else {
+        $data{'formula'} = '?';
+        $data{'nel'}     = 0;
+    }
+
+    $data{'calcformula'} =
+        calculate_formula_sum($dataset, {
+            'use_attached_hydrogens' => $use_attached_hydrogens
+        }
+    );
+
+    $data{'cellformula'} =
+        calculate_formula_sum($dataset, {
+            'use_attached_hydrogens' => $use_attached_hydrogens,
+            'Z' => 1,
+            'formula_type' => 'unit cell'
+        }
+    );
+
     return \%data;
+}
+
+sub report_mandatory_data_items
+{
+    my ( $values, $mandatory_tags ) = @_;
+
+    for my $field ( @{$mandatory_tags} ) {
+        for my $tag ( @{$text_value_fields2tags{$field}} ) {
+            if ( !defined $values->{$tag} ) {
+                warn "WARNING, data item '$tag' is absent.\n";
+            }
+        }
+    };
+
+    return;
 }
 
 sub filter_num
 {
-    my @nums = map { s/\(.*\)$//; $_ } @_;
-    wantarray ? @nums : $nums[0];
-}
+    my ($value) = @_;
 
-sub check_chem_formula
-{
-    my ( $formula ) = @_;
-
-    my $formula_component = "[a-zA-Z]{1,2}[0-9.]*";
-
-    if( $formula !~ /^\s*($formula_component\s+)*($formula_component)\s*$/ ) {
-        warn "WARNING, chemical formula '$formula' could not be parsed -- "
-           . "a chemical formula should consist of space-seprated chemical "
-           . "element names with optional numeric quantities "
-           . "(e.g. 'C2 H6 O')\n";
+    if ( defined $value && $value ne '?' && $value ne '.' ) {
+        $value =~ s/[(].*[)]$//;
+    } else {
+        $value = undef;
     }
+
+    return $value;
 }
 
-sub unique
+sub calculate_formula_sum
 {
-    my $prev;
-    return map {(!defined $prev || $prev ne $_) ? $prev=$_ : ()} @_;
+    my ($dataset, $options) = @_;
+
+    my $Z = $options->{'Z'};
+    my $formula_type = $options->{'formula_type'};
+    my $use_attached_hydrogens = $options->{'use_attached_hydrogens'};
+
+    my $formula;
+    eval {
+        $formula = cif_cell_contents( $dataset, $Z, $use_attached_hydrogens );
+    };
+    if( $@ ) {
+        # ERRORS that originated within the function are downgraded to warnings
+        my $error = $@;
+        $error =~ s/[A-Z]+, //;
+        chomp $error;
+        warn 'WARNING, ' . (defined $formula_type ? "$formula_type " : '' ) .
+             "summary formula could not be calculated -- $error\n";
+    }
+
+    if ( defined $formula ) {
+        $formula = '- ' . $formula . ' -';
+    }
+
+    return $formula;
+}
+
+sub calculate_cell_volume
+{
+    my ($values) = @_;
+
+    my @cell = get_cell( $values, { silent => 1 } );
+    my $cell_volume = scalar cell_volume( @cell );
+    if ( defined $cell_volume ) {
+        $cell_volume = sprintf '%7.2f', $cell_volume;
+        $cell_volume =~ s/\s+//g;
+    }
+
+    return $cell_volume;
+}
+
+sub get_cod_flags
+{
+    my ( $dataset ) = @_;
+
+    # Compose COD flags:
+    my @flags;
+
+    push @flags, 'has coordinates' if has_coordinates( $dataset );
+    push @flags, 'has disorder'    if is_disordered( $dataset );
+    push @flags, 'has Fobs'        if has_Fobs( $dataset );
+
+    return join ',', @flags;
+}
+
+sub get_authors
+{
+    my ($values) = @_;
+    my $authors;
+    if( exists $values->{'_publ_author_name'} ) {
+        $authors = join '; ', map { cif2unicode($_) }
+                        @{$values->{'_publ_author_name'}};
+    }
+
+    return $authors;
+}
+
+sub concat_text_field
+{
+    my ($biblio) = @_;
+
+
+    my $authors    = defined $biblio->{'authors'}   ?
+                             $biblio->{'authors'}   : '';
+    my $title      = defined $biblio->{'title'}     ?
+                             $biblio->{'title'}     : '';
+    my $journal    = defined $biblio->{'journal'}   ?
+                             $biblio->{'journal'}   : '';
+    my $year       = defined $biblio->{'year'}      ?
+                             $biblio->{'year'}      : '';
+    my $volume     = defined $biblio->{'volume'}    ?
+                             $biblio->{'volume'}    : '';
+    my $issue      = defined $biblio->{'issue'}     ?
+                             $biblio->{'issue'}     : '';
+    my $first_page = defined $biblio->{'firstpage'} ?
+                             $biblio->{'firstpage'} : '';
+    my $last_page  = defined $biblio->{'lastpage'}  ?
+                             $biblio->{'lastpage'}  : '';
+
+    my $text = join '\n', map { clean_whitespaces( $_ ) }
+                     ( $authors, $title, $journal, $volume .
+                       ( $issue ? ( $volume ? "($issue)" :
+                                   "(issue $issue)") : '' ),
+                       '(' . $year . ')',
+                       ( $last_page ? $first_page . '-' . $last_page :
+                         $first_page ) );
+
+    return $text;
 }
 
 sub count_number_of_elements
 {
-    my $formula = $_[0];
-    my @elements = map {s/[^A-Za-z]//g; /^[A-Za-z]+$/ ? $_ : () }
-                   split( " ", $formula );
-
-    my @unique = unique( sort {$a cmp $b} @elements );
-
-    return int(@unique);
-}
-
-sub get_num
-{
-    my ($values, $tag, $index ) = @_;
-
-    return filter_num( &get_tag );
-}
-
-sub get_num_or_undef
-{
-    my $value = &get_tag_or_undef;
-
-    if( defined $value ) {
-        if( $value ne '?' && $value ne '.' ) {
-            return filter_num( $value );
-        } else {
-            return undef;
+    my ( $formula ) = @_;
+    my @elements;
+    for my $el ( split ' ', $formula ) {
+        $el =~ s/[^A-Za-z]//g;
+        if ( $el =~ /^[A-Za-z]+$/ ) {
+            push @elements, $el;
         }
-    } else {
-        return undef;
     }
-}
+    my @unique = uniq @elements;
 
-sub get_tag
-{
-    push( @_, 0 );
-    &get_and_check_tag;
-}
-
-sub get_tag_silently
-{
-    push( @_, 1 );
-    &get_and_check_tag;
+    return int @unique;
 }
 
 sub get_tag_or_undef
 {
-    push( @_, 2 );
-    &get_and_check_tag;
-}
-
-sub get_and_check_tag
-{
-    my ( $values, $tag, $index, $ignore_errors ) = @_;
-
-    if( ref $values eq "HASH" ) {
-        if( exists $values->{$tag} && ref $values->{$tag} eq "ARRAY" ) {
-            if( defined $values->{$tag}[$index] ) {
-                my $val = $values->{$tag}[$index];
-           #     if( $val =~ /^\\\n/ ) {
-           #         $val =~ s/\\\n//g;
-           #     }
-           #     $val =~ s/\n/ /g;
-           #     $val =~ s/\s+/ /g;
-           #     $val =~ s/^\s*|\s*$//g;
-                return $val;
-            } else {
-                unless( $ignore_errors ) {
-                    warn "WARNING, data item '$tag' does not have value "
-                       . "number $index\n";
-                }
-            }
-        } else {
-            unless( $ignore_errors ) {
-                warn "WARNING, data item '$tag' is absent\n";
-            }
+    my ($values, $tag, $index) = @_;
+    if( exists $values->{$tag} ) {
+        if( defined $values->{$tag}[$index] ) {
+            return $values->{$tag}[$index];
         }
     }
-    return $ignore_errors <= 1 ? "" : undef;
+
+    return;
+}
+
+sub get_data_value
+{
+    my ($values, $data_names) = @_;
+
+    my $value;
+    for my $data_name ( @{$data_names} ) {
+        if (!defined $value) {
+            $value = get_tag_or_undef( $values, $data_name, 0 );
+        }
+    }
+
+    return $value;
 }
 
 sub clean_whitespaces
@@ -666,9 +592,13 @@ sub clean_whitespaces
     return $value;
 }
 
-sub get_space_group_info
+sub get_space_group_h_m_symbol
 {
-    my ($values) = @_;
+    my ($values, $options) = @_;
+
+    my $reformat_sg =
+        exists $options->{'reformat_space_group'} ?
+               $options->{'reformat_space_group'} : 0;
 
     my @space_group_tags = qw (
         _space_group_name_H-M_alt
@@ -684,9 +614,9 @@ sub get_space_group_info
     for my $sg_tag (@space_group_tags) {
         if( exists $values->{$sg_tag} ) {
             $space_group = $values->{$sg_tag}[0];
-            if( $sg_tag =~ /_H-M/ && $reformat_space_group ) {
+            if( $sg_tag =~ /_H-M/ && $reformat_sg ) {
                 my $orig_sg = $space_group;
-                $orig_sg =~ s/[\(\)~_\s]//g;
+                $orig_sg =~ s/[()~_\s]//g;
                 ## print ">>> $orig_sg\n";
                 if( exists $space_groups{$orig_sg} ) {
                     $space_group = $space_groups{$orig_sg};
@@ -732,60 +662,100 @@ sub get_experimental_method
 {
     my ($values) = @_;
 
-    if( exists $values->{_cod_struct_determination_method} ) {
-        return $values->{_cod_struct_determination_method}[0];
+    if( exists $values->{'_cod_struct_determination_method'} ) {
+        return $values->{'_cod_struct_determination_method'}[0];
     }
 
-    my @powder_tags = grep /^_pd_/,
-                      @COD::CIF::Tags::DictTags::tag_list;
+    my @powder_tags = grep { /^_pd_/ }
+                        @COD::CIF::Tags::DictTags::tag_list;
 
     for my $tag (@powder_tags) {
         if( exists $values->{$tag} ) {
-            return "powder diffraction";
+            return 'powder diffraction';
         }
     }
 
-    for my $tag (qw(_exptl_crystals_number _exptl.crystals_number)) {
+    for my $tag ( qw( _exptl_crystals_number _exptl.crystals_number ) ) {
         if( exists $values->{$tag} ) {
-            return "single crystal";
+            return 'single crystal';
         }
     }
 
-    return undef;
+    return;
 }
 
-sub compute_Zprime
+sub get_coeditor_code
 {
-    my ( $Z, $space_group_H_M ) = @_;
+    my ($values, $options) = @_;
 
-    return undef unless defined $space_group_H_M;
+    my $journal_name = $options->{'journal'};
+
+    my $acce_code;
+
+    for ( qw( _journal_coeditor_code
+              _journal.coeditor_code ) ) {
+        if( exists $values->{$_} ) {
+            $acce_code = get_tag_or_undef( $values, $_, 0 );
+            last;
+        }
+    }
+
+    # Ad hoc logic for Acta Crystallograhica journals to determine
+    # the coeditor code from the orignal file name
+    if ( !defined $acce_code && defined $journal_name &&
+         $journal_name =~ /^Acta Cryst/ ) {
+        for ( qw( _cod_data_source_file
+                  _[local]_cod_data_source_file ) ) {
+            if( exists $values->{$_} ) {
+                $acce_code = get_tag_or_undef( $values, $_, 0 );
+                last;
+            }
+        }
+
+        if ( defined $acce_code ) {
+            $acce_code =~ s/[.].*$//g;
+            if( $acce_code !~ /^[a-zA-Z]{1,2}[0-9]{4,5}$/ ) {
+                $acce_code = undef;
+            }
+        }
+    }
+
+    if ( defined $acce_code ) { $acce_code = uc $acce_code };
+
+    return $acce_code;
+}
+
+sub compute_z_prime
+{
+    my ( $Z, $space_group_h_m ) = @_;
+
+    return unless defined $space_group_h_m;
 
     use COD::Spacegroups::Lookup::COD;
     my @sg_description =
-        grep { $space_group_H_M eq $_->{universal_h_m} }
+        grep { $space_group_h_m eq $_->{'universal_h_m'} }
              @COD::Spacegroups::Lookup::COD::table;
 
     if( int(@sg_description) == 1 && defined $Z ) {
-        my $AU_count = int(@{$sg_description[0]{symops}});
-        return $Z / $AU_count;
-    } else {
-        return undef;
+        my $au_count = int @{$sg_description[0]{symops}};
+        return $Z / $au_count;
     }
+
+    return;
 }
 
 sub validate_SQL_types
 {
     my( $data, $types ) = @_;
 
-    for my $key (sort keys %$data) {
+    for my $key (sort keys %{$data}) {
         next if !defined $data->{$key};
-        next if $data->{$key} eq 'NULL';
         next if !exists $types->{$key};
 
         if( $types->{$key} =~ /^(float|double|(small|medium)int)/i &&
             !looks_like_number( $data->{$key} ) ) {
             warn "value of '$key' ('$data->{$key}') does not seem " .
-                 "to be numeric";
+                 'to be numeric';
             $data->{$key} = undef;
             next;
         }
@@ -793,21 +763,23 @@ sub validate_SQL_types
         if( $types->{$key} =~ /unsigned/i &&
             $data->{$key} < 0 ) {
             warn "value of '$key' ('$data->{$key}') is negative, " .
-                 "while it must be unsigned";
+                 'while it must be unsigned';
             $data->{$key} = undef;
             next;
         }
 
-        if( $types->{$key} =~ /^(var)?char\((\d+)\)/i ) {
+        if( $types->{$key} =~ /^(var)?char[(](\d+)[)]/i ) {
             my $max_length = $2;
             my $val_length = length( $data->{$key} );
             if( $val_length > $max_length ) {
                 warn "value of '$key' ('$data->{$key}') is longer " .
                      "than allowed ($val_length > $max_length) " .
-                     "and may be corrupted upon casting";
+                     'and may be corrupted upon casting';
             }
         }
     }
+
+    return;
 }
 
 1;

@@ -14,7 +14,7 @@
 import argparse
 import pprint
 import sys
-from pycodcif import parse
+from pycodcif import parse, CifParserException
 
 def version():
     import os
@@ -81,7 +81,10 @@ if 'version' in options.keys():
     version()
 
 for filename in files:
-    data, errcount, _ = parse(filename, options)
-    pprint.PrettyPrinter().pprint(data)
-    print len(data[0]['tags'][0])
-    sys.stderr.write("{} error(s) detected\n".format(errcount))
+    try:
+        data, errcount, _ = parse(filename, options)
+        pprint.PrettyPrinter().pprint(data)
+        print len(data[0]['tags'][0])
+        sys.stderr.write("{} error(s) detected\n".format(errcount))
+    except CifParserException:
+        sys.exit(1)
