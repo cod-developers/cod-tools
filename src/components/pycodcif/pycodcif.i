@@ -12,6 +12,9 @@ warnings.filterwarnings('ignore', category=UnicodeWarning)
 def parse(filename,*args):
     import re
 
+    if isinstance(filename,unicode):
+        filename = filename.encode('utf-8')
+
     prog = '-'
     try:
         import sys
