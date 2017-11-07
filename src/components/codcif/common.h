@@ -8,7 +8,7 @@
 #ifndef __COMMON_H
 #define __COMMON_H
 
-#include <stdlib.h>
+#include <unistd.h>
 
 char *strclone( const char *s );
 char *strnclone( const char *s, size_t length );
