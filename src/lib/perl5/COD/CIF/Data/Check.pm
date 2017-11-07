@@ -37,6 +37,7 @@ check_simultaneous_presence
 check_su_eligibility
 check_temperature_factors
 check_timestamp
+parse_datetime
 check_z
 );
 
@@ -770,25 +771,12 @@ sub check_timestamp
     my ( $dataset, $data_names ) = @_;
 
     my @messages;
-
-    use DateTime::Format::RFC3339;
-    my $parser = DateTime::Format::RFC3339->new();
-
     for my $name ( @{$data_names} ) {
         if ( exists $dataset->{'values'}{$name} ) {
             foreach ( @{$dataset->{'values'}{$name}} ) {
                 my $datetime;
                 eval {
-                    # Parse date only time
-                    if ( /^(\d{4})-(\d{2})-(\d{2})$/ ) {
-                        $datetime = DateTime->new(
-                            'year'  => $1,
-                            'month' => $2,
-                            'day'   => $3,
-                        );
-                    } else {
-                        $datetime = $parser->parse_datetime($_);
-                    }
+                    $datetime = parse_datetime($_);
                 };
                 if ($@) {
                     push @messages, "ERROR, data item '$name' value " .
@@ -797,7 +785,7 @@ sub check_timestamp
                 } else {
                     if ( DateTime->compare($datetime, DateTime->now() ) > 0 ) {
                         push @messages, "ERROR, data item '$name' value " .
-                             "'$_' seems to be specify a moment of time in " .
+                             "'$_' seems to specify a moment of time in " .
                              'the future';
                     }
                 }
@@ -806,6 +794,38 @@ sub check_timestamp
     }
 
     return \@messages;
+}
+
+##
+# Parses the datetime string and returns a DateTime object. The accepted
+# datetime strings can be expressed either as a date only time (YYYY-MM-DD)
+# or a datetime value (as defined in RFC3339). In case a non-conforming string
+# is passed a warning message is raised and an undefined value is returned.
+#
+# @param $datetime_string
+#       Datetime string that should be parsed.
+# @return
+#       A DateTime object corresponding to the parsed string.
+##
+sub parse_datetime
+{
+    my ($datetime_string) = @_;
+
+    my $datetime;
+    # Parse date only time
+    if ( $datetime_string =~ /^(\d{4})-(\d{2})-(\d{2})$/ ) {
+        $datetime = DateTime->new(
+                        'year'  => $1,
+                        'month' => $2,
+                        'day'   => $3,
+                    );
+    } else {
+        use DateTime::Format::RFC3339;
+        my $parser = DateTime::Format::RFC3339->new();
+        $datetime = $parser->parse_datetime($datetime_string);
+    }
+
+    return $datetime;
 }
 
 1;
