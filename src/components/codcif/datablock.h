@@ -8,7 +8,7 @@
 #ifndef __DATABLOCK_H
 #define __DATABLOCK_H
 
-#include <stdlib.h>
+#include <unistd.h>
 #include <stdarg.h>
 #include <cexceptions.h>
 #include <cifvalue.h>
