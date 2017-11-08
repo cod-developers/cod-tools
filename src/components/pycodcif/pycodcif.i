@@ -11,10 +11,17 @@
 
     cif_option_t cif_option_default();
 
+    // from cifvalue.h:
+    #include <cifvalue.h>
+
+    CIFVALUE *new_value_from_scalar( char *s, cif_value_type_t type, cexception_t *ex );
+
     // from datablock.h:
     #include <datablock.h>
 
     ssize_t datablock_tag_index( DATABLOCK *datablock, char *tag );
+    void datablock_overwrite_cifvalue( DATABLOCK * datablock, ssize_t tag_nr,
+        ssize_t val_nr, CIFVALUE *value, cexception_t *ex );
 
     // from cif.h:
     #include <cif.h>
@@ -345,6 +352,36 @@ class CifParserException(Exception):
     $result = PyInt_FromLong( $1 );
 }
 
+%typemap(in) cif_value_type_t {
+    cif_value_type_t type;
+    if(        strcmp( PyString_AsString($input), "CIF_INT" ) == 0 ) {
+        type = CIF_INT;
+    } else if( strcmp( PyString_AsString($input), "CIF_FLOAT" ) == 0 ) {
+        type = CIF_FLOAT;
+    } else if( strcmp( PyString_AsString($input), "CIF_UQSTRING" ) == 0 ) {
+        type = CIF_UQSTRING;
+    } else if( strcmp( PyString_AsString($input), "CIF_SQSTRING" ) == 0 ) {
+        type = CIF_SQSTRING;
+    } else if( strcmp( PyString_AsString($input), "CIF_SQ3STRING" ) == 0 ) {
+        type = CIF_SQ3STRING;
+    } else if( strcmp( PyString_AsString($input), "CIF_DQ3STRING" ) == 0 ) {
+        type = CIF_DQ3STRING;
+    } else if( strcmp( PyString_AsString($input), "CIF_TEXT" ) == 0 ) {
+        type = CIF_TEXT;
+    } else if( strcmp( PyString_AsString($input), "CIF_LIST" ) == 0 ) {
+        type = CIF_LIST;
+    } else if( strcmp( PyString_AsString($input), "CIF_TABLE" ) == 0 ) {
+        type = CIF_TABLE;
+    } else {
+        type = CIF_NON_EXISTANT;
+    }
+    $1 = type;
+}
+
+%typemap(in) ssize_t {
+    $1 = PyInt_AsLong( $input );
+}
+
 #include <Python.h>
 
 PyObject * parse_cif( char * fname, char * prog, PyObject * options );
@@ -356,10 +393,17 @@ typedef enum cif_option_t cif_option_t;
 
 cif_option_t cif_option_default();
 
+// from cifvalue.h:
+#include <cifvalue.h>
+
+CIFVALUE *new_value_from_scalar( char *s, cif_value_type_t type, cexception_t *ex );
+
 // from datablock.h:
 #include <datablock.h>
 
 ssize_t datablock_tag_index( DATABLOCK *datablock, char *tag );
+void datablock_overwrite_cifvalue( DATABLOCK * datablock, ssize_t tag_nr,
+    ssize_t val_nr, CIFVALUE *value, cexception_t *ex );
 
 // from cif.h:
 #include <cif.h>
