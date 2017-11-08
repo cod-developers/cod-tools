@@ -24,6 +24,9 @@
     ssize_t datablock_tag_index( DATABLOCK *datablock, char *tag );
     void datablock_overwrite_cifvalue( DATABLOCK * datablock, ssize_t tag_nr,
         ssize_t val_nr, CIFVALUE *value, cexception_t *ex );
+    void datablock_insert_cifvalue( DATABLOCK * datablock, char *tag,
+                                    CIFVALUE *value, cexception_t *ex );
+
 
     // from cif.h:
     #include <cif.h>
@@ -408,6 +411,8 @@ CIFVALUE *datablock_cifvalue( DATABLOCK *datablock, int tag_nr, int val_nr );
 ssize_t datablock_tag_index( DATABLOCK *datablock, char *tag );
 void datablock_overwrite_cifvalue( DATABLOCK * datablock, ssize_t tag_nr,
     ssize_t val_nr, CIFVALUE *value, cexception_t *ex );
+void datablock_insert_cifvalue( DATABLOCK * datablock, char *tag,
+                                CIFVALUE *value, cexception_t *ex );
 
 // from cif.h:
 #include <cif.h>
