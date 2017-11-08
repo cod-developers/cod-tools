@@ -15,10 +15,12 @@
     #include <cifvalue.h>
 
     CIFVALUE *new_value_from_scalar( char *s, cif_value_type_t type, cexception_t *ex );
+    void value_dump( CIFVALUE *value );
 
     // from datablock.h:
     #include <datablock.h>
 
+    CIFVALUE *datablock_cifvalue( DATABLOCK *datablock, int tag_nr, int val_nr );
     ssize_t datablock_tag_index( DATABLOCK *datablock, char *tag );
     void datablock_overwrite_cifvalue( DATABLOCK * datablock, ssize_t tag_nr,
         ssize_t val_nr, CIFVALUE *value, cexception_t *ex );
@@ -397,10 +399,12 @@ cif_option_t cif_option_default();
 #include <cifvalue.h>
 
 CIFVALUE *new_value_from_scalar( char *s, cif_value_type_t type, cexception_t *ex );
+void value_dump( CIFVALUE *value );
 
 // from datablock.h:
 #include <datablock.h>
 
+CIFVALUE *datablock_cifvalue( DATABLOCK *datablock, int tag_nr, int val_nr );
 ssize_t datablock_tag_index( DATABLOCK *datablock, char *tag );
 void datablock_overwrite_cifvalue( DATABLOCK * datablock, ssize_t tag_nr,
     ssize_t val_nr, CIFVALUE *value, cexception_t *ex );
