@@ -800,7 +800,7 @@ sub check_timestamp
 # Parses the datetime string and returns a DateTime object. The accepted
 # datetime strings can be expressed either as a date only time (YYYY-MM-DD)
 # or a datetime value (as defined in RFC3339). In case a non-conforming string
-# is passed a warning message is raised and an undefined value is returned.
+# is passed the subroutine dies.
 #
 # @param $datetime_string
 #       Datetime string that should be parsed.
@@ -812,17 +812,23 @@ sub parse_datetime
     my ($datetime_string) = @_;
 
     my $datetime;
-    # Parse date only time
-    if ( $datetime_string =~ /^(\d{4})-(\d{2})-(\d{2})$/ ) {
-        $datetime = DateTime->new(
-                        'year'  => $1,
-                        'month' => $2,
-                        'day'   => $3,
-                    );
-    } else {
-        use DateTime::Format::RFC3339;
-        my $parser = DateTime::Format::RFC3339->new();
-        $datetime = $parser->parse_datetime($datetime_string);
+    eval {
+        # Parse date only time
+        if ( $datetime_string =~ /^(\d{4})-(\d{2})-(\d{2})$/ ) {
+            $datetime = DateTime->new(
+                            'year'  => $1,
+                            'month' => $2,
+                            'day'   => $3,
+                        );
+        } else {
+            use DateTime::Format::RFC3339;
+            my $parser = DateTime::Format::RFC3339->new();
+            $datetime = $parser->parse_datetime($datetime_string);
+        }
+    };
+    if ($@) {
+        die "ERROR, value '$datetime_string' could not be succesfully " .
+            'parsed as a timestamp value' . "\n";
     }
 
     return $datetime;
