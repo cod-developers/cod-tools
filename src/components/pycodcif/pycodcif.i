@@ -3,6 +3,28 @@
     #include <Python.h>
 
     PyObject * parse_cif( char * fname, char * prog, PyObject * options );
+
+    // from cif_options.h:
+    #include <cif_options.h>
+
+    typedef enum cif_option_t cif_option_t;
+
+    cif_option_t cif_option_default();
+
+    // from datablock.h:
+    #include <datablock.h>
+
+    ssize_t datablock_tag_index( DATABLOCK *datablock, char *tag );
+
+    // from cif.h:
+    #include <cif.h>
+
+    DATABLOCK * cif_datablock_list( CIF *cif );
+
+    // from cif_compiler.h:
+    #include <cif_compiler.h>
+
+    CIF *new_cif_from_cif_file( char *filename, cif_option_t co, cexception_t *ex );
 %}
 
 %pythoncode %{
@@ -319,6 +341,32 @@ class CifParserException(Exception):
 
 %}
 
+%typemap(out) ssize_t {
+    $result = PyInt_FromLong( $1 );
+}
+
 #include <Python.h>
 
 PyObject * parse_cif( char * fname, char * prog, PyObject * options );
+
+// from cif_options.h:
+#include <cif_options.h>
+
+typedef enum cif_option_t cif_option_t;
+
+cif_option_t cif_option_default();
+
+// from datablock.h:
+#include <datablock.h>
+
+ssize_t datablock_tag_index( DATABLOCK *datablock, char *tag );
+
+// from cif.h:
+#include <cif.h>
+
+DATABLOCK * cif_datablock_list( CIF *cif );
+
+// from cif_compiler.h:
+#include <cif_compiler.h>
+
+CIF *new_cif_from_cif_file( char *filename, cif_option_t co, cexception_t *ex );
