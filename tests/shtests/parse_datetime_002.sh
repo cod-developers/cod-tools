@@ -29,11 +29,18 @@ my @datetime_values = (
     '2000-23-01',
     # Day lies outside the allowed range for the given month
     '2000-02-30',
+    # Space in front of the date-only timestamp
+    ' 2000-02-30',
+    # Space at the end of the date-only timestamp
+    '2000-02-30 ',
+    # Space in front of the datetime timestamp
+    ' 1985-04-12T23:20:50.52Z',
+    # Space at the end of the datetime timestamp
+    '1985-04-12T23:20:50.52Z ',
     # Incorrect datetime
     '1985-04-12T23:20:50.52J',
     # Space instead of the 'T' separator
     '1985-04-12 23:20:50.52Z',
-    # Lower case letters
 );
 
 for (@datetime_values) {
