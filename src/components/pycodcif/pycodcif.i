@@ -20,6 +20,8 @@
     // from datablock.h:
     #include <datablock.h>
 
+    DATABLOCK *new_datablock( const char *name, DATABLOCK *next,
+                              cexception_t *ex );
     DATABLOCK *datablock_next( DATABLOCK *datablock );
     CIFVALUE *datablock_cifvalue( DATABLOCK *datablock, int tag_nr, int val_nr );
     ssize_t datablock_tag_index( DATABLOCK *datablock, char *tag );
@@ -41,6 +43,8 @@
     #include <cif_compiler.h>
 
     CIF *new_cif_from_cif_file( char *filename, cif_option_t co, cexception_t *ex );
+
+    PyObject *extract_value( CIFVALUE * cifvalue );
 %}
 
 %pythoncode %{
@@ -355,7 +359,7 @@ def escape_meta(text, escaped_symbols):
 class CifParserException(Exception):
     pass
 
-class Cif(object):
+class CifFile(object):
     def __init__(self):
         self._cif = new_cif( None )
 
@@ -368,6 +372,22 @@ class Cif(object):
         if datablock is None:
             raise IndexError('list index out of range')
         return datablock
+
+class CifDatablock(object):
+    def __init__(self, name):
+        self._datablock = new_datablock( name, None, None )
+
+    def __getitem__(self, key):
+        tag_index = datablock_tag_index( self._datablock, key )
+        if tag_index == -1:
+            raise KeyError(key)
+        return extract_value( datablock_cifvalue( self._datablock, tag_index, 0 ) )
+
+    def __setitem__(self, key, value):
+        tag_index = datablock_tag_index( self._datablock, key )
+        cifvalue = new_value_from_scalar( value, "CIF_UQSTRING", None )
+        if tag_index == -1:
+            datablock_insert_cifvalue( self._datablock, key, cifvalue, None )
 
 %}
 
@@ -425,6 +445,8 @@ void value_dump( CIFVALUE *value );
 // from datablock.h:
 #include <datablock.h>
 
+DATABLOCK *new_datablock( const char *name, DATABLOCK *next,
+                          cexception_t *ex );
 DATABLOCK *datablock_next( DATABLOCK *datablock );
 CIFVALUE *datablock_cifvalue( DATABLOCK *datablock, int tag_nr, int val_nr );
 ssize_t datablock_tag_index( DATABLOCK *datablock, char *tag );
@@ -446,3 +468,5 @@ DATABLOCK * cif_datablock_list( CIF *cif );
 #include <cif_compiler.h>
 
 CIF *new_cif_from_cif_file( char *filename, cif_option_t co, cexception_t *ex );
+
+PyObject *extract_value( CIFVALUE * cifvalue );
