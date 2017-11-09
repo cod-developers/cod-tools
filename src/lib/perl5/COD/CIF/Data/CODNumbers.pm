@@ -24,6 +24,7 @@ our @EXPORT_OK = qw(
     fetch_duplicates_from_database
     cif_fill_data
     entries_are_the_same
+    are_equiv_lattices
 );
 
 my %has_numeric_value = (
@@ -403,7 +404,7 @@ sub get_cell($)
 
 
 ##
-# Evaluates if the crystal lattice information provided in both entries could
+# Evaluates if the crystal lattice parameters provided in both entries could
 # be considered equivalent. Missing values are treated as being equal to any
 # other value.
 #
@@ -420,9 +421,7 @@ sub get_cell($)
 #
 #       {
 #       # Logical value denoting whether the s.u. values should be
-#       # considered while comparing the measured values. If this
-#       # options is enabled and the s.u. of at least one value is
-#       # provided the maximum difference parameter values are ignored
+#       # considered while comparing the measured values
 #           'use_su'               => 1,
 #       # The maximum difference between two cell length values in
 #       # ångströms for them to be still considered equivalent
@@ -435,7 +434,7 @@ sub get_cell($)
 #       In case the option value is undefined the default value is used.
 #
 # @return
-#       '1' if the crystal lattice information is considered equivalent,
+#       '1' if the crystal lattice parameters are considered equivalent,
 #       '0' otherwise.
 ##
 sub are_equiv_lattices
