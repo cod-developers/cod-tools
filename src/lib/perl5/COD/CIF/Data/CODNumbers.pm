@@ -37,12 +37,12 @@ my %skip_tag = (
 );
 
 my %default_options = (
-    'max_cell_length_diff'  => 0.5, # Angstroems
-    'max_cell_angle_diff'   => 1.2, # degrees
+    'use_su'                => 1,
+    'max_cell_length_diff'  => 0.5,
+    'max_cell_angle_diff'   => 1.2,
     'check_bibliography'    => 1,
     'check_sample_history'  => 0,
     'check_compound_source' => 0,
-    'ignore_sigma'          => 0,
     'cod_series_prefix'     => ''
 );
 
@@ -401,72 +401,165 @@ sub get_cell($)
     );
 }
 
-sub cells_are_the_same($$$$$)
+
+##
+# Evaluates if the crystal lattice information provided in both entries could
+# be considered equivalent. Missing values are treated as being equal to any
+# other value.
+#
+# @param $entry1
+#       Data structure of the first entry as returned by the 'cif_fill_data()'
+#       or the 'query_COD_database()' subroutines.
+# @param $entry2
+#       Data structure of the second entry as returned by the 'cif_fill_data()'
+#       or the 'query_COD_database()' subroutines.
+# @param $options
+#       Reference to a hash containing the options that modify the behaviour
+#       of the subroutine. The following options are recognised by this
+#       subroutine:
+#
+#       {
+#       # Logical value denoting whether the s.u. values should be
+#       # considered while comparing the measured values. If this
+#       # options is enabled and the s.u. of at least one value is
+#       # provided the maximum difference parameter values are ignored
+#           'use_su'               => 1,
+#       # The maximum difference between two cell length values in
+#       # ångströms for them to be still considered equivalent
+#           'max_cell_length_diff' => 0.5,
+#       # The maximum difference between two cell angle values in
+#       # ångströms for them to be still considered equivalent
+#           'max_cell_angle_diff'  => 1.2,
+#       }
+#
+#       In case the option value is undefined the default value is used.
+#
+# @return
+#       '1' if the crystal lattice information is considered equivalent,
+#       '0' otherwise.
+##
+sub are_equiv_lattices
 {
-    my ($cell1, $cell2, $sigma1, $sigma2, $user_options) = @_;
+    my ($entry1, $entry2, $options) = @_;
 
-    $user_options = {} unless defined $user_options;
-    my %options;
-    foreach my $key (keys %default_options) {
-        $options{$key} = defined $user_options->{$key} ?
-                                 $user_options->{$key} :
-                                 $default_options{$key};
-    };
+    my $use_su          = defined $options->{'use_su'} ?
+                                  $options->{'use_su'} : 1;
+    my $max_length_diff = defined $options->{'max_cell_length_diff'} ?
+                                  $options->{'max_cell_length_diff'} : 0.5;
+    my $max_angle_diff  = defined $options->{'max_cell_angle_diff'} ?
+                                  $options->{'max_cell_angle_diff'} : 1.2;
 
-    my @cell1 = get_cell( $cell1 );
-    my @cell2 = get_cell( $cell2 );
-    my @sigma1 = get_cell( $sigma1 );
-    my @sigma2 = get_cell( $sigma2 );
+    my @cell1  = get_cell( $entry1->{'cell'} );
+    my @cell2  = get_cell( $entry2->{'cell'} );
+    my @sigma1 = get_cell( $entry1->{'sigcell'} );
+    my @sigma2 = get_cell( $entry2->{'sigcell'} );
 
     for my $i (0..2) {
-        my $length1 = $cell1[$i];
-        my $length2 = $cell2[$i];
-        if( defined $length1 and defined $length2 ) {
-            my $sigma1 = $sigma1[$i];
-            my $sigma2 = $sigma2[$i];
-            if( defined $sigma1 || defined $sigma2 ) {
-                $sigma1 = 0 unless defined $sigma1;
-                $sigma2 = 0 unless defined $sigma2;
+        my $length_1 = $cell1[$i];
+        my $length_2 = $cell2[$i];
+        my $su_1     = $sigma1[$i];
+        my $su_2     = $sigma2[$i];
+        next if ( !( defined $length_1 && defined $length_2 ) );
+
+        return 0 if !are_equiv_meas(
+            $length_1,
+            $length_2,
+            {
+                'su_1'     => $su_1,
+                'su_2'     => $su_2,
+                'use_su'   => $use_su,
+                'max_diff' => $max_length_diff,
             }
-            if( defined $sigma1 && ! $options{ignore_sigma} ) {
-                if( !eqsig( $length1, $sigma1, $length2, $sigma2 )) {
-                    return 0;
-                }
-            } else {
-                my $diff = abs( $length1 - $length2 );
-                if( $diff > $options{max_cell_length_diff} ) {
-                    return 0;
-                }
-            }
-        }
-    }
-    for my $i (3..5) {
-        my $angle1 = $cell1[$i];
-        my $angle2 = $cell2[$i];
-        if( defined $angle1 and defined $angle2 ) {
-            my $sigma1 = $sigma1[$i];
-            my $sigma2 = $sigma2[$i];
-            if( defined $sigma1 || defined $sigma2 ) {
-                $sigma1 = 0 unless defined $sigma1;
-                $sigma2 = 0 unless defined $sigma2;
-            }
-            if( defined $sigma1 && ! $options{ignore_sigma} ) {
-                if( !eqsig( $angle1, $sigma1, $angle2, $sigma2 )) {
-                    return 0;
-                }
-            } else {
-                my $diff = abs( $angle1 - $angle2 );
-                if( $diff > $options{max_cell_angle_diff} ) {
-                    return 0;
-                }
-            }
-        }
+        );
     }
 
-    ## print ">>> \$cell1: @cell1\n";
-    ## print ">>> \$cell2: @cell2\n";
+    for my $i (3..5) {
+        my $angle_1 = $cell1[$i];
+        my $angle_2 = $cell2[$i];
+        my $su_1    = $sigma1[$i];
+        my $su_2    = $sigma2[$i];
+        next if ( !( defined $angle_1 && defined $angle_2 ) );
+
+        return 0 if !are_equiv_meas(
+            $angle_1,
+            $angle_2,
+            {
+                'su_1'     => $su_1,
+                'su_2'     => $su_2,
+                'use_su'   => $use_su,
+                'max_diff' => $max_angle_diff,
+            }
+        );
+    }
 
     return 1;
+}
+
+##
+# Compares two numeric measured values while making use of the standard
+# uncertainties (s.u.) associated with the measurement. In case the use of
+# the s.u. values is not desired a similarity treshold can be can be provided
+# instead.
+#
+# @param $value_1
+#       The first numeric value to be compared.
+# @param $value_2
+#       The second numeric value to be compared.
+# @param $options
+#       Reference to a hash containing the options that modify the behaviour
+#       of the subroutine. The following options are recognised by this
+#       subroutine:
+#
+#       {
+#       # Logical value denoting whether the s.u. values should be
+#       # considered while comparing the measured values. In case
+#       # this option is enabled, but no s.u. values are provided
+#       # the values are compared using the treshold value. In
+#       # case only one s.u. value is provided, the other value
+#       # is assumed to be zero.
+#       # TODO: is defaulting to zero really the correct behaviour?
+#           'use_su'   => 1,
+#       # Standard uncertainty value associated with $value_1
+#           'su_1'     => undef,
+#       # Standard uncertainty value associated with $value_2
+#           'su_2'     => undef,
+#       # The maximum difference between numeric values for them to
+#       # be still considered equivalent
+#           'max_diff' => 0,
+#       }
+#
+#       In case the option value is undefined the default value is used.
+#
+# @return
+#       '1' if the numeric values are considered equivalent,
+#       '0' otherwise.
+##
+sub are_equiv_meas
+{
+    my ( $value_1, $value_2, $options ) = @_;
+
+    my $su_1     = $options->{'su_1'};
+    my $su_2     = $options->{'su_2'};
+    my $use_su   = defined $options->{'use_su'} ?
+                           $options->{'use_su'} : 1;
+    my $max_diff = defined $options->{'max_diff'} ?
+                           $options->{'max_diff'} : 0;
+
+    if( !(defined $su_1 || defined $su_2) ) {
+        $use_su = 0;
+    } else {
+        $su_1 = 0 unless defined $su_1;
+        $su_2 = 0 unless defined $su_2;
+    }
+
+    my $are_equal;
+    if( $use_su ) {
+        $are_equal = eqsig( $value_1, $su_1, $value_2, $su_2 );
+    } else {
+        $are_equal = abs( $value_1 - $value_2 ) < $max_diff;
+    }
+
+    return $are_equal;
 }
 
 sub conditions_are_the_same
@@ -580,10 +673,7 @@ sub entries_are_the_same
     };
 
     my $are_the_same =
-        cells_are_the_same(
-            $entry1->{cell}, $entry2->{cell},
-            $entry1->{sigcell}, $entry2->{sigcell},
-            \%options ) &&
+        are_equiv_lattices( $entry1, $entry2, \%options ) &&
         conditions_are_the_same( $entry1, $entry2, \%options ) &&
         (!defined $entry1->{suboptimal} || $entry1->{suboptimal} ne 'yes') &&
         (!defined $entry2->{suboptimal} || $entry2->{suboptimal} ne 'yes');
