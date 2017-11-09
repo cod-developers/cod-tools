@@ -20,6 +20,7 @@
     // from datablock.h:
     #include <datablock.h>
 
+    DATABLOCK *datablock_next( DATABLOCK *datablock );
     CIFVALUE *datablock_cifvalue( DATABLOCK *datablock, int tag_nr, int val_nr );
     ssize_t datablock_tag_index( DATABLOCK *datablock, char *tag );
     void datablock_overwrite_cifvalue( DATABLOCK * datablock, ssize_t tag_nr,
@@ -354,6 +355,20 @@ def escape_meta(text, escaped_symbols):
 class CifParserException(Exception):
     pass
 
+class Cif(object):
+    def __init__(self):
+        self._cif = new_cif( None )
+
+    def __getitem__(self, key):
+        datablock = cif_datablock_list( self._cif )
+        for i in range(0,key):
+            if datablock is None:
+                raise IndexError('list index out of range')
+            datablock = datablock_next( datablock )
+        if datablock is None:
+            raise IndexError('list index out of range')
+        return datablock
+
 %}
 
 %typemap(out) ssize_t {
@@ -410,6 +425,7 @@ void value_dump( CIFVALUE *value );
 // from datablock.h:
 #include <datablock.h>
 
+DATABLOCK *datablock_next( DATABLOCK *datablock );
 CIFVALUE *datablock_cifvalue( DATABLOCK *datablock, int tag_nr, int val_nr );
 ssize_t datablock_tag_index( DATABLOCK *datablock, char *tag );
 void datablock_overwrite_cifvalue( DATABLOCK * datablock, ssize_t tag_nr,
