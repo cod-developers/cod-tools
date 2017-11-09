@@ -27,10 +27,13 @@
     void datablock_insert_cifvalue( DATABLOCK * datablock, char *tag,
                                     CIFVALUE *value, cexception_t *ex );
 
-
     // from cif.h:
     #include <cif.h>
 
+    CIF *new_cif( cexception_t *ex );
+    void cif_start_datablock( CIF *cif, const char *name,
+                              cexception_t *ex );
+    void cif_print( CIF *cif );
     DATABLOCK * cif_datablock_list( CIF *cif );
 
     // from cif_compiler.h:
@@ -417,6 +420,10 @@ void datablock_insert_cifvalue( DATABLOCK * datablock, char *tag,
 // from cif.h:
 #include <cif.h>
 
+CIF *new_cif( cexception_t *ex );
+void cif_start_datablock( CIF *cif, const char *name,
+                          cexception_t *ex );
+void cif_print( CIF *cif );
 DATABLOCK * cif_datablock_list( CIF *cif );
 
 // from cif_compiler.h:
