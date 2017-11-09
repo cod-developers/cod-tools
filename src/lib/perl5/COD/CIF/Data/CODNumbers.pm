@@ -27,13 +27,13 @@ our @EXPORT_OK = qw(
 );
 
 my %has_numeric_value = (
-    "_journal_year"   => 1,
-    "_journal_volume" => 1,
-    "_journal_issue"  => 1,
+    '_journal_year'   => 1,
+    '_journal_volume' => 1,
+    '_journal_issue'  => 1,
 );
 
 my %skip_tag = (
-    "_journal_name_full" => 0,
+    '_journal_name_full' => 0,
 );
 
 my %default_options = (
@@ -137,47 +137,47 @@ sub fetch_duplicates_from_database
         my %structures_found = ();
 
         if( defined $formula && defined $COD{$formula} ) {
-            for my $COD_entry (@{$COD{$formula}}) {
+            for my $cod_entry (@{$COD{$formula}}) {
                 if( entries_are_the_same( $structures{$id},
-                                          $COD_entry,
+                                          $cod_entry,
                                           \%options )) {
-                    my $COD_key = $COD_entry->{filename};
-                    $structures_found{$COD_key} = $COD_entry;
+                    my $cod_key = $cod_entry->{filename};
+                    $structures_found{$cod_key} = $cod_entry;
                 }
             }
         }
         if( defined $calc_formula && defined $COD{$calc_formula} &&
             ( !defined $formula || $formula ne $calc_formula )) {
             ## print ">>> formula: '$formula', contents: '$calc_formula'\n";
-            for my $COD_entry (@{$COD{$calc_formula}}) {
+            for my $cod_entry (@{$COD{$calc_formula}}) {
                 if( entries_are_the_same( $structures{$id},
-                                          $COD_entry,
+                                          $cod_entry,
                                           \%options )) {
-                    my $COD_key = $COD_entry->{filename};
-                    if( !exists $structures_found{$COD_key} ) {
-                        $structures_found{$COD_key} = $COD_entry;
+                    my $cod_key = $cod_entry->{filename};
+                    if( !exists $structures_found{$cod_key} ) {
+                        $structures_found{$cod_key} = $cod_entry;
                     }
                 }
             }
         }
         if( defined $cell_formula && defined $COD{$cell_formula} &&
             ( !defined $calc_formula || $calc_formula ne $cell_formula ) ) {
-            for my $COD_entry (@{$COD{$cell_formula}}) {
+            for my $cod_entry (@{$COD{$cell_formula}}) {
                 if( entries_are_the_same( $structures{$id},
-                                          $COD_entry,
+                                          $cod_entry,
                                           \%options )) {
-                    my $COD_key = $COD_entry->{filename};
-                    if( !exists $structures_found{$COD_key} ) {
-                        $structures_found{$COD_key} = $COD_entry;
+                    my $cod_key = $cod_entry->{filename};
+                    if( !exists $structures_found{$cod_key} ) {
+                        $structures_found{$cod_key} = $cod_entry;
                     }
                 }
             }
         }
 
-        push( @duplicates,
-                { formula => $final_formula,
-                  datablock => $structures{$id},
-                  duplicates => \%structures_found } );
+        push @duplicates,
+               { formula    => $final_formula,
+                 datablock  => $structures{$id},
+                 duplicates => \%structures_found };
     }
 
     return \@duplicates;
@@ -220,7 +220,7 @@ sub cif_fill_data
     my $sigmas = $dataset->{precisions};
     my $id = $dataset->{name};
 
-    return undef if !defined $id;
+    return if !defined $id;
     $structure{id} = $id;
     $structure{filename} = basename( $file );
     $structure{index} = $index;
@@ -234,14 +234,14 @@ sub cif_fill_data
             $formula =~ s/^\s*|\s*$//g;
             $formula =~ s/\s+/ /g;
 
-            my $formula_parser = new COD::Formulae::Parser::AdHoc;
+            my $formula_parser = COD::Formulae::Parser::AdHoc->new();
 
             eval {
                 $formula_parser->ParseString( $formula );
                 if( defined $formula_parser->YYData->{ERRCOUNT} &&
                     $formula_parser->YYData->{ERRCOUNT} > 0 ) {
                     die "ERROR, $formula_parser->YYData->{ERRCOUNT} "
-                      . "error(s) encountered while parsing chemical "
+                      . 'error(s) encountered while parsing chemical '
                       . "formula sum\n";
                     ;
                 } else {
@@ -251,7 +251,7 @@ sub cif_fill_data
             if( $@ ) {
                 warn "WARNING, could not parse formula '$formula' "
                    . "resorting to simple split routine\n";
-                $formula = join( " ", sort {$a cmp $b} split( " ", $formula ));
+                $formula = join ' ', sort {$a cmp $b} split( ' ', $formula );
             }
         }
             $structure{chemical_formula_sum} = $formula;
@@ -265,7 +265,7 @@ sub cif_fill_data
         # ERRORs that originated within the function are downgraded to warnings
         my $error = $@;
         $error =~ s/[A-Z]+, //;
-        chomp($error);
+        chomp $error;
         warn "WARNING, summary formula could not be calculated -- $error\n";
     };
     $structure{calc_formula} = $calc_formula
@@ -280,7 +280,7 @@ sub cif_fill_data
         # ERRORs that originated within the function are downgraded to warnings
         my $error = $@;
         $error =~ s/[A-Z]+, //;
-        chomp($error);
+        chomp $error;
         warn "WARNING, unit cell summary formula could not be calculated -- $error\n";
     };
     $structure{cell_formula} = $cell_formula
@@ -293,7 +293,7 @@ sub cif_fill_data
             $val =~ s/^\s*'\s*|\s*'\s*$//g;
             $val =~ s/\(.*$//;
             $val =~ s/[()_a-zA-Z]//g;
-            $structure{cell}{$key} = sprintf "%f", $val;
+            $structure{cell}{$key} = sprintf '%f', $val;
         }
     }
     for my $key ( qw( _cell_length_a _cell_length_b _cell_length_c
@@ -330,11 +330,11 @@ sub cif_fill_data
            if( defined $val ) {
                my $parameter;
                if( $key =~ /history/ ) {
-                   $parameter = "history";
+                   $parameter = 'history';
                } elsif( $key =~ /pressure/ ) {
-                   $parameter = "pressure";
+                   $parameter = 'pressure';
                } else {
-                   $parameter = "temperature";
+                   $parameter = 'temperature';
                }
                $structure{$parameter}{$key} = $val;
                $structure{$parameter}{$key}
@@ -344,14 +344,14 @@ sub cif_fill_data
     }
 
     for my $key ( qw( _cod_enantiomer_of
-                       _cod_related_optimal_struct )) {
+                      _cod_related_optimal_struct ) ) {
         if( exists $values->{$key} ) {
             $structure{enantiomer} = $values->{$key}[0];
         }
     }
 
     for my $key ( qw( _cod_related_optimal_struct
-                       _[local]_cod_related_optimal_struct )) {
+                      _[local]_cod_related_optimal_struct ) ) {
         if( exists $values->{$key} ) {
             $structure{related_optimal} = $values->{$key}[0];
         }
@@ -371,7 +371,7 @@ sub cif_fill_data
     }
 
     for my $key ( qw( _cod_suboptimal_structure
-                       _[local]_cod_suboptimal_structure )) {
+                      _[local]_cod_suboptimal_structure ) ) {
         if( exists $values->{$key} ) {
             $structure{suboptimal} = $values->{$key}[0];
         }
@@ -485,10 +485,10 @@ sub conditions_are_the_same
 
     my @parameters = qw( temperature pressure );
     if( $options{check_sample_history} ) {
-        push( @parameters, "history" );
+        push @parameters, 'history';
     }
     if( $options{check_compound_source} ) {
-        push( @parameters, "source" );
+        push @parameters, 'source';
     }
 
     for my $parameter ( @parameters ) {
@@ -534,7 +534,7 @@ sub bibliographies_are_the_same($$)
 {
     my ($biblio1, $biblio2) = @_;
 
-    my %tags = map {($_,$_)} ( keys %$biblio1, keys %$biblio2 );
+    my %tags = map {($_,$_)} ( keys %{$biblio1}, keys %{$biblio2} );
 
     # If DOIs exists, their comparison gives a definitve answer to
     # whether we are analysing the same paper (data source) or not:
@@ -585,8 +585,8 @@ sub entries_are_the_same
             $entry1->{sigcell}, $entry2->{sigcell},
             \%options ) &&
         conditions_are_the_same( $entry1, $entry2, \%options ) &&
-        (!defined $entry1->{suboptimal} || $entry1->{suboptimal} ne "yes") &&
-        (!defined $entry2->{suboptimal} || $entry2->{suboptimal} ne "yes");
+        (!defined $entry1->{suboptimal} || $entry1->{suboptimal} ne 'yes') &&
+        (!defined $entry2->{suboptimal} || $entry2->{suboptimal} ne 'yes');
 
     if( $options{check_bibliography} ) {
         $are_the_same = $are_the_same && bibliographies_are_the_same(
@@ -604,7 +604,7 @@ sub entries_are_the_same
         if( defined $entry1->{related_optimal} &&
             $entry1->{related_optimal} eq $entry2->{id} &&
             defined $entry1->{suboptimal} &&
-            $entry1->{suboptimal} eq "yes" ) {
+            $entry1->{suboptimal} eq 'yes' ) {
             $are_the_same = 0;
         }
     }
@@ -658,6 +658,8 @@ sub database_disconnect
     $dbh->disconnect
     || die 'cannot disconnect from the database' .
        ( defined $DBI::errstr ? ' -- ' . lcfirst( $DBI::errstr) : '' );
+
+    return;
 }
 
 sub query_COD_database
@@ -683,10 +685,10 @@ sub query_COD_database
 
     my @history_columns = qw( thermalhist pressurehist );
 
-    my $column_list = join( ",", @columns );
+    my $column_list = join ',', @columns;
 
     if( $options{check_sample_history} ) {
-        $column_list .= "," . join( ",", @history_columns );
+        $column_list .= ',' . join ',', @history_columns;
     }
 
     if( $options{check_compound_source} ) {
@@ -695,8 +697,8 @@ sub query_COD_database
 
     my $sth = $dbh->prepare(
         "SELECT $column_list FROM `$database->{table}` ".
-        "WHERE (formula = ? OR calcformula = ? OR cellformula = ?)" .
-        ($cod_series_prefix ? "AND `file` LIKE '$cod_series_prefix%'" : "")
+        'WHERE (formula = ? OR calcformula = ? OR cellformula = ?)' .
+        ($cod_series_prefix ? "AND `file` LIKE '$cod_series_prefix%'" : '')
         );
 
     for my $id (keys %{$data}) {
@@ -708,7 +710,7 @@ sub query_COD_database
                            $data->{$id}{cell_formula} )) {
             if( defined $formula ) {
                 ## print ">>> formula = $formula\n";
-                my $query_formula = "- " . $formula . " -";
+                my $query_formula = '- ' . $formula . ' -';
                 my $rv = $sth->execute( $query_formula,
                                         $query_formula,
                                         $query_formula );
@@ -784,7 +786,7 @@ sub query_COD_database
                         $structure->{bibliography}{_journal_paper_doi} =
                             $row->{doi} if defined $row->{doi};
 
-                        push( @{$COD->{$formula}}, $structure );
+                        push @{$COD->{$formula}}, $structure;
                     }
                 } else {
                     die "ERROR, error fetching formula '${formula}'" .
@@ -794,6 +796,8 @@ sub query_COD_database
             }
         }
     }
+
+    return;
 }
 
 1;
