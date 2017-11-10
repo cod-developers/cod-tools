@@ -44,9 +44,9 @@ my $entry_1 = {
 
 my $entry_2 = {
     'cell' => {
-        '_cell_length_a'    => 5,
-        '_cell_length_b'    => 5,
-        '_cell_length_c'    => 5,
+        '_cell_length_a'    => 9,
+        '_cell_length_b'    => 9,
+        '_cell_length_c'    => 9,
         '_cell_angle_alpha' => 90,
         '_cell_angle_beta'  => 90,
         '_cell_angle_gamma' => 90,
@@ -61,9 +61,9 @@ my $entry_2 = {
     },
 };
 
-my $equivalent = COD::CIF::Data::CODNumbers::are_equiv_lattices(
+my $equivalent = COD::CIF::Data::CODNumbers::have_equiv_lattices(
     $entry_1,
-    $entry_2
+    $entry_2,
 );
 
 if ( $equivalent ) {

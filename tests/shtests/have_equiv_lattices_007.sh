@@ -63,7 +63,7 @@ my $entry_2 = {
     },
 };
 
-my $equivalent = COD::CIF::Data::CODNumbers::are_equiv_lattices(
+my $equivalent = COD::CIF::Data::CODNumbers::have_equiv_lattices(
     $entry_1,
     $entry_2,
     {

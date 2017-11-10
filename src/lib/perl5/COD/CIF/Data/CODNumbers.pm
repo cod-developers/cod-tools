@@ -24,17 +24,8 @@ our @EXPORT_OK = qw(
     fetch_duplicates_from_database
     cif_fill_data
     entries_are_the_same
-    are_equiv_lattices
-);
-
-my %has_numeric_value = (
-    '_journal_year'   => 1,
-    '_journal_volume' => 1,
-    '_journal_issue'  => 1,
-);
-
-my %skip_tag = (
-    '_journal_name_full' => 0,
+    have_equiv_lattices
+    have_equiv_bibliographies
 );
 
 my %default_options = (
@@ -402,7 +393,6 @@ sub get_cell($)
     );
 }
 
-
 ##
 # Evaluates if the crystal lattice parameters provided in both entries could
 # be considered equivalent. Missing values are treated as being equal to any
@@ -437,7 +427,7 @@ sub get_cell($)
 #       '1' if the crystal lattice parameters are considered equivalent,
 #       '0' otherwise.
 ##
-sub are_equiv_lattices
+sub have_equiv_lattices
 {
     my ($entry1, $entry2, $options) = @_;
 
@@ -497,7 +487,7 @@ sub are_equiv_lattices
 ##
 # Compares two numeric measured values while making use of the standard
 # uncertainties (s.u.) associated with the measurement. In case the use of
-# the s.u. values is not desired a similarity treshold can be can be provided
+# the s.u. values is not desired a similarity threshold can be can be provided
 # instead.
 #
 # @param $value_1
@@ -513,7 +503,7 @@ sub are_equiv_lattices
 #       # Logical value denoting whether the s.u. values should be
 #       # considered while comparing the measured values. In case
 #       # this option is enabled, but no s.u. values are provided
-#       # the values are compared using the treshold value. In
+#       # the values are compared using the threshold value. In
 #       # case only one s.u. value is provided, the other value
 #       # is assumed to be zero.
 #       # TODO: is defaulting to zero really the correct behaviour?
@@ -622,36 +612,63 @@ sub conditions_are_the_same
     return 1;
 }
 
-sub bibliographies_are_the_same($$)
+##
+# Evaluates if the bibliographical information provided in both entries could
+# be considered equivalent. Missing values are treated as being equal to any
+# other value.
+#
+# @param $entry1
+#       Data structure of the first entry as returned by the 'cif_fill_data()'
+#       or the 'query_COD_database()' subroutines.
+# @param $entry2
+#       Data structure of the second entry as returned by the 'cif_fill_data()'
+#       or the 'query_COD_database()' subroutines.
+#
+# @return
+#       '1' if the bibliographical information is considered equivalent,
+#       '0' otherwise.
+##
+sub have_equiv_bibliographies
 {
     my ($biblio1, $biblio2) = @_;
 
     my %tags = map {($_,$_)} ( keys %{$biblio1}, keys %{$biblio2} );
 
-    # If DOIs exists, their comparison gives a definitve answer to
+    # If DOIs exists, their comparison gives a definitive answer to
     # whether we are analysing the same paper (data source) or not:
-
-    if( exists $biblio1->{_journal_paper_doi} &&
-        exists $biblio2->{_journal_paper_doi} ) {
+    if( exists $biblio1->{'_journal_paper_doi'} &&
+        exists $biblio2->{'_journal_paper_doi'} ) {
         return
-            lc($biblio1->{_journal_paper_doi}) eq
-            lc($biblio2->{_journal_paper_doi});
+            lc $biblio1->{'_journal_paper_doi'} eq
+            lc $biblio2->{'_journal_paper_doi'};
     }
 
+    my %has_numeric_value = (
+        '_journal_year'   => 1,
+        '_journal_volume' => 1,
+        '_journal_issue'  => 1,
+    );
+
+    my %skip_tag = (
+        '_journal_name_full' => 0,
+    );
+
     for my $tag ( keys %tags ) {
-        next if( $skip_tag{$tag} );
-        if( defined $biblio1->{$tag} && defined $biblio2->{$tag} ) {
-            if( $has_numeric_value{$tag} ) {
-                if( $biblio1->{$tag} != $biblio2->{$tag} ) {
-                    return 0;
-                }
-            } else {
-                if( $biblio1->{$tag} ne $biblio2->{$tag} ) {
-                    return 0;
-                }
+        next if ( $skip_tag{$tag} );
+        my $value_1 = $biblio1->{$tag};
+        my $value_2 = $biblio2->{$tag};
+        next if ( !( defined $value_1 && defined $value_2 ) );
+        if( $has_numeric_value{$tag} ) {
+            if( $value_1 != $value_2 ) {
+                return 0;
+            }
+        } else {
+            if( $value_1 ne $value_2 ) {
+                return 0;
             }
         }
     }
+
     return 1;
 }
 
@@ -672,15 +689,15 @@ sub entries_are_the_same
     };
 
     my $are_the_same =
-        are_equiv_lattices( $entry1, $entry2, \%options ) &&
+        have_equiv_lattices( $entry1, $entry2, \%options ) &&
         conditions_are_the_same( $entry1, $entry2, \%options ) &&
         (!defined $entry1->{suboptimal} || $entry1->{suboptimal} ne 'yes') &&
         (!defined $entry2->{suboptimal} || $entry2->{suboptimal} ne 'yes');
 
-    if( $options{check_bibliography} ) {
-        $are_the_same = $are_the_same && bibliographies_are_the_same(
-                                            $entry1->{bibliography},
-                                            $entry2->{bibliography} );
+    if( $options{'check_bibliography'} ) {
+        $are_the_same = $are_the_same && have_equiv_bibliographies(
+                                            $entry1->{'bibliography'},
+                                            $entry2->{'bibliography'} );
     }
 
     if( $are_the_same ) {

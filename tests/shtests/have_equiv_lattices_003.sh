@@ -14,9 +14,8 @@ perl <<'END_SCRIPT'
 #*
 #* Unit test for the COD::CIF::Data::CODNumbers::are_equiv_lattices()
 #* subroutine. Tests the way the subroutine behaves when two lattices
-#* with differing cell lengths are compared. In this case the s.u.
-#* values are provided and the 'use_su' option is disabled. The lattices
-#* should be considered not equivalent.
+#* with differing cell angles are compared. In this case no options
+#* and no s.u. values are provided to the subroutine.
 #**
 
 use strict;
@@ -34,9 +33,9 @@ my $entry_1 = {
         '_cell_angle_gamma' => 90,
     },
     'sigcell' => {
-        '_cell_length_a'    => 2,
-        '_cell_length_b'    => 2,
-        '_cell_length_c'    => 2,
+        '_cell_length_a'    => undef,
+        '_cell_length_b'    => undef,
+        '_cell_length_c'    => undef,
         '_cell_angle_alpha' => undef,
         '_cell_angle_beta'  => undef,
         '_cell_angle_gamma' => undef,
@@ -45,27 +44,26 @@ my $entry_1 = {
 
 my $entry_2 = {
     'cell' => {
-        '_cell_length_a'    => 8,
-        '_cell_length_b'    => 8,
-        '_cell_length_c'    => 8,
-        '_cell_angle_alpha' => 90,
-        '_cell_angle_beta'  => 90,
-        '_cell_angle_gamma' => 90,
+        '_cell_length_a'    => 5,
+        '_cell_length_b'    => 5,
+        '_cell_length_c'    => 5,
+        '_cell_angle_alpha' => 45,
+        '_cell_angle_beta'  => 45,
+        '_cell_angle_gamma' => 45,
     },
     'sigcell' => {
-        '_cell_length_a'    => 2,
-        '_cell_length_b'    => 2,
-        '_cell_length_c'    => 2,
+        '_cell_length_a'    => undef,
+        '_cell_length_b'    => undef,
+        '_cell_length_c'    => undef,
         '_cell_angle_alpha' => undef,
         '_cell_angle_beta'  => undef,
         '_cell_angle_gamma' => undef,
     },
 };
 
-my $equivalent = COD::CIF::Data::CODNumbers::are_equiv_lattices(
+my $equivalent = COD::CIF::Data::CODNumbers::have_equiv_lattices(
     $entry_1,
-    $entry_2,
-    { 'use_su' => 0 }
+    $entry_2
 );
 
 if ( $equivalent ) {
