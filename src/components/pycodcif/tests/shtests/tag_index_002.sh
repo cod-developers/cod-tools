@@ -14,6 +14,6 @@ import sys
 from pycodcif import CifDatablock
 
 datablock = CifDatablock("new")
-datablock['_tag'] = "10"
+datablock['_tag'] = 10
 
 print datablock['_tag']
