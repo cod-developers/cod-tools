@@ -36,6 +36,7 @@
     CIF *new_cif( cexception_t *ex );
     void cif_start_datablock( CIF *cif, const char *name,
                               cexception_t *ex );
+    void cif_append_datablock( CIF * cif, DATABLOCK *datablock );
     void cif_print( CIF *cif );
     DATABLOCK * cif_datablock_list( CIF *cif );
 
@@ -373,6 +374,15 @@ class CifFile(object):
             raise IndexError('list index out of range')
         return datablock
 
+    def __str__(self):
+        with capture() as output:
+            cif_print( self._cif )
+        return output[0]
+
+    def append(self, datablock):
+        # must be a datablock!
+        cif_append_datablock( self._cif, datablock._datablock )
+
 class CifDatablock(object):
     def __init__(self, name):
         self._datablock = new_datablock( name, None, None )
@@ -387,6 +397,22 @@ class CifDatablock(object):
         tag_index = datablock_tag_index( self._datablock, key )
         if tag_index == -1:
             datablock_insert_cifvalue( self._datablock, key, value, None )
+
+import contextlib
+
+@contextlib.contextmanager
+def capture():
+    import sys
+    from cStringIO import StringIO
+    oldout,olderr = sys.stdout, sys.stderr
+    try:
+        out=[StringIO(), StringIO()]
+        sys.stdout,sys.stderr = out
+        yield out
+    finally:
+        sys.stdout,sys.stderr = oldout, olderr
+        out[0] = out[0].getvalue()
+        out[1] = out[1].getvalue()
 
 %}
 
@@ -480,6 +506,7 @@ void datablock_insert_cifvalue( DATABLOCK * datablock, char *tag,
 CIF *new_cif( cexception_t *ex );
 void cif_start_datablock( CIF *cif, const char *name,
                           cexception_t *ex );
+void cif_append_datablock( CIF * cif, DATABLOCK *datablock );
 void cif_print( CIF *cif );
 DATABLOCK * cif_datablock_list( CIF *cif );
 
