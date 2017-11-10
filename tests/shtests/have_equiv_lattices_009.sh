@@ -14,9 +14,9 @@ perl <<'END_SCRIPT'
 #*
 #* Unit test for the COD::CIF::Data::CODNumbers::are_equiv_lattices()
 #* subroutine. Tests the way the subroutine behaves when both of the
-#* lattices are missing some of the length and angle values. Since
-#* missing values are treated as being equal to any other value the
-#* lattices should be treated as equivalent.
+#* lattices are missing some of the length and angle values. Even
+#* though some values are missing, the missmatching ones cause the
+#* lattices to be treated as not equivalent.
 #**
 
 use strict;
@@ -28,7 +28,7 @@ my $entry_1 = {
     'cell' => {
         '_cell_length_a'    => 5,
         '_cell_length_b'    => undef,
-        '_cell_length_c'    => undef,
+        '_cell_length_c'    => 5,
         '_cell_angle_alpha' => 90,
         '_cell_angle_beta'  => undef,
         '_cell_angle_gamma' => undef,
@@ -47,7 +47,7 @@ my $entry_2 = {
     'cell' => {
         '_cell_length_a'    => undef,
         '_cell_length_b'    => 5,
-        '_cell_length_c'    => undef,
+        '_cell_length_c'    => 10,
         '_cell_angle_alpha' => undef,
         '_cell_angle_beta'  => 90,
         '_cell_angle_gamma' => undef,
@@ -62,7 +62,7 @@ my $entry_2 = {
     },
 };
 
-my $equivalent = COD::CIF::Data::CODNumbers::are_equiv_lattices(
+my $equivalent = COD::CIF::Data::CODNumbers::have_equiv_lattices(
     $entry_1,
     $entry_2,
 );

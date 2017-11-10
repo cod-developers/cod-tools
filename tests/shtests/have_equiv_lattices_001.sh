@@ -14,10 +14,8 @@ perl <<'END_SCRIPT'
 #*
 #* Unit test for the COD::CIF::Data::CODNumbers::are_equiv_lattices()
 #* subroutine. Tests the way the subroutine behaves when two lattices
-#* with differing cell parameters are compared. In this case the s.u.
-#* values are not provided and the 'max_cell_length_diff' and
-#* 'max_cell_angle_diff' options are given explicit values. The lattices
-#* should be considered equivalent.
+#* with identical parameters are compared. In this case no options and
+#* no s.u. values are provided to the subroutine.
 #**
 
 use strict;
@@ -46,10 +44,10 @@ my $entry_1 = {
 
 my $entry_2 = {
     'cell' => {
-        '_cell_length_a'    => 4.5,
+        '_cell_length_a'    => 5,
         '_cell_length_b'    => 5,
         '_cell_length_c'    => 5,
-        '_cell_angle_alpha' => 85,
+        '_cell_angle_alpha' => 90,
         '_cell_angle_beta'  => 90,
         '_cell_angle_gamma' => 90,
     },
@@ -63,13 +61,9 @@ my $entry_2 = {
     },
 };
 
-my $equivalent = COD::CIF::Data::CODNumbers::are_equiv_lattices(
+my $equivalent = COD::CIF::Data::CODNumbers::have_equiv_lattices(
     $entry_1,
-    $entry_2,
-    {
-        'max_cell_length_diff' => '0.6',
-        'max_cell_angle_diff'  => '6',
-    }
+    $entry_2
 );
 
 if ( $equivalent ) {
