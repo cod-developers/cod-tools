@@ -385,11 +385,14 @@ class CifDatablock(object):
 
     def __setitem__(self, key, value):
         tag_index = datablock_tag_index( self._datablock, key )
-        cifvalue = new_value_from_scalar( value, "CIF_UQSTRING", None )
         if tag_index == -1:
-            datablock_insert_cifvalue( self._datablock, key, cifvalue, None )
+            datablock_insert_cifvalue( self._datablock, key, value, None )
 
 %}
+
+%typemap(out) CIFVALUE * {
+    $result = extract_value( $1 );
+}
 
 %typemap(out) ssize_t {
     $result = PyInt_FromLong( $1 );
@@ -419,6 +422,18 @@ class CifDatablock(object):
         type = CIF_NON_EXISTANT;
     }
     $1 = type;
+}
+
+%typemap(in) CIFVALUE * {
+    cif_value_type_t type = CIF_UNKNOWN;
+    if(        PyInt_Check( $input ) || PyLong_Check( $input ) ) {
+        type = CIF_INT;
+    } else if( PyFloat_Check( $input ) ) {
+        type = CIF_FLOAT;
+    } else if( PyString_Check( $input ) ) {
+        type = CIF_SQSTRING; // conditions exist here
+    }
+    $1 = new_value_from_scalar( PyString_AsString( PyObject_Str( $input ) ), type, NULL );
 }
 
 %typemap(in) ssize_t {

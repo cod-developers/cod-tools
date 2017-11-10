@@ -18,9 +18,7 @@ datablock = cif_datablock_list( cif )
 print datablock_tag_index( datablock, "_audit_author.name" )
 print datablock_tag_index( datablock, "_this_tag_does_not_exist" )
 
-# Inserts non-existing data item in the datablock
-cifvalue = new_value_from_scalar( "12.3456789", "CIF_FLOAT", None )
-datablock_insert_cifvalue( datablock, "_this_tag_does_not_exist", cifvalue, None )
+datablock_insert_cifvalue( datablock, "_this_tag_does_not_exist", 12345, None )
 
 # Checks whether the value is correctly inserted
 tag_id = datablock_tag_index( datablock, "_this_tag_does_not_exist" )
@@ -29,8 +27,7 @@ value_dump( cifvalue )
 print ""
 
 # Overwrites an existing value in the datablock
-cifvalue = new_value_from_scalar( "Someone Else", "CIF_UQSTRING", None )
-datablock_overwrite_cifvalue( datablock, 22, 0, cifvalue, None )
+datablock_overwrite_cifvalue( datablock, 22, 0, "Someone Else", None )
 
 # Checks whether the value is correctly overwritten
 cifvalue = datablock_cifvalue( datablock, 22, 0 )
