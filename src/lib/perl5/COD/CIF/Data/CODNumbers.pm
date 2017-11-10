@@ -652,7 +652,7 @@ sub have_equiv_bibliographies
     );
 
     my %skip_tag = (
-        '_journal_name_full' => 0,
+        '_journal_name_full' => 1,
     );
 
     for my $tag ( keys %tags ) {
