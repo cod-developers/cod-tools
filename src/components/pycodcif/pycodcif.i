@@ -30,6 +30,7 @@
         ssize_t val_nr, CIFVALUE *value, cexception_t *ex );
     void datablock_insert_cifvalue( DATABLOCK * datablock, char *tag,
                                     CIFVALUE *value, cexception_t *ex );
+    char * datablock_name( DATABLOCK * datablock );
 
     // from cif.h:
     #include <cif.h>
@@ -368,13 +369,20 @@ class CifFile(object):
 
     def __getitem__(self, key):
         datablock = cif_datablock_list( self._cif )
-        for i in range(0,key):
+        if isinstance(key, int):
+            for i in range(0,key):
+                if datablock is None:
+                    raise IndexError('list index out of range')
+                datablock = datablock_next( datablock )
             if datablock is None:
                 raise IndexError('list index out of range')
-            datablock = datablock_next( datablock )
-        if datablock is None:
-            raise IndexError('list index out of range')
-        return datablock
+            return CifDatablock(datablock = datablock)
+        else:
+            while datablock_name( datablock ) != key:
+                datablock = datablock_next( datablock )
+                if datablock is None:
+                    raise KeyError(key)
+            return CifDatablock(datablock = datablock)
 
     def __str__(self):
         with capture() as output:
@@ -386,8 +394,11 @@ class CifFile(object):
         cif_append_datablock( self._cif, datablock._datablock )
 
 class CifDatablock(object):
-    def __init__(self, name):
-        self._datablock = new_datablock( name, None, None )
+    def __init__(self, name = None, datablock = None):
+        if datablock is None:
+            self._datablock = new_datablock( name, None, None )
+        else:
+            self._datablock = datablock
 
     def __getitem__(self, key):
         tag_index = datablock_tag_index( self._datablock, key )
@@ -505,6 +516,7 @@ void datablock_overwrite_cifvalue( DATABLOCK * datablock, ssize_t tag_nr,
     ssize_t val_nr, CIFVALUE *value, cexception_t *ex );
 void datablock_insert_cifvalue( DATABLOCK * datablock, char *tag,
                                 CIFVALUE *value, cexception_t *ex );
+char * datablock_name( DATABLOCK * datablock );
 
 // from cif.h:
 #include <cif.h>
