@@ -617,10 +617,10 @@ sub conditions_are_the_same
 # be considered equivalent. Missing values are treated as being equal to any
 # other value.
 #
-# @param $entry1
+# @param $entry_1
 #       Data structure of the first entry as returned by the 'cif_fill_data()'
 #       or the 'query_COD_database()' subroutines.
-# @param $entry2
+# @param $entry_2
 #       Data structure of the second entry as returned by the 'cif_fill_data()'
 #       or the 'query_COD_database()' subroutines.
 #
@@ -630,17 +630,19 @@ sub conditions_are_the_same
 ##
 sub have_equiv_bibliographies
 {
-    my ($biblio1, $biblio2) = @_;
+    my ($entry_1, $entry_2) = @_;
 
-    my %tags = map {($_,$_)} ( keys %{$biblio1}, keys %{$biblio2} );
+    my $biblio_1 = $entry_1->{'bibliography'};
+    my $biblio_2 = $entry_2->{'bibliography'};
+    my %tags = map {($_,$_)} ( keys %{$biblio_1}, keys %{$biblio_2} );
 
     # If DOIs exists, their comparison gives a definitive answer to
     # whether we are analysing the same paper (data source) or not:
-    if( exists $biblio1->{'_journal_paper_doi'} &&
-        exists $biblio2->{'_journal_paper_doi'} ) {
+    if( exists $biblio_1->{'_journal_paper_doi'} &&
+        exists $biblio_2->{'_journal_paper_doi'} ) {
         return
-            lc $biblio1->{'_journal_paper_doi'} eq
-            lc $biblio2->{'_journal_paper_doi'};
+            lc $biblio_1->{'_journal_paper_doi'} eq
+            lc $biblio_2->{'_journal_paper_doi'};
     }
 
     my %has_numeric_value = (
@@ -655,8 +657,8 @@ sub have_equiv_bibliographies
 
     for my $tag ( keys %tags ) {
         next if ( $skip_tag{$tag} );
-        my $value_1 = $biblio1->{$tag};
-        my $value_2 = $biblio2->{$tag};
+        my $value_1 = $biblio_1->{$tag};
+        my $value_2 = $biblio_2->{$tag};
         next if ( !( defined $value_1 && defined $value_2 ) );
         if( $has_numeric_value{$tag} ) {
             if( $value_1 != $value_2 ) {
@@ -696,8 +698,7 @@ sub entries_are_the_same
 
     if( $options{'check_bibliography'} ) {
         $are_the_same = $are_the_same && have_equiv_bibliographies(
-                                            $entry1->{'bibliography'},
-                                            $entry2->{'bibliography'} );
+                                            $entry1, $entry2 );
     }
 
     if( $are_the_same ) {
