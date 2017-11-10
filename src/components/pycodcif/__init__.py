@@ -1,4 +1,4 @@
-from .pycodcif import (parse, CifParserException, Cif, CifFile, CifDatablock,
+from .pycodcif import (parse, CifParserException, CifFile, CifDatablock,
 
                        cif_option_default,
 
