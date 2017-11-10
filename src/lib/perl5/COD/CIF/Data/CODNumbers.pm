@@ -638,8 +638,8 @@ sub have_equiv_bibliographies
 
     # If DOIs exists, their comparison gives a definitive answer to
     # whether we are analysing the same paper (data source) or not:
-    if( exists $biblio_1->{'_journal_paper_doi'} &&
-        exists $biblio_2->{'_journal_paper_doi'} ) {
+    if( defined $biblio_1->{'_journal_paper_doi'} &&
+        defined $biblio_2->{'_journal_paper_doi'} ) {
         return
             lc $biblio_1->{'_journal_paper_doi'} eq
             lc $biblio_2->{'_journal_paper_doi'};
@@ -661,11 +661,12 @@ sub have_equiv_bibliographies
         my $value_2 = $biblio_2->{$tag};
         next if ( !( defined $value_1 && defined $value_2 ) );
         if( $has_numeric_value{$tag} ) {
-            if( $value_1 != $value_2 ) {
+            if ( $value_1 != $value_2 ) {
                 return 0;
             }
         } else {
-            if( $value_1 ne $value_2 ) {
+            # TODO: should comparison be case insensitive?
+            if ( $value_1 ne $value_2 ) {
                 return 0;
             }
         }
