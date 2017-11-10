@@ -23,6 +23,7 @@
     DATABLOCK *new_datablock( const char *name, DATABLOCK *next,
                               cexception_t *ex );
     DATABLOCK *datablock_next( DATABLOCK *datablock );
+    ssize_t *datablock_value_lengths( DATABLOCK *datablock );
     CIFVALUE *datablock_cifvalue( DATABLOCK *datablock, int tag_nr, int val_nr );
     ssize_t datablock_tag_index( DATABLOCK *datablock, char *tag );
     void datablock_overwrite_cifvalue( DATABLOCK * datablock, ssize_t tag_nr,
@@ -46,6 +47,7 @@
     CIF *new_cif_from_cif_file( char *filename, cif_option_t co, cexception_t *ex );
 
     PyObject *extract_value( CIFVALUE * cifvalue );
+    ssize_t datablock_value_length( DATABLOCK *datablock, size_t tag_index );
 %}
 
 %pythoncode %{
@@ -391,7 +393,10 @@ class CifDatablock(object):
         tag_index = datablock_tag_index( self._datablock, key )
         if tag_index == -1:
             raise KeyError(key)
-        return extract_value( datablock_cifvalue( self._datablock, tag_index, 0 ) )
+        values = []
+        for i in range(0, datablock_value_length( self._datablock, tag_index )):
+            values.append( extract_value( datablock_cifvalue( self._datablock, tag_index, i ) ) )
+        return values
 
     def __setitem__(self, key, value):
         tag_index = datablock_tag_index( self._datablock, key )
@@ -493,6 +498,7 @@ void value_dump( CIFVALUE *value );
 DATABLOCK *new_datablock( const char *name, DATABLOCK *next,
                           cexception_t *ex );
 DATABLOCK *datablock_next( DATABLOCK *datablock );
+ssize_t *datablock_value_lengths( DATABLOCK *datablock );
 CIFVALUE *datablock_cifvalue( DATABLOCK *datablock, int tag_nr, int val_nr );
 ssize_t datablock_tag_index( DATABLOCK *datablock, char *tag );
 void datablock_overwrite_cifvalue( DATABLOCK * datablock, ssize_t tag_nr,
@@ -516,3 +522,4 @@ DATABLOCK * cif_datablock_list( CIF *cif );
 CIF *new_cif_from_cif_file( char *filename, cif_option_t co, cexception_t *ex );
 
 PyObject *extract_value( CIFVALUE * cifvalue );
+ssize_t datablock_value_length( DATABLOCK *datablock, size_t tag_index );
