@@ -424,16 +424,20 @@ class CifDatablock(object):
     $1 = type;
 }
 
-%typemap(in) CIFVALUE * {
+%typemap(in) CIFVALUE * (PyObject *) {
     cif_value_type_t type = CIF_UNKNOWN;
+    char * value = PyString_AsString( PyObject_Str( $input ) );
     if(        PyInt_Check( $input ) || PyLong_Check( $input ) ) {
         type = CIF_INT;
     } else if( PyFloat_Check( $input ) ) {
         type = CIF_FLOAT;
     } else if( PyString_Check( $input ) ) {
         type = CIF_SQSTRING; // conditions exist here
+    } else if( $input == Py_None ) {
+        value = "?";
+        type = CIF_UQSTRING;
     }
-    $1 = new_value_from_scalar( PyString_AsString( PyObject_Str( $input ) ), type, NULL );
+    $1 = new_value_from_scalar( value, type, NULL );
 }
 
 %typemap(in) ssize_t {
