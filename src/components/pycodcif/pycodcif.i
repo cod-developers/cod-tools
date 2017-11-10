@@ -23,6 +23,7 @@
     DATABLOCK *new_datablock( const char *name, DATABLOCK *next,
                               cexception_t *ex );
     DATABLOCK *datablock_next( DATABLOCK *datablock );
+    size_t datablock_length( DATABLOCK *datablock );
     ssize_t *datablock_value_lengths( DATABLOCK *datablock );
     CIFVALUE *datablock_cifvalue( DATABLOCK *datablock, int tag_nr, int val_nr );
     ssize_t datablock_tag_index( DATABLOCK *datablock, char *tag );
@@ -49,6 +50,7 @@
 
     PyObject *extract_value( CIFVALUE * cifvalue );
     ssize_t datablock_value_length( DATABLOCK *datablock, size_t tag_index );
+    char *datablock_tag( DATABLOCK *datablock, size_t tag_index );
 %}
 
 %pythoncode %{
@@ -414,6 +416,10 @@ class CifDatablock(object):
         if tag_index == -1:
             datablock_insert_cifvalue( self._datablock, key, value, None )
 
+    def keys(self):
+        length = datablock_length( self._datablock )
+        return [ datablock_tag( self._datablock, x) for x in range(0, length) ]
+
 import contextlib
 
 @contextlib.contextmanager
@@ -509,6 +515,7 @@ void value_dump( CIFVALUE *value );
 DATABLOCK *new_datablock( const char *name, DATABLOCK *next,
                           cexception_t *ex );
 DATABLOCK *datablock_next( DATABLOCK *datablock );
+size_t datablock_length( DATABLOCK *datablock );
 ssize_t *datablock_value_lengths( DATABLOCK *datablock );
 CIFVALUE *datablock_cifvalue( DATABLOCK *datablock, int tag_nr, int val_nr );
 ssize_t datablock_tag_index( DATABLOCK *datablock, char *tag );
@@ -535,3 +542,4 @@ CIF *new_cif_from_cif_file( char *filename, cif_option_t co, cexception_t *ex );
 
 PyObject *extract_value( CIFVALUE * cifvalue );
 ssize_t datablock_value_length( DATABLOCK *datablock, size_t tag_index );
+char *datablock_tag( DATABLOCK *datablock, size_t tag_index );
