@@ -15,8 +15,8 @@ perl <<'END_SCRIPT'
 #* Unit test for the COD::CIF::Data::CODNumbers::have_equiv_bibliographies
 #* subroutine. Tests the way the subroutine behaves when two entries with
 #* almost identical bibliographies are compared. In this case, the only
-#* difference is the case of the string values. Currently, these entries
-#* are treated as not having equivalent bibliographies.
+#* difference is the case of the string values. Entries should be treated
+#* as having equivalent bibliographies.
 #**
 
 use strict;
