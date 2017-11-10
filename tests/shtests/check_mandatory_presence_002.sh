@@ -63,7 +63,12 @@ my $data_block =
   }
 };
 
-my $data_names = [ '_tag_2', '_tag_4', '_tag_missing', '_tag_not_here' ];
+my $data_names = {
+    '_tag_2'        => 1,
+    '_tag_4'        => 1,
+    '_tag_missing'  => 1,
+    '_tag_not_here' => 1,
+};
 
 my $messages = COD::CIF::Data::Check::check_mandatory_presence(
     $data_block,

@@ -13,8 +13,8 @@ perl <<'END_SCRIPT'
 #------------------------------------------------------------------------------
 #*
 #* Unit test for the COD::CIF::Data::Check::check_mandatory_presence()
-#* subroutine. Tests the way the subroutine behaves when all of the mandatory
-#* data names are present in the CIF file.
+#* subroutine. Tests the way the subroutine behaves when not all of the
+#* recommended and mandatory data names are present in the CIF file.
 #**
 
 use strict;
@@ -64,8 +64,10 @@ my $data_block =
 };
 
 my $data_names = {
-    '_tag_2' => 1,
-    '_tag_4' => 1,
+    '_tag_2'        => 0,
+    '_tag_4'        => 0,
+    '_tag_missing'  => 1,
+    '_tag_not_here' => 0,
 };
 
 my $messages = COD::CIF::Data::Check::check_mandatory_presence(

@@ -147,9 +147,7 @@ sub check_chemical_formula_sum
 
     my $formula = $dataset->{'values'}{'_chemical_formula_sum'}[0];
 
-    if( !defined $formula ) {
-        push @messages, 'WARNING, no _chemical_formula_sum';
-    } else {
+    if ( defined $formula ) {
         push @messages, @{check_formula_sum_syntax($formula)};
     }
 
@@ -734,8 +732,18 @@ sub check_su_eligibility
 # @param $dataset
 #       Reference to a data block as returned by the COD::CIF::Parser.
 # @param $data_names
-#       Reference to an array of data names that should be searched for
-#       in the data block.
+#       Reference to a hash that details what data names should be
+#       searched for in the data block. The data names serve a hash
+#       keys and the values correspond to the severity of the audit
+#       message:
+#       {
+#       # Data item '_tag_1' is mandatory.
+#       # An error message will be generated in case it is not found.
+#           '_tag_1' => 1,
+#       # Data item '_tag_2' is optional, but highly recommended
+#       # An warning message will be generated in case it is not found.
+#           '_tag_2' => 0,
+#       }
 # @return
 #       Reference to an array of audit messages.
 ##
@@ -744,9 +752,15 @@ sub check_mandatory_presence
     my ( $dataset, $data_names ) = @_;
     my @messages;
 
-    for ( @{$data_names} ) {
+    for ( sort keys %{$data_names} ) {
         if ( !defined $dataset->{'values'}{$_} ) {
-            push @messages, "ERROR, mandatory data item '$_' was not found"
+            if ( $data_names->{$_} ) {
+                push @messages,
+                    "ERROR, mandatory data item '$_' was not found"
+            } else {
+                push @messages,
+                     "WARNING, recommended data item '$_' was not found"
+            }
         }
     }
 
