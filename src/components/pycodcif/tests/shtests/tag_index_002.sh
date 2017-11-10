@@ -24,3 +24,4 @@ print cif
 
 print cif['new']['_tag']
 print cif[0]['_tag']
+print cif[0].keys()
