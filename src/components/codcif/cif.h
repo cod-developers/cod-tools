@@ -48,6 +48,8 @@ CIFMESSAGE *cif_insert_message( CIF *cif, CIFMESSAGE *message );
 void cif_start_datablock( CIF * volatile cif, const char *name,
                           cexception_t *ex );
 
+void cif_append_datablock( CIF * volatile cif, DATABLOCK *datablock );
+
 void cif_start_save_frame( CIF * volatile cif, const char *name,
                           cexception_t *ex );
 
