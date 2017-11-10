@@ -665,8 +665,7 @@ sub have_equiv_bibliographies
                 return 0;
             }
         } else {
-            # TODO: should comparison be case insensitive?
-            if ( $value_1 ne $value_2 ) {
+            if ( lc $value_1 ne lc $value_2 ) {
                 return 0;
             }
         }
