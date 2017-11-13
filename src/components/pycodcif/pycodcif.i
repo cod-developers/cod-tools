@@ -55,6 +55,7 @@
     PyObject *extract_value( CIFVALUE * cifvalue );
     ssize_t datablock_value_length( DATABLOCK *datablock, size_t tag_index );
     char *datablock_tag( DATABLOCK *datablock, size_t tag_index );
+    int datablock_tag_in_loop( DATABLOCK *datablock, size_t tag_index );
 %}
 
 %pythoncode %{
@@ -421,18 +422,21 @@ class CifDatablock(object):
         tag_index = datablock_tag_index( self._datablock, key )
         if tag_index == -1:
             datablock_insert_cifvalue( self._datablock, key, value, None )
+        elif datablock_tag_in_loop( self._datablock, tag_index ) == -1:
+            datablock_overwrite_cifvalue( self._datablock, tag_index, 0, value, None )
 
     def keys(self):
         length = datablock_length( self._datablock )
         return [ datablock_tag( self._datablock, x) for x in range(0, length) ]
 
     def add_loop(self, keys, values):
+        for key in keys:
+            if key in self.keys():
+                raise KeyError( "data item '{}' already exists".format(key) )
         datablock_start_loop( self._datablock )
         for i in range(0,len(values)):
             for j, key in enumerate(keys):
                 if i == 0:
-                    if key in self.keys():
-                        raise KeyError( "data item '{}' already exists".format(key) )
                     datablock_insert_cifvalue( self._datablock, key,
                                                values[i][j], None )
                 else:
@@ -494,7 +498,8 @@ def capture():
 
 %typemap(in) CIFVALUE * (PyObject *) {
     cif_value_type_t type = CIF_UNKNOWN;
-    char * value = PyString_AsString( PyObject_Str( $input ) );
+    char * value = strdupx( PyString_AsString( PyObject_Str( $input ) ),
+                            NULL );
     if(        PyInt_Check( $input ) || PyLong_Check( $input ) ) {
         type = CIF_INT;
     } else if( PyFloat_Check( $input ) ) {
@@ -567,3 +572,4 @@ CIF *new_cif_from_cif_file( char *filename, cif_option_t co, cexception_t *ex );
 PyObject *extract_value( CIFVALUE * cifvalue );
 ssize_t datablock_value_length( DATABLOCK *datablock, size_t tag_index );
 char *datablock_tag( DATABLOCK *datablock, size_t tag_index );
+int datablock_tag_in_loop( DATABLOCK *datablock, size_t tag_index );
