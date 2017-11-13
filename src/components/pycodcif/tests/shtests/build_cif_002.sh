@@ -23,5 +23,13 @@ cif.append( datablock )
 print cif
 
 # This should cause an error
-datablock.add_loop( [ '_a', '_f' ], [[ 1, 1 ]] )
+try:
+    datablock.add_loop( [ '_a', '_f' ], [[ 1, 1 ]] )
+except KeyError as e:
+    print e
+
+datablock['_overwritten'] = 'first'
+print cif
+
+datablock['_overwritten'] = 'second'
 print cif

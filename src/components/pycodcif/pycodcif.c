@@ -323,3 +323,7 @@ ssize_t datablock_value_length( DATABLOCK *datablock, size_t tag_index ) {
 char *datablock_tag( DATABLOCK *datablock, size_t tag_index ) {
     return datablock_tags( datablock )[tag_index];
 }
+
+int datablock_tag_in_loop( DATABLOCK *datablock, size_t tag_index ) {
+    return datablock_in_loop( datablock )[tag_index];
+}
