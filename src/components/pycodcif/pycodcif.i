@@ -53,6 +53,7 @@
     CIF *new_cif_from_cif_file( char *filename, cif_option_t co, cexception_t *ex );
 
     PyObject *extract_value( CIFVALUE * cifvalue );
+    cif_option_t extract_parser_options( PyObject * options );
     ssize_t datablock_value_length( DATABLOCK *datablock, size_t tag_index );
     char *datablock_tag( DATABLOCK *datablock, size_t tag_index );
     int datablock_tag_in_loop( DATABLOCK *datablock, size_t tag_index );
@@ -371,8 +372,13 @@ class CifParserException(Exception):
     pass
 
 class CifFile(object):
-    def __init__(self):
-        self._cif = new_cif( None )
+    def __init__(self, file = None, parser_options = {}):
+        if file is None:
+            # Create an empty CifFile object
+            self._cif = new_cif( None )
+        else:
+            # Parse CIF file
+            self._cif = new_cif_from_cif_file( file, parser_options, None )
 
     def __getitem__(self, key):
         datablock = cif_datablock_list( self._cif )
@@ -479,6 +485,10 @@ def capture():
     $result = PyInt_FromLong( $1 );
 }
 
+%typemap(in) cif_option_t {
+    $1 = extract_parser_options( $input );
+}
+
 %typemap(in) cif_value_type_t {
     cif_value_type_t type;
     if(        strcmp( PyString_AsString($input), "CIF_INT" ) == 0 ) {
@@ -579,6 +589,7 @@ DATABLOCK * cif_datablock_list( CIF *cif );
 CIF *new_cif_from_cif_file( char *filename, cif_option_t co, cexception_t *ex );
 
 PyObject *extract_value( CIFVALUE * cifvalue );
+cif_option_t extract_parser_options( PyObject * options );
 ssize_t datablock_value_length( DATABLOCK *datablock, size_t tag_index );
 char *datablock_tag( DATABLOCK *datablock, size_t tag_index );
 int datablock_tag_in_loop( DATABLOCK *datablock, size_t tag_index );
