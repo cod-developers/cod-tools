@@ -278,45 +278,46 @@ sub cif_fill_data
     $structure{cell_formula} = $cell_formula
         if defined $cell_formula;
 
-    for my $key ( qw( _cell_length_a _cell_length_b _cell_length_c
-                      _cell_angle_alpha _cell_angle_beta _cell_angle_gamma )) {
+    for my $key ( qw( _cell_length_a
+                      _cell_length_b
+                      _cell_length_c
+                      _cell_angle_alpha
+                      _cell_angle_beta
+                      _cell_angle_gamma ) ) {
         my $val = $values->{$key}[0];
-        if( defined $val ) {
+        if ( defined $val ) {
             $val =~ s/^\s*'\s*|\s*'\s*$//g;
             $val =~ s/\(.*$//;
             $val =~ s/[()_a-zA-Z]//g;
-            $structure{cell}{$key} = sprintf '%f', $val;
+            $structure{'cell'}{$key} = sprintf '%f', $val;
         }
-    }
-    for my $key ( qw( _cell_length_a _cell_length_b _cell_length_c
-                      _cell_angle_alpha _cell_angle_beta _cell_angle_gamma )) {
         if( exists $sigmas->{$key} ) {
-            my $val = $sigmas->{$key}[0];
-            $structure{sigcell}{$key} = $val;
+            $structure{'sigcell'}{$key} = $sigmas->{$key}[0];
         }
     }
+
     for my $key ( qw( _cell_measurement_temperature
-                       _cell_measurement_temperature_C
-                       _diffrn_ambient_temperature
-                       _diffrn_ambient_temperature_C
-                       _diffrn_ambient_temperature_gt
-                       _diffrn_ambient_temperature_lt
-                       _pd_prep_temperature
-                       _cell_measurement_pressure
-                       _cell_measurement_pressure_gPa
-                       _cell_wave_vectors_pressure_max
-                       _cell_wave_vectors_pressure_min
-                       _diffrn_ambient_pressure
-                       _diffrn.ambient_pressure
-                       _diffrn.ambient_pressure_esd
-                       _diffrn_ambient_pressure_gPa
-                       _diffrn_ambient_pressure_gt
-                       _diffrn.ambient_pressure_gt
-                       _diffrn_ambient_pressure_lt
-                       _diffrn.ambient_pressure_lt
-                       _exptl_crystal_pressure_history
-                       _exptl_crystal_thermal_history
-                       _pd_prep_pressure )) {
+                      _cell_measurement_temperature_C
+                      _diffrn_ambient_temperature
+                      _diffrn_ambient_temperature_C
+                      _diffrn_ambient_temperature_gt
+                      _diffrn_ambient_temperature_lt
+                      _pd_prep_temperature
+                      _cell_measurement_pressure
+                      _cell_measurement_pressure_gPa
+                      _cell_wave_vectors_pressure_max
+                      _cell_wave_vectors_pressure_min
+                      _diffrn_ambient_pressure
+                      _diffrn.ambient_pressure
+                      _diffrn.ambient_pressure_esd
+                      _diffrn_ambient_pressure_gPa
+                      _diffrn_ambient_pressure_gt
+                      _diffrn.ambient_pressure_gt
+                      _diffrn_ambient_pressure_lt
+                      _diffrn.ambient_pressure_lt
+                      _exptl_crystal_pressure_history
+                      _exptl_crystal_thermal_history
+                      _pd_prep_pressure ) ) {
        if( exists $values->{$key} ) {
            my $val = $values->{$key}[0];
            if( defined $val ) {
@@ -395,7 +396,7 @@ sub get_cell($)
 
 ##
 # Evaluates if the crystal lattice parameters provided in both entries could
-# be considered equivalent. Missing values are treated as being equal to any
+# be considered equivalent. Undefined values are treated as being equal to any
 # other value.
 #
 # @param $entry1
@@ -551,70 +552,126 @@ sub are_equiv_meas
     return $are_equal;
 }
 
-sub conditions_are_the_same
+##
+# Evaluates if all of the values in a certain category provided in both entries
+# could be considered equivalent. Undefined values are treated as being equal
+# to any other value.
+#
+# @param $entry1
+#       Data structure of the first entry as returned by the 'cif_fill_data()'
+#       or the 'query_COD_database()' subroutines.
+# @param $entry2
+#       Data structure of the second entry as returned by the 'cif_fill_data()'
+#       or the 'query_COD_database()' subroutines.
+# @param $category
+#       The name of the category that the compared values belong to, i.e.
+#       'bibliography'.
+# @return
+#       '1' if the sample histories are considered equivalent,
+#       '0' otherwise.
+##
+sub have_equiv_category_values
 {
-    my ($entry1, $entry2, $user_options) = @_;
-
-    $user_options = {} unless defined $user_options;
-    my %options;
-    foreach my $key (keys %default_options) {
-        $options{$key} = defined $user_options->{$key} ?
-                                 $user_options->{$key} :
-                                 $default_options{$key};
-    };
+    my ($entry_1, $entry_2, $category) = @_;
 
     my $number = '[-+]?([0-9]+(\.[0-9]*)?|\.[0-9]+)([Ee][-+]?[0-9]+)?';
 
-    my @parameters = qw( temperature pressure );
-    if( $options{check_sample_history} ) {
-        push @parameters, 'history';
-    }
-    if( $options{check_compound_source} ) {
-        push @parameters, 'source';
-    }
+    my %tags = map {($_,$_)} ( keys %{$entry_1->{$category}},
+                               keys %{$entry_2->{$category}} );
 
-    for my $parameter ( @parameters ) {
-
-        my %tags = map {($_,$_)} ( keys %{$entry1->{$parameter}},
-                                   keys %{$entry2->{$parameter}} );
-
-        ## print ">>> 1: ",keys %{$entry1->{$parameter}},"\n";
-        ## print ">>> 2: ",keys %{$entry2->{$parameter}},"\n";
-
-        for my $tag (keys %tags) {
-            if( exists $entry1->{$parameter}{$tag} &&
-                exists $entry2->{$parameter}{$tag} ) {
-                ## print ">>> $tag\n";
-                my $val1 = $entry1->{$parameter}{$tag};
-                my $val2 = $entry2->{$parameter}{$tag};
-                if( $val1 =~ /^${number}$/o || $val2 =~ /^${number}$/o ) {
-                    $val1 =~ s/\(\d+\)$//;
-                    $val2 =~ s/\(\d+\)$//;
-                    ## print ">>> '$val1', '$val2'\n\n";
-                    if( $val1 != $val2 ) {
-                        return 0;
-                    }
-                } else {
-                    $val1 =~ s/^\s+|\s+$//g;
-                    $val2 =~ s/^\s+|\s+$//g;
-                    $val1 =~ s/\n/ /g;
-                    $val2 =~ s/\n/ /g;
-                    $val1 =~ s/\s+/ /g;
-                    $val2 =~ s/\s+/ /g;
-                    ## print ">>> '$val1', '$val2'\n\n";
-                    if( $val1 ne $val2 ) {
-                        return 0;
-                    }
-                }
-            }
+    for my $tag (keys %tags) {
+        next if ( !( exists $entry_1->{$category}{$tag} &&
+                     exists $entry_2->{$category}{$tag} ) );
+        my $val_1 = $entry_1->{$category}{$tag};
+        my $val_2 = $entry_2->{$category}{$tag};
+        if ( $val_1 =~ /^${number}$/o || $val_2 =~ /^${number}$/o ) {
+            $val_1 =~ s/\(\d+\)$//;
+            $val_2 =~ s/\(\d+\)$//;
+            return 0 if ( $val_1 != $val_2 )
+        } else {
+            $val_1 =~ s/^\s+|\s+$//g;
+            $val_2 =~ s/^\s+|\s+$//g;
+            $val_1 =~ s/\n/ /g;
+            $val_2 =~ s/\n/ /g;
+            $val_1 =~ s/\s+/ /g;
+            $val_2 =~ s/\s+/ /g;
+            return 0 if ( $val_1 ne $val_2 );
         }
     }
+
     return 1;
 }
 
 ##
+# Evaluates if the sample histories provided in both entries could
+# be considered equivalent. Undefined values are treated as being equal
+# to any other value.
+#
+# @param $entry1
+#       Data structure of the first entry as returned by the 'cif_fill_data()'
+#       or the 'query_COD_database()' subroutines.
+# @param $entry2
+#       Data structure of the second entry as returned by the 'cif_fill_data()'
+#       or the 'query_COD_database()' subroutines.
+# @return
+#       '1' if the sample histories are considered equivalent,
+#       '0' otherwise.
+##
+sub have_equiv_sample_histories
+{
+    my ($entry1, $entry2) = @_;
+
+    return have_equiv_category_values($entry1, $entry2, 'history');
+}
+
+##
+# Evaluates if the compound sources provided in both entries could
+# be considered equivalent. Undefined values are treated as being equal
+# to any other value.
+#
+# @param $entry1
+#       Data structure of the first entry as returned by the 'cif_fill_data()'
+#       or the 'query_COD_database()' subroutines.
+# @param $entry2
+#       Data structure of the second entry as returned by the 'cif_fill_data()'
+#       or the 'query_COD_database()' subroutines.
+# @return
+#       '1' if the compound sources are considered equivalent,
+#       '0' otherwise.
+##
+sub have_equiv_compound_sources
+{
+    my ($entry1, $entry2) = @_;
+
+    return have_equiv_category_values($entry1, $entry2, 'source');
+}
+
+##
+# Evaluates if the experimental conditions provided in both entries could
+# be considered equivalent. Undefined values are treated as being equal
+# to any other value.
+#
+# @param $entry1
+#       Data structure of the first entry as returned by the 'cif_fill_data()'
+#       or the 'query_COD_database()' subroutines.
+# @param $entry2
+#       Data structure of the second entry as returned by the 'cif_fill_data()'
+#       or the 'query_COD_database()' subroutines.
+# @return
+#       '1' if the experimental conditions are considered equivalent,
+#       '0' otherwise.
+##
+sub have_equiv_conditions
+{
+    my ( $entry1, $entry2 ) = @_;
+
+    return have_equiv_category_values($entry1, $entry2, 'temperature') &&
+           have_equiv_category_values($entry1, $entry2, 'pressure');
+}
+
+##
 # Evaluates if the bibliographical information provided in both entries could
-# be considered equivalent. Missing values are treated as being equal to any
+# be considered equivalent. Undefined values are treated as being equal to any
 # other value.
 #
 # @param $entry_1
@@ -623,7 +680,6 @@ sub conditions_are_the_same
 # @param $entry_2
 #       Data structure of the second entry as returned by the 'cif_fill_data()'
 #       or the 'query_COD_database()' subroutines.
-#
 # @return
 #       '1' if the bibliographical information is considered equivalent,
 #       '0' otherwise.
@@ -678,10 +734,6 @@ sub entries_are_the_same
 {
     my ($entry1, $entry2, $user_options) = @_;
 
-    ## print ">>> $entry1->{id}, $entry2->{id}, ",
-    ## defined $entry1->{suboptimal} ? $entry1->{suboptimal} : "" , " ", 
-    ## defined $entry2->{suboptimal} ? $entry2->{suboptimal} : "", "\n";
-
     $user_options = {} unless defined $user_options;
     my %options;
     foreach my $key (keys %default_options) {
@@ -692,13 +744,23 @@ sub entries_are_the_same
 
     my $are_the_same =
         have_equiv_lattices( $entry1, $entry2, \%options ) &&
-        conditions_are_the_same( $entry1, $entry2, \%options ) &&
+        have_equiv_conditions( $entry1, $entry2 ) &&
         (!defined $entry1->{suboptimal} || $entry1->{suboptimal} ne 'yes') &&
         (!defined $entry2->{suboptimal} || $entry2->{suboptimal} ne 'yes');
 
-    if( $options{'check_bibliography'} ) {
-        $are_the_same = $are_the_same && have_equiv_bibliographies(
-                                            $entry1, $entry2 );
+    if ( $options{'check_sample_history'} &&
+         !have_equiv_sample_histories( $entry1, $entry2 ) ) {
+        return 0;
+    }
+
+    if ( $options{'check_compound_source'} &&
+         !have_equiv_compound_sources( $entry1, $entry2 ) ) {
+        return 0;
+    }
+
+    if ( $options{'check_bibliography'} &&
+         !have_equiv_bibliographies( $entry1, $entry2 ) ) {
+        return 0;
     }
 
     if( $are_the_same ) {
