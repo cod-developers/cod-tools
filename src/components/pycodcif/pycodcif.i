@@ -411,8 +411,10 @@ class CifDatablock(object):
         if tag_index == -1:
             raise KeyError(key)
         values = []
-        for i in range(0, datablock_value_length( self._datablock, tag_index )):
-            values.append( extract_value( datablock_cifvalue( self._datablock, tag_index, i ) ) )
+        for i in range(0, datablock_value_length( self._datablock,
+                                                  tag_index )):
+            values.append( extract_value( datablock_cifvalue( self._datablock,
+                                                              tag_index, i ) ) )
         return values
 
     def __setitem__(self, key, value):
@@ -429,9 +431,13 @@ class CifDatablock(object):
         for i in range(0,len(values)):
             for j, key in enumerate(keys):
                 if i == 0:
-                    datablock_insert_cifvalue( self._datablock, key, values[i][j], None )
+                    if key in self.keys():
+                        raise KeyError( "data item '{}' already exists".format(key) )
+                    datablock_insert_cifvalue( self._datablock, key,
+                                               values[i][j], None )
                 else:
-                    datablock_push_loop_cifvalue( self._datablock, values[i][j], None )
+                    datablock_push_loop_cifvalue( self._datablock,
+                                                  values[i][j], None )
         datablock_finish_loop( self._datablock, None )
 
 import contextlib
