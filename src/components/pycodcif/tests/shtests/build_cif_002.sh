@@ -33,3 +33,6 @@ print cif
 
 datablock['_overwritten'] = 'second'
 print cif
+
+datablock['_simple_loop'] = [ 10, 12, 13 ]
+print cif
