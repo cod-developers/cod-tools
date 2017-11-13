@@ -31,6 +31,10 @@
         ssize_t val_nr, CIFVALUE *value, cexception_t *ex );
     void datablock_insert_cifvalue( DATABLOCK * datablock, char *tag,
                                     CIFVALUE *value, cexception_t *ex );
+    void datablock_start_loop( DATABLOCK *datablock );
+    void datablock_finish_loop( DATABLOCK *datablock, cexception_t *ex );
+    void datablock_push_loop_cifvalue( DATABLOCK * datablock, CIFVALUE *value,
+                                       cexception_t *ex );
     char * datablock_name( DATABLOCK * datablock );
 
     // from cif.h:
@@ -420,6 +424,16 @@ class CifDatablock(object):
         length = datablock_length( self._datablock )
         return [ datablock_tag( self._datablock, x) for x in range(0, length) ]
 
+    def add_loop(self, keys, values):
+        datablock_start_loop( self._datablock )
+        for i in range(0,len(values)):
+            for j, key in enumerate(keys):
+                if i == 0:
+                    datablock_insert_cifvalue( self._datablock, key, values[i][j], None )
+                else:
+                    datablock_push_loop_cifvalue( self._datablock, values[i][j], None )
+        datablock_finish_loop( self._datablock, None )
+
 import contextlib
 
 @contextlib.contextmanager
@@ -523,6 +537,10 @@ void datablock_overwrite_cifvalue( DATABLOCK * datablock, ssize_t tag_nr,
     ssize_t val_nr, CIFVALUE *value, cexception_t *ex );
 void datablock_insert_cifvalue( DATABLOCK * datablock, char *tag,
                                 CIFVALUE *value, cexception_t *ex );
+void datablock_start_loop( DATABLOCK *datablock );
+void datablock_finish_loop( DATABLOCK *datablock, cexception_t *ex );
+void datablock_push_loop_cifvalue( DATABLOCK * datablock, CIFVALUE *value,
+                                   cexception_t *ex );
 char * datablock_name( DATABLOCK * datablock );
 
 // from cif.h:
