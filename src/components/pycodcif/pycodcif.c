@@ -114,6 +114,55 @@ PyObject *extract_type( CIFVALUE * cifvalue ) {
     return extracted;
 }
 
+cif_option_t extract_parser_options( PyObject * options )
+{
+    cif_option_t co = cif_option_default();
+
+    if( is_option_set( options, "do_not_unprefix_text" ) ) {
+        co = cif_option_set_do_not_unprefix_text( co );
+    }
+    if( is_option_set( options, "do_not_unfold_text" ) ) {
+        co = cif_option_set_do_not_unfold_text( co );
+    }
+    if( is_option_set( options, "fix_errors" ) ) {
+        co = cif_option_set_fix_errors( co );
+    }
+    if( is_option_set( options, "fix_duplicate_tags_with_same_values" ) ) {
+        co = cif_option_set_fix_duplicate_tags_with_same_values( co );
+    }
+    if( is_option_set( options, "fix_duplicate_tags_with_empty_values" ) ) {
+        co = cif_option_set_fix_duplicate_tags_with_empty_values( co );
+    }
+    if( is_option_set( options, "fix_data_header" ) ) {
+        co = cif_option_set_fix_data_header( co );
+    }
+    if( is_option_set( options, "fix_datablock_names" ) ) {
+        co = cif_option_set_fix_datablock_names( co );
+        set_lexer_fix_datablock_names();
+    }
+    if( is_option_set( options, "fix_string_quotes" ) ) {
+        co = cif_option_set_fix_string_quotes( co );
+    }
+    if( is_option_set( options, "fix_missing_closing_double_quote" ) ) {
+        set_lexer_fix_missing_closing_double_quote();
+    }
+    if( is_option_set( options, "fix_missing_closing_single_quote" ) ) {
+        set_lexer_fix_missing_closing_single_quote();
+    }
+    if( is_option_set( options, "fix_ctrl_z" ) ) {
+        set_lexer_fix_ctrl_z();
+    }
+    if( is_option_set( options, "fix_non_ascii_symbols" ) ) {
+        set_lexer_fix_non_ascii_symbols();
+    }
+    if( is_option_set( options, "allow_uqstring_brackets" ) ) {
+        set_lexer_allow_uqstring_brackets();
+    }
+    co = cif_option_suppress_messages( co );
+
+    return( co );
+}
+
 PyObject *convert_datablock( DATABLOCK * datablock )
 {
     PyObject * current_datablock = PyDict_New();
@@ -186,50 +235,7 @@ PyObject * parse_cif( char * fname, char * prog, PyObject * opt )
     cif_flex_debug_off();
     cif_debug_off();
     CIF * volatile cif = NULL;
-    cif_option_t co = cif_option_default();
-
-    PyObject * options = opt;
-    if( is_option_set( options, "do_not_unprefix_text" ) ) {
-        co = cif_option_set_do_not_unprefix_text( co );
-    }
-    if( is_option_set( options, "do_not_unfold_text" ) ) {
-        co = cif_option_set_do_not_unfold_text( co );
-    }
-    if( is_option_set( options, "fix_errors" ) ) {
-        co = cif_option_set_fix_errors( co );
-    }
-    if( is_option_set( options, "fix_duplicate_tags_with_same_values" ) ) {
-        co = cif_option_set_fix_duplicate_tags_with_same_values( co );
-    }
-    if( is_option_set( options, "fix_duplicate_tags_with_empty_values" ) ) {
-        co = cif_option_set_fix_duplicate_tags_with_empty_values( co );
-    }
-    if( is_option_set( options, "fix_data_header" ) ) {
-        co = cif_option_set_fix_data_header( co );
-    }
-    if( is_option_set( options, "fix_datablock_names" ) ) {
-        co = cif_option_set_fix_datablock_names( co );
-        set_lexer_fix_datablock_names();
-    }
-    if( is_option_set( options, "fix_string_quotes" ) ) {
-        co = cif_option_set_fix_string_quotes( co );
-    }
-    if( is_option_set( options, "fix_missing_closing_double_quote" ) ) {
-        set_lexer_fix_missing_closing_double_quote();
-    }
-    if( is_option_set( options, "fix_missing_closing_single_quote" ) ) {
-        set_lexer_fix_missing_closing_single_quote();
-    }
-    if( is_option_set( options, "fix_ctrl_z" ) ) {
-        set_lexer_fix_ctrl_z();
-    }
-    if( is_option_set( options, "fix_non_ascii_symbols" ) ) {
-        set_lexer_fix_non_ascii_symbols();
-    }
-    if( is_option_set( options, "allow_uqstring_brackets" ) ) {
-        set_lexer_allow_uqstring_brackets();
-    }
-    co = cif_option_suppress_messages( co );
+    cif_option_t co = extract_parser_options( opt );
 
     if( !fname ||
         ( strlen( fname ) == 1 && fname[0] == '-' ) ) {
