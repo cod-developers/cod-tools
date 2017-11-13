@@ -25,6 +25,7 @@ our @ISA = qw( Exporter );
 our @EXPORT_OK = qw(
     fetch_duplicates
     fetch_duplicates_from_database
+    get_database_entries
     cif_fill_data
     entries_are_the_same
     have_equiv_lattices
@@ -36,6 +37,49 @@ my %default_options = (
     'check_sample_history'  => 0,
     'check_compound_source' => 0,
 );
+
+my $db_fields2tags = {
+    'cell' => {
+        'a'     => '_cell_length_a',
+        'b'     => '_cell_length_b',
+        'c'     => '_cell_length_c',
+        'alpha' => '_cell_angle_alpha',
+        'beta'  => '_cell_angle_beta',
+        'gamma' => '_cell_angle_gamma',
+    },
+    'sigcell' => {
+        'siga'     => '_cell_length_a',
+        'sigb'     => '_cell_length_b',
+        'sigc'     => '_cell_length_c',
+        'sigalpha' => '_cell_angle_alpha',
+        'sigbeta'  => '_cell_angle_beta',
+        'siggamma' => '_cell_angle_gamma',
+    },
+    'bibliography' => {
+        'journal'   => '_journal_name_full',
+        'year'      => '_journal_year',
+        'volume'    => '_journal_volume',
+        'issue'     => '_journal_issue',
+        'firstpage' => '_journal_page_first',
+        'lastpage'  => '_journal_page_last',
+        'doi'       => '_journal_paper_doi',
+    },
+    'temperature'  => {
+        'diffrtemp' => '_diffrn_ambient_temperature',
+        'celltemp'  => '_cell_measurement_temperature',
+    },
+    'pressure'     => {
+        'diffrpressure' => '_diffrn_ambient_pressure',
+        'cellpressure'  => '_cell_measurement_pressure',
+    },
+    'history'      => {
+        'thermalhist'  => '_exptl_crystal_thermal_history',
+        'pressurehist' => '_exptl_crystal_pressure_history',
+    },
+    'source'       => {
+        'compoundsource' => '_chemical_compound_source'
+    }
+};
 
 ##
 # Queries the database and returns a list of duplicates for each of the
@@ -53,7 +97,7 @@ my %default_options = (
 #       returned by 'the database_connect()' subroutine.
 # @param $user_options
 #       Reference to a hash containing the options that will be passed to
-#       the 'query_COD_database()' and 'entries_are_the_same()' subroutines.
+#       the 'get_database_entries()' and 'entries_are_the_same()' subroutines.
 # @return $duplicates
 #       Reference to an array containing the following hash structure
 #       for each of the crystal structure descriptions:
@@ -67,7 +111,7 @@ my %default_options = (
 #         # A hash of crystal structure entries located in the database.
 #         # Each duplicate entry is identified by its database ID (i.e. COD ID)
 #         # and described by a data structure as returned by the
-#         # 'query_COD_database()' subroutine:
+#         # 'get_database_entries()' subroutine:
 #           'duplicates' =>
 #               {
 #                 '1100003' =>
@@ -91,7 +135,7 @@ sub fetch_duplicates_from_database
 {
     my( $structures, $database, $dbh, $user_options ) = @_;
 
-    $user_options = {} unless defined $user_options;
+    $user_options = {} if !defined $user_options;
     my %options = %{$user_options};
     foreach my $key (keys %default_options) {
         if ( !defined $options{$key} ) {
@@ -101,7 +145,7 @@ sub fetch_duplicates_from_database
 
     my %structures = %{$structures};
     my $sth = prepare_database_query( $dbh, $database, \%options );
-    my $COD = query_COD_database( $sth, \%structures );
+    my $db_entries = get_database_entries( $sth, \%structures, $db_fields2tags );
 
     my @duplicates;
     for my $id (sort { $structures{$a}->{index} <=>
@@ -122,8 +166,8 @@ sub fetch_duplicates_from_database
 
         my %structures_found = ();
         for my $formula (@formulas) {
-            next if !defined $COD->{$formula};
-            for my $cod_entry (@{$COD->{$formula}}) {
+            next if !defined $db_entries->{$formula};
+            for my $cod_entry (@{$db_entries->{$formula}}) {
                 if( entries_are_the_same( $structures{$id},
                                           $cod_entry,
                                           \%options )) {
@@ -260,7 +304,7 @@ sub cif_fill_data
             $val =~ s/[()_a-zA-Z]//g;
             $structure{'cell'}{$key} = sprintf '%f', $val;
         }
-        if( exists $sigmas->{$key} ) {
+        if( defined $sigmas->{$key} ) {
             $structure{'sigcell'}{$key} = $sigmas->{$key}[0];
         }
     }
@@ -374,10 +418,10 @@ sub get_cell($)
 #
 # @param $entry1
 #       Data structure of the first entry as returned by the 'cif_fill_data()'
-#       or the 'query_COD_database()' subroutines.
+#       or the 'get_database_entries()' subroutines.
 # @param $entry2
 #       Data structure of the second entry as returned by the 'cif_fill_data()'
-#       or the 'query_COD_database()' subroutines.
+#       or the 'get_database_entries()' subroutines.
 # @param $options
 #       Reference to a hash containing the options that modify the behaviour
 #       of the subroutine. The following options are recognised by this
@@ -511,8 +555,8 @@ sub are_equiv_meas
     if( !(defined $su_1 || defined $su_2) ) {
         $use_su = 0;
     } else {
-        $su_1 = 0 unless defined $su_1;
-        $su_2 = 0 unless defined $su_2;
+        $su_1 = 0 if !defined $su_1;
+        $su_2 = 0 if !defined $su_2;
     }
 
     my $are_equal;
@@ -532,10 +576,10 @@ sub are_equiv_meas
 #
 # @param $entry1
 #       Data structure of the first entry as returned by the 'cif_fill_data()'
-#       or the 'query_COD_database()' subroutines.
+#       or the 'get_database_entries()' subroutines.
 # @param $entry2
 #       Data structure of the second entry as returned by the 'cif_fill_data()'
-#       or the 'query_COD_database()' subroutines.
+#       or the 'get_database_entries()' subroutines.
 # @param $category
 #       The name of the category that the compared values belong to, i.e.
 #       'bibliography'.
@@ -553,8 +597,8 @@ sub have_equiv_category_values
                                keys %{$entry_2->{$category}} );
 
     for my $tag (keys %tags) {
-        next if ( !( exists $entry_1->{$category}{$tag} &&
-                     exists $entry_2->{$category}{$tag} ) );
+        next if ( !( defined $entry_1->{$category}{$tag} &&
+                     defined $entry_2->{$category}{$tag} ) );
         my $val_1 = $entry_1->{$category}{$tag};
         my $val_2 = $entry_2->{$category}{$tag};
         if ( $val_1 =~ /^${number}$/o || $val_2 =~ /^${number}$/o ) {
@@ -582,10 +626,10 @@ sub have_equiv_category_values
 #
 # @param $entry1
 #       Data structure of the first entry as returned by the 'cif_fill_data()'
-#       or the 'query_COD_database()' subroutines.
+#       or the 'get_database_entries()' subroutines.
 # @param $entry2
 #       Data structure of the second entry as returned by the 'cif_fill_data()'
-#       or the 'query_COD_database()' subroutines.
+#       or the 'get_database_entries()' subroutines.
 # @return
 #       '1' if the sample histories are considered equivalent,
 #       '0' otherwise.
@@ -604,10 +648,10 @@ sub have_equiv_sample_histories
 #
 # @param $entry1
 #       Data structure of the first entry as returned by the 'cif_fill_data()'
-#       or the 'query_COD_database()' subroutines.
+#       or the 'get_database_entries()' subroutines.
 # @param $entry2
 #       Data structure of the second entry as returned by the 'cif_fill_data()'
-#       or the 'query_COD_database()' subroutines.
+#       or the 'get_database_entries()' subroutines.
 # @return
 #       '1' if the compound sources are considered equivalent,
 #       '0' otherwise.
@@ -626,10 +670,10 @@ sub have_equiv_compound_sources
 #
 # @param $entry1
 #       Data structure of the first entry as returned by the 'cif_fill_data()'
-#       or the 'query_COD_database()' subroutines.
+#       or the 'get_database_entries()' subroutines.
 # @param $entry2
 #       Data structure of the second entry as returned by the 'cif_fill_data()'
-#       or the 'query_COD_database()' subroutines.
+#       or the 'get_database_entries()' subroutines.
 # @return
 #       '1' if the experimental conditions are considered equivalent,
 #       '0' otherwise.
@@ -649,10 +693,10 @@ sub have_equiv_conditions
 #
 # @param $entry_1
 #       Data structure of the first entry as returned by the 'cif_fill_data()'
-#       or the 'query_COD_database()' subroutines.
+#       or the 'get_database_entries()' subroutines.
 # @param $entry_2
 #       Data structure of the second entry as returned by the 'cif_fill_data()'
-#       or the 'query_COD_database()' subroutines.
+#       or the 'get_database_entries()' subroutines.
 # @return
 #       '1' if the bibliographical information is considered equivalent,
 #       '0' otherwise.
@@ -707,7 +751,7 @@ sub entries_are_the_same
 {
     my ($entry1, $entry2, $user_options) = @_;
 
-    $user_options = {} unless defined $user_options;
+    $user_options = {} if !defined $user_options;
     my %options = %{$user_options};
     foreach my $key (keys %default_options) {
         if ( !defined $options{$key} ) {
@@ -816,7 +860,7 @@ sub prepare_database_query
 {
     my ( $dbh, $database, $user_options ) = @_;
 
-    $user_options = {} unless defined $user_options;
+    $user_options = {} if !defined $user_options;
     my %options = %{$user_options};
     foreach my $key (keys %default_options) {
         if ( !defined $options{$key} ) {
@@ -853,94 +897,54 @@ sub prepare_database_query
     return $sth;
 }
 
-sub query_COD_database
+sub get_database_entries
 {
-    my ( $sth, $data ) = @_;
-
-    my $categories = {
-        'bibliography' => {
-            'journal'   => '_journal_name_full',
-            'year'      => '_journal_year',
-            'volume'    => '_journal_volume',
-            'issue'     => '_journal_issue',
-            'firstpage' => '_journal_page_first',
-            'lastpage'  => '_journal_page_last',
-            'doi'       => '_journal_paper_doi',
-        },
-        'temperature'  => {
-            'diffrtemp' => '_diffrn_ambient_temperature',
-            'celltemp'  => '_cell_measurement_temperature',
-        },
-        'pressure'     => {
-            'diffrpressure' => '_diffrn_ambient_pressure',
-            'cellpressure'  => '_cell_measurement_pressure',
-        },
-        'history'      => {
-            'thermalhist'  => '_exptl_crystal_thermal_history',
-            'pressurehist' => '_exptl_crystal_pressure_history',
-        },
-        'source'       => {
-            'compoundsource' => '_chemical_compound_source'
-        }
-    };
+    my ( $sth, $data, $db_fields2tags ) = @_;
 
     my $COD = ();
     for my $id (keys %{$data}) {
         for my $formula (( $data->{$id}{chemical_formula_sum},
                            $data->{$id}{calc_formula},
                            $data->{$id}{cell_formula} )) {
-            if( defined $formula ) {
-                my $query_formula = '- ' . $formula . ' -';
-                my $rv = $sth->execute( $query_formula,
-                                        $query_formula,
-                                        $query_formula );
-                if( defined $rv ) {
-                    $COD->{$formula} = [];
-                    while ( my $row = $sth->fetchrow_hashref() ) {
-                        my $structure = {
-                            filename => $row->{file},
-                            id => $row->{file},
-                            cell => {
-                                _cell_length_a => $row->{a},
-                                _cell_length_b => $row->{b},
-                                _cell_length_c => $row->{c},
-                                _cell_angle_alpha => $row->{alpha},
-                                _cell_angle_beta  => $row->{beta},
-                                _cell_angle_gamma => $row->{gamma},
-                            },
-                            sigcell => {
-                                _cell_length_a => $row->{siga},
-                                _cell_length_b => $row->{sigb},
-                                _cell_length_c => $row->{sigc},
-                                _cell_angle_alpha => $row->{sigalpha},
-                                _cell_angle_beta  => $row->{sigbeta},
-                                _cell_angle_gamma => $row->{siggamma},
-                            }
-                        };
-
-                        for my $category (keys %{$categories}) {
-                            for my $field ( keys %{$categories->{$category}} ) {
-                                if ( defined $row->{$field} ) {
-                                    $structure->{$category}{
-                                        $categories->{$category}{$field}
-                                    } =
-                                        $row->{$field};
-                                }
-                            }
-                        }
-
-                        push @{$COD->{$formula}}, $structure;
-                    }
-                } else {
-                    die "ERROR, error fetching formula '${formula}'" .
-                         ( defined $DBI::errstr ? ' -- ' .
-                                   lcfirst( $DBI::errstr) : '' );
+            next if !defined $formula;
+            my $query_formula = '- ' . $formula . ' -';
+            my $rv = $sth->execute( $query_formula,
+                                    $query_formula,
+                                    $query_formula );
+            if( defined $rv ) {
+                $COD->{$formula} = [];
+                while ( my $row = $sth->fetchrow_hashref() ) {
+                    my $entry = build_entry_from_db_row( $row, $db_fields2tags );
+                    push @{$COD->{$formula}}, $entry;
                 }
+            } else {
+                die "ERROR, error fetching formula '${formula}'" .
+                     ( defined $DBI::errstr ? ' -- ' .
+                               lcfirst( $DBI::errstr) : '' );
             }
         }
     }
 
     return $COD;
+}
+
+sub build_entry_from_db_row
+{
+    my ($db_row, $db_fields2tags) = @_;
+
+    my $entry = {
+        'filename' => $db_row->{'file'},
+        'id'       => $db_row->{'file'},
+    };
+
+    for my $category (keys %{$db_fields2tags}) {
+        my $fields = $db_fields2tags->{$category};
+        for my $field ( keys %{$fields} ) {
+            $entry->{$category}{$fields->{$field}} = $db_row->{$field};
+        }
+    }
+
+    return $entry;
 }
 
 1;
