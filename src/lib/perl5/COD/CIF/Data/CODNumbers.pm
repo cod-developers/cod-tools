@@ -12,6 +12,7 @@ package COD::CIF::Data::CODNumbers;
 
 use strict;
 use warnings;
+use DBI;
 use File::Basename qw( basename );
 use COD::Formulae::Parser::AdHoc;
 use COD::CIF::Data::CellContents qw( cif_cell_contents );
@@ -97,10 +98,8 @@ sub fetch_duplicates_from_database
     };
 
     my %structures = %{$structures};
-
-    my %COD = ();
-
-    query_COD_database( $dbh, $database, \%COD, \%structures, \%options );
+    my $sth = prepare_database_query( $dbh, $database, \%options );
+    my $COD = query_COD_database( $sth, \%structures );
 
     my @duplicates;
     for my $id (sort { $structures{$a}->{index} <=>
@@ -124,8 +123,8 @@ sub fetch_duplicates_from_database
 
         my %structures_found = ();
 
-        if( defined $formula && defined $COD{$formula} ) {
-            for my $cod_entry (@{$COD{$formula}}) {
+        if( defined $formula && defined $COD->{$formula} ) {
+            for my $cod_entry (@{$COD->{$formula}}) {
                 if( entries_are_the_same( $structures{$id},
                                           $cod_entry,
                                           \%options )) {
@@ -134,10 +133,10 @@ sub fetch_duplicates_from_database
                 }
             }
         }
-        if( defined $calc_formula && defined $COD{$calc_formula} &&
+        if( defined $calc_formula && defined $COD->{$calc_formula} &&
             ( !defined $formula || $formula ne $calc_formula )) {
             ## print ">>> formula: '$formula', contents: '$calc_formula'\n";
-            for my $cod_entry (@{$COD{$calc_formula}}) {
+            for my $cod_entry (@{$COD->{$calc_formula}}) {
                 if( entries_are_the_same( $structures{$id},
                                           $cod_entry,
                                           \%options )) {
@@ -148,9 +147,9 @@ sub fetch_duplicates_from_database
                 }
             }
         }
-        if( defined $cell_formula && defined $COD{$cell_formula} &&
+        if( defined $cell_formula && defined $COD->{$cell_formula} &&
             ( !defined $calc_formula || $calc_formula ne $cell_formula ) ) {
-            for my $cod_entry (@{$COD{$cell_formula}}) {
+            for my $cod_entry (@{$COD->{$cell_formula}}) {
                 if( entries_are_the_same( $structures{$id},
                                           $cod_entry,
                                           \%options )) {
@@ -832,9 +831,9 @@ sub database_disconnect
     return;
 }
 
-sub query_COD_database
+sub prepare_database_query
 {
-    my ( $dbh, $database, $COD, $data, $user_options ) = @_;
+    my ( $dbh, $database, $user_options ) = @_;
 
     $user_options = {} unless defined $user_options;
     my %options = %{$user_options};
@@ -845,8 +844,6 @@ sub query_COD_database
     };
     my $cod_series_prefix = defined $options{'cod_series_prefix'} ?
                                     $options{'cod_series_prefix'} : '';
-
-    use DBI;
 
     my @columns = qw( file a b c alpha beta gamma
                       siga sigb sigc sigalpha sigbeta siggamma
@@ -870,8 +867,43 @@ sub query_COD_database
         "SELECT $column_list FROM `$database->{table}` ".
         'WHERE (formula = ? OR calcformula = ? OR cellformula = ?)' .
         ($cod_series_prefix ? "AND `file` LIKE '$cod_series_prefix%'" : '')
-        );
+    );
 
+    return $sth;
+}
+
+sub query_COD_database
+{
+    my ( $sth, $data ) = @_;
+
+    my $categories = {
+        'bibliography' => {
+            'journal'   => '_journal_name_full',
+            'year'      => '_journal_year',
+            'volume'    => '_journal_volume',
+            'issue'     => '_journal_issue',
+            'firstpage' => '_journal_page_first',
+            'lastpage'  => '_journal_page_last',
+            'doi'       => '_journal_paper_doi',
+        },
+        'temperature'  => {
+            'diffrtemp' => '_diffrn_ambient_temperature',
+            'celltemp'  => '_cell_measurement_temperature',
+        },
+        'pressure'     => {
+            'diffrpressure' => '_diffrn_ambient_pressure',
+            'cellpressure'  => '_cell_measurement_pressure',
+        },
+        'history'      => {
+            'thermalhist'  => '_exptl_crystal_thermal_history',
+            'pressurehist' => '_exptl_crystal_pressure_history',
+        },
+        'source'       => {
+            'compoundsource' => '_chemical_compound_source'
+        }
+    };
+
+    my $COD = ();
     for my $id (keys %{$data}) {
         ## print ">>> id = $id\n";
         ## use COD::Serialise qw( serialiseRef );
@@ -915,47 +947,16 @@ sub query_COD_database
                             }
                         };
 
-                        $structure->{temperature}{_diffrn_ambient_temperature} =
-                            $row->{diffrtemp} if defined $row->{diffrtemp};
-
-                        $structure->{temperature}{_cell_measurement_temperature} =
-                            $row->{celltemp} if defined $row->{celltemp};
-
-                        $structure->{pressure}{_diffrn_ambient_pressure} =
-                            $row->{diffrpressure} if defined $row->{diffrpressure};
-
-                        $structure->{pressure}{_cell_measurement_pressure} =
-                            $row->{cellpressure} if defined $row->{cellpressure};
-
-                        $structure->{history}{_exptl_crystal_thermal_history} =
-                            $row->{thermalhist} if defined $row->{thermalhist};
-
-                        $structure->{history}{_exptl_crystal_pressure_history} =
-                            $row->{pressurehist} if defined $row->{pressurehist};
-
-                        $structure->{source}{_chemical_compound_source} =
-                            $row->{compoundsource} if defined $row->{compoundsource};
-
-                        $structure->{bibliography}{_journal_name_full} =
-                            $row->{journal} if defined $row->{journal};
-
-                        $structure->{bibliography}{_journal_year} =
-                            $row->{year} if defined $row->{year};
-
-                        $structure->{bibliography}{_journal_volume} =
-                            $row->{volume} if defined $row->{volume};
-
-                        $structure->{bibliography}{_journal_issue} =
-                            $row->{issue} if defined $row->{issue};
-
-                        $structure->{bibliography}{_journal_page_first} =
-                            $row->{firstpage} if defined $row->{firstpage};
-
-                        $structure->{bibliography}{_journal_page_last} =
-                            $row->{lastpage} if defined $row->{lastpage};
-
-                        $structure->{bibliography}{_journal_paper_doi} =
-                            $row->{doi} if defined $row->{doi};
+                        for my $category (keys %{$categories}) {
+                            for my $field ( keys %{$categories->{$category}} ) {
+                                if ( defined $row->{$field} ) {
+                                    $structure->{$category}{
+                                        $categories->{$category}{$field}
+                                    } =
+                                        $row->{$field};
+                                }
+                            }
+                        }
 
                         push @{$COD->{$formula}}, $structure;
                     }
@@ -968,7 +969,7 @@ sub query_COD_database
         }
     }
 
-    return;
+    return $COD;
 }
 
 1;
