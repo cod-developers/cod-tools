@@ -18,6 +18,7 @@ use COD::CIF::Data::CellContents qw( cif_cell_contents );
 use COD::CIF::Data::CODFlags qw( is_disordered has_coordinates has_Fobs );
 use COD::CIF::Data::Check qw( check_formula_sum_syntax );
 use COD::CIF::Unicode2CIF qw( cif2unicode );
+use COD::CIF::Tags::Manage qw( get_data_value get_aliased_value );
 use COD::CIF::Tags::DictTags;
 use COD::Spacegroups::Names;
 use Scalar::Util qw( looks_like_number );
@@ -306,17 +307,17 @@ sub cif2cod
 
     # Get text values directly from CIF data items
     for my $field ( sort keys %text_value_fields2tags ) {
-        $data{$field} = get_data_value( $values, $text_value_fields2tags{$field} );
+        $data{$field} = get_aliased_value( $values, $text_value_fields2tags{$field} );
     };
 
     # Get numeric values directly from CIF data items
     for my $field ( sort keys %num_value_fields2tags ) {
-        $data{$field} = get_data_value( $values, $num_value_fields2tags{$field} );
+        $data{$field} = get_aliased_value( $values, $num_value_fields2tags{$field} );
     }
 
     # Get su values directly from CIF data items
     for my $field ( sort keys %su_fields2tags ) {
-        $data{$field} = get_data_value( $sigmas, $su_fields2tags{$field} );
+        $data{$field} = get_aliased_value( $sigmas, $su_fields2tags{$field} );
     };
 
     # process numeric values
@@ -508,7 +509,6 @@ sub concat_text_field
 {
     my ($biblio) = @_;
 
-
     my $authors    = defined $biblio->{'authors'}   ?
                              $biblio->{'authors'}   : '';
     my $title      = defined $biblio->{'title'}     ?
@@ -550,32 +550,6 @@ sub count_number_of_elements
     my @unique = uniq @elements;
 
     return int @unique;
-}
-
-sub get_tag_or_undef
-{
-    my ($values, $tag, $index) = @_;
-    if( exists $values->{$tag} ) {
-        if( defined $values->{$tag}[$index] ) {
-            return $values->{$tag}[$index];
-        }
-    }
-
-    return;
-}
-
-sub get_data_value
-{
-    my ($values, $data_names) = @_;
-
-    my $value;
-    for my $data_name ( @{$data_names} ) {
-        if (!defined $value) {
-            $value = get_tag_or_undef( $values, $data_name, 0 );
-        }
-    }
-
-    return $value;
 }
 
 sub clean_whitespaces
@@ -695,7 +669,7 @@ sub get_coeditor_code
     for ( qw( _journal_coeditor_code
               _journal.coeditor_code ) ) {
         if( exists $values->{$_} ) {
-            $acce_code = get_tag_or_undef( $values, $_, 0 );
+            $acce_code = get_data_value( $values, $_, 0 );
             last;
         }
     }
@@ -707,7 +681,7 @@ sub get_coeditor_code
         for ( qw( _cod_data_source_file
                   _[local]_cod_data_source_file ) ) {
             if( exists $values->{$_} ) {
-                $acce_code = get_tag_or_undef( $values, $_, 0 );
+                $acce_code = get_data_value( $values, $_, 0 );
                 last;
             }
         }
