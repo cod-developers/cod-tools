@@ -29,13 +29,9 @@ our @EXPORT_OK = qw(
 );
 
 my %default_options = (
-    'use_su'                => 1,
-    'max_cell_length_diff'  => 0.5,
-    'max_cell_angle_diff'   => 1.2,
     'check_bibliography'    => 1,
     'check_sample_history'  => 0,
     'check_compound_source' => 0,
-    'cod_series_prefix'     => ''
 );
 
 ##
@@ -93,11 +89,11 @@ sub fetch_duplicates_from_database
     my( $structures, $database, $dbh, $user_options ) = @_;
 
     $user_options = {} unless defined $user_options;
-    my %options;
+    my %options = %{$user_options};
     foreach my $key (keys %default_options) {
-        $options{$key} = defined $user_options->{$key} ?
-                                 $user_options->{$key} :
-                                 $default_options{$key};
+        if ( !defined $options{$key} ) {
+            $options{$key} = $default_options{$key};
+        }
     };
 
     my %structures = %{$structures};
@@ -336,12 +332,8 @@ sub cif_fill_data
         }
     }
 
-    # FIXME: does _cod_related_optimal_struct really belong here?
-    for my $key ( qw( _cod_enantiomer_of
-                      _cod_related_optimal_struct ) ) {
-        if( exists $values->{$key} ) {
-            $structure{enantiomer} = $values->{$key}[0];
-        }
+    if( exists $values->{'_cod_enantiomer_of'} ) {
+        $structure{'enantiomer'} = $values->{'_cod_enantiomer_of'}[0];
     }
 
     for my $key ( qw( _cod_related_optimal_struct
@@ -736,11 +728,11 @@ sub entries_are_the_same
     my ($entry1, $entry2, $user_options) = @_;
 
     $user_options = {} unless defined $user_options;
-    my %options;
+    my %options = %{$user_options};
     foreach my $key (keys %default_options) {
-        $options{$key} = defined $user_options->{$key} ?
-                                 $user_options->{$key} :
-                                 $default_options{$key};
+        if ( !defined $options{$key} ) {
+            $options{$key} = $default_options{$key};
+        }
     };
 
     # FIXME: the logic involving optimal/suboptimal structures seems
@@ -845,13 +837,14 @@ sub query_COD_database
     my ( $dbh, $database, $COD, $data, $user_options ) = @_;
 
     $user_options = {} unless defined $user_options;
-    my %options;
+    my %options = %{$user_options};
     foreach my $key (keys %default_options) {
-        $options{$key} = defined $user_options->{$key} ?
-                                 $user_options->{$key} :
-                                 $default_options{$key};
+        if ( !defined $options{$key} ) {
+            $options{$key} = $default_options{$key};
+        }
     };
-    my $cod_series_prefix = $options{cod_series_prefix};
+    my $cod_series_prefix = defined $options{'cod_series_prefix'} ?
+                                    $options{'cod_series_prefix'} : '';
 
     use DBI;
 
