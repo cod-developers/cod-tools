@@ -14,8 +14,10 @@ use strict;
 use warnings;
 use DBI;
 use File::Basename qw( basename );
+use List::MoreUtils qw( uniq );
 use COD::Formulae::Parser::AdHoc;
 use COD::CIF::Data::CellContents qw( cif_cell_contents );
+use COD::CIF::Tags::Manage qw( get_aliased_value );
 use COD::Precision qw( eqsig );
 
 require Exporter;
@@ -104,52 +106,24 @@ sub fetch_duplicates_from_database
     my @duplicates;
     for my $id (sort { $structures{$a}->{index} <=>
                        $structures{$b}->{index} } keys %structures) {
-        my $formula = $structures{$id}{chemical_formula_sum};
-        my $calc_formula = $structures{$id}{calc_formula};
-        my $cell_formula = $structures{$id}{cell_formula};
 
-        my $final_formula;
-        if( defined $formula ) {
-            $final_formula = $formula;
-        } elsif( defined $calc_formula ) {
-            $final_formula = $calc_formula;
-        } elsif( defined $cell_formula ) {
-            $final_formula = $cell_formula;
-        } else {
-            $final_formula = '?';
-        }
+        my @formulas;
+        for my $field ( qw( chemical_formula_sum
+                            calc_formula
+                            cell_formula ) ) {
+            if ( defined $structures{$id}{$field} ) {
+                push @formulas, $structures{$id}{$field};
+            }
+        };
+        @formulas = uniq @formulas;
 
+        my $final_formula = @formulas ? $formulas[0] : '?';
         $final_formula =~ s/\s/_/g;
 
         my %structures_found = ();
-
-        if( defined $formula && defined $COD->{$formula} ) {
+        for my $formula (@formulas) {
+            next if !defined $COD->{$formula};
             for my $cod_entry (@{$COD->{$formula}}) {
-                if( entries_are_the_same( $structures{$id},
-                                          $cod_entry,
-                                          \%options )) {
-                    my $cod_key = $cod_entry->{filename};
-                    $structures_found{$cod_key} = $cod_entry;
-                }
-            }
-        }
-        if( defined $calc_formula && defined $COD->{$calc_formula} &&
-            ( !defined $formula || $formula ne $calc_formula )) {
-            ## print ">>> formula: '$formula', contents: '$calc_formula'\n";
-            for my $cod_entry (@{$COD->{$calc_formula}}) {
-                if( entries_are_the_same( $structures{$id},
-                                          $cod_entry,
-                                          \%options )) {
-                    my $cod_key = $cod_entry->{filename};
-                    if( !exists $structures_found{$cod_key} ) {
-                        $structures_found{$cod_key} = $cod_entry;
-                    }
-                }
-            }
-        }
-        if( defined $cell_formula && defined $COD->{$cell_formula} &&
-            ( !defined $calc_formula || $calc_formula ne $cell_formula ) ) {
-            for my $cod_entry (@{$COD->{$cell_formula}}) {
                 if( entries_are_the_same( $structures{$id},
                                           $cod_entry,
                                           \%options )) {
@@ -291,80 +265,87 @@ sub cif_fill_data
         }
     }
 
-    for my $key ( qw( _cell_measurement_temperature
-                      _cell_measurement_temperature_C
-                      _diffrn_ambient_temperature
-                      _diffrn_ambient_temperature_C
-                      _diffrn_ambient_temperature_gt
-                      _diffrn_ambient_temperature_lt
-                      _pd_prep_temperature
-                      _cell_measurement_pressure
-                      _cell_measurement_pressure_gPa
-                      _cell_wave_vectors_pressure_max
-                      _cell_wave_vectors_pressure_min
-                      _diffrn_ambient_pressure
-                      _diffrn.ambient_pressure
-                      _diffrn.ambient_pressure_esd
-                      _diffrn_ambient_pressure_gPa
-                      _diffrn_ambient_pressure_gt
-                      _diffrn.ambient_pressure_gt
-                      _diffrn_ambient_pressure_lt
-                      _diffrn.ambient_pressure_lt
-                      _exptl_crystal_pressure_history
-                      _exptl_crystal_thermal_history
-                      _pd_prep_pressure ) ) {
-       if( exists $values->{$key} ) {
-           my $val = $values->{$key}[0];
-           if( defined $val ) {
-               my $parameter;
-               if( $key =~ /history/ ) {
-                   $parameter = 'history';
-               } elsif( $key =~ /pressure/ ) {
-                   $parameter = 'pressure';
-               } else {
-                   $parameter = 'temperature';
-               }
-               $structure{$parameter}{$key} = $val;
-               $structure{$parameter}{$key}
-                   =~ s/^\s*'\s*|\s*'\s*$//g;
+    my $categories = {
+        'bibliography' => [
+            qw(
+                _journal_name_full
+                _journal_year
+                _journal_volume
+                _journal_issue
+                _journal_page_first
+                _journal_page_last
+                _journal_paper_doi
+            )
+        ],
+        'history' => [
+            qw(
+                 _exptl_crystal_pressure_history
+                 _exptl_crystal_thermal_history
+            )
+        ],
+        'pressure' => [
+            qw(
+                _cell_measurement_pressure
+                _cell_measurement_pressure_gPa
+                _cell_wave_vectors_pressure_max
+                _cell_wave_vectors_pressure_min
+                _diffrn_ambient_pressure
+                _diffrn.ambient_pressure
+                _diffrn.ambient_pressure_esd
+                _diffrn_ambient_pressure_gPa
+                _diffrn_ambient_pressure_gt
+                _diffrn.ambient_pressure_gt
+                _diffrn_ambient_pressure_lt
+                _diffrn.ambient_pressure_lt
+                _pd_prep_pressure
+            )
+        ],
+        'temperature' => [
+            qw(
+                _cell_measurement_temperature
+                _cell_measurement_temperature_C
+                _diffrn_ambient_temperature
+                _diffrn_ambient_temperature_C
+                _diffrn_ambient_temperature_gt
+                _diffrn_ambient_temperature_lt
+                _pd_prep_temperature
+            )
+        ],
+        'enantiomer' => [
+            qw(
+                _cod_enantiomer_of
+            )
+        ],
+        'source' => [
+            qw(
+                _chemical_compound_source
+            )
+        ]
+    };
+
+    for my $category ( keys %{$categories} ) {
+        for my $data_name ( @{$categories->{$category}} ) {
+            my $val = $values->{$data_name}[0];
+            if( defined $val ) {
+               $structure{$category}{$data_name} = $val;
+               $structure{$category}{$data_name}
+                   =~ s/^\s*['"]\s*|\s*['"]\s*$//g;
             }
         }
     }
 
-    if( exists $values->{'_cod_enantiomer_of'} ) {
-        $structure{'enantiomer'} = $values->{'_cod_enantiomer_of'}[0];
+    my $value = get_aliased_value($values,
+                    [ qw( _cod_related_optimal_struct
+                          _[local]_cod_related_optimal_struct ) ]);
+    if (defined $value) {
+        $structure{'related_optimal'} = $value;
     }
 
-    for my $key ( qw( _cod_related_optimal_struct
-                      _[local]_cod_related_optimal_struct ) ) {
-        if( exists $values->{$key} ) {
-            $structure{related_optimal} = $values->{$key}[0];
-        }
-    }
-
-     my @journal_keys =
-        grep { ! /^_journal_name/ }
-        grep { /^_journal_[^\s]*$/ }
-        keys %{$values};
-
-    for my $key (@journal_keys) {
-        my $val = $values->{$key}[0];
-        if( defined $val ) {
-            $val =~ s/^['"]|["']$//g;
-            $structure{bibliography}{$key} = $val;
-        }
-    }
-
-    for my $key ( qw( _cod_suboptimal_structure
-                      _[local]_cod_suboptimal_structure ) ) {
-        if( exists $values->{$key} ) {
-            $structure{suboptimal} = $values->{$key}[0];
-        }
-    }
-
-    if( exists $values->{_chemical_compound_source} ) {
-        $structure{source}{_chemical_compound_source} =
-            $values->{_chemical_compound_source}[0];
+    $value = get_aliased_value($values,
+                [ qw( _cod_suboptimal_structure
+                      _[local]_cod_suboptimal_structure ) ] );
+    if (defined $value) {
+        $structure{'suboptimal'} = $value;
     }
 
     return \%structure;
@@ -751,8 +732,8 @@ sub entries_are_the_same
     # FIXME: the enantiomer and related optimal checks are parameter position
     # dependent:
     # ( entries_are_the_same($s1, $s2) != entries_are_the_same($s1, $s2) )
-    if ( defined $entry1->{'enantiomer'} &&
-         $entry1->{'enantiomer'} eq $entry2->{'id'} ) {
+    if ( defined $entry1->{'enantiomer'}{'_cod_enantiomer_of'} &&
+         $entry1->{'enantiomer'}{'_cod_enantiomer_of'} eq $entry2->{'id'} ) {
         return 0;
     }
 
@@ -905,27 +886,17 @@ sub query_COD_database
 
     my $COD = ();
     for my $id (keys %{$data}) {
-        ## print ">>> id = $id\n";
-        ## use COD::Serialise qw( serialiseRef );
-        ## serialiseRef( $data->{$id} );
         for my $formula (( $data->{$id}{chemical_formula_sum},
                            $data->{$id}{calc_formula},
                            $data->{$id}{cell_formula} )) {
             if( defined $formula ) {
-                ## print ">>> formula = $formula\n";
                 my $query_formula = '- ' . $formula . ' -';
                 my $rv = $sth->execute( $query_formula,
                                         $query_formula,
                                         $query_formula );
                 if( defined $rv ) {
-                    ## print "\n>>> rv = $rv\n";
-                    ## local $" = ", ";
                     $COD->{$formula} = [];
-                    while( my $row = $sth->fetchrow_hashref() ) {
-                        ## my @row = map { defined $row->{$_} ? 
-                        ##           $row->{$_} : "NULL" } @columns;
-                        ## print ">>> @row\n";
-
+                    while ( my $row = $sth->fetchrow_hashref() ) {
                         my $structure = {
                             filename => $row->{file},
                             id => $row->{file},
