@@ -421,8 +421,15 @@ class CifDatablock(object):
     def __setitem__(self, key, value):
         tag_index = datablock_tag_index( self._datablock, key )
         if tag_index == -1:
-            datablock_insert_cifvalue( self._datablock, key, value, None )
-        elif datablock_tag_in_loop( self._datablock, tag_index ) == -1:
+            if isinstance(value, list):
+                self.add_loop( [ key ], [ [x] for x in value ] )
+            else:
+                datablock_insert_cifvalue( self._datablock, key, value, None )
+        elif isinstance(value, list):
+            raise ValueError( "can not overwrite data item with a loop" )
+        elif datablock_tag_in_loop( self._datablock, tag_index ) != -1:
+            raise ValueError( "can not overwrite a loop" )
+        else:
             datablock_overwrite_cifvalue( self._datablock, tag_index, 0, value, None )
 
     def keys(self):
