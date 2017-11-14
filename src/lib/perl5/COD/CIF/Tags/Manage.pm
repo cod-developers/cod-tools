@@ -35,6 +35,8 @@ our @EXPORT_OK = qw(
     rename_tags
     set_tag
     set_loop_tag
+    get_data_value
+    get_aliased_value
 );
 
 sub rename_tags($$$);
@@ -460,6 +462,37 @@ sub set_loop_tag
     $cif->{'values'}{$tag} = $values;
 
     return;
+}
+
+sub get_data_value
+{
+    my ($values, $data_name, $index) = @_;
+
+    $index = 0 unless defined $index;
+
+    if( exists $values->{$data_name} ) {
+        if( defined $values->{$data_name}[$index] ) {
+            return $values->{$data_name}[$index];
+        }
+    }
+
+    return;
+}
+
+sub get_aliased_value
+{
+    my ($values, $data_names, $index) = @_;
+
+    my $value;
+    for my $data_name ( @{$data_names} ) {
+        if (!defined $value) {
+            $value = get_data_value( $values, $data_name, $index );
+        } else {
+            last;
+        }
+    }
+
+    return $value;
 }
 
 ##

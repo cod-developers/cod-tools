@@ -12,7 +12,7 @@
 
 /* uses: */
 #include <stdio.h>
-#include <stdlib.h>
+#include <unistd.h>
 #include <stdarg.h>
 #include <string.h>
 #include <allocx.h>
@@ -463,12 +463,8 @@ void datablock_overwrite_cifvalue( DATABLOCK * datablock, ssize_t tag_nr,
     cexception_t inner;
 
     cexception_guard( inner ) {
-        if( value ) {
-            delete_value( datablock_cifvalue( datablock, tag_nr, val_nr ) );
-            datablock->values[tag_nr][val_nr] = value;
-        } else {
-            datablock->values[tag_nr][val_nr] = NULL;
-        }
+        delete_value( datablock_cifvalue( datablock, tag_nr, val_nr ) );
+        datablock->values[tag_nr][val_nr] = value;
     }
     cexception_catch {
         cexception_reraise( inner, ex );

@@ -9,7 +9,7 @@
 #define __CIF2_LEXER_H
 
 #include <stdio.h>
-#include <stdlib.h> /* for ssize_t */
+#include <unistd.h> /* for ssize_t */
 #include <cexceptions.h>
 #include <cif_compiler.h>
 

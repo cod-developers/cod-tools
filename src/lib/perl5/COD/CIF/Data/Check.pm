@@ -147,9 +147,7 @@ sub check_chemical_formula_sum
 
     my $formula = $dataset->{'values'}{'_chemical_formula_sum'}[0];
 
-    if( !defined $formula ) {
-        push @messages, 'WARNING, no _chemical_formula_sum';
-    } else {
+    if ( defined $formula ) {
         push @messages, @{check_formula_sum_syntax($formula)};
     }
 
@@ -734,8 +732,18 @@ sub check_su_eligibility
 # @param $dataset
 #       Reference to a data block as returned by the COD::CIF::Parser.
 # @param $data_names
-#       Reference to an array of data names that should be searched for
-#       in the data block.
+#       Reference to a hash that details what data names should be
+#       searched for in the data block. The data names serve a hash
+#       keys and the values correspond to the severity of the audit
+#       message:
+#       {
+#       # Data item '_tag_1' is mandatory.
+#       # An error message will be generated in case it is not found.
+#           '_tag_1' => 1,
+#       # Data item '_tag_2' is optional, but highly recommended
+#       # An warning message will be generated in case it is not found.
+#           '_tag_2' => 0,
+#       }
 # @return
 #       Reference to an array of audit messages.
 ##
@@ -744,9 +752,15 @@ sub check_mandatory_presence
     my ( $dataset, $data_names ) = @_;
     my @messages;
 
-    for ( @{$data_names} ) {
+    for ( sort keys %{$data_names} ) {
         if ( !defined $dataset->{'values'}{$_} ) {
-            push @messages, "ERROR, mandatory data item '$_' was not found"
+            if ( $data_names->{$_} ) {
+                push @messages,
+                    "ERROR, mandatory data item '$_' was not found"
+            } else {
+                push @messages,
+                     "WARNING, recommended data item '$_' was not found"
+            }
         }
     }
 
@@ -785,7 +799,7 @@ sub check_timestamp
                 } else {
                     if ( DateTime->compare($datetime, DateTime->now() ) > 0 ) {
                         push @messages, "ERROR, data item '$name' value " .
-                             "'$_' seems to be specify a moment of time in " .
+                             "'$_' seems to specify a moment of time in " .
                              'the future';
                     }
                 }
@@ -800,7 +814,7 @@ sub check_timestamp
 # Parses the datetime string and returns a DateTime object. The accepted
 # datetime strings can be expressed either as a date only time (YYYY-MM-DD)
 # or a datetime value (as defined in RFC3339). In case a non-conforming string
-# is passed a warning message is raised and an undefined value is returned.
+# is passed the subroutine dies.
 #
 # @param $datetime_string
 #       Datetime string that should be parsed.
@@ -812,17 +826,23 @@ sub parse_datetime
     my ($datetime_string) = @_;
 
     my $datetime;
-    # Parse date only time
-    if ( $datetime_string =~ /^(\d{4})-(\d{2})-(\d{2})$/ ) {
-        $datetime = DateTime->new(
-                        'year'  => $1,
-                        'month' => $2,
-                        'day'   => $3,
-                    );
-    } else {
-        use DateTime::Format::RFC3339;
-        my $parser = DateTime::Format::RFC3339->new();
-        $datetime = $parser->parse_datetime($datetime_string);
+    eval {
+        # Parse date only time
+        if ( $datetime_string =~ /^(\d{4})-(\d{2})-(\d{2})$/ ) {
+            $datetime = DateTime->new(
+                            'year'  => $1,
+                            'month' => $2,
+                            'day'   => $3,
+                        );
+        } else {
+            use DateTime::Format::RFC3339;
+            my $parser = DateTime::Format::RFC3339->new();
+            $datetime = $parser->parse_datetime($datetime_string);
+        }
+    };
+    if ($@) {
+        die "ERROR, value '$datetime_string' could not be succesfully " .
+            'parsed as a timestamp value' . "\n";
     }
 
     return $datetime;

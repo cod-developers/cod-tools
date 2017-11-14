@@ -26,11 +26,13 @@ void delete_cif_compiler( CIF_COMPILER *c );
 
 char *cif_compiler_filename( CIF_COMPILER *ccc );
 CIF *cif_compiler_cif( CIF_COMPILER *ccc );
+FILE *cif_compiler_file( CIF_COMPILER *ccc );
 int cif_compiler_nerrors( CIF_COMPILER *ccc );
 int cif_compiler_loop_tag_count( CIF_COMPILER *ccc );
 int cif_compiler_loop_value_count( CIF_COMPILER *ccc );
 int cif_compiler_loop_start_line( CIF_COMPILER *ccc );
 
+void cif_compiler_set_file( CIF_COMPILER *ccc, FILE *file );
 void cif_compiler_detach_cif( CIF_COMPILER *ccc );
 void cif_compiler_increase_nerrors( CIF_COMPILER *ccc );
 void cif_compiler_increase_nwarnings( CIF_COMPILER *ccc );
