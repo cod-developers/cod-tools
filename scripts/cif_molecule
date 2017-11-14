@@ -1109,54 +1109,7 @@ sub get_molecules
 }
 
 #===============================================================#
-# Gets symmetry operators if they are not directly represented in the CIF file.
-
-# Accepts
-#     option - an option, for example, "hall"
-#     param  - according to an option a value given in the CIF file
-
-# Uses @COD::Spacegroups::Lookup::COD::table =
-# (
-# {
-#     number          => 1,
-#     hall            => ' P 1',
-#     schoenflies     => 'C1^1',
-#     hermann_mauguin => 'P 1',
-#     universal_h_m   => 'P 1',
-#     symops => [
-#         'x,y,z',
-#     ],
-#     ncsym => [
-#         'x,y,z',
-#     ]
-# },
-# );
-
-# Return a reference to symmetry operators.
-
-sub get_symops
-{
-    my ($option, $param) = @_;
-
-    $param =~ s/ //g;
-    $param =~ s/_//g;
-
-    foreach my $hash (@COD::Spacegroups::Lookup::COD::table)
-    {
-        my $value = $hash->{$option};
-        $value =~ s/ //g;
-        $value =~ s/_//g;
-
-        if($value eq $param)
-        {
-            return $hash->{symops};
-        }
-    }
-    return;
-}
-
-#===============================================================#
-# Applies symmetry operator to all atoms in a givel list.
+# Applies symmetry operator to all atoms in a given list.
 #
 # The symop_apply_to_atoms subroutine accepts a reference to an array
 # of hash references:
@@ -2164,9 +2117,4 @@ sub mat_rank
                               $_->[2] != 0 ? $_ : () } @m;
 
     return scalar @non_null_rows;
-}
-
-sub sprint_value
-{
-    &COD::CIF::Tags::Print::sprint_value;
 }
