@@ -48,10 +48,20 @@ my @ordered_keys = qw( database code description uri );
 
 my %related;
 #* OPTIONS:
+#*   --related-entry-code
+#*                     Code of the related entry in the external database.
+#*   --related-entry-database
+#*                     Name of the database that the related entry belong to.
+#*   --related-entry-description
+#*                     Description of the related entry.
+#*   --related-entry-uri
+#*                     The URI pointing to the related entry.
+#*
 #*   --use-perl-parser
 #*                     Use Perl parser to parse CIF files.
 #*   --use-c-parser
 #*                     Use C parser to parse CIF files (default).
+#*
 #*   --help, --usage
 #*                     Output a short usage message (this message) and exit.
 #*   --version
@@ -116,6 +126,16 @@ for my $filename (@ARGV) {
                     [ $key_data_name, sort values %cif_tags ]
                 );
 
+                my @initial_loop_neighbours;
+                foreach ( $key_data_name, values %cif_tags ) {
+                    if ( defined $dataset->{'inloop'}{$_} ) {
+                        my $initial_loop_no = $dataset->{'inloop'}{$_};
+                        @initial_loop_neighbours =
+                            @{$dataset->{'loops'}[$initial_loop_no]};
+                        last;
+                    }
+                }
+
                 my @entry_ids = @{
                     generate_loop_key( $dataset, {
                         'key_data_name'        => $key_data_name,
@@ -123,6 +143,8 @@ for my $filename (@ARGV) {
                         'addition_entry_count' => $related_size,
                     } )
                 };
+
+                my $target_loop_size = @entry_ids;
 
                 # Use the loop of other item in the same category
                 # if the key data item is currently not looped
@@ -151,6 +173,7 @@ for my $filename (@ARGV) {
                         $dataset, {
                         'data_name'         => $cif_tags{$_},
                         'initial_loop_size' => $initial_loop_size,
+                        'target_loop_size'  => $target_loop_size,
                         'additional_values' => $related{$_},
                         }
                     ) };
@@ -160,6 +183,27 @@ for my $filename (@ARGV) {
                         $cif_tags{$_},
                         $key_data_name,
                         \@new_data_values
+                    );
+                }
+
+                # Add unknown values to other data items in the loop
+                for my $data_name ( @initial_loop_neighbours ) {
+                 #   next if $data_name eq $key_data_name;
+                 #   next if grep { $data_name } keys %cif_tags;
+
+                    my @padded_data_values = @{ generate_loop_values(
+                        $dataset, {
+                        'data_name'         => $data_name,
+                        'initial_loop_size' => $initial_loop_size,
+                        'target_loop_size'  => $target_loop_size,
+                        }
+                    ) };
+
+                    set_loop_tag(
+                        $dataset,
+                        $data_name,
+                        $key_data_name,
+                        \@padded_data_values
                     );
                 }
             } else {
@@ -215,6 +259,7 @@ sub generate_loop_values
 
     my $data_name         = $param->{'data_name'};
     my $initial_loop_size = $param->{'initial_loop_size'};
+    my $target_loop_size     = $param->{'target_loop_size'};
     my $additional_values = $param->{'additional_values'};
 
     if ( !defined $dataset->{'values'}{$data_name} &&
@@ -231,7 +276,11 @@ sub generate_loop_values
         }
         push @new_data_values, @{$additional_values};
     } else {
-        @new_data_values = ( @{$dataset->{'values'}{$data_name}}, ('?') x 1 )
+        my $diff = $target_loop_size - @{$dataset->{'values'}{$data_name}};
+        if ( $diff >= 0 ) {
+            @new_data_values = ( @{$dataset->{'values'}{$data_name}},
+                                 ('?') x $diff )
+        }
     }
 
     return \@new_data_values;
