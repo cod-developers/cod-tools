@@ -21,8 +21,6 @@
 #include <stringx.h>
 #include <assert.h>
 
-FILE *yyin;
-
 static CIF_COMPILER *cif_cc;
 
 static char *current_line;
@@ -96,9 +94,9 @@ static int cif_lexer( FILE *in, cexception_t *ex );
 
 int ciflex( void )
 {
-    if( !yyin )
-        yyin = stdin;
-    return cif_lexer( yyin, NULL );
+    if( !cif_compiler_file( cif_cc ) )
+        cif_compiler_set_file( cif_cc, stdin );
+    return cif_lexer( cif_compiler_file( cif_cc ), NULL );
 }
 
 void cifrestart( void )

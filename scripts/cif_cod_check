@@ -25,6 +25,7 @@ use COD::CIF::Data::Check qw( check_author_names
                               check_disorder
                               check_embedded_file_integrity
                               check_limits
+                              check_mandatory_presence
                               check_pdcif_relations
                               check_simultaneous_presence
                               check_su_eligibility
@@ -599,6 +600,13 @@ local $| = 1;
 
 my $name_syntax_explained = 0;
 
+# Generate a list of mandatory data items based on the checks
+my %mandatory_items;
+
+if ( $check{'chemical_formula_sum'} ) {
+    $mandatory_items{'_chemical_formula_sum'} = 0;
+}
+
 @ARGV = ('-') unless @ARGV;
 
 for my $filename (@ARGV) {
@@ -643,6 +651,9 @@ for my $filename (@ARGV) {
         };
 
         my @messages;
+
+        push @messages,
+             @{check_mandatory_presence( $dataset, \%mandatory_items )};
 
         if ( $check{'bibliography'} ) {
             push @messages,
