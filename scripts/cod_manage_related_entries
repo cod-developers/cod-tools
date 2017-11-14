@@ -149,14 +149,6 @@ for my $filename (@ARGV) {
                 # Use the loop of other item in the same category
                 # if the key data item is currently not looped
                 my $loop_tag = $key_data_name;
-             #   if ( !exists $dataset->{'inloop'}{$key_data_name} ) {
-             #       for ( values %cif_tags ) {
-             #           if ( exists $dataset->{'inloop'}{$_} ) {
-             #               $loop_tag = $_;
-             #               last;
-             #           }
-             #       }
-             #   }
 
                 set_loop_tag(
                     $dataset,
@@ -166,8 +158,10 @@ for my $filename (@ARGV) {
                 );
 
                 for ( @ordered_keys ) {
-                    next if ( !defined $related{$_} &&
-                              !defined $dataset->{'values'}{$cif_tags{$_}} );
+                    if ( !( defined $related{$_} ||
+                            defined $dataset->{'values'}{$cif_tags{$_}} ) ) {
+                        next;
+                    }
 
                     my @new_data_values = @{ generate_loop_values(
                         $dataset, {
@@ -188,9 +182,6 @@ for my $filename (@ARGV) {
 
                 # Add unknown values to other data items in the loop
                 for my $data_name ( @initial_loop_neighbours ) {
-                 #   next if $data_name eq $key_data_name;
-                 #   next if grep { $data_name } keys %cif_tags;
-
                     my @padded_data_values = @{ generate_loop_values(
                         $dataset, {
                         'data_name'         => $data_name,
@@ -211,10 +202,6 @@ for my $filename (@ARGV) {
                      'the data block will not be modified' . "\n";
             }
 
-            if ( exists $dataset->{'inloop'}{$key_data_name} ) {
-
-            }
-
             print_cif( $dataset,
                        {
                             'preserve_loop_order' => 1,
@@ -233,6 +220,59 @@ for my $filename (@ARGV) {
     }
 }
 
+##
+# Returns the number of values associated with any of the given data names.
+# It is expected that all of the given data items either belong to the same
+# loop or contain only a single value. An error message is raised in case
+# the data items contain differing numbers of values.
+#
+# @param $dataset
+#       Reference to a data block as returned by the COD::CIF::Parser.
+# @param $data_names
+#       Reference to an array of data names that should be examined.
+# @return
+#       The number of values associated with the given data names.
+##
+sub get_initial_entry_count
+{
+    my ( $dataset, $data_names ) = @_;
+
+    my $count;
+    foreach ( @{$data_names} ) {
+        if (exists $dataset->{'values'}{$_}) {
+            $count = @{$dataset->{'values'}{$_}} if !defined $count;
+            if ( @{$dataset->{'values'}{$_}} ne $count ) {
+                die 'ERROR, data items [' .
+                     ( join ', ', map { "'$_'" } @{$data_names} ) . '] ' .
+                    'do not contain the same number of values' . "\n";
+            }
+        }
+    }
+    $count = 0 if !defined $count;
+
+    return $count;
+}
+
+##
+# Generates the list of loop identifiers based on the already existing
+# values.
+#
+# @param $dataset
+#       Reference to a data block as returned by the COD::CIF::Parser.
+# @param $options
+#       Reference to a hash of options. The following options are recognised:
+#       {
+#       # Data name of the loop identifiers
+#           'key_data_name'        => '_cod_related_entry_id',
+#       # The initial size of the identifier loop. This option is
+#       # ignored if the 'key_data_name' data item is defined
+#           'initial_entry_count'  => '5'
+#       # The number additional identifiers that need to be generated
+#           'addition_entry_count' => '7'
+#       }
+# @return
+#       Reference to an array of loop identifiers.
+##
 sub generate_loop_key
 {
     my ( $dataset, $options ) = @_;
@@ -253,45 +293,50 @@ sub generate_loop_key
     return \@loop_key;
 }
 
+##
+# Constructs a new list of values based on the existing one by padding CIF
+# special values where needed.
+#
+# @param $dataset
+#       Reference to a data block as returned by the COD::CIF::Parser.
+# @param $options
+#       Reference to a hash of options. The following options are recognised:
+#       {
+#       # Data name of the data item containing the original values
+#           'key_data_name'     => '_cod_related_entry_id',
+#       # The initial size of the data item loop. This option is
+#       # ignored if the 'key_data_name' data item is defined
+#           'initial_loop_size' => '5'
+#       # The desired size of the new value list
+#           'target_loop_size'  => '7'
+#       # A list of additional data values that should be appended to the list
+#           'additional_values' => [1, 2, 3 ,4]
+#       }
+# @return
+#       Reference to an array of loop identifiers.
+##
 sub generate_loop_values
 {
-    my ( $dataset, $param ) = @_;
+    my ( $dataset, $options ) = @_;
 
-    my $data_name         = $param->{'data_name'};
-    my $initial_loop_size = $param->{'initial_loop_size'};
-    my $target_loop_size     = $param->{'target_loop_size'};
-    my $additional_values = $param->{'additional_values'};
-
-    if ( !defined $dataset->{'values'}{$data_name} &&
-         !$additional_values ) {
-        return [];
-    }
+    my $data_name         = $options->{'data_name'};
+    my $initial_loop_size = $options->{'initial_loop_size'};
+    my $target_loop_size  = $options->{'target_loop_size'};
+    my $additional_values = $options->{'additional_values'};
 
     my @new_data_values;
-    if ( defined $additional_values ) {
-        if ( defined $dataset->{'values'}{$data_name} ) {
-            push @new_data_values, @{$dataset->{'values'}{$data_name}};
-        } else {
-            @new_data_values = ('?') x $initial_loop_size;
-        }
-        push @new_data_values, @{$additional_values};
+    if ( defined $dataset->{'values'}{$data_name} ) {
+        @new_data_values = @{$dataset->{'values'}{$data_name}};
     } else {
-        my $diff = $target_loop_size - @{$dataset->{'values'}{$data_name}};
-        if ( $diff >= 0 ) {
-            @new_data_values = ( @{$dataset->{'values'}{$data_name}},
-                                 ('?') x $diff )
-        }
+        @new_data_values = ('?') x $initial_loop_size;
     }
 
+    if ( defined $additional_values ) {
+        push @new_data_values, @{$additional_values};
+    }
+
+    my $diff = $target_loop_size - @new_data_values;
+    push @new_data_values, ('?') x $diff;
+
     return \@new_data_values;
-}
-
-sub get_initial_entry_count
-{
-    my ( $dataset, $data_names ) = @_;
-
-    return max ( map {
-            ( exists $dataset->{'values'}{$_} ) ?
-                scalar(@{$dataset->{'values'}{$_}}) : 0 }
-                  @{$data_names} );
 }
