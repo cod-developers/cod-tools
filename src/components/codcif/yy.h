@@ -4,12 +4,6 @@
 #ifndef __YY_H
 #define __YY_H
 
-#include <stdio.h>
-#include <stdarg.h>
-#include <cexceptions.h>
-
-extern FILE *yyin;
-
 extern int yyparse( void );
 
 /* For testing of lexical analysers: */

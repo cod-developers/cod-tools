@@ -28,12 +28,12 @@ use COD::ErrorHandler qw( process_warnings
 use COD::ToolsVersion;
 
 my %database = (
-        host  => "www.crystallography.net",
-        user  => "cod_reader",
-        name  => "cod",
-        table => "data",
-        password => "",
-        platform => "mysql",
+        host  => 'www.crystallography.net',
+        user  => 'cod_reader',
+        name  => 'cod',
+        table => 'data',
+        password => '',
+        platform => 'mysql',
     );
 
 my $use_parser = 'c';
@@ -161,55 +161,55 @@ my %options;
 #*                     Output version information and exit.
 #**
 @ARGV = getOptions(
-    "-d,--database"  => \$database{name},
-    "-l,--localhost" => sub { $database{host} = 'localhost' },
-    "-h,--host"      => \$database{host},
-    "-p,--port"      => \$database{port},
-    "-s,--server"    => \$database{host},
-    "-t,--table"     => \$database{table},
-    "-u,--user"      => \$database{user},
-    "--password"     => \$database{password},
-    "--platform"     => \$database{platform},
+    '-d,--database'  => \$database{name},
+    '-l,--localhost' => sub { $database{host} = 'localhost' },
+    '-h,--host'      => \$database{host},
+    '-p,--port'      => \$database{port},
+    '-s,--server'    => \$database{host},
+    '-t,--table'     => \$database{table},
+    '-u,--user'      => \$database{user},
+    '--password'     => \$database{password},
+    '--platform'     => \$database{platform},
 
-    "-P,--print-datablock-name"     => sub{ $print_datablock_name = 1 },
-    "-P-,--no-print-datablock-name" => sub{ $print_datablock_name = 0 },
-    "--dont-print-datablock-name"   => sub{ $print_datablock_name = 0 },
+    '-P,--print-datablock-name'     => sub{ $print_datablock_name = 1 },
+    '-P-,--no-print-datablock-name' => sub{ $print_datablock_name = 0 },
+    '--dont-print-datablock-name'   => sub{ $print_datablock_name = 0 },
 
-    "-S,--series" => \$options{cod_series_prefix},
+    '-S,--series' => \$options{cod_series_prefix},
 
-    "--max-cell-length-difference" => \$options{max_cell_length_diff},
-    "--max-cell-angle-difference"  => \$options{max_cell_angle_diff},
+    '--max-cell-length-difference' => \$options{max_cell_length_diff},
+    '--max-cell-angle-difference'  => \$options{max_cell_angle_diff},
 
-    "--check-bibliography"      => sub { $options{check_bibliography} = 1; },
-    "--dont-check-bibliography" => sub { $options{check_bibliography} = 0; },
-    "--no-check-bibliography"   => sub { $options{check_bibliography} = 0; },
+    '--check-bibliography'      => sub { $options{check_bibliography} = 1; },
+    '--dont-check-bibliography' => sub { $options{check_bibliography} = 0; },
+    '--no-check-bibliography'   => sub { $options{check_bibliography} = 0; },
 
-    "--check-sample-history"      => sub { $options{check_sample_history} = 1; },
-    "--dont-check-sample-history" => sub { $options{check_sample_history} = 0; },
-    "--no-check-sample-history"   => sub { $options{check_sample_history} = 0; },
-    "--disregard-sample-history"  => sub { $options{check_sample_history} = 0; },
-    
-    "--check-compound-source"      => sub { $options{check_compound_source} = 1; },
-    "--dont-check-compound-source" => sub { $options{check_compound_source} = 0; },
-    "--no-check-compound-source"   => sub { $options{check_compound_source} = 0; },
-    "--disregard-compound-source"  => sub { $options{check_compound_source} = 0; },
+    '--check-sample-history'      => sub { $options{check_sample_history} = 1; },
+    '--dont-check-sample-history' => sub { $options{check_sample_history} = 0; },
+    '--no-check-sample-history'   => sub { $options{check_sample_history} = 0; },
+    '--disregard-sample-history'  => sub { $options{check_sample_history} = 0; },
 
-    "--ignore-sigma"        => sub{ $options{ignore_sigma} = 1 },
-    "--dont-ignore-sigma"   => sub{ $options{ignore_sigma} = 0 },
-    "--no-ignore-sigma"     => sub{ $options{ignore_sigma} = 0 },
+    '--check-compound-source'      => sub { $options{check_compound_source} = 1; },
+    '--dont-check-compound-source' => sub { $options{check_compound_source} = 0; },
+    '--no-check-compound-source'   => sub { $options{check_compound_source} = 0; },
+    '--disregard-compound-source'  => sub { $options{check_compound_source} = 0; },
 
-    "--use-sigma"       => sub{ $options{ignore_sigma} = 0 },
-    "--dont-use-sigma"  => sub{ $options{ignore_sigma} = 1 },
-    "--no-use-sigma"    => sub{ $options{ignore_sigma} = 1 },
+    '--ignore-sigma'        => sub{ $options{use_su} = 0 },
+    '--dont-ignore-sigma'   => sub{ $options{use_su} = 1 },
+    '--no-ignore-sigma'     => sub{ $options{use_su} = 1 },
 
-    "--use-perl-parser"       => sub{ $use_parser = "perl" },
-    "--use-c-parser"          => sub{ $use_parser = "c" },
-    
+    '--use-sigma'           => sub{ $options{use_su} = 1 },
+    '--dont-use-sigma'      => sub{ $options{use_su} = 0 },
+    '--no-use-sigma'        => sub{ $options{use_su} = 0 },
+
+    '--use-perl-parser'       => sub{ $use_parser = 'perl' },
+    '--use-c-parser'          => sub{ $use_parser = 'c' },
+
     '--cif-input'  => sub { $input_format = 'cif' },
     '--json-input' => sub { $input_format = 'json' },
 
-    "--options"      => sub { options; exit },
-    "--help,--usage" => sub { usage; exit },
+    '--options'      => sub { options; exit },
+    '--help,--usage' => sub { usage; exit },
     '--version'      => sub { print 'cod-tools version ',
                               $COD::ToolsVersion::Version, "\n";
                               exit }
@@ -219,7 +219,7 @@ if( $input_format eq 'json' ) {
     $use_parser = 'json';
 }
 
-@ARGV = ("-") unless @ARGV;
+@ARGV = ('-') unless @ARGV;
 
 binmode STDOUT, ':encoding(UTF-8)';
 binmode STDERR, ':encoding(UTF-8)';
@@ -228,7 +228,7 @@ for my $filename (@ARGV) {
     my $parser_options = { 'parser' => $use_parser, 'no_print' => 1 };
     my ( $data, $err_count, $messages ) = parse_cif( $filename, $parser_options );
     process_parser_messages( $messages, $die_on_error_level );
-    
+
     canonicalize_all_names( $data );
 
     local $SIG{__WARN__} = sub { process_warnings( {
@@ -244,7 +244,7 @@ for my $filename (@ARGV) {
 
     my %structures = ();
     my $index = 0;
-    foreach my $dataset ( @$data ) {
+    foreach my $dataset ( @{$data} ) {
 
         my $dataname = 'data_' . $dataset->{name};
 
@@ -284,28 +284,28 @@ for my $filename (@ARGV) {
             }, $die_on_error_level->{'ERROR'} );
     };
 
-    for my $datablock ( @$duplicates ) {
+    for my $datablock ( @{$duplicates} ) {
         if( keys %{ $datablock->{duplicates} } > 0 ) {
             for my $key (sort keys %{ $datablock->{duplicates} } ) {
-                my $COD_entry = $datablock->{duplicates}{$key};
+                my $cod_entry = $datablock->{duplicates}{$key};
                 printf
-                    "%-35s %15s %3d %s",
+                    '%-35s %15s %3d %s',
                     $datablock->{formula},
-                    $COD_entry->{filename},
+                    $cod_entry->{filename},
                     scalar keys %{ $datablock->{duplicates} },
                     $filename;
                 if( $print_datablock_name ) {
-                    printf " %s", $datablock->{datablock}{id};
+                    printf ' %s', $datablock->{datablock}{id};
                 }
                 print "\n"
             }
         } else {
             printf
-                "%-35s %15s %3d %s",
-                $datablock->{formula}, "?", 0,
+                '%-35s %15s %3d %s',
+                $datablock->{formula}, '?', 0,
                 $filename;
             if( $print_datablock_name ) {
-                printf " %s", $datablock->{datablock}{id};
+                printf ' %s', $datablock->{datablock}{id};
             }
             print "\n"
         }

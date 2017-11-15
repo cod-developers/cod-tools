@@ -3,6 +3,60 @@
     #include <Python.h>
 
     PyObject * parse_cif( char * fname, char * prog, PyObject * options );
+
+    // from cif_options.h:
+    #include <cif_options.h>
+
+    typedef enum cif_option_t cif_option_t;
+
+    cif_option_t cif_option_default();
+
+    // from cifvalue.h:
+    #include <cifvalue.h>
+
+    CIFVALUE *new_value_from_scalar( char *s, cif_value_type_t type, cexception_t *ex );
+    void value_dump( CIFVALUE *value );
+
+    // from datablock.h:
+    #include <datablock.h>
+
+    DATABLOCK *new_datablock( const char *name, DATABLOCK *next,
+                              cexception_t *ex );
+    DATABLOCK *datablock_next( DATABLOCK *datablock );
+    size_t datablock_length( DATABLOCK *datablock );
+    ssize_t *datablock_value_lengths( DATABLOCK *datablock );
+    CIFVALUE *datablock_cifvalue( DATABLOCK *datablock, int tag_nr, int val_nr );
+    ssize_t datablock_tag_index( DATABLOCK *datablock, char *tag );
+    void datablock_overwrite_cifvalue( DATABLOCK * datablock, ssize_t tag_nr,
+        ssize_t val_nr, CIFVALUE *value, cexception_t *ex );
+    void datablock_insert_cifvalue( DATABLOCK * datablock, char *tag,
+                                    CIFVALUE *value, cexception_t *ex );
+    void datablock_start_loop( DATABLOCK *datablock );
+    void datablock_finish_loop( DATABLOCK *datablock, cexception_t *ex );
+    void datablock_push_loop_cifvalue( DATABLOCK * datablock, CIFVALUE *value,
+                                       cexception_t *ex );
+    char * datablock_name( DATABLOCK * datablock );
+
+    // from cif.h:
+    #include <cif.h>
+
+    CIF *new_cif( cexception_t *ex );
+    void cif_start_datablock( CIF *cif, const char *name,
+                              cexception_t *ex );
+    void cif_append_datablock( CIF * cif, DATABLOCK *datablock );
+    void cif_print( CIF *cif );
+    DATABLOCK * cif_datablock_list( CIF *cif );
+
+    // from cif_compiler.h:
+    #include <cif_compiler.h>
+
+    CIF *new_cif_from_cif_file( char *filename, cif_option_t co, cexception_t *ex );
+
+    PyObject *extract_value( CIFVALUE * cifvalue );
+    cif_option_t extract_parser_options( PyObject * options );
+    ssize_t datablock_value_length( DATABLOCK *datablock, size_t tag_index );
+    char *datablock_tag( DATABLOCK *datablock, size_t tag_index );
+    int datablock_tag_in_loop( DATABLOCK *datablock, size_t tag_index );
 %}
 
 %pythoncode %{
@@ -11,6 +65,9 @@ warnings.filterwarnings('ignore', category=UnicodeWarning)
 
 def parse(filename,*args):
     import re
+
+    if isinstance(filename,unicode):
+        filename = filename.encode('utf-8')
 
     prog = '-'
     try:
@@ -307,15 +364,232 @@ def escape_meta(text, escaped_symbols):
     symbols = "|".join(["\\{0}".format(x) for x in escaped_symbols.keys()])
 
     def escape_internal(matchobj):
-        return escaped_symbols(matchobj.group(0))
+        return escaped_symbols[matchobj.group(0)]
 
     return re.sub("({0})".format(symbols), escape_internal, text)
 
 class CifParserException(Exception):
     pass
 
+class CifFile(object):
+    def __init__(self, file = None, parser_options = {}):
+        if file is None:
+            # Create an empty CifFile object
+            self._cif = new_cif( None )
+        else:
+            # Parse CIF file
+            self._cif = new_cif_from_cif_file( file, parser_options, None )
+
+    def __getitem__(self, key):
+        datablock = cif_datablock_list( self._cif )
+        if isinstance(key, int):
+            for i in range(0,key):
+                if datablock is None:
+                    raise IndexError('list index out of range')
+                datablock = datablock_next( datablock )
+            if datablock is None:
+                raise IndexError('list index out of range')
+            return CifDatablock(datablock = datablock)
+        else:
+            while datablock_name( datablock ) != key:
+                datablock = datablock_next( datablock )
+                if datablock is None:
+                    raise KeyError(key)
+            return CifDatablock(datablock = datablock)
+
+    def __str__(self):
+        with capture() as output:
+            cif_print( self._cif )
+        return output[0]
+
+    def append(self, datablock):
+        # must be a datablock!
+        cif_append_datablock( self._cif, datablock._datablock )
+
+class CifDatablock(object):
+    def __init__(self, name = None, datablock = None):
+        if datablock is None:
+            self._datablock = new_datablock( name, None, None )
+        else:
+            self._datablock = datablock
+
+    def __getitem__(self, key):
+        tag_index = datablock_tag_index( self._datablock, key )
+        if tag_index == -1:
+            raise KeyError(key)
+        values = []
+        for i in range(0, datablock_value_length( self._datablock,
+                                                  tag_index )):
+            values.append( extract_value( datablock_cifvalue( self._datablock,
+                                                              tag_index, i ) ) )
+        return values
+
+    def __setitem__(self, key, value):
+        if not isinstance(value, list):
+            value = [ value ]
+        tag_index = datablock_tag_index( self._datablock, key )
+        if tag_index == -1:
+            if len(value) == 1:
+                datablock_insert_cifvalue( self._datablock, key, value[0], None )
+            else:
+                self.add_loop( [ key ], [ [x] for x in value ] )
+        elif len(value) > 1:
+            raise ValueError( "can not overwrite data item with a loop" )
+        elif datablock_tag_in_loop( self._datablock, tag_index ) != -1:
+            raise ValueError( "can not overwrite a loop" )
+        else:
+            datablock_overwrite_cifvalue( self._datablock, tag_index, 0, value[0], None )
+
+    def keys(self):
+        length = datablock_length( self._datablock )
+        return [ datablock_tag( self._datablock, x) for x in range(0, length) ]
+
+    def add_loop(self, keys, values):
+        for key in keys:
+            if key in self.keys():
+                raise KeyError( "data item '{}' already exists".format(key) )
+        datablock_start_loop( self._datablock )
+        for i in range(0,len(values)):
+            for j, key in enumerate(keys):
+                if i == 0:
+                    datablock_insert_cifvalue( self._datablock, key,
+                                               values[i][j], None )
+                else:
+                    datablock_push_loop_cifvalue( self._datablock,
+                                                  values[i][j], None )
+        datablock_finish_loop( self._datablock, None )
+
+import contextlib
+
+@contextlib.contextmanager
+def capture():
+    import sys
+    from cStringIO import StringIO
+    oldout,olderr = sys.stdout, sys.stderr
+    try:
+        out=[StringIO(), StringIO()]
+        sys.stdout,sys.stderr = out
+        yield out
+    finally:
+        sys.stdout,sys.stderr = oldout, olderr
+        out[0] = out[0].getvalue()
+        out[1] = out[1].getvalue()
+
 %}
+
+%typemap(out) CIFVALUE * {
+    $result = extract_value( $1 );
+}
+
+%typemap(out) ssize_t {
+    $result = PyInt_FromLong( $1 );
+}
+
+%typemap(in) cif_option_t {
+    $1 = extract_parser_options( $input );
+}
+
+%typemap(in) cif_value_type_t {
+    cif_value_type_t type;
+    if(        strcmp( PyString_AsString($input), "CIF_INT" ) == 0 ) {
+        type = CIF_INT;
+    } else if( strcmp( PyString_AsString($input), "CIF_FLOAT" ) == 0 ) {
+        type = CIF_FLOAT;
+    } else if( strcmp( PyString_AsString($input), "CIF_UQSTRING" ) == 0 ) {
+        type = CIF_UQSTRING;
+    } else if( strcmp( PyString_AsString($input), "CIF_SQSTRING" ) == 0 ) {
+        type = CIF_SQSTRING;
+    } else if( strcmp( PyString_AsString($input), "CIF_SQ3STRING" ) == 0 ) {
+        type = CIF_SQ3STRING;
+    } else if( strcmp( PyString_AsString($input), "CIF_DQ3STRING" ) == 0 ) {
+        type = CIF_DQ3STRING;
+    } else if( strcmp( PyString_AsString($input), "CIF_TEXT" ) == 0 ) {
+        type = CIF_TEXT;
+    } else if( strcmp( PyString_AsString($input), "CIF_LIST" ) == 0 ) {
+        type = CIF_LIST;
+    } else if( strcmp( PyString_AsString($input), "CIF_TABLE" ) == 0 ) {
+        type = CIF_TABLE;
+    } else {
+        type = CIF_NON_EXISTANT;
+    }
+    $1 = type;
+}
+
+%typemap(in) CIFVALUE * (PyObject *) {
+    cif_value_type_t type = CIF_UNKNOWN;
+    char * value = strdupx( PyString_AsString( PyObject_Str( $input ) ),
+                            NULL );
+    if(        PyInt_Check( $input ) || PyLong_Check( $input ) ) {
+        type = CIF_INT;
+    } else if( PyFloat_Check( $input ) ) {
+        type = CIF_FLOAT;
+    } else if( PyString_Check( $input ) ) {
+        type = CIF_SQSTRING; // conditions exist here
+    } else if( $input == Py_None ) {
+        value = "?";
+        type = CIF_UQSTRING;
+    }
+    $1 = new_value_from_scalar( value, type, NULL );
+}
+
+%typemap(in) ssize_t {
+    $1 = PyInt_AsLong( $input );
+}
 
 #include <Python.h>
 
 PyObject * parse_cif( char * fname, char * prog, PyObject * options );
+
+// from cif_options.h:
+#include <cif_options.h>
+
+typedef enum cif_option_t cif_option_t;
+
+cif_option_t cif_option_default();
+
+// from cifvalue.h:
+#include <cifvalue.h>
+
+CIFVALUE *new_value_from_scalar( char *s, cif_value_type_t type, cexception_t *ex );
+void value_dump( CIFVALUE *value );
+
+// from datablock.h:
+#include <datablock.h>
+
+DATABLOCK *new_datablock( const char *name, DATABLOCK *next,
+                          cexception_t *ex );
+DATABLOCK *datablock_next( DATABLOCK *datablock );
+size_t datablock_length( DATABLOCK *datablock );
+ssize_t *datablock_value_lengths( DATABLOCK *datablock );
+CIFVALUE *datablock_cifvalue( DATABLOCK *datablock, int tag_nr, int val_nr );
+ssize_t datablock_tag_index( DATABLOCK *datablock, char *tag );
+void datablock_overwrite_cifvalue( DATABLOCK * datablock, ssize_t tag_nr,
+    ssize_t val_nr, CIFVALUE *value, cexception_t *ex );
+void datablock_insert_cifvalue( DATABLOCK * datablock, char *tag,
+                                CIFVALUE *value, cexception_t *ex );
+void datablock_start_loop( DATABLOCK *datablock );
+void datablock_finish_loop( DATABLOCK *datablock, cexception_t *ex );
+void datablock_push_loop_cifvalue( DATABLOCK * datablock, CIFVALUE *value,
+                                   cexception_t *ex );
+char * datablock_name( DATABLOCK * datablock );
+
+// from cif.h:
+#include <cif.h>
+
+CIF *new_cif( cexception_t *ex );
+void cif_start_datablock( CIF *cif, const char *name,
+                          cexception_t *ex );
+void cif_append_datablock( CIF * cif, DATABLOCK *datablock );
+void cif_print( CIF *cif );
+DATABLOCK * cif_datablock_list( CIF *cif );
+
+// from cif_compiler.h:
+#include <cif_compiler.h>
+
+CIF *new_cif_from_cif_file( char *filename, cif_option_t co, cexception_t *ex );
+
+PyObject *extract_value( CIFVALUE * cifvalue );
+cif_option_t extract_parser_options( PyObject * options );
+ssize_t datablock_value_length( DATABLOCK *datablock, size_t tag_index );
+char *datablock_tag( DATABLOCK *datablock, size_t tag_index );
+int datablock_tag_in_loop( DATABLOCK *datablock, size_t tag_index );

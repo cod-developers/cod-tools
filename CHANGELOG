@@ -1,40 +1,49 @@
 cod-tools (unreleased)
 
   * Added:
-    - COD::Spacegroups::Lookup:COD:
+    - COD::Spacegroups::Lookup::COD:
       - adding the '-P 2yb (x,y+1/4,z)' space group description.
     - COD::CIF::Data:
       - adding the get_sg_data subroutine.
     - COD::CIF::Data::AtomList: adding datablock_from_atom_array() to
       ease the conversion of atom list data structure to CIF.
     - COD::CIF::Tags::Manage:
-      - adding the has_unknown_value(), has_inapplicable_value() and
-        has_special_value() subroutines.
+      - adding the has_unknown_value(), has_inapplicable_value(),
+        has_special_value(), get_data_value() and get_aliased_value()
+        subroutines.
     - COD::CIF::Tags::Merge: a new module with CIF data block merging
       code.
     - COD::CIF::Tags::COD:
-      - Adding all the data names that were defined in the cif_cod.dic
+      - adding all the data names that were defined in the cif_cod.dic
         version 0.035.
     - cif_fillcell: --merge-special-positions command line option.
     - COD::AuthorNames:
       - adding the get_name_syntax_description() subroutine.
     - COD::CIF::Data::Check module.
     - COD::CIF::DDL::Ranges module.
+    - codcif: cif_append_datablock() method.
+    - cod_manage_related script.
+    - COD::CIF::Data::EstimateZ:
+      - adding a warning message about the inability to calculate the cell
+        volume in the get_volume() subroutine.
   * Changed:
     - Changing the error messages regarding unrecognised space groups
       to match those raised by the COD::CIF::Data::get_symmetry_operators()
       subroutine.
     - COD::CIF::Tags::Manage:
-      - Changing the way set_loop_tag() bahaves when incorrect parameters are
+      - changing the way set_loop_tag() behaves when incorrect parameters are
         passed.
     - COD::CIF::Tags::Print:
       - Simplified the interface of the print_loop() subroutine.
     - Removed a conditional dealing with an undefined data block name from
       multiple scripts.
     - cif_validate:
-      - Change the way numeric enumeration ranges are displayed in audit
+      - changing the way numeric enumeration ranges are displayed in audit
         messages.
     - pycodcif: throwing CifParserException instead of exiting.
+    - COD::CIF::Data::CODNumbers:
+      - adding 'have_equiv_lattices' and 'have_equiv_bibliographies' to the
+        list of exported subroutines.
   * Fixed:
     - Using CIF value type to detect special CIF values '?' and '.'
       in:
@@ -53,6 +62,16 @@ cod-tools (unreleased)
         are properly issued.
     - COD::CIF::Data::CIF2COD:
       - Adding missing parentheses in the 'cif2cod()' subroutine.
+    - COD::CIF::Data::CODNumbers:
+      - Correcting the bibliography handling logic to use case insensitive
+        string comparison.
+      - Correcting the bibliography handling logic to not compare the
+        journal names.
+    - codcif:
+      - possible memory leak in datablock_overwrite_cifvalue().
+    - pycodcif:
+      - Converting Unicode file names to string before processing.
+      - Fixing incorrect braces in dictionary member access.
 
 cod-tools (2.1)
 

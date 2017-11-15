@@ -1,0 +1,342 @@
+#! /bin/sh
+#!perl -w # --*- Perl -*--
+eval 'exec perl -x $0 ${1+"$@"}'
+    if 0;
+#------------------------------------------------------------------------------
+#$Author$
+#$Date$
+#$Rev$
+#$URL$
+#------------------------------------------------------------------------------
+#*
+#* Embeds provided relationships between databases into a CIF file using
+#* the COD notation described in the 'cod_cif.dic' dictionary.
+#*
+#* USAGE:
+#*    $0 --options input1.cif
+#**
+
+use strict;
+use warnings;
+use List::Util qw( max );
+use COD::CIF::Parser qw( parse_cif );
+use COD::CIF::Tags::Print qw( print_cif );
+use COD::CIF::Tags::Manage qw( set_loop_tag );
+use COD::CIF::Tags::CanonicalNames qw( canonicalize_all_names );
+use COD::SOptions qw( getOptions get_value );
+use COD::SUsage qw( usage options );
+use COD::ErrorHandler qw( process_warnings
+                          process_errors
+                          process_parser_messages );
+use COD::ToolsVersion;
+
+my $use_parser = 'c';
+my $die_on_error_level = {
+    'ERROR'   => 1,
+    'WARNING' => 0,
+    'NOTE'    => 0
+};
+
+my $key_data_name = '_cod_related_entry_id';
+my %cif_tags = (
+    'database'    => '_cod_related_entry_database',
+    'code'        => '_cod_related_entry_code',
+    'description' => '_cod_related_entry_description',
+    'uri'         => '_cod_related_entry_uri'
+);
+my @ordered_keys = qw( database code description uri );
+
+my %related;
+#* OPTIONS:
+#*   --related-entry-code
+#*                     Code of the related entry in the external database.
+#*   --related-entry-database
+#*                     Name of the database that the related entry belong to.
+#*   --related-entry-description
+#*                     Description of the related entry.
+#*   --related-entry-uri
+#*                     The URI pointing to the related entry.
+#*
+#*   --use-perl-parser
+#*                     Use Perl parser to parse CIF files.
+#*   --use-c-parser
+#*                     Use C parser to parse CIF files (default).
+#*
+#*   --help, --usage
+#*                     Output a short usage message (this message) and exit.
+#*   --version
+#*                     Output version information and exit.
+#**
+@ARGV = getOptions(
+    '--related-entry-database'    => sub { $related{'database'} = get_value() },
+    '--related-entry-code'        => sub { $related{'code'} = get_value() },
+    '--related-entry-description' => sub { $related{'description'} = get_value() },
+    '--related-entry-uri'         => sub { $related{'uri'} = get_value() },
+
+    '--use-perl-parser'          => sub { $use_parser = 'perl' },
+    '--use-c-parser'             => sub { $use_parser = 'c' },
+
+    '--options'                  => sub { options; exit },
+    '--help,--usage'             => sub { usage; exit },
+    '--version'                  => sub { print 'cod-tools version ',
+                                          $COD::ToolsVersion::Version, "\n";
+                                          exit }
+);
+
+@ARGV = ( '-' ) unless @ARGV;
+
+binmode STDOUT, ':encoding(UTF-8)';
+binmode STDERR, ':encoding(UTF-8)';
+
+for my $filename (@ARGV) {
+
+    my $options = { 'parser' => $use_parser, 'no_print' => 1 };
+    my ( $data, $err_count, $messages ) = parse_cif( $filename, $options );
+    process_parser_messages( $messages, $die_on_error_level );
+
+    for my $dataset (@{$data}) {
+        my $dataname = 'data_' . $dataset->{'name'};
+
+        canonicalize_all_names( $data );
+
+        local $SIG{__WARN__} = sub { process_warnings( {
+                                       'message'  => @_,
+                                       'program'  => $0,
+                                       'filename' => $filename,
+                                       'add_pos'  => $dataname
+                                     }, $die_on_error_level ) };
+
+        eval {
+            foreach( keys %related ) {
+                $related{$_} = [$related{$_}];
+            }
+
+            my $related_defined;
+            my $related_size = 0;
+            for ( @ordered_keys ) {
+                if ( defined $related{$_} ) {
+                  $related_size = @{$related{$_}};
+                  $related_defined = 1;
+                }
+            }
+
+            if ($related_defined) {
+                my $initial_loop_size = get_initial_entry_count(
+                    $dataset,
+                    [ $key_data_name, sort values %cif_tags ]
+                );
+
+                my @initial_loop_neighbours;
+                foreach ( $key_data_name, values %cif_tags ) {
+                    if ( defined $dataset->{'inloop'}{$_} ) {
+                        my $initial_loop_no = $dataset->{'inloop'}{$_};
+                        @initial_loop_neighbours =
+                            @{$dataset->{'loops'}[$initial_loop_no]};
+                        last;
+                    }
+                }
+
+                my @entry_ids = @{
+                    generate_loop_key( $dataset, {
+                        'key_data_name'        => $key_data_name,
+                        'initial_entry_count'  => $initial_loop_size,
+                        'addition_entry_count' => $related_size,
+                    } )
+                };
+
+                my $target_loop_size = @entry_ids;
+
+                # Use the loop of other item in the same category
+                # if the key data item is currently not looped
+                my $loop_tag = $key_data_name;
+
+                set_loop_tag(
+                    $dataset,
+                    $key_data_name,
+                    $loop_tag,
+                    \@entry_ids
+                );
+
+                for ( @ordered_keys ) {
+                    if ( !( defined $related{$_} ||
+                            defined $dataset->{'values'}{$cif_tags{$_}} ) ) {
+                        next;
+                    }
+
+                    my @new_data_values = @{ generate_loop_values(
+                        $dataset, {
+                        'data_name'         => $cif_tags{$_},
+                        'initial_loop_size' => $initial_loop_size,
+                        'target_loop_size'  => $target_loop_size,
+                        'additional_values' => $related{$_},
+                        }
+                    ) };
+
+                    set_loop_tag(
+                        $dataset,
+                        $cif_tags{$_},
+                        $key_data_name,
+                        \@new_data_values
+                    );
+                }
+
+                # Add unknown values to other data items in the loop
+                for my $data_name ( @initial_loop_neighbours ) {
+                    my @padded_data_values = @{ generate_loop_values(
+                        $dataset, {
+                        'data_name'         => $data_name,
+                        'initial_loop_size' => $initial_loop_size,
+                        'target_loop_size'  => $target_loop_size,
+                        }
+                    ) };
+
+                    set_loop_tag(
+                        $dataset,
+                        $data_name,
+                        $key_data_name,
+                        \@padded_data_values
+                    );
+                }
+            } else {
+                warn 'WARNING, no related entry information was provided -- ' .
+                     'the data block will not be modified' . "\n";
+            }
+
+            print_cif( $dataset,
+                       {
+                            'preserve_loop_order' => 1,
+                            'keep_tag_order' => 1
+                       }
+                     );
+        };
+        if ( $@ ) {
+            process_errors( {
+              'message'       => $@,
+              'program'       => $0,
+              'filename'      => $filename,
+              'add_pos'       => $dataname
+            }, $die_on_error_level->{'ERROR'} )
+        }
+    }
+}
+
+##
+# Returns the number of values associated with any of the given data names.
+# It is expected that all of the given data items either belong to the same
+# loop or contain only a single value. An error message is raised in case
+# the data items contain differing numbers of values.
+#
+# @param $dataset
+#       Reference to a data block as returned by the COD::CIF::Parser.
+# @param $data_names
+#       Reference to an array of data names that should be examined.
+# @return
+#       The number of values associated with the given data names.
+##
+sub get_initial_entry_count
+{
+    my ( $dataset, $data_names ) = @_;
+
+    my $count;
+    foreach ( @{$data_names} ) {
+        if (exists $dataset->{'values'}{$_}) {
+            $count = @{$dataset->{'values'}{$_}} if !defined $count;
+            if ( @{$dataset->{'values'}{$_}} ne $count ) {
+                die 'ERROR, data items [' .
+                     ( join ', ', map { "'$_'" } @{$data_names} ) . '] ' .
+                    'do not contain the same number of values' . "\n";
+            }
+        }
+    }
+    $count = 0 if !defined $count;
+
+    return $count;
+}
+
+##
+# Generates the list of loop identifiers based on the already existing
+# values.
+#
+# @param $dataset
+#       Reference to a data block as returned by the COD::CIF::Parser.
+# @param $options
+#       Reference to a hash of options. The following options are recognised:
+#       {
+#       # Data name of the loop identifiers
+#           'key_data_name'        => '_cod_related_entry_id',
+#       # The initial size of the identifier loop. This option is
+#       # ignored if the 'key_data_name' data item is defined
+#           'initial_entry_count'  => '5'
+#       # The number additional identifiers that need to be generated
+#           'addition_entry_count' => '7'
+#       }
+# @return
+#       Reference to an array of loop identifiers.
+##
+sub generate_loop_key
+{
+    my ( $dataset, $options ) = @_;
+
+    my $key_data_name        = $options->{'key_data_name'};
+    my $existing_entry_count = $options->{'initial_entry_count'};
+    my $addition_entry_count = $options->{'addition_entry_count'};
+
+    my @loop_key;
+    if ( defined $dataset->{'values'}{$key_data_name} ) {
+        push @loop_key, @{$dataset->{'values'}{$key_data_name}};
+        my $max_value = max( @{$dataset->{'values'}{$key_data_name}} );
+        push @loop_key, map { $max_value + $_ } 1..$addition_entry_count;
+    } else {
+        push @loop_key, (1..$existing_entry_count + $addition_entry_count);
+    }
+
+    return \@loop_key;
+}
+
+##
+# Constructs a new list of values based on the existing one by padding CIF
+# special values where needed.
+#
+# @param $dataset
+#       Reference to a data block as returned by the COD::CIF::Parser.
+# @param $options
+#       Reference to a hash of options. The following options are recognised:
+#       {
+#       # Data name of the data item containing the original values
+#           'key_data_name'     => '_cod_related_entry_id',
+#       # The initial size of the data item loop. This option is
+#       # ignored if the 'key_data_name' data item is defined
+#           'initial_loop_size' => '5'
+#       # The desired size of the new value list
+#           'target_loop_size'  => '7'
+#       # A list of additional data values that should be appended to the list
+#           'additional_values' => [1, 2, 3 ,4]
+#       }
+# @return
+#       Reference to an array of loop identifiers.
+##
+sub generate_loop_values
+{
+    my ( $dataset, $options ) = @_;
+
+    my $data_name         = $options->{'data_name'};
+    my $initial_loop_size = $options->{'initial_loop_size'};
+    my $target_loop_size  = $options->{'target_loop_size'};
+    my $additional_values = $options->{'additional_values'};
+
+    my @new_data_values;
+    if ( defined $dataset->{'values'}{$data_name} ) {
+        @new_data_values = @{$dataset->{'values'}{$data_name}};
+    } else {
+        @new_data_values = ('?') x $initial_loop_size;
+    }
+
+    if ( defined $additional_values ) {
+        push @new_data_values, @{$additional_values};
+    }
+
+    my $diff = $target_loop_size - @new_data_values;
+    push @new_data_values, ('?') x $diff;
+
+    return \@new_data_values;
+}

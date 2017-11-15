@@ -1,0 +1,47 @@
+#! /bin/sh
+
+#BEGIN DEPEND------------------------------------------------------------------
+INPUT_MODULES='src/lib/perl5/COD/CIF/Data/CODNumbers.pm'
+#END DEPEND--------------------------------------------------------------------
+
+perl <<'END_SCRIPT'
+#------------------------------------------------------------------------------
+#$Author$
+#$Date$ 
+#$Revision$
+#$URL$
+#------------------------------------------------------------------------------
+#*
+#* Unit test for the COD::CIF::Data::CODNumbers::are_equiv_meas() subroutine.
+#* Tests the way the subroutine behaves when two number without s.u. values
+#* are measured and the cutoff value is provided. The selected cutoff values
+#* results in the values being treated as equal.
+#**
+
+use strict;
+use warnings;
+
+use COD::CIF::Data::CODNumbers;
+
+my $value_1 = 4;
+my $value_2 = 3;
+my $su_1    = 3;
+my $su_2    = 1;
+my $use_su  = 1;
+
+my $equivalent = COD::CIF::Data::CODNumbers::are_equiv_meas(
+    $value_1,
+    $value_2,
+    {
+        'use_su'   => $use_su,
+        'max_diff' => 5,
+    }
+);
+
+if ( $equivalent ) {
+    print "Values '$value_1' and '$value_2' were treated as equivalent.\n";
+} else {
+    print "Values '$value_1' and '$value_2' were treated as not equivalent.\n";
+}
+
+END_SCRIPT

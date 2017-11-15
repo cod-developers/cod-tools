@@ -9,5 +9,7 @@ sudo yum install -y \
     perl-List-MoreUtils \
     perl-WWW-Curl \
     perl-XML-Simple
-sudo cpan Capture::Tiny
-sudo cpan Carp::Assert
+sudo yum install --enablerepo=epel -y \
+    perl-DateTime-Format-RFC3339 \
+    perl-Capture-Tiny \
+    perl-Carp-Assert

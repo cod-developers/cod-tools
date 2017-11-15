@@ -12,7 +12,7 @@
 
 /* uses: */
 #include <stdio.h>
-#include <stdlib.h>
+#include <unistd.h>
 #include <stdarg.h>
 #include <string.h>
 #include <datablock.h>
@@ -125,14 +125,20 @@ void cif_start_datablock( CIF * volatile cif, const char *name,
     assert( cif );
 
     new_block = new_datablock( name, NULL, ex );
+    cif_append_datablock( cif, new_block );
+}
+
+void cif_append_datablock( CIF * volatile cif, DATABLOCK *datablock )
+{
+    assert( cif );
 
     if( cif->last_datablock ) {
-        datablock_set_next( cif->last_datablock, new_block );
-        cif->last_datablock = new_block;
+        datablock_set_next( cif->last_datablock, datablock );
+        cif->last_datablock = datablock;
     } else {
-        cif->datablock_list = cif->last_datablock = new_block;
+        cif->datablock_list = cif->last_datablock = datablock;
     }
-    cif->current_datablock = new_block;
+    cif->current_datablock = datablock;
 }
 
 void cif_start_save_frame( CIF * volatile cif, const char *name,
