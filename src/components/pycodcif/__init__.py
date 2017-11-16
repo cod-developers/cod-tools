@@ -1,5 +1,4 @@
-from .pycodcif import (parse, CifParserException, CifFile, CifDatablock,
-
+from .pycodcif import (parse, CifParserException, CifFile, CifDatablock, CifUnknownValue, CifInapplicableValue,
                        cif_option_default,
 
                        new_value_from_scalar, value_dump,
