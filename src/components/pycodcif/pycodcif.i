@@ -525,14 +525,11 @@ def capture():
     cif_value_type_t type = CIF_UNKNOWN;
 
     PyObject * module = PyImport_ImportModule( "pycodcif" );
-    PyObject * moduleDict = PyModule_GetDict( module );
-    PyObject * unknown      = PyMapping_GetItemString( moduleDict, "CifUnknownValue" );
-    PyObject * inapplicable = PyMapping_GetItemString( moduleDict, "CifInapplicableValue" );
-    // PyObject* sys_mod_dict = PyImport_GetModuleDict();
-    // PyObject* main_mod = PyMapping_GetItemString( sys_mod_dict, "CifUnknownValue" );
-    // PyObject* unknown      = PyMapping_GetItemString( sys_mod_dict, "CifUnknownValue" );
-    // PyObject* inapplicable = PyMapping_GetItemString( sys_mod_dict, "CifInapplicableValue" );
-    // PyObject* inapplicable = PyMapping_GetItemString( main_mod, "CifInapplicableValue", "" );
+    PyObject * module_dict  = PyModule_GetDict( module );
+    PyObject * unknown      = PyMapping_GetItemString( module_dict,
+                                                       "CifUnknownValue" );
+    PyObject * inapplicable = PyMapping_GetItemString( module_dict,
+                                                       "CifInapplicableValue" );
 
     char * value = strdupx( PyString_AsString( PyObject_Str( $input ) ),
                             NULL );
