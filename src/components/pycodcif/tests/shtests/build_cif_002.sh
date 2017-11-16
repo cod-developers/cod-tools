@@ -11,7 +11,7 @@
 #  Test driver for pycodcif module.
 #**
 import sys
-from pycodcif import CifFile, CifDatablock
+from pycodcif import CifFile, CifDatablock, CifUnknownValue, CifInapplicableValue
 
 datablock = CifDatablock("new")
 
@@ -35,4 +35,6 @@ datablock['_overwritten'] = 'second'
 print cif
 
 datablock['_simple_loop'] = [ 10, 12, 13 ]
+datablock['_unknown']      = CifUnknownValue()
+datablock['_inapplicable'] = CifInapplicableValue()
 print cif
