@@ -390,7 +390,7 @@ sub neighbour_list_from_chemistry_openbabel_obmol
         if( $atom->IsAromatic() &&
             @{$neighbour_list{neighbours}->[$i-1]} +
             $neighbour_list{atoms}->[$i-1]{"attached_hydrogens"} >= 3 ) {
-            $neighbour_list{atoms}->[$i-1]{"attached_hydrogens"} = 0;
+            $neighbour_list{atoms}->[$i-1]{"planarity"} = 0;
         }
     }
 

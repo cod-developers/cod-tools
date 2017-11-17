@@ -16,7 +16,7 @@ use COD::Serialise qw( serialiseRef );
 
 my $obMol = new Chemistry::OpenBabel::OBMol;
 my $obConversion = new Chemistry::OpenBabel::OBConversion;
-$obConversion->SetInAndOutFormats( "smi", "mdl" );
+$obConversion->SetInFormat( "smi" );
 $obConversion->ReadString( $obMol, "C1cc1(=O)[O-]" );
 serialiseRef( neighbour_list_from_chemistry_openbabel_obmol( $obMol ) );
 
