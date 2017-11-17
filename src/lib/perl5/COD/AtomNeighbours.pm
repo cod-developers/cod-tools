@@ -23,6 +23,7 @@ our @EXPORT_OK = qw(
     get_max_covalent_radius
     make_neighbour_list
     neighbour_list_from_chemistry_mol
+    neighbour_list_from_chemistry_openbabel_obmol
 );
 
 #==============================================================================#
@@ -271,7 +272,6 @@ sub neighbour_list_from_chemistry_mol
     );
 
     my %atom_ids;
-
     my $n = 0;
     for my $atom ($mol->atoms()) {
         my %atom_info;
@@ -317,6 +317,63 @@ sub neighbour_list_from_chemistry_mol
     for my $atom ($mol->atoms()) {
         push( @{$neighbour_list{neighbours}},
               [ map { $atom_ids{$_} } $atom->neighbors() ] );
+    }
+
+    return \%neighbour_list;
+}
+
+sub neighbour_list_from_chemistry_openbabel_obmol
+{
+    my( $obmol ) = @_;
+
+    my %neighbour_list = (
+        atoms => [],
+        neighbours => [],
+    );
+
+    my %atom_ids;
+    for my $i (1..$obmol->NumAtoms()) { # Atoms are indexed from 1
+        my $atom = $obmol->GetAtom($i);
+        my %atom_info;
+
+        $atom_info{"name"}                  = $atom->GetType() . $i;
+        $atom_info{"site_label"}            = $atom->GetType() . $i;
+        $atom_info{"cell_label"}            = $atom->GetType() . $i;
+        $atom_info{"index"}                 = $i-1;
+        $atom_info{"symop"}                 =
+          [
+            [ 1, 0, 0, 0 ],
+            [ 0, 1, 0, 0 ],
+            [ 0, 0, 1, 0 ],
+            [ 0, 0, 0, 1 ]
+          ];
+        $atom_info{"symop_id"}              = 1;
+        $atom_info{"unity_matrix_applied"}  = 1;
+        $atom_info{"translation_id"}        = "555";
+        $atom_info{"translation"}           = [ 0, 0, 0 ];
+
+        $atom_info{"chemical_type"}         = $atom->GetType();
+        $atom_info{"assembly"}              = ".";
+        $atom_info{"group"}                 = ".";
+        $atom_info{"atom_site_occupancy"}   = 1;
+        $atom_info{"attached_hydrogens"}    = $atom->ImplicitHydrogenCount();
+
+        if( $atom->IsAromatic() ) {
+            $atom_info{"planarity"} = 0;
+        }
+
+        $atom_ids{$atom->GetId()} = $i-1;
+        push( @{$neighbour_list{atoms}}, \%atom_info );
+    }
+
+    for my $i (0..$obmol->NumBonds()-1) { # Bonds are indexed from 0 (?)
+        my $bond = $obmol->GetBond($i);
+        push @{$neighbour_list{neighbours}
+                              [$atom_ids{$bond->GetBeginAtom()->GetId()}]},
+             $atom_ids{$bond->GetEndAtom()->GetId()};
+        push @{$neighbour_list{neighbours}
+                              [$atom_ids{$bond->GetEndAtom()->GetId()}]},
+             $atom_ids{$bond->GetBeginAtom()->GetId()};
     }
 
     return \%neighbour_list;
