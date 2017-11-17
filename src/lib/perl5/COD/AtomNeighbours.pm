@@ -345,6 +345,12 @@ sub neighbour_list_from_chemistry_openbabel_obmol
                              $atom->GetAtomicNum() }
                       keys %COD::AtomProperties::atoms;
 
+        # Since the atomic numbers of H and D are equal, chemical type
+        # has to be checked:
+        if( $type eq 'D' && $atom->GetType() =~ /^H/ ) {
+            $type = 'H';
+        }
+
         $atom_info{"name"}                  = $type . $i;
         $atom_info{"site_label"}            = $type . $i;
         $atom_info{"cell_label"}            = $type . $i;
