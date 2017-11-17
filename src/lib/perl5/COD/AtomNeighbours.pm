@@ -367,10 +367,6 @@ sub neighbour_list_from_chemistry_openbabel_obmol
         $atom_info{"atom_site_occupancy"}   = 1;
         $atom_info{"attached_hydrogens"}    = $atom->ImplicitHydrogenCount();
 
-        if( $atom->IsAromatic() ) {
-            $atom_info{"planarity"} = 0;
-        }
-
         $atom_ids{$atom->GetId()} = $i-1;
         push( @{$neighbour_list{atoms}}, \%atom_info );
     }
@@ -383,6 +379,19 @@ sub neighbour_list_from_chemistry_openbabel_obmol
         push @{$neighbour_list{neighbours}
                               [$atom_ids{$bond->GetEndAtom()->GetId()}]},
              $atom_ids{$bond->GetBeginAtom()->GetId()};
+    }
+
+    # Aromatic atoms are considered planar only if they have three
+    # or more neighbours, as any three points lie on the same
+    # plane.
+    for my $i (1..$obmol->NumAtoms()) { # Atoms are indexed from 1
+        my $atom = $obmol->GetAtom($i);
+        
+        if( $atom->IsAromatic() &&
+            @{$neighbour_list{neighbours}->[$i-1]} +
+            $neighbour_list{atoms}->[$i-1]{"attached_hydrogens"} >= 3 ) {
+            $neighbour_list{atoms}->[$i-1]{"attached_hydrogens"} = 0;
+        }
     }
 
     return \%neighbour_list;
