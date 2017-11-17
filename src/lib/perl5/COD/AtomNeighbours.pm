@@ -14,6 +14,7 @@ use strict;
 use warnings;
 use Carp qw( croak );
 use COD::AtomBricks qw( build_bricks get_atom_index get_search_span );
+use COD::AtomProperties;
 use COD::Algebra::Vector qw( distance );
 use COD::CIF::Data::AtomList qw( atoms_are_alternative );
 
@@ -336,9 +337,14 @@ sub neighbour_list_from_chemistry_openbabel_obmol
         my $atom = $obmol->GetAtom($i);
         my %atom_info;
 
-        $atom_info{"name"}                  = $atom->GetType() . $i;
-        $atom_info{"site_label"}            = $atom->GetType() . $i;
-        $atom_info{"cell_label"}            = $atom->GetType() . $i;
+        my( $type ) = sort
+                      grep { $COD::AtomProperties::atoms{$_}->{atomic_number} ==
+                             $atom->GetAtomicNum() }
+                      keys %COD::AtomProperties::atoms;
+
+        $atom_info{"name"}                  = $type . $i;
+        $atom_info{"site_label"}            = $type . $i;
+        $atom_info{"cell_label"}            = $type . $i;
         $atom_info{"index"}                 = $i-1;
         $atom_info{"symop"}                 =
           [
@@ -352,7 +358,7 @@ sub neighbour_list_from_chemistry_openbabel_obmol
         $atom_info{"translation_id"}        = "555";
         $atom_info{"translation"}           = [ 0, 0, 0 ];
 
-        $atom_info{"chemical_type"}         = $atom->GetType();
+        $atom_info{"chemical_type"}         = $type;
         $atom_info{"assembly"}              = ".";
         $atom_info{"group"}                 = ".";
         $atom_info{"atom_site_occupancy"}   = 1;
