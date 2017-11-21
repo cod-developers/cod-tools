@@ -43,4 +43,6 @@ char *value_scalar( CIFVALUE *value );
 CIFLIST *value_list( CIFVALUE *value );
 CIFTABLE *value_table( CIFVALUE *value );
 
+cif_value_type_t value_type_from_string_2_0( char *str );
+
 #endif
