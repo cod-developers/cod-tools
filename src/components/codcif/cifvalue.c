@@ -106,12 +106,47 @@ CIFTABLE *value_table( CIFVALUE *value ) {
     return value->v.t;
 }
 
+cif_value_type_t value_type_from_string_1_1( char *str ) {
+    if( is_integer( str ) ) { return CIF_INT; }
+    if( is_real( str ) ) { return CIF_FLOAT; }
+    if( strchr( str, '\n' ) != NULL || strchr( str, '\r' ) != NULL ) {
+        return CIF_TEXT;
+    }
+    if( *str == '\0' ) { return CIF_SQSTRING; }
+
+    int has_space_after_squote = 0;
+    int has_space_after_dquote = 0;
+    char *pos;
+    for( pos = str; *pos != '\0'; pos++ ) {
+        if( pos != str && *pos == ' ' ) {
+            if( *(pos-1) == '\'' ) { has_space_after_squote = 1; }
+            if( *(pos-1) == '"'  ) { has_space_after_dquote = 1; }
+        }
+    }
+    if( has_space_after_squote && has_space_after_dquote ) {
+        return CIF_TEXT;
+    }
+    if( has_space_after_squote || *str == '\'' ) {
+        return CIF_DQSTRING;
+    }
+    if( has_space_after_dquote || strchr( str, ' ' ) || strchr( str, '\t' ) ||
+        *str == '_' || *str == '[' || *str == ']' || *str == '$' ||
+        starts_with_keyword( "data_",   str ) ||
+        starts_with_keyword( "loop_",   str ) ||
+        starts_with_keyword( "global_", str ) ||
+        starts_with_keyword( "save_",   str ) ) {
+        return CIF_SQSTRING;
+    }
+    return CIF_UQSTRING;
+}
+
 cif_value_type_t value_type_from_string_2_0( char *str ) {
     if( is_integer( str ) ) { return CIF_INT; }
     if( is_real( str ) ) { return CIF_FLOAT; }
     if( strchr( str, '\n' ) != NULL || strchr( str, '\r' ) != NULL ) {
         return CIF_TEXT;
     }
+    if( *str == '\0' ) { return CIF_SQSTRING; }
     size_t len = strlen( str );
     int consecutive_squotes = 0;
     int consecutive_dquotes = 0;
