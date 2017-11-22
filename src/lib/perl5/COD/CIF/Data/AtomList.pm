@@ -451,6 +451,8 @@ sub datablock_from_atom_array
                       atom_site_type_symbol
                       atom_site_U_iso_or_equiv
                       calc_flag
+                      multiplicity
+                      multiplicity_ratio
                       refinement_flags
                       refinement_flags_adp
                       refinement_flags_occupancy
@@ -567,14 +569,18 @@ sub datablock_from_atom_array
                   '_cod_molecule_atom_transl_z',
                   '_cod_molecule_atom_label',
                   [ map { $_->{translation}[2] } @$atoms ] );
-    set_loop_tag( $datablock,
-                  '_cod_molecule_atom_mult',
-                  '_cod_molecule_atom_label',
-                  [ map { $_->{multiplicity} } @$atoms ] );
-    set_loop_tag( $datablock,
-                  '_cod_molecule_atom_mult_ratio',
-                  '_cod_molecule_atom_label',
-                  [ map { $_->{multiplicity_ratio} } @$atoms ] );
+    if ( $has_key{'multiplicity'} ) {
+        set_loop_tag( $datablock,
+                      '_cod_molecule_atom_mult',
+                      '_cod_molecule_atom_label',
+                      [ map { $_->{multiplicity} } @$atoms ] )
+    };
+    if ( $has_key{'multiplicity_ratio'} ) {
+        set_loop_tag( $datablock,
+                      '_cod_molecule_atom_mult_ratio',
+                      '_cod_molecule_atom_label',
+                      [ map { $_->{multiplicity_ratio} } @$atoms ] );
+    }
     set_loop_tag( $datablock,
                   '_cod_molecule_atom_assembly',
                   '_cod_molecule_atom_label',
