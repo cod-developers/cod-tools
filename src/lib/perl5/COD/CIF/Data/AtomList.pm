@@ -38,6 +38,7 @@ our @EXPORT_OK = qw(
     dump_atoms_as_cif
     uniquify_atom_names
     extract_atom
+    generate_cod_molecule_data_block
 );
 
 my @shallow_copied_keys = qw( symop_list f2o site_symops symop );
@@ -451,8 +452,6 @@ sub datablock_from_atom_array
                       atom_site_type_symbol
                       atom_site_U_iso_or_equiv
                       calc_flag
-                      multiplicity
-                      multiplicity_ratio
                       refinement_flags
                       refinement_flags_adp
                       refinement_flags_occupancy
@@ -529,63 +528,94 @@ sub datablock_from_atom_array
                   [ map { $_->{calc_flag} } @$atoms ] )
         if $has_key{calc_flag};
 
+    return $datablock;
+}
+
+##
+# Generates a data block containing the _cod_molecule_* data items from the
+# atom array data structure.
+#
+# @param $atoms
+#       Reference to an atom array as returned by the
+#       datablock_from_atom_array() subroutine.
+#
+# @return $data_block
+#       Reference to a CIF data block as constructed by the
+#       COD::CIF::Tags::Manage module.
+##
+sub generate_cod_molecule_data_block
+{
+    my ( $atoms ) = @_;
+
+    my $has_disorder = grep { $_->{'group'} ne '.' ||
+                              $_->{'assembly'} ne '.' } @$atoms;
+    my %has_key;
+    for my $key ( qw(
+                      multiplicity
+                      multiplicity_ratio
+                  ) ) {
+        $has_key{$key} =
+            grep { exists $_->{$key} && $_->{$key} ne '.' } @$atoms;
+    }
+
+    my $data_block = new_datablock( 'cod_molecule' );
     # Set _cod_molecule_* data items
-    set_loop_tag( $datablock,
+    set_loop_tag( $data_block,
                   '_cod_molecule_atom_label',
                   '_cod_molecule_atom_label',
                   [ map { $_->{name} } @$atoms ] );
-    set_loop_tag( $datablock,
+    set_loop_tag( $data_block,
                   '_cod_molecule_atom_orig_label',
                   '_cod_molecule_atom_label',
                   [ map { $_->{site_label} } @$atoms ] );
-    set_loop_tag( $datablock,
+    set_loop_tag( $data_block,
                   '_cod_molecule_atom_symmetry',
                   '_cod_molecule_atom_label',
                   [ map { $_->{symop_id} . '_' .
                           $_->{translation_id} } @$atoms ] );
-    set_loop_tag( $datablock,
+    set_loop_tag( $data_block,
                   '_cod_molecule_atom_symop_id',
                   '_cod_molecule_atom_label',
                   [ map { $_->{symop_id} } @$atoms ] );
-    set_loop_tag( $datablock,
+    set_loop_tag( $data_block,
                   '_cod_molecule_atom_symop_xyz',
                   '_cod_molecule_atom_label',
                   [ map { symop_string_canonical_form(
                             string_from_symop( $_->{symop} ) ) }
                         @$atoms ] );
-    set_loop_tag( $datablock,
+    set_loop_tag( $data_block,
                   '_cod_molecule_atom_transl_id',
                   '_cod_molecule_atom_label',
                   [ map { $_->{translation_id} } @$atoms ] );
-    set_loop_tag( $datablock,
+    set_loop_tag( $data_block,
                   '_cod_molecule_atom_transl_x',
                   '_cod_molecule_atom_label',
                   [ map { $_->{translation}[0] } @$atoms ] );
-    set_loop_tag( $datablock,
+    set_loop_tag( $data_block,
                   '_cod_molecule_atom_transl_y',
                   '_cod_molecule_atom_label',
                   [ map { $_->{translation}[1] } @$atoms ] );
-    set_loop_tag( $datablock,
+    set_loop_tag( $data_block,
                   '_cod_molecule_atom_transl_z',
                   '_cod_molecule_atom_label',
                   [ map { $_->{translation}[2] } @$atoms ] );
     if ( $has_key{'multiplicity'} ) {
-        set_loop_tag( $datablock,
+        set_loop_tag( $data_block,
                       '_cod_molecule_atom_mult',
                       '_cod_molecule_atom_label',
                       [ map { $_->{multiplicity} } @$atoms ] )
     };
     if ( $has_key{'multiplicity_ratio'} ) {
-        set_loop_tag( $datablock,
+        set_loop_tag( $data_block,
                       '_cod_molecule_atom_mult_ratio',
                       '_cod_molecule_atom_label',
                       [ map { $_->{multiplicity_ratio} } @$atoms ] );
     }
-    set_loop_tag( $datablock,
+    set_loop_tag( $data_block,
                   '_cod_molecule_atom_assembly',
                   '_cod_molecule_atom_label',
                   [ map { $_->{assembly} } @$atoms ] ) if $has_disorder;
-    set_loop_tag( $datablock,
+    set_loop_tag( $data_block,
                   '_cod_molecule_atom_group',
                   '_cod_molecule_atom_label',
                   [ map { $_->{group} } @$atoms ] ) if $has_disorder;
@@ -601,17 +631,17 @@ sub datablock_from_atom_array
                                             string_from_symop( $symop ) );
             }
         }
-        set_loop_tag( $datablock,
+        set_loop_tag( $data_block,
                       '_cod_molecule_transform_label',
                       '_cod_molecule_transform_label',
                       \@transform_labels );
-        set_loop_tag( $datablock,
+        set_loop_tag( $data_block,
                       '_cod_molecule_transform_symop',
                       '_cod_molecule_transform_label',
                       \@transform_symops );
     }
 
-    return $datablock;
+    return $data_block;
 }
 
 # ============================================================================ #
