@@ -1064,6 +1064,7 @@ sub copy_atom
 
     if( ref $old_atom ne "HASH" ) {
         use Carp;
+        # FIXME: the croak should contain a meaningful message
         croak;
     }
 
