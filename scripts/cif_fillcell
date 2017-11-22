@@ -252,7 +252,7 @@ sub fillcell
                 $new_atom = [ $new_atom ];
             }
 
-            for( my $m = 0; $m < @{$new_atom}; $m++ ) {
+            for my $atom ( @{$new_atom} ) {
                 foreach my $tag ( @{$atom_loop_tags} ) {
                     my $old_atom_data = $values->{$tag};
 
@@ -260,17 +260,16 @@ sub fillcell
 
                     if($tag eq '_atom_site_label') {
                         push @{$tag_values{$tag}},
-                             $new_atom->[$m]{'site_label'} . '_' .
-                             $new_atom->[$m]{'symop_id'}   . '_' . $m;
+                             $atom->{'name'};
                     } elsif($tag eq '_atom_site_fract_x') {
                         push @{$tag_values{$tag}},
-                             $new_atom->[$m]{'coordinates_fract'}[0];
+                             $atom->{'coordinates_fract'}[0];
                     } elsif($tag eq '_atom_site_fract_y') {
                         push @{$tag_values{$tag}},
-                             $new_atom->[$m]{'coordinates_fract'}[1];
+                             $atom->{'coordinates_fract'}[1];
                     } elsif($tag eq '_atom_site_fract_z') {
                         push @{$tag_values{$tag}},
-                             $new_atom->[$m]{'coordinates_fract'}[2];
+                             $atom->{'coordinates_fract'}[2];
                     } else {
                         push @{$tag_values{$tag}},
                              ${$old_atom_data}[$j];
