@@ -34,6 +34,7 @@ our @EXPORT_OK = qw(
     apply_shifts
     atoms_coincide
     chemical_formula_sum
+    shift_atom
     symop_apply
     symop_generate_atoms
     symop_register_applied_symop
@@ -198,6 +199,8 @@ sub symop_register_applied_symop($$@)
                 flush_zeros_in_symop(
                     symop_modulo_1( $symop_now ) ) ) );
 
+    # FIXME: the symmetry operation list is currently optional in the
+    # atom object. The following code fails if the list is not provided
     $new_atom_info->{symop} = $symop_now;
     $new_atom_info->{symop_id} =
         $new_atom_info->{symop_list}
@@ -388,7 +391,7 @@ sub shift_atom($)
         push @shifted_atoms, $new_atom;
     } } }
 
-    return @shifted_atoms;
+    return \@shifted_atoms;
 }
 
 #===============================================================#
@@ -410,7 +413,7 @@ sub apply_shifts($)
     my @shifted = ();
 
     for my $atom (@{$atoms}) {
-        push( @shifted, shift_atom( $atom ));
+        push @shifted, @{ shift_atom($atom) };
     }
 
     return \@shifted;
