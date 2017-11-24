@@ -1517,7 +1517,8 @@ sub print_molecule
         set_loop_tag( $new_dataset,
                       $tag,
                       '_atom_site_label',
-                      [ map { sprintf $format, $_ }
+                      [ map { $_ = sprintf $format, $_;
+                              s/^\s+//; s/\s+$//; $_ }
                             @{$new_dataset->{values}{$tag}} ] );
     }
 
