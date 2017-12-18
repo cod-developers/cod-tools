@@ -556,9 +556,6 @@ sub clean_whitespaces
 {
     my ( $value ) = @_;
 
-    if( $value =~ /^\\\n/ ) {
-        $value =~ s/\\\n//g;
-    }
     $value =~ s/\n/ /g;
     $value =~ s/\s+/ /g;
     $value =~ s/^\s*|\s*$//g;

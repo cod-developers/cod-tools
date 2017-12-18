@@ -67,6 +67,7 @@ use COD::CIF::Data::AtomList qw( atom_array_from_cif
                                  atoms_are_alternative
                                  copy_atom
                                  datablock_from_atom_array
+                                 generate_cod_molecule_data_block
                                  dump_atoms_as_cif );
 use COD::CIF::Data::SymmetryGenerator qw( apply_shifts
                                           atoms_coincide
@@ -1493,6 +1494,9 @@ sub print_molecule
     my $atoms_datablock = datablock_from_atom_array( \@atoms );
     merge_datablocks( $atoms_datablock, $new_dataset );
 
+    my $cod_molecule_datablock = generate_cod_molecule_data_block( \@atoms );
+    merge_datablocks( $cod_molecule_datablock, $new_dataset );
+
     if( $force_unit_occupancies &&
         exists $new_dataset->{values}{_atom_site_occupancy} ) {
         set_loop_tag( $new_dataset,
@@ -1513,7 +1517,8 @@ sub print_molecule
         set_loop_tag( $new_dataset,
                       $tag,
                       '_atom_site_label',
-                      [ map { sprintf $format, $_ }
+                      [ map { $_ = sprintf $format, $_;
+                              s/^\s+//; s/\s+$//; $_ }
                             @{$new_dataset->{values}{$tag}} ] );
     }
 

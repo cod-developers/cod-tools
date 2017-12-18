@@ -371,6 +371,12 @@ def escape_meta(text, escaped_symbols):
 class CifParserException(Exception):
     pass
 
+class CifUnknownValue(object):
+    pass
+
+class CifInapplicableValue(object):
+    pass
+
 class CifFile(object):
     def __init__(self, file = None, parser_options = {}):
         if file is None:
@@ -517,6 +523,14 @@ def capture():
 
 %typemap(in) CIFVALUE * (PyObject *) {
     cif_value_type_t type = CIF_UNKNOWN;
+
+    PyObject * module = PyImport_ImportModule( "pycodcif" );
+    PyObject * module_dict  = PyModule_GetDict( module );
+    PyObject * unknown      = PyMapping_GetItemString( module_dict,
+                                                       "CifUnknownValue" );
+    PyObject * inapplicable = PyMapping_GetItemString( module_dict,
+                                                       "CifInapplicableValue" );
+
     char * value = strdupx( PyString_AsString( PyObject_Str( $input ) ),
                             NULL );
     if(        PyInt_Check( $input ) || PyLong_Check( $input ) ) {
@@ -525,8 +539,11 @@ def capture():
         type = CIF_FLOAT;
     } else if( PyString_Check( $input ) ) {
         type = CIF_SQSTRING; // conditions exist here
-    } else if( $input == Py_None ) {
+    } else if( $input == Py_None || PyObject_IsInstance( $input, unknown ) ) {
         value = "?";
+        type = CIF_UQSTRING;
+    } else if( PyObject_IsInstance( $input, inapplicable ) ) {
+        value = ".";
         type = CIF_UQSTRING;
     }
     $1 = new_value_from_scalar( value, type, NULL );
