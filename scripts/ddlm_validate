@@ -132,7 +132,8 @@ my $die_on_error_level = {
 # CIF files against CIF dictionaries
 my %default_ddlm_values = (
     # DDLm version 3.11.10
-    '_type.container' => 'Single'
+    '_type.container'   => 'single',
+    '_definition.scope' => 'item'
 );
 
 my %dicts;
@@ -155,8 +156,7 @@ if( @dict_files ) {
             }
         );
         $dict_block = merge_imported_files( $dict_block, $imported_data );
-        $dicts{$dict} =  build_search_struct( $dict_block,
-                                              { 'duplicate_aliases' => 1 } );
+        $dicts{$dict} =  build_search_struct( $dict_block );
     }
 } else {
     report_message( {
@@ -229,14 +229,10 @@ for my $filename ( @ARGV ) {
         }
         push @validation_messages, @{validate_linked_items($struct, $dict)};
 
-        # TODO: _name.linked_item_id check existence of the given data item
-
-        # TODO: check the matching of _name.linked_item_id linked values (except)
-
         # TODO: check for the existence of the key data item
 
         # TODO: eligibility of su values
-        @tags = grep { !exists $dict->{'Tags'}{lc $_} } @tags;
+        @tags = grep { !exists $dict->{'Item'}{lc $_} } @tags;
       }
 
       if ( !$report_local_tags ) {
@@ -518,7 +514,7 @@ my $cif2_character = $cif2_ws_character . $cif2_nws_character;
         if (defined $scheme) {
             if ( $scheme =~ /^[^A-Za-z]/ ) {
                 push @validation_messages, "the URI scheme component '$scheme' " .
-                    'must start with a ASCII letter ([A-Za-z])';
+                    'must start with an ASCII letter ([A-Za-z])';
             }
             if ( $scheme =~ /([^A-Za-z0-9.+-])/ ) {
                 push @validation_messages, "the '$1' symbol is not allowed " .
@@ -1006,14 +1002,6 @@ sub get_data_names
 # the Dictionary, Category and Item contexts classification.
 # @param $data
 #       CIF datablock as returned by the COD::CIF::Parser.
-# @param $options
-#       Hash reference to with the following keys:
-#       $options = {
-#        'duplicate_aliases' => 0,
-#        # Create a separate Item hash entry for each definition alias id.
-#        # The entries are created as shallow copies of the original definition
-#        # entry. By default, the copies are not made.
-#       }
 # @return $struct
 #       Hash reference with the following keys:
 #       $struct = {
@@ -1028,7 +1016,7 @@ sub get_data_names
 ##
 sub build_search_struct
 {
-    my ($data, $options) = @_;
+    my ($data) = @_;
 
     my %categories;
     my %items;
@@ -1036,45 +1024,31 @@ sub build_search_struct
     for my $saveblock ( @{$data->{'save_blocks'}} ) {
         my $values = $saveblock->{values};
 
-        if ( exists $values->{'_definition.scope'} ) {
-            if ( $values->{'_definition.scope'}[0] eq 'Dictionary' ) {
-                next; #
-            } elsif ( $values->{'_definition.scope'}[0] eq 'Category' ) {
-                $categories{ lc $values->{'_definition.id'}[0] } = $saveblock;
-                if ( exists $values->{'_alias.definition_id'} ) {
-                    for ( @{$values->{'_alias.definition_id'}} ) {
-                        $values->{'original_tags'}{ lc $_ } = $_;
-                        $categories{ lc $_ } = $saveblock;
-                    }
-                }
-            } elsif ( $values->{'_definition.scope'}[0] eq 'Item' ) {
-                $items{ lc $values->{'_definition.id'}[0] } = $saveblock;
-                if ( exists $values->{'_alias.definition_id'} ) {
-                    for ( @{$values->{'_alias.definition_id'}} ) {
-                        $values->{'original_tags'}{ lc $_ } = $_;
-                        $items{ lc $_ } = $saveblock;
-                    }
-                }
-            } else {
-                # this error should be reported by the enumeration check
-            }
-        } else {
-            # ITEM is currently stated as the default value
-            $items{ $values->{'_definition.id'}[0] } = $saveblock;
-            if ($options->{'duplicate_aliases'} &&
-                exists $values->{'_alias.definition_id'}) {
+        # setting the default value
+        if ( !exists $values->{'_definition.scope'} ) {
+            $values->{'_definition.scope'} =
+                [ $default_ddlm_values{'_definition.scope'} ];
+        }
+
+        if ( lc $values->{'_definition.scope'}[0] eq 'dictionary' ) {
+            next; # TODO: do more research on this scope
+        } elsif ( lc $values->{'_definition.scope'}[0] eq 'category' ) {
+            $categories{ lc $values->{'_definition.id'}[0] } = $saveblock;
+            if ( exists $values->{'_alias.definition_id'} ) {
                 for ( @{$values->{'_alias.definition_id'}} ) {
-                    $values->{'original_tags'}{ lc $_ } = $_;
+                    $categories{ lc $_ } = $saveblock;
+                }
+            }
+        } elsif ( lc $values->{'_definition.scope'}[0] eq 'item' ) {
+            $items{ lc $values->{'_definition.id'}[0] } = $saveblock;
+            if ( exists $values->{'_alias.definition_id'} ) {
+                for ( @{$values->{'_alias.definition_id'}} ) {
                     $items{ lc $_ } = $saveblock;
                 }
             }
-        }
-        $tags{ lc $values->{'_definition.id'}[0] } = 1;
-        if ($options->{'duplicate_aliases'} &&
-            exists $values->{'_alias.definition_id'}) {
-            for ( @{$values->{'_alias.definition_id'}} ) {
-                $tags{ lc $_ } = 1;
-            }
+        } else {
+            # TODO: it should be reported that the current version of the
+            # validator does not support that kind of _definition.scope
         }
     };
 
