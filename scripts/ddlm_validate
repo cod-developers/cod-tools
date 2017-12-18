@@ -180,7 +180,7 @@ for my $filename ( @ARGV ) {
 
     # TODO: complain if there if more than one data block
     for my $datablock ( @{$data} ) {
-      my $dataname = 'data_' . $datablock->{'name'} if defined $datablock->{'name'};
+      my $dataname = 'data_' . $datablock->{'name'};
       local $SIG{__WARN__} = sub { process_warnings( {
                                      'message'       => @_,
                                      'program'       => $0,
@@ -229,14 +229,13 @@ for my $filename ( @ARGV ) {
         }
         push @validation_messages, @{validate_linked_items($struct, $dict)};
 
-        # _name.linked_item_id check existence of the given data item
+        # TODO: _name.linked_item_id check existence of the given data item
 
-        # check the matching of _name.linked_item_id linked values (except)
+        # TODO: check the matching of _name.linked_item_id linked values (except)
 
-        # check for the existence of the key data item
+        # TODO: check for the existence of the key data item
 
-        # eligibility of su values
-        # map { "$filename: $dataname: $_.\n" }
+        # TODO: eligibility of su values
         @tags = grep { !exists $dict->{'Tags'}{lc $_} } @tags;
       }
 
@@ -280,20 +279,26 @@ sub validate_linked_items
       if ( exists $dict->{'Item'}{$tag} ) {
         my $dict_item = $dict->{'Item'}{$tag};
         if ( exists $dict_item->{'values'}{'_name.linked_item_id'} ) {
-          my @linked_item_names = ( $dict_item->{'values'}{'_name.linked_item_id'}[0] );
+          my @linked_item_names = ( lc $dict_item->{'values'}{'_name.linked_item_id'}[0] );
+          # Check if the linking data item stores the su values
+          my $is_su = 0;
+          if ( exists $dict_item->{'values'}{'_type.purpose'} &&
+               lc $dict_item->{'values'}{'_type.purpose'}[0] eq 'su' ) {
+            $is_su = 1;
+          };
           # Retrieve the aliases of the linked data item
           if ( exists $dict->{'Item'}{$linked_item_names[0]} &&
                exists $dict->{'Item'}{$linked_item_names[0]}{'values'} &&
                exists $dict->{'Item'}{$linked_item_names[0]}{'values'}
                                              {'_alias.definition_id'} ) {
             push @linked_item_names,
-                 @{$dict->{'Item'}{$linked_item_names[0]}{'values'}
+                 map { lc } @{$dict->{'Item'}{$linked_item_names[0]}{'values'}
                                                {'_alias.definition_id'}};
           }
 
           # filtering out special CIF values ('?' and '.')
           my @data_item_values;
-          for (my $i = 0; $i < @{$data->{$scope}{$instance}{'values'}{$tag}}; $i++ ) {
+          for ( my $i = 0; $i < @{$data->{$scope}{$instance}{'values'}{$tag}}; $i++ ) {
             if ( !has_special_value($data->{$scope}{$instance}, $tag, $i) ) {
                 push @data_item_values,
                      $data->{$scope}{$instance}{'values'}{$tag}[$i];
@@ -303,6 +308,9 @@ sub validate_linked_items
           my $linked_item_found = 0;
           for my $linked_item_name (@linked_item_names) {
             if ( exists $data->{$scope}{$instance}{'values'}{$linked_item_name} ) {
+              $linked_item_found = 1;
+              # SU are not required to match the linked data item values
+              next if $is_su;
               my %candidate_key_values = map { $_ => 1 }
                     @{$data->{$scope}{$instance}{'values'}{$linked_item_name}};
               my @unmatched = uniq sort grep { !exists $candidate_key_values{$_} }
@@ -311,7 +319,6 @@ sub validate_linked_items
                     map { "the '$tag' data item contains value '$_' that was " .
                           'not found among the values of the linked ' .
                           "'$linked_item_name' data item" } @unmatched;
-              $linked_item_found = 1;
               last;
             }
           }
@@ -800,7 +807,7 @@ sub validate_loops
     for my $tag ( @{$data->{$scope}{$instance}{'tags'}} ) {
       if ( exists $dict->{'Item'}{$tag} ) {
         my $category_id = $dict->{'Item'}{$tag}{'values'}{'_name.category_id'}[0];
-        my $category = $dict->{'Category'}{uc $category_id};
+        my $category = $dict->{'Category'}{lc $category_id};
         my $category_is_looped =
             (lc $category->{'values'}{'_definition.class'}[0] eq 'loop');
         my $tag_is_looped = defined $data->{$scope}{$instance}{'inloop'}{$tag};
@@ -1033,18 +1040,18 @@ sub build_search_struct
             if ( $values->{'_definition.scope'}[0] eq 'Dictionary' ) {
                 next; #
             } elsif ( $values->{'_definition.scope'}[0] eq 'Category' ) {
-                $categories{ $values->{'_definition.id'}[0] } = $saveblock;
-                if (exists $values->{'_alias.definition_id'}) {
+                $categories{ lc $values->{'_definition.id'}[0] } = $saveblock;
+                if ( exists $values->{'_alias.definition_id'} ) {
                     for ( @{$values->{'_alias.definition_id'}} ) {
-                        $values->{'original_tags'}{lc $_} = $_;
+                        $values->{'original_tags'}{ lc $_ } = $_;
                         $categories{ lc $_ } = $saveblock;
                     }
                 }
             } elsif ( $values->{'_definition.scope'}[0] eq 'Item' ) {
-                $items{ $values->{'_definition.id'}[0] } = $saveblock;
-                if (exists $values->{'_alias.definition_id'}) {
+                $items{ lc $values->{'_definition.id'}[0] } = $saveblock;
+                if ( exists $values->{'_alias.definition_id'} ) {
                     for ( @{$values->{'_alias.definition_id'}} ) {
-                        $values->{'original_tags'}{lc $_} = $_;
+                        $values->{'original_tags'}{ lc $_ } = $_;
                         $items{ lc $_ } = $saveblock;
                     }
                 }
@@ -1057,7 +1064,7 @@ sub build_search_struct
             if ($options->{'duplicate_aliases'} &&
                 exists $values->{'_alias.definition_id'}) {
                 for ( @{$values->{'_alias.definition_id'}} ) {
-                    $values->{'original_tags'}{lc $_} = $_;
+                    $values->{'original_tags'}{ lc $_ } = $_;
                     $items{ lc $_ } = $saveblock;
                 }
             }
@@ -1087,7 +1094,7 @@ sub expand_categories
     my ($categories, $dict) = @_;
 
     my @expanded_categories;
-    foreach my $category (@{$categories}) {
+    foreach my $category ( map { lc } @{$categories} ) {
         if ( exists $dict->{'Item'}{$category} ) {
             push @expanded_categories, $category;
         } elsif ( exists $dict->{'Category'}{$category} ) {
