@@ -26,6 +26,7 @@ our @EXPORT_OK = qw(
     fetch_duplicates
     fetch_duplicates_from_database
     get_database_entries
+    build_entry_from_db_row
     cif_fill_data
     entries_are_the_same
     have_equiv_lattices
