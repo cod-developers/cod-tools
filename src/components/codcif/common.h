@@ -9,6 +9,7 @@
 #define __COMMON_H
 
 #include <unistd.h>
+#include <math.h>
 
 char *strclone( const char *s );
 char *strnclone( const char *s, size_t length );
@@ -27,5 +28,7 @@ int is_tag_value_unknown( char *tv );
 
 void fprintf_escaped( const char *message,
                       int escape_parenthesis, int escape_space );
+
+double unpack_precision( char * value, double precision );
 
 #endif
