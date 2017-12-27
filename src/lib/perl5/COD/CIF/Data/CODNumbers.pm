@@ -32,7 +32,7 @@ our @EXPORT_OK = qw(
     entries_are_the_same
     have_equiv_lattices
     have_equiv_bibliographies
-    have_equiv_categories
+    have_equiv_category_values
     have_equiv_timestamps
 );
 
