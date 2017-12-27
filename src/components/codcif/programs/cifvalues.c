@@ -224,5 +224,9 @@ int main( int argc, char *argv[], char *env[] )
   delete_cif( cif );
   freex( files );
 
+  for( i = 0; i < tagcount; i++ )
+      freex( taglist[i] );
+  freex( taglist );
+
   return retval;
 }

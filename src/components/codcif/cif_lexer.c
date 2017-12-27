@@ -268,7 +268,6 @@ static int cif_lexer( FILE *in, cexception_t *ex )
                         if( ch == EOF || isspace(ch) ) {
                             /* The quoted string is properly terminated: */
                             ungetlinec( ch, in );
-                            prevchar = token[pos-1];
                             pushchar( &token, &length, pos, '\0' );
                             ciflval.s = check_and_clean
                                 ( token, /* is_textfield = */ 0, ex );

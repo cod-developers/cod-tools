@@ -378,3 +378,36 @@ void fprintf_escaped( const char *message,
         p++;
     }
 }
+
+double unpack_precision( char * value, double precision ) {
+    const char *p = value;
+
+    /* Skipping everything until the decimal dot: */
+    while( *p && *p != '.' ) { p++; }
+    if( *p == '.' ) { p++; }
+
+    /* Collecting mantissa, if any: */
+    int mantissa_length = 0;
+    while( *p && *p >= 48 && *p <= 57 ) {
+        mantissa_length ++;
+        p++;
+    }
+    precision /= pow( 10, mantissa_length );
+
+    /* Collecting exponent part, if any: */
+    if( *p == 'e' || *p == 'E' ) {
+        int exponent = 1;
+        p++;
+
+        if( *p == '-' ) { exponent = -1; }
+        if( *p == '-' || *p == '+' ) { p++; }
+
+        while( *p && *p >= 48 && *p <= 57 ) {
+            exponent *= *p - 48;
+            p++;
+        }
+        precision *= pow( 10, exponent );
+    }
+
+    return precision;
+}

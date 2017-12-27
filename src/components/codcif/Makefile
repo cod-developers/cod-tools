@@ -126,7 +126,7 @@ INCLUDES = ${sort -I. ${addprefix -I, ${SRC_DIR} ${OTHER_DIRS} ${LIB_DIRS}}}
 ## LIBFLAGS = ${addprefix -l, ${LIB_NAMES}}
 
 ## LDFLAGS  = -L/usr/local/lib
-## LIBFLAGS = -lm
+LIBFLAGS = -lm
 
 SVN_VERSION := $(shell svnversion)
 

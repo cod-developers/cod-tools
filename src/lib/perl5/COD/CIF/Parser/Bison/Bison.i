@@ -5,6 +5,7 @@
     #include <XSUB.h>
 
     SV * parse_cif( char * fname, char * prog, SV * options );
+    double unpack_precision( char * value, double precision );
 %}
 
 %perlcode %{
@@ -12,7 +13,6 @@ use strict;
 use warnings;
 use Encode qw(decode);
 
-use COD::Precision qw( unpack_precision );
 use COD::UserMessage qw( sprint_message );
 
 sub parse
@@ -266,3 +266,4 @@ sub decode_utf8_typed_values
 #include <XSUB.h>
 
 SV * parse_cif( char * fname, char * prog, SV * options );
+double unpack_precision( char * value, double precision );
