@@ -134,7 +134,7 @@ char *list_concat( CIFLIST *list, char separator, cexception_t *ex )
         length += strlen( value_scalar( list_get( list, i ) ) );
     }
 
-    char *buf = mallocx( length + list_length( list ) - 1, ex );
+    char *buf = mallocx( length + list_length( list ), ex );
     buf[0] = '\0';
     ssize_t pos = 0;
     for( i = 0; i < list_length( list ); i++ ) {
