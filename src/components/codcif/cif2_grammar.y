@@ -203,6 +203,7 @@ data_heading
                                      "in it -- replaced spaces with underscores",
                                      typed_value_line( $2 ), -1, px );
                 }
+                freex( data_list );
             } else {
                 cif_start_datablock( cif_compiler_cif( cif_cc ), $1, px );
                 yyerror_token( cif_cc, "incorrect CIF syntax",
