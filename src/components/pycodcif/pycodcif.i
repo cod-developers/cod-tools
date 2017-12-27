@@ -380,6 +380,14 @@ class CifFile(object):
             cif_print( self._cif )
         return output[0]
 
+    def keys(self):
+        keys = list()
+        datablock = cif_datablock_list( self._cif )
+        while datablock is not None:
+            keys.append( datablock_name( datablock ) )
+            datablock = datablock_next( datablock )
+        return keys
+
     def append(self, datablock):
         # must be a datablock!
         cif_append_datablock( self._cif, datablock._datablock )
