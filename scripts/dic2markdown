@@ -34,7 +34,8 @@ for my $filename (@ARGV) {
     }
 
     my $dict = build_dictionary_structure( $data->[0] );
-    print Dumper $dict;
+
+    dic_block2markdown( $dict );
 }
 
 # Constructs CIF DDLm dictionary relation tree for easier detection of
@@ -44,8 +45,7 @@ sub build_dictionary_structure
     my( $dataset ) = @_;
 
     my $parents = {};
-    for my $i (0..@{$dataset->{save_blocks}}-1) {
-        my $save_block = $dataset->{save_blocks}[$i];
+    for my $save_block (@{$dataset->{save_blocks}}) {
 
         if( !exists $save_block->{values}{'_name.category_id'} ) {
             warn "save block '$save_block->{name}' does not contain " .
@@ -77,5 +77,19 @@ sub find_children
         my $new_node = { content => $_ };
         find_children( $new_node, $parents );
         push @{$node->{children}}, $new_node;
+    }
+}
+
+sub dic_block2markdown
+{
+    my( $node, $indent ) = @_;
+
+    my $content = $node->{content};
+
+    $indent = 0 if !defined $indent;
+    print '#' x ($indent + 1) . ' ' . $content->{values}{'_definition.id'}[0] . "\n\n";
+
+    foreach (@{$node->{children}}) {
+        dic_block2markdown( $_, $indent + 1 );
     }
 }
