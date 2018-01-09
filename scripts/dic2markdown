@@ -48,9 +48,11 @@ sub build_dictionary_structure
     for my $save_block (@{$dataset->{save_blocks}}) {
 
         if( !exists $save_block->{values}{'_name.category_id'} ) {
-            warn "save block '$save_block->{name}' does not contain " .
-                 '\'_name.category_id\' data item -- unable to ' .
-                 'determine its anchestry, skipping';
+            if( $save_block->{values}{'_definition.class'}[0] ne 'Head' ) {
+                warn "save block '$save_block->{name}' does not contain " .
+                     '\'_name.category_id\' data item -- unable to ' .
+                     'determine its anchestry, skipping';
+            }
             next;
         }
 
@@ -58,7 +60,8 @@ sub build_dictionary_structure
         push @{$parents->{$parent}}, $save_block;
     }
 
-    my @heads = @{$parents->{lc $dataset->{values}{'_dictionary.title'}[0]}};
+    my @heads = grep { $_->{values}{'_definition.class'}[0] eq 'Head' }
+                     @{$dataset->{save_blocks}};
 
     my $dict = {};
     $dict->{content} = $heads[0];
