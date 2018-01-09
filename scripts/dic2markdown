@@ -54,11 +54,11 @@ sub build_dictionary_structure
             next;
         }
 
-        my $parent = $save_block->{values}{'_name.category_id'}[0];
+        my $parent = lc $save_block->{values}{'_name.category_id'}[0];
         push @{$parents->{$parent}}, $save_block;
     }
 
-    my @heads = @{$parents->{$dataset->{values}{'_dictionary.title'}[0]}};
+    my @heads = @{$parents->{lc $dataset->{values}{'_dictionary.title'}[0]}};
 
     my $dict = {};
     $dict->{content} = $heads[0];
@@ -70,7 +70,7 @@ sub build_dictionary_structure
 sub find_children
 {
     my( $node, $parents ) = @_;
-    my $children = $parents->{$node->{content}{values}{'_definition.id'}[0]};
+    my $children = $parents->{lc $node->{content}{values}{'_definition.id'}[0]};
     return if !$children;
 
     foreach (@$children) {
