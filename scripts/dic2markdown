@@ -133,7 +133,7 @@ sub dic_block2markdown
     $title =~ s/_/\\_/g;
 
     print '#' x ($indent + 1) . ' ' . $title . "\n\n";
-    print $values->{'_description.text'}[0] . "\n\n";
+    print tidy_text( $values->{'_description.text'}[0] ) . "\n\n";
 
     if( exists $values->{'_enumeration_set.state'} ) {
         my $default = '?';
@@ -149,4 +149,22 @@ sub dic_block2markdown
     foreach (@{$node->{children}}) {
         dic_block2markdown( $_, $indent + 1 );
     }
+}
+
+sub tidy_text
+{
+    my( $text ) = @_;
+
+    $text =~ s/^\n//;
+    $text =~ s/_/\\_/g;
+
+    # Removing prefices from text fields:
+
+    my( $prefix ) = $text =~ /^( +)/;
+    return $text if !$prefix;
+
+    my $len = length $prefix;
+
+    $text =~ s/^ {$len}//gm;
+    return $text;
 }
