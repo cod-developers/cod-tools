@@ -133,6 +133,17 @@ sub dic_block2markdown
     print '#' x ($indent + 1) . ' ' . $title . "\n\n";
     print $values->{'_description.text'}[0] . "\n\n";
 
+    if( exists $values->{'_enumeration_set.state'} ) {
+        my $default = '?';
+        if( exists $values->{'_enumeration.default'} ) {
+            $default = $values->{'_enumeration.default'}[0];
+        }
+        print "Values:\n\n",
+              map { "* $_" . ($_ eq $default ? ' (default)' : '') . "\n" }
+                  @{$values->{'_enumeration_set.state'}};
+        print "\n";
+    }
+
     foreach (@{$node->{children}}) {
         dic_block2markdown( $_, $indent + 1 );
     }
