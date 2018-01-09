@@ -84,10 +84,14 @@ sub dic_block2markdown
 {
     my( $node, $indent ) = @_;
 
-    my $content = $node->{content};
+    my $values = $node->{content}{values};
 
     $indent = 0 if !defined $indent;
-    print '#' x ($indent + 1) . ' ' . $content->{values}{'_definition.id'}[0] . "\n\n";
+    my $title = $values->{'_definition.id'}[0];
+    $title =~ s/_/\\_/g;
+
+    print '#' x ($indent + 1) . ' ' . $title . "\n\n";
+    print $values->{'_description.text'}[0] . "\n\n";
 
     foreach (@{$node->{children}}) {
         dic_block2markdown( $_, $indent + 1 );
