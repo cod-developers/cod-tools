@@ -135,11 +135,25 @@ sub dic_block2markdown
     print '#' x ($indent + 1) . ' ' . $title . "\n\n";
     print tidy_text( $values->{'_description.text'}[0] ) . "\n\n";
 
-    if( exists $values->{'_enumeration_set.state'} ) {
-        my $default = '?';
-        if( exists $values->{'_enumeration.default'} ) {
-            $default = $values->{'_enumeration.default'}[0];
+    my $default = '?';
+    if( exists $values->{'_enumeration.default'} ) {
+        $default = $values->{'_enumeration.default'}[0];
+    }
+    if( exists $values->{'_enumeration_set.state'} &&
+        exists $values->{'_enumeration_set.detail'} ) {
+        print "Values:\n\n",
+              "<table>\n  <tr><th>Value</th><th>Description</th></tr>\n";
+        for my $i (keys @{$values->{'_enumeration_set.state'}}) {
+            print '  <tr><td>' .
+                  tidy_text( $values->{'_enumeration_set.state'}[$i] ) .
+                  '</td><td>' .
+                  tidy_text( $values->{'_enumeration_set.detail'}[$i] ) .
+                  ( $values->{'_enumeration_set.state'}[$i] eq $default
+                    ? ' (default)' : '' ) .
+                  "</td></tr>\n";
         }
+        print "</table>\n";
+    } elsif( exists $values->{'_enumeration_set.state'} ) {
         print "Values:\n\n",
               map { "* $_" . ($_ eq $default ? ' (default)' : '') . "\n" }
                   @{$values->{'_enumeration_set.state'}};
