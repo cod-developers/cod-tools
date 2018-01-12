@@ -72,9 +72,16 @@ for my $filename (@ARGV) {
             'processed';
     }
 
-    my $dict = build_dictionary_structure( $data->[0] );
+    for my $datablock (@$data) {
+        my $dict = build_dictionary_structure( $datablock );
 
-    dic_block2markdown( $dict );
+        printf "# %s\n\n", $datablock->{values}{'_dictionary.title'}[0];
+        printf "Version: %s (%s)\n\n",
+               $datablock->{values}{'_dictionary.version'}[0],
+               $datablock->{values}{'_dictionary.date'}[0];
+
+        dic_block2markdown( $dict, 1 );
+    }
 }
 
 # Constructs CIF DDLm dictionary relation tree for easier detection of
