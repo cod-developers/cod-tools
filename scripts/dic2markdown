@@ -135,10 +135,10 @@ sub dic_block2markdown
 
     $indent = 0 if !defined $indent;
     my $title = $values->{'_definition.id'}[0];
-    $title =~ s/_/\\_/g;
 
-    print '#' x ($indent + 1) . ' ' . $title . "\n\n";
-    print tidy_text( $values->{'_description.text'}[0] ) . "\n\n";
+    print '#' x ($indent + 1) . ' ' . escape_markdown( $title ) . "\n\n",
+          escape_markdown( unprefix( $values->{'_description.text'}[0] ) ),
+          "\n\n";
 
     my $default = '?';
     if( exists $values->{'_enumeration.default'} ) {
@@ -150,9 +150,9 @@ sub dic_block2markdown
               "<table>\n  <tr><th>Value</th><th>Description</th></tr>\n";
         for my $i (keys @{$values->{'_enumeration_set.state'}}) {
             print '  <tr><td>' .
-                  tidy_text( $values->{'_enumeration_set.state'}[$i] ) .
+                  unprefix( $values->{'_enumeration_set.state'}[$i] ) .
                   '</td><td>' .
-                  tidy_text( $values->{'_enumeration_set.detail'}[$i] ) .
+                  unprefix( $values->{'_enumeration_set.detail'}[$i] ) .
                   ( $values->{'_enumeration_set.state'}[$i] eq $default
                     ? ' (default)' : '' ) .
                   "</td></tr>\n";
@@ -160,7 +160,8 @@ sub dic_block2markdown
         print "</table>\n";
     } elsif( exists $values->{'_enumeration_set.state'} ) {
         print "Values:\n\n",
-              map { "* $_" . ($_ eq $default ? ' (default)' : '') . "\n" }
+              map { '* ' . escape_markdown( $_ ) .
+                    ($_ eq $default ? ' (default)' : '') . "\n" }
                   @{$values->{'_enumeration_set.state'}};
         print "\n";
     }
@@ -170,14 +171,11 @@ sub dic_block2markdown
     }
 }
 
-sub tidy_text
+sub unprefix
 {
     my( $text ) = @_;
 
     $text =~ s/^\n//;
-    $text =~ s/_/\\_/g;
-
-    # Removing prefices from text fields:
 
     my( $prefix ) = $text =~ /^( +)/;
     return $text if !$prefix;
@@ -185,5 +183,13 @@ sub tidy_text
     my $len = length $prefix;
 
     $text =~ s/^ {$len}//gm;
+    return $text;
+}
+
+sub escape_markdown
+{
+    my( $text ) = @_;
+
+    $text =~ s/([_*])/\\$1/g;
     return $text;
 }
