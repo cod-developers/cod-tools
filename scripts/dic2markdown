@@ -24,6 +24,7 @@ use COD::ErrorHandler qw( process_warnings
                           process_errors
                           process_parser_messages );
 use COD::ToolsVersion;
+use HTML::Entities qw( encode_entities );
 
 my $use_parser = 'c';
 
@@ -74,10 +75,10 @@ for my $filename (@ARGV) {
         my $dict = build_dictionary_structure( $datablock );
 
         printf "# %s\n\n",
-               escape_markdown( $datablock->{values}{'_dictionary.title'}[0] );
+               escape( $datablock->{values}{'_dictionary.title'}[0] );
         printf "Version: %s (%s)\n\n",
-               escape_markdown( $datablock->{values}{'_dictionary.version'}[0] ),
-               escape_markdown( $datablock->{values}{'_dictionary.date'}[0] );
+               escape( $datablock->{values}{'_dictionary.version'}[0] ),
+               escape( $datablock->{values}{'_dictionary.date'}[0] );
 
         dic_block2markdown( $dict, 1 );
     }
@@ -137,10 +138,10 @@ sub dic_block2markdown
     $indent = 0 if !defined $indent;
     my $title = $values->{'_definition.id'}[0];
 
-    print '#' x ($indent + 1) . ' ' . escape_markdown( $title ) . "\n\n";
+    print '#' x ($indent + 1) . ' ' . escape( $title ) . "\n\n";
 
     if( exists $values->{'_description.text'} ) {
-        print escape_markdown( unprefix( $values->{'_description.text'}[0] ) ),
+        print escape( unprefix( $values->{'_description.text'}[0] ) ),
               "\n\n";
     }
 
@@ -153,10 +154,10 @@ sub dic_block2markdown
         print "Values:\n\n",
               "<table>\n  <tr><th>Value</th><th>Description</th></tr>\n";
         for my $i (keys @{$values->{'_enumeration_set.state'}}) {
-            print '  <tr><td>' .
-                  unprefix( $values->{'_enumeration_set.state'}[$i] ) .
-                  '</td><td>' .
-                  unprefix( $values->{'_enumeration_set.detail'}[$i] ) .
+            print '  <tr><td>' . encode_entities(
+                  unprefix( $values->{'_enumeration_set.state'}[$i] ) ) .
+                  '</td><td>' . encode_entities(
+                  unprefix( $values->{'_enumeration_set.detail'}[$i] ) ) .
                   ( $values->{'_enumeration_set.state'}[$i] eq $default
                     ? ' (default)' : '' ) .
                   "</td></tr>\n";
@@ -164,7 +165,7 @@ sub dic_block2markdown
         print "</table>\n";
     } elsif( exists $values->{'_enumeration_set.state'} ) {
         print "Values:\n\n",
-              map { '* ' . escape_markdown( $_ ) .
+              map { '* ' . escape( $_ ) .
                     ($_ eq $default ? ' (default)' : '') . "\n" }
                   @{$values->{'_enumeration_set.state'}};
         print "\n";
@@ -190,10 +191,15 @@ sub unprefix
     return $text;
 }
 
-sub escape_markdown
+sub escape
 {
     my( $text ) = @_;
 
+    # Escaping Markdown:
     $text =~ s/([_*])/\\$1/g;
+
+    # Escaping HTML:
+    $text = encode_entities( $text );
+
     return $text;
 }
