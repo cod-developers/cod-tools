@@ -73,10 +73,11 @@ for my $filename (@ARGV) {
     for my $datablock (@$data) {
         my $dict = build_dictionary_structure( $datablock );
 
-        printf "# %s\n\n", $datablock->{values}{'_dictionary.title'}[0];
+        printf "# %s\n\n",
+               escape_markdown( $datablock->{values}{'_dictionary.title'}[0] );
         printf "Version: %s (%s)\n\n",
-               $datablock->{values}{'_dictionary.version'}[0],
-               $datablock->{values}{'_dictionary.date'}[0];
+               escape_markdown( $datablock->{values}{'_dictionary.version'}[0] ),
+               escape_markdown( $datablock->{values}{'_dictionary.date'}[0] );
 
         dic_block2markdown( $dict, 1 );
     }
@@ -136,9 +137,12 @@ sub dic_block2markdown
     $indent = 0 if !defined $indent;
     my $title = $values->{'_definition.id'}[0];
 
-    print '#' x ($indent + 1) . ' ' . escape_markdown( $title ) . "\n\n",
-          escape_markdown( unprefix( $values->{'_description.text'}[0] ) ),
-          "\n\n";
+    print '#' x ($indent + 1) . ' ' . escape_markdown( $title ) . "\n\n";
+
+    if( exists $values->{'_description.text'} ) {
+        print escape_markdown( unprefix( $values->{'_description.text'}[0] ) ),
+              "\n\n";
+    }
 
     my $default = '?';
     if( exists $values->{'_enumeration.default'} ) {
