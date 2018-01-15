@@ -67,20 +67,45 @@ for my $filename (@ARGV) {
 
     if( !@$data || !exists $data->[0] || !exists $data->[0]{cifversion} ||
         $data->[0]{cifversion}{major} != 2 ) {
-        die 'CIF format must be of version 2.0 or greater to be ' .
-            'processed';
+        process_errors( {
+                message  => 'only CIF format version 2.0 or greater ' .
+                            'is accepted',
+                program  => $0,
+                filename => $filename
+            }, $die_on_errors );
     }
 
     for my $datablock (@$data) {
-        my $dict = build_dictionary_structure( $datablock );
+        my $dataname = 'data_' . $datablock->{'name'};
 
-        printf "# %s\n\n",
-               escape( $datablock->{values}{'_dictionary.title'}[0] );
-        printf "Version: %s (%s)\n\n",
-               escape( $datablock->{values}{'_dictionary.version'}[0] ),
-               escape( $datablock->{values}{'_dictionary.date'}[0] );
+        local $SIG{__WARN__} = sub {
+            process_warnings( {
+                'message'  => @_,
+                'program'  => $0,
+                'filename' => $filename,
+                'add_pos'  => $dataname
+            }, $die_on_error_level )
+        };
 
-        dic_block2markdown( $dict, 1 );
+        eval {
+            my $dict = build_dictionary_structure( $datablock );
+
+            printf "# %s\n\n",
+                   escape( $datablock->{values}{'_dictionary.title'}[0] );
+            printf "Version: %s (%s)\n\n",
+                   escape( $datablock->{values}{'_dictionary.version'}[0] ),
+                   escape( $datablock->{values}{'_dictionary.date'}[0] );
+
+            dic_block2markdown( $dict, 1 );
+        };
+        if( $@ ) {
+            process_errors( {
+              'message'       => $@,
+              'program'       => $0,
+              'filename'      => $filename,
+              'add_pos'       => $dataname
+            }, $die_on_errors )
+        }
     }
 }
 
