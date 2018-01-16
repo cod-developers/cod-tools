@@ -5,6 +5,7 @@ sudo apt-get install -y \
     gawk \
     libcapture-tiny-perl \
     libcarp-assert-perl \
+    libchemistry-openbabel-perl \
     libclone-perl \
     libdatetime-format-rfc3339-perl \
     libdbd-mysql-perl \
