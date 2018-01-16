@@ -15,7 +15,6 @@ sudo apt-get install -y \
     libhtml-parser-perl \
     libjson-perl \
     liblist-moreutils-perl \
-    libchemistry-openbabel-perl \
     libparse-yapp-perl \
     libwww-curl-perl \
     libxml-simple-perl \
