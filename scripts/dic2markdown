@@ -1,0 +1,234 @@
+#! /bin/sh
+#!perl -w # --*- Perl -*--
+eval 'exec perl -x $0 ${1+"$@"}'
+    if 0;
+#------------------------------------------------------------------------------
+#$Author$
+#$Date$
+#$Revision$
+#$URL$
+#------------------------------------------------------------------------------
+#*
+#* Generates textual descriptions for DDLm dictionaries.
+#*
+#* USAGE:
+#*    $0 --options input1.dic input*.dic
+#**
+
+use strict;
+use warnings;
+use COD::CIF::Parser qw( parse_cif );
+use COD::SOptions qw( getOptions );
+use COD::SUsage qw( usage options );
+use COD::ErrorHandler qw( process_warnings
+                          process_errors
+                          process_parser_messages );
+use COD::ToolsVersion;
+use HTML::Entities qw( encode_entities );
+
+my $use_parser = 'c';
+
+#* OPTIONS:
+#*   --use-perl-parser
+#*                     Use Perl parser for CIF parsing.
+#*   --use-c-parser
+#*                     Use Perl & C parser for CIF parsing (default).
+#*
+#*   --help, --usage
+#*                     Output a short usage message (this message) and exit.
+#*   --version
+#*                     Output version information and exit.
+#**
+@ARGV = getOptions(
+    "--use-perl-parser" => sub { $use_parser = "perl" },
+    "--use-c-parser"    => sub { $use_parser = "c" },
+    "--options"         => sub { options; exit },
+    "--help,--usage"    => sub { usage; exit },
+    '--version'         => sub { print 'cod-tools version ',
+                                 $COD::ToolsVersion::Version, "\n";
+                                 exit }
+);
+
+my $die_on_errors    = 1;
+my $die_on_warnings  = 0;
+my $die_on_notes     = 0;
+my $die_on_error_level = {
+    ERROR   => $die_on_errors,
+    WARNING => $die_on_warnings,
+    NOTE    => $die_on_notes
+};
+
+@ARGV = ('-') unless @ARGV;
+
+for my $filename (@ARGV) {
+    my $options = { 'parser' => $use_parser, 'no_print' => 1 };
+    my ( $data, $err_count, $messages ) = parse_cif( $filename, $options );
+    process_parser_messages( $messages, $die_on_error_level );
+
+    if( !@$data || !exists $data->[0] || !exists $data->[0]{cifversion} ||
+        $data->[0]{cifversion}{major} != 2 ) {
+        process_errors( {
+                message  => 'only CIF format version 2.0 or greater ' .
+                            'is accepted',
+                program  => $0,
+                filename => $filename
+            }, $die_on_errors );
+    }
+
+    for my $datablock (@$data) {
+        my $dataname = 'data_' . $datablock->{'name'};
+
+        local $SIG{__WARN__} = sub {
+            process_warnings( {
+                'message'  => @_,
+                'program'  => $0,
+                'filename' => $filename,
+                'add_pos'  => $dataname
+            }, $die_on_error_level )
+        };
+
+        eval {
+            my $dict = build_dictionary_structure( $datablock );
+
+            printf "# %s\n\n",
+                   escape( $datablock->{values}{'_dictionary.title'}[0] );
+            printf "Version: %s (%s)\n\n",
+                   escape( $datablock->{values}{'_dictionary.version'}[0] ),
+                   escape( $datablock->{values}{'_dictionary.date'}[0] );
+
+            dic_block2markdown( $dict, 1 );
+        };
+        if( $@ ) {
+            process_errors( {
+              'message'       => $@,
+              'program'       => $0,
+              'filename'      => $filename,
+              'add_pos'       => $dataname
+            }, $die_on_errors )
+        }
+    }
+}
+
+# Constructs CIF DDLm dictionary relation tree for easier detection of
+# dependencies.
+sub build_dictionary_structure
+{
+    my( $dataset ) = @_;
+
+    my $parents = {};
+    for my $save_block (@{$dataset->{save_blocks}}) {
+
+        if( !exists $save_block->{values}{'_name.category_id'} ) {
+            if( $save_block->{values}{'_definition.class'}[0] ne 'Head' ) {
+                warn "save block '$save_block->{name}' does not contain " .
+                     '\'_name.category_id\' data item -- unable to ' .
+                     'determine its anchestry, skipping';
+            }
+            next;
+        }
+
+        my $parent = lc $save_block->{values}{'_name.category_id'}[0];
+        push @{$parents->{$parent}}, $save_block;
+    }
+
+    my @heads = grep { $_->{values}{'_definition.class'}[0] eq 'Head' }
+                     @{$dataset->{save_blocks}};
+
+    my $dict = {};
+    $dict->{content} = $heads[0];
+    find_children( $dict, $parents );
+
+    return $dict;
+}
+
+sub find_children
+{
+    my( $node, $parents ) = @_;
+    my $children = $parents->{lc $node->{content}{values}{'_definition.id'}[0]};
+    return if !$children;
+
+    foreach (@$children) {
+        my $new_node = { content => $_ };
+        find_children( $new_node, $parents );
+        push @{$node->{children}}, $new_node;
+    }
+}
+
+sub dic_block2markdown
+{
+    my( $node, $indent ) = @_;
+
+    my $values = $node->{content}{values};
+
+    $indent = 0 if !defined $indent;
+    my $title = $values->{'_definition.id'}[0];
+
+    print '#' x ($indent + 1) . ' ' . escape( $title ) . "\n\n";
+
+    if( exists $values->{'_description.text'} ) {
+        print escape( unprefix( $values->{'_description.text'}[0] ) ),
+              "\n\n";
+    }
+
+    if( exists $values->{'_units.code'} ) {
+        printf "Units: %s\n\n", escape( $values->{'_units.code'}[0] );
+    }
+
+    my $default = '?';
+    if( exists $values->{'_enumeration.default'} ) {
+        $default = $values->{'_enumeration.default'}[0];
+    }
+    if( exists $values->{'_enumeration_set.state'} &&
+        exists $values->{'_enumeration_set.detail'} ) {
+        print "Values:\n\n",
+              "<table>\n  <tr><th>Value</th><th>Description</th></tr>\n";
+        for my $i (keys @{$values->{'_enumeration_set.state'}}) {
+            print '  <tr><td>' . encode_entities(
+                  unprefix( $values->{'_enumeration_set.state'}[$i] ) ) .
+                  '</td><td>' . encode_entities(
+                  unprefix( $values->{'_enumeration_set.detail'}[$i] ) ) .
+                  ( $values->{'_enumeration_set.state'}[$i] eq $default
+                    ? ' (default)' : '' ) .
+                  "</td></tr>\n";
+        }
+        print "</table>\n";
+    } elsif( exists $values->{'_enumeration_set.state'} ) {
+        print "Values:\n\n",
+              map { '* ' . escape( $_ ) .
+                    ($_ eq $default ? ' (default)' : '') . "\n" }
+                  @{$values->{'_enumeration_set.state'}};
+        print "\n";
+    }
+
+    foreach (@{$node->{children}}) {
+        dic_block2markdown( $_, $indent + 1 );
+    }
+}
+
+sub unprefix
+{
+    my( $text ) = @_;
+
+    $text =~ s/^\n//;
+
+    my( $prefix ) = $text =~ /^( +)/;
+    return $text if !$prefix;
+
+    my $len = length $prefix;
+
+    $text =~ s/^ {$len}//gm;
+    return $text;
+}
+
+sub escape
+{
+    my( $text ) = @_;
+
+    # Escaping Markdown:
+    $text =~ s/([_*])/\\$1/g;
+
+    # Escaping HTML:
+    $text = encode_entities( $text );
+
+    return $text;
+}

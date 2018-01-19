@@ -34,7 +34,8 @@ use COD::CIF::Tags::AMCSD;
 use COD::CIF::Tags::TCOD;
 use COD::CIF::Tags::DFT;
 use COD::CIF::Tags::Excluded;
-use COD::CIF::Tags::Manage qw( exclude_tag
+use COD::CIF::Tags::Manage qw( cifversion
+                               exclude_tag
                                exclude_empty_tags
                                exclude_empty_non_loop_tags
                                exclude_unknown_tags
@@ -1010,27 +1011,44 @@ for my $filename (@ARGV) {
                 }
 
                 foreach my $key ( keys %user_bib ) {
-                    if ( $key eq 'authors' ) {
-                        my $authors = $user_bib{$key};
-                        use Encode 'decode_utf8';
-                        ## use encoding 'utf8';
-                        for my $author (@{$authors}) {
-                            # This does not work, alas:
-                            ## map { pack('U*', unpack('C*', $_ )) }
+                    use Encode 'decode_utf8';
+                    my @values;
+                    if( ref $user_bib{$key} ) {
+                        @values = @{$user_bib{$key}};
+                    } else {
+                        @values = ( $user_bib{$key} );
+                    }
 
-                            # Insist that the names are well-formed utf8:
-                            $author = decode_utf8($author);
-                            $author = unicode2cif($author);
-                            $author =~ s/^\s+|\s+$//g;
-                            $author =~ s/\n/ /g;
-                            $author =~ s/\s+/ /g;
+                    ## use encoding 'utf8';
+                    for my $value (@values) {
+                        # This does not work, alas:
+                        ## map { pack('U*', unpack('C*', $_ )) }
+
+                        # Insist that the names are well-formed utf8:
+                        $value = decode_utf8($value);
+
+                        # Unicode symbols must be CIF-encoded for CIF 1.1:
+                        if( !cifversion( $dataset ) ||
+                             cifversion( $dataset ) ne '2.0' ) {
+                            $value = unicode2cif($value);
                         }
 
+                        # Cleaning of white space should be performed
+                        # only for arrays, therefore, just for the
+                        # value of 'authors':
+                        if( ref $user_bib{$key} ) {
+                            $value =~ s/^\s+|\s+$//g;
+                            $value =~ s/\n/ /g;
+                            $value =~ s/\s+/ /g;
+                        }
+                    }
+
+                    if( ref $user_bib{$key} ) {
                         set_loop_tag( $dataset, $bib2cif_map{$key},
-                                      undef, $authors )
+                                      undef, \@values );
                     } else {
                         set_tag( $dataset, $bib2cif_map{$key},
-                                 unicode2cif( $user_bib{$key} ) );
+                                 $values[0] );
                     }
                 }
             }
