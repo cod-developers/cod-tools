@@ -129,3 +129,5 @@ sub process_warnings
 
     report_message( $details, $exit );
 }
+
+1;
