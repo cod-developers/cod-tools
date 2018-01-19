@@ -247,3 +247,5 @@ sub is_in_range_char
     }
     return 0;
 }
+
+1;
