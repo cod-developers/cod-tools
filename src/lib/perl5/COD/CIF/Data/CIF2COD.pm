@@ -18,7 +18,7 @@ use COD::CIF::Data::CellContents qw( cif_cell_contents );
 use COD::CIF::Data::CODFlags qw( is_disordered has_coordinates has_Fobs );
 use COD::CIF::Data::Check qw( check_formula_sum_syntax );
 use COD::CIF::Unicode2CIF qw( cif2unicode );
-use COD::CIF::Tags::Manage qw( get_data_value get_aliased_value );
+use COD::CIF::Tags::Manage qw( cifversion get_data_value get_aliased_value );
 use COD::CIF::Tags::DictTags;
 use COD::Spacegroups::Names;
 use Scalar::Util qw( looks_like_number );
@@ -344,7 +344,8 @@ sub cif2cod
     for ( qw( chemname commonname mineral
               radType radSymbol
               journal title ) ) {
-        if ( defined $data{$_} ) {
+        if ( defined $data{$_} &&
+            ( !cifversion( $dataset ) || cifversion( $dataset ) eq '1.1' ) ) {
             $data{$_} = cif2unicode($data{$_});
         }
     };
@@ -368,7 +369,7 @@ sub cif2cod
     $data{'method'} = get_experimental_method( $values );
     $data{'Zprime'} = compute_z_prime( $data{'Z'}, $data{'sg'} );
 
-    $data{'authors'} = get_authors( $values );
+    $data{'authors'} = get_authors( $dataset );
     $data{'text'}    = concat_text_field(\%data);
     # TODO: the following two lines are only retained to conform to the previous output
     $data{'title'}   = defined $data{'title'} ? $data{'title'} : '';
@@ -495,11 +496,16 @@ sub get_cod_flags
 
 sub get_authors
 {
-    my ($values) = @_;
+    my ( $dataset ) = @_;
+    my $values = $dataset->{values};
     my $authors;
     if( exists $values->{'_publ_author_name'} ) {
-        $authors = join '; ', map { cif2unicode($_) }
-                        @{$values->{'_publ_author_name'}};
+        my @authors = @{$values->{'_publ_author_name'}};
+        if( !cifversion( $dataset ) ||
+             cifversion( $dataset ) eq '1.1' ) {
+            @authors = map { cif2unicode($_) } @authors;
+        }
+        $authors = join '; ', @authors;
     }
 
     return $authors;
