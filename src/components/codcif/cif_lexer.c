@@ -143,7 +143,7 @@ static int cif_lexer( FILE *in, cexception_t *ex )
                                  cif_flex_previous_line_number(), -1, ex );
             } else {
                 ciferror( "DOS EOF symbol ^Z was encountered, "
-                         "it is not permitted in CIFs" );
+                          "it is not permitted in CIFs" );
             }
             prevchar = ch;
             ch = getlinec( in, ex );
@@ -162,8 +162,15 @@ static int cif_lexer( FILE *in, cexception_t *ex )
                     putchar( ch );
                 }
                 if( (ch < 32 && ch != 9 && ch != 10 && ch != 13) || ch >= 127 ) {
-                    yywarning_token( cif_cc, "unallowed symbol in CIF comment",
-                                     cif_flex_current_line_number(), pos, ex );
+                    if( cif_lexer_has_flags
+                        (CIF_FLEX_LEXER_FIX_NON_ASCII_SYMBOLS) ) {
+                            yynote_token( cif_cc, "unallowed symbol in CIF comment "
+                                                  "was encountered and ignored",
+                                          cif_flex_current_line_number(), pos, ex );
+                    } else {
+                        yywarning_token( cif_cc, "unallowed symbol in CIF comment",
+                                         cif_flex_current_line_number(), pos, ex );
+                    }
                 }
             }
             if( ch == '\r' ) {
