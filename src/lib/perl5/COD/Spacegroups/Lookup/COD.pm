@@ -19389,11 +19389,10 @@ our @EXPORT_OK = qw(
     number          => 15,
     hall            => '-C 2yc (x+y-16/3*z,-x+y+16/3*z,1/3*z)',
     schoenflies     => 'C2h^6',
-    hermann_mauguin => 'R 1 2/c 1 ("rhombohedral" setting)',
+    hermann_mauguin => 'R 1 2/c 1',
     universal_h_m   => 'R 1 2/c 1',
-    crystal_class   => 'rhombohedral',
-    constraints     => '$a == $b && $b == $c && ' .
-                       '$alpha == $beta && $beta == $gamma',
+    crystal_class   => 'monoclinic',
+    constraints     => '$alpha == 90 && $beta == 90',
     symops => [
         'x,y,z',
         'y,x,-z+1/2',

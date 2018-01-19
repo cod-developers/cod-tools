@@ -18,6 +18,8 @@ use strict;
 use warnings;
 use COD::Cell qw( cell_volume );
 use COD::CIF::Data qw( get_cell );
+use COD::Precision qw( unpack_cif_number );
+use COD::CIF::Tags::Manage qw( get_aliased_value );
 
 require Exporter;
 our @ISA = qw( Exporter );
@@ -33,88 +35,87 @@ sub cif_estimate_z($)
     my ($dataset) = @_;
     my $values = $dataset->{values};
 
-    if( defined $values ) {
+    my $volume  = get_volume( $values );
+    my $density = get_crystal_density( $values );
+    my $molwt   = get_molecular_weight( $values );
 
-        my $volume = get_volume( $values );
-        my $density = get_crystal_density( $values );
-        my $molwt = get_molecular_weight( $values );
-
-        if( defined $volume && defined $density && defined $molwt ) {
-            return int( 0.5 + $N * $density * $volume / $molwt );
-        } else {
-            my $error = "";
-            my $sep = "; ";
-            if( !defined $volume ) {
-                $error .= $sep . "cell volume undefined";
-            }
-            if( !defined $density ) {
-                 $error .= $sep . "crystal density undefined";
-            }
-            if( !defined $molwt ) {
-                $error .= $sep . "molecular weight undefined";
-            }
-            die 'ERROR, not enough data to estimate Z' . "$error" . "\n";
+    if( defined $volume && defined $density && defined $molwt ) {
+        return int( 0.5 + $N * $density * $volume / $molwt );
+    } else {
+        my $error = '';
+        my $sep = '; ';
+        if( !defined $volume ) {
+            $error .= $sep . 'cell volume undefined';
         }
+        if( !defined $density ) {
+             $error .= $sep . 'crystal density undefined';
+        }
+        if( !defined $molwt ) {
+            $error .= $sep . 'molecular weight undefined';
+        }
+        die 'ERROR, not enough data to estimate Z' . "$error" . "\n";
     }
 }
 
 sub get_crystal_density
 {
-    my $values = shift;
+    my ($values) = @_;
 
-    for my $tag (qw(
+    my $density = get_aliased_value( $values,
+            [ qw(
                 _exptl_crystal_density_diffrn
                 _exptl_crystal.density_diffrn
                 _exptl_crystal.density_Matthews
                 _exptl_crystal_density_meas
-             )) {
-        if( exists $values->{$tag} ) {
-            my $density = $values->{$tag}[0];
-            $density =~ s/\(\d*\)$//;
-            return $density;
-        }
+            ) ]
+    );
+
+    if (defined $density) {
+        $density = unpack_cif_number( $density );
     }
-    return undef;
+
+    return $density;
 }
 
 sub get_molecular_weight
 {
-    my $values = shift;
+    my ($values) = @_;
 
-    for my $tag (qw(
+    my $weight = get_aliased_value( $values,
+            [ qw(
                 _chemical_formula_weight
                 _chemical_formula.weight
                 _chemical_formula_weight_meas
                 _chemical_formula.weight_meas
-             )) {
-        if( exists $values->{$tag} ) {
-            my $wt = $values->{$tag}[0];
-            $wt =~ s/\(\d*\)$//;
-            return $wt;
-        }
+            ) ]
+    );
+
+    if ( defined $weight ) {
+        $weight =  unpack_cif_number( $weight );
     }
-    return undef;
+
+    return $weight;
 }
 
 sub get_volume
 {
-    my $values = shift;
+    my ($values) = @_;
 
+    my $volume;
     if( defined $values->{_cell_volume} ) {
-        my $volume = $values->{_cell_volume}[0];
-        $volume =~ s/\(\d*\)$//;
-        return $volume;
+        $volume = unpack_cif_number( $values->{_cell_volume}[0] );
     } else {
-        if( defined $values->{_cell_length_a} &&
-            defined $values->{_cell_length_b} &&
-            defined $values->{_cell_length_c} ) {
+        eval {
             my @cell = get_cell( $values );
-            return cell_volume( @cell );
-        } else {
-            return undef
+            $volume = cell_volume( @cell );
+        };
+        if ($@) {
+            $@ =~ s/^ERROR, //;
+            warn "WARNING, not enough data to estimate cell volume -- $@";
         }
     }
-    return undef
+
+    return $volume;
 }
 
 1;

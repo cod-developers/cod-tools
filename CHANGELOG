@@ -11,36 +11,69 @@ cod-tools (unreleased)
       - adding the has_unknown_value(), has_inapplicable_value(),
         has_special_value(), get_data_value() and get_aliased_value()
         subroutines.
+      - cifversion() subroutine.
     - COD::CIF::Tags::Merge: a new module with CIF data block merging
       code.
     - COD::CIF::Tags::COD:
-      - Adding all the data names that were defined in the cif_cod.dic
+      - adding all the data names that were defined in the cif_cod.dic
         version 0.035.
     - cif_fillcell: --merge-special-positions command line option.
     - COD::AuthorNames:
       - adding the get_name_syntax_description() subroutine.
     - COD::CIF::Data::Check module.
     - COD::CIF::DDL::Ranges module.
-    - codcif: cif_append_datablock() method.
+    - codcif:
+      - cif_append_datablock() method.
+      - value_type_from_string_1_1() function.
+      - value_type_from_string_2_0() function.
+      - unpack_precision() function.
     - cod_manage_related script.
+    - dic2markdown script.
+    - COD::CIF::Data::EstimateZ:
+      - adding a warning message about the inability to calculate the cell
+        volume in the get_volume() subroutine.
+    - COD::AtomNeighbours: adding subroutine
+      neighbour_list_from_chemistry_openbabel_obmol() for the construction
+      of atom neighbours data structure from the object of
+      Chemistry::OpenBabel::OBMol Perl module.
+    - COD::CIF::Data::AtomList:
+      - Adding the generate_cod_molecule_data_block() subroutine.
   * Changed:
     - Changing the error messages regarding unrecognised space groups
       to match those raised by the COD::CIF::Data::get_symmetry_operators()
       subroutine.
+    - COD::AuthorNames::parse_author_name(): treating leading and trailing
+      spaces in author names separately to issue less misleading error
+      messages about space symbols not permitted in author names.
     - COD::CIF::Tags::Manage:
-      - Changing the way set_loop_tag() behaves when incorrect parameters are
+      - changing the way set_loop_tag() behaves when incorrect parameters are
         passed.
     - COD::CIF::Tags::Print:
-      - Simplified the interface of the print_loop() subroutine.
+      - simplified the interface of the print_loop() subroutine.
     - Removed a conditional dealing with an undefined data block name from
       multiple scripts.
     - cif_validate:
-      - Change the way numeric enumeration ranges are displayed in audit
+      - changing the way numeric enumeration ranges are displayed in audit
         messages.
+    - COD::CIF::Parser::Bison and pycodcif: using unpack_precision()
+      function to extract precisions from numeric CIF values.
     - pycodcif: throwing CifParserException instead of exiting.
     - COD::CIF::Data::CODNumbers:
-      - Adding 'have_equiv_lattices' and 'have_equiv_bibliographies' to the
-        list of exported subroutines.
+      - adding 'have_equiv_lattices', 'have_equiv_bibliographies',
+        'have_equiv_timestamps', 'have_equiv_category_values' and
+        'build_entry_from_db_row' to the list of exported subroutines.
+    - COD::CIF::Data::SymmetryGenerator:
+      - adding 'shift_atom' to the list of exported subroutines.
+    - cif_fillcell:
+      - modifying the output to always contain the '_atom_site_label' data
+        item values.
+      - modifying the output to encode the symop and translation information
+        in atom names in a more standard way.
+    - cif_find_symmetry: flushing zeros in the output coordinates.
+    - replacement_values.lst:
+      - adding new replacement rules.
+    - codcif: requalifying warnings about unallowed symbols in CIF 1.1
+      comments as notes in fix mode.
   * Fixed:
     - Using CIF value type to detect special CIF values '?' and '.'
       in:
@@ -69,6 +102,17 @@ cod-tools (unreleased)
     - pycodcif:
       - Converting Unicode file names to string before processing.
       - Fixing incorrect braces in dictionary member access.
+      - Fixing incorrect precision conversion for values with capital E
+        letter in their representation.
+    - COD::Spacegroups::Lookup::COD:
+      - Correcting space group information of the 'R 1 2/c 1' space group.
+    - cif_fillcell:
+      - Correcting the numbering of the symmetry operators in atom names to
+        start from '1' and not '0'.
+    - cif_filter: correcting CIF-encoding of user-supplied bibliography
+      values for both CIF 1.1 and CIF 2.0.
+    - Adding 'openbabel' from 'epel' repository to CentOS-6.8/run.sh
+      dependency list.
 
 cod-tools (2.1)
 

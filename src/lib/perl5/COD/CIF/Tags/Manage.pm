@@ -17,6 +17,7 @@ use warnings;
 require Exporter;
 our @ISA = qw( Exporter );
 our @EXPORT_OK = qw(
+    cifversion
     clean_cif
     exclude_tag
     tag_is_empty
@@ -493,6 +494,17 @@ sub get_aliased_value
     }
 
     return $value;
+}
+
+sub cifversion($)
+{
+    my( $datablock ) = @_;
+    return if !exists $datablock->{cifversion} ||
+              !exists $datablock->{cifversion}{major} ||
+              !exists $datablock->{cifversion}{minor};
+
+    return sprintf '%d.%d', $datablock->{cifversion}{major},
+                            $datablock->{cifversion}{minor};
 }
 
 ##

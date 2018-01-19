@@ -16,6 +16,7 @@ use DBI;
 use File::Basename qw( basename );
 use List::MoreUtils qw( uniq );
 use COD::Formulae::Parser::AdHoc;
+use COD::CIF::Data::Check qw( parse_datetime );
 use COD::CIF::Data::CellContents qw( cif_cell_contents );
 use COD::CIF::Tags::Manage qw( get_aliased_value );
 use COD::Precision qw( eqsig );
@@ -26,10 +27,13 @@ our @EXPORT_OK = qw(
     fetch_duplicates
     fetch_duplicates_from_database
     get_database_entries
+    build_entry_from_db_row
     cif_fill_data
     entries_are_the_same
     have_equiv_lattices
     have_equiv_bibliographies
+    have_equiv_category_values
+    have_equiv_timestamps
 );
 
 my %default_options = (
@@ -745,6 +749,60 @@ sub have_equiv_bibliographies
     }
 
     return 1;
+}
+
+sub have_equiv_timestamps
+{
+    my ($entry_1, $entry_2, $data_name) = @_;
+
+    my $timestamp_1 = $entry_1->{'timestamp'}{$data_name};
+    my $timestamp_2 = $entry_2->{'timestamp'}{$data_name};
+
+    if ( !( defined $timestamp_1 && defined $timestamp_2 ) ) {
+        return 1;
+    }
+
+    use DateTime::Format::RFC3339;
+    my $parser = DateTime::Format::RFC3339->new();
+
+    my $dt_1;
+    my $dt_2;
+    eval {
+        $dt_1 = parse_datetime($timestamp_1);
+        $dt_1->set_time_zone('UTC');
+    };
+    if ($@) {
+        chomp $@;
+        warn $@ . "\n";
+    }
+
+    eval {
+        $dt_2 = parse_datetime($timestamp_2);
+        $dt_2->set_time_zone('UTC');
+    };
+    if ($@) {
+        chomp $@;
+        warn $@ . "\n";
+    }
+
+    if ( !( defined $dt_1 && defined $dt_2 ) ) {
+        return 1;
+    }
+
+    if ( is_date_only_timestamp($timestamp_1) ||
+         is_date_only_timestamp($timestamp_2) ) {
+        return $dt_1->date() eq $dt_2->date();
+    }
+
+    return DateTime->compare($dt_1, $dt_2) == 0 ? 1 : 0;
+}
+
+# TODO: this might be better of in a specialized Timestamp module...
+sub is_date_only_timestamp
+{
+    my ($timestamp) = @_;
+
+    return ( $timestamp =~ /^\d{4}-\d{2}-\d{2}$/ ) ? 1 : 0;
 }
 
 sub entries_are_the_same

@@ -52,6 +52,9 @@
 
     CIF *new_cif_from_cif_file( char *filename, cif_option_t co, cexception_t *ex );
 
+    // from common.h:
+    double unpack_precision( char * value, double precision );
+
     PyObject *extract_value( CIFVALUE * cifvalue );
     cif_option_t extract_parser_options( PyObject * options );
     ssize_t datablock_value_length( DATABLOCK *datablock, size_t tag_index );
@@ -143,38 +146,6 @@ def parse(filename,*args):
 
     return data, nerrors, [warnings + errors]
 
-def unpack_precision(value,precision):
-    """
-    Adapted from:
-
-    URL: svn://www.crystallography.net/cod-tools/branches/andrius-inline-to-swig/src/lib/perl5/Precision.pm
-    Relative URL: ^/branches/andrius-inline-to-swig/src/lib/perl5/Precision.pm
-    Repository Root: svn://www.crystallography.net/cod-tools
-    Repository UUID: 04be6746-3802-0410-999d-98508da1e98c
-    Revision: 3228
-    """
-    import re
-    match = re.search('([-+]?[0-9]*)?(\.)?([0-9]+)?(?:e([+-]?[0-9]+))?',
-                      value)
-    
-    int_part = 0
-    if match.group(1):
-        if match.group(1) == '+':
-            int_part = 1
-        elif match.group(1) == '-':
-            int_part = -1
-        else:
-            int_part = int(match.group(1))
-    dec_dot = match.group(2)
-    mantissa = match.group(3)
-    exponent = 0
-    if match.group(4):
-        exponent = int(match.group(4))
-    if dec_dot and mantissa:
-        precision = float(precision) / (10**len(mantissa))
-    precision = float(precision) * (10**exponent)
-    return precision
-
 def extract_precision(values,types):
     import re
     if isinstance(types,list):
@@ -203,7 +174,8 @@ def extract_precision(values,types):
     elif types == 'FLOAT':
         match = re.search('^(.*)(\(([0-9]+)\))$',values)
         if match is not None and match.group(1):
-            return unpack_precision(match.group(1),match.group(3)), 1
+            return unpack_precision(match.group(1), \
+                                    float(match.group(3))), 1
         else:
             return None, 1
     elif types == 'INT':
@@ -371,6 +343,12 @@ def escape_meta(text, escaped_symbols):
 class CifParserException(Exception):
     pass
 
+class CifUnknownValue(object):
+    pass
+
+class CifInapplicableValue(object):
+    pass
+
 class CifFile(object):
     def __init__(self, file = None, parser_options = {}):
         if file is None:
@@ -401,6 +379,14 @@ class CifFile(object):
         with capture() as output:
             cif_print( self._cif )
         return output[0]
+
+    def keys(self):
+        keys = list()
+        datablock = cif_datablock_list( self._cif )
+        while datablock is not None:
+            keys.append( datablock_name( datablock ) )
+            datablock = datablock_next( datablock )
+        return keys
 
     def append(self, datablock):
         # must be a datablock!
@@ -517,6 +503,14 @@ def capture():
 
 %typemap(in) CIFVALUE * (PyObject *) {
     cif_value_type_t type = CIF_UNKNOWN;
+
+    PyObject * module = PyImport_ImportModule( "pycodcif" );
+    PyObject * module_dict  = PyModule_GetDict( module );
+    PyObject * unknown      = PyMapping_GetItemString( module_dict,
+                                                       "CifUnknownValue" );
+    PyObject * inapplicable = PyMapping_GetItemString( module_dict,
+                                                       "CifInapplicableValue" );
+
     char * value = strdupx( PyString_AsString( PyObject_Str( $input ) ),
                             NULL );
     if(        PyInt_Check( $input ) || PyLong_Check( $input ) ) {
@@ -525,8 +519,11 @@ def capture():
         type = CIF_FLOAT;
     } else if( PyString_Check( $input ) ) {
         type = CIF_SQSTRING; // conditions exist here
-    } else if( $input == Py_None ) {
+    } else if( $input == Py_None || PyObject_IsInstance( $input, unknown ) ) {
         value = "?";
+        type = CIF_UQSTRING;
+    } else if( PyObject_IsInstance( $input, inapplicable ) ) {
+        value = ".";
         type = CIF_UQSTRING;
     }
     $1 = new_value_from_scalar( value, type, NULL );
@@ -587,6 +584,9 @@ DATABLOCK * cif_datablock_list( CIF *cif );
 #include <cif_compiler.h>
 
 CIF *new_cif_from_cif_file( char *filename, cif_option_t co, cexception_t *ex );
+
+// from common.h:
+double unpack_precision( char * value, double precision );
 
 PyObject *extract_value( CIFVALUE * cifvalue );
 cif_option_t extract_parser_options( PyObject * options );

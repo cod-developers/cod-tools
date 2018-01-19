@@ -10,6 +10,8 @@ sudo yum install -y \
     perl-WWW-Curl \
     perl-XML-Simple
 sudo yum install --enablerepo=epel -y \
+    openbabel \
     perl-DateTime-Format-RFC3339 \
     perl-Capture-Tiny \
-    perl-Carp-Assert
+    perl-Carp-Assert \
+    perl-openbabel

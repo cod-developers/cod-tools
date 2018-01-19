@@ -52,6 +52,7 @@ use COD::UserMessage qw( error );
 my $use_parser = 'c';
 my $findsym_method = 'spglib';
 my $symprec = 1e-5;
+my $zero_threshold = 1e-10;
 my $dump_symmetry_dataset = 0;
 my $invert_CoB = 1;
 
@@ -378,7 +379,8 @@ sub find_symmetry_spglib
             ( $values->{'_atom_site_fract_x'}[$i],
               $values->{'_atom_site_fract_y'}[$i],
               $values->{'_atom_site_fract_z'}[$i] ) =
-                map { sprintf( $fformat, $_ ) }
+                map { $_ = ( $_ > $zero_threshold ? $_ : 0 );
+                     sprintf( $fformat, $_ ) }
                     @$coordinates_now;
         }
     } else {

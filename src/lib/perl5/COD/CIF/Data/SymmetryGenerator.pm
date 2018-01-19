@@ -34,6 +34,7 @@ our @EXPORT_OK = qw(
     apply_shifts
     atoms_coincide
     chemical_formula_sum
+    shift_atom
     symop_apply
     symop_generate_atoms
     symop_register_applied_symop
@@ -198,6 +199,8 @@ sub symop_register_applied_symop($$@)
                 flush_zeros_in_symop(
                     symop_modulo_1( $symop_now ) ) ) );
 
+    # FIXME: the symmetry operation list is currently optional in the
+    # atom object. The following code fails if the list is not provided
     $new_atom_info->{symop} = $symop_now;
     $new_atom_info->{symop_id} =
         $new_atom_info->{symop_list}
@@ -364,31 +367,10 @@ sub shift_atom($)
     foreach my $x ( @shift ) {
     foreach my $y ( @shift ) {
     foreach my $z ( @shift ) {
-        my $new_atom = copy_atom($atom);
-        $new_atom->{'translation'} = [ $x, $y, $z ];
-        my @new_atom_xyz;
-        if( $x != 0 || $y != 0 || $z != 0 ||
-            $atom->{'unity_matrix_applied'} != 1) {
-
-            $new_atom_xyz[0] = $atom->{'coordinates_fract'}[0] + $x;
-            $new_atom_xyz[1] = $atom->{'coordinates_fract'}[1] + $y;
-            $new_atom_xyz[2] = $atom->{'coordinates_fract'}[2] + $z;
-
-            my $shift_label = ( $x + 5 ) . ( $y + 5 ) . ( $z + 5 );
-
-            $new_atom->{'coordinates_fract'} = \@new_atom_xyz;
-            $new_atom->{'coordinates_ortho'} =
-                        symop_vector_mul( $atom->{'f2o'}, \@new_atom_xyz );
-            $new_atom->{'name'} =
-                        $atom->{'site_label'} . "_" .
-                        $atom->{'symop_id'} . "_" .
-                        $shift_label;
-            $new_atom->{'translation_id'} = $shift_label;
-        }
-        push @shifted_atoms, $new_atom;
+        push @shifted_atoms, translate_atom( $atom, [ $x, $y, $z ] );
     } } }
 
-    return @shifted_atoms;
+    return \@shifted_atoms;
 }
 
 #===============================================================#
@@ -410,7 +392,7 @@ sub apply_shifts($)
     my @shifted = ();
 
     for my $atom (@{$atoms}) {
-        push( @shifted, shift_atom( $atom ));
+        push @shifted, @{ shift_atom($atom) };
     }
 
     return \@shifted;

@@ -105,6 +105,19 @@ sub parse_author_name
     my $LastNames = qr/${Last}(?:\s+${Last})*/;
 
     my $UCS_author = $unparsed_name;
+    my $space = {
+        leading  => $UCS_author =~ s/^ +//,
+        trailing => $UCS_author =~ s/ +$//,
+    };
+    delete $space->{leading}  if !$space->{leading};
+    delete $space->{trailing} if !$space->{trailing};
+
+    if( %$space ) {
+        warn "WARNING, name '$unparsed_name' contains " .
+             join( ' and ', sort keys %$space ) . ' spaces, ' .
+             'that is not permitted in names' . "\n";
+    }
+
     if( $UCS_author =~ /^([^[:alpha:]])/ ||
         $UCS_author =~ /([^-\.,[:alpha:]'()\s])/ ) {
         my $symbol_escaped = $1;
