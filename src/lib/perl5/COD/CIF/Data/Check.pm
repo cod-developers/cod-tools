@@ -41,7 +41,11 @@ parse_datetime
 check_z
 );
 
-my $CIF_NUMERIC_REGEX = '([+-]?(?:\d+(?:\.\d*)?|\.\d+))\(?(\d*)\)?';
+my $CIF_NUMERIC_REGEX =
+    '([+-]?' .
+    '(?:\d+(?:\.\d*)?|\.\d+)' .
+    '(?:[eE][+-]?\d+)?)' .
+    '(\(\d+\))?';
 
 ##
 # Checks if the publication authors names provided in the data block
