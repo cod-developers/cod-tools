@@ -238,6 +238,13 @@ sub ddl2ddlm
             $ddl_datablock->{values}{_category}[0] eq 'category_overview' ) {
             $ddl_datablock->{values}{_name}[0] =~ s/^_//;
             $ddl_datablock->{values}{_name}[0] =~ s/_\[\]$//;
+            # Uppercasing category names to make them stand out:
+            $ddl_datablock->{values}{_name}[0] =
+                uc $ddl_datablock->{values}{_name}[0];
+            # For now, 'Loop' and 'Set' categories are not differentiated:
+            set_tag( $ddl_datablock, '_definition.class', 'Loop' );
+        } else {
+            set_tag( $ddl_datablock, '_definition.class', 'Attribute' );
         }
 
         for my $tag (sort keys %tags_to_rename) {
@@ -246,7 +253,6 @@ sub ddl2ddlm
                         $tag,
                         $tags_to_rename{$tag} );
         }
-        set_tag( $ddl_datablock, '_definition.class', 'Attribute' ); # for now
 
         push @{$ddlm_datablock->{save_blocks}}, $ddl_datablock;
     }
