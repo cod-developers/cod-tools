@@ -37,6 +37,8 @@ my %tags_to_rename = (
     _definition         => '_description.text',
 );
 
+my $category_overview = 'category_overview';
+
 my $use_parser = 'c';
 
 #* OPTIONS:
@@ -236,16 +238,16 @@ sub ddl2ddlm
     my( $ddl_datablocks ) = @_;
     my $ddlm_datablock = new_datablock( 'converted_data_block' );
 
-    my $category_overview = new_datablock( 'category_overview' );
-    set_tag( $category_overview, '_definition.id', 'category_overview' );
-    set_tag( $category_overview, '_definition.class', 'Head' );
-    push @{$ddlm_datablock->{save_blocks}}, $category_overview;
+    my $head = new_datablock( $category_overview );
+    set_tag( $head, '_definition.id', uc $category_overview );
+    set_tag( $head, '_definition.class', 'Head' );
+    push @{$ddlm_datablock->{save_blocks}}, $head;
 
     for my $ddl_datablock (@$ddl_datablocks) {
         next if $ddl_datablock->{name} eq 'on_this_dictionary';
 
         if( exists $ddl_datablock->{values}{_category} &&
-            $ddl_datablock->{values}{_category}[0] eq 'category_overview' ) {
+            $ddl_datablock->{values}{_category}[0] eq $category_overview ) {
             $ddl_datablock->{values}{_name}[0] =~ s/^_//;
             $ddl_datablock->{values}{_name}[0] =~ s/_\[\]$//;
             # Uppercasing category names to make them stand out:
