@@ -18,6 +18,7 @@ eval 'exec perl -x $0 ${1+"$@"}'
 use strict;
 use warnings;
 use COD::CIF::Parser qw( parse_cif );
+use COD::CIF::Tags::Manage qw( new_datablock rename_tag set_tag );
 use COD::SOptions qw( getOptions );
 use COD::SUsage qw( usage options );
 use COD::ErrorHandler qw( process_warnings
@@ -25,6 +26,15 @@ use COD::ErrorHandler qw( process_warnings
                           process_parser_messages );
 use COD::ToolsVersion;
 use HTML::Entities qw( encode_entities );
+
+my %tags_to_rename = (
+    _name               => '_definition.id',
+    _category           => '_name.category_id',
+    _enumeration        => '_enumeration_set.state',
+    _enumeration_detail => '_enumeration_set.detail',
+    _units_detail       => '_units.code',
+    _definition         => '_definition.id',
+);
 
 my $use_parser = 'c';
 
@@ -65,14 +75,20 @@ for my $filename (@ARGV) {
     my ( $data, $err_count, $messages ) = parse_cif( $filename, $options );
     process_parser_messages( $messages, $die_on_error_level );
 
-    if( !@$data || !exists $data->[0] || !exists $data->[0]{cifversion} ||
-        $data->[0]{cifversion}{major} != 2 ) {
+    if( !@$data || !exists $data->[0] ) {
+        # TODO: change the warning
         process_errors( {
                 message  => 'only CIF format version 2.0 or greater ' .
                             'is accepted',
                 program  => $0,
                 filename => $filename
             }, $die_on_errors );
+    }
+
+    if( !exists $data->[0]{cifversion} ||
+        $data->[0]{cifversion}{major} != 2 ) {
+        # TODO: emit a warning
+        $data = [ ddl2ddlm( $data ) ];
     }
 
     for my $datablock (@$data) {
@@ -203,6 +219,49 @@ sub dic_block2markdown
     foreach (@{$node->{children}}) {
         dic_block2markdown( $_, $indent + 1 );
     }
+}
+
+sub ddl2ddlm
+{
+    my( $ddl_datablocks ) = @_;
+    my $ddlm_datablock = new_datablock( 'converted_data_block' );
+
+    my $category_overview = new_datablock( 'category_overview' );
+    set_tag( $category_overview, '_definition.id', 'category_overview' );
+    set_tag( $category_overview, '_definition.class', 'Head' );
+    push @{$ddlm_datablock->{save_blocks}}, $category_overview;
+
+    for my $ddl_datablock (@$ddl_datablocks) {
+        next if $ddl_datablock->{name} eq 'on_this_dictionary';
+
+        if( exists $ddl_datablock->{values}{_category} &&
+            $ddl_datablock->{values}{_category}[0] eq 'category_overview' ) {
+            $ddl_datablock->{values}{_name}[0] =~ s/^_//;
+            $ddl_datablock->{values}{_name}[0] =~ s/_\[\]$//;
+        }
+
+        for my $tag (sort keys %tags_to_rename) {
+            next if !exists $ddl_datablock->{values}{$tag};
+            rename_tag( $ddl_datablock,
+                        $tag,
+                        $tags_to_rename{$tag} );
+        }
+        set_tag( $ddl_datablock, '_definition.class', 'Attribute' ); # for now
+
+        push @{$ddlm_datablock->{save_blocks}}, $ddl_datablock;
+    }
+
+    set_tag( $ddlm_datablock,
+             '_dictionary.title',
+             $ddl_datablocks->[0]{values}{_dictionary_name}[0] );
+    set_tag( $ddlm_datablock,
+             '_dictionary.version',
+             $ddl_datablocks->[0]{values}{_dictionary_version}[0] );
+    set_tag( $ddlm_datablock,
+             '_dictionary.date',
+             $ddl_datablocks->[0]{values}{_dictionary_update}[0] );
+
+    return $ddlm_datablock;
 }
 
 sub unprefix
