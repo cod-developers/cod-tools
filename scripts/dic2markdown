@@ -25,6 +25,7 @@ use COD::ErrorHandler qw( process_warnings
                           process_errors
                           process_parser_messages );
 use COD::ToolsVersion;
+use COD::UserMessage qw( sprint_message );
 use HTML::Entities qw( encode_entities );
 
 my %tags_to_rename = (
@@ -75,20 +76,24 @@ for my $filename (@ARGV) {
     my ( $data, $err_count, $messages ) = parse_cif( $filename, $options );
     process_parser_messages( $messages, $die_on_error_level );
 
-    if( !@$data || !exists $data->[0] ) {
-        # TODO: change the warning
-        process_errors( {
-                message  => 'only CIF format version 2.0 or greater ' .
-                            'is accepted',
-                program  => $0,
-                filename => $filename
-            }, $die_on_errors );
+    if ( !@{$data} ) {
+        warn sprint_message( $0, $filename, undef, 'WARNING',
+                             'the file contains no data blocks',
+                             undef );
+        next;
     }
 
     if( !exists $data->[0]{cifversion} ||
         $data->[0]{cifversion}{major} != 2 ) {
-        # TODO: emit a warning
         $data = [ ddl2ddlm( $data ) ];
+        process_warnings( {
+                message  => 'apparently DDL dictionary was encountered, ' .
+                            'converting it to DDLm; the conversion is ' .
+                            'experimental and may result in corruption ' .
+                            'or loss of dictionary data',
+                program  => $0,
+                filename => $filename,
+            }, $die_on_error_level );
     }
 
     for my $datablock (@$data) {
@@ -221,6 +226,11 @@ sub dic_block2markdown
     }
 }
 
+# Converts (in a rather crude way) CIF data blocks of DDL dictionaries
+# to DDLm in order to represent them using the same code. This method
+# should not be used to translate DDL to DDLm for other purposes as it
+# is largely based on guesswork and works satisfactory only for the
+# purpose of this script.
 sub ddl2ddlm
 {
     my( $ddl_datablocks ) = @_;
