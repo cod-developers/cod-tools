@@ -19,7 +19,7 @@ use strict;
 use warnings;
 use COD::CIF::Parser qw( parse_cif );
 use COD::CIF::Tags::Manage qw( new_datablock rename_tag set_tag );
-use COD::SOptions qw( getOptions );
+use COD::SOptions qw( getOptions get_value );
 use COD::SUsage qw( usage options );
 use COD::ErrorHandler qw( process_warnings
                           process_errors
@@ -40,6 +40,7 @@ my %tags_to_rename = (
 my $category_overview = 'category_overview';
 
 my $use_parser = 'c';
+my $additional_head_text;
 
 #* OPTIONS:
 #*   --use-perl-parser
@@ -47,19 +48,28 @@ my $use_parser = 'c';
 #*   --use-c-parser
 #*                     Use Perl & C parser for CIF parsing (default).
 #*
+#*   --append-head-text
+#*                     Read Markdown text from a file and append it to
+#*                     the dictionary overview text, just before
+#*                     enumerating the categories in the dictionary.
+#*
 #*   --help, --usage
 #*                     Output a short usage message (this message) and exit.
 #*   --version
 #*                     Output version information and exit.
 #**
 @ARGV = getOptions(
-    "--use-perl-parser" => sub { $use_parser = "perl" },
-    "--use-c-parser"    => sub { $use_parser = "c" },
-    "--options"         => sub { options; exit },
-    "--help,--usage"    => sub { usage; exit },
-    '--version'         => sub { print 'cod-tools version ',
-                                 $COD::ToolsVersion::Version, "\n";
-                                 exit }
+    "--use-perl-parser"  => sub { $use_parser = "perl" },
+    "--use-c-parser"     => sub { $use_parser = "c" },
+    "--append-head-text" => sub { open( my $inp, get_value() );
+                                  $additional_head_text =
+                                    join '', <$inp>;
+                                  close $inp },
+    "--options"          => sub { options; exit },
+    "--help,--usage"     => sub { usage; exit },
+    '--version'          => sub { print 'cod-tools version ',
+                                  $COD::ToolsVersion::Version, "\n";
+                                  exit }
 );
 
 my $die_on_errors    = 1;
@@ -118,6 +128,8 @@ for my $filename (@ARGV) {
             printf "Version: %s (%s)\n\n",
                    escape( $datablock->{values}{'_dictionary.version'}[0] ),
                    escape( $datablock->{values}{'_dictionary.date'}[0] );
+
+            print "$additional_head_text\n\n" if $additional_head_text;
 
             dic_block2markdown( $dict, 1 );
         };
