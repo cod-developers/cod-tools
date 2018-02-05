@@ -19,6 +19,7 @@ use strict;
 use warnings;
 use COD::CIF::Parser qw( parse_cif );
 use COD::CIF::Tags::Manage qw( new_datablock rename_tag set_tag );
+use COD::CIF::Unicode2CIF qw( cif2unicode );
 use COD::SOptions qw( getOptions get_value );
 use COD::SUsage qw( usage options );
 use COD::ErrorHandler qw( process_warnings
@@ -273,6 +274,11 @@ sub ddl2ddlm
 
         for my $tag (sort keys %tags_to_rename) {
             next if !exists $ddl_datablock->{values}{$tag};
+
+            $ddl_datablock->{values}{$tag} =
+                [ map { cif2unicode( $_ ) }
+                      @{$ddl_datablock->{values}{$tag}} ];
+
             rename_tag( $ddl_datablock,
                         $tag,
                         $tags_to_rename{$tag} );
