@@ -169,6 +169,34 @@ if( @dict_files ) {
     my $dict_iucr_uri = 'ftp://ftp.iucr.org/pub/cif_core.dic';
 };
 
+#for my $name ( sort keys %dicts ) {
+#    my $dict = $dicts{$name};
+#
+#    local $SIG{__WARN__} = sub { process_warnings( {
+#                                   'message'       => @_,
+#                                   'program'       => $0,
+#                                 }, $die_on_error_level ) };
+#
+#    for my $save_block ( @{$dict->{'Datablock'}{'save_blocks'}} ) {
+#        if ( defined $save_block->{'values'}{'_definition.class'} &&
+#             uc $save_block->{'values'}{'_definition.class'}[0] eq 'HEAD' ) {
+#            next;
+#        }
+#        my $category_id = $save_block->{'values'}{'_name.category_id'}[0];
+#        my $category = $dict->{'Category'}{lc $category_id};
+#
+#        # This should not happen in a proper dictionary
+#        if ( !defined $category ) {
+#            warn "the definition of the '$save_block->{'values'}{'_definition.id'}[0]' " .
+#                "data item seems to be incorrect in the '$dict->{'Datablock'}{'name'}' " .
+#                "dictionary -- the item is defined as belonging to the " .
+#                 "'$category_id' category which is not provided in the " .
+#                 "given dictionary\n";
+#                next;
+#            }
+#    }
+#}
+
 @ARGV = ('-') unless @ARGV;
 # start-iterate-through-CIF-files
 
@@ -804,6 +832,10 @@ sub validate_loops
       if ( exists $dict->{'Item'}{$tag} ) {
         my $category_id = $dict->{'Item'}{$tag}{'values'}{'_name.category_id'}[0];
         my $category = $dict->{'Category'}{lc $category_id};
+
+        # This should not happen in a proper dictionary
+        next if ( !defined $category );
+
         my $category_is_looped =
             (lc $category->{'values'}{'_definition.class'}[0] eq 'loop');
         my $tag_is_looped = defined $data->{$scope}{$instance}{'inloop'}{$tag};
