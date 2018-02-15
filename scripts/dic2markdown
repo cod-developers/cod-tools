@@ -18,7 +18,7 @@ eval 'exec perl -x $0 ${1+"$@"}'
 use strict;
 use warnings;
 use COD::CIF::Parser qw( parse_cif );
-use COD::CIF::Tags::Manage qw( new_datablock rename_tag set_tag );
+use COD::CIF::Tags::Manage qw( cifversion new_datablock rename_tag set_tag );
 use COD::CIF::Unicode2CIF qw( cif2unicode );
 use COD::SOptions qw( getOptions get_value );
 use COD::SUsage qw( usage options );
@@ -96,8 +96,7 @@ for my $filename (@ARGV) {
         next;
     }
 
-    if( !exists $data->[0]{cifversion} ||
-        $data->[0]{cifversion}{major} != 2 ) {
+    if( !cifversion( $data->[0] ) || cifversion( $data->[0] ) !~ /^2\./ ) {
         $data = [ ddl2ddlm( $data ) ];
         process_warnings( {
                 message  => 'apparently DDL dictionary was encountered, ' .
