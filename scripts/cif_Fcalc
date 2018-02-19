@@ -201,9 +201,7 @@ for my $filename (@ARGV) {
         ## my $radiation_wavelengths = remove_su(
         ##     $datablock->{values}{_diffrn_radiation_wavelength} );
         my $cell_parameters = get_unit_cell_parameters( $values );
-        my $f2o = symop_ortho_from_fract(
-            @{$cell_parameters->{crystal_cell_degrees}} );
-        my $atoms = atoms_from_cif( $datablock, $f2o );
+        my $atoms = atoms_from_cif( $datablock );
 
         my %atom_index; # contains a index in $atoms using 'label' key.
         foreach (@{$atoms}) {
@@ -556,9 +554,6 @@ sub remove_su
 #   $datablock
 #               A reference to an array of hashes where the data from the CIF
 #               file is stored.
-#   $f2o
-#               A refence to the orthogonalization matrix for the calculation
-#               of orthogonal coordinates.
 #
 # Returns:
 # $atoms = [
@@ -586,8 +581,11 @@ sub remove_su
 #  ];
 sub atoms_from_cif
 {
-    my( $datablock, $f2o ) = @_;
+    my( $datablock ) = @_;
     my $values = $datablock->{values};
+
+    my @cell = get_cell( $values );
+    my $f2o = symop_ortho_from_fract( @cell );
 
     my $Cromer_Mann_coefficients = get_Cromer_Mann_coefficients( $values );
     my $themal_coefficients = get_thermal( $values );
