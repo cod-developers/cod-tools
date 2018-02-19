@@ -201,7 +201,7 @@ sub dic_block2markdown
     print '#' x ($indent + 1) . ' ' . escape( $title ) . "\n\n";
 
     if( exists $values->{'_description.text'} ) {
-        print escape( unprefix( $values->{'_description.text'}[0] ) ),
+        print mark_hyperlinks( escape( unprefix( $values->{'_description.text'}[0] ) ) ),
               "\n\n";
     }
 
@@ -221,7 +221,7 @@ sub dic_block2markdown
             print '  <tr><td>' . encode_entities(
                   unprefix( $values->{'_enumeration_set.state'}[$i] ) ) .
                   '</td><td>' . encode_entities(
-                  unprefix( $values->{'_enumeration_set.detail'}[$i] ) ) .
+                  mark_hyperlinks( unprefix( $values->{'_enumeration_set.detail'}[$i] ) ) ) .
                   ( $values->{'_enumeration_set.state'}[$i] eq $default
                     ? ' (default)' : '' ) .
                   "</td></tr>\n";
@@ -323,6 +323,15 @@ sub escape
 
     # Escaping HTML:
     $text = encode_entities( $text );
+
+    return $text;
+}
+
+sub mark_hyperlinks
+{
+    my( $text ) = @_;
+
+    $text =~ s/(https?:\/\/[^\s\(\)]+)(\.?)/[$1]($1)$2/g;
 
     return $text;
 }
