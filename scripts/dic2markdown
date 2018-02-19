@@ -40,6 +40,10 @@ my %tags_to_rename = (
 
 my $category_overview = 'category_overview';
 
+sub unprefix($);
+sub escape($);
+sub mark_hyperlinks($);
+
 my $use_parser = 'c';
 my $additional_head_text;
 
@@ -204,14 +208,14 @@ sub dic_block2markdown
     local $\ = "\n\n";
 
     my $title = $values->{'_definition.id'}[0];
-    print '#' x ($indent + 1) . ' ' . escape( $title );
+    print '#' x ($indent + 1) . ' ', escape $title;
 
     if( exists $values->{'_description.text'} ) {
-        print mark_hyperlinks( escape( unprefix( $values->{'_description.text'}[0] ) ) );
+        print mark_hyperlinks escape unprefix $values->{'_description.text'}[0];
     }
 
     if( exists $values->{'_units.code'} ) {
-        print 'Units: ', escape( $values->{'_units.code'}[0] );
+        print 'Units: ', escape $values->{'_units.code'}[0];
     }
 
     local $\ = "\n";
@@ -224,7 +228,7 @@ sub dic_block2markdown
             print '  <tr><td>' . encode_entities(
                   unprefix( $values->{'_enumeration_set.state'}[$i] ) ) .
                   '</td><td>' . encode_entities(
-                  mark_hyperlinks( unprefix( $values->{'_enumeration_set.detail'}[$i] ) ) ) .
+                  mark_hyperlinks unprefix $values->{'_enumeration_set.detail'}[$i] ) .
                   "</td></tr>";
         }
         print '</table>';
@@ -300,7 +304,7 @@ sub ddl2ddlm
     return $ddlm_datablock;
 }
 
-sub unprefix
+sub unprefix($)
 {
     my( $text ) = @_;
 
@@ -315,7 +319,7 @@ sub unprefix
     return $text;
 }
 
-sub escape
+sub escape($)
 {
     my( $text ) = @_;
 
@@ -328,7 +332,7 @@ sub escape
     return $text;
 }
 
-sub mark_hyperlinks
+sub mark_hyperlinks($)
 {
     my( $text ) = @_;
 
