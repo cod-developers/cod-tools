@@ -201,34 +201,36 @@ sub dic_block2markdown
         $indent++;
     }
 
+    local $\ = "\n\n";
+
     my $title = $values->{'_definition.id'}[0];
-    print '#' x ($indent + 1) . ' ' . escape( $title ) . "\n\n";
+    print '#' x ($indent + 1) . ' ' . escape( $title );
 
     if( exists $values->{'_description.text'} ) {
-        print mark_hyperlinks( escape( unprefix( $values->{'_description.text'}[0] ) ) ),
-              "\n\n";
+        print mark_hyperlinks( escape( unprefix( $values->{'_description.text'}[0] ) ) );
     }
 
     if( exists $values->{'_units.code'} ) {
-        printf "Units: %s\n\n", escape( $values->{'_units.code'}[0] );
+        print 'Units: ', escape( $values->{'_units.code'}[0] );
     }
+
+    local $\ = "\n";
 
     if( exists $values->{'_enumeration_set.state'} &&
         exists $values->{'_enumeration_set.detail'} ) {
         print "Values:\n\n",
-              "<table>\n  <tr><th>Value</th><th>Description</th></tr>\n";
+              "<table>\n  <tr><th>Value</th><th>Description</th></tr>";
         for my $i (0..$#{$values->{'_enumeration_set.state'}}) {
             print '  <tr><td>' . encode_entities(
                   unprefix( $values->{'_enumeration_set.state'}[$i] ) ) .
                   '</td><td>' . encode_entities(
                   mark_hyperlinks( unprefix( $values->{'_enumeration_set.detail'}[$i] ) ) ) .
-                  "</td></tr>\n";
+                  "</td></tr>";
         }
-        print "</table>\n";
+        print '</table>';
     } elsif( exists $values->{'_enumeration_set.state'} ) {
         print "Values:\n\n", map { '* ' . escape( $_ ). "\n" }
                                  @{$values->{'_enumeration_set.state'}};
-        print "\n";
     }
     if( exists $values->{'_enumeration.default'} ) {
         printf "Default value: '%s'\n\n", $values->{'_enumeration.default'}[0];
