@@ -196,8 +196,12 @@ sub dic_block2markdown
     my $values = $node->{content}{values};
 
     $indent = 0 if !defined $indent;
-    my $title = $values->{'_definition.id'}[0];
+    if( exists $values->{'_definition.class'} &&
+        $values->{'_definition.class'}[0] eq 'Attribute' ) {
+        $indent++;
+    }
 
+    my $title = $values->{'_definition.id'}[0];
     print '#' x ($indent + 1) . ' ' . escape( $title ) . "\n\n";
 
     if( exists $values->{'_description.text'} ) {
@@ -231,7 +235,7 @@ sub dic_block2markdown
     }
 
     foreach (@{$node->{children}}) {
-        dic_block2markdown( $_, $indent + 1 );
+        dic_block2markdown( $_, $indent );
     }
 }
 
