@@ -488,7 +488,7 @@ if( defined $hkl_file ) {
     for my $hkl_datablock (@{$hkl_data}) {
         my $values = $hkl_datablock->{'values'};
         my( $h_values, $k_values, $l_values,
-            $F_sguared_mes,
+            $F_squared_mes,
             $F_squared_calc,
             $F_squared_sigma_mes ) =
                 ( $values->{_refln_index_h},
@@ -508,19 +508,19 @@ if( defined $hkl_file ) {
                 if( $condition ) {
                     if(
                         ($calculated->[0] >
-                         ($F_sguared_mes->[$i] - $F_squared_sigma_mes->[$i])) &&
+                         ($F_squared_mes->[$i] - $F_squared_sigma_mes->[$i])) &&
                         ($calculated->[0] <
-                         ($F_sguared_mes->[$i] + $F_squared_sigma_mes->[$i]))
+                         ($F_squared_mes->[$i] + $F_squared_sigma_mes->[$i]))
                         ) {
                         print 'Y ';
                     } else {
                         print 'N ';
                     };
                     my $error_squared =
-                        ( abs( $F_sguared_mes->[$i] - $calculated->[0] ) /
-                          $F_sguared_mes->[$i] ) * 100 ;
+                        ( abs( $F_squared_mes->[$i] - $calculated->[0] ) /
+                          $F_squared_mes->[$i] ) * 100 ;
                     print  "My Calc: $calculated->[0] "
-                         . "Mes: $F_sguared_mes->[$i] "
+                         . "Mes: $F_squared_mes->[$i] "
                          . "Their Calc: $F_squared_calc->[$i] "
                          . "Sigma: $F_squared_sigma_mes->[$i] "
                          . " My Error: $error_squared\n";
