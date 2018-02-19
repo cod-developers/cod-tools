@@ -812,8 +812,8 @@ sub get_unit_cell_parameters
 # for example 0.554 [angstrom**-1]
 sub d2r_length
 {
-    my( $c_length1, $c_length2, $angle1_2, $cell_vol ) = @_;
-    return ($c_length1 * $c_length2 * sin( $angle1_2 )) / $cell_vol;
+    my( $a, $b, $gamma, $cell_vol ) = @_;
+    return $a * $b * sin( $gamma ) / $cell_vol;
 }
 
 #--------------------------------------------------------------------#
@@ -826,12 +826,11 @@ sub d2r_length
 # alpha* = d2r_angle( beta, gamma, ALPHA );
 sub d2r_angle
 {
-    my( $angle1, $angle2, $angle_which_converts ) = @_;
+    my( $alpha, $beta, $GAMMA ) = @_;
     use POSIX;
     return POSIX::acos(
-        (cos( $angle1 ) * cos( $angle2 ) -
-         cos( $angle_which_converts)) /
-        (sin( $angle1 ) * sin( $angle2 )) );
+        (cos( $alpha ) * cos( $beta ) - cos( $GAMMA )) /
+        (sin( $alpha ) * sin( $beta )) );
 }
 
 #----------------------------------------------------------------------#
@@ -847,7 +846,7 @@ sub spacing_d_hkl
     my( $h, $k, $l, $a_star, $b_star, $c_star,
          $alpha_star, $beta_star, $gamma_star ) = @_;
     return 1 /
-    sqrt( $h**2 * $a_star**2 +
+        sqrt( $h**2 * $a_star**2 +
               $k**2 * $b_star**2 +
               $l**2 * $c_star**2 +
               2 * $h * $k * $a_star * $b_star * cos( $gamma_star ) +
