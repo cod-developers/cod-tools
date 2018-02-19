@@ -209,10 +209,6 @@ sub dic_block2markdown
         printf "Units: %s\n\n", escape( $values->{'_units.code'}[0] );
     }
 
-    my $default = '?';
-    if( exists $values->{'_enumeration.default'} ) {
-        $default = $values->{'_enumeration.default'}[0];
-    }
     if( exists $values->{'_enumeration_set.state'} &&
         exists $values->{'_enumeration_set.detail'} ) {
         print "Values:\n\n",
@@ -222,17 +218,16 @@ sub dic_block2markdown
                   unprefix( $values->{'_enumeration_set.state'}[$i] ) ) .
                   '</td><td>' . encode_entities(
                   mark_hyperlinks( unprefix( $values->{'_enumeration_set.detail'}[$i] ) ) ) .
-                  ( $values->{'_enumeration_set.state'}[$i] eq $default
-                    ? ' (default)' : '' ) .
                   "</td></tr>\n";
         }
         print "</table>\n";
     } elsif( exists $values->{'_enumeration_set.state'} ) {
-        print "Values:\n\n",
-              map { '* ' . escape( $_ ) .
-                    ($_ eq $default ? ' (default)' : '') . "\n" }
-                  @{$values->{'_enumeration_set.state'}};
+        print "Values:\n\n", map { '* ' . escape( $_ ). "\n" }
+                                 @{$values->{'_enumeration_set.state'}};
         print "\n";
+    }
+    if( exists $values->{'_enumeration.default'} ) {
+        printf "Default value: '%s'\n\n", $values->{'_enumeration.default'}[0];
     }
 
     foreach (@{$node->{children}}) {
