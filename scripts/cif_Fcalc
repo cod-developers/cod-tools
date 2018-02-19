@@ -203,7 +203,7 @@ for my $filename (@ARGV) {
         my $cell_parameters = get_unit_cell_parameters( $values );
         my $f2o = symop_ortho_from_fract(
             @{$cell_parameters->{crystal_cell_degrees}} );
-        my $atoms = atoms_from_cif( $values, $f2o );
+        my $atoms = atoms_from_cif( $datablock, $f2o );
 
         my %atom_index; # contains a index in $atoms using 'label' key.
         foreach (@{$atoms}) {
@@ -553,7 +553,7 @@ sub remove_su
 # Function of extracting atom information from the CIF file.
 #
 # Parameters:
-#   $values
+#   $datablock
 #               A reference to an array of hashes where the data from the CIF
 #               file is stored.
 #   $f2o
@@ -586,14 +586,15 @@ sub remove_su
 #  ];
 sub atoms_from_cif
 {
-    my( $values, $f2o ) = @_;
+    my( $datablock, $f2o ) = @_;
+    my $values = $datablock->{values};
 
     my $Cromer_Mann_coefficients = get_Cromer_Mann_coefficients( $values );
     my $themal_coefficients = get_thermal( $values );
     my $sym_atoms_and_their_count = cell_filling_sym( $values, $f2o );
     my $atoms_neighbors = get_neighbors( $values );
 
-    my $atoms = atom_array_from_cif( { 'values' => $values }, {} );
+    my $atoms = atom_array_from_cif( $datablock, {} );
 
     foreach my $atom ( @{$atoms} ) {
         my $index = $atom->{'index'};
