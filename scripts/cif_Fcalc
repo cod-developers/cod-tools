@@ -499,13 +499,10 @@ if( defined $hkl_file ) {
                   $values->{_refln_f_squared_sigma} );
 
         foreach my $calculated (@{$hkl_and_F_sorted}) {
-            my $set_flag = 0;
             for my $i (0..$#{$values->{_refln_index_h}}) {
-                my $condition =
-                    ( $calculated->[1][0] == $h_values->[$i] &&
-                      $calculated->[1][1] == $k_values->[$i] &&
-                      $calculated->[1][2] == $l_values->[$i] );
-                if( $condition ) {
+                if( $calculated->[1][0] == $h_values->[$i] &&
+                    $calculated->[1][1] == $k_values->[$i] &&
+                    $calculated->[1][2] == $l_values->[$i] ) {
                     if(
                         ($calculated->[0] >
                          ($F_squared_mes->[$i] - $F_squared_sigma_mes->[$i])) &&
@@ -524,9 +521,8 @@ if( defined $hkl_file ) {
                          . "Their Calc: $F_squared_calc->[$i] "
                          . "Sigma: $F_squared_sigma_mes->[$i] "
                          . " My Error: $error_squared\n";
-                    $set_flag = 1;
+                    last;
                 }
-                last if( $set_flag );
             } # end for
         } # end foreach
     } # end for data blocks
