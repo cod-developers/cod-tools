@@ -634,30 +634,16 @@ sub get_Cromer_Mann_coefficients
     # filling data by empty hashes if label _atom_type_symbol
     # is not defined;
     if( !defined $values->{'_atom_type_symbol'}[0] ) {
-        for(0..$#{$labels}) {
-            push( @atoms_aniso_coefficients, {} );
-        }
+        @atoms_aniso_coefficients = ( {} ) x @$labels;
     }
+
     # correction of chemical element to standard record;
     foreach (@{$values->{_atom_type_symbol}}) {
-        my $double_sym = ucfirst( lc( substr( $_,0,2 )));
-        $double_sym =~ s/\s//g;
-        push( @{$chemical_type_of_Cromer_Mann_loop}, $double_sym );
+        my $chemical_type = ucfirst( lc( substr( $_, 0, 2 ) ) );
+        $chemical_type =~ s/\s//g;
+        push @{$chemical_type_of_Cromer_Mann_loop}, $chemical_type;
     }
-    my $Cromer_Mann_coefficients =
-        [ $values->{'_atom_type_scat_cromer_mann_a1'},
-          $values->{'_atom_type_scat_cromer_mann_a2'},
-          $values->{'_atom_type_scat_cromer_mann_a3'},
-          $values->{'_atom_type_scat_cromer_mann_a4'},
-          $values->{'_atom_type_scat_cromer_mann_b1'},
-          $values->{'_atom_type_scat_cromer_mann_b2'},
-          $values->{'_atom_type_scat_cromer_mann_b3'},
-          $values->{'_atom_type_scat_cromer_mann_b4'},
-          $values->{'_atom_type_scat_cromer_mann_c'} ];
-    my $atom_scat_dispersion_real =
-          $values->{'_atom_type_scat_dispersion_real'};
-    my $atom_scat_dispersion_imag =
-          $values->{'_atom_type_scat_dispersion_imag'};
+
     for my $i (0..$#{$labels}) {
         # general loop
         my $atom_chemical_type = $values->{'_atom_site_type_symbol'}[$i];
@@ -671,24 +657,25 @@ sub get_Cromer_Mann_coefficients
         ## ">>> $chemical_type_of_Cromer_Mann_loop->[$y]\n";
         ## print length($atom_chemical_type), 
         ## "<<< $atom_chemical_type\n";
-            if( $atom_chemical_type eq
-                 $chemical_type_of_Cromer_Mann_loop->[$y] ) {
-                my %thermal = (
-                    'Crommer_Mann_coefficients' => [
-                        $Cromer_Mann_coefficients->[0][$y],
-                        $Cromer_Mann_coefficients->[1][$y],
-                        $Cromer_Mann_coefficients->[2][$y],
-                        $Cromer_Mann_coefficients->[3][$y],
-                        $Cromer_Mann_coefficients->[4][$y],
-                        $Cromer_Mann_coefficients->[5][$y],
-                        $Cromer_Mann_coefficients->[6][$y],
-                        $Cromer_Mann_coefficients->[7][$y],
-                        $Cromer_Mann_coefficients->[8][$y] ],
-                    'scat_dispersion_real' => $atom_scat_dispersion_real->[$y],
-                    'scat_dispersion_imag' => $atom_scat_dispersion_imag->[$y]
-                    );
-                push @atoms_aniso_coefficients, \%thermal;
-            } # end of if;
+            next if $atom_chemical_type ne
+                    $chemical_type_of_Cromer_Mann_loop->[$y];
+            my %thermal = (
+                'Crommer_Mann_coefficients' => [
+                    $values->{'_atom_type_scat_cromer_mann_a1'}[$y],
+                    $values->{'_atom_type_scat_cromer_mann_a2'}[$y],
+                    $values->{'_atom_type_scat_cromer_mann_a3'}[$y],
+                    $values->{'_atom_type_scat_cromer_mann_a4'}[$y],
+                    $values->{'_atom_type_scat_cromer_mann_b1'}[$y],
+                    $values->{'_atom_type_scat_cromer_mann_b2'}[$y],
+                    $values->{'_atom_type_scat_cromer_mann_b3'}[$y],
+                    $values->{'_atom_type_scat_cromer_mann_b4'}[$y],
+                    $values->{'_atom_type_scat_cromer_mann_c'}[$y] ],
+                'scat_dispersion_real' =>
+                    $values->{'_atom_type_scat_dispersion_real'}[$y],
+                'scat_dispersion_imag' =>
+                    $values->{'_atom_type_scat_dispersion_imag'}[$y],
+                );
+            push @atoms_aniso_coefficients, \%thermal;
         } # second for
     } # first for 
     return \@atoms_aniso_coefficients;
@@ -924,11 +911,11 @@ sub atom_structure_factor_from_coefficients
     my( $a1, $a2, $a3, $a4, $b1, $b2, $b3, $b4, $c ) = @{$Cromer_Mann};
     my $sin_teta_div_wavelength = 1 / (2 * $resolution);
     return
-    $a1 * exp( -$b1 * $sin_teta_div_wavelength**2 ) +
-    $a2 * exp( -$b2 * $sin_teta_div_wavelength**2 ) +
-    $a3 * exp( -$b3 * $sin_teta_div_wavelength**2 ) +
-    $a4 * exp( -$b4 * $sin_teta_div_wavelength**2 ) +
-    $c;
+        $a1 * exp( -$b1 * $sin_teta_div_wavelength**2 ) +
+        $a2 * exp( -$b2 * $sin_teta_div_wavelength**2 ) +
+        $a3 * exp( -$b3 * $sin_teta_div_wavelength**2 ) +
+        $a4 * exp( -$b4 * $sin_teta_div_wavelength**2 ) +
+        $c;
 }
 
 #----------------------------------------------------------------------#
