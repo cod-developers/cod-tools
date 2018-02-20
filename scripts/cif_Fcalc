@@ -232,10 +232,6 @@ for my $filename (@ARGV) {
             }
         }
 
-        my $scat_dispersion_key = 0;
-        if( defined $atoms->[0]{'scat_dispersion_real'} ) {
-            $scat_dispersion_key = 1;
-        }
         # seaching list of chemical elements;
         my $chemical_element_list = [];
         foreach my $atom (@{$atoms}) {
@@ -280,6 +276,11 @@ for my $filename (@ARGV) {
         unless( $dump_Cromer_Mann_parameters || $dump_cell_parameters ||
                 $dump_xyz_coordinates || $dump_cell_xyz_coordinates ) {
 
+            if( !defined $atoms->[0]{'scat_dispersion_real'} ) {
+                die 'ERROR, the CIF file does not contain the data ' .
+                    'of anomalous-dispersion scattering factor' . "\n";
+            }
+
             my( $h_max, $h_min, $k_max, $k_min, $l_max, $l_min );
             if(!defined $Miller_indexes) {
                 ( $h_max, $h_min, $k_max, $k_min, $l_max, $l_min ) =
@@ -301,9 +302,12 @@ for my $filename (@ARGV) {
                     @{$cell_parameters->{reciprocal_cell_radians}} );
                 next if($resolution_hkl < $max_resolution);
 
-                my ( $F_cos_comp_w_Tf_and_cor, $F_sin_comp_w_Tf_and_cor,
-                     $F_cos_comp_w_cor, $F_sin_comp_w_cor,
-                     $F_cos_comp, $F_sin_comp ) = (0,0,0,0,0,0);
+                my ( $F_cos_comp_w_Tf_and_cor,
+                     $F_sin_comp_w_Tf_and_cor,
+                     $F_cos_comp_w_cor,
+                     $F_sin_comp_w_cor,
+                     $F_cos_comp,
+                     $F_sin_comp ) = ( 0, 0, 0, 0, 0, 0 );
 
                 foreach my $atom (@{$atoms}) {
                     #------------------------------------------------------
@@ -323,13 +327,10 @@ for my $filename (@ARGV) {
                         atom_structure_factor_from_coefficients(
                             $CromerManncoeff, $resolution_hkl );
 
-                    my $atom_structure_factor_corrected;
-                    if( $scat_dispersion_key ) {
-                        $atom_structure_factor_corrected =
-                            sqrt( ( $atom_structure_factor +
-                                    $atom->{'scat_dispersion_real'} )**2 +
-                                    $atom->{'scat_dispersion_real'}**2 );
-                    }
+                    my $atom_structure_factor_corrected =
+                        sqrt( ( $atom_structure_factor +
+                                $atom->{'scat_dispersion_real'} )**2 +
+                                $atom->{'scat_dispersion_real'}**2 );
 
                     foreach my $sym_xyz (@{$atom->{symmetrical_xyz_fract}}) {
                         my $atom_hkl_phase = atom_phase_hkl_rad( @hkl, @{$sym_xyz} );
@@ -377,20 +378,15 @@ for my $filename (@ARGV) {
                         $F_sin_comp_w_cor +=
                             $atom->{atom_site_occupancy} * $atom_structure_factor *
                             $temperature_factor * sin( $atom_hkl_phase );
-                        if( $scat_dispersion_key ) {
-                            $F_cos_comp +=
-                                $atom->{atom_site_occupancy} *
-                                $atom_structure_factor_corrected *
-                                $temperature_factor * cos( $atom_hkl_phase );
-                             $F_sin_comp +=
-                                $atom->{atom_site_occupancy} *
-                                $atom_structure_factor_corrected *
-                                $temperature_factor * sin( $atom_hkl_phase );
-                        } else {
-                            die 'ERROR, the CIF file does not contain the data '
-                              . 'of anomalous-dispersion scattering factor'
-                              . "\n";
-                        }
+
+                        $F_cos_comp +=
+                            $atom->{atom_site_occupancy} *
+                            $atom_structure_factor_corrected *
+                            $temperature_factor * cos( $atom_hkl_phase );
+                        $F_sin_comp +=
+                            $atom->{atom_site_occupancy} *
+                            $atom_structure_factor_corrected *
+                            $temperature_factor * sin( $atom_hkl_phase );
                     } # foreach of cell atoms;
                 } # foreach of assimetric unit atoms;
 
