@@ -37,6 +37,7 @@ use COD::CIF::Data qw( get_cell );
 use COD::Algebra::Vector qw( distance );
 use COD::Spacegroups::Symop::Parse qw( symop_from_string modulo_1 );
 use COD::Spacegroups::Symop::Algebra qw( symop_vector_mul );
+use COD::Precision qw( unpack_cif_number );
 use COD::CromerMann;
 use COD::CIF::Data qw( get_symmetry_operators );
 use COD::Fractional qw( symop_ortho_from_fract );
@@ -198,8 +199,7 @@ for my $filename (@ARGV) {
 
         my @hkl_and_F;
         eval {
-        ## my $radiation_wavelengths = remove_su(
-        ##     $datablock->{values}{_diffrn_radiation_wavelength} );
+
         my $cell_parameters = get_unit_cell_parameters( $values );
         my $atoms = atoms_from_cif( $datablock );
 
@@ -528,20 +528,6 @@ if( defined $hkl_file ) {
     } # end for data blocks
 }
 
-#-------------------------------------------------------------------#
-# Remove the standard deviation (standard uncertainties) components
-# from input data; 
-# Parameters: reference to an array with scalar
-# values; for ex.: 0.21582(8) 
-# Return: reference to an array without
-# std. deviations; for ex.: 0.21582
-sub remove_su
-{
-    my( $input ) = @_;
-    return [ map { my $value = $_;
-                   $value =~ s/\(\d+\)//; $value } @{$input} ];
-}
-
 #--------------------------------------------------------------------#
 # Function of extracting atom information from the CIF file.
 #
@@ -707,16 +693,24 @@ sub get_thermal
     my @atoms_thermal_coefficients;
 
     my $thermal_parameter_B =
-        remove_su( $values->{'_atom_site_b_iso_or_equiv'} );
+        [ map { $_ = unpack_cif_number( $_ ) }
+              @{$values->{'_atom_site_b_iso_or_equiv'}} ];
     my $squared_displacement_U =
-        remove_su( $values->{'_atom_site_u_iso_or_equiv'} );
+        [ map { $_ = unpack_cif_number( $_ ) }
+              @{$values->{'_atom_site_u_iso_or_equiv'}} ];
     my @anisotrophic_U_ij_values =
-        ( remove_su( $values->{'_atom_site_aniso_u_11'} ),
-          remove_su( $values->{'_atom_site_aniso_u_22'} ),
-          remove_su( $values->{'_atom_site_aniso_u_33'} ),
-          remove_su( $values->{'_atom_site_aniso_u_23'} ),
-          remove_su( $values->{'_atom_site_aniso_u_13'} ),
-          remove_su( $values->{'_atom_site_aniso_u_12'} ) );
+        ( [ map { $_ = unpack_cif_number( $_ ) }
+                @{$values->{'_atom_site_aniso_u_11'}} ],
+          [ map { $_ = unpack_cif_number( $_ ) }
+                @{$values->{'_atom_site_aniso_u_22'}} ],
+          [ map { $_ = unpack_cif_number( $_ ) }
+                @{$values->{'_atom_site_aniso_u_33'}} ],
+          [ map { $_ = unpack_cif_number( $_ ) }
+                @{$values->{'_atom_site_aniso_u_23'}} ],
+          [ map { $_ = unpack_cif_number( $_ ) }
+                @{$values->{'_atom_site_aniso_u_13'}} ],
+          [ map { $_ = unpack_cif_number( $_ ) }
+                @{$values->{'_atom_site_aniso_u_12'}} ] );
     # _atom_site_aniso_label needs for extracting of anisotrophic values; 
     my %temporary_aniso_data;
     for my $i (0..$#{$values->{_atom_site_aniso_label}}) {
@@ -767,7 +761,7 @@ sub get_unit_cell_parameters
     my( $values ) = @_;
 
     my @crystal_lattice = get_cell( $values );
-    my $cell_volume = ${remove_su( $values->{_cell_volume} )}[0];
+    my $cell_volume = unpack_cif_number( $values->{_cell_volume}[0] );
     my( $a, $b, $c, $alpha, $beta, $gamma ) = @crystal_lattice;
     my @crystal_cell_radians =
         ( $a, $b, $c, deg2rad( $alpha, $beta, $gamma ));
@@ -972,11 +966,6 @@ sub cell_filling_sym
 {
     my( $values, $f2o ) = @_;
 
-    my @xyz_arrays =
-        ( remove_su( $values->{'_atom_site_fract_x'} ),
-          remove_su( $values->{'_atom_site_fract_y'} ),
-          remove_su( $values->{'_atom_site_fract_z'} ) );
-
     my $sym_data = get_symmetry_operators( { 'values' => $values } );
 
     my @sym_operators = map { symop_from_string($_) } @{$sym_data};
@@ -985,9 +974,11 @@ sub cell_filling_sym
     foreach my $i (0..$#{$values->{_atom_site_label}}) {
         my %sym_atom_coordinates;
 
-        my $fract_xyz = [ $xyz_arrays[0]->[$i],
-                          $xyz_arrays[1]->[$i],
-                          $xyz_arrays[2]->[$i] ];
+        my $x = unpack_cif_number( $values->{'_atom_site_fract_x'}[$i] );
+        my $y = unpack_cif_number( $values->{'_atom_site_fract_y'}[$i] );
+        my $z = unpack_cif_number( $values->{'_atom_site_fract_z'}[$i] );
+
+        my $fract_xyz = [ $x, $y, $z ];
         my $ortho_xyz = symop_vector_mul( $f2o, $fract_xyz );
 
         foreach my $symop ( @sym_operators ) {
