@@ -474,10 +474,10 @@ if( defined $hkl_file ) {
                 'program'   => $0,
                 'filename'  => $hkl_file,
                 'err_level' => 'WARNING',
-                'message'   => 'the value of --max-Fhkl-number is greater '
+                'message'   => 'the value of --max-Fhkl-number is larger '
                              . 'than the number of calculated structure '
-                             . 'factors -- printing out of full structure '
-                             . 'factors number'
+                             . 'factors -- printing out all structure '
+                             . 'factors'
             }, $die_on_error_level->{'WARNING'} );
         } else {
             $hkl_and_F_sorted =
@@ -488,9 +488,9 @@ if( defined $hkl_file ) {
     for my $hkl_datablock (@{$hkl_data}) {
         my $values = $hkl_datablock->{'values'};
         my( $h_values, $k_values, $l_values,
-            $F_squared_mes,
+            $F_squared_meas,
             $F_squared_calc,
-            $F_squared_sigma_mes ) =
+            $F_squared_sigma_meas ) =
                 ( $values->{_refln_index_h},
                   $values->{_refln_index_k},
                   $values->{_refln_index_l},
@@ -505,21 +505,21 @@ if( defined $hkl_file ) {
                     $calculated->[1][2] == $l_values->[$i] ) {
                     if(
                         ($calculated->[0] >
-                         ($F_squared_mes->[$i] - $F_squared_sigma_mes->[$i])) &&
+                         ($F_squared_meas->[$i] - $F_squared_sigma_meas->[$i])) &&
                         ($calculated->[0] <
-                         ($F_squared_mes->[$i] + $F_squared_sigma_mes->[$i]))
+                         ($F_squared_meas->[$i] + $F_squared_sigma_meas->[$i]))
                         ) {
                         print 'Y ';
                     } else {
                         print 'N ';
                     };
                     my $error_squared =
-                        ( abs( $F_squared_mes->[$i] - $calculated->[0] ) /
-                          $F_squared_mes->[$i] ) * 100 ;
+                        ( abs( $F_squared_meas->[$i] - $calculated->[0] ) /
+                          $F_squared_meas->[$i] ) * 100 ;
                     print  "My Calc: $calculated->[0] "
-                         . "Mes: $F_squared_mes->[$i] "
+                         . "Meas: $F_squared_meas->[$i] "
                          . "Their Calc: $F_squared_calc->[$i] "
-                         . "Sigma: $F_squared_sigma_mes->[$i] "
+                         . "Sigma: $F_squared_sigma_meas->[$i] "
                          . " My Error: $error_squared\n";
                     last;
                 }
