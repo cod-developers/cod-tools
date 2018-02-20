@@ -425,8 +425,7 @@ for my $filename (@ARGV) {
 
         my $search_equal_intensities = sort_Friedel( $hkl_and_F_sorted );
         if( defined $max_number_print_of_F ) {
-            if( ($max_number_print_of_F - 1) >
-                $#{$search_equal_intensities} ) {
+            if( $max_number_print_of_F > @$search_equal_intensities ) {
                 warn 'WARNING, the value of --max-Fhkl-number is larger'
                    . 'than the number of calculated structure factors -- '
                    . "printing out all structure factors\n";
@@ -465,7 +464,7 @@ if( defined $hkl_file ) {
 
     # take a top segment of calculated and sorted structure factors;
     if( defined $max_number_print_of_F ) {
-        if( ($max_number_print_of_F - 1) > $#{$hkl_and_F_sorted} ) {
+        if( $max_number_print_of_F > @$hkl_and_F_sorted ) {
             report_message( {
                 'program'   => $0,
                 'filename'  => $hkl_file,
@@ -508,7 +507,7 @@ if( defined $hkl_file ) {
                         print 'Y ';
                     } else {
                         print 'N ';
-                    };
+                    }
                     my $error_squared =
                         ( abs( $F_squared_meas->[$i] - $calculated->[0] ) /
                           $F_squared_meas->[$i] ) * 100 ;
@@ -915,8 +914,7 @@ sub atom_structure_factor_from_coefficients
 sub atom_phase_hkl_rad
 {
     my( $h, $k, $l, $fract_x, $fract_y, $fract_z ) = @_;
-    return 2 * $PI * ($h * $fract_x + $k * $fract_y +
-                       $l * $fract_z);
+    return 2 * $PI * ( $h * $fract_x + $k * $fract_y + $l * $fract_z );
 }
 
 # Function for temperature factor calculation (anisotropic);
@@ -999,32 +997,24 @@ sub cell_filling_sym
         my $length_of_ref = $#{$sym_atoms_ortho};
         for my $i (0..$length_of_ref) { # symmetric atoms
             for my $k ($i+1..$length_of_ref) {
-                my $what_distance = distance( $sym_atoms_ortho->[$i],
-                                              $sym_atoms_ortho->[$k] );
-                if( $what_distance < 0.01 ) {
-                    unless( compare_number($sym_atoms_whitout_twins, $k) ) {
-                        push @{$sym_atoms_whitout_twins}, $k;
-                    }  # end if unless
-                } # end if
+                next if distance( $sym_atoms_ortho->[$i],
+                                  $sym_atoms_ortho->[$k] ) >= 0.01;
+                next if compare_number( $sym_atoms_whitout_twins, $k );
+                push @{$sym_atoms_whitout_twins}, $k;
             } # for 3
         } # for 2
         push @temporary_sym_all, $sym_atoms_whitout_twins;
-        ## print "@{$sym_atoms_whitout_twins} $sym_atoms_whitout_twins\n";
     } # for 1
 
     # deleting of symmetic atom twins;
     for my $i (0..$#temporary_sym_all) {
-        if( defined $temporary_sym_all[$i]->[0] ) {
-            my @number_sort_reverse = sort {$b <=> $a} @{$temporary_sym_all[$i]};
-            foreach my $del_position ( @number_sort_reverse  ) {
-                ## print "$del_position\n";
-                ## print @{$sym_atom_info[$i]->{symmetrical_xyz_ortho}},">>>\n";
-                splice @{$sym_atom_info[$i]->{symmetrical_xyz_ortho}},
-                       $del_position, 1;
-                splice @{$sym_atom_info[$i]->{symmetrical_xyz_fract}},
-                        $del_position, 1;
-            }
-        } # end if
+        next if !defined $temporary_sym_all[$i]->[0];
+        for my $del_position (reverse sort @{$temporary_sym_all[$i]}) {
+            splice @{$sym_atom_info[$i]->{symmetrical_xyz_ortho}},
+                   $del_position, 1;
+            splice @{$sym_atom_info[$i]->{symmetrical_xyz_fract}},
+                   $del_position, 1;
+        }
     }
 
     # only for first element adding the atoms full count of crystal cell;
@@ -1122,7 +1112,7 @@ sub compare_number
 {
     my( $reference_to_array, $template ) = @_;
     foreach my $number ( @{$reference_to_array} ) {
-        return 1 if( $number == $template );
+        return 1 if $number == $template;
     }
     return 0;
 }
@@ -1160,7 +1150,7 @@ sub sort_Friedel
         } elsif ( !defined $ref_to_sorted_Fhkl->[$cur_i + $add][0] ) {
             $comp = 0; # last element not exist;
         } else {
-            $comp = 0; # elements are not eqaul;
+            $comp = 0; # elements are not equal;
         }
         ## print "Condition 1: $a == $b \n";
         # ... then merging of Fhkl values;
