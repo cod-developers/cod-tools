@@ -21,7 +21,8 @@ use strict;
 use warnings;
 use File::Basename qw( basename );
 use COD::CIF::Data qw( get_cell );
-use COD::CIF::Data::CODNumbers qw( have_equiv_bibliographies );
+use COD::CIF::Data::CODNumbers qw( cif_fill_data
+                                   have_equiv_bibliographies );
 use COD::CIF::Parser qw( parse_cif );
 use COD::CIF::Tags::CanonicalNames qw( canonicalize_all_names );
 use COD::SOptions qw( getOptions );
@@ -287,38 +288,8 @@ sub structures_from_cif_file
 
     my %structures;
     for my $datablock (@$data) {
-        my $values = $datablock->{values};
-        my @cell   = get_cell( $values, { silent => 1 } );
-
-        my $formula = $values->{_chemical_formula_sum}[0];
-        $formula =~ s/\s+/ /g;
-        $formula =~ s/^\s+|\s+$//g;
-        my $new_formula = join ' ', sort {$a cmp $b} split ' ', $formula;
-
-        my $structure = {
-            id => $datablock->{name},
-            filename => basename( $filename ),
-            chemical_formula_sum => $new_formula,
-            _cell_length_a => $cell[0],
-            _cell_length_b => $cell[1],
-            _cell_length_c => $cell[2],
-            _cell_angle_alpha => $cell[3],
-            _cell_angle_beta  => $cell[4],
-            _cell_angle_gamma => $cell[5],
-       };
-       for my $tag (@{$datablock->{tags}}) {
-           if( $tag =~ /(temperature|pressure)/ ) {
-               $structure->{$1}{$tag} = $values->{$tag}[0];
-           }
-           if( $tag =~ /^_journal/ ) {
-               $structure->{bibliography}{$tag} = $values->{$tag}[0];
-           }
-           if( $tag eq '_cod_suboptimal_structure' ||
-               $tag eq '_[local]_cod_suboptimal_structure' ) {
-               $structure->{suboptimal} = $values->{$tag}[0];
-           }
-       }
-       $structures{$datablock->{name}} = $structure;
+        my $structure = cif_fill_data( $datablock, $filename );
+        $structures{$datablock->{name}} = $structure;
     }
 
     return \%structures;
