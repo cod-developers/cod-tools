@@ -20,9 +20,13 @@ eval 'exec perl -x $0 ${1+"$@"}'
 use strict;
 use warnings;
 use File::Basename qw( basename );
+use COD::CIF::Data qw( get_cell );
+use COD::CIF::Parser qw( parse_cif );
+use COD::CIF::Tags::CanonicalNames qw( canonicalize_all_names );
 use COD::SOptions qw( getOptions );
 use COD::SUsage qw( usage );
 use COD::ErrorHandler qw( process_errors
+                          process_parser_messages
                           report_message );
 use COD::ToolsVersion;
 
@@ -164,7 +168,7 @@ for my $file (@cif_files) {
 
 #------------------------------------------------------------------------------
 
-sub get_cell($)
+sub get_cell_local($)
 {
     my ( $datablok ) = @_;
 
@@ -182,8 +186,8 @@ sub cells_are_the_same($$)
 {
     my ($cell1, $cell2) = @_;
 
-    my @cell1 = get_cell( $cell1 );
-    my @cell2 = get_cell( $cell2 );
+    my @cell1 = get_cell_local( $cell1 );
+    my @cell2 = get_cell_local( $cell2 );
 
     my $max_length_diff = 0;
     my $max_angle_diff = 0;
@@ -218,7 +222,7 @@ sub conditions_are_the_same
 {
     my ($entry1, $entry2) = @_;
 
-    for my $parameter ('temperature', 'pressure' ) {
+    for my $parameter ('temperature', 'pressure') {
 
         my %tags = map {($_,$_)} ( keys %{$entry1->{$parameter}},
                                    keys %{$entry2->{$parameter}} );
@@ -296,57 +300,49 @@ sub structures_from_cif_file
 {
     my( $filename ) = @_;
 
-    open my $COD_CIF, '<', $filename or die 'ERROR, '
-        . 'could not open the CIF file for reading -- ' . lcfirst($!) . "\n";
+    my $options = { 'no_print' => 1 };
+    my ( $data, $err_count, $messages ) = parse_cif( $filename, $options );
+    process_parser_messages( $messages, $die_on_error_level );
 
-    my $id;
+    return {} if $err_count > 0;
+
+    canonicalize_all_names( $data );
+
     my %structures;
-    while( <$COD_CIF> ) {
-        if( /^\s*data_(.*)/ ) {
-            $id = $1;
-            $structures{$id}{id} = $id;
-            $structures{$id}{filename} = basename( $filename );
-        }
-        if( /^\s*_chemical_formula_sum\s+(.*)/ ) {
-            my $formula = $1;
-            $formula =~ s/^\s*'\s*|\s*'\s*$//g;
-            $formula =~ s/\s+/ /g;
-            my $sorted = join ' ', sort {$a cmp $b} split ' ', $formula;
-            $structures{$id}{chemical_formula_sum} = $sorted;
-        }
-        if( /^\s*(_cell_(?:length_a|length_b|length_c|
-                     angle_alpha|angle_beta|angle_gamma))\s+([\d.]+)/x ) {
-            my $key = $1;
-            my $val = $2;
-            $val =~ s/^\s*'\s*|\s*'\s*$//g;
-            $val =~ s/\(.*$//;
-            $val =~ s/[()_a-zA-Z]//g;
-            $structures{$id}{cell}{$key} = sprintf '%f', $val;
-        }
-        if( /^\s*(_[^\s]*temperature[^\s]*)\s+(.*)/ ) {
-            $structures{$id}{temperature}{$1} = $2;
-            $structures{$id}{temperature}{$1} =~ s/^\s*'\s*|\s*'\s*$//g;
-        }
-        if( /^\s*(_[^\s]*pressure[^\s]*)\s+(.*)/ ) {
-            $structures{$id}{pressure}{$1} = $2;
-            $structures{$id}{pressure}{$1} =~ s/^\s*'\s*|\s*'\s*$//g;
-        }
-        if( !( /^\s*_journal_name/ ) ) {
-            if ( /^\s*(_journal_[^\s]*)\s+(.*)\s*$/ ) {
-                my $key = $1;
-                my $value = $2;
-                $value =~ s/^['"]|["']$//g;
-                $structures{$id}{bibliography}{$key} = $value;
-            }
-        }
-        if( /^\s*(?:_\[local\])?_cod_suboptimal_structure\s+(.*)\s*$/ ) {
-            ## print ">>>>>> $2\n";
-            $structures{$id}{suboptimal} = $1;
-        }
-    }
+    for my $datablock (@$data) {
+        my $values = $datablock->{values};
+        my @cell   = get_cell( $values, { silent => 1 } );
 
-    close $COD_CIF or die 'ERROR, '
-        . 'could not close the CIF file after reading -- ' . lcfirst($!) . "\n";
+        my $formula = $values->{_chemical_formula_sum}[0];
+        $formula =~ s/\s+/ /g;
+        $formula =~ s/^\s+|\s+$//g;
+        my $new_formula = join ' ', sort {$a cmp $b} split ' ', $formula;
+
+        my $structure = {
+            id => $datablock->{name},
+            filename => basename( $filename ),
+            chemical_formula_sum => $new_formula,
+            _cell_length_a => $cell[0],
+            _cell_length_b => $cell[1],
+            _cell_length_c => $cell[2],
+            _cell_angle_alpha => $cell[3],
+            _cell_angle_beta  => $cell[4],
+            _cell_angle_gamma => $cell[5],
+       };
+       for my $tag (@{$datablock->{tags}}) {
+           if( $tag =~ /(temperature|pressure)/ ) {
+               $structure->{$1}{$tag} = $values->{$tag}[0];
+           }
+           if( $tag =~ /^_journal/ && $tag ne '_journal_name_full' ) {
+               $structure->{bibliography}{$tag} = $values->{$tag}[0];
+           }
+           if( $tag eq '_cod_suboptimal_structure' ||
+               $tag eq '_[local]_cod_suboptimal_structure' ) {
+               $structure->{suboptimal} = $values->{$tag}[0];
+           }
+       }
+       $structures{$datablock->{name}} = $structure;
+    }
 
     return \%structures;
 }
