@@ -82,62 +82,11 @@ do {
 } if 0;
 
 for my $file (@COD_cif_files) {
-    my %structures = ();
-
-    eval {
-
     chomp $file;
-    open my $COD_CIF, '<', "$file" or die 'ERROR, '
-        . 'could not open the CIF file for reading -- ' . lcfirst($!) . "\n";
-
-    my $id;
-    while( <$COD_CIF> ) {
-        if( /^\s*data_(.*)/ ) {
-            $id = $1;
-            $structures{$id}{id} = $id;
-            $structures{$id}{filename} = basename( $file );
-        }
-        if( /^\s*_chemical_formula_sum\s+(.*)/ ) {
-            my $formula = $1;
-            $formula =~ s/^\s*'\s*|\s*'\s*$//g;
-            $formula =~ s/\s+/ /g;
-            my $sorted = join ' ', sort {$a cmp $b} split ' ', $formula;
-            $structures{$id}{chemical_formula_sum} = $sorted;
-        }
-        if( /^\s*(_cell_(?:length_a|length_b|length_c|
-                     angle_alpha|angle_beta|angle_gamma))\s+([\d.]+)/x ) {
-            my $key = $1;
-            my $val = $2;
-            $val =~ s/^\s*'\s*|\s*'\s*$//g;
-            $val =~ s/\(.*$//;
-            $val =~ s/[()_a-zA-Z]//g;
-            $structures{$id}{cell}{$key} = sprintf '%f', $val;
-        }
-        if( /^\s*(_[^\s]*temperature[^\s]*)\s+(.*)/ ) {
-            $structures{$id}{temperature}{$1} = $2;
-            $structures{$id}{temperature}{$1} =~ s/^\s*'\s*|\s*'\s*$//g;
-        }
-        if( /^\s*(_[^\s]*pressure[^\s]*)\s+(.*)/ ) {
-            $structures{$id}{pressure}{$1} = $2;
-            $structures{$id}{pressure}{$1} =~ s/^\s*'\s*|\s*'\s*$//g;
-        }
-        if( !( /^\s*_journal_name/ ) ) {
-            if ( /^\s*(_journal_[^\s]*)\s+(.*)\s*$/ ) {
-                my $key = $1;
-                my $value = $2;
-                $value =~ s/^['"]|["']$//g;
-                $structures{$id}{bibliography}{$key} = $value;
-            }
-        }
-        if( /^\s*(?:_\[local\])?_cod_suboptimal_structure\s+(.*)\s*$/ ) {
-            ## print ">>>>>> $2\n";
-            $structures{$id}{suboptimal} = $1;
-        }
-    }
-
-    close $COD_CIF or die 'ERROR, '
-        . 'could not close the CIF file after reading -- ' . lcfirst($!) . "\n";
-
+    my %structures = ();
+    eval {
+        my $structures = structures_from_cif_file( $file );
+        %structures = %$structures;
     }; # end of eval
     if ($@) {
         process_errors( {
@@ -167,61 +116,11 @@ do {
 my @cif_files = `find @ARGV -name "*.cif" -o -name "*.CIF"`;
 
 for my $file (@cif_files) {
-    my %structures = ();
-
-    eval {
-
     chomp $file;
-    open my $CIF, '<', "$file" or die 'ERROR, '
-        . 'could not open the CIF file for reading -- ' . lcfirst($!) . "\n";
-
-    my $id;
-    while( <$CIF> ) {
-        if( /^\s*data_(.*)/ ) {
-            $id = $1;
-            $structures{$id}{id} = $id;
-            $structures{$id}{filename} = basename( $file );
-        }
-        if( /^\s*_chemical_formula_sum\s+(.*)/ ) {
-            my $formula = $1;
-            $formula =~ s/^\s*'\s*|\s*'\s*$//g;
-            $formula =~ s/\s+/ /g;
-            my $sorted = join ' ', sort {$a cmp $b} split ' ', $formula;
-            $structures{$id}{chemical_formula_sum} = $sorted;
-        }
-        if( /^\s*(_cell_(?:length_a|length_b|length_c|
-                     angle_alpha|angle_beta|angle_gamma))\s+([\d.]+)/x ) {
-            my $key = $1;
-            my $val = $2;
-            $val =~ s/^\s*'\s*|\s*'\s*$//g;
-            $val =~ s/\(.*$//;
-            $structures{$id}{cell}{$key} = sprintf '%f', $val;
-        }
-        if( /^\s*(_[^\s]*temperature[^\s]*)\s+(.*)/ ) {
-            $structures{$id}{temperature}{$1} = $2;
-            $structures{$id}{temperature}{$1} =~ s/^\s*'\s*|\s*'\s*$//g;
-        }
-        if( /^\s*(_[^\s]*pressure[^\s]*)\s+(.*)/ ) {
-            $structures{$id}{pressure}{$1} = $2;
-            $structures{$id}{pressure}{$1} =~ s/^\s*'\s*|\s*'\s*$//g;
-        }
-        if( !(/^\s*_journal_name/) ) {
-            if ( /^\s*(_journal_[^\s]*)\s+(.*)\s*$/ ) {
-                my $key = $1;
-                my $value = $2;
-                $value =~ s/^['"]|["']$//g;
-                $structures{$id}{bibliography}{$key} = $value;
-            }
-        }
-        if( /^\s*(?:_\[local\])?_cod_suboptimal_structure\s+(.*)\s*$/ ) {
-            ## print ">>>>>> $2\n";
-            $structures{$id}{suboptimal} = $2;
-        }
-    }
-
-    close $CIF or die 'ERROR, '
-        . 'could not close the CIF file after reading -- ' . lcfirst($!) . "\n";;
-
+    my %structures = ();
+    eval {
+        my $structures = structures_from_cif_file( $file );
+        %structures = %$structures;
     }; # end of eval
     if ($@) {
         process_errors( {
@@ -391,4 +290,63 @@ sub entries_are_the_same
             (!defined $entry2->{suboptimal} || $entry2->{suboptimal} ne 'yes') &&
             cells_are_the_same( $entry1->{cell}, $entry2->{cell} );
     }
+}
+
+sub structures_from_cif_file
+{
+    my( $filename ) = @_;
+
+    open my $COD_CIF, '<', $filename or die 'ERROR, '
+        . 'could not open the CIF file for reading -- ' . lcfirst($!) . "\n";
+
+    my $id;
+    my %structures;
+    while( <$COD_CIF> ) {
+        if( /^\s*data_(.*)/ ) {
+            $id = $1;
+            $structures{$id}{id} = $id;
+            $structures{$id}{filename} = basename( $filename );
+        }
+        if( /^\s*_chemical_formula_sum\s+(.*)/ ) {
+            my $formula = $1;
+            $formula =~ s/^\s*'\s*|\s*'\s*$//g;
+            $formula =~ s/\s+/ /g;
+            my $sorted = join ' ', sort {$a cmp $b} split ' ', $formula;
+            $structures{$id}{chemical_formula_sum} = $sorted;
+        }
+        if( /^\s*(_cell_(?:length_a|length_b|length_c|
+                     angle_alpha|angle_beta|angle_gamma))\s+([\d.]+)/x ) {
+            my $key = $1;
+            my $val = $2;
+            $val =~ s/^\s*'\s*|\s*'\s*$//g;
+            $val =~ s/\(.*$//;
+            $val =~ s/[()_a-zA-Z]//g;
+            $structures{$id}{cell}{$key} = sprintf '%f', $val;
+        }
+        if( /^\s*(_[^\s]*temperature[^\s]*)\s+(.*)/ ) {
+            $structures{$id}{temperature}{$1} = $2;
+            $structures{$id}{temperature}{$1} =~ s/^\s*'\s*|\s*'\s*$//g;
+        }
+        if( /^\s*(_[^\s]*pressure[^\s]*)\s+(.*)/ ) {
+            $structures{$id}{pressure}{$1} = $2;
+            $structures{$id}{pressure}{$1} =~ s/^\s*'\s*|\s*'\s*$//g;
+        }
+        if( !( /^\s*_journal_name/ ) ) {
+            if ( /^\s*(_journal_[^\s]*)\s+(.*)\s*$/ ) {
+                my $key = $1;
+                my $value = $2;
+                $value =~ s/^['"]|["']$//g;
+                $structures{$id}{bibliography}{$key} = $value;
+            }
+        }
+        if( /^\s*(?:_\[local\])?_cod_suboptimal_structure\s+(.*)\s*$/ ) {
+            ## print ">>>>>> $2\n";
+            $structures{$id}{suboptimal} = $1;
+        }
+    }
+
+    close $COD_CIF or die 'ERROR, '
+        . 'could not close the CIF file after reading -- ' . lcfirst($!) . "\n";
+
+    return \%structures;
 }
