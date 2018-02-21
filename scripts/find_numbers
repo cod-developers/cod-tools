@@ -19,10 +19,9 @@ eval 'exec perl -x $0 ${1+"$@"}'
 
 use strict;
 use warnings;
-use File::Basename qw( basename );
 use COD::CIF::Data qw( get_cell );
 use COD::CIF::Data::CODNumbers qw( cif_fill_data
-                                   have_equiv_bibliographies );
+                                   entries_are_the_same );
 use COD::CIF::Parser qw( parse_cif );
 use COD::CIF::Tags::CanonicalNames qw( canonicalize_all_names );
 use COD::SOptions qw( getOptions );
@@ -102,7 +101,6 @@ for my $file (@COD_cif_files) {
         }, $die_on_error_level->{'ERROR'} )
     };
 
-    my $basename = basename( $file );
     for my $id (keys %structures) {
         my $formula = $structures{$id}{chemical_formula_sum};
 
@@ -147,14 +145,20 @@ for my $file (@cif_files) {
         my $n = 0;
         if( defined $COD{$formula} ) {
             for my $COD_entry (@{$COD{$formula}}) {
-                if( entries_are_the_same( $structures{$id}, $COD_entry )) {
+                if( entries_are_the_same( $structures{$id},
+                                          $COD_entry,
+                                          {  check_bibliography =>
+                                            $check_bibliography } ) ) {
                     $n++;
                 }
             }
         }
         if( $n > 0 ) {
             for my $COD_entry (@{$COD{$formula}}) {
-                if( entries_are_the_same( $structures{$id}, $COD_entry )) {
+                if( entries_are_the_same( $structures{$id},
+                                          $COD_entry,
+                                          {  check_bibliography =>
+                                            $check_bibliography } ) ) {
                     printf
                         "%-35s %15s %3d %s\n",
                         $final_formula,
@@ -169,110 +173,6 @@ for my $file (@cif_files) {
 }
 
 #------------------------------------------------------------------------------
-
-sub get_cell_local($)
-{
-    my ( $datablok ) = @_;
-
-    return (
-        $datablok->{_cell_length_a},
-        $datablok->{_cell_length_b},
-        $datablok->{_cell_length_c},
-        $datablok->{_cell_angle_alpha},
-        $datablok->{_cell_angle_beta},
-        $datablok->{_cell_angle_gamma}
-    );
-}
-
-sub cells_are_the_same($$)
-{
-    my ($cell1, $cell2) = @_;
-
-    my @cell1 = get_cell_local( $cell1 );
-    my @cell2 = get_cell_local( $cell2 );
-
-    my $max_length_diff = 0;
-    my $max_angle_diff = 0;
-
-    for my $i (0..2) {
-        my $length1 = $cell1[$i];
-        my $length2 = $cell2[$i];
-        if( defined $length1 and defined $length2 ) {
-            my $diff = abs( $length1 - $length2 );
-            if( $max_length_diff < $diff ) {
-                $max_length_diff = $diff;
-            }
-        }
-    }
-    for my $i (3..5) {
-        my $angle1 = $cell1[$i];
-        my $angle2 = $cell2[$i];
-        if( defined $angle1 and defined $angle2 ) {
-            my $diff = abs( $angle1 - $angle2 );
-            if( $max_angle_diff < $diff ) {
-                $max_angle_diff = $diff;
-            }
-        }
-    }
-
-    return
-        $max_length_diff < $max_cell_length_diff &&
-        $max_angle_diff < $max_cell_angle_diff;
-}
-
-sub conditions_are_the_same
-{
-    my ($entry1, $entry2) = @_;
-
-    for my $parameter ('temperature', 'pressure') {
-
-        my %tags = map {($_,$_)} ( keys %{$entry1->{$parameter}},
-                                   keys %{$entry2->{$parameter}} );
-        for my $tag (keys %tags) {
-            if( exists $entry1->{$parameter}{$tag} &&
-                exists $entry2->{$parameter}{$tag} &&
-                $entry1->{$parameter}{$tag} ne $entry2->{$parameter}{$tag} ) {
-                return 0;
-            }
-        }
-    }
-    return 1;
-}
-
-sub data_sections_are_the_same($$)
-{
-    my ($entry1, $entry2) = @_;
-
-    return
-        $entry1->{filename} eq $entry2->{filename} &&
-        $entry1->{id} eq $entry2->{id};
-}
-
-sub entries_are_the_same
-{
-    my ($entry1, $entry2) = @_;
-
-    ## print ">>> $entry1->{id}, $entry2->{id}, ",
-    ## defined $entry1->{suboptimal} ? $entry1->{suboptimal} : "" , " ", 
-    ## defined $entry2->{suboptimal} ? $entry2->{suboptimal} : "", "\n";
-
-    if( $check_bibliography ) {
-        return
-            ! data_sections_are_the_same( $entry1, $entry2 ) &&
-            cells_are_the_same( $entry1->{cell}, $entry2->{cell} ) &&
-            conditions_are_the_same( $entry1, $entry2 ) &&
-            (!defined $entry1->{suboptimal} || $entry1->{suboptimal} ne 'yes') &&
-            (!defined $entry2->{suboptimal} || $entry2->{suboptimal} ne 'yes') &&
-            have_equiv_bibliographies( $entry1, $entry2 );
-    } else {
-        return
-            ! data_sections_are_the_same( $entry1, $entry2 ) &&
-            conditions_are_the_same( $entry1, $entry2 ) &&
-            (!defined $entry1->{suboptimal} || $entry1->{suboptimal} ne 'yes') &&
-            (!defined $entry2->{suboptimal} || $entry2->{suboptimal} ne 'yes') &&
-            cells_are_the_same( $entry1->{cell}, $entry2->{cell} );
-    }
-}
 
 sub structures_from_cif_file
 {
