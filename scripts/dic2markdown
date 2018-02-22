@@ -46,6 +46,7 @@ sub mark_hyperlinks($);
 
 my $use_parser = 'c';
 my $additional_head_text;
+my $add_anchors = 1;
 
 #* OPTIONS:
 #*   --use-perl-parser
@@ -57,6 +58,12 @@ my $additional_head_text;
 #*                     Read Markdown text from a file and append it to
 #*                     the dictionary overview text, just before
 #*                     enumerating the categories in the dictionary.
+#*
+#*   --add-anchors
+#*                     Add HTML anchors for headings (default).
+#*   --no-add-anchors
+#*   --dont-add-anchors
+#*                     Do not add HTML anchors for headings.
 #*
 #*   --help, --usage
 #*                     Output a short usage message (this message) and exit.
@@ -70,6 +77,9 @@ my $additional_head_text;
                                   $additional_head_text =
                                     join '', <$inp>;
                                   close $inp },
+    "--add-anchors"      => sub { $add_anchors = 1 },
+    "--no-add-anchors"   => sub { $add_anchors = 0 },
+    "--dont-add-anchors" => sub { $add_anchors = 0 },
     "--options"          => sub { options; exit },
     "--help,--usage"     => sub { usage; exit },
     '--version'          => sub { print 'cod-tools version ',
@@ -135,7 +145,9 @@ for my $filename (@ARGV) {
 
             print "$additional_head_text\n\n" if $additional_head_text;
 
-            dic_block2markdown( $dict, 1 );
+            dic_block2markdown( $dict,
+                                { indent => 1,
+                                  add_anchors => $add_anchors } );
         };
         if( $@ ) {
             process_errors( {
@@ -195,11 +207,14 @@ sub find_children
 
 sub dic_block2markdown
 {
-    my( $node, $indent ) = @_;
+    my( $node, $options ) = @_;
+
+    $options = {} unless $options;
+    my $indent = $options->{indent};
+    $indent = 0 unless defined $indent;
 
     my $values = $node->{content}{values};
 
-    $indent = 0 if !defined $indent;
     if( exists $values->{'_definition.class'} &&
         ($values->{'_definition.class'}[0] eq 'Attribute' ||
          $values->{'_definition.class'}[0] eq 'Datum') ) {
@@ -212,7 +227,11 @@ sub dic_block2markdown
         local $\ = "\n\n";
 
         my $title = $values->{'_definition.id'}[0];
-        print '#' x ($indent + 1) . ' ', escape $title;
+        my $anchor = '';
+        if( $options->{add_anchors} ) {
+            $anchor = '<a name="' . encode_entities( $title ) . '"></a>';
+        }
+        print '#' x ($indent + 1) . ' ', $anchor, escape $title;
 
         if( exists $values->{'_description.text'} ) {
             print mark_hyperlinks escape unprefix $values->{'_description.text'}[0];
@@ -246,7 +265,9 @@ sub dic_block2markdown
     }
 
     foreach (@{$node->{children}}) {
-        dic_block2markdown( $_, $indent );
+        dic_block2markdown( $_,
+                            { indent => $indent,
+                              add_anchors => $options->{add_anchors} } );
     }
 }
 
