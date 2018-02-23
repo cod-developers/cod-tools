@@ -20,6 +20,7 @@ eval 'exec perl -x $0 ${1+"$@"}'
 use strict;
 use warnings;
 use COD::CIF::Parser qw( parse_cif );
+use COD::CIF::Data qw( get_source_data_block_name );
 use COD::CIF::Data::Diff qw( comm );
 use COD::CIF::Data::CODFlags qw( has_hkl
                                  has_powder_diffraction_intensities
@@ -139,11 +140,11 @@ while( @ARGV > 0 ) {
         next PAIR;
     }
 
-    my $hkl_dataname = get_source_block_name( $hkl_dataset );
+    my $hkl_dataname = get_source_data_block_name( $hkl_dataset );
     my $cif_index;
     my @cif_datanames;
     for( my $i = 0; $i < @$cif_data; $i++ ) {
-        my $cif_dataname = get_source_block_name( $cif_data->[$i] );
+        my $cif_dataname = get_source_data_block_name( $cif_data->[$i] );
         push( @cif_datanames, $cif_dataname );
         if( $cif_dataname eq $hkl_dataname ) {
             $cif_index = $i;
@@ -231,19 +232,4 @@ sub compare_lc_strings
 {
     my( $a, $b ) = @_;
     return lc( $a ) cmp lc( $b );
-}
-
-# Returns data block name. Original source data block name, if specified, is
-# prefered. If not specified, current data block name is returned.
-sub get_source_block_name
-{
-    my( $datablock ) = @_;
-    my $values = $datablock->{values};
-    if( exists $values->{'_cod_data_source_block'} ) {
-        return $values->{'_cod_data_source_block'}[0];
-    }
-    if( exists $values->{'_[local]_cod_data_source_block'} ) {
-        return $values->{'_[local]_cod_data_source_block'}[0];
-    }
-    return $datablock->{name};
 }
