@@ -131,8 +131,11 @@ sub comm
             }
             next;
         }
-        if( scalar @{$cif1->{values}{$tags1[0]}} !=
-            scalar @{$cif2->{values}{$tags2[0]}} ) {
+
+        my $values1 = $cif1->{values};
+        my $values2 = $cif2->{values};
+        if( scalar @{$values1->{$tags1[0]}} !=
+            scalar @{$values2->{$tags2[0]}} ) {
             push @$comm, [ shift @tags1, undef, shift @tags2 ];
             next;
         }
@@ -141,15 +144,14 @@ sub comm
         if( exists $comparators->{$tags1[0]} ) {
             $comparator = $comparators->{$tags1[0]};
         }
-        for( my $i = 0; $i < @{$cif1->{values}{$tags1[0]}}; $i++ ) {
-            if( &{$comparator}(
-                $cif1->{values}{$tags1[0]}[$i],
-                $cif2->{values}{$tags2[0]}[$i] ) != 0 ) {
+        for( my $i = 0; $i < @{$values1->{$tags1[0]}}; $i++ ) {
+            if( &$comparator( $values1->{$tags1[0]}[$i],
+                              $values2->{$tags2[0]}[$i] ) != 0 ) {
                 push @$comm, [ shift @tags1, undef, shift @tags2 ];
                 next PAIR_OF_TAGS;
             }
         }
-        push( @$comm, [ undef, $tags1[0], undef ] ) unless $no_common;
+        push @$comm, [ undef, $tags1[0], undef ] unless $no_common;
         shift @tags1;
         shift @tags2;
     }
