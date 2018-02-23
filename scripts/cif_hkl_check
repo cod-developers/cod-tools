@@ -194,30 +194,29 @@ while( @ARGV > 0 ) {
         } );
 
     foreach my $line ( @$comm ) {
-        if( defined $line->[0] && defined $line->[2] ) {
-            my $reason;
-            if( $line->[0] eq '_publ_author_name' ) {
-                $reason = "publication author lists differ";
-            } else {
-                $reason = "values of tag '$line->[0]' differ";
-            }
-            $reason .= " ('" . join( ', ', map { "'$_'" }
-                  @{$cif_data->[$cif_index]{values}{$line->[0]}} ) .
-                  "' (CIF) and '" . join( ', ', map { "'$_'" }
-                  @{$hkl_values->{$line->[0]}} ) .
-                  "' (diffraction data))";
-            report_message( {
-                'program'   => $0,
-                'filename'  => $cif_file,
-                'add_pos'   => defined $hkl_dataname ? 'data_' . $hkl_dataname
-                                                     : $hkl_dataname,
-                'err_level' => 'WARNING',
-                'message'   => 'cannot confirm relation between data blocks '
-                             . "named '$hkl_dataname' from supplied CIF and "
-                             . "diffraction data files -- $reason"
-            }, $die_on_error_level->{'WARNING'} );
-            next PAIR;
+        next if !defined $line->[0] || !defined $line->[2];
+        my $reason;
+        if( $line->[0] eq '_publ_author_name' ) {
+            $reason = "publication author lists differ";
+        } else {
+            $reason = "values of tag '$line->[0]' differ";
         }
+        $reason .= " ('" . join( ', ', map { "'$_'" }
+              @{$cif_data->[$cif_index]{values}{$line->[0]}} ) .
+              "' (CIF) and '" . join( ', ', map { "'$_'" }
+              @{$hkl_values->{$line->[0]}} ) .
+              "' (diffraction data))";
+        report_message( {
+            'program'   => $0,
+            'filename'  => $cif_file,
+            'add_pos'   => defined $hkl_dataname ? 'data_' . $hkl_dataname
+                                                 : $hkl_dataname,
+            'err_level' => 'WARNING',
+            'message'   => 'cannot confirm relation between data blocks '
+                         . "named '$hkl_dataname' from supplied CIF and "
+                         . "diffraction data files -- $reason"
+        }, $die_on_error_level->{'WARNING'} );
+        next PAIR;
     }
 
     report_message( {
