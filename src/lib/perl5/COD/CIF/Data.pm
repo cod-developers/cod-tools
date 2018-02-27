@@ -410,14 +410,20 @@ sub lookup_space_group
 # prefered. If not specified, current data block name is returned.
 sub get_source_data_block_name
 {
-    my( $datablock ) = @_;
+    my( $datablock, $options ) = @_;
     my $values = $datablock->{values};
-    if( exists $values->{'_cod_data_source_block'} ) {
-        return $values->{'_cod_data_source_block'}[0];
+    my $database = 'cod';
+    if( $options && exists $options->{database} ) {
+        $database = $options->{database};
     }
-    if( exists $values->{'_[local]_cod_data_source_block'} ) {
-        return $values->{'_[local]_cod_data_source_block'}[0];
+
+    if( exists $values->{"_${database}_data_source_block"} ) {
+        return $values->{"_${database}_data_source_block"}[0];
     }
+    if( exists $values->{"_[local]_${database}_data_source_block"} ) {
+        return $values->{"_[local]_${database}_data_source_block"}[0];
+    }
+
     return $datablock->{name};
 }
 
