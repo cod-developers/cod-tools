@@ -1396,35 +1396,4 @@ sub get_deposition_authors
     return $deposition_authors;
 }
 
-sub comm_array
-{
-    my( $arr1, $arr2 ) = @_;
-    my @arr1 = @{$arr1};
-    my @arr2 = @{$arr2};
-    my @comm;
-    while( scalar( @arr1 ) + scalar( @arr2 ) > 0 ) {
-        if( @arr1 == 0 ) {
-            push @comm, [ undef, undef, shift @arr2 ];
-            next;
-        }
-        if( @arr2 == 0 ) {
-            push @comm, [ shift @arr1, undef, undef ];
-            next;
-        }
-        if( $arr1[0] ne $arr2[0] ) {
-            if( $arr1[0] lt $arr2[0] ) {
-                push @comm, [ shift @arr1, undef, undef ];
-            } else {
-                push @comm, [ undef, undef, shift @arr2 ];
-            }
-        } else {
-            push @comm, [ undef, $arr1[0], undef ];
-            shift @arr1;
-            shift @arr2;
-        }
-        next;
-    }
-    return \@comm;
-}
-
 1;
