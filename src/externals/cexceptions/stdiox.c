@@ -37,3 +37,16 @@ void fclosex( FILE *file, cexception_t *ex )
               "could not close file", strerror( errno ));
     }
 }
+
+FILE *fmemopenx( void *buf, size_t size, const char *mode, cexception_t *ex )
+{
+    FILE *f = fmemopen( buf, size, mode );
+
+    if( f == NULL ) {
+        cexception_raise_syserror
+            ( ex, stdiox_subsystem, STDIOX_FILE_MEMOPEN_ERROR,
+              "could not open file in memory", strerror( errno ));
+    }
+
+    return f;
+}
