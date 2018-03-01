@@ -16,11 +16,9 @@ use Encode qw(decode);
 
 use COD::UserMessage qw( sprint_message );
 
-sub parse
+sub process_parse_result
 {
-    my( $filename, $options ) = @_;
-    $options = {} unless $options;
-    my $parse_result = parse_cif( $filename, $0, $options );
+    my( $parse_result, $no_print ) = @_;
     my $data = $parse_result->{datablocks};
     my $messages = $parse_result->{messages};
     my $nerrors = $parse_result->{nerrors};
@@ -77,7 +75,7 @@ sub parse
         }
     }
 
-    if( !exists $options->{no_print} || $options->{no_print} == 0 ) {
+    if( !$no_print ) {
         print STDERR $_ foreach( @warnings );
         my $last_error = pop @errors;
         print STDERR $_ foreach( @errors );
@@ -88,8 +86,19 @@ sub parse
 
     unshift @errors, @warnings;
 
+    return( $data, $nerrors, \@errors );
+}
+
+sub parse
+{
+    my( $filename, $options ) = @_;
+    $options = {} unless $options;
+    my $parse_result = parse_cif( $filename, $0, $options );
+    my( $data, $nerrors, $errors ) =
+        process_parse_result( $parse_result, $options->{no_print} );
+
     if( wantarray ) {
-        return( $data, $nerrors, \@errors );
+        return( $data, $nerrors, $errors );
     } else {
         return $data;
     }
@@ -100,75 +109,11 @@ sub parse_string
     my( $buffer, $options ) = @_;
     $options = {} unless $options;
     my $parse_result = parse_cif_string( $buffer, $0, $options );
-    my $data = $parse_result->{datablocks};
-    my $messages = $parse_result->{messages};
-    my $nerrors = $parse_result->{nerrors};
-
-    foreach my $datablock ( @{$data} ) {
-        $datablock->{precisions} = {};
-        foreach my $tag ( keys %{$datablock->{types}} ) {
-            my( $precisions ) =
-                extract_precision( $datablock->{values}{$tag},
-                                   $datablock->{types}{$tag} );
-            if( defined $precisions ) {
-                $datablock->{precisions}{$tag} = $precisions;
-            }
-        }
-        foreach my $saveblock ( @{$datablock->{'save_blocks'}} ) {
-            $saveblock->{'precisions'} = {};
-            foreach my $tag ( keys %{$saveblock->{types}} ) {
-                my( $precisions ) =
-                    extract_precision( $saveblock->{values}{$tag},
-                                       $saveblock->{types}{$tag} );
-                if( defined $precisions ) {
-                    $saveblock->{precisions}{$tag} = $precisions;
-                }
-            }
-        }
-    }
-
-    $data = [ map { decode_utf8_frame($_) } @{$data} ];
-
-    my @errors;
-    my @warnings;
-    foreach my $message ( @{$messages} ) {
-        my $datablock = $message->{addpos};
-        if( defined $datablock ) {
-            $datablock = "data_$datablock";
-        }
-        my $explanation = $message->{explanation};
-        $explanation = lcfirst $explanation if (defined $explanation);
-        my $msg = sprint_message( $message->{program},
-                                  $message->{filename},
-                                  $datablock,
-                                  $message->{status},
-                                  $message->{message},
-                                  $explanation,
-                                  $message->{lineno},
-                                  $message->{columnno},
-                                  $message->{line} );
-        $msg = decode( 'utf8', $msg );
-
-        if( $message->{status} eq 'ERROR' ) {
-            push @errors, $msg;
-        } else {
-            push @warnings, $msg;
-        }
-    }
-
-    if( !exists $options->{no_print} || $options->{no_print} == 0 ) {
-        print STDERR $_ foreach( @warnings );
-        my $last_error = pop @errors;
-        print STDERR $_ foreach( @errors );
-        if (defined $last_error) {
-            die $last_error;
-        }
-    }
-
-    unshift @errors, @warnings;
+    my( $data, $nerrors, $errors ) =
+        process_parse_result( $parse_result, $options->{no_print} );
 
     if( wantarray ) {
-        return( $data, $nerrors, \@errors );
+        return( $data, $nerrors, $errors );
     } else {
         return $data;
     }
