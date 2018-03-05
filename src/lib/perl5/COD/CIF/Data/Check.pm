@@ -310,6 +310,40 @@ sub check_disorder
     return \@messages;
 }
 
+##
+# Checks if atoms that have special occupancy values (unknown or inapplicable)
+# are explicitly marked as dummy atoms.
+#
+# @param $dataset
+#       Reference to a data block as returned by the COD::CIF::Parser.
+# @return
+#       Reference to an array of audit messages.
+##
+sub check_occupancies
+{
+    my( $dataset ) = @_;
+    my @messages;
+
+    my $values = $dataset->{'values'};
+    if ( exists $values->{'_atom_site_occupancy'} ) {
+        for (my $i = 0; $i < @{$values->{'_atom_site_label'}}; $i++) {
+            if ( ( $values->{'_atom_site_occupancy'}[$i] eq '.' || 
+                   $values->{'_atom_site_occupancy'}[$i] eq '?' ) &&
+                 ( !exists $values->{'_atom_site_calc_flag'} ||
+                   $values->{'_atom_site_calc_flag'}[$i] ne 'dum' ) ) {
+                push @messages,
+                     "WARNING, atom '$values->{'_atom_site_label'}[$i]' has " .
+                     "a special occupancy value " .
+                     "'$values->{'_atom_site_occupancy'}[$i]' " .
+                     'even though the atom is not explicitly marked as a ' .
+                     'dummy atom' . "\n";
+            }
+        }
+    }
+
+    return \@messages;
+}
+
 # Check whether specified tags are all simultaneously present. This
 # check in COD is important for _atom_site_fractional_{x,y,z},
 # _atom_site_Cartesian_{x,y,z} and _atom_site_aniso_U_?? data items.
