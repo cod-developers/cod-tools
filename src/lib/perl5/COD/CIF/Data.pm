@@ -23,6 +23,7 @@ our @EXPORT_OK = qw(
     get_cell
     get_sg_data
     get_content_encodings
+    get_source_data_block_name
     get_symmetry_operators
 );
 
@@ -403,6 +404,27 @@ sub lookup_space_group
         }
     }
     return;
+}
+
+# Returns data block name. Original source data block name, if specified, is
+# prefered. If not specified, current data block name is returned.
+sub get_source_data_block_name
+{
+    my( $datablock, $options ) = @_;
+    my $values = $datablock->{values};
+    my $database = 'cod';
+    if( $options && exists $options->{database} ) {
+        $database = $options->{database};
+    }
+
+    if( exists $values->{"_${database}_data_source_block"} ) {
+        return $values->{"_${database}_data_source_block"}[0];
+    }
+    if( exists $values->{"_[local]_${database}_data_source_block"} ) {
+        return $values->{"_[local]_${database}_data_source_block"}[0];
+    }
+
+    return $datablock->{name};
 }
 
 1;

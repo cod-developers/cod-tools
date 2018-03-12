@@ -18,15 +18,35 @@ eval 'exec perl -x $0 ${1+"$@"}'
 use strict;
 use warnings;
 use COD::CIF::Parser qw( parse_cif );
-use COD::SOptions qw( getOptions );
+use COD::CIF::Tags::Manage qw( cifversion new_datablock rename_tag set_tag );
+use COD::CIF::Unicode2CIF qw( cif2unicode );
+use COD::SOptions qw( getOptions get_value );
 use COD::SUsage qw( usage options );
 use COD::ErrorHandler qw( process_warnings
                           process_errors
                           process_parser_messages );
 use COD::ToolsVersion;
+use COD::UserMessage qw( sprint_message );
 use HTML::Entities qw( encode_entities );
 
+my %tags_to_rename = (
+    _name               => '_definition.id',
+    _category           => '_name.category_id',
+    _enumeration        => '_enumeration_set.state',
+    _enumeration_detail => '_enumeration_set.detail',
+    _units_detail       => '_units.code',
+    _definition         => '_description.text',
+);
+
+my $category_overview = 'category_overview';
+
+sub unprefix($);
+sub escape($);
+sub mark_hyperlinks($);
+
 my $use_parser = 'c';
+my $additional_head_text;
+my $add_anchors = 1;
 
 #* OPTIONS:
 #*   --use-perl-parser
@@ -34,19 +54,37 @@ my $use_parser = 'c';
 #*   --use-c-parser
 #*                     Use Perl & C parser for CIF parsing (default).
 #*
+#*   --append-head-text
+#*                     Read Markdown text from a file and append it to
+#*                     the dictionary overview text, just before
+#*                     enumerating the categories in the dictionary.
+#*
+#*   --add-anchors
+#*                     Add HTML anchors for headings (default).
+#*   --no-add-anchors
+#*   --dont-add-anchors
+#*                     Do not add HTML anchors for headings.
+#*
 #*   --help, --usage
 #*                     Output a short usage message (this message) and exit.
 #*   --version
 #*                     Output version information and exit.
 #**
 @ARGV = getOptions(
-    "--use-perl-parser" => sub { $use_parser = "perl" },
-    "--use-c-parser"    => sub { $use_parser = "c" },
-    "--options"         => sub { options; exit },
-    "--help,--usage"    => sub { usage; exit },
-    '--version'         => sub { print 'cod-tools version ',
-                                 $COD::ToolsVersion::Version, "\n";
-                                 exit }
+    "--use-perl-parser"  => sub { $use_parser = "perl" },
+    "--use-c-parser"     => sub { $use_parser = "c" },
+    "--append-head-text" => sub { open( my $inp, get_value() );
+                                  $additional_head_text =
+                                    join '', <$inp>;
+                                  close $inp },
+    "--add-anchors"      => sub { $add_anchors = 1 },
+    "--no-add-anchors"   => sub { $add_anchors = 0 },
+    "--dont-add-anchors" => sub { $add_anchors = 0 },
+    "--options"          => sub { options; exit },
+    "--help,--usage"     => sub { usage; exit },
+    '--version'          => sub { print 'cod-tools version ',
+                                  $COD::ToolsVersion::Version, "\n";
+                                  exit }
 );
 
 my $die_on_errors    = 1;
@@ -65,14 +103,23 @@ for my $filename (@ARGV) {
     my ( $data, $err_count, $messages ) = parse_cif( $filename, $options );
     process_parser_messages( $messages, $die_on_error_level );
 
-    if( !@$data || !exists $data->[0] || !exists $data->[0]{cifversion} ||
-        $data->[0]{cifversion}{major} != 2 ) {
-        process_errors( {
-                message  => 'only CIF format version 2.0 or greater ' .
-                            'is accepted',
+    if ( !@{$data} ) {
+        warn sprint_message( $0, $filename, undef, 'WARNING',
+                             'the file contains no data blocks',
+                             undef );
+        next;
+    }
+
+    if( !cifversion( $data->[0] ) || cifversion( $data->[0] ) !~ /^2\./ ) {
+        $data = [ ddl2ddlm( $data ) ];
+        process_warnings( {
+                message  => 'apparently DDL dictionary was encountered, ' .
+                            'converting it to DDLm; the conversion is ' .
+                            'experimental and may result in corruption ' .
+                            'or loss of dictionary data',
                 program  => $0,
-                filename => $filename
-            }, $die_on_errors );
+                filename => $filename,
+            }, $die_on_error_level );
     }
 
     for my $datablock (@$data) {
@@ -96,7 +143,11 @@ for my $filename (@ARGV) {
                    escape( $datablock->{values}{'_dictionary.version'}[0] ),
                    escape( $datablock->{values}{'_dictionary.date'}[0] );
 
-            dic_block2markdown( $dict, 1 );
+            print "$additional_head_text\n\n" if $additional_head_text;
+
+            dic_block2markdown( $dict,
+                                { indent => 1,
+                                  add_anchors => $add_anchors } );
         };
         if( $@ ) {
             process_errors( {
@@ -156,56 +207,130 @@ sub find_children
 
 sub dic_block2markdown
 {
-    my( $node, $indent ) = @_;
+    my( $node, $options ) = @_;
+
+    $options = {} unless $options;
+    my $indent = $options->{indent};
+    $indent = 0 unless defined $indent;
 
     my $values = $node->{content}{values};
 
-    $indent = 0 if !defined $indent;
-    my $title = $values->{'_definition.id'}[0];
-
-    print '#' x ($indent + 1) . ' ' . escape( $title ) . "\n\n";
-
-    if( exists $values->{'_description.text'} ) {
-        print escape( unprefix( $values->{'_description.text'}[0] ) ),
-              "\n\n";
+    if( exists $values->{'_definition.class'} &&
+        ($values->{'_definition.class'}[0] eq 'Attribute' ||
+         $values->{'_definition.class'}[0] eq 'Datum') ) {
+        $indent++;
     }
 
-    if( exists $values->{'_units.code'} ) {
-        printf "Units: %s\n\n", escape( $values->{'_units.code'}[0] );
-    }
+    if( !exists $values->{'_definition.class'} ||
+        $values->{'_definition.class'}[0] ne 'Head' ) {
 
-    my $default = '?';
-    if( exists $values->{'_enumeration.default'} ) {
-        $default = $values->{'_enumeration.default'}[0];
-    }
-    if( exists $values->{'_enumeration_set.state'} &&
-        exists $values->{'_enumeration_set.detail'} ) {
-        print "Values:\n\n",
-              "<table>\n  <tr><th>Value</th><th>Description</th></tr>\n";
-        for my $i (keys @{$values->{'_enumeration_set.state'}}) {
-            print '  <tr><td>' . encode_entities(
-                  unprefix( $values->{'_enumeration_set.state'}[$i] ) ) .
-                  '</td><td>' . encode_entities(
-                  unprefix( $values->{'_enumeration_set.detail'}[$i] ) ) .
-                  ( $values->{'_enumeration_set.state'}[$i] eq $default
-                    ? ' (default)' : '' ) .
-                  "</td></tr>\n";
+        local $\ = "\n\n";
+
+        my $title = $values->{'_definition.id'}[0];
+        my $anchor = '';
+        if( $options->{add_anchors} ) {
+            $anchor = '<a name="' . encode_entities( $title ) . '"></a>';
         }
-        print "</table>\n";
-    } elsif( exists $values->{'_enumeration_set.state'} ) {
-        print "Values:\n\n",
-              map { '* ' . escape( $_ ) .
-                    ($_ eq $default ? ' (default)' : '') . "\n" }
-                  @{$values->{'_enumeration_set.state'}};
-        print "\n";
+        print '#' x ($indent + 1) . ' ', $anchor, escape $title;
+
+        if( exists $values->{'_description.text'} ) {
+            print mark_hyperlinks escape unprefix $values->{'_description.text'}[0];
+        }
+
+        if( exists $values->{'_units.code'} ) {
+            print 'Units: ', escape $values->{'_units.code'}[0];
+        }
+
+        local $\ = "\n";
+
+        if( exists $values->{'_enumeration_set.state'} &&
+            exists $values->{'_enumeration_set.detail'} ) {
+            print "Values:\n\n",
+                  "<table>\n  <tr><th>Value</th><th>Description</th></tr>";
+            for my $i (0..$#{$values->{'_enumeration_set.state'}}) {
+                print '  <tr><td>' . encode_entities(
+                      unprefix( $values->{'_enumeration_set.state'}[$i] ) ) .
+                      '</td><td>' . encode_entities(
+                      mark_hyperlinks unprefix $values->{'_enumeration_set.detail'}[$i] ) .
+                      "</td></tr>";
+            }
+            print '</table>';
+        } elsif( exists $values->{'_enumeration_set.state'} ) {
+            print "Values:\n\n", map { '* ' . escape( $_ ). "\n" }
+                                     @{$values->{'_enumeration_set.state'}};
+        }
+        if( exists $values->{'_enumeration.default'} ) {
+            printf "Default value: '%s'\n\n", $values->{'_enumeration.default'}[0];
+        }
     }
 
     foreach (@{$node->{children}}) {
-        dic_block2markdown( $_, $indent + 1 );
+        dic_block2markdown( $_,
+                            { indent => $indent,
+                              add_anchors => $options->{add_anchors} } );
     }
 }
 
-sub unprefix
+# Converts (in a rather crude way) CIF data blocks of DDL dictionaries
+# to DDLm in order to represent them using the same code. This method
+# should not be used to translate DDL to DDLm for other purposes as it
+# is largely based on guesswork and works satisfactory only for the
+# purpose of this script.
+sub ddl2ddlm
+{
+    my( $ddl_datablocks ) = @_;
+    my $ddlm_datablock = new_datablock( 'converted_data_block' );
+
+    my $head = new_datablock( $category_overview );
+    set_tag( $head, '_definition.id', uc $category_overview );
+    set_tag( $head, '_definition.class', 'Head' );
+    push @{$ddlm_datablock->{save_blocks}}, $head;
+
+    for my $ddl_datablock (@$ddl_datablocks) {
+        next if $ddl_datablock->{name} eq 'on_this_dictionary';
+
+        if( exists $ddl_datablock->{values}{_category} &&
+            $ddl_datablock->{values}{_category}[0] eq $category_overview ) {
+            $ddl_datablock->{values}{_name}[0] =~ s/^_//;
+            $ddl_datablock->{values}{_name}[0] =~ s/_\[\]$//;
+            # Uppercasing category names to make them stand out:
+            $ddl_datablock->{values}{_name}[0] =
+                uc $ddl_datablock->{values}{_name}[0];
+            # For now, 'Loop' and 'Set' categories are not differentiated:
+            set_tag( $ddl_datablock, '_definition.class', 'Loop' );
+        } else {
+            set_tag( $ddl_datablock, '_definition.class', 'Attribute' );
+        }
+
+        for my $tag (sort keys %tags_to_rename) {
+            next if !exists $ddl_datablock->{values}{$tag};
+
+            $ddl_datablock->{values}{$tag} =
+                [ map { cif2unicode( $_ ) }
+                      @{$ddl_datablock->{values}{$tag}} ];
+
+            rename_tag( $ddl_datablock,
+                        $tag,
+                        $tags_to_rename{$tag} );
+        }
+
+        push @{$ddlm_datablock->{save_blocks}}, $ddl_datablock;
+    }
+
+    set_tag( $ddlm_datablock,
+             '_dictionary.title',
+             $ddl_datablocks->[0]{values}{_dictionary_name}[0] );
+    set_tag( $ddlm_datablock,
+             '_dictionary.version',
+             $ddl_datablocks->[0]{values}{_dictionary_version}[0] );
+    set_tag( $ddlm_datablock,
+             '_dictionary.date',
+             $ddl_datablocks->[0]{values}{_dictionary_update}[0] );
+
+    return $ddlm_datablock;
+}
+
+sub unprefix($)
 {
     my( $text ) = @_;
 
@@ -220,7 +345,7 @@ sub unprefix
     return $text;
 }
 
-sub escape
+sub escape($)
 {
     my( $text ) = @_;
 
@@ -229,6 +354,15 @@ sub escape
 
     # Escaping HTML:
     $text = encode_entities( $text );
+
+    return $text;
+}
+
+sub mark_hyperlinks($)
+{
+    my( $text ) = @_;
+
+    $text =~ s/(https?:\/\/[^\s\(\)]+)(\.?)/[$1]($1)$2/g;
 
     return $text;
 }
