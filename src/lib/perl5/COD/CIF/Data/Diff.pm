@@ -82,12 +82,12 @@ sub comm
     my @tags1 = keys %{$cif1->{values}};
     my @tags2 = keys %{$cif2->{values}};
     if( defined $options->{compare_only} ) {
-        my %compare_only = map{ $_ => 1 } @{$options->{compare_only}};
+        my %compare_only = map { $_ => 1 } @{$options->{compare_only}};
         @tags1 = grep { exists $compare_only{$_} } @tags1;
         @tags2 = grep { exists $compare_only{$_} } @tags2;
     }
     if( defined $options->{compare_not} ) {
-        my %compare_not = map{ $_ => 1 } @{$options->{compare_not}};
+        my %compare_not = map { $_ => 1 } @{$options->{compare_not}};
         @tags1 = grep { !exists $compare_not{$_} } @tags1;
         @tags2 = grep { !exists $compare_not{$_} } @tags2;
     }
@@ -95,22 +95,22 @@ sub comm
     @tags2 = sort @tags2;
     PAIR_OF_TAGS:
     while( @tags1 > 0 || @tags2 > 0 ) {
-        if( scalar @tags1 == 0 ) {
+        if( !@tags1 ) {
             my $tag = shift @tags2;
             if( $options->{ignore_empty_values} &&
                 tag_is_empty( $cif2, $tag ) ) {
                 next;
             }
-            push( @$comm, [ undef, undef, $tag ] ) unless $no_left;
+            push @$comm, [ undef, undef, $tag ] unless $no_left;
             next;
         }
-        if( scalar @tags2 == 0 ) {
+        if( !@tags2 ) {
             my $tag = shift @tags1;
             if( $options->{ignore_empty_values} &&
                 tag_is_empty( $cif1, $tag ) ) {
                 next;
             }
-            push( @$comm, [ $tag, undef, undef ] ) unless $no_right;
+            push @$comm, [ $tag, undef, undef ] unless $no_right;
             next;
         }
         if( $tags1[0] ne $tags2[0] ) {
@@ -120,50 +120,47 @@ sub comm
                     tag_is_empty( $cif1, $tag ) ) {
                     next;
                 }
-                push( @$comm, [ $tag, undef, undef ] ) unless $no_left;
+                push @$comm, [ $tag, undef, undef ] unless $no_left;
             } else {
                 my $tag = shift @tags2;
                 if( $options->{ignore_empty_values} &&
                     tag_is_empty( $cif2, $tag ) ) {
                     next;
                 }
-                push( @$comm, [ undef, undef, $tag ] ) unless $no_right;
+                push @$comm, [ undef, undef, $tag ] unless $no_right;
             }
             next;
         }
-        if( scalar @{$cif1->{values}{$tags1[0]}} !=
-            scalar @{$cif2->{values}{$tags2[0]}} ) {
-            push( @$comm, [ $tags1[0], undef, $tags2[0] ] );
-            shift @tags1;
-            shift @tags2;
+
+        my $values1 = $cif1->{values};
+        my $values2 = $cif2->{values};
+        if( scalar @{$values1->{$tags1[0]}} !=
+            scalar @{$values2->{$tags2[0]}} ) {
+            push @$comm, [ shift @tags1, undef, shift @tags2 ];
             next;
         }
-        my $is_different;
-        for( my $i = 0; $i < @{$cif1->{values}{$tags1[0]}}; $i++ ) {
-            if( exists $comparators->{$tags1[0]} ) {
-                if( &{ $comparators->{$tags1[0]} }(
-                    $cif1->{values}{$tags1[0]}[$i],
-                    $cif2->{values}{$tags2[0]}[$i] ) != 0 ) {
-                    push( @$comm, [ $tags1[0], undef, $tags2[0] ] );
-                    shift @tags1;
-                    shift @tags2;
-                    next PAIR_OF_TAGS;
-                }
-            } else {
-                if( $cif1->{values}{$tags1[0]}[$i] ne
-                    $cif2->{values}{$tags2[0]}[$i] ) {
-                    push( @$comm, [ $tags1[0], undef, $tags2[0] ] );
-                    shift @tags1;
-                    shift @tags2;
-                    next PAIR_OF_TAGS;
-                }
+
+        my $comparator = \&cmp_text;
+        if( exists $comparators->{$tags1[0]} ) {
+            $comparator = $comparators->{$tags1[0]};
+        }
+        for( my $i = 0; $i < @{$values1->{$tags1[0]}}; $i++ ) {
+            if( &$comparator( $values1->{$tags1[0]}[$i],
+                              $values2->{$tags2[0]}[$i] ) != 0 ) {
+                push @$comm, [ shift @tags1, undef, shift @tags2 ];
+                next PAIR_OF_TAGS;
             }
         }
-        push( @$comm, [ undef, $tags1[0], undef ] ) unless $no_common;
+        push @$comm, [ undef, $tags1[0], undef ] unless $no_common;
         shift @tags1;
         shift @tags2;
     }
     return $comm;
+}
+
+sub cmp_text
+{
+    return $_[0] cmp $_[1];
 }
 
 1;

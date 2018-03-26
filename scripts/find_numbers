@@ -19,11 +19,15 @@ eval 'exec perl -x $0 ${1+"$@"}'
 
 use strict;
 use warnings;
-use File::Basename qw( basename );
+use COD::CIF::Data::CODNumbers qw( cif_fill_data
+                                   entries_are_the_same );
+use COD::CIF::Parser qw( parse_cif );
+use COD::CIF::Tags::CanonicalNames qw( canonicalize_all_names );
+use COD::ErrorHandler qw( process_errors
+                          process_parser_messages
+                          report_message );
 use COD::SOptions qw( getOptions );
 use COD::SUsage qw( usage );
-use COD::ErrorHandler qw( process_errors
-                          report_message );
 use COD::ToolsVersion;
 
 my $die_on_error_level = {
@@ -82,62 +86,11 @@ do {
 } if 0;
 
 for my $file (@COD_cif_files) {
-    my %structures = ();
-
-    eval {
-
     chomp $file;
-    open my $COD_CIF, '<', "$file" or die 'ERROR, '
-        . 'could not open the CIF file for reading -- ' . lcfirst($!) . "\n";
-
-    my $id;
-    while( <$COD_CIF> ) {
-        if( /^\s*data_(.*)/ ) {
-            $id = $1;
-            $structures{$id}{id} = $id;
-            $structures{$id}{filename} = basename( $file );
-        }
-        if( /^\s*_chemical_formula_sum\s+(.*)/ ) {
-            my $formula = $1;
-            $formula =~ s/^\s*'\s*|\s*'\s*$//g;
-            $formula =~ s/\s+/ /g;
-            my $sorted = join ' ', sort {$a cmp $b} split ' ', $formula;
-            $structures{$id}{chemical_formula_sum} = $sorted;
-        }
-        if( /^\s*(_cell_(?:length_a|length_b|length_c|
-                     angle_alpha|angle_beta|angle_gamma))\s+([\d.]+)/x ) {
-            my $key = $1;
-            my $val = $2;
-            $val =~ s/^\s*'\s*|\s*'\s*$//g;
-            $val =~ s/\(.*$//;
-            $val =~ s/[()_a-zA-Z]//g;
-            $structures{$id}{cell}{$key} = sprintf '%f', $val;
-        }
-        if( /^\s*(_[^\s]*temperature[^\s]*)\s+(.*)/ ) {
-            $structures{$id}{temperature}{$1} = $2;
-            $structures{$id}{temperature}{$1} =~ s/^\s*'\s*|\s*'\s*$//g;
-        }
-        if( /^\s*(_[^\s]*pressure[^\s]*)\s+(.*)/ ) {
-            $structures{$id}{pressure}{$1} = $2;
-            $structures{$id}{pressure}{$1} =~ s/^\s*'\s*|\s*'\s*$//g;
-        }
-        if( !( /^\s*_journal_name/ ) ) {
-            if ( /^\s*(_journal_[^\s]*)\s+(.*)\s*$/ ) {
-                my $key = $1;
-                my $value = $2;
-                $value =~ s/^['"]|["']$//g;
-                $structures{$id}{bibliography}{$key} = $value;
-            }
-        }
-        if( /^\s*(?:_\[local\])?_cod_suboptimal_structure\s+(.*)\s*$/ ) {
-            ## print ">>>>>> $2\n";
-            $structures{$id}{suboptimal} = $1;
-        }
-    }
-
-    close $COD_CIF or die 'ERROR, '
-        . 'could not close the CIF file after reading -- ' . lcfirst($!) . "\n";
-
+    my %structures = ();
+    eval {
+        my $structures = structures_from_cif_file( $file );
+        %structures = %$structures;
     }; # end of eval
     if ($@) {
         process_errors( {
@@ -147,7 +100,6 @@ for my $file (@COD_cif_files) {
         }, $die_on_error_level->{'ERROR'} )
     };
 
-    my $basename = basename( $file );
     for my $id (keys %structures) {
         my $formula = $structures{$id}{chemical_formula_sum};
 
@@ -167,61 +119,11 @@ do {
 my @cif_files = `find @ARGV -name "*.cif" -o -name "*.CIF"`;
 
 for my $file (@cif_files) {
-    my %structures = ();
-
-    eval {
-
     chomp $file;
-    open my $CIF, '<', "$file" or die 'ERROR, '
-        . 'could not open the CIF file for reading -- ' . lcfirst($!) . "\n";
-
-    my $id;
-    while( <$CIF> ) {
-        if( /^\s*data_(.*)/ ) {
-            $id = $1;
-            $structures{$id}{id} = $id;
-            $structures{$id}{filename} = basename( $file );
-        }
-        if( /^\s*_chemical_formula_sum\s+(.*)/ ) {
-            my $formula = $1;
-            $formula =~ s/^\s*'\s*|\s*'\s*$//g;
-            $formula =~ s/\s+/ /g;
-            my $sorted = join ' ', sort {$a cmp $b} split ' ', $formula;
-            $structures{$id}{chemical_formula_sum} = $sorted;
-        }
-        if( /^\s*(_cell_(?:length_a|length_b|length_c|
-                     angle_alpha|angle_beta|angle_gamma))\s+([\d.]+)/x ) {
-            my $key = $1;
-            my $val = $2;
-            $val =~ s/^\s*'\s*|\s*'\s*$//g;
-            $val =~ s/\(.*$//;
-            $structures{$id}{cell}{$key} = sprintf '%f', $val;
-        }
-        if( /^\s*(_[^\s]*temperature[^\s]*)\s+(.*)/ ) {
-            $structures{$id}{temperature}{$1} = $2;
-            $structures{$id}{temperature}{$1} =~ s/^\s*'\s*|\s*'\s*$//g;
-        }
-        if( /^\s*(_[^\s]*pressure[^\s]*)\s+(.*)/ ) {
-            $structures{$id}{pressure}{$1} = $2;
-            $structures{$id}{pressure}{$1} =~ s/^\s*'\s*|\s*'\s*$//g;
-        }
-        if( !(/^\s*_journal_name/) ) {
-            if ( /^\s*(_journal_[^\s]*)\s+(.*)\s*$/ ) {
-                my $key = $1;
-                my $value = $2;
-                $value =~ s/^['"]|["']$//g;
-                $structures{$id}{bibliography}{$key} = $value;
-            }
-        }
-        if( /^\s*(?:_\[local\])?_cod_suboptimal_structure\s+(.*)\s*$/ ) {
-            ## print ">>>>>> $2\n";
-            $structures{$id}{suboptimal} = $2;
-        }
-    }
-
-    close $CIF or die 'ERROR, '
-        . 'could not close the CIF file after reading -- ' . lcfirst($!) . "\n";;
-
+    my %structures = ();
+    eval {
+        my $structures = structures_from_cif_file( $file );
+        %structures = %$structures;
     }; # end of eval
     if ($@) {
         process_errors( {
@@ -242,14 +144,20 @@ for my $file (@cif_files) {
         my $n = 0;
         if( defined $COD{$formula} ) {
             for my $COD_entry (@{$COD{$formula}}) {
-                if( entries_are_the_same( $structures{$id}, $COD_entry )) {
+                if( entries_are_the_same( $structures{$id},
+                                          $COD_entry,
+                                          {  check_bibliography =>
+                                            $check_bibliography } ) ) {
                     $n++;
                 }
             }
         }
         if( $n > 0 ) {
             for my $COD_entry (@{$COD{$formula}}) {
-                if( entries_are_the_same( $structures{$id}, $COD_entry )) {
+                if( entries_are_the_same( $structures{$id},
+                                          $COD_entry,
+                                          {  check_bibliography =>
+                                            $check_bibliography } ) ) {
                     printf
                         "%-35s %15s %3d %s\n",
                         $final_formula,
@@ -265,130 +173,23 @@ for my $file (@cif_files) {
 
 #------------------------------------------------------------------------------
 
-sub get_cell($)
+sub structures_from_cif_file
 {
-    my ( $datablok ) = @_;
+    my( $filename ) = @_;
 
-    return (
-        $datablok->{_cell_length_a},
-        $datablok->{_cell_length_b},
-        $datablok->{_cell_length_c},
-        $datablok->{_cell_angle_alpha},
-        $datablok->{_cell_angle_beta},
-        $datablok->{_cell_angle_gamma}
-    );
-}
+    my $options = { 'no_print' => 1 };
+    my ( $data, $err_count, $messages ) = parse_cif( $filename, $options );
+    process_parser_messages( $messages, $die_on_error_level );
 
-sub cells_are_the_same($$)
-{
-    my ($cell1, $cell2) = @_;
+    return {} if $err_count > 0;
 
-    my @cell1 = get_cell( $cell1 );
-    my @cell2 = get_cell( $cell2 );
+    canonicalize_all_names( $data );
 
-    my $max_length_diff = 0;
-    my $max_angle_diff = 0;
-
-    for my $i (0..2) {
-        my $length1 = $cell1[$i];
-        my $length2 = $cell2[$i];
-        if( defined $length1 and defined $length2 ) {
-            my $diff = abs( $length1 - $length2 );
-            if( $max_length_diff < $diff ) {
-                $max_length_diff = $diff;
-            }
-        }
-    }
-    for my $i (3..5) {
-        my $angle1 = $cell1[$i];
-        my $angle2 = $cell2[$i];
-        if( defined $angle1 and defined $angle2 ) {
-            my $diff = abs( $angle1 - $angle2 );
-            if( $max_angle_diff < $diff ) {
-                $max_angle_diff = $diff;
-            }
-        }
+    my %structures;
+    for my $datablock (@$data) {
+        my $structure = cif_fill_data( $datablock, $filename );
+        $structures{$datablock->{name}} = $structure;
     }
 
-    return
-        $max_length_diff < $max_cell_length_diff &&
-        $max_angle_diff < $max_cell_angle_diff;
-}
-
-sub conditions_are_the_same
-{
-    my ($entry1, $entry2) = @_;
-
-    for my $parameter ('temperature', 'pressure' ) {
-
-        my %tags = map {($_,$_)} ( keys %{$entry1->{$parameter}},
-                                   keys %{$entry2->{$parameter}} );
-        for my $tag (keys %tags) {
-            if( exists $entry1->{$parameter}{$tag} &&
-                exists $entry2->{$parameter}{$tag} &&
-                $entry1->{$parameter}{$tag} ne $entry2->{$parameter}{$tag} ) {
-                return 0;
-            }
-        }
-    }
-    return 1;
-}
-
-sub bibliographies_are_the_same($$)
-{
-    my ($biblio1, $biblio2) = @_;
-
-    my %tags = map {($_,$_)} ( keys %{$biblio1}, keys %{$biblio2} );
-
-    for my $tag ( keys %tags ) {
-        next if( $skip_tag{$tag} );
-        if( defined $biblio1->{$tag} && defined $biblio2->{$tag} ) {
-            if( $has_numeric_value{$tag} ) {
-                if( $biblio1->{$tag} != $biblio2->{$tag} ) {
-                    return 0;
-                }
-            } else {
-                if( $biblio1->{$tag} ne $biblio2->{$tag} ) {
-                    return 0;
-                }
-            }
-        }
-    }
-    return 1;
-}
-
-sub data_sections_are_the_same($$)
-{
-    my ($entry1, $entry2) = @_;
-
-    return
-        $entry1->{filename} eq $entry2->{filename} &&
-        $entry1->{id} eq $entry2->{id};
-}
-
-sub entries_are_the_same
-{
-    my ($entry1, $entry2) = @_;
-
-    ## print ">>> $entry1->{id}, $entry2->{id}, ",
-    ## defined $entry1->{suboptimal} ? $entry1->{suboptimal} : "" , " ", 
-    ## defined $entry2->{suboptimal} ? $entry2->{suboptimal} : "", "\n";
-
-    if( $check_bibliography ) {
-        return
-            ! data_sections_are_the_same( $entry1, $entry2 ) &&
-            cells_are_the_same( $entry1->{cell}, $entry2->{cell} ) &&
-            conditions_are_the_same( $entry1, $entry2 ) &&
-            (!defined $entry1->{suboptimal} || $entry1->{suboptimal} ne 'yes') &&
-            (!defined $entry2->{suboptimal} || $entry2->{suboptimal} ne 'yes') &&
-            bibliographies_are_the_same( $entry1->{bibliography},
-                                         $entry2->{bibliography} );
-    } else {
-        return
-            ! data_sections_are_the_same( $entry1, $entry2 ) &&
-            conditions_are_the_same( $entry1, $entry2 ) &&
-            (!defined $entry1->{suboptimal} || $entry1->{suboptimal} ne 'yes') &&
-            (!defined $entry2->{suboptimal} || $entry2->{suboptimal} ne 'yes') &&
-            cells_are_the_same( $entry1->{cell}, $entry2->{cell} );
-    }
+    return \%structures;
 }

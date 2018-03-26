@@ -580,6 +580,10 @@ eval {
         close( $header ) or die "ERROR, "
            . "error while closing header file after reading -- "
            . lcfirst($!) . "\n";
+
+        # The header must not contain CIF 2.0 magic code. For CIF 2.0
+        # files the magic code is printed explicitly before the header.
+        $cif_header =~ s/^#\\#CIF_2\.0[ \t]*\n//;
     }
 };
 if ($@) {
