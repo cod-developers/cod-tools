@@ -24,6 +24,7 @@ binmode STDERR, ':encoding(UTF-8)';
 use List::MoreUtils qw( any uniq );
 use File::Basename;
 use Scalar::Util qw( looks_like_number );
+use Date::Calc qw( check_date );
 use URI;
 
 use COD::CIF::Parser qw( parse_cif );
@@ -554,13 +555,12 @@ my $cif2_character = $cif2_ws_character . $cif2_nws_character;
         }
     } elsif ( $type eq 'date' ) {
         # ISO standard date format <yyyy>-<mm>-<dd>
-        if ( $value !~ m/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/ ) {
+        if ( $value !~ m/^([0-9]{4})-([0-9]{2})-([0-9]{2})$/ ||
+             !check_date( $1, $2, $3 ) ) {
             push @validation_messages,
                  'the value should conform to the ISO standard date format ' .
                  '<yyyy>-<mm>-<dd>';
         }
-        # TODO: a more thorough check should be carried out for the dates --
-        #       the month and day value ranges should be checked
     } elsif ( $type eq 'version' ) {
         # version digit string of the form <major>.<version>.<update>
         if ( $value !~ m/^[0-9]+(?:\.[0-9]+){0,2}$/ ) {
