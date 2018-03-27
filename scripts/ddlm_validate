@@ -33,7 +33,7 @@ use COD::CIF::DDL::Ranges qw( parse_range
 use COD::CIF::DDL::DDLm qw( get_imported_files
                             merge_imported_files );
 use COD::CIF::Tags::Manage qw( has_special_value );
-use COD::DateTime qw( parse_date );
+use COD::DateTime qw( parse_date parse_datetime );
 use COD::SOptions qw( getOptions get_value );
 use COD::SUsage qw( usage options );
 use COD::ErrorHandler qw( process_warnings
@@ -554,7 +554,8 @@ my $cif2_character = $cif2_ws_character . $cif2_nws_character;
                  'an URI string must start with a scheme component';
         }
     } elsif ( $type eq 'date' ) {
-        # ISO standard date format <yyyy>-<mm>-<dd>
+        # ISO standard date format <yyyy>-<mm>-<dd>.
+        # Use DateTime for all new dictionaries
         eval {
             parse_date($value);
         };
@@ -562,6 +563,17 @@ my $cif2_character = $cif2_ws_character . $cif2_nws_character;
             push @validation_messages,
                  'the value should conform to the ISO standard date format ' .
                  '<yyyy>-<mm>-<dd>';
+        }
+    } elsif ( $type eq 'datetime' ) {
+        # A timestamp. Text formats must use date-time or
+        # full-date productions of RFC3339 ABNF
+        eval {
+            parse_datetime($value);
+        };
+        if ( $@ ) {
+            push @validation_messages,
+                 'the value should be a date-time or full-date production ' .
+                 'of RFC339 ABNF';
         }
     } elsif ( $type eq 'version' ) {
         # version digit string of the form <major>.<version>.<update>
