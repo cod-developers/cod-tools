@@ -19,20 +19,25 @@ eval 'exec perl -x $0 ${1+"$@"}'
 
 use strict;
 use warnings;
-use STAR::Parser;
+use COD::CIF::Parser qw( parse_cif );
 use COD::CIF::Unicode2CIF qw( cif2unicode );
 use COD::SOptions qw( getOptions );
 use COD::SUsage qw( usage );
 use COD::ErrorHandler qw( process_errors );
 use COD::ToolsVersion;
+use COD::ErrorHandler qw( process_parser_messages );
 
-my $die_on_error_level = {
-    ERROR   => 1,
-    WARNING => 0,
-    NOTE    => 0
-};
+my $use_parser = 'c';
+my $die_on_errors   = 1;
+my $die_on_warnings = 0;
+my $die_on_notes    = 0;
 
 #* OPTIONS:
+#*   -c, --always-continue
+#*                     Continue processing and return successful return status
+#*                     even if errors are diagnosed.
+#*   -c-, --always-die
+#*                     Stop and return error status if errors are diagnosed.
 #*
 #*   --help, --usage
 #*                     Output a short usage message (this message) and exit.
@@ -40,49 +45,37 @@ my $die_on_error_level = {
 #*                     Output version information and exit.
 #**
 @ARGV = getOptions(
+    '-c,--always-continue' => sub { $die_on_errors   = 0;
+                                    $die_on_warnings = 0;
+                                    $die_on_notes    = 0 },
+    '-c-,--always-die'     => sub { $die_on_errors   = 1;
+                                    $die_on_warnings = 1;
+                                    $die_on_notes    = 1 },
     "--help,--usage" => sub { usage; exit },
     '--version'      => sub { print 'cod-tools version ',
                               $COD::ToolsVersion::Version, "\n";
                               exit }
 );
 
-my $filename = @ARGV > 0 ? shift(@ARGV) : "-";
-my $bib_file   = @ARGV > 0 ? shift(@ARGV) : undef;
-my @data;
+my $die_on_error_level = {
+    ERROR   => $die_on_errors,
+    WARNING => $die_on_warnings,
+    NOTE    => $die_on_notes
+};
 
-@data = STAR::Parser->parse(-file=>$filename);
+my $filename = @ARGV > 0 ? shift(@ARGV) : "-";
+my $bib_file = @ARGV > 0 ? shift(@ARGV) : undef;
+
+binmode STDOUT, ':encoding(UTF-8)';
+binmode STDERR, ':encoding(UTF-8)';
+
+my $options = { parser => $use_parser, no_print   => 1 };
+my ( $data, $err_count, $messages ) = parse_cif( $filename, $options );
+process_parser_messages( $messages, $die_on_error_level );
 
 my $n = 0;
-
-binmode( STDOUT, ':encoding(UTF-8)' );
-binmode( STDERR, ':encoding(UTF-8)' );
-
-for my $dataset (@data) {
-
-    next unless defined $dataset->{DATA};
-
-    my $compounds = $dataset->{DATA};
-    my @names = keys %{$compounds};
-
-    ## print int(@data), "\n"; exit;
-
-    my $compound_name = $names[0];
-    my $compound = $compounds->{$compound_name};
-    my $category = defined $compound ? $compound->{"-"} : undef;
-    my $datablok = defined $category ? $category->{"-"} : undef;
-
-    next if !defined $datablok;
-
-    # Make sure all tags are present in their lowercase form:
-
-    foreach my $key (keys %$datablok) {
-        my $value = $datablok->{$key};
-        my $lc_key = lc( $key );
-        if( $lc_key ne $key ) {
-            $datablok->{$lc_key} = $value;
-        }
-    }
-
+for my $dataset (@$data) {
+    my $datablok = $dataset->{values};
     next if !defined $datablok->{_atom_site_label};
 
     print "\n" if $n > 0;
