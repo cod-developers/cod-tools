@@ -842,7 +842,8 @@ sub validate_loops
     for my $scope ( 'Dictionary', 'Category', 'Item' ) {
     for my $instance ( keys %{$data->{$scope}} ) {
     my %looped_categories;
-    for my $tag ( @{$data->{$scope}{$instance}{'tags'}} ) {
+    my $data_frame = $data->{$scope}{$instance};
+    for my $tag ( @{$data_frame->{'tags'}} ) {
       if ( exists $dict->{'Item'}{$tag} ) {
         my $category_id = $dict->{'Item'}{$tag}{'values'}{'_name.category_id'}[0];
         my $category = $dict->{'Category'}{lc $category_id};
@@ -852,14 +853,14 @@ sub validate_loops
 
         my $category_is_looped =
             (lc $category->{'values'}{'_definition.class'}[0] eq 'loop');
-        my $tag_is_looped = defined $data->{$scope}{$instance}{'inloop'}{$tag};
+        my $tag_is_looped = defined $data_frame->{'inloop'}{$tag};
 
         if ( $category_is_looped ) {
             $looped_categories{$category_id}{$tag} = {
                 'loop_id'   =>
-                    ( defined $data->{$scope}{$instance}{'inloop'}{$tag} ?
-                      $data->{$scope}{$instance}{'inloop'}{$tag} : -1 ),
-                'loop_size' => scalar @{$data->{$scope}{$instance}{'values'}{$tag}}
+                    ( defined $data_frame->{'inloop'}{$tag} ?
+                      $data_frame->{'inloop'}{$tag} : -1 ),
+                'loop_size' => scalar @{$data_frame->{'values'}{$tag}}
             };
         } elsif ( !$category_is_looped && $tag_is_looped ) {
             push @validation_messages,
@@ -868,7 +869,34 @@ sub validate_loops
       }
     }
 
+    # check if the mandatory loop key exists
+    foreach my $c (keys %looped_categories ) {
+        my $category_key_id = $dict->{'Category'}{$c}{'values'}{'_category.key_id'}[0];
+        if (defined $category_key_id) {
+            my $category_key = $dict->{'Item'}{$category_key_id};
+
+            if ( defined $category_key ) {
+                my $category_key_type = $category_key->{'values'}{'_type.contents'}[0];
+                my @data_names;
+                push @data_names, @{$category_key->{'values'}{'_definition.id'}};
+                if ( defined $category_key->{'values'}{'_alias.definition_id'} ) {
+                    push @data_names, @{$category_key->{'values'}{'_alias.definition_id'}};
+                }
+
+                for my $data_name (@data_names) {
+                    if ( defined $data_frame->{'values'}{$data_name} ) {
+                        check_key_uniqueness( $data_frame->{'values'}{$data_name}, $category_key_type);
+                    }
+                }
+            }
+        }
+   #     my $category_composite_key = $dict->{'Category'}{$c}{'values'}{'_category_key.name'};
+   #     if (defined $category_composite_key) {
+   #     }
+    }
+
       foreach my $c (keys %looped_categories ) {
+        # check if all data items appear in the same loop
         my %loops;
         foreach my $d ( keys %{$looped_categories{$c}} ) {
             $loops{$looped_categories{$c}{$d}{'loop_id'}}++;
@@ -884,6 +912,55 @@ sub validate_loops
 
     return \@validation_messages;
 }
+
+sub check_key_uniqueness
+{
+    my ($key_values, $key_type) = @_;
+
+    my @validation_messages;
+
+    my %unique_values;
+    for my $value ( @{$key_values} ) {
+        my $is_new_key = 1;
+        for my $unique_key (keys %unique_values) {
+            if ( compare_ddlm_values($value, $unique_key, $key_type) ) {
+                push @{$unique_values{$unique_key}}, $value;
+                $is_new_key = 0;
+            }
+        }
+        if ( $is_new_key ) {
+            push @{$unique_values{$value}}, $value;
+       }
+    }
+
+    foreach my $key ( keys %unique_values ) {
+        if ( @{$unique_values{$key}} > 1 ) {
+            push @validation_messages, "value '$key' appears " .
+                 ( scalar @{$unique_values{$key}} ) . ' times as [' .
+                 ( join ', ', map { "'$_'" } @{$unique_values{$key}} ) . ']';
+        }
+    }
+
+    return @validation_messages;
+}
+
+sub compare_ddlm_values
+{
+  my ( $value_1, $value_2, $content_type ) = @_;
+
+  if ( lc $content_type eq 'code' ) {
+    return (lc $value_1 eq lc $value_2);
+  }
+
+  return 0;
+}
+
+#sub 
+#{
+#    my ($key) = @_;
+#
+#    
+#}
 
 sub report_deprecated
 {
@@ -1015,7 +1092,7 @@ sub validate_scope_restrictions
 
                 push @validation_messages,
                     "data item '$tag' is recommended in the '$scope' scope of " .
-                    "the '$data->{$scope}{$instance}{'name'}' frame"
+                    "the '$data->{$scope}{$instance}{'name'}' frame";
             }
           }
         }
@@ -1074,7 +1151,7 @@ sub build_search_struct
         if ( !exists $values->{'_definition.scope'} ) {
             $values->{'_definition.scope'} =
                 [ $default_ddlm_values{'_definition.scope'} ];
-        }
+        }# _dictionary_valid.scope
 
         if ( lc $values->{'_definition.scope'}[0] eq 'dictionary' ) {
             next; # TODO: do more research on this scope
