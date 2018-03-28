@@ -34,6 +34,7 @@ use COD::CIF::DDL::DDLm qw( get_imported_files
                             merge_imported_files );
 use COD::CIF::Tags::Manage qw( has_special_value );
 use COD::DateTime qw( parse_date parse_datetime );
+use COD::Precision qw( unpack_cif_number );
 use COD::SOptions qw( getOptions get_value );
 use COD::SUsage qw( usage options );
 use COD::ErrorHandler qw( process_warnings
@@ -876,7 +877,12 @@ sub validate_loops
             my $category_key = $dict->{'Item'}{$category_key_id};
 
             if ( defined $category_key ) {
-                my $category_key_type = $category_key->{'values'}{'_type.contents'}[0];
+                my $type_contents = $category_key->{'values'}{'_type.contents'}[0];
+                if ( lc $type_contents eq 'implied' ) {
+                    if ( exists $data_frame->{'values'}{'_type.contents'}[0] ) {
+                        $type_contents = $data_frame->{'values'}{'_type.contents'}[0];
+                    }
+                }
                 my @data_names;
                 push @data_names, @{$category_key->{'values'}{'_definition.id'}};
                 if ( defined $category_key->{'values'}{'_alias.definition_id'} ) {
@@ -885,7 +891,7 @@ sub validate_loops
 
                 for my $data_name (@data_names) {
                     if ( defined $data_frame->{'values'}{$data_name} ) {
-                        check_key_uniqueness( $data_frame->{'values'}{$data_name}, $category_key_type);
+                        check_key_uniqueness( $data_frame->{'values'}{$data_name}, $type_contents);
                     }
                 }
             }
@@ -944,15 +950,73 @@ sub check_key_uniqueness
     return @validation_messages;
 }
 
+# TODO: it should be noted, that special CIF values are handled outside of
+# this function
+# TODO: for now precissions are not considered
 sub compare_ddlm_values
 {
   my ( $value_1, $value_2, $content_type ) = @_;
 
-  if ( lc $content_type eq 'code' ) {
-    return (lc $value_1 eq lc $value_2);
+  $content_type = lc $content_type;
+
+  if ( $content_type eq 'text' ) {
+    return ( $value_1 eq $value_2 );
+  }
+
+  if ( $content_type eq 'tag' ) {
+    return ( $value_1 eq $value_2 );
+  }
+
+  if ( $content_type eq 'symop' ) {
+    return ( $value_1 eq $value_2 );
+  }
+
+  if ( $content_type eq 'code' ) {
+    return ( lc $value_1 eq lc $value_2 );
+  }
+
+  if ( $content_type eq 'dimension' ) {
+# TODO: the dimension data type is currently not yet fully established
+    return 0;
+  }
+
+  if ( $content_type eq 'count' ) {
+    my $uvalue_1 = unpack_cif_number($value_1);
+    my $uvalue_2 = unpack_cif_number($value_2);
+    if ( looks_like_number( $uvalue_1 ) && looks_like_number( $uvalue_2 ) ) {
+        return ( $uvalue_1 == $uvalue_2 );
+    } else {
+        return 0;
+    }
+  }
+
+  if ( $content_type eq 'index' ) {
+    my $uvalue_1 = unpack_cif_number($value_1);
+    my $uvalue_2 = unpack_cif_number($value_2);
+    if ( looks_like_number( $uvalue_1 ) && looks_like_number( $uvalue_2 ) ) {
+        return ( $uvalue_1 == $uvalue_2 );
+    } else {
+        return 0;
+    }
+  }
+
+  if ( $content_type eq 'real' ) {
+    my $uvalue_1 = unpack_cif_number($value_1);
+    my $uvalue_2 = unpack_cif_number($value_2);
+    if ( looks_like_number( $uvalue_1 ) && looks_like_number( $uvalue_2 ) ) {
+        return equal( $uvalue_1, $uvalue_2, 8 ); #TODO: using 8 for now
+    } else {
+        return 0;
+    }
   }
 
   return 0;
+}
+
+sub equal {
+  my ($num_1, $num_2, $dp) = @_;
+
+    return sprintf("%.${dp}g", $num_1) eq sprintf("%.${dp}g", $num_2);
 }
 
 #sub 
