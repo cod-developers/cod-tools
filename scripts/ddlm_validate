@@ -135,7 +135,8 @@ my $die_on_error_level = {
 my %default_ddlm_values = (
     # DDLm version 3.11.10
     '_type.container'   => 'single',
-    '_definition.scope' => 'item'
+    '_definition.scope' => 'item',
+    '_type.contents'    => 'text',
 );
 
 my %dicts;
@@ -382,47 +383,76 @@ sub validate_type_contents
 
     for my $scope ( 'Dictionary', 'Category', 'Item' ) {
     for my $instance ( sort keys %{$data->{$scope}} ) {
-    for my $tag ( @{$data->{$scope}{$instance}{'tags'}} ) {
+    my $data_frame = $data->{$scope}{$instance};
+    for my $tag ( @{$data_frame->{'tags'}} ) {
       if ( exists $dict->{'Item'}{$tag} ) {
-        my $dict_item = $dict->{'Item'}{$tag};
-        if ( exists $dict_item->{'values'}{'_type.contents'} ) {
-          my $type_contents = lc $dict_item->{'values'}{'_type.contents'}[0];
-          # The 'implied' data type points to the data type given in the
-          # data item definition save frame
-          if ( $type_contents eq 'implied' ) {
-              if ( exists $data->{$scope}{$instance}{'values'}{'_type.contents'}[0] ) {
-                $type_contents = $data->{$scope}{$instance}{'values'}{'_type.contents'}[0];
-              }
-          }
+        my $type_contents = get_type_contents( $tag, $data_frame, $dict );
 
-          if ( $type_contents eq 'byreference') {
-            if ( exists $dict_item->{'values'}
-                                 {'_type.contents_referenced_id'}[0] ) {
-                $type_contents = $dict->{'Item'}{
-                                    $dict_item->{'values'}
-                                      {'_type.contents_referenced_id'}[0]}
-                                        {'values'}{'_type.contents'}[0];
-            } else {
-                push @validation_messages,
-                    "the '$tag' data item has the 'byReference' content type, " .
-                    "but the '_type.contents_referenced_id' data item is missing " .
-                    'in the definition save frame';
-                next;
-            }
-          }
-
-          for (my $i = 0; $i < @{$data->{$scope}{$instance}{'values'}{$tag}}; $i++) {
-            my $value = $data->{$scope}{$instance}{'values'}{$tag}[$i];
+        for (my $i = 0; $i < @{$data_frame->{'values'}{$tag}}; $i++) {
+            my $value = $data_frame->{'values'}{$tag}[$i];
             push @validation_messages,
                 map { "data item '$tag' " . $_ }
                     @{ check_data_types( $value, $type_contents,
-                       $data->{$scope}{$instance}{'types'}{$tag}[$i] ) };
-          }
+                       $data_frame->{'types'}{$tag}[$i] ) };
         }
       }
     }}}
 
     return \@validation_messages;
+}
+
+##
+# Determine the content type for the given data item as defined in a DDLm
+# dictionary file. The "Implied" and "ByReference" content types are
+# automatically resolved to more definitive content types.
+#
+# @param $data_name
+#       The data name of the data item for which the content type should
+#       be determined.
+# @param $data_frame
+#       CIF data frame (data block or save block) in which the data item
+#       resides as returned by the COD::CIF::Parser.
+# @param $dict
+#       The data structure of the validation dictionary (as returned by the
+#       'build_search_struct' data structure).
+# @return
+#       Content type for the given data item as defined in the provided DDLm.
+##
+sub get_type_contents
+{
+    my ($data_name, $data_frame, $dict) = @_;
+
+    my $type_contents = $default_ddlm_values{'_type.contents'};
+
+    my $dict_item_frame = $dict->{'Item'}{$data_name};
+    if ( exists $dict_item_frame->{'values'}{'_type.contents'} ) {
+        $type_contents = lc $dict_item_frame->{'values'}{'_type.contents'}[0];
+        # The 'implied' type content refers to type content
+        # of the data frame in which the data item resides
+        if ( $type_contents eq 'implied' ) {
+            if ( exists $data_frame->{'values'}{'_type.contents'}[0] ) {
+                $type_contents = $data_frame->{'values'}{'_type.contents'}[0];
+            }
+        }
+
+        if ( $type_contents eq 'byreference' ) {
+            if ( exists $dict_item_frame->{'values'}
+                                 {'_type.contents_referenced_id'}[0] ) {
+                $type_contents = get_type_contents(
+                    $dict_item_frame->{'values'}{'_type.contents_referenced_id'}[0],
+                    $dict_item_frame,
+                    $dict );
+            } else {
+                warn, 'incorrect definition in the DDLm dictionary -- ' .
+                      "the '$data_name' data item has the 'byReference' " .
+                      'content type, but the \'_type.contents_referenced_id\' ' .
+                      'data item is missing in the definition save frame' . "\n";
+                next;
+            }
+        }
+    }
+
+    return $type_contents;
 }
 
 sub check_data_types
@@ -874,24 +904,23 @@ sub validate_loops
     foreach my $c (keys %looped_categories ) {
         my $category_key_id = $dict->{'Category'}{$c}{'values'}{'_category.key_id'}[0];
         if (defined $category_key_id) {
-            my $category_key = $dict->{'Item'}{$category_key_id};
+            my $category_key_frame = $dict->{'Item'}{$category_key_id};
 
-            if ( defined $category_key ) {
-                my $type_contents = $category_key->{'values'}{'_type.contents'}[0];
-                if ( lc $type_contents eq 'implied' ) {
-                    if ( exists $data_frame->{'values'}{'_type.contents'}[0] ) {
-                        $type_contents = $data_frame->{'values'}{'_type.contents'}[0];
-                    }
-                }
+            if ( defined $category_key_frame ) {
+                my $type_contents = get_type_contents(
+                    $category_key_id, $data_frame, $dict
+                );
+
                 my @data_names;
-                push @data_names, @{$category_key->{'values'}{'_definition.id'}};
-                if ( defined $category_key->{'values'}{'_alias.definition_id'} ) {
-                    push @data_names, @{$category_key->{'values'}{'_alias.definition_id'}};
+                push @data_names, @{$category_key_frame->{'values'}{'_definition.id'}};
+                if ( defined $category_key_frame->{'values'}{'_alias.definition_id'} ) {
+                    push @data_names, @{$category_key_frame->{'values'}{'_alias.definition_id'}};
                 }
 
                 for my $data_name (@data_names) {
                     if ( defined $data_frame->{'values'}{$data_name} ) {
-                        check_key_uniqueness( $data_frame->{'values'}{$data_name}, $type_contents);
+                        check_key_uniqueness( $data_frame->{'values'}{$data_name},
+                        $type_contents);
                     }
                 }
             }
@@ -1018,13 +1047,6 @@ sub equal {
 
     return sprintf("%.${dp}g", $num_1) eq sprintf("%.${dp}g", $num_2);
 }
-
-#sub 
-#{
-#    my ($key) = @_;
-#
-#    
-#}
 
 sub report_deprecated
 {
@@ -1188,7 +1210,7 @@ sub get_data_names
 # Builds a data structure that is more convenient to traverse in regards to
 # the Dictionary, Category and Item contexts classification.
 # @param $data
-#       CIF datablock as returned by the COD::CIF::Parser.
+#       CIF data block as returned by the COD::CIF::Parser.
 # @return $struct
 #       Hash reference with the following keys:
 #       $struct = {
