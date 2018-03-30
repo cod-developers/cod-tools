@@ -1,17 +1,22 @@
 from setuptools import setup, Command, Extension
 from os.path import dirname, realpath
 
-version = '2.2'
-svnrevision = '5781'
+# svnrevision = '5781'
 
 src_dir = dirname(dirname(dirname(realpath(__file__)))) + '/'
+
+version = None
+with open( '.version', 'r' ) as f:
+    for line in f:
+        if not line.startswith('#'):
+            version = line.rstrip('\n')
 
 setup(
     name="pycodcif",
     version=version,
     author="COD development team",
     description="COD CIF parser",
-    long_description="COD parser for CIF1.1 and CIF2.0 formats",
+    long_description="COD parser for CIF v1.1 and CIF v2.0 formats",
     author_email="grazulis@ibt.lt",
     maintainer="Andrius Merkys",
     maintainer_email="andrius.merkys@gmail.com",
@@ -44,12 +49,11 @@ setup(
 
                    'pycodcif.i',
                    'pycodcif.c',
-                   # 'pycodcif_wrap.c'],
-                   ],
+                  ],
                   define_macros=[
                     ('_YACC_',None),
                     ('YYDEBUG','1'),
-                    ('SVN_VERSION',svnrevision),
+                    # ('SVN_VERSION',svnrevision),
                   ],
                   include_dirs=[src_dir + 'externals/cexceptions',
                                 src_dir + 'components/codcif']),
