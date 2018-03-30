@@ -86,15 +86,7 @@ install-libcodcif:
 		| xargs -i install {} ${PREFIX}/bin
 
 install-pycodcif:
-	mkdir --parents ${PREFIX}/bin
-	mkdir --parents ${PREFIX}/lib/python2.7/dist-packages/pycodcif
-	install scripts/cif_printout_Python ${PREFIX}/bin
-	install --mode 644 \
-		src/components/pycodcif/__init__.py \
-		src/components/pycodcif/pycodcif.py \
-		${PREFIX}/lib/python2.7/dist-packages/pycodcif
-	install src/components/pycodcif/_pycodcif.so \
-		${PREFIX}/lib/python2.7/dist-packages/pycodcif
+	$(MAKE) install -C src/components/pycodcif PREFIX=${PREFIX}
 
 install-spglib:
 	mkdir --parents ${PREFIX}/${vendorarch}/COD
