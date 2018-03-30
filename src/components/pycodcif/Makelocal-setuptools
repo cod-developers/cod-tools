@@ -1,13 +1,22 @@
-SWIG_TMP_FILES   = pycodcif.py pycodcif_wrap.c
 PYTHON_DIST_PATH = lib/python2.7/dist-packages
 
 VERSION := $(shell grep -v "^\#" ../../../.version)
 
 EGG_DIR = pycodcif-${VERSION}.egg-info
 
+.PHONY: all build install
+
+all: build
+
+build: ${TEST_MODULE} ${TEST_DEPEND}
+
 ${TEST_MODULE} ${TEST_DEPEND}:
 	python setup.py build
 	python setup.py install --root .
+	ln -s usr/local/${PYTHON_DIST_PATH}/pycodcif/_pycodcif.so
+
+echo:
+	echo ${TEST_MODULE} ${TEST_DEPEND}
 
 install:
 	mkdir --parents ${PREFIX}/${PYTHON_DIST_PATH}/pycodcif
@@ -17,8 +26,8 @@ install:
 	install --mode 644 usr/local/${PYTHON_DIST_PATH}/${EGG_DIR}/*  ${PREFIX}/${PYTHON_DIST_PATH}/${EGG_DIR}
 
 clean:
-	rm  -f ${SWIG_TMP_FILES}
+	rm  -f pycodcif_wrap.c
 	rm -rf build pycodcif.egg-info
 
 distclean cleanAll: clean
-	rm -rf usr
+	rm -rf usr pycodcif.py _pycodcif.so
