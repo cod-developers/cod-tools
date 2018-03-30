@@ -1,7 +1,10 @@
 from setuptools import setup, Command, Extension
+from os.path import dirname, realpath
 
 version = '2.2'
 svnrevision = '5781'
+
+src_dir = dirname(dirname(dirname(realpath(__file__)))) + '/'
 
 setup(
     name="pycodcif",
@@ -18,26 +21,26 @@ setup(
     license="GPLv2",
     ext_modules=[
         Extension('pycodcif._pycodcif',
-                  ['/home/andrius/src/cod-tools/trunk/src/externals/cexceptions/cxprintf.c',
-                   '/home/andrius/src/cod-tools/trunk/src/externals/cexceptions/stringx.c',
-                   '/home/andrius/src/cod-tools/trunk/src/externals/cexceptions/allocx.c',
-                   '/home/andrius/src/cod-tools/trunk/src/externals/cexceptions/stdiox.c',
-                   '/home/andrius/src/cod-tools/trunk/src/externals/cexceptions/cexceptions.c',
+                  [src_dir + 'externals/cexceptions/cxprintf.c',
+                   src_dir + 'externals/cexceptions/stringx.c',
+                   src_dir + 'externals/cexceptions/allocx.c',
+                   src_dir + 'externals/cexceptions/stdiox.c',
+                   src_dir + 'externals/cexceptions/cexceptions.c',
 
-                   '/home/andrius/src/cod-tools/trunk/src/components/codcif/cif_options.c',
-                   '/home/andrius/src/cod-tools/trunk/src/components/codcif/common.c',
-                   '/home/andrius/src/cod-tools/trunk/src/components/codcif/ciftable.c',
-                   '/home/andrius/src/cod-tools/trunk/src/components/codcif/cif2_lexer.c',
-                   '/home/andrius/src/cod-tools/trunk/src/components/codcif/cifvalue.c',
-                   '/home/andrius/src/cod-tools/trunk/src/components/codcif/cifmessage.c',
-                   '/home/andrius/src/cod-tools/trunk/src/components/codcif/cif_grammar_flex.c',
-                   '/home/andrius/src/cod-tools/trunk/src/components/codcif/cif_lexer.c',
-                   '/home/andrius/src/cod-tools/trunk/src/components/codcif/cif.c',
-                   '/home/andrius/src/cod-tools/trunk/src/components/codcif/datablock.c',
-                   '/home/andrius/src/cod-tools/trunk/src/components/codcif/cif_compiler.c',
-                   '/home/andrius/src/cod-tools/trunk/src/components/codcif/ciflist.c',
-                   '/home/andrius/src/cod-tools/trunk/src/components/codcif/cif_grammar.tab.c',
-                   '/home/andrius/src/cod-tools/trunk/src/components/codcif/cif2_grammar.tab.c',
+                   src_dir + 'components/codcif/cif_options.c',
+                   src_dir + 'components/codcif/common.c',
+                   src_dir + 'components/codcif/ciftable.c',
+                   src_dir + 'components/codcif/cif2_lexer.c',
+                   src_dir + 'components/codcif/cifvalue.c',
+                   src_dir + 'components/codcif/cifmessage.c',
+                   src_dir + 'components/codcif/cif_grammar_flex.c',
+                   src_dir + 'components/codcif/cif_lexer.c',
+                   src_dir + 'components/codcif/cif.c',
+                   src_dir + 'components/codcif/datablock.c',
+                   src_dir + 'components/codcif/cif_compiler.c',
+                   src_dir + 'components/codcif/ciflist.c',
+                   src_dir + 'components/codcif/cif_grammar.tab.c',
+                   src_dir + 'components/codcif/cif2_grammar.tab.c',
 
                    'pycodcif.i',
                    'pycodcif.c',
@@ -48,8 +51,8 @@ setup(
                     ('YYDEBUG','1'),
                     ('SVN_VERSION',svnrevision),
                   ],
-                  include_dirs=['/home/andrius/src/cod-tools/trunk/src/externals/cexceptions',
-                                '/home/andrius/src/cod-tools/trunk/src/components/codcif']),
+                  include_dirs=[src_dir + 'externals/cexceptions',
+                                src_dir + 'components/codcif']),
                 ],
     # test_suite='nose.collector',
     # tests_require=['nose'],
