@@ -326,7 +326,7 @@ sub validate_linked_items
           # filtering out special CIF values ('?' and '.')
           my @data_item_values;
           for ( my $i = 0; $i < @{$data->{$scope}{$instance}{'values'}{$tag}}; $i++ ) {
-            if ( !has_special_value($data->{$scope}{$instance}, $tag, $i) ) {
+            if ( !has_special_value($data->{$scope}{$instance}, $tag, $i ) ) {
                 push @data_item_values,
                      $data->{$scope}{$instance}{'values'}{$tag}[$i];
             }
@@ -976,7 +976,7 @@ sub check_loop_keys
 
     my @validation_messages;
 
-    foreach my $c (keys %{$looped_categories} ) {
+    foreach my $c (sort keys %{$looped_categories} ) {
 
         my $minimum_loop_size = 0;
         for my $tag ( keys %{ $looped_categories->{$c} } ) {
@@ -1010,10 +1010,12 @@ sub check_loop_keys
                 for my $data_name (@data_names) {
                     if ( defined $data_frame->{'values'}{$data_name} ) {
                         $is_key_present = 1;
-                        check_key_uniqueness(
-                          $data_frame->{'values'}{$data_name},
-                          $type_contents
-                        );
+                        push @validation_messages,
+                             check_key_uniqueness(
+                                $data_name,
+                                $data_frame,
+                                $type_contents
+                             );
                     }
                 }
 
@@ -1056,9 +1058,12 @@ sub check_loop_keys
 }
 
 ##
-# Checks loop properties against the DDLm dictionary file.
-# @param $key_values
-#       Array reference to the key values.
+# Checks the loop key uniqueness constraint.
+# @param $data_name
+#       The data name of the data item which acts as the unique loop key.
+# @param $data_frame
+#       CIF data frame (data block or save block) in which the data item
+#       resides as returned by the COD::CIF::Parser.
 # @param $key_type
 #       Content type of the key as defined in the DDLm dictionary.
 # @return
@@ -1066,12 +1071,17 @@ sub check_loop_keys
 ##
 sub check_key_uniqueness
 {
-    my ($key_values, $key_type) = @_;
+    my ($data_name, $data_frame, $key_type) = @_;
 
     my @validation_messages;
 
     my %unique_values;
-    for my $value ( @{$key_values} ) {
+    for ( my $i = 0; $i < @{$data_frame->{'values'}{$data_name}}; $i++ ) {
+        # TODO: special values are silently skipped, but maybe they should
+        # still be reported somehow since having special value in a key
+        #  might not be desirable...
+        next if has_special_value($data_frame, $data_name, $i);
+        my $value = $data_frame->{'values'}{$data_name}[$i];
         my $is_new_key = 1;
         for my $unique_key (keys %unique_values) {
             if ( compare_ddlm_values($value, $unique_key, $key_type) ) {
@@ -1084,9 +1094,11 @@ sub check_key_uniqueness
        }
     }
 
-    foreach my $key ( keys %unique_values ) {
+    foreach my $key ( sort keys %unique_values ) {
         if ( @{$unique_values{$key}} > 1 ) {
-            push @validation_messages, "value '$key' appears " .
+            push @validation_messages, "data item $data_name acts as a loop " .
+                 'key, but the associated data values are not unique -- ' .
+                 "value '$key' appears " .
                  ( scalar @{$unique_values{$key}} ) . ' times as [' .
                  ( join ', ', map { "'$_'" } @{$unique_values{$key}} ) . ']';
         }
@@ -1098,7 +1110,8 @@ sub check_key_uniqueness
 # TODO: it should be noted, that special CIF values are handled outside of
 # this function
 # TODO: for now precisions are not considered
-# TODO: maybe move this to a separate module?
+# TODO: maybe move this to a separate module, implement and test all available
+# options
 sub compare_ddlm_values
 {
   my ( $value_1, $value_2, $content_type ) = @_;
@@ -1109,16 +1122,28 @@ sub compare_ddlm_values
     return ( $value_1 eq $value_2 );
   }
 
+  if ( $content_type eq 'code' ) {
+    return ( lc $value_1 eq lc $value_2 );
+  }
+
+  if ( $content_type eq 'name' ) {
+    return ( lc $value_1 eq lc $value_2 );
+  }
+
   if ( $content_type eq 'tag' ) {
+    return ( lc $value_1 eq lc $value_2 );
+  }
+
+  if ( $content_type eq 'uri' ) {
+    return ( $value_1 eq $value_2 );
+  }
+
+  if ( $content_type eq 'date' ) {
     return ( $value_1 eq $value_2 );
   }
 
   if ( $content_type eq 'symop' ) {
     return ( $value_1 eq $value_2 );
-  }
-
-  if ( $content_type eq 'code' ) {
-    return ( lc $value_1 eq lc $value_2 );
   }
 
   if ( $content_type eq 'dimension' ) {
